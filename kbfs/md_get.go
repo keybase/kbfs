@@ -10,9 +10,9 @@ import (
 )
 
 func mdGetTlf(ctx context.Context, config libkbfs.Config, tlfIDStr string) error {
-	tlfID := libkbfs.ParseTlfID(tlfIDStr)
-	if tlfID == libkbfs.NullTlfID {
-		return fmt.Errorf("Could not parse `%s' into a TLF ID", tlfIDStr)
+	tlfID, err := libkbfs.ParseTlfID(tlfIDStr)
+	if err != nil {
+		return err
 	}
 
 	mdOps := config.MDOps()
@@ -22,7 +22,7 @@ func mdGetTlf(ctx context.Context, config libkbfs.Config, tlfIDStr string) error
 		return err
 	}
 
-	mdID, err := rmd.MetadataID(config)
+	mdID, err := rmd.MetadataID(config.Crypto())
 	if err != nil {
 		return err
 	}
@@ -45,8 +45,8 @@ func mdGetTlf(ctx context.Context, config libkbfs.Config, tlfIDStr string) error
 	fmt.Print("------------\n")
 
 	data := rmd.Data()
-	// TODO: Print Dir.
-	fmt.Printf("Last writer: %s\n", data.LastWriter)
+	// TODO: Clean up output.
+	fmt.Printf("Dir: %s\n", data.Dir)
 	fmt.Print("TLF private key: {32 bytes}\n")
 	// TODO: Print changes.
 
