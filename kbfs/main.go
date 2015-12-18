@@ -98,6 +98,8 @@ func realMain() (exitStatus int) {
 		return read(ctx, config, args)
 	case "write":
 		return write(ctx, config, args)
+	case "md":
+		return mdMain(ctx, config, args)
 	default:
 		printError("kbfs", fmt.Errorf("unknown command '%s'", cmd))
 		return 1
