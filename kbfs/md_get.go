@@ -22,7 +22,23 @@ func mdGetTlf(ctx context.Context, config libkbfs.Config, tlfIDStr string) error
 		return err
 	}
 
-	fmt.Printf("%+v\n", rmd)
+	mdID, err := rmd.MetadataID(config)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("MD ID: %s\n", mdID)
+	fmt.Printf("Prev: %s\n", rmd.PrevRoot)
+	fmt.Printf("TLF ID: %s\n", rmd.ID)
+	fmt.Printf("Branch ID: %s\n", rmd.BID)
+	fmt.Printf("Revision: %s\n", rmd.Revision)
+	// TODO: Print flags.
+	fmt.Printf("Disk usage: %d\n", rmd.DiskUsage)
+	fmt.Printf("Bytes in new blocks: %d\n", rmd.RefBytes)
+	fmt.Printf("Bytes in unreferenced blocks: %d\n", rmd.UnrefBytes)
+	// TODO: Print Writers/Keys.
+	// TODO: Print PrivateMetadata if possible.
+
 	return nil
 }
 
