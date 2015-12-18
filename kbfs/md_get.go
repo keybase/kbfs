@@ -27,6 +27,8 @@ func mdGetTlf(ctx context.Context, config libkbfs.Config, tlfIDStr string) error
 		return err
 	}
 
+	fmt.Print("Public info\n")
+	fmt.Print("-----------\n")
 	fmt.Printf("MD ID: %s\n", mdID)
 	fmt.Printf("Prev: %s\n", rmd.PrevRoot)
 	fmt.Printf("TLF ID: %s\n", rmd.ID)
@@ -37,7 +39,16 @@ func mdGetTlf(ctx context.Context, config libkbfs.Config, tlfIDStr string) error
 	fmt.Printf("Bytes in new blocks: %d\n", rmd.RefBytes)
 	fmt.Printf("Bytes in unreferenced blocks: %d\n", rmd.UnrefBytes)
 	// TODO: Print Writers/Keys.
-	// TODO: Print PrivateMetadata if possible.
+
+	fmt.Print("\n")
+	fmt.Print("Private info\n")
+	fmt.Print("------------\n")
+
+	data := rmd.Data()
+	// TODO: Print Dir.
+	fmt.Printf("Last writer: %s\n", data.LastWriter)
+	fmt.Print("TLF private key: {32 bytes}\n")
+	// TODO: Print changes.
 
 	return nil
 }
