@@ -32,6 +32,7 @@ type FSNotifications struct {
 	notificationMutex sync.RWMutex
 }
 
+// NewFSNotifications creates a new FSNotifications object.
 func NewFSNotifications(log logger.Logger) *FSNotifications {
 	return &FSNotifications{log: log}
 }
