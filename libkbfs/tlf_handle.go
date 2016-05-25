@@ -230,16 +230,24 @@ func (h BareTlfHandle) IsReader(user keybase1.UID) bool {
 	return h.IsPublic() || h.findUserInList(user, h.Readers) || h.IsWriter(user)
 }
 
-// Users returns a list of all reader and writer UIDs for the tlf,
-// separated out into resolved and unresolved.
-func (h BareTlfHandle) Users() ([]keybase1.UID, []keybase1.SocialAssertion) {
+// ResolvedUsers returns a list of all resolved reader and writer
+// UIDs. Note that if the handle is public, the returned list won't
+// contain PUBLIC_UID.
+func (h BareTlfHandle) ResolvedUsers() []keybase1.UID {
 	var resolvedUsers []keybase1.UID
 	resolvedUsers = append(resolvedUsers, h.Writers...)
-	resolvedUsers = append(resolvedUsers, h.Readers...)
+	if !h.IsPublic() {
+		resolvedUsers = append(resolvedUsers, h.Readers...)
+	}
+	return resolvedUsers
+}
+
+// UnresolvedUsers returns a list of all unresolved readers and writers.
+func (h BareTlfHandle) UnresolvedUsers() []keybase1.SocialAssertion {
 	var unresolvedUsers []keybase1.SocialAssertion
 	unresolvedUsers = append(unresolvedUsers, h.UnresolvedWriters...)
 	unresolvedUsers = append(unresolvedUsers, h.UnresolvedReaders...)
-	return resolvedUsers, unresolvedUsers
+	return unresolvedUsers
 }
 
 // CanonicalTlfName is a string containing the canonical name of a TLF.
