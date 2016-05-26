@@ -31,35 +31,35 @@ var ErrInvalidWriter = errors.New("Cannot make TLF handle with invalid writer")
 // is passed an invalid reader.
 var ErrInvalidReader = errors.New("Cannot make TLF handle with invalid reader")
 
-// UIDList can be used to lexicographically sort UIDs.
-type UIDList []keybase1.UID
+// uidList can be used to lexicographically sort UIDs.
+type uidList []keybase1.UID
 
-func (u UIDList) Len() int {
+func (u uidList) Len() int {
 	return len(u)
 }
 
-func (u UIDList) Less(i, j int) bool {
+func (u uidList) Less(i, j int) bool {
 	return u[i].Less(u[j])
 }
 
-func (u UIDList) Swap(i, j int) {
+func (u uidList) Swap(i, j int) {
 	u[i], u[j] = u[j], u[i]
 }
 
-// SocialAssertionList can be used to lexicographically sort SocialAssertions.
-type SocialAssertionList []keybase1.SocialAssertion
+// socialAssertionList can be used to lexicographically sort SocialAssertions.
+type socialAssertionList []keybase1.SocialAssertion
 
-func (u SocialAssertionList) Len() int {
+func (u socialAssertionList) Len() int {
 	return len(u)
 }
 
-func (u SocialAssertionList) Less(i, j int) bool {
+func (u socialAssertionList) Less(i, j int) bool {
 	si := u[i].String()
 	sj := u[j].String()
 	return si < sj
 }
 
-func (u SocialAssertionList) Swap(i, j int) {
+func (u socialAssertionList) Swap(i, j int) {
 	u[i], u[j] = u[j], u[i]
 }
 
@@ -97,27 +97,27 @@ func MakeBareTlfHandle(
 
 	writersCopy := make([]keybase1.UID, len(writers))
 	copy(writersCopy, writers)
-	sort.Sort(UIDList(writersCopy))
+	sort.Sort(uidList(writersCopy))
 
 	var readersCopy []keybase1.UID
 	if len(readers) > 0 {
 		readersCopy = make([]keybase1.UID, len(readers))
 		copy(readersCopy, readers)
-		sort.Sort(UIDList(readersCopy))
+		sort.Sort(uidList(readersCopy))
 	}
 
 	var unresolvedWritersCopy []keybase1.SocialAssertion
 	if len(unresolvedWriters) > 0 {
 		unresolvedWritersCopy = make([]keybase1.SocialAssertion, len(unresolvedWriters))
 		copy(unresolvedWritersCopy, unresolvedWriters)
-		sort.Sort(SocialAssertionList(unresolvedWritersCopy))
+		sort.Sort(socialAssertionList(unresolvedWritersCopy))
 	}
 
 	var unresolvedReadersCopy []keybase1.SocialAssertion
 	if len(unresolvedReaders) > 0 {
 		unresolvedReadersCopy = make([]keybase1.SocialAssertion, len(unresolvedReaders))
 		copy(unresolvedReadersCopy, unresolvedReaders)
-		sort.Sort(SocialAssertionList(unresolvedReadersCopy))
+		sort.Sort(socialAssertionList(unresolvedReadersCopy))
 	}
 
 	return BareTlfHandle{
@@ -188,10 +188,10 @@ func (h BareTlfHandle) ResolveAssertions(
 		delete(resolvedReaders, u)
 	}
 	h.Readers = uidSetToSlice(resolvedReaders)
-	sort.Sort(UIDList(h.Writers))
-	sort.Sort(UIDList(h.Readers))
-	sort.Sort(SocialAssertionList(h.UnresolvedWriters))
-	sort.Sort(SocialAssertionList(h.UnresolvedReaders))
+	sort.Sort(uidList(h.Writers))
+	sort.Sort(uidList(h.Readers))
+	sort.Sort(socialAssertionList(h.UnresolvedWriters))
+	sort.Sort(socialAssertionList(h.UnresolvedReaders))
 	return h
 }
 
