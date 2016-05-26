@@ -9,6 +9,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/client/go/protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -155,6 +156,74 @@ func TestParseTlfHandleAssertionPublicSuccess(t *testing.T) {
 	h2, err := MakeTlfHandle(context.Background(), h.ToBareHandleOrBust(), kbpki)
 	require.NoError(t, err)
 	assert.Equal(t, CanonicalTlfName(name), h2.GetCanonicalName())
+}
+
+func TestTlfHandleAccessorsPrivate(t *testing.T) {
+	ctx := context.Background()
+
+	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"u1", "u2", "u3"})
+	currentUID := localUsers[0].UID
+	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
+
+	kbpki := &daemonKBPKI{
+		daemon: daemon,
+	}
+
+	name := "u1,u2@twitter,u3,u4@twitter#u2,u5@twitter,u6@twitter"
+	h, err := ParseTlfHandle(ctx, kbpki, name, false, true)
+	require.NoError(t, err)
+
+	require.False(t, h.IsPublic())
+
+	require.True(t, h.IsWriter(localUsers[0].UID))
+	require.True(t, h.IsReader(localUsers[0].UID))
+
+	require.False(t, h.IsWriter(localUsers[1].UID))
+	require.True(t, h.IsReader(localUsers[1].UID))
+
+	require.True(t, h.IsWriter(localUsers[2].UID))
+	require.True(t, h.IsReader(localUsers[2].UID))
+
+	for i := 6; i < 10; i++ {
+		u := keybase1.MakeTestUID(uint32(i))
+		require.False(t, h.IsWriter(u))
+		require.False(t, h.IsReader(u))
+	}
+
+	require.Equal(t, h.ResolvedWriters(),
+		[]keybase1.UID{
+			localUsers[0].UID,
+			localUsers[2].UID,
+		})
+	require.Equal(t, h.FirstResolvedWriter(), localUsers[0].UID)
+
+	require.Equal(t, h.ResolvedReaders(),
+		[]keybase1.UID{
+			localUsers[1].UID,
+		})
+
+	require.Equal(t, h.UnresolvedWriters(),
+		[]keybase1.SocialAssertion{
+			{
+				User:    "u2",
+				Service: "twitter",
+			},
+			{
+				User:    "u4",
+				Service: "twitter",
+			},
+		})
+	require.Equal(t, h.UnresolvedReaders(),
+		[]keybase1.SocialAssertion{
+			{
+				User:    "u5",
+				Service: "twitter",
+			},
+			{
+				User:    "u6",
+				Service: "twitter",
+			},
+		})
 }
 
 func TestParseTlfHandleSocialAssertion(t *testing.T) {
