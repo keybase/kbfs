@@ -281,6 +281,25 @@ func TestTlfHandleAccessorsPublic(t *testing.T) {
 	require.Nil(t, h.UnresolvedReaders())
 }
 
+func TestTlfHandleConflictInfo(t *testing.T) {
+	var h TlfHandle
+
+	require.Nil(t, h.ConflictInfo())
+	info := ConflictInfo{
+		Date:   100,
+		Number: 50,
+	}
+
+	h.SetConflictInfo(&info)
+	require.Equal(t, info, *h.ConflictInfo())
+
+	info.Date = 101
+	require.NotEqual(t, info, *h.ConflictInfo())
+
+	h.SetConflictInfo(nil)
+	require.Nil(t, h.ConflictInfo())
+}
+
 func TestParseTlfHandleSocialAssertion(t *testing.T) {
 	ctx := context.Background()
 
