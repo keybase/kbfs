@@ -19,17 +19,19 @@ import (
 // CanonicalTlfName is a string containing the canonical name of a TLF.
 type CanonicalTlfName string
 
-// TlfHandle is like BareTlfHandle but it also contains a canonical
-// TLF name.  It is go-routine-safe.
+// TlfHandle is BareTlfHandle augmented with additional info.  It is
+// immutable.
 type TlfHandle struct {
+	// If this is true, resolvedReaders and unresolvedReaders
+	// should both be nil.
 	public            bool
 	resolvedWriters   map[keybase1.UID]libkb.NormalizedUsername
 	resolvedReaders   map[keybase1.UID]libkb.NormalizedUsername
 	unresolvedWriters []keybase1.SocialAssertion
 	unresolvedReaders []keybase1.SocialAssertion
 	conflictInfo      *ConflictInfo
-	// name can be computed from the other fields, but cached for
-	// speed.
+	// name can be computed from the other fields, but is cached
+	// for speed.
 	name CanonicalTlfName
 }
 
@@ -43,10 +45,7 @@ func (h TlfHandle) IsWriter(user keybase1.UID) bool {
 }
 
 func (h TlfHandle) IsReader(user keybase1.UID) bool {
-	if h.public {
-		return true
-	}
-	if h.IsWriter(user) {
+	if h.public || h.IsWriter(user) {
 		return true
 	}
 	_, ok := h.resolvedReaders[user]
