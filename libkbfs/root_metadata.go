@@ -718,7 +718,7 @@ func (md *RootMetadata) updateFromTlfHandle(newHandle *TlfHandle) error {
 		return err
 	}
 
-	newBareHandle, err := newHandle.GetBareHandle()
+	newBareHandle, err := newHandle.ToBareHandle()
 	if err != nil {
 		return err
 	}

@@ -126,7 +126,7 @@ func TestParseTlfHandleAssertionPrivateSuccess(t *testing.T) {
 
 	// Make sure that generating another handle doesn't change the
 	// name.
-	h2, err := MakeTlfHandle(context.Background(), h.GetBareHandleOrBust(), kbpki)
+	h2, err := MakeTlfHandle(context.Background(), h.ToBareHandleOrBust(), kbpki)
 	require.NoError(t, err)
 	assert.Equal(t, CanonicalTlfName(name), h2.GetCanonicalName())
 }
@@ -152,7 +152,7 @@ func TestParseTlfHandleAssertionPublicSuccess(t *testing.T) {
 
 	// Make sure that generating another handle doesn't change the
 	// name.
-	h2, err := MakeTlfHandle(context.Background(), h.GetBareHandleOrBust(), kbpki)
+	h2, err := MakeTlfHandle(context.Background(), h.ToBareHandleOrBust(), kbpki)
 	require.NoError(t, err)
 	assert.Equal(t, CanonicalTlfName(name), h2.GetCanonicalName())
 }
@@ -182,7 +182,7 @@ func TestParseTlfHandleSocialAssertion(t *testing.T) {
 
 	// Make sure that generating another handle doesn't change the
 	// name.
-	h2, err := MakeTlfHandle(context.Background(), h.GetBareHandleOrBust(), kbpki)
+	h2, err := MakeTlfHandle(context.Background(), h.ToBareHandleOrBust(), kbpki)
 	require.NoError(t, err)
 	assert.Equal(t, CanonicalTlfName(name), h2.GetCanonicalName())
 }

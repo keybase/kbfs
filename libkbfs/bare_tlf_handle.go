@@ -64,7 +64,10 @@ func (u SocialAssertionList) Swap(i, j int) {
 }
 
 // MakeBareTlfHandle creates a BareTlfHandle from the given list of
-// readers and writers.
+// readers and writers. If the given reader list contains just
+// keybase1.PUBLIC_UID, then the returned handle will be for a public
+// folder. Otherwise, it will be private. PUBLIC_UID shouldn't be in
+// any list in any other case.
 func MakeBareTlfHandle(
 	writers, readers []keybase1.UID,
 	unresolvedWriters, unresolvedReaders []keybase1.SocialAssertion,
