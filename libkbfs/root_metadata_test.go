@@ -87,19 +87,14 @@ func makeFakeTlfHandle(
 	t *testing.T, x uint32, public bool,
 	unresolvedWriters, unresolvedReaders []keybase1.SocialAssertion) *TlfHandle {
 	uid := keybase1.MakeTestUID(x)
-	var readers []keybase1.UID
-	if public {
-		readers = []keybase1.UID{keybase1.PUBLIC_UID}
+	return &TlfHandle{
+		public: public,
+		resolvedWriters: map[keybase1.UID]libkb.NormalizedUsername{
+			uid: "test_user",
+		},
+		unresolvedWriters: unresolvedWriters,
+		unresolvedReaders: unresolvedReaders,
 	}
-	bareH, err := MakeBareTlfHandle(
-		[]keybase1.UID{uid}, readers,
-		unresolvedWriters, unresolvedReaders,
-		nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return &TlfHandle{b: bareH}
 }
 
 func newRootMetadataOrBust(

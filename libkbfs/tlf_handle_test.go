@@ -536,7 +536,7 @@ func TestResolveAgainConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.b.ConflictInfo = ci
+	h.conflictInfo = ci
 	newH, err := h.ResolveAgain(ctx, daemon)
 	require.Nil(t, err)
 	assert.Equal(t, CanonicalTlfName("u1,u2#u3"+
