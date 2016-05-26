@@ -3,7 +3,7 @@ package libkbfs
 import (
 	"testing"
 
-	"github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -102,6 +102,83 @@ func TestMakeBareTlfHandleFailures(t *testing.T) {
 
 	_, err = MakeBareTlfHandle(w, r[:1], nil, ur, nil)
 	assert.Equal(t, ErrInvalidReader, err)
+}
+
+func TestBareTlfHandleAccessors(t *testing.T) {
+	w := []keybase1.UID{
+		keybase1.MakeTestUID(4),
+		keybase1.MakeTestUID(3),
+	}
+
+	r := []keybase1.UID{
+		keybase1.MakeTestUID(5),
+		keybase1.MakeTestUID(1),
+	}
+
+	uw := []keybase1.SocialAssertion{
+		{
+			User:    "user2",
+			Service: "service3",
+		},
+		{
+			User:    "user1",
+			Service: "service1",
+		},
+	}
+
+	ur := []keybase1.SocialAssertion{
+		{
+			User:    "user5",
+			Service: "service3",
+		},
+		{
+			User:    "user1",
+			Service: "service2",
+		},
+	}
+
+	h, err := MakeBareTlfHandle(w, r, uw, ur, nil)
+	require.NoError(t, err)
+
+	require.False(t, h.IsPublic())
+
+	for _, u := range w {
+		require.True(t, h.IsWriter(u))
+		require.True(t, h.IsReader(u))
+	}
+
+	for _, u := range r {
+		require.False(t, h.IsWriter(u))
+		require.True(t, h.IsReader(u))
+	}
+
+	require.Equal(t, h.ResolvedUsers(),
+		[]keybase1.UID{
+			keybase1.MakeTestUID(3),
+			keybase1.MakeTestUID(4),
+			keybase1.MakeTestUID(1),
+			keybase1.MakeTestUID(5),
+		})
+	require.True(t, h.HasUnresolvedUsers())
+	require.Equal(t, h.UnresolvedUsers(),
+		[]keybase1.SocialAssertion{
+			{
+				User:    "user1",
+				Service: "service1",
+			},
+			{
+				User:    "user2",
+				Service: "service3",
+			},
+			{
+				User:    "user1",
+				Service: "service2",
+			},
+			{
+				User:    "user5",
+				Service: "service3",
+			},
+		})
 }
 
 func TestBareTlfHandleResolveAssertions(t *testing.T) {
