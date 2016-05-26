@@ -60,13 +60,18 @@ func (h TlfHandle) IsReader(user keybase1.UID) bool {
 	return ok
 }
 
+func (h TlfHandle) unsortedResolvedWriters() []keybase1.UID {
+	writers := make([]keybase1.UID, 0, len(h.resolvedWriters))
+	for r := range h.resolvedWriters {
+		writers = append(writers, r)
+	}
+	return writers
+}
+
 // ResolvedWriters returns the handle's resolved writer UIDs in sorted
 // order.
 func (h TlfHandle) ResolvedWriters() []keybase1.UID {
-	writers := make([]keybase1.UID, 0, len(h.resolvedWriters))
-	for w := range h.resolvedWriters {
-		writers = append(writers, w)
-	}
+	writers := h.unsortedResolvedWriters()
 	sort.Sort(UIDList(writers))
 	return writers
 }
@@ -77,13 +82,18 @@ func (h TlfHandle) FirstResolvedWriter() keybase1.UID {
 	return h.ResolvedWriters()[0]
 }
 
-// ResolvedReaders returns the handle's resolved reader UIDs in sorted
-// order.
-func (h TlfHandle) ResolvedReaders() []keybase1.UID {
+func (h TlfHandle) unsortedResolvedReaders() []keybase1.UID {
 	readers := make([]keybase1.UID, 0, len(h.resolvedReaders))
 	for r := range h.resolvedReaders {
 		readers = append(readers, r)
 	}
+	return readers
+}
+
+// ResolvedReaders returns the handle's resolved reader UIDs in sorted
+// order.
+func (h TlfHandle) ResolvedReaders() []keybase1.UID {
+	readers := h.unsortedResolvedReaders()
 	sort.Sort(UIDList(readers))
 	return readers
 }
@@ -124,21 +134,24 @@ func (h TlfHandle) SetConflictInfo(info *ConflictInfo) {
 	h.conflictInfo = &conflictInfoCopy
 }
 
-func (h TlfHandle) GetBareHandle() (BareTlfHandle, error) {
+// ToBareHandle returns a BareTlfHandle corresponding to this handle.
+func (h TlfHandle) ToBareHandle() (BareTlfHandle, error) {
 	var readers []keybase1.UID
 	if h.public {
 		readers = []keybase1.UID{keybase1.PUBLIC_UID}
 	} else {
-		readers = h.ResolvedReaders()
+		readers = h.unsortedResolvedReaders()
 	}
 	return MakeBareTlfHandle(
-		h.ResolvedWriters(), readers,
+		h.unsortedResolvedWriters(), readers,
 		h.unresolvedWriters, h.unresolvedReaders,
 		h.conflictInfo)
 }
 
-func (h TlfHandle) GetBareHandleOrBust() BareTlfHandle {
-	bh, err := h.GetBareHandle()
+// ToBareHandle returns a BareTlfHandle corresponding to this handle,
+// and panics if there's an error. Used by tests.
+func (h TlfHandle) ToBareHandleOrBust() BareTlfHandle {
+	bh, err := h.ToBareHandle()
 	if err != nil {
 		panic(err)
 	}
@@ -240,11 +253,11 @@ func makeTlfHandleHelper(
 		delete(usedUnresolvedReaders, sa)
 	}
 
-	unresolvedWriters := getSortedHandleLists(usedUnresolvedWriters)
+	unresolvedWriters := getSortedUnresolved(usedUnresolvedWriters)
 
 	var unresolvedReaders []keybase1.SocialAssertion
 	if !public {
-		unresolvedReaders = getSortedHandleLists(usedUnresolvedReaders)
+		unresolvedReaders = getSortedUnresolved(usedUnresolvedReaders)
 	}
 
 	writerNames := getSortedNames(usedWNames, unresolvedWriters)
@@ -257,13 +270,18 @@ func makeTlfHandleHelper(
 		canonicalName += ConflictSuffixSep + conflictInfo.String()
 	}
 
+	var conflictInfoCopy *ConflictInfo
+	if conflictInfo != nil {
+		c := *conflictInfo
+		conflictInfo = &c
+	}
 	h := &TlfHandle{
 		public:            public,
 		resolvedWriters:   usedWNames,
 		resolvedReaders:   usedRNames,
 		unresolvedWriters: unresolvedWriters,
 		unresolvedReaders: unresolvedReaders,
-		conflictInfo:      conflictInfo,
+		conflictInfo:      conflictInfoCopy,
 		name:              CanonicalTlfName(canonicalName),
 	}
 
@@ -321,7 +339,7 @@ func MakeTlfHandle(
 		return nil, err
 	}
 
-	newHandle, err := h.GetBareHandle()
+	newHandle, err := h.ToBareHandle()
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +493,7 @@ func (h *TlfHandle) ResolveAgain(ctx context.Context, resolver resolver) (
 	return h.ResolveAgainForUser(ctx, resolver, keybase1.UID(""))
 }
 
-func getSortedHandleLists(unresolved map[keybase1.SocialAssertion]bool) []keybase1.SocialAssertion {
+func getSortedUnresolved(unresolved map[keybase1.SocialAssertion]bool) []keybase1.SocialAssertion {
 	var assertions []keybase1.SocialAssertion
 	for sa := range unresolved {
 		assertions = append(assertions, sa)
