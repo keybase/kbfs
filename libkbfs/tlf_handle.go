@@ -95,21 +95,25 @@ func (h TlfHandle) SetConflictInfo(info *ConflictInfo) {
 	h.conflictInfo = info
 }
 
-func (h TlfHandle) GetBareHandle() BareTlfHandle {
+func (h TlfHandle) GetBareHandle() (BareTlfHandle, error) {
 	var readers []keybase1.UID
 	if h.public {
 		readers = []keybase1.UID{keybase1.PUBLIC_UID}
 	} else {
 		readers = h.GetReaders()
 	}
-	bareHandle, err := MakeBareTlfHandle(
+	return MakeBareTlfHandle(
 		h.GetWriters(), readers,
 		h.unresolvedWriters, h.unresolvedReaders,
 		h.conflictInfo)
+}
+
+func (h TlfHandle) GetBareHandleOrBust() BareTlfHandle {
+	bh, err := h.GetBareHandle()
 	if err != nil {
 		panic(err)
 	}
-	return bareHandle
+	return bh
 }
 
 type nameUIDPair struct {
@@ -288,8 +292,12 @@ func MakeTlfHandle(
 		return nil, err
 	}
 
-	if !reflect.DeepEqual(h.GetBareHandle(), bareHandle) {
-		panic(fmt.Errorf("h.GetBareHandle()=%+v unexpectedly not equal to bareHandle=%+v", h.GetBareHandle(), bareHandle))
+	newHandle, err := h.GetBareHandle()
+	if err != nil {
+		return nil, err
+	}
+	if !reflect.DeepEqual(newHandle, bareHandle) {
+		panic(fmt.Errorf("newHandle=%+v unexpectedly not equal to bareHandle=%+v", newHandle, bareHandle))
 	}
 
 	return h, nil
