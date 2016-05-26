@@ -24,9 +24,11 @@ type CanonicalTlfName string
 type TlfHandle struct {
 	// If this is true, resolvedReaders and unresolvedReaders
 	// should both be nil.
-	public            bool
-	resolvedWriters   map[keybase1.UID]libkb.NormalizedUsername
-	resolvedReaders   map[keybase1.UID]libkb.NormalizedUsername
+	public          bool
+	resolvedWriters map[keybase1.UID]libkb.NormalizedUsername
+	resolvedReaders map[keybase1.UID]libkb.NormalizedUsername
+	// Both unresolvedWriters and unresolvedReaders are stored in
+	// sorted order.
 	unresolvedWriters []keybase1.SocialAssertion
 	unresolvedReaders []keybase1.SocialAssertion
 	conflictInfo      *ConflictInfo
@@ -102,12 +104,24 @@ func (h TlfHandle) UnresolvedReaders() []keybase1.SocialAssertion {
 	return unresolvedReaders
 }
 
-func (h TlfHandle) GetConflictInfo() *ConflictInfo {
-	return h.conflictInfo
+// ConflictInfo returns the handle's conflict info, if any.
+func (h TlfHandle) ConflictInfo() *ConflictInfo {
+	if h.conflictInfo == nil {
+		return nil
+	}
+	conflictInfoCopy := *h.conflictInfo
+	return &conflictInfoCopy
 }
 
+// SetConflictInfo sets the handle's conflict info to the given one,
+// which may be nil.
 func (h TlfHandle) SetConflictInfo(info *ConflictInfo) {
-	h.conflictInfo = info
+	if info == nil {
+		h.conflictInfo = nil
+		return
+	}
+	conflictInfoCopy := *info
+	h.conflictInfo = &conflictInfoCopy
 }
 
 func (h TlfHandle) GetBareHandle() (BareTlfHandle, error) {
@@ -444,7 +458,7 @@ func (h *TlfHandle) ResolveAgainForUser(ctx context.Context, resolver resolver,
 		}
 	}
 
-	newH, err := makeTlfHandleHelper(ctx, h.IsPublic(), writers, readers, h.GetConflictInfo())
+	newH, err := makeTlfHandleHelper(ctx, h.IsPublic(), writers, readers, h.ConflictInfo())
 	if err != nil {
 		return nil, err
 	}
