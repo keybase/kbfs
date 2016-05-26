@@ -256,66 +256,94 @@ type CanonicalTlfName string
 // TlfHandle is like BareTlfHandle but it also contains a canonical
 // TLF name.  It is go-routine-safe.
 type TlfHandle struct {
-	// TODO: don't store a BareTlfHandle but generate it as
-	// necessary.
-	b               BareTlfHandle
-	resolvedWriters map[keybase1.UID]libkb.NormalizedUsername
-	resolvedReaders map[keybase1.UID]libkb.NormalizedUsername
+	public            bool
+	resolvedWriters   map[keybase1.UID]libkb.NormalizedUsername
+	resolvedReaders   map[keybase1.UID]libkb.NormalizedUsername
+	unresolvedWriters []keybase1.SocialAssertion
+	unresolvedReaders []keybase1.SocialAssertion
+	conflictInfo      *ConflictInfo
 	// name can be computed from the other fields, but cached for
 	// speed.
 	name CanonicalTlfName
 }
 
 func (h TlfHandle) IsPublic() bool {
-	return h.b.IsPublic()
+	return h.public
 }
 
 func (h TlfHandle) IsWriter(user keybase1.UID) bool {
-	return h.b.IsWriter(user)
+	_, ok := h.resolvedWriters[user]
+	return ok
 }
 
 func (h TlfHandle) IsReader(user keybase1.UID) bool {
-	return h.b.IsReader(user)
+	if h.public {
+		return true
+	}
+	if h.IsWriter(user) {
+		return true
+	}
+	_, ok := h.resolvedReaders[user]
+	return ok
 }
 
 func (h TlfHandle) GetWriters() []keybase1.UID {
-	writers := make([]keybase1.UID, len(h.b.Writers))
-	copy(writers, h.b.Writers)
+	writers := make([]keybase1.UID, 0, len(h.resolvedWriters))
+	for w := range h.resolvedWriters {
+		writers = append(writers, w)
+	}
+	sort.Sort(UIDList(writers))
 	return writers
 }
 
 func (h TlfHandle) GetReaders() []keybase1.UID {
-	readers := make([]keybase1.UID, len(h.b.Readers))
-	copy(readers, h.b.Readers)
+	readers := make([]keybase1.UID, 0, len(h.resolvedReaders))
+	for r := range h.resolvedReaders {
+		readers = append(readers, r)
+	}
+	sort.Sort(UIDList(readers))
 	return readers
 }
 
 func (h TlfHandle) GetUnresolvedWriters() []keybase1.SocialAssertion {
-	unresolvedWriters := make([]keybase1.SocialAssertion, len(h.b.UnresolvedWriters))
-	copy(unresolvedWriters, h.b.UnresolvedWriters)
+	unresolvedWriters := make([]keybase1.SocialAssertion, len(h.unresolvedWriters))
+	copy(unresolvedWriters, h.unresolvedWriters)
 	return unresolvedWriters
 }
 
 func (h TlfHandle) GetUnresolvedReaders() []keybase1.SocialAssertion {
-	unresolvedReaders := make([]keybase1.SocialAssertion, len(h.b.UnresolvedReaders))
-	copy(unresolvedReaders, h.b.UnresolvedReaders)
+	unresolvedReaders := make([]keybase1.SocialAssertion, len(h.unresolvedReaders))
+	copy(unresolvedReaders, h.unresolvedReaders)
 	return unresolvedReaders
 }
 
 func (h TlfHandle) ResolvedUsers() []keybase1.UID {
-	return h.b.ResolvedUsers()
+	return append(h.GetWriters(), h.GetReaders()...)
 }
 
 func (h TlfHandle) GetConflictInfo() *ConflictInfo {
-	return h.b.ConflictInfo
+	return h.conflictInfo
 }
 
 func (h TlfHandle) SetConflictInfo(info *ConflictInfo) {
-	h.b.ConflictInfo = info
+	h.conflictInfo = info
 }
 
 func (h TlfHandle) GetBareHandle() BareTlfHandle {
-	return h.b
+	var readers []keybase1.UID
+	if h.public {
+		readers = []keybase1.UID{keybase1.PUBLIC_UID}
+	} else {
+		readers = h.GetReaders()
+	}
+	bareHandle, err := MakeBareTlfHandle(
+		h.GetWriters(), readers,
+		h.unresolvedWriters, h.unresolvedReaders,
+		h.conflictInfo)
+	if err != nil {
+		panic(err)
+	}
+	return bareHandle
 }
 
 type nameUIDPair struct {
@@ -413,24 +441,11 @@ func makeTlfHandleHelper(
 		delete(usedUnresolvedReaders, sa)
 	}
 
-	writerUIDs, unresolvedWriters :=
-		getSortedHandleLists(usedWNames, usedUnresolvedWriters)
+	unresolvedWriters := getSortedHandleLists(usedUnresolvedWriters)
 
-	var readerUIDs []keybase1.UID
 	var unresolvedReaders []keybase1.SocialAssertion
-	if public {
-		readerUIDs = []keybase1.UID{keybase1.PublicUID}
-	} else {
-		readerUIDs, unresolvedReaders =
-			getSortedHandleLists(usedRNames, usedUnresolvedReaders)
-	}
-
-	bareHandle, err := MakeBareTlfHandle(
-		writerUIDs, readerUIDs,
-		unresolvedWriters, unresolvedReaders,
-		conflictInfo)
-	if err != nil {
-		return nil, err
+	if !public {
+		unresolvedReaders = getSortedHandleLists(usedUnresolvedReaders)
 	}
 
 	writerNames := getSortedNames(usedWNames, unresolvedWriters)
@@ -444,10 +459,13 @@ func makeTlfHandleHelper(
 	}
 
 	h := &TlfHandle{
-		b:               bareHandle,
-		resolvedWriters: usedWNames,
-		resolvedReaders: usedRNames,
-		name:            CanonicalTlfName(canonicalName),
+		public:            public,
+		resolvedWriters:   usedWNames,
+		resolvedReaders:   usedRNames,
+		unresolvedWriters: unresolvedWriters,
+		unresolvedReaders: unresolvedReaders,
+		conflictInfo:      conflictInfo,
+		name:              CanonicalTlfName(canonicalName),
 	}
 
 	return h, nil
@@ -512,14 +530,9 @@ func MakeTlfHandle(
 }
 
 func (h *TlfHandle) deepCopy(codec Codec) (*TlfHandle, error) {
-	var hCopy TlfHandle
+	hCopy := *h
 
-	err := CodecUpdate(codec, &hCopy.b, h.b)
-	if err != nil {
-		return nil, err
-	}
-
-	err = CodecUpdate(codec, &hCopy.resolvedWriters, h.resolvedWriters)
+	err := CodecUpdate(codec, &hCopy.resolvedWriters, h.resolvedWriters)
 	if err != nil {
 		return nil, err
 	}
@@ -529,7 +542,20 @@ func (h *TlfHandle) deepCopy(codec Codec) (*TlfHandle, error) {
 		return nil, err
 	}
 
-	hCopy.name = h.name
+	err = CodecUpdate(codec, &hCopy.unresolvedWriters, h.unresolvedWriters)
+	if err != nil {
+		return nil, err
+	}
+
+	err = CodecUpdate(codec, &hCopy.unresolvedReaders, h.unresolvedReaders)
+	if err != nil {
+		return nil, err
+	}
+
+	err = CodecUpdate(codec, &hCopy.conflictInfo, h.conflictInfo)
+	if err != nil {
+		return nil, err
+	}
 
 	return &hCopy, nil
 }
@@ -648,21 +674,13 @@ func (h *TlfHandle) ResolveAgain(ctx context.Context, resolver resolver) (
 	return h.ResolveAgainForUser(ctx, resolver, keybase1.UID(""))
 }
 
-func getSortedHandleLists(
-	uidToName map[keybase1.UID]libkb.NormalizedUsername,
-	unresolved map[keybase1.SocialAssertion]bool) (
-	[]keybase1.UID, []keybase1.SocialAssertion) {
-	var uids []keybase1.UID
+func getSortedHandleLists(unresolved map[keybase1.SocialAssertion]bool) []keybase1.SocialAssertion {
 	var assertions []keybase1.SocialAssertion
-	for uid := range uidToName {
-		uids = append(uids, uid)
-	}
 	for sa := range unresolved {
 		assertions = append(assertions, sa)
 	}
-	sort.Sort(UIDList(uids))
 	sort.Sort(SocialAssertionList(assertions))
-	return uids, assertions
+	return assertions
 }
 
 func splitAndNormalizeTLFName(name string, public bool) (

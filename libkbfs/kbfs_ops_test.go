@@ -687,7 +687,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailNonReader(t *testing.T) {
 
 	h := parseTlfHandleOrBust(t, config, "bob#alice", false)
 	// Hack around access check in ParseTlfHandle.
-	h.b.Readers = nil
+	h.resolvedReaders = nil
 
 	rmd := newRootMetadataOrBust(t, id, h)
 
