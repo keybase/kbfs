@@ -492,12 +492,12 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	}
 
 	// All writer keys in the desired keyset
-	wKeys, err := km.generateKeyMapForUsers(ctx, resolvedHandle.GetWriters())
+	wKeys, err := km.generateKeyMapForUsers(ctx, resolvedHandle.ResolvedWriters())
 	if err != nil {
 		return false, nil, err
 	}
 	// All reader keys in the desired keyset
-	rKeys, err := km.generateKeyMapForUsers(ctx, resolvedHandle.GetReaders())
+	rKeys, err := km.generateKeyMapForUsers(ctx, resolvedHandle.ResolvedReaders())
 	if err != nil {
 		return false, nil, err
 	}

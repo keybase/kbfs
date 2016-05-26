@@ -584,11 +584,11 @@ func TestMakeRekeyReadError(t *testing.T) {
 	require.Equal(t, NewReadAccessError(h, u), err)
 
 	err = makeRekeyReadError(
-		rmd, h, FirstValidKeyGen, h.GetWriters()[0], "alice")
+		rmd, h, FirstValidKeyGen, h.FirstResolvedWriter(), "alice")
 	require.Equal(t, NeedSelfRekeyError{"alice"}, err)
 
 	err = makeRekeyReadError(
-		rmd, h, FirstValidKeyGen+1, h.GetWriters()[0], "alice")
+		rmd, h, FirstValidKeyGen+1, h.FirstResolvedWriter(), "alice")
 	require.Equal(t, NeedOtherRekeyError{"alice"}, err)
 }
 
