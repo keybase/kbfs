@@ -200,7 +200,6 @@ func (h BareTlfHandle) IsPublic() bool {
 
 func (h BareTlfHandle) findUserInList(user keybase1.UID,
 	users []keybase1.UID) bool {
-	// TODO: this could be more efficient with a cached map/set
 	for _, u := range users {
 		if u == user {
 			return true
