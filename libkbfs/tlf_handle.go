@@ -61,6 +61,9 @@ func (h TlfHandle) IsReader(user keybase1.UID) bool {
 }
 
 func (h TlfHandle) unsortedResolvedWriters() []keybase1.UID {
+	if len(h.resolvedWriters) == 0 {
+		return nil
+	}
 	writers := make([]keybase1.UID, 0, len(h.resolvedWriters))
 	for r := range h.resolvedWriters {
 		writers = append(writers, r)
@@ -83,6 +86,9 @@ func (h TlfHandle) FirstResolvedWriter() keybase1.UID {
 }
 
 func (h TlfHandle) unsortedResolvedReaders() []keybase1.UID {
+	if len(h.resolvedReaders) == 0 {
+		return nil
+	}
 	readers := make([]keybase1.UID, 0, len(h.resolvedReaders))
 	for r := range h.resolvedReaders {
 		readers = append(readers, r)
@@ -91,7 +97,7 @@ func (h TlfHandle) unsortedResolvedReaders() []keybase1.UID {
 }
 
 // ResolvedReaders returns the handle's resolved reader UIDs in sorted
-// order.
+// order. If the handle is public, nil will be returned.
 func (h TlfHandle) ResolvedReaders() []keybase1.UID {
 	readers := h.unsortedResolvedReaders()
 	sort.Sort(uidList(readers))
@@ -101,14 +107,20 @@ func (h TlfHandle) ResolvedReaders() []keybase1.UID {
 // UnresolvedWriters returns the handle's unresolved writers in sorted
 // order.
 func (h TlfHandle) UnresolvedWriters() []keybase1.SocialAssertion {
+	if len(h.unresolvedWriters) == 0 {
+		return nil
+	}
 	unresolvedWriters := make([]keybase1.SocialAssertion, len(h.unresolvedWriters))
 	copy(unresolvedWriters, h.unresolvedWriters)
 	return unresolvedWriters
 }
 
 // UnresolvedReaders returns the handle's unresolved readers in sorted
-// order.
+// order. If the handle is public, nil will be returned.
 func (h TlfHandle) UnresolvedReaders() []keybase1.SocialAssertion {
+	if len(h.unresolvedReaders) == 0 {
+		return nil
+	}
 	unresolvedReaders := make([]keybase1.SocialAssertion, len(h.unresolvedReaders))
 	copy(unresolvedReaders, h.unresolvedReaders)
 	return unresolvedReaders
