@@ -35,15 +35,21 @@ type TlfHandle struct {
 	name CanonicalTlfName
 }
 
+// IsPublic returns whether or not this TlfHandle represents a public
+// top-level folder.
 func (h TlfHandle) IsPublic() bool {
 	return h.public
 }
 
+// IsWriter returns whether or not the given user is a writer for the
+// top-level folder represented by this TlfHandle.
 func (h TlfHandle) IsWriter(user keybase1.UID) bool {
 	_, ok := h.resolvedWriters[user]
 	return ok
 }
 
+// IsReader returns whether or not the given user is a reader for the
+// top-level folder represented by this TlfHandle.
 func (h TlfHandle) IsReader(user keybase1.UID) bool {
 	if h.public || h.IsWriter(user) {
 		return true

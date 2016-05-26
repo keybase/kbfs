@@ -221,7 +221,7 @@ func (h BareTlfHandle) IsReader(user keybase1.UID) bool {
 	return h.IsPublic() || h.findUserInList(user, h.Readers) || h.IsWriter(user)
 }
 
-// ResolvedUsers returns a list of all resolved reader and writer
+// ResolvedUsers returns a list of all resolved writer and reader
 // UIDs. Note that if the handle is public, the returned list won't
 // contain PUBLIC_UID.
 func (h BareTlfHandle) ResolvedUsers() []keybase1.UID {
@@ -233,7 +233,8 @@ func (h BareTlfHandle) ResolvedUsers() []keybase1.UID {
 	return resolvedUsers
 }
 
-// UnresolvedUsers returns a list of all unresolved readers and writers.
+// UnresolvedUsers returns a list of all unresolved writers and
+// readers.
 func (h BareTlfHandle) UnresolvedUsers() []keybase1.SocialAssertion {
 	var unresolvedUsers []keybase1.SocialAssertion
 	unresolvedUsers = append(unresolvedUsers, h.UnresolvedWriters...)
