@@ -718,7 +718,10 @@ func (md *RootMetadata) updateFromTlfHandle(newHandle *TlfHandle) error {
 		return err
 	}
 
-	newBareHandle := newHandle.GetBareHandle()
+	newBareHandle, err := newHandle.GetBareHandle()
+	if err != nil {
+		return err
+	}
 	if !reflect.DeepEqual(bareHandle, newBareHandle) {
 		return fmt.Errorf(
 			"bareHandle=%+v != newBareHandle=%+v",
