@@ -99,13 +99,13 @@ func makeFakeTlfHandle(
 		t.Fatal(err)
 	}
 
-	return &TlfHandle{BareTlfHandle: bareH}
+	return &TlfHandle{b: bareH}
 }
 
 func newRootMetadataOrBust(
 	t *testing.T, tlfID TlfID, h *TlfHandle) *RootMetadata {
 	var rmd RootMetadata
-	err := updateNewRootMetadata(&rmd, tlfID, h.BareTlfHandle)
+	err := updateNewRootMetadata(&rmd, tlfID, h.GetBareHandle())
 	require.NoError(t, err)
 	rmd.tlfHandle = h
 	return &rmd
@@ -134,7 +134,7 @@ func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
 	rmd.tlfHandle = nil
 	bh, err := rmd.MakeBareTlfHandle()
 	require.NoError(t, err)
-	require.Equal(t, h.BareTlfHandle, bh)
+	require.Equal(t, h.GetBareHandle(), bh)
 }
 
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for
@@ -163,7 +163,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	h := makeFakeTlfHandle(t, 14, false, uw, ur)
 	tlfID := FakeTlfID(0, false)
 	rmd := newRootMetadataOrBust(t, tlfID, h)
-	FakeInitialRekey(rmd, h.BareTlfHandle)
+	FakeInitialRekey(rmd, h.GetBareHandle())
 
 	dirHandle := rmd.GetTlfHandle()
 	require.Equal(t, h, dirHandle)
@@ -171,7 +171,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	rmd.tlfHandle = nil
 	bh, err := rmd.MakeBareTlfHandle()
 	require.NoError(t, err)
-	require.Equal(t, h.BareTlfHandle, bh)
+	require.Equal(t, h.GetBareHandle(), bh)
 }
 
 // Test that key generations work as expected for private TLFs.
@@ -182,7 +182,7 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 	if rmd.LatestKeyGeneration() != 0 {
 		t.Errorf("Expected key generation to be invalid (0)")
 	}
-	FakeInitialRekey(rmd, h.BareTlfHandle)
+	FakeInitialRekey(rmd, h.GetBareHandle())
 	if rmd.LatestKeyGeneration() != FirstValidKeyGen {
 		t.Errorf("Expected key generation to be valid(%d)", FirstValidKeyGen)
 	}
@@ -549,7 +549,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	// ... including if the assertions get resolved.
 	AddNewAssertionForTestOrBust(t, config, "bob", "bob@twitter")
 	rmd.SerializedPrivateMetadata = []byte{1} // MakeSuccessor requires this
-	FakeInitialRekey(rmd, h.BareTlfHandle)
+	FakeInitialRekey(rmd, h.GetBareHandle())
 	if rmd.SerializedPrivateMetadata == nil {
 		t.Fatalf("Nil private MD")
 	}
@@ -561,7 +561,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't make MD successor: %v", err)
 	}
-	FakeInitialRekey(rmd3, h3.BareTlfHandle)
+	FakeInitialRekey(rmd3, h3.GetBareHandle())
 	err = rmd3.updateFromTlfHandle(h3)
 	if err != nil {
 		t.Fatalf("Couldn't update TLF handle: %v", err)
@@ -580,7 +580,7 @@ func TestMakeRekeyReadError(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	rmd := newRootMetadataOrBust(t, id, h)
-	FakeInitialRekey(rmd, h.BareTlfHandle)
+	FakeInitialRekey(rmd, h.GetBareHandle())
 
 	u, uid, err := config.KBPKI().Resolve(context.Background(), "bob")
 	require.NoError(t, err)
@@ -589,11 +589,11 @@ func TestMakeRekeyReadError(t *testing.T) {
 	require.Equal(t, NewReadAccessError(h, u), err)
 
 	err = makeRekeyReadError(
-		rmd, h, FirstValidKeyGen, h.Writers[0], "alice")
+		rmd, h, FirstValidKeyGen, h.GetWriters()[0], "alice")
 	require.Equal(t, NeedSelfRekeyError{"alice"}, err)
 
 	err = makeRekeyReadError(
-		rmd, h, FirstValidKeyGen+1, h.Writers[0], "alice")
+		rmd, h, FirstValidKeyGen+1, h.GetWriters()[0], "alice")
 	require.Equal(t, NeedOtherRekeyError{"alice"}, err)
 }
 
@@ -607,7 +607,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 		false)
 	require.NoError(t, err)
 	rmd := newRootMetadataOrBust(t, id, h)
-	FakeInitialRekey(rmd, h.BareTlfHandle)
+	FakeInitialRekey(rmd, h.GetBareHandle())
 
 	u, uid, err := config.KBPKI().Resolve(ctx, "bob")
 	require.NoError(t, err)

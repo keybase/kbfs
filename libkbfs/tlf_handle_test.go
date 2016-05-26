@@ -223,7 +223,7 @@ func TestParseTlfHandleAssertionPrivateSuccess(t *testing.T) {
 
 	// Make sure that generating another handle doesn't change the
 	// name.
-	h2, err := MakeTlfHandle(context.Background(), h.BareTlfHandle, kbpki)
+	h2, err := MakeTlfHandle(context.Background(), h.GetBareHandle(), kbpki)
 	require.NoError(t, err)
 	assert.Equal(t, CanonicalTlfName(name), h2.GetCanonicalName())
 }
@@ -249,7 +249,7 @@ func TestParseTlfHandleAssertionPublicSuccess(t *testing.T) {
 
 	// Make sure that generating another handle doesn't change the
 	// name.
-	h2, err := MakeTlfHandle(context.Background(), h.BareTlfHandle, kbpki)
+	h2, err := MakeTlfHandle(context.Background(), h.GetBareHandle(), kbpki)
 	require.NoError(t, err)
 	assert.Equal(t, CanonicalTlfName(name), h2.GetCanonicalName())
 }
@@ -275,7 +275,7 @@ func TestParseTlfHandleSocialAssertion(t *testing.T) {
 
 	// Make sure that generating another handle doesn't change the
 	// name.
-	h2, err := MakeTlfHandle(context.Background(), h.BareTlfHandle, kbpki)
+	h2, err := MakeTlfHandle(context.Background(), h.GetBareHandle(), kbpki)
 	require.NoError(t, err)
 	assert.Equal(t, CanonicalTlfName(name), h2.GetCanonicalName())
 }
@@ -536,7 +536,7 @@ func TestResolveAgainConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.ConflictInfo = ci
+	h.b.ConflictInfo = ci
 	newH, err := h.ResolveAgain(ctx, daemon)
 	require.Nil(t, err)
 	assert.Equal(t, CanonicalTlfName("u1,u2#u3"+

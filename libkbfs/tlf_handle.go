@@ -258,12 +258,64 @@ type CanonicalTlfName string
 type TlfHandle struct {
 	// TODO: don't store a BareTlfHandle but generate it as
 	// necessary.
-	BareTlfHandle
+	b               BareTlfHandle
 	resolvedWriters map[keybase1.UID]libkb.NormalizedUsername
 	resolvedReaders map[keybase1.UID]libkb.NormalizedUsername
 	// name can be computed from the other fields, but cached for
 	// speed.
 	name CanonicalTlfName
+}
+
+func (h TlfHandle) IsPublic() bool {
+	return h.b.IsPublic()
+}
+
+func (h TlfHandle) IsWriter(user keybase1.UID) bool {
+	return h.b.IsWriter(user)
+}
+
+func (h TlfHandle) IsReader(user keybase1.UID) bool {
+	return h.b.IsReader(user)
+}
+
+func (h TlfHandle) GetWriters() []keybase1.UID {
+	writers := make([]keybase1.UID, len(h.b.Writers))
+	copy(writers, h.b.Writers)
+	return writers
+}
+
+func (h TlfHandle) GetReaders() []keybase1.UID {
+	readers := make([]keybase1.UID, len(h.b.Readers))
+	copy(readers, h.b.Readers)
+	return readers
+}
+
+func (h TlfHandle) GetUnresolvedWriters() []keybase1.SocialAssertion {
+	unresolvedWriters := make([]keybase1.SocialAssertion, len(h.b.UnresolvedWriters))
+	copy(unresolvedWriters, h.b.UnresolvedWriters)
+	return unresolvedWriters
+}
+
+func (h TlfHandle) GetUnresolvedReaders() []keybase1.SocialAssertion {
+	unresolvedReaders := make([]keybase1.SocialAssertion, len(h.b.UnresolvedReaders))
+	copy(unresolvedReaders, h.b.UnresolvedReaders)
+	return unresolvedReaders
+}
+
+func (h TlfHandle) ResolvedUsers() []keybase1.UID {
+	return h.b.ResolvedUsers()
+}
+
+func (h TlfHandle) GetConflictInfo() *ConflictInfo {
+	return h.b.ConflictInfo
+}
+
+func (h TlfHandle) SetConflictInfo(info *ConflictInfo) {
+	h.b.ConflictInfo = info
+}
+
+func (h TlfHandle) GetBareHandle() BareTlfHandle {
+	return h.b
 }
 
 type nameUIDPair struct {
@@ -392,7 +444,7 @@ func makeTlfHandleHelper(
 	}
 
 	h := &TlfHandle{
-		BareTlfHandle:   bareHandle,
+		b:               bareHandle,
 		resolvedWriters: usedWNames,
 		resolvedReaders: usedRNames,
 		name:            CanonicalTlfName(canonicalName),
@@ -452,8 +504,8 @@ func MakeTlfHandle(
 		return nil, err
 	}
 
-	if !reflect.DeepEqual(h.BareTlfHandle, bareHandle) {
-		panic(fmt.Errorf("h.BareTlfHandle=%+v unexpectedly not equal to bareHandle=%+v", h.BareTlfHandle, bareHandle))
+	if !reflect.DeepEqual(h.GetBareHandle(), bareHandle) {
+		panic(fmt.Errorf("h.GetBareHandle()=%+v unexpectedly not equal to bareHandle=%+v", h.GetBareHandle(), bareHandle))
 	}
 
 	return h, nil
@@ -462,7 +514,7 @@ func MakeTlfHandle(
 func (h *TlfHandle) deepCopy(codec Codec) (*TlfHandle, error) {
 	var hCopy TlfHandle
 
-	err := CodecUpdate(codec, &hCopy, h)
+	err := CodecUpdate(codec, &hCopy.b, h.b)
 	if err != nil {
 		return nil, err
 	}
@@ -552,32 +604,34 @@ func (rp resolvableNameUIDPair) resolve(ctx context.Context) (nameUIDPair, keyba
 // assertions that resolve to uid.
 func (h *TlfHandle) ResolveAgainForUser(ctx context.Context, resolver resolver,
 	uid keybase1.UID) (*TlfHandle, error) {
-	if len(h.UnresolvedWriters)+len(h.UnresolvedReaders) == 0 {
+	unresolvedWriters := h.GetUnresolvedWriters()
+	unresolvedReaders := h.GetUnresolvedReaders()
+	if len(unresolvedWriters)+len(unresolvedReaders) == 0 {
 		return h, nil
 	}
 
-	writers := make([]resolvableUser, 0, len(h.Writers)+len(h.UnresolvedWriters))
+	writers := make([]resolvableUser, 0, len(h.resolvedWriters)+len(unresolvedWriters))
 	for uid, w := range h.resolvedWriters {
 		writers = append(writers, resolvableNameUIDPair{w, uid})
 	}
-	for _, uw := range h.UnresolvedWriters {
+	for _, uw := range unresolvedWriters {
 		writers = append(writers, resolvableAssertion{resolver,
 			uw.String(), uid})
 	}
 
 	var readers []resolvableUser
 	if !h.IsPublic() {
-		readers = make([]resolvableUser, 0, len(h.Readers)+len(h.UnresolvedReaders))
+		readers = make([]resolvableUser, 0, len(h.resolvedReaders)+len(unresolvedReaders))
 		for uid, r := range h.resolvedReaders {
 			readers = append(readers, resolvableNameUIDPair{r, uid})
 		}
-		for _, ur := range h.UnresolvedReaders {
+		for _, ur := range unresolvedReaders {
 			readers = append(readers, resolvableAssertion{resolver,
 				ur.String(), uid})
 		}
 	}
 
-	newH, err := makeTlfHandleHelper(ctx, h.IsPublic(), writers, readers, h.BareTlfHandle.ConflictInfo)
+	newH, err := makeTlfHandleHelper(ctx, h.IsPublic(), writers, readers, h.GetConflictInfo())
 	if err != nil {
 		return nil, err
 	}
@@ -825,7 +879,7 @@ func ParseTlfHandle(
 
 		canRead := false
 
-		for _, uid := range append(h.Writers, h.Readers...) {
+		for _, uid := range h.ResolvedUsers() {
 			if uid == currentUID {
 				canRead = true
 				break
