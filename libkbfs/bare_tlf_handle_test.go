@@ -104,7 +104,7 @@ func TestMakeBareTlfHandleFailures(t *testing.T) {
 	assert.Equal(t, ErrInvalidReader, err)
 }
 
-func TestBareTlfHandleAccessors(t *testing.T) {
+func TestBareTlfHandleAccessorsPrivate(t *testing.T) {
 	w := []keybase1.UID{
 		keybase1.MakeTestUID(4),
 		keybase1.MakeTestUID(3),
@@ -152,6 +152,12 @@ func TestBareTlfHandleAccessors(t *testing.T) {
 		require.True(t, h.IsReader(u))
 	}
 
+	for i := 6; i < 10; i++ {
+		u := keybase1.MakeTestUID(uint32(i))
+		require.False(t, h.IsWriter(u))
+		require.False(t, h.IsReader(u))
+	}
+
 	require.Equal(t, h.ResolvedUsers(),
 		[]keybase1.UID{
 			keybase1.MakeTestUID(3),
@@ -179,6 +185,102 @@ func TestBareTlfHandleAccessors(t *testing.T) {
 				Service: "service3",
 			},
 		})
+}
+
+func TestBareTlfHandleAccessorsPublic(t *testing.T) {
+	w := []keybase1.UID{
+		keybase1.MakeTestUID(4),
+		keybase1.MakeTestUID(3),
+	}
+
+	uw := []keybase1.SocialAssertion{
+		{
+			User:    "user2",
+			Service: "service3",
+		},
+		{
+			User:    "user1",
+			Service: "service1",
+		},
+	}
+
+	h, err := MakeBareTlfHandle(
+		w, []keybase1.UID{keybase1.PUBLIC_UID}, uw, nil, nil)
+	require.NoError(t, err)
+
+	require.True(t, h.IsPublic())
+
+	for _, u := range w {
+		require.True(t, h.IsWriter(u))
+		require.True(t, h.IsReader(u))
+	}
+
+	for i := 6; i < 10; i++ {
+		u := keybase1.MakeTestUID(uint32(i))
+		require.False(t, h.IsWriter(u))
+		require.True(t, h.IsReader(u))
+	}
+
+	require.Equal(t, h.ResolvedUsers(),
+		[]keybase1.UID{
+			keybase1.MakeTestUID(3),
+			keybase1.MakeTestUID(4),
+		})
+	require.True(t, h.HasUnresolvedUsers())
+	require.Equal(t, h.UnresolvedUsers(),
+		[]keybase1.SocialAssertion{
+			{
+				User:    "user1",
+				Service: "service1",
+			},
+			{
+				User:    "user2",
+				Service: "service3",
+			},
+		})
+}
+
+func TestBareTlfHandleHasUnresolvedUsers(t *testing.T) {
+	w := []keybase1.UID{
+		keybase1.MakeTestUID(4),
+		keybase1.MakeTestUID(3),
+	}
+
+	uw := []keybase1.SocialAssertion{
+		{
+			User:    "user2",
+			Service: "service3",
+		},
+		{
+			User:    "user1",
+			Service: "service1",
+		},
+	}
+
+	ur := []keybase1.SocialAssertion{
+		{
+			User:    "user5",
+			Service: "service3",
+		},
+		{
+			User:    "user1",
+			Service: "service2",
+		},
+	}
+
+	h, err := MakeBareTlfHandle(w, nil, uw, ur, nil)
+	require.NoError(t, err)
+	require.True(t, h.HasUnresolvedUsers())
+
+	uw = h.UnresolvedWriters
+	h.UnresolvedWriters = nil
+	require.True(t, h.HasUnresolvedUsers())
+
+	h.UnresolvedReaders = nil
+	require.False(t, h.HasUnresolvedUsers())
+
+	h.UnresolvedWriters = uw
+	require.True(t, h.HasUnresolvedUsers())
 }
 
 func TestBareTlfHandleResolveAssertions(t *testing.T) {
