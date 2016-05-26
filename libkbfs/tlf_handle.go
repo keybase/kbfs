@@ -72,7 +72,7 @@ func (h TlfHandle) unsortedResolvedWriters() []keybase1.UID {
 // order.
 func (h TlfHandle) ResolvedWriters() []keybase1.UID {
 	writers := h.unsortedResolvedWriters()
-	sort.Sort(UIDList(writers))
+	sort.Sort(uidList(writers))
 	return writers
 }
 
@@ -94,7 +94,7 @@ func (h TlfHandle) unsortedResolvedReaders() []keybase1.UID {
 // order.
 func (h TlfHandle) ResolvedReaders() []keybase1.UID {
 	readers := h.unsortedResolvedReaders()
-	sort.Sort(UIDList(readers))
+	sort.Sort(uidList(readers))
 	return readers
 }
 
@@ -498,7 +498,7 @@ func getSortedUnresolved(unresolved map[keybase1.SocialAssertion]bool) []keybase
 	for sa := range unresolved {
 		assertions = append(assertions, sa)
 	}
-	sort.Sort(SocialAssertionList(assertions))
+	sort.Sort(socialAssertionList(assertions))
 	return assertions
 }
 
