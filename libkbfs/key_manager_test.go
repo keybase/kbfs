@@ -83,10 +83,9 @@ func expectUncachedGetTLFCryptKeyAnyDevice(config *ConfigMock, rmd *RootMetadata
 
 func expectRekey(config *ConfigMock, rmd *RootMetadata, numDevices int, handleChange bool) {
 	if handleChange {
-		bh := rmd.tlfHandle.ToBareHandleOrBust()
 		// if the handle changes the key manager checks for a conflict
 		config.mockMdops.EXPECT().GetLatestHandleForTLF(gomock.Any(), gomock.Any()).
-			Return(&bh, nil)
+			Return(rmd.tlfHandle.ToBareHandleOrBust(), nil)
 	}
 
 	// generate new keys
@@ -311,9 +310,8 @@ func TestKeyManagerRekeyResolveAgainSuccessPublic(t *testing.T) {
 	daemon := config.KeybaseDaemon().(*KeybaseDaemonLocal)
 	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
 
-	bh := rmd.tlfHandle.ToBareHandleOrBust()
 	config.mockMdops.EXPECT().GetLatestHandleForTLF(gomock.Any(), gomock.Any()).
-		Return(&bh, nil)
+		Return(rmd.tlfHandle.ToBareHandleOrBust(), nil)
 
 	done, cryptKey, err := config.KeyManager().Rekey(ctx, rmd, false)
 	require.True(t, done)
@@ -354,9 +352,8 @@ func TestKeyManagerRekeyResolveAgainSuccessPublicSelf(t *testing.T) {
 	daemon.addNewAssertionForTestOrBust("alice", "alice@twitter")
 	daemon.addNewAssertionForTestOrBust("charlie", "charlie@twitter")
 
-	bh := rmd.tlfHandle.ToBareHandleOrBust()
 	config.mockMdops.EXPECT().GetLatestHandleForTLF(gomock.Any(), gomock.Any()).
-		Return(&bh, nil)
+		Return(rmd.tlfHandle.ToBareHandleOrBust(), nil)
 
 	done, cryptKey, err := config.KeyManager().Rekey(ctx, rmd, false)
 	require.True(t, done)
