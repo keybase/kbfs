@@ -182,7 +182,8 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 	mStatus MergeStatus) (
 	*RootMetadata, error) {
 	mdserv := md.config.MDServer()
-	id, rmds, err := mdserv.GetForHandle(ctx, handle.BareTlfHandle, mStatus)
+	bh := handle.GetBareHandle()
+	id, rmds, err := mdserv.GetForHandle(ctx, bh, mStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +194,7 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 			return nil, nil
 		}
 		var rmd RootMetadata
-		err := updateNewRootMetadata(&rmd, id, handle.BareTlfHandle)
+		err := updateNewRootMetadata(&rmd, id, bh)
 		if err != nil {
 			return nil, err
 		}

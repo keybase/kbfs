@@ -62,7 +62,7 @@ func TestMdcachePut(t *testing.T) {
 
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
-	h.Writers = append(h.Writers, keybase1.MakeTestUID(0))
+	h.b.Writers = append(h.b.Writers, keybase1.MakeTestUID(0))
 
 	testMdcachePut(t, id, 1, Merged, NullBranchID, h, config)
 }
