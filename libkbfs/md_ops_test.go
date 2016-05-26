@@ -39,8 +39,8 @@ func addFakeRMDSData(rmds *RootMetadataSigned, h *TlfHandle) {
 	rmds.MD.mdID = fakeMdID(fakeTlfIDByte(rmds.MD.ID))
 
 	rmds.MD.Revision = MetadataRevision(1)
-	rmds.MD.LastModifyingWriter = h.GetWriters()[0]
-	rmds.MD.LastModifyingUser = h.GetWriters()[0]
+	rmds.MD.LastModifyingWriter = h.FirstResolvedWriter()
+	rmds.MD.LastModifyingUser = h.FirstResolvedWriter()
 	rmds.SigInfo = SignatureInfo{
 		Version:      SigED25519,
 		Signature:    []byte{42},

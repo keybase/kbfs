@@ -222,7 +222,7 @@ func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
 
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
-	uid := h.GetWriters()[0]
+	uid := h.FirstResolvedWriter()
 	rmd := newRootMetadataOrBust(t, id, h)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
@@ -242,7 +242,7 @@ func TestKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
-	uid := h.GetWriters()[0]
+	uid := h.FirstResolvedWriter()
 	rmd := newRootMetadataOrBust(t, id, h)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
@@ -262,7 +262,7 @@ func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
-	uid := h.GetWriters()[0]
+	uid := h.FirstResolvedWriter()
 	rmd := newRootMetadataOrBust(t, id, h)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")

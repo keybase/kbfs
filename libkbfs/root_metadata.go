@@ -705,7 +705,7 @@ func (md *RootMetadata) updateFromTlfHandle(newHandle *TlfHandle) error {
 	}
 
 	if newHandle.IsPublic() {
-		md.Writers = newHandle.GetWriters()
+		md.Writers = newHandle.ResolvedWriters()
 	} else {
 		md.UnresolvedReaders = newHandle.GetUnresolvedReaders()
 	}

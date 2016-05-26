@@ -58,7 +58,9 @@ func (h TlfHandle) IsReader(user keybase1.UID) bool {
 	return ok
 }
 
-func (h TlfHandle) GetWriters() []keybase1.UID {
+// ResolvedWriters returns the handle's resolved writer UIDs in sorted
+// order.
+func (h TlfHandle) ResolvedWriters() []keybase1.UID {
 	writers := make([]keybase1.UID, 0, len(h.resolvedWriters))
 	for w := range h.resolvedWriters {
 		writers = append(writers, w)
@@ -67,7 +69,15 @@ func (h TlfHandle) GetWriters() []keybase1.UID {
 	return writers
 }
 
-func (h TlfHandle) GetReaders() []keybase1.UID {
+// FirstResolvedWriter returns the handle's first resolved writer UID
+// (when sorted). This is used mostly for tests.
+func (h TlfHandle) FirstResolvedWriter() keybase1.UID {
+	return h.ResolvedWriters()[0]
+}
+
+// ResolvedReaders returns the handle's resolved reader UIDs in sorted
+// order.
+func (h TlfHandle) ResolvedReaders() []keybase1.UID {
 	readers := make([]keybase1.UID, 0, len(h.resolvedReaders))
 	for r := range h.resolvedReaders {
 		readers = append(readers, r)
@@ -101,10 +111,10 @@ func (h TlfHandle) GetBareHandle() (BareTlfHandle, error) {
 	if h.public {
 		readers = []keybase1.UID{keybase1.PUBLIC_UID}
 	} else {
-		readers = h.GetReaders()
+		readers = h.ResolvedReaders()
 	}
 	return MakeBareTlfHandle(
-		h.GetWriters(), readers,
+		h.ResolvedWriters(), readers,
 		h.unresolvedWriters, h.unresolvedReaders,
 		h.conflictInfo)
 }
