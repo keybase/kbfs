@@ -159,8 +159,8 @@ func (h TlfHandle) ToBareHandle() (BareTlfHandle, error) {
 		h.conflictInfo)
 }
 
-// ToBareHandle returns a BareTlfHandle corresponding to this handle,
-// and panics if there's an error. Used by tests.
+// ToBareHandleOrBust returns a BareTlfHandle corresponding to this
+// handle, and panics if there's an error. Used by tests.
 func (h TlfHandle) ToBareHandleOrBust() BareTlfHandle {
 	bh, err := h.ToBareHandle()
 	if err != nil {
