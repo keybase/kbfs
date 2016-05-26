@@ -86,13 +86,17 @@ func (h TlfHandle) ResolvedReaders() []keybase1.UID {
 	return readers
 }
 
-func (h TlfHandle) GetUnresolvedWriters() []keybase1.SocialAssertion {
+// UnresolvedWriters returns the handle's unresolved writers in sorted
+// order.
+func (h TlfHandle) UnresolvedWriters() []keybase1.SocialAssertion {
 	unresolvedWriters := make([]keybase1.SocialAssertion, len(h.unresolvedWriters))
 	copy(unresolvedWriters, h.unresolvedWriters)
 	return unresolvedWriters
 }
 
-func (h TlfHandle) GetUnresolvedReaders() []keybase1.SocialAssertion {
+// UnresolvedReaders returns the handle's unresolved readers in sorted
+// order.
+func (h TlfHandle) UnresolvedReaders() []keybase1.SocialAssertion {
 	unresolvedReaders := make([]keybase1.SocialAssertion, len(h.unresolvedReaders))
 	copy(unresolvedReaders, h.unresolvedReaders)
 	return unresolvedReaders
