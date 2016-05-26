@@ -707,11 +707,11 @@ func (md *RootMetadata) updateFromTlfHandle(newHandle *TlfHandle) error {
 	if newHandle.IsPublic() {
 		md.Writers = newHandle.ResolvedWriters()
 	} else {
-		md.UnresolvedReaders = newHandle.GetUnresolvedReaders()
+		md.UnresolvedReaders = newHandle.UnresolvedReaders()
 	}
 
-	md.Extra.UnresolvedWriters = newHandle.GetUnresolvedWriters()
-	md.ConflictInfo = newHandle.GetConflictInfo()
+	md.Extra.UnresolvedWriters = newHandle.UnresolvedWriters()
+	md.ConflictInfo = newHandle.ConflictInfo()
 
 	bareHandle, err := md.makeBareTlfHandle()
 	if err != nil {
