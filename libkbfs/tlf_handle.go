@@ -137,7 +137,7 @@ func (h TlfHandle) ConflictInfo() *ConflictInfo {
 
 // SetConflictInfo sets the handle's conflict info to the given one,
 // which may be nil.
-func (h TlfHandle) SetConflictInfo(info *ConflictInfo) {
+func (h *TlfHandle) SetConflictInfo(info *ConflictInfo) {
 	if info == nil {
 		h.conflictInfo = nil
 		return
