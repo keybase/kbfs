@@ -88,10 +88,6 @@ func (h TlfHandle) GetUnresolvedReaders() []keybase1.SocialAssertion {
 	return unresolvedReaders
 }
 
-func (h TlfHandle) ResolvedUsers() []keybase1.UID {
-	return append(h.GetWriters(), h.GetReaders()...)
-}
-
 func (h TlfHandle) GetConflictInfo() *ConflictInfo {
 	return h.conflictInfo
 }
@@ -680,16 +676,7 @@ func ParseTlfHandle(
 			return nil, err
 		}
 
-		canRead := false
-
-		for _, uid := range h.ResolvedUsers() {
-			if uid == currentUID {
-				canRead = true
-				break
-			}
-		}
-
-		if !canRead {
+		if !h.IsReader(currentUID) {
 			return nil, ReadAccessError{currentUsername, h.GetCanonicalName(), public}
 		}
 	}
