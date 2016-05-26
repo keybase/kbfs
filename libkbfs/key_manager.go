@@ -447,9 +447,6 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		if err != nil {
 			return false, nil, err
 		}
-		if latestHandle == nil {
-			return false, nil, NoSuchTlfHandleError{md.ID}
-		}
 		resolvedInfo := resolvedHandle.ConflictInfo()
 		if latestHandle.ConflictInfo != resolvedInfo {
 			km.log.CDebugf(ctx, "handle for %s is conflicted",
