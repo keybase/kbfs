@@ -19,8 +19,7 @@ import (
 // CanonicalTlfName is a string containing the canonical name of a TLF.
 type CanonicalTlfName string
 
-// TlfHandle is BareTlfHandle augmented with additional info.  It is
-// immutable.
+// TlfHandle is BareTlfHandle augmented with additional info.
 type TlfHandle struct {
 	// If this is true, resolvedReaders and unresolvedReaders
 	// should both be nil.
