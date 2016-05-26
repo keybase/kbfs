@@ -415,28 +415,26 @@ func (rp resolvableNameUIDPair) resolve(ctx context.Context) (nameUIDPair, keyba
 // assertions that resolve to uid.
 func (h *TlfHandle) ResolveAgainForUser(ctx context.Context, resolver resolver,
 	uid keybase1.UID) (*TlfHandle, error) {
-	unresolvedWriters := h.GetUnresolvedWriters()
-	unresolvedReaders := h.GetUnresolvedReaders()
-	if len(unresolvedWriters)+len(unresolvedReaders) == 0 {
+	if len(h.unresolvedWriters)+len(h.unresolvedReaders) == 0 {
 		return h, nil
 	}
 
-	writers := make([]resolvableUser, 0, len(h.resolvedWriters)+len(unresolvedWriters))
+	writers := make([]resolvableUser, 0, len(h.resolvedWriters)+len(h.unresolvedWriters))
 	for uid, w := range h.resolvedWriters {
 		writers = append(writers, resolvableNameUIDPair{w, uid})
 	}
-	for _, uw := range unresolvedWriters {
+	for _, uw := range h.unresolvedWriters {
 		writers = append(writers, resolvableAssertion{true, resolver,
 			uw.String(), uid})
 	}
 
 	var readers []resolvableUser
 	if !h.IsPublic() {
-		readers = make([]resolvableUser, 0, len(h.resolvedReaders)+len(unresolvedReaders))
+		readers = make([]resolvableUser, 0, len(h.resolvedReaders)+len(h.unresolvedReaders))
 		for uid, r := range h.resolvedReaders {
 			readers = append(readers, resolvableNameUIDPair{r, uid})
 		}
-		for _, ur := range unresolvedReaders {
+		for _, ur := range h.unresolvedReaders {
 			readers = append(readers, resolvableAssertion{true, resolver,
 				ur.String(), uid})
 		}
