@@ -361,10 +361,7 @@ func (md *RootMetadata) deepCopy(codec Codec, copyHandle bool) (*RootMetadata, e
 	}
 
 	if copyHandle {
-		newMd.tlfHandle, err = md.tlfHandle.deepCopy(codec)
-		if err != nil {
-			return nil, err
-		}
+		newMd.tlfHandle = md.tlfHandle.deepCopy()
 	}
 
 	// No need to copy mdID.

@@ -361,35 +361,26 @@ func MakeTlfHandle(
 	return h, nil
 }
 
-func (h *TlfHandle) deepCopy(codec Codec) (*TlfHandle, error) {
-	hCopy := *h
-
-	err := CodecUpdate(codec, &hCopy.resolvedWriters, h.resolvedWriters)
-	if err != nil {
-		return nil, err
+func (h *TlfHandle) deepCopy() *TlfHandle {
+	hCopy := TlfHandle{
+		public:            h.public,
+		name:              h.name,
+		unresolvedWriters: h.UnresolvedWriters(),
+		unresolvedReaders: h.UnresolvedReaders(),
+		conflictInfo:      h.ConflictInfo(),
 	}
 
-	err = CodecUpdate(codec, &hCopy.resolvedReaders, h.resolvedReaders)
-	if err != nil {
-		return nil, err
+	hCopy.resolvedWriters = make(map[keybase1.UID]libkb.NormalizedUsername, len(h.resolvedWriters))
+	for k, v := range h.resolvedWriters {
+		hCopy.resolvedWriters[k] = v
 	}
 
-	err = CodecUpdate(codec, &hCopy.unresolvedWriters, h.unresolvedWriters)
-	if err != nil {
-		return nil, err
+	hCopy.resolvedReaders = make(map[keybase1.UID]libkb.NormalizedUsername, len(h.resolvedReaders))
+	for k, v := range h.resolvedReaders {
+		hCopy.resolvedReaders[k] = v
 	}
 
-	err = CodecUpdate(codec, &hCopy.unresolvedReaders, h.unresolvedReaders)
-	if err != nil {
-		return nil, err
-	}
-
-	err = CodecUpdate(codec, &hCopy.conflictInfo, h.conflictInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	return &hCopy, nil
+	return &hCopy
 }
 
 func getSortedNames(
