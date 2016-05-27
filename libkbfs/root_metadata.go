@@ -705,29 +705,27 @@ func (md *RootMetadata) updateFromTlfHandle(newHandle *TlfHandle) error {
 	}
 
 	if newHandle.IsPublic() {
-		md.Writers = make([]keybase1.UID, len(newHandle.Writers))
-		copy(md.Writers, newHandle.Writers)
+		md.Writers = newHandle.ResolvedWriters()
 	} else {
-		md.UnresolvedReaders =
-			make([]keybase1.SocialAssertion, len(newHandle.UnresolvedReaders))
-		copy(md.UnresolvedReaders, newHandle.UnresolvedReaders)
+		md.UnresolvedReaders = newHandle.UnresolvedReaders()
 	}
 
-	md.Extra.UnresolvedWriters =
-		make([]keybase1.SocialAssertion, len(newHandle.UnresolvedWriters))
-	copy(md.Extra.UnresolvedWriters, newHandle.UnresolvedWriters)
-
-	md.ConflictInfo = newHandle.ConflictInfo
+	md.Extra.UnresolvedWriters = newHandle.UnresolvedWriters()
+	md.ConflictInfo = newHandle.ConflictInfo()
 
 	bareHandle, err := md.makeBareTlfHandle()
 	if err != nil {
 		return err
 	}
 
-	if !reflect.DeepEqual(bareHandle, newHandle.BareTlfHandle) {
+	newBareHandle, err := newHandle.ToBareHandle()
+	if err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(bareHandle, newBareHandle) {
 		return fmt.Errorf(
-			"bareHandle=%+v != newHandle.BareTlfHandle=%+v",
-			bareHandle, newHandle.BareTlfHandle)
+			"bareHandle=%+v != newBareHandle=%+v",
+			bareHandle, newBareHandle)
 	}
 
 	md.tlfHandle = newHandle
