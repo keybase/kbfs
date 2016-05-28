@@ -29,7 +29,7 @@ func TestNormalizeNamesInTLFWithConflict(t *testing.T) {
 	readerNames := []string{"EE", "ff", "AA@HackerNews", "aa", "BB", "bb", "ZZ@hackernews"}
 	conflictSuffix := "(cOnflictED coPy 2015-05-11 #4)"
 	s, err := normalizeNamesInTLF(writerNames, readerNames, conflictSuffix)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "aa,bb,c@twitter,d@twitter#AA@hackernews,ZZ@hackernews,aa,bb,bb,ee,ff (conflicted copy 2015-05-11 #4)", s)
 }
 
@@ -482,7 +482,7 @@ func TestResolveAgainConflict(t *testing.T) {
 
 	name := "u1,u2#u3@twitter"
 	h, err := ParseTlfHandle(ctx, kbpki, name, false)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, CanonicalTlfName(name), h.GetCanonicalName())
 
 	daemon.addNewAssertionForTest("u3", "u3@twitter")
@@ -492,7 +492,7 @@ func TestResolveAgainConflict(t *testing.T) {
 	}
 	h.conflictInfo = ci
 	newH, err := h.ResolveAgain(ctx, daemon)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, CanonicalTlfName("u1,u2#u3"+
 		ConflictSuffixSep+ci.String()), newH.GetCanonicalName())
 }
