@@ -910,8 +910,9 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 	// cache for the merged branch.
 	mergedNodeCache := newNodeCacheStandard(cr.fbo.folderBranch)
 	// Initialize the root node.  There will always be at least one
-	// unmerged path.
-	mergedNodeCache.GetOrCreate(mergedChains.mostRecentMD.data.Dir.BlockPointer,
+	// unmerged path.  Hold it here so it doesn't get gc'd.
+	rootNode, _ := mergedNodeCache.GetOrCreate(
+		mergedChains.mostRecentMD.data.Dir.BlockPointer,
 		unmergedPaths[0].path[0].Name, nil)
 
 	newPtrs := make(map[BlockPointer]bool)
@@ -932,6 +933,10 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	// Print out the root node here, to guarantee it isn't GC'd before
+	// SearchForNodes completes.
+	cr.log.CDebugf(ctx, "Found %d nodes for %d ptrs, root node %p",
+		len(nodeMap), len(ptrs), rootNode.GetID())
 
 	for ptr, n := range nodeMap {
 		if n == nil {
@@ -1436,13 +1441,19 @@ func (cr *ConflictResolver) fixRenameConflicts(ctx context.Context,
 	}
 
 	mergedNodeCache := newNodeCacheStandard(cr.fbo.folderBranch)
-	mergedNodeCache.GetOrCreate(mergedChains.mostRecentMD.data.Dir.BlockPointer,
-		string(mergedChains.mostRecentMD.GetTlfHandle().GetCanonicalName()), nil)
+	rootNode, _ := mergedNodeCache.GetOrCreate(
+		mergedChains.mostRecentMD.data.Dir.BlockPointer,
+		string(mergedChains.mostRecentMD.GetTlfHandle().GetCanonicalName()),
+		nil)
 	nodeMap, err := cr.fbo.blocks.SearchForNodes(
 		ctx, mergedNodeCache, ptrs, newPtrs, mergedChains.mostRecentMD)
 	if err != nil {
 		return nil, err
 	}
+	// Print out the root node here, to guarantee it isn't GC'd before
+	// SearchForNodes completes.
+	cr.log.CDebugf(ctx, "Found %d nodes for %d ptrs, root node %p",
+		len(nodeMap), len(ptrs), rootNode.GetID())
 
 	for _, ptr := range doubleRenames {
 		// Find the merged paths
@@ -2972,13 +2983,17 @@ func (cr *ConflictResolver) getOpsForLocalNotification(ctx context.Context,
 	// that we can correctly order the chains from the root outward.
 	mergedNodeCache := newNodeCacheStandard(cr.fbo.folderBranch)
 	// Initialize the root node.
-	mergedNodeCache.GetOrCreate(md.data.Dir.BlockPointer,
+	rootNode, _ := mergedNodeCache.GetOrCreate(md.data.Dir.BlockPointer,
 		string(md.GetTlfHandle().GetCanonicalName()), nil)
 	nodeMap, err := cr.fbo.blocks.SearchForNodes(
 		ctx, mergedNodeCache, ptrs, newPtrs, md)
 	if err != nil {
 		return nil, err
 	}
+	// Print out the root node here, to guarantee it isn't GC'd before
+	// SearchForNodes completes.
+	cr.log.CDebugf(ctx, "Found %d nodes for %d ptrs, root node %p",
+		len(nodeMap), len(ptrs), rootNode.GetID())
 	mergedPaths := make([]path, 0, len(nodeMap))
 	for _, node := range nodeMap {
 		if node == nil {
