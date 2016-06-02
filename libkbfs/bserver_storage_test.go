@@ -13,7 +13,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-func makeTestEntries(n int) ([]BlockID, []blockEntry, error) {
+func makeTestEntries(b *testing.B, n int) ([]BlockID, []blockEntry) {
 	ids := make([]BlockID, n)
 
 	for i := 0; i < n; i++ {
@@ -27,20 +27,20 @@ func makeTestEntries(n int) ([]BlockID, []blockEntry, error) {
 		entries[i].BlockData = make([]byte, blockSize)
 		err := cryptoRandRead(entries[i].BlockData)
 		if err != nil {
-			return nil, nil, err
+			b.Fatal(err)
 		}
 		err = cryptoRandRead(entries[i].KeyServerHalf.data[:])
 		if err != nil {
-			return nil, nil, err
+			b.Fatal(err)
 		}
 		err = cryptoRandRead(entries[i].Tlf.id[:TlfIDByteLen-1])
 		if err != nil {
-			return nil, nil, err
+			b.Fatal(err)
 		}
 		entries[i].Tlf.id[TlfIDByteLen-1] = TlfIDSuffix
 	}
 
-	return ids, entries, nil
+	return ids, entries
 }
 
 func doPuts(b *testing.B, ids []BlockID, entries []blockEntry,
@@ -58,10 +58,7 @@ func runGetBenchmark(b *testing.B, s bserverLocalStorage) {
 	if numIDs > 500 {
 		numIDs = 500
 	}
-	ids, entries, err := makeTestEntries(numIDs)
-	if err != nil {
-		b.Fatal(err)
-	}
+	ids, entries := makeTestEntries(b, numIDs)
 
 	doPuts(b, ids, entries, s)
 
@@ -87,14 +84,13 @@ type fileFixture struct {
 	tempdir string
 }
 
-func makeFileFixture() (fixture fileFixture, err error) {
+func makeFileFixture(b *testing.B) fileFixture {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "kbfs_file_storage")
 	if err != nil {
-		return
+		b.Fatal(err)
 	}
 
-	fixture = fileFixture{tempdir}
-	return
+	return fileFixture{tempdir}
 }
 
 func (f fileFixture) cleanup() {
@@ -106,25 +102,26 @@ type leveldbFixture struct {
 	db      *leveldb.DB
 }
 
-func makeLeveldbFixture() (fixture leveldbFixture, err error) {
+func makeLeveldbFixture(b *testing.B) leveldbFixture {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "kbfs_leveldb_storage")
 	if err != nil {
-		return
+		b.Fatal(err)
 	}
 
+	success := false
 	defer func() {
-		if err != nil {
+		if !success {
 			os.RemoveAll(tempdir)
 		}
 	}()
 
 	db, err := leveldb.OpenFile(tempdir, leveldbOptions)
 	if err != nil {
-		return
+		b.Fatal(err)
 	}
 
-	fixture = leveldbFixture{tempdir, db}
-	return
+	success = true
+	return leveldbFixture{tempdir, db}
 }
 
 func (f leveldbFixture) cleanup() {
@@ -138,11 +135,7 @@ func BenchmarkMemStorageGet(b *testing.B) {
 }
 
 func BenchmarkFileStorageGet(b *testing.B) {
-	f, err := makeFileFixture()
-	if err != nil {
-		b.Fatal(err)
-	}
-
+	f := makeFileFixture(b)
 	defer func() {
 		f.cleanup()
 	}()
@@ -152,11 +145,7 @@ func BenchmarkFileStorageGet(b *testing.B) {
 }
 
 func BenchmarkLeveldbStorageGet(b *testing.B) {
-	f, err := makeLeveldbFixture()
-	if err != nil {
-		b.Fatal(err)
-	}
-
+	f := makeLeveldbFixture(b)
 	defer func() {
 		f.cleanup()
 	}()
@@ -166,10 +155,7 @@ func BenchmarkLeveldbStorageGet(b *testing.B) {
 }
 
 func runPutBenchmark(b *testing.B, s bserverLocalStorage) {
-	ids, entries, err := makeTestEntries(b.N)
-	if err != nil {
-		b.Fatal(err)
-	}
+	ids, entries := makeTestEntries(b, b.N)
 
 	b.ResetTimer()
 	defer b.StopTimer()
@@ -183,11 +169,7 @@ func BenchmarkMemStoragePut(b *testing.B) {
 }
 
 func BenchmarkFileStoragePut(b *testing.B) {
-	f, err := makeFileFixture()
-	if err != nil {
-		b.Fatal(err)
-	}
-
+	f := makeFileFixture(b)
 	defer func() {
 		f.cleanup()
 	}()
@@ -197,11 +179,7 @@ func BenchmarkFileStoragePut(b *testing.B) {
 }
 
 func BenchmarkLeveldbStoragePut(b *testing.B) {
-	f, err := makeLeveldbFixture()
-	if err != nil {
-		b.Fatal(err)
-	}
-
+	f := makeLeveldbFixture(b)
 	defer func() {
 		f.cleanup()
 	}()
