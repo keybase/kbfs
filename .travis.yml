@@ -44,6 +44,7 @@ script:
   - cd ../test
   - go test -i -tags fuse && go test -race -c && ./test.test -test.timeout 4m
   - go test -c -tags fuse && ./test.test -test.timeout 4m
+after_success:
   - if [ "$TRAVIS_OS_NAME" == 'linux' ] && [ "$TRAVIS_PULL_REQUEST" == 'false' ]; then
       cp $GOPATH/bin/kbfsfuse $GOPATH/src/github.com/keybase/kbfs/kbfsfuse/kbfsfuse &&
       docker build -t $DOCKER_USER/kbfsfuse --build-arg KEYBASE_TEST_ROOT_CERT_PEM="$KEYBASE_TEST_ROOT_CERT_PEM" $GOPATH/src/github.com/keybase/kbfs/kbfsfuse &&
