@@ -33,6 +33,11 @@ func makeTestEntries(n int) ([]BlockID, []blockEntry, error) {
 		if err != nil {
 			return nil, nil, err
 		}
+		err = cryptoRandRead(entries[i].Tlf.id[:TlfIDByteLen-1])
+		if err != nil {
+			return nil, nil, err
+		}
+		entries[i].Tlf.id[TlfIDByteLen-1] = TlfIDSuffix
 	}
 
 	return ids, entries, nil
