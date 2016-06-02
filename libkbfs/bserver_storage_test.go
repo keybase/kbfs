@@ -49,19 +49,19 @@ func doPuts(ids []BlockID, entries []blockEntry, s bserverLocalStorage) error {
 	return nil
 }
 
-func runGetBenchmark(b *testing.B, s bserverLocalStorage) error {
+func runGetBenchmark(b *testing.B, s bserverLocalStorage) {
 	numIDs := b.N
 	if numIDs > 500 {
 		numIDs = 500
 	}
 	ids, entries, err := makeTestEntries(numIDs)
 	if err != nil {
-		return err
+		b.Fatal(err)
 	}
 
 	err = doPuts(ids, entries, s)
 	if err != nil {
-		return err
+		b.Fatal(err)
 	}
 
 	indices := make([]int, b.N)
@@ -77,11 +77,9 @@ func runGetBenchmark(b *testing.B, s bserverLocalStorage) error {
 		// if necessary.
 		_, err := s.get(ids[indices[i]])
 		if err != nil {
-			return err
+			b.Fatal(err)
 		}
 	}
-
-	return nil
 }
 
 type fileFixture struct {
@@ -135,10 +133,7 @@ func (f leveldbFixture) cleanup() {
 
 func BenchmarkMemStorageGet(b *testing.B) {
 	s := makeBserverMemStorage()
-	err := runGetBenchmark(b, s)
-	if err != nil {
-		b.Fatal(err)
-	}
+	runGetBenchmark(b, s)
 }
 
 func BenchmarkFileStorageGet(b *testing.B) {
@@ -152,10 +147,7 @@ func BenchmarkFileStorageGet(b *testing.B) {
 	}()
 
 	s := makeBserverFileStorage(NewCodecMsgpack(), f.tempdir)
-	err = runGetBenchmark(b, s)
-	if err != nil {
-		b.Fatal(err)
-	}
+	runGetBenchmark(b, s)
 }
 
 func BenchmarkLeveldbStorageGet(b *testing.B) {
@@ -169,10 +161,7 @@ func BenchmarkLeveldbStorageGet(b *testing.B) {
 	}()
 
 	s := makeBserverLeveldbStorage(NewCodecMsgpack(), f.db)
-	err = runGetBenchmark(b, s)
-	if err != nil {
-		b.Fatal(err)
-	}
+	runGetBenchmark(b, s)
 }
 
 func runPutBenchmark(b *testing.B, s bserverLocalStorage) error {
