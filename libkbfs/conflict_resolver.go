@@ -934,7 +934,8 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 		return nil, nil, nil, err
 	}
 	// Print out the root node here, to guarantee it isn't GC'd before
-	// SearchForNodes completes.
+	// SearchForNodes completes. TODO: replace with a
+	// runtime.KeepAlive() call in Go 1.7.
 	cr.log.CDebugf(ctx, "Found %d nodes for %d ptrs, root node %p",
 		len(nodeMap), len(ptrs), rootNode.GetID())
 
@@ -1451,7 +1452,8 @@ func (cr *ConflictResolver) fixRenameConflicts(ctx context.Context,
 		return nil, err
 	}
 	// Print out the root node here, to guarantee it isn't GC'd before
-	// SearchForNodes completes.
+	// SearchForNodes completes.  TODO: replace with a
+	// runtime.KeepAlive() call in Go 1.7.
 	cr.log.CDebugf(ctx, "Found %d nodes for %d ptrs, root node %p",
 		len(nodeMap), len(ptrs), rootNode.GetID())
 
