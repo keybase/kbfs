@@ -38,15 +38,14 @@ func makeTestEntries(n int) ([]BlockID, []blockEntry, error) {
 	return ids, entries, nil
 }
 
-func doPuts(ids []BlockID, entries []blockEntry, s bserverLocalStorage) error {
+func doPuts(b *testing.B, ids []BlockID, entries []blockEntry,
+	s bserverLocalStorage) {
 	for i := 0; i < len(ids); i++ {
 		err := s.put(ids[i], entries[i%len(entries)])
 		if err != nil {
-			return err
+			b.Fatal(err)
 		}
 	}
-
-	return nil
 }
 
 func runGetBenchmark(b *testing.B, s bserverLocalStorage) {
@@ -59,10 +58,7 @@ func runGetBenchmark(b *testing.B, s bserverLocalStorage) {
 		b.Fatal(err)
 	}
 
-	err = doPuts(ids, entries, s)
-	if err != nil {
-		b.Fatal(err)
-	}
+	doPuts(b, ids, entries, s)
 
 	indices := make([]int, b.N)
 	for i := 0; i < b.N; i++ {
@@ -164,24 +160,21 @@ func BenchmarkLeveldbStorageGet(b *testing.B) {
 	runGetBenchmark(b, s)
 }
 
-func runPutBenchmark(b *testing.B, s bserverLocalStorage) error {
+func runPutBenchmark(b *testing.B, s bserverLocalStorage) {
 	ids, entries, err := makeTestEntries(b.N)
 	if err != nil {
-		return err
+		b.Fatal(err)
 	}
 
 	b.ResetTimer()
 	defer b.StopTimer()
 
-	return doPuts(ids, entries, s)
+	doPuts(b, ids, entries, s)
 }
 
 func BenchmarkMemStoragePut(b *testing.B) {
 	s := makeBserverMemStorage()
-	err := runPutBenchmark(b, s)
-	if err != nil {
-		b.Fatal(err)
-	}
+	runPutBenchmark(b, s)
 }
 
 func BenchmarkFileStoragePut(b *testing.B) {
@@ -195,10 +188,7 @@ func BenchmarkFileStoragePut(b *testing.B) {
 	}()
 
 	s := makeBserverFileStorage(NewCodecMsgpack(), f.tempdir)
-	err = runPutBenchmark(b, s)
-	if err != nil {
-		b.Fatal(err)
-	}
+	runPutBenchmark(b, s)
 }
 
 func BenchmarkLeveldbStoragePut(b *testing.B) {
@@ -212,8 +202,5 @@ func BenchmarkLeveldbStoragePut(b *testing.B) {
 	}()
 
 	s := makeBserverLeveldbStorage(NewCodecMsgpack(), f.db)
-	err = runPutBenchmark(b, s)
-	if err != nil {
-		b.Fatal(err)
-	}
+	runPutBenchmark(b, s)
 }
