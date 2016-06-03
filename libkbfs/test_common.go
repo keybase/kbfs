@@ -91,7 +91,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 	bserverAddr := os.Getenv(EnvTestBServerAddr)
 	var blockServer BlockServer
 	switch {
-	case bserverAddr == "file":
+	case bserverAddr == "tempdir":
 		var err error
 		blockServer, err = NewBlockServerTempDir(config)
 		if err != nil {
