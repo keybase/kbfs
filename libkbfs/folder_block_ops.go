@@ -745,11 +745,13 @@ func (fbo *folderBlockOps) newRightBlockLocked(
 	rblock := &FileBlock{}
 
 	newPtr := BlockPointer{
-		ID:       newRID,
-		KeyGen:   md.LatestKeyGeneration(),
-		DataVer:  DefaultNewBlockDataVersion(fbo.config, false),
-		Creator:  uid,
-		RefNonce: zeroBlockRefNonce,
+		ID:      newRID,
+		KeyGen:  md.LatestKeyGeneration(),
+		DataVer: DefaultNewBlockDataVersion(fbo.config, false),
+		BlockContext: BlockContext{
+			Creator:  uid,
+			RefNonce: zeroBlockRefNonce,
+		},
 	}
 
 	pblock.IPtrs = append(pblock.IPtrs, IndirectFilePtr{
@@ -1108,11 +1110,13 @@ func (fbo *folderBlockOps) createIndirectBlockLocked(md *RootMetadata,
 			{
 				BlockInfo: BlockInfo{
 					BlockPointer: BlockPointer{
-						ID:       newID,
-						KeyGen:   md.LatestKeyGeneration(),
-						DataVer:  dver,
-						Creator:  uid,
-						RefNonce: zeroBlockRefNonce,
+						ID:      newID,
+						KeyGen:  md.LatestKeyGeneration(),
+						DataVer: dver,
+						BlockContext: BlockContext{
+							Creator:  uid,
+							RefNonce: zeroBlockRefNonce,
+						},
 					},
 					EncodedSize: 0,
 				},
@@ -1650,11 +1654,13 @@ func (fbo *folderBlockOps) ReadyBlock(ctx context.Context, md *RootMetadata,
 		ptr.SetWriter(uid)
 	} else {
 		ptr = BlockPointer{
-			ID:       id,
-			KeyGen:   md.LatestKeyGeneration(),
-			DataVer:  block.DataVersion(),
-			Creator:  uid,
-			RefNonce: zeroBlockRefNonce,
+			ID:      id,
+			KeyGen:  md.LatestKeyGeneration(),
+			DataVer: block.DataVersion(),
+			BlockContext: BlockContext{
+				Creator:  uid,
+				RefNonce: zeroBlockRefNonce,
+			},
 		}
 	}
 

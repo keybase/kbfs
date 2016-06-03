@@ -577,8 +577,11 @@ func makeBP(id BlockID, rmd *RootMetadata, config Config,
 		ID:      id,
 		KeyGen:  rmd.LatestKeyGeneration(),
 		DataVer: DefaultNewBlockDataVersion(config, false),
-		Creator: u,
-		// refnonces not needed for tests until dedup is implemented
+		BlockContext: BlockContext{
+			Creator: u,
+			// refnonces not needed for tests until dedup
+			// is implemented
+		},
 	}
 }
 
@@ -605,8 +608,12 @@ func makeIFP(id BlockID, rmd *RootMetadata, config Config,
 
 func makeBIFromID(id BlockID, user keybase1.UID) BlockInfo {
 	return BlockInfo{
-		BlockPointer: BlockPointer{ID: id, KeyGen: 1, DataVer: 1,
-			Creator: user},
+		BlockPointer: BlockPointer{
+			ID: id, KeyGen: 1, DataVer: 1,
+			BlockContext: BlockContext{
+				Creator: user,
+			},
+		},
 		EncodedSize: 1,
 	}
 }
@@ -3082,7 +3089,12 @@ func TestKBFSOpsWriteOverMultipleBlocks(t *testing.T) {
 	id1 := fakeBlockID(44)
 	id2 := fakeBlockID(45)
 	rootBlock := NewDirBlock().(*DirBlock)
-	filePtr := BlockPointer{ID: fileID, Creator: uid, KeyGen: 1, DataVer: 1}
+	filePtr := BlockPointer{
+		ID: fileID, KeyGen: 1, DataVer: 1,
+		BlockContext: BlockContext{
+			Creator: uid,
+		},
+	}
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
 			BlockPointer: filePtr,
@@ -4232,7 +4244,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 
 	// manually add b
 	expectedPath.path = append(expectedPath.path,
-		pathNode{BlockPointer{ID: aID, RefNonce: refNonce}, "b"})
+		pathNode{BlockPointer{ID: aID, BlockContext: BlockContext{RefNonce: refNonce}}, "b"})
 	config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{rmd},
 		ptrMatcher{expectedPath.path[1].BlockPointer}, readyBlockData).
 		Return(nil)

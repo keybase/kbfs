@@ -33,22 +33,6 @@ type Block interface {
 	DataVersion() DataVer
 }
 
-// BlockContext is used by the server to help identify blocks
-type BlockContext interface {
-	// GetCreator returns the UID of the writer who created this block
-	// and was first charged for it.  Note that this might differ from
-	// the user that actually first PUT the block if we implement
-	// per-group billing.
-	GetCreator() keybase1.UID
-	// GetWriter returns the UID of the writer for the corresponding
-	// block (and should be charged for it).  Note that this might
-	// differ from the user that actually PUTs the block if we
-	// implement per-group billing.
-	GetWriter() keybase1.UID
-	// GetRefNonce returns the unique reference nonce for this block
-	GetRefNonce() BlockRefNonce
-}
-
 // NodeID is a unique but transient ID for a Node. That is, two Node
 // objects in memory at the same time represent the same file or
 // directory if and only if their NodeIDs are equal (by pointer).

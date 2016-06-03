@@ -1162,7 +1162,10 @@ func TestKBFSOpsConcurWriteParallelBlocksError(t *testing.T) {
 		Do(func(ctx context.Context, id BlockID, tlfID TlfID,
 			context BlockContext, buf []byte,
 			serverHalf BlockCryptKeyServerHalf) {
-			errPtrChan <- context.(BlockPointer)
+			errPtrChan <- BlockPointer{
+				ID:           id,
+				BlockContext: context,
+			}
 		}).After(c).Return(putErr)
 	// let the rest through
 	proceedChan := make(chan struct{})
