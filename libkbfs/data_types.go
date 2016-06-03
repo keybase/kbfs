@@ -224,7 +224,7 @@ func (r blockRef) String() string {
 	return s
 }
 
-// BlockPointer contains all the information used by the server to
+// BlockContext contains all the information used by the server to
 // identify blocks (other than the ID).
 //
 // NOTE: Don't add or modify anything in this struct without
@@ -254,7 +254,7 @@ func (c BlockContext) GetCreator() keybase1.UID {
 	return c.Creator
 }
 
-// GetCreator returns the writer of the associated block.
+// GetWriter returns the writer of the associated block.
 func (c BlockContext) GetWriter() keybase1.UID {
 	if !c.Writer.IsNil() {
 		return c.Writer
