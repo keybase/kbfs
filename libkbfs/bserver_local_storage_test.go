@@ -9,8 +9,6 @@ import (
 	"math/rand"
 	"os"
 	"testing"
-
-	"github.com/syndtr/goleveldb/leveldb"
 )
 
 func makeTestEntries(b *testing.B, n int) ([]BlockID, []blockEntry) {
@@ -92,38 +90,6 @@ func (f fileFixture) cleanup() {
 	os.RemoveAll(f.tempdir)
 }
 
-type leveldbFixture struct {
-	tempdir string
-	db      *leveldb.DB
-}
-
-func makeLeveldbFixture(b *testing.B) leveldbFixture {
-	tempdir, err := ioutil.TempDir(os.TempDir(), "kbfs_leveldb_storage")
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	success := false
-	defer func() {
-		if !success {
-			os.RemoveAll(tempdir)
-		}
-	}()
-
-	db, err := leveldb.OpenFile(tempdir, leveldbOptions)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	success = true
-	return leveldbFixture{tempdir, db}
-}
-
-func (f leveldbFixture) cleanup() {
-	f.db.Close()
-	os.RemoveAll(f.tempdir)
-}
-
 func BenchmarkMemStorageGet(b *testing.B) {
 	s := makeBserverMemStorage()
 	runGetBenchmark(b, s)
@@ -136,16 +102,6 @@ func BenchmarkFileStorageGet(b *testing.B) {
 	}()
 
 	s := makeBserverFileStorage(NewCodecMsgpack(), f.tempdir)
-	runGetBenchmark(b, s)
-}
-
-func BenchmarkLeveldbStorageGet(b *testing.B) {
-	f := makeLeveldbFixture(b)
-	defer func() {
-		f.cleanup()
-	}()
-
-	s := makeBserverLeveldbStorage(NewCodecMsgpack(), f.db)
 	runGetBenchmark(b, s)
 }
 
@@ -170,15 +126,5 @@ func BenchmarkFileStoragePut(b *testing.B) {
 	}()
 
 	s := makeBserverFileStorage(NewCodecMsgpack(), f.tempdir)
-	runPutBenchmark(b, s)
-}
-
-func BenchmarkLeveldbStoragePut(b *testing.B) {
-	f := makeLeveldbFixture(b)
-	defer func() {
-		f.cleanup()
-	}()
-
-	s := makeBserverLeveldbStorage(NewCodecMsgpack(), f.db)
 	runPutBenchmark(b, s)
 }

@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	// EnvTestMDServerAddr is the environment variable name for an mdserver address.
+	// EnvTestMDServerAddr is the environment variable name for an
+	// mdserver address.
 	EnvTestMDServerAddr = "KEYBASE_TEST_MDSERVER_ADDR"
 	// EnvTestBServerAddr is the environment variable name for a block
 	// server address.
@@ -88,16 +89,26 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 
 	// see if a local remote server is specified
 	bserverAddr := os.Getenv(EnvTestBServerAddr)
-	if len(bserverAddr) != 0 {
-		blockServer := NewBlockServerRemote(config, bserverAddr)
-		config.SetBlockServer(blockServer)
-	} else {
-		blockServer, err := NewBlockServerMemory(config)
+	var blockServer BlockServer
+	switch {
+	case bserverAddr == "file":
+		var err error
+		blockServer, err = NewBlockServerLocal(config, "/tmp/foobar")
 		if err != nil {
 			t.Fatal(err)
 		}
-		config.SetBlockServer(blockServer)
+
+	case len(bserverAddr) != 0:
+		blockServer = NewBlockServerRemote(config, bserverAddr)
+
+	default:
+		var err error
+		blockServer, err = NewBlockServerMemory(config)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
+	config.SetBlockServer(blockServer)
 
 	// see if a local remote server is specified
 	mdServerAddr := os.Getenv(EnvTestMDServerAddr)
