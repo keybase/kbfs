@@ -111,7 +111,6 @@ func (b *BlockServerLocal) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		BlockData:     buf,
 		Refs:          make(map[BlockRefNonce]blockRefLocalStatus),
 		KeyServerHalf: serverHalf,
-		Tlf:           tlfID,
 	}
 	entry.Refs[zeroBlockRefNonce] = liveBlockRef
 	return b.getStorage(tlfID).put(id, entry)
@@ -173,7 +172,7 @@ func (b *BlockServerLocal) ArchiveBlockReferences(ctx context.Context,
 // used during testing.
 func (b *BlockServerLocal) getAll(tlfID TlfID) (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	return b.getStorage(tlfID).getAll(tlfID)
+	return b.getStorage(tlfID).getAll()
 }
 
 // Shutdown implements the BlockServer interface for BlockServerLocal.

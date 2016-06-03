@@ -28,14 +28,13 @@ type blockEntry struct {
 	BlockData     []byte
 	Refs          map[BlockRefNonce]blockRefLocalStatus
 	KeyServerHalf BlockCryptKeyServerHalf
-	Tlf           TlfID
 }
 
 // bserverLocalStorage abstracts the various methods of storing blocks
 // for bserverLocal.
 type bserverLocalStorage interface {
 	get(id BlockID) (blockEntry, error)
-	getAll(tlf TlfID) (map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error)
+	getAll() (map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error)
 	put(id BlockID, entry blockEntry) error
 	addReference(id BlockID, refNonce BlockRefNonce) error
 	removeReference(id BlockID, refNonce BlockRefNonce) (int, error)
@@ -66,16 +65,13 @@ func (s *bserverMemStorage) get(id BlockID) (blockEntry, error) {
 	return entry, nil
 }
 
-func (s *bserverMemStorage) getAll(tlf TlfID) (
+func (s *bserverMemStorage) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
 	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
 	for id, entry := range s.m {
-		if entry.Tlf != tlf {
-			continue
-		}
 		res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
 		for ref, status := range entry.Refs {
 			res[id][ref] = status
@@ -211,7 +207,7 @@ func (s *bserverFileStorage) get(id BlockID) (blockEntry, error) {
 	return entry, nil
 }
 
-func (s *bserverFileStorage) getAll(tlf TlfID) (
+func (s *bserverFileStorage) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
 	return nil, errors.New("getAll not yet implemented for bserverFileStorage")
 }
@@ -354,7 +350,7 @@ func (s *bserverLeveldbStorage) get(id BlockID) (blockEntry, error) {
 	return entry, nil
 }
 
-func (s *bserverLeveldbStorage) getAll(tlf TlfID) (
+func (s *bserverLeveldbStorage) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
 	return nil,
 		errors.New("getAll not yet implemented for bserverLeveldbStorage")
