@@ -6,16 +6,26 @@ package libkbfs
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/keybase/client/go/logger"
 	"golang.org/x/net/context"
 )
 
+type blockMemEntry struct {
+	tlfID         TlfID
+	blockData     []byte
+	refs          map[BlockRefNonce]blockRefLocalStatus
+	keyServerHalf BlockCryptKeyServerHalf
+}
+
 // BlockServerMemory implements the BlockServer interface by just
 // storing blocks in memory.
 type BlockServerMemory struct {
 	log logger.Logger
-	s   *bserverMemStorage
+
+	lock sync.RWMutex
+	m    map[BlockID]blockMemEntry
 }
 
 var _ BlockServer = (*BlockServerMemory)(nil)
@@ -25,7 +35,8 @@ var _ BlockServer = (*BlockServerMemory)(nil)
 func NewBlockServerMemory(config Config) *BlockServerMemory {
 	return &BlockServerMemory{
 		config.MakeLogger("BSM"),
-		makeBserverMemStorage(),
+		sync.RWMutex{},
+		make(map[BlockID]blockMemEntry),
 	}
 }
 
@@ -34,11 +45,14 @@ func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
 	b.log.CDebugf(ctx, "BlockServerMemory.Get id=%s uid=%s",
 		id, context.GetWriter())
-	entry, err := b.s.get(id)
-	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+
+	entry, ok := b.m[id]
+	if !ok {
+		return nil, BlockCryptKeyServerHalf{}, BServerErrorBlockNonExistent{}
 	}
-	return entry.BlockData, entry.KeyServerHalf, nil
+	return entry.blockData, entry.keyServerHalf, nil
 }
 
 // Put implements the BlockServer interface for BlockServerMemory
@@ -52,14 +66,18 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		return fmt.Errorf("Can't Put() a block with a non-zero refnonce.")
 	}
 
-	entry := blockEntry{
-		TlfID:         tlfID,
-		BlockData:     buf,
-		Refs:          make(map[BlockRefNonce]blockRefLocalStatus),
-		KeyServerHalf: serverHalf,
+	entry := blockMemEntry{
+		tlfID:         tlfID,
+		blockData:     buf,
+		refs:          make(map[BlockRefNonce]blockRefLocalStatus),
+		keyServerHalf: serverHalf,
 	}
-	entry.Refs[zeroBlockRefNonce] = liveBlockRef
-	return b.s.put(id, entry)
+	entry.refs[zeroBlockRefNonce] = liveBlockRef
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	b.m[id] = entry
+	return nil
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerMemory
@@ -70,7 +88,25 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 		"refnonce=%s uid=%s", id,
 		refNonce, context.GetWriter())
 
-	return b.s.addReference(id, refNonce)
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	entry, ok := b.m[id]
+	if !ok {
+		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
+			"exist and cannot be referenced.", id)}
+	}
+
+	// only add it if there's a non-archived reference
+	for _, status := range entry.refs {
+		if status == liveBlockRef {
+			entry.refs[refNonce] = liveBlockRef
+			b.m[id] = entry
+			return nil
+		}
+	}
+	return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
+		"been archived and cannot be referenced.", id)}
 }
 
 // RemoveBlockReference implements the BlockServer interface for
@@ -81,16 +117,27 @@ func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
 	b.log.CDebugf(ctx, "BlockServerMemory.RemoveBlockReference ")
 	liveCounts = make(map[BlockID]int)
 	for bid, refs := range contexts {
-		for _, ref := range refs {
-			count, err := b.s.removeReference(bid, ref.GetRefNonce())
-			if err != nil {
-				return liveCounts, err
+		count := func() int {
+			b.lock.Lock()
+			defer b.lock.Unlock()
+			entry, ok := b.m[bid]
+			if !ok {
+				// This block is already gone; no error.
+				return 0
 			}
-			existing, ok := liveCounts[bid]
-			if !ok || existing > count {
-				liveCounts[bid] = count
+
+			for _, ref := range refs {
+				delete(entry.refs, ref.GetRefNonce())
 			}
-		}
+			count := len(entry.refs)
+			if count == 0 {
+				delete(b.m, bid)
+			} else {
+				b.m[bid] = entry
+			}
+			return count
+		}()
+		liveCounts[bid] = count
 	}
 	return liveCounts, nil
 }
@@ -104,7 +151,26 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 			refNonce := context.GetRefNonce()
 			b.log.CDebugf(ctx, "BlockServerMemory.ArchiveBlockReference id=%s "+
 				"refnonce=%s", id, refNonce)
-			err := b.s.archiveReference(id, refNonce)
+			err := func() error {
+				b.lock.Lock()
+				defer b.lock.Unlock()
+
+				entry, ok := b.m[id]
+				if !ok {
+					return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
+						"exist and cannot be archived.", id)}
+				}
+
+				_, ok = entry.refs[refNonce]
+				if !ok {
+					return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
+						"doesn't exist and cannot be archived.", id, refNonce)}
+				}
+
+				entry.refs[refNonce] = archivedBlockRef
+				b.m[id] = entry
+				return nil
+			}()
 			if err != nil {
 				return err
 			}
@@ -118,7 +184,20 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 // used during testing.
 func (b *BlockServerMemory) getAll(tlfID TlfID) (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	return b.s.getAll(tlfID)
+	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+
+	for id, entry := range b.m {
+		if entry.tlfID != tlfID {
+			continue
+		}
+		res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
+		for ref, status := range entry.refs {
+			res[id][ref] = status
+		}
+	}
+	return res, nil
 }
 
 // Shutdown implements the BlockServer interface for BlockServerMemory.
