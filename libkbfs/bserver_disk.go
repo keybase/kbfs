@@ -15,6 +15,202 @@ import (
 	"golang.org/x/net/context"
 )
 
+type blockEntry struct {
+	// These fields are only exported for serialization purposes.
+	BlockData     []byte
+	Refs          map[BlockRefNonce]blockRefLocalStatus
+	KeyServerHalf BlockCryptKeyServerHalf
+}
+
+// bserverTlfStorage stores block data in flat files on disk.
+type bserverTlfStorage struct {
+	codec Codec
+	lock  sync.RWMutex
+	dir   string
+}
+
+func makeBserverTlfStorage(codec Codec, dir string) *bserverTlfStorage {
+	return &bserverTlfStorage{codec: codec, dir: dir}
+}
+
+// Store each block in its own file with name equal to the hex-encoded
+// blockID. Splay the filenames over 256^2 subdirectories (one byte
+// for the hash type plus the first byte of the hash data) using the
+// first four characters of the name to keep the number of directories
+// in dir itself to a manageable number, similar to git.
+func (s *bserverTlfStorage) buildPath(id BlockID) string {
+	idStr := id.String()
+	return filepath.Join(s.dir, idStr[:4], idStr[4:])
+}
+
+func (s *bserverTlfStorage) getLocked(p string) (blockEntry, error) {
+	buf, err := ioutil.ReadFile(p)
+	if err != nil {
+		return blockEntry{}, err
+	}
+
+	var entry blockEntry
+	err = s.codec.Decode(buf, &entry)
+	if err != nil {
+		return blockEntry{}, err
+	}
+
+	return entry, nil
+}
+
+func (s *bserverTlfStorage) get(id BlockID) (blockEntry, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	entry, err := s.getLocked(s.buildPath(id))
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = BServerErrorBlockNonExistent{}
+		}
+		return blockEntry{}, err
+	}
+	return entry, nil
+}
+
+func (s *bserverTlfStorage) getAll() (
+	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
+	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	subdirInfos, err := ioutil.ReadDir(s.dir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, subdirInfo := range subdirInfos {
+		if !subdirInfo.IsDir() {
+			continue
+		}
+
+		subDir := filepath.Join(s.dir, subdirInfo.Name())
+		fileInfos, err := ioutil.ReadDir(subDir)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, fileInfo := range fileInfos {
+			idStr := subdirInfo.Name() + fileInfo.Name()
+			id, err := BlockIDFromString(idStr)
+			if err != nil {
+				return nil, err
+			}
+
+			_, ok := res[id]
+			if ok {
+				return nil, fmt.Errorf(
+					"Multiple dir entries for block %s", id)
+			}
+
+			res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
+
+			filePath := filepath.Join(subDir, fileInfo.Name())
+			entry, err := s.getLocked(filePath)
+			if err != nil {
+				return nil, err
+			}
+			res[id] = entry.Refs
+		}
+	}
+
+	return res, nil
+}
+
+func (s *bserverTlfStorage) putLocked(p string, entry blockEntry) error {
+	entryBuf, err := s.codec.Encode(entry)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(filepath.Dir(p), 0700)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(p, entryBuf, 0600)
+}
+
+func (s *bserverTlfStorage) put(id BlockID, entry blockEntry) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.putLocked(s.buildPath(id), entry)
+}
+
+func (s *bserverTlfStorage) addReference(id BlockID, refNonce BlockRefNonce) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	p := s.buildPath(id)
+	entry, err := s.getLocked(p)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s "+
+				"doesn't exist and cannot be referenced.", id)}
+		}
+		return err
+	}
+
+	// only add it if there's a non-archived reference
+	for _, status := range entry.Refs {
+		if status == liveBlockRef {
+			entry.Refs[refNonce] = liveBlockRef
+			return s.putLocked(p, entry)
+		}
+	}
+
+	return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
+		"been archived and cannot be referenced.", id)}
+}
+
+func (s *bserverTlfStorage) removeReference(id BlockID, refNonce BlockRefNonce) (
+	liveCount int, err error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	p := s.buildPath(id)
+	entry, err := s.getLocked(p)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// This block is already gone; no error.
+			return 0, nil
+		}
+		return -1, err
+	}
+
+	delete(entry.Refs, refNonce)
+	if len(entry.Refs) == 0 {
+		return 0, os.Remove(p)
+	}
+	return len(entry.Refs), s.putLocked(p, entry)
+}
+
+func (s *bserverTlfStorage) archiveReference(id BlockID, refNonce BlockRefNonce) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	p := s.buildPath(id)
+	entry, err := s.getLocked(p)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s "+
+				"doesn't exist and cannot be archived.", id)}
+		}
+		return err
+	}
+
+	_, ok := entry.Refs[refNonce]
+	if !ok {
+		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
+			"doesn't exist and cannot be archived.", id, refNonce)}
+	}
+
+	entry.Refs[refNonce] = archivedBlockRef
+	return s.putLocked(p, entry)
+}
+
 // BlockServerDisk implements the BlockServer interface by just
 // storing blocks in a local leveldb instance
 type BlockServerDisk struct {
@@ -24,7 +220,7 @@ type BlockServerDisk struct {
 	shutdownFunc func()
 
 	tlfStorageLock sync.RWMutex
-	tlfStorage     map[TlfID]*bserverFileStorage
+	tlfStorage     map[TlfID]*bserverTlfStorage
 }
 
 var _ BlockServer = (*BlockServerDisk)(nil)
@@ -39,7 +235,7 @@ func newBlockServerDisk(
 		dirPath,
 		shutdownFunc,
 		sync.RWMutex{},
-		make(map[TlfID]*bserverFileStorage),
+		make(map[TlfID]*bserverTlfStorage),
 	}
 	return bserv
 }
@@ -62,8 +258,8 @@ func NewBlockServerTempDir(config Config) (*BlockServerDisk, error) {
 	}), nil
 }
 
-func (b *BlockServerDisk) getStorage(tlfID TlfID) *bserverFileStorage {
-	storage := func() *bserverFileStorage {
+func (b *BlockServerDisk) getStorage(tlfID TlfID) *bserverTlfStorage {
+	storage := func() *bserverTlfStorage {
 		b.tlfStorageLock.RLock()
 		defer b.tlfStorageLock.RUnlock()
 		return b.tlfStorage[tlfID]
@@ -81,7 +277,7 @@ func (b *BlockServerDisk) getStorage(tlfID TlfID) *bserverFileStorage {
 	}
 
 	path := filepath.Join(b.dirPath, tlfID.String())
-	storage = makeBserverFileStorage(b.codec, path)
+	storage = makeBserverTlfStorage(b.codec, path)
 	b.tlfStorage[tlfID] = storage
 	return storage
 }

@@ -12,6 +12,15 @@ import (
 	"golang.org/x/net/context"
 )
 
+// TODO: Move this somewhere better.
+type blockRefLocalStatus int
+
+const (
+	noBlockRef blockRefLocalStatus = iota
+	liveBlockRef
+	archivedBlockRef
+)
+
 type blockMemEntry struct {
 	tlfID         TlfID
 	blockData     []byte
