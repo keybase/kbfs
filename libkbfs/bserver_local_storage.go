@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -202,7 +201,50 @@ func (s *bserverFileStorage) get(id BlockID) (blockEntry, error) {
 
 func (s *bserverFileStorage) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	return nil, errors.New("getAll not yet implemented for bserverFileStorage")
+	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	subdirInfos, err := ioutil.ReadDir(s.dir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, subdirInfo := range subdirInfos {
+		if !subdirInfo.IsDir() {
+			continue
+		}
+
+		subDir := filepath.Join(s.dir, subdirInfo.Name())
+		fileInfos, err := ioutil.ReadDir(subDir)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, fileInfo := range fileInfos {
+			idStr := subdirInfo.Name() + fileInfo.Name()
+			id, err := BlockIDFromString(idStr)
+			if err != nil {
+				return nil, err
+			}
+
+			_, ok := res[id]
+			if ok {
+				return nil, fmt.Errorf(
+					"Multiple dir entries for block %s", id)
+			}
+
+			res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
+
+			filePath := filepath.Join(subDir, fileInfo.Name())
+			entry, err := s.getLocked(filePath)
+			if err != nil {
+				return nil, err
+			}
+			res[id] = entry.Refs
+		}
+	}
+
+	return res, nil
 }
 
 func (s *bserverFileStorage) putLocked(p string, entry blockEntry) error {
