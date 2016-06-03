@@ -941,6 +941,15 @@ type BlockServer interface {
 	GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error)
 }
 
+// blockServerLocal is the interface for BlockServer implementations
+// that store data locally.
+type blockServerLocal interface {
+	BlockServer
+	// getAll returns all the known block references, and should only be
+	// used during testing.
+	getAll(tlfID TlfID) (map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error)
+}
+
 // BlockSplitter decides when a file or directory block needs to be split
 type BlockSplitter interface {
 	// CopyUntilSplit copies data into the block until we reach the

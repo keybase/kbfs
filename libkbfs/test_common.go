@@ -102,11 +102,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 		blockServer = NewBlockServerRemote(config, bserverAddr)
 
 	default:
-		var err error
-		blockServer, err = NewBlockServerMemory(config)
-		if err != nil {
-			t.Fatal(err)
-		}
+		blockServer = NewBlockServerMemory(config)
 	}
 	config.SetBlockServer(blockServer)
 

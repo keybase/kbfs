@@ -22,6 +22,7 @@ const (
 
 type blockEntry struct {
 	// These fields are only exported for serialization purposes.
+	TlfID         TlfID
 	BlockData     []byte
 	Refs          map[BlockRefNonce]blockRefLocalStatus
 	KeyServerHalf BlockCryptKeyServerHalf
@@ -31,7 +32,7 @@ type blockEntry struct {
 // for bserverLocal.
 type bserverLocalStorage interface {
 	get(id BlockID) (blockEntry, error)
-	getAll() (map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error)
+	getAll(tlfID TlfID) (map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error)
 	put(id BlockID, entry blockEntry) error
 	addReference(id BlockID, refNonce BlockRefNonce) error
 	removeReference(id BlockID, refNonce BlockRefNonce) (int, error)
@@ -61,13 +62,16 @@ func (s *bserverMemStorage) get(id BlockID) (blockEntry, error) {
 	return entry, nil
 }
 
-func (s *bserverMemStorage) getAll() (
+func (s *bserverMemStorage) getAll(tlfID TlfID) (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
 	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
 	for id, entry := range s.m {
+		if entry.TlfID != tlfID {
+			continue
+		}
 		res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
 		for ref, status := range entry.Refs {
 			res[id][ref] = status
@@ -199,7 +203,7 @@ func (s *bserverFileStorage) get(id BlockID) (blockEntry, error) {
 	return entry, nil
 }
 
-func (s *bserverFileStorage) getAll() (
+func (s *bserverFileStorage) getAll(tlfID TlfID) (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
 	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
 	s.lock.RLock()

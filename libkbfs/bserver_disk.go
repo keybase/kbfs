@@ -15,76 +15,55 @@ import (
 	"golang.org/x/net/context"
 )
 
-// BlockServerLocal implements the BlockServer interface by just
+// BlockServerDisk implements the BlockServer interface by just
 // storing blocks in a local leveldb instance
-type BlockServerLocal struct {
-	config          Config
-	log             logger.Logger
-	makeStorageFunc func(tlfID TlfID) bserverLocalStorage
-	shutdownFunc    func()
+type BlockServerDisk struct {
+	codec        Codec
+	log          logger.Logger
+	dirPath      string
+	shutdownFunc func()
 
 	tlfStorageLock sync.RWMutex
-	tlfStorage     map[TlfID]bserverLocalStorage
+	tlfStorage     map[TlfID]*bserverFileStorage
 }
 
-var _ BlockServer = (*BlockServerLocal)(nil)
+var _ BlockServer = (*BlockServerDisk)(nil)
 
-// newBlockServerLocal constructs a new BlockServerLocal that stores
+// newBlockServerDisk constructs a new BlockServerDisk that stores
 // its data in the given directory.
-func newBlockServerLocal(config Config,
-	makeStorageFunc func(tlfID TlfID) bserverLocalStorage,
-	shutdownFunc func()) (
-	*BlockServerLocal, error) {
-	bserv := &BlockServerLocal{
-		config,
+func newBlockServerDisk(
+	config Config, dirPath string, shutdownFunc func()) *BlockServerDisk {
+	bserv := &BlockServerDisk{
+		config.Codec(),
 		config.MakeLogger("BSL"),
-		makeStorageFunc,
+		dirPath,
 		shutdownFunc,
 		sync.RWMutex{},
-		make(map[TlfID]bserverLocalStorage),
+		make(map[TlfID]*bserverFileStorage),
 	}
-	return bserv, nil
+	return bserv
 }
 
-// NewBlockServerDir constructs a new BlockServerLocal that stores
+// NewBlockServerDir constructs a new BlockServerDisk that stores
 // its data in the given directory.
-func NewBlockServerDir(config Config, dirPath string) (
-	*BlockServerLocal, error) {
-	return newBlockServerLocal(
-		config, func(tlfID TlfID) bserverLocalStorage {
-			path := filepath.Join(dirPath, tlfID.String())
-			return makeBserverFileStorage(config.Codec(), path)
-		}, nil)
+func NewBlockServerDir(config Config, dirPath string) *BlockServerDisk {
+	return newBlockServerDisk(config, dirPath, nil)
 }
 
-// NewBlockServerTempDir constructs a new BlockServerLocal that stores its
+// NewBlockServerTempDir constructs a new BlockServerDisk that stores its
 // data in a temp directory which is cleaned up on shutdown.
-func NewBlockServerTempDir(config Config) (
-	*BlockServerLocal, error) {
+func NewBlockServerTempDir(config Config) (*BlockServerDisk, error) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "kbfs_bserver_tmp")
 	if err != nil {
 		return nil, err
 	}
-	return newBlockServerLocal(
-		config, func(tlfID TlfID) bserverLocalStorage {
-			path := filepath.Join(tempdir, tlfID.String())
-			return makeBserverFileStorage(config.Codec(), path)
-		}, func() {
-			os.RemoveAll(tempdir)
-		})
+	return newBlockServerDisk(config, tempdir, func() {
+		os.RemoveAll(tempdir)
+	}), nil
 }
 
-// NewBlockServerMemory constructs a new BlockServerLocal that stores
-// its data in memory.
-func NewBlockServerMemory(config Config) (*BlockServerLocal, error) {
-	return newBlockServerLocal(
-		config, func(tlfID TlfID) bserverLocalStorage {
-			return makeBserverMemStorage()
-		}, nil)
-}
-
-func (b *BlockServerLocal) getStorage(tlfID TlfID) bserverLocalStorage {
-	storage := func() bserverLocalStorage {
+func (b *BlockServerDisk) getStorage(tlfID TlfID) *bserverFileStorage {
+	storage := func() *bserverFileStorage {
 		b.tlfStorageLock.RLock()
 		defer b.tlfStorageLock.RUnlock()
 		return b.tlfStorage[tlfID]
@@ -101,15 +80,16 @@ func (b *BlockServerLocal) getStorage(tlfID TlfID) bserverLocalStorage {
 		return storage
 	}
 
-	storage = b.makeStorageFunc(tlfID)
+	path := filepath.Join(b.dirPath, tlfID.String())
+	storage = makeBserverFileStorage(b.codec, path)
 	b.tlfStorage[tlfID] = storage
 	return storage
 }
 
-// Get implements the BlockServer interface for BlockServerLocal
-func (b *BlockServerLocal) Get(ctx context.Context, id BlockID, tlfID TlfID,
+// Get implements the BlockServer interface for BlockServerDisk
+func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
-	b.log.CDebugf(ctx, "BlockServerLocal.Get id=%s uid=%s",
+	b.log.CDebugf(ctx, "BlockServerDisk.Get id=%s uid=%s",
 		id, context.GetWriter())
 	entry, err := b.getStorage(tlfID).get(id)
 	if err != nil {
@@ -118,11 +98,11 @@ func (b *BlockServerLocal) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	return entry.BlockData, entry.KeyServerHalf, nil
 }
 
-// Put implements the BlockServer interface for BlockServerLocal
-func (b *BlockServerLocal) Put(ctx context.Context, id BlockID, tlfID TlfID,
+// Put implements the BlockServer interface for BlockServerDisk
+func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
-	b.log.CDebugf(ctx, "BlockServerLocal.Put id=%s uid=%s",
+	b.log.CDebugf(ctx, "BlockServerDisk.Put id=%s uid=%s",
 		id, context.GetWriter())
 
 	if context.GetRefNonce() != zeroBlockRefNonce {
@@ -138,11 +118,11 @@ func (b *BlockServerLocal) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	return b.getStorage(tlfID).put(id, entry)
 }
 
-// AddBlockReference implements the BlockServer interface for BlockServerLocal
-func (b *BlockServerLocal) AddBlockReference(ctx context.Context, id BlockID,
+// AddBlockReference implements the BlockServer interface for BlockServerDisk
+func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
 	tlfID TlfID, context BlockContext) error {
 	refNonce := context.GetRefNonce()
-	b.log.CDebugf(ctx, "BlockServerLocal.AddBlockReference id=%s "+
+	b.log.CDebugf(ctx, "BlockServerDisk.AddBlockReference id=%s "+
 		"refnonce=%s uid=%s", id,
 		refNonce, context.GetWriter())
 
@@ -150,11 +130,11 @@ func (b *BlockServerLocal) AddBlockReference(ctx context.Context, id BlockID,
 }
 
 // RemoveBlockReference implements the BlockServer interface for
-// BlockServerLocal
-func (b *BlockServerLocal) RemoveBlockReference(ctx context.Context,
+// BlockServerDisk
+func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
-	b.log.CDebugf(ctx, "BlockServerLocal.RemoveBlockReference ")
+	b.log.CDebugf(ctx, "BlockServerDisk.RemoveBlockReference ")
 	liveCounts = make(map[BlockID]int)
 	for bid, refs := range contexts {
 		for _, ref := range refs {
@@ -172,13 +152,13 @@ func (b *BlockServerLocal) RemoveBlockReference(ctx context.Context,
 }
 
 // ArchiveBlockReferences implements the BlockServer interface for
-// BlockServerLocal
-func (b *BlockServerLocal) ArchiveBlockReferences(ctx context.Context,
+// BlockServerDisk
+func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) error {
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
 			refNonce := context.GetRefNonce()
-			b.log.CDebugf(ctx, "BlockServerLocal.ArchiveBlockReference id=%s "+
+			b.log.CDebugf(ctx, "BlockServerDisk.ArchiveBlockReference id=%s "+
 				"refnonce=%s", id, refNonce)
 			err := b.getStorage(tlfID).archiveReference(id, refNonce)
 			if err != nil {
@@ -192,13 +172,13 @@ func (b *BlockServerLocal) ArchiveBlockReferences(ctx context.Context,
 
 // getAll returns all the known block references, and should only be
 // used during testing.
-func (b *BlockServerLocal) getAll(tlfID TlfID) (
+func (b *BlockServerDisk) getAll(tlfID TlfID) (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	return b.getStorage(tlfID).getAll()
+	return b.getStorage(tlfID).getAll(tlfID)
 }
 
-// Shutdown implements the BlockServer interface for BlockServerLocal.
-func (b *BlockServerLocal) Shutdown() {
+// Shutdown implements the BlockServer interface for BlockServerDisk.
+func (b *BlockServerDisk) Shutdown() {
 	func() {
 		b.tlfStorageLock.Lock()
 		defer b.tlfStorageLock.Unlock()
@@ -211,11 +191,11 @@ func (b *BlockServerLocal) Shutdown() {
 	}
 }
 
-// RefreshAuthToken implements the BlockServer interface for BlockServerLocal.
-func (b *BlockServerLocal) RefreshAuthToken(_ context.Context) {}
+// RefreshAuthToken implements the BlockServer interface for BlockServerDisk.
+func (b *BlockServerDisk) RefreshAuthToken(_ context.Context) {}
 
-// GetUserQuotaInfo implements the BlockServer interface for BlockServerLocal
-func (b *BlockServerLocal) GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error) {
+// GetUserQuotaInfo implements the BlockServer interface for BlockServerDisk
+func (b *BlockServerDisk) GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error) {
 	// Return a dummy value here.
 	return &UserQuotaInfo{Limit: 0x7FFFFFFFFFFFFFFF}, nil
 }
