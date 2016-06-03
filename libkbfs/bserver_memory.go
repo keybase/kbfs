@@ -71,6 +71,11 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s uid=%s",
 		id, context.GetWriter())
 
+	if context.GetCreator() != context.GetWriter() {
+		return fmt.Errorf("Can't Put() a block with creator=%s != writer=%s",
+			context.GetCreator(), context.GetWriter())
+	}
+
 	if context.GetRefNonce() != zeroBlockRefNonce {
 		return fmt.Errorf("Can't Put() a block with a non-zero refnonce.")
 	}
