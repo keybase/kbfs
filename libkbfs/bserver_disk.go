@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -44,18 +45,51 @@ func (s *bserverTlfStorage) buildPath(id BlockID) string {
 }
 
 func (s *bserverTlfStorage) getLocked(p string) (blockEntry, error) {
-	buf, err := ioutil.ReadFile(p)
+	dataPath := filepath.Join(p, "data")
+	data, err := ioutil.ReadFile(dataPath)
 	if err != nil {
 		return blockEntry{}, err
 	}
 
-	var entry blockEntry
-	err = s.codec.Decode(buf, &entry)
+	kshPath := filepath.Join(p, "ksh")
+	buf, err := ioutil.ReadFile(kshPath)
 	if err != nil {
 		return blockEntry{}, err
 	}
 
-	return entry, nil
+	var kshData [32]byte
+	// TODO: Validate length.
+	copy(kshData[:], buf)
+	ksh := MakeBlockCryptKeyServerHalf(kshData)
+
+	refsPath := filepath.Join(p, "refs")
+	refInfos, err := ioutil.ReadDir(refsPath)
+	if err != nil {
+		return blockEntry{}, err
+	}
+
+	refs := make(map[BlockRefNonce]blockRefLocalStatus)
+	for _, refInfo := range refInfos {
+		var refNonce BlockRefNonce
+		buf, err := hex.DecodeString(refInfo.Name())
+		if err != nil {
+			return blockEntry{}, err
+		}
+		// TODO: Validate length.
+		copy(refNonce[:], buf)
+		buf, err = ioutil.ReadFile(filepath.Join(refsPath, refInfo.Name()))
+		if err != nil {
+			return blockEntry{}, err
+		}
+		status := blockRefLocalStatus(buf[0])
+		refs[refNonce] = status
+	}
+
+	return blockEntry{
+		BlockData:     data,
+		Refs:          refs,
+		KeyServerHalf: ksh,
+	}, nil
 }
 
 func (s *bserverTlfStorage) get(id BlockID) (blockEntry, error) {
@@ -120,17 +154,39 @@ func (s *bserverTlfStorage) getAll() (
 }
 
 func (s *bserverTlfStorage) putLocked(p string, entry blockEntry) error {
-	entryBuf, err := s.codec.Encode(entry)
+	err := os.RemoveAll(p)
 	if err != nil {
 		return err
 	}
 
-	err = os.MkdirAll(filepath.Dir(p), 0700)
+	refsPath := filepath.Join(p, "refs")
+
+	err = os.MkdirAll(refsPath, 0700)
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(p, entryBuf, 0600)
+	dataPath := filepath.Join(p, "data")
+	err = ioutil.WriteFile(dataPath, entry.BlockData, 0600)
+	if err != nil {
+		return err
+	}
+
+	kshPath := filepath.Join(p, "ksh")
+	err = ioutil.WriteFile(kshPath, entry.KeyServerHalf.data[:], 0600)
+	if err != nil {
+		return err
+	}
+
+	for ref, status := range entry.Refs {
+		refPath := filepath.Join(refsPath, ref.String())
+		err := ioutil.WriteFile(refPath, []byte{byte(status)}, 0600)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *bserverTlfStorage) put(id BlockID, entry blockEntry) error {
@@ -182,7 +238,7 @@ func (s *bserverTlfStorage) removeReference(id BlockID, refNonce BlockRefNonce) 
 
 	delete(entry.Refs, refNonce)
 	if len(entry.Refs) == 0 {
-		return 0, os.Remove(p)
+		return 0, os.RemoveAll(p)
 	}
 	return len(entry.Refs), s.putLocked(p, entry)
 }
@@ -370,7 +426,7 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 // used during testing.
 func (b *BlockServerDisk) getAll(tlfID TlfID) (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	return b.getStorage(tlfID).getAll(tlfID)
+	return b.getStorage(tlfID).getAll()
 }
 
 // Shutdown implements the BlockServer interface for BlockServerDisk.
