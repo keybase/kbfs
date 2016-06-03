@@ -37,7 +37,6 @@ type bserverLocalStorage interface {
 	addReference(id BlockID, refNonce BlockRefNonce) error
 	removeReference(id BlockID, refNonce BlockRefNonce) (int, error)
 	archiveReference(id BlockID, refNonce BlockRefNonce) error
-	shutdown()
 }
 
 // bserverMemStorage stores block data in an in-memory map.
@@ -148,10 +147,6 @@ func (s *bserverMemStorage) archiveReference(id BlockID, refNonce BlockRefNonce)
 	entry.Refs[refNonce] = archivedBlockRef
 	s.m[id] = entry
 	return nil
-}
-
-func (s *bserverMemStorage) shutdown() {
-	// Nothing to do.
 }
 
 // bserverFileStorage stores block data in flat files on disk.
@@ -300,8 +295,4 @@ func (s *bserverFileStorage) archiveReference(id BlockID, refNonce BlockRefNonce
 
 	entry.Refs[refNonce] = archivedBlockRef
 	return s.putLocked(p, entry)
-}
-
-func (s *bserverFileStorage) shutdown() {
-	// Nothing to do.
 }

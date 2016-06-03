@@ -6,6 +6,8 @@ package libkbfs
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -19,6 +21,7 @@ type BlockServerLocal struct {
 	config          Config
 	log             logger.Logger
 	makeStorageFunc func(tlfID TlfID) bserverLocalStorage
+	shutdownFunc    func()
 
 	tlfStorageLock sync.RWMutex
 	tlfStorage     map[TlfID]bserverLocalStorage
@@ -29,26 +32,45 @@ var _ BlockServer = (*BlockServerLocal)(nil)
 // newBlockServerLocal constructs a new BlockServerLocal that stores
 // its data in the given directory.
 func newBlockServerLocal(config Config,
-	makeStorageFunc func(tlfID TlfID) bserverLocalStorage) (
+	makeStorageFunc func(tlfID TlfID) bserverLocalStorage,
+	shutdownFunc func()) (
 	*BlockServerLocal, error) {
 	bserv := &BlockServerLocal{
 		config,
 		config.MakeLogger("BSL"),
 		makeStorageFunc,
+		shutdownFunc,
 		sync.RWMutex{},
 		make(map[TlfID]bserverLocalStorage),
 	}
 	return bserv, nil
 }
 
-// NewBlockServerLocal constructs a new BlockServerLocal that stores
+// NewBlockServerDir constructs a new BlockServerLocal that stores
 // its data in the given directory.
-func NewBlockServerLocal(config Config, dirPath string) (
+func NewBlockServerDir(config Config, dirPath string) (
 	*BlockServerLocal, error) {
 	return newBlockServerLocal(
 		config, func(tlfID TlfID) bserverLocalStorage {
 			path := filepath.Join(dirPath, tlfID.String())
 			return makeBserverFileStorage(config.Codec(), path)
+		}, nil)
+}
+
+// NewBlockServerTempDir constructs a new BlockServerLocal that stores its
+// data in a temp directory which is cleaned up on shutdown.
+func NewBlockServerTempDir(config Config) (
+	*BlockServerLocal, error) {
+	tempdir, err := ioutil.TempDir(os.TempDir(), "kbfs_bserver_tmp")
+	if err != nil {
+		return nil, err
+	}
+	return newBlockServerLocal(
+		config, func(tlfID TlfID) bserverLocalStorage {
+			path := filepath.Join(tempdir, tlfID.String())
+			return makeBserverFileStorage(config.Codec(), path)
+		}, func() {
+			os.RemoveAll(tempdir)
 		})
 }
 
@@ -58,7 +80,7 @@ func NewBlockServerMemory(config Config) (*BlockServerLocal, error) {
 	return newBlockServerLocal(
 		config, func(tlfID TlfID) bserverLocalStorage {
 			return makeBserverMemStorage()
-		})
+		}, nil)
 }
 
 func (b *BlockServerLocal) getStorage(tlfID TlfID) bserverLocalStorage {
@@ -177,14 +199,16 @@ func (b *BlockServerLocal) getAll(tlfID TlfID) (
 
 // Shutdown implements the BlockServer interface for BlockServerLocal.
 func (b *BlockServerLocal) Shutdown() {
-	b.tlfStorageLock.Lock()
-	defer b.tlfStorageLock.Unlock()
-	for _, s := range b.tlfStorage {
-		s.shutdown()
-	}
+	func() {
+		b.tlfStorageLock.Lock()
+		defer b.tlfStorageLock.Unlock()
+		// Make further accesses panic.
+		b.tlfStorage = nil
+	}()
 
-	// Make further accesses panic.
-	b.tlfStorage = nil
+	if b.shutdownFunc != nil {
+		b.shutdownFunc()
+	}
 }
 
 // RefreshAuthToken implements the BlockServer interface for BlockServerLocal.

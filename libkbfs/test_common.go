@@ -93,7 +93,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 	switch {
 	case bserverAddr == "file":
 		var err error
-		blockServer, err = NewBlockServerLocal(config, "/tmp/foobar")
+		blockServer, err = NewBlockServerTempDir(config)
 		if err != nil {
 			t.Fatal(err)
 		}

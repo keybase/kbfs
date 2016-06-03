@@ -187,7 +187,7 @@ func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverA
 	if len(serverRootDir) > 0 {
 		// local persistent block server
 		blockPath := filepath.Join(serverRootDir, "kbfs_block")
-		return NewBlockServerLocal(config, blockPath)
+		return NewBlockServerDir(config, blockPath)
 	}
 
 	if len(bserverAddr) == 0 {
