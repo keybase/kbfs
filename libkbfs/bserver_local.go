@@ -33,7 +33,7 @@ func newBlockServerLocal(config Config,
 	*BlockServerLocal, error) {
 	bserv := &BlockServerLocal{
 		config,
-		config.MakeLogger(""),
+		config.MakeLogger("BSL"),
 		makeStorageFunc,
 		sync.RWMutex{},
 		make(map[TlfID]bserverLocalStorage),

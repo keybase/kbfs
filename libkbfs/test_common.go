@@ -89,8 +89,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 	// see if a local remote server is specified
 	bserverAddr := os.Getenv(EnvTestBServerAddr)
 	if len(bserverAddr) != 0 {
-		blockServer :=
-			NewBlockServerRemote(config, bserverAddr)
+		blockServer := NewBlockServerRemote(config, bserverAddr)
 		config.SetBlockServer(blockServer)
 	} else {
 		blockServer, err := NewBlockServerMemory(config)
