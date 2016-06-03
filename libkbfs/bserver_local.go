@@ -6,6 +6,8 @@ package libkbfs
 
 import (
 	"fmt"
+	"path/filepath"
+	"sync"
 
 	"github.com/keybase/client/go/logger"
 	"golang.org/x/net/context"
@@ -14,28 +16,72 @@ import (
 // BlockServerLocal implements the BlockServer interface by just
 // storing blocks in a local leveldb instance
 type BlockServerLocal struct {
-	config Config
-	log    logger.Logger
-	s      bserverLocalStorage
+	config          Config
+	log             logger.Logger
+	makeStorageFunc func(tlfID TlfID) bserverLocalStorage
+
+	tlfStorageLock sync.RWMutex
+	tlfStorage     map[TlfID]bserverLocalStorage
 }
 
 var _ BlockServer = (*BlockServerLocal)(nil)
 
-// NewBlockServerLocal constructs a new BlockServerLocal that stores
-// its data in the given leveldb directory.
-func NewBlockServerLocal(config Config, dbfile string) (
+// newBlockServerLocal constructs a new BlockServerLocal that stores
+// its data in the given directory.
+func newBlockServerLocal(config Config,
+	makeStorageFunc func(tlfID TlfID) bserverLocalStorage) (
 	*BlockServerLocal, error) {
-	s := makeBserverFileStorage(config.Codec(), dbfile)
-	bserv := &BlockServerLocal{config: config, log: config.MakeLogger(""), s: s}
+	bserv := &BlockServerLocal{
+		config,
+		config.MakeLogger(""),
+		makeStorageFunc,
+		sync.RWMutex{},
+		make(map[TlfID]bserverLocalStorage),
+	}
 	return bserv, nil
+}
+
+// NewBlockServerLocal constructs a new BlockServerLocal that stores
+// its data in the given directory.
+func NewBlockServerLocal(config Config, dirPath string) (
+	*BlockServerLocal, error) {
+	return newBlockServerLocal(
+		config, func(tlfID TlfID) bserverLocalStorage {
+			path := filepath.Join(dirPath, tlfID.String())
+			return makeBserverFileStorage(config.Codec(), path)
+		})
 }
 
 // NewBlockServerMemory constructs a new BlockServerLocal that stores
 // its data in memory.
 func NewBlockServerMemory(config Config) (*BlockServerLocal, error) {
-	s := makeBserverMemStorage()
-	bserv := &BlockServerLocal{config: config, log: config.MakeLogger(""), s: s}
-	return bserv, nil
+	return newBlockServerLocal(
+		config, func(tlfID TlfID) bserverLocalStorage {
+			return makeBserverMemStorage()
+		})
+}
+
+func (b *BlockServerLocal) getStorage(tlfID TlfID) bserverLocalStorage {
+	storage := func() bserverLocalStorage {
+		b.tlfStorageLock.RLock()
+		defer b.tlfStorageLock.RUnlock()
+		return b.tlfStorage[tlfID]
+	}()
+
+	if storage != nil {
+		return storage
+	}
+
+	b.tlfStorageLock.Lock()
+	defer b.tlfStorageLock.Unlock()
+	storage = b.tlfStorage[tlfID]
+	if storage != nil {
+		return storage
+	}
+
+	storage = b.makeStorageFunc(tlfID)
+	b.tlfStorage[tlfID] = storage
+	return storage
 }
 
 // Get implements the BlockServer interface for BlockServerLocal
@@ -43,7 +89,7 @@ func (b *BlockServerLocal) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
 	b.log.CDebugf(ctx, "BlockServerLocal.Get id=%s uid=%s",
 		id, context.GetWriter())
-	entry, err := b.s.get(id)
+	entry, err := b.getStorage(tlfID).get(id)
 	if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
@@ -68,7 +114,7 @@ func (b *BlockServerLocal) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		Tlf:           tlfID,
 	}
 	entry.Refs[zeroBlockRefNonce] = liveBlockRef
-	return b.s.put(id, entry)
+	return b.getStorage(tlfID).put(id, entry)
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerLocal
@@ -79,7 +125,7 @@ func (b *BlockServerLocal) AddBlockReference(ctx context.Context, id BlockID,
 		"refnonce=%s uid=%s", id,
 		refNonce, context.GetWriter())
 
-	return b.s.addReference(id, refNonce)
+	return b.getStorage(tlfID).addReference(id, refNonce)
 }
 
 // RemoveBlockReference implements the BlockServer interface for
@@ -91,7 +137,7 @@ func (b *BlockServerLocal) RemoveBlockReference(ctx context.Context,
 	liveCounts = make(map[BlockID]int)
 	for bid, refs := range contexts {
 		for _, ref := range refs {
-			count, err := b.s.removeReference(bid, ref.GetRefNonce())
+			count, err := b.getStorage(tlfID).removeReference(bid, ref.GetRefNonce())
 			if err != nil {
 				return liveCounts, err
 			}
@@ -113,7 +159,7 @@ func (b *BlockServerLocal) ArchiveBlockReferences(ctx context.Context,
 			refNonce := context.GetRefNonce()
 			b.log.CDebugf(ctx, "BlockServerLocal.ArchiveBlockReference id=%s "+
 				"refnonce=%s", id, refNonce)
-			err := b.s.archiveReference(id, refNonce)
+			err := b.getStorage(tlfID).archiveReference(id, refNonce)
 			if err != nil {
 				return err
 			}
@@ -125,14 +171,21 @@ func (b *BlockServerLocal) ArchiveBlockReferences(ctx context.Context,
 
 // getAll returns all the known block references, and should only be
 // used during testing.
-func (b *BlockServerLocal) getAll(tlf TlfID) (
+func (b *BlockServerLocal) getAll(tlfID TlfID) (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	return b.s.getAll(tlf)
+	return b.getStorage(tlfID).getAll(tlfID)
 }
 
 // Shutdown implements the BlockServer interface for BlockServerLocal.
 func (b *BlockServerLocal) Shutdown() {
-	b.s.shutdown()
+	b.tlfStorageLock.Lock()
+	defer b.tlfStorageLock.Unlock()
+	for _, s := range b.tlfStorage {
+		s.shutdown()
+	}
+
+	// Make further accesses panic.
+	b.tlfStorage = nil
 }
 
 // RefreshAuthToken implements the BlockServer interface for BlockServerLocal.
