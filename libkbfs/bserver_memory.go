@@ -13,8 +13,9 @@ import (
 )
 
 type blockRefEntry struct {
-	status  blockRefLocalStatus
-	context BlockContext
+	// These fields are exported only for serialization purposes.
+	Status  blockRefLocalStatus
+	Context BlockContext
 }
 
 type blockMemEntry struct {
@@ -67,10 +68,10 @@ func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	}
 
 	refEntry, ok := entry.refs[context.GetRefNonce()]
-	if refEntry.context != context {
+	if refEntry.Context != context {
 		return nil, BlockCryptKeyServerHalf{},
 			fmt.Errorf("Context mismatch: expected %s, got %s",
-				refEntry.context, context)
+				refEntry.Context, context)
 	}
 
 	return entry.blockData, entry.keyServerHalf, nil
@@ -112,9 +113,9 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 				entry.tlfID, tlfID)
 		}
 
-		if refEntry, ok := entry.refs[zeroBlockRefNonce]; ok && refEntry.context != context {
+		if refEntry, ok := entry.refs[zeroBlockRefNonce]; ok && refEntry.Context != context {
 			return fmt.Errorf("Context mismatch: expected %s, got %s",
-				refEntry.context, context)
+				refEntry.Context, context)
 		}
 
 		// The only thing that could be different now is the
@@ -133,8 +134,8 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		blockData: data,
 		refs: map[BlockRefNonce]blockRefEntry{
 			zeroBlockRefNonce: blockRefEntry{
-				status:  liveBlockRef,
-				context: context,
+				Status:  liveBlockRef,
+				Context: context,
 			},
 		},
 		keyServerHalf: serverHalf,
@@ -165,7 +166,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 	// Only add it if there's a non-archived reference.
 	hasNonArchivedRef := false
 	for _, refEntry := range entry.refs {
-		if refEntry.status == liveBlockRef {
+		if refEntry.Status == liveBlockRef {
 			hasNonArchivedRef = true
 			break
 		}
@@ -176,14 +177,14 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 	}
 
 	refNonce := context.GetRefNonce()
-	if refEntry, ok := entry.refs[refNonce]; ok && refEntry.context != context {
+	if refEntry, ok := entry.refs[refNonce]; ok && refEntry.Context != context {
 		return fmt.Errorf("Context mismatch: expected %s, got %s",
-			refEntry.context, context)
+			refEntry.Context, context)
 	}
 
 	entry.refs[refNonce] = blockRefEntry{
-		status:  liveBlockRef,
-		context: context,
+		Status:  liveBlockRef,
+		Context: context,
 	}
 	return nil
 }
@@ -208,10 +209,10 @@ func (b *BlockServerMemory) removeBlockReferences(
 		// If this check fails, this ref is already gone,
 		// which is not an error.
 		if refEntry, ok := entry.refs[refNonce]; ok {
-			if refEntry.context != context {
+			if refEntry.Context != context {
 				return 0, fmt.Errorf(
 					"Context mismatch: expected %s, got %s",
-					refEntry.context, context)
+					refEntry.Context, context)
 			}
 			delete(entry.refs, refNonce)
 		}
@@ -266,12 +267,12 @@ func (b *BlockServerMemory) archiveBlockReference(
 			"doesn't exist and cannot be archived.", id, refNonce)}
 	}
 
-	if refEntry.context != context {
+	if refEntry.Context != context {
 		return fmt.Errorf("Context mismatch: expected %s, got %s",
-			refEntry.context, context)
+			refEntry.Context, context)
 	}
 
-	refEntry.status = archivedBlockRef
+	refEntry.Status = archivedBlockRef
 	entry.refs[refNonce] = refEntry
 	return nil
 }
@@ -309,7 +310,7 @@ func (b *BlockServerMemory) getAll(tlfID TlfID) (
 		}
 		res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
 		for ref, refEntry := range entry.refs {
-			res[id][ref] = refEntry.status
+			res[id][ref] = refEntry.Status
 		}
 	}
 	return res, nil

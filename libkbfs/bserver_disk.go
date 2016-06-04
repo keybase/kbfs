@@ -19,7 +19,7 @@ import (
 type blockEntry struct {
 	// These fields are only exported for serialization purposes.
 	BlockData     []byte
-	Refs          map[BlockRefNonce]blockRefLocalStatus
+	Refs          map[BlockRefNonce]blockRefEntry
 	KeyServerHalf BlockCryptKeyServerHalf
 }
 
@@ -68,7 +68,7 @@ func (s *bserverTlfStorage) getLocked(p string) (blockEntry, error) {
 		return blockEntry{}, err
 	}
 
-	refs := make(map[BlockRefNonce]blockRefLocalStatus)
+	refs := make(map[BlockRefNonce]blockRefEntry)
 	for _, refInfo := range refInfos {
 		var refNonce BlockRefNonce
 		buf, err := hex.DecodeString(refInfo.Name())
@@ -81,8 +81,12 @@ func (s *bserverTlfStorage) getLocked(p string) (blockEntry, error) {
 		if err != nil {
 			return blockEntry{}, err
 		}
-		status := blockRefLocalStatus(buf[0])
-		refs[refNonce] = status
+		var refEntry blockRefEntry
+		err = s.codec.Decode(buf, &refEntry)
+		if err != nil {
+			return blockEntry{}, err
+		}
+		refs[refNonce] = refEntry
 	}
 
 	return blockEntry{
@@ -146,7 +150,10 @@ func (s *bserverTlfStorage) getAll() (
 			if err != nil {
 				return nil, err
 			}
-			res[id] = entry.Refs
+
+			for ref, refEntry := range entry.Refs {
+				res[id][ref] = refEntry.Status
+			}
 		}
 	}
 
@@ -178,9 +185,13 @@ func (s *bserverTlfStorage) putLocked(p string, entry blockEntry) error {
 		return err
 	}
 
-	for ref, status := range entry.Refs {
+	for ref, refEntry := range entry.Refs {
 		refPath := filepath.Join(refsPath, ref.String())
-		err := ioutil.WriteFile(refPath, []byte{byte(status)}, 0600)
+		buf, err := s.codec.Encode(refEntry)
+		if err != nil {
+			return err
+		}
+		err = ioutil.WriteFile(refPath, buf, 0600)
 		if err != nil {
 			return err
 		}
@@ -210,9 +221,9 @@ func (s *bserverTlfStorage) addReference(id BlockID, refNonce BlockRefNonce) err
 	}
 
 	// only add it if there's a non-archived reference
-	for _, status := range entry.Refs {
-		if status == liveBlockRef {
-			entry.Refs[refNonce] = liveBlockRef
+	for _, refEntry := range entry.Refs {
+		if refEntry.Status == liveBlockRef {
+			entry.Refs[refNonce] = refEntry
 			return s.putLocked(p, entry)
 		}
 	}
@@ -257,13 +268,14 @@ func (s *bserverTlfStorage) archiveReference(id BlockID, refNonce BlockRefNonce)
 		return err
 	}
 
-	_, ok := entry.Refs[refNonce]
+	refEntry, ok := entry.Refs[refNonce]
 	if !ok {
 		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
 			"doesn't exist and cannot be archived.", id, refNonce)}
 	}
 
-	entry.Refs[refNonce] = archivedBlockRef
+	refEntry.Status = archivedBlockRef
+	entry.Refs[refNonce] = refEntry
 	return s.putLocked(p, entry)
 }
 
@@ -362,11 +374,15 @@ func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	}
 
 	entry := blockEntry{
-		BlockData:     buf,
-		Refs:          make(map[BlockRefNonce]blockRefLocalStatus),
+		BlockData: buf,
+		Refs: map[BlockRefNonce]blockRefEntry{
+			zeroBlockRefNonce: blockRefEntry{
+				Status:  liveBlockRef,
+				Context: context,
+			},
+		},
 		KeyServerHalf: serverHalf,
 	}
-	entry.Refs[zeroBlockRefNonce] = liveBlockRef
 	return b.getStorage(tlfID).put(id, entry)
 }
 
