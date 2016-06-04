@@ -60,6 +60,12 @@ func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 		return nil, BlockCryptKeyServerHalf{}, BServerErrorBlockNonExistent{}
 	}
 
+	if entry.tlfID != tlfID {
+		return nil, BlockCryptKeyServerHalf{},
+			fmt.Errorf("TLF ID mismatch: expected %s, got %s",
+				entry.tlfID, tlfID)
+	}
+
 	refEntry, ok := entry.refs[context.GetRefNonce()]
 	if refEntry.context != context {
 		return nil, BlockCryptKeyServerHalf{},
