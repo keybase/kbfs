@@ -105,6 +105,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
+	// TODO: Avoid clobbering existing refs?
 	b.m[id] = entry
 	return nil
 }
@@ -127,6 +128,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 	// only add it if there's a non-archived reference
 	for _, refEntry := range entry.refs {
 		if refEntry.status == liveBlockRef {
+			// TODO: Avoid clobbering an existing ref?
 			entry.refs[context.GetRefNonce()] = blockRefEntry{
 				status:  liveBlockRef,
 				context: context,
@@ -157,8 +159,15 @@ func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
 				return 0
 			}
 
-			for _, ref := range refs {
-				delete(entry.refs, ref.GetRefNonce())
+			for _, context := range refs {
+				if refEntry, ok := entry.refs[context.GetRefNonce()]; ok {
+					if refEntry.context != context {
+						fmt.Errorf("Context mismatch: expected %s, got %s",
+							refEntry.context, context)
+					}
+
+					delete(entry.refs, context.GetRefNonce())
+				}
 			}
 			count := len(entry.refs)
 			if count == 0 {
@@ -182,7 +191,6 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
-			refNonce := context.GetRefNonce()
 			err := func() error {
 				b.lock.Lock()
 				defer b.lock.Unlock()
@@ -193,10 +201,16 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 						"exist and cannot be archived.", id)}
 				}
 
+				refNonce := context.GetRefNonce()
 				refEntry, ok := entry.refs[refNonce]
 				if !ok {
 					return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
 						"doesn't exist and cannot be archived.", id, refNonce)}
+				}
+
+				if refEntry.context != context {
+					fmt.Errorf("Context mismatch: expected %s, got %s",
+						refEntry.context, context)
 				}
 
 				refEntry.status = archivedBlockRef
