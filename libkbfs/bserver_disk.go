@@ -69,6 +69,18 @@ func (s *bserverTlfStorage) getRefEntryLocked(
 	return refEntry, nil
 }
 
+func (s *bserverTlfStorage) getRefEntryCountLocked(id BlockID) (int, error) {
+	refInfos, err := ioutil.ReadDir(s.buildRefsPath(id))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	// TODO: Do more checking.
+	return len(refInfos), nil
+}
+
 func (s *bserverTlfStorage) getLocked(id BlockID) (blockEntry, error) {
 	p := s.buildPath(id)
 	dataPath := filepath.Join(p, "data")
@@ -264,26 +276,37 @@ func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error
 	})
 }
 
-func (s *bserverTlfStorage) removeReference(id BlockID, refNonce BlockRefNonce) (
-	liveCount int, err error) {
+func (s *bserverTlfStorage) removeRefEntryLocked(id BlockID, refNonce BlockRefNonce) error {
+	refPath := s.buildRefPath(id, refNonce)
+	return os.RemoveAll(refPath)
+}
+
+func (s *bserverTlfStorage) removeReferences(
+	id BlockID, contexts []BlockContext) (int, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	p := s.buildPath(id)
-	entry, err := s.getLocked(id)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// This block is already gone; no error.
-			return 0, nil
+	for _, context := range contexts {
+		refNonce := context.GetRefNonce()
+		// TODO: Check context before removing.
+		err := s.removeRefEntryLocked(id, refNonce)
+		if err != nil {
+			return 0, err
 		}
-		return -1, err
 	}
 
-	delete(entry.Refs, refNonce)
-	if len(entry.Refs) == 0 {
-		return 0, os.RemoveAll(p)
+	count, err := s.getRefEntryCountLocked(id)
+	if err != nil {
+		return 0, err
 	}
-	return len(entry.Refs), s.putLocked(id, entry)
+
+	if count == 0 {
+		err := os.RemoveAll(s.buildPath(id))
+		if err != nil {
+			return 0, err
+		}
+	}
+	return count, nil
 }
 
 func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) error {
@@ -432,17 +455,12 @@ func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
 	b.log.CDebugf(ctx, "BlockServerDisk.RemoveBlockReference "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
 	liveCounts = make(map[BlockID]int)
-	for bid, refs := range contexts {
-		for _, ref := range refs {
-			count, err := b.getStorage(tlfID).removeReference(bid, ref.GetRefNonce())
-			if err != nil {
-				return liveCounts, err
-			}
-			existing, ok := liveCounts[bid]
-			if !ok || existing > count {
-				liveCounts[bid] = count
-			}
+	for id, idContexts := range contexts {
+		count, err := b.getStorage(tlfID).removeReferences(id, idContexts)
+		if err != nil {
+			return nil, err
 		}
+		liveCounts[id] = count
 	}
 	return liveCounts, nil
 }
