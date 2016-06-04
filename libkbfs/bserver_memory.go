@@ -84,6 +84,8 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		return fmt.Errorf("Can't Put() a block with a non-zero refnonce.")
 	}
 
+	// TOOD: Check that buf matches the ID.
+
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -98,9 +100,14 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 			return fmt.Errorf("Context mismatch: expected %s, got %s",
 				refEntry.context, context)
 		}
+
+		// The only thing that could be different now is the
+		// key server half.
+		entry.keyServerHalf = serverHalf
+		return nil
 	}
 
-	entry := blockMemEntry{
+	b.m[id] = blockMemEntry{
 		tlfID:     tlfID,
 		blockData: buf,
 		refs: map[BlockRefNonce]blockRefEntry{
@@ -111,9 +118,6 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		},
 		keyServerHalf: serverHalf,
 	}
-
-	// TODO: Avoid clobbering existing refs?
-	b.m[id] = entry
 	return nil
 }
 
