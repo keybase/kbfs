@@ -335,7 +335,7 @@ type BlockServerDisk struct {
 	codec        Codec
 	log          logger.Logger
 	dirPath      string
-	shutdownFunc func()
+	shutdownFunc func(logger.Logger)
 
 	tlfStorageLock sync.RWMutex
 	tlfStorage     map[TlfID]*bserverTlfStorage
@@ -346,7 +346,7 @@ var _ BlockServer = (*BlockServerDisk)(nil)
 // newBlockServerDisk constructs a new BlockServerDisk that stores
 // its data in the given directory.
 func newBlockServerDisk(
-	config Config, dirPath string, shutdownFunc func()) *BlockServerDisk {
+	config Config, dirPath string, shutdownFunc func(logger.Logger)) *BlockServerDisk {
 	bserv := &BlockServerDisk{
 		config.Codec(),
 		config.MakeLogger("BSD"),
@@ -371,8 +371,11 @@ func NewBlockServerTempDir(config Config) (*BlockServerDisk, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newBlockServerDisk(config, tempdir, func() {
-		os.RemoveAll(tempdir)
+	return newBlockServerDisk(config, tempdir, func(log logger.Logger) {
+		err := os.RemoveAll(tempdir)
+		if err != nil {
+			log.Warning("error removing %s: %s", tempdir, err)
+		}
 	}), nil
 }
 
@@ -488,7 +491,7 @@ func (b *BlockServerDisk) Shutdown() {
 	}()
 
 	if b.shutdownFunc != nil {
-		b.shutdownFunc()
+		b.shutdownFunc(b.log)
 	}
 }
 
