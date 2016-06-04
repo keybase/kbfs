@@ -16,16 +16,20 @@ import (
 type blockRefLocalStatus int
 
 const (
-	noBlockRef blockRefLocalStatus = iota
-	liveBlockRef
-	archivedBlockRef
+	liveBlockRef     = 1
+	archivedBlockRef = 2
 )
+
+type blockRefEntry struct {
+	status  blockRefLocalStatus
+	context BlockContext
+}
 
 type blockMemEntry struct {
 	tlfID         TlfID
 	blockData     []byte
-	refs          map[BlockRefNonce]blockRefLocalStatus
 	keyServerHalf BlockCryptKeyServerHalf
+	refs          map[BlockRefNonce]blockRefEntry
 }
 
 // BlockServerMemory implements the BlockServer interface by just
@@ -61,6 +65,14 @@ func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	if !ok {
 		return nil, BlockCryptKeyServerHalf{}, BServerErrorBlockNonExistent{}
 	}
+
+	refEntry, ok := entry.refs[context.GetRefNonce()]
+	if refEntry.context != context {
+		return nil, BlockCryptKeyServerHalf{},
+			fmt.Errorf("Context mismatch: expected %s, got %s",
+				refEntry.context, context)
+	}
+
 	return entry.blockData, entry.keyServerHalf, nil
 }
 
@@ -83,10 +95,13 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	entry := blockMemEntry{
 		tlfID:         tlfID,
 		blockData:     buf,
-		refs:          make(map[BlockRefNonce]blockRefLocalStatus),
+		refs:          make(map[BlockRefNonce]blockRefEntry),
 		keyServerHalf: serverHalf,
 	}
-	entry.refs[zeroBlockRefNonce] = liveBlockRef
+	entry.refs[zeroBlockRefNonce] = blockRefEntry{
+		status:  liveBlockRef,
+		context: context,
+	}
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -110,9 +125,12 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 	}
 
 	// only add it if there's a non-archived reference
-	for _, status := range entry.refs {
-		if status == liveBlockRef {
-			entry.refs[context.GetRefNonce()] = liveBlockRef
+	for _, refEntry := range entry.refs {
+		if refEntry.status == liveBlockRef {
+			entry.refs[context.GetRefNonce()] = blockRefEntry{
+				status:  liveBlockRef,
+				context: context,
+			}
 			b.m[id] = entry
 			return nil
 		}
@@ -175,13 +193,14 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 						"exist and cannot be archived.", id)}
 				}
 
-				_, ok = entry.refs[refNonce]
+				refEntry, ok := entry.refs[refNonce]
 				if !ok {
 					return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
 						"doesn't exist and cannot be archived.", id, refNonce)}
 				}
 
-				entry.refs[refNonce] = archivedBlockRef
+				refEntry.status = archivedBlockRef
+				entry.refs[refNonce] = refEntry
 				b.m[id] = entry
 				return nil
 			}()
@@ -207,8 +226,8 @@ func (b *BlockServerMemory) getAll(tlfID TlfID) (
 			continue
 		}
 		res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
-		for ref, status := range entry.refs {
-			res[id][ref] = status
+		for ref, refEntry := range entry.refs {
+			res[id][ref] = refEntry.status
 		}
 	}
 	return res, nil
