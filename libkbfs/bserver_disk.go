@@ -244,11 +244,39 @@ func (s *bserverTlfStorage) put(id BlockID, entry blockEntry) error {
 	return s.putLocked(id, entry)
 }
 
+func (s *bserverTlfStorage) hasNonArchivedReferenceLocked(id BlockID) (bool, error) {
+	refsPath := s.buildRefsPath(id)
+	refInfos, err := ioutil.ReadDir(refsPath)
+	if err != nil {
+		return false, err
+	}
+
+	for _, refInfo := range refInfos {
+		var refNonce BlockRefNonce
+		buf, err := hex.DecodeString(refInfo.Name())
+		if err != nil {
+			return false, err
+		}
+		// TODO: Validate length.
+		copy(refNonce[:], buf)
+
+		refEntry, err := s.getRefEntryLocked(id, refNonce)
+		if err != nil {
+			return false, err
+		}
+		if refEntry.Status == liveBlockRef {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	entry, err := s.getLocked(id)
+	// Only add it if there's a non-archived reference.
+	hasNonArchivedRef, err := s.hasNonArchivedReferenceLocked(id)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s "+
@@ -257,14 +285,6 @@ func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error
 		return err
 	}
 
-	// Only add it if there's a non-archived reference.
-	hasNonArchivedRef := false
-	for _, refEntry := range entry.Refs {
-		if refEntry.Status == liveBlockRef {
-			hasNonArchivedRef = true
-			break
-		}
-	}
 	if !hasNonArchivedRef {
 		return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
 			"been archived and cannot be referenced.", id)}
