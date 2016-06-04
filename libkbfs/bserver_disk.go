@@ -44,6 +44,14 @@ func (s *bserverTlfStorage) buildPath(id BlockID) string {
 	return filepath.Join(s.dir, idStr[:4], idStr[4:])
 }
 
+func (s *bserverTlfStorage) buildDataPath(id BlockID) string {
+	return filepath.Join(s.buildPath(id), "data")
+}
+
+func (s *bserverTlfStorage) buildKeyServerHalfPath(id BlockID) string {
+	return filepath.Join(s.buildPath(id), "key_server_half")
+}
+
 func (s *bserverTlfStorage) buildRefsPath(id BlockID) string {
 	return filepath.Join(s.buildPath(id), "refs")
 }
@@ -82,15 +90,12 @@ func (s *bserverTlfStorage) getRefEntryCountLocked(id BlockID) (int, error) {
 }
 
 func (s *bserverTlfStorage) getLocked(id BlockID) (blockEntry, error) {
-	p := s.buildPath(id)
-	dataPath := filepath.Join(p, "data")
-	data, err := ioutil.ReadFile(dataPath)
+	data, err := ioutil.ReadFile(s.buildDataPath(id))
 	if err != nil {
 		return blockEntry{}, err
 	}
 
-	kshPath := filepath.Join(p, "ksh")
-	buf, err := ioutil.ReadFile(kshPath)
+	buf, err := ioutil.ReadFile(s.buildKeyServerHalfPath(id))
 	if err != nil {
 		return blockEntry{}, err
 	}
@@ -202,46 +207,30 @@ func (s *bserverTlfStorage) putRefEntryLocked(id BlockID, refEntry blockRefEntry
 	return ioutil.WriteFile(refPath, buf, 0600)
 }
 
-func (s *bserverTlfStorage) putLocked(id BlockID, entry blockEntry) error {
-	p := s.buildPath(id)
-	err := os.RemoveAll(p)
-	if err != nil {
-		return err
-	}
-
-	refsPath := filepath.Join(p, "refs")
-
-	err = os.MkdirAll(refsPath, 0700)
-	if err != nil {
-		return err
-	}
-
-	dataPath := filepath.Join(p, "data")
-	err = ioutil.WriteFile(dataPath, entry.BlockData, 0600)
-	if err != nil {
-		return err
-	}
-
-	kshPath := filepath.Join(p, "ksh")
-	err = ioutil.WriteFile(kshPath, entry.KeyServerHalf.data[:], 0600)
-	if err != nil {
-		return err
-	}
-
-	for _, refEntry := range entry.Refs {
-		err := s.putRefEntryLocked(id, refEntry)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s *bserverTlfStorage) put(id BlockID, entry blockEntry) error {
+func (s *bserverTlfStorage) put(id BlockID, context BlockContext, buf []byte,
+	serverHalf BlockCryptKeyServerHalf) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	return s.putLocked(id, entry)
+
+	err := os.MkdirAll(s.buildRefsPath(id), 0700)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(s.buildDataPath(id), buf, 0600)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(s.buildKeyServerHalfPath(id), serverHalf.data[:], 0600)
+	if err != nil {
+		return err
+	}
+
+	return s.putRefEntryLocked(id, blockRefEntry{
+		Status:  liveBlockRef,
+		Context: context,
+	})
 }
 
 func (s *bserverTlfStorage) hasNonArchivedReferenceLocked(id BlockID) (bool, error) {
@@ -446,17 +435,7 @@ func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		return fmt.Errorf("Can't Put() a block with a non-zero refnonce.")
 	}
 
-	entry := blockEntry{
-		BlockData: buf,
-		Refs: map[BlockRefNonce]blockRefEntry{
-			zeroBlockRefNonce: blockRefEntry{
-				Status:  liveBlockRef,
-				Context: context,
-			},
-		},
-		KeyServerHalf: serverHalf,
-	}
-	return b.getStorage(tlfID).put(id, entry)
+	return b.getStorage(tlfID).put(id, context, buf, serverHalf)
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerDisk
