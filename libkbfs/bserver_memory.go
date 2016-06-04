@@ -133,6 +133,41 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 		"been archived and cannot be referenced.", id)}
 }
 
+func (b *BlockServerMemory) removeBlockReferences(
+	id BlockID, tlfID TlfID, contexts []BlockContext) (int, error) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	entry, ok := b.m[id]
+	if !ok {
+		// This block is already gone; no error.
+		return 0, nil
+	}
+
+	if entry.tlfID != tlfID {
+		return 0, fmt.Errorf("TLF ID mismatch: expected %s, got %s",
+			entry.tlfID, tlfID)
+	}
+
+	for _, context := range contexts {
+		refNonce := context.GetRefNonce()
+		// If this check fails, this ref is already gone,
+		// which is not an error.
+		if refEntry, ok := entry.refs[refNonce]; ok {
+			if refEntry.context != context {
+				return 0, fmt.Errorf(
+					"Context mismatch: expected %s, got %s",
+					refEntry.context, context)
+			}
+			delete(entry.refs, refNonce)
+		}
+	}
+	count := len(entry.refs)
+	if count == 0 {
+		delete(b.m, id)
+	}
+	return count, nil
+}
+
 // RemoveBlockReference implements the BlockServer interface for
 // BlockServerMemory
 func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
@@ -141,42 +176,19 @@ func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
 	b.log.CDebugf(ctx, "BlockServerMemory.RemoveBlockReference "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
 	liveCounts = make(map[BlockID]int)
-	for bid, refs := range contexts {
-		count := func() int {
-			b.lock.Lock()
-			defer b.lock.Unlock()
-			entry, ok := b.m[bid]
-			if !ok {
-				// This block is already gone; no error.
-				return 0
-			}
-
-			for _, context := range refs {
-				if refEntry, ok := entry.refs[context.GetRefNonce()]; ok {
-					if refEntry.context != context {
-						fmt.Errorf("Context mismatch: expected %s, got %s",
-							refEntry.context, context)
-					}
-
-					delete(entry.refs, context.GetRefNonce())
-				}
-			}
-			count := len(entry.refs)
-			if count == 0 {
-				delete(b.m, bid)
-			} else {
-				b.m[bid] = entry
-			}
-			return count
-		}()
-		liveCounts[bid] = count
+	for id, idContexts := range contexts {
+		count, err := b.removeBlockReferences(id, tlfID, idContexts)
+		if err != nil {
+			return nil, err
+		}
+		liveCounts[id] = count
 	}
 	return liveCounts, nil
 }
 
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerMemory
-func (b *BlockServerMemory) archiveBlockReference(ctx context.Context,
+func (b *BlockServerMemory) archiveBlockReference(
 	id BlockID, tlfID TlfID, context BlockContext) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -218,7 +230,7 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
-			err := b.archiveBlockReference(ctx, id, tlfID, context)
+			err := b.archiveBlockReference(id, tlfID, context)
 			if err != nil {
 				return err
 			}
