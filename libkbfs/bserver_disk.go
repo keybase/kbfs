@@ -89,26 +89,11 @@ func (s *bserverTlfStorage) getRefEntryCountLocked(id BlockID) (int, error) {
 	return len(refInfos), nil
 }
 
-func (s *bserverTlfStorage) getLocked(id BlockID) (blockEntry, error) {
-	data, err := ioutil.ReadFile(s.buildDataPath(id))
-	if err != nil {
-		return blockEntry{}, err
-	}
-
-	buf, err := ioutil.ReadFile(s.buildKeyServerHalfPath(id))
-	if err != nil {
-		return blockEntry{}, err
-	}
-
-	var kshData [32]byte
-	// TODO: Validate length.
-	copy(kshData[:], buf)
-	ksh := MakeBlockCryptKeyServerHalf(kshData)
-
+func (s *bserverTlfStorage) getRefsLocked(id BlockID) (map[BlockRefNonce]blockRefEntry, error) {
 	refsPath := s.buildRefsPath(id)
 	refInfos, err := ioutil.ReadDir(refsPath)
 	if err != nil {
-		return blockEntry{}, err
+		return nil, err
 	}
 
 	refs := make(map[BlockRefNonce]blockRefEntry)
@@ -116,36 +101,46 @@ func (s *bserverTlfStorage) getLocked(id BlockID) (blockEntry, error) {
 		var refNonce BlockRefNonce
 		buf, err := hex.DecodeString(refInfo.Name())
 		if err != nil {
-			return blockEntry{}, err
+			return nil, err
 		}
 		// TODO: Validate length.
 		copy(refNonce[:], buf)
 
 		refEntry, err := s.getRefEntryLocked(id, refNonce)
 		if err != nil {
-			return blockEntry{}, err
+			return nil, err
 		}
 		refs[refNonce] = refEntry
 	}
 
-	return blockEntry{
-		BlockData:     data,
-		Refs:          refs,
-		KeyServerHalf: ksh,
-	}, nil
+	return refs, nil
 }
 
-func (s *bserverTlfStorage) get(id BlockID) (blockEntry, error) {
+func (s *bserverTlfStorage) get(id BlockID) ([]byte, BlockCryptKeyServerHalf, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	entry, err := s.getLocked(id)
+
+	data, err := ioutil.ReadFile(s.buildDataPath(id))
 	if err != nil {
 		if os.IsNotExist(err) {
 			err = BServerErrorBlockNonExistent{}
 		}
-		return blockEntry{}, err
+		return nil, BlockCryptKeyServerHalf{}, err
 	}
-	return entry, nil
+
+	buf, err := ioutil.ReadFile(s.buildKeyServerHalfPath(id))
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = BServerErrorBlockNonExistent{}
+		}
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	var kshData [32]byte
+	// TODO: Validate length.
+	copy(kshData[:], buf)
+	serverHalf := MakeBlockCryptKeyServerHalf(kshData)
+	return data, serverHalf, nil
 }
 
 func (s *bserverTlfStorage) getAll() (
@@ -184,12 +179,12 @@ func (s *bserverTlfStorage) getAll() (
 
 			res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
 
-			entry, err := s.getLocked(id)
+			refs, err := s.getRefsLocked(id)
 			if err != nil {
 				return nil, err
 			}
 
-			for ref, refEntry := range entry.Refs {
+			for ref, refEntry := range refs {
 				res[id][ref] = refEntry.Status
 			}
 		}
@@ -417,11 +412,11 @@ func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
 	b.log.CDebugf(ctx, "BlockServerDisk.Get id=%s tlfID=%s context=%s",
 		id, tlfID, context)
-	entry, err := b.getStorage(tlfID).get(id)
+	data, keyServerHalf, err := b.getStorage(tlfID).get(id)
 	if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
-	return entry.BlockData, entry.KeyServerHalf, nil
+	return data, keyServerHalf, nil
 }
 
 // Put implements the BlockServer interface for BlockServerDisk
