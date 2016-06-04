@@ -93,14 +93,14 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		return fmt.Errorf("Can't Put() a block with a non-zero refnonce.")
 	}
 
-	bufId, err := b.crypto.MakePermanentBlockID(buf)
+	bufID, err := b.crypto.MakePermanentBlockID(buf)
 	if err != nil {
 		return err
 	}
 
-	if bufId != id {
+	if bufID != id {
 		return fmt.Errorf(
-			"Block ID mismatch: expected %s, got %s", bufId, id)
+			"Block ID mismatch: expected %s, got %s", bufID, id)
 	}
 
 	b.lock.Lock()
