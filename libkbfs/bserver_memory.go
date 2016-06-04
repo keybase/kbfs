@@ -117,20 +117,35 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 			"exist and cannot be referenced.", id)}
 	}
 
-	// only add it if there's a non-archived reference
+	if entry.tlfID != tlfID {
+		return fmt.Errorf("TLF ID mismatch: expected %s, got %s",
+			entry.tlfID, tlfID)
+	}
+
+	// Only add it if there's a non-archived reference.
+	hasNonArchivedRef := false
 	for _, refEntry := range entry.refs {
 		if refEntry.status == liveBlockRef {
-			// TODO: Avoid clobbering an existing ref?
-			entry.refs[context.GetRefNonce()] = blockRefEntry{
-				status:  liveBlockRef,
-				context: context,
-			}
-			b.m[id] = entry
-			return nil
+			hasNonArchivedRef = true
+			break
 		}
 	}
-	return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
-		"been archived and cannot be referenced.", id)}
+	if !hasNonArchivedRef {
+		return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
+			"been archived and cannot be referenced.", id)}
+	}
+
+	refNonce := context.GetRefNonce()
+	if refEntry, ok := entry.refs[refNonce]; ok && refEntry.context != context {
+		return fmt.Errorf("Context mismatch: expected %s, got %s",
+			refEntry.context, context)
+	}
+
+	entry.refs[refNonce] = blockRefEntry{
+		status:  liveBlockRef,
+		context: context,
+	}
+	return nil
 }
 
 func (b *BlockServerMemory) removeBlockReferences(
