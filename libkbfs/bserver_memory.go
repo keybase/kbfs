@@ -201,7 +201,7 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 				}
 
 				if refEntry.context != context {
-					fmt.Errorf("Context mismatch: expected %s, got %s",
+					return fmt.Errorf("Context mismatch: expected %s, got %s",
 						refEntry.context, context)
 				}
 
