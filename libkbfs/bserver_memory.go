@@ -187,6 +187,11 @@ func (b *BlockServerMemory) archiveBlockReference(ctx context.Context,
 			"exist and cannot be archived.", id)}
 	}
 
+	if entry.tlfID != tlfID {
+		return fmt.Errorf("TLF ID mismatch: expected %s, got %s",
+			entry.tlfID, tlfID)
+	}
+
 	refNonce := context.GetRefNonce()
 	refEntry, ok := entry.refs[refNonce]
 	if !ok {
