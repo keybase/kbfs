@@ -176,6 +176,36 @@ func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
 
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerMemory
+func (b *BlockServerMemory) archiveBlockReference(ctx context.Context,
+	id BlockID, tlfID TlfID, context BlockContext) error {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	entry, ok := b.m[id]
+	if !ok {
+		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
+			"exist and cannot be archived.", id)}
+	}
+
+	refNonce := context.GetRefNonce()
+	refEntry, ok := entry.refs[refNonce]
+	if !ok {
+		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
+			"doesn't exist and cannot be archived.", id, refNonce)}
+	}
+
+	if refEntry.context != context {
+		return fmt.Errorf("Context mismatch: expected %s, got %s",
+			refEntry.context, context)
+	}
+
+	refEntry.status = archivedBlockRef
+	entry.refs[refNonce] = refEntry
+	return nil
+}
+
+// ArchiveBlockReferences implements the BlockServer interface for
+// BlockServerMemory
 func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerMemory.ArchiveBlockReferences "+
@@ -183,33 +213,7 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
-			err := func() error {
-				b.lock.Lock()
-				defer b.lock.Unlock()
-
-				entry, ok := b.m[id]
-				if !ok {
-					return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
-						"exist and cannot be archived.", id)}
-				}
-
-				refNonce := context.GetRefNonce()
-				refEntry, ok := entry.refs[refNonce]
-				if !ok {
-					return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
-						"doesn't exist and cannot be archived.", id, refNonce)}
-				}
-
-				if refEntry.context != context {
-					return fmt.Errorf("Context mismatch: expected %s, got %s",
-						refEntry.context, context)
-				}
-
-				refEntry.status = archivedBlockRef
-				entry.refs[refNonce] = refEntry
-				b.m[id] = entry
-				return nil
-			}()
+			err := b.archiveBlockReference(ctx, id, tlfID, context)
 			if err != nil {
 				return err
 			}
