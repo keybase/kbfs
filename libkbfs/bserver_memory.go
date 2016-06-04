@@ -27,7 +27,8 @@ type blockMemEntry struct {
 // BlockServerMemory implements the BlockServer interface by just
 // storing blocks in memory.
 type BlockServerMemory struct {
-	log logger.Logger
+	crypto Crypto
+	log    logger.Logger
 
 	lock sync.RWMutex
 	m    map[BlockID]blockMemEntry
@@ -39,6 +40,7 @@ var _ BlockServer = (*BlockServerMemory)(nil)
 // its data in memory.
 func NewBlockServerMemory(config Config) *BlockServerMemory {
 	return &BlockServerMemory{
+		config.Crypto(),
 		config.MakeLogger("BSM"),
 		sync.RWMutex{},
 		make(map[BlockID]blockMemEntry),
@@ -84,7 +86,15 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		return fmt.Errorf("Can't Put() a block with a non-zero refnonce.")
 	}
 
-	// TOOD: Check that buf matches the ID.
+	bufId, err := b.crypto.MakePermanentBlockID(buf)
+	if err != nil {
+		return err
+	}
+
+	if bufId != id {
+		return fmt.Errorf(
+			"Block ID mismatch: expected %s, got %s", bufId, id)
+	}
 
 	b.lock.Lock()
 	defer b.lock.Unlock()

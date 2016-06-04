@@ -5059,11 +5059,13 @@ type corruptBlockServer struct {
 	BlockServer
 }
 
-func (cbs *corruptBlockServer) Put(ctx context.Context, id BlockID, tlfID TlfID,
-	context BlockContext, buf []byte,
-	serverHalf BlockCryptKeyServerHalf) error {
-	return cbs.BlockServer.Put(ctx, id, tlfID, context, append(buf, 0),
-		serverHalf)
+func (cbs corruptBlockServer) Get(ctx context.Context, id BlockID, tlfID TlfID,
+	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
+	data, keyServerHalf, err := cbs.BlockServer.Get(ctx, id, tlfID, context)
+	if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+	return append(data, 0), keyServerHalf, nil
 }
 
 func TestKBFSOpsFailToReadUnverifiableBlock(t *testing.T) {
