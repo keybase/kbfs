@@ -119,14 +119,18 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 
 		// The only thing that could be different now is the
 		// key server half.
+		//
+		// TODO: Figure out whether it can actually be
+		// different.
 		entry.keyServerHalf = serverHalf
 		return nil
 	}
 
-	// TODO: Copy buf.
+	data := make([]byte, len(buf))
+	copy(data, buf)
 	b.m[id] = blockMemEntry{
 		tlfID:     tlfID,
-		blockData: buf,
+		blockData: data,
 		refs: map[BlockRefNonce]blockRefEntry{
 			zeroBlockRefNonce: blockRefEntry{
 				status:  liveBlockRef,
