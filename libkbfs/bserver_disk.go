@@ -44,7 +44,33 @@ func (s *bserverTlfStorage) buildPath(id BlockID) string {
 	return filepath.Join(s.dir, idStr[:4], idStr[4:])
 }
 
-func (s *bserverTlfStorage) getLocked(p string) (blockEntry, error) {
+func (s *bserverTlfStorage) buildRefsPath(id BlockID) string {
+	return filepath.Join(s.buildPath(id), "refs")
+}
+
+func (s *bserverTlfStorage) buildRefPath(id BlockID, refNonce BlockRefNonce) string {
+	refNonceStr := refNonce.String()
+	return filepath.Join(s.buildRefsPath(id), refNonceStr)
+}
+
+func (s *bserverTlfStorage) getRefEntryLocked(
+	id BlockID, refNonce BlockRefNonce) (blockRefEntry, error) {
+	buf, err := ioutil.ReadFile(s.buildRefPath(id, refNonce))
+	if err != nil {
+		return blockRefEntry{}, err
+	}
+
+	var refEntry blockRefEntry
+	err = s.codec.Decode(buf, &refEntry)
+	if err != nil {
+		return blockRefEntry{}, err
+	}
+
+	return refEntry, nil
+}
+
+func (s *bserverTlfStorage) getLocked(id BlockID) (blockEntry, error) {
+	p := s.buildPath(id)
 	dataPath := filepath.Join(p, "data")
 	data, err := ioutil.ReadFile(dataPath)
 	if err != nil {
@@ -62,7 +88,7 @@ func (s *bserverTlfStorage) getLocked(p string) (blockEntry, error) {
 	copy(kshData[:], buf)
 	ksh := MakeBlockCryptKeyServerHalf(kshData)
 
-	refsPath := filepath.Join(p, "refs")
+	refsPath := s.buildRefsPath(id)
 	refInfos, err := ioutil.ReadDir(refsPath)
 	if err != nil {
 		return blockEntry{}, err
@@ -77,12 +103,8 @@ func (s *bserverTlfStorage) getLocked(p string) (blockEntry, error) {
 		}
 		// TODO: Validate length.
 		copy(refNonce[:], buf)
-		buf, err = ioutil.ReadFile(filepath.Join(refsPath, refInfo.Name()))
-		if err != nil {
-			return blockEntry{}, err
-		}
-		var refEntry blockRefEntry
-		err = s.codec.Decode(buf, &refEntry)
+
+		refEntry, err := s.getRefEntryLocked(id, refNonce)
 		if err != nil {
 			return blockEntry{}, err
 		}
@@ -99,7 +121,7 @@ func (s *bserverTlfStorage) getLocked(p string) (blockEntry, error) {
 func (s *bserverTlfStorage) get(id BlockID) (blockEntry, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	entry, err := s.getLocked(s.buildPath(id))
+	entry, err := s.getLocked(id)
 	if err != nil {
 		if os.IsNotExist(err) {
 			err = BServerErrorBlockNonExistent{}
@@ -145,8 +167,7 @@ func (s *bserverTlfStorage) getAll() (
 
 			res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
 
-			filePath := filepath.Join(subDir, fileInfo.Name())
-			entry, err := s.getLocked(filePath)
+			entry, err := s.getLocked(id)
 			if err != nil {
 				return nil, err
 			}
@@ -160,7 +181,17 @@ func (s *bserverTlfStorage) getAll() (
 	return res, nil
 }
 
-func (s *bserverTlfStorage) putLocked(p string, entry blockEntry) error {
+func (s *bserverTlfStorage) putRefEntryLocked(id BlockID, refEntry blockRefEntry) error {
+	buf, err := s.codec.Encode(refEntry)
+	if err != nil {
+		return err
+	}
+	refPath := s.buildRefPath(id, refEntry.Context.GetRefNonce())
+	return ioutil.WriteFile(refPath, buf, 0600)
+}
+
+func (s *bserverTlfStorage) putLocked(id BlockID, entry blockEntry) error {
+	p := s.buildPath(id)
 	err := os.RemoveAll(p)
 	if err != nil {
 		return err
@@ -185,13 +216,8 @@ func (s *bserverTlfStorage) putLocked(p string, entry blockEntry) error {
 		return err
 	}
 
-	for ref, refEntry := range entry.Refs {
-		refPath := filepath.Join(refsPath, ref.String())
-		buf, err := s.codec.Encode(refEntry)
-		if err != nil {
-			return err
-		}
-		err = ioutil.WriteFile(refPath, buf, 0600)
+	for _, refEntry := range entry.Refs {
+		err := s.putRefEntryLocked(id, refEntry)
 		if err != nil {
 			return err
 		}
@@ -203,15 +229,14 @@ func (s *bserverTlfStorage) putLocked(p string, entry blockEntry) error {
 func (s *bserverTlfStorage) put(id BlockID, entry blockEntry) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	return s.putLocked(s.buildPath(id), entry)
+	return s.putLocked(id, entry)
 }
 
-func (s *bserverTlfStorage) addReference(id BlockID, refNonce BlockRefNonce) error {
+func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	p := s.buildPath(id)
-	entry, err := s.getLocked(p)
+	entry, err := s.getLocked(id)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s "+
@@ -220,16 +245,23 @@ func (s *bserverTlfStorage) addReference(id BlockID, refNonce BlockRefNonce) err
 		return err
 	}
 
-	// only add it if there's a non-archived reference
+	// Only add it if there's a non-archived reference.
+	hasNonArchivedRef := false
 	for _, refEntry := range entry.Refs {
 		if refEntry.Status == liveBlockRef {
-			entry.Refs[refNonce] = refEntry
-			return s.putLocked(p, entry)
+			hasNonArchivedRef = true
+			break
 		}
 	}
+	if !hasNonArchivedRef {
+		return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
+			"been archived and cannot be referenced.", id)}
+	}
 
-	return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
-		"been archived and cannot be referenced.", id)}
+	return s.putRefEntryLocked(id, blockRefEntry{
+		Status:  liveBlockRef,
+		Context: context,
+	})
 }
 
 func (s *bserverTlfStorage) removeReference(id BlockID, refNonce BlockRefNonce) (
@@ -238,7 +270,7 @@ func (s *bserverTlfStorage) removeReference(id BlockID, refNonce BlockRefNonce) 
 	defer s.lock.Unlock()
 
 	p := s.buildPath(id)
-	entry, err := s.getLocked(p)
+	entry, err := s.getLocked(id)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// This block is already gone; no error.
@@ -251,32 +283,30 @@ func (s *bserverTlfStorage) removeReference(id BlockID, refNonce BlockRefNonce) 
 	if len(entry.Refs) == 0 {
 		return 0, os.RemoveAll(p)
 	}
-	return len(entry.Refs), s.putLocked(p, entry)
+	return len(entry.Refs), s.putLocked(id, entry)
 }
 
-func (s *bserverTlfStorage) archiveReference(id BlockID, refNonce BlockRefNonce) error {
+func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	p := s.buildPath(id)
-	entry, err := s.getLocked(p)
+	refNonce := context.GetRefNonce()
+	refEntry, err := s.getRefEntryLocked(id, refNonce)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s "+
-				"doesn't exist and cannot be archived.", id)}
+			return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
+				"doesn't exist and cannot be archived.", id, refNonce)}
 		}
 		return err
 	}
 
-	refEntry, ok := entry.Refs[refNonce]
-	if !ok {
-		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
-			"doesn't exist and cannot be archived.", id, refNonce)}
+	if refEntry.Context != context {
+		return fmt.Errorf("Context mismatch: expected %s, got %s",
+			refEntry.Context, context)
 	}
 
 	refEntry.Status = archivedBlockRef
-	entry.Refs[refNonce] = refEntry
-	return s.putLocked(p, entry)
+	return s.putRefEntryLocked(id, refEntry)
 }
 
 // BlockServerDisk implements the BlockServer interface by just
@@ -353,7 +383,7 @@ func (b *BlockServerDisk) getStorage(tlfID TlfID) *bserverTlfStorage {
 // Get implements the BlockServer interface for BlockServerDisk
 func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
-	b.log.CDebugf(ctx, "BlockServerMemory.Get id=%s tlfID=%s context=%s",
+	b.log.CDebugf(ctx, "BlockServerDisk.Get id=%s tlfID=%s context=%s",
 		id, tlfID, context)
 	entry, err := b.getStorage(tlfID).get(id)
 	if err != nil {
@@ -366,7 +396,7 @@ func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID TlfID,
 func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
-	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s tlfID=%s context=%s",
+	b.log.CDebugf(ctx, "BlockServerDisk.Put id=%s tlfID=%s context=%s",
 		id, tlfID, context)
 
 	if context.GetRefNonce() != zeroBlockRefNonce {
@@ -389,9 +419,9 @@ func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID TlfID,
 // AddBlockReference implements the BlockServer interface for BlockServerDisk
 func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
 	tlfID TlfID, context BlockContext) error {
-	b.log.CDebugf(ctx, "BlockServerMemory.AddBlockReference id=%s "+
+	b.log.CDebugf(ctx, "BlockServerDisk.AddBlockReference id=%s "+
 		"tlfID=%s context=%s", id, tlfID, context)
-	return b.getStorage(tlfID).addReference(id, context.GetRefNonce())
+	return b.getStorage(tlfID).addReference(id, context)
 }
 
 // RemoveBlockReference implements the BlockServer interface for
@@ -399,7 +429,7 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
 func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
-	b.log.CDebugf(ctx, "BlockServerMemory.RemoveBlockReference "+
+	b.log.CDebugf(ctx, "BlockServerDisk.RemoveBlockReference "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
 	liveCounts = make(map[BlockID]int)
 	for bid, refs := range contexts {
@@ -421,13 +451,12 @@ func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
 // BlockServerDisk
 func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) error {
-	b.log.CDebugf(ctx, "BlockServerMemory.ArchiveBlockReferences "+
+	b.log.CDebugf(ctx, "BlockServerDisk.ArchiveBlockReferences "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
 
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
-			refNonce := context.GetRefNonce()
-			err := b.getStorage(tlfID).archiveReference(id, refNonce)
+			err := b.getStorage(tlfID).archiveReference(id, context)
 			if err != nil {
 				return err
 			}
