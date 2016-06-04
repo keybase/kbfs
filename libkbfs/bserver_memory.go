@@ -123,6 +123,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		return nil
 	}
 
+	// TODO: Copy buf.
 	b.m[id] = blockMemEntry{
 		tlfID:     tlfID,
 		blockData: buf,
