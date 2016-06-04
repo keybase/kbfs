@@ -16,13 +16,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-type blockEntry struct {
-	// These fields are only exported for serialization purposes.
-	BlockData     []byte
-	Refs          map[BlockRefNonce]blockRefEntry
-	KeyServerHalf BlockCryptKeyServerHalf
-}
-
 // bserverTlfStorage stores block data in flat files on disk.
 type bserverTlfStorage struct {
 	codec Codec
