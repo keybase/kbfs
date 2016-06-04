@@ -84,18 +84,33 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		return fmt.Errorf("Can't Put() a block with a non-zero refnonce.")
 	}
 
-	entry := blockMemEntry{
-		tlfID:         tlfID,
-		blockData:     buf,
-		refs:          make(map[BlockRefNonce]blockRefEntry),
-		keyServerHalf: serverHalf,
-	}
-	entry.refs[zeroBlockRefNonce] = blockRefEntry{
-		status:  liveBlockRef,
-		context: context,
-	}
 	b.lock.Lock()
 	defer b.lock.Unlock()
+
+	if entry, ok := b.m[id]; ok {
+		if entry.tlfID != tlfID {
+			return fmt.Errorf(
+				"TLF ID mismatch: expected %s, got %s",
+				entry.tlfID, tlfID)
+		}
+
+		if refEntry, ok := entry.refs[zeroBlockRefNonce]; ok && refEntry.context != context {
+			return fmt.Errorf("Context mismatch: expected %s, got %s",
+				refEntry.context, context)
+		}
+	}
+
+	entry := blockMemEntry{
+		tlfID:     tlfID,
+		blockData: buf,
+		refs: map[BlockRefNonce]blockRefEntry{
+			zeroBlockRefNonce: blockRefEntry{
+				status:  liveBlockRef,
+				context: context,
+			},
+		},
+		keyServerHalf: serverHalf,
+	}
 
 	// TODO: Avoid clobbering existing refs?
 	b.m[id] = entry
