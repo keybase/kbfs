@@ -12,14 +12,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// TODO: Move this somewhere better.
-type blockRefLocalStatus int
-
-const (
-	liveBlockRef     = 1
-	archivedBlockRef = 2
-)
-
 type blockRefEntry struct {
 	status  blockRefLocalStatus
 	context BlockContext

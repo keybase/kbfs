@@ -941,6 +941,13 @@ type BlockServer interface {
 	GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error)
 }
 
+type blockRefLocalStatus int
+
+const (
+	liveBlockRef     = 1
+	archivedBlockRef = 2
+)
+
 // blockServerLocal is the interface for BlockServer implementations
 // that store data locally.
 type blockServerLocal interface {
