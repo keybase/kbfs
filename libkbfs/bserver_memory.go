@@ -113,6 +113,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 				entry.tlfID, tlfID)
 		}
 
+		// TODO: Is it okay for the creator to change?
 		if refEntry, ok := entry.refs[zeroBlockRefNonce]; ok && refEntry.Context != context {
 			return fmt.Errorf("Context mismatch: expected %s, got %s",
 				refEntry.Context, context)
