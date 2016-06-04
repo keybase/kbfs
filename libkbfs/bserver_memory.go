@@ -52,8 +52,8 @@ func NewBlockServerMemory(config Config) *BlockServerMemory {
 // Get implements the BlockServer interface for BlockServerMemory
 func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
-	b.log.CDebugf(ctx, "BlockServerMemory.Get id=%s uid=%s",
-		id, context.GetWriter())
+	b.log.CDebugf(ctx, "BlockServerMemory.Get id=%s tlfID=%s context=%s",
+		id, tlfID, context)
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
@@ -68,8 +68,8 @@ func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
-	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s uid=%s",
-		id, context.GetWriter())
+	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s tlfID=%s context=%s",
+		id, tlfID, context)
 
 	if context.GetCreator() != context.GetWriter() {
 		return fmt.Errorf("Can't Put() a block with creator=%s != writer=%s",
@@ -97,10 +97,8 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 // AddBlockReference implements the BlockServer interface for BlockServerMemory
 func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 	tlfID TlfID, context BlockContext) error {
-	refNonce := context.GetRefNonce()
 	b.log.CDebugf(ctx, "BlockServerMemory.AddBlockReference id=%s "+
-		"refnonce=%s uid=%s", id,
-		refNonce, context.GetWriter())
+		"tlfID=%s context=%s", id, tlfID, context)
 
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -114,7 +112,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 	// only add it if there's a non-archived reference
 	for _, status := range entry.refs {
 		if status == liveBlockRef {
-			entry.refs[refNonce] = liveBlockRef
+			entry.refs[context.GetRefNonce()] = liveBlockRef
 			b.m[id] = entry
 			return nil
 		}
@@ -128,7 +126,8 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
-	b.log.CDebugf(ctx, "BlockServerMemory.RemoveBlockReference ")
+	b.log.CDebugf(ctx, "BlockServerMemory.RemoveBlockReference "+
+		"tlfID=%s contexts=%v", tlfID, contexts)
 	liveCounts = make(map[BlockID]int)
 	for bid, refs := range contexts {
 		count := func() int {
@@ -160,11 +159,12 @@ func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
 // BlockServerMemory
 func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) error {
+	b.log.CDebugf(ctx, "BlockServerMemory.ArchiveBlockReferences "+
+		"tlfID=%s contexts=%v", tlfID, contexts)
+
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
 			refNonce := context.GetRefNonce()
-			b.log.CDebugf(ctx, "BlockServerMemory.ArchiveBlockReference id=%s "+
-				"refnonce=%s", id, refNonce)
 			err := func() error {
 				b.lock.Lock()
 				defer b.lock.Unlock()

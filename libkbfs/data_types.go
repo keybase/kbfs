@@ -284,6 +284,18 @@ func (c BlockContext) IsFirstRef() bool {
 	return c.RefNonce == zeroBlockRefNonce
 }
 
+func (c BlockContext) String() string {
+	s := fmt.Sprintf("BlockContext{Creator: %s", c.Creator)
+	if len(c.Writer) > 0 {
+		s += fmt.Sprintf(", Writer: %s", c.Writer)
+	}
+	if c.RefNonce != zeroBlockRefNonce {
+		s += fmt.Sprintf(", RefNonce: %s", c.RefNonce)
+	}
+	s += "}"
+	return s
+}
+
 // BlockPointer contains the identifying information for a block in KBFS.
 //
 // NOTE: Don't add or modify anything in this struct without
@@ -309,15 +321,7 @@ func (p BlockPointer) IsValid() bool {
 }
 
 func (p BlockPointer) String() string {
-	s := fmt.Sprintf("BlockPointer{ID: %s, KeyGen: %d, DataVer: %d, Creator: %s", p.ID, p.KeyGen, p.DataVer, p.Creator)
-	if len(p.Writer) > 0 {
-		s += fmt.Sprintf(", Writer: %s", p.Writer)
-	}
-	if p.RefNonce != zeroBlockRefNonce {
-		s += fmt.Sprintf(", RefNonce: %s", p.RefNonce)
-	}
-	s += "}"
-	return s
+	return fmt.Sprintf("BlockPointer{ID: %s, KeyGen: %d, DataVer: %d, Context: %s}", p.ID, p.KeyGen, p.DataVer, p.BlockContext)
 }
 
 // IsInitialized returns whether or not this BlockPointer has non-nil data.

@@ -287,7 +287,7 @@ func newBlockServerDisk(
 	config Config, dirPath string, shutdownFunc func()) *BlockServerDisk {
 	bserv := &BlockServerDisk{
 		config.Codec(),
-		config.MakeLogger("BSL"),
+		config.MakeLogger("BSD"),
 		dirPath,
 		shutdownFunc,
 		sync.RWMutex{},
@@ -341,8 +341,8 @@ func (b *BlockServerDisk) getStorage(tlfID TlfID) *bserverTlfStorage {
 // Get implements the BlockServer interface for BlockServerDisk
 func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
-	b.log.CDebugf(ctx, "BlockServerDisk.Get id=%s uid=%s",
-		id, context.GetWriter())
+	b.log.CDebugf(ctx, "BlockServerMemory.Get id=%s tlfID=%s context=%s",
+		id, tlfID, context)
 	entry, err := b.getStorage(tlfID).get(id)
 	if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
@@ -354,8 +354,8 @@ func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID TlfID,
 func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
-	b.log.CDebugf(ctx, "BlockServerDisk.Put id=%s uid=%s",
-		id, context.GetWriter())
+	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s tlfID=%s context=%s",
+		id, tlfID, context)
 
 	if context.GetRefNonce() != zeroBlockRefNonce {
 		return fmt.Errorf("Can't Put() a block with a non-zero refnonce.")
@@ -373,12 +373,9 @@ func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID TlfID,
 // AddBlockReference implements the BlockServer interface for BlockServerDisk
 func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
 	tlfID TlfID, context BlockContext) error {
-	refNonce := context.GetRefNonce()
-	b.log.CDebugf(ctx, "BlockServerDisk.AddBlockReference id=%s "+
-		"refnonce=%s uid=%s", id,
-		refNonce, context.GetWriter())
-
-	return b.getStorage(tlfID).addReference(id, refNonce)
+	b.log.CDebugf(ctx, "BlockServerMemory.AddBlockReference id=%s "+
+		"tlfID=%s context=%s", id, tlfID, context)
+	return b.getStorage(tlfID).addReference(id, context.GetRefNonce())
 }
 
 // RemoveBlockReference implements the BlockServer interface for
@@ -386,7 +383,8 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
 func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
-	b.log.CDebugf(ctx, "BlockServerDisk.RemoveBlockReference ")
+	b.log.CDebugf(ctx, "BlockServerMemory.RemoveBlockReference "+
+		"tlfID=%s contexts=%v", tlfID, contexts)
 	liveCounts = make(map[BlockID]int)
 	for bid, refs := range contexts {
 		for _, ref := range refs {
@@ -407,11 +405,12 @@ func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
 // BlockServerDisk
 func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) error {
+	b.log.CDebugf(ctx, "BlockServerMemory.ArchiveBlockReferences "+
+		"tlfID=%s contexts=%v", tlfID, contexts)
+
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
 			refNonce := context.GetRefNonce()
-			b.log.CDebugf(ctx, "BlockServerDisk.ArchiveBlockReference id=%s "+
-				"refnonce=%s", id, refNonce)
 			err := b.getStorage(tlfID).archiveReference(id, refNonce)
 			if err != nil {
 				return err
