@@ -69,14 +69,14 @@ func NewBlockServerTempDir(config Config) (*BlockServerDisk, error) {
 	}), nil
 }
 
-var blockServerDiskShutdownErr = errors.New("BlockServerDisk is shutdown")
+var errBlockServerDiskShutdown = errors.New("BlockServerDisk is shutdown")
 
 func (b *BlockServerDisk) getStorage(tlfID TlfID) (*bserverTlfStorage, error) {
 	storage, err := func() (*bserverTlfStorage, error) {
 		b.tlfStorageLock.RLock()
 		defer b.tlfStorageLock.RUnlock()
 		if b.tlfStorage == nil {
-			return nil, blockServerDiskShutdownErr
+			return nil, errBlockServerDiskShutdown
 		}
 		return b.tlfStorage[tlfID], nil
 	}()
@@ -92,7 +92,7 @@ func (b *BlockServerDisk) getStorage(tlfID TlfID) (*bserverTlfStorage, error) {
 	b.tlfStorageLock.Lock()
 	defer b.tlfStorageLock.Unlock()
 	if b.tlfStorage == nil {
-		return nil, blockServerDiskShutdownErr
+		return nil, errBlockServerDiskShutdown
 	}
 
 	storage = b.tlfStorage[tlfID]

@@ -94,7 +94,7 @@ func (s *bserverTlfStorage) getRefEntryLocked(
 	return refEntry, nil
 }
 
-var bserverTlfStorageShutdownErr = errors.New("bserverTlfStorage is shutdown")
+var errBserverTlfStorageShutdown = errors.New("bserverTlfStorage is shutdown")
 
 func (s *bserverTlfStorage) getData(id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
@@ -103,7 +103,7 @@ func (s *bserverTlfStorage) getData(id BlockID, context BlockContext) (
 
 	if s.isShutdown {
 		return nil, BlockCryptKeyServerHalf{},
-			bserverTlfStorageShutdownErr
+			errBserverTlfStorageShutdown
 	}
 
 	refEntry, err := s.getRefEntryLocked(id, context.GetRefNonce())
@@ -187,7 +187,7 @@ func (s *bserverTlfStorage) getAll() (
 	defer s.lock.RUnlock()
 
 	if s.isShutdown {
-		return nil, bserverTlfStorageShutdownErr
+		return nil, errBserverTlfStorageShutdown
 	}
 
 	levelOneInfos, err := ioutil.ReadDir(s.dir)
@@ -267,7 +267,7 @@ func (s *bserverTlfStorage) putData(
 	defer s.lock.Unlock()
 
 	if s.isShutdown {
-		return bserverTlfStorageShutdownErr
+		return errBserverTlfStorageShutdown
 	}
 
 	// Do this first, so that it makes the dirs for the data and
@@ -300,7 +300,7 @@ func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error
 	defer s.lock.Unlock()
 
 	if s.isShutdown {
-		return bserverTlfStorageShutdownErr
+		return errBserverTlfStorageShutdown
 	}
 
 	refEntries, err := s.getRefEntriesLocked(id)
@@ -336,7 +336,7 @@ func (s *bserverTlfStorage) removeReferences(
 	defer s.lock.Unlock()
 
 	if s.isShutdown {
-		return 0, bserverTlfStorageShutdownErr
+		return 0, errBserverTlfStorageShutdown
 	}
 
 	refEntries, err := s.getRefEntriesLocked(id)
@@ -381,7 +381,7 @@ func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) e
 	defer s.lock.Unlock()
 
 	if s.isShutdown {
-		return bserverTlfStorageShutdownErr
+		return errBserverTlfStorageShutdown
 	}
 
 	refNonce := context.GetRefNonce()

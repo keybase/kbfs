@@ -50,7 +50,7 @@ func NewBlockServerMemory(config Config) *BlockServerMemory {
 	}
 }
 
-var blockServerMemoryShutdownErr = errors.New("BlockServerMemory is shutdown")
+var errBlockServerMemoryShutdown = errors.New("BlockServerMemory is shutdown")
 
 // Get implements the BlockServer interface for BlockServerMemory
 func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
@@ -61,7 +61,7 @@ func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	defer b.lock.RUnlock()
 
 	if b.m == nil {
-		return nil, BlockCryptKeyServerHalf{}, blockServerMemoryShutdownErr
+		return nil, BlockCryptKeyServerHalf{}, errBlockServerMemoryShutdown
 	}
 
 	entry, ok := b.m[id]
@@ -125,7 +125,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	defer b.lock.Unlock()
 
 	if b.m == nil {
-		return blockServerMemoryShutdownErr
+		return errBlockServerMemoryShutdown
 	}
 
 	if entry, ok := b.m[id]; ok {
@@ -176,7 +176,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 	defer b.lock.Unlock()
 
 	if b.m == nil {
-		return blockServerMemoryShutdownErr
+		return errBlockServerMemoryShutdown
 	}
 
 	entry, ok := b.m[id]
@@ -222,7 +222,7 @@ func (b *BlockServerMemory) removeBlockReferences(
 	defer b.lock.Unlock()
 
 	if b.m == nil {
-		return 0, blockServerMemoryShutdownErr
+		return 0, errBlockServerMemoryShutdown
 	}
 
 	entry, ok := b.m[id]
@@ -282,7 +282,7 @@ func (b *BlockServerMemory) archiveBlockReference(
 	defer b.lock.Unlock()
 
 	if b.m == nil {
-		return blockServerMemoryShutdownErr
+		return errBlockServerMemoryShutdown
 	}
 
 	entry, ok := b.m[id]
@@ -341,7 +341,7 @@ func (b *BlockServerMemory) getAll(tlfID TlfID) (
 	defer b.lock.RUnlock()
 
 	if b.m == nil {
-		return nil, blockServerMemoryShutdownErr
+		return nil, errBlockServerMemoryShutdown
 	}
 
 	for id, entry := range b.m {
