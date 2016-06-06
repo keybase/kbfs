@@ -318,7 +318,12 @@ func (b *BlockServerMemory) getAll(tlfID TlfID) (
 }
 
 // Shutdown implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) Shutdown() {}
+func (b *BlockServerMemory) Shutdown() {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	// Make further accesses panic.
+	b.m = nil
+}
 
 // RefreshAuthToken implements the BlockServer interface for BlockServerMemory.
 func (b *BlockServerMemory) RefreshAuthToken(_ context.Context) {}
