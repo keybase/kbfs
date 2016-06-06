@@ -14,7 +14,26 @@ import (
 	"sync"
 )
 
-// bserverTlfStorage stores block data in flat files on disk.
+// bserverTlfStorage stores block data for a single TLF in flat files
+// on disk. In particular, it stores data for each block in a
+// directory with name equal to the hex-encoded blockID.
+//
+// The block ID name is splayed over 256^2 subdirectories (one byte
+// for the hash type plus the first byte of the hash data) using the
+// first four characters of the name to keep the number of directories
+// in dir itself to a manageable number, similar to git.
+//
+// An example directory structure would be:
+//
+// dir/0100/0...01/data
+// dir/0100/0...01/key_server_half
+// dir/0100/0...01/refs/0000000000000000
+// dir/0100/0...01/refs/0000000000000001
+// ...
+// dir/01ff/f...ff/data
+// dir/01ff/f...ff/key_server_half
+// dir/01ff/f...ff/refs/0000000000000000
+// dir/01ff/f...ff/refs/ffffffffffffffff
 type bserverTlfStorage struct {
 	codec Codec
 	dir   string
@@ -29,11 +48,6 @@ func makeBserverTlfStorage(codec Codec, dir string) *bserverTlfStorage {
 	return &bserverTlfStorage{codec: codec, dir: dir}
 }
 
-// Store each block in its own file with name equal to the hex-encoded
-// blockID. Splay the filenames over 256^2 subdirectories (one byte
-// for the hash type plus the first byte of the hash data) using the
-// first four characters of the name to keep the number of directories
-// in dir itself to a manageable number, similar to git.
 func (s *bserverTlfStorage) buildPath(id BlockID) string {
 	idStr := id.String()
 	return filepath.Join(s.dir, idStr[:4], idStr[4:])
