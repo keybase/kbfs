@@ -210,14 +210,18 @@ func (b *BlockServerDisk) getAll(tlfID TlfID) (
 
 // Shutdown implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) Shutdown() {
-	func() {
+	tlfStorage := func() map[TlfID]*bserverTlfStorage {
 		b.tlfStorageLock.Lock()
 		defer b.tlfStorageLock.Unlock()
 		// Make further accesses error out.
-		//
-		// TODO: Shut down each tlfStorage.
+		tlfStorage := b.tlfStorage
 		b.tlfStorage = nil
+		return tlfStorage
 	}()
+
+	for _, s := range tlfStorage {
+		s.shutdown()
+	}
 
 	if b.shutdownFunc != nil {
 		b.shutdownFunc(b.log)

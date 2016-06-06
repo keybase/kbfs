@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,8 +17,12 @@ import (
 // bserverTlfStorage stores block data in flat files on disk.
 type bserverTlfStorage struct {
 	codec Codec
-	lock  sync.RWMutex
 	dir   string
+
+	// Protects any IO operations in dir or any of its children,
+	// as well as isShutdown.
+	lock       sync.RWMutex
+	isShutdown bool
 }
 
 func makeBserverTlfStorage(codec Codec, dir string) *bserverTlfStorage {
@@ -106,9 +111,15 @@ func (s *bserverTlfStorage) getRefsLocked(id BlockID) (map[BlockRefNonce]blockRe
 	return refs, nil
 }
 
+var bserverTlfStorageShutdownErr = errors.New("bserverTlfStorage is shutdown")
+
 func (s *bserverTlfStorage) get(id BlockID) ([]byte, BlockCryptKeyServerHalf, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
+
+	if s.isShutdown {
+		return nil, BlockCryptKeyServerHalf{}, bserverTlfStorageShutdownErr
+	}
 
 	data, err := ioutil.ReadFile(s.buildDataPath(id))
 	if err != nil {
@@ -138,6 +149,11 @@ func (s *bserverTlfStorage) getAll() (
 	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
 	s.lock.RLock()
 	defer s.lock.RUnlock()
+
+	if s.isShutdown {
+		return nil, bserverTlfStorageShutdownErr
+	}
+
 	subdirInfos, err := ioutil.ReadDir(s.dir)
 	if err != nil {
 		return nil, err
@@ -197,6 +213,10 @@ func (s *bserverTlfStorage) put(id BlockID, context BlockContext, buf []byte,
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	if s.isShutdown {
+		return bserverTlfStorageShutdownErr
+	}
+
 	err := os.MkdirAll(s.buildRefsPath(id), 0700)
 	if err != nil {
 		return err
@@ -249,6 +269,10 @@ func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	if s.isShutdown {
+		return bserverTlfStorageShutdownErr
+	}
+
 	// Only add it if there's a non-archived reference.
 	hasNonArchivedRef, err := s.hasNonArchivedReferenceLocked(id)
 	if err != nil {
@@ -280,6 +304,10 @@ func (s *bserverTlfStorage) removeReferences(
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	if s.isShutdown {
+		return 0, bserverTlfStorageShutdownErr
+	}
+
 	for _, context := range contexts {
 		refNonce := context.GetRefNonce()
 		// TODO: Check context before removing.
@@ -307,6 +335,10 @@ func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) e
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	if s.isShutdown {
+		return bserverTlfStorageShutdownErr
+	}
+
 	refNonce := context.GetRefNonce()
 	refEntry, err := s.getRefEntryLocked(id, refNonce)
 	if err != nil {
@@ -324,4 +356,10 @@ func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) e
 
 	refEntry.Status = archivedBlockRef
 	return s.putRefEntryLocked(id, refEntry)
+}
+
+func (s *bserverTlfStorage) shutdown() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.isShutdown = true
 }
