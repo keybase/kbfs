@@ -14,6 +14,8 @@ import (
 	"sync"
 )
 
+// TODO: Have bserverTlfStorage store a journal of put operations.
+
 // bserverTlfStorage stores block data for a single TLF in flat files
 // on disk. In particular, it stores data for each block in a
 // directory with name equal to the hex-encoded blockID.
