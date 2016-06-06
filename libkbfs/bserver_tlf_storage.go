@@ -347,11 +347,6 @@ func (s *bserverTlfStorage) removeReferences(
 		return 0, err
 	}
 
-	if len(refEntries) == 0 {
-		// This block is already gone; no error.
-		return 0, nil
-	}
-
 	for _, context := range contexts {
 		refNonce := context.GetRefNonce()
 		// If this check fails, this ref is already gone,
