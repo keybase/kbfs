@@ -20,6 +20,7 @@ import (
 // storing blocks in a local leveldb instance
 type BlockServerDisk struct {
 	codec        Codec
+	crypto       Crypto
 	log          logger.Logger
 	dirPath      string
 	shutdownFunc func(logger.Logger)
@@ -37,6 +38,7 @@ func newBlockServerDisk(
 	config Config, dirPath string, shutdownFunc func(logger.Logger)) *BlockServerDisk {
 	bserv := &BlockServerDisk{
 		config.Codec(),
+		config.Crypto(),
 		config.MakeLogger("BSD"),
 		dirPath,
 		shutdownFunc,
@@ -99,7 +101,7 @@ func (b *BlockServerDisk) getStorage(tlfID TlfID) (*bserverTlfStorage, error) {
 	}
 
 	path := filepath.Join(b.dirPath, tlfID.String())
-	storage = makeBserverTlfStorage(b.codec, path)
+	storage = makeBserverTlfStorage(b.codec, b.crypto, path)
 	b.tlfStorage[tlfID] = storage
 	return storage, nil
 }

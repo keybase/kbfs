@@ -35,8 +35,9 @@ import (
 // dir/01ff/f...ff/refs/0000000000000000
 // dir/01ff/f...ff/refs/ffffffffffffffff
 type bserverTlfStorage struct {
-	codec Codec
-	dir   string
+	codec  Codec
+	crypto Crypto
+	dir    string
 
 	// Protects any IO operations in dir or any of its children,
 	// as well as isShutdown.
@@ -44,8 +45,9 @@ type bserverTlfStorage struct {
 	isShutdown bool
 }
 
-func makeBserverTlfStorage(codec Codec, dir string) *bserverTlfStorage {
-	return &bserverTlfStorage{codec: codec, dir: dir}
+func makeBserverTlfStorage(
+	codec Codec, crypto Crypto, dir string) *bserverTlfStorage {
+	return &bserverTlfStorage{codec: codec, crypto: crypto, dir: dir}
 }
 
 func (s *bserverTlfStorage) buildPath(id BlockID) string {
@@ -250,6 +252,11 @@ func (s *bserverTlfStorage) putRefEntryLocked(
 func (s *bserverTlfStorage) putData(
 	id BlockID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
+	err := validateBlockServerPut(s.crypto, id, context, buf)
+	if err != nil {
+		return err
+	}
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -257,12 +264,14 @@ func (s *bserverTlfStorage) putData(
 		return bserverTlfStorageShutdownErr
 	}
 
-	err := os.MkdirAll(s.buildRefsPath(id), 0700)
+	// TODO: Do the below atomically.
+
+	// Do this first, so that it makes the dirs for the data and
+	// key server half files.
+	err = os.MkdirAll(s.buildRefsPath(id), 0700)
 	if err != nil {
 		return err
 	}
-
-	// TODO: Check data hash.
 
 	err = ioutil.WriteFile(s.buildDataPath(id), buf, 0600)
 	if err != nil {

@@ -85,13 +85,8 @@ func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	return entry.blockData, entry.keyServerHalf, nil
 }
 
-// Put implements the BlockServer interface for BlockServerMemory
-func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
-	context BlockContext, buf []byte,
-	serverHalf BlockCryptKeyServerHalf) error {
-	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s tlfID=%s context=%s",
-		id, tlfID, context)
-
+func validateBlockServerPut(
+	crypto Crypto, id BlockID, context BlockContext, buf []byte) error {
 	if context.GetCreator() != context.GetWriter() {
 		return fmt.Errorf("Can't Put() a block with creator=%s != writer=%s",
 			context.GetCreator(), context.GetWriter())
@@ -101,7 +96,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		return fmt.Errorf("Can't Put() a block with a non-zero refnonce.")
 	}
 
-	bufID, err := b.crypto.MakePermanentBlockID(buf)
+	bufID, err := crypto.MakePermanentBlockID(buf)
 	if err != nil {
 		return err
 	}
@@ -109,6 +104,21 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	if bufID != id {
 		return fmt.Errorf(
 			"Block ID mismatch: expected %s, got %s", bufID, id)
+	}
+
+	return nil
+}
+
+// Put implements the BlockServer interface for BlockServerMemory
+func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
+	context BlockContext, buf []byte,
+	serverHalf BlockCryptKeyServerHalf) error {
+	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s tlfID=%s context=%s",
+		id, tlfID, context)
+
+	err := validateBlockServerPut(b.crypto, id, context, buf)
+	if err != nil {
+		return err
 	}
 
 	b.lock.Lock()
