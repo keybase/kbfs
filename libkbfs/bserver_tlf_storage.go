@@ -146,6 +146,7 @@ func (s *bserverTlfStorage) getData(id BlockID, context BlockContext) (
 func (s *bserverTlfStorage) getRefEntriesLocked(id BlockID) (
 	map[BlockRefNonce]blockRefEntry, error) {
 	refsPath := s.buildRefsPath(id)
+	// Let caller handle os.IsNotExist(err) case.
 	refInfos, err := ioutil.ReadDir(refsPath)
 	if err != nil {
 		return nil, err
@@ -291,33 +292,6 @@ func (s *bserverTlfStorage) putData(
 	})
 }
 
-func (s *bserverTlfStorage) hasNonArchivedReferenceLocked(id BlockID) (bool, error) {
-	refsPath := s.buildRefsPath(id)
-	refInfos, err := ioutil.ReadDir(refsPath)
-	if err != nil {
-		return false, err
-	}
-
-	for _, refInfo := range refInfos {
-		var refNonce BlockRefNonce
-		buf, err := hex.DecodeString(refInfo.Name())
-		if err != nil {
-			return false, err
-		}
-		// TODO: Validate length.
-		copy(refNonce[:], buf)
-
-		refEntry, err := s.getRefEntryLocked(id, refNonce)
-		if err != nil {
-			return false, err
-		}
-		if refEntry.Status == liveBlockRef {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -326,16 +300,22 @@ func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error
 		return bserverTlfStorageShutdownErr
 	}
 
-	// Only add it if there's a non-archived reference.
-	hasNonArchivedRef, err := s.hasNonArchivedReferenceLocked(id)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s "+
-				"doesn't exist and cannot be referenced.", id)}
-		}
+	refEntries, err := s.getRefEntriesLocked(id)
+	if os.IsNotExist(err) {
+		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s "+
+			"doesn't exist and cannot be referenced.", id)}
+	} else if err != nil {
 		return err
 	}
 
+	// Only add it if there's a non-archived reference.
+	hasNonArchivedRef := false
+	for _, refEntry := range refEntries {
+		if refEntry.Status == liveBlockRef {
+			hasNonArchivedRef = true
+			break
+		}
+	}
 	if !hasNonArchivedRef {
 		return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
 			"been archived and cannot be referenced.", id)}
@@ -347,11 +327,6 @@ func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error
 	})
 }
 
-func (s *bserverTlfStorage) removeRefEntryLocked(id BlockID, refNonce BlockRefNonce) error {
-	refPath := s.buildRefPath(id, refNonce)
-	return os.RemoveAll(refPath)
-}
-
 func (s *bserverTlfStorage) removeReferences(
 	id BlockID, contexts []BlockContext) (int, error) {
 	s.lock.Lock()
@@ -359,15 +334,6 @@ func (s *bserverTlfStorage) removeReferences(
 
 	if s.isShutdown {
 		return 0, bserverTlfStorageShutdownErr
-	}
-
-	for _, context := range contexts {
-		refNonce := context.GetRefNonce()
-		// TODO: Check context before removing.
-		err := s.removeRefEntryLocked(id, refNonce)
-		if err != nil {
-			return 0, err
-		}
 	}
 
 	refEntries, err := s.getRefEntriesLocked(id)
@@ -379,12 +345,37 @@ func (s *bserverTlfStorage) removeReferences(
 	}
 
 	if len(refEntries) == 0 {
+		// This block is already gone; no error.
+		return 0, nil
+	}
+
+	for _, context := range contexts {
+		refNonce := context.GetRefNonce()
+		// If this check fails, this ref is already gone,
+		// which is not an error.
+		if refEntry, ok := refEntries[refNonce]; ok {
+			if refEntry.Context != context {
+				return 0, fmt.Errorf(
+					"Context mismatch: expected %s, got %s",
+					refEntry.Context, context)
+			}
+			refPath := s.buildRefPath(id, refNonce)
+			err := os.RemoveAll(refPath)
+			if err != nil {
+				return 0, err
+			}
+			delete(refEntries, refNonce)
+		}
+	}
+
+	count := len(refEntries)
+	if count == 0 {
 		err := os.RemoveAll(s.buildPath(id))
 		if err != nil {
 			return 0, err
 		}
 	}
-	return len(refEntries), nil
+	return count, nil
 }
 
 func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) error {
@@ -397,11 +388,10 @@ func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) e
 
 	refNonce := context.GetRefNonce()
 	refEntry, err := s.getRefEntryLocked(id, refNonce)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
-				"doesn't exist and cannot be archived.", id, refNonce)}
-		}
+	if os.IsNotExist(err) {
+		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
+			"doesn't exist and cannot be archived.", id, refNonce)}
+	} else if err != nil {
 		return err
 	}
 
