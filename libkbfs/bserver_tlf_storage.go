@@ -70,9 +70,26 @@ func (s *bserverTlfStorage) buildRefPath(id BlockID, refNonce BlockRefNonce) str
 	return filepath.Join(s.buildRefsPath(id), refNonceStr)
 }
 
+func (s *bserverTlfStorage) getRefEntryLocked(
+	id BlockID, refNonce BlockRefNonce) (blockRefEntry, error) {
+	buf, err := ioutil.ReadFile(s.buildRefPath(id, refNonce))
+	if err != nil {
+		// Let caller handle os.IsNotExist(err) case.
+		return blockRefEntry{}, err
+	}
+
+	var refEntry blockRefEntry
+	err = s.codec.Decode(buf, &refEntry)
+	if err != nil {
+		return blockRefEntry{}, err
+	}
+
+	return refEntry, nil
+}
+
 var bserverTlfStorageShutdownErr = errors.New("bserverTlfStorage is shutdown")
 
-func (s *bserverTlfStorage) getData(id BlockID) (
+func (s *bserverTlfStorage) getData(id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -80,6 +97,20 @@ func (s *bserverTlfStorage) getData(id BlockID) (
 	if s.isShutdown {
 		return nil, BlockCryptKeyServerHalf{},
 			bserverTlfStorageShutdownErr
+	}
+
+	refEntry, err := s.getRefEntryLocked(id, context.GetRefNonce())
+	if os.IsNotExist(err) {
+		return nil, BlockCryptKeyServerHalf{},
+			BServerErrorBlockNonExistent{}
+	} else if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	if refEntry.Context != context {
+		return nil, BlockCryptKeyServerHalf{},
+			fmt.Errorf("Context mismatch: expected %s, got %s",
+				refEntry.Context, context)
 	}
 
 	data, err := ioutil.ReadFile(s.buildDataPath(id))
@@ -110,34 +141,8 @@ func (s *bserverTlfStorage) getData(id BlockID) (
 	return data, serverHalf, nil
 }
 
-func (s *bserverTlfStorage) getRefEntryLocked(
-	id BlockID, refNonce BlockRefNonce) (blockRefEntry, error) {
-	buf, err := ioutil.ReadFile(s.buildRefPath(id, refNonce))
-	if err != nil {
-		return blockRefEntry{}, err
-	}
-
-	var refEntry blockRefEntry
-	err = s.codec.Decode(buf, &refEntry)
-	if err != nil {
-		return blockRefEntry{}, err
-	}
-
-	return refEntry, nil
-}
-
-func (s *bserverTlfStorage) getRefEntryCountLocked(id BlockID) (int, error) {
-	refInfos, err := ioutil.ReadDir(s.buildRefsPath(id))
-	if os.IsNotExist(err) {
-		return 0, nil
-	} else if err != nil {
-		return 0, err
-	}
-	// TODO: Do more checking.
-	return len(refInfos), nil
-}
-
-func (s *bserverTlfStorage) getRefsLocked(id BlockID) (map[BlockRefNonce]blockRefEntry, error) {
+func (s *bserverTlfStorage) getRefEntriesLocked(id BlockID) (
+	map[BlockRefNonce]blockRefEntry, error) {
 	refsPath := s.buildRefsPath(id)
 	refInfos, err := ioutil.ReadDir(refsPath)
 	if err != nil {
@@ -151,7 +156,10 @@ func (s *bserverTlfStorage) getRefsLocked(id BlockID) (map[BlockRefNonce]blockRe
 		if err != nil {
 			return nil, err
 		}
-		// TODO: Validate length.
+		if len(buf) != len(refNonce) {
+			return nil, fmt.Errorf(
+				"Invalid ref nonce file %s", refInfo.Name())
+		}
 		copy(refNonce[:], buf)
 
 		refEntry, err := s.getRefEntryLocked(id, refNonce)
@@ -174,24 +182,33 @@ func (s *bserverTlfStorage) getAll() (
 		return nil, bserverTlfStorageShutdownErr
 	}
 
-	subdirInfos, err := ioutil.ReadDir(s.dir)
+	levelOneInfos, err := ioutil.ReadDir(s.dir)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, subdirInfo := range subdirInfos {
-		if !subdirInfo.IsDir() {
+	// Ignore non-dirs while traversing below.
+
+	// TODO: Tighten up checks below if we ever use this for
+	// anything other than tests.
+
+	for _, levelOneInfo := range levelOneInfos {
+		if !levelOneInfo.IsDir() {
 			continue
 		}
 
-		subDir := filepath.Join(s.dir, subdirInfo.Name())
-		fileInfos, err := ioutil.ReadDir(subDir)
+		levelOneDir := filepath.Join(s.dir, levelOneInfo.Name())
+		levelTwoInfos, err := ioutil.ReadDir(levelOneDir)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, fileInfo := range fileInfos {
-			idStr := subdirInfo.Name() + fileInfo.Name()
+		for _, levelTwoInfo := range levelTwoInfos {
+			if !levelTwoInfo.IsDir() {
+				continue
+			}
+
+			idStr := levelOneInfo.Name() + levelTwoInfo.Name()
 			id, err := BlockIDFromString(idStr)
 			if err != nil {
 				return nil, err
@@ -205,7 +222,7 @@ func (s *bserverTlfStorage) getAll() (
 
 			res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
 
-			refs, err := s.getRefsLocked(id)
+			refs, err := s.getRefEntriesLocked(id)
 			if err != nil {
 				return nil, err
 			}
@@ -219,11 +236,13 @@ func (s *bserverTlfStorage) getAll() (
 	return res, nil
 }
 
-func (s *bserverTlfStorage) putRefEntryLocked(id BlockID, refEntry blockRefEntry) error {
+func (s *bserverTlfStorage) putRefEntryLocked(
+	id BlockID, refEntry blockRefEntry) error {
 	buf, err := s.codec.Encode(refEntry)
 	if err != nil {
 		return err
 	}
+	// TODO: Add integrity-checking?
 	refPath := s.buildRefPath(id, refEntry.Context.GetRefNonce())
 	return ioutil.WriteFile(refPath, buf, 0600)
 }
@@ -342,18 +361,21 @@ func (s *bserverTlfStorage) removeReferences(
 		}
 	}
 
-	count, err := s.getRefEntryCountLocked(id)
-	if err != nil {
+	refEntries, err := s.getRefEntriesLocked(id)
+	if os.IsNotExist(err) {
+		// This block is already gone; no error.
+		return 0, nil
+	} else if err != nil {
 		return 0, err
 	}
 
-	if count == 0 {
+	if len(refEntries) == 0 {
 		err := os.RemoveAll(s.buildPath(id))
 		if err != nil {
 			return 0, err
 		}
 	}
-	return count, nil
+	return len(refEntries), nil
 }
 
 func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) error {
