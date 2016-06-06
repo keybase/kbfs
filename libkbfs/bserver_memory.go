@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -32,7 +33,8 @@ type BlockServerMemory struct {
 	log    logger.Logger
 
 	lock sync.RWMutex
-	m    map[BlockID]blockMemEntry
+	// m is nil after Shutdown() is called.
+	m map[BlockID]blockMemEntry
 }
 
 var _ BlockServer = (*BlockServerMemory)(nil)
@@ -48,6 +50,8 @@ func NewBlockServerMemory(config Config) *BlockServerMemory {
 	}
 }
 
+var blockServerMemoryShutdownErr = errors.New("BlockServerMemory is shutdown")
+
 // Get implements the BlockServer interface for BlockServerMemory
 func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
@@ -55,6 +59,10 @@ func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 		id, tlfID, context)
 	b.lock.RLock()
 	defer b.lock.RUnlock()
+
+	if b.m == nil {
+		return nil, BlockCryptKeyServerHalf{}, blockServerMemoryShutdownErr
+	}
 
 	entry, ok := b.m[id]
 	if !ok {
@@ -106,6 +114,10 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
+	if b.m == nil {
+		return blockServerMemoryShutdownErr
+	}
+
 	if entry, ok := b.m[id]; ok {
 		if entry.tlfID != tlfID {
 			return fmt.Errorf(
@@ -153,6 +165,10 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
+	if b.m == nil {
+		return blockServerMemoryShutdownErr
+	}
+
 	entry, ok := b.m[id]
 	if !ok {
 		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
@@ -194,6 +210,11 @@ func (b *BlockServerMemory) removeBlockReferences(
 	id BlockID, tlfID TlfID, contexts []BlockContext) (int, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
+
+	if b.m == nil {
+		return 0, blockServerMemoryShutdownErr
+	}
+
 	entry, ok := b.m[id]
 	if !ok {
 		// This block is already gone; no error.
@@ -250,6 +271,10 @@ func (b *BlockServerMemory) archiveBlockReference(
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
+	if b.m == nil {
+		return blockServerMemoryShutdownErr
+	}
+
 	entry, ok := b.m[id]
 	if !ok {
 		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
@@ -305,6 +330,10 @@ func (b *BlockServerMemory) getAll(tlfID TlfID) (
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
+	if b.m == nil {
+		return nil, blockServerMemoryShutdownErr
+	}
+
 	for id, entry := range b.m {
 		if entry.tlfID != tlfID {
 			continue
@@ -321,7 +350,7 @@ func (b *BlockServerMemory) getAll(tlfID TlfID) (
 func (b *BlockServerMemory) Shutdown() {
 	b.lock.Lock()
 	defer b.lock.Unlock()
-	// Make further accesses panic.
+	// Make further accesses error out.
 	b.m = nil
 }
 
