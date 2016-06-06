@@ -113,7 +113,7 @@ func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
-	data, keyServerHalf, err := tlfStorage.get(id)
+	data, keyServerHalf, err := tlfStorage.getData(id)
 	if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
@@ -135,7 +135,7 @@ func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	if err != nil {
 		return err
 	}
-	return tlfStorage.put(id, context, buf, serverHalf)
+	return tlfStorage.putData(id, context, buf, serverHalf)
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerDisk

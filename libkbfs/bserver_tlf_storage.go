@@ -70,6 +70,46 @@ func (s *bserverTlfStorage) buildRefPath(id BlockID, refNonce BlockRefNonce) str
 	return filepath.Join(s.buildRefsPath(id), refNonceStr)
 }
 
+var bserverTlfStorageShutdownErr = errors.New("bserverTlfStorage is shutdown")
+
+func (s *bserverTlfStorage) getData(id BlockID) (
+	[]byte, BlockCryptKeyServerHalf, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	if s.isShutdown {
+		return nil, BlockCryptKeyServerHalf{},
+			bserverTlfStorageShutdownErr
+	}
+
+	data, err := ioutil.ReadFile(s.buildDataPath(id))
+	if os.IsNotExist(err) {
+		return nil, BlockCryptKeyServerHalf{},
+			BServerErrorBlockNonExistent{}
+	} else if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	keyServerHalfPath := s.buildKeyServerHalfPath(id)
+	buf, err := ioutil.ReadFile(keyServerHalfPath)
+	if os.IsNotExist(err) {
+		return nil, BlockCryptKeyServerHalf{},
+			BServerErrorBlockNonExistent{}
+	} else if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	var serverHalfData [32]byte
+	if len(buf) != len(serverHalfData) {
+		return nil, BlockCryptKeyServerHalf{},
+			fmt.Errorf("Corrupt server half data file %s",
+				keyServerHalfPath)
+	}
+	copy(serverHalfData[:], buf)
+	serverHalf := MakeBlockCryptKeyServerHalf(serverHalfData)
+	return data, serverHalf, nil
+}
+
 func (s *bserverTlfStorage) getRefEntryLocked(
 	id BlockID, refNonce BlockRefNonce) (blockRefEntry, error) {
 	buf, err := ioutil.ReadFile(s.buildRefPath(id, refNonce))
@@ -88,10 +128,9 @@ func (s *bserverTlfStorage) getRefEntryLocked(
 
 func (s *bserverTlfStorage) getRefEntryCountLocked(id BlockID) (int, error) {
 	refInfos, err := ioutil.ReadDir(s.buildRefsPath(id))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0, nil
-		}
+	if os.IsNotExist(err) {
+		return 0, nil
+	} else if err != nil {
 		return 0, err
 	}
 	// TODO: Do more checking.
@@ -123,39 +162,6 @@ func (s *bserverTlfStorage) getRefsLocked(id BlockID) (map[BlockRefNonce]blockRe
 	}
 
 	return refs, nil
-}
-
-var bserverTlfStorageShutdownErr = errors.New("bserverTlfStorage is shutdown")
-
-func (s *bserverTlfStorage) get(id BlockID) ([]byte, BlockCryptKeyServerHalf, error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	if s.isShutdown {
-		return nil, BlockCryptKeyServerHalf{}, bserverTlfStorageShutdownErr
-	}
-
-	data, err := ioutil.ReadFile(s.buildDataPath(id))
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = BServerErrorBlockNonExistent{}
-		}
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	buf, err := ioutil.ReadFile(s.buildKeyServerHalfPath(id))
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = BServerErrorBlockNonExistent{}
-		}
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	var kshData [32]byte
-	// TODO: Validate length.
-	copy(kshData[:], buf)
-	serverHalf := MakeBlockCryptKeyServerHalf(kshData)
-	return data, serverHalf, nil
 }
 
 func (s *bserverTlfStorage) getAll() (
@@ -222,7 +228,8 @@ func (s *bserverTlfStorage) putRefEntryLocked(id BlockID, refEntry blockRefEntry
 	return ioutil.WriteFile(refPath, buf, 0600)
 }
 
-func (s *bserverTlfStorage) put(id BlockID, context BlockContext, buf []byte,
+func (s *bserverTlfStorage) putData(
+	id BlockID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -236,10 +243,14 @@ func (s *bserverTlfStorage) put(id BlockID, context BlockContext, buf []byte,
 		return err
 	}
 
+	// TODO: Check data hash.
+
 	err = ioutil.WriteFile(s.buildDataPath(id), buf, 0600)
 	if err != nil {
 		return err
 	}
+
+	// TODO: Add integrity-checking for key server half?
 
 	err = ioutil.WriteFile(s.buildKeyServerHalfPath(id), serverHalf.data[:], 0600)
 	if err != nil {
