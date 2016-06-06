@@ -16,6 +16,9 @@ import (
 
 // TODO: Have bserverTlfStorage store a journal of put operations.
 
+// TODO: Do all high-level operations atomically on the file-system
+// level.
+
 // bserverTlfStorage stores block data for a single TLF in flat files
 // on disk. In particular, it stores data for each block in a
 // directory with name equal to the hex-encoded blockID.
@@ -266,8 +269,6 @@ func (s *bserverTlfStorage) putData(
 	if s.isShutdown {
 		return bserverTlfStorageShutdownErr
 	}
-
-	// TODO: Do the below atomically.
 
 	// Do this first, so that it makes the dirs for the data and
 	// key server half files.
