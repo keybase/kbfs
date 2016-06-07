@@ -274,8 +274,6 @@ func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
 	return liveCounts, nil
 }
 
-// ArchiveBlockReferences implements the BlockServer interface for
-// BlockServerMemory.
 func (b *BlockServerMemory) archiveBlockReference(
 	id BlockID, tlfID TlfID, context BlockContext) error {
 	b.lock.Lock()
