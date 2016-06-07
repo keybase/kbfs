@@ -52,7 +52,7 @@ func NewBlockServerMemory(config Config) *BlockServerMemory {
 
 var errBlockServerMemoryShutdown = errors.New("BlockServerMemory is shutdown")
 
-// Get implements the BlockServer interface for BlockServerMemory
+// Get implements the BlockServer interface for BlockServerMemory.
 func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
 	b.log.CDebugf(ctx, "BlockServerMemory.Get id=%s tlfID=%s context=%s",
@@ -109,7 +109,7 @@ func validateBlockServerPut(
 	return nil
 }
 
-// Put implements the BlockServer interface for BlockServerMemory
+// Put implements the BlockServer interface for BlockServerMemory.
 func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
@@ -166,7 +166,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	return nil
 }
 
-// AddBlockReference implements the BlockServer interface for BlockServerMemory
+// AddBlockReference implements the BlockServer interface for BlockServerMemory.
 func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 	tlfID TlfID, context BlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerMemory.AddBlockReference id=%s "+
@@ -257,7 +257,7 @@ func (b *BlockServerMemory) removeBlockReferences(
 }
 
 // RemoveBlockReference implements the BlockServer interface for
-// BlockServerMemory
+// BlockServerMemory.
 func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
@@ -275,7 +275,7 @@ func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
 }
 
 // ArchiveBlockReferences implements the BlockServer interface for
-// BlockServerMemory
+// BlockServerMemory.
 func (b *BlockServerMemory) archiveBlockReference(
 	id BlockID, tlfID TlfID, context BlockContext) error {
 	b.lock.Lock()
@@ -314,7 +314,7 @@ func (b *BlockServerMemory) archiveBlockReference(
 }
 
 // ArchiveBlockReferences implements the BlockServer interface for
-// BlockServerMemory
+// BlockServerMemory.
 func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerMemory.ArchiveBlockReferences "+
@@ -367,7 +367,7 @@ func (b *BlockServerMemory) Shutdown() {
 // RefreshAuthToken implements the BlockServer interface for BlockServerMemory.
 func (b *BlockServerMemory) RefreshAuthToken(_ context.Context) {}
 
-// GetUserQuotaInfo implements the BlockServer interface for BlockServerMemory
+// GetUserQuotaInfo implements the BlockServer interface for BlockServerMemory.
 func (b *BlockServerMemory) GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error) {
 	// Return a dummy value here.
 	return &UserQuotaInfo{Limit: 0x7FFFFFFFFFFFFFFF}, nil

@@ -17,7 +17,7 @@ import (
 )
 
 // BlockServerDisk implements the BlockServer interface by just
-// storing blocks in a local leveldb instance
+// storing blocks in a local leveldb instance.
 type BlockServerDisk struct {
 	codec        Codec
 	crypto       Crypto
@@ -106,7 +106,7 @@ func (b *BlockServerDisk) getStorage(tlfID TlfID) (*bserverTlfStorage, error) {
 	return storage, nil
 }
 
-// Get implements the BlockServer interface for BlockServerDisk
+// Get implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
 	b.log.CDebugf(ctx, "BlockServerDisk.Get id=%s tlfID=%s context=%s",
@@ -122,7 +122,7 @@ func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	return data, keyServerHalf, nil
 }
 
-// Put implements the BlockServer interface for BlockServerDisk
+// Put implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
@@ -140,7 +140,7 @@ func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	return tlfStorage.putData(id, context, buf, serverHalf)
 }
 
-// AddBlockReference implements the BlockServer interface for BlockServerDisk
+// AddBlockReference implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
 	tlfID TlfID, context BlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerDisk.AddBlockReference id=%s "+
@@ -153,7 +153,7 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
 }
 
 // RemoveBlockReference implements the BlockServer interface for
-// BlockServerDisk
+// BlockServerDisk.
 func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
@@ -176,7 +176,7 @@ func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
 }
 
 // ArchiveBlockReferences implements the BlockServer interface for
-// BlockServerDisk
+// BlockServerDisk.
 func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerDisk.ArchiveBlockReferences "+
@@ -233,7 +233,7 @@ func (b *BlockServerDisk) Shutdown() {
 // RefreshAuthToken implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) RefreshAuthToken(_ context.Context) {}
 
-// GetUserQuotaInfo implements the BlockServer interface for BlockServerDisk
+// GetUserQuotaInfo implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error) {
 	// Return a dummy value here.
 	return &UserQuotaInfo{Limit: 0x7FFFFFFFFFFFFFFF}, nil
