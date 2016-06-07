@@ -298,6 +298,7 @@ func TestKeyManagerRekeySuccessPrivate(t *testing.T) {
 func TestKeyManagerRekeyResolveAgainSuccessPublic(t *testing.T) {
 	mockCtrl, config, ctx := keyManagerInit(t)
 	defer keyManagerShutdown(mockCtrl, config)
+	config.SetCodec(NewCodecMsgpack())
 
 	id := FakeTlfID(1, true)
 	h, err := ParseTlfHandle(
