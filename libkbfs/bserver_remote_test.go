@@ -180,7 +180,7 @@ func (fc *FakeBServerClient) numBlocks() int {
 // Test that putting a block, and getting it back, works
 func TestBServerRemotePutAndGet(t *testing.T) {
 	codec := NewCodecMsgpack()
-	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"testuser"})
+	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"user1", "user2"})
 	currentUID := localUsers[0].UID
 	crypto := &CryptoLocal{CryptoCommon: MakeCryptoCommonNoConfig()}
 	config := &ConfigLocal{codec: codec, crypto: crypto}
@@ -225,6 +225,24 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	}
 
 	// Add a reference.
+	nonce, err := crypto.MakeBlockRefNonce()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bCtx2 := BlockContext{currentUID, localUsers[1].UID, nonce}
+	b.AddBlockReference(ctx, bID, tlfID, bCtx2)
+
+	// Now get the same block back
+	buf, key, err = b.Get(ctx, bID, tlfID, bCtx2)
+	if err != nil {
+		t.Fatalf("Get returned an error: %v", err)
+	}
+	if !bytes.Equal(buf, data) {
+		t.Errorf("Got bad data -- got %v, expected %v", buf, data)
+	}
+	if key != serverHalf {
+		t.Errorf("Got bad key -- got %v, expected %v", key, serverHalf)
+	}
 }
 
 // If we cancel the RPC before the RPC returns, the call should error quickly.
