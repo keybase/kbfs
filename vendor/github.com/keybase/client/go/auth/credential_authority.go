@@ -2,12 +2,11 @@ package auth
 
 import (
 	"fmt"
-	"time"
-
 	libkb "github.com/keybase/client/go/libkb"
 	logger "github.com/keybase/client/go/logger"
 	keybase1 "github.com/keybase/client/go/protocol"
 	context "golang.org/x/net/context"
+	"time"
 )
 
 const (
@@ -489,6 +488,9 @@ func (v *CredentialAuthority) CheckUserKey(ctx context.Context, uid keybase1.UID
 // CheckUsers is used to validate all provided UIDs are known.
 func (v *CredentialAuthority) CheckUsers(ctx context.Context, users []keybase1.UID) (err error) {
 	for _, uid := range users {
+		if uid == keybase1.PUBLIC_UID {
+			continue
+		}
 		if err = v.CheckUserKey(ctx, uid, nil, nil); err != nil {
 			break
 		}
