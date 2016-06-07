@@ -907,8 +907,8 @@ type BlockServer interface {
 	// context.
 	//
 	// Put should be idempotent, although it should also return an
-	// error if context or serverHalf differs from previous Puts
-	// for the same ID.
+	// error if, for a given ID, any of the other arguments differ
+	// from previous Put calls with the same ID.
 	Put(ctx context.Context, id BlockID, tlfID TlfID, context BlockContext,
 		buf []byte, serverHalf BlockCryptKeyServerHalf) error
 
@@ -917,8 +917,12 @@ type BlockServer interface {
 	// BlockRefNonce).  (Contexts with a BlockRefNonce of zero should
 	// be used when putting the block for the first time via Put().)
 	// Returns a BServerErrorBlockNonExistent if id is unknown within
-	// this folder.  Calling more than once with the same context is a
-	// no-op.
+	// this folder.
+	//
+	// AddBlockReference should be idempotent, although it should
+	// also return an error if, for a given ID and refnonce, any
+	// of the other fields of context differ from previous
+	// AddBlockReference calls with the same ID and refnonce.
 	AddBlockReference(ctx context.Context, id BlockID, tlfID TlfID,
 		context BlockContext) error
 	// RemoveBlockReference removes the reference to the given block
@@ -935,6 +939,11 @@ type BlockServer interface {
 	// "archived"; that is, they are not being used in the current
 	// view of the folder, and shouldn't be served to anyone other
 	// than folder writers.
+	//
+	// For a given ID/refnonce pair, ArchiveBlockReferences should
+	// be idempotent, although it should also return an error if
+	// any of the other fields of the context differ from previous
+	// calls with the same ID/refnonce pair.
 	ArchiveBlockReferences(ctx context.Context, tlfID TlfID,
 		contexts map[BlockID][]BlockContext) error
 
