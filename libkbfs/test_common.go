@@ -26,6 +26,11 @@ const (
 	// EnvTestBServerAddr is the environment variable name for a block
 	// server address.
 	EnvTestBServerAddr = "KEYBASE_TEST_BSERVER_ADDR"
+	// TempdirBServerAddr is the special value of the
+	// EnvTestBServerAddr environment value to signify that an
+	// on-disk implementation of the bserver should be used with a
+	// temporary directory.
+	TempdirBServerAddr = "tempdir"
 )
 
 // RandomBlockID returns a randomly-generated BlockID for testing.
@@ -91,7 +96,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 	bserverAddr := os.Getenv(EnvTestBServerAddr)
 	var blockServer BlockServer
 	switch {
-	case bserverAddr == "tempdir":
+	case bserverAddr == TempdirBServerAddr:
 		var err error
 		blockServer, err = NewBlockServerTempDir(config)
 		if err != nil {
