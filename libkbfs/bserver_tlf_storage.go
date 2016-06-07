@@ -246,11 +246,22 @@ func (s *bserverTlfStorage) getAll() (
 
 func (s *bserverTlfStorage) putRefEntryLocked(
 	id BlockID, refEntry blockRefEntry) error {
+	existingRefEntry, err := s.getRefEntryLocked(
+		id, refEntry.Context.GetRefNonce())
+	if !os.IsNotExist(err) && err != nil {
+		return err
+	}
+
+	err = existingRefEntry.checkContext(refEntry.Context)
+	if err != nil {
+		return err
+	}
+
 	buf, err := s.codec.Encode(refEntry)
 	if err != nil {
 		return err
 	}
-	// TODO: Add integrity-checking?
+
 	refPath := s.buildRefPath(id, refEntry.Context.GetRefNonce())
 	return ioutil.WriteFile(refPath, buf, 0600)
 }
