@@ -18,8 +18,9 @@ import (
 )
 
 type FakeBServerClient struct {
-	blocks     map[keybase1.GetBlockArg]keybase1.GetBlockRes
 	blocksLock sync.Mutex
+	blocks     map[keybase1.GetBlockArg]keybase1.GetBlockRes
+
 	readyChan  chan<- struct{}
 	goChan     <-chan struct{}
 	finishChan chan<- struct{}
