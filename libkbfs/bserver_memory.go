@@ -399,6 +399,12 @@ func (b *BlockServerMemory) getAll(tlfID TlfID) (
 	return res, nil
 }
 
+func (b *BlockServerMemory) numBlocks() int {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	return len(b.m)
+}
+
 // Shutdown implements the BlockServer interface for BlockServerMemory.
 func (b *BlockServerMemory) Shutdown() {
 	b.lock.Lock()
