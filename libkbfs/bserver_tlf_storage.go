@@ -296,17 +296,24 @@ func (s *bserverTlfStorage) putData(
 	}
 
 	_, existingServerHalf, err := s.getDataLocked(id, context)
-	if _, ok := err.(BServerErrorBlockNonExistent); !ok && err != nil {
+	_, exists := err.(BServerErrorBlockNonExistent)
+	if !exists && err != nil {
 		return err
 	}
 
-	// We checked that both buf and existingData hash to id, so no need to
-	// check that they're both equal.
+	if exists {
+		// If the entry already exists, everything should be
+		// the same, except for possibly additional
+		// references.
 
-	if existingServerHalf != serverHalf {
-		return fmt.Errorf(
-			"key server half mismatch: expected %v, got %v",
-			existingServerHalf, serverHalf)
+		// We checked that both buf and existingData hash to
+		// id, so no need to check that they're both equal.
+
+		if existingServerHalf != serverHalf {
+			return fmt.Errorf(
+				"key server half mismatch: expected %v, got %v",
+				existingServerHalf, serverHalf)
+		}
 	}
 
 	// Do this first, so that it makes the dirs for the data and
