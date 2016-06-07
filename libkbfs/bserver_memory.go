@@ -352,6 +352,8 @@ func (b *BlockServerMemory) archiveBlockReference(
 	if _, ok := err.(BServerErrorBlockNonExistent); ok {
 		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
 			"doesn't exist and cannot be archived.", id, context.GetRefNonce())}
+	} else if err != nil {
+		return err
 	}
 
 	return entry.refs.put(context, archivedBlockRef)
