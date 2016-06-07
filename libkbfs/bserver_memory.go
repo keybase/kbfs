@@ -19,11 +19,76 @@ type blockRefEntry struct {
 	Context BlockContext
 }
 
+// blockRefMap is a map with additional checking methods.
+type blockRefMap map[BlockRefNonce]blockRefEntry
+
+func (refs blockRefMap) hasNonArchivedRef() bool {
+	for _, refEntry := range refs {
+		if refEntry.Status == liveBlockRef {
+			return true
+		}
+	}
+	return false
+}
+
+func (refs blockRefMap) checkExists(context BlockContext) error {
+	refEntry, ok := refs[context.GetRefNonce()]
+	if !ok {
+		return BServerErrorBlockNonExistent{}
+	}
+
+	if refEntry.Context != context {
+		return fmt.Errorf(
+			"Context mismatch: expected %s, got %s",
+			refEntry.Context, context)
+	}
+
+	return nil
+}
+
+func (refs blockRefMap) getStatuses() map[BlockRefNonce]blockRefLocalStatus {
+	statuses := make(map[BlockRefNonce]blockRefLocalStatus)
+	for ref, refEntry := range refs {
+		statuses[ref] = refEntry.Status
+	}
+	return statuses
+}
+
+func (refs blockRefMap) put(
+	context BlockContext, status blockRefLocalStatus) error {
+	refNonce := context.GetRefNonce()
+	if refEntry, ok := refs[refNonce]; ok && refEntry.Context != context {
+		return fmt.Errorf("Context mismatch: expected %s, got %s",
+			refEntry.Context, context)
+	}
+
+	refs[refNonce] = blockRefEntry{
+		Status:  status,
+		Context: context,
+	}
+	return nil
+}
+
+func (refs blockRefMap) remove(context BlockContext) error {
+	refNonce := context.GetRefNonce()
+	// If this check fails, this ref is already gone, which is not
+	// an error.
+	if refEntry, ok := refs[refNonce]; ok {
+		if refEntry.Context != context {
+			return fmt.Errorf(
+				"Context mismatch: expected %s, got %s",
+				refEntry.Context, context)
+		}
+		delete(refs, refNonce)
+	}
+	return nil
+}
+
 type blockMemEntry struct {
 	tlfID         TlfID
 	blockData     []byte
 	keyServerHalf BlockCryptKeyServerHalf
-	refs          map[BlockRefNonce]blockRefEntry
+	refs          blockRefMap
 }
 
 // BlockServerMemory implements the BlockServer interface by just
@@ -75,11 +140,9 @@ func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
 				entry.tlfID, tlfID)
 	}
 
-	refEntry, ok := entry.refs[context.GetRefNonce()]
-	if refEntry.Context != context {
-		return nil, BlockCryptKeyServerHalf{},
-			fmt.Errorf("Context mismatch: expected %s, got %s",
-				refEntry.Context, context)
+	err := entry.refs.checkExists(context)
+	if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
 	}
 
 	return entry.blockData, entry.keyServerHalf, nil
@@ -109,21 +172,6 @@ func validateBlockServerPut(
 	return nil
 }
 
-func putBlockRef(refs map[BlockRefNonce]blockRefEntry,
-	status blockRefLocalStatus, context BlockContext) error {
-	refNonce := context.GetRefNonce()
-	if refEntry, ok := refs[refNonce]; ok && refEntry.Context != context {
-		return fmt.Errorf("Context mismatch: expected %s, got %s",
-			refEntry.Context, context)
-	}
-
-	refs[refNonce] = blockRefEntry{
-		Status:  status,
-		Context: context,
-	}
-	return nil
-}
-
 // Put implements the BlockServer interface for BlockServerMemory.
 func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext, buf []byte,
@@ -143,7 +191,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		return errBlockServerMemoryShutdown
 	}
 
-	var refs map[BlockRefNonce]blockRefEntry
+	var refs blockRefMap
 	if entry, ok := b.m[id]; ok {
 		// If the entry already exists, everything should be
 		// the same, except for possibly additional
@@ -169,7 +217,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	} else {
 		data := make([]byte, len(buf))
 		copy(data, buf)
-		refs = make(map[BlockRefNonce]blockRefEntry)
+		refs = make(blockRefMap)
 		b.m[id] = blockMemEntry{
 			tlfID:         tlfID,
 			blockData:     data,
@@ -178,7 +226,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		}
 	}
 
-	return putBlockRef(refs, liveBlockRef, context)
+	return refs.put(context, liveBlockRef)
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerMemory.
@@ -206,19 +254,12 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 	}
 
 	// Only add it if there's a non-archived reference.
-	hasNonArchivedRef := false
-	for _, refEntry := range entry.refs {
-		if refEntry.Status == liveBlockRef {
-			hasNonArchivedRef = true
-			break
-		}
-	}
-	if !hasNonArchivedRef {
+	if !entry.refs.hasNonArchivedRef() {
 		return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
 			"been archived and cannot be referenced.", id)}
 	}
 
-	return putBlockRef(entry.refs, liveBlockRef, context)
+	return entry.refs.put(context, liveBlockRef)
 }
 
 func (b *BlockServerMemory) removeBlockReferences(
@@ -242,16 +283,9 @@ func (b *BlockServerMemory) removeBlockReferences(
 	}
 
 	for _, context := range contexts {
-		refNonce := context.GetRefNonce()
-		// If this check fails, this ref is already gone,
-		// which is not an error.
-		if refEntry, ok := entry.refs[refNonce]; ok {
-			if refEntry.Context != context {
-				return 0, fmt.Errorf(
-					"Context mismatch: expected %s, got %s",
-					refEntry.Context, context)
-			}
-			delete(entry.refs, refNonce)
+		err := entry.refs.remove(context)
+		if err != nil {
+			return 0, err
 		}
 	}
 	count := len(entry.refs)
@@ -299,14 +333,13 @@ func (b *BlockServerMemory) archiveBlockReference(
 			entry.tlfID, tlfID)
 	}
 
-	refNonce := context.GetRefNonce()
-	_, ok = entry.refs[refNonce]
-	if !ok {
+	err := entry.refs.checkExists(context)
+	if _, ok := err.(BServerErrorBlockNonExistent); ok {
 		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
-			"doesn't exist and cannot be archived.", id, refNonce)}
+			"doesn't exist and cannot be archived.", id, context.GetRefNonce())}
 	}
 
-	return putBlockRef(entry.refs, archivedBlockRef, context)
+	return entry.refs.put(context, archivedBlockRef)
 }
 
 // ArchiveBlockReferences implements the BlockServer interface for
@@ -344,10 +377,7 @@ func (b *BlockServerMemory) getAll(tlfID TlfID) (
 		if entry.tlfID != tlfID {
 			continue
 		}
-		res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
-		for ref, refEntry := range entry.refs {
-			res[id][ref] = refEntry.Status
-		}
+		res[id] = entry.refs.getStatuses()
 	}
 	return res, nil
 }

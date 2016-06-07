@@ -231,12 +231,12 @@ func (s *bserverTlfStorage) getAll() (
 
 			res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
 
-			refs, err := s.getRefEntriesLocked(id)
+			refEntries, err := s.getRefEntriesLocked(id)
 			if err != nil {
 				return nil, err
 			}
 
-			for ref, refEntry := range refs {
+			for ref, refEntry := range refEntries {
 				res[id][ref] = refEntry.Status
 			}
 		}
