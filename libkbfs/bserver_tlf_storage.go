@@ -262,13 +262,21 @@ func (s *bserverTlfStorage) putRefEntryLocked(
 	id BlockID, refEntry blockRefEntry) error {
 	existingRefEntry, err := s.getRefEntryLocked(
 		id, refEntry.Context.GetRefNonce())
-	if !os.IsNotExist(err) && err != nil {
+	var exists bool
+	switch {
+	case os.IsNotExist(err):
+		exists = false
+	case err == nil:
+		exists = true
+	default:
 		return err
 	}
 
-	err = existingRefEntry.checkContext(refEntry.Context)
-	if err != nil {
-		return err
+	if exists {
+		err = existingRefEntry.checkContext(refEntry.Context)
+		if err != nil {
+			return err
+		}
 	}
 
 	buf, err := s.codec.Encode(refEntry)
