@@ -296,8 +296,13 @@ func (s *bserverTlfStorage) putData(
 	}
 
 	_, existingServerHalf, err := s.getDataLocked(id, context)
-	_, exists := err.(BServerErrorBlockNonExistent)
-	if !exists && err != nil {
+	var exists bool
+	switch err.(type) {
+	case BServerErrorBlockNonExistent:
+		exists = false
+	case nil:
+		exists = true
+	default:
 		return err
 	}
 
