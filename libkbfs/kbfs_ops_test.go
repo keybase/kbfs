@@ -579,8 +579,8 @@ func makeBP(id BlockID, rmd *RootMetadata, config Config,
 		DataVer: DefaultNewBlockDataVersion(config, false),
 		BlockContext: BlockContext{
 			Creator: u,
-			// refnonces not needed for tests until dedup
-			// is implemented
+			// Refnonces not needed; explicit refnonce
+			// testing happens elsewhere.
 		},
 	}
 }
