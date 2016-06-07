@@ -132,9 +132,23 @@ func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlock
 	return keybase1.GetBlockRes{serverHalf.String(), data}, nil
 }
 
-func (fc *FakeBServerClient) AddReference(context.Context, keybase1.AddReferenceArg) error {
-	// Do nothing.
-	return nil
+func (fc *FakeBServerClient) AddReference(ctx context.Context, arg keybase1.AddReferenceArg) error {
+	id, err := BlockIDFromString(arg.Ref.Bid.BlockHash)
+	if err != nil {
+		return err
+	}
+
+	tlfID := ParseTlfID(arg.Folder)
+	if tlfID == NullTlfID {
+		return fmt.Errorf("Invalid TLF ID %s", arg.Folder)
+	}
+
+	bCtx := BlockContext{
+		RefNonce: BlockRefNonce(arg.Ref.Nonce),
+		Creator:  arg.Ref.ChargedTo,
+	}
+
+	return fc.bserverMem.AddBlockReference(ctx, id, tlfID, bCtx)
 }
 
 func (fc *FakeBServerClient) DelReference(context.Context, keybase1.DelReferenceArg) error {
@@ -209,6 +223,8 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	if key != serverHalf {
 		t.Errorf("Got bad key -- got %v, expected %v", key, serverHalf)
 	}
+
+	// Add a reference.
 }
 
 // If we cancel the RPC before the RPC returns, the call should error quickly.
