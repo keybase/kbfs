@@ -905,6 +905,10 @@ type BlockServer interface {
 	// key.  context should contain a BlockRefNonce of zero.  There
 	// will be an initial reference for this block for the given
 	// context.
+	//
+	// Put should be idempotent, although it should also return an
+	// error if context or serverHalf differs from previous Puts
+	// for the same ID.
 	Put(ctx context.Context, id BlockID, tlfID TlfID, context BlockContext,
 		buf []byte, serverHalf BlockCryptKeyServerHalf) error
 
