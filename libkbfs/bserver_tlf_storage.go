@@ -20,13 +20,14 @@ import (
 // level.
 
 // bserverTlfStorage stores block data for a single TLF in flat files
-// on disk. In particular, it stores data for each block in a
-// directory with name equal to the hex-encoded blockID.
+// in a directory on disk. More specifically, for each block in a TLF,
+// it stores data for that block in its own subdirectory.
 //
-// The block ID name is splayed over 256^2 subdirectories (one byte
-// for the hash type plus the first byte of the hash data) using the
-// first four characters of the name to keep the number of directories
-// in dir itself to a manageable number, similar to git.
+// The block ID name is splayed over (# of possible hash types) * 256
+// subdirectories -- one byte for the hash type (currently only one)
+// plus the first byte of the hash data -- using the first four
+// characters of the name to keep the number of directories in dir
+// itself to a manageable number, similar to git.
 //
 // An example directory structure would be:
 //
