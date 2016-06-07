@@ -109,6 +109,21 @@ func validateBlockServerPut(
 	return nil
 }
 
+func putBlockRef(refs map[BlockRefNonce]blockRefEntry,
+	status blockRefLocalStatus, context BlockContext) error {
+	refNonce := context.GetRefNonce()
+	if refEntry, ok := refs[refNonce]; ok && refEntry.Context != context {
+		return fmt.Errorf("Context mismatch: expected %s, got %s",
+			refEntry.Context, context)
+	}
+
+	refs[refNonce] = blockRefEntry{
+		Status:  status,
+		Context: context,
+	}
+	return nil
+}
+
 // Put implements the BlockServer interface for BlockServerMemory.
 func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext, buf []byte,
@@ -128,6 +143,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 		return errBlockServerMemoryShutdown
 	}
 
+	var refs map[BlockRefNonce]blockRefEntry
 	if entry, ok := b.m[id]; ok {
 		// If the entry already exists, everything should be
 		// the same, except for possibly additional
@@ -149,39 +165,20 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 				entry.keyServerHalf, serverHalf)
 		}
 
-		if refEntry, ok := entry.refs[zeroBlockRefNonce]; ok {
-			if refEntry.Context != context {
-				return fmt.Errorf(
-					"Context mismatch: expected %s, got %s",
-					refEntry.Context, context)
-			}
-		} else {
-			// It's theoretically possible for the
-			// zeroBlockRefNonce to have been
-			// removed/archived already.
-			entry.refs[zeroBlockRefNonce] = blockRefEntry{
-				Status:  liveBlockRef,
-				Context: context,
-			}
+		refs = entry.refs
+	} else {
+		data := make([]byte, len(buf))
+		copy(data, buf)
+		refs = make(map[BlockRefNonce]blockRefEntry)
+		b.m[id] = blockMemEntry{
+			tlfID:         tlfID,
+			blockData:     data,
+			keyServerHalf: serverHalf,
+			refs:          refs,
 		}
-
-		return nil
 	}
 
-	data := make([]byte, len(buf))
-	copy(data, buf)
-	b.m[id] = blockMemEntry{
-		tlfID:         tlfID,
-		blockData:     data,
-		keyServerHalf: serverHalf,
-		refs: map[BlockRefNonce]blockRefEntry{
-			zeroBlockRefNonce: blockRefEntry{
-				Status:  liveBlockRef,
-				Context: context,
-			},
-		},
-	}
-	return nil
+	return putBlockRef(refs, liveBlockRef, context)
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerMemory.
@@ -221,17 +218,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 			"been archived and cannot be referenced.", id)}
 	}
 
-	refNonce := context.GetRefNonce()
-	if refEntry, ok := entry.refs[refNonce]; ok && refEntry.Context != context {
-		return fmt.Errorf("Context mismatch: expected %s, got %s",
-			refEntry.Context, context)
-	}
-
-	entry.refs[refNonce] = blockRefEntry{
-		Status:  liveBlockRef,
-		Context: context,
-	}
-	return nil
+	return putBlockRef(entry.refs, liveBlockRef, context)
 }
 
 func (b *BlockServerMemory) removeBlockReferences(
@@ -313,20 +300,13 @@ func (b *BlockServerMemory) archiveBlockReference(
 	}
 
 	refNonce := context.GetRefNonce()
-	refEntry, ok := entry.refs[refNonce]
+	_, ok = entry.refs[refNonce]
 	if !ok {
 		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
 			"doesn't exist and cannot be archived.", id, refNonce)}
 	}
 
-	if refEntry.Context != context {
-		return fmt.Errorf("Context mismatch: expected %s, got %s",
-			refEntry.Context, context)
-	}
-
-	refEntry.Status = archivedBlockRef
-	entry.refs[refNonce] = refEntry
-	return nil
+	return putBlockRef(entry.refs, archivedBlockRef, context)
 }
 
 // ArchiveBlockReferences implements the BlockServer interface for
