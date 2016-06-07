@@ -97,11 +97,8 @@ func (s *bserverTlfStorage) getRefEntryLocked(
 
 var errBserverTlfStorageShutdown = errors.New("bserverTlfStorage is shutdown")
 
-func (s *bserverTlfStorage) getData(id BlockID, context BlockContext) (
+func (s *bserverTlfStorage) getDataLocked(id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
 	if s.isShutdown {
 		return nil, BlockCryptKeyServerHalf{},
 			errBserverTlfStorageShutdown
@@ -156,6 +153,13 @@ func (s *bserverTlfStorage) getData(id BlockID, context BlockContext) (
 	copy(serverHalfData[:], buf)
 	serverHalf := MakeBlockCryptKeyServerHalf(serverHalfData)
 	return data, serverHalf, nil
+}
+
+func (s *bserverTlfStorage) getData(id BlockID, context BlockContext) (
+	[]byte, BlockCryptKeyServerHalf, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return s.getDataLocked(id, context)
 }
 
 func (s *bserverTlfStorage) getRefEntriesLocked(id BlockID) (
@@ -291,7 +295,7 @@ func (s *bserverTlfStorage) putData(
 		return errBserverTlfStorageShutdown
 	}
 
-	_, existingServerHalf, err := s.getData(id, context)
+	_, existingServerHalf, err := s.getDataLocked(id, context)
 	if _, ok := err.(BServerErrorBlockNonExistent); !ok && err != nil {
 		return err
 	}
