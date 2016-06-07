@@ -324,7 +324,7 @@ func (s *bserverTlfStorage) putData(
 
 		if existingServerHalf != serverHalf {
 			return fmt.Errorf(
-				"key server half mismatch: expected %v, got %v",
+				"key server half mismatch: expected %s, got %s",
 				existingServerHalf, serverHalf)
 		}
 	}
