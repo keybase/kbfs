@@ -129,39 +129,57 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	}
 
 	if entry, ok := b.m[id]; ok {
+		// If the entry already exists, everything should be
+		// the same, except for possibly additional
+		// references.
+
 		if entry.tlfID != tlfID {
 			return fmt.Errorf(
 				"TLF ID mismatch: expected %s, got %s",
 				entry.tlfID, tlfID)
 		}
 
-		// TODO: Is it okay for the creator to change?
-		if refEntry, ok := entry.refs[zeroBlockRefNonce]; ok && refEntry.Context != context {
-			return fmt.Errorf("Context mismatch: expected %s, got %s",
-				refEntry.Context, context)
+		// We checked that buf hashes to id, so no need to
+		// check that it's equal to entry.data (since that was
+		// presumably already checked previously).
+
+		if entry.keyServerHalf != serverHalf {
+			return fmt.Errorf(
+				"key server half mismatch: expected %v, got %v",
+				entry.keyServerHalf, serverHalf)
 		}
 
-		// The only thing that could be different now is the
-		// key server half.
-		//
-		// TODO: Figure out whether it can actually be
-		// different.
-		entry.keyServerHalf = serverHalf
+		if refEntry, ok := entry.refs[zeroBlockRefNonce]; ok {
+			if refEntry.Context != context {
+				return fmt.Errorf(
+					"Context mismatch: expected %s, got %s",
+					refEntry.Context, context)
+			}
+		} else {
+			// It's theoretically possible for the
+			// zeroBlockRefNonce to have been
+			// removed/archived already.
+			entry.refs[zeroBlockRefNonce] = blockRefEntry{
+				Status:  liveBlockRef,
+				Context: context,
+			}
+		}
+
 		return nil
 	}
 
 	data := make([]byte, len(buf))
 	copy(data, buf)
 	b.m[id] = blockMemEntry{
-		tlfID:     tlfID,
-		blockData: data,
+		tlfID:         tlfID,
+		blockData:     data,
+		keyServerHalf: serverHalf,
 		refs: map[BlockRefNonce]blockRefEntry{
 			zeroBlockRefNonce: blockRefEntry{
 				Status:  liveBlockRef,
 				Context: context,
 			},
 		},
-		keyServerHalf: serverHalf,
 	}
 	return nil
 }
