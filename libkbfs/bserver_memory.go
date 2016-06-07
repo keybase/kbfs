@@ -224,7 +224,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 
 		if entry.keyServerHalf != serverHalf {
 			return fmt.Errorf(
-				"key server half mismatch: expected %v, got %v",
+				"key server half mismatch: expected %s, got %s",
 				entry.keyServerHalf, serverHalf)
 		}
 
