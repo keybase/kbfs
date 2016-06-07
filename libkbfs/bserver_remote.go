@@ -200,7 +200,7 @@ func (b *BlockServerRemote) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	arg := keybase1.GetBlockArg{
 		Bid: keybase1.BlockIdCombo{
 			BlockHash: id.String(),
-			ChargedTo: context.GetWriter(),
+			ChargedTo: context.GetCreator(),
 		},
 		Folder: tlfID.String(),
 	}
@@ -239,8 +239,8 @@ func (b *BlockServerRemote) Put(ctx context.Context, id BlockID, tlfID TlfID,
 
 	arg := keybase1.PutBlockArg{
 		Bid: keybase1.BlockIdCombo{
-			ChargedTo: context.GetWriter(),
 			BlockHash: id.String(),
+			ChargedTo: context.GetCreator(),
 		},
 		BlockKey: serverHalf.String(),
 		Folder:   tlfID.String(),
@@ -275,8 +275,8 @@ func (b *BlockServerRemote) AddBlockReference(ctx context.Context, id BlockID,
 
 	ref := keybase1.BlockReference{
 		Bid: keybase1.BlockIdCombo{
-			ChargedTo: context.GetCreator(),
 			BlockHash: id.String(),
+			ChargedTo: context.GetCreator(),
 		},
 		ChargedTo: context.GetWriter(), //the actual writer to decrement quota from
 		Nonce:     keybase1.BlockRefNonce(context.GetRefNonce()),
@@ -423,8 +423,8 @@ func (b *BlockServerRemote) getNotDone(all map[BlockID][]BlockContext, doneRefs 
 			}
 			notDone = append(notDone, keybase1.BlockReference{
 				Bid: keybase1.BlockIdCombo{
-					ChargedTo: context.GetCreator(),
 					BlockHash: id.String(),
+					ChargedTo: context.GetCreator(),
 				},
 				ChargedTo: context.GetWriter(),
 				Nonce:     keybase1.BlockRefNonce(context.GetRefNonce()),
