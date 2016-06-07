@@ -128,6 +128,16 @@ func (s *bserverTlfStorage) getData(id BlockID, context BlockContext) (
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
 
+	dataID, err := s.crypto.MakePermanentBlockID(data)
+	if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	if id != dataID {
+		return nil, BlockCryptKeyServerHalf{}, fmt.Errorf(
+			"Block ID mismatch: expected %s, got %s", id, dataID)
+	}
+
 	keyServerHalfPath := s.buildKeyServerHalfPath(id)
 	buf, err := ioutil.ReadFile(keyServerHalfPath)
 	if os.IsNotExist(err) {
@@ -279,6 +289,20 @@ func (s *bserverTlfStorage) putData(
 
 	if s.isShutdown {
 		return errBserverTlfStorageShutdown
+	}
+
+	_, existingServerHalf, err := s.getData(id, context)
+	if _, ok := err.(BServerErrorBlockNonExistent); !ok && err != nil {
+		return err
+	}
+
+	// We checked that both buf and existingData hash to id, so no need to
+	// check that they're both equal.
+
+	if existingServerHalf != serverHalf {
+		return fmt.Errorf(
+			"key server half mismatch: expected %v, got %v",
+			existingServerHalf, serverHalf)
 	}
 
 	// Do this first, so that it makes the dirs for the data and

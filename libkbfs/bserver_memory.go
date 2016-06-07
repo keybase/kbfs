@@ -179,9 +179,9 @@ func validateBlockServerPut(
 		return err
 	}
 
-	if bufID != id {
+	if id != bufID {
 		return fmt.Errorf(
-			"Block ID mismatch: expected %s, got %s", bufID, id)
+			"Block ID mismatch: expected %s, got %s", id, bufID)
 	}
 
 	return nil
