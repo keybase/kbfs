@@ -13,10 +13,28 @@ import (
 	"golang.org/x/net/context"
 )
 
+// TODO: Move this to bserver_errors.go once the actual block server
+// starts using it.
+type bserverErrorContextMismatch struct {
+	expected, actual BlockContext
+}
+
+func (e bserverErrorContextMismatch) Error() string {
+	return fmt.Sprintf(
+		"Context mismatch: expected %s, got %s", e.expected, e.actual)
+}
+
 type blockRefEntry struct {
 	// These fields are exported only for serialization purposes.
 	Status  blockRefLocalStatus
 	Context BlockContext
+}
+
+func (e blockRefEntry) checkContext(context BlockContext) error {
+	if e.Context != context {
+		return bserverErrorContextMismatch{e.Context, context}
+	}
+	return nil
 }
 
 // blockRefMap is a map with additional checking methods.
@@ -37,13 +55,7 @@ func (refs blockRefMap) checkExists(context BlockContext) error {
 		return BServerErrorBlockNonExistent{}
 	}
 
-	if refEntry.Context != context {
-		return fmt.Errorf(
-			"Context mismatch: expected %s, got %s",
-			refEntry.Context, context)
-	}
-
-	return nil
+	return refEntry.checkContext(context)
 }
 
 func (refs blockRefMap) getStatuses() map[BlockRefNonce]blockRefLocalStatus {
@@ -57,9 +69,11 @@ func (refs blockRefMap) getStatuses() map[BlockRefNonce]blockRefLocalStatus {
 func (refs blockRefMap) put(
 	context BlockContext, status blockRefLocalStatus) error {
 	refNonce := context.GetRefNonce()
-	if refEntry, ok := refs[refNonce]; ok && refEntry.Context != context {
-		return fmt.Errorf("Context mismatch: expected %s, got %s",
-			refEntry.Context, context)
+	if refEntry, ok := refs[refNonce]; ok {
+		err := refEntry.checkContext(context)
+		if err != nil {
+			return err
+		}
 	}
 
 	refs[refNonce] = blockRefEntry{
@@ -74,10 +88,9 @@ func (refs blockRefMap) remove(context BlockContext) error {
 	// If this check fails, this ref is already gone, which is not
 	// an error.
 	if refEntry, ok := refs[refNonce]; ok {
-		if refEntry.Context != context {
-			return fmt.Errorf(
-				"Context mismatch: expected %s, got %s",
-				refEntry.Context, context)
+		err := refEntry.checkContext(context)
+		if err != nil {
+			return err
 		}
 		delete(refs, refNonce)
 	}

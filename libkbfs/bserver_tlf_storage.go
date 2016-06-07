@@ -115,10 +115,9 @@ func (s *bserverTlfStorage) getData(id BlockID, context BlockContext) (
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
 
-	if refEntry.Context != context {
-		return nil, BlockCryptKeyServerHalf{},
-			fmt.Errorf("Context mismatch: expected %s, got %s",
-				refEntry.Context, context)
+	err = refEntry.checkContext(context)
+	if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
 	}
 
 	data, err := ioutil.ReadFile(s.buildDataPath(id))
@@ -353,13 +352,13 @@ func (s *bserverTlfStorage) removeReferences(
 		// If this check fails, this ref is already gone,
 		// which is not an error.
 		if refEntry, ok := refEntries[refNonce]; ok {
-			if refEntry.Context != context {
-				return 0, fmt.Errorf(
-					"Context mismatch: expected %s, got %s",
-					refEntry.Context, context)
+			err := refEntry.checkContext(context)
+			if err != nil {
+				return 0, err
 			}
+
 			refPath := s.buildRefPath(id, refNonce)
-			err := os.RemoveAll(refPath)
+			err = os.RemoveAll(refPath)
 			if err != nil {
 				return 0, err
 			}
@@ -394,9 +393,9 @@ func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) e
 		return err
 	}
 
-	if refEntry.Context != context {
-		return fmt.Errorf("Context mismatch: expected %s, got %s",
-			refEntry.Context, context)
+	err = refEntry.checkContext(context)
+	if err != nil {
+		return err
 	}
 
 	refEntry.Status = archivedBlockRef
