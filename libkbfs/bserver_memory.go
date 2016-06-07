@@ -28,6 +28,8 @@ type blockRefEntry struct {
 	// These fields are exported only for serialization purposes.
 	Status  blockRefLocalStatus
 	Context BlockContext
+
+	// TODO: Add unknown field support.
 }
 
 func (e blockRefEntry) checkContext(context BlockContext) error {
