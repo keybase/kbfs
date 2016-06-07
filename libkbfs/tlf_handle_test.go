@@ -170,7 +170,7 @@ func TestTlfHandleAccessorsPrivate(t *testing.T) {
 	}
 
 	name := "u1,u2@twitter,u3,u4@twitter#u2,u5@twitter,u6@twitter"
-	h, err := ParseTlfHandle(ctx, kbpki, name, false, true)
+	h, err := ParseTlfHandle(ctx, kbpki, name, false)
 	require.NoError(t, err)
 
 	require.False(t, h.IsPublic())
@@ -238,7 +238,7 @@ func TestTlfHandleAccessorsPublic(t *testing.T) {
 	}
 
 	name := "u1,u2@twitter,u3,u4@twitter"
-	h, err := ParseTlfHandle(ctx, kbpki, name, true, true)
+	h, err := ParseTlfHandle(ctx, kbpki, name, true)
 	require.NoError(t, err)
 
 	require.True(t, h.IsPublic())
