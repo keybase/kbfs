@@ -129,7 +129,10 @@ func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlock
 	if err != nil {
 		return keybase1.GetBlockRes{}, err
 	}
-	return keybase1.GetBlockRes{serverHalf.String(), data}, nil
+	return keybase1.GetBlockRes{
+		BlockKey: serverHalf.String(),
+		Buf:      data,
+	}, nil
 }
 
 func (fc *FakeBServerClient) AddReference(ctx context.Context, arg keybase1.AddReferenceArg) error {
