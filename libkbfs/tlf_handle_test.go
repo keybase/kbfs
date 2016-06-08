@@ -383,8 +383,9 @@ func TestParseTlfHandleConflictSuffix(t *testing.T) {
 
 	a := "u1 " + ci.String()
 	h, err := ParseTlfHandle(ctx, kbpki, a, false)
-	assert.NoError(t, err)
-	assert.NotNil(t, h.ConflictInfo())
+	require.NoError(t, err)
+	require.NotNil(t, h.ConflictInfo())
+	require.Equal(t, ci.String(), h.ConflictInfo().String())
 }
 
 func TestParseTlfHandleFailConflictingAssertion(t *testing.T) {
