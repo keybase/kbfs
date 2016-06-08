@@ -440,6 +440,58 @@ func TestSBSMultipleResolutions(t *testing.T) {
 	)
 }
 
+func TestSBSConflicts(t *testing.T) {
+	test(t,
+		users("alice", "bob", "charlie"),
+		inPrivateTlf("alice,bob,charlie@twitter"),
+		as(alice,
+			mkfile("alice1.txt", "hello bob & charlie"),
+		),
+		as(bob,
+			read("alice1.txt", "hello bob & charlie"),
+		),
+		as(charlie,
+			expectError(initRoot(), "charlie does not have read access to directory /keybase/private/alice,bob,charlie@twitter"),
+		),
+
+		inPrivateTlf("alice,bob@twitter,charlie@twitter"),
+		as(alice,
+			mkfile("alice2.txt", "hello bob & charlie"),
+		),
+		as(bob,
+			expectError(initRoot(), "bob does not have read access to directory /keybase/private/alice,bob@twitter,charlie@twitter"),
+		),
+		as(charlie,
+			expectError(initRoot(), "charlie does not have read access to directory /keybase/private/alice,bob@twitter,charlie@twitter"),
+		),
+
+		inPrivateTlf("alice,bob,charlie"),
+		as(alice,
+			mkfile("alice3.txt", "hello bob & charlie"),
+		),
+		as(bob,
+			read("alice3.txt", "hello bob & charlie"),
+		),
+		as(charlie,
+			read("alice3.txt", "hello bob & charlie"),
+		),
+
+		addNewAssertion("bob", "bob@twitter"),
+		addNewAssertion("charlie", "charlie@twitter"),
+		as(alice,
+			// TODO: Ideally, we wouldn't have to do this,
+			// and we'd just wait for a rekey.
+			rekey(),
+		),
+
+		// TODO: Test that alice's favorites are updated.
+
+		// TODO: Test that the three folders are resolved with
+		// conflict markers. Need some way to control how the
+		// conflict markers are created, first...
+	)
+}
+
 // TODO: When we implement automatic rekey for DSL tests, write
 // equivalents of TestSBSOfflineDeviceComesOnline{Private,Public} from
 // the docker tests.
