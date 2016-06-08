@@ -182,6 +182,26 @@ func (b *BlockServerRemote) ShouldRetryOnConnect(err error) bool {
 	return !inputCanceled
 }
 
+func makeBlockIdCombo(id BlockID, context BlockContext) keybase1.BlockIdCombo {
+	// ChargedTo is somewhat confusing when this BlockIdCombo is
+	// used in a BlockReference -- it just refers to the original
+	// creator of the block, i.e. the original user charged for
+	// the block.
+	return keybase1.BlockIdCombo{
+		BlockHash: id.String(),
+		ChargedTo: context.GetCreator(),
+	}
+}
+
+func makeBlockReference(id BlockID, context BlockContext) keybase1.BlockReference {
+	return keybase1.BlockReference{
+		Bid: makeBlockIdCombo(id, context),
+		// The actual writer to decrement quota from.
+		ChargedTo: context.GetWriter(),
+		Nonce:     keybase1.BlockRefNonce(context.GetRefNonce()),
+	}
+}
+
 // Get implements the BlockServer interface for BlockServerRemote.
 func (b *BlockServerRemote) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
@@ -198,10 +218,7 @@ func (b *BlockServerRemote) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	}()
 
 	arg := keybase1.GetBlockArg{
-		Bid: keybase1.BlockIdCombo{
-			BlockHash: id.String(),
-			ChargedTo: context.GetCreator(),
-		},
+		Bid:    makeBlockIdCombo(id, context),
 		Folder: tlfID.String(),
 	}
 
@@ -238,10 +255,7 @@ func (b *BlockServerRemote) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	}()
 
 	arg := keybase1.PutBlockArg{
-		Bid: keybase1.BlockIdCombo{
-			BlockHash: id.String(),
-			ChargedTo: context.GetCreator(),
-		},
+		Bid:      makeBlockIdCombo(id, context),
 		BlockKey: serverHalf.String(),
 		Folder:   tlfID.String(),
 		Buf:      buf,
@@ -273,17 +287,8 @@ func (b *BlockServerRemote) AddBlockReference(ctx context.Context, id BlockID,
 		}
 	}()
 
-	ref := keybase1.BlockReference{
-		Bid: keybase1.BlockIdCombo{
-			BlockHash: id.String(),
-			ChargedTo: context.GetCreator(),
-		},
-		ChargedTo: context.GetWriter(), //the actual writer to decrement quota from
-		Nonce:     keybase1.BlockRefNonce(context.GetRefNonce()),
-	}
-
 	err = b.client.AddReference(ctx, keybase1.AddReferenceArg{
-		Ref:    ref,
+		Ref:    makeBlockReference(id, context),
 		Folder: tlfID.String(),
 	})
 	if err != nil {
@@ -421,14 +426,8 @@ func (b *BlockServerRemote) getNotDone(all map[BlockID][]BlockContext, doneRefs 
 					continue
 				}
 			}
-			notDone = append(notDone, keybase1.BlockReference{
-				Bid: keybase1.BlockIdCombo{
-					BlockHash: id.String(),
-					ChargedTo: context.GetCreator(),
-				},
-				ChargedTo: context.GetWriter(),
-				Nonce:     keybase1.BlockRefNonce(context.GetRefNonce()),
-			})
+			ref := makeBlockReference(id, context)
+			notDone = append(notDone, ref)
 		}
 	}
 	return notDone
