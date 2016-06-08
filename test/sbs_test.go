@@ -299,3 +299,28 @@ func TestSBSPromoteReaderToWriter(t *testing.T) {
 		),
 	)
 }
+
+// TestSBSOnlyUnresolvedWriter tests that a TLF with a single
+// unresolved writer is only usable once that writer becomes resolved.
+func TestSBSOnlyUnresolvedWriter(t *testing.T) {
+	test(t,
+		users("alice"),
+		inPrivateTlf("alice@twitter"),
+		as(alice,
+			expectError(mkfile("foo.txt", "hello world"),
+				"alice does not have read access to directory /keybase/private/alice@twitter"),
+		),
+
+		addNewAssertion("alice", "alice@twitter"),
+
+		inPrivateTlf("alice"),
+		as(alice,
+			mkfile("foo.txt", "hello world"),
+		),
+
+		inPrivateTlfNonCanonical("alice@twitter", "alice"),
+		as(alice,
+			read("foo.txt", "hello world"),
+		),
+	)
+}
