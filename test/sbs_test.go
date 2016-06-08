@@ -440,6 +440,9 @@ func TestSBSMultipleResolutions(t *testing.T) {
 	)
 }
 
+// TestSBSConflicts tests that different folders with unresolved users
+// that get resolved to the same one don't get merged, but that one is
+// chosen and the others pick up a conflict marker.
 func TestSBSConflicts(t *testing.T) {
 	test(t,
 		users("alice", "bob", "charlie"),
