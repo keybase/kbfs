@@ -209,3 +209,42 @@ func TestSBSNewlyResolvedWritersPublic(t *testing.T) {
 		),
 	)
 }
+
+func TestSBSExistingWriter(t *testing.T) {
+	test(t,
+		users("alice", "bob"),
+		inPrivateTlf("alice,bob,bob@twitter"),
+		as(alice,
+			mkfile("alice.txt", "hello bob"),
+		),
+		as(bob,
+			mkfile("bob.txt", "hello alice"),
+			read("alice.txt", "hello bob"),
+		),
+		as(alice,
+			read("bob.txt", "hello alice"),
+		),
+
+		addNewAssertion("bob", "bob@twitter"),
+
+		inPrivateTlf("alice,bob"),
+		as(alice,
+			read("alice.txt", "hello bob"),
+			read("bob.txt", "hello alice"),
+		),
+		as(bob,
+			read("alice.txt", "hello bob"),
+			read("bob.txt", "hello alice"),
+		),
+
+		inPrivateTlfNonCanonical("alice,bob,bob@twitter", "alice,bob"),
+		as(alice,
+			read("alice.txt", "hello bob"),
+			read("bob.txt", "hello alice"),
+		),
+		as(bob,
+			read("alice.txt", "hello bob"),
+			read("bob.txt", "hello alice"),
+		),
+	)
+}
