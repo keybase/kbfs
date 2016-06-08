@@ -9,6 +9,8 @@ import "testing"
 // TestTlfNameChangePrivate tests that a file written to a private TLF
 // with an unresolved writer becomes readable to the resolved writer
 // after resolution.
+//
+// This is the equivalent to the TestSBSSimple docker test.
 func TestTlfNameChangePrivate(t *testing.T) {
 	test(t,
 		users("alice", "bob", "charlie"),
@@ -91,6 +93,8 @@ func TestSBSNewlyResolvedWritersPrivate(t *testing.T) {
 
 // TestTlfNameChangePublic tests that a public TLF with an unresolved
 // writer becomes writeable by the resolved writer after resolution.
+//
+// This is the equivalent to the TestSBSSimplePublic docker test.
 func TestTlfNameChangePublic(t *testing.T) {
 	test(t,
 		users("alice", "bob", "charlie"),
@@ -210,6 +214,9 @@ func TestSBSNewlyResolvedWritersPublic(t *testing.T) {
 	)
 }
 
+// TODO: Write an equivalent to TestSBSFavorites from the docker
+// tests.
+
 // TestSBSExistingWriter tests that a TLF with an unresolved writer
 // that resolves to an existing writer resolves to the TLF without the
 // unresolved writer.
@@ -229,6 +236,11 @@ func TestSBSExistingWriter(t *testing.T) {
 		),
 
 		addNewAssertion("bob", "bob@twitter"),
+		as(alice,
+			// TODO: Ideally, we wouldn't have to do this,
+			// and we'd just wait for a rekey.
+			rekey(),
+		),
 
 		inPrivateTlf("alice,bob"),
 		as(alice,
@@ -269,7 +281,6 @@ func TestSBSPromoteReaderToWriter(t *testing.T) {
 		),
 
 		addNewAssertion("bob", "bob@twitter"),
-		// Need a rekey to promote bob to a writer.
 		as(alice,
 			// TODO: Ideally, we wouldn't have to do this,
 			// and we'd just wait for a rekey.
@@ -428,3 +439,7 @@ func TestSBSMultipleResolutions(t *testing.T) {
 		),
 	)
 }
+
+// TODO: When we implement automatic rekey for DSL tests, write
+// equivalents of TestSBSOfflineDeviceComesOnline{Private,Public} from
+// the docker tests.
