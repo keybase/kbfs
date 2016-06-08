@@ -365,6 +365,28 @@ func TestParseTlfHandleAndAssertion(t *testing.T) {
 	assert.Equal(t, TlfNameNotCanonical{a, "u1"}, err)
 }
 
+func TestParseTlfHandleConflictSuffix(t *testing.T) {
+	ctx := context.Background()
+
+	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"u1"})
+	currentUID := localUsers[0].UID
+	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
+
+	kbpki := &daemonKBPKI{
+		daemon: daemon,
+	}
+
+	ci := &ConflictInfo{
+		Date:   1462838400,
+		Number: 1,
+	}
+
+	a := "u1 " + ci.String()
+	h, err := ParseTlfHandle(ctx, kbpki, a, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, h.ConflictInfo())
+}
+
 func TestParseTlfHandleFailConflictingAssertion(t *testing.T) {
 	ctx := context.Background()
 
