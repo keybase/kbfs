@@ -210,6 +210,9 @@ func TestSBSNewlyResolvedWritersPublic(t *testing.T) {
 	)
 }
 
+// TestSBSExistingWriter tests that a TLF with an unresolved writer
+// that resolves to an existing writer resolves to the TLF without the
+// unresolved writer.
 func TestSBSExistingWriter(t *testing.T) {
 	test(t,
 		users("alice", "bob"),
@@ -249,6 +252,9 @@ func TestSBSExistingWriter(t *testing.T) {
 	)
 }
 
+// TestSBSPromoteReaderToWriter tests that a TLF with an unresolved
+// writer that resolves to an existing reader resolves to the TLF with
+// the reader promoted to a writer.
 func TestSBSPromoteReaderToWriter(t *testing.T) {
 	test(t,
 		users("alice", "bob"),
@@ -263,6 +269,7 @@ func TestSBSPromoteReaderToWriter(t *testing.T) {
 		),
 
 		addNewAssertion("bob", "bob@twitter"),
+		// Need a rekey to promote bob to a writer.
 		as(alice,
 			// TODO: Ideally, we wouldn't have to do this,
 			// and we'd just wait for a rekey.
