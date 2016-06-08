@@ -248,3 +248,47 @@ func TestSBSExistingWriter(t *testing.T) {
 		),
 	)
 }
+
+func TestSBSPromoteReaderToWriter(t *testing.T) {
+	test(t,
+		users("alice", "bob"),
+		inPrivateTlf("alice,bob@twitter#bob"),
+		as(alice,
+			mkfile("alice.txt", "hello bob"),
+		),
+		as(bob,
+			read("alice.txt", "hello bob"),
+			expectError(mkfile("bob.txt", "hello alice"),
+				"bob does not have write access to directory /keybase/private/alice,bob@twitter#bob"),
+		),
+
+		addNewAssertion("bob", "bob@twitter"),
+		as(alice,
+			// TODO: Ideally, we wouldn't have to do this,
+			// and we'd just wait for a rekey.
+			rekey(),
+		),
+
+		inPrivateTlf("alice,bob"),
+		as(alice,
+			read("alice.txt", "hello bob"),
+		),
+		as(bob,
+			read("alice.txt", "hello bob"),
+			mkfile("bob.txt", "hello alice"),
+		),
+		as(alice,
+			read("bob.txt", "hello alice"),
+		),
+
+		inPrivateTlfNonCanonical("alice,bob@twitter#bob", "alice,bob"),
+		as(alice,
+			read("alice.txt", "hello bob"),
+			read("bob.txt", "hello alice"),
+		),
+		as(bob,
+			read("alice.txt", "hello bob"),
+			read("bob.txt", "hello alice"),
+		),
+	)
+}
