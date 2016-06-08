@@ -182,7 +182,7 @@ func (b *BlockServerRemote) ShouldRetryOnConnect(err error) bool {
 	return !inputCanceled
 }
 
-func makeBlockIdCombo(id BlockID, context BlockContext) keybase1.BlockIdCombo {
+func makeBlockIDCombo(id BlockID, context BlockContext) keybase1.BlockIdCombo {
 	// ChargedTo is somewhat confusing when this BlockIdCombo is
 	// used in a BlockReference -- it just refers to the original
 	// creator of the block, i.e. the original user charged for
@@ -195,7 +195,7 @@ func makeBlockIdCombo(id BlockID, context BlockContext) keybase1.BlockIdCombo {
 
 func makeBlockReference(id BlockID, context BlockContext) keybase1.BlockReference {
 	return keybase1.BlockReference{
-		Bid: makeBlockIdCombo(id, context),
+		Bid: makeBlockIDCombo(id, context),
 		// The actual writer to decrement quota from.
 		ChargedTo: context.GetWriter(),
 		Nonce:     keybase1.BlockRefNonce(context.GetRefNonce()),
@@ -218,7 +218,7 @@ func (b *BlockServerRemote) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	}()
 
 	arg := keybase1.GetBlockArg{
-		Bid:    makeBlockIdCombo(id, context),
+		Bid:    makeBlockIDCombo(id, context),
 		Folder: tlfID.String(),
 	}
 
@@ -255,7 +255,7 @@ func (b *BlockServerRemote) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	}()
 
 	arg := keybase1.PutBlockArg{
-		Bid:      makeBlockIdCombo(id, context),
+		Bid:      makeBlockIDCombo(id, context),
 		BlockKey: serverHalf.String(),
 		Folder:   tlfID.String(),
 		Buf:      buf,
