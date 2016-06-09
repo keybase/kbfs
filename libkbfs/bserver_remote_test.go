@@ -80,9 +80,9 @@ func (fc *FakeBServerClient) PutBlock(ctx context.Context, arg keybase1.PutBlock
 		return err
 	}
 
-	tlfID := ParseTlfID(arg.Folder)
-	if tlfID == NullTlfID {
-		return fmt.Errorf("Invalid TLF ID %s", arg.Folder)
+	tlfID, err := ParseTlfID(arg.Folder)
+	if err != nil {
+		return err
 	}
 
 	buf, err := hex.DecodeString(arg.BlockKey)
@@ -115,9 +115,9 @@ func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlock
 		return keybase1.GetBlockRes{}, err
 	}
 
-	tlfID := ParseTlfID(arg.Folder)
-	if tlfID == NullTlfID {
-		return keybase1.GetBlockRes{}, fmt.Errorf("Invalid TLF ID %s", arg.Folder)
+	tlfID, err := ParseTlfID(arg.Folder)
+	if err != nil {
+		return keybase1.GetBlockRes{}, err
 	}
 
 	bCtx := BlockContext{
@@ -141,9 +141,9 @@ func (fc *FakeBServerClient) AddReference(ctx context.Context, arg keybase1.AddR
 		return err
 	}
 
-	tlfID := ParseTlfID(arg.Folder)
-	if tlfID == NullTlfID {
-		return fmt.Errorf("Invalid TLF ID %s", arg.Folder)
+	tlfID, err := ParseTlfID(arg.Folder)
+	if err != nil {
+		return err
 	}
 
 	bCtx := BlockContext{
