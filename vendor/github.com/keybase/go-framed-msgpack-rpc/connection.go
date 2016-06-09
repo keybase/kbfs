@@ -237,6 +237,64 @@ type Connection struct {
 	reconnectedBefore bool
 }
 
+type ConnectionPool struct {
+	size        int
+	connections chan *Connection
+	shutdownCh  chan struct{}
+}
+
+func NewTLSConnectionPool(size int, srvAddr string, rootCerts []byte,
+	errorUnwrapper ErrorUnwrapper, handler ConnectionHandler,
+	connectNow bool, l LogFactory, wef WrapErrorFunc, log LogOutput,
+	tagsFunc LogTagsFromContext) *ConnectionPool {
+	p := &ConnectionPool{
+		size:        size,
+		connections: make(chan *Connection, size),
+		shutdownCh:  make(chan struct{}),
+	}
+	for i := 0; i < size; i++ {
+		p.connections <- NewTLSConnection(srvAddr, rootCerts, errorUnwrapper,
+			handler, connectNow, l, wef, log, tagsFunc)
+	}
+	return p
+}
+
+var _ GenericClient = (*ConnectionPool)(nil)
+
+func (p *ConnectionPool) put(c *Connection) {
+	p.connections <- c
+}
+
+func (p *ConnectionPool) Call(ctx context.Context, method string, arg interface{}, res interface{}) error {
+	select {
+	case c := <-p.connections:
+		defer p.put(c)
+		return c.GetClient().Call(ctx, method, arg, res)
+	case <-p.shutdownCh:
+		return errors.New("Shutting down")
+	}
+}
+
+func (p *ConnectionPool) Notify(ctx context.Context, method string, arg interface{}) error {
+	select {
+	case c := <-p.connections:
+		defer p.put(c)
+		return c.GetClient().Notify(ctx, method, arg)
+	case <-p.shutdownCh:
+		return errors.New("Shutting down")
+	}
+}
+
+func (p *ConnectionPool) Shutdown() {
+	// TODO fix this, currently it can block indefinitely on a hanging call and
+	// it races with Call() and Notify() while the channel isn't drained
+	close(p.shutdownCh)
+	for i := 0; i < p.size; i++ {
+		c := <-p.connections
+		c.Shutdown()
+	}
+}
+
 // NewTLSConnection returns a connection that tries to connect to the
 // given server address with TLS.
 func NewTLSConnection(srvAddr string, rootCerts []byte,

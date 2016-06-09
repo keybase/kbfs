@@ -55,12 +55,12 @@ func NewBlockServerRemote(config Config, blkSrvAddr string) *BlockServerRemote {
 	bs.authToken = NewAuthToken(config,
 		BServerTokenServer, BServerTokenExpireIn,
 		"libkbfs_bserver_remote", bs)
-	// This will connect only on-demand due to the last argument.
-	conn := rpc.NewTLSConnection(blkSrvAddr, GetRootCerts(blkSrvAddr),
+	// This will connect only on-demand due to the connectNow argument.
+	connPool := rpc.NewTLSConnectionPool(10, blkSrvAddr, GetRootCerts(blkSrvAddr),
 		bServerErrorUnwrapper{}, bs, false, libkb.NewRPCLogFactory(libkb.G),
 		libkb.WrapError, config.MakeLogger(""), LogTagsFromContext)
-	bs.client = keybase1.BlockClient{Cli: conn.GetClient()}
-	bs.shutdownFn = conn.Shutdown
+	bs.client = keybase1.BlockClient{Cli: connPool}
+	bs.shutdownFn = connPool.Shutdown
 	return bs
 }
 
