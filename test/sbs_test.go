@@ -490,8 +490,8 @@ func TestSBSConflicts(t *testing.T) {
 		// TODO: Test that alice's favorites are updated.
 
 		// TODO: Test that the three folders are resolved with
-		// conflict markers. Need some way to control how the
-		// conflict markers are created, first...
+		// conflict markers. This will require changes to
+		// MDServerLocal.
 	)
 }
 
