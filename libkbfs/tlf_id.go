@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"encoding"
 	"encoding/hex"
-	"fmt"
 )
 
 const (
@@ -41,16 +40,6 @@ func (id TlfID) Bytes() []byte {
 // String implements the fmt.Stringer interface for TlfID.
 func (id TlfID) String() string {
 	return hex.EncodeToString(id.id[:])
-}
-
-// InvalidTlfID indicates whether the folder ID returned from the MD
-// server was not parsable/invalid.
-type InvalidTlfID struct {
-	id string
-}
-
-func (e InvalidTlfID) Error() string {
-	return fmt.Sprintf("Invalid TLF ID %q", e.id)
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for TlfID.

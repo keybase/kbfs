@@ -6,9 +6,7 @@ package libkbfs
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/keybase/client/go/libkb"
@@ -85,16 +83,10 @@ func (fc *FakeBServerClient) PutBlock(ctx context.Context, arg keybase1.PutBlock
 		return err
 	}
 
-	buf, err := hex.DecodeString(arg.BlockKey)
+	serverHalf, err := ParseBlockCryptKeyServerHalf(arg.BlockKey)
 	if err != nil {
-		return fmt.Errorf("Invalid server half %s", arg.BlockKey)
+		return err
 	}
-	var serverHalfData [32]byte
-	if len(buf) != len(serverHalfData) {
-		return fmt.Errorf("Invalid server half %s", arg.BlockKey)
-	}
-	copy(serverHalfData[:], buf)
-	serverHalf := MakeBlockCryptKeyServerHalf(serverHalfData)
 
 	bCtx := BlockContext{
 		RefNonce: zeroBlockRefNonce,

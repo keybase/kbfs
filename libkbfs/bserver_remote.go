@@ -255,7 +255,9 @@ func (b *BlockServerRemote) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	}()
 
 	arg := keybase1.PutBlockArg{
-		Bid:      makeBlockIDCombo(id, context),
+		Bid: makeBlockIDCombo(id, context),
+		// BlockKey is misnamed -- it contains just the server
+		// half.
 		BlockKey: serverHalf.String(),
 		Folder:   tlfID.String(),
 		Buf:      buf,
