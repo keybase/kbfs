@@ -47,14 +47,20 @@ type bserverTlfStorage struct {
 	dir    string
 
 	// Protects any IO operations in dir or any of its children,
-	// as well as isShutdown.
+	// as well as refs and isShutdown.
 	lock       sync.RWMutex
+	refs       map[BlockID]blockRefMap
 	isShutdown bool
 }
 
 func makeBserverTlfStorage(
-	codec Codec, crypto cryptoPure, dir string) *bserverTlfStorage {
-	return &bserverTlfStorage{codec: codec, crypto: crypto, dir: dir}
+	codec Codec, crypto CryptoPure, dir string) *bserverTlfStorage {
+	return &bserverTlfStorage{
+		codec:  codec,
+		crypto: crypto,
+		dir:    dir,
+		refs:   make(map[BlockID]blockRefMap),
+	}
 }
 
 func (s *bserverTlfStorage) buildBlocksPath() string {
@@ -412,7 +418,17 @@ func (s *bserverTlfStorage) putRefEntryLocked(
 	}
 
 	refPath := s.buildRefPath(id, refEntry.Context.GetRefNonce())
-	return ioutil.WriteFile(refPath, buf, 0600)
+	err = ioutil.WriteFile(refPath, buf, 0600)
+	if err != nil {
+		return err
+	}
+
+	if s.refs[id] == nil {
+		s.refs[id] = make(blockRefMap)
+	}
+
+	s.refs[id].put(refEntry.Context, refEntry.Status)
+	return nil
 }
 
 func (s *bserverTlfStorage) putData(
