@@ -211,11 +211,13 @@ func (b *BlockServerRemote) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	size := -1
 	defer func() {
 		if err != nil {
-			b.deferLog.CWarningf(ctx, "Get id=%s uid=%s sz=%d err=%v",
-				id, context.GetWriter(), size, err)
+			b.deferLog.CWarningf(
+				ctx, "Get id=%s tlf=%s context=%s sz=%d err=%v",
+				id, tlfID, context, size, err)
 		} else {
-			b.deferLog.CDebugf(ctx, "Get id=%s uid=%s sz=%d",
-				id, context.GetWriter(), size)
+			b.deferLog.CDebugf(
+				ctx, "Get id=%s tlf=%s context=%s sz=%d",
+				id, tlfID, context, size)
 		}
 	}()
 
@@ -248,11 +250,12 @@ func (b *BlockServerRemote) Put(ctx context.Context, id BlockID, tlfID TlfID,
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(
-				ctx, "Put id=%s uid=%s sz=%d err=%v",
-				id, context.GetWriter(), size, err)
+				ctx, "Put id=%s tlf=%s context=%s sz=%d err=%v",
+				id, tlfID, context, size, err)
 		} else {
-			b.deferLog.CDebugf(ctx, "Put id=%s uid=%s sz=%d",
-				id, context.GetWriter(), size)
+			b.deferLog.CDebugf(
+				ctx, "Put id=%s tlf=%s context=%s sz=%d",
+				id, tlfID, context, size)
 		}
 	}()
 
@@ -282,12 +285,12 @@ func (b *BlockServerRemote) AddBlockReference(ctx context.Context, id BlockID,
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(
-				ctx, "AddBlockReference id=%s uid=%s err=%v",
-				id, context.GetWriter(), err)
+				ctx, "AddBlockReference id=%s tlf=%s context=%s err=%v",
+				id, tlfID, context, err)
 		} else {
 			b.deferLog.CDebugf(
-				ctx, "AddBlockReference id=%s uid=%s",
-				id, context.GetWriter())
+				ctx, "AddBlockReference id=%s tlf=%s context=%s",
+				id, tlfID, context)
 		}
 	}()
 
