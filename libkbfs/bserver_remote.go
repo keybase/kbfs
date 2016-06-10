@@ -187,6 +187,8 @@ func makeBlockIDCombo(id BlockID, context BlockContext) keybase1.BlockIdCombo {
 	// used in a BlockReference -- it just refers to the original
 	// creator of the block, i.e. the original user charged for
 	// the block.
+	//
+	// This may all change once we implement groups.
 	return keybase1.BlockIdCombo{
 		BlockHash: id.String(),
 		ChargedTo: context.GetCreator(),
@@ -196,7 +198,7 @@ func makeBlockIDCombo(id BlockID, context BlockContext) keybase1.BlockIdCombo {
 func makeBlockReference(id BlockID, context BlockContext) keybase1.BlockReference {
 	return keybase1.BlockReference{
 		Bid: makeBlockIDCombo(id, context),
-		// The actual writer to decrement quota from.
+		// The actual writer to modify quota for.
 		ChargedTo: context.GetWriter(),
 		Nonce:     keybase1.BlockRefNonce(context.GetRefNonce()),
 	}

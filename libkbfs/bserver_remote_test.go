@@ -112,8 +112,10 @@ func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlock
 		return keybase1.GetBlockRes{}, err
 	}
 
-	// Always use this block context since the RPC API drops the
-	// real context.
+	// Always use this block context (the one the block was
+	// originally put with) since the RPC API doesn't pass along
+	// all the info from the block context passed into
+	// BlockServer.Get().
 	bCtx := BlockContext{
 		RefNonce: zeroBlockRefNonce,
 		Creator:  arg.Bid.ChargedTo,
