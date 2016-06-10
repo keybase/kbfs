@@ -22,7 +22,7 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 	defer func() {
 		err := os.RemoveAll(tempdir)
 		if err != nil {
-			t.Log("error removing %s: %s", tempdir, err)
+			t.Logf("error removing %s: %s", tempdir, err)
 		}
 	}()
 
