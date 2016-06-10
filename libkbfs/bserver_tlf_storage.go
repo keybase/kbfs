@@ -83,16 +83,20 @@ func (s *bserverTlfStorage) buildRefPath(id BlockID, refNonce BlockRefNonce) str
 	return filepath.Join(s.buildRefsPath(id), refNonceStr)
 }
 
+func (s *bserverTlfStorage) getJournalPath() string {
+	return filepath.Join(s.dir, "journal")
+}
+
 func (s *bserverTlfStorage) getEarliestPath() string {
-	return filepath.Join(s.dir, "journal", "EARLIEST")
+	return filepath.Join(s.getJournalPath(), "EARLIEST")
 }
 
 func (s *bserverTlfStorage) getLatestPath() string {
-	return filepath.Join(s.dir, "journal", "LATEST")
+	return filepath.Join(s.getJournalPath(), "LATEST")
 }
 
 func (s *bserverTlfStorage) getEntryPath(o uint64) string {
-	return filepath.Join(s.dir, "journal", ordinalToStr(o))
+	return filepath.Join(s.getJournalPath(), ordinalToStr(o))
 }
 
 func ordinalToStr(o uint64) string {
@@ -141,6 +145,38 @@ type bserverJournalEntry struct {
 	Context BlockContext
 }
 
+func (s *bserverTlfStorage) getJournalEntryLocked(o uint64) (bserverJournalEntry, error) {
+	p := s.getEntryPath(o)
+	buf, err := ioutil.ReadFile(p)
+	if err != nil {
+		return bserverJournalEntry{}, err
+	}
+
+	var e bserverJournalEntry
+	err = s.codec.Decode(buf, &e)
+	if err != nil {
+		return bserverJournalEntry{}, err
+	}
+
+	return e, nil
+}
+
+func (s *bserverTlfStorage) putJournalEntryLocked(o uint64, e bserverJournalEntry) error {
+	err := os.MkdirAll(s.getJournalPath(), 0700)
+	if err != nil {
+		return err
+	}
+
+	p := s.getEntryPath(o)
+
+	buf, err := s.codec.Encode(e)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(p, buf, 0600)
+}
+
 func (s *bserverTlfStorage) addJournalEntryLocked(
 	op string, id BlockID, context BlockContext) error {
 	var next uint64
@@ -152,9 +188,8 @@ func (s *bserverTlfStorage) addJournalEntryLocked(
 	} else {
 		next = o + 1
 	}
-	p := s.getEntryPath(o)
 
-	buf, err := s.codec.Encode(bserverJournalEntry{
+	err = s.putJournalEntryLocked(next, bserverJournalEntry{
 		Op:      op,
 		ID:      id,
 		Context: context,
@@ -162,8 +197,6 @@ func (s *bserverTlfStorage) addJournalEntryLocked(
 	if err != nil {
 		return err
 	}
-
-	ioutil.WriteFile(p, buf, 0600)
 
 	_, err = s.getEarliestOrdinalLocked()
 	if os.IsNotExist(err) {
@@ -584,4 +617,22 @@ func (s *bserverTlfStorage) shutdown() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.isShutdown = true
+
+	first, err := s.getEarliestOrdinalLocked()
+	if os.IsNotExist(err) {
+		return
+	} else if err != nil {
+		panic(err)
+	}
+	last, err := s.getLatestOrdinalLocked()
+	if err != nil {
+		panic(err)
+	}
+
+	for i := first; i <= last; i++ {
+		_, err := s.getJournalEntryLocked(i)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
