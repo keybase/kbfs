@@ -83,6 +83,10 @@ func (s *bserverTlfStorage) buildRefPath(id BlockID, refNonce BlockRefNonce) str
 	return filepath.Join(s.buildRefsPath(id), refNonceStr)
 }
 
+func (s *bserverTlfStorage) getEarliestPath() string {
+	return filepath.Join(s.dir, "journal", "EARLIEST")
+}
+
 func (s *bserverTlfStorage) getLatestPath() string {
 	return filepath.Join(s.dir, "journal", "LATEST")
 }
@@ -102,27 +106,33 @@ func strToOrdinal(s string) (uint64, error) {
 	return strconv.ParseUint(s, 16, 64)
 }
 
-func (s *bserverTlfStorage) getCurrentOrdinalLocked() (uint64, error) {
-	latestPath := s.getLatestPath()
-	buf, err := ioutil.ReadFile(latestPath)
+func (s *bserverTlfStorage) getOrdinalLocked(path string) (uint64, error) {
+	buf, err := ioutil.ReadFile(path)
 	if err != nil {
 		return 0, err
 	}
 	return strToOrdinal(string(buf))
 }
 
-func (s *bserverTlfStorage) getNextOrdinalLocked() (uint64, error) {
-	currOrdinal, err := s.getCurrentOrdinalLocked()
-	if err != nil {
-		return 0, err
-	}
-	return currOrdinal + 1, nil
+func (s *bserverTlfStorage) putOrdinalLocked(path string, o uint64) error {
+	str := ordinalToStr(o)
+	return ioutil.WriteFile(path, []byte(str), 0600)
 }
 
-func (s *bserverTlfStorage) putCurrentOrdinalLocked(currOrdinal uint64) error {
-	latestPath := s.getLatestPath()
-	str := ordinalToStr(currOrdinal)
-	return ioutil.WriteFile(latestPath, []byte(str), 0600)
+func (s *bserverTlfStorage) getEarliestOrdinalLocked() (uint64, error) {
+	return s.getOrdinalLocked(s.getEarliestPath())
+}
+
+func (s *bserverTlfStorage) putEarliestOrdinalLocked(currOrdinal uint64) error {
+	return s.putOrdinalLocked(s.getEarliestPath(), currOrdinal)
+}
+
+func (s *bserverTlfStorage) getLatestOrdinalLocked() (uint64, error) {
+	return s.getOrdinalLocked(s.getLatestPath())
+}
+
+func (s *bserverTlfStorage) putLatestOrdinalLocked(currOrdinal uint64) error {
+	return s.putOrdinalLocked(s.getLatestPath(), currOrdinal)
 }
 
 type bserverJournalEntry struct {
@@ -133,7 +143,15 @@ type bserverJournalEntry struct {
 
 func (s *bserverTlfStorage) addJournalEntryLocked(
 	op string, id BlockID, context BlockContext) error {
-	o, err := s.getNextOrdinalLocked()
+	var next uint64
+	o, err := s.getLatestOrdinalLocked()
+	if os.IsNotExist(err) {
+		next = 0
+	} else if err != nil {
+		return err
+	} else {
+		next = o + 1
+	}
 	p := s.getEntryPath(o)
 
 	buf, err := s.codec.Encode(bserverJournalEntry{
@@ -146,6 +164,12 @@ func (s *bserverTlfStorage) addJournalEntryLocked(
 	}
 
 	ioutil.WriteFile(p, buf, 0600)
+
+	_, err = s.getEarliestOrdinalLocked()
+	if os.IsNotExist(err) {
+		s.putEarliestOrdinalLocked(next)
+	}
+	s.putLatestOrdinalLocked(next)
 	return nil
 }
 
