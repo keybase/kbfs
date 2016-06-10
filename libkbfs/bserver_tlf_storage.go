@@ -82,6 +82,18 @@ func (s *bserverTlfStorage) buildRefPath(id BlockID, refNonce BlockRefNonce) str
 	return filepath.Join(s.buildRefsPath(id), refNonceStr)
 }
 
+type bserverJournalEntry struct {
+	op      string
+	id      BlockID
+	context BlockContext
+}
+
+func (s *bserverTlfStorage) addJournalEntryLocked(
+	op string, id BlockID, context BlockContext) error {
+	// TODO: fill in.
+	return nil
+}
+
 func (s *bserverTlfStorage) getRefEntryLocked(
 	id BlockID, refNonce BlockRefNonce) (blockRefEntry, error) {
 	buf, err := ioutil.ReadFile(s.buildRefPath(id, refNonce))
@@ -351,10 +363,15 @@ func (s *bserverTlfStorage) putData(
 		return err
 	}
 
-	return s.putRefEntryLocked(id, blockRefEntry{
+	err = s.putRefEntryLocked(id, blockRefEntry{
 		Status:  liveBlockRef,
 		Context: context,
 	})
+	if err != nil {
+		return err
+	}
+
+	return s.addJournalEntryLocked("put", id, context)
 }
 
 func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error {
@@ -386,10 +403,15 @@ func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error
 			"been archived and cannot be referenced.", id)}
 	}
 
-	return s.putRefEntryLocked(id, blockRefEntry{
+	err = s.putRefEntryLocked(id, blockRefEntry{
 		Status:  liveBlockRef,
 		Context: context,
 	})
+	if err != nil {
+		return err
+	}
+
+	return s.addJournalEntryLocked("addReference", id, context)
 }
 
 func (s *bserverTlfStorage) removeReferences(
@@ -435,6 +457,15 @@ func (s *bserverTlfStorage) removeReferences(
 			return 0, err
 		}
 	}
+
+	// TODO: Coalesce into one entry.
+	for _, context := range contexts {
+		err := s.addJournalEntryLocked("removeReference", id, context)
+		if err != nil {
+			return 0, err
+		}
+	}
+
 	return count, nil
 }
 
@@ -461,7 +492,13 @@ func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) e
 	}
 
 	refEntry.Status = archivedBlockRef
-	return s.putRefEntryLocked(id, refEntry)
+	err = s.putRefEntryLocked(id, refEntry)
+	if err != nil {
+		return err
+	}
+
+	// TODO: Coalesce into one entry.
+	return s.addJournalEntryLocked("archiveReference", id, context)
 }
 
 func (s *bserverTlfStorage) shutdown() {
