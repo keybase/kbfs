@@ -32,13 +32,14 @@ import (
 //
 // dir/blocks/0100/0...01/data
 // dir/blocks/0100/0...01/key_server_half
-// dir/blocks/0100/0...01/refs/0000000000000000
-// dir/blocks/0100/0...01/refs/0000000000000001
 // ...
 // dir/blocks/01ff/f...ff/data
 // dir/blocks/01ff/f...ff/key_server_half
-// dir/blocks/01ff/f...ff/refs/0000000000000000
-// dir/blocks/01ff/f...ff/refs/ffffffffffffffff
+// dir/journal/EARLIEST
+// dir/journal/LATEST
+// dir/journal/0...000
+// dir/journal/0...001
+// dir/journal/0ffffff
 type bserverTlfStorage struct {
 	codec  Codec
 	crypto cryptoPure
