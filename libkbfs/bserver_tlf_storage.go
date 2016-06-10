@@ -55,7 +55,7 @@ type bserverTlfStorage struct {
 }
 
 func makeBserverTlfStorage(
-	codec Codec, crypto CryptoPure, dir string) *bserverTlfStorage {
+	codec Codec, crypto cryptoPure, dir string) *bserverTlfStorage {
 	return &bserverTlfStorage{
 		codec:  codec,
 		crypto: crypto,

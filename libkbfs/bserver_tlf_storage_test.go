@@ -9,13 +9,14 @@ import (
 	"os"
 	"testing"
 
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBserverTlfStorageBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
-	crypto := &CryptoLocal{CryptoCommon: MakeCryptoCommonNoConfig()}
+	crypto := MakeCryptoCommon(NewCodecMsgpack(), logger.NewTestLogger(t))
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "bserver_tlf_storage")
 	require.NoError(t, err)
@@ -26,7 +27,7 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 		}
 	}()
 
-	s := makeBserverTlfStorage(codec, crypto, tempdir)
+	s := makeBserverTlfStorage(codec, &crypto, tempdir)
 
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
