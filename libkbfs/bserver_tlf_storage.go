@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"sync"
 )
@@ -326,6 +327,52 @@ func (s *bserverTlfStorage) getRefEntriesLocked(id BlockID) (
 	return refs, nil
 }
 
+func (s *bserverTlfStorage) getRefEntriesMemLocked(id BlockID) blockRefMap {
+	return s.refs[id]
+}
+
+func (s *bserverTlfStorage) getRefEntriesJournalLocked() (
+	map[BlockID]blockRefMap, error) {
+	first, err := s.getEarliestOrdinalLocked()
+	if os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	last, err := s.getLatestOrdinalLocked()
+	if err != nil {
+		return nil, err
+	}
+
+	refs := make(map[BlockID]blockRefMap)
+
+	for i := first; i <= last; i++ {
+		e, err := s.getJournalEntryLocked(i)
+		if err != nil {
+			return nil, err
+		}
+
+		if s.refs[e.ID] == nil {
+			s.refs[e.ID] = make(blockRefMap)
+		}
+
+		switch e.Op {
+		case "put", "addReference":
+			s.refs[e.ID].put(e.Context, liveBlockRef)
+
+		case "removeReference":
+			delete(s.refs[e.ID], e.Context.GetRefNonce())
+
+		case "archiveReference":
+			s.refs[e.ID].put(e.Context, archivedBlockRef)
+
+		default:
+			return nil, fmt.Errorf("Unknown op %s", e.Op)
+		}
+	}
+	return refs, nil
+}
+
 func (s *bserverTlfStorage) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
 	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
@@ -575,6 +622,10 @@ func (s *bserverTlfStorage) removeReferences(
 				return 0, err
 			}
 			delete(refEntries, refNonce)
+
+			if s.refs[id] != nil {
+				delete(s.refs[id], refNonce)
+			}
 		}
 	}
 
@@ -634,21 +685,12 @@ func (s *bserverTlfStorage) shutdown() {
 	defer s.lock.Unlock()
 	s.isShutdown = true
 
-	first, err := s.getEarliestOrdinalLocked()
-	if os.IsNotExist(err) {
-		return
-	} else if err != nil {
-		panic(err)
-	}
-	last, err := s.getLatestOrdinalLocked()
+	refs, err := s.getRefEntriesJournalLocked()
 	if err != nil {
 		panic(err)
 	}
 
-	for i := first; i <= last; i++ {
-		_, err := s.getJournalEntryLocked(i)
-		if err != nil {
-			panic(err)
-		}
+	if reflect.DeepEqual(refs, s.refs) {
+		panic(fmt.Sprintf("refs = %v != s.refs = %v", refs, s.refs))
 	}
 }
