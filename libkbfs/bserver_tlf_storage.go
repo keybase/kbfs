@@ -31,15 +31,15 @@ import (
 //
 // An example directory structure would be:
 //
-// dir/0100/0...01/data
-// dir/0100/0...01/key_server_half
-// dir/0100/0...01/refs/0000000000000000
-// dir/0100/0...01/refs/0000000000000001
+// dir/blocks/0100/0...01/data
+// dir/blocks/0100/0...01/key_server_half
+// dir/blocks/0100/0...01/refs/0000000000000000
+// dir/blocks/0100/0...01/refs/0000000000000001
 // ...
-// dir/01ff/f...ff/data
-// dir/01ff/f...ff/key_server_half
-// dir/01ff/f...ff/refs/0000000000000000
-// dir/01ff/f...ff/refs/ffffffffffffffff
+// dir/blocks/01ff/f...ff/data
+// dir/blocks/01ff/f...ff/key_server_half
+// dir/blocks/01ff/f...ff/refs/0000000000000000
+// dir/blocks/01ff/f...ff/refs/ffffffffffffffff
 type bserverTlfStorage struct {
 	codec  Codec
 	crypto cryptoPure
@@ -56,9 +56,13 @@ func makeBserverTlfStorage(
 	return &bserverTlfStorage{codec: codec, crypto: crypto, dir: dir}
 }
 
+func (s *bserverTlfStorage) buildBlocksPath() string {
+	return filepath.Join(s.dir, "blocks")
+}
+
 func (s *bserverTlfStorage) buildPath(id BlockID) string {
 	idStr := id.String()
-	return filepath.Join(s.dir, idStr[:4], idStr[4:])
+	return filepath.Join(s.buildBlocksPath(), idStr[:4], idStr[4:])
 }
 
 func (s *bserverTlfStorage) buildDataPath(id BlockID) string {
@@ -202,7 +206,8 @@ func (s *bserverTlfStorage) getAll() (
 		return nil, errBserverTlfStorageShutdown
 	}
 
-	levelOneInfos, err := ioutil.ReadDir(s.dir)
+	blocksPath := s.buildBlocksPath()
+	levelOneInfos, err := ioutil.ReadDir(blocksPath)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +222,7 @@ func (s *bserverTlfStorage) getAll() (
 			continue
 		}
 
-		levelOneDir := filepath.Join(s.dir, levelOneInfo.Name())
+		levelOneDir := filepath.Join(blocksPath, levelOneInfo.Name())
 		levelTwoInfos, err := ioutil.ReadDir(levelOneDir)
 		if err != nil {
 			return nil, err
