@@ -101,7 +101,11 @@ func (b *BlockServerDisk) getStorage(tlfID TlfID) (*bserverTlfStorage, error) {
 	}
 
 	path := filepath.Join(b.dirPath, tlfID.String())
-	storage = makeBserverTlfStorage(b.codec, b.crypto, path)
+	storage, err = makeBserverTlfStorage(b.codec, b.crypto, path)
+	if err != nil {
+		return nil, err
+	}
+
 	b.tlfStorage[tlfID] = storage
 	return storage, nil
 }

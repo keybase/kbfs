@@ -55,13 +55,20 @@ type bserverTlfStorage struct {
 }
 
 func makeBserverTlfStorage(
-	codec Codec, crypto cryptoPure, dir string) *bserverTlfStorage {
-	return &bserverTlfStorage{
+	codec Codec, crypto cryptoPure, dir string) (*bserverTlfStorage, error) {
+	bserver := &bserverTlfStorage{
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
-		refs:   make(map[BlockID]blockRefMap),
 	}
+
+	refs, err := bserver.getRefEntriesJournalLocked()
+	if err != nil {
+		return nil, err
+	}
+
+	bserver.refs = refs
+	return bserver, nil
 }
 
 func (s *bserverTlfStorage) buildBlocksPath() string {
@@ -283,9 +290,11 @@ func (s *bserverTlfStorage) getData(id BlockID, context BlockContext) (
 
 func (s *bserverTlfStorage) getRefEntriesJournalLocked() (
 	map[BlockID]blockRefMap, error) {
+	refs := make(map[BlockID]blockRefMap)
+
 	first, err := s.getEarliestOrdinalLocked()
 	if os.IsNotExist(err) {
-		return nil, nil
+		return refs, nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -293,8 +302,6 @@ func (s *bserverTlfStorage) getRefEntriesJournalLocked() (
 	if err != nil {
 		return nil, err
 	}
-
-	refs := make(map[BlockID]blockRefMap)
 
 	for i := first; i <= last; i++ {
 		e, err := s.getJournalEntryLocked(i)
