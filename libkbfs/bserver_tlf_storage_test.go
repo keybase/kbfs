@@ -29,7 +29,8 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	s := makeBserverTlfStorage(codec, &crypto, tempdir)
+	s := makeBserverTlfStorage(codec, crypto, tempdir)
+	defer s.shutdown()
 
 	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
 
@@ -57,6 +58,22 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 	s.addReference(bID, bCtx2)
 
 	// Make sure we get the same block via that reference.
+	buf, key, err = s.getData(bID, bCtx2)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
+
+	// Shutdown and restart.
+	s.shutdown()
+	s = makeBserverTlfStorage(codec, crypto, tempdir)
+
+	// Make sure we get the same block for both refs.
+
+	buf, key, err = s.getData(bID, bCtx)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
+
 	buf, key, err = s.getData(bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
