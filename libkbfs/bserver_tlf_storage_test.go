@@ -5,22 +5,17 @@
 package libkbfs
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/client/go/protocol"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBserverTlfStorageBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
-	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"user1", "user2"})
-	currentUID := localUsers[0].UID
 	crypto := &CryptoLocal{CryptoCommon: MakeCryptoCommonNoConfig()}
-	config := &ConfigLocal{codec: codec, crypto: crypto}
-	setTestLogger(config, t)
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "bserver_tlf_storage")
 	require.NoError(t, err)
@@ -33,51 +28,34 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 
 	s := makeBserverTlfStorage(codec, crypto, tempdir)
 
-	bCtx := BlockContext{currentUID, "", zeroBlockRefNonce}
+	uid1 := keybase1.MakeTestUID(1)
+	uid2 := keybase1.MakeTestUID(2)
+
+	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	serverHalf, err := config.Crypto().MakeRandomBlockCryptKeyServerHalf()
-	if err != nil {
-		t.Errorf("Couldn't make block server key half: %v", err)
-	}
+	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
 	err = s.putData(bID, bCtx, data, serverHalf)
-	if err != nil {
-		t.Fatalf("Put got error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Now get the same block back
 	buf, key, err := s.getData(bID, bCtx)
-	if err != nil {
-		t.Fatalf("Get returned an error: %v", err)
-	}
-	if !bytes.Equal(buf, data) {
-		t.Errorf("Got bad data -- got %v, expected %v", buf, data)
-	}
-	if key != serverHalf {
-		t.Errorf("Got bad key -- got %v, expected %v", key, serverHalf)
-	}
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
 
 	// Add a reference.
 	nonce, err := crypto.MakeBlockRefNonce()
-	if err != nil {
-		t.Fatal(err)
-	}
-	bCtx2 := BlockContext{currentUID, localUsers[1].UID, nonce}
+	require.NoError(t, err)
+	bCtx2 := BlockContext{uid1, uid2, nonce}
 	s.addReference(bID, bCtx2)
 
 	// Now get the same block back
 	buf, key, err = s.getData(bID, bCtx2)
-	if err != nil {
-		t.Fatalf("Get returned an error: %v", err)
-	}
-	if !bytes.Equal(buf, data) {
-		t.Errorf("Got bad data -- got %v, expected %v", buf, data)
-	}
-	if key != serverHalf {
-		t.Errorf("Got bad key -- got %v, expected %v", key, serverHalf)
-	}
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
 }
