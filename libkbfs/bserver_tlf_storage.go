@@ -18,6 +18,8 @@ import (
 // TODO: Do all high-level operations atomically on the file-system
 // level.
 
+// TODO: Make IO ops cancellable.
+
 // bserverTlfStorage stores block data for a single TLF in flat files
 // in a directory on disk. More specifically, for each block in a TLF,
 // it stores data for that block in its own subdirectory.
