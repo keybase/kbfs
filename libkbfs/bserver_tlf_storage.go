@@ -352,19 +352,19 @@ func (s *bserverTlfStorage) getRefEntriesJournalLocked() (
 			return nil, err
 		}
 
-		if s.refs[e.ID] == nil {
-			s.refs[e.ID] = make(blockRefMap)
+		if refs[e.ID] == nil {
+			refs[e.ID] = make(blockRefMap)
 		}
 
 		switch e.Op {
 		case "put", "addReference":
-			s.refs[e.ID].put(e.Context, liveBlockRef)
+			refs[e.ID].put(e.Context, liveBlockRef)
 
 		case "removeReference":
-			delete(s.refs[e.ID], e.Context.GetRefNonce())
+			delete(refs[e.ID], e.Context.GetRefNonce())
 
 		case "archiveReference":
-			s.refs[e.ID].put(e.Context, archivedBlockRef)
+			refs[e.ID].put(e.Context, archivedBlockRef)
 
 		default:
 			return nil, fmt.Errorf("Unknown op %s", e.Op)
@@ -690,7 +690,7 @@ func (s *bserverTlfStorage) shutdown() {
 		panic(err)
 	}
 
-	if reflect.DeepEqual(refs, s.refs) {
+	if !reflect.DeepEqual(refs, s.refs) {
 		panic(fmt.Sprintf("refs = %v != s.refs = %v", refs, s.refs))
 	}
 }
