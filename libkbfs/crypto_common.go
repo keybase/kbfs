@@ -39,6 +39,8 @@ type CryptoCommon struct {
 	deferLog logger.Logger
 }
 
+var _ cryptoPure = (*CryptoCommon)(nil)
+
 // MakeCryptoCommon returns a default CryptoCommon object.
 func MakeCryptoCommon(config Config) CryptoCommon {
 	log := config.MakeLogger("")
