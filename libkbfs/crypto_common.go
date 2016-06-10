@@ -42,17 +42,8 @@ type CryptoCommon struct {
 var _ cryptoPure = (*CryptoCommon)(nil)
 
 // MakeCryptoCommon returns a default CryptoCommon object.
-func MakeCryptoCommon(config Config) CryptoCommon {
-	log := config.MakeLogger("")
-	return CryptoCommon{config.Codec(), log, log.CloneWithAddedDepth(1)}
-}
-
-// MakeCryptoCommonNoConfig returns a default CryptoCommon
-// object. This is meant to be used for code that doesn't use Config
-// (like server code).
-func MakeCryptoCommonNoConfig() CryptoCommon {
-	log := logger.NewNull()
-	return CryptoCommon{NewCodecMsgpack(), log, log.CloneWithAddedDepth(1)}
+func MakeCryptoCommon(codec Codec, log logger.Logger) CryptoCommon {
+	return CryptoCommon{codec, log, log.CloneWithAddedDepth(1)}
 }
 
 // MakeRandomTlfID implements the Crypto interface for CryptoCommon.
