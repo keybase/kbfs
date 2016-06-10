@@ -16,8 +16,6 @@ import (
 	"sync"
 )
 
-// TODO: Have bserverTlfStorage store a journal of put operations.
-
 // TODO: Do all high-level operations atomically on the file-system
 // level.
 
