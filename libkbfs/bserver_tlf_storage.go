@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 )
 
@@ -82,15 +83,69 @@ func (s *bserverTlfStorage) buildRefPath(id BlockID, refNonce BlockRefNonce) str
 	return filepath.Join(s.buildRefsPath(id), refNonceStr)
 }
 
+func (s *bserverTlfStorage) getLatestPath() string {
+	return filepath.Join(s.dir, "journal", "LATEST")
+}
+
+func (s *bserverTlfStorage) getEntryPath(o uint64) string {
+	return filepath.Join(s.dir, "journal", ordinalToStr(o))
+}
+
+func ordinalToStr(o uint64) string {
+	return fmt.Sprintf("%016x", o)
+}
+
+func strToOrdinal(s string) (uint64, error) {
+	if len(s) != 16 {
+		return 0, fmt.Errorf("%q has invalid format", s)
+	}
+	return strconv.ParseUint(s, 16, 64)
+}
+
+func (s *bserverTlfStorage) getCurrentOrdinalLocked() (uint64, error) {
+	latestPath := s.getLatestPath()
+	buf, err := ioutil.ReadFile(latestPath)
+	if err != nil {
+		return 0, err
+	}
+	return strToOrdinal(string(buf))
+}
+
+func (s *bserverTlfStorage) getNextOrdinalLocked() (uint64, error) {
+	currOrdinal, err := s.getCurrentOrdinalLocked()
+	if err != nil {
+		return 0, err
+	}
+	return currOrdinal + 1, nil
+}
+
+func (s *bserverTlfStorage) putCurrentOrdinalLocked(currOrdinal uint64) error {
+	latestPath := s.getLatestPath()
+	str := ordinalToStr(currOrdinal)
+	return ioutil.WriteFile(latestPath, []byte(str), 0600)
+}
+
 type bserverJournalEntry struct {
-	op      string
-	id      BlockID
-	context BlockContext
+	Op      string
+	ID      BlockID
+	Context BlockContext
 }
 
 func (s *bserverTlfStorage) addJournalEntryLocked(
 	op string, id BlockID, context BlockContext) error {
-	// TODO: fill in.
+	o, err := s.getNextOrdinalLocked()
+	p := s.getEntryPath(o)
+
+	buf, err := s.codec.Encode(bserverJournalEntry{
+		Op:      op,
+		ID:      id,
+		Context: context,
+	})
+	if err != nil {
+		return err
+	}
+
+	ioutil.WriteFile(p, buf, 0600)
 	return nil
 }
 
