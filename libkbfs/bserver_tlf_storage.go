@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -77,15 +76,6 @@ func (s *bserverTlfStorage) buildDataPath(id BlockID) string {
 
 func (s *bserverTlfStorage) buildKeyServerHalfPath(id BlockID) string {
 	return filepath.Join(s.buildPath(id), "key_server_half")
-}
-
-func (s *bserverTlfStorage) buildRefsPath(id BlockID) string {
-	return filepath.Join(s.buildPath(id), "refs")
-}
-
-func (s *bserverTlfStorage) buildRefPath(id BlockID, refNonce BlockRefNonce) string {
-	refNonceStr := refNonce.String()
-	return filepath.Join(s.buildRefsPath(id), refNonceStr)
 }
 
 func (s *bserverTlfStorage) getJournalPath() string {
@@ -213,19 +203,17 @@ func (s *bserverTlfStorage) addJournalEntryLocked(
 
 func (s *bserverTlfStorage) getRefEntryLocked(
 	id BlockID, refNonce BlockRefNonce) (blockRefEntry, error) {
-	buf, err := ioutil.ReadFile(s.buildRefPath(id, refNonce))
-	if err != nil {
-		// Let caller handle os.IsNotExist(err) case.
-		return blockRefEntry{}, err
+	refs := s.refs[id]
+	if refs == nil {
+		return blockRefEntry{}, BServerErrorBlockNonExistent{}
 	}
 
-	var refEntry blockRefEntry
-	err = s.codec.Decode(buf, &refEntry)
-	if err != nil {
-		return blockRefEntry{}, err
+	e, ok := refs[refNonce]
+	if !ok {
+		return blockRefEntry{}, BServerErrorBlockNonExistent{}
 	}
 
-	return refEntry, nil
+	return e, nil
 }
 
 var errBserverTlfStorageShutdown = errors.New("bserverTlfStorage is shutdown")
@@ -238,10 +226,7 @@ func (s *bserverTlfStorage) getDataLocked(id BlockID, context BlockContext) (
 	}
 
 	refEntry, err := s.getRefEntryLocked(id, context.GetRefNonce())
-	if os.IsNotExist(err) {
-		return nil, BlockCryptKeyServerHalf{},
-			BServerErrorBlockNonExistent{}
-	} else if err != nil {
+	if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
 
@@ -291,42 +276,6 @@ func (s *bserverTlfStorage) getData(id BlockID, context BlockContext) (
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.getDataLocked(id, context)
-}
-
-func (s *bserverTlfStorage) getRefEntriesLocked(id BlockID) (
-	map[BlockRefNonce]blockRefEntry, error) {
-	refsPath := s.buildRefsPath(id)
-	// Let caller handle os.IsNotExist(err) case.
-	refInfos, err := ioutil.ReadDir(refsPath)
-	if err != nil {
-		return nil, err
-	}
-
-	refs := make(map[BlockRefNonce]blockRefEntry)
-	for _, refInfo := range refInfos {
-		var refNonce BlockRefNonce
-		buf, err := hex.DecodeString(refInfo.Name())
-		if err != nil {
-			return nil, err
-		}
-		if len(buf) != len(refNonce) {
-			return nil, fmt.Errorf(
-				"Invalid ref nonce file %s", refInfo.Name())
-		}
-		copy(refNonce[:], buf)
-
-		refEntry, err := s.getRefEntryLocked(id, refNonce)
-		if err != nil {
-			return nil, err
-		}
-		refs[refNonce] = refEntry
-	}
-
-	return refs, nil
-}
-
-func (s *bserverTlfStorage) getRefEntriesMemLocked(id BlockID) blockRefMap {
-	return s.refs[id]
 }
 
 func (s *bserverTlfStorage) getRefEntriesJournalLocked() (
@@ -422,12 +371,12 @@ func (s *bserverTlfStorage) getAll() (
 
 			res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
 
-			refEntries, err := s.getRefEntriesLocked(id)
-			if err != nil {
-				return nil, err
+			refs := s.refs[id]
+			if refs == nil {
+				return nil, fmt.Errorf("No refs for block %s", id)
 			}
 
-			for ref, refEntry := range refEntries {
+			for ref, refEntry := range refs {
 				res[id][ref] = refEntry.Status
 			}
 		}
@@ -441,10 +390,10 @@ func (s *bserverTlfStorage) putRefEntryLocked(
 	existingRefEntry, err := s.getRefEntryLocked(
 		id, refEntry.Context.GetRefNonce())
 	var exists bool
-	switch {
-	case os.IsNotExist(err):
+	switch err.(type) {
+	case BServerErrorBlockNonExistent:
 		exists = false
-	case err == nil:
+	case nil:
 		exists = true
 	default:
 		return err
@@ -455,17 +404,6 @@ func (s *bserverTlfStorage) putRefEntryLocked(
 		if err != nil {
 			return err
 		}
-	}
-
-	buf, err := s.codec.Encode(refEntry)
-	if err != nil {
-		return err
-	}
-
-	refPath := s.buildRefPath(id, refEntry.Context.GetRefNonce())
-	err = ioutil.WriteFile(refPath, buf, 0600)
-	if err != nil {
-		return err
 	}
 
 	if s.refs[id] == nil {
@@ -517,9 +455,7 @@ func (s *bserverTlfStorage) putData(
 		}
 	}
 
-	// Do this first, so that it makes the dirs for the data and
-	// key server half files.
-	err = os.MkdirAll(s.buildRefsPath(id), 0700)
+	err = os.MkdirAll(s.buildPath(id), 0700)
 	if err != nil {
 		return err
 	}
@@ -555,17 +491,15 @@ func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error
 		return errBserverTlfStorageShutdown
 	}
 
-	refEntries, err := s.getRefEntriesLocked(id)
-	if os.IsNotExist(err) {
+	refs := s.refs[id]
+	if refs == nil {
 		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s "+
 			"doesn't exist and cannot be referenced.", id)}
-	} else if err != nil {
-		return err
 	}
 
 	// Only add it if there's a non-archived reference.
 	hasNonArchivedRef := false
-	for _, refEntry := range refEntries {
+	for _, refEntry := range refs {
 		if refEntry.Status == liveBlockRef {
 			hasNonArchivedRef = true
 			break
@@ -576,7 +510,7 @@ func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error
 			"been archived and cannot be referenced.", id)}
 	}
 
-	err = s.putRefEntryLocked(id, blockRefEntry{
+	err := s.putRefEntryLocked(id, blockRefEntry{
 		Status:  liveBlockRef,
 		Context: context,
 	})
@@ -596,38 +530,27 @@ func (s *bserverTlfStorage) removeReferences(
 		return 0, errBserverTlfStorageShutdown
 	}
 
-	refEntries, err := s.getRefEntriesLocked(id)
-	if os.IsNotExist(err) {
+	refs := s.refs[id]
+	if refs == nil {
 		// This block is already gone; no error.
 		return 0, nil
-	} else if err != nil {
-		return 0, err
 	}
 
 	for _, context := range contexts {
 		refNonce := context.GetRefNonce()
 		// If this check fails, this ref is already gone,
 		// which is not an error.
-		if refEntry, ok := refEntries[refNonce]; ok {
+		if refEntry, ok := refs[refNonce]; ok {
 			err := refEntry.checkContext(context)
 			if err != nil {
 				return 0, err
 			}
 
-			refPath := s.buildRefPath(id, refNonce)
-			err = os.RemoveAll(refPath)
-			if err != nil {
-				return 0, err
-			}
-			delete(refEntries, refNonce)
-
-			if s.refs[id] != nil {
-				delete(s.refs[id], refNonce)
-			}
+			delete(refs, refNonce)
 		}
 	}
 
-	count := len(refEntries)
+	count := len(refs)
 	if count == 0 {
 		err := os.RemoveAll(s.buildPath(id))
 		if err != nil {
@@ -656,10 +579,14 @@ func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) e
 
 	refNonce := context.GetRefNonce()
 	refEntry, err := s.getRefEntryLocked(id, refNonce)
-	if os.IsNotExist(err) {
+	switch err.(type) {
+	case BServerErrorBlockNonExistent:
 		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
 			"doesn't exist and cannot be archived.", id, refNonce)}
-	} else if err != nil {
+	case nil:
+		break
+
+	default:
 		return err
 	}
 
