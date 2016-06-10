@@ -26,22 +26,25 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 		}
 	}()
 
-	s := makeBserverTlfStorage(codec, &crypto, tempdir)
-
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
+	s := makeBserverTlfStorage(codec, &crypto, tempdir)
+
 	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
+
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
 	require.NoError(t, err)
 
 	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
+
+	// Put the block.
 	err = s.putData(bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 
-	// Now get the same block back
+	// Make sure we get the same block back.
 	buf, key, err := s.getData(bID, bCtx)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
@@ -53,7 +56,7 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 	bCtx2 := BlockContext{uid1, uid2, nonce}
 	s.addReference(bID, bCtx2)
 
-	// Now get the same block back
+	// Make sure we get the same block via that reference.
 	buf, key, err = s.getData(bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
