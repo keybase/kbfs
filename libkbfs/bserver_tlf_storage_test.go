@@ -13,6 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func getJournalLength(t *testing.T, s *bserverTlfStorage) int {
+	l, err := s.journalLength()
+	require.NoError(t, err)
+	return int(l)
+}
+
 func TestBserverTlfStorageBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := makeTestCryptoCommon(t)
@@ -33,6 +39,8 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 	require.NoError(t, err)
 	defer s.shutdown()
 
+	require.Equal(t, 0, getJournalLength(t, s))
+
 	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
 
 	data := []byte{1, 2, 3, 4}
@@ -45,6 +53,7 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 	// Put the block.
 	err = s.putData(bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
+	require.Equal(t, 1, getJournalLength(t, s))
 
 	// Make sure we get the same block back.
 	buf, key, err := s.getData(bID, bCtx)
@@ -56,7 +65,9 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	s.addReference(bID, bCtx2)
+	err = s.addReference(bID, bCtx2)
+	require.NoError(t, err)
+	require.Equal(t, 2, getJournalLength(t, s))
 
 	// Make sure we get the same block via that reference.
 	buf, key, err = s.getData(bID, bCtx2)
@@ -68,6 +79,8 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 	s.shutdown()
 	s, err = makeBserverTlfStorage(codec, crypto, tempdir)
 	require.NoError(t, err)
+
+	require.Equal(t, 2, getJournalLength(t, s))
 
 	// Make sure we get the same block for both refs.
 

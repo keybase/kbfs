@@ -206,9 +206,26 @@ func (s *bserverTlfStorage) addJournalEntryLocked(
 	_, err = s.getEarliestOrdinalLocked()
 	if os.IsNotExist(err) {
 		s.putEarliestOrdinalLocked(next)
+	} else if err != nil {
+		return err
 	}
-	s.putLatestOrdinalLocked(next)
-	return nil
+	return s.putLatestOrdinalLocked(next)
+}
+
+func (s *bserverTlfStorage) journalLength() (uint64, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	first, err := s.getEarliestOrdinalLocked()
+	if os.IsNotExist(err) {
+		return 0, nil
+	} else if err != nil {
+		return 0, err
+	}
+	last, err := s.getLatestOrdinalLocked()
+	if err != nil {
+		return 0, err
+	}
+	return last - first + 1, nil
 }
 
 func (s *bserverTlfStorage) getRefEntryLocked(
