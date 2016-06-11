@@ -339,8 +339,10 @@ func (s *bserverTlfStorage) getRefEntriesJournalLocked() (
 				delete(refs[e.ID], context.GetRefNonce())
 			}
 
-		case "archiveReference":
-			refs[e.ID].put(e.Contexts[0], archivedBlockRef)
+		case "archiveReferences":
+			for _, context := range e.Contexts {
+				refs[e.ID].put(context, archivedBlockRef)
+			}
 
 		default:
 			return nil, fmt.Errorf("Unknown op %s", e.Op)
@@ -566,7 +568,7 @@ func (s *bserverTlfStorage) removeReferences(
 	return count, nil
 }
 
-func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) error {
+func (s *bserverTlfStorage) archiveReferences(id BlockID, contexts []BlockContext) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -574,32 +576,34 @@ func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) e
 		return errBserverTlfStorageShutdown
 	}
 
-	refNonce := context.GetRefNonce()
-	refEntry, err := s.getRefEntryLocked(id, refNonce)
-	switch err.(type) {
-	case BServerErrorBlockNonExistent:
-		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
-			"doesn't exist and cannot be archived.", id, refNonce)}
-	case nil:
-		break
+	for _, context := range contexts {
+		refNonce := context.GetRefNonce()
+		refEntry, err := s.getRefEntryLocked(id, refNonce)
+		switch err.(type) {
+		case BServerErrorBlockNonExistent:
+			return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
+				"doesn't exist and cannot be archived.", id, refNonce)}
+		case nil:
+			break
 
-	default:
-		return err
-	}
+		default:
+			return err
+		}
 
-	err = refEntry.checkContext(context)
-	if err != nil {
-		return err
-	}
+		err = refEntry.checkContext(context)
+		if err != nil {
+			return err
+		}
 
-	refEntry.Status = archivedBlockRef
-	err = s.putRefEntryLocked(id, refEntry)
-	if err != nil {
-		return err
+		refEntry.Status = archivedBlockRef
+		err = s.putRefEntryLocked(id, refEntry)
+		if err != nil {
+			return err
+		}
 	}
 
 	// TODO: Coalesce into one entry.
-	return s.addJournalEntryLocked("archiveReference", id, []BlockContext{context})
+	return s.addJournalEntryLocked("archiveReferences", id, contexts)
 }
 
 func (s *bserverTlfStorage) shutdown() {

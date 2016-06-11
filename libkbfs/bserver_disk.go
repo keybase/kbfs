@@ -191,11 +191,9 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 	}
 
 	for id, idContexts := range contexts {
-		for _, context := range idContexts {
-			err := tlfStorage.archiveReference(id, context)
-			if err != nil {
-				return err
-			}
+		err := tlfStorage.archiveReferences(id, idContexts)
+		if err != nil {
+			return err
 		}
 	}
 
