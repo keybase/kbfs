@@ -94,3 +94,59 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
 }
+
+func TestBserverTlfStorageRemoveReferences(t *testing.T) {
+	codec := NewCodecMsgpack()
+	crypto := makeTestCryptoCommon(t)
+
+	tempdir, err := ioutil.TempDir(os.TempDir(), "bserver_tlf_storage")
+	require.NoError(t, err)
+	defer func() {
+		err := os.RemoveAll(tempdir)
+		if err != nil {
+			t.Logf("error removing %s: %s", tempdir, err)
+		}
+	}()
+
+	uid1 := keybase1.MakeTestUID(1)
+	uid2 := keybase1.MakeTestUID(2)
+
+	s, err := makeBserverTlfStorage(codec, crypto, tempdir)
+	require.NoError(t, err)
+	defer s.shutdown()
+
+	require.Equal(t, 0, getJournalLength(t, s))
+
+	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
+
+	data := []byte{1, 2, 3, 4}
+	bID, err := crypto.MakePermanentBlockID(data)
+	require.NoError(t, err)
+
+	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
+
+	// Put the block.
+	err = s.putData(bID, bCtx, data, serverHalf)
+	require.NoError(t, err)
+	require.Equal(t, 1, getJournalLength(t, s))
+
+	// Add a reference.
+	nonce, err := crypto.MakeBlockRefNonce()
+	require.NoError(t, err)
+	bCtx2 := BlockContext{uid1, uid2, nonce}
+	err = s.addReference(bID, bCtx2)
+	require.NoError(t, err)
+	require.Equal(t, 2, getJournalLength(t, s))
+
+	// Remove references.
+	liveCount, err := s.removeReferences(bID, []BlockContext{bCtx, bCtx2})
+	require.NoError(t, err)
+	require.Equal(t, 0, liveCount)
+	require.Equal(t, 3, getJournalLength(t, s))
+
+	// Add reference back, which should error.
+	err = s.addReference(bID, bCtx2)
+	require.IsType(t, BServerErrorBlockArchived{}, err)
+	require.Equal(t, 3, getJournalLength(t, s))
+}

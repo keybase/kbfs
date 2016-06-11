@@ -145,9 +145,9 @@ func (s *bserverTlfStorage) putLatestOrdinalLocked(currOrdinal uint64) error {
 }
 
 type bserverJournalEntry struct {
-	Op      string
-	ID      BlockID
-	Context BlockContext
+	Op       string
+	ID       BlockID
+	Contexts []BlockContext
 }
 
 func (s *bserverTlfStorage) getJournalEntryLocked(o uint64) (bserverJournalEntry, error) {
@@ -183,7 +183,7 @@ func (s *bserverTlfStorage) putJournalEntryLocked(o uint64, e bserverJournalEntr
 }
 
 func (s *bserverTlfStorage) addJournalEntryLocked(
-	op string, id BlockID, context BlockContext) error {
+	op string, id BlockID, contexts []BlockContext) error {
 	var next uint64
 	o, err := s.getLatestOrdinalLocked()
 	if os.IsNotExist(err) {
@@ -195,9 +195,9 @@ func (s *bserverTlfStorage) addJournalEntryLocked(
 	}
 
 	err = s.putJournalEntryLocked(next, bserverJournalEntry{
-		Op:      op,
-		ID:      id,
-		Context: context,
+		Op:       op,
+		ID:       id,
+		Contexts: contexts,
 	})
 	if err != nil {
 		return err
@@ -332,13 +332,15 @@ func (s *bserverTlfStorage) getRefEntriesJournalLocked() (
 
 		switch e.Op {
 		case "put", "addReference":
-			refs[e.ID].put(e.Context, liveBlockRef)
+			refs[e.ID].put(e.Contexts[0], liveBlockRef)
 
-		case "removeReference":
-			delete(refs[e.ID], e.Context.GetRefNonce())
+		case "removeReferences":
+			for _, context := range e.Contexts {
+				delete(refs[e.ID], context.GetRefNonce())
+			}
 
 		case "archiveReference":
-			refs[e.ID].put(e.Context, archivedBlockRef)
+			refs[e.ID].put(e.Contexts[0], archivedBlockRef)
 
 		default:
 			return nil, fmt.Errorf("Unknown op %s", e.Op)
@@ -349,7 +351,6 @@ func (s *bserverTlfStorage) getRefEntriesJournalLocked() (
 
 func (s *bserverTlfStorage) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -357,55 +358,16 @@ func (s *bserverTlfStorage) getAll() (
 		return nil, errBserverTlfStorageShutdown
 	}
 
-	blocksPath := s.buildBlocksPath()
-	levelOneInfos, err := ioutil.ReadDir(blocksPath)
-	if err != nil {
-		return nil, err
-	}
+	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
 
-	// Ignore non-dirs while traversing below.
-
-	// TODO: Tighten up checks below if we ever use this for
-	// anything other than tests.
-
-	for _, levelOneInfo := range levelOneInfos {
-		if !levelOneInfo.IsDir() {
+	for id, refs := range s.refs {
+		if len(refs) == 0 {
 			continue
 		}
 
-		levelOneDir := filepath.Join(blocksPath, levelOneInfo.Name())
-		levelTwoInfos, err := ioutil.ReadDir(levelOneDir)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, levelTwoInfo := range levelTwoInfos {
-			if !levelTwoInfo.IsDir() {
-				continue
-			}
-
-			idStr := levelOneInfo.Name() + levelTwoInfo.Name()
-			id, err := BlockIDFromString(idStr)
-			if err != nil {
-				return nil, err
-			}
-
-			_, ok := res[id]
-			if ok {
-				return nil, fmt.Errorf(
-					"Multiple dir entries for block %s", id)
-			}
-
-			res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
-
-			refs := s.refs[id]
-			if refs == nil {
-				return nil, fmt.Errorf("No refs for block %s", id)
-			}
-
-			for ref, refEntry := range refs {
-				res[id][ref] = refEntry.Status
-			}
+		res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
+		for ref, refEntry := range refs {
+			res[id][ref] = refEntry.Status
 		}
 	}
 
@@ -507,7 +469,7 @@ func (s *bserverTlfStorage) putData(
 		return err
 	}
 
-	return s.addJournalEntryLocked("put", id, context)
+	return s.addJournalEntryLocked("put", id, []BlockContext{context})
 }
 
 func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error {
@@ -532,10 +494,19 @@ func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error
 			break
 		}
 	}
+
 	if !hasNonArchivedRef {
 		return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
 			"been archived and cannot be referenced.", id)}
 	}
+
+	// We allow adding a reference even if all the existing
+	// references are archived, or if we have no references at
+	// all. This is because we can't be sure that there are other
+	// references we don't know about.
+	//
+	// TODO: Figure out what to do with an addReference without a
+	// preceding Put.
 
 	err := s.putRefEntryLocked(id, blockRefEntry{
 		Status:  liveBlockRef,
@@ -545,7 +516,7 @@ func (s *bserverTlfStorage) addReference(id BlockID, context BlockContext) error
 		return err
 	}
 
-	return s.addJournalEntryLocked("addReference", id, context)
+	return s.addJournalEntryLocked("addReference", id, []BlockContext{context})
 }
 
 func (s *bserverTlfStorage) removeReferences(
@@ -585,12 +556,11 @@ func (s *bserverTlfStorage) removeReferences(
 		}
 	}
 
-	// TODO: Coalesce into one entry.
-	for _, context := range contexts {
-		err := s.addJournalEntryLocked("removeReference", id, context)
-		if err != nil {
-			return 0, err
-		}
+	// TODO: Figure out what to do with live count.
+
+	err := s.addJournalEntryLocked("removeReferences", id, contexts)
+	if err != nil {
+		return 0, err
 	}
 
 	return count, nil
@@ -629,7 +599,7 @@ func (s *bserverTlfStorage) archiveReference(id BlockID, context BlockContext) e
 	}
 
 	// TODO: Coalesce into one entry.
-	return s.addJournalEntryLocked("archiveReference", id, context)
+	return s.addJournalEntryLocked("archiveReference", id, []BlockContext{context})
 }
 
 func (s *bserverTlfStorage) shutdown() {
