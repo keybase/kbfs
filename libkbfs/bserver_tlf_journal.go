@@ -85,7 +85,7 @@ func makeBserverTlfJournal(codec Codec, crypto cryptoPure, dir string) (
 	// for consistency.
 	bserver.lock.Lock()
 	defer bserver.lock.Unlock()
-	refs, err := bserver.loadJournalLocked()
+	refs, err := bserver.readJournalLocked()
 	if err != nil {
 		return nil, err
 	}
@@ -219,6 +219,56 @@ func (s *bserverTlfJournal) readJournalEntryLocked(o journalOrdinal) (
 	}
 
 	return e, nil
+}
+
+// readJournalLocked reads the journal and returns a map of all the
+// block references in the journal.
+func (s *bserverTlfJournal) readJournalLocked() (
+	map[BlockID]blockRefMap, error) {
+	refs := make(map[BlockID]blockRefMap)
+
+	first, err := s.readEarliestOrdinalLocked()
+	if os.IsNotExist(err) {
+		return refs, nil
+	} else if err != nil {
+		return nil, err
+	}
+	last, err := s.readLatestOrdinalLocked()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := first; i <= last; i++ {
+		e, err := s.readJournalEntryLocked(i)
+		if err != nil {
+			return nil, err
+		}
+
+		blockRefs = refs[e.ID]
+		if blockRefs == nil {
+			blockrefs = make(blockRefMap)
+			refs[e.ID] = blockRefs
+		}
+
+		switch e.Op {
+		case "put", "addReference":
+			blockRefs.put(e.Contexts[0], liveBlockRef)
+
+		case "removeReferences":
+			for _, context := range e.Contexts {
+				delete(blockRefs, context.GetRefNonce())
+			}
+
+		case "archiveReferences":
+			for _, context := range e.Contexts {
+				blockRefs.put(context, archivedBlockRef)
+			}
+
+		default:
+			return nil, fmt.Errorf("Unknown op %s", e.Op)
+		}
+	}
+	return refs, nil
 }
 
 func (s *bserverTlfJournal) writeJournalEntryLocked(
@@ -367,84 +417,6 @@ func (s *bserverTlfJournal) getDataLocked(id BlockID, context BlockContext) (
 	return data, serverHalf, nil
 }
 
-func (s *bserverTlfJournal) getData(id BlockID, context BlockContext) (
-	[]byte, BlockCryptKeyServerHalf, error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	return s.getDataLocked(id, context)
-}
-
-func (s *bserverTlfJournal) loadJournalLocked() (
-	map[BlockID]blockRefMap, error) {
-	refs := make(map[BlockID]blockRefMap)
-
-	first, err := s.readEarliestOrdinalLocked()
-	if os.IsNotExist(err) {
-		return refs, nil
-	} else if err != nil {
-		return nil, err
-	}
-	last, err := s.readLatestOrdinalLocked()
-	if err != nil {
-		return nil, err
-	}
-
-	for i := first; i <= last; i++ {
-		e, err := s.readJournalEntryLocked(i)
-		if err != nil {
-			return nil, err
-		}
-
-		if refs[e.ID] == nil {
-			refs[e.ID] = make(blockRefMap)
-		}
-
-		switch e.Op {
-		case "put", "addReference":
-			refs[e.ID].put(e.Contexts[0], liveBlockRef)
-
-		case "removeReferences":
-			for _, context := range e.Contexts {
-				delete(refs[e.ID], context.GetRefNonce())
-			}
-
-		case "archiveReferences":
-			for _, context := range e.Contexts {
-				refs[e.ID].put(context, archivedBlockRef)
-			}
-
-		default:
-			return nil, fmt.Errorf("Unknown op %s", e.Op)
-		}
-	}
-	return refs, nil
-}
-
-func (s *bserverTlfJournal) getAll() (
-	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	if s.isShutdown {
-		return nil, errBserverTlfJournalShutdown
-	}
-
-	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
-
-	for id, refs := range s.refs {
-		if len(refs) == 0 {
-			continue
-		}
-
-		res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
-		for ref, refEntry := range refs {
-			res[id][ref] = refEntry.Status
-		}
-	}
-
-	return res, nil
-}
-
 func (s *bserverTlfJournal) putRefEntryLocked(
 	id BlockID, refEntry blockRefEntry) error {
 	existingRefEntry, err := s.getRefEntryLocked(
@@ -472,6 +444,40 @@ func (s *bserverTlfJournal) putRefEntryLocked(
 
 	s.refs[id].put(refEntry.Context, refEntry.Status)
 	return nil
+}
+
+// All functions below are public functions.
+
+func (s *bserverTlfJournal) getData(id BlockID, context BlockContext) (
+	[]byte, BlockCryptKeyServerHalf, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return s.getDataLocked(id, context)
+}
+
+func (s *bserverTlfJournal) getAll() (
+	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	if s.isShutdown {
+		return nil, errBserverTlfJournalShutdown
+	}
+
+	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
+
+	for id, refs := range s.refs {
+		if len(refs) == 0 {
+			continue
+		}
+
+		res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
+		for ref, refEntry := range refs {
+			res[id][ref] = refEntry.Status
+		}
+	}
+
+	return res, nil
 }
 
 func (s *bserverTlfJournal) putData(
@@ -527,7 +533,8 @@ func (s *bserverTlfJournal) putData(
 
 	// TODO: Add integrity-checking for key server half?
 
-	err = ioutil.WriteFile(s.keyServerHalfPath(id), serverHalf.data[:], 0600)
+	err = ioutil.WriteFile(
+		s.keyServerHalfPath(id), serverHalf.data[:], 0600)
 	if err != nil {
 		return err
 	}
@@ -571,7 +578,7 @@ func (s *bserverTlfJournal) addReference(id BlockID, context BlockContext) error
 			"been archived and cannot be referenced.", id)}
 	}
 
-	// We allow adding a reference even if all the existing
+	// TODO: Allow adding a reference even if all the existing
 	// references are archived, or if we have no references at
 	// all. This is because we can't be sure that there are other
 	// references we don't know about.
@@ -587,7 +594,8 @@ func (s *bserverTlfJournal) addReference(id BlockID, context BlockContext) error
 		return err
 	}
 
-	return s.appendJournalEntryLocked("addReference", id, []BlockContext{context})
+	return s.appendJournalEntryLocked(
+		"addReference", id, []BlockContext{context})
 }
 
 func (s *bserverTlfJournal) removeReferences(
@@ -627,7 +635,8 @@ func (s *bserverTlfJournal) removeReferences(
 		}
 	}
 
-	// TODO: Figure out what to do with live count.
+	// TODO: Figure out what to do with live count when we have a
+	// real block server backend.
 
 	err := s.appendJournalEntryLocked("removeReferences", id, contexts)
 	if err != nil {
@@ -637,7 +646,8 @@ func (s *bserverTlfJournal) removeReferences(
 	return count, nil
 }
 
-func (s *bserverTlfJournal) archiveReferences(id BlockID, contexts []BlockContext) error {
+func (s *bserverTlfJournal) archiveReferences(
+	id BlockID, contexts []BlockContext) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -650,8 +660,12 @@ func (s *bserverTlfJournal) archiveReferences(id BlockID, contexts []BlockContex
 		refEntry, err := s.getRefEntryLocked(id, refNonce)
 		switch err.(type) {
 		case BServerErrorBlockNonExistent:
-			return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
-				"doesn't exist and cannot be archived.", id, refNonce)}
+			return BServerErrorBlockNonExistent{
+				fmt.Sprintf(
+					"Block ID %s (ref %s) doesn't "+
+						"exist and cannot be archived.",
+					id, refNonce),
+			}
 		case nil:
 			break
 
@@ -680,7 +694,8 @@ func (s *bserverTlfJournal) shutdown() {
 	defer s.lock.Unlock()
 	s.isShutdown = true
 
-	refs, err := s.loadJournalLocked()
+	// Double-check the on-disk journal with the in-memory one.
+	refs, err := s.readJournalLocked()
 	if err != nil {
 		panic(err)
 	}
