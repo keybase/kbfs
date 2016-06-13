@@ -306,12 +306,16 @@ func (s *bserverTlfJournal) getRefEntryLocked(
 
 var errBserverTlfJournalShutdown = errors.New("bserverTlfJournal is shutdown")
 
+// getDataLocked verifies the block data for the given ID and context
+// and returns it.
 func (s *bserverTlfJournal) getDataLocked(id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
 	if s.isShutdown {
 		return nil, BlockCryptKeyServerHalf{},
 			errBserverTlfJournalShutdown
 	}
+
+	// Check arguments.
 
 	refEntry, err := s.getRefEntryLocked(id, context.GetRefNonce())
 	if err != nil {
@@ -323,22 +327,14 @@ func (s *bserverTlfJournal) getDataLocked(id BlockID, context BlockContext) (
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
 
+	// Read files.
+
 	data, err := ioutil.ReadFile(s.blockDataPath(id))
 	if os.IsNotExist(err) {
 		return nil, BlockCryptKeyServerHalf{},
 			BServerErrorBlockNonExistent{}
 	} else if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	dataID, err := s.crypto.MakePermanentBlockID(data)
-	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	if id != dataID {
-		return nil, BlockCryptKeyServerHalf{}, fmt.Errorf(
-			"Block ID mismatch: expected %s, got %s", id, dataID)
 	}
 
 	keyServerHalfPath := s.keyServerHalfPath(id)
@@ -348,6 +344,18 @@ func (s *bserverTlfJournal) getDataLocked(id BlockID, context BlockContext) (
 			BServerErrorBlockNonExistent{}
 	} else if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	// Check integrity.
+
+	dataID, err := s.crypto.MakePermanentBlockID(data)
+	if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	if id != dataID {
+		return nil, BlockCryptKeyServerHalf{}, fmt.Errorf(
+			"Block ID mismatch: expected %s, got %s", id, dataID)
 	}
 
 	var serverHalf BlockCryptKeyServerHalf
