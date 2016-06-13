@@ -27,9 +27,7 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 	require.NoError(t, err)
 	defer func() {
 		err := os.RemoveAll(tempdir)
-		if err != nil {
-			t.Logf("error removing %s: %s", tempdir, err)
-		}
+		require.NoError(t, err)
 	}()
 
 	uid1 := keybase1.MakeTestUID(1)
@@ -103,9 +101,7 @@ func TestBserverTlfJournalRemoveReferences(t *testing.T) {
 	require.NoError(t, err)
 	defer func() {
 		err := os.RemoveAll(tempdir)
-		if err != nil {
-			t.Logf("error removing %s: %s", tempdir, err)
-		}
+		require.NoError(t, err)
 	}()
 
 	uid1 := keybase1.MakeTestUID(1)
@@ -159,9 +155,7 @@ func TestBserverTlfJournalArchiveReferences(t *testing.T) {
 	require.NoError(t, err)
 	defer func() {
 		err := os.RemoveAll(tempdir)
-		if err != nil {
-			t.Logf("error removing %s: %s", tempdir, err)
-		}
+		require.NoError(t, err)
 	}()
 
 	uid1 := keybase1.MakeTestUID(1)

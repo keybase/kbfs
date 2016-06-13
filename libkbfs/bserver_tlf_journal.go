@@ -244,9 +244,9 @@ func (s *bserverTlfJournal) readJournalLocked() (
 			return nil, err
 		}
 
-		blockRefs = refs[e.ID]
+		blockRefs := refs[e.ID]
 		if blockRefs == nil {
-			blockrefs = make(blockRefMap)
+			blockRefs = make(blockRefMap)
 			refs[e.ID] = blockRefs
 		}
 
