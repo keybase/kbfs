@@ -24,7 +24,7 @@ const (
 	// Maximum supported plaintext size of a directory in KBFS. TODO:
 	// increase this once we support levels of indirection for
 	// directories.
-	maxDirBytesDefault = 512 * 1024
+	maxDirBytesDefault = MaxBlockSize
 	// Default time after setting the rekey bit before prompting for a
 	// paper key.
 	rekeyWithPromptWaitTimeDefault = 10 * time.Minute
@@ -567,8 +567,8 @@ func (c *ConfigLocal) ResetCaches() {
 	defer c.lock.Unlock()
 	c.mdcache = NewMDCacheStandard(5000)
 	c.kcache = NewKeyCacheStandard(5000)
-	// Limit the block cache to 10K entries or 512 MB of bytes
-	c.bcache = NewBlockCacheStandard(c, 10000, 512*1024*1024)
+	// Limit the block cache to 10K entries or 1024 blocks (currently 512MiB)
+	c.bcache = NewBlockCacheStandard(c, 10000, MaxBlockSize*1024)
 	c.dirtyBcache = NewDirtyBlockCacheStandard()
 }
 

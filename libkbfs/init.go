@@ -318,7 +318,7 @@ func Init(params InitParams, onInterruptFn func(), log logger.Logger) (Config, e
 	// Total history size for 1048576-byte blocks: 618945052672 bytes
 	// Total history size for 2097152-byte blocks: 1134341128192 bytes
 	// Total history size for 4194304-byte blocks: 2216672886784 bytes
-	bsplitter, err := NewBlockSplitterSimple(512*1024, 8*1024,
+	bsplitter, err := NewBlockSplitterSimple(MaxBlockSize, 8*1024,
 		config.Codec())
 	if err != nil {
 		return nil, err
