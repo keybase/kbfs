@@ -27,7 +27,7 @@ type BlockServerDisk struct {
 
 	tlfStorageLock sync.RWMutex
 	// tlfStorage is nil after Shutdown() is called.
-	tlfStorage map[TlfID]*bserverTlfStorage
+	tlfStorage map[TlfID]*bserverTlfJournal
 }
 
 var _ BlockServer = (*BlockServerDisk)(nil)
@@ -43,7 +43,7 @@ func newBlockServerDisk(
 		dirPath,
 		shutdownFunc,
 		sync.RWMutex{},
-		make(map[TlfID]*bserverTlfStorage),
+		make(map[TlfID]*bserverTlfJournal),
 	}
 	return bserv
 }
@@ -71,8 +71,8 @@ func NewBlockServerTempDir(config Config) (*BlockServerDisk, error) {
 
 var errBlockServerDiskShutdown = errors.New("BlockServerDisk is shutdown")
 
-func (b *BlockServerDisk) getStorage(tlfID TlfID) (*bserverTlfStorage, error) {
-	storage, err := func() (*bserverTlfStorage, error) {
+func (b *BlockServerDisk) getStorage(tlfID TlfID) (*bserverTlfJournal, error) {
+	storage, err := func() (*bserverTlfJournal, error) {
 		b.tlfStorageLock.RLock()
 		defer b.tlfStorageLock.RUnlock()
 		if b.tlfStorage == nil {
@@ -101,7 +101,7 @@ func (b *BlockServerDisk) getStorage(tlfID TlfID) (*bserverTlfStorage, error) {
 	}
 
 	path := filepath.Join(b.dirPath, tlfID.String())
-	storage, err = makeBserverTlfStorage(b.codec, b.crypto, path)
+	storage, err = makeBserverTlfJournal(b.codec, b.crypto, path)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func (b *BlockServerDisk) getAll(tlfID TlfID) (
 
 // Shutdown implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) Shutdown() {
-	tlfStorage := func() map[TlfID]*bserverTlfStorage {
+	tlfStorage := func() map[TlfID]*bserverTlfJournal {
 		b.tlfStorageLock.Lock()
 		defer b.tlfStorageLock.Unlock()
 		// Make further accesses error out.

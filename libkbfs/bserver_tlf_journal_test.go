@@ -13,13 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getJournalLength(t *testing.T, s *bserverTlfStorage) int {
+func getJournalLength(t *testing.T, s *bserverTlfJournal) int {
 	l, err := s.journalLength()
 	require.NoError(t, err)
 	return int(l)
 }
 
-func TestBserverTlfStorageBasic(t *testing.T) {
+func TestBserverTlfJournalBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := makeTestCryptoCommon(t)
 
@@ -35,7 +35,7 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	s, err := makeBserverTlfStorage(codec, crypto, tempdir)
+	s, err := makeBserverTlfJournal(codec, crypto, tempdir)
 	require.NoError(t, err)
 	defer s.shutdown()
 
@@ -77,7 +77,7 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 
 	// Shutdown and restart.
 	s.shutdown()
-	s, err = makeBserverTlfStorage(codec, crypto, tempdir)
+	s, err = makeBserverTlfJournal(codec, crypto, tempdir)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, getJournalLength(t, s))
@@ -95,7 +95,7 @@ func TestBserverTlfStorageBasic(t *testing.T) {
 	require.Equal(t, serverHalf, key)
 }
 
-func TestBserverTlfStorageRemoveReferences(t *testing.T) {
+func TestBserverTlfJournalRemoveReferences(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := makeTestCryptoCommon(t)
 
@@ -111,7 +111,7 @@ func TestBserverTlfStorageRemoveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	s, err := makeBserverTlfStorage(codec, crypto, tempdir)
+	s, err := makeBserverTlfJournal(codec, crypto, tempdir)
 	require.NoError(t, err)
 	defer s.shutdown()
 
@@ -151,7 +151,7 @@ func TestBserverTlfStorageRemoveReferences(t *testing.T) {
 	require.Equal(t, 3, getJournalLength(t, s))
 }
 
-func TestBserverTlfStorageArchiveReferences(t *testing.T) {
+func TestBserverTlfJournalArchiveReferences(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := makeTestCryptoCommon(t)
 
@@ -167,7 +167,7 @@ func TestBserverTlfStorageArchiveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	s, err := makeBserverTlfStorage(codec, crypto, tempdir)
+	s, err := makeBserverTlfJournal(codec, crypto, tempdir)
 	require.NoError(t, err)
 	defer s.shutdown()
 
