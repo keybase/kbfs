@@ -71,15 +71,21 @@ type bserverTlfJournal struct {
 	isShutdown bool
 }
 
-func makeBserverTlfJournal(
-	codec Codec, crypto cryptoPure, dir string) (*bserverTlfJournal, error) {
+// makeBserverTlfJournal returns a new bserverTlfJournal for the given
+// directory. Any existing journal entries are read.
+func makeBserverTlfJournal(codec Codec, crypto cryptoPure, dir string) (
+	*bserverTlfJournal, error) {
 	bserver := &bserverTlfJournal{
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
 	}
 
-	refs, err := bserver.getRefEntriesJournalLocked()
+	// Locking here is not strictly necessary, but do it anyway
+	// for consistency.
+	bserver.lock.Lock()
+	defer bserver.lock.Unlock()
+	refs, err := bserver.loadJournalLocked()
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +328,7 @@ func (s *bserverTlfJournal) getData(id BlockID, context BlockContext) (
 	return s.getDataLocked(id, context)
 }
 
-func (s *bserverTlfJournal) getRefEntriesJournalLocked() (
+func (s *bserverTlfJournal) loadJournalLocked() (
 	map[BlockID]blockRefMap, error) {
 	refs := make(map[BlockID]blockRefMap)
 
@@ -628,7 +634,7 @@ func (s *bserverTlfJournal) shutdown() {
 	defer s.lock.Unlock()
 	s.isShutdown = true
 
-	refs, err := s.getRefEntriesJournalLocked()
+	refs, err := s.loadJournalLocked()
 	if err != nil {
 		panic(err)
 	}
