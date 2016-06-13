@@ -63,6 +63,9 @@ type bserverTlfJournal struct {
 
 	// Protects any IO operations in dir or any of its children,
 	// as well as refs and isShutdown.
+	//
+	// TODO: Consider using https://github.com/pkg/singlefile
+	// instead.
 	lock       sync.RWMutex
 	refs       map[BlockID]blockRefMap
 	isShutdown bool
