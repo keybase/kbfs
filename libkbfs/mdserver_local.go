@@ -37,14 +37,7 @@ type MDServerLocal struct {
 	locksMutex *sync.Mutex
 	locksDb    *leveldb.DB // folderId -> deviceKID
 
-	// mutex protects observers and sessionHeads
-	mutex *sync.Mutex
-	// Multiple instances of MDServerLocal could share a reference to
-	// this map and sessionHead, and we use that to ensure that all
-	// observers are fired correctly no matter which MDServerLocal
-	// instance gets the Put() call.
-	observers    map[TlfID]map[*MDServerLocal]chan<- error
-	sessionHeads map[TlfID]*MDServerLocal
+	shared *mdServerLocalShared
 
 	shutdown     *bool
 	shutdownLock *sync.RWMutex
@@ -70,9 +63,8 @@ func newMDServerLocalWithStorage(config Config, handleStorage, mdStorage,
 	}
 	log := config.MakeLogger("")
 	mdserv := &MDServerLocal{config, handleDb, mdDb, branchDb, log,
-		&sync.Mutex{}, locksDb, &sync.Mutex{},
-		make(map[TlfID]map[*MDServerLocal]chan<- error),
-		make(map[TlfID]*MDServerLocal), new(bool), &sync.RWMutex{}}
+		&sync.Mutex{}, locksDb, newMDServerLocalShared(),
+		new(bool), &sync.RWMutex{}}
 	return mdserv, nil
 }
 
@@ -535,22 +527,7 @@ func (md *MDServerLocal) Put(ctx context.Context, rmds *RootMetadataSigned) erro
 		// Don't send notifies if it's just a rekey (the real mdserver
 		// sends a "folder needs rekey" notification in this case).
 		!(rmds.MD.IsRekeySet() && rmds.MD.IsWriterMetadataCopiedSet()) {
-		md.mutex.Lock()
-		defer md.mutex.Unlock()
-
-		md.sessionHeads[id] = md
-
-		// now fire all the observers that aren't from this session
-		for k, v := range md.observers[id] {
-			if k != md {
-				v <- nil
-				close(v)
-				delete(md.observers[id], k)
-			}
-		}
-		if len(md.observers[id]) == 0 {
-			delete(md.observers, id)
-		}
+		md.shared.setHead(id, md)
 	}
 
 	return nil
@@ -638,31 +615,7 @@ func (md *MDServerLocal) RegisterForUpdate(ctx context.Context, id TlfID,
 		return nil, err
 	}
 
-	md.mutex.Lock()
-	defer md.mutex.Unlock()
-
-	c := make(chan error, 1)
-	if currMergedHeadRev > currHead && md != md.sessionHeads[id] {
-		c <- nil
-		close(c)
-		return c, nil
-	}
-
-	if _, ok := md.observers[id]; !ok {
-		md.observers[id] = make(map[*MDServerLocal]chan<- error)
-	}
-
-	// Otherwise, this is a legit observer.  This assumes that each
-	// client will be using a unique instance of MDServerLocal.
-	if _, ok := md.observers[id][md]; ok {
-		// If the local node registers something twice, it indicates a
-		// fatal bug.  Note that in the real MDServer implementation,
-		// we should allow this, in order to make the RPC properly
-		// idempotent.
-		panic(fmt.Sprintf("Attempted double-registration for MDServerLocal %p",
-			md))
-	}
-	md.observers[id][md] = c
+	c := md.shared.registerForUpdate(id, currHead, currMergedHeadRev, md)
 	return c, nil
 }
 
@@ -794,7 +747,7 @@ func (md *MDServerLocal) copy(config Config) *MDServerLocal {
 	// observers correctly no matter where they got on the list.
 	log := config.MakeLogger("")
 	return &MDServerLocal{config, md.handleDb, md.mdDb, md.branchDb, log,
-		md.locksMutex, md.locksDb, md.mutex, md.observers, md.sessionHeads,
+		md.locksMutex, md.locksDb, md.shared,
 		md.shutdown, md.shutdownLock}
 }
 
