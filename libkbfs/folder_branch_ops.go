@@ -46,6 +46,9 @@ const (
 
 // Constants used in this file.  TODO: Make these configurable?
 const (
+	// The maximum block size in bytes
+	MaxBlockSize = 512 << 10
+	// Maximum number of blocks that can be sent in parallel
 	maxParallelBlockPuts = 10
 	// Max response size for a single DynamoDB query is 1MB.
 	maxMDsAtATime = 10
@@ -55,7 +58,7 @@ const (
 	// Cap the number of times we retry after a recoverable error
 	maxRetriesOnRecoverableErrors = 10
 	// When the number of dirty bytes exceeds this level, force a sync.
-	dirtyBytesThreshold = maxParallelBlockPuts * (512 << 10)
+	dirtyBytesThreshold = maxParallelBlockPuts * MaxBlockSize
 	// The timeout for any background task.
 	backgroundTaskTimeout = 1 * time.Minute
 )
