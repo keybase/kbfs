@@ -20,6 +20,10 @@ import (
 
 // TODO: Make IO ops cancellable.
 
+// TODO: Add a mode which doesn't assume that this is the only storage
+// for TLF data, i.e. that doesn't remove files when the (known)
+// refcount drops to zero, etc.
+
 // bserverTlfStorage stores block data for a single TLF in flat files
 // in a directory on disk. More specifically, for each block in a TLF,
 // it stores data for that block in its own subdirectory.
