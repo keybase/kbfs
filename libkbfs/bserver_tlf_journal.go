@@ -94,77 +94,87 @@ func makeBserverTlfJournal(codec Codec, crypto cryptoPure, dir string) (
 	return bserver, nil
 }
 
-func (s *bserverTlfJournal) buildBlocksPath() string {
-	return filepath.Join(s.dir, "blocks")
+// journalOrdinal is the ordinal used for naming journal entries.
+//
+// TODO: Incorporate metadata revision numbers.
+type journalOrdinal uint64
+
+func makeJournalOrdinal(s string) (journalOrdinal, error) {
+	if len(s) != 16 {
+		return 0, fmt.Errorf("invalid journal ordinal %q", s)
+	}
+	u, err := strconv.ParseUint(s, 16, 64)
+	if err != nil {
+		return 0, err
+	}
+	return journalOrdinal(u), nil
 }
 
-func (s *bserverTlfJournal) buildPath(id BlockID) string {
-	idStr := id.String()
-	return filepath.Join(s.buildBlocksPath(), idStr[:4], idStr[4:])
+func (o journalOrdinal) String() string {
+	return fmt.Sprintf("%016x", uint64(o))
 }
 
-func (s *bserverTlfJournal) buildDataPath(id BlockID) string {
-	return filepath.Join(s.buildPath(id), "data")
-}
+// The functions below are for building various paths for the journal.
 
-func (s *bserverTlfJournal) buildKeyServerHalfPath(id BlockID) string {
-	return filepath.Join(s.buildPath(id), "key_server_half")
-}
-
-func (s *bserverTlfJournal) getJournalPath() string {
+func (s *bserverTlfJournal) journalPath() string {
 	return filepath.Join(s.dir, "journal")
 }
 
-func (s *bserverTlfJournal) getEarliestPath() string {
-	return filepath.Join(s.getJournalPath(), "EARLIEST")
+func (s *bserverTlfJournal) earliestPath() string {
+	return filepath.Join(s.journalPath(), "EARLIEST")
 }
 
-func (s *bserverTlfJournal) getLatestPath() string {
-	return filepath.Join(s.getJournalPath(), "LATEST")
+func (s *bserverTlfJournal) latestPath() string {
+	return filepath.Join(s.journalPath(), "LATEST")
 }
 
-func (s *bserverTlfJournal) getEntryPath(o uint64) string {
-	return filepath.Join(s.getJournalPath(), ordinalToStr(o))
+func (s *bserverTlfJournal) journalEntryPath(o journalOrdinal) string {
+	return filepath.Join(s.journalPath(), o.String())
 }
 
-func ordinalToStr(o uint64) string {
-	return fmt.Sprintf("%016x", o)
+func (s *bserverTlfJournal) blocksPath() string {
+	return filepath.Join(s.dir, "blocks")
 }
 
-func strToOrdinal(s string) (uint64, error) {
-	if len(s) != 16 {
-		return 0, fmt.Errorf("%q has invalid format", s)
-	}
-	return strconv.ParseUint(s, 16, 64)
+func (s *bserverTlfJournal) blockPath(id BlockID) string {
+	idStr := id.String()
+	return filepath.Join(s.blocksPath(), idStr[:4], idStr[4:])
 }
 
-func (s *bserverTlfJournal) getOrdinalLocked(path string) (uint64, error) {
+func (s *bserverTlfJournal) blockDataPath(id BlockID) string {
+	return filepath.Join(s.blockPath(id), "data")
+}
+
+func (s *bserverTlfJournal) keyServerHalfPath(id BlockID) string {
+	return filepath.Join(s.blockPath(id), "key_server_half")
+}
+
+func (s *bserverTlfJournal) getOrdinalLocked(path string) (journalOrdinal, error) {
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {
 		return 0, err
 	}
-	return strToOrdinal(string(buf))
+	return makeJournalOrdinal(string(buf))
 }
 
-func (s *bserverTlfJournal) putOrdinalLocked(path string, o uint64) error {
-	str := ordinalToStr(o)
-	return ioutil.WriteFile(path, []byte(str), 0600)
+func (s *bserverTlfJournal) putOrdinalLocked(path string, o journalOrdinal) error {
+	return ioutil.WriteFile(path, []byte(o.String()), 0600)
 }
 
-func (s *bserverTlfJournal) getEarliestOrdinalLocked() (uint64, error) {
-	return s.getOrdinalLocked(s.getEarliestPath())
+func (s *bserverTlfJournal) getEarliestOrdinalLocked() (journalOrdinal, error) {
+	return s.getOrdinalLocked(s.earliestPath())
 }
 
-func (s *bserverTlfJournal) putEarliestOrdinalLocked(currOrdinal uint64) error {
-	return s.putOrdinalLocked(s.getEarliestPath(), currOrdinal)
+func (s *bserverTlfJournal) putEarliestOrdinalLocked(o journalOrdinal) error {
+	return s.putOrdinalLocked(s.earliestPath(), o)
 }
 
-func (s *bserverTlfJournal) getLatestOrdinalLocked() (uint64, error) {
-	return s.getOrdinalLocked(s.getLatestPath())
+func (s *bserverTlfJournal) getLatestOrdinalLocked() (journalOrdinal, error) {
+	return s.getOrdinalLocked(s.latestPath())
 }
 
-func (s *bserverTlfJournal) putLatestOrdinalLocked(currOrdinal uint64) error {
-	return s.putOrdinalLocked(s.getLatestPath(), currOrdinal)
+func (s *bserverTlfJournal) putLatestOrdinalLocked(o journalOrdinal) error {
+	return s.putOrdinalLocked(s.latestPath(), o)
 }
 
 type bserverJournalEntry struct {
@@ -173,8 +183,9 @@ type bserverJournalEntry struct {
 	Contexts []BlockContext
 }
 
-func (s *bserverTlfJournal) getJournalEntryLocked(o uint64) (bserverJournalEntry, error) {
-	p := s.getEntryPath(o)
+func (s *bserverTlfJournal) getJournalEntryLocked(o journalOrdinal) (
+	bserverJournalEntry, error) {
+	p := s.journalEntryPath(o)
 	buf, err := ioutil.ReadFile(p)
 	if err != nil {
 		return bserverJournalEntry{}, err
@@ -189,13 +200,14 @@ func (s *bserverTlfJournal) getJournalEntryLocked(o uint64) (bserverJournalEntry
 	return e, nil
 }
 
-func (s *bserverTlfJournal) putJournalEntryLocked(o uint64, e bserverJournalEntry) error {
-	err := os.MkdirAll(s.getJournalPath(), 0700)
+func (s *bserverTlfJournal) putJournalEntryLocked(
+	o journalOrdinal, e bserverJournalEntry) error {
+	err := os.MkdirAll(s.journalPath(), 0700)
 	if err != nil {
 		return err
 	}
 
-	p := s.getEntryPath(o)
+	p := s.journalEntryPath(o)
 
 	buf, err := s.codec.Encode(e)
 	if err != nil {
@@ -207,7 +219,7 @@ func (s *bserverTlfJournal) putJournalEntryLocked(o uint64, e bserverJournalEntr
 
 func (s *bserverTlfJournal) addJournalEntryLocked(
 	op string, id BlockID, contexts []BlockContext) error {
-	var next uint64
+	var next journalOrdinal
 	o, err := s.getLatestOrdinalLocked()
 	if os.IsNotExist(err) {
 		next = 0
@@ -248,7 +260,7 @@ func (s *bserverTlfJournal) journalLength() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return last - first + 1, nil
+	return uint64(last - first + 1), nil
 }
 
 func (s *bserverTlfJournal) getRefEntryLocked(
@@ -285,7 +297,7 @@ func (s *bserverTlfJournal) getDataLocked(id BlockID, context BlockContext) (
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
 
-	data, err := ioutil.ReadFile(s.buildDataPath(id))
+	data, err := ioutil.ReadFile(s.blockDataPath(id))
 	if os.IsNotExist(err) {
 		return nil, BlockCryptKeyServerHalf{},
 			BServerErrorBlockNonExistent{}
@@ -303,7 +315,7 @@ func (s *bserverTlfJournal) getDataLocked(id BlockID, context BlockContext) (
 			"Block ID mismatch: expected %s, got %s", id, dataID)
 	}
 
-	keyServerHalfPath := s.buildKeyServerHalfPath(id)
+	keyServerHalfPath := s.keyServerHalfPath(id)
 	buf, err := ioutil.ReadFile(keyServerHalfPath)
 	if os.IsNotExist(err) {
 		return nil, BlockCryptKeyServerHalf{},
@@ -469,19 +481,19 @@ func (s *bserverTlfJournal) putData(
 		}
 	}
 
-	err = os.MkdirAll(s.buildPath(id), 0700)
+	err = os.MkdirAll(s.blockPath(id), 0700)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(s.buildDataPath(id), buf, 0600)
+	err = ioutil.WriteFile(s.blockDataPath(id), buf, 0600)
 	if err != nil {
 		return err
 	}
 
 	// TODO: Add integrity-checking for key server half?
 
-	err = ioutil.WriteFile(s.buildKeyServerHalfPath(id), serverHalf.data[:], 0600)
+	err = ioutil.WriteFile(s.keyServerHalfPath(id), serverHalf.data[:], 0600)
 	if err != nil {
 		return err
 	}
@@ -575,7 +587,7 @@ func (s *bserverTlfJournal) removeReferences(
 
 	count := len(refs)
 	if count == 0 {
-		err := os.RemoveAll(s.buildPath(id))
+		err := os.RemoveAll(s.blockPath(id))
 		if err != nil {
 			return 0, err
 		}
