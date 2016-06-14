@@ -49,7 +49,7 @@ const (
 	// The maximum block size in bytes
 	MaxBlockSize = 512 << 10
 	// Maximum number of blocks that can be sent in parallel
-	maxParallelBlockPuts = 10
+	maxParallelBlockPuts = 100
 	// Max response size for a single DynamoDB query is 1MB.
 	maxMDsAtATime = 10
 	// Time between checks for dirty files to flush, in case Sync is
