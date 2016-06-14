@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-type mdServerLocalShared struct {
+type mdServerLocalUpdateManager struct {
 	// Protects observers and sessionHeads.
 	lock sync.Mutex
 	// Multiple local instances of MDServer could share a
@@ -20,14 +20,14 @@ type mdServerLocalShared struct {
 	sessionHeads map[TlfID]MDServer
 }
 
-func newMDServerLocalShared() *mdServerLocalShared {
-	return &mdServerLocalShared{
+func newMDServerLocalUpdateManager() *mdServerLocalUpdateManager {
+	return &mdServerLocalUpdateManager{
 		observers:    make(map[TlfID]map[MDServer]chan<- error),
 		sessionHeads: make(map[TlfID]MDServer),
 	}
 }
 
-func (s *mdServerLocalShared) setHead(id TlfID, server MDServer) {
+func (s *mdServerLocalUpdateManager) setHead(id TlfID, server MDServer) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -46,7 +46,7 @@ func (s *mdServerLocalShared) setHead(id TlfID, server MDServer) {
 	}
 }
 
-func (s *mdServerLocalShared) registerForUpdate(
+func (s *mdServerLocalUpdateManager) registerForUpdate(
 	id TlfID, currHead, currMergedHeadRev MetadataRevision,
 	server MDServer) <-chan error {
 	s.lock.Lock()

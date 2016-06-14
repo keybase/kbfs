@@ -37,7 +37,7 @@ type MDServerLocal struct {
 	locksMutex *sync.Mutex
 	locksDb    *leveldb.DB // folderId -> deviceKID
 
-	shared *mdServerLocalShared
+	updateManager *mdServerLocalUpdateManager
 
 	shutdown     *bool
 	shutdownLock *sync.RWMutex
@@ -63,7 +63,7 @@ func newMDServerLocalWithStorage(config Config, handleStorage, mdStorage,
 	}
 	log := config.MakeLogger("")
 	mdserv := &MDServerLocal{config, handleDb, mdDb, branchDb, log,
-		&sync.Mutex{}, locksDb, newMDServerLocalShared(),
+		&sync.Mutex{}, locksDb, newMDServerLocalUpdateManager(),
 		new(bool), &sync.RWMutex{}}
 	return mdserv, nil
 }
@@ -527,7 +527,7 @@ func (md *MDServerLocal) Put(ctx context.Context, rmds *RootMetadataSigned) erro
 		// Don't send notifies if it's just a rekey (the real mdserver
 		// sends a "folder needs rekey" notification in this case).
 		!(rmds.MD.IsRekeySet() && rmds.MD.IsWriterMetadataCopiedSet()) {
-		md.shared.setHead(id, md)
+		md.updateManager.setHead(id, md)
 	}
 
 	return nil
@@ -615,7 +615,7 @@ func (md *MDServerLocal) RegisterForUpdate(ctx context.Context, id TlfID,
 		return nil, err
 	}
 
-	c := md.shared.registerForUpdate(id, currHead, currMergedHeadRev, md)
+	c := md.updateManager.registerForUpdate(id, currHead, currMergedHeadRev, md)
 	return c, nil
 }
 
@@ -747,7 +747,7 @@ func (md *MDServerLocal) copy(config Config) *MDServerLocal {
 	// observers correctly no matter where they got on the list.
 	log := config.MakeLogger("")
 	return &MDServerLocal{config, md.handleDb, md.mdDb, md.branchDb, log,
-		md.locksMutex, md.locksDb, md.shared,
+		md.locksMutex, md.locksDb, md.updateManager,
 		md.shutdown, md.shutdownLock}
 }
 
