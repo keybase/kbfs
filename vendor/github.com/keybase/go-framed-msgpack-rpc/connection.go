@@ -261,14 +261,10 @@ func NewTLSConnectionPool(size int, srvAddr string, rootCerts []byte,
 
 var _ GenericClient = (*ConnectionPool)(nil)
 
-func (p *ConnectionPool) put(c *Connection) {
-	p.connections <- c
-}
-
 func (p *ConnectionPool) Call(ctx context.Context, method string, arg interface{}, res interface{}) error {
 	select {
 	case c := <-p.connections:
-		defer p.put(c)
+		p.connections <- c
 		return c.GetClient().Call(ctx, method, arg, res)
 	case <-p.shutdownCh:
 		return errors.New("Shutting down")
@@ -278,7 +274,7 @@ func (p *ConnectionPool) Call(ctx context.Context, method string, arg interface{
 func (p *ConnectionPool) Notify(ctx context.Context, method string, arg interface{}) error {
 	select {
 	case c := <-p.connections:
-		defer p.put(c)
+		p.connections <- c
 		return c.GetClient().Notify(ctx, method, arg)
 	case <-p.shutdownCh:
 		return errors.New("Shutting down")
