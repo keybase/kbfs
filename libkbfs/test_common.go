@@ -222,7 +222,7 @@ func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *C
 		// copy the existing mdServer but update the config
 		// this way the current device KID is paired with
 		// the proper user yet the DB state is all shared.
-		mdServerToCopy := config.MDServer().(*MDServerLocal)
+		mdServerToCopy := config.MDServer().(mdServerLocal)
 		mdServer = mdServerToCopy.copy(c)
 
 		// use the same db but swap configs
@@ -376,7 +376,7 @@ func AddNewAssertionForTest(
 	}
 
 	// Let the mdserver know about the name change
-	md, ok := config.MDServer().(*MDServerLocal)
+	md, ok := config.MDServer().(mdServerLocal)
 	if !ok {
 		return errors.New("Bad md server")
 	}

@@ -119,7 +119,7 @@ func makeMDServer(config Config, serverInMemory bool, serverRootDir, mdserverAdd
 		handlePath := filepath.Join(serverRootDir, "kbfs_handles")
 		mdPath := filepath.Join(serverRootDir, "kbfs_md")
 		branchPath := filepath.Join(serverRootDir, "kbfs_branches")
-		return NewMDServerLocal(
+		return NewMDServerDisk(
 			config, handlePath, mdPath, branchPath)
 	}
 
