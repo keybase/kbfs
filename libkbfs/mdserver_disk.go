@@ -621,6 +621,16 @@ func (md *MDServerDisk) getCurrentDeviceKIDBytes(ctx context.Context) (
 	return buf.Bytes(), nil
 }
 
+func getTruncateLockKey(id TlfID) ([]byte, error) {
+	buf := &bytes.Buffer{}
+	// add folder id
+	_, err := buf.Write(id.Bytes())
+	if err != nil {
+		return []byte{}, err
+	}
+	return buf.Bytes(), nil
+}
+
 // TruncateLock implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) TruncateLock(ctx context.Context, id TlfID) (
 	bool, error) {

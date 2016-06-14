@@ -29,13 +29,13 @@ type mdBlockLocal struct {
 // MDServerMemory just stores blocks in local leveldb instances.
 type MDServerMemory struct {
 	config   Config
+	log      logger.Logger
 	handleDb *leveldb.DB // folder handle                  -> folderId
 	mdDb     *leveldb.DB // folderId+[branchId]+[revision] -> mdBlockLocal
 	branchDb *leveldb.DB // folderId+deviceKID             -> branchId
-	log      logger.Logger
 
 	locksMutex *sync.Mutex
-	locksDb    *leveldb.DB // folderId -> deviceKID
+	locksDb    map[TlfID]keybase1.KID // folderId -> deviceKID
 
 	updateManager *mdServerLocalUpdateManager
 
@@ -59,12 +59,9 @@ func newMDServerMemoryWithStorage(config Config, handleStorage, mdStorage,
 	if err != nil {
 		return nil, err
 	}
-	locksDb, err := leveldb.Open(lockStorage, leveldbOptions)
-	if err != nil {
-		return nil, err
-	}
+	locksDb := make(map[TlfID]keybase1.KID)
 	log := config.MakeLogger("")
-	mdserv := &MDServerMemory{config, handleDb, mdDb, branchDb, log,
+	mdserv := &MDServerMemory{config, log, handleDb, mdDb, branchDb,
 		&sync.Mutex{}, locksDb, newMDServerLocalUpdateManager(),
 		new(bool), &sync.RWMutex{}}
 	return mdserv, nil
@@ -585,16 +582,6 @@ func (md *MDServerMemory) RegisterForUpdate(ctx context.Context, id TlfID,
 	return c, nil
 }
 
-func getTruncateLockKey(id TlfID) ([]byte, error) {
-	buf := &bytes.Buffer{}
-	// add folder id
-	_, err := buf.Write(id.Bytes())
-	if err != nil {
-		return []byte{}, err
-	}
-	return buf.Bytes(), nil
-}
-
 func (md *MDServerMemory) getCurrentDeviceKIDBytes(ctx context.Context) (
 	[]byte, error) {
 	buf := &bytes.Buffer{}
@@ -615,25 +602,18 @@ func (md *MDServerMemory) TruncateLock(ctx context.Context, id TlfID) (
 	md.locksMutex.Lock()
 	defer md.locksMutex.Unlock()
 
-	key, err := getTruncateLockKey(id)
+	myKID, err := md.getCurrentDeviceKID(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	myKID, err := md.getCurrentDeviceKIDBytes(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	lockBytes, err := md.locksDb.Get(key, nil)
-	if err == leveldb.ErrNotFound {
-		if err := md.locksDb.Put(key, myKID, nil); err != nil {
-			return false, err
-		}
+	lockKID, ok := md.locksDb[id]
+	if !ok {
+		md.locksDb[id] = myKID
 		return true, nil
-	} else if err != nil {
-		return false, err
-	} else if bytes.Equal(lockBytes, myKID) {
+	}
+
+	if lockKID == myKID {
 		// idempotent
 		return true, nil
 	}
@@ -648,26 +628,19 @@ func (md *MDServerMemory) TruncateUnlock(ctx context.Context, id TlfID) (
 	md.locksMutex.Lock()
 	defer md.locksMutex.Unlock()
 
-	key, err := getTruncateLockKey(id)
+	myKID, err := md.getCurrentDeviceKID(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	myKID, err := md.getCurrentDeviceKIDBytes(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	lockBytes, err := md.locksDb.Get(key, nil)
-	if err == leveldb.ErrNotFound {
-		// Already unlocked
+	lockKID, ok := md.locksDb[id]
+	if !ok {
+		// Already unlocked.
 		return true, nil
-	} else if err != nil {
-		return false, err
-	} else if bytes.Equal(lockBytes, myKID) {
-		if err := md.locksDb.Delete(key, nil); err != nil {
-			return false, err
-		}
+	}
+
+	if lockKID == myKID {
+		delete(md.locksDb, id)
 		return true, nil
 	}
 
@@ -693,9 +666,6 @@ func (md *MDServerMemory) Shutdown() {
 	if md.branchDb != nil {
 		md.branchDb.Close()
 	}
-	if md.locksDb != nil {
-		md.locksDb.Close()
-	}
 }
 
 // IsConnected implements the MDServer interface for MDServerMemory.
@@ -712,7 +682,7 @@ func (md *MDServerMemory) copy(config Config) mdServerLocal {
 	// purpose, so that the MD server that gets a Put will notify all
 	// observers correctly no matter where they got on the list.
 	log := config.MakeLogger("")
-	return &MDServerMemory{config, md.handleDb, md.mdDb, md.branchDb, log,
+	return &MDServerMemory{config, log, md.handleDb, md.mdDb, md.branchDb,
 		md.locksMutex, md.locksDb, md.updateManager,
 		md.shutdown, md.shutdownLock}
 }
