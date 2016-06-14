@@ -26,16 +26,23 @@ type mdBlockLocal struct {
 	Timestamp time.Time
 }
 
+type mdBranchKey struct {
+	tlfID     TlfID
+	deviceKID keybase1.KID
+}
+
 // MDServerMemory just stores blocks in local leveldb instances.
 type MDServerMemory struct {
 	config   Config
 	log      logger.Logger
 	handleDb *leveldb.DB // folder handle                  -> folderId
 	mdDb     *leveldb.DB // folderId+[branchId]+[revision] -> mdBlockLocal
-	branchDb *leveldb.DB // folderId+deviceKID             -> branchId
+
+	branchMutex *sync.Mutex
+	branchDb    map[mdBranchKey]BranchID // TlfID+deviceKID -> BranchID
 
 	locksMutex *sync.Mutex
-	locksDb    map[TlfID]keybase1.KID // folderId -> deviceKID
+	locksDb    map[TlfID]keybase1.KID // TlfID -> deviceKID
 
 	updateManager *mdServerLocalUpdateManager
 
@@ -55,15 +62,12 @@ func newMDServerMemoryWithStorage(config Config, handleStorage, mdStorage,
 	if err != nil {
 		return nil, err
 	}
-	branchDb, err := leveldb.Open(branchStorage, leveldbOptions)
-	if err != nil {
-		return nil, err
-	}
+	branchDb := make(map[mdBranchKey]BranchID)
 	locksDb := make(map[TlfID]keybase1.KID)
 	log := config.MakeLogger("")
-	mdserv := &MDServerMemory{config, log, handleDb, mdDb, branchDb,
-		&sync.Mutex{}, locksDb, newMDServerLocalUpdateManager(),
-		new(bool), &sync.RWMutex{}}
+	mdserv := &MDServerMemory{config, log, handleDb, mdDb,
+		&sync.Mutex{}, branchDb, &sync.Mutex{}, locksDb,
+		newMDServerLocalUpdateManager(), new(bool), &sync.RWMutex{}}
 	return mdserv, nil
 }
 
@@ -274,23 +278,14 @@ func (md *MDServerMemory) getMDKey(id TlfID, revision MetadataRevision,
 	return buf.Bytes(), nil
 }
 
-func (md *MDServerMemory) getBranchKey(ctx context.Context, id TlfID) ([]byte, error) {
-	buf := &bytes.Buffer{}
-	// add folder id
-	_, err := buf.Write(id.Bytes())
-	if err != nil {
-		return []byte{}, err
-	}
+func (md *MDServerMemory) getBranchKey(ctx context.Context, id TlfID) (
+	mdBranchKey, error) {
 	// add device KID
 	deviceKID, err := md.getCurrentDeviceKID(ctx)
 	if err != nil {
-		return []byte{}, err
+		return mdBranchKey{}, err
 	}
-	_, err = buf.Write(deviceKID.ToBytes())
-	if err != nil {
-		return []byte{}, err
-	}
-	return buf.Bytes(), nil
+	return mdBranchKey{id, deviceKID}, nil
 }
 
 func (md *MDServerMemory) getCurrentDeviceKID(ctx context.Context) (keybase1.KID, error) {
@@ -450,18 +445,15 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 
 	// Record branch ID
 	if recordBranchID {
-		buf, err := md.config.Codec().Encode(bid)
-		if err != nil {
-			return MDServerError{err}
-		}
 		branchKey, err := md.getBranchKey(ctx, id)
 		if err != nil {
 			return MDServerError{err}
 		}
-		err = md.branchDb.Put(branchKey, buf, nil)
-		if err != nil {
-			return MDServerError{err}
-		}
+		func() {
+			md.branchMutex.Lock()
+			defer md.branchMutex.Unlock()
+			md.branchDb[branchKey] = bid
+		}()
 	}
 
 	block := &mdBlockLocal{rmds, md.config.Clock().Now()}
@@ -530,11 +522,9 @@ func (md *MDServerMemory) PruneBranch(ctx context.Context, id TlfID, bid BranchI
 	if err != nil {
 		return MDServerError{err}
 	}
-	err = md.branchDb.Delete(branchKey, nil)
-	if err != nil {
-		return MDServerError{err}
-	}
-
+	md.branchMutex.Lock()
+	defer md.branchMutex.Unlock()
+	delete(md.branchDb, branchKey)
 	return nil
 }
 
@@ -543,17 +533,11 @@ func (md *MDServerMemory) getBranchID(ctx context.Context, id TlfID) (BranchID, 
 	if err != nil {
 		return NullBranchID, MDServerError{err}
 	}
-	buf, err := md.branchDb.Get(branchKey, nil)
-	if err == leveldb.ErrNotFound {
+	md.branchMutex.Lock()
+	defer md.branchMutex.Unlock()
+	bid, ok := md.branchDb[branchKey]
+	if !ok {
 		return NullBranchID, nil
-	}
-	if err != nil {
-		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-	}
-	var bid BranchID
-	err = md.config.Codec().Decode(buf, &bid)
-	if err != nil {
-		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 	return bid, nil
 }
@@ -663,9 +647,6 @@ func (md *MDServerMemory) Shutdown() {
 	if md.mdDb != nil {
 		md.mdDb.Close()
 	}
-	if md.branchDb != nil {
-		md.branchDb.Close()
-	}
 }
 
 // IsConnected implements the MDServer interface for MDServerMemory.
@@ -682,9 +663,9 @@ func (md *MDServerMemory) copy(config Config) mdServerLocal {
 	// purpose, so that the MD server that gets a Put will notify all
 	// observers correctly no matter where they got on the list.
 	log := config.MakeLogger("")
-	return &MDServerMemory{config, log, md.handleDb, md.mdDb, md.branchDb,
-		md.locksMutex, md.locksDb, md.updateManager,
-		md.shutdown, md.shutdownLock}
+	return &MDServerMemory{config, log, md.handleDb, md.mdDb,
+		md.branchMutex, md.branchDb, md.locksMutex, md.locksDb,
+		md.updateManager, md.shutdown, md.shutdownLock}
 }
 
 // isShutdown returns whether the logical, shared MDServer instance
