@@ -347,11 +347,9 @@ func (md *RootMetadata) deepCopy(codec Codec, copyHandle bool) (*RootMetadata, e
 func (md *RootMetadata) deepCopyInPlace(codec Codec, copyHandle bool,
 	newMd *RootMetadata) error {
 	if err := CodecUpdate(codec, newMd, md); err != nil {
-		panic(err)
 		return err
 	}
 	if err := CodecUpdate(codec, &newMd.data, md.data); err != nil {
-		panic(err)
 		return err
 	}
 

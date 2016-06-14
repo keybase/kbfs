@@ -70,7 +70,7 @@ func (s *mdServerLocalUpdateManager) registerForUpdate(
 		// fatal bug.  Note that in the real MDServer implementation,
 		// we should allow this, in order to make the RPC properly
 		// idempotent.
-		panic(fmt.Sprintf("Attempted double-registration for MDServerLocal %p",
+		panic(fmt.Errorf("Attempted double-registration for MDServerLocal %v",
 			server))
 	}
 	s.observers[id][server] = c
