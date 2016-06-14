@@ -6,24 +6,21 @@ package libkbfs
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"reflect"
 	"sync"
-	"time"
 
 	"github.com/keybase/client/go/logger"
 	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
-	"github.com/syndtr/goleveldb/leveldb/util"
 	"golang.org/x/net/context"
 )
 
-type mdBlockLocal struct {
-	MD        *RootMetadataSigned
-	Timestamp time.Time
+type mdBlockKey struct {
+	tlfID    TlfID
+	branchID BranchID
 }
 
 type mdBranchKey struct {
@@ -35,14 +32,18 @@ type mdBranchKey struct {
 type MDServerMemory struct {
 	config   Config
 	log      logger.Logger
-	handleDb *leveldb.DB // folder handle                  -> folderId
-	mdDb     *leveldb.DB // folderId+[branchId]+[revision] -> mdBlockLocal
+	handleDb *leveldb.DB // TLF handle -> TLF ID
+
+	mdMutex *sync.Mutex
+	// (TLF ID, branch ID) -> [revision]mdBlockLocal
+	mdDb map[mdBlockKey][]mdBlockLocal
 
 	branchMutex *sync.Mutex
-	branchDb    map[mdBranchKey]BranchID // TlfID+deviceKID -> BranchID
+	// (TLF ID, device KID) -> branch ID
+	branchDb map[mdBranchKey]BranchID
 
 	locksMutex *sync.Mutex
-	locksDb    map[TlfID]keybase1.KID // TlfID -> deviceKID
+	locksDb    map[TlfID]keybase1.KID // TLF ID -> device KID
 
 	updateManager *mdServerLocalUpdateManager
 
@@ -52,20 +53,17 @@ type MDServerMemory struct {
 
 var _ mdServerLocal = (*MDServerMemory)(nil)
 
-func newMDServerMemoryWithStorage(config Config, handleStorage, mdStorage,
-	branchStorage, lockStorage storage.Storage) (*MDServerMemory, error) {
+func newMDServerMemoryWithStorage(
+	config Config, handleStorage storage.Storage) (*MDServerMemory, error) {
 	handleDb, err := leveldb.Open(handleStorage, leveldbOptions)
 	if err != nil {
 		return nil, err
 	}
-	mdDb, err := leveldb.Open(mdStorage, leveldbOptions)
-	if err != nil {
-		return nil, err
-	}
+	mdDb := make(map[mdBlockKey][]mdBlockLocal)
 	branchDb := make(map[mdBranchKey]BranchID)
 	locksDb := make(map[TlfID]keybase1.KID)
 	log := config.MakeLogger("")
-	mdserv := &MDServerMemory{config, log, handleDb, mdDb,
+	mdserv := &MDServerMemory{config, log, handleDb, &sync.Mutex{}, mdDb,
 		&sync.Mutex{}, branchDb, &sync.Mutex{}, locksDb,
 		newMDServerLocalUpdateManager(), new(bool), &sync.RWMutex{}}
 	return mdserv, nil
@@ -74,9 +72,7 @@ func newMDServerMemoryWithStorage(config Config, handleStorage, mdStorage,
 // NewMDServerMemory constructs a new MDServerMemory object that stores
 // all data in-memory.
 func NewMDServerMemory(config Config) (*MDServerMemory, error) {
-	return newMDServerMemoryWithStorage(config,
-		storage.NewMemStorage(), storage.NewMemStorage(),
-		storage.NewMemStorage(), storage.NewMemStorage())
+	return newMDServerMemoryWithStorage(config, storage.NewMemStorage())
 }
 
 // Helper to aid in enforcement that only specified public keys can access TLF metdata.
@@ -227,55 +223,33 @@ func (md *MDServerMemory) rmdsFromBlockBytes(buf []byte) (
 }
 
 func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id TlfID,
-	bid BranchID, mStatus MergeStatus) (rmds *RootMetadataSigned, err error) {
-	key, err := md.getMDKey(id, 0, bid, mStatus)
+	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+	key, err := md.getMDKey(id, bid, mStatus)
 	if err != nil {
-		return
+		return nil, err
 	}
-	buf, err := md.mdDb.Get(key[:], nil)
+	md.mdMutex.Lock()
+	defer md.mdMutex.Unlock()
+	rmds := md.mdDb[key]
+	if len(rmds) == 0 {
+		return nil, nil
+	}
+	var rmdsCopy RootMetadataSigned
+	err = CodecUpdate(md.config.Codec(), &rmdsCopy, rmds[len(rmds)-1].MD)
 	if err != nil {
-		if err == leveldb.ErrNotFound {
-			rmds, err = nil, nil
-			return
-		}
-		return
+		return nil, err
 	}
-	return md.rmdsFromBlockBytes(buf)
+	return &rmdsCopy, nil
 }
 
-func (md *MDServerMemory) getMDKey(id TlfID, revision MetadataRevision,
-	bid BranchID, mStatus MergeStatus) ([]byte, error) {
-	// short-cut
-	if revision == MetadataRevisionUninitialized && mStatus == Merged {
-		return id.Bytes(), nil
+func (md *MDServerMemory) getMDKey(
+	id TlfID, bid BranchID, mStatus MergeStatus) (mdBlockKey, error) {
+	if (mStatus == Merged) != (bid == NullBranchID) {
+		return mdBlockKey{},
+			fmt.Errorf("mstatus=%v is inconsistent with bid=%v",
+				mStatus, bid)
 	}
-	buf := &bytes.Buffer{}
-
-	// add folder id
-	_, err := buf.Write(id.Bytes())
-	if err != nil {
-		return []byte{}, err
-	}
-
-	// this order is signifcant for range fetches.
-	// we want increments in revision number to only affect
-	// the least significant bits of the key.
-	if mStatus == Unmerged {
-		// add branch ID
-		_, err = buf.Write(bid.Bytes())
-		if err != nil {
-			return []byte{}, err
-		}
-	}
-
-	if revision >= MetadataRevisionInitial {
-		// add revision
-		err = binary.Write(buf, binary.BigEndian, revision.Number())
-		if err != nil {
-			return []byte{}, err
-		}
-	}
-	return buf.Bytes(), nil
+	return mdBlockKey{id, bid}, nil
 }
 
 func (md *MDServerMemory) getBranchKey(ctx context.Context, id TlfID) (
@@ -331,28 +305,30 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id TlfID,
 		}
 	}
 
-	var rmdses []*RootMetadataSigned
-	startKey, err := md.getMDKey(id, start, bid, mStatus)
+	key, err := md.getMDKey(id, bid, mStatus)
 	if err != nil {
-		return rmdses, MDServerError{err}
-	}
-	stopKey, err := md.getMDKey(id, stop+1, bid, mStatus)
-	if err != nil {
-		return rmdses, MDServerError{err}
+		return nil, MDServerError{err}
 	}
 
-	iter := md.mdDb.NewIterator(&util.Range{Start: startKey, Limit: stopKey}, nil)
-	defer iter.Release()
-	for iter.Next() {
-		buf := iter.Value()
-		rmds, err := md.rmdsFromBlockBytes(buf)
-		if err != nil {
-			return rmdses, MDServerError{err}
-		}
-		rmdses = append(rmdses, rmds)
+	md.mdMutex.Lock()
+	defer md.mdMutex.Unlock()
+
+	blocks := md.mdDb[key]
+
+	startI := int(start - MetadataRevisionInitial)
+	endI := int(stop - MetadataRevisionInitial + 1)
+	if endI > len(blocks) {
+		endI = len(blocks)
 	}
-	if err := iter.Error(); err != nil {
-		return rmdses, MDServerError{err}
+
+	var rmdses []*RootMetadataSigned
+	for i := startI; i < endI; i++ {
+		var rmdsCopy RootMetadataSigned
+		err = CodecUpdate(md.config.Codec(), &rmdsCopy, blocks[i].MD)
+		if err != nil {
+			return nil, MDServerError{err}
+		}
+		rmdses = append(rmdses, &rmdsCopy)
 	}
 
 	return rmdses, nil
@@ -456,35 +432,23 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 		}()
 	}
 
-	block := &mdBlockLocal{rmds, md.config.Clock().Now()}
-	buf, err := md.config.Codec().Encode(block)
+	var rmdsCopy RootMetadataSigned
+	err = CodecUpdate(md.config.Codec(), &rmdsCopy, rmds)
 	if err != nil {
 		return MDServerError{err}
 	}
 
-	// Wrap writes in a batch
-	batch := new(leveldb.Batch)
+	block := mdBlockLocal{&rmdsCopy, md.config.Clock().Now()}
 
 	// Add an entry with the revision key.
-	revKey, err := md.getMDKey(id, rmds.MD.Revision, rmds.MD.BID, mStatus)
+	revKey, err := md.getMDKey(id, rmds.MD.BID, mStatus)
 	if err != nil {
 		return MDServerError{err}
 	}
-	batch.Put(revKey, buf)
 
-	// Add an entry with the head key.
-	headKey, err := md.getMDKey(id, MetadataRevisionUninitialized,
-		rmds.MD.BID, mStatus)
-	if err != nil {
-		return MDServerError{err}
-	}
-	batch.Put(headKey, buf)
-
-	// Write the batch.
-	err = md.mdDb.Write(batch, nil)
-	if err != nil {
-		return MDServerError{err}
-	}
+	md.mdMutex.Lock()
+	defer md.mdMutex.Unlock()
+	md.mdDb[revKey] = append(md.mdDb[revKey], block)
 
 	if mStatus == Merged &&
 		// Don't send notifies if it's just a rekey (the real mdserver
@@ -644,9 +608,6 @@ func (md *MDServerMemory) Shutdown() {
 	if md.handleDb != nil {
 		md.handleDb.Close()
 	}
-	if md.mdDb != nil {
-		md.mdDb.Close()
-	}
 }
 
 // IsConnected implements the MDServer interface for MDServerMemory.
@@ -663,7 +624,7 @@ func (md *MDServerMemory) copy(config Config) mdServerLocal {
 	// purpose, so that the MD server that gets a Put will notify all
 	// observers correctly no matter where they got on the list.
 	log := config.MakeLogger("")
-	return &MDServerMemory{config, log, md.handleDb, md.mdDb,
+	return &MDServerMemory{config, log, md.handleDb, md.mdMutex, md.mdDb,
 		md.branchMutex, md.branchDb, md.locksMutex, md.locksDb,
 		md.updateManager, md.shutdown, md.shutdownLock}
 }

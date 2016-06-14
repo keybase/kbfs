@@ -193,10 +193,12 @@ func CodecEqual(c Codec, x, y interface{}) (bool, error) {
 func CodecUpdate(c Codec, dst interface{}, src interface{}) error {
 	buf, err := c.Encode(src)
 	if err != nil {
+		panic(err)
 		return err
 	}
 	err = c.Decode(buf, dst)
 	if err != nil {
+		panic(err)
 		return err
 	}
 	return nil
