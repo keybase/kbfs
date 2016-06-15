@@ -14,9 +14,9 @@ import (
 )
 
 func getJournalLength(t *testing.T, s *bserverTlfJournal) int {
-	l, err := s.journalLength()
+	len, err := s.journalLength()
 	require.NoError(t, err)
-	return int(l)
+	return int(len)
 }
 
 func TestBserverTlfJournalBasic(t *testing.T) {
