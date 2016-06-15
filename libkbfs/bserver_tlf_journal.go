@@ -183,11 +183,13 @@ func (s *bserverTlfJournal) writeLatestOrdinalLocked(o journalOrdinal) error {
 	return s.writeOrdinalLocked(s.latestPath(), o)
 }
 
+type bserverOpName string
+
 const (
-	blockPutOp    = "blockPut"
-	addRefOp      = "addReference"
-	removeRefsOp  = "removeReferences"
-	archiveRefsOp = "archiveReferences"
+	blockPutOp    bserverOpName = "blockPut"
+	addRefOp      bserverOpName = "addReference"
+	removeRefsOp  bserverOpName = "removeReferences"
+	archiveRefsOp bserverOpName = "archiveReferences"
 )
 
 // A bserverJournalEntry is just the name of the operation and the
@@ -195,7 +197,7 @@ const (
 // serialization.
 type bserverJournalEntry struct {
 	// Must be one of the four ops above.
-	Op string
+	Op bserverOpName
 	ID BlockID
 	// Must have exactly one entry for blockPutOp and addRefOp,
 	// and at least one for removeRefsOp and archiveRefsOp.
@@ -251,15 +253,15 @@ func (s *bserverTlfJournal) readJournalLocked() (
 		}
 
 		switch e.Op {
-		case "put", "addReference":
+		case blockPutOp, addRefOp:
 			blockRefs.put(e.Contexts[0], liveBlockRef)
 
-		case "removeReferences":
+		case removeRefsOp:
 			for _, context := range e.Contexts {
 				delete(blockRefs, context.GetRefNonce())
 			}
 
-		case "archiveReferences":
+		case archiveRefsOp:
 			for _, context := range e.Contexts {
 				blockRefs.put(context, archivedBlockRef)
 			}
@@ -289,7 +291,7 @@ func (s *bserverTlfJournal) writeJournalEntryLocked(
 }
 
 func (s *bserverTlfJournal) appendJournalEntryLocked(
-	op string, id BlockID, contexts []BlockContext) error {
+	op bserverOpName, id BlockID, contexts []BlockContext) error {
 	var next journalOrdinal
 	o, err := s.readLatestOrdinalLocked()
 	if os.IsNotExist(err) {
@@ -547,7 +549,8 @@ func (s *bserverTlfJournal) putData(
 		return err
 	}
 
-	return s.appendJournalEntryLocked("put", id, []BlockContext{context})
+	return s.appendJournalEntryLocked(
+		blockPutOp, id, []BlockContext{context})
 }
 
 func (s *bserverTlfJournal) addReference(id BlockID, context BlockContext) error {
@@ -595,7 +598,7 @@ func (s *bserverTlfJournal) addReference(id BlockID, context BlockContext) error
 	}
 
 	return s.appendJournalEntryLocked(
-		"addReference", id, []BlockContext{context})
+		addRefOp, id, []BlockContext{context})
 }
 
 func (s *bserverTlfJournal) removeReferences(
@@ -638,7 +641,7 @@ func (s *bserverTlfJournal) removeReferences(
 	// TODO: Figure out what to do with live count when we have a
 	// real block server backend.
 
-	err := s.appendJournalEntryLocked("removeReferences", id, contexts)
+	err := s.appendJournalEntryLocked(removeRefsOp, id, contexts)
 	if err != nil {
 		return 0, err
 	}
@@ -686,7 +689,7 @@ func (s *bserverTlfJournal) archiveReferences(
 	}
 
 	// TODO: Coalesce into one entry.
-	return s.appendJournalEntryLocked("archiveReferences", id, contexts)
+	return s.appendJournalEntryLocked(archiveRefsOp, id, contexts)
 }
 
 func (s *bserverTlfJournal) shutdown() {
