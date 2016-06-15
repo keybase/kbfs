@@ -297,6 +297,8 @@ func (s *bserverTlfJournal) writeJournalEntryLocked(
 
 func (s *bserverTlfJournal) appendJournalEntryLocked(
 	op bserverOpName, id BlockID, contexts []BlockContext) error {
+	// TODO: Consider caching the latest ordinal in memory instead
+	// of reading it from disk every time.
 	var next journalOrdinal
 	o, err := s.readLatestOrdinalLocked()
 	if os.IsNotExist(err) {
