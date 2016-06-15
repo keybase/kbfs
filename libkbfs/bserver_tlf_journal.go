@@ -690,7 +690,6 @@ func (s *bserverTlfJournal) archiveReferences(
 		}
 	}
 
-	// TODO: Coalesce into one entry.
 	return s.appendJournalEntryLocked(archiveRefsOp, id, contexts)
 }
 
