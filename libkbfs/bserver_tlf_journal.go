@@ -199,8 +199,7 @@ type bserverJournalEntry struct {
 	// Must be one of the four ops above.
 	Op bserverOpName
 	ID BlockID
-	// Must have exactly one entry for blockPutOp and addRefOp,
-	// and at least one for removeRefsOp and archiveRefsOp.
+	// Must have exactly one entry for blockPutOp and addRefOp.
 	Contexts []BlockContext
 }
 
@@ -254,6 +253,12 @@ func (s *bserverTlfJournal) readJournalLocked() (
 
 		switch e.Op {
 		case blockPutOp, addRefOp:
+			if len(e.Contexts) != 1 {
+				return nil, fmt.Errorf(
+					"Op %s for id=%s doesn't have exactly one context: %v",
+					e.Op, e.ID, e.Contexts)
+			}
+
 			blockRefs.put(e.Contexts[0], liveBlockRef)
 
 		case removeRefsOp:
