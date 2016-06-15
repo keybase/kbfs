@@ -586,13 +586,10 @@ func (s *bserverTlfJournal) addReference(id BlockID, context BlockContext) error
 			"been archived and cannot be referenced.", id)}
 	}
 
-	// TODO: Allow adding a reference even if all the existing
-	// references are archived, or if we have no references at
-	// all. This is because we can't be sure that there are other
-	// references we don't know about.
-	//
-	// TODO: Figure out what to do with an addReference without a
-	// preceding Put.
+	// TODO: Figure out if we should allow adding a reference even
+	// if all the existing references are archived, or if we have
+	// no references at all. Also figure out what to do with an
+	// addReference without a preceding Put.
 
 	err := s.putRefEntryLocked(id, blockRefEntry{
 		Status:  liveBlockRef,
