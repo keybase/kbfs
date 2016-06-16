@@ -5285,6 +5285,8 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now mallory can read alice's secrets.
+	err = kbfsOps2.SyncFromServerForTesting(ctx, fb1)
+	require.NoError(t, err)
 	fileNode2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "secret.txt")
 	require.NoError(t, err)
 	var buf [1024]byte
