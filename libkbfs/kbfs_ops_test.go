@@ -5197,24 +5197,4 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	config1.SetKeyCache(NewKeyCacheStandard(1))
 	err = kbfsOps1.SyncFromServerForTesting(ctx, fb1)
 	require.NoError(t, err)
-
-	// Simulate waiting for alice to write secret data.
-	rootNode1 = GetRootNodeOrBust(t, config1, "alice", false)
-	fileNode1, _, err := kbfsOps1.CreateFile(
-		ctx, rootNode1, "secret.txt", false)
-	require.NoError(t, err)
-	err = kbfsOps1.Write(ctx, fileNode1, []byte("I like bob"), 0)
-	require.NoError(t, err)
-	err = kbfsOps1.Sync(ctx, fileNode1)
-	require.NoError(t, err)
-
-	// Now mallory can read alice's secrets.
-	err = kbfsOps2.SyncFromServerForTesting(ctx, fb1)
-	require.NoError(t, err)
-	fileNode2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "secret.txt")
-	require.NoError(t, err)
-	var buf [1024]byte
-	n2, err := config2.KBFSOps().Read(ctx, fileNode2, buf[:], 0)
-	require.NoError(t, err)
-	require.Equal(t, "I like bob", string(buf[:n2]))
 }

@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -503,7 +502,7 @@ func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
 	fbo.headLock.AssertLocked(lState)
 
 	isFirstHead := fbo.head == nil
-	var oldHandle *TlfHandle
+	handleNameChanged := false
 	wasReadable := false
 	if !isFirstHead {
 		wasReadable = fbo.head.IsReadable()
@@ -523,7 +522,38 @@ func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
 			return nil
 		}
 
-		oldHandle = fbo.head.GetTlfHandle()
+		oldHandle := fbo.head.GetTlfHandle()
+		newHandle := md.GetTlfHandle()
+		oldName := oldHandle.GetCanonicalName()
+		newName := newHandle.GetCanonicalName()
+		if oldName != newName {
+			// TODO: Resolve these "at the same time" to
+			// avoid race conditions.
+
+			oldResolvedHandle, err := oldHandle.ResolveAgain(
+				ctx, fbo.config.KBPKI())
+			if err != nil {
+				return err
+			}
+
+			newResolvedHandle, err := newHandle.ResolveAgain(
+				ctx, fbo.config.KBPKI())
+			if err != nil {
+				return err
+			}
+
+			oldResolvedName := oldResolvedHandle.GetCanonicalName()
+			newResolvedName := newResolvedHandle.GetCanonicalName()
+			if oldResolvedName != newResolvedName {
+				return fmt.Errorf("old head (%s -> %s) and new head (%s -> %s) resolve to different names",
+					oldName, oldResolvedName,
+					newName, newResolvedName)
+			}
+
+			fbo.log.CDebugf(ctx, "Handle changed (%s -> %s)",
+				oldName, newName)
+			handleNameChanged = true
+		}
 	}
 
 	fbo.log.CDebugf(ctx, "Setting head revision to %d", md.Revision)
@@ -552,11 +582,9 @@ func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
 			fbo.updateDoneChan = make(chan struct{})
 			go fbo.registerAndWaitForUpdates()
 		}
-	} else if h := fbo.head.GetTlfHandle(); !reflect.DeepEqual(oldHandle, h) {
-		fbo.log.CDebugf(ctx, "Handle changed (%s -> %s)",
-			oldHandle.GetCanonicalName(), h.GetCanonicalName())
+	} else if handleNameChanged {
 		// If the handle has changed, send out a notification.
-		fbo.observers.tlfHandleChange(ctx, h)
+		fbo.observers.tlfHandleChange(ctx, fbo.head.GetTlfHandle())
 		// Also the folder should be re-identified given the
 		// newly-resolved assertions.
 		func() {
