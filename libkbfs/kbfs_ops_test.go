@@ -5147,6 +5147,15 @@ func TestKBFSOpsEmptyTlfSize(t *testing.T) {
 	}
 }
 
+type cryptoFixedTlf struct {
+	Crypto
+	tlf TlfID
+}
+
+func (c cryptoFixedTlf) MakeRandomTlfID(isPublic bool) (TlfID, error) {
+	return c.tlf, nil
+}
+
 type mdServerSwitch struct {
 	MDServer
 
@@ -5226,9 +5235,6 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	config1, _, ctx := kbfsOpsInitNoMocks(t, "alice", "mallory")
 	defer config1.Shutdown()
 
-	config2 := ConfigAsUser(config1, "mallory")
-	defer config2.Shutdown()
-
 	// Create alice's TLF.
 	rootNode1 := GetRootNodeOrBust(t, config1, "alice", false)
 
@@ -5238,8 +5244,19 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 		ctx, rootNode1, "secret.txt", false)
 	require.NoError(t, err)
 
-	// Create mallory's fake TLF.
+	tlf1 := rootNode1.GetFolderBranch().Tlf
+
+	// Create mallory's fake TLF using the same TLF ID as alice's.
+	config2 := ConfigAsUser(config1, "mallory")
+	crypto2 := cryptoFixedTlf{config2.Crypto(), tlf1}
+	config2.SetCrypto(crypto2)
+	mdserver2, err := NewMDServerMemory(config2)
+	require.NoError(t, err)
+	config2.SetMDServer(mdserver2)
+	config2.SetMDCache(NewMDCacheStandard(1))
+
 	rootNode2 := GetRootNodeOrBust(t, config2, "alice,mallory", false)
+	require.Equal(t, tlf1, rootNode2.GetFolderBranch().Tlf)
 
 	kbfsOps2 := config2.KBFSOps()
 
@@ -5255,15 +5272,12 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	err = kbfsOps2.RemoveEntry(ctx, rootNode2, "dummy.txt")
 	require.NoError(t, err)
 
-	mdServer := makeMDServerSwitch(config1.MDServer())
-	config1.SetMDServer(mdServer)
-
-	// Now route alice's TLF to mallory's fake TLF.
-	mdServer.addSub(rootNode1.GetFolderBranch().Tlf,
-		rootNode2.GetFolderBranch().Tlf)
+	// Now route alice's TLF to mallory's MD server.
+	config1.SetMDServer(config2.MDServer())
 
 	// Simulate the server triggering alice to update.
-	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
+	err = kbfsOps1.SyncFromServerForTesting(
+		ctx, rootNode1.GetFolderBranch())
 	require.NoError(t, err)
 
 	// Simulate waiting for alice to write secret data.
