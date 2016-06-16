@@ -14,6 +14,7 @@ import (
 	"bazil.org/fuse"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/kbfs/env"
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libfuse"
 	"github.com/keybase/kbfs/libkbfs"
@@ -59,7 +60,7 @@ func getUsageStr(ctx libkbfs.Context) string {
 }
 
 func start() *libfs.Error {
-	ctx := newContext()
+	ctx := env.NewContext()
 
 	kbfsParams := libkbfs.AddFlags(flag.CommandLine, ctx)
 	platformParams := libfuse.AddPlatformFlags(flag.CommandLine)

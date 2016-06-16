@@ -107,7 +107,7 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 	return &params
 }
 
-func makeMDServer(config Config, serverInMemory bool, serverRootDir, mdserverAddr string) (
+func makeMDServer(config Config, serverInMemory bool, serverRootDir, mdserverAddr string, ctx Context) (
 	MDServer, error) {
 	if serverInMemory {
 		// local in-memory MD server
@@ -129,7 +129,7 @@ func makeMDServer(config Config, serverInMemory bool, serverRootDir, mdserverAdd
 
 	// remote MD server. this can't fail. reconnection attempts
 	// will be automatic.
-	mdServer := NewMDServerRemote(config, mdserverAddr)
+	mdServer := NewMDServerRemote(config, mdserverAddr, ctx)
 	return mdServer, nil
 }
 
@@ -158,7 +158,7 @@ func makeKeyServer(config Config, serverInMemory bool, serverRootDir, keyserverA
 	return keyServer, nil
 }
 
-func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverAddr string, log logger.Logger) (
+func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverAddr string, ctx Context, log logger.Logger) (
 	BlockServer, error) {
 	if serverInMemory {
 		// local in-memory block server
@@ -176,12 +176,12 @@ func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverA
 	}
 
 	log.Debug("Using remote bserver %s", bserverAddr)
-	return NewBlockServerRemote(config, bserverAddr), nil
+	return NewBlockServerRemote(config, bserverAddr, ctx), nil
 }
 
 func makeKeybaseDaemon(config Config, serverInMemory bool, serverRootDir string, localUser libkb.NormalizedUsername, codec Codec, ctx Context, log logger.Logger, debug bool) (KeybaseDaemon, error) {
 	if len(localUser) == 0 {
-		libkb.G.ConfigureSocketInfo()
+		ctx.ConfigureSocketInfo()
 		return NewKeybaseDaemonRPC(config, ctx, log, debug), nil
 	}
 
@@ -336,7 +336,7 @@ func Init(ctx Context, params InitParams, onInterruptFn func(), log logger.Logge
 	config.SetMDOps(NewMDOpsStandard(config))
 
 	mdServer, err := makeMDServer(
-		config, params.ServerInMemory, params.ServerRootDir, params.MDServerAddr)
+		config, params.ServerInMemory, params.ServerRootDir, params.MDServerAddr, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("problem creating MD server: %v", err)
 	}
@@ -380,7 +380,7 @@ func Init(ctx Context, params InitParams, onInterruptFn func(), log logger.Logge
 		config.SetCrypto(NewCryptoLocal(config, signingKey, cryptPrivateKey))
 	}
 
-	bserv, err := makeBlockServer(config, params.ServerInMemory, params.ServerRootDir, params.BServerAddr, log)
+	bserv, err := makeBlockServer(config, params.ServerInMemory, params.ServerRootDir, params.BServerAddr, ctx, log)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open block database: %v", err)
 	}

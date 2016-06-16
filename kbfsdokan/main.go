@@ -55,7 +55,7 @@ func getUsageStr(ctx libkbfs.Context) string {
 }
 
 func start() *libfs.Error {
-	ctx := newContext()
+	ctx := env.NewContext()
 	kbfsParams := libkbfs.AddFlags(flag.CommandLine, ctx)
 
 	flag.Parse()
