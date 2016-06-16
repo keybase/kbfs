@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"sync"
 	"testing"
 	"time"
 
@@ -5154,81 +5153,6 @@ type cryptoFixedTlf struct {
 
 func (c cryptoFixedTlf) MakeRandomTlfID(isPublic bool) (TlfID, error) {
 	return c.tlf, nil
-}
-
-type mdServerSwitch struct {
-	MDServer
-
-	subsLock sync.Mutex
-	// Map from the target TLF ID to its substitution.
-	subs map[TlfID]TlfID
-}
-
-func makeMDServerSwitch(delegate MDServer) *mdServerSwitch {
-	return &mdServerSwitch{
-		MDServer: delegate,
-		subs:     make(map[TlfID]TlfID),
-	}
-}
-
-func (md *mdServerSwitch) addSub(target, sub TlfID) {
-	md.subsLock.Lock()
-	defer md.subsLock.Unlock()
-	md.subs[target] = sub
-}
-
-func (md *mdServerSwitch) subTlfID(id TlfID) TlfID {
-	md.subsLock.Lock()
-	defer md.subsLock.Unlock()
-	if subID, ok := md.subs[id]; ok {
-		return subID
-	}
-	return id
-}
-
-func (md *mdServerSwitch) GetForHandle(
-	ctx context.Context, handle BareTlfHandle,
-	mStatus MergeStatus) (TlfID, *RootMetadataSigned, error) {
-	id, rmds, err := md.MDServer.GetForHandle(ctx, handle, mStatus)
-	id = md.subTlfID(id)
-	return id, rmds, err
-}
-
-func (md *mdServerSwitch) GetForTLF(
-	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus) (
-	*RootMetadataSigned, error) {
-	return md.MDServer.GetForTLF(ctx, md.subTlfID(id), bid, mStatus)
-}
-
-func (md *mdServerSwitch) GetRange(
-	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
-	start, stop MetadataRevision) ([]*RootMetadataSigned, error) {
-	return md.MDServer.GetRange(
-		ctx, md.subTlfID(id), bid, mStatus, start, stop)
-}
-
-func (md *mdServerSwitch) PruneBranch(
-	ctx context.Context, id TlfID, bid BranchID) error {
-	return md.MDServer.PruneBranch(ctx, md.subTlfID(id), bid)
-}
-
-func (md *mdServerSwitch) RegisterForUpdate(ctx context.Context, id TlfID,
-	currHead MetadataRevision) (<-chan error, error) {
-	return md.MDServer.RegisterForUpdate(ctx, md.subTlfID(id), currHead)
-}
-
-func (md *mdServerSwitch) TruncateLock(
-	ctx context.Context, id TlfID) (bool, error) {
-	return md.MDServer.TruncateLock(ctx, md.subTlfID(id))
-}
-func (md *mdServerSwitch) TruncateUnlock(
-	ctx context.Context, id TlfID) (bool, error) {
-	return md.MDServer.TruncateUnlock(ctx, md.subTlfID(id))
-}
-
-func (md *mdServerSwitch) GetLatestHandleForTLF(
-	ctx context.Context, id TlfID) (BareTlfHandle, error) {
-	return md.MDServer.GetLatestHandleForTLF(ctx, md.subTlfID(id))
 }
 
 func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
