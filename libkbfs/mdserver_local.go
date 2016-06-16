@@ -192,7 +192,6 @@ func (md *MDServerLocal) GetForHandle(ctx context.Context, handle BareTlfHandle,
 		return id, nil, err
 	}
 	if !handle.IsReader(uid) {
-		panic(fmt.Errorf("handle = %+v, uid=%s", handle, uid))
 		return id, nil, MDServerErrorUnauthorized{}
 	}
 
