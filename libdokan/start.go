@@ -32,7 +32,7 @@ func Start(mounter Mounter, options StartOptions, kbCtx libkbfs.Context) *libfs.
 		mounter.Unmount()
 	}
 
-	config, err := libkbfs.Init(options.KbfsParams, onInterruptFn, log)
+	config, err := libkbfs.Init(kbCtx, options.KbfsParams, onInterruptFn, log)
 	if err != nil {
 		return libfs.InitError(err.Error())
 	}
