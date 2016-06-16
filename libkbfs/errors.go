@@ -988,13 +988,14 @@ func (e NoSuchTlfHandleError) Error() string {
 // doesn't match the server's extension for the given handle.
 type TlfHandleExtensionMismatchError struct {
 	Expected *TlfHandleExtension
-	Actual   *TlfHandleExtension
+	// Actual may be nil.
+	Actual *TlfHandleExtension
 }
 
 // Error implements the error interface for TlfHandleExtensionMismatchError
 func (e TlfHandleExtensionMismatchError) Error() string {
-	return fmt.Sprint("Folder handle extension  mismatch, "+
-		"expected: %s, actual: %s", e.Expected, e.Actual)
+	return fmt.Sprint("Folder handle extension mismatch, "+
+		"expected: %s, actual: %v", e.Expected, e.Actual)
 }
 
 // MetadataIsFinalError indicates that we tried to make a successor to a
