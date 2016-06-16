@@ -337,6 +337,7 @@ func (c CryptoCommon) decryptData(encryptedData encryptedData, key [32]byte) ([]
 
 	decryptedData, ok := secretbox.Open(nil, encryptedData.EncryptedData, &nonce, &key)
 	if !ok {
+		panic("what 1")
 		return nil, libkb.DecryptionError{}
 	}
 
@@ -513,6 +514,7 @@ func (c CryptoCommon) DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf, privK
 	}
 	leafBytes, ok := box.Open(nil, encryptedLeaf.EncryptedData[:], nonce, (*[32]byte)(&ePubKey.data), (*[32]byte)(&privKey.data))
 	if !ok {
+		panic("what 2")
 		return nil, libkb.DecryptionError{}
 	}
 	// decode the leaf

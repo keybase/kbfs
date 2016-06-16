@@ -5237,18 +5237,16 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 
 	// Create alice's TLF.
 	rootNode1 := GetRootNodeOrBust(t, config1, "alice", false)
+	fb1 := rootNode1.GetFolderBranch()
 
 	kbfsOps1 := config1.KBFSOps()
 
-	fileNode1, _, err := kbfsOps1.CreateFile(
-		ctx, rootNode1, "secret.txt", false)
+	_, _, err := kbfsOps1.CreateFile(ctx, rootNode1, "dummy.txt", false)
 	require.NoError(t, err)
-
-	tlf1 := rootNode1.GetFolderBranch().Tlf
 
 	// Create mallory's fake TLF using the same TLF ID as alice's.
 	config2 := ConfigAsUser(config1, "mallory")
-	crypto2 := cryptoFixedTlf{config2.Crypto(), tlf1}
+	crypto2 := cryptoFixedTlf{config2.Crypto(), fb1.Tlf}
 	config2.SetCrypto(crypto2)
 	mdserver2, err := NewMDServerMemory(config2)
 	require.NoError(t, err)
@@ -5256,13 +5254,9 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	config2.SetMDCache(NewMDCacheStandard(1))
 
 	rootNode2 := GetRootNodeOrBust(t, config2, "alice,mallory", false)
-	require.Equal(t, tlf1, rootNode2.GetFolderBranch().Tlf)
+	require.Equal(t, fb1.Tlf, rootNode2.GetFolderBranch().Tlf)
 
 	kbfsOps2 := config2.KBFSOps()
-
-	fileNode2, _, err := kbfsOps2.CreateFile(
-		ctx, rootNode2, "secret.txt", false)
-	require.NoError(t, err)
 
 	// Add some operations to get mallory's TLF to have a higher
 	// MetadataVersion.
@@ -5273,18 +5267,26 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now route alice's TLF to mallory's MD server.
-	config1.SetMDServer(config2.MDServer())
+	config1.SetMDServer(mdserver2.copy(config1))
 
 	// Simulate the server triggering alice to update.
-	err = kbfsOps1.SyncFromServerForTesting(
-		ctx, rootNode1.GetFolderBranch())
+	config1.SetKeyCache(NewKeyCacheStandard(1))
+	err = kbfsOps1.SyncFromServerForTesting(ctx, fb1)
 	require.NoError(t, err)
 
 	// Simulate waiting for alice to write secret data.
+	rootNode1 = GetRootNodeOrBust(t, config1, "alice", false)
+	fileNode1, _, err := kbfsOps1.CreateFile(
+		ctx, rootNode1, "secret.txt", false)
+	require.NoError(t, err)
 	err = kbfsOps1.Write(ctx, fileNode1, []byte("I like bob"), 0)
+	require.NoError(t, err)
+	err = kbfsOps1.Sync(ctx, fileNode1)
 	require.NoError(t, err)
 
 	// Now mallory can read alice's secrets.
+	fileNode2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "secret.txt")
+	require.NoError(t, err)
 	var buf [1024]byte
 	n2, err := config2.KBFSOps().Read(ctx, fileNode2, buf[:], 0)
 	require.NoError(t, err)

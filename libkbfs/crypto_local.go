@@ -121,6 +121,7 @@ func (c *CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf Encrypted
 	// This check isn't strictly needed, but parallels the
 	// implementation in CryptoClient.
 	if len(encryptedClientHalf.EncryptedData) != len(clientHalf.data)+box.Overhead {
+		panic("what 3")
 		err = libkb.DecryptionError{}
 		return
 	}
@@ -146,11 +147,13 @@ func (c *CryptoLocal) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 
 	decryptedData, ok := box.Open(nil, encryptedClientHalf.EncryptedData, &nonce, (*[32]byte)(&publicKey.data), (*[32]byte)(c.cryptPrivateKey.kp.Private))
 	if !ok {
+		panic("what 4")
 		err = libkb.DecryptionError{}
 		return
 	}
 
 	if len(decryptedData) != len(clientHalf.data) {
+		panic("what 5")
 		err = libkb.DecryptionError{}
 		return
 	}
@@ -178,6 +181,7 @@ func (c *CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 			return clientHalf, i, nil
 		}
 	}
+	panic("what 6")
 	err = libkb.DecryptionError{}
 	return
 }
