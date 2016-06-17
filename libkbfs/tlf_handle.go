@@ -621,6 +621,9 @@ func (h TlfHandle) ResolvesTo(
 		unresolvedAssertions[ur.String()] = true
 	}
 
+	// TODO: Once we keep track of the original assertions in
+	// TlfHandle, restrict the resolver to use other's assertions
+	// only, so that we don't hit the network at all.
 	partialResolvedH, err = h.ResolveAgain(
 		ctx, partialResolver{unresolvedAssertions, resolver})
 	if err != nil {
