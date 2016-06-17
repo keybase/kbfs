@@ -360,8 +360,6 @@ func TestTlfHandlEqual(t *testing.T) {
 		daemon: daemon,
 	}
 
-	// Test public bit.
-
 	name1 := "u1,u2@twitter,u3,u4@twitter"
 	h1, err := ParseTlfHandle(ctx, kbpki, name1, true)
 	require.NoError(t, err)
@@ -369,6 +367,8 @@ func TestTlfHandlEqual(t *testing.T) {
 	eq, err := h1.Equals(codec, *h1)
 	require.NoError(t, err)
 	require.True(t, eq)
+
+	// Test public bit.
 
 	h2, err := ParseTlfHandle(ctx, kbpki, name1, false)
 	require.NoError(t, err)
@@ -648,6 +648,96 @@ func TestResolveAgainConflict(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, CanonicalTlfName("u1,u2#u3"+
 		TlfHandleExtensionSep+ext.String()), newH.GetCanonicalName())
+}
+
+func TestTlfHandlCheckResolvesTo(t *testing.T) {
+	ctx := context.Background()
+
+	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{
+		"u1", "u2", "u3", "u4", "u5",
+	})
+	currentUID := localUsers[0].UID
+	codec := NewCodecMsgpack()
+	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, codec)
+
+	kbpki := &daemonKBPKI{
+		daemon: daemon,
+	}
+
+	name1 := "u1,u2@twitter,u3,u4@twitter"
+	h1, err := ParseTlfHandle(ctx, kbpki, name1, true)
+	require.NoError(t, err)
+
+	resolvedH1, resolvedH2, resolvesTo, err :=
+		h1.CheckResolvesTo(ctx, codec, kbpki, h1)
+	require.NoError(t, err)
+	require.Equal(t, h1, resolvedH1)
+	require.Equal(t, h1, resolvedH2)
+	require.True(t, resolvesTo)
+
+	// Test different public bit.
+
+	h2, err := ParseTlfHandle(ctx, kbpki, name1, false)
+	require.NoError(t, err)
+
+	resolvedH1, resolvedH2, resolvesTo, err =
+		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
+	require.NoError(t, err)
+	require.Equal(t, h1, resolvedH1)
+	require.Equal(t, h2, resolvedH2)
+	require.False(t, resolvesTo)
+
+	// Test missing/demoted writer, and missing reader.
+
+	name1 = "u1,u2@twitter,u5#u3,u4@twitter"
+	h1, err = ParseTlfHandle(ctx, kbpki, name1, false)
+	require.NoError(t, err)
+
+	for _, name2 := range []string{
+		"u1,u2@twitter#u3,u4@twitter",
+		"u1,u2@twitter#u3,u4@twitter,u5",
+		"u1,u2@twitter,u5#u4@twitter",
+	} {
+		h2, err := ParseTlfHandle(ctx, kbpki, name2, false)
+		require.NoError(t, err)
+
+		resolvedH1, resolvedH2, resolvesTo, err =
+			h1.CheckResolvesTo(ctx, codec, kbpki, h2)
+		require.NoError(t, err)
+		require.Equal(t, h1, resolvedH1)
+		require.Equal(t, h2, resolvedH2)
+		require.False(t, resolvesTo)
+	}
+
+	// Test differing conflict info or finalized info.
+
+	h2, err = ParseTlfHandle(ctx, kbpki, name1, false)
+	require.NoError(t, err)
+	info := TlfHandleExtension{
+		Date:   100,
+		Number: 50,
+		Type:   TlfHandleExtensionConflict,
+	}
+	err = h2.UpdateConflictInfo(codec, &info)
+	require.NoError(t, err)
+
+	resolvedH1, resolvedH2, resolvesTo, err =
+		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
+	require.NoError(t, err)
+	require.Equal(t, h1, resolvedH1)
+	require.Equal(t, h2, resolvedH2)
+	require.False(t, resolvesTo)
+
+	h2, err = ParseTlfHandle(ctx, kbpki, name1, false)
+	require.NoError(t, err)
+	h2.SetFinalizedInfo(&info)
+
+	resolvedH1, resolvedH2, resolvesTo, err =
+		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
+	require.NoError(t, err)
+	require.Equal(t, h1, resolvedH1)
+	require.Equal(t, h2, resolvedH2)
+	require.False(t, resolvesTo)
 }
 
 func TestParseTlfHandleNoncanonicalExtensions(t *testing.T) {
