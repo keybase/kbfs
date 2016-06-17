@@ -738,7 +738,7 @@ func (tlf *TLF) loadDirHelper(ctx context.Context, filterErr bool) (
 	if err != nil {
 		return nil, false, err
 	}
-	eq, err := tlf.folder.h.Equals(tlf.folder.fs.config.Codec(), handle)
+	eq, err := tlf.folder.h.Equals(tlf.folder.fs.config.Codec(), *handle)
 	if err != nil {
 		return nil, false, err
 	}
