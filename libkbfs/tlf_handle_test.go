@@ -668,11 +668,10 @@ func TestTlfHandlCheckResolvesTo(t *testing.T) {
 	h1, err := ParseTlfHandle(ctx, kbpki, name1, true)
 	require.NoError(t, err)
 
-	resolvedH1, resolvedH2, resolvesTo, err :=
+	resolvedH1, resolvesTo, err :=
 		h1.CheckResolvesTo(ctx, codec, kbpki, h1)
 	require.NoError(t, err)
 	require.Equal(t, h1, resolvedH1)
-	require.Equal(t, h1, resolvedH2)
 	require.True(t, resolvesTo)
 
 	// Test different public bit.
@@ -680,11 +679,10 @@ func TestTlfHandlCheckResolvesTo(t *testing.T) {
 	h2, err := ParseTlfHandle(ctx, kbpki, name1, false)
 	require.NoError(t, err)
 
-	resolvedH1, resolvedH2, resolvesTo, err =
+	resolvedH1, resolvesTo, err =
 		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
 	require.NoError(t, err)
 	require.Equal(t, h1, resolvedH1)
-	require.Equal(t, h2, resolvedH2)
 	require.False(t, resolvesTo)
 
 	// Test missing/demoted writer, and missing reader.
@@ -701,11 +699,10 @@ func TestTlfHandlCheckResolvesTo(t *testing.T) {
 		h2, err := ParseTlfHandle(ctx, kbpki, name2, false)
 		require.NoError(t, err)
 
-		resolvedH1, resolvedH2, resolvesTo, err =
+		resolvedH1, resolvesTo, err =
 			h1.CheckResolvesTo(ctx, codec, kbpki, h2)
 		require.NoError(t, err)
 		require.Equal(t, h1, resolvedH1)
-		require.Equal(t, h2, resolvedH2)
 		require.False(t, resolvesTo)
 	}
 
@@ -721,56 +718,43 @@ func TestTlfHandlCheckResolvesTo(t *testing.T) {
 	err = h2.UpdateConflictInfo(codec, &info)
 	require.NoError(t, err)
 
-	resolvedH1, resolvedH2, resolvesTo, err =
+	resolvedH1, resolvesTo, err =
 		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
 	require.NoError(t, err)
 	require.Equal(t, h1, resolvedH1)
-	require.Equal(t, h2, resolvedH2)
 	require.False(t, resolvesTo)
 
 	h2, err = ParseTlfHandle(ctx, kbpki, name1, false)
 	require.NoError(t, err)
 	h2.SetFinalizedInfo(&info)
 
-	resolvedH1, resolvedH2, resolvesTo, err =
+	resolvedH1, resolvesTo, err =
 		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
 	require.NoError(t, err)
 	require.Equal(t, h1, resolvedH1)
-	require.Equal(t, h2, resolvedH2)
 	require.False(t, resolvesTo)
 
 	// Test positive resolution cases.
 
-	for _, name2 := range []string{
-		"u1,u2@twitter,u5#u3,u4@twitter",
-		"u1,u2,u5#u3,u4@twitter",
-		"u1,u2@twitter,u5#u3,u4",
-		"u1,u2,u5#u3,u4",
-	} {
-		daemon.removeAssertionForTest("u2@twitter")
+	name2 := "u1,u2,u5#u3,u4@twitter"
+	daemon.removeAssertionForTest("u2@twitter")
 
-		h2, err = ParseTlfHandle(ctx, kbpki, name2, false)
-		require.NoError(t, err)
+	h2, err = ParseTlfHandle(ctx, kbpki, name2, false)
+	require.NoError(t, err)
 
-		daemon.addNewAssertionForTestOrBust("u2", "u2@twitter")
+	daemon.addNewAssertionForTestOrBust("u2", "u2@twitter")
 
-		expectedResolvedH, err := ParseTlfHandle(
-			ctx, kbpki, "u1,u2,u5#u3,u4@twitter", false)
-		require.NoError(t, err)
-
-		resolvedH1, resolvedH2, resolvesTo, err =
-			h1.CheckResolvesTo(ctx, codec, kbpki, h2)
-		require.NoError(t, err)
-		require.Equal(t, expectedResolvedH, resolvedH1)
-		require.Equal(t, expectedResolvedH, resolvedH2)
-		require.True(t, resolvesTo)
-	}
+	resolvedH1, resolvesTo, err =
+		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
+	require.NoError(t, err)
+	require.Equal(t, h2, resolvedH1, name2)
+	require.True(t, resolvesTo, name2)
 
 	// Test reader promotion.
 
 	daemon.removeAssertionForTest("u2@twitter")
 
-	name2 := "u1,u3,u5#u4@twitter"
+	name2 = "u1,u3,u5#u4@twitter"
 	h2, err = ParseTlfHandle(ctx, kbpki, name2, false)
 	require.NoError(t, err)
 
@@ -780,11 +764,10 @@ func TestTlfHandlCheckResolvesTo(t *testing.T) {
 		ctx, kbpki, "u1,u3,u5#u4@twitter", false)
 	require.NoError(t, err)
 
-	resolvedH1, resolvedH2, resolvesTo, err =
+	resolvedH1, resolvesTo, err =
 		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
 	require.NoError(t, err)
 	require.Equal(t, expectedResolvedH, resolvedH1)
-	require.Equal(t, expectedResolvedH, resolvedH2)
 	require.True(t, resolvesTo)
 }
 

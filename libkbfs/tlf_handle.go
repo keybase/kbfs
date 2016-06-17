@@ -592,71 +592,48 @@ func (h *TlfHandle) ResolveAgain(ctx context.Context, resolver resolver) (
 	return h.ResolveAgainForUser(ctx, resolver, keybase1.UID(""))
 }
 
+type partialResolver struct {
+	unresolvedAssertions map[string]bool
+	delegate             resolver
+}
+
+func (pr partialResolver) Resolve(ctx context.Context, assertion string) (
+	libkb.NormalizedUsername, keybase1.UID, error) {
+	if pr.unresolvedAssertions[assertion] {
+		// Force an unresolved assertion.
+		return libkb.NormalizedUsername(""),
+			keybase1.UID(""), NoSuchUserError{assertion}
+	}
+	return pr.delegate.Resolve(ctx, assertion)
+}
+
 // CheckResolvesTo checks whether this handle resolves to the given
 // one, and returns that. It also returns the resolved versions of
 // both handles, which may just be the handles unchanged if it is
 // determined that this handle cannot resolve to the given one.
 func (h TlfHandle) CheckResolvesTo(
 	ctx context.Context, codec Codec, resolver resolver, other *TlfHandle) (
-	resolvedH, resolvedOther *TlfHandle, resolvesTo bool, err error) {
-	if h.public != other.public {
-		return &h, other, false, nil
+	partialResolvedH *TlfHandle, resolvesTo bool, err error) {
+	unresolvedAssertions := make(map[string]bool)
+	for _, uw := range other.unresolvedWriters {
+		unresolvedAssertions[uw.String()] = true
 	}
-
-	eq, err := CodecEqual(codec, h.conflictInfo, other.conflictInfo)
+	for _, ur := range other.unresolvedReaders {
+		unresolvedAssertions[ur.String()] = true
+	}
+	fmt.Printf("ua=%+v\n", unresolvedAssertions)
+	partialResolvedH, err = h.ResolveAgain(
+		ctx, partialResolver{unresolvedAssertions, resolver})
 	if err != nil {
-		return nil, nil, false, err
-	}
-	if !eq {
-		return &h, other, false, nil
+		return nil, false, err
 	}
 
-	eq, err = CodecEqual(codec, h.finalizedInfo, other.finalizedInfo)
+	resolvesTo, err = partialResolvedH.Equals(codec, *other)
 	if err != nil {
-		return nil, nil, false, err
-	}
-	if !eq {
-		return &h, other, false, nil
+		return nil, false, err
 	}
 
-	// TODO: Do this algorithm instead: Resolve h, except
-	// "whitelist" all the existing unresolved assertions in
-	// other, and then check that the result is equal to other.
-
-	// A writer in h must still be a writer in other.
-
-	for uid, name := range h.resolvedWriters {
-		if other.resolvedWriters[uid] != name {
-			return &h, other, false, nil
-		}
-	}
-
-	// A reader in h must still be a reader or writer (due to
-	// promotion) in other.
-
-	for uid, name := range h.resolvedReaders {
-		if other.resolvedReaders[uid] != name &&
-			other.resolvedWriters[uid] != name {
-			return &h, other, false, nil
-		}
-	}
-
-	resolvedH, err = h.ResolveAgain(ctx, resolver)
-	if err != nil {
-		return nil, nil, false, err
-	}
-
-	resolvedOther, err = h.ResolveAgain(ctx, resolver)
-	if err != nil {
-		return nil, nil, false, err
-	}
-
-	resolvesTo, err = resolvedH.Equals(codec, *resolvedOther)
-	if err != nil {
-		return nil, nil, false, err
-	}
-
-	return resolvedH, resolvedOther, resolvesTo, nil
+	return partialResolvedH, resolvesTo, nil
 }
 
 func getSortedUnresolved(unresolved map[keybase1.SocialAssertion]bool) []keybase1.SocialAssertion {
