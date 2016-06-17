@@ -630,6 +630,10 @@ func (h TlfHandle) ResolvesTo(
 		return false, nil, err
 	}
 
+	// TODO: If h doesn't have conflict info and other does, and
+	// everything else is equal, we should still return true.
+	//
+	// TODO: The same for finalized info?
 	resolvesTo, err = partialResolvedH.Equals(codec, *other)
 	if err != nil {
 		return false, nil, err
