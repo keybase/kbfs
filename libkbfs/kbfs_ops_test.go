@@ -5155,6 +5155,8 @@ func (c cryptoFixedTlf) MakeRandomTlfID(isPublic bool) (TlfID, error) {
 	return c.tlf, nil
 }
 
+// TestKBFSOpsMaliciousMDServerRange tries to trick KBFSOps into
+// accepting bad MDs.
 func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	config1, _, ctx := kbfsOpsInitNoMocks(t, "alice", "mallory")
 	defer config1.Shutdown()
