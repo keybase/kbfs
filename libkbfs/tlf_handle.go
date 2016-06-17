@@ -244,6 +244,65 @@ func (h TlfHandle) Equals(codec Codec, other TlfHandle) (bool, error) {
 	return true, nil
 }
 
+// CheckResolvesTo checks whether this handle resolves to the given
+// one, and returns that. It also returns the resolved versions of
+// both handles, which may just be the handles unchanged if it is
+// determined that this handle cannot resolved to the given one.
+func (h TlfHandle) CheckResolvesTo(
+	ctx context.Context, codec Codec, resolver resolver, other *TlfHandle) (
+	resolvedH, resolvedOther *TlfHandle, resolvesTo bool, err error) {
+	if h.public != other.public {
+		return &h, other, false, nil
+	}
+
+	for uid, name := range h.resolvedWriters {
+		if other.resolvedWriters[uid] != name {
+			return &h, other, false, nil
+		}
+	}
+
+	for uid, name := range h.resolvedReaders {
+		// Resolution might promote a reader to a writer.
+		if other.resolvedReaders[uid] != name &&
+			other.resolvedWriters[uid] != name {
+			return &h, other, false, nil
+		}
+	}
+
+	eq, err := CodecEqual(codec, h.conflictInfo, other.conflictInfo)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	if !eq {
+		return &h, other, false, nil
+	}
+
+	eq, err = CodecEqual(codec, h.finalizedInfo, other.finalizedInfo)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	if !eq {
+		return &h, other, false, nil
+	}
+
+	resolvedH, err = h.ResolveAgain(ctx, resolver)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
+	resolvedOther, err = h.ResolveAgain(ctx, resolver)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
+	resolvesTo, err = resolvedH.Equals(codec, *resolvedOther)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
+	return resolvedH, resolvedOther, resolvesTo, nil
+}
+
 // ToBareHandle returns a BareTlfHandle corresponding to this handle.
 func (h TlfHandle) ToBareHandle() (BareTlfHandle, error) {
 	var readers []keybase1.UID
