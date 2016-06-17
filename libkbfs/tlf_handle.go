@@ -607,13 +607,12 @@ func (pr partialResolver) Resolve(ctx context.Context, assertion string) (
 	return pr.delegate.Resolve(ctx, assertion)
 }
 
-// CheckResolvesTo checks whether this handle resolves to the given
-// one, and returns that. It also returns the resolved versions of
-// both handles, which may just be the handles unchanged if it is
-// determined that this handle cannot resolve to the given one.
-func (h TlfHandle) CheckResolvesTo(
+// ResolvesTo returns whether this handle resolves to the given one.
+// It also returns the partially-resolved version of h; this should
+// equal other if and only if true is returned.
+func (h TlfHandle) ResolvesTo(
 	ctx context.Context, codec Codec, resolver resolver, other *TlfHandle) (
-	partialResolvedH *TlfHandle, resolvesTo bool, err error) {
+	resolvesTo bool, partialResolvedH *TlfHandle, err error) {
 	unresolvedAssertions := make(map[string]bool)
 	for _, uw := range other.unresolvedWriters {
 		unresolvedAssertions[uw.String()] = true
@@ -621,19 +620,19 @@ func (h TlfHandle) CheckResolvesTo(
 	for _, ur := range other.unresolvedReaders {
 		unresolvedAssertions[ur.String()] = true
 	}
-	fmt.Printf("ua=%+v\n", unresolvedAssertions)
+
 	partialResolvedH, err = h.ResolveAgain(
 		ctx, partialResolver{unresolvedAssertions, resolver})
 	if err != nil {
-		return nil, false, err
+		return false, nil, err
 	}
 
 	resolvesTo, err = partialResolvedH.Equals(codec, *other)
 	if err != nil {
-		return nil, false, err
+		return false, nil, err
 	}
 
-	return partialResolvedH, resolvesTo, nil
+	return resolvesTo, partialResolvedH, nil
 }
 
 func getSortedUnresolved(unresolved map[keybase1.SocialAssertion]bool) []keybase1.SocialAssertion {

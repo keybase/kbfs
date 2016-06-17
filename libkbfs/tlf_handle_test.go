@@ -650,7 +650,7 @@ func TestResolveAgainConflict(t *testing.T) {
 		TlfHandleExtensionSep+ext.String()), newH.GetCanonicalName())
 }
 
-func TestTlfHandlCheckResolvesTo(t *testing.T) {
+func TestTlfHandleResolvesTo(t *testing.T) {
 	ctx := context.Background()
 
 	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{
@@ -668,43 +668,22 @@ func TestTlfHandlCheckResolvesTo(t *testing.T) {
 	h1, err := ParseTlfHandle(ctx, kbpki, name1, true)
 	require.NoError(t, err)
 
-	resolvedH1, resolvesTo, err :=
-		h1.CheckResolvesTo(ctx, codec, kbpki, h1)
+	resolvesTo, partialResolvedH1, err :=
+		h1.ResolvesTo(ctx, codec, kbpki, h1)
 	require.NoError(t, err)
-	require.Equal(t, h1, resolvedH1)
 	require.True(t, resolvesTo)
+	require.Equal(t, h1, partialResolvedH1)
 
 	// Test different public bit.
 
 	h2, err := ParseTlfHandle(ctx, kbpki, name1, false)
 	require.NoError(t, err)
 
-	resolvedH1, resolvesTo, err =
-		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
+	resolvesTo, partialResolvedH1, err =
+		h1.ResolvesTo(ctx, codec, kbpki, h2)
 	require.NoError(t, err)
-	require.Equal(t, h1, resolvedH1)
 	require.False(t, resolvesTo)
-
-	// Test missing/demoted writer, and missing reader.
-
-	name1 = "u1,u2@twitter,u5#u3,u4@twitter"
-	h1, err = ParseTlfHandle(ctx, kbpki, name1, false)
-	require.NoError(t, err)
-
-	for _, name2 := range []string{
-		"u1,u2@twitter#u3,u4@twitter",
-		"u1,u2@twitter#u3,u4@twitter,u5",
-		"u1,u2@twitter,u5#u4@twitter",
-	} {
-		h2, err := ParseTlfHandle(ctx, kbpki, name2, false)
-		require.NoError(t, err)
-
-		resolvedH1, resolvesTo, err =
-			h1.CheckResolvesTo(ctx, codec, kbpki, h2)
-		require.NoError(t, err)
-		require.Equal(t, h1, resolvedH1)
-		require.False(t, resolvesTo)
-	}
+	require.Equal(t, h1, partialResolvedH1)
 
 	// Test differing conflict info or finalized info.
 
@@ -718,57 +697,54 @@ func TestTlfHandlCheckResolvesTo(t *testing.T) {
 	err = h2.UpdateConflictInfo(codec, &info)
 	require.NoError(t, err)
 
-	resolvedH1, resolvesTo, err =
-		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
+	resolvesTo, partialResolvedH1, err =
+		h1.ResolvesTo(ctx, codec, kbpki, h2)
 	require.NoError(t, err)
-	require.Equal(t, h1, resolvedH1)
 	require.False(t, resolvesTo)
+	require.Equal(t, h1, partialResolvedH1)
 
 	h2, err = ParseTlfHandle(ctx, kbpki, name1, false)
 	require.NoError(t, err)
 	h2.SetFinalizedInfo(&info)
 
-	resolvedH1, resolvesTo, err =
-		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
+	resolvesTo, partialResolvedH1, err =
+		h1.ResolvesTo(ctx, codec, kbpki, h2)
 	require.NoError(t, err)
-	require.Equal(t, h1, resolvedH1)
 	require.False(t, resolvesTo)
+	require.Equal(t, h1, partialResolvedH1)
 
 	// Test positive resolution cases.
 
-	name2 := "u1,u2,u5#u3,u4@twitter"
-	daemon.removeAssertionForTest("u2@twitter")
-
-	h2, err = ParseTlfHandle(ctx, kbpki, name2, false)
+	name1 = "u1,u2@twitter,u5#u3,u4@twitter"
+	h1, err = ParseTlfHandle(ctx, kbpki, name1, false)
 	require.NoError(t, err)
 
-	daemon.addNewAssertionForTestOrBust("u2", "u2@twitter")
+	type testCase struct {
+		name2     string
+		resolveTo string
+	}
 
-	resolvedH1, resolvesTo, err =
-		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
-	require.NoError(t, err)
-	require.Equal(t, h2, resolvedH1, name2)
-	require.True(t, resolvesTo, name2)
+	for _, tc := range []testCase{
+		// Resolve to new user.
+		{"u1,u2,u5#u3,u4@twitter", "u2"},
+		// Resolve to existing writer.
+		{"u1,u5#u3,u4@twitter", "u1"},
+		// Resolve to existing reader.
+		{"u1,u3,u5#u4@twitter", "u3"},
+	} {
+		h2, err = ParseTlfHandle(ctx, kbpki, tc.name2, false)
+		require.NoError(t, err)
 
-	// Test reader promotion.
+		daemon.addNewAssertionForTestOrBust(tc.resolveTo, "u2@twitter")
 
-	daemon.removeAssertionForTest("u2@twitter")
+		resolvesTo, partialResolvedH1, err =
+			h1.ResolvesTo(ctx, codec, kbpki, h2)
+		require.NoError(t, err)
+		assert.True(t, resolvesTo, tc.name2)
+		require.Equal(t, h2, partialResolvedH1, tc.name2)
 
-	name2 = "u1,u3,u5#u4@twitter"
-	h2, err = ParseTlfHandle(ctx, kbpki, name2, false)
-	require.NoError(t, err)
-
-	daemon.addNewAssertionForTestOrBust("u3", "u2@twitter")
-
-	expectedResolvedH, err := ParseTlfHandle(
-		ctx, kbpki, "u1,u3,u5#u4@twitter", false)
-	require.NoError(t, err)
-
-	resolvedH1, resolvesTo, err =
-		h1.CheckResolvesTo(ctx, codec, kbpki, h2)
-	require.NoError(t, err)
-	require.Equal(t, expectedResolvedH, resolvedH1)
-	require.True(t, resolvesTo)
+		daemon.removeAssertionForTest("u2@twitter")
+	}
 }
 
 func TestParseTlfHandleNoncanonicalExtensions(t *testing.T) {
