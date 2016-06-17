@@ -22,7 +22,7 @@ func mdOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config = NewConfigMock(mockCtrl, ctr)
 	mdops := NewMDOpsStandard(config)
 	config.SetMDOps(mdops)
-	interposeDaemonKBPKI(config, "alice", "bob")
+	interposeDaemonKBPKI(config, "alice", "bob", "charlie")
 	ctx = context.Background()
 	return
 }
@@ -216,11 +216,15 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 	id := FakeTlfID(1, true)
 
 	mdHandle1, err := ParseTlfHandle(ctx, config.KBPKI(),
-		"alice,charlie@twitter", true)
+		"alice,dave@twitter", true)
 	require.NoError(t, err)
 
 	mdHandle2, err := ParseTlfHandle(ctx, config.KBPKI(),
-		"alice,bob", true)
+		"alice,bob,charlie", true)
+	require.NoError(t, err)
+
+	mdHandle3, err := ParseTlfHandle(ctx, config.KBPKI(),
+		"alice,bob@twitter,charlie@twitter", true)
 	require.NoError(t, err)
 
 	rmds1 := &RootMetadataSigned{}
@@ -233,15 +237,23 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 	require.NoError(t, err)
 	addFakeRMDSData(rmds2, mdHandle2)
 
+	rmds3 := &RootMetadataSigned{}
+	err = updateNewRootMetadata(&rmds3.MD, id, mdHandle3.ToBareHandleOrBust())
+	require.NoError(t, err)
+	addFakeRMDSData(rmds3, mdHandle3)
+
 	// Do this before setting tlfHandles to nil.
 	verifyMDForPublic(config, rmds2, nil, nil)
+	verifyMDForPublic(config, rmds3, nil, nil)
 
 	// Set tlfHandle to nil so that the md server returns a
 	// 'deserialized' RMDS.
 	rmds1.MD.tlfHandle = nil
 	rmds2.MD.tlfHandle = nil
+	rmds3.MD.tlfHandle = nil
 
-	h, err := ParseTlfHandle(ctx, config.KBPKI(), "alice,bob@twitter", true)
+	h, err := ParseTlfHandle(
+		ctx, config.KBPKI(), "alice,bob,charlie@twitter", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,10 +268,17 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 
 	daemon := config.KeybaseDaemon().(*KeybaseDaemonLocal)
 	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
+	daemon.addNewAssertionForTestOrBust("charlie", "charlie@twitter")
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(NullTlfID, rmds2, nil)
 
-	// Second time should succeed.
+	// Second and time should succeed.
+	if _, err := config.MDOps().GetForHandle(ctx, h); err != nil {
+		t.Errorf("Got error on get: %v", err)
+	}
+
+	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(NullTlfID, rmds3, nil)
+
 	if _, err := config.MDOps().GetForHandle(ctx, h); err != nil {
 		t.Errorf("Got error on get: %v", err)
 	}

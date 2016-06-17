@@ -218,18 +218,33 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 		return nil, err
 	}
 
-	resolvesTo, _, err := handle.ResolvesTo(
-		ctx, md.config.Codec(), md.config.KBPKI(), mdHandle)
+	handleResolvesToMdHandle, partialResolvedHandle, err :=
+		handle.ResolvesTo(
+			ctx, md.config.Codec(), md.config.KBPKI(), mdHandle)
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: If handle has conflict info, mdHandle should, too.
+	mdHandleResolvesToHandle, partialResolvedMdHandle, err :=
+		mdHandle.ResolvesTo(
+			ctx, md.config.Codec(), md.config.KBPKI(), handle)
+	if err != nil {
+		return nil, err
+	}
+
 	handlePath := handle.GetCanonicalPath()
 	mdHandlePath := mdHandle.GetCanonicalPath()
-	if !resolvesTo {
+	if !handleResolvesToMdHandle && !mdHandleResolvesToHandle {
 		return nil, MDMismatchError{
 			handle.GetCanonicalPath(),
-			fmt.Sprintf("MD (id=%s) contained unexpected handle path %s",
-				rmds.MD.ID, mdHandlePath),
+			fmt.Sprintf(
+				"MD (id=%s) contained unexpected handle path %s (%s -> %s) (%s -> %s)",
+				rmds.MD.ID, mdHandlePath,
+				handle.GetCanonicalPath(),
+				partialResolvedHandle.GetCanonicalPath(),
+				mdHandle.GetCanonicalPath(),
+				partialResolvedMdHandle.GetCanonicalPath()),
 		}
 	}
 
