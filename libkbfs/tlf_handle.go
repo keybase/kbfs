@@ -154,12 +154,6 @@ func (h *TlfHandle) UpdateConflictInfo(
 	}
 	// Make sure conflict info is the same; the conflict info for
 	// a TLF, once set, is immutable and should never change.
-	if info == nil {
-		return TlfHandleExtensionMismatchError{
-			Expected: *h.ConflictInfo(),
-			Actual:   nil,
-		}
-	}
 	equal, err := CodecEqual(codec, h.conflictInfo, info)
 	if err != nil {
 		return err
@@ -202,6 +196,52 @@ func (h TlfHandle) Extensions() (extensions []TlfHandleExtension) {
 		extensions = append(extensions, *h.FinalizedInfo())
 	}
 	return extensions
+}
+
+// Equals returns whether h and other contain the same info.
+func (h TlfHandle) Equals(codec Codec, other TlfHandle) (bool, error) {
+	if h.public != other.public {
+		return false, nil
+	}
+
+	if !reflect.DeepEqual(h.resolvedWriters, other.resolvedWriters) {
+		return false, nil
+	}
+
+	if !reflect.DeepEqual(h.resolvedReaders, other.resolvedReaders) {
+		return false, nil
+	}
+
+	if !reflect.DeepEqual(h.unresolvedWriters, other.unresolvedWriters) {
+		return false, nil
+	}
+
+	if !reflect.DeepEqual(h.unresolvedReaders, other.unresolvedReaders) {
+		return false, nil
+	}
+
+	eq, err := CodecEqual(codec, h.conflictInfo, other.conflictInfo)
+	if err != nil {
+		return false, err
+	}
+	if !eq {
+		return false, nil
+	}
+
+	eq, err = CodecEqual(codec, h.finalizedInfo, other.finalizedInfo)
+	if err != nil {
+		return false, err
+	}
+	if !eq {
+		return false, nil
+	}
+
+	if h.name != other.name {
+		panic(fmt.Errorf(
+			"%+v equals %+v in everything but name", h, other))
+	}
+
+	return true, nil
 }
 
 // ToBareHandle returns a BareTlfHandle corresponding to this handle.
