@@ -5196,5 +5196,6 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	// Simulate the server triggering alice to update.
 	config1.SetKeyCache(NewKeyCacheStandard(1))
 	err = kbfsOps1.SyncFromServerForTesting(ctx, fb1)
-	require.NoError(t, err)
+	require.EqualError(t, err,
+		"old head (alice -> alice) and new head (alice,mallory -> alice,mallory) resolve to different names")
 }
