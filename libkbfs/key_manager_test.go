@@ -457,7 +457,7 @@ func TestKeyManagerPromoteReaderSuccessPrivate(t *testing.T) {
 
 	// Pretend that bob@twitter now resolves to bob.
 	daemon := config.KeybaseDaemon().(*KeybaseDaemonLocal)
-	daemon.addNewAssertionForTest("bob", "bob@twitter")
+	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
 
 	// Make the first key generation
 	if done, _, err := config.KeyManager().Rekey(ctx, rmd, false); !done || err != nil {

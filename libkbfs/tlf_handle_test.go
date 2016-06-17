@@ -638,7 +638,7 @@ func TestResolveAgainConflict(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, CanonicalTlfName(name), h.GetCanonicalName())
 
-	daemon.addNewAssertionForTest("u3", "u3@twitter")
+	daemon.addNewAssertionForTestOrBust("u3", "u3@twitter")
 	ext, err := NewTlfHandleExtension(TlfHandleExtensionConflict, 1)
 	if err != nil {
 		t.Fatal(err)
@@ -753,8 +753,8 @@ func TestTlfHandlCheckResolvesTo(t *testing.T) {
 		h2, err = ParseTlfHandle(ctx, kbpki, name2, false)
 		require.NoError(t, err)
 
-		daemon.addNewAssertionForTest("u2", "u2@twitter")
-		daemon.addNewAssertionForTest("u4", "u4@twitter")
+		daemon.addNewAssertionForTestOrBust("u2", "u2@twitter")
+		daemon.addNewAssertionForTestOrBust("u4", "u4@twitter")
 
 		expectedResolvedH, err := ParseTlfHandle(
 			ctx, kbpki, "u1,u2,u5#u3,u4", false)
