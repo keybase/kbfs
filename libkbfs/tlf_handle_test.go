@@ -346,6 +346,49 @@ func TestTlfHandleFinalizedInfo(t *testing.T) {
 	require.Nil(t, h.FinalizedInfo())
 }
 
+func TestTlfHandlEqual(t *testing.T) {
+	ctx := context.Background()
+
+	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{
+		"u1", "u2", "u3", "u4", "u5",
+	})
+	currentUID := localUsers[0].UID
+	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
+
+	kbpki := &daemonKBPKI{
+		daemon: daemon,
+	}
+
+	codec := NewCodecMsgpack()
+
+	name1 := "u1,u2@twitter,u3,u4@twitter"
+	h1, err := ParseTlfHandle(ctx, kbpki, name1, true)
+	require.NoError(t, err)
+
+	eq, err := h1.Equals(codec, *h1)
+	require.NoError(t, err)
+	require.True(t, eq)
+
+	h2, err := ParseTlfHandle(ctx, kbpki, name1, false)
+	require.NoError(t, err)
+	eq, err = h1.Equals(codec, *h2)
+	require.NoError(t, err)
+	require.False(t, eq)
+
+	for _, name2 := range []string{
+		"u1@twitter,u3,u4@twitter,u5",
+		"u1,u3,u4@twitter,u5@twitter",
+		"u1,u2@twitter,u4@twitter,u5",
+		"u1,u2@twitter,u3,u5@twitter",
+	} {
+		h2, err := ParseTlfHandle(ctx, kbpki, name2, true)
+		require.NoError(t, err)
+		eq, err := h1.Equals(codec, *h2)
+		require.NoError(t, err)
+		require.False(t, eq)
+	}
+}
+
 func TestParseTlfHandleSocialAssertion(t *testing.T) {
 	ctx := context.Background()
 
