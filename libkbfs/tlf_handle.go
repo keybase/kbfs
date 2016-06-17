@@ -152,7 +152,8 @@ func (h *TlfHandle) UpdateConflictInfo(
 		h.conflictInfo = &conflictInfoCopy
 		return nil
 	}
-	// Make sure conflict info is the same.
+	// Make sure conflict info is the same; the conflict info for
+	// a TLF, once set, is immutable and should never change.
 	if info == nil {
 		return TlfHandleExtensionMismatchError{
 			Expected: h.ConflictInfo(),
