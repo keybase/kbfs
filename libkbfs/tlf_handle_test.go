@@ -745,6 +745,28 @@ func TestTlfHandleResolvesTo(t *testing.T) {
 
 		daemon.removeAssertionForTest("u2@twitter")
 	}
+
+	// Test negative resolution cases.
+
+	name1 = "u1,u2@twitter,u5#u3,u4@twitter"
+
+	for _, tc := range []testCase{
+		{"u1,u5#u3,u4@twitter", "u2"},
+		{"u1,u2,u5#u3,u4@twitter", "u1"},
+		{"u1,u2,u5#u3,u4@twitter", "u3"},
+	} {
+		h2, err = ParseTlfHandle(ctx, kbpki, tc.name2, false)
+		require.NoError(t, err)
+
+		daemon.addNewAssertionForTestOrBust(tc.resolveTo, "u2@twitter")
+
+		resolvesTo, partialResolvedH1, err =
+			h1.ResolvesTo(ctx, codec, kbpki, h2)
+		require.NoError(t, err)
+		assert.False(t, resolvesTo, tc.name2)
+
+		daemon.removeAssertionForTest("u2@twitter")
+	}
 }
 
 func TestParseTlfHandleNoncanonicalExtensions(t *testing.T) {
