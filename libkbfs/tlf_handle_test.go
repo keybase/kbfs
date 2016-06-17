@@ -306,18 +306,24 @@ func TestTlfHandleConflictInfo(t *testing.T) {
 	err = h.UpdateConflictInfo(codec, &info)
 	require.NoError(t, err)
 
-	err = h.UpdateConflictInfo(codec, nil)
-	require.Equal(t, TlfHandleExtensionMismatchError{
-		Expected: h.ConflictInfo(),
+	expectedErr := TlfHandleExtensionMismatchError{
+		Expected: *h.ConflictInfo(),
 		Actual:   nil,
-	}, err)
+	}
+	err = h.UpdateConflictInfo(codec, nil)
+	require.Equal(t, expectedErr, err)
+	require.Equal(t, "Folder handle extension mismatch, expected: (conflicted copy 1970-01-01 #50), actual: <nil>", err.Error())
 
+	expectedErr = TlfHandleExtensionMismatchError{
+		Expected: *h.ConflictInfo(),
+		Actual:   &info,
+	}
 	info.Date = 101
 	err = h.UpdateConflictInfo(codec, &info)
-	require.Equal(t, TlfHandleExtensionMismatchError{
-		Expected: h.ConflictInfo(),
-		Actual:   &info,
-	}, err)
+	require.Equal(t, expectedErr, err)
+	// A strange error message, since the difference doesn't show
+	// up in the strings. Oh, well.
+	require.Equal(t, "Folder handle extension mismatch, expected: (conflicted copy 1970-01-01 #50), actual: (conflicted copy 1970-01-01 #50)", err.Error())
 }
 
 func TestTlfHandleFinalizedInfo(t *testing.T) {
