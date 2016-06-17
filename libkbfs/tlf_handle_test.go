@@ -353,13 +353,14 @@ func TestTlfHandlEqual(t *testing.T) {
 		"u1", "u2", "u3", "u4", "u5",
 	})
 	currentUID := localUsers[0].UID
-	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
+	codec := NewCodecMsgpack()
+	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, codec)
 
 	kbpki := &daemonKBPKI{
 		daemon: daemon,
 	}
 
-	codec := NewCodecMsgpack()
+	// Test public bit.
 
 	name1 := "u1,u2@twitter,u3,u4@twitter"
 	h1, err := ParseTlfHandle(ctx, kbpki, name1, true)
@@ -375,18 +376,57 @@ func TestTlfHandlEqual(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, eq)
 
+	// Test resolved and unresolved readers and writers.
+
+	name1 = "u1,u2@twitter#u3,u4@twitter"
+	h1, err = ParseTlfHandle(ctx, kbpki, name1, false)
+	require.NoError(t, err)
+
 	for _, name2 := range []string{
-		"u1@twitter,u3,u4@twitter,u5",
-		"u1,u3,u4@twitter,u5@twitter",
-		"u1,u2@twitter,u4@twitter,u5",
-		"u1,u2@twitter,u3,u5@twitter",
+		"u1,u2@twitter,u5#u3,u4@twitter",
+		"u1,u5@twitter#u3,u4@twitter",
+		"u1,u2@twitter#u4@twitter,u5",
+		"u1,u2@twitter#u3,u5@twitter",
 	} {
-		h2, err := ParseTlfHandle(ctx, kbpki, name2, true)
+		h2, err := ParseTlfHandle(ctx, kbpki, name2, false)
 		require.NoError(t, err)
 		eq, err := h1.Equals(codec, *h2)
 		require.NoError(t, err)
 		require.False(t, eq)
 	}
+
+	// Test conflict info and finalized info.
+
+	h2, err = ParseTlfHandle(ctx, kbpki, name1, false)
+	require.NoError(t, err)
+	info := TlfHandleExtension{
+		Date:   100,
+		Number: 50,
+		Type:   TlfHandleExtensionConflict,
+	}
+	err = h2.UpdateConflictInfo(codec, &info)
+	require.NoError(t, err)
+
+	eq, err = h1.Equals(codec, *h2)
+	require.NoError(t, err)
+	require.False(t, eq)
+
+	h2, err = ParseTlfHandle(ctx, kbpki, name1, false)
+	require.NoError(t, err)
+	h2.SetFinalizedInfo(&info)
+
+	eq, err = h1.Equals(codec, *h2)
+	require.NoError(t, err)
+	require.False(t, eq)
+
+	// Test panic on name difference.
+	h2, err = ParseTlfHandle(ctx, kbpki, name1, false)
+	require.NoError(t, err)
+	h2.name += "x"
+
+	require.Panics(t, func() {
+		h1.Equals(codec, *h2)
+	}, "in everything but name")
 }
 
 func TestParseTlfHandleSocialAssertion(t *testing.T) {
