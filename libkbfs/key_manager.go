@@ -446,45 +446,14 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 		// Check with the server to see if the handle became a conflict.
 		latestHandle, err := km.config.MDOps().GetLatestHandleForTLF(ctx, md.ID)
+		if latestHandle.ConflictInfo != nil {
+			km.log.CDebugf(ctx, "handle for %s is conflicted",
+				handle.GetCanonicalPath())
+		}
+		err = resolvedHandle.UpdateConflictInfo(
+			km.config.Codec(), latestHandle.ConflictInfo)
 		if err != nil {
 			return false, nil, err
-		}
-		resolvedInfo := resolvedHandle.ConflictInfo()
-		if resolvedInfo == nil {
-			if latestHandle.ConflictInfo == nil {
-				// Nothing to do.
-			} else {
-				km.log.CDebugf(
-					ctx, "handle for %s is conflicted",
-					handle.GetCanonicalPath())
-				// Set the conflict info in the resolved handle.
-				// This will get stored in the metadata block.
-				// TODO: We should do some verification of this.
-				resolvedHandle.SetConflictInfo(latestHandle.ConflictInfo)
-			}
-		} else {
-			if latestHandle.ConflictInfo == nil {
-				// Conflict info disappeared?
-				err := TlfHandleExtensionMismatchError{
-					Expected: resolvedInfo,
-					Actual:   nil,
-				}
-				return false, nil, err
-			}
-			// Make sure conflict info is the same.
-			equal, err := CodecEqual(
-				km.config.Codec(), resolvedInfo,
-				latestHandle.ConflictInfo)
-			if err != nil {
-				return false, nil, err
-			}
-			if !equal {
-				err := TlfHandleExtensionMismatchError{
-					Expected: resolvedInfo,
-					Actual:   latestHandle.ConflictInfo,
-				}
-				return false, nil, err
-			}
 		}
 	}
 

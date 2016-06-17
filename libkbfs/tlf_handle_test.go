@@ -285,20 +285,39 @@ func TestTlfHandleConflictInfo(t *testing.T) {
 	var h TlfHandle
 
 	require.Nil(t, h.ConflictInfo())
+
+	codec := NewCodecMsgpack()
+	err := h.UpdateConflictInfo(codec, nil)
+	require.NoError(t, err)
+
 	info := TlfHandleExtension{
 		Date:   100,
 		Number: 50,
 		Type:   TlfHandleExtensionConflict,
 	}
-
-	h.SetConflictInfo(&info)
+	err = h.UpdateConflictInfo(codec, &info)
+	require.NoError(t, err)
 	require.Equal(t, info, *h.ConflictInfo())
 
 	info.Date = 101
 	require.NotEqual(t, info, *h.ConflictInfo())
 
-	h.SetConflictInfo(nil)
-	require.Nil(t, h.ConflictInfo())
+	info.Date = 100
+	err = h.UpdateConflictInfo(codec, &info)
+	require.NoError(t, err)
+
+	err = h.UpdateConflictInfo(codec, nil)
+	require.Equal(t, TlfHandleExtensionMismatchError{
+		Expected: h.ConflictInfo(),
+		Actual:   nil,
+	}, err)
+
+	info.Date = 101
+	err = h.UpdateConflictInfo(codec, &info)
+	require.Equal(t, TlfHandleExtensionMismatchError{
+		Expected: h.ConflictInfo(),
+		Actual:   &info,
+	}, err)
 }
 
 func TestTlfHandleFinalizedInfo(t *testing.T) {
