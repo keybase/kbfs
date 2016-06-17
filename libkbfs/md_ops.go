@@ -208,19 +208,6 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 		return &rmd, nil
 	}
 
-	resolvedHandle, err := handle.ResolveAgain(ctx, md.config.KBPKI())
-	if err != nil {
-		return nil, err
-	}
-
-	handlePath := handle.GetCanonicalPath()
-	resolvedHandlePath := resolvedHandle.GetCanonicalPath()
-
-	if resolvedHandlePath != handlePath {
-		md.log.CDebugf(ctx, "handle for %s resolved to %s",
-			handlePath, resolvedHandlePath)
-	}
-
 	bareMdHandle, err := rmds.MD.MakeBareTlfHandle()
 	if err != nil {
 		return nil, err
@@ -231,35 +218,24 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 		return nil, err
 	}
 
-	// It's theoretically possible that this ResolveAgain may get
-	// different results for the same assertions present in
-	// handle, which will cause false negatives. This is okay for
-	// now, as it should rarely happen, and the user can just
-	// retry.
-	//
-	// TODO: Resolve handle and mdHandle again "at the same time".
-
-	resolvedMdHandle, err := mdHandle.ResolveAgain(ctx, md.config.KBPKI())
+	resolvesTo, _, err := handle.ResolvesTo(
+		ctx, md.config.Codec(), md.config.KBPKI(), mdHandle)
 	if err != nil {
 		return nil, err
 	}
-
+	handlePath := handle.GetCanonicalPath()
 	mdHandlePath := mdHandle.GetCanonicalPath()
-	resolvedMdHandlePath := resolvedMdHandle.GetCanonicalPath()
-
-	if resolvedMdHandlePath != mdHandlePath {
-		md.log.CDebugf(ctx, "handle in metadata for %s resolved to %s",
-			mdHandlePath, resolvedMdHandlePath)
+	if !resolvesTo {
+		return nil, MDMismatchError{
+			handle.GetCanonicalPath(),
+			fmt.Sprintf("MD (id=%s) contained unexpected handle path %s",
+				rmds.MD.ID, mdHandlePath),
+		}
 	}
 
-	// Make sure that the path for the given handle matches the
-	// one generated from the MD.
-	if resolvedMdHandlePath != resolvedHandlePath {
-		return nil, MDMismatchError{
-			resolvedHandlePath,
-			fmt.Sprintf("MD (id=%s) contained unexpected handle path %s",
-				rmds.MD.ID, resolvedMdHandlePath),
-		}
+	if handlePath != mdHandlePath {
+		md.log.CDebugf(ctx, "handle for %s resolved to %s",
+			handlePath, mdHandlePath)
 	}
 
 	// TODO: For now, use the mdHandle that came with rmds for
