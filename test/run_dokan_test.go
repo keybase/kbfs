@@ -45,7 +45,6 @@ func createUserDokan(t *testing.T, ith int, config *libkbfs.ConfigLocal) User {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fs.LaunchNotificationProcessor(ctx)
 	return &fsUser{
 		mntDir: mnt.Dir,
 		config: config,
