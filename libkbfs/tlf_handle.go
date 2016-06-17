@@ -595,13 +595,33 @@ func (h *TlfHandle) ResolveAgain(ctx context.Context, resolver resolver) (
 // CheckResolvesTo checks whether this handle resolves to the given
 // one, and returns that. It also returns the resolved versions of
 // both handles, which may just be the handles unchanged if it is
-// determined that this handle cannot resolved to the given one.
+// determined that this handle cannot resolve to the given one.
 func (h TlfHandle) CheckResolvesTo(
 	ctx context.Context, codec Codec, resolver resolver, other *TlfHandle) (
 	resolvedH, resolvedOther *TlfHandle, resolvesTo bool, err error) {
 	if h.public != other.public {
 		return &h, other, false, nil
 	}
+
+	eq, err := CodecEqual(codec, h.conflictInfo, other.conflictInfo)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	if !eq {
+		return &h, other, false, nil
+	}
+
+	eq, err = CodecEqual(codec, h.finalizedInfo, other.finalizedInfo)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	if !eq {
+		return &h, other, false, nil
+	}
+
+	// TODO: Do this algorithm instead: Resolve h, except
+	// "whitelist" all the existing unresolved assertions in
+	// other, and then check that the result is equal to other.
 
 	// A writer in h must still be a writer in other.
 
@@ -619,22 +639,6 @@ func (h TlfHandle) CheckResolvesTo(
 			other.resolvedWriters[uid] != name {
 			return &h, other, false, nil
 		}
-	}
-
-	eq, err := CodecEqual(codec, h.conflictInfo, other.conflictInfo)
-	if err != nil {
-		return nil, nil, false, err
-	}
-	if !eq {
-		return &h, other, false, nil
-	}
-
-	eq, err = CodecEqual(codec, h.finalizedInfo, other.finalizedInfo)
-	if err != nil {
-		return nil, nil, false, err
-	}
-	if !eq {
-		return &h, other, false, nil
 	}
 
 	resolvedH, err = h.ResolveAgain(ctx, resolver)
