@@ -524,32 +524,25 @@ func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
 
 		oldHandle := fbo.head.GetTlfHandle()
 		newHandle := md.GetTlfHandle()
+
+		resolvesTo, partialResolvedOldHandle, err :=
+			oldHandle.ResolvesTo(
+				ctx, fbo.config.Codec(), fbo.config.KBPKI(),
+				newHandle)
+		if err != nil {
+			return err
+		}
+
 		oldName := oldHandle.GetCanonicalName()
+		partialOldName := partialResolvedOldHandle.GetCanonicalName()
 		newName := newHandle.GetCanonicalName()
+
+		if !resolvesTo {
+			return fmt.Errorf(
+				"old head %q resolves to %q instead of new head %q",
+				oldName, partialOldName, newName)
+		}
 		if oldName != newName {
-			// TODO: Resolve these "at the same time" to
-			// avoid race conditions.
-
-			oldResolvedHandle, err := oldHandle.ResolveAgain(
-				ctx, fbo.config.KBPKI())
-			if err != nil {
-				return err
-			}
-
-			newResolvedHandle, err := newHandle.ResolveAgain(
-				ctx, fbo.config.KBPKI())
-			if err != nil {
-				return err
-			}
-
-			oldResolvedName := oldResolvedHandle.GetCanonicalName()
-			newResolvedName := newResolvedHandle.GetCanonicalName()
-			if oldResolvedName != newResolvedName {
-				return fmt.Errorf("old head (%s -> %s) and new head (%s -> %s) resolve to different names",
-					oldName, oldResolvedName,
-					newName, newResolvedName)
-			}
-
 			fbo.log.CDebugf(ctx, "Handle changed (%s -> %s)",
 				oldName, newName)
 			handleNameChanged = true

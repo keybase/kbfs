@@ -5197,5 +5197,5 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	config1.SetKeyCache(NewKeyCacheStandard(1))
 	err = kbfsOps1.SyncFromServerForTesting(ctx, fb1)
 	require.EqualError(t, err,
-		"old head (alice -> alice) and new head (alice,mallory -> alice,mallory) resolve to different names")
+		"old head \"alice\" resolves to \"alice\" instead of new head \"alice,mallory\"")
 }
