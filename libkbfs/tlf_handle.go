@@ -603,14 +603,18 @@ func (h TlfHandle) CheckResolvesTo(
 		return &h, other, false, nil
 	}
 
+	// A writer in h must still be a writer in other.
+
 	for uid, name := range h.resolvedWriters {
 		if other.resolvedWriters[uid] != name {
 			return &h, other, false, nil
 		}
 	}
 
+	// A reader in h must still be a reader or writer (due to
+	// promotion) in other.
+
 	for uid, name := range h.resolvedReaders {
-		// Resolution might promote a reader to a writer.
 		if other.resolvedReaders[uid] != name &&
 			other.resolvedWriters[uid] != name {
 			return &h, other, false, nil

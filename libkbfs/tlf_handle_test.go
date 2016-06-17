@@ -748,16 +748,14 @@ func TestTlfHandlCheckResolvesTo(t *testing.T) {
 		"u1,u2,u5#u3,u4",
 	} {
 		daemon.removeAssertionForTest("u2@twitter")
-		daemon.removeAssertionForTest("u4@twitter")
 
 		h2, err = ParseTlfHandle(ctx, kbpki, name2, false)
 		require.NoError(t, err)
 
 		daemon.addNewAssertionForTestOrBust("u2", "u2@twitter")
-		daemon.addNewAssertionForTestOrBust("u4", "u4@twitter")
 
 		expectedResolvedH, err := ParseTlfHandle(
-			ctx, kbpki, "u1,u2,u5#u3,u4", false)
+			ctx, kbpki, "u1,u2,u5#u3,u4@twitter", false)
 		require.NoError(t, err)
 
 		resolvedH1, resolvedH2, resolvesTo, err =
@@ -771,17 +769,15 @@ func TestTlfHandlCheckResolvesTo(t *testing.T) {
 	// Test reader promotion.
 
 	daemon.removeAssertionForTest("u2@twitter")
-	daemon.removeAssertionForTest("u4@twitter")
 
 	name2 := "u1,u3,u5#u4@twitter"
 	h2, err = ParseTlfHandle(ctx, kbpki, name2, false)
 	require.NoError(t, err)
 
 	daemon.addNewAssertionForTestOrBust("u3", "u2@twitter")
-	daemon.addNewAssertionForTestOrBust("u4", "u4@twitter")
 
 	expectedResolvedH, err := ParseTlfHandle(
-		ctx, kbpki, "u1,u3,u5#u4", false)
+		ctx, kbpki, "u1,u3,u5#u4@twitter", false)
 	require.NoError(t, err)
 
 	resolvedH1, resolvedH2, resolvesTo, err =
