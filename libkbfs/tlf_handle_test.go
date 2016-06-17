@@ -738,6 +738,35 @@ func TestTlfHandlCheckResolvesTo(t *testing.T) {
 	require.Equal(t, h1, resolvedH1)
 	require.Equal(t, h2, resolvedH2)
 	require.False(t, resolvesTo)
+
+	// Test positive resolution cases.
+
+	for _, name2 := range []string{
+		"u1,u2@twitter,u5#u3,u4@twitter",
+		"u1,u2,u5#u3,u4@twitter",
+		"u1,u2@twitter,u5#u3,u4",
+		"u1,u2,u5#u3,u4",
+	} {
+		daemon.removeAssertionForTest("u2@twitter")
+		daemon.removeAssertionForTest("u4@twitter")
+
+		h2, err = ParseTlfHandle(ctx, kbpki, name2, false)
+		require.NoError(t, err)
+
+		daemon.addNewAssertionForTest("u2", "u2@twitter")
+		daemon.addNewAssertionForTest("u4", "u4@twitter")
+
+		expectedResolvedH, err := ParseTlfHandle(
+			ctx, kbpki, "u1,u2,u5#u3,u4", false)
+		require.NoError(t, err)
+
+		resolvedH1, resolvedH2, resolvesTo, err =
+			h1.CheckResolvesTo(ctx, codec, kbpki, h2)
+		require.NoError(t, err)
+		require.Equal(t, expectedResolvedH, resolvedH1)
+		require.Equal(t, expectedResolvedH, resolvedH2)
+		require.True(t, resolvesTo)
+	}
 }
 
 func TestParseTlfHandleNoncanonicalExtensions(t *testing.T) {
