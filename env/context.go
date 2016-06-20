@@ -10,10 +10,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/go-framed-msgpack-rpc"
-	"github.com/keybase/kbfs/libkbfs"
 )
-
-var _ libkbfs.Context = (*Context)(nil)
 
 // Context is an implementation for libkbfs.Context
 type Context struct {
