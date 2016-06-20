@@ -9,6 +9,7 @@ package libdokan
 import (
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/keybase/kbfs/dokan"
 	"github.com/keybase/kbfs/libfs"
@@ -115,6 +116,31 @@ func (tlf *TLF) loadDirHelper(ctx context.Context, info string, filterErr bool) 
 func (tlf *TLF) loadDirAllowNonexistent(ctx context.Context, info string) (
 	*Dir, bool, error) {
 	return tlf.loadDirHelper(ctx, info, true)
+}
+
+// SetFileTime sets mtime for FSOs (File and Dir).
+func (tlf *TLF) SetFileTime(fi *dokan.FileInfo, creation time.Time, lastAccess time.Time, lastWrite time.Time) (err error) {
+	ctx, cancel := NewContextWithOpID(tlf.folder.fs, "TLF SetFileTime")
+	defer cancel()
+
+	dir, _, err := tlf.loadDirHelper(ctx, "TLF SetFileTime", false)
+	if err != nil {
+		return err
+	}
+	return dir.SetFileTime(fi, creation, lastAccess, lastWrite)
+}
+
+// SetFileAttributes for Dokan.
+func (tlf *TLF) SetFileAttributes(fi *dokan.FileInfo, fileAttributes uint32) error {
+	ctx, cancel := NewContextWithOpID(tlf.folder.fs, "TLF SetFileAttributes")
+	defer cancel()
+	dir, _, err := tlf.loadDirHelper(ctx, "TLF SetFileAttributes", false)
+	if err != nil {
+		return err
+	}
+	return dir.SetFileAttributes(fi, fileAttributes)
+
+	return nil
 }
 
 // GetFileInformation for dokan.

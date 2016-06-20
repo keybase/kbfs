@@ -46,6 +46,23 @@ const (
 
 // Constants used in this file.  TODO: Make these configurable?
 const (
+	// MaxBlockSizeBytesDefault is the default maximum block size for KBFS.
+	// 512K blocks by default, block changes embedded max == 8K.
+	// Block size was chosen somewhat arbitrarily by trying to
+	// minimize the overall size of the history written by a user when
+	// appending 1KB writes to a file, up to a 1GB total file.  Here
+	// is the output of a simple script that approximates that
+	// calculation:
+	//
+	// Total history size for 0065536-byte blocks: 1134341128192 bytes
+	// Total history size for 0131072-byte blocks: 618945052672 bytes
+	// Total history size for 0262144-byte blocks: 412786622464 bytes
+	// Total history size for 0524288-byte blocks: 412786622464 bytes
+	// Total history size for 1048576-byte blocks: 618945052672 bytes
+	// Total history size for 2097152-byte blocks: 1134341128192 bytes
+	// Total history size for 4194304-byte blocks: 2216672886784 bytes
+	MaxBlockSizeBytesDefault = 512 << 10
+	// Maximum number of blocks that can be sent in parallel
 	maxParallelBlockPuts = 10
 	// Max response size for a single DynamoDB query is 1MB.
 	maxMDsAtATime = 10
@@ -55,7 +72,7 @@ const (
 	// Cap the number of times we retry after a recoverable error
 	maxRetriesOnRecoverableErrors = 10
 	// When the number of dirty bytes exceeds this level, force a sync.
-	dirtyBytesThreshold = maxParallelBlockPuts * (512 << 10)
+	dirtyBytesThreshold = maxParallelBlockPuts * MaxBlockSizeBytesDefault
 	// The timeout for any background task.
 	backgroundTaskTimeout = 1 * time.Minute
 )
@@ -2673,8 +2690,7 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 		// stat calls accurately if the user still has an open
 		// handle to this file. TODO: Hook this in with the
 		// node cache GC logic to be perfectly accurate.
-		fbo.blocks.ClearCacheInfo(lState, file)
-		return true, nil
+		return true, fbo.blocks.ClearCacheInfo(lState, file)
 	}
 
 	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
@@ -2746,10 +2762,6 @@ func (fbo *folderBranchOps) Sync(ctx context.Context, file Node) (err error) {
 	if err != nil {
 		return
 	}
-	defer func() {
-		lState := makeFBOLockState()
-		fbo.blocks.NotifyBlockedWrites(lState, err)
-	}()
 
 	var stillDirty bool
 	err = fbo.doMDWriteWithRetryUnlessCanceled(ctx,
@@ -3794,11 +3806,22 @@ func (fbo *folderBranchOps) backgroundFlusher(betweenFlushes time.Duration) {
 	defer ticker.Stop()
 	lState := makeFBOLockState()
 	for {
-		select {
-		case <-ticker.C:
-		case <-fbo.forceSyncChan:
-		case <-fbo.shutdownChan:
-			return
+		doSelect := true
+		if fbo.blocks.GetState(lState) == dirtyState &&
+			fbo.config.DirtyBlockCache().ShouldForceSync() {
+			// We have dirty files, and the system has a full buffer,
+			// so don't bother waiting for a signal, just get right to
+			// the main attraction.
+			doSelect = false
+		}
+
+		if doSelect {
+			select {
+			case <-ticker.C:
+			case <-fbo.forceSyncChan:
+			case <-fbo.shutdownChan:
+				return
+			}
 		}
 		dirtyRefs := fbo.blocks.GetDirtyRefs(lState)
 		fbo.runUnlessShutdown(func(ctx context.Context) (err error) {
