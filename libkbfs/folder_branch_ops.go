@@ -569,85 +569,86 @@ func (fbo *folderBranchOps) setInitialHeadUntrustedLocked(ctx context.Context,
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
 	if fbo.head != nil {
-		panic("Unexpected non-nil head")
+		return errors.New("Unexpected non-nil head in setInitialHeadUntrustedLocked")
 	}
 	return fbo.setHeadLocked(ctx, lState, md)
 }
 
-func (fbo *folderBranchOps) setHeadInitLocked(ctx context.Context,
+// setNewInitialHeadLocked is for when we're creating a brand-new TLF.
+func (fbo *folderBranchOps) setNewInitialHeadLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
 	if fbo.head != nil {
-		panic("Unexpected non-nil head")
+		return errors.New("Unexpected non-nil head in setNewInitialHeadLocked")
 	}
 	if md.Revision != MetadataRevisionInitial {
-		panic(fmt.Sprintf("what %d", md.Revision))
+		return fmt.Errorf("setNewInitialHeadLocked unexpectedly called with revision %d", md.Revision)
 	}
 	return fbo.setHeadLocked(ctx, lState, md)
 }
 
-func (fbo *folderBranchOps) setHeadTrustedLocked(ctx context.Context,
+// setInitialHeadUntrustedLocked is for when the given RootMetadata
+// was fetched due to a user action, and will be checked against the
+// TLF name.
+func (fbo *folderBranchOps) setInitialHeadTrustedLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
 	if fbo.head != nil {
-		panic("Unexpected non-nil head")
+		return errors.New("Unexpected non-nil head in setInitialHeadUntrustedLocked")
 	}
 	return fbo.setHeadLocked(ctx, lState, md)
 }
 
+// setHeadSuccessorLocked is for when we're applying updates from the
+// server.
 func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
-	handleNameChanged := false
 	if fbo.head == nil {
-		if md.Revision != MetadataRevisionInitial {
-			panic(fmt.Sprintf("what %d", md.Revision))
-		}
-	} else {
-		err := fbo.head.CheckValidSuccessor(fbo.config, md)
-		if err != nil {
-			return err
-		}
-
-		oldHandle := fbo.head.GetTlfHandle()
-		newHandle := md.GetTlfHandle()
-
-		// Newer handles should be equal or more resolved over time.
-		resolvesTo, partialResolvedOldHandle, err :=
-			oldHandle.ResolvesTo(
-				ctx, fbo.config.Codec(), fbo.config.KBPKI(),
-				newHandle)
-		if err != nil {
-			return err
-		}
-
-		oldName := oldHandle.GetCanonicalName()
-		newName := newHandle.GetCanonicalName()
-
-		if !resolvesTo {
-			return IncompatibleHandleError{
-				oldName,
-				partialResolvedOldHandle.GetCanonicalName(),
-				newName,
-			}
-		}
-
-		if oldName != newName {
-			fbo.log.CDebugf(ctx, "Handle changed (%s -> %s)",
-				oldName, newName)
-			handleNameChanged = true
-		}
+		// This can happen in tests via SyncFromServerForTesting().
+		return fbo.setInitialHeadTrustedLocked(ctx, lState, md)
 	}
 
-	err := fbo.setHeadLocked(ctx, lState, md)
+	err := fbo.head.CheckValidSuccessor(fbo.config, md)
 	if err != nil {
 		return err
 	}
 
-	if handleNameChanged {
+	oldHandle := fbo.head.GetTlfHandle()
+	newHandle := md.GetTlfHandle()
+
+	// Newer handles should be equal or more resolved over time.
+	resolvesTo, partialResolvedOldHandle, err :=
+		oldHandle.ResolvesTo(
+			ctx, fbo.config.Codec(), fbo.config.KBPKI(),
+			newHandle)
+	if err != nil {
+		return err
+	}
+
+	oldName := oldHandle.GetCanonicalName()
+	newName := newHandle.GetCanonicalName()
+
+	if !resolvesTo {
+		return IncompatibleHandleError{
+			oldName,
+			partialResolvedOldHandle.GetCanonicalName(),
+			newName,
+		}
+	}
+
+	err = fbo.setHeadLocked(ctx, lState, md)
+	if err != nil {
+		return err
+	}
+
+	if oldName != newName {
+		fbo.log.CDebugf(ctx, "Handle changed (%s -> %s)",
+			oldName, newName)
+
 		// If the handle has changed, send out a notification.
 		fbo.observers.tlfHandleChange(ctx, fbo.head.GetTlfHandle())
 		// Also the folder should be re-identified given the
@@ -966,7 +967,7 @@ func (fbo *folderBranchOps) initMDLocked(
 			"%v: Unexpected MD ID during new MD initialization: %v",
 			md.ID, headID)
 	}
-	fbo.setHeadInitLocked(ctx, lState, md)
+	fbo.setNewInitialHeadLocked(ctx, lState, md)
 	if err != nil {
 		return err
 	}
@@ -1039,7 +1040,7 @@ func (fbo *folderBranchOps) CheckForNewMDAndInit(
 			// updated either directly via writes or through the
 			// background update processor.
 			if fbo.head == nil {
-				err := fbo.setHeadTrustedLocked(ctx, lState, md)
+				err := fbo.setInitialHeadTrustedLocked(ctx, lState, md)
 				if err != nil {
 					return err
 				}
