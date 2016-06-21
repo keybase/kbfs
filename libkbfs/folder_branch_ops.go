@@ -499,8 +499,8 @@ func (fbo *folderBranchOps) checkDataVersion(p path, ptr BlockPointer) error {
 	return nil
 }
 
-func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
-	lState *lockState, md *RootMetadata, handleNameChanged bool) error {
+func (fbo *folderBranchOps) setHeadLocked(
+	ctx context.Context, lState *lockState, md *RootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
 
@@ -551,16 +551,6 @@ func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
 			fbo.updateDoneChan = make(chan struct{})
 			go fbo.registerAndWaitForUpdates()
 		}
-	} else if handleNameChanged {
-		// If the handle has changed, send out a notification.
-		fbo.observers.tlfHandleChange(ctx, fbo.head.GetTlfHandle())
-		// Also the folder should be re-identified given the
-		// newly-resolved assertions.
-		func() {
-			fbo.identifyLock.Lock()
-			defer fbo.identifyLock.Unlock()
-			fbo.identifyDone = false
-		}()
 	}
 	if !wasReadable && md.IsReadable() {
 		// Let any listeners know that this folder is now readable,
@@ -578,7 +568,7 @@ func (fbo *folderBranchOps) setHeadUntrustedLocked(ctx context.Context,
 	if fbo.head != nil {
 		panic("Unexpected non-nil head")
 	}
-	return fbo.setHeadLocked(ctx, lState, md, false)
+	return fbo.setHeadLocked(ctx, lState, md)
 }
 
 func (fbo *folderBranchOps) setHeadInitLocked(ctx context.Context,
@@ -591,7 +581,7 @@ func (fbo *folderBranchOps) setHeadInitLocked(ctx context.Context,
 	if md.Revision != MetadataRevisionInitial {
 		panic(fmt.Sprintf("what %d", md.Revision))
 	}
-	return fbo.setHeadLocked(ctx, lState, md, false)
+	return fbo.setHeadLocked(ctx, lState, md)
 }
 
 func (fbo *folderBranchOps) setHeadTrustedLocked(ctx context.Context,
@@ -601,7 +591,7 @@ func (fbo *folderBranchOps) setHeadTrustedLocked(ctx context.Context,
 	if fbo.head != nil {
 		panic("Unexpected non-nil head")
 	}
-	return fbo.setHeadLocked(ctx, lState, md, false)
+	return fbo.setHeadLocked(ctx, lState, md)
 }
 
 func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
@@ -649,7 +639,24 @@ func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 		}
 	}
 
-	return fbo.setHeadLocked(ctx, lState, md, handleNameChanged)
+	err := fbo.setHeadLocked(ctx, lState, md)
+	if err != nil {
+		return err
+	}
+
+	if handleNameChanged {
+		// If the handle has changed, send out a notification.
+		fbo.observers.tlfHandleChange(ctx, fbo.head.GetTlfHandle())
+		// Also the folder should be re-identified given the
+		// newly-resolved assertions.
+		func() {
+			fbo.identifyLock.Lock()
+			defer fbo.identifyLock.Unlock()
+			fbo.identifyDone = false
+		}()
+	}
+
+	return nil
 }
 
 func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
@@ -665,7 +672,7 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 		return err
 	}
 
-	return fbo.setHeadLocked(ctx, lState, md, false)
+	return fbo.setHeadLocked(ctx, lState, md)
 }
 
 func (fbo *folderBranchOps) setHeadResolvedLocked(ctx context.Context,
@@ -677,7 +684,7 @@ func (fbo *folderBranchOps) setHeadResolvedLocked(ctx context.Context,
 		panic("Unexpected merge status 2")
 	}
 
-	return fbo.setHeadLocked(ctx, lState, md, false)
+	return fbo.setHeadLocked(ctx, lState, md)
 }
 
 func (fbo *folderBranchOps) identifyOnce(
