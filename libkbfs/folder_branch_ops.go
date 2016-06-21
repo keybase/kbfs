@@ -601,6 +601,31 @@ func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
 	return nil
 }
 
+func (fbo *folderBranchOps) setHeadUntrustedLocked(ctx context.Context,
+	lState *lockState, md *RootMetadata) error {
+	return fbo.setHeadLocked(ctx, lState, md)
+}
+
+func (fbo *folderBranchOps) setHeadInitLocked(ctx context.Context,
+	lState *lockState, md *RootMetadata) error {
+	return fbo.setHeadLocked(ctx, lState, md)
+}
+
+func (fbo *folderBranchOps) setHeadTrustedLocked(ctx context.Context,
+	lState *lockState, md *RootMetadata) error {
+	return fbo.setHeadLocked(ctx, lState, md)
+}
+
+func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
+	lState *lockState, md *RootMetadata) error {
+	return fbo.setHeadLocked(ctx, lState, md)
+}
+
+func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
+	lState *lockState, md *RootMetadata) error {
+	return fbo.setHeadLocked(ctx, lState, md)
+}
+
 func (fbo *folderBranchOps) identifyOnce(
 	ctx context.Context, md *RootMetadata) error {
 	fbo.identifyLock.Lock()
@@ -675,7 +700,7 @@ func (fbo *folderBranchOps) getMDLocked(
 	} else {
 		fbo.headLock.Lock(lState)
 		defer fbo.headLock.Unlock(lState)
-		err = fbo.setHeadLocked(ctx, lState, md)
+		err = fbo.setHeadUntrustedLocked(ctx, lState, md)
 		if err != nil {
 			return nil, err
 		}
@@ -871,7 +896,7 @@ func (fbo *folderBranchOps) initMDLocked(
 			"%v: Unexpected MD ID during new MD initialization: %v",
 			md.ID, headID)
 	}
-	fbo.setHeadLocked(ctx, lState, md)
+	fbo.setHeadInitLocked(ctx, lState, md)
 	if err != nil {
 		return err
 	}
@@ -944,7 +969,7 @@ func (fbo *folderBranchOps) CheckForNewMDAndInit(
 			// updated either directly via writes or through the
 			// background update processor.
 			if fbo.head == nil {
-				err := fbo.setHeadLocked(ctx, lState, md)
+				err := fbo.setHeadTrustedLocked(ctx, lState, md)
 				if err != nil {
 					return err
 				}
@@ -1729,7 +1754,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	err = fbo.setHeadLocked(ctx, lState, md)
+	err = fbo.setHeadSuccessorLocked(ctx, lState, md)
 	if err != nil {
 		return err
 	}
@@ -1766,7 +1791,7 @@ func (fbo *folderBranchOps) finalizeMDRekeyWriteLocked(ctx context.Context,
 
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	return fbo.setHeadLocked(ctx, lState, md)
+	return fbo.setHeadSuccessorLocked(ctx, lState, md)
 }
 
 func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
@@ -1830,7 +1855,7 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	err = fbo.setHeadLocked(ctx, lState, md)
+	err = fbo.setHeadSuccessorLocked(ctx, lState, md)
 	if err != nil {
 		return err
 	}
@@ -3188,7 +3213,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			return err
 		}
 
-		err := fbo.setHeadLocked(ctx, lState, rmd)
+		err := fbo.setHeadSuccessorLocked(ctx, lState, rmd)
 		if err != nil {
 			return err
 		}
@@ -3232,7 +3257,8 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 				fbo.getCurrMDRevisionLocked(lState)}
 		}
 
-		err := fbo.setHeadLocked(ctx, lState, rmd)
+		// TODO: Skip if not predecessor.
+		err := fbo.setHeadPredecessorLocked(ctx, lState, rmd)
 		if err != nil {
 			return err
 		}
@@ -3333,7 +3359,7 @@ func (fbo *folderBranchOps) undoUnmergedMDUpdatesLocked(
 	err = func() error {
 		fbo.headLock.Lock(lState)
 		defer fbo.headLock.Unlock(lState)
-		return fbo.setHeadLocked(ctx, lState, rmds[0])
+		return fbo.setHeadPredecessorLocked(ctx, lState, rmds[0])
 	}()
 	if err != nil {
 		return nil, err
@@ -3943,7 +3969,7 @@ func (fbo *folderBranchOps) finalizeResolution(ctx context.Context,
 	// Set the head to the new MD.
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	err = fbo.setHeadLocked(ctx, lState, md)
+	err = fbo.setHeadSuccessorLocked(ctx, lState, md)
 	if err != nil {
 		fbo.log.CWarningf(ctx, "Couldn't set local MD head after a "+
 			"successful put: %v", err)
