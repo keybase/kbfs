@@ -663,31 +663,39 @@ func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 	return nil
 }
 
+// setHeadPredecessorLocked is for when we're unstaging updates.
 func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
+	fbo.mdWriterLock.AssertLocked(lState)
+	fbo.headLock.AssertLocked(lState)
 	if fbo.head == nil {
-		panic("Unexpected nil head")
+		return errors.New("Unexpected nil head in setHeadPredecessorLocked")
 	}
 	if fbo.head.Revision <= MetadataRevisionInitial {
-		panic(fmt.Sprintf("low rev = %d", fbo.head.Revision))
+		return fmt.Errorf("setHeadPredecessorLocked unexpectedly called with revision %d", fbo.head.Revision)
 	}
 	err := md.CheckValidSuccessor(fbo.config, fbo.head)
 	if err != nil {
 		return err
 	}
 
+	// TODO: Figure out what to do about handles "un-resolving".
+
 	return fbo.setHeadLocked(ctx, lState, md)
 }
 
-func (fbo *folderBranchOps) setHeadResolvedLocked(ctx context.Context,
+// setHeadConflictResolvedLocked is for when we're setting the merged
+// update with resolved conflicts.
+func (fbo *folderBranchOps) setHeadConflictResolvedLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
+	fbo.mdWriterLock.AssertLocked(lState)
+	fbo.headLock.AssertLocked(lState)
 	if fbo.head.MergedStatus() != Unmerged {
-		panic("Unexpected merge status")
+		return errors.New("Unexpected merged head in setHeadConflictResolvedLocked")
 	}
 	if md.MergedStatus() != Merged {
-		panic("Unexpected merge status 2")
+		return errors.New("Unexpected unmerged update in setHeadConflictResolvedLocked")
 	}
-
 	return fbo.setHeadLocked(ctx, lState, md)
 }
 
@@ -4042,7 +4050,7 @@ func (fbo *folderBranchOps) finalizeResolution(ctx context.Context,
 	// Set the head to the new MD.
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	err = fbo.setHeadResolvedLocked(ctx, lState, md)
+	err = fbo.setHeadConflictResolvedLocked(ctx, lState, md)
 	if err != nil {
 		fbo.log.CWarningf(ctx, "Couldn't set local MD head after a "+
 			"successful put: %v", err)
