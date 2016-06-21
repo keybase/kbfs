@@ -82,51 +82,6 @@ func NewMDServerMemory(config Config) (*MDServerMemory, error) {
 	return mdserv, nil
 }
 
-// Helper to aid in enforcement that only specified public keys can access TLF metdata.
-func (md *MDServerMemory) checkPerms(ctx context.Context, id TlfID,
-	checkWrite bool, newMd *RootMetadataSigned) (bool, error) {
-	rmds, err := md.getHeadForTLF(ctx, id, NullBranchID, Merged)
-	if rmds == nil {
-		// TODO: the real mdserver will actually reverse lookup the folder handle
-		// and check that the UID is listed.
-		return true, nil
-	}
-	_, user, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return false, err
-	}
-	h, err := rmds.MD.MakeBareTlfHandle()
-	if err != nil {
-		return false, err
-	}
-	isWriter := h.IsWriter(user)
-	isReader := h.IsReader(user)
-	if checkWrite {
-		// if this is a reader, are they acting within their restrictions?
-		if !isWriter && isReader && newMd != nil {
-			return newMd.MD.IsValidRekeyRequest(md.config, &rmds.MD, user)
-		}
-		return isWriter, nil
-	}
-	return isWriter || isReader, nil
-}
-
-// Helper to aid in enforcement that only specified public keys can access TLF metdata.
-func (md *MDServerMemory) isReader(ctx context.Context, id TlfID) (bool, error) {
-	return md.checkPerms(ctx, id, false, nil)
-}
-
-// Helper to aid in enforcement that only specified public keys can access TLF metdata.
-func (md *MDServerMemory) isWriter(ctx context.Context, id TlfID) (bool, error) {
-	return md.checkPerms(ctx, id, true, nil)
-}
-
-// Helper to aid in enforcement that only specified public keys can access TLF metdata.
-func (md *MDServerMemory) isWriterOrValidRekey(ctx context.Context, id TlfID, newMd *RootMetadataSigned) (
-	bool, error) {
-	return md.checkPerms(ctx, id, true, newMd)
-}
-
 func (md *MDServerMemory) handleDbGet(h BareTlfHandle) (TlfID, bool, error) {
 	hBytes, err := md.config.Codec().Encode(h)
 	if err != nil {
@@ -207,7 +162,7 @@ func (md *MDServerMemory) GetForTLF(ctx context.Context, id TlfID,
 	}
 
 	// Check permissions
-	ok, err := md.isReader(ctx, id)
+	ok, err := isReader(ctx, md.config.Codec(), md.config.KBPKI(), md, id)
 	if err != nil {
 		return nil, MDServerError{err}
 	}
@@ -297,7 +252,7 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id TlfID,
 	}
 
 	// Check permissions
-	ok, err := md.isReader(ctx, id)
+	ok, err := isReader(ctx, md.config.Codec(), md.config.KBPKI(), md, id)
 	if err != nil {
 		return nil, MDServerError{err}
 	}
@@ -369,7 +324,8 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 	id := rmds.MD.ID
 
 	// Check permissions
-	ok, err := md.isWriterOrValidRekey(ctx, id, rmds)
+	ok, err := isWriterOrValidRekey(
+		ctx, md.config.Codec(), md.config.KBPKI(), md, id, rmds)
 	if err != nil {
 		return MDServerError{err}
 	}
