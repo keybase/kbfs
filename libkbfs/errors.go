@@ -320,7 +320,7 @@ func (e MDMissingDataError) Error() string {
 // for the given top-level folder.
 type MDMismatchError struct {
 	Dir string
-	Err string
+	Err error
 }
 
 // Error implements the error interface for MDMismatchError

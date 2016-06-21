@@ -409,14 +409,17 @@ func (md *RootMetadata) MakeSuccessor(config Config, isWriter bool) (*RootMetada
 // successor to the current one, and returns an error otherwise.
 func (md *RootMetadata) CheckValidSuccessor(
 	config Config, nextMd *RootMetadata) error {
+	// (1) Verify current metadata is non-final.
 	if md.IsFinal() {
 		return MetadataIsFinalError{}
 	}
 
+	// (2) Check revision.
 	if nextMd.Revision != md.Revision+1 {
 		return MDUpdateApplyError{nextMd.Revision, md.Revision}
 	}
 
+	// (3) Check PrevRoot pointer.
 	currRoot, err := md.MetadataID(config)
 	if err != nil {
 		return err
