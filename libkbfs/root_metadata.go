@@ -439,6 +439,9 @@ func (md *RootMetadata) CheckValidSuccessor(
 		}
 	}
 
+	// TODO: Check that the successor TLF handle is the same or
+	// more resolved.
+
 	return nil
 }
 
