@@ -500,12 +500,11 @@ func (fbo *folderBranchOps) checkDataVersion(p path, ptr BlockPointer) error {
 }
 
 func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
-	lState *lockState, md *RootMetadata) error {
+	lState *lockState, md *RootMetadata, handleNameChanged bool) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
 
 	isFirstHead := fbo.head == nil
-	handleNameChanged := false
 	wasReadable := false
 	if !isFirstHead {
 		wasReadable = fbo.head.IsReadable()
@@ -523,35 +522,6 @@ func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
 		if headID == mdID {
 			// only save this new MD if the MDID has changed
 			return nil
-		}
-
-		oldHandle := fbo.head.GetTlfHandle()
-		newHandle := md.GetTlfHandle()
-
-		// Newer handles should be equal or more resolved over
-		// time.
-		resolvesTo, partialResolvedOldHandle, err :=
-			oldHandle.ResolvesTo(
-				ctx, fbo.config.Codec(), fbo.config.KBPKI(),
-				newHandle)
-		if err != nil {
-			return err
-		}
-
-		oldName := oldHandle.GetCanonicalName()
-		newName := newHandle.GetCanonicalName()
-
-		if !resolvesTo {
-			return IncompatibleHandleError{
-				oldName,
-				partialResolvedOldHandle.GetCanonicalName(),
-				newName,
-			}
-		}
-		if oldName != newName {
-			fbo.log.CDebugf(ctx, "Handle changed (%s -> %s)",
-				oldName, newName)
-			handleNameChanged = true
 		}
 	}
 
@@ -608,7 +578,7 @@ func (fbo *folderBranchOps) setHeadUntrustedLocked(ctx context.Context,
 	if fbo.head != nil {
 		panic("Unexpected non-nil head")
 	}
-	return fbo.setHeadLocked(ctx, lState, md)
+	return fbo.setHeadLocked(ctx, lState, md, false)
 }
 
 func (fbo *folderBranchOps) setHeadInitLocked(ctx context.Context,
@@ -621,7 +591,7 @@ func (fbo *folderBranchOps) setHeadInitLocked(ctx context.Context,
 	if md.Revision != MetadataRevisionInitial {
 		panic(fmt.Sprintf("what %d", md.Revision))
 	}
-	return fbo.setHeadLocked(ctx, lState, md)
+	return fbo.setHeadLocked(ctx, lState, md, false)
 }
 
 func (fbo *folderBranchOps) setHeadTrustedLocked(ctx context.Context,
@@ -631,13 +601,14 @@ func (fbo *folderBranchOps) setHeadTrustedLocked(ctx context.Context,
 	if fbo.head != nil {
 		panic("Unexpected non-nil head")
 	}
-	return fbo.setHeadLocked(ctx, lState, md)
+	return fbo.setHeadLocked(ctx, lState, md, false)
 }
 
 func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
+	handleNameChanged := false
 	if fbo.head == nil {
 		if md.Revision != MetadataRevisionInitial {
 			panic(fmt.Sprintf("what %d", md.Revision))
@@ -647,9 +618,38 @@ func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 		if err != nil {
 			return err
 		}
+
+		oldHandle := fbo.head.GetTlfHandle()
+		newHandle := md.GetTlfHandle()
+
+		// Newer handles should be equal or more resolved over time.
+		resolvesTo, partialResolvedOldHandle, err :=
+			oldHandle.ResolvesTo(
+				ctx, fbo.config.Codec(), fbo.config.KBPKI(),
+				newHandle)
+		if err != nil {
+			return err
+		}
+
+		oldName := oldHandle.GetCanonicalName()
+		newName := newHandle.GetCanonicalName()
+
+		if !resolvesTo {
+			return IncompatibleHandleError{
+				oldName,
+				partialResolvedOldHandle.GetCanonicalName(),
+				newName,
+			}
+		}
+
+		if oldName != newName {
+			fbo.log.CDebugf(ctx, "Handle changed (%s -> %s)",
+				oldName, newName)
+			handleNameChanged = true
+		}
 	}
 
-	return fbo.setHeadLocked(ctx, lState, md)
+	return fbo.setHeadLocked(ctx, lState, md, handleNameChanged)
 }
 
 func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
@@ -665,7 +665,7 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 		return err
 	}
 
-	return fbo.setHeadLocked(ctx, lState, md)
+	return fbo.setHeadLocked(ctx, lState, md, false)
 }
 
 func (fbo *folderBranchOps) setHeadResolvedLocked(ctx context.Context,
@@ -677,7 +677,7 @@ func (fbo *folderBranchOps) setHeadResolvedLocked(ctx context.Context,
 		panic("Unexpected merge status 2")
 	}
 
-	return fbo.setHeadLocked(ctx, lState, md)
+	return fbo.setHeadLocked(ctx, lState, md, false)
 }
 
 func (fbo *folderBranchOps) identifyOnce(
