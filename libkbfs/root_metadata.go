@@ -405,8 +405,14 @@ func (md *RootMetadata) MakeSuccessor(config Config, isWriter bool) (*RootMetada
 	return newMd, nil
 }
 
+// CheckValidSuccessor makes sure the given RootMetadata is a valid
+// successor to the current one, and returns an error otherwise.
 func (md *RootMetadata) CheckValidSuccessor(
 	config Config, nextMd *RootMetadata) error {
+	if md.IsFinal() {
+		return MetadataIsFinalError{}
+	}
+
 	if nextMd.Revision != md.Revision+1 {
 		return MDUpdateApplyError{nextMd.Revision, md.Revision}
 	}
@@ -416,11 +422,7 @@ func (md *RootMetadata) CheckValidSuccessor(
 		return err
 	}
 	if nextMd.PrevRoot != currRoot {
-		return MDMismatchError{}
-	}
-
-	if md.IsFinal() {
-		return MDMismatchError{}
+		return MDPrevRootMismatch{currRoot, nextMd.PrevRoot}
 	}
 
 	return nil

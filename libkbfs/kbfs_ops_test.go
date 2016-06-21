@@ -5201,6 +5201,5 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	// Simulate the server triggering alice to update.
 	config1.SetKeyCache(NewKeyCacheStandard(1))
 	err = kbfsOps1.SyncFromServerForTesting(ctx, fb1)
-	require.EqualError(t, err,
-		"Could not verify metadata for directory : ")
+	require.IsType(t, MDPrevRootMismatch{}, err)
 }

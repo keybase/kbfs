@@ -754,6 +754,18 @@ func (e MDUpdateApplyError) Error() string {
 		"current revision %d", e.rev, e.curr)
 }
 
+// MDPrevRootMismatch indicates that the PrevRoot field of a successor
+// MD doesn't match the ID of its predecessor.
+type MDPrevRootMismatch struct {
+	expected MdID
+	actual   MdID
+}
+
+func (e MDPrevRootMismatch) Error() string {
+	return fmt.Sprintf("ID of prev root is %s, expected %s",
+		e.actual, e.expected)
+}
+
 // MDUpdateInvertError indicates that we tried to apply a revision that
 // was not the next in line.
 type MDUpdateInvertError struct {
@@ -998,8 +1010,8 @@ func (e TlfHandleExtensionMismatchError) Error() string {
 		"expected: %s, actual: %s", e.Expected, e.Actual)
 }
 
-// MetadataIsFinalError indicates that we tried to make a successor to a
-// finalized folder.
+// MetadataIsFinalError indicates that we tried to make or set a
+// successor to a finalized folder.
 type MetadataIsFinalError struct {
 }
 

@@ -670,12 +670,8 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 
 func (fbo *folderBranchOps) setHeadResolvedLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
-	currRev := fbo.getCurrMDRevisionLocked(lState)
 	if fbo.head.MergedStatus() != Unmerged {
 		panic("Unexpected merge status")
-	}
-	if md.Revision < currRev {
-		return MDUpdateApplyError{md.Revision, currRev}
 	}
 	if md.MergedStatus() != Merged {
 		panic("Unexpected merge status 2")
