@@ -636,9 +636,17 @@ func (fbo *folderBranchOps) setHeadTrustedLocked(ctx context.Context,
 
 func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
-	currRev := fbo.getCurrMDRevisionLocked(lState)
-	if md.Revision != currRev+1 {
-		return MDUpdateApplyError{md.Revision, currRev}
+	fbo.mdWriterLock.AssertLocked(lState)
+	fbo.headLock.AssertLocked(lState)
+	if fbo.head == nil {
+		if md.Revision != MetadataRevisionInitial {
+			panic(fmt.Sprintf("what %d", md.Revision))
+		}
+	} else {
+		err := fbo.head.CheckValidSuccessor(fbo.config, md)
+		if err != nil {
+			return err
+		}
 	}
 
 	return fbo.setHeadLocked(ctx, lState, md)

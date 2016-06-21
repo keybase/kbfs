@@ -405,6 +405,27 @@ func (md *RootMetadata) MakeSuccessor(config Config, isWriter bool) (*RootMetada
 	return newMd, nil
 }
 
+func (md *RootMetadata) CheckValidSuccessor(
+	config Config, nextMd *RootMetadata) error {
+	if nextMd.Revision != md.Revision+1 {
+		return MDUpdateApplyError{nextMd.Revision, md.Revision}
+	}
+
+	currRoot, err := md.MetadataID(config)
+	if err != nil {
+		return err
+	}
+	if nextMd.PrevRoot != currRoot {
+		return MDMismatchError{}
+	}
+
+	if md.IsFinal() {
+		return MDMismatchError{}
+	}
+
+	return nil
+}
+
 func (md *RootMetadata) getTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundle, *TLFReaderKeyBundle, error) {
 	if md.ID.IsPublic() {
 		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundle"}
