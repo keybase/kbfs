@@ -660,8 +660,9 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 	if fbo.head.Revision <= MetadataRevisionInitial {
 		panic(fmt.Sprintf("low rev = %d", fbo.head.Revision))
 	}
-	if md.Revision != fbo.head.Revision-1 {
-		return MDUpdateApplyError{md.Revision, fbo.head.Revision - 1}
+	err := md.CheckValidSuccessor(fbo.config, fbo.head)
+	if err != nil {
+		return err
 	}
 
 	return fbo.setHeadLocked(ctx, lState, md)
