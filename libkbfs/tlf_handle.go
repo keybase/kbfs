@@ -617,7 +617,8 @@ func (pr partialResolver) Resolve(ctx context.Context, assertion string) (
 }
 
 // ResolvesTo returns whether this handle resolves to the given one.
-// It also returns the partially-resolved version of h; this should
+// It also returns the partially-resolved version of h, i.e. h
+// resolved except for unresolved assertions in other; this should
 // equal other if and only if true is returned.
 func (h TlfHandle) ResolvesTo(
 	ctx context.Context, codec Codec, resolver resolver, other *TlfHandle) (
