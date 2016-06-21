@@ -561,7 +561,10 @@ func (fbo *folderBranchOps) setHeadLocked(
 	return nil
 }
 
-func (fbo *folderBranchOps) setHeadUntrustedLocked(ctx context.Context,
+// setInitialHeadUntrustedLocked is for when the given RootMetadata
+// was fetched not due to a user action, i.e. via a Rekey
+// notification, and we don't have a TLF name to check against.
+func (fbo *folderBranchOps) setInitialHeadUntrustedLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
@@ -759,9 +762,15 @@ func (fbo *folderBranchOps) getMDLocked(
 			return nil, err
 		}
 	} else {
+		// We go down this code path either due to a rekey
+		// notification for an unseen TLF, or in some tests.
+		//
+		// TODO: Make tests not take this code path, and keep
+		// track of the fact that MDs coming from rekey
+		// notifications are untrusted.
 		fbo.headLock.Lock(lState)
 		defer fbo.headLock.Unlock(lState)
-		err = fbo.setHeadUntrustedLocked(ctx, lState, md)
+		err = fbo.setInitialHeadUntrustedLocked(ctx, lState, md)
 		if err != nil {
 			return nil, err
 		}
