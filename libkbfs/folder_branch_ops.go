@@ -603,16 +603,34 @@ func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
 
 func (fbo *folderBranchOps) setHeadUntrustedLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
+	fbo.mdWriterLock.AssertLocked(lState)
+	fbo.headLock.AssertLocked(lState)
+	if fbo.head != nil {
+		panic("Unexpected non-nil head")
+	}
 	return fbo.setHeadLocked(ctx, lState, md)
 }
 
 func (fbo *folderBranchOps) setHeadInitLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
+	fbo.mdWriterLock.AssertLocked(lState)
+	fbo.headLock.AssertLocked(lState)
+	if fbo.head != nil {
+		panic("Unexpected non-nil head")
+	}
+	if md.Revision != MetadataRevisionInitial {
+		panic(fmt.Sprintf("what %d", md.Revision))
+	}
 	return fbo.setHeadLocked(ctx, lState, md)
 }
 
 func (fbo *folderBranchOps) setHeadTrustedLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
+	fbo.mdWriterLock.AssertLocked(lState)
+	fbo.headLock.AssertLocked(lState)
+	if fbo.head != nil {
+		panic("Unexpected non-nil head")
+	}
 	return fbo.setHeadLocked(ctx, lState, md)
 }
 
