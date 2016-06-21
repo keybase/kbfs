@@ -3372,7 +3372,8 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 				fbo.getCurrMDRevisionLocked(lState)}
 		}
 
-		// TODO: Skip if not predecessor.
+		// TODO: Check that the revisions are equal only for
+		// the first iteration.
 		if rmd.Revision < fbo.getCurrMDRevisionLocked(lState) {
 			err := fbo.setHeadPredecessorLocked(ctx, lState, rmd)
 			if err != nil {
