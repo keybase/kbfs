@@ -3319,11 +3319,6 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			// Already caught up!
 			continue
 		}
-		if rmd.Revision != fbo.getCurrMDRevisionLocked(lState)+1 {
-			return MDRevisionMismatch{rmd.Revision,
-				fbo.getCurrMDRevisionLocked(lState)}
-		}
-
 		if err := rmd.isReadableOrError(ctx, fbo.config); err != nil {
 			return err
 		}
