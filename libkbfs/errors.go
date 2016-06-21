@@ -1007,3 +1007,18 @@ type MetadataIsFinalError struct {
 func (e MetadataIsFinalError) Error() string {
 	return "Metadata is final"
 }
+
+// UnexpectedHandleResolutionError indicates that somethine tried to
+// update the head of a TLF with a RootMetadata with an incompatible
+// handle.
+type IncompatibleHandleError struct {
+	oldName                  CanonicalTlfName
+	partiallyResolvedOldName CanonicalTlfName
+	newName                  CanonicalTlfName
+}
+
+func (e IncompatibleHandleError) Error() string {
+	return fmt.Sprintf(
+		"old head %q resolves to %q instead of new head %q",
+		e.oldName, e.partiallyResolvedOldName, e.newName)
+}
