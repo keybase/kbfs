@@ -525,6 +525,8 @@ func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
 		oldHandle := fbo.head.GetTlfHandle()
 		newHandle := md.GetTlfHandle()
 
+		// Newer handles should be equal or more resolved over
+		// time.
 		resolvesTo, partialResolvedOldHandle, err :=
 			oldHandle.ResolvesTo(
 				ctx, fbo.config.Codec(), fbo.config.KBPKI(),
