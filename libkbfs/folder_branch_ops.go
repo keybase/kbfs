@@ -659,6 +659,22 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 	return fbo.setHeadLocked(ctx, lState, md)
 }
 
+func (fbo *folderBranchOps) setHeadResolvedLocked(ctx context.Context,
+	lState *lockState, md *RootMetadata) error {
+	currRev := fbo.getCurrMDRevisionLocked(lState)
+	if fbo.head.MergedStatus() != Unmerged {
+		panic("Unexpected merge status")
+	}
+	if md.Revision < currRev {
+		return MDUpdateApplyError{md.Revision, currRev}
+	}
+	if md.MergedStatus() != Merged {
+		panic("Unexpected merge status 2")
+	}
+
+	return fbo.setHeadLocked(ctx, lState, md)
+}
+
 func (fbo *folderBranchOps) identifyOnce(
 	ctx context.Context, md *RootMetadata) error {
 	fbo.identifyLock.Lock()
@@ -4004,7 +4020,7 @@ func (fbo *folderBranchOps) finalizeResolution(ctx context.Context,
 	// Set the head to the new MD.
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	err = fbo.setHeadSuccessorLocked(ctx, lState, md)
+	err = fbo.setHeadResolvedLocked(ctx, lState, md)
 	if err != nil {
 		fbo.log.CWarningf(ctx, "Couldn't set local MD head after a "+
 			"successful put: %v", err)
