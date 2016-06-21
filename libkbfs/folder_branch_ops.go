@@ -3259,7 +3259,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			continue
 		}
 		if rmd.Revision != fbo.getCurrMDRevisionLocked(lState)+1 {
-			return MDUpdateApplyError{rmd.Revision,
+			return MDRevisionMismatch{rmd.Revision,
 				fbo.getCurrMDRevisionLocked(lState)}
 		}
 
@@ -3547,7 +3547,7 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 		// rekey bit is set, just a "folder needs rekey" update.
 		if err := fbo.getAndApplyMDUpdates(
 			ctx, lState, fbo.applyMDUpdatesLocked); err != nil {
-			if applyErr, ok := err.(MDUpdateApplyError); !ok ||
+			if applyErr, ok := err.(MDRevisionMismatch); !ok ||
 				applyErr.rev != applyErr.curr {
 				return err
 			}
@@ -3748,7 +3748,7 @@ func (fbo *folderBranchOps) SyncFromServerForTesting(
 	}
 
 	if err := fbo.getAndApplyMDUpdates(ctx, lState, fbo.applyMDUpdates); err != nil {
-		if applyErr, ok := err.(MDUpdateApplyError); ok {
+		if applyErr, ok := err.(MDRevisionMismatch); ok {
 			if applyErr.rev == applyErr.curr {
 				fbo.log.CDebugf(ctx, "Already up-to-date with server")
 				return nil

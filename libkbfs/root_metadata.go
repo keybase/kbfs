@@ -424,7 +424,10 @@ func (md *RootMetadata) CheckValidSuccessor(
 
 	// (2) Check revision.
 	if nextMd.Revision != md.Revision+1 {
-		return MDUpdateApplyError{nextMd.Revision, md.Revision}
+		return MDRevisionMismatch{
+			rev:  nextMd.Revision,
+			curr: md.Revision,
+		}
 	}
 
 	// (3) Check PrevRoot pointer.

@@ -466,10 +466,10 @@ func (md *MDServerLocal) Put(ctx context.Context, rmds *RootMetadataSigned) erro
 		case nil:
 			break
 
-		case MDUpdateApplyError:
+		case MDRevisionMismatch:
 			return MDServerErrorConflictRevision{
-				Expected: head.MD.Revision + 1,
-				Actual:   rmds.MD.Revision,
+				Expected: err.curr + 1,
+				Actual:   err.rev,
 			}
 
 		case MDPrevRootMismatch:
