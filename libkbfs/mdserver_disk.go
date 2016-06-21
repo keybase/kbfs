@@ -779,9 +779,7 @@ func (md *MDServerDisk) CheckForRekeys(ctx context.Context) <-chan error {
 
 func (md *MDServerDisk) addNewAssertionForTest(uid keybase1.UID,
 	newAssertion keybase1.SocialAssertion) error {
-	md.shutdownLock.RLock()
-	defer md.shutdownLock.RUnlock()
-	if *md.shutdown {
+	if md.isShutdown() {
 		return errors.New("MD server already shut down")
 	}
 

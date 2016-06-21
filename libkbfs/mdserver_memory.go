@@ -14,10 +14,11 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	keybase1 "github.com/keybase/client/go/protocol"
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/storage"
 	"golang.org/x/net/context"
 )
+
+// An mdHandleKey is an encoded BareTlfHandle.
+type mdHandleKey string
 
 type mdBlockKey struct {
 	tlfID    TlfID
@@ -37,9 +38,14 @@ type mdBlockMem struct {
 
 // MDServerMemory just stores blocks in local leveldb instances.
 type MDServerMemory struct {
-	config   Config
-	log      logger.Logger
-	handleDb *leveldb.DB // TLF handle -> TLF ID
+	config Config
+	log    logger.Logger
+
+	handleMutex *sync.RWMutex
+	// Bare TLF handle -> TLF ID
+	handleDb map[mdHandleKey]TlfID
+	// TLF ID -> latest bare TLF handle
+	latestHandleDb map[TlfID]BareTlfHandle
 
 	mdMutex *sync.Mutex
 	// (TLF ID, branch ID) -> [revision]mdBlockMem
@@ -60,26 +66,20 @@ type MDServerMemory struct {
 
 var _ mdServerLocal = (*MDServerMemory)(nil)
 
-func newMDServerMemoryWithStorage(
-	config Config, handleStorage storage.Storage) (*MDServerMemory, error) {
-	handleDb, err := leveldb.Open(handleStorage, leveldbOptions)
-	if err != nil {
-		return nil, err
-	}
+// NewMDServerMemory constructs a new MDServerMemory object that stores
+// all data in-memory.
+func NewMDServerMemory(config Config) (*MDServerMemory, error) {
+	handleDb := make(map[mdHandleKey]TlfID)
+	latestHandleDb := make(map[TlfID]BareTlfHandle)
 	mdDb := make(map[mdBlockKey][]mdBlockMem)
 	branchDb := make(map[mdBranchKey]BranchID)
 	locksDb := make(map[TlfID]keybase1.KID)
 	log := config.MakeLogger("")
-	mdserv := &MDServerMemory{config, log, handleDb, &sync.Mutex{}, mdDb,
-		&sync.Mutex{}, branchDb, &sync.Mutex{}, locksDb,
+	mdserv := &MDServerMemory{config, log, &sync.RWMutex{}, handleDb,
+		latestHandleDb, &sync.Mutex{}, mdDb, &sync.Mutex{}, branchDb,
+		&sync.Mutex{}, locksDb,
 		newMDServerLocalUpdateManager(), new(bool), &sync.RWMutex{}}
 	return mdserv, nil
-}
-
-// NewMDServerMemory constructs a new MDServerMemory object that stores
-// all data in-memory.
-func NewMDServerMemory(config Config) (*MDServerMemory, error) {
-	return newMDServerMemoryWithStorage(config, storage.NewMemStorage())
 }
 
 // Helper to aid in enforcement that only specified public keys can access TLF metdata.
@@ -127,6 +127,31 @@ func (md *MDServerMemory) isWriterOrValidRekey(ctx context.Context, id TlfID, ne
 	return md.checkPerms(ctx, id, true, newMd)
 }
 
+func (md *MDServerMemory) handleDbGet(h BareTlfHandle) (TlfID, bool, error) {
+	hBytes, err := md.config.Codec().Encode(h)
+	if err != nil {
+		return NullTlfID, false, err
+	}
+
+	md.handleMutex.RLock()
+	defer md.handleMutex.RUnlock()
+	id, ok := md.handleDb[mdHandleKey(hBytes)]
+	return id, ok, nil
+}
+
+func (md *MDServerMemory) handleDbPut(h BareTlfHandle, id TlfID) error {
+	hBytes, err := md.config.Codec().Encode(h)
+	if err != nil {
+		return err
+	}
+
+	md.handleMutex.Lock()
+	defer md.handleMutex.Unlock()
+	md.handleDb[mdHandleKey(hBytes)] = id
+	md.latestHandleDb[id] = h
+	return nil
+}
+
 // GetForHandle implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetForHandle(ctx context.Context, handle BareTlfHandle,
 	mStatus MergeStatus) (TlfID, *RootMetadataSigned, error) {
@@ -137,21 +162,11 @@ func (md *MDServerMemory) GetForHandle(ctx context.Context, handle BareTlfHandle
 		return id, nil, errors.New("MD server already shut down")
 	}
 
-	handleBytes, err := md.config.Codec().Encode(handle)
+	id, ok, err := md.handleDbGet(handle)
 	if err != nil {
-		return id, nil, err
-	}
-
-	buf, err := md.handleDb.Get(handleBytes, nil)
-	if err != nil && err != leveldb.ErrNotFound {
 		return id, nil, MDServerError{err}
 	}
-	if err == nil {
-		var id TlfID
-		err := id.UnmarshalBinary(buf)
-		if err != nil {
-			return NullTlfID, nil, err
-		}
+	if ok {
 		rmds, err := md.GetForTLF(ctx, id, NullBranchID, mStatus)
 		return id, rmds, err
 	}
@@ -171,7 +186,7 @@ func (md *MDServerMemory) GetForHandle(ctx context.Context, handle BareTlfHandle
 		return id, nil, MDServerError{err}
 	}
 
-	err = md.handleDb.Put(handleBytes, id.Bytes(), nil)
+	err = md.handleDbPut(handle, id)
 	if err != nil {
 		return id, nil, MDServerError{err}
 	}
@@ -599,10 +614,6 @@ func (md *MDServerMemory) Shutdown() {
 		return
 	}
 	*md.shutdown = true
-
-	if md.handleDb != nil {
-		md.handleDb.Close()
-	}
 }
 
 // IsConnected implements the MDServer interface for MDServerMemory.
@@ -619,9 +630,10 @@ func (md *MDServerMemory) copy(config Config) mdServerLocal {
 	// purpose, so that the MD server that gets a Put will notify all
 	// observers correctly no matter where they got on the list.
 	log := config.MakeLogger("")
-	return &MDServerMemory{config, log, md.handleDb, md.mdMutex, md.mdDb,
-		md.branchMutex, md.branchDb, md.locksMutex, md.locksDb,
-		md.updateManager, md.shutdown, md.shutdownLock}
+	return &MDServerMemory{config, log, md.handleMutex, md.handleDb,
+		md.latestHandleDb, md.mdMutex, md.mdDb, md.branchMutex,
+		md.branchDb, md.locksMutex, md.locksDb, md.updateManager,
+		md.shutdown, md.shutdownLock}
 }
 
 // isShutdown returns whether the logical, shared MDServer instance
@@ -647,40 +659,34 @@ func (md *MDServerMemory) CheckForRekeys(ctx context.Context) <-chan error {
 
 func (md *MDServerMemory) addNewAssertionForTest(uid keybase1.UID,
 	newAssertion keybase1.SocialAssertion) error {
-	md.shutdownLock.RLock()
-	defer md.shutdownLock.RUnlock()
-	if *md.shutdown {
+	if md.isShutdown() {
 		return errors.New("MD server already shut down")
 	}
 
+	md.handleMutex.Lock()
+	defer md.handleMutex.Unlock()
 	// Iterate through all the handles, and add handles for ones
 	// containing newAssertion to now include the uid.
-	iter := md.handleDb.NewIterator(nil, nil)
-	defer iter.Release()
-	for iter.Next() {
-		handleBytes := iter.Key()
-		var handle BareTlfHandle
-		err := md.config.Codec().Decode(handleBytes, &handle)
+	for hBytes, id := range md.handleDb {
+		var h BareTlfHandle
+		err := md.config.Codec().Decode([]byte(hBytes), &h)
 		if err != nil {
 			return err
 		}
 		assertions := map[keybase1.SocialAssertion]keybase1.UID{
 			newAssertion: uid,
 		}
-		newHandle := handle.ResolveAssertions(assertions)
-		if reflect.DeepEqual(handle, newHandle) {
+		newH := h.ResolveAssertions(assertions)
+		if reflect.DeepEqual(h, newH) {
 			continue
 		}
-		newHandleBytes, err := md.config.Codec().Encode(newHandle)
+		newHBytes, err := md.config.Codec().Encode(newH)
 		if err != nil {
 			return err
 		}
-		id := iter.Value()
-		if err := md.handleDb.Put(newHandleBytes, id, nil); err != nil {
-			return err
-		}
+		md.handleDb[mdHandleKey(newHBytes)] = id
 	}
-	return iter.Error()
+	return nil
 }
 
 func (md *MDServerMemory) getCurrentMergedHeadRevision(
@@ -698,25 +704,7 @@ func (md *MDServerMemory) getCurrentMergedHeadRevision(
 // GetLatestHandleForTLF implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetLatestHandleForTLF(_ context.Context, id TlfID) (
 	BareTlfHandle, error) {
-	var handle BareTlfHandle
-	iter := md.handleDb.NewIterator(nil, nil)
-	defer iter.Release()
-	for iter.Next() {
-		var dbID TlfID
-		idBytes := iter.Value()
-		err := dbID.UnmarshalBinary(idBytes)
-		if err != nil {
-			return BareTlfHandle{}, err
-		}
-		if id != dbID {
-			continue
-		}
-		handleBytes := iter.Key()
-		handle = BareTlfHandle{}
-		err = md.config.Codec().Decode(handleBytes, &handle)
-		if err != nil {
-			return BareTlfHandle{}, err
-		}
-	}
-	return handle, nil
+	md.handleMutex.RLock()
+	defer md.handleMutex.RUnlock()
+	return md.latestHandleDb[id], nil
 }
