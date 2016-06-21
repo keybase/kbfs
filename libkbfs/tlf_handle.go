@@ -198,13 +198,17 @@ func (h TlfHandle) Extensions() (extensions []TlfHandleExtension) {
 	return extensions
 }
 
+func init() {
+	if reflect.ValueOf(TlfHandle{}).NumField() != 8 {
+		panic(errors.New(
+			"Unexpected number of fields in TlfHandle; " +
+				"please update TlfHandle.Equals() for your " +
+				"new or removed field"))
+	}
+}
+
 // Equals returns whether h and other contain the same info.
 func (h TlfHandle) Equals(codec Codec, other TlfHandle) (bool, error) {
-	if reflect.ValueOf(h).NumField() != 8 {
-		return false, errors.New(
-			"Unexpected number of fields in TlfHandle; please update TlfHandle.Equals() for your new or removed field")
-	}
-
 	if h.public != other.public {
 		return false, nil
 	}
