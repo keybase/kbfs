@@ -536,10 +536,11 @@ func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
 		}
 
 		oldName := oldHandle.GetCanonicalName()
-		partialOldName := partialResolvedOldHandle.GetCanonicalName()
 		newName := newHandle.GetCanonicalName()
 
 		if !resolvesTo {
+			partialOldName :=
+				partialResolvedOldHandle.GetCanonicalName()
 			return fmt.Errorf(
 				"old head %q resolves to %q instead of new head %q",
 				oldName, partialOldName, newName)
