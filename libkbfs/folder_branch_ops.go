@@ -679,9 +679,45 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 		return err
 	}
 
-	// TODO: Figure out what to do about handles "un-resolving".
+	oldHandle := fbo.head.GetTlfHandle()
+	newHandle := md.GetTlfHandle()
 
-	return fbo.setHeadLocked(ctx, lState, md)
+	// The new, older handle might become less resolved.
+	resolvesTo, partialResolvedNewHandle, err :=
+		newHandle.ResolvesTo(
+			ctx, fbo.config.Codec(), fbo.config.KBPKI(),
+			oldHandle)
+	if err != nil {
+		return err
+	}
+
+	oldName := oldHandle.GetCanonicalName()
+	newName := newHandle.GetCanonicalName()
+
+	if !resolvesTo {
+		return IncompatibleHandleError{
+			oldName,
+			partialResolvedNewHandle.GetCanonicalName(),
+			newName,
+		}
+	}
+
+	err = fbo.setHeadLocked(ctx, lState, md)
+	if err != nil {
+		return err
+	}
+
+	if oldName != newName {
+		fbo.log.CDebugf(ctx, "Handle reverting (%s -> %s)",
+			oldName, newName)
+
+		// If the handle has changed, send out a notification.
+		fbo.observers.tlfHandleChange(ctx, fbo.head.GetTlfHandle())
+		// But no identification necessary since we're
+		// less-resolved.
+	}
+
+	return nil
 }
 
 // setHeadConflictResolvedLocked is for when we're setting the merged
