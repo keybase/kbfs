@@ -102,9 +102,7 @@ func NewMDServerDisk(config Config, handleDbfile string, mdDbfile string,
 func (md *MDServerDisk) GetForHandle(ctx context.Context, handle BareTlfHandle,
 	mStatus MergeStatus) (TlfID, *RootMetadataSigned, error) {
 	id := NullTlfID
-	md.shutdownLock.RLock()
-	defer md.shutdownLock.RUnlock()
-	if *md.shutdown {
+	if md.isShutdown() {
 		return id, nil, errors.New("MD server already shut down")
 	}
 
@@ -152,9 +150,7 @@ func (md *MDServerDisk) GetForHandle(ctx context.Context, handle BareTlfHandle,
 // GetForTLF implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) GetForTLF(ctx context.Context, id TlfID,
 	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
-	md.shutdownLock.RLock()
-	defer md.shutdownLock.RUnlock()
-	if *md.shutdown {
+	if md.isShutdown() {
 		return nil, errors.New("MD server already shut down")
 	}
 
@@ -295,9 +291,7 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id TlfID,
 	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	md.log.CDebugf(ctx, "GetRange %d %d (%s)", start, stop, mStatus)
-	md.shutdownLock.RLock()
-	defer md.shutdownLock.RUnlock()
-	if *md.shutdown {
+	if md.isShutdown() {
 		return nil, errors.New("MD server already shut down")
 	}
 
@@ -354,9 +348,7 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id TlfID,
 
 // Put implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error {
-	md.shutdownLock.RLock()
-	defer md.shutdownLock.RUnlock()
-	if *md.shutdown {
+	if md.isShutdown() {
 		return errors.New("MD server already shut down")
 	}
 
@@ -496,9 +488,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 
 // PruneBranch implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) PruneBranch(ctx context.Context, id TlfID, bid BranchID) error {
-	md.shutdownLock.RLock()
-	defer md.shutdownLock.RUnlock()
-	if *md.shutdown {
+	if md.isShutdown() {
 		return errors.New("MD server already shut down")
 	}
 	if bid == NullBranchID {
@@ -563,9 +553,7 @@ func (md *MDServerDisk) getCurrentMergedHeadRevision(
 // RegisterForUpdate implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) RegisterForUpdate(ctx context.Context, id TlfID,
 	currHead MetadataRevision) (<-chan error, error) {
-	md.shutdownLock.RLock()
-	defer md.shutdownLock.RUnlock()
-	if *md.shutdown {
+	if md.isShutdown() {
 		return nil, errors.New("MD server already shut down")
 	}
 
