@@ -399,10 +399,9 @@ func (md *RootMetadata) MakeSuccessor(config Config, isWriter bool) (*RootMetada
 	}
 	// bump revision
 	if md.Revision < MetadataRevisionInitial {
-		newMd.Revision = MetadataRevisionInitial
-	} else {
-		newMd.Revision = md.Revision + 1
+		return nil, errors.New("MD with invalid revision")
 	}
+	newMd.Revision = md.Revision + 1
 	return newMd, nil
 }
 
