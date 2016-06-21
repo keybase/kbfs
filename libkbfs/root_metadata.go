@@ -330,23 +330,6 @@ func (md *RootMetadata) IsReadable() bool {
 	return md.ID.IsPublic() || md.data.Dir.IsInitialized()
 }
 
-// increment makes this MD the immediate follower of the given
-// currMD.  It assumes md was deep-copied from currMD.
-func (md *RootMetadata) increment(config Config, currMD *RootMetadata) error {
-	var err error
-	md.PrevRoot, err = currMD.MetadataID(config)
-	if err != nil {
-		return err
-	}
-	// bump revision
-	if md.Revision < MetadataRevisionInitial {
-		md.Revision = MetadataRevisionInitial
-	} else {
-		md.Revision = currMD.Revision + 1
-	}
-	return nil
-}
-
 func (md *RootMetadata) clearLastRevision() {
 	md.ClearBlockChanges()
 	// remove the copied flag (if any.)
@@ -409,8 +392,16 @@ func (md *RootMetadata) MakeSuccessor(config Config, isWriter bool) (*RootMetada
 		newMd.Flags |= MetadataFlagRekey
 		newMd.Flags |= MetadataFlagWriterMetadataCopied
 	}
-	if err := newMd.increment(config, md); err != nil {
+
+	newMd.PrevRoot, err = md.MetadataID(config)
+	if err != nil {
 		return nil, err
+	}
+	// bump revision
+	if md.Revision < MetadataRevisionInitial {
+		newMd.Revision = MetadataRevisionInitial
+	} else {
+		newMd.Revision = md.Revision + 1
 	}
 	return newMd, nil
 }
