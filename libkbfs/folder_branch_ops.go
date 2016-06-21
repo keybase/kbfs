@@ -646,6 +646,16 @@ func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 
 func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
+	if fbo.head == nil {
+		panic("Unexpected nil head")
+	}
+	if fbo.head.Revision <= MetadataRevisionInitial {
+		panic(fmt.Sprintf("low rev = %d", fbo.head.Revision))
+	}
+	if md.Revision != fbo.head.Revision-1 {
+		return MDUpdateApplyError{md.Revision, fbo.head.Revision - 1}
+	}
+
 	return fbo.setHeadLocked(ctx, lState, md)
 }
 
@@ -3281,9 +3291,11 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 		}
 
 		// TODO: Skip if not predecessor.
-		err := fbo.setHeadPredecessorLocked(ctx, lState, rmd)
-		if err != nil {
-			return err
+		if rmd.Revision < fbo.getCurrMDRevisionLocked(lState) {
+			err := fbo.setHeadPredecessorLocked(ctx, lState, rmd)
+			if err != nil {
+				return err
+			}
 		}
 
 		// iterate the ops in reverse and invert each one
