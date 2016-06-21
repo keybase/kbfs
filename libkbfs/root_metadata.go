@@ -414,6 +414,14 @@ func (md *RootMetadata) CheckValidSuccessor(
 		return MetadataIsFinalError{}
 	}
 
+	// (2) Check TLF ID.
+	if nextMd.ID != md.ID {
+		return MDTlfIDMismatch{
+			currID: md.ID,
+			nextID: nextMd.ID,
+		}
+	}
+
 	// (2) Check revision.
 	if nextMd.Revision != md.Revision+1 {
 		return MDUpdateApplyError{nextMd.Revision, md.Revision}
@@ -425,7 +433,10 @@ func (md *RootMetadata) CheckValidSuccessor(
 		return err
 	}
 	if nextMd.PrevRoot != currRoot {
-		return MDPrevRootMismatch{currRoot, nextMd.PrevRoot}
+		return MDPrevRootMismatch{
+			prevRoot: nextMd.PrevRoot,
+			currRoot: currRoot,
+		}
 	}
 
 	return nil

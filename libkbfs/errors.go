@@ -754,16 +754,28 @@ func (e MDUpdateApplyError) Error() string {
 		"current revision %d", e.rev, e.curr)
 }
 
+// MDTlfIDMismatch indicates that the ID field of a successor MD
+// doesn't match the ID field of its predecessor.
+type MDTlfIDMismatch struct {
+	currID TlfID
+	nextID TlfID
+}
+
+func (e MDTlfIDMismatch) Error() string {
+	return fmt.Sprintf("TLF ID %s doesn't match successor TLF ID %s",
+		e.currID, e.nextID)
+}
+
 // MDPrevRootMismatch indicates that the PrevRoot field of a successor
 // MD doesn't match the ID of its predecessor.
 type MDPrevRootMismatch struct {
-	expected MdID
-	actual   MdID
+	prevRoot MdID
+	currRoot MdID
 }
 
 func (e MDPrevRootMismatch) Error() string {
-	return fmt.Sprintf("ID of prev root is %s, expected %s",
-		e.actual, e.expected)
+	return fmt.Sprintf("PrevRoot %s doesn't match current root %s",
+		e.prevRoot, e.currRoot)
 }
 
 // MDUpdateInvertError indicates that we tried to apply a revision that
