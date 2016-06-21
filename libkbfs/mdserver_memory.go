@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/keybase/client/go/logger"
 	keybase1 "github.com/keybase/client/go/protocol"
@@ -28,6 +29,12 @@ type mdBranchKey struct {
 	deviceKID keybase1.KID
 }
 
+type mdBlockMem struct {
+	// An encoded RootMetdataSigned.
+	encodedMd []byte
+	timestamp time.Time
+}
+
 // MDServerMemory just stores blocks in local leveldb instances.
 type MDServerMemory struct {
 	config   Config
@@ -35,8 +42,8 @@ type MDServerMemory struct {
 	handleDb *leveldb.DB // TLF handle -> TLF ID
 
 	mdMutex *sync.Mutex
-	// (TLF ID, branch ID) -> [revision]mdBlockLocal
-	mdDb map[mdBlockKey][]mdBlockLocal
+	// (TLF ID, branch ID) -> [revision]mdBlockMem
+	mdDb map[mdBlockKey][]mdBlockMem
 
 	branchMutex *sync.Mutex
 	// (TLF ID, device KID) -> branch ID
@@ -59,7 +66,7 @@ func newMDServerMemoryWithStorage(
 	if err != nil {
 		return nil, err
 	}
-	mdDb := make(map[mdBlockKey][]mdBlockLocal)
+	mdDb := make(map[mdBlockKey][]mdBlockMem)
 	branchDb := make(map[mdBranchKey]BranchID)
 	locksDb := make(map[TlfID]keybase1.KID)
 	log := config.MakeLogger("")
@@ -211,17 +218,6 @@ func (md *MDServerMemory) GetForTLF(ctx context.Context, id TlfID,
 	return rmds, nil
 }
 
-func (md *MDServerMemory) rmdsFromBlockBytes(buf []byte) (
-	*RootMetadataSigned, error) {
-	block := new(mdBlockLocal)
-	err := md.config.Codec().Decode(buf, block)
-	if err != nil {
-		return nil, err
-	}
-	block.MD.untrustedServerTimestamp = block.Timestamp
-	return block.MD, nil
-}
-
 func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id TlfID,
 	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
 	key, err := md.getMDKey(id, bid, mStatus)
@@ -230,16 +226,16 @@ func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id TlfID,
 	}
 	md.mdMutex.Lock()
 	defer md.mdMutex.Unlock()
-	rmds := md.mdDb[key]
-	if len(rmds) == 0 {
+	blocks := md.mdDb[key]
+	if len(blocks) == 0 {
 		return nil, nil
 	}
-	var rmdsCopy RootMetadataSigned
-	err = CodecUpdate(md.config.Codec(), &rmdsCopy, rmds[len(rmds)-1].MD)
+	var rmds RootMetadataSigned
+	err = md.config.Codec().Decode(blocks[len(blocks)-1].encodedMd, &rmds)
 	if err != nil {
 		return nil, err
 	}
-	return &rmdsCopy, nil
+	return &rmds, nil
 }
 
 func (md *MDServerMemory) getMDKey(
@@ -323,12 +319,12 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id TlfID,
 
 	var rmdses []*RootMetadataSigned
 	for i := startI; i < endI; i++ {
-		var rmdsCopy RootMetadataSigned
-		err = CodecUpdate(md.config.Codec(), &rmdsCopy, blocks[i].MD)
+		var rmds RootMetadataSigned
+		err = md.config.Codec().Decode(blocks[i].encodedMd, &rmds)
 		if err != nil {
 			return nil, MDServerError{err}
 		}
-		rmdses = append(rmdses, &rmdsCopy)
+		rmdses = append(rmdses, &rmds)
 	}
 
 	return rmdses, nil
@@ -432,13 +428,12 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 		}()
 	}
 
-	var rmdsCopy RootMetadataSigned
-	err = CodecUpdate(md.config.Codec(), &rmdsCopy, rmds)
+	encodedMd, err := md.config.Codec().Encode(rmds)
 	if err != nil {
 		return MDServerError{err}
 	}
 
-	block := mdBlockLocal{&rmdsCopy, md.config.Clock().Now()}
+	block := mdBlockMem{encodedMd, md.config.Clock().Now()}
 
 	// Add an entry with the revision key.
 	revKey, err := md.getMDKey(id, rmds.MD.BID, mStatus)

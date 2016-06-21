@@ -245,6 +245,17 @@ func (md *MDServerDisk) rmdsFromBlockBytes(buf []byte) (
 	return block.MD, nil
 }
 
+func (md *MDServerMemory) rmdsFromBlockBytes(buf []byte) (
+	*RootMetadataSigned, error) {
+	block := new(mdBlockLocal)
+	err := md.config.Codec().Decode(buf, block)
+	if err != nil {
+		return nil, err
+	}
+	block.MD.untrustedServerTimestamp = block.Timestamp
+	return block.MD, nil
+}
+
 func (md *MDServerDisk) getHeadForTLF(ctx context.Context, id TlfID,
 	bid BranchID, mStatus MergeStatus) (rmds *RootMetadataSigned, err error) {
 	key, err := md.getMDKey(id, 0, bid, mStatus)
