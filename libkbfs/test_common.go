@@ -133,7 +133,6 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 		}
 
 	case len(mdServerAddr) != 0:
-		panic(mdServerAddr)
 		var err error
 		// start/restart local in-memory DynamoDB
 		runner, err := NewTestDynamoDBRunner()
