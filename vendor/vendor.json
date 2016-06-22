@@ -77,11 +77,11 @@
 			"revisionTime": "2015-09-05T19:33:21-07:00"
 		},
 		{
-			"checksumSHA1": "egYe7ZwngazaWRW/WfawGNClGJg=",
+			"checksumSHA1": "yHabPUY9bRqAdgwU0imHRYbWwaE=",
 			"origin": "github.com/aalness/goamz/aws",
 			"path": "github.com/goamz/goamz/aws",
-			"revision": "30143e3f33a7db39c8d0afe3f265e5fe27f359fa",
-			"revisionTime": "2016-06-15T16:34:33Z",
+			"revision": "4e51bd2c576c18389bb840a36586da8097b13ba6",
+			"revisionTime": "2016-06-22T16:35:19Z",
 			"tree": true
 		},
 		{
