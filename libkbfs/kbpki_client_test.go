@@ -76,13 +76,13 @@ func TestKBPKIClientHasVerifyingKey(t *testing.T) {
 	c, _, localUsers := makeTestKBPKIClient(t)
 
 	err := c.HasVerifyingKey(context.Background(), keybase1.MakeTestUID(1),
-		localUsers[0].VerifyingKeys[0], time.Now())
+		localUsers[0].VerifyingKeys[0], time.Now(), false)
 	if err != nil {
 		t.Error(err)
 	}
 
 	err = c.HasVerifyingKey(context.Background(), keybase1.MakeTestUID(1),
-		VerifyingKey{}, time.Now())
+		VerifyingKey{}, time.Now(), false)
 	if err == nil {
 		t.Error("HasVerifyingKey unexpectedly succeeded")
 	}
@@ -100,14 +100,14 @@ func TestKBPKIClientHasRevokedVerifyingKey(t *testing.T) {
 
 	// Something verified before the key was revoked
 	err := c.HasVerifyingKey(context.Background(), keybase1.MakeTestUID(1),
-		revokedKey, revokeTime.Add(-10*time.Second))
+		revokedKey, revokeTime.Add(-10*time.Second), false)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// Something verified after the key was revoked
 	err = c.HasVerifyingKey(context.Background(), keybase1.MakeTestUID(1),
-		revokedKey, revokeTime.Add(10*time.Second))
+		revokedKey, revokeTime.Add(10*time.Second), false)
 	if err == nil {
 		t.Error("HasVerifyingKey unexpectedly succeeded")
 	}
@@ -142,7 +142,7 @@ func TestKBPKIClientHasVerifyingKeyStaleCache(t *testing.T) {
 	config.mockKbd.EXPECT().LoadUserPlusKeys(gomock.Any(), u).
 		Return(info2, nil)
 
-	err := c.HasVerifyingKey(context.Background(), u, key2, time.Now())
+	err := c.HasVerifyingKey(context.Background(), u, key2, time.Now(), false)
 	if err != nil {
 		t.Error(err)
 	}

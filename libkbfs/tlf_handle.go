@@ -905,3 +905,9 @@ func CheckTlfHandleOffline(
 	_, _, _, err := splitAndNormalizeTLFName(name, public)
 	return err
 }
+
+// IsFinal returns whether or not this TlfHandle represents a finalized
+// top-level folder.
+func (h TlfHandle) IsFinal() bool {
+	return h.finalizedInfo != nil
+}
