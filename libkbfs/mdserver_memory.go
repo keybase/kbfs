@@ -350,31 +350,9 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 
 	// Consistency checks
 	if head != nil {
-		if head.MD.Revision+1 != rmds.MD.Revision {
-			return MDServerErrorConflictRevision{
-				Expected: head.MD.Revision + 1,
-				Actual:   rmds.MD.Revision,
-			}
-		}
-		expectedHash, err := head.MD.MetadataID(md.config)
+		err := head.MD.CheckValidSuccessorForServer(md.config, &rmds.MD)
 		if err != nil {
-			return MDServerError{Err: err}
-		}
-		if rmds.MD.PrevRoot != expectedHash {
-			return MDServerErrorConflictPrevRoot{
-				Expected: expectedHash,
-				Actual:   rmds.MD.PrevRoot,
-			}
-		}
-		expectedUsage := head.MD.DiskUsage
-		if !rmds.MD.IsWriterMetadataCopiedSet() {
-			expectedUsage += rmds.MD.RefBytes - rmds.MD.UnrefBytes
-		}
-		if rmds.MD.DiskUsage != expectedUsage {
-			return MDServerErrorConflictDiskUsage{
-				Expected: expectedUsage,
-				Actual:   rmds.MD.DiskUsage,
-			}
+			return err
 		}
 	}
 

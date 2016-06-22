@@ -460,6 +460,45 @@ func (md *RootMetadata) CheckValidSuccessor(
 	return nil
 }
 
+// CheckValidSuccessorForServer is like CheckValidSuccessor but with
+// server-specific error messages and extra checks.
+func (md *RootMetadata) CheckValidSuccessorForServer(
+	config Config, nextMd *RootMetadata) error {
+	err := md.CheckValidSuccessor(config, nextMd)
+	switch err := err.(type) {
+	case nil:
+		break
+
+	case MDRevisionMismatch:
+		return MDServerErrorConflictRevision{
+			Expected: err.curr + 1,
+			Actual:   err.rev,
+		}
+
+	case MDPrevRootMismatch:
+		return MDServerErrorConflictPrevRoot{
+			Expected: err.currRoot,
+			Actual:   err.prevRoot,
+		}
+
+	default:
+		return MDServerError{Err: err}
+	}
+
+	expectedUsage := md.DiskUsage
+	if !nextMd.IsWriterMetadataCopiedSet() {
+		expectedUsage += nextMd.RefBytes - nextMd.UnrefBytes
+	}
+	if nextMd.DiskUsage != expectedUsage {
+		return MDServerErrorConflictDiskUsage{
+			Expected: expectedUsage,
+			Actual:   nextMd.DiskUsage,
+		}
+	}
+
+	return nil
+}
+
 func (md *RootMetadata) getTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundle, *TLFReaderKeyBundle, error) {
 	if md.ID.IsPublic() {
 		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundle"}

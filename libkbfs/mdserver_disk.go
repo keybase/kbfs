@@ -402,31 +402,9 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 
 	// Consistency checks
 	if head != nil {
-		err := head.MD.CheckValidSuccessor(md.config, &rmds.MD)
-		switch err := err.(type) {
-		case nil:
-			break
-
-		case MDRevisionMismatch:
-			return MDServerErrorConflictRevision{
-				Expected: err.curr + 1,
-				Actual:   err.rev,
-			}
-
-		case MDPrevRootMismatch:
-			return MDServerErrorConflictPrevRoot{
-				Expected: err.currRoot,
-				Actual:   err.prevRoot,
-			}
-
-		case MDDiskUsageMismatch:
-			return MDServerErrorConflictDiskUsage{
-				Expected: err.expectedDiskUsage,
-				Actual:   err.actualDiskUsage,
-			}
-
-		default:
-			return MDServerError{Err: err}
+		err := head.MD.CheckValidSuccessorForServer(md.config, &rmds.MD)
+		if err != nil {
+			return err
 		}
 	}
 
