@@ -110,5 +110,36 @@ func (h bareTlfHandleMap) checkCanResolveTo(
 		}
 	}
 
+	uuwCount := len(other.unresolvedWriters) - len(h.unresolvedWriters)
+	uurCount := len(other.unresolvedReaders) - len(h.unresolvedReaders)
+
+	for r := range other.readers {
+		if h.readers[r] {
+			continue
+		}
+		uurCount--
+		if uurCount < 0 {
+			return fmt.Errorf("not enough old unresolved readers to account for new readers")
+		}
+	}
+
+	uwCount := 0
+	for w := range other.writers {
+		if h.writers[w] {
+			continue
+		}
+		if h.readers[w] {
+			uuwCount--
+			if uuwCount < 0 {
+				return fmt.Errorf("not enough old unresolved readers to account for promoted readers")
+			}
+		} else {
+			uwCount++
+			if uwCount > uuwCount+uurCount {
+				return fmt.Errorf("not enough old unresolved users to account for new writers")
+			}
+		}
+	}
+
 	panic("not finished yet")
 }
