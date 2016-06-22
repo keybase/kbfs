@@ -141,5 +141,5 @@ func (h bareTlfHandleMap) checkCanResolveTo(
 		}
 	}
 
-	panic("not finished yet")
+	return nil
 }
