@@ -60,8 +60,8 @@ type MDServerMemory struct {
 
 	updateManager *mdServerLocalUpdateManager
 
-	shutdown     *bool
 	shutdownLock *sync.RWMutex
+	shutdown     *bool
 }
 
 var _ mdServerLocal = (*MDServerMemory)(nil)
@@ -78,7 +78,7 @@ func NewMDServerMemory(config Config) (*MDServerMemory, error) {
 	mdserv := &MDServerMemory{config, log, &sync.RWMutex{}, handleDb,
 		latestHandleDb, &sync.Mutex{}, mdDb, &sync.Mutex{}, branchDb,
 		&sync.Mutex{}, locksDb,
-		newMDServerLocalUpdateManager(), new(bool), &sync.RWMutex{}}
+		newMDServerLocalUpdateManager(), &sync.RWMutex{}, new(bool)}
 	return mdserv, nil
 }
 
@@ -555,7 +555,7 @@ func (md *MDServerMemory) copy(config Config) mdServerLocal {
 	return &MDServerMemory{config, log, md.handleMutex, md.handleDb,
 		md.latestHandleDb, md.mdMutex, md.mdDb, md.branchMutex,
 		md.branchDb, md.locksMutex, md.locksDb, md.updateManager,
-		md.shutdown, md.shutdownLock}
+		md.shutdownLock, md.shutdown}
 }
 
 // isShutdown returns whether the logical, shared MDServer instance
