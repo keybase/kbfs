@@ -9,6 +9,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"time"
@@ -36,8 +39,9 @@ type MDServerDisk struct {
 
 	updateManager *mdServerLocalUpdateManager
 
-	shutdown     *bool
 	shutdownLock *sync.RWMutex
+	shutdown     *bool
+	shutdownFunc func(logger.Logger)
 }
 
 var _ mdServerLocal = (*MDServerDisk)(nil)
@@ -47,8 +51,31 @@ type mdBlockLocal struct {
 	Timestamp time.Time
 }
 
-func newMDServerDiskWithStorage(config Config, handleStorage, mdStorage,
-	branchStorage, lockStorage storage.Storage) (*MDServerDisk, error) {
+func newMDServerDisk(config Config, dirPath string,
+	shutdownFunc func(logger.Logger)) (*MDServerDisk, error) {
+	handlePath := filepath.Join(dirPath, "handles")
+	mdPath := filepath.Join(dirPath, "md")
+	branchPath := filepath.Join(dirPath, "branches")
+
+	handleStorage, err := storage.OpenFile(handlePath)
+	if err != nil {
+		return nil, err
+	}
+
+	mdStorage, err := storage.OpenFile(mdPath)
+	if err != nil {
+		return nil, err
+	}
+
+	branchStorage, err := storage.OpenFile(branchPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Always use memory for the lock storage, so it gets wiped after
+	// a restart.
+	lockStorage := storage.NewMemStorage()
+
 	handleDb, err := leveldb.Open(handleStorage, leveldbOptions)
 	if err != nil {
 		return nil, err
@@ -68,36 +95,29 @@ func newMDServerDiskWithStorage(config Config, handleStorage, mdStorage,
 	log := config.MakeLogger("")
 	mdserv := &MDServerDisk{config, handleDb, mdDb, branchDb, log,
 		&sync.Mutex{}, locksDb, newMDServerLocalUpdateManager(),
-		new(bool), &sync.RWMutex{}}
+		&sync.RWMutex{}, new(bool), shutdownFunc}
 	return mdserv, nil
 }
 
-// NewMDServerDisk constructs a new MDServerDisk object that stores
-// data in the directories specified as parameters to this function.
-func NewMDServerDisk(config Config, handleDbfile string, mdDbfile string,
-	branchDbfile string) (*MDServerDisk, error) {
+// NewMDServerDir constructs a new MDServerDisk that stores its data
+// in the given directory.
+func NewMDServerDir(config Config, dirPath string) (*MDServerDisk, error) {
+	return newMDServerDisk(config, dirPath, nil)
+}
 
-	handleStorage, err := storage.OpenFile(handleDbfile)
+// NewMDServerTempDir constructs a new MDServerDisk that stores its
+// data in a temp directory which is cleaned up on shutdown.
+func NewMDServerTempDir(config Config) (*MDServerDisk, error) {
+	tempdir, err := ioutil.TempDir(os.TempDir(), "kbfs_mdserver_tmp")
 	if err != nil {
 		return nil, err
 	}
-
-	mdStorage, err := storage.OpenFile(mdDbfile)
-	if err != nil {
-		return nil, err
-	}
-
-	branchStorage, err := storage.OpenFile(branchDbfile)
-	if err != nil {
-		return nil, err
-	}
-
-	// Always use memory for the lock storage, so it gets wiped after
-	// a restart.
-	lockStorage := storage.NewMemStorage()
-
-	return newMDServerDiskWithStorage(config, handleStorage, mdStorage,
-		branchStorage, lockStorage)
+	return newMDServerDisk(config, tempdir, func(log logger.Logger) {
+		err := os.RemoveAll(tempdir)
+		if err != nil {
+			log.Warning("error removing %s: %s", tempdir, err)
+		}
+	})
 }
 
 // GetForHandle implements the MDServer interface for MDServerDisk.
@@ -659,6 +679,8 @@ func (md *MDServerDisk) Shutdown() {
 	if md.locksDb != nil {
 		md.locksDb.Close()
 	}
+
+	md.shutdownFunc(md.log)
 }
 
 // IsConnected implements the MDServer interface for MDServerDisk.
@@ -677,7 +699,7 @@ func (md *MDServerDisk) copy(config Config) mdServerLocal {
 	log := config.MakeLogger("")
 	return &MDServerDisk{config, md.handleDb, md.mdDb, md.branchDb, log,
 		md.locksMutex, md.locksDb, md.updateManager,
-		md.shutdown, md.shutdownLock}
+		md.shutdownLock, md.shutdown, md.shutdownFunc}
 }
 
 // isShutdown returns whether the logical, shared MDServer instance
