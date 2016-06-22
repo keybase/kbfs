@@ -40,9 +40,9 @@ type Engine interface {
 		clock libkbfs.Clock) map[libkb.NormalizedUsername]User
 	// GetUID is called by the test harness to retrieve a user instance's UID.
 	GetUID(u User) keybase1.UID
-	// GetFavorites returns a map from each favorite to whether
-	// it's public or nto.
-	GetFavorites(u User) (map[string]bool, error)
+	// GetFavorites returns the set of all public or private
+	// favorites, based on the given bool.
+	GetFavorites(u User, public bool) (map[string]bool, error)
 	// GetRootDir is called by the test harness to get a handle to a TLF from the given user's
 	// perspective
 	GetRootDir(u User, tlfName string, isPublic bool, expectedCanonicalTlfName string) (dir Node, err error)

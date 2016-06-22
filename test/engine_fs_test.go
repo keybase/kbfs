@@ -69,7 +69,7 @@ func buildRootPath(u *fsUser, tlfName string, isPublic bool) string {
 	return path
 }
 
-func (e *fsEngine) GetFavorites(u User) (map[string]bool, error) {
+func (e *fsEngine) GetFavorites(u User, public bool) (map[string]bool, error) {
 	panic("not implemented")
 }
 

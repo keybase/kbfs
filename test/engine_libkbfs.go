@@ -130,7 +130,7 @@ outer:
 }
 
 // GetFavorites implements the Engine interface.
-func (k *LibKBFS) GetFavorites(u User) (map[string]bool, error) {
+func (k *LibKBFS) GetFavorites(u User, public bool) (map[string]bool, error) {
 	config := u.(*libkbfs.ConfigLocal)
 	ctx := context.Background()
 	favorites, err := config.KBFSOps().GetFavorites(ctx)
@@ -139,7 +139,10 @@ func (k *LibKBFS) GetFavorites(u User) (map[string]bool, error) {
 	}
 	favoritesMap := make(map[string]bool)
 	for _, f := range favorites {
-		favoritesMap[f.Name] = f.Public
+		if f.Public != public {
+			continue
+		}
+		favoritesMap[f.Name] = true
 	}
 	return favoritesMap, nil
 }
