@@ -69,6 +69,10 @@ func buildRootPath(u *fsUser, tlfName string, isPublic bool) string {
 	return path
 }
 
+func (e *fsEngine) GetFavorites(u User) (map[string]bool, error) {
+	panic("not implemented")
+}
+
 // GetRootDir implements the Engine interface.
 func (e *fsEngine) GetRootDir(user User, tlfName string, isPublic bool, expectedCanonicalTlfName string) (dir Node, err error) {
 	u := user.(*fsUser)
