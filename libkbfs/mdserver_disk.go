@@ -21,6 +21,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+// TODO: Convert this to use flat files and a journal.
+
 // MDServerDisk just stores blocks in local leveldb instances.
 type MDServerDisk struct {
 	config   Config
