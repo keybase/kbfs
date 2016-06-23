@@ -79,31 +79,47 @@ func GetDefaultMDServer(ctx Context) string {
 }
 
 func defaultLogPath(ctx Context) string {
-	// TODO is there a better way to get G here?
 	return filepath.Join(ctx.GetLogDir(), libkb.KBFSLogFileName)
+}
+
+// DefaultInitParams returns default init params
+func DefaultInitParams(ctx Context) InitParams {
+	return InitParams{
+		Debug:            BoolForString(os.Getenv("KBFS_DEBUG")),
+		BServerAddr:      GetDefaultBServer(ctx),
+		MDServerAddr:     GetDefaultMDServer(ctx),
+		TLFValidDuration: tlfValidDurationDefault,
+		LogFileConfig: logger.LogFileConfig{
+			MaxAge:       30 * 24 * time.Hour,
+			MaxSize:      128 * 1024 * 1024,
+			MaxKeepFiles: 3,
+		},
+	}
 }
 
 // AddFlags adds libkbfs flags to the given FlagSet. Returns an
 // InitParams that will be filled in once the given FlagSet is parsed.
 func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
+	defaultParams := DefaultInitParams(ctx)
+
 	var params InitParams
-	flags.BoolVar(&params.Debug, "debug", BoolForString(os.Getenv("KBFS_DEBUG")), "Print debug messages")
+	flags.BoolVar(&params.Debug, "debug", defaultParams.Debug, "Print debug messages")
 	flags.StringVar(&params.CPUProfile, "cpuprofile", "", "write cpu profile to file")
 
-	flags.StringVar(&params.BServerAddr, "bserver", GetDefaultBServer(ctx), "host:port of the block server")
-	flags.StringVar(&params.MDServerAddr, "mdserver", GetDefaultMDServer(ctx), "host:port of the metadata server")
+	flags.StringVar(&params.BServerAddr, "bserver", defaultParams.BServerAddr, "host:port of the block server")
+	flags.StringVar(&params.MDServerAddr, "mdserver", defaultParams.MDServerAddr, "host:port of the metadata server")
 
 	flags.BoolVar(&params.ServerInMemory, "server-in-memory", false, "use in-memory server (and ignore -bserver, -mdserver, and -server-root)")
 	flags.StringVar(&params.ServerRootDir, "server-root", "", "directory to put local server files (and ignore -bserver and -mdserver)")
 	flags.StringVar(&params.LocalUser, "localuser", "", "fake local user (used only with -server-in-memory or -server-root)")
-	flags.DurationVar(&params.TLFValidDuration, "tlf-valid", tlfValidDurationDefault, "time tlfs are valid before redoing identification")
+	flags.DurationVar(&params.TLFValidDuration, "tlf-valid", defaultParams.TLFValidDuration, "time tlfs are valid before redoing identification")
 	flags.BoolVar(&params.LogToFile, "log-to-file", false, fmt.Sprintf("Log to default file: %s", defaultLogPath(ctx)))
 	flags.StringVar(&params.LogFileConfig.Path, "log-file", "", "Path to log file")
-	flags.DurationVar(&params.LogFileConfig.MaxAge, "log-file-max-age", 30*24*time.Hour, "Maximum age of a log file before rotation")
-	params.LogFileConfig.MaxSize = 128 * 1024 * 1024
+	flags.DurationVar(&params.LogFileConfig.MaxAge, "log-file-max-age", defaultParams.LogFileConfig.MaxAge, "Maximum age of a log file before rotation")
+	params.LogFileConfig.MaxSize = defaultParams.LogFileConfig.MaxSize
 	flag.Var(SizeFlag{&params.LogFileConfig.MaxSize}, "log-file-max-size", "Maximum size of a log file before rotation")
 	// The default is to *DELETE* old log files for kbfs.
-	flag.IntVar(&params.LogFileConfig.MaxKeepFiles, "log-file-max-keep-files", 3, "Maximum number of log files for this service, older ones are deleted. 0 for infinite.")
+	flag.IntVar(&params.LogFileConfig.MaxKeepFiles, "log-file-max-keep-files", defaultParams.LogFileConfig.MaxKeepFiles, "Maximum number of log files for this service, older ones are deleted. 0 for infinite.")
 	return &params
 }
 

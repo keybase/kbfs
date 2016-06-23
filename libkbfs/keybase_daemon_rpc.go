@@ -378,6 +378,7 @@ func (k *KeybaseDaemonRPC) OnConnect(ctx context.Context,
 		keybase1.IdentifyUiProtocol(daemonIdentifyUI{k.daemonLog}),
 		keybase1.NotifySessionProtocol(k),
 		keybase1.NotifyUsersProtocol(k),
+		keybase1.FsProtocol(&fsRPC{config: k.config, log: k.log}),
 	}
 	for _, p := range protocols {
 		err := server.Register(p)

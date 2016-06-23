@@ -56,27 +56,27 @@ func writeHelper(ctx context.Context, config libkbfs.Config, args []string) (err
 		}
 	}()
 
-	p, err := makeKbfsPath(filePathStr)
+	p, err := libkbfs.NewPath(filePathStr)
 	if err != nil {
 		return
 	}
 
-	if p.pathType != tlfPath {
+	if p.PathType != libkbfs.TLFPathType {
 		err = cannotWriteErr{filePathStr, nil}
 		return
 	}
 
-	dir, filename, err := p.dirAndBasename()
+	dir, filename, err := p.DirAndBasename()
 	if err != nil {
 		return
 	}
 
-	if dir.pathType != tlfPath {
+	if dir.PathType != libkbfs.TLFPathType {
 		err = cannotWriteErr{filePathStr, nil}
 		return
 	}
 
-	parentNode, err := dir.getDirNode(ctx, config)
+	parentNode, err := dir.GetDirNode(ctx, config)
 	if err != nil {
 		return err
 	}
