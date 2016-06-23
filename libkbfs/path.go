@@ -235,27 +235,28 @@ func (p Path) GetNode(ctx context.Context, config Config) (Node, EntryInfo, erro
 		return nil, entryInfo, nil
 	}
 
-	var h *TlfHandle
+	var tlfHandle *TlfHandle
 	name := p.TLFName
 outer:
 	for {
-		h, err = ParseTlfHandle(ctx, config.KBPKI(), name, p.Public)
-		switch err := err.(type) {
+		var parseErr error
+		tlfHandle, parseErr = ParseTlfHandle(ctx, config.KBPKI(), name, p.Public)
+		switch parseErr := parseErr.(type) {
 		case nil:
 			// No error.
 			break outer
 
 		case TlfNameNotCanonical:
 			// Non-canonical name, so try again.
-			name = err.NameToTry
+			name = parseErr.NameToTry
 
 		default:
 			// Some other error.
-			return nil, EntryInfo{}, err
+			return nil, EntryInfo{}, parseErr
 		}
 	}
 
-	node, entryInfo, err := config.KBFSOps().GetOrCreateRootNode(ctx, h, MasterBranch)
+	node, entryInfo, err := config.KBFSOps().GetOrCreateRootNode(ctx, tlfHandle, MasterBranch)
 	if err != nil {
 		return nil, EntryInfo{}, err
 	}

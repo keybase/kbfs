@@ -17,79 +17,79 @@ type fsRPC struct {
 	log    logger.Logger
 }
 
-func (f fsRPC) favorites(ctx context.Context, path Path) (keybase1.ListResult, error) {
+func (f fsRPC) favorites(ctx context.Context, path Path) (keybase1.FsListResult, error) {
 	favs, err := f.config.KBFSOps().GetFavorites(ctx)
 	if err != nil {
-		return keybase1.ListResult{}, err
+		return keybase1.FsListResult{}, err
 	}
-	paths := []keybase1.Path{}
+	files := []keybase1.File{}
 	for _, fav := range favs {
 		if (fav.Public && path.Public) || (!fav.Public && !path.Public) {
-			paths = append(paths, keybase1.Path{Name: fav.Name})
+			files = append(files, keybase1.File{Name: fav.Name})
 		}
 	}
-	return keybase1.ListResult{Paths: paths}, nil
+	return keybase1.FsListResult{Files: files}, nil
 }
 
-func (f fsRPC) tlf(ctx context.Context, path Path) (keybase1.ListResult, error) {
-	paths := []keybase1.Path{}
+func (f fsRPC) tlf(ctx context.Context, path Path) (keybase1.FsListResult, error) {
+	files := []keybase1.File{}
 
 	node, de, err := path.GetNode(ctx, f.config)
 	if err != nil {
-		return keybase1.ListResult{}, err
+		return keybase1.FsListResult{}, err
 	}
 
 	if node == nil {
-		return keybase1.ListResult{}, fmt.Errorf("Node not found for path: %s", path)
+		return keybase1.FsListResult{}, fmt.Errorf("Node not found for path: %s", path)
 	}
 
 	if de.Type == Dir {
 		children, err := f.config.KBFSOps().GetDirChildren(ctx, node)
 		if err != nil {
-			return keybase1.ListResult{}, err
+			return keybase1.FsListResult{}, err
 		}
 
 		// For entryInfo: for name, entryInfo := range children
 		for name := range children {
-			paths = append(paths, keybase1.Path{Name: name})
+			files = append(files, keybase1.File{Name: name})
 		}
 	} else {
 		_, name, err := path.DirAndBasename()
 		if err != nil {
-			return keybase1.ListResult{}, err
+			return keybase1.FsListResult{}, err
 		}
-		paths = append(paths, keybase1.Path{Name: name})
+		files = append(files, keybase1.File{Name: name})
 	}
-	return keybase1.ListResult{Paths: paths}, nil
+	return keybase1.FsListResult{Files: files}, nil
 }
 
-func (f fsRPC) keybase(ctx context.Context) (keybase1.ListResult, error) {
-	return keybase1.ListResult{
-		Paths: []keybase1.Path{
-			keybase1.Path{Name: "/keybase/public"},
-			keybase1.Path{Name: "/keybase/private"},
+func (f fsRPC) keybase(ctx context.Context) (keybase1.FsListResult, error) {
+	return keybase1.FsListResult{
+		Files: []keybase1.File{
+			keybase1.File{Name: "/keybase/public"},
+			keybase1.File{Name: "/keybase/private"},
 		},
 	}, nil
 }
 
-func (f fsRPC) root(ctx context.Context) (keybase1.ListResult, error) {
-	return keybase1.ListResult{
-		Paths: []keybase1.Path{
-			keybase1.Path{Name: "/keybase"},
+func (f fsRPC) root(ctx context.Context) (keybase1.FsListResult, error) {
+	return keybase1.FsListResult{
+		Files: []keybase1.File{
+			keybase1.File{Name: "/keybase"},
 		},
 	}, nil
 }
 
-// List implements keyubase1.FsInterface
-func (f *fsRPC) List(ctx context.Context, arg keybase1.ListArg) (keybase1.ListResult, error) {
+// FsList implements keyubase1.FsInterface
+func (f *fsRPC) FsList(ctx context.Context, arg keybase1.FsListArg) (keybase1.FsListResult, error) {
 	f.log.CDebugf(ctx, "fsRpc:List %q", arg.Path)
 
 	kbfsPath, err := NewPath(arg.Path)
 	if err != nil {
-		return keybase1.ListResult{}, err
+		return keybase1.FsListResult{}, err
 	}
 
-	var result keybase1.ListResult
+	var result keybase1.FsListResult
 	switch kbfsPath.PathType {
 	case RootPathType:
 		result, err = f.root(ctx)
