@@ -680,7 +680,9 @@ func (md *MDServerDisk) Shutdown() {
 		md.locksDb.Close()
 	}
 
-	md.shutdownFunc(md.log)
+	if md.shutdownFunc != nil {
+		md.shutdownFunc(md.log)
+	}
 }
 
 // IsConnected implements the MDServer interface for MDServerDisk.

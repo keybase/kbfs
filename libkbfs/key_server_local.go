@@ -181,5 +181,7 @@ func (ks *KeyServerLocal) Shutdown() {
 		ks.db.Close()
 	}
 
-	ks.shutdownFunc(ks.log)
+	if ks.shutdownFunc != nil {
+		ks.shutdownFunc(ks.log)
+	}
 }
