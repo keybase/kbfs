@@ -403,3 +403,40 @@ func (md *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMe
 
 	return nil
 }
+
+// PruneBranch implements the MDServer interface for MDServerDisk.
+func (md *mdServerTlfStorage) pruneBranch(
+	ctx context.Context, kbpki KBPKI, bid BranchID) error {
+	md.lock.Lock()
+	defer md.lock.Unlock()
+
+	if md.isShutdown {
+		return errors.New("MD server already shut down")
+	}
+
+	if bid == NullBranchID {
+		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+	}
+
+	currBID, err := md.getBranchID(ctx, kbpki)
+	if err != nil {
+		return err
+	}
+	if currBID == NullBranchID || bid != currBID {
+		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+	}
+
+	// Don't actually delete unmerged history. This is intentional to be consistent
+	// with the mdserver behavior-- it garbage collects discarded branches in the
+	// background.
+	branchKey, err := md.getBranchKey(ctx, kbpki)
+	if err != nil {
+		return MDServerError{err}
+	}
+	err = md.branchDb.Delete(branchKey, nil)
+	if err != nil {
+		return MDServerError{err}
+	}
+
+	return nil
+}
