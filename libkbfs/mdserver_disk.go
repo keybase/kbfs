@@ -409,7 +409,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 		return MDServerErrorUnauthorized{}
 	}
 
-	head, err := md.getHeadForTLF(ctx, id, rmds.MD.BID, mStatus)
+	head, err := md.getHeadForTLF(ctx, id, bid, mStatus)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -466,7 +466,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 	batch := new(leveldb.Batch)
 
 	// Add an entry with the revision key.
-	revKey, err := md.getMDKey(id, rmds.MD.Revision, rmds.MD.BID, mStatus)
+	revKey, err := md.getMDKey(id, rmds.MD.Revision, bid, mStatus)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -474,7 +474,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 
 	// Add an entry with the head key.
 	headKey, err := md.getMDKey(id, MetadataRevisionUninitialized,
-		rmds.MD.BID, mStatus)
+		bid, mStatus)
 	if err != nil {
 		return MDServerError{err}
 	}

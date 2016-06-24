@@ -346,7 +346,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 		return MDServerErrorUnauthorized{}
 	}
 
-	head, err := md.getHeadForTLF(ctx, id, rmds.MD.BID, mStatus)
+	head, err := md.getHeadForTLF(ctx, id, bid, mStatus)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -398,7 +398,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 	block := mdBlockMem{encodedMd, md.config.Clock().Now()}
 
 	// Add an entry with the revision key.
-	revKey, err := md.getMDKey(id, rmds.MD.BID, mStatus)
+	revKey, err := md.getMDKey(id, bid, mStatus)
 	if err != nil {
 		return MDServerError{err}
 	}
