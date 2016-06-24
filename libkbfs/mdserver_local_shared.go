@@ -12,8 +12,8 @@ import (
 )
 
 func checkMDPerms(ctx context.Context, codec Codec, kbpki KBPKI,
-	mergedMasterHead *RootMetadataSigned, id TlfID,
-	checkWrite bool, newMd *RootMetadataSigned) (bool, error) {
+	mergedMasterHead *RootMetadataSigned, checkWrite bool,
+	newMd *RootMetadataSigned) (bool, error) {
 	if mergedMasterHead == nil {
 		// TODO: the real mdserver will actually reverse
 		// lookup the folder handle and check that the UID is
@@ -46,19 +46,19 @@ func checkMDPerms(ctx context.Context, codec Codec, kbpki KBPKI,
 // access TLF metadata. mergedMasterHead can be nil, in which case
 // true is returned.
 func isReader(ctx context.Context, codec Codec, kbpki KBPKI,
-	mergedMasterHead *RootMetadataSigned, id TlfID) (bool, error) {
+	mergedMasterHead *RootMetadataSigned) (bool, error) {
 	return checkMDPerms(
-		ctx, codec, kbpki, mergedMasterHead, id, false, nil)
+		ctx, codec, kbpki, mergedMasterHead, false, nil)
 }
 
 // Helper to aid in enforcement that only specified public keys can
 // access TLF metadata. mergedMasterHead can be nil, in which case
 // true is returned.
 func isWriterOrValidRekey(ctx context.Context, codec Codec, kbpki KBPKI,
-	mergedMasterHead *RootMetadataSigned, id TlfID,
+	mergedMasterHead *RootMetadataSigned,
 	newMd *RootMetadataSigned) (bool, error) {
 	return checkMDPerms(
-		ctx, codec, kbpki, mergedMasterHead, id, true, newMd)
+		ctx, codec, kbpki, mergedMasterHead, true, newMd)
 }
 
 type mdServerLocalUpdateManager struct {

@@ -188,7 +188,7 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id TlfID,
 
 	// Check permissions
 	ok, err := isReader(
-		ctx, md.config.Codec(), md.config.KBPKI(), mergedMasterHead, id)
+		ctx, md.config.Codec(), md.config.KBPKI(), mergedMasterHead)
 	if err != nil {
 		return nil, MDServerError{err}
 	}
@@ -325,7 +325,7 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id TlfID,
 
 	// Check permissions
 	ok, err := isReader(
-		ctx, md.config.Codec(), md.config.KBPKI(), mergedMasterHead, id)
+		ctx, md.config.Codec(), md.config.KBPKI(), mergedMasterHead)
 	if err != nil {
 		return nil, MDServerError{err}
 	}
@@ -401,7 +401,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 	// Check permissions
 	ok, err := isWriterOrValidRekey(
 		ctx, md.config.Codec(), md.config.KBPKI(),
-		mergedMasterHead, id, rmds)
+		mergedMasterHead, rmds)
 	if err != nil {
 		return MDServerError{err}
 	}
