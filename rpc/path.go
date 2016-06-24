@@ -2,13 +2,15 @@
 // Use of this source code is governed by a BSD
 // license that can be found in the LICENSE file.
 
-package libkbfs
+package rpc
 
 import (
 	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/keybase/kbfs/libkbfs"
 
 	"golang.org/x/net/context"
 )
@@ -227,44 +229,44 @@ func (p Path) Join(childName string) (childPath Path, err error) {
 }
 
 // GetNode returns a node
-func (p Path) GetNode(ctx context.Context, config Config) (Node, EntryInfo, error) {
+func (p Path) GetNode(ctx context.Context, config libkbfs.Config) (libkbfs.Node, libkbfs.EntryInfo, error) {
 	if p.PathType != TLFPathType {
-		entryInfo := EntryInfo{
-			Type: Dir,
+		entryInfo := libkbfs.EntryInfo{
+			Type: libkbfs.Dir,
 		}
 		return nil, entryInfo, nil
 	}
 
-	var tlfHandle *TlfHandle
+	var tlfHandle *libkbfs.TlfHandle
 	name := p.TLFName
 outer:
 	for {
 		var parseErr error
-		tlfHandle, parseErr = ParseTlfHandle(ctx, config.KBPKI(), name, p.Public)
+		tlfHandle, parseErr = libkbfs.ParseTlfHandle(ctx, config.KBPKI(), name, p.Public)
 		switch parseErr := parseErr.(type) {
 		case nil:
 			// No error.
 			break outer
 
-		case TlfNameNotCanonical:
+		case libkbfs.TlfNameNotCanonical:
 			// Non-canonical name, so try again.
 			name = parseErr.NameToTry
 
 		default:
 			// Some other error.
-			return nil, EntryInfo{}, parseErr
+			return nil, libkbfs.EntryInfo{}, parseErr
 		}
 	}
 
-	node, entryInfo, err := config.KBFSOps().GetOrCreateRootNode(ctx, tlfHandle, MasterBranch)
+	node, entryInfo, err := config.KBFSOps().GetOrCreateRootNode(ctx, tlfHandle, libkbfs.MasterBranch)
 	if err != nil {
-		return nil, EntryInfo{}, err
+		return nil, libkbfs.EntryInfo{}, err
 	}
 
 	for _, component := range p.TLFComponents {
 		lookupNode, lookupEntryInfo, lookupErr := config.KBFSOps().Lookup(ctx, node, component)
 		if lookupErr != nil {
-			return nil, EntryInfo{}, lookupErr
+			return nil, libkbfs.EntryInfo{}, lookupErr
 		}
 		node = lookupNode
 		entryInfo = lookupEntryInfo
@@ -274,7 +276,7 @@ outer:
 }
 
 // GetFileNode returns a file node
-func (p Path) GetFileNode(ctx context.Context, config Config) (Node, error) {
+func (p Path) GetFileNode(ctx context.Context, config libkbfs.Config) (libkbfs.Node, error) {
 	n, de, err := p.GetNode(ctx, config)
 	if err != nil {
 		return nil, err
@@ -282,7 +284,7 @@ func (p Path) GetFileNode(ctx context.Context, config Config) (Node, error) {
 
 	// TODO: What to do with symlinks?
 
-	if de.Type != File && de.Type != Exec {
+	if de.Type != libkbfs.File && de.Type != libkbfs.Exec {
 		return nil, fmt.Errorf("openFile: %s is not a file, but a %s", p, de.Type)
 	}
 
@@ -290,7 +292,7 @@ func (p Path) GetFileNode(ctx context.Context, config Config) (Node, error) {
 }
 
 // GetDirNode returns a nil node if this doesn't have type TLFPathType
-func (p Path) GetDirNode(ctx context.Context, config Config) (Node, error) {
+func (p Path) GetDirNode(ctx context.Context, config libkbfs.Config) (libkbfs.Node, error) {
 	// TODO: Handle non-TLFPathTypes.
 
 	n, de, err := p.GetNode(ctx, config)
@@ -300,7 +302,7 @@ func (p Path) GetDirNode(ctx context.Context, config Config) (Node, error) {
 
 	// TODO: What to do with symlinks?
 
-	if de.Type != Dir {
+	if de.Type != libkbfs.Dir {
 		return nil, fmt.Errorf("openDir: %s is not a dir, but a %s", p, de.Type)
 	}
 

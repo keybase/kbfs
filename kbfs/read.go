@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/keybase/kbfs/libkbfs"
+	"github.com/keybase/kbfs/rpc"
 	"golang.org/x/net/context"
 )
 
@@ -55,12 +56,12 @@ func readHelper(ctx context.Context, config libkbfs.Config, args []string) error
 	}
 
 	filePathStr := flags.Arg(0)
-	p, err := libkbfs.NewPath(filePathStr)
+	p, err := rpc.NewPath(filePathStr)
 	if err != nil {
 		return err
 	}
 
-	if p.PathType != libkbfs.TLFPathType {
+	if p.PathType != rpc.TLFPathType {
 		return fmt.Errorf("Cannot read %s", p)
 	}
 

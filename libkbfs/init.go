@@ -195,46 +195,6 @@ func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverA
 	return NewBlockServerRemote(config, bserverAddr, ctx), nil
 }
 
-func makeKeybaseDaemon(config Config, serverInMemory bool, serverRootDir string, localUser libkb.NormalizedUsername, codec Codec, ctx Context, log logger.Logger, debug bool) (KeybaseDaemon, error) {
-	if len(localUser) == 0 {
-		ctx.ConfigureSocketInfo()
-		return NewKeybaseDaemonRPC(config, ctx, log, debug), nil
-	}
-
-	users := []libkb.NormalizedUsername{"strib", "max", "chris", "fred"}
-	userIndex := -1
-	for i := range users {
-		if localUser == users[i] {
-			userIndex = i
-			break
-		}
-	}
-	if userIndex < 0 {
-		return nil, fmt.Errorf("user %s not in list %v", localUser, users)
-	}
-
-	localUsers := MakeLocalUsers(users)
-
-	// TODO: Auto-generate these, too?
-	localUsers[0].Asserts = []string{"github:strib"}
-	localUsers[1].Asserts = []string{"twitter:maxtaco"}
-	localUsers[2].Asserts = []string{"twitter:malgorithms"}
-	localUsers[3].Asserts = []string{"twitter:fakalin"}
-
-	localUID := localUsers[userIndex].UID
-
-	if serverInMemory {
-		return NewKeybaseDaemonMemory(localUID, localUsers, codec), nil
-	}
-
-	if len(serverRootDir) > 0 {
-		favPath := filepath.Join(serverRootDir, "kbfs_favs")
-		return NewKeybaseDaemonDisk(localUID, localUsers, favPath, codec)
-	}
-
-	return nil, errors.New("Can't user localuser without a local server")
-}
-
 // InitLog sets up logging switching to a log file if necessary.
 // Returns a valid logger even on error, which are non-fatal, thus
 // errors from this function may be ignored.
@@ -273,8 +233,7 @@ func InitLog(params InitParams, ctx Context) (logger.Logger, error) {
 // Init should be called at the beginning of main. Shutdown (see
 // below) should then be called at the end of main (usually via
 // defer).
-func Init(ctx Context, params InitParams, onInterruptFn func(), log logger.Logger) (Config, error) {
-	localUser := libkb.NewNormalizedUsername(params.LocalUser)
+func Init(ctx Context, params InitParams, keybaseDaemonFn KeybaseDaemonFn, onInterruptFn func(), log logger.Logger) (Config, error) {
 
 	if params.CPUProfile != "" {
 		// Let the GC/OS clean up the file handle.
@@ -357,7 +316,10 @@ func Init(ctx Context, params InitParams, onInterruptFn func(), log logger.Logge
 
 	config.SetKeyServer(keyServer)
 
-	daemon, err := makeKeybaseDaemon(config, params.ServerInMemory, params.ServerRootDir, localUser, config.Codec(), ctx, config.MakeLogger(""), params.Debug)
+	if keybaseDaemonFn == nil {
+		keybaseDaemonFn = makeKeybaseDaemon
+	}
+	daemon, err := keybaseDaemonFn(config, params, ctx, config.MakeLogger(""))
 	if err != nil {
 		return nil, fmt.Errorf("problem creating daemon: %s", err)
 	}
@@ -373,6 +335,7 @@ func Init(ctx Context, params InitParams, onInterruptFn func(), log logger.Logge
 
 	config.SetReporter(NewReporterKBPKI(config, 10, 1000))
 
+	localUser := libkb.NewNormalizedUsername(params.LocalUser)
 	if localUser == "" {
 		c := NewCryptoClient(config, ctx)
 		config.SetCrypto(c)

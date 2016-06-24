@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/keybase/kbfs/libkbfs"
+	"github.com/keybase/kbfs/rpc"
 	"golang.org/x/net/context"
 )
 
 func statNode(ctx context.Context, config libkbfs.Config, nodePathStr string) error {
-	p, err := libkbfs.NewPath(nodePathStr)
+	p, err := rpc.NewPath(nodePathStr)
 	if err != nil {
 		return err
 	}
