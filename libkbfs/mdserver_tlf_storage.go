@@ -440,3 +440,30 @@ func (md *mdServerTlfStorage) pruneBranch(
 
 	return nil
 }
+
+func (md *mdServerTlfStorage) truncateLock(ctx context.Context, kbpki KBPKI) (
+	bool, error) {
+	md.lock.Lock()
+	defer md.lock.Unlock()
+
+	if md.isShutdown {
+		return false, errors.New("MD server already shut down")
+	}
+
+	key, err := kbpki.GetCurrentCryptPublicKey(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if md.truncateLockHolder != nil {
+		if *md.truncateLockHolder == key.kid {
+			// idempotent
+			return true, nil
+		}
+		// Locked by someone else.
+		return false, MDServerErrorLocked{}
+	}
+
+	md.truncateLockHolder = &key.kid
+	return true, nil
+}
