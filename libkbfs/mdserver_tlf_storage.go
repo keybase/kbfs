@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"golang.org/x/net/context"
 
@@ -36,7 +35,7 @@ type mdServerTlfStorage struct {
 	// instead.
 	lock sync.RWMutex
 
-	mdDb     *leveldb.DB // [branchId]+[revision] -> mdBlockLocal
+	mdDb     *leveldb.DB // [branchId]+[revision] -> MdID
 	branchDb *leveldb.DB // deviceKID             -> branchId
 
 	// Store the truncate lock holder just in memory, so it gets
@@ -89,10 +88,9 @@ func (s *mdServerTlfStorage) mdPath(id MdID) string {
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
 }
 
-func (s *mdServerTlfStorage) getMDLocked(id MdID) (
-	*RootMetadataSigned, time.Time, error) {
+func (s *mdServerTlfStorage) getMDLocked(id MdID) (*RootMetadataSigned, error) {
 	if s.isShutdown {
-		return nil, time.Time{}, errors.New("MD server already shut down")
+		return nil, errors.New("MD server already shut down")
 	}
 
 	// Read file.
@@ -100,33 +98,37 @@ func (s *mdServerTlfStorage) getMDLocked(id MdID) (
 	path := s.mdPath(id)
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, err
 	}
 
 	var rmds RootMetadataSigned
 	err = s.codec.Decode(data, &rmds)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, err
 	}
 
 	// Check integrity.
 
 	mdID, err := rmds.MD.MetadataID(s.crypto)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, err
 	}
 
 	if id != mdID {
-		return nil, time.Time{}, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"Metadata ID mismatch: expected %s, got %s", id, mdID)
 	}
 
 	fileInfo, err := os.Stat(path)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, err
 	}
 
-	return &rmds, fileInfo.ModTime(), nil
+	rmds.untrustedServerTimestamp = fileInfo.ModTime()
+
+	// TODO: Verify signature?
+
+	return &rmds, nil
 }
 
 func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
@@ -139,7 +141,7 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
 		return err
 	}
 
-	_, _, err = s.getMDLocked(id)
+	_, err = s.getMDLocked(id)
 	if os.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
@@ -226,37 +228,26 @@ func (md *mdServerTlfStorage) getMDKey(revision MetadataRevision,
 	return buf.Bytes(), nil
 }
 
-type mdBlockLocal struct {
-	MD        *RootMetadataSigned
-	Timestamp time.Time
-}
-
-func (md *mdServerTlfStorage) rmdsFromBlockBytes(buf []byte) (
-	*RootMetadataSigned, error) {
-	block := new(mdBlockLocal)
-	err := md.codec.Decode(buf, block)
-	if err != nil {
-		return nil, err
-	}
-	block.MD.untrustedServerTimestamp = block.Timestamp
-	return block.MD, nil
-}
-
 func (md *mdServerTlfStorage) getHeadForTLF(ctx context.Context,
 	bid BranchID, mStatus MergeStatus) (rmds *RootMetadataSigned, err error) {
 	key, err := md.getMDKey(0, bid, mStatus)
 	if err != nil {
-		return
+		return nil, err
 	}
 	buf, err := md.mdDb.Get(key[:], nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
-			rmds, err = nil, nil
-			return
+			return nil, nil
 		}
-		return
+		return nil, err
 	}
-	return md.rmdsFromBlockBytes(buf)
+
+	id, err := MdIDFromBytes(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return md.getMDLocked(id)
 }
 
 func (md *mdServerTlfStorage) getForTLF(ctx context.Context,
@@ -355,8 +346,12 @@ func (md *mdServerTlfStorage) getRangeLocked(ctx context.Context,
 	iter := md.mdDb.NewIterator(&util.Range{Start: startKey, Limit: stopKey}, nil)
 	defer iter.Release()
 	for iter.Next() {
-		buf := iter.Value()
-		rmds, err := md.rmdsFromBlockBytes(buf)
+		id, err := MdIDFromBytes(iter.Value())
+		if err != nil {
+			return nil, MDServerError{err}
+		}
+
+		rmds, err := md.getMDLocked(id)
 		if err != nil {
 			return rmdses, MDServerError{err}
 		}
@@ -468,8 +463,12 @@ func (md *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMe
 		}
 	}
 
-	block := &mdBlockLocal{rmds, md.clock.Now()}
-	buf, err := md.codec.Encode(block)
+	err = md.putMDLocked(rmds)
+	if err != nil {
+		return MDServerError{err}
+	}
+
+	id, err := rmds.MD.MetadataID(md.crypto)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -482,7 +481,7 @@ func (md *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMe
 	if err != nil {
 		return MDServerError{err}
 	}
-	batch.Put(revKey, buf)
+	batch.Put(revKey, id.Bytes())
 
 	// Add an entry with the head key.
 	headKey, err := md.getMDKey(MetadataRevisionUninitialized,
@@ -490,7 +489,7 @@ func (md *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMe
 	if err != nil {
 		return MDServerError{err}
 	}
-	batch.Put(headKey, buf)
+	batch.Put(headKey, id.Bytes())
 
 	// Write the batch.
 	err = md.mdDb.Write(batch, nil)
