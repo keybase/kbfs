@@ -495,3 +495,20 @@ func (md *mdServerTlfStorage) truncateUnlock(ctx context.Context, kbpki KBPKI) (
 	md.truncateLockHolder = nil
 	return true, nil
 }
+
+func (md *mdServerTlfStorage) shutdown() {
+	md.lock.Lock()
+	defer md.lock.Unlock()
+
+	if md.isShutdown {
+		return
+	}
+	md.isShutdown = true
+
+	if md.mdDb != nil {
+		md.mdDb.Close()
+	}
+	if md.branchDb != nil {
+		md.branchDb.Close()
+	}
+}
