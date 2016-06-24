@@ -89,8 +89,6 @@ func (s *mdServerTlfStorage) mdPath(id MdID) string {
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
 }
 
-// getDataLocked verifies the block data for the given ID and context
-// and returns it.
 func (s *mdServerTlfStorage) getMDLocked(id MdID) (
 	*RootMetadataSigned, time.Time, error) {
 	if s.isShutdown {
@@ -129,6 +127,46 @@ func (s *mdServerTlfStorage) getMDLocked(id MdID) (
 	}
 
 	return &rmds, fileInfo.ModTime(), nil
+}
+
+func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
+	if s.isShutdown {
+		return errors.New("MD server already shut down")
+	}
+
+	id, err := rmds.MD.MetadataID(s.crypto)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = s.getMDLocked(id)
+	if os.IsNotExist(err) {
+		// Continue on.
+	} else if err != nil {
+		return err
+	} else {
+		// Entry exists, so nothing else to do.
+		return nil
+	}
+
+	path := s.mdPath(id)
+
+	err = os.MkdirAll(filepath.Dir(path), 0700)
+	if err != nil {
+		return err
+	}
+
+	buf, err := s.codec.Encode(rmds)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(path, buf, 0600)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (md *mdServerTlfStorage) getBranchKey(ctx context.Context, kbpki KBPKI) ([]byte, error) {
