@@ -30,8 +30,12 @@ func (f fs) favorites(ctx context.Context, path Path) (keybase1.ListResult, erro
 	}
 	files := []keybase1.File{}
 	for _, fav := range favs {
-		if (fav.Public && path.Public) || (!fav.Public && !path.Public) {
-			files = append(files, keybase1.File{Name: fav.Name})
+		if fav.Public == path.Public {
+			favPath, err := path.Join(fav.Name)
+			if err != nil {
+				return keybase1.ListResult{}, err
+			}
+			files = append(files, keybase1.File{Path: favPath.String()})
 		}
 	}
 	return keybase1.ListResult{Files: files}, nil
@@ -57,14 +61,22 @@ func (f fs) tlf(ctx context.Context, path Path) (keybase1.ListResult, error) {
 
 		// For entryInfo: for name, entryInfo := range children
 		for name := range children {
-			files = append(files, keybase1.File{Name: name})
+			dirPath, err := path.Join(name)
+			if err != nil {
+				return keybase1.ListResult{}, err
+			}
+			files = append(files, keybase1.File{Path: dirPath.String()})
 		}
 	} else {
 		_, name, err := path.DirAndBasename()
 		if err != nil {
 			return keybase1.ListResult{}, err
 		}
-		files = append(files, keybase1.File{Name: name})
+		filePath, err := path.Join(name)
+		if err != nil {
+			return keybase1.ListResult{}, err
+		}
+		files = append(files, keybase1.File{Path: filePath.String()})
 	}
 	return keybase1.ListResult{Files: files}, nil
 }
@@ -72,8 +84,8 @@ func (f fs) tlf(ctx context.Context, path Path) (keybase1.ListResult, error) {
 func (f fs) keybase(ctx context.Context) (keybase1.ListResult, error) {
 	return keybase1.ListResult{
 		Files: []keybase1.File{
-			keybase1.File{Name: "/keybase/public"},
-			keybase1.File{Name: "/keybase/private"},
+			keybase1.File{Path: "/keybase/public"},
+			keybase1.File{Path: "/keybase/private"},
 		},
 	}, nil
 }
@@ -81,14 +93,14 @@ func (f fs) keybase(ctx context.Context) (keybase1.ListResult, error) {
 func (f fs) root(ctx context.Context) (keybase1.ListResult, error) {
 	return keybase1.ListResult{
 		Files: []keybase1.File{
-			keybase1.File{Name: "/keybase"},
+			keybase1.File{Path: "/keybase"},
 		},
 	}, nil
 }
 
 // List implements keybase1.FsInterface
 func (f *fs) List(ctx context.Context, arg keybase1.ListArg) (keybase1.ListResult, error) {
-	f.log.CDebugf(ctx, "fsRpc:List %q", arg.Path)
+	f.log.CDebugf(ctx, "Listing %q", arg.Path)
 
 	kbfsPath, err := NewPath(arg.Path)
 	if err != nil {
