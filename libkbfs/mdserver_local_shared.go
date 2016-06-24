@@ -11,52 +11,54 @@ import (
 	"golang.org/x/net/context"
 )
 
-type getTlfHeader interface {
-	getHeadForTLF(ctx context.Context, id TlfID,
-		bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error)
-}
-
 func checkMDPerms(ctx context.Context, codec Codec, kbpki KBPKI,
-	getTlfHeader getTlfHeader, id TlfID,
+	mergedMasterHead *RootMetadataSigned, id TlfID,
 	checkWrite bool, newMd *RootMetadataSigned) (bool, error) {
-	rmds, err := getTlfHeader.getHeadForTLF(ctx, id, NullBranchID, Merged)
-	if rmds == nil {
-		// TODO: the real mdserver will actually reverse lookup the folder handle
-		// and check that the UID is listed.
+	if mergedMasterHead == nil {
+		// TODO: the real mdserver will actually reverse
+		// lookup the folder handle and check that the UID is
+		// listed.
 		return true, nil
 	}
 	_, user, err := kbpki.GetCurrentUserInfo(ctx)
 	if err != nil {
 		return false, err
 	}
-	h, err := rmds.MD.MakeBareTlfHandle()
+	h, err := mergedMasterHead.MD.MakeBareTlfHandle()
 	if err != nil {
 		return false, err
 	}
 	isWriter := h.IsWriter(user)
 	isReader := h.IsReader(user)
 	if checkWrite {
-		// if this is a reader, are they acting within their restrictions?
+		// if this is a reader, are they acting within their
+		// restrictions?
 		if !isWriter && isReader && newMd != nil {
 			return newMd.MD.IsValidRekeyRequest(
-				codec, &rmds.MD, user)
+				codec, &mergedMasterHead.MD, user)
 		}
 		return isWriter, nil
 	}
 	return isWriter || isReader, nil
 }
 
-// Helper to aid in enforcement that only specified public keys can access TLF metdata.
+// Helper to aid in enforcement that only specified public keys can
+// access TLF metadata. mergedMasterHead can be nil, in which case
+// true is returned.
 func isReader(ctx context.Context, codec Codec, kbpki KBPKI,
-	getTlfHeader getTlfHeader, id TlfID) (bool, error) {
-	return checkMDPerms(ctx, codec, kbpki, getTlfHeader, id, false, nil)
+	mergedMasterHead *RootMetadataSigned, id TlfID) (bool, error) {
+	return checkMDPerms(
+		ctx, codec, kbpki, mergedMasterHead, id, false, nil)
 }
 
-// Helper to aid in enforcement that only specified public keys can access TLF metdata.
+// Helper to aid in enforcement that only specified public keys can
+// access TLF metadata. mergedMasterHead can be nil, in which case
+// true is returned.
 func isWriterOrValidRekey(ctx context.Context, codec Codec, kbpki KBPKI,
-	getTlfHeader getTlfHeader, id TlfID, newMd *RootMetadataSigned) (
-	bool, error) {
-	return checkMDPerms(ctx, codec, kbpki, getTlfHeader, id, true, newMd)
+	mergedMasterHead *RootMetadataSigned, id TlfID,
+	newMd *RootMetadataSigned) (bool, error) {
+	return checkMDPerms(
+		ctx, codec, kbpki, mergedMasterHead, id, true, newMd)
 }
 
 type mdServerLocalUpdateManager struct {

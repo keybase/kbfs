@@ -157,8 +157,15 @@ func (md *MDServerMemory) GetForTLF(ctx context.Context, id TlfID,
 		return nil, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
+	mergedMasterHead, err :=
+		md.getHeadForTLF(ctx, id, NullBranchID, Merged)
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+
 	// Check permissions
-	ok, err := isReader(ctx, md.config.Codec(), md.config.KBPKI(), md, id)
+	ok, err := isReader(
+		ctx, md.config.Codec(), md.config.KBPKI(), mergedMasterHead, id)
 	if err != nil {
 		return nil, MDServerError{err}
 	}
@@ -245,8 +252,15 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id TlfID,
 		return nil, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
+	mergedMasterHead, err :=
+		md.getHeadForTLF(ctx, id, NullBranchID, Merged)
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+
 	// Check permissions
-	ok, err := isReader(ctx, md.config.Codec(), md.config.KBPKI(), md, id)
+	ok, err := isReader(
+		ctx, md.config.Codec(), md.config.KBPKI(), mergedMasterHead, id)
 	if err != nil {
 		return nil, MDServerError{err}
 	}
@@ -315,9 +329,16 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 
 	id := rmds.MD.ID
 
+	mergedMasterHead, err :=
+		md.getHeadForTLF(ctx, id, NullBranchID, Merged)
+	if err != nil {
+		return MDServerError{err}
+	}
+
 	// Check permissions
 	ok, err := isWriterOrValidRekey(
-		ctx, md.config.Codec(), md.config.KBPKI(), md, id, rmds)
+		ctx, md.config.Codec(), md.config.KBPKI(),
+		mergedMasterHead, id, rmds)
 	if err != nil {
 		return MDServerError{err}
 	}
