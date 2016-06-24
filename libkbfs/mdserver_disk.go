@@ -440,7 +440,8 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 
 	// Consistency checks
 	if head != nil {
-		err := head.MD.CheckValidSuccessorForServer(md.config, &rmds.MD)
+		err := head.MD.CheckValidSuccessorForServer(
+			md.config.Crypto(), &rmds.MD)
 		if err != nil {
 			return err
 		}

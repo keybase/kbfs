@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -20,8 +21,10 @@ import (
 )
 
 type mdServerTlfStorage struct {
-	codec Codec
-	dir   string
+	codec  Codec
+	clock  Clock
+	crypto cryptoPure
+	dir    string
 
 	// Protects any IO operations in dir or any of its children,
 	// as well all the DBs, truncateLockHolder, and isShutdown.
@@ -41,7 +44,8 @@ type mdServerTlfStorage struct {
 }
 
 func makeMDServerTlfStorage(
-	codec Codec, dir string) (*mdServerTlfStorage, error) {
+	codec Codec, clock Clock, crypto cryptoPure, dir string) (
+	*mdServerTlfStorage, error) {
 	mdPath := filepath.Join(dir, "md")
 	branchPath := filepath.Join(dir, "branches")
 
@@ -65,6 +69,8 @@ func makeMDServerTlfStorage(
 	}
 	return &mdServerTlfStorage{
 		codec:    codec,
+		clock:    clock,
+		crypto:   crypto,
 		dir:      dir,
 		mdDb:     mdDb,
 		branchDb: branchDb,
@@ -202,13 +208,10 @@ func (md *mdServerTlfStorage) getForTLF(ctx context.Context,
 	return rmds, nil
 }
 
-func (md *mdServerTlfStorage) getRange(ctx context.Context,
+func (md *mdServerTlfStorage) getRangeLocked(ctx context.Context,
 	kbpki KBPKI, bid BranchID, mStatus MergeStatus,
 	start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
-	md.lock.RLock()
-	defer md.lock.RUnlock()
-
 	if md.isShutdown {
 		return nil, errors.New("MD server already shut down")
 	}
@@ -267,4 +270,136 @@ func (md *mdServerTlfStorage) getRange(ctx context.Context,
 	}
 
 	return rmdses, nil
+}
+
+func (md *mdServerTlfStorage) getRange(ctx context.Context,
+	kbpki KBPKI, bid BranchID, mStatus MergeStatus,
+	start, stop MetadataRevision) (
+	[]*RootMetadataSigned, error) {
+	md.lock.RLock()
+	defer md.lock.RUnlock()
+
+	if md.isShutdown {
+		return nil, errors.New("MD server already shut down")
+	}
+
+	return md.getRangeLocked(ctx, kbpki, bid, mStatus, start, stop)
+}
+
+func (md *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMetadataSigned) error {
+	md.lock.Lock()
+	defer md.lock.Unlock()
+
+	if md.isShutdown {
+		return errors.New("MD server already shut down")
+	}
+
+	mStatus := rmds.MD.MergedStatus()
+	bid := rmds.MD.BID
+
+	if mStatus == Merged {
+		if bid != NullBranchID {
+			return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+		}
+	} else {
+		if bid == NullBranchID {
+			return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+		}
+	}
+
+	mergedMasterHead, err := md.getHeadForTLF(ctx, NullBranchID, Merged)
+	if err != nil {
+		return MDServerError{err}
+	}
+
+	// Check permissions
+	ok, err := isWriterOrValidRekey(
+		ctx, md.codec, kbpki, mergedMasterHead, rmds)
+	if err != nil {
+		return MDServerError{err}
+	}
+	if !ok {
+		return MDServerErrorUnauthorized{}
+	}
+
+	head, err := md.getHeadForTLF(ctx, bid, mStatus)
+	if err != nil {
+		return MDServerError{err}
+	}
+
+	var recordBranchID bool
+
+	if mStatus == Unmerged && head == nil {
+		// currHead for unmerged history might be on the main branch
+		prevRev := rmds.MD.Revision - 1
+		rmdses, err := md.getRangeLocked(
+			ctx, kbpki, NullBranchID, Merged, prevRev, prevRev)
+		if err != nil {
+			return MDServerError{err}
+		}
+		if len(rmdses) != 1 {
+			return MDServerError{
+				Err: fmt.Errorf("Expected 1 MD block got %d", len(rmdses)),
+			}
+		}
+		head = rmdses[0]
+		recordBranchID = true
+	}
+
+	// Consistency checks
+	if head != nil {
+		err := head.MD.CheckValidSuccessorForServer(
+			md.crypto, &rmds.MD)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Record branch ID
+	if recordBranchID {
+		buf, err := md.codec.Encode(bid)
+		if err != nil {
+			return MDServerError{err}
+		}
+		branchKey, err := md.getBranchKey(ctx, kbpki)
+		if err != nil {
+			return MDServerError{err}
+		}
+		err = md.branchDb.Put(branchKey, buf, nil)
+		if err != nil {
+			return MDServerError{err}
+		}
+	}
+
+	block := &mdBlockLocal{rmds, md.clock.Now()}
+	buf, err := md.codec.Encode(block)
+	if err != nil {
+		return MDServerError{err}
+	}
+
+	// Wrap writes in a batch
+	batch := new(leveldb.Batch)
+
+	// Add an entry with the revision key.
+	revKey, err := md.getMDKey(rmds.MD.Revision, bid, mStatus)
+	if err != nil {
+		return MDServerError{err}
+	}
+	batch.Put(revKey, buf)
+
+	// Add an entry with the head key.
+	headKey, err := md.getMDKey(MetadataRevisionUninitialized,
+		bid, mStatus)
+	if err != nil {
+		return MDServerError{err}
+	}
+	batch.Put(headKey, buf)
+
+	// Write the batch.
+	err = md.mdDb.Write(batch, nil)
+	if err != nil {
+		return MDServerError{err}
+	}
+
+	return nil
 }
