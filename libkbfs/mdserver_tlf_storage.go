@@ -9,6 +9,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -76,6 +78,57 @@ func makeMDServerTlfStorage(
 		mdDb:     mdDb,
 		branchDb: branchDb,
 	}, nil
+}
+
+func (s *mdServerTlfStorage) mdsPath() string {
+	return filepath.Join(s.dir, "mds")
+}
+
+func (s *mdServerTlfStorage) mdPath(id MdID) string {
+	idStr := id.String()
+	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
+}
+
+// getDataLocked verifies the block data for the given ID and context
+// and returns it.
+func (s *mdServerTlfStorage) getMDLocked(id MdID) (
+	*RootMetadataSigned, time.Time, error) {
+	if s.isShutdown {
+		return nil, time.Time{}, errors.New("MD server already shut down")
+	}
+
+	// Read file.
+
+	path := s.mdPath(id)
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
+	var rmds RootMetadataSigned
+	err = s.codec.Decode(data, &rmds)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
+	// Check integrity.
+
+	mdID, err := rmds.MD.MetadataID(s.crypto)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
+	if id != mdID {
+		return nil, time.Time{}, fmt.Errorf(
+			"Metadata ID mismatch: expected %s, got %s", id, mdID)
+	}
+
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
+	return &rmds, fileInfo.ModTime(), nil
 }
 
 func (md *mdServerTlfStorage) getBranchKey(ctx context.Context, kbpki KBPKI) ([]byte, error) {
