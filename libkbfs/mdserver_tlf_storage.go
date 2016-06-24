@@ -16,6 +16,7 @@ import (
 	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 type mdServerTlfStorage struct {
@@ -199,4 +200,71 @@ func (md *mdServerTlfStorage) getForTLF(ctx context.Context,
 		return nil, MDServerError{err}
 	}
 	return rmds, nil
+}
+
+func (md *mdServerTlfStorage) getRange(ctx context.Context,
+	kbpki KBPKI, bid BranchID, mStatus MergeStatus,
+	start, stop MetadataRevision) (
+	[]*RootMetadataSigned, error) {
+	md.lock.RLock()
+	defer md.lock.RUnlock()
+
+	if md.isShutdown {
+		return nil, errors.New("MD server already shut down")
+	}
+
+	if mStatus == Merged && bid != NullBranchID {
+		return nil, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+	}
+
+	mergedMasterHead, err := md.getHeadForTLF(ctx, NullBranchID, Merged)
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+
+	// Check permissions
+	ok, err := isReader(ctx, md.codec, kbpki, mergedMasterHead)
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+	if !ok {
+		return nil, MDServerErrorUnauthorized{}
+	}
+
+	// Lookup the branch ID if not supplied
+	if mStatus == Unmerged && bid == NullBranchID {
+		bid, err = md.getBranchID(ctx, kbpki)
+		if err != nil {
+			return nil, err
+		}
+		if bid == NullBranchID {
+			return nil, nil
+		}
+	}
+
+	var rmdses []*RootMetadataSigned
+	startKey, err := md.getMDKey(start, bid, mStatus)
+	if err != nil {
+		return rmdses, MDServerError{err}
+	}
+	stopKey, err := md.getMDKey(stop+1, bid, mStatus)
+	if err != nil {
+		return rmdses, MDServerError{err}
+	}
+
+	iter := md.mdDb.NewIterator(&util.Range{Start: startKey, Limit: stopKey}, nil)
+	defer iter.Release()
+	for iter.Next() {
+		buf := iter.Value()
+		rmds, err := md.rmdsFromBlockBytes(buf)
+		if err != nil {
+			return rmdses, MDServerError{err}
+		}
+		rmdses = append(rmdses, rmds)
+	}
+	if err := iter.Error(); err != nil {
+		return rmdses, MDServerError{err}
+	}
+
+	return rmdses, nil
 }
