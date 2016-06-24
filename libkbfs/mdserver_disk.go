@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"sync"
-	"time"
 
 	"github.com/keybase/client/go/logger"
 	keybase1 "github.com/keybase/client/go/protocol"
@@ -43,11 +42,6 @@ type MDServerDisk struct {
 }
 
 var _ mdServerLocal = (*MDServerDisk)(nil)
-
-type mdBlockLocal struct {
-	MD        *RootMetadataSigned
-	Timestamp time.Time
-}
 
 func newMDServerDisk(config Config, dirPath string,
 	shutdownFunc func(logger.Logger)) (*MDServerDisk, error) {

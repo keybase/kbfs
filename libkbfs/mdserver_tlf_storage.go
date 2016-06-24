@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"golang.org/x/net/context"
 
@@ -132,6 +133,11 @@ func (md *mdServerTlfStorage) getMDKey(revision MetadataRevision,
 		}
 	}
 	return buf.Bytes(), nil
+}
+
+type mdBlockLocal struct {
+	MD        *RootMetadataSigned
+	Timestamp time.Time
 }
 
 func (md *mdServerTlfStorage) rmdsFromBlockBytes(buf []byte) (
