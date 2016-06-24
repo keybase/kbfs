@@ -467,3 +467,31 @@ func (md *mdServerTlfStorage) truncateLock(ctx context.Context, kbpki KBPKI) (
 	md.truncateLockHolder = &key.kid
 	return true, nil
 }
+
+func (md *mdServerTlfStorage) truncateUnlock(ctx context.Context, kbpki KBPKI) (
+	bool, error) {
+	md.lock.Lock()
+	defer md.lock.Unlock()
+
+	if md.isShutdown {
+		return false, errors.New("MD server already shut down")
+	}
+
+	if md.truncateLockHolder == nil {
+		// Already unlocked.
+		return true, nil
+	}
+
+	key, err := kbpki.GetCurrentCryptPublicKey(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if *md.truncateLockHolder != key.kid {
+		// Locked by someone else.
+		return false, MDServerErrorLocked{}
+	}
+
+	md.truncateLockHolder = nil
+	return true, nil
+}
