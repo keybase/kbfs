@@ -674,6 +674,11 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 	if fbo.head.Revision <= MetadataRevisionInitial {
 		return fmt.Errorf("setHeadPredecessorLocked unexpectedly called with revision %d", fbo.head.Revision)
 	}
+
+	if fbo.head.BID == NullBranchID {
+		return fmt.Errorf("setHeadPredecessorLocked unexpectedly called with null branch ID")
+	}
+
 	err := md.CheckValidSuccessor(fbo.config, fbo.head)
 	if err != nil {
 		return err
