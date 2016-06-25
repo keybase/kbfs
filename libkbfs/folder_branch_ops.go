@@ -602,7 +602,7 @@ func (fbo *folderBranchOps) setInitialHeadTrustedLocked(ctx context.Context,
 }
 
 // setHeadSuccessorLocked is for when we're applying updates from the
-// server.
+// server or when we're applying new updates we created ourselves.
 func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
@@ -621,6 +621,9 @@ func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 	newHandle := md.GetTlfHandle()
 
 	// Newer handles should be equal or more resolved over time.
+	//
+	// TODO: In some cases, they shouldn't, e.g. if we're on an
+	// unmerged branch. Add checks for this.
 	resolvesTo, partialResolvedOldHandle, err :=
 		oldHandle.ResolvesTo(
 			ctx, fbo.config.Codec(), fbo.config.KBPKI(),
@@ -675,8 +678,8 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 		return fmt.Errorf("setHeadPredecessorLocked unexpectedly called with revision %d", fbo.head.Revision)
 	}
 
-	if fbo.head.BID == NullBranchID {
-		return fmt.Errorf("setHeadPredecessorLocked unexpectedly called with null branch ID")
+	if fbo.head.MergedStatus() != Unmerged {
+		return errors.New("Unexpected merged head in setHeadPredecessorLocked")
 	}
 
 	err := md.CheckValidSuccessor(fbo.config, fbo.head)
@@ -687,42 +690,20 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 	oldHandle := fbo.head.GetTlfHandle()
 	newHandle := md.GetTlfHandle()
 
-	// The new, older handle might become less resolved.
-	resolvesTo, partialResolvedNewHandle, err :=
-		newHandle.ResolvesTo(
-			ctx, fbo.config.Codec(), fbo.config.KBPKI(),
-			oldHandle)
+	// The two handles must be the same, since no rekeying is done
+	// while unmerged.
+
+	eq, err := oldHandle.Equals(fbo.config.Codec(), *newHandle)
 	if err != nil {
 		return err
 	}
-
-	oldName := oldHandle.GetCanonicalName()
-	newName := newHandle.GetCanonicalName()
-
-	if !resolvesTo {
-		return IncompatibleHandleError{
-			oldName,
-			partialResolvedNewHandle.GetCanonicalName(),
-			newName,
-		}
+	if !eq {
+		return fmt.Errorf(
+			"head handle %v unexpectedly not equal to new handle = %v",
+			oldHandle, newHandle)
 	}
 
-	err = fbo.setHeadLocked(ctx, lState, md)
-	if err != nil {
-		return err
-	}
-
-	if oldName != newName {
-		fbo.log.CDebugf(ctx, "Handle reverting (%s -> %s)",
-			oldName, newName)
-
-		// If the handle has changed, send out a notification.
-		fbo.observers.tlfHandleChange(ctx, fbo.head.GetTlfHandle())
-		// But no identification necessary since we're
-		// less-resolved.
-	}
-
-	return nil
+	return fbo.setHeadLocked(ctx, lState, md)
 }
 
 // setHeadConflictResolvedLocked is for when we're setting the merged
