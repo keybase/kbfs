@@ -767,7 +767,7 @@ func (e MDTlfIDMismatch) Error() string {
 }
 
 // MDPrevRootMismatch indicates that the PrevRoot field of a successor
-// MD doesn't match the ID of its predecessor.
+// MD doesn't match the metadata ID of its predecessor.
 type MDPrevRootMismatch struct {
 	prevRoot MdID
 	currRoot MdID
