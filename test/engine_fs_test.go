@@ -62,6 +62,8 @@ func (e *fsEngine) GetUID(user User) keybase1.UID {
 func buildRootPath(u *fsUser, isPublic bool) string {
 	var path string
 	if isPublic {
+		// TODO: Consolidate all "public" and "private"
+		// constants in libkbfs.
 		path = filepath.Join(u.mntDir, "public")
 	} else {
 		path = filepath.Join(u.mntDir, "private")
