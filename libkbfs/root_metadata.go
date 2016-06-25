@@ -481,6 +481,12 @@ func (md *RootMetadata) CheckValidSuccessorForServer(
 			Actual:   err.prevRoot,
 		}
 
+	case MDDiskUsageMismatch:
+		return MDServerErrorConflictDiskUsage{
+			Expected: err.expectedDiskUsage,
+			Actual:   err.actualDiskUsage,
+		}
+
 	default:
 		return MDServerError{Err: err}
 	}
