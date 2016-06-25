@@ -92,7 +92,6 @@ func (e *fsEngine) GetFavorites(user User, public bool) (map[string]bool, error)
 		favorites[fi.Name()] = true
 	}
 	return favorites, nil
-
 }
 
 // GetRootDir implements the Engine interface.
