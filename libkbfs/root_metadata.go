@@ -442,6 +442,17 @@ func (md *RootMetadata) CheckValidSuccessor(
 		}
 	}
 
+	expectedUsage := md.DiskUsage
+	if !nextMd.IsWriterMetadataCopiedSet() {
+		expectedUsage += nextMd.RefBytes - nextMd.UnrefBytes
+	}
+	if nextMd.DiskUsage != expectedUsage {
+		return MDDiskUsageMismatch{
+			expectedDiskUsage: expectedUsage,
+			actualDiskUsage:   nextMd.DiskUsage,
+		}
+	}
+
 	// TODO: Check that the successor (bare) TLF handle is the
 	// same or more resolved.
 

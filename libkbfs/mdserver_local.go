@@ -478,19 +478,14 @@ func (md *MDServerLocal) Put(ctx context.Context, rmds *RootMetadataSigned) erro
 				Actual:   err.prevRoot,
 			}
 
+		case MDDiskUsageMismatch:
+			return MDServerErrorConflictDiskUsage{
+				Expected: err.expectedDiskUsage,
+				Actual:   err.actualDiskUsage,
+			}
+
 		default:
 			return MDServerError{Err: err}
-		}
-
-		expectedUsage := head.MD.DiskUsage
-		if !rmds.MD.IsWriterMetadataCopiedSet() {
-			expectedUsage += rmds.MD.RefBytes - rmds.MD.UnrefBytes
-		}
-		if rmds.MD.DiskUsage != expectedUsage {
-			return MDServerErrorConflictDiskUsage{
-				Expected: expectedUsage,
-				Actual:   rmds.MD.DiskUsage,
-			}
 		}
 	}
 

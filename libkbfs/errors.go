@@ -778,6 +778,18 @@ func (e MDPrevRootMismatch) Error() string {
 		e.prevRoot, e.currRoot)
 }
 
+// MDDiskUsageMismatch indicates an inconsistency in the DiskUsage
+// field of a RootMetadata object.
+type MDDiskUsageMismatch struct {
+	expectedDiskUsage uint64
+	actualDiskUsage   uint64
+}
+
+func (e MDDiskUsageMismatch) Error() string {
+	return fmt.Sprintf("Disk usage %d doesn't match expected %d",
+		e.actualDiskUsage, e.expectedDiskUsage)
+}
+
 // MDUpdateInvertError indicates that we tried to apply a revision that
 // was not the next in line.
 type MDUpdateInvertError struct {
