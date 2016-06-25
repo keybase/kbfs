@@ -3347,6 +3347,10 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 		rmd := rmds[i]
 		// on undo, it's ok to re-apply the current revision since you
 		// need to invert all of its ops.
+		//
+		// This duplicates a check in
+		// fbo.setHeadPredecessorLocked. TODO: Remove this
+		// duplication.
 		if rmd.Revision != fbo.getCurrMDRevisionLocked(lState) &&
 			rmd.Revision != fbo.getCurrMDRevisionLocked(lState)-1 {
 			return MDUpdateInvertError{rmd.Revision,
