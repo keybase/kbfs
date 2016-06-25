@@ -491,17 +491,6 @@ func (md *RootMetadata) CheckValidSuccessorForServer(
 		return MDServerError{Err: err}
 	}
 
-	expectedUsage := md.DiskUsage
-	if !nextMd.IsWriterMetadataCopiedSet() {
-		expectedUsage += nextMd.RefBytes - nextMd.UnrefBytes
-	}
-	if nextMd.DiskUsage != expectedUsage {
-		return MDServerErrorConflictDiskUsage{
-			Expected: expectedUsage,
-			Actual:   nextMd.DiskUsage,
-		}
-	}
-
 	return nil
 }
 
