@@ -49,6 +49,7 @@ after_build:
 # to run your custom scripts instead of automatic MSBuild
 build_script:
   - SET PATH=%PATH%;c:\MinGW\bin
+  - go version
   - cd c:\work\src\github.com\keybase\kbfs
   - copy C:\dokan\Win32\Release\dokan1.lib dokan\
   - cd dokan
