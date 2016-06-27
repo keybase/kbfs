@@ -53,7 +53,7 @@ type mdServerMemShared struct {
 	updateManager *mdServerLocalUpdateManager
 }
 
-// MDServerMemory just stores blocks in local leveldb instances.
+// MDServerMemory just stores metadata objects in memory.
 type MDServerMemory struct {
 	config Config
 	log    logger.Logger
