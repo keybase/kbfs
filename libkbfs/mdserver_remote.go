@@ -92,7 +92,7 @@ func NewMDServerRemote(config Config, srvAddr string, ctx Context) *MDServerRemo
 	return mdServer
 }
 
-// RemoteAddress returns the remote bserver this client is talking to
+// RemoteAddress returns the remote mdserver this client is talking to
 func (md *MDServerRemote) RemoteAddress() string {
 	return md.mdSrvAddr
 }
