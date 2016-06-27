@@ -613,14 +613,6 @@ func (md *MDServerLocal) getBranchID(ctx context.Context, id TlfID) (BranchID, e
 
 func (md *MDServerLocal) getCurrentMergedHeadRevision(
 	ctx context.Context, id TlfID) (rev MetadataRevision, err error) {
-	md.mutex.Lock()
-	defer md.mutex.Unlock()
-
-	return md.getCurrentMergedHeadRevisionLocked(ctx, id)
-}
-
-func (md *MDServerLocal) getCurrentMergedHeadRevisionLocked(
-	ctx context.Context, id TlfID) (rev MetadataRevision, err error) {
 	head, err := md.getHeadForTLF(ctx, id, NullBranchID, Merged)
 	if err != nil {
 		return 0, err
@@ -645,7 +637,7 @@ func (md *MDServerLocal) RegisterForUpdate(ctx context.Context, id TlfID,
 
 	// are we already past this revision?  If so, fire observer
 	// immediately
-	currMergedHeadRev, err := md.getCurrentMergedHeadRevisionLocked(ctx, id)
+	currMergedHeadRev, err := md.getCurrentMergedHeadRevision(ctx, id)
 	if err != nil {
 		return nil, err
 	}
