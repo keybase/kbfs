@@ -149,38 +149,46 @@ func (md *MDServerMemory) GetForHandle(ctx context.Context, handle BareTlfHandle
 	return id, nil, nil
 }
 
-// GetForTLF implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) GetForTLF(ctx context.Context, id TlfID,
-	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+func (md *MDServerMemory) checkGetParams(
+	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus) (
+	newBid BranchID, err error) {
 	if mStatus == Merged && bid != NullBranchID {
-		return nil, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
 	mergedMasterHead, err :=
 		md.getHeadForTLF(ctx, id, NullBranchID, Merged)
 	if err != nil {
-		return nil, MDServerError{err}
+		return NullBranchID, MDServerError{err}
 	}
 
 	// Check permissions
 	ok, err := isReader(
 		ctx, md.config.Codec(), md.config.KBPKI(), mergedMasterHead)
 	if err != nil {
-		return nil, MDServerError{err}
+		return NullBranchID, MDServerError{err}
 	}
 	if !ok {
-		return nil, MDServerErrorUnauthorized{}
+		return NullBranchID, MDServerErrorUnauthorized{}
 	}
 
 	// Lookup the branch ID if not supplied
 	if mStatus == Unmerged && bid == NullBranchID {
-		bid, err = md.getBranchID(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		if bid == NullBranchID {
-			return nil, nil
-		}
+		return md.getBranchID(ctx, id)
+	}
+
+	return bid, nil
+}
+
+// GetForTLF implements the MDServer interface for MDServerMemory.
+func (md *MDServerMemory) GetForTLF(ctx context.Context, id TlfID,
+	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+	bid, err := md.checkGetParams(ctx, id, bid, mStatus)
+	if err != nil {
+		return nil, err
+	}
+	if mStatus == Unmerged && bid == NullBranchID {
+		return nil, nil
 	}
 
 	rmds, err := md.getHeadForTLF(ctx, id, bid, mStatus)
@@ -247,35 +255,12 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id TlfID,
 	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	md.log.CDebugf(ctx, "GetRange %d %d (%s)", start, stop, mStatus)
-	if mStatus == Merged && bid != NullBranchID {
-		return nil, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-	}
-
-	mergedMasterHead, err :=
-		md.getHeadForTLF(ctx, id, NullBranchID, Merged)
+	bid, err := md.checkGetParams(ctx, id, bid, mStatus)
 	if err != nil {
-		return nil, MDServerError{err}
+		return nil, err
 	}
-
-	// Check permissions
-	ok, err := isReader(
-		ctx, md.config.Codec(), md.config.KBPKI(), mergedMasterHead)
-	if err != nil {
-		return nil, MDServerError{err}
-	}
-	if !ok {
-		return nil, MDServerErrorUnauthorized{}
-	}
-
-	// Lookup the branch ID if not supplied
 	if mStatus == Unmerged && bid == NullBranchID {
-		bid, err = md.getBranchID(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		if bid == NullBranchID {
-			return nil, nil
-		}
+		return nil, nil
 	}
 
 	key, err := md.getMDKey(id, bid, mStatus)
