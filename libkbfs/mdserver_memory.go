@@ -470,13 +470,9 @@ func (md *MDServerMemory) RegisterForUpdate(ctx context.Context, id TlfID,
 
 	// are we already past this revision?  If so, fire observer
 	// immediately
-	head, err := md.getHeadForTLF(ctx, id, NullBranchID, Merged)
+	currMergedHeadRev, err := md.getCurrentMergedHeadRevision(ctx, id)
 	if err != nil {
 		return nil, err
-	}
-	var currMergedHeadRev MetadataRevision
-	if head != nil {
-		currMergedHeadRev = head.MD.Revision
 	}
 
 	c := md.updateManager.registerForUpdate(id, currHead, currMergedHeadRev, md)
