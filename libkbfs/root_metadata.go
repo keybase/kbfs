@@ -461,7 +461,7 @@ func (md *RootMetadata) CheckValidSuccessor(
 }
 
 // CheckValidSuccessorForServer is like CheckValidSuccessor but with
-// server-specific error messages and extra checks.
+// server-specific error messages.
 func (md *RootMetadata) CheckValidSuccessorForServer(
 	config Config, nextMd *RootMetadata) error {
 	err := md.CheckValidSuccessor(config, nextMd)
