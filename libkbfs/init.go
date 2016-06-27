@@ -233,6 +233,10 @@ func InitLog(params InitParams, ctx Context) (logger.Logger, error) {
 // Init should be called at the beginning of main. Shutdown (see
 // below) should then be called at the end of main (usually via
 // defer).
+//
+// The keybaseDaemonFn argument is to temporarily support KBFS on
+// mobile (for using a custom KeybaseDaemon implementation) and will
+// be removed in the future, when we use a non-RPC implementation.
 func Init(ctx Context, params InitParams, keybaseDaemonFn KeybaseDaemonFn, onInterruptFn func(), log logger.Logger) (Config, error) {
 
 	if params.CPUProfile != "" {
