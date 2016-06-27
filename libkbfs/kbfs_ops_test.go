@@ -78,7 +78,8 @@ func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 	// Each test is expected to check the cache for correctness at the
 	// end of the test.
 	config.SetBlockCache(NewBlockCacheStandard(config, 100, 1<<30))
-	config.SetDirtyBlockCache(NewDirtyBlockCacheStandard(5<<20, 10<<20))
+	config.SetDirtyBlockCache(NewDirtyBlockCacheStandard(wallClock{},
+		testLoggerMaker(t), 5<<20, 10<<20))
 	config.mockBcache = nil
 	config.mockDirtyBcache = nil
 
@@ -4330,6 +4331,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 	config.SetBlockCache(config.mockBcache)
 	config.mockDirtyBcache = NewMockDirtyBlockCache(mockCtrl)
 	config.SetDirtyBlockCache(config.mockDirtyBcache)
+	config.mockDirtyBcache.EXPECT().UpdateSyncingBytes(gomock.Any()).AnyTimes()
 	config.mockDirtyBcache.EXPECT().BlockSyncFinished(gomock.Any()).AnyTimes()
 	config.mockDirtyBcache.EXPECT().SyncFinished(gomock.Any())
 
@@ -4527,6 +4529,7 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 	config.SetBlockCache(config.mockBcache)
 	config.mockDirtyBcache = NewMockDirtyBlockCache(mockCtrl)
 	config.SetDirtyBlockCache(config.mockDirtyBcache)
+	config.mockDirtyBcache.EXPECT().UpdateSyncingBytes(gomock.Any()).AnyTimes()
 	config.mockDirtyBcache.EXPECT().BlockSyncFinished(gomock.Any()).AnyTimes()
 	config.mockDirtyBcache.EXPECT().SyncFinished(gomock.Any())
 
@@ -5198,6 +5201,8 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	// Simulate the server triggering alice to update.
 	config1.SetKeyCache(NewKeyCacheStandard(1))
 	err = kbfsOps1.SyncFromServerForTesting(ctx, fb1)
-	require.EqualError(t, err,
-		"old head \"alice\" resolves to \"alice\" instead of new head \"alice,mallory\"")
+	// TODO: We can actually fake out the PrevRoot pointer, too
+	// and then we'll be caught by the handle check. But when we
+	// have MDOps do the handle check, that'll trigger first.
+	require.IsType(t, MDPrevRootMismatch{}, err)
 }
