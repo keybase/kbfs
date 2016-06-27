@@ -64,22 +64,22 @@ func isWriterOrValidRekey(ctx context.Context, codec Codec, kbpki KBPKI,
 type mdServerLocalUpdateManager struct {
 	// Protects observers and sessionHeads.
 	lock sync.Mutex
-	// Multiple local instances of MDServer could share a
+	// Multiple local instances of mdServerLocal could share a
 	// reference to this map and sessionHead, and we use that to
 	// ensure that all observers are fired correctly no matter
 	// which local instance gets the Put() call.
-	observers    map[TlfID]map[MDServer]chan<- error
-	sessionHeads map[TlfID]MDServer
+	observers    map[TlfID]map[mdServerLocal]chan<- error
+	sessionHeads map[TlfID]mdServerLocal
 }
 
 func newMDServerLocalUpdateManager() *mdServerLocalUpdateManager {
 	return &mdServerLocalUpdateManager{
-		observers:    make(map[TlfID]map[MDServer]chan<- error),
-		sessionHeads: make(map[TlfID]MDServer),
+		observers:    make(map[TlfID]map[mdServerLocal]chan<- error),
+		sessionHeads: make(map[TlfID]mdServerLocal),
 	}
 }
 
-func (m *mdServerLocalUpdateManager) setHead(id TlfID, server MDServer) {
+func (m *mdServerLocalUpdateManager) setHead(id TlfID, server mdServerLocal) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -100,7 +100,7 @@ func (m *mdServerLocalUpdateManager) setHead(id TlfID, server MDServer) {
 
 func (m *mdServerLocalUpdateManager) registerForUpdate(
 	id TlfID, currHead, currMergedHeadRev MetadataRevision,
-	server MDServer) <-chan error {
+	server mdServerLocal) <-chan error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -112,7 +112,7 @@ func (m *mdServerLocalUpdateManager) registerForUpdate(
 	}
 
 	if _, ok := m.observers[id]; !ok {
-		m.observers[id] = make(map[MDServer]chan<- error)
+		m.observers[id] = make(map[mdServerLocal]chan<- error)
 	}
 
 	// Otherwise, this is a legit observer.  This assumes that each
