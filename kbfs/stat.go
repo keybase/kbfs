@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/keybase/kbfs/fsrpc"
 	"github.com/keybase/kbfs/libkbfs"
-	"github.com/keybase/kbfs/rpc"
 	"golang.org/x/net/context"
 )
 
 func statNode(ctx context.Context, config libkbfs.Config, nodePathStr string) error {
-	p, err := rpc.NewPath(nodePathStr)
+	p, err := fsrpc.NewPath(nodePathStr)
 	if err != nil {
 		return err
 	}

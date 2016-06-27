@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/keybase/kbfs/fsrpc"
 	"github.com/keybase/kbfs/libkbfs"
-	"github.com/keybase/kbfs/rpc"
 	"golang.org/x/net/context"
 )
 
@@ -27,7 +27,7 @@ func createDir(ctx context.Context, kbfsOps libkbfs.KBFSOps, parentNode libkbfs.
 }
 
 func mkdirOne(ctx context.Context, config libkbfs.Config, dirPathStr string, createIntermediate, verbose bool) error {
-	p, err := rpc.NewPath(dirPathStr)
+	p, err := fsrpc.NewPath(dirPathStr)
 	if err != nil {
 		return err
 	}
@@ -35,13 +35,13 @@ func mkdirOne(ctx context.Context, config libkbfs.Config, dirPathStr string, cre
 	kbfsOps := config.KBFSOps()
 
 	if createIntermediate {
-		if p.PathType != rpc.TLFPathType || len(p.TLFComponents) == 0 {
+		if p.PathType != fsrpc.TLFPathType || len(p.TLFComponents) == 0 {
 			// Nothing to do.
 			return nil
 		}
 
-		tlfRoot := rpc.Path{
-			PathType: rpc.TLFPathType,
+		tlfRoot := fsrpc.Path{
+			PathType: fsrpc.TLFPathType,
 			Public:   p.Public,
 			TLFName:  p.TLFName,
 		}
@@ -69,7 +69,7 @@ func mkdirOne(ctx context.Context, config libkbfs.Config, dirPathStr string, cre
 			currNode = nextNode
 		}
 	} else {
-		if p.PathType != rpc.TLFPathType {
+		if p.PathType != fsrpc.TLFPathType {
 			return libkbfs.NameExistsError{Name: p.String()}
 		}
 
@@ -78,7 +78,7 @@ func mkdirOne(ctx context.Context, config libkbfs.Config, dirPathStr string, cre
 			return err
 		}
 
-		if parentDir.PathType != rpc.TLFPathType {
+		if parentDir.PathType != fsrpc.TLFPathType {
 			// TODO: Ideally, this would error out if
 			// p already existed.
 			_, err := p.GetDirNode(ctx, config)

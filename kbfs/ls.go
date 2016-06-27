@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/keybase/kbfs/fsrpc"
 	"github.com/keybase/kbfs/libkbfs"
-	"github.com/keybase/kbfs/rpc"
 	"golang.org/x/net/context"
 )
 
-func printHeader(p rpc.Path) {
+func printHeader(p fsrpc.Path) {
 	fmt.Printf("%s:\n", p)
 }
 
@@ -53,7 +53,7 @@ func computeModeStr(entryType libkbfs.EntryType) string {
 	return fmt.Sprintf("%s%s%s%s", typeStr, modeStr, modeStr, "---")
 }
 
-func printEntry(ctx context.Context, config libkbfs.Config, dir rpc.Path, name string, entryType libkbfs.EntryType, longFormat, useSigil bool) {
+func printEntry(ctx context.Context, config libkbfs.Config, dir fsrpc.Path, name string, entryType libkbfs.EntryType, longFormat, useSigil bool) {
 	var sigil string
 	if useSigil {
 		switch entryType {
@@ -90,18 +90,18 @@ func printEntry(ctx context.Context, config libkbfs.Config, dir rpc.Path, name s
 	}
 }
 
-func lsHelper(ctx context.Context, config libkbfs.Config, p rpc.Path, hasMultiple bool, handleEntry func(string, libkbfs.EntryType)) error {
+func lsHelper(ctx context.Context, config libkbfs.Config, p fsrpc.Path, hasMultiple bool, handleEntry func(string, libkbfs.EntryType)) error {
 	kbfsOps := config.KBFSOps()
 
 	switch p.PathType {
-	case rpc.RootPathType:
+	case fsrpc.RootPathType:
 		if hasMultiple {
 			printHeader(p)
 		}
 		handleEntry(topName, libkbfs.Dir)
 		return nil
 
-	case rpc.KeybasePathType:
+	case fsrpc.KeybasePathType:
 		if hasMultiple {
 			printHeader(p)
 		}
@@ -109,7 +109,7 @@ func lsHelper(ctx context.Context, config libkbfs.Config, p rpc.Path, hasMultipl
 		handleEntry(privateName, libkbfs.Dir)
 		return nil
 
-	case rpc.KeybaseChildPathType:
+	case fsrpc.KeybaseChildPathType:
 		favs, err := kbfsOps.GetFavorites(ctx)
 		if err != nil {
 			return err
@@ -125,7 +125,7 @@ func lsHelper(ctx context.Context, config libkbfs.Config, p rpc.Path, hasMultipl
 		}
 		return nil
 
-	case rpc.TLFPathType:
+	case fsrpc.TLFPathType:
 		n, de, err := p.GetNode(ctx, config)
 		if err != nil {
 			return err
@@ -165,7 +165,7 @@ func lsHelper(ctx context.Context, config libkbfs.Config, p rpc.Path, hasMultipl
 	return fmt.Errorf("invalid KBFS path %s", p)
 }
 
-func lsOne(ctx context.Context, config libkbfs.Config, p rpc.Path, longFormat, useSigil, recursive, hasMultiple bool, errorFn func(error)) {
+func lsOne(ctx context.Context, config libkbfs.Config, p fsrpc.Path, longFormat, useSigil, recursive, hasMultiple bool, errorFn func(error)) {
 	var children []string
 	handleEntry := func(name string, entryType libkbfs.EntryType) {
 		if recursive && entryType == libkbfs.Dir {
@@ -209,7 +209,7 @@ func ls(ctx context.Context, config libkbfs.Config, args []string) (exitStatus i
 
 	hasMultiple := len(nodePathStrs) > 1
 	for i, nodePathStr := range nodePathStrs {
-		p, err := rpc.NewPath(nodePathStr)
+		p, err := fsrpc.NewPath(nodePathStr)
 		if err != nil {
 			printError("ls", err)
 			exitStatus = 1

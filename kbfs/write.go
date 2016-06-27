@@ -10,8 +10,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/keybase/kbfs/fsrpc"
 	"github.com/keybase/kbfs/libkbfs"
-	"github.com/keybase/kbfs/rpc"
 	"golang.org/x/net/context"
 )
 
@@ -57,12 +57,12 @@ func writeHelper(ctx context.Context, config libkbfs.Config, args []string) (err
 		}
 	}()
 
-	p, err := rpc.NewPath(filePathStr)
+	p, err := fsrpc.NewPath(filePathStr)
 	if err != nil {
 		return
 	}
 
-	if p.PathType != rpc.TLFPathType {
+	if p.PathType != fsrpc.TLFPathType {
 		err = cannotWriteErr{filePathStr, nil}
 		return
 	}
@@ -72,7 +72,7 @@ func writeHelper(ctx context.Context, config libkbfs.Config, args []string) (err
 		return
 	}
 
-	if dir.PathType != rpc.TLFPathType {
+	if dir.PathType != fsrpc.TLFPathType {
 		err = cannotWriteErr{filePathStr, nil}
 		return
 	}

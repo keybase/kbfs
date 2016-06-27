@@ -10,8 +10,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/keybase/kbfs/fsrpc"
 	"github.com/keybase/kbfs/libkbfs"
-	"github.com/keybase/kbfs/rpc"
 	"golang.org/x/net/context"
 )
 
@@ -56,12 +56,12 @@ func readHelper(ctx context.Context, config libkbfs.Config, args []string) error
 	}
 
 	filePathStr := flags.Arg(0)
-	p, err := rpc.NewPath(filePathStr)
+	p, err := fsrpc.NewPath(filePathStr)
 	if err != nil {
 		return err
 	}
 
-	if p.PathType != rpc.TLFPathType {
+	if p.PathType != fsrpc.TLFPathType {
 		return fmt.Errorf("Cannot read %s", p)
 	}
 
