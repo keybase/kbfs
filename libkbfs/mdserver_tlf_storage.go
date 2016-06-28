@@ -252,41 +252,46 @@ func (s *mdServerTlfStorage) getHeadForTLFLocked(ctx context.Context,
 	return s.getMDLocked(id)
 }
 
-func (s *mdServerTlfStorage) getRangeLocked(ctx context.Context,
-	kbpki KBPKI, bid BranchID, mStatus MergeStatus,
-	start, stop MetadataRevision) (
-	[]*RootMetadataSigned, error) {
-	if s.isShutdown {
-		return nil, errMDServerTlfStorageShutdown
-	}
-
+func (s *mdServerTlfStorage) checkGetParamsLocked(
+	ctx context.Context, kbpki KBPKI, bid BranchID, mStatus MergeStatus) (
+	newBid BranchID, err error) {
 	if mStatus == Merged && bid != NullBranchID {
-		return nil, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
-	mergedMasterHead, err := s.getHeadForTLFLocked(ctx, NullBranchID, Merged)
+	mergedMasterHead, err :=
+		s.getHeadForTLFLocked(ctx, NullBranchID, Merged)
 	if err != nil {
-		return nil, MDServerError{err}
+		return NullBranchID, MDServerError{err}
 	}
 
 	// Check permissions
 	ok, err := isReader(ctx, s.codec, kbpki, mergedMasterHead)
 	if err != nil {
-		return nil, MDServerError{err}
+		return NullBranchID, MDServerError{err}
 	}
 	if !ok {
-		return nil, MDServerErrorUnauthorized{}
+		return NullBranchID, MDServerErrorUnauthorized{}
 	}
 
 	// Lookup the branch ID if not supplied
 	if mStatus == Unmerged && bid == NullBranchID {
-		bid, err = s.getBranchID(ctx, kbpki)
-		if err != nil {
-			return nil, err
-		}
-		if bid == NullBranchID {
-			return nil, nil
-		}
+		return s.getBranchID(ctx, kbpki)
+	}
+
+	return bid, nil
+}
+
+func (s *mdServerTlfStorage) getRangeLocked(ctx context.Context,
+	kbpki KBPKI, bid BranchID, mStatus MergeStatus,
+	start, stop MetadataRevision) (
+	[]*RootMetadataSigned, error) {
+	bid, err := s.checkGetParamsLocked(ctx, kbpki, bid, mStatus)
+	if err != nil {
+		return nil, err
+	}
+	if mStatus == Unmerged && bid == NullBranchID {
+		return nil, nil
 	}
 
 	var rmdses []*RootMetadataSigned
@@ -332,33 +337,12 @@ func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
 		return nil, errMDServerTlfStorageShutdown
 	}
 
-	if mStatus == Merged && bid != NullBranchID {
-		return nil, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-	}
-
-	mergedMasterHead, err := s.getHeadForTLFLocked(ctx, NullBranchID, Merged)
+	bid, err := s.checkGetParamsLocked(ctx, kbpki, bid, mStatus)
 	if err != nil {
-		return nil, MDServerError{err}
+		return nil, err
 	}
-
-	// Check permissions
-	ok, err := isReader(ctx, s.codec, kbpki, mergedMasterHead)
-	if err != nil {
-		return nil, MDServerError{err}
-	}
-	if !ok {
-		return nil, MDServerErrorUnauthorized{}
-	}
-
-	// Lookup the branch ID if not supplied
 	if mStatus == Unmerged && bid == NullBranchID {
-		bid, err = s.getBranchID(ctx, kbpki)
-		if err != nil {
-			return nil, err
-		}
-		if bid == NullBranchID {
-			return nil, nil
-		}
+		return nil, nil
 	}
 
 	rmds, err := s.getHeadForTLFLocked(ctx, bid, mStatus)
