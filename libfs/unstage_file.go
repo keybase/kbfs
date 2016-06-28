@@ -5,6 +5,8 @@
 package libfs
 
 import (
+	"bytes"
+
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
@@ -12,9 +14,9 @@ import (
 
 // UnstageForTesting unstages all unmerged commits and fast-forwards
 // to the current master, if the given data is non-empty. If the given
-// data is empty, it does nothing. If the given data has bytes
-// "async", the unstaging is done asynchronously, i.e. this function
-// returns immediately and the unstaging happens in the
+// data is empty, it does nothing. If the given data begins with the
+// bytes "async", the unstaging is done asynchronously, i.e. this
+// function returns immediately and the unstaging happens in the
 // background. (Other subsequent IO operations may be blocked,
 // though.)
 func UnstageForTesting(ctx context.Context, log logger.Logger,
@@ -25,9 +27,19 @@ func UnstageForTesting(ctx context.Context, log logger.Logger,
 		return 0, nil
 	}
 
-	err := config.KBFSOps().UnstageForTesting(ctx, fb)
-	if err != nil {
-		return 0, err
+	if bytes.HasPrefix(data, []byte("async")) {
+		go func() {
+			ctx := context.Background()
+			err := config.KBFSOps().UnstageForTesting(ctx, fb)
+			if err != nil {
+				log.Warning("Async UnstageForTesting error: %v", err)
+			}
+		}()
+	} else {
+		err := config.KBFSOps().UnstageForTesting(ctx, fb)
+		if err != nil {
+			return 0, err
+		}
 	}
 	return len(data), nil
 }
