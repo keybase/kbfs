@@ -86,74 +86,61 @@ func NewMDServerMemory(config Config) (*MDServerMemory, error) {
 
 var errMDServerMemoryShutdown = errors.New("MDServerMemory is shutdown")
 
-func (md *MDServerMemory) handleDbGet(h BareTlfHandle) (TlfID, bool, error) {
-	hBytes, err := md.config.Codec().Encode(h)
+func (md *MDServerMemory) getHandleID(ctx context.Context, handle BareTlfHandle,
+	mStatus MergeStatus) (tlfID TlfID, created bool, err error) {
+	handleBytes, err := md.config.Codec().Encode(handle)
 	if err != nil {
-		return NullTlfID, false, err
-	}
-
-	md.lock.RLock()
-	defer md.lock.RUnlock()
-	if md.handleDb == nil {
-		return NullTlfID, false, errMDServerMemoryShutdown
-	}
-
-	id, ok := md.handleDb[mdHandleKey(hBytes)]
-	return id, ok, nil
-}
-
-func (md *MDServerMemory) handleDbPut(h BareTlfHandle, id TlfID) error {
-	hBytes, err := md.config.Codec().Encode(h)
-	if err != nil {
-		return err
+		return NullTlfID, false, MDServerError{err}
 	}
 
 	md.lock.Lock()
 	defer md.lock.Unlock()
 	if md.handleDb == nil {
-		return errMDServerMemoryShutdown
+		return NullTlfID, false, errMDServerDiskShutdown
 	}
 
-	md.handleDb[mdHandleKey(hBytes)] = id
-	md.latestHandleDb[id] = h
-	return nil
-}
-
-// GetForHandle implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) GetForHandle(ctx context.Context, handle BareTlfHandle,
-	mStatus MergeStatus) (TlfID, *RootMetadataSigned, error) {
-	id, ok, err := md.handleDbGet(handle)
-	if err != nil {
-		return NullTlfID, nil, MDServerError{err}
-	}
+	id, ok := md.handleDb[mdHandleKey(handleBytes)]
 	if ok {
-		rmds, err := md.GetForTLF(ctx, id, NullBranchID, mStatus)
-		if err != nil {
-			return NullTlfID, nil, err
-		}
-		return id, rmds, nil
+		return id, false, nil
 	}
 
 	// Non-readers shouldn't be able to create the dir.
 	_, uid, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
-		return NullTlfID, nil, MDServerError{err}
+		return NullTlfID, false, MDServerError{err}
 	}
 	if !handle.IsReader(uid) {
-		return NullTlfID, nil, MDServerErrorUnauthorized{}
+		return NullTlfID, false, MDServerErrorUnauthorized{}
 	}
 
 	// Allocate a new random ID.
 	id, err = md.config.Crypto().MakeRandomTlfID(handle.IsPublic())
 	if err != nil {
-		return NullTlfID, nil, MDServerError{err}
+		return NullTlfID, false, MDServerError{err}
 	}
 
-	err = md.handleDbPut(handle, id)
+	md.handleDb[mdHandleKey(handleBytes)] = id
+	md.latestHandleDb[id] = handle
+	return id, true, nil
+}
+
+// GetForHandle implements the MDServer interface for MDServerMemory.
+func (md *MDServerMemory) GetForHandle(ctx context.Context, handle BareTlfHandle,
+	mStatus MergeStatus) (TlfID, *RootMetadataSigned, error) {
+	id, created, err := md.getHandleID(ctx, handle, mStatus)
 	if err != nil {
-		return NullTlfID, nil, MDServerError{err}
+		return NullTlfID, nil, err
 	}
-	return id, nil, nil
+
+	if created {
+		return id, nil, nil
+	}
+
+	rmds, err := md.GetForTLF(ctx, id, NullBranchID, mStatus)
+	if err != nil {
+		return NullTlfID, nil, err
+	}
+	return id, rmds, nil
 }
 
 func (md *MDServerMemory) checkGetParams(
