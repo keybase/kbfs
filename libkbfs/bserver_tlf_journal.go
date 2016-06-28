@@ -369,11 +369,6 @@ var errBserverTlfJournalShutdown = errors.New("bserverTlfJournal is shutdown")
 // and returns it.
 func (j *bserverTlfJournal) getDataLocked(id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
-	if j.isShutdown {
-		return nil, BlockCryptKeyServerHalf{},
-			errBserverTlfJournalShutdown
-	}
-
 	// Check arguments.
 
 	refEntry, err := j.getRefEntryLocked(id, context.GetRefNonce())
@@ -461,6 +456,12 @@ func (j *bserverTlfJournal) getData(id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
+
+	if j.isShutdown {
+		return nil, BlockCryptKeyServerHalf{},
+			errBserverTlfJournalShutdown
+	}
+
 	return j.getDataLocked(id, context)
 }
 
