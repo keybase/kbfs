@@ -9,11 +9,9 @@ import (
 	"sync"
 
 	keybase1 "github.com/keybase/client/go/protocol"
-
-	"golang.org/x/net/context"
 )
 
-func checkMDPerms(ctx context.Context, codec Codec, kbpki KBPKI,
+func checkMDPerms(codec Codec, currentUID keybase1.UID,
 	mergedMasterHead *RootMetadataSigned, checkWrite bool,
 	newMd *RootMetadataSigned) (bool, error) {
 	if mergedMasterHead == nil {
@@ -22,45 +20,70 @@ func checkMDPerms(ctx context.Context, codec Codec, kbpki KBPKI,
 		// listed.
 		return true, nil
 	}
-	_, user, err := kbpki.GetCurrentUserInfo(ctx)
+	h, err := mergedMasterHead.MD.MakeBareTlfHandle()
 	if err != nil {
 		return false, err
+	}
+	isReader := h.IsReader(currentUID)
+	if checkWrite {
+		isWriter := h.IsWriter(currentUID)
+		// if this is a reader, are they acting within their
+		// restrictions?
+		if !isWriter && isReader && newMd != nil {
+			return newMd.MD.IsValidRekeyRequest(
+				codec, &mergedMasterHead.MD, currentUID)
+		}
+		return isWriter, nil
+	}
+	return isReader, nil
+}
+
+// Helper to aid in enforcement that only specified public keys can
+// access TLF metadata. mergedMasterHead can be nil, in which case
+// true is returned.
+func isReader(currentUID keybase1.UID,
+	mergedMasterHead *RootMetadataSigned) (bool, error) {
+	if mergedMasterHead == nil {
+		// TODO: the real mdserver will actually reverse
+		// lookup the folder handle and check that the UID is
+		// listed.
+		return true, nil
 	}
 	h, err := mergedMasterHead.MD.MakeBareTlfHandle()
 	if err != nil {
 		return false, err
 	}
-	isWriter := h.IsWriter(user)
-	isReader := h.IsReader(user)
-	if checkWrite {
-		// if this is a reader, are they acting within their
-		// restrictions?
-		if !isWriter && isReader && newMd != nil {
-			return newMd.MD.IsValidRekeyRequest(
-				codec, &mergedMasterHead.MD, user)
-		}
-		return isWriter, nil
-	}
-	return isWriter || isReader, nil
+	return h.IsReader(currentUID), nil
 }
 
 // Helper to aid in enforcement that only specified public keys can
 // access TLF metadata. mergedMasterHead can be nil, in which case
 // true is returned.
-func isReader(ctx context.Context, codec Codec, kbpki KBPKI,
-	mergedMasterHead *RootMetadataSigned) (bool, error) {
-	return checkMDPerms(
-		ctx, codec, kbpki, mergedMasterHead, false, nil)
-}
-
-// Helper to aid in enforcement that only specified public keys can
-// access TLF metadata. mergedMasterHead can be nil, in which case
-// true is returned.
-func isWriterOrValidRekey(ctx context.Context, codec Codec, kbpki KBPKI,
+func isWriterOrValidRekey(codec Codec, currentUID keybase1.UID,
 	mergedMasterHead *RootMetadataSigned,
 	newMd *RootMetadataSigned) (bool, error) {
-	return checkMDPerms(
-		ctx, codec, kbpki, mergedMasterHead, true, newMd)
+	if mergedMasterHead == nil {
+		// TODO: the real mdserver will actually reverse
+		// lookup the folder handle and check that the UID is
+		// listed.
+		return true, nil
+	}
+	h, err := mergedMasterHead.MD.MakeBareTlfHandle()
+	if err != nil {
+		return false, err
+	}
+	if h.IsWriter(currentUID) {
+		return true, nil
+	}
+
+	if h.IsReader(currentUID) {
+		// if this is a reader, are they acting within their
+		// restrictions?
+		return newMd.MD.IsValidRekeyRequest(
+			codec, &mergedMasterHead.MD, currentUID)
+	}
+
+	return false, nil
 }
 
 // mdServerLocalTruncateLockManager manages the truncate locks for a

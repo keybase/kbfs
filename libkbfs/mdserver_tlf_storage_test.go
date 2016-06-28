@@ -62,7 +62,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		if i > 1 {
 			rmds.MD.PrevRoot = prevRoot
 		}
-		err = s.put(ctx, kbpki, rmds)
+		recordBranchID, err := s.put(ctx, kbpki, rmds)
+		require.Equal(t, i == 1, recordBranchID)
 		require.NoError(t, err)
 		prevRoot, err = rmds.MD.MetadataID(crypto)
 		require.NoError(t, err)

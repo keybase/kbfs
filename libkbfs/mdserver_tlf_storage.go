@@ -192,13 +192,19 @@ func (s *mdServerTlfStorage) getHeadForTLFLocked(bid BranchID) (
 
 func (s *mdServerTlfStorage) checkGetParamsLocked(
 	ctx context.Context, kbpki KBPKI, bid BranchID) error {
+	// Check permissions
+
 	mergedMasterHead, err := s.getHeadForTLFLocked(NullBranchID)
 	if err != nil {
 		return MDServerError{err}
 	}
 
-	// Check permissions
-	ok, err := isReader(ctx, s.codec, kbpki, mergedMasterHead)
+	_, currentUID, err := kbpki.GetCurrentUserInfo(ctx)
+	if err != nil {
+		return MDServerError{err}
+	}
+
+	ok, err := isReader(currentUID, mergedMasterHead)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -301,14 +307,20 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 		return false, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
+	// Check permissions
+
+	_, currentUID, err := kbpki.GetCurrentUserInfo(ctx)
+	if err != nil {
+		return false, MDServerError{err}
+	}
+
 	mergedMasterHead, err := s.getHeadForTLFLocked(NullBranchID)
 	if err != nil {
 		return false, MDServerError{err}
 	}
 
-	// Check permissions
 	ok, err := isWriterOrValidRekey(
-		ctx, s.codec, kbpki, mergedMasterHead, rmds)
+		s.codec, currentUID, mergedMasterHead, rmds)
 	if err != nil {
 		return false, MDServerError{err}
 	}
