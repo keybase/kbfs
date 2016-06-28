@@ -57,9 +57,6 @@ func TestMDServerBasics(t *testing.T) {
 		if i > 1 {
 			rmds.MD.PrevRoot = prevRoot
 		}
-		if err != nil {
-			t.Fatal(err)
-		}
 		err = mdServer.Put(ctx, rmds)
 		if err != nil {
 			t.Fatal(err)
