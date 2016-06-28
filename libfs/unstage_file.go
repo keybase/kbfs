@@ -14,11 +14,16 @@ import (
 
 // UnstageForTesting unstages all unmerged commits and fast-forwards
 // to the current master, if the given data is non-empty. If the given
-// data is empty, it does nothing. If the given data begins with the
-// bytes "async", the unstaging is done asynchronously, i.e. this
-// function returns immediately and the unstaging happens in the
-// background. (Other subsequent IO operations may be blocked,
-// though.)
+// data is empty, it does nothing.
+//
+// This should only be needed if there is a bug in automatic conflict
+// resolution.
+//
+// If the given data begins with the bytes "async", the unstaging is
+// done asynchronously, i.e. this function returns immediately and the
+// unstaging happens in the background. (Other subsequent IO
+// operations may be blocked, though.) You can figure out when the
+// unstage succeeds by consulting .kbfs_status.
 func UnstageForTesting(ctx context.Context, log logger.Logger,
 	config libkbfs.Config, fb libkbfs.FolderBranch,
 	data []byte) (int, error) {
