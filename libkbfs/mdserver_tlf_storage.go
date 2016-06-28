@@ -88,13 +88,7 @@ func (s *mdServerTlfStorage) mdPath(id MdID) string {
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
 }
 
-var errMDServerTlfStorageShutdown = errors.New("mdServerTlfStorage is shutdown")
-
 func (s *mdServerTlfStorage) getMDLocked(id MdID) (*RootMetadataSigned, error) {
-	if s.isShutdown {
-		return nil, errMDServerTlfStorageShutdown
-	}
-
 	// Read file.
 
 	path := s.mdPath(id)
@@ -134,10 +128,6 @@ func (s *mdServerTlfStorage) getMDLocked(id MdID) (*RootMetadataSigned, error) {
 }
 
 func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
-	if s.isShutdown {
-		return errMDServerTlfStorageShutdown
-	}
-
 	id, err := rmds.MD.MetadataID(s.crypto)
 	if err != nil {
 		return err
@@ -326,6 +316,8 @@ func (s *mdServerTlfStorage) getRangeLocked(ctx context.Context,
 }
 
 // All functions below are public functions.
+
+var errMDServerTlfStorageShutdown = errors.New("mdServerTlfStorage is shutdown")
 
 func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
 	kbpki KBPKI, bid BranchID, mStatus MergeStatus) (
