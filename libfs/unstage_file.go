@@ -20,7 +20,7 @@ import (
 func UnstageForTesting(ctx context.Context, log logger.Logger,
 	config libkbfs.Config, fb libkbfs.FolderBranch,
 	data []byte) (int, error) {
-	log.CDebugf(ctx, "UnstageForTesting(%v, %d)", fb, len(data))
+	log.CDebugf(ctx, "UnstageForTesting(%v, %v)", fb, data)
 	if len(data) == 0 {
 		return 0, nil
 	}
