@@ -363,8 +363,6 @@ func (j *bserverTlfJournal) getRefEntryLocked(
 	return e, nil
 }
 
-var errBserverTlfJournalShutdown = errors.New("bserverTlfJournal is shutdown")
-
 // getDataLocked verifies the block data for the given ID and context
 // and returns it.
 func (j *bserverTlfJournal) getDataLocked(id BlockID, context BlockContext) (
@@ -451,6 +449,8 @@ func (j *bserverTlfJournal) putRefEntryLocked(
 }
 
 // All functions below are public functions.
+
+var errBserverTlfJournalShutdown = errors.New("bserverTlfJournal is shutdown")
 
 func (j *bserverTlfJournal) getData(id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
