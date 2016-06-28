@@ -18,7 +18,6 @@ import (
 // single mdServerTlfStorage.
 func TestMDServerTlfStorageBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
-	clock := newTestClockNow()
 	crypto := makeTestCryptoCommon(t)
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_storage")
@@ -28,7 +27,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	s, err := makeMDServerTlfStorage(codec, clock, crypto, tempdir)
+	s, err := makeMDServerTlfStorage(codec, crypto, tempdir)
 	require.NoError(t, err)
 	defer s.shutdown()
 
@@ -36,7 +35,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 
 	ctx := context.Background()
 	var kbpki KBPKI
-	head, err := s.getForTLF(ctx, kbpki, bid, Unmerged)
+	head, err := s.getForTLF(ctx, kbpki, bid)
 	require.NoError(t, err)
 	require.Nil(t, head)
 }

@@ -168,8 +168,8 @@ func (s *mdServerTlfStorage) getMDKey(revision MetadataRevision,
 	return buf.Bytes(), nil
 }
 
-func (s *mdServerTlfStorage) getHeadForTLFLocked(ctx context.Context,
-	bid BranchID) (rmds *RootMetadataSigned, err error) {
+func (s *mdServerTlfStorage) getHeadForTLFLocked(bid BranchID) (
+	rmds *RootMetadataSigned, err error) {
 	key, err := s.getMDKey(0, bid)
 	if err != nil {
 		return nil, err
@@ -192,7 +192,7 @@ func (s *mdServerTlfStorage) getHeadForTLFLocked(ctx context.Context,
 
 func (s *mdServerTlfStorage) checkGetParamsLocked(
 	ctx context.Context, kbpki KBPKI, bid BranchID) error {
-	mergedMasterHead, err := s.getHeadForTLFLocked(ctx, NullBranchID)
+	mergedMasterHead, err := s.getHeadForTLFLocked(NullBranchID)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -266,7 +266,7 @@ func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
 		return nil, err
 	}
 
-	rmds, err := s.getHeadForTLFLocked(ctx, bid)
+	rmds, err := s.getHeadForTLFLocked(bid)
 	if err != nil {
 		return nil, MDServerError{err}
 	}
@@ -301,7 +301,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 		return false, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
-	mergedMasterHead, err := s.getHeadForTLFLocked(ctx, NullBranchID)
+	mergedMasterHead, err := s.getHeadForTLFLocked(NullBranchID)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -316,7 +316,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 		return false, MDServerErrorUnauthorized{}
 	}
 
-	head, err := s.getHeadForTLFLocked(ctx, bid)
+	head, err := s.getHeadForTLFLocked(bid)
 	if err != nil {
 		return false, MDServerError{err}
 	}
