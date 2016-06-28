@@ -25,5 +25,6 @@ func (f *UnstageFile) WriteFile(fi *dokan.FileInfo, bs []byte, offset int64) (n 
 	ctx, cancel := NewContextWithOpID(f.folder.fs, "UnstageFile WriteFile")
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err, cancel) }()
 	return libfs.UnstageForTesting(
-		ctx, f.folder.fs.config, f.folder.getFolderBranch(), bs)
+		ctx, f.folder.fs.log, f.folder.fs.config,
+		f.folder.getFolderBranch(), bs)
 }

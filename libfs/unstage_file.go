@@ -5,12 +5,22 @@
 package libfs
 
 import (
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
 
-func UnstageForTesting(ctx context.Context, config libkbfs.Config,
-	fb libkbfs.FolderBranch, data []byte) (int, error) {
+// UnstageForTesting unstages all unmerged commits and fast-forwards
+// to the current master, if the given data is non-empty. If the given
+// data is empty, it does nothing. If the given data has bytes
+// "async", the unstaging is done asynchronously, i.e. this function
+// returns immediately and the unstaging happens in the
+// background. (Other subsequent IO operations may be blocked,
+// though.)
+func UnstageForTesting(ctx context.Context, log logger.Logger,
+	config libkbfs.Config, fb libkbfs.FolderBranch,
+	data []byte) (int, error) {
+	log.CDebugf(ctx, "UnstageForTesting(%v, %d)", fb, len(data))
 	if len(data) == 0 {
 		return 0, nil
 	}

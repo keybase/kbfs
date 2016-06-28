@@ -35,10 +35,10 @@ var _ fs.HandleWriter = (*UnstageFile)(nil)
 // Write implements the fs.HandleWriter interface for UnstageFile.
 func (f *UnstageFile) Write(ctx context.Context, req *fuse.WriteRequest,
 	resp *fuse.WriteResponse) (err error) {
-	f.folder.fs.log.CDebugf(ctx, "UnstageFile Write")
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 	size, err := libfs.UnstageForTesting(
-		ctx, f.folder.fs.config, f.folder.getFolderBranch(), req.Data)
+		ctx, f.folder.fs.log, f.folder.fs.config,
+		f.folder.getFolderBranch(), req.Data)
 	if err != nil {
 		return err
 	}
