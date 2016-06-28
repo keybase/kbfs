@@ -13,8 +13,7 @@ import (
 
 // UnstageFile represents a write-only file when any write of at least
 // one byte triggers unstaging all unmerged commits and
-// fast-forwarding to the current master.  TODO: remove this file once
-// we have automatic conflict resolution.
+// fast-forwarding to the current master.
 type UnstageFile struct {
 	folder *Folder
 	specialWriteFile
