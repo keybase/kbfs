@@ -9,6 +9,8 @@ import (
 	"os"
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,4 +31,12 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	s, err := makeMDServerTlfStorage(codec, clock, crypto, tempdir)
 	require.NoError(t, err)
 	defer s.shutdown()
+
+	bid := FakeBranchID(1)
+
+	ctx := context.Background()
+	var kbpki KBPKI
+	head, err := s.getForTLF(ctx, kbpki, bid, Unmerged)
+	require.NoError(t, err)
+	require.Nil(t, head)
 }
