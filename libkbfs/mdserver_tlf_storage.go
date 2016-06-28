@@ -35,6 +35,8 @@ type mdServerTlfStorage struct {
 	// instead.
 	lock sync.RWMutex
 
+	// TODO: Replace the DBs below with a journal.
+
 	mdDb     *leveldb.DB // [branchId]+[revision] -> MdID
 	branchDb *leveldb.DB // deviceKID             -> branchId
 
@@ -88,6 +90,10 @@ func (s *mdServerTlfStorage) mdPath(id MdID) string {
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
 }
 
+// getDataLocked verifies the MD data (but not the signature) for the
+// given ID and returns it.
+//
+// TODO: Verify signature?
 func (s *mdServerTlfStorage) getMDLocked(id MdID) (*RootMetadataSigned, error) {
 	// Read file.
 
@@ -121,8 +127,6 @@ func (s *mdServerTlfStorage) getMDLocked(id MdID) (*RootMetadataSigned, error) {
 	}
 
 	rmds.untrustedServerTimestamp = fileInfo.ModTime()
-
-	// TODO: Verify signature?
 
 	return &rmds, nil
 }
