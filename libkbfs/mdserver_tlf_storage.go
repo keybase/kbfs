@@ -250,52 +250,6 @@ func (s *mdServerTlfStorage) getHeadForTLF(ctx context.Context,
 	return s.getMDLocked(id)
 }
 
-func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
-	kbpki KBPKI, bid BranchID, mStatus MergeStatus) (
-	*RootMetadataSigned, error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	if s.isShutdown {
-		return nil, errors.New("MD server already shut down")
-	}
-
-	if mStatus == Merged && bid != NullBranchID {
-		return nil, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-	}
-
-	mergedMasterHead, err := s.getHeadForTLF(ctx, NullBranchID, Merged)
-	if err != nil {
-		return nil, MDServerError{err}
-	}
-
-	// Check permissions
-	ok, err := isReader(ctx, s.codec, kbpki, mergedMasterHead)
-	if err != nil {
-		return nil, MDServerError{err}
-	}
-	if !ok {
-		return nil, MDServerErrorUnauthorized{}
-	}
-
-	// Lookup the branch ID if not supplied
-	if mStatus == Unmerged && bid == NullBranchID {
-		bid, err = s.getBranchID(ctx, kbpki)
-		if err != nil {
-			return nil, err
-		}
-		if bid == NullBranchID {
-			return nil, nil
-		}
-	}
-
-	rmds, err := s.getHeadForTLF(ctx, bid, mStatus)
-	if err != nil {
-		return nil, MDServerError{err}
-	}
-	return rmds, nil
-}
-
 func (s *mdServerTlfStorage) getRangeLocked(ctx context.Context,
 	kbpki KBPKI, bid BranchID, mStatus MergeStatus,
 	start, stop MetadataRevision) (
@@ -362,6 +316,54 @@ func (s *mdServerTlfStorage) getRangeLocked(ctx context.Context,
 	}
 
 	return rmdses, nil
+}
+
+// All functions below are public functions.
+
+func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
+	kbpki KBPKI, bid BranchID, mStatus MergeStatus) (
+	*RootMetadataSigned, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	if s.isShutdown {
+		return nil, errors.New("MD server already shut down")
+	}
+
+	if mStatus == Merged && bid != NullBranchID {
+		return nil, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+	}
+
+	mergedMasterHead, err := s.getHeadForTLF(ctx, NullBranchID, Merged)
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+
+	// Check permissions
+	ok, err := isReader(ctx, s.codec, kbpki, mergedMasterHead)
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+	if !ok {
+		return nil, MDServerErrorUnauthorized{}
+	}
+
+	// Lookup the branch ID if not supplied
+	if mStatus == Unmerged && bid == NullBranchID {
+		bid, err = s.getBranchID(ctx, kbpki)
+		if err != nil {
+			return nil, err
+		}
+		if bid == NullBranchID {
+			return nil, nil
+		}
+	}
+
+	rmds, err := s.getHeadForTLF(ctx, bid, mStatus)
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+	return rmds, nil
 }
 
 func (s *mdServerTlfStorage) getRange(ctx context.Context,
@@ -603,8 +605,10 @@ func (s *mdServerTlfStorage) shutdown() {
 
 	if s.mdDb != nil {
 		s.mdDb.Close()
+		s.mdDb = nil
 	}
 	if s.branchDb != nil {
 		s.branchDb.Close()
+		s.branchDb = nil
 	}
 }
