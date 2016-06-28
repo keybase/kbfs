@@ -654,7 +654,7 @@ func (md *MDServerMemory) addNewAssertionForTest(uid keybase1.UID,
 
 func (md *MDServerMemory) getCurrentMergedHeadRevision(
 	ctx context.Context, id TlfID) (rev MetadataRevision, err error) {
-	head, err := md.getHeadForTLF(ctx, id, NullBranchID, Merged)
+	head, err := md.GetForTLF(ctx, id, NullBranchID, Merged)
 	if err != nil {
 		return 0, err
 	}

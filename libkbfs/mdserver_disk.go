@@ -239,12 +239,7 @@ func (md *MDServerDisk) PruneBranch(ctx context.Context, id TlfID, bid BranchID)
 
 func (md *MDServerDisk) getCurrentMergedHeadRevision(
 	ctx context.Context, id TlfID) (rev MetadataRevision, err error) {
-	tlfStorage, err := md.getStorage(id)
-	if err != nil {
-		return 0, err
-	}
-
-	head, err := tlfStorage.getHeadForTLF(ctx, NullBranchID, Merged)
+	head, err := md.GetForTLF(ctx, id, NullBranchID, Merged)
 	if err != nil {
 		return 0, err
 	}
