@@ -304,10 +304,8 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 		if bid != NullBranchID {
 			return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 		}
-	} else {
-		if bid == NullBranchID {
-			return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-		}
+	} else if bid == NullBranchID {
+		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
 	id := rmds.MD.ID
