@@ -122,34 +122,36 @@ func (md *MDServerMemory) handleDbPut(h BareTlfHandle, id TlfID) error {
 // GetForHandle implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetForHandle(ctx context.Context, handle BareTlfHandle,
 	mStatus MergeStatus) (TlfID, *RootMetadataSigned, error) {
-	id := NullTlfID
 	id, ok, err := md.handleDbGet(handle)
 	if err != nil {
-		return id, nil, MDServerError{err}
+		return NullTlfID, nil, MDServerError{err}
 	}
 	if ok {
 		rmds, err := md.GetForTLF(ctx, id, NullBranchID, mStatus)
-		return id, rmds, err
+		if err != nil {
+			return NullTlfID, nil, err
+		}
+		return id, rmds, nil
 	}
 
 	// Non-readers shouldn't be able to create the dir.
 	_, uid, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
-		return id, nil, err
+		return NullTlfID, nil, MDServerError{err}
 	}
 	if !handle.IsReader(uid) {
-		return id, nil, MDServerErrorUnauthorized{}
+		return NullTlfID, nil, MDServerErrorUnauthorized{}
 	}
 
 	// Allocate a new random ID.
 	id, err = md.config.Crypto().MakeRandomTlfID(handle.IsPublic())
 	if err != nil {
-		return id, nil, MDServerError{err}
+		return NullTlfID, nil, MDServerError{err}
 	}
 
 	err = md.handleDbPut(handle, id)
 	if err != nil {
-		return id, nil, MDServerError{err}
+		return NullTlfID, nil, MDServerError{err}
 	}
 	return id, nil, nil
 }

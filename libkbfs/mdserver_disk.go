@@ -19,24 +19,29 @@ import (
 	"golang.org/x/net/context"
 )
 
-// MDServerDisk just stores blocks in local leveldb instances.
-type MDServerDisk struct {
-	codec    Codec
-	clock    Clock
-	crypto   Crypto
-	kbpki    KBPKI
-	handleDb *leveldb.DB // folder handle -> folderId
-	log      logger.Logger
-	dirPath  string
+type mdServerDiskShared struct {
+	dirPath string
 
-	tlfStorageLock *sync.RWMutex
-	tlfStorage     map[TlfID]*mdServerTlfStorage
+	// Protects handleDb and tlfStorage. After Shutdown() is
+	// called, both handleDb and tlfStorage are nil.
+	lock       sync.RWMutex
+	handleDb   *leveldb.DB // folder handle -> folderId
+	tlfStorage map[TlfID]*mdServerTlfStorage
 
 	updateManager *mdServerLocalUpdateManager
 
-	shutdownLock *sync.RWMutex
-	shutdown     *bool
 	shutdownFunc func(logger.Logger)
+}
+
+// MDServerDisk stores all info on disk.
+type MDServerDisk struct {
+	codec  Codec
+	clock  Clock
+	crypto Crypto
+	kbpki  KBPKI
+	log    logger.Logger
+
+	*mdServerDiskShared
 }
 
 var _ mdServerLocal = (*MDServerDisk)(nil)
@@ -56,10 +61,10 @@ func newMDServerDisk(config Config, dirPath string,
 	}
 	log := config.MakeLogger("")
 	mdserv := &MDServerDisk{config.Codec(), config.Clock(),
-		config.Crypto(), config.KBPKI(), handleDb, log, dirPath,
-		&sync.RWMutex{}, make(map[TlfID]*mdServerTlfStorage),
-		newMDServerLocalUpdateManager(),
-		&sync.RWMutex{}, new(bool), shutdownFunc}
+		config.Crypto(), config.KBPKI(), log, &mdServerDiskShared{
+			dirPath, sync.RWMutex{}, handleDb,
+			make(map[TlfID]*mdServerTlfStorage),
+			newMDServerLocalUpdateManager(), shutdownFunc}}
 	return mdserv, nil
 }
 
@@ -88,8 +93,8 @@ var errMDServerDiskShutdown = errors.New("MDServerDisk is shutdown")
 
 func (md *MDServerDisk) getStorage(tlfID TlfID) (*mdServerTlfStorage, error) {
 	storage, err := func() (*mdServerTlfStorage, error) {
-		md.tlfStorageLock.RLock()
-		defer md.tlfStorageLock.RUnlock()
+		md.lock.RLock()
+		defer md.lock.RUnlock()
 		if md.tlfStorage == nil {
 			return nil, errMDServerDiskShutdown
 		}
@@ -104,8 +109,8 @@ func (md *MDServerDisk) getStorage(tlfID TlfID) (*mdServerTlfStorage, error) {
 		return storage, nil
 	}
 
-	md.tlfStorageLock.Lock()
-	defer md.tlfStorageLock.Unlock()
+	md.lock.Lock()
+	defer md.lock.Unlock()
 	if md.tlfStorage == nil {
 		return nil, errMDServerDiskShutdown
 	}
@@ -126,55 +131,71 @@ func (md *MDServerDisk) getStorage(tlfID TlfID) (*mdServerTlfStorage, error) {
 	return storage, nil
 }
 
-// GetForHandle implements the MDServer interface for MDServerDisk.
-func (md *MDServerDisk) GetForHandle(ctx context.Context, handle BareTlfHandle,
-	mStatus MergeStatus) (TlfID, *RootMetadataSigned, error) {
-	id := NullTlfID
-	md.shutdownLock.RLock()
-	defer md.shutdownLock.RUnlock()
-	if *md.shutdown {
-		return id, nil, errors.New("MD server already shut down")
-	}
-
+func (md *MDServerDisk) getHandleID(ctx context.Context, handle BareTlfHandle,
+	mStatus MergeStatus) (tlfID TlfID, created bool, err error) {
 	handleBytes, err := md.codec.Encode(handle)
 	if err != nil {
-		return id, nil, err
+		return NullTlfID, false, MDServerError{err}
+	}
+
+	md.lock.Lock()
+	defer md.lock.Unlock()
+	if md.handleDb == nil {
+		return NullTlfID, false, errMDServerDiskShutdown
 	}
 
 	buf, err := md.handleDb.Get(handleBytes, nil)
 	if err != nil && err != leveldb.ErrNotFound {
-		return id, nil, MDServerError{err}
+		return NullTlfID, false, MDServerError{err}
 	}
 	if err == nil {
 		var id TlfID
 		err := id.UnmarshalBinary(buf)
 		if err != nil {
-			return NullTlfID, nil, err
+			return NullTlfID, false, MDServerError{err}
 		}
-		rmds, err := md.GetForTLF(ctx, id, NullBranchID, mStatus)
-		return id, rmds, err
+		return id, false, nil
 	}
 
 	// Non-readers shouldn't be able to create the dir.
 	_, uid, err := md.kbpki.GetCurrentUserInfo(ctx)
 	if err != nil {
-		return id, nil, err
+		return NullTlfID, false, MDServerError{err}
 	}
 	if !handle.IsReader(uid) {
-		return id, nil, MDServerErrorUnauthorized{}
+		return NullTlfID, false, MDServerErrorUnauthorized{}
 	}
 
 	// Allocate a new random ID.
-	id, err = md.crypto.MakeRandomTlfID(handle.IsPublic())
+	id, err := md.crypto.MakeRandomTlfID(handle.IsPublic())
 	if err != nil {
-		return id, nil, MDServerError{err}
+		return NullTlfID, false, MDServerError{err}
 	}
 
 	err = md.handleDb.Put(handleBytes, id.Bytes(), nil)
 	if err != nil {
-		return id, nil, MDServerError{err}
+		return NullTlfID, false, MDServerError{err}
 	}
-	return id, nil, nil
+	return id, true, nil
+}
+
+// GetForHandle implements the MDServer interface for MDServerDisk.
+func (md *MDServerDisk) GetForHandle(ctx context.Context, handle BareTlfHandle,
+	mStatus MergeStatus) (TlfID, *RootMetadataSigned, error) {
+	id, created, err := md.getHandleID(ctx, handle, mStatus)
+	if err != nil {
+		return NullTlfID, nil, err
+	}
+
+	if created {
+		return id, nil, nil
+	}
+
+	rmds, err := md.GetForTLF(ctx, id, NullBranchID, mStatus)
+	if err != nil {
+		return NullTlfID, nil, err
+	}
+	return id, rmds, nil
 }
 
 // GetForTLF implements the MDServer interface for MDServerDisk.
@@ -285,28 +306,22 @@ func (md *MDServerDisk) TruncateUnlock(ctx context.Context, id TlfID) (
 
 // Shutdown implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) Shutdown() {
-	md.shutdownLock.Lock()
-	defer md.shutdownLock.Unlock()
-	if *md.shutdown {
+	md.lock.Lock()
+	defer md.lock.Unlock()
+	if md.handleDb == nil {
 		return
 	}
-	*md.shutdown = true
 
-	tlfStorage := func() map[TlfID]*mdServerTlfStorage {
-		md.tlfStorageLock.Lock()
-		defer md.tlfStorageLock.Unlock()
-		// Make further accesses error out.
-		tlfStorage := md.tlfStorage
-		md.tlfStorage = nil
-		return tlfStorage
-	}()
+	// Make further accesses error out.
+
+	md.handleDb.Close()
+	md.handleDb = nil
+
+	tlfStorage := md.tlfStorage
+	md.tlfStorage = nil
 
 	for _, s := range tlfStorage {
 		s.shutdown()
-	}
-
-	if md.handleDb != nil {
-		md.handleDb.Close()
 	}
 
 	if md.shutdownFunc != nil {
@@ -329,17 +344,15 @@ func (md *MDServerDisk) copy(config Config) mdServerLocal {
 	// observers correctly no matter where they got on the list.
 	log := config.MakeLogger("")
 	return &MDServerDisk{md.codec, md.clock, md.crypto, config.KBPKI(),
-		md.handleDb, log, md.dirPath, md.tlfStorageLock,
-		md.tlfStorage, md.updateManager,
-		md.shutdownLock, md.shutdown, md.shutdownFunc}
+		log, md.mdServerDiskShared}
 }
 
 // isShutdown returns whether the logical, shared MDServer instance
 // has been shut down.
 func (md *MDServerDisk) isShutdown() bool {
-	md.shutdownLock.RLock()
-	defer md.shutdownLock.RUnlock()
-	return *md.shutdown
+	md.lock.RLock()
+	defer md.lock.RUnlock()
+	return md.handleDb == nil
 }
 
 // DisableRekeyUpdatesForTesting implements the MDServer interface.
@@ -357,10 +370,11 @@ func (md *MDServerDisk) CheckForRekeys(ctx context.Context) <-chan error {
 
 func (md *MDServerDisk) addNewAssertionForTest(uid keybase1.UID,
 	newAssertion keybase1.SocialAssertion) error {
-	md.shutdownLock.RLock()
-	defer md.shutdownLock.RUnlock()
-	if *md.shutdown {
-		return errors.New("MD server already shut down")
+	md.lock.Lock()
+	defer md.lock.Unlock()
+
+	if md.handleDb == nil {
+		return errMDServerDiskShutdown
 	}
 
 	// Iterate through all the handles, and add handles for ones
@@ -396,6 +410,13 @@ func (md *MDServerDisk) addNewAssertionForTest(uid keybase1.UID,
 // GetLatestHandleForTLF implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) GetLatestHandleForTLF(_ context.Context, id TlfID) (
 	BareTlfHandle, error) {
+	md.lock.RLock()
+	defer md.lock.RUnlock()
+
+	if md.handleDb == nil {
+		return BareTlfHandle{}, errMDServerDiskShutdown
+	}
+
 	var handle BareTlfHandle
 	iter := md.handleDb.NewIterator(nil, nil)
 	defer iter.Release()
