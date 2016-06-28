@@ -510,9 +510,9 @@ func (s *mdServerTlfStorage) pruneBranch(
 		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
-	// Don't actually delete unmerged history. This is intentional to be consistent
-	// with the mdserver behavior-- it garbage collects discarded branches in the
-	// background.
+	// Don't actually delete unmerged history. This is intentional
+	// to be consistent with the mdserver behavior-- it garbage
+	// collects discarded branches in the background.
 	branchKey, err := s.getBranchKey(ctx, kbpki)
 	if err != nil {
 		return MDServerError{err}
