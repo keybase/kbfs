@@ -7,6 +7,7 @@ package libfuse
 import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
+	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
@@ -36,14 +37,11 @@ func (f *UnstageFile) Write(ctx context.Context, req *fuse.WriteRequest,
 	resp *fuse.WriteResponse) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "UnstageFile Write")
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
-	if len(req.Data) == 0 {
-		return nil
-	}
-	err = f.folder.fs.config.KBFSOps().
-		UnstageForTesting(ctx, f.folder.getFolderBranch())
+	size, err := libfs.UnstageForTesting(
+		ctx, f.folder.fs.config, f.folder.getFolderBranch(), req.Data)
 	if err != nil {
 		return err
 	}
-	resp.Size = len(req.Data)
+	resp.Size = size
 	return nil
 }
