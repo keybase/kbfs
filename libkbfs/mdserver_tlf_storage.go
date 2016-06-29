@@ -22,7 +22,7 @@ type mdServerTlfStorage struct {
 	dir    string
 
 	// Protects any IO operations in dir or any of its children,
-	// as well all the DBs, j, and isShutdown.
+	// as well all the j, ids, and isShutdown.
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
@@ -31,7 +31,7 @@ type mdServerTlfStorage struct {
 	j tlfJournal
 
 	// branch ID -> [revision]MdID
-	mds map[BranchID][]MdID
+	mdIDs map[BranchID][]MdID
 
 	isShutdown bool
 }
@@ -61,12 +61,12 @@ func makeMDServerTlfStorage(codec Codec, crypto cryptoPure, dir string) (
 	// for consistency.
 	journal.lock.Lock()
 	defer journal.lock.Unlock()
-	mds, err := journal.readJournalLocked()
+	mdIDs, err := journal.readJournalLocked()
 	if err != nil {
 		return nil, err
 	}
 
-	journal.mds = mds
+	journal.mdIDs = mdIDs
 
 	return journal, nil
 }
@@ -97,11 +97,11 @@ func (s *mdServerTlfStorage) readJournalEntryLocked(o journalOrdinal) (
 // readJournalLocked reads the journal and returns a map of all the
 // MDs in the journal.
 func (s *mdServerTlfStorage) readJournalLocked() (map[BranchID][]MdID, error) {
-	mds := make(map[BranchID][]MdID)
+	mdIDs := make(map[BranchID][]MdID)
 
 	first, err := s.j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
-		return mds, nil
+		return mdIDs, nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -118,10 +118,10 @@ func (s *mdServerTlfStorage) readJournalLocked() (map[BranchID][]MdID, error) {
 			return nil, err
 		}
 
-		branchMDs := mds[e.BranchID]
+		branchMdIDs := mdIDs[e.BranchID]
 		initialRev, ok := initialRevs[e.BranchID]
 		if ok {
-			expectedRevision := MetadataRevision(int(initialRev) + len(branchMDs))
+			expectedRevision := MetadataRevision(int(initialRev) + len(branchMdIDs))
 			if expectedRevision != e.Revision {
 				return nil, fmt.Errorf(
 					"Revision mismatch for branch %s: expected %s, got %s",
@@ -131,9 +131,9 @@ func (s *mdServerTlfStorage) readJournalLocked() (map[BranchID][]MdID, error) {
 			initialRevs[e.BranchID] = e.Revision
 		}
 
-		mds[e.BranchID] = append(branchMDs, e.MetadataID)
+		mdIDs[e.BranchID] = append(branchMdIDs, e.MetadataID)
 	}
-	return mds, nil
+	return mdIDs, nil
 }
 
 func (s *mdServerTlfStorage) writeJournalEntryLocked(
@@ -230,11 +230,11 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
 
 func (s *mdServerTlfStorage) getHeadForTLFLocked(bid BranchID) (
 	rmds *RootMetadataSigned, err error) {
-	ids := s.mds[bid]
-	if len(ids) == 0 {
+	branchMdIDs := s.mdIDs[bid]
+	if len(branchMdIDs) == 0 {
 		return nil, nil
 	}
-	return s.getMDLocked(ids[len(ids)-1])
+	return s.getMDLocked(branchMdIDs[len(branchMdIDs)-1])
 }
 
 func (s *mdServerTlfStorage) checkGetParamsLocked(
@@ -266,17 +266,17 @@ func (s *mdServerTlfStorage) getRangeLocked(
 		return nil, err
 	}
 
-	ids := s.mds[bid]
+	branchMdIDs := s.mdIDs[bid]
 
 	startI := int(start - MetadataRevisionInitial)
 	endI := int(stop - MetadataRevisionInitial + 1)
-	if endI > len(ids) {
-		endI = len(ids)
+	if endI > len(branchMdIDs) {
+		endI = len(branchMdIDs)
 	}
 
 	var rmdses []*RootMetadataSigned
 	for i := startI; i < endI; i++ {
-		rmds, err := s.getMDLocked(ids[i])
+		rmds, err := s.getMDLocked(branchMdIDs[i])
 		if err != nil {
 			return nil, MDServerError{err}
 		}
@@ -399,7 +399,7 @@ func (s *mdServerTlfStorage) put(
 		return false, MDServerError{err}
 	}
 
-	s.mds[bid] = append(s.mds[bid], id)
+	s.mdIDs[bid] = append(s.mdIDs[bid], id)
 
 	err = s.appendJournalEntryLocked(bid, rmds.MD.Revision, id)
 	if err != nil {
@@ -419,12 +419,12 @@ func (s *mdServerTlfStorage) shutdown() {
 	s.isShutdown = true
 
 	// Double-check the on-disk journal with the in-memory one.
-	mds, err := s.readJournalLocked()
+	mdIDs, err := s.readJournalLocked()
 	if err != nil {
 		panic(err)
 	}
 
-	if !reflect.DeepEqual(mds, s.mds) {
-		panic(fmt.Sprintf("mds = %v != s.mds = %v", mds, s.mds))
+	if !reflect.DeepEqual(mdIDs, s.mdIDs) {
+		panic(fmt.Sprintf("mdIDs = %v != s.mdIDs = %v", mdIDs, s.mdIDs))
 	}
 }
