@@ -5,8 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/keybase/client/go/protocol"
@@ -32,18 +30,14 @@ func TestMDServerBasics(t *testing.T) {
 
 	id, rmds, err := mdServer.GetForHandle(ctx, h, Merged)
 	require.NoError(t, err)
-	if rmds != nil {
-		t.Fatal(errors.New("unexpected metadata found"))
-	}
+	require.Nil(t, rmds)
 
 	// (2) push some new metadata blocks
 	prevRoot := MdID{}
 	middleRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
 		rmds, err := NewRootMetadataSignedForTest(id, h)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		rmds.MD.SerializedPrivateMetadata = make([]byte, 1)
 		rmds.MD.SerializedPrivateMetadata[0] = 0x1
 		rmds.MD.Revision = MetadataRevision(i)
@@ -53,13 +47,9 @@ func TestMDServerBasics(t *testing.T) {
 			rmds.MD.PrevRoot = prevRoot
 		}
 		err = mdServer.Put(ctx, rmds)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		prevRoot, err = rmds.MD.MetadataID(config.Crypto())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if i == 5 {
 			middleRoot = prevRoot
 		}
@@ -74,9 +64,7 @@ func TestMDServerBasics(t *testing.T) {
 	FakeInitialRekey(&rmds.MD, h)
 	rmds.MD.PrevRoot = prevRoot
 	err = mdServer.Put(ctx, rmds)
-	if _, ok := err.(MDServerErrorConflictRevision); !ok {
-		t.Fatal(fmt.Errorf("Expected MDServerErrorConflictRevision got: %v", err))
-	}
+	require.IsType(t, MDServerErrorConflictRevision{}, err)
 
 	// (4) push some new unmerged metadata blocks linking to the
 	//     middle merged block.
@@ -85,9 +73,7 @@ func TestMDServerBasics(t *testing.T) {
 	require.NoError(t, err)
 	for i := MetadataRevision(6); i < 41; i++ {
 		rmds, err := NewRootMetadataSignedForTest(id, h)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		rmds.MD.Revision = MetadataRevision(i)
 		rmds.MD.SerializedPrivateMetadata = make([]byte, 1)
 		rmds.MD.SerializedPrivateMetadata[0] = 0x1
@@ -97,37 +83,23 @@ func TestMDServerBasics(t *testing.T) {
 		rmds.MD.WFlags |= MetadataFlagUnmerged
 		rmds.MD.BID = bid
 		err = mdServer.Put(ctx, rmds)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		prevRoot, err = rmds.MD.MetadataID(config.Crypto())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// (5) check for proper unmerged head
 	head, err := mdServer.GetForTLF(ctx, id, bid, Unmerged)
 	require.NoError(t, err)
-	if head == nil {
-		t.Fatal(errors.New("no head found"))
-	}
-	if head.MD.Revision != MetadataRevision(40) {
-		t.Fatal(fmt.Errorf("expected revision 40, got: %d",
-			head.MD.Revision))
-	}
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(40), head.MD.Revision)
 
 	// (6a) try to get unmerged range
 	rmdses, err := mdServer.GetRange(ctx, id, bid, Unmerged, 1, 100)
 	require.NoError(t, err)
-	if len(rmdses) != 35 {
-		t.Fatal(fmt.Errorf("expected 35 MD blocks, got: %d", len(rmdses)))
-	}
+	require.Equal(t, 35, len(rmdses))
 	for i := MetadataRevision(6); i < 16; i++ {
-		if rmdses[i-6].MD.Revision != i {
-			t.Fatal(fmt.Errorf("expected revision %d, got: %d",
-				i, rmdses[i-6].MD.Revision))
-		}
+		require.Equal(t, i, rmdses[i-6].MD.Revision)
 	}
 
 	// (6b) try to get unmerged range subset.
@@ -152,39 +124,25 @@ func TestMDServerBasics(t *testing.T) {
 	// (8) verify head is pruned
 	head, err = mdServer.GetForTLF(ctx, id, NullBranchID, Unmerged)
 	require.NoError(t, err)
-	if head != nil {
-		t.Fatal(errors.New("head found"))
-	}
+	require.Nil(t, head)
 
 	// (9) verify revision history is pruned
 	rmdses, err = mdServer.GetRange(ctx, id, NullBranchID, Unmerged, 1, 100)
 	require.NoError(t, err)
-	if len(rmdses) != 0 {
-		t.Fatal(fmt.Errorf("expected no unmerged history, got: %d", len(rmdses)))
-	}
+	require.Equal(t, 0, len(rmdses))
 
 	// (10) check for proper merged head
 	head, err = mdServer.GetForTLF(ctx, id, NullBranchID, Merged)
 	require.NoError(t, err)
-	if head == nil {
-		t.Fatal(errors.New("no head found"))
-	}
-	if head.MD.Revision != MetadataRevision(10) {
-		t.Fatal(fmt.Errorf("expected revision 10, got: %d",
-			head.MD.Revision))
-	}
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(10), head.MD.Revision)
 
 	// (11) try to get merged range
 	rmdses, err = mdServer.GetRange(ctx, id, NullBranchID, Merged, 1, 100)
 	require.NoError(t, err)
-	if len(rmdses) != 10 {
-		t.Fatal(fmt.Errorf("expected 10 MD blocks, got: %d", len(rmdses)))
-	}
+	require.Equal(t, 10, len(rmdses))
 	for i := MetadataRevision(1); i <= 10; i++ {
-		if rmdses[i-1].MD.Revision != i {
-			t.Fatal(fmt.Errorf("expected revision %d, got: %d",
-				i, rmdses[i-1].MD.Revision))
-		}
+		require.Equal(t, i, rmdses[i-1].MD.Revision)
 	}
 }
 
@@ -215,9 +173,7 @@ func TestMDServerRegisterForUpdate(t *testing.T) {
 
 	id2, _, err := mdServer.GetForHandle(ctx, h2, Merged)
 	require.NoError(t, err)
-	if id1 == id2 {
-		t.Fatalf("id2 == id1: %s", id1)
-	}
+	require.Equal(t, id1, id2)
 
 	_, err = mdServer.RegisterForUpdate(ctx, id1, MetadataRevisionInitial)
 	require.NoError(t, err)
