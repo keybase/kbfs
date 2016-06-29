@@ -17,7 +17,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
@@ -33,23 +32,16 @@ type mdServerTlfStorage struct {
 	// instead.
 	lock sync.RWMutex
 
-	// TODO: Replace the DBs below with a journal.
-
-	mdDb *leveldb.DB // [branchId]+[revision] -> MdID
+	// TODO: Replace idDb below with a journal.
+	idDb *leveldb.DB // [branchId]+[revision] -> MdID
 
 	isShutdown bool
 }
 
 func makeMDServerTlfStorage(codec Codec, crypto cryptoPure, dir string) (
 	*mdServerTlfStorage, error) {
-	mdPath := filepath.Join(dir, "md")
-
-	mdStorage, err := storage.OpenFile(mdPath)
-	if err != nil {
-		return nil, err
-	}
-
-	mdDb, err := leveldb.Open(mdStorage, leveldbOptions)
+	idDb, err := leveldb.OpenFile(
+		filepath.Join(dir, "md_id"), leveldbOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +49,7 @@ func makeMDServerTlfStorage(codec Codec, crypto cryptoPure, dir string) (
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
-		mdDb:   mdDb,
+		idDb:   idDb,
 	}, nil
 }
 
@@ -182,7 +174,7 @@ func (s *mdServerTlfStorage) getHeadForTLFLocked(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	buf, err := s.mdDb.Get(key[:], nil)
+	buf, err := s.idDb.Get(key[:], nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			return nil, nil
@@ -199,8 +191,7 @@ func (s *mdServerTlfStorage) getHeadForTLFLocked(ctx context.Context,
 }
 
 func (s *mdServerTlfStorage) checkGetParamsLocked(
-	ctx context.Context, kbpki KBPKI, bid BranchID) (
-	err error) {
+	ctx context.Context, kbpki KBPKI, bid BranchID) error {
 	mergedMasterHead, err := s.getHeadForTLFLocked(ctx, NullBranchID)
 	if err != nil {
 		return MDServerError{err}
@@ -236,7 +227,7 @@ func (s *mdServerTlfStorage) getRangeLocked(ctx context.Context,
 		return rmdses, MDServerError{err}
 	}
 
-	iter := s.mdDb.NewIterator(&util.Range{Start: startKey, Limit: stopKey}, nil)
+	iter := s.idDb.NewIterator(&util.Range{Start: startKey, Limit: stopKey}, nil)
 	defer iter.Release()
 	for iter.Next() {
 		id, err := MdIDFromBytes(iter.Value())
@@ -306,14 +297,8 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 	mStatus := rmds.MD.MergedStatus()
 	bid := rmds.MD.BID
 
-	if mStatus == Merged {
-		if bid != NullBranchID {
-			return false, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-		}
-	} else {
-		if bid == NullBranchID {
-			return false, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-		}
+	if (mStatus == Merged) != (bid == NullBranchID) {
+		return false, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
 	mergedMasterHead, err := s.getHeadForTLFLocked(ctx, NullBranchID)
@@ -357,8 +342,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 
 	// Consistency checks
 	if head != nil {
-		err := head.MD.CheckValidSuccessorForServer(
-			s.crypto, &rmds.MD)
+		err := head.MD.CheckValidSuccessorForServer(s.crypto, &rmds.MD)
 		if err != nil {
 			return false, err
 		}
@@ -392,7 +376,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 	batch.Put(headKey, id.Bytes())
 
 	// Write the batch.
-	err = s.mdDb.Write(batch, nil)
+	err = s.idDb.Write(batch, nil)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -409,8 +393,8 @@ func (s *mdServerTlfStorage) shutdown() {
 	}
 	s.isShutdown = true
 
-	if s.mdDb != nil {
-		s.mdDb.Close()
-		s.mdDb = nil
+	if s.idDb != nil {
+		s.idDb.Close()
+		s.idDb = nil
 	}
 }

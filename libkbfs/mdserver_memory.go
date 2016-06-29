@@ -308,11 +308,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 	mStatus := rmds.MD.MergedStatus()
 	bid := rmds.MD.BID
 
-	if mStatus == Merged {
-		if bid != NullBranchID {
-			return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-		}
-	} else if bid == NullBranchID {
+	if (mStatus == Merged) != (bid == NullBranchID) {
 		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
