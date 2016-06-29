@@ -294,6 +294,12 @@ func (md *MDServerDisk) TruncateLock(ctx context.Context, id TlfID) (
 		return false, MDServerError{err}
 	}
 
+	md.lock.Lock()
+	defer md.lock.Unlock()
+	if md.truncateLockManager == nil {
+		return false, errMDServerDiskShutdown
+	}
+
 	return md.truncateLockManager.truncateLock(key.kid, id)
 }
 
@@ -303,6 +309,12 @@ func (md *MDServerDisk) TruncateUnlock(ctx context.Context, id TlfID) (
 	key, err := md.kbpki.GetCurrentCryptPublicKey(ctx)
 	if err != nil {
 		return false, MDServerError{err}
+	}
+
+	md.lock.Lock()
+	defer md.lock.Unlock()
+	if md.truncateLockManager == nil {
+		return false, errMDServerDiskShutdown
 	}
 
 	return md.truncateLockManager.truncateUnlock(key.kid, id)
