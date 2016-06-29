@@ -23,7 +23,6 @@ import (
 
 type mdServerTlfStorage struct {
 	codec  Codec
-	clock  Clock
 	crypto cryptoPure
 	dir    string
 
@@ -41,8 +40,7 @@ type mdServerTlfStorage struct {
 	isShutdown bool
 }
 
-func makeMDServerTlfStorage(
-	codec Codec, clock Clock, crypto cryptoPure, dir string) (
+func makeMDServerTlfStorage(codec Codec, crypto cryptoPure, dir string) (
 	*mdServerTlfStorage, error) {
 	mdPath := filepath.Join(dir, "md")
 
@@ -57,7 +55,6 @@ func makeMDServerTlfStorage(
 	}
 	return &mdServerTlfStorage{
 		codec:  codec,
-		clock:  clock,
 		crypto: crypto,
 		dir:    dir,
 		mdDb:   mdDb,
