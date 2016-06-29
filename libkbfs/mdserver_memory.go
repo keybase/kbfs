@@ -42,8 +42,9 @@ type mdBlockMemList struct {
 }
 
 type mdServerMemShared struct {
-	// Protects all *db variables. After Shutdown() is called, all
-	// *db variables and truncateLockManager are nil.
+	// Protects all *db variables and truncateLockManager. After
+	// Shutdown() is called, all *db variables and
+	// truncateLockManager are nil.
 	lock sync.RWMutex
 	// Bare TLF handle -> TLF ID
 	handleDb map[mdHandleKey]TlfID
@@ -52,10 +53,10 @@ type mdServerMemShared struct {
 	// (TLF ID, branch ID) -> list of MDs
 	mdDb map[mdBlockKey]mdBlockMemList
 	// (TLF ID, device KID) -> branch ID
-	branchDb map[mdBranchKey]BranchID
-
+	branchDb            map[mdBranchKey]BranchID
 	truncateLockManager *mdServerLocalTruncateLockManager
-	updateManager       *mdServerLocalUpdateManager
+
+	updateManager *mdServerLocalUpdateManager
 }
 
 // MDServerMemory just stores metadata objects in memory.
