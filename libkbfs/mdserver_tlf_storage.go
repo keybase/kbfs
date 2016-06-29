@@ -286,7 +286,7 @@ func (s *mdServerTlfStorage) getRange(ctx context.Context,
 	return s.getRangeLocked(ctx, kbpki, bid, start, stop)
 }
 
-func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMetadataSigned) (bool, error) {
+func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMetadataSigned) (recordBranchID bool, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -320,8 +320,6 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 	if err != nil {
 		return false, MDServerError{err}
 	}
-
-	var recordBranchID bool
 
 	if mStatus == Unmerged && head == nil {
 		// currHead for unmerged history might be on the main branch
