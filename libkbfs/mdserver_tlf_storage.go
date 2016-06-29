@@ -36,8 +36,7 @@ type mdServerTlfStorage struct {
 
 	// TODO: Replace the DBs below with a journal.
 
-	mdDb     *leveldb.DB // [branchId]+[revision] -> MdID
-	branchDb *leveldb.DB // deviceKID             -> branchId
+	mdDb *leveldb.DB // [branchId]+[revision] -> MdID
 
 	isShutdown bool
 }
@@ -46,14 +45,8 @@ func makeMDServerTlfStorage(
 	codec Codec, clock Clock, crypto cryptoPure, dir string) (
 	*mdServerTlfStorage, error) {
 	mdPath := filepath.Join(dir, "md")
-	branchPath := filepath.Join(dir, "branches")
 
 	mdStorage, err := storage.OpenFile(mdPath)
-	if err != nil {
-		return nil, err
-	}
-
-	branchStorage, err := storage.OpenFile(branchPath)
 	if err != nil {
 		return nil, err
 	}
@@ -62,17 +55,12 @@ func makeMDServerTlfStorage(
 	if err != nil {
 		return nil, err
 	}
-	branchDb, err := leveldb.Open(branchStorage, leveldbOptions)
-	if err != nil {
-		return nil, err
-	}
 	return &mdServerTlfStorage{
-		codec:    codec,
-		clock:    clock,
-		crypto:   crypto,
-		dir:      dir,
-		mdDb:     mdDb,
-		branchDb: branchDb,
+		codec:  codec,
+		clock:  clock,
+		crypto: crypto,
+		dir:    dir,
+		mdDb:   mdDb,
 	}, nil
 }
 
@@ -162,34 +150,6 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
 	return nil
 }
 
-func (s *mdServerTlfStorage) getBranchKey(ctx context.Context, kbpki KBPKI) ([]byte, error) {
-	key, err := kbpki.GetCurrentCryptPublicKey(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return key.kid.ToBytes(), nil
-}
-
-func (s *mdServerTlfStorage) getBranchID(ctx context.Context, kbpki KBPKI) (BranchID, error) {
-	branchKey, err := s.getBranchKey(ctx, kbpki)
-	if err != nil {
-		return NullBranchID, MDServerError{err}
-	}
-	buf, err := s.branchDb.Get(branchKey, nil)
-	if err == leveldb.ErrNotFound {
-		return NullBranchID, nil
-	}
-	if err != nil {
-		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-	}
-	var bid BranchID
-	err = s.codec.Decode(buf, &bid)
-	if err != nil {
-		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-	}
-	return bid, nil
-}
-
 func (s *mdServerTlfStorage) getMDKey(revision MetadataRevision,
 	bid BranchID, mStatus MergeStatus) ([]byte, error) {
 	// short-cut
@@ -243,39 +203,34 @@ func (s *mdServerTlfStorage) getHeadForTLFLocked(ctx context.Context,
 
 func (s *mdServerTlfStorage) checkGetParamsLocked(
 	ctx context.Context, kbpki KBPKI, bid BranchID, mStatus MergeStatus) (
-	newBid BranchID, err error) {
+	err error) {
 	if mStatus == Merged && bid != NullBranchID {
-		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
 	mergedMasterHead, err :=
 		s.getHeadForTLFLocked(ctx, NullBranchID, Merged)
 	if err != nil {
-		return NullBranchID, MDServerError{err}
+		return MDServerError{err}
 	}
 
 	// Check permissions
 	ok, err := isReader(ctx, s.codec, kbpki, mergedMasterHead)
 	if err != nil {
-		return NullBranchID, MDServerError{err}
+		return MDServerError{err}
 	}
 	if !ok {
-		return NullBranchID, MDServerErrorUnauthorized{}
+		return MDServerErrorUnauthorized{}
 	}
 
-	// Lookup the branch ID if not supplied
-	if mStatus == Unmerged && bid == NullBranchID {
-		return s.getBranchID(ctx, kbpki)
-	}
-
-	return bid, nil
+	return nil
 }
 
 func (s *mdServerTlfStorage) getRangeLocked(ctx context.Context,
 	kbpki KBPKI, bid BranchID, mStatus MergeStatus,
 	start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
-	bid, err := s.checkGetParamsLocked(ctx, kbpki, bid, mStatus)
+	err := s.checkGetParamsLocked(ctx, kbpki, bid, mStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +283,7 @@ func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
 		return nil, errMDServerTlfStorageShutdown
 	}
 
-	bid, err := s.checkGetParamsLocked(ctx, kbpki, bid, mStatus)
+	err := s.checkGetParamsLocked(ctx, kbpki, bid, mStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -357,12 +312,12 @@ func (s *mdServerTlfStorage) getRange(ctx context.Context,
 	return s.getRangeLocked(ctx, kbpki, bid, mStatus, start, stop)
 }
 
-func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMetadataSigned) error {
+func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMetadataSigned) (bool, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if s.isShutdown {
-		return errMDServerTlfStorageShutdown
+		return false, errMDServerTlfStorageShutdown
 	}
 
 	mStatus := rmds.MD.MergedStatus()
@@ -370,32 +325,32 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 
 	if mStatus == Merged {
 		if bid != NullBranchID {
-			return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+			return false, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 		}
 	} else {
 		if bid == NullBranchID {
-			return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+			return false, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 		}
 	}
 
 	mergedMasterHead, err := s.getHeadForTLFLocked(ctx, NullBranchID, Merged)
 	if err != nil {
-		return MDServerError{err}
+		return false, MDServerError{err}
 	}
 
 	// Check permissions
 	ok, err := isWriterOrValidRekey(
 		ctx, s.codec, kbpki, mergedMasterHead, rmds)
 	if err != nil {
-		return MDServerError{err}
+		return false, MDServerError{err}
 	}
 	if !ok {
-		return MDServerErrorUnauthorized{}
+		return false, MDServerErrorUnauthorized{}
 	}
 
 	head, err := s.getHeadForTLFLocked(ctx, bid, mStatus)
 	if err != nil {
-		return MDServerError{err}
+		return false, MDServerError{err}
 	}
 
 	var recordBranchID bool
@@ -406,10 +361,10 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 		rmdses, err := s.getRangeLocked(
 			ctx, kbpki, NullBranchID, Merged, prevRev, prevRev)
 		if err != nil {
-			return MDServerError{err}
+			return false, MDServerError{err}
 		}
 		if len(rmdses) != 1 {
-			return MDServerError{
+			return false, MDServerError{
 				Err: fmt.Errorf("Expected 1 MD block got %d", len(rmdses)),
 			}
 		}
@@ -422,34 +377,18 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 		err := head.MD.CheckValidSuccessorForServer(
 			s.crypto, &rmds.MD)
 		if err != nil {
-			return err
-		}
-	}
-
-	// Record branch ID
-	if recordBranchID {
-		buf, err := s.codec.Encode(bid)
-		if err != nil {
-			return MDServerError{err}
-		}
-		branchKey, err := s.getBranchKey(ctx, kbpki)
-		if err != nil {
-			return MDServerError{err}
-		}
-		err = s.branchDb.Put(branchKey, buf, nil)
-		if err != nil {
-			return MDServerError{err}
+			return false, err
 		}
 	}
 
 	err = s.putMDLocked(rmds)
 	if err != nil {
-		return MDServerError{err}
+		return false, MDServerError{err}
 	}
 
 	id, err := rmds.MD.MetadataID(s.crypto)
 	if err != nil {
-		return MDServerError{err}
+		return false, MDServerError{err}
 	}
 
 	// Wrap writes in a batch
@@ -458,7 +397,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 	// Add an entry with the revision key.
 	revKey, err := s.getMDKey(rmds.MD.Revision, bid, mStatus)
 	if err != nil {
-		return MDServerError{err}
+		return false, MDServerError{err}
 	}
 	batch.Put(revKey, id.Bytes())
 
@@ -466,54 +405,17 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 	headKey, err := s.getMDKey(MetadataRevisionUninitialized,
 		bid, mStatus)
 	if err != nil {
-		return MDServerError{err}
+		return false, MDServerError{err}
 	}
 	batch.Put(headKey, id.Bytes())
 
 	// Write the batch.
 	err = s.mdDb.Write(batch, nil)
 	if err != nil {
-		return MDServerError{err}
+		return false, MDServerError{err}
 	}
 
-	return nil
-}
-
-// PruneBranch implements the MDServer interface for MDServerDisk.
-func (s *mdServerTlfStorage) pruneBranch(
-	ctx context.Context, kbpki KBPKI, bid BranchID) error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if s.isShutdown {
-		return errMDServerTlfStorageShutdown
-	}
-
-	if bid == NullBranchID {
-		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-	}
-
-	currBID, err := s.getBranchID(ctx, kbpki)
-	if err != nil {
-		return err
-	}
-	if currBID == NullBranchID || bid != currBID {
-		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-	}
-
-	// Don't actually delete unmerged history. This is intentional
-	// to be consistent with the mdserver behavior-- it garbage
-	// collects discarded branches in the background.
-	branchKey, err := s.getBranchKey(ctx, kbpki)
-	if err != nil {
-		return MDServerError{err}
-	}
-	err = s.branchDb.Delete(branchKey, nil)
-	if err != nil {
-		return MDServerError{err}
-	}
-
-	return nil
+	return recordBranchID, nil
 }
 
 func (s *mdServerTlfStorage) shutdown() {
@@ -528,9 +430,5 @@ func (s *mdServerTlfStorage) shutdown() {
 	if s.mdDb != nil {
 		s.mdDb.Close()
 		s.mdDb = nil
-	}
-	if s.branchDb != nil {
-		s.branchDb.Close()
-		s.branchDb = nil
 	}
 }

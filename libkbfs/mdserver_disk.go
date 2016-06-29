@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"bytes"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -27,6 +28,7 @@ type mdServerDiskShared struct {
 	// handleDb, tlfStorage, and truncateLockManager are nil.
 	lock                sync.RWMutex
 	handleDb            *leveldb.DB // folder handle -> folderId
+	branchDb            *leveldb.DB // folderId+deviceKID             -> branchId
 	tlfStorage          map[TlfID]*mdServerTlfStorage
 	truncateLockManager *mdServerLocalTruncateLockManager
 
@@ -51,8 +53,14 @@ var _ mdServerLocal = (*MDServerDisk)(nil)
 func newMDServerDisk(config Config, dirPath string,
 	shutdownFunc func(logger.Logger)) (*MDServerDisk, error) {
 	handlePath := filepath.Join(dirPath, "handles")
+	branchPath := filepath.Join(dirPath, "branches")
 
 	handleStorage, err := storage.OpenFile(handlePath)
+	if err != nil {
+		return nil, err
+	}
+
+	branchStorage, err := storage.OpenFile(branchPath)
 	if err != nil {
 		return nil, err
 	}
@@ -61,11 +69,15 @@ func newMDServerDisk(config Config, dirPath string,
 	if err != nil {
 		return nil, err
 	}
+	branchDb, err := leveldb.Open(branchStorage, leveldbOptions)
+	if err != nil {
+		return nil, err
+	}
 	log := config.MakeLogger("")
 	truncateLockManager := newMDServerLocalTruncatedLockManager()
 	mdserv := &MDServerDisk{config.Codec(), config.Clock(),
 		config.Crypto(), config.KBPKI(), log, &mdServerDiskShared{
-			dirPath, sync.RWMutex{}, handleDb,
+			dirPath, sync.RWMutex{}, handleDb, branchDb,
 			make(map[TlfID]*mdServerTlfStorage),
 			&truncateLockManager,
 			newMDServerLocalUpdateManager(), shutdownFunc}}
@@ -202,9 +214,60 @@ func (md *MDServerDisk) GetForHandle(ctx context.Context, handle BareTlfHandle,
 	return id, rmds, nil
 }
 
+func (md *MDServerDisk) getBranchKey(ctx context.Context, id TlfID) ([]byte, error) {
+	buf := &bytes.Buffer{}
+	// add folder id
+	_, err := buf.Write(id.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	// add device KID
+	key, err := md.kbpki.GetCurrentCryptPublicKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_, err = buf.Write(key.kid.ToBytes())
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (md *MDServerDisk) getBranchID(ctx context.Context, id TlfID) (BranchID, error) {
+	branchKey, err := md.getBranchKey(ctx, id)
+	if err != nil {
+		return NullBranchID, MDServerError{err}
+	}
+	buf, err := md.branchDb.Get(branchKey, nil)
+	if err == leveldb.ErrNotFound {
+		return NullBranchID, nil
+	}
+	if err != nil {
+		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+	}
+	var bid BranchID
+	err = md.codec.Decode(buf, &bid)
+	if err != nil {
+		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+	}
+	return bid, nil
+}
+
 // GetForTLF implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) GetForTLF(ctx context.Context, id TlfID,
 	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+	// Lookup the branch ID if not supplied
+	if mStatus == Unmerged && bid == NullBranchID {
+		var err error
+		bid, err = md.getBranchID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if bid == NullBranchID {
+			return nil, nil
+		}
+	}
+
 	tlfStorage, err := md.getStorage(id)
 	if err != nil {
 		return nil, err
@@ -218,6 +281,18 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id TlfID,
 	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	md.log.CDebugf(ctx, "GetRange %d %d (%s)", start, stop, mStatus)
+
+	// Lookup the branch ID if not supplied
+	if mStatus == Unmerged && bid == NullBranchID {
+		var err error
+		bid, err = md.getBranchID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if bid == NullBranchID {
+			return nil, nil
+		}
+	}
 
 	tlfStorage, err := md.getStorage(id)
 	if err != nil {
@@ -234,9 +309,25 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 		return err
 	}
 
-	err = tlfStorage.put(ctx, md.kbpki, rmds)
+	recordBranchID, err := tlfStorage.put(ctx, md.kbpki, rmds)
 	if err != nil {
 		return err
+	}
+
+	// Record branch ID
+	if recordBranchID {
+		buf, err := md.codec.Encode(rmds.MD.BID)
+		if err != nil {
+			return MDServerError{err}
+		}
+		branchKey, err := md.getBranchKey(ctx, rmds.MD.ID)
+		if err != nil {
+			return MDServerError{err}
+		}
+		err = md.branchDb.Put(branchKey, buf, nil)
+		if err != nil {
+			return MDServerError{err}
+		}
 	}
 
 	mStatus := rmds.MD.MergedStatus()
@@ -252,12 +343,31 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 
 // PruneBranch implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) PruneBranch(ctx context.Context, id TlfID, bid BranchID) error {
-	tlfStorage, err := md.getStorage(id)
+	if bid == NullBranchID {
+		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+	}
+
+	currBID, err := md.getBranchID(ctx, id)
 	if err != nil {
 		return err
 	}
+	if currBID == NullBranchID || bid != currBID {
+		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+	}
 
-	return tlfStorage.pruneBranch(ctx, md.kbpki, bid)
+	// Don't actually delete unmerged history. This is intentional to be consistent
+	// with the mdserver behavior-- it garbage collects discarded branches in the
+	// background.
+	branchKey, err := md.getBranchKey(ctx, id)
+	if err != nil {
+		return MDServerError{err}
+	}
+	err = md.branchDb.Delete(branchKey, nil)
+	if err != nil {
+		return MDServerError{err}
+	}
+
+	return nil
 }
 
 func (md *MDServerDisk) getCurrentMergedHeadRevision(
@@ -332,6 +442,9 @@ func (md *MDServerDisk) Shutdown() {
 
 	md.handleDb.Close()
 	md.handleDb = nil
+
+	md.branchDb.Close()
+	md.branchDb = nil
 
 	tlfStorage := md.tlfStorage
 	md.tlfStorage = nil
