@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"sync"
 )
 
@@ -62,11 +61,12 @@ type bserverTlfJournal struct {
 	dir    string
 
 	// Protects any IO operations in dir or any of its children,
-	// as well as refs and isShutdown.
+	// as well as j, refs, and isShutdown.
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
 	lock       sync.RWMutex
+	j          tlfJournal
 	refs       map[BlockID]blockRefMap
 	isShutdown bool
 }
@@ -75,10 +75,12 @@ type bserverTlfJournal struct {
 // directory. Any existing journal entries are read.
 func makeBserverTlfJournal(codec Codec, crypto cryptoPure, dir string) (
 	*bserverTlfJournal, error) {
+	j := makeTlfJournal(codec, dir, reflect.TypeOf(bserverJournalEntry{}))
 	journal := &bserverTlfJournal{
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
+		j:      j,
 	}
 
 	// Locking here is not strictly necessary, but do it anyway
@@ -94,43 +96,7 @@ func makeBserverTlfJournal(codec Codec, crypto cryptoPure, dir string) (
 	return journal, nil
 }
 
-// journalOrdinal is the ordinal used for naming journal entries.
-//
-// TODO: Incorporate metadata revision numbers.
-type journalOrdinal uint64
-
-func makeJournalOrdinal(s string) (journalOrdinal, error) {
-	if len(s) != 16 {
-		return 0, fmt.Errorf("invalid journal ordinal %q", s)
-	}
-	u, err := strconv.ParseUint(s, 16, 64)
-	if err != nil {
-		return 0, err
-	}
-	return journalOrdinal(u), nil
-}
-
-func (o journalOrdinal) String() string {
-	return fmt.Sprintf("%016x", uint64(o))
-}
-
-// The functions below are for building various paths for the journal.
-
-func (j *bserverTlfJournal) journalPath() string {
-	return filepath.Join(j.dir, "journal")
-}
-
-func (j *bserverTlfJournal) earliestPath() string {
-	return filepath.Join(j.journalPath(), "EARLIEST")
-}
-
-func (j *bserverTlfJournal) latestPath() string {
-	return filepath.Join(j.journalPath(), "LATEST")
-}
-
-func (j *bserverTlfJournal) journalEntryPath(o journalOrdinal) string {
-	return filepath.Join(j.journalPath(), o.String())
-}
+// The functions below are for building various non-journal paths.
 
 func (j *bserverTlfJournal) blocksPath() string {
 	return filepath.Join(j.dir, "blocks")
@@ -147,40 +113,6 @@ func (j *bserverTlfJournal) blockDataPath(id BlockID) string {
 
 func (j *bserverTlfJournal) keyServerHalfPath(id BlockID) string {
 	return filepath.Join(j.blockPath(id), "key_server_half")
-}
-
-// The functions below are for getting and setting the earliest and
-// latest ordinals.
-
-func (j *bserverTlfJournal) readOrdinalLocked(path string) (
-	journalOrdinal, error) {
-	buf, err := ioutil.ReadFile(path)
-	if err != nil {
-		return 0, err
-	}
-	return makeJournalOrdinal(string(buf))
-}
-
-func (j *bserverTlfJournal) writeOrdinalLocked(
-	path string, o journalOrdinal) error {
-	return ioutil.WriteFile(path, []byte(o.String()), 0600)
-}
-
-func (j *bserverTlfJournal) readEarliestOrdinalLocked() (
-	journalOrdinal, error) {
-	return j.readOrdinalLocked(j.earliestPath())
-}
-
-func (j *bserverTlfJournal) writeEarliestOrdinalLocked(o journalOrdinal) error {
-	return j.writeOrdinalLocked(j.earliestPath(), o)
-}
-
-func (j *bserverTlfJournal) readLatestOrdinalLocked() (journalOrdinal, error) {
-	return j.readOrdinalLocked(j.latestPath())
-}
-
-func (j *bserverTlfJournal) writeLatestOrdinalLocked(o journalOrdinal) error {
-	return j.writeOrdinalLocked(j.latestPath(), o)
 }
 
 type bserverOpName string
@@ -207,19 +139,12 @@ type bserverJournalEntry struct {
 
 func (j *bserverTlfJournal) readJournalEntryLocked(o journalOrdinal) (
 	bserverJournalEntry, error) {
-	p := j.journalEntryPath(o)
-	buf, err := ioutil.ReadFile(p)
+	entry, err := j.j.readJournalEntry(o)
 	if err != nil {
 		return bserverJournalEntry{}, err
 	}
 
-	var e bserverJournalEntry
-	err = j.codec.Decode(buf, &e)
-	if err != nil {
-		return bserverJournalEntry{}, err
-	}
-
-	return e, nil
+	return entry.(bserverJournalEntry), nil
 }
 
 // readJournalLocked reads the journal and returns a map of all the
@@ -228,13 +153,13 @@ func (j *bserverTlfJournal) readJournalLocked() (
 	map[BlockID]blockRefMap, error) {
 	refs := make(map[BlockID]blockRefMap)
 
-	first, err := j.readEarliestOrdinalLocked()
+	first, err := j.j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
 		return refs, nil
 	} else if err != nil {
 		return nil, err
 	}
-	last, err := j.readLatestOrdinalLocked()
+	last, err := j.j.readLatestOrdinal()
 	if err != nil {
 		return nil, err
 	}
@@ -279,20 +204,8 @@ func (j *bserverTlfJournal) readJournalLocked() (
 }
 
 func (j *bserverTlfJournal) writeJournalEntryLocked(
-	o journalOrdinal, e bserverJournalEntry) error {
-	err := os.MkdirAll(j.journalPath(), 0700)
-	if err != nil {
-		return err
-	}
-
-	p := j.journalEntryPath(o)
-
-	buf, err := j.codec.Encode(e)
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(p, buf, 0600)
+	o journalOrdinal, entry bserverJournalEntry) error {
+	return j.j.writeJournalEntry(o, entry)
 }
 
 func (j *bserverTlfJournal) appendJournalEntryLocked(
@@ -300,7 +213,7 @@ func (j *bserverTlfJournal) appendJournalEntryLocked(
 	// TODO: Consider caching the latest ordinal in memory instead
 	// of reading it from disk every time.
 	var next journalOrdinal
-	o, err := j.readLatestOrdinalLocked()
+	o, err := j.j.readLatestOrdinal()
 	if os.IsNotExist(err) {
 		next = 0
 	} else if err != nil {
@@ -323,29 +236,19 @@ func (j *bserverTlfJournal) appendJournalEntryLocked(
 		return err
 	}
 
-	_, err = j.readEarliestOrdinalLocked()
+	_, err = j.j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
-		j.writeEarliestOrdinalLocked(next)
+		j.j.writeEarliestOrdinal(next)
 	} else if err != nil {
 		return err
 	}
-	return j.writeLatestOrdinalLocked(next)
+	return j.j.writeLatestOrdinal(next)
 }
 
 func (j *bserverTlfJournal) journalLength() (uint64, error) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
-	first, err := j.readEarliestOrdinalLocked()
-	if os.IsNotExist(err) {
-		return 0, nil
-	} else if err != nil {
-		return 0, err
-	}
-	last, err := j.readLatestOrdinalLocked()
-	if err != nil {
-		return 0, err
-	}
-	return uint64(last - first + 1), nil
+	return j.j.journalLength()
 }
 
 func (j *bserverTlfJournal) getRefEntryLocked(
