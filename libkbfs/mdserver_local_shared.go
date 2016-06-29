@@ -61,6 +61,51 @@ func isWriterOrValidRekey(ctx context.Context, codec Codec, kbpki KBPKI,
 		ctx, codec, kbpki, mergedMasterHead, true, newMd)
 }
 
+type mdServerLocalTruncateLockManager struct {
+	// TLF ID -> device KID.
+	locksDb map[TlfID]keybase1.KID
+}
+
+func newMDServerLocalTruncatedLockManager() mdServerLocalTruncateLockManager {
+	return mdServerLocalTruncateLockManager{
+		locksDb: make(map[TlfID]keybase1.KID),
+	}
+}
+
+func (m mdServerLocalTruncateLockManager) truncateLock(
+	deviceKID keybase1.KID, id TlfID) (bool, error) {
+	lockKID, ok := m.locksDb[id]
+	if !ok {
+		m.locksDb[id] = deviceKID
+		return true, nil
+	}
+
+	if lockKID == deviceKID {
+		// idempotent
+		return true, nil
+	}
+
+	// Locked by someone else.
+	return false, MDServerErrorLocked{}
+}
+
+func (m mdServerLocalTruncateLockManager) truncateUnlock(
+	deviceKID keybase1.KID, id TlfID) (bool, error) {
+	lockKID, ok := m.locksDb[id]
+	if !ok {
+		// Already unlocked.
+		return true, nil
+	}
+
+	if lockKID == deviceKID {
+		delete(m.locksDb, id)
+		return true, nil
+	}
+
+	// Locked by someone else.
+	return false, MDServerErrorLocked{}
+}
+
 type mdServerLocalUpdateManager struct {
 	// Protects observers and sessionHeads.
 	lock sync.Mutex

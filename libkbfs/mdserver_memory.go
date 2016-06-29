@@ -43,7 +43,7 @@ type mdBlockMemList struct {
 
 type mdServerMemShared struct {
 	// Protects all *db variables. After Shutdown() is called, all
-	// *db variables are nil.
+	// *db variables and truncateLockManager are nil.
 	lock sync.RWMutex
 	// Bare TLF handle -> TLF ID
 	handleDb map[mdHandleKey]TlfID
@@ -53,9 +53,9 @@ type mdServerMemShared struct {
 	mdDb map[mdBlockKey]mdBlockMemList
 	// (TLF ID, device KID) -> branch ID
 	branchDb map[mdBranchKey]BranchID
-	locksDb  map[TlfID]keybase1.KID // TLF ID -> device KID
 
-	updateManager *mdServerLocalUpdateManager
+	truncateLockManager *mdServerLocalTruncateLockManager
+	updateManager       *mdServerLocalUpdateManager
 }
 
 // MDServerMemory just stores metadata objects in memory.
@@ -75,11 +75,11 @@ func NewMDServerMemory(config Config) (*MDServerMemory, error) {
 	latestHandleDb := make(map[TlfID]BareTlfHandle)
 	mdDb := make(map[mdBlockKey]mdBlockMemList)
 	branchDb := make(map[mdBranchKey]BranchID)
-	locksDb := make(map[TlfID]keybase1.KID)
 	log := config.MakeLogger("")
+	truncateLockManager := newMDServerLocalTruncatedLockManager()
 	mdserv := &MDServerMemory{config, log, &mdServerMemShared{
-		sync.RWMutex{}, handleDb,
-		latestHandleDb, mdDb, branchDb, locksDb,
+		sync.RWMutex{}, handleDb, latestHandleDb, mdDb, branchDb,
+		&truncateLockManager,
 		newMDServerLocalUpdateManager()}}
 	return mdserv, nil
 }
@@ -508,7 +508,7 @@ func (md *MDServerMemory) TruncateLock(ctx context.Context, id TlfID) (
 	bool, error) {
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	if md.locksDb == nil {
+	if md.truncateLockManager == nil {
 		return false, errMDServerMemoryShutdown
 	}
 
@@ -517,19 +517,7 @@ func (md *MDServerMemory) TruncateLock(ctx context.Context, id TlfID) (
 		return false, err
 	}
 
-	lockKID, ok := md.locksDb[id]
-	if !ok {
-		md.locksDb[id] = myKID
-		return true, nil
-	}
-
-	if lockKID == myKID {
-		// idempotent
-		return true, nil
-	}
-
-	// Locked by someone else.
-	return false, MDServerErrorLocked{}
+	return md.truncateLockManager.truncateLock(myKID, id)
 }
 
 // TruncateUnlock implements the MDServer interface for MDServerMemory.
@@ -537,7 +525,7 @@ func (md *MDServerMemory) TruncateUnlock(ctx context.Context, id TlfID) (
 	bool, error) {
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	if md.locksDb == nil {
+	if md.truncateLockManager == nil {
 		return false, errMDServerMemoryShutdown
 	}
 
@@ -546,19 +534,7 @@ func (md *MDServerMemory) TruncateUnlock(ctx context.Context, id TlfID) (
 		return false, err
 	}
 
-	lockKID, ok := md.locksDb[id]
-	if !ok {
-		// Already unlocked.
-		return true, nil
-	}
-
-	if lockKID == myKID {
-		delete(md.locksDb, id)
-		return true, nil
-	}
-
-	// Locked by someone else.
-	return false, MDServerErrorLocked{}
+	return md.truncateLockManager.truncateUnlock(myKID, id)
 }
 
 // Shutdown implements the MDServer interface for MDServerMemory.
@@ -568,7 +544,7 @@ func (md *MDServerMemory) Shutdown() {
 	md.handleDb = nil
 	md.latestHandleDb = nil
 	md.branchDb = nil
-	md.locksDb = nil
+	md.truncateLockManager = nil
 }
 
 // IsConnected implements the MDServer interface for MDServerMemory.
