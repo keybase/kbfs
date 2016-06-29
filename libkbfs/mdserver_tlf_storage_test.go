@@ -38,11 +38,13 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// (1) Validate merged branch is empty.
+
 	head, err := s.getForTLF(uid, deviceKID, NullBranchID)
 	require.NoError(t, err)
 	require.Nil(t, head)
 
-	// Push some new metadata blocks.
+	// (2) Push some new metadata blocks.
 
 	prevRoot := MdID{}
 	middleRoot := MdID{}
@@ -68,5 +70,72 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		}
 	}
 
-	_ = middleRoot
+	// (3) Trigger a conflict.
+
+	rmds, err := NewRootMetadataSignedForTest(id, h)
+	require.NoError(t, err)
+	rmds.MD.Revision = MetadataRevision(10)
+	rmds.MD.SerializedPrivateMetadata = make([]byte, 1)
+	rmds.MD.SerializedPrivateMetadata[0] = 0x1
+	FakeInitialRekey(&rmds.MD, h)
+	rmds.MD.PrevRoot = prevRoot
+	_, err = s.put(uid, deviceKID, rmds)
+	require.IsType(t, MDServerErrorConflictRevision{}, err)
+
+	// (4) Push some new unmerged metadata blocks linking to the
+	// middle merged block.
+
+	prevRoot = middleRoot
+	bid := FakeBranchID(1)
+	for i := MetadataRevision(6); i < 41; i++ {
+		rmds, err := NewRootMetadataSignedForTest(id, h)
+		require.NoError(t, err)
+		rmds.MD.Revision = MetadataRevision(i)
+		rmds.MD.SerializedPrivateMetadata = make([]byte, 1)
+		rmds.MD.SerializedPrivateMetadata[0] = 0x1
+		rmds.MD.PrevRoot = prevRoot
+		FakeInitialRekey(&rmds.MD, h)
+		rmds.MD.clearCachedMetadataIDForTest()
+		rmds.MD.WFlags |= MetadataFlagUnmerged
+		rmds.MD.BID = bid
+		recordBranchID, err := s.put(uid, deviceKID, rmds)
+		require.NoError(t, err)
+		require.Equal(t, i == MetadataRevision(6), recordBranchID)
+		prevRoot, err = rmds.MD.MetadataID(crypto)
+		require.NoError(t, err)
+	}
+
+	// (5) Check for proper unmerged head.
+
+	head, err = s.getForTLF(uid, deviceKID, bid)
+	require.NoError(t, err)
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(40), head.MD.Revision)
+
+	// (6) Try to get unmerged range.
+
+	rmdses, err := s.getRange(uid, deviceKID, bid, 1, 100)
+	require.NoError(t, err)
+	require.Equal(t, 35, len(rmdses))
+	for i := MetadataRevision(6); i < 16; i++ {
+		require.Equal(t, i, rmdses[i-6].MD.Revision)
+	}
+
+	// Nothing corresponds to (7) - (9) from MDServerTestBasics.
+
+	// (10) Check for proper merged head.
+
+	head, err = s.getForTLF(uid, deviceKID, NullBranchID)
+	require.NoError(t, err)
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(10), head.MD.Revision)
+
+	// (11) Try to get merged range.
+
+	rmdses, err = s.getRange(uid, deviceKID, NullBranchID, 1, 100)
+	require.NoError(t, err)
+	require.Equal(t, 10, len(rmdses))
+	for i := MetadataRevision(1); i <= 10; i++ {
+		require.Equal(t, i, rmdses[i-1].MD.Revision)
+	}
 }
