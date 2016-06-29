@@ -75,7 +75,9 @@ type bserverTlfJournal struct {
 // directory. Any existing journal entries are read.
 func makeBserverTlfJournal(codec Codec, crypto cryptoPure, dir string) (
 	*bserverTlfJournal, error) {
-	j := makeTlfJournal(codec, dir, reflect.TypeOf(bserverJournalEntry{}))
+	journalPath := filepath.Join(dir, "blocks_journal")
+	j := makeTlfJournal(
+		codec, journalPath, reflect.TypeOf(bserverJournalEntry{}))
 	journal := &bserverTlfJournal{
 		codec:  codec,
 		crypto: crypto,
@@ -210,39 +212,11 @@ func (j *bserverTlfJournal) writeJournalEntryLocked(
 
 func (j *bserverTlfJournal) appendJournalEntryLocked(
 	op bserverOpName, id BlockID, contexts []BlockContext) error {
-	// TODO: Consider caching the latest ordinal in memory instead
-	// of reading it from disk every time.
-	var next journalOrdinal
-	o, err := j.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
-		next = 0
-	} else if err != nil {
-		return err
-	} else {
-		next = o + 1
-		if next == 0 {
-			// Rollover is almost certainly a bug.
-			return fmt.Errorf("Ordinal rollover for (%s, %s, %v)",
-				op, id, contexts)
-		}
-	}
-
-	err = j.writeJournalEntryLocked(next, bserverJournalEntry{
+	return j.j.appendJournalEntry(bserverJournalEntry{
 		Op:       op,
 		ID:       id,
 		Contexts: contexts,
 	})
-	if err != nil {
-		return err
-	}
-
-	_, err = j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
-		j.j.writeEarliestOrdinal(next)
-	} else if err != nil {
-		return err
-	}
-	return j.j.writeLatestOrdinal(next)
 }
 
 func (j *bserverTlfJournal) journalLength() (uint64, error) {

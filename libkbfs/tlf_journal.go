@@ -51,20 +51,16 @@ func (o journalOrdinal) String() string {
 
 // The functions below are for building various paths for the journal.
 
-func (j tlfJournal) journalPath() string {
-	return filepath.Join(j.dir, "journal")
-}
-
 func (j tlfJournal) earliestPath() string {
-	return filepath.Join(j.journalPath(), "EARLIEST")
+	return filepath.Join(j.dir, "EARLIEST")
 }
 
 func (j tlfJournal) latestPath() string {
-	return filepath.Join(j.journalPath(), "LATEST")
+	return filepath.Join(j.dir, "LATEST")
 }
 
 func (j tlfJournal) journalEntryPath(o journalOrdinal) string {
-	return filepath.Join(j.journalPath(), o.String())
+	return filepath.Join(j.dir, o.String())
 }
 
 // The functions below are for getting and setting the earliest and
@@ -128,7 +124,7 @@ func (j tlfJournal) writeJournalEntry(
 			j.entryType, entryType))
 	}
 
-	err := os.MkdirAll(j.journalPath(), 0700)
+	err := os.MkdirAll(j.dir, 0700)
 	if err != nil {
 		return err
 	}
@@ -141,6 +137,37 @@ func (j tlfJournal) writeJournalEntry(
 	}
 
 	return ioutil.WriteFile(p, buf, 0600)
+}
+
+func (j tlfJournal) appendJournalEntry(entry interface{}) error {
+	// TODO: Consider caching the latest ordinal in memory instead
+	// of reading it from disk every time.
+	var next journalOrdinal
+	o, err := j.readLatestOrdinal()
+	if os.IsNotExist(err) {
+		next = 0
+	} else if err != nil {
+		return err
+	} else {
+		next = o + 1
+		if next == 0 {
+			// Rollover is almost certainly a bug.
+			return fmt.Errorf("Ordinal rollover for %+v", entry)
+		}
+	}
+
+	err = j.writeJournalEntry(next, entry)
+	if err != nil {
+		return err
+	}
+
+	_, err = j.readEarliestOrdinal()
+	if os.IsNotExist(err) {
+		j.writeEarliestOrdinal(next)
+	} else if err != nil {
+		return err
+	}
+	return j.writeLatestOrdinal(next)
 }
 
 func (j tlfJournal) journalLength() (uint64, error) {
