@@ -147,9 +147,9 @@ func (s *mdServerTlfStorage) getMDKey(revision MetadataRevision,
 	}
 	buf := &bytes.Buffer{}
 
-	// this order is signifcant for range fetches.
-	// we want increments in revision number to only affect
-	// the least significant bits of the key.
+	// this order is significant for range fetches.  we want
+	// increments in revision number to only affect the least
+	// significant bits of the key.
 	if bid != NullBranchID {
 		// add branch ID
 		_, err := buf.Write(bid.Bytes())
