@@ -20,18 +20,18 @@ import (
 //
 // The directory layout looks like:
 //
-// dir/blocks_journal/EARLIEST
-// dir/blocks_journal/LATEST
-// dir/blocks_journal/0...000
-// dir/blocks_journal/0...001
-// dir/blocks_journal/0...fff
+// dir/block_journal/EARLIEST
+// dir/block_journal/LATEST
+// dir/block_journal/0...000
+// dir/block_journal/0...001
+// dir/block_journal/0...fff
 // dir/blocks/0100/0...01/data
 // dir/blocks/0100/0...01/key_server_half
 // ...
 // dir/blocks/01ff/f...ff/data
 // dir/blocks/01ff/f...ff/key_server_half
 //
-// Each entry in the journal in dir/blocks_journal contains the
+// Each entry in the journal in dir/block_journal contains the
 // mutating operation and arguments for a single operation, except for
 // block data. (See tlfJournal comments for more details about the
 // journal.)
@@ -66,11 +66,31 @@ type bserverTlfJournal struct {
 	isShutdown bool
 }
 
+type bserverOpName string
+
+const (
+	blockPutOp    bserverOpName = "blockPut"
+	addRefOp      bserverOpName = "addReference"
+	removeRefsOp  bserverOpName = "removeReferences"
+	archiveRefsOp bserverOpName = "archiveReferences"
+)
+
+// A bserverJournalEntry is just the name of the operation and the
+// associated block ID and contexts. Fields are exported only for
+// serialization.
+type bserverJournalEntry struct {
+	// Must be one of the four ops above.
+	Op bserverOpName
+	ID BlockID
+	// Must have exactly one entry for blockPutOp and addRefOp.
+	Contexts []BlockContext
+}
+
 // makeBserverTlfJournal returns a new bserverTlfJournal for the given
 // directory. Any existing journal entries are read.
 func makeBserverTlfJournal(codec Codec, crypto cryptoPure, dir string) (
 	*bserverTlfJournal, error) {
-	journalPath := filepath.Join(dir, "blocks_journal")
+	journalPath := filepath.Join(dir, "block_journal")
 	j := makeTlfJournal(
 		codec, journalPath, reflect.TypeOf(bserverJournalEntry{}))
 	journal := &bserverTlfJournal{
@@ -110,26 +130,6 @@ func (j *bserverTlfJournal) blockDataPath(id BlockID) string {
 
 func (j *bserverTlfJournal) keyServerHalfPath(id BlockID) string {
 	return filepath.Join(j.blockPath(id), "key_server_half")
-}
-
-type bserverOpName string
-
-const (
-	blockPutOp    bserverOpName = "blockPut"
-	addRefOp      bserverOpName = "addReference"
-	removeRefsOp  bserverOpName = "removeReferences"
-	archiveRefsOp bserverOpName = "archiveReferences"
-)
-
-// A bserverJournalEntry is just the name of the operation and the
-// associated block ID and contexts. Fields are exported only for
-// serialization.
-type bserverJournalEntry struct {
-	// Must be one of the four ops above.
-	Op bserverOpName
-	ID BlockID
-	// Must have exactly one entry for blockPutOp and addRefOp.
-	Contexts []BlockContext
 }
 
 // The functions below are for reading and writing journal entries.

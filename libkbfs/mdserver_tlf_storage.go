@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 
 	keybase1 "github.com/keybase/client/go/protocol"
@@ -25,11 +26,13 @@ type mdServerTlfStorage struct {
 	dir    string
 
 	// Protects any IO operations in dir or any of its children,
-	// as well all the DBs and isShutdown.
+	// as well all the DBs, j, and isShutdown.
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
 	lock sync.RWMutex
+
+	j tlfJournal
 
 	// TODO: Replace idDb below with a journal.
 	idDb *leveldb.DB // [branchId]+[revision] -> MdID
@@ -37,8 +40,28 @@ type mdServerTlfStorage struct {
 	isShutdown bool
 }
 
+type mdServerOpName string
+
+const (
+	mdPutOp       mdServerOpName = "mdPut"
+	pruneBranchOp mdServerOpName = "pruneBranch"
+)
+
+// An mdServerJournalEntry is just the name of the operation. Fields
+// are exported only for serialization.
+//
+// TODO: Fill in.
+type mdServerJournalEntry struct {
+	// Must be one of the four ops above.
+	Op mdServerOpName
+}
+
 func makeMDServerTlfStorage(codec Codec, crypto cryptoPure, dir string) (
 	*mdServerTlfStorage, error) {
+	journalPath := filepath.Join(dir, "md_journal")
+	j := makeTlfJournal(
+		codec, journalPath, reflect.TypeOf(mdServerJournalEntry{}))
+
 	idDb, err := leveldb.OpenFile(
 		filepath.Join(dir, "md_id"), leveldbOptions)
 	if err != nil {
@@ -48,9 +71,12 @@ func makeMDServerTlfStorage(codec Codec, crypto cryptoPure, dir string) (
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
+		j:      j,
 		idDb:   idDb,
 	}, nil
 }
+
+// The functions below are for building various non-journal paths.
 
 func (s *mdServerTlfStorage) mdsPath() string {
 	return filepath.Join(s.dir, "mds")
@@ -59,6 +85,35 @@ func (s *mdServerTlfStorage) mdsPath() string {
 func (s *mdServerTlfStorage) mdPath(id MdID) string {
 	idStr := id.String()
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
+}
+
+// The functions below are for reading and writing journal entries.
+
+func (s *mdServerTlfStorage) readJournalEntryLocked(o journalOrdinal) (
+	mdServerJournalEntry, error) {
+	entry, err := s.j.readJournalEntry(o)
+	if err != nil {
+		return mdServerJournalEntry{}, err
+	}
+
+	return entry.(mdServerJournalEntry), nil
+}
+
+func (s *mdServerTlfStorage) writeJournalEntryLocked(
+	o journalOrdinal, entry mdServerJournalEntry) error {
+	return s.j.writeJournalEntry(o, entry)
+}
+
+func (s *mdServerTlfStorage) appendJournalEntryLocked(op mdServerOpName) error {
+	return s.j.appendJournalEntry(mdServerJournalEntry{
+		Op: op,
+	})
+}
+
+func (s *mdServerTlfStorage) journalLength() (uint64, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return s.j.journalLength()
 }
 
 // getDataLocked verifies the MD data (but not the signature) for the
@@ -130,12 +185,7 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(path, buf, 0600)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ioutil.WriteFile(path, buf, 0600)
 }
 
 func (s *mdServerTlfStorage) getMDKey(revision MetadataRevision,
