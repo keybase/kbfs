@@ -13,6 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func getMDJournalLength(t *testing.T, s *mdServerTlfStorage) int {
+	len, err := s.journalLength()
+	require.NoError(t, err)
+	return int(len)
+}
+
 // TestMDServerTlfStorageBasic copies TestMDServerBasics, but for a
 // single mdServerTlfStorage.
 func TestMDServerTlfStorageBasic(t *testing.T) {
@@ -30,6 +36,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	require.NoError(t, err)
 	defer s.shutdown()
 
+	require.Equal(t, 0, getMDJournalLength(t, s))
+
 	uid := keybase1.MakeTestUID(1)
 	deviceKID := keybase1.KID("fake kid")
 	id := FakeTlfID(1, false)
@@ -41,6 +49,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	head, err := s.getForTLF(uid, deviceKID, NullBranchID)
 	require.NoError(t, err)
 	require.Nil(t, head)
+
+	require.Equal(t, 0, getMDJournalLength(t, s))
 
 	// (2) Push some new metadata blocks.
 
@@ -68,6 +78,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		}
 	}
 
+	require.Equal(t, 10, getMDJournalLength(t, s))
+
 	// (3) Trigger a conflict.
 
 	rmds, err := NewRootMetadataSignedForTest(id, h)
@@ -79,6 +91,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	rmds.MD.PrevRoot = prevRoot
 	_, err = s.put(uid, deviceKID, rmds)
 	require.IsType(t, MDServerErrorConflictRevision{}, err)
+
+	require.Equal(t, 10, getMDJournalLength(t, s))
 
 	// (4) Push some new unmerged metadata blocks linking to the
 	// middle merged block.
@@ -103,12 +117,16 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	require.Equal(t, 45, getMDJournalLength(t, s))
+
 	// (5) Check for proper unmerged head.
 
 	head, err = s.getForTLF(uid, deviceKID, bid)
 	require.NoError(t, err)
 	require.NotNil(t, head)
 	require.Equal(t, MetadataRevision(40), head.MD.Revision)
+
+	require.Equal(t, 45, getMDJournalLength(t, s))
 
 	// (6) Try to get unmerged range.
 
@@ -121,12 +139,16 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 
 	// Nothing corresponds to (7) - (9) from MDServerTestBasics.
 
+	require.Equal(t, 45, getMDJournalLength(t, s))
+
 	// (10) Check for proper merged head.
 
 	head, err = s.getForTLF(uid, deviceKID, NullBranchID)
 	require.NoError(t, err)
 	require.NotNil(t, head)
 	require.Equal(t, MetadataRevision(10), head.MD.Revision)
+
+	require.Equal(t, 45, getMDJournalLength(t, s))
 
 	// (11) Try to get merged range.
 
@@ -136,4 +158,6 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	for i := MetadataRevision(1); i <= 10; i++ {
 		require.Equal(t, i, rmdses[i-1].MD.Revision)
 	}
+
+	require.Equal(t, 45, getMDJournalLength(t, s))
 }
