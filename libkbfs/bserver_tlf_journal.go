@@ -20,21 +20,21 @@ import (
 //
 // The directory layout looks like:
 //
-// dir/journal/EARLIEST
-// dir/journal/LATEST
-// dir/journal/0...000
-// dir/journal/0...001
-// dir/journal/0...fff
+// dir/blocks_journal/EARLIEST
+// dir/blocks_journal/LATEST
+// dir/blocks_journal/0...000
+// dir/blocks_journal/0...001
+// dir/blocks_journal/0...fff
 // dir/blocks/0100/0...01/data
 // dir/blocks/0100/0...01/key_server_half
 // ...
 // dir/blocks/01ff/f...ff/data
 // dir/blocks/01ff/f...ff/key_server_half
 //
-// Each file in dir/journal is named with an ordinal and contains the
+// Each entry in the journal in dir/blocks_journal contains the
 // mutating operation and arguments for a single operation, except for
-// block data. The files EARLIEST and LATEST point to the earliest and
-// latest valid ordinal, respectively.
+// block data. (See tlfJournal comments for more details about the
+// journal.)
 //
 // The block data is stored separately in dir/blocks. Each block has
 // its own subdirectory with its ID as a name.  The block
@@ -46,11 +46,6 @@ import (
 // has data, which is the raw block data that should hash to the block
 // ID, and key_server_half, which contains the raw data for the
 // associated key server half.
-//
-// TODO: Do all high-level operations atomically on the file-system
-// level.
-//
-// TODO: Make IO ops cancellable.
 //
 // TODO: Add a mode which doesn't assume that this is the only storage
 // for TLF data, i.e. that doesn't remove files when the (known)

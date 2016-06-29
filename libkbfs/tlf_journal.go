@@ -13,6 +13,24 @@ import (
 	"strconv"
 )
 
+// tlfJournal stores an ordered list of entries.
+//
+// The directory layout looks like:
+//
+// dir/EARLIEST
+// dir/LATEST
+// dir/0...000
+// dir/0...001
+// dir/0...fff
+//
+// Each file in dir is named with an ordinal and contains a generic
+// serializable entry object. The files EARLIEST and LATEST point to
+// the earliest and latest valid ordinal, respectively.
+//
+// TODO: Do all high-level operations atomically on the file-system
+// level.
+//
+// TODO: Make IO ops cancellable.
 type tlfJournal struct {
 	codec     Codec
 	dir       string
