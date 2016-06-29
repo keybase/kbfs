@@ -16,20 +16,23 @@ import (
 	"github.com/keybase/client/go/logger"
 	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/storage"
 	"golang.org/x/net/context"
 )
 
 type mdServerDiskShared struct {
 	dirPath string
 
-	// Protects handleDb, tlfStorage, and
-	// truncateLockManager. After Shutdown() is called,
-	// handleDb, tlfStorage, and truncateLockManager are nil.
-	lock                sync.RWMutex
-	handleDb            *leveldb.DB // folder handle -> folderId
-	branchDb            *leveldb.DB // folderId+deviceKID             -> branchId
-	tlfStorage          map[TlfID]*mdServerTlfStorage
+	// Protects handleDb, branchDb, tlfStorage, and
+	// truncateLockManager. After Shutdown() is called, handleDb,
+	// branchDb, tlfStorage, and truncateLockManager are nil.
+	lock sync.RWMutex
+	// Bare TLF handle -> TLF ID
+	handleDb *leveldb.DB
+	// (TLF ID, device KID) -> branch ID
+	branchDb   *leveldb.DB
+	tlfStorage map[TlfID]*mdServerTlfStorage
+	// Always use memory for the lock storage, so it gets wiped
+	// after a restart.
 	truncateLockManager *mdServerLocalTruncateLockManager
 
 	updateManager *mdServerLocalUpdateManager
@@ -53,23 +56,13 @@ var _ mdServerLocal = (*MDServerDisk)(nil)
 func newMDServerDisk(config Config, dirPath string,
 	shutdownFunc func(logger.Logger)) (*MDServerDisk, error) {
 	handlePath := filepath.Join(dirPath, "handles")
+	handleDb, err := leveldb.OpenFile(handlePath, leveldbOptions)
+	if err != nil {
+		return nil, err
+	}
+
 	branchPath := filepath.Join(dirPath, "branches")
-
-	handleStorage, err := storage.OpenFile(handlePath)
-	if err != nil {
-		return nil, err
-	}
-
-	branchStorage, err := storage.OpenFile(branchPath)
-	if err != nil {
-		return nil, err
-	}
-
-	handleDb, err := leveldb.Open(handleStorage, leveldbOptions)
-	if err != nil {
-		return nil, err
-	}
-	branchDb, err := leveldb.Open(branchStorage, leveldbOptions)
+	branchDb, err := leveldb.OpenFile(branchPath, leveldbOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -237,6 +230,14 @@ func (md *MDServerDisk) getBranchID(ctx context.Context, id TlfID) (BranchID, er
 	if err != nil {
 		return NullBranchID, MDServerError{err}
 	}
+
+	md.lock.RLock()
+	defer md.lock.RUnlock()
+
+	if md.branchDb == nil {
+		return NullBranchID, errMDServerDiskShutdown
+	}
+
 	buf, err := md.branchDb.Get(branchKey, nil)
 	if err == leveldb.ErrNotFound {
 		return NullBranchID, nil
@@ -250,6 +251,50 @@ func (md *MDServerDisk) getBranchID(ctx context.Context, id TlfID) (BranchID, er
 		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 	return bid, nil
+}
+
+func (md *MDServerDisk) putBranchID(
+	ctx context.Context, id TlfID, bid BranchID) error {
+	md.lock.Lock()
+	defer md.lock.Unlock()
+
+	if md.branchDb == nil {
+		return errMDServerDiskShutdown
+	}
+
+	branchKey, err := md.getBranchKey(ctx, id)
+	if err != nil {
+		return MDServerError{err}
+	}
+	buf, err := md.codec.Encode(bid)
+	if err != nil {
+		return MDServerError{err}
+	}
+	err = md.branchDb.Put(branchKey, buf, nil)
+	if err != nil {
+		return MDServerError{err}
+	}
+
+	return nil
+}
+
+func (md *MDServerDisk) deleteBranchID(ctx context.Context, id TlfID) error {
+	md.lock.Lock()
+	defer md.lock.Unlock()
+
+	if md.branchDb == nil {
+		return errMDServerDiskShutdown
+	}
+
+	branchKey, err := md.getBranchKey(ctx, id)
+	if err != nil {
+		return MDServerError{err}
+	}
+	err = md.branchDb.Delete(branchKey, nil)
+	if err != nil {
+		return MDServerError{err}
+	}
+	return nil
 }
 
 // GetForTLF implements the MDServer interface for MDServerDisk.
@@ -315,15 +360,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 
 	// Record branch ID
 	if recordBranchID {
-		buf, err := md.codec.Encode(rmds.MD.BID)
-		if err != nil {
-			return MDServerError{err}
-		}
-		branchKey, err := md.getBranchKey(ctx, rmds.MD.ID)
-		if err != nil {
-			return MDServerError{err}
-		}
-		err = md.branchDb.Put(branchKey, buf, nil)
+		err = md.putBranchID(ctx, rmds.MD.ID, rmds.MD.BID)
 		if err != nil {
 			return MDServerError{err}
 		}
@@ -354,19 +391,10 @@ func (md *MDServerDisk) PruneBranch(ctx context.Context, id TlfID, bid BranchID)
 		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
-	// Don't actually delete unmerged history. This is intentional to be consistent
-	// with the mdserver behavior-- it garbage collects discarded branches in the
-	// background.
-	branchKey, err := md.getBranchKey(ctx, id)
-	if err != nil {
-		return MDServerError{err}
-	}
-	err = md.branchDb.Delete(branchKey, nil)
-	if err != nil {
-		return MDServerError{err}
-	}
-
-	return nil
+	// Don't actually delete unmerged history. This is intentional
+	// to be consistent with the mdserver behavior-- it garbage
+	// collects discarded branches in the background.
+	return md.deleteBranchID(ctx, id)
 }
 
 func (md *MDServerDisk) getCurrentMergedHeadRevision(
