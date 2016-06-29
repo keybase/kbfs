@@ -14,9 +14,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"golang.org/x/net/context"
-
-	"github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
@@ -291,7 +289,9 @@ func (s *mdServerTlfStorage) getRange(
 	return s.getRangeLocked(currentUID, deviceKID, bid, start, stop)
 }
 
-func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMetadataSigned) (recordBranchID bool, err error) {
+func (s *mdServerTlfStorage) put(
+	currentUID keybase1.UID, deviceKID keybase1.KID,
+	rmds *RootMetadataSigned) (recordBranchID bool, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -307,11 +307,6 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 	}
 
 	// Check permissions
-
-	_, currentUID, err := kbpki.GetCurrentUserInfo(ctx)
-	if err != nil {
-		return false, MDServerError{err}
-	}
 
 	mergedMasterHead, err := s.getHeadForTLFLocked(NullBranchID)
 	if err != nil {
@@ -332,16 +327,11 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 		return false, MDServerError{err}
 	}
 
-	key, err := kbpki.GetCurrentCryptPublicKey(ctx)
-	if err != nil {
-		return false, MDServerError{err}
-	}
-
 	if mStatus == Unmerged && head == nil {
 		// currHead for unmerged history might be on the main branch
 		prevRev := rmds.MD.Revision - 1
 		rmdses, err := s.getRangeLocked(
-			currentUID, key.kid, NullBranchID, prevRev, prevRev)
+			currentUID, deviceKID, NullBranchID, prevRev, prevRev)
 		if err != nil {
 			return false, MDServerError{err}
 		}

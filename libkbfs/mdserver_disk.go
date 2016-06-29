@@ -370,12 +370,22 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id TlfID,
 
 // Put implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error {
+	_, currentUID, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return MDServerError{err}
+	}
+
+	key, err := md.config.KBPKI().GetCurrentCryptPublicKey(ctx)
+	if err != nil {
+		return MDServerError{err}
+	}
+
 	tlfStorage, err := md.getStorage(rmds.MD.ID)
 	if err != nil {
 		return err
 	}
 
-	recordBranchID, err := tlfStorage.put(ctx, md.config.KBPKI(), rmds)
+	recordBranchID, err := tlfStorage.put(currentUID, key.kid, rmds)
 	if err != nil {
 		return err
 	}

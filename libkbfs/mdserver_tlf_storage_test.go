@@ -9,8 +9,6 @@ import (
 	"os"
 	"testing"
 
-	"golang.org/x/net/context"
-
 	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/stretchr/testify/require"
 )
@@ -35,15 +33,12 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	uid := keybase1.MakeTestUID(1)
 	deviceKID := keybase1.KID("fake kid")
 	id := FakeTlfID(1, false)
-	bid := FakeBranchID(1)
 	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
-	var kbpki KBPKI
-	head, err := s.getForTLF(uid, deviceKID, bid)
+	head, err := s.getForTLF(uid, deviceKID, NullBranchID)
 	require.NoError(t, err)
 	require.Nil(t, head)
 
@@ -63,9 +58,9 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		if i > 1 {
 			rmds.MD.PrevRoot = prevRoot
 		}
-		recordBranchID, err := s.put(ctx, kbpki, rmds)
-		require.Equal(t, i == 1, recordBranchID)
+		recordBranchID, err := s.put(uid, deviceKID, rmds)
 		require.NoError(t, err)
+		require.False(t, recordBranchID)
 		prevRoot, err = rmds.MD.MetadataID(crypto)
 		require.NoError(t, err)
 		if i == 5 {
