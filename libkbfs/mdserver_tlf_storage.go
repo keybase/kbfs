@@ -40,20 +40,12 @@ type mdServerTlfStorage struct {
 	isShutdown bool
 }
 
-type mdServerOpName string
-
-const (
-	mdPutOp       mdServerOpName = "mdPut"
-	pruneBranchOp mdServerOpName = "pruneBranch"
-)
-
-// An mdServerJournalEntry is just the name of the operation. Fields
-// are exported only for serialization.
-//
-// TODO: Fill in.
+// An mdServerJournalEntry is just the parameters for a Put
+// operation. Fields are exported only for serialization.
 type mdServerJournalEntry struct {
-	// Must be one of the four ops above.
-	Op mdServerOpName
+	BranchID   BranchID
+	Revision   MetadataRevision
+	MetadataID MdID
 }
 
 func makeMDServerTlfStorage(codec Codec, crypto cryptoPure, dir string) (
@@ -104,9 +96,12 @@ func (s *mdServerTlfStorage) writeJournalEntryLocked(
 	return s.j.writeJournalEntry(o, entry)
 }
 
-func (s *mdServerTlfStorage) appendJournalEntryLocked(op mdServerOpName) error {
+func (s *mdServerTlfStorage) appendJournalEntryLocked(BranchID BranchID,
+	Revision MetadataRevision, MetadataID MdID) error {
 	return s.j.appendJournalEntry(mdServerJournalEntry{
-		Op: op,
+		BranchID:   BranchID,
+		Revision:   Revision,
+		MetadataID: MetadataID,
 	})
 }
 
@@ -431,6 +426,11 @@ func (s *mdServerTlfStorage) put(
 
 	// Write the batch.
 	err = s.idDb.Write(batch, nil)
+	if err != nil {
+		return false, MDServerError{err}
+	}
+
+	err = s.appendJournalEntryLocked(bid, rmds.MD.Revision, id)
 	if err != nil {
 		return false, MDServerError{err}
 	}
