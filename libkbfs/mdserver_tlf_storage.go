@@ -22,7 +22,7 @@ type mdServerTlfStorage struct {
 	dir    string
 
 	// Protects any IO operations in dir or any of its children,
-	// as well all the j, ids, and isShutdown.
+	// as well all the j, mdIDs, and isShutdown.
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
