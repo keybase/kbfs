@@ -173,7 +173,7 @@ func TestMDServerRegisterForUpdate(t *testing.T) {
 
 	id2, _, err := mdServer.GetForHandle(ctx, h2, Merged)
 	require.NoError(t, err)
-	require.Equal(t, id1, id2)
+	require.NotEqual(t, id1, id2)
 
 	_, err = mdServer.RegisterForUpdate(ctx, id1, MetadataRevisionInitial)
 	require.NoError(t, err)
