@@ -34,9 +34,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	deviceKID := keybase1.KID("fake kid")
 	id := FakeTlfID(1, false)
 	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// (1) Validate merged branch is empty.
 

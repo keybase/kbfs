@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/keybase/client/go/protocol"
+	"github.com/stretchr/testify/require"
 
 	"golang.org/x/net/context"
 )
@@ -23,20 +24,14 @@ func TestMDServerBasics(t *testing.T) {
 	ctx := context.Background()
 
 	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// (1) get metadata -- allocates an ID
 	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	id, rmds, err := mdServer.GetForHandle(ctx, h, Merged)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if rmds != nil {
 		t.Fatal(errors.New("unexpected metadata found"))
 	}
@@ -72,9 +67,7 @@ func TestMDServerBasics(t *testing.T) {
 
 	// (3) trigger a conflict
 	rmds, err = NewRootMetadataSignedForTest(id, h)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	rmds.MD.Revision = MetadataRevision(10)
 	rmds.MD.SerializedPrivateMetadata = make([]byte, 1)
 	rmds.MD.SerializedPrivateMetadata[0] = 0x1
@@ -89,9 +82,7 @@ func TestMDServerBasics(t *testing.T) {
 	//     middle merged block.
 	prevRoot = middleRoot
 	bid, err := config.Crypto().MakeRandomBranchID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	for i := MetadataRevision(6); i < 41; i++ {
 		rmds, err := NewRootMetadataSignedForTest(id, h)
 		if err != nil {
@@ -117,9 +108,7 @@ func TestMDServerBasics(t *testing.T) {
 
 	// (5) check for proper unmerged head
 	head, err := mdServer.GetForTLF(ctx, id, bid, Unmerged)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if head == nil {
 		t.Fatal(errors.New("no head found"))
 	}
@@ -130,9 +119,7 @@ func TestMDServerBasics(t *testing.T) {
 
 	// (6a) try to get unmerged range
 	rmdses, err := mdServer.GetRange(ctx, id, bid, Unmerged, 1, 100)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(rmdses) != 35 {
 		t.Fatal(fmt.Errorf("expected 35 MD blocks, got: %d", len(rmdses)))
 	}
@@ -160,33 +147,25 @@ func TestMDServerBasics(t *testing.T) {
 
 	// (7) prune unmerged
 	err = mdServer.PruneBranch(ctx, id, bid)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// (8) verify head is pruned
 	head, err = mdServer.GetForTLF(ctx, id, NullBranchID, Unmerged)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if head != nil {
 		t.Fatal(errors.New("head found"))
 	}
 
 	// (9) verify revision history is pruned
 	rmdses, err = mdServer.GetRange(ctx, id, NullBranchID, Unmerged, 1, 100)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(rmdses) != 0 {
 		t.Fatal(fmt.Errorf("expected no unmerged history, got: %d", len(rmdses)))
 	}
 
 	// (10) check for proper merged head
 	head, err = mdServer.GetForTLF(ctx, id, NullBranchID, Merged)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if head == nil {
 		t.Fatal(errors.New("no head found"))
 	}
@@ -197,9 +176,7 @@ func TestMDServerBasics(t *testing.T) {
 
 	// (11) try to get merged range
 	rmdses, err = mdServer.GetRange(ctx, id, NullBranchID, Merged, 1, 100)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(rmdses) != 10 {
 		t.Fatal(fmt.Errorf("expected 10 MD blocks, got: %d", len(rmdses)))
 	}
@@ -222,43 +199,29 @@ func TestMDServerRegisterForUpdate(t *testing.T) {
 	ctx := context.Background()
 
 	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create first TLF.
 	h1, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	id1, _, err := mdServer.GetForHandle(ctx, h1, Merged)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create second TLF, which should end up being different from
 	// the first one.
 	h2, err := MakeBareTlfHandle([]keybase1.UID{uid}, []keybase1.UID{keybase1.PUBLIC_UID}, nil, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	id2, _, err := mdServer.GetForHandle(ctx, h2, Merged)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if id1 == id2 {
 		t.Fatalf("id2 == id1: %s", id1)
 	}
 
 	_, err = mdServer.RegisterForUpdate(ctx, id1, MetadataRevisionInitial)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = mdServer.RegisterForUpdate(ctx, id2, MetadataRevisionInitial)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
