@@ -43,7 +43,6 @@ type mdServerDiskShared struct {
 // MDServerDisk stores all info on disk.
 type MDServerDisk struct {
 	codec  Codec
-	clock  Clock
 	crypto cryptoPure
 	kbpki  KBPKI
 	log    logger.Logger
@@ -68,7 +67,7 @@ func newMDServerDisk(config Config, dirPath string,
 	}
 	log := config.MakeLogger("")
 	truncateLockManager := newMDServerLocalTruncatedLockManager()
-	mdserv := &MDServerDisk{config.Codec(), config.Clock(),
+	mdserv := &MDServerDisk{config.Codec(),
 		config.Crypto(), config.KBPKI(), log, &mdServerDiskShared{
 			dirPath, sync.RWMutex{}, handleDb, branchDb,
 			make(map[TlfID]*mdServerTlfStorage),
@@ -499,7 +498,7 @@ func (md *MDServerDisk) copy(config Config) mdServerLocal {
 	// purpose, so that the MD server that gets a Put will notify all
 	// observers correctly no matter where they got on the list.
 	log := config.MakeLogger("")
-	return &MDServerDisk{md.codec, md.clock, md.crypto, config.KBPKI(),
+	return &MDServerDisk{md.codec, md.crypto, config.KBPKI(),
 		log, md.mdServerDiskShared}
 }
 
