@@ -91,6 +91,48 @@ func (s *mdServerTlfStorage) readJournalEntryLocked(o journalOrdinal) (
 	return entry.(mdServerJournalEntry), nil
 }
 
+// readJournalLocked reads the journal and returns a map of all the
+// MDs in the journal.
+func (s *mdServerTlfStorage) readJournalLocked() (map[BranchID][]MdID, error) {
+	mds := make(map[BranchID][]MdID)
+
+	first, err := s.j.readEarliestOrdinal()
+	if os.IsNotExist(err) {
+		return mds, nil
+	} else if err != nil {
+		return nil, err
+	}
+	last, err := s.j.readLatestOrdinal()
+	if err != nil {
+		return nil, err
+	}
+
+	initialRevs := make(map[BranchID]MetadataRevision)
+
+	for i := first; i <= last; i++ {
+		e, err := s.readJournalEntryLocked(i)
+		if err != nil {
+			return nil, err
+		}
+
+		branchMDs := mds[e.BranchID]
+		initialRev, ok := initialRevs[e.BranchID]
+		if ok {
+			expectedRevision := MetadataRevision(int(initialRev) + len(branchMDs))
+			if expectedRevision != e.Revision {
+				return nil, fmt.Errorf(
+					"Revision mismatch for branch %s: expected %s, got %s",
+					e.BranchID, expectedRevision, e.Revision)
+			}
+		} else {
+			initialRevs[e.BranchID] = e.Revision
+		}
+
+		mds[e.BranchID] = append(branchMDs, e.MetadataID)
+	}
+	return mds, nil
+}
+
 func (s *mdServerTlfStorage) writeJournalEntryLocked(
 	o journalOrdinal, entry mdServerJournalEntry) error {
 	return s.j.writeJournalEntry(o, entry)
@@ -446,6 +488,11 @@ func (s *mdServerTlfStorage) shutdown() {
 		return
 	}
 	s.isShutdown = true
+
+	_, err := s.readJournalLocked()
+	if err != nil {
+		panic(err)
+	}
 
 	if s.idDb != nil {
 		s.idDb.Close()
