@@ -273,7 +273,7 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id TlfID,
 		return nil, err
 	}
 
-	return tlfStorage.getForTLF(ctx, md.kbpki, bid, mStatus)
+	return tlfStorage.getForTLF(ctx, md.kbpki, bid)
 }
 
 // GetRange implements the MDServer interface for MDServerDisk.
@@ -299,7 +299,7 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id TlfID,
 		return nil, err
 	}
 
-	return tlfStorage.getRange(ctx, md.kbpki, bid, mStatus, start, stop)
+	return tlfStorage.getRange(ctx, md.kbpki, bid, start, stop)
 }
 
 // Put implements the MDServer interface for MDServerDisk.

@@ -151,9 +151,9 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
 }
 
 func (s *mdServerTlfStorage) getMDKey(revision MetadataRevision,
-	bid BranchID, mStatus MergeStatus) ([]byte, error) {
+	bid BranchID) ([]byte, error) {
 	// short-cut
-	if revision == MetadataRevisionUninitialized && mStatus == Merged {
+	if revision == MetadataRevisionUninitialized && bid == NullBranchID {
 		return nil, nil
 	}
 	buf := &bytes.Buffer{}
@@ -161,7 +161,7 @@ func (s *mdServerTlfStorage) getMDKey(revision MetadataRevision,
 	// this order is signifcant for range fetches.
 	// we want increments in revision number to only affect
 	// the least significant bits of the key.
-	if mStatus == Unmerged {
+	if bid != NullBranchID {
 		// add branch ID
 		_, err := buf.Write(bid.Bytes())
 		if err != nil {
@@ -180,8 +180,8 @@ func (s *mdServerTlfStorage) getMDKey(revision MetadataRevision,
 }
 
 func (s *mdServerTlfStorage) getHeadForTLFLocked(ctx context.Context,
-	bid BranchID, mStatus MergeStatus) (rmds *RootMetadataSigned, err error) {
-	key, err := s.getMDKey(0, bid, mStatus)
+	bid BranchID) (rmds *RootMetadataSigned, err error) {
+	key, err := s.getMDKey(0, bid)
 	if err != nil {
 		return nil, err
 	}
@@ -202,14 +202,9 @@ func (s *mdServerTlfStorage) getHeadForTLFLocked(ctx context.Context,
 }
 
 func (s *mdServerTlfStorage) checkGetParamsLocked(
-	ctx context.Context, kbpki KBPKI, bid BranchID, mStatus MergeStatus) (
+	ctx context.Context, kbpki KBPKI, bid BranchID) (
 	err error) {
-	if mStatus == Merged && bid != NullBranchID {
-		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
-	}
-
-	mergedMasterHead, err :=
-		s.getHeadForTLFLocked(ctx, NullBranchID, Merged)
+	mergedMasterHead, err := s.getHeadForTLFLocked(ctx, NullBranchID)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -227,23 +222,19 @@ func (s *mdServerTlfStorage) checkGetParamsLocked(
 }
 
 func (s *mdServerTlfStorage) getRangeLocked(ctx context.Context,
-	kbpki KBPKI, bid BranchID, mStatus MergeStatus,
-	start, stop MetadataRevision) (
+	kbpki KBPKI, bid BranchID, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
-	err := s.checkGetParamsLocked(ctx, kbpki, bid, mStatus)
+	err := s.checkGetParamsLocked(ctx, kbpki, bid)
 	if err != nil {
 		return nil, err
 	}
-	if mStatus == Unmerged && bid == NullBranchID {
-		return nil, nil
-	}
 
 	var rmdses []*RootMetadataSigned
-	startKey, err := s.getMDKey(start, bid, mStatus)
+	startKey, err := s.getMDKey(start, bid)
 	if err != nil {
 		return rmdses, MDServerError{err}
 	}
-	stopKey, err := s.getMDKey(stop+1, bid, mStatus)
+	stopKey, err := s.getMDKey(stop+1, bid)
 	if err != nil {
 		return rmdses, MDServerError{err}
 	}
@@ -274,8 +265,7 @@ func (s *mdServerTlfStorage) getRangeLocked(ctx context.Context,
 var errMDServerTlfStorageShutdown = errors.New("mdServerTlfStorage is shutdown")
 
 func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
-	kbpki KBPKI, bid BranchID, mStatus MergeStatus) (
-	*RootMetadataSigned, error) {
+	kbpki KBPKI, bid BranchID) (*RootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -283,15 +273,12 @@ func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
 		return nil, errMDServerTlfStorageShutdown
 	}
 
-	err := s.checkGetParamsLocked(ctx, kbpki, bid, mStatus)
+	err := s.checkGetParamsLocked(ctx, kbpki, bid)
 	if err != nil {
 		return nil, err
 	}
-	if mStatus == Unmerged && bid == NullBranchID {
-		return nil, nil
-	}
 
-	rmds, err := s.getHeadForTLFLocked(ctx, bid, mStatus)
+	rmds, err := s.getHeadForTLFLocked(ctx, bid)
 	if err != nil {
 		return nil, MDServerError{err}
 	}
@@ -299,8 +286,7 @@ func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
 }
 
 func (s *mdServerTlfStorage) getRange(ctx context.Context,
-	kbpki KBPKI, bid BranchID, mStatus MergeStatus,
-	start, stop MetadataRevision) (
+	kbpki KBPKI, bid BranchID, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -309,7 +295,7 @@ func (s *mdServerTlfStorage) getRange(ctx context.Context,
 		return nil, errMDServerTlfStorageShutdown
 	}
 
-	return s.getRangeLocked(ctx, kbpki, bid, mStatus, start, stop)
+	return s.getRangeLocked(ctx, kbpki, bid, start, stop)
 }
 
 func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMetadataSigned) (bool, error) {
@@ -333,7 +319,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 		}
 	}
 
-	mergedMasterHead, err := s.getHeadForTLFLocked(ctx, NullBranchID, Merged)
+	mergedMasterHead, err := s.getHeadForTLFLocked(ctx, NullBranchID)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -348,7 +334,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 		return false, MDServerErrorUnauthorized{}
 	}
 
-	head, err := s.getHeadForTLFLocked(ctx, bid, mStatus)
+	head, err := s.getHeadForTLFLocked(ctx, bid)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -359,7 +345,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 		// currHead for unmerged history might be on the main branch
 		prevRev := rmds.MD.Revision - 1
 		rmdses, err := s.getRangeLocked(
-			ctx, kbpki, NullBranchID, Merged, prevRev, prevRev)
+			ctx, kbpki, NullBranchID, prevRev, prevRev)
 		if err != nil {
 			return false, MDServerError{err}
 		}
@@ -395,15 +381,14 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 	batch := new(leveldb.Batch)
 
 	// Add an entry with the revision key.
-	revKey, err := s.getMDKey(rmds.MD.Revision, bid, mStatus)
+	revKey, err := s.getMDKey(rmds.MD.Revision, bid)
 	if err != nil {
 		return false, MDServerError{err}
 	}
 	batch.Put(revKey, id.Bytes())
 
 	// Add an entry with the head key.
-	headKey, err := s.getMDKey(MetadataRevisionUninitialized,
-		bid, mStatus)
+	headKey, err := s.getMDKey(MetadataRevisionUninitialized, bid)
 	if err != nil {
 		return false, MDServerError{err}
 	}
