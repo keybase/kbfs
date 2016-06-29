@@ -42,9 +42,7 @@ type mdServerDiskShared struct {
 
 // MDServerDisk stores all info on disk.
 type MDServerDisk struct {
-	codec  Codec
-	crypto cryptoPure
-	kbpki  KBPKI
+	config Config
 	log    logger.Logger
 
 	*mdServerDiskShared
@@ -76,8 +74,7 @@ func newMDServerDisk(config Config, dirPath string,
 		updateManager:       newMDServerLocalUpdateManager(),
 		shutdownFunc:        shutdownFunc,
 	}
-	mdserv := &MDServerDisk{
-		config.Codec(), config.Crypto(), config.KBPKI(), log, &shared}
+	mdserv := &MDServerDisk{config, log, &shared}
 	return mdserv, nil
 }
 
@@ -134,7 +131,8 @@ func (md *MDServerDisk) getStorage(tlfID TlfID) (*mdServerTlfStorage, error) {
 	}
 
 	path := filepath.Join(md.dirPath, tlfID.String())
-	storage, err = makeMDServerTlfStorage(md.codec, md.crypto, path)
+	storage, err = makeMDServerTlfStorage(
+		md.config.Codec(), md.config.Crypto(), path)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +143,7 @@ func (md *MDServerDisk) getStorage(tlfID TlfID) (*mdServerTlfStorage, error) {
 
 func (md *MDServerDisk) getHandleID(ctx context.Context, handle BareTlfHandle,
 	mStatus MergeStatus) (tlfID TlfID, created bool, err error) {
-	handleBytes, err := md.codec.Encode(handle)
+	handleBytes, err := md.config.Codec().Encode(handle)
 	if err != nil {
 		return NullTlfID, false, MDServerError{err}
 	}
@@ -170,7 +168,7 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle BareTlfHandle,
 	}
 
 	// Non-readers shouldn't be able to create the dir.
-	_, uid, err := md.kbpki.GetCurrentUserInfo(ctx)
+	_, uid, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return NullTlfID, false, MDServerError{err}
 	}
@@ -179,7 +177,7 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle BareTlfHandle,
 	}
 
 	// Allocate a new random ID.
-	id, err := md.crypto.MakeRandomTlfID(handle.IsPublic())
+	id, err := md.config.Crypto().MakeRandomTlfID(handle.IsPublic())
 	if err != nil {
 		return NullTlfID, false, MDServerError{err}
 	}
@@ -218,7 +216,7 @@ func (md *MDServerDisk) getBranchKey(ctx context.Context, id TlfID) ([]byte, err
 		return nil, err
 	}
 	// add device KID
-	key, err := md.kbpki.GetCurrentCryptPublicKey(ctx)
+	key, err := md.config.KBPKI().GetCurrentCryptPublicKey(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +248,7 @@ func (md *MDServerDisk) getBranchID(ctx context.Context, id TlfID) (BranchID, er
 		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 	var bid BranchID
-	err = md.codec.Decode(buf, &bid)
+	err = md.config.Codec().Decode(buf, &bid)
 	if err != nil {
 		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
@@ -270,7 +268,7 @@ func (md *MDServerDisk) putBranchID(
 	if err != nil {
 		return MDServerError{err}
 	}
-	buf, err := md.codec.Encode(bid)
+	buf, err := md.config.Codec().Encode(bid)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -321,7 +319,7 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id TlfID,
 		return nil, err
 	}
 
-	return tlfStorage.getForTLF(ctx, md.kbpki, bid)
+	return tlfStorage.getForTLF(ctx, md.config.KBPKI(), bid)
 }
 
 // GetRange implements the MDServer interface for MDServerDisk.
@@ -347,7 +345,7 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id TlfID,
 		return nil, err
 	}
 
-	return tlfStorage.getRange(ctx, md.kbpki, bid, start, stop)
+	return tlfStorage.getRange(ctx, md.config.KBPKI(), bid, start, stop)
 }
 
 // Put implements the MDServer interface for MDServerDisk.
@@ -357,7 +355,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 		return err
 	}
 
-	recordBranchID, err := tlfStorage.put(ctx, md.kbpki, rmds)
+	recordBranchID, err := tlfStorage.put(ctx, md.config.KBPKI(), rmds)
 	if err != nil {
 		return err
 	}
@@ -430,7 +428,7 @@ func (md *MDServerDisk) RegisterForUpdate(ctx context.Context, id TlfID,
 // TruncateLock implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) TruncateLock(ctx context.Context, id TlfID) (
 	bool, error) {
-	key, err := md.kbpki.GetCurrentCryptPublicKey(ctx)
+	key, err := md.config.KBPKI().GetCurrentCryptPublicKey(ctx)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -447,7 +445,7 @@ func (md *MDServerDisk) TruncateLock(ctx context.Context, id TlfID) (
 // TruncateUnlock implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) TruncateUnlock(ctx context.Context, id TlfID) (
 	bool, error) {
-	key, err := md.kbpki.GetCurrentCryptPublicKey(ctx)
+	key, err := md.config.KBPKI().GetCurrentCryptPublicKey(ctx)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -503,8 +501,7 @@ func (md *MDServerDisk) copy(config Config) mdServerLocal {
 	// purpose, so that the MD server that gets a Put will notify all
 	// observers correctly no matter where they got on the list.
 	log := config.MakeLogger("")
-	return &MDServerDisk{md.codec, md.crypto, config.KBPKI(),
-		log, md.mdServerDiskShared}
+	return &MDServerDisk{config, log, md.mdServerDiskShared}
 }
 
 // isShutdown returns whether the logical, shared MDServer instance
@@ -544,7 +541,7 @@ func (md *MDServerDisk) addNewAssertionForTest(uid keybase1.UID,
 	for iter.Next() {
 		handleBytes := iter.Key()
 		var handle BareTlfHandle
-		err := md.codec.Decode(handleBytes, &handle)
+		err := md.config.Codec().Decode(handleBytes, &handle)
 		if err != nil {
 			return err
 		}
@@ -555,7 +552,7 @@ func (md *MDServerDisk) addNewAssertionForTest(uid keybase1.UID,
 		if reflect.DeepEqual(handle, newHandle) {
 			continue
 		}
-		newHandleBytes, err := md.codec.Encode(newHandle)
+		newHandleBytes, err := md.config.Codec().Encode(newHandle)
 		if err != nil {
 			return err
 		}
@@ -592,7 +589,7 @@ func (md *MDServerDisk) GetLatestHandleForTLF(_ context.Context, id TlfID) (
 		}
 		handleBytes := iter.Key()
 		handle = BareTlfHandle{}
-		err = md.codec.Decode(handleBytes, &handle)
+		err = md.config.Codec().Decode(handleBytes, &handle)
 		if err != nil {
 			return BareTlfHandle{}, err
 		}
