@@ -78,10 +78,15 @@ func NewMDServerMemory(config Config) (*MDServerMemory, error) {
 	branchDb := make(map[mdBranchKey]BranchID)
 	log := config.MakeLogger("")
 	truncateLockManager := newMDServerLocalTruncatedLockManager()
-	mdserv := &MDServerMemory{config, log, &mdServerMemShared{
-		sync.RWMutex{}, handleDb, latestHandleDb, mdDb, branchDb,
-		&truncateLockManager,
-		newMDServerLocalUpdateManager()}}
+	shared := mdServerMemShared{
+		handleDb:            handleDb,
+		latestHandleDb:      latestHandleDb,
+		mdDb:                mdDb,
+		branchDb:            branchDb,
+		truncateLockManager: &truncateLockManager,
+		updateManager:       newMDServerLocalUpdateManager(),
+	}
+	mdserv := &MDServerMemory{config, log, &shared}
 	return mdserv, nil
 }
 

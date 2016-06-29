@@ -67,12 +67,17 @@ func newMDServerDisk(config Config, dirPath string,
 	}
 	log := config.MakeLogger("")
 	truncateLockManager := newMDServerLocalTruncatedLockManager()
-	mdserv := &MDServerDisk{config.Codec(),
-		config.Crypto(), config.KBPKI(), log, &mdServerDiskShared{
-			dirPath, sync.RWMutex{}, handleDb, branchDb,
-			make(map[TlfID]*mdServerTlfStorage),
-			&truncateLockManager,
-			newMDServerLocalUpdateManager(), shutdownFunc}}
+	shared := mdServerDiskShared{
+		dirPath:             dirPath,
+		handleDb:            handleDb,
+		branchDb:            branchDb,
+		tlfStorage:          make(map[TlfID]*mdServerTlfStorage),
+		truncateLockManager: &truncateLockManager,
+		updateManager:       newMDServerLocalUpdateManager(),
+		shutdownFunc:        shutdownFunc,
+	}
+	mdserv := &MDServerDisk{
+		config.Codec(), config.Crypto(), config.KBPKI(), log, &shared}
 	return mdserv, nil
 }
 
