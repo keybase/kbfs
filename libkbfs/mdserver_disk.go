@@ -314,12 +314,22 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id TlfID,
 		}
 	}
 
+	_, currentUID, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+
+	key, err := md.config.KBPKI().GetCurrentCryptPublicKey(ctx)
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+
 	tlfStorage, err := md.getStorage(id)
 	if err != nil {
 		return nil, err
 	}
 
-	return tlfStorage.getForTLF(ctx, md.config.KBPKI(), bid)
+	return tlfStorage.getForTLF(currentUID, key.kid, bid)
 }
 
 // GetRange implements the MDServer interface for MDServerDisk.
@@ -340,12 +350,22 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id TlfID,
 		}
 	}
 
+	_, currentUID, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+
+	key, err := md.config.KBPKI().GetCurrentCryptPublicKey(ctx)
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+
 	tlfStorage, err := md.getStorage(id)
 	if err != nil {
 		return nil, err
 	}
 
-	return tlfStorage.getRange(ctx, md.config.KBPKI(), bid, start, stop)
+	return tlfStorage.getRange(currentUID, key.kid, bid, start, stop)
 }
 
 // Put implements the MDServer interface for MDServerDisk.

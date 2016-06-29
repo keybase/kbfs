@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/keybase/client/go/protocol"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
@@ -191,15 +192,10 @@ func (s *mdServerTlfStorage) getHeadForTLFLocked(bid BranchID) (
 }
 
 func (s *mdServerTlfStorage) checkGetParamsLocked(
-	ctx context.Context, kbpki KBPKI, bid BranchID) error {
+	currentUID keybase1.UID, deviceKID keybase1.KID, bid BranchID) error {
 	// Check permissions
 
 	mergedMasterHead, err := s.getHeadForTLFLocked(NullBranchID)
-	if err != nil {
-		return MDServerError{err}
-	}
-
-	_, currentUID, err := kbpki.GetCurrentUserInfo(ctx)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -215,10 +211,11 @@ func (s *mdServerTlfStorage) checkGetParamsLocked(
 	return nil
 }
 
-func (s *mdServerTlfStorage) getRangeLocked(ctx context.Context,
-	kbpki KBPKI, bid BranchID, start, stop MetadataRevision) (
+func (s *mdServerTlfStorage) getRangeLocked(
+	currentUID keybase1.UID, deviceKID keybase1.KID,
+	bid BranchID, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
-	err := s.checkGetParamsLocked(ctx, kbpki, bid)
+	err := s.checkGetParamsLocked(currentUID, deviceKID, bid)
 	if err != nil {
 		return nil, err
 	}
@@ -258,8 +255,9 @@ func (s *mdServerTlfStorage) getRangeLocked(ctx context.Context,
 
 var errMDServerTlfStorageShutdown = errors.New("mdServerTlfStorage is shutdown")
 
-func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
-	kbpki KBPKI, bid BranchID) (*RootMetadataSigned, error) {
+func (s *mdServerTlfStorage) getForTLF(
+	currentUID keybase1.UID, deviceKID keybase1.KID,
+	bid BranchID) (*RootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -267,7 +265,7 @@ func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
 		return nil, errMDServerTlfStorageShutdown
 	}
 
-	err := s.checkGetParamsLocked(ctx, kbpki, bid)
+	err := s.checkGetParamsLocked(currentUID, deviceKID, bid)
 	if err != nil {
 		return nil, err
 	}
@@ -279,8 +277,9 @@ func (s *mdServerTlfStorage) getForTLF(ctx context.Context,
 	return rmds, nil
 }
 
-func (s *mdServerTlfStorage) getRange(ctx context.Context,
-	kbpki KBPKI, bid BranchID, start, stop MetadataRevision) (
+func (s *mdServerTlfStorage) getRange(
+	currentUID keybase1.UID, deviceKID keybase1.KID,
+	bid BranchID, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -289,7 +288,7 @@ func (s *mdServerTlfStorage) getRange(ctx context.Context,
 		return nil, errMDServerTlfStorageShutdown
 	}
 
-	return s.getRangeLocked(ctx, kbpki, bid, start, stop)
+	return s.getRangeLocked(currentUID, deviceKID, bid, start, stop)
 }
 
 func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMetadataSigned) (recordBranchID bool, err error) {
@@ -333,11 +332,16 @@ func (s *mdServerTlfStorage) put(ctx context.Context, kbpki KBPKI, rmds *RootMet
 		return false, MDServerError{err}
 	}
 
+	key, err := kbpki.GetCurrentCryptPublicKey(ctx)
+	if err != nil {
+		return false, MDServerError{err}
+	}
+
 	if mStatus == Unmerged && head == nil {
 		// currHead for unmerged history might be on the main branch
 		prevRev := rmds.MD.Revision - 1
 		rmdses, err := s.getRangeLocked(
-			ctx, kbpki, NullBranchID, prevRev, prevRev)
+			currentUID, key.kid, NullBranchID, prevRev, prevRev)
 		if err != nil {
 			return false, MDServerError{err}
 		}

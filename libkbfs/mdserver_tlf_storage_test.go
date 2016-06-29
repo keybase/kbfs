@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,6 +33,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	defer s.shutdown()
 
 	uid := keybase1.MakeTestUID(1)
+	deviceKID := keybase1.KID("fake kid")
 	id := FakeTlfID(1, false)
 	bid := FakeBranchID(1)
 	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
@@ -42,7 +43,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 
 	ctx := context.Background()
 	var kbpki KBPKI
-	head, err := s.getForTLF(ctx, kbpki, bid)
+	head, err := s.getForTLF(uid, deviceKID, bid)
 	require.NoError(t, err)
 	require.Nil(t, head)
 
