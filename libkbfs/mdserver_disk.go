@@ -41,7 +41,7 @@ type mdServerDiskShared struct {
 type MDServerDisk struct {
 	codec  Codec
 	clock  Clock
-	crypto Crypto
+	crypto cryptoPure
 	kbpki  KBPKI
 	log    logger.Logger
 
