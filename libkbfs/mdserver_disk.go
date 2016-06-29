@@ -22,11 +22,13 @@ import (
 type mdServerDiskShared struct {
 	dirPath string
 
-	// Protects handleDb and tlfStorage. After Shutdown() is
-	// called, both handleDb and tlfStorage are nil.
-	lock       sync.RWMutex
-	handleDb   *leveldb.DB // folder handle -> folderId
-	tlfStorage map[TlfID]*mdServerTlfStorage
+	// Protects handleDb, tlfStorage, and
+	// truncateLockManager. After Shutdown() is called,
+	// handleDb, tlfStorage, and truncateLockManager are nil.
+	lock                sync.RWMutex
+	handleDb            *leveldb.DB // folder handle -> folderId
+	tlfStorage          map[TlfID]*mdServerTlfStorage
+	truncateLockManager *mdServerLocalTruncateLockManager
 
 	updateManager *mdServerLocalUpdateManager
 
@@ -60,10 +62,12 @@ func newMDServerDisk(config Config, dirPath string,
 		return nil, err
 	}
 	log := config.MakeLogger("")
+	truncateLockManager := newMDServerLocalTruncatedLockManager()
 	mdserv := &MDServerDisk{config.Codec(), config.Clock(),
 		config.Crypto(), config.KBPKI(), log, &mdServerDiskShared{
 			dirPath, sync.RWMutex{}, handleDb,
 			make(map[TlfID]*mdServerTlfStorage),
+			&truncateLockManager,
 			newMDServerLocalUpdateManager(), shutdownFunc}}
 	return mdserv, nil
 }
@@ -285,23 +289,23 @@ func (md *MDServerDisk) RegisterForUpdate(ctx context.Context, id TlfID,
 // TruncateLock implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) TruncateLock(ctx context.Context, id TlfID) (
 	bool, error) {
-	tlfStorage, err := md.getStorage(id)
+	key, err := md.kbpki.GetCurrentCryptPublicKey(ctx)
 	if err != nil {
-		return false, err
+		return false, MDServerError{err}
 	}
 
-	return tlfStorage.truncateLock(ctx, md.kbpki)
+	return md.truncateLockManager.truncateLock(key.kid, id)
 }
 
 // TruncateUnlock implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) TruncateUnlock(ctx context.Context, id TlfID) (
 	bool, error) {
-	tlfStorage, err := md.getStorage(id)
+	key, err := md.kbpki.GetCurrentCryptPublicKey(ctx)
 	if err != nil {
-		return false, err
+		return false, MDServerError{err}
 	}
 
-	return tlfStorage.truncateUnlock(ctx, md.kbpki)
+	return md.truncateLockManager.truncateUnlock(key.kid, id)
 }
 
 // Shutdown implements the MDServer interface for MDServerDisk.

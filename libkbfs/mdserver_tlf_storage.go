@@ -16,7 +16,6 @@ import (
 
 	"golang.org/x/net/context"
 
-	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/syndtr/goleveldb/leveldb/util"
@@ -29,7 +28,7 @@ type mdServerTlfStorage struct {
 	dir    string
 
 	// Protects any IO operations in dir or any of its children,
-	// as well all the DBs, truncateLockHolder, and isShutdown.
+	// as well all the DBs and isShutdown.
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
@@ -39,10 +38,6 @@ type mdServerTlfStorage struct {
 
 	mdDb     *leveldb.DB // [branchId]+[revision] -> MdID
 	branchDb *leveldb.DB // deviceKID             -> branchId
-
-	// Store the truncate lock holder just in memory, so it gets
-	// wiped after a restart.
-	truncateLockHolder *keybase1.KID
 
 	isShutdown bool
 }
@@ -519,61 +514,6 @@ func (s *mdServerTlfStorage) pruneBranch(
 	}
 
 	return nil
-}
-
-func (s *mdServerTlfStorage) truncateLock(ctx context.Context, kbpki KBPKI) (
-	bool, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if s.isShutdown {
-		return false, errMDServerTlfStorageShutdown
-	}
-
-	key, err := kbpki.GetCurrentCryptPublicKey(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	if s.truncateLockHolder != nil {
-		if *s.truncateLockHolder == key.kid {
-			// idempotent
-			return true, nil
-		}
-		// Locked by someone else.
-		return false, MDServerErrorLocked{}
-	}
-
-	s.truncateLockHolder = &key.kid
-	return true, nil
-}
-
-func (s *mdServerTlfStorage) truncateUnlock(ctx context.Context, kbpki KBPKI) (
-	bool, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if s.isShutdown {
-		return false, errMDServerTlfStorageShutdown
-	}
-
-	if s.truncateLockHolder == nil {
-		// Already unlocked.
-		return true, nil
-	}
-
-	key, err := kbpki.GetCurrentCryptPublicKey(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	if *s.truncateLockHolder != key.kid {
-		// Locked by someone else.
-		return false, MDServerErrorLocked{}
-	}
-
-	s.truncateLockHolder = nil
-	return true, nil
 }
 
 func (s *mdServerTlfStorage) shutdown() {
