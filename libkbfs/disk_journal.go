@@ -48,8 +48,6 @@ func makeDiskJournal(
 }
 
 // journalOrdinal is the ordinal used for naming journal entries.
-//
-// TODO: Incorporate metadata revision numbers.
 type journalOrdinal uint64
 
 func makeJournalOrdinal(s string) (journalOrdinal, error) {
