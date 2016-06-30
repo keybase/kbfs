@@ -28,7 +28,7 @@ type mdServerTlfStorage struct {
 	// instead.
 	lock sync.RWMutex
 
-	j tlfJournal
+	j diskJournal
 
 	// branch ID -> [revision]MdID
 	mdIDs map[BranchID][]MdID

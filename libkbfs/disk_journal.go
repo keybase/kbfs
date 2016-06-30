@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-// tlfJournal stores an ordered list of entries.
+// diskJournal stores an ordered list of entries.
 //
 // The directory layout looks like:
 //
@@ -31,16 +31,16 @@ import (
 // level.
 //
 // TODO: Make IO ops cancellable.
-type tlfJournal struct {
+type diskJournal struct {
 	codec     Codec
 	dir       string
 	entryType reflect.Type
 }
 
-// makeTlfJournal returns a new tlfJournal for the given directory.
+// makeTlfJournal returns a new diskJournal for the given directory.
 func makeTlfJournal(
-	codec Codec, dir string, entryType reflect.Type) tlfJournal {
-	return tlfJournal{
+	codec Codec, dir string, entryType reflect.Type) diskJournal {
+	return diskJournal{
 		codec:     codec,
 		dir:       dir,
 		entryType: entryType,
@@ -69,22 +69,22 @@ func (o journalOrdinal) String() string {
 
 // The functions below are for building various paths for the journal.
 
-func (j tlfJournal) earliestPath() string {
+func (j diskJournal) earliestPath() string {
 	return filepath.Join(j.dir, "EARLIEST")
 }
 
-func (j tlfJournal) latestPath() string {
+func (j diskJournal) latestPath() string {
 	return filepath.Join(j.dir, "LATEST")
 }
 
-func (j tlfJournal) journalEntryPath(o journalOrdinal) string {
+func (j diskJournal) journalEntryPath(o journalOrdinal) string {
 	return filepath.Join(j.dir, o.String())
 }
 
 // The functions below are for getting and setting the earliest and
 // latest ordinals.
 
-func (j tlfJournal) readOrdinal(path string) (
+func (j diskJournal) readOrdinal(path string) (
 	journalOrdinal, error) {
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -93,31 +93,31 @@ func (j tlfJournal) readOrdinal(path string) (
 	return makeJournalOrdinal(string(buf))
 }
 
-func (j tlfJournal) writeOrdinal(
+func (j diskJournal) writeOrdinal(
 	path string, o journalOrdinal) error {
 	return ioutil.WriteFile(path, []byte(o.String()), 0600)
 }
 
-func (j tlfJournal) readEarliestOrdinal() (
+func (j diskJournal) readEarliestOrdinal() (
 	journalOrdinal, error) {
 	return j.readOrdinal(j.earliestPath())
 }
 
-func (j tlfJournal) writeEarliestOrdinal(o journalOrdinal) error {
+func (j diskJournal) writeEarliestOrdinal(o journalOrdinal) error {
 	return j.writeOrdinal(j.earliestPath(), o)
 }
 
-func (j tlfJournal) readLatestOrdinal() (journalOrdinal, error) {
+func (j diskJournal) readLatestOrdinal() (journalOrdinal, error) {
 	return j.readOrdinal(j.latestPath())
 }
 
-func (j tlfJournal) writeLatestOrdinal(o journalOrdinal) error {
+func (j diskJournal) writeLatestOrdinal(o journalOrdinal) error {
 	return j.writeOrdinal(j.latestPath(), o)
 }
 
 // The functions below are for reading and writing journal entries.
 
-func (j tlfJournal) readJournalEntry(o journalOrdinal) (
+func (j diskJournal) readJournalEntry(o journalOrdinal) (
 	interface{}, error) {
 	p := j.journalEntryPath(o)
 	buf, err := ioutil.ReadFile(p)
@@ -134,7 +134,7 @@ func (j tlfJournal) readJournalEntry(o journalOrdinal) (
 	return entry.Elem().Interface(), nil
 }
 
-func (j tlfJournal) writeJournalEntry(
+func (j diskJournal) writeJournalEntry(
 	o journalOrdinal, entry interface{}) error {
 	entryType := reflect.TypeOf(entry)
 	if entryType != j.entryType {
@@ -157,7 +157,7 @@ func (j tlfJournal) writeJournalEntry(
 	return ioutil.WriteFile(p, buf, 0600)
 }
 
-func (j tlfJournal) appendJournalEntry(entry interface{}) error {
+func (j diskJournal) appendJournalEntry(entry interface{}) error {
 	// TODO: Consider caching the latest ordinal in memory instead
 	// of reading it from disk every time.
 	var next journalOrdinal
@@ -188,7 +188,7 @@ func (j tlfJournal) appendJournalEntry(entry interface{}) error {
 	return j.writeLatestOrdinal(next)
 }
 
-func (j tlfJournal) journalLength() (uint64, error) {
+func (j diskJournal) journalLength() (uint64, error) {
 	first, err := j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
 		return 0, nil

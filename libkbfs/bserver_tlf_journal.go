@@ -33,7 +33,7 @@ import (
 //
 // Each entry in the journal in dir/block_journal contains the
 // mutating operation and arguments for a single operation, except for
-// block data. (See tlfJournal comments for more details about the
+// block data. (See diskJournal comments for more details about the
 // journal.)
 //
 // The block data is stored separately in dir/blocks. Each block has
@@ -61,7 +61,7 @@ type bserverTlfJournal struct {
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
 	lock       sync.RWMutex
-	j          tlfJournal
+	j          diskJournal
 	refs       map[BlockID]blockRefMap
 	isShutdown bool
 }
