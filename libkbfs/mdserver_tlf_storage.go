@@ -15,6 +15,37 @@ import (
 	keybase1 "github.com/keybase/client/go/protocol"
 )
 
+// mdServerTlfStorage stores an ordered list of metadata IDs for each
+// branch of a single TLF, along with the associated metadata objects,
+// in flat files on disk.
+//
+// The directory layout looks like:
+//
+// dir/00..00/EARLIEST
+// dir/00..00/LATEST
+// dir/00..00/0...001
+// dir/00..00/0...002
+// dir/00..00/0...fff
+// dir/00..cc/EARLIEST
+// dir/00..cc/LATEST
+// dir/00..cc/0...0ff
+// dir/00..cc/0...100
+// dir/00..cc/0...fff
+// dir/mds/0100/0...01
+// ...
+// dir/mds/01ff/f...ff
+//
+// Each branch has its own subdirectory with a journal; the journal
+// ordinals are just MetadataRevisions, and the journal entries are
+// just MdIDs.
+//
+// The Metadata objects are stored separately in dir/mds. Each block
+// has its own subdirectory with its ID as a name. The MD
+// subdirectories are splayed over (# of possible hash types) * 256
+// subdirectories -- one byte for the hash type (currently only one)
+// plus the first byte of the hash data -- using the first four
+// characters of the name to keep the number of directories in dir
+// itself to a manageable number, similar to git.
 type mdServerTlfStorage struct {
 	codec  Codec
 	crypto cryptoPure

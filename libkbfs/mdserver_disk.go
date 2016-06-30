@@ -40,7 +40,8 @@ type mdServerDiskShared struct {
 	shutdownFunc func(logger.Logger)
 }
 
-// MDServerDisk stores all info on disk.
+// MDServerDisk stores all info on disk, either in levelDBs, or disk
+// journals and flat files for the actual MDs.
 type MDServerDisk struct {
 	config Config
 	log    logger.Logger
