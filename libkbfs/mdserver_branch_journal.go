@@ -85,6 +85,31 @@ func (j *mdServerBranchJournal) journalLength() (uint64, error) {
 	return j.j.journalLength()
 }
 
+func (j *mdServerBranchJournal) getHead() *MdID {
+	if len(j.mdIDs) == 0 {
+		return nil
+	}
+	return &j.mdIDs[len(j.mdIDs)-1]
+}
+
+func (j *mdServerBranchJournal) getRange(start, stop MetadataRevision) []MdID {
+	if j.initialRevision == MetadataRevisionUninitialized {
+		return nil
+	}
+	var startI int
+	if start <= j.initialRevision {
+		startI = 0
+	} else {
+		startI = int(start - j.initialRevision)
+	}
+	end := stop + 1
+	endI := int(end - j.initialRevision)
+	if endI > len(j.mdIDs) {
+		endI = len(j.mdIDs)
+	}
+	return j.mdIDs[startI:endI]
+}
+
 func (j *mdServerBranchJournal) put(
 	revision MetadataRevision, mdID MdID) error {
 	if j.initialRevision != MetadataRevisionUninitialized {

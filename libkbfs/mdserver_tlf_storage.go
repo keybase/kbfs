@@ -150,10 +150,11 @@ func (s *mdServerTlfStorage) getHeadForTLFLocked(bid BranchID) (
 	if err != nil {
 		return nil, err
 	}
-	if len(j.mdIDs) == 0 {
+	headID := j.getHead()
+	if headID == nil {
 		return nil, nil
 	}
-	return s.getMDLocked(j.mdIDs[len(j.mdIDs)-1])
+	return s.getMDLocked(*headID)
 }
 
 func (s *mdServerTlfStorage) checkGetParamsLocked(
@@ -190,15 +191,10 @@ func (s *mdServerTlfStorage) getRangeLocked(
 		return nil, err
 	}
 
-	startI := int(start - MetadataRevisionInitial)
-	endI := int(stop - MetadataRevisionInitial + 1)
-	if endI > len(j.mdIDs) {
-		endI = len(j.mdIDs)
-	}
-
+	mdIDs := j.getRange(start, stop)
 	var rmdses []*RootMetadataSigned
-	for i := startI; i < endI; i++ {
-		rmds, err := s.getMDLocked(j.mdIDs[i])
+	for _, mdID := range mdIDs {
+		rmds, err := s.getMDLocked(mdID)
 		if err != nil {
 			return nil, MDServerError{err}
 		}
