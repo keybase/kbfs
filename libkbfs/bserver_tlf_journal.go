@@ -91,7 +91,7 @@ type bserverJournalEntry struct {
 func makeBserverTlfJournal(codec Codec, crypto cryptoPure, dir string) (
 	*bserverTlfJournal, error) {
 	journalPath := filepath.Join(dir, "block_journal")
-	j := makeTlfJournal(
+	j := makeDiskJournal(
 		codec, journalPath, reflect.TypeOf(bserverJournalEntry{}))
 	journal := &bserverTlfJournal{
 		codec:  codec,

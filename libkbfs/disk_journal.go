@@ -37,8 +37,8 @@ type diskJournal struct {
 	entryType reflect.Type
 }
 
-// makeTlfJournal returns a new diskJournal for the given directory.
-func makeTlfJournal(
+// makeDiskJournal returns a new diskJournal for the given directory.
+func makeDiskJournal(
 	codec Codec, dir string, entryType reflect.Type) diskJournal {
 	return diskJournal{
 		codec:     codec,
