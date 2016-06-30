@@ -157,20 +157,30 @@ func (j diskJournal) writeJournalEntry(
 	return ioutil.WriteFile(p, buf, 0600)
 }
 
-func (j diskJournal) appendJournalEntry(entry interface{}) error {
+func (j diskJournal) appendJournalEntry(
+	o *journalOrdinal, entry interface{}) error {
 	// TODO: Consider caching the latest ordinal in memory instead
 	// of reading it from disk every time.
 	var next journalOrdinal
-	o, err := j.readLatestOrdinal()
+	lo, err := j.readLatestOrdinal()
 	if os.IsNotExist(err) {
-		next = 0
+		if o != nil {
+			next = *o
+		} else {
+			next = 0
+		}
 	} else if err != nil {
 		return err
 	} else {
-		next = o + 1
+		next = lo + 1
 		if next == 0 {
 			// Rollover is almost certainly a bug.
 			return fmt.Errorf("Ordinal rollover for %+v", entry)
+		}
+		if o != nil && next != *o {
+			return fmt.Errorf(
+				"%v unexpectedly does not follow %v for %+v",
+				*o, lo, entry)
 		}
 	}
 

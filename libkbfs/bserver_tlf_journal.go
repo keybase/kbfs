@@ -207,7 +207,7 @@ func (j *bserverTlfJournal) writeJournalEntryLocked(
 
 func (j *bserverTlfJournal) appendJournalEntryLocked(
 	op bserverOpName, id BlockID, contexts []BlockContext) error {
-	return j.j.appendJournalEntry(bserverJournalEntry{
+	return j.j.appendJournalEntry(nil, bserverJournalEntry{
 		Op:       op,
 		ID:       id,
 		Contexts: contexts,
