@@ -388,8 +388,9 @@ func (d *Dir) create(ctx context.Context, oc *openContext, name string) (f dokan
 	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err, nil) }()
 
 	isExec := false // Windows lacks executable modes.
+	isExcl := false // TODO: populate this field properly based on oc
 	newNode, _, err := d.folder.fs.config.KBFSOps().CreateFile(
-		ctx, d.node, name, isExec)
+		ctx, d.node, name, isExec, isExcl)
 	if err != nil {
 		return nil, false, err
 	}

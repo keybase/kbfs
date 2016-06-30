@@ -459,8 +459,9 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
 	isExec := (req.Mode.Perm() & 0100) != 0
+	isExcl := (req.Flags & fuse.OpenExclusive) != 0
 	newNode, _, err := d.folder.fs.config.KBFSOps().CreateFile(
-		ctx, d.node, req.Name, isExec)
+		ctx, d.node, req.Name, isExec, isExcl)
 	if err != nil {
 		return nil, nil, err
 	}

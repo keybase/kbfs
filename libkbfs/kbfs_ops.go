@@ -318,10 +318,10 @@ func (fs *KBFSOpsStandard) CreateDir(
 
 // CreateFile implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) CreateFile(
-	ctx context.Context, dir Node, name string, isExec bool) (
+	ctx context.Context, dir Node, name string, isExec bool, isExcl bool) (
 	Node, EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
-	return ops.CreateFile(ctx, dir, name, isExec)
+	return ops.CreateFile(ctx, dir, name, isExec, isExcl)
 }
 
 // CreateLink implements the KBFSOps interface for KBFSOpsStandard
