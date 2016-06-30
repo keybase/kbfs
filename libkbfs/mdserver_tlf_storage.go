@@ -26,7 +26,7 @@ type mdServerTlfStorage struct {
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
 	lock           sync.RWMutex
-	branchJournals map[BranchID]*mdServerBranchJournal
+	branchJournals map[BranchID]mdServerBranchJournal
 	isShutdown     bool
 }
 
@@ -36,7 +36,7 @@ func makeMDServerTlfStorage(
 		codec:          codec,
 		crypto:         crypto,
 		dir:            dir,
-		branchJournals: make(map[BranchID]*mdServerBranchJournal),
+		branchJournals: make(map[BranchID]mdServerBranchJournal),
 	}
 	return journal
 }
@@ -125,21 +125,17 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
 }
 
 func (s *mdServerTlfStorage) getBranchJournalLocked(
-	bid BranchID) (*mdServerBranchJournal, error) {
+	bid BranchID) (mdServerBranchJournal, error) {
 	j, ok := s.branchJournals[bid]
 	if !ok {
 		// TODO: Splay the branch directories?
 		dir := filepath.Join(s.dir, bid.String())
 		err := os.MkdirAll(dir, 0700)
 		if err != nil {
-			return nil, err
+			return mdServerBranchJournal{}, err
 		}
 
-		j, err = makeMDServerBranchJournal(s.codec, dir)
-		if err != nil {
-			return nil, err
-		}
-		s.branchJournals[bid] = j
+		s.branchJournals[bid] = makeMDServerBranchJournal(s.codec, dir)
 	}
 	return j, nil
 }
@@ -150,11 +146,14 @@ func (s *mdServerTlfStorage) getHeadForTLFLocked(bid BranchID) (
 	if err != nil {
 		return nil, err
 	}
-	headID := j.getHead()
-	if headID == nil {
+	headID, err := j.getHead()
+	if err != nil {
+		return nil, err
+	}
+	if headID == (MdID{}) {
 		return nil, nil
 	}
-	return s.getMDLocked(*headID)
+	return s.getMDLocked(headID)
 }
 
 func (s *mdServerTlfStorage) checkGetParamsLocked(
@@ -191,7 +190,10 @@ func (s *mdServerTlfStorage) getRangeLocked(
 		return nil, err
 	}
 
-	mdIDs := j.getRange(start, stop)
+	mdIDs, err := j.getRange(start, stop)
+	if err != nil {
+		return nil, err
+	}
 	var rmdses []*RootMetadataSigned
 	for _, mdID := range mdIDs {
 		rmds, err := s.getMDLocked(mdID)
@@ -354,13 +356,5 @@ func (s *mdServerTlfStorage) shutdown() {
 		return
 	}
 	s.isShutdown = true
-
-	for bid, j := range s.branchJournals {
-		err := j.checkJournal()
-		if err != nil {
-			panic(fmt.Sprintf("bid=%v: %v", bid, err))
-		}
-	}
-
 	s.branchJournals = nil
 }
