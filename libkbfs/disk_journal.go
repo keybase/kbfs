@@ -181,7 +181,10 @@ func (j diskJournal) appendJournalEntry(entry interface{}) error {
 
 	_, err = j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
-		j.writeEarliestOrdinal(next)
+		err := j.writeEarliestOrdinal(next)
+		if err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}

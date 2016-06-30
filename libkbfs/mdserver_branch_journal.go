@@ -11,14 +11,14 @@ import (
 )
 
 type mdServerBranchJournal struct {
-	j     diskJournal
-	mdIDs []MdID
+	j               diskJournal
+	initialRevision MetadataRevision
+	mdIDs           []MdID
 }
 
 // An mdServerJournalEntry is just the parameters for a Put
 // operation. Fields are exported only for serialization.
 type mdServerJournalEntry struct {
-	Revision   MetadataRevision
 	MetadataID MdID
 }
 
@@ -29,11 +29,12 @@ func makeMDServerBranchJournal(
 		j: j,
 	}
 
-	mdIDs, err := journal.readJournal()
+	initialRevision, mdIDs, err := journal.readJournal()
 	if err != nil {
 		return nil, err
 	}
 
+	journal.initialRevision = initialRevision
 	journal.mdIDs = mdIDs
 
 	return &journal, nil
@@ -51,55 +52,33 @@ func (j *mdServerBranchJournal) readJournalEntry(o journalOrdinal) (
 
 // readJournal reads the journal and returns an array of all the MdIDs
 // in the journal.
-func (j *mdServerBranchJournal) readJournal() ([]MdID, error) {
-	var mdIDs []MdID
+func (j *mdServerBranchJournal) readJournal() (MetadataRevision, []MdID, error) {
 
 	first, err := j.j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
-		return mdIDs, nil
+		return MetadataRevisionUninitialized, nil, nil
 	} else if err != nil {
-		return nil, err
+		return MetadataRevisionUninitialized, nil, err
 	}
 	last, err := j.j.readLatestOrdinal()
 	if err != nil {
-		return nil, err
+		return MetadataRevisionUninitialized, nil, err
 	}
 
-	var initialRev MetadataRevision
-
+	var mdIDs []MdID
 	for i := first; i <= last; i++ {
 		e, err := j.readJournalEntry(i)
 		if err != nil {
-			return nil, err
+			return MetadataRevisionUninitialized, nil, err
 		}
-
-		if i == first {
-			initialRev = e.Revision
-		} else {
-			expectedRevision := MetadataRevision(int(initialRev) + len(mdIDs))
-			if expectedRevision != e.Revision {
-				return nil, fmt.Errorf(
-					"Revision mismatch: expected %s, got %s",
-					expectedRevision, e.Revision)
-			}
-		}
-
 		mdIDs = append(mdIDs, e.MetadataID)
 	}
-	return mdIDs, nil
+	return MetadataRevision(first), mdIDs, nil
 }
 
 func (j *mdServerBranchJournal) writeJournalEntry(
 	o journalOrdinal, entry mdServerJournalEntry) error {
 	return j.j.writeJournalEntry(o, entry)
-}
-
-func (j *mdServerBranchJournal) appendJournalEntry(
-	revision MetadataRevision, mdID MdID) error {
-	return j.j.appendJournalEntry(mdServerJournalEntry{
-		Revision:   revision,
-		MetadataID: mdID,
-	})
 }
 
 func (j *mdServerBranchJournal) journalLength() (uint64, error) {
@@ -108,20 +87,50 @@ func (j *mdServerBranchJournal) journalLength() (uint64, error) {
 
 func (j *mdServerBranchJournal) put(
 	revision MetadataRevision, mdID MdID) error {
-	err := j.appendJournalEntry(revision, mdID)
+	if j.initialRevision != MetadataRevisionUninitialized {
+		expectedRevision := j.initialRevision + MetadataRevision(len(j.mdIDs))
+		if expectedRevision != revision {
+			return fmt.Errorf("expected revision %s, got %s",
+				expectedRevision, revision)
+		}
+	}
+
+	err := j.j.writeJournalEntry(journalOrdinal(revision),
+		mdServerJournalEntry{
+			MetadataID: mdID,
+		})
 	if err != nil {
 		return err
+	}
+
+	if j.initialRevision == MetadataRevisionUninitialized {
+		err := j.j.writeEarliestOrdinal(journalOrdinal(revision))
+		if err != nil {
+			return err
+		}
+	}
+	err = j.j.writeLatestOrdinal(journalOrdinal(revision))
+	if err != nil {
+		return err
+	}
+
+	if j.initialRevision == MetadataRevisionUninitialized {
+		j.initialRevision = revision
 	}
 	j.mdIDs = append(j.mdIDs, mdID)
 	return nil
 }
 
 func (j *mdServerBranchJournal) checkJournal() error {
-	mdIDs, err := j.readJournal()
+	initialRevision, mdIDs, err := j.readJournal()
 	if err != nil {
 		return err
 	}
 
+	if initialRevision != j.initialRevision {
+		return fmt.Errorf("initialRevision = %v != s.initialRevision= %v",
+			initialRevision, j.initialRevision)
+	}
 	if !reflect.DeepEqual(mdIDs, j.mdIDs) {
 		return fmt.Errorf("mdIDs = %v != s.mdIDs = %v", mdIDs, j.mdIDs)
 	}
