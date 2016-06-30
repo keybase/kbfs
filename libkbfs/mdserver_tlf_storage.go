@@ -21,23 +21,24 @@ import (
 //
 // The directory layout looks like:
 //
-// dir/00..00/EARLIEST
-// dir/00..00/LATEST
-// dir/00..00/0...001
-// dir/00..00/0...002
-// dir/00..00/0...fff
-// dir/00..cc/EARLIEST
-// dir/00..cc/LATEST
-// dir/00..cc/0...0ff
-// dir/00..cc/0...100
-// dir/00..cc/0...fff
+// dir/md_branch_journals/00..00/EARLIEST
+// dir/md_branch_journals/00..00/LATEST
+// dir/md_branch_journals/00..00/0...001
+// dir/md_branch_journals/00..00/0...002
+// dir/md_branch_journals/00..00/0...fff
+// dir/md_branch_journals/00..cc/EARLIEST
+// dir/md_branch_journals/00..cc/LATEST
+// dir/md_branch_journals/00..cc/0...0ff
+// dir/md_branch_journals/00..cc/0...100
+// dir/md_branch_journals/00..cc/0...fff
 // dir/mds/0100/0...01
 // ...
 // dir/mds/01ff/f...ff
 //
 // Each branch has its own subdirectory with a journal; the journal
 // ordinals are just MetadataRevisions, and the journal entries are
-// just MdIDs.
+// just MdIDs. (Branches are usually temporary, so no need to splay
+// them.)
 //
 // The Metadata objects are stored separately in dir/mds. Each block
 // has its own subdirectory with its ID as a name. The MD
@@ -71,7 +72,11 @@ func makeMDServerTlfStorage(
 	return journal
 }
 
-// The functions below are for building various non-journal paths.
+// The functions below are for building various paths.
+
+func (s *mdServerTlfStorage) branchJournalsPath() string {
+	return filepath.Join(s.dir, "md_branch_journals")
+}
 
 func (s *mdServerTlfStorage) mdsPath() string {
 	return filepath.Join(s.dir, "mds")
@@ -158,8 +163,7 @@ func (s *mdServerTlfStorage) getBranchJournalLocked(
 	bid BranchID) (mdServerBranchJournal, error) {
 	j, ok := s.branchJournals[bid]
 	if !ok {
-		// TODO: Splay the branch directories?
-		dir := filepath.Join(s.dir, bid.String())
+		dir := filepath.Join(s.branchJournalsPath(), bid.String())
 		err := os.MkdirAll(dir, 0700)
 		if err != nil {
 			return mdServerBranchJournal{}, err
