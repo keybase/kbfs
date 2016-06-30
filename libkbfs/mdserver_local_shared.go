@@ -63,6 +63,8 @@ func isWriterOrValidRekey(ctx context.Context, codec Codec, kbpki KBPKI,
 		ctx, codec, kbpki, mergedMasterHead, true, newMd)
 }
 
+// mdServerLocalTruncateLockManager manages the truncate locks for a
+// set of TLFs. Note that it is not goroutine-safe.
 type mdServerLocalTruncateLockManager struct {
 	// TLF ID -> device KID.
 	locksDb map[TlfID]keybase1.KID
@@ -108,13 +110,12 @@ func (m mdServerLocalTruncateLockManager) truncateUnlock(
 	return false, MDServerErrorLocked{}
 }
 
+// mdServerLocalUpdateManager manages the observers for a set of TLFs
+// referenced by multiple mdServerLocal instances sharing the same
+// data. It is goroutine-safe.
 type mdServerLocalUpdateManager struct {
 	// Protects observers and sessionHeads.
-	lock sync.Mutex
-	// Multiple local instances of mdServerLocal could share a
-	// reference to this map and sessionHead, and we use that to
-	// ensure that all observers are fired correctly no matter
-	// which local instance gets the Put() call.
+	lock         sync.Mutex
 	observers    map[TlfID]map[mdServerLocal]chan<- error
 	sessionHeads map[TlfID]mdServerLocal
 }
