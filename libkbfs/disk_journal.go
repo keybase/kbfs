@@ -48,6 +48,8 @@ func makeDiskJournal(
 }
 
 // journalOrdinal is the ordinal used for naming journal entries.
+//
+// TODO: Support pairs, e.g. (MetadataRevision, journalOrdinal).
 type journalOrdinal uint64
 
 func makeJournalOrdinal(s string) (journalOrdinal, error) {
@@ -155,6 +157,12 @@ func (j diskJournal) writeJournalEntry(
 	return ioutil.WriteFile(p, buf, 0600)
 }
 
+// appendJournalEntry appends the given entry to the journal. If o is
+// nil, then if the journal is empty, the new entry will have ordinal
+// 0, and otherwise it will have ordinal equal to the successor of the
+// latest ordinal. Otherwise, if o is non-nil, then if the journal
+// entry, the new entry will have ordinal *o, and otherwise it return
+// an error if *o is not the successor of the latest ordinal.
 func (j diskJournal) appendJournalEntry(
 	o *journalOrdinal, entry interface{}) error {
 	// TODO: Consider caching the latest ordinal in memory instead
