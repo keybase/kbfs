@@ -99,6 +99,8 @@ func (j mdServerBranchJournal) readMdID(r MetadataRevision) (MdID, error) {
 	return e.(MdID), nil
 }
 
+// All functions below are public functions.
+
 func (j mdServerBranchJournal) journalLength() (uint64, error) {
 	return j.j.journalLength()
 }

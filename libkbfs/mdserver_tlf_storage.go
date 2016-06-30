@@ -21,13 +21,12 @@ type mdServerTlfStorage struct {
 	dir    string
 
 	// Protects any IO operations in dir or any of its children,
-	// as well as branchJournals and isShutdown.
+	// as well as branchJournals and its contents.
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
 	lock           sync.RWMutex
 	branchJournals map[BranchID]mdServerBranchJournal
-	isShutdown     bool
 }
 
 func makeMDServerTlfStorage(
@@ -211,13 +210,19 @@ func (s *mdServerTlfStorage) getRangeLocked(
 	return rmdses, nil
 }
 
+func (s *mdServerTlfStorage) isShutdownLocked() bool {
+	return s.branchJournals == nil
+}
+
+// All functions below are public functions.
+
 var errMDServerTlfStorageShutdown = errors.New("mdServerTlfStorage is shutdown")
 
 func (s *mdServerTlfStorage) journalLength(bid BranchID) (uint64, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	if s.isShutdown {
+	if s.isShutdownLocked() {
 		return 0, errMDServerTlfStorageShutdown
 	}
 
@@ -229,15 +234,13 @@ func (s *mdServerTlfStorage) journalLength(bid BranchID) (uint64, error) {
 	return j.journalLength()
 }
 
-// All functions below are public functions.
-
 func (s *mdServerTlfStorage) getForTLF(
 	currentUID keybase1.UID, deviceKID keybase1.KID,
 	bid BranchID) (*RootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	if s.isShutdown {
+	if s.isShutdownLocked() {
 		return nil, errMDServerTlfStorageShutdown
 	}
 
@@ -260,7 +263,7 @@ func (s *mdServerTlfStorage) getRange(
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	if s.isShutdown {
+	if s.isShutdownLocked() {
 		return nil, errMDServerTlfStorageShutdown
 	}
 
@@ -273,7 +276,7 @@ func (s *mdServerTlfStorage) put(
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if s.isShutdown {
+	if s.isShutdownLocked() {
 		return false, errMDServerTlfStorageShutdown
 	}
 
@@ -356,10 +359,5 @@ func (s *mdServerTlfStorage) put(
 func (s *mdServerTlfStorage) shutdown() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
-	if s.isShutdown {
-		return
-	}
-	s.isShutdown = true
 	s.branchJournals = nil
 }
