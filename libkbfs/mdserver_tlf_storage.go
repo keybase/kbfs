@@ -190,15 +190,20 @@ func (s *mdServerTlfStorage) getRangeLocked(
 		return nil, err
 	}
 
-	mdIDs, err := j.getRange(start, stop)
+	realStart, mdIDs, err := j.getRange(start, stop)
 	if err != nil {
 		return nil, err
 	}
 	var rmdses []*RootMetadataSigned
-	for _, mdID := range mdIDs {
+	for i, mdID := range mdIDs {
+		expectedRevision := realStart + MetadataRevision(i)
 		rmds, err := s.getMDLocked(mdID)
 		if err != nil {
 			return nil, MDServerError{err}
+		}
+		if expectedRevision != rmds.MD.Revision {
+			panic(fmt.Errorf("expected revision %v, got %v",
+				expectedRevision, rmds.MD.Revision))
 		}
 		rmdses = append(rmdses, rmds)
 	}

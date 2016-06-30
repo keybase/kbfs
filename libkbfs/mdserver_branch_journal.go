@@ -114,19 +114,19 @@ func (j mdServerBranchJournal) getHead() (MdID, error) {
 }
 
 func (j mdServerBranchJournal) getRange(
-	start, stop MetadataRevision) ([]MdID, error) {
+	start, stop MetadataRevision) (MetadataRevision, []MdID, error) {
 	earliestRevision, err := j.readEarliestRevision()
 	if err != nil {
-		return nil, err
+		return MetadataRevisionUninitialized, nil, err
 	} else if earliestRevision == MetadataRevisionUninitialized {
-		return nil, nil
+		return MetadataRevisionUninitialized, nil, nil
 	}
 
 	latestRevision, err := j.readLatestRevision()
 	if err != nil {
-		return nil, err
+		return MetadataRevisionUninitialized, nil, err
 	} else if latestRevision == MetadataRevisionUninitialized {
-		return nil, nil
+		return MetadataRevisionUninitialized, nil, nil
 	}
 
 	if start < earliestRevision {
@@ -141,11 +141,11 @@ func (j mdServerBranchJournal) getRange(
 	for i := start; i <= stop; i++ {
 		mdID, err := j.readMdID(i)
 		if err != nil {
-			return nil, err
+			return MetadataRevisionUninitialized, nil, err
 		}
 		mdIDs = append(mdIDs, mdID)
 	}
-	return mdIDs, nil
+	return start, mdIDs, nil
 }
 
 func (j mdServerBranchJournal) append(r MetadataRevision, mdID MdID) error {
