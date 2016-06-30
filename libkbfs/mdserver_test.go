@@ -104,17 +104,10 @@ func TestMDServerBasics(t *testing.T) {
 
 	// (6b) try to get unmerged range subset.
 	rmdses, err = mdServer.GetRange(ctx, id, bid, Unmerged, 7, 14)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(rmdses) != 8 {
-		t.Fatal(fmt.Errorf("expected 8 MD blocks, got: %d", len(rmdses)))
-	}
+	require.NoError(t, err)
+	require.Equal(t, 8, len(rmdses))
 	for i := MetadataRevision(7); i <= 14; i++ {
-		if rmdses[i-7].MD.Revision != i {
-			t.Fatal(fmt.Errorf("expected revision %d, got: %d",
-				i, rmdses[i-7].MD.Revision))
-		}
+		require.Equal(t, i, rmdses[i-7].MD.Revision)
 	}
 
 	// (7) prune unmerged
