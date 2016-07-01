@@ -348,15 +348,12 @@ func (ccs *crChains) makeChainForOp(op op) error {
 			return err
 		}
 		ro.setWriterInfo(realOp.getWriterInfo())
-		// OldDir.Ref may be zero, since realOp may still be
-		// invalid (if we're being called before pointers are
-		// fixed up).
-		if realOp.OldDir.Ref != (BlockPointer{}) {
-			ro.Dir.Ref = realOp.OldDir.Ref
-			err = ccs.addOp(realOp.OldDir.Ref, ro)
-			if err != nil {
-				return err
-			}
+		// realOp.OldDir.Ref may be zero if this is a
+		// post-resolution chain, so set ro.Dir.Ref manually.
+		ro.Dir.Ref = realOp.OldDir.Ref
+		err = ccs.addOp(realOp.OldDir.Ref, ro)
+		if err != nil {
+			return err
 		}
 
 		ndu := realOp.NewDir.Unref
@@ -396,9 +393,8 @@ func (ccs *crChains) makeChainForOp(op op) error {
 		co.setWriterInfo(realOp.getWriterInfo())
 		co.renamed = true
 
-		// ndr may be zero, since realOp may still be invalid
-		// (if we're being called before pointers are fixed
-		// up).
+		// ndr may be zero if this is a post-resolution chain,
+		// so set co.Dir.Ref manually.
 		if ndr != (BlockPointer{}) {
 			co.Dir.Ref = ndr
 			err = ccs.addOp(ndr, co)
