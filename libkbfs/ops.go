@@ -254,6 +254,11 @@ func (co *createOp) AllUpdates() []blockUpdate {
 }
 
 func (co *createOp) checkValid() error {
+	if co.NewName == "" {
+		// Must be for root dir.
+		return nil
+	}
+
 	err := co.Dir.checkValid()
 	if err != nil {
 		return fmt.Errorf("createOp.Dir=%v got error: %v", co.Dir, err)
