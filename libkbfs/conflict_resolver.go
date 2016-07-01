@@ -3173,7 +3173,7 @@ func (cr *ConflictResolver) completeResolution(ctx context.Context,
 
 	// Can only do this after syncBlocks, since syncBlocks calls
 	// crFixOpPointers, and the ops may be invalid until then.
-	err := md.data.checkValid()
+	err = md.data.checkValid()
 	if err != nil {
 		return err
 	}

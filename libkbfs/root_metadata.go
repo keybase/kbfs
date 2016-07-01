@@ -38,7 +38,7 @@ type PrivateMetadata struct {
 }
 
 func (p PrivateMetadata) checkValid() error {
-	for i, op := range md.data.Changes.Ops {
+	for i, op := range p.Changes.Ops {
 		err := op.checkValid()
 		if err != nil {
 			return fmt.Errorf("op[%d]=%v invalid: %v", i, op, err)

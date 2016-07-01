@@ -1801,7 +1801,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata, bps *blockPutState, excl EXCL) (err error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
-	err := md.data.checkValid()
+	err = md.data.checkValid()
 	if err != nil {
 		return err
 	}
