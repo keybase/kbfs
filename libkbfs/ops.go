@@ -68,7 +68,10 @@ func makeBlockUpdate(unref, ref BlockPointer) (blockUpdate, error) {
 	if err != nil {
 		return blockUpdate{}, err
 	}
-	bu.setRef(ref)
+	err = bu.setRef(ref)
+	if err != nil {
+		return blockUpdate{}, err
+	}
 	return bu, nil
 }
 
@@ -84,11 +87,12 @@ func (u *blockUpdate) setUnref(ptr BlockPointer) error {
 	return nil
 }
 
-func (u *blockUpdate) setRef(ptr BlockPointer) {
+func (u *blockUpdate) setRef(ptr BlockPointer) error {
 	if ptr == (BlockPointer{}) {
-		panic(fmt.Errorf("setUnref called with nil ptr"))
+		return fmt.Errorf("setUnref called with nil ptr")
 	}
 	u.Ref = ptr
+	return nil
 }
 
 // list codes
@@ -212,7 +216,10 @@ func (co *createOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
 		panic("AdUpdate called on create op for root dir")
 	}
 	if oldPtr == co.Dir.Unref {
-		co.Dir.setRef(newPtr)
+		err := co.Dir.setRef(newPtr)
+		if err != nil {
+			panic(err)
+		}
 		return
 	}
 	co.OpCommon.AddUpdate(oldPtr, newPtr)
@@ -324,7 +331,10 @@ func newRmOp(name string, oldDir BlockPointer) (*rmOp, error) {
 
 func (ro *rmOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
 	if oldPtr == ro.Dir.Unref {
-		ro.Dir.setRef(newPtr)
+		err := ro.Dir.setRef(newPtr)
+		if err != nil {
+			panic(err)
+		}
 		return
 	}
 	ro.OpCommon.AddUpdate(oldPtr, newPtr)
@@ -412,11 +422,17 @@ func newRenameOp(oldName string, oldOldDir BlockPointer,
 
 func (ro *renameOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
 	if oldPtr == ro.OldDir.Unref {
-		ro.OldDir.setRef(newPtr)
+		err := ro.OldDir.setRef(newPtr)
+		if err != nil {
+			panic(err)
+		}
 		return
 	}
 	if ro.NewDir != (blockUpdate{}) && oldPtr == ro.NewDir.Unref {
-		ro.NewDir.setRef(newPtr)
+		err := ro.NewDir.setRef(newPtr)
+		if err != nil {
+			panic(err)
+		}
 		return
 	}
 	ro.OpCommon.AddUpdate(oldPtr, newPtr)
@@ -517,7 +533,10 @@ func (so *syncOp) resetUpdateState() {
 
 func (so *syncOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
 	if oldPtr == so.File.Unref {
-		so.File.setRef(newPtr)
+		err := so.File.setRef(newPtr)
+		if err != nil {
+			panic(err)
+		}
 		return
 	}
 	so.OpCommon.AddUpdate(oldPtr, newPtr)
@@ -747,7 +766,10 @@ func newSetAttrOp(name string, oldDir BlockPointer,
 
 func (sao *setAttrOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
 	if oldPtr == sao.Dir.Unref {
-		sao.Dir.setRef(newPtr)
+		err := sao.Dir.setRef(newPtr)
+		if err != nil {
+			panic(err)
+		}
 		return
 	}
 	sao.OpCommon.AddUpdate(oldPtr, newPtr)

@@ -1190,13 +1190,19 @@ outer:
 				if err != nil {
 					return err
 				}
-				invertCreate.Dir.setRef(info.originalNewParent)
+				err = invertCreate.Dir.setRef(info.originalNewParent)
+				if err != nil {
+					return err
+				}
 				invertRm, err := newCreateOp(info.oldName,
 					info.originalOldParent, cop.Type)
 				if err != nil {
 					return err
 				}
-				invertRm.Dir.setRef(info.originalOldParent)
+				err = invertRm.Dir.setRef(info.originalOldParent)
+				if err != nil {
+					return err
+				}
 				invertRm.renamed = true
 				invertRm.AddRefBlock(ptr)
 
@@ -1614,7 +1620,10 @@ func (cr *ConflictResolver) addMergedRecreates(ctx context.Context,
 					if err != nil {
 						return err
 					}
-					co.Dir.setRef(chain.original)
+					err = co.Dir.setRef(chain.original)
+					if err != nil {
+						return err
+					}
 					co.AddRefBlock(c.mostRecent)
 					winfo, err := newWriterInfo(ctx, cr.config,
 						mergedChains.mostRecentMD.LastModifyingWriter,

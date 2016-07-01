@@ -348,7 +348,10 @@ func (ccs *crChains) makeChainForOp(op op) error {
 			return err
 		}
 		ro.setWriterInfo(realOp.getWriterInfo())
-		ro.Dir.setRef(realOp.OldDir.Ref)
+		err = ro.Dir.setRef(realOp.OldDir.Ref)
+		if err != nil {
+			return err
+		}
 		err = ccs.addOp(realOp.OldDir.Ref, ro)
 		if err != nil {
 			return err
@@ -370,7 +373,10 @@ func (ccs *crChains) makeChainForOp(op op) error {
 				return err
 			}
 			roOverwrite.setWriterInfo(realOp.getWriterInfo())
-			roOverwrite.Dir.setRef(ndr)
+			err = roOverwrite.Dir.setRef(ndr)
+			if err != nil {
+				return err
+			}
 			err = ccs.addOp(ndr, roOverwrite)
 			if err != nil {
 				return err
@@ -387,7 +393,10 @@ func (ccs *crChains) makeChainForOp(op op) error {
 		}
 		co.setWriterInfo(realOp.getWriterInfo())
 		co.renamed = true
-		co.Dir.setRef(ndr)
+		err = co.Dir.setRef(ndr)
+		if err != nil {
+			return err
+		}
 		err = ccs.addOp(ndr, co)
 		if err != nil {
 			return err

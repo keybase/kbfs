@@ -913,7 +913,8 @@ func TestCRMergedChainsRenameCycleSimple(t *testing.T) {
 
 	ro, err := newRmOp("dirA", dirRootPtr)
 	require.NoError(t, err)
-	ro.Dir.setRef(unmergedPathRoot.tailPointer())
+	err = ro.Dir.setRef(unmergedPathRoot.tailPointer())
+	require.NoError(t, err)
 	ro.dropThis = true
 	ro.setWriterInfo(writerInfo{name: "u2"})
 	ro.setFinalPath(unmergedPathRoot)
