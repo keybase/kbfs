@@ -2176,7 +2176,7 @@ func (cr *ConflictResolver) makeRevertedOps(ctx context.Context,
 				if sao, ok := op.(*setAttrOp); ok {
 					if newDir, _, ok :=
 						otherChains.renamedParentAndName(sao.File); ok {
-						sao.Dir.Unref = newDir
+						sao.Dir.setUnref(newDir)
 					}
 				}
 			}
@@ -2222,8 +2222,8 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 				// skips chains which are newly-created within this
 				// branch.
 				newCreateOp := *cop
-				newCreateOp.Dir.Unref = chain.mostRecent
-				newCreateOp.Dir.Ref = chain.mostRecent
+				newCreateOp.Dir.setUnref(chain.mostRecent)
+				newCreateOp.Dir.setRef(chain.mostRecent)
 				chain.ops[i] = &newCreateOp
 				if !added {
 					newPaths = append(newPaths, path{
@@ -2363,8 +2363,8 @@ func crFixOpPointers(oldOps []op, updates map[BlockPointer]BlockPointer,
 			// Since the first op does all the heavy lifting of
 			// updating pointers, we can set these to both just be the
 			// new pointer
-			update.Unref = newPtr
-			update.Ref = newPtr
+			update.setUnref(newPtr)
+			update.setRef(newPtr)
 		}
 		for _, ptr := range ptrsToFix {
 			newPtr, ok := updates[*ptr]
@@ -2880,7 +2880,7 @@ func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
 			cr.log.CDebugf(ctx, "Fixing resOp update from unmerged most "+
 				"recent %v to merged most recent %v",
 				update.Unref, mergedMostRecent)
-			update.Unref = mergedMostRecent
+			update.setUnref(mergedMostRecent)
 			resOp.Updates[i] = update
 			updates[update.Unref] = update.Ref
 		}

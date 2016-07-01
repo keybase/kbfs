@@ -348,7 +348,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 			return err
 		}
 		ro.setWriterInfo(realOp.getWriterInfo())
-		ro.Dir.Ref = realOp.OldDir.Ref
+		ro.Dir.setRef(realOp.OldDir.Ref)
 		err = ccs.addOp(realOp.OldDir.Ref, ro)
 		if err != nil {
 			return err
@@ -387,7 +387,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 		}
 		co.setWriterInfo(realOp.getWriterInfo())
 		co.renamed = true
-		co.Dir.Ref = ndr
+		co.Dir.setRef(ndr)
 		err = ccs.addOp(ndr, co)
 		if err != nil {
 			return err
@@ -461,13 +461,12 @@ func (ccs *crChains) makeChainForOp(op op) error {
 
 func (ccs *crChains) makeChainForNewOpWithUpdate(
 	targetPtr BlockPointer, newOp op, update *blockUpdate) error {
-	oldUnref := update.Unref
-	update.Unref = targetPtr
-	update.Ref = update.Unref // so that most recent == original
+	oldUpdate := *update
+	update.setUnref(targetPtr)
+	update.setRef(update.Unref) // so that most recent == original
 	defer func() {
 		// reset the update to its original state before returning.
-		update.Unref = oldUnref
-		update.Ref = BlockPointer{}
+		*update = oldUpdate
 	}()
 	err := ccs.makeChainForOp(newOp)
 	if err != nil {
