@@ -695,7 +695,10 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 		if err != nil {
 			return path{}, BlockPointer{}, nil, err
 		}
-		co := newCreateOp(name, parentOriginal, de.Type)
+		co, err := newCreateOp(name, parentOriginal, de.Type)
+		if err != nil {
+			return path{}, BlockPointer{}, nil, err
+		}
 		co.AddUpdate(parentOriginal, parentOriginal)
 		co.setFinalPath(parentPath)
 		co.AddRefBlock(currOriginal)
@@ -1182,12 +1185,18 @@ outer:
 				newInfo.oldName = info.newName
 			} else {
 				// invert the op in the merged chains
-				invertCreate := newRmOp(info.newName,
+				invertCreate, err := newRmOp(info.newName,
 					info.originalNewParent)
-				invertCreate.Dir.Ref = info.originalNewParent
-				invertRm := newCreateOp(info.oldName,
+				if err != nil {
+					return err
+				}
+				invertCreate.Dir.setRef(info.originalNewParent)
+				invertRm, err := newCreateOp(info.oldName,
 					info.originalOldParent, cop.Type)
-				invertRm.Dir.Ref = info.originalOldParent
+				if err != nil {
+					return err
+				}
+				invertRm.Dir.setRef(info.originalOldParent)
 				invertRm.renamed = true
 				invertRm.AddRefBlock(ptr)
 
@@ -1601,8 +1610,11 @@ func (cr *ConflictResolver) addMergedRecreates(ctx context.Context,
 						// is created on the unmerged branch.
 						t = File
 					}
-					co := newCreateOp(name, chain.original, t)
-					co.Dir.Ref = chain.original
+					co, err := newCreateOp(name, chain.original, t)
+					if err != nil {
+						return err
+					}
+					co.Dir.setRef(chain.original)
 					co.AddRefBlock(c.mostRecent)
 					winfo, err := newWriterInfo(ctx, cr.config,
 						mergedChains.mostRecentMD.LastModifyingWriter,
@@ -2135,9 +2147,12 @@ func (cr *ConflictResolver) makeRevertedOps(ctx context.Context,
 							"for original %v", renameOriginal)
 					}
 
-					rop := newRenameOp(ri.oldName, ri.originalOldParent,
+					rop, err := newRenameOp(ri.oldName, ri.originalOldParent,
 						ri.newName, ri.originalNewParent, renameOriginal,
 						cop.Type)
+					if err != nil {
+						return nil, err
+					}
 					// Set the Dir.Ref fields to be the same as the Unref
 					// -- they will be fixed up later.
 					rop.AddUpdate(ri.originalOldParent, ri.originalOldParent)

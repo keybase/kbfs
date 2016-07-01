@@ -343,10 +343,13 @@ func (ccs *crChains) makeChainForOp(op op) error {
 	case *renameOp:
 		// split rename op into two separate operations, one for
 		// remove and one for create
-		ro := newRmOp(realOp.OldName, realOp.OldDir.Unref)
+		ro, err := newRmOp(realOp.OldName, realOp.OldDir.Unref)
+		if err != nil {
+			return err
+		}
 		ro.setWriterInfo(realOp.getWriterInfo())
 		ro.Dir.Ref = realOp.OldDir.Ref
-		err := ccs.addOp(realOp.OldDir.Ref, ro)
+		err = ccs.addOp(realOp.OldDir.Ref, ro)
 		if err != nil {
 			return err
 		}
@@ -362,9 +365,12 @@ func (ccs *crChains) makeChainForOp(op op) error {
 		if len(realOp.Unrefs()) > 0 {
 			// Something was overwritten; make an explicit rm for it
 			// so we can check for conflicts.
-			roOverwrite := newRmOp(realOp.NewName, ndu)
+			roOverwrite, err := newRmOp(realOp.NewName, ndu)
+			if err != nil {
+				return err
+			}
 			roOverwrite.setWriterInfo(realOp.getWriterInfo())
-			roOverwrite.Dir.Ref = ndr
+			roOverwrite.Dir.setRef(ndr)
 			err = ccs.addOp(ndr, roOverwrite)
 			if err != nil {
 				return err
@@ -375,7 +381,10 @@ func (ccs *crChains) makeChainForOp(op op) error {
 			}
 		}
 
-		co := newCreateOp(realOp.NewName, ndu, realOp.RenamedType)
+		co, err := newCreateOp(realOp.NewName, ndu, realOp.RenamedType)
+		if err != nil {
+			return err
+		}
 		co.setWriterInfo(realOp.getWriterInfo())
 		co.renamed = true
 		co.Dir.Ref = ndr
@@ -483,8 +492,11 @@ func (ccs *crChains) makeChainForNewOp(targetPtr BlockPointer, newOp op) error {
 		// In this case, we don't want to split the rename chain, so
 		// just make up a new operation and later overwrite it with
 		// the rename op.
-		co := newCreateOp(realOp.NewName, realOp.NewDir.Unref, File)
-		err := ccs.makeChainForNewOpWithUpdate(targetPtr, co, &co.Dir)
+		co, err := newCreateOp(realOp.NewName, realOp.NewDir.Unref, File)
+		if err != nil {
+			return err
+		}
+		err = ccs.makeChainForNewOpWithUpdate(targetPtr, co, &co.Dir)
 		if err != nil {
 			return err
 		}

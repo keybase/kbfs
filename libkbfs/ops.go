@@ -62,6 +62,27 @@ type blockUpdate struct {
 	Ref   BlockPointer `codec:"r,omitempty"`
 }
 
+func (u blockUpdate) isValid() bool {
+	return u.Unref != (BlockPointer{}) && u.Ref != (BlockPointer{})
+}
+
+func (u *blockUpdate) setUnref(ptr BlockPointer) error {
+	if ptr == (BlockPointer{}) {
+		err := fmt.Errorf("setUnref called with nil ptr")
+		panic(err)
+		return err
+	}
+	u.Unref = ptr
+	return nil
+}
+
+func (u *blockUpdate) setRef(ptr BlockPointer) {
+	if ptr == (BlockPointer{}) {
+		panic(fmt.Errorf("setUnref called with nil ptr"))
+	}
+	u.Ref = ptr
+}
+
 // list codes
 const (
 	opsListCode extCode = iota + extCodeListRangeStart
@@ -103,7 +124,11 @@ func (oc *OpCommon) AddUnrefBlock(ptr BlockPointer) {
 // AddUpdate adds a mapping from an old block to the new version of
 // that block, for this op.
 func (oc *OpCommon) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
-	oc.Updates = append(oc.Updates, blockUpdate{oldPtr, newPtr})
+	bu := blockUpdate{oldPtr, newPtr}
+	if !bu.isValid() {
+		panic(fmt.Errorf("Invalid update %+v", bu))
+	}
+	oc.Updates = append(oc.Updates, bu)
 }
 
 // Refs returns a slice containing all the blocks that were initially
@@ -156,18 +181,30 @@ type createOp struct {
 	crSymPath string
 }
 
-func newCreateOp(name string, oldDir BlockPointer, t EntryType) *createOp {
+func newCreateOp(name string, oldDir BlockPointer, t EntryType) (*createOp, error) {
 	co := &createOp{
 		NewName: name,
 	}
-	co.Dir.Unref = oldDir
+	err := co.Dir.setUnref(oldDir)
+	if err != nil {
+		return nil, err
+	}
 	co.Type = t
-	return co
+	return co, nil
+}
+
+func newCreateOpForRootDir() *createOp {
+	return &createOp{
+		Type: Dir,
+	}
 }
 
 func (co *createOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
+	if co.Dir == (blockUpdate{}) {
+		panic("AdUpdate called on create op for root dir")
+	}
 	if oldPtr == co.Dir.Unref {
-		co.Dir.Ref = newPtr
+		co.Dir.setRef(newPtr)
 		return
 	}
 	co.OpCommon.AddUpdate(oldPtr, newPtr)
@@ -266,17 +303,20 @@ type rmOp struct {
 	dropThis bool
 }
 
-func newRmOp(name string, oldDir BlockPointer) *rmOp {
+func newRmOp(name string, oldDir BlockPointer) (*rmOp, error) {
 	ro := &rmOp{
 		OldName: name,
 	}
-	ro.Dir.Unref = oldDir
-	return ro
+	err := ro.Dir.setUnref(oldDir)
+	if err != nil {
+		return nil, err
+	}
+	return ro, nil
 }
 
 func (ro *rmOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
 	if oldPtr == ro.Dir.Unref {
-		ro.Dir.Ref = newPtr
+		ro.Dir.setRef(newPtr)
 		return
 	}
 	ro.OpCommon.AddUpdate(oldPtr, newPtr)
@@ -341,28 +381,34 @@ type renameOp struct {
 
 func newRenameOp(oldName string, oldOldDir BlockPointer,
 	newName string, oldNewDir BlockPointer, renamed BlockPointer,
-	renamedType EntryType) *renameOp {
+	renamedType EntryType) (*renameOp, error) {
 	ro := &renameOp{
 		OldName:     oldName,
 		NewName:     newName,
 		Renamed:     renamed,
 		RenamedType: renamedType,
 	}
-	ro.OldDir.Unref = oldOldDir
+	err := ro.OldDir.setUnref(oldOldDir)
+	if err != nil {
+		return nil, err
+	}
 	// If we are renaming within a directory, let the NewDir remain empty.
 	if oldOldDir != oldNewDir {
-		ro.NewDir.Unref = oldNewDir
+		err := ro.NewDir.setUnref(oldNewDir)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return ro
+	return ro, nil
 }
 
 func (ro *renameOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
 	if oldPtr == ro.OldDir.Unref {
-		ro.OldDir.Ref = newPtr
+		ro.OldDir.setRef(newPtr)
 		return
 	}
 	if ro.NewDir != (blockUpdate{}) && oldPtr == ro.NewDir.Unref {
-		ro.NewDir.Ref = newPtr
+		ro.NewDir.setRef(newPtr)
 		return
 	}
 	ro.OpCommon.AddUpdate(oldPtr, newPtr)
@@ -375,7 +421,7 @@ func (ro *renameOp) SizeExceptUpdates() uint64 {
 func (ro *renameOp) AllUpdates() []blockUpdate {
 	updates := make([]blockUpdate, len(ro.Updates))
 	copy(updates, ro.Updates)
-	if (ro.NewDir != blockUpdate{}) {
+	if ro.NewDir != (blockUpdate{}) {
 		return append(updates, ro.NewDir, ro.OldDir)
 	}
 	return append(updates, ro.OldDir)
@@ -447,11 +493,14 @@ type syncOp struct {
 	Writes []WriteRange `codec:"w"`
 }
 
-func newSyncOp(oldFile BlockPointer) *syncOp {
+func newSyncOp(oldFile BlockPointer) (*syncOp, error) {
 	so := &syncOp{}
-	so.File.Unref = oldFile
+	err := so.File.setUnref(oldFile)
+	if err != nil {
+		return nil, err
+	}
 	so.resetUpdateState()
-	return so
+	return so, nil
 }
 
 func (so *syncOp) resetUpdateState() {
@@ -460,7 +509,7 @@ func (so *syncOp) resetUpdateState() {
 
 func (so *syncOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
 	if oldPtr == so.File.Unref {
-		so.File.Ref = newPtr
+		so.File.setRef(newPtr)
 		return
 	}
 	so.OpCommon.AddUpdate(oldPtr, newPtr)
@@ -675,19 +724,22 @@ type setAttrOp struct {
 }
 
 func newSetAttrOp(name string, oldDir BlockPointer,
-	attr attrChange, file BlockPointer) *setAttrOp {
+	attr attrChange, file BlockPointer) (*setAttrOp, error) {
 	sao := &setAttrOp{
 		Name: name,
 	}
-	sao.Dir.Unref = oldDir
+	err := sao.Dir.setUnref(oldDir)
+	if err != nil {
+		return nil, err
+	}
 	sao.Attr = attr
 	sao.File = file
-	return sao
+	return sao, nil
 }
 
 func (sao *setAttrOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
 	if oldPtr == sao.Dir.Unref {
-		sao.Dir.Ref = newPtr
+		sao.Dir.setRef(newPtr)
 		return
 	}
 	sao.OpCommon.AddUpdate(oldPtr, newPtr)
@@ -859,29 +911,44 @@ func (gco *gcOp) GetDefaultAction(mergedPath path) crAction {
 // used for local notifications only, and would not be useful for
 // finding conflicts (for example, we lose information about the type
 // of the file in a rmOp that we are trying to re-create).
-func invertOpForLocalNotifications(oldOp op) op {
-	var newOp op
+func invertOpForLocalNotifications(oldOp op) (newOp op, err error) {
 	switch op := oldOp.(type) {
 	default:
 		panic(fmt.Sprintf("Unrecognized operation: %v", op))
 	case *createOp:
-		newOp = newRmOp(op.NewName, op.Dir.Ref)
+		newOp, err = newRmOp(op.NewName, op.Dir.Ref)
+		if err != nil {
+			return nil, err
+		}
 	case *rmOp:
 		// Guess at the type, shouldn't be used for local notification
 		// purposes.
-		newOp = newCreateOp(op.OldName, op.Dir.Ref, File)
+		newOp, err = newCreateOp(op.OldName, op.Dir.Ref, File)
+		if err != nil {
+			return nil, err
+		}
 	case *renameOp:
-		newOp = newRenameOp(op.NewName, op.NewDir.Ref,
+		newOp, err = newRenameOp(op.NewName, op.NewDir.Ref,
 			op.OldName, op.OldDir.Ref, op.Renamed, op.RenamedType)
+		if err != nil {
+			return nil, err
+		}
 	case *syncOp:
 		// Just replay the writes; for notifications purposes, they
 		// will do the right job of marking the right bytes as
 		// invalid.
-		newOp = newSyncOp(op.File.Ref)
-		newOp.(*syncOp).Writes = make([]WriteRange, len(op.Writes))
-		copy(newOp.(*syncOp).Writes, op.Writes)
+		so, err := newSyncOp(op.File.Ref)
+		if err != nil {
+			return nil, err
+		}
+		so.Writes = make([]WriteRange, len(op.Writes))
+		copy(so.Writes, op.Writes)
+		newOp = so
 	case *setAttrOp:
-		newOp = newSetAttrOp(op.Name, op.Dir.Ref, op.Attr, op.File)
+		newOp, err = newSetAttrOp(op.Name, op.Dir.Ref, op.Attr, op.File)
+		if err != nil {
+			return nil, err
+		}
 	case *gcOp:
 		newOp = op
 	}
@@ -892,7 +959,7 @@ func invertOpForLocalNotifications(oldOp op) op {
 	for _, update := range oldOp.AllUpdates() {
 		newOp.AddUpdate(update.Ref, update.Unref)
 	}
-	return newOp
+	return newOp, nil
 }
 
 // NOTE: If you're updating opPointerizer and RegisterOps, make sure

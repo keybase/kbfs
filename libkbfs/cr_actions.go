@@ -220,11 +220,17 @@ func crActionConvertSymlink(unmergedMostRecent BlockPointer,
 	mergedChains *crChains, fromName string, toName string) error {
 	// If this was turned into a symlink, then we have to simulate
 	// rm/create at the beginning of the mergedOps list.
-	ro := newRmOp(fromName, mergedMostRecent)
+	ro, err := newRmOp(fromName, mergedMostRecent)
+	if err != nil {
+		return err
+	}
 	// Add a fake unref so this rm doesn't get mistaken for one
 	// half of a rename operation.
 	ro.AddUnrefBlock(zeroPtr)
-	co := newCreateOp(toName, mergedMostRecent, Sym)
+	co, err := newCreateOp(toName, mergedMostRecent, Sym)
+	if err != nil {
+		return err
+	}
 
 	// If the chain already exists, just append the operations instead
 	// of prepending them.  We don't want to do any rms of nodes that
@@ -540,9 +546,12 @@ func (rua *renameUnmergedAction) updateOps(unmergedMostRecent BlockPointer,
 		return NoSuchNameError{rua.fromName}
 	}
 
-	rop := newRenameOp(rua.fromName, mergedMostRecent, rua.toName,
+	rop, err := newRenameOp(rua.fromName, mergedMostRecent, rua.toName,
 		mergedMostRecent, newMergedEntry.BlockPointer,
 		newMergedEntry.Type)
+	if err != nil {
+		return err
+	}
 	// For local notifications, we need to transform the entry's
 	// pointer into the new (de-dup'd) pointer.  newMergedEntry is
 	// not yet the final pointer (that happens during syncBlock),
@@ -551,8 +560,11 @@ func (rua *renameUnmergedAction) updateOps(unmergedMostRecent BlockPointer,
 		rop.AddUpdate(unmergedEntry.BlockPointer,
 			newMergedEntry.BlockPointer)
 	}
-	err := prependOpsToChain(mergedMostRecent, mergedChains,
-		rop, newCreateOp(rua.fromName, mergedMostRecent, mergedEntry.Type))
+	co, err := newCreateOp(rua.fromName, mergedMostRecent, mergedEntry.Type)
+	if err != nil {
+		return err
+	}
+	err = prependOpsToChain(mergedMostRecent, mergedChains, rop, co)
 	if err != nil {
 		return err
 	}
@@ -560,7 +572,7 @@ func (rua *renameUnmergedAction) updateOps(unmergedMostRecent BlockPointer,
 	// Before merging the unmerged ops, create a file with the new
 	// name, unless the create already exists.
 	found := false
-	var co *createOp
+	co = nil
 	for _, op := range unmergedChain.ops {
 		var ok bool
 		if co, ok = op.(*createOp); ok && co.NewName == rua.toName {
@@ -572,7 +584,10 @@ func (rua *renameUnmergedAction) updateOps(unmergedMostRecent BlockPointer,
 		}
 	}
 	if !found {
-		co = newCreateOp(rua.toName, unmergedMostRecent, mergedEntry.Type)
+		co, err = newCreateOp(rua.toName, unmergedMostRecent, mergedEntry.Type)
+		if err != nil {
+			return err
+		}
 		if rua.symPath == "" {
 			co.AddRefBlock(newMergedEntry.BlockPointer)
 		}
@@ -687,9 +702,12 @@ func (rma *renameMergedAction) updateOps(unmergedMostRecent BlockPointer,
 
 		// Prepend a rename for the merged copy to the unmerged set of
 		// operations.
-		rop := newRenameOp(rma.fromName, unmergedMostRecent, rma.toName,
+		rop, err := newRenameOp(rma.fromName, unmergedMostRecent, rma.toName,
 			unmergedMostRecent, mergedEntry.BlockPointer, mergedEntry.Type)
-		err := prependOpsToChain(unmergedMostRecent, unmergedChains, rop)
+		if err != nil {
+			return err
+		}
+		err = prependOpsToChain(unmergedMostRecent, unmergedChains, rop)
 		if err != nil {
 			return err
 		}
@@ -706,8 +724,11 @@ func (rma *renameMergedAction) updateOps(unmergedMostRecent BlockPointer,
 			}
 		}
 		if !found {
-			err := prependOpsToChain(mergedMostRecent, mergedChains,
-				newCreateOp(rma.toName, mergedMostRecent, mergedEntry.Type))
+			co, err := newCreateOp(rma.toName, mergedMostRecent, mergedEntry.Type)
+			if err != nil {
+				return err
+			}
+			err = prependOpsToChain(mergedMostRecent, mergedChains, co)
 			if err != nil {
 				return err
 			}
@@ -765,8 +786,11 @@ func (dua *dropUnmergedAction) updateOps(unmergedMostRecent BlockPointer,
 		return nil
 	}
 
-	invertedOp := invertOpForLocalNotifications(dua.op)
-	err := prependOpsToChain(mergedMostRecent, mergedChains, invertedOp)
+	invertedOp, err := invertOpForLocalNotifications(dua.op)
+	if err != nil {
+		return err
+	}
+	err = prependOpsToChain(mergedMostRecent, mergedChains, invertedOp)
 	if err != nil {
 		return err
 	}
