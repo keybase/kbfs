@@ -1657,6 +1657,15 @@ func isRecoverableBlockError(err error) bool {
 	return isArchiveError || isDeleteError || isRefError
 }
 
+// Returns whether the given error is one that shouldn't block the
+// removal of a file or directory.
+//
+// TODO: Consider other errors recoverable, e.g. ones that arise from
+// present but corrupted blocks?
+func isRecoverableBlockErrorForRemoval(err error) bool {
+	return isRecoverableBlockError(err)
+}
+
 func isRetriableError(err error, retries int) bool {
 	recoverable := isRecoverableBlockError(err)
 	return recoverable && retries < maxRetriesOnRecoverableErrors
@@ -2329,7 +2338,7 @@ func (fbo *folderBranchOps) unrefEntry(ctx context.Context,
 	if de.Type == File || de.Type == Exec {
 		blockInfos, err := fbo.blocks.GetIndirectFileBlockInfos(
 			ctx, lState, md, childPath)
-		if isRecoverableBlockError(err) {
+		if isRecoverableBlockErrorForRemoval(err) {
 			fbo.log.CWarningf(ctx, "Recoverable block error encountered in unrefEntry(%v, %v, %v); continuing", dir, de, name)
 		} else if err != nil {
 			return err
@@ -2405,10 +2414,7 @@ func (fbo *folderBranchOps) removeDirLocked(ctx context.Context,
 
 	childBlock, err := fbo.blocks.GetDir(
 		ctx, lState, md, childPath, blockRead)
-	// TODO: Like folderBlockOps.GetIndirectFileBlockInfos,
-	// consider other errors recoverable, e.g. ones that arise
-	// from present but corrupted blocks?
-	if isRecoverableBlockError(err) {
+	if isRecoverableBlockErrorForRemoval(err) {
 		fbo.log.CWarningf(ctx, "Recoverable block error encountered in removeDirLocked(%v); continuing", childPath)
 	} else if err != nil {
 		return err
