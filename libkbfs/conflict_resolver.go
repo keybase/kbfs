@@ -3171,6 +3171,13 @@ func (cr *ConflictResolver) completeResolution(ctx context.Context,
 		return err
 	}
 
+	// Can only do this after syncBlocks, since syncBlocks calls
+	// crFixOpPointers, and the ops may be invalid until then.
+	err := md.data.checkValid()
+	if err != nil {
+		return err
+	}
+
 	defer func() {
 		if err != nil {
 			cr.fbo.fbm.cleanUpBlockState(md, bps)

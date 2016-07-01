@@ -348,13 +348,15 @@ func (ccs *crChains) makeChainForOp(op op) error {
 			return err
 		}
 		ro.setWriterInfo(realOp.getWriterInfo())
-		err = ro.Dir.setRef(realOp.OldDir.Ref)
-		if err != nil {
-			return err
-		}
-		err = ccs.addOp(realOp.OldDir.Ref, ro)
-		if err != nil {
-			return err
+		// OldDir.Ref may be nil, since realOp may still be
+		// invalid (if we're being called before pointers are
+		// fixed up).
+		if realOp.OldDir.Ref != (BlockPointer{}) {
+			ro.Dir.Ref = realOp.OldDir.Ref
+			err = ccs.addOp(realOp.OldDir.Ref, ro)
+			if err != nil {
+				return err
+			}
 		}
 
 		ndu := realOp.NewDir.Unref
@@ -393,13 +395,16 @@ func (ccs *crChains) makeChainForOp(op op) error {
 		}
 		co.setWriterInfo(realOp.getWriterInfo())
 		co.renamed = true
-		err = co.Dir.setRef(ndr)
-		if err != nil {
-			return err
-		}
-		err = ccs.addOp(ndr, co)
-		if err != nil {
-			return err
+
+		// ndr may be nil, since realOp may still be invalid
+		// (if we're being called before pointers are fixed
+		// up).
+		if ndr != nil {
+			co.Dir.Ref = ndr
+			err = ccs.addOp(ndr, co)
+			if err != nil {
+				return err
+			}
 		}
 
 		// also keep track of the new parent for the renamed node

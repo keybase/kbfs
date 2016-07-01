@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -26,6 +27,7 @@ type op interface {
 	getWriterInfo() writerInfo
 	setFinalPath(p path)
 	getFinalPath() path
+	checkValid() error
 	// CheckConflict compares the function's target op with the given
 	// op, and returns a resolution if one is needed (or nil
 	// otherwise).  The resulting action (if any) assumes that this
@@ -75,6 +77,16 @@ func makeBlockUpdate(unref, ref BlockPointer) (blockUpdate, error) {
 	return bu, nil
 }
 
+func (u blockUpdate) checkValid() error {
+	if u.Unref == (BlockPointer{}) {
+		return errors.New("nil unref")
+	}
+	if u.Ref == (BlockPointer{}) {
+		return errors.New("nil ref")
+	}
+	return nil
+}
+
 func (u *blockUpdate) setUnref(ptr BlockPointer) error {
 	if ptr == (BlockPointer{}) {
 		return fmt.Errorf("setUnref called with nil ptr")
@@ -85,7 +97,7 @@ func (u *blockUpdate) setUnref(ptr BlockPointer) error {
 
 func (u *blockUpdate) setRef(ptr BlockPointer) error {
 	if ptr == (BlockPointer{}) {
-		return fmt.Errorf("setUnref called with nil ptr")
+		return fmt.Errorf("setRef called with nil ptr")
 	}
 	u.Ref = ptr
 	return nil
@@ -167,6 +179,17 @@ func (oc *OpCommon) getFinalPath() path {
 	return oc.finalPath
 }
 
+func (oc *OpCommon) checkUpdatesValid() error {
+	for i, update := range oc.Updates {
+		err := update.checkValid()
+		if err != nil {
+			return fmt.Errorf(
+				"update[%d]=%v got error: %v", i, update, err)
+		}
+	}
+	return nil
+}
+
 // createOp is an op representing a file or subdirectory creation
 type createOp struct {
 	OpCommon
@@ -229,6 +252,16 @@ func (co *createOp) AllUpdates() []blockUpdate {
 	updates := make([]blockUpdate, len(co.Updates))
 	copy(updates, co.Updates)
 	return append(updates, co.Dir)
+}
+
+func (co *createOp) checkValid() error {
+	err := co.Dir.checkValid()
+	if err != nil {
+		return fmt.Errorf("createOp.Dir=%v got error: %v", co.Dir, err)
+	}
+	return nil
+
+	return co.checkUpdatesValid()
 }
 
 func (co *createOp) String() string {
@@ -346,6 +379,16 @@ func (ro *rmOp) AllUpdates() []blockUpdate {
 	return append(updates, ro.Dir)
 }
 
+func (ro *rmOp) checkValid() error {
+	err := ro.Dir.checkValid()
+	if err != nil {
+		return fmt.Errorf("rmOp.Dir=%v got error: %v", ro.Dir, err)
+	}
+	return nil
+
+	return ro.checkUpdatesValid()
+}
+
 func (ro *rmOp) String() string {
 	return fmt.Sprintf("rm %s", ro.OldName)
 }
@@ -445,6 +488,23 @@ func (ro *renameOp) AllUpdates() []blockUpdate {
 		return append(updates, ro.NewDir, ro.OldDir)
 	}
 	return append(updates, ro.OldDir)
+}
+
+func (ro *renameOp) checkValid() error {
+	err := ro.OldDir.checkValid()
+	if err != nil {
+		return fmt.Errorf("renameOp.OldDir=%v got error: %v",
+			ro.OldDir, err)
+	}
+	if ro.NewDir != (blockUpdate{}) {
+		err = ro.NewDir.checkValid()
+		if err != nil {
+			return fmt.Errorf("renameOp.NewDir=%v got error: %v",
+				ro.NewDir, err)
+		}
+	}
+
+	return ro.checkUpdatesValid()
 }
 
 func (ro *renameOp) String() string {
@@ -558,6 +618,14 @@ func (so *syncOp) AllUpdates() []blockUpdate {
 	updates := make([]blockUpdate, len(so.Updates))
 	copy(updates, so.Updates)
 	return append(updates, so.File)
+}
+
+func (so *syncOp) checkValid() error {
+	err := so.File.checkValid()
+	if err != nil {
+		return fmt.Errorf("syncOp.File=%v got error: %v", so.File, err)
+	}
+	return so.checkUpdatesValid()
 }
 
 func (so *syncOp) String() string {
@@ -781,6 +849,14 @@ func (sao *setAttrOp) AllUpdates() []blockUpdate {
 	return append(updates, sao.Dir)
 }
 
+func (sao *setAttrOp) checkValid() error {
+	err := sao.Dir.checkValid()
+	if err != nil {
+		return fmt.Errorf("setAttrOp.Dir=%v got error: %v", sao.Dir, err)
+	}
+	return sao.checkUpdatesValid()
+}
+
 func (sao *setAttrOp) String() string {
 	return fmt.Sprintf("setAttr %s (%s)", sao.Name, sao.Attr)
 }
@@ -845,6 +921,10 @@ func (ro *resolutionOp) AllUpdates() []blockUpdate {
 	return ro.Updates
 }
 
+func (ro *resolutionOp) checkValid() error {
+	return ro.checkUpdatesValid()
+}
+
 func (ro *resolutionOp) String() string {
 	return "resolution"
 }
@@ -874,6 +954,10 @@ func (ro *rekeyOp) SizeExceptUpdates() uint64 {
 
 func (ro *rekeyOp) AllUpdates() []blockUpdate {
 	return ro.Updates
+}
+
+func (ro *rekeyOp) checkValid() error {
+	return ro.checkUpdatesValid()
 }
 
 func (ro *rekeyOp) String() string {
@@ -917,6 +1001,10 @@ func (gco *gcOp) SizeExceptUpdates() uint64 {
 
 func (gco *gcOp) AllUpdates() []blockUpdate {
 	return gco.Updates
+}
+
+func (gco *gcOp) checkValid() error {
+	return gco.checkUpdatesValid()
 }
 
 func (gco *gcOp) String() string {
