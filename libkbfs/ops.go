@@ -213,7 +213,7 @@ func newCreateOpForRootDir() *createOp {
 
 func (co *createOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
 	if co.Dir == (blockUpdate{}) {
-		panic("AdUpdate called on create op for root dir")
+		panic("AddUpdate called on create op for root dir")
 	}
 	if oldPtr == co.Dir.Unref {
 		err := co.Dir.setRef(newPtr)
