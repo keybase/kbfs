@@ -1805,8 +1805,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	}
 
 	if doUnmergedPut {
-		// We're out of date, and this is not an exclusive write, so put it as an
-		// unmerged MD.
+		// We're out of date, so put it as an unmerged MD.
 		var bid BranchID
 		if wasMasterBranch {
 			// new branch ID
