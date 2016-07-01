@@ -2405,11 +2405,11 @@ func (fbo *folderBranchOps) removeDirLocked(ctx context.Context,
 
 	childBlock, err := fbo.blocks.GetDir(
 		ctx, lState, md, childPath, blockRead)
-	if err != nil {
+	if isRecoverableBlockError(err) {
+		fbo.log.CWarningf(ctx, "Recoverable block error encountered in removeDirLocked(%v); continuing", childPath)
+	} else if err != nil {
 		return err
-	}
-
-	if len(childBlock.Children) > 0 {
+	} else if len(childBlock.Children) > 0 {
 		return DirNotEmptyError{dirName}
 	}
 
