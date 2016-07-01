@@ -2329,7 +2329,9 @@ func (fbo *folderBranchOps) unrefEntry(ctx context.Context,
 	if de.Type == File || de.Type == Exec {
 		blockInfos, err := fbo.blocks.GetIndirectFileBlockInfos(
 			ctx, lState, md, childPath)
-		if err != nil {
+		if isRecoverableBlockError(err) {
+			fbo.log.CWarningf(ctx, "Recoverable block error encountered in unrefEntry(%v, %v, %v); continuing", dir, de, name)
+		} else if err != nil {
 			return NoSuchBlockError{de.ID}
 		}
 		for _, blockInfo := range blockInfos {
