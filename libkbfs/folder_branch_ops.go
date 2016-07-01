@@ -2332,7 +2332,7 @@ func (fbo *folderBranchOps) unrefEntry(ctx context.Context,
 		if isRecoverableBlockError(err) {
 			fbo.log.CWarningf(ctx, "Recoverable block error encountered in unrefEntry(%v, %v, %v); continuing", dir, de, name)
 		} else if err != nil {
-			return NoSuchBlockError{de.ID}
+			return err
 		}
 		for _, blockInfo := range blockInfos {
 			md.AddUnrefBlock(blockInfo)
