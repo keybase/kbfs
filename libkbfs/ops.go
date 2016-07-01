@@ -75,10 +75,6 @@ func makeBlockUpdate(unref, ref BlockPointer) (blockUpdate, error) {
 	return bu, nil
 }
 
-func (u blockUpdate) isValid() bool {
-	return u.Unref != (BlockPointer{}) && u.Ref != (BlockPointer{})
-}
-
 func (u *blockUpdate) setUnref(ptr BlockPointer) error {
 	if ptr == (BlockPointer{}) {
 		return fmt.Errorf("setUnref called with nil ptr")
@@ -136,9 +132,9 @@ func (oc *OpCommon) AddUnrefBlock(ptr BlockPointer) {
 // AddUpdate adds a mapping from an old block to the new version of
 // that block, for this op.
 func (oc *OpCommon) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
-	bu := blockUpdate{oldPtr, newPtr}
-	if !bu.isValid() {
-		panic(fmt.Errorf("Invalid update %+v", bu))
+	bu, err := makeBlockUpdate(oldPtr, newPtr)
+	if err != nil {
+		panic(err)
 	}
 	oc.Updates = append(oc.Updates, bu)
 }
