@@ -144,10 +144,9 @@ func (oc *OpCommon) AddUnrefBlock(ptr BlockPointer) {
 // AddUpdate adds a mapping from an old block to the new version of
 // that block, for this op.
 func (oc *OpCommon) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
-	bu, err := makeBlockUpdate(oldPtr, newPtr)
-	if err != nil {
-		panic(err)
-	}
+	// Either pointer may be zero, if we're building an op that
+	// will be fixed up later.
+	bu := blockUpdate{oldPtr, newPtr}
 	oc.Updates = append(oc.Updates, bu)
 }
 
