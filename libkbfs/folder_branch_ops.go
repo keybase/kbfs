@@ -1782,13 +1782,13 @@ func (fbo *folderBranchOps) isRevisionConflict(err error) bool {
 }
 
 func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
-	lState *lockState, md *RootMetadata, bps *blockPutState, isExcl bool) (err error) {
+	lState *lockState, md *RootMetadata, bps *blockPutState, excl EXCL) (err error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
 	// finally, write out the new metadata
 	mdops := fbo.config.MDOps()
 
-	doUnmergedPut, wasMasterBranch := !isExcl, fbo.isMasterBranchLocked(lState)
+	doUnmergedPut, wasMasterBranch := (excl == NoEXCL), fbo.isMasterBranchLocked(lState)
 	mergedRev := MetadataRevisionUninitialized
 
 	if fbo.isMasterBranchLocked(lState) {
@@ -1799,7 +1799,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 			fbo.log.CDebugf(ctx, "Conflict: %v", err)
 			mergedRev = md.Revision
 
-			if isExcl {
+			if excl == WithEXCL {
 				// If this was caused by an exclusive create, we shouldn't do an
 				// UnmergedPut, but rather wait until we are on master branch.
 				return err
@@ -1807,7 +1807,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		} else if err != nil {
 			return err
 		}
-	} else if isExcl {
+	} else if excl == WithEXCL {
 		return UnmergedError{}
 	}
 
@@ -1971,7 +1971,7 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 func (fbo *folderBranchOps) syncBlockAndFinalizeLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata, newBlock Block, dir path,
 	name string, entryType EntryType, mtime bool, ctime bool,
-	stopAt BlockPointer, isExcl bool) (de DirEntry, err error) {
+	stopAt BlockPointer, excl EXCL) (de DirEntry, err error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 	_, de, bps, err := fbo.syncBlockAndCheckEmbedLocked(
 		ctx, lState, md, newBlock, dir, name, entryType, mtime,
@@ -1990,7 +1990,7 @@ func (fbo *folderBranchOps) syncBlockAndFinalizeLocked(ctx context.Context,
 	if err != nil {
 		return DirEntry{}, err
 	}
-	err = fbo.finalizeMDWriteLocked(ctx, lState, md, bps, isExcl)
+	err = fbo.finalizeMDWriteLocked(ctx, lState, md, bps, excl)
 	if err != nil {
 		return DirEntry{}, err
 	}
@@ -2034,7 +2034,7 @@ func (fbo *folderBranchOps) checkNewDirSize(ctx context.Context,
 // entryType must not by Sym.
 func (fbo *folderBranchOps) createEntryLocked(
 	ctx context.Context, lState *lockState, dir Node, name string,
-	entryType EntryType, isExcl bool) (Node, DirEntry, error) {
+	entryType EntryType, excl EXCL) (Node, DirEntry, error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
 	if err := checkDisallowedPrefixes(name); err != nil {
@@ -2086,7 +2086,7 @@ func (fbo *folderBranchOps) createEntryLocked(
 
 	de, err := fbo.syncBlockAndFinalizeLocked(
 		ctx, lState, md, newBlock, dirPath, name, entryType,
-		true, true, zeroPtr, isExcl)
+		true, true, zeroPtr, excl)
 	if err != nil {
 		return nil, DirEntry{}, err
 	}
@@ -2159,7 +2159,7 @@ func (fbo *folderBranchOps) CreateDir(
 
 	err = fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
-			node, de, err := fbo.createEntryLocked(ctx, lState, dir, path, Dir, false)
+			node, de, err := fbo.createEntryLocked(ctx, lState, dir, path, Dir, NoEXCL)
 			n = node
 			ei = de.EntryInfo
 			return err
@@ -2171,7 +2171,7 @@ func (fbo *folderBranchOps) CreateDir(
 }
 
 func (fbo *folderBranchOps) CreateFile(
-	ctx context.Context, dir Node, path string, isExec bool, isExcl bool) (
+	ctx context.Context, dir Node, path string, isExec bool, excl EXCL) (
 	n Node, ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "CreateFile %p %s", dir.GetID(), path)
 	defer func() {
@@ -2197,7 +2197,7 @@ func (fbo *folderBranchOps) CreateFile(
 	err = fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
 			node, de, err :=
-				fbo.createEntryLocked(ctx, lState, dir, path, entryType, isExcl)
+				fbo.createEntryLocked(ctx, lState, dir, path, entryType, excl)
 			n = node
 			ei = de.EntryInfo
 			return err
@@ -2266,7 +2266,7 @@ func (fbo *folderBranchOps) createLinkLocked(
 
 	_, err = fbo.syncBlockAndFinalizeLocked(
 		ctx, lState, md, dblock, *dirPath.parentPath(),
-		dirPath.tailName(), Dir, true, true, zeroPtr, false)
+		dirPath.tailName(), Dir, true, true, zeroPtr, NoEXCL)
 	if err != nil {
 		return DirEntry{}, err
 	}
@@ -2350,7 +2350,7 @@ func (fbo *folderBranchOps) removeEntryLocked(ctx context.Context,
 	// sync the parent directory
 	_, err = fbo.syncBlockAndFinalizeLocked(
 		ctx, lState, md, pblock, *dir.parentPath(), dir.tailName(),
-		Dir, true, true, zeroPtr, false)
+		Dir, true, true, zeroPtr, NoEXCL)
 	if err != nil {
 		return err
 	}
@@ -2574,7 +2574,7 @@ func (fbo *folderBranchOps) renameLocked(
 		return err
 	}
 
-	return fbo.finalizeMDWriteLocked(ctx, lState, md, newBps, false)
+	return fbo.finalizeMDWriteLocked(ctx, lState, md, newBps, NoEXCL)
 }
 
 func (fbo *folderBranchOps) Rename(
@@ -2751,7 +2751,7 @@ func (fbo *folderBranchOps) setExLocked(
 	dblock.Children[file.tailName()] = de
 	_, err = fbo.syncBlockAndFinalizeLocked(
 		ctx, lState, md, dblock, *parentPath.parentPath(), parentPath.tailName(),
-		Dir, false, false, zeroPtr, false)
+		Dir, false, false, zeroPtr, NoEXCL)
 	return err
 }
 
@@ -2803,7 +2803,7 @@ func (fbo *folderBranchOps) setMtimeLocked(
 	dblock.Children[file.tailName()] = de
 	_, err = fbo.syncBlockAndFinalizeLocked(
 		ctx, lState, md, dblock, *parentPath.parentPath(), parentPath.tailName(),
-		Dir, false, false, zeroPtr, false)
+		Dir, false, false, zeroPtr, NoEXCL)
 	return err
 }
 
@@ -2907,7 +2907,7 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 		return true, err
 	}
 
-	err = fbo.finalizeMDWriteLocked(ctx, lState, md, bps, false)
+	err = fbo.finalizeMDWriteLocked(ctx, lState, md, bps, NoEXCL)
 	if err != nil {
 		return true, err
 	}
@@ -3520,7 +3520,7 @@ func (fbo *folderBranchOps) unstageLocked(ctx context.Context,
 		resOp.AddUnrefBlock(ptr)
 	}
 	md.AddOp(resOp)
-	return fbo.finalizeMDWriteLocked(ctx, lState, md, &blockPutState{}, false)
+	return fbo.finalizeMDWriteLocked(ctx, lState, md, &blockPutState{}, NoEXCL)
 }
 
 // TODO: remove once we have automatic conflict resolution

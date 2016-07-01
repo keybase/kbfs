@@ -141,7 +141,7 @@ type KBFSOps interface {
 	// logged-in user has write permission to the top-level folder.
 	// Returns the new Node for the created file, and its new
 	// entry info.  This is a remote-sync operation.
-	CreateFile(ctx context.Context, dir Node, name string, isExec bool, isExcl bool) (
+	CreateFile(ctx context.Context, dir Node, name string, isExec bool, excl EXCL) (
 		Node, EntryInfo, error)
 	// CreateLink creates a new symlink under the given node, if the
 	// logged-in user has write permission to the top-level folder.

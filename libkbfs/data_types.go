@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/keybase/client/go/libkb"
@@ -638,6 +639,28 @@ func (et EntryType) String() string {
 		return "SYM"
 	}
 	return "<invalid EntryType>"
+}
+
+// EXCL indicates whether O_EXCL is set on a fuse call
+type EXCL uint32
+
+const (
+	// NoEXCL indicates O_EXCL is not set
+	NoEXCL EXCL = 0
+
+	// WithEXCL indicates O_EXCL is set
+	WithEXCL EXCL = syscall.O_EXCL
+)
+
+func (o EXCL) String() string {
+	switch o {
+	case NoEXCL:
+		return "O_EXCL unset"
+	case WithEXCL:
+		return "O_EXCL set"
+	default:
+		return "<invalid EXCL>"
+	}
 }
 
 // EntryInfo is the (non-block-related) info a directory knows about

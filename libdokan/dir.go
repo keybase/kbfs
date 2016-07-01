@@ -387,10 +387,10 @@ func (d *Dir) create(ctx context.Context, oc *openContext, name string) (f dokan
 	d.folder.fs.log.CDebugf(ctx, "Dir Create %s", name)
 	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err, nil) }()
 
-	isExec := false // Windows lacks executable modes.
-	isExcl := false // TODO: populate this field properly based on oc
+	isExec := false        // Windows lacks executable modes.
+	excl := libkbfs.NoEXCL // TODO: populate this field properly based on oc
 	newNode, _, err := d.folder.fs.config.KBFSOps().CreateFile(
-		ctx, d.node, name, isExec, isExcl)
+		ctx, d.node, name, isExec, excl)
 	if err != nil {
 		return nil, false, err
 	}
