@@ -3381,7 +3381,7 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 			if err != nil {
 				fbo.log.CWarningf(ctx,
 					"got error %v when invert op %v; skipping",
-					err, io)
+					err, ops[j])
 				continue
 			}
 			fbo.notifyOneOpLocked(ctx, lState, io, rmd)
