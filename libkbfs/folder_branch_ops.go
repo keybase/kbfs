@@ -1788,7 +1788,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	// finally, write out the new metadata
 	mdops := fbo.config.MDOps()
 
-	doUnmergedPut, wasMasterBranch := (excl == NoEXCL), fbo.isMasterBranchLocked(lState)
+	doUnmergedPut, wasMasterBranch := true, fbo.isMasterBranchLocked(lState)
 	mergedRev := MetadataRevisionUninitialized
 
 	if fbo.isMasterBranchLocked(lState) {
@@ -1799,16 +1799,9 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 			fbo.log.CDebugf(ctx, "Conflict: %v", err)
 			mergedRev = md.Revision
 
-			if excl == WithEXCL {
-				// If this was caused by an exclusive create, we shouldn't do an
-				// UnmergedPut, but rather wait until we are on master branch.
-				return err
-			}
 		} else if err != nil {
 			return err
 		}
-	} else if excl == WithEXCL {
-		return UnmergedError{}
 	}
 
 	if doUnmergedPut {

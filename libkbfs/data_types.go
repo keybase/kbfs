@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/keybase/client/go/libkb"
@@ -642,14 +641,14 @@ func (et EntryType) String() string {
 }
 
 // EXCL indicates whether O_EXCL is set on a fuse call
-type EXCL uint32
+type EXCL bool
 
 const (
 	// NoEXCL indicates O_EXCL is not set
-	NoEXCL EXCL = 0
+	NoEXCL EXCL = false
 
 	// WithEXCL indicates O_EXCL is set
-	WithEXCL EXCL = syscall.O_EXCL
+	WithEXCL EXCL = true
 )
 
 func (o EXCL) String() string {

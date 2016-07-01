@@ -15,6 +15,7 @@ import (
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
+	"golang.org/x/sys/windows/"
 )
 
 // Folder represents KBFS top-level folders
@@ -383,12 +384,16 @@ func openSymlink(ctx context.Context, oc *openContext, parent *Dir, rootDir *Dir
 	return rootDir.open(ctx, oc, dst)
 }
 
+func getEXCLFromOpenContext(oc *openContext) libkbfs.EXCL {
+	return libkbfs.EXCL(oc.CreateDisposition == windows.CREATE_NEW)
+}
+
 func (d *Dir) create(ctx context.Context, oc *openContext, name string) (f dokan.File, isDir bool, err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Create %s", name)
 	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err, nil) }()
 
-	isExec := false        // Windows lacks executable modes.
-	excl := libkbfs.NoEXCL // TODO: populate this field properly based on oc
+	isExec := false // Windows lacks executable modes.
+	excl := getEXCLFromOpenContext(oc)
 	newNode, _, err := d.folder.fs.config.KBFSOps().CreateFile(
 		ctx, d.node, name, isExec, excl)
 	if err != nil {
