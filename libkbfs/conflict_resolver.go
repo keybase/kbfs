@@ -2176,7 +2176,10 @@ func (cr *ConflictResolver) makeRevertedOps(ctx context.Context,
 				if sao, ok := op.(*setAttrOp); ok {
 					if newDir, _, ok :=
 						otherChains.renamedParentAndName(sao.File); ok {
-						sao.Dir.setUnref(newDir)
+						err := sao.Dir.setUnref(newDir)
+						if err != nil {
+							return nil, err
+						}
 					}
 				}
 			}
@@ -2886,7 +2889,10 @@ func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
 			cr.log.CDebugf(ctx, "Fixing resOp update from unmerged most "+
 				"recent %v to merged most recent %v",
 				update.Unref, mergedMostRecent)
-			update.setUnref(mergedMostRecent)
+			err = update.setUnref(mergedMostRecent)
+			if err != nil {
+				return nil, nil, err
+			}
 			resOp.Updates[i] = update
 			updates[update.Unref] = update.Ref
 		}
