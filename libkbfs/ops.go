@@ -259,8 +259,6 @@ func (co *createOp) checkValid() error {
 	if err != nil {
 		return fmt.Errorf("createOp.Dir=%v got error: %v", co.Dir, err)
 	}
-	return nil
-
 	return co.checkUpdatesValid()
 }
 
@@ -384,8 +382,6 @@ func (ro *rmOp) checkValid() error {
 	if err != nil {
 		return fmt.Errorf("rmOp.Dir=%v got error: %v", ro.Dir, err)
 	}
-	return nil
-
 	return ro.checkUpdatesValid()
 }
 
