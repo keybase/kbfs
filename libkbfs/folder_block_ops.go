@@ -439,6 +439,9 @@ func (fbo *folderBlockOps) getFileLocked(ctx context.Context,
 // returned list may still be non-empty, and holds all the BlockInfos
 // for all found indirect blocks. (This will be relevant when we
 // handle multiple levels of indirection.)
+//
+// TODO: Consider other errors recoverable, e.g. ones that arise from
+// present but corrupted blocks?
 func (fbo *folderBlockOps) GetIndirectFileBlockInfos(ctx context.Context,
 	lState *lockState, md *RootMetadata, file path) ([]BlockInfo, error) {
 	// TODO: handle multiple levels of indirection.
