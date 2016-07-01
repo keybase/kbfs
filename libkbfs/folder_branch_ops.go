@@ -3379,7 +3379,10 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 		for j := len(ops) - 1; j >= 0; j-- {
 			io, err := invertOpForLocalNotifications(ops[j])
 			if err != nil {
-				return err
+				fbo.log.CWarningf(ctx,
+					"got error %v when invert op %v; skipping",
+					err, io)
+				continue
 			}
 			fbo.notifyOneOpLocked(ctx, lState, io, rmd)
 		}
