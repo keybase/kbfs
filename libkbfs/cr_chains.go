@@ -462,13 +462,17 @@ func (ccs *crChains) makeChainForOp(op op) error {
 func (ccs *crChains) makeChainForNewOpWithUpdate(
 	targetPtr BlockPointer, newOp op, update *blockUpdate) error {
 	oldUpdate := *update
-	update.setUnref(targetPtr)
-	update.setRef(update.Unref) // so that most recent == original
+	// so that most recent == original
+	var err error
+	*update, err = makeBlockUpdate(targetPtr, update.Unref)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		// reset the update to its original state before returning.
 		*update = oldUpdate
 	}()
-	err := ccs.makeChainForOp(newOp)
+	err = ccs.makeChainForOp(newOp)
 	if err != nil {
 		return err
 	}

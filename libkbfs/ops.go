@@ -62,15 +62,23 @@ type blockUpdate struct {
 	Ref   BlockPointer `codec:"r,omitempty"`
 }
 
+func makeBlockUpdate(unref, ref BlockPointer) (blockUpdate, error) {
+	bu := blockUpdate{}
+	err := bu.setUnref(unref)
+	if err != nil {
+		return blockUpdate{}, err
+	}
+	bu.setRef(ref)
+	return bu, nil
+}
+
 func (u blockUpdate) isValid() bool {
 	return u.Unref != (BlockPointer{}) && u.Ref != (BlockPointer{})
 }
 
 func (u *blockUpdate) setUnref(ptr BlockPointer) error {
 	if ptr == (BlockPointer{}) {
-		err := fmt.Errorf("setUnref called with nil ptr")
-		panic(err)
-		return err
+		return fmt.Errorf("setUnref called with nil ptr")
 	}
 	u.Unref = ptr
 	return nil

@@ -503,8 +503,13 @@ func (rua *renameUnmergedAction) updateOps(unmergedMostRecent BlockPointer,
 		for _, op := range unmergedChain.ops {
 			switch realOp := op.(type) {
 			case *syncOp:
-				realOp.File.setUnref(newMergedEntry.BlockPointer)
-				realOp.File.setRef(newMergedEntry.BlockPointer)
+				var err error
+				realOp.File, err = makeBlockUpdate(
+					newMergedEntry.BlockPointer,
+					newMergedEntry.BlockPointer)
+				if err != nil {
+					return err
+				}
 				// Nuke the previously referenced blocks, they are no
 				// longer relevant.
 				realOp.RefBlocks = nil

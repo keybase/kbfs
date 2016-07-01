@@ -2222,8 +2222,11 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 				// skips chains which are newly-created within this
 				// branch.
 				newCreateOp := *cop
-				newCreateOp.Dir.setUnref(chain.mostRecent)
-				newCreateOp.Dir.setRef(chain.mostRecent)
+				newCreateOp.Dir, err = makeBlockUpdate(
+					chain.mostRecent, chain.mostRecent)
+				if err != nil {
+					return nil, err
+				}
 				chain.ops[i] = &newCreateOp
 				if !added {
 					newPaths = append(newPaths, path{
@@ -2363,8 +2366,11 @@ func crFixOpPointers(oldOps []op, updates map[BlockPointer]BlockPointer,
 			// Since the first op does all the heavy lifting of
 			// updating pointers, we can set these to both just be the
 			// new pointer
-			update.setUnref(newPtr)
-			update.setRef(newPtr)
+			var err error
+			*update, err = makeBlockUpdate(newPtr, newPtr)
+			if err != nil {
+				return nil, err
+			}
 		}
 		for _, ptr := range ptrsToFix {
 			newPtr, ok := updates[*ptr]
