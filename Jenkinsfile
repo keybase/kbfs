@@ -95,10 +95,10 @@ node("fuse") {
                 stage "Test"
                 parallel (
                     test_linux: {
-                        runLinuxTest()
+                        runNixTest()
                     },
                     test_windows: {
-                        node('windows') {
+                        node('windows-pipeline') {
                         withEnv([
                             'GOROOT=C:\\tools\\go',
                             "GOPATH=\"${pwd()}\"",
@@ -111,6 +111,7 @@ node("fuse") {
                             checkout scm
 
                             println "Test Windows"
+                            // TODO Implement Windows test
                         }}}
                     },
                     test_osx: {
@@ -125,8 +126,25 @@ node("fuse") {
                                 checkout scm
 
                             println "Test OS X"
-                                runLinuxTest()
+                                runNixTest()
                         }}}
+                    },
+                    integrate: {
+                        sh "go install github.com/keybase/kbfs/kbfsfuse"
+                        sh "cp ${env.GOPATH}/bin/kbfsfuse ./kbfsfuse/kbfsfuse"
+                        def kbfsImage = docker.build("keybaseprivate/kbfsfuse", "kbfsfuse")
+                        sh "docker save -o kbfsfuse.tar keybaseprivate/kbfsfuse"
+                        archive("kbfsfuse.tar")
+                        // TODO Implement kbfs-server test
+                        //build([
+                        //    job: "/kbfs-server/master",
+                        //    parameters: [
+                        //        [$class: 'StringParameterValue',
+                        //            name: 'kbfsProjectName',
+                        //            value: env.JOB_NAME,
+                        //        ],
+                        //    ]
+                        //])
                     },
                 )
             } finally {
@@ -136,11 +154,6 @@ node("fuse") {
             }
 
 
-        stage "Dockerize"
-
-            sh "go install github.com/keybase/kbfs/kbfsfuse"
-            sh "cp ${env.GOPATH}/bin/kbfsfuse ./kbfsfuse/kbfsfuse"
-            def kbfsImage = docker.build("keybaseprivate/kbfsfuse", "kbfsfuse")
 
 
         stage "Integrate"
@@ -160,7 +173,7 @@ node("fuse") {
     }
 }
 
-def runLinuxTest() {
+def runNixTest() {
     sh 'go get -u github.com/golang/lint/golint'
     sh 'go install github.com/golang/lint/golint'
     sh '''
