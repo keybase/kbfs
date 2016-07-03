@@ -90,76 +90,45 @@ node("fuse") {
                     }
                     kbwebNodePrivateIP = new URL ("http://169.254.169.254/latest/meta-data/local-ipv4").getText()
                     kbwebNodePublicID = new URL ("http://169.254.169.254/latest/meta-data/public-ipv4").getText()
-
-                    stage "Test"
-                        parallel (
-                            test_linux: {
-                                sh 'go get -u github.com/golang/lint/golint'
-                                sh 'go install github.com/golang/lint/golint'
-                                sh '''
-                                    lint=$(make -s lint);
-                                    echo 2>&1 "$lint";
-                                    [ -z "$lint" -o "$lint" = "Lint-free!" ]
-                                '''
-                                sh 'go vet $(go list ./... 2>/dev/null | grep -v /vendor/)'
-                                sh 'go install github.com/keybase/kbfs/...'
-                                dir('libkbfs') {
-                                    sh 'go test -i'
-                                    sh 'go test -race -c'
-                                    sh './libkbfs.test -test.timeout 2m'
-                                }
-                                withEnv([
-                                    'KEYBASE_TEST_BSERVER_ADDR=tempdir',
-                                    'KEYBASE_TEST_MDSERVER_ADDR=tempdir',
-                                ]) {
-                                    dir('libfuse') {
-                                        sh 'go test -i'
-                                        sh 'go test -c'
-                                        sh './libfuse.test -test.timeout 2m'
-                                    }
-                                    dir('test') {
-                                        sh 'go test -i -tags fuse'
-                                        println "Test Dir with Race but no Fuse"
-                                        sh 'go test -race -c'
-                                        sh './test.test -test.timeout 7m'
-                                        println "Test Dir with Fuse but no Race"
-                                        sh 'go test -c -tags fuse'
-                                        sh './test.test -test.timeout 7m'
-                                    }
-                                }
-                            },
-                            test_windows: {
-                                node('windows') {
-                                withEnv([
-                                    'GOROOT=C:\\tools\\go',
-                                    "GOPATH=\"${pwd()}\"",
-                                    'PATH+TOOLS="C:\\tools\\go\\bin";"C:\\Program Files (x86)\\GNU\\GnuPG";',
-                                    "KEYBASE_SERVER_URI=http://${kbwebNodePrivateIP}:3000",
-                                    "KEYBASE_PUSH_SERVER_URI=fmprpc://${kbwebNodePublicIP}:9911",
-                                ]) {
-                                ws("${pwd()}/src/github.com/keybase/client") {
-                                    println "Checkout Windows"
-                                    checkout scm
-
-                                    println "Test Windows"
-                                }}}
-                            },
-                            test_osx: {
-                                node('osx') {
-                                withEnv([
-                                    "GOPATH=${pwd()}",
-                                    "KEYBASE_SERVER_URI=http://${kbwebNodePublicIP}:3000",
-                                    "KEYBASE_PUSH_SERVER_URI=fmprpc://${kbwebNodePublicIP}:9911",
-                                ]) {
-                                ws("${pwd()}/src/github.com/keybase/client") {
-                                    println "Checkout OS X"
-                                        checkout scm
-
-                                    println "Test OS X"
-                                }}}
-                            },
-                        )
                 }
+
+                stage "Test"
+                parallel (
+                    test_linux: {
+                        runLinuxTest()
+                    },
+                    test_windows: {
+                        node('windows') {
+                        withEnv([
+                            'GOROOT=C:\\tools\\go',
+                            "GOPATH=\"${pwd()}\"",
+                            'PATH+TOOLS="C:\\tools\\go\\bin";"C:\\Program Files (x86)\\GNU\\GnuPG";',
+                            "KEYBASE_SERVER_URI=http://${kbwebNodePrivateIP}:3000",
+                            "KEYBASE_PUSH_SERVER_URI=fmprpc://${kbwebNodePublicIP}:9911",
+                        ]) {
+                        ws("${pwd()}/src/github.com/keybase/client") {
+                            println "Checkout Windows"
+                            checkout scm
+
+                            println "Test Windows"
+                        }}}
+                    },
+                    test_osx: {
+                        node('osx') {
+                        withEnv([
+                            "GOPATH=${pwd()}",
+                            "KEYBASE_SERVER_URI=http://${kbwebNodePublicIP}:3000",
+                            "KEYBASE_PUSH_SERVER_URI=fmprpc://${kbwebNodePublicIP}:9911",
+                        ]) {
+                        ws("${pwd()}/src/github.com/keybase/kbfs") {
+                            println "Checkout OS X"
+                                checkout scm
+
+                            println "Test OS X"
+                                runLinuxTest()
+                        }}}
+                    },
+                )
             } finally {
                 if (kbweb != null) {
                     kbweb.stop()
@@ -188,6 +157,42 @@ node("fuse") {
             } else {
                 println "Not pushing docker"
             }
+    }
+}
+
+def runLinuxTest() {
+    sh 'go get -u github.com/golang/lint/golint'
+    sh 'go install github.com/golang/lint/golint'
+    sh '''
+        lint=$(make -s lint);
+        echo 2>&1 "$lint";
+        [ -z "$lint" -o "$lint" = "Lint-free!" ]
+    '''
+    sh 'go vet $(go list ./... 2>/dev/null | grep -v /vendor/)'
+    sh 'go install github.com/keybase/kbfs/...'
+    dir('libkbfs') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+        sh './libkbfs.test -test.timeout 2m'
+    }
+    withEnv([
+        'KEYBASE_TEST_BSERVER_ADDR=tempdir',
+        'KEYBASE_TEST_MDSERVER_ADDR=tempdir',
+    ]) {
+        dir('libfuse') {
+            sh 'go test -i'
+            sh 'go test -c'
+            sh './libfuse.test -test.timeout 2m'
+        }
+        dir('test') {
+            sh 'go test -i -tags fuse'
+            println "Test Dir with Race but no Fuse"
+            sh 'go test -race -c'
+            sh './test.test -test.timeout 7m'
+            println "Test Dir with Fuse but no Race"
+            sh 'go test -c -tags fuse'
+            sh './test.test -test.timeout 7m'
+        }
     }
 }
 
