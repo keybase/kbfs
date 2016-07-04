@@ -1,6 +1,6 @@
 #!groovy
 
-node("fuse") {
+node("ec2-fleet") {
     properties([
         [$class: "BuildDiscarderProperty",
             strategy: [$class: "LogRotator",
