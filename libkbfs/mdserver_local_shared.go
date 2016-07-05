@@ -11,33 +11,6 @@ import (
 	keybase1 "github.com/keybase/client/go/protocol"
 )
 
-func checkMDPerms(codec Codec, currentUID keybase1.UID,
-	mergedMasterHead *RootMetadataSigned, checkWrite bool,
-	newMd *RootMetadataSigned) (bool, error) {
-	if mergedMasterHead == nil {
-		// TODO: the real mdserver will actually reverse
-		// lookup the folder handle and check that the UID is
-		// listed.
-		return true, nil
-	}
-	h, err := mergedMasterHead.MD.MakeBareTlfHandle()
-	if err != nil {
-		return false, err
-	}
-	isReader := h.IsReader(currentUID)
-	if checkWrite {
-		isWriter := h.IsWriter(currentUID)
-		// if this is a reader, are they acting within their
-		// restrictions?
-		if !isWriter && isReader && newMd != nil {
-			return newMd.MD.IsValidRekeyRequest(
-				codec, &mergedMasterHead.MD, currentUID)
-		}
-		return isWriter, nil
-	}
-	return isReader, nil
-}
-
 // Helper to aid in enforcement that only specified public keys can
 // access TLF metadata. mergedMasterHead can be nil, in which case
 // true is returned.
