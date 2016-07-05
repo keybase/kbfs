@@ -26,11 +26,11 @@ import (
 // dir/md_branch_journals/00..00/0...001
 // dir/md_branch_journals/00..00/0...002
 // dir/md_branch_journals/00..00/0...fff
-// dir/md_branch_journals/00..cc/EARLIEST
-// dir/md_branch_journals/00..cc/LATEST
-// dir/md_branch_journals/00..cc/0...0ff
-// dir/md_branch_journals/00..cc/0...100
-// dir/md_branch_journals/00..cc/0...fff
+// dir/md_branch_journals/5f..3d/EARLIEST
+// dir/md_branch_journals/5f..3d/LATEST
+// dir/md_branch_journals/5f..3d/0...0ff
+// dir/md_branch_journals/5f..3d/0...100
+// dir/md_branch_journals/5f..3d/0...fff
 // dir/mds/0100/0...01
 // ...
 // dir/mds/01ff/f...ff
