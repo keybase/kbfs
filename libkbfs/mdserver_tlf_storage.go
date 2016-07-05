@@ -163,15 +163,18 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
 func (s *mdServerTlfStorage) getOrCreateBranchJournalLocked(
 	bid BranchID) (mdServerBranchJournal, error) {
 	j, ok := s.branchJournals[bid]
-	if !ok {
-		dir := filepath.Join(s.branchJournalsPath(), bid.String())
-		err := os.MkdirAll(dir, 0700)
-		if err != nil {
-			return mdServerBranchJournal{}, err
-		}
-
-		s.branchJournals[bid] = makeMDServerBranchJournal(s.codec, dir)
+	if ok {
+		return j, nil
 	}
+
+	dir := filepath.Join(s.branchJournalsPath(), bid.String())
+	err := os.MkdirAll(dir, 0700)
+	if err != nil {
+		return mdServerBranchJournal{}, err
+	}
+
+	j = makeMDServerBranchJournal(s.codec, dir)
+	s.branchJournals[bid] = j
 	return j, nil
 }
 
