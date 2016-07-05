@@ -55,7 +55,7 @@ node("ec2-fleet") {
                     //    gregorImage.pull()
                     //},
                     pull_kbweb: {
-                        if (kbwebNodePrivateIP == '' || kbwebNodePublicIP == '') {
+                        if (!binding.variables.containsKey("kbwebNodePrivateIP") || kbwebNodePrivateIP == '' || kbwebNodePublicIP == '') {
                             kbwebImage.pull()
                         }
                     },
@@ -85,7 +85,7 @@ node("ec2-fleet") {
             def kbweb = null
 
             try {
-                if (kbwebNodePrivateIP == '' || kbwebNodePublicIP == '') {
+                if (!binding.variables.containsKey("kbwebNodePrivateIP") || kbwebNodePrivateIP == '' || kbwebNodePublicIP == '') {
                     retry(5) {
                         kbweb = kbwebImage.run('-p 3000:3000 -p 9911:9911 --entrypoint run/startup_for_container.sh')
                     }
@@ -99,7 +99,7 @@ node("ec2-fleet") {
                         runNixTest()
                     },
                     test_windows: {
-                        node('windows-pipeline') {
+                        node('windows') {
                         withEnv([
                             'GOROOT=C:\\tools\\go',
                             "GOPATH=\"${pwd()}\"",
