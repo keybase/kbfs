@@ -91,7 +91,8 @@ func (s *mdServerTlfStorage) mdPath(id MdID) string {
 // given ID and returns it.
 //
 // TODO: Verify signature?
-func (s *mdServerTlfStorage) getMDLocked(id MdID) (*RootMetadataSigned, error) {
+func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
+	*RootMetadataSigned, error) {
 	// Read file.
 
 	path := s.mdPath(id)
@@ -134,7 +135,7 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
 		return err
 	}
 
-	_, err = s.getMDLocked(id)
+	_, err = s.getMDReadLocked(id)
 	if os.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
@@ -159,7 +160,7 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
 	return ioutil.WriteFile(path, buf, 0600)
 }
 
-func (s *mdServerTlfStorage) getBranchJournalLocked(
+func (s *mdServerTlfStorage) getOrCreateBranchJournalLocked(
 	bid BranchID) (mdServerBranchJournal, error) {
 	j, ok := s.branchJournals[bid]
 	if !ok {
@@ -174,11 +175,11 @@ func (s *mdServerTlfStorage) getBranchJournalLocked(
 	return j, nil
 }
 
-func (s *mdServerTlfStorage) getHeadForTLFLocked(bid BranchID) (
+func (s *mdServerTlfStorage) getHeadForTLFReadLocked(bid BranchID) (
 	rmds *RootMetadataSigned, err error) {
-	j, err := s.getBranchJournalLocked(bid)
-	if err != nil {
-		return nil, err
+	j, ok := s.branchJournals[bid]
+	if !ok {
+		return nil, nil
 	}
 	headID, err := j.getHead()
 	if err != nil {
@@ -187,14 +188,12 @@ func (s *mdServerTlfStorage) getHeadForTLFLocked(bid BranchID) (
 	if headID == (MdID{}) {
 		return nil, nil
 	}
-	return s.getMDLocked(headID)
+	return s.getMDReadLocked(headID)
 }
 
-func (s *mdServerTlfStorage) checkGetParamsLocked(
+func (s *mdServerTlfStorage) checkGetParamsReadLocked(
 	currentUID keybase1.UID, deviceKID keybase1.KID, bid BranchID) error {
-	// Check permissions
-
-	mergedMasterHead, err := s.getHeadForTLFLocked(NullBranchID)
+	mergedMasterHead, err := s.getHeadForTLFReadLocked(NullBranchID)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -210,18 +209,18 @@ func (s *mdServerTlfStorage) checkGetParamsLocked(
 	return nil
 }
 
-func (s *mdServerTlfStorage) getRangeLocked(
+func (s *mdServerTlfStorage) getRangeReadLocked(
 	currentUID keybase1.UID, deviceKID keybase1.KID,
 	bid BranchID, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
-	err := s.checkGetParamsLocked(currentUID, deviceKID, bid)
+	err := s.checkGetParamsReadLocked(currentUID, deviceKID, bid)
 	if err != nil {
 		return nil, err
 	}
 
-	j, err := s.getBranchJournalLocked(bid)
-	if err != nil {
-		return nil, err
+	j, ok := s.branchJournals[bid]
+	if !ok {
+		return nil, nil
 	}
 
 	realStart, mdIDs, err := j.getRange(start, stop)
@@ -231,7 +230,7 @@ func (s *mdServerTlfStorage) getRangeLocked(
 	var rmdses []*RootMetadataSigned
 	for i, mdID := range mdIDs {
 		expectedRevision := realStart + MetadataRevision(i)
-		rmds, err := s.getMDLocked(mdID)
+		rmds, err := s.getMDReadLocked(mdID)
 		if err != nil {
 			return nil, MDServerError{err}
 		}
@@ -245,7 +244,7 @@ func (s *mdServerTlfStorage) getRangeLocked(
 	return rmdses, nil
 }
 
-func (s *mdServerTlfStorage) isShutdownLocked() bool {
+func (s *mdServerTlfStorage) isShutdownReadLocked() bool {
 	return s.branchJournals == nil
 }
 
@@ -257,13 +256,13 @@ func (s *mdServerTlfStorage) journalLength(bid BranchID) (uint64, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	if s.isShutdownLocked() {
+	if s.isShutdownReadLocked() {
 		return 0, errMDServerTlfStorageShutdown
 	}
 
-	j, err := s.getBranchJournalLocked(bid)
-	if err != nil {
-		return 0, err
+	j, ok := s.branchJournals[bid]
+	if !ok {
+		return 0, nil
 	}
 
 	return j.journalLength()
@@ -275,16 +274,16 @@ func (s *mdServerTlfStorage) getForTLF(
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	if s.isShutdownLocked() {
+	if s.isShutdownReadLocked() {
 		return nil, errMDServerTlfStorageShutdown
 	}
 
-	err := s.checkGetParamsLocked(currentUID, deviceKID, bid)
+	err := s.checkGetParamsReadLocked(currentUID, deviceKID, bid)
 	if err != nil {
 		return nil, err
 	}
 
-	rmds, err := s.getHeadForTLFLocked(bid)
+	rmds, err := s.getHeadForTLFReadLocked(bid)
 	if err != nil {
 		return nil, MDServerError{err}
 	}
@@ -298,11 +297,11 @@ func (s *mdServerTlfStorage) getRange(
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	if s.isShutdownLocked() {
+	if s.isShutdownReadLocked() {
 		return nil, errMDServerTlfStorageShutdown
 	}
 
-	return s.getRangeLocked(currentUID, deviceKID, bid, start, stop)
+	return s.getRangeReadLocked(currentUID, deviceKID, bid, start, stop)
 }
 
 func (s *mdServerTlfStorage) put(
@@ -311,7 +310,7 @@ func (s *mdServerTlfStorage) put(
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if s.isShutdownLocked() {
+	if s.isShutdownReadLocked() {
 		return false, errMDServerTlfStorageShutdown
 	}
 
@@ -324,7 +323,7 @@ func (s *mdServerTlfStorage) put(
 
 	// Check permissions
 
-	mergedMasterHead, err := s.getHeadForTLFLocked(NullBranchID)
+	mergedMasterHead, err := s.getHeadForTLFReadLocked(NullBranchID)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -338,7 +337,7 @@ func (s *mdServerTlfStorage) put(
 		return false, MDServerErrorUnauthorized{}
 	}
 
-	head, err := s.getHeadForTLFLocked(bid)
+	head, err := s.getHeadForTLFReadLocked(bid)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -346,7 +345,7 @@ func (s *mdServerTlfStorage) put(
 	if mStatus == Unmerged && head == nil {
 		// currHead for unmerged history might be on the main branch
 		prevRev := rmds.MD.Revision - 1
-		rmdses, err := s.getRangeLocked(
+		rmdses, err := s.getRangeReadLocked(
 			currentUID, deviceKID, NullBranchID, prevRev, prevRev)
 		if err != nil {
 			return false, MDServerError{err}
@@ -378,7 +377,7 @@ func (s *mdServerTlfStorage) put(
 		return false, MDServerError{err}
 	}
 
-	j, err := s.getBranchJournalLocked(bid)
+	j, err := s.getOrCreateBranchJournalLocked(bid)
 	if err != nil {
 		return false, err
 	}
