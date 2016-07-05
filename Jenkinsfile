@@ -96,7 +96,7 @@ node("ec2-fleet") {
                 stage "Test"
                 parallel (
                     test_linux: {
-                        runNixTest()
+                        runNixTest('linux_')
                     },
                     //test_windows: {
                     //    node('windows') {
@@ -127,7 +127,7 @@ node("ec2-fleet") {
                                 checkout scm
 
                             println "Test OS X"
-                                runNixTest()
+                                runNixTest('osx_')
                         }}}
                     },
                     integrate: {
@@ -174,13 +174,13 @@ node("ec2-fleet") {
     }
 }
 
-def runNixTest() {
+def runNixTest(prefix) {
     withEnv([
         'KEYBASE_TEST_BSERVER_ADDR=tempdir',
         'KEYBASE_TEST_MDSERVER_ADDR=tempdir',
     ]) {
-    parallel (
-        vet: {
+        tests = [:]
+        tests[prefix+'vet'] = {
             sh 'go get -u github.com/golang/lint/golint'
             sh 'go install github.com/golang/lint/golint'
             sh '''
@@ -189,25 +189,25 @@ def runNixTest() {
                 [ -z "$lint" -o "$lint" = "Lint-free!" ]
             '''
             sh 'go vet $(go list ./... 2>/dev/null | grep -v /vendor/)'
-        },
-        install: {
+        }
+        tests[prefix+'install'] = {
             sh 'go install github.com/keybase/kbfs/...'
-        },
-        libkbfs: {
+        }
+        tests[prefix+'libkbfs'] = {
             dir('libkbfs') {
                 sh 'go test -i'
                 sh 'go test -race -c'
                 sh './libkbfs.test -test.timeout 2m'
             }
-        },
-        libfuse: {
+        }
+        tests[prefix+'libfuse'] = {
             dir('libfuse') {
                 sh 'go test -i'
                 sh 'go test -c'
                 sh './libfuse.test -test.timeout 2m'
             }
-        },
-        test: {
+        }
+        tests[prefix+'test'] = {
             dir('test') {
                 sh 'go test -i -tags fuse'
                 println "Test Dir with Race but no Fuse"
@@ -217,8 +217,9 @@ def runNixTest() {
                 sh 'go test -c -tags fuse'
                 sh './test.test -test.timeout 7m'
             }
-        },
-    )}
+        }
+        parallel (tests)
+    }
 }
 
 // Need to separate this out because cause is not serializable and thus state
