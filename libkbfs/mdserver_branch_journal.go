@@ -139,6 +139,10 @@ func (j mdServerBranchJournal) getRange(
 		stop = latestRevision
 	}
 
+	if stop < start {
+		return MetadataRevisionUninitialized, nil, nil
+	}
+
 	var mdIDs []MdID
 	for i := start; i <= stop; i++ {
 		mdID, err := j.readMdID(i)
