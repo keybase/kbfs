@@ -98,23 +98,23 @@ node("ec2-fleet") {
                     test_linux: {
                         runNixTest()
                     },
-                    test_windows: {
-                        node('windows') {
-                        withEnv([
-                            'GOROOT=C:\\tools\\go',
-                            "GOPATH=\"${pwd()}\"",
-                            'PATH+TOOLS="C:\\tools\\go\\bin";"C:\\Program Files (x86)\\GNU\\GnuPG";',
-                            "KEYBASE_SERVER_URI=http://${kbwebNodePrivateIP}:3000",
-                            "KEYBASE_PUSH_SERVER_URI=fmprpc://${kbwebNodePublicIP}:9911",
-                        ]) {
-                        ws("${pwd()}/src/github.com/keybase/client") {
-                            println "Checkout Windows"
-                            checkout scm
+                    //test_windows: {
+                    //    node('windows') {
+                    //    withEnv([
+                    //        'GOROOT=C:\\tools\\go',
+                    //        "GOPATH=\"${pwd()}\"",
+                    //        'PATH+TOOLS="C:\\tools\\go\\bin";"C:\\Program Files (x86)\\GNU\\GnuPG";',
+                    //        "KEYBASE_SERVER_URI=http://${kbwebNodePrivateIP}:3000",
+                    //        "KEYBASE_PUSH_SERVER_URI=fmprpc://${kbwebNodePublicIP}:9911",
+                    //    ]) {
+                    //    ws("${pwd()}/src/github.com/keybase/client") {
+                    //        println "Checkout Windows"
+                    //        checkout scm
 
-                            println "Test Windows"
-                            // TODO Implement Windows test
-                        }}}
-                    },
+                    //        println "Test Windows"
+                    //        // TODO Implement Windows test
+                    //    }}}
+                    //},
                     test_osx: {
                         node('osx') {
                         withEnv([
