@@ -27,6 +27,9 @@ import (
 // serializable entry object. The files EARLIEST and LATEST point to
 // the earliest and latest valid ordinal, respectively.
 //
+// This class is not goroutine-safe; it assumes that all
+// synchronization is done at a higher level.
+//
 // TODO: Do all high-level operations atomically on the file-system
 // level.
 //
