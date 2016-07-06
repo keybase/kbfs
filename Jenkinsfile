@@ -96,7 +96,11 @@ node("ec2-fleet") {
                 stage "Test"
                 parallel (
                     test_linux: {
-                        runNixTest('linux_')
+                        withEnv([
+                            "PATH=${env.PATH}:${env.GOPATH}/bin",
+                        ]) {
+                            runNixTest('linux_')
+                        }
                     },
                     //test_windows: {
                     //    node('windows') {
@@ -117,18 +121,22 @@ node("ec2-fleet") {
                     //},
                     test_osx: {
                         node('osx') {
-                        withEnv([
-                            "GOPATH=${pwd()}",
-                            "KEYBASE_SERVER_URI=http://${kbwebNodePublicIP}:3000",
-                            "KEYBASE_PUSH_SERVER_URI=fmprpc://${kbwebNodePublicIP}:9911",
-                        ]) {
-                        ws("${pwd()}/src/github.com/keybase/kbfs") {
-                            println "Checkout OS X"
+                            def GOPATH=pwd()
+                            println "Executing OS X in ${GOPATH}"
+                            ws("${GOPATH}/src/github.com/keybase/kbfs") {
+                                println "Checkout OS X"
                                 checkout scm
 
-                            println "Test OS X"
-                                runNixTest('osx_')
-                        }}}
+                                println "Test OS X"
+                                withEnv([
+                                    "GOPATH=${GOPATH}",
+                                    "KEYBASE_SERVER_URI=http://${kbwebNodePublicIP}:3000",
+                                    "KEYBASE_PUSH_SERVER_URI=fmprpc://${kbwebNodePublicIP}:9911",
+                                ]) {
+                                    runNixTest('osx_')
+                                }
+                            }
+                        }
                     },
                     integrate: {
                         sh "go install github.com/keybase/kbfs/kbfsfuse"
