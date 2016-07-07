@@ -24,8 +24,7 @@ type FakeBServerClient struct {
 }
 
 func NewFakeBServerClient(
-	config Config,
-	readyChan chan<- struct{},
+	config IFCERFTConfig, readyChan chan<- struct{},
 	goChan <-chan struct{},
 	finishChan chan<- struct{}) *FakeBServerClient {
 	return &FakeBServerClient{

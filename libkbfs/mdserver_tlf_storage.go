@@ -48,7 +48,7 @@ import (
 // characters of the name to keep the number of directories in dir
 // itself to a manageable number, similar to git.
 type mdServerTlfStorage struct {
-	codec  Codec
+	codec  IFCERFTCodec
 	crypto cryptoPure
 	dir    string
 
@@ -62,7 +62,7 @@ type mdServerTlfStorage struct {
 }
 
 func makeMDServerTlfStorage(
-	codec Codec, crypto cryptoPure, dir string) *mdServerTlfStorage {
+	codec IFCERFTCodec, crypto cryptoPure, dir string) *mdServerTlfStorage {
 	journal := &mdServerTlfStorage{
 		codec:          codec,
 		crypto:         crypto,

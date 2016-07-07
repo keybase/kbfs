@@ -20,13 +20,13 @@ func maybePrintPath(path string, err error, verbose bool) {
 	}
 }
 
-func createDir(ctx context.Context, kbfsOps libkbfs.KBFSOps, parentNode libkbfs.Node, dirname, path string, verbose bool) (libkbfs.Node, error) {
+func createDir(ctx context.Context, kbfsOps libkbfs.IFCERFTKBFSOps, parentNode libkbfs.IFCERFTNode, dirname, path string, verbose bool) (libkbfs.IFCERFTNode, error) {
 	childNode, _, err := kbfsOps.CreateDir(ctx, parentNode, dirname)
 	maybePrintPath(path, err, verbose)
 	return childNode, err
 }
 
-func mkdirOne(ctx context.Context, config libkbfs.Config, dirPathStr string, createIntermediate, verbose bool) error {
+func mkdirOne(ctx context.Context, config libkbfs.IFCERFTConfig, dirPathStr string, createIntermediate, verbose bool) error {
 	p, err := fsrpc.NewPath(dirPathStr)
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func mkdirOne(ctx context.Context, config libkbfs.Config, dirPathStr string, cre
 	return nil
 }
 
-func mkdir(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
+func mkdir(ctx context.Context, config libkbfs.IFCERFTConfig, args []string) (exitStatus int) {
 	flags := flag.NewFlagSet("kbfs mkdir", flag.ContinueOnError)
 	createIntermediate := flags.Bool("p", false, "Create intermediate directories as required.")
 	verbose := flags.Bool("v", false, "Print extra status output.")

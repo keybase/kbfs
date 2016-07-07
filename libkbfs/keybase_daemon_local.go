@@ -38,7 +38,7 @@ type favoriteStore interface {
 type diskFavoriteClient struct {
 	currentUID keybase1.UID
 	favoriteDb *leveldb.DB
-	codec      Codec
+	codec      IFCERFTCodec
 }
 
 var _ favoriteStore = diskFavoriteClient{}
@@ -113,7 +113,7 @@ func (c memoryFavoriteClient) Shutdown() {}
 // KeybaseDaemonLocal implements KeybaseDaemon using an in-memory user
 // and session store, and a given favorite store.
 type KeybaseDaemonLocal struct {
-	codec Codec
+	codec IFCERFTCodec
 
 	// lock protects localUsers and asserts against races.
 	lock       sync.Mutex
@@ -124,7 +124,7 @@ type KeybaseDaemonLocal struct {
 	favoriteStore favoriteStore
 }
 
-var _ KeybaseDaemon = &KeybaseDaemonLocal{}
+var _ IFCERFTKeybaseDaemon = &KeybaseDaemonLocal{}
 
 func (k *KeybaseDaemonLocal) assertionToUIDLocked(ctx context.Context,
 	assertion string) (uid keybase1.UID, err error) {
@@ -307,8 +307,7 @@ func (k *KeybaseDaemonLocal) addDeviceForTesting(uid keybase1.UID,
 	return index, nil
 }
 
-func (k *KeybaseDaemonLocal) revokeDeviceForTesting(clock Clock,
-	uid keybase1.UID, index int) error {
+func (k *KeybaseDaemonLocal) revokeDeviceForTesting(clock IFCERFTClock, uid keybase1.UID, index int) error {
 	k.lock.Lock()
 	defer k.lock.Unlock()
 
@@ -422,7 +421,7 @@ func (k *KeybaseDaemonLocal) Shutdown() {
 // set of possible users, and one user that should be "logged in".
 // Any storage (e.g. the favorites) persists to disk.
 func NewKeybaseDaemonDisk(currentUID keybase1.UID, users []LocalUser,
-	favDBFile string, codec Codec) (*KeybaseDaemonLocal, error) {
+	favDBFile string, codec IFCERFTCodec) (*KeybaseDaemonLocal, error) {
 	favoriteDb, err := leveldb.OpenFile(favDBFile, leveldbOptions)
 	if err != nil {
 		return nil, err
@@ -435,15 +434,14 @@ func NewKeybaseDaemonDisk(currentUID keybase1.UID, users []LocalUser,
 // a set of possible users, and one user that should be "logged in".
 // Any storage (e.g. the favorites) is kept in memory only.
 func NewKeybaseDaemonMemory(currentUID keybase1.UID,
-	users []LocalUser, codec Codec) *KeybaseDaemonLocal {
+	users []LocalUser, codec IFCERFTCodec) *KeybaseDaemonLocal {
 	favoriteStore := memoryFavoriteClient{
 		favorites: make(map[string]keybase1.Folder),
 	}
 	return newKeybaseDaemonLocal(codec, currentUID, users, favoriteStore)
 }
 
-func newKeybaseDaemonLocal(codec Codec,
-	currentUID keybase1.UID, users []LocalUser,
+func newKeybaseDaemonLocal(codec IFCERFTCodec, currentUID keybase1.UID, users []LocalUser,
 	favoriteStore favoriteStore) *KeybaseDaemonLocal {
 	localUserMap := make(localUserMap)
 	asserts := make(map[string]keybase1.UID)

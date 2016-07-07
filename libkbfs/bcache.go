@@ -21,7 +21,7 @@ type idCacheKey struct {
 // internally by just their block ID (since blocks are immutable and
 // content-addressable).
 type BlockCacheStandard struct {
-	config             Config
+	config             IFCERFTConfig
 	cleanBytesCapacity uint64
 
 	ids *lru.Cache
@@ -29,7 +29,7 @@ type BlockCacheStandard struct {
 	cleanTransient *lru.Cache
 
 	cleanLock      sync.RWMutex
-	cleanPermanent map[BlockID]Block
+	cleanPermanent map[BlockID]IFCERFTBlock
 
 	bytesLock       sync.Mutex
 	cleanTotalBytes uint64
@@ -41,12 +41,12 @@ type BlockCacheStandard struct {
 // between the transient and permanent clean caches.  If putting a
 // block will exceed this bytes capacity, transient entries are
 // evicted until the block will fit in capacity.
-func NewBlockCacheStandard(config Config, transientCapacity int,
+func NewBlockCacheStandard(config IFCERFTConfig, transientCapacity int,
 	cleanBytesCapacity uint64) *BlockCacheStandard {
 	b := &BlockCacheStandard{
 		config:             config,
 		cleanBytesCapacity: cleanBytesCapacity,
-		cleanPermanent:     make(map[BlockID]Block),
+		cleanPermanent:     make(map[BlockID]IFCERFTBlock),
 	}
 
 	if transientCapacity > 0 {
@@ -66,10 +66,10 @@ func NewBlockCacheStandard(config Config, transientCapacity int,
 }
 
 // Get implements the BlockCache interface for BlockCacheStandard.
-func (b *BlockCacheStandard) Get(ptr BlockPointer) (Block, error) {
+func (b *BlockCacheStandard) Get(ptr BlockPointer) (IFCERFTBlock, error) {
 	if b.cleanTransient != nil {
 		if tmp, ok := b.cleanTransient.Get(ptr.ID); ok {
-			block, ok := tmp.(Block)
+			block, ok := tmp.(IFCERFTBlock)
 			if !ok {
 				return nil, BadDataError{ptr.ID}
 			}
@@ -77,7 +77,7 @@ func (b *BlockCacheStandard) Get(ptr BlockPointer) (Block, error) {
 		}
 	}
 
-	block := func() Block {
+	block := func() IFCERFTBlock {
 		b.cleanLock.RLock()
 		defer b.cleanLock.RUnlock()
 		return b.cleanPermanent[ptr.ID]
@@ -89,7 +89,7 @@ func (b *BlockCacheStandard) Get(ptr BlockPointer) (Block, error) {
 	return nil, NoSuchBlockError{ptr.ID}
 }
 
-func getCachedBlockSize(block Block) uint32 {
+func getCachedBlockSize(block IFCERFTBlock) uint32 {
 	// Get the size of the block.  For direct file blocks, use the
 	// length of the plaintext contents.  For everything else, just
 	// approximate the plaintext size using the encoding size.
@@ -105,7 +105,7 @@ func getCachedBlockSize(block Block) uint32 {
 }
 
 func (b *BlockCacheStandard) onEvict(key interface{}, value interface{}) {
-	block, ok := value.(Block)
+	block, ok := value.(IFCERFTBlock)
 	if !ok {
 		return
 	}
@@ -179,10 +179,10 @@ func (b *BlockCacheStandard) makeRoomForSize(size uint64) bool {
 
 // Put implements the BlockCache interface for BlockCacheStandard.
 func (b *BlockCacheStandard) Put(
-	ptr BlockPointer, tlf TlfID, block Block, lifetime BlockCacheLifetime) error {
+	ptr BlockPointer, tlf TlfID, block IFCERFTBlock, lifetime IFCERFTBlockCacheLifetime) error {
 	// If it's the right type of block and lifetime, store the
 	// hash -> ID mapping.
-	if fBlock, ok := block.(*FileBlock); b.ids != nil && lifetime == TransientEntry && ok && !fBlock.IsInd {
+	if fBlock, ok := block.(*FileBlock); b.ids != nil && lifetime == IFCERFTTransientEntry && ok && !fBlock.IsInd {
 		if fBlock.hash == nil {
 			_, hash := DoRawDefaultHash(fBlock.Contents)
 			fBlock.hash = &hash
@@ -195,10 +195,10 @@ func (b *BlockCacheStandard) Put(
 	}
 
 	switch lifetime {
-	case TransientEntry:
+	case IFCERFTTransientEntry:
 		// Cache it later, once we know there's room
 
-	case PermanentEntry:
+	case IFCERFTPermanentEntry:
 		func() {
 			b.cleanLock.Lock()
 			defer b.cleanLock.Unlock()
@@ -211,7 +211,7 @@ func (b *BlockCacheStandard) Put(
 
 	size := uint64(getCachedBlockSize(block))
 	madeRoom := b.makeRoomForSize(size)
-	if madeRoom && lifetime == TransientEntry && b.cleanTransient != nil {
+	if madeRoom && lifetime == IFCERFTTransientEntry && b.cleanTransient != nil {
 		b.cleanTransient.Add(ptr.ID, block)
 	}
 	return nil
@@ -242,7 +242,7 @@ func (b *BlockCacheStandard) DeleteTransient(
 	// If the block is cached and a file block, delete the known
 	// pointer as well.
 	if tmp, ok := b.cleanTransient.Get(ptr.ID); ok {
-		block, ok := tmp.(Block)
+		block, ok := tmp.(IFCERFTBlock)
 		if !ok {
 			return BadDataError{ptr.ID}
 		}

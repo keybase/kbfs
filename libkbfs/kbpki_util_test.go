@@ -15,8 +15,8 @@ import (
 // daemonKBPKI is a hacky way to make a KBPKI instance that uses some
 // methods from KeybaseDaemon.
 type daemonKBPKI struct {
-	KBPKI
-	daemon KeybaseDaemon
+	IFCERFTKBPKI
+	daemon IFCERFTKeybaseDaemon
 }
 
 func (d *daemonKBPKI) GetCurrentUserInfo(ctx context.Context) (
@@ -61,8 +61,8 @@ func interposeDaemonKBPKI(
 	config.SetKeybaseDaemon(daemon)
 
 	daemonKBPKI := &daemonKBPKI{
-		KBPKI:  config.mockKbpki,
-		daemon: daemon,
+		IFCERFTKBPKI: config.mockKbpki,
+		daemon:       daemon,
 	}
 	config.SetKBPKI(daemonKBPKI)
 }
@@ -70,7 +70,7 @@ func interposeDaemonKBPKI(
 // identifyCountingKBPKI is a KBPKI instance that counts calls to
 // Identify.
 type identifyCountingKBPKI struct {
-	KBPKI
+	IFCERFTKBPKI
 	identifyLock  sync.RWMutex
 	identifyCalls int
 }
@@ -89,5 +89,5 @@ func (ik *identifyCountingKBPKI) getIdentifyCalls() int {
 
 func (ik *identifyCountingKBPKI) Identify(ctx context.Context, assertion, reason string) (UserInfo, error) {
 	ik.addIdentifyCall()
-	return ik.KBPKI.Identify(ctx, assertion, reason)
+	return ik.IFCERFTKBPKI.Identify(ctx, assertion, reason)
 }

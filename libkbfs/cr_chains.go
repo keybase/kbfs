@@ -79,7 +79,7 @@ func (cc *crChain) getCollapsedWriteRange() []WriteRange {
 	return wr
 }
 
-func (cc *crChain) getActionsToMerge(renamer ConflictRenamer, mergedPath path,
+func (cc *crChain) getActionsToMerge(renamer IFCERFTConflictRenamer, mergedPath path,
 	mergedChain *crChain) (crActionList, error) {
 	var actions crActionList
 
@@ -583,7 +583,7 @@ func newCRChainsEmpty() *crChains {
 	}
 }
 
-func newCRChains(ctx context.Context, cfg Config, rmds []*RootMetadata,
+func newCRChains(ctx context.Context, cfg IFCERFTConfig, rmds []*RootMetadata,
 	fbo *folderBlockOps, identifyTypes bool) (
 	ccs *crChains, err error) {
 	ccs = newCRChainsEmpty()
@@ -654,7 +654,7 @@ type crChainSummary struct {
 }
 
 func (ccs *crChains) summary(identifyChains *crChains,
-	nodeCache NodeCache) (res []*crChainSummary) {
+	nodeCache IFCERFTNodeCache) (res []*crChainSummary) {
 	for _, chain := range ccs.byOriginal {
 		summary := &crChainSummary{}
 		res = append(res, summary)

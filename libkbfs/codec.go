@@ -17,7 +17,7 @@ import (
 // extensions.
 type ext struct {
 	// codec should NOT encode extension types
-	codec Codec
+	codec IFCERFTCodec
 }
 
 // ConvertExt implements the codec.Ext interface for ext.
@@ -52,7 +52,7 @@ func (e ext) ReadExt(v interface{}, buf []byte) {
 // themselves contain nested extension types.
 type extSlice struct {
 	// codec SHOULD encode extension types
-	codec Codec
+	codec IFCERFTCodec
 	typer func(interface{}) reflect.Value
 }
 
@@ -176,7 +176,7 @@ func (c *CodecMsgpack) RegisterIfaceSliceType(rt reflect.Type, code extCode,
 
 // CodecEqual returns whether or not the given objects serialize to
 // the same byte string. x or y (or both) can be nil.
-func CodecEqual(c Codec, x, y interface{}) (bool, error) {
+func CodecEqual(c IFCERFTCodec, x, y interface{}) (bool, error) {
 	xBuf, err := c.Encode(x)
 	if err != nil {
 		return false, err
@@ -190,7 +190,7 @@ func CodecEqual(c Codec, x, y interface{}) (bool, error) {
 
 // CodecUpdate encodes src into a byte string, and then decode it into
 // dst.
-func CodecUpdate(c Codec, dst interface{}, src interface{}) error {
+func CodecUpdate(c IFCERFTCodec, dst interface{}, src interface{}) error {
 	buf, err := c.Encode(src)
 	if err != nil {
 		return err

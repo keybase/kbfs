@@ -22,19 +22,19 @@ const AuthTokenMinRefreshSeconds = 60
 
 // AuthToken encapsulates a timed authentication token.
 type AuthToken struct {
-	config         Config
+	config         IFCERFTConfig
 	tokenType      string
 	expireIn       int
 	clientName     string
 	clientVersion  string
-	refreshHandler AuthTokenRefreshHandler
+	refreshHandler IFCERFTAuthTokenRefreshHandler
 	tickerCancel   context.CancelFunc
 	tickerMu       sync.Mutex // protects the ticker cancel function
 }
 
 // NewAuthToken creates a new authentication token.
-func NewAuthToken(config Config, tokenType string, expireIn int,
-	submoduleName string, rh AuthTokenRefreshHandler) *AuthToken {
+func NewAuthToken(config IFCERFTConfig, tokenType string, expireIn int,
+	submoduleName string, rh IFCERFTAuthTokenRefreshHandler) *AuthToken {
 	clientName := fmt.Sprintf("go %s %s %s", submoduleName, runtime.GOOS, runtime.GOARCH)
 	authToken := &AuthToken{
 		config:         config,

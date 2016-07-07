@@ -47,8 +47,7 @@ const (
 // TLF's symmetric secret key information.
 type DeviceKeyInfoMap map[keybase1.KID]TLFCryptKeyInfo
 
-func (kim DeviceKeyInfoMap) fillInDeviceInfo(crypto Crypto,
-	uid keybase1.UID, tlfCryptKey TLFCryptKey,
+func (kim DeviceKeyInfoMap) fillInDeviceInfo(crypto IFCERFTCrypto, uid keybase1.UID, tlfCryptKey TLFCryptKey,
 	ePrivKey TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys []CryptPublicKey) (
 	serverMap map[keybase1.KID]TLFCryptKeyServerHalf, err error) {
@@ -204,7 +203,7 @@ func (tkg TLFReaderKeyGenerations) IsReader(user keybase1.UID, deviceKID keybase
 
 type serverKeyMap map[keybase1.UID]map[keybase1.KID]TLFCryptKeyServerHalf
 
-func fillInDevicesAndServerMap(crypto Crypto, newIndex int,
+func fillInDevicesAndServerMap(crypto IFCERFTCrypto, newIndex int,
 	cryptKeys map[keybase1.UID][]CryptPublicKey,
 	keyInfoMap UserDeviceKeyInfoMap,
 	ePubKey TLFEphemeralPublicKey, ePrivKey TLFEphemeralPrivateKey,
@@ -230,8 +229,7 @@ func fillInDevicesAndServerMap(crypto Crypto, newIndex int,
 // in the provided lists has complete TLF crypt key info, and uses the
 // new ephemeral key pair to generate the info if it doesn't yet
 // exist.
-func fillInDevices(crypto Crypto,
-	wkb *TLFWriterKeyBundle, rkb *TLFReaderKeyBundle,
+func fillInDevices(crypto IFCERFTCrypto, wkb *TLFWriterKeyBundle, rkb *TLFReaderKeyBundle,
 	wKeys map[keybase1.UID][]CryptPublicKey,
 	rKeys map[keybase1.UID][]CryptPublicKey, ePubKey TLFEphemeralPublicKey,
 	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey TLFCryptKey) (

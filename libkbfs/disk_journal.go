@@ -35,14 +35,14 @@ import (
 //
 // TODO: Make IO ops cancellable.
 type diskJournal struct {
-	codec     Codec
+	codec     IFCERFTCodec
 	dir       string
 	entryType reflect.Type
 }
 
 // makeDiskJournal returns a new diskJournal for the given directory.
 func makeDiskJournal(
-	codec Codec, dir string, entryType reflect.Type) diskJournal {
+	codec IFCERFTCodec, dir string, entryType reflect.Type) diskJournal {
 	return diskJournal{
 		codec:     codec,
 		dir:       dir,

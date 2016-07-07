@@ -18,7 +18,7 @@ type keyCacheKey struct {
 	keyGen KeyGen
 }
 
-var _ KeyCache = (*KeyCacheStandard)(nil)
+var _ IFCERFTKeyCache = (*KeyCacheStandard)(nil)
 
 // NewKeyCacheStandard constructs a new KeyCacheStandard with the given
 // cache capacity.

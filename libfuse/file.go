@@ -14,7 +14,7 @@ import (
 // File represents KBFS files.
 type File struct {
 	folder *Folder
-	node   libkbfs.Node
+	node   libkbfs.IFCERFTNode
 }
 
 var _ fs.Node = (*File)(nil)

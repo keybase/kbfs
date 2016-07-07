@@ -52,7 +52,7 @@ func addFakeRMDSData(rmds *RootMetadataSigned, h *TlfHandle) {
 	}
 }
 
-func newRMDS(t *testing.T, config Config, public bool) *RootMetadataSigned {
+func newRMDS(t *testing.T, config IFCERFTConfig, public bool) *RootMetadataSigned {
 	id := FakeTlfID(1, public)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", public)
@@ -586,7 +586,7 @@ func TestMDOpsGetRangeFailBadPrevRoot(t *testing.T) {
 }
 
 type fakeMDServerPut struct {
-	MDServer
+	IFCERFTMDServer
 
 	lastRmdsLock sync.Mutex
 	lastRmds     *RootMetadataSigned
@@ -608,8 +608,7 @@ func (s *fakeMDServerPut) getLastRmds() *RootMetadataSigned {
 func (s *fakeMDServerPut) Shutdown() {}
 
 func validatePutPublicRMDS(
-	ctx context.Context, t *testing.T, config Config,
-	expectedRmd *RootMetadata, rmds *RootMetadataSigned) {
+	ctx context.Context, t *testing.T, config IFCERFTConfig, expectedRmd *RootMetadata, rmds *RootMetadataSigned) {
 	// TODO: Handle private RMDS, too.
 
 	// Verify LastModifying* fields.

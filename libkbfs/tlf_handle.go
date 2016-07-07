@@ -142,7 +142,7 @@ func (h TlfHandle) ConflictInfo() *TlfHandleExtension {
 // also be nil.) Otherwise, the given conflict info must match the
 // existing one.
 func (h *TlfHandle) UpdateConflictInfo(
-	codec Codec, info *TlfHandleExtension) error {
+	codec IFCERFTCodec, info *TlfHandleExtension) error {
 	if h.conflictInfo == nil {
 		if info == nil {
 			// Nothing to do.
@@ -208,7 +208,7 @@ func init() {
 }
 
 // Equals returns whether h and other contain the same info.
-func (h TlfHandle) Equals(codec Codec, other TlfHandle) (bool, error) {
+func (h TlfHandle) Equals(codec IFCERFTCodec, other TlfHandle) (bool, error) {
 	if h.public != other.public {
 		return false, nil
 	}
@@ -626,7 +626,7 @@ func (pr partialResolver) Resolve(ctx context.Context, assertion string) (
 // resolved except for unresolved assertions in other; this should
 // equal other if and only if true is returned.
 func (h TlfHandle) ResolvesTo(
-	ctx context.Context, codec Codec, resolver resolver, other *TlfHandle) (
+	ctx context.Context, codec IFCERFTCodec, resolver resolver, other *TlfHandle) (
 	resolvesTo bool, partialResolvedH *TlfHandle, err error) {
 	unresolvedAssertions := make(map[string]bool)
 	for _, uw := range other.unresolvedWriters {
@@ -821,7 +821,7 @@ func (ra resolvableAssertion) resolve(ctx context.Context) (
 // NoSuchNameError: Returned when public is set and the given folder
 // has no public folder.
 func ParseTlfHandle(
-	ctx context.Context, kbpki KBPKI, name string, public bool) (
+	ctx context.Context, kbpki IFCERFTKBPKI, name string, public bool) (
 	*TlfHandle, error) {
 	// Before parsing the tlf handle (which results in identify
 	// calls that cause tracker popups), first see if there's any

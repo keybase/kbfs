@@ -41,7 +41,7 @@ type Folder struct {
 	//
 	// Children must call folder.forgetChildLocked on receiving the
 	// FUSE Forget request.
-	nodes map[libkbfs.NodeID]fs.Node
+	nodes map[libkbfs.IFCERFTNodeID]fs.Node
 
 	// Protects the updateChan.
 	updateMu sync.Mutex
@@ -56,7 +56,7 @@ func newFolder(fl *FolderList, h *libkbfs.TlfHandle) *Folder {
 		fs:    fl.fs,
 		list:  fl,
 		h:     h,
-		nodes: map[libkbfs.NodeID]fs.Node{},
+		nodes: map[libkbfs.IFCERFTNodeID]fs.Node{},
 	}
 	return f
 }
@@ -120,7 +120,7 @@ func (f *Folder) getFolderBranch() libkbfs.FolderBranch {
 }
 
 // forgetNode forgets a formerly active child with basename name.
-func (f *Folder) forgetNode(node libkbfs.Node) {
+func (f *Folder) forgetNode(node libkbfs.IFCERFTNode) {
 	f.nodesMu.Lock()
 	defer f.nodesMu.Unlock()
 
@@ -132,7 +132,7 @@ func (f *Folder) forgetNode(node libkbfs.Node) {
 	}
 }
 
-var _ libkbfs.Observer = (*Folder)(nil)
+var _ libkbfs.IFCERFTObserver = (*Folder)(nil)
 
 // invalidateNodeDataRange notifies the kernel to invalidate cached data for node.
 //
@@ -166,7 +166,7 @@ func (f *Folder) invalidateNodeDataRange(node fs.Node, write libkbfs.WriteRange)
 }
 
 // LocalChange is called for changes originating within in this process.
-func (f *Folder) LocalChange(ctx context.Context, node libkbfs.Node, write libkbfs.WriteRange) {
+func (f *Folder) LocalChange(ctx context.Context, node libkbfs.IFCERFTNode, write libkbfs.WriteRange) {
 	if !f.fs.conn.Protocol().HasInvalidate() {
 		// OSXFUSE 2.x does not support notifications
 		return
@@ -180,8 +180,7 @@ func (f *Folder) LocalChange(ctx context.Context, node libkbfs.Node, write libkb
 	f.fs.queueNotification(func() { f.localChangeInvalidate(ctx, node, write) })
 }
 
-func (f *Folder) localChangeInvalidate(ctx context.Context, node libkbfs.Node,
-	write libkbfs.WriteRange) {
+func (f *Folder) localChangeInvalidate(ctx context.Context, node libkbfs.IFCERFTNode, write libkbfs.WriteRange) {
 	f.nodesMu.Lock()
 	n, ok := f.nodes[node.GetID()]
 	f.nodesMu.Unlock()
@@ -197,7 +196,7 @@ func (f *Folder) localChangeInvalidate(ctx context.Context, node libkbfs.Node,
 
 // BatchChanges is called for changes originating anywhere, including
 // other hosts.
-func (f *Folder) BatchChanges(ctx context.Context, changes []libkbfs.NodeChange) {
+func (f *Folder) BatchChanges(ctx context.Context, changes []libkbfs.IFCERFTNodeChange) {
 	if !f.fs.conn.Protocol().HasInvalidate() {
 		// OSXFUSE 2.x does not support notifications
 		return
@@ -215,7 +214,7 @@ func (f *Folder) BatchChanges(ctx context.Context, changes []libkbfs.NodeChange)
 }
 
 func (f *Folder) batchChangesInvalidate(ctx context.Context,
-	changes []libkbfs.NodeChange) {
+	changes []libkbfs.IFCERFTNodeChange) {
 	for _, v := range changes {
 		f.nodesMu.Lock()
 		n, ok := f.nodes[v.Node.GetID()]
@@ -304,10 +303,10 @@ type DirInterface interface {
 // the TLF root directory itself).
 type Dir struct {
 	folder *Folder
-	node   libkbfs.Node
+	node   libkbfs.IFCERFTNode
 }
 
-func newDir(folder *Folder, node libkbfs.Node) *Dir {
+func newDir(folder *Folder, node libkbfs.IFCERFTNode) *Dir {
 	d := &Dir{
 		folder: folder,
 		node:   node,

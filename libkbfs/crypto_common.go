@@ -34,7 +34,7 @@ func cryptoRandRead(buf []byte) error {
 // CryptoCommon contains many of the function implementations need for
 // the Crypto interface, which can be reused by other implementations.
 type CryptoCommon struct {
-	codec    Codec
+	codec    IFCERFTCodec
 	log      logger.Logger
 	deferLog logger.Logger
 }
@@ -42,7 +42,7 @@ type CryptoCommon struct {
 var _ cryptoPure = (*CryptoCommon)(nil)
 
 // MakeCryptoCommon returns a default CryptoCommon object.
-func MakeCryptoCommon(codec Codec, log logger.Logger) CryptoCommon {
+func MakeCryptoCommon(codec IFCERFTCodec, log logger.Logger) CryptoCommon {
 	return CryptoCommon{codec, log, log.CloneWithAddedDepth(1)}
 }
 
@@ -430,7 +430,7 @@ func (c CryptoCommon) depadBlock(paddedBlock []byte) ([]byte, error) {
 }
 
 // EncryptBlock implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) EncryptBlock(block Block, key BlockCryptKey) (plainSize int, encryptedBlock EncryptedBlock, err error) {
+func (c CryptoCommon) EncryptBlock(block IFCERFTBlock, key BlockCryptKey) (plainSize int, encryptedBlock EncryptedBlock, err error) {
 	encodedBlock, err := c.codec.Encode(block)
 	if err != nil {
 		return
@@ -452,7 +452,7 @@ func (c CryptoCommon) EncryptBlock(block Block, key BlockCryptKey) (plainSize in
 }
 
 // DecryptBlock implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) DecryptBlock(encryptedBlock EncryptedBlock, key BlockCryptKey, block Block) error {
+func (c CryptoCommon) DecryptBlock(encryptedBlock EncryptedBlock, key BlockCryptKey, block IFCERFTBlock) error {
 	paddedBlock, err := c.decryptData(encryptedData(encryptedBlock), key.data)
 	if err != nil {
 		return err

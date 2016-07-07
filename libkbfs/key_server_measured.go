@@ -13,17 +13,17 @@ import (
 // KeyServerMeasured delegates to another KeyServer instance but
 // also keeps track of stats.
 type KeyServerMeasured struct {
-	delegate    KeyServer
+	delegate    IFCERFTKeyServer
 	getTimer    metrics.Timer
 	putTimer    metrics.Timer
 	deleteTimer metrics.Timer
 }
 
-var _ KeyServer = KeyServerMeasured{}
+var _ IFCERFTKeyServer = KeyServerMeasured{}
 
 // NewKeyServerMeasured creates and returns a new KeyServerMeasured
 // instance with the given delegate and registry.
-func NewKeyServerMeasured(delegate KeyServer, r metrics.Registry) KeyServerMeasured {
+func NewKeyServerMeasured(delegate IFCERFTKeyServer, r metrics.Registry) KeyServerMeasured {
 	getTimer := metrics.GetOrRegisterTimer("KeyServer.GetTLFCryptKeyServerHalf", r)
 	putTimer := metrics.GetOrRegisterTimer("KeyServer.PutTLFCryptKeyServerHalves", r)
 	deleteTimer := metrics.GetOrRegisterTimer("KeyServer.DeleteTLFCryptKeyServerHalf", r)

@@ -14,7 +14,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func statNode(ctx context.Context, config libkbfs.Config, nodePathStr string) error {
+func statNode(ctx context.Context, config libkbfs.IFCERFTConfig, nodePathStr string) error {
 	p, err := fsrpc.NewPath(nodePathStr)
 	if err != nil {
 		return err
@@ -49,7 +49,7 @@ func statNode(ctx context.Context, config libkbfs.Config, nodePathStr string) er
 	return nil
 }
 
-func stat(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
+func stat(ctx context.Context, config libkbfs.IFCERFTConfig, args []string) (exitStatus int) {
 	flags := flag.NewFlagSet("kbfs stat", flag.ContinueOnError)
 	flags.Parse(args)
 

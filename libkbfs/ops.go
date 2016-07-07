@@ -31,7 +31,7 @@ type op interface {
 	// otherwise).  The resulting action (if any) assumes that this
 	// method's target op is the unmerged op, and the given op is the
 	// merged op.
-	CheckConflict(renamer ConflictRenamer, mergedOp op, isFile bool) (
+	CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op, isFile bool) (
 		crAction, error)
 	// GetDefaultAction should be called on an unmerged op only after
 	// all conflicts with the corresponding change have been checked,
@@ -191,7 +191,7 @@ func (co *createOp) String() string {
 	return res
 }
 
-func (co *createOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (co *createOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *createOp:
@@ -296,7 +296,7 @@ func (ro *rmOp) String() string {
 	return fmt.Sprintf("rm %s", ro.OldName)
 }
 
-func (ro *rmOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (ro *rmOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *createOp:
@@ -385,7 +385,7 @@ func (ro *renameOp) String() string {
 	return fmt.Sprintf("rename %s -> %s", ro.OldName, ro.NewName)
 }
 
-func (ro *renameOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (ro *renameOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	return nil, fmt.Errorf("Unexpected conflict check on a rename op: %s", ro)
 }
@@ -496,7 +496,7 @@ func (so *syncOp) String() string {
 	return fmt.Sprintf("sync [%s]", strings.Join(writes, ", "))
 }
 
-func (so *syncOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (so *syncOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	switch mergedOp.(type) {
 	case *syncOp:
@@ -707,7 +707,7 @@ func (sao *setAttrOp) String() string {
 	return fmt.Sprintf("setAttr %s (%s)", sao.Name, sao.Attr)
 }
 
-func (sao *setAttrOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (sao *setAttrOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *setAttrOp:
@@ -771,7 +771,7 @@ func (ro *resolutionOp) String() string {
 	return "resolution"
 }
 
-func (ro *resolutionOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (ro *resolutionOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	return nil, nil
 }
@@ -802,7 +802,7 @@ func (ro *rekeyOp) String() string {
 	return "rekey"
 }
 
-func (ro *rekeyOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (ro *rekeyOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	return nil, nil
 }
@@ -845,7 +845,7 @@ func (gco *gcOp) String() string {
 	return fmt.Sprintf("gc %d", gco.LatestRev)
 }
 
-func (gco *gcOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (gco *gcOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	return nil, nil
 }
@@ -927,7 +927,7 @@ func opPointerizer(iface interface{}) reflect.Value {
 }
 
 // RegisterOps registers all op types with the given codec.
-func RegisterOps(codec Codec) {
+func RegisterOps(codec IFCERFTCodec) {
 	codec.RegisterType(reflect.TypeOf(createOp{}), createOpCode)
 	codec.RegisterType(reflect.TypeOf(rmOp{}), rmOpCode)
 	codec.RegisterType(reflect.TypeOf(renameOp{}), renameOpCode)

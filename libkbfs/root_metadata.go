@@ -173,7 +173,7 @@ type RootMetadata struct {
 	mdID     MdID
 }
 
-func (md *RootMetadata) haveOnlyUserRKeysChanged(codec Codec, prevMD *RootMetadata, user keybase1.UID) (bool, error) {
+func (md *RootMetadata) haveOnlyUserRKeysChanged(codec IFCERFTCodec, prevMD *RootMetadata, user keybase1.UID) (bool, error) {
 	// Require the same number of generations
 	if len(md.RKeys) != len(prevMD.RKeys) {
 		return false, nil
@@ -201,7 +201,7 @@ func (md *RootMetadata) haveOnlyUserRKeysChanged(codec Codec, prevMD *RootMetada
 
 // IsValidRekeyRequest returns true if the current block is a simple rekey wrt
 // the passed block.
-func (md *RootMetadata) IsValidRekeyRequest(codec Codec, prevMd *RootMetadata, user keybase1.UID) (bool, error) {
+func (md *RootMetadata) IsValidRekeyRequest(codec IFCERFTCodec, prevMd *RootMetadata, user keybase1.UID) (bool, error) {
 	if !md.IsWriterMetadataCopiedSet() {
 		// Not a copy.
 		return false, nil
@@ -337,7 +337,7 @@ func (md *RootMetadata) clearLastRevision() {
 	md.Flags &= ^MetadataFlagWriterMetadataCopied
 }
 
-func (md *RootMetadata) deepCopy(codec Codec, copyHandle bool) (*RootMetadata, error) {
+func (md *RootMetadata) deepCopy(codec IFCERFTCodec, copyHandle bool) (*RootMetadata, error) {
 	var newMd RootMetadata
 	if err := md.deepCopyInPlace(codec, copyHandle, &newMd); err != nil {
 		return nil, err
@@ -345,7 +345,7 @@ func (md *RootMetadata) deepCopy(codec Codec, copyHandle bool) (*RootMetadata, e
 	return &newMd, nil
 }
 
-func (md *RootMetadata) deepCopyInPlace(codec Codec, copyHandle bool,
+func (md *RootMetadata) deepCopyInPlace(codec IFCERFTCodec, copyHandle bool,
 	newMd *RootMetadata) error {
 	if err := CodecUpdate(codec, newMd, md); err != nil {
 		return err
@@ -367,14 +367,14 @@ func (md *RootMetadata) deepCopyInPlace(codec Codec, copyHandle bool,
 // for testing, except for tlfHandle. Non-test code should use
 // MakeSuccessor() instead.
 func (md *RootMetadata) DeepCopyForServerTest(
-	codec Codec) (*RootMetadata, error) {
+	codec IFCERFTCodec) (*RootMetadata, error) {
 	return md.deepCopy(codec, false)
 }
 
 // MakeSuccessor returns a complete copy of this RootMetadata (but
 // with cleared block change lists and cleared serialized metadata),
 // with the revision incremented and a correct backpointer.
-func (md *RootMetadata) MakeSuccessor(config Config, isWriter bool) (*RootMetadata, error) {
+func (md *RootMetadata) MakeSuccessor(config IFCERFTConfig, isWriter bool) (*RootMetadata, error) {
 	if md.IsFinal() {
 		return nil, MetadataIsFinalError{}
 	}
@@ -737,7 +737,7 @@ func (md *RootMetadata) ClearBlockChanges() {
 
 // Helper which returns nil if the md block is uninitialized or readable by
 // the current user. Otherwise an appropriate read access error is returned.
-func (md *RootMetadata) isReadableOrError(ctx context.Context, config Config) error {
+func (md *RootMetadata) isReadableOrError(ctx context.Context, config IFCERFTConfig) error {
 	if !md.IsInitialized() || md.IsReadable() {
 		return nil
 	}
@@ -763,7 +763,7 @@ func (md *RootMetadata) writerKID() keybase1.KID {
 
 // VerifyWriterMetadata verifies md's WriterMetadata against md's
 // WriterMetadataSigInfo, assuming the verifying key there is valid.
-func (md *RootMetadata) VerifyWriterMetadata(codec Codec, crypto Crypto) error {
+func (md *RootMetadata) VerifyWriterMetadata(codec IFCERFTCodec, crypto IFCERFTCrypto) error {
 	// We have to re-marshal the WriterMetadata, since it's
 	// embedded.
 	buf, err := codec.Encode(md.WriterMetadata)
@@ -864,7 +864,7 @@ func (rmds *RootMetadataSigned) IsInitialized() bool {
 
 // VerifyRootMetadata verifies rmd's MD against rmd's SigInfo,
 // assuming the verifying key there is valid.
-func (rmds *RootMetadataSigned) VerifyRootMetadata(codec Codec, crypto Crypto) error {
+func (rmds *RootMetadataSigned) VerifyRootMetadata(codec IFCERFTCodec, crypto IFCERFTCrypto) error {
 	md := &rmds.MD
 	if rmds.MD.IsFinal() {
 		var err error
@@ -895,7 +895,7 @@ func (rmds *RootMetadataSigned) VerifyRootMetadata(codec Codec, crypto Crypto) e
 
 // MerkleHash computes a hash of this RootMetadataSigned object for inclusion
 // into the KBFS Merkle tree.
-func (rmds *RootMetadataSigned) MerkleHash(config Config) (MerkleHash, error) {
+func (rmds *RootMetadataSigned) MerkleHash(config IFCERFTConfig) (MerkleHash, error) {
 	return config.Crypto().MakeMerkleHash(rmds)
 }
 
@@ -917,7 +917,7 @@ func (rmds *RootMetadataSigned) Version() MetadataVer {
 
 // MakeFinalCopy returns a complete copy of this RootMetadataSigned (but with
 // cleared serialized metadata), with the revision incremented and the final bit set.
-func (rmds *RootMetadataSigned) MakeFinalCopy(config Config) (
+func (rmds *RootMetadataSigned) MakeFinalCopy(config IFCERFTConfig) (
 	*RootMetadataSigned, error) {
 	if rmds.MD.IsFinal() {
 		return nil, MetadataIsFinalError{}

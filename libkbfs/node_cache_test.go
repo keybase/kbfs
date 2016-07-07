@@ -10,8 +10,7 @@ import (
 )
 
 func setupNodeCache(t *testing.T, id TlfID, branch BranchName, flat bool) (
-	ncs *nodeCacheStandard, parentNode Node, childNode1 Node, childNode2 Node,
-	childPath1 []pathNode, childPath2 []pathNode) {
+	ncs *nodeCacheStandard, parentNode IFCERFTNode, childNode1 IFCERFTNode, childNode2 IFCERFTNode, childPath1 []pathNode, childPath2 []pathNode) {
 	ncs = newNodeCacheStandard(FolderBranch{id, branch})
 
 	parentPtr := BlockPointer{ID: fakeBlockID(0)}
@@ -95,7 +94,7 @@ func setupNodeCache(t *testing.T, id TlfID, branch BranchName, flat bool) (
 // references.
 //
 // (Doing real GC cycles and running finalizers, etc. is brittle.)
-func simulateGC(ncs *nodeCacheStandard, liveList []Node) {
+func simulateGC(ncs *nodeCacheStandard, liveList []IFCERFTNode) {
 	hasWork := true
 	for hasWork {
 		hasWork = false
@@ -164,7 +163,7 @@ func TestNodeCacheGetOrCreateNoParent(t *testing.T) {
 		t.Errorf("Couldn't create top-level parent node: %v", err)
 	}
 
-	simulateGC(ncs, []Node{})
+	simulateGC(ncs, []IFCERFTNode{})
 
 	// now try to create a child node for that parent
 	childPtr1 := BlockPointer{ID: fakeBlockID(1)}
@@ -236,7 +235,7 @@ func TestNodeCacheMoveNoParent(t *testing.T) {
 	childPtr2 := path2[1].BlockPointer
 
 	// get rid of child1
-	simulateGC(ncs, []Node{childNode2})
+	simulateGC(ncs, []IFCERFTNode{childNode2})
 
 	// now move child2 under child1
 	err := ncs.Move(childPtr2.ref(), childNode1, "child3")
@@ -365,19 +364,19 @@ func TestNodeCacheGCBasic(t *testing.T) {
 		t.Errorf("Expected %d nodes, got %d", 3, len(ncs.nodes))
 	}
 
-	simulateGC(ncs, []Node{parentNode, childNode2})
+	simulateGC(ncs, []IFCERFTNode{parentNode, childNode2})
 
 	if len(ncs.nodes) != 2 {
 		t.Errorf("Expected %d nodes, got %d", 2, len(ncs.nodes))
 	}
 
-	simulateGC(ncs, []Node{parentNode})
+	simulateGC(ncs, []IFCERFTNode{parentNode})
 
 	if len(ncs.nodes) != 1 {
 		t.Errorf("Expected %d nodes, got %d", 1, len(ncs.nodes))
 	}
 
-	simulateGC(ncs, []Node{})
+	simulateGC(ncs, []IFCERFTNode{})
 
 	if len(ncs.nodes) != 0 {
 		t.Errorf("Expected %d nodes, got %d", 0, len(ncs.nodes))
@@ -394,13 +393,13 @@ func TestNodeCacheGCParent(t *testing.T) {
 		t.Errorf("Expected %d nodes, got %d", 3, len(ncs.nodes))
 	}
 
-	simulateGC(ncs, []Node{childNode2})
+	simulateGC(ncs, []IFCERFTNode{childNode2})
 
 	if len(ncs.nodes) != 2 {
 		t.Errorf("Expected %d nodes, got %d", 2, len(ncs.nodes))
 	}
 
-	simulateGC(ncs, []Node{})
+	simulateGC(ncs, []IFCERFTNode{})
 
 	if len(ncs.nodes) != 0 {
 		t.Errorf("Expected %d nodes, got %d", 0, len(ncs.nodes))

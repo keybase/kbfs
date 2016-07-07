@@ -14,12 +14,12 @@ import (
 )
 
 type fs struct {
-	config libkbfs.Config
+	config libkbfs.IFCERFTConfig
 	log    logger.Logger
 }
 
 // NewFS returns a new FS protocol implementation
-func NewFS(config libkbfs.Config, log logger.Logger) keybase1.FsInterface {
+func NewFS(config libkbfs.IFCERFTConfig, log logger.Logger) keybase1.FsInterface {
 	return &fs{config: config, log: log}
 }
 

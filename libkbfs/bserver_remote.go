@@ -26,7 +26,7 @@ const (
 // BlockServerRemote implements the BlockServer interface and
 // represents a remote KBFS block server.
 type BlockServerRemote struct {
-	config     Config
+	config     IFCERFTConfig
 	shutdownFn func()
 	client     keybase1.BlockInterface
 	log        logger.Logger
@@ -36,14 +36,14 @@ type BlockServerRemote struct {
 }
 
 // Test that BlockServerRemote fully implements the BlockServer interface.
-var _ BlockServer = (*BlockServerRemote)(nil)
+var _ IFCERFTBlockServer = (*BlockServerRemote)(nil)
 
 // Test that BlockServerRemote fully implements the AuthTokenRefreshHandler interface.
-var _ AuthTokenRefreshHandler = (*BlockServerRemote)(nil)
+var _ IFCERFTAuthTokenRefreshHandler = (*BlockServerRemote)(nil)
 
 // NewBlockServerRemote constructs a new BlockServerRemote for the
 // given address.
-func NewBlockServerRemote(config Config, blkSrvAddr string, ctx Context) *BlockServerRemote {
+func NewBlockServerRemote(config IFCERFTConfig, blkSrvAddr string, ctx Context) *BlockServerRemote {
 	log := config.MakeLogger("BSR")
 	deferLog := log.CloneWithAddedDepth(1)
 	bs := &BlockServerRemote{
@@ -66,8 +66,7 @@ func NewBlockServerRemote(config Config, blkSrvAddr string, ctx Context) *BlockS
 }
 
 // For testing.
-func newBlockServerRemoteWithClient(config Config,
-	client keybase1.BlockInterface) *BlockServerRemote {
+func newBlockServerRemoteWithClient(config IFCERFTConfig, client keybase1.BlockInterface) *BlockServerRemote {
 	log := config.MakeLogger("BSR")
 	deferLog := log.CloneWithAddedDepth(1)
 	bs := &BlockServerRemote{

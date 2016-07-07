@@ -7,14 +7,14 @@ package libkbfs
 import "testing"
 
 func blockCacheTestInit(t *testing.T, capacity int,
-	bytesCapacity uint64) Config {
+	bytesCapacity uint64) IFCERFTConfig {
 	config := MakeTestConfigOrBust(t, "test")
 	b := NewBlockCacheStandard(config, capacity, bytesCapacity)
 	config.SetBlockCache(b)
 	return config
 }
 
-func testBcachePutWithBlock(t *testing.T, id BlockID, bcache BlockCache, lifetime BlockCacheLifetime, block Block) {
+func testBcachePutWithBlock(t *testing.T, id BlockID, bcache IFCERFTBlockCache, lifetime IFCERFTBlockCacheLifetime, block IFCERFTBlock) {
 	ptr := BlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
@@ -31,12 +31,12 @@ func testBcachePutWithBlock(t *testing.T, id BlockID, bcache BlockCache, lifetim
 	}
 }
 
-func testBcachePut(t *testing.T, id BlockID, bcache BlockCache, lifetime BlockCacheLifetime) {
+func testBcachePut(t *testing.T, id BlockID, bcache IFCERFTBlockCache, lifetime IFCERFTBlockCacheLifetime) {
 	block := NewFileBlock()
 	testBcachePutWithBlock(t, id, bcache, lifetime, block)
 }
 
-func testExpectedMissing(t *testing.T, id BlockID, bcache BlockCache) {
+func testExpectedMissing(t *testing.T, id BlockID, bcache IFCERFTBlockCache) {
 	expectedErr := NoSuchBlockError{id}
 	ptr := BlockPointer{ID: id}
 	if _, err := bcache.Get(ptr); err == nil {
@@ -49,8 +49,8 @@ func testExpectedMissing(t *testing.T, id BlockID, bcache BlockCache) {
 func TestBcachePut(t *testing.T) {
 	config := blockCacheTestInit(t, 100, 1<<30)
 	defer CheckConfigAndShutdown(t, config)
-	testBcachePut(t, fakeBlockID(1), config.BlockCache(), TransientEntry)
-	testBcachePut(t, fakeBlockID(2), config.BlockCache(), PermanentEntry)
+	testBcachePut(t, fakeBlockID(1), config.BlockCache(), IFCERFTTransientEntry)
+	testBcachePut(t, fakeBlockID(2), config.BlockCache(), IFCERFTPermanentEntry)
 }
 
 func TestBcachePutPastCapacity(t *testing.T) {
@@ -58,10 +58,10 @@ func TestBcachePutPastCapacity(t *testing.T) {
 	defer CheckConfigAndShutdown(t, config)
 	bcache := config.BlockCache()
 	id1 := fakeBlockID(1)
-	testBcachePut(t, id1, bcache, TransientEntry)
+	testBcachePut(t, id1, bcache, IFCERFTTransientEntry)
 	id2 := fakeBlockID(2)
-	testBcachePut(t, id2, bcache, TransientEntry)
-	testBcachePut(t, fakeBlockID(3), bcache, TransientEntry)
+	testBcachePut(t, id2, bcache, IFCERFTTransientEntry)
+	testBcachePut(t, fakeBlockID(3), bcache, IFCERFTTransientEntry)
 
 	// now block 1 should have been kicked out
 	testExpectedMissing(t, id1, bcache)
@@ -72,7 +72,7 @@ func TestBcachePutPastCapacity(t *testing.T) {
 	}
 
 	// permanent blocks don't count
-	testBcachePut(t, fakeBlockID(4), config.BlockCache(), PermanentEntry)
+	testBcachePut(t, fakeBlockID(4), config.BlockCache(), IFCERFTPermanentEntry)
 }
 
 func TestBcacheCheckPtrSuccess(t *testing.T) {
@@ -86,7 +86,7 @@ func TestBcacheCheckPtrSuccess(t *testing.T) {
 	ptr := BlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
-	err := bcache.Put(ptr, tlf, block, TransientEntry)
+	err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry)
 	if err != nil {
 		t.Errorf("Couldn't put block: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestBcacheCheckPtrPermanent(t *testing.T) {
 	ptr := BlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
-	err := bcache.Put(ptr, tlf, block, PermanentEntry)
+	err := bcache.Put(ptr, tlf, block, IFCERFTPermanentEntry)
 	if err != nil {
 		t.Errorf("Couldn't put block: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestBcacheCheckPtrNotFound(t *testing.T) {
 	ptr := BlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
-	err := bcache.Put(ptr, tlf, block, TransientEntry)
+	err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry)
 	if err != nil {
 		t.Errorf("Couldn't put block: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestBcacheDeleteTransient(t *testing.T) {
 	ptr := BlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
-	err := bcache.Put(ptr, tlf, block, TransientEntry)
+	err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry)
 	if err != nil {
 		t.Errorf("Couldn't put block: %v", err)
 	}
@@ -184,12 +184,12 @@ func TestBcacheDeletePermanent(t *testing.T) {
 	bcache := config.BlockCache()
 
 	id1 := fakeBlockID(1)
-	testBcachePut(t, id1, bcache, PermanentEntry)
+	testBcachePut(t, id1, bcache, IFCERFTPermanentEntry)
 
 	id2 := fakeBlockID(2)
 	block2 := NewFileBlock()
-	testBcachePutWithBlock(t, id2, bcache, TransientEntry, block2)
-	testBcachePutWithBlock(t, id2, bcache, PermanentEntry, block2)
+	testBcachePutWithBlock(t, id2, bcache, IFCERFTTransientEntry, block2)
+	testBcachePutWithBlock(t, id2, bcache, IFCERFTPermanentEntry, block2)
 
 	bcache.DeletePermanent(id1)
 	bcache.DeletePermanent(id2)
@@ -215,7 +215,7 @@ func TestBcacheEmptyTransient(t *testing.T) {
 	// Make sure all the operations work even if the cache has no
 	// transient capacity.
 
-	if err := bcache.Put(ptr, tlf, block, TransientEntry); err != nil {
+	if err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry); err != nil {
 		t.Errorf("Got error on Put for block %s: %v", id, err)
 	}
 
@@ -250,7 +250,7 @@ func TestBcacheEvictOnBytes(t *testing.T) {
 		id := fakeBlockID(i)
 		ptr := BlockPointer{ID: id}
 
-		if err := bcache.Put(ptr, tlf, block, TransientEntry); err != nil {
+		if err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry); err != nil {
 			t.Errorf("Got error on Put for block %s: %v", id, err)
 		}
 	}
@@ -282,7 +282,7 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 	block := &FileBlock{
 		Contents: make([]byte, 2),
 	}
-	if err := bcache.Put(ptr, tlf, block, PermanentEntry); err != nil {
+	if err := bcache.Put(ptr, tlf, block, IFCERFTPermanentEntry); err != nil {
 		t.Errorf("Got error on Put for block %s: %v", idPerm, err)
 	}
 
@@ -293,7 +293,7 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 		id := fakeBlockID(i)
 		ptr := BlockPointer{ID: id}
 
-		if err := bcache.Put(ptr, tlf, block, TransientEntry); err != nil {
+		if err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry); err != nil {
 			t.Errorf("Got error on Put for block %s: %v", id, err)
 		}
 	}
@@ -323,7 +323,7 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 	block.SetEncodedSize(7)
 	id := fakeBlockID(8)
 	ptr = BlockPointer{ID: id}
-	if err := bcache.Put(ptr, tlf, block, TransientEntry); err != nil {
+	if err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry); err != nil {
 		t.Errorf("Got error on Put for block %s: %v", id, err)
 	}
 
@@ -345,7 +345,7 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 	block2 := &FileBlock{
 		Contents: make([]byte, 10),
 	}
-	if err := bcache.Put(ptr2, tlf, block2, PermanentEntry); err != nil {
+	if err := bcache.Put(ptr2, tlf, block2, IFCERFTPermanentEntry); err != nil {
 		t.Errorf("Got error on Put for block %s: %v", idPerm, err)
 	}
 
@@ -369,7 +369,7 @@ func TestPutNoHashCalculation(t *testing.T) {
 	// this is an invalid hash; if Put() does not calculate hash, it should go
 	// into the cache
 	block.hash = &RawDefaultHash{}
-	if err := bcache.Put(ptr, tlf, block, TransientEntry); err != nil {
+	if err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry); err != nil {
 		t.Errorf("Got error on Put for block %s: %v", ptr.ID, err)
 	}
 

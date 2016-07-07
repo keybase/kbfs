@@ -17,7 +17,7 @@ type rekeyQueueEntry struct {
 
 // RekeyQueueStandard implements the RekeyQueue interface.
 type RekeyQueueStandard struct {
-	config    Config
+	config    IFCERFTConfig
 	queueMu   sync.RWMutex // protects all of the below
 	queue     []rekeyQueueEntry
 	hasWorkCh chan struct{}
@@ -26,10 +26,10 @@ type RekeyQueueStandard struct {
 }
 
 // Test that RekeyQueueStandard fully implements the RekeyQueue interface.
-var _ RekeyQueue = (*RekeyQueueStandard)(nil)
+var _ IFCERFTRekeyQueue = (*RekeyQueueStandard)(nil)
 
 // NewRekeyQueueStandard instantiates a new rekey worker.
-func NewRekeyQueueStandard(config Config) *RekeyQueueStandard {
+func NewRekeyQueueStandard(config IFCERFTConfig) *RekeyQueueStandard {
 	rkq := &RekeyQueueStandard{
 		config: config,
 	}

@@ -38,7 +38,7 @@ type conflictInput struct {
 // ConflictResolver is responsible for resolving conflicts in the
 // background.
 type ConflictResolver struct {
-	config Config
+	config IFCERFTConfig
 	fbo    *folderBranchOps
 	log    logger.Logger
 
@@ -55,7 +55,7 @@ type ConflictResolver struct {
 // NewConflictResolver constructs a new ConflictResolver (and launches
 // any necessary background goroutines).
 func NewConflictResolver(
-	config Config, fbo *folderBranchOps) *ConflictResolver {
+	config IFCERFTConfig, fbo *folderBranchOps) *ConflictResolver {
 	// make a logger with an appropriate module name
 	branchSuffix := ""
 	if fbo.branch() != MasterBranch {
@@ -334,7 +334,7 @@ func (sp crSortedPaths) Swap(i, j int) {
 // that if a path cannot be found, the corresponding chain is
 // completely removed from the set of CR chains.
 func (cr *ConflictResolver) getPathsFromChains(ctx context.Context,
-	chains *crChains, nodeCache NodeCache) ([]path, error) {
+	chains *crChains, nodeCache IFCERFTNodeCache) ([]path, error) {
 	newPtrs := make(map[BlockPointer]bool)
 	var ptrs []BlockPointer
 	for ptr, chain := range chains.byMostRecent {
@@ -2521,7 +2521,7 @@ func (cr *ConflictResolver) syncTree(ctx context.Context, lState *lockState,
 	if len(node.children) == 0 {
 		// Look for the directory block or the new file block.
 		entryType := Dir
-		var block Block
+		var block IFCERFTBlock
 		var ok bool
 		block, ok = lbc[node.ptr]
 		// non-nil exactly when entryType != Dir.
@@ -2627,7 +2627,7 @@ func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 		}
 	}
 
-	localBlocks := make(map[BlockPointer]Block)
+	localBlocks := make(map[BlockPointer]IFCERFTBlock)
 	for _, bs := range bps.blockStates {
 		if bs.block != nil {
 			localBlocks[bs.blockPtr] = bs.block

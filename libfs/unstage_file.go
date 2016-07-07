@@ -25,7 +25,7 @@ import (
 // operations may be blocked, though.) You can figure out when the
 // unstage succeeds by consulting .kbfs_status.
 func UnstageForTesting(ctx context.Context, log logger.Logger,
-	config libkbfs.Config, fb libkbfs.FolderBranch,
+	config libkbfs.IFCERFTConfig, fb libkbfs.FolderBranch,
 	data []byte) (int, error) {
 	log.CDebugf(ctx, "UnstageForTesting(%v, %v)", fb, data)
 	if len(data) == 0 {

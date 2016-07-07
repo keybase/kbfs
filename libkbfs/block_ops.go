@@ -13,14 +13,14 @@ import (
 // BlockOpsStandard implements the BlockOps interface by relaying
 // requests to the block server.
 type BlockOpsStandard struct {
-	config Config
+	config IFCERFTConfig
 }
 
-var _ BlockOps = (*BlockOpsStandard)(nil)
+var _ IFCERFTBlockOps = (*BlockOpsStandard)(nil)
 
 // Get implements the BlockOps interface for BlockOpsStandard.
 func (b *BlockOpsStandard) Get(ctx context.Context, md *RootMetadata,
-	blockPtr BlockPointer, block Block) error {
+	blockPtr BlockPointer, block IFCERFTBlock) error {
 	bserv := b.config.BlockServer()
 	buf, blockServerHalf, err := bserv.Get(ctx, blockPtr.ID, md.ID, blockPtr.BlockContext)
 	if err != nil {
@@ -70,7 +70,7 @@ func (b *BlockOpsStandard) Get(ctx context.Context, md *RootMetadata,
 
 // Ready implements the BlockOps interface for BlockOpsStandard.
 func (b *BlockOpsStandard) Ready(ctx context.Context, md *RootMetadata,
-	block Block) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
+	block IFCERFTBlock) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
 	err error) {
 	defer func() {
 		if err != nil {

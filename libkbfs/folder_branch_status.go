@@ -50,11 +50,11 @@ type StatusUpdate struct{}
 // folder-branch, and produces FolderBranchStatus instances suitable
 // for callers outside this package to consume.
 type folderBranchStatusKeeper struct {
-	config    Config
-	nodeCache NodeCache
+	config    IFCERFTConfig
+	nodeCache IFCERFTNodeCache
 
 	md         *RootMetadata
-	dirtyNodes map[NodeID]Node
+	dirtyNodes map[IFCERFTNodeID]IFCERFTNode
 	unmerged   *crChains
 	merged     *crChains
 	dataMutex  sync.Mutex
@@ -64,11 +64,11 @@ type folderBranchStatusKeeper struct {
 }
 
 func newFolderBranchStatusKeeper(
-	config Config, nodeCache NodeCache) *folderBranchStatusKeeper {
+	config IFCERFTConfig, nodeCache IFCERFTNodeCache) *folderBranchStatusKeeper {
 	return &folderBranchStatusKeeper{
 		config:     config,
 		nodeCache:  nodeCache,
-		dirtyNodes: make(map[NodeID]Node),
+		dirtyNodes: make(map[IFCERFTNodeID]IFCERFTNode),
 		updateChan: make(chan StatusUpdate, 1),
 	}
 }
@@ -105,7 +105,7 @@ func (fbsk *folderBranchStatusKeeper) setCRChains(unmerged *crChains,
 	fbsk.signalChangeLocked()
 }
 
-func (fbsk *folderBranchStatusKeeper) addNode(m map[NodeID]Node, n Node) {
+func (fbsk *folderBranchStatusKeeper) addNode(m map[IFCERFTNodeID]IFCERFTNode, n IFCERFTNode) {
 	fbsk.dataMutex.Lock()
 	defer fbsk.dataMutex.Unlock()
 	id := n.GetID()
@@ -117,7 +117,7 @@ func (fbsk *folderBranchStatusKeeper) addNode(m map[NodeID]Node, n Node) {
 	fbsk.signalChangeLocked()
 }
 
-func (fbsk *folderBranchStatusKeeper) rmNode(m map[NodeID]Node, n Node) {
+func (fbsk *folderBranchStatusKeeper) rmNode(m map[IFCERFTNodeID]IFCERFTNode, n IFCERFTNode) {
 	fbsk.dataMutex.Lock()
 	defer fbsk.dataMutex.Unlock()
 	id := n.GetID()
@@ -129,17 +129,17 @@ func (fbsk *folderBranchStatusKeeper) rmNode(m map[NodeID]Node, n Node) {
 	fbsk.signalChangeLocked()
 }
 
-func (fbsk *folderBranchStatusKeeper) addDirtyNode(n Node) {
+func (fbsk *folderBranchStatusKeeper) addDirtyNode(n IFCERFTNode) {
 	fbsk.addNode(fbsk.dirtyNodes, n)
 }
 
-func (fbsk *folderBranchStatusKeeper) rmDirtyNode(n Node) {
+func (fbsk *folderBranchStatusKeeper) rmDirtyNode(n IFCERFTNode) {
 	fbsk.rmNode(fbsk.dirtyNodes, n)
 }
 
 // dataMutex should be taken by the caller
 func (fbsk *folderBranchStatusKeeper) convertNodesToPathsLocked(
-	m map[NodeID]Node) []string {
+	m map[IFCERFTNodeID]IFCERFTNode) []string {
 	var ret []string
 	for _, n := range m {
 		ret = append(ret, fbsk.nodeCache.PathFromNode(n).String())

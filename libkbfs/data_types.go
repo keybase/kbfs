@@ -833,12 +833,12 @@ func (u *UserQuotaInfo) Accum(another *UserQuotaInfo, accumF func(int64, int64) 
 }
 
 // ToBytes marshals this UserQuotaInfo
-func (u *UserQuotaInfo) ToBytes(config Config) ([]byte, error) {
+func (u *UserQuotaInfo) ToBytes(config IFCERFTConfig) ([]byte, error) {
 	return config.Codec().Encode(u)
 }
 
 // UserQuotaInfoDecode decodes b into a UserQuotaInfo
-func UserQuotaInfoDecode(b []byte, config Config) (*UserQuotaInfo, error) {
+func UserQuotaInfoDecode(b []byte, config IFCERFTConfig) (*UserQuotaInfo, error) {
 	var info UserQuotaInfo
 	err := config.Codec().Decode(b, &info)
 	if err != nil {

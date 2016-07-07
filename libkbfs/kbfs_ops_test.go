@@ -22,19 +22,19 @@ import (
 )
 
 type CheckBlockOps struct {
-	delegate BlockOps
+	delegate IFCERFTBlockOps
 	tr       gomock.TestReporter
 }
 
-var _ BlockOps = (*CheckBlockOps)(nil)
+var _ IFCERFTBlockOps = (*CheckBlockOps)(nil)
 
 func (cbo *CheckBlockOps) Get(ctx context.Context, md *RootMetadata,
-	blockPtr BlockPointer, block Block) error {
+	blockPtr BlockPointer, block IFCERFTBlock) error {
 	return cbo.delegate.Get(ctx, md, blockPtr, block)
 }
 
 func (cbo *CheckBlockOps) Ready(ctx context.Context, md *RootMetadata,
-	block Block) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
+	block IFCERFTBlock) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
 	err error) {
 	id, plainSize, readyBlockData, err = cbo.delegate.Ready(ctx, md, block)
 	encodedSize := readyBlockData.GetEncodedSize()
@@ -226,14 +226,14 @@ func TestKBFSOpsGetFavoritesFail(t *testing.T) {
 	}
 }
 
-func getOps(config Config, id TlfID) *folderBranchOps {
+func getOps(config IFCERFTConfig, id TlfID) *folderBranchOps {
 	return config.KBFSOps().(*KBFSOpsStandard).
 		getOpsNoAdd(FolderBranch{id, MasterBranch})
 }
 
 // createNewRMD creates a new RMD for the given name. Returns its ID
 // and handle also.
-func createNewRMD(t *testing.T, config Config, name string, public bool) (
+func createNewRMD(t *testing.T, config IFCERFTConfig, name string, public bool) (
 	TlfID, *TlfHandle, *RootMetadata) {
 	id := FakeTlfID(1, public)
 	h := parseTlfHandleOrBust(t, config, name, public)
@@ -355,7 +355,7 @@ func fboIdentityDone(fbo *folderBranchOps) bool {
 }
 
 type failIdentifyKBPKI struct {
-	KBPKI
+	IFCERFTKBPKI
 	identifyErr error
 }
 
@@ -384,11 +384,11 @@ func TestKBFSOpsGetRootNodeCacheIdentifyFail(t *testing.T) {
 	assert.False(t, fboIdentityDone(ops))
 }
 
-func expectBlock(config *ConfigMock, rmd *RootMetadata, blockPtr BlockPointer, block Block, err error) {
+func expectBlock(config *ConfigMock, rmd *RootMetadata, blockPtr BlockPointer, block IFCERFTBlock, err error) {
 	config.mockBops.EXPECT().Get(gomock.Any(), rmdMatcher{rmd},
 		ptrMatcher{blockPtr}, gomock.Any()).
 		Do(func(ctx context.Context, md *RootMetadata,
-			blockPtr BlockPointer, getBlock Block) {
+			blockPtr BlockPointer, getBlock IFCERFTBlock) {
 			switch v := getBlock.(type) {
 			case *FileBlock:
 				*v = *block.(*FileBlock)
@@ -572,8 +572,7 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 	}
 }
 
-func makeBP(id BlockID, rmd *RootMetadata, config Config,
-	u keybase1.UID) BlockPointer {
+func makeBP(id BlockID, rmd *RootMetadata, config IFCERFTConfig, u keybase1.UID) BlockPointer {
 	return BlockPointer{
 		ID:      id,
 		KeyGen:  rmd.LatestKeyGeneration(),
@@ -586,16 +585,14 @@ func makeBP(id BlockID, rmd *RootMetadata, config Config,
 	}
 }
 
-func makeBI(id BlockID, rmd *RootMetadata, config Config,
-	u keybase1.UID, encodedSize uint32) BlockInfo {
+func makeBI(id BlockID, rmd *RootMetadata, config IFCERFTConfig, u keybase1.UID, encodedSize uint32) BlockInfo {
 	return BlockInfo{
 		BlockPointer: makeBP(id, rmd, config, u),
 		EncodedSize:  encodedSize,
 	}
 }
 
-func makeIFP(id BlockID, rmd *RootMetadata, config Config,
-	u keybase1.UID, encodedSize uint32, off int64) IndirectFilePtr {
+func makeIFP(id BlockID, rmd *RootMetadata, config IFCERFTConfig, u keybase1.UID, encodedSize uint32, off int64) IndirectFilePtr {
 	return IndirectFilePtr{
 		BlockInfo{
 			BlockPointer: makeBP(id, rmd, config, u),
@@ -619,8 +616,8 @@ func makeBIFromID(id BlockID, user keybase1.UID) BlockInfo {
 	}
 }
 
-func nodeFromPath(t *testing.T, ops *folderBranchOps, p path) Node {
-	var prevNode Node
+func nodeFromPath(t *testing.T, ops *folderBranchOps, p path) IFCERFTNode {
+	var prevNode IFCERFTNode
 	// populate the node cache with all the nodes we'll need
 	for _, pathNode := range p.path {
 		n, err := ops.nodeCache.GetOrCreate(pathNode.BlockPointer,
@@ -634,8 +631,8 @@ func nodeFromPath(t *testing.T, ops *folderBranchOps, p path) Node {
 }
 
 func testPutBlockInCache(config *ConfigMock, ptr BlockPointer, id TlfID,
-	block Block) {
-	config.BlockCache().Put(ptr, id, block, TransientEntry)
+	block IFCERFTBlock) {
+	config.BlockCache().Put(ptr, id, block, IFCERFTTransientEntry)
 }
 
 func TestKBFSOpsGetBaseDirChildrenCacheSuccess(t *testing.T) {
@@ -1087,8 +1084,8 @@ func expectSyncBlockUnmerged(
 		newEntry, skipSync, refBytes, unrefBytes, newRmd, newBlockIDs, true)
 }
 
-func getBlockFromCache(t *testing.T, config Config, ptr BlockPointer,
-	branch BranchName) Block {
+func getBlockFromCache(t *testing.T, config IFCERFTConfig, ptr BlockPointer,
+	branch BranchName) IFCERFTBlock {
 	if block, err := config.DirtyBlockCache().Get(ptr, branch); err == nil {
 		return block
 	}
@@ -1101,7 +1098,7 @@ func getBlockFromCache(t *testing.T, config Config, ptr BlockPointer,
 	return block
 }
 
-func getDirBlockFromCache(t *testing.T, config Config, ptr BlockPointer,
+func getDirBlockFromCache(t *testing.T, config IFCERFTConfig, ptr BlockPointer,
 	branch BranchName) *DirBlock {
 	block := getBlockFromCache(t, config, ptr, branch)
 	dblock, ok := block.(*DirBlock)
@@ -1111,7 +1108,7 @@ func getDirBlockFromCache(t *testing.T, config Config, ptr BlockPointer,
 	return dblock
 }
 
-func getFileBlockFromCache(t *testing.T, config Config, ptr BlockPointer,
+func getFileBlockFromCache(t *testing.T, config IFCERFTConfig, ptr BlockPointer,
 	branch BranchName) *FileBlock {
 	block := getBlockFromCache(t, config, ptr, branch)
 	fblock, ok := block.(*FileBlock)
@@ -1121,8 +1118,7 @@ func getFileBlockFromCache(t *testing.T, config Config, ptr BlockPointer,
 	return fblock
 }
 
-func checkNewPath(t *testing.T, ctx context.Context, config Config,
-	newPath path, expectedPath path, rmd *RootMetadata, blocks []BlockID,
+func checkNewPath(t *testing.T, ctx context.Context, config IFCERFTConfig, newPath path, expectedPath path, rmd *RootMetadata, blocks []BlockID,
 	entryType EntryType, newName string, rename bool) {
 	// TODO: check that the observer updates match the expectedPath as
 	// well (but need to handle the rename case where there can be
@@ -1288,7 +1284,7 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 		expectSyncBlock(t, config, nil, uid, id, "b", p, rmd,
 			entryType != Sym, 0, 0, 0, &newRmd, blocks)
 
-	var newN Node
+	var newN IFCERFTNode
 	var err error
 	switch entryType {
 	case File:
@@ -2730,7 +2726,7 @@ func TestKBFSOpsServerReadFailNoSuchBlock(t *testing.T) {
 	}
 }
 
-func checkSyncOp(t *testing.T, codec Codec, so *syncOp, filePtr BlockPointer,
+func checkSyncOp(t *testing.T, codec IFCERFTCodec, so *syncOp, filePtr BlockPointer,
 	writes []WriteRange) {
 	if so == nil {
 		t.Error("No sync info for written file!")
@@ -2754,7 +2750,7 @@ func checkSyncOp(t *testing.T, codec Codec, so *syncOp, filePtr BlockPointer,
 	}
 }
 
-func checkSyncOpInCache(t *testing.T, codec Codec, ops *folderBranchOps,
+func checkSyncOpInCache(t *testing.T, codec IFCERFTCodec, ops *folderBranchOps,
 	filePtr BlockPointer, writes []WriteRange) {
 	// check the in-progress syncOp
 	si, ok := ops.blocks.unrefCache[filePtr.ref()]
@@ -3899,7 +3895,7 @@ func getOrCreateSyncInfo(
 	return ops.blocks.getOrCreateSyncInfoLocked(lState, de)
 }
 
-func makeBlockStateDirty(config Config, rmd *RootMetadata, p path,
+func makeBlockStateDirty(config IFCERFTConfig, rmd *RootMetadata, p path,
 	ptr BlockPointer) {
 	ops := getOps(config, rmd.ID)
 	lState := makeFBOLockState()
@@ -4062,7 +4058,7 @@ func expectSyncDirtyBlock(config *ConfigMock, rmd *RootMetadata,
 
 	newPtr := BlockPointer{ID: newID}
 	if config.mockBcache != nil {
-		config.mockBcache.EXPECT().Put(ptrMatcher{newPtr}, rmd.ID, block, PermanentEntry).Return(nil)
+		config.mockBcache.EXPECT().Put(ptrMatcher{newPtr}, rmd.ID, block, IFCERFTPermanentEntry).Return(nil)
 		config.mockBcache.EXPECT().DeletePermanent(newID).Return(nil)
 	} else {
 		// Nothing to do, since the cache entry is added and
@@ -4307,8 +4303,8 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 }
 
 func putAndCleanAnyBlock(config *ConfigMock, p path) {
-	config.mockBcache.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any(), TransientEntry).
-		Do(func(ptr BlockPointer, tlf TlfID, block Block, lifetime BlockCacheLifetime) {
+	config.mockBcache.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any(), IFCERFTTransientEntry).
+		Do(func(ptr BlockPointer, tlf TlfID, block IFCERFTBlock, lifetime IFCERFTBlockCacheLifetime) {
 			config.mockDirtyBcache.EXPECT().
 				Get(ptrMatcher{BlockPointer{ID: ptr.ID}}, p.Branch).
 				AnyTimes().Return(nil, NoSuchBlockError{ptr.ID})
@@ -4417,7 +4413,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 	var newBlock3 *FileBlock
 	config.mockDirtyBcache.EXPECT().Put(fileBlock.IPtrs[2].BlockPointer,
 		p.Branch, gomock.Any()).
-		Do(func(ptr BlockPointer, branch BranchName, block Block) {
+		Do(func(ptr BlockPointer, branch BranchName, block IFCERFTBlock) {
 			newBlock3 = block.(*FileBlock)
 			// id3 syncs just fine
 			config.mockDirtyBcache.EXPECT().IsDirty(ptrMatcher{ptr}, branch).
@@ -4437,7 +4433,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 	config.mockCrypto.EXPECT().MakeTemporaryBlockID().Return(id5, nil)
 	config.mockDirtyBcache.EXPECT().Put(ptrMatcher{BlockPointer{ID: id5}},
 		p.Branch, gomock.Any()).
-		Do(func(ptr BlockPointer, branch BranchName, block Block) {
+		Do(func(ptr BlockPointer, branch BranchName, block IFCERFTBlock) {
 			newID5 = ptr.ID
 			newBlock5 = block.(*FileBlock)
 			// id5 syncs just fine
@@ -4633,7 +4629,7 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 	var newBlock4 *FileBlock
 	config.mockDirtyBcache.EXPECT().Put(fileBlock.IPtrs[3].BlockPointer,
 		p.Branch, gomock.Any()).
-		Do(func(ptr BlockPointer, branch BranchName, block Block) {
+		Do(func(ptr BlockPointer, branch BranchName, block IFCERFTBlock) {
 			newBlock4 = block.(*FileBlock)
 			// now block 4 is dirty, but it's the end of the line,
 			// so nothing else to do
@@ -4827,13 +4823,12 @@ type testBGObserver struct {
 	c chan<- struct{}
 }
 
-func (t *testBGObserver) LocalChange(ctx context.Context, node Node,
-	write WriteRange) {
+func (t *testBGObserver) LocalChange(ctx context.Context, node IFCERFTNode, write WriteRange) {
 	// ignore
 }
 
 func (t *testBGObserver) BatchChanges(ctx context.Context,
-	changes []NodeChange) {
+	changes []IFCERFTNodeChange) {
 	t.c <- struct{}{}
 }
 
@@ -5087,12 +5082,12 @@ func TestKBFSOpsMultiBlockSyncWithArchivedBlock(t *testing.T) {
 }
 
 type corruptBlockServer struct {
-	BlockServer
+	IFCERFTBlockServer
 }
 
 func (cbs corruptBlockServer) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
-	data, keyServerHalf, err := cbs.BlockServer.Get(ctx, id, tlfID, context)
+	data, keyServerHalf, err := cbs.IFCERFTBlockServer.Get(ctx, id, tlfID, context)
 	if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
@@ -5103,7 +5098,7 @@ func TestKBFSOpsFailToReadUnverifiableBlock(t *testing.T) {
 	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
 	defer CheckConfigAndShutdown(t, config)
 	config.SetBlockServer(&corruptBlockServer{
-		BlockServer: config.BlockServer(),
+		IFCERFTBlockServer: config.BlockServer(),
 	})
 
 	// create a file.
@@ -5150,7 +5145,7 @@ func TestKBFSOpsEmptyTlfSize(t *testing.T) {
 }
 
 type cryptoFixedTlf struct {
-	Crypto
+	IFCERFTCrypto
 	tlf TlfID
 }
 

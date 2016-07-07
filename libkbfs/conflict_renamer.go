@@ -15,7 +15,7 @@ import (
 // WriterDeviceDateConflictRenamer renames a file using
 // a username, device name, and date.
 type WriterDeviceDateConflictRenamer struct {
-	config Config
+	config IFCERFTConfig
 }
 
 // ConflictRename implements the ConflictRename interface for
@@ -59,7 +59,7 @@ func splitExtension(path string) (string, string) {
 	return path, ""
 }
 
-func newWriterInfo(ctx context.Context, cfg Config, uid keybase1.UID, kid keybase1.KID) (writerInfo, error) {
+func newWriterInfo(ctx context.Context, cfg IFCERFTConfig, uid keybase1.UID, kid keybase1.KID) (writerInfo, error) {
 	ui, err := cfg.KeybaseDaemon().LoadUserPlusKeys(ctx, uid)
 	if err != nil {
 		return writerInfo{}, err

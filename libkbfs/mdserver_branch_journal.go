@@ -22,7 +22,7 @@ type mdServerBranchJournal struct {
 	j diskJournal
 }
 
-func makeMDServerBranchJournal(codec Codec, dir string) mdServerBranchJournal {
+func makeMDServerBranchJournal(codec IFCERFTCodec, dir string) mdServerBranchJournal {
 	j := makeDiskJournal(codec, dir, reflect.TypeOf(MdID{}))
 	return mdServerBranchJournal{j}
 }

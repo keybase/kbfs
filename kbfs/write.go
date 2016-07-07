@@ -17,8 +17,8 @@ import (
 
 type nodeWriter struct {
 	ctx     context.Context
-	kbfsOps libkbfs.KBFSOps
-	node    libkbfs.Node
+	kbfsOps libkbfs.IFCERFTKBFSOps
+	node    libkbfs.IFCERFTNode
 	off     int64
 	verbose bool
 }
@@ -37,7 +37,7 @@ func (nw *nodeWriter) Write(p []byte) (n int, err error) {
 	return
 }
 
-func writeHelper(ctx context.Context, config libkbfs.Config, args []string) (err error) {
+func writeHelper(ctx context.Context, config libkbfs.IFCERFTConfig, args []string) (err error) {
 	flags := flag.NewFlagSet("kbfs write", flag.ContinueOnError)
 	append := flags.Bool("a", false, "Append to an existing file instead of truncating it.")
 	verbose := flags.Bool("v", false, "Print extra status output.")
@@ -155,7 +155,7 @@ func writeHelper(ctx context.Context, config libkbfs.Config, args []string) (err
 	return nil
 }
 
-func write(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
+func write(ctx context.Context, config libkbfs.IFCERFTConfig, args []string) (exitStatus int) {
 	err := writeHelper(ctx, config, args)
 	if err != nil {
 		printError("write", err)

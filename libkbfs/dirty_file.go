@@ -45,7 +45,7 @@ type dirtyBlockState struct {
 // has not yet completed syncing its dirty blocks to the server.
 type dirtyFile struct {
 	path        path
-	dirtyBcache DirtyBlockCache
+	dirtyBcache IFCERFTDirtyBlockCache
 
 	// Protects access to the fields below.  Most, but not all,
 	// accesses to dirtyFile is already protected by
@@ -82,7 +82,7 @@ type dirtyFile struct {
 	errListeners []chan<- error
 }
 
-func newDirtyFile(file path, dirtyBcache DirtyBlockCache) *dirtyFile {
+func newDirtyFile(file path, dirtyBcache IFCERFTDirtyBlockCache) *dirtyFile {
 	return &dirtyFile{
 		path:            file,
 		dirtyBcache:     dirtyBcache,

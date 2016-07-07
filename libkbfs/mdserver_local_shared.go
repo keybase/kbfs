@@ -32,7 +32,7 @@ func isReader(currentUID keybase1.UID,
 // Helper to aid in enforcement that only specified public keys can
 // access TLF metadata. mergedMasterHead can be nil, in which case
 // true is returned.
-func isWriterOrValidRekey(codec Codec, currentUID keybase1.UID,
+func isWriterOrValidRekey(codec IFCERFTCodec, currentUID keybase1.UID,
 	mergedMasterHead *RootMetadataSigned,
 	newMd *RootMetadataSigned) (bool, error) {
 	if mergedMasterHead == nil {

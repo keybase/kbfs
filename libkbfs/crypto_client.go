@@ -20,19 +20,19 @@ type CryptoClient struct {
 	CryptoCommon
 	client     keybase1.CryptoClient
 	shutdownFn func()
-	config     Config
+	config     IFCERFTConfig
 }
 
 // cryptoRPCWarningTime says how long we should wait before logging a
 // message about an RPC taking too long.
 const cryptoRPCWarningTime = 2 * time.Minute
 
-var _ Crypto = (*CryptoClient)(nil)
+var _ IFCERFTCrypto = (*CryptoClient)(nil)
 
 var _ rpc.ConnectionHandler = (*CryptoClient)(nil)
 
 // NewCryptoClient constructs a new CryptoClient.
-func NewCryptoClient(config Config, kbCtx Context) *CryptoClient {
+func NewCryptoClient(config IFCERFTConfig, kbCtx Context) *CryptoClient {
 	log := config.MakeLogger("")
 	c := &CryptoClient{
 		CryptoCommon: MakeCryptoCommon(config.Codec(), log),
@@ -45,7 +45,7 @@ func NewCryptoClient(config Config, kbCtx Context) *CryptoClient {
 }
 
 // newCryptoClientWithClient should only be used for testing.
-func newCryptoClientWithClient(config Config, client rpc.GenericClient) *CryptoClient {
+func newCryptoClientWithClient(config IFCERFTConfig, client rpc.GenericClient) *CryptoClient {
 	log := config.MakeLogger("")
 	return &CryptoClient{
 		CryptoCommon: MakeCryptoCommon(config.Codec(), log),

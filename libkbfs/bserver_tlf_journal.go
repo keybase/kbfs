@@ -51,7 +51,7 @@ import (
 // for TLF data, i.e. that doesn't remove files when the (known)
 // refcount drops to zero, etc.
 type bserverTlfJournal struct {
-	codec  Codec
+	codec  IFCERFTCodec
 	crypto cryptoPure
 	dir    string
 
@@ -88,7 +88,7 @@ type bserverJournalEntry struct {
 
 // makeBserverTlfJournal returns a new bserverTlfJournal for the given
 // directory. Any existing journal entries are read.
-func makeBserverTlfJournal(codec Codec, crypto cryptoPure, dir string) (
+func makeBserverTlfJournal(codec IFCERFTCodec, crypto cryptoPure, dir string) (
 	*bserverTlfJournal, error) {
 	journalPath := filepath.Join(dir, "block_journal")
 	j := makeDiskJournal(

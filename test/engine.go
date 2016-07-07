@@ -41,7 +41,7 @@ type Engine interface {
 	// default engine timeout, or if it is zero, it has no effect.
 	InitTest(t testing.TB, blockSize int64, blockChangeSize int64,
 		bwKBps int, opTimeout time.Duration, users []libkb.NormalizedUsername,
-		clock libkbfs.Clock) map[libkb.NormalizedUsername]User
+		clock libkbfs.IFCERFTClock) map[libkb.NormalizedUsername]User
 	// GetUID is called by the test harness to retrieve a user instance's UID.
 	GetUID(u User) keybase1.UID
 	// GetFavorites returns the set of all public or private

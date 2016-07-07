@@ -12,7 +12,7 @@ import (
 // BlockServerMeasured delegates to another BlockServer instance but
 // also keeps track of stats.
 type BlockServerMeasured struct {
-	delegate                    BlockServer
+	delegate                    IFCERFTBlockServer
 	getTimer                    metrics.Timer
 	putTimer                    metrics.Timer
 	addBlockReferenceTimer      metrics.Timer
@@ -20,11 +20,11 @@ type BlockServerMeasured struct {
 	archiveBlockReferencesTimer metrics.Timer
 }
 
-var _ BlockServer = BlockServerMeasured{}
+var _ IFCERFTBlockServer = BlockServerMeasured{}
 
 // NewBlockServerMeasured creates and returns a new
 // BlockServerMeasured instance with the given delegate and registry.
-func NewBlockServerMeasured(delegate BlockServer, r metrics.Registry) BlockServerMeasured {
+func NewBlockServerMeasured(delegate IFCERFTBlockServer, r metrics.Registry) BlockServerMeasured {
 	getTimer := metrics.GetOrRegisterTimer("BlockServer.Get", r)
 	putTimer := metrics.GetOrRegisterTimer("BlockServer.Put", r)
 	addBlockReferenceTimer := metrics.GetOrRegisterTimer("BlockServer.AddBlockReference", r)

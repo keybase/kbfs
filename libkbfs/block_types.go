@@ -59,7 +59,7 @@ func (cb *CommonBlock) DataVersion() DataVer {
 }
 
 // NewCommonBlock returns a generic block, unsuitable for caching.
-func NewCommonBlock() Block {
+func NewCommonBlock() IFCERFTBlock {
 	return &CommonBlock{}
 }
 
@@ -73,14 +73,14 @@ type DirBlock struct {
 }
 
 // NewDirBlock creates a new, empty DirBlock.
-func NewDirBlock() Block {
+func NewDirBlock() IFCERFTBlock {
 	return &DirBlock{
 		Children: make(map[string]DirEntry),
 	}
 }
 
 // DeepCopy makes a complete copy of a DirBlock
-func (db DirBlock) DeepCopy(codec Codec) (*DirBlock, error) {
+func (db DirBlock) DeepCopy(codec IFCERFTCodec) (*DirBlock, error) {
 	var dirBlockCopy DirBlock
 	err := CodecUpdate(codec, &dirBlockCopy, db)
 	if err != nil {
@@ -106,7 +106,7 @@ type FileBlock struct {
 }
 
 // NewFileBlock creates a new, empty FileBlock.
-func NewFileBlock() Block {
+func NewFileBlock() IFCERFTBlock {
 	return &FileBlock{
 		Contents: make([]byte, 0, 0),
 	}
@@ -123,7 +123,7 @@ func (fb *FileBlock) DataVersion() DataVer {
 }
 
 // DeepCopy makes a complete copy of a FileBlock
-func (fb FileBlock) DeepCopy(codec Codec) (*FileBlock, error) {
+func (fb FileBlock) DeepCopy(codec IFCERFTCodec) (*FileBlock, error) {
 	var fileBlockCopy FileBlock
 	err := CodecUpdate(codec, &fileBlockCopy, fb)
 	if err != nil {
@@ -133,7 +133,7 @@ func (fb FileBlock) DeepCopy(codec Codec) (*FileBlock, error) {
 }
 
 // DefaultNewBlockDataVersion returns the default data version for new blocks.
-func DefaultNewBlockDataVersion(c Config, holes bool) DataVer {
+func DefaultNewBlockDataVersion(c IFCERFTConfig, holes bool) DataVer {
 	if holes {
 		return FilesWithHolesDataVer
 	}

@@ -47,18 +47,18 @@ type stallingBlockOps struct {
 	stallMap    map[interface{}]staller
 	// lock protects only delegate at the moment
 	lock             sync.Mutex
-	internalDelegate BlockOps
+	internalDelegate IFCERFTBlockOps
 }
 
-var _ BlockOps = (*stallingBlockOps)(nil)
+var _ IFCERFTBlockOps = (*stallingBlockOps)(nil)
 
-func (f *stallingBlockOps) delegate() BlockOps {
+func (f *stallingBlockOps) delegate() IFCERFTBlockOps {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	return f.internalDelegate
 }
 
-func (f *stallingBlockOps) setDelegate(bops BlockOps) {
+func (f *stallingBlockOps) setDelegate(bops IFCERFTBlockOps) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	f.internalDelegate = bops
@@ -70,13 +70,13 @@ func (f *stallingBlockOps) maybeStall(ctx context.Context, opName string) {
 
 func (f *stallingBlockOps) Get(
 	ctx context.Context, md *RootMetadata, blockPtr BlockPointer,
-	block Block) error {
+	block IFCERFTBlock) error {
 	f.maybeStall(ctx, "Get")
 	return f.delegate().Get(ctx, md, blockPtr, block)
 }
 
 func (f *stallingBlockOps) Ready(
-	ctx context.Context, md *RootMetadata, block Block) (
+	ctx context.Context, md *RootMetadata, block IFCERFTBlock) (
 	id BlockID, plainSize int, readyBlockData ReadyBlockData, err error) {
 	f.maybeStall(ctx, "Ready")
 	return f.delegate().Ready(ctx, md, block)
@@ -121,10 +121,10 @@ type stallingMDOps struct {
 	stallOpName string
 	stallKey    interface{}
 	stallMap    map[interface{}]staller
-	delegate    MDOps
+	delegate    IFCERFTMDOps
 }
 
-var _ MDOps = (*stallingMDOps)(nil)
+var _ IFCERFTMDOps = (*stallingMDOps)(nil)
 
 func (m *stallingMDOps) maybeStall(ctx context.Context, opName string) {
 	maybeStall(ctx, opName, m.stallOpName, m.stallKey, m.stallMap)

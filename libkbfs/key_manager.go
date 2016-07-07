@@ -17,13 +17,13 @@ import (
 // keys from KeyOps and KBPKI, and computing the complete keys
 // necessary to run KBFS.
 type KeyManagerStandard struct {
-	config   Config
+	config   IFCERFTConfig
 	log      logger.Logger
 	deferLog logger.Logger
 }
 
 // NewKeyManagerStandard returns a new KeyManagerStandard
-func NewKeyManagerStandard(config Config) *KeyManagerStandard {
+func NewKeyManagerStandard(config IFCERFTConfig) *KeyManagerStandard {
 	log := config.MakeLogger("")
 	return &KeyManagerStandard{config, log, log.CloneWithAddedDepth(1)}
 }

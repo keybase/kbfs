@@ -20,7 +20,7 @@ import (
 
 // FS implements the newfuse FS interface for KBFS.
 type FS struct {
-	config libkbfs.Config
+	config libkbfs.IFCERFTConfig
 	fuse   *fs.Server
 	conn   *fuse.Conn
 	log    logger.Logger
@@ -37,7 +37,7 @@ type FS struct {
 }
 
 // NewFS creates an FS
-func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool) *FS {
+func NewFS(config libkbfs.IFCERFTConfig, conn *fuse.Conn, debug bool) *FS {
 	log := config.MakeLogger("kbfsfuse")
 	// We need extra depth for errors, so that we can report the line
 	// number for the caller of reportErr, not reportErr itself.

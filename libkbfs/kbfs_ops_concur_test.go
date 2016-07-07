@@ -44,7 +44,7 @@ func (cl *CounterLock) GetCount() int {
 }
 
 func kbfsOpsConcurInit(t *testing.T, users ...libkb.NormalizedUsername) (
-	Config, keybase1.UID, context.Context) {
+	IFCERFTConfig, keybase1.UID, context.Context) {
 	return kbfsOpsInitNoMocks(t, users...)
 }
 
@@ -111,8 +111,7 @@ func TestKBFSOpsConcurDoubleMDGet(t *testing.T) {
 	}
 }
 
-func setStallingMDOpsForPut(ctx context.Context, config Config,
-	stallAfterPut bool) (
+func setStallingMDOpsForPut(ctx context.Context, config IFCERFTConfig, stallAfterPut bool) (
 	<-chan struct{}, chan<- struct{}, context.Context) {
 	onPutStalledCh := make(chan struct{}, 1)
 	putUnstallCh := make(chan struct{})
@@ -538,7 +537,7 @@ func TestKBFSOpsConcurBlockReadWrite(t *testing.T) {
 type mdRecordingKeyManager struct {
 	lastMD   *RootMetadata
 	lastMDMu sync.RWMutex
-	delegate KeyManager
+	delegate IFCERFTKeyManager
 }
 
 func (km *mdRecordingKeyManager) getLastMD() *RootMetadata {
@@ -1536,7 +1535,7 @@ func TestKBFSOpsTruncateWithDupBlockCanceled(t *testing.T) {
 }
 
 type blockOpsOverQuota struct {
-	BlockOps
+	IFCERFTBlockOps
 }
 
 func (booq *blockOpsOverQuota) Put(ctx context.Context, md *RootMetadata,
@@ -1592,7 +1591,7 @@ func TestKBFSOpsErrorOnBlockedWriteDuringSync(t *testing.T) {
 		t.Errorf("Couldn't write file: %v", err)
 	}
 
-	booq := &blockOpsOverQuota{BlockOps: staller.delegate()}
+	booq := &blockOpsOverQuota{IFCERFTBlockOps: staller.delegate()}
 	staller.setDelegate(booq)
 
 	// Block the Sync

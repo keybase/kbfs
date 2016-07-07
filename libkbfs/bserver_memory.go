@@ -117,11 +117,11 @@ type BlockServerMemory struct {
 	m map[BlockID]blockMemEntry
 }
 
-var _ BlockServer = (*BlockServerMemory)(nil)
+var _ IFCERFTBlockServer = (*BlockServerMemory)(nil)
 
 // NewBlockServerMemory constructs a new BlockServerMemory that stores
 // its data in memory.
-func NewBlockServerMemory(config Config) *BlockServerMemory {
+func NewBlockServerMemory(config IFCERFTConfig) *BlockServerMemory {
 	return &BlockServerMemory{
 		config.Crypto(),
 		config.MakeLogger("BSM"),

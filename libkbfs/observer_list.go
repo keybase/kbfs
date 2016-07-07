@@ -13,7 +13,7 @@ import (
 // observerList is a thread-safe list of observers.
 type observerList struct {
 	lock      sync.RWMutex
-	observers []Observer
+	observers []IFCERFTObserver
 }
 
 func newObserverList() *observerList {
@@ -22,13 +22,13 @@ func newObserverList() *observerList {
 
 // It's the caller's responsibility to make sure add isn't called
 // twice for the same Observer.
-func (ol *observerList) add(o Observer) {
+func (ol *observerList) add(o IFCERFTObserver) {
 	ol.lock.Lock()
 	defer ol.lock.Unlock()
 	ol.observers = append(ol.observers, o)
 }
 
-func (ol *observerList) remove(o Observer) {
+func (ol *observerList) remove(o IFCERFTObserver) {
 	ol.lock.Lock()
 	defer ol.lock.Unlock()
 	for i, oldObs := range ol.observers {
@@ -40,7 +40,7 @@ func (ol *observerList) remove(o Observer) {
 }
 
 func (ol *observerList) localChange(
-	ctx context.Context, node Node, write WriteRange) {
+	ctx context.Context, node IFCERFTNode, write WriteRange) {
 	ol.lock.RLock()
 	defer ol.lock.RUnlock()
 	for _, o := range ol.observers {
@@ -49,7 +49,7 @@ func (ol *observerList) localChange(
 }
 
 func (ol *observerList) batchChanges(
-	ctx context.Context, changes []NodeChange) {
+	ctx context.Context, changes []IFCERFTNodeChange) {
 	ol.lock.RLock()
 	defer ol.lock.RUnlock()
 	for _, o := range ol.observers {

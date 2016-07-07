@@ -9,17 +9,17 @@ import metrics "github.com/rcrowley/go-metrics"
 // KeyCacheMeasured delegates to another KeyCache instance but
 // also keeps track of stats.
 type KeyCacheMeasured struct {
-	delegate      KeyCache
+	delegate      IFCERFTKeyCache
 	getTimer      metrics.Timer
 	putTimer      metrics.Timer
 	hitCountMeter metrics.Meter
 }
 
-var _ KeyCache = KeyCacheMeasured{}
+var _ IFCERFTKeyCache = KeyCacheMeasured{}
 
 // NewKeyCacheMeasured creates and returns a new KeyCacheMeasured
 // instance with the given delegate and registry.
-func NewKeyCacheMeasured(delegate KeyCache, r metrics.Registry) KeyCacheMeasured {
+func NewKeyCacheMeasured(delegate IFCERFTKeyCache, r metrics.Registry) KeyCacheMeasured {
 	getTimer := metrics.GetOrRegisterTimer("KeyCache.GetTLFCryptKey", r)
 	putTimer := metrics.GetOrRegisterTimer("KeyCache.PutTLFCryptKey", r)
 	// TODO: Implement RatioGauge (

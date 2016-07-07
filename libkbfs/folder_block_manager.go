@@ -34,7 +34,7 @@ const (
 // particular TLF.  It archives historical blocks and reclaims quota
 // usage, all in the background.
 type folderBlockManager struct {
-	config       Config
+	config       IFCERFTConfig
 	log          logger.Logger
 	shutdownChan chan struct{}
 	id           TlfID
@@ -83,7 +83,7 @@ type folderBlockManager struct {
 	wasLastQRComplete  bool
 }
 
-func newFolderBlockManager(config Config, fb FolderBranch,
+func newFolderBlockManager(config IFCERFTConfig, fb FolderBranch,
 	helper fbmHelper) *folderBlockManager {
 	tlfStringFull := fb.Tlf.String()
 	log := config.MakeLogger(fmt.Sprintf("FBM %s", tlfStringFull[:8]))

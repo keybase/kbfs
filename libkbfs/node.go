@@ -27,7 +27,7 @@ func newNodeCore(ptr BlockPointer, name string, parent *nodeStandard,
 	}
 }
 
-func (c *nodeCore) ParentID() NodeID {
+func (c *nodeCore) ParentID() IFCERFTNodeID {
 	if c.parent == nil {
 		return nil
 	}
@@ -38,7 +38,7 @@ type nodeStandard struct {
 	core *nodeCore
 }
 
-var _ Node = (*nodeStandard)(nil)
+var _ IFCERFTNode = (*nodeStandard)(nil)
 
 func nodeStandardFinalizer(n *nodeStandard) {
 	n.core.cache.forget(n.core)
@@ -50,7 +50,7 @@ func makeNodeStandard(core *nodeCore) *nodeStandard {
 	return n
 }
 
-func (n *nodeStandard) GetID() NodeID {
+func (n *nodeStandard) GetID() IFCERFTNodeID {
 	return n.core
 }
 

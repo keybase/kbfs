@@ -130,7 +130,7 @@ func testCRCheckOps(t *testing.T, cc *crChains, original BlockPointer,
 	}
 }
 
-func testCRChainsFillInWriter(t *testing.T, rmds []*RootMetadata) Config {
+func testCRChainsFillInWriter(t *testing.T, rmds []*RootMetadata) IFCERFTConfig {
 	config := MakeTestConfigOrBust(t, "u1")
 	kbpki := config.KBPKI()
 	_, uid, err := kbpki.GetCurrentUserInfo(context.Background())

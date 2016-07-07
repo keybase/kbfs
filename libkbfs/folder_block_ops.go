@@ -43,7 +43,7 @@ type syncInfo struct {
 	unrefBytes uint64
 }
 
-func (si *syncInfo) DeepCopy(codec Codec) (*syncInfo, error) {
+func (si *syncInfo) DeepCopy(codec IFCERFTCodec) (*syncInfo, error) {
 	newSi := &syncInfo{
 		oldInfo:    si.oldInfo,
 		refBytes:   si.refBytes,
@@ -119,7 +119,7 @@ func (si *syncInfo) DeepCopy(codec Codec) (*syncInfo, error) {
 //     their previous old pointers, and so dirtyFile needs to know their old
 //     bytes can be cleaned up now.
 type folderBlockOps struct {
-	config       Config
+	config       IFCERFTConfig
 	log          logger.Logger
 	folderBranch FolderBranch
 	observers    *observerList
@@ -158,7 +158,7 @@ type folderBlockOps struct {
 	// nodeCache itself is goroutine-safe, but write/truncate must
 	// call PathFromNode() only under blockLock (see nodeCache
 	// comments in folder_branch_ops.go).
-	nodeCache NodeCache
+	nodeCache IFCERFTNodeCache
 }
 
 // Only exported methods of folderBlockOps should be used outside of this
@@ -186,7 +186,7 @@ func (fbo *folderBlockOps) GetState(lState *lockState) overallBlockState {
 }
 
 func (fbo *folderBlockOps) getBlockFromDirtyOrCleanCache(ptr BlockPointer,
-	branch BranchName) (Block, error) {
+	branch BranchName) (IFCERFTBlock, error) {
 	// Check the dirty cache first.
 	if block, err := fbo.config.DirtyBlockCache().Get(ptr, branch); err == nil {
 		return block, nil
@@ -204,7 +204,7 @@ func (fbo *folderBlockOps) getBlockFromDirtyOrCleanCache(ptr BlockPointer,
 func (fbo *folderBlockOps) getBlockHelperLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata, ptr BlockPointer, branch BranchName,
 	newBlock makeNewBlock, doCache bool, notifyPath path) (
-	Block, error) {
+	IFCERFTBlock, error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 
 	if !ptr.IsValid() {
@@ -245,7 +245,7 @@ func (fbo *folderBlockOps) getBlockHelperLocked(ctx context.Context,
 
 	if doCache {
 		if err := fbo.config.BlockCache().Put(ptr, fbo.id(), block,
-			TransientEntry); err != nil {
+			IFCERFTTransientEntry); err != nil {
 			return nil, err
 		}
 	}
@@ -292,7 +292,7 @@ func (fbo *folderBlockOps) getFileBlockHelperLocked(ctx context.Context,
 // in the cache already.
 func (fbo *folderBlockOps) GetBlockForReading(ctx context.Context,
 	lState *lockState, md *RootMetadata, ptr BlockPointer, branch BranchName) (
-	Block, error) {
+	IFCERFTBlock, error) {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
 	return fbo.getBlockHelperLocked(ctx, lState, md, ptr, branch,
@@ -737,7 +737,7 @@ func (fbo *folderBlockOps) getOrCreateDirtyFileLocked(lState *lockState,
 // This is useful when operating on a dirty copy of a block that may
 // already be in the cache.
 func (fbo *folderBlockOps) cacheBlockIfNotYetDirtyLocked(
-	lState *lockState, ptr BlockPointer, file path, block Block) error {
+	lState *lockState, ptr BlockPointer, file path, block IFCERFTBlock) error {
 	fbo.blockLock.AssertLocked(lState)
 	df := fbo.getOrCreateDirtyFileLocked(lState, file)
 	needsCaching, isSyncing := df.setBlockDirty(ptr)
@@ -1065,8 +1065,7 @@ func (fbo *folderBlockOps) Read(
 }
 
 func (fbo *folderBlockOps) maybeWaitOnDeferredWrites(
-	ctx context.Context, lState *lockState, file Node,
-	c DirtyPermChan) error {
+	ctx context.Context, lState *lockState, file IFCERFTNode, c IFCERFTDirtyPermChan) error {
 	var errListener chan error
 	err := func() error {
 		fbo.blockLock.Lock(lState)
@@ -1115,7 +1114,7 @@ func (fbo *folderBlockOps) maybeWaitOnDeferredWrites(
 }
 
 func (fbo *folderBlockOps) pathFromNodeForBlockWriteLocked(
-	lState *lockState, n Node) (path, error) {
+	lState *lockState, n IFCERFTNode) (path, error) {
 	fbo.blockLock.AssertLocked(lState)
 	p := fbo.nodeCache.PathFromNode(n)
 	if !p.isValid() {
@@ -1350,7 +1349,7 @@ func (fbo *folderBlockOps) writeDataLocked(
 // future sync.
 func (fbo *folderBlockOps) Write(
 	ctx context.Context, lState *lockState, md *RootMetadata,
-	file Node, data []byte, off int64) error {
+	file IFCERFTNode, data []byte, off int64) error {
 	// If there is too much unflushed data, we should wait until some
 	// of it gets flush so our memory usage doesn't grow without
 	// bound.
@@ -1631,7 +1630,7 @@ func (fbo *folderBlockOps) truncateLocked(
 // will be unblocked by a future sync.
 func (fbo *folderBlockOps) Truncate(
 	ctx context.Context, lState *lockState, md *RootMetadata,
-	file Node, size uint64) error {
+	file IFCERFTNode, size uint64) error {
 	// If there is too much unflushed data, we should wait until some
 	// of it gets flush so our memory usage doesn't grow without
 	// bound.
@@ -1762,7 +1761,7 @@ func (fbo *folderBlockOps) revertSyncInfoAfterRecoverableError(
 // ReadyBlock is a thin wrapper around BlockOps.Ready() that handles
 // checking for duplicates.
 func (fbo *folderBlockOps) ReadyBlock(ctx context.Context, md *RootMetadata,
-	block Block, uid keybase1.UID) (
+	block IFCERFTBlock, uid keybase1.UID) (
 	info BlockInfo, plainSize int, readyBlockData ReadyBlockData, err error) {
 	var ptr BlockPointer
 	if fBlock, ok := block.(*FileBlock); ok && !fBlock.IsInd {
@@ -2041,7 +2040,7 @@ func (fbo *folderBlockOps) startSyncWriteLocked(ctx context.Context,
 				}
 
 				syncState.newIndirectFileBlockPtrs = append(syncState.newIndirectFileBlockPtrs, newInfo.BlockPointer)
-				err = bcache.Put(newInfo.BlockPointer, fbo.id(), block, PermanentEntry)
+				err = bcache.Put(newInfo.BlockPointer, fbo.id(), block, IFCERFTPermanentEntry)
 				if err != nil {
 					return nil, nil, syncState, err
 				}
@@ -2285,9 +2284,8 @@ func (fbo *folderBlockOps) notifyErrListeners(lState *lockState,
 //
 // Returns the number of nodes found by this invocation.
 func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
-	lState *lockState, cache NodeCache, newPtrs map[BlockPointer]bool,
-	md *RootMetadata, currDir path, nodeMap map[BlockPointer]Node,
-	numNodesFoundSoFar int) (int, error) {
+	lState *lockState, cache IFCERFTNodeCache, newPtrs map[BlockPointer]bool,
+	md *RootMetadata, currDir path, nodeMap map[BlockPointer]IFCERFTNode, numNodesFoundSoFar int) (int, error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 
 	dirBlock, err := fbo.getDirLocked(
@@ -2305,7 +2303,7 @@ func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 		if _, ok := nodeMap[de.BlockPointer]; ok {
 			childPath := currDir.ChildPath(name, de.BlockPointer)
 			// make a node for every pathnode
-			var n Node
+			var n IFCERFTNode
 			for _, pn := range childPath.path {
 				n, err = cache.GetOrCreate(pn.BlockPointer, pn.Name, n)
 				if err != nil {
@@ -2343,13 +2341,13 @@ func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 // it is the caller's responsibility to decide to error on particular
 // unresolved nodes.
 func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
-	cache NodeCache, ptrs []BlockPointer, newPtrs map[BlockPointer]bool,
-	md *RootMetadata) (map[BlockPointer]Node, error) {
+	cache IFCERFTNodeCache, ptrs []BlockPointer, newPtrs map[BlockPointer]bool,
+	md *RootMetadata) (map[BlockPointer]IFCERFTNode, error) {
 	lState := makeFBOLockState()
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
 
-	nodeMap := make(map[BlockPointer]Node)
+	nodeMap := make(map[BlockPointer]IFCERFTNode)
 	for _, ptr := range ptrs {
 		nodeMap[ptr] = nil
 	}
@@ -2360,7 +2358,7 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 
 	// Start with the root node
 	rootPtr := md.data.Dir.BlockPointer
-	var node Node
+	var node IFCERFTNode
 	if cache == fbo.nodeCache {
 		// Root node should already exist.
 		node = cache.Get(rootPtr.ref())
@@ -2458,7 +2456,7 @@ func (fbo *folderBlockOps) setCachedAttr(
 // if there is one.
 func (fbo *folderBlockOps) UpdateCachedEntryAttributes(
 	ctx context.Context, lState *lockState, md *RootMetadata,
-	dir path, op *setAttrOp) (Node, error) {
+	dir path, op *setAttrOp) (IFCERFTNode, error) {
 	childPath := dir.ChildPathNoPtr(op.Name)
 
 	// find the node for the actual change; requires looking up

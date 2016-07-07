@@ -17,8 +17,8 @@ import (
 
 type nodeReader struct {
 	ctx     context.Context
-	kbfsOps libkbfs.KBFSOps
-	node    libkbfs.Node
+	kbfsOps libkbfs.IFCERFTKBFSOps
+	node    libkbfs.IFCERFTNode
 	off     int64
 	verbose bool
 }
@@ -46,7 +46,7 @@ func (nr *nodeReader) Read(p []byte) (n int, err error) {
 	return
 }
 
-func readHelper(ctx context.Context, config libkbfs.Config, args []string) error {
+func readHelper(ctx context.Context, config libkbfs.IFCERFTConfig, args []string) error {
 	flags := flag.NewFlagSet("kbfs read", flag.ContinueOnError)
 	verbose := flags.Bool("v", false, "Print extra status output.")
 	flags.Parse(args)
@@ -90,7 +90,7 @@ func readHelper(ctx context.Context, config libkbfs.Config, args []string) error
 	return nil
 }
 
-func read(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
+func read(ctx context.Context, config libkbfs.IFCERFTConfig, args []string) (exitStatus int) {
 	err := readHelper(ctx, config, args)
 	if err != nil {
 		printError("read", err)

@@ -61,7 +61,7 @@ type mdServerMemShared struct {
 
 // MDServerMemory just stores metadata objects in memory.
 type MDServerMemory struct {
-	config Config
+	config IFCERFTConfig
 	log    logger.Logger
 
 	*mdServerMemShared
@@ -71,7 +71,7 @@ var _ mdServerLocal = (*MDServerMemory)(nil)
 
 // NewMDServerMemory constructs a new MDServerMemory object that stores
 // all data in-memory.
-func NewMDServerMemory(config Config) (*MDServerMemory, error) {
+func NewMDServerMemory(config IFCERFTConfig) (*MDServerMemory, error) {
 	handleDb := make(map[mdHandleKey]TlfID)
 	latestHandleDb := make(map[TlfID]BareTlfHandle)
 	mdDb := make(map[mdBlockKey]mdBlockMemList)
@@ -568,7 +568,7 @@ func (md *MDServerMemory) IsConnected() bool {
 func (md *MDServerMemory) RefreshAuthToken(ctx context.Context) {}
 
 // This should only be used for testing with an in-memory server.
-func (md *MDServerMemory) copy(config Config) mdServerLocal {
+func (md *MDServerMemory) copy(config IFCERFTConfig) mdServerLocal {
 	// NOTE: observers and sessionHeads are copied shallowly on
 	// purpose, so that the MD server that gets a Put will notify all
 	// observers correctly no matter where they got on the list.

@@ -21,7 +21,7 @@ type FakeCryptoClient struct {
 	goChan    <-chan struct{}
 }
 
-func NewFakeCryptoClient(config Config, signingKey SigningKey,
+func NewFakeCryptoClient(config IFCERFTConfig, signingKey SigningKey,
 	cryptPrivateKey CryptPrivateKey,
 	readyChan chan<- struct{},
 	goChan <-chan struct{}) *FakeCryptoClient {
@@ -134,7 +134,7 @@ func (fc FakeCryptoClient) Notify(_ context.Context, s string, args interface{})
 	return fmt.Errorf("Unknown notify: %s %v", s, args)
 }
 
-func testCryptoClientConfig(t *testing.T) Config {
+func testCryptoClientConfig(t *testing.T) IFCERFTConfig {
 	config := &ConfigLocal{codec: NewCodecMsgpack()}
 	setTestLogger(config, t)
 	return config

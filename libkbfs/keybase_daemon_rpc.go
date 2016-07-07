@@ -35,7 +35,7 @@ type KeybaseDaemonRPC struct {
 	kbfsClient     keybase1.KbfsInterface
 	log            logger.Logger
 
-	config Config
+	config IFCERFTConfig
 
 	// Only used when there's a real connection (i.e., not in
 	// testing).
@@ -64,11 +64,11 @@ var _ keybase1.NotifyUsersInterface = (*KeybaseDaemonRPC)(nil)
 
 var _ rpc.ConnectionHandler = (*KeybaseDaemonRPC)(nil)
 
-var _ KeybaseDaemon = (*KeybaseDaemonRPC)(nil)
+var _ IFCERFTKeybaseDaemon = (*KeybaseDaemonRPC)(nil)
 
 // NewKeybaseDaemonRPC makes a new KeybaseDaemonRPC that makes RPC
 // calls using the socket of the given Keybase context.
-func NewKeybaseDaemonRPC(config Config, kbCtx Context, log logger.Logger, debug bool) *KeybaseDaemonRPC {
+func NewKeybaseDaemonRPC(config IFCERFTConfig, kbCtx Context, log logger.Logger, debug bool) *KeybaseDaemonRPC {
 	k := newKeybaseDaemonRPC(kbCtx, log)
 	k.config = config
 	conn := NewSharedKeybaseConnection(kbCtx, config, k)

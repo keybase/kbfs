@@ -395,7 +395,7 @@ func TestReaddirPublic(t *testing.T) {
 }
 
 type kbdaemonBrokenIdentify struct {
-	libkbfs.KeybaseDaemon
+	libkbfs.IFCERFTKeybaseDaemon
 }
 
 func (k kbdaemonBrokenIdentify) Identify(ctx context.Context, assertion,
@@ -426,7 +426,7 @@ func TestReaddirPublicFailedIdentifyViaOSCall(t *testing.T) {
 
 	// Make u1 get failures for every identify call.
 	config1.SetKeybaseDaemon(kbdaemonBrokenIdentify{
-		KeybaseDaemon: config1.KeybaseDaemon(),
+		IFCERFTKeybaseDaemon: config1.KeybaseDaemon(),
 	})
 
 	// A private non-existing home folder, with write permissions, fails.
@@ -2324,13 +2324,12 @@ type testMountObserver struct {
 	c chan<- struct{}
 }
 
-func (t *testMountObserver) LocalChange(ctx context.Context, node libkbfs.Node,
-	write libkbfs.WriteRange) {
+func (t *testMountObserver) LocalChange(ctx context.Context, node libkbfs.IFCERFTNode, write libkbfs.WriteRange) {
 	// ignore
 }
 
 func (t *testMountObserver) BatchChanges(ctx context.Context,
-	changes []libkbfs.NodeChange) {
+	changes []libkbfs.IFCERFTNodeChange) {
 	t.c <- struct{}{}
 }
 

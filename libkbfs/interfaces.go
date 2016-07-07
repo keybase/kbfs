@@ -17,12 +17,12 @@ import (
 
 // AuthTokenRefreshHandler defines a callback to be called when an auth token refresh
 // is needed.
-type AuthTokenRefreshHandler interface {
+type IFCERFTAuthTokenRefreshHandler interface {
 	RefreshAuthToken(context.Context)
 }
 
 // Block just needs to be (de)serialized using msgpack
-type Block interface {
+type IFCERFTBlock interface {
 	// GetEncodedSize returns the encoded size of this block, but only
 	// if it has been previously set; otherwise it returns 0.
 	GetEncodedSize() uint32
@@ -36,20 +36,20 @@ type Block interface {
 // NodeID is a unique but transient ID for a Node. That is, two Node
 // objects in memory at the same time represent the same file or
 // directory if and only if their NodeIDs are equal (by pointer).
-type NodeID interface {
+type IFCERFTNodeID interface {
 	// ParentID returns the NodeID of the directory containing the
 	// pointed-to file or directory, or nil if none exists.
-	ParentID() NodeID
+	ParentID() IFCERFTNodeID
 }
 
 // Node represents a direct pointer to a file or directory in KBFS.
 // It is somewhat like an inode in a regular file system.  Users of
 // KBFS can use Node as a handle when accessing files or directories
 // they have previously looked up.
-type Node interface {
+type IFCERFTNode interface {
 	// GetID returns the ID of this Node. This should be used as a
 	// map key instead of the Node itself.
-	GetID() NodeID
+	GetID() IFCERFTNodeID
 	// GetFolderBranch returns the folder ID and branch for this Node.
 	GetFolderBranch() FolderBranch
 	// GetBasename returns the current basename of the node, or ""
@@ -90,7 +90,7 @@ type Node interface {
 // Context derived from it), allowing the caller to determine whether
 // the notification is a result of their own action or an external
 // action.
-type KBFSOps interface {
+type IFCERFTKBFSOps interface {
 	// GetFavorites returns the logged-in user's list of favorite
 	// top-level folders.  This is a remote-access operation.
 	GetFavorites(ctx context.Context) ([]Favorite, error)
@@ -116,27 +116,27 @@ type KBFSOps interface {
 	// remote-access operation.
 	GetOrCreateRootNode(
 		ctx context.Context, h *TlfHandle, branch BranchName) (
-		node Node, ei EntryInfo, err error)
+		node IFCERFTNode, ei EntryInfo, err error)
 	// GetDirChildren returns a map of children in the directory,
 	// mapped to their EntryInfo, if the logged-in user has read
 	// permission for the top-level folder.  This is a remote-access
 	// operation.
-	GetDirChildren(ctx context.Context, dir Node) (map[string]EntryInfo, error)
+	GetDirChildren(ctx context.Context, dir IFCERFTNode) (map[string]EntryInfo, error)
 	// Lookup returns the Node and entry info associated with a
 	// given name in a directory, if the logged-in user has read
 	// permissions to the top-level folder.  The returned Node is nil
 	// if the name is a symlink.  This is a remote-access operation.
-	Lookup(ctx context.Context, dir Node, name string) (Node, EntryInfo, error)
+	Lookup(ctx context.Context, dir IFCERFTNode, name string) (IFCERFTNode, EntryInfo, error)
 	// Stat returns the entry info associated with a
 	// given Node, if the logged-in user has read permissions to the
 	// top-level folder.  This is a remote-access operation.
-	Stat(ctx context.Context, node Node) (EntryInfo, error)
+	Stat(ctx context.Context, node IFCERFTNode) (EntryInfo, error)
 	// CreateDir creates a new subdirectory under the given node, if
 	// the logged-in user has write permission to the top-level
 	// folder.  Returns the new Node for the created subdirectory, and
 	// its new entry info.  This is a remote-sync operation.
-	CreateDir(ctx context.Context, dir Node, name string) (
-		Node, EntryInfo, error)
+	CreateDir(ctx context.Context, dir IFCERFTNode, name string) (
+		IFCERFTNode, EntryInfo, error)
 	// CreateFile creates a new file under the given node, if the
 	// logged-in user has write permission to the top-level folder.
 	// Returns the new Node for the created file, and its new
@@ -145,23 +145,23 @@ type KBFSOps interface {
 	// Unix open() call.
 	//
 	// This is a remote-sync operation.
-	CreateFile(ctx context.Context, dir Node, name string, isExec bool, excl EXCL) (
-		Node, EntryInfo, error)
+	CreateFile(ctx context.Context, dir IFCERFTNode, name string, isExec bool, excl EXCL) (
+		IFCERFTNode, EntryInfo, error)
 	// CreateLink creates a new symlink under the given node, if the
 	// logged-in user has write permission to the top-level folder.
 	// Returns the new entry info for the created symlink.  This
 	// is a remote-sync operation.
-	CreateLink(ctx context.Context, dir Node, fromName string, toPath string) (
+	CreateLink(ctx context.Context, dir IFCERFTNode, fromName string, toPath string) (
 		EntryInfo, error)
 	// RemoveDir removes the subdirectory represented by the given
 	// node, if the logged-in user has write permission to the
 	// top-level folder.  Will return an error if the subdirectory is
 	// not empty.  This is a remote-sync operation.
-	RemoveDir(ctx context.Context, dir Node, dirName string) error
+	RemoveDir(ctx context.Context, dir IFCERFTNode, dirName string) error
 	// RemoveEntry removes the directory entry represented by the
 	// given node, if the logged-in user has write permission to the
 	// top-level folder.  This is a remote-sync operation.
-	RemoveEntry(ctx context.Context, dir Node, name string) error
+	RemoveEntry(ctx context.Context, dir IFCERFTNode, name string) error
 	// Rename performs an atomic rename operation with a given
 	// top-level folder if the logged-in user has write permission to
 	// that folder, and will return an error if nodes from different
@@ -169,8 +169,7 @@ type KBFSOps interface {
 	// already has an entry corresponding to an existing directory
 	// (only non-dir types may be renamed over).  This is a
 	// remote-sync operation.
-	Rename(ctx context.Context, oldParent Node, oldName string, newParent Node,
-		newName string) error
+	Rename(ctx context.Context, oldParent IFCERFTNode, oldName string, newParent IFCERFTNode, newName string) error
 	// Read fills in the given buffer with data from the file at the
 	// given node starting at the given offset, if the logged-in user
 	// has read permission to the top-level folder.  The read data
@@ -183,7 +182,7 @@ type KBFSOps interface {
 	// not the data has been cached locally.  If (0, nil) is returned,
 	// that means EOF has been reached. This is a remote-access
 	// operation.
-	Read(ctx context.Context, file Node, dest []byte, off int64) (int64, error)
+	Read(ctx context.Context, file IFCERFTNode, dest []byte, off int64) (int64, error)
 	// Write modifies the file at the given node, by writing the given
 	// buffer at the given offset within the file, if the logged-in
 	// user has write permission to the top-level folder.  It
@@ -193,7 +192,7 @@ type KBFSOps interface {
 	// may or may not succeed as no-ops, depending on whether or not
 	// the necessary blocks have been locally cached.  This is a
 	// remote-access operation.
-	Write(ctx context.Context, file Node, data []byte, off int64) error
+	Write(ctx context.Context, file IFCERFTNode, data []byte, off int64) error
 	// Truncate modifies the file at the given node, by either
 	// shrinking or extending its size to match the given size, if the
 	// logged-in user has write permission to the top-level folder.
@@ -201,23 +200,23 @@ type KBFSOps interface {
 	// on an unlinked file may or may not succeed as no-ops, depending
 	// on whether or not the necessary blocks have been locally
 	// cached.  This is a remote-access operation.
-	Truncate(ctx context.Context, file Node, size uint64) error
+	Truncate(ctx context.Context, file IFCERFTNode, size uint64) error
 	// SetEx turns on or off the executable bit on the file
 	// represented by a given node, if the logged-in user has write
 	// permissions to the top-level folder.  This is a remote-sync
 	// operation.
-	SetEx(ctx context.Context, file Node, ex bool) error
+	SetEx(ctx context.Context, file IFCERFTNode, ex bool) error
 	// SetMtime sets the modification time on the file represented by
 	// a given node, if the logged-in user has write permissions to
 	// the top-level folder.  If mtime is nil, it is a noop.  This is
 	// a remote-sync operation.
-	SetMtime(ctx context.Context, file Node, mtime *time.Time) error
+	SetMtime(ctx context.Context, file IFCERFTNode, mtime *time.Time) error
 	// Sync flushes all outstanding writes and truncates for the given
 	// file to the KBFS servers, if the logged-in user has write
 	// permissions to the top-level folder.  If done through a file
 	// system interface, this may include modifications done via
 	// multiple file handles.  This is a remote-sync operation.
-	Sync(ctx context.Context, file Node) error
+	Sync(ctx context.Context, file IFCERFTNode) error
 	// FolderStatus returns the status of a particular folder/branch, along
 	// with a channel that will be closed when the status has been
 	// updated (to eliminate the need for polling this method).
@@ -260,7 +259,7 @@ type KBFSOps interface {
 
 // KeybaseDaemon is an interface for communicating with the local
 // Keybase daemon.
-type KeybaseDaemon interface {
+type IFCERFTKeybaseDaemon interface {
 	// Resolve, given an assertion, resolves it to a username/UID
 	// pair. The username <-> UID mapping is trusted and
 	// immutable, so it can be cached. If the assertion is just
@@ -357,7 +356,7 @@ type normalizedUsernameGetter interface {
 }
 
 // KBPKI interacts with the Keybase daemon to fetch user info.
-type KBPKI interface {
+type IFCERFTKBPKI interface {
 	// GetCurrentToken gets the current keybase session token.
 	GetCurrentToken(ctx context.Context) (string, error)
 	// GetCurrentUserInfo gets the name and UID of the current
@@ -415,7 +414,7 @@ type KBPKI interface {
 
 // KeyManager fetches and constructs the keys needed for KBFS file
 // operations.
-type KeyManager interface {
+type IFCERFTKeyManager interface {
 	// GetTLFCryptKeyForEncryption gets the crypt key to use for
 	// encryption (i.e., with the latest key generation) for the
 	// TLF with the given metadata.
@@ -458,7 +457,7 @@ type KeyManager interface {
 }
 
 // Reporter exports events (asynchronously) to any number of sinks
-type Reporter interface {
+type IFCERFTReporter interface {
 	// ReportErr records that a given error happened.
 	ReportErr(ctx context.Context, tlfName CanonicalTlfName, public bool,
 		mode ErrorModeType, err error)
@@ -471,7 +470,7 @@ type Reporter interface {
 }
 
 // MDCache gets and puts plaintext top-level metadata into the cache.
-type MDCache interface {
+type IFCERFTMDCache interface {
 	// Get gets the metadata object associated with the given TlfID,
 	// revision number, and branch ID (NullBranchID for merged MD).
 	Get(tlf TlfID, rev MetadataRevision, bid BranchID) (*RootMetadata, error)
@@ -480,7 +479,7 @@ type MDCache interface {
 }
 
 // KeyCache handles caching for both TLFCryptKeys and BlockCryptKeys.
-type KeyCache interface {
+type IFCERFTKeyCache interface {
 	// GetTLFCryptKey gets the crypt key for the given TLF.
 	GetTLFCryptKey(TlfID, KeyGen) (TLFCryptKey, error)
 	// PutTLFCryptKey stores the crypt key for the given TLF.
@@ -488,23 +487,23 @@ type KeyCache interface {
 }
 
 // BlockCacheLifetime denotes the lifetime of an entry in BlockCache.
-type BlockCacheLifetime int
+type IFCERFTBlockCacheLifetime int
 
 const (
 	// TransientEntry means that the cache entry may be evicted at
 	// any time.
-	TransientEntry BlockCacheLifetime = iota
+	IFCERFTTransientEntry IFCERFTBlockCacheLifetime = iota
 	// PermanentEntry means that the cache entry must remain until
 	// explicitly removed from the cache.
-	PermanentEntry
+	IFCERFTPermanentEntry
 )
 
 // BlockCache gets and puts plaintext dir blocks and file blocks into
 // a cache.  These blocks are immutable and identified by their
 // content hash.
-type BlockCache interface {
+type IFCERFTBlockCache interface {
 	// Get gets the block associated with the given block ID.
-	Get(ptr BlockPointer) (Block, error)
+	Get(ptr BlockPointer) (IFCERFTBlock, error)
 	// CheckForKnownPtr sees whether this cache has a transient
 	// entry for the given file block, which must be a direct file
 	// block containing data).  Returns the full BlockPointer
@@ -523,8 +522,7 @@ type BlockCache interface {
 	// be put into the cache both with TransientEntry and
 	// PermanentEntry -- these are two separate entries. This is
 	// fine, since the block should be the same.
-	Put(ptr BlockPointer, tlf TlfID, block Block,
-		lifetime BlockCacheLifetime) error
+	Put(ptr BlockPointer, tlf TlfID, block IFCERFTBlock, lifetime IFCERFTBlockCacheLifetime) error
 	// DeleteTransient removes the transient entry for the given
 	// pointer from the cache, as well as any cached IDs so the block
 	// won't be reused.
@@ -542,7 +540,7 @@ type BlockCache interface {
 // permission to write.  We are forced to define it as a type due to a
 // bug in mockgen that can't handle return values with a chan
 // struct{}.
-type DirtyPermChan <-chan struct{}
+type IFCERFTDirtyPermChan <-chan struct{}
 
 // DirtyBlockCache gets and puts plaintext dir blocks and file blocks
 // into a cache, which have been modified by the application and not
@@ -551,13 +549,13 @@ type DirtyPermChan <-chan struct{}
 // their context, along with a Branch in case the same TLF is being
 // modified via multiple branches.  Dirty blocks are never evicted,
 // they must be deleted explicitly.
-type DirtyBlockCache interface {
+type IFCERFTDirtyBlockCache interface {
 	// Get gets the block associated with the given block ID.  Returns
 	// the dirty block for the given ID, if one exists.
-	Get(ptr BlockPointer, branch BranchName) (Block, error)
+	Get(ptr BlockPointer, branch BranchName) (IFCERFTBlock, error)
 	// Put stores a dirty block currently identified by the
 	// given block pointer and branch name.
-	Put(ptr BlockPointer, branch BranchName, block Block) error
+	Put(ptr BlockPointer, branch BranchName, block IFCERFTBlock) error
 	// Delete removes the dirty block associated with the given block
 	// pointer and branch from the cache.  No error is returned if no
 	// block exists for the given ID.
@@ -577,7 +575,7 @@ type DirtyBlockCache interface {
 	// completed its write and called `UpdateUnsyncedBytes` for all
 	// the exact dirty block sizes.
 	RequestPermissionToDirty(ctx context.Context,
-		estimatedDirtyBytes int64) (DirtyPermChan, error)
+		estimatedDirtyBytes int64) (IFCERFTDirtyPermChan, error)
 	// UpdateUnsyncedBytes is called by a user, who has already been
 	// granted permission to write, with the delta in block sizes that
 	// were dirtied as part of the write.  So for example, if a
@@ -688,13 +686,13 @@ type cryptoPure interface {
 	// EncryptBlocks encrypts a block. plainSize is the size of the encoded
 	// block; EncryptBlock() must guarantee that plainSize <=
 	// len(encryptedBlock).
-	EncryptBlock(block Block, key BlockCryptKey) (
+	EncryptBlock(block IFCERFTBlock, key BlockCryptKey) (
 		plainSize int, encryptedBlock EncryptedBlock, err error)
 
 	// DecryptBlock decrypts a block. Similar to EncryptBlock(),
 	// DecryptBlock() must guarantee that (size of the decrypted
 	// block) <= len(encryptedBlock).
-	DecryptBlock(encryptedBlock EncryptedBlock, key BlockCryptKey, block Block) error
+	DecryptBlock(encryptedBlock EncryptedBlock, key BlockCryptKey, block IFCERFTBlock) error
 
 	// GetTLFCryptKeyServerHalfID creates a unique ID for this particular
 	// TLFCryptKeyServerHalf.
@@ -716,7 +714,7 @@ type cryptoPure interface {
 }
 
 // Crypto signs, verifies, encrypts, and decrypts stuff.
-type Crypto interface {
+type IFCERFTCrypto interface {
 	cryptoPure
 
 	// Sign signs the msg with the current device's private key.
@@ -745,7 +743,7 @@ type Crypto interface {
 }
 
 // Codec encodes and decodes arbitrary data
-type Codec interface {
+type IFCERFTCodec interface {
 	// Decode unmarshals the given buffer into the given object, if possible.
 	Decode(buf []byte, obj interface{}) error
 	// Encode marshals the given object into a returned buffer.
@@ -772,7 +770,7 @@ type Codec interface {
 
 // MDOps gets and puts root metadata to an MDServer.  On a get, it
 // verifies the metadata is signed by the metadata's signing key.
-type MDOps interface {
+type IFCERFTMDOps interface {
 	// GetForHandle returns the current metadata
 	// object corresponding to the given top-level folder's handle, if
 	// the logged-in user has read permission on the folder.  It
@@ -822,7 +820,7 @@ type MDOps interface {
 }
 
 // KeyOps fetches server-side key halves from the key server.
-type KeyOps interface {
+type IFCERFTKeyOps interface {
 	// GetTLFCryptKeyServerHalf gets a server-side key half for a
 	// device given the key half ID.
 	GetTLFCryptKeyServerHalf(ctx context.Context,
@@ -843,21 +841,21 @@ type KeyOps interface {
 
 // BlockOps gets and puts data blocks to a BlockServer. It performs
 // the necessary crypto operations on each block.
-type BlockOps interface {
+type IFCERFTBlockOps interface {
 	// Get gets the block associated with the given block pointer
 	// (which belongs to the TLF with the given metadata),
 	// decrypts it if necessary, and fills in the provided block
 	// object with its contents, if the logged-in user has read
 	// permission for that block.
 	Get(ctx context.Context, md *RootMetadata, blockPtr BlockPointer,
-		block Block) error
+		block IFCERFTBlock) error
 
 	// Ready turns the given block (which belongs to the TLF with
 	// the given metadata) into encoded (and encrypted) data, and
 	// calculates its ID and size, so that we can do a bunch of
 	// block puts in parallel for every write. Ready() must
 	// guarantee that plainSize <= readyBlockData.QuotaSize().
-	Ready(ctx context.Context, md *RootMetadata, block Block) (
+	Ready(ctx context.Context, md *RootMetadata, block IFCERFTBlock) (
 		id BlockID, plainSize int, readyBlockData ReadyBlockData, err error)
 
 	// Put stores the readied block data under the given block
@@ -889,8 +887,8 @@ type BlockOps interface {
 // has read permissions.
 //
 // TODO: Add interface for searching by time
-type MDServer interface {
-	AuthTokenRefreshHandler
+type IFCERFTMDServer interface {
+	IFCERFTAuthTokenRefreshHandler
 
 	// GetForHandle returns the current (signed/encrypted) metadata
 	// object corresponding to the given top-level folder's handle, if
@@ -968,21 +966,21 @@ type MDServer interface {
 }
 
 type mdServerLocal interface {
-	MDServer
+	IFCERFTMDServer
 	addNewAssertionForTest(
 		uid keybase1.UID, newAssertion keybase1.SocialAssertion) error
 	getCurrentMergedHeadRevision(ctx context.Context, id TlfID) (
 		rev MetadataRevision, err error)
 	isShutdown() bool
-	copy(config Config) mdServerLocal
+	copy(config IFCERFTConfig) mdServerLocal
 }
 
 // BlockServer gets and puts opaque data blocks.  The instantiation
 // should be able to fetch session/user details via KBPKI.  On a
 // put/delete, the server is reponsible for: 1) checking that the ID
 // matches the hash of the buffer; and 2) enforcing writer quotas.
-type BlockServer interface {
-	AuthTokenRefreshHandler
+type IFCERFTBlockServer interface {
+	IFCERFTAuthTokenRefreshHandler
 
 	// Get gets the (encrypted) block data associated with the given
 	// block ID and context, uses the provided block key to decrypt
@@ -1063,14 +1061,14 @@ const (
 // blockServerLocal is the interface for BlockServer implementations
 // that store data locally.
 type blockServerLocal interface {
-	BlockServer
+	IFCERFTBlockServer
 	// getAll returns all the known block references, and should only be
 	// used during testing.
 	getAll(tlfID TlfID) (map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error)
 }
 
 // BlockSplitter decides when a file or directory block needs to be split
-type BlockSplitter interface {
+type IFCERFTBlockSplitter interface {
 	// CopyUntilSplit copies data into the block until we reach the
 	// point where we should split, but only if writing to the end of
 	// the last block.  If this is writing into the middle of a file,
@@ -1092,7 +1090,7 @@ type BlockSplitter interface {
 }
 
 // KeyServer fetches/writes server-side key halves from/to the key server.
-type KeyServer interface {
+type IFCERFTKeyServer interface {
 	// GetTLFCryptKeyServerHalf gets a server-side key half for a
 	// device given the key half ID.
 	GetTLFCryptKeyServerHalf(ctx context.Context,
@@ -1116,8 +1114,8 @@ type KeyServer interface {
 
 // NodeChange represents a change made to a node as part of an atomic
 // file system operation.
-type NodeChange struct {
-	Node Node
+type IFCERFTNodeChange struct {
+	Node IFCERFTNode
 	// Basenames of entries added/removed.
 	DirUpdated  []string
 	FileUpdated []WriteRange
@@ -1128,14 +1126,14 @@ type NodeChange struct {
 // make any calls to the Notifier interface.  Nodes passed to the
 // observer should not be held past the end of the notification
 // callback.
-type Observer interface {
+type IFCERFTObserver interface {
 	// LocalChange announces that the file at this Node has been
 	// updated locally, but not yet saved at the server.
-	LocalChange(ctx context.Context, node Node, write WriteRange)
+	LocalChange(ctx context.Context, node IFCERFTNode, write WriteRange)
 	// BatchChanges announces that the nodes have all been updated
 	// together atomically.  Each NodeChange in changes affects the
 	// same top-level folder and branch.
-	BatchChanges(ctx context.Context, changes []NodeChange)
+	BatchChanges(ctx context.Context, changes []IFCERFTNodeChange)
 	// TlfHandleChange announces that the handle of the corresponding
 	// folder branch has changed, likely due to previously-unresolved
 	// assertions becoming resolved.  This indicates that the listener
@@ -1148,24 +1146,24 @@ type Observer interface {
 }
 
 // Notifier notifies registrants of directory changes
-type Notifier interface {
+type IFCERFTNotifier interface {
 	// RegisterForChanges declares that the given Observer wants to
 	// subscribe to updates for the given top-level folders.
-	RegisterForChanges(folderBranches []FolderBranch, obs Observer) error
+	RegisterForChanges(folderBranches []FolderBranch, obs IFCERFTObserver) error
 	// UnregisterFromChanges declares that the given Observer no
 	// longer wants to subscribe to updates for the given top-level
 	// folders.
-	UnregisterFromChanges(folderBranches []FolderBranch, obs Observer) error
+	UnregisterFromChanges(folderBranches []FolderBranch, obs IFCERFTObserver) error
 }
 
 // Clock is an interface for getting the current time
-type Clock interface {
+type IFCERFTClock interface {
 	// Now returns the current time.
 	Now() time.Time
 }
 
 // ConflictRenamer deals with names for conflicting directory entries.
-type ConflictRenamer interface {
+type IFCERFTConflictRenamer interface {
 	// ConflictRename returns the appropriately modified filename.
 	ConflictRename(op op, original string) string
 }
@@ -1173,53 +1171,53 @@ type ConflictRenamer interface {
 // Config collects all the singleton instance instantiations needed to
 // run KBFS in one place.  The methods below are self-explanatory and
 // do not require comments.
-type Config interface {
-	KBFSOps() KBFSOps
-	SetKBFSOps(KBFSOps)
-	KBPKI() KBPKI
-	SetKBPKI(KBPKI)
-	KeyManager() KeyManager
-	SetKeyManager(KeyManager)
-	Reporter() Reporter
-	SetReporter(Reporter)
-	MDCache() MDCache
-	SetMDCache(MDCache)
-	KeyCache() KeyCache
-	SetKeyCache(KeyCache)
-	BlockCache() BlockCache
-	SetBlockCache(BlockCache)
-	DirtyBlockCache() DirtyBlockCache
-	SetDirtyBlockCache(DirtyBlockCache)
-	Crypto() Crypto
-	SetCrypto(Crypto)
-	Codec() Codec
-	SetCodec(Codec)
-	MDOps() MDOps
-	SetMDOps(MDOps)
-	KeyOps() KeyOps
-	SetKeyOps(KeyOps)
-	BlockOps() BlockOps
-	SetBlockOps(BlockOps)
-	MDServer() MDServer
-	SetMDServer(MDServer)
-	BlockServer() BlockServer
-	SetBlockServer(BlockServer)
-	KeyServer() KeyServer
-	SetKeyServer(KeyServer)
-	KeybaseDaemon() KeybaseDaemon
-	SetKeybaseDaemon(KeybaseDaemon)
-	BlockSplitter() BlockSplitter
-	SetBlockSplitter(BlockSplitter)
-	Notifier() Notifier
-	SetNotifier(Notifier)
-	Clock() Clock
-	SetClock(Clock)
-	ConflictRenamer() ConflictRenamer
-	SetConflictRenamer(ConflictRenamer)
+type IFCERFTConfig interface {
+	KBFSOps() IFCERFTKBFSOps
+	SetKBFSOps(IFCERFTKBFSOps)
+	KBPKI() IFCERFTKBPKI
+	SetKBPKI(IFCERFTKBPKI)
+	KeyManager() IFCERFTKeyManager
+	SetKeyManager(IFCERFTKeyManager)
+	Reporter() IFCERFTReporter
+	SetReporter(IFCERFTReporter)
+	MDCache() IFCERFTMDCache
+	SetMDCache(IFCERFTMDCache)
+	KeyCache() IFCERFTKeyCache
+	SetKeyCache(IFCERFTKeyCache)
+	BlockCache() IFCERFTBlockCache
+	SetBlockCache(IFCERFTBlockCache)
+	DirtyBlockCache() IFCERFTDirtyBlockCache
+	SetDirtyBlockCache(IFCERFTDirtyBlockCache)
+	Crypto() IFCERFTCrypto
+	SetCrypto(IFCERFTCrypto)
+	Codec() IFCERFTCodec
+	SetCodec(IFCERFTCodec)
+	MDOps() IFCERFTMDOps
+	SetMDOps(IFCERFTMDOps)
+	KeyOps() IFCERFTKeyOps
+	SetKeyOps(IFCERFTKeyOps)
+	BlockOps() IFCERFTBlockOps
+	SetBlockOps(IFCERFTBlockOps)
+	MDServer() IFCERFTMDServer
+	SetMDServer(IFCERFTMDServer)
+	BlockServer() IFCERFTBlockServer
+	SetBlockServer(IFCERFTBlockServer)
+	KeyServer() IFCERFTKeyServer
+	SetKeyServer(IFCERFTKeyServer)
+	KeybaseDaemon() IFCERFTKeybaseDaemon
+	SetKeybaseDaemon(IFCERFTKeybaseDaemon)
+	BlockSplitter() IFCERFTBlockSplitter
+	SetBlockSplitter(IFCERFTBlockSplitter)
+	Notifier() IFCERFTNotifier
+	SetNotifier(IFCERFTNotifier)
+	Clock() IFCERFTClock
+	SetClock(IFCERFTClock)
+	ConflictRenamer() IFCERFTConflictRenamer
+	SetConflictRenamer(IFCERFTConflictRenamer)
 	MetadataVersion() MetadataVer
 	DataVersion() DataVer
-	RekeyQueue() RekeyQueue
-	SetRekeyQueue(RekeyQueue)
+	RekeyQueue() IFCERFTRekeyQueue
+	SetRekeyQueue(IFCERFTRekeyQueue)
 	// ReqsBufSize indicates the number of read or write operations
 	// that can be buffered per folder
 	ReqsBufSize() int
@@ -1275,16 +1273,16 @@ type Config interface {
 // things change about the underlying KBFS blocks.  It is probably
 // most useful to instantiate this on a per-folder-branch basis, so
 // that it can create a Path with the correct DirId and Branch name.
-type NodeCache interface {
+type IFCERFTNodeCache interface {
 	// GetOrCreate either makes a new Node for the given
 	// BlockPointer, or returns an existing one. TODO: If we ever
 	// support hard links, we will have to revisit the "name" and
 	// "parent" parameters here.  name must not be empty. Returns
 	// an error if parent cannot be found.
-	GetOrCreate(ptr BlockPointer, name string, parent Node) (Node, error)
+	GetOrCreate(ptr BlockPointer, name string, parent IFCERFTNode) (IFCERFTNode, error)
 	// Get returns the Node associated with the given ptr if one
 	// already exists.  Otherwise, it returns nil.
-	Get(ref blockRef) Node
+	Get(ref blockRef) IFCERFTNode
 	// UpdatePointer updates the BlockPointer for the corresponding
 	// Node.  NodeCache ignores this call when oldRef is not cached in
 	// any Node.
@@ -1294,7 +1292,7 @@ type NodeCache interface {
 	// is not cached.  Returns an error if newParent cannot be found.
 	// If newParent is nil, it treats the ptr's corresponding node as
 	// being unlinked from the old parent completely.
-	Move(ref blockRef, newParent Node, newName string) error
+	Move(ref blockRef, newParent IFCERFTNode, newName string) error
 	// Unlink set the corresponding node's parent to nil and caches
 	// the provided path in case the node is still open. NodeCache
 	// ignores the call when ptr is not cached.  The path is required
@@ -1302,7 +1300,7 @@ type NodeCache interface {
 	// already that shouldn't be reflected in the cached path.
 	Unlink(ref blockRef, oldPath path)
 	// PathFromNode creates the path up to a given Node.
-	PathFromNode(node Node) path
+	PathFromNode(node IFCERFTNode) path
 }
 
 // fileBlockDeepCopier fetches a file block, makes a deep copy of it
@@ -1356,7 +1354,7 @@ type crAction interface {
 
 // RekeyQueue is a managed queue of folders needing some rekey action taken upon them
 // by the current client.
-type RekeyQueue interface {
+type IFCERFTRekeyQueue interface {
 	// Enqueue enqueues a folder for rekey action.
 	Enqueue(TlfID) <-chan error
 	// IsRekeyPending returns true if the given folder is in the rekey queue.

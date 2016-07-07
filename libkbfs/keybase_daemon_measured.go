@@ -14,7 +14,7 @@ import (
 // KeybaseDaemonMeasured delegates to another KeybaseDaemon instance
 // but also keeps track of stats.
 type KeybaseDaemonMeasured struct {
-	delegate                KeybaseDaemon
+	delegate                IFCERFTKeybaseDaemon
 	resolveTimer            metrics.Timer
 	identifyTimer           metrics.Timer
 	loadUserPlusKeysTimer   metrics.Timer
@@ -26,11 +26,11 @@ type KeybaseDaemonMeasured struct {
 	notifyTimer             metrics.Timer
 }
 
-var _ KeybaseDaemon = KeybaseDaemonMeasured{}
+var _ IFCERFTKeybaseDaemon = KeybaseDaemonMeasured{}
 
 // NewKeybaseDaemonMeasured creates and returns a new KeybaseDaemonMeasured
 // instance with the given delegate and registry.
-func NewKeybaseDaemonMeasured(delegate KeybaseDaemon, r metrics.Registry) KeybaseDaemonMeasured {
+func NewKeybaseDaemonMeasured(delegate IFCERFTKeybaseDaemon, r metrics.Registry) KeybaseDaemonMeasured {
 	resolveTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.Resolve", r)
 	identifyTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.Identify", r)
 	loadUserPlusKeysTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.LoadUserPlusKeys", r)

@@ -18,12 +18,12 @@ import (
 // consistent.  Useful mostly for testing because it isn't scalable
 // and loads all the state in memory.
 type StateChecker struct {
-	config Config
+	config IFCERFTConfig
 	log    logger.Logger
 }
 
 // NewStateChecker returns a new StateChecker instance.
-func NewStateChecker(config Config) *StateChecker {
+func NewStateChecker(config IFCERFTConfig) *StateChecker {
 	return &StateChecker{config, config.MakeLogger("")}
 }
 

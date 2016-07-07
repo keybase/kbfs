@@ -12,11 +12,11 @@ import (
 // KeyOpsStandard implements the KeyOps interface and relays get/put
 // requests for server-side key halves from/to the key server.
 type KeyOpsStandard struct {
-	config Config
+	config IFCERFTConfig
 }
 
 // Test that KeyOps standard fully implements the KeyOps interface.
-var _ KeyOps = (*KeyOpsStandard)(nil)
+var _ IFCERFTKeyOps = (*KeyOpsStandard)(nil)
 
 // GetTLFCryptKeyServerHalf is an implementation of the KeyOps interface.
 func (k *KeyOpsStandard) GetTLFCryptKeyServerHalf(ctx context.Context,

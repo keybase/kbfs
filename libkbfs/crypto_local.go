@@ -82,11 +82,11 @@ type CryptoLocal struct {
 	cryptPrivateKey CryptPrivateKey
 }
 
-var _ Crypto = (*CryptoLocal)(nil)
+var _ IFCERFTCrypto = (*CryptoLocal)(nil)
 
 // NewCryptoLocal constructs a new CryptoLocal instance with the given
 // signing key.
-func NewCryptoLocal(config Config, signingKey SigningKey, cryptPrivateKey CryptPrivateKey) *CryptoLocal {
+func NewCryptoLocal(config IFCERFTConfig, signingKey SigningKey, cryptPrivateKey CryptPrivateKey) *CryptoLocal {
 	log := config.MakeLogger("")
 	return &CryptoLocal{MakeCryptoCommon(config.Codec(), log),
 		signingKey, cryptPrivateKey}

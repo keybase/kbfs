@@ -49,7 +49,7 @@ func TestTLFCryptKeyInfoUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeTLFCryptKeyInfoFuture(t))
 }
 
-func testKeyBundleGetKeysOrBust(t *testing.T, config Config, uid keybase1.UID,
+func testKeyBundleGetKeysOrBust(t *testing.T, config IFCERFTConfig, uid keybase1.UID,
 	keys map[keybase1.UID][]CryptPublicKey) {
 	publicKeys, err := config.KBPKI().GetCryptPublicKeys(
 		context.Background(), uid)
@@ -59,7 +59,7 @@ func testKeyBundleGetKeysOrBust(t *testing.T, config Config, uid keybase1.UID,
 	keys[uid] = publicKeys
 }
 
-func testKeyBundleCheckKeys(t *testing.T, config Config, uid keybase1.UID,
+func testKeyBundleCheckKeys(t *testing.T, config IFCERFTConfig, uid keybase1.UID,
 	wkb TLFWriterKeyBundle, ePubKey TLFEphemeralPublicKey,
 	tlfCryptKey TLFCryptKey, serverMap serverKeyMap) {
 	ctx := context.Background()

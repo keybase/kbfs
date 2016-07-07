@@ -666,7 +666,7 @@ func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 
 	// Set the KBPKI so we can count the identify calls
 	countKBPKI := &identifyCountingKBPKI{
-		KBPKI: config1.KBPKI(),
+		IFCERFTKBPKI: config1.KBPKI(),
 	}
 	config1.SetKBPKI(countKBPKI)
 	// Force the FBO to forget about its previous identify, so that we
@@ -888,7 +888,7 @@ func TestKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T) {
 
 	// Set the KBPKI so we can count the identify calls
 	countKBPKI := &identifyCountingKBPKI{
-		KBPKI: config1.KBPKI(),
+		IFCERFTKBPKI: config1.KBPKI(),
 	}
 	config1.SetKBPKI(countKBPKI)
 	// Force the FBO to forget about its previous identify, so that we
@@ -1448,9 +1448,9 @@ func TestKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T) {
 // call, and sends on the given channel whether each call had
 // promptPaper set or not.
 type cryptoLocalTrapAny struct {
-	Crypto
+	IFCERFTCrypto
 	promptCh    chan<- bool
-	cryptoToUse Crypto
+	cryptoToUse IFCERFTCrypto
 }
 
 func (clta *cryptoLocalTrapAny) DecryptTLFCryptKeyClientHalfAny(
@@ -1543,7 +1543,7 @@ func TestKeyManagerRekeyAddDeviceWithPrompt(t *testing.T) {
 	ops.mdWriterLock.Lock(lState)
 	ops.mdWriterLock.Unlock(lState)
 
-	config2Dev2.SetCrypto(clta.Crypto)
+	config2Dev2.SetCrypto(clta.IFCERFTCrypto)
 
 	rootNode2Dev2 := GetRootNodeOrBust(t, config2Dev2, name, false)
 
@@ -1665,7 +1665,7 @@ func TestKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T) {
 	ops.mdWriterLock.Lock(lState)
 	ops.mdWriterLock.Unlock(lState)
 
-	config2Dev2.SetCrypto(clta.Crypto)
+	config2Dev2.SetCrypto(clta.IFCERFTCrypto)
 
 	rootNode2Dev2 := GetRootNodeOrBust(t, config2Dev2, name, false)
 

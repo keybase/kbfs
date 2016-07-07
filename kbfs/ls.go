@@ -53,7 +53,7 @@ func computeModeStr(entryType libkbfs.EntryType) string {
 	return fmt.Sprintf("%s%s%s%s", typeStr, modeStr, modeStr, "---")
 }
 
-func printEntry(ctx context.Context, config libkbfs.Config, dir fsrpc.Path, name string, entryType libkbfs.EntryType, longFormat, useSigil bool) {
+func printEntry(ctx context.Context, config libkbfs.IFCERFTConfig, dir fsrpc.Path, name string, entryType libkbfs.EntryType, longFormat, useSigil bool) {
 	var sigil string
 	if useSigil {
 		switch entryType {
@@ -90,7 +90,7 @@ func printEntry(ctx context.Context, config libkbfs.Config, dir fsrpc.Path, name
 	}
 }
 
-func lsHelper(ctx context.Context, config libkbfs.Config, p fsrpc.Path, hasMultiple bool, handleEntry func(string, libkbfs.EntryType)) error {
+func lsHelper(ctx context.Context, config libkbfs.IFCERFTConfig, p fsrpc.Path, hasMultiple bool, handleEntry func(string, libkbfs.EntryType)) error {
 	kbfsOps := config.KBFSOps()
 
 	switch p.PathType {
@@ -165,7 +165,7 @@ func lsHelper(ctx context.Context, config libkbfs.Config, p fsrpc.Path, hasMulti
 	return fmt.Errorf("invalid KBFS path %s", p)
 }
 
-func lsOne(ctx context.Context, config libkbfs.Config, p fsrpc.Path, longFormat, useSigil, recursive, hasMultiple bool, errorFn func(error)) {
+func lsOne(ctx context.Context, config libkbfs.IFCERFTConfig, p fsrpc.Path, longFormat, useSigil, recursive, hasMultiple bool, errorFn func(error)) {
 	var children []string
 	handleEntry := func(name string, entryType libkbfs.EntryType) {
 		if recursive && entryType == libkbfs.Dir {
@@ -193,7 +193,7 @@ func lsOne(ctx context.Context, config libkbfs.Config, p fsrpc.Path, longFormat,
 	}
 }
 
-func ls(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
+func ls(ctx context.Context, config libkbfs.IFCERFTConfig, args []string) (exitStatus int) {
 	flags := flag.NewFlagSet("kbfs ls", flag.ContinueOnError)
 	longFormat := flags.Bool("l", false, "List in long format.")
 	useSigil := flags.Bool("F", false, "Display sigils after each pathname.")

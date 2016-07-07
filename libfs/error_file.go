@@ -32,7 +32,7 @@ func convertStack(stack []uintptr) []errors.StackFrame {
 
 // GetEncodedErrors gets the list of encoded errors in a format suitable
 // for error file.
-func GetEncodedErrors(config libkbfs.Config) func(context.Context) ([]byte, time.Time, error) {
+func GetEncodedErrors(config libkbfs.IFCERFTConfig) func(context.Context) ([]byte, time.Time, error) {
 	return func(_ context.Context) ([]byte, time.Time, error) {
 		errors := config.Reporter().AllKnownErrors()
 		jsonErrors := make([]JSONReportedError, len(errors))

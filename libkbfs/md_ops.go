@@ -17,12 +17,12 @@ import (
 // layers, and processes RootMetadataSigned objects (encrypted and
 // signed) suitable for passing to/from the MDServer backend.
 type MDOpsStandard struct {
-	config Config
+	config IFCERFTConfig
 	log    logger.Logger
 }
 
 // NewMDOpsStandard returns a new MDOpsStandard
-func NewMDOpsStandard(config Config) *MDOpsStandard {
+func NewMDOpsStandard(config IFCERFTConfig) *MDOpsStandard {
 	return &MDOpsStandard{config, config.MakeLogger("")}
 }
 

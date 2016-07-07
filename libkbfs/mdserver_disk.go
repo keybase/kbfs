@@ -43,7 +43,7 @@ type mdServerDiskShared struct {
 // MDServerDisk stores all info on disk, either in levelDBs, or disk
 // journals and flat files for the actual MDs.
 type MDServerDisk struct {
-	config Config
+	config IFCERFTConfig
 	log    logger.Logger
 
 	*mdServerDiskShared
@@ -51,7 +51,7 @@ type MDServerDisk struct {
 
 var _ mdServerLocal = (*MDServerDisk)(nil)
 
-func newMDServerDisk(config Config, dirPath string,
+func newMDServerDisk(config IFCERFTConfig, dirPath string,
 	shutdownFunc func(logger.Logger)) (*MDServerDisk, error) {
 	handlePath := filepath.Join(dirPath, "handles")
 	handleDb, err := leveldb.OpenFile(handlePath, leveldbOptions)
@@ -81,13 +81,13 @@ func newMDServerDisk(config Config, dirPath string,
 
 // NewMDServerDir constructs a new MDServerDisk that stores its data
 // in the given directory.
-func NewMDServerDir(config Config, dirPath string) (*MDServerDisk, error) {
+func NewMDServerDir(config IFCERFTConfig, dirPath string) (*MDServerDisk, error) {
 	return newMDServerDisk(config, dirPath, nil)
 }
 
 // NewMDServerTempDir constructs a new MDServerDisk that stores its
 // data in a temp directory which is cleaned up on shutdown.
-func NewMDServerTempDir(config Config) (*MDServerDisk, error) {
+func NewMDServerTempDir(config IFCERFTConfig) (*MDServerDisk, error) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "kbfs_mdserver_tmp")
 	if err != nil {
 		return nil, err
@@ -524,7 +524,7 @@ func (md *MDServerDisk) IsConnected() bool {
 func (md *MDServerDisk) RefreshAuthToken(ctx context.Context) {}
 
 // This should only be used for testing with an in-memory server.
-func (md *MDServerDisk) copy(config Config) mdServerLocal {
+func (md *MDServerDisk) copy(config IFCERFTConfig) mdServerLocal {
 	// NOTE: observers and sessionHeads are copied shallowly on
 	// purpose, so that the MD server that gets a Put will notify all
 	// observers correctly no matter where they got on the list.

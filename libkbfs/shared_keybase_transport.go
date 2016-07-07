@@ -14,8 +14,7 @@ import (
 
 // NewSharedKeybaseConnection returns a connection that tries to
 // connect to the local keybase daemon.
-func NewSharedKeybaseConnection(kbCtx Context, config Config,
-	handler rpc.ConnectionHandler) *rpc.Connection {
+func NewSharedKeybaseConnection(kbCtx Context, config IFCERFTConfig, handler rpc.ConnectionHandler) *rpc.Connection {
 	transport := &SharedKeybaseTransport{kbCtx: kbCtx}
 	return rpc.NewConnectionWithTransport(handler, transport,
 		libkb.ErrorUnwrapper{}, true, libkb.WrapError,

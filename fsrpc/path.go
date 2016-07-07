@@ -229,7 +229,7 @@ func (p Path) Join(childName string) (childPath Path, err error) {
 }
 
 // GetNode returns a node
-func (p Path) GetNode(ctx context.Context, config libkbfs.Config) (libkbfs.Node, libkbfs.EntryInfo, error) {
+func (p Path) GetNode(ctx context.Context, config libkbfs.IFCERFTConfig) (libkbfs.IFCERFTNode, libkbfs.EntryInfo, error) {
 	if p.PathType != TLFPathType {
 		entryInfo := libkbfs.EntryInfo{
 			Type: libkbfs.Dir,
@@ -276,7 +276,7 @@ outer:
 }
 
 // GetFileNode returns a file node
-func (p Path) GetFileNode(ctx context.Context, config libkbfs.Config) (libkbfs.Node, error) {
+func (p Path) GetFileNode(ctx context.Context, config libkbfs.IFCERFTConfig) (libkbfs.IFCERFTNode, error) {
 	n, de, err := p.GetNode(ctx, config)
 	if err != nil {
 		return nil, err
@@ -292,7 +292,7 @@ func (p Path) GetFileNode(ctx context.Context, config libkbfs.Config) (libkbfs.N
 }
 
 // GetDirNode returns a nil node if this doesn't have type TLFPathType
-func (p Path) GetDirNode(ctx context.Context, config libkbfs.Config) (libkbfs.Node, error) {
+func (p Path) GetDirNode(ctx context.Context, config libkbfs.IFCERFTConfig) (libkbfs.IFCERFTNode, error) {
 	// TODO: Handle non-TLFPathTypes.
 
 	n, de, err := p.GetNode(ctx, config)

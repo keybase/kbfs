@@ -10,7 +10,7 @@ import (
 	"github.com/keybase/kbfs/libkbfs"
 )
 
-func setBlockSizes(t testing.TB, config libkbfs.Config, blockSize, blockChangeSize int64) {
+func setBlockSizes(t testing.TB, config libkbfs.IFCERFTConfig, blockSize, blockChangeSize int64) {
 	// Set the block sizes, if any
 	if blockSize > 0 || blockChangeSize > 0 {
 		if blockSize == 0 {
@@ -32,7 +32,7 @@ func setBlockSizes(t testing.TB, config libkbfs.Config, blockSize, blockChangeSi
 	}
 }
 
-func maybeSetBw(t testing.TB, config libkbfs.Config, bwKBps int) {
+func maybeSetBw(t testing.TB, config libkbfs.IFCERFTConfig, bwKBps int) {
 	if bwKBps > 0 {
 		config.SetBlockOps(libkbfs.NewBlockOpsConstrained(
 			config.BlockOps(), bwKBps))

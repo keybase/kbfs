@@ -53,7 +53,7 @@ func TestParseTlfHandleNoUserFailure(t *testing.T) {
 	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
 
 	kbpki := &identifyCountingKBPKI{
-		KBPKI: &daemonKBPKI{
+		IFCERFTKBPKI: &daemonKBPKI{
 			daemon: daemon,
 		},
 	}
@@ -72,7 +72,7 @@ func TestParseTlfHandleNotReaderFailure(t *testing.T) {
 	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
 
 	kbpki := &identifyCountingKBPKI{
-		KBPKI: &daemonKBPKI{
+		IFCERFTKBPKI: &daemonKBPKI{
 			daemon: daemon,
 		},
 	}
@@ -92,7 +92,7 @@ func TestParseTlfHandleAssertionNotCanonicalFailure(t *testing.T) {
 	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
 
 	kbpki := &identifyCountingKBPKI{
-		KBPKI: &daemonKBPKI{
+		IFCERFTKBPKI: &daemonKBPKI{
 			daemon: daemon,
 		},
 	}
@@ -114,7 +114,7 @@ func TestParseTlfHandleAssertionPrivateSuccess(t *testing.T) {
 	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
 
 	kbpki := &identifyCountingKBPKI{
-		KBPKI: &daemonKBPKI{
+		IFCERFTKBPKI: &daemonKBPKI{
 			daemon: daemon,
 		},
 	}
@@ -140,7 +140,7 @@ func TestParseTlfHandleAssertionPublicSuccess(t *testing.T) {
 	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
 
 	kbpki := &identifyCountingKBPKI{
-		KBPKI: &daemonKBPKI{
+		IFCERFTKBPKI: &daemonKBPKI{
 			daemon: daemon,
 		},
 	}
@@ -437,7 +437,7 @@ func TestParseTlfHandleSocialAssertion(t *testing.T) {
 	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
 
 	kbpki := &identifyCountingKBPKI{
-		KBPKI: &daemonKBPKI{
+		IFCERFTKBPKI: &daemonKBPKI{
 			daemon: daemon,
 		},
 	}
@@ -463,7 +463,7 @@ func TestParseTlfHandleUIDAssertion(t *testing.T) {
 	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
 
 	kbpki := &identifyCountingKBPKI{
-		KBPKI: &daemonKBPKI{
+		IFCERFTKBPKI: &daemonKBPKI{
 			daemon: daemon,
 		},
 	}
@@ -483,7 +483,7 @@ func TestParseTlfHandleAndAssertion(t *testing.T) {
 	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
 
 	kbpki := &identifyCountingKBPKI{
-		KBPKI: &daemonKBPKI{
+		IFCERFTKBPKI: &daemonKBPKI{
 			daemon: daemon,
 		},
 	}
@@ -527,7 +527,7 @@ func TestParseTlfHandleFailConflictingAssertion(t *testing.T) {
 	daemon := NewKeybaseDaemonMemory(currentUID, localUsers, NewCodecMsgpack())
 
 	kbpki := &identifyCountingKBPKI{
-		KBPKI: &daemonKBPKI{
+		IFCERFTKBPKI: &daemonKBPKI{
 			daemon: daemon,
 		},
 	}
@@ -540,8 +540,7 @@ func TestParseTlfHandleFailConflictingAssertion(t *testing.T) {
 
 // parseTlfHandleOrBust parses the given TLF name, which must be
 // canonical, into a TLF handle, and failing if there's an error.
-func parseTlfHandleOrBust(t logger.TestLogBackend, config Config,
-	name string, public bool) *TlfHandle {
+func parseTlfHandleOrBust(t logger.TestLogBackend, config IFCERFTConfig, name string, public bool) *TlfHandle {
 	ctx := context.Background()
 	h, err := ParseTlfHandle(ctx, config.KBPKI(), name, public)
 	if err != nil {

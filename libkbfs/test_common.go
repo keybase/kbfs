@@ -63,7 +63,7 @@ func testLoggerMaker(t logger.TestLogBackend) func(m string) logger.Logger {
 	}
 }
 
-func setTestLogger(config Config, t logger.TestLogBackend) {
+func setTestLogger(config IFCERFTConfig, t logger.TestLogBackend) {
 	config.SetLoggerMaker(testLoggerMaker(t))
 }
 
@@ -99,7 +99,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 
 	// see if a local remote server is specified
 	bserverAddr := os.Getenv(EnvTestBServerAddr)
-	var blockServer BlockServer
+	var blockServer IFCERFTBlockServer
 	switch {
 	case bserverAddr == TempdirServerAddr:
 		var err error
@@ -118,8 +118,8 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 
 	// see if a local remote server is specified
 	mdServerAddr := os.Getenv(EnvTestMDServerAddr)
-	var mdServer MDServer
-	var keyServer KeyServer
+	var mdServer IFCERFTMDServer
+	var keyServer IFCERFTKeyServer
 	switch {
 	case mdServerAddr == TempdirServerAddr:
 		var err error
@@ -174,7 +174,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 	// no auto reclamation
 	config.qrPeriod = 0 * time.Second
 
-	configs := []Config{config}
+	configs := []IFCERFTConfig{config}
 	config.allKnownConfigsForTesting = &configs
 
 	return config
@@ -222,8 +222,8 @@ func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *C
 		c.SetBlockServer(config.BlockServer())
 	}
 
-	var mdServer MDServer
-	var keyServer KeyServer
+	var mdServer IFCERFTMDServer
+	var keyServer IFCERFTKeyServer
 	if s, ok := config.MDServer().(*MDServerRemote); ok {
 		// connect to server
 		mdServer = NewMDServerRemote(c, s.RemoteAddress(), env.NewContext())
@@ -314,8 +314,7 @@ func makeFakeKeys(name libkb.NormalizedUsername, index int) (
 
 // AddDeviceForLocalUserOrBust creates a new device for a user and
 // returns the index for that device.
-func AddDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config,
-	uid keybase1.UID) int {
+func AddDeviceForLocalUserOrBust(t logger.TestLogBackend, config IFCERFTConfig, uid keybase1.UID) int {
 	kbd, ok := config.KeybaseDaemon().(*KeybaseDaemonLocal)
 	if !ok {
 		t.Fatal("Bad keybase daemon")
@@ -330,8 +329,7 @@ func AddDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config,
 
 // RevokeDeviceForLocalUserOrBust revokes a device for a user in the
 // given index.
-func RevokeDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config,
-	uid keybase1.UID, index int) {
+func RevokeDeviceForLocalUserOrBust(t logger.TestLogBackend, config IFCERFTConfig, uid keybase1.UID, index int) {
 	kbd, ok := config.KeybaseDaemon().(*KeybaseDaemonLocal)
 	if !ok {
 		t.Fatal("Bad keybase daemon")
@@ -344,7 +342,7 @@ func RevokeDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config,
 }
 
 // SwitchDeviceForLocalUserOrBust switches the current user's current device
-func SwitchDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config, index int) {
+func SwitchDeviceForLocalUserOrBust(t logger.TestLogBackend, config IFCERFTConfig, index int) {
 	name, uid, err := config.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
 		t.Fatalf("Couldn't get UID: %v", err)
@@ -375,7 +373,7 @@ func SwitchDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config, inde
 // that does already resolve to something.  It only applies to the
 // given config.
 func AddNewAssertionForTest(
-	config Config, oldAssertion, newAssertion string) error {
+	config IFCERFTConfig, oldAssertion, newAssertion string) error {
 	kbd, ok := config.KeybaseDaemon().(*KeybaseDaemonLocal)
 	if !ok {
 		return errors.New("Bad keybase daemon")
@@ -407,8 +405,7 @@ func AddNewAssertionForTest(
 
 // AddNewAssertionForTestOrBust is like AddNewAssertionForTest, but
 // dies if there's an error.
-func AddNewAssertionForTestOrBust(t logger.TestLogBackend, config Config,
-	oldAssertion, newAssertion string) {
+func AddNewAssertionForTestOrBust(t logger.TestLogBackend, config IFCERFTConfig, oldAssertion, newAssertion string) {
 	err := AddNewAssertionForTest(config, oldAssertion, newAssertion)
 	if err != nil {
 		t.Fatal(err)
@@ -435,7 +432,7 @@ func testRPCWithCanceledContext(t logger.TestLogBackend,
 // DisableUpdatesForTesting stops the given folder from acting on new
 // updates.  Send a struct{}{} down the returned channel to restart
 // notifications
-func DisableUpdatesForTesting(config Config, folderBranch FolderBranch) (
+func DisableUpdatesForTesting(config IFCERFTConfig, folderBranch FolderBranch) (
 	chan<- struct{}, error) {
 	kbfsOps, ok := config.KBFSOps().(*KBFSOpsStandard)
 	if !ok {
@@ -450,7 +447,7 @@ func DisableUpdatesForTesting(config Config, folderBranch FolderBranch) (
 
 // DisableCRForTesting stops conflict resolution for the given folder.
 // RestartCRForTesting should be called to restart it.
-func DisableCRForTesting(config Config, folderBranch FolderBranch) error {
+func DisableCRForTesting(config IFCERFTConfig, folderBranch FolderBranch) error {
 	kbfsOps, ok := config.KBFSOps().(*KBFSOpsStandard)
 	if !ok {
 		return errors.New("Unexpected KBFSOps type")
@@ -463,8 +460,7 @@ func DisableCRForTesting(config Config, folderBranch FolderBranch) error {
 
 // RestartCRForTesting re-enables conflict resolution for
 // the given folder.
-func RestartCRForTesting(baseCtx context.Context, config Config,
-	folderBranch FolderBranch) error {
+func RestartCRForTesting(baseCtx context.Context, config IFCERFTConfig, folderBranch FolderBranch) error {
 	kbfsOps, ok := config.KBFSOps().(*KBFSOpsStandard)
 	if !ok {
 		return errors.New("Unexpected KBFSOps type")
@@ -484,8 +480,7 @@ func RestartCRForTesting(baseCtx context.Context, config Config,
 
 // ForceQuotaReclamationForTesting kicks off quota reclamation under
 // the given config, for the given folder-branch.
-func ForceQuotaReclamationForTesting(config Config,
-	folderBranch FolderBranch) error {
+func ForceQuotaReclamationForTesting(config IFCERFTConfig, folderBranch FolderBranch) error {
 	kbfsOps, ok := config.KBFSOps().(*KBFSOpsStandard)
 	if !ok {
 		return errors.New("Unexpected KBFSOps type")
@@ -534,7 +529,7 @@ func (tc *TestClock) Add(d time.Duration) {
 
 // CheckConfigAndShutdown shuts down the given config, but fails the
 // test if there's an error.
-func CheckConfigAndShutdown(t logger.TestLogBackend, config Config) {
+func CheckConfigAndShutdown(t logger.TestLogBackend, config IFCERFTConfig) {
 	if err := config.Shutdown(); err != nil {
 		t.Errorf(err.Error())
 	}
@@ -542,7 +537,7 @@ func CheckConfigAndShutdown(t logger.TestLogBackend, config Config) {
 
 // GetRootNodeForTest gets the root node for the given TLF name, which
 // must be canonical, creating it if necessary.
-func GetRootNodeForTest(config Config, name string, public bool) (Node, error) {
+func GetRootNodeForTest(config IFCERFTConfig, name string, public bool) (IFCERFTNode, error) {
 	ctx := context.Background()
 	h, err := ParseTlfHandle(ctx, config.KBPKI(), name, public)
 	if err != nil {
@@ -561,7 +556,7 @@ func GetRootNodeForTest(config Config, name string, public bool) (Node, error) {
 // must be canonical, creating it if necessary, and failing if there's
 // an error.
 func GetRootNodeOrBust(
-	t logger.TestLogBackend, config Config, name string, public bool) Node {
+	t logger.TestLogBackend, config IFCERFTConfig, name string, public bool) IFCERFTNode {
 	n, err := GetRootNodeForTest(config, name, public)
 	if err != nil {
 		t.Fatalf("Couldn't get root node for %s (public=%t): %v",

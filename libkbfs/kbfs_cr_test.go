@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func readAndCompareData(t *testing.T, config Config, ctx context.Context,
+func readAndCompareData(t *testing.T, config IFCERFTConfig, ctx context.Context,
 	name string, expectedData []byte, user libkb.NormalizedUsername) {
 	rootNode := GetRootNodeOrBust(t, config, name, false)
 
@@ -34,16 +34,15 @@ func readAndCompareData(t *testing.T, config Config, ctx context.Context,
 
 type testCRObserver struct {
 	c       chan<- struct{}
-	changes []NodeChange
+	changes []IFCERFTNodeChange
 }
 
-func (t *testCRObserver) LocalChange(ctx context.Context, node Node,
-	write WriteRange) {
+func (t *testCRObserver) LocalChange(ctx context.Context, node IFCERFTNode, write WriteRange) {
 	// ignore
 }
 
 func (t *testCRObserver) BatchChanges(ctx context.Context,
-	changes []NodeChange) {
+	changes []IFCERFTNodeChange) {
 	t.changes = append(t.changes, changes...)
 	t.c <- struct{}{}
 }
@@ -53,8 +52,7 @@ func (t *testCRObserver) TlfHandleChange(ctx context.Context,
 	return
 }
 
-func checkStatus(t *testing.T, ctx context.Context, kbfsOps KBFSOps,
-	staged bool, headWriter libkb.NormalizedUsername, dirtyPaths []string, fb FolderBranch,
+func checkStatus(t *testing.T, ctx context.Context, kbfsOps IFCERFTKBFSOps, staged bool, headWriter libkb.NormalizedUsername, dirtyPaths []string, fb FolderBranch,
 	prefix string) {
 	status, _, err := kbfsOps.FolderStatus(ctx, fb)
 	if err != nil {
@@ -324,7 +322,7 @@ func TestUnmergedAfterRestart(t *testing.T) {
 	if len(cro.changes) != 2 {
 		t.Errorf("Unexpected number of changes: %d", len(cro.changes))
 	}
-	var n Node
+	var n IFCERFTNode
 	for _, change := range cro.changes {
 		if n == nil {
 			n = change.Node
@@ -1054,7 +1052,7 @@ func TestCRDouble(t *testing.T) {
 }
 
 // Helper to block on rekey of a given folder.
-func waitForRekey(t *testing.T, config Config, id TlfID) {
+func waitForRekey(t *testing.T, config IFCERFTConfig, id TlfID) {
 	rekeyCh := config.RekeyQueue().GetRekeyChannel(id)
 	if rekeyCh != nil {
 		// rekey in progress still

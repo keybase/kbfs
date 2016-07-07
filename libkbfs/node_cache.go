@@ -23,7 +23,7 @@ type nodeCacheStandard struct {
 	lock         sync.RWMutex
 }
 
-var _ NodeCache = (*nodeCacheStandard)(nil)
+var _ IFCERFTNodeCache = (*nodeCacheStandard)(nil)
 
 func newNodeCacheStandard(fb FolderBranch) *nodeCacheStandard {
 	return &nodeCacheStandard{
@@ -58,7 +58,7 @@ func (ncs *nodeCacheStandard) forget(core *nodeCore) {
 }
 
 // lock must be held for writing by the caller
-func (ncs *nodeCacheStandard) newChildForParentLocked(parent Node) (*nodeStandard, error) {
+func (ncs *nodeCacheStandard) newChildForParentLocked(parent IFCERFTNode) (*nodeStandard, error) {
 	nodeStandard, ok := parent.(*nodeStandard)
 	if !ok {
 		return nil, ParentNodeNotFoundError{blockRef{}}
@@ -82,7 +82,7 @@ func makeNodeStandardForEntry(entry *nodeCacheEntry) *nodeStandard {
 
 // GetOrCreate implements the NodeCache interface for nodeCacheStandard.
 func (ncs *nodeCacheStandard) GetOrCreate(
-	ptr BlockPointer, name string, parent Node) (Node, error) {
+	ptr BlockPointer, name string, parent IFCERFTNode) (IFCERFTNode, error) {
 	if !ptr.IsValid() {
 		// Temporary code to track down bad block
 		// pointers. Remove when not needed anymore.
@@ -126,7 +126,7 @@ func (ncs *nodeCacheStandard) GetOrCreate(
 }
 
 // Get implements the NodeCache interface for nodeCacheStandard.
-func (ncs *nodeCacheStandard) Get(ref blockRef) Node {
+func (ncs *nodeCacheStandard) Get(ref blockRef) IFCERFTNode {
 	if ref == (blockRef{}) {
 		return nil
 	}
@@ -180,7 +180,7 @@ func (ncs *nodeCacheStandard) UpdatePointer(
 
 // Move implements the NodeCache interface for nodeCacheStandard.
 func (ncs *nodeCacheStandard) Move(
-	ref blockRef, newParent Node, newName string) error {
+	ref blockRef, newParent IFCERFTNode, newName string) error {
 	if ref == (blockRef{}) {
 		return nil
 	}
@@ -238,7 +238,7 @@ func (ncs *nodeCacheStandard) Unlink(ref blockRef, oldPath path) {
 }
 
 // PathFromNode implements the NodeCache interface for nodeCacheStandard.
-func (ncs *nodeCacheStandard) PathFromNode(node Node) (p path) {
+func (ncs *nodeCacheStandard) PathFromNode(node IFCERFTNode) (p path) {
 	ncs.lock.RLock()
 	defer ncs.lock.RUnlock()
 

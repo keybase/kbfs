@@ -123,8 +123,8 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 	return &params
 }
 
-func makeMDServer(config Config, serverInMemory bool, serverRootDir, mdserverAddr string, ctx Context) (
-	MDServer, error) {
+func makeMDServer(config IFCERFTConfig, serverInMemory bool, serverRootDir, mdserverAddr string, ctx Context) (
+	IFCERFTMDServer, error) {
 	if serverInMemory {
 		// local in-memory MD server
 		return NewMDServerMemory(config)
@@ -146,8 +146,8 @@ func makeMDServer(config Config, serverInMemory bool, serverRootDir, mdserverAdd
 	return mdServer, nil
 }
 
-func makeKeyServer(config Config, serverInMemory bool, serverRootDir, keyserverAddr string) (
-	KeyServer, error) {
+func makeKeyServer(config IFCERFTConfig, serverInMemory bool, serverRootDir, keyserverAddr string) (
+	IFCERFTKeyServer, error) {
 	if serverInMemory {
 		// local in-memory key server
 		return NewKeyServerMemory(config)
@@ -164,15 +164,15 @@ func makeKeyServer(config Config, serverInMemory bool, serverRootDir, keyserverA
 	}
 
 	// currently the MD server also acts as the key server.
-	keyServer, ok := config.MDServer().(KeyServer)
+	keyServer, ok := config.MDServer().(IFCERFTKeyServer)
 	if !ok {
 		return nil, errors.New("MD server is not a key server")
 	}
 	return keyServer, nil
 }
 
-func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverAddr string, ctx Context, log logger.Logger) (
-	BlockServer, error) {
+func makeBlockServer(config IFCERFTConfig, serverInMemory bool, serverRootDir, bserverAddr string, ctx Context, log logger.Logger) (
+	IFCERFTBlockServer, error) {
 	if serverInMemory {
 		// local in-memory block server
 		return NewBlockServerMemory(config), nil
@@ -234,7 +234,7 @@ func InitLog(params InitParams, ctx Context) (logger.Logger, error) {
 // The keybaseDaemonFn argument is to temporarily support KBFS on
 // mobile (for using a custom KeybaseDaemon implementation) and will
 // be removed in the future, when we use a non-RPC implementation.
-func Init(ctx Context, params InitParams, keybaseDaemonFn KeybaseDaemonFn, onInterruptFn func(), log logger.Logger) (Config, error) {
+func Init(ctx Context, params InitParams, keybaseDaemonFn KeybaseDaemonFn, onInterruptFn func(), log logger.Logger) (IFCERFTConfig, error) {
 
 	if params.CPUProfile != "" {
 		// Let the GC/OS clean up the file handle.

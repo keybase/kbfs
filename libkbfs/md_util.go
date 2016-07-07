@@ -16,7 +16,7 @@ type mdRange struct {
 	end   MetadataRevision
 }
 
-func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
+func getMDRange(ctx context.Context, config IFCERFTConfig, id TlfID, bid BranchID,
 	start MetadataRevision, end MetadataRevision, mStatus MergeStatus) (
 	rmds []*RootMetadata, err error) {
 	// The range is invalid.  Don't treat as an error though; it just
@@ -110,7 +110,7 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 //
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
-func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
+func getMergedMDUpdates(ctx context.Context, config IFCERFTConfig, id TlfID,
 	startRev MetadataRevision) (mergedRmds []*RootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
@@ -171,7 +171,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 //
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
-func getUnmergedMDUpdates(ctx context.Context, config Config, id TlfID,
+func getUnmergedMDUpdates(ctx context.Context, config IFCERFTConfig, id TlfID,
 	bid BranchID, startRev MetadataRevision) (
 	currHead MetadataRevision, unmergedRmds []*RootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
@@ -216,8 +216,7 @@ func getUnmergedMDUpdates(ctx context.Context, config Config, id TlfID,
 	return currHead, unmergedRmds, nil
 }
 
-func decryptMDPrivateData(ctx context.Context, config Config,
-	rmdToDecrypt, rmdWithKeys *RootMetadata) error {
+func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecrypt, rmdWithKeys *RootMetadata) error {
 	handle := rmdToDecrypt.GetTlfHandle()
 	crypto := config.Crypto()
 	codec := config.Codec()
@@ -279,7 +278,7 @@ func decryptMDPrivateData(ctx context.Context, config Config,
 				return err
 			}
 			if err := config.BlockCache().Put(info.BlockPointer,
-				rmdToDecrypt.ID, block, TransientEntry); err != nil {
+				rmdToDecrypt.ID, block, IFCERFTTransientEntry); err != nil {
 				return err
 			}
 		}

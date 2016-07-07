@@ -215,8 +215,8 @@ func TestCRInputFracturedRange(t *testing.T) {
 }
 
 func testCRSharedFolderForUsers(t *testing.T, name string, createAs keybase1.UID,
-	configs map[keybase1.UID]Config, dirs []string) map[keybase1.UID]Node {
-	nodes := make(map[keybase1.UID]Node)
+	configs map[keybase1.UID]IFCERFTConfig, dirs []string) map[keybase1.UID]IFCERFTNode {
+	nodes := make(map[keybase1.UID]IFCERFTNode)
 
 	// create by the first user
 	kbfsOps := configs[createAs].KBFSOps()
@@ -346,8 +346,7 @@ func testCRCheckPathsAndActions(t *testing.T, cr *ConflictResolver,
 	}
 }
 
-func testCRGetCROrBust(t *testing.T, config Config,
-	fb FolderBranch) *ConflictResolver {
+func testCRGetCROrBust(t *testing.T, config IFCERFTConfig, fb FolderBranch) *ConflictResolver {
 	kbfsOpsCast, ok := config.KBFSOps().(*KBFSOpsStandard)
 	if !ok {
 		t.Fatalf("Unexpected KBFSOps type")
@@ -376,7 +375,7 @@ func TestCRMergedChainsSimple(t *testing.T) {
 
 	name := userName1.String() + "," + userName2.String()
 
-	configs := make(map[keybase1.UID]Config)
+	configs := make(map[keybase1.UID]IFCERFTConfig)
 	configs[uid1] = config1
 	configs[uid2] = config2
 	nodes := testCRSharedFolderForUsers(t, name, uid1, configs, []string{"dir"})
@@ -436,7 +435,7 @@ func TestCRMergedChainsDifferentDirectories(t *testing.T) {
 
 	name := userName1.String() + "," + userName2.String()
 
-	configs := make(map[keybase1.UID]Config)
+	configs := make(map[keybase1.UID]IFCERFTConfig)
 	configs[uid1] = config1
 	configs[uid2] = config2
 	nodesA := testCRSharedFolderForUsers(t, name, uid1, configs, []string{"dirA"})
@@ -498,7 +497,7 @@ func TestCRMergedChainsDeletedDirectories(t *testing.T) {
 
 	name := userName1.String() + "," + userName2.String()
 
-	configs := make(map[keybase1.UID]Config)
+	configs := make(map[keybase1.UID]IFCERFTConfig)
 	configs[uid1] = config1
 	configs[uid2] = config2
 	nodesA := testCRSharedFolderForUsers(t, name, uid1, configs, []string{"dirA"})
@@ -593,7 +592,7 @@ func TestCRMergedChainsRenamedDirectory(t *testing.T) {
 
 	name := userName1.String() + "," + userName2.String()
 
-	configs := make(map[keybase1.UID]Config)
+	configs := make(map[keybase1.UID]IFCERFTConfig)
 	configs[uid1] = config1
 	configs[uid2] = config2
 	nodesA := testCRSharedFolderForUsers(t, name, uid1, configs, []string{"dirA"})
@@ -679,7 +678,7 @@ func TestCRMergedChainsComplex(t *testing.T) {
 
 	name := userName1.String() + "," + userName2.String()
 
-	configs := make(map[keybase1.UID]Config)
+	configs := make(map[keybase1.UID]IFCERFTConfig)
 	configs[uid1] = config1
 	configs[uid2] = config2
 	nodesA := testCRSharedFolderForUsers(t, name, uid1, configs, []string{"dirA"})
@@ -854,7 +853,7 @@ func TestCRMergedChainsRenameCycleSimple(t *testing.T) {
 
 	name := userName1.String() + "," + userName2.String()
 
-	configs := make(map[keybase1.UID]Config)
+	configs := make(map[keybase1.UID]IFCERFTConfig)
 	configs[uid1] = config1
 	configs[uid2] = config2
 	nodesRoot := testCRSharedFolderForUsers(t, name, uid1, configs, []string{"root"})
@@ -940,7 +939,7 @@ func TestCRMergedChainsConflictSimple(t *testing.T) {
 
 	name := userName1.String() + "," + userName2.String()
 
-	configs := make(map[keybase1.UID]Config)
+	configs := make(map[keybase1.UID]IFCERFTConfig)
 	configs[uid1] = config1
 	configs[uid2] = config2
 	nodesRoot := testCRSharedFolderForUsers(t, name, uid1, configs, []string{"root"})
@@ -1008,7 +1007,7 @@ func TestCRMergedChainsConflictFileCollapse(t *testing.T) {
 
 	name := userName1.String() + "," + userName2.String()
 
-	configs := make(map[keybase1.UID]Config)
+	configs := make(map[keybase1.UID]IFCERFTConfig)
 	configs[uid1] = config1
 	configs[uid2] = config2
 	nodesRoot := testCRSharedFolderForUsers(t, name, uid1, configs, []string{"root"})
@@ -1113,7 +1112,7 @@ func TestCRDoActionsSimple(t *testing.T) {
 
 	name := userName1.String() + "," + userName2.String()
 
-	configs := make(map[keybase1.UID]Config)
+	configs := make(map[keybase1.UID]IFCERFTConfig)
 	configs[uid1] = config1
 	configs[uid2] = config2
 	nodes := testCRSharedFolderForUsers(t, name, uid1, configs, []string{"dir"})
@@ -1204,7 +1203,7 @@ func TestCRDoActionsWriteConflict(t *testing.T) {
 
 	name := userName1.String() + "," + userName2.String()
 
-	configs := make(map[keybase1.UID]Config)
+	configs := make(map[keybase1.UID]IFCERFTConfig)
 	configs[uid1] = config1
 	configs[uid2] = config2
 	nodes := testCRSharedFolderForUsers(t, name, uid1, configs, []string{"dir"})

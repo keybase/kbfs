@@ -14,7 +14,7 @@ import (
 )
 
 // GetEncodedMetrics returns metrics encoded as bytes for metrics file.
-func GetEncodedMetrics(config libkbfs.Config) func(context.Context) ([]byte, time.Time, error) {
+func GetEncodedMetrics(config libkbfs.IFCERFTConfig) func(context.Context) ([]byte, time.Time, error) {
 	return func(context.Context) ([]byte, time.Time, error) {
 		if registry := config.MetricsRegistry(); registry != nil {
 			b := bytes.NewBuffer(nil)

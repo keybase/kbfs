@@ -16,14 +16,14 @@ import (
 
 // KBPKIClient uses a config's KeybaseDaemon.
 type KBPKIClient struct {
-	config Config
+	config IFCERFTConfig
 	log    logger.Logger
 }
 
-var _ KBPKI = (*KBPKIClient)(nil)
+var _ IFCERFTKBPKI = (*KBPKIClient)(nil)
 
 // NewKBPKIClient returns a new KBPKIClient with the given Config.
-func NewKBPKIClient(config Config) *KBPKIClient {
+func NewKBPKIClient(config IFCERFTConfig) *KBPKIClient {
 	return &KBPKIClient{config, config.MakeLogger("")}
 }
 

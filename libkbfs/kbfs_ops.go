@@ -18,7 +18,7 @@ import (
 // safe by forwarding requests to individual per-folder-branch
 // handlers that are go-routine-safe.
 type KBFSOpsStandard struct {
-	config   Config
+	config   IFCERFTConfig
 	log      logger.Logger
 	deferLog logger.Logger
 	ops      map[FolderBranch]*folderBranchOps
@@ -36,10 +36,10 @@ type KBFSOpsStandard struct {
 	currentStatus kbfsCurrentStatus
 }
 
-var _ KBFSOps = (*KBFSOpsStandard)(nil)
+var _ IFCERFTKBFSOps = (*KBFSOpsStandard)(nil)
 
 // NewKBFSOpsStandard constructs a new KBFSOpsStandard object.
-func NewKBFSOpsStandard(config Config) *KBFSOpsStandard {
+func NewKBFSOpsStandard(config IFCERFTConfig) *KBFSOpsStandard {
 	log := config.MakeLogger("")
 	kops := &KBFSOpsStandard{
 		config:                config,
@@ -214,7 +214,7 @@ func (fs *KBFSOpsStandard) getOps(
 }
 
 func (fs *KBFSOpsStandard) getOpsByNode(ctx context.Context,
-	node Node) *folderBranchOps {
+	node IFCERFTNode) *folderBranchOps {
 	return fs.getOps(ctx, node.GetFolderBranch())
 }
 
@@ -234,7 +234,7 @@ func (fs *KBFSOpsStandard) getOpsByHandle(ctx context.Context,
 // KBFSOpsStandard
 func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 	ctx context.Context, h *TlfHandle, branch BranchName) (
-	node Node, ei EntryInfo, err error) {
+	node IFCERFTNode, ei EntryInfo, err error) {
 	fs.log.CDebugf(ctx, "GetOrCreateRootNode(%s, %v)",
 		h.GetCanonicalPath(), branch)
 	defer func() { fs.deferLog.CDebugf(ctx, "Done: %#v", err) }()
@@ -294,21 +294,21 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 }
 
 // GetDirChildren implements the KBFSOps interface for KBFSOpsStandard
-func (fs *KBFSOpsStandard) GetDirChildren(ctx context.Context, dir Node) (
+func (fs *KBFSOpsStandard) GetDirChildren(ctx context.Context, dir IFCERFTNode) (
 	map[string]EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.GetDirChildren(ctx, dir)
 }
 
 // Lookup implements the KBFSOps interface for KBFSOpsStandard
-func (fs *KBFSOpsStandard) Lookup(ctx context.Context, dir Node, name string) (
-	Node, EntryInfo, error) {
+func (fs *KBFSOpsStandard) Lookup(ctx context.Context, dir IFCERFTNode, name string) (
+	IFCERFTNode, EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.Lookup(ctx, dir, name)
 }
 
 // Stat implements the KBFSOps interface for KBFSOpsStandard
-func (fs *KBFSOpsStandard) Stat(ctx context.Context, node Node) (
+func (fs *KBFSOpsStandard) Stat(ctx context.Context, node IFCERFTNode) (
 	EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, node)
 	return ops.Stat(ctx, node)
@@ -316,22 +316,22 @@ func (fs *KBFSOpsStandard) Stat(ctx context.Context, node Node) (
 
 // CreateDir implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) CreateDir(
-	ctx context.Context, dir Node, name string) (Node, EntryInfo, error) {
+	ctx context.Context, dir IFCERFTNode, name string) (IFCERFTNode, EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateDir(ctx, dir, name)
 }
 
 // CreateFile implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) CreateFile(
-	ctx context.Context, dir Node, name string, isExec bool, excl EXCL) (
-	Node, EntryInfo, error) {
+	ctx context.Context, dir IFCERFTNode, name string, isExec bool, excl EXCL) (
+	IFCERFTNode, EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateFile(ctx, dir, name, isExec, excl)
 }
 
 // CreateLink implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) CreateLink(
-	ctx context.Context, dir Node, fromName string, toPath string) (
+	ctx context.Context, dir IFCERFTNode, fromName string, toPath string) (
 	EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateLink(ctx, dir, fromName, toPath)
@@ -339,22 +339,21 @@ func (fs *KBFSOpsStandard) CreateLink(
 
 // RemoveDir implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) RemoveDir(
-	ctx context.Context, dir Node, name string) error {
+	ctx context.Context, dir IFCERFTNode, name string) error {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.RemoveDir(ctx, dir, name)
 }
 
 // RemoveEntry implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) RemoveEntry(
-	ctx context.Context, dir Node, name string) error {
+	ctx context.Context, dir IFCERFTNode, name string) error {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.RemoveEntry(ctx, dir, name)
 }
 
 // Rename implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Rename(
-	ctx context.Context, oldParent Node, oldName string, newParent Node,
-	newName string) error {
+	ctx context.Context, oldParent IFCERFTNode, oldName string, newParent IFCERFTNode, newName string) error {
 	oldFB := oldParent.GetFolderBranch()
 	newFB := newParent.GetFolderBranch()
 
@@ -369,7 +368,7 @@ func (fs *KBFSOpsStandard) Rename(
 
 // Read implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Read(
-	ctx context.Context, file Node, dest []byte, off int64) (
+	ctx context.Context, file IFCERFTNode, dest []byte, off int64) (
 	numRead int64, err error) {
 	ops := fs.getOpsByNode(ctx, file)
 	return ops.Read(ctx, file, dest, off)
@@ -377,34 +376,34 @@ func (fs *KBFSOpsStandard) Read(
 
 // Write implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Write(
-	ctx context.Context, file Node, data []byte, off int64) error {
+	ctx context.Context, file IFCERFTNode, data []byte, off int64) error {
 	ops := fs.getOpsByNode(ctx, file)
 	return ops.Write(ctx, file, data, off)
 }
 
 // Truncate implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Truncate(
-	ctx context.Context, file Node, size uint64) error {
+	ctx context.Context, file IFCERFTNode, size uint64) error {
 	ops := fs.getOpsByNode(ctx, file)
 	return ops.Truncate(ctx, file, size)
 }
 
 // SetEx implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) SetEx(
-	ctx context.Context, file Node, ex bool) error {
+	ctx context.Context, file IFCERFTNode, ex bool) error {
 	ops := fs.getOpsByNode(ctx, file)
 	return ops.SetEx(ctx, file, ex)
 }
 
 // SetMtime implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) SetMtime(
-	ctx context.Context, file Node, mtime *time.Time) error {
+	ctx context.Context, file IFCERFTNode, mtime *time.Time) error {
 	ops := fs.getOpsByNode(ctx, file)
 	return ops.SetMtime(ctx, file, mtime)
 }
 
 // Sync implements the KBFSOps interface for KBFSOpsStandard
-func (fs *KBFSOpsStandard) Sync(ctx context.Context, file Node) error {
+func (fs *KBFSOpsStandard) Sync(ctx context.Context, file IFCERFTNode) error {
 	ops := fs.getOpsByNode(ctx, file)
 	return ops.Sync(ctx, file)
 }
@@ -478,11 +477,11 @@ func (fs *KBFSOpsStandard) GetUpdateHistory(ctx context.Context,
 }
 
 // Notifier:
-var _ Notifier = (*KBFSOpsStandard)(nil)
+var _ IFCERFTNotifier = (*KBFSOpsStandard)(nil)
 
 // RegisterForChanges implements the Notifer interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) RegisterForChanges(
-	folderBranches []FolderBranch, obs Observer) error {
+	folderBranches []FolderBranch, obs IFCERFTObserver) error {
 	for _, fb := range folderBranches {
 		// TODO: add branch parameter to notifier interface
 		ops := fs.getOpsNoAdd(fb)
@@ -493,7 +492,7 @@ func (fs *KBFSOpsStandard) RegisterForChanges(
 
 // UnregisterFromChanges implements the Notifer interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) UnregisterFromChanges(
-	folderBranches []FolderBranch, obs Observer) error {
+	folderBranches []FolderBranch, obs IFCERFTObserver) error {
 	for _, fb := range folderBranches {
 		// TODO: add branch parameter to notifier interface
 		ops := fs.getOpsNoAdd(fb)

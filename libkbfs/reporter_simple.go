@@ -16,7 +16,7 @@ import (
 // ReporterSimple remembers the last maxErrors errors, or all errors
 // if maxErrors < 1.
 type ReporterSimple struct {
-	clock          Clock
+	clock          IFCERFTClock
 	maxErrors      int
 	currErrorIndex int
 	filledOnce     bool
@@ -26,7 +26,7 @@ type ReporterSimple struct {
 }
 
 // NewReporterSimple creates a new ReporterSimple.
-func NewReporterSimple(clock Clock, maxErrors int) *ReporterSimple {
+func NewReporterSimple(clock IFCERFTClock, maxErrors int) *ReporterSimple {
 	rs := &ReporterSimple{
 		clock:          clock,
 		maxErrors:      maxErrors,

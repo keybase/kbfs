@@ -114,9 +114,9 @@ func (_m *MockNodeID) EXPECT() *_MockNodeIDRecorder {
 	return _m.recorder
 }
 
-func (_m *MockNodeID) ParentID() NodeID {
+func (_m *MockNodeID) ParentID() IFCERFTNodeID {
 	ret := _m.ctrl.Call(_m, "ParentID")
-	ret0, _ := ret[0].(NodeID)
+	ret0, _ := ret[0].(IFCERFTNodeID)
 	return ret0
 }
 
@@ -145,9 +145,9 @@ func (_m *MockNode) EXPECT() *_MockNodeRecorder {
 	return _m.recorder
 }
 
-func (_m *MockNode) GetID() NodeID {
+func (_m *MockNode) GetID() IFCERFTNodeID {
 	ret := _m.ctrl.Call(_m, "GetID")
-	ret0, _ := ret[0].(NodeID)
+	ret0, _ := ret[0].(IFCERFTNodeID)
 	return ret0
 }
 
@@ -235,9 +235,9 @@ func (_mr *_MockKBFSOpsRecorder) DeleteFavorite(arg0, arg1 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeleteFavorite", arg0, arg1)
 }
 
-func (_m *MockKBFSOps) GetOrCreateRootNode(ctx context.Context, h *TlfHandle, branch BranchName) (Node, EntryInfo, error) {
+func (_m *MockKBFSOps) GetOrCreateRootNode(ctx context.Context, h *TlfHandle, branch BranchName) (IFCERFTNode, EntryInfo, error) {
 	ret := _m.ctrl.Call(_m, "GetOrCreateRootNode", ctx, h, branch)
-	ret0, _ := ret[0].(Node)
+	ret0, _ := ret[0].(IFCERFTNode)
 	ret1, _ := ret[1].(EntryInfo)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -247,7 +247,7 @@ func (_mr *_MockKBFSOpsRecorder) GetOrCreateRootNode(arg0, arg1, arg2 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetOrCreateRootNode", arg0, arg1, arg2)
 }
 
-func (_m *MockKBFSOps) GetDirChildren(ctx context.Context, dir Node) (map[string]EntryInfo, error) {
+func (_m *MockKBFSOps) GetDirChildren(ctx context.Context, dir IFCERFTNode) (map[string]EntryInfo, error) {
 	ret := _m.ctrl.Call(_m, "GetDirChildren", ctx, dir)
 	ret0, _ := ret[0].(map[string]EntryInfo)
 	ret1, _ := ret[1].(error)
@@ -258,9 +258,9 @@ func (_mr *_MockKBFSOpsRecorder) GetDirChildren(arg0, arg1 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetDirChildren", arg0, arg1)
 }
 
-func (_m *MockKBFSOps) Lookup(ctx context.Context, dir Node, name string) (Node, EntryInfo, error) {
+func (_m *MockKBFSOps) Lookup(ctx context.Context, dir IFCERFTNode, name string) (IFCERFTNode, EntryInfo, error) {
 	ret := _m.ctrl.Call(_m, "Lookup", ctx, dir, name)
-	ret0, _ := ret[0].(Node)
+	ret0, _ := ret[0].(IFCERFTNode)
 	ret1, _ := ret[1].(EntryInfo)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -270,7 +270,7 @@ func (_mr *_MockKBFSOpsRecorder) Lookup(arg0, arg1, arg2 interface{}) *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Lookup", arg0, arg1, arg2)
 }
 
-func (_m *MockKBFSOps) Stat(ctx context.Context, node Node) (EntryInfo, error) {
+func (_m *MockKBFSOps) Stat(ctx context.Context, node IFCERFTNode) (EntryInfo, error) {
 	ret := _m.ctrl.Call(_m, "Stat", ctx, node)
 	ret0, _ := ret[0].(EntryInfo)
 	ret1, _ := ret[1].(error)
@@ -281,9 +281,9 @@ func (_mr *_MockKBFSOpsRecorder) Stat(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Stat", arg0, arg1)
 }
 
-func (_m *MockKBFSOps) CreateDir(ctx context.Context, dir Node, name string) (Node, EntryInfo, error) {
+func (_m *MockKBFSOps) CreateDir(ctx context.Context, dir IFCERFTNode, name string) (IFCERFTNode, EntryInfo, error) {
 	ret := _m.ctrl.Call(_m, "CreateDir", ctx, dir, name)
-	ret0, _ := ret[0].(Node)
+	ret0, _ := ret[0].(IFCERFTNode)
 	ret1, _ := ret[1].(EntryInfo)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -293,9 +293,9 @@ func (_mr *_MockKBFSOpsRecorder) CreateDir(arg0, arg1, arg2 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CreateDir", arg0, arg1, arg2)
 }
 
-func (_m *MockKBFSOps) CreateFile(ctx context.Context, dir Node, name string, isExec bool, excl EXCL) (Node, EntryInfo, error) {
+func (_m *MockKBFSOps) CreateFile(ctx context.Context, dir IFCERFTNode, name string, isExec bool, excl EXCL) (IFCERFTNode, EntryInfo, error) {
 	ret := _m.ctrl.Call(_m, "CreateFile", ctx, dir, name, isExec, excl)
-	ret0, _ := ret[0].(Node)
+	ret0, _ := ret[0].(IFCERFTNode)
 	ret1, _ := ret[1].(EntryInfo)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -305,7 +305,7 @@ func (_mr *_MockKBFSOpsRecorder) CreateFile(arg0, arg1, arg2, arg3, arg4 interfa
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CreateFile", arg0, arg1, arg2, arg3, arg4)
 }
 
-func (_m *MockKBFSOps) CreateLink(ctx context.Context, dir Node, fromName string, toPath string) (EntryInfo, error) {
+func (_m *MockKBFSOps) CreateLink(ctx context.Context, dir IFCERFTNode, fromName string, toPath string) (EntryInfo, error) {
 	ret := _m.ctrl.Call(_m, "CreateLink", ctx, dir, fromName, toPath)
 	ret0, _ := ret[0].(EntryInfo)
 	ret1, _ := ret[1].(error)
@@ -316,7 +316,7 @@ func (_mr *_MockKBFSOpsRecorder) CreateLink(arg0, arg1, arg2, arg3 interface{}) 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CreateLink", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockKBFSOps) RemoveDir(ctx context.Context, dir Node, dirName string) error {
+func (_m *MockKBFSOps) RemoveDir(ctx context.Context, dir IFCERFTNode, dirName string) error {
 	ret := _m.ctrl.Call(_m, "RemoveDir", ctx, dir, dirName)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -326,7 +326,7 @@ func (_mr *_MockKBFSOpsRecorder) RemoveDir(arg0, arg1, arg2 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RemoveDir", arg0, arg1, arg2)
 }
 
-func (_m *MockKBFSOps) RemoveEntry(ctx context.Context, dir Node, name string) error {
+func (_m *MockKBFSOps) RemoveEntry(ctx context.Context, dir IFCERFTNode, name string) error {
 	ret := _m.ctrl.Call(_m, "RemoveEntry", ctx, dir, name)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -336,7 +336,7 @@ func (_mr *_MockKBFSOpsRecorder) RemoveEntry(arg0, arg1, arg2 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RemoveEntry", arg0, arg1, arg2)
 }
 
-func (_m *MockKBFSOps) Rename(ctx context.Context, oldParent Node, oldName string, newParent Node, newName string) error {
+func (_m *MockKBFSOps) Rename(ctx context.Context, oldParent IFCERFTNode, oldName string, newParent IFCERFTNode, newName string) error {
 	ret := _m.ctrl.Call(_m, "Rename", ctx, oldParent, oldName, newParent, newName)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -346,7 +346,7 @@ func (_mr *_MockKBFSOpsRecorder) Rename(arg0, arg1, arg2, arg3, arg4 interface{}
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Rename", arg0, arg1, arg2, arg3, arg4)
 }
 
-func (_m *MockKBFSOps) Read(ctx context.Context, file Node, dest []byte, off int64) (int64, error) {
+func (_m *MockKBFSOps) Read(ctx context.Context, file IFCERFTNode, dest []byte, off int64) (int64, error) {
 	ret := _m.ctrl.Call(_m, "Read", ctx, file, dest, off)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
@@ -357,7 +357,7 @@ func (_mr *_MockKBFSOpsRecorder) Read(arg0, arg1, arg2, arg3 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Read", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockKBFSOps) Write(ctx context.Context, file Node, data []byte, off int64) error {
+func (_m *MockKBFSOps) Write(ctx context.Context, file IFCERFTNode, data []byte, off int64) error {
 	ret := _m.ctrl.Call(_m, "Write", ctx, file, data, off)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -367,7 +367,7 @@ func (_mr *_MockKBFSOpsRecorder) Write(arg0, arg1, arg2, arg3 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Write", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockKBFSOps) Truncate(ctx context.Context, file Node, size uint64) error {
+func (_m *MockKBFSOps) Truncate(ctx context.Context, file IFCERFTNode, size uint64) error {
 	ret := _m.ctrl.Call(_m, "Truncate", ctx, file, size)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -377,7 +377,7 @@ func (_mr *_MockKBFSOpsRecorder) Truncate(arg0, arg1, arg2 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Truncate", arg0, arg1, arg2)
 }
 
-func (_m *MockKBFSOps) SetEx(ctx context.Context, file Node, ex bool) error {
+func (_m *MockKBFSOps) SetEx(ctx context.Context, file IFCERFTNode, ex bool) error {
 	ret := _m.ctrl.Call(_m, "SetEx", ctx, file, ex)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -387,7 +387,7 @@ func (_mr *_MockKBFSOpsRecorder) SetEx(arg0, arg1, arg2 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetEx", arg0, arg1, arg2)
 }
 
-func (_m *MockKBFSOps) SetMtime(ctx context.Context, file Node, mtime *time.Time) error {
+func (_m *MockKBFSOps) SetMtime(ctx context.Context, file IFCERFTNode, mtime *time.Time) error {
 	ret := _m.ctrl.Call(_m, "SetMtime", ctx, file, mtime)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -397,7 +397,7 @@ func (_mr *_MockKBFSOpsRecorder) SetMtime(arg0, arg1, arg2 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetMtime", arg0, arg1, arg2)
 }
 
-func (_m *MockKBFSOps) Sync(ctx context.Context, file Node) error {
+func (_m *MockKBFSOps) Sync(ctx context.Context, file IFCERFTNode) error {
 	ret := _m.ctrl.Call(_m, "Sync", ctx, file)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -1128,9 +1128,9 @@ func (_m *MockBlockCache) EXPECT() *_MockBlockCacheRecorder {
 	return _m.recorder
 }
 
-func (_m *MockBlockCache) Get(ptr BlockPointer) (Block, error) {
+func (_m *MockBlockCache) Get(ptr BlockPointer) (IFCERFTBlock, error) {
 	ret := _m.ctrl.Call(_m, "Get", ptr)
-	ret0, _ := ret[0].(Block)
+	ret0, _ := ret[0].(IFCERFTBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1150,7 +1150,7 @@ func (_mr *_MockBlockCacheRecorder) CheckForKnownPtr(arg0, arg1 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckForKnownPtr", arg0, arg1)
 }
 
-func (_m *MockBlockCache) Put(ptr BlockPointer, tlf TlfID, block Block, lifetime BlockCacheLifetime) error {
+func (_m *MockBlockCache) Put(ptr BlockPointer, tlf TlfID, block IFCERFTBlock, lifetime IFCERFTBlockCacheLifetime) error {
 	ret := _m.ctrl.Call(_m, "Put", ptr, tlf, block, lifetime)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -1211,9 +1211,9 @@ func (_m *MockDirtyBlockCache) EXPECT() *_MockDirtyBlockCacheRecorder {
 	return _m.recorder
 }
 
-func (_m *MockDirtyBlockCache) Get(ptr BlockPointer, branch BranchName) (Block, error) {
+func (_m *MockDirtyBlockCache) Get(ptr BlockPointer, branch BranchName) (IFCERFTBlock, error) {
 	ret := _m.ctrl.Call(_m, "Get", ptr, branch)
-	ret0, _ := ret[0].(Block)
+	ret0, _ := ret[0].(IFCERFTBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1222,7 +1222,7 @@ func (_mr *_MockDirtyBlockCacheRecorder) Get(arg0, arg1 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1)
 }
 
-func (_m *MockDirtyBlockCache) Put(ptr BlockPointer, branch BranchName, block Block) error {
+func (_m *MockDirtyBlockCache) Put(ptr BlockPointer, branch BranchName, block IFCERFTBlock) error {
 	ret := _m.ctrl.Call(_m, "Put", ptr, branch, block)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -1252,9 +1252,9 @@ func (_mr *_MockDirtyBlockCacheRecorder) IsDirty(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsDirty", arg0, arg1)
 }
 
-func (_m *MockDirtyBlockCache) RequestPermissionToDirty(ctx context.Context, estimatedDirtyBytes int64) (DirtyPermChan, error) {
+func (_m *MockDirtyBlockCache) RequestPermissionToDirty(ctx context.Context, estimatedDirtyBytes int64) (IFCERFTDirtyPermChan, error) {
 	ret := _m.ctrl.Call(_m, "RequestPermissionToDirty", ctx, estimatedDirtyBytes)
-	ret0, _ := ret[0].(DirtyPermChan)
+	ret0, _ := ret[0].(IFCERFTDirtyPermChan)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1536,7 +1536,7 @@ func (_mr *_MockcryptoPureRecorder) DecryptPrivateMetadata(arg0, arg1 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptPrivateMetadata", arg0, arg1)
 }
 
-func (_m *MockcryptoPure) EncryptBlock(block Block, key BlockCryptKey) (int, EncryptedBlock, error) {
+func (_m *MockcryptoPure) EncryptBlock(block IFCERFTBlock, key BlockCryptKey) (int, EncryptedBlock, error) {
 	ret := _m.ctrl.Call(_m, "EncryptBlock", block, key)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(EncryptedBlock)
@@ -1548,7 +1548,7 @@ func (_mr *_MockcryptoPureRecorder) EncryptBlock(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptBlock", arg0, arg1)
 }
 
-func (_m *MockcryptoPure) DecryptBlock(encryptedBlock EncryptedBlock, key BlockCryptKey, block Block) error {
+func (_m *MockcryptoPure) DecryptBlock(encryptedBlock EncryptedBlock, key BlockCryptKey, block IFCERFTBlock) error {
 	ret := _m.ctrl.Call(_m, "DecryptBlock", encryptedBlock, key, block)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -1822,7 +1822,7 @@ func (_mr *_MockCryptoRecorder) DecryptPrivateMetadata(arg0, arg1 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptPrivateMetadata", arg0, arg1)
 }
 
-func (_m *MockCrypto) EncryptBlock(block Block, key BlockCryptKey) (int, EncryptedBlock, error) {
+func (_m *MockCrypto) EncryptBlock(block IFCERFTBlock, key BlockCryptKey) (int, EncryptedBlock, error) {
 	ret := _m.ctrl.Call(_m, "EncryptBlock", block, key)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(EncryptedBlock)
@@ -1834,7 +1834,7 @@ func (_mr *_MockCryptoRecorder) EncryptBlock(arg0, arg1 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptBlock", arg0, arg1)
 }
 
-func (_m *MockCrypto) DecryptBlock(encryptedBlock EncryptedBlock, key BlockCryptKey, block Block) error {
+func (_m *MockCrypto) DecryptBlock(encryptedBlock EncryptedBlock, key BlockCryptKey, block IFCERFTBlock) error {
 	ret := _m.ctrl.Call(_m, "DecryptBlock", encryptedBlock, key, block)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2189,7 +2189,7 @@ func (_m *MockBlockOps) EXPECT() *_MockBlockOpsRecorder {
 	return _m.recorder
 }
 
-func (_m *MockBlockOps) Get(ctx context.Context, md *RootMetadata, blockPtr BlockPointer, block Block) error {
+func (_m *MockBlockOps) Get(ctx context.Context, md *RootMetadata, blockPtr BlockPointer, block IFCERFTBlock) error {
 	ret := _m.ctrl.Call(_m, "Get", ctx, md, blockPtr, block)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2199,7 +2199,7 @@ func (_mr *_MockBlockOpsRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockOps) Ready(ctx context.Context, md *RootMetadata, block Block) (BlockID, int, ReadyBlockData, error) {
+func (_m *MockBlockOps) Ready(ctx context.Context, md *RootMetadata, block IFCERFTBlock) (BlockID, int, ReadyBlockData, error) {
 	ret := _m.ctrl.Call(_m, "Ready", ctx, md, block)
 	ret0, _ := ret[0].(BlockID)
 	ret1, _ := ret[1].(int)
@@ -2600,7 +2600,7 @@ func (_mr *_MockmdServerLocalRecorder) isShutdown() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "isShutdown")
 }
 
-func (_m *MockmdServerLocal) copy(config Config) mdServerLocal {
+func (_m *MockmdServerLocal) copy(config IFCERFTConfig) mdServerLocal {
 	ret := _m.ctrl.Call(_m, "copy", config)
 	ret0, _ := ret[0].(mdServerLocal)
 	return ret0
@@ -2955,7 +2955,7 @@ func (_m *MockObserver) EXPECT() *_MockObserverRecorder {
 	return _m.recorder
 }
 
-func (_m *MockObserver) LocalChange(ctx context.Context, node Node, write WriteRange) {
+func (_m *MockObserver) LocalChange(ctx context.Context, node IFCERFTNode, write WriteRange) {
 	_m.ctrl.Call(_m, "LocalChange", ctx, node, write)
 }
 
@@ -2963,7 +2963,7 @@ func (_mr *_MockObserverRecorder) LocalChange(arg0, arg1, arg2 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "LocalChange", arg0, arg1, arg2)
 }
 
-func (_m *MockObserver) BatchChanges(ctx context.Context, changes []NodeChange) {
+func (_m *MockObserver) BatchChanges(ctx context.Context, changes []IFCERFTNodeChange) {
 	_m.ctrl.Call(_m, "BatchChanges", ctx, changes)
 }
 
@@ -3000,7 +3000,7 @@ func (_m *MockNotifier) EXPECT() *_MockNotifierRecorder {
 	return _m.recorder
 }
 
-func (_m *MockNotifier) RegisterForChanges(folderBranches []FolderBranch, obs Observer) error {
+func (_m *MockNotifier) RegisterForChanges(folderBranches []FolderBranch, obs IFCERFTObserver) error {
 	ret := _m.ctrl.Call(_m, "RegisterForChanges", folderBranches, obs)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3010,7 +3010,7 @@ func (_mr *_MockNotifierRecorder) RegisterForChanges(arg0, arg1 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RegisterForChanges", arg0, arg1)
 }
 
-func (_m *MockNotifier) UnregisterFromChanges(folderBranches []FolderBranch, obs Observer) error {
+func (_m *MockNotifier) UnregisterFromChanges(folderBranches []FolderBranch, obs IFCERFTObserver) error {
 	ret := _m.ctrl.Call(_m, "UnregisterFromChanges", folderBranches, obs)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3103,9 +3103,9 @@ func (_m *MockConfig) EXPECT() *_MockConfigRecorder {
 	return _m.recorder
 }
 
-func (_m *MockConfig) KBFSOps() KBFSOps {
+func (_m *MockConfig) KBFSOps() IFCERFTKBFSOps {
 	ret := _m.ctrl.Call(_m, "KBFSOps")
-	ret0, _ := ret[0].(KBFSOps)
+	ret0, _ := ret[0].(IFCERFTKBFSOps)
 	return ret0
 }
 
@@ -3113,7 +3113,7 @@ func (_mr *_MockConfigRecorder) KBFSOps() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "KBFSOps")
 }
 
-func (_m *MockConfig) SetKBFSOps(_param0 KBFSOps) {
+func (_m *MockConfig) SetKBFSOps(_param0 IFCERFTKBFSOps) {
 	_m.ctrl.Call(_m, "SetKBFSOps", _param0)
 }
 
@@ -3121,9 +3121,9 @@ func (_mr *_MockConfigRecorder) SetKBFSOps(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKBFSOps", arg0)
 }
 
-func (_m *MockConfig) KBPKI() KBPKI {
+func (_m *MockConfig) KBPKI() IFCERFTKBPKI {
 	ret := _m.ctrl.Call(_m, "KBPKI")
-	ret0, _ := ret[0].(KBPKI)
+	ret0, _ := ret[0].(IFCERFTKBPKI)
 	return ret0
 }
 
@@ -3131,7 +3131,7 @@ func (_mr *_MockConfigRecorder) KBPKI() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "KBPKI")
 }
 
-func (_m *MockConfig) SetKBPKI(_param0 KBPKI) {
+func (_m *MockConfig) SetKBPKI(_param0 IFCERFTKBPKI) {
 	_m.ctrl.Call(_m, "SetKBPKI", _param0)
 }
 
@@ -3139,9 +3139,9 @@ func (_mr *_MockConfigRecorder) SetKBPKI(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKBPKI", arg0)
 }
 
-func (_m *MockConfig) KeyManager() KeyManager {
+func (_m *MockConfig) KeyManager() IFCERFTKeyManager {
 	ret := _m.ctrl.Call(_m, "KeyManager")
-	ret0, _ := ret[0].(KeyManager)
+	ret0, _ := ret[0].(IFCERFTKeyManager)
 	return ret0
 }
 
@@ -3149,7 +3149,7 @@ func (_mr *_MockConfigRecorder) KeyManager() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "KeyManager")
 }
 
-func (_m *MockConfig) SetKeyManager(_param0 KeyManager) {
+func (_m *MockConfig) SetKeyManager(_param0 IFCERFTKeyManager) {
 	_m.ctrl.Call(_m, "SetKeyManager", _param0)
 }
 
@@ -3157,9 +3157,9 @@ func (_mr *_MockConfigRecorder) SetKeyManager(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKeyManager", arg0)
 }
 
-func (_m *MockConfig) Reporter() Reporter {
+func (_m *MockConfig) Reporter() IFCERFTReporter {
 	ret := _m.ctrl.Call(_m, "Reporter")
-	ret0, _ := ret[0].(Reporter)
+	ret0, _ := ret[0].(IFCERFTReporter)
 	return ret0
 }
 
@@ -3167,7 +3167,7 @@ func (_mr *_MockConfigRecorder) Reporter() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Reporter")
 }
 
-func (_m *MockConfig) SetReporter(_param0 Reporter) {
+func (_m *MockConfig) SetReporter(_param0 IFCERFTReporter) {
 	_m.ctrl.Call(_m, "SetReporter", _param0)
 }
 
@@ -3175,9 +3175,9 @@ func (_mr *_MockConfigRecorder) SetReporter(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetReporter", arg0)
 }
 
-func (_m *MockConfig) MDCache() MDCache {
+func (_m *MockConfig) MDCache() IFCERFTMDCache {
 	ret := _m.ctrl.Call(_m, "MDCache")
-	ret0, _ := ret[0].(MDCache)
+	ret0, _ := ret[0].(IFCERFTMDCache)
 	return ret0
 }
 
@@ -3185,7 +3185,7 @@ func (_mr *_MockConfigRecorder) MDCache() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MDCache")
 }
 
-func (_m *MockConfig) SetMDCache(_param0 MDCache) {
+func (_m *MockConfig) SetMDCache(_param0 IFCERFTMDCache) {
 	_m.ctrl.Call(_m, "SetMDCache", _param0)
 }
 
@@ -3193,9 +3193,9 @@ func (_mr *_MockConfigRecorder) SetMDCache(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetMDCache", arg0)
 }
 
-func (_m *MockConfig) KeyCache() KeyCache {
+func (_m *MockConfig) KeyCache() IFCERFTKeyCache {
 	ret := _m.ctrl.Call(_m, "KeyCache")
-	ret0, _ := ret[0].(KeyCache)
+	ret0, _ := ret[0].(IFCERFTKeyCache)
 	return ret0
 }
 
@@ -3203,7 +3203,7 @@ func (_mr *_MockConfigRecorder) KeyCache() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "KeyCache")
 }
 
-func (_m *MockConfig) SetKeyCache(_param0 KeyCache) {
+func (_m *MockConfig) SetKeyCache(_param0 IFCERFTKeyCache) {
 	_m.ctrl.Call(_m, "SetKeyCache", _param0)
 }
 
@@ -3211,9 +3211,9 @@ func (_mr *_MockConfigRecorder) SetKeyCache(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKeyCache", arg0)
 }
 
-func (_m *MockConfig) BlockCache() BlockCache {
+func (_m *MockConfig) BlockCache() IFCERFTBlockCache {
 	ret := _m.ctrl.Call(_m, "BlockCache")
-	ret0, _ := ret[0].(BlockCache)
+	ret0, _ := ret[0].(IFCERFTBlockCache)
 	return ret0
 }
 
@@ -3221,7 +3221,7 @@ func (_mr *_MockConfigRecorder) BlockCache() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "BlockCache")
 }
 
-func (_m *MockConfig) SetBlockCache(_param0 BlockCache) {
+func (_m *MockConfig) SetBlockCache(_param0 IFCERFTBlockCache) {
 	_m.ctrl.Call(_m, "SetBlockCache", _param0)
 }
 
@@ -3229,9 +3229,9 @@ func (_mr *_MockConfigRecorder) SetBlockCache(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetBlockCache", arg0)
 }
 
-func (_m *MockConfig) DirtyBlockCache() DirtyBlockCache {
+func (_m *MockConfig) DirtyBlockCache() IFCERFTDirtyBlockCache {
 	ret := _m.ctrl.Call(_m, "DirtyBlockCache")
-	ret0, _ := ret[0].(DirtyBlockCache)
+	ret0, _ := ret[0].(IFCERFTDirtyBlockCache)
 	return ret0
 }
 
@@ -3239,7 +3239,7 @@ func (_mr *_MockConfigRecorder) DirtyBlockCache() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DirtyBlockCache")
 }
 
-func (_m *MockConfig) SetDirtyBlockCache(_param0 DirtyBlockCache) {
+func (_m *MockConfig) SetDirtyBlockCache(_param0 IFCERFTDirtyBlockCache) {
 	_m.ctrl.Call(_m, "SetDirtyBlockCache", _param0)
 }
 
@@ -3247,9 +3247,9 @@ func (_mr *_MockConfigRecorder) SetDirtyBlockCache(arg0 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetDirtyBlockCache", arg0)
 }
 
-func (_m *MockConfig) Crypto() Crypto {
+func (_m *MockConfig) Crypto() IFCERFTCrypto {
 	ret := _m.ctrl.Call(_m, "Crypto")
-	ret0, _ := ret[0].(Crypto)
+	ret0, _ := ret[0].(IFCERFTCrypto)
 	return ret0
 }
 
@@ -3257,7 +3257,7 @@ func (_mr *_MockConfigRecorder) Crypto() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Crypto")
 }
 
-func (_m *MockConfig) SetCrypto(_param0 Crypto) {
+func (_m *MockConfig) SetCrypto(_param0 IFCERFTCrypto) {
 	_m.ctrl.Call(_m, "SetCrypto", _param0)
 }
 
@@ -3265,9 +3265,9 @@ func (_mr *_MockConfigRecorder) SetCrypto(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetCrypto", arg0)
 }
 
-func (_m *MockConfig) Codec() Codec {
+func (_m *MockConfig) Codec() IFCERFTCodec {
 	ret := _m.ctrl.Call(_m, "Codec")
-	ret0, _ := ret[0].(Codec)
+	ret0, _ := ret[0].(IFCERFTCodec)
 	return ret0
 }
 
@@ -3275,7 +3275,7 @@ func (_mr *_MockConfigRecorder) Codec() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Codec")
 }
 
-func (_m *MockConfig) SetCodec(_param0 Codec) {
+func (_m *MockConfig) SetCodec(_param0 IFCERFTCodec) {
 	_m.ctrl.Call(_m, "SetCodec", _param0)
 }
 
@@ -3283,9 +3283,9 @@ func (_mr *_MockConfigRecorder) SetCodec(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetCodec", arg0)
 }
 
-func (_m *MockConfig) MDOps() MDOps {
+func (_m *MockConfig) MDOps() IFCERFTMDOps {
 	ret := _m.ctrl.Call(_m, "MDOps")
-	ret0, _ := ret[0].(MDOps)
+	ret0, _ := ret[0].(IFCERFTMDOps)
 	return ret0
 }
 
@@ -3293,7 +3293,7 @@ func (_mr *_MockConfigRecorder) MDOps() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MDOps")
 }
 
-func (_m *MockConfig) SetMDOps(_param0 MDOps) {
+func (_m *MockConfig) SetMDOps(_param0 IFCERFTMDOps) {
 	_m.ctrl.Call(_m, "SetMDOps", _param0)
 }
 
@@ -3301,9 +3301,9 @@ func (_mr *_MockConfigRecorder) SetMDOps(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetMDOps", arg0)
 }
 
-func (_m *MockConfig) KeyOps() KeyOps {
+func (_m *MockConfig) KeyOps() IFCERFTKeyOps {
 	ret := _m.ctrl.Call(_m, "KeyOps")
-	ret0, _ := ret[0].(KeyOps)
+	ret0, _ := ret[0].(IFCERFTKeyOps)
 	return ret0
 }
 
@@ -3311,7 +3311,7 @@ func (_mr *_MockConfigRecorder) KeyOps() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "KeyOps")
 }
 
-func (_m *MockConfig) SetKeyOps(_param0 KeyOps) {
+func (_m *MockConfig) SetKeyOps(_param0 IFCERFTKeyOps) {
 	_m.ctrl.Call(_m, "SetKeyOps", _param0)
 }
 
@@ -3319,9 +3319,9 @@ func (_mr *_MockConfigRecorder) SetKeyOps(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKeyOps", arg0)
 }
 
-func (_m *MockConfig) BlockOps() BlockOps {
+func (_m *MockConfig) BlockOps() IFCERFTBlockOps {
 	ret := _m.ctrl.Call(_m, "BlockOps")
-	ret0, _ := ret[0].(BlockOps)
+	ret0, _ := ret[0].(IFCERFTBlockOps)
 	return ret0
 }
 
@@ -3329,7 +3329,7 @@ func (_mr *_MockConfigRecorder) BlockOps() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "BlockOps")
 }
 
-func (_m *MockConfig) SetBlockOps(_param0 BlockOps) {
+func (_m *MockConfig) SetBlockOps(_param0 IFCERFTBlockOps) {
 	_m.ctrl.Call(_m, "SetBlockOps", _param0)
 }
 
@@ -3337,9 +3337,9 @@ func (_mr *_MockConfigRecorder) SetBlockOps(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetBlockOps", arg0)
 }
 
-func (_m *MockConfig) MDServer() MDServer {
+func (_m *MockConfig) MDServer() IFCERFTMDServer {
 	ret := _m.ctrl.Call(_m, "MDServer")
-	ret0, _ := ret[0].(MDServer)
+	ret0, _ := ret[0].(IFCERFTMDServer)
 	return ret0
 }
 
@@ -3347,7 +3347,7 @@ func (_mr *_MockConfigRecorder) MDServer() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MDServer")
 }
 
-func (_m *MockConfig) SetMDServer(_param0 MDServer) {
+func (_m *MockConfig) SetMDServer(_param0 IFCERFTMDServer) {
 	_m.ctrl.Call(_m, "SetMDServer", _param0)
 }
 
@@ -3355,9 +3355,9 @@ func (_mr *_MockConfigRecorder) SetMDServer(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetMDServer", arg0)
 }
 
-func (_m *MockConfig) BlockServer() BlockServer {
+func (_m *MockConfig) BlockServer() IFCERFTBlockServer {
 	ret := _m.ctrl.Call(_m, "BlockServer")
-	ret0, _ := ret[0].(BlockServer)
+	ret0, _ := ret[0].(IFCERFTBlockServer)
 	return ret0
 }
 
@@ -3365,7 +3365,7 @@ func (_mr *_MockConfigRecorder) BlockServer() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "BlockServer")
 }
 
-func (_m *MockConfig) SetBlockServer(_param0 BlockServer) {
+func (_m *MockConfig) SetBlockServer(_param0 IFCERFTBlockServer) {
 	_m.ctrl.Call(_m, "SetBlockServer", _param0)
 }
 
@@ -3373,9 +3373,9 @@ func (_mr *_MockConfigRecorder) SetBlockServer(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetBlockServer", arg0)
 }
 
-func (_m *MockConfig) KeyServer() KeyServer {
+func (_m *MockConfig) KeyServer() IFCERFTKeyServer {
 	ret := _m.ctrl.Call(_m, "KeyServer")
-	ret0, _ := ret[0].(KeyServer)
+	ret0, _ := ret[0].(IFCERFTKeyServer)
 	return ret0
 }
 
@@ -3383,7 +3383,7 @@ func (_mr *_MockConfigRecorder) KeyServer() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "KeyServer")
 }
 
-func (_m *MockConfig) SetKeyServer(_param0 KeyServer) {
+func (_m *MockConfig) SetKeyServer(_param0 IFCERFTKeyServer) {
 	_m.ctrl.Call(_m, "SetKeyServer", _param0)
 }
 
@@ -3391,9 +3391,9 @@ func (_mr *_MockConfigRecorder) SetKeyServer(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKeyServer", arg0)
 }
 
-func (_m *MockConfig) KeybaseDaemon() KeybaseDaemon {
+func (_m *MockConfig) KeybaseDaemon() IFCERFTKeybaseDaemon {
 	ret := _m.ctrl.Call(_m, "KeybaseDaemon")
-	ret0, _ := ret[0].(KeybaseDaemon)
+	ret0, _ := ret[0].(IFCERFTKeybaseDaemon)
 	return ret0
 }
 
@@ -3401,7 +3401,7 @@ func (_mr *_MockConfigRecorder) KeybaseDaemon() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "KeybaseDaemon")
 }
 
-func (_m *MockConfig) SetKeybaseDaemon(_param0 KeybaseDaemon) {
+func (_m *MockConfig) SetKeybaseDaemon(_param0 IFCERFTKeybaseDaemon) {
 	_m.ctrl.Call(_m, "SetKeybaseDaemon", _param0)
 }
 
@@ -3409,9 +3409,9 @@ func (_mr *_MockConfigRecorder) SetKeybaseDaemon(arg0 interface{}) *gomock.Call 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKeybaseDaemon", arg0)
 }
 
-func (_m *MockConfig) BlockSplitter() BlockSplitter {
+func (_m *MockConfig) BlockSplitter() IFCERFTBlockSplitter {
 	ret := _m.ctrl.Call(_m, "BlockSplitter")
-	ret0, _ := ret[0].(BlockSplitter)
+	ret0, _ := ret[0].(IFCERFTBlockSplitter)
 	return ret0
 }
 
@@ -3419,7 +3419,7 @@ func (_mr *_MockConfigRecorder) BlockSplitter() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "BlockSplitter")
 }
 
-func (_m *MockConfig) SetBlockSplitter(_param0 BlockSplitter) {
+func (_m *MockConfig) SetBlockSplitter(_param0 IFCERFTBlockSplitter) {
 	_m.ctrl.Call(_m, "SetBlockSplitter", _param0)
 }
 
@@ -3427,9 +3427,9 @@ func (_mr *_MockConfigRecorder) SetBlockSplitter(arg0 interface{}) *gomock.Call 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetBlockSplitter", arg0)
 }
 
-func (_m *MockConfig) Notifier() Notifier {
+func (_m *MockConfig) Notifier() IFCERFTNotifier {
 	ret := _m.ctrl.Call(_m, "Notifier")
-	ret0, _ := ret[0].(Notifier)
+	ret0, _ := ret[0].(IFCERFTNotifier)
 	return ret0
 }
 
@@ -3437,7 +3437,7 @@ func (_mr *_MockConfigRecorder) Notifier() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Notifier")
 }
 
-func (_m *MockConfig) SetNotifier(_param0 Notifier) {
+func (_m *MockConfig) SetNotifier(_param0 IFCERFTNotifier) {
 	_m.ctrl.Call(_m, "SetNotifier", _param0)
 }
 
@@ -3445,9 +3445,9 @@ func (_mr *_MockConfigRecorder) SetNotifier(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetNotifier", arg0)
 }
 
-func (_m *MockConfig) Clock() Clock {
+func (_m *MockConfig) Clock() IFCERFTClock {
 	ret := _m.ctrl.Call(_m, "Clock")
-	ret0, _ := ret[0].(Clock)
+	ret0, _ := ret[0].(IFCERFTClock)
 	return ret0
 }
 
@@ -3455,7 +3455,7 @@ func (_mr *_MockConfigRecorder) Clock() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Clock")
 }
 
-func (_m *MockConfig) SetClock(_param0 Clock) {
+func (_m *MockConfig) SetClock(_param0 IFCERFTClock) {
 	_m.ctrl.Call(_m, "SetClock", _param0)
 }
 
@@ -3463,9 +3463,9 @@ func (_mr *_MockConfigRecorder) SetClock(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetClock", arg0)
 }
 
-func (_m *MockConfig) ConflictRenamer() ConflictRenamer {
+func (_m *MockConfig) ConflictRenamer() IFCERFTConflictRenamer {
 	ret := _m.ctrl.Call(_m, "ConflictRenamer")
-	ret0, _ := ret[0].(ConflictRenamer)
+	ret0, _ := ret[0].(IFCERFTConflictRenamer)
 	return ret0
 }
 
@@ -3473,7 +3473,7 @@ func (_mr *_MockConfigRecorder) ConflictRenamer() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ConflictRenamer")
 }
 
-func (_m *MockConfig) SetConflictRenamer(_param0 ConflictRenamer) {
+func (_m *MockConfig) SetConflictRenamer(_param0 IFCERFTConflictRenamer) {
 	_m.ctrl.Call(_m, "SetConflictRenamer", _param0)
 }
 
@@ -3501,9 +3501,9 @@ func (_mr *_MockConfigRecorder) DataVersion() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DataVersion")
 }
 
-func (_m *MockConfig) RekeyQueue() RekeyQueue {
+func (_m *MockConfig) RekeyQueue() IFCERFTRekeyQueue {
 	ret := _m.ctrl.Call(_m, "RekeyQueue")
-	ret0, _ := ret[0].(RekeyQueue)
+	ret0, _ := ret[0].(IFCERFTRekeyQueue)
 	return ret0
 }
 
@@ -3511,7 +3511,7 @@ func (_mr *_MockConfigRecorder) RekeyQueue() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RekeyQueue")
 }
 
-func (_m *MockConfig) SetRekeyQueue(_param0 RekeyQueue) {
+func (_m *MockConfig) SetRekeyQueue(_param0 IFCERFTRekeyQueue) {
 	_m.ctrl.Call(_m, "SetRekeyQueue", _param0)
 }
 
@@ -3702,9 +3702,9 @@ func (_m *MockNodeCache) EXPECT() *_MockNodeCacheRecorder {
 	return _m.recorder
 }
 
-func (_m *MockNodeCache) GetOrCreate(ptr BlockPointer, name string, parent Node) (Node, error) {
+func (_m *MockNodeCache) GetOrCreate(ptr BlockPointer, name string, parent IFCERFTNode) (IFCERFTNode, error) {
 	ret := _m.ctrl.Call(_m, "GetOrCreate", ptr, name, parent)
-	ret0, _ := ret[0].(Node)
+	ret0, _ := ret[0].(IFCERFTNode)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3713,9 +3713,9 @@ func (_mr *_MockNodeCacheRecorder) GetOrCreate(arg0, arg1, arg2 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetOrCreate", arg0, arg1, arg2)
 }
 
-func (_m *MockNodeCache) Get(ref blockRef) Node {
+func (_m *MockNodeCache) Get(ref blockRef) IFCERFTNode {
 	ret := _m.ctrl.Call(_m, "Get", ref)
-	ret0, _ := ret[0].(Node)
+	ret0, _ := ret[0].(IFCERFTNode)
 	return ret0
 }
 
@@ -3731,7 +3731,7 @@ func (_mr *_MockNodeCacheRecorder) UpdatePointer(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdatePointer", arg0, arg1)
 }
 
-func (_m *MockNodeCache) Move(ref blockRef, newParent Node, newName string) error {
+func (_m *MockNodeCache) Move(ref blockRef, newParent IFCERFTNode, newName string) error {
 	ret := _m.ctrl.Call(_m, "Move", ref, newParent, newName)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3749,7 +3749,7 @@ func (_mr *_MockNodeCacheRecorder) Unlink(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Unlink", arg0, arg1)
 }
 
-func (_m *MockNodeCache) PathFromNode(node Node) path {
+func (_m *MockNodeCache) PathFromNode(node IFCERFTNode) path {
 	ret := _m.ctrl.Call(_m, "PathFromNode", node)
 	ret0, _ := ret[0].(path)
 	return ret0

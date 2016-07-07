@@ -14,9 +14,9 @@ import (
 )
 
 // KeybaseDaemonFn defines a constructor for a KeybaseDaemonFn
-type KeybaseDaemonFn func(config Config, params InitParams, ctx Context, log logger.Logger) (KeybaseDaemon, error)
+type KeybaseDaemonFn func(config IFCERFTConfig, params InitParams, ctx Context, log logger.Logger) (IFCERFTKeybaseDaemon, error)
 
-func makeKeybaseDaemon(config Config, params InitParams, ctx Context, log logger.Logger) (KeybaseDaemon, error) {
+func makeKeybaseDaemon(config IFCERFTConfig, params InitParams, ctx Context, log logger.Logger) (IFCERFTKeybaseDaemon, error) {
 	localUser := libkb.NewNormalizedUsername(params.LocalUser)
 	if len(localUser) == 0 {
 		ctx.ConfigureSocketInfo()

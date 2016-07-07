@@ -25,8 +25,7 @@ func totalBlockRefs(m map[BlockID]map[BlockRefNonce]blockRefLocalStatus) int {
 // Test that quota reclamation works for a simple case where the user
 // does a few updates, then lets quota reclamation run, and we make
 // sure that all historical blocks have been deleted.
-func testQuotaReclamation(t *testing.T, ctx context.Context, config Config,
-	userName libkb.NormalizedUsername) {
+func testQuotaReclamation(t *testing.T, ctx context.Context, config IFCERFTConfig, userName libkb.NormalizedUsername) {
 	clock, now := newTestClockAndTimeNow()
 	config.SetClock(clock)
 

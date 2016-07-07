@@ -41,27 +41,27 @@ const (
 // server objects (no KBFS operations used RPCs).
 type ConfigLocal struct {
 	lock        sync.RWMutex
-	kbfs        KBFSOps
-	keyman      KeyManager
-	rep         Reporter
-	kcache      KeyCache
-	bcache      BlockCache
-	dirtyBcache DirtyBlockCache
-	codec       Codec
-	mdops       MDOps
-	kops        KeyOps
-	crypto      Crypto
-	mdcache     MDCache
-	bops        BlockOps
-	mdserv      MDServer
-	bserv       BlockServer
-	keyserv     KeyServer
-	daemon      KeybaseDaemon
-	bsplit      BlockSplitter
-	notifier    Notifier
-	clock       Clock
-	kbpki       KBPKI
-	renamer     ConflictRenamer
+	kbfs        IFCERFTKBFSOps
+	keyman      IFCERFTKeyManager
+	rep         IFCERFTReporter
+	kcache      IFCERFTKeyCache
+	bcache      IFCERFTBlockCache
+	dirtyBcache IFCERFTDirtyBlockCache
+	codec       IFCERFTCodec
+	mdops       IFCERFTMDOps
+	kops        IFCERFTKeyOps
+	crypto      IFCERFTCrypto
+	mdcache     IFCERFTMDCache
+	bops        IFCERFTBlockOps
+	mdserv      IFCERFTMDServer
+	bserv       IFCERFTBlockServer
+	keyserv     IFCERFTKeyServer
+	daemon      IFCERFTKeybaseDaemon
+	bsplit      IFCERFTBlockSplitter
+	notifier    IFCERFTNotifier
+	clock       IFCERFTClock
+	kbpki       IFCERFTKBPKI
+	renamer     IFCERFTConflictRenamer
 	registry    metrics.Registry
 	loggerFn    func(prefix string) logger.Logger
 	noBGFlush   bool // logic opposite so the default value is the common setting
@@ -70,20 +70,20 @@ type ConfigLocal struct {
 	maxFileBytes uint64
 	maxNameBytes uint32
 	maxDirBytes  uint64
-	rekeyQueue   RekeyQueue
+	rekeyQueue   IFCERFTRekeyQueue
 
 	qrPeriod   time.Duration
 	qrUnrefAge time.Duration
 
 	// allKnownConfigsForTesting is used for testing, and contains all created
 	// Config objects in this test.
-	allKnownConfigsForTesting *[]Config
+	allKnownConfigsForTesting *[]IFCERFTConfig
 
 	// tlfValidDuration is the time TLFs are valid before redoing identification.
 	tlfValidDuration time.Duration
 }
 
-var _ Config = (*ConfigLocal)(nil)
+var _ IFCERFTConfig = (*ConfigLocal)(nil)
 
 // LocalUser represents a fake KBFS user, useful for testing.
 type LocalUser struct {
@@ -220,126 +220,126 @@ func NewConfigLocal() *ConfigLocal {
 }
 
 // KBFSOps implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) KBFSOps() KBFSOps {
+func (c *ConfigLocal) KBFSOps() IFCERFTKBFSOps {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.kbfs
 }
 
 // SetKBFSOps implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetKBFSOps(k KBFSOps) {
+func (c *ConfigLocal) SetKBFSOps(k IFCERFTKBFSOps) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.kbfs = k
 }
 
 // KBPKI implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) KBPKI() KBPKI {
+func (c *ConfigLocal) KBPKI() IFCERFTKBPKI {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.kbpki
 }
 
 // SetKBPKI implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetKBPKI(k KBPKI) {
+func (c *ConfigLocal) SetKBPKI(k IFCERFTKBPKI) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.kbpki = k
 }
 
 // KeyManager implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) KeyManager() KeyManager {
+func (c *ConfigLocal) KeyManager() IFCERFTKeyManager {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.keyman
 }
 
 // SetKeyManager implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetKeyManager(k KeyManager) {
+func (c *ConfigLocal) SetKeyManager(k IFCERFTKeyManager) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.keyman = k
 }
 
 // Reporter implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) Reporter() Reporter {
+func (c *ConfigLocal) Reporter() IFCERFTReporter {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.rep
 }
 
 // SetReporter implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetReporter(r Reporter) {
+func (c *ConfigLocal) SetReporter(r IFCERFTReporter) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.rep = r
 }
 
 // KeyCache implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) KeyCache() KeyCache {
+func (c *ConfigLocal) KeyCache() IFCERFTKeyCache {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.kcache
 }
 
 // SetKeyCache implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetKeyCache(k KeyCache) {
+func (c *ConfigLocal) SetKeyCache(k IFCERFTKeyCache) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.kcache = k
 }
 
 // BlockCache implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) BlockCache() BlockCache {
+func (c *ConfigLocal) BlockCache() IFCERFTBlockCache {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.bcache
 }
 
 // SetBlockCache implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetBlockCache(b BlockCache) {
+func (c *ConfigLocal) SetBlockCache(b IFCERFTBlockCache) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.bcache = b
 }
 
 // DirtyBlockCache implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) DirtyBlockCache() DirtyBlockCache {
+func (c *ConfigLocal) DirtyBlockCache() IFCERFTDirtyBlockCache {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.dirtyBcache
 }
 
 // SetDirtyBlockCache implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetDirtyBlockCache(d DirtyBlockCache) {
+func (c *ConfigLocal) SetDirtyBlockCache(d IFCERFTDirtyBlockCache) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.dirtyBcache = d
 }
 
 // Crypto implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) Crypto() Crypto {
+func (c *ConfigLocal) Crypto() IFCERFTCrypto {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.crypto
 }
 
 // SetCrypto implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetCrypto(cr Crypto) {
+func (c *ConfigLocal) SetCrypto(cr IFCERFTCrypto) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.crypto = cr
 }
 
 // Codec implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) Codec() Codec {
+func (c *ConfigLocal) Codec() IFCERFTCodec {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.codec
 }
 
 // SetCodec implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetCodec(co Codec) {
+func (c *ConfigLocal) SetCodec(co IFCERFTCodec) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.codec = co
@@ -347,168 +347,168 @@ func (c *ConfigLocal) SetCodec(co Codec) {
 }
 
 // MDOps implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) MDOps() MDOps {
+func (c *ConfigLocal) MDOps() IFCERFTMDOps {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.mdops
 }
 
 // SetMDOps implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetMDOps(m MDOps) {
+func (c *ConfigLocal) SetMDOps(m IFCERFTMDOps) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.mdops = m
 }
 
 // KeyOps implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) KeyOps() KeyOps {
+func (c *ConfigLocal) KeyOps() IFCERFTKeyOps {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.kops
 }
 
 // SetKeyOps implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetKeyOps(k KeyOps) {
+func (c *ConfigLocal) SetKeyOps(k IFCERFTKeyOps) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.kops = k
 }
 
 // MDCache implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) MDCache() MDCache {
+func (c *ConfigLocal) MDCache() IFCERFTMDCache {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.mdcache
 }
 
 // SetMDCache implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetMDCache(m MDCache) {
+func (c *ConfigLocal) SetMDCache(m IFCERFTMDCache) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.mdcache = m
 }
 
 // BlockOps implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) BlockOps() BlockOps {
+func (c *ConfigLocal) BlockOps() IFCERFTBlockOps {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.bops
 }
 
 // SetBlockOps implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetBlockOps(b BlockOps) {
+func (c *ConfigLocal) SetBlockOps(b IFCERFTBlockOps) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.bops = b
 }
 
 // MDServer implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) MDServer() MDServer {
+func (c *ConfigLocal) MDServer() IFCERFTMDServer {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.mdserv
 }
 
 // SetMDServer implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetMDServer(m MDServer) {
+func (c *ConfigLocal) SetMDServer(m IFCERFTMDServer) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.mdserv = m
 }
 
 // BlockServer implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) BlockServer() BlockServer {
+func (c *ConfigLocal) BlockServer() IFCERFTBlockServer {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.bserv
 }
 
 // SetBlockServer implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetBlockServer(b BlockServer) {
+func (c *ConfigLocal) SetBlockServer(b IFCERFTBlockServer) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.bserv = b
 }
 
 // KeyServer implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) KeyServer() KeyServer {
+func (c *ConfigLocal) KeyServer() IFCERFTKeyServer {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.keyserv
 }
 
 // SetKeyServer implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetKeyServer(k KeyServer) {
+func (c *ConfigLocal) SetKeyServer(k IFCERFTKeyServer) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.keyserv = k
 }
 
 // KeybaseDaemon implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) KeybaseDaemon() KeybaseDaemon {
+func (c *ConfigLocal) KeybaseDaemon() IFCERFTKeybaseDaemon {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.daemon
 }
 
 // SetKeybaseDaemon implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetKeybaseDaemon(k KeybaseDaemon) {
+func (c *ConfigLocal) SetKeybaseDaemon(k IFCERFTKeybaseDaemon) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.daemon = k
 }
 
 // BlockSplitter implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) BlockSplitter() BlockSplitter {
+func (c *ConfigLocal) BlockSplitter() IFCERFTBlockSplitter {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.bsplit
 }
 
 // SetBlockSplitter implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetBlockSplitter(b BlockSplitter) {
+func (c *ConfigLocal) SetBlockSplitter(b IFCERFTBlockSplitter) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.bsplit = b
 }
 
 // Notifier implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) Notifier() Notifier {
+func (c *ConfigLocal) Notifier() IFCERFTNotifier {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.notifier
 }
 
 // SetNotifier implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetNotifier(n Notifier) {
+func (c *ConfigLocal) SetNotifier(n IFCERFTNotifier) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.notifier = n
 }
 
 // Clock implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) Clock() Clock {
+func (c *ConfigLocal) Clock() IFCERFTClock {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.clock
 }
 
 // SetClock implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetClock(cl Clock) {
+func (c *ConfigLocal) SetClock(cl IFCERFTClock) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.clock = cl
 }
 
 // ConflictRenamer implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) ConflictRenamer() ConflictRenamer {
+func (c *ConfigLocal) ConflictRenamer() IFCERFTConflictRenamer {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.renamer
 }
 
 // SetConflictRenamer implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetConflictRenamer(cr ConflictRenamer) {
+func (c *ConfigLocal) SetConflictRenamer(cr IFCERFTConflictRenamer) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.renamer = cr
@@ -574,7 +574,7 @@ func (c *ConfigLocal) MaxDirBytes() uint64 {
 	return c.maxDirBytes
 }
 
-func (c *ConfigLocal) resetCachesWithoutShutdown() DirtyBlockCache {
+func (c *ConfigLocal) resetCachesWithoutShutdown() IFCERFTDirtyBlockCache {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.mdcache = NewMDCacheStandard(5000)
@@ -668,12 +668,12 @@ func (c *ConfigLocal) MetricsRegistry() metrics.Registry {
 }
 
 // SetRekeyQueue implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetRekeyQueue(r RekeyQueue) {
+func (c *ConfigLocal) SetRekeyQueue(r IFCERFTRekeyQueue) {
 	c.rekeyQueue = r
 }
 
 // RekeyQueue implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) RekeyQueue() RekeyQueue {
+func (c *ConfigLocal) RekeyQueue() IFCERFTRekeyQueue {
 	return c.rekeyQueue
 }
 

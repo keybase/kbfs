@@ -32,7 +32,7 @@ const (
 
 // MDServerRemote is an implementation of the MDServer interface.
 type MDServerRemote struct {
-	config       Config
+	config       IFCERFTConfig
 	conn         *rpc.Connection
 	client       keybase1.MetadataClient
 	log          logger.Logger
@@ -54,19 +54,19 @@ type MDServerRemote struct {
 }
 
 // Test that MDServerRemote fully implements the MDServer interface.
-var _ MDServer = (*MDServerRemote)(nil)
+var _ IFCERFTMDServer = (*MDServerRemote)(nil)
 
 // Test that MDServerRemote fully implements the KeyServer interface.
-var _ KeyServer = (*MDServerRemote)(nil)
+var _ IFCERFTKeyServer = (*MDServerRemote)(nil)
 
 // Test that MDServerRemote fully implements the AuthTokenRefreshHandler interface.
-var _ AuthTokenRefreshHandler = (*MDServerRemote)(nil)
+var _ IFCERFTAuthTokenRefreshHandler = (*MDServerRemote)(nil)
 
 // Test that MDServerRemote fully implements the ConnectionHandler interface.
 var _ rpc.ConnectionHandler = (*MDServerRemote)(nil)
 
 // NewMDServerRemote returns a new instance of MDServerRemote.
-func NewMDServerRemote(config Config, srvAddr string, ctx Context) *MDServerRemote {
+func NewMDServerRemote(config IFCERFTConfig, srvAddr string, ctx Context) *MDServerRemote {
 	mdServer := &MDServerRemote{
 		config:     config,
 		observers:  make(map[TlfID]chan<- error),

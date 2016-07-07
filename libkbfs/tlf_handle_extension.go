@@ -120,7 +120,7 @@ func NewTlfHandleExtension(extType TlfHandleExtensionType, num uint16) (
 
 // NewTestTlfHandleExtensionWithClock returns a new TlfHandleExtension using a passed clock.
 func NewTestTlfHandleExtensionWithClock(extType TlfHandleExtensionType,
-	num uint16, clock Clock) (*TlfHandleExtension, error) {
+	num uint16, clock IFCERFTClock) (*TlfHandleExtension, error) {
 	return newTlfHandleExtension(extType, num, clock)
 }
 
@@ -141,7 +141,7 @@ func NewTestTlfHandleExtensionStaticTime(extType TlfHandleExtensionType, num uin
 }
 
 // Helper to instantiate a TlfHandleExtension object.
-func newTlfHandleExtension(extType TlfHandleExtensionType, num uint16, clock Clock) (
+func newTlfHandleExtension(extType TlfHandleExtensionType, num uint16, clock IFCERFTClock) (
 	*TlfHandleExtension, error) {
 	if num == 0 {
 		return nil, ErrTlfHandleExtensionInvalidNumber

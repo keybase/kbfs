@@ -20,7 +20,7 @@ import (
 
 // KeyServerLocal puts/gets key server halves in/from a local leveldb instance.
 type KeyServerLocal struct {
-	config Config
+	config IFCERFTConfig
 	db     *leveldb.DB // TLFCryptKeyServerHalfID -> TLFCryptKeyServerHalf
 	log    logger.Logger
 
@@ -30,9 +30,9 @@ type KeyServerLocal struct {
 }
 
 // Test that KeyServerLocal fully implements the KeyServer interface.
-var _ KeyServer = (*KeyServerLocal)(nil)
+var _ IFCERFTKeyServer = (*KeyServerLocal)(nil)
 
-func newKeyServerLocal(config Config, storage storage.Storage,
+func newKeyServerLocal(config IFCERFTConfig, storage storage.Storage,
 	shutdownFunc func(logger.Logger)) (*KeyServerLocal, error) {
 	db, err := leveldb.Open(storage, leveldbOptions)
 	if err != nil {
@@ -45,12 +45,12 @@ func newKeyServerLocal(config Config, storage storage.Storage,
 
 // NewKeyServerMemory returns a KeyServerLocal with an in-memory leveldb
 // instance.
-func NewKeyServerMemory(config Config) (*KeyServerLocal, error) {
+func NewKeyServerMemory(config IFCERFTConfig) (*KeyServerLocal, error) {
 	return newKeyServerLocal(config, storage.NewMemStorage(), nil)
 }
 
 func newKeyServerDisk(
-	config Config, dirPath string, shutdownFunc func(logger.Logger)) (
+	config IFCERFTConfig, dirPath string, shutdownFunc func(logger.Logger)) (
 	*KeyServerLocal, error) {
 	keyPath := filepath.Join(dirPath, "keys")
 	storage, err := storage.OpenFile(keyPath)
@@ -62,13 +62,13 @@ func newKeyServerDisk(
 
 // NewKeyServerDir constructs a new KeyServerLocal that stores its
 // data in the given directory.
-func NewKeyServerDir(config Config, dirPath string) (*KeyServerLocal, error) {
+func NewKeyServerDir(config IFCERFTConfig, dirPath string) (*KeyServerLocal, error) {
 	return newKeyServerDisk(config, dirPath, nil)
 }
 
 // NewKeyServerTempDir constructs a new KeyServerLocal that stores its
 // data in a temp directory which is cleaned up on shutdown.
-func NewKeyServerTempDir(config Config) (*KeyServerLocal, error) {
+func NewKeyServerTempDir(config IFCERFTConfig) (*KeyServerLocal, error) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "kbfs_keyserver_tmp")
 	if err != nil {
 		return nil, err
@@ -163,7 +163,7 @@ func (ks *KeyServerLocal) DeleteTLFCryptKeyServerHalf(ctx context.Context,
 }
 
 // Copies a key server but swaps the config.
-func (ks *KeyServerLocal) copy(config Config) *KeyServerLocal {
+func (ks *KeyServerLocal) copy(config IFCERFTConfig) *KeyServerLocal {
 	return &KeyServerLocal{config, ks.db, config.MakeLogger(""),
 		ks.shutdownLock, ks.shutdown, ks.shutdownFunc}
 }

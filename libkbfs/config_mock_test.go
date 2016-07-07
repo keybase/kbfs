@@ -13,19 +13,19 @@ import (
 )
 
 type FakeObserver struct {
-	localChange  Node
-	batchChanges []NodeChange
+	localChange  IFCERFTNode
+	batchChanges []IFCERFTNodeChange
 	ctx          context.Context
 }
 
 func (fn *FakeObserver) LocalChange(ctx context.Context,
-	node Node, write WriteRange) {
+	node IFCERFTNode, write WriteRange) {
 	fn.localChange = node
 	fn.ctx = ctx
 }
 
 func (fn *FakeObserver) BatchChanges(
-	ctx context.Context, nodeChanges []NodeChange) {
+	ctx context.Context, nodeChanges []IFCERFTNodeChange) {
 	fn.batchChanges = nodeChanges
 	fn.ctx = ctx
 }

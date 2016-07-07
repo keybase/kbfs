@@ -15,16 +15,16 @@ import (
 // requests to a delegate BlockOps, but it delays all Puts by
 // simulating a bottleneck of the given bandwidth.
 type BlockOpsConstrained struct {
-	BlockOps
+	IFCERFTBlockOps
 	bwKBps int
 	lock   sync.Mutex
 }
 
 // NewBlockOpsConstrained constructs a new BlockOpsConstrained.
-func NewBlockOpsConstrained(delegate BlockOps, bwKBps int) *BlockOpsConstrained {
+func NewBlockOpsConstrained(delegate IFCERFTBlockOps, bwKBps int) *BlockOpsConstrained {
 	return &BlockOpsConstrained{
-		BlockOps: delegate,
-		bwKBps:   bwKBps,
+		IFCERFTBlockOps: delegate,
+		bwKBps:          bwKBps,
 	}
 }
 
@@ -51,5 +51,5 @@ func (b *BlockOpsConstrained) Put(ctx context.Context, md *RootMetadata,
 	if err := b.delay(ctx, len(readyBlockData.buf)); err != nil {
 		return err
 	}
-	return b.BlockOps.Put(ctx, md, blockPtr, readyBlockData)
+	return b.IFCERFTBlockOps.Put(ctx, md, blockPtr, readyBlockData)
 }

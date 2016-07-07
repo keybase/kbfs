@@ -49,7 +49,7 @@ type dirtyReq struct {
 // the backpressure and buffer-fullness checks, the sync buffer size
 // is cut in half.
 type DirtyBlockCacheStandard struct {
-	clock   Clock
+	clock   IFCERFTClock
 	makeLog func(string) logger.Logger
 	log     logger.Logger
 	reqWg   sync.WaitGroup
@@ -79,7 +79,7 @@ type DirtyBlockCacheStandard struct {
 	isShutdown   bool
 
 	lock               sync.RWMutex
-	cache              map[dirtyBlockID]Block
+	cache              map[dirtyBlockID]IFCERFTBlock
 	unsyncedDirtyBytes int64
 	syncingDirtyBytes  int64 // just for bookkeeping, not actually used
 	totalDirtyBytes    int64
@@ -92,8 +92,7 @@ type DirtyBlockCacheStandard struct {
 // be created before logging is initialized).  The min and max buffer
 // sizes define the possible range of how many bytes we'll try to sync
 // in any one sync.
-func NewDirtyBlockCacheStandard(clock Clock,
-	makeLog func(string) logger.Logger, minSyncBufferSize int64,
+func NewDirtyBlockCacheStandard(clock IFCERFTClock, makeLog func(string) logger.Logger, minSyncBufferSize int64,
 	maxSyncBufferSize int64) *DirtyBlockCacheStandard {
 	d := &DirtyBlockCacheStandard{
 		clock:              clock,
@@ -101,7 +100,7 @@ func NewDirtyBlockCacheStandard(clock Clock,
 		requestsChan:       make(chan dirtyReq, 1000),
 		bytesDecreasedChan: make(chan struct{}, 1),
 		shutdownChan:       make(chan struct{}),
-		cache:              make(map[dirtyBlockID]Block),
+		cache:              make(map[dirtyBlockID]IFCERFTBlock),
 		minSyncBufferSize:  minSyncBufferSize,
 		maxSyncBufferSize:  maxSyncBufferSize,
 		syncBufferSize:     minSyncBufferSize,
@@ -114,8 +113,8 @@ func NewDirtyBlockCacheStandard(clock Clock,
 // Get implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
 func (d *DirtyBlockCacheStandard) Get(ptr BlockPointer, branch BranchName) (
-	Block, error) {
-	block := func() Block {
+	IFCERFTBlock, error) {
+	block := func() IFCERFTBlock {
 		dirtyID := dirtyBlockID{
 			id:       ptr.ID,
 			refNonce: ptr.RefNonce,
@@ -135,7 +134,7 @@ func (d *DirtyBlockCacheStandard) Get(ptr BlockPointer, branch BranchName) (
 // Put implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
 func (d *DirtyBlockCacheStandard) Put(ptr BlockPointer, branch BranchName,
-	block Block) error {
+	block IFCERFTBlock) error {
 	dirtyID := dirtyBlockID{
 		id:       ptr.ID,
 		refNonce: ptr.RefNonce,
@@ -332,7 +331,7 @@ func (d *DirtyBlockCacheStandard) processPermission() {
 // RequestPermissionToDirty implements the DirtyBlockCache interface
 // for DirtyBlockCacheStandard.
 func (d *DirtyBlockCacheStandard) RequestPermissionToDirty(
-	ctx context.Context, estimatedDirtyBytes int64) (DirtyPermChan, error) {
+	ctx context.Context, estimatedDirtyBytes int64) (IFCERFTDirtyPermChan, error) {
 	d.shutdownLock.RLock()
 	defer d.shutdownLock.RUnlock()
 	if d.isShutdown {

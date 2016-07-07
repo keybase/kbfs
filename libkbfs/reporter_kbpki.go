@@ -59,14 +59,14 @@ var noErrorNames = map[string]bool{
 // tracking.  Notify will make RPCs to the keybase daemon.
 type ReporterKBPKI struct {
 	*ReporterSimple
-	config       Config
+	config       IFCERFTConfig
 	log          logger.Logger
 	notifyBuffer chan *keybase1.FSNotification
 	canceler     func()
 }
 
 // NewReporterKBPKI creates a new ReporterKBPKI.
-func NewReporterKBPKI(config Config, maxErrors, bufSize int) *ReporterKBPKI {
+func NewReporterKBPKI(config IFCERFTConfig, maxErrors, bufSize int) *ReporterKBPKI {
 	r := &ReporterKBPKI{
 		ReporterSimple: NewReporterSimple(config.Clock(), maxErrors),
 		config:         config,
@@ -203,7 +203,7 @@ func readNotification(file path, finish bool) *keybase1.FSNotification {
 
 // rekeyNotification creates FSNotifications from TlfHandles for rekey
 // events.
-func rekeyNotification(ctx context.Context, config Config, handle *TlfHandle, finish bool) *keybase1.FSNotification {
+func rekeyNotification(ctx context.Context, config IFCERFTConfig, handle *TlfHandle, finish bool) *keybase1.FSNotification {
 	code := keybase1.FSStatusCode_START
 	if finish {
 		code = keybase1.FSStatusCode_FINISH

@@ -48,7 +48,7 @@ type favReq struct {
 
 // Favorites manages a user's favorite list.
 type Favorites struct {
-	config Config
+	config IFCERFTConfig
 
 	// Channels for interacting with the favorites cache
 	reqChan chan *favReq
@@ -66,7 +66,7 @@ type Favorites struct {
 	shutdown   bool
 }
 
-func newFavoritesWithChan(config Config, reqChan chan *favReq) *Favorites {
+func newFavoritesWithChan(config IFCERFTConfig, reqChan chan *favReq) *Favorites {
 	f := &Favorites{
 		config:       config,
 		reqChan:      reqChan,
@@ -77,7 +77,7 @@ func newFavoritesWithChan(config Config, reqChan chan *favReq) *Favorites {
 }
 
 // NewFavorites constructs a new Favorites instance.
-func NewFavorites(config Config) *Favorites {
+func NewFavorites(config IFCERFTConfig) *Favorites {
 	return newFavoritesWithChan(config, make(chan *favReq, 100))
 }
 

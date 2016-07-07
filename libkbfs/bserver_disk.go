@@ -19,8 +19,8 @@ import (
 // BlockServerDisk implements the BlockServer interface by just
 // storing blocks in a local leveldb instance.
 type BlockServerDisk struct {
-	codec        Codec
-	crypto       Crypto
+	codec        IFCERFTCodec
+	crypto       IFCERFTCrypto
 	log          logger.Logger
 	dirPath      string
 	shutdownFunc func(logger.Logger)
@@ -30,12 +30,12 @@ type BlockServerDisk struct {
 	diskJournal map[TlfID]*bserverTlfJournal
 }
 
-var _ BlockServer = (*BlockServerDisk)(nil)
+var _ IFCERFTBlockServer = (*BlockServerDisk)(nil)
 
 // newBlockServerDisk constructs a new BlockServerDisk that stores
 // its data in the given directory.
 func newBlockServerDisk(
-	config Config, dirPath string, shutdownFunc func(logger.Logger)) *BlockServerDisk {
+	config IFCERFTConfig, dirPath string, shutdownFunc func(logger.Logger)) *BlockServerDisk {
 	bserv := &BlockServerDisk{
 		config.Codec(),
 		config.Crypto(),
@@ -50,13 +50,13 @@ func newBlockServerDisk(
 
 // NewBlockServerDir constructs a new BlockServerDisk that stores
 // its data in the given directory.
-func NewBlockServerDir(config Config, dirPath string) *BlockServerDisk {
+func NewBlockServerDir(config IFCERFTConfig, dirPath string) *BlockServerDisk {
 	return newBlockServerDisk(config, dirPath, nil)
 }
 
 // NewBlockServerTempDir constructs a new BlockServerDisk that stores its
 // data in a temp directory which is cleaned up on shutdown.
-func NewBlockServerTempDir(config Config) (*BlockServerDisk, error) {
+func NewBlockServerTempDir(config IFCERFTConfig) (*BlockServerDisk, error) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "kbfs_bserver_tmp")
 	if err != nil {
 		return nil, err
