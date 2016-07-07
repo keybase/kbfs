@@ -797,9 +797,14 @@ func (fbo *folderBranchOps) getMDLocked(
 		// There are no unmerged MDs for this device, so just use the current head.
 		md = mergedMD
 	} else {
-		// We don't need to do this for merged head because the setHeadLocked()
-		// already does that anyway.
-		fbo.setLatestMergedRevisionLocked(ctx, lState, mergedMD.Revision, false)
+		func() {
+			fbo.headLock.Lock(lState)
+			defer fbo.headLock.Unlock(lState)
+			// We don't need to do this for merged head
+			// because the setHeadLocked() already does
+			// that anyway.
+			fbo.setLatestMergedRevisionLocked(ctx, lState, mergedMD.Revision, false)
+		}
 	}
 
 	if md.data.Dir.Type != Dir && (!md.IsInitialized() || md.IsReadable()) {
