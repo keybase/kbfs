@@ -209,13 +209,17 @@ type folderBranchOps struct {
 	folderBranch FolderBranch
 	bid          BranchID // protected by mdWriterLock
 	bType        branchType
-	head         *RootMetadata
 	observers    *observerList
 
 	// these locks, when locked concurrently by the same goroutine,
 	// should only be taken in the following order to avoid deadlock:
-	mdWriterLock leveledMutex   // taken by any method making MD modifications
-	headLock     leveledRWMutex // protects access to the MD
+	mdWriterLock leveledMutex // taken by any method making MD modifications
+
+	// protects access to head and latestMergedRevision.
+	headLock leveledRWMutex
+	head     *RootMetadata
+	// latestMergedRevision tracks the latest heard merged revision on server
+	latestMergedRevision MetadataRevision
 
 	blocks folderBlockOps
 
@@ -279,9 +283,6 @@ type folderBranchOps struct {
 	// rekey with a paper key prompt, if enough time has passed.
 	// Protected by mdWriterLock
 	rekeyWithPromptTimer *time.Timer
-
-	// latestMergedRevision tracks the latest heard merged revision on server
-	latestMergedRevision MetadataRevision
 }
 
 var _ KBFSOps = (*folderBranchOps)(nil)
@@ -804,7 +805,7 @@ func (fbo *folderBranchOps) getMDLocked(
 			// because the setHeadLocked() already does
 			// that anyway.
 			fbo.setLatestMergedRevisionLocked(ctx, lState, mergedMD.Revision, false)
-		}
+		}()
 	}
 
 	if md.data.Dir.Type != Dir && (!md.IsInitialized() || md.IsReadable()) {
