@@ -730,7 +730,7 @@ func (fbo *folderBranchOps) setHeadConflictResolvedLocked(ctx context.Context,
 }
 
 func (fbo *folderBranchOps) identifyOnce(
-	ctx context.Context, md *RootMetadata) error {
+	ctx context.Context, md ConstRootMetadata) error {
 	fbo.identifyLock.Lock()
 	defer fbo.identifyLock.Unlock()
 	if fbo.identifyDone {
@@ -762,7 +762,7 @@ func (fbo *folderBranchOps) getMDLocked(
 		if err != nil || rtype == mdReadNoIdentify || rtype == mdRekey {
 			return
 		}
-		err = fbo.identifyOnce(ctx, md)
+		err = fbo.identifyOnce(ctx, ConstRootMetadata{md})
 	}()
 
 	md = fbo.getHead(lState).RootMetadata
@@ -1075,7 +1075,7 @@ func (fbo *folderBranchOps) CheckForNewMDAndInit(
 		// user is not a valid writer.)  Also, we want to make sure we
 		// fail before we set the head, otherwise future calls will
 		// succeed incorrectly.
-		err = fbo.identifyOnce(ctx, md)
+		err = fbo.identifyOnce(ctx, ConstRootMetadata{md})
 		if err != nil {
 			return err
 		}
