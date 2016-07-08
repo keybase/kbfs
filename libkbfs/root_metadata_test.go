@@ -419,24 +419,26 @@ func makeFakeRootMetadataFuture(t *testing.T) *rootMetadataFuture {
 		wmf,
 		rootMetadataWrapper{
 			RootMetadata{
-				// This needs to be list format so it fails to compile if new
-				// fields are added, effectively checking at compile time
-				// whether new fields have been added
-				WriterMetadata{},
-				SignatureInfo{
-					100,
-					[]byte{0xc},
-					MakeFakeVerifyingKeyOrBust("fake kid"),
+				BareRootMetadata{
+					// This needs to be list format so it fails to compile if new
+					// fields are added, effectively checking at compile time
+					// whether new fields have been added
+					WriterMetadata{},
+					SignatureInfo{
+						100,
+						[]byte{0xc},
+						MakeFakeVerifyingKeyOrBust("fake kid"),
+					},
+					"uid1",
+					0xb,
+					5,
+					MdID{h},
+					nil,
+					[]keybase1.SocialAssertion{sa},
+					nil,
+					nil,
+					codec.UnknownFieldSetHandler{},
 				},
-				"uid1",
-				0xb,
-				5,
-				MdID{h},
-				nil,
-				[]keybase1.SocialAssertion{sa},
-				nil,
-				nil,
-				codec.UnknownFieldSetHandler{},
 				PrivateMetadata{},
 				nil,
 				sync.RWMutex{},

@@ -130,7 +130,7 @@ func expectBlockDecrypt(config *ConfigMock, rmd *RootMetadata, blockPtr BlockPoi
 
 func makeRMD() *RootMetadata {
 	tlfID := FakeTlfID(0, false)
-	return &RootMetadata{WriterMetadata: WriterMetadata{ID: tlfID}}
+	return &RootMetadata{BareRootMetadata: BareRootMetadata{WriterMetadata: WriterMetadata{ID: tlfID}}}
 }
 
 func TestBlockOpsGetSuccess(t *testing.T) {

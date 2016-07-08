@@ -132,7 +132,7 @@ type WriterMetadataExtra struct {
 }
 
 // RootMetadata is the MD that is signed by the reader or writer.
-type RootMetadata struct {
+type BareRootMetadata struct {
 	// The metadata that is only editable by the writer.
 	//
 	// TODO: If we ever get a chance to update RootMetadata
@@ -170,6 +170,10 @@ type RootMetadata struct {
 	FinalizedInfo *TlfHandleExtension `codec:"fi,omitempty"`
 
 	codec.UnknownFieldSetHandler
+}
+
+type RootMetadata struct {
+	BareRootMetadata
 
 	// The plaintext, deserialized PrivateMetadata
 	data PrivateMetadata
