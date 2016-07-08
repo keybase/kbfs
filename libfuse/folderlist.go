@@ -27,7 +27,7 @@ type FolderList struct {
 	folders map[string]*TLF
 
 	muRecentlyRemoved sync.RWMutex
-	recentlyRemoved   map[libkbfs.CanonicalTlfName]bool
+	recentlyRemoved   map[libkbfs.IFCERFTCanonicalTlfName]bool
 }
 
 var _ fs.Node = (*FolderList)(nil)
@@ -41,7 +41,7 @@ func (*FolderList) Attr(ctx context.Context, a *fuse.Attr) error {
 var _ fs.NodeRequestLookuper = (*FolderList)(nil)
 
 func (fl *FolderList) reportErr(ctx context.Context,
-	mode libkbfs.ErrorModeType, tlfName libkbfs.CanonicalTlfName, err error) {
+	mode libkbfs.ErrorModeType, tlfName libkbfs.IFCERFTCanonicalTlfName, err error) {
 	if err == nil {
 		fl.fs.errLog.CDebugf(ctx, "Request complete")
 		return
@@ -56,12 +56,12 @@ func (fl *FolderList) reportErr(ctx context.Context,
 	fl.fs.errLog.CDebugf(ctx, err.Error())
 }
 
-func (fl *FolderList) addToRecentlyRemoved(name libkbfs.CanonicalTlfName) {
+func (fl *FolderList) addToRecentlyRemoved(name libkbfs.IFCERFTCanonicalTlfName) {
 	func() {
 		fl.muRecentlyRemoved.Lock()
 		defer fl.muRecentlyRemoved.Unlock()
 		if fl.recentlyRemoved == nil {
-			fl.recentlyRemoved = make(map[libkbfs.CanonicalTlfName]bool)
+			fl.recentlyRemoved = make(map[libkbfs.IFCERFTCanonicalTlfName]bool)
 		}
 		fl.recentlyRemoved[name] = true
 	}()
@@ -72,13 +72,13 @@ func (fl *FolderList) addToRecentlyRemoved(name libkbfs.CanonicalTlfName) {
 	})
 }
 
-func (fl *FolderList) isRecentlyRemoved(name libkbfs.CanonicalTlfName) bool {
+func (fl *FolderList) isRecentlyRemoved(name libkbfs.IFCERFTCanonicalTlfName) bool {
 	fl.muRecentlyRemoved.RLock()
 	defer fl.muRecentlyRemoved.RUnlock()
 	return fl.recentlyRemoved != nil && fl.recentlyRemoved[name]
 }
 
-func (fl *FolderList) addToFavorite(ctx context.Context, h *libkbfs.TlfHandle) (err error) {
+func (fl *FolderList) addToFavorite(ctx context.Context, h *libkbfs.IFCERFTTlfHandle) (err error) {
 	cName := h.GetCanonicalName()
 
 	// `rmdir` command on macOS does a lookup after removing the dir. if the
@@ -100,7 +100,7 @@ func (fl *FolderList) Lookup(ctx context.Context, req *fuse.LookupRequest, resp 
 	fl.fs.log.CDebugf(ctx, "FL Lookup %s", req.Name)
 	defer func() {
 		fl.reportErr(ctx, libkbfs.ReadMode,
-			libkbfs.CanonicalTlfName(req.Name), err)
+			libkbfs.IFCERFTCanonicalTlfName(req.Name), err)
 	}()
 	fl.mu.Lock()
 	defer fl.mu.Unlock()
@@ -191,7 +191,7 @@ func (fl *FolderList) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err er
 	_, _, err = fl.fs.config.KBPKI().GetCurrentUserInfo(ctx)
 	isLoggedIn := err == nil
 
-	var favs []libkbfs.Favorite
+	var favs []libkbfs.IFCERFTFavorite
 	if isLoggedIn {
 		favs, err = fl.fs.config.KBFSOps().GetFavorites(ctx)
 		if err != nil {

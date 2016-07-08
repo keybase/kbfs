@@ -151,7 +151,7 @@ func TestKBFSOpsConcurReadDuringSync(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -208,7 +208,7 @@ func testKBFSOpsConcurWritesDuringSync(t *testing.T,
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -343,7 +343,7 @@ func TestKBFSOpsConcurDeferredDoubleWritesDuringSync(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -456,7 +456,7 @@ func TestKBFSOpsConcurBlockReadWrite(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -535,47 +535,47 @@ func TestKBFSOpsConcurBlockReadWrite(t *testing.T) {
 // mdRecordingKeyManager records the last *RootMetadata argument seen
 // in its KeyManager methods.
 type mdRecordingKeyManager struct {
-	lastMD   *RootMetadata
+	lastMD   *IFCERFTRootMetadata
 	lastMDMu sync.RWMutex
 	delegate IFCERFTKeyManager
 }
 
-func (km *mdRecordingKeyManager) getLastMD() *RootMetadata {
+func (km *mdRecordingKeyManager) getLastMD() *IFCERFTRootMetadata {
 	km.lastMDMu.RLock()
 	defer km.lastMDMu.RUnlock()
 	return km.lastMD
 }
 
-func (km *mdRecordingKeyManager) setLastMD(md *RootMetadata) {
+func (km *mdRecordingKeyManager) setLastMD(md *IFCERFTRootMetadata) {
 	km.lastMDMu.Lock()
 	defer km.lastMDMu.Unlock()
 	km.lastMD = md
 }
 
 func (km *mdRecordingKeyManager) GetTLFCryptKeyForEncryption(
-	ctx context.Context, md *RootMetadata) (TLFCryptKey, error) {
+	ctx context.Context, md *IFCERFTRootMetadata) (IFCERFTTLFCryptKey, error) {
 	km.setLastMD(md)
 	return km.delegate.GetTLFCryptKeyForEncryption(ctx, md)
 }
 
 func (km *mdRecordingKeyManager) GetTLFCryptKeyForMDDecryption(
-	ctx context.Context, mdToDecrypt, mdWithKeys *RootMetadata) (
-	TLFCryptKey, error) {
+	ctx context.Context, mdToDecrypt, mdWithKeys *IFCERFTRootMetadata) (
+	IFCERFTTLFCryptKey, error) {
 	km.setLastMD(mdToDecrypt)
 	return km.delegate.GetTLFCryptKeyForMDDecryption(ctx,
 		mdToDecrypt, mdWithKeys)
 }
 
 func (km *mdRecordingKeyManager) GetTLFCryptKeyForBlockDecryption(
-	ctx context.Context, md *RootMetadata, blockPtr BlockPointer) (
-	TLFCryptKey, error) {
+	ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer) (
+	IFCERFTTLFCryptKey, error) {
 	km.setLastMD(md)
 	return km.delegate.GetTLFCryptKeyForBlockDecryption(ctx, md, blockPtr)
 }
 
 func (km *mdRecordingKeyManager) Rekey(
-	ctx context.Context, md *RootMetadata, promptPaper bool) (
-	bool, *TLFCryptKey, error) {
+	ctx context.Context, md *IFCERFTRootMetadata, promptPaper bool) (
+	bool, *IFCERFTTLFCryptKey, error) {
 	km.setLastMD(md)
 	return km.delegate.Rekey(ctx, md, promptPaper)
 }
@@ -597,7 +597,7 @@ func TestKBFSOpsConcurBlockSyncWrite(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -701,7 +701,7 @@ func TestKBFSOpsConcurBlockSyncTruncate(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -811,7 +811,7 @@ func TestKBFSOpsConcurBlockSyncReadIndirect(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -864,7 +864,7 @@ func TestKBFSOpsConcurWriteDuringFolderUpdate(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -875,7 +875,7 @@ func TestKBFSOpsConcurWriteDuringFolderUpdate(t *testing.T) {
 	}
 
 	// Now update the folder pointer in some other way
-	_, _, err = kbfsOps.CreateFile(ctx, rootNode, "b", false, NoEXCL)
+	_, _, err = kbfsOps.CreateFile(ctx, rootNode, "b", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -910,7 +910,7 @@ func TestKBFSOpsConcurWriteDuringSyncMultiBlocks(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1018,7 +1018,7 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1110,7 +1110,7 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 		t.Fatalf("Second sync failed: %v", err)
 	}
 
-	if _, _, err := kbfsOps.CreateFile(ctx, rootNode, "b", false, NoEXCL); err != nil {
+	if _, _, err := kbfsOps.CreateFile(ctx, rootNode, "b", false, IFCERFTNoEXCL); err != nil {
 		t.Fatalf("Couldn't create file after sync: %v", err)
 	}
 
@@ -1147,7 +1147,7 @@ func TestKBFSOpsConcurWriteParallelBlocksError(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1166,13 +1166,12 @@ func TestKBFSOpsConcurWriteParallelBlocksError(t *testing.T) {
 	c = b.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any()).Times(2).After(c).Return(nil)
 	putErr := errors.New("This is a forced error on put")
-	errPtrChan := make(chan BlockPointer)
+	errPtrChan := make(chan IFCERFTBlockPointer)
 	c = b.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any()).
-		Do(func(ctx context.Context, id BlockID, tlfID TlfID,
-			context BlockContext, buf []byte,
+		Do(func(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext, buf []byte,
 			serverHalf BlockCryptKeyServerHalf) {
-			errPtrChan <- BlockPointer{
+			errPtrChan <- IFCERFTBlockPointer{
 				ID:           id,
 				BlockContext: context,
 			}
@@ -1181,14 +1180,13 @@ func TestKBFSOpsConcurWriteParallelBlocksError(t *testing.T) {
 	proceedChan := make(chan struct{})
 	b.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any()).AnyTimes().
-		Do(func(ctx context.Context, id BlockID, tlfID TlfID,
-			context BlockContext, buf []byte,
+		Do(func(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext, buf []byte,
 			serverHalf BlockCryptKeyServerHalf) {
 			<-proceedChan
 		}).After(c).Return(nil)
 	b.EXPECT().Shutdown().AnyTimes()
 
-	var errPtr BlockPointer
+	var errPtr IFCERFTBlockPointer
 	go func() {
 		errPtr = <-errPtrChan
 		close(proceedChan)
@@ -1251,7 +1249,7 @@ func TestKBFSOpsMultiBlockWriteDuringRetriedSync(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1281,7 +1279,7 @@ func TestKBFSOpsMultiBlockWriteDuringRetriedSync(t *testing.T) {
 		t.Fatalf("Couldn't sync from server: %v", err)
 	}
 
-	fileNode2, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode2, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1359,7 +1357,7 @@ func TestKBFSOpsConcurCanceledSyncSucceeds(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1467,7 +1465,7 @@ func TestKBFSOpsTruncateWithDupBlockCanceled(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	_, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	_, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1483,7 +1481,7 @@ func TestKBFSOpsTruncateWithDupBlockCanceled(t *testing.T) {
 		t.Fatalf("Couldn't sync from server: %v", err)
 	}
 
-	fileNode2, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode2, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1538,8 +1536,7 @@ type blockOpsOverQuota struct {
 	IFCERFTBlockOps
 }
 
-func (booq *blockOpsOverQuota) Put(ctx context.Context, md *RootMetadata,
-	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
+func (booq *blockOpsOverQuota) Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData ReadyBlockData) error {
 	return BServerErrorOverQuota{
 		Throttled: true,
 	}
@@ -1577,7 +1574,7 @@ func TestKBFSOpsErrorOnBlockedWriteDuringSync(t *testing.T) {
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
 
 	kbfsOps := config.KBFSOps()
-	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoEXCL)
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}

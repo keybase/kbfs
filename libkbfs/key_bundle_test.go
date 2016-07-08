@@ -50,7 +50,7 @@ func TestTLFCryptKeyInfoUnknownFields(t *testing.T) {
 }
 
 func testKeyBundleGetKeysOrBust(t *testing.T, config IFCERFTConfig, uid keybase1.UID,
-	keys map[keybase1.UID][]CryptPublicKey) {
+	keys map[keybase1.UID][]IFCERFTCryptPublicKey) {
 	publicKeys, err := config.KBPKI().GetCryptPublicKeys(
 		context.Background(), uid)
 	if err != nil {
@@ -61,7 +61,7 @@ func testKeyBundleGetKeysOrBust(t *testing.T, config IFCERFTConfig, uid keybase1
 
 func testKeyBundleCheckKeys(t *testing.T, config IFCERFTConfig, uid keybase1.UID,
 	wkb TLFWriterKeyBundle, ePubKey TLFEphemeralPublicKey,
-	tlfCryptKey TLFCryptKey, serverMap serverKeyMap) {
+	tlfCryptKey IFCERFTTLFCryptKey, serverMap serverKeyMap) {
 	ctx := context.Background()
 	// Check that every user can recover the crypt key
 	cryptPublicKey, err := config.KBPKI().GetCurrentCryptPublicKey(ctx)
@@ -127,7 +127,7 @@ func TestKeyBundleFillInDevices(t *testing.T) {
 	}
 
 	// Generate keys
-	wKeys := make(map[keybase1.UID][]CryptPublicKey)
+	wKeys := make(map[keybase1.UID][]IFCERFTCryptPublicKey)
 
 	testKeyBundleGetKeysOrBust(t, config1, u1, wKeys)
 	testKeyBundleGetKeysOrBust(t, config1, u2, wKeys)

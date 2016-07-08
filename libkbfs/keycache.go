@@ -14,7 +14,7 @@ type KeyCacheStandard struct {
 }
 
 type keyCacheKey struct {
-	tlf    TlfID
+	tlf    IFCERFTTlfID
 	keyGen KeyGen
 }
 
@@ -31,21 +31,21 @@ func NewKeyCacheStandard(capacity int) *KeyCacheStandard {
 }
 
 // GetTLFCryptKey implements the KeyCache interface for KeyCacheStandard.
-func (k *KeyCacheStandard) GetTLFCryptKey(tlf TlfID, keyGen KeyGen) (
-	TLFCryptKey, error) {
+func (k *KeyCacheStandard) GetTLFCryptKey(tlf IFCERFTTlfID, keyGen KeyGen) (
+	IFCERFTTLFCryptKey, error) {
 	cacheKey := keyCacheKey{tlf, keyGen}
 	if entry, ok := k.lru.Get(cacheKey); ok {
-		if key, ok := entry.(TLFCryptKey); ok {
+		if key, ok := entry.(IFCERFTTLFCryptKey); ok {
 			return key, nil
 		}
 		// shouldn't really be possible
-		return TLFCryptKey{}, KeyCacheHitError{tlf, keyGen}
+		return IFCERFTTLFCryptKey{}, KeyCacheHitError{tlf, keyGen}
 	}
-	return TLFCryptKey{}, KeyCacheMissError{tlf, keyGen}
+	return IFCERFTTLFCryptKey{}, KeyCacheMissError{tlf, keyGen}
 }
 
 // PutTLFCryptKey implements the KeyCache interface for KeyCacheStandard.
-func (k *KeyCacheStandard) PutTLFCryptKey(tlf TlfID, keyGen KeyGen, key TLFCryptKey) error {
+func (k *KeyCacheStandard) PutTLFCryptKey(tlf IFCERFTTlfID, keyGen KeyGen, key IFCERFTTLFCryptKey) error {
 	cacheKey := keyCacheKey{tlf, keyGen}
 	k.lru.Add(cacheKey, key)
 	return nil

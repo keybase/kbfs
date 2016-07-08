@@ -47,9 +47,8 @@ const (
 // TLF's symmetric secret key information.
 type DeviceKeyInfoMap map[keybase1.KID]TLFCryptKeyInfo
 
-func (kim DeviceKeyInfoMap) fillInDeviceInfo(crypto IFCERFTCrypto, uid keybase1.UID, tlfCryptKey TLFCryptKey,
-	ePrivKey TLFEphemeralPrivateKey, ePubIndex int,
-	publicKeys []CryptPublicKey) (
+func (kim DeviceKeyInfoMap) fillInDeviceInfo(crypto IFCERFTCrypto, uid keybase1.UID, tlfCryptKey IFCERFTTLFCryptKey, ePrivKey TLFEphemeralPrivateKey, ePubIndex int,
+	publicKeys []IFCERFTCryptPublicKey) (
 	serverMap map[keybase1.KID]TLFCryptKeyServerHalf, err error) {
 	serverMap = make(map[keybase1.KID]TLFCryptKeyServerHalf)
 	// for each device:
@@ -204,10 +203,9 @@ func (tkg TLFReaderKeyGenerations) IsReader(user keybase1.UID, deviceKID keybase
 type serverKeyMap map[keybase1.UID]map[keybase1.KID]TLFCryptKeyServerHalf
 
 func fillInDevicesAndServerMap(crypto IFCERFTCrypto, newIndex int,
-	cryptKeys map[keybase1.UID][]CryptPublicKey,
-	keyInfoMap UserDeviceKeyInfoMap,
+	cryptKeys map[keybase1.UID][]IFCERFTCryptPublicKey, keyInfoMap UserDeviceKeyInfoMap,
 	ePubKey TLFEphemeralPublicKey, ePrivKey TLFEphemeralPrivateKey,
-	tlfCryptKey TLFCryptKey, newServerKeys serverKeyMap) error {
+	tlfCryptKey IFCERFTTLFCryptKey, newServerKeys serverKeyMap) error {
 	for u, keys := range cryptKeys {
 		if _, ok := keyInfoMap[u]; !ok {
 			keyInfoMap[u] = DeviceKeyInfoMap{}
@@ -230,9 +228,8 @@ func fillInDevicesAndServerMap(crypto IFCERFTCrypto, newIndex int,
 // new ephemeral key pair to generate the info if it doesn't yet
 // exist.
 func fillInDevices(crypto IFCERFTCrypto, wkb *TLFWriterKeyBundle, rkb *TLFReaderKeyBundle,
-	wKeys map[keybase1.UID][]CryptPublicKey,
-	rKeys map[keybase1.UID][]CryptPublicKey, ePubKey TLFEphemeralPublicKey,
-	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey TLFCryptKey) (
+	wKeys map[keybase1.UID][]IFCERFTCryptPublicKey, rKeys map[keybase1.UID][]IFCERFTCryptPublicKey, ePubKey TLFEphemeralPublicKey,
+	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey IFCERFTTLFCryptKey) (
 	serverKeyMap, error) {
 	var newIndex int
 	if len(wKeys) == 0 {

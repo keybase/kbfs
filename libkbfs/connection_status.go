@@ -21,17 +21,17 @@ func (errDisconnected) Error() string { return "Disconnected" }
 type kbfsCurrentStatus struct {
 	lock            sync.Mutex
 	failingServices map[string]error
-	invalidateChan  chan StatusUpdate
+	invalidateChan  chan IFCERFTStatusUpdate
 }
 
 // Init inits the kbfsCurrentStatus.
 func (kcs *kbfsCurrentStatus) Init() {
 	kcs.failingServices = map[string]error{}
-	kcs.invalidateChan = make(chan StatusUpdate)
+	kcs.invalidateChan = make(chan IFCERFTStatusUpdate)
 }
 
 // CurrentStatus returns a copy of the current status.
-func (kcs *kbfsCurrentStatus) CurrentStatus() (map[string]error, chan StatusUpdate) {
+func (kcs *kbfsCurrentStatus) CurrentStatus() (map[string]error, chan IFCERFTStatusUpdate) {
 	kcs.lock.Lock()
 	defer kcs.lock.Unlock()
 
@@ -59,5 +59,5 @@ func (kcs *kbfsCurrentStatus) PushConnectionStatusChange(service string, err err
 	}
 
 	close(kcs.invalidateChan)
-	kcs.invalidateChan = make(chan StatusUpdate)
+	kcs.invalidateChan = make(chan IFCERFTStatusUpdate)
 }

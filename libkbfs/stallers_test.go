@@ -69,22 +69,20 @@ func (f *stallingBlockOps) maybeStall(ctx context.Context, opName string) {
 }
 
 func (f *stallingBlockOps) Get(
-	ctx context.Context, md *RootMetadata, blockPtr BlockPointer,
-	block IFCERFTBlock) error {
+	ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, block IFCERFTBlock) error {
 	f.maybeStall(ctx, "Get")
 	return f.delegate().Get(ctx, md, blockPtr, block)
 }
 
 func (f *stallingBlockOps) Ready(
-	ctx context.Context, md *RootMetadata, block IFCERFTBlock) (
+	ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (
 	id BlockID, plainSize int, readyBlockData ReadyBlockData, err error) {
 	f.maybeStall(ctx, "Ready")
 	return f.delegate().Ready(ctx, md, block)
 }
 
 func (f *stallingBlockOps) Put(
-	ctx context.Context, md *RootMetadata, blockPtr BlockPointer,
-	readyBlockData ReadyBlockData) error {
+	ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData ReadyBlockData) error {
 	f.maybeStall(ctx, "Put")
 	select {
 	case <-ctx.Done():
@@ -101,14 +99,13 @@ func (f *stallingBlockOps) Put(
 }
 
 func (f *stallingBlockOps) Delete(
-	ctx context.Context, md *RootMetadata,
-	ptrs []BlockPointer) (map[BlockID]int, error) {
+	ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) (map[BlockID]int, error) {
 	f.maybeStall(ctx, "Delete")
 	return f.delegate().Delete(ctx, md, ptrs)
 }
 
 func (f *stallingBlockOps) Archive(
-	ctx context.Context, md *RootMetadata, ptrs []BlockPointer) error {
+	ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) error {
 	f.maybeStall(ctx, "Archive")
 	return f.delegate().Archive(ctx, md, ptrs)
 }
@@ -130,50 +127,47 @@ func (m *stallingMDOps) maybeStall(ctx context.Context, opName string) {
 	maybeStall(ctx, opName, m.stallOpName, m.stallKey, m.stallMap)
 }
 
-func (m *stallingMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
-	*RootMetadata, error) {
+func (m *stallingMDOps) GetForHandle(ctx context.Context, handle *IFCERFTTlfHandle) (
+	*IFCERFTRootMetadata, error) {
 	m.maybeStall(ctx, "GetForHandle")
 	return m.delegate.GetForHandle(ctx, handle)
 }
 
 func (m *stallingMDOps) GetUnmergedForHandle(ctx context.Context,
-	handle *TlfHandle) (*RootMetadata, error) {
+	handle *IFCERFTTlfHandle) (*IFCERFTRootMetadata, error) {
 	m.maybeStall(ctx, "GetUnmergedForHandle")
 	return m.delegate.GetUnmergedForHandle(ctx, handle)
 }
 
-func (m *stallingMDOps) GetForTLF(ctx context.Context, id TlfID) (
-	*RootMetadata, error) {
+func (m *stallingMDOps) GetForTLF(ctx context.Context, id IFCERFTTlfID) (
+	*IFCERFTRootMetadata, error) {
 	m.maybeStall(ctx, "GetForTLF")
 	return m.delegate.GetForTLF(ctx, id)
 }
 
-func (m *stallingMDOps) GetLatestHandleForTLF(ctx context.Context, id TlfID) (
+func (m *stallingMDOps) GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (
 	BareTlfHandle, error) {
 	m.maybeStall(ctx, "GetLatestHandleForTLF")
 	return m.delegate.GetLatestHandleForTLF(ctx, id)
 }
 
-func (m *stallingMDOps) GetUnmergedForTLF(ctx context.Context, id TlfID,
-	bid BranchID) (*RootMetadata, error) {
+func (m *stallingMDOps) GetUnmergedForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID) (*IFCERFTRootMetadata, error) {
 	m.maybeStall(ctx, "GetUnmergedForTLF")
 	return m.delegate.GetUnmergedForTLF(ctx, id, bid)
 }
 
-func (m *stallingMDOps) GetRange(ctx context.Context, id TlfID,
-	start, stop MetadataRevision) (
-	[]*RootMetadata, error) {
+func (m *stallingMDOps) GetRange(ctx context.Context, id IFCERFTTlfID, start, stop MetadataRevision) (
+	[]*IFCERFTRootMetadata, error) {
 	m.maybeStall(ctx, "GetRange")
 	return m.delegate.GetRange(ctx, id, start, stop)
 }
 
-func (m *stallingMDOps) GetUnmergedRange(ctx context.Context, id TlfID,
-	bid BranchID, start, stop MetadataRevision) ([]*RootMetadata, error) {
+func (m *stallingMDOps) GetUnmergedRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, start, stop MetadataRevision) ([]*IFCERFTRootMetadata, error) {
 	m.maybeStall(ctx, "GetUnmergedRange")
 	return m.delegate.GetUnmergedRange(ctx, id, bid, start, stop)
 }
 
-func (m *stallingMDOps) Put(ctx context.Context, md *RootMetadata) error {
+func (m *stallingMDOps) Put(ctx context.Context, md *IFCERFTRootMetadata) error {
 	m.maybeStall(ctx, "Put")
 	select {
 	case <-ctx.Done():
@@ -192,8 +186,7 @@ func (m *stallingMDOps) Put(ctx context.Context, md *RootMetadata) error {
 	}
 }
 
-func (m *stallingMDOps) PutUnmerged(ctx context.Context, md *RootMetadata,
-	bid BranchID) error {
+func (m *stallingMDOps) PutUnmerged(ctx context.Context, md *IFCERFTRootMetadata, bid BranchID) error {
 	m.maybeStall(ctx, "PutUnmerged")
 	select {
 	case <-ctx.Done():

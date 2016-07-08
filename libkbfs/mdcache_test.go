@@ -27,9 +27,9 @@ func mdCacheShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	mockCtrl.Finish()
 }
 
-func testMdcachePut(t *testing.T, tlf TlfID, rev MetadataRevision,
-	mStatus MergeStatus, bid BranchID, h *TlfHandle, config *ConfigMock) {
-	rmd := &RootMetadata{
+func testMdcachePut(t *testing.T, tlf IFCERFTTlfID, rev MetadataRevision,
+	mStatus MergeStatus, bid BranchID, h *IFCERFTTlfHandle, config *ConfigMock) {
+	rmd := &IFCERFTRootMetadata{
 		WriterMetadata: WriterMetadata{
 			ID:    tlf,
 			WKeys: make(TLFWriterKeyGenerations, 1, 1),

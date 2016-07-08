@@ -178,45 +178,45 @@ func (k *KeybaseDaemonLocal) Resolve(ctx context.Context, assertion string) (
 
 // Identify implements KeybaseDaemon for KeybaseDaemonLocal.
 func (k *KeybaseDaemonLocal) Identify(ctx context.Context, assertion, reason string) (
-	UserInfo, error) {
+	IFCERFTUserInfo, error) {
 	k.lock.Lock()
 	defer k.lock.Unlock()
 	uid, err := k.assertionToUIDLocked(ctx, assertion)
 	if err != nil {
-		return UserInfo{}, err
+		return IFCERFTUserInfo{}, err
 	}
 
 	u, err := k.localUsers.getLocalUser(uid)
 	if err != nil {
-		return UserInfo{}, err
+		return IFCERFTUserInfo{}, err
 	}
 
-	var infoCopy UserInfo
-	if err := CodecUpdate(k.codec, &infoCopy, u.UserInfo); err != nil {
-		return UserInfo{}, err
+	var infoCopy IFCERFTUserInfo
+	if err := CodecUpdate(k.codec, &infoCopy, u.IFCERFTUserInfo); err != nil {
+		return IFCERFTUserInfo{}, err
 	}
 	return infoCopy, nil
 }
 
 // LoadUserPlusKeys implements KeybaseDaemon for KeybaseDaemonLocal.
-func (k *KeybaseDaemonLocal) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID) (UserInfo, error) {
+func (k *KeybaseDaemonLocal) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID) (IFCERFTUserInfo, error) {
 	k.lock.Lock()
 	defer k.lock.Unlock()
 	u, err := k.localUsers.getLocalUser(uid)
 	if err != nil {
-		return UserInfo{}, err
+		return IFCERFTUserInfo{}, err
 	}
 
-	var infoCopy UserInfo
-	if err := CodecUpdate(k.codec, &infoCopy, u.UserInfo); err != nil {
-		return UserInfo{}, err
+	var infoCopy IFCERFTUserInfo
+	if err := CodecUpdate(k.codec, &infoCopy, u.IFCERFTUserInfo); err != nil {
+		return IFCERFTUserInfo{}, err
 	}
 	return infoCopy, nil
 }
 
 // LoadUnverifiedKeys implements KeybaseDaemon for KeybaseDaemonLocal.
 func (k *KeybaseDaemonLocal) LoadUnverifiedKeys(ctx context.Context, uid keybase1.UID) (
-	[]VerifyingKey, []CryptPublicKey, error) {
+	[]IFCERFTVerifyingKey, []IFCERFTCryptPublicKey, error) {
 	k.lock.Lock()
 	defer k.lock.Unlock()
 	u, err := k.localUsers.getLocalUser(uid)
@@ -228,14 +228,14 @@ func (k *KeybaseDaemonLocal) LoadUnverifiedKeys(ctx context.Context, uid keybase
 
 // CurrentSession implements KeybaseDaemon for KeybaseDaemonLocal.
 func (k *KeybaseDaemonLocal) CurrentSession(ctx context.Context, sessionID int) (
-	SessionInfo, error) {
+	IFCERFTSessionInfo, error) {
 	k.lock.Lock()
 	defer k.lock.Unlock()
 	u, err := k.localUsers.getLocalUser(k.currentUID)
 	if err != nil {
-		return SessionInfo{}, err
+		return IFCERFTSessionInfo{}, err
 	}
-	return SessionInfo{
+	return IFCERFTSessionInfo{
 		Name:           u.Name,
 		UID:            u.UID,
 		Token:          "keybase_daemon_local_token",
@@ -286,7 +286,7 @@ func (k *KeybaseDaemonLocal) removeAssertionForTest(assertion string) {
 }
 
 type makeKeysFunc func(libkb.NormalizedUsername, int) (
-	CryptPublicKey, VerifyingKey)
+	IFCERFTCryptPublicKey, IFCERFTVerifyingKey)
 
 func (k *KeybaseDaemonLocal) addDeviceForTesting(uid keybase1.UID,
 	makeKeys makeKeysFunc) (int, error) {
@@ -322,11 +322,11 @@ func (k *KeybaseDaemonLocal) revokeDeviceForTesting(clock IFCERFTClock, uid keyb
 	}
 
 	if user.RevokedVerifyingKeys == nil {
-		user.RevokedVerifyingKeys = make(map[VerifyingKey]keybase1.KeybaseTime)
+		user.RevokedVerifyingKeys = make(map[IFCERFTVerifyingKey]keybase1.KeybaseTime)
 	}
 	if user.RevokedCryptPublicKeys == nil {
 		user.RevokedCryptPublicKeys =
-			make(map[CryptPublicKey]keybase1.KeybaseTime)
+			make(map[IFCERFTCryptPublicKey]keybase1.KeybaseTime)
 	}
 
 	kbtime := keybase1.KeybaseTime{

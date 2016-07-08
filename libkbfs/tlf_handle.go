@@ -17,12 +17,12 @@ import (
 )
 
 // CanonicalTlfName is a string containing the canonical name of a TLF.
-type CanonicalTlfName string
+type IFCERFTCanonicalTlfName string
 
 // TlfHandle contains all the info in a BareTlfHandle as well as
 // additional info. This doesn't embed BareTlfHandle to avoid having
 // to keep track of data in multiple places.
-type TlfHandle struct {
+type IFCERFTTlfHandle struct {
 	// If this is true, resolvedReaders and unresolvedReaders
 	// should both be nil.
 	public          bool
@@ -36,25 +36,25 @@ type TlfHandle struct {
 	finalizedInfo     *TlfHandleExtension
 	// name can be computed from the other fields, but is cached
 	// for speed.
-	name CanonicalTlfName
+	name IFCERFTCanonicalTlfName
 }
 
 // IsPublic returns whether or not this TlfHandle represents a public
 // top-level folder.
-func (h TlfHandle) IsPublic() bool {
+func (h IFCERFTTlfHandle) IsPublic() bool {
 	return h.public
 }
 
 // IsWriter returns whether or not the given user is a writer for the
 // top-level folder represented by this TlfHandle.
-func (h TlfHandle) IsWriter(user keybase1.UID) bool {
+func (h IFCERFTTlfHandle) IsWriter(user keybase1.UID) bool {
 	_, ok := h.resolvedWriters[user]
 	return ok
 }
 
 // IsReader returns whether or not the given user is a reader for the
 // top-level folder represented by this TlfHandle.
-func (h TlfHandle) IsReader(user keybase1.UID) bool {
+func (h IFCERFTTlfHandle) IsReader(user keybase1.UID) bool {
 	if h.public || h.IsWriter(user) {
 		return true
 	}
@@ -62,7 +62,7 @@ func (h TlfHandle) IsReader(user keybase1.UID) bool {
 	return ok
 }
 
-func (h TlfHandle) unsortedResolvedWriters() []keybase1.UID {
+func (h IFCERFTTlfHandle) unsortedResolvedWriters() []keybase1.UID {
 	if len(h.resolvedWriters) == 0 {
 		return nil
 	}
@@ -75,7 +75,7 @@ func (h TlfHandle) unsortedResolvedWriters() []keybase1.UID {
 
 // ResolvedWriters returns the handle's resolved writer UIDs in sorted
 // order.
-func (h TlfHandle) ResolvedWriters() []keybase1.UID {
+func (h IFCERFTTlfHandle) ResolvedWriters() []keybase1.UID {
 	writers := h.unsortedResolvedWriters()
 	sort.Sort(uidList(writers))
 	return writers
@@ -83,11 +83,11 @@ func (h TlfHandle) ResolvedWriters() []keybase1.UID {
 
 // FirstResolvedWriter returns the handle's first resolved writer UID
 // (when sorted). This is used mostly for tests.
-func (h TlfHandle) FirstResolvedWriter() keybase1.UID {
+func (h IFCERFTTlfHandle) FirstResolvedWriter() keybase1.UID {
 	return h.ResolvedWriters()[0]
 }
 
-func (h TlfHandle) unsortedResolvedReaders() []keybase1.UID {
+func (h IFCERFTTlfHandle) unsortedResolvedReaders() []keybase1.UID {
 	if len(h.resolvedReaders) == 0 {
 		return nil
 	}
@@ -100,7 +100,7 @@ func (h TlfHandle) unsortedResolvedReaders() []keybase1.UID {
 
 // ResolvedReaders returns the handle's resolved reader UIDs in sorted
 // order. If the handle is public, nil will be returned.
-func (h TlfHandle) ResolvedReaders() []keybase1.UID {
+func (h IFCERFTTlfHandle) ResolvedReaders() []keybase1.UID {
 	readers := h.unsortedResolvedReaders()
 	sort.Sort(uidList(readers))
 	return readers
@@ -108,7 +108,7 @@ func (h TlfHandle) ResolvedReaders() []keybase1.UID {
 
 // UnresolvedWriters returns the handle's unresolved writers in sorted
 // order.
-func (h TlfHandle) UnresolvedWriters() []keybase1.SocialAssertion {
+func (h IFCERFTTlfHandle) UnresolvedWriters() []keybase1.SocialAssertion {
 	if len(h.unresolvedWriters) == 0 {
 		return nil
 	}
@@ -119,7 +119,7 @@ func (h TlfHandle) UnresolvedWriters() []keybase1.SocialAssertion {
 
 // UnresolvedReaders returns the handle's unresolved readers in sorted
 // order. If the handle is public, nil will be returned.
-func (h TlfHandle) UnresolvedReaders() []keybase1.SocialAssertion {
+func (h IFCERFTTlfHandle) UnresolvedReaders() []keybase1.SocialAssertion {
 	if len(h.unresolvedReaders) == 0 {
 		return nil
 	}
@@ -129,7 +129,7 @@ func (h TlfHandle) UnresolvedReaders() []keybase1.SocialAssertion {
 }
 
 // ConflictInfo returns the handle's conflict info, if any.
-func (h TlfHandle) ConflictInfo() *TlfHandleExtension {
+func (h IFCERFTTlfHandle) ConflictInfo() *TlfHandleExtension {
 	if h.conflictInfo == nil {
 		return nil
 	}
@@ -141,7 +141,7 @@ func (h TlfHandle) ConflictInfo() *TlfHandleExtension {
 // one, if the existing one is nil. (In this case, the given one may
 // also be nil.) Otherwise, the given conflict info must match the
 // existing one.
-func (h *TlfHandle) UpdateConflictInfo(
+func (h *IFCERFTTlfHandle) UpdateConflictInfo(
 	codec IFCERFTCodec, info *TlfHandleExtension) error {
 	if h.conflictInfo == nil {
 		if info == nil {
@@ -168,7 +168,7 @@ func (h *TlfHandle) UpdateConflictInfo(
 }
 
 // FinalizedInfo returns the handle's finalized info, if any.
-func (h TlfHandle) FinalizedInfo() *TlfHandleExtension {
+func (h IFCERFTTlfHandle) FinalizedInfo() *TlfHandleExtension {
 	if h.finalizedInfo == nil {
 		return nil
 	}
@@ -178,7 +178,7 @@ func (h TlfHandle) FinalizedInfo() *TlfHandleExtension {
 
 // SetFinalizedInfo sets the handle's finalized info to the given one,
 // which may be nil.
-func (h *TlfHandle) SetFinalizedInfo(info *TlfHandleExtension) {
+func (h *IFCERFTTlfHandle) SetFinalizedInfo(info *TlfHandleExtension) {
 	if info == nil {
 		h.finalizedInfo = nil
 		return
@@ -188,7 +188,7 @@ func (h *TlfHandle) SetFinalizedInfo(info *TlfHandleExtension) {
 }
 
 // Extensions returns a list of extensions for the given handle.
-func (h TlfHandle) Extensions() (extensions []TlfHandleExtension) {
+func (h IFCERFTTlfHandle) Extensions() (extensions []TlfHandleExtension) {
 	if h.ConflictInfo() != nil {
 		extensions = append(extensions, *h.ConflictInfo())
 	}
@@ -199,7 +199,7 @@ func (h TlfHandle) Extensions() (extensions []TlfHandleExtension) {
 }
 
 func init() {
-	if reflect.ValueOf(TlfHandle{}).NumField() != 8 {
+	if reflect.ValueOf(IFCERFTTlfHandle{}).NumField() != 8 {
 		panic(errors.New(
 			"Unexpected number of fields in TlfHandle; " +
 				"please update TlfHandle.Equals() for your " +
@@ -208,7 +208,7 @@ func init() {
 }
 
 // Equals returns whether h and other contain the same info.
-func (h TlfHandle) Equals(codec IFCERFTCodec, other TlfHandle) (bool, error) {
+func (h IFCERFTTlfHandle) Equals(codec IFCERFTCodec, other IFCERFTTlfHandle) (bool, error) {
 	if h.public != other.public {
 		return false, nil
 	}
@@ -254,7 +254,7 @@ func (h TlfHandle) Equals(codec IFCERFTCodec, other TlfHandle) (bool, error) {
 }
 
 // ToBareHandle returns a BareTlfHandle corresponding to this handle.
-func (h TlfHandle) ToBareHandle() (BareTlfHandle, error) {
+func (h IFCERFTTlfHandle) ToBareHandle() (BareTlfHandle, error) {
 	var readers []keybase1.UID
 	if h.public {
 		readers = []keybase1.UID{keybase1.PUBLIC_UID}
@@ -269,7 +269,7 @@ func (h TlfHandle) ToBareHandle() (BareTlfHandle, error) {
 
 // ToBareHandleOrBust returns a BareTlfHandle corresponding to this
 // handle, and panics if there's an error. Used by tests.
-func (h TlfHandle) ToBareHandleOrBust() BareTlfHandle {
+func (h IFCERFTTlfHandle) ToBareHandleOrBust() BareTlfHandle {
 	bh, err := h.ToBareHandle()
 	if err != nil {
 		panic(err)
@@ -320,7 +320,7 @@ func resolveOneUser(
 
 func makeTlfHandleHelper(
 	ctx context.Context, public bool, writers, readers []resolvableUser,
-	extensions []TlfHandleExtension) (*TlfHandle, error) {
+	extensions []TlfHandleExtension) (*IFCERFTTlfHandle, error) {
 	if public && len(readers) > 0 {
 		return nil, errors.New("public folder cannot have readers")
 	}
@@ -390,7 +390,7 @@ func makeTlfHandleHelper(
 	canonicalName += NewTlfHandleExtensionSuffix(extensions)
 	conflictInfo, finalizedInfo := tlfHandleExtensionList(extensions).Splat()
 
-	h := &TlfHandle{
+	h := &IFCERFTTlfHandle{
 		public:            public,
 		resolvedWriters:   usedWNames,
 		resolvedReaders:   usedRNames,
@@ -398,7 +398,7 @@ func makeTlfHandleHelper(
 		unresolvedReaders: unresolvedReaders,
 		conflictInfo:      conflictInfo,
 		finalizedInfo:     finalizedInfo,
-		name:              CanonicalTlfName(canonicalName),
+		name:              IFCERFTCanonicalTlfName(canonicalName),
 	}
 
 	return h, nil
@@ -430,7 +430,7 @@ func (rsa resolvableSocialAssertion) resolve(ctx context.Context) (nameUIDPair, 
 // the given normalizedUsernameGetter (which is usually a KBPKI).
 func MakeTlfHandle(
 	ctx context.Context, bareHandle BareTlfHandle,
-	nug normalizedUsernameGetter) (*TlfHandle, error) {
+	nug normalizedUsernameGetter) (*IFCERFTTlfHandle, error) {
 	writers := make([]resolvableUser, 0, len(bareHandle.Writers)+len(bareHandle.UnresolvedWriters))
 	for _, w := range bareHandle.Writers {
 		writers = append(writers, resolvableUID{nug, w})
@@ -466,8 +466,8 @@ func MakeTlfHandle(
 	return h, nil
 }
 
-func (h *TlfHandle) deepCopy() *TlfHandle {
-	hCopy := TlfHandle{
+func (h *IFCERFTTlfHandle) deepCopy() *IFCERFTTlfHandle {
+	hCopy := IFCERFTTlfHandle{
 		public:            h.public,
 		name:              h.name,
 		unresolvedWriters: h.UnresolvedWriters(),
@@ -504,7 +504,7 @@ func getSortedNames(
 }
 
 // GetCanonicalName returns the canonical name of this TLF.
-func (h *TlfHandle) GetCanonicalName() CanonicalTlfName {
+func (h *IFCERFTTlfHandle) GetCanonicalName() IFCERFTCanonicalTlfName {
 	if h.name == "" {
 		panic(fmt.Sprintf("TlfHandle %v with no name", h))
 	}
@@ -512,7 +512,7 @@ func (h *TlfHandle) GetCanonicalName() CanonicalTlfName {
 	return h.name
 }
 
-func buildCanonicalPath(public bool, canonicalName CanonicalTlfName) string {
+func buildCanonicalPath(public bool, canonicalName IFCERFTCanonicalTlfName) string {
 	var folderType string
 	if public {
 		folderType = "public"
@@ -524,14 +524,14 @@ func buildCanonicalPath(public bool, canonicalName CanonicalTlfName) string {
 }
 
 // GetCanonicalPath returns the full canonical path of this TLF.
-func (h *TlfHandle) GetCanonicalPath() string {
+func (h *IFCERFTTlfHandle) GetCanonicalPath() string {
 	return buildCanonicalPath(h.IsPublic(), h.GetCanonicalName())
 }
 
 // ToFavorite converts a TlfHandle into a Favorite, suitable for
 // Favorites calls.
-func (h *TlfHandle) ToFavorite() Favorite {
-	return Favorite{
+func (h *IFCERFTTlfHandle) ToFavorite() IFCERFTFavorite {
+	return IFCERFTFavorite{
 		Name:   string(h.GetCanonicalName()),
 		Public: h.IsPublic(),
 	}
@@ -540,10 +540,10 @@ func (h *TlfHandle) ToFavorite() Favorite {
 // ToFavorite converts a TlfHandle into a Favorite, and sets internal
 // state about whether the corresponding folder was just created or
 // not.
-func (h *TlfHandle) toFavToAdd(created bool) favToAdd {
+func (h *IFCERFTTlfHandle) toFavToAdd(created bool) favToAdd {
 	return favToAdd{
-		Favorite: h.ToFavorite(),
-		created:  created,
+		IFCERFTFavorite: h.ToFavorite(),
+		created:         created,
 	}
 }
 
@@ -558,8 +558,8 @@ func (rp resolvableNameUIDPair) resolve(ctx context.Context) (nameUIDPair, keyba
 // optimization, if h contains no unresolved assertions, it just
 // returns itself.  If uid != keybase1.UID(""), it only allows
 // assertions that resolve to uid.
-func (h *TlfHandle) ResolveAgainForUser(ctx context.Context, resolver resolver,
-	uid keybase1.UID) (*TlfHandle, error) {
+func (h *IFCERFTTlfHandle) ResolveAgainForUser(ctx context.Context, resolver resolver,
+	uid keybase1.UID) (*IFCERFTTlfHandle, error) {
 	if len(h.unresolvedWriters)+len(h.unresolvedReaders) == 0 {
 		return h, nil
 	}
@@ -597,8 +597,8 @@ func (h *TlfHandle) ResolveAgainForUser(ctx context.Context, resolver resolver,
 // given handle and returns a new handle with the results. As an
 // optimization, if h contains no unresolved assertions, it just
 // returns itself.
-func (h *TlfHandle) ResolveAgain(ctx context.Context, resolver resolver) (
-	*TlfHandle, error) {
+func (h *IFCERFTTlfHandle) ResolveAgain(ctx context.Context, resolver resolver) (
+	*IFCERFTTlfHandle, error) {
 	if h.IsFinal() {
 		// Don't attempt to further resolve final handles.
 		return h, nil
@@ -625,9 +625,9 @@ func (pr partialResolver) Resolve(ctx context.Context, assertion string) (
 // It also returns the partially-resolved version of h, i.e. h
 // resolved except for unresolved assertions in other; this should
 // equal other if and only if true is returned.
-func (h TlfHandle) ResolvesTo(
-	ctx context.Context, codec IFCERFTCodec, resolver resolver, other *TlfHandle) (
-	resolvesTo bool, partialResolvedH *TlfHandle, err error) {
+func (h IFCERFTTlfHandle) ResolvesTo(
+	ctx context.Context, codec IFCERFTCodec, resolver resolver, other *IFCERFTTlfHandle) (
+	resolvesTo bool, partialResolvedH *IFCERFTTlfHandle, err error) {
 	unresolvedAssertions := make(map[string]bool)
 	for _, uw := range other.unresolvedWriters {
 		unresolvedAssertions[uw.String()] = true
@@ -822,7 +822,7 @@ func (ra resolvableAssertion) resolve(ctx context.Context) (
 // has no public folder.
 func ParseTlfHandle(
 	ctx context.Context, kbpki IFCERFTKBPKI, name string, public bool) (
-	*TlfHandle, error) {
+	*IFCERFTTlfHandle, error) {
 	// Before parsing the tlf handle (which results in identify
 	// calls that cause tracker popups), first see if there's any
 	// quick normalization of usernames we can do.  For example,
@@ -912,6 +912,6 @@ func CheckTlfHandleOffline(
 
 // IsFinal returns whether or not this TlfHandle represents a finalized
 // top-level folder.
-func (h TlfHandle) IsFinal() bool {
+func (h IFCERFTTlfHandle) IsFinal() bool {
 	return h.finalizedInfo != nil
 }

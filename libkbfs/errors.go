@@ -114,7 +114,7 @@ func (e DirNotEmptyError) Error() string {
 // TlfAccessError that the user tried to perform an unpermitted
 // operation on a top-level folder.
 type TlfAccessError struct {
-	ID TlfID
+	ID IFCERFTTlfID
 }
 
 // Error implements the error interface for TlfAccessError
@@ -146,7 +146,7 @@ func (e ErrorFileAccessError) Error() string {
 // top-level folder without read permission.
 type ReadAccessError struct {
 	User   libkb.NormalizedUsername
-	Tlf    CanonicalTlfName
+	Tlf    IFCERFTCanonicalTlfName
 	Public bool
 }
 
@@ -160,7 +160,7 @@ func (e ReadAccessError) Error() string {
 // top-level folder without read permission.
 type WriteAccessError struct {
 	User   libkb.NormalizedUsername
-	Tlf    CanonicalTlfName
+	Tlf    IFCERFTCanonicalTlfName
 	Public bool
 }
 
@@ -172,14 +172,14 @@ func (e WriteAccessError) Error() string {
 
 // NewReadAccessError constructs a ReadAccessError for the given
 // directory and user.
-func NewReadAccessError(h *TlfHandle, username libkb.NormalizedUsername) error {
+func NewReadAccessError(h *IFCERFTTlfHandle, username libkb.NormalizedUsername) error {
 	tlfname := h.GetCanonicalName()
 	return ReadAccessError{username, tlfname, h.IsPublic()}
 }
 
 // NewWriteAccessError constructs a WriteAccessError for the given
 // directory and user.
-func NewWriteAccessError(h *TlfHandle, username libkb.NormalizedUsername) error {
+func NewWriteAccessError(h *IFCERFTTlfHandle, username libkb.NormalizedUsername) error {
 	tlfname := h.GetCanonicalName()
 	return WriteAccessError{username, tlfname, h.IsPublic()}
 }
@@ -188,7 +188,7 @@ func NewWriteAccessError(h *TlfHandle, username libkb.NormalizedUsername) error 
 // be rekeyed for the local device, and can be done so by one of the
 // other user's devices.
 type NeedSelfRekeyError struct {
-	Tlf CanonicalTlfName
+	Tlf IFCERFTCanonicalTlfName
 }
 
 // Error implements the error interface for NeedSelfRekeyError
@@ -202,7 +202,7 @@ func (e NeedSelfRekeyError) Error() string {
 // be rekeyed for the local device, and can only done so by one of the
 // other users.
 type NeedOtherRekeyError struct {
-	Tlf CanonicalTlfName
+	Tlf IFCERFTCanonicalTlfName
 }
 
 // Error implements the error interface for NeedOtherRekeyError
@@ -218,8 +218,8 @@ func (e NeedOtherRekeyError) Error() string {
 //
 // ptr and branch should be filled in, but p may be empty.
 type NotFileBlockError struct {
-	ptr    BlockPointer
-	branch BranchName
+	ptr    IFCERFTBlockPointer
+	branch IFCERFTBranchName
 	p      path
 }
 
@@ -232,8 +232,8 @@ func (e NotFileBlockError) Error() string {
 //
 // ptr and branch should be filled in, but p may be empty.
 type NotDirBlockError struct {
-	ptr    BlockPointer
-	branch BranchName
+	ptr    IFCERFTBlockPointer
+	branch IFCERFTBranchName
 	p      path
 }
 
@@ -307,7 +307,7 @@ func (e BadCryptoError) Error() string {
 // BadCryptoMDError indicates that KBFS performed a bad crypto
 // operation, specifically on a MD object.
 type BadCryptoMDError struct {
-	ID TlfID
+	ID IFCERFTTlfID
 }
 
 // Error implements the error interface for BadCryptoMDError
@@ -318,7 +318,7 @@ func (e BadCryptoMDError) Error() string {
 // BadMDError indicates that the system is storing corrupt MD object
 // for the given TLF ID.
 type BadMDError struct {
-	ID TlfID
+	ID IFCERFTTlfID
 }
 
 // Error implements the error interface for BadMDError
@@ -329,7 +329,7 @@ func (e BadMDError) Error() string {
 // MDMissingDataError indicates that we are trying to take get the
 // metadata ID of a MD object with no serialized data field.
 type MDMissingDataError struct {
-	ID TlfID
+	ID IFCERFTTlfID
 }
 
 // Error implements the error interface for MDMissingDataError
@@ -354,7 +354,7 @@ func (e MDMismatchError) Error() string {
 // NoSuchMDError indicates that there is no MD object for the given
 // folder, revision, and merged status.
 type NoSuchMDError struct {
-	Tlf TlfID
+	Tlf IFCERFTTlfID
 	Rev MetadataRevision
 	BID BranchID
 }
@@ -368,7 +368,7 @@ func (e NoSuchMDError) Error() string {
 // InvalidMetadataVersionError indicates that an invalid metadata version was
 // used.
 type InvalidMetadataVersionError struct {
-	Tlf         TlfID
+	Tlf         IFCERFTTlfID
 	MetadataVer MetadataVer
 }
 
@@ -382,7 +382,7 @@ func (e InvalidMetadataVersionError) Error() string {
 // folder has been written using a new metadata version that our
 // client doesn't understand.
 type NewMetadataVersionError struct {
-	Tlf         TlfID
+	Tlf         IFCERFTTlfID
 	MetadataVer MetadataVer
 }
 
@@ -396,7 +396,7 @@ func (e NewMetadataVersionError) Error() string {
 // InvalidDataVersionError indicates that an invalid data version was
 // used.
 type InvalidDataVersionError struct {
-	DataVer DataVer
+	DataVer IFCERFTDataVer
 }
 
 // Error implements the error interface for InvalidDataVersionError.
@@ -409,7 +409,7 @@ func (e InvalidDataVersionError) Error() string {
 // understand.
 type NewDataVersionError struct {
 	path    path
-	DataVer DataVer
+	DataVer IFCERFTDataVer
 }
 
 // Error implements the error interface for NewDataVersionError.
@@ -435,7 +435,7 @@ func (e OutdatedVersionError) Error() string {
 // InvalidKeyGenerationError indicates that an invalid key generation
 // was used.
 type InvalidKeyGenerationError struct {
-	TlfHandle *TlfHandle
+	TlfHandle *IFCERFTTlfHandle
 	KeyGen    KeyGen
 }
 
@@ -447,7 +447,7 @@ func (e InvalidKeyGenerationError) Error() string {
 // NewKeyGenerationError indicates that the data at the given path has
 // been written using keys that our client doesn't have.
 type NewKeyGenerationError struct {
-	TlfHandle *TlfHandle
+	TlfHandle *IFCERFTTlfHandle
 	KeyGen    KeyGen
 }
 
@@ -557,7 +557,7 @@ func (e UnverifiableTlfUpdateError) Error() string {
 // KeyCacheMissError indicates that a key matching the given TlfID
 // and key generation wasn't found in cache.
 type KeyCacheMissError struct {
-	tlf    TlfID
+	tlf    IFCERFTTlfID
 	keyGen KeyGen
 }
 
@@ -569,7 +569,7 @@ func (e KeyCacheMissError) Error() string {
 // KeyCacheHitError indicates that a key matching the given TlfID
 // and key generation was found in cache but the object type was unknown.
 type KeyCacheHitError struct {
-	tlf    TlfID
+	tlf    IFCERFTTlfID
 	keyGen KeyGen
 }
 
@@ -621,7 +621,7 @@ func (e NoKeysError) Error() string {
 // InvalidPublicTLFOperation indicates that an invalid operation was
 // attempted on a public TLF.
 type InvalidPublicTLFOperation struct {
-	id     TlfID
+	id     IFCERFTTlfID
 	opName string
 }
 
@@ -634,8 +634,8 @@ func (e InvalidPublicTLFOperation) Error() string {
 // WrongOpsError indicates that an unexpected path got passed into a
 // FolderBranchOps instance
 type WrongOpsError struct {
-	nodeFB FolderBranch
-	opsFB  FolderBranch
+	nodeFB IFCERFTFolderBranch
+	opsFB  IFCERFTFolderBranch
 }
 
 // Error implements the error interface for WrongOpsError.
@@ -647,7 +647,7 @@ func (e WrongOpsError) Error() string {
 // NodeNotFoundError indicates that we tried to find a node for the
 // given BlockPointer and failed.
 type NodeNotFoundError struct {
-	ptr BlockPointer
+	ptr IFCERFTBlockPointer
 }
 
 // Error implements the error interface for NodeNotFoundError.
@@ -779,8 +779,8 @@ func (e MDRevisionMismatch) Error() string {
 // MDTlfIDMismatch indicates that the ID field of a successor MD
 // doesn't match the ID field of its predecessor.
 type MDTlfIDMismatch struct {
-	currID TlfID
-	nextID TlfID
+	currID IFCERFTTlfID
+	nextID IFCERFTTlfID
 }
 
 func (e MDTlfIDMismatch) Error() string {
@@ -838,7 +838,7 @@ func (e NotPermittedWhileDirtyError) Error() string {
 // NoChainFoundError indicates that a conflict resolution chain
 // corresponding to the given pointer could not be found.
 type NoChainFoundError struct {
-	ptr BlockPointer
+	ptr IFCERFTBlockPointer
 }
 
 // Error implements the error interface for NoChainFoundError.
@@ -943,7 +943,7 @@ func (e RekeyPermissionError) Error() string {
 // NewRekeyPermissionError constructs a RekeyPermissionError for the given
 // directory and user.
 func NewRekeyPermissionError(
-	dir *TlfHandle, username libkb.NormalizedUsername) error {
+	dir *IFCERFTTlfHandle, username libkb.NormalizedUsername) error {
 	dirname := dir.GetCanonicalPath()
 	return RekeyPermissionError{username, dirname}
 }
@@ -1034,7 +1034,7 @@ func (e UnexpectedUnmergedPutError) Error() string {
 // NoSuchTlfHandleError indicates we were unable to resolve a folder
 // ID to a folder handle.
 type NoSuchTlfHandleError struct {
-	ID TlfID
+	ID IFCERFTTlfID
 }
 
 // Error implements the error interface for NoSuchTlfHandleError
@@ -1069,9 +1069,9 @@ func (e MetadataIsFinalError) Error() string {
 // IncompatibleHandleError indicates that somethine tried to update
 // the head of a TLF with a RootMetadata with an incompatible handle.
 type IncompatibleHandleError struct {
-	oldName                  CanonicalTlfName
-	partiallyResolvedOldName CanonicalTlfName
-	newName                  CanonicalTlfName
+	oldName                  IFCERFTCanonicalTlfName
+	partiallyResolvedOldName IFCERFTCanonicalTlfName
+	newName                  IFCERFTCanonicalTlfName
 }
 
 func (e IncompatibleHandleError) Error() string {

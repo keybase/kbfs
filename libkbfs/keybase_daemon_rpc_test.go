@@ -52,8 +52,8 @@ func TestKeybaseDaemonRPCGetCurrentSessionCanceled(t *testing.T) {
 // TODO: Add tests for Favorite* methods, too.
 
 type fakeKeybaseClient struct {
-	session                     SessionInfo
-	users                       map[keybase1.UID]UserInfo
+	session                     IFCERFTSessionInfo
+	users                       map[keybase1.UID]IFCERFTUserInfo
 	currentSessionCalled        bool
 	identifyCalled              bool
 	loadUserPlusKeysCalled      bool
@@ -143,7 +143,7 @@ const expectCached = false
 
 func testCurrentSession(
 	t *testing.T, client *fakeKeybaseClient, c *KeybaseDaemonRPC,
-	expectedSession SessionInfo, expectedCalled bool) {
+	expectedSession IFCERFTSessionInfo, expectedCalled bool) {
 	client.currentSessionCalled = false
 
 	ctx := context.Background()
@@ -160,7 +160,7 @@ func TestKeybaseDaemonSessionCache(t *testing.T) {
 	name := libkb.NormalizedUsername("fake username")
 	k := MakeLocalUserCryptPublicKeyOrBust(name)
 	v := MakeLocalUserVerifyingKeyOrBust(name)
-	session := SessionInfo{
+	session := IFCERFTSessionInfo{
 		Name:           name,
 		UID:            keybase1.UID("fake uid"),
 		Token:          "fake token",
@@ -246,7 +246,7 @@ func TestKeybaseDaemonUserCache(t *testing.T) {
 	uid2 := keybase1.UID("uid2")
 	name1 := libkb.NewNormalizedUsername("name1")
 	name2 := libkb.NewNormalizedUsername("name2")
-	users := map[keybase1.UID]UserInfo{
+	users := map[keybase1.UID]IFCERFTUserInfo{
 		uid1: {Name: name1},
 		uid2: {Name: name2},
 	}
@@ -330,7 +330,7 @@ func TestKeybaseDaemonUserCache(t *testing.T) {
 
 	// Test that CheckForRekey gets called only if the logged-in user
 	// changes.
-	session := SessionInfo{
+	session := IFCERFTSessionInfo{
 		UID: uid1,
 	}
 	c.setCachedCurrentSession(session)

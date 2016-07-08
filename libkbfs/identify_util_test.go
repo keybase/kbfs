@@ -30,16 +30,16 @@ func (g testNormalizedUsernameGetter) GetNormalizedUsername(
 }
 
 type testIdentifier struct {
-	assertions         map[string]UserInfo
+	assertions         map[string]IFCERFTUserInfo
 	identifiedUidsLock sync.Mutex
 	identifiedUids     map[keybase1.UID]bool
 }
 
 func (ti *testIdentifier) Identify(
-	ctx context.Context, assertion, reason string) (UserInfo, error) {
+	ctx context.Context, assertion, reason string) (IFCERFTUserInfo, error) {
 	userInfo, ok := ti.assertions[assertion]
 	if !ok {
-		return UserInfo{}, NoSuchUserError{assertion}
+		return IFCERFTUserInfo{}, NoSuchUserError{assertion}
 	}
 
 	func() {
@@ -62,7 +62,7 @@ func TestIdentify(t *testing.T) {
 	}
 
 	ti := &testIdentifier{
-		assertions: map[string]UserInfo{
+		assertions: map[string]IFCERFTUserInfo{
 			"alice": {
 				Name: "alice",
 				UID:  keybase1.MakeTestUID(1),

@@ -36,7 +36,7 @@ func MakeFakeSigningKeyOrBust(seed string) SigningKey {
 
 // MakeFakeVerifyingKeyOrBust makes a new key suitable for verifying
 // signatures made from the fake signing key made with the same seed.
-func MakeFakeVerifyingKeyOrBust(seed string) VerifyingKey {
+func MakeFakeVerifyingKeyOrBust(seed string) IFCERFTVerifyingKey {
 	sk := MakeFakeSigningKeyOrBust(seed)
 	return sk.GetVerifyingKey()
 }
@@ -56,7 +56,7 @@ func MakeFakeCryptPrivateKeyOrBust(seed string) CryptPrivateKey {
 
 // MakeFakeCryptPublicKeyOrBust makes the public key corresponding to
 // the crypt private key made with the same seed.
-func MakeFakeCryptPublicKeyOrBust(seed string) CryptPublicKey {
+func MakeFakeCryptPublicKeyOrBust(seed string) IFCERFTCryptPublicKey {
 	k := MakeFakeCryptPrivateKeyOrBust(seed)
 	return k.getPublicKey()
 }

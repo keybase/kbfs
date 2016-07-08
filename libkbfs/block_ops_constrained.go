@@ -46,8 +46,7 @@ func (b *BlockOpsConstrained) delay(ctx context.Context, size int) error {
 }
 
 // Put implements the BlockOps interface for BlockOpsConstrained.
-func (b *BlockOpsConstrained) Put(ctx context.Context, md *RootMetadata,
-	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
+func (b *BlockOpsConstrained) Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData ReadyBlockData) error {
 	if err := b.delay(ctx, len(readyBlockData.buf)); err != nil {
 		return err
 	}

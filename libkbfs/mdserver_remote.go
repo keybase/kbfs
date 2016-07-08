@@ -44,7 +44,7 @@ type MDServerRemote struct {
 	isAuthenticated  bool
 
 	observerMu sync.Mutex // protects observers
-	observers  map[TlfID]chan<- error
+	observers  map[IFCERFTTlfID]chan<- error
 
 	tickerCancel context.CancelFunc
 	tickerMu     sync.Mutex // protects the ticker cancel function
@@ -69,7 +69,7 @@ var _ rpc.ConnectionHandler = (*MDServerRemote)(nil)
 func NewMDServerRemote(config IFCERFTConfig, srvAddr string, ctx Context) *MDServerRemote {
 	mdServer := &MDServerRemote{
 		config:     config,
-		observers:  make(map[TlfID]chan<- error),
+		observers:  make(map[IFCERFTTlfID]chan<- error),
 		log:        config.MakeLogger(""),
 		mdSrvAddr:  srvAddr,
 		rekeyTimer: time.NewTimer(MdServerBackgroundRekeyPeriod),
@@ -319,16 +319,15 @@ func (md *MDServerRemote) cancelObservers() {
 }
 
 // Signal an observer. The observer lock must be held.
-func (md *MDServerRemote) signalObserverLocked(observerChan chan<- error, id TlfID, err error) {
+func (md *MDServerRemote) signalObserverLocked(observerChan chan<- error, id IFCERFTTlfID, err error) {
 	observerChan <- err
 	close(observerChan)
 	delete(md.observers, id)
 }
 
 // Helper used to retrieve metadata blocks from the MD server.
-func (md *MDServerRemote) get(ctx context.Context, id TlfID,
-	handle *BareTlfHandle, bid BranchID, mStatus MergeStatus,
-	start, stop MetadataRevision) (TlfID, []*RootMetadataSigned, error) {
+func (md *MDServerRemote) get(ctx context.Context, id IFCERFTTlfID, handle *BareTlfHandle, bid BranchID, mStatus MergeStatus,
+	start, stop MetadataRevision) (IFCERFTTlfID, []*RootMetadataSigned, error) {
 	// figure out which args to send
 	if id == NullTlfID && handle == nil {
 		panic("nil TlfID and handle passed into MDServerRemote.get")
@@ -387,7 +386,7 @@ func (md *MDServerRemote) get(ctx context.Context, id TlfID,
 // GetForHandle implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetForHandle(ctx context.Context,
 	handle BareTlfHandle, mStatus MergeStatus) (
-	TlfID, *RootMetadataSigned, error) {
+	IFCERFTTlfID, *RootMetadataSigned, error) {
 	id, rmdses, err := md.get(ctx, NullTlfID, &handle, NullBranchID,
 		mStatus,
 		MetadataRevisionUninitialized, MetadataRevisionUninitialized)
@@ -401,8 +400,7 @@ func (md *MDServerRemote) GetForHandle(ctx context.Context,
 }
 
 // GetForTLF implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) GetForTLF(ctx context.Context, id TlfID,
-	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+func (md *MDServerRemote) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
 	_, rmdses, err := md.get(ctx, id, nil, bid, mStatus,
 		MetadataRevisionUninitialized, MetadataRevisionUninitialized)
 	if err != nil {
@@ -415,8 +413,7 @@ func (md *MDServerRemote) GetForTLF(ctx context.Context, id TlfID,
 }
 
 // GetRange implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) GetRange(ctx context.Context, id TlfID,
-	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
+func (md *MDServerRemote) GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	_, rmds, err := md.get(ctx, id, nil, bid, mStatus, start, stop)
 	return rmds, err
@@ -442,7 +439,7 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned) err
 }
 
 // PruneBranch implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) PruneBranch(ctx context.Context, id TlfID, bid BranchID) error {
+func (md *MDServerRemote) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid BranchID) error {
 	arg := keybase1.PruneBranchArg{
 		FolderID: id.String(),
 		BranchID: bid.String(),
@@ -496,8 +493,7 @@ func (md *MDServerRemote) FolderNeedsRekey(_ context.Context, arg keybase1.Folde
 }
 
 // RegisterForUpdate implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) RegisterForUpdate(ctx context.Context, id TlfID,
-	currHead MetadataRevision) (<-chan error, error) {
+func (md *MDServerRemote) RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead MetadataRevision) (<-chan error, error) {
 	arg := keybase1.RegisterForUpdatesArg{
 		FolderID:     id.String(),
 		CurrRevision: currHead.Number(),
@@ -558,19 +554,19 @@ func (md *MDServerRemote) RegisterForUpdate(ctx context.Context, id TlfID,
 }
 
 // TruncateLock implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) TruncateLock(ctx context.Context, id TlfID) (
+func (md *MDServerRemote) TruncateLock(ctx context.Context, id IFCERFTTlfID) (
 	bool, error) {
 	return md.client.TruncateLock(ctx, id.String())
 }
 
 // TruncateUnlock implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) TruncateUnlock(ctx context.Context, id TlfID) (
+func (md *MDServerRemote) TruncateUnlock(ctx context.Context, id IFCERFTTlfID) (
 	bool, error) {
 	return md.client.TruncateUnlock(ctx, id.String())
 }
 
 // GetLatestHandleForTLF implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) GetLatestHandleForTLF(ctx context.Context, id TlfID) (
+func (md *MDServerRemote) GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (
 	BareTlfHandle, error) {
 	buf, err := md.client.GetLatestFolderHandle(ctx, id.String())
 	if err != nil {
@@ -652,7 +648,7 @@ func (md *MDServerRemote) IsConnected() bool {
 
 // GetTLFCryptKeyServerHalf is an implementation of the KeyServer interface.
 func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
-	serverHalfID TLFCryptKeyServerHalfID, cryptKey CryptPublicKey) (serverHalf TLFCryptKeyServerHalf, err error) {
+	serverHalfID TLFCryptKeyServerHalfID, cryptKey IFCERFTCryptPublicKey) (serverHalf TLFCryptKeyServerHalf, err error) {
 	// encode the ID
 	idBytes, err := md.config.Codec().Encode(serverHalfID)
 	if err != nil {

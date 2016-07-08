@@ -15,7 +15,7 @@ import (
 // FolderBranchStatus is a simple data structure describing the
 // current status of a particular folder-branch.  It is suitable for
 // encoding directly as JSON.
-type FolderBranchStatus struct {
+type IFCERFTFolderBranchStatus struct {
 	Staged       bool
 	HeadWriter   libkb.NormalizedUsername
 	DiskUsage    uint64
@@ -44,7 +44,7 @@ type KBFSStatus struct {
 }
 
 // StatusUpdate is a dummy type used to indicate status has been updated.
-type StatusUpdate struct{}
+type IFCERFTStatusUpdate struct{}
 
 // folderBranchStatusKeeper holds and updates the status for a given
 // folder-branch, and produces FolderBranchStatus instances suitable
@@ -53,13 +53,13 @@ type folderBranchStatusKeeper struct {
 	config    IFCERFTConfig
 	nodeCache IFCERFTNodeCache
 
-	md         *RootMetadata
+	md         *IFCERFTRootMetadata
 	dirtyNodes map[IFCERFTNodeID]IFCERFTNode
 	unmerged   *crChains
 	merged     *crChains
 	dataMutex  sync.Mutex
 
-	updateChan  chan StatusUpdate
+	updateChan  chan IFCERFTStatusUpdate
 	updateMutex sync.Mutex
 }
 
@@ -69,7 +69,7 @@ func newFolderBranchStatusKeeper(
 		config:     config,
 		nodeCache:  nodeCache,
 		dirtyNodes: make(map[IFCERFTNodeID]IFCERFTNode),
-		updateChan: make(chan StatusUpdate, 1),
+		updateChan: make(chan IFCERFTStatusUpdate, 1),
 	}
 }
 
@@ -78,12 +78,12 @@ func (fbsk *folderBranchStatusKeeper) signalChangeLocked() {
 	fbsk.updateMutex.Lock()
 	defer fbsk.updateMutex.Unlock()
 	close(fbsk.updateChan)
-	fbsk.updateChan = make(chan StatusUpdate, 1)
+	fbsk.updateChan = make(chan IFCERFTStatusUpdate, 1)
 }
 
 // setRootMetadata sets the current head metadata for the
 // corresponding folder-branch.
-func (fbsk *folderBranchStatusKeeper) setRootMetadata(md *RootMetadata) {
+func (fbsk *folderBranchStatusKeeper) setRootMetadata(md *IFCERFTRootMetadata) {
 	fbsk.dataMutex.Lock()
 	defer fbsk.dataMutex.Unlock()
 	if fbsk.md == md {
@@ -150,19 +150,19 @@ func (fbsk *folderBranchStatusKeeper) convertNodesToPathsLocked(
 // getStatus returns a FolderBranchStatus-representation of the
 // current status.
 func (fbsk *folderBranchStatusKeeper) getStatus(ctx context.Context) (
-	FolderBranchStatus, <-chan StatusUpdate, error) {
+	IFCERFTFolderBranchStatus, <-chan IFCERFTStatusUpdate, error) {
 	fbsk.dataMutex.Lock()
 	defer fbsk.dataMutex.Unlock()
 	fbsk.updateMutex.Lock()
 	defer fbsk.updateMutex.Unlock()
 
-	var fbs FolderBranchStatus
+	var fbs IFCERFTFolderBranchStatus
 
 	if fbsk.md != nil {
 		fbs.Staged = (fbsk.md.WFlags & MetadataFlagUnmerged) != 0
 		name, err := fbsk.config.KBPKI().GetNormalizedUsername(ctx, fbsk.md.LastModifyingWriter)
 		if err != nil {
-			return FolderBranchStatus{}, nil, err
+			return IFCERFTFolderBranchStatus{}, nil, err
 		}
 		fbs.HeadWriter = name
 		fbs.DiskUsage = fbsk.md.DiskUsage

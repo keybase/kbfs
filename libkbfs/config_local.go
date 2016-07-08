@@ -87,28 +87,28 @@ var _ IFCERFTConfig = (*ConfigLocal)(nil)
 
 // LocalUser represents a fake KBFS user, useful for testing.
 type LocalUser struct {
-	UserInfo
+	IFCERFTUserInfo
 	Asserts []string
 	// Index into UserInfo.CryptPublicKeys.
 	CurrentCryptPublicKeyIndex int
 	// Index into UserInfo.VerifyingKeys.
 	CurrentVerifyingKeyIndex int
 	// Unverified keys.
-	UnverifiedVerifyingKeys   []VerifyingKey
-	UnverifiedCryptPublicKeys []CryptPublicKey
+	UnverifiedVerifyingKeys   []IFCERFTVerifyingKey
+	UnverifiedCryptPublicKeys []IFCERFTCryptPublicKey
 }
 
 // GetCurrentCryptPublicKey returns this LocalUser's public encryption key.
-func (lu *LocalUser) GetCurrentCryptPublicKey() CryptPublicKey {
+func (lu *LocalUser) GetCurrentCryptPublicKey() IFCERFTCryptPublicKey {
 	return lu.CryptPublicKeys[lu.CurrentCryptPublicKeyIndex]
 }
 
 // GetCurrentVerifyingKey returns this LocalUser's public signing key.
-func (lu *LocalUser) GetCurrentVerifyingKey() VerifyingKey {
+func (lu *LocalUser) GetCurrentVerifyingKey() IFCERFTVerifyingKey {
 	return lu.VerifyingKeys[lu.CurrentVerifyingKeyIndex]
 }
 
-func verifyingKeysToPublicKeys(keys []VerifyingKey) []keybase1.PublicKey {
+func verifyingKeysToPublicKeys(keys []IFCERFTVerifyingKey) []keybase1.PublicKey {
 	publicKeys := make([]keybase1.PublicKey, len(keys))
 	for i, key := range keys {
 		publicKeys[i] = keybase1.PublicKey{
@@ -119,7 +119,7 @@ func verifyingKeysToPublicKeys(keys []VerifyingKey) []keybase1.PublicKey {
 	return publicKeys
 }
 
-func cryptPublicKeysToPublicKeys(keys []CryptPublicKey) []keybase1.PublicKey {
+func cryptPublicKeysToPublicKeys(keys []IFCERFTCryptPublicKey) []keybase1.PublicKey {
 	publicKeys := make([]keybase1.PublicKey, len(keys))
 	for i, key := range keys {
 		publicKeys[i] = keybase1.PublicKey{
@@ -148,7 +148,7 @@ func MakeLocalUserSigningKeyOrBust(name libkb.NormalizedUsername) SigningKey {
 
 // MakeLocalUserVerifyingKeyOrBust makes a new verifying key
 // corresponding to the signing key for this user.
-func MakeLocalUserVerifyingKeyOrBust(name libkb.NormalizedUsername) VerifyingKey {
+func MakeLocalUserVerifyingKeyOrBust(name libkb.NormalizedUsername) IFCERFTVerifyingKey {
 	return MakeLocalUserSigningKeyOrBust(name).GetVerifyingKey()
 }
 
@@ -160,7 +160,7 @@ func MakeLocalUserCryptPrivateKeyOrBust(name libkb.NormalizedUsername) CryptPriv
 
 // MakeLocalUserCryptPublicKeyOrBust returns the public key
 // corresponding to the crypt private key for this user.
-func MakeLocalUserCryptPublicKeyOrBust(name libkb.NormalizedUsername) CryptPublicKey {
+func MakeLocalUserCryptPublicKeyOrBust(name libkb.NormalizedUsername) IFCERFTCryptPublicKey {
 	return MakeLocalUserCryptPrivateKeyOrBust(name).getPublicKey()
 }
 
@@ -172,11 +172,11 @@ func MakeLocalUsers(users []libkb.NormalizedUsername) []LocalUser {
 		verifyingKey := MakeLocalUserVerifyingKeyOrBust(users[i])
 		cryptPublicKey := MakeLocalUserCryptPublicKeyOrBust(users[i])
 		localUsers[i] = LocalUser{
-			UserInfo: UserInfo{
+			IFCERFTUserInfo: IFCERFTUserInfo{
 				Name:            users[i],
 				UID:             keybase1.MakeTestUID(uint32(i + 1)),
-				VerifyingKeys:   []VerifyingKey{verifyingKey},
-				CryptPublicKeys: []CryptPublicKey{cryptPublicKey},
+				VerifyingKeys:   []IFCERFTVerifyingKey{verifyingKey},
+				CryptPublicKeys: []IFCERFTCryptPublicKey{cryptPublicKey},
 				KIDNames: map[keybase1.KID]string{
 					verifyingKey.KID(): "dev1",
 				},
@@ -520,7 +520,7 @@ func (c *ConfigLocal) MetadataVersion() MetadataVer {
 }
 
 // DataVersion implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) DataVersion() DataVer {
+func (c *ConfigLocal) DataVersion() IFCERFTDataVer {
 	return FilesWithHolesDataVer
 }
 

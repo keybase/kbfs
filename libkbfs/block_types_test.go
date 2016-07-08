@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makeFakeBlockPointer(t *testing.T) BlockPointer {
+func makeFakeBlockPointer(t *testing.T) IFCERFTBlockPointer {
 	h, err := DefaultHash([]byte("fake buf"))
 	require.NoError(t, err)
-	return BlockPointer{
+	return IFCERFTBlockPointer{
 		BlockID{h},
 		5,
 		1,

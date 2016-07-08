@@ -35,7 +35,7 @@ const (
 
 // fillAttr sets attributes based on the entry info. It only handles fields
 // common to all entryinfo types.
-func fillAttr(ei *libkbfs.EntryInfo, a *fuse.Attr) {
+func fillAttr(ei *libkbfs.IFCERFTEntryInfo, a *fuse.Attr) {
 	a.Valid = 1 * time.Minute
 
 	a.Size = ei.Size

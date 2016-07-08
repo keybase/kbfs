@@ -11,7 +11,7 @@ import (
 )
 
 type rekeyQueueEntry struct {
-	id TlfID
+	id IFCERFTTlfID
 	ch chan error
 }
 
@@ -37,7 +37,7 @@ func NewRekeyQueueStandard(config IFCERFTConfig) *RekeyQueueStandard {
 }
 
 // Enqueue implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) Enqueue(id TlfID) <-chan error {
+func (rkq *RekeyQueueStandard) Enqueue(id IFCERFTTlfID) <-chan error {
 	c := make(chan error, 1)
 	err := func() error {
 		rkq.queueMu.Lock()
@@ -68,12 +68,12 @@ func (rkq *RekeyQueueStandard) Enqueue(id TlfID) <-chan error {
 }
 
 // IsRekeyPending implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) IsRekeyPending(id TlfID) bool {
+func (rkq *RekeyQueueStandard) IsRekeyPending(id IFCERFTTlfID) bool {
 	return rkq.GetRekeyChannel(id) != nil
 }
 
 // GetRekeyChannel implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) GetRekeyChannel(id TlfID) <-chan error {
+func (rkq *RekeyQueueStandard) GetRekeyChannel(id IFCERFTTlfID) <-chan error {
 	rkq.queueMu.RLock()
 	defer rkq.queueMu.RUnlock()
 	for _, e := range rkq.queue {
@@ -160,7 +160,7 @@ func (rkq *RekeyQueueStandard) processRekeys(ctx context.Context, hasWorkCh chan
 	}
 }
 
-func (rkq *RekeyQueueStandard) peek() TlfID {
+func (rkq *RekeyQueueStandard) peek() IFCERFTTlfID {
 	rkq.queueMu.Lock()
 	defer rkq.queueMu.Unlock()
 	if len(rkq.queue) != 0 {

@@ -35,26 +35,26 @@ var disallowedPrefixes = [...]string{".kbfs"}
 
 // UserInfo contains all the info about a keybase user that kbfs cares
 // about.
-type UserInfo struct {
+type IFCERFTUserInfo struct {
 	Name            libkb.NormalizedUsername
 	UID             keybase1.UID
-	VerifyingKeys   []VerifyingKey
-	CryptPublicKeys []CryptPublicKey
+	VerifyingKeys   []IFCERFTVerifyingKey
+	CryptPublicKeys []IFCERFTCryptPublicKey
 	KIDNames        map[keybase1.KID]string
 
 	// Revoked keys, and the time at which they were revoked.
-	RevokedVerifyingKeys   map[VerifyingKey]keybase1.KeybaseTime
-	RevokedCryptPublicKeys map[CryptPublicKey]keybase1.KeybaseTime
+	RevokedVerifyingKeys   map[IFCERFTVerifyingKey]keybase1.KeybaseTime
+	RevokedCryptPublicKeys map[IFCERFTCryptPublicKey]keybase1.KeybaseTime
 }
 
 // SessionInfo contains all the info about the keybase session that
 // kbfs cares about.
-type SessionInfo struct {
+type IFCERFTSessionInfo struct {
 	Name           libkb.NormalizedUsername
 	UID            keybase1.UID
 	Token          string
-	CryptPublicKey CryptPublicKey
-	VerifyingKey   VerifyingKey
+	CryptPublicKey IFCERFTCryptPublicKey
+	VerifyingKey   IFCERFTVerifyingKey
 }
 
 // SigVer denotes a signature version.
@@ -74,9 +74,9 @@ func (v SigVer) IsNil() bool {
 // for a message.
 type SignatureInfo struct {
 	// Exported only for serialization purposes.
-	Version      SigVer       `codec:"v"`
-	Signature    []byte       `codec:"s"`
-	VerifyingKey VerifyingKey `codec:"k"`
+	Version      SigVer              `codec:"v"`
+	Signature    []byte              `codec:"s"`
+	VerifyingKey IFCERFTVerifyingKey `codec:"k"`
 }
 
 // IsNil returns true if this SignatureInfo is nil.
@@ -140,7 +140,7 @@ type EncryptedMerkleLeaf struct {
 // request a client half decryption.
 type EncryptedTLFCryptKeyClientAndEphemeral struct {
 	// PublicKey contains the wrapped Key ID of the public key
-	PubKey CryptPublicKey
+	PubKey IFCERFTCryptPublicKey
 	// ClientHalf contains the encrypted client half of the TLF key
 	ClientHalf EncryptedTLFCryptKeyClientHalf
 	// EPubKey contains the ephemeral public key used to encrypt ClientHalf
@@ -179,7 +179,7 @@ const (
 
 // DataVer is the type of a version for marshalled KBFS data
 // structures.
-type DataVer int
+type IFCERFTDataVer int
 
 const (
 	// FirstValidDataVer is the first value that is considered a
@@ -300,16 +300,16 @@ func (c BlockContext) String() string {
 //
 // NOTE: Don't add or modify anything in this struct without
 // considering how old clients will handle them.
-type BlockPointer struct {
-	ID      BlockID `codec:"i"`
-	KeyGen  KeyGen  `codec:"k"` // if valid, which generation of the TLFKeyBundle to use.
-	DataVer DataVer `codec:"d"` // if valid, which version of the KBFS data structures is pointed to
+type IFCERFTBlockPointer struct {
+	ID      BlockID        `codec:"i"`
+	KeyGen  KeyGen         `codec:"k"` // if valid, which generation of the TLFKeyBundle to use.
+	DataVer IFCERFTDataVer `codec:"d"` // if valid, which version of the KBFS data structures is pointed to
 	BlockContext
 }
 
 // IsValid returns whether the block pointer is valid. A zero block
 // pointer is considered invalid.
-func (p BlockPointer) IsValid() bool {
+func (p IFCERFTBlockPointer) IsValid() bool {
 	if !p.ID.IsValid() {
 		return false
 	}
@@ -320,16 +320,16 @@ func (p BlockPointer) IsValid() bool {
 	return true
 }
 
-func (p BlockPointer) String() string {
+func (p IFCERFTBlockPointer) String() string {
 	return fmt.Sprintf("BlockPointer{ID: %s, KeyGen: %d, DataVer: %d, Context: %s}", p.ID, p.KeyGen, p.DataVer, p.BlockContext)
 }
 
 // IsInitialized returns whether or not this BlockPointer has non-nil data.
-func (p BlockPointer) IsInitialized() bool {
+func (p IFCERFTBlockPointer) IsInitialized() bool {
 	return p.ID != BlockID{}
 }
 
-func (p BlockPointer) ref() blockRef {
+func (p IFCERFTBlockPointer) ref() blockRef {
 	return blockRef{
 		id:       p.ID,
 		refNonce: p.RefNonce,
@@ -342,7 +342,7 @@ func (p BlockPointer) ref() blockRef {
 // NOTE: Don't add or modify anything in this struct without
 // considering how old clients will handle them.
 type BlockInfo struct {
-	BlockPointer
+	IFCERFTBlockPointer
 	// When non-zero, the size of the encoded (and possibly
 	// encrypted) data contained in the block. When non-zero,
 	// always at least the size of the plaintext data contained in
@@ -350,7 +350,7 @@ type BlockInfo struct {
 	EncodedSize uint32 `codec:"e"`
 }
 
-var bpSize = uint64(reflect.TypeOf(BlockPointer{}).Size())
+var bpSize = uint64(reflect.TypeOf(IFCERFTBlockPointer{}).Size())
 
 // ReadyBlockData is a block that has been encoded (and encrypted).
 type ReadyBlockData struct {
@@ -366,14 +366,14 @@ func (r ReadyBlockData) GetEncodedSize() int {
 }
 
 // Favorite is a top-level favorited folder name.
-type Favorite struct {
+type IFCERFTFavorite struct {
 	Name   string
 	Public bool
 }
 
 // NewFavoriteFromFolder creates a Favorite from a
 // keybase1.Folder.
-func NewFavoriteFromFolder(folder keybase1.Folder) *Favorite {
+func NewFavoriteFromFolder(folder keybase1.Folder) *IFCERFTFavorite {
 	name := folder.Name
 	if !folder.Private {
 		// Old versions of the client still use an outdated "#public"
@@ -383,13 +383,13 @@ func NewFavoriteFromFolder(folder keybase1.Folder) *Favorite {
 		name = strings.TrimSuffix(folder.Name, oldPublicSuffix)
 	}
 
-	return &Favorite{
+	return &IFCERFTFavorite{
 		Name:   name,
 		Public: !folder.Private,
 	}
 }
 
-func (f Favorite) toKBFolder(created bool) keybase1.Folder {
+func (f IFCERFTFavorite) toKBFolder(created bool) keybase1.Folder {
 	return keybase1.Folder{
 		Name:    f.Name,
 		Private: !f.Public,
@@ -400,18 +400,18 @@ func (f Favorite) toKBFolder(created bool) keybase1.Folder {
 // PathNode is a single node along an KBFS path, pointing to the top
 // block for that node of the path.
 type pathNode struct {
-	BlockPointer
+	IFCERFTBlockPointer
 	Name string
 }
 
 func (n pathNode) isValid() bool {
-	return n.BlockPointer.IsValid()
+	return n.IFCERFTBlockPointer.IsValid()
 }
 
 // DebugString returns a string representation of the node with all
 // pointer information.
 func (n pathNode) DebugString() string {
-	return fmt.Sprintf("%s(ptr=%s)", n.Name, n.BlockPointer)
+	return fmt.Sprintf("%s(ptr=%s)", n.Name, n.IFCERFTBlockPointer)
 }
 
 // BranchName is the name given to a KBFS branch, for a particular
@@ -419,23 +419,23 @@ func (n pathNode) DebugString() string {
 // client-side only, and can be used to specify which root to use for
 // a top-level folder.  (For example, viewing a historical archive
 // could use a different branch name.)
-type BranchName string
+type IFCERFTBranchName string
 
 const (
 	// MasterBranch represents the mainline branch for a top-level
 	// folder.  Set to the empty string so that the default will be
 	// the master branch.
-	MasterBranch BranchName = ""
+	MasterBranch IFCERFTBranchName = ""
 )
 
 // FolderBranch represents a unique pair of top-level folder and a
 // branch of that folder.
-type FolderBranch struct {
-	Tlf    TlfID
-	Branch BranchName // master branch, by default
+type IFCERFTFolderBranch struct {
+	Tlf    IFCERFTTlfID
+	Branch IFCERFTBranchName // master branch, by default
 }
 
-func (fb FolderBranch) String() string {
+func (fb IFCERFTFolderBranch) String() string {
 	s := fb.Tlf.String()
 	if len(fb.Branch) > 0 {
 		s += fmt.Sprintf("(branch=%s)", fb.Branch)
@@ -446,7 +446,7 @@ func (fb FolderBranch) String() string {
 // path represents the full KBFS path to a particular location, so
 // that a flush can traverse backwards and fix up ids along the way.
 type path struct {
-	FolderBranch
+	IFCERFTFolderBranch
 	path []pathNode
 }
 
@@ -480,8 +480,8 @@ func (p path) tailName() string {
 
 // tailPointer returns the BlockPointer of the final node in the Path.
 // Must be called with a valid path.
-func (p path) tailPointer() BlockPointer {
-	return p.path[len(p.path)-1].BlockPointer
+func (p path) tailPointer() IFCERFTBlockPointer {
+	return p.path[len(p.path)-1].IFCERFTBlockPointer
 }
 
 // DebugString returns a string representation of the path with all
@@ -491,7 +491,7 @@ func (p path) DebugString() string {
 	for _, node := range p.path {
 		debugNames = append(debugNames, node.DebugString())
 	}
-	return fmt.Sprintf("%s:%s", p.FolderBranch, strings.Join(debugNames, "/"))
+	return fmt.Sprintf("%s:%s", p.IFCERFTFolderBranch, strings.Join(debugNames, "/"))
 }
 
 // String implements the fmt.Stringer interface for Path.
@@ -508,25 +508,25 @@ func (p path) String() string {
 // called with a path of only a single node, as that would produce an
 // invalid path.
 func (p path) parentPath() *path {
-	return &path{p.FolderBranch, p.path[:len(p.path)-1]}
+	return &path{p.IFCERFTFolderBranch, p.path[:len(p.path)-1]}
 }
 
 // ChildPath returns a new Path with the addition of a new entry
 // with the given name and BlockPointer.
-func (p path) ChildPath(name string, ptr BlockPointer) path {
+func (p path) ChildPath(name string, ptr IFCERFTBlockPointer) path {
 	child := path{
-		FolderBranch: p.FolderBranch,
-		path:         make([]pathNode, len(p.path), len(p.path)+1),
+		IFCERFTFolderBranch: p.IFCERFTFolderBranch,
+		path:                make([]pathNode, len(p.path), len(p.path)+1),
 	}
 	copy(child.path, p.path)
-	child.path = append(child.path, pathNode{Name: name, BlockPointer: ptr})
+	child.path = append(child.path, pathNode{Name: name, IFCERFTBlockPointer: ptr})
 	return child
 }
 
 // ChildPathNoPtr returns a new Path with the addition of a new entry
 // with the given name.  That final PathNode will have no BlockPointer.
 func (p path) ChildPathNoPtr(name string) path {
-	return p.ChildPath(name, BlockPointer{})
+	return p.ChildPath(name, IFCERFTBlockPointer{})
 }
 
 // hasPublic returns whether or not this is a top-level folder that
@@ -583,21 +583,21 @@ func (bc *BlockChanges) addBPSize() {
 
 // AddRefBlock adds the newly-referenced block to this BlockChanges
 // and updates the size estimate.
-func (bc *BlockChanges) AddRefBlock(ptr BlockPointer) {
+func (bc *BlockChanges) AddRefBlock(ptr IFCERFTBlockPointer) {
 	bc.Ops[len(bc.Ops)-1].AddRefBlock(ptr)
 	bc.addBPSize()
 }
 
 // AddUnrefBlock adds the newly unreferenced block to this BlockChanges
 // and updates the size estimate.
-func (bc *BlockChanges) AddUnrefBlock(ptr BlockPointer) {
+func (bc *BlockChanges) AddUnrefBlock(ptr IFCERFTBlockPointer) {
 	bc.Ops[len(bc.Ops)-1].AddUnrefBlock(ptr)
 	bc.addBPSize()
 }
 
 // AddUpdate adds the newly updated block to this BlockChanges
 // and updates the size estimate.
-func (bc *BlockChanges) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
+func (bc *BlockChanges) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer) {
 	bc.Ops[len(bc.Ops)-1].AddUpdate(oldPtr, newPtr)
 	// add sizes for both block pointers
 	bc.addBPSize()
@@ -641,21 +641,21 @@ func (et EntryType) String() string {
 }
 
 // EXCL indicates whether O_EXCL is set on a fuse call
-type EXCL bool
+type IFCERFTEXCL bool
 
 const (
 	// NoEXCL indicates O_EXCL is not set
-	NoEXCL EXCL = false
+	IFCERFTNoEXCL IFCERFTEXCL = false
 
 	// WithEXCL indicates O_EXCL is set
-	WithEXCL EXCL = true
+	IFCERFTWithEXCL IFCERFTEXCL = true
 )
 
-func (o EXCL) String() string {
+func (o IFCERFTEXCL) String() string {
 	switch o {
-	case NoEXCL:
+	case IFCERFTNoEXCL:
 		return "O_EXCL unset"
-	case WithEXCL:
+	case IFCERFTWithEXCL:
 		return "O_EXCL set"
 	default:
 		return "<invalid EXCL>"
@@ -668,7 +668,7 @@ func (o EXCL) String() string {
 // NOTE: Don't add or modify anything in this struct without
 // considering how old clients will handle them (since this is
 // embedded in DirEntry).
-type EntryInfo struct {
+type IFCERFTEntryInfo struct {
 	Type    EntryType
 	Size    uint64
 	SymPath string `codec:",omitempty"` // must be within the same root dir

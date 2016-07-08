@@ -79,7 +79,7 @@ func TestCryptoCommonRandomTLFKeys(t *testing.T) {
 		t.Errorf("zero TLFEphemeralPrivateKey (a4)")
 	}
 
-	if a5 == (TLFCryptKey{}) {
+	if a5 == (IFCERFTTLFCryptKey{}) {
 		t.Errorf("zero TLFCryptKey (a5)")
 	}
 
@@ -99,7 +99,7 @@ func TestCryptoCommonRandomTLFKeys(t *testing.T) {
 		t.Errorf("zero TLFEphemeralPrivateKey (b4)")
 	}
 
-	if b5 == (TLFCryptKey{}) {
+	if b5 == (IFCERFTTLFCryptKey{}) {
 		t.Errorf("zero TLFCryptKey (b5)")
 	}
 
@@ -627,11 +627,11 @@ func TestDecryptPrivateMetadataFailures(t *testing.T) {
 
 	checkDecryptionFailures(t, encryptedData(encryptedPrivateMetadata), cryptKey,
 		func(encryptedData encryptedData, key interface{}) error {
-			_, err = c.DecryptPrivateMetadata(EncryptedPrivateMetadata(encryptedData), key.(TLFCryptKey))
+			_, err = c.DecryptPrivateMetadata(EncryptedPrivateMetadata(encryptedData), key.(IFCERFTTLFCryptKey))
 			return err
 		},
 		func(key interface{}) interface{} {
-			cryptKey := key.(TLFCryptKey)
+			cryptKey := key.(IFCERFTTLFCryptKey)
 			cryptKeyCorrupt := cryptKey
 			cryptKeyCorrupt.data[0] = ^cryptKeyCorrupt.data[0]
 			return cryptKeyCorrupt
@@ -880,7 +880,7 @@ func (tba testBlockArray) GetEncodedSize() uint32 {
 func (tba testBlockArray) SetEncodedSize(size uint32) {
 }
 
-func (testBlockArray) DataVersion() DataVer { return FirstValidDataVer }
+func (testBlockArray) DataVersion() IFCERFTDataVer { return FirstValidDataVer }
 
 // Test that block encrypted data length is the same for data
 // length within same power of 2.

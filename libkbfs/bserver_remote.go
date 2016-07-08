@@ -205,8 +205,7 @@ func makeBlockReference(id BlockID, context BlockContext) keybase1.BlockReferenc
 }
 
 // Get implements the BlockServer interface for BlockServerRemote.
-func (b *BlockServerRemote) Get(ctx context.Context, id BlockID, tlfID TlfID,
-	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
+func (b *BlockServerRemote) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
 	var err error
 	size := -1
 	defer func() {
@@ -242,8 +241,7 @@ func (b *BlockServerRemote) Get(ctx context.Context, id BlockID, tlfID TlfID,
 }
 
 // Put implements the BlockServer interface for BlockServerRemote.
-func (b *BlockServerRemote) Put(ctx context.Context, id BlockID, tlfID TlfID,
-	context BlockContext, buf []byte,
+func (b *BlockServerRemote) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
 	var err error
 	size := len(buf)
@@ -274,7 +272,7 @@ func (b *BlockServerRemote) Put(ctx context.Context, id BlockID, tlfID TlfID,
 
 // AddBlockReference implements the BlockServer interface for BlockServerRemote
 func (b *BlockServerRemote) AddBlockReference(ctx context.Context, id BlockID,
-	tlfID TlfID, context BlockContext) error {
+	tlfID IFCERFTTlfID, context BlockContext) error {
 	var err error
 	defer func() {
 		if err != nil {
@@ -298,7 +296,7 @@ func (b *BlockServerRemote) AddBlockReference(ctx context.Context, id BlockID,
 // RemoveBlockReference implements the BlockServer interface for
 // BlockServerRemote
 func (b *BlockServerRemote) RemoveBlockReference(ctx context.Context,
-	tlfID TlfID, contexts map[BlockID][]BlockContext) (liveCounts map[BlockID]int, err error) {
+	tlfID IFCERFTTlfID, contexts map[BlockID][]BlockContext) (liveCounts map[BlockID]int, err error) {
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(ctx, "RemoveBlockReference batch size=%d err=%v", len(contexts), err)
@@ -322,7 +320,7 @@ func (b *BlockServerRemote) RemoveBlockReference(ctx context.Context,
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerRemote
 func (b *BlockServerRemote) ArchiveBlockReferences(ctx context.Context,
-	tlfID TlfID, contexts map[BlockID][]BlockContext) (err error) {
+	tlfID IFCERFTTlfID, contexts map[BlockID][]BlockContext) (err error) {
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(ctx, "ArchiveBlockReferences batch size=%d err=%v", len(contexts), err)
@@ -336,7 +334,7 @@ func (b *BlockServerRemote) ArchiveBlockReferences(ctx context.Context,
 
 // batchDowngradeReferences archives or deletes a batch of references
 func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
-	tlfID TlfID, contexts map[BlockID][]BlockContext, archive bool) (
+	tlfID IFCERFTTlfID, contexts map[BlockID][]BlockContext, archive bool) (
 	doneRefs map[BlockID]map[BlockRefNonce]int, finalError error) {
 	tries := 0
 	doneRefs = make(map[BlockID]map[BlockRefNonce]int)

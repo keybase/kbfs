@@ -36,7 +36,7 @@ func makeTestKBPKIClientWithRevokedKey(t *testing.T, revokeTime time.Time) (
 		index := 99
 		keySalt := keySaltForUserDevice(user.Name, index)
 		newVerifyingKey := MakeLocalUserVerifyingKeyOrBust(keySalt)
-		user.RevokedVerifyingKeys = map[VerifyingKey]keybase1.KeybaseTime{
+		user.RevokedVerifyingKeys = map[IFCERFTVerifyingKey]keybase1.KeybaseTime{
 			newVerifyingKey: {Unix: keybase1.ToTime(revokeTime), Chain: 100},
 		}
 		users[i] = user
@@ -82,7 +82,7 @@ func TestKBPKIClientHasVerifyingKey(t *testing.T) {
 	}
 
 	err = c.HasVerifyingKey(context.Background(), keybase1.MakeTestUID(1),
-		VerifyingKey{}, time.Now())
+		IFCERFTVerifyingKey{}, time.Now())
 	if err == nil {
 		t.Error("HasVerifyingKey unexpectedly succeeded")
 	}
@@ -92,7 +92,7 @@ func TestKBPKIClientHasRevokedVerifyingKey(t *testing.T) {
 	revokeTime := time.Now()
 	c, _, localUsers := makeTestKBPKIClientWithRevokedKey(t, revokeTime)
 
-	var revokedKey VerifyingKey
+	var revokedKey IFCERFTVerifyingKey
 	for k := range localUsers[0].RevokedVerifyingKeys {
 		revokedKey = k
 		break
@@ -129,15 +129,15 @@ func TestKBPKIClientHasVerifyingKeyStaleCache(t *testing.T) {
 	u := keybase1.MakeTestUID(1)
 	key1 := MakeLocalUserVerifyingKeyOrBust("u_1")
 	key2 := MakeLocalUserVerifyingKeyOrBust("u_2")
-	info1 := UserInfo{
-		VerifyingKeys: []VerifyingKey{key1},
+	info1 := IFCERFTUserInfo{
+		VerifyingKeys: []IFCERFTVerifyingKey{key1},
 	}
 	config.mockKbd.EXPECT().LoadUserPlusKeys(gomock.Any(), u).
 		Return(info1, nil)
 
 	config.mockKbd.EXPECT().FlushUserFromLocalCache(gomock.Any(), u)
-	info2 := UserInfo{
-		VerifyingKeys: []VerifyingKey{key1, key2},
+	info2 := IFCERFTUserInfo{
+		VerifyingKeys: []IFCERFTVerifyingKey{key1, key2},
 	}
 	config.mockKbd.EXPECT().LoadUserPlusKeys(gomock.Any(), u).
 		Return(info2, nil)
@@ -193,7 +193,7 @@ func makeTestKBPKIClientWithUnverifiedKey(t *testing.T) (
 		index := 99
 		keySalt := keySaltForUserDevice(user.Name, index)
 		newVerifyingKey := MakeLocalUserVerifyingKeyOrBust(keySalt)
-		user.UnverifiedVerifyingKeys = []VerifyingKey{newVerifyingKey}
+		user.UnverifiedVerifyingKeys = []IFCERFTVerifyingKey{newVerifyingKey}
 		users[i] = user
 	}
 	codec := NewCodecMsgpack()
@@ -206,7 +206,7 @@ func makeTestKBPKIClientWithUnverifiedKey(t *testing.T) (
 func TestKBPKIClientHasUnverifiedVerifyingKey(t *testing.T) {
 	c, _, localUsers := makeTestKBPKIClientWithUnverifiedKey(t)
 
-	var unverifiedKey VerifyingKey
+	var unverifiedKey IFCERFTVerifyingKey
 	for _, k := range localUsers[0].UnverifiedVerifyingKeys {
 		unverifiedKey = k
 		break

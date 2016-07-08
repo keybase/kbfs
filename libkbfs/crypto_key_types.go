@@ -71,7 +71,7 @@ func (k kidContainer) String() string {
 // These are also sometimes known as sibkeys.
 //
 // Copies of VerifyingKey objects are deep copies.
-type VerifyingKey struct {
+type IFCERFTVerifyingKey struct {
 	// Should only be used by implementations of Crypto and KBPKI.
 	//
 	// Even though we currently use NaclSignatures, we use a KID
@@ -80,16 +80,16 @@ type VerifyingKey struct {
 	kidContainer
 }
 
-var _ encoding.BinaryMarshaler = VerifyingKey{}
-var _ encoding.BinaryUnmarshaler = (*VerifyingKey)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTVerifyingKey{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTVerifyingKey)(nil)
 
 // MakeVerifyingKey returns a VerifyingKey containing the given KID.
-func MakeVerifyingKey(kid keybase1.KID) VerifyingKey {
-	return VerifyingKey{kidContainer{kid}}
+func MakeVerifyingKey(kid keybase1.KID) IFCERFTVerifyingKey {
+	return IFCERFTVerifyingKey{kidContainer{kid}}
 }
 
 // IsNil returns true if the VerifyingKey is nil.
-func (k VerifyingKey) IsNil() bool {
+func (k IFCERFTVerifyingKey) IsNil() bool {
 	return k.kid.IsNil()
 }
 
@@ -182,7 +182,7 @@ func MakeTLFEphemeralPrivateKey(data [32]byte) TLFEphemeralPrivateKey {
 // subkeys.
 //
 // Copies of CryptPublicKey objects are deep copies.
-type CryptPublicKey struct {
+type IFCERFTCryptPublicKey struct {
 	// Should only be used by implementations of Crypto.
 	//
 	// Even though we currently use nacl/box, we use a KID here
@@ -192,12 +192,12 @@ type CryptPublicKey struct {
 }
 
 // MakeCryptPublicKey returns a CryptPublicKey containing the given KID.
-func MakeCryptPublicKey(kid keybase1.KID) CryptPublicKey {
-	return CryptPublicKey{kidContainer{kid}}
+func MakeCryptPublicKey(kid keybase1.KID) IFCERFTCryptPublicKey {
+	return IFCERFTCryptPublicKey{kidContainer{kid}}
 }
 
-var _ encoding.BinaryMarshaler = CryptPublicKey{}
-var _ encoding.BinaryUnmarshaler = (*CryptPublicKey)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTCryptPublicKey{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTCryptPublicKey)(nil)
 
 // TLFEphemeralPublicKey (M_e) is used along with a crypt private key
 // to decrypt TLFCryptKeyClientHalf objects (t_u^{f,0,i}) for
@@ -262,17 +262,17 @@ func MakeTLFCryptKeyClientHalf(data [32]byte) TLFCryptKeyClientHalf {
 // BlockCryptKeys. (See 4.1.1, 4.1.2.)
 //
 // Copies of TLFCryptKey objects are deep copies.
-type TLFCryptKey struct {
+type IFCERFTTLFCryptKey struct {
 	// Should only be used by implementations of Crypto.
 	byte32Container
 }
 
-var _ encoding.BinaryMarshaler = TLFCryptKey{}
-var _ encoding.BinaryUnmarshaler = (*TLFCryptKey)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTTLFCryptKey{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTTLFCryptKey)(nil)
 
 // MakeTLFCryptKey returns a TLFCryptKey containing the given data.
-func MakeTLFCryptKey(data [32]byte) TLFCryptKey {
-	return TLFCryptKey{byte32Container{data}}
+func MakeTLFCryptKey(data [32]byte) IFCERFTTLFCryptKey {
+	return IFCERFTTLFCryptKey{byte32Container{data}}
 }
 
 // PublicTLFCryptKey is the TLFCryptKey used for all public TLFs. That

@@ -81,7 +81,7 @@ func NewReporterKBPKI(config IFCERFTConfig, maxErrors, bufSize int) *ReporterKBP
 
 // ReportErr implements the Reporter interface for ReporterKBPKI.
 func (r *ReporterKBPKI) ReportErr(ctx context.Context,
-	tlfName CanonicalTlfName, public bool, mode ErrorModeType, err error) {
+	tlfName IFCERFTCanonicalTlfName, public bool, mode ErrorModeType, err error) {
 	r.ReporterSimple.ReportErr(ctx, tlfName, public, mode, err)
 
 	// Fire off error popups
@@ -203,7 +203,7 @@ func readNotification(file path, finish bool) *keybase1.FSNotification {
 
 // rekeyNotification creates FSNotifications from TlfHandles for rekey
 // events.
-func rekeyNotification(ctx context.Context, config IFCERFTConfig, handle *TlfHandle, finish bool) *keybase1.FSNotification {
+func rekeyNotification(ctx context.Context, config IFCERFTConfig, handle *IFCERFTTlfHandle, finish bool) *keybase1.FSNotification {
 	code := keybase1.FSStatusCode_START
 	if finish {
 		code = keybase1.FSStatusCode_FINISH
@@ -245,7 +245,7 @@ func baseNotification(file path, finish bool) *keybase1.FSNotification {
 // genericErrorNotification creates FSNotifications for generic
 // errors, and makes it look like a read error.
 func errorNotification(err error, errType keybase1.FSErrorType,
-	tlfName CanonicalTlfName, public bool, mode ErrorModeType,
+	tlfName IFCERFTCanonicalTlfName, public bool, mode ErrorModeType,
 	params map[string]string) *keybase1.FSNotification {
 	if tlfName != "" {
 		params[errorParamTlf] = string(tlfName)
@@ -280,8 +280,7 @@ func errorNotification(err error, errType keybase1.FSErrorType,
 	}
 }
 
-func mdReadSuccessNotification(tlfName CanonicalTlfName,
-	public bool) *keybase1.FSNotification {
+func mdReadSuccessNotification(tlfName IFCERFTCanonicalTlfName, public bool) *keybase1.FSNotification {
 	params := make(map[string]string)
 	if tlfName != "" {
 		params[errorParamTlf] = string(tlfName)

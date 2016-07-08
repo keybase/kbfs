@@ -252,17 +252,17 @@ func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *C
 
 // FakeTlfID creates a fake public or private TLF ID from the given
 // byte.
-func FakeTlfID(b byte, public bool) TlfID {
+func FakeTlfID(b byte, public bool) IFCERFTTlfID {
 	bytes := [TlfIDByteLen]byte{b}
 	if public {
 		bytes[TlfIDByteLen-1] = PubTlfIDSuffix
 	} else {
 		bytes[TlfIDByteLen-1] = TlfIDSuffix
 	}
-	return TlfID{bytes}
+	return IFCERFTTlfID{bytes}
 }
 
-func fakeTlfIDByte(id TlfID) byte {
+func fakeTlfIDByte(id IFCERFTTlfID) byte {
 	return id.id[0]
 }
 
@@ -288,7 +288,7 @@ func NewEmptyTLFReaderKeyBundle() TLFReaderKeyBundle {
 }
 
 // AddNewKeysOrBust adds new keys to root metadata and blows up on error.
-func AddNewKeysOrBust(t logger.TestLogBackend, rmd *RootMetadata, wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) {
+func AddNewKeysOrBust(t logger.TestLogBackend, rmd *IFCERFTRootMetadata, wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) {
 	if err := rmd.AddNewKeys(wkb, rkb); err != nil {
 		t.Fatal(err)
 	}
@@ -305,7 +305,7 @@ func keySaltForUserDevice(name libkb.NormalizedUsername,
 }
 
 func makeFakeKeys(name libkb.NormalizedUsername, index int) (
-	CryptPublicKey, VerifyingKey) {
+	IFCERFTCryptPublicKey, IFCERFTVerifyingKey) {
 	keySalt := keySaltForUserDevice(name, index)
 	newCryptPublicKey := MakeLocalUserCryptPublicKeyOrBust(keySalt)
 	newVerifyingKey := MakeLocalUserVerifyingKeyOrBust(keySalt)
@@ -432,7 +432,7 @@ func testRPCWithCanceledContext(t logger.TestLogBackend,
 // DisableUpdatesForTesting stops the given folder from acting on new
 // updates.  Send a struct{}{} down the returned channel to restart
 // notifications
-func DisableUpdatesForTesting(config IFCERFTConfig, folderBranch FolderBranch) (
+func DisableUpdatesForTesting(config IFCERFTConfig, folderBranch IFCERFTFolderBranch) (
 	chan<- struct{}, error) {
 	kbfsOps, ok := config.KBFSOps().(*KBFSOpsStandard)
 	if !ok {
@@ -447,7 +447,7 @@ func DisableUpdatesForTesting(config IFCERFTConfig, folderBranch FolderBranch) (
 
 // DisableCRForTesting stops conflict resolution for the given folder.
 // RestartCRForTesting should be called to restart it.
-func DisableCRForTesting(config IFCERFTConfig, folderBranch FolderBranch) error {
+func DisableCRForTesting(config IFCERFTConfig, folderBranch IFCERFTFolderBranch) error {
 	kbfsOps, ok := config.KBFSOps().(*KBFSOpsStandard)
 	if !ok {
 		return errors.New("Unexpected KBFSOps type")
@@ -460,7 +460,7 @@ func DisableCRForTesting(config IFCERFTConfig, folderBranch FolderBranch) error 
 
 // RestartCRForTesting re-enables conflict resolution for
 // the given folder.
-func RestartCRForTesting(baseCtx context.Context, config IFCERFTConfig, folderBranch FolderBranch) error {
+func RestartCRForTesting(baseCtx context.Context, config IFCERFTConfig, folderBranch IFCERFTFolderBranch) error {
 	kbfsOps, ok := config.KBFSOps().(*KBFSOpsStandard)
 	if !ok {
 		return errors.New("Unexpected KBFSOps type")
@@ -480,7 +480,7 @@ func RestartCRForTesting(baseCtx context.Context, config IFCERFTConfig, folderBr
 
 // ForceQuotaReclamationForTesting kicks off quota reclamation under
 // the given config, for the given folder-branch.
-func ForceQuotaReclamationForTesting(config IFCERFTConfig, folderBranch FolderBranch) error {
+func ForceQuotaReclamationForTesting(config IFCERFTConfig, folderBranch IFCERFTFolderBranch) error {
 	kbfsOps, ok := config.KBFSOps().(*KBFSOpsStandard)
 	if !ok {
 		return errors.New("Unexpected KBFSOps type")

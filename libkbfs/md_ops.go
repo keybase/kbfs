@@ -120,7 +120,7 @@ func (md *MDOpsStandard) verifyWriterKey(
 }
 
 func (md *MDOpsStandard) processMetadata(ctx context.Context,
-	handle *TlfHandle, rmds *RootMetadataSigned) error {
+	handle *IFCERFTTlfHandle, rmds *RootMetadataSigned) error {
 	// A blank sig means this is a brand new MD object, and
 	// there's nothing to do.
 	if !rmds.IsInitialized() {
@@ -189,9 +189,8 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	return nil
 }
 
-func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
-	mStatus MergeStatus) (
-	*RootMetadata, error) {
+func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *IFCERFTTlfHandle, mStatus MergeStatus) (
+	*IFCERFTRootMetadata, error) {
 	mdserv := md.config.MDServer()
 	bh, err := handle.ToBareHandle()
 	if err != nil {
@@ -208,7 +207,7 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 			// don't automatically create unmerged MDs
 			return nil, nil
 		}
-		var rmd RootMetadata
+		var rmd IFCERFTRootMetadata
 		err := updateNewRootMetadata(&rmd, id, bh)
 		if err != nil {
 			return nil, err
@@ -276,19 +275,19 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 }
 
 // GetForHandle implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle) (
-	*RootMetadata, error) {
+func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *IFCERFTTlfHandle) (
+	*IFCERFTRootMetadata, error) {
 	return md.getForHandle(ctx, handle, Merged)
 }
 
 // GetUnmergedForHandle implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetUnmergedForHandle(ctx context.Context, handle *TlfHandle) (
-	*RootMetadata, error) {
+func (md *MDOpsStandard) GetUnmergedForHandle(ctx context.Context, handle *IFCERFTTlfHandle) (
+	*IFCERFTRootMetadata, error) {
 	return md.getForHandle(ctx, handle, Unmerged)
 }
 
 func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
-	id TlfID, bid BranchID, handle *TlfHandle, rmds *RootMetadataSigned) error {
+	id IFCERFTTlfID, bid BranchID, handle *IFCERFTTlfHandle, rmds *RootMetadataSigned) error {
 	// Make sure the signed-over ID matches
 	if id != rmds.MD.ID {
 		return MDMismatchError{
@@ -309,8 +308,7 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 	return md.processMetadata(ctx, handle, rmds)
 }
 
-func (md *MDOpsStandard) getForTLF(ctx context.Context, id TlfID,
-	bid BranchID, mStatus MergeStatus) (*RootMetadata, error) {
+func (md *MDOpsStandard) getForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus) (*IFCERFTRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetForTLF(ctx, id, bid, mStatus)
 	if err != nil {
 		return nil, err
@@ -335,26 +333,25 @@ func (md *MDOpsStandard) getForTLF(ctx context.Context, id TlfID,
 }
 
 // GetForTLF implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetForTLF(ctx context.Context, id TlfID) (*RootMetadata, error) {
+func (md *MDOpsStandard) GetForTLF(ctx context.Context, id IFCERFTTlfID) (*IFCERFTRootMetadata, error) {
 	return md.getForTLF(ctx, id, NullBranchID, Merged)
 }
 
 // GetUnmergedForTLF implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetUnmergedForTLF(ctx context.Context, id TlfID, bid BranchID) (
-	*RootMetadata, error) {
+func (md *MDOpsStandard) GetUnmergedForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID) (
+	*IFCERFTRootMetadata, error) {
 	return md.getForTLF(ctx, id, bid, Unmerged)
 }
 
-func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
-	bid BranchID, rmds []*RootMetadataSigned) (
-	[]*RootMetadata, error) {
+func (md *MDOpsStandard) processRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, rmds []*RootMetadataSigned) (
+	[]*IFCERFTRootMetadata, error) {
 	if rmds == nil {
 		return nil, nil
 	}
 
 	// Verify that the given MD objects form a valid sequence.
-	var prevMD *RootMetadata
-	rmd := make([]*RootMetadata, 0, len(rmds))
+	var prevMD *IFCERFTRootMetadata
+	rmd := make([]*IFCERFTRootMetadata, 0, len(rmds))
 	for _, r := range rmds {
 		bareHandle, err := r.MD.MakeBareTlfHandle()
 		if err != nil {
@@ -393,9 +390,8 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 	return rmd, nil
 }
 
-func (md *MDOpsStandard) getRange(ctx context.Context, id TlfID,
-	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
-	[]*RootMetadata, error) {
+func (md *MDOpsStandard) getRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
+	[]*IFCERFTRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetRange(ctx, id, bid, mStatus, start,
 		stop)
 	if err != nil {
@@ -409,18 +405,16 @@ func (md *MDOpsStandard) getRange(ctx context.Context, id TlfID,
 }
 
 // GetRange implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetRange(ctx context.Context, id TlfID,
-	start, stop MetadataRevision) ([]*RootMetadata, error) {
+func (md *MDOpsStandard) GetRange(ctx context.Context, id IFCERFTTlfID, start, stop MetadataRevision) ([]*IFCERFTRootMetadata, error) {
 	return md.getRange(ctx, id, NullBranchID, Merged, start, stop)
 }
 
 // GetUnmergedRange implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id TlfID,
-	bid BranchID, start, stop MetadataRevision) ([]*RootMetadata, error) {
+func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, start, stop MetadataRevision) ([]*IFCERFTRootMetadata, error) {
 	return md.getRange(ctx, id, bid, Unmerged, start, stop)
 }
 
-func (md *MDOpsStandard) readyMD(ctx context.Context, rmd *RootMetadata) (
+func (md *MDOpsStandard) readyMD(ctx context.Context, rmd *IFCERFTRootMetadata) (
 	rms *RootMetadataSigned, err error) {
 	_, me, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
@@ -496,7 +490,7 @@ func (md *MDOpsStandard) readyMD(ctx context.Context, rmd *RootMetadata) (
 	return rmds, nil
 }
 
-func (md *MDOpsStandard) put(ctx context.Context, rmd *RootMetadata) error {
+func (md *MDOpsStandard) put(ctx context.Context, rmd *IFCERFTRootMetadata) error {
 	rmds, err := md.readyMD(ctx, rmd)
 	if err != nil {
 		return err
@@ -509,7 +503,7 @@ func (md *MDOpsStandard) put(ctx context.Context, rmd *RootMetadata) error {
 }
 
 // Put implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) Put(ctx context.Context, rmd *RootMetadata) error {
+func (md *MDOpsStandard) Put(ctx context.Context, rmd *IFCERFTRootMetadata) error {
 	if rmd.MergedStatus() == Unmerged {
 		return UnexpectedUnmergedPutError{}
 	}
@@ -517,14 +511,14 @@ func (md *MDOpsStandard) Put(ctx context.Context, rmd *RootMetadata) error {
 }
 
 // PutUnmerged implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) PutUnmerged(ctx context.Context, rmd *RootMetadata, bid BranchID) error {
+func (md *MDOpsStandard) PutUnmerged(ctx context.Context, rmd *IFCERFTRootMetadata, bid BranchID) error {
 	rmd.WFlags |= MetadataFlagUnmerged
 	rmd.BID = bid
 	return md.put(ctx, rmd)
 }
 
 // GetLatestHandleForTLF implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetLatestHandleForTLF(ctx context.Context, id TlfID) (
+func (md *MDOpsStandard) GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (
 	BareTlfHandle, error) {
 	// TODO: Verify this mapping using a Merkle tree.
 	return md.config.MDServer().GetLatestHandleForTLF(ctx, id)

@@ -50,7 +50,7 @@ func NewAuthToken(config IFCERFTConfig, tokenType string, expireIn int,
 // Sign is called to create a new signed authentication token.
 func (a *AuthToken) signWithUserAndKeyInfo(ctx context.Context,
 	challengeInfo keybase1.ChallengeInfo, uid keybase1.UID,
-	username libkb.NormalizedUsername, key VerifyingKey) (string, error) {
+	username libkb.NormalizedUsername, key IFCERFTVerifyingKey) (string, error) {
 	// create the token
 	token := auth.NewToken(uid, username, key.kid, a.tokenType,
 		challengeInfo.Challenge, challengeInfo.Now, a.expireIn,
@@ -97,7 +97,7 @@ func (a *AuthToken) Sign(ctx context.Context, challengeInfo keybase1.ChallengeIn
 // This is useful for server-to-server communication where identity is
 // established using only the KID.  Assume the client and server
 // clocks are roughly synchronized.
-func (a *AuthToken) SignUserless(ctx context.Context, key VerifyingKey) (
+func (a *AuthToken) SignUserless(ctx context.Context, key IFCERFTVerifyingKey) (
 	string, error) {
 	// Pass in a reserved, meaningless UID.
 	return a.signWithUserAndKeyInfo(ctx,

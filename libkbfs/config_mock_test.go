@@ -31,7 +31,7 @@ func (fn *FakeObserver) BatchChanges(
 }
 
 func (fn *FakeObserver) TlfHandleChange(ctx context.Context,
-	newHandle *TlfHandle) {
+	newHandle *IFCERFTTlfHandle) {
 	return
 }
 

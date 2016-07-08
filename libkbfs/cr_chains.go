@@ -16,7 +16,7 @@ import (
 // block pointers for the node.
 type crChain struct {
 	ops                  []op
-	original, mostRecent BlockPointer
+	original, mostRecent IFCERFTBlockPointer
 	file                 bool
 }
 
@@ -153,7 +153,7 @@ func (cc *crChain) isFile() bool {
 // state, but setAttr(mtime) can apply to either type; in that case,
 // we need to fetch the block to figure out the type.
 func (cc *crChain) identifyType(ctx context.Context, fbo *folderBlockOps,
-	md *RootMetadata, chains *crChains) error {
+	md *IFCERFTRootMetadata, chains *crChains) error {
 	if len(cc.ops) == 0 {
 		return nil
 	}
@@ -162,7 +162,7 @@ func (cc *crChain) identifyType(ctx context.Context, fbo *folderBlockOps,
 	// chain.  If it only has a setAttr/mtime, we don't know what it
 	// is, so fall through and fetch the block unless we come across
 	// another op that can determine the type.
-	var parentDir BlockPointer
+	var parentDir IFCERFTBlockPointer
 	for _, op := range cc.ops {
 		switch realOp := op.(type) {
 		case *syncOp:
@@ -208,7 +208,7 @@ func (cc *crChain) identifyType(ctx context.Context, fbo *folderBlockOps,
 	// We don't have the file name handy, so search for the pointer.
 	found := false
 	for _, entry := range dblock.Children {
-		if entry.BlockPointer != cc.mostRecent {
+		if entry.IFCERFTBlockPointer != cc.mostRecent {
 			continue
 		}
 		switch entry.Type {
@@ -232,9 +232,9 @@ func (cc *crChain) identifyType(ctx context.Context, fbo *folderBlockOps,
 }
 
 type renameInfo struct {
-	originalOldParent BlockPointer
+	originalOldParent IFCERFTBlockPointer
 	oldName           string
-	originalNewParent BlockPointer
+	originalNewParent IFCERFTBlockPointer
 	newName           string
 }
 
@@ -250,36 +250,36 @@ func (ri renameInfo) String() string {
 // by both the starting (original) and ending (most recent) pointers.
 // It also keeps track of which chain points to the root of the folder.
 type crChains struct {
-	byOriginal   map[BlockPointer]*crChain
-	byMostRecent map[BlockPointer]*crChain
-	originalRoot BlockPointer
+	byOriginal   map[IFCERFTBlockPointer]*crChain
+	byMostRecent map[IFCERFTBlockPointer]*crChain
+	originalRoot IFCERFTBlockPointer
 
 	// The original blockpointers for nodes that have been
 	// unreferenced or initially referenced during this chain.
-	deletedOriginals map[BlockPointer]bool
-	createdOriginals map[BlockPointer]bool
+	deletedOriginals map[IFCERFTBlockPointer]bool
+	createdOriginals map[IFCERFTBlockPointer]bool
 
 	// A map from original blockpointer to the full rename operation
 	// of the node (from the original location of the node to the
 	// final locations).
-	renamedOriginals map[BlockPointer]renameInfo
+	renamedOriginals map[IFCERFTBlockPointer]renameInfo
 
 	// Separately track pointers for unembedded block changes.
-	blockChangePointers map[BlockPointer]bool
+	blockChangePointers map[IFCERFTBlockPointer]bool
 
 	// Pointers that should be explicitly cleaned up in the resolution.
-	toUnrefPointers map[BlockPointer]bool
+	toUnrefPointers map[IFCERFTBlockPointer]bool
 
 	// Also keep a reference to the most recent MD that's part of this
 	// chain.
-	mostRecentMD *RootMetadata
+	mostRecentMD *IFCERFTRootMetadata
 
 	// We need to be able to track ANY BlockPointer, at any point in
 	// the chain, back to its original.
-	originals map[BlockPointer]BlockPointer
+	originals map[IFCERFTBlockPointer]IFCERFTBlockPointer
 }
 
-func (ccs *crChains) addOp(ptr BlockPointer, op op) error {
+func (ccs *crChains) addOp(ptr IFCERFTBlockPointer, op op) error {
 	currChain, ok := ccs.byMostRecent[ptr]
 	if !ok {
 		return fmt.Errorf("Could not find chain for most recent ptr %v", ptr)
@@ -451,14 +451,14 @@ func (ccs *crChains) makeChainForOp(op op) error {
 }
 
 func (ccs *crChains) makeChainForNewOpWithUpdate(
-	targetPtr BlockPointer, newOp op, update *blockUpdate) error {
+	targetPtr IFCERFTBlockPointer, newOp op, update *blockUpdate) error {
 	oldUnref := update.Unref
 	update.Unref = targetPtr
 	update.Ref = update.Unref // so that most recent == original
 	defer func() {
 		// reset the update to its original state before returning.
 		update.Unref = oldUnref
-		update.Ref = BlockPointer{}
+		update.Ref = IFCERFTBlockPointer{}
 	}()
 	err := ccs.makeChainForOp(newOp)
 	if err != nil {
@@ -473,7 +473,7 @@ func (ccs *crChains) makeChainForNewOpWithUpdate(
 // usual makeChainForOp method.  This function is not goroutine-safe
 // with respect to newOp.  Also note that rename ops will not be split
 // into two ops; they will be placed only in the new directory chain.
-func (ccs *crChains) makeChainForNewOp(targetPtr BlockPointer, newOp op) error {
+func (ccs *crChains) makeChainForNewOp(targetPtr IFCERFTBlockPointer, newOp op) error {
 	switch realOp := newOp.(type) {
 	case *createOp:
 		return ccs.makeChainForNewOpWithUpdate(targetPtr, newOp, &realOp.Dir)
@@ -509,82 +509,81 @@ func (ccs *crChains) makeChainForNewOp(targetPtr BlockPointer, newOp op) error {
 	}
 }
 
-func (ccs *crChains) mostRecentFromOriginal(original BlockPointer) (
-	BlockPointer, error) {
+func (ccs *crChains) mostRecentFromOriginal(original IFCERFTBlockPointer) (
+	IFCERFTBlockPointer, error) {
 	chain, ok := ccs.byOriginal[original]
 	if !ok {
-		return BlockPointer{}, NoChainFoundError{original}
+		return IFCERFTBlockPointer{}, NoChainFoundError{original}
 	}
 	return chain.mostRecent, nil
 }
 
-func (ccs *crChains) mostRecentFromOriginalOrSame(original BlockPointer) (
-	BlockPointer, error) {
+func (ccs *crChains) mostRecentFromOriginalOrSame(original IFCERFTBlockPointer) (
+	IFCERFTBlockPointer, error) {
 	ptr, err := ccs.mostRecentFromOriginal(original)
 	if err == nil {
 		// A satisfactory chain was found.
 		return ptr, nil
 	} else if _, ok := err.(NoChainFoundError); !ok {
 		// An unexpected error!
-		return BlockPointer{}, err
+		return IFCERFTBlockPointer{}, err
 	}
 	return original, nil
 }
 
-func (ccs *crChains) originalFromMostRecent(mostRecent BlockPointer) (
-	BlockPointer, error) {
+func (ccs *crChains) originalFromMostRecent(mostRecent IFCERFTBlockPointer) (
+	IFCERFTBlockPointer, error) {
 	chain, ok := ccs.byMostRecent[mostRecent]
 	if !ok {
-		return BlockPointer{}, NoChainFoundError{mostRecent}
+		return IFCERFTBlockPointer{}, NoChainFoundError{mostRecent}
 	}
 	return chain.original, nil
 }
 
-func (ccs *crChains) originalFromMostRecentOrSame(mostRecent BlockPointer) (
-	BlockPointer, error) {
+func (ccs *crChains) originalFromMostRecentOrSame(mostRecent IFCERFTBlockPointer) (
+	IFCERFTBlockPointer, error) {
 	ptr, err := ccs.originalFromMostRecent(mostRecent)
 	if err == nil {
 		// A satisfactory chain was found.
 		return ptr, nil
 	} else if _, ok := err.(NoChainFoundError); !ok {
 		// An unexpected error!
-		return BlockPointer{}, err
+		return IFCERFTBlockPointer{}, err
 	}
 	return mostRecent, nil
 }
 
-func (ccs *crChains) isCreated(original BlockPointer) bool {
+func (ccs *crChains) isCreated(original IFCERFTBlockPointer) bool {
 	return ccs.createdOriginals[original]
 }
 
-func (ccs *crChains) isDeleted(original BlockPointer) bool {
+func (ccs *crChains) isDeleted(original IFCERFTBlockPointer) bool {
 	return ccs.deletedOriginals[original]
 }
 
-func (ccs *crChains) renamedParentAndName(original BlockPointer) (
-	BlockPointer, string, bool) {
+func (ccs *crChains) renamedParentAndName(original IFCERFTBlockPointer) (
+	IFCERFTBlockPointer, string, bool) {
 	info, ok := ccs.renamedOriginals[original]
 	if !ok {
-		return BlockPointer{}, "", false
+		return IFCERFTBlockPointer{}, "", false
 	}
 	return info.originalNewParent, info.newName, true
 }
 
 func newCRChainsEmpty() *crChains {
 	return &crChains{
-		byOriginal:          make(map[BlockPointer]*crChain),
-		byMostRecent:        make(map[BlockPointer]*crChain),
-		deletedOriginals:    make(map[BlockPointer]bool),
-		createdOriginals:    make(map[BlockPointer]bool),
-		renamedOriginals:    make(map[BlockPointer]renameInfo),
-		blockChangePointers: make(map[BlockPointer]bool),
-		toUnrefPointers:     make(map[BlockPointer]bool),
-		originals:           make(map[BlockPointer]BlockPointer),
+		byOriginal:          make(map[IFCERFTBlockPointer]*crChain),
+		byMostRecent:        make(map[IFCERFTBlockPointer]*crChain),
+		deletedOriginals:    make(map[IFCERFTBlockPointer]bool),
+		createdOriginals:    make(map[IFCERFTBlockPointer]bool),
+		renamedOriginals:    make(map[IFCERFTBlockPointer]renameInfo),
+		blockChangePointers: make(map[IFCERFTBlockPointer]bool),
+		toUnrefPointers:     make(map[IFCERFTBlockPointer]bool),
+		originals:           make(map[IFCERFTBlockPointer]IFCERFTBlockPointer),
 	}
 }
 
-func newCRChains(ctx context.Context, cfg IFCERFTConfig, rmds []*RootMetadata,
-	fbo *folderBlockOps, identifyTypes bool) (
+func newCRChains(ctx context.Context, cfg IFCERFTConfig, rmds []*IFCERFTRootMetadata, fbo *folderBlockOps, identifyTypes bool) (
 	ccs *crChains, err error) {
 	ccs = newCRChainsEmpty()
 
@@ -602,7 +601,7 @@ func newCRChains(ctx context.Context, cfg IFCERFTConfig, rmds []*RootMetadata,
 			return nil, err
 		}
 
-		if ptr := rmd.data.cachedChanges.Info.BlockPointer; ptr != zeroPtr {
+		if ptr := rmd.data.cachedChanges.Info.IFCERFTBlockPointer; ptr != zeroPtr {
 			ccs.blockChangePointers[ptr] = true
 		}
 
@@ -617,7 +616,7 @@ func newCRChains(ctx context.Context, cfg IFCERFTConfig, rmds []*RootMetadata,
 		if !ccs.originalRoot.IsInitialized() {
 			// Find the original pointer for the root directory
 			if rootChain, ok :=
-				ccs.byMostRecent[rmd.data.Dir.BlockPointer]; ok {
+				ccs.byMostRecent[rmd.data.Dir.IFCERFTBlockPointer]; ok {
 				ccs.originalRoot = rootChain.original
 			}
 		}
@@ -679,7 +678,7 @@ func (ccs *crChains) summary(identifyChains *crChains,
 	return res
 }
 
-func (ccs *crChains) removeChain(ptr BlockPointer) {
+func (ccs *crChains) removeChain(ptr IFCERFTBlockPointer) {
 	delete(ccs.byOriginal, ptr)
 	delete(ccs.byMostRecent, ptr)
 }
@@ -688,7 +687,7 @@ func (ccs *crChains) removeChain(ptr BlockPointer) {
 // modifying each custom BlockPointer field to reference the original
 // version of the corresponding blocks.
 func (ccs *crChains) copyOpAndRevertUnrefsToOriginals(currOp op) op {
-	var unrefs []*BlockPointer
+	var unrefs []*IFCERFTBlockPointer
 	var newOp op
 	switch realOp := currOp.(type) {
 	case *createOp:
@@ -726,8 +725,7 @@ func (ccs *crChains) copyOpAndRevertUnrefsToOriginals(currOp op) op {
 }
 
 // changeOriginal converts the original of a chain to a different original.
-func (ccs *crChains) changeOriginal(oldOriginal BlockPointer,
-	newOriginal BlockPointer) error {
+func (ccs *crChains) changeOriginal(oldOriginal IFCERFTBlockPointer, newOriginal IFCERFTBlockPointer) error {
 	chain, ok := ccs.byOriginal[oldOriginal]
 	if !ok {
 		return NoChainFoundError{oldOriginal}

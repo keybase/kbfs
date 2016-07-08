@@ -36,7 +36,7 @@ func NewKeyCacheMeasured(delegate IFCERFTKeyCache, r metrics.Registry) KeyCacheM
 
 // GetTLFCryptKey implements the KeyCache interface for
 // KeyCacheMeasured.
-func (b KeyCacheMeasured) GetTLFCryptKey(tlfID TlfID, keyGen KeyGen) (key TLFCryptKey, err error) {
+func (b KeyCacheMeasured) GetTLFCryptKey(tlfID IFCERFTTlfID, keyGen KeyGen) (key IFCERFTTLFCryptKey, err error) {
 	b.getTimer.Time(func() {
 		key, err = b.delegate.GetTLFCryptKey(tlfID, keyGen)
 	})
@@ -48,7 +48,7 @@ func (b KeyCacheMeasured) GetTLFCryptKey(tlfID TlfID, keyGen KeyGen) (key TLFCry
 
 // PutTLFCryptKey implements the KeyCache interface for
 // KeyCacheMeasured.
-func (b KeyCacheMeasured) PutTLFCryptKey(tlfID TlfID, keyGen KeyGen, key TLFCryptKey) (err error) {
+func (b KeyCacheMeasured) PutTLFCryptKey(tlfID IFCERFTTlfID, keyGen KeyGen, key IFCERFTTLFCryptKey) (err error) {
 	b.putTimer.Time(func() {
 		err = b.delegate.PutTLFCryptKey(tlfID, keyGen, key)
 	})

@@ -16,7 +16,7 @@ import (
 
 // NewStatusFile returns a special read file that contains a text
 // representation of the status of the current TLF.
-func NewStatusFile(fs *FS, folderBranch *libkbfs.FolderBranch, resp *fuse.LookupResponse) *SpecialReadFile {
+func NewStatusFile(fs *FS, folderBranch *libkbfs.IFCERFTFolderBranch, resp *fuse.LookupResponse) *SpecialReadFile {
 	resp.EntryValid = 0
 	return &SpecialReadFile{
 		read: func(ctx context.Context) ([]byte, time.Time, error) {

@@ -41,8 +41,7 @@ func NewBlockServerMeasured(delegate IFCERFTBlockServer, r metrics.Registry) Blo
 }
 
 // Get implements the BlockServer interface for BlockServerMeasured.
-func (b BlockServerMeasured) Get(ctx context.Context, id BlockID, tlfID TlfID,
-	context BlockContext) (
+func (b BlockServerMeasured) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext) (
 	buf []byte, serverHalf BlockCryptKeyServerHalf, err error) {
 	b.getTimer.Time(func() {
 		buf, serverHalf, err = b.delegate.Get(ctx, id, tlfID, context)
@@ -51,8 +50,7 @@ func (b BlockServerMeasured) Get(ctx context.Context, id BlockID, tlfID TlfID,
 }
 
 // Put implements the BlockServer interface for BlockServerMeasured.
-func (b BlockServerMeasured) Put(ctx context.Context, id BlockID, tlfID TlfID,
-	context BlockContext, buf []byte,
+func (b BlockServerMeasured) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) (err error) {
 	b.putTimer.Time(func() {
 		err = b.delegate.Put(ctx, id, tlfID, context, buf, serverHalf)
@@ -63,7 +61,7 @@ func (b BlockServerMeasured) Put(ctx context.Context, id BlockID, tlfID TlfID,
 // AddBlockReference implements the BlockServer interface for
 // BlockServerMeasured.
 func (b BlockServerMeasured) AddBlockReference(ctx context.Context, id BlockID,
-	tlfID TlfID, context BlockContext) (err error) {
+	tlfID IFCERFTTlfID, context BlockContext) (err error) {
 	b.addBlockReferenceTimer.Time(func() {
 		err = b.delegate.AddBlockReference(ctx, id, tlfID, context)
 	})
@@ -73,7 +71,7 @@ func (b BlockServerMeasured) AddBlockReference(ctx context.Context, id BlockID,
 // RemoveBlockReference implements the BlockServer interface for
 // BlockServerMeasured.
 func (b BlockServerMeasured) RemoveBlockReference(ctx context.Context,
-	tlfID TlfID, contexts map[BlockID][]BlockContext) (
+	tlfID IFCERFTTlfID, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
 	b.removeBlockReferenceTimer.Time(func() {
 		liveCounts, err = b.delegate.RemoveBlockReference(ctx, tlfID, contexts)
@@ -84,7 +82,7 @@ func (b BlockServerMeasured) RemoveBlockReference(ctx context.Context,
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerRemote
 func (b BlockServerMeasured) ArchiveBlockReferences(ctx context.Context,
-	tlfID TlfID, contexts map[BlockID][]BlockContext) (err error) {
+	tlfID IFCERFTTlfID, contexts map[BlockID][]BlockContext) (err error) {
 	b.archiveBlockReferencesTimer.Time(func() {
 		err = b.delegate.ArchiveBlockReferences(ctx, tlfID, contexts)
 	})

@@ -24,7 +24,7 @@ func TestTlfIDEncodeDecode(t *testing.T) {
 			TlfIDByteLen+overhead, len(encodedID))
 	}
 
-	var id2 TlfID
+	var id2 IFCERFTTlfID
 	err = codec.Decode(encodedID, &id2)
 	if err != nil {
 		t.Fatal(err)

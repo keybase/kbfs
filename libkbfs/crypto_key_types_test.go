@@ -60,7 +60,7 @@ func testKidContainerTypeEncodeDecodeZero(t *testing.T, kt kidContainerType) {
 type verifyingKeyType struct{}
 
 func (verifyingKeyType) makeZero() interface{} {
-	return VerifyingKey{}
+	return IFCERFTVerifyingKey{}
 }
 
 func (verifyingKeyType) makeFromKID(kid keybase1.KID) interface{} {
@@ -68,7 +68,7 @@ func (verifyingKeyType) makeFromKID(kid keybase1.KID) interface{} {
 }
 
 func (verifyingKeyType) decode(codec *CodecMsgpack, data []byte) (interface{}, error) {
-	k := VerifyingKey{}
+	k := IFCERFTVerifyingKey{}
 	err := codec.Decode(data, &k)
 	return k, err
 }
@@ -159,7 +159,7 @@ func TestTLFEphemeralPrivateKeyEncodeDecode(t *testing.T) {
 type cryptPublicKeyType struct{}
 
 func (cryptPublicKeyType) makeZero() interface{} {
-	return CryptPublicKey{}
+	return IFCERFTCryptPublicKey{}
 }
 
 func (cryptPublicKeyType) makeFromKID(kid keybase1.KID) interface{} {
@@ -167,7 +167,7 @@ func (cryptPublicKeyType) makeFromKID(kid keybase1.KID) interface{} {
 }
 
 func (cryptPublicKeyType) decode(codec *CodecMsgpack, data []byte) (interface{}, error) {
-	k := CryptPublicKey{}
+	k := IFCERFTCryptPublicKey{}
 	err := codec.Decode(data, &k)
 	return k, err
 }
@@ -235,7 +235,7 @@ func TestTLFCryptKeyClientHalfEncodeDecode(t *testing.T) {
 type tlfCryptKeyType struct{}
 
 func (tlfCryptKeyType) makeZero() interface{} {
-	return TLFCryptKey{}
+	return IFCERFTTLFCryptKey{}
 }
 
 func (tlfCryptKeyType) makeFromData(data [32]byte) interface{} {
@@ -251,7 +251,7 @@ func TestTLFCryptKeyEncodeDecode(t *testing.T) {
 type blockCryptKeyServerHalfType struct{}
 
 func (blockCryptKeyServerHalfType) makeZero() interface{} {
-	return TLFCryptKey{}
+	return IFCERFTTLFCryptKey{}
 }
 
 func (blockCryptKeyServerHalfType) makeFromData(data [32]byte) interface{} {
@@ -267,7 +267,7 @@ func TestBlockCryptKeyServerHalfEncodeDecode(t *testing.T) {
 type blockCryptKeyType struct{}
 
 func (blockCryptKeyType) makeZero() interface{} {
-	return TLFCryptKey{}
+	return IFCERFTTLFCryptKey{}
 }
 
 func (blockCryptKeyType) makeFromData(data [32]byte) interface{} {

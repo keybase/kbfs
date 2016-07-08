@@ -15,7 +15,7 @@ import (
 )
 
 type fbmHelper interface {
-	getMDForFBM(ctx context.Context) (*RootMetadata, error)
+	getMDForFBM(ctx context.Context) (*IFCERFTRootMetadata, error)
 	finalizeGCOp(ctx context.Context, gco *gcOp) error
 }
 
@@ -37,11 +37,11 @@ type folderBlockManager struct {
 	config       IFCERFTConfig
 	log          logger.Logger
 	shutdownChan chan struct{}
-	id           TlfID
+	id           IFCERFTTlfID
 
 	// A queue of MD updates for this folder that need to have their
 	// unref's blocks archived
-	archiveChan chan *RootMetadata
+	archiveChan chan *IFCERFTRootMetadata
 
 	archivePauseChan chan (<-chan struct{})
 
@@ -58,7 +58,7 @@ type folderBlockManager struct {
 	// The lock should only be held immediately around accessing the
 	// list.  TODO: Persist these to disk?
 	blocksToDeleteLock       sync.Mutex
-	blocksToDeleteAfterError map[*RootMetadata][]BlockPointer
+	blocksToDeleteAfterError map[*IFCERFTRootMetadata][]IFCERFTBlockPointer
 
 	// forceReclamation forces the manager to start a reclamation
 	// process.
@@ -83,8 +83,7 @@ type folderBlockManager struct {
 	wasLastQRComplete  bool
 }
 
-func newFolderBlockManager(config IFCERFTConfig, fb FolderBranch,
-	helper fbmHelper) *folderBlockManager {
+func newFolderBlockManager(config IFCERFTConfig, fb IFCERFTFolderBranch, helper fbmHelper) *folderBlockManager {
 	tlfStringFull := fb.Tlf.String()
 	log := config.MakeLogger(fmt.Sprintf("FBM %s", tlfStringFull[:8]))
 	fbm := &folderBlockManager{
@@ -92,9 +91,9 @@ func newFolderBlockManager(config IFCERFTConfig, fb FolderBranch,
 		log:                      log,
 		shutdownChan:             make(chan struct{}),
 		id:                       fb.Tlf,
-		archiveChan:              make(chan *RootMetadata, 25),
+		archiveChan:              make(chan *IFCERFTRootMetadata, 25),
 		archivePauseChan:         make(chan (<-chan struct{})),
-		blocksToDeleteAfterError: make(map[*RootMetadata][]BlockPointer),
+		blocksToDeleteAfterError: make(map[*IFCERFTRootMetadata][]IFCERFTBlockPointer),
 		forceReclamationChan:     make(chan struct{}, 1),
 		helper:                   helper,
 	}
@@ -165,7 +164,7 @@ func (fbm *folderBlockManager) shutdown() {
 //
 //  ... = ...doBlockPuts(ctx, md, *bps)
 func (fbm *folderBlockManager) cleanUpBlockState(
-	md *RootMetadata, bps *blockPutState) {
+	md *IFCERFTRootMetadata, bps *blockPutState) {
 	fbm.blocksToDeleteLock.Lock()
 	defer fbm.blocksToDeleteLock.Unlock()
 	fbm.log.CDebugf(nil, "Clean up md %d %s", md.Revision, md.MergedStatus())
@@ -175,7 +174,7 @@ func (fbm *folderBlockManager) cleanUpBlockState(
 	}
 }
 
-func (fbm *folderBlockManager) archiveUnrefBlocks(md *RootMetadata) {
+func (fbm *folderBlockManager) archiveUnrefBlocks(md *IFCERFTRootMetadata) {
 	// Don't archive for unmerged revisions, because conflict
 	// resolution might undo some of the unreferences.
 	if md.MergedStatus() != Merged {
@@ -190,7 +189,7 @@ func (fbm *folderBlockManager) archiveUnrefBlocks(md *RootMetadata) {
 // blocking.  By the time it returns, the archive group has been
 // incremented so future waits will block on this archive.  This
 // method is for internal use within folderBlockManager only.
-func (fbm *folderBlockManager) archiveUnrefBlocksNoWait(md *RootMetadata) {
+func (fbm *folderBlockManager) archiveUnrefBlocksNoWait(md *IFCERFTRootMetadata) {
 	// Don't archive for unmerged revisions, because conflict
 	// resolution might undo some of the unreferences.
 	if md.MergedStatus() != Merged {
@@ -232,7 +231,7 @@ func (fbm *folderBlockManager) forceQuotaReclamation() {
 // block server for the given block pointers.  For deletes, it returns
 // a list of block IDs that no longer have any references.
 func (fbm *folderBlockManager) doChunkedDowngrades(ctx context.Context,
-	md *RootMetadata, ptrs []BlockPointer, archive bool) (
+	md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer, archive bool) (
 	[]BlockID, error) {
 	fbm.log.CDebugf(ctx, "Downgrading %d pointers (archive=%t)",
 		len(ptrs), archive)
@@ -245,7 +244,7 @@ func (fbm *folderBlockManager) doChunkedDowngrades(ctx context.Context,
 	if numWorkers > maxParallelBlockPuts {
 		numWorkers = maxParallelBlockPuts
 	}
-	chunks := make(chan []BlockPointer, numChunks)
+	chunks := make(chan []IFCERFTBlockPointer, numChunks)
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
@@ -316,26 +315,26 @@ func (fbm *folderBlockManager) doChunkedDowngrades(ctx context.Context,
 // for the given block pointers.  It returns a list of block IDs that
 // no longer have any references.
 func (fbm *folderBlockManager) deleteBlockRefs(ctx context.Context,
-	md *RootMetadata, ptrs []BlockPointer) ([]BlockID, error) {
+	md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) ([]BlockID, error) {
 	return fbm.doChunkedDowngrades(ctx, md, ptrs, false)
 }
 
 func (fbm *folderBlockManager) processBlocksToDelete(ctx context.Context) error {
 	// also attempt to delete any error references
-	var toDelete map[*RootMetadata][]BlockPointer
+	var toDelete map[*IFCERFTRootMetadata][]IFCERFTBlockPointer
 	func() {
 		fbm.blocksToDeleteLock.Lock()
 		defer fbm.blocksToDeleteLock.Unlock()
 		toDelete = fbm.blocksToDeleteAfterError
 		fbm.blocksToDeleteAfterError =
-			make(map[*RootMetadata][]BlockPointer)
+			make(map[*IFCERFTRootMetadata][]IFCERFTBlockPointer)
 	}()
 
 	if len(toDelete) == 0 {
 		return nil
 	}
 
-	toDeleteAgain := make(map[*RootMetadata][]BlockPointer)
+	toDeleteAgain := make(map[*IFCERFTRootMetadata][]IFCERFTBlockPointer)
 	for md, ptrs := range toDelete {
 		fbm.log.CDebugf(ctx, "Checking deleted blocks for revision %d",
 			md.Revision)
@@ -438,7 +437,7 @@ func (fbm *folderBlockManager) runUnlessShutdown(
 }
 
 func (fbm *folderBlockManager) archiveBlockRefs(ctx context.Context,
-	md *RootMetadata, ptrs []BlockPointer) error {
+	md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) error {
 	_, err := fbm.doChunkedDowngrades(ctx, md, ptrs, true)
 	return err
 }
@@ -447,7 +446,7 @@ func (fbm *folderBlockManager) archiveBlocksInBackground() {
 	for {
 		select {
 		case md := <-fbm.archiveChan:
-			var ptrs []BlockPointer
+			var ptrs []IFCERFTBlockPointer
 			for _, op := range md.data.Changes.Ops {
 				ptrs = append(ptrs, op.Unrefs()...)
 				for _, update := range op.AllUpdates() {
@@ -504,7 +503,7 @@ func (fbm *folderBlockManager) archiveBlocksInBackground() {
 	}
 }
 
-func (fbm *folderBlockManager) isOldEnough(rmd *RootMetadata) bool {
+func (fbm *folderBlockManager) isOldEnough(rmd *IFCERFTRootMetadata) bool {
 	// Trust the client-provided timestamp -- it's
 	// possible that a writer with a bad clock could cause
 	// another writer to clear out quotas early.  That's
@@ -524,7 +523,7 @@ func (fbm *folderBlockManager) isOldEnough(rmd *RootMetadata) bool {
 // that's older than the unref age, as well as the latest revision
 // that was scrubbed by the previous gc op.
 func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
-	ctx context.Context, head *RootMetadata) (
+	ctx context.Context, head *IFCERFTRootMetadata) (
 	mostRecentOldEnoughRev, lastGCRev MetadataRevision, err error) {
 	// Walk backwards until we find one that is old enough.  Also,
 	// look out for the previous gcOp.
@@ -593,7 +592,7 @@ func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
 // the latest revision represented in the returned slice of pointers.
 func (fbm *folderBlockManager) getUnreferencedBlocks(
 	ctx context.Context, latestRev, earliestRev MetadataRevision) (
-	ptrs []BlockPointer, lastRevConsidered MetadataRevision,
+	ptrs []IFCERFTBlockPointer, lastRevConsidered MetadataRevision,
 	complete bool, err error) {
 	fbm.log.CDebugf(ctx, "Getting unreferenced blocks between revisions "+
 		"%d and %d", earliestRev, latestRev)
@@ -696,11 +695,11 @@ outer:
 }
 
 func (fbm *folderBlockManager) finalizeReclamation(ctx context.Context,
-	ptrs []BlockPointer, zeroRefCounts []BlockID,
+	ptrs []IFCERFTBlockPointer, zeroRefCounts []BlockID,
 	latestRev MetadataRevision) error {
 	gco := newGCOp(latestRev)
 	for _, id := range zeroRefCounts {
-		gco.AddUnrefBlock(BlockPointer{ID: id})
+		gco.AddUnrefBlock(IFCERFTBlockPointer{ID: id})
 	}
 	fbm.log.CDebugf(ctx, "Finalizing reclamation %s with %d ptrs", gco,
 		len(ptrs))
@@ -710,7 +709,7 @@ func (fbm *folderBlockManager) finalizeReclamation(ctx context.Context,
 		func() error { return fbm.helper.finalizeGCOp(ctx, gco) })
 }
 
-func (fbm *folderBlockManager) isQRNecessary(head *RootMetadata) bool {
+func (fbm *folderBlockManager) isQRNecessary(head *IFCERFTRootMetadata) bool {
 	if head == nil {
 		return false
 	}

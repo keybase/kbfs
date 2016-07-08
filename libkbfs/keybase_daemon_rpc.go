@@ -20,8 +20,8 @@ type unverifiedKeys struct {
 	// Unnverified set of all keys which have ever ostensibly belonged
 	// to the user including those which existed prior to any account
 	// reset.
-	VerifyingKeys   []VerifyingKey
-	CryptPublicKeys []CryptPublicKey
+	VerifyingKeys   []IFCERFTVerifyingKey
+	CryptPublicKeys []IFCERFTCryptPublicKey
 }
 
 // KeybaseDaemonRPC implements the KeybaseDaemon interface using RPC
@@ -44,11 +44,11 @@ type KeybaseDaemonRPC struct {
 
 	sessionCacheLock sync.RWMutex
 	// Set to the zero value when invalidated.
-	cachedCurrentSession SessionInfo
+	cachedCurrentSession IFCERFTSessionInfo
 
 	userCacheLock sync.RWMutex
 	// Map entries are removed when invalidated.
-	userCache               map[keybase1.UID]UserInfo
+	userCache               map[keybase1.UID]IFCERFTUserInfo
 	userCacheUnverifiedKeys map[keybase1.UID]unverifiedKeys
 
 	lastNotificationFilenameLock sync.Mutex
@@ -93,7 +93,7 @@ func newKeybaseDaemonRPC(kbCtx Context, log logger.Logger) *KeybaseDaemonRPC {
 	k := KeybaseDaemonRPC{
 		context:                 kbCtx,
 		log:                     log,
-		userCache:               make(map[keybase1.UID]UserInfo),
+		userCache:               make(map[keybase1.UID]IFCERFTUserInfo),
 		userCacheUnverifiedKeys: make(map[keybase1.UID]unverifiedKeys),
 	}
 	return &k
@@ -107,8 +107,8 @@ func (k *KeybaseDaemonRPC) fillClients(client rpc.GenericClient) {
 	k.kbfsClient = keybase1.KbfsClient{Cli: client}
 }
 
-type addVerifyingKeyFunc func(VerifyingKey)
-type addCryptPublicKeyFunc func(CryptPublicKey)
+type addVerifyingKeyFunc func(IFCERFTVerifyingKey)
+type addCryptPublicKeyFunc func(IFCERFTCryptPublicKey)
 
 // processKey adds the given public key to the appropriate verifying
 // or crypt list (as return values), and also updates the given name
@@ -137,15 +137,15 @@ func processKey(publicKey keybase1.PublicKey,
 }
 
 func filterKeys(keys []keybase1.PublicKey) (
-	[]VerifyingKey, []CryptPublicKey, map[keybase1.KID]string, error) {
-	var verifyingKeys []VerifyingKey
-	var cryptPublicKeys []CryptPublicKey
+	[]IFCERFTVerifyingKey, []IFCERFTCryptPublicKey, map[keybase1.KID]string, error) {
+	var verifyingKeys []IFCERFTVerifyingKey
+	var cryptPublicKeys []IFCERFTCryptPublicKey
 	var kidNames = map[keybase1.KID]string{}
 
-	addVerifyingKey := func(key VerifyingKey) {
+	addVerifyingKey := func(key IFCERFTVerifyingKey) {
 		verifyingKeys = append(verifyingKeys, key)
 	}
-	addCryptPublicKey := func(key CryptPublicKey) {
+	addCryptPublicKey := func(key IFCERFTCryptPublicKey) {
 		cryptPublicKeys = append(cryptPublicKeys, key)
 	}
 
@@ -160,17 +160,17 @@ func filterKeys(keys []keybase1.PublicKey) (
 }
 
 func filterRevokedKeys(keys []keybase1.RevokedKey) (
-	map[VerifyingKey]keybase1.KeybaseTime,
-	map[CryptPublicKey]keybase1.KeybaseTime, map[keybase1.KID]string, error) {
-	verifyingKeys := make(map[VerifyingKey]keybase1.KeybaseTime)
-	cryptPublicKeys := make(map[CryptPublicKey]keybase1.KeybaseTime)
+	map[IFCERFTVerifyingKey]keybase1.KeybaseTime,
+	map[IFCERFTCryptPublicKey]keybase1.KeybaseTime, map[keybase1.KID]string, error) {
+	verifyingKeys := make(map[IFCERFTVerifyingKey]keybase1.KeybaseTime)
+	cryptPublicKeys := make(map[IFCERFTCryptPublicKey]keybase1.KeybaseTime)
 	var kidNames = map[keybase1.KID]string{}
 
 	for _, revokedKey := range keys {
-		addVerifyingKey := func(key VerifyingKey) {
+		addVerifyingKey := func(key IFCERFTVerifyingKey) {
 			verifyingKeys[key] = revokedKey.Time
 		}
-		addCryptPublicKey := func(key CryptPublicKey) {
+		addCryptPublicKey := func(key IFCERFTCryptPublicKey) {
 			cryptPublicKeys[key] = revokedKey.Time
 		}
 		err := processKey(revokedKey.Key, addVerifyingKey, addCryptPublicKey,
@@ -183,25 +183,25 @@ func filterRevokedKeys(keys []keybase1.RevokedKey) (
 
 }
 
-func (k *KeybaseDaemonRPC) getCachedCurrentSession() SessionInfo {
+func (k *KeybaseDaemonRPC) getCachedCurrentSession() IFCERFTSessionInfo {
 	k.sessionCacheLock.RLock()
 	defer k.sessionCacheLock.RUnlock()
 	return k.cachedCurrentSession
 }
 
-func (k *KeybaseDaemonRPC) setCachedCurrentSession(s SessionInfo) {
+func (k *KeybaseDaemonRPC) setCachedCurrentSession(s IFCERFTSessionInfo) {
 	k.sessionCacheLock.Lock()
 	defer k.sessionCacheLock.Unlock()
 	k.cachedCurrentSession = s
 }
 
-func (k *KeybaseDaemonRPC) getCachedUserInfo(uid keybase1.UID) UserInfo {
+func (k *KeybaseDaemonRPC) getCachedUserInfo(uid keybase1.UID) IFCERFTUserInfo {
 	k.userCacheLock.RLock()
 	defer k.userCacheLock.RUnlock()
 	return k.userCache[uid]
 }
 
-func (k *KeybaseDaemonRPC) setCachedUserInfo(uid keybase1.UID, info UserInfo) {
+func (k *KeybaseDaemonRPC) setCachedUserInfo(uid keybase1.UID, info IFCERFTUserInfo) {
 	k.userCacheLock.Lock()
 	defer k.userCacheLock.Unlock()
 	if info.Name == libkb.NormalizedUsername("") {
@@ -212,7 +212,7 @@ func (k *KeybaseDaemonRPC) setCachedUserInfo(uid keybase1.UID, info UserInfo) {
 }
 
 func (k *KeybaseDaemonRPC) getCachedUnverifiedKeys(uid keybase1.UID) (
-	[]VerifyingKey, []CryptPublicKey, bool) {
+	[]IFCERFTVerifyingKey, []IFCERFTCryptPublicKey, bool) {
 	k.userCacheLock.RLock()
 	defer k.userCacheLock.RUnlock()
 	if unverifiedKeys, ok := k.userCacheUnverifiedKeys[uid]; ok {
@@ -221,8 +221,7 @@ func (k *KeybaseDaemonRPC) getCachedUnverifiedKeys(uid keybase1.UID) (
 	return nil, nil, false
 }
 
-func (k *KeybaseDaemonRPC) setCachedUnverifiedKeys(uid keybase1.UID, vk []VerifyingKey,
-	cpk []CryptPublicKey) {
+func (k *KeybaseDaemonRPC) setCachedUnverifiedKeys(uid keybase1.UID, vk []IFCERFTVerifyingKey, cpk []IFCERFTCryptPublicKey) {
 	k.userCacheLock.Lock()
 	defer k.userCacheLock.Unlock()
 	k.userCacheUnverifiedKeys[uid] = unverifiedKeys{
@@ -238,10 +237,10 @@ func (k *KeybaseDaemonRPC) clearCachedUnverifiedKeys(uid keybase1.UID) {
 }
 
 func (k *KeybaseDaemonRPC) clearCaches() {
-	k.setCachedCurrentSession(SessionInfo{})
+	k.setCachedCurrentSession(IFCERFTSessionInfo{})
 	k.userCacheLock.Lock()
 	defer k.userCacheLock.Unlock()
-	k.userCache = make(map[keybase1.UID]UserInfo)
+	k.userCache = make(map[keybase1.UID]IFCERFTUserInfo)
 	k.userCacheUnverifiedKeys = make(map[keybase1.UID]unverifiedKeys)
 }
 
@@ -249,7 +248,7 @@ func (k *KeybaseDaemonRPC) clearCaches() {
 func (k *KeybaseDaemonRPC) LoggedIn(ctx context.Context, name string) error {
 	k.log.CDebugf(ctx, "Current session logged in: %s", name)
 	// Since we don't have the whole session, just clear the cache.
-	k.setCachedCurrentSession(SessionInfo{})
+	k.setCachedCurrentSession(IFCERFTSessionInfo{})
 	if k.config != nil {
 		k.config.MDServer().RefreshAuthToken(ctx)
 		k.config.BlockServer().RefreshAuthToken(ctx)
@@ -261,7 +260,7 @@ func (k *KeybaseDaemonRPC) LoggedIn(ctx context.Context, name string) error {
 // LoggedOut implements keybase1.NotifySessionInterface.
 func (k *KeybaseDaemonRPC) LoggedOut(ctx context.Context) error {
 	k.log.CDebugf(ctx, "Current session logged out")
-	k.setCachedCurrentSession(SessionInfo{})
+	k.setCachedCurrentSession(IFCERFTSessionInfo{})
 	if k.config != nil {
 		k.config.MDServer().RefreshAuthToken(ctx)
 		k.config.BlockServer().RefreshAuthToken(ctx)
@@ -273,7 +272,7 @@ func (k *KeybaseDaemonRPC) LoggedOut(ctx context.Context) error {
 // UserChanged implements keybase1.NotifyUsersInterface.
 func (k *KeybaseDaemonRPC) UserChanged(ctx context.Context, uid keybase1.UID) error {
 	k.log.CDebugf(ctx, "User %s changed", uid)
-	k.setCachedUserInfo(uid, UserInfo{})
+	k.setCachedUserInfo(uid, IFCERFTUserInfo{})
 	k.clearCachedUnverifiedKeys(uid)
 
 	if k.getCachedCurrentSession().UID == uid {
@@ -531,7 +530,7 @@ func (k *KeybaseDaemonRPC) Resolve(ctx context.Context, assertion string) (
 
 // Identify implements the KeybaseDaemon interface for KeybaseDaemonRPC.
 func (k *KeybaseDaemonRPC) Identify(ctx context.Context, assertion, reason string) (
-	UserInfo, error) {
+	IFCERFTUserInfo, error) {
 	// setting UseDelegateUI to true here will cause daemon to use
 	// registered identify ui providers instead of terminal if any
 	// are available.  If not, then it will use the terminal UI.
@@ -542,7 +541,7 @@ func (k *KeybaseDaemonRPC) Identify(ctx context.Context, assertion, reason strin
 	}
 	res, err := k.identifyClient.Identify2(ctx, arg)
 	if err != nil {
-		return UserInfo{}, convertIdentifyError(assertion, err)
+		return IFCERFTUserInfo{}, convertIdentifyError(assertion, err)
 	}
 
 	return k.processUserPlusKeys(res.Upk)
@@ -550,7 +549,7 @@ func (k *KeybaseDaemonRPC) Identify(ctx context.Context, assertion, reason strin
 
 // LoadUserPlusKeys implements the KeybaseDaemon interface for KeybaseDaemonRPC.
 func (k *KeybaseDaemonRPC) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID) (
-	UserInfo, error) {
+	IFCERFTUserInfo, error) {
 	cachedUserInfo := k.getCachedUserInfo(uid)
 	if cachedUserInfo.Name != libkb.NormalizedUsername("") {
 		return cachedUserInfo, nil
@@ -559,23 +558,23 @@ func (k *KeybaseDaemonRPC) LoadUserPlusKeys(ctx context.Context, uid keybase1.UI
 	arg := keybase1.LoadUserPlusKeysArg{Uid: uid}
 	res, err := k.userClient.LoadUserPlusKeys(ctx, arg)
 	if err != nil {
-		return UserInfo{}, err
+		return IFCERFTUserInfo{}, err
 	}
 
 	return k.processUserPlusKeys(res)
 }
 
 func (k *KeybaseDaemonRPC) processUserPlusKeys(upk keybase1.UserPlusKeys) (
-	UserInfo, error) {
+	IFCERFTUserInfo, error) {
 	verifyingKeys, cryptPublicKeys, kidNames, err := filterKeys(upk.DeviceKeys)
 	if err != nil {
-		return UserInfo{}, err
+		return IFCERFTUserInfo{}, err
 	}
 
 	revokedVerifyingKeys, revokedCryptPublicKeys, revokedKidNames, err :=
 		filterRevokedKeys(upk.RevokedDeviceKeys)
 	if err != nil {
-		return UserInfo{}, err
+		return IFCERFTUserInfo{}, err
 	}
 
 	if len(revokedKidNames) > 0 {
@@ -584,7 +583,7 @@ func (k *KeybaseDaemonRPC) processUserPlusKeys(upk keybase1.UserPlusKeys) (
 		}
 	}
 
-	u := UserInfo{
+	u := IFCERFTUserInfo{
 		Name:                   libkb.NewNormalizedUsername(upk.Username),
 		UID:                    upk.Uid,
 		VerifyingKeys:          verifyingKeys,
@@ -600,7 +599,7 @@ func (k *KeybaseDaemonRPC) processUserPlusKeys(upk keybase1.UserPlusKeys) (
 
 // LoadUnverifiedKeys implements the KeybaseDaemon interface for KeybaseDaemonRPC.
 func (k *KeybaseDaemonRPC) LoadUnverifiedKeys(ctx context.Context, uid keybase1.UID) (
-	[]VerifyingKey, []CryptPublicKey, error) {
+	[]IFCERFTVerifyingKey, []IFCERFTCryptPublicKey, error) {
 	if vk, cpk, ok := k.getCachedUnverifiedKeys(uid); ok {
 		return vk, cpk, nil
 	}
@@ -615,7 +614,7 @@ func (k *KeybaseDaemonRPC) LoadUnverifiedKeys(ctx context.Context, uid keybase1.
 }
 
 func (k *KeybaseDaemonRPC) processUnverifiedKeys(uid keybase1.UID, keys []keybase1.PublicKey) (
-	[]VerifyingKey, []CryptPublicKey, error) {
+	[]IFCERFTVerifyingKey, []IFCERFTCryptPublicKey, error) {
 	verifyingKeys, cryptPublicKeys, _, err := filterKeys(keys)
 	if err != nil {
 		return nil, nil, err
@@ -626,9 +625,9 @@ func (k *KeybaseDaemonRPC) processUnverifiedKeys(uid keybase1.UID, keys []keybas
 
 // CurrentSession implements the KeybaseDaemon interface for KeybaseDaemonRPC.
 func (k *KeybaseDaemonRPC) CurrentSession(ctx context.Context, sessionID int) (
-	SessionInfo, error) {
+	IFCERFTSessionInfo, error) {
 	cachedCurrentSession := k.getCachedCurrentSession()
-	if cachedCurrentSession != (SessionInfo{}) {
+	if cachedCurrentSession != (IFCERFTSessionInfo{}) {
 		return cachedCurrentSession, nil
 	}
 
@@ -642,20 +641,20 @@ func (k *KeybaseDaemonRPC) CurrentSession(ctx context.Context, sessionID int) (
 			// above.
 			err = ncs
 		}
-		return SessionInfo{}, err
+		return IFCERFTSessionInfo{}, err
 	}
 	// Import the KIDs to validate them.
 	deviceSubkey, err := libkb.ImportKeypairFromKID(res.DeviceSubkeyKid)
 	if err != nil {
-		return SessionInfo{}, err
+		return IFCERFTSessionInfo{}, err
 	}
 	deviceSibkey, err := libkb.ImportKeypairFromKID(res.DeviceSibkeyKid)
 	if err != nil {
-		return SessionInfo{}, err
+		return IFCERFTSessionInfo{}, err
 	}
 	cryptPublicKey := MakeCryptPublicKey(deviceSubkey.GetKID())
 	verifyingKey := MakeVerifyingKey(deviceSibkey.GetKID())
-	s := SessionInfo{
+	s := IFCERFTSessionInfo{
 		Name:           libkb.NewNormalizedUsername(res.Username),
 		UID:            keybase1.UID(res.Uid),
 		Token:          res.Token,
@@ -714,7 +713,7 @@ func (k *KeybaseDaemonRPC) Notify(ctx context.Context, notification *keybase1.FS
 func (k *KeybaseDaemonRPC) FlushUserFromLocalCache(ctx context.Context,
 	uid keybase1.UID) {
 	k.log.CDebugf(ctx, "Flushing cache for user %s", uid)
-	k.setCachedUserInfo(uid, UserInfo{})
+	k.setCachedUserInfo(uid, IFCERFTUserInfo{})
 }
 
 // FlushUserUnverifiedKeysFromLocalCache implements the KeybaseDaemon interface for

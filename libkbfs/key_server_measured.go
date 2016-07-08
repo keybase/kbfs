@@ -38,7 +38,7 @@ func NewKeyServerMeasured(delegate IFCERFTKeyServer, r metrics.Registry) KeyServ
 // GetTLFCryptKeyServerHalf implements the KeyServer interface for
 // KeyServerMeasured.
 func (b KeyServerMeasured) GetTLFCryptKeyServerHalf(ctx context.Context,
-	serverHalfID TLFCryptKeyServerHalfID, key CryptPublicKey) (
+	serverHalfID TLFCryptKeyServerHalfID, key IFCERFTCryptPublicKey) (
 	serverHalf TLFCryptKeyServerHalf, err error) {
 	b.getTimer.Time(func() {
 		serverHalf, err = b.delegate.GetTLFCryptKeyServerHalf(ctx, serverHalfID, key)

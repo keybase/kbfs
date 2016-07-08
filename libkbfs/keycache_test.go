@@ -11,7 +11,7 @@ import (
 
 func TestKeyCacheBasic(t *testing.T) {
 	cache := NewKeyCacheStandard(10)
-	tlf := TlfID{id: [TlfIDByteLen]byte{0xf}}
+	tlf := IFCERFTTlfID{id: [TlfIDByteLen]byte{0xf}}
 	key := MakeTLFCryptKey([32]byte{0xf})
 	keyGen := KeyGen(1)
 	_, err := cache.GetTLFCryptKey(tlf, keyGen)
@@ -35,7 +35,7 @@ func TestKeyCacheBasic(t *testing.T) {
 		t.Fatal("keys are unequal")
 	}
 	for i := 0; i < 11; i++ {
-		tlf = TlfID{id: [TlfIDByteLen]byte{byte(i)}}
+		tlf = IFCERFTTlfID{id: [TlfIDByteLen]byte{byte(i)}}
 		key = MakeTLFCryptKey([32]byte{byte(i)})
 		err = cache.PutTLFCryptKey(tlf, keyGen, key)
 		if err != nil {
@@ -43,7 +43,7 @@ func TestKeyCacheBasic(t *testing.T) {
 		}
 	}
 	for i := 0; i < 11; i++ {
-		tlf = TlfID{id: [TlfIDByteLen]byte{byte(i)}}
+		tlf = IFCERFTTlfID{id: [TlfIDByteLen]byte{byte(i)}}
 		key, err = cache.GetTLFCryptKey(tlf, keyGen)
 		if i > 0 && err != nil {
 			t.Fatal(err)

@@ -21,12 +21,12 @@ import (
 type mdHandleKey string
 
 type mdBlockKey struct {
-	tlfID    TlfID
+	tlfID    IFCERFTTlfID
 	branchID BranchID
 }
 
 type mdBranchKey struct {
-	tlfID     TlfID
+	tlfID     IFCERFTTlfID
 	deviceKID keybase1.KID
 }
 
@@ -47,9 +47,9 @@ type mdServerMemShared struct {
 	// truncateLockManager are nil.
 	lock sync.RWMutex
 	// Bare TLF handle -> TLF ID
-	handleDb map[mdHandleKey]TlfID
+	handleDb map[mdHandleKey]IFCERFTTlfID
 	// TLF ID -> latest bare TLF handle
-	latestHandleDb map[TlfID]BareTlfHandle
+	latestHandleDb map[IFCERFTTlfID]BareTlfHandle
 	// (TLF ID, branch ID) -> list of MDs
 	mdDb map[mdBlockKey]mdBlockMemList
 	// (TLF ID, device KID) -> branch ID
@@ -72,8 +72,8 @@ var _ mdServerLocal = (*MDServerMemory)(nil)
 // NewMDServerMemory constructs a new MDServerMemory object that stores
 // all data in-memory.
 func NewMDServerMemory(config IFCERFTConfig) (*MDServerMemory, error) {
-	handleDb := make(map[mdHandleKey]TlfID)
-	latestHandleDb := make(map[TlfID]BareTlfHandle)
+	handleDb := make(map[mdHandleKey]IFCERFTTlfID)
+	latestHandleDb := make(map[IFCERFTTlfID]BareTlfHandle)
 	mdDb := make(map[mdBlockKey]mdBlockMemList)
 	branchDb := make(map[mdBranchKey]BranchID)
 	log := config.MakeLogger("")
@@ -93,7 +93,7 @@ func NewMDServerMemory(config IFCERFTConfig) (*MDServerMemory, error) {
 var errMDServerMemoryShutdown = errors.New("MDServerMemory is shutdown")
 
 func (md *MDServerMemory) getHandleID(ctx context.Context, handle BareTlfHandle,
-	mStatus MergeStatus) (tlfID TlfID, created bool, err error) {
+	mStatus MergeStatus) (tlfID IFCERFTTlfID, created bool, err error) {
 	handleBytes, err := md.config.Codec().Encode(handle)
 	if err != nil {
 		return NullTlfID, false, MDServerError{err}
@@ -132,7 +132,7 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle BareTlfHandle,
 
 // GetForHandle implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetForHandle(ctx context.Context, handle BareTlfHandle,
-	mStatus MergeStatus) (TlfID, *RootMetadataSigned, error) {
+	mStatus MergeStatus) (IFCERFTTlfID, *RootMetadataSigned, error) {
 	id, created, err := md.getHandleID(ctx, handle, mStatus)
 	if err != nil {
 		return NullTlfID, nil, err
@@ -150,7 +150,7 @@ func (md *MDServerMemory) GetForHandle(ctx context.Context, handle BareTlfHandle
 }
 
 func (md *MDServerMemory) checkGetParams(
-	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus) (
+	ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus) (
 	newBid BranchID, err error) {
 	if mStatus == Merged && bid != NullBranchID {
 		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
@@ -186,8 +186,7 @@ func (md *MDServerMemory) checkGetParams(
 }
 
 // GetForTLF implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) GetForTLF(ctx context.Context, id TlfID,
-	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+func (md *MDServerMemory) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
 	bid, err := md.checkGetParams(ctx, id, bid, mStatus)
 	if err != nil {
 		return nil, err
@@ -203,8 +202,7 @@ func (md *MDServerMemory) GetForTLF(ctx context.Context, id TlfID,
 	return rmds, nil
 }
 
-func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id TlfID,
-	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
 	key, err := md.getMDKey(id, bid, mStatus)
 	if err != nil {
 		return nil, err
@@ -229,7 +227,7 @@ func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id TlfID,
 }
 
 func (md *MDServerMemory) getMDKey(
-	id TlfID, bid BranchID, mStatus MergeStatus) (mdBlockKey, error) {
+	id IFCERFTTlfID, bid BranchID, mStatus MergeStatus) (mdBlockKey, error) {
 	if (mStatus == Merged) != (bid == NullBranchID) {
 		return mdBlockKey{},
 			fmt.Errorf("mstatus=%v is inconsistent with bid=%v",
@@ -238,7 +236,7 @@ func (md *MDServerMemory) getMDKey(
 	return mdBlockKey{id, bid}, nil
 }
 
-func (md *MDServerMemory) getBranchKey(ctx context.Context, id TlfID) (
+func (md *MDServerMemory) getBranchKey(ctx context.Context, id IFCERFTTlfID) (
 	mdBranchKey, error) {
 	// add device KID
 	deviceKID, err := md.getCurrentDeviceKID(ctx)
@@ -257,8 +255,7 @@ func (md *MDServerMemory) getCurrentDeviceKID(ctx context.Context) (keybase1.KID
 }
 
 // GetRange implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) GetRange(ctx context.Context, id TlfID,
-	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
+func (md *MDServerMemory) GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	md.log.CDebugf(ctx, "GetRange %d %d (%s)", start, stop, mStatus)
 	bid, err := md.checkGetParams(ctx, id, bid, mStatus)
@@ -439,7 +436,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 }
 
 // PruneBranch implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) PruneBranch(ctx context.Context, id TlfID, bid BranchID) error {
+func (md *MDServerMemory) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid BranchID) error {
 	if bid == NullBranchID {
 		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
@@ -469,7 +466,7 @@ func (md *MDServerMemory) PruneBranch(ctx context.Context, id TlfID, bid BranchI
 	return nil
 }
 
-func (md *MDServerMemory) getBranchID(ctx context.Context, id TlfID) (BranchID, error) {
+func (md *MDServerMemory) getBranchID(ctx context.Context, id IFCERFTTlfID) (BranchID, error) {
 	branchKey, err := md.getBranchKey(ctx, id)
 	if err != nil {
 		return NullBranchID, MDServerError{err}
@@ -488,8 +485,7 @@ func (md *MDServerMemory) getBranchID(ctx context.Context, id TlfID) (BranchID, 
 }
 
 // RegisterForUpdate implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) RegisterForUpdate(ctx context.Context, id TlfID,
-	currHead MetadataRevision) (<-chan error, error) {
+func (md *MDServerMemory) RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead MetadataRevision) (<-chan error, error) {
 	// are we already past this revision?  If so, fire observer
 	// immediately
 	currMergedHeadRev, err := md.getCurrentMergedHeadRevision(ctx, id)
@@ -516,7 +512,7 @@ func (md *MDServerMemory) getCurrentDeviceKIDBytes(ctx context.Context) (
 }
 
 // TruncateLock implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) TruncateLock(ctx context.Context, id TlfID) (
+func (md *MDServerMemory) TruncateLock(ctx context.Context, id IFCERFTTlfID) (
 	bool, error) {
 	md.lock.Lock()
 	defer md.lock.Unlock()
@@ -533,7 +529,7 @@ func (md *MDServerMemory) TruncateLock(ctx context.Context, id TlfID) (
 }
 
 // TruncateUnlock implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) TruncateUnlock(ctx context.Context, id TlfID) (
+func (md *MDServerMemory) TruncateUnlock(ctx context.Context, id IFCERFTTlfID) (
 	bool, error) {
 	md.lock.Lock()
 	defer md.lock.Unlock()
@@ -630,7 +626,7 @@ func (md *MDServerMemory) addNewAssertionForTest(uid keybase1.UID,
 }
 
 func (md *MDServerMemory) getCurrentMergedHeadRevision(
-	ctx context.Context, id TlfID) (rev MetadataRevision, err error) {
+	ctx context.Context, id IFCERFTTlfID) (rev MetadataRevision, err error) {
 	head, err := md.GetForTLF(ctx, id, NullBranchID, Merged)
 	if err != nil {
 		return 0, err
@@ -642,7 +638,7 @@ func (md *MDServerMemory) getCurrentMergedHeadRevision(
 }
 
 // GetLatestHandleForTLF implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) GetLatestHandleForTLF(_ context.Context, id TlfID) (
+func (md *MDServerMemory) GetLatestHandleForTLF(_ context.Context, id IFCERFTTlfID) (
 	BareTlfHandle, error) {
 	md.lock.RLock()
 	defer md.lock.RUnlock()

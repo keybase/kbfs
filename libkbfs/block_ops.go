@@ -19,8 +19,7 @@ type BlockOpsStandard struct {
 var _ IFCERFTBlockOps = (*BlockOpsStandard)(nil)
 
 // Get implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Get(ctx context.Context, md *RootMetadata,
-	blockPtr BlockPointer, block IFCERFTBlock) error {
+func (b *BlockOpsStandard) Get(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, block IFCERFTBlock) error {
 	bserv := b.config.BlockServer()
 	buf, blockServerHalf, err := bserv.Get(ctx, blockPtr.ID, md.ID, blockPtr.BlockContext)
 	if err != nil {
@@ -69,8 +68,7 @@ func (b *BlockOpsStandard) Get(ctx context.Context, md *RootMetadata,
 }
 
 // Ready implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Ready(ctx context.Context, md *RootMetadata,
-	block IFCERFTBlock) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
+func (b *BlockOpsStandard) Ready(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
 	err error) {
 	defer func() {
 		if err != nil {
@@ -135,8 +133,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, md *RootMetadata,
 }
 
 // Put implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Put(ctx context.Context, md *RootMetadata,
-	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
+func (b *BlockOpsStandard) Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData ReadyBlockData) error {
 	bserv := b.config.BlockServer()
 	var err error
 	if blockPtr.RefNonce == zeroBlockRefNonce {
@@ -158,8 +155,7 @@ func (b *BlockOpsStandard) Put(ctx context.Context, md *RootMetadata,
 }
 
 // Delete implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Delete(ctx context.Context, md *RootMetadata,
-	ptrs []BlockPointer) (liveCounts map[BlockID]int, err error) {
+func (b *BlockOpsStandard) Delete(ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) (liveCounts map[BlockID]int, err error) {
 	contexts := make(map[BlockID][]BlockContext)
 	for _, ptr := range ptrs {
 		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.BlockContext)
@@ -168,8 +164,7 @@ func (b *BlockOpsStandard) Delete(ctx context.Context, md *RootMetadata,
 }
 
 // Archive implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Archive(ctx context.Context, md *RootMetadata,
-	ptrs []BlockPointer) error {
+func (b *BlockOpsStandard) Archive(ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) error {
 	contexts := make(map[BlockID][]BlockContext)
 	for _, ptr := range ptrs {
 		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.BlockContext)

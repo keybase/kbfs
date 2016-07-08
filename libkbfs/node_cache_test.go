@@ -9,11 +9,11 @@ import (
 	"testing"
 )
 
-func setupNodeCache(t *testing.T, id TlfID, branch BranchName, flat bool) (
+func setupNodeCache(t *testing.T, id IFCERFTTlfID, branch IFCERFTBranchName, flat bool) (
 	ncs *nodeCacheStandard, parentNode IFCERFTNode, childNode1 IFCERFTNode, childNode2 IFCERFTNode, childPath1 []pathNode, childPath2 []pathNode) {
-	ncs = newNodeCacheStandard(FolderBranch{id, branch})
+	ncs = newNodeCacheStandard(IFCERFTFolderBranch{id, branch})
 
-	parentPtr := BlockPointer{ID: fakeBlockID(0)}
+	parentPtr := IFCERFTBlockPointer{ID: fakeBlockID(0)}
 	parentName := "parent"
 	var err error
 	parentNode, err = ncs.GetOrCreate(parentPtr, parentName, nil)
@@ -25,7 +25,7 @@ func setupNodeCache(t *testing.T, id TlfID, branch BranchName, flat bool) (
 	}
 
 	// now create a child node for that parent
-	childPtr1 := BlockPointer{ID: fakeBlockID(1)}
+	childPtr1 := IFCERFTBlockPointer{ID: fakeBlockID(1)}
 	childName1 := "child1"
 	childNode1, err = ncs.GetOrCreate(childPtr1, childName1, parentNode)
 	if err != nil {
@@ -40,7 +40,7 @@ func setupNodeCache(t *testing.T, id TlfID, branch BranchName, flat bool) (
 		parent2 = parentNode
 	}
 
-	childPtr2 := BlockPointer{ID: fakeBlockID(2)}
+	childPtr2 := IFCERFTBlockPointer{ID: fakeBlockID(2)}
 	childName2 := "child2"
 	childNode2, err = ncs.GetOrCreate(childPtr2, childName2, parent2)
 	if err != nil {
@@ -52,38 +52,38 @@ func setupNodeCache(t *testing.T, id TlfID, branch BranchName, flat bool) (
 
 	childPath1 = []pathNode{
 		{
-			BlockPointer: parentPtr,
-			Name:         parentName,
+			IFCERFTBlockPointer: parentPtr,
+			Name:                parentName,
 		},
 		{
-			BlockPointer: childPtr1,
-			Name:         childName1,
+			IFCERFTBlockPointer: childPtr1,
+			Name:                childName1,
 		},
 	}
 	if flat {
 		childPath2 = []pathNode{
 			{
-				BlockPointer: parentPtr,
-				Name:         parentName,
+				IFCERFTBlockPointer: parentPtr,
+				Name:                parentName,
 			},
 			{
-				BlockPointer: childPtr2,
-				Name:         childName2,
+				IFCERFTBlockPointer: childPtr2,
+				Name:                childName2,
 			},
 		}
 	} else {
 		childPath2 = []pathNode{
 			{
-				BlockPointer: parentPtr,
-				Name:         parentName,
+				IFCERFTBlockPointer: parentPtr,
+				Name:                parentName,
 			},
 			{
-				BlockPointer: childPtr1,
-				Name:         childName1,
+				IFCERFTBlockPointer: childPtr1,
+				Name:                childName1,
 			},
 			{
-				BlockPointer: childPtr2,
-				Name:         childName2,
+				IFCERFTBlockPointer: childPtr2,
+				Name:                childName2,
 			},
 		}
 	}
@@ -128,9 +128,9 @@ func simulateGC(ncs *nodeCacheStandard, liveList []IFCERFTNode) {
 func TestNodeCacheGetOrCreateSuccess(t *testing.T) {
 	ncs, parentNode, childNode1A, _, path1, path2 :=
 		setupNodeCache(t, FakeTlfID(0, false), MasterBranch, true)
-	parentPtr := path1[0].BlockPointer
-	childPtr1 := path1[1].BlockPointer
-	childPtr2 := path2[1].BlockPointer
+	parentPtr := path1[0].IFCERFTBlockPointer
+	childPtr1 := path1[1].IFCERFTBlockPointer
+	childPtr2 := path2[1].IFCERFTBlockPointer
 
 	// make sure we get the same node back for the second call
 	childNode1B, err := ncs.GetOrCreate(childPtr1, childNode1A.GetBasename(), parentNode)
@@ -155,9 +155,9 @@ func TestNodeCacheGetOrCreateSuccess(t *testing.T) {
 
 // Tests that a child can't be created with an unknown parent.
 func TestNodeCacheGetOrCreateNoParent(t *testing.T) {
-	ncs := newNodeCacheStandard(FolderBranch{FakeTlfID(0, false), ""})
+	ncs := newNodeCacheStandard(IFCERFTFolderBranch{FakeTlfID(0, false), ""})
 
-	parentPtr := BlockPointer{ID: fakeBlockID(0)}
+	parentPtr := IFCERFTBlockPointer{ID: fakeBlockID(0)}
 	parentNode, err := ncs.GetOrCreate(parentPtr, "parent", nil)
 	if err != nil {
 		t.Errorf("Couldn't create top-level parent node: %v", err)
@@ -166,7 +166,7 @@ func TestNodeCacheGetOrCreateNoParent(t *testing.T) {
 	simulateGC(ncs, []IFCERFTNode{})
 
 	// now try to create a child node for that parent
-	childPtr1 := BlockPointer{ID: fakeBlockID(1)}
+	childPtr1 := IFCERFTBlockPointer{ID: fakeBlockID(1)}
 	_, err = ncs.GetOrCreate(childPtr1, "child", parentNode)
 	expectedErr := ParentNodeNotFoundError{parentPtr.ref()}
 	if err != expectedErr {
@@ -176,18 +176,18 @@ func TestNodeCacheGetOrCreateNoParent(t *testing.T) {
 
 // Tests that UpdatePointer works
 func TestNodeCacheUpdatePointer(t *testing.T) {
-	ncs := newNodeCacheStandard(FolderBranch{FakeTlfID(0, false), ""})
+	ncs := newNodeCacheStandard(IFCERFTFolderBranch{FakeTlfID(0, false), ""})
 
-	parentPtr := BlockPointer{ID: fakeBlockID(0)}
+	parentPtr := IFCERFTBlockPointer{ID: fakeBlockID(0)}
 	parentNode, err := ncs.GetOrCreate(parentPtr, "parent", nil)
 	if err != nil {
 		t.Errorf("Couldn't create top-level parent node: %v", err)
 	}
 
-	newParentPtr := BlockPointer{ID: fakeBlockID(1)}
+	newParentPtr := IFCERFTBlockPointer{ID: fakeBlockID(1)}
 	ncs.UpdatePointer(parentPtr.ref(), newParentPtr)
 
-	if parentNode.(*nodeStandard).core.pathNode.BlockPointer != newParentPtr {
+	if parentNode.(*nodeStandard).core.pathNode.IFCERFTBlockPointer != newParentPtr {
 		t.Errorf("UpdatePointer didn't work.")
 	}
 }
@@ -196,9 +196,9 @@ func TestNodeCacheUpdatePointer(t *testing.T) {
 func TestNodeCacheMoveSuccess(t *testing.T) {
 	ncs, _, childNode1, childNode2, path1, path2 :=
 		setupNodeCache(t, FakeTlfID(0, false), MasterBranch, true)
-	parentPtr := path1[0].BlockPointer
-	childPtr1 := path1[1].BlockPointer
-	childPtr2 := path2[1].BlockPointer
+	parentPtr := path1[0].IFCERFTBlockPointer
+	childPtr1 := path1[1].IFCERFTBlockPointer
+	childPtr2 := path2[1].IFCERFTBlockPointer
 
 	// now move child2 under child1
 	err := ncs.Move(childPtr2.ref(), childNode1, "child3")
@@ -231,8 +231,8 @@ func TestNodeCacheMoveSuccess(t *testing.T) {
 func TestNodeCacheMoveNoParent(t *testing.T) {
 	ncs, _, childNode1, childNode2, path1, path2 :=
 		setupNodeCache(t, FakeTlfID(0, false), MasterBranch, true)
-	childPtr1 := path1[1].BlockPointer
-	childPtr2 := path2[1].BlockPointer
+	childPtr1 := path1[1].IFCERFTBlockPointer
+	childPtr2 := path2[1].IFCERFTBlockPointer
 
 	// get rid of child1
 	simulateGC(ncs, []IFCERFTNode{childNode2})
@@ -245,8 +245,7 @@ func TestNodeCacheMoveNoParent(t *testing.T) {
 	}
 }
 
-func checkNodeCachePath(t *testing.T, id TlfID, branch BranchName,
-	path path, expectedPath []pathNode) {
+func checkNodeCachePath(t *testing.T, id IFCERFTTlfID, branch IFCERFTBranchName, path path, expectedPath []pathNode) {
 	if len(path.path) != len(expectedPath) {
 		t.Errorf("Bad path length: %v vs %v", len(path.path), len(expectedPath))
 	}
@@ -259,7 +258,7 @@ func checkNodeCachePath(t *testing.T, id TlfID, branch BranchName,
 	if path.Tlf != id {
 		t.Errorf("Wrong top dir: %v vs %v", path.Tlf, id)
 	}
-	if path.Branch != BranchName(branch) {
+	if path.Branch != IFCERFTBranchName(branch) {
 		t.Errorf("Wrong branch: %s vs %s", path.Branch, branch)
 	}
 }
@@ -268,10 +267,10 @@ func checkNodeCachePath(t *testing.T, id TlfID, branch BranchName,
 // still have a path, but not a basename.
 func TestNodeCacheUnlink(t *testing.T) {
 	id := FakeTlfID(42, false)
-	branch := BranchName("testBranch")
+	branch := IFCERFTBranchName("testBranch")
 	ncs, _, _, childNode2, _, path2 :=
 		setupNodeCache(t, id, branch, false)
-	childPtr2 := path2[2].BlockPointer
+	childPtr2 := path2[2].IFCERFTBlockPointer
 
 	// unlink child2
 	ncs.Unlink(childPtr2.ref(), ncs.PathFromNode(childNode2))
@@ -288,10 +287,10 @@ func TestNodeCacheUnlink(t *testing.T) {
 // parent, and the child still has a path and a basename.
 func TestNodeCacheUnlinkParent(t *testing.T) {
 	id := FakeTlfID(42, false)
-	branch := BranchName("testBranch")
+	branch := IFCERFTBranchName("testBranch")
 	ncs, _, childNode1, childNode2, _, path2 :=
 		setupNodeCache(t, id, branch, false)
-	childPtr1 := path2[1].BlockPointer
+	childPtr1 := path2[1].IFCERFTBlockPointer
 
 	// unlink node 2's parent
 	ncs.Unlink(childPtr1.ref(), ncs.PathFromNode(childNode1))
@@ -309,15 +308,15 @@ func TestNodeCacheUnlinkParent(t *testing.T) {
 // node core.
 func TestNodeCacheUnlinkThenRelink(t *testing.T) {
 	id := FakeTlfID(42, false)
-	branch := BranchName("testBranch")
+	branch := IFCERFTBranchName("testBranch")
 	ncs, _, childNode1, childNode2, _, path2 :=
 		setupNodeCache(t, id, branch, false)
-	childPtr2 := path2[2].BlockPointer
+	childPtr2 := path2[2].IFCERFTBlockPointer
 
 	// unlink child2
 	ncs.Unlink(childPtr2.ref(), ncs.PathFromNode(childNode2))
 	newChildName := "newChildName"
-	newChildPtr2 := BlockPointer{ID: fakeBlockID(22)}
+	newChildPtr2 := IFCERFTBlockPointer{ID: fakeBlockID(22)}
 	ncs.UpdatePointer(childPtr2.ref(), newChildPtr2) // NO-OP
 	childNode2B, err := ncs.GetOrCreate(newChildPtr2, newChildName, childNode1)
 	if err != nil {
@@ -333,7 +332,7 @@ func TestNodeCacheUnlinkThenRelink(t *testing.T) {
 
 	// New node
 	path = ncs.PathFromNode(childNode2B)
-	path2[2].BlockPointer = newChildPtr2
+	path2[2].IFCERFTBlockPointer = newChildPtr2
 	path2[2].Name = newChildName
 	checkNodeCachePath(t, id, branch, path, path2)
 
@@ -348,7 +347,7 @@ func TestNodeCacheUnlinkThenRelink(t *testing.T) {
 // Tests that PathFromNode works correctly
 func TestNodeCachePathFromNode(t *testing.T) {
 	id := FakeTlfID(42, false)
-	branch := BranchName("testBranch")
+	branch := IFCERFTBranchName("testBranch")
 	ncs, _, _, childNode2, _, path2 :=
 		setupNodeCache(t, id, branch, false)
 	path := ncs.PathFromNode(childNode2)

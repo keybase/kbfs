@@ -34,7 +34,7 @@ func (d *daemonKBPKI) Resolve(ctx context.Context, assertion string) (
 	return d.daemon.Resolve(ctx, assertion)
 }
 
-func (d *daemonKBPKI) Identify(ctx context.Context, assertion, reason string) (UserInfo, error) {
+func (d *daemonKBPKI) Identify(ctx context.Context, assertion, reason string) (IFCERFTUserInfo, error) {
 	return d.daemon.Identify(ctx, assertion, reason)
 }
 
@@ -87,7 +87,7 @@ func (ik *identifyCountingKBPKI) getIdentifyCalls() int {
 	return ik.identifyCalls
 }
 
-func (ik *identifyCountingKBPKI) Identify(ctx context.Context, assertion, reason string) (UserInfo, error) {
+func (ik *identifyCountingKBPKI) Identify(ctx context.Context, assertion, reason string) (IFCERFTUserInfo, error) {
 	ik.addIdentifyCall()
 	return ik.IFCERFTKBPKI.Identify(ctx, assertion, reason)
 }

@@ -15,12 +15,12 @@ type nodeCore struct {
 	cachedPath path
 }
 
-func newNodeCore(ptr BlockPointer, name string, parent *nodeStandard,
+func newNodeCore(ptr IFCERFTBlockPointer, name string, parent *nodeStandard,
 	cache *nodeCacheStandard) *nodeCore {
 	return &nodeCore{
 		pathNode: &pathNode{
-			BlockPointer: ptr,
-			Name:         name,
+			IFCERFTBlockPointer: ptr,
+			Name:                name,
 		},
 		parent: parent,
 		cache:  cache,
@@ -54,7 +54,7 @@ func (n *nodeStandard) GetID() IFCERFTNodeID {
 	return n.core
 }
 
-func (n *nodeStandard) GetFolderBranch() FolderBranch {
+func (n *nodeStandard) GetFolderBranch() IFCERFTFolderBranch {
 	return n.core.cache.folderBranch
 }
 

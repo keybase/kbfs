@@ -85,9 +85,9 @@ func TestPrivateMetadataUnknownFields(t *testing.T) {
 // makeFakeTlfHandle should only be used in this file.
 func makeFakeTlfHandle(
 	t *testing.T, x uint32, public bool,
-	unresolvedWriters, unresolvedReaders []keybase1.SocialAssertion) *TlfHandle {
+	unresolvedWriters, unresolvedReaders []keybase1.SocialAssertion) *IFCERFTTlfHandle {
 	uid := keybase1.MakeTestUID(x)
-	return &TlfHandle{
+	return &IFCERFTTlfHandle{
 		public: public,
 		resolvedWriters: map[keybase1.UID]libkb.NormalizedUsername{
 			uid: "test_user",
@@ -98,8 +98,8 @@ func makeFakeTlfHandle(
 }
 
 func newRootMetadataOrBust(
-	t *testing.T, tlfID TlfID, h *TlfHandle) *RootMetadata {
-	var rmd RootMetadata
+	t *testing.T, tlfID IFCERFTTlfID, h *IFCERFTTlfHandle) *IFCERFTRootMetadata {
+	var rmd IFCERFTRootMetadata
 	err := updateNewRootMetadata(&rmd, tlfID, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 	rmd.tlfHandle = h
@@ -382,7 +382,7 @@ func (rkgf tlfReaderKeyGenerationsFuture) toCurrent() TLFReaderKeyGenerations {
 // in RootMetadata, so that they may be overridden in
 // rootMetadataFuture.
 type rootMetadataWrapper struct {
-	RootMetadata
+	IFCERFTRootMetadata
 }
 
 type rootMetadataFuture struct {
@@ -398,8 +398,8 @@ type rootMetadataFuture struct {
 	extra
 }
 
-func (rmf *rootMetadataFuture) toCurrent() *RootMetadata {
-	rm := rmf.rootMetadataWrapper.RootMetadata
+func (rmf *rootMetadataFuture) toCurrent() *IFCERFTRootMetadata {
+	rm := rmf.rootMetadataWrapper.IFCERFTRootMetadata
 	rm.WriterMetadata = WriterMetadata(rmf.writerMetadataFuture.toCurrent())
 	rm.RKeys = rmf.RKeys.toCurrent()
 	return &rm
@@ -418,7 +418,7 @@ func makeFakeRootMetadataFuture(t *testing.T) *rootMetadataFuture {
 	rmf := rootMetadataFuture{
 		wmf,
 		rootMetadataWrapper{
-			RootMetadata{
+			IFCERFTRootMetadata{
 				// This needs to be list format so it fails to compile if new
 				// fields are added, effectively checking at compile time
 				// whether new fields have been added

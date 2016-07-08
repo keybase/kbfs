@@ -13,7 +13,7 @@ import (
 )
 
 type favToAdd struct {
-	Favorite
+	IFCERFTFavorite
 
 	// created, if set to true, indicates that this is the first time the TLF has
 	// ever existed. It is only used when adding the TLF to favorites
@@ -21,7 +21,7 @@ type favToAdd struct {
 }
 
 func (f favToAdd) toKBFolder() keybase1.Folder {
-	return f.Favorite.toKBFolder(f.created)
+	return f.IFCERFTFavorite.toKBFolder(f.created)
 }
 
 // favReq represents a request to access the logged-in user's
@@ -34,8 +34,8 @@ type favReq struct {
 	// Request types
 	refresh bool
 	toAdd   []favToAdd
-	toDel   []Favorite
-	favs    chan<- []Favorite
+	toDel   []IFCERFTFavorite
+	favs    chan<- []IFCERFTFavorite
 
 	// Closed when the request is done.
 	done chan struct{}
@@ -57,7 +57,7 @@ type Favorites struct {
 	// It may not be consistent with the server's view of the user's
 	// favorites list, if other devices have modified the list since
 	// the last refresh.
-	cache map[Favorite]bool
+	cache map[IFCERFTFavorite]bool
 
 	inFlightLock sync.Mutex
 	inFlightAdds map[favToAdd]*favReq
@@ -106,20 +106,20 @@ func (f *Favorites) handleReq(req *favReq) (err error) {
 			return err
 		}
 
-		f.cache = make(map[Favorite]bool)
+		f.cache = make(map[IFCERFTFavorite]bool)
 		for _, folder := range folders {
 			f.cache[*NewFavoriteFromFolder(folder)] = true
 		}
 		username, _, err := f.config.KBPKI().GetCurrentUserInfo(req.ctx)
 		if err == nil {
 			// Add favorites for the current user, that cannot be deleted.
-			f.cache[Favorite{string(username), true}] = true
-			f.cache[Favorite{string(username), false}] = true
+			f.cache[IFCERFTFavorite{string(username), true}] = true
+			f.cache[IFCERFTFavorite{string(username), false}] = true
 		}
 	}
 
 	for _, fav := range req.toAdd {
-		if !fav.created && f.cache[fav.Favorite] {
+		if !fav.created && f.cache[fav.IFCERFTFavorite] {
 			continue
 		}
 		err := kbpki.FavoriteAdd(req.ctx, fav.toKBFolder())
@@ -128,7 +128,7 @@ func (f *Favorites) handleReq(req *favReq) (err error) {
 				"Failure adding favorite %v: %v", fav, err)
 			return err
 		}
-		f.cache[fav.Favorite] = true
+		f.cache[fav.IFCERFTFavorite] = true
 	}
 
 	for _, fav := range req.toDel {
@@ -143,7 +143,7 @@ func (f *Favorites) handleReq(req *favReq) (err error) {
 	}
 
 	if req.favs != nil {
-		favorites := make([]Favorite, 0, len(f.cache))
+		favorites := make([]IFCERFTFavorite, 0, len(f.cache))
 		for fav := range f.cache {
 			favorites = append(favorites, fav)
 		}
@@ -268,13 +268,13 @@ func (f *Favorites) AddAsync(ctx context.Context, fav favToAdd) {
 
 // Delete deletes a favorite from the favorites list.  It is
 // idempotent.
-func (f *Favorites) Delete(ctx context.Context, fav Favorite) error {
+func (f *Favorites) Delete(ctx context.Context, fav IFCERFTFavorite) error {
 	if f.hasShutdown() {
 		return ShutdownHappenedError{}
 	}
 	return f.sendReq(ctx, &favReq{
 		ctx:   ctx,
-		toDel: []Favorite{fav},
+		toDel: []IFCERFTFavorite{fav},
 		done:  make(chan struct{}),
 	})
 }
@@ -300,11 +300,11 @@ func (f *Favorites) RefreshCache(ctx context.Context) {
 
 // Get returns the logged-in users list of favorites. It
 // doesn't use the cache.
-func (f *Favorites) Get(ctx context.Context) ([]Favorite, error) {
+func (f *Favorites) Get(ctx context.Context) ([]IFCERFTFavorite, error) {
 	if f.hasShutdown() {
 		return nil, ShutdownHappenedError{}
 	}
-	favChan := make(chan []Favorite, 1)
+	favChan := make(chan []IFCERFTFavorite, 1)
 	req := &favReq{
 		ctx:  ctx,
 		favs: favChan,

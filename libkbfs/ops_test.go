@@ -48,8 +48,8 @@ func TestRenameOpCustomUpdateWithinDir(t *testing.T) {
 		"old name", oldDir, "new name", oldDir,
 		renamed, Exec)
 	require.Equal(t, blockUpdate{Unref: oldDir}, ro.OldDir)
-	require.Equal(t, BlockPointer{}, ro.NewDir.Unref)
-	require.Equal(t, BlockPointer{}, ro.NewDir.Ref)
+	require.Equal(t, IFCERFTBlockPointer{}, ro.NewDir.Unref)
+	require.Equal(t, IFCERFTBlockPointer{}, ro.NewDir.Ref)
 
 	// Update to oldDir should update ro.OldDir.
 	newDir := oldDir
@@ -207,13 +207,13 @@ func makeFakeBlockUpdate(t *testing.T) blockUpdate {
 }
 
 func makeFakeOpCommon(t *testing.T, withRefBlocks bool) OpCommon {
-	var refBlocks []BlockPointer
+	var refBlocks []IFCERFTBlockPointer
 	if withRefBlocks {
-		refBlocks = []BlockPointer{makeFakeBlockPointer(t)}
+		refBlocks = []IFCERFTBlockPointer{makeFakeBlockPointer(t)}
 	}
 	oc := OpCommon{
 		refBlocks,
-		[]BlockPointer{makeFakeBlockPointer(t)},
+		[]IFCERFTBlockPointer{makeFakeBlockPointer(t)},
 		[]blockUpdate{makeFakeBlockUpdate(t)},
 		codec.UnknownFieldSetHandler{},
 		writerInfo{},
@@ -470,8 +470,8 @@ func TestOpSerialization(t *testing.T) {
 	ops := testOps{}
 	// add a couple ops of different types
 	ops.Ops = append(ops.Ops,
-		newCreateOp("test1", BlockPointer{ID: fakeBlockID(42)}, File),
-		newRmOp("test2", BlockPointer{ID: fakeBlockID(43)}))
+		newCreateOp("test1", IFCERFTBlockPointer{ID: fakeBlockID(42)}, File),
+		newRmOp("test2", IFCERFTBlockPointer{ID: fakeBlockID(43)}))
 
 	buf, err := c.Encode(ops)
 	if err != nil {
@@ -500,11 +500,11 @@ func TestOpSerialization(t *testing.T) {
 }
 
 func TestOpInversion(t *testing.T) {
-	oldPtr1 := BlockPointer{ID: fakeBlockID(42)}
-	newPtr1 := BlockPointer{ID: fakeBlockID(82)}
-	oldPtr2 := BlockPointer{ID: fakeBlockID(43)}
-	newPtr2 := BlockPointer{ID: fakeBlockID(83)}
-	filePtr := BlockPointer{ID: fakeBlockID(44)}
+	oldPtr1 := IFCERFTBlockPointer{ID: fakeBlockID(42)}
+	newPtr1 := IFCERFTBlockPointer{ID: fakeBlockID(82)}
+	oldPtr2 := IFCERFTBlockPointer{ID: fakeBlockID(43)}
+	newPtr2 := IFCERFTBlockPointer{ID: fakeBlockID(83)}
+	filePtr := IFCERFTBlockPointer{ID: fakeBlockID(44)}
 
 	cop := newCreateOp("test1", oldPtr1, File)
 	cop.AddUpdate(oldPtr1, newPtr1)

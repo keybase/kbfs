@@ -58,7 +58,7 @@ func (ol *observerList) batchChanges(
 }
 
 func (ol *observerList) tlfHandleChange(
-	ctx context.Context, newHandle *TlfHandle) {
+	ctx context.Context, newHandle *IFCERFTTlfHandle) {
 	ol.lock.RLock()
 	defer ol.lock.RUnlock()
 	for _, o := range ol.observers {

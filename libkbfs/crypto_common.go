@@ -47,11 +47,11 @@ func MakeCryptoCommon(codec IFCERFTCodec, log logger.Logger) CryptoCommon {
 }
 
 // MakeRandomTlfID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeRandomTlfID(isPublic bool) (TlfID, error) {
-	var id TlfID
+func (c CryptoCommon) MakeRandomTlfID(isPublic bool) (IFCERFTTlfID, error) {
+	var id IFCERFTTlfID
 	err := cryptoRandRead(id.id[:])
 	if err != nil {
-		return TlfID{}, err
+		return IFCERFTTlfID{}, err
 	}
 	if isPublic {
 		id.id[TlfIDByteLen-1] = PubTlfIDSuffix
@@ -72,7 +72,7 @@ func (c CryptoCommon) MakeRandomBranchID() (BranchID, error) {
 }
 
 // MakeMdID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeMdID(md *RootMetadata) (MdID, error) {
+func (c CryptoCommon) MakeMdID(md *IFCERFTRootMetadata) (MdID, error) {
 	// Make sure that the serialized metadata is set; otherwise we
 	// won't get the right MdID.
 	if md.SerializedPrivateMetadata == nil {
@@ -144,15 +144,14 @@ func (c CryptoCommon) MakeRandomTLFKeys() (
 	tlfPrivateKey TLFPrivateKey,
 	tlfEphemeralPublicKey TLFEphemeralPublicKey,
 	tlfEphemeralPrivateKey TLFEphemeralPrivateKey,
-	tlfCryptKey TLFCryptKey,
-	err error) {
+	tlfCryptKey IFCERFTTLFCryptKey, err error) {
 	defer func() {
 		if err != nil {
 			tlfPublicKey = TLFPublicKey{}
 			tlfPrivateKey = TLFPrivateKey{}
 			tlfEphemeralPublicKey = TLFEphemeralPublicKey{}
 			tlfEphemeralPrivateKey = TLFEphemeralPrivateKey{}
-			tlfCryptKey = TLFCryptKey{}
+			tlfCryptKey = IFCERFTTLFCryptKey{}
 		}
 	}()
 
@@ -211,19 +210,19 @@ func xorKeys(x, y [32]byte) [32]byte {
 }
 
 // MaskTLFCryptKey implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, key TLFCryptKey) (clientHalf TLFCryptKeyClientHalf, err error) {
+func (c CryptoCommon) MaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, key IFCERFTTLFCryptKey) (clientHalf TLFCryptKeyClientHalf, err error) {
 	clientHalf.data = xorKeys(serverHalf.data, key.data)
 	return
 }
 
 // UnmaskTLFCryptKey implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) UnmaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, clientHalf TLFCryptKeyClientHalf) (key TLFCryptKey, err error) {
+func (c CryptoCommon) UnmaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, clientHalf TLFCryptKeyClientHalf) (key IFCERFTTLFCryptKey, err error) {
 	key.data = xorKeys(serverHalf.data, clientHalf.data)
 	return
 }
 
 // UnmaskBlockCryptKey implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) UnmaskBlockCryptKey(serverHalf BlockCryptKeyServerHalf, tlfCryptKey TLFCryptKey) (key BlockCryptKey, error error) {
+func (c CryptoCommon) UnmaskBlockCryptKey(serverHalf BlockCryptKeyServerHalf, tlfCryptKey IFCERFTTLFCryptKey) (key BlockCryptKey, error error) {
 	key.data = xorKeys(serverHalf.data, tlfCryptKey.data)
 	return
 }
@@ -264,7 +263,7 @@ func (c CryptoCommon) Verify(msg []byte, sigInfo SignatureInfo) (err error) {
 
 // EncryptTLFCryptKeyClientHalf implements the Crypto interface for
 // CryptoCommon.
-func (c CryptoCommon) EncryptTLFCryptKeyClientHalf(privateKey TLFEphemeralPrivateKey, publicKey CryptPublicKey, clientHalf TLFCryptKeyClientHalf) (encryptedClientHalf EncryptedTLFCryptKeyClientHalf, err error) {
+func (c CryptoCommon) EncryptTLFCryptKeyClientHalf(privateKey TLFEphemeralPrivateKey, publicKey IFCERFTCryptPublicKey, clientHalf TLFCryptKeyClientHalf) (encryptedClientHalf EncryptedTLFCryptKeyClientHalf, err error) {
 	var nonce [24]byte
 	err = cryptoRandRead(nonce[:])
 	if err != nil {
@@ -309,7 +308,7 @@ func (c CryptoCommon) encryptData(data []byte, key [32]byte) (encryptedData, err
 }
 
 // EncryptPrivateMetadata implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) EncryptPrivateMetadata(pmd *PrivateMetadata, key TLFCryptKey) (encryptedPmd EncryptedPrivateMetadata, err error) {
+func (c CryptoCommon) EncryptPrivateMetadata(pmd *PrivateMetadata, key IFCERFTTLFCryptKey) (encryptedPmd EncryptedPrivateMetadata, err error) {
 	encodedPmd, err := c.codec.Encode(pmd)
 	if err != nil {
 		return
@@ -344,7 +343,7 @@ func (c CryptoCommon) decryptData(encryptedData encryptedData, key [32]byte) ([]
 }
 
 // DecryptPrivateMetadata implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) DecryptPrivateMetadata(encryptedPmd EncryptedPrivateMetadata, key TLFCryptKey) (*PrivateMetadata, error) {
+func (c CryptoCommon) DecryptPrivateMetadata(encryptedPmd EncryptedPrivateMetadata, key IFCERFTTLFCryptKey) (*PrivateMetadata, error) {
 	encodedPmd, err := c.decryptData(encryptedData(encryptedPmd), key.data)
 	if err != nil {
 		return nil, err

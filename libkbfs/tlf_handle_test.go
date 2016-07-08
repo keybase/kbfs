@@ -80,7 +80,7 @@ func TestParseTlfHandleNotReaderFailure(t *testing.T) {
 	name := "u2,u3"
 	_, err := ParseTlfHandle(ctx, kbpki, name, false)
 	assert.Equal(t, 0, kbpki.getIdentifyCalls())
-	assert.Equal(t, ReadAccessError{"u1", CanonicalTlfName(name), false}, err)
+	assert.Equal(t, ReadAccessError{"u1", IFCERFTCanonicalTlfName(name), false}, err)
 }
 
 func TestParseTlfHandleAssertionNotCanonicalFailure(t *testing.T) {
@@ -123,13 +123,13 @@ func TestParseTlfHandleAssertionPrivateSuccess(t *testing.T) {
 	h, err := ParseTlfHandle(ctx, kbpki, name, false)
 	require.NoError(t, err)
 	assert.Equal(t, 0, kbpki.getIdentifyCalls())
-	assert.Equal(t, CanonicalTlfName(name), h.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName(name), h.GetCanonicalName())
 
 	// Make sure that generating another handle doesn't change the
 	// name.
 	h2, err := MakeTlfHandle(context.Background(), h.ToBareHandleOrBust(), kbpki)
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName(name), h2.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName(name), h2.GetCanonicalName())
 }
 
 func TestParseTlfHandleAssertionPublicSuccess(t *testing.T) {
@@ -149,13 +149,13 @@ func TestParseTlfHandleAssertionPublicSuccess(t *testing.T) {
 	h, err := ParseTlfHandle(ctx, kbpki, name, true)
 	require.NoError(t, err)
 	assert.Equal(t, 0, kbpki.getIdentifyCalls())
-	assert.Equal(t, CanonicalTlfName(name), h.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName(name), h.GetCanonicalName())
 
 	// Make sure that generating another handle doesn't change the
 	// name.
 	h2, err := MakeTlfHandle(context.Background(), h.ToBareHandleOrBust(), kbpki)
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName(name), h2.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName(name), h2.GetCanonicalName())
 }
 
 func TestTlfHandleAccessorsPrivate(t *testing.T) {
@@ -282,7 +282,7 @@ func TestTlfHandleAccessorsPublic(t *testing.T) {
 }
 
 func TestTlfHandleConflictInfo(t *testing.T) {
-	var h TlfHandle
+	var h IFCERFTTlfHandle
 
 	require.Nil(t, h.ConflictInfo())
 
@@ -327,7 +327,7 @@ func TestTlfHandleConflictInfo(t *testing.T) {
 }
 
 func TestTlfHandleFinalizedInfo(t *testing.T) {
-	var h TlfHandle
+	var h IFCERFTTlfHandle
 
 	require.Nil(t, h.FinalizedInfo())
 	info := TlfHandleExtension{
@@ -446,13 +446,13 @@ func TestParseTlfHandleSocialAssertion(t *testing.T) {
 	h, err := ParseTlfHandle(ctx, kbpki, name, false)
 	assert.Equal(t, 0, kbpki.getIdentifyCalls())
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName(name), h.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName(name), h.GetCanonicalName())
 
 	// Make sure that generating another handle doesn't change the
 	// name.
 	h2, err := MakeTlfHandle(context.Background(), h.ToBareHandleOrBust(), kbpki)
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName(name), h2.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName(name), h2.GetCanonicalName())
 }
 
 func TestParseTlfHandleUIDAssertion(t *testing.T) {
@@ -540,7 +540,7 @@ func TestParseTlfHandleFailConflictingAssertion(t *testing.T) {
 
 // parseTlfHandleOrBust parses the given TLF name, which must be
 // canonical, into a TLF handle, and failing if there's an error.
-func parseTlfHandleOrBust(t logger.TestLogBackend, config IFCERFTConfig, name string, public bool) *TlfHandle {
+func parseTlfHandleOrBust(t logger.TestLogBackend, config IFCERFTConfig, name string, public bool) *IFCERFTTlfHandle {
 	ctx := context.Background()
 	h, err := ParseTlfHandle(ctx, config.KBPKI(), name, public)
 	if err != nil {
@@ -564,13 +564,13 @@ func TestResolveAgainBasic(t *testing.T) {
 	name := "u1,u2#u3@twitter"
 	h, err := ParseTlfHandle(ctx, kbpki, name, false)
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName(name), h.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName(name), h.GetCanonicalName())
 
 	// ResolveAgain shouldn't rely on resolving the original names again.
 	daemon.addNewAssertionForTestOrBust("u3", "u3@twitter")
 	newH, err := h.ResolveAgain(ctx, daemon)
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName("u1,u2#u3"), newH.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName("u1,u2#u3"), newH.GetCanonicalName())
 }
 
 func TestResolveAgainDoubleAsserts(t *testing.T) {
@@ -587,7 +587,7 @@ func TestResolveAgainDoubleAsserts(t *testing.T) {
 	name := "u1,u1@github,u1@twitter#u2,u2@github,u2@twitter"
 	h, err := ParseTlfHandle(ctx, kbpki, name, false)
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName(name), h.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName(name), h.GetCanonicalName())
 
 	daemon.addNewAssertionForTestOrBust("u1", "u1@twitter")
 	daemon.addNewAssertionForTestOrBust("u1", "u1@github")
@@ -595,7 +595,7 @@ func TestResolveAgainDoubleAsserts(t *testing.T) {
 	daemon.addNewAssertionForTestOrBust("u2", "u2@github")
 	newH, err := h.ResolveAgain(ctx, daemon)
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName("u1#u2"), newH.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName("u1#u2"), newH.GetCanonicalName())
 }
 
 func TestResolveAgainWriterReader(t *testing.T) {
@@ -612,13 +612,13 @@ func TestResolveAgainWriterReader(t *testing.T) {
 	name := "u1,u2@github#u2@twitter"
 	h, err := ParseTlfHandle(ctx, kbpki, name, false)
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName(name), h.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName(name), h.GetCanonicalName())
 
 	daemon.addNewAssertionForTestOrBust("u2", "u2@twitter")
 	daemon.addNewAssertionForTestOrBust("u2", "u2@github")
 	newH, err := h.ResolveAgain(ctx, daemon)
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName("u1,u2"), newH.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName("u1,u2"), newH.GetCanonicalName())
 }
 
 func TestResolveAgainConflict(t *testing.T) {
@@ -635,7 +635,7 @@ func TestResolveAgainConflict(t *testing.T) {
 	name := "u1,u2#u3@twitter"
 	h, err := ParseTlfHandle(ctx, kbpki, name, false)
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName(name), h.GetCanonicalName())
+	assert.Equal(t, IFCERFTCanonicalTlfName(name), h.GetCanonicalName())
 
 	daemon.addNewAssertionForTestOrBust("u3", "u3@twitter")
 	ext, err := NewTlfHandleExtension(TlfHandleExtensionConflict, 1)
@@ -645,7 +645,7 @@ func TestResolveAgainConflict(t *testing.T) {
 	h.conflictInfo = ext
 	newH, err := h.ResolveAgain(ctx, daemon)
 	require.NoError(t, err)
-	assert.Equal(t, CanonicalTlfName("u1,u2#u3"+
+	assert.Equal(t, IFCERFTCanonicalTlfName("u1,u2#u3"+
 		TlfHandleExtensionSep+ext.String()), newH.GetCanonicalName())
 }
 

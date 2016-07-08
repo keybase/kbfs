@@ -65,7 +65,7 @@ func (k KeybaseDaemonMeasured) Resolve(ctx context.Context, assertion string) (
 
 // Identify implements the KeybaseDaemon interface for KeybaseDaemonMeasured.
 func (k KeybaseDaemonMeasured) Identify(ctx context.Context, assertion, reason string) (
-	userInfo UserInfo, err error) {
+	userInfo IFCERFTUserInfo, err error) {
 	k.identifyTimer.Time(func() {
 		userInfo, err = k.delegate.Identify(ctx, assertion, reason)
 	})
@@ -74,7 +74,7 @@ func (k KeybaseDaemonMeasured) Identify(ctx context.Context, assertion, reason s
 
 // LoadUserPlusKeys implements the KeybaseDaemon interface for KeybaseDaemonMeasured.
 func (k KeybaseDaemonMeasured) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID) (
-	userInfo UserInfo, err error) {
+	userInfo IFCERFTUserInfo, err error) {
 	k.loadUserPlusKeysTimer.Time(func() {
 		userInfo, err = k.delegate.LoadUserPlusKeys(ctx, uid)
 	})
@@ -83,7 +83,7 @@ func (k KeybaseDaemonMeasured) LoadUserPlusKeys(ctx context.Context, uid keybase
 
 // LoadUnverifiedKeys implements the KeybaseDaemon interface for KeybaseDaemonMeasured.
 func (k KeybaseDaemonMeasured) LoadUnverifiedKeys(ctx context.Context, uid keybase1.UID) (
-	verifyingKeys []VerifyingKey, cryptKeys []CryptPublicKey, err error) {
+	verifyingKeys []IFCERFTVerifyingKey, cryptKeys []IFCERFTCryptPublicKey, err error) {
 	k.loadUnverifiedKeysTimer.Time(func() {
 		verifyingKeys, cryptKeys, err = k.delegate.LoadUnverifiedKeys(ctx, uid)
 	})
@@ -93,7 +93,7 @@ func (k KeybaseDaemonMeasured) LoadUnverifiedKeys(ctx context.Context, uid keyba
 // CurrentSession implements the KeybaseDaemon interface for
 // KeybaseDaemonMeasured.
 func (k KeybaseDaemonMeasured) CurrentSession(ctx context.Context, sessionID int) (
-	sessionInfo SessionInfo, err error) {
+	sessionInfo IFCERFTSessionInfo, err error) {
 	k.currentSessionTimer.Time(func() {
 		sessionInfo, err = k.delegate.CurrentSession(ctx, sessionID)
 	})

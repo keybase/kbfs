@@ -39,7 +39,7 @@ func NewSigningKey(kp libkb.NaclSigningKeyPair) SigningKey {
 }
 
 // GetVerifyingKey returns the public key half of this signing key.
-func (k SigningKey) GetVerifyingKey() VerifyingKey {
+func (k SigningKey) GetVerifyingKey() IFCERFTVerifyingKey {
 	return MakeVerifyingKey(k.kp.Public.GetKID())
 }
 
@@ -70,7 +70,7 @@ func makeCryptPrivateKey(secret CryptPrivateKeySecret) (CryptPrivateKey, error) 
 
 // GetPublicKey returns the public key corresponding to this private
 // key.
-func (k CryptPrivateKey) getPublicKey() CryptPublicKey {
+func (k CryptPrivateKey) getPublicKey() IFCERFTCryptPublicKey {
 	return MakeCryptPublicKey(k.kp.Public.GetKID())
 }
 

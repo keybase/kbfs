@@ -14,13 +14,13 @@ import (
 
 // op represents a single file-system remote-sync operation
 type op interface {
-	AddRefBlock(ptr BlockPointer)
-	AddUnrefBlock(ptr BlockPointer)
-	AddUpdate(oldPtr BlockPointer, newPtr BlockPointer)
+	AddRefBlock(ptr IFCERFTBlockPointer)
+	AddUnrefBlock(ptr IFCERFTBlockPointer)
+	AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer)
 	SizeExceptUpdates() uint64
 	AllUpdates() []blockUpdate
-	Refs() []BlockPointer
-	Unrefs() []BlockPointer
+	Refs() []IFCERFTBlockPointer
+	Unrefs() []IFCERFTBlockPointer
 	String() string
 	setWriterInfo(writerInfo)
 	getWriterInfo() writerInfo
@@ -58,8 +58,8 @@ const (
 // NOTE: Don't add or modify anything in this struct without
 // considering how old clients will handle them.
 type blockUpdate struct {
-	Unref BlockPointer `codec:"u,omitempty"`
-	Ref   BlockPointer `codec:"r,omitempty"`
+	Unref IFCERFTBlockPointer `codec:"u,omitempty"`
+	Ref   IFCERFTBlockPointer `codec:"r,omitempty"`
 }
 
 // list codes
@@ -72,9 +72,9 @@ type opsList []op
 // OpCommon are data structures needed by all ops.  It is only
 // exported for serialization purposes.
 type OpCommon struct {
-	RefBlocks   []BlockPointer `codec:"r,omitempty"`
-	UnrefBlocks []BlockPointer `codec:"u,omitempty"`
-	Updates     []blockUpdate  `codec:"o,omitempty"`
+	RefBlocks   []IFCERFTBlockPointer `codec:"r,omitempty"`
+	UnrefBlocks []IFCERFTBlockPointer `codec:"u,omitempty"`
+	Updates     []blockUpdate         `codec:"o,omitempty"`
 
 	codec.UnknownFieldSetHandler
 
@@ -90,31 +90,31 @@ type OpCommon struct {
 
 // AddRefBlock adds this block to the list of newly-referenced blocks
 // for this op.
-func (oc *OpCommon) AddRefBlock(ptr BlockPointer) {
+func (oc *OpCommon) AddRefBlock(ptr IFCERFTBlockPointer) {
 	oc.RefBlocks = append(oc.RefBlocks, ptr)
 }
 
 // AddUnrefBlock adds this block to the list of newly-unreferenced blocks
 // for this op.
-func (oc *OpCommon) AddUnrefBlock(ptr BlockPointer) {
+func (oc *OpCommon) AddUnrefBlock(ptr IFCERFTBlockPointer) {
 	oc.UnrefBlocks = append(oc.UnrefBlocks, ptr)
 }
 
 // AddUpdate adds a mapping from an old block to the new version of
 // that block, for this op.
-func (oc *OpCommon) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
+func (oc *OpCommon) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer) {
 	oc.Updates = append(oc.Updates, blockUpdate{oldPtr, newPtr})
 }
 
 // Refs returns a slice containing all the blocks that were initially
 // referenced during this op.
-func (oc *OpCommon) Refs() []BlockPointer {
+func (oc *OpCommon) Refs() []IFCERFTBlockPointer {
 	return oc.RefBlocks
 }
 
 // Unrefs returns a slice containing all the blocks that were
 // unreferenced during this op.
-func (oc *OpCommon) Unrefs() []BlockPointer {
+func (oc *OpCommon) Unrefs() []IFCERFTBlockPointer {
 	return oc.UnrefBlocks
 }
 
@@ -156,7 +156,7 @@ type createOp struct {
 	crSymPath string
 }
 
-func newCreateOp(name string, oldDir BlockPointer, t EntryType) *createOp {
+func newCreateOp(name string, oldDir IFCERFTBlockPointer, t EntryType) *createOp {
 	co := &createOp{
 		NewName: name,
 	}
@@ -165,7 +165,7 @@ func newCreateOp(name string, oldDir BlockPointer, t EntryType) *createOp {
 	return co
 }
 
-func (co *createOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
+func (co *createOp) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer) {
 	if oldPtr == co.Dir.Unref {
 		co.Dir.Ref = newPtr
 		return
@@ -266,7 +266,7 @@ type rmOp struct {
 	dropThis bool
 }
 
-func newRmOp(name string, oldDir BlockPointer) *rmOp {
+func newRmOp(name string, oldDir IFCERFTBlockPointer) *rmOp {
 	ro := &rmOp{
 		OldName: name,
 	}
@@ -274,7 +274,7 @@ func newRmOp(name string, oldDir BlockPointer) *rmOp {
 	return ro
 }
 
-func (ro *rmOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
+func (ro *rmOp) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer) {
 	if oldPtr == ro.Dir.Unref {
 		ro.Dir.Ref = newPtr
 		return
@@ -331,17 +331,15 @@ func (ro *rmOp) GetDefaultAction(mergedPath path) crAction {
 // directories for the purposes of conflict resolution.
 type renameOp struct {
 	OpCommon
-	OldName     string       `codec:"on"`
-	OldDir      blockUpdate  `codec:"od"`
-	NewName     string       `codec:"nn"`
-	NewDir      blockUpdate  `codec:"nd"`
-	Renamed     BlockPointer `codec:"re"`
-	RenamedType EntryType    `codec:"rt"`
+	OldName     string              `codec:"on"`
+	OldDir      blockUpdate         `codec:"od"`
+	NewName     string              `codec:"nn"`
+	NewDir      blockUpdate         `codec:"nd"`
+	Renamed     IFCERFTBlockPointer `codec:"re"`
+	RenamedType EntryType           `codec:"rt"`
 }
 
-func newRenameOp(oldName string, oldOldDir BlockPointer,
-	newName string, oldNewDir BlockPointer, renamed BlockPointer,
-	renamedType EntryType) *renameOp {
+func newRenameOp(oldName string, oldOldDir IFCERFTBlockPointer, newName string, oldNewDir IFCERFTBlockPointer, renamed IFCERFTBlockPointer, renamedType EntryType) *renameOp {
 	ro := &renameOp{
 		OldName:     oldName,
 		NewName:     newName,
@@ -356,7 +354,7 @@ func newRenameOp(oldName string, oldOldDir BlockPointer,
 	return ro
 }
 
-func (ro *renameOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
+func (ro *renameOp) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer) {
 	if oldPtr == ro.OldDir.Unref {
 		ro.OldDir.Ref = newPtr
 		return
@@ -447,7 +445,7 @@ type syncOp struct {
 	Writes []WriteRange `codec:"w"`
 }
 
-func newSyncOp(oldFile BlockPointer) *syncOp {
+func newSyncOp(oldFile IFCERFTBlockPointer) *syncOp {
 	so := &syncOp{}
 	so.File.Unref = oldFile
 	so.resetUpdateState()
@@ -458,7 +456,7 @@ func (so *syncOp) resetUpdateState() {
 	so.Updates = nil
 }
 
-func (so *syncOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
+func (so *syncOp) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer) {
 	if oldPtr == so.File.Unref {
 		so.File.Ref = newPtr
 		return
@@ -668,14 +666,13 @@ func (ac attrChange) String() string {
 // file/subdirectory with in a directory.
 type setAttrOp struct {
 	OpCommon
-	Name string       `codec:"n"`
-	Dir  blockUpdate  `codec:"d"`
-	Attr attrChange   `codec:"a"`
-	File BlockPointer `codec:"f"`
+	Name string              `codec:"n"`
+	Dir  blockUpdate         `codec:"d"`
+	Attr attrChange          `codec:"a"`
+	File IFCERFTBlockPointer `codec:"f"`
 }
 
-func newSetAttrOp(name string, oldDir BlockPointer,
-	attr attrChange, file BlockPointer) *setAttrOp {
+func newSetAttrOp(name string, oldDir IFCERFTBlockPointer, attr attrChange, file IFCERFTBlockPointer) *setAttrOp {
 	sao := &setAttrOp{
 		Name: name,
 	}
@@ -685,7 +682,7 @@ func newSetAttrOp(name string, oldDir BlockPointer,
 	return sao
 }
 
-func (sao *setAttrOp) AddUpdate(oldPtr BlockPointer, newPtr BlockPointer) {
+func (sao *setAttrOp) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer) {
 	if oldPtr == sao.Dir.Unref {
 		sao.Dir.Ref = newPtr
 		return

@@ -14,10 +14,10 @@ import (
 
 // GetEncodedFolderStatus returns serialized JSON containing status information
 // for a folder
-func GetEncodedFolderStatus(ctx context.Context, config libkbfs.IFCERFTConfig, folderBranch *libkbfs.FolderBranch) (
+func GetEncodedFolderStatus(ctx context.Context, config libkbfs.IFCERFTConfig, folderBranch *libkbfs.IFCERFTFolderBranch) (
 	data []byte, t time.Time, err error) {
 
-	var status libkbfs.FolderBranchStatus
+	var status libkbfs.IFCERFTFolderBranchStatus
 	status, _, err = config.KBFSOps().FolderStatus(ctx, *folderBranch)
 	if err != nil {
 		return nil, time.Time{}, err

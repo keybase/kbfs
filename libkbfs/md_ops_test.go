@@ -32,7 +32,7 @@ func mdOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	mockCtrl.Finish()
 }
 
-func addFakeRMDSData(rmds *RootMetadataSigned, h *TlfHandle) {
+func addFakeRMDSData(rmds *RootMetadataSigned, h *IFCERFTTlfHandle) {
 	rmds.MD.tlfHandle = h
 
 	// Need to do this to avoid calls to the mocked-out MakeMdID.
@@ -93,7 +93,7 @@ func verifyMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
 		Return(nil)
 	expectGetTLFCryptKeyForMDDecryption(config, &rmds.MD)
 	config.mockCrypto.EXPECT().DecryptPrivateMetadata(
-		gomock.Any(), TLFCryptKey{}).Return(&rmds.MD.data, nil)
+		gomock.Any(), IFCERFTTLFCryptKey{}).Return(&rmds.MD.data, nil)
 
 	if rmds.MD.IsFinal() {
 		config.mockKbpki.EXPECT().HasUnverifiedVerifyingKey(gomock.Any(), gomock.Any(),
@@ -114,7 +114,7 @@ func verifyMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
 func putMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
 	expectGetTLFCryptKeyForEncryption(config, &rmds.MD)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
-		&rmds.MD.data, TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
+		&rmds.MD.data, IFCERFTTLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
 
 	packedData := []byte{4, 3, 2, 1}
 	// TODO make these EXPECTs more specific.
@@ -608,7 +608,7 @@ func (s *fakeMDServerPut) getLastRmds() *RootMetadataSigned {
 func (s *fakeMDServerPut) Shutdown() {}
 
 func validatePutPublicRMDS(
-	ctx context.Context, t *testing.T, config IFCERFTConfig, expectedRmd *RootMetadata, rmds *RootMetadataSigned) {
+	ctx context.Context, t *testing.T, config IFCERFTConfig, expectedRmd *IFCERFTRootMetadata, rmds *RootMetadataSigned) {
 	// TODO: Handle private RMDS, too.
 
 	// Verify LastModifying* fields.
@@ -635,7 +635,7 @@ func validatePutPublicRMDS(
 	require.NoError(t, err)
 
 	// Copy expectedRmd to get rid of unexported fields.
-	var expectedRmdCopy RootMetadata
+	var expectedRmdCopy IFCERFTRootMetadata
 	err = CodecUpdate(config.Codec(), &expectedRmdCopy, expectedRmd)
 	require.NoError(t, err)
 
@@ -659,7 +659,7 @@ func TestMDOpsPutPublicSuccess(t *testing.T) {
 	id := FakeTlfID(1, true)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
 
-	var rmd RootMetadata
+	var rmd IFCERFTRootMetadata
 	err := updateNewRootMetadata(&rmd, id, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 	rmd.data = makeFakePrivateMetadataFuture(t).toCurrent()
@@ -694,7 +694,7 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 
 	expectGetTLFCryptKeyForEncryption(config, rmd)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
-		&rmd.data, TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
+		&rmd.data, IFCERFTTLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
 
 	err := errors.New("Fake fail")
 	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(nil, err)

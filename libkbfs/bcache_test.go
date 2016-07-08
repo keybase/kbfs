@@ -15,7 +15,7 @@ func blockCacheTestInit(t *testing.T, capacity int,
 }
 
 func testBcachePutWithBlock(t *testing.T, id BlockID, bcache IFCERFTBlockCache, lifetime IFCERFTBlockCacheLifetime, block IFCERFTBlock) {
-	ptr := BlockPointer{ID: id}
+	ptr := IFCERFTBlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
 	// put the block
@@ -38,7 +38,7 @@ func testBcachePut(t *testing.T, id BlockID, bcache IFCERFTBlockCache, lifetime 
 
 func testExpectedMissing(t *testing.T, id BlockID, bcache IFCERFTBlockCache) {
 	expectedErr := NoSuchBlockError{id}
-	ptr := BlockPointer{ID: id}
+	ptr := IFCERFTBlockPointer{ID: id}
 	if _, err := bcache.Get(ptr); err == nil {
 		t.Errorf("No expected error on 1st get: %v", err)
 	} else if err != expectedErr {
@@ -67,7 +67,7 @@ func TestBcachePutPastCapacity(t *testing.T) {
 	testExpectedMissing(t, id1, bcache)
 
 	// but 2 should still be there
-	if _, err := bcache.Get(BlockPointer{ID: id2}); err != nil {
+	if _, err := bcache.Get(IFCERFTBlockPointer{ID: id2}); err != nil {
 		t.Errorf("Got unexpected error on 2nd get: %v", err)
 	}
 
@@ -83,7 +83,7 @@ func TestBcacheCheckPtrSuccess(t *testing.T) {
 	block := NewFileBlock().(*FileBlock)
 	block.Contents = []byte{1, 2, 3, 4}
 	id := fakeBlockID(1)
-	ptr := BlockPointer{ID: id}
+	ptr := IFCERFTBlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
 	err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry)
@@ -107,7 +107,7 @@ func TestBcacheCheckPtrPermanent(t *testing.T) {
 	block := NewFileBlock().(*FileBlock)
 	block.Contents = []byte{1, 2, 3, 4}
 	id := fakeBlockID(1)
-	ptr := BlockPointer{ID: id}
+	ptr := IFCERFTBlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
 	err := bcache.Put(ptr, tlf, block, IFCERFTPermanentEntry)
@@ -118,7 +118,7 @@ func TestBcacheCheckPtrPermanent(t *testing.T) {
 	checkedPtr, err := bcache.CheckForKnownPtr(tlf, block)
 	if err != nil {
 		t.Errorf("Unexpected error checking id: %v", err)
-	} else if checkedPtr != (BlockPointer{}) {
+	} else if checkedPtr != (IFCERFTBlockPointer{}) {
 		t.Errorf("Unexpected non-zero pointer %v", checkedPtr)
 	}
 }
@@ -131,7 +131,7 @@ func TestBcacheCheckPtrNotFound(t *testing.T) {
 	block := NewFileBlock().(*FileBlock)
 	block.Contents = []byte{1, 2, 3, 4}
 	id := fakeBlockID(1)
-	ptr := BlockPointer{ID: id}
+	ptr := IFCERFTBlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
 	err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry)
@@ -157,7 +157,7 @@ func TestBcacheDeleteTransient(t *testing.T) {
 	block := NewFileBlock().(*FileBlock)
 	block.Contents = []byte{1, 2, 3, 4}
 	id := fakeBlockID(1)
-	ptr := BlockPointer{ID: id}
+	ptr := IFCERFTBlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
 	err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry)
@@ -196,7 +196,7 @@ func TestBcacheDeletePermanent(t *testing.T) {
 	testExpectedMissing(t, id1, bcache)
 
 	// 2 should still be there
-	if _, err := bcache.Get(BlockPointer{ID: id2}); err != nil {
+	if _, err := bcache.Get(IFCERFTBlockPointer{ID: id2}); err != nil {
 		t.Errorf("Got unexpected error on 2nd get: %v", err)
 	}
 }
@@ -209,7 +209,7 @@ func TestBcacheEmptyTransient(t *testing.T) {
 
 	block := NewFileBlock()
 	id := fakeBlockID(1)
-	ptr := BlockPointer{ID: id}
+	ptr := IFCERFTBlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
 	// Make sure all the operations work even if the cache has no
@@ -248,7 +248,7 @@ func TestBcacheEvictOnBytes(t *testing.T) {
 			Contents: make([]byte, 1),
 		}
 		id := fakeBlockID(i)
-		ptr := BlockPointer{ID: id}
+		ptr := IFCERFTBlockPointer{ID: id}
 
 		if err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry); err != nil {
 			t.Errorf("Got error on Put for block %s: %v", id, err)
@@ -263,7 +263,7 @@ func TestBcacheEvictOnBytes(t *testing.T) {
 
 	for i := byte(3); i < 8; i++ {
 		id := fakeBlockID(i)
-		if _, err := bcache.Get(BlockPointer{ID: id}); err != nil {
+		if _, err := bcache.Get(IFCERFTBlockPointer{ID: id}); err != nil {
 			t.Errorf("Got unexpected error on get: %v", err)
 		}
 	}
@@ -278,7 +278,7 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 
 	tlf := FakeTlfID(1, false)
 	idPerm := fakeBlockID(0)
-	ptr := BlockPointer{ID: idPerm}
+	ptr := IFCERFTBlockPointer{ID: idPerm}
 	block := &FileBlock{
 		Contents: make([]byte, 2),
 	}
@@ -291,7 +291,7 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 			Contents: make([]byte, 1),
 		}
 		id := fakeBlockID(i)
-		ptr := BlockPointer{ID: id}
+		ptr := IFCERFTBlockPointer{ID: id}
 
 		if err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry); err != nil {
 			t.Errorf("Got error on Put for block %s: %v", id, err)
@@ -299,7 +299,7 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 	}
 
 	// The permanent block shouldn't be evicted
-	if _, err := bcache.Get(BlockPointer{ID: idPerm}); err != nil {
+	if _, err := bcache.Get(IFCERFTBlockPointer{ID: idPerm}); err != nil {
 		t.Errorf("Got unexpected error on get: %v", err)
 	}
 
@@ -311,7 +311,7 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 
 	for i := byte(5); i < 8; i++ {
 		id := fakeBlockID(i)
-		if _, err := bcache.Get(BlockPointer{ID: id}); err != nil {
+		if _, err := bcache.Get(IFCERFTBlockPointer{ID: id}); err != nil {
 			t.Errorf("Got unexpected error on get: %v", err)
 		}
 	}
@@ -322,13 +322,13 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 	}
 	block.SetEncodedSize(7)
 	id := fakeBlockID(8)
-	ptr = BlockPointer{ID: id}
+	ptr = IFCERFTBlockPointer{ID: id}
 	if err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry); err != nil {
 		t.Errorf("Got error on Put for block %s: %v", id, err)
 	}
 
 	// All transient blocks should be gone (including the new one)
-	if _, err := bcache.Get(BlockPointer{ID: idPerm}); err != nil {
+	if _, err := bcache.Get(IFCERFTBlockPointer{ID: idPerm}); err != nil {
 		t.Errorf("Got unexpected error on get: %v", err)
 	}
 
@@ -341,7 +341,7 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 	// Now try putting in a permanent block that exceeds capacity,
 	// which should always succeed.
 	idPerm2 := fakeBlockID(9)
-	ptr2 := BlockPointer{ID: idPerm2}
+	ptr2 := IFCERFTBlockPointer{ID: idPerm2}
 	block2 := &FileBlock{
 		Contents: make([]byte, 10),
 	}
@@ -349,10 +349,10 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 		t.Errorf("Got error on Put for block %s: %v", idPerm, err)
 	}
 
-	if _, err := bcache.Get(BlockPointer{ID: idPerm}); err != nil {
+	if _, err := bcache.Get(IFCERFTBlockPointer{ID: idPerm}); err != nil {
 		t.Errorf("Got unexpected error on get: %v", err)
 	}
-	if _, err := bcache.Get(BlockPointer{ID: idPerm2}); err != nil {
+	if _, err := bcache.Get(IFCERFTBlockPointer{ID: idPerm2}); err != nil {
 		t.Errorf("Got unexpected error on get: %v", err)
 	}
 }
@@ -361,7 +361,7 @@ func TestPutNoHashCalculation(t *testing.T) {
 	config := blockCacheTestInit(t, 100, 1<<30)
 	defer CheckConfigAndShutdown(t, config)
 	bcache := config.BlockCache()
-	ptr := BlockPointer{ID: fakeBlockID(1)}
+	ptr := IFCERFTBlockPointer{ID: fakeBlockID(1)}
 	tlf := FakeTlfID(1, false)
 	block := NewFileBlock().(*FileBlock)
 	block.Contents = []byte{1, 2, 3, 4}

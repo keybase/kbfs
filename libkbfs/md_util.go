@@ -16,9 +16,9 @@ type mdRange struct {
 	end   MetadataRevision
 }
 
-func getMDRange(ctx context.Context, config IFCERFTConfig, id TlfID, bid BranchID,
+func getMDRange(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, bid BranchID,
 	start MetadataRevision, end MetadataRevision, mStatus MergeStatus) (
-	rmds []*RootMetadata, err error) {
+	rmds []*IFCERFTRootMetadata, err error) {
 	// The range is invalid.  Don't treat as an error though; it just
 	// indicates that we don't yet know about any revisions.
 	if start < MetadataRevisionInitial || end < MetadataRevisionInitial {
@@ -55,7 +55,7 @@ func getMDRange(ctx context.Context, config IFCERFTConfig, id TlfID, bid BranchI
 
 	// Try to fetch the rest from the server.  TODO: parallelize me.
 	for _, r := range toDownload {
-		var fetchedRmds []*RootMetadata
+		var fetchedRmds []*IFCERFTRootMetadata
 		switch mStatus {
 		case Merged:
 			fetchedRmds, err = config.MDOps().GetRange(
@@ -110,8 +110,7 @@ func getMDRange(ctx context.Context, config IFCERFTConfig, id TlfID, bid BranchI
 //
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
-func getMergedMDUpdates(ctx context.Context, config IFCERFTConfig, id TlfID,
-	startRev MetadataRevision) (mergedRmds []*RootMetadata, err error) {
+func getMergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, startRev MetadataRevision) (mergedRmds []*IFCERFTRootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
 	if startRev < MetadataRevisionInitial {
@@ -171,9 +170,8 @@ func getMergedMDUpdates(ctx context.Context, config IFCERFTConfig, id TlfID,
 //
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
-func getUnmergedMDUpdates(ctx context.Context, config IFCERFTConfig, id TlfID,
-	bid BranchID, startRev MetadataRevision) (
-	currHead MetadataRevision, unmergedRmds []*RootMetadata, err error) {
+func getUnmergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, bid BranchID, startRev MetadataRevision) (
+	currHead MetadataRevision, unmergedRmds []*IFCERFTRootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
 	if startRev < MetadataRevisionInitial {
@@ -216,7 +214,7 @@ func getUnmergedMDUpdates(ctx context.Context, config IFCERFTConfig, id TlfID,
 	return currHead, unmergedRmds, nil
 }
 
-func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecrypt, rmdWithKeys *RootMetadata) error {
+func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecrypt, rmdWithKeys *IFCERFTRootMetadata) error {
 	handle := rmdToDecrypt.GetTlfHandle()
 	crypto := config.Crypto()
 	codec := config.Codec()
@@ -265,19 +263,19 @@ func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecryp
 	}
 
 	// Re-embed the block changes if it's needed.
-	if info := rmdToDecrypt.data.Changes.Info; info.BlockPointer != zeroPtr {
+	if info := rmdToDecrypt.data.Changes.Info; info.IFCERFTBlockPointer != zeroPtr {
 		// We don't have a convenient way to fetch the block from here
 		// via folderBlockOps, so just go directly via the
 		// BlockCache/BlockOps.  No locking around the blocks is
 		// needed since these change blocks are read-only.
-		block, err := config.BlockCache().Get(info.BlockPointer)
+		block, err := config.BlockCache().Get(info.IFCERFTBlockPointer)
 		if err != nil {
 			block = NewFileBlock()
 			if err := config.BlockOps().Get(ctx, rmdWithKeys,
-				info.BlockPointer, block); err != nil {
+				info.IFCERFTBlockPointer, block); err != nil {
 				return err
 			}
-			if err := config.BlockCache().Put(info.BlockPointer,
+			if err := config.BlockCache().Put(info.IFCERFTBlockPointer,
 				rmdToDecrypt.ID, block, IFCERFTTransientEntry); err != nil {
 				return err
 			}
@@ -285,7 +283,7 @@ func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecryp
 
 		fblock, ok := block.(*FileBlock)
 		if !ok {
-			return NotFileBlockError{info.BlockPointer, MasterBranch, path{}}
+			return NotFileBlockError{info.IFCERFTBlockPointer, MasterBranch, path{}}
 		}
 
 		err = config.Codec().Decode(fblock.Contents, &rmdToDecrypt.data.Changes)
@@ -293,7 +291,7 @@ func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecryp
 			return err
 		}
 		// The changes block pointer is an implicit ref block
-		rmdToDecrypt.data.Changes.Ops[0].AddRefBlock(info.BlockPointer)
+		rmdToDecrypt.data.Changes.Ops[0].AddRefBlock(info.IFCERFTBlockPointer)
 		rmdToDecrypt.data.cachedChanges.Info = info
 	}
 

@@ -399,8 +399,8 @@ type kbdaemonBrokenIdentify struct {
 }
 
 func (k kbdaemonBrokenIdentify) Identify(ctx context.Context, assertion,
-	reason string) (libkbfs.UserInfo, error) {
-	return libkbfs.UserInfo{}, errors.New("Fake identify error")
+	reason string) (libkbfs.IFCERFTUserInfo, error) {
+	return libkbfs.IFCERFTUserInfo{}, errors.New("Fake identify error")
 }
 
 // Regression test for KBFS-772 on OSX.  (There's a bug where ls only
@@ -2334,7 +2334,7 @@ func (t *testMountObserver) BatchChanges(ctx context.Context,
 }
 
 func (t *testMountObserver) TlfHandleChange(ctx context.Context,
-	newHandle *libkbfs.TlfHandle) {
+	newHandle *libkbfs.IFCERFTTlfHandle) {
 	return
 }
 
@@ -2593,7 +2593,7 @@ func TestStatusFile(t *testing.T) {
 		t.Fatalf("Couldn't read KBFS status file: %v", err)
 	}
 
-	var bufStatus libkbfs.FolderBranchStatus
+	var bufStatus libkbfs.IFCERFTFolderBranchStatus
 	json.Unmarshal(buf, &bufStatus)
 
 	// It's safe to compare the path slices with DeepEqual since they

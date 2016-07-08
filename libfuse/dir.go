@@ -26,10 +26,10 @@ type Folder struct {
 	list *FolderList
 
 	handleMu sync.RWMutex
-	h        *libkbfs.TlfHandle
+	h        *libkbfs.IFCERFTTlfHandle
 
 	folderBranchMu sync.Mutex
-	folderBranch   libkbfs.FolderBranch
+	folderBranch   libkbfs.IFCERFTFolderBranch
 
 	// Protects the nodes map.
 	nodesMu sync.Mutex
@@ -51,7 +51,7 @@ type Folder struct {
 	updateChan chan<- struct{}
 }
 
-func newFolder(fl *FolderList, h *libkbfs.TlfHandle) *Folder {
+func newFolder(fl *FolderList, h *libkbfs.IFCERFTTlfHandle) *Folder {
 	f := &Folder{
 		fs:    fl.fs,
 		list:  fl,
@@ -61,7 +61,7 @@ func newFolder(fl *FolderList, h *libkbfs.TlfHandle) *Folder {
 	return f
 }
 
-func (f *Folder) name() libkbfs.CanonicalTlfName {
+func (f *Folder) name() libkbfs.IFCERFTCanonicalTlfName {
 	f.handleMu.RLock()
 	defer f.handleMu.RUnlock()
 	return f.h.GetCanonicalName()
@@ -83,13 +83,13 @@ func (f *Folder) reportErr(ctx context.Context,
 	f.fs.errLog.CDebugf(ctx, err.Error())
 }
 
-func (f *Folder) setFolderBranch(folderBranch libkbfs.FolderBranch) error {
+func (f *Folder) setFolderBranch(folderBranch libkbfs.IFCERFTFolderBranch) error {
 	f.folderBranchMu.Lock()
 	defer f.folderBranchMu.Unlock()
 
 	// TODO unregister all at unmount
 	err := f.list.fs.config.Notifier().RegisterForChanges(
-		[]libkbfs.FolderBranch{folderBranch}, f)
+		[]libkbfs.IFCERFTFolderBranch{folderBranch}, f)
 	if err != nil {
 		return err
 	}
@@ -100,20 +100,20 @@ func (f *Folder) setFolderBranch(folderBranch libkbfs.FolderBranch) error {
 func (f *Folder) unsetFolderBranch(ctx context.Context) {
 	f.folderBranchMu.Lock()
 	defer f.folderBranchMu.Unlock()
-	if f.folderBranch == (libkbfs.FolderBranch{}) {
+	if f.folderBranch == (libkbfs.IFCERFTFolderBranch{}) {
 		// Wasn't set.
 		return
 	}
 
-	err := f.list.fs.config.Notifier().UnregisterFromChanges([]libkbfs.FolderBranch{f.folderBranch}, f)
+	err := f.list.fs.config.Notifier().UnregisterFromChanges([]libkbfs.IFCERFTFolderBranch{f.folderBranch}, f)
 	if err != nil {
 		f.fs.log.Info("cannot unregister change notifier for folder %q: %v",
 			f.name(), err)
 	}
-	f.folderBranch = libkbfs.FolderBranch{}
+	f.folderBranch = libkbfs.IFCERFTFolderBranch{}
 }
 
-func (f *Folder) getFolderBranch() libkbfs.FolderBranch {
+func (f *Folder) getFolderBranch() libkbfs.IFCERFTFolderBranch {
 	f.folderBranchMu.Lock()
 	defer f.folderBranchMu.Unlock()
 	return f.folderBranch
@@ -258,7 +258,7 @@ func (f *Folder) batchChangesInvalidate(ctx context.Context,
 
 // TlfHandleChange is called when the name of a folder changes.
 func (f *Folder) TlfHandleChange(ctx context.Context,
-	newHandle *libkbfs.TlfHandle) {
+	newHandle *libkbfs.IFCERFTTlfHandle) {
 	// Handle in the background because we shouldn't lock during the
 	// notification
 	f.fs.queueNotification(func() {
@@ -267,8 +267,8 @@ func (f *Folder) TlfHandleChange(ctx context.Context,
 }
 
 func (f *Folder) tlfHandleChangeInvalidate(ctx context.Context,
-	newHandle *libkbfs.TlfHandle) {
-	oldName := func() libkbfs.CanonicalTlfName {
+	newHandle *libkbfs.IFCERFTTlfHandle) {
+	oldName := func() libkbfs.IFCERFTCanonicalTlfName {
 		f.handleMu.Lock()
 		defer f.handleMu.Unlock()
 		oldName := f.h.GetCanonicalName()
@@ -452,8 +452,8 @@ func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.Lo
 	}
 }
 
-func getEXCLFromCreateRequest(req *fuse.CreateRequest) libkbfs.EXCL {
-	return libkbfs.EXCL(req.Flags&fuse.OpenExclusive == fuse.OpenExclusive)
+func getEXCLFromCreateRequest(req *fuse.CreateRequest) libkbfs.IFCERFTEXCL {
+	return libkbfs.IFCERFTEXCL(req.Flags&fuse.OpenExclusive == fuse.OpenExclusive)
 }
 
 // Create implements the fs.NodeCreater interface for Dir.
@@ -684,7 +684,7 @@ type TLF struct {
 	dir     *Dir
 }
 
-func newTLF(fl *FolderList, h *libkbfs.TlfHandle) *TLF {
+func newTLF(fl *FolderList, h *libkbfs.IFCERFTTlfHandle) *TLF {
 	folder := newFolder(fl, h)
 	tlf := &TLF{
 		folder: folder,

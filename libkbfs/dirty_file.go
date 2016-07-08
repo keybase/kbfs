@@ -59,7 +59,7 @@ type dirtyFile struct {
 	// deep copy and those writes should be deferred; if it is
 	// blockSyncing and blockAlreadyCopied, then just defer the
 	// writes.
-	fileBlockStates map[BlockPointer]dirtyBlockState
+	fileBlockStates map[IFCERFTBlockPointer]dirtyBlockState
 	// notYetSyncingBytes is the number of bytes that are dirty in the
 	// file, but haven't yet started syncing to the server yet.
 	notYetSyncingBytes int64
@@ -86,11 +86,11 @@ func newDirtyFile(file path, dirtyBcache IFCERFTDirtyBlockCache) *dirtyFile {
 	return &dirtyFile{
 		path:            file,
 		dirtyBcache:     dirtyBcache,
-		fileBlockStates: make(map[BlockPointer]dirtyBlockState),
+		fileBlockStates: make(map[IFCERFTBlockPointer]dirtyBlockState),
 	}
 }
 
-func (df *dirtyFile) blockNeedsCopy(ptr BlockPointer) bool {
+func (df *dirtyFile) blockNeedsCopy(ptr IFCERFTBlockPointer) bool {
 	df.lock.Lock()
 	defer df.lock.Unlock()
 	return df.fileBlockStates[ptr].copy == blockNeedsCopy
@@ -107,7 +107,7 @@ func (df *dirtyFile) updateNotYetSyncingBytes(newBytes int64) {
 // whether or not the block needs to be put in the dirty cache
 // (because it isn't yet), and whether or not the block is currently
 // part of a sync in progress.
-func (df *dirtyFile) setBlockDirty(ptr BlockPointer) (
+func (df *dirtyFile) setBlockDirty(ptr IFCERFTBlockPointer) (
 	needsCaching bool, isSyncing bool) {
 	df.lock.Lock()
 	defer df.lock.Unlock()
@@ -120,7 +120,7 @@ func (df *dirtyFile) setBlockDirty(ptr BlockPointer) (
 	return needsCaching, isSyncing
 }
 
-func (df *dirtyFile) setBlockNotDirty(ptr BlockPointer) (
+func (df *dirtyFile) setBlockNotDirty(ptr IFCERFTBlockPointer) (
 	needsCaching bool, isSyncing bool) {
 	df.lock.Lock()
 	defer df.lock.Unlock()
@@ -130,19 +130,19 @@ func (df *dirtyFile) setBlockNotDirty(ptr BlockPointer) (
 	return
 }
 
-func (df *dirtyFile) isBlockSyncing(ptr BlockPointer) bool {
+func (df *dirtyFile) isBlockSyncing(ptr IFCERFTBlockPointer) bool {
 	df.lock.Lock()
 	defer df.lock.Unlock()
 	return df.fileBlockStates[ptr].sync == blockSyncing
 }
 
-func (df *dirtyFile) isBlockDirty(ptr BlockPointer) bool {
+func (df *dirtyFile) isBlockDirty(ptr IFCERFTBlockPointer) bool {
 	df.lock.Lock()
 	defer df.lock.Unlock()
 	return df.fileBlockStates[ptr].copy == blockAlreadyCopied
 }
 
-func (df *dirtyFile) setBlockSyncing(ptr BlockPointer) error {
+func (df *dirtyFile) setBlockSyncing(ptr IFCERFTBlockPointer) error {
 	df.lock.Lock()
 	defer df.lock.Unlock()
 	state := df.fileBlockStates[ptr]
@@ -206,7 +206,7 @@ func (df *dirtyFile) resetSyncingBlocksToDirty() {
 	df.totalSyncBytes = 0 // all the blocks need to be re-synced.
 }
 
-func (df *dirtyFile) setBlockSyncedLocked(ptr BlockPointer) error {
+func (df *dirtyFile) setBlockSyncedLocked(ptr IFCERFTBlockPointer) error {
 	state, ok := df.fileBlockStates[ptr]
 	if !ok || (state.copy == blockAlreadyCopied &&
 		state.sync == blockNotSyncing) {
@@ -226,7 +226,7 @@ func (df *dirtyFile) setBlockSyncedLocked(ptr BlockPointer) error {
 	return nil
 }
 
-func (df *dirtyFile) setBlockSynced(ptr BlockPointer) error {
+func (df *dirtyFile) setBlockSynced(ptr IFCERFTBlockPointer) error {
 	df.lock.Lock()
 	defer df.lock.Unlock()
 	return df.setBlockSyncedLocked(ptr)
@@ -292,7 +292,7 @@ func (df *dirtyFile) notifyErrListeners(err error) {
 	}
 }
 
-func (df *dirtyFile) setBlockOrphaned(ptr BlockPointer, orphaned bool) {
+func (df *dirtyFile) setBlockOrphaned(ptr IFCERFTBlockPointer, orphaned bool) {
 	df.lock.Lock()
 	defer df.lock.Unlock()
 	state, ok := df.fileBlockStates[ptr]

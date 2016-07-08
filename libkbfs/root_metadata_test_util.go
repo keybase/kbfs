@@ -8,7 +8,7 @@ package libkbfs
 // to be exported for use by other modules' tests.
 
 // NewRootMetadataSignedForTest returns a new RootMetadataSigned for testing.
-func NewRootMetadataSignedForTest(id TlfID, h BareTlfHandle) (*RootMetadataSigned, error) {
+func NewRootMetadataSignedForTest(id IFCERFTTlfID, h BareTlfHandle) (*RootMetadataSigned, error) {
 	rmds := &RootMetadataSigned{}
 	err := updateNewRootMetadata(&rmds.MD, id, h)
 	if err != nil {
@@ -21,7 +21,7 @@ func NewRootMetadataSignedForTest(id TlfID, h BareTlfHandle) (*RootMetadataSigne
 // RootMetadata. This is necessary since newly-created RootMetadata
 // objects don't have enough data to build a TlfHandle from until the
 // first rekey.
-func FakeInitialRekey(rmd *RootMetadata, h BareTlfHandle) {
+func FakeInitialRekey(rmd *IFCERFTRootMetadata, h BareTlfHandle) {
 	if rmd.ID.IsPublic() {
 		panic("Called FakeInitialRekey on public TLF")
 	}

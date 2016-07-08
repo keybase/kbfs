@@ -18,14 +18,14 @@ type nodeCacheEntry struct {
 // the reference counts of nodeStandard Nodes, and using their member
 // fields to construct paths.
 type nodeCacheStandard struct {
-	folderBranch FolderBranch
+	folderBranch IFCERFTFolderBranch
 	nodes        map[blockRef]*nodeCacheEntry
 	lock         sync.RWMutex
 }
 
 var _ IFCERFTNodeCache = (*nodeCacheStandard)(nil)
 
-func newNodeCacheStandard(fb FolderBranch) *nodeCacheStandard {
+func newNodeCacheStandard(fb IFCERFTFolderBranch) *nodeCacheStandard {
 	return &nodeCacheStandard{
 		folderBranch: fb,
 		nodes:        make(map[blockRef]*nodeCacheEntry),
@@ -82,7 +82,7 @@ func makeNodeStandardForEntry(entry *nodeCacheEntry) *nodeStandard {
 
 // GetOrCreate implements the NodeCache interface for nodeCacheStandard.
 func (ncs *nodeCacheStandard) GetOrCreate(
-	ptr BlockPointer, name string, parent IFCERFTNode) (IFCERFTNode, error) {
+	ptr IFCERFTBlockPointer, name string, parent IFCERFTNode) (IFCERFTNode, error) {
 	if !ptr.IsValid() {
 		// Temporary code to track down bad block
 		// pointers. Remove when not needed anymore.
@@ -148,8 +148,8 @@ func (ncs *nodeCacheStandard) Get(ref blockRef) IFCERFTNode {
 
 // UpdatePointer implements the NodeCache interface for nodeCacheStandard.
 func (ncs *nodeCacheStandard) UpdatePointer(
-	oldRef blockRef, newPtr BlockPointer) {
-	if oldRef == (blockRef{}) && newPtr == (BlockPointer{}) {
+	oldRef blockRef, newPtr IFCERFTBlockPointer) {
+	if oldRef == (blockRef{}) && newPtr == (IFCERFTBlockPointer{}) {
 		return
 	}
 
@@ -173,7 +173,7 @@ func (ncs *nodeCacheStandard) UpdatePointer(
 		return
 	}
 
-	entry.core.pathNode.BlockPointer = newPtr
+	entry.core.pathNode.IFCERFTBlockPointer = newPtr
 	delete(ncs.nodes, oldRef)
 	ncs.nodes[newPtr.ref()] = entry
 }
@@ -276,6 +276,6 @@ func (ncs *nodeCacheStandard) PathFromNode(node IFCERFTNode) (p path) {
 	}
 
 	// TODO: would it make any sense to cache the constructed path?
-	p.FolderBranch = ncs.folderBranch
+	p.IFCERFTFolderBranch = ncs.folderBranch
 	return
 }

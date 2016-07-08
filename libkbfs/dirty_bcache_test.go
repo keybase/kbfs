@@ -13,7 +13,7 @@ import (
 
 func testDirtyBcachePut(t *testing.T, id BlockID, dirtyBcache IFCERFTDirtyBlockCache) {
 	block := NewFileBlock()
-	ptr := BlockPointer{ID: id}
+	ptr := IFCERFTBlockPointer{ID: id}
 	branch := MasterBranch
 
 	// put the block
@@ -37,7 +37,7 @@ func testDirtyBcachePut(t *testing.T, id BlockID, dirtyBcache IFCERFTDirtyBlockC
 func testExpectedMissingDirty(t *testing.T, id BlockID,
 	dirtyBcache IFCERFTDirtyBlockCache) {
 	expectedErr := NoSuchBlockError{id}
-	ptr := BlockPointer{ID: id}
+	ptr := IFCERFTBlockPointer{ID: id}
 	if _, err := dirtyBcache.Get(ptr, MasterBranch); err == nil {
 		t.Errorf("No expected error on 1st get: %v", err)
 	} else if err != expectedErr {
@@ -62,8 +62,8 @@ func TestDirtyBcachePutDuplicate(t *testing.T) {
 	// original is still not found.
 	newNonce := BlockRefNonce([8]byte{1, 0, 0, 0, 0, 0, 0, 0})
 	newNonceBlock := NewFileBlock()
-	bp1 := BlockPointer{ID: id1}
-	bp2 := BlockPointer{
+	bp1 := IFCERFTBlockPointer{ID: id1}
+	bp2 := IFCERFTBlockPointer{
 		ID:           id1,
 		BlockContext: BlockContext{RefNonce: newNonce},
 	}
@@ -80,7 +80,7 @@ func TestDirtyBcachePutDuplicate(t *testing.T) {
 
 	// Then dirty a different branch, and make sure the
 	// original is still clean
-	newBranch := BranchName("dirtyBranch")
+	newBranch := IFCERFTBranchName("dirtyBranch")
 	newBranchBlock := NewFileBlock()
 	err = dirtyBcache.Put(bp1, newBranch, newBranchBlock)
 	if err != nil {
@@ -104,16 +104,16 @@ func TestDirtyBcacheDelete(t *testing.T) {
 
 	id1 := fakeBlockID(1)
 	testDirtyBcachePut(t, id1, dirtyBcache)
-	newBranch := BranchName("dirtyBranch")
+	newBranch := IFCERFTBranchName("dirtyBranch")
 	newBranchBlock := NewFileBlock()
-	err := dirtyBcache.Put(BlockPointer{ID: id1}, newBranch, newBranchBlock)
+	err := dirtyBcache.Put(IFCERFTBlockPointer{ID: id1}, newBranch, newBranchBlock)
 	if err != nil {
 		t.Errorf("Unexpected error on PutDirty: %v", err)
 	}
 
-	dirtyBcache.Delete(BlockPointer{ID: id1}, MasterBranch)
+	dirtyBcache.Delete(IFCERFTBlockPointer{ID: id1}, MasterBranch)
 	testExpectedMissingDirty(t, id1, dirtyBcache)
-	if !dirtyBcache.IsDirty(BlockPointer{ID: id1}, newBranch) {
+	if !dirtyBcache.IsDirty(IFCERFTBlockPointer{ID: id1}, newBranch) {
 		t.Errorf("New branch block is now unexpectedly clean")
 	}
 }

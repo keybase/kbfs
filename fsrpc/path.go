@@ -229,15 +229,15 @@ func (p Path) Join(childName string) (childPath Path, err error) {
 }
 
 // GetNode returns a node
-func (p Path) GetNode(ctx context.Context, config libkbfs.IFCERFTConfig) (libkbfs.IFCERFTNode, libkbfs.EntryInfo, error) {
+func (p Path) GetNode(ctx context.Context, config libkbfs.IFCERFTConfig) (libkbfs.IFCERFTNode, libkbfs.IFCERFTEntryInfo, error) {
 	if p.PathType != TLFPathType {
-		entryInfo := libkbfs.EntryInfo{
+		entryInfo := libkbfs.IFCERFTEntryInfo{
 			Type: libkbfs.Dir,
 		}
 		return nil, entryInfo, nil
 	}
 
-	var tlfHandle *libkbfs.TlfHandle
+	var tlfHandle *libkbfs.IFCERFTTlfHandle
 	name := p.TLFName
 outer:
 	for {
@@ -254,19 +254,19 @@ outer:
 
 		default:
 			// Some other error.
-			return nil, libkbfs.EntryInfo{}, parseErr
+			return nil, libkbfs.IFCERFTEntryInfo{}, parseErr
 		}
 	}
 
 	node, entryInfo, err := config.KBFSOps().GetOrCreateRootNode(ctx, tlfHandle, libkbfs.MasterBranch)
 	if err != nil {
-		return nil, libkbfs.EntryInfo{}, err
+		return nil, libkbfs.IFCERFTEntryInfo{}, err
 	}
 
 	for _, component := range p.TLFComponents {
 		lookupNode, lookupEntryInfo, lookupErr := config.KBFSOps().Lookup(ctx, node, component)
 		if lookupErr != nil {
-			return nil, libkbfs.EntryInfo{}, lookupErr
+			return nil, libkbfs.IFCERFTEntryInfo{}, lookupErr
 		}
 		node = lookupNode
 		entryInfo = lookupEntryInfo

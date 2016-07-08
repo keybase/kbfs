@@ -20,7 +20,7 @@ var _ IFCERFTKeyOps = (*KeyOpsStandard)(nil)
 
 // GetTLFCryptKeyServerHalf is an implementation of the KeyOps interface.
 func (k *KeyOpsStandard) GetTLFCryptKeyServerHalf(ctx context.Context,
-	serverHalfID TLFCryptKeyServerHalfID, key CryptPublicKey) (
+	serverHalfID TLFCryptKeyServerHalfID, key IFCERFTCryptPublicKey) (
 	TLFCryptKeyServerHalf, error) {
 	// get the key half from the server
 	serverHalf, err := k.config.KeyServer().GetTLFCryptKeyServerHalf(ctx, serverHalfID, key)

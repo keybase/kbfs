@@ -22,28 +22,28 @@ const (
 )
 
 // TlfID is a top-level folder ID
-type TlfID struct {
+type IFCERFTTlfID struct {
 	id [TlfIDByteLen]byte
 }
 
-var _ encoding.BinaryMarshaler = TlfID{}
-var _ encoding.BinaryUnmarshaler = (*TlfID)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTTlfID{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTTlfID)(nil)
 
 // NullTlfID is an empty TlfID
-var NullTlfID = TlfID{}
+var NullTlfID = IFCERFTTlfID{}
 
 // Bytes returns the bytes of the TLF ID.
-func (id TlfID) Bytes() []byte {
+func (id IFCERFTTlfID) Bytes() []byte {
 	return id.id[:]
 }
 
 // String implements the fmt.Stringer interface for TlfID.
-func (id TlfID) String() string {
+func (id IFCERFTTlfID) String() string {
 	return hex.EncodeToString(id.id[:])
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for TlfID.
-func (id TlfID) MarshalBinary() (data []byte, err error) {
+func (id IFCERFTTlfID) MarshalBinary() (data []byte, err error) {
 	suffix := id.id[TlfIDByteLen-1]
 	if suffix != TlfIDSuffix && suffix != PubTlfIDSuffix {
 		return nil, InvalidTlfID{id.String()}
@@ -53,7 +53,7 @@ func (id TlfID) MarshalBinary() (data []byte, err error) {
 
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface
 // for TlfID.
-func (id *TlfID) UnmarshalBinary(data []byte) error {
+func (id *IFCERFTTlfID) UnmarshalBinary(data []byte) error {
 	if len(data) != TlfIDByteLen {
 		return InvalidTlfID{hex.EncodeToString(data)}
 	}
@@ -66,13 +66,13 @@ func (id *TlfID) UnmarshalBinary(data []byte) error {
 }
 
 // IsPublic returns true if this TlfID is for a public top-level folder
-func (id TlfID) IsPublic() bool {
+func (id IFCERFTTlfID) IsPublic() bool {
 	return id.id[TlfIDByteLen-1] == PubTlfIDSuffix
 }
 
 // ParseTlfID parses a hex encoded TlfID. Returns NullTlfID and an
 // InvalidTlfID on failure.
-func ParseTlfID(s string) (TlfID, error) {
+func ParseTlfID(s string) (IFCERFTTlfID, error) {
 	if len(s) != TlfIDStringLen {
 		return NullTlfID, InvalidTlfID{s}
 	}
@@ -80,7 +80,7 @@ func ParseTlfID(s string) (TlfID, error) {
 	if err != nil {
 		return NullTlfID, InvalidTlfID{s}
 	}
-	var id TlfID
+	var id IFCERFTTlfID
 	err = id.UnmarshalBinary(bytes)
 	if err != nil {
 		return NullTlfID, InvalidTlfID{s}

@@ -84,7 +84,7 @@ func NewKeyServerTempDir(config IFCERFTConfig) (*KeyServerLocal, error) {
 // GetTLFCryptKeyServerHalf implements the KeyServer interface for
 // KeyServerLocal.
 func (ks *KeyServerLocal) GetTLFCryptKeyServerHalf(ctx context.Context,
-	serverHalfID TLFCryptKeyServerHalfID, key CryptPublicKey) (serverHalf TLFCryptKeyServerHalf, err error) {
+	serverHalfID TLFCryptKeyServerHalfID, key IFCERFTCryptPublicKey) (serverHalf TLFCryptKeyServerHalf, err error) {
 	ks.shutdownLock.RLock()
 	defer ks.shutdownLock.RUnlock()
 	if *ks.shutdown {

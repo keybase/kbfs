@@ -20,7 +20,7 @@ type LibKBFS struct {
 	// hack: hold references on behalf of the test harness
 	refs map[libkbfs.IFCERFTConfig]map[libkbfs.IFCERFTNode]bool
 	// channels used to re-enable updates if disabled
-	updateChannels map[libkbfs.IFCERFTConfig]map[libkbfs.FolderBranch]chan<- struct{}
+	updateChannels map[libkbfs.IFCERFTConfig]map[libkbfs.IFCERFTFolderBranch]chan<- struct{}
 	// test object, mostly for logging
 	t testing.TB
 	// timeout for all KBFS calls
@@ -40,7 +40,7 @@ func (k *LibKBFS) Init() {
 	// Initialize reference holder and channels maps
 	k.refs = make(map[libkbfs.IFCERFTConfig]map[libkbfs.IFCERFTNode]bool)
 	k.updateChannels =
-		make(map[libkbfs.IFCERFTConfig]map[libkbfs.FolderBranch]chan<- struct{})
+		make(map[libkbfs.IFCERFTConfig]map[libkbfs.IFCERFTFolderBranch]chan<- struct{})
 }
 
 // InitTest implements the Engine interface.
@@ -61,7 +61,7 @@ func (k *LibKBFS) InitTest(t testing.TB, blockSize int64, blockChangeSize int64,
 	config.SetClock(clock)
 	userMap[users[0]] = config
 	k.refs[config] = make(map[libkbfs.IFCERFTNode]bool)
-	k.updateChannels[config] = make(map[libkbfs.FolderBranch]chan<- struct{})
+	k.updateChannels[config] = make(map[libkbfs.IFCERFTFolderBranch]chan<- struct{})
 
 	if len(users) == 1 {
 		return userMap
@@ -73,7 +73,7 @@ func (k *LibKBFS) InitTest(t testing.TB, blockSize int64, blockChangeSize int64,
 		c.SetClock(clock)
 		userMap[name] = c
 		k.refs[c] = make(map[libkbfs.IFCERFTNode]bool)
-		k.updateChannels[c] = make(map[libkbfs.FolderBranch]chan<- struct{})
+		k.updateChannels[c] = make(map[libkbfs.IFCERFTFolderBranch]chan<- struct{})
 	}
 	return userMap
 }
@@ -107,7 +107,7 @@ func (k *LibKBFS) GetUID(u User) (uid keybase1.UID) {
 
 func parseTlfHandle(
 	ctx context.Context, kbpki libkbfs.IFCERFTKBPKI, tlfName string, isPublic bool) (
-	h *libkbfs.TlfHandle, err error) {
+	h *libkbfs.IFCERFTTlfHandle, err error) {
 	// Limit to one non-canonical name for now.
 outer:
 	for i := 0; i < 2; i++ {
@@ -193,7 +193,7 @@ func (k *LibKBFS) CreateFile(u User, parentDir Node, name string) (file Node, er
 	ctx, cancel := k.newContext()
 	defer cancel()
 	file, _, err = kbfsOps.CreateFile(ctx, parentDir.(libkbfs.IFCERFTNode), name,
-		false, libkbfs.NoEXCL)
+		false, libkbfs.IFCERFTNoEXCL)
 	if err != nil {
 		return file, err
 	}
@@ -323,7 +323,7 @@ func (k *LibKBFS) Lookup(u User, parentDir Node, name string) (file Node, symPat
 // GetDirChildrenTypes implements the Engine interface.
 func (k *LibKBFS) GetDirChildrenTypes(u User, parentDir Node) (childrenTypes map[string]string, err error) {
 	kbfsOps := u.(*libkbfs.ConfigLocal).KBFSOps()
-	var entries map[string]libkbfs.EntryInfo
+	var entries map[string]libkbfs.IFCERFTEntryInfo
 	ctx, cancel := k.newContext()
 	defer cancel()
 	entries, err = kbfsOps.GetDirChildren(ctx, parentDir.(libkbfs.IFCERFTNode))
@@ -359,7 +359,7 @@ func (k *LibKBFS) SetMtime(u User, file Node, mtime time.Time) (err error) {
 func (k *LibKBFS) GetMtime(u User, file Node) (mtime time.Time, err error) {
 	config := u.(*libkbfs.ConfigLocal)
 	kbfsOps := config.KBFSOps()
-	var info libkbfs.EntryInfo
+	var info libkbfs.IFCERFTEntryInfo
 	ctx, cancel := k.newContext()
 	defer cancel()
 	if node, ok := file.(libkbfs.IFCERFTNode); ok {
@@ -505,7 +505,7 @@ func (k *LibKBFS) Shutdown(u User) error {
 	k.refs[config] = make(map[libkbfs.IFCERFTNode]bool)
 	delete(k.refs, config)
 	// clear update channels
-	k.updateChannels[config] = make(map[libkbfs.FolderBranch]chan<- struct{})
+	k.updateChannels[config] = make(map[libkbfs.IFCERFTFolderBranch]chan<- struct{})
 	delete(k.updateChannels, config)
 	// shutdown
 	if err := config.Shutdown(); err != nil {

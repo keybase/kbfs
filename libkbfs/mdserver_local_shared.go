@@ -63,17 +63,17 @@ func isWriterOrValidRekey(codec IFCERFTCodec, currentUID keybase1.UID,
 // set of TLFs. Note that it is not goroutine-safe.
 type mdServerLocalTruncateLockManager struct {
 	// TLF ID -> device KID.
-	locksDb map[TlfID]keybase1.KID
+	locksDb map[IFCERFTTlfID]keybase1.KID
 }
 
 func newMDServerLocalTruncatedLockManager() mdServerLocalTruncateLockManager {
 	return mdServerLocalTruncateLockManager{
-		locksDb: make(map[TlfID]keybase1.KID),
+		locksDb: make(map[IFCERFTTlfID]keybase1.KID),
 	}
 }
 
 func (m mdServerLocalTruncateLockManager) truncateLock(
-	deviceKID keybase1.KID, id TlfID) (bool, error) {
+	deviceKID keybase1.KID, id IFCERFTTlfID) (bool, error) {
 	lockKID, ok := m.locksDb[id]
 	if !ok {
 		m.locksDb[id] = deviceKID
@@ -90,7 +90,7 @@ func (m mdServerLocalTruncateLockManager) truncateLock(
 }
 
 func (m mdServerLocalTruncateLockManager) truncateUnlock(
-	deviceKID keybase1.KID, id TlfID) (bool, error) {
+	deviceKID keybase1.KID, id IFCERFTTlfID) (bool, error) {
 	lockKID, ok := m.locksDb[id]
 	if !ok {
 		// Already unlocked.
@@ -112,18 +112,18 @@ func (m mdServerLocalTruncateLockManager) truncateUnlock(
 type mdServerLocalUpdateManager struct {
 	// Protects observers and sessionHeads.
 	lock         sync.Mutex
-	observers    map[TlfID]map[mdServerLocal]chan<- error
-	sessionHeads map[TlfID]mdServerLocal
+	observers    map[IFCERFTTlfID]map[mdServerLocal]chan<- error
+	sessionHeads map[IFCERFTTlfID]mdServerLocal
 }
 
 func newMDServerLocalUpdateManager() *mdServerLocalUpdateManager {
 	return &mdServerLocalUpdateManager{
-		observers:    make(map[TlfID]map[mdServerLocal]chan<- error),
-		sessionHeads: make(map[TlfID]mdServerLocal),
+		observers:    make(map[IFCERFTTlfID]map[mdServerLocal]chan<- error),
+		sessionHeads: make(map[IFCERFTTlfID]mdServerLocal),
 	}
 }
 
-func (m *mdServerLocalUpdateManager) setHead(id TlfID, server mdServerLocal) {
+func (m *mdServerLocalUpdateManager) setHead(id IFCERFTTlfID, server mdServerLocal) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -143,7 +143,7 @@ func (m *mdServerLocalUpdateManager) setHead(id TlfID, server mdServerLocal) {
 }
 
 func (m *mdServerLocalUpdateManager) registerForUpdate(
-	id TlfID, currHead, currMergedHeadRev MetadataRevision,
+	id IFCERFTTlfID, currHead, currMergedHeadRev MetadataRevision,
 	server mdServerLocal) <-chan error {
 	m.lock.Lock()
 	defer m.lock.Unlock()

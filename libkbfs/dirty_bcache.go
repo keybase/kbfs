@@ -16,7 +16,7 @@ import (
 type dirtyBlockID struct {
 	id       BlockID
 	refNonce BlockRefNonce
-	branch   BranchName
+	branch   IFCERFTBranchName
 }
 
 type dirtyReq struct {
@@ -112,7 +112,7 @@ func NewDirtyBlockCacheStandard(clock IFCERFTClock, makeLog func(string) logger.
 
 // Get implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) Get(ptr BlockPointer, branch BranchName) (
+func (d *DirtyBlockCacheStandard) Get(ptr IFCERFTBlockPointer, branch IFCERFTBranchName) (
 	IFCERFTBlock, error) {
 	block := func() IFCERFTBlock {
 		dirtyID := dirtyBlockID{
@@ -133,8 +133,7 @@ func (d *DirtyBlockCacheStandard) Get(ptr BlockPointer, branch BranchName) (
 
 // Put implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) Put(ptr BlockPointer, branch BranchName,
-	block IFCERFTBlock) error {
+func (d *DirtyBlockCacheStandard) Put(ptr IFCERFTBlockPointer, branch IFCERFTBranchName, block IFCERFTBlock) error {
 	dirtyID := dirtyBlockID{
 		id:       ptr.ID,
 		refNonce: ptr.RefNonce,
@@ -149,8 +148,7 @@ func (d *DirtyBlockCacheStandard) Put(ptr BlockPointer, branch BranchName,
 
 // Delete implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) Delete(ptr BlockPointer,
-	branch BranchName) error {
+func (d *DirtyBlockCacheStandard) Delete(ptr IFCERFTBlockPointer, branch IFCERFTBranchName) error {
 	dirtyID := dirtyBlockID{
 		id:       ptr.ID,
 		refNonce: ptr.RefNonce,
@@ -166,7 +164,7 @@ func (d *DirtyBlockCacheStandard) Delete(ptr BlockPointer,
 // IsDirty implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
 func (d *DirtyBlockCacheStandard) IsDirty(
-	ptr BlockPointer, branch BranchName) (isDirty bool) {
+	ptr IFCERFTBlockPointer, branch IFCERFTBranchName) (isDirty bool) {
 	dirtyID := dirtyBlockID{
 		id:       ptr.ID,
 		refNonce: ptr.RefNonce,

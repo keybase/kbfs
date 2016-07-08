@@ -31,8 +31,8 @@ func NewStateChecker(config IFCERFTConfig) *StateChecker {
 // the blocksFound map, if the given path represents an indirect
 // block.
 func (sc *StateChecker) findAllFileBlocks(ctx context.Context,
-	lState *lockState, ops *folderBranchOps, md *RootMetadata, file path,
-	blockSizes map[BlockPointer]uint32) error {
+	lState *lockState, ops *folderBranchOps, md *IFCERFTRootMetadata, file path,
+	blockSizes map[IFCERFTBlockPointer]uint32) error {
 	fblock, err := ops.blocks.GetFileBlockForReading(ctx, lState, md,
 		file.tailPointer(), file.Branch, file)
 	if err != nil {
@@ -45,8 +45,8 @@ func (sc *StateChecker) findAllFileBlocks(ctx context.Context,
 
 	parentPath := file.parentPath()
 	for _, childPtr := range fblock.IPtrs {
-		blockSizes[childPtr.BlockPointer] = childPtr.EncodedSize
-		p := parentPath.ChildPath(file.tailName(), childPtr.BlockPointer)
+		blockSizes[childPtr.IFCERFTBlockPointer] = childPtr.EncodedSize
+		p := parentPath.ChildPath(file.tailName(), childPtr.IFCERFTBlockPointer)
 		err := sc.findAllFileBlocks(ctx, lState, ops, md, p, blockSizes)
 		if err != nil {
 			return err
@@ -59,8 +59,8 @@ func (sc *StateChecker) findAllFileBlocks(ctx context.Context,
 // the blockSizes map, and then recursively checks all
 // subdirectories.
 func (sc *StateChecker) findAllBlocksInPath(ctx context.Context,
-	lState *lockState, ops *folderBranchOps, md *RootMetadata, dir path,
-	blockSizes map[BlockPointer]uint32) error {
+	lState *lockState, ops *folderBranchOps, md *IFCERFTRootMetadata, dir path,
+	blockSizes map[IFCERFTBlockPointer]uint32) error {
 	dblock, err := ops.blocks.GetDirBlockForReading(ctx, lState, md,
 		dir.tailPointer(), dir.Branch, dir)
 	if err != nil {
@@ -72,8 +72,8 @@ func (sc *StateChecker) findAllBlocksInPath(ctx context.Context,
 			continue
 		}
 
-		blockSizes[de.BlockPointer] = de.EncodedSize
-		p := dir.ChildPath(name, de.BlockPointer)
+		blockSizes[de.IFCERFTBlockPointer] = de.EncodedSize
+		p := dir.ChildPath(name, de.IFCERFTBlockPointer)
 
 		if de.Type == Dir {
 			err := sc.findAllBlocksInPath(ctx, lState, ops, md, p, blockSizes)
@@ -92,7 +92,7 @@ func (sc *StateChecker) findAllBlocksInPath(ctx context.Context,
 }
 
 func (sc *StateChecker) getLastGCRevisionTime(ctx context.Context,
-	tlf TlfID) time.Time {
+	tlf IFCERFTTlfID) time.Time {
 	config, ok := sc.config.(*ConfigLocal)
 	if !ok {
 		return time.Time{}
@@ -101,7 +101,7 @@ func (sc *StateChecker) getLastGCRevisionTime(ctx context.Context,
 	var latestTime time.Time
 	for _, c := range *config.allKnownConfigsForTesting {
 		ops := c.KBFSOps().(*KBFSOpsStandard).getOpsNoAdd(
-			FolderBranch{tlf, MasterBranch})
+			IFCERFTFolderBranch{tlf, MasterBranch})
 		rt := ops.fbm.getLastReclamationTime()
 		if rt.After(latestTime) {
 			latestTime = rt
@@ -118,7 +118,7 @@ func (sc *StateChecker) getLastGCRevisionTime(ctx context.Context,
 
 // CheckMergedState verifies that the state for the given tlf is
 // consistent.
-func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
+func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf IFCERFTTlfID) error {
 	// Blow away MD cache so we don't have any lingering re-embedded
 	// block changes (otherwise we won't be able to learn their sizes).
 	sc.config.SetMDCache(NewMDCacheStandard(5000))
@@ -143,15 +143,15 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 		return errors.New("Unexpected KBFSOps type")
 	}
 
-	fb := FolderBranch{tlf, MasterBranch}
+	fb := IFCERFTFolderBranch{tlf, MasterBranch}
 	ops := kbfsOps.getOpsNoAdd(fb)
 	lastGCRevisionTime := sc.getLastGCRevisionTime(ctx, tlf)
 
 	// Build the expected block list.
-	expectedLiveBlocks := make(map[BlockPointer]bool)
+	expectedLiveBlocks := make(map[IFCERFTBlockPointer]bool)
 	expectedRef := uint64(0)
-	archivedBlocks := make(map[BlockPointer]bool)
-	actualLiveBlocks := make(map[BlockPointer]uint32)
+	archivedBlocks := make(map[IFCERFTBlockPointer]bool)
+	actualLiveBlocks := make(map[IFCERFTBlockPointer]uint32)
 
 	// See what the last GC op revision is.  All unref'd pointers from
 	// that revision or earlier should be deleted from the block
@@ -178,10 +178,10 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 			continue
 		}
 		// Any unembedded block changes also count towards the actual size
-		if info := rmd.data.cachedChanges.Info; info.BlockPointer != zeroPtr {
+		if info := rmd.data.cachedChanges.Info; info.IFCERFTBlockPointer != zeroPtr {
 			sc.log.CDebugf(ctx, "Unembedded block change: %v, %d",
-				info.BlockPointer, info.EncodedSize)
-			actualLiveBlocks[info.BlockPointer] = info.EncodedSize
+				info.IFCERFTBlockPointer, info.EncodedSize)
+			actualLiveBlocks[info.IFCERFTBlockPointer] = info.EncodedSize
 		}
 
 		var hasGCOp bool
@@ -189,7 +189,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 			_, isGCOp := op.(*gcOp)
 			hasGCOp = hasGCOp || isGCOp
 
-			opRefs := make(map[BlockPointer]bool)
+			opRefs := make(map[IFCERFTBlockPointer]bool)
 			for _, ptr := range op.Refs() {
 				if ptr != zeroPtr {
 					expectedLiveBlocks[ptr] = true
@@ -267,7 +267,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 		return err
 	}
 	rootPath := ops.nodeCache.PathFromNode(rootNode)
-	if g, e := rootPath.tailPointer(), currMD.data.Dir.BlockPointer; g != e {
+	if g, e := rootPath.tailPointer(), currMD.data.Dir.IFCERFTBlockPointer; g != e {
 		return fmt.Errorf("Current MD root pointer %v doesn't match root "+
 			"node pointer %v", e, g)
 	}
@@ -281,7 +281,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 
 	// Compare the two and see if there are any differences. Don't use
 	// reflect.DeepEqual so we can print out exactly what's wrong.
-	var extraBlocks []BlockPointer
+	var extraBlocks []IFCERFTBlockPointer
 	actualSize := uint64(0)
 	for ptr, size := range actualLiveBlocks {
 		actualSize += uint64(size)
@@ -294,7 +294,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 			tlf, extraBlocks)
 		return fmt.Errorf("Folder %v has inconsistent state", tlf)
 	}
-	var missingBlocks []BlockPointer
+	var missingBlocks []IFCERFTBlockPointer
 	for ptr := range expectedLiveBlocks {
 		if _, ok := actualLiveBlocks[ptr]; !ok {
 			missingBlocks = append(missingBlocks, ptr)

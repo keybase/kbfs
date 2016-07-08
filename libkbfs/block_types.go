@@ -54,7 +54,7 @@ func (cb *CommonBlock) SetEncodedSize(size uint32) {
 }
 
 // DataVersion returns data version for this block.
-func (cb *CommonBlock) DataVersion() DataVer {
+func (cb *CommonBlock) DataVersion() IFCERFTDataVer {
 	return FirstValidDataVer
 }
 
@@ -113,7 +113,7 @@ func NewFileBlock() IFCERFTBlock {
 }
 
 // DataVersion returns data version for this block.
-func (fb *FileBlock) DataVersion() DataVer {
+func (fb *FileBlock) DataVersion() IFCERFTDataVer {
 	for i := range fb.IPtrs {
 		if fb.IPtrs[i].Holes {
 			return FilesWithHolesDataVer
@@ -133,7 +133,7 @@ func (fb FileBlock) DeepCopy(codec IFCERFTCodec) (*FileBlock, error) {
 }
 
 // DefaultNewBlockDataVersion returns the default data version for new blocks.
-func DefaultNewBlockDataVersion(c IFCERFTConfig, holes bool) DataVer {
+func DefaultNewBlockDataVersion(c IFCERFTConfig, holes bool) IFCERFTDataVer {
 	if holes {
 		return FilesWithHolesDataVer
 	}

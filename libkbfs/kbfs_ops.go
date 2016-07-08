@@ -21,8 +21,8 @@ type KBFSOpsStandard struct {
 	config   IFCERFTConfig
 	log      logger.Logger
 	deferLog logger.Logger
-	ops      map[FolderBranch]*folderBranchOps
-	opsByFav map[Favorite]*folderBranchOps
+	ops      map[IFCERFTFolderBranch]*folderBranchOps
+	opsByFav map[IFCERFTFavorite]*folderBranchOps
 	opsLock  sync.RWMutex
 	// reIdentifyControlChan controls reidentification.
 	// Sending a value to this channel forces all fbos
@@ -45,8 +45,8 @@ func NewKBFSOpsStandard(config IFCERFTConfig) *KBFSOpsStandard {
 		config:                config,
 		log:                   log,
 		deferLog:              log.CloneWithAddedDepth(1),
-		ops:                   make(map[FolderBranch]*folderBranchOps),
-		opsByFav:              make(map[Favorite]*folderBranchOps),
+		ops:                   make(map[IFCERFTFolderBranch]*folderBranchOps),
+		opsByFav:              make(map[IFCERFTFavorite]*folderBranchOps),
 		reIdentifyControlChan: make(chan struct{}),
 		favs: NewFavorites(config),
 	}
@@ -118,7 +118,7 @@ func (fs *KBFSOpsStandard) PushConnectionStatusChange(service string, newStatus 
 // GetFavorites implements the KBFSOps interface for
 // KBFSOpsStandard.
 func (fs *KBFSOpsStandard) GetFavorites(ctx context.Context) (
-	[]Favorite, error) {
+	[]IFCERFTFavorite, error) {
 	return fs.favs.Get(ctx)
 }
 
@@ -130,13 +130,13 @@ func (fs *KBFSOpsStandard) RefreshCachedFavorites(ctx context.Context) {
 
 // AddFavorite implements the KBFSOps interface for KBFSOpsStandard.
 func (fs *KBFSOpsStandard) AddFavorite(ctx context.Context,
-	fav Favorite) error {
+	fav IFCERFTFavorite) error {
 	kbpki := fs.config.KBPKI()
 	_, _, err := kbpki.GetCurrentUserInfo(ctx)
 	isLoggedIn := err == nil
 
 	if isLoggedIn {
-		err := fs.favs.Add(ctx, favToAdd{Favorite: fav, created: false})
+		err := fs.favs.Add(ctx, favToAdd{IFCERFTFavorite: fav, created: false})
 		if err != nil {
 			return err
 		}
@@ -148,7 +148,7 @@ func (fs *KBFSOpsStandard) AddFavorite(ctx context.Context,
 // DeleteFavorite implements the KBFSOps interface for
 // KBFSOpsStandard.
 func (fs *KBFSOpsStandard) DeleteFavorite(ctx context.Context,
-	fav Favorite) error {
+	fav IFCERFTFavorite) error {
 	kbpki := fs.config.KBPKI()
 	_, _, err := kbpki.GetCurrentUserInfo(ctx)
 	isLoggedIn := err == nil
@@ -181,7 +181,7 @@ func (fs *KBFSOpsStandard) DeleteFavorite(ctx context.Context,
 	return nil
 }
 
-func (fs *KBFSOpsStandard) getOpsNoAdd(fb FolderBranch) *folderBranchOps {
+func (fs *KBFSOpsStandard) getOpsNoAdd(fb IFCERFTFolderBranch) *folderBranchOps {
 	fs.opsLock.RLock()
 	if ops, ok := fs.ops[fb]; ok {
 		fs.opsLock.RUnlock()
@@ -203,7 +203,7 @@ func (fs *KBFSOpsStandard) getOpsNoAdd(fb FolderBranch) *folderBranchOps {
 }
 
 func (fs *KBFSOpsStandard) getOps(
-	ctx context.Context, fb FolderBranch) *folderBranchOps {
+	ctx context.Context, fb IFCERFTFolderBranch) *folderBranchOps {
 	ops := fs.getOpsNoAdd(fb)
 	if err := ops.addToFavorites(ctx, fs.favs, false); err != nil {
 		// Failure to favorite shouldn't cause a failure.  Just log
@@ -219,7 +219,7 @@ func (fs *KBFSOpsStandard) getOpsByNode(ctx context.Context,
 }
 
 func (fs *KBFSOpsStandard) getOpsByHandle(ctx context.Context,
-	handle *TlfHandle, fb FolderBranch) *folderBranchOps {
+	handle *IFCERFTTlfHandle, fb IFCERFTFolderBranch) *folderBranchOps {
 	ops := fs.getOps(ctx, fb)
 	fs.opsLock.Lock()
 	defer fs.opsLock.Unlock()
@@ -233,8 +233,8 @@ func (fs *KBFSOpsStandard) getOpsByHandle(ctx context.Context,
 // GetOrCreateRootNode implements the KBFSOps interface for
 // KBFSOpsStandard
 func (fs *KBFSOpsStandard) GetOrCreateRootNode(
-	ctx context.Context, h *TlfHandle, branch BranchName) (
-	node IFCERFTNode, ei EntryInfo, err error) {
+	ctx context.Context, h *IFCERFTTlfHandle, branch IFCERFTBranchName) (
+	node IFCERFTNode, ei IFCERFTEntryInfo, err error) {
 	fs.log.CDebugf(ctx, "GetOrCreateRootNode(%s, %v)",
 		h.GetCanonicalPath(), branch)
 	defer func() { fs.deferLog.CDebugf(ctx, "Done: %#v", err) }()
@@ -244,15 +244,15 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 	// TODO: only do this the first time, cache the folder ID after that
 	md, err := mdops.GetUnmergedForHandle(ctx, h)
 	if err != nil {
-		return nil, EntryInfo{}, err
+		return nil, IFCERFTEntryInfo{}, err
 	}
 	if md == nil {
 		md, err = mdops.GetForHandle(ctx, h)
 		if err != nil {
-			return nil, EntryInfo{}, err
+			return nil, IFCERFTEntryInfo{}, err
 		}
 	}
-	fb := FolderBranch{Tlf: md.ID, Branch: branch}
+	fb := IFCERFTFolderBranch{Tlf: md.ID, Branch: branch}
 
 	// we might not be able to read the metadata if we aren't in the
 	// key group yet.
@@ -266,7 +266,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 				"access due to unreadable MD for %s", h.GetCanonicalPath())
 			go ops.rekeyWithPrompt()
 		}
-		return nil, EntryInfo{}, err
+		return nil, IFCERFTEntryInfo{}, err
 	}
 
 	ops := fs.getOpsByHandle(ctx, h, fb)
@@ -276,13 +276,13 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 		// branch new MD object.
 		created, err = ops.CheckForNewMDAndInit(ctx, md)
 		if err != nil {
-			return nil, EntryInfo{}, err
+			return nil, IFCERFTEntryInfo{}, err
 		}
 	}
 
 	node, ei, _, err = ops.getRootNode(ctx)
 	if err != nil {
-		return nil, EntryInfo{}, err
+		return nil, IFCERFTEntryInfo{}, err
 	}
 
 	if err := ops.addToFavorites(ctx, fs.favs, created); err != nil {
@@ -295,36 +295,36 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 
 // GetDirChildren implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) GetDirChildren(ctx context.Context, dir IFCERFTNode) (
-	map[string]EntryInfo, error) {
+	map[string]IFCERFTEntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.GetDirChildren(ctx, dir)
 }
 
 // Lookup implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Lookup(ctx context.Context, dir IFCERFTNode, name string) (
-	IFCERFTNode, EntryInfo, error) {
+	IFCERFTNode, IFCERFTEntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.Lookup(ctx, dir, name)
 }
 
 // Stat implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Stat(ctx context.Context, node IFCERFTNode) (
-	EntryInfo, error) {
+	IFCERFTEntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, node)
 	return ops.Stat(ctx, node)
 }
 
 // CreateDir implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) CreateDir(
-	ctx context.Context, dir IFCERFTNode, name string) (IFCERFTNode, EntryInfo, error) {
+	ctx context.Context, dir IFCERFTNode, name string) (IFCERFTNode, IFCERFTEntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateDir(ctx, dir, name)
 }
 
 // CreateFile implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) CreateFile(
-	ctx context.Context, dir IFCERFTNode, name string, isExec bool, excl EXCL) (
-	IFCERFTNode, EntryInfo, error) {
+	ctx context.Context, dir IFCERFTNode, name string, isExec bool, excl IFCERFTEXCL) (
+	IFCERFTNode, IFCERFTEntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateFile(ctx, dir, name, isExec, excl)
 }
@@ -332,7 +332,7 @@ func (fs *KBFSOpsStandard) CreateFile(
 // CreateLink implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) CreateLink(
 	ctx context.Context, dir IFCERFTNode, fromName string, toPath string) (
-	EntryInfo, error) {
+	IFCERFTEntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateLink(ctx, dir, fromName, toPath)
 }
@@ -410,15 +410,15 @@ func (fs *KBFSOpsStandard) Sync(ctx context.Context, file IFCERFTNode) error {
 
 // FolderStatus implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) FolderStatus(
-	ctx context.Context, folderBranch FolderBranch) (
-	FolderBranchStatus, <-chan StatusUpdate, error) {
+	ctx context.Context, folderBranch IFCERFTFolderBranch) (
+	IFCERFTFolderBranchStatus, <-chan IFCERFTStatusUpdate, error) {
 	ops := fs.getOps(ctx, folderBranch)
 	return ops.FolderStatus(ctx, folderBranch)
 }
 
 // Status implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Status(ctx context.Context) (
-	KBFSStatus, <-chan StatusUpdate, error) {
+	KBFSStatus, <-chan IFCERFTStatusUpdate, error) {
 	username, _, err := fs.config.KBPKI().GetCurrentUserInfo(ctx)
 	var usageBytes int64 = -1
 	var limitBytes int64 = -1
@@ -450,28 +450,28 @@ func (fs *KBFSOpsStandard) Status(ctx context.Context) (
 // UnstageForTesting implements the KBFSOps interface for KBFSOpsStandard
 // TODO: remove once we have automatic conflict resolution
 func (fs *KBFSOpsStandard) UnstageForTesting(
-	ctx context.Context, folderBranch FolderBranch) error {
+	ctx context.Context, folderBranch IFCERFTFolderBranch) error {
 	ops := fs.getOps(ctx, folderBranch)
 	return ops.UnstageForTesting(ctx, folderBranch)
 }
 
 // Rekey implements the KBFSOps interface for KBFSOpsStandard
-func (fs *KBFSOpsStandard) Rekey(ctx context.Context, id TlfID) error {
+func (fs *KBFSOpsStandard) Rekey(ctx context.Context, id IFCERFTTlfID) error {
 	// We currently only support rekeys of master branches.
-	ops := fs.getOpsNoAdd(FolderBranch{Tlf: id, Branch: MasterBranch})
+	ops := fs.getOpsNoAdd(IFCERFTFolderBranch{Tlf: id, Branch: MasterBranch})
 	return ops.Rekey(ctx, id)
 }
 
 // SyncFromServerForTesting implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) SyncFromServerForTesting(
-	ctx context.Context, folderBranch FolderBranch) error {
+	ctx context.Context, folderBranch IFCERFTFolderBranch) error {
 	ops := fs.getOps(ctx, folderBranch)
 	return ops.SyncFromServerForTesting(ctx, folderBranch)
 }
 
 // GetUpdateHistory implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) GetUpdateHistory(ctx context.Context,
-	folderBranch FolderBranch) (history TLFUpdateHistory, err error) {
+	folderBranch IFCERFTFolderBranch) (history TLFUpdateHistory, err error) {
 	ops := fs.getOps(ctx, folderBranch)
 	return ops.GetUpdateHistory(ctx, folderBranch)
 }
@@ -481,7 +481,7 @@ var _ IFCERFTNotifier = (*KBFSOpsStandard)(nil)
 
 // RegisterForChanges implements the Notifer interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) RegisterForChanges(
-	folderBranches []FolderBranch, obs IFCERFTObserver) error {
+	folderBranches []IFCERFTFolderBranch, obs IFCERFTObserver) error {
 	for _, fb := range folderBranches {
 		// TODO: add branch parameter to notifier interface
 		ops := fs.getOpsNoAdd(fb)
@@ -492,7 +492,7 @@ func (fs *KBFSOpsStandard) RegisterForChanges(
 
 // UnregisterFromChanges implements the Notifer interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) UnregisterFromChanges(
-	folderBranches []FolderBranch, obs IFCERFTObserver) error {
+	folderBranches []IFCERFTFolderBranch, obs IFCERFTObserver) error {
 	for _, fb := range folderBranches {
 		// TODO: add branch parameter to notifier interface
 		ops := fs.getOpsNoAdd(fb)

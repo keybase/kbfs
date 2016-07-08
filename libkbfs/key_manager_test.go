@@ -33,13 +33,13 @@ func keyManagerShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	mockCtrl.Finish()
 }
 
-func expectCachedGetTLFCryptKey(config *ConfigMock, rmd *RootMetadata, keyGen KeyGen) {
-	config.mockKcache.EXPECT().GetTLFCryptKey(rmd.ID, keyGen).Return(TLFCryptKey{}, nil)
+func expectCachedGetTLFCryptKey(config *ConfigMock, rmd *IFCERFTRootMetadata, keyGen KeyGen) {
+	config.mockKcache.EXPECT().GetTLFCryptKey(rmd.ID, keyGen).Return(IFCERFTTLFCryptKey{}, nil)
 }
 
-func expectUncachedGetTLFCryptKey(config *ConfigMock, rmd *RootMetadata, keyGen KeyGen, uid keybase1.UID, subkey CryptPublicKey, encrypt bool) {
+func expectUncachedGetTLFCryptKey(config *ConfigMock, rmd *IFCERFTRootMetadata, keyGen KeyGen, uid keybase1.UID, subkey IFCERFTCryptPublicKey, encrypt bool) {
 	config.mockKcache.EXPECT().GetTLFCryptKey(rmd.ID, keyGen).
-		Return(TLFCryptKey{}, KeyCacheMissError{})
+		Return(IFCERFTTLFCryptKey{}, KeyCacheMissError{})
 
 	// get the xor'd key out of the metadata
 	config.mockKbpki.EXPECT().GetCurrentCryptPublicKey(gomock.Any()).
@@ -51,38 +51,38 @@ func expectUncachedGetTLFCryptKey(config *ConfigMock, rmd *RootMetadata, keyGen 
 	// get the server-side half and retrieve the real secret key
 	config.mockKops.EXPECT().GetTLFCryptKeyServerHalf(gomock.Any(),
 		gomock.Any(), gomock.Any()).Return(TLFCryptKeyServerHalf{}, nil)
-	config.mockCrypto.EXPECT().UnmaskTLFCryptKey(TLFCryptKeyServerHalf{}, TLFCryptKeyClientHalf{}).Return(TLFCryptKey{}, nil)
+	config.mockCrypto.EXPECT().UnmaskTLFCryptKey(TLFCryptKeyServerHalf{}, TLFCryptKeyClientHalf{}).Return(IFCERFTTLFCryptKey{}, nil)
 
 	// now put the key into the cache
 	if !encrypt {
-		config.mockKcache.EXPECT().PutTLFCryptKey(rmd.ID, keyGen, TLFCryptKey{}).
+		config.mockKcache.EXPECT().PutTLFCryptKey(rmd.ID, keyGen, IFCERFTTLFCryptKey{}).
 			Return(nil)
 	}
 }
 
-func expectUncachedGetTLFCryptKeyAnyDevice(config *ConfigMock, rmd *RootMetadata, keyGen KeyGen, uid keybase1.UID, subkey CryptPublicKey, encrypt bool) {
+func expectUncachedGetTLFCryptKeyAnyDevice(config *ConfigMock, rmd *IFCERFTRootMetadata, keyGen KeyGen, uid keybase1.UID, subkey IFCERFTCryptPublicKey, encrypt bool) {
 	config.mockKcache.EXPECT().GetTLFCryptKey(rmd.ID, keyGen).
-		Return(TLFCryptKey{}, KeyCacheMissError{})
+		Return(IFCERFTTLFCryptKey{}, KeyCacheMissError{})
 
 	// get the xor'd key out of the metadata
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), uid).
-		Return([]CryptPublicKey{subkey}, nil)
+		Return([]IFCERFTCryptPublicKey{subkey}, nil)
 	config.mockCrypto.EXPECT().DecryptTLFCryptKeyClientHalfAny(gomock.Any(),
 		gomock.Any(), false).Return(TLFCryptKeyClientHalf{}, 0, nil)
 
 	// get the server-side half and retrieve the real secret key
 	config.mockKops.EXPECT().GetTLFCryptKeyServerHalf(gomock.Any(),
 		gomock.Any(), gomock.Any()).Return(TLFCryptKeyServerHalf{}, nil)
-	config.mockCrypto.EXPECT().UnmaskTLFCryptKey(TLFCryptKeyServerHalf{}, TLFCryptKeyClientHalf{}).Return(TLFCryptKey{}, nil)
+	config.mockCrypto.EXPECT().UnmaskTLFCryptKey(TLFCryptKeyServerHalf{}, TLFCryptKeyClientHalf{}).Return(IFCERFTTLFCryptKey{}, nil)
 
 	// now put the key into the cache
 	if !encrypt {
-		config.mockKcache.EXPECT().PutTLFCryptKey(rmd.ID, keyGen, TLFCryptKey{}).
+		config.mockKcache.EXPECT().PutTLFCryptKey(rmd.ID, keyGen, IFCERFTTLFCryptKey{}).
 			Return(nil)
 	}
 }
 
-func expectRekey(config *ConfigMock, rmd *RootMetadata, numDevices int, handleChange bool) {
+func expectRekey(config *ConfigMock, rmd *IFCERFTRootMetadata, numDevices int, handleChange bool) {
 	if handleChange {
 		// if the handle changes the key manager checks for a conflict
 		config.mockMdops.EXPECT().GetLatestHandleForTLF(gomock.Any(), gomock.Any()).
@@ -90,15 +90,15 @@ func expectRekey(config *ConfigMock, rmd *RootMetadata, numDevices int, handleCh
 	}
 
 	// generate new keys
-	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(TLFPublicKey{}, TLFPrivateKey{}, TLFEphemeralPublicKey{}, TLFEphemeralPrivateKey{}, TLFCryptKey{}, nil)
+	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(TLFPublicKey{}, TLFPrivateKey{}, TLFEphemeralPublicKey{}, TLFEphemeralPrivateKey{}, IFCERFTTLFCryptKey{}, nil)
 	config.mockCrypto.EXPECT().MakeRandomTLFCryptKeyServerHalf().Return(TLFCryptKeyServerHalf{}, nil).Times(numDevices)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), gomock.Any()).
-		Return([]CryptPublicKey{subkey}, nil).Times(numDevices)
+		Return([]IFCERFTCryptPublicKey{subkey}, nil).Times(numDevices)
 
 	// make keys for the one device
-	config.mockCrypto.EXPECT().MaskTLFCryptKey(TLFCryptKeyServerHalf{}, TLFCryptKey{}).Return(TLFCryptKeyClientHalf{}, nil).Times(numDevices)
+	config.mockCrypto.EXPECT().MaskTLFCryptKey(TLFCryptKeyServerHalf{}, IFCERFTTLFCryptKey{}).Return(TLFCryptKeyClientHalf{}, nil).Times(numDevices)
 	config.mockCrypto.EXPECT().EncryptTLFCryptKeyClientHalf(TLFEphemeralPrivateKey{}, subkey, TLFCryptKeyClientHalf{}).Return(EncryptedTLFCryptKeyClientHalf{}, nil).Times(numDevices)
 	config.mockKops.EXPECT().PutTLFCryptKeyServerHalves(gomock.Any(), gomock.Any()).Return(nil)
 	config.mockCrypto.EXPECT().GetTLFCryptKeyServerHalfID(gomock.Any(), gomock.Any(), gomock.Any()).Return(TLFCryptKeyServerHalfID{}, nil).Times(numDevices)
@@ -138,7 +138,7 @@ func TestKeyManagerPublicTLFCryptKey(t *testing.T) {
 	}
 
 	tlfCryptKey, err = config.KeyManager().
-		GetTLFCryptKeyForBlockDecryption(ctx, rmd, BlockPointer{})
+		GetTLFCryptKeyForBlockDecryption(ctx, rmd, IFCERFTBlockPointer{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -197,13 +197,13 @@ func TestKeyManagerCachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	expectCachedGetTLFCryptKey(config, rmd, keyGen)
 
 	if _, err := config.KeyManager().GetTLFCryptKeyForBlockDecryption(
-		ctx, rmd, BlockPointer{KeyGen: keyGen}); err != nil {
+		ctx, rmd, IFCERFTBlockPointer{KeyGen: keyGen}); err != nil {
 		t.Errorf("Got error on GetTLFCryptKeyForBlockDecryption: %v", err)
 	}
 }
 
 // makeDirRKeyBundle creates a new bundle with a reader key.
-func makeDirRKeyBundle(uid keybase1.UID, cryptPublicKey CryptPublicKey) TLFReaderKeyBundle {
+func makeDirRKeyBundle(uid keybase1.UID, cryptPublicKey IFCERFTCryptPublicKey) TLFReaderKeyBundle {
 	return TLFReaderKeyBundle{
 		RKeys: UserDeviceKeyInfoMap{
 			uid: {
@@ -273,7 +273,7 @@ func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	expectUncachedGetTLFCryptKey(config, rmd, keyGen, uid, subkey, false)
 
 	if _, err := config.KeyManager().GetTLFCryptKeyForBlockDecryption(
-		ctx, rmd, BlockPointer{KeyGen: keyGen}); err != nil {
+		ctx, rmd, IFCERFTBlockPointer{KeyGen: keyGen}); err != nil {
 		t.Errorf("Got error on GetTLFCryptKeyForBlockDecryption: %v", err)
 	}
 }
@@ -318,7 +318,7 @@ func TestKeyManagerRekeyResolveAgainSuccessPublic(t *testing.T) {
 	require.NoError(t, err)
 
 	newH := rmd.GetTlfHandle()
-	require.Equal(t, CanonicalTlfName("alice,bob"), newH.GetCanonicalName())
+	require.Equal(t, IFCERFTCanonicalTlfName("alice,bob"), newH.GetCanonicalName())
 
 	// Also check MakeBareTlfHandle.
 	oldHandle := rmd.tlfHandle
@@ -358,7 +358,7 @@ func TestKeyManagerRekeyResolveAgainSuccessPublicSelf(t *testing.T) {
 	require.NoError(t, err)
 
 	newH := rmd.GetTlfHandle()
-	require.Equal(t, CanonicalTlfName("alice,bob,charlie"), newH.GetCanonicalName())
+	require.Equal(t, IFCERFTCanonicalTlfName("alice,bob,charlie"), newH.GetCanonicalName())
 
 	// Also check MakeBareTlfHandle.
 	oldHandle := rmd.tlfHandle
@@ -399,7 +399,7 @@ func TestKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	}
 
 	newH := rmd.GetTlfHandle()
-	require.Equal(t, CanonicalTlfName("alice,bob,dave@twitter#charlie"),
+	require.Equal(t, IFCERFTCanonicalTlfName("alice,bob,dave@twitter#charlie"),
 		newH.GetCanonicalName())
 
 	// Also check MakeBareTlfHandle.
@@ -418,7 +418,7 @@ func TestKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	expectRekey(config, rmd, 1, true)
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), gomock.Any()).
-		Return([]CryptPublicKey{subkey}, nil).Times(3)
+		Return([]IFCERFTCryptPublicKey{subkey}, nil).Times(3)
 	if done, _, err :=
 		config.KeyManager().Rekey(ctx, rmd, false); !done || err != nil {
 		t.Fatalf("Got error on rekey: %t, %v", done, err)
@@ -430,7 +430,7 @@ func TestKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	}
 
 	newH = rmd.GetTlfHandle()
-	require.Equal(t, CanonicalTlfName("alice,bob,dave#charlie"),
+	require.Equal(t, IFCERFTCanonicalTlfName("alice,bob,dave#charlie"),
 		newH.GetCanonicalName())
 
 	// Also check MakeBareTlfHandle.
@@ -470,7 +470,7 @@ func TestKeyManagerPromoteReaderSuccessPrivate(t *testing.T) {
 
 	newH := rmd.GetTlfHandle()
 	require.Equal(t,
-		CanonicalTlfName("alice,bob"),
+		IFCERFTCanonicalTlfName("alice,bob"),
 		newH.GetCanonicalName())
 }
 
@@ -500,7 +500,7 @@ func TestKeyManagerReaderRekeyResolveAgainSuccessPrivate(t *testing.T) {
 
 	newH := rmd.GetTlfHandle()
 	require.Equal(t,
-		CanonicalTlfName("alice,dave@twitter#bob@twitter,charlie@twitter"),
+		IFCERFTCanonicalTlfName("alice,dave@twitter#bob@twitter,charlie@twitter"),
 		newH.GetCanonicalName())
 
 	// Now resolve everyone, but have reader bob to do the rekey
@@ -521,7 +521,7 @@ func TestKeyManagerReaderRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	expectRekey(config, rmd, 1, false)
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), gomock.Any()).
-		Return([]CryptPublicKey{subkey}, nil)
+		Return([]IFCERFTCryptPublicKey{subkey}, nil)
 	if done, _, err :=
 		config.KeyManager().Rekey(ctx, rmd, false); !done || err != nil {
 		t.Fatalf("Got error on rekey: %t, %v", done, err)
@@ -535,7 +535,7 @@ func TestKeyManagerReaderRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	// bob shouldn't have been able to resolve other users since he's
 	// just a reader.
 	newH = rmd.GetTlfHandle()
-	require.Equal(t, CanonicalTlfName("alice,dave@twitter#bob,charlie@twitter"),
+	require.Equal(t, IFCERFTCanonicalTlfName("alice,dave@twitter#bob,charlie@twitter"),
 		newH.GetCanonicalName())
 
 	// Also check MakeBareTlfHandle.
@@ -571,7 +571,7 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 
 	newH := rmd.GetTlfHandle()
 	require.Equal(t,
-		CanonicalTlfName("alice,bob,bob@twitter"),
+		IFCERFTCanonicalTlfName("alice,bob,bob@twitter"),
 		newH.GetCanonicalName())
 
 	// Now resolve everyone, but have reader bob to do the rekey
@@ -583,11 +583,11 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 	oldKeyGen = rmd.LatestKeyGeneration()
 	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(TLFPublicKey{},
 		TLFPrivateKey{}, TLFEphemeralPublicKey{}, TLFEphemeralPrivateKey{},
-		TLFCryptKey{}, nil)
+		IFCERFTTLFCryptKey{}, nil)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), gomock.Any()).
-		Return([]CryptPublicKey{subkey}, nil).Times(2)
+		Return([]IFCERFTCryptPublicKey{subkey}, nil).Times(2)
 	if done, _, err :=
 		config.KeyManager().Rekey(ctx, rmd, false); !done || err != nil {
 		t.Fatalf("Got error on rekey: %t, %v", done, err)
@@ -601,7 +601,7 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 	// bob shouldn't have been able to resolve other users since he's
 	// just a reader.
 	newH = rmd.GetTlfHandle()
-	require.Equal(t, CanonicalTlfName("alice,bob"), newH.GetCanonicalName())
+	require.Equal(t, IFCERFTCanonicalTlfName("alice,bob"), newH.GetCanonicalName())
 
 	// Also check MakeBareTlfHandle.
 	rmd.tlfHandle = nil
@@ -632,7 +632,7 @@ func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 	kbfsOps1 := config1.KBFSOps()
 
 	// user 1 creates a file
-	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoEXCL)
+	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -642,7 +642,7 @@ func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 	kbfsOps2 := config2.KBFSOps()
 
 	// user 2 creates a file
-	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "b", false, NoEXCL)
+	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "b", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -692,7 +692,7 @@ func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 	}
 
 	// user 2 creates another file
-	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "c", false, NoEXCL)
+	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "c", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -737,7 +737,7 @@ func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 	}
 
 	// force re-encryption of the root dir
-	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "d", false, NoEXCL)
+	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "d", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -851,7 +851,7 @@ func TestKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T) {
 	kbfsOps1 := config1.KBFSOps()
 
 	// user 1 creates a file
-	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoEXCL)
+	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -936,7 +936,7 @@ func TestKeyManagerSelfRekeyAcrossDevices(t *testing.T) {
 	kbfsOps1 := config1.KBFSOps()
 
 	t.Log("User 1 creates a file")
-	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoEXCL)
+	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -979,7 +979,7 @@ func TestKeyManagerSelfRekeyAcrossDevices(t *testing.T) {
 	}
 
 	t.Log("User 2 device 2 creates a file")
-	_, _, err = kbfsOps2Dev2.CreateFile(ctx, root2dev2, "b", false, NoEXCL)
+	_, _, err = kbfsOps2Dev2.CreateFile(ctx, root2dev2, "b", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1018,7 +1018,7 @@ func TestKeyManagerReaderRekey(t *testing.T) {
 	kbfsOps1 := config1.KBFSOps()
 
 	t.Log("User 1 creates a file")
-	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoEXCL)
+	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1106,7 +1106,7 @@ func TestKeyManagerReaderRekeyAndRevoke(t *testing.T) {
 	kbfsOps1 := config1.KBFSOps()
 
 	t.Log("User 1 creates a file")
-	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoEXCL)
+	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1202,7 +1202,7 @@ func TestKeyManagerRekeyBit(t *testing.T) {
 	kbfsOps1 := config1.KBFSOps()
 
 	// user 1 creates a file
-	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoEXCL)
+	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1359,7 +1359,7 @@ func TestKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T) {
 	kbfsOps1 := config1.KBFSOps()
 
 	// user 1 creates a file
-	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoEXCL)
+	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1425,7 +1425,7 @@ func TestKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T) {
 	}
 
 	// force re-encryption of the root dir
-	_, _, err = kbfsOps2Dev2.CreateFile(ctx, root2Dev2, "b", false, NoEXCL)
+	_, _, err = kbfsOps2Dev2.CreateFile(ctx, root2Dev2, "b", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1483,7 +1483,7 @@ func TestKeyManagerRekeyAddDeviceWithPrompt(t *testing.T) {
 	kbfsOps1 := config1.KBFSOps()
 
 	// user 1 creates a file
-	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoEXCL)
+	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1553,7 +1553,7 @@ func TestKeyManagerRekeyAddDeviceWithPrompt(t *testing.T) {
 		t.Fatalf("Device 2 couldn't see the dir entry after rekey")
 	}
 	// user 2 creates another file to make a new revision
-	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2Dev2, "b", false, NoEXCL)
+	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2Dev2, "b", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1591,7 +1591,7 @@ func TestKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T) {
 	kbfsOps1 := config1.KBFSOps()
 
 	// user 1 creates a file
-	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoEXCL)
+	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
@@ -1675,7 +1675,7 @@ func TestKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T) {
 		t.Fatalf("Device 2 couldn't see the dir entry after rekey")
 	}
 	// user 2 creates another file to make a new revision
-	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2Dev2, "b", false, NoEXCL)
+	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2Dev2, "b", false, IFCERFTNoEXCL)
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}

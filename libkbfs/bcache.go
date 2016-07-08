@@ -12,7 +12,7 @@ import (
 )
 
 type idCacheKey struct {
-	tlf           TlfID
+	tlf           IFCERFTTlfID
 	plaintextHash RawDefaultHash
 }
 
@@ -66,7 +66,7 @@ func NewBlockCacheStandard(config IFCERFTConfig, transientCapacity int,
 }
 
 // Get implements the BlockCache interface for BlockCacheStandard.
-func (b *BlockCacheStandard) Get(ptr BlockPointer) (IFCERFTBlock, error) {
+func (b *BlockCacheStandard) Get(ptr IFCERFTBlockPointer) (IFCERFTBlock, error) {
 	if b.cleanTransient != nil {
 		if tmp, ok := b.cleanTransient.Get(ptr.ID); ok {
 			block, ok := tmp.(IFCERFTBlock)
@@ -116,14 +116,14 @@ func (b *BlockCacheStandard) onEvict(key interface{}, value interface{}) {
 }
 
 // CheckForKnownPtr implements the BlockCache interface for BlockCacheStandard.
-func (b *BlockCacheStandard) CheckForKnownPtr(tlf TlfID, block *FileBlock) (
-	BlockPointer, error) {
+func (b *BlockCacheStandard) CheckForKnownPtr(tlf IFCERFTTlfID, block *FileBlock) (
+	IFCERFTBlockPointer, error) {
 	if block.IsInd {
-		return BlockPointer{}, NotDirectFileBlockError{}
+		return IFCERFTBlockPointer{}, NotDirectFileBlockError{}
 	}
 
 	if b.ids == nil {
-		return BlockPointer{}, nil
+		return IFCERFTBlockPointer{}, nil
 	}
 
 	_, hash := DoRawDefaultHash(block.Contents)
@@ -131,12 +131,12 @@ func (b *BlockCacheStandard) CheckForKnownPtr(tlf TlfID, block *FileBlock) (
 	key := idCacheKey{tlf, *block.hash}
 	tmp, ok := b.ids.Get(key)
 	if !ok {
-		return BlockPointer{}, nil
+		return IFCERFTBlockPointer{}, nil
 	}
 
-	ptr, ok := tmp.(BlockPointer)
+	ptr, ok := tmp.(IFCERFTBlockPointer)
 	if !ok {
-		return BlockPointer{}, fmt.Errorf("Unexpected cached id: %v", tmp)
+		return IFCERFTBlockPointer{}, fmt.Errorf("Unexpected cached id: %v", tmp)
 	}
 	return ptr, nil
 }
@@ -179,7 +179,7 @@ func (b *BlockCacheStandard) makeRoomForSize(size uint64) bool {
 
 // Put implements the BlockCache interface for BlockCacheStandard.
 func (b *BlockCacheStandard) Put(
-	ptr BlockPointer, tlf TlfID, block IFCERFTBlock, lifetime IFCERFTBlockCacheLifetime) error {
+	ptr IFCERFTBlockPointer, tlf IFCERFTTlfID, block IFCERFTBlock, lifetime IFCERFTBlockCacheLifetime) error {
 	// If it's the right type of block and lifetime, store the
 	// hash -> ID mapping.
 	if fBlock, ok := block.(*FileBlock); b.ids != nil && lifetime == IFCERFTTransientEntry && ok && !fBlock.IsInd {
@@ -234,7 +234,7 @@ func (b *BlockCacheStandard) DeletePermanent(id BlockID) error {
 
 // DeleteTransient implements the BlockCache interface for BlockCacheStandard.
 func (b *BlockCacheStandard) DeleteTransient(
-	ptr BlockPointer, tlf TlfID) error {
+	ptr IFCERFTBlockPointer, tlf IFCERFTTlfID) error {
 	if b.cleanTransient == nil {
 		return nil
 	}
@@ -261,7 +261,7 @@ func (b *BlockCacheStandard) DeleteTransient(
 }
 
 // DeleteKnownPtr implements the BlockCache interface for BlockCacheStandard.
-func (b *BlockCacheStandard) DeleteKnownPtr(tlf TlfID, block *FileBlock) error {
+func (b *BlockCacheStandard) DeleteKnownPtr(tlf IFCERFTTlfID, block *FileBlock) error {
 	if block.IsInd {
 		return NotDirectFileBlockError{}
 	}

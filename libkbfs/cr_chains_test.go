@@ -11,9 +11,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func checkExpectedChains(t *testing.T, expected map[BlockPointer]BlockPointer,
-	expectedRenames map[BlockPointer]renameInfo, expectedRoot BlockPointer,
-	cc *crChains, checkTailPtr bool) {
+func checkExpectedChains(t *testing.T, expected map[IFCERFTBlockPointer]IFCERFTBlockPointer, expectedRenames map[IFCERFTBlockPointer]renameInfo, expectedRoot IFCERFTBlockPointer, cc *crChains, checkTailPtr bool) {
 	if g, e := len(cc.byOriginal), len(expected); g != e {
 		t.Errorf("Wrong number of originals, %v vs %v", g, e)
 	}
@@ -58,12 +56,11 @@ func checkExpectedChains(t *testing.T, expected map[BlockPointer]BlockPointer,
 	}
 }
 
-func testCRInitPtrs(n int) (currPtr byte, ptrs []BlockPointer,
-	revPtrs map[BlockPointer]BlockPointer) {
+func testCRInitPtrs(n int) (currPtr byte, ptrs []IFCERFTBlockPointer, revPtrs map[IFCERFTBlockPointer]IFCERFTBlockPointer) {
 	currPtr = byte(42)
-	revPtrs = make(map[BlockPointer]BlockPointer)
+	revPtrs = make(map[IFCERFTBlockPointer]IFCERFTBlockPointer)
 	for i := 0; i < n; i++ {
-		ptr := BlockPointer{ID: fakeBlockID(currPtr)}
+		ptr := IFCERFTBlockPointer{ID: fakeBlockID(currPtr)}
 		currPtr++
 		ptrs = append(ptrs, ptr)
 		revPtrs[ptr] = ptr
@@ -72,11 +69,9 @@ func testCRInitPtrs(n int) (currPtr byte, ptrs []BlockPointer,
 }
 
 func testCRFillOpPtrs(currPtr byte,
-	expected map[BlockPointer]BlockPointer,
-	revPtrs map[BlockPointer]BlockPointer,
-	affectedPtrs []BlockPointer, op op) (nextCurrPtr byte) {
+	expected map[IFCERFTBlockPointer]IFCERFTBlockPointer, revPtrs map[IFCERFTBlockPointer]IFCERFTBlockPointer, affectedPtrs []IFCERFTBlockPointer, op op) (nextCurrPtr byte) {
 	for _, ptr := range affectedPtrs {
-		newPtr := BlockPointer{ID: fakeBlockID(currPtr)}
+		newPtr := IFCERFTBlockPointer{ID: fakeBlockID(currPtr)}
 		currPtr++
 		op.AddUpdate(ptr, newPtr)
 		expected[revPtrs[ptr]] = newPtr
@@ -86,8 +81,7 @@ func testCRFillOpPtrs(currPtr byte,
 }
 
 // If one of the ops is a rename, it doesn't check for exact equality
-func testCRCheckOps(t *testing.T, cc *crChains, original BlockPointer,
-	expectedOps []op) {
+func testCRCheckOps(t *testing.T, cc *crChains, original IFCERFTBlockPointer, expectedOps []op) {
 	chain, ok := cc.byOriginal[original]
 	if !ok {
 		t.Fatalf("No chain at %v", original)
@@ -130,7 +124,7 @@ func testCRCheckOps(t *testing.T, cc *crChains, original BlockPointer,
 	}
 }
 
-func testCRChainsFillInWriter(t *testing.T, rmds []*RootMetadata) IFCERFTConfig {
+func testCRChainsFillInWriter(t *testing.T, rmds []*IFCERFTRootMetadata) IFCERFTConfig {
 	config := MakeTestConfigOrBust(t, "u1")
 	kbpki := config.KBPKI()
 	_, uid, err := kbpki.GetCurrentUserInfo(context.Background())
@@ -144,28 +138,28 @@ func testCRChainsFillInWriter(t *testing.T, rmds []*RootMetadata) IFCERFTConfig 
 }
 
 func TestCRChainsSingleOp(t *testing.T) {
-	rmd := &RootMetadata{}
+	rmd := &IFCERFTRootMetadata{}
 
 	currPtr, ptrs, revPtrs := testCRInitPtrs(3)
 	rootPtrUnref := ptrs[0]
 	dir1Unref := ptrs[1]
 	dir2Unref := ptrs[2]
-	expected := make(map[BlockPointer]BlockPointer)
+	expected := make(map[IFCERFTBlockPointer]IFCERFTBlockPointer)
 
 	co := newCreateOp("new", dir2Unref, File)
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{rootPtrUnref, dir1Unref, dir2Unref}, co)
+		[]IFCERFTBlockPointer{rootPtrUnref, dir1Unref, dir2Unref}, co)
 	rmd.AddOp(co)
-	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
+	rmd.data.Dir.IFCERFTBlockPointer = expected[rootPtrUnref]
 
-	rmds := []*RootMetadata{rmd}
+	rmds := []*IFCERFTRootMetadata{rmd}
 	config := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
 	cc, err := newCRChains(context.Background(), config, rmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
-	checkExpectedChains(t, expected, make(map[BlockPointer]renameInfo),
+	checkExpectedChains(t, expected, make(map[IFCERFTBlockPointer]renameInfo),
 		rootPtrUnref, cc, true)
 
 	// check for the create op
@@ -173,26 +167,26 @@ func TestCRChainsSingleOp(t *testing.T) {
 }
 
 func TestCRChainsRenameOp(t *testing.T) {
-	rmd := &RootMetadata{}
+	rmd := &IFCERFTRootMetadata{}
 
 	currPtr, ptrs, revPtrs := testCRInitPtrs(3)
 	rootPtrUnref := ptrs[0]
 	dir1Unref := ptrs[1]
 	dir2Unref := ptrs[2]
-	filePtr := BlockPointer{ID: fakeBlockID(currPtr)}
+	filePtr := IFCERFTBlockPointer{ID: fakeBlockID(currPtr)}
 	currPtr++
-	expected := make(map[BlockPointer]BlockPointer)
-	expectedRenames := make(map[BlockPointer]renameInfo)
+	expected := make(map[IFCERFTBlockPointer]IFCERFTBlockPointer)
+	expectedRenames := make(map[IFCERFTBlockPointer]renameInfo)
 
 	oldName, newName := "old", "new"
 	ro := newRenameOp(oldName, dir1Unref, newName, dir2Unref, filePtr, File)
 	expectedRenames[filePtr] = renameInfo{dir1Unref, "old", dir2Unref, "new"}
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{rootPtrUnref, dir1Unref, dir2Unref}, ro)
+		[]IFCERFTBlockPointer{rootPtrUnref, dir1Unref, dir2Unref}, ro)
 	rmd.AddOp(ro)
-	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
+	rmd.data.Dir.IFCERFTBlockPointer = expected[rootPtrUnref]
 
-	rmds := []*RootMetadata{rmd}
+	rmds := []*IFCERFTRootMetadata{rmd}
 	config := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
 	cc, err := newCRChains(context.Background(), config, rmds, nil, true)
@@ -230,33 +224,33 @@ func TestCRChainsMultiOps(t *testing.T) {
 	dir2Unref := ptrs[2]
 	dir3Unref := ptrs[3]
 	file4Unref := ptrs[4]
-	file2Ptr := BlockPointer{ID: fakeBlockID(currPtr)}
+	file2Ptr := IFCERFTBlockPointer{ID: fakeBlockID(currPtr)}
 	currPtr++
-	expected := make(map[BlockPointer]BlockPointer)
-	expectedRenames := make(map[BlockPointer]renameInfo)
+	expected := make(map[IFCERFTBlockPointer]IFCERFTBlockPointer)
+	expectedRenames := make(map[IFCERFTBlockPointer]renameInfo)
 
-	bigRmd := &RootMetadata{}
-	var multiRmds []*RootMetadata
+	bigRmd := &IFCERFTRootMetadata{}
+	var multiRmds []*IFCERFTRootMetadata
 
 	// setex root/dir3/file2
 	op1 := newSetAttrOp(f2, dir3Unref, exAttr, file2Ptr)
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{rootPtrUnref, dir3Unref}, op1)
+		[]IFCERFTBlockPointer{rootPtrUnref, dir3Unref}, op1)
 	expected[file2Ptr] = file2Ptr // no update to the file ptr
 	bigRmd.AddOp(op1)
-	newRmd := &RootMetadata{}
+	newRmd := &IFCERFTRootMetadata{}
 	newRmd.AddOp(op1)
-	newRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
+	newRmd.data.Dir.IFCERFTBlockPointer = expected[rootPtrUnref]
 	multiRmds = append(multiRmds, newRmd)
 
 	// createfile root/dir1/file3
 	op2 := newCreateOp(f3, dir1Unref, File)
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], dir1Unref}, op2)
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], dir1Unref}, op2)
 	bigRmd.AddOp(op2)
-	newRmd = &RootMetadata{}
+	newRmd = &IFCERFTRootMetadata{}
 	newRmd.AddOp(op2)
-	newRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
+	newRmd.data.Dir.IFCERFTBlockPointer = expected[rootPtrUnref]
 	multiRmds = append(multiRmds, newRmd)
 
 	// rename root/dir3/file2 root/dir1/file4
@@ -264,38 +258,38 @@ func TestCRChainsMultiOps(t *testing.T) {
 		expected[dir1Unref], file2Ptr, File)
 	expectedRenames[file2Ptr] = renameInfo{dir3Unref, f2, dir1Unref, f4}
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref],
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], expected[dir1Unref],
 			expected[dir3Unref]}, op3)
 	bigRmd.AddOp(op3)
-	newRmd = &RootMetadata{}
+	newRmd = &IFCERFTRootMetadata{}
 	newRmd.AddOp(op3)
-	newRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
+	newRmd.data.Dir.IFCERFTBlockPointer = expected[rootPtrUnref]
 	multiRmds = append(multiRmds, newRmd)
 
 	// write root/dir1/file4
 	op4 := newSyncOp(file4Unref)
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref], file4Unref},
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], expected[dir1Unref], file4Unref},
 		op4)
 	bigRmd.AddOp(op4)
-	newRmd = &RootMetadata{}
+	newRmd = &IFCERFTRootMetadata{}
 	newRmd.AddOp(op4)
-	newRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
+	newRmd.data.Dir.IFCERFTBlockPointer = expected[rootPtrUnref]
 	multiRmds = append(multiRmds, newRmd)
 
 	// rm root/dir1/dir2/file1
 	op5 := newRmOp(f1, dir2Unref)
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref], dir2Unref},
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], expected[dir1Unref], dir2Unref},
 		op5)
 	bigRmd.AddOp(op5)
-	newRmd = &RootMetadata{}
+	newRmd = &IFCERFTRootMetadata{}
 	newRmd.AddOp(op5)
-	newRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
+	newRmd.data.Dir.IFCERFTBlockPointer = expected[rootPtrUnref]
 	multiRmds = append(multiRmds, newRmd)
 
-	bigRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
-	rmds := []*RootMetadata{bigRmd}
+	bigRmd.data.Dir.IFCERFTBlockPointer = expected[rootPtrUnref]
+	rmds := []*IFCERFTRootMetadata{bigRmd}
 	config := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
 	cc, err := newCRChains(context.Background(), config, rmds, nil, true)
@@ -370,44 +364,44 @@ func TestCRChainsCollapse(t *testing.T) {
 	rootPtrUnref := ptrs[0]
 	dir1Unref := ptrs[1]
 	dir2Unref := ptrs[2]
-	file1Ptr := BlockPointer{ID: fakeBlockID(currPtr)}
+	file1Ptr := IFCERFTBlockPointer{ID: fakeBlockID(currPtr)}
 	currPtr++
-	file4Ptr := BlockPointer{ID: fakeBlockID(currPtr)}
+	file4Ptr := IFCERFTBlockPointer{ID: fakeBlockID(currPtr)}
 	currPtr++
-	expected := make(map[BlockPointer]BlockPointer)
-	expectedRenames := make(map[BlockPointer]renameInfo)
+	expected := make(map[IFCERFTBlockPointer]IFCERFTBlockPointer)
+	expectedRenames := make(map[IFCERFTBlockPointer]renameInfo)
 
-	rmd := &RootMetadata{}
+	rmd := &IFCERFTRootMetadata{}
 
 	// createfile root/dir1/file2
 	op1 := newCreateOp(f2, dir1Unref, File)
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{rootPtrUnref, dir1Unref}, op1)
+		[]IFCERFTBlockPointer{rootPtrUnref, dir1Unref}, op1)
 	rmd.AddOp(op1)
 
 	// setex root/dir2/file1
 	op2 := newSetAttrOp(f1, dir2Unref, exAttr, file1Ptr)
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], dir2Unref}, op2)
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], dir2Unref}, op2)
 	expected[file1Ptr] = file1Ptr
 	rmd.AddOp(op2)
 
 	// createfile root/dir1/file3
 	op3 := newCreateOp(f3, expected[dir1Unref], File)
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op3)
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op3)
 	rmd.AddOp(op3)
 
 	// createfile root/dir1/file4
 	op4 := newCreateOp(f4, expected[dir1Unref], File)
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op4)
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op4)
 	rmd.AddOp(op4)
 
 	// rm root/dir1/file2
 	op5 := newRmOp(f2, expected[dir1Unref])
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op5)
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op5)
 	rmd.AddOp(op5)
 
 	// rename root/dir2/file1 root/dir1/file3
@@ -415,21 +409,21 @@ func TestCRChainsCollapse(t *testing.T) {
 		file1Ptr, File)
 	expectedRenames[file1Ptr] = renameInfo{dir2Unref, f1, dir1Unref, f3}
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref],
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], expected[dir1Unref],
 			expected[dir2Unref]}, op6)
 	rmd.AddOp(op6)
 
 	// rm root/dir1/file3
 	op7 := newRmOp(f3, expected[dir1Unref])
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op7)
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op7)
 	rmd.AddOp(op7)
 
 	// rename root/dir1/file4 root/dir1/file5
 	op8 := newRenameOp(f4, expected[dir1Unref], f5, expected[dir1Unref],
 		file4Ptr, File)
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op8)
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op8)
 	rmd.AddOp(op8)
 
 	// rename root/dir1/file5 root/dir1/file3
@@ -438,11 +432,11 @@ func TestCRChainsCollapse(t *testing.T) {
 	// expected the previous old name, not the new one
 	expectedRenames[file4Ptr] = renameInfo{dir1Unref, f4, dir1Unref, f3}
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
-		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op9)
+		[]IFCERFTBlockPointer{expected[rootPtrUnref], expected[dir1Unref]}, op9)
 	rmd.AddOp(op9)
 
-	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
-	rmds := []*RootMetadata{rmd}
+	rmd.data.Dir.IFCERFTBlockPointer = expected[rootPtrUnref]
+	rmds := []*IFCERFTRootMetadata{rmd}
 	config := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
 	cc, err := newCRChains(context.Background(), config, rmds, nil, true)

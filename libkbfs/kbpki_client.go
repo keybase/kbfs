@@ -52,20 +52,20 @@ func (k *KBPKIClient) GetCurrentUserInfo(ctx context.Context) (
 
 // GetCurrentCryptPublicKey implements the KBPKI interface for KBPKIClient.
 func (k *KBPKIClient) GetCurrentCryptPublicKey(ctx context.Context) (
-	CryptPublicKey, error) {
+	IFCERFTCryptPublicKey, error) {
 	s, err := k.session(ctx)
 	if err != nil {
-		return CryptPublicKey{}, err
+		return IFCERFTCryptPublicKey{}, err
 	}
 	return s.CryptPublicKey, nil
 }
 
 // GetCurrentVerifyingKey implements the KBPKI interface for KBPKIClient.
 func (k *KBPKIClient) GetCurrentVerifyingKey(ctx context.Context) (
-	VerifyingKey, error) {
+	IFCERFTVerifyingKey, error) {
 	s, err := k.session(ctx)
 	if err != nil {
-		return VerifyingKey{}, err
+		return IFCERFTVerifyingKey{}, err
 	}
 	return s.VerifyingKey, nil
 }
@@ -78,7 +78,7 @@ func (k *KBPKIClient) Resolve(ctx context.Context, assertion string) (
 
 // Identify implements the KBPKI interface for KBPKIClient.
 func (k *KBPKIClient) Identify(ctx context.Context, assertion, reason string) (
-	UserInfo, error) {
+	IFCERFTUserInfo, error) {
 	return k.config.KeybaseDaemon().Identify(ctx, assertion, reason)
 }
 
@@ -94,7 +94,7 @@ func (k *KBPKIClient) GetNormalizedUsername(ctx context.Context, uid keybase1.UI
 }
 
 func (k *KBPKIClient) hasVerifyingKey(ctx context.Context, uid keybase1.UID,
-	verifyingKey VerifyingKey, atServerTime time.Time) (bool, error) {
+	verifyingKey IFCERFTVerifyingKey, atServerTime time.Time) (bool, error) {
 	userInfo, err := k.loadUserPlusKeys(ctx, uid)
 	if err != nil {
 		return false, err
@@ -130,7 +130,7 @@ func (k *KBPKIClient) hasVerifyingKey(ctx context.Context, uid keybase1.UID,
 }
 
 func (k *KBPKIClient) hasUnverifiedVerifyingKey(ctx context.Context, uid keybase1.UID,
-	verifyingKey VerifyingKey) (bool, error) {
+	verifyingKey IFCERFTVerifyingKey) (bool, error) {
 	verifyingKeys, _, err := k.loadUnverifiedKeys(ctx, uid)
 	if err != nil {
 		return false, err
@@ -150,7 +150,7 @@ func (k *KBPKIClient) hasUnverifiedVerifyingKey(ctx context.Context, uid keybase
 
 // HasVerifyingKey implements the KBPKI interface for KBPKIClient.
 func (k *KBPKIClient) HasVerifyingKey(ctx context.Context, uid keybase1.UID,
-	verifyingKey VerifyingKey, atServerTime time.Time) error {
+	verifyingKey IFCERFTVerifyingKey, atServerTime time.Time) error {
 	ok, err := k.hasVerifyingKey(ctx, uid, verifyingKey, atServerTime)
 	if err != nil {
 		return err
@@ -176,7 +176,7 @@ func (k *KBPKIClient) HasVerifyingKey(ctx context.Context, uid keybase1.UID,
 
 // HasUnverifiedVerifyingKey implements the KBPKI interface for KBPKIClient.
 func (k *KBPKIClient) HasUnverifiedVerifyingKey(ctx context.Context, uid keybase1.UID,
-	verifyingKey VerifyingKey) error {
+	verifyingKey IFCERFTVerifyingKey) error {
 	ok, err := k.hasUnverifiedVerifyingKey(ctx, uid, verifyingKey)
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func (k *KBPKIClient) HasUnverifiedVerifyingKey(ctx context.Context, uid keybase
 
 // GetCryptPublicKeys implements the KBPKI interface for KBPKIClient.
 func (k *KBPKIClient) GetCryptPublicKeys(ctx context.Context,
-	uid keybase1.UID) (keys []CryptPublicKey, err error) {
+	uid keybase1.UID) (keys []IFCERFTCryptPublicKey, err error) {
 	userInfo, err := k.loadUserPlusKeys(ctx, uid)
 	if err != nil {
 		return nil, err
@@ -206,11 +206,11 @@ func (k *KBPKIClient) GetCryptPublicKeys(ctx context.Context,
 }
 
 func (k *KBPKIClient) loadUserPlusKeys(ctx context.Context, uid keybase1.UID) (
-	UserInfo, error) {
+	IFCERFTUserInfo, error) {
 	return k.config.KeybaseDaemon().LoadUserPlusKeys(ctx, uid)
 }
 
-func (k *KBPKIClient) session(ctx context.Context) (SessionInfo, error) {
+func (k *KBPKIClient) session(ctx context.Context) (IFCERFTSessionInfo, error) {
 	const sessionID = 0
 	return k.config.KeybaseDaemon().CurrentSession(ctx, sessionID)
 }
@@ -237,6 +237,6 @@ func (k *KBPKIClient) Notify(ctx context.Context, notification *keybase1.FSNotif
 }
 
 func (k *KBPKIClient) loadUnverifiedKeys(ctx context.Context, uid keybase1.UID) (
-	[]VerifyingKey, []CryptPublicKey, error) {
+	[]IFCERFTVerifyingKey, []IFCERFTCryptPublicKey, error) {
 	return k.config.KeybaseDaemon().LoadUnverifiedKeys(ctx, uid)
 }
