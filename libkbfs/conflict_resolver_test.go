@@ -57,7 +57,7 @@ func TestCRInput(t *testing.T) {
 	unmergedHead := MetadataRevision(5)
 	mergedHead := MetadataRevision(15)
 
-	cr.fbo.head = &RootMetadata{
+	cr.fbo.head = ConstRootMetadata{&RootMetadata{
 		BareRootMetadata: BareRootMetadata{
 			WriterMetadata: WriterMetadata{
 				ID:     FakeTlfID(0x1, false),
@@ -66,7 +66,7 @@ func TestCRInput(t *testing.T) {
 			Revision: unmergedHead,
 		},
 		tlfHandle: &TlfHandle{name: "fake"},
-	}
+	}}
 	// serve all the MDs from the cache
 	config.mockMdcache.EXPECT().Put(gomock.Any()).AnyTimes().Return(nil)
 	for i := unmergedHead; i >= branchPoint+1; i-- {
@@ -141,7 +141,7 @@ func TestCRInputFracturedRange(t *testing.T) {
 	unmergedHead := MetadataRevision(5)
 	mergedHead := MetadataRevision(15)
 
-	cr.fbo.head = &RootMetadata{
+	cr.fbo.head = ConstRootMetadata{&RootMetadata{
 		BareRootMetadata: BareRootMetadata{
 			WriterMetadata: WriterMetadata{
 				ID:     FakeTlfID(0x1, false),
@@ -150,7 +150,7 @@ func TestCRInputFracturedRange(t *testing.T) {
 			Revision: unmergedHead,
 		},
 		tlfHandle: &TlfHandle{name: "fake"},
-	}
+	}}
 	// serve all the MDs from the cache
 	config.mockMdcache.EXPECT().Put(gomock.Any()).AnyTimes().Return(nil)
 	for i := unmergedHead; i >= branchPoint+1; i-- {

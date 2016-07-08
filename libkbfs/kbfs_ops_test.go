@@ -267,7 +267,7 @@ func injectNewRMD(t *testing.T, config *ConfigMock) (
 	FakeInitialRekey(rmd, h.ToBareHandleOrBust())
 
 	ops := getOps(config, id)
-	ops.head = rmd
+	ops.head = ConstRootMetadata{rmd}
 	rmd.SerializedPrivateMetadata = make([]byte, 1)
 	config.Notifier().RegisterForChanges(
 		[]FolderBranch{{id, MasterBranch}}, config.observer)
@@ -551,7 +551,7 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 	ops := getOps(config, id)
 	assert.False(t, fboIdentityDone(ops))
 
-	ops.head = rmd
+	ops.head = ConstRootMetadata{rmd}
 	n, ei, err :=
 		config.KBFSOps().GetOrCreateRootNode(ctx, h, MasterBranch)
 	require.NoError(t, err)
@@ -720,7 +720,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailNonReader(t *testing.T) {
 	n := nodeFromPath(t, ops, p)
 
 	// won't even try getting the block if the user isn't a reader
-	ops.head = rmd
+	ops.head = ConstRootMetadata{rmd}
 	expectedErr := ReadAccessError{"alice", h.GetCanonicalName(), false}
 	if _, err := config.KBFSOps().GetDirChildren(ctx, n); err == nil {
 		t.Errorf("Got no expected error on getdir")
@@ -761,7 +761,7 @@ func TestKBFSOpsGetNestedDirChildrenCacheSuccess(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = rmd
+	ops.head = ConstRootMetadata{rmd}
 
 	u := h.FirstResolvedWriter()
 
@@ -801,7 +801,7 @@ func TestKBFSOpsLookupSuccess(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = rmd
+	ops.head = ConstRootMetadata{rmd}
 
 	u := h.FirstResolvedWriter()
 
@@ -844,7 +844,7 @@ func TestKBFSOpsLookupSymlinkSuccess(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = rmd
+	ops.head = ConstRootMetadata{rmd}
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -882,7 +882,7 @@ func TestKBFSOpsLookupNoSuchNameFail(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = rmd
+	ops.head = ConstRootMetadata{rmd}
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -917,7 +917,7 @@ func TestKBFSOpsLookupNewDataVersionFail(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = rmd
+	ops.head = ConstRootMetadata{rmd}
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -958,7 +958,7 @@ func TestKBFSOpsStatSuccess(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = rmd
+	ops.head = ConstRootMetadata{rmd}
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -5061,7 +5061,7 @@ func TestKBFSOpsStatRootSuccess(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = rmd
+	ops.head = ConstRootMetadata{rmd}
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -5081,7 +5081,7 @@ func TestKBFSOpsFailingRootOps(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = rmd
+	ops.head = ConstRootMetadata{rmd}
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)

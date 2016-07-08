@@ -625,7 +625,7 @@ type cryptoPure interface {
 	MakeRandomBranchID() (BranchID, error)
 
 	// MakeMdID computes the MD ID of a RootMetadata object.
-	MakeMdID(md *RootMetadata) (MdID, error)
+	MakeMdID(md *BareRootMetadata) (MdID, error)
 
 	// MakeMerkleHash computes the hash of a RootMetadataSigned object
 	// for inclusion into the KBFS Merkle tree.

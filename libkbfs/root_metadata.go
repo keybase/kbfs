@@ -699,7 +699,7 @@ func (md *RootMetadata) MetadataID(crypto cryptoPure) (MdID, error) {
 		return mdID, nil
 	}
 
-	mdID, err := crypto.MakeMdID(md)
+	mdID, err := crypto.MakeMdID(&md.BareRootMetadata)
 	if err != nil {
 		return MdID{}, err
 	}

@@ -1356,7 +1356,7 @@ func (_mr *_MockcryptoPureRecorder) MakeRandomBranchID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomBranchID")
 }
 
-func (_m *MockcryptoPure) MakeMdID(md *RootMetadata) (MdID, error) {
+func (_m *MockcryptoPure) MakeMdID(md *BareRootMetadata) (MdID, error) {
 	ret := _m.ctrl.Call(_m, "MakeMdID", md)
 	ret0, _ := ret[0].(MdID)
 	ret1, _ := ret[1].(error)
@@ -1642,7 +1642,7 @@ func (_mr *_MockCryptoRecorder) MakeRandomBranchID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomBranchID")
 }
 
-func (_m *MockCrypto) MakeMdID(md *RootMetadata) (MdID, error) {
+func (_m *MockCrypto) MakeMdID(md *BareRootMetadata) (MdID, error) {
 	ret := _m.ctrl.Call(_m, "MakeMdID", md)
 	ret0, _ := ret[0].(MdID)
 	ret1, _ := ret[1].(error)
