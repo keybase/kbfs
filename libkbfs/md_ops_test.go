@@ -163,18 +163,13 @@ func TestMDOpsGetForHandlePublicSuccess(t *testing.T) {
 
 	rmds, h := newRMDS(t, config, true)
 
-	// Do this before setting tlfHandle to nil.
 	verifyMDForPublic(config, rmds, nil, nil)
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(NullTlfID, rmds, nil)
 
-	if rmd2, err := config.MDOps().GetForHandle(ctx, h); err != nil {
-		t.Errorf("Got error on get: %v", err)
-	} else if rmd2.ID != rmds.MD.ID {
-		t.Errorf("Got back wrong id on get: %v (expected %v)", rmd2.ID, rmds.MD.ID)
-	} else if &rmd2.BareRootMetadata != &rmds.MD {
-		t.Errorf("Got back wrong data on get: %v (expected %v)", rmd2, &rmds.MD)
-	}
+	rmd2, err := config.MDOps().GetForHandle(ctx, h)
+	require.NoError(t, err)
+	require.Equal(t, rmds.MD, rmd2.BareRootMetadata)
 }
 
 func TestMDOpsGetForHandlePrivateSuccess(t *testing.T) {
@@ -183,18 +178,13 @@ func TestMDOpsGetForHandlePrivateSuccess(t *testing.T) {
 
 	rmds, h := newRMDS(t, config, false)
 
-	// Do this before setting tlfHandle to nil.
 	verifyMDForPrivate(config, rmds)
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(NullTlfID, rmds, nil)
 
-	if rmd2, err := config.MDOps().GetForHandle(ctx, h); err != nil {
-		t.Errorf("Got error on get: %v", err)
-	} else if rmd2.ID != rmds.MD.ID {
-		t.Errorf("Got back wrong id on get: %v (expected %v)", rmd2.ID, rmds.MD.ID)
-	} else if &rmd2.BareRootMetadata != &rmds.MD {
-		t.Errorf("Got back wrong data on get: %v (expected %v)", rmd2, &rmds.MD)
-	}
+	rmd2, err := config.MDOps().GetForHandle(ctx, h)
+	require.NoError(t, err)
+	require.Equal(t, rmds.MD, rmd2.BareRootMetadata)
 }
 
 func TestMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T) {
