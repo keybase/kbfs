@@ -2209,11 +2209,11 @@ func (cr *ConflictResolver) makeRevertedOps(ctx context.Context,
 // the other operations.
 func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 	lState *lockState, unmergedPaths []path, unmergedChains *crChains,
-	mergedChains *crChains) (ConstRootMetadata, error) {
+	mergedChains *crChains) (*RootMetadata, error) {
 	currMD := mergedChains.mostRecentMD
 	newMD, err := currMD.MakeSuccessor(cr.config, true)
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return nil, err
 	}
 
 	// We also need to add in any creates that happened within
@@ -2239,7 +2239,7 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 				newCreateOp.Dir, err = makeBlockUpdate(
 					chain.mostRecent, chain.mostRecent)
 				if err != nil {
-					return ConstRootMetadata{}, err
+					return nil, err
 				}
 				chain.ops[i] = &newCreateOp
 				if !added {
@@ -2258,7 +2258,7 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 				ptr, err :=
 					unmergedChains.mostRecentFromOriginalOrSame(cop.Refs()[0])
 				if err != nil {
-					return ConstRootMetadata{}, err
+					return nil, err
 				}
 				file := path{
 					FolderBranch: cr.fbo.folderBranch,
@@ -2267,7 +2267,7 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 				fblock, err := cr.fbo.blocks.GetFileBlockForReading(ctx, lState,
 					MakeConstRootMetadata(unmergedChains.mostRecentMD), ptr, file.Branch, file)
 				if err != nil {
-					return ConstRootMetadata{}, err
+					return nil, err
 				}
 				if fblock.IsInd {
 					newCreateOp.RefBlocks = make([]BlockPointer,
@@ -2289,7 +2289,7 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 	ops, err := cr.makeRevertedOps(
 		ctx, lState, unmergedPaths, unmergedChains, mergedChains)
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return nil, err
 	}
 
 	cr.log.CDebugf(ctx, "Remote notifications: %v", ops)
@@ -2301,7 +2301,7 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 	// Add a final dummy operation to collect all of the block updates.
 	newMD.AddOp(newResolutionOp())
 
-	return MakeConstRootMetadata(newMD), nil
+	return newMD, nil
 }
 
 // crFixOpPointers takes in a slice of "reverted" ops (all referring
@@ -3160,14 +3160,14 @@ func (cr *ConflictResolver) completeResolution(ctx context.Context,
 		return err
 	}
 
-	resolvedPaths, err := cr.makePostResolutionPaths(ctx, md.RootMetadata, unmergedChains,
+	resolvedPaths, err := cr.makePostResolutionPaths(ctx, md, unmergedChains,
 		mergedChains, mergedPaths)
 	if err != nil {
 		return err
 	}
 
 	updates, bps, err := cr.syncBlocks(
-		ctx, lState, md.RootMetadata, unmergedChains, mergedChains,
+		ctx, lState, md, unmergedChains, mergedChains,
 		resolvedPaths, lbc, newFileBlocks)
 	if err != nil {
 		return err
@@ -3182,17 +3182,18 @@ func (cr *ConflictResolver) completeResolution(ctx context.Context,
 
 	defer func() {
 		if err != nil {
-			cr.fbo.fbm.cleanUpBlockState(md, bps, blockDeleteOnMDFail)
+			cr.fbo.fbm.cleanUpBlockState(
+				MakeConstRootMetadata(md), bps, blockDeleteOnMDFail)
 		}
 	}()
 
 	// Put all the blocks.  TODO: deal with recoverable block errors?
-	_, err = cr.fbo.doBlockPuts(ctx, md, *bps)
+	_, err = cr.fbo.doBlockPuts(ctx, ConstRootMetadata{md}, *bps)
 	if err != nil {
 		return err
 	}
 
-	err = cr.finalizeResolution(ctx, lState, md.RootMetadata, unmergedChains,
+	err = cr.finalizeResolution(ctx, lState, md, unmergedChains,
 		mergedChains, updates, bps)
 	if err != nil {
 		return err
