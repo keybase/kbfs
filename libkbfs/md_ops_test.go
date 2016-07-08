@@ -389,11 +389,9 @@ func TestMDOpsGetSuccess(t *testing.T) {
 
 	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.ID, NullBranchID, Merged).Return(rmds, nil)
 
-	if rmd2, err := config.MDOps().GetForTLF(ctx, rmds.MD.ID); err != nil {
-		t.Errorf("Got error on get: %v", err)
-	} else if &rmd2.BareRootMetadata != &rmds.MD {
-		t.Errorf("Got back wrong data on get: %v (expected %v)", rmd2, &rmds.MD)
-	}
+	rmd2, err := config.MDOps().GetForTLF(ctx, rmds.MD.ID)
+	require.NoError(t, err)
+	require.Equal(t, rmds.MD, rmd2.BareRootMetadata)
 }
 
 func TestMDOpsGetBlankSigFailure(t *testing.T) {
