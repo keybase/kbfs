@@ -191,6 +191,10 @@ type ConstRootMetadata struct {
 	*RootMetadata
 }
 
+func MakeConstRootMetadata(rmd *RootMetadata) ConstRootMetadata {
+	return ConstRootMetadata{rmd}
+}
+
 func (md *BareRootMetadata) haveOnlyUserRKeysChanged(codec Codec, prevMD *RootMetadata, user keybase1.UID) (bool, error) {
 	// Require the same number of generations
 	if len(md.RKeys) != len(prevMD.RKeys) {
@@ -778,7 +782,7 @@ func (md *RootMetadata) isReadableOrError(ctx context.Context, config Config) er
 	if err != nil {
 		return err
 	}
-	return makeRekeyReadError(ConstRootMetadata{md}, resolvedHandle, md.LatestKeyGeneration(),
+	return makeRekeyReadError(MakeConstRootMetadata(md), resolvedHandle, md.LatestKeyGeneration(),
 		uid, username)
 }
 

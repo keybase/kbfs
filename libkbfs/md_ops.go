@@ -181,7 +181,7 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	// Try to decrypt using the keys available in this md.  If that
 	// doesn't work, a future MD may contain more keys and will be
 	// tried later.
-	err = decryptMDPrivateData(ctx, md.config, &rmds.MD, ConstRootMetadata{&rmds.MD})
+	err = decryptMDPrivateData(ctx, md.config, &rmds.MD, MakeConstRootMetadata(&rmds.MD))
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 		// Need to keep the TLF handle around long enough to
 		// rekey the metadata for the first time.
 		rmd.tlfHandle = handle
-		return ConstRootMetadata{&rmd}, nil
+		return MakeConstRootMetadata(&rmd), nil
 	}
 
 	bareMdHandle, err := rmds.MD.MakeBareTlfHandle()
@@ -271,7 +271,7 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 		return ConstRootMetadata{}, err
 	}
 
-	return ConstRootMetadata{&rmds.MD}, nil
+	return MakeConstRootMetadata(&rmds.MD), nil
 }
 
 // GetForHandle implements the MDOps interface for MDOpsStandard.
@@ -330,7 +330,7 @@ func (md *MDOpsStandard) getForTLF(ctx context.Context, id TlfID,
 	if err != nil {
 		return ConstRootMetadata{}, err
 	}
-	return ConstRootMetadata{&rmds.MD}, nil
+	return MakeConstRootMetadata(&rmds.MD), nil
 }
 
 // GetForTLF implements the MDOps interface for MDOpsStandard.
@@ -379,7 +379,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 			return nil, err
 		}
 		prevMD = &r.MD
-		rmd = append(rmd, ConstRootMetadata{&r.MD})
+		rmd = append(rmd, MakeConstRootMetadata(&r.MD))
 	}
 
 	// TODO: in the case where lastRoot == MdID{}, should we verify
@@ -441,7 +441,7 @@ func (md *MDOpsStandard) readyMD(ctx context.Context, rmd *RootMetadata) (
 			rmd.SerializedPrivateMetadata = encodedPrivateMetadata
 		} else if !rmd.IsWriterMetadataCopiedSet() {
 			// Encrypt and encode the private metadata
-			k, err := md.config.KeyManager().GetTLFCryptKeyForEncryption(ctx, ConstRootMetadata{rmd})
+			k, err := md.config.KeyManager().GetTLFCryptKeyForEncryption(ctx, MakeConstRootMetadata(rmd))
 			if err != nil {
 				return nil, err
 			}

@@ -351,7 +351,7 @@ func (cr *ConflictResolver) getPathsFromChains(ctx context.Context,
 	}
 
 	nodeMap, err := cr.fbo.blocks.SearchForNodes(
-		ctx, nodeCache, ptrs, newPtrs, ConstRootMetadata{chains.mostRecentMD})
+		ctx, nodeCache, ptrs, newPtrs, MakeConstRootMetadata(chains.mostRecentMD))
 	if err != nil {
 		return nil, err
 	}
@@ -581,7 +581,7 @@ func (cr *ConflictResolver) addChildBlocksIfIndirectFile(ctx context.Context,
 	// For files with indirect pointers, and all child blocks
 	// as refblocks for the re-created file.
 	fblock, err := cr.fbo.blocks.GetFileBlockForReading(ctx, lState,
-		ConstRootMetadata{unmergedChains.mostRecentMD}, mostRecent, currPath.Branch, currPath)
+		MakeConstRootMetadata(unmergedChains.mostRecentMD), mostRecent, currPath.Branch, currPath)
 	if err != nil {
 		return err
 	}
@@ -693,7 +693,7 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 		}
 
 		de, err := cr.fbo.blocks.GetDirtyEntry(
-			ctx, lState, ConstRootMetadata{unmergedChains.mostRecentMD}, currPath)
+			ctx, lState, MakeConstRootMetadata(unmergedChains.mostRecentMD), currPath)
 		if err != nil {
 			return path{}, BlockPointer{}, nil, err
 		}
@@ -937,7 +937,7 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 
 	mergedNodeCache := newNodeCacheStandard(cr.fbo.folderBranch)
 	nodeMap, err := cr.fbo.blocks.SearchForNodes(
-		ctx, mergedNodeCache, ptrs, newPtrs, ConstRootMetadata{mergedChains.mostRecentMD})
+		ctx, mergedNodeCache, ptrs, newPtrs, MakeConstRootMetadata(mergedChains.mostRecentMD))
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -1458,7 +1458,7 @@ func (cr *ConflictResolver) fixRenameConflicts(ctx context.Context,
 
 	mergedNodeCache := newNodeCacheStandard(cr.fbo.folderBranch)
 	nodeMap, err := cr.fbo.blocks.SearchForNodes(
-		ctx, mergedNodeCache, ptrs, newPtrs, ConstRootMetadata{mergedChains.mostRecentMD})
+		ctx, mergedNodeCache, ptrs, newPtrs, MakeConstRootMetadata(mergedChains.mostRecentMD))
 	if err != nil {
 		return nil, err
 	}
@@ -1855,7 +1855,7 @@ func (cr *ConflictResolver) makeFileBlockDeepCopy(ctx context.Context,
 	name string, ptr BlockPointer, blocks fileBlockMap) (
 	BlockPointer, error) {
 	md := chains.mostRecentMD
-	fblock, err := cr.fbo.blocks.GetFileBlockForReading(ctx, lState, ConstRootMetadata{md}, ptr,
+	fblock, err := cr.fbo.blocks.GetFileBlockForReading(ctx, lState, MakeConstRootMetadata(md), ptr,
 		parentPath.Branch, parentPath.ChildPath(name, ptr))
 	if err != nil {
 		return BlockPointer{}, err
@@ -1980,7 +1980,7 @@ func (cr *ConflictResolver) doActions(ctx context.Context,
 		actions := actionMap[mergedPath.tailPointer()]
 		// Now get the directory blocks.
 		unmergedBlock, err := cr.fetchDirBlockCopy(ctx,
-			lState, ConstRootMetadata{unmergedChains.mostRecentMD}, unmergedPath, lbc)
+			lState, MakeConstRootMetadata(unmergedChains.mostRecentMD), unmergedPath, lbc)
 		if err != nil {
 			return err
 		}
@@ -1995,7 +1995,7 @@ func (cr *ConflictResolver) doActions(ctx context.Context,
 			lbc[mergedPath.tailPointer()] = mergedBlock
 		} else {
 			mergedBlock, err = cr.fetchDirBlockCopy(ctx,
-				lState, ConstRootMetadata{mergedChains.mostRecentMD}, mergedPath,
+				lState, MakeConstRootMetadata(mergedChains.mostRecentMD), mergedPath,
 				lbc)
 			if err != nil {
 				return err
@@ -2041,7 +2041,7 @@ func (cr *ConflictResolver) doActions(ctx context.Context,
 						// a copy since this will just be a source
 						// block.
 						dBlock, err := cr.fbo.blocks.GetDirBlockForReading(ctx, lState,
-							ConstRootMetadata{mergedChains.mostRecentMD}, newPtr,
+							MakeConstRootMetadata(mergedChains.mostRecentMD), newPtr,
 							mergedPath.Branch, path{})
 						if err != nil {
 							return err
@@ -2265,7 +2265,7 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 					path:         []pathNode{{BlockPointer: ptr}},
 				}
 				fblock, err := cr.fbo.blocks.GetFileBlockForReading(ctx, lState,
-					ConstRootMetadata{unmergedChains.mostRecentMD}, ptr, file.Branch, file)
+					MakeConstRootMetadata(unmergedChains.mostRecentMD), ptr, file.Branch, file)
 				if err != nil {
 					return ConstRootMetadata{}, err
 				}
@@ -2301,7 +2301,7 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 	// Add a final dummy operation to collect all of the block updates.
 	newMD.AddOp(newResolutionOp())
 
-	return ConstRootMetadata{newMD}, nil
+	return MakeConstRootMetadata(newMD), nil
 }
 
 // crFixOpPointers takes in a slice of "reverted" ops (all referring
@@ -2430,7 +2430,7 @@ func (cr *ConflictResolver) resolveOnePath(ctx context.Context,
 
 			nodeMap, err := cr.fbo.blocks.SearchForNodes(
 				ctx, cr.fbo.nodeCache, ptrs, newPtrs,
-				ConstRootMetadata{unmergedChains.mostRecentMD})
+				MakeConstRootMetadata(unmergedChains.mostRecentMD))
 			if err != nil {
 				return path{}, err
 			}
@@ -2684,7 +2684,7 @@ func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 			// from other sources as well (such as its directory entry
 			// or its indirect file block) if we happened to have come
 			// across it before.
-			block, err = cr.fbo.blocks.GetBlockForReading(ctx, lState, ConstRootMetadata{md}, ptr,
+			block, err = cr.fbo.blocks.GetBlockForReading(ctx, lState, MakeConstRootMetadata(md), ptr,
 				cr.fbo.branch())
 			if err != nil {
 				return err
@@ -2720,7 +2720,7 @@ func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 		}
 
 		block, err := cr.fbo.blocks.GetBlockForReading(ctx, lState,
-			ConstRootMetadata{mergedChains.mostRecentMD}, ptr, cr.fbo.branch())
+			MakeConstRootMetadata(mergedChains.mostRecentMD), ptr, cr.fbo.branch())
 		if err != nil {
 			cr.log.CDebugf(ctx, "Got err reading %v", ptr)
 			return err
@@ -3098,7 +3098,7 @@ func (cr *ConflictResolver) getOpsForLocalNotification(ctx context.Context,
 	// that we can correctly order the chains from the root outward.
 	mergedNodeCache := newNodeCacheStandard(cr.fbo.folderBranch)
 	nodeMap, err := cr.fbo.blocks.SearchForNodes(
-		ctx, mergedNodeCache, ptrs, newPtrs, ConstRootMetadata{md})
+		ctx, mergedNodeCache, ptrs, newPtrs, MakeConstRootMetadata(md))
 	if err != nil {
 		return nil, err
 	}

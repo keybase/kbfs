@@ -150,7 +150,7 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	expectBlockDecrypt(config, rmd, blockPtr, encData, decData, nil)
 
 	var gotBlock TestBlock
-	err := config.BlockOps().Get(ctx, ConstRootMetadata{rmd}, blockPtr, &gotBlock)
+	err := config.BlockOps().Get(ctx, MakeConstRootMetadata(rmd), blockPtr, &gotBlock)
 	if err != nil {
 		t.Fatalf("Got error on get: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestBlockOpsGetFailGet(t *testing.T) {
 	config.mockBserv.EXPECT().Get(ctx, id, rmd.ID, blockPtr.BlockContext).Return(
 		nil, BlockCryptKeyServerHalf{}, err)
 
-	if err2 := config.BlockOps().Get(ctx, ConstRootMetadata{rmd}, blockPtr, nil); err2 != err {
+	if err2 := config.BlockOps().Get(ctx, MakeConstRootMetadata(rmd), blockPtr, nil); err2 != err {
 		t.Errorf("Got bad error: %v", err2)
 	}
 }
@@ -191,7 +191,7 @@ func TestBlockOpsGetFailVerify(t *testing.T) {
 		encData, BlockCryptKeyServerHalf{}, nil)
 	config.mockCrypto.EXPECT().VerifyBlockID(encData, id).Return(err)
 
-	if err2 := config.BlockOps().Get(ctx, ConstRootMetadata{rmd}, blockPtr, nil); err2 != err {
+	if err2 := config.BlockOps().Get(ctx, MakeConstRootMetadata(rmd), blockPtr, nil); err2 != err {
 		t.Errorf("Got bad error: %v", err2)
 	}
 }
@@ -211,7 +211,7 @@ func TestBlockOpsGetFailDecryptBlockData(t *testing.T) {
 
 	expectBlockDecrypt(config, rmd, blockPtr, encData, TestBlock{}, err)
 
-	if err2 := config.BlockOps().Get(ctx, ConstRootMetadata{rmd}, blockPtr, nil); err2 != err {
+	if err2 := config.BlockOps().Get(ctx, MakeConstRootMetadata(rmd), blockPtr, nil); err2 != err {
 		t.Errorf("Got bad error: %v", err2)
 	}
 }
@@ -232,7 +232,7 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 	config.mockCrypto.EXPECT().MakePermanentBlockID(encData).Return(id, nil)
 
 	id2, plainSize, readyBlockData, err :=
-		config.BlockOps().Ready(ctx, ConstRootMetadata{rmd}, decData)
+		config.BlockOps().Ready(ctx, MakeConstRootMetadata(rmd), decData)
 	if err != nil {
 		t.Errorf("Got error on ready: %v", err)
 	} else if id2 != id {
@@ -256,7 +256,7 @@ func TestBlockOpsReadyFailTooLowByteCount(t *testing.T) {
 
 	expectBlockEncrypt(config, rmd, decData, 4, encData, nil)
 
-	_, _, _, err := config.BlockOps().Ready(ctx, ConstRootMetadata{rmd}, decData)
+	_, _, _, err := config.BlockOps().Ready(ctx, MakeConstRootMetadata(rmd), decData)
 	if _, ok := err.(TooLowByteCountError); !ok {
 		t.Errorf("Unexpectedly did not get TooLowByteCountError; "+
 			"instead got %v", err)
@@ -276,7 +276,7 @@ func TestBlockOpsReadyFailEncryptBlockData(t *testing.T) {
 	expectBlockEncrypt(config, rmd, decData, 0, nil, err)
 
 	if _, _, _, err2 := config.BlockOps().
-		Ready(ctx, ConstRootMetadata{rmd}, decData); err2 != err {
+		Ready(ctx, MakeConstRootMetadata(rmd), decData); err2 != err {
 		t.Errorf("Got bad error on ready: %v", err2)
 	}
 }
@@ -297,7 +297,7 @@ func TestBlockOpsReadyFailMakePermanentBlockID(t *testing.T) {
 	config.mockCrypto.EXPECT().MakePermanentBlockID(encData).Return(fakeBlockID(0), err)
 
 	if _, _, _, err2 := config.BlockOps().
-		Ready(ctx, ConstRootMetadata{rmd}, decData); err2 != err {
+		Ready(ctx, MakeConstRootMetadata(rmd), decData); err2 != err {
 		t.Errorf("Got bad error on ready: %v", err2)
 	}
 }
@@ -321,7 +321,7 @@ func TestBlockOpsPutNewBlockSuccess(t *testing.T) {
 		readyBlockData.buf, readyBlockData.serverHalf).Return(nil)
 
 	if err := config.BlockOps().
-		Put(ctx, ConstRootMetadata{rmd}, blockPtr, readyBlockData); err != nil {
+		Put(ctx, MakeConstRootMetadata(rmd), blockPtr, readyBlockData); err != nil {
 		t.Errorf("Got error on put: %v", err)
 	}
 }
@@ -351,7 +351,7 @@ func TestBlockOpsPutIncRefSuccess(t *testing.T) {
 		Return(nil)
 
 	if err := config.BlockOps().
-		Put(ctx, ConstRootMetadata{rmd}, blockPtr, readyBlockData); err != nil {
+		Put(ctx, MakeConstRootMetadata(rmd), blockPtr, readyBlockData); err != nil {
 		t.Errorf("Got error on put: %v", err)
 	}
 }
@@ -377,7 +377,7 @@ func TestBlockOpsPutFail(t *testing.T) {
 		readyBlockData.buf, readyBlockData.serverHalf).Return(err)
 
 	if err2 := config.BlockOps().
-		Put(ctx, ConstRootMetadata{rmd}, blockPtr, readyBlockData); err2 != err {
+		Put(ctx, MakeConstRootMetadata(rmd), blockPtr, readyBlockData); err2 != err {
 		t.Errorf("Got bad error on put: %v", err2)
 	}
 }
@@ -399,7 +399,7 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 	config.mockBserv.EXPECT().RemoveBlockReference(ctx, rmd.ID, contexts).
 		Return(liveCounts, nil)
 
-	if _, err := config.BlockOps().Delete(ctx, ConstRootMetadata{rmd}, blockPtrs); err != nil {
+	if _, err := config.BlockOps().Delete(ctx, MakeConstRootMetadata(rmd), blockPtrs); err != nil {
 		t.Errorf("Got error on delete: %v", err)
 	}
 }
@@ -422,7 +422,7 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 	config.mockBserv.EXPECT().RemoveBlockReference(ctx, rmd.ID, contexts).
 		Return(liveCounts, err)
 
-	if _, err2 := config.BlockOps().Delete(ctx, ConstRootMetadata{rmd}, blockPtrs); err2 != err {
+	if _, err2 := config.BlockOps().Delete(ctx, MakeConstRootMetadata(rmd), blockPtrs); err2 != err {
 		t.Errorf("Got bad error on delete: %v", err2)
 	}
 }
