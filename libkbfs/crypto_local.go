@@ -94,9 +94,9 @@ func NewCryptoLocal(config IFCERFTConfig, signingKey SigningKey, cryptPrivateKey
 
 // Sign implements the Crypto interface for CryptoLocal.
 func (c *CryptoLocal) Sign(ctx context.Context, msg []byte) (
-	sigInfo SignatureInfo, err error) {
-	sigInfo = SignatureInfo{
-		Version:      SigED25519,
+	sigInfo IFCERFTSignatureInfo, err error) {
+	sigInfo = IFCERFTSignatureInfo{
+		Version:      IFCERFTSigED25519,
 		Signature:    c.signingKey.kp.Private.Sign(msg)[:],
 		VerifyingKey: c.signingKey.GetVerifyingKey(),
 	}
@@ -110,10 +110,9 @@ func (c *CryptoLocal) SignToString(ctx context.Context, msg []byte) (
 	return
 }
 
-func (c *CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf EncryptedTLFCryptKeyClientHalf,
-	clientHalf TLFCryptKeyClientHalf) (
+func (c *CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf, clientHalf TLFCryptKeyClientHalf) (
 	nonce [24]byte, err error) {
-	if encryptedClientHalf.Version != EncryptionSecretbox {
+	if encryptedClientHalf.Version != IFCERFTEncryptionSecretbox {
 		err = UnknownEncryptionVer{encryptedClientHalf.Version}
 		return
 	}
@@ -136,8 +135,7 @@ func (c *CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf Encrypted
 // DecryptTLFCryptKeyClientHalf implements the Crypto interface for
 // CryptoLocal.
 func (c *CryptoLocal) DecryptTLFCryptKeyClientHalf(ctx context.Context,
-	publicKey TLFEphemeralPublicKey,
-	encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (
+	publicKey IFCERFTTLFEphemeralPublicKey, encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf) (
 	clientHalf TLFCryptKeyClientHalf, err error) {
 	nonce, err := c.prepareTLFCryptKeyClientHalf(encryptedClientHalf, clientHalf)
 	if err != nil {
@@ -162,7 +160,7 @@ func (c *CryptoLocal) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 // DecryptTLFCryptKeyClientHalfAny implements the Crypto interface for
 // CryptoLocal.
 func (c *CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
-	keys []EncryptedTLFCryptKeyClientAndEphemeral, _ bool) (
+	keys []IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, _ bool) (
 	clientHalf TLFCryptKeyClientHalf, index int, err error) {
 	if len(keys) == 0 {
 		return clientHalf, index, NoKeysError{}

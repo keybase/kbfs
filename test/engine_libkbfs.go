@@ -164,7 +164,7 @@ func (k *LibKBFS) GetRootDir(u User, tlfName string, isPublic bool, expectedCano
 	}
 
 	dir, _, err = config.KBFSOps().GetOrCreateRootNode(
-		ctx, h, libkbfs.MasterBranch)
+		ctx, h, libkbfs.IFCERFTMasterBranch)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +309,7 @@ func (k *LibKBFS) Lookup(u User, parentDir Node, name string) (file Node, symPat
 	if file != nil {
 		k.refs[config][file.(libkbfs.IFCERFTNode)] = true
 	}
-	if ei.Type == libkbfs.Sym {
+	if ei.Type == libkbfs.IFCERFTSym {
 		symPath = ei.SymPath
 	}
 	if file == nil {
@@ -385,7 +385,7 @@ func getRootNode(ctx context.Context, config libkbfs.IFCERFTConfig, tlfName stri
 	}
 
 	kbfsOps := config.KBFSOps()
-	dir, _, err := kbfsOps.GetOrCreateRootNode(ctx, h, libkbfs.MasterBranch)
+	dir, _, err := kbfsOps.GetOrCreateRootNode(ctx, h, libkbfs.IFCERFTMasterBranch)
 	if err != nil {
 		return nil, err
 	}

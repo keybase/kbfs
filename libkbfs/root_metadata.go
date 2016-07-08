@@ -27,14 +27,14 @@ type PrivateMetadata struct {
 	// m_f as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
 	TLFPrivateKey TLFPrivateKey
 	// The block changes done as part of the update that created this MD
-	Changes BlockChanges
+	Changes IFCERFTBlockChanges
 
 	codec.UnknownFieldSetHandler
 
 	// When the above Changes field gets unembedded into its own
 	// block, we may want to temporarily keep around the old
 	// BlockChanges for easy reference.
-	cachedChanges BlockChanges
+	cachedChanges IFCERFTBlockChanges
 }
 
 // MetadataFlags bitfield.
@@ -133,7 +133,7 @@ type IFCERFTRootMetadata struct {
 
 	// The signature for the writer metadata, to prove
 	// that it's only been changed by writers.
-	WriterMetadataSigInfo SignatureInfo
+	WriterMetadataSigInfo IFCERFTSignatureInfo
 
 	// The last KB user who modified this RootMetadata
 	LastModifyingUser keybase1.UID
@@ -238,11 +238,11 @@ func (md *IFCERFTRootMetadata) IsValidRekeyRequest(codec IFCERFTCodec, prevMd *I
 
 // MergedStatus returns the status of this update -- has it been
 // merged into the main folder or not?
-func (md *IFCERFTRootMetadata) MergedStatus() MergeStatus {
+func (md *IFCERFTRootMetadata) MergedStatus() IFCERFTMergeStatus {
 	if md.WFlags&MetadataFlagUnmerged != 0 {
-		return Unmerged
+		return IFCERFTUnmerged
 	}
-	return Merged
+	return IFCERFTMerged
 }
 
 // IsRekeySet returns true if the rekey bit is set.
@@ -494,15 +494,15 @@ func (md *IFCERFTRootMetadata) CheckValidSuccessorForServer(
 	return nil
 }
 
-func (md *IFCERFTRootMetadata) getTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundle, *TLFReaderKeyBundle, error) {
+func (md *IFCERFTRootMetadata) getTLFKeyBundles(keyGen IFCERFTKeyGen) (*TLFWriterKeyBundle, *TLFReaderKeyBundle, error) {
 	if md.ID.IsPublic() {
 		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundle"}
 	}
 
-	if keyGen < FirstValidKeyGen {
+	if keyGen < IFCERFTFirstValidKeyGen {
 		return nil, nil, InvalidKeyGenerationError{md.GetTlfHandle(), keyGen}
 	}
-	i := int(keyGen - FirstValidKeyGen)
+	i := int(keyGen - IFCERFTFirstValidKeyGen)
 	if i >= len(md.WKeys) || i >= len(md.RKeys) {
 		return nil, nil, NewKeyGenerationError{md.GetTlfHandle(), keyGen}
 	}
@@ -511,7 +511,7 @@ func (md *IFCERFTRootMetadata) getTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBun
 
 // GetTLFCryptKeyInfo returns the TLFCryptKeyInfo entry for the given user
 // and device at the given key generation.
-func (md *IFCERFTRootMetadata) GetTLFCryptKeyInfo(keyGen KeyGen, user keybase1.UID,
+func (md *IFCERFTRootMetadata) GetTLFCryptKeyInfo(keyGen IFCERFTKeyGen, user keybase1.UID,
 	currentCryptPublicKey IFCERFTCryptPublicKey) (
 	info TLFCryptKeyInfo, ok bool, err error) {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
@@ -532,7 +532,7 @@ func (md *IFCERFTRootMetadata) GetTLFCryptKeyInfo(keyGen KeyGen, user keybase1.U
 
 // GetTLFCryptPublicKeys returns the public crypt keys for the given user
 // at the given key generation.
-func (md *IFCERFTRootMetadata) GetTLFCryptPublicKeys(keyGen KeyGen, user keybase1.UID) (
+func (md *IFCERFTRootMetadata) GetTLFCryptPublicKeys(keyGen IFCERFTKeyGen, user keybase1.UID) (
 	[]keybase1.KID, bool) {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
@@ -550,20 +550,20 @@ func (md *IFCERFTRootMetadata) GetTLFCryptPublicKeys(keyGen KeyGen, user keybase
 // GetTLFEphemeralPublicKey returns the ephemeral public key used for
 // the TLFCryptKeyInfo for the given user and device.
 func (md *IFCERFTRootMetadata) GetTLFEphemeralPublicKey(
-	keyGen KeyGen, user keybase1.UID,
-	currentCryptPublicKey IFCERFTCryptPublicKey) (TLFEphemeralPublicKey, error) {
+	keyGen IFCERFTKeyGen, user keybase1.UID,
+	currentCryptPublicKey IFCERFTCryptPublicKey) (IFCERFTTLFEphemeralPublicKey, error) {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
-		return TLFEphemeralPublicKey{}, err
+		return IFCERFTTLFEphemeralPublicKey{}, err
 	}
 
 	info, ok, err := md.GetTLFCryptKeyInfo(
 		keyGen, user, currentCryptPublicKey)
 	if err != nil {
-		return TLFEphemeralPublicKey{}, err
+		return IFCERFTTLFEphemeralPublicKey{}, err
 	}
 	if !ok {
-		return TLFEphemeralPublicKey{},
+		return IFCERFTTLFEphemeralPublicKey{},
 			TLFEphemeralPublicKeyNotFoundError{
 				user, currentCryptPublicKey.kid}
 	}
@@ -575,9 +575,9 @@ func (md *IFCERFTRootMetadata) GetTLFEphemeralPublicKey(
 }
 
 // LatestKeyGeneration returns the newest key generation for this RootMetadata.
-func (md *IFCERFTRootMetadata) LatestKeyGeneration() KeyGen {
+func (md *IFCERFTRootMetadata) LatestKeyGeneration() IFCERFTKeyGen {
 	if md.ID.IsPublic() {
-		return PublicKeyGen
+		return IFCERFTPublicKeyGen
 	}
 	return md.WKeys.LatestKeyGeneration()
 }
@@ -656,10 +656,10 @@ func (md *IFCERFTRootMetadata) MakeBareTlfHandle() (BareTlfHandle, error) {
 func (md *IFCERFTRootMetadata) IsInitialized() bool {
 	keyGen := md.LatestKeyGeneration()
 	if md.ID.IsPublic() {
-		return keyGen == PublicKeyGen
+		return keyGen == IFCERFTPublicKeyGen
 	}
 	// The data is only initialized once we have at least one set of keys
-	return keyGen >= FirstValidKeyGen
+	return keyGen >= IFCERFTFirstValidKeyGen
 }
 
 // MetadataID computes and caches the MdID for this RootMetadata
@@ -692,14 +692,14 @@ func (md *IFCERFTRootMetadata) clearCachedMetadataIDForTest() {
 }
 
 // AddRefBlock adds the newly-referenced block to the add block change list.
-func (md *IFCERFTRootMetadata) AddRefBlock(info BlockInfo) {
+func (md *IFCERFTRootMetadata) AddRefBlock(info IFCERFTBlockInfo) {
 	md.RefBytes += uint64(info.EncodedSize)
 	md.DiskUsage += uint64(info.EncodedSize)
 	md.data.Changes.AddRefBlock(info.IFCERFTBlockPointer)
 }
 
 // AddUnrefBlock adds the newly-unreferenced block to the add block change list.
-func (md *IFCERFTRootMetadata) AddUnrefBlock(info BlockInfo) {
+func (md *IFCERFTRootMetadata) AddUnrefBlock(info IFCERFTBlockInfo) {
 	if info.EncodedSize > 0 {
 		md.UnrefBytes += uint64(info.EncodedSize)
 		md.DiskUsage -= uint64(info.EncodedSize)
@@ -708,7 +708,7 @@ func (md *IFCERFTRootMetadata) AddUnrefBlock(info BlockInfo) {
 }
 
 // AddUpdate adds the newly-updated block to the add block change list.
-func (md *IFCERFTRootMetadata) AddUpdate(oldInfo BlockInfo, newInfo BlockInfo) {
+func (md *IFCERFTRootMetadata) AddUpdate(oldInfo IFCERFTBlockInfo, newInfo IFCERFTBlockInfo) {
 	if oldInfo.EncodedSize > 0 {
 		md.UnrefBytes += uint64(oldInfo.EncodedSize)
 		md.RefBytes += uint64(newInfo.EncodedSize)
@@ -731,7 +731,7 @@ func (md *IFCERFTRootMetadata) ClearBlockChanges() {
 	md.RefBytes = 0
 	md.UnrefBytes = 0
 	md.data.Changes.sizeEstimate = 0
-	md.data.Changes.Info = BlockInfo{}
+	md.data.Changes.Info = IFCERFTBlockInfo{}
 	md.data.Changes.Ops = nil
 }
 
@@ -847,7 +847,7 @@ func (md *IFCERFTRootMetadata) TlfHandleExtensions() (extensions []TlfHandleExte
 // RootMetadataSigned is the top-level MD object stored in MD server
 type RootMetadataSigned struct {
 	// signature over the root metadata by the private signing key
-	SigInfo SignatureInfo `codec:",omitempty"`
+	SigInfo IFCERFTSignatureInfo `codec:",omitempty"`
 	// all the metadata
 	MD IFCERFTRootMetadata
 	// When does the server say this MD update was received?  (This is
@@ -901,7 +901,7 @@ func (rmds *RootMetadataSigned) MerkleHash(config IFCERFTConfig) (MerkleHash, er
 
 // Version returns the metadata version of this MD block, depending on
 // which features it uses.
-func (rmds *RootMetadataSigned) Version() MetadataVer {
+func (rmds *RootMetadataSigned) Version() IFCERFTMetadataVer {
 	// Only folders with unresolved assertions orconflict info get the
 	// new version.
 	if len(rmds.MD.Extra.UnresolvedWriters) > 0 ||
@@ -943,8 +943,7 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(config IFCERFTConfig) (
 }
 
 func makeRekeyReadError(
-	md *IFCERFTRootMetadata, resolvedHandle *IFCERFTTlfHandle, keyGen KeyGen,
-	uid keybase1.UID, username libkb.NormalizedUsername) error {
+	md *IFCERFTRootMetadata, resolvedHandle *IFCERFTTlfHandle, keyGen IFCERFTKeyGen, uid keybase1.UID, username libkb.NormalizedUsername) error {
 	// If the user is not a legitimate reader of the folder, this is a
 	// normal read access error.
 	if resolvedHandle.IsPublic() {

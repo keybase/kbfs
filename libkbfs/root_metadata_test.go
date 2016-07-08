@@ -55,7 +55,7 @@ func makeFakePrivateMetadataFuture(t *testing.T) privateMetadataFuture {
 		PrivateMetadata{
 			DirEntry{},
 			MakeTLFPrivateKey([32]byte{0xb}),
-			BlockChanges{
+			IFCERFTBlockChanges{
 				makeFakeBlockInfo(t),
 				opsList{
 					&createOp,
@@ -70,7 +70,7 @@ func makeFakePrivateMetadataFuture(t *testing.T) privateMetadataFuture {
 				0,
 			},
 			codec.UnknownFieldSetHandler{},
-			BlockChanges{},
+			IFCERFTBlockChanges{},
 		},
 		makeFakeDirEntryFuture(t),
 		makeExtraOrBust("PrivateMetadata", t),
@@ -178,8 +178,8 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 		t.Errorf("Expected key generation to be invalid (0)")
 	}
 	FakeInitialRekey(rmd, h.ToBareHandleOrBust())
-	if rmd.LatestKeyGeneration() != FirstValidKeyGen {
-		t.Errorf("Expected key generation to be valid(%d)", FirstValidKeyGen)
+	if rmd.LatestKeyGeneration() != IFCERFTFirstValidKeyGen {
+		t.Errorf("Expected key generation to be valid(%d)", IFCERFTFirstValidKeyGen)
 	}
 }
 
@@ -188,8 +188,8 @@ func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
 	tlfID := FakeTlfID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
 	rmd := newRootMetadataOrBust(t, tlfID, h)
-	if rmd.LatestKeyGeneration() != PublicKeyGen {
-		t.Errorf("Expected key generation to be public (%d)", PublicKeyGen)
+	if rmd.LatestKeyGeneration() != IFCERFTPublicKeyGen {
+		t.Errorf("Expected key generation to be public (%d)", IFCERFTPublicKeyGen)
 	}
 }
 
@@ -423,7 +423,7 @@ func makeFakeRootMetadataFuture(t *testing.T) *rootMetadataFuture {
 				// fields are added, effectively checking at compile time
 				// whether new fields have been added
 				WriterMetadata{},
-				SignatureInfo{
+				IFCERFTSignatureInfo{
 					100,
 					[]byte{0xc},
 					MakeFakeVerifyingKeyOrBust("fake kid"),
@@ -540,7 +540,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
 	rmd2 := newRootMetadataOrBust(t, id2, h2)
 	rmds2 := RootMetadataSigned{MD: *rmd2}
-	if g, e := rmds2.Version(), MetadataVer(PreExtraMetadataVer); g != e {
+	if g, e := rmds2.Version(), IFCERFTMetadataVer(PreExtraMetadataVer); g != e {
 		t.Errorf("MD without unresolved users got wrong version %d, "+
 			"expected %d", g, e)
 	}
@@ -566,7 +566,7 @@ func TestRootMetadataVersion(t *testing.T) {
 		t.Fatalf("Couldn't update TLF handle: %v", err)
 	}
 	rmds3 := RootMetadataSigned{MD: *rmd3}
-	if g, e := rmds3.Version(), MetadataVer(PreExtraMetadataVer); g != e {
+	if g, e := rmds3.Version(), IFCERFTMetadataVer(PreExtraMetadataVer); g != e {
 		t.Errorf("MD without unresolved users got wrong version %d, "+
 			"expected %d", g, e)
 	}
@@ -584,15 +584,15 @@ func TestMakeRekeyReadError(t *testing.T) {
 	u, uid, err := config.KBPKI().Resolve(context.Background(), "bob")
 	require.NoError(t, err)
 
-	err = makeRekeyReadError(rmd, h, FirstValidKeyGen, uid, u)
+	err = makeRekeyReadError(rmd, h, IFCERFTFirstValidKeyGen, uid, u)
 	require.Equal(t, NewReadAccessError(h, u), err)
 
 	err = makeRekeyReadError(
-		rmd, h, FirstValidKeyGen, h.FirstResolvedWriter(), "alice")
+		rmd, h, IFCERFTFirstValidKeyGen, h.FirstResolvedWriter(), "alice")
 	require.Equal(t, NeedSelfRekeyError{"alice"}, err)
 
 	err = makeRekeyReadError(
-		rmd, h, FirstValidKeyGen+1, h.FirstResolvedWriter(), "alice")
+		rmd, h, IFCERFTFirstValidKeyGen+1, h.FirstResolvedWriter(), "alice")
 	require.Equal(t, NeedOtherRekeyError{"alice"}, err)
 }
 
@@ -611,7 +611,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	u, uid, err := config.KBPKI().Resolve(ctx, "bob")
 	require.NoError(t, err)
 
-	err = makeRekeyReadError(rmd, h, FirstValidKeyGen, uid, u)
+	err = makeRekeyReadError(rmd, h, IFCERFTFirstValidKeyGen, uid, u)
 	require.Equal(t, NewReadAccessError(h, u), err)
 
 	config.KeybaseDaemon().(*KeybaseDaemonLocal).addNewAssertionForTestOrBust(
@@ -620,7 +620,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	resolvedHandle, err := h.ResolveAgain(ctx, config.KBPKI())
 	require.NoError(t, err)
 
-	err = makeRekeyReadError(rmd, resolvedHandle, FirstValidKeyGen, uid, u)
+	err = makeRekeyReadError(rmd, resolvedHandle, IFCERFTFirstValidKeyGen, uid, u)
 	require.Equal(t, NeedOtherRekeyError{"alice,bob"}, err)
 }
 

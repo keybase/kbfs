@@ -271,7 +271,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 
 	ops := fs.getOpsByHandle(ctx, h, fb)
 	var created bool
-	if branch == MasterBranch {
+	if branch == IFCERFTMasterBranch {
 		// For now, only the master branch can be initialized with a
 		// branch new MD object.
 		created, err = ops.CheckForNewMDAndInit(ctx, md)
@@ -431,7 +431,7 @@ func (fs *KBFSOpsStandard) Status(ctx context.Context) (
 		if err == nil {
 			limitBytes = quotaInfo.Limit
 			if quotaInfo.Total != nil {
-				usageBytes = quotaInfo.Total.Bytes[UsageWrite]
+				usageBytes = quotaInfo.Total.Bytes[IFCERFTUsageWrite]
 			} else {
 				usageBytes = 0
 			}
@@ -458,7 +458,7 @@ func (fs *KBFSOpsStandard) UnstageForTesting(
 // Rekey implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Rekey(ctx context.Context, id IFCERFTTlfID) error {
 	// We currently only support rekeys of master branches.
-	ops := fs.getOpsNoAdd(IFCERFTFolderBranch{Tlf: id, Branch: MasterBranch})
+	ops := fs.getOpsNoAdd(IFCERFTFolderBranch{Tlf: id, Branch: IFCERFTMasterBranch})
 	return ops.Rekey(ctx, id)
 }
 
@@ -471,7 +471,7 @@ func (fs *KBFSOpsStandard) SyncFromServerForTesting(
 
 // GetUpdateHistory implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) GetUpdateHistory(ctx context.Context,
-	folderBranch IFCERFTFolderBranch) (history TLFUpdateHistory, err error) {
+	folderBranch IFCERFTFolderBranch) (history IFCERFTTLFUpdateHistory, err error) {
 	ops := fs.getOps(ctx, folderBranch)
 	return ops.GetUpdateHistory(ctx, folderBranch)
 }

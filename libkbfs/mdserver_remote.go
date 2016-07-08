@@ -326,8 +326,7 @@ func (md *MDServerRemote) signalObserverLocked(observerChan chan<- error, id IFC
 }
 
 // Helper used to retrieve metadata blocks from the MD server.
-func (md *MDServerRemote) get(ctx context.Context, id IFCERFTTlfID, handle *BareTlfHandle, bid BranchID, mStatus MergeStatus,
-	start, stop MetadataRevision) (IFCERFTTlfID, []*RootMetadataSigned, error) {
+func (md *MDServerRemote) get(ctx context.Context, id IFCERFTTlfID, handle *BareTlfHandle, bid BranchID, mStatus IFCERFTMergeStatus, start, stop MetadataRevision) (IFCERFTTlfID, []*RootMetadataSigned, error) {
 	// figure out which args to send
 	if id == NullTlfID && handle == nil {
 		panic("nil TlfID and handle passed into MDServerRemote.get")
@@ -336,7 +335,7 @@ func (md *MDServerRemote) get(ctx context.Context, id IFCERFTTlfID, handle *Bare
 		StartRevision: start.Number(),
 		StopRevision:  stop.Number(),
 		BranchID:      bid.String(),
-		Unmerged:      mStatus == Unmerged,
+		Unmerged:      mStatus == IFCERFTUnmerged,
 		LogTags:       nil,
 	}
 
@@ -365,7 +364,7 @@ func (md *MDServerRemote) get(ctx context.Context, id IFCERFTTlfID, handle *Bare
 	// deserialize blocks
 	rmdses := make([]*RootMetadataSigned, len(response.MdBlocks))
 	for i, block := range response.MdBlocks {
-		ver := MetadataVer(block.Version)
+		ver := IFCERFTMetadataVer(block.Version)
 		if ver < FirstValidMetadataVer {
 			return id, nil, InvalidMetadataVersionError{id, ver}
 		} else if ver > md.config.MetadataVersion() {
@@ -385,7 +384,7 @@ func (md *MDServerRemote) get(ctx context.Context, id IFCERFTTlfID, handle *Bare
 
 // GetForHandle implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetForHandle(ctx context.Context,
-	handle BareTlfHandle, mStatus MergeStatus) (
+	handle BareTlfHandle, mStatus IFCERFTMergeStatus) (
 	IFCERFTTlfID, *RootMetadataSigned, error) {
 	id, rmdses, err := md.get(ctx, NullTlfID, &handle, NullBranchID,
 		mStatus,
@@ -400,7 +399,7 @@ func (md *MDServerRemote) GetForHandle(ctx context.Context,
 }
 
 // GetForTLF implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+func (md *MDServerRemote) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (*RootMetadataSigned, error) {
 	_, rmdses, err := md.get(ctx, id, nil, bid, mStatus,
 		MetadataRevisionUninitialized, MetadataRevisionUninitialized)
 	if err != nil {
@@ -413,7 +412,7 @@ func (md *MDServerRemote) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid Br
 }
 
 // GetRange implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
+func (md *MDServerRemote) GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	_, rmds, err := md.get(ctx, id, nil, bid, mStatus, start, stop)
 	return rmds, err

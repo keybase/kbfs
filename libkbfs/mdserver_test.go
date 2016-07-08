@@ -28,7 +28,7 @@ func TestMDServerBasics(t *testing.T) {
 	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	id, rmds, err := mdServer.GetForHandle(ctx, h, Merged)
+	id, rmds, err := mdServer.GetForHandle(ctx, h, IFCERFTMerged)
 	require.NoError(t, err)
 	require.Nil(t, rmds)
 
@@ -89,13 +89,13 @@ func TestMDServerBasics(t *testing.T) {
 	}
 
 	// (5) check for proper unmerged head
-	head, err := mdServer.GetForTLF(ctx, id, bid, Unmerged)
+	head, err := mdServer.GetForTLF(ctx, id, bid, IFCERFTUnmerged)
 	require.NoError(t, err)
 	require.NotNil(t, head)
 	require.Equal(t, MetadataRevision(40), head.MD.Revision)
 
 	// (6a) try to get unmerged range
-	rmdses, err := mdServer.GetRange(ctx, id, bid, Unmerged, 1, 100)
+	rmdses, err := mdServer.GetRange(ctx, id, bid, IFCERFTUnmerged, 1, 100)
 	require.NoError(t, err)
 	require.Equal(t, 35, len(rmdses))
 	for i := MetadataRevision(6); i < 16; i++ {
@@ -103,7 +103,7 @@ func TestMDServerBasics(t *testing.T) {
 	}
 
 	// (6b) try to get unmerged range subset.
-	rmdses, err = mdServer.GetRange(ctx, id, bid, Unmerged, 7, 14)
+	rmdses, err = mdServer.GetRange(ctx, id, bid, IFCERFTUnmerged, 7, 14)
 	require.NoError(t, err)
 	require.Equal(t, 8, len(rmdses))
 	for i := MetadataRevision(7); i <= 14; i++ {
@@ -115,23 +115,23 @@ func TestMDServerBasics(t *testing.T) {
 	require.NoError(t, err)
 
 	// (8) verify head is pruned
-	head, err = mdServer.GetForTLF(ctx, id, NullBranchID, Unmerged)
+	head, err = mdServer.GetForTLF(ctx, id, NullBranchID, IFCERFTUnmerged)
 	require.NoError(t, err)
 	require.Nil(t, head)
 
 	// (9) verify revision history is pruned
-	rmdses, err = mdServer.GetRange(ctx, id, NullBranchID, Unmerged, 1, 100)
+	rmdses, err = mdServer.GetRange(ctx, id, NullBranchID, IFCERFTUnmerged, 1, 100)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(rmdses))
 
 	// (10) check for proper merged head
-	head, err = mdServer.GetForTLF(ctx, id, NullBranchID, Merged)
+	head, err = mdServer.GetForTLF(ctx, id, NullBranchID, IFCERFTMerged)
 	require.NoError(t, err)
 	require.NotNil(t, head)
 	require.Equal(t, MetadataRevision(10), head.MD.Revision)
 
 	// (11) try to get merged range
-	rmdses, err = mdServer.GetRange(ctx, id, NullBranchID, Merged, 1, 100)
+	rmdses, err = mdServer.GetRange(ctx, id, NullBranchID, IFCERFTMerged, 1, 100)
 	require.NoError(t, err)
 	require.Equal(t, 10, len(rmdses))
 	for i := MetadataRevision(1); i <= 10; i++ {
@@ -156,7 +156,7 @@ func TestMDServerRegisterForUpdate(t *testing.T) {
 	h1, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	id1, _, err := mdServer.GetForHandle(ctx, h1, Merged)
+	id1, _, err := mdServer.GetForHandle(ctx, h1, IFCERFTMerged)
 	require.NoError(t, err)
 
 	// Create second TLF, which should end up being different from
@@ -164,7 +164,7 @@ func TestMDServerRegisterForUpdate(t *testing.T) {
 	h2, err := MakeBareTlfHandle([]keybase1.UID{uid}, []keybase1.UID{keybase1.PUBLIC_UID}, nil, nil, nil)
 	require.NoError(t, err)
 
-	id2, _, err := mdServer.GetForHandle(ctx, h2, Merged)
+	id2, _, err := mdServer.GetForHandle(ctx, h2, IFCERFTMerged)
 	require.NoError(t, err)
 	require.NotEqual(t, id1, id2)
 

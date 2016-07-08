@@ -110,7 +110,7 @@ func (c *CryptoClient) logAboutLongRPCUnlessCancelled(ctx context.Context,
 
 // Sign implements the Crypto interface for CryptoClient.
 func (c *CryptoClient) Sign(ctx context.Context, msg []byte) (
-	sigInfo SignatureInfo, err error) {
+	sigInfo IFCERFTSignatureInfo, err error) {
 	c.log.CDebugf(ctx, "Signing %d-byte message", len(msg))
 	defer func() {
 		c.deferLog.CDebugf(ctx, "Signed %d-byte message with %s: err=%v", len(msg),
@@ -127,8 +127,8 @@ func (c *CryptoClient) Sign(ctx context.Context, msg []byte) (
 		return
 	}
 
-	sigInfo = SignatureInfo{
-		Version:      SigED25519,
+	sigInfo = IFCERFTSignatureInfo{
+		Version:      IFCERFTSigED25519,
 		Signature:    ed25519SigInfo.Sig[:],
 		VerifyingKey: MakeVerifyingKey(libkb.NaclSigningKeyPublic(ed25519SigInfo.PublicKey).GetKID()),
 	}
@@ -152,9 +152,9 @@ func (c *CryptoClient) SignToString(ctx context.Context, msg []byte) (
 	return
 }
 
-func (c *CryptoClient) prepareTLFCryptKeyClientHalf(encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (
+func (c *CryptoClient) prepareTLFCryptKeyClientHalf(encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf) (
 	encryptedData keybase1.EncryptedBytes32, nonce keybase1.BoxNonce, err error) {
-	if encryptedClientHalf.Version != EncryptionSecretbox {
+	if encryptedClientHalf.Version != IFCERFTEncryptionSecretbox {
 		err = UnknownEncryptionVer{encryptedClientHalf.Version}
 		return
 	}
@@ -176,8 +176,7 @@ func (c *CryptoClient) prepareTLFCryptKeyClientHalf(encryptedClientHalf Encrypte
 // DecryptTLFCryptKeyClientHalf implements the Crypto interface for
 // CryptoClient.
 func (c *CryptoClient) DecryptTLFCryptKeyClientHalf(ctx context.Context,
-	publicKey TLFEphemeralPublicKey,
-	encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (
+	publicKey IFCERFTTLFEphemeralPublicKey, encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf) (
 	clientHalf TLFCryptKeyClientHalf, err error) {
 	c.log.CDebugf(ctx, "Decrypting TLF client key half")
 	defer func() {
@@ -207,7 +206,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 // DecryptTLFCryptKeyClientHalfAny implements the Crypto interface for
 // CryptoClient.
 func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
-	keys []EncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
+	keys []IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
 	clientHalf TLFCryptKeyClientHalf, index int, err error) {
 	c.log.CDebugf(ctx, "Decrypting TLF client key half with any key")
 	defer func() {

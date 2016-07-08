@@ -28,7 +28,7 @@ func (id TLFCryptKeyServerHalfID) String() string {
 // TLFCryptKeyInfo is a per-device key half entry in the
 // TLFWriterKeyBundle/TLFReaderKeyBundle.
 type TLFCryptKeyInfo struct {
-	ClientHalf   EncryptedTLFCryptKeyClientHalf
+	ClientHalf   IFCERFTEncryptedTLFCryptKeyClientHalf
 	ServerHalfID TLFCryptKeyServerHalfID
 	EPubKeyIndex int `codec:"i,omitempty"`
 
@@ -75,7 +75,7 @@ func (kim DeviceKeyInfoMap) fillInDeviceInfo(crypto IFCERFTCrypto, uid keybase1.
 			return nil, err
 		}
 
-		var encryptedClientHalf EncryptedTLFCryptKeyClientHalf
+		var encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf
 		encryptedClientHalf, err =
 			crypto.EncryptTLFCryptKeyClientHalf(ePrivKey, k, clientHalf)
 		if err != nil {
@@ -127,7 +127,7 @@ type TLFWriterKeyBundle struct {
 	// existing data), we track multiple ephemeral public keys; the
 	// one used by a particular device is specified by EPubKeyIndex in
 	// its TLFCryptoKeyInfo struct.
-	TLFEphemeralPublicKeys TLFEphemeralPublicKeys `codec:"ePubKey"`
+	TLFEphemeralPublicKeys IFCERFTTLFEphemeralPublicKeys `codec:"ePubKey"`
 
 	codec.UnknownFieldSetHandler
 }
@@ -143,8 +143,8 @@ func (tkb TLFWriterKeyBundle) IsWriter(user keybase1.UID, deviceKID keybase1.KID
 type TLFWriterKeyGenerations []TLFWriterKeyBundle
 
 // LatestKeyGeneration returns the current key generation for this TLF.
-func (tkg TLFWriterKeyGenerations) LatestKeyGeneration() KeyGen {
-	return KeyGen(len(tkg))
+func (tkg TLFWriterKeyGenerations) LatestKeyGeneration() IFCERFTKeyGen {
+	return IFCERFTKeyGen(len(tkg))
 }
 
 // IsWriter returns whether or not the user+device is an authorized writer
@@ -170,7 +170,7 @@ type TLFReaderKeyBundle struct {
 	// its TLFCryptoKeyInfo struct.
 	// This list is needed so a reader rekey doesn't modify the writer
 	// metadata.
-	TLFReaderEphemeralPublicKeys TLFEphemeralPublicKeys `codec:"readerEPubKey,omitempty"`
+	TLFReaderEphemeralPublicKeys IFCERFTTLFEphemeralPublicKeys `codec:"readerEPubKey,omitempty"`
 
 	codec.UnknownFieldSetHandler
 }
@@ -186,8 +186,8 @@ func (trb TLFReaderKeyBundle) IsReader(user keybase1.UID, deviceKID keybase1.KID
 type TLFReaderKeyGenerations []TLFReaderKeyBundle
 
 // LatestKeyGeneration returns the current key generation for this TLF.
-func (tkg TLFReaderKeyGenerations) LatestKeyGeneration() KeyGen {
-	return KeyGen(len(tkg))
+func (tkg TLFReaderKeyGenerations) LatestKeyGeneration() IFCERFTKeyGen {
+	return IFCERFTKeyGen(len(tkg))
 }
 
 // IsReader returns whether or not the user+device is an authorized reader
@@ -204,7 +204,7 @@ type serverKeyMap map[keybase1.UID]map[keybase1.KID]TLFCryptKeyServerHalf
 
 func fillInDevicesAndServerMap(crypto IFCERFTCrypto, newIndex int,
 	cryptKeys map[keybase1.UID][]IFCERFTCryptPublicKey, keyInfoMap UserDeviceKeyInfoMap,
-	ePubKey TLFEphemeralPublicKey, ePrivKey TLFEphemeralPrivateKey,
+	ePubKey IFCERFTTLFEphemeralPublicKey, ePrivKey TLFEphemeralPrivateKey,
 	tlfCryptKey IFCERFTTLFCryptKey, newServerKeys serverKeyMap) error {
 	for u, keys := range cryptKeys {
 		if _, ok := keyInfoMap[u]; !ok {
@@ -228,8 +228,7 @@ func fillInDevicesAndServerMap(crypto IFCERFTCrypto, newIndex int,
 // new ephemeral key pair to generate the info if it doesn't yet
 // exist.
 func fillInDevices(crypto IFCERFTCrypto, wkb *TLFWriterKeyBundle, rkb *TLFReaderKeyBundle,
-	wKeys map[keybase1.UID][]IFCERFTCryptPublicKey, rKeys map[keybase1.UID][]IFCERFTCryptPublicKey, ePubKey TLFEphemeralPublicKey,
-	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey IFCERFTTLFCryptKey) (
+	wKeys map[keybase1.UID][]IFCERFTCryptPublicKey, rKeys map[keybase1.UID][]IFCERFTCryptPublicKey, ePubKey IFCERFTTLFEphemeralPublicKey, ePrivKey TLFEphemeralPrivateKey, tlfCryptKey IFCERFTTLFCryptKey) (
 	serverKeyMap, error) {
 	var newIndex int
 	if len(wKeys) == 0 {

@@ -18,16 +18,16 @@ func printHeader(p fsrpc.Path) {
 	fmt.Printf("%s:\n", p)
 }
 
-func computeModeStr(entryType libkbfs.EntryType) string {
+func computeModeStr(entryType libkbfs.IFCERFTEntryType) string {
 	var typeStr string
 	switch entryType {
-	case libkbfs.File:
+	case libkbfs.IFCERFTFile:
 		typeStr = "-"
-	case libkbfs.Exec:
+	case libkbfs.IFCERFTExec:
 		typeStr = "-"
-	case libkbfs.Dir:
+	case libkbfs.IFCERFTDir:
 		typeStr = "d"
-	case libkbfs.Sym:
+	case libkbfs.IFCERFTSym:
 		typeStr = "l"
 	default:
 		typeStr = "?"
@@ -37,13 +37,13 @@ func computeModeStr(entryType libkbfs.EntryType) string {
 	// and omit w below if so.
 	var modeStr string
 	switch entryType {
-	case libkbfs.File:
+	case libkbfs.IFCERFTFile:
 		modeStr = "rw-"
-	case libkbfs.Exec:
+	case libkbfs.IFCERFTExec:
 		modeStr = "rwx"
-	case libkbfs.Dir:
+	case libkbfs.IFCERFTDir:
 		modeStr = "rwx"
-	case libkbfs.Sym:
+	case libkbfs.IFCERFTSym:
 		modeStr = "rwx"
 	default:
 		modeStr = "rw-"
@@ -53,16 +53,16 @@ func computeModeStr(entryType libkbfs.EntryType) string {
 	return fmt.Sprintf("%s%s%s%s", typeStr, modeStr, modeStr, "---")
 }
 
-func printEntry(ctx context.Context, config libkbfs.IFCERFTConfig, dir fsrpc.Path, name string, entryType libkbfs.EntryType, longFormat, useSigil bool) {
+func printEntry(ctx context.Context, config libkbfs.IFCERFTConfig, dir fsrpc.Path, name string, entryType libkbfs.IFCERFTEntryType, longFormat, useSigil bool) {
 	var sigil string
 	if useSigil {
 		switch entryType {
-		case libkbfs.File:
-		case libkbfs.Exec:
+		case libkbfs.IFCERFTFile:
+		case libkbfs.IFCERFTExec:
 			sigil = "*"
-		case libkbfs.Dir:
+		case libkbfs.IFCERFTDir:
 			sigil = "/"
-		case libkbfs.Sym:
+		case libkbfs.IFCERFTSym:
 			sigil = "@"
 		default:
 			sigil = "?"
@@ -81,7 +81,7 @@ func printEntry(ctx context.Context, config libkbfs.IFCERFTConfig, dir fsrpc.Pat
 		modeStr := computeModeStr(entryType)
 		mtimeStr := time.Unix(0, de.Mtime).Format("Jan 02 15:04")
 		var symPathStr string
-		if entryType == libkbfs.Sym {
+		if entryType == libkbfs.IFCERFTSym {
 			symPathStr = fmt.Sprintf(" -> %s", de.SymPath)
 		}
 		fmt.Printf("%s\t%d\t%s\t%s%s%s\n", modeStr, de.Size, mtimeStr, name, sigil, symPathStr)
@@ -90,7 +90,7 @@ func printEntry(ctx context.Context, config libkbfs.IFCERFTConfig, dir fsrpc.Pat
 	}
 }
 
-func lsHelper(ctx context.Context, config libkbfs.IFCERFTConfig, p fsrpc.Path, hasMultiple bool, handleEntry func(string, libkbfs.EntryType)) error {
+func lsHelper(ctx context.Context, config libkbfs.IFCERFTConfig, p fsrpc.Path, hasMultiple bool, handleEntry func(string, libkbfs.IFCERFTEntryType)) error {
 	kbfsOps := config.KBFSOps()
 
 	switch p.PathType {
@@ -98,15 +98,15 @@ func lsHelper(ctx context.Context, config libkbfs.IFCERFTConfig, p fsrpc.Path, h
 		if hasMultiple {
 			printHeader(p)
 		}
-		handleEntry(topName, libkbfs.Dir)
+		handleEntry(topName, libkbfs.IFCERFTDir)
 		return nil
 
 	case fsrpc.KeybasePathType:
 		if hasMultiple {
 			printHeader(p)
 		}
-		handleEntry(publicName, libkbfs.Dir)
-		handleEntry(privateName, libkbfs.Dir)
+		handleEntry(publicName, libkbfs.IFCERFTDir)
+		handleEntry(privateName, libkbfs.IFCERFTDir)
 		return nil
 
 	case fsrpc.KeybaseChildPathType:
@@ -120,7 +120,7 @@ func lsHelper(ctx context.Context, config libkbfs.IFCERFTConfig, p fsrpc.Path, h
 		}
 		for _, fav := range favs {
 			if p.Public == fav.Public {
-				handleEntry(fav.Name, libkbfs.Dir)
+				handleEntry(fav.Name, libkbfs.IFCERFTDir)
 			}
 		}
 		return nil
@@ -131,7 +131,7 @@ func lsHelper(ctx context.Context, config libkbfs.IFCERFTConfig, p fsrpc.Path, h
 			return err
 		}
 
-		if de.Type == libkbfs.Dir {
+		if de.Type == libkbfs.IFCERFTDir {
 			// GetDirChildren doesn't verify the dir-ness
 			// of the node correctly (since it ends up
 			// creating a new DirBlock if the node isn't
@@ -167,8 +167,8 @@ func lsHelper(ctx context.Context, config libkbfs.IFCERFTConfig, p fsrpc.Path, h
 
 func lsOne(ctx context.Context, config libkbfs.IFCERFTConfig, p fsrpc.Path, longFormat, useSigil, recursive, hasMultiple bool, errorFn func(error)) {
 	var children []string
-	handleEntry := func(name string, entryType libkbfs.EntryType) {
-		if recursive && entryType == libkbfs.Dir {
+	handleEntry := func(name string, entryType libkbfs.IFCERFTEntryType) {
+		if recursive && entryType == libkbfs.IFCERFTDir {
 			children = append(children, name)
 		}
 		printEntry(ctx, config, p, name, entryType, longFormat, useSigil)

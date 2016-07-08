@@ -8,7 +8,7 @@ import "github.com/keybase/go-codec/codec"
 
 // DirEntry is all the data info a directory know about its child.
 type DirEntry struct {
-	BlockInfo
+	IFCERFTBlockInfo
 	IFCERFTEntryInfo
 
 	codec.UnknownFieldSetHandler

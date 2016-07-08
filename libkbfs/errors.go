@@ -369,7 +369,7 @@ func (e NoSuchMDError) Error() string {
 // used.
 type InvalidMetadataVersionError struct {
 	Tlf         IFCERFTTlfID
-	MetadataVer MetadataVer
+	MetadataVer IFCERFTMetadataVer
 }
 
 // Error implements the error interface for InvalidMetadataVersionError.
@@ -383,7 +383,7 @@ func (e InvalidMetadataVersionError) Error() string {
 // client doesn't understand.
 type NewMetadataVersionError struct {
 	Tlf         IFCERFTTlfID
-	MetadataVer MetadataVer
+	MetadataVer IFCERFTMetadataVer
 }
 
 // Error implements the error interface for NewMetadataVersionError.
@@ -436,7 +436,7 @@ func (e OutdatedVersionError) Error() string {
 // was used.
 type InvalidKeyGenerationError struct {
 	TlfHandle *IFCERFTTlfHandle
-	KeyGen    KeyGen
+	KeyGen    IFCERFTKeyGen
 }
 
 // Error implements the error interface for InvalidKeyGenerationError.
@@ -448,7 +448,7 @@ func (e InvalidKeyGenerationError) Error() string {
 // been written using keys that our client doesn't have.
 type NewKeyGenerationError struct {
 	TlfHandle *IFCERFTTlfHandle
-	KeyGen    KeyGen
+	KeyGen    IFCERFTKeyGen
 }
 
 // Error implements the error interface for NewKeyGenerationError.
@@ -483,7 +483,7 @@ func (e TooLowByteCountError) Error() string {
 // InconsistentEncodedSizeError is raised when a dirty block has a
 // non-zero encoded size.
 type InconsistentEncodedSizeError struct {
-	info BlockInfo
+	info IFCERFTBlockInfo
 }
 
 // Error implements the error interface for InconsistentEncodedSizeError
@@ -506,7 +506,7 @@ func (e MDWriteNeededInRequest) Error() string {
 // UnknownSigVer indicates that we can't process a signature because
 // it has an unknown version.
 type UnknownSigVer struct {
-	sigVer SigVer
+	sigVer IFCERFTSigVer
 }
 
 // Error implements the error interface for UnknownSigVer
@@ -558,7 +558,7 @@ func (e UnverifiableTlfUpdateError) Error() string {
 // and key generation wasn't found in cache.
 type KeyCacheMissError struct {
 	tlf    IFCERFTTlfID
-	keyGen KeyGen
+	keyGen IFCERFTKeyGen
 }
 
 // Error implements the error interface for KeyCacheMissError.
@@ -570,7 +570,7 @@ func (e KeyCacheMissError) Error() string {
 // and key generation was found in cache but the object type was unknown.
 type KeyCacheHitError struct {
 	tlf    IFCERFTTlfID
-	keyGen KeyGen
+	keyGen IFCERFTKeyGen
 }
 
 // Error implements the error interface for KeyCacheHitError.
@@ -591,7 +591,7 @@ func (e UnexpectedShortCryptoRandRead) Error() string {
 // UnknownEncryptionVer indicates that we can't decrypt an
 // encryptedData object because it has an unknown version.
 type UnknownEncryptionVer struct {
-	ver EncryptionVer
+	ver IFCERFTEncryptionVer
 }
 
 // Error implements the error interface for UnknownEncryptionVer.

@@ -187,7 +187,7 @@ func TestCryptPublicKeyEncodeDecodeZero(t *testing.T) {
 type tlfEphemeralPublicKeyType struct{}
 
 func (tlfEphemeralPublicKeyType) makeZero() interface{} {
-	return TLFEphemeralPublicKey{}
+	return IFCERFTTLFEphemeralPublicKey{}
 }
 
 func (tlfEphemeralPublicKeyType) makeFromData(data [32]byte) interface{} {

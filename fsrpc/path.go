@@ -232,7 +232,7 @@ func (p Path) Join(childName string) (childPath Path, err error) {
 func (p Path) GetNode(ctx context.Context, config libkbfs.IFCERFTConfig) (libkbfs.IFCERFTNode, libkbfs.IFCERFTEntryInfo, error) {
 	if p.PathType != TLFPathType {
 		entryInfo := libkbfs.IFCERFTEntryInfo{
-			Type: libkbfs.Dir,
+			Type: libkbfs.IFCERFTDir,
 		}
 		return nil, entryInfo, nil
 	}
@@ -258,7 +258,7 @@ outer:
 		}
 	}
 
-	node, entryInfo, err := config.KBFSOps().GetOrCreateRootNode(ctx, tlfHandle, libkbfs.MasterBranch)
+	node, entryInfo, err := config.KBFSOps().GetOrCreateRootNode(ctx, tlfHandle, libkbfs.IFCERFTMasterBranch)
 	if err != nil {
 		return nil, libkbfs.IFCERFTEntryInfo{}, err
 	}
@@ -284,7 +284,7 @@ func (p Path) GetFileNode(ctx context.Context, config libkbfs.IFCERFTConfig) (li
 
 	// TODO: What to do with symlinks?
 
-	if de.Type != libkbfs.File && de.Type != libkbfs.Exec {
+	if de.Type != libkbfs.IFCERFTFile && de.Type != libkbfs.IFCERFTExec {
 		return nil, fmt.Errorf("openFile: %s is not a file, but a %s", p, de.Type)
 	}
 
@@ -302,7 +302,7 @@ func (p Path) GetDirNode(ctx context.Context, config libkbfs.IFCERFTConfig) (lib
 
 	// TODO: What to do with symlinks?
 
-	if de.Type != libkbfs.Dir {
+	if de.Type != libkbfs.IFCERFTDir {
 		return nil, fmt.Errorf("openDir: %s is not a dir, but a %s", p, de.Type)
 	}
 

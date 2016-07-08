@@ -204,19 +204,19 @@ var _ encoding.BinaryUnmarshaler = (*IFCERFTCryptPublicKey)(nil)
 // non-public directories. (See 4.1.1.)
 //
 // Copies of TLFEphemeralPublicKey objects are deep copies.
-type TLFEphemeralPublicKey struct {
+type IFCERFTTLFEphemeralPublicKey struct {
 	// Should only be used by implementations of Crypto. Meant to
 	// be converted to libkb.NaclDHKeyPublic.
 	byte32Container
 }
 
-var _ encoding.BinaryMarshaler = TLFEphemeralPublicKey{}
-var _ encoding.BinaryUnmarshaler = (*TLFEphemeralPublicKey)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTTLFEphemeralPublicKey{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTTLFEphemeralPublicKey)(nil)
 
 // MakeTLFEphemeralPublicKey returns a TLFEphemeralPublicKey
 // containing the given data.
-func MakeTLFEphemeralPublicKey(data [32]byte) TLFEphemeralPublicKey {
-	return TLFEphemeralPublicKey{byte32Container{data}}
+func MakeTLFEphemeralPublicKey(data [32]byte) IFCERFTTLFEphemeralPublicKey {
+	return IFCERFTTLFEphemeralPublicKey{byte32Container{data}}
 }
 
 // TLFCryptKeyServerHalf (s_u^{f,0,i}) is the masked, server-side half
@@ -291,31 +291,31 @@ var PublicTLFCryptKey = MakeTLFCryptKey([32]byte{
 // server half.
 //
 // Copies of BlockCryptKeyServerHalf objects are deep copies.
-type BlockCryptKeyServerHalf struct {
+type IFCERFTBlockCryptKeyServerHalf struct {
 	// Should only be used by implementations of Crypto.
 	byte32Container
 }
 
-var _ encoding.BinaryMarshaler = BlockCryptKeyServerHalf{}
-var _ encoding.BinaryUnmarshaler = (*BlockCryptKeyServerHalf)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTBlockCryptKeyServerHalf{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTBlockCryptKeyServerHalf)(nil)
 
 // MakeBlockCryptKeyServerHalf returns a BlockCryptKeyServerHalf
 // containing the given data.
-func MakeBlockCryptKeyServerHalf(data [32]byte) BlockCryptKeyServerHalf {
-	return BlockCryptKeyServerHalf{byte32Container{data}}
+func MakeBlockCryptKeyServerHalf(data [32]byte) IFCERFTBlockCryptKeyServerHalf {
+	return IFCERFTBlockCryptKeyServerHalf{byte32Container{data}}
 }
 
 // ParseBlockCryptKeyServerHalf returns a BlockCryptKeyServerHalf
 // containing the given hex-encoded data, or an error.
-func ParseBlockCryptKeyServerHalf(s string) (BlockCryptKeyServerHalf, error) {
+func ParseBlockCryptKeyServerHalf(s string) (IFCERFTBlockCryptKeyServerHalf, error) {
 	buf, err := hex.DecodeString(s)
 	if err != nil {
-		return BlockCryptKeyServerHalf{}, err
+		return IFCERFTBlockCryptKeyServerHalf{}, err
 	}
-	var serverHalf BlockCryptKeyServerHalf
+	var serverHalf IFCERFTBlockCryptKeyServerHalf
 	err = serverHalf.UnmarshalBinary(buf)
 	if err != nil {
-		return BlockCryptKeyServerHalf{}, err
+		return IFCERFTBlockCryptKeyServerHalf{}, err
 	}
 	return serverHalf, nil
 }

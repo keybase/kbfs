@@ -79,8 +79,8 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 		}
 		arg := args.([]interface{})[0].(keybase1.UnboxBytes32Arg)
 		publicKey := MakeTLFEphemeralPublicKey(arg.PeersPublicKey)
-		encryptedClientHalf := EncryptedTLFCryptKeyClientHalf{
-			Version:       EncryptionSecretbox,
+		encryptedClientHalf := IFCERFTEncryptedTLFCryptKeyClientHalf{
+			Version:       IFCERFTEncryptionSecretbox,
 			EncryptedData: arg.EncryptedBytes32[:],
 			Nonce:         arg.Nonce[:],
 		}
@@ -98,17 +98,17 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 			return err
 		}
 		arg := args.([]interface{})[0].(keybase1.UnboxBytes32AnyArg)
-		keys := make([]EncryptedTLFCryptKeyClientAndEphemeral, 0, len(arg.Bundles))
+		keys := make([]IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, 0, len(arg.Bundles))
 		for _, k := range arg.Bundles {
 			ePublicKey := MakeTLFEphemeralPublicKey(k.PublicKey)
-			encryptedClientHalf := EncryptedTLFCryptKeyClientHalf{
-				Version:       EncryptionSecretbox,
+			encryptedClientHalf := IFCERFTEncryptedTLFCryptKeyClientHalf{
+				Version:       IFCERFTEncryptionSecretbox,
 				EncryptedData: make([]byte, len(k.Ciphertext)),
 				Nonce:         make([]byte, len(k.Nonce)),
 			}
 			copy(encryptedClientHalf.EncryptedData, k.Ciphertext[:])
 			copy(encryptedClientHalf.Nonce, k.Nonce[:])
-			keys = append(keys, EncryptedTLFCryptKeyClientAndEphemeral{
+			keys = append(keys, IFCERFTEncryptedTLFCryptKeyClientAndEphemeral{
 				EPubKey:    ePublicKey,
 				ClientHalf: encryptedClientHalf,
 				PubKey:     MakeCryptPublicKey(k.Kid),
@@ -215,8 +215,8 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfBoxSeal(t *testing.T) {
 	}
 
 	encryptedData := box.Seal(nil, clientHalf.data[:], &nonce, (*[32]byte)(&dhKeyPair.Public), (*[32]byte)(&ephPrivateKey.data))
-	encryptedClientHalf := EncryptedTLFCryptKeyClientHalf{
-		Version:       EncryptionSecretbox,
+	encryptedClientHalf := IFCERFTEncryptedTLFCryptKeyClientHalf{
+		Version:       IFCERFTEncryptionSecretbox,
 		Nonce:         nonce[:],
 		EncryptedData: encryptedData,
 	}
@@ -263,7 +263,7 @@ func TestCryptoClientDecryptEncryptedTLFCryptKeyClientHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if encryptedClientHalf.Version != EncryptionSecretbox {
+	if encryptedClientHalf.Version != IFCERFTEncryptionSecretbox {
 		t.Fatalf("Unexpected encryption version %d", encryptedClientHalf.Version)
 	}
 
@@ -286,7 +286,7 @@ func TestCryptoClientDecryptEmptyEncryptedTLFCryptKeyClientHalfAny(t *testing.T)
 	fc := NewFakeCryptoClient(config, signingKey, cryptPrivateKey, nil, nil)
 	c := newCryptoClientWithClient(config, fc)
 
-	keys := make([]EncryptedTLFCryptKeyClientAndEphemeral, 0, 0)
+	keys := make([]IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, 0, 0)
 
 	_, _, err := c.DecryptTLFCryptKeyClientHalfAny(
 		context.Background(), keys, false)
@@ -304,7 +304,7 @@ func TestCryptoClientDecryptEncryptedTLFCryptKeyClientHalfAny(t *testing.T) {
 	fc := NewFakeCryptoClient(config, signingKey, cryptPrivateKey, nil, nil)
 	c := newCryptoClientWithClient(config, fc)
 
-	keys := make([]EncryptedTLFCryptKeyClientAndEphemeral, 0, 4)
+	keys := make([]IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, 0, 4)
 	clientHalves := make([]TLFCryptKeyClientHalf, 0, 4)
 	for i := 0; i < 4; i++ {
 		_, _, ephPublicKey, ephPrivateKey, cryptKey, err := c.MakeRandomTLFKeys()
@@ -329,10 +329,10 @@ func TestCryptoClientDecryptEncryptedTLFCryptKeyClientHalfAny(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if encryptedClientHalf.Version != EncryptionSecretbox {
+		if encryptedClientHalf.Version != IFCERFTEncryptionSecretbox {
 			t.Fatalf("Unexpected encryption version %d", encryptedClientHalf.Version)
 		}
-		keys = append(keys, EncryptedTLFCryptKeyClientAndEphemeral{
+		keys = append(keys, IFCERFTEncryptedTLFCryptKeyClientAndEphemeral{
 			PubKey:     cryptPrivateKey.getPublicKey(),
 			ClientHalf: encryptedClientHalf,
 			EPubKey:    ephPublicKey,
@@ -405,7 +405,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfAnyFailures(t *testing.T) {
 	copy(encryptedClientHalfCorruptData.EncryptedData, encryptedClientHalf.EncryptedData)
 	encryptedClientHalfCorruptData.EncryptedData[0] = ^encryptedClientHalfCorruptData.EncryptedData[0]
 
-	keys := []EncryptedTLFCryptKeyClientAndEphemeral{
+	keys := []IFCERFTEncryptedTLFCryptKeyClientAndEphemeral{
 		{
 			PubKey:     cryptPrivateKey.getPublicKey(),
 			ClientHalf: encryptedClientHalfWrongVersion,

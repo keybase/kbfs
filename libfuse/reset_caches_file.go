@@ -39,7 +39,7 @@ var _ fs.HandleWriter = (*ResetCachesFile)(nil)
 func (f *ResetCachesFile) Write(ctx context.Context, req *fuse.WriteRequest,
 	resp *fuse.WriteResponse) (err error) {
 	f.fs.log.CDebugf(ctx, "ResetCachesFile Write")
-	defer func() { f.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
+	defer func() { f.fs.reportErr(ctx, libkbfs.IFCERFTWriteMode, err) }()
 	if len(req.Data) == 0 {
 		return nil
 	}

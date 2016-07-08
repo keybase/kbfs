@@ -14,7 +14,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func totalBlockRefs(m map[BlockID]map[BlockRefNonce]blockRefLocalStatus) int {
+func totalBlockRefs(m map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus) int {
 	n := 0
 	for _, refs := range m {
 		n += len(refs)

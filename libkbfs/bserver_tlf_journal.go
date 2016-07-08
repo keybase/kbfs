@@ -83,7 +83,7 @@ type bserverJournalEntry struct {
 	Op bserverOpName
 	ID BlockID
 	// Must have exactly one entry for blockPutOp and addRefOp.
-	Contexts []BlockContext
+	Contexts []IFCERFTBlockContext
 }
 
 // makeBserverTlfJournal returns a new bserverTlfJournal for the given
@@ -206,7 +206,7 @@ func (j *bserverTlfJournal) writeJournalEntryLocked(
 }
 
 func (j *bserverTlfJournal) appendJournalEntryLocked(
-	op bserverOpName, id BlockID, contexts []BlockContext) error {
+	op bserverOpName, id BlockID, contexts []IFCERFTBlockContext) error {
 	return j.j.appendJournalEntry(nil, bserverJournalEntry{
 		Op:       op,
 		ID:       id,
@@ -221,7 +221,7 @@ func (j *bserverTlfJournal) journalLength() (uint64, error) {
 }
 
 func (j *bserverTlfJournal) getRefEntryLocked(
-	id BlockID, refNonce BlockRefNonce) (blockRefEntry, error) {
+	id BlockID, refNonce IFCERFTBlockRefNonce) (blockRefEntry, error) {
 	refs := j.refs[id]
 	if refs == nil {
 		return blockRefEntry{}, BServerErrorBlockNonExistent{}
@@ -237,55 +237,55 @@ func (j *bserverTlfJournal) getRefEntryLocked(
 
 // getDataLocked verifies the block data for the given ID and context
 // and returns it.
-func (j *bserverTlfJournal) getDataLocked(id BlockID, context BlockContext) (
-	[]byte, BlockCryptKeyServerHalf, error) {
+func (j *bserverTlfJournal) getDataLocked(id BlockID, context IFCERFTBlockContext) (
+	[]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	// Check arguments.
 
 	refEntry, err := j.getRefEntryLocked(id, context.GetRefNonce())
 	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, err
 	}
 
 	err = refEntry.checkContext(context)
 	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, err
 	}
 
 	// Read files.
 
 	data, err := ioutil.ReadFile(j.blockDataPath(id))
 	if os.IsNotExist(err) {
-		return nil, BlockCryptKeyServerHalf{},
+		return nil, IFCERFTBlockCryptKeyServerHalf{},
 			BServerErrorBlockNonExistent{}
 	} else if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, err
 	}
 
 	keyServerHalfPath := j.keyServerHalfPath(id)
 	buf, err := ioutil.ReadFile(keyServerHalfPath)
 	if os.IsNotExist(err) {
-		return nil, BlockCryptKeyServerHalf{},
+		return nil, IFCERFTBlockCryptKeyServerHalf{},
 			BServerErrorBlockNonExistent{}
 	} else if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, err
 	}
 
 	// Check integrity.
 
 	dataID, err := j.crypto.MakePermanentBlockID(data)
 	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, err
 	}
 
 	if id != dataID {
-		return nil, BlockCryptKeyServerHalf{}, fmt.Errorf(
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, fmt.Errorf(
 			"Block ID mismatch: expected %s, got %s", id, dataID)
 	}
 
-	var serverHalf BlockCryptKeyServerHalf
+	var serverHalf IFCERFTBlockCryptKeyServerHalf
 	err = serverHalf.UnmarshalBinary(buf)
 	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, err
 	}
 
 	return data, serverHalf, nil
@@ -324,13 +324,13 @@ func (j *bserverTlfJournal) putRefEntryLocked(
 
 var errBserverTlfJournalShutdown = errors.New("bserverTlfJournal is shutdown")
 
-func (j *bserverTlfJournal) getData(id BlockID, context BlockContext) (
-	[]byte, BlockCryptKeyServerHalf, error) {
+func (j *bserverTlfJournal) getData(id BlockID, context IFCERFTBlockContext) (
+	[]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
 
 	if j.isShutdown {
-		return nil, BlockCryptKeyServerHalf{},
+		return nil, IFCERFTBlockCryptKeyServerHalf{},
 			errBserverTlfJournalShutdown
 	}
 
@@ -338,7 +338,7 @@ func (j *bserverTlfJournal) getData(id BlockID, context BlockContext) (
 }
 
 func (j *bserverTlfJournal) getAll() (
-	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
+	map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
 
@@ -346,14 +346,14 @@ func (j *bserverTlfJournal) getAll() (
 		return nil, errBserverTlfJournalShutdown
 	}
 
-	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
+	res := make(map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus)
 
 	for id, refs := range j.refs {
 		if len(refs) == 0 {
 			continue
 		}
 
-		res[id] = make(map[BlockRefNonce]blockRefLocalStatus)
+		res[id] = make(map[IFCERFTBlockRefNonce]blockRefLocalStatus)
 		for ref, refEntry := range refs {
 			res[id][ref] = refEntry.Status
 		}
@@ -363,8 +363,8 @@ func (j *bserverTlfJournal) getAll() (
 }
 
 func (j *bserverTlfJournal) putData(
-	id BlockID, context BlockContext, buf []byte,
-	serverHalf BlockCryptKeyServerHalf) error {
+	id BlockID, context IFCERFTBlockContext, buf []byte,
+	serverHalf IFCERFTBlockCryptKeyServerHalf) error {
 	err := validateBlockServerPut(j.crypto, id, context, buf)
 	if err != nil {
 		return err
@@ -430,10 +430,10 @@ func (j *bserverTlfJournal) putData(
 	}
 
 	return j.appendJournalEntryLocked(
-		blockPutOp, id, []BlockContext{context})
+		blockPutOp, id, []IFCERFTBlockContext{context})
 }
 
-func (j *bserverTlfJournal) addReference(id BlockID, context BlockContext) error {
+func (j *bserverTlfJournal) addReference(id BlockID, context IFCERFTBlockContext) error {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
@@ -475,11 +475,11 @@ func (j *bserverTlfJournal) addReference(id BlockID, context BlockContext) error
 	}
 
 	return j.appendJournalEntryLocked(
-		addRefOp, id, []BlockContext{context})
+		addRefOp, id, []IFCERFTBlockContext{context})
 }
 
 func (j *bserverTlfJournal) removeReferences(
-	id BlockID, contexts []BlockContext) (int, error) {
+	id BlockID, contexts []IFCERFTBlockContext) (int, error) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
@@ -527,7 +527,7 @@ func (j *bserverTlfJournal) removeReferences(
 }
 
 func (j *bserverTlfJournal) archiveReferences(
-	id BlockID, contexts []BlockContext) error {
+	id BlockID, contexts []IFCERFTBlockContext) error {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 

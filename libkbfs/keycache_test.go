@@ -13,7 +13,7 @@ func TestKeyCacheBasic(t *testing.T) {
 	cache := NewKeyCacheStandard(10)
 	tlf := IFCERFTTlfID{id: [TlfIDByteLen]byte{0xf}}
 	key := MakeTLFCryptKey([32]byte{0xf})
-	keyGen := KeyGen(1)
+	keyGen := IFCERFTKeyGen(1)
 	_, err := cache.GetTLFCryptKey(tlf, keyGen)
 	if _, ok := err.(KeyCacheMissError); !ok {
 		t.Fatal(errors.New("expected KeyCacheMissError"))

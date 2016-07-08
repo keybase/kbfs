@@ -16,7 +16,7 @@ import (
 
 func TestCreateOpCustomUpdate(t *testing.T) {
 	oldDir := makeFakeBlockPointer(t)
-	co := newCreateOp("name", oldDir, Exec)
+	co := newCreateOp("name", oldDir, IFCERFTExec)
 	require.Equal(t, blockUpdate{Unref: oldDir}, co.Dir)
 
 	// Update to oldDir should update co.Dir.
@@ -46,7 +46,7 @@ func TestRenameOpCustomUpdateWithinDir(t *testing.T) {
 	renamed.ID = fakeBlockID(42)
 	ro := newRenameOp(
 		"old name", oldDir, "new name", oldDir,
-		renamed, Exec)
+		renamed, IFCERFTExec)
 	require.Equal(t, blockUpdate{Unref: oldDir}, ro.OldDir)
 	require.Equal(t, IFCERFTBlockPointer{}, ro.NewDir.Unref)
 	require.Equal(t, IFCERFTBlockPointer{}, ro.NewDir.Ref)
@@ -68,7 +68,7 @@ func TestRenameOpCustomUpdateAcrossDirs(t *testing.T) {
 	renamed.ID = fakeBlockID(43)
 	ro := newRenameOp(
 		"old name", oldOldDir, "new name", oldNewDir,
-		renamed, Exec)
+		renamed, IFCERFTExec)
 	require.Equal(t, blockUpdate{Unref: oldOldDir}, ro.OldDir)
 	require.Equal(t, blockUpdate{Unref: oldNewDir}, ro.NewDir)
 
@@ -228,7 +228,7 @@ func makeFakeCreateOpFuture(t *testing.T) createOpFuture {
 			makeFakeOpCommon(t, true),
 			"new name",
 			makeFakeBlockUpdate(t),
-			Exec,
+			IFCERFTExec,
 			false,
 			false,
 			"",
@@ -294,7 +294,7 @@ func makeFakeRenameOpFuture(t *testing.T) renameOpFuture {
 			"new name",
 			makeFakeBlockUpdate(t),
 			makeFakeBlockPointer(t),
-			Exec,
+			IFCERFTExec,
 		},
 		makeExtraOrBust("renameOp", t),
 	}
@@ -470,7 +470,7 @@ func TestOpSerialization(t *testing.T) {
 	ops := testOps{}
 	// add a couple ops of different types
 	ops.Ops = append(ops.Ops,
-		newCreateOp("test1", IFCERFTBlockPointer{ID: fakeBlockID(42)}, File),
+		newCreateOp("test1", IFCERFTBlockPointer{ID: fakeBlockID(42)}, IFCERFTFile),
 		newRmOp("test2", IFCERFTBlockPointer{ID: fakeBlockID(43)}))
 
 	buf, err := c.Encode(ops)
@@ -506,7 +506,7 @@ func TestOpInversion(t *testing.T) {
 	newPtr2 := IFCERFTBlockPointer{ID: fakeBlockID(83)}
 	filePtr := IFCERFTBlockPointer{ID: fakeBlockID(44)}
 
-	cop := newCreateOp("test1", oldPtr1, File)
+	cop := newCreateOp("test1", oldPtr1, IFCERFTFile)
 	cop.AddUpdate(oldPtr1, newPtr1)
 	cop.AddUpdate(oldPtr2, newPtr2)
 	expectedIOp := newRmOp("test1", newPtr1)
@@ -528,10 +528,10 @@ func TestOpInversion(t *testing.T) {
 	}
 
 	// rename
-	rop := newRenameOp("old", oldPtr1, "new", oldPtr2, filePtr, File)
+	rop := newRenameOp("old", oldPtr1, "new", oldPtr2, filePtr, IFCERFTFile)
 	rop.AddUpdate(oldPtr1, newPtr1)
 	rop.AddUpdate(oldPtr2, newPtr2)
-	expectedIOp3 := newRenameOp("new", newPtr2, "old", newPtr1, filePtr, File)
+	expectedIOp3 := newRenameOp("new", newPtr2, "old", newPtr1, filePtr, IFCERFTFile)
 	expectedIOp3.AddUpdate(newPtr1, oldPtr1)
 	expectedIOp3.AddUpdate(newPtr2, oldPtr2)
 

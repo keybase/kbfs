@@ -41,7 +41,7 @@ func (*FolderList) Attr(ctx context.Context, a *fuse.Attr) error {
 var _ fs.NodeRequestLookuper = (*FolderList)(nil)
 
 func (fl *FolderList) reportErr(ctx context.Context,
-	mode libkbfs.ErrorModeType, tlfName libkbfs.IFCERFTCanonicalTlfName, err error) {
+	mode libkbfs.IFCERFTErrorModeType, tlfName libkbfs.IFCERFTCanonicalTlfName, err error) {
 	if err == nil {
 		fl.fs.errLog.CDebugf(ctx, "Request complete")
 		return
@@ -99,7 +99,7 @@ func (fl *FolderList) addToFavorite(ctx context.Context, h *libkbfs.IFCERFTTlfHa
 func (fl *FolderList) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
 	fl.fs.log.CDebugf(ctx, "FL Lookup %s", req.Name)
 	defer func() {
-		fl.reportErr(ctx, libkbfs.ReadMode,
+		fl.reportErr(ctx, libkbfs.IFCERFTReadMode,
 			libkbfs.IFCERFTCanonicalTlfName(req.Name), err)
 	}()
 	fl.mu.Lock()
@@ -186,7 +186,7 @@ var _ fs.HandleReadDirAller = (*FolderList)(nil)
 func (fl *FolderList) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 	fl.fs.log.CDebugf(ctx, "FL ReadDirAll")
 	defer func() {
-		fl.fs.reportErr(ctx, libkbfs.ReadMode, err)
+		fl.fs.reportErr(ctx, libkbfs.IFCERFTReadMode, err)
 	}()
 	_, _, err = fl.fs.config.KBPKI().GetCurrentUserInfo(ctx)
 	isLoggedIn := err == nil
@@ -217,7 +217,7 @@ var _ fs.NodeRemover = (*FolderList)(nil)
 // Remove implements the fs.NodeRemover interface for FolderList.
 func (fl *FolderList) Remove(ctx context.Context, req *fuse.RemoveRequest) (err error) {
 	fl.fs.log.CDebugf(ctx, "FolderList Remove %s", req.Name)
-	defer func() { fl.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
+	defer func() { fl.fs.reportErr(ctx, libkbfs.IFCERFTWriteMode, err) }()
 
 	h, err := libkbfs.IFCERFTParseTlfHandle(
 		ctx, fl.fs.config.KBPKI(), req.Name, fl.public)

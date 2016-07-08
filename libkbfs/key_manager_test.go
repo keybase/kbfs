@@ -33,11 +33,11 @@ func keyManagerShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	mockCtrl.Finish()
 }
 
-func expectCachedGetTLFCryptKey(config *ConfigMock, rmd *IFCERFTRootMetadata, keyGen KeyGen) {
+func expectCachedGetTLFCryptKey(config *ConfigMock, rmd *IFCERFTRootMetadata, keyGen IFCERFTKeyGen) {
 	config.mockKcache.EXPECT().GetTLFCryptKey(rmd.ID, keyGen).Return(IFCERFTTLFCryptKey{}, nil)
 }
 
-func expectUncachedGetTLFCryptKey(config *ConfigMock, rmd *IFCERFTRootMetadata, keyGen KeyGen, uid keybase1.UID, subkey IFCERFTCryptPublicKey, encrypt bool) {
+func expectUncachedGetTLFCryptKey(config *ConfigMock, rmd *IFCERFTRootMetadata, keyGen IFCERFTKeyGen, uid keybase1.UID, subkey IFCERFTCryptPublicKey, encrypt bool) {
 	config.mockKcache.EXPECT().GetTLFCryptKey(rmd.ID, keyGen).
 		Return(IFCERFTTLFCryptKey{}, KeyCacheMissError{})
 
@@ -45,7 +45,7 @@ func expectUncachedGetTLFCryptKey(config *ConfigMock, rmd *IFCERFTRootMetadata, 
 	config.mockKbpki.EXPECT().GetCurrentCryptPublicKey(gomock.Any()).
 		Return(subkey, nil)
 	config.mockCrypto.EXPECT().DecryptTLFCryptKeyClientHalf(gomock.Any(),
-		TLFEphemeralPublicKey{}, gomock.Any()).
+		IFCERFTTLFEphemeralPublicKey{}, gomock.Any()).
 		Return(TLFCryptKeyClientHalf{}, nil)
 
 	// get the server-side half and retrieve the real secret key
@@ -60,7 +60,7 @@ func expectUncachedGetTLFCryptKey(config *ConfigMock, rmd *IFCERFTRootMetadata, 
 	}
 }
 
-func expectUncachedGetTLFCryptKeyAnyDevice(config *ConfigMock, rmd *IFCERFTRootMetadata, keyGen KeyGen, uid keybase1.UID, subkey IFCERFTCryptPublicKey, encrypt bool) {
+func expectUncachedGetTLFCryptKeyAnyDevice(config *ConfigMock, rmd *IFCERFTRootMetadata, keyGen IFCERFTKeyGen, uid keybase1.UID, subkey IFCERFTCryptPublicKey, encrypt bool) {
 	config.mockKcache.EXPECT().GetTLFCryptKey(rmd.ID, keyGen).
 		Return(IFCERFTTLFCryptKey{}, KeyCacheMissError{})
 
@@ -90,7 +90,7 @@ func expectRekey(config *ConfigMock, rmd *IFCERFTRootMetadata, numDevices int, h
 	}
 
 	// generate new keys
-	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(TLFPublicKey{}, TLFPrivateKey{}, TLFEphemeralPublicKey{}, TLFEphemeralPrivateKey{}, IFCERFTTLFCryptKey{}, nil)
+	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(TLFPublicKey{}, TLFPrivateKey{}, IFCERFTTLFEphemeralPublicKey{}, TLFEphemeralPrivateKey{}, IFCERFTTLFCryptKey{}, nil)
 	config.mockCrypto.EXPECT().MakeRandomTLFCryptKeyServerHalf().Return(TLFCryptKeyServerHalf{}, nil).Times(numDevices)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
@@ -99,7 +99,7 @@ func expectRekey(config *ConfigMock, rmd *IFCERFTRootMetadata, numDevices int, h
 
 	// make keys for the one device
 	config.mockCrypto.EXPECT().MaskTLFCryptKey(TLFCryptKeyServerHalf{}, IFCERFTTLFCryptKey{}).Return(TLFCryptKeyClientHalf{}, nil).Times(numDevices)
-	config.mockCrypto.EXPECT().EncryptTLFCryptKeyClientHalf(TLFEphemeralPrivateKey{}, subkey, TLFCryptKeyClientHalf{}).Return(EncryptedTLFCryptKeyClientHalf{}, nil).Times(numDevices)
+	config.mockCrypto.EXPECT().EncryptTLFCryptKeyClientHalf(TLFEphemeralPrivateKey{}, subkey, TLFCryptKeyClientHalf{}).Return(IFCERFTEncryptedTLFCryptKeyClientHalf{}, nil).Times(numDevices)
 	config.mockKops.EXPECT().PutTLFCryptKeyServerHalves(gomock.Any(), gomock.Any()).Return(nil)
 	config.mockCrypto.EXPECT().GetTLFCryptKeyServerHalfID(gomock.Any(), gomock.Any(), gomock.Any()).Return(TLFCryptKeyServerHalfID{}, nil).Times(numDevices)
 
@@ -212,7 +212,7 @@ func makeDirRKeyBundle(uid keybase1.UID, cryptPublicKey IFCERFTCryptPublicKey) T
 				},
 			},
 		},
-		TLFReaderEphemeralPublicKeys: make([]TLFEphemeralPublicKey, 1),
+		TLFReaderEphemeralPublicKeys: make([]IFCERFTTLFEphemeralPublicKey, 1),
 	}
 }
 
@@ -582,7 +582,7 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 	// doesn't otherwise change the handle since bob is already in it.
 	oldKeyGen = rmd.LatestKeyGeneration()
 	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(TLFPublicKey{},
-		TLFPrivateKey{}, TLFEphemeralPublicKey{}, TLFEphemeralPrivateKey{},
+		TLFPrivateKey{}, IFCERFTTLFEphemeralPublicKey{}, TLFEphemeralPrivateKey{},
 		IFCERFTTLFCryptKey{}, nil)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
@@ -816,7 +816,7 @@ func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 	if !ok {
 		t.Fatal("Wrong kind of key manager for config2")
 	}
-	for keyGen := KeyGen(FirstValidKeyGen); keyGen <= currKeyGen; keyGen++ {
+	for keyGen := IFCERFTKeyGen(IFCERFTFirstValidKeyGen); keyGen <= currKeyGen; keyGen++ {
 		_, err = km2.getTLFCryptKeyUsingCurrentDevice(ctx, rmd, keyGen, true)
 		if err == nil {
 			t.Errorf("User 2 could still fetch a key for keygen %d", keyGen)
@@ -844,7 +844,7 @@ func TestKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T) {
 	}
 
 	// Create a shared folder
-	name := u1.String() + "," + u2.String() + ReaderSep + u3.String()
+	name := u1.String() + "," + u2.String() + IFCERFTReaderSep + u3.String()
 
 	rootNode1 := GetRootNodeOrBust(t, config1, name, false)
 
@@ -1011,7 +1011,7 @@ func TestKeyManagerReaderRekey(t *testing.T) {
 	}
 
 	t.Log("Create a shared folder")
-	name := u1.String() + ReaderSep + u2.String()
+	name := u1.String() + IFCERFTReaderSep + u2.String()
 
 	rootNode1 := GetRootNodeOrBust(t, config1, name, false)
 
@@ -1099,7 +1099,7 @@ func TestKeyManagerReaderRekeyAndRevoke(t *testing.T) {
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
 	t.Log("Create a shared folder")
-	name := u1.String() + ReaderSep + u2.String()
+	name := u1.String() + IFCERFTReaderSep + u2.String()
 
 	rootNode1 := GetRootNodeOrBust(t, config1, name, false)
 
@@ -1455,7 +1455,7 @@ type cryptoLocalTrapAny struct {
 
 func (clta *cryptoLocalTrapAny) DecryptTLFCryptKeyClientHalfAny(
 	ctx context.Context,
-	keys []EncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
+	keys []IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
 	TLFCryptKeyClientHalf, int, error) {
 	clta.promptCh <- promptPaper
 	// Decrypt the key half with the given config object

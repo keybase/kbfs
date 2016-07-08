@@ -42,7 +42,7 @@ func NewReporterSimple(clock IFCERFTClock, maxErrors int) *ReporterSimple {
 
 // ReportErr implements the Reporter interface for ReporterSimple.
 func (r *ReporterSimple) ReportErr(ctx context.Context,
-	_ IFCERFTCanonicalTlfName, _ bool, _ ErrorModeType, err error) {
+	_ IFCERFTCanonicalTlfName, _ bool, _ IFCERFTErrorModeType, err error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 

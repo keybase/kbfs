@@ -515,7 +515,7 @@ func (c *ConfigLocal) SetConflictRenamer(cr IFCERFTConflictRenamer) {
 }
 
 // MetadataVersion implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) MetadataVersion() MetadataVer {
+func (c *ConfigLocal) MetadataVersion() IFCERFTMetadataVer {
 	return InitialExtraMetadataVer
 }
 

@@ -76,13 +76,13 @@ func (f *stallingBlockOps) Get(
 
 func (f *stallingBlockOps) Ready(
 	ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (
-	id BlockID, plainSize int, readyBlockData ReadyBlockData, err error) {
+	id BlockID, plainSize int, readyBlockData IFCERFTReadyBlockData, err error) {
 	f.maybeStall(ctx, "Ready")
 	return f.delegate().Ready(ctx, md, block)
 }
 
 func (f *stallingBlockOps) Put(
-	ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData ReadyBlockData) error {
+	ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData IFCERFTReadyBlockData) error {
 	f.maybeStall(ctx, "Put")
 	select {
 	case <-ctx.Done():

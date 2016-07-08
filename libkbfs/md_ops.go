@@ -189,7 +189,7 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	return nil
 }
 
-func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *IFCERFTTlfHandle, mStatus MergeStatus) (
+func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *IFCERFTTlfHandle, mStatus IFCERFTMergeStatus) (
 	*IFCERFTRootMetadata, error) {
 	mdserv := md.config.MDServer()
 	bh, err := handle.ToBareHandle()
@@ -203,7 +203,7 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *IFCERFTTlfHan
 	}
 
 	if rmds == nil {
-		if mStatus == Unmerged {
+		if mStatus == IFCERFTUnmerged {
 			// don't automatically create unmerged MDs
 			return nil, nil
 		}
@@ -277,13 +277,13 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *IFCERFTTlfHan
 // GetForHandle implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *IFCERFTTlfHandle) (
 	*IFCERFTRootMetadata, error) {
-	return md.getForHandle(ctx, handle, Merged)
+	return md.getForHandle(ctx, handle, IFCERFTMerged)
 }
 
 // GetUnmergedForHandle implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetUnmergedForHandle(ctx context.Context, handle *IFCERFTTlfHandle) (
 	*IFCERFTRootMetadata, error) {
-	return md.getForHandle(ctx, handle, Unmerged)
+	return md.getForHandle(ctx, handle, IFCERFTUnmerged)
 }
 
 func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
@@ -308,7 +308,7 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 	return md.processMetadata(ctx, handle, rmds)
 }
 
-func (md *MDOpsStandard) getForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus) (*IFCERFTRootMetadata, error) {
+func (md *MDOpsStandard) getForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (*IFCERFTRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetForTLF(ctx, id, bid, mStatus)
 	if err != nil {
 		return nil, err
@@ -334,13 +334,13 @@ func (md *MDOpsStandard) getForTLF(ctx context.Context, id IFCERFTTlfID, bid Bra
 
 // GetForTLF implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetForTLF(ctx context.Context, id IFCERFTTlfID) (*IFCERFTRootMetadata, error) {
-	return md.getForTLF(ctx, id, NullBranchID, Merged)
+	return md.getForTLF(ctx, id, NullBranchID, IFCERFTMerged)
 }
 
 // GetUnmergedForTLF implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetUnmergedForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID) (
 	*IFCERFTRootMetadata, error) {
-	return md.getForTLF(ctx, id, bid, Unmerged)
+	return md.getForTLF(ctx, id, bid, IFCERFTUnmerged)
 }
 
 func (md *MDOpsStandard) processRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, rmds []*RootMetadataSigned) (
@@ -390,7 +390,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id IFCERFTTlfID, bid 
 	return rmd, nil
 }
 
-func (md *MDOpsStandard) getRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
+func (md *MDOpsStandard) getRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus, start, stop MetadataRevision) (
 	[]*IFCERFTRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetRange(ctx, id, bid, mStatus, start,
 		stop)
@@ -406,12 +406,12 @@ func (md *MDOpsStandard) getRange(ctx context.Context, id IFCERFTTlfID, bid Bran
 
 // GetRange implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetRange(ctx context.Context, id IFCERFTTlfID, start, stop MetadataRevision) ([]*IFCERFTRootMetadata, error) {
-	return md.getRange(ctx, id, NullBranchID, Merged, start, stop)
+	return md.getRange(ctx, id, NullBranchID, IFCERFTMerged, start, stop)
 }
 
 // GetUnmergedRange implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, start, stop MetadataRevision) ([]*IFCERFTRootMetadata, error) {
-	return md.getRange(ctx, id, bid, Unmerged, start, stop)
+	return md.getRange(ctx, id, bid, IFCERFTUnmerged, start, stop)
 }
 
 func (md *MDOpsStandard) readyMD(ctx context.Context, rmd *IFCERFTRootMetadata) (
@@ -504,7 +504,7 @@ func (md *MDOpsStandard) put(ctx context.Context, rmd *IFCERFTRootMetadata) erro
 
 // Put implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) Put(ctx context.Context, rmd *IFCERFTRootMetadata) error {
-	if rmd.MergedStatus() == Unmerged {
+	if rmd.MergedStatus() == IFCERFTUnmerged {
 		return UnexpectedUnmergedPutError{}
 	}
 	return md.put(ctx, rmd)

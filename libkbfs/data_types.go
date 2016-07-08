@@ -18,15 +18,15 @@ import (
 const (
 	// ReaderSep is the string that separates readers from writers in a
 	// TLF name.
-	ReaderSep = "#"
+	IFCERFTReaderSep = "#"
 
 	// TlfHandleExtensionSep is the string that separates the folder
 	// participants from an extension suffix in the TLF name.
-	TlfHandleExtensionSep = " "
+	IFCERFTTlfHandleExtensionSep = " "
 
 	// PublicUIDName is the name given to keybase1.PublicUID.  This string
 	// should correspond to an illegal or reserved Keybase user name.
-	PublicUIDName = "_public"
+	IFCERFTPublicUIDName = "_public"
 )
 
 // disallowedPrefixes must not be allowed at the beginning of any
@@ -58,111 +58,111 @@ type IFCERFTSessionInfo struct {
 }
 
 // SigVer denotes a signature version.
-type SigVer int
+type IFCERFTSigVer int
 
 const (
 	// SigED25519 is the signature type for ED25519
-	SigED25519 SigVer = 1
+	IFCERFTSigED25519 IFCERFTSigVer = 1
 )
 
 // IsNil returns true if this SigVer is nil.
-func (v SigVer) IsNil() bool {
+func (v IFCERFTSigVer) IsNil() bool {
 	return int(v) == 0
 }
 
 // SignatureInfo contains all the info needed to verify a signature
 // for a message.
-type SignatureInfo struct {
+type IFCERFTSignatureInfo struct {
 	// Exported only for serialization purposes.
-	Version      SigVer              `codec:"v"`
+	Version      IFCERFTSigVer       `codec:"v"`
 	Signature    []byte              `codec:"s"`
 	VerifyingKey IFCERFTVerifyingKey `codec:"k"`
 }
 
 // IsNil returns true if this SignatureInfo is nil.
-func (s SignatureInfo) IsNil() bool {
+func (s IFCERFTSignatureInfo) IsNil() bool {
 	return s.Version.IsNil() && len(s.Signature) == 0 && s.VerifyingKey.IsNil()
 }
 
 // deepCopy makes a complete copy of this SignatureInfo.
-func (s SignatureInfo) deepCopy() SignatureInfo {
+func (s IFCERFTSignatureInfo) deepCopy() IFCERFTSignatureInfo {
 	signature := make([]byte, len(s.Signature))
 	copy(signature[:], s.Signature[:])
-	return SignatureInfo{s.Version, signature, s.VerifyingKey}
+	return IFCERFTSignatureInfo{s.Version, signature, s.VerifyingKey}
 }
 
 // String implements the fmt.Stringer interface for SignatureInfo.
-func (s SignatureInfo) String() string {
+func (s IFCERFTSignatureInfo) String() string {
 	return fmt.Sprintf("SignatureInfo{Version: %d, Signature: %s, "+
 		"VerifyingKey: %s}", s.Version, hex.EncodeToString(s.Signature[:]),
 		&s.VerifyingKey)
 }
 
 // TLFEphemeralPublicKeys stores a list of TLFEphemeralPublicKey
-type TLFEphemeralPublicKeys []TLFEphemeralPublicKey
+type IFCERFTTLFEphemeralPublicKeys []IFCERFTTLFEphemeralPublicKey
 
 // EncryptionVer denotes a version for the encryption method.
-type EncryptionVer int
+type IFCERFTEncryptionVer int
 
 const (
 	// EncryptionSecretbox is the encryption version that uses
 	// nacl/secretbox or nacl/box.
-	EncryptionSecretbox EncryptionVer = 1
+	IFCERFTEncryptionSecretbox IFCERFTEncryptionVer = 1
 )
 
 // encryptedData is encrypted data with a nonce and a version.
 type encryptedData struct {
 	// Exported only for serialization purposes. Should only be
 	// used by implementations of Crypto.
-	Version       EncryptionVer `codec:"v"`
-	EncryptedData []byte        `codec:"e"`
-	Nonce         []byte        `codec:"n"`
+	Version       IFCERFTEncryptionVer `codec:"v"`
+	EncryptedData []byte               `codec:"e"`
+	Nonce         []byte               `codec:"n"`
 }
 
 // EncryptedTLFCryptKeyClientHalf is an encrypted
 // TLFCryptKeyCLientHalf object.
-type EncryptedTLFCryptKeyClientHalf encryptedData
+type IFCERFTEncryptedTLFCryptKeyClientHalf encryptedData
 
 // EncryptedPrivateMetadata is an encrypted PrivateMetadata object.
-type EncryptedPrivateMetadata encryptedData
+type IFCERFTEncryptedPrivateMetadata encryptedData
 
 // EncryptedBlock is an encrypted Block.
-type EncryptedBlock encryptedData
+type IFCERFTEncryptedBlock encryptedData
 
 // EncryptedMerkleLeaf is an encrypted Merkle leaf.
-type EncryptedMerkleLeaf struct {
+type IFCERFTEncryptedMerkleLeaf struct {
 	_struct       bool `codec:",toarray"`
-	Version       EncryptionVer
+	Version       IFCERFTEncryptionVer
 	EncryptedData []byte
 }
 
 // EncryptedTLFCryptKeyClientAndEphemeral has what's needed to
 // request a client half decryption.
-type EncryptedTLFCryptKeyClientAndEphemeral struct {
+type IFCERFTEncryptedTLFCryptKeyClientAndEphemeral struct {
 	// PublicKey contains the wrapped Key ID of the public key
 	PubKey IFCERFTCryptPublicKey
 	// ClientHalf contains the encrypted client half of the TLF key
-	ClientHalf EncryptedTLFCryptKeyClientHalf
+	ClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf
 	// EPubKey contains the ephemeral public key used to encrypt ClientHalf
-	EPubKey TLFEphemeralPublicKey
+	EPubKey IFCERFTTLFEphemeralPublicKey
 }
 
 // KeyGen is the type of a key generation for a top-level folder.
-type KeyGen int
+type IFCERFTKeyGen int
 
 const (
 	// PublicKeyGen is the value used for public TLFs. Note that
 	// it is not considered a valid key generation.
-	PublicKeyGen KeyGen = -1
+	IFCERFTPublicKeyGen IFCERFTKeyGen = -1
 	// FirstValidKeyGen is the first value that is considered a
 	// valid key generation. Note that the nil value is not
 	// considered valid.
-	FirstValidKeyGen = 1
+	IFCERFTFirstValidKeyGen = 1
 )
 
 // MetadataVer is the type of a version for marshalled KBFS metadata
 // structures.
-type MetadataVer int
+type IFCERFTMetadataVer int
 
 const (
 	// FirstValidMetadataVer is the first value that is considered a
@@ -194,13 +194,13 @@ const (
 // BlockRefNonce is a 64-bit unique sequence of bytes for identifying
 // this reference of a block ID from other references to the same
 // (duplicated) block.
-type BlockRefNonce [8]byte
+type IFCERFTBlockRefNonce [8]byte
 
 // zeroBlockRefNonce is a special BlockRefNonce used for the initial
 // reference to a block.
-var zeroBlockRefNonce = BlockRefNonce([8]byte{0, 0, 0, 0, 0, 0, 0, 0})
+var zeroBlockRefNonce = IFCERFTBlockRefNonce([8]byte{0, 0, 0, 0, 0, 0, 0, 0})
 
-func (nonce BlockRefNonce) String() string {
+func (nonce IFCERFTBlockRefNonce) String() string {
 	return hex.EncodeToString(nonce[:])
 }
 
@@ -208,7 +208,7 @@ func (nonce BlockRefNonce) String() string {
 // reference to a block.
 type blockRef struct {
 	id       BlockID
-	refNonce BlockRefNonce
+	refNonce IFCERFTBlockRefNonce
 }
 
 func (r blockRef) IsValid() bool {
@@ -229,7 +229,7 @@ func (r blockRef) String() string {
 //
 // NOTE: Don't add or modify anything in this struct without
 // considering how old clients will handle them.
-type BlockContext struct {
+type IFCERFTBlockContext struct {
 	// Creator is the UID that was first charged for the initial
 	// reference to this block.
 	Creator keybase1.UID `codec:"c"`
@@ -246,16 +246,16 @@ type BlockContext struct {
 	// subsequent references to the same block must have a random
 	// RefNonce (it can't be a monotonically increasing number because
 	// that would require coordination among clients).
-	RefNonce BlockRefNonce `codec:"r,omitempty"`
+	RefNonce IFCERFTBlockRefNonce `codec:"r,omitempty"`
 }
 
 // GetCreator returns the creator of the associated block.
-func (c BlockContext) GetCreator() keybase1.UID {
+func (c IFCERFTBlockContext) GetCreator() keybase1.UID {
 	return c.Creator
 }
 
 // GetWriter returns the writer of the associated block.
-func (c BlockContext) GetWriter() keybase1.UID {
+func (c IFCERFTBlockContext) GetWriter() keybase1.UID {
 	if !c.Writer.IsNil() {
 		return c.Writer
 	}
@@ -263,7 +263,7 @@ func (c BlockContext) GetWriter() keybase1.UID {
 }
 
 // SetWriter sets the Writer field, if necessary.
-func (c *BlockContext) SetWriter(newWriter keybase1.UID) {
+func (c *IFCERFTBlockContext) SetWriter(newWriter keybase1.UID) {
 	if c.Creator != newWriter {
 		c.Writer = newWriter
 	} else {
@@ -274,17 +274,17 @@ func (c *BlockContext) SetWriter(newWriter keybase1.UID) {
 }
 
 // GetRefNonce returns the ref nonce of the associated block.
-func (c BlockContext) GetRefNonce() BlockRefNonce {
+func (c IFCERFTBlockContext) GetRefNonce() IFCERFTBlockRefNonce {
 	return c.RefNonce
 }
 
 // IsFirstRef returns whether or not p represents the first reference
 // to the corresponding BlockID.
-func (c BlockContext) IsFirstRef() bool {
+func (c IFCERFTBlockContext) IsFirstRef() bool {
 	return c.RefNonce == zeroBlockRefNonce
 }
 
-func (c BlockContext) String() string {
+func (c IFCERFTBlockContext) String() string {
 	s := fmt.Sprintf("BlockContext{Creator: %s", c.Creator)
 	if len(c.Writer) > 0 {
 		s += fmt.Sprintf(", Writer: %s", c.Writer)
@@ -302,9 +302,9 @@ func (c BlockContext) String() string {
 // considering how old clients will handle them.
 type IFCERFTBlockPointer struct {
 	ID      BlockID        `codec:"i"`
-	KeyGen  KeyGen         `codec:"k"` // if valid, which generation of the TLFKeyBundle to use.
+	KeyGen  IFCERFTKeyGen  `codec:"k"` // if valid, which generation of the TLFKeyBundle to use.
 	DataVer IFCERFTDataVer `codec:"d"` // if valid, which version of the KBFS data structures is pointed to
-	BlockContext
+	IFCERFTBlockContext
 }
 
 // IsValid returns whether the block pointer is valid. A zero block
@@ -321,7 +321,7 @@ func (p IFCERFTBlockPointer) IsValid() bool {
 }
 
 func (p IFCERFTBlockPointer) String() string {
-	return fmt.Sprintf("BlockPointer{ID: %s, KeyGen: %d, DataVer: %d, Context: %s}", p.ID, p.KeyGen, p.DataVer, p.BlockContext)
+	return fmt.Sprintf("BlockPointer{ID: %s, KeyGen: %d, DataVer: %d, Context: %s}", p.ID, p.KeyGen, p.DataVer, p.IFCERFTBlockContext)
 }
 
 // IsInitialized returns whether or not this BlockPointer has non-nil data.
@@ -341,7 +341,7 @@ func (p IFCERFTBlockPointer) ref() blockRef {
 //
 // NOTE: Don't add or modify anything in this struct without
 // considering how old clients will handle them.
-type BlockInfo struct {
+type IFCERFTBlockInfo struct {
 	IFCERFTBlockPointer
 	// When non-zero, the size of the encoded (and possibly
 	// encrypted) data contained in the block. When non-zero,
@@ -353,15 +353,15 @@ type BlockInfo struct {
 var bpSize = uint64(reflect.TypeOf(IFCERFTBlockPointer{}).Size())
 
 // ReadyBlockData is a block that has been encoded (and encrypted).
-type ReadyBlockData struct {
+type IFCERFTReadyBlockData struct {
 	// These fields should not be used outside of BlockOps.Put().
 	buf        []byte
-	serverHalf BlockCryptKeyServerHalf
+	serverHalf IFCERFTBlockCryptKeyServerHalf
 }
 
 // GetEncodedSize returns the size of the encoded (and encrypted)
 // block data.
-func (r ReadyBlockData) GetEncodedSize() int {
+func (r IFCERFTReadyBlockData) GetEncodedSize() int {
 	return len(r.buf)
 }
 
@@ -373,13 +373,13 @@ type IFCERFTFavorite struct {
 
 // NewFavoriteFromFolder creates a Favorite from a
 // keybase1.Folder.
-func NewFavoriteFromFolder(folder keybase1.Folder) *IFCERFTFavorite {
+func IFCERFTNewFavoriteFromFolder(folder keybase1.Folder) *IFCERFTFavorite {
 	name := folder.Name
 	if !folder.Private {
 		// Old versions of the client still use an outdated "#public"
 		// suffix for favorited public folders. TODO: remove this once
 		// those old versions of the client are retired.
-		const oldPublicSuffix = ReaderSep + "public"
+		const oldPublicSuffix = IFCERFTReaderSep + "public"
 		name = strings.TrimSuffix(folder.Name, oldPublicSuffix)
 	}
 
@@ -425,7 +425,7 @@ const (
 	// MasterBranch represents the mainline branch for a top-level
 	// folder.  Set to the empty string so that the default will be
 	// the master branch.
-	MasterBranch IFCERFTBranchName = ""
+	IFCERFTMasterBranch IFCERFTBranchName = ""
 )
 
 // FolderBranch represents a unique pair of top-level folder and a
@@ -553,10 +553,10 @@ func (p path) hasPublic() bool {
 //
 // NOTE: Don't add or modify anything in this struct without
 // considering how old clients will handle them.
-type BlockChanges struct {
+type IFCERFTBlockChanges struct {
 	// If this is set, the actual changes are stored in a block (where
 	// the block contains a serialized version of BlockChanges)
-	Info BlockInfo `codec:"p,omitempty"`
+	Info IFCERFTBlockInfo `codec:"p,omitempty"`
 	// An ordered list of operations completed in this update
 	Ops opsList `codec:"o,omitempty"`
 	// Estimate the number of bytes that this set of changes will take to encode
@@ -566,7 +566,7 @@ type BlockChanges struct {
 // Equals returns true if the given BlockChanges is equal to this
 // BlockChanges.  Currently does not check for equality at the
 // operation level.
-func (bc BlockChanges) Equals(other BlockChanges) bool {
+func (bc IFCERFTBlockChanges) Equals(other IFCERFTBlockChanges) bool {
 	if bc.Info != other.Info || len(bc.Ops) != len(other.Ops) ||
 		bc.sizeEstimate != other.sizeEstimate {
 		return false
@@ -575,7 +575,7 @@ func (bc BlockChanges) Equals(other BlockChanges) bool {
 	return true
 }
 
-func (bc *BlockChanges) addBPSize() {
+func (bc *IFCERFTBlockChanges) addBPSize() {
 	// We want an estimate of the codec-encoded size, but the
 	// in-memory size is good enough.
 	bc.sizeEstimate += bpSize
@@ -583,21 +583,21 @@ func (bc *BlockChanges) addBPSize() {
 
 // AddRefBlock adds the newly-referenced block to this BlockChanges
 // and updates the size estimate.
-func (bc *BlockChanges) AddRefBlock(ptr IFCERFTBlockPointer) {
+func (bc *IFCERFTBlockChanges) AddRefBlock(ptr IFCERFTBlockPointer) {
 	bc.Ops[len(bc.Ops)-1].AddRefBlock(ptr)
 	bc.addBPSize()
 }
 
 // AddUnrefBlock adds the newly unreferenced block to this BlockChanges
 // and updates the size estimate.
-func (bc *BlockChanges) AddUnrefBlock(ptr IFCERFTBlockPointer) {
+func (bc *IFCERFTBlockChanges) AddUnrefBlock(ptr IFCERFTBlockPointer) {
 	bc.Ops[len(bc.Ops)-1].AddUnrefBlock(ptr)
 	bc.addBPSize()
 }
 
 // AddUpdate adds the newly updated block to this BlockChanges
 // and updates the size estimate.
-func (bc *BlockChanges) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer) {
+func (bc *IFCERFTBlockChanges) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer) {
 	bc.Ops[len(bc.Ops)-1].AddUpdate(oldPtr, newPtr)
 	// add sizes for both block pointers
 	bc.addBPSize()
@@ -606,35 +606,35 @@ func (bc *BlockChanges) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBloc
 
 // AddOp starts a new operation for this BlockChanges.  Subsequent
 // Add* calls will populate this operation.
-func (bc *BlockChanges) AddOp(o op) {
+func (bc *IFCERFTBlockChanges) AddOp(o op) {
 	bc.Ops = append(bc.Ops, o)
 	bc.sizeEstimate += o.SizeExceptUpdates()
 }
 
 // EntryType is the type of a directory entry.
-type EntryType int
+type IFCERFTEntryType int
 
 const (
 	// File is a regular file.
-	File EntryType = iota
+	IFCERFTFile IFCERFTEntryType = iota
 	// Exec is an executable file.
-	Exec
+	IFCERFTExec
 	// Dir is a directory.
-	Dir
+	IFCERFTDir
 	// Sym is a symbolic link.
-	Sym
+	IFCERFTSym
 )
 
 // String implements the fmt.Stringer interface for EntryType
-func (et EntryType) String() string {
+func (et IFCERFTEntryType) String() string {
 	switch et {
-	case File:
+	case IFCERFTFile:
 		return "FILE"
-	case Exec:
+	case IFCERFTExec:
 		return "EXEC"
-	case Dir:
+	case IFCERFTDir:
 		return "DIR"
-	case Sym:
+	case IFCERFTSym:
 		return "SYM"
 	}
 	return "<invalid EntryType>"
@@ -669,7 +669,7 @@ func (o IFCERFTEXCL) String() string {
 // considering how old clients will handle them (since this is
 // embedded in DirEntry).
 type IFCERFTEntryInfo struct {
-	Type    EntryType
+	Type    IFCERFTEntryType
 	Size    uint64
 	SymPath string `codec:",omitempty"` // must be within the same root dir
 	// Mtime is in unix nanoseconds
@@ -696,24 +696,24 @@ type ReportedError struct {
 }
 
 // MergeStatus represents the merge status of a TLF.
-type MergeStatus int
+type IFCERFTMergeStatus int
 
 const (
 	// Merged means that the TLF is merged and no conflict
 	// resolution needs to be done.
-	Merged MergeStatus = iota
+	IFCERFTMerged IFCERFTMergeStatus = iota
 	// Unmerged means that the TLF is unmerged and conflict
 	// resolution needs to be done. Metadata blocks which
 	// represent unmerged history should have a non-null
 	// branch ID defined.
-	Unmerged
+	IFCERFTUnmerged
 )
 
-func (m MergeStatus) String() string {
+func (m IFCERFTMergeStatus) String() string {
 	switch m {
-	case Merged:
+	case IFCERFTMerged:
 		return "merged"
-	case Unmerged:
+	case IFCERFTUnmerged:
 		return "unmerged"
 	default:
 		return "unknown"
@@ -721,38 +721,38 @@ func (m MergeStatus) String() string {
 }
 
 // UsageType indicates the type of usage that quota manager is keeping stats of
-type UsageType int
+type IFCERFTUsageType int
 
 const (
 	// UsageWrite indicates a block is written (written blocks include archived blocks)
-	UsageWrite UsageType = iota
+	IFCERFTUsageWrite IFCERFTUsageType = iota
 	// UsageArchive indicates an existing block is archived
-	UsageArchive
+	IFCERFTUsageArchive
 	// UsageRead indicates a block is read
-	UsageRead
+	IFCERFTUsageRead
 	// NumUsage indicates the number of usage types
-	NumUsage
+	IFCERFTNumUsage
 )
 
 // UsageStat tracks the amount of bytes/blocks used, broken down by usage types
-type UsageStat struct {
-	Bytes  map[UsageType]int64
-	Blocks map[UsageType]int64
+type IFCERFTUsageStat struct {
+	Bytes  map[IFCERFTUsageType]int64
+	Blocks map[IFCERFTUsageType]int64
 	// Mtime is in unix nanoseconds
 	Mtime int64
 }
 
 // NewUsageStat creates a new UsageStat
-func NewUsageStat() *UsageStat {
-	return &UsageStat{
-		Bytes:  make(map[UsageType]int64),
-		Blocks: make(map[UsageType]int64),
+func IFCERFTNewUsageStat() *IFCERFTUsageStat {
+	return &IFCERFTUsageStat{
+		Bytes:  make(map[IFCERFTUsageType]int64),
+		Blocks: make(map[IFCERFTUsageType]int64),
 	}
 }
 
 // NonZero checks whether UsageStat has accumulated any usage info
-func (u *UsageStat) NonZero() bool {
-	for i := UsageType(0); i < NumUsage; i++ {
+func (u *IFCERFTUsageStat) NonZero() bool {
+	for i := IFCERFTUsageType(0); i < IFCERFTNumUsage; i++ {
 		if u.Bytes[i] != 0 {
 			return true
 		}
@@ -763,11 +763,11 @@ func (u *UsageStat) NonZero() bool {
 //AccumOne records the usage of one block, whose size is denoted by change
 //A positive change means the block is newly added, negative means the block
 //is deleted. If archive is true, it means the block is archived.
-func (u *UsageStat) AccumOne(change int, usage UsageType) {
+func (u *IFCERFTUsageStat) AccumOne(change int, usage IFCERFTUsageType) {
 	if change == 0 {
 		return
 	}
-	if usage < UsageWrite || usage > UsageRead {
+	if usage < IFCERFTUsageWrite || usage > IFCERFTUsageRead {
 		return
 	}
 	u.Bytes[usage] += int64(change)
@@ -779,7 +779,7 @@ func (u *UsageStat) AccumOne(change int, usage UsageType) {
 }
 
 // Accum combines changes to the existing UserQuotaInfo object using accumulation function accumF.
-func (u *UsageStat) Accum(another *UsageStat, accumF func(int64, int64) int64) {
+func (u *IFCERFTUsageStat) Accum(another *IFCERFTUsageStat, accumF func(int64, int64) int64) {
 	if another == nil {
 		return
 	}
@@ -792,54 +792,54 @@ func (u *UsageStat) Accum(another *UsageStat, accumF func(int64, int64) int64) {
 }
 
 // UserQuotaInfo contains a user's quota usage information
-type UserQuotaInfo struct {
-	Folders map[string]*UsageStat
-	Total   *UsageStat
+type IFCERFTUserQuotaInfo struct {
+	Folders map[string]*IFCERFTUsageStat
+	Total   *IFCERFTUsageStat
 	Limit   int64
 }
 
 // NewUserQuotaInfo returns a newly constructed UserQuotaInfo.
-func NewUserQuotaInfo() *UserQuotaInfo {
-	return &UserQuotaInfo{
-		Folders: make(map[string]*UsageStat),
-		Total:   NewUsageStat(),
+func IFCERFTNewUserQuotaInfo() *IFCERFTUserQuotaInfo {
+	return &IFCERFTUserQuotaInfo{
+		Folders: make(map[string]*IFCERFTUsageStat),
+		Total:   IFCERFTNewUsageStat(),
 	}
 }
 
 // AccumOne combines one quota charge to the existing UserQuotaInfo
-func (u *UserQuotaInfo) AccumOne(change int, folder string, usage UsageType) {
+func (u *IFCERFTUserQuotaInfo) AccumOne(change int, folder string, usage IFCERFTUsageType) {
 	if _, ok := u.Folders[folder]; !ok {
-		u.Folders[folder] = NewUsageStat()
+		u.Folders[folder] = IFCERFTNewUsageStat()
 	}
 	u.Folders[folder].AccumOne(change, usage)
 	u.Total.AccumOne(change, usage)
 }
 
 // Accum combines changes to the existing UserQuotaInfo object using accumulation function accumF.
-func (u *UserQuotaInfo) Accum(another *UserQuotaInfo, accumF func(int64, int64) int64) {
+func (u *IFCERFTUserQuotaInfo) Accum(another *IFCERFTUserQuotaInfo, accumF func(int64, int64) int64) {
 	if another == nil {
 		return
 	}
 	if u.Total == nil {
-		u.Total = NewUsageStat()
+		u.Total = IFCERFTNewUsageStat()
 	}
 	u.Total.Accum(another.Total, accumF)
 	for f, change := range another.Folders {
 		if _, ok := u.Folders[f]; !ok {
-			u.Folders[f] = NewUsageStat()
+			u.Folders[f] = IFCERFTNewUsageStat()
 		}
 		u.Folders[f].Accum(change, accumF)
 	}
 }
 
 // ToBytes marshals this UserQuotaInfo
-func (u *UserQuotaInfo) ToBytes(config IFCERFTConfig) ([]byte, error) {
+func (u *IFCERFTUserQuotaInfo) ToBytes(config IFCERFTConfig) ([]byte, error) {
 	return config.Codec().Encode(u)
 }
 
 // UserQuotaInfoDecode decodes b into a UserQuotaInfo
-func UserQuotaInfoDecode(b []byte, config IFCERFTConfig) (*UserQuotaInfo, error) {
-	var info UserQuotaInfo
+func IFCERFTUserQuotaInfoDecode(b []byte, config IFCERFTConfig) (*IFCERFTUserQuotaInfo, error) {
+	var info IFCERFTUserQuotaInfo
 	err := config.Codec().Decode(b, &info)
 	if err != nil {
 		return nil, err
@@ -850,7 +850,7 @@ func UserQuotaInfoDecode(b []byte, config IFCERFTConfig) (*UserQuotaInfo, error)
 
 // OpSummary describes the changes performed by a single op, and is
 // suitable for encoding directly as JSON.
-type OpSummary struct {
+type IFCERFTOpSummary struct {
 	Op      string
 	Refs    []string
 	Unrefs  []string
@@ -858,20 +858,20 @@ type OpSummary struct {
 }
 
 // UpdateSummary describes the operations done by a single MD revision.
-type UpdateSummary struct {
+type IFCERFTUpdateSummary struct {
 	Revision  MetadataRevision
 	Date      time.Time
 	Writer    string
 	LiveBytes uint64 // the "DiskUsage" for the TLF as of this revision
-	Ops       []OpSummary
+	Ops       []IFCERFTOpSummary
 }
 
 // TLFUpdateHistory gives all the summaries of all updates in a TLF's
 // history.
-type TLFUpdateHistory struct {
+type IFCERFTTLFUpdateHistory struct {
 	ID      string
 	Name    string
-	Updates []UpdateSummary
+	Updates []IFCERFTUpdateSummary
 }
 
 // writerInfo is the keybase username and device that generated the operation.
@@ -883,11 +883,11 @@ type writerInfo struct {
 
 // ErrorModeType indicates what type of operation was being attempted
 // when an error was reported.
-type ErrorModeType int
+type IFCERFTErrorModeType int
 
 const (
 	// ReadMode indicates that an error happened while trying to read.
-	ReadMode ErrorModeType = iota
+	IFCERFTReadMode IFCERFTErrorModeType = iota
 	// WriteMode indicates that an error happened while trying to write.
-	WriteMode
+	IFCERFTWriteMode
 )

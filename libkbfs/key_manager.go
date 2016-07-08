@@ -54,7 +54,7 @@ func (km *KeyManagerStandard) GetTLFCryptKeyForBlockDecryption(
 }
 
 func (km *KeyManagerStandard) getTLFCryptKeyUsingCurrentDevice(
-	ctx context.Context, md *IFCERFTRootMetadata, keyGen KeyGen, cache bool) (
+	ctx context.Context, md *IFCERFTRootMetadata, keyGen IFCERFTKeyGen, cache bool) (
 	tlfCryptKey IFCERFTTLFCryptKey, err error) {
 	flags := getTLFCryptKeyFlags(0)
 	if cache {
@@ -72,14 +72,14 @@ const (
 )
 
 func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
-	md *IFCERFTRootMetadata, keyGen KeyGen, flags getTLFCryptKeyFlags) (
+	md *IFCERFTRootMetadata, keyGen IFCERFTKeyGen, flags getTLFCryptKeyFlags) (
 	IFCERFTTLFCryptKey, error) {
 
 	if md.ID.IsPublic() {
 		return PublicTLFCryptKey, nil
 	}
 
-	if keyGen < FirstValidKeyGen {
+	if keyGen < IFCERFTFirstValidKeyGen {
 		return IFCERFTTLFCryptKey{}, InvalidKeyGenerationError{md.GetTlfHandle(), keyGen}
 	}
 	// Is this some key we don't know yet?  Shouldn't really ever happen,
@@ -133,7 +133,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 			return IFCERFTTLFCryptKey{}, err
 		}
 
-		keys := make([]EncryptedTLFCryptKeyClientAndEphemeral, 0,
+		keys := make([]IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, 0,
 			len(publicKeys))
 		keysInfo := make([]TLFCryptKeyInfo, 0, len(publicKeys))
 		publicKeyLookup := make([]int, 0, len(publicKeys))
@@ -147,7 +147,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 				}
 
 				keysInfo = append(keysInfo, info)
-				keys = append(keys, EncryptedTLFCryptKeyClientAndEphemeral{
+				keys = append(keys, IFCERFTEncryptedTLFCryptKeyClientAndEphemeral{
 					PubKey:     k,
 					ClientHalf: info.ClientHalf,
 					EPubKey:    ePublicKey,
@@ -223,8 +223,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) updateKeyBundle(ctx context.Context,
-	md *IFCERFTRootMetadata, keyGen KeyGen, wKeys map[keybase1.UID][]IFCERFTCryptPublicKey, rKeys map[keybase1.UID][]IFCERFTCryptPublicKey, ePubKey TLFEphemeralPublicKey,
-	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey IFCERFTTLFCryptKey) error {
+	md *IFCERFTRootMetadata, keyGen IFCERFTKeyGen, wKeys map[keybase1.UID][]IFCERFTCryptPublicKey, rKeys map[keybase1.UID][]IFCERFTCryptPublicKey, ePubKey IFCERFTTLFEphemeralPublicKey, ePrivKey TLFEphemeralPrivateKey, tlfCryptKey IFCERFTTLFCryptKey) error {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return err
@@ -397,10 +396,10 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 	defer func() { km.deferLog.CDebugf(ctx, "Rekey %s done: %#v", md.ID, err) }()
 
 	currKeyGen := md.LatestKeyGeneration()
-	if md.ID.IsPublic() != (currKeyGen == PublicKeyGen) {
+	if md.ID.IsPublic() != (currKeyGen == IFCERFTPublicKeyGen) {
 		return false, nil, fmt.Errorf(
 			"ID %v has isPublic=%t but currKeyGen is %d (isPublic=%t)",
-			md.ID, md.ID.IsPublic(), currKeyGen, currKeyGen == PublicKeyGen)
+			md.ID, md.ID.IsPublic(), currKeyGen, currKeyGen == IFCERFTPublicKeyGen)
 	}
 
 	if promptPaper && md.ID.IsPublic() {
@@ -474,7 +473,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 	// Decide whether we have a new device and/or a revoked device, or neither.
 	// Look up all the device public keys for all writers and readers first.
 
-	incKeyGen := currKeyGen < FirstValidKeyGen
+	incKeyGen := currKeyGen < IFCERFTFirstValidKeyGen
 
 	if !isWriter && incKeyGen {
 		// Readers cannot create the first key generation
@@ -583,7 +582,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 
 	// If there's at least one new device, add that device to every key bundle.
 	if addNewReaderDevice || addNewWriterDevice {
-		for keyGen := KeyGen(FirstValidKeyGen); keyGen <= currKeyGen; keyGen++ {
+		for keyGen := IFCERFTKeyGen(IFCERFTFirstValidKeyGen); keyGen <= currKeyGen; keyGen++ {
 			flags := getTLFCryptKeyAnyDevice
 			if promptPaper {
 				flags |= getTLFCryptKeyPromptPaper
@@ -674,7 +673,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 	md.data.TLFPrivateKey = privKey
 
 	// Delete server-side key halves for any revoked devices.
-	for keygen := KeyGen(FirstValidKeyGen); keygen <= currKeyGen; keygen++ {
+	for keygen := IFCERFTKeyGen(IFCERFTFirstValidKeyGen); keygen <= currKeyGen; keygen++ {
 		wkb, rkb, err := md.getTLFKeyBundles(keygen)
 		if err != nil {
 			return false, nil, err

@@ -16,14 +16,14 @@ const MerkleRootVersion = 1
 
 // MerkleRoot represents a signed Merkle tree root.
 type MerkleRoot struct {
-	Version   int                    `codec:"v"`
-	TreeID    keybase1.MerkleTreeID  `codec:"t"`
-	SeqNo     int64                  `codec:"sn"`
-	Timestamp int64                  `codec:"ts"`
-	Hash      merkle.Hash            `codec:"h"`
-	PrevRoot  merkle.Hash            `codec:"pr"`
-	EPubKey   *TLFEphemeralPublicKey `codec:"epk,omitempty"` // these two are only necessary with encrypted leaves.
-	Nonce     *[24]byte              `codec:"non,omitempty"` // the public tree leaves are in the clear.
+	Version   int                           `codec:"v"`
+	TreeID    keybase1.MerkleTreeID         `codec:"t"`
+	SeqNo     int64                         `codec:"sn"`
+	Timestamp int64                         `codec:"ts"`
+	Hash      merkle.Hash                   `codec:"h"`
+	PrevRoot  merkle.Hash                   `codec:"pr"`
+	EPubKey   *IFCERFTTLFEphemeralPublicKey `codec:"epk,omitempty"` // these two are only necessary with encrypted leaves.
+	Nonce     *[24]byte                     `codec:"non,omitempty"` // the public tree leaves are in the clear.
 }
 
 // MerkleLeaf is the value of a Merkle leaf node.

@@ -216,7 +216,7 @@ func ParseTlfHandleExtensionSuffix(s string) ([]TlfHandleExtension, error) {
 func NewTlfHandleExtensionSuffix(extensions []TlfHandleExtension) string {
 	var suffix string
 	for _, extension := range extensions {
-		suffix += TlfHandleExtensionSep
+		suffix += IFCERFTTlfHandleExtensionSep
 		suffix += extension.String()
 	}
 	return suffix

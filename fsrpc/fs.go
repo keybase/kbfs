@@ -53,7 +53,7 @@ func (f fs) tlf(ctx context.Context, path Path) (keybase1.ListResult, error) {
 		return keybase1.ListResult{}, fmt.Errorf("Node not found for path: %s", path)
 	}
 
-	if de.Type == libkbfs.Dir {
+	if de.Type == libkbfs.IFCERFTDir {
 		children, err := f.config.KBFSOps().GetDirChildren(ctx, node)
 		if err != nil {
 			return keybase1.ListResult{}, err

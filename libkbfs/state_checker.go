@@ -68,14 +68,14 @@ func (sc *StateChecker) findAllBlocksInPath(ctx context.Context,
 	}
 
 	for name, de := range dblock.Children {
-		if de.Type == Sym {
+		if de.Type == IFCERFTSym {
 			continue
 		}
 
 		blockSizes[de.IFCERFTBlockPointer] = de.EncodedSize
 		p := dir.ChildPath(name, de.IFCERFTBlockPointer)
 
-		if de.Type == Dir {
+		if de.Type == IFCERFTDir {
 			err := sc.findAllBlocksInPath(ctx, lState, ops, md, p, blockSizes)
 			if err != nil {
 				return err
@@ -101,7 +101,7 @@ func (sc *StateChecker) getLastGCRevisionTime(ctx context.Context,
 	var latestTime time.Time
 	for _, c := range *config.allKnownConfigsForTesting {
 		ops := c.KBFSOps().(*KBFSOpsStandard).getOpsNoAdd(
-			IFCERFTFolderBranch{tlf, MasterBranch})
+			IFCERFTFolderBranch{tlf, IFCERFTMasterBranch})
 		rt := ops.fbm.getLastReclamationTime()
 		if rt.After(latestTime) {
 			latestTime = rt
@@ -143,7 +143,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf IFCERFTTlfID) 
 		return errors.New("Unexpected KBFSOps type")
 	}
 
-	fb := IFCERFTFolderBranch{tlf, MasterBranch}
+	fb := IFCERFTFolderBranch{tlf, IFCERFTMasterBranch}
 	ops := kbfsOps.getOpsNoAdd(fb)
 	lastGCRevisionTime := sc.getLastGCRevisionTime(ctx, tlf)
 
@@ -322,16 +322,16 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf IFCERFTTlfID) 
 		return err
 	}
 
-	blockRefsByID := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
+	blockRefsByID := make(map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus)
 	for ptr := range expectedLiveBlocks {
 		if _, ok := blockRefsByID[ptr.ID]; !ok {
-			blockRefsByID[ptr.ID] = make(map[BlockRefNonce]blockRefLocalStatus)
+			blockRefsByID[ptr.ID] = make(map[IFCERFTBlockRefNonce]blockRefLocalStatus)
 		}
 		blockRefsByID[ptr.ID][ptr.RefNonce] = liveBlockRef
 	}
 	for ptr := range archivedBlocks {
 		if _, ok := blockRefsByID[ptr.ID]; !ok {
-			blockRefsByID[ptr.ID] = make(map[BlockRefNonce]blockRefLocalStatus)
+			blockRefsByID[ptr.ID] = make(map[IFCERFTBlockRefNonce]blockRefLocalStatus)
 		}
 		blockRefsByID[ptr.ID][ptr.RefNonce] = archivedBlockRef
 	}

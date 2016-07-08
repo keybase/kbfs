@@ -140,7 +140,7 @@ func (md *MDServerDisk) getStorage(tlfID IFCERFTTlfID) (*mdServerTlfStorage, err
 }
 
 func (md *MDServerDisk) getHandleID(ctx context.Context, handle BareTlfHandle,
-	mStatus MergeStatus) (tlfID IFCERFTTlfID, created bool, err error) {
+	mStatus IFCERFTMergeStatus) (tlfID IFCERFTTlfID, created bool, err error) {
 	handleBytes, err := md.config.Codec().Encode(handle)
 	if err != nil {
 		return NullTlfID, false, MDServerError{err}
@@ -189,7 +189,7 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle BareTlfHandle,
 
 // GetForHandle implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) GetForHandle(ctx context.Context, handle BareTlfHandle,
-	mStatus MergeStatus) (IFCERFTTlfID, *RootMetadataSigned, error) {
+	mStatus IFCERFTMergeStatus) (IFCERFTTlfID, *RootMetadataSigned, error) {
 	id, created, err := md.getHandleID(ctx, handle, mStatus)
 	if err != nil {
 		return NullTlfID, nil, err
@@ -298,9 +298,9 @@ func (md *MDServerDisk) deleteBranchID(ctx context.Context, id IFCERFTTlfID) err
 }
 
 // GetForTLF implements the MDServer interface for MDServerDisk.
-func (md *MDServerDisk) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+func (md *MDServerDisk) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (*RootMetadataSigned, error) {
 	// Lookup the branch ID if not supplied
-	if mStatus == Unmerged && bid == NullBranchID {
+	if mStatus == IFCERFTUnmerged && bid == NullBranchID {
 		var err error
 		bid, err = md.getBranchID(ctx, id)
 		if err != nil {
@@ -330,12 +330,12 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid Bran
 }
 
 // GetRange implements the MDServer interface for MDServerDisk.
-func (md *MDServerDisk) GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
+func (md *MDServerDisk) GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	md.log.CDebugf(ctx, "GetRange %d %d (%s)", start, stop, mStatus)
 
 	// Lookup the branch ID if not supplied
-	if mStatus == Unmerged && bid == NullBranchID {
+	if mStatus == IFCERFTUnmerged && bid == NullBranchID {
 		var err error
 		bid, err = md.getBranchID(ctx, id)
 		if err != nil {
@@ -395,7 +395,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 	}
 
 	mStatus := rmds.MD.MergedStatus()
-	if mStatus == Merged &&
+	if mStatus == IFCERFTMerged &&
 		// Don't send notifies if it's just a rekey (the real mdserver
 		// sends a "folder needs rekey" notification in this case).
 		!(rmds.MD.IsRekeySet() && rmds.MD.IsWriterMetadataCopiedSet()) {
@@ -427,7 +427,7 @@ func (md *MDServerDisk) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid Br
 
 func (md *MDServerDisk) getCurrentMergedHeadRevision(
 	ctx context.Context, id IFCERFTTlfID) (rev MetadataRevision, err error) {
-	head, err := md.GetForTLF(ctx, id, NullBranchID, Merged)
+	head, err := md.GetForTLF(ctx, id, NullBranchID, IFCERFTMerged)
 	if err != nil {
 		return 0, err
 	}

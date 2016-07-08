@@ -133,7 +133,7 @@ func (c CryptoCommon) VerifyBlockID(encodedEncryptedData []byte, id BlockID) err
 }
 
 // MakeBlockRefNonce implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeBlockRefNonce() (nonce BlockRefNonce, err error) {
+func (c CryptoCommon) MakeBlockRefNonce() (nonce IFCERFTBlockRefNonce, err error) {
 	err = cryptoRandRead(nonce[:])
 	return
 }
@@ -142,14 +142,13 @@ func (c CryptoCommon) MakeBlockRefNonce() (nonce BlockRefNonce, err error) {
 func (c CryptoCommon) MakeRandomTLFKeys() (
 	tlfPublicKey TLFPublicKey,
 	tlfPrivateKey TLFPrivateKey,
-	tlfEphemeralPublicKey TLFEphemeralPublicKey,
-	tlfEphemeralPrivateKey TLFEphemeralPrivateKey,
+	tlfEphemeralPublicKey IFCERFTTLFEphemeralPublicKey, tlfEphemeralPrivateKey TLFEphemeralPrivateKey,
 	tlfCryptKey IFCERFTTLFCryptKey, err error) {
 	defer func() {
 		if err != nil {
 			tlfPublicKey = TLFPublicKey{}
 			tlfPrivateKey = TLFPrivateKey{}
-			tlfEphemeralPublicKey = TLFEphemeralPublicKey{}
+			tlfEphemeralPublicKey = IFCERFTTLFEphemeralPublicKey{}
 			tlfEphemeralPrivateKey = TLFEphemeralPrivateKey{}
 			tlfCryptKey = IFCERFTTLFCryptKey{}
 		}
@@ -192,10 +191,10 @@ func (c CryptoCommon) MakeRandomTLFCryptKeyServerHalf() (serverHalf TLFCryptKeyS
 
 // MakeRandomBlockCryptKeyServerHalf implements the Crypto interface
 // for CryptoCommon.
-func (c CryptoCommon) MakeRandomBlockCryptKeyServerHalf() (serverHalf BlockCryptKeyServerHalf, err error) {
+func (c CryptoCommon) MakeRandomBlockCryptKeyServerHalf() (serverHalf IFCERFTBlockCryptKeyServerHalf, err error) {
 	err = cryptoRandRead(serverHalf.data[:])
 	if err != nil {
-		serverHalf = BlockCryptKeyServerHalf{}
+		serverHalf = IFCERFTBlockCryptKeyServerHalf{}
 		return
 	}
 	return
@@ -222,20 +221,20 @@ func (c CryptoCommon) UnmaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, client
 }
 
 // UnmaskBlockCryptKey implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) UnmaskBlockCryptKey(serverHalf BlockCryptKeyServerHalf, tlfCryptKey IFCERFTTLFCryptKey) (key BlockCryptKey, error error) {
+func (c CryptoCommon) UnmaskBlockCryptKey(serverHalf IFCERFTBlockCryptKeyServerHalf, tlfCryptKey IFCERFTTLFCryptKey) (key BlockCryptKey, error error) {
 	key.data = xorKeys(serverHalf.data, tlfCryptKey.data)
 	return
 }
 
 // Verify implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) Verify(msg []byte, sigInfo SignatureInfo) (err error) {
+func (c CryptoCommon) Verify(msg []byte, sigInfo IFCERFTSignatureInfo) (err error) {
 	defer func() {
 		c.deferLog.Debug(
 			"Verify result for %d-byte message with %s: %v",
 			len(msg), sigInfo, err)
 	}()
 
-	if sigInfo.Version != SigED25519 {
+	if sigInfo.Version != IFCERFTSigED25519 {
 		err = UnknownSigVer{sigInfo.Version}
 		return
 	}
@@ -263,7 +262,7 @@ func (c CryptoCommon) Verify(msg []byte, sigInfo SignatureInfo) (err error) {
 
 // EncryptTLFCryptKeyClientHalf implements the Crypto interface for
 // CryptoCommon.
-func (c CryptoCommon) EncryptTLFCryptKeyClientHalf(privateKey TLFEphemeralPrivateKey, publicKey IFCERFTCryptPublicKey, clientHalf TLFCryptKeyClientHalf) (encryptedClientHalf EncryptedTLFCryptKeyClientHalf, err error) {
+func (c CryptoCommon) EncryptTLFCryptKeyClientHalf(privateKey TLFEphemeralPrivateKey, publicKey IFCERFTCryptPublicKey, clientHalf TLFCryptKeyClientHalf) (encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf, err error) {
 	var nonce [24]byte
 	err = cryptoRandRead(nonce[:])
 	if err != nil {
@@ -283,8 +282,8 @@ func (c CryptoCommon) EncryptTLFCryptKeyClientHalf(privateKey TLFEphemeralPrivat
 
 	encryptedData := box.Seal(nil, clientHalf.data[:], &nonce, (*[32]byte)(&dhKeyPair.Public), (*[32]byte)(&privateKey.data))
 
-	encryptedClientHalf = EncryptedTLFCryptKeyClientHalf{
-		Version:       EncryptionSecretbox,
+	encryptedClientHalf = IFCERFTEncryptedTLFCryptKeyClientHalf{
+		Version:       IFCERFTEncryptionSecretbox,
 		Nonce:         nonce[:],
 		EncryptedData: encryptedData,
 	}
@@ -301,14 +300,14 @@ func (c CryptoCommon) encryptData(data []byte, key [32]byte) (encryptedData, err
 	sealedData := secretbox.Seal(nil, data, &nonce, &key)
 
 	return encryptedData{
-		Version:       EncryptionSecretbox,
+		Version:       IFCERFTEncryptionSecretbox,
 		Nonce:         nonce[:],
 		EncryptedData: sealedData,
 	}, nil
 }
 
 // EncryptPrivateMetadata implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) EncryptPrivateMetadata(pmd *PrivateMetadata, key IFCERFTTLFCryptKey) (encryptedPmd EncryptedPrivateMetadata, err error) {
+func (c CryptoCommon) EncryptPrivateMetadata(pmd *PrivateMetadata, key IFCERFTTLFCryptKey) (encryptedPmd IFCERFTEncryptedPrivateMetadata, err error) {
 	encodedPmd, err := c.codec.Encode(pmd)
 	if err != nil {
 		return
@@ -319,12 +318,12 @@ func (c CryptoCommon) EncryptPrivateMetadata(pmd *PrivateMetadata, key IFCERFTTL
 		return
 	}
 
-	encryptedPmd = EncryptedPrivateMetadata(encryptedData)
+	encryptedPmd = IFCERFTEncryptedPrivateMetadata(encryptedData)
 	return
 }
 
 func (c CryptoCommon) decryptData(encryptedData encryptedData, key [32]byte) ([]byte, error) {
-	if encryptedData.Version != EncryptionSecretbox {
+	if encryptedData.Version != IFCERFTEncryptionSecretbox {
 		return nil, UnknownEncryptionVer{encryptedData.Version}
 	}
 
@@ -343,7 +342,7 @@ func (c CryptoCommon) decryptData(encryptedData encryptedData, key [32]byte) ([]
 }
 
 // DecryptPrivateMetadata implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) DecryptPrivateMetadata(encryptedPmd EncryptedPrivateMetadata, key IFCERFTTLFCryptKey) (*PrivateMetadata, error) {
+func (c CryptoCommon) DecryptPrivateMetadata(encryptedPmd IFCERFTEncryptedPrivateMetadata, key IFCERFTTLFCryptKey) (*PrivateMetadata, error) {
 	encodedPmd, err := c.decryptData(encryptedData(encryptedPmd), key.data)
 	if err != nil {
 		return nil, err
@@ -429,7 +428,7 @@ func (c CryptoCommon) depadBlock(paddedBlock []byte) ([]byte, error) {
 }
 
 // EncryptBlock implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) EncryptBlock(block IFCERFTBlock, key BlockCryptKey) (plainSize int, encryptedBlock EncryptedBlock, err error) {
+func (c CryptoCommon) EncryptBlock(block IFCERFTBlock, key BlockCryptKey) (plainSize int, encryptedBlock IFCERFTEncryptedBlock, err error) {
 	encodedBlock, err := c.codec.Encode(block)
 	if err != nil {
 		return
@@ -446,12 +445,12 @@ func (c CryptoCommon) EncryptBlock(block IFCERFTBlock, key BlockCryptKey) (plain
 	}
 
 	plainSize = len(encodedBlock)
-	encryptedBlock = EncryptedBlock(encryptedData)
+	encryptedBlock = IFCERFTEncryptedBlock(encryptedData)
 	return
 }
 
 // DecryptBlock implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) DecryptBlock(encryptedBlock EncryptedBlock, key BlockCryptKey, block IFCERFTBlock) error {
+func (c CryptoCommon) DecryptBlock(encryptedBlock IFCERFTEncryptedBlock, key BlockCryptKey, block IFCERFTBlock) error {
 	paddedBlock, err := c.decryptData(encryptedData(encryptedBlock), key.data)
 	if err != nil {
 		return err
@@ -494,24 +493,24 @@ func (c CryptoCommon) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServ
 
 // EncryptMerkleLeaf encrypts a Merkle leaf node with the TLFPublicKey.
 func (c CryptoCommon) EncryptMerkleLeaf(leaf MerkleLeaf, pubKey TLFPublicKey,
-	nonce *[24]byte, ePrivKey TLFEphemeralPrivateKey) (EncryptedMerkleLeaf, error) {
+	nonce *[24]byte, ePrivKey TLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error) {
 	// encode the clear-text leaf
 	leafBytes, err := c.codec.Encode(leaf)
 	if err != nil {
-		return EncryptedMerkleLeaf{}, err
+		return IFCERFTEncryptedMerkleLeaf{}, err
 	}
 	// encrypt the encoded leaf
 	encryptedData := box.Seal(nil, leafBytes[:], nonce, (*[32]byte)(&pubKey.data), (*[32]byte)(&ePrivKey.data))
-	return EncryptedMerkleLeaf{
-		Version:       EncryptionSecretbox,
+	return IFCERFTEncryptedMerkleLeaf{
+		Version:       IFCERFTEncryptionSecretbox,
 		EncryptedData: encryptedData,
 	}, nil
 }
 
 // DecryptMerkleLeaf decrypts a Merkle leaf node with the TLFPrivateKey.
-func (c CryptoCommon) DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf, privKey TLFPrivateKey,
-	nonce *[24]byte, ePubKey TLFEphemeralPublicKey) (*MerkleLeaf, error) {
-	if encryptedLeaf.Version != EncryptionSecretbox {
+func (c CryptoCommon) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey TLFPrivateKey,
+	nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error) {
+	if encryptedLeaf.Version != IFCERFTEncryptionSecretbox {
 		return nil, UnknownEncryptionVer{encryptedLeaf.Version}
 	}
 	leafBytes, ok := box.Open(nil, encryptedLeaf.EncryptedData[:], nonce, (*[32]byte)(&ePubKey.data), (*[32]byte)(&privKey.data))

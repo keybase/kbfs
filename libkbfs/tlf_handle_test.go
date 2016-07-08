@@ -646,7 +646,7 @@ func TestResolveAgainConflict(t *testing.T) {
 	newH, err := h.ResolveAgain(ctx, daemon)
 	require.NoError(t, err)
 	assert.Equal(t, IFCERFTCanonicalTlfName("u1,u2#u3"+
-		TlfHandleExtensionSep+ext.String()), newH.GetCanonicalName())
+		IFCERFTTlfHandleExtensionSep+ext.String()), newH.GetCanonicalName())
 }
 
 func TestTlfHandleResolvesTo(t *testing.T) {

@@ -161,7 +161,7 @@ func (cuea *copyUnmergedEntryAction) do(ctx context.Context,
 	}
 
 	if cuea.symPath != "" {
-		unmergedEntry.Type = Sym
+		unmergedEntry.Type = IFCERFTSym
 		unmergedEntry.SymPath = cuea.symPath
 	}
 
@@ -223,7 +223,7 @@ func crActionConvertSymlink(unmergedMostRecent IFCERFTBlockPointer, mergedMostRe
 	// Add a fake unref so this rm doesn't get mistaken for one
 	// half of a rename operation.
 	ro.AddUnrefBlock(zeroPtr)
-	co := newCreateOp(toName, mergedMostRecent, Sym)
+	co := newCreateOp(toName, mergedMostRecent, IFCERFTSym)
 
 	// If the chain already exists, just append the operations instead
 	// of prepending them.  We don't want to do any rms of nodes that
@@ -405,12 +405,12 @@ func crActionCopyFile(ctx context.Context, copier fileBlockDeepCopier,
 	}
 
 	if toSymPath != "" {
-		fromEntry.Type = Sym
+		fromEntry.Type = IFCERFTSym
 		fromEntry.SymPath = toSymPath
 	}
 
 	// We only rename files (or make symlinks to directories).
-	if fromEntry.Type == Dir {
+	if fromEntry.Type == IFCERFTDir {
 		// Just fill in the last path node, we don't have the full path.
 		return IFCERFTBlockPointer{}, "", NotFileError{path{path: []pathNode{{
 			IFCERFTBlockPointer: fromEntry.IFCERFTBlockPointer,
@@ -639,7 +639,7 @@ func (rma *renameMergedAction) do(ctx context.Context,
 		return NoSuchNameError{rma.fromName}
 	}
 	if rma.symPath != "" {
-		unmergedEntry.Type = Sym
+		unmergedEntry.Type = IFCERFTSym
 		unmergedEntry.SymPath = rma.symPath
 	}
 	mergedBlock.Children[rma.fromName] = unmergedEntry

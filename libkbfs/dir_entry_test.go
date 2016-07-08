@@ -28,7 +28,7 @@ func makeFakeDirEntryFuture(t *testing.T) dirEntryFuture {
 		DirEntry{
 			makeFakeBlockInfo(t),
 			IFCERFTEntryInfo{
-				Dir,
+				IFCERFTDir,
 				100,
 				"fake sym path",
 				101,

@@ -30,8 +30,8 @@ func makeFakeTLFCryptKeyInfoFuture(t *testing.T) tlfCryptKeyInfoFuture {
 	hmac, err := DefaultHMAC([]byte("fake key"), []byte("fake buf"))
 	require.NoError(t, err)
 	cki := TLFCryptKeyInfo{
-		EncryptedTLFCryptKeyClientHalf{
-			EncryptionSecretbox,
+		IFCERFTEncryptedTLFCryptKeyClientHalf{
+			IFCERFTEncryptionSecretbox,
 			[]byte("fake encrypted data"),
 			[]byte("fake nonce"),
 		},
@@ -60,8 +60,7 @@ func testKeyBundleGetKeysOrBust(t *testing.T, config IFCERFTConfig, uid keybase1
 }
 
 func testKeyBundleCheckKeys(t *testing.T, config IFCERFTConfig, uid keybase1.UID,
-	wkb TLFWriterKeyBundle, ePubKey TLFEphemeralPublicKey,
-	tlfCryptKey IFCERFTTLFCryptKey, serverMap serverKeyMap) {
+	wkb TLFWriterKeyBundle, ePubKey IFCERFTTLFEphemeralPublicKey, tlfCryptKey IFCERFTTLFCryptKey, serverMap serverKeyMap) {
 	ctx := context.Background()
 	// Check that every user can recover the crypt key
 	cryptPublicKey, err := config.KBPKI().GetCurrentCryptPublicKey(ctx)
@@ -123,7 +122,7 @@ func TestKeyBundleFillInDevices(t *testing.T) {
 	// Make a wkb with empty writer key maps
 	wkb := TLFWriterKeyBundle{
 		WKeys: make(UserDeviceKeyInfoMap),
-		TLFEphemeralPublicKeys: make(TLFEphemeralPublicKeys, 1),
+		TLFEphemeralPublicKeys: make(IFCERFTTLFEphemeralPublicKeys, 1),
 	}
 
 	// Generate keys
@@ -233,7 +232,7 @@ func makeFakeTLFWriterKeyBundleFuture(t *testing.T) tlfWriterKeyBundleFuture {
 	wkb := TLFWriterKeyBundle{
 		nil,
 		MakeTLFPublicKey([32]byte{0xa}),
-		TLFEphemeralPublicKeys{
+		IFCERFTTLFEphemeralPublicKeys{
 			MakeTLFEphemeralPublicKey([32]byte{0xb}),
 		},
 		codec.UnknownFieldSetHandler{},
@@ -269,7 +268,7 @@ func (rkbf tlfReaderKeyBundleFuture) toCurrentStruct() currentStruct {
 func makeFakeTLFReaderKeyBundleFuture(t *testing.T) tlfReaderKeyBundleFuture {
 	rkb := TLFReaderKeyBundle{
 		nil,
-		TLFEphemeralPublicKeys{
+		IFCERFTTLFEphemeralPublicKeys{
 			MakeTLFEphemeralPublicKey([32]byte{0xc}),
 		},
 		codec.UnknownFieldSetHandler{},

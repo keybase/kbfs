@@ -127,7 +127,7 @@ func simulateGC(ncs *nodeCacheStandard, liveList []IFCERFTNode) {
 // Tests for simple GetOrCreate successes (with and without a parent)
 func TestNodeCacheGetOrCreateSuccess(t *testing.T) {
 	ncs, parentNode, childNode1A, _, path1, path2 :=
-		setupNodeCache(t, FakeTlfID(0, false), MasterBranch, true)
+		setupNodeCache(t, FakeTlfID(0, false), IFCERFTMasterBranch, true)
 	parentPtr := path1[0].IFCERFTBlockPointer
 	childPtr1 := path1[1].IFCERFTBlockPointer
 	childPtr2 := path2[1].IFCERFTBlockPointer
@@ -195,7 +195,7 @@ func TestNodeCacheUpdatePointer(t *testing.T) {
 // Tests that Move works as expected
 func TestNodeCacheMoveSuccess(t *testing.T) {
 	ncs, _, childNode1, childNode2, path1, path2 :=
-		setupNodeCache(t, FakeTlfID(0, false), MasterBranch, true)
+		setupNodeCache(t, FakeTlfID(0, false), IFCERFTMasterBranch, true)
 	parentPtr := path1[0].IFCERFTBlockPointer
 	childPtr1 := path1[1].IFCERFTBlockPointer
 	childPtr2 := path2[1].IFCERFTBlockPointer
@@ -230,7 +230,7 @@ func TestNodeCacheMoveSuccess(t *testing.T) {
 // Tests that a child can't be updated with an unknown parent
 func TestNodeCacheMoveNoParent(t *testing.T) {
 	ncs, _, childNode1, childNode2, path1, path2 :=
-		setupNodeCache(t, FakeTlfID(0, false), MasterBranch, true)
+		setupNodeCache(t, FakeTlfID(0, false), IFCERFTMasterBranch, true)
 	childPtr1 := path1[1].IFCERFTBlockPointer
 	childPtr2 := path2[1].IFCERFTBlockPointer
 
@@ -357,7 +357,7 @@ func TestNodeCachePathFromNode(t *testing.T) {
 // Make sure that (simulated) GC works as expected.
 func TestNodeCacheGCBasic(t *testing.T) {
 	ncs, parentNode, _, childNode2, _, _ :=
-		setupNodeCache(t, FakeTlfID(0, false), MasterBranch, true)
+		setupNodeCache(t, FakeTlfID(0, false), IFCERFTMasterBranch, true)
 
 	if len(ncs.nodes) != 3 {
 		t.Errorf("Expected %d nodes, got %d", 3, len(ncs.nodes))
@@ -386,7 +386,7 @@ func TestNodeCacheGCBasic(t *testing.T) {
 // last reference to a parent.
 func TestNodeCacheGCParent(t *testing.T) {
 	ncs, _, _, childNode2, _, _ :=
-		setupNodeCache(t, FakeTlfID(0, false), MasterBranch, true)
+		setupNodeCache(t, FakeTlfID(0, false), IFCERFTMasterBranch, true)
 
 	if len(ncs.nodes) != 3 {
 		t.Errorf("Expected %d nodes, got %d", 3, len(ncs.nodes))
@@ -417,7 +417,7 @@ func testNodeStandardFinalizer(n *nodeStandard) {
 // Make sure that that making a node unreachable runs the finalizer on GC.
 func TestNodeCacheGCReal(t *testing.T) {
 	ncs, _, childNode1, childNode2, _, _ :=
-		setupNodeCache(t, FakeTlfID(0, false), MasterBranch, true)
+		setupNodeCache(t, FakeTlfID(0, false), IFCERFTMasterBranch, true)
 
 	if len(ncs.nodes) != 3 {
 		t.Errorf("Expected %d nodes, got %d", 3, len(ncs.nodes))

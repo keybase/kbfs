@@ -137,9 +137,9 @@ func (oc *OpCommon) getFinalPath() path {
 // createOp is an op representing a file or subdirectory creation
 type createOp struct {
 	OpCommon
-	NewName string      `codec:"n"`
-	Dir     blockUpdate `codec:"d"`
-	Type    EntryType   `codec:"t"`
+	NewName string           `codec:"n"`
+	Dir     blockUpdate      `codec:"d"`
+	Type    IFCERFTEntryType `codec:"t"`
 
 	// If true, this create op represents half of a rename operation.
 	// This op should never be persisted.
@@ -156,7 +156,7 @@ type createOp struct {
 	crSymPath string
 }
 
-func newCreateOp(name string, oldDir IFCERFTBlockPointer, t EntryType) *createOp {
+func newCreateOp(name string, oldDir IFCERFTBlockPointer, t IFCERFTEntryType) *createOp {
 	co := &createOp{
 		NewName: name,
 	}
@@ -198,9 +198,9 @@ func (co *createOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 		// Conflicts if this creates the same name and one of them
 		// isn't creating a directory.
 		sameName := (realMergedOp.NewName == co.NewName)
-		if sameName && (realMergedOp.Type != Dir || co.Type != Dir) {
-			if realMergedOp.Type != Dir &&
-				(co.Type == Dir || co.crSymPath != "") {
+		if sameName && (realMergedOp.Type != IFCERFTDir || co.Type != IFCERFTDir) {
+			if realMergedOp.Type != IFCERFTDir &&
+				(co.Type == IFCERFTDir || co.crSymPath != "") {
 				// Rename the merged entry only if the unmerged one is
 				// a directory (or to-be-sympath'd directory) and the
 				// merged one is not.
@@ -224,7 +224,7 @@ func (co *createOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 		// TODO: Implement a better merging strategy for when an
 		// existing directory gets into a rename conflict with another
 		// existing or new directory.
-		if sameName && realMergedOp.Type == Dir && co.Type == Dir &&
+		if sameName && realMergedOp.Type == IFCERFTDir && co.Type == IFCERFTDir &&
 			(realMergedOp.renamed || co.renamed) {
 			// Always rename the unmerged one
 			return &copyUnmergedEntryAction{
@@ -336,10 +336,10 @@ type renameOp struct {
 	NewName     string              `codec:"nn"`
 	NewDir      blockUpdate         `codec:"nd"`
 	Renamed     IFCERFTBlockPointer `codec:"re"`
-	RenamedType EntryType           `codec:"rt"`
+	RenamedType IFCERFTEntryType    `codec:"rt"`
 }
 
-func newRenameOp(oldName string, oldOldDir IFCERFTBlockPointer, newName string, oldNewDir IFCERFTBlockPointer, renamed IFCERFTBlockPointer, renamedType EntryType) *renameOp {
+func newRenameOp(oldName string, oldOldDir IFCERFTBlockPointer, newName string, oldNewDir IFCERFTBlockPointer, renamed IFCERFTBlockPointer, renamedType IFCERFTEntryType) *renameOp {
 	ro := &renameOp{
 		OldName:     oldName,
 		NewName:     newName,
@@ -866,7 +866,7 @@ func invertOpForLocalNotifications(oldOp op) op {
 	case *rmOp:
 		// Guess at the type, shouldn't be used for local notification
 		// purposes.
-		newOp = newCreateOp(op.OldName, op.Dir.Ref, File)
+		newOp = newCreateOp(op.OldName, op.Dir.Ref, IFCERFTFile)
 	case *renameOp:
 		newOp = newRenameOp(op.NewName, op.NewDir.Ref,
 			op.OldName, op.OldDir.Ref, op.Renamed, op.RenamedType)

@@ -38,7 +38,7 @@ func GetEncodedStatus(ctx context.Context, config libkbfs.IFCERFTConfig) (
 	data []byte, t time.Time, err error) {
 	status, _, err := config.KBFSOps().Status(ctx)
 	if err != nil {
-		config.Reporter().ReportErr(ctx, "", false, libkbfs.ReadMode, err)
+		config.Reporter().ReportErr(ctx, "", false, libkbfs.IFCERFTReadMode, err)
 	}
 	data, err = json.MarshalIndent(status, "", "  ")
 	if err != nil {

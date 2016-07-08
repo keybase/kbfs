@@ -87,7 +87,7 @@ func (fc *FakeBServerClient) PutBlock(ctx context.Context, arg keybase1.PutBlock
 		return err
 	}
 
-	bCtx := BlockContext{
+	bCtx := IFCERFTBlockContext{
 		RefNonce: zeroBlockRefNonce,
 		Creator:  arg.Bid.ChargedTo,
 	}
@@ -115,7 +115,7 @@ func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlock
 	// originally put with) since the RPC API doesn't pass along
 	// all the info from the block context passed into
 	// BlockServer.Get().
-	bCtx := BlockContext{
+	bCtx := IFCERFTBlockContext{
 		RefNonce: zeroBlockRefNonce,
 		Creator:  arg.Bid.ChargedTo,
 	}
@@ -141,8 +141,8 @@ func (fc *FakeBServerClient) AddReference(ctx context.Context, arg keybase1.AddR
 		return err
 	}
 
-	bCtx := BlockContext{
-		RefNonce: BlockRefNonce(arg.Ref.Nonce),
+	bCtx := IFCERFTBlockContext{
+		RefNonce: IFCERFTBlockRefNonce(arg.Ref.Nonce),
 		Creator:  arg.Ref.ChargedTo,
 	}
 
@@ -187,7 +187,7 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	b := newBlockServerRemoteWithClient(config, fc)
 
 	tlfID := FakeTlfID(2, false)
-	bCtx := BlockContext{currentUID, "", zeroBlockRefNonce}
+	bCtx := IFCERFTBlockContext{currentUID, "", zeroBlockRefNonce}
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
 	if err != nil {
@@ -227,7 +227,7 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bCtx2 := BlockContext{currentUID, localUsers[1].UID, nonce}
+	bCtx2 := IFCERFTBlockContext{currentUID, localUsers[1].UID, nonce}
 	err = b.AddBlockReference(ctx, bID, tlfID, bCtx2)
 	if err != nil {
 		t.Fatal(err)
@@ -262,7 +262,7 @@ func TestBServerRemotePutCanceled(t *testing.T) {
 	f := func(ctx context.Context) error {
 		bID := fakeBlockID(1)
 		tlfID := FakeTlfID(2, false)
-		bCtx := BlockContext{currentUID, "", zeroBlockRefNonce}
+		bCtx := IFCERFTBlockContext{currentUID, "", zeroBlockRefNonce}
 		data := []byte{1, 2, 3, 4}
 		serverHalf, err :=
 			config.Crypto().MakeRandomBlockCryptKeyServerHalf()

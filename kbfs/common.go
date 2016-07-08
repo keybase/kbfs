@@ -17,7 +17,7 @@ const (
 	privateName = "private"
 )
 
-const publicSuffix = libkbfs.ReaderSep + libkbfs.PublicUIDName
+const publicSuffix = libkbfs.IFCERFTReaderSep + libkbfs.IFCERFTPublicUIDName
 
 func byteCountStr(n int) string {
 	if n == 1 {

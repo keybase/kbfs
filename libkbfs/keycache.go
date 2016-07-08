@@ -15,7 +15,7 @@ type KeyCacheStandard struct {
 
 type keyCacheKey struct {
 	tlf    IFCERFTTlfID
-	keyGen KeyGen
+	keyGen IFCERFTKeyGen
 }
 
 var _ IFCERFTKeyCache = (*KeyCacheStandard)(nil)
@@ -31,7 +31,7 @@ func NewKeyCacheStandard(capacity int) *KeyCacheStandard {
 }
 
 // GetTLFCryptKey implements the KeyCache interface for KeyCacheStandard.
-func (k *KeyCacheStandard) GetTLFCryptKey(tlf IFCERFTTlfID, keyGen KeyGen) (
+func (k *KeyCacheStandard) GetTLFCryptKey(tlf IFCERFTTlfID, keyGen IFCERFTKeyGen) (
 	IFCERFTTLFCryptKey, error) {
 	cacheKey := keyCacheKey{tlf, keyGen}
 	if entry, ok := k.lru.Get(cacheKey); ok {
@@ -45,7 +45,7 @@ func (k *KeyCacheStandard) GetTLFCryptKey(tlf IFCERFTTlfID, keyGen KeyGen) (
 }
 
 // PutTLFCryptKey implements the KeyCache interface for KeyCacheStandard.
-func (k *KeyCacheStandard) PutTLFCryptKey(tlf IFCERFTTlfID, keyGen KeyGen, key IFCERFTTLFCryptKey) error {
+func (k *KeyCacheStandard) PutTLFCryptKey(tlf IFCERFTTlfID, keyGen IFCERFTKeyGen, key IFCERFTTLFCryptKey) error {
 	cacheKey := keyCacheKey{tlf, keyGen}
 	k.lru.Add(cacheKey, key)
 	return nil

@@ -68,7 +68,7 @@ func (f *Folder) name() libkbfs.IFCERFTCanonicalTlfName {
 }
 
 func (f *Folder) reportErr(ctx context.Context,
-	mode libkbfs.ErrorModeType, err error) {
+	mode libkbfs.IFCERFTErrorModeType, err error) {
 	if err == nil {
 		f.fs.errLog.CDebugf(ctx, "Request complete")
 		return
@@ -319,7 +319,7 @@ var _ DirInterface = (*Dir)(nil)
 // Attr implements the fs.Node interface for Dir.
 func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Attr")
-	defer func() { d.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
+	defer func() { d.folder.reportErr(ctx, libkbfs.IFCERFTReadMode, err) }()
 
 	return d.attr(ctx, a)
 }
@@ -344,7 +344,7 @@ func (d *Dir) attr(ctx context.Context, a *fuse.Attr) (err error) {
 // Lookup implements the fs.NodeRequestLookuper interface for Dir.
 func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Lookup %s", req.Name)
-	defer func() { d.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
+	defer func() { d.folder.reportErr(ctx, libkbfs.IFCERFTReadMode, err) }()
 
 	specialNode := handleSpecialFile(req.Name, d.folder.fs, resp)
 	if specialNode != nil {
@@ -428,7 +428,7 @@ func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.Lo
 	default:
 		return nil, fmt.Errorf("unhandled entry type: %v", de.Type)
 
-	case libkbfs.File, libkbfs.Exec:
+	case libkbfs.IFCERFTFile, libkbfs.IFCERFTExec:
 		child := &File{
 			folder: d.folder,
 			node:   newNode,
@@ -436,12 +436,12 @@ func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.Lo
 		d.folder.nodes[newNode.GetID()] = child
 		return child, nil
 
-	case libkbfs.Dir:
+	case libkbfs.IFCERFTDir:
 		child := newDir(d.folder, newNode)
 		d.folder.nodes[newNode.GetID()] = child
 		return child, nil
 
-	case libkbfs.Sym:
+	case libkbfs.IFCERFTSym:
 		child := &Symlink{
 			parent: d,
 			name:   req.Name,
@@ -459,7 +459,7 @@ func getEXCLFromCreateRequest(req *fuse.CreateRequest) libkbfs.IFCERFTEXCL {
 // Create implements the fs.NodeCreater interface for Dir.
 func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (node fs.Node, handle fs.Handle, err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Create %s", req.Name)
-	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
+	defer func() { d.folder.reportErr(ctx, libkbfs.IFCERFTWriteMode, err) }()
 
 	isExec := (req.Mode.Perm() & 0100) != 0
 	excl := getEXCLFromCreateRequest(req)
@@ -483,7 +483,7 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (
 	node fs.Node, err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Mkdir %s", req.Name)
-	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
+	defer func() { d.folder.reportErr(ctx, libkbfs.IFCERFTWriteMode, err) }()
 
 	newNode, _, err := d.folder.fs.config.KBFSOps().CreateDir(
 		ctx, d.node, req.Name)
@@ -503,7 +503,7 @@ func (d *Dir) Symlink(ctx context.Context, req *fuse.SymlinkRequest) (
 	node fs.Node, err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Symlink %s -> %s",
 		req.NewName, req.Target)
-	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
+	defer func() { d.folder.reportErr(ctx, libkbfs.IFCERFTWriteMode, err) }()
 
 	if _, err := d.folder.fs.config.KBFSOps().CreateLink(
 		ctx, d.node, req.NewName, req.Target); err != nil {
@@ -522,7 +522,7 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 	newDir fs.Node) (err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Rename %s -> %s",
 		req.OldName, req.NewName)
-	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
+	defer func() { d.folder.reportErr(ctx, libkbfs.IFCERFTWriteMode, err) }()
 
 	var realNewDir *Dir
 	switch newDir := newDir.(type) {
@@ -568,7 +568,7 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 // Remove implements the fs.NodeRemover interface for Dir.
 func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) (err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Remove %s", req.Name)
-	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
+	defer func() { d.folder.reportErr(ctx, libkbfs.IFCERFTWriteMode, err) }()
 
 	// node will be removed from Folder.nodes, if it is there in the
 	// first place, by its Forget
@@ -588,7 +588,7 @@ func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) (err error) {
 // ReadDirAll implements the fs.NodeReadDirAller interface for Dir.
 func (d *Dir) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir ReadDirAll")
-	defer func() { d.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
+	defer func() { d.folder.reportErr(ctx, libkbfs.IFCERFTReadMode, err) }()
 
 	children, err := d.folder.fs.config.KBFSOps().GetDirChildren(ctx, d.node)
 	if err != nil {
@@ -600,11 +600,11 @@ func (d *Dir) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 			Name: name,
 		}
 		switch ei.Type {
-		case libkbfs.File, libkbfs.Exec:
+		case libkbfs.IFCERFTFile, libkbfs.IFCERFTExec:
 			fde.Type = fuse.DT_File
-		case libkbfs.Dir:
+		case libkbfs.IFCERFTDir:
 			fde.Type = fuse.DT_Dir
-		case libkbfs.Sym:
+		case libkbfs.IFCERFTSym:
 			fde.Type = fuse.DT_Link
 		}
 		res = append(res, fde)
@@ -620,7 +620,7 @@ func (d *Dir) Forget() {
 // Setattr implements the fs.NodeSetattrer interface for Dir.
 func (d *Dir) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse.SetattrResponse) (err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir SetAttr")
-	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
+	defer func() { d.folder.reportErr(ctx, libkbfs.IFCERFTWriteMode, err) }()
 
 	valid := req.Valid
 
@@ -731,7 +731,7 @@ func (tlf *TLF) loadDirHelper(ctx context.Context, filterErr bool) (
 		if filterErr {
 			exitEarly, err = libfs.FilterTLFEarlyExitError(ctx, err, tlf.folder.fs.log, tlf.folder.name())
 		}
-		tlf.folder.reportErr(ctx, libkbfs.ReadMode, err)
+		tlf.folder.reportErr(ctx, libkbfs.IFCERFTReadMode, err)
 	}()
 
 	// In case there were any unresolved assertions, try them again on
@@ -753,7 +753,7 @@ func (tlf *TLF) loadDirHelper(ctx context.Context, filterErr bool) (
 
 	rootNode, _, err :=
 		tlf.folder.fs.config.KBFSOps().GetOrCreateRootNode(
-			ctx, handle, libkbfs.MasterBranch)
+			ctx, handle, libkbfs.IFCERFTMasterBranch)
 	if err != nil {
 		return nil, false, err
 	}

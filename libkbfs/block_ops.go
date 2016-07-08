@@ -21,7 +21,7 @@ var _ IFCERFTBlockOps = (*BlockOpsStandard)(nil)
 // Get implements the BlockOps interface for BlockOpsStandard.
 func (b *BlockOpsStandard) Get(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, block IFCERFTBlock) error {
 	bserv := b.config.BlockServer()
-	buf, blockServerHalf, err := bserv.Get(ctx, blockPtr.ID, md.ID, blockPtr.BlockContext)
+	buf, blockServerHalf, err := bserv.Get(ctx, blockPtr.ID, md.ID, blockPtr.IFCERFTBlockContext)
 	if err != nil {
 		// Temporary code to track down bad block
 		// requests. Remove when not needed anymore.
@@ -51,7 +51,7 @@ func (b *BlockOpsStandard) Get(ctx context.Context, md *IFCERFTRootMetadata, blo
 		return err
 	}
 
-	var encryptedBlock EncryptedBlock
+	var encryptedBlock IFCERFTEncryptedBlock
 	err = b.config.Codec().Decode(buf, &encryptedBlock)
 	if err != nil {
 		return err
@@ -68,13 +68,12 @@ func (b *BlockOpsStandard) Get(ctx context.Context, md *IFCERFTRootMetadata, blo
 }
 
 // Ready implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Ready(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
-	err error) {
+func (b *BlockOpsStandard) Ready(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (id BlockID, plainSize int, readyBlockData IFCERFTReadyBlockData, err error) {
 	defer func() {
 		if err != nil {
 			id = BlockID{}
 			plainSize = 0
-			readyBlockData = ReadyBlockData{}
+			readyBlockData = IFCERFTReadyBlockData{}
 		}
 	}()
 
@@ -107,7 +106,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, md *IFCERFTRootMetadata, b
 		return
 	}
 
-	readyBlockData = ReadyBlockData{
+	readyBlockData = IFCERFTReadyBlockData{
 		buf:        buf,
 		serverHalf: serverHalf,
 	}
@@ -133,22 +132,22 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, md *IFCERFTRootMetadata, b
 }
 
 // Put implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData ReadyBlockData) error {
+func (b *BlockOpsStandard) Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData IFCERFTReadyBlockData) error {
 	bserv := b.config.BlockServer()
 	var err error
 	if blockPtr.RefNonce == zeroBlockRefNonce {
-		err = bserv.Put(ctx, blockPtr.ID, md.ID, blockPtr.BlockContext,
+		err = bserv.Put(ctx, blockPtr.ID, md.ID, blockPtr.IFCERFTBlockContext,
 			readyBlockData.buf, readyBlockData.serverHalf)
 	} else {
 		// non-zero block refnonce means this is a new reference to an
 		// existing block.
 		err = bserv.AddBlockReference(ctx, blockPtr.ID, md.ID,
-			blockPtr.BlockContext)
+			blockPtr.IFCERFTBlockContext)
 	}
 	if qe, ok := err.(BServerErrorOverQuota); ok && !qe.Throttled {
 		name := md.GetTlfHandle().GetCanonicalName()
 		b.config.Reporter().ReportErr(ctx, name, md.ID.IsPublic(),
-			WriteMode, OverQuotaWarning{qe.Usage, qe.Limit})
+			IFCERFTWriteMode, OverQuotaWarning{qe.Usage, qe.Limit})
 		return nil
 	}
 	return err
@@ -156,18 +155,18 @@ func (b *BlockOpsStandard) Put(ctx context.Context, md *IFCERFTRootMetadata, blo
 
 // Delete implements the BlockOps interface for BlockOpsStandard.
 func (b *BlockOpsStandard) Delete(ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) (liveCounts map[BlockID]int, err error) {
-	contexts := make(map[BlockID][]BlockContext)
+	contexts := make(map[BlockID][]IFCERFTBlockContext)
 	for _, ptr := range ptrs {
-		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.BlockContext)
+		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.IFCERFTBlockContext)
 	}
 	return b.config.BlockServer().RemoveBlockReference(ctx, md.ID, contexts)
 }
 
 // Archive implements the BlockOps interface for BlockOpsStandard.
 func (b *BlockOpsStandard) Archive(ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) error {
-	contexts := make(map[BlockID][]BlockContext)
+	contexts := make(map[BlockID][]IFCERFTBlockContext)
 	for _, ptr := range ptrs {
-		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.BlockContext)
+		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.IFCERFTBlockContext)
 	}
 
 	return b.config.BlockServer().ArchiveBlockReferences(ctx, md.ID, contexts)

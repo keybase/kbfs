@@ -111,23 +111,23 @@ func (b *BlockServerDisk) getJournal(tlfID IFCERFTTlfID) (*bserverTlfJournal, er
 }
 
 // Get implements the BlockServer interface for BlockServerDisk.
-func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
+func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	b.log.CDebugf(ctx, "BlockServerDisk.Get id=%s tlfID=%s context=%s",
 		id, tlfID, context)
 	diskJournal, err := b.getJournal(tlfID)
 	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, err
 	}
 	data, keyServerHalf, err := diskJournal.getData(id, context)
 	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, err
 	}
 	return data, keyServerHalf, nil
 }
 
 // Put implements the BlockServer interface for BlockServerDisk.
-func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext, buf []byte,
-	serverHalf BlockCryptKeyServerHalf) error {
+func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
+	serverHalf IFCERFTBlockCryptKeyServerHalf) error {
 	b.log.CDebugf(ctx, "BlockServerDisk.Put id=%s tlfID=%s context=%s size=%d",
 		id, tlfID, context, len(buf))
 
@@ -144,7 +144,7 @@ func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfI
 
 // AddBlockReference implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
-	tlfID IFCERFTTlfID, context BlockContext) error {
+	tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerDisk.AddBlockReference id=%s "+
 		"tlfID=%s context=%s", id, tlfID, context)
 	diskJournal, err := b.getJournal(tlfID)
@@ -157,7 +157,7 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
 // RemoveBlockReference implements the BlockServer interface for
 // BlockServerDisk.
 func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
-	tlfID IFCERFTTlfID, contexts map[BlockID][]BlockContext) (
+	tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) (
 	liveCounts map[BlockID]int, err error) {
 	b.log.CDebugf(ctx, "BlockServerDisk.RemoveBlockReference "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
@@ -180,7 +180,7 @@ func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerDisk.
 func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
-	tlfID IFCERFTTlfID, contexts map[BlockID][]BlockContext) error {
+	tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerDisk.ArchiveBlockReferences "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
 	diskJournal, err := b.getJournal(tlfID)
@@ -201,7 +201,7 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 // getAll returns all the known block references, and should only be
 // used during testing.
 func (b *BlockServerDisk) getAll(tlfID IFCERFTTlfID) (
-	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
+	map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error) {
 	diskJournal, err := b.getJournal(tlfID)
 	if err != nil {
 		return nil, err
@@ -234,7 +234,7 @@ func (b *BlockServerDisk) Shutdown() {
 func (b *BlockServerDisk) RefreshAuthToken(_ context.Context) {}
 
 // GetUserQuotaInfo implements the BlockServer interface for BlockServerDisk.
-func (b *BlockServerDisk) GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error) {
+func (b *BlockServerDisk) GetUserQuotaInfo(ctx context.Context) (info *IFCERFTUserQuotaInfo, err error) {
 	// Return a dummy value here.
-	return &UserQuotaInfo{Limit: 0x7FFFFFFFFFFFFFFF}, nil
+	return &IFCERFTUserQuotaInfo{Limit: 0x7FFFFFFFFFFFFFFF}, nil
 }

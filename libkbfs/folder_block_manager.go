@@ -101,7 +101,7 @@ func newFolderBlockManager(config IFCERFTConfig, fb IFCERFTFolderBranch, helper 
 	// doesn't do possibly-racy-in-tests access to
 	// fbm.config.BlockOps().
 	go fbm.archiveBlocksInBackground()
-	if fb.Branch == MasterBranch {
+	if fb.Branch == IFCERFTMasterBranch {
 		go fbm.reclaimQuotaInBackground()
 	}
 	return fbm
@@ -177,7 +177,7 @@ func (fbm *folderBlockManager) cleanUpBlockState(
 func (fbm *folderBlockManager) archiveUnrefBlocks(md *IFCERFTRootMetadata) {
 	// Don't archive for unmerged revisions, because conflict
 	// resolution might undo some of the unreferences.
-	if md.MergedStatus() != Merged {
+	if md.MergedStatus() != IFCERFTMerged {
 		return
 	}
 
@@ -192,7 +192,7 @@ func (fbm *folderBlockManager) archiveUnrefBlocks(md *IFCERFTRootMetadata) {
 func (fbm *folderBlockManager) archiveUnrefBlocksNoWait(md *IFCERFTRootMetadata) {
 	// Don't archive for unmerged revisions, because conflict
 	// resolution might undo some of the unreferences.
-	if md.MergedStatus() != Merged {
+	if md.MergedStatus() != IFCERFTMerged {
 		return
 	}
 
@@ -537,7 +537,7 @@ func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
 		}
 
 		rmds, err := getMDRange(ctx, fbm.config, fbm.id, NullBranchID, startRev,
-			currHead, Merged)
+			currHead, IFCERFTMerged)
 		if err != nil {
 			return MetadataRevisionUninitialized,
 				MetadataRevisionUninitialized, err
@@ -622,7 +622,7 @@ outer:
 		}
 
 		rmds, err := getMDRange(ctx, fbm.config, fbm.id, NullBranchID, startRev,
-			currHead, Merged)
+			currHead, IFCERFTMerged)
 		if err != nil {
 			return nil, MetadataRevisionUninitialized, false, err
 		}
@@ -745,7 +745,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 		return err
 	} else if err := head.isReadableOrError(ctx, fbm.config); err != nil {
 		return err
-	} else if head.MergedStatus() != Merged {
+	} else if head.MergedStatus() != IFCERFTMerged {
 		return errors.New("Skipping quota reclamation while unstaged")
 	}
 

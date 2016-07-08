@@ -71,7 +71,7 @@ func TestCryptoCommonRandomTLFKeys(t *testing.T) {
 		t.Errorf("zero TLFPrivateKey (a2)")
 	}
 
-	if a3 == (TLFEphemeralPublicKey{}) {
+	if a3 == (IFCERFTTLFEphemeralPublicKey{}) {
 		t.Errorf("zero TLFEphemeralPublicKey (a3)")
 	}
 
@@ -91,7 +91,7 @@ func TestCryptoCommonRandomTLFKeys(t *testing.T) {
 		t.Errorf("zero TLFPrivateKey (b2)")
 	}
 
-	if b3 == (TLFEphemeralPublicKey{}) {
+	if b3 == (IFCERFTTLFEphemeralPublicKey{}) {
 		t.Errorf("zero TLFEphemeralPublicKey (b3)")
 	}
 
@@ -162,7 +162,7 @@ func TestCryptoCommonRandomBlockCryptKeyServerHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if k1 == (BlockCryptKeyServerHalf{}) {
+	if k1 == (IFCERFTBlockCryptKeyServerHalf{}) {
 		t.Errorf("zero BlockCryptKeyServerHalf k1")
 	}
 
@@ -171,7 +171,7 @@ func TestCryptoCommonRandomBlockCryptKeyServerHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if k2 == (BlockCryptKeyServerHalf{}) {
+	if k2 == (IFCERFTBlockCryptKeyServerHalf{}) {
 		t.Errorf("zero BlockCryptKeyServerHalf k2")
 	}
 
@@ -275,8 +275,8 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	signingKey := MakeFakeSigningKeyOrBust("client sign")
 
 	msg := []byte("message")
-	sigInfo := SignatureInfo{
-		Version:      SigED25519,
+	sigInfo := IFCERFTSignatureInfo{
+		Version:      IFCERFTSigED25519,
 		Signature:    signingKey.kp.Private.Sign(msg)[:],
 		VerifyingKey: signingKey.GetVerifyingKey(),
 	}
@@ -381,8 +381,8 @@ func TestCryptoCommonEncryptTLFCryptKeyClientHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if encryptedClientHalf.Version != EncryptionSecretbox {
-		t.Errorf("Expected version %v, got %v", EncryptionSecretbox, encryptedClientHalf.Version)
+	if encryptedClientHalf.Version != IFCERFTEncryptionSecretbox {
+		t.Errorf("Expected version %v, got %v", IFCERFTEncryptionSecretbox, encryptedClientHalf.Version)
 	}
 
 	expectedEncryptedLength := len(clientHalf.data) + box.Overhead
@@ -417,8 +417,8 @@ func TestCryptoCommonEncryptTLFCryptKeyClientHalf(t *testing.T) {
 }
 
 func checkSecretboxOpen(t *testing.T, encryptedData encryptedData, key [32]byte) (encodedData []byte) {
-	if encryptedData.Version != EncryptionSecretbox {
-		t.Errorf("Expected version %v, got %v", EncryptionSecretbox, encryptedData.Version)
+	if encryptedData.Version != IFCERFTEncryptionSecretbox {
+		t.Errorf("Expected version %v, got %v", IFCERFTEncryptionSecretbox, encryptedData.Version)
 	}
 
 	if len(encryptedData.Nonce) != 24 {
@@ -488,7 +488,7 @@ func secretboxSealEncoded(t *testing.T, c *CryptoCommon, encodedData []byte, key
 	sealedPmd := secretbox.Seal(nil, encodedData, &nonce, &key)
 
 	return encryptedData{
-		Version:       EncryptionSecretbox,
+		Version:       IFCERFTEncryptionSecretbox,
 		Nonce:         nonce[:],
 		EncryptedData: sealedPmd,
 	}
@@ -509,7 +509,7 @@ func TestDecryptPrivateMetadataSecretboxSeal(t *testing.T) {
 		TLFPrivateKey: tlfPrivateKey,
 	}
 
-	encryptedPrivateMetadata := EncryptedPrivateMetadata(secretboxSeal(t, &c, privateMetadata, cryptKey.data))
+	encryptedPrivateMetadata := IFCERFTEncryptedPrivateMetadata(secretboxSeal(t, &c, privateMetadata, cryptKey.data))
 
 	decryptedPrivateMetadata, err := c.DecryptPrivateMetadata(encryptedPrivateMetadata, cryptKey)
 	if err != nil {
@@ -627,7 +627,7 @@ func TestDecryptPrivateMetadataFailures(t *testing.T) {
 
 	checkDecryptionFailures(t, encryptedData(encryptedPrivateMetadata), cryptKey,
 		func(encryptedData encryptedData, key interface{}) error {
-			_, err = c.DecryptPrivateMetadata(EncryptedPrivateMetadata(encryptedData), key.(IFCERFTTLFCryptKey))
+			_, err = c.DecryptPrivateMetadata(IFCERFTEncryptedPrivateMetadata(encryptedData), key.(IFCERFTTLFCryptKey))
 			return err
 		},
 		func(key interface{}) interface{} {
@@ -699,7 +699,7 @@ func TestDecryptBlockSecretboxSeal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	encryptedBlock := EncryptedBlock(secretboxSealEncoded(t, &c, paddedBlock, cryptKey.data))
+	encryptedBlock := IFCERFTEncryptedBlock(secretboxSealEncoded(t, &c, paddedBlock, cryptKey.data))
 
 	var decryptedBlock TestBlock
 	err = c.DecryptBlock(encryptedBlock, cryptKey, &decryptedBlock)
@@ -753,7 +753,7 @@ func TestDecryptBlockFailures(t *testing.T) {
 	checkDecryptionFailures(t, encryptedData(encryptedBlock), cryptKey,
 		func(encryptedData encryptedData, key interface{}) error {
 			var dummy TestBlock
-			return c.DecryptBlock(EncryptedBlock(encryptedData), key.(BlockCryptKey), &dummy)
+			return c.DecryptBlock(IFCERFTEncryptedBlock(encryptedData), key.(BlockCryptKey), &dummy)
 		},
 		func(key interface{}) interface{} {
 			cryptKey := key.(BlockCryptKey)

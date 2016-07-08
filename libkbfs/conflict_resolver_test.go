@@ -22,7 +22,7 @@ func crTestInit(t *testing.T) (mockCtrl *gomock.Controller, config *ConfigMock,
 	config = NewConfigMock(mockCtrl, ctr)
 	config.SetCodec(NewCodecMsgpack())
 	id := FakeTlfID(1, false)
-	fbo := newFolderBranchOps(config, IFCERFTFolderBranch{id, MasterBranch}, standard)
+	fbo := newFolderBranchOps(config, IFCERFTFolderBranch{id, IFCERFTMasterBranch}, standard)
 	// usernames don't matter for these tests
 	config.mockKbpki.EXPECT().GetNormalizedUsername(gomock.Any(), gomock.Any()).
 		AnyTimes().Return(libkb.NormalizedUsername("mockUser"), nil)
@@ -558,8 +558,8 @@ func TestCRMergedChainsDeletedDirectories(t *testing.T) {
 	})
 	mergedPaths[expectedUnmergedPath.tailPointer()] = mergedPath
 
-	coB := newCreateOp("dirB", dirAPtr, Dir)
-	coC := newCreateOp("dirC", dirBPtr, Dir)
+	coB := newCreateOp("dirB", dirAPtr, IFCERFTDir)
+	coC := newCreateOp("dirC", dirBPtr, IFCERFTDir)
 
 	dirAPtr1 := cr1.fbo.nodeCache.PathFromNode(dirA1).tailPointer()
 	expectedActions := map[IFCERFTBlockPointer]crActionList{
@@ -817,7 +817,7 @@ func TestCRMergedChainsComplex(t *testing.T) {
 	mergedPathB := cr1.fbo.nodeCache.PathFromNode(dirB1)
 	mergedPaths[uPathB2.tailPointer()] = mergedPathB
 
-	coF := newCreateOp("dirF", dirEPtr, Dir)
+	coF := newCreateOp("dirF", dirEPtr, IFCERFTDir)
 
 	mergedPathE := cr1.fbo.nodeCache.PathFromNode(dirE1)
 	expectedActions := map[IFCERFTBlockPointer]crActionList{
@@ -1080,7 +1080,7 @@ func TestCRMergedChainsConflictFileCollapse(t *testing.T) {
 	})
 	mergedPaths[unmergedPathFile.tailPointer()] = mergedPathFile
 
-	coFile := newCreateOp("file", dirRootPtr, Exec)
+	coFile := newCreateOp("file", dirRootPtr, IFCERFTExec)
 
 	cre := WriterDeviceDateConflictRenamer{}
 	mergedPathRoot := cr1.fbo.nodeCache.PathFromNode(dirRoot1)

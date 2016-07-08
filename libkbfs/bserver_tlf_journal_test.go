@@ -39,7 +39,7 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 
 	require.Equal(t, 0, getBlockJournalLength(t, j))
 
-	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
+	bCtx := IFCERFTBlockContext{uid1, "", zeroBlockRefNonce}
 
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
@@ -62,7 +62,7 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 	// Add a reference.
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
-	bCtx2 := BlockContext{uid1, uid2, nonce}
+	bCtx2 := IFCERFTBlockContext{uid1, uid2, nonce}
 	err = j.addReference(bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, 2, getBlockJournalLength(t, j))
@@ -113,7 +113,7 @@ func TestBserverTlfJournalRemoveReferences(t *testing.T) {
 
 	require.Equal(t, 0, getBlockJournalLength(t, j))
 
-	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
+	bCtx := IFCERFTBlockContext{uid1, "", zeroBlockRefNonce}
 
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
@@ -130,13 +130,13 @@ func TestBserverTlfJournalRemoveReferences(t *testing.T) {
 	// Add a reference.
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
-	bCtx2 := BlockContext{uid1, uid2, nonce}
+	bCtx2 := IFCERFTBlockContext{uid1, uid2, nonce}
 	err = j.addReference(bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
 	// Remove references.
-	liveCount, err := j.removeReferences(bID, []BlockContext{bCtx, bCtx2})
+	liveCount, err := j.removeReferences(bID, []IFCERFTBlockContext{bCtx, bCtx2})
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
@@ -167,7 +167,7 @@ func TestBserverTlfJournalArchiveReferences(t *testing.T) {
 
 	require.Equal(t, 0, getBlockJournalLength(t, j))
 
-	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
+	bCtx := IFCERFTBlockContext{uid1, "", zeroBlockRefNonce}
 
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
@@ -184,13 +184,13 @@ func TestBserverTlfJournalArchiveReferences(t *testing.T) {
 	// Add a reference.
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
-	bCtx2 := BlockContext{uid1, uid2, nonce}
+	bCtx2 := IFCERFTBlockContext{uid1, uid2, nonce}
 	err = j.addReference(bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
 	// Archive references.
-	err = j.archiveReferences(bID, []BlockContext{bCtx, bCtx2})
+	err = j.archiveReferences(bID, []IFCERFTBlockContext{bCtx, bCtx2})
 	require.NoError(t, err)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 

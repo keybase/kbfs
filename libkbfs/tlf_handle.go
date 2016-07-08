@@ -383,7 +383,7 @@ func makeTlfHandleHelper(
 	canonicalName := strings.Join(writerNames, ",")
 	if !public && len(usedRNames)+len(unresolvedReaders) > 0 {
 		readerNames := getSortedNames(usedRNames, unresolvedReaders)
-		canonicalName += ReaderSep + strings.Join(readerNames, ",")
+		canonicalName += IFCERFTReaderSep + strings.Join(readerNames, ",")
 	}
 
 	sort.Sort(tlfHandleExtensionList(extensions))
@@ -670,7 +670,7 @@ func splitAndNormalizeTLFName(name string, public bool) (
 	writerNames, readerNames []string,
 	extensionSuffix string, err error) {
 
-	names := strings.SplitN(name, TlfHandleExtensionSep, 2)
+	names := strings.SplitN(name, IFCERFTTlfHandleExtensionSep, 2)
 	if len(names) > 2 {
 		return nil, nil, "", BadTLFNameError{name}
 	}
@@ -678,7 +678,7 @@ func splitAndNormalizeTLFName(name string, public bool) (
 		extensionSuffix = names[1]
 	}
 
-	splitNames := strings.SplitN(names[0], ReaderSep, 3)
+	splitNames := strings.SplitN(names[0], IFCERFTReaderSep, 3)
 	if len(splitNames) > 2 {
 		return nil, nil, "", BadTLFNameError{name}
 	}
@@ -764,12 +764,12 @@ func normalizeNamesInTLF(writerNames, readerNames []string,
 			}
 		}
 		sort.Strings(sortedReaderNames)
-		normalizedName += ReaderSep + strings.Join(sortedReaderNames, ",")
+		normalizedName += IFCERFTReaderSep + strings.Join(sortedReaderNames, ",")
 	}
 	if len(extensionSuffix) != 0 {
 		// This *should* be normalized already but make sure.  I can see not
 		// doing so might surprise a caller.
-		normalizedName += TlfHandleExtensionSep + strings.ToLower(extensionSuffix)
+		normalizedName += IFCERFTTlfHandleExtensionSep + strings.ToLower(extensionSuffix)
 	}
 
 	return normalizedName, nil
@@ -783,7 +783,7 @@ type resolvableAssertion struct {
 
 func (ra resolvableAssertion) resolve(ctx context.Context) (
 	nameUIDPair, keybase1.SocialAssertion, error) {
-	if ra.assertion == PublicUIDName {
+	if ra.assertion == IFCERFTPublicUIDName {
 		return nameUIDPair{}, keybase1.SocialAssertion{}, fmt.Errorf("Invalid name %s", ra.assertion)
 	}
 	name, uid, err := ra.resolver.Resolve(ctx, ra.assertion)

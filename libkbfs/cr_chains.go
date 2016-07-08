@@ -212,11 +212,11 @@ func (cc *crChain) identifyType(ctx context.Context, fbo *folderBlockOps,
 			continue
 		}
 		switch entry.Type {
-		case Dir:
+		case IFCERFTDir:
 			cc.file = false
-		case File:
+		case IFCERFTFile:
 			cc.file = true
-		case Exec:
+		case IFCERFTExec:
 			cc.file = true
 		default:
 			return fmt.Errorf("Unexpected chain type: %s", entry.Type)
@@ -483,7 +483,7 @@ func (ccs *crChains) makeChainForNewOp(targetPtr IFCERFTBlockPointer, newOp op) 
 		// In this case, we don't want to split the rename chain, so
 		// just make up a new operation and later overwrite it with
 		// the rename op.
-		co := newCreateOp(realOp.NewName, realOp.NewDir.Unref, File)
+		co := newCreateOp(realOp.NewName, realOp.NewDir.Unref, IFCERFTFile)
 		err := ccs.makeChainForNewOpWithUpdate(targetPtr, co, &co.Dir)
 		if err != nil {
 			return err

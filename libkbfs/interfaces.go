@@ -71,17 +71,16 @@ type cryptoPure interface {
 	// MakeRefNonce generates a block reference nonce using a
 	// CSPRNG. This is used for distinguishing different references to
 	// the same BlockID.
-	MakeBlockRefNonce() (BlockRefNonce, error)
+	MakeBlockRefNonce() (IFCERFTBlockRefNonce, error)
 
 	// MakeRandomTLFKeys generates top-level folder keys using a CSPRNG.
-	MakeRandomTLFKeys() (TLFPublicKey, TLFPrivateKey, TLFEphemeralPublicKey,
-		TLFEphemeralPrivateKey, IFCERFTTLFCryptKey, error)
+	MakeRandomTLFKeys() (TLFPublicKey, TLFPrivateKey, IFCERFTTLFEphemeralPublicKey, TLFEphemeralPrivateKey, IFCERFTTLFCryptKey, error)
 	// MakeRandomTLFCryptKeyServerHalf generates the server-side of a
 	// top-level folder crypt key.
 	MakeRandomTLFCryptKeyServerHalf() (TLFCryptKeyServerHalf, error)
 	// MakeRandomBlockCryptKeyServerHalf generates the server-side of
 	// a block crypt key.
-	MakeRandomBlockCryptKeyServerHalf() (BlockCryptKeyServerHalf, error)
+	MakeRandomBlockCryptKeyServerHalf() (IFCERFTBlockCryptKeyServerHalf, error)
 
 	// MaskTLFCryptKey returns the client-side of a top-level folder crypt key.
 	MaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, key IFCERFTTLFCryptKey) (
@@ -90,34 +89,33 @@ type cryptoPure interface {
 	UnmaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf,
 		clientHalf TLFCryptKeyClientHalf) (IFCERFTTLFCryptKey, error)
 	// UnmaskBlockCryptKey returns the block crypt key.
-	UnmaskBlockCryptKey(serverHalf BlockCryptKeyServerHalf,
-		tlfCryptKey IFCERFTTLFCryptKey) (BlockCryptKey, error)
+	UnmaskBlockCryptKey(serverHalf IFCERFTBlockCryptKeyServerHalf, tlfCryptKey IFCERFTTLFCryptKey) (BlockCryptKey, error)
 
 	// Verify verifies that sig matches msg being signed with the
 	// private key that corresponds to verifyingKey.
-	Verify(msg []byte, sigInfo SignatureInfo) error
+	Verify(msg []byte, sigInfo IFCERFTSignatureInfo) error
 
 	// EncryptTLFCryptKeyClientHalf encrypts a TLFCryptKeyClientHalf
 	// using both a TLF's ephemeral private key and a device pubkey.
 	EncryptTLFCryptKeyClientHalf(privateKey TLFEphemeralPrivateKey,
 		publicKey IFCERFTCryptPublicKey, clientHalf TLFCryptKeyClientHalf) (
-		EncryptedTLFCryptKeyClientHalf, error)
+		IFCERFTEncryptedTLFCryptKeyClientHalf, error)
 
 	// EncryptPrivateMetadata encrypts a PrivateMetadata object.
-	EncryptPrivateMetadata(pmd *PrivateMetadata, key IFCERFTTLFCryptKey) (EncryptedPrivateMetadata, error)
+	EncryptPrivateMetadata(pmd *PrivateMetadata, key IFCERFTTLFCryptKey) (IFCERFTEncryptedPrivateMetadata, error)
 	// DecryptPrivateMetadata decrypts a PrivateMetadata object.
-	DecryptPrivateMetadata(encryptedPMD EncryptedPrivateMetadata, key IFCERFTTLFCryptKey) (*PrivateMetadata, error)
+	DecryptPrivateMetadata(encryptedPMD IFCERFTEncryptedPrivateMetadata, key IFCERFTTLFCryptKey) (*PrivateMetadata, error)
 
 	// EncryptBlocks encrypts a block. plainSize is the size of the encoded
 	// block; EncryptBlock() must guarantee that plainSize <=
 	// len(encryptedBlock).
 	EncryptBlock(block IFCERFTBlock, key BlockCryptKey) (
-		plainSize int, encryptedBlock EncryptedBlock, err error)
+		plainSize int, encryptedBlock IFCERFTEncryptedBlock, err error)
 
 	// DecryptBlock decrypts a block. Similar to EncryptBlock(),
 	// DecryptBlock() must guarantee that (size of the decrypted
 	// block) <= len(encryptedBlock).
-	DecryptBlock(encryptedBlock EncryptedBlock, key BlockCryptKey, block IFCERFTBlock) error
+	DecryptBlock(encryptedBlock IFCERFTEncryptedBlock, key BlockCryptKey, block IFCERFTBlock) error
 
 	// GetTLFCryptKeyServerHalfID creates a unique ID for this particular
 	// TLFCryptKeyServerHalf.
@@ -131,11 +129,11 @@ type cryptoPure interface {
 
 	// EncryptMerkleLeaf encrypts a Merkle leaf node with the TLFPublicKey.
 	EncryptMerkleLeaf(leaf MerkleLeaf, pubKey TLFPublicKey, nonce *[24]byte,
-		ePrivKey TLFEphemeralPrivateKey) (EncryptedMerkleLeaf, error)
+		ePrivKey TLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error)
 
 	// DecryptMerkleLeaf decrypts a Merkle leaf node with the TLFPrivateKey.
-	DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf, privKey TLFPrivateKey,
-		nonce *[24]byte, ePubKey TLFEphemeralPublicKey) (*MerkleLeaf, error)
+	DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey TLFPrivateKey,
+		nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error)
 }
 
 type mdServerLocal interface {
@@ -161,7 +159,7 @@ type blockServerLocal interface {
 	IFCERFTBlockServer
 	// getAll returns all the known block references, and should only be
 	// used during testing.
-	getAll(tlfID IFCERFTTlfID) (map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error)
+	getAll(tlfID IFCERFTTlfID) (map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error)
 }
 
 // fileBlockDeepCopier fetches a file block, makes a deep copy of it

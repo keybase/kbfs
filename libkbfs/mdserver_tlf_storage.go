@@ -320,7 +320,7 @@ func (s *mdServerTlfStorage) put(
 	mStatus := rmds.MD.MergedStatus()
 	bid := rmds.MD.BID
 
-	if (mStatus == Merged) != (bid == NullBranchID) {
+	if (mStatus == IFCERFTMerged) != (bid == NullBranchID) {
 		return false, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
@@ -345,7 +345,7 @@ func (s *mdServerTlfStorage) put(
 		return false, MDServerError{err}
 	}
 
-	if mStatus == Unmerged && head == nil {
+	if mStatus == IFCERFTUnmerged && head == nil {
 		// currHead for unmerged history might be on the main branch
 		prevRev := rmds.MD.Revision - 1
 		rmdses, err := s.getRangeReadLocked(

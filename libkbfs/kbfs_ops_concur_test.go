@@ -1169,19 +1169,19 @@ func TestKBFSOpsConcurWriteParallelBlocksError(t *testing.T) {
 	errPtrChan := make(chan IFCERFTBlockPointer)
 	c = b.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any()).
-		Do(func(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext, buf []byte,
-			serverHalf BlockCryptKeyServerHalf) {
+		Do(func(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
+			serverHalf IFCERFTBlockCryptKeyServerHalf) {
 			errPtrChan <- IFCERFTBlockPointer{
-				ID:           id,
-				BlockContext: context,
+				ID:                  id,
+				IFCERFTBlockContext: context,
 			}
 		}).After(c).Return(putErr)
 	// let the rest through
 	proceedChan := make(chan struct{})
 	b.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any()).AnyTimes().
-		Do(func(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext, buf []byte,
-			serverHalf BlockCryptKeyServerHalf) {
+		Do(func(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
+			serverHalf IFCERFTBlockCryptKeyServerHalf) {
 			<-proceedChan
 		}).After(c).Return(nil)
 	b.EXPECT().Shutdown().AnyTimes()
@@ -1536,7 +1536,7 @@ type blockOpsOverQuota struct {
 	IFCERFTBlockOps
 }
 
-func (booq *blockOpsOverQuota) Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData ReadyBlockData) error {
+func (booq *blockOpsOverQuota) Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData IFCERFTReadyBlockData) error {
 	return BServerErrorOverQuota{
 		Throttled: true,
 	}

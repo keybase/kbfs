@@ -32,8 +32,7 @@ func (cbo *CheckBlockOps) Get(ctx context.Context, md *IFCERFTRootMetadata, bloc
 	return cbo.delegate.Get(ctx, md, blockPtr, block)
 }
 
-func (cbo *CheckBlockOps) Ready(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
-	err error) {
+func (cbo *CheckBlockOps) Ready(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (id BlockID, plainSize int, readyBlockData IFCERFTReadyBlockData, err error) {
 	id, plainSize, readyBlockData, err = cbo.delegate.Ready(ctx, md, block)
 	encodedSize := readyBlockData.GetEncodedSize()
 	if plainSize > encodedSize {
@@ -43,7 +42,7 @@ func (cbo *CheckBlockOps) Ready(ctx context.Context, md *IFCERFTRootMetadata, bl
 	return
 }
 
-func (cbo *CheckBlockOps) Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData ReadyBlockData) error {
+func (cbo *CheckBlockOps) Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData IFCERFTReadyBlockData) error {
 	return cbo.delegate.Put(ctx, md, blockPtr, readyBlockData)
 }
 
@@ -223,7 +222,7 @@ func TestKBFSOpsGetFavoritesFail(t *testing.T) {
 
 func getOps(config IFCERFTConfig, id IFCERFTTlfID) *folderBranchOps {
 	return config.KBFSOps().(*KBFSOpsStandard).
-		getOpsNoAdd(IFCERFTFolderBranch{id, MasterBranch})
+		getOpsNoAdd(IFCERFTFolderBranch{id, IFCERFTMasterBranch})
 }
 
 // createNewRMD creates a new RMD for the given name. Returns its ID
@@ -241,14 +240,14 @@ func createNewRMD(t *testing.T, config IFCERFTConfig, name string, public bool) 
 func injectNewRMD(t *testing.T, config *ConfigMock) (
 	keybase1.UID, IFCERFTTlfID, *IFCERFTRootMetadata) {
 	id, h, rmd := createNewRMD(t, config, "alice", false)
-	var keyGen KeyGen
+	var keyGen IFCERFTKeyGen
 	if id.IsPublic() {
-		keyGen = PublicKeyGen
+		keyGen = IFCERFTPublicKeyGen
 	} else {
 		keyGen = 1
 	}
 	rmd.data.Dir = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: IFCERFTBlockPointer{
 				KeyGen:  keyGen,
 				DataVer: 1,
@@ -265,7 +264,7 @@ func injectNewRMD(t *testing.T, config *ConfigMock) (
 	ops.head = rmd
 	rmd.SerializedPrivateMetadata = make([]byte, 1)
 	config.Notifier().RegisterForChanges(
-		[]IFCERFTFolderBranch{{id, MasterBranch}}, config.observer)
+		[]IFCERFTFolderBranch{{id, IFCERFTMasterBranch}}, config.observer)
 	uid := h.FirstResolvedWriter()
 	rmd.data.Dir.Creator = uid
 	return uid, id, rmd
@@ -277,7 +276,7 @@ func TestKBFSOpsGetRootNodeCacheSuccess(t *testing.T) {
 
 	_, id, rmd := injectNewRMD(t, config)
 	rmd.data.Dir.IFCERFTBlockPointer.ID = fakeBlockID(1)
-	rmd.data.Dir.Type = Dir
+	rmd.data.Dir.Type = IFCERFTDir
 
 	ops := getOps(config, id)
 	assert.False(t, fboIdentityDone(ops))
@@ -306,7 +305,7 @@ func TestKBFSOpsGetRootNodeReIdentify(t *testing.T) {
 
 	_, id, rmd := injectNewRMD(t, config)
 	rmd.data.Dir.IFCERFTBlockPointer.ID = fakeBlockID(1)
-	rmd.data.Dir.Type = Dir
+	rmd.data.Dir.Type = IFCERFTDir
 
 	ops := getOps(config, id)
 	assert.False(t, fboIdentityDone(ops))
@@ -365,7 +364,7 @@ func TestKBFSOpsGetRootNodeCacheIdentifyFail(t *testing.T) {
 	_, id, rmd := injectNewRMD(t, config)
 
 	rmd.data.Dir.IFCERFTBlockPointer.ID = fakeBlockID(1)
-	rmd.data.Dir.Type = Dir
+	rmd.data.Dir.Type = IFCERFTDir
 
 	ops := getOps(config, id)
 
@@ -415,7 +414,7 @@ func (p ptrMatcher) String() string {
 }
 
 func fillInNewMD(t *testing.T, config *ConfigMock, rmd *IFCERFTRootMetadata) (
-	rootPtr IFCERFTBlockPointer, plainSize int, readyBlockData ReadyBlockData) {
+	rootPtr IFCERFTBlockPointer, plainSize int, readyBlockData IFCERFTReadyBlockData) {
 	if !rmd.ID.IsPublic() {
 		config.mockKeyman.EXPECT().Rekey(gomock.Any(), rmd, gomock.Any()).
 			Do(func(ctx context.Context, rmd *IFCERFTRootMetadata, promptPaper bool) {
@@ -428,7 +427,7 @@ func fillInNewMD(t *testing.T, config *ConfigMock, rmd *IFCERFTRootMetadata) (
 		DataVer: 1,
 	}
 	plainSize = 3
-	readyBlockData = ReadyBlockData{
+	readyBlockData = IFCERFTReadyBlockData{
 		buf: []byte{1, 2, 3, 4},
 	}
 
@@ -468,7 +467,7 @@ func testKBFSOpsGetRootNodeCreateNewSuccess(t *testing.T, public bool) {
 		t.Errorf("Got bad MD back: path size %d", len(p.path))
 	} else if p.path[0].ID != rootPtr.ID {
 		t.Errorf("Got bad MD back: root ID %v", p.path[0].ID)
-	} else if ei.Type != Dir {
+	} else if ei.Type != IFCERFTDir {
 		t.Error("Got bad MD non-dir rootID back")
 	} else if ei.Size != uint64(plainSize) {
 		t.Errorf("Got bad MD Size back: %d", ei.Size)
@@ -522,14 +521,14 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	rmd.data.Dir = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: IFCERFTBlockPointer{
 				ID: fakeBlockID(1),
 			},
 			EncodedSize: 15,
 		},
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type:  Dir,
+			Type:  IFCERFTDir,
 			Size:  10,
 			Mtime: 1,
 			Ctime: 2,
@@ -544,7 +543,7 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 
 	ops.head = rmd
 	n, ei, err :=
-		config.KBFSOps().GetOrCreateRootNode(ctx, h, MasterBranch)
+		config.KBFSOps().GetOrCreateRootNode(ctx, h, IFCERFTMasterBranch)
 	require.NoError(t, err)
 	assert.True(t, fboIdentityDone(ops))
 
@@ -555,7 +554,7 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 		t.Errorf("Got bad MD back: path size %d", len(p.path))
 	} else if p.path[0].ID != rmd.data.Dir.ID {
 		t.Errorf("Got bad MD back: root ID %v", p.path[0].ID)
-	} else if ei.Type != Dir {
+	} else if ei.Type != IFCERFTDir {
 		t.Error("Got bad MD non-dir rootID back")
 	} else if ei.Size != 10 {
 		t.Errorf("Got bad MD Size back: %d", ei.Size)
@@ -571,7 +570,7 @@ func makeBP(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybas
 		ID:      id,
 		KeyGen:  rmd.LatestKeyGeneration(),
 		DataVer: DefaultNewBlockDataVersion(config, false),
-		BlockContext: BlockContext{
+		IFCERFTBlockContext: IFCERFTBlockContext{
 			Creator: u,
 			// Refnonces not needed; explicit refnonce
 			// testing happens elsewhere.
@@ -579,8 +578,8 @@ func makeBP(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybas
 	}
 }
 
-func makeBI(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybase1.UID, encodedSize uint32) BlockInfo {
-	return BlockInfo{
+func makeBI(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybase1.UID, encodedSize uint32) IFCERFTBlockInfo {
+	return IFCERFTBlockInfo{
 		IFCERFTBlockPointer: makeBP(id, rmd, config, u),
 		EncodedSize:         encodedSize,
 	}
@@ -588,7 +587,7 @@ func makeBI(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybas
 
 func makeIFP(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybase1.UID, encodedSize uint32, off int64) IndirectFilePtr {
 	return IndirectFilePtr{
-		BlockInfo{
+		IFCERFTBlockInfo{
 			IFCERFTBlockPointer: makeBP(id, rmd, config, u),
 			EncodedSize:         encodedSize,
 		},
@@ -598,11 +597,11 @@ func makeIFP(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keyba
 	}
 }
 
-func makeBIFromID(id BlockID, user keybase1.UID) BlockInfo {
-	return BlockInfo{
+func makeBIFromID(id BlockID, user keybase1.UID) IFCERFTBlockInfo {
+	return IFCERFTBlockInfo{
 		IFCERFTBlockPointer: IFCERFTBlockPointer{
 			ID: id, KeyGen: 1, DataVer: 1,
-			BlockContext: BlockContext{
+			IFCERFTBlockContext: IFCERFTBlockContext{
 				Creator: user,
 			},
 		},
@@ -636,8 +635,8 @@ func TestKBFSOpsGetBaseDirChildrenCacheSuccess(t *testing.T) {
 
 	rootID := fakeBlockID(42)
 	dirBlock := NewDirBlock().(*DirBlock)
-	dirBlock.Children["a"] = DirEntry{IFCERFTEntryInfo: IFCERFTEntryInfo{Type: File}}
-	dirBlock.Children["b"] = DirEntry{IFCERFTEntryInfo: IFCERFTEntryInfo{Type: Dir}}
+	dirBlock.Children["a"] = DirEntry{IFCERFTEntryInfo: IFCERFTEntryInfo{Type: IFCERFTFile}}
+	dirBlock.Children["b"] = DirEntry{IFCERFTEntryInfo: IFCERFTEntryInfo{Type: IFCERFTDir}}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
 	p := path{IFCERFTFolderBranch{Tlf: id}, []pathNode{node}}
 	testPutBlockInCache(config, node.IFCERFTBlockPointer, id, dirBlock)
@@ -754,8 +753,8 @@ func TestKBFSOpsGetNestedDirChildrenCacheSuccess(t *testing.T) {
 	aID := fakeBlockID(43)
 	bID := fakeBlockID(44)
 	dirBlock := NewDirBlock().(*DirBlock)
-	dirBlock.Children["a"] = DirEntry{IFCERFTEntryInfo: IFCERFTEntryInfo{Type: Exec}}
-	dirBlock.Children["b"] = DirEntry{IFCERFTEntryInfo: IFCERFTEntryInfo{Type: Sym}}
+	dirBlock.Children["a"] = DirEntry{IFCERFTEntryInfo: IFCERFTEntryInfo{Type: IFCERFTExec}}
+	dirBlock.Children["b"] = DirEntry{IFCERFTEntryInfo: IFCERFTEntryInfo{Type: IFCERFTSym}}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
 	aNode := pathNode{makeBP(aID, rmd, config, u), "a"}
 	bNode := pathNode{makeBP(bID, rmd, config, u), "b"}
@@ -795,9 +794,9 @@ func TestKBFSOpsLookupSuccess(t *testing.T) {
 	bID := fakeBlockID(44)
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, u),
+		IFCERFTBlockInfo: makeBIFromID(bID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -837,9 +836,9 @@ func TestKBFSOpsLookupSymlinkSuccess(t *testing.T) {
 	bID := fakeBlockID(44)
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, u),
+		IFCERFTBlockInfo: makeBIFromID(bID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Sym,
+			Type: IFCERFTSym,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -875,9 +874,9 @@ func TestKBFSOpsLookupNoSuchNameFail(t *testing.T) {
 	bID := fakeBlockID(44)
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, u),
+		IFCERFTBlockInfo: makeBIFromID(bID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -912,9 +911,9 @@ func TestKBFSOpsLookupNewDataVersionFail(t *testing.T) {
 	bInfo := makeBIFromID(bID, u)
 	bInfo.DataVer = 10
 	dirBlock.Children["b"] = DirEntry{
-		BlockInfo: bInfo,
+		IFCERFTBlockInfo: bInfo,
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -951,9 +950,9 @@ func TestKBFSOpsStatSuccess(t *testing.T) {
 	bID := fakeBlockID(44)
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, u),
+		IFCERFTBlockInfo: makeBIFromID(bID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -1006,7 +1005,7 @@ func expectSyncBlockHelper(
 		newBuf := []byte{byte(i)}
 		refBytes += uint64(len(newBuf))
 		lastID = newID
-		readyBlockData := ReadyBlockData{
+		readyBlockData := IFCERFTReadyBlockData{
 			buf: newBuf,
 		}
 		call := config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{rmd},
@@ -1106,7 +1105,7 @@ func getFileBlockFromCache(t *testing.T, config IFCERFTConfig, ptr IFCERFTBlockP
 }
 
 func checkNewPath(t *testing.T, ctx context.Context, config IFCERFTConfig, newPath path, expectedPath path, rmd *IFCERFTRootMetadata, blocks []BlockID,
-	entryType EntryType, newName string, rename bool) {
+	entryType IFCERFTEntryType, newName string, rename bool) {
 	// TODO: check that the observer updates match the expectedPath as
 	// well (but need to handle the rename case where there can be
 	// multiple updates).  For now, just check that there's at least
@@ -1188,7 +1187,7 @@ func checkNewPath(t *testing.T, ctx context.Context, config IFCERFTConfig, newPa
 			}
 		}
 
-		if (currDe.Type != File && currDe.Type != Exec) && currDe.Size == 0 {
+		if (currDe.Type != IFCERFTFile && currDe.Type != IFCERFTExec) && currDe.Size == 0 {
 			t.Errorf("Type %s unexpectedly has 0 size (%d)", currDe.Type, i)
 		}
 	}
@@ -1235,7 +1234,7 @@ func checkOp(t *testing.T, op OpCommon, refs []IFCERFTBlockPointer, unrefs []IFC
 
 }
 
-func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
+func testCreateEntrySuccess(t *testing.T, entryType IFCERFTEntryType) {
 	mockCtrl, config, ctx := kbfsOpsInit(t, true)
 	defer kbfsTestShutdown(mockCtrl, config)
 
@@ -1243,13 +1242,13 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 
 	rootID := fakeBlockID(42)
 	rmd.data.Dir.ID = rootID
-	rmd.data.Dir.Type = Dir
+	rmd.data.Dir.Type = IFCERFTDir
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	aBlock := NewDirBlock().(*DirBlock)
@@ -1267,18 +1266,18 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 	blocks := make([]BlockID, 3)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "b", p, rmd,
-			entryType != Sym, 0, 0, 0, &newRmd, blocks)
+			entryType != IFCERFTSym, 0, 0, 0, &newRmd, blocks)
 
 	var newN IFCERFTNode
 	var err error
 	switch entryType {
-	case File:
+	case IFCERFTFile:
 		newN, _, err = config.KBFSOps().CreateFile(ctx, n, "b", false, IFCERFTNoEXCL)
-	case Exec:
+	case IFCERFTExec:
 		newN, _, err = config.KBFSOps().CreateFile(ctx, n, "b", true, IFCERFTNoEXCL)
-	case Dir:
+	case IFCERFTDir:
 		newN, _, err = config.KBFSOps().CreateDir(ctx, n, "b")
-	case Sym:
+	case IFCERFTSym:
 		_, err = config.KBFSOps().CreateLink(ctx, n, "b", "c")
 		newN = n
 	}
@@ -1292,16 +1291,16 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 		entryType, "b", false)
 	b1 :=
 		getDirBlockFromCache(t, config, newP.path[1].IFCERFTBlockPointer, newP.Branch)
-	if entryType == Sym {
+	if entryType == IFCERFTSym {
 		de := b1.Children["b"]
-		if de.Type != Sym {
+		if de.Type != IFCERFTSym {
 			t.Error("Entry is not a symbolic link")
 		}
 		if de.SymPath != "c" {
 			t.Errorf("Symbolic path points to the wrong thing: %s", de.SymPath)
 		}
 		blocks = blocks[:len(blocks)-1] // discard fake block for symlink
-	} else if entryType != Dir {
+	} else if entryType != IFCERFTDir {
 		de := b1.Children["b"]
 		if de.Size != 0 {
 			t.Errorf("New file has non-zero size: %d", de.Size)
@@ -1315,7 +1314,7 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 		t.Errorf("Couldn't find the createOp")
 	}
 	var refBlocks []IFCERFTBlockPointer
-	if entryType != Sym {
+	if entryType != IFCERFTSym {
 		refBlocks = append(refBlocks, newP.path[2].IFCERFTBlockPointer)
 	}
 	updates := []blockUpdate{
@@ -1334,19 +1333,19 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 }
 
 func TestKBFSOpsCreateDirSuccess(t *testing.T) {
-	testCreateEntrySuccess(t, Dir)
+	testCreateEntrySuccess(t, IFCERFTDir)
 }
 
 func TestKBFSOpsCreateFileSuccess(t *testing.T) {
-	testCreateEntrySuccess(t, File)
+	testCreateEntrySuccess(t, IFCERFTFile)
 }
 
 func TestKBFSOpsCreateExecFileSuccess(t *testing.T) {
-	testCreateEntrySuccess(t, Exec)
+	testCreateEntrySuccess(t, IFCERFTExec)
 }
 
 func TestKBFSOpsCreateLinkSuccess(t *testing.T) {
-	testCreateEntrySuccess(t, Sym)
+	testCreateEntrySuccess(t, IFCERFTSym)
 }
 
 func testCreateEntryFailDupName(t *testing.T, isDir bool) {
@@ -1359,9 +1358,9 @@ func testCreateEntryFailDupName(t *testing.T, isDir bool) {
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, u),
+		IFCERFTBlockInfo: makeBIFromID(aID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -1477,7 +1476,7 @@ func TestCreateLinkFailDirTooBig(t *testing.T) {
 	testCreateEntryFailDirTooBig(t, false)
 }
 
-func testCreateEntryFailKBFSPrefix(t *testing.T, et EntryType) {
+func testCreateEntryFailKBFSPrefix(t *testing.T, et IFCERFTEntryType) {
 	mockCtrl, config, ctx := kbfsOpsInit(t, false)
 	defer kbfsTestShutdown(mockCtrl, config)
 
@@ -1487,9 +1486,9 @@ func testCreateEntryFailKBFSPrefix(t *testing.T, et EntryType) {
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, u),
+		IFCERFTBlockInfo: makeBIFromID(aID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -1503,13 +1502,13 @@ func testCreateEntryFailKBFSPrefix(t *testing.T, et EntryType) {
 	var err error
 	// dir and link have different checks for dup name
 	switch et {
-	case Dir:
+	case IFCERFTDir:
 		_, _, err = config.KBFSOps().CreateDir(ctx, n, name)
-	case Sym:
+	case IFCERFTSym:
 		_, err = config.KBFSOps().CreateLink(ctx, n, name, "a")
-	case Exec:
+	case IFCERFTExec:
 		_, _, err = config.KBFSOps().CreateFile(ctx, n, name, true, IFCERFTNoEXCL)
-	case File:
+	case IFCERFTFile:
 		_, _, err = config.KBFSOps().CreateFile(ctx, n, name, false, IFCERFTNoEXCL)
 	}
 	if err == nil {
@@ -1520,22 +1519,22 @@ func testCreateEntryFailKBFSPrefix(t *testing.T, et EntryType) {
 }
 
 func TestCreateDirFailKBFSPrefix(t *testing.T) {
-	testCreateEntryFailKBFSPrefix(t, Dir)
+	testCreateEntryFailKBFSPrefix(t, IFCERFTDir)
 }
 
 func TestCreateFileFailKBFSPrefix(t *testing.T) {
-	testCreateEntryFailKBFSPrefix(t, File)
+	testCreateEntryFailKBFSPrefix(t, IFCERFTFile)
 }
 
 func TestCreateExecFailKBFSPrefix(t *testing.T) {
-	testCreateEntryFailKBFSPrefix(t, Exec)
+	testCreateEntryFailKBFSPrefix(t, IFCERFTExec)
 }
 
 func TestCreateLinkFailKBFSPrefix(t *testing.T) {
-	testCreateEntryFailKBFSPrefix(t, Sym)
+	testCreateEntryFailKBFSPrefix(t, IFCERFTSym)
 }
 
-func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
+func testRemoveEntrySuccess(t *testing.T, entryType IFCERFTEntryType) {
 	mockCtrl, config, ctx := kbfsOpsInit(t, true)
 	defer kbfsTestShutdown(mockCtrl, config)
 
@@ -1547,20 +1546,20 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	bID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	aBlock := NewDirBlock().(*DirBlock)
 	aBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, uid),
+		IFCERFTBlockInfo: makeBIFromID(bID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
 			Type: entryType,
 		},
 	}
 	bBlock := NewFileBlock()
-	if entryType == Dir {
+	if entryType == IFCERFTDir {
 		bBlock = NewDirBlock()
 	}
 	node := pathNode{makeBP(rootID, rmd, config, uid), "p"}
@@ -1571,7 +1570,7 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	n := nodeFromPath(t, ops, p)
 
 	// deleting "a/b"
-	if entryType != Sym {
+	if entryType != IFCERFTSym {
 		testPutBlockInCache(config, bNode.IFCERFTBlockPointer, id, bBlock)
 	}
 	testPutBlockInCache(config, aNode.IFCERFTBlockPointer, id, aBlock)
@@ -1584,7 +1583,7 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 		p, rmd, false, 0, 0, unrefBytes, &newRmd, blocks)
 
 	var err error
-	if entryType == Dir {
+	if entryType == IFCERFTDir {
 		err = config.KBFSOps().RemoveDir(ctx, n, "b")
 	} else {
 		err = config.KBFSOps().RemoveEntry(ctx, n, "b")
@@ -1601,7 +1600,7 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	if _, ok := b1.Children["b"]; ok {
 		t.Errorf("entry for b is still around after removal")
 	}
-	if entryType != Sym {
+	if entryType != IFCERFTSym {
 		blocks = append(blocks, bID)
 	}
 	checkBlockCache(t, config, append(blocks, rootID, aID), nil)
@@ -1626,15 +1625,15 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 }
 
 func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
-	testRemoveEntrySuccess(t, Dir)
+	testRemoveEntrySuccess(t, IFCERFTDir)
 }
 
 func TestKBFSOpsRemoveFileSuccess(t *testing.T) {
-	testRemoveEntrySuccess(t, File)
+	testRemoveEntrySuccess(t, IFCERFTFile)
 }
 
 func TestKBFSOpsRemoveSymlinkSuccess(t *testing.T) {
-	testRemoveEntrySuccess(t, Sym)
+	testRemoveEntrySuccess(t, IFCERFTSym)
 }
 
 func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
@@ -1653,7 +1652,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	// TODO(akalin): Figure out actual Size value.
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: IFCERFTBlockPointer{ID: fileID, KeyGen: 1},
 			EncodedSize:         10,
 		},
@@ -1706,7 +1705,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 		t.Errorf("Got error on removal: %v", err)
 	}
 	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-		File, "", false)
+		IFCERFTFile, "", false)
 	b0 :=
 		getDirBlockFromCache(t, config, newP.path[0].IFCERFTBlockPointer, newP.Branch)
 	if _, ok := b0.Children["a"]; ok {
@@ -1749,23 +1748,23 @@ func TestRemoveDirFailNonEmpty(t *testing.T) {
 	cID := fakeBlockID(44)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, u),
+		IFCERFTBlockInfo: makeBIFromID(aID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	aBlock := NewDirBlock().(*DirBlock)
 	aBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, u),
+		IFCERFTBlockInfo: makeBIFromID(bID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	bBlock := NewDirBlock().(*DirBlock)
 	bBlock.Children["c"] = DirEntry{
-		BlockInfo: makeBIFromID(cID, u),
+		IFCERFTBlockInfo: makeBIFromID(cID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -1797,9 +1796,9 @@ func TestRemoveDirFailNoSuchName(t *testing.T) {
 	bID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, u),
+		IFCERFTBlockInfo: makeBIFromID(aID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	aBlock := NewDirBlock().(*DirBlock)
@@ -1834,16 +1833,16 @@ func TestRenameInDirSuccess(t *testing.T) {
 	bID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	aBlock := NewDirBlock().(*DirBlock)
 	aBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, uid),
+		IFCERFTBlockInfo: makeBIFromID(bID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, uid), "p"}
@@ -1869,7 +1868,7 @@ func TestRenameInDirSuccess(t *testing.T) {
 	newP := ops.nodeCache.PathFromNode(n)
 
 	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-		File, "c", true)
+		IFCERFTFile, "c", true)
 	b1 := getDirBlockFromCache(
 		t, config, newP.path[1].IFCERFTBlockPointer, newP.Branch)
 	if _, ok := b1.Children["b"]; ok {
@@ -1918,22 +1917,22 @@ func TestRenameInDirOverEntrySuccess(t *testing.T) {
 	cID := fakeBlockID(44)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	aBlock := NewDirBlock().(*DirBlock)
 	aBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, uid),
+		IFCERFTBlockInfo: makeBIFromID(bID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	aBlock.Children["c"] = DirEntry{
-		BlockInfo: makeBIFromID(cID, uid),
+		IFCERFTBlockInfo: makeBIFromID(cID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	cBlock := NewFileBlock().(*FileBlock)
@@ -1963,7 +1962,7 @@ func TestRenameInDirOverEntrySuccess(t *testing.T) {
 	newP := ops.nodeCache.PathFromNode(n)
 
 	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-		File, "c", true)
+		IFCERFTFile, "c", true)
 	b1 := getDirBlockFromCache(
 		t, config, newP.path[1].IFCERFTBlockPointer, newP.Branch)
 	if _, ok := b1.Children["b"]; ok {
@@ -2010,9 +2009,9 @@ func TestRenameInRootSuccess(t *testing.T) {
 	aID := fakeBlockID(42)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, uid), "p"}
@@ -2036,7 +2035,7 @@ func TestRenameInRootSuccess(t *testing.T) {
 	newP := ops.nodeCache.PathFromNode(n)
 
 	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-		File, "b", true)
+		IFCERFTFile, "b", true)
 	b0 := getDirBlockFromCache(
 		t, config, newP.path[0].IFCERFTBlockPointer, newP.Branch)
 	if _, ok := b0.Children["a"]; ok {
@@ -2081,19 +2080,19 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 	aID := fakeBlockID(42)
 	bID := fakeBlockID(43)
 	rmd.data.Dir.ID = rootID
-	rmd.data.Dir.Type = Dir
+	rmd.data.Dir.Type = IFCERFTDir
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	aBlock := NewDirBlock().(*DirBlock)
 	aBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, uid),
+		IFCERFTBlockInfo: makeBIFromID(bID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, uid), "p"}
@@ -2104,9 +2103,9 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 
 	dID := fakeBlockID(40)
 	rootBlock.Children["d"] = DirEntry{
-		BlockInfo: makeBIFromID(dID, uid),
+		IFCERFTBlockInfo: makeBIFromID(dID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	dBlock := NewDirBlock().(*DirBlock)
@@ -2145,9 +2144,9 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 	// checkNewPath expects {rootBlock, aBlock}
 	blocks1 = []BlockID{blocks2[0], blocks1[0]}
 	checkNewPath(t, ctx, config, newP1, expectedPath1, newRmd, blocks1,
-		File, "", true)
+		IFCERFTFile, "", true)
 	checkNewPath(t, ctx, config, newP2, expectedPath2, newRmd, blocks2,
-		File, "c", true)
+		IFCERFTFile, "c", true)
 	b0 := getDirBlockFromCache(
 		t, config, newP1.path[0].IFCERFTBlockPointer, newP1.Branch)
 	if _, ok := b0.Children["b"]; ok {
@@ -2196,25 +2195,25 @@ func TestRenameAcrossPrefixSuccess(t *testing.T) {
 	bID := fakeBlockID(43)
 	dID := fakeBlockID(40)
 	rmd.data.Dir.ID = rootID
-	rmd.data.Dir.Type = Dir
+	rmd.data.Dir.Type = IFCERFTDir
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	aBlock := NewDirBlock().(*DirBlock)
 	aBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, uid),
+		IFCERFTBlockInfo: makeBIFromID(bID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	aBlock.Children["d"] = DirEntry{
-		BlockInfo: makeBIFromID(dID, uid),
+		IFCERFTBlockInfo: makeBIFromID(dID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	dBlock := NewDirBlock().(*DirBlock)
@@ -2269,7 +2268,7 @@ func TestRenameAcrossPrefixSuccess(t *testing.T) {
 	b0.Children["a"] = aDe
 
 	checkNewPath(t, ctx, config, newP2, expectedPath2, newRmd, blocks,
-		File, "c", true)
+		IFCERFTFile, "c", true)
 	b1 := getDirBlockFromCache(
 		t, config, newP1.path[1].IFCERFTBlockPointer, newP1.Branch)
 	if _, ok := b1.Children["b"]; ok {
@@ -2295,26 +2294,26 @@ func TestRenameAcrossOtherPrefixSuccess(t *testing.T) {
 	bID := fakeBlockID(43)
 	dID := fakeBlockID(40)
 	rmd.data.Dir.ID = rootID
-	rmd.data.Dir.Type = Dir
+	rmd.data.Dir.Type = IFCERFTDir
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: Dir,
+			Type: IFCERFTDir,
 		},
 	}
 	aBlock := NewDirBlock().(*DirBlock)
 	aBlock.Children["d"] = DirEntry{
-		BlockInfo: makeBIFromID(dID, uid),
+		IFCERFTBlockInfo: makeBIFromID(dID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	dBlock := NewDirBlock().(*DirBlock)
 	dBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, uid),
+		IFCERFTBlockInfo: makeBIFromID(bID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, uid), "p"}
@@ -2378,7 +2377,7 @@ func TestRenameAcrossOtherPrefixSuccess(t *testing.T) {
 	}
 
 	checkNewPath(t, ctx, config, newP1, expectedPath1, newRmd, blocks2,
-		File, "c", true)
+		IFCERFTFile, "c", true)
 	b2 := getDirBlockFromCache(
 		t, config, newP1.path[2].IFCERFTBlockPointer, newP1.Branch)
 	if _, ok := b2.Children["b"]; ok {
@@ -2761,12 +2760,12 @@ func TestKBFSOpsWriteNewBlockSuccess(t *testing.T) {
 	fileID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: makeBP(fileID, rmd, config, uid),
 			EncodedSize:         1,
 		},
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
@@ -2830,12 +2829,12 @@ func TestKBFSOpsWriteExtendSuccess(t *testing.T) {
 	fileID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: makeBP(fileID, rmd, config, uid),
 			EncodedSize:         1,
 		},
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
@@ -2891,12 +2890,12 @@ func TestKBFSOpsWritePastEndSuccess(t *testing.T) {
 	fileID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: makeBP(fileID, rmd, config, uid),
 			EncodedSize:         1,
 		},
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
@@ -2952,12 +2951,12 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 	fileID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: makeBP(fileID, rmd, config, uid),
 			EncodedSize:         1,
 		},
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
@@ -3072,12 +3071,12 @@ func TestKBFSOpsWriteOverMultipleBlocks(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	filePtr := IFCERFTBlockPointer{
 		ID: fileID, KeyGen: 1, DataVer: 1,
-		BlockContext: BlockContext{
+		IFCERFTBlockContext: IFCERFTBlockContext{
 			Creator: uid,
 		},
 	}
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: filePtr,
 			EncodedSize:         1,
 		},
@@ -3170,12 +3169,12 @@ func TestKBFSOpsWriteFailTooBig(t *testing.T) {
 	fileID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: makeBP(fileID, rmd, config, uid),
 			EncodedSize:         1,
 		},
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 			Size: 10,
 		},
 	}
@@ -3211,12 +3210,12 @@ func TestKBFSOpsTruncateToZeroSuccess(t *testing.T) {
 	fileID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: makeBP(fileID, rmd, config, uid),
 			EncodedSize:         1,
 		},
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
@@ -3276,9 +3275,9 @@ func TestKBFSOpsTruncateSameSize(t *testing.T) {
 	fileID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: makeBIFromID(fileID, u),
+		IFCERFTBlockInfo: makeBIFromID(fileID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
@@ -3314,12 +3313,12 @@ func TestKBFSOpsTruncateSmallerSuccess(t *testing.T) {
 	fileID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: makeBP(fileID, rmd, config, uid),
 			EncodedSize:         1,
 		},
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
@@ -3372,7 +3371,7 @@ func TestKBFSOpsTruncateShortensLastBlock(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	fileInfo := makeBIFromID(fileID, uid)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: fileInfo,
+		IFCERFTBlockInfo: fileInfo,
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
 			Size: 10,
 		},
@@ -3456,7 +3455,7 @@ func TestKBFSOpsTruncateRemovesABlock(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	fileInfo := makeBIFromID(fileID, uid)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: fileInfo,
+		IFCERFTBlockInfo: fileInfo,
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
 			Size: 10,
 		},
@@ -3532,12 +3531,12 @@ func TestKBFSOpsTruncateBiggerSuccess(t *testing.T) {
 	fileID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: makeBP(fileID, rmd, config, uid),
 			EncodedSize:         1,
 		},
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
@@ -3584,8 +3583,8 @@ func TestKBFSOpsTruncateBiggerSuccess(t *testing.T) {
 		[]WriteRange{{Off: 5, Len: 5}})
 }
 
-func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
-	mockCtrl, config, ctx := kbfsOpsInit(t, entryType != Sym)
+func testSetExSuccess(t *testing.T, entryType IFCERFTEntryType, ex bool) {
+	mockCtrl, config, ctx := kbfsOpsInit(t, entryType != IFCERFTSym)
 	defer kbfsTestShutdown(mockCtrl, config)
 
 	uid, id, rmd := injectNewRMD(t, config)
@@ -3595,7 +3594,7 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
 			Size: 1,
 			Type: entryType,
@@ -3611,14 +3610,14 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 
 	expectedChanges := 1
 	// SetEx() should do nothing for symlinks.
-	if entryType == Sym {
+	if entryType == IFCERFTSym {
 		expectedChanges = 0
 	}
 
 	var expectedPath path
 	var newRmd *IFCERFTRootMetadata
 	var blocks []BlockID
-	if entryType != Sym {
+	if entryType != IFCERFTSym {
 		// sync block
 		blocks = make([]BlockID, 2)
 		expectedPath, _ = expectSyncBlock(t, config, nil, uid, id, "",
@@ -3627,11 +3626,11 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 	}
 
 	// SetEx() should only change the type of File and Exec.
-	var expectedType EntryType
-	if entryType == File && ex {
-		expectedType = Exec
-	} else if entryType == Exec && !ex {
-		expectedType = File
+	var expectedType IFCERFTEntryType
+	if entryType == IFCERFTFile && ex {
+		expectedType = IFCERFTExec
+	} else if entryType == IFCERFTExec && !ex {
+		expectedType = IFCERFTFile
 	} else {
 		expectedType = entryType
 	}
@@ -3653,7 +3652,7 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 		if rootBlock.Children["a"].Type != expectedType {
 			t.Errorf("a has type %s, expected %s",
 				rootBlock.Children["a"].Type, expectedType)
-		} else if entryType != Sym {
+		} else if entryType != IFCERFTSym {
 			// SetEx() should always change the ctime of
 			// non-symlinks.
 			// pretend it's a rename so only ctime gets checked
@@ -3661,12 +3660,12 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 				expectedType, "", true)
 		}
 	}
-	if entryType != Sym {
+	if entryType != IFCERFTSym {
 		blocks = blocks[:len(blocks)-1] // last block is never in the cache
 	}
 	checkBlockCache(t, config, append(blocks, rootID), nil)
 
-	if entryType != Sym {
+	if entryType != IFCERFTSym {
 		// make sure the setAttrOp is correct
 		sao, ok := newRmd.data.Changes.Ops[0].(*setAttrOp)
 		if !ok {
@@ -3687,35 +3686,35 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 }
 
 func TestSetExFileSuccess(t *testing.T) {
-	testSetExSuccess(t, File, true)
+	testSetExSuccess(t, IFCERFTFile, true)
 }
 
 func TestSetNoExFileSuccess(t *testing.T) {
-	testSetExSuccess(t, File, false)
+	testSetExSuccess(t, IFCERFTFile, false)
 }
 
 func TestSetExExecSuccess(t *testing.T) {
-	testSetExSuccess(t, Exec, true)
+	testSetExSuccess(t, IFCERFTExec, true)
 }
 
 func TestSetNoExExecSuccess(t *testing.T) {
-	testSetExSuccess(t, Exec, false)
+	testSetExSuccess(t, IFCERFTExec, false)
 }
 
 func TestSetExDirSuccess(t *testing.T) {
-	testSetExSuccess(t, Dir, true)
+	testSetExSuccess(t, IFCERFTDir, true)
 }
 
 func TestSetNoExDirSuccess(t *testing.T) {
-	testSetExSuccess(t, Dir, false)
+	testSetExSuccess(t, IFCERFTDir, false)
 }
 
 func TestSetExSymSuccess(t *testing.T) {
-	testSetExSuccess(t, Sym, true)
+	testSetExSuccess(t, IFCERFTSym, true)
 }
 
 func TestSetNoExSymSuccess(t *testing.T) {
-	testSetExSuccess(t, Sym, false)
+	testSetExSuccess(t, IFCERFTSym, false)
 }
 
 func TestSetExFailNoSuchName(t *testing.T) {
@@ -3757,9 +3756,9 @@ func TestSetMtimeSuccess(t *testing.T) {
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	node := pathNode{makeBP(rootID, rmd, config, uid), "p"}
@@ -3788,7 +3787,7 @@ func TestSetMtimeSuccess(t *testing.T) {
 		t.Errorf("a has wrong mtime: %v", b0.Children["a"].Mtime)
 	} else {
 		checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-			Exec, "", false)
+			IFCERFTExec, "", false)
 	}
 	blocks = blocks[:len(blocks)-1] // last block is never in the cache
 	checkBlockCache(t, config, append(blocks, rootID), nil)
@@ -3822,9 +3821,9 @@ func TestSetMtimeNull(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	oldMtime := time.Now().UnixNano()
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, u),
+		IFCERFTBlockInfo: makeBIFromID(aID, u),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type:  File,
+			Type:  IFCERFTFile,
 			Mtime: oldMtime,
 		},
 	}
@@ -3902,9 +3901,9 @@ func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	aBlock := NewFileBlock().(*FileBlock)
@@ -3949,7 +3948,7 @@ func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
 	}
 	newP := ops.nodeCache.PathFromNode(n)
 	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-		Exec, "", false)
+		IFCERFTExec, "", false)
 	checkBlockCache(t, config, append(blocks, rootID), nil)
 
 	// check the sync op
@@ -4014,7 +4013,7 @@ func TestSyncCleanSuccess(t *testing.T) {
 
 func expectSyncDirtyBlock(config *ConfigMock, rmd *IFCERFTRootMetadata, p path, ptr IFCERFTBlockPointer, block *FileBlock, splitAt int64,
 	padSize int, opsLockHeld bool) *gomock.Call {
-	branch := MasterBranch
+	branch := IFCERFTMasterBranch
 	if config.mockDirtyBcache != nil {
 		config.mockDirtyBcache.EXPECT().IsDirty(ptrMatcher{ptr}, branch).
 			AnyTimes().Return(true)
@@ -4033,7 +4032,7 @@ func expectSyncDirtyBlock(config *ConfigMock, rmd *IFCERFTRootMetadata, p path, 
 	// that Ready() is called, but GoMock isn't expressive enough
 	// for that.
 	newEncBuf := make([]byte, len(block.Contents)+padSize)
-	readyBlockData := ReadyBlockData{
+	readyBlockData := IFCERFTReadyBlockData{
 		buf: newEncBuf,
 	}
 	c2 := config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{rmd}, block).
@@ -4068,7 +4067,7 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 	id4 := fakeBlockID(47)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(fileID, uid),
+		IFCERFTBlockInfo: makeBIFromID(fileID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
 			Size: 20,
 		},
@@ -4146,7 +4145,7 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 		t.Errorf("Indirect pointer encoded size4 wrong: %d", fileBlock.IPtrs[3].EncodedSize)
 	} else {
 		checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-			Exec, "", false)
+			IFCERFTExec, "", false)
 	}
 	checkBlockCache(t, config,
 		append(blocks, rootID, fileBlock.IPtrs[1].ID, fileBlock.IPtrs[3].ID),
@@ -4186,15 +4185,15 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	bID := fakeBlockID(44)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	rootBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, uid),
+		IFCERFTBlockInfo: makeBIFromID(bID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	aBlock := NewFileBlock().(*FileBlock)
@@ -4218,13 +4217,13 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	testPutBlockInCache(config, node.IFCERFTBlockPointer, id, rootBlock)
 	testPutBlockInCache(config, aNode.IFCERFTBlockPointer, id, aBlock)
 
-	readyBlockData := ReadyBlockData{
+	readyBlockData := IFCERFTReadyBlockData{
 		buf: []byte{6, 7, 8, 9, 10, 11, 12},
 	}
 	config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{rmd}, bBlock).
 		Return(bID, len(bBlock.Contents), readyBlockData, nil)
 
-	refNonce := BlockRefNonce{1}
+	refNonce := IFCERFTBlockRefNonce{1}
 	config.mockCrypto.EXPECT().MakeBlockRefNonce().AnyTimes().
 		Return(refNonce, nil)
 
@@ -4240,7 +4239,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 
 	// manually add b
 	expectedPath.path = append(expectedPath.path,
-		pathNode{IFCERFTBlockPointer{ID: aID, BlockContext: BlockContext{RefNonce: refNonce}}, "b"})
+		pathNode{IFCERFTBlockPointer{ID: aID, IFCERFTBlockContext: IFCERFTBlockContext{RefNonce: refNonce}}, "b"})
 	config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{rmd},
 		ptrMatcher{expectedPath.path[1].IFCERFTBlockPointer}, readyBlockData).
 		Return(nil)
@@ -4252,7 +4251,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	}
 	newP := ops.nodeCache.PathFromNode(n)
 	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-		Exec, "", false)
+		IFCERFTExec, "", false)
 	// block b shouldn't be anywhere in the cache
 	checkBlockCache(t, config, append(blocks[0:1], rootID, aID), nil)
 
@@ -4325,7 +4324,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 	id4 := fakeBlockID(47)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(fileID, uid),
+		IFCERFTBlockInfo: makeBIFromID(fileID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
 			Size: 20,
 		},
@@ -4493,7 +4492,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 		t.Errorf("Block 5 has the wrong data: %v", newBlock5.Contents)
 	} else {
 		checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-			Exec, "", false)
+			IFCERFTExec, "", false)
 	}
 }
 
@@ -4523,7 +4522,7 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 	id4 := fakeBlockID(47)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(fileID, uid),
+		IFCERFTBlockInfo: makeBIFromID(fileID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
 			Size: 20,
 		},
@@ -4676,7 +4675,7 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 		t.Errorf("Block 4 has the wrong data: %v", newBlock4.Contents)
 	} else {
 		checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-			Exec, "", false)
+			IFCERFTExec, "", false)
 	}
 }
 
@@ -4691,9 +4690,9 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
+		IFCERFTBlockInfo: makeBIFromID(aID, uid),
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	aBlock := NewFileBlock().(*FileBlock)
@@ -4728,7 +4727,7 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 	changeBlockID := fakeBlockID(253)
 	changePlainSize := 1
 	changeBuf := []byte{253}
-	changeReadyBlockData := ReadyBlockData{
+	changeReadyBlockData := IFCERFTReadyBlockData{
 		buf: changeBuf,
 	}
 	lastCall = config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{rmd},
@@ -4747,7 +4746,7 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 			newRmd.data.cachedChanges.Info.ID, changeBlockID)
 	} else {
 		checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-			Exec, "", false)
+			IFCERFTExec, "", false)
 	}
 	checkBlockCache(t, config, append(blocks, rootID, changeBlockID), nil)
 }
@@ -4833,12 +4832,12 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 	fileID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: makeBP(fileID, rmd, config, uid),
 			EncodedSize:         1,
 		},
 		IFCERFTEntryInfo: IFCERFTEntryInfo{
-			Type: File,
+			Type: IFCERFTFile,
 		},
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
@@ -4869,7 +4868,7 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 
 	c := make(chan struct{})
 	observer := &testBGObserver{c}
-	config.Notifier().RegisterForChanges([]IFCERFTFolderBranch{{id, MasterBranch}},
+	config.Notifier().RegisterForChanges([]IFCERFTFolderBranch{{id, IFCERFTMasterBranch}},
 		observer)
 
 	// start the background flusher
@@ -5068,10 +5067,10 @@ type corruptBlockServer struct {
 	IFCERFTBlockServer
 }
 
-func (cbs corruptBlockServer) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
+func (cbs corruptBlockServer) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	data, keyServerHalf, err := cbs.IFCERFTBlockServer.Get(ctx, id, tlfID, context)
 	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, err
 	}
 	return append(data, 0), keyServerHalf, nil
 }

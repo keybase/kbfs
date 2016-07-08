@@ -248,7 +248,7 @@ type IFCERFTKBFSOps interface {
 	// Note that the history does not include any unmerged changes or
 	// outstanding writes from the local device.
 	GetUpdateHistory(ctx context.Context, folderBranch IFCERFTFolderBranch) (
-		history TLFUpdateHistory, err error)
+		history IFCERFTTLFUpdateHistory, err error)
 	// Shutdown is called to clean up any resources associated with
 	// this KBFSOps instance.
 	Shutdown() error
@@ -431,7 +431,7 @@ type IFCERFTKeyManager interface {
 type IFCERFTReporter interface {
 	// ReportErr records that a given error happened.
 	ReportErr(ctx context.Context, tlfName IFCERFTCanonicalTlfName, public bool,
-		mode ErrorModeType, err error)
+		mode IFCERFTErrorModeType, err error)
 	// AllKnownErrors returns all errors known to this Reporter.
 	AllKnownErrors() []ReportedError
 	// Notify sends the given notification to any sink.
@@ -452,9 +452,9 @@ type IFCERFTMDCache interface {
 // KeyCache handles caching for both TLFCryptKeys and BlockCryptKeys.
 type IFCERFTKeyCache interface {
 	// GetTLFCryptKey gets the crypt key for the given TLF.
-	GetTLFCryptKey(IFCERFTTlfID, KeyGen) (IFCERFTTLFCryptKey, error)
+	GetTLFCryptKey(IFCERFTTlfID, IFCERFTKeyGen) (IFCERFTTLFCryptKey, error)
 	// PutTLFCryptKey stores the crypt key for the given TLF.
-	PutTLFCryptKey(IFCERFTTlfID, KeyGen, IFCERFTTLFCryptKey) error
+	PutTLFCryptKey(IFCERFTTlfID, IFCERFTKeyGen, IFCERFTTLFCryptKey) error
 }
 
 // BlockCacheLifetime denotes the lifetime of an entry in BlockCache.
@@ -589,7 +589,7 @@ type IFCERFTCrypto interface {
 	cryptoPure
 
 	// Sign signs the msg with the current device's private key.
-	Sign(ctx context.Context, msg []byte) (sigInfo SignatureInfo, err error)
+	Sign(ctx context.Context, msg []byte) (sigInfo IFCERFTSignatureInfo, err error)
 	// Sign signs the msg with the current device's private key and output
 	// the full serialized NaclSigInfo.
 	SignToString(ctx context.Context, msg []byte) (signature string, err error)
@@ -597,8 +597,7 @@ type IFCERFTCrypto interface {
 	// using the current device's private key and the TLF's ephemeral
 	// public key.
 	DecryptTLFCryptKeyClientHalf(ctx context.Context,
-		publicKey TLFEphemeralPublicKey,
-		encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (
+		publicKey IFCERFTTLFEphemeralPublicKey, encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf) (
 		TLFCryptKeyClientHalf, error)
 
 	// DecryptTLFCryptKeyClientHalfAny decrypts one of the
@@ -606,7 +605,7 @@ type IFCERFTCrypto interface {
 	// ephemeral public key.  If promptPaper is true, the service will
 	// prompt the user for any unlocked paper keys.
 	DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
-		keys []EncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
+		keys []IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
 		TLFCryptKeyClientHalf, int, error)
 
 	// Shutdown frees any resources associated with this instance.
@@ -726,12 +725,12 @@ type IFCERFTBlockOps interface {
 	// block puts in parallel for every write. Ready() must
 	// guarantee that plainSize <= readyBlockData.QuotaSize().
 	Ready(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (
-		id BlockID, plainSize int, readyBlockData ReadyBlockData, err error)
+		id BlockID, plainSize int, readyBlockData IFCERFTReadyBlockData, err error)
 
 	// Put stores the readied block data under the given block
 	// pointer (which belongs to the TLF with the given metadata)
 	// on the server.
-	Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData ReadyBlockData) error
+	Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData IFCERFTReadyBlockData) error
 
 	// Delete instructs the server to delete the given block references.
 	// It returns the number of not-yet deleted references to
@@ -765,18 +764,17 @@ type IFCERFTMDServer interface {
 	// creates the folder if one doesn't exist yet, and the logged-in
 	// user has permission to do so.
 	GetForHandle(ctx context.Context, handle BareTlfHandle,
-		mStatus MergeStatus) (IFCERFTTlfID, *RootMetadataSigned, error)
+		mStatus IFCERFTMergeStatus) (IFCERFTTlfID, *RootMetadataSigned, error)
 
 	// GetForTLF returns the current (signed/encrypted) metadata object
 	// corresponding to the given top-level folder, if the logged-in
 	// user has read permission on the folder.
-	GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus) (
+	GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (
 		*RootMetadataSigned, error)
 
 	// GetRange returns a range of (signed/encrypted) metadata objects
 	// corresponding to the passed revision numbers (inclusive).
-	GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus MergeStatus,
-		start, stop MetadataRevision) ([]*RootMetadataSigned, error)
+	GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus, start, stop MetadataRevision) ([]*RootMetadataSigned, error)
 
 	// Put stores the (signed/encrypted) metadata object for the given
 	// top-level folder. Note: If the unmerged bit is set in the metadata
@@ -845,8 +843,8 @@ type IFCERFTBlockServer interface {
 	// the block, and fills in the provided block object with its
 	// contents, if the logged-in user has read permission for that
 	// block.
-	Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext) (
-		[]byte, BlockCryptKeyServerHalf, error)
+	Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) (
+		[]byte, IFCERFTBlockCryptKeyServerHalf, error)
 	// Put stores the (encrypted) block data under the given ID and
 	// context on the server, along with the server half of the block
 	// key.  context should contain a BlockRefNonce of zero.  There
@@ -860,8 +858,7 @@ type IFCERFTBlockServer interface {
 	// If this returns a BServerErrorOverQuota, with Throttled=false,
 	// the caller can treat it as informational and otherwise ignore
 	// the error.
-	Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext,
-		buf []byte, serverHalf BlockCryptKeyServerHalf) error
+	Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte, serverHalf IFCERFTBlockCryptKeyServerHalf) error
 
 	// AddBlockReference adds a new reference to the given block,
 	// defined by the given context (which should contain a non-zero
@@ -878,7 +875,7 @@ type IFCERFTBlockServer interface {
 	// If this returns a BServerErrorOverQuota, with Throttled=false,
 	// the caller can treat it as informational and otherwise ignore
 	// the error.
-	AddBlockReference(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext) error
+	AddBlockReference(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error
 	// RemoveBlockReference removes the reference to the given block
 	// ID defined by the given context.  If no references to the block
 	// remain after this call, the server is allowed to delete the
@@ -886,7 +883,7 @@ type IFCERFTBlockServer interface {
 	// the count has already been removed, the call is a no-op.
 	// It returns the number of remaining not-yet-deleted references after this
 	// reference has been removed
-	RemoveBlockReference(ctx context.Context, tlfID IFCERFTTlfID, contexts map[BlockID][]BlockContext) (liveCounts map[BlockID]int, err error)
+	RemoveBlockReference(ctx context.Context, tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) (liveCounts map[BlockID]int, err error)
 
 	// ArchiveBlockReferences marks the given block references as
 	// "archived"; that is, they are not being used in the current
@@ -897,13 +894,13 @@ type IFCERFTBlockServer interface {
 	// be idempotent, although it should also return an error if
 	// any of the other fields of the context differ from previous
 	// calls with the same ID/refnonce pair.
-	ArchiveBlockReferences(ctx context.Context, tlfID IFCERFTTlfID, contexts map[BlockID][]BlockContext) error
+	ArchiveBlockReferences(ctx context.Context, tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) error
 
 	// Shutdown is called to shutdown a BlockServer connection.
 	Shutdown()
 
 	// GetUserQuotaInfo returns the quota for the user.
-	GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error)
+	GetUserQuotaInfo(ctx context.Context) (info *IFCERFTUserQuotaInfo, err error)
 }
 
 // BlockSplitter decides when a file or directory block needs to be split
@@ -925,7 +922,7 @@ type IFCERFTBlockSplitter interface {
 
 	// ShouldEmbedBlockChanges decides whether we should keep the
 	// block changes embedded in the MD or not.
-	ShouldEmbedBlockChanges(bc *BlockChanges) bool
+	ShouldEmbedBlockChanges(bc *IFCERFTBlockChanges) bool
 }
 
 // KeyServer fetches/writes server-side key halves from/to the key server.
@@ -1053,7 +1050,7 @@ type IFCERFTConfig interface {
 	SetClock(IFCERFTClock)
 	ConflictRenamer() IFCERFTConflictRenamer
 	SetConflictRenamer(IFCERFTConflictRenamer)
-	MetadataVersion() MetadataVer
+	MetadataVersion() IFCERFTMetadataVer
 	DataVersion() IFCERFTDataVer
 	RekeyQueue() IFCERFTRekeyQueue
 	SetRekeyQueue(IFCERFTRekeyQueue)

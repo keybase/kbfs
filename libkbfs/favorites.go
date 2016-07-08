@@ -108,7 +108,7 @@ func (f *Favorites) handleReq(req *favReq) (err error) {
 
 		f.cache = make(map[IFCERFTFavorite]bool)
 		for _, folder := range folders {
-			f.cache[*NewFavoriteFromFolder(folder)] = true
+			f.cache[*IFCERFTNewFavoriteFromFolder(folder)] = true
 		}
 		username, _, err := f.config.KBPKI().GetCurrentUserInfo(req.ctx)
 		if err == nil {

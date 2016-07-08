@@ -11,7 +11,7 @@ import "github.com/keybase/go-codec/codec"
 type IndirectDirPtr struct {
 	// TODO: Make sure that the block is not dirty when the EncodedSize
 	// field is non-zero.
-	BlockInfo
+	IFCERFTBlockInfo
 	Off string `codec:"o"`
 
 	codec.UnknownFieldSetHandler
@@ -22,7 +22,7 @@ type IndirectDirPtr struct {
 type IndirectFilePtr struct {
 	// When the EncodedSize field is non-zero, the block must not
 	// be dirty.
-	BlockInfo
+	IFCERFTBlockInfo
 	Off int64 `codec:"o"`
 	// Marker for files with holes
 	Holes bool `codec:"h,omitempty"`

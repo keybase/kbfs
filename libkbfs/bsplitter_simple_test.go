@@ -117,7 +117,7 @@ func TestBsplitterOffTooBig(t *testing.T) {
 
 func TestBsplitterShouldEmbed(t *testing.T) {
 	bsplit := &BlockSplitterSimple{10, 10}
-	bc := &BlockChanges{}
+	bc := &IFCERFTBlockChanges{}
 	bc.sizeEstimate = 1
 	if !bsplit.ShouldEmbedBlockChanges(bc) {
 		t.Errorf("Not embedding a 1-byte block change")
@@ -130,7 +130,7 @@ func TestBsplitterShouldEmbed(t *testing.T) {
 
 func TestBsplitterShouldNotEmbed(t *testing.T) {
 	bsplit := &BlockSplitterSimple{10, 10}
-	bc := &BlockChanges{}
+	bc := &IFCERFTBlockChanges{}
 	bc.sizeEstimate = 11
 	if bsplit.ShouldEmbedBlockChanges(bc) {
 		t.Errorf("Not embedding a 1-byte block change")

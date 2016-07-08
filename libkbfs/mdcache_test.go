@@ -28,7 +28,7 @@ func mdCacheShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 }
 
 func testMdcachePut(t *testing.T, tlf IFCERFTTlfID, rev MetadataRevision,
-	mStatus MergeStatus, bid BranchID, h *IFCERFTTlfHandle, config *ConfigMock) {
+	mStatus IFCERFTMergeStatus, bid BranchID, h *IFCERFTTlfHandle, config *ConfigMock) {
 	rmd := &IFCERFTRootMetadata{
 		WriterMetadata: WriterMetadata{
 			ID:    tlf,
@@ -39,7 +39,7 @@ func testMdcachePut(t *testing.T, tlf IFCERFTTlfID, rev MetadataRevision,
 		RKeys:    make(TLFReaderKeyGenerations, 1, 1),
 	}
 	rmd.WKeys[0] = NewEmptyTLFWriterKeyBundle()
-	if mStatus == Unmerged {
+	if mStatus == IFCERFTUnmerged {
 		rmd.WFlags |= MetadataFlagUnmerged
 	}
 
@@ -64,7 +64,7 @@ func TestMdcachePut(t *testing.T) {
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	h.resolvedWriters[keybase1.MakeTestUID(0)] = "test_user0"
 
-	testMdcachePut(t, id, 1, Merged, NullBranchID, h, config)
+	testMdcachePut(t, id, 1, IFCERFTMerged, NullBranchID, h, config)
 }
 
 func TestMdcachePutPastCapacity(t *testing.T) {
@@ -80,10 +80,10 @@ func TestMdcachePutPastCapacity(t *testing.T) {
 	id2 := FakeTlfID(3, false)
 	h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
 
-	testMdcachePut(t, id0, 0, Merged, NullBranchID, h0, config)
+	testMdcachePut(t, id0, 0, IFCERFTMerged, NullBranchID, h0, config)
 	bid := FakeBranchID(1)
-	testMdcachePut(t, id1, 0, Unmerged, bid, h1, config)
-	testMdcachePut(t, id2, 1, Merged, NullBranchID, h2, config)
+	testMdcachePut(t, id1, 0, IFCERFTUnmerged, bid, h1, config)
+	testMdcachePut(t, id2, 1, IFCERFTMerged, NullBranchID, h2, config)
 
 	// id 0 should no longer be in the cache
 	// make sure we can get it successfully

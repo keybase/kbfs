@@ -16,7 +16,7 @@ import (
 // TODO: Move this to bserver_errors.go once the actual block server
 // starts using it.
 type bserverErrorContextMismatch struct {
-	expected, actual BlockContext
+	expected, actual IFCERFTBlockContext
 }
 
 func (e bserverErrorContextMismatch) Error() string {
@@ -27,12 +27,12 @@ func (e bserverErrorContextMismatch) Error() string {
 type blockRefEntry struct {
 	// These fields are exported only for serialization purposes.
 	Status  blockRefLocalStatus
-	Context BlockContext
+	Context IFCERFTBlockContext
 
 	// TODO: Add unknown field support.
 }
 
-func (e blockRefEntry) checkContext(context BlockContext) error {
+func (e blockRefEntry) checkContext(context IFCERFTBlockContext) error {
 	if e.Context != context {
 		return bserverErrorContextMismatch{e.Context, context}
 	}
@@ -40,7 +40,7 @@ func (e blockRefEntry) checkContext(context BlockContext) error {
 }
 
 // blockRefMap is a map with additional checking methods.
-type blockRefMap map[BlockRefNonce]blockRefEntry
+type blockRefMap map[IFCERFTBlockRefNonce]blockRefEntry
 
 func (refs blockRefMap) hasNonArchivedRef() bool {
 	for _, refEntry := range refs {
@@ -51,7 +51,7 @@ func (refs blockRefMap) hasNonArchivedRef() bool {
 	return false
 }
 
-func (refs blockRefMap) checkExists(context BlockContext) error {
+func (refs blockRefMap) checkExists(context IFCERFTBlockContext) error {
 	refEntry, ok := refs[context.GetRefNonce()]
 	if !ok {
 		return BServerErrorBlockNonExistent{}
@@ -60,8 +60,8 @@ func (refs blockRefMap) checkExists(context BlockContext) error {
 	return refEntry.checkContext(context)
 }
 
-func (refs blockRefMap) getStatuses() map[BlockRefNonce]blockRefLocalStatus {
-	statuses := make(map[BlockRefNonce]blockRefLocalStatus)
+func (refs blockRefMap) getStatuses() map[IFCERFTBlockRefNonce]blockRefLocalStatus {
+	statuses := make(map[IFCERFTBlockRefNonce]blockRefLocalStatus)
 	for ref, refEntry := range refs {
 		statuses[ref] = refEntry.Status
 	}
@@ -69,7 +69,7 @@ func (refs blockRefMap) getStatuses() map[BlockRefNonce]blockRefLocalStatus {
 }
 
 func (refs blockRefMap) put(
-	context BlockContext, status blockRefLocalStatus) error {
+	context IFCERFTBlockContext, status blockRefLocalStatus) error {
 	refNonce := context.GetRefNonce()
 	if refEntry, ok := refs[refNonce]; ok {
 		err := refEntry.checkContext(context)
@@ -85,7 +85,7 @@ func (refs blockRefMap) put(
 	return nil
 }
 
-func (refs blockRefMap) remove(context BlockContext) error {
+func (refs blockRefMap) remove(context IFCERFTBlockContext) error {
 	refNonce := context.GetRefNonce()
 	// If this check fails, this ref is already gone, which is not
 	// an error.
@@ -102,7 +102,7 @@ func (refs blockRefMap) remove(context BlockContext) error {
 type blockMemEntry struct {
 	tlfID         IFCERFTTlfID
 	blockData     []byte
-	keyServerHalf BlockCryptKeyServerHalf
+	keyServerHalf IFCERFTBlockCryptKeyServerHalf
 	refs          blockRefMap
 }
 
@@ -133,37 +133,37 @@ func NewBlockServerMemory(config IFCERFTConfig) *BlockServerMemory {
 var errBlockServerMemoryShutdown = errors.New("BlockServerMemory is shutdown")
 
 // Get implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
+func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	b.log.CDebugf(ctx, "BlockServerMemory.Get id=%s tlfID=%s context=%s",
 		id, tlfID, context)
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
 	if b.m == nil {
-		return nil, BlockCryptKeyServerHalf{}, errBlockServerMemoryShutdown
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, errBlockServerMemoryShutdown
 	}
 
 	entry, ok := b.m[id]
 	if !ok {
-		return nil, BlockCryptKeyServerHalf{}, BServerErrorBlockNonExistent{}
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, BServerErrorBlockNonExistent{}
 	}
 
 	if entry.tlfID != tlfID {
-		return nil, BlockCryptKeyServerHalf{},
+		return nil, IFCERFTBlockCryptKeyServerHalf{},
 			fmt.Errorf("TLF ID mismatch: expected %s, got %s",
 				entry.tlfID, tlfID)
 	}
 
 	err := entry.refs.checkExists(context)
 	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, IFCERFTBlockCryptKeyServerHalf{}, err
 	}
 
 	return entry.blockData, entry.keyServerHalf, nil
 }
 
 func validateBlockServerPut(
-	crypto cryptoPure, id BlockID, context BlockContext, buf []byte) error {
+	crypto cryptoPure, id BlockID, context IFCERFTBlockContext, buf []byte) error {
 	if context.GetCreator() != context.GetWriter() {
 		return fmt.Errorf("Can't Put() a block with creator=%s != writer=%s",
 			context.GetCreator(), context.GetWriter())
@@ -187,8 +187,8 @@ func validateBlockServerPut(
 }
 
 // Put implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context BlockContext, buf []byte,
-	serverHalf BlockCryptKeyServerHalf) error {
+func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
+	serverHalf IFCERFTBlockCryptKeyServerHalf) error {
 	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s tlfID=%s context=%s "+
 		"size=%d", id, tlfID, context, len(buf))
 
@@ -244,7 +244,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID IFCERFTTl
 
 // AddBlockReference implements the BlockServer interface for BlockServerMemory.
 func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
-	tlfID IFCERFTTlfID, context BlockContext) error {
+	tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerMemory.AddBlockReference id=%s "+
 		"tlfID=%s context=%s", id, tlfID, context)
 
@@ -276,7 +276,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 }
 
 func (b *BlockServerMemory) removeBlockReferences(
-	id BlockID, tlfID IFCERFTTlfID, contexts []BlockContext) (int, error) {
+	id BlockID, tlfID IFCERFTTlfID, contexts []IFCERFTBlockContext) (int, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -311,7 +311,7 @@ func (b *BlockServerMemory) removeBlockReferences(
 // RemoveBlockReference implements the BlockServer interface for
 // BlockServerMemory.
 func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
-	tlfID IFCERFTTlfID, contexts map[BlockID][]BlockContext) (
+	tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) (
 	liveCounts map[BlockID]int, err error) {
 	b.log.CDebugf(ctx, "BlockServerMemory.RemoveBlockReference "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
@@ -327,7 +327,7 @@ func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
 }
 
 func (b *BlockServerMemory) archiveBlockReference(
-	id BlockID, tlfID IFCERFTTlfID, context BlockContext) error {
+	id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -360,7 +360,7 @@ func (b *BlockServerMemory) archiveBlockReference(
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerMemory.
 func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
-	tlfID IFCERFTTlfID, contexts map[BlockID][]BlockContext) error {
+	tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerMemory.ArchiveBlockReferences "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
 
@@ -379,8 +379,8 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 // getAll returns all the known block references, and should only be
 // used during testing.
 func (b *BlockServerMemory) getAll(tlfID IFCERFTTlfID) (
-	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
+	map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error) {
+	res := make(map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus)
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
@@ -415,7 +415,7 @@ func (b *BlockServerMemory) Shutdown() {
 func (b *BlockServerMemory) RefreshAuthToken(_ context.Context) {}
 
 // GetUserQuotaInfo implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error) {
+func (b *BlockServerMemory) GetUserQuotaInfo(ctx context.Context) (info *IFCERFTUserQuotaInfo, err error) {
 	// Return a dummy value here.
-	return &UserQuotaInfo{Limit: 0x7FFFFFFFFFFFFFFF}, nil
+	return &IFCERFTUserQuotaInfo{Limit: 0x7FFFFFFFFFFFFFFF}, nil
 }

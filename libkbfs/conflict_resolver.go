@@ -58,7 +58,7 @@ func NewConflictResolver(
 	config IFCERFTConfig, fbo *folderBranchOps) *ConflictResolver {
 	// make a logger with an appropriate module name
 	branchSuffix := ""
-	if fbo.branch() != MasterBranch {
+	if fbo.branch() != IFCERFTMasterBranch {
 		branchSuffix = " " + string(fbo.branch())
 	}
 	tlfStringFull := fbo.id().String()
@@ -457,7 +457,7 @@ func (cr *ConflictResolver) checkPathForMerge(ctx context.Context,
 		}
 		unmergedOriginal := cop.Refs()[0]
 		mergedOriginal := mergedCop.Refs()[0]
-		if cop.Type != Dir {
+		if cop.Type != IFCERFTDir {
 			// Only merge files if they don't both have writes.
 			if fileWithConflictingWrite(unmergedChains, mergedChains,
 				unmergedOriginal, mergedOriginal) {
@@ -488,7 +488,7 @@ func (cr *ConflictResolver) checkPathForMerge(ctx context.Context,
 				unmergedOriginal, mergedOriginal)
 		}
 		newPath := unmergedPath.ChildPath(cop.NewName, unmergedChain.mostRecent)
-		if cop.Type == Dir {
+		if cop.Type == IFCERFTDir {
 			// recurse for this chain
 			newPaths, err := cr.checkPathForMerge(ctx, unmergedChain, newPath,
 				unmergedChains, mergedChains)
@@ -700,7 +700,7 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 		co.setFinalPath(parentPath)
 		co.AddRefBlock(currOriginal)
 
-		if co.Type != Dir {
+		if co.Type != IFCERFTDir {
 			err = cr.addChildBlocksIfIndirectFile(ctx, lState,
 				currOriginal, unmergedChains, currPath, co)
 			if err != nil {
@@ -1157,8 +1157,8 @@ outer:
 				continue
 			}
 
-			if cop.Type == Dir {
-				cop.Type = Sym
+			if cop.Type == IFCERFTDir {
+				cop.Type = IFCERFTSym
 				cop.crSymPath = symPath
 				cop.RefBlocks = nil
 			} else {
@@ -1593,13 +1593,13 @@ func (cr *ConflictResolver) addMergedRecreates(ctx context.Context,
 							"of merged entry %v we're trying to recreate",
 							parentOriginal, unrefOriginal)
 					}
-					t := Dir
+					t := IFCERFTDir
 					if c.isFile() {
 						// TODO: how to fix this up for executables
 						// and symlinks?  Only matters for checking
 						// conflicts if something with the same name
 						// is created on the unmerged branch.
-						t = File
+						t = IFCERFTFile
 					}
 					co := newCreateOp(name, chain.original, t)
 					co.Dir.Ref = chain.original
@@ -1855,7 +1855,7 @@ func (cr *ConflictResolver) makeFileBlockDeepCopy(ctx context.Context,
 			ID:      newID,
 			KeyGen:  md.LatestKeyGeneration(),
 			DataVer: cr.config.DataVersion(),
-			BlockContext: BlockContext{
+			IFCERFTBlockContext: IFCERFTBlockContext{
 				Creator:  uid,
 				RefNonce: zeroBlockRefNonce,
 			},
@@ -2103,7 +2103,7 @@ func (cr *ConflictResolver) makeRevertedOps(ctx context.Context,
 				renameOriginal, ok := renames[crRenameHelperKey{
 					chain.original, cop.NewName}]
 				if !ok {
-					if cop.crSymPath != "" || cop.Type == Sym {
+					if cop.crSymPath != "" || cop.Type == IFCERFTSym {
 						// For symlinks created by the CR process, we
 						// expect the rmOp to have been removed.  For
 						// existing symlinks that were simply moved,
@@ -2121,7 +2121,7 @@ func (cr *ConflictResolver) makeRevertedOps(ctx context.Context,
 					// If we are re-instating a deleted node, just use
 					// the create op.
 					op = chains.copyOpAndRevertUnrefsToOriginals(cop)
-					if cop.Type != Dir {
+					if cop.Type != IFCERFTDir {
 						err := cr.addChildBlocksIfIndirectFile(ctx, lState,
 							renameOriginal, chains, cop.getFinalPath(), op)
 						if err != nil {
@@ -2218,7 +2218,7 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 					})
 					added = true
 				}
-				if cop.Type == Dir || len(cop.Refs()) == 0 {
+				if cop.Type == IFCERFTDir || len(cop.Refs()) == 0 {
 					continue
 				}
 				// Make sure to add any direct file blocks too,
@@ -2519,7 +2519,7 @@ func (cr *ConflictResolver) syncTree(ctx context.Context, lState *lockState,
 	// If this has no children, then sync it, as far back as stopAt.
 	if len(node.children) == 0 {
 		// Look for the directory block or the new file block.
-		entryType := Dir
+		entryType := IFCERFTDir
 		var block IFCERFTBlock
 		var ok bool
 		block, ok = lbc[node.ptr]
@@ -2543,7 +2543,7 @@ func (cr *ConflictResolver) syncTree(ctx context.Context, lState *lockState,
 					"parent %v", node.mergedPath.tailName(), node.parent.ptr)
 			}
 			block = fblock
-			entryType = File // TODO: FIXME for Ex and Sym
+			entryType = IFCERFTFile // TODO: FIXME for Ex and Sym
 		}
 
 		// TODO: fix mtime and ctime?
@@ -2555,16 +2555,16 @@ func (cr *ConflictResolver) syncTree(ctx context.Context, lState *lockState,
 			return nil, err
 		}
 
-		if entryType != Dir {
+		if entryType != IFCERFTDir {
 			if fblock.IsInd {
 				// For an indirect file block, make sure a new
 				// reference is made for every child block.
 				for _, iptr := range fblock.IPtrs {
-					bps.addNewBlock(iptr.IFCERFTBlockPointer, nil, ReadyBlockData{},
+					bps.addNewBlock(iptr.IFCERFTBlockPointer, nil, IFCERFTReadyBlockData{},
 						nil)
 					// TODO: add block updates to the op chain for these guys
 					// (need encoded size!)
-					newMD.AddRefBlock(iptr.BlockInfo)
+					newMD.AddRefBlock(iptr.IFCERFTBlockInfo)
 				}
 			}
 		}
@@ -3191,7 +3191,7 @@ outer:
 	handle := cr.fbo.getHead(lState).GetTlfHandle()
 	cr.config.Reporter().ReportErr(ctx,
 		handle.GetCanonicalName(), handle.IsPublic(),
-		WriteMode, reportedError)
+		IFCERFTWriteMode, reportedError)
 	return nil
 }
 
@@ -3215,7 +3215,7 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 			handle := cr.fbo.getHead(lState).GetTlfHandle()
 			cr.config.Reporter().ReportErr(ctx,
 				handle.GetCanonicalName(), handle.IsPublic(),
-				WriteMode, CRWrapError{err})
+				IFCERFTWriteMode, CRWrapError{err})
 		}
 	}()
 

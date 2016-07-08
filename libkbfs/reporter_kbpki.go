@@ -81,7 +81,7 @@ func NewReporterKBPKI(config IFCERFTConfig, maxErrors, bufSize int) *ReporterKBP
 
 // ReportErr implements the Reporter interface for ReporterKBPKI.
 func (r *ReporterKBPKI) ReportErr(ctx context.Context,
-	tlfName IFCERFTCanonicalTlfName, public bool, mode ErrorModeType, err error) {
+	tlfName IFCERFTCanonicalTlfName, public bool, mode IFCERFTErrorModeType, err error) {
 	r.ReporterSimple.ReportErr(ctx, tlfName, public, mode, err)
 
 	// Fire off error popups
@@ -245,21 +245,20 @@ func baseNotification(file path, finish bool) *keybase1.FSNotification {
 // genericErrorNotification creates FSNotifications for generic
 // errors, and makes it look like a read error.
 func errorNotification(err error, errType keybase1.FSErrorType,
-	tlfName IFCERFTCanonicalTlfName, public bool, mode ErrorModeType,
-	params map[string]string) *keybase1.FSNotification {
+	tlfName IFCERFTCanonicalTlfName, public bool, mode IFCERFTErrorModeType, params map[string]string) *keybase1.FSNotification {
 	if tlfName != "" {
 		params[errorParamTlf] = string(tlfName)
 	}
 	var nType keybase1.FSNotificationType
 	switch mode {
-	case ReadMode:
+	case IFCERFTReadMode:
 		params[errorParamMode] = errorModeRead
 		if public {
 			nType = keybase1.FSNotificationType_VERIFYING
 		} else {
 			nType = keybase1.FSNotificationType_DECRYPTING
 		}
-	case WriteMode:
+	case IFCERFTWriteMode:
 		params[errorParamMode] = errorModeWrite
 		if public {
 			nType = keybase1.FSNotificationType_SIGNING

@@ -37,7 +37,7 @@ func statNode(ctx context.Context, config libkbfs.IFCERFTConfig, nodePathStr str
 	}
 
 	var symPathStr string
-	if ei.Type == libkbfs.Sym {
+	if ei.Type == libkbfs.IFCERFTSym {
 		symPathStr = fmt.Sprintf("SymPath: %s, ", ei.SymPath)
 	}
 

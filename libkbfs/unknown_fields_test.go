@@ -24,7 +24,7 @@ func makeExtraOrBust(prefix string, t *testing.T) extra {
 	require.NoError(t, err)
 	return extra{
 		Extra1: encryptedData{
-			Version:       EncryptionSecretbox + 1,
+			Version:       IFCERFTEncryptionSecretbox + 1,
 			EncryptedData: []byte(prefix + " fake extra encrypted data"),
 			Nonce:         []byte(prefix + " fake extra nonce"),
 		},

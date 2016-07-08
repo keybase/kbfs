@@ -18,16 +18,16 @@ func makeFakeBlockPointer(t *testing.T) IFCERFTBlockPointer {
 		BlockID{h},
 		5,
 		1,
-		BlockContext{
+		IFCERFTBlockContext{
 			"fake creator",
 			"fake writer",
-			BlockRefNonce{0xb},
+			IFCERFTBlockRefNonce{0xb},
 		},
 	}
 }
 
-func makeFakeBlockInfo(t *testing.T) BlockInfo {
-	return BlockInfo{
+func makeFakeBlockInfo(t *testing.T) IFCERFTBlockInfo {
+	return IFCERFTBlockInfo{
 		makeFakeBlockPointer(t),
 		150,
 	}

@@ -17,7 +17,7 @@ type mdRange struct {
 }
 
 func getMDRange(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, bid BranchID,
-	start MetadataRevision, end MetadataRevision, mStatus MergeStatus) (
+	start MetadataRevision, end MetadataRevision, mStatus IFCERFTMergeStatus) (
 	rmds []*IFCERFTRootMetadata, err error) {
 	// The range is invalid.  Don't treat as an error though; it just
 	// indicates that we don't yet know about any revisions.
@@ -57,10 +57,10 @@ func getMDRange(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, bid 
 	for _, r := range toDownload {
 		var fetchedRmds []*IFCERFTRootMetadata
 		switch mStatus {
-		case Merged:
+		case IFCERFTMerged:
 			fetchedRmds, err = config.MDOps().GetRange(
 				ctx, id, r.start, r.end)
-		case Unmerged:
+		case IFCERFTUnmerged:
 			fetchedRmds, err = config.MDOps().GetUnmergedRange(
 				ctx, id, bid, r.start, r.end)
 		default:
@@ -121,7 +121,7 @@ func getMergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTTlf
 	for {
 		end := start + maxMDsAtATime - 1 // range is inclusive
 		rmds, err := getMDRange(ctx, config, id, NullBranchID, start, end,
-			Merged)
+			IFCERFTMerged)
 		if err != nil {
 			return nil, err
 		}
@@ -188,7 +188,7 @@ func getUnmergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTT
 		}
 
 		rmds, err := getMDRange(ctx, config, id, bid, startRev, currHead,
-			Unmerged)
+			IFCERFTUnmerged)
 		if err != nil {
 			return MetadataRevisionUninitialized, nil, err
 		}
@@ -226,7 +226,7 @@ func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecryp
 		}
 	} else {
 		// decrypt the root data for non-public directories
-		var encryptedPrivateMetadata EncryptedPrivateMetadata
+		var encryptedPrivateMetadata IFCERFTEncryptedPrivateMetadata
 		if err := codec.Decode(rmdToDecrypt.SerializedPrivateMetadata,
 			&encryptedPrivateMetadata); err != nil {
 			return err
@@ -283,7 +283,7 @@ func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecryp
 
 		fblock, ok := block.(*FileBlock)
 		if !ok {
-			return NotFileBlockError{info.IFCERFTBlockPointer, MasterBranch, path{}}
+			return NotFileBlockError{info.IFCERFTBlockPointer, IFCERFTMasterBranch, path{}}
 		}
 
 		err = config.Codec().Decode(fblock.Contents, &rmdToDecrypt.data.Changes)

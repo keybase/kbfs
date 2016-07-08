@@ -14,7 +14,7 @@ import (
 func testDirtyBcachePut(t *testing.T, id BlockID, dirtyBcache IFCERFTDirtyBlockCache) {
 	block := NewFileBlock()
 	ptr := IFCERFTBlockPointer{ID: id}
-	branch := MasterBranch
+	branch := IFCERFTMasterBranch
 
 	// put the block
 	if err := dirtyBcache.Put(ptr, branch, block); err != nil {
@@ -38,7 +38,7 @@ func testExpectedMissingDirty(t *testing.T, id BlockID,
 	dirtyBcache IFCERFTDirtyBlockCache) {
 	expectedErr := NoSuchBlockError{id}
 	ptr := IFCERFTBlockPointer{ID: id}
-	if _, err := dirtyBcache.Get(ptr, MasterBranch); err == nil {
+	if _, err := dirtyBcache.Get(ptr, IFCERFTMasterBranch); err == nil {
 		t.Errorf("No expected error on 1st get: %v", err)
 	} else if err != expectedErr {
 		t.Errorf("Got unexpected error on 1st get: %v", err)
@@ -60,19 +60,19 @@ func TestDirtyBcachePutDuplicate(t *testing.T) {
 
 	// Dirty a specific reference nonce, and make sure the
 	// original is still not found.
-	newNonce := BlockRefNonce([8]byte{1, 0, 0, 0, 0, 0, 0, 0})
+	newNonce := IFCERFTBlockRefNonce([8]byte{1, 0, 0, 0, 0, 0, 0, 0})
 	newNonceBlock := NewFileBlock()
 	bp1 := IFCERFTBlockPointer{ID: id1}
 	bp2 := IFCERFTBlockPointer{
-		ID:           id1,
-		BlockContext: BlockContext{RefNonce: newNonce},
+		ID:                  id1,
+		IFCERFTBlockContext: IFCERFTBlockContext{RefNonce: newNonce},
 	}
-	err := dirtyBcache.Put(bp2, MasterBranch, newNonceBlock)
+	err := dirtyBcache.Put(bp2, IFCERFTMasterBranch, newNonceBlock)
 	if err != nil {
 		t.Errorf("Unexpected error on PutDirty: %v", err)
 	}
 
-	cleanBranch := MasterBranch
+	cleanBranch := IFCERFTMasterBranch
 	testExpectedMissingDirty(t, id1, dirtyBcache)
 	if !dirtyBcache.IsDirty(bp2, cleanBranch) {
 		t.Errorf("New refnonce block is now unexpectedly clean")
@@ -111,7 +111,7 @@ func TestDirtyBcacheDelete(t *testing.T) {
 		t.Errorf("Unexpected error on PutDirty: %v", err)
 	}
 
-	dirtyBcache.Delete(IFCERFTBlockPointer{ID: id1}, MasterBranch)
+	dirtyBcache.Delete(IFCERFTBlockPointer{ID: id1}, IFCERFTMasterBranch)
 	testExpectedMissingDirty(t, id1, dirtyBcache)
 	if !dirtyBcache.IsDirty(IFCERFTBlockPointer{ID: id1}, newBranch) {
 		t.Errorf("New branch block is now unexpectedly clean")

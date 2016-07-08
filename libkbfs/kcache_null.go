@@ -12,11 +12,11 @@ type KeyCacheNull struct{}
 var _ IFCERFTKeyCache = (*KeyCacheNull)(nil)
 
 // GetTLFCryptKey implements the KeyCache interface for KeyCacheNull.
-func (k *KeyCacheNull) GetTLFCryptKey(IFCERFTTlfID, KeyGen) (IFCERFTTLFCryptKey, error) {
+func (k *KeyCacheNull) GetTLFCryptKey(IFCERFTTlfID, IFCERFTKeyGen) (IFCERFTTLFCryptKey, error) {
 	return IFCERFTTLFCryptKey{}, errors.New("NULL")
 }
 
 // PutTLFCryptKey implements the KeyCache interface for KeyCacheNull.
-func (k *KeyCacheNull) PutTLFCryptKey(IFCERFTTlfID, KeyGen, IFCERFTTLFCryptKey) error {
+func (k *KeyCacheNull) PutTLFCryptKey(IFCERFTTlfID, IFCERFTKeyGen, IFCERFTTLFCryptKey) error {
 	return nil
 }

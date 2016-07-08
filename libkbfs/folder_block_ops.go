@@ -35,9 +35,9 @@ const (
 )
 
 type syncInfo struct {
-	oldInfo    BlockInfo
+	oldInfo    IFCERFTBlockInfo
 	op         *syncOp
-	unrefs     []BlockInfo
+	unrefs     []IFCERFTBlockInfo
 	bps        *blockPutState
 	refBytes   uint64
 	unrefBytes uint64
@@ -49,7 +49,7 @@ func (si *syncInfo) DeepCopy(codec IFCERFTCodec) (*syncInfo, error) {
 		refBytes:   si.refBytes,
 		unrefBytes: si.unrefBytes,
 	}
-	newSi.unrefs = make([]BlockInfo, len(si.unrefs))
+	newSi.unrefs = make([]IFCERFTBlockInfo, len(si.unrefs))
 	copy(newSi.unrefs, si.unrefs)
 	if si.bps != nil {
 		newSi.bps = si.bps.DeepCopy()
@@ -429,7 +429,7 @@ func (fbo *folderBlockOps) getFileLocked(ctx context.Context,
 // GetIndirectFileBlockInfos returns a list of BlockInfos for all
 // indirect blocks of the given file.
 func (fbo *folderBlockOps) GetIndirectFileBlockInfos(ctx context.Context,
-	lState *lockState, md *IFCERFTRootMetadata, file path) ([]BlockInfo, error) {
+	lState *lockState, md *IFCERFTRootMetadata, file path) ([]IFCERFTBlockInfo, error) {
 	// TODO: handle multiple levels of indirection.
 	fBlock, err := func() (*FileBlock, error) {
 		fbo.blockLock.RLock(lState)
@@ -443,9 +443,9 @@ func (fbo *folderBlockOps) GetIndirectFileBlockInfos(ctx context.Context,
 	if !fBlock.IsInd {
 		return nil, nil
 	}
-	blockInfos := make([]BlockInfo, len(fBlock.IPtrs))
+	blockInfos := make([]IFCERFTBlockInfo, len(fBlock.IPtrs))
 	for i, ptr := range fBlock.IPtrs {
-		blockInfos[i] = ptr.BlockInfo
+		blockInfos[i] = ptr.IFCERFTBlockInfo
 	}
 	return blockInfos, nil
 }
@@ -766,14 +766,14 @@ func (fbo *folderBlockOps) newRightBlockLocked(
 		ID:      newRID,
 		KeyGen:  md.LatestKeyGeneration(),
 		DataVer: DefaultNewBlockDataVersion(fbo.config, false),
-		BlockContext: BlockContext{
+		IFCERFTBlockContext: IFCERFTBlockContext{
 			Creator:  uid,
 			RefNonce: zeroBlockRefNonce,
 		},
 	}
 
 	pblock.IPtrs = append(pblock.IPtrs, IndirectFilePtr{
-		BlockInfo: BlockInfo{
+		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: newPtr,
 			EncodedSize:         0,
 		},
@@ -798,7 +798,7 @@ func (fbo *folderBlockOps) getOrCreateSyncInfoLocked(
 	si, ok := fbo.unrefCache[ref]
 	if !ok {
 		si = &syncInfo{
-			oldInfo: de.BlockInfo,
+			oldInfo: de.IFCERFTBlockInfo,
 			op:      newSyncOp(de.IFCERFTBlockPointer),
 		}
 		fbo.unrefCache[ref] = si
@@ -1150,12 +1150,12 @@ func (fbo *folderBlockOps) createIndirectBlockLocked(lState *lockState,
 		},
 		IPtrs: []IndirectFilePtr{
 			{
-				BlockInfo: BlockInfo{
+				IFCERFTBlockInfo: IFCERFTBlockInfo{
 					IFCERFTBlockPointer: IFCERFTBlockPointer{
 						ID:      newID,
 						KeyGen:  md.LatestKeyGeneration(),
 						DataVer: dver,
-						BlockContext: BlockContext{
+						IFCERFTBlockContext: IFCERFTBlockContext{
 							Creator:  uid,
 							RefNonce: zeroBlockRefNonce,
 						},
@@ -1299,7 +1299,7 @@ func (fbo *folderBlockOps) writeDataLocked(
 		if parentBlock != nil {
 			// remember how many bytes it was
 			si.unrefs = append(si.unrefs,
-				parentBlock.IPtrs[indexInParent].BlockInfo)
+				parentBlock.IPtrs[indexInParent].IFCERFTBlockInfo)
 			parentBlock.IPtrs[indexInParent].EncodedSize = 0
 		}
 		// keep the old block ID while it's dirty
@@ -1563,7 +1563,7 @@ func (fbo *folderBlockOps) truncateLocked(
 	if nextBlockOff > 0 {
 		// TODO: if indexInParent == 0, we can remove the level of indirection
 		for _, ptr := range parentBlock.IPtrs[indexInParent+1:] {
-			si.unrefs = append(si.unrefs, ptr.BlockInfo)
+			si.unrefs = append(si.unrefs, ptr.IFCERFTBlockInfo)
 		}
 		parentBlock.IPtrs = parentBlock.IPtrs[:indexInParent+1]
 		// always make the parent block dirty, so we will sync it
@@ -1591,7 +1591,7 @@ func (fbo *folderBlockOps) truncateLocked(
 		// make sure that the pointer to parentBlock in the grandparent block
 		// has EncodedSize 0.
 		si.unrefs = append(si.unrefs,
-			parentBlock.IPtrs[indexInParent].BlockInfo)
+			parentBlock.IPtrs[indexInParent].IFCERFTBlockInfo)
 		parentBlock.IPtrs[indexInParent].EncodedSize = 0
 	}
 
@@ -1745,7 +1745,7 @@ func (fbo *folderBlockOps) revertSyncInfoAfterRecoverableError(
 // ReadyBlock is a thin wrapper around BlockOps.Ready() that handles
 // checking for duplicates.
 func (fbo *folderBlockOps) ReadyBlock(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock, uid keybase1.UID) (
-	info BlockInfo, plainSize int, readyBlockData ReadyBlockData, err error) {
+	info IFCERFTBlockInfo, plainSize int, readyBlockData IFCERFTReadyBlockData, err error) {
 	var ptr IFCERFTBlockPointer
 	if fBlock, ok := block.(*FileBlock); ok && !fBlock.IsInd {
 		// first see if we are duplicating any known blocks in this folder
@@ -1775,14 +1775,14 @@ func (fbo *folderBlockOps) ReadyBlock(ctx context.Context, md *IFCERFTRootMetada
 			ID:      id,
 			KeyGen:  md.LatestKeyGeneration(),
 			DataVer: block.DataVersion(),
-			BlockContext: BlockContext{
+			IFCERFTBlockContext: IFCERFTBlockContext{
 				Creator:  uid,
 				RefNonce: zeroBlockRefNonce,
 			},
 		}
 	}
 
-	info = BlockInfo{
+	info = IFCERFTBlockInfo{
 		IFCERFTBlockPointer: ptr,
 		EncodedSize:         uint32(readyBlockData.GetEncodedSize()),
 	}
@@ -1916,7 +1916,7 @@ func (fbo *folderBlockOps) startSyncWriteLocked(ctx context.Context,
 			ptr := fblock.IPtrs[i]
 			isDirty := dirtyBcache.IsDirty(ptr.IFCERFTBlockPointer, file.Branch)
 			if (ptr.EncodedSize > 0) && isDirty {
-				return nil, nil, syncState, InconsistentEncodedSizeError{ptr.BlockInfo}
+				return nil, nil, syncState, InconsistentEncodedSizeError{ptr.IFCERFTBlockInfo}
 			}
 			if isDirty {
 				_, _, _, block, nextBlockOff, _, err :=
@@ -1957,7 +1957,7 @@ func (fbo *folderBlockOps) startSyncWriteLocked(ctx context.Context,
 						return nil, nil, syncState, err
 					}
 					fblock.IPtrs[i+1].Off = ptr.Off + int64(len(block.Contents))
-					md.AddUnrefBlock(fblock.IPtrs[i+1].BlockInfo)
+					md.AddUnrefBlock(fblock.IPtrs[i+1].IFCERFTBlockInfo)
 					fblock.IPtrs[i+1].EncodedSize = 0
 				case splitAt < 0:
 					if nextBlockOff < 0 {
@@ -1984,7 +1984,7 @@ func (fbo *folderBlockOps) startSyncWriteLocked(ctx context.Context,
 						}
 						fblock.IPtrs[i+1].Off =
 							ptr.Off + int64(len(block.Contents))
-						md.AddUnrefBlock(fblock.IPtrs[i+1].BlockInfo)
+						md.AddUnrefBlock(fblock.IPtrs[i+1].IFCERFTBlockInfo)
 						fblock.IPtrs[i+1].EncodedSize = 0
 					} else {
 						// TODO: delete the block, and if we're down
@@ -1995,7 +1995,7 @@ func (fbo *folderBlockOps) startSyncWriteLocked(ctx context.Context,
 						// of indirection, make sure that the pointer
 						// to the parent block in the grandparent
 						// block has EncodedSize 0.
-						md.AddUnrefBlock(fblock.IPtrs[i+1].BlockInfo)
+						md.AddUnrefBlock(fblock.IPtrs[i+1].IFCERFTBlockInfo)
 						fblock.IPtrs =
 							append(fblock.IPtrs[:i+1], fblock.IPtrs[i+2:]...)
 					}
@@ -2007,7 +2007,7 @@ func (fbo *folderBlockOps) startSyncWriteLocked(ctx context.Context,
 			localPtr := ptr.IFCERFTBlockPointer
 			isDirty := dirtyBcache.IsDirty(localPtr, file.Branch)
 			if (ptr.EncodedSize > 0) && isDirty {
-				return nil, nil, syncState, InconsistentEncodedSizeError{ptr.BlockInfo}
+				return nil, nil, syncState, InconsistentEncodedSizeError{ptr.IFCERFTBlockInfo}
 			}
 			if isDirty {
 				_, _, _, block, _, _, err := fbo.getFileBlockAtOffsetLocked(
@@ -2035,7 +2035,7 @@ func (fbo *folderBlockOps) startSyncWriteLocked(ctx context.Context,
 				syncState.oldFileBlockPtrs =
 					append(syncState.oldFileBlockPtrs, localPtr)
 
-				fblock.IPtrs[i].BlockInfo = newInfo
+				fblock.IPtrs[i].IFCERFTBlockInfo = newInfo
 				md.AddRefBlock(newInfo)
 				si.bps.addNewBlock(newInfo.IFCERFTBlockPointer, block, readyBlockData,
 					func() error {
@@ -2299,7 +2299,7 @@ func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 		}
 
 		// otherwise, recurse if this represents an updated block
-		if _, ok := newPtrs[de.IFCERFTBlockPointer]; de.Type == Dir && ok {
+		if _, ok := newPtrs[de.IFCERFTBlockPointer]; de.Type == IFCERFTDir && ok {
 			childPath := currDir.ChildPath(name, de.IFCERFTBlockPointer)
 			n, err := fbo.searchForNodesInDirLocked(ctx, lState, cache, newPtrs, md,
 				childPath, nodeMap, numNodesFoundSoFar+numNodesFound)

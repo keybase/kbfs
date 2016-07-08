@@ -15,7 +15,7 @@ import (
 
 type dirtyBlockID struct {
 	id       BlockID
-	refNonce BlockRefNonce
+	refNonce IFCERFTBlockRefNonce
 	branch   IFCERFTBranchName
 }
 

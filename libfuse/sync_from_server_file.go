@@ -43,7 +43,7 @@ var _ fs.HandleWriter = (*SyncFromServerFile)(nil)
 func (f *SyncFromServerFile) Write(ctx context.Context, req *fuse.WriteRequest,
 	resp *fuse.WriteResponse) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "SyncFromServerFile Write")
-	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
+	defer func() { f.folder.reportErr(ctx, libkbfs.IFCERFTWriteMode, err) }()
 	if len(req.Data) == 0 {
 		return nil
 	}

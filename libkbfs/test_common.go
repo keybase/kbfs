@@ -544,7 +544,7 @@ func GetRootNodeForTest(config IFCERFTConfig, name string, public bool) (IFCERFT
 		return nil, err
 	}
 
-	n, _, err := config.KBFSOps().GetOrCreateRootNode(ctx, h, MasterBranch)
+	n, _, err := config.KBFSOps().GetOrCreateRootNode(ctx, h, IFCERFTMasterBranch)
 	if err != nil {
 		return nil, err
 	}
