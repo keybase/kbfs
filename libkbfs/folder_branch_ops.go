@@ -777,6 +777,13 @@ func (fbo *folderBranchOps) getMDLocked(
 		return nil, MDWriteNeededInRequest{}
 	}
 
+	// We go down this code path either due to a rekey
+	// notification for an unseen TLF, or in some tests.
+	//
+	// TODO: Make tests not take this code path, and keep track of
+	// the fact that MDs coming from rekey notifications are
+	// untrusted.
+
 	fbo.mdWriterLock.AssertLocked(lState)
 
 	// Not in cache, fetch from server and add to cache.  First, see
@@ -814,12 +821,6 @@ func (fbo *folderBranchOps) getMDLocked(
 			return nil, err
 		}
 	} else {
-		// We go down this code path either due to a rekey
-		// notification for an unseen TLF, or in some tests.
-		//
-		// TODO: Make tests not take this code path, and keep
-		// track of the fact that MDs coming from rekey
-		// notifications are untrusted.
 		fbo.headLock.Lock(lState)
 		defer fbo.headLock.Unlock(lState)
 		err = fbo.setInitialHeadUntrustedLocked(ctx, lState, md)
