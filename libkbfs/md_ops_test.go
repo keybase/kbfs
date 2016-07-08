@@ -514,38 +514,24 @@ func TestMDOpsGetRangeFailBadPrevRoot(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
 
-	rmds1, _ := newRMDS(t, config, false)
+	injectShimCrypto(t, config)
 
-	rmds2, _ := newRMDS(t, config, false)
+	rmdses := makeRMDSRange(t, config, 100, 5)
 
-	rmds1.MD.PrevRoot = fakeMdID(46) // points to some random ID
-	rmds1.MD.Revision = 202
+	rmdses[2].MD.PrevRoot = fakeMdID(1)
 
-	rmds3, _ := newRMDS(t, config, false)
+	start := MetadataRevision(100)
+	stop := start + MetadataRevision(len(rmdses))
 
-	rmds2.MD.PrevRoot = fakeMdID(43)
-	rmds2.MD.Revision = 201
-	mdID4 := fakeMdID(44)
-	rmds3.MD.PrevRoot = mdID4
-	rmds3.MD.Revision = 200
-
-	// Do this before setting tlfHandle to nil.
-	verifyMDForPrivate(config, rmds3)
-	verifyMDForPrivate(config, rmds2)
-
-	allRMDSs := []*RootMetadataSigned{rmds3, rmds2, rmds1}
-
-	start, stop := MetadataRevision(200), MetadataRevision(202)
-	config.mockMdserv.EXPECT().GetRange(ctx, rmds1.MD.ID, NullBranchID, Merged, start,
-		stop).Return(allRMDSs, nil)
-
-	_, err := config.MDOps().GetRange(ctx, rmds1.MD.ID, start, stop)
-	if err == nil {
-		t.Errorf("Got no expected error on GetSince")
-	} else if _, ok := err.(MDMismatchError); !ok {
-		t.Errorf("Got unexpected error on GetSince with bad PrevRoot chain: %v",
-			err)
+	for i := 0; i < 2; i++ {
+		verifyMDForPrivate(config, rmdses[i])
 	}
+
+	config.mockMdserv.EXPECT().GetRange(ctx, rmdses[0].MD.ID, NullBranchID, Merged, start,
+		stop).Return(rmdses, nil)
+
+	_, err := config.MDOps().GetRange(ctx, rmdses[0].MD.ID, start, stop)
+	require.IsType(t, MDMismatchError{}, err)
 }
 
 type fakeMDServerPut struct {
