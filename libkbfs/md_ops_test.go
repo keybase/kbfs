@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/client/go/logger"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -61,6 +62,7 @@ func newRMD(t *testing.T, config Config, public bool) (*RootMetadata, *TlfHandle
 func addFakeRMDSData(rmds *RootMetadataSigned, h *TlfHandle) {
 	// Need to do this to avoid calls to the mocked-out MakeMdID.
 	rmds.MD.Revision = MetadataRevision(1)
+	rmds.MD.SerializedPrivateMetadata = []byte{1}
 	rmds.MD.LastModifyingWriter = h.FirstResolvedWriter()
 	rmds.MD.LastModifyingUser = h.FirstResolvedWriter()
 	rmds.SigInfo = SignatureInfo{
@@ -441,45 +443,62 @@ func TestMDOpsGetFailIdCheck(t *testing.T) {
 	}
 }
 
+type shimCrypto struct {
+	Crypto
+	pure cryptoPure
+}
+
+func (c shimCrypto) MakeMdID(md *BareRootMetadata) (MdID, error) {
+	return c.pure.MakeMdID(md)
+}
+
+func injectShimCrypto(t *testing.T, config Config) {
+	crypto := shimCrypto{config.Crypto(), MakeCryptoCommon(NewCodecMsgpack(), logger.NewTestLogger(t))}
+	config.SetCrypto(crypto)
+}
+
+func makeRMDSRange(t *testing.T, config Config,
+	start MetadataRevision, count int) []*RootMetadataSigned {
+	var rmdses []*RootMetadataSigned
+	var prevID MdID
+	for i := 0; i < count; i++ {
+		rmds, _ := newRMDS(t, config, false)
+		rmds.MD.PrevRoot = prevID
+		rmds.MD.Revision = start + MetadataRevision(i)
+		currID, err := config.Crypto().MakeMdID(&rmds.MD)
+		require.NoError(t, err)
+		prevID = currID
+		rmdses = append(rmdses, rmds)
+	}
+	return rmdses
+}
+
 func testMDOpsGetRangeSuccess(t *testing.T, fromStart bool) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
 
-	rmds1, _ := newRMDS(t, config, false)
+	injectShimCrypto(t, config)
 
-	rmds2, _ := newRMDS(t, config, false)
+	rmdses := makeRMDSRange(t, config, 100, 5)
 
-	rmds1.MD.PrevRoot = fakeMdID(42)
-	rmds1.MD.Revision = 102
-
-	rmds3, _ := newRMDS(t, config, false)
-
-	rmds2.MD.PrevRoot = fakeMdID(43)
-	rmds2.MD.Revision = 101
-	mdID4 := fakeMdID(44)
-	rmds3.MD.PrevRoot = mdID4
-	rmds3.MD.Revision = 100
-
-	start, stop := MetadataRevision(100), MetadataRevision(102)
+	start := MetadataRevision(100)
+	stop := start + MetadataRevision(len(rmdses))
 	if fromStart {
 		start = 0
 	}
 
-	// Do this before setting tlfHandles to nil.
-	verifyMDForPrivate(config, rmds3)
-	verifyMDForPrivate(config, rmds2)
-	verifyMDForPrivate(config, rmds1)
+	for _, rmds := range rmdses {
+		verifyMDForPrivate(config, rmds)
+	}
 
-	allRMDSs := []*RootMetadataSigned{rmds3, rmds2, rmds1}
+	config.mockMdserv.EXPECT().GetRange(ctx, rmdses[0].MD.ID, NullBranchID, Merged, start,
+		stop).Return(rmdses, nil)
 
-	config.mockMdserv.EXPECT().GetRange(ctx, rmds1.MD.ID, NullBranchID, Merged, start,
-		stop).Return(allRMDSs, nil)
-
-	allRMDs, err := config.MDOps().GetRange(ctx, rmds1.MD.ID, start, stop)
-	if err != nil {
-		t.Errorf("Got error on GetRange: %v", err)
-	} else if len(allRMDs) != 3 {
-		t.Errorf("Got back wrong number of RMDs: %d", len(allRMDs))
+	rmds, err := config.MDOps().GetRange(ctx, rmdses[0].MD.ID, start, stop)
+	require.NoError(t, err)
+	require.Equal(t, len(rmdses), len(rmds))
+	for i := 0; i < len(rmdses); i++ {
+		require.Equal(t, rmdses[i].MD, rmds[i].BareRootMetadata)
 	}
 }
 
