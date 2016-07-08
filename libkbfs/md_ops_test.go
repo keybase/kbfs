@@ -558,7 +558,7 @@ func (s *fakeMDServerPut) Shutdown() {}
 
 func validatePutPublicRMDS(
 	ctx context.Context, t *testing.T, config Config,
-	expectedRmd *RootMetadata, rmds *RootMetadataSigned) {
+	inputRmd *BareRootMetadata, rmds *RootMetadataSigned) {
 	// TODO: Handle private RMDS, too.
 
 	// Verify LastModifying* fields.
@@ -584,18 +584,17 @@ func validatePutPublicRMDS(
 	err = config.Crypto().Verify(buf, rmds.SigInfo)
 	require.NoError(t, err)
 
-	// Copy expectedRmd to get rid of unexported fields.
-	var expectedRmdCopy RootMetadata
-	err = CodecUpdate(config.Codec(), &expectedRmdCopy, expectedRmd)
+	var expectedRmd BareRootMetadata
+	err = CodecUpdate(config.Codec(), &expectedRmd, inputRmd)
 	require.NoError(t, err)
 
 	// Overwrite written fields.
-	expectedRmdCopy.LastModifyingWriter = rmds.MD.LastModifyingWriter
-	expectedRmdCopy.LastModifyingUser = rmds.MD.LastModifyingUser
-	expectedRmdCopy.WriterMetadataSigInfo = rmds.MD.WriterMetadataSigInfo
-	expectedRmdCopy.SerializedPrivateMetadata = rmds.MD.SerializedPrivateMetadata
+	expectedRmd.LastModifyingWriter = rmds.MD.LastModifyingWriter
+	expectedRmd.LastModifyingUser = rmds.MD.LastModifyingUser
+	expectedRmd.WriterMetadataSigInfo = rmds.MD.WriterMetadataSigInfo
+	expectedRmd.SerializedPrivateMetadata = rmds.MD.SerializedPrivateMetadata
 
-	require.Equal(t, expectedRmdCopy, rmds.MD)
+	require.Equal(t, expectedRmd, rmds.MD)
 }
 
 func TestMDOpsPutPublicSuccess(t *testing.T) {
@@ -619,7 +618,7 @@ func TestMDOpsPutPublicSuccess(t *testing.T) {
 	err = config.MDOps().Put(ctx, &rmd)
 
 	rmds := mdServer.getLastRmds()
-	validatePutPublicRMDS(ctx, t, config, &rmd, rmds)
+	validatePutPublicRMDS(ctx, t, config, &rmd.BareRootMetadata, rmds)
 }
 
 func TestMDOpsPutPrivateSuccess(t *testing.T) {
