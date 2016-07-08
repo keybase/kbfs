@@ -191,7 +191,7 @@ type ConstRootMetadata struct {
 	*RootMetadata
 }
 
-func (md *RootMetadata) haveOnlyUserRKeysChanged(codec Codec, prevMD *RootMetadata, user keybase1.UID) (bool, error) {
+func (md *BareRootMetadata) haveOnlyUserRKeysChanged(codec Codec, prevMD *RootMetadata, user keybase1.UID) (bool, error) {
 	// Require the same number of generations
 	if len(md.RKeys) != len(prevMD.RKeys) {
 		return false, nil
@@ -219,7 +219,7 @@ func (md *RootMetadata) haveOnlyUserRKeysChanged(codec Codec, prevMD *RootMetada
 
 // IsValidRekeyRequest returns true if the current block is a simple rekey wrt
 // the passed block.
-func (md *RootMetadata) IsValidRekeyRequest(codec Codec, prevMd *RootMetadata, user keybase1.UID) (bool, error) {
+func (md *BareRootMetadata) IsValidRekeyRequest(codec Codec, prevMd *RootMetadata, user keybase1.UID) (bool, error) {
 	if !md.IsWriterMetadataCopiedSet() {
 		// Not a copy.
 		return false, nil
@@ -256,7 +256,7 @@ func (md *RootMetadata) IsValidRekeyRequest(codec Codec, prevMd *RootMetadata, u
 
 // MergedStatus returns the status of this update -- has it been
 // merged into the main folder or not?
-func (md *RootMetadata) MergedStatus() MergeStatus {
+func (md *BareRootMetadata) MergedStatus() MergeStatus {
 	if md.WFlags&MetadataFlagUnmerged != 0 {
 		return Unmerged
 	}
@@ -264,24 +264,24 @@ func (md *RootMetadata) MergedStatus() MergeStatus {
 }
 
 // IsRekeySet returns true if the rekey bit is set.
-func (md *RootMetadata) IsRekeySet() bool {
+func (md *BareRootMetadata) IsRekeySet() bool {
 	return md.Flags&MetadataFlagRekey != 0
 }
 
 // IsWriterMetadataCopiedSet returns true if the bit is set indicating the writer metadata
 // was copied.
-func (md *RootMetadata) IsWriterMetadataCopiedSet() bool {
+func (md *BareRootMetadata) IsWriterMetadataCopiedSet() bool {
 	return md.Flags&MetadataFlagWriterMetadataCopied != 0
 }
 
 // IsFinal returns true if this is the last metadata block for a given folder.  This is
 // only expected to be set for folder resets.
-func (md *RootMetadata) IsFinal() bool {
+func (md *BareRootMetadata) IsFinal() bool {
 	return md.Flags&MetadataFlagFinal != 0
 }
 
 // IsWriter returns whether or not the user+device is an authorized writer.
-func (md *RootMetadata) IsWriter(user keybase1.UID, deviceKID keybase1.KID) bool {
+func (md *BareRootMetadata) IsWriter(user keybase1.UID, deviceKID keybase1.KID) bool {
 	if md.ID.IsPublic() {
 		for _, w := range md.Writers {
 			if w == user {
@@ -294,7 +294,7 @@ func (md *RootMetadata) IsWriter(user keybase1.UID, deviceKID keybase1.KID) bool
 }
 
 // IsReader returns whether or not the user+device is an authorized reader.
-func (md *RootMetadata) IsReader(user keybase1.UID, deviceKID keybase1.KID) bool {
+func (md *BareRootMetadata) IsReader(user keybase1.UID, deviceKID keybase1.KID) bool {
 	if md.ID.IsPublic() {
 		return true
 	}
