@@ -539,7 +539,7 @@ func CheckConfigAndShutdown(t logger.TestLogBackend, config IFCERFTConfig) {
 // must be canonical, creating it if necessary.
 func GetRootNodeForTest(config IFCERFTConfig, name string, public bool) (IFCERFTNode, error) {
 	ctx := context.Background()
-	h, err := ParseTlfHandle(ctx, config.KBPKI(), name, public)
+	h, err := IFCERFTParseTlfHandle(ctx, config.KBPKI(), name, public)
 	if err != nil {
 		return nil, err
 	}

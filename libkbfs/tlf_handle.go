@@ -820,7 +820,7 @@ func (ra resolvableAssertion) resolve(ctx context.Context) (
 //
 // NoSuchNameError: Returned when public is set and the given folder
 // has no public folder.
-func ParseTlfHandle(
+func IFCERFTParseTlfHandle(
 	ctx context.Context, kbpki IFCERFTKBPKI, name string, public bool) (
 	*IFCERFTTlfHandle, error) {
 	// Before parsing the tlf handle (which results in identify
@@ -904,7 +904,7 @@ func ParseTlfHandle(
 
 // CheckTlfHandleOffline does light checks whether a TLF handle looks ok,
 // it avoids all network calls.
-func CheckTlfHandleOffline(
+func IFCERFTCheckTlfHandleOffline(
 	ctx context.Context, name string, public bool) error {
 	_, _, _, err := splitAndNormalizeTLFName(name, public)
 	return err

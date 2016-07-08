@@ -111,7 +111,7 @@ func parseTlfHandle(
 	// Limit to one non-canonical name for now.
 outer:
 	for i := 0; i < 2; i++ {
-		h, err = libkbfs.ParseTlfHandle(ctx, kbpki, tlfName, isPublic)
+		h, err = libkbfs.IFCERFTParseTlfHandle(ctx, kbpki, tlfName, isPublic)
 		switch err := err.(type) {
 		case nil:
 			break outer

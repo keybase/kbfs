@@ -196,7 +196,7 @@ func TestMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T) {
 	// 'deserialized' RMDS.
 	rmds.MD.tlfHandle = nil
 
-	hUnresolved, err := ParseTlfHandle(ctx, config.KBPKI(),
+	hUnresolved, err := IFCERFTParseTlfHandle(ctx, config.KBPKI(),
 		"alice,bob@twitter", true)
 	if err != nil {
 		t.Fatal(err)
@@ -225,15 +225,15 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 
 	id := FakeTlfID(1, true)
 
-	mdHandle1, err := ParseTlfHandle(ctx, config.KBPKI(),
+	mdHandle1, err := IFCERFTParseTlfHandle(ctx, config.KBPKI(),
 		"alice,dave@twitter", true)
 	require.NoError(t, err)
 
-	mdHandle2, err := ParseTlfHandle(ctx, config.KBPKI(),
+	mdHandle2, err := IFCERFTParseTlfHandle(ctx, config.KBPKI(),
 		"alice,bob,charlie", true)
 	require.NoError(t, err)
 
-	mdHandle3, err := ParseTlfHandle(ctx, config.KBPKI(),
+	mdHandle3, err := IFCERFTParseTlfHandle(ctx, config.KBPKI(),
 		"alice,bob@twitter,charlie@twitter", true)
 	require.NoError(t, err)
 
@@ -262,7 +262,7 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 	rmds2.MD.tlfHandle = nil
 	rmds3.MD.tlfHandle = nil
 
-	h, err := ParseTlfHandle(
+	h, err := IFCERFTParseTlfHandle(
 		ctx, config.KBPKI(), "alice,bob,charlie@twitter", true)
 	if err != nil {
 		t.Fatal(err)
@@ -304,7 +304,7 @@ func TestMDOpsGetForUnresolvedHandlePublicFailure(t *testing.T) {
 	// 'deserialized' RMDS.
 	rmds.MD.tlfHandle = nil
 
-	hUnresolved, err := ParseTlfHandle(ctx, config.KBPKI(),
+	hUnresolved, err := IFCERFTParseTlfHandle(ctx, config.KBPKI(),
 		"alice,bob@github,bob@twitter", true)
 	if err != nil {
 		t.Fatal(err)

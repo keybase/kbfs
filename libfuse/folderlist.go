@@ -115,7 +115,7 @@ func (fl *FolderList) Lookup(ctx context.Context, req *fuse.LookupRequest, resp 
 		return nil, fuse.ENOENT
 	}
 
-	h, errParseTlfHandle := libkbfs.ParseTlfHandle(
+	h, errParseTlfHandle := libkbfs.IFCERFTParseTlfHandle(
 		ctx, fl.fs.config.KBPKI(), req.Name, fl.public)
 
 	if child, ok := fl.folders[req.Name]; ok {
@@ -169,7 +169,7 @@ func (fl *FolderList) Lookup(ctx context.Context, req *fuse.LookupRequest, resp 
 }
 
 func (fl *FolderList) isValidAliasTarget(ctx context.Context, nameToTry string) bool {
-	return libkbfs.CheckTlfHandleOffline(ctx, nameToTry, fl.public) == nil
+	return libkbfs.IFCERFTCheckTlfHandleOffline(ctx, nameToTry, fl.public) == nil
 }
 
 func (fl *FolderList) forgetFolder(folderName string) {
@@ -219,7 +219,7 @@ func (fl *FolderList) Remove(ctx context.Context, req *fuse.RemoveRequest) (err 
 	fl.fs.log.CDebugf(ctx, "FolderList Remove %s", req.Name)
 	defer func() { fl.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
 
-	h, err := libkbfs.ParseTlfHandle(
+	h, err := libkbfs.IFCERFTParseTlfHandle(
 		ctx, fl.fs.config.KBPKI(), req.Name, fl.public)
 
 	switch err := err.(type) {

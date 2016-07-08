@@ -602,7 +602,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 
 	id := FakeTlfID(1, false)
 	ctx := context.Background()
-	h, err := ParseTlfHandle(ctx, config.KBPKI(), "alice,bob@twitter",
+	h, err := IFCERFTParseTlfHandle(ctx, config.KBPKI(), "alice,bob@twitter",
 		false)
 	require.NoError(t, err)
 	rmd := newRootMetadataOrBust(t, id, h)

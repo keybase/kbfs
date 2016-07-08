@@ -301,7 +301,7 @@ func TestKeyManagerRekeyResolveAgainSuccessPublic(t *testing.T) {
 	defer keyManagerShutdown(mockCtrl, config)
 
 	id := FakeTlfID(1, true)
-	h, err := ParseTlfHandle(
+	h, err := IFCERFTParseTlfHandle(
 		ctx, config.KBPKI(), "alice,bob@twitter", true)
 	require.NoError(t, err)
 	rmd := newRootMetadataOrBust(t, id, h)
@@ -340,7 +340,7 @@ func TestKeyManagerRekeyResolveAgainSuccessPublicSelf(t *testing.T) {
 	defer keyManagerShutdown(mockCtrl, config)
 
 	id := FakeTlfID(1, true)
-	h, err := ParseTlfHandle(
+	h, err := IFCERFTParseTlfHandle(
 		ctx, config.KBPKI(), "alice@twitter,bob,charlie@twitter", true)
 	require.NoError(t, err)
 	rmd := newRootMetadataOrBust(t, id, h)
@@ -374,7 +374,7 @@ func TestKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	defer keyManagerShutdown(mockCtrl, config)
 
 	id := FakeTlfID(1, false)
-	h, err := ParseTlfHandle(
+	h, err := IFCERFTParseTlfHandle(
 		ctx, config.KBPKI(), "alice,bob@twitter,dave@twitter#charlie@twitter",
 		false)
 	if err != nil {
@@ -445,7 +445,7 @@ func TestKeyManagerPromoteReaderSuccessPrivate(t *testing.T) {
 	defer keyManagerShutdown(mockCtrl, config)
 
 	id := FakeTlfID(1, false)
-	h, err := ParseTlfHandle(ctx, config.KBPKI(),
+	h, err := IFCERFTParseTlfHandle(ctx, config.KBPKI(),
 		"alice,bob@twitter#bob", false)
 	if err != nil {
 		t.Fatal(err)
@@ -479,7 +479,7 @@ func TestKeyManagerReaderRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	defer keyManagerShutdown(mockCtrl, config)
 
 	id := FakeTlfID(1, false)
-	h, err := ParseTlfHandle(ctx, config.KBPKI(),
+	h, err := IFCERFTParseTlfHandle(ctx, config.KBPKI(),
 		"alice,dave@twitter#bob@twitter,charlie@twitter", false)
 	if err != nil {
 		t.Fatal(err)
@@ -550,7 +550,7 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 	defer keyManagerShutdown(mockCtrl, config)
 
 	id := FakeTlfID(1, false)
-	h, err := ParseTlfHandle(ctx, config.KBPKI(), "alice,bob,bob@twitter",
+	h, err := IFCERFTParseTlfHandle(ctx, config.KBPKI(), "alice,bob,bob@twitter",
 		false)
 	if err != nil {
 		t.Fatal(err)

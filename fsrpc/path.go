@@ -242,7 +242,7 @@ func (p Path) GetNode(ctx context.Context, config libkbfs.IFCERFTConfig) (libkbf
 outer:
 	for {
 		var parseErr error
-		tlfHandle, parseErr = libkbfs.ParseTlfHandle(ctx, config.KBPKI(), name, p.Public)
+		tlfHandle, parseErr = libkbfs.IFCERFTParseTlfHandle(ctx, config.KBPKI(), name, p.Public)
 		switch parseErr := parseErr.(type) {
 		case nil:
 			// No error.
