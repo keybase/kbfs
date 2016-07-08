@@ -99,7 +99,7 @@ func makeFakeTlfHandle(
 func newRootMetadataOrBust(
 	t *testing.T, tlfID TlfID, h *TlfHandle) *RootMetadata {
 	var rmd RootMetadata
-	err := updateNewRootMetadata(&rmd, tlfID, h.ToBareHandleOrBust())
+	err := updateNewRootMetadata(&rmd.BareRootMetadata, tlfID, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 	rmd.tlfHandle = h
 	return &rmd
@@ -157,7 +157,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	h := makeFakeTlfHandle(t, 14, false, uw, ur)
 	tlfID := FakeTlfID(0, false)
 	rmd := newRootMetadataOrBust(t, tlfID, h)
-	FakeInitialRekey(rmd, h.ToBareHandleOrBust())
+	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
 
 	dirHandle := rmd.GetTlfHandle()
 	require.Equal(t, h, dirHandle)
@@ -176,7 +176,7 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 	if rmd.LatestKeyGeneration() != 0 {
 		t.Errorf("Expected key generation to be invalid (0)")
 	}
-	FakeInitialRekey(rmd, h.ToBareHandleOrBust())
+	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
 	if rmd.LatestKeyGeneration() != FirstValidKeyGen {
 		t.Errorf("Expected key generation to be valid(%d)", FirstValidKeyGen)
 	}
@@ -471,7 +471,7 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	// Copy bit unset.
 	newRmd := newRootMetadataOrBust(t, id, h)
 	ok, err := newRmd.IsValidRekeyRequest(
-		config.Codec(), rmd, newRmd.LastModifyingWriter)
+		config.Codec(), &rmd.BareRootMetadata, newRmd.LastModifyingWriter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -496,7 +496,7 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	}
 	newRmd.WriterMetadataSigInfo = sigInfo2
 	ok, err = newRmd.IsValidRekeyRequest(
-		config.Codec(), rmd, newRmd.LastModifyingWriter)
+		config.Codec(), &rmd.BareRootMetadata, newRmd.LastModifyingWriter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -507,7 +507,7 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	// Replace with copied signature.
 	newRmd.WriterMetadataSigInfo = sigInfo
 	ok, err = newRmd.IsValidRekeyRequest(
-		config.Codec(), rmd, newRmd.LastModifyingWriter)
+		config.Codec(), &rmd.BareRootMetadata, newRmd.LastModifyingWriter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -524,7 +524,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob@twitter", false)
 	rmd := newRootMetadataOrBust(t, id, h)
-	rmds := RootMetadataSigned{MD: *rmd}
+	rmds := RootMetadataSigned{MD: rmd.BareRootMetadata}
 	if g, e := rmds.Version(), config.MetadataVersion(); g != e {
 		t.Errorf("MD with unresolved users got wrong version %d, expected %d",
 			g, e)
@@ -534,7 +534,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	id2 := FakeTlfID(2, false)
 	h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
 	rmd2 := newRootMetadataOrBust(t, id2, h2)
-	rmds2 := RootMetadataSigned{MD: *rmd2}
+	rmds2 := RootMetadataSigned{MD: rmd2.BareRootMetadata}
 	if g, e := rmds2.Version(), MetadataVer(PreExtraMetadataVer); g != e {
 		t.Errorf("MD without unresolved users got wrong version %d, "+
 			"expected %d", g, e)
@@ -543,7 +543,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	// ... including if the assertions get resolved.
 	AddNewAssertionForTestOrBust(t, config, "bob", "bob@twitter")
 	rmd.SerializedPrivateMetadata = []byte{1} // MakeSuccessor requires this
-	FakeInitialRekey(rmd, h.ToBareHandleOrBust())
+	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
 	if rmd.SerializedPrivateMetadata == nil {
 		t.Fatalf("Nil private MD")
 	}
@@ -555,12 +555,12 @@ func TestRootMetadataVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't make MD successor: %v", err)
 	}
-	FakeInitialRekey(rmd3, h3.ToBareHandleOrBust())
+	FakeInitialRekey(&rmd3.BareRootMetadata, h3.ToBareHandleOrBust())
 	err = rmd3.updateFromTlfHandle(h3)
 	if err != nil {
 		t.Fatalf("Couldn't update TLF handle: %v", err)
 	}
-	rmds3 := RootMetadataSigned{MD: *rmd3}
+	rmds3 := RootMetadataSigned{MD: rmd3.BareRootMetadata}
 	if g, e := rmds3.Version(), MetadataVer(PreExtraMetadataVer); g != e {
 		t.Errorf("MD without unresolved users got wrong version %d, "+
 			"expected %d", g, e)
@@ -574,7 +574,7 @@ func TestMakeRekeyReadError(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	rmd := newRootMetadataOrBust(t, id, h)
-	FakeInitialRekey(rmd, h.ToBareHandleOrBust())
+	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
 
 	u, uid, err := config.KBPKI().Resolve(context.Background(), "bob")
 	require.NoError(t, err)
@@ -601,7 +601,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 		false)
 	require.NoError(t, err)
 	rmd := newRootMetadataOrBust(t, id, h)
-	FakeInitialRekey(rmd, h.ToBareHandleOrBust())
+	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
 
 	u, uid, err := config.KBPKI().Resolve(ctx, "bob")
 	require.NoError(t, err)

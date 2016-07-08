@@ -109,7 +109,7 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 
 	// Check integrity.
 
-	mdID, err := rmds.MD.MetadataID(s.crypto)
+	mdID, err := s.crypto.MakeMdID(&rmds.MD)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 }
 
 func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
-	id, err := rmds.MD.MetadataID(s.crypto)
+	id, err := s.crypto.MakeMdID(&rmds.MD)
 	if err != nil {
 		return err
 	}
@@ -359,20 +359,20 @@ func (s *mdServerTlfStorage) put(
 		recordBranchID = true
 	}
 
+	id, err := s.crypto.MakeMdID(&rmds.MD)
+	if err != nil {
+		return false, MDServerError{err}
+	}
+
 	// Consistency checks
 	if head != nil {
-		err := head.MD.CheckValidSuccessorForServer(s.crypto, &rmds.MD)
+		err := head.MD.CheckValidSuccessorForServer(id, &rmds.MD)
 		if err != nil {
 			return false, err
 		}
 	}
 
 	err = s.putMDLocked(rmds)
-	if err != nil {
-		return false, MDServerError{err}
-	}
-
-	id, err := rmds.MD.MetadataID(s.crypto)
 	if err != nil {
 		return false, MDServerError{err}
 	}

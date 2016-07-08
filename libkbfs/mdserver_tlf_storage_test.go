@@ -62,14 +62,13 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		rmds.MD.SerializedPrivateMetadata[0] = 0x1
 		rmds.MD.Revision = MetadataRevision(i)
 		FakeInitialRekey(&rmds.MD, h)
-		rmds.MD.clearCachedMetadataIDForTest()
 		if i > 1 {
 			rmds.MD.PrevRoot = prevRoot
 		}
 		recordBranchID, err := s.put(uid, rmds)
 		require.NoError(t, err)
 		require.False(t, recordBranchID)
-		prevRoot, err = rmds.MD.MetadataID(crypto)
+		prevRoot, err = crypto.MakeMdID(&rmds.MD)
 		require.NoError(t, err)
 		if i == 5 {
 			middleRoot = prevRoot
@@ -105,13 +104,12 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		rmds.MD.SerializedPrivateMetadata[0] = 0x1
 		rmds.MD.PrevRoot = prevRoot
 		FakeInitialRekey(&rmds.MD, h)
-		rmds.MD.clearCachedMetadataIDForTest()
 		rmds.MD.WFlags |= MetadataFlagUnmerged
 		rmds.MD.BID = bid
 		recordBranchID, err := s.put(uid, rmds)
 		require.NoError(t, err)
 		require.Equal(t, i == MetadataRevision(6), recordBranchID)
-		prevRoot, err = rmds.MD.MetadataID(crypto)
+		prevRoot, err = crypto.MakeMdID(&rmds.MD)
 		require.NoError(t, err)
 	}
 
