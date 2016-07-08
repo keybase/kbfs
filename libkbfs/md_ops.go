@@ -443,7 +443,7 @@ func (md *MDOpsStandard) readyMD(ctx context.Context, rmd *RootMetadata) (
 			rmd.SerializedPrivateMetadata = encodedPrivateMetadata
 		} else if !rmd.IsWriterMetadataCopiedSet() {
 			// Encrypt and encode the private metadata
-			k, err := md.config.KeyManager().GetTLFCryptKeyForEncryption(ctx, rmd)
+			k, err := md.config.KeyManager().GetTLFCryptKeyForEncryption(ctx, ConstRootMetadata{rmd})
 			if err != nil {
 				return nil, err
 			}

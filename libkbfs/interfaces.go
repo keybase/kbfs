@@ -419,7 +419,7 @@ type KeyManager interface {
 	// GetTLFCryptKeyForEncryption gets the crypt key to use for
 	// encryption (i.e., with the latest key generation) for the
 	// TLF with the given metadata.
-	GetTLFCryptKeyForEncryption(ctx context.Context, md *RootMetadata) (
+	GetTLFCryptKeyForEncryption(ctx context.Context, md ConstRootMetadata) (
 		TLFCryptKey, error)
 
 	// GetTLFCryptKeyForMDDecryption gets the crypt key to use for the
@@ -428,12 +428,12 @@ type KeyManager interface {
 	// (which in most cases is the same as mdToDecrypt) if it's not
 	// already cached.
 	GetTLFCryptKeyForMDDecryption(ctx context.Context,
-		mdToDecrypt, mdWithKeys *RootMetadata) (TLFCryptKey, error)
+		mdToDecrypt, mdWithKeys ConstRootMetadata) (TLFCryptKey, error)
 
 	// GetTLFCryptKeyForBlockDecryption gets the crypt key to use
 	// for the TLF with the given metadata to decrypt the block
 	// pointed to by the given pointer.
-	GetTLFCryptKeyForBlockDecryption(ctx context.Context, md *RootMetadata,
+	GetTLFCryptKeyForBlockDecryption(ctx context.Context, md ConstRootMetadata,
 		blockPtr BlockPointer) (TLFCryptKey, error)
 
 	// Rekey checks the given MD object, if it is a private TLF,

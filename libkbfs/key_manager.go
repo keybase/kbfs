@@ -31,7 +31,7 @@ func NewKeyManagerStandard(config Config) *KeyManagerStandard {
 // GetTLFCryptKeyForEncryption implements the KeyManager interface for
 // KeyManagerStandard.
 func (km *KeyManagerStandard) GetTLFCryptKeyForEncryption(ctx context.Context,
-	md *RootMetadata) (tlfCryptKey TLFCryptKey, err error) {
+	md ConstRootMetadata) (tlfCryptKey TLFCryptKey, err error) {
 	return km.getTLFCryptKeyUsingCurrentDevice(ctx, md,
 		md.LatestKeyGeneration(), false)
 }
@@ -39,7 +39,7 @@ func (km *KeyManagerStandard) GetTLFCryptKeyForEncryption(ctx context.Context,
 // GetTLFCryptKeyForMDDecryption implements the KeyManager interface
 // for KeyManagerStandard.
 func (km *KeyManagerStandard) GetTLFCryptKeyForMDDecryption(
-	ctx context.Context, mdToDecrypt, mdWithKeys *RootMetadata) (
+	ctx context.Context, mdToDecrypt, mdWithKeys ConstRootMetadata) (
 	tlfCryptKey TLFCryptKey, err error) {
 	return km.getTLFCryptKey(ctx, mdWithKeys, mdToDecrypt.LatestKeyGeneration(),
 		getTLFCryptKeyAnyDevice|getTLFCryptKeyDoCache)
@@ -48,13 +48,13 @@ func (km *KeyManagerStandard) GetTLFCryptKeyForMDDecryption(
 // GetTLFCryptKeyForBlockDecryption implements the KeyManager interface for
 // KeyManagerStandard.
 func (km *KeyManagerStandard) GetTLFCryptKeyForBlockDecryption(
-	ctx context.Context, md *RootMetadata, blockPtr BlockPointer) (
+	ctx context.Context, md ConstRootMetadata, blockPtr BlockPointer) (
 	tlfCryptKey TLFCryptKey, err error) {
 	return km.getTLFCryptKeyUsingCurrentDevice(ctx, md, blockPtr.KeyGen, true)
 }
 
 func (km *KeyManagerStandard) getTLFCryptKeyUsingCurrentDevice(
-	ctx context.Context, md *RootMetadata, keyGen KeyGen, cache bool) (
+	ctx context.Context, md ConstRootMetadata, keyGen KeyGen, cache bool) (
 	tlfCryptKey TLFCryptKey, err error) {
 	flags := getTLFCryptKeyFlags(0)
 	if cache {
@@ -72,7 +72,7 @@ const (
 )
 
 func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
-	md *RootMetadata, keyGen KeyGen, flags getTLFCryptKeyFlags) (
+	md ConstRootMetadata, keyGen KeyGen, flags getTLFCryptKeyFlags) (
 	TLFCryptKey, error) {
 
 	if md.ID.IsPublic() {
@@ -248,7 +248,7 @@ func (km *KeyManagerStandard) updateKeyBundle(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
-	md *RootMetadata, keyInfoMap UserDeviceKeyInfoMap,
+	md ConstRootMetadata, keyInfoMap UserDeviceKeyInfoMap,
 	expectedKeys map[keybase1.UID][]CryptPublicKey) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
 	for u, keys := range expectedKeys {
@@ -275,7 +275,7 @@ func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
-	md *RootMetadata, keyInfoMap UserDeviceKeyInfoMap,
+	md ConstRootMetadata, keyInfoMap UserDeviceKeyInfoMap,
 	expectedKeys map[keybase1.UID][]CryptPublicKey) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
 	for u, kids := range keyInfoMap {
@@ -359,7 +359,7 @@ func (km *KeyManagerStandard) deleteKeysForRemovedDevices(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) identifyUIDSets(ctx context.Context,
-	md *RootMetadata, writersToIdentify map[keybase1.UID]bool,
+	md ConstRootMetadata, writersToIdentify map[keybase1.UID]bool,
 	readersToIdentify map[keybase1.UID]bool) error {
 	uids := make([]keybase1.UID, 0, len(writersToIdentify)+len(readersToIdentify))
 	for u := range writersToIdentify {
@@ -511,13 +511,13 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			return false, nil, err
 		}
 
-		newWriterUsers = km.usersWithNewDevices(ctx, md, wkb.WKeys, wKeys)
-		newReaderUsers = km.usersWithNewDevices(ctx, md, rkb.RKeys, rKeys)
+		newWriterUsers = km.usersWithNewDevices(ctx, ConstRootMetadata{md}, wkb.WKeys, wKeys)
+		newReaderUsers = km.usersWithNewDevices(ctx, ConstRootMetadata{md}, rkb.RKeys, rKeys)
 		addNewWriterDevice = len(newWriterUsers) > 0
 		addNewReaderDevice = len(newReaderUsers) > 0
 
-		wRemoved := km.usersWithRemovedDevices(ctx, md, wkb.WKeys, wKeys)
-		rRemoved := km.usersWithRemovedDevices(ctx, md, rkb.RKeys, rKeys)
+		wRemoved := km.usersWithRemovedDevices(ctx, ConstRootMetadata{md}, wkb.WKeys, wKeys)
+		rRemoved := km.usersWithRemovedDevices(ctx, ConstRootMetadata{md}, rkb.RKeys, rKeys)
 		incKeyGen = len(wRemoved) > 0 || len(rRemoved) > 0
 
 		promotedReaders = make(map[keybase1.UID]bool, len(rRemoved))
@@ -543,7 +543,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			newWriterUsers[u] = true
 		}
 
-		if err := km.identifyUIDSets(ctx, md, newWriterUsers, newReaderUsers); err != nil {
+		if err := km.identifyUIDSets(ctx, ConstRootMetadata{md}, newWriterUsers, newReaderUsers); err != nil {
 			return false, nil, err
 		}
 	}
@@ -589,7 +589,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			if promptPaper {
 				flags |= getTLFCryptKeyPromptPaper
 			}
-			currTlfCryptKey, err := km.getTLFCryptKey(ctx, md, keyGen, flags)
+			currTlfCryptKey, err := km.getTLFCryptKey(ctx, ConstRootMetadata{md}, keyGen, flags)
 			if err != nil {
 				return false, nil, err
 			}

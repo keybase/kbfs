@@ -20,10 +20,22 @@ type rmdMatcher struct {
 	rmd *RootMetadata
 }
 
+func getRMD(x interface{}) (*RootMetadata, bool) {
+	rmd, ok := x.(*RootMetadata)
+	if ok {
+		return rmd, true
+	}
+	crmd, ok := x.(ConstRootMetadata)
+	if ok {
+		return crmd.RootMetadata, true
+	}
+	return nil, false
+}
+
 // Matches returns whether x is a *RootMetadata and it has the same ID
 // and latest key generation as m.rmd.
 func (m rmdMatcher) Matches(x interface{}) bool {
-	rmd, ok := x.(*RootMetadata)
+	rmd, ok := getRMD(x)
 	if !ok {
 		return false
 	}

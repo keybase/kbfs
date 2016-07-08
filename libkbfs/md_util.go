@@ -237,7 +237,7 @@ func decryptMDPrivateData(ctx context.Context, config Config,
 		}
 
 		k, err := config.KeyManager().GetTLFCryptKeyForMDDecryption(ctx,
-			rmdToDecrypt, rmdWithKeys)
+			ConstRootMetadata{rmdToDecrypt}, ConstRootMetadata{rmdWithKeys})
 
 		privateMetadata := &PrivateMetadata{}
 		if err != nil {

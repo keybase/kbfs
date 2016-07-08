@@ -40,7 +40,7 @@ func (b *BlockOpsStandard) Get(ctx context.Context, md *RootMetadata,
 	}
 
 	tlfCryptKey, err := b.config.KeyManager().
-		GetTLFCryptKeyForBlockDecryption(ctx, md, blockPtr)
+		GetTLFCryptKeyForBlockDecryption(ctx, ConstRootMetadata{md}, blockPtr)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, md *RootMetadata,
 	crypto := b.config.Crypto()
 
 	tlfCryptKey, err := b.config.KeyManager().
-		GetTLFCryptKeyForEncryption(ctx, md)
+		GetTLFCryptKeyForEncryption(ctx, ConstRootMetadata{md})
 	if err != nil {
 		return
 	}
