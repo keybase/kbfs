@@ -3467,8 +3467,12 @@ func (fbo *folderBranchOps) undoUnmergedMDUpdatesLocked(
 	err = func() error {
 		fbo.headLock.Lock(lState)
 		defer fbo.headLock.Unlock(lState)
+		err := fbo.setHeadPredecessorLocked(ctx, lState, rmds[0])
+		if err != nil {
+			return err
+		}
 		fbo.setLatestMergedRevisionLocked(ctx, lState, rmds[0].Revision, true)
-		return fbo.setHeadPredecessorLocked(ctx, lState, rmds[0])
+		return nil
 	}()
 	if err != nil {
 		return nil, err
