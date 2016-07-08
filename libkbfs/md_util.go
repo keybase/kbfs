@@ -40,7 +40,7 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 				toDownload = append(toDownload, mdRange{i, i})
 			}
 			toDownload[len(toDownload)-1].end = i
-			rmd = nil
+			rmd = ConstRootMetadata{}
 		} else {
 			slot := len(rmds)
 			if slot < minSlot {
@@ -50,7 +50,7 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 				maxSlot = slot
 			}
 		}
-		rmds = append(rmds, rmd)
+		rmds = append(rmds, rmd.RootMetadata)
 	}
 
 	// Try to fetch the rest from the server.  TODO: parallelize me.
@@ -80,7 +80,7 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 			}
 
 			rmds[slot] = rmd
-			if err := mdcache.Put(rmd); err != nil {
+			if err := mdcache.Put(ConstRootMetadata{rmd}); err != nil {
 				config.MakeLogger("").CDebugf(ctx, "Error putting md "+
 					"%d into the cache: %v", rmd.Revision, err)
 			}
@@ -156,7 +156,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 				return nil, err
 			}
 			// Overwrite the cached copy with the new copy
-			if err := config.MDCache().Put(rmdCopy); err != nil {
+			if err := config.MDCache().Put(ConstRootMetadata{rmdCopy}); err != nil {
 				return nil, err
 			}
 			mergedRmds[i] = rmdCopy

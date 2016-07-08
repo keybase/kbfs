@@ -1042,9 +1042,9 @@ func (_m *MockMDCache) EXPECT() *_MockMDCacheRecorder {
 	return _m.recorder
 }
 
-func (_m *MockMDCache) Get(tlf TlfID, rev MetadataRevision, bid BranchID) (*RootMetadata, error) {
+func (_m *MockMDCache) Get(tlf TlfID, rev MetadataRevision, bid BranchID) (ConstRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "Get", tlf, rev, bid)
-	ret0, _ := ret[0].(*RootMetadata)
+	ret0, _ := ret[0].(ConstRootMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1053,7 +1053,7 @@ func (_mr *_MockMDCacheRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1, arg2)
 }
 
-func (_m *MockMDCache) Put(md *RootMetadata) error {
+func (_m *MockMDCache) Put(md ConstRootMetadata) error {
 	ret := _m.ctrl.Call(_m, "Put", md)
 	ret0, _ := ret[0].(error)
 	return ret0

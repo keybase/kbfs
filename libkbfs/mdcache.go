@@ -32,19 +32,19 @@ func NewMDCacheStandard(capacity int) *MDCacheStandard {
 
 // Get implements the MDCache interface for MDCacheStandard.
 func (md *MDCacheStandard) Get(tlf TlfID, rev MetadataRevision, bid BranchID) (
-	*RootMetadata, error) {
+	ConstRootMetadata, error) {
 	key := mdCacheKey{tlf, rev, bid}
 	if tmp, ok := md.lru.Get(key); ok {
-		if rmd, ok := tmp.(*RootMetadata); ok {
+		if rmd, ok := tmp.(ConstRootMetadata); ok {
 			return rmd, nil
 		}
-		return nil, BadMDError{tlf}
+		return ConstRootMetadata{}, BadMDError{tlf}
 	}
-	return nil, NoSuchMDError{tlf, rev, bid}
+	return ConstRootMetadata{}, NoSuchMDError{tlf, rev, bid}
 }
 
 // Put implements the MDCache interface for MDCacheStandard.
-func (md *MDCacheStandard) Put(rmd *RootMetadata) error {
+func (md *MDCacheStandard) Put(rmd ConstRootMetadata) error {
 	key := mdCacheKey{rmd.ID, rmd.Revision, rmd.BID}
 	md.lru.Add(key, rmd)
 	return nil

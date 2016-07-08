@@ -474,9 +474,9 @@ type Reporter interface {
 type MDCache interface {
 	// Get gets the metadata object associated with the given TlfID,
 	// revision number, and branch ID (NullBranchID for merged MD).
-	Get(tlf TlfID, rev MetadataRevision, bid BranchID) (*RootMetadata, error)
+	Get(tlf TlfID, rev MetadataRevision, bid BranchID) (ConstRootMetadata, error)
 	// Put stores the metadata object.
-	Put(md *RootMetadata) error
+	Put(md ConstRootMetadata) error
 }
 
 // KeyCache handles caching for both TLFCryptKeys and BlockCryptKeys.
