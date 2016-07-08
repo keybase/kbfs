@@ -19,7 +19,7 @@ type BlockOpsStandard struct {
 var _ BlockOps = (*BlockOpsStandard)(nil)
 
 // Get implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Get(ctx context.Context, md *RootMetadata,
+func (b *BlockOpsStandard) Get(ctx context.Context, md ConstRootMetadata,
 	blockPtr BlockPointer, block Block) error {
 	bserv := b.config.BlockServer()
 	buf, blockServerHalf, err := bserv.Get(ctx, blockPtr.ID, md.ID, blockPtr.BlockContext)
@@ -40,7 +40,7 @@ func (b *BlockOpsStandard) Get(ctx context.Context, md *RootMetadata,
 	}
 
 	tlfCryptKey, err := b.config.KeyManager().
-		GetTLFCryptKeyForBlockDecryption(ctx, ConstRootMetadata{md}, blockPtr)
+		GetTLFCryptKeyForBlockDecryption(ctx, md, blockPtr)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (b *BlockOpsStandard) Get(ctx context.Context, md *RootMetadata,
 }
 
 // Ready implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Ready(ctx context.Context, md *RootMetadata,
+func (b *BlockOpsStandard) Ready(ctx context.Context, md ConstRootMetadata,
 	block Block) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
 	err error) {
 	defer func() {
@@ -83,7 +83,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, md *RootMetadata,
 	crypto := b.config.Crypto()
 
 	tlfCryptKey, err := b.config.KeyManager().
-		GetTLFCryptKeyForEncryption(ctx, ConstRootMetadata{md})
+		GetTLFCryptKeyForEncryption(ctx, md)
 	if err != nil {
 		return
 	}
@@ -135,7 +135,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, md *RootMetadata,
 }
 
 // Put implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Put(ctx context.Context, md *RootMetadata,
+func (b *BlockOpsStandard) Put(ctx context.Context, md ConstRootMetadata,
 	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
 	bserv := b.config.BlockServer()
 	var err error
@@ -158,7 +158,7 @@ func (b *BlockOpsStandard) Put(ctx context.Context, md *RootMetadata,
 }
 
 // Delete implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Delete(ctx context.Context, md *RootMetadata,
+func (b *BlockOpsStandard) Delete(ctx context.Context, md ConstRootMetadata,
 	ptrs []BlockPointer) (liveCounts map[BlockID]int, err error) {
 	contexts := make(map[BlockID][]BlockContext)
 	for _, ptr := range ptrs {
@@ -168,7 +168,7 @@ func (b *BlockOpsStandard) Delete(ctx context.Context, md *RootMetadata,
 }
 
 // Archive implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Archive(ctx context.Context, md *RootMetadata,
+func (b *BlockOpsStandard) Archive(ctx context.Context, md ConstRootMetadata,
 	ptrs []BlockPointer) error {
 	contexts := make(map[BlockID][]BlockContext)
 	for _, ptr := range ptrs {

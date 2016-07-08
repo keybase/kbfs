@@ -152,7 +152,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 			}
 			latestRmd := mergedRmds[len(mergedRmds)-1]
 			if err := decryptMDPrivateData(ctx, config,
-				rmdCopy, latestRmd.RootMetadata); err != nil {
+				rmdCopy, latestRmd); err != nil {
 				return nil, err
 			}
 			// Overwrite the cached copy with the new copy
@@ -218,7 +218,7 @@ func getUnmergedMDUpdates(ctx context.Context, config Config, id TlfID,
 }
 
 func decryptMDPrivateData(ctx context.Context, config Config,
-	rmdToDecrypt, rmdWithKeys *RootMetadata) error {
+	rmdToDecrypt *RootMetadata, rmdWithKeys ConstRootMetadata) error {
 	handle := rmdToDecrypt.GetTlfHandle()
 	crypto := config.Crypto()
 	codec := config.Codec()
@@ -237,7 +237,7 @@ func decryptMDPrivateData(ctx context.Context, config Config,
 		}
 
 		k, err := config.KeyManager().GetTLFCryptKeyForMDDecryption(ctx,
-			ConstRootMetadata{rmdToDecrypt}, ConstRootMetadata{rmdWithKeys})
+			ConstRootMetadata{rmdToDecrypt}, rmdWithKeys)
 
 		privateMetadata := &PrivateMetadata{}
 		if err != nil {

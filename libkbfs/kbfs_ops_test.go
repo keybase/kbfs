@@ -28,12 +28,12 @@ type CheckBlockOps struct {
 
 var _ BlockOps = (*CheckBlockOps)(nil)
 
-func (cbo *CheckBlockOps) Get(ctx context.Context, md *RootMetadata,
+func (cbo *CheckBlockOps) Get(ctx context.Context, md ConstRootMetadata,
 	blockPtr BlockPointer, block Block) error {
 	return cbo.delegate.Get(ctx, md, blockPtr, block)
 }
 
-func (cbo *CheckBlockOps) Ready(ctx context.Context, md *RootMetadata,
+func (cbo *CheckBlockOps) Ready(ctx context.Context, md ConstRootMetadata,
 	block Block) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
 	err error) {
 	id, plainSize, readyBlockData, err = cbo.delegate.Ready(ctx, md, block)
@@ -45,17 +45,17 @@ func (cbo *CheckBlockOps) Ready(ctx context.Context, md *RootMetadata,
 	return
 }
 
-func (cbo *CheckBlockOps) Put(ctx context.Context, md *RootMetadata,
+func (cbo *CheckBlockOps) Put(ctx context.Context, md ConstRootMetadata,
 	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
 	return cbo.delegate.Put(ctx, md, blockPtr, readyBlockData)
 }
 
-func (cbo *CheckBlockOps) Delete(ctx context.Context, md *RootMetadata,
+func (cbo *CheckBlockOps) Delete(ctx context.Context, md ConstRootMetadata,
 	ptrs []BlockPointer) (map[BlockID]int, error) {
 	return cbo.delegate.Delete(ctx, md, ptrs)
 }
 
-func (cbo *CheckBlockOps) Archive(ctx context.Context, md *RootMetadata,
+func (cbo *CheckBlockOps) Archive(ctx context.Context, md ConstRootMetadata,
 	ptrs []BlockPointer) error {
 	return cbo.delegate.Archive(ctx, md, ptrs)
 }
@@ -387,7 +387,7 @@ func TestKBFSOpsGetRootNodeCacheIdentifyFail(t *testing.T) {
 func expectBlock(config *ConfigMock, rmd *RootMetadata, blockPtr BlockPointer, block Block, err error) {
 	config.mockBops.EXPECT().Get(gomock.Any(), rmdMatcher{rmd},
 		ptrMatcher{blockPtr}, gomock.Any()).
-		Do(func(ctx context.Context, md *RootMetadata,
+		Do(func(ctx context.Context, md ConstRootMetadata,
 			blockPtr BlockPointer, getBlock Block) {
 			switch v := getBlock.(type) {
 			case *FileBlock:
@@ -457,7 +457,7 @@ func testKBFSOpsGetRootNodeCreateNewSuccess(t *testing.T, public bool) {
 	// now KBFS will fill it in:
 	rootPtr, plainSize, readyBlockData := fillInNewMD(t, config, rmd)
 	// now cache and put everything
-	config.mockBops.EXPECT().Put(ctx, rmd, ptrMatcher{rootPtr}, readyBlockData).
+	config.mockBops.EXPECT().Put(ctx, ConstRootMetadata{rmd}, ptrMatcher{rootPtr}, readyBlockData).
 		Return(nil)
 	config.mockMdops.EXPECT().Put(gomock.Any(), rmd).Return(nil)
 	config.mockMdcache.EXPECT().Put(ConstRootMetadata{rmd}).Return(nil)
