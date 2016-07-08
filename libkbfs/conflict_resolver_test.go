@@ -69,7 +69,7 @@ func TestCRInput(t *testing.T) {
 	config.mockMdcache.EXPECT().Put(gomock.Any()).AnyTimes().Return(nil)
 	for i := unmergedHead; i >= branchPoint+1; i-- {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
-			&RootMetadata{
+			ConstRootMetadata{&RootMetadata{
 				WriterMetadata: WriterMetadata{
 					ID:     FakeTlfID(0x1, false),
 					WFlags: MetadataFlagUnmerged,
@@ -77,28 +77,28 @@ func TestCRInput(t *testing.T) {
 				},
 				Revision:  i,
 				tlfHandle: &TlfHandle{name: "fake"},
-			}, nil)
+			}}, nil)
 	}
 	for i := MetadataRevisionInitial; i <= branchPoint; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
-			nil, NoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
+			ConstRootMetadata{}, NoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
 	}
 	config.mockMdops.EXPECT().GetUnmergedRange(gomock.Any(), cr.fbo.id(),
 		cr.fbo.bid, MetadataRevisionInitial, branchPoint).Return(nil, nil)
 
 	for i := branchPoint + 1; i <= mergedHead; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
-			&RootMetadata{
+			ConstRootMetadata{&RootMetadata{
 				WriterMetadata: WriterMetadata{
 					ID: FakeTlfID(0x1, false),
 				},
 				Revision:  i,
 				tlfHandle: &TlfHandle{name: "fake"},
-			}, nil)
+			}}, nil)
 	}
 	for i := mergedHead + 1; i <= branchPoint+2*maxMDsAtATime; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
-			nil, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
+			ConstRootMetadata{}, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
 	}
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(), mergedHead+1,
 		gomock.Any()).Return(nil, nil)
@@ -147,7 +147,7 @@ func TestCRInputFracturedRange(t *testing.T) {
 	config.mockMdcache.EXPECT().Put(gomock.Any()).AnyTimes().Return(nil)
 	for i := unmergedHead; i >= branchPoint+1; i-- {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
-			&RootMetadata{
+			ConstRootMetadata{&RootMetadata{
 				Revision: i,
 				WriterMetadata: WriterMetadata{
 					ID:     FakeTlfID(0x1, false),
@@ -155,11 +155,11 @@ func TestCRInputFracturedRange(t *testing.T) {
 					BID:    cr.fbo.bid,
 				},
 				tlfHandle: &TlfHandle{name: "fake"},
-			}, nil)
+			}}, nil)
 	}
 	for i := MetadataRevisionInitial; i <= branchPoint; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
-			nil, NoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
+			ConstRootMetadata{nil}, NoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
 	}
 	config.mockMdops.EXPECT().GetUnmergedRange(gomock.Any(), cr.fbo.id(),
 		cr.fbo.bid, MetadataRevisionInitial, branchPoint).Return(nil, nil)
@@ -170,31 +170,31 @@ func TestCRInputFracturedRange(t *testing.T) {
 		// be fetched from the server.
 		if i != skipCacheRevision {
 			config.mockMdcache.EXPECT().Get(cr.fbo.id(), i,
-				NullBranchID).Return(&RootMetadata{
+				NullBranchID).Return(ConstRootMetadata{&RootMetadata{
 				WriterMetadata: WriterMetadata{
 					ID: FakeTlfID(0x1, false),
 				},
 				Revision:  i,
 				tlfHandle: &TlfHandle{name: "fake"},
-			}, nil)
+			}}, nil)
 		} else {
 			config.mockMdcache.EXPECT().Get(cr.fbo.id(), i,
 				NullBranchID).Return(
-				nil, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
+				ConstRootMetadata{}, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
 		}
 	}
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(),
 		skipCacheRevision, skipCacheRevision).Return(
-		[]*RootMetadata{{
+		[]ConstRootMetadata{{&RootMetadata{
 			WriterMetadata: WriterMetadata{
 				ID: FakeTlfID(0x1, false),
 			},
 			Revision:  skipCacheRevision,
 			tlfHandle: &TlfHandle{name: "fake"},
-		}}, nil)
+		}}}, nil)
 	for i := mergedHead + 1; i <= branchPoint+2*maxMDsAtATime; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
-			nil, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
+			ConstRootMetadata{}, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
 	}
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(), mergedHead+1,
 		gomock.Any()).Return(nil, nil)

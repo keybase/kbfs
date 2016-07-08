@@ -190,50 +190,49 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 }
 
 func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
-	mStatus MergeStatus) (
-	*RootMetadata, error) {
+	mStatus MergeStatus) (ConstRootMetadata, error) {
 	mdserv := md.config.MDServer()
 	bh, err := handle.ToBareHandle()
 	if err != nil {
-		return nil, err
+		return ConstRootMetadata{}, err
 	}
 
 	id, rmds, err := mdserv.GetForHandle(ctx, bh, mStatus)
 	if err != nil {
-		return nil, err
+		return ConstRootMetadata{}, err
 	}
 
 	if rmds == nil {
 		if mStatus == Unmerged {
 			// don't automatically create unmerged MDs
-			return nil, nil
+			return ConstRootMetadata{}, nil
 		}
 		var rmd RootMetadata
 		err := updateNewRootMetadata(&rmd, id, bh)
 		if err != nil {
-			return nil, err
+			return ConstRootMetadata{}, err
 		}
 		// Need to keep the TLF handle around long enough to
 		// rekey the metadata for the first time.
 		rmd.tlfHandle = handle
-		return &rmd, nil
+		return ConstRootMetadata{&rmd}, nil
 	}
 
 	bareMdHandle, err := rmds.MD.MakeBareTlfHandle()
 	if err != nil {
-		return nil, err
+		return ConstRootMetadata{}, err
 	}
 
 	mdHandle, err := MakeTlfHandle(ctx, bareMdHandle, md.config.KBPKI())
 	if err != nil {
-		return nil, err
+		return ConstRootMetadata{}, err
 	}
 
 	handleResolvesToMdHandle, partialResolvedHandle, err :=
 		handle.ResolvesTo(
 			ctx, md.config.Codec(), md.config.KBPKI(), *mdHandle)
 	if err != nil {
-		return nil, err
+		return ConstRootMetadata{}, err
 	}
 
 	// TODO: If handle has conflict info, mdHandle should, too.
@@ -241,13 +240,13 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 		mdHandle.ResolvesTo(
 			ctx, md.config.Codec(), md.config.KBPKI(), *handle)
 	if err != nil {
-		return nil, err
+		return ConstRootMetadata{}, err
 	}
 
 	handlePath := handle.GetCanonicalPath()
 	mdHandlePath := mdHandle.GetCanonicalPath()
 	if !handleResolvesToMdHandle && !mdHandleResolvesToHandle {
-		return nil, MDMismatchError{
+		return ConstRootMetadata{}, MDMismatchError{
 			handle.GetCanonicalPath(),
 			fmt.Errorf(
 				"MD (id=%s) contained unexpected handle path %s (%s -> %s) (%s -> %s)",
@@ -269,21 +268,21 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 	// the upper layers of the new name, either directly, or
 	// through a rekey.
 	if err := md.processMetadata(ctx, mdHandle, rmds); err != nil {
-		return nil, err
+		return ConstRootMetadata{}, err
 	}
 
-	return &rmds.MD, nil
+	return ConstRootMetadata{&rmds.MD}, nil
 }
 
 // GetForHandle implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle) (
-	*RootMetadata, error) {
+	ConstRootMetadata, error) {
 	return md.getForHandle(ctx, handle, Merged)
 }
 
 // GetUnmergedForHandle implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetUnmergedForHandle(ctx context.Context, handle *TlfHandle) (
-	*RootMetadata, error) {
+	ConstRootMetadata, error) {
 	return md.getForHandle(ctx, handle, Unmerged)
 }
 
@@ -310,51 +309,50 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 }
 
 func (md *MDOpsStandard) getForTLF(ctx context.Context, id TlfID,
-	bid BranchID, mStatus MergeStatus) (*RootMetadata, error) {
+	bid BranchID, mStatus MergeStatus) (ConstRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetForTLF(ctx, id, bid, mStatus)
 	if err != nil {
-		return nil, err
+		return ConstRootMetadata{}, err
 	}
 	if rmds == nil {
 		// Possible if mStatus is Unmerged
-		return nil, nil
+		return ConstRootMetadata{}, nil
 	}
 	bareHandle, err := rmds.MD.MakeBareTlfHandle()
 	if err != nil {
-		return nil, err
+		return ConstRootMetadata{}, err
 	}
 	handle, err := MakeTlfHandle(ctx, bareHandle, md.config.KBPKI())
 	if err != nil {
-		return nil, err
+		return ConstRootMetadata{}, err
 	}
 	err = md.processMetadataWithID(ctx, id, bid, handle, rmds)
 	if err != nil {
-		return nil, err
+		return ConstRootMetadata{}, err
 	}
-	return &rmds.MD, nil
+	return ConstRootMetadata{&rmds.MD}, nil
 }
 
 // GetForTLF implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetForTLF(ctx context.Context, id TlfID) (*RootMetadata, error) {
+func (md *MDOpsStandard) GetForTLF(ctx context.Context, id TlfID) (ConstRootMetadata, error) {
 	return md.getForTLF(ctx, id, NullBranchID, Merged)
 }
 
 // GetUnmergedForTLF implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetUnmergedForTLF(ctx context.Context, id TlfID, bid BranchID) (
-	*RootMetadata, error) {
+func (md *MDOpsStandard) GetUnmergedForTLF(ctx context.Context, id TlfID, bid BranchID) (ConstRootMetadata, error) {
 	return md.getForTLF(ctx, id, bid, Unmerged)
 }
 
 func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 	bid BranchID, rmds []*RootMetadataSigned) (
-	[]*RootMetadata, error) {
+	[]ConstRootMetadata, error) {
 	if rmds == nil {
 		return nil, nil
 	}
 
 	// Verify that the given MD objects form a valid sequence.
 	var prevMD *RootMetadata
-	rmd := make([]*RootMetadata, 0, len(rmds))
+	rmd := make([]ConstRootMetadata, 0, len(rmds))
 	for _, r := range rmds {
 		bareHandle, err := r.MD.MakeBareTlfHandle()
 		if err != nil {
@@ -381,7 +379,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 			return nil, err
 		}
 		prevMD = &r.MD
-		rmd = append(rmd, &r.MD)
+		rmd = append(rmd, ConstRootMetadata{&r.MD})
 	}
 
 	// TODO: in the case where lastRoot == MdID{}, should we verify
@@ -395,7 +393,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 
 func (md *MDOpsStandard) getRange(ctx context.Context, id TlfID,
 	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
-	[]*RootMetadata, error) {
+	[]ConstRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetRange(ctx, id, bid, mStatus, start,
 		stop)
 	if err != nil {
@@ -410,13 +408,13 @@ func (md *MDOpsStandard) getRange(ctx context.Context, id TlfID,
 
 // GetRange implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetRange(ctx context.Context, id TlfID,
-	start, stop MetadataRevision) ([]*RootMetadata, error) {
+	start, stop MetadataRevision) ([]ConstRootMetadata, error) {
 	return md.getRange(ctx, id, NullBranchID, Merged, start, stop)
 }
 
 // GetUnmergedRange implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id TlfID,
-	bid BranchID, start, stop MetadataRevision) ([]*RootMetadata, error) {
+	bid BranchID, start, stop MetadataRevision) ([]ConstRootMetadata, error) {
 	return md.getRange(ctx, id, bid, Unmerged, start, stop)
 }
 

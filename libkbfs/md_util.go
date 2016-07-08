@@ -18,7 +18,7 @@ type mdRange struct {
 
 func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 	start MetadataRevision, end MetadataRevision, mStatus MergeStatus) (
-	rmds []*RootMetadata, err error) {
+	rmds []ConstRootMetadata, err error) {
 	// The range is invalid.  Don't treat as an error though; it just
 	// indicates that we don't yet know about any revisions.
 	if start < MetadataRevisionInitial || end < MetadataRevisionInitial {
@@ -50,12 +50,12 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 				maxSlot = slot
 			}
 		}
-		rmds = append(rmds, rmd.RootMetadata)
+		rmds = append(rmds, rmd)
 	}
 
 	// Try to fetch the rest from the server.  TODO: parallelize me.
 	for _, r := range toDownload {
-		var fetchedRmds []*RootMetadata
+		var fetchedRmds []ConstRootMetadata
 		switch mStatus {
 		case Merged:
 			fetchedRmds, err = config.MDOps().GetRange(
@@ -80,7 +80,7 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 			}
 
 			rmds[slot] = rmd
-			if err := mdcache.Put(ConstRootMetadata{rmd}); err != nil {
+			if err := mdcache.Put(rmd); err != nil {
 				config.MakeLogger("").CDebugf(ctx, "Error putting md "+
 					"%d into the cache: %v", rmd.Revision, err)
 			}
@@ -94,7 +94,7 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 	rmds = rmds[minSlot : maxSlot+1]
 	// check to make sure there are no holes
 	for i, rmd := range rmds {
-		if rmd == nil {
+		if rmd == (ConstRootMetadata{}) {
 			return nil, fmt.Errorf("No %s MD found for revision %d",
 				mStatus, int(start)+minSlot+i)
 		}
@@ -111,7 +111,7 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
 func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
-	startRev MetadataRevision) (mergedRmds []*RootMetadata, err error) {
+	startRev MetadataRevision) (mergedRmds []ConstRootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
 	if startRev < MetadataRevisionInitial {
@@ -152,14 +152,14 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 			}
 			latestRmd := mergedRmds[len(mergedRmds)-1]
 			if err := decryptMDPrivateData(ctx, config,
-				rmdCopy, latestRmd); err != nil {
+				rmdCopy, latestRmd.RootMetadata); err != nil {
 				return nil, err
 			}
 			// Overwrite the cached copy with the new copy
 			if err := config.MDCache().Put(ConstRootMetadata{rmdCopy}); err != nil {
 				return nil, err
 			}
-			mergedRmds[i] = rmdCopy
+			mergedRmds[i] = ConstRootMetadata{rmdCopy}
 		}
 	}
 	return mergedRmds, nil
@@ -174,7 +174,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 // instead of the cached versions.
 func getUnmergedMDUpdates(ctx context.Context, config Config, id TlfID,
 	bid BranchID, startRev MetadataRevision) (
-	currHead MetadataRevision, unmergedRmds []*RootMetadata, err error) {
+	currHead MetadataRevision, unmergedRmds []ConstRootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
 	if startRev < MetadataRevisionInitial {

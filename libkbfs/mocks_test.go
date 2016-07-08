@@ -2017,9 +2017,9 @@ func (_m *MockMDOps) EXPECT() *_MockMDOpsRecorder {
 	return _m.recorder
 }
 
-func (_m *MockMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (*RootMetadata, error) {
+func (_m *MockMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (ConstRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "GetForHandle", ctx, handle)
-	ret0, _ := ret[0].(*RootMetadata)
+	ret0, _ := ret[0].(ConstRootMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2028,9 +2028,9 @@ func (_mr *_MockMDOpsRecorder) GetForHandle(arg0, arg1 interface{}) *gomock.Call
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetForHandle", arg0, arg1)
 }
 
-func (_m *MockMDOps) GetUnmergedForHandle(ctx context.Context, handle *TlfHandle) (*RootMetadata, error) {
+func (_m *MockMDOps) GetUnmergedForHandle(ctx context.Context, handle *TlfHandle) (ConstRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "GetUnmergedForHandle", ctx, handle)
-	ret0, _ := ret[0].(*RootMetadata)
+	ret0, _ := ret[0].(ConstRootMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2039,9 +2039,9 @@ func (_mr *_MockMDOpsRecorder) GetUnmergedForHandle(arg0, arg1 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUnmergedForHandle", arg0, arg1)
 }
 
-func (_m *MockMDOps) GetForTLF(ctx context.Context, id TlfID) (*RootMetadata, error) {
+func (_m *MockMDOps) GetForTLF(ctx context.Context, id TlfID) (ConstRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "GetForTLF", ctx, id)
-	ret0, _ := ret[0].(*RootMetadata)
+	ret0, _ := ret[0].(ConstRootMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2050,9 +2050,9 @@ func (_mr *_MockMDOpsRecorder) GetForTLF(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetForTLF", arg0, arg1)
 }
 
-func (_m *MockMDOps) GetUnmergedForTLF(ctx context.Context, id TlfID, bid BranchID) (*RootMetadata, error) {
+func (_m *MockMDOps) GetUnmergedForTLF(ctx context.Context, id TlfID, bid BranchID) (ConstRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "GetUnmergedForTLF", ctx, id, bid)
-	ret0, _ := ret[0].(*RootMetadata)
+	ret0, _ := ret[0].(ConstRootMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2061,9 +2061,9 @@ func (_mr *_MockMDOpsRecorder) GetUnmergedForTLF(arg0, arg1, arg2 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUnmergedForTLF", arg0, arg1, arg2)
 }
 
-func (_m *MockMDOps) GetRange(ctx context.Context, id TlfID, start MetadataRevision, stop MetadataRevision) ([]*RootMetadata, error) {
+func (_m *MockMDOps) GetRange(ctx context.Context, id TlfID, start MetadataRevision, stop MetadataRevision) ([]ConstRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "GetRange", ctx, id, start, stop)
-	ret0, _ := ret[0].([]*RootMetadata)
+	ret0, _ := ret[0].([]ConstRootMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2072,9 +2072,9 @@ func (_mr *_MockMDOpsRecorder) GetRange(arg0, arg1, arg2, arg3 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetRange", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockMDOps) GetUnmergedRange(ctx context.Context, id TlfID, bid BranchID, start MetadataRevision, stop MetadataRevision) ([]*RootMetadata, error) {
+func (_m *MockMDOps) GetUnmergedRange(ctx context.Context, id TlfID, bid BranchID, start MetadataRevision, stop MetadataRevision) ([]ConstRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "GetUnmergedRange", ctx, id, bid, start, stop)
-	ret0, _ := ret[0].([]*RootMetadata)
+	ret0, _ := ret[0].([]ConstRootMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

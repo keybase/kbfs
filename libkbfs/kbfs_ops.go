@@ -246,7 +246,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 	if err != nil {
 		return nil, EntryInfo{}, err
 	}
-	if md == nil {
+	if md == (ConstRootMetadata{}) {
 		md, err = mdops.GetForHandle(ctx, h)
 		if err != nil {
 			return nil, EntryInfo{}, err
@@ -274,7 +274,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 	if branch == MasterBranch {
 		// For now, only the master branch can be initialized with a
 		// branch new MD object.
-		created, err = ops.CheckForNewMDAndInit(ctx, md)
+		created, err = ops.CheckForNewMDAndInit(ctx, md.RootMetadata)
 		if err != nil {
 			return nil, EntryInfo{}, err
 		}

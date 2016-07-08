@@ -448,7 +448,7 @@ func (fbm *folderBlockManager) processBlocksToDelete(ctx context.Context, toDele
 				"archiving it", rmds[0].Revision)
 			// Don't block on archiving the MD, because that could
 			// lead to deadlock.
-			fbm.archiveUnrefBlocksNoWait(rmds[0])
+			fbm.archiveUnrefBlocksNoWait(rmds[0].RootMetadata)
 			return nil
 		}
 
@@ -660,7 +660,7 @@ func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
 		for i := len(rmds) - 1; i >= 0; i-- {
 			rmd := rmds[i]
 			if mostRecentOldEnoughRev == MetadataRevisionUninitialized &&
-				fbm.isOldEnough(rmd) {
+				fbm.isOldEnough(rmd.RootMetadata) {
 				fbm.log.CDebugf(ctx, "Revision %d is older than the unref "+
 					"age %s", rmd.Revision,
 					fbm.config.QuotaReclamationMinUnrefAge())

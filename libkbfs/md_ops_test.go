@@ -152,7 +152,7 @@ func TestMDOpsGetForHandlePublicSuccess(t *testing.T) {
 		t.Errorf("Got error on get: %v", err)
 	} else if rmd2.ID != rmds.MD.ID {
 		t.Errorf("Got back wrong id on get: %v (expected %v)", rmd2.ID, rmds.MD.ID)
-	} else if rmd2 != &rmds.MD {
+	} else if rmd2.RootMetadata != &rmds.MD {
 		t.Errorf("Got back wrong data on get: %v (expected %v)", rmd2, &rmds.MD)
 	}
 }
@@ -178,7 +178,7 @@ func TestMDOpsGetForHandlePrivateSuccess(t *testing.T) {
 		t.Errorf("Got error on get: %v", err)
 	} else if rmd2.ID != rmds.MD.ID {
 		t.Errorf("Got back wrong id on get: %v (expected %v)", rmd2.ID, rmds.MD.ID)
-	} else if rmd2 != &rmds.MD {
+	} else if rmd2.RootMetadata != &rmds.MD {
 		t.Errorf("Got back wrong data on get: %v (expected %v)", rmd2, &rmds.MD)
 	}
 }
@@ -421,7 +421,7 @@ func TestMDOpsGetSuccess(t *testing.T) {
 
 	if rmd2, err := config.MDOps().GetForTLF(ctx, rmds.MD.ID); err != nil {
 		t.Errorf("Got error on get: %v", err)
-	} else if rmd2 != &rmds.MD {
+	} else if rmd2.RootMetadata != &rmds.MD {
 		t.Errorf("Got back wrong data on get: %v (expected %v)", rmd2, &rmds.MD)
 	}
 }

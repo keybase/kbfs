@@ -791,10 +791,11 @@ func (fbo *folderBranchOps) getMDLocked(
 	mdops := fbo.config.MDOps()
 
 	// get the head of the unmerged branch for this device (if any)
-	md, err = mdops.GetUnmergedForTLF(ctx, fbo.id(), NullBranchID)
+	cmd, err := mdops.GetUnmergedForTLF(ctx, fbo.id(), NullBranchID)
 	if err != nil {
 		return nil, err
 	}
+	md = cmd.RootMetadata
 
 	mergedMD, err := mdops.GetForTLF(ctx, fbo.id())
 	if err != nil {
@@ -803,7 +804,7 @@ func (fbo *folderBranchOps) getMDLocked(
 
 	if md == nil {
 		// There are no unmerged MDs for this device, so just use the current head.
-		md = mergedMD
+		md = mergedMD.RootMetadata
 	} else {
 		func() {
 			fbo.headLock.Lock(lState)
@@ -3336,10 +3337,10 @@ func (fbo *folderBranchOps) getCurrMDRevision(
 	return fbo.getCurrMDRevisionLocked(lState)
 }
 
-type applyMDUpdatesFunc func(context.Context, *lockState, []*RootMetadata) error
+type applyMDUpdatesFunc func(context.Context, *lockState, []ConstRootMetadata) error
 
 func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
-	lState *lockState, rmds []*RootMetadata) error {
+	lState *lockState, rmds []ConstRootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 
 	fbo.headLock.Lock(lState)
@@ -3378,7 +3379,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			return err
 		}
 
-		err := fbo.setHeadSuccessorLocked(ctx, lState, rmd)
+		err := fbo.setHeadSuccessorLocked(ctx, lState, rmd.RootMetadata)
 		if err != nil {
 			return err
 		}
@@ -3387,14 +3388,14 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			continue
 		}
 		for _, op := range rmd.data.Changes.Ops {
-			fbo.notifyOneOpLocked(ctx, lState, op, rmd)
+			fbo.notifyOneOpLocked(ctx, lState, op, rmd.RootMetadata)
 		}
 	}
 	return nil
 }
 
 func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
-	lState *lockState, rmds []*RootMetadata) error {
+	lState *lockState, rmds []ConstRootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 
 	fbo.headLock.Lock(lState)
@@ -3425,7 +3426,7 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 		// TODO: Check that the revisions are equal only for
 		// the first iteration.
 		if rmd.Revision < fbo.getCurrMDRevisionLocked(lState) {
-			err := fbo.setHeadPredecessorLocked(ctx, lState, rmd)
+			err := fbo.setHeadPredecessorLocked(ctx, lState, rmd.RootMetadata)
 			if err != nil {
 				return err
 			}
@@ -3446,14 +3447,14 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 					err, ops[j])
 				continue
 			}
-			fbo.notifyOneOpLocked(ctx, lState, io, rmd)
+			fbo.notifyOneOpLocked(ctx, lState, io, rmd.RootMetadata)
 		}
 	}
 	return nil
 }
 
 func (fbo *folderBranchOps) applyMDUpdates(ctx context.Context,
-	lState *lockState, rmds []*RootMetadata) error {
+	lState *lockState, rmds []ConstRootMetadata) error {
 	fbo.mdWriterLock.Lock(lState)
 	defer fbo.mdWriterLock.Unlock(lState)
 	return fbo.applyMDUpdatesLocked(ctx, lState, rmds)
@@ -3503,7 +3504,7 @@ func (fbo *folderBranchOps) getAndApplyMDUpdates(ctx context.Context,
 // should be modified with care.
 func (fbo *folderBranchOps) getUnmergedMDUpdates(
 	ctx context.Context, lState *lockState) (
-	MetadataRevision, []*RootMetadata, error) {
+	MetadataRevision, []ConstRootMetadata, error) {
 	// acquire mdWriterLock to read the current branch ID.
 	bid := func() BranchID {
 		fbo.mdWriterLock.Lock(lState)
@@ -3516,7 +3517,7 @@ func (fbo *folderBranchOps) getUnmergedMDUpdates(
 
 func (fbo *folderBranchOps) getUnmergedMDUpdatesLocked(
 	ctx context.Context, lState *lockState) (
-	MetadataRevision, []*RootMetadata, error) {
+	MetadataRevision, []ConstRootMetadata, error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
 	return getUnmergedMDUpdates(ctx, fbo.config, fbo.id(),
@@ -3558,7 +3559,7 @@ func (fbo *folderBranchOps) undoUnmergedMDUpdatesLocked(
 	err = func() error {
 		fbo.headLock.Lock(lState)
 		defer fbo.headLock.Unlock(lState)
-		err := fbo.setHeadPredecessorLocked(ctx, lState, rmds[0])
+		err := fbo.setHeadPredecessorLocked(ctx, lState, rmds[0].RootMetadata)
 		if err != nil {
 			return err
 		}

@@ -217,12 +217,13 @@ func (cr *ConflictResolver) checkDone(ctx context.Context) error {
 func (cr *ConflictResolver) getMDs(ctx context.Context, lState *lockState) (
 	unmerged []*RootMetadata, merged []*RootMetadata, err error) {
 	// first get all outstanding unmerged MDs for this device
-	branchPoint, unmerged, err := cr.fbo.getUnmergedMDUpdates(ctx, lState)
+	branchPoint, unmergedC, err := cr.fbo.getUnmergedMDUpdates(ctx, lState)
 	if err != nil {
 		return nil, nil, err
 	}
+	unmerged = make([]*RootMetadata, len(unmergedC))
 	// Deep copy because CR may change them.
-	for i, md := range unmerged {
+	for i, md := range unmergedC {
 		mdCopy, err := md.deepCopy(cr.config.Codec(), true)
 		if err != nil {
 			return nil, nil, err
@@ -231,13 +232,14 @@ func (cr *ConflictResolver) getMDs(ctx context.Context, lState *lockState) (
 	}
 
 	// now get all the merged MDs, starting from after the branch point
-	merged, err = getMergedMDUpdates(ctx, cr.fbo.config, cr.fbo.id(),
+	mergedC, err := getMergedMDUpdates(ctx, cr.fbo.config, cr.fbo.id(),
 		branchPoint+1)
 	if err != nil {
 		return nil, nil, err
 	}
+	merged = make([]*RootMetadata, len(mergedC))
 	// Deep copy because CR may change them.
-	for i, md := range merged {
+	for i, md := range mergedC {
 		mdCopy, err := md.deepCopy(cr.config.Codec(), true)
 		if err != nil {
 			return nil, nil, err

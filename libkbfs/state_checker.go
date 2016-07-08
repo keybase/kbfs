@@ -272,7 +272,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 			"node pointer %v", e, g)
 	}
 	actualLiveBlocks[rootPath.tailPointer()] = currMD.data.Dir.EncodedSize
-	if err := sc.findAllBlocksInPath(ctx, lState, ops, currMD, rootPath,
+	if err := sc.findAllBlocksInPath(ctx, lState, ops, currMD.RootMetadata, rootPath,
 		actualLiveBlocks); err != nil {
 		return err
 	}

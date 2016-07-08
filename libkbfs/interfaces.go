@@ -779,32 +779,32 @@ type MDOps interface {
 	// creates the folder if one doesn't exist yet, and the logged-in
 	// user has permission to do so.
 	GetForHandle(ctx context.Context, handle *TlfHandle) (
-		*RootMetadata, error)
+		ConstRootMetadata, error)
 
 	// GetUnmergedForHandle is the same as the above but for unmerged
 	// metadata history.
 	GetUnmergedForHandle(ctx context.Context, handle *TlfHandle) (
-		*RootMetadata, error)
+		ConstRootMetadata, error)
 
 	// GetForTLF returns the current metadata object
 	// corresponding to the given top-level folder, if the logged-in
 	// user has read permission on the folder.
-	GetForTLF(ctx context.Context, id TlfID) (*RootMetadata, error)
+	GetForTLF(ctx context.Context, id TlfID) (ConstRootMetadata, error)
 
 	// GetUnmergedForTLF is the same as the above but for unmerged
 	// metadata.
 	GetUnmergedForTLF(ctx context.Context, id TlfID, bid BranchID) (
-		*RootMetadata, error)
+		ConstRootMetadata, error)
 
 	// GetRange returns a range of metadata objects corresponding to
 	// the passed revision numbers (inclusive).
 	GetRange(ctx context.Context, id TlfID, start, stop MetadataRevision) (
-		[]*RootMetadata, error)
+		[]ConstRootMetadata, error)
 
 	// GetUnmergedRange is the same as the above but for unmerged
 	// metadata history (inclusive).
 	GetUnmergedRange(ctx context.Context, id TlfID, bid BranchID,
-		start, stop MetadataRevision) ([]*RootMetadata, error)
+		start, stop MetadataRevision) ([]ConstRootMetadata, error)
 
 	// Put stores the metadata object for the given
 	// top-level folder.
