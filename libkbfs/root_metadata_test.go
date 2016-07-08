@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"reflect"
 	"sort"
-	"sync"
 	"testing"
 
 	"github.com/keybase/client/go/libkb"
@@ -381,78 +380,72 @@ func (rkgf tlfReaderKeyGenerationsFuture) toCurrent() TLFReaderKeyGenerations {
 // rootMetadataWrapper exists only to add extra depth to fields
 // in RootMetadata, so that they may be overridden in
 // rootMetadataFuture.
-type rootMetadataWrapper struct {
-	RootMetadata
+type bareRootMetadataWrapper struct {
+	BareRootMetadata
 }
 
-type rootMetadataFuture struct {
-	// Override RootMetadata.WriterMetadata. Put it first to work
+type bareRootMetadataFuture struct {
+	// Override BareRootMetadata.WriterMetadata. Put it first to work
 	// around a bug in codec's field lookup code.
 	//
 	// TODO: Report and fix this bug upstream.
 	writerMetadataFuture
 
-	rootMetadataWrapper
-	// Override RootMetadata.RKeys.
+	bareRootMetadataWrapper
+	// Override BareRootMetadata.RKeys.
 	RKeys tlfReaderKeyGenerationsFuture `codec:",omitempty"`
 	extra
 }
 
-func (rmf *rootMetadataFuture) toCurrent() *RootMetadata {
-	rm := rmf.rootMetadataWrapper.RootMetadata
-	rm.WriterMetadata = WriterMetadata(rmf.writerMetadataFuture.toCurrent())
-	rm.RKeys = rmf.RKeys.toCurrent()
+func (brmf *bareRootMetadataFuture) toCurrent() *BareRootMetadata {
+	rm := brmf.bareRootMetadataWrapper.BareRootMetadata
+	rm.WriterMetadata = WriterMetadata(brmf.writerMetadataFuture.toCurrent())
+	rm.RKeys = brmf.RKeys.toCurrent()
 	return &rm
 }
 
-func (rmf *rootMetadataFuture) toCurrentStruct() currentStruct {
-	return rmf.toCurrent()
+func (brmf *bareRootMetadataFuture) toCurrentStruct() currentStruct {
+	return brmf.toCurrent()
 }
 
-func makeFakeRootMetadataFuture(t *testing.T) *rootMetadataFuture {
+func makeFakeBareRootMetadataFuture(t *testing.T) *bareRootMetadataFuture {
 	wmf := makeFakeWriterMetadataFuture(t)
 	rkb := makeFakeTLFReaderKeyBundleFuture(t)
 	h, err := DefaultHash([]byte("fake buf"))
 	require.NoError(t, err)
 	sa, _ := libkb.NormalizeSocialAssertion("bar@github")
-	rmf := rootMetadataFuture{
+	rmf := bareRootMetadataFuture{
 		wmf,
-		rootMetadataWrapper{
-			RootMetadata{
-				BareRootMetadata{
-					// This needs to be list format so it fails to compile if new
-					// fields are added, effectively checking at compile time
-					// whether new fields have been added
-					WriterMetadata{},
-					SignatureInfo{
-						100,
-						[]byte{0xc},
-						MakeFakeVerifyingKeyOrBust("fake kid"),
-					},
-					"uid1",
-					0xb,
-					5,
-					MdID{h},
-					nil,
-					[]keybase1.SocialAssertion{sa},
-					nil,
-					nil,
-					codec.UnknownFieldSetHandler{},
+		bareRootMetadataWrapper{
+			BareRootMetadata{
+				// This needs to be list format so it fails to compile if new
+				// fields are added, effectively checking at compile time
+				// whether new fields have been added
+				WriterMetadata{},
+				SignatureInfo{
+					100,
+					[]byte{0xc},
+					MakeFakeVerifyingKeyOrBust("fake kid"),
 				},
-				PrivateMetadata{},
+				"uid1",
+				0xb,
+				5,
+				MdID{h},
 				nil,
-				sync.RWMutex{},
-				MdID{},
+				[]keybase1.SocialAssertion{sa},
+				nil,
+				nil,
+				codec.UnknownFieldSetHandler{},
 			},
 		},
 		[]*tlfReaderKeyBundleFuture{&rkb},
-		makeExtraOrBust("RootMetadata", t),
+		makeExtraOrBust("BareRootMetadata", t),
 	}
 	return &rmf
 }
 
-func TestRootMetadataUnknownFields(t *testing.T) {
-	testStructUnknownFields(t, makeFakeRootMetadataFuture(t))
+func TestBareRootMetadataUnknownFields(t *testing.T) {
+	testStructUnknownFields(t, makeFakeBareRootMetadataFuture(t))
 }
 
 func TestIsValidRekeyRequestBasic(t *testing.T) {
