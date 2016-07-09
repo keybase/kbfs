@@ -976,11 +976,13 @@ func makeRekeyReadError(
 	return NeedOtherRekeyError{tlfName}
 }
 
+// ImmutableRootMetadata is an immutable version of mdID.
 type ImmutableRootMetadata struct {
 	ConstRootMetadata
 	mdID MdID
 }
 
+// MakeImmutableRootMetadata makes a new ImmutableRootMetadata.
 func MakeImmutableRootMetadata(rmd *RootMetadata, mdID MdID) ImmutableRootMetadata {
 	return ImmutableRootMetadata{ConstRootMetadata{rmd}, mdID}
 }
