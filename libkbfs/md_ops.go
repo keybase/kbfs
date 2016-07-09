@@ -192,49 +192,49 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 }
 
 func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
-	mStatus MergeStatus) (ConstRootMetadata, error) {
+	mStatus MergeStatus) (TlfID, ConstRootMetadata, error) {
 	mdserv := md.config.MDServer()
 	bh, err := handle.ToBareHandle()
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return TlfID{}, ConstRootMetadata{}, err
 	}
 
 	id, rmds, err := mdserv.GetForHandle(ctx, bh, mStatus)
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return TlfID{}, ConstRootMetadata{}, err
 	}
 
 	if rmds == nil {
 		if mStatus == Unmerged {
 			// don't automatically create unmerged MDs
-			return ConstRootMetadata{}, nil
+			return TlfID{}, ConstRootMetadata{}, nil
 		}
 		var rmd RootMetadata
 		err := updateNewRootMetadata(&rmd.BareRootMetadata, id, bh)
 		if err != nil {
-			return ConstRootMetadata{}, err
+			return TlfID{}, ConstRootMetadata{}, err
 		}
 		// Need to keep the TLF handle around long enough to
 		// rekey the metadata for the first time.
 		rmd.tlfHandle = handle
-		return MakeConstRootMetadata(&rmd), nil
+		return id, MakeConstRootMetadata(&rmd), nil
 	}
 
 	bareMdHandle, err := rmds.MD.MakeBareTlfHandle()
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return TlfID{}, ConstRootMetadata{}, err
 	}
 
 	mdHandle, err := MakeTlfHandle(ctx, bareMdHandle, md.config.KBPKI())
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return TlfID{}, ConstRootMetadata{}, err
 	}
 
 	handleResolvesToMdHandle, partialResolvedHandle, err :=
 		handle.ResolvesTo(
 			ctx, md.config.Codec(), md.config.KBPKI(), *mdHandle)
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return TlfID{}, ConstRootMetadata{}, err
 	}
 
 	// TODO: If handle has conflict info, mdHandle should, too.
@@ -242,13 +242,13 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 		mdHandle.ResolvesTo(
 			ctx, md.config.Codec(), md.config.KBPKI(), *handle)
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return TlfID{}, ConstRootMetadata{}, err
 	}
 
 	handlePath := handle.GetCanonicalPath()
 	mdHandlePath := mdHandle.GetCanonicalPath()
 	if !handleResolvesToMdHandle && !mdHandleResolvesToHandle {
-		return ConstRootMetadata{}, MDMismatchError{
+		return TlfID{}, ConstRootMetadata{}, MDMismatchError{
 			handle.GetCanonicalPath(),
 			fmt.Errorf(
 				"MD (id=%s) contained unexpected handle path %s (%s -> %s) (%s -> %s)",
@@ -271,22 +271,23 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 	// through a rekey.
 	rmd, err := md.processMetadata(ctx, mdHandle, rmds)
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return TlfID{}, ConstRootMetadata{}, err
 	}
 
-	return rmd, nil
+	return id, rmd, nil
 }
 
 // GetForHandle implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle) (
-	ConstRootMetadata, error) {
+	TlfID, ConstRootMetadata, error) {
 	return md.getForHandle(ctx, handle, Merged)
 }
 
 // GetUnmergedForHandle implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetUnmergedForHandle(ctx context.Context, handle *TlfHandle) (
 	ConstRootMetadata, error) {
-	return md.getForHandle(ctx, handle, Unmerged)
+	_, rmd, err := md.getForHandle(ctx, handle, Unmerged)
+	return rmd, err
 }
 
 func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,

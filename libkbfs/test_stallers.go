@@ -381,14 +381,15 @@ func (m *stallingMDOps) maybeStall(ctx context.Context, opName StallableMDOp) {
 }
 
 func (m *stallingMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
-	md ConstRootMetadata, err error) {
+	tlfID TlfID, md ConstRootMetadata, err error) {
 	m.maybeStall(ctx, StallableMDGetForHandle)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetForHandle error
-		md, errGetForHandle = m.delegate.GetForHandle(ctx, handle)
+		tlfID, md, errGetForHandle =
+			m.delegate.GetForHandle(ctx, handle)
 		return errGetForHandle
 	})
-	return md, err
+	return tlfID, md, err
 }
 
 func (m *stallingMDOps) GetUnmergedForHandle(ctx context.Context,

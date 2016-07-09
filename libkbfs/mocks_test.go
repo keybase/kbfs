@@ -2017,11 +2017,12 @@ func (_m *MockMDOps) EXPECT() *_MockMDOpsRecorder {
 	return _m.recorder
 }
 
-func (_m *MockMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (ConstRootMetadata, error) {
+func (_m *MockMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (TlfID, ConstRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "GetForHandle", ctx, handle)
-	ret0, _ := ret[0].(ConstRootMetadata)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(TlfID)
+	ret1, _ := ret[1].(ConstRootMetadata)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 func (_mr *_MockMDOpsRecorder) GetForHandle(arg0, arg1 interface{}) *gomock.Call {

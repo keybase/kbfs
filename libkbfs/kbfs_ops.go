@@ -247,7 +247,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 		return nil, EntryInfo{}, err
 	}
 	if md == (ConstRootMetadata{}) {
-		md, err = mdops.GetForHandle(ctx, h)
+		_, md, err = mdops.GetForHandle(ctx, h)
 		if err != nil {
 			return nil, EntryInfo{}, err
 		}

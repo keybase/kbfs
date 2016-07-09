@@ -779,7 +779,7 @@ type MDOps interface {
 	// creates the folder if one doesn't exist yet, and the logged-in
 	// user has permission to do so.
 	GetForHandle(ctx context.Context, handle *TlfHandle) (
-		ConstRootMetadata, error)
+		TlfID, ConstRootMetadata, error)
 
 	// GetUnmergedForHandle is the same as the above but for unmerged
 	// metadata history.
