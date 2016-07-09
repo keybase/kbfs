@@ -1062,15 +1062,20 @@ func (fbo *folderBranchOps) checkNode(node Node) error {
 
 // CheckForNewMDAndInit sees whether the given MD object has been
 // initialized yet; if not, it does so.
-func (fbo *folderBranchOps) CheckForNewMDAndInit(
-	ctx context.Context, md *RootMetadata) (created bool, err error) {
-	fbo.log.CDebugf(ctx, "CheckForNewMDAndInit, revision=%d (%s)",
+func (fbo *folderBranchOps) SetInitialMD(
+	ctx context.Context, md ConstRootMetadata) (err error) {
+	fbo.log.CDebugf(ctx, "SetInitialMD, revision=%d (%s)",
 		md.Revision, md.MergedStatus())
 	defer func() {
-		fbo.deferLog.CDebugf(ctx, "Done: %v, created: %t", err, created)
+		fbo.deferLog.CDebugf(ctx, "Done: %v", err)
 	}()
 
-	err = runUnlessCanceled(ctx, func() error {
+	if md.data.Dir.Type != Dir {
+		// Not initialized.
+		return fmt.Errorf("MD with revision=%d not initialized", md.Revision)
+	}
+
+	return runUnlessCanceled(ctx, func() error {
 		fb := FolderBranch{md.ID, MasterBranch}
 		if fb != fbo.folderBranch {
 			return WrongOpsError{fbo.folderBranch, fb}
@@ -1083,7 +1088,7 @@ func (fbo *folderBranchOps) CheckForNewMDAndInit(
 		// user is not a valid writer.)  Also, we want to make sure we
 		// fail before we set the head, otherwise future calls will
 		// succeed incorrectly.
-		err = fbo.identifyOnce(ctx, MakeConstRootMetadata(md))
+		err = fbo.identifyOnce(ctx, md)
 		if err != nil {
 			return err
 		}
@@ -1108,34 +1113,69 @@ func (fbo *folderBranchOps) CheckForNewMDAndInit(
 			}()
 		}
 
-		if md.data.Dir.Type == Dir {
-			// this MD is already initialized
-			fbo.headLock.Lock(lState)
-			defer fbo.headLock.Unlock(lState)
-
-			// Only update the head the first time; later it will be
-			// updated either directly via writes or through the
-			// background update processor.
-			if fbo.head == (ImmutableRootMetadata{}) {
-				mdID, err := md.MetadataID(fbo.config.Crypto())
-				if err != nil {
-					return err
-				}
-				err = fbo.setInitialHeadTrustedLocked(ctx, lState, MakeImmutableRootMetadata(md, mdID))
-				if err != nil {
-					return err
-				}
+		fbo.headLock.Lock(lState)
+		defer fbo.headLock.Unlock(lState)
+		// Only update the head the first time; later it will be
+		// updated either directly via writes or through the
+		// background update processor.
+		if fbo.head == (ImmutableRootMetadata{}) {
+			mdID, err := md.MetadataID(fbo.config.Crypto())
+			if err != nil {
+				return err
 			}
-			return nil
+			err = fbo.setInitialHeadTrustedLocked(ctx, lState, MakeImmutableRootMetadata(md.RootMetadata, mdID))
+			if err != nil {
+				return err
+			}
 		}
-		// Initialize if needed
-		created = true
-		return fbo.initMDLocked(ctx, lState, md)
+		return nil
 	})
+}
+
+func (fbo *folderBranchOps) InitNewMD(ctx context.Context, id TlfID, handle *TlfHandle) (err error) {
+	fbo.log.CDebugf(ctx, "InitNewMD")
+	defer func() {
+		fbo.deferLog.CDebugf(ctx, "Done: %v", err)
+	}()
+
+	bh, err := handle.ToBareHandle()
 	if err != nil {
-		return false, err
+		return err
 	}
-	return created, nil
+
+	var rmd RootMetadata
+	err = updateNewRootMetadata(&rmd.BareRootMetadata, id, bh)
+	if err != nil {
+		return err
+	}
+	// Need to keep the TLF handle around long enough to
+	// rekey the metadata for the first time.
+	rmd.tlfHandle = handle
+
+	return runUnlessCanceled(ctx, func() error {
+		fb := FolderBranch{rmd.ID, MasterBranch}
+		if fb != fbo.folderBranch {
+			return WrongOpsError{fbo.folderBranch, fb}
+		}
+
+		// Always identify first when trying to initialize the folder,
+		// even if we turn out not to be a writer.  (We can't rely on
+		// the identifyOnce call in getMDLocked, because that isn't
+		// called from the initialization code path when the local
+		// user is not a valid writer.)  Also, we want to make sure we
+		// fail before we set the head, otherwise future calls will
+		// succeed incorrectly.
+		err = fbo.identifyOnce(ctx, MakeConstRootMetadata(&rmd))
+		if err != nil {
+			return err
+		}
+
+		lState := makeFBOLockState()
+
+		fbo.mdWriterLock.Lock(lState)
+		defer fbo.mdWriterLock.Unlock(lState)
+		return fbo.initMDLocked(ctx, lState, &rmd)
+	})
 }
 
 // execMDReadNoIdentifyThenMDWrite first tries to execute the
