@@ -392,15 +392,12 @@ func (ccs *crChains) makeChainForOp(op op) error {
 		}
 		co.setWriterInfo(realOp.getWriterInfo())
 		co.renamed = true
-
 		// ndr may be zero if this is a post-resolution chain,
 		// so set co.Dir.Ref manually.
-		if ndr != zeroPtr {
-			co.Dir.Ref = ndr
-			err = ccs.addOp(ndr, co)
-			if err != nil {
-				return err
-			}
+		co.Dir.Ref = ndr
+		err = ccs.addOp(ndr, co)
+		if err != nil {
+			return err
 		}
 
 		// also keep track of the new parent for the renamed node
