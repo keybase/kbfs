@@ -247,9 +247,27 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 		return nil, EntryInfo{}, err
 	}
 	if md == (ConstRootMetadata{}) {
-		_, md, err = mdops.GetForHandle(ctx, h)
+		var id TlfID
+		id, md, err = mdops.GetForHandle(ctx, h)
 		if err != nil {
 			return nil, EntryInfo{}, err
+		}
+
+		if md == (ConstRootMetadata{}) {
+			bh, err := h.ToBareHandle()
+			if err != nil {
+				return nil, EntryInfo{}, err
+			}
+
+			var rmd RootMetadata
+			err = updateNewRootMetadata(&rmd.BareRootMetadata, id, bh)
+			if err != nil {
+				return nil, EntryInfo{}, err
+			}
+			// Need to keep the TLF handle around long enough to
+			// rekey the metadata for the first time.
+			rmd.tlfHandle = h
+			md = ConstRootMetadata{&rmd}
 		}
 	}
 	fb := FolderBranch{Tlf: md.ID, Branch: branch}
