@@ -16,6 +16,20 @@ import (
 	"golang.org/x/net/context"
 )
 
+type shimCrypto struct {
+	Crypto
+	pure cryptoPure
+}
+
+func (c shimCrypto) MakeMdID(md *BareRootMetadata) (MdID, error) {
+	return c.pure.MakeMdID(md)
+}
+
+func injectShimCrypto(t *testing.T, config Config) {
+	crypto := shimCrypto{config.Crypto(), MakeCryptoCommon(NewCodecMsgpack(), logger.NewTestLogger(t))}
+	config.SetCrypto(crypto)
+}
+
 func mdOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config *ConfigMock, ctx context.Context) {
 	ctr := NewSafeTestReporter(t)
@@ -23,6 +37,7 @@ func mdOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config = NewConfigMock(mockCtrl, ctr)
 	mdops := NewMDOpsStandard(config)
 	config.SetMDOps(mdops)
+	injectShimCrypto(t, config)
 	interposeDaemonKBPKI(config, "alice", "bob", "charlie")
 	ctx = context.Background()
 	return
@@ -445,20 +460,6 @@ func TestMDOpsGetFailIdCheck(t *testing.T) {
 	}
 }
 
-type shimCrypto struct {
-	Crypto
-	pure cryptoPure
-}
-
-func (c shimCrypto) MakeMdID(md *BareRootMetadata) (MdID, error) {
-	return c.pure.MakeMdID(md)
-}
-
-func injectShimCrypto(t *testing.T, config Config) {
-	crypto := shimCrypto{config.Crypto(), MakeCryptoCommon(NewCodecMsgpack(), logger.NewTestLogger(t))}
-	config.SetCrypto(crypto)
-}
-
 func makeRMDSRange(t *testing.T, config Config,
 	start MetadataRevision, count int) []*RootMetadataSigned {
 	var rmdses []*RootMetadataSigned
@@ -478,8 +479,6 @@ func makeRMDSRange(t *testing.T, config Config,
 func testMDOpsGetRangeSuccess(t *testing.T, fromStart bool) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
-
-	injectShimCrypto(t, config)
 
 	rmdses := makeRMDSRange(t, config, 100, 5)
 
@@ -515,8 +514,6 @@ func TestMDOpsGetRangeFromStartSuccess(t *testing.T) {
 func TestMDOpsGetRangeFailBadPrevRoot(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
-
-	injectShimCrypto(t, config)
 
 	rmdses := makeRMDSRange(t, config, 100, 5)
 
@@ -658,8 +655,6 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 func TestMDOpsGetRangeFailFinal(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
-
-	injectShimCrypto(t, config)
 
 	rmds1, _ := newRMDS(t, config, false)
 	rmds1.MD.PrevRoot = fakeMdID(42)
