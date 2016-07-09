@@ -3380,7 +3380,12 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 			io, err := invertOpForLocalNotifications(ops[j])
 			if err != nil {
 				fbo.log.CWarningf(ctx,
-					"got error %v when invert op %v; skipping",
+					"got error %v when invert op %v; "+
+						"skipping. Open file handles "+
+						"may now be in an invalid "+
+						"state, which can be fixed by "+
+						"either closing them all or "+
+						"restarting KBFS.",
 					err, ops[j])
 				continue
 			}
