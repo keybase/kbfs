@@ -420,26 +420,26 @@ func (p ptrMatcher) String() string {
 	return fmt.Sprintf("Matches BlockPointer %v", p.ptr)
 }
 
-func fillInNewMD(t *testing.T, config *ConfigMock, rmd *RootMetadata) (
-	rootPtr BlockPointer, plainSize int, readyBlockData ReadyBlockData) {
+func fillInNewMD(t *testing.T, config *ConfigMock, rmd *RootMetadata) {
 	if !rmd.ID.IsPublic() {
-		config.mockKeyman.EXPECT().Rekey(gomock.Any(), rmd, gomock.Any()).
-			Do(func(ctx context.Context, rmd *RootMetadata, promptPaper bool) {
-				FakeInitialRekey(&rmd.BareRootMetadata, rmd.GetTlfHandle().ToBareHandleOrBust())
-			}).Return(true, nil, nil)
+		FakeInitialRekey(&rmd.BareRootMetadata, rmd.GetTlfHandle().ToBareHandleOrBust())
 	}
-	rootPtr = BlockPointer{
+	rootPtr := BlockPointer{
 		ID:      fakeBlockID(42),
 		KeyGen:  1,
 		DataVer: 1,
 	}
-	plainSize = 3
-	readyBlockData = ReadyBlockData{
-		buf: []byte{1, 2, 3, 4},
-	}
 
-	config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{rmd},
-		gomock.Any()).Return(rootPtr.ID, plainSize, readyBlockData, nil)
+	rmd.data.Dir = DirEntry{
+		BlockInfo: BlockInfo{
+			BlockPointer: rootPtr,
+			EncodedSize:  5,
+		},
+		EntryInfo: EntryInfo{
+			Type: Dir,
+			Size: 3,
+		},
+	}
 	return
 }
 
@@ -448,18 +448,13 @@ func testKBFSOpsGetRootNodeCreateNewSuccess(t *testing.T, public bool) {
 	defer kbfsTestShutdown(mockCtrl, config)
 
 	id, h, rmd := createNewRMD(t, config, "alice", public)
+	fillInNewMD(t, config, rmd)
 
 	// create a new MD
 	config.mockMdops.EXPECT().GetUnmergedForTLF(
 		gomock.Any(), id, gomock.Any()).Return(ImmutableRootMetadata{}, nil)
 	irmd := MakeImmutableRootMetadata(rmd, MdID{})
 	config.mockMdops.EXPECT().GetForTLF(gomock.Any(), id).Return(irmd, nil)
-	// now KBFS will fill it in:
-	rootPtr, plainSize, readyBlockData := fillInNewMD(t, config, rmd)
-	// now cache and put everything
-	config.mockBops.EXPECT().Put(ctx, MakeConstRootMetadata(rmd), ptrMatcher{rootPtr}, readyBlockData).
-		Return(nil)
-	config.mockMdops.EXPECT().Put(gomock.Any(), rmd).Return(nil)
 	config.mockMdcache.EXPECT().Put(irmd).Return(nil)
 
 	ops := getOps(config, id)
@@ -473,16 +468,10 @@ func testKBFSOpsGetRootNodeCreateNewSuccess(t *testing.T, public bool) {
 		t.Errorf("Got bad MD back: directory %v", p.Tlf)
 	} else if len(p.path) != 1 {
 		t.Errorf("Got bad MD back: path size %d", len(p.path))
-	} else if p.path[0].ID != rootPtr.ID {
+	} else if p.path[0].ID != rmd.data.Dir.BlockInfo.ID {
 		t.Errorf("Got bad MD back: root ID %v", p.path[0].ID)
 	} else if ei.Type != Dir {
 		t.Error("Got bad MD non-dir rootID back")
-	} else if ei.Size != uint64(plainSize) {
-		t.Errorf("Got bad MD Size back: %d", ei.Size)
-	} else if ei.Mtime == 0 {
-		t.Error("Got zero MD MTime back")
-	} else if ei.Ctime == 0 {
-		t.Error("Got zero MD CTime back")
 	} else if h != rmd.GetTlfHandle() {
 		t.Errorf("Got bad handle back: handle %v", h)
 	}
@@ -494,34 +483,6 @@ func TestKBFSOpsGetRootNodeCreateNewSuccessPublic(t *testing.T) {
 
 func TestKBFSOpsGetRootNodeCreateNewSuccessPrivate(t *testing.T) {
 	testKBFSOpsGetRootNodeCreateNewSuccess(t, false)
-}
-
-func TestKBFSOpsGetRootMDCreateNewFailNonWriter(t *testing.T) {
-	mockCtrl, config, ctx := kbfsOpsInit(t, false)
-	defer kbfsTestShutdown(mockCtrl, config)
-
-	id, h, rmd := createNewRMD(t, config, "bob", true)
-
-	// create a new MD
-
-	// in reality, createNewMD should fail early because the MD server
-	// will refuse to create the new MD for this user.  But for this test,
-	// we won't bother
-	config.mockMdops.EXPECT().GetUnmergedForTLF(
-		gomock.Any(), id, gomock.Any()).Return(ImmutableRootMetadata{}, nil)
-	config.mockMdops.EXPECT().GetForTLF(gomock.Any(), id).Return(
-		MakeImmutableRootMetadata(rmd, MdID{}), nil)
-	// try to get the MD for writing, but fail (no puts should happen)
-	expectedErr := WriteAccessError{
-		"alice", h.GetCanonicalName(), true}
-
-	ops := getOps(config, id)
-	if _, _, _, err := ops.getRootNode(ctx); err == nil {
-		t.Errorf("Got no expected error on root MD")
-	} else if err.Error() != expectedErr.Error() {
-		t.Errorf("Got unexpected error on root MD: %v vs %v", err, expectedErr)
-	}
-	assert.False(t, fboIdentityDone(ops))
 }
 
 func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
