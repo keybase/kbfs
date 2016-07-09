@@ -2030,13 +2030,13 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 		return err
 	}
 
+	fbo.setBranchIDLocked(lState, NullBranchID)
+	md.swapCachedBlockChanges()
+
 	mdID, err := fbo.config.Crypto().MakeMdID(&md.BareRootMetadata)
 	if err != nil {
 		return err
 	}
-
-	fbo.setBranchIDLocked(lState, NullBranchID)
-	md.swapCachedBlockChanges()
 
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
