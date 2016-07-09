@@ -58,8 +58,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		rmds, err := NewRootMetadataSignedForTest(id, h)
 		require.NoError(t, err)
 
-		rmds.MD.SerializedPrivateMetadata = make([]byte, 1)
-		rmds.MD.SerializedPrivateMetadata[0] = 0x1
+		rmds.MD.SerializedPrivateMetadata = []byte{0x1}
 		rmds.MD.Revision = MetadataRevision(i)
 		FakeInitialRekey(&rmds.MD, h)
 		if i > 1 {
@@ -100,8 +99,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		rmds, err := NewRootMetadataSignedForTest(id, h)
 		require.NoError(t, err)
 		rmds.MD.Revision = MetadataRevision(i)
-		rmds.MD.SerializedPrivateMetadata = make([]byte, 1)
-		rmds.MD.SerializedPrivateMetadata[0] = 0x1
+		rmds.MD.SerializedPrivateMetadata = []byte{0x1}
 		rmds.MD.PrevRoot = prevRoot
 		FakeInitialRekey(&rmds.MD, h)
 		rmds.MD.WFlags |= MetadataFlagUnmerged
