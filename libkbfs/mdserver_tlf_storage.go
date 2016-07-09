@@ -129,35 +129,40 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 	return &rmds, nil
 }
 
-func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
+func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) (MdID, error) {
 	id, err := s.crypto.MakeMdID(&rmds.MD)
 	if err != nil {
-		return err
+		return MdID{}, err
 	}
 
 	_, err = s.getMDReadLocked(id)
 	if os.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
-		return err
+		return MdID{}, err
 	} else {
 		// Entry exists, so nothing else to do.
-		return nil
+		return id, nil
 	}
 
 	path := s.mdPath(id)
 
 	err = os.MkdirAll(filepath.Dir(path), 0700)
 	if err != nil {
-		return err
+		return MdID{}, err
 	}
 
 	buf, err := s.codec.Encode(rmds)
 	if err != nil {
-		return err
+		return MdID{}, err
 	}
 
-	return ioutil.WriteFile(path, buf, 0600)
+	err = ioutil.WriteFile(path, buf, 0600)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	return id, nil
 }
 
 func (s *mdServerTlfStorage) getOrCreateBranchJournalLocked(
@@ -372,7 +377,7 @@ func (s *mdServerTlfStorage) put(
 		}
 	}
 
-	err = s.putMDLocked(rmds)
+	id, err := s.putMDLocked(rmds)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -380,11 +385,6 @@ func (s *mdServerTlfStorage) put(
 	j, err := s.getOrCreateBranchJournalLocked(bid)
 	if err != nil {
 		return false, err
-	}
-
-	id, err := s.crypto.MakeMdID(&rmds.MD)
-	if err != nil {
-		return false, MDServerError{err}
 	}
 
 	err = j.append(rmds.MD.Revision, id)
