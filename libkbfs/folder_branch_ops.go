@@ -877,7 +877,7 @@ func (fbo *folderBranchOps) getMDForWriteLocked(
 	// Make a new successor of the current MD to hold the coming
 	// writes.  The caller must pass this into
 	// syncBlockAndCheckEmbedLocked or the changes will be lost.
-	newMd, err := md.MakeSuccessor(fbo.config, true)
+	newMd, err := md.MakeSuccessor(fbo.config, md.mdID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -907,7 +907,7 @@ func (fbo *folderBranchOps) getMDForRekeyWriteLocked(
 			NewRekeyPermissionError(md.GetTlfHandle(), username)
 	}
 
-	newMd, err := md.MakeSuccessor(fbo.config, handle.IsWriter(uid))
+	newMd, err := md.MakeSuccessor(fbo.config, md.mdID, handle.IsWriter(uid))
 	if err != nil {
 		return nil, false, err
 	}

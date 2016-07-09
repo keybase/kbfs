@@ -582,7 +582,7 @@ func (md *RootMetadata) DeepCopyForServerTest(
 // MakeSuccessor returns a complete copy of this RootMetadata (but
 // with cleared block change lists and cleared serialized metadata),
 // with the revision incremented and a correct backpointer.
-func (md *RootMetadata) MakeSuccessor(config Config, isWriter bool) (*RootMetadata, error) {
+func (md *RootMetadata) MakeSuccessor(config Config, mdID MdID, isWriter bool) (*RootMetadata, error) {
 	if md.IsFinal() {
 		return nil, MetadataIsFinalError{}
 	}
@@ -602,10 +602,7 @@ func (md *RootMetadata) MakeSuccessor(config Config, isWriter bool) (*RootMetada
 		newMd.Flags |= MetadataFlagWriterMetadataCopied
 	}
 
-	newMd.PrevRoot, err = md.MetadataID(config.Crypto())
-	if err != nil {
-		return nil, err
-	}
+	newMd.PrevRoot = mdID
 	// bump revision
 	if md.Revision < MetadataRevisionInitial {
 		return nil, errors.New("MD with invalid revision")
