@@ -130,7 +130,7 @@ type WriterMetadataExtra struct {
 	codec.UnknownFieldSetHandler
 }
 
-// RootMetadata is the MD that is signed by the reader or writer.
+// BareRootMetadata is the MD that is signed by the reader or writer.
 type BareRootMetadata struct {
 	// The metadata that is only editable by the writer.
 	//
@@ -513,6 +513,8 @@ func (md *BareRootMetadata) TlfHandleExtensions() (extensions []TlfHandleExtensi
 	return extensions
 }
 
+// RootMetadata is the MD that is signed by the reader or writer, with
+// some additional data.
 type RootMetadata struct {
 	BareRootMetadata
 
@@ -846,10 +848,12 @@ func (md *RootMetadata) swapCachedBlockChanges() {
 	}
 }
 
+// ConstRootMetadata is a pointer to a const RootMetadata.
 type ConstRootMetadata struct {
 	*RootMetadata
 }
 
+// MakeConstRootMetadata makes a new ConstRootMetadata.
 func MakeConstRootMetadata(rmd *RootMetadata) ConstRootMetadata {
 	return ConstRootMetadata{rmd}
 }
