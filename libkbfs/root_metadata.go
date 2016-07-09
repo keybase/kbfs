@@ -611,18 +611,6 @@ func (md *RootMetadata) MakeSuccessor(config Config, mdID MdID, isWriter bool) (
 	return newMd, nil
 }
 
-// CheckValidSuccessor makes sure the given RootMetadata is a valid
-// successor to the current one, and returns an error otherwise.
-func (md *RootMetadata) CheckValidSuccessor(
-	crypto cryptoPure, nextMd *RootMetadata) error {
-	currID, err := md.MetadataID(crypto)
-	if err != nil {
-		return err
-	}
-
-	return md.BareRootMetadata.CheckValidSuccessor(currID, &nextMd.BareRootMetadata)
-}
-
 func (md *RootMetadata) getTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundle, *TLFReaderKeyBundle, error) {
 	if md.ID.IsPublic() {
 		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundle"}
