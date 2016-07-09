@@ -261,13 +261,10 @@ func injectNewRMD(t *testing.T, config *ConfigMock) (
 			EncodedSize: 1,
 		},
 	}
-	// Need to do this to avoid multiple calls to the mocked-out
-	// MakeMdID above, leading to confusion.
-	rmd.mdID = fakeMdID(fakeTlfIDByte(id))
 	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
 
 	ops := getOps(config, id)
-	ops.head = MakeImmutableRootMetadata(rmd, rmd.mdID)
+	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(fakeTlfIDByte(id)))
 	rmd.SerializedPrivateMetadata = make([]byte, 1)
 	config.Notifier().RegisterForChanges(
 		[]FolderBranch{{id, MasterBranch}}, config.observer)
@@ -5094,6 +5091,10 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
+	// Make sure all MDs get different MD IDs, as otherwise
+	// setHeadLocked will panic).
+	injectShimCrypto(t, config)
+
 	rootID := fakeBlockID(42)
 	rmd.data.Dir.ID = rootID
 	fileID := fakeBlockID(43)
@@ -5146,10 +5147,8 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 
 	// Since in the mock test all MDs get the same MD ID, manually
 	// alter head's md ID so it doesn't look the same as the next MD
-	// (which would cause setHeadRevision to skip it).
-	newRmd.mdIDLock.Lock()
+	// (which would cause setHeadRevision to panic).
 	newRmd.mdID = fakeMdID(fakeTlfIDByte(id) + 100)
-	newRmd.mdIDLock.Unlock()
 
 	// Make sure we get a sync even if we overwrite (not extend) the file
 	data[1] = 0
