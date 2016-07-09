@@ -395,7 +395,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 
 		// ndr may be zero if this is a post-resolution chain,
 		// so set co.Dir.Ref manually.
-		if ndr != (BlockPointer{}) {
+		if ndr != zeroPtr {
 			co.Dir.Ref = ndr
 			err = ccs.addOp(ndr, co)
 			if err != nil {
