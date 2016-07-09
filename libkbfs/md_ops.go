@@ -120,11 +120,11 @@ func (md *MDOpsStandard) verifyWriterKey(
 }
 
 func (md *MDOpsStandard) processMetadata(ctx context.Context,
-	handle *TlfHandle, rmds *RootMetadataSigned) (ConstRootMetadata, error) {
+	handle *TlfHandle, rmds *RootMetadataSigned) (ImmutableRootMetadata, error) {
 	// A blank sig means this is a brand new MD object, and
 	// there's nothing to do.
 	if !rmds.IsInitialized() {
-		return ConstRootMetadata{}, errors.New("Missing RootMetadata signature")
+		return ImmutableRootMetadata{}, errors.New("Missing RootMetadata signature")
 	}
 
 	// Otherwise, verify signatures and deserialize private data.
@@ -132,7 +132,7 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	// Make sure the last writer is really a valid writer
 	writer := rmds.MD.LastModifyingWriter
 	if !handle.IsWriter(writer) {
-		return ConstRootMetadata{}, MDMismatchError{
+		return ImmutableRootMetadata{}, MDMismatchError{
 			handle.GetCanonicalPath(),
 			fmt.Errorf("Writer MD (id=%s) was written by a non-writer %s",
 				rmds.MD.ID, writer)}
@@ -141,7 +141,7 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	// Make sure the last user to change the blob is really a valid reader
 	user := rmds.MD.LastModifyingUser
 	if !handle.IsReader(user) {
-		return ConstRootMetadata{}, MDMismatchError{
+		return ImmutableRootMetadata{}, MDMismatchError{
 			handle.GetCanonicalPath(),
 			fmt.Errorf("MD (id=%s) was changed by a non-reader %s",
 				rmds.MD.ID, user),
@@ -149,7 +149,7 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	}
 
 	if err := md.verifyWriterKey(ctx, rmds, handle); err != nil {
-		return ConstRootMetadata{}, err
+		return ImmutableRootMetadata{}, err
 	}
 
 	codec := md.config.Codec()
@@ -157,7 +157,7 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 
 	err := rmds.MD.VerifyWriterMetadata(codec, crypto)
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return ImmutableRootMetadata{}, err
 	}
 
 	if handle.IsFinal() {
@@ -168,12 +168,12 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 			rmds.SigInfo.VerifyingKey, rmds.untrustedServerTimestamp)
 	}
 	if err != nil {
-		return ConstRootMetadata{}, md.convertVerifyingKeyError(ctx, rmds, handle, err)
+		return ImmutableRootMetadata{}, md.convertVerifyingKeyError(ctx, rmds, handle, err)
 	}
 
 	err = rmds.VerifyRootMetadata(codec, crypto)
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return ImmutableRootMetadata{}, err
 	}
 
 	var rmd RootMetadata
@@ -185,47 +185,52 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	// tried later.
 	err = decryptMDPrivateData(ctx, md.config, &rmd, MakeConstRootMetadata(&rmd))
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return ImmutableRootMetadata{}, err
 	}
 
-	return MakeConstRootMetadata(&rmd), nil
+	mdID, err := rmd.MetadataID(md.config.Crypto())
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+
+	return MakeImmutableRootMetadata(&rmd, mdID), nil
 }
 
 func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
-	mStatus MergeStatus) (TlfID, ConstRootMetadata, error) {
+	mStatus MergeStatus) (TlfID, ImmutableRootMetadata, error) {
 	mdserv := md.config.MDServer()
 	bh, err := handle.ToBareHandle()
 	if err != nil {
-		return TlfID{}, ConstRootMetadata{}, err
+		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
 	id, rmds, err := mdserv.GetForHandle(ctx, bh, mStatus)
 	if err != nil {
-		return TlfID{}, ConstRootMetadata{}, err
+		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
 	if rmds == nil {
 		if mStatus == Unmerged {
-			return TlfID{}, ConstRootMetadata{}, nil
+			return TlfID{}, ImmutableRootMetadata{}, nil
 		}
-		return id, ConstRootMetadata{}, nil
+		return id, ImmutableRootMetadata{}, nil
 	}
 
 	bareMdHandle, err := rmds.MD.MakeBareTlfHandle()
 	if err != nil {
-		return TlfID{}, ConstRootMetadata{}, err
+		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
 	mdHandle, err := MakeTlfHandle(ctx, bareMdHandle, md.config.KBPKI())
 	if err != nil {
-		return TlfID{}, ConstRootMetadata{}, err
+		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
 	handleResolvesToMdHandle, partialResolvedHandle, err :=
 		handle.ResolvesTo(
 			ctx, md.config.Codec(), md.config.KBPKI(), *mdHandle)
 	if err != nil {
-		return TlfID{}, ConstRootMetadata{}, err
+		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
 	// TODO: If handle has conflict info, mdHandle should, too.
@@ -233,13 +238,13 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 		mdHandle.ResolvesTo(
 			ctx, md.config.Codec(), md.config.KBPKI(), *handle)
 	if err != nil {
-		return TlfID{}, ConstRootMetadata{}, err
+		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
 	handlePath := handle.GetCanonicalPath()
 	mdHandlePath := mdHandle.GetCanonicalPath()
 	if !handleResolvesToMdHandle && !mdHandleResolvesToHandle {
-		return TlfID{}, ConstRootMetadata{}, MDMismatchError{
+		return TlfID{}, ImmutableRootMetadata{}, MDMismatchError{
 			handle.GetCanonicalPath(),
 			fmt.Errorf(
 				"MD (id=%s) contained unexpected handle path %s (%s -> %s) (%s -> %s)",
@@ -262,7 +267,7 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 	// through a rekey.
 	rmd, err := md.processMetadata(ctx, mdHandle, rmds)
 	if err != nil {
-		return TlfID{}, ConstRootMetadata{}, err
+		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
 	return id, rmd, nil
@@ -270,22 +275,22 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 
 // GetForHandle implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle) (
-	TlfID, ConstRootMetadata, error) {
+	TlfID, ImmutableRootMetadata, error) {
 	return md.getForHandle(ctx, handle, Merged)
 }
 
 // GetUnmergedForHandle implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetUnmergedForHandle(ctx context.Context, handle *TlfHandle) (
-	ConstRootMetadata, error) {
+	ImmutableRootMetadata, error) {
 	_, rmd, err := md.getForHandle(ctx, handle, Unmerged)
 	return rmd, err
 }
 
 func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
-	id TlfID, bid BranchID, handle *TlfHandle, rmds *RootMetadataSigned) (ConstRootMetadata, error) {
+	id TlfID, bid BranchID, handle *TlfHandle, rmds *RootMetadataSigned) (ImmutableRootMetadata, error) {
 	// Make sure the signed-over ID matches
 	if id != rmds.MD.ID {
-		return ConstRootMetadata{}, MDMismatchError{
+		return ImmutableRootMetadata{}, MDMismatchError{
 			id.String(),
 			fmt.Errorf("MD contained unexpected folder id %s, expected %s",
 				rmds.MD.ID.String(), id.String()),
@@ -293,7 +298,7 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 	}
 	// Make sure the signed-over branch ID matches
 	if bid != rmds.MD.BID {
-		return ConstRootMetadata{}, MDMismatchError{
+		return ImmutableRootMetadata{}, MDMismatchError{
 			id.String(),
 			fmt.Errorf("MD contained unexpected branch id %s, expected %s, "+
 				"folder id %s", rmds.MD.BID.String(), bid.String(), id.String()),
@@ -304,50 +309,50 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 }
 
 func (md *MDOpsStandard) getForTLF(ctx context.Context, id TlfID,
-	bid BranchID, mStatus MergeStatus) (ConstRootMetadata, error) {
+	bid BranchID, mStatus MergeStatus) (ImmutableRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetForTLF(ctx, id, bid, mStatus)
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return ImmutableRootMetadata{}, err
 	}
 	if rmds == nil {
 		// Possible if mStatus is Unmerged
-		return ConstRootMetadata{}, nil
+		return ImmutableRootMetadata{}, nil
 	}
 	bareHandle, err := rmds.MD.MakeBareTlfHandle()
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return ImmutableRootMetadata{}, err
 	}
 	handle, err := MakeTlfHandle(ctx, bareHandle, md.config.KBPKI())
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return ImmutableRootMetadata{}, err
 	}
 	rmd, err := md.processMetadataWithID(ctx, id, bid, handle, rmds)
 	if err != nil {
-		return ConstRootMetadata{}, err
+		return ImmutableRootMetadata{}, err
 	}
 	return rmd, nil
 }
 
 // GetForTLF implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetForTLF(ctx context.Context, id TlfID) (ConstRootMetadata, error) {
+func (md *MDOpsStandard) GetForTLF(ctx context.Context, id TlfID) (ImmutableRootMetadata, error) {
 	return md.getForTLF(ctx, id, NullBranchID, Merged)
 }
 
 // GetUnmergedForTLF implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetUnmergedForTLF(ctx context.Context, id TlfID, bid BranchID) (ConstRootMetadata, error) {
+func (md *MDOpsStandard) GetUnmergedForTLF(ctx context.Context, id TlfID, bid BranchID) (ImmutableRootMetadata, error) {
 	return md.getForTLF(ctx, id, bid, Unmerged)
 }
 
 func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 	bid BranchID, rmdses []*RootMetadataSigned) (
-	[]ConstRootMetadata, error) {
+	[]ImmutableRootMetadata, error) {
 	if rmdses == nil {
 		return nil, nil
 	}
 
 	// Verify that the given MD objects form a valid sequence.
-	var prevMD ConstRootMetadata
-	rmds := make([]ConstRootMetadata, 0, len(rmdses))
+	var prevMD ImmutableRootMetadata
+	rmds := make([]ImmutableRootMetadata, 0, len(rmdses))
 	for _, r := range rmdses {
 		bareHandle, err := r.MD.MakeBareTlfHandle()
 		if err != nil {
@@ -358,7 +363,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 			return nil, err
 		}
 
-		if prevMD != (ConstRootMetadata{}) {
+		if prevMD != (ImmutableRootMetadata{}) {
 			prevMDID, err := prevMD.MetadataID(md.config.Crypto())
 			if err != nil {
 				return nil, err
@@ -392,7 +397,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 
 func (md *MDOpsStandard) getRange(ctx context.Context, id TlfID,
 	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
-	[]ConstRootMetadata, error) {
+	[]ImmutableRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetRange(ctx, id, bid, mStatus, start,
 		stop)
 	if err != nil {
@@ -407,13 +412,13 @@ func (md *MDOpsStandard) getRange(ctx context.Context, id TlfID,
 
 // GetRange implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetRange(ctx context.Context, id TlfID,
-	start, stop MetadataRevision) ([]ConstRootMetadata, error) {
+	start, stop MetadataRevision) ([]ImmutableRootMetadata, error) {
 	return md.getRange(ctx, id, NullBranchID, Merged, start, stop)
 }
 
 // GetUnmergedRange implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id TlfID,
-	bid BranchID, start, stop MetadataRevision) ([]ConstRootMetadata, error) {
+	bid BranchID, start, stop MetadataRevision) ([]ImmutableRootMetadata, error) {
 	return md.getRange(ctx, id, bid, Unmerged, start, stop)
 }
 

@@ -198,7 +198,7 @@ func TestCRInputFracturedRange(t *testing.T) {
 	}
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(),
 		skipCacheRevision, skipCacheRevision).Return(
-		[]ConstRootMetadata{MakeConstRootMetadata(&RootMetadata{
+		[]ImmutableRootMetadata{MakeImmutableRootMetadata(&RootMetadata{
 			BareRootMetadata: BareRootMetadata{
 				WriterMetadata: WriterMetadata{
 					ID: FakeTlfID(0x1, false),
@@ -206,7 +206,7 @@ func TestCRInputFracturedRange(t *testing.T) {
 				Revision: skipCacheRevision,
 			},
 			tlfHandle: &TlfHandle{name: "fake"},
-		})}, nil)
+		}, MdID{})}, nil)
 	for i := mergedHead + 1; i <= branchPoint+2*maxMDsAtATime; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
 			ImmutableRootMetadata{}, NoSuchMDError{cr.fbo.id(), i, NullBranchID})

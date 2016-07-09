@@ -15,7 +15,7 @@ import (
 )
 
 type fbmHelper interface {
-	getMDForFBM(ctx context.Context) (ConstRootMetadata, error)
+	getMDForFBM(ctx context.Context) (ImmutableRootMetadata, error)
 	finalizeGCOp(ctx context.Context, gco *gcOp) error
 }
 
@@ -448,7 +448,7 @@ func (fbm *folderBlockManager) processBlocksToDelete(ctx context.Context, toDele
 				"archiving it", rmds[0].Revision)
 			// Don't block on archiving the MD, because that could
 			// lead to deadlock.
-			fbm.archiveUnrefBlocksNoWait(rmds[0])
+			fbm.archiveUnrefBlocksNoWait(rmds[0].ConstRootMetadata)
 			return nil
 		}
 
@@ -660,7 +660,7 @@ func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
 		for i := len(rmds) - 1; i >= 0; i-- {
 			rmd := rmds[i]
 			if mostRecentOldEnoughRev == MetadataRevisionUninitialized &&
-				fbm.isOldEnough(rmd) {
+				fbm.isOldEnough(rmd.ConstRootMetadata) {
 				fbm.log.CDebugf(ctx, "Revision %d is older than the unref "+
 					"age %s", rmd.Revision,
 					fbm.config.QuotaReclamationMinUnrefAge())
@@ -871,7 +871,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 		return NewWriteAccessError(head.GetTlfHandle(), username)
 	}
 
-	if !fbm.isQRNecessary(head) {
+	if !fbm.isQRNecessary(head.ConstRootMetadata) {
 		// Nothing has changed since last time, so no need to do any QR.
 		return nil
 	}
@@ -879,7 +879,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 	var complete bool
 	defer func() {
 		// Remember the QR we just performed.
-		if err == nil && head != (ConstRootMetadata{}) {
+		if err == nil && head != (ImmutableRootMetadata{}) {
 			fbm.lastQRHeadRev = head.Revision
 			fbm.lastQROldEnoughRev = mostRecentOldEnoughRev
 			fbm.wasLastQRComplete = complete
@@ -909,7 +909,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 	}()
 
 	mostRecentOldEnoughRev, lastGCRev, err :=
-		fbm.getMostRecentOldEnoughAndGCRevisions(ctx, head)
+		fbm.getMostRecentOldEnoughAndGCRevisions(ctx, head.ConstRootMetadata)
 	if err != nil {
 		return err
 	}
@@ -948,7 +948,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 		return nil
 	}
 
-	zeroRefCounts, err := fbm.deleteBlockRefs(ctx, head, ptrs)
+	zeroRefCounts, err := fbm.deleteBlockRefs(ctx, head.ConstRootMetadata, ptrs)
 	if err != nil {
 		return err
 	}

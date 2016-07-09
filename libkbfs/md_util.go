@@ -18,7 +18,7 @@ type mdRange struct {
 
 func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 	start MetadataRevision, end MetadataRevision, mStatus MergeStatus) (
-	rmds []ConstRootMetadata, err error) {
+	rmds []ImmutableRootMetadata, err error) {
 	// The range is invalid.  Don't treat as an error though; it just
 	// indicates that we don't yet know about any revisions.
 	if start < MetadataRevisionInitial || end < MetadataRevisionInitial {
@@ -34,13 +34,13 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 	maxSlot := -1
 	for i := start; i <= end; i++ {
 		irmd, err := mdcache.Get(id, i, bid)
-		var crmd ConstRootMetadata
 		if err != nil {
 			if len(toDownload) == 0 ||
 				toDownload[len(toDownload)-1].end != i-1 {
 				toDownload = append(toDownload, mdRange{i, i})
 			}
 			toDownload[len(toDownload)-1].end = i
+			irmd = ImmutableRootMetadata{}
 		} else {
 			slot := len(rmds)
 			if slot < minSlot {
@@ -49,14 +49,13 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 			if slot > maxSlot {
 				maxSlot = slot
 			}
-			crmd = irmd.ConstRootMetadata
 		}
-		rmds = append(rmds, crmd)
+		rmds = append(rmds, irmd)
 	}
 
 	// Try to fetch the rest from the server.  TODO: parallelize me.
 	for _, r := range toDownload {
-		var fetchedRmds []ConstRootMetadata
+		var fetchedRmds []ImmutableRootMetadata
 		switch mStatus {
 		case Merged:
 			fetchedRmds, err = config.MDOps().GetRange(
@@ -81,12 +80,8 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 			}
 
 			rmds[slot] = rmd
-			mdID, err := config.Crypto().MakeMdID(&rmd.BareRootMetadata)
-			if err != nil {
-				return nil, err
-			}
 
-			if err := mdcache.Put(MakeImmutableRootMetadata(rmd.RootMetadata, mdID)); err != nil {
+			if err := mdcache.Put(rmd); err != nil {
 				config.MakeLogger("").CDebugf(ctx, "Error putting md "+
 					"%d into the cache: %v", rmd.Revision, err)
 			}
@@ -100,7 +95,7 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 	rmds = rmds[minSlot : maxSlot+1]
 	// check to make sure there are no holes
 	for i, rmd := range rmds {
-		if rmd == (ConstRootMetadata{}) {
+		if rmd == (ImmutableRootMetadata{}) {
 			return nil, fmt.Errorf("No %s MD found for revision %d",
 				mStatus, int(start)+minSlot+i)
 		}
@@ -117,7 +112,7 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
 func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
-	startRev MetadataRevision) (mergedRmds []ConstRootMetadata, err error) {
+	startRev MetadataRevision) (mergedRmds []ImmutableRootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
 	if startRev < MetadataRevisionInitial {
@@ -158,18 +153,15 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 			}
 			latestRmd := mergedRmds[len(mergedRmds)-1]
 			if err := decryptMDPrivateData(ctx, config,
-				rmdCopy, latestRmd); err != nil {
-				return nil, err
-			}
-			mdID, err := config.Crypto().MakeMdID(&rmdCopy.BareRootMetadata)
-			if err != nil {
+				rmdCopy, latestRmd.ConstRootMetadata); err != nil {
 				return nil, err
 			}
 			// Overwrite the cached copy with the new copy
-			if err := config.MDCache().Put(MakeImmutableRootMetadata(rmdCopy, mdID)); err != nil {
+			irmdCopy := MakeImmutableRootMetadata(rmdCopy, rmd.mdID)
+			if err := config.MDCache().Put(irmdCopy); err != nil {
 				return nil, err
 			}
-			mergedRmds[i] = MakeConstRootMetadata(rmdCopy)
+			mergedRmds[i] = irmdCopy
 		}
 	}
 	return mergedRmds, nil
@@ -184,7 +176,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 // instead of the cached versions.
 func getUnmergedMDUpdates(ctx context.Context, config Config, id TlfID,
 	bid BranchID, startRev MetadataRevision) (
-	currHead MetadataRevision, unmergedRmds []ConstRootMetadata, err error) {
+	currHead MetadataRevision, unmergedRmds []ImmutableRootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
 	if startRev < MetadataRevisionInitial {

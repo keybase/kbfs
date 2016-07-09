@@ -451,16 +451,16 @@ func testKBFSOpsGetRootNodeCreateNewSuccess(t *testing.T, public bool) {
 
 	// create a new MD
 	config.mockMdops.EXPECT().GetUnmergedForTLF(
-		gomock.Any(), id, gomock.Any()).Return(ConstRootMetadata{}, nil)
-	config.mockMdops.EXPECT().GetForTLF(gomock.Any(), id).Return(
-		MakeConstRootMetadata(rmd), nil)
+		gomock.Any(), id, gomock.Any()).Return(ImmutableRootMetadata{}, nil)
+	irmd := MakeImmutableRootMetadata(rmd, MdID{})
+	config.mockMdops.EXPECT().GetForTLF(gomock.Any(), id).Return(irmd, nil)
 	// now KBFS will fill it in:
 	rootPtr, plainSize, readyBlockData := fillInNewMD(t, config, rmd)
 	// now cache and put everything
 	config.mockBops.EXPECT().Put(ctx, MakeConstRootMetadata(rmd), ptrMatcher{rootPtr}, readyBlockData).
 		Return(nil)
 	config.mockMdops.EXPECT().Put(gomock.Any(), rmd).Return(nil)
-	config.mockMdcache.EXPECT().Put(MakeImmutableRootMetadata(rmd, MdID{})).Return(nil)
+	config.mockMdcache.EXPECT().Put(irmd).Return(nil)
 
 	ops := getOps(config, id)
 	assert.False(t, fboIdentityDone(ops))
@@ -508,9 +508,9 @@ func TestKBFSOpsGetRootMDCreateNewFailNonWriter(t *testing.T) {
 	// will refuse to create the new MD for this user.  But for this test,
 	// we won't bother
 	config.mockMdops.EXPECT().GetUnmergedForTLF(
-		gomock.Any(), id, gomock.Any()).Return(ConstRootMetadata{}, nil)
+		gomock.Any(), id, gomock.Any()).Return(ImmutableRootMetadata{}, nil)
 	config.mockMdops.EXPECT().GetForTLF(gomock.Any(), id).Return(
-		MakeConstRootMetadata(rmd), nil)
+		MakeImmutableRootMetadata(rmd, MdID{}), nil)
 	// try to get the MD for writing, but fail (no puts should happen)
 	expectedErr := WriteAccessError{
 		"alice", h.GetCanonicalName(), true}
@@ -545,9 +545,9 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 	}
 
 	config.mockMdops.EXPECT().GetUnmergedForHandle(gomock.Any(), h).Return(
-		ConstRootMetadata{}, nil)
+		ImmutableRootMetadata{}, nil)
 	config.mockMdops.EXPECT().GetForHandle(gomock.Any(), h).Return(
-		TlfID{}, MakeConstRootMetadata(rmd), nil)
+		TlfID{}, MakeImmutableRootMetadata(rmd, MdID{}), nil)
 	ops := getOps(config, id)
 	assert.False(t, fboIdentityDone(ops))
 

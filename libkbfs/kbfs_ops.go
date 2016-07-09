@@ -248,13 +248,13 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 		return nil, EntryInfo{}, err
 	}
 
-	if md == (ConstRootMetadata{}) {
+	if md == (ImmutableRootMetadata{}) {
 		var id TlfID
 		id, md, err = mdops.GetForHandle(ctx, h)
 		if err != nil {
 			return nil, EntryInfo{}, err
 		}
-		if md == (ConstRootMetadata{}) {
+		if md == (ImmutableRootMetadata{}) {
 			if id == (TlfID{}) {
 				return nil, EntryInfo{}, errors.New("No ID or MD")
 			}
@@ -277,7 +277,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 				return nil, EntryInfo{}, err
 			}
 
-			if err := ops.addToFavorites(ctx, fs.favs, md == (ConstRootMetadata{})); err != nil {
+			if err := ops.addToFavorites(ctx, fs.favs, true); err != nil {
 				// Failure to favorite shouldn't cause a failure.  Just log
 				// and move on.
 				fs.log.CDebugf(ctx, "Couldn't add favorite: %v", err)
@@ -316,7 +316,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 		return nil, EntryInfo{}, err
 	}
 
-	if err := ops.addToFavorites(ctx, fs.favs, md == (ConstRootMetadata{})); err != nil {
+	if err := ops.addToFavorites(ctx, fs.favs, false); err != nil {
 		// Failure to favorite shouldn't cause a failure.  Just log
 		// and move on.
 		fs.log.CDebugf(ctx, "Couldn't add favorite: %v", err)

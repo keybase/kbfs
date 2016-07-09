@@ -381,7 +381,7 @@ func (m *stallingMDOps) maybeStall(ctx context.Context, opName StallableMDOp) {
 }
 
 func (m *stallingMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
-	tlfID TlfID, md ConstRootMetadata, err error) {
+	tlfID TlfID, md ImmutableRootMetadata, err error) {
 	m.maybeStall(ctx, StallableMDGetForHandle)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetForHandle error
@@ -393,7 +393,7 @@ func (m *stallingMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
 }
 
 func (m *stallingMDOps) GetUnmergedForHandle(ctx context.Context,
-	handle *TlfHandle) (md ConstRootMetadata, err error) {
+	handle *TlfHandle) (md ImmutableRootMetadata, err error) {
 	m.maybeStall(ctx, StallableMDGetUnmergedForHandle)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetUnmergedForHandle error
@@ -404,7 +404,7 @@ func (m *stallingMDOps) GetUnmergedForHandle(ctx context.Context,
 }
 
 func (m *stallingMDOps) GetForTLF(ctx context.Context, id TlfID) (
-	md ConstRootMetadata, err error) {
+	md ImmutableRootMetadata, err error) {
 	m.maybeStall(ctx, StallableMDGetForTLF)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetForTLF error
@@ -426,7 +426,7 @@ func (m *stallingMDOps) GetLatestHandleForTLF(ctx context.Context, id TlfID) (
 }
 
 func (m *stallingMDOps) GetUnmergedForTLF(ctx context.Context, id TlfID,
-	bid BranchID) (md ConstRootMetadata, err error) {
+	bid BranchID) (md ImmutableRootMetadata, err error) {
 	m.maybeStall(ctx, StallableMDGetUnmergedForTLF)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetUnmergedForTLF error
@@ -438,7 +438,7 @@ func (m *stallingMDOps) GetUnmergedForTLF(ctx context.Context, id TlfID,
 
 func (m *stallingMDOps) GetRange(ctx context.Context, id TlfID,
 	start, stop MetadataRevision) (
-	mds []ConstRootMetadata, err error) {
+	mds []ImmutableRootMetadata, err error) {
 	m.maybeStall(ctx, StallableMDGetRange)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetRange error
@@ -449,7 +449,7 @@ func (m *stallingMDOps) GetRange(ctx context.Context, id TlfID,
 }
 
 func (m *stallingMDOps) GetUnmergedRange(ctx context.Context, id TlfID,
-	bid BranchID, start, stop MetadataRevision) (mds []ConstRootMetadata, err error) {
+	bid BranchID, start, stop MetadataRevision) (mds []ImmutableRootMetadata, err error) {
 	m.maybeStall(ctx, StallableMDGetUnmergedRange)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetUnmergedRange error

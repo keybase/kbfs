@@ -594,7 +594,7 @@ func TestKBFSOpsConcurBlockSyncWrite(t *testing.T) {
 
 	lastMD := km.getLastMD()
 
-	if md != lastMD {
+	if md.RootMetadata != lastMD {
 		t.Error("Last MD seen by key manager != head")
 	}
 }
@@ -681,7 +681,7 @@ func TestKBFSOpsConcurBlockSyncTruncate(t *testing.T) {
 
 	lastMD := km.getLastMD()
 
-	if md != lastMD {
+	if md.RootMetadata != lastMD {
 		t.Error("Last MD seen by key manager != head")
 	}
 }
