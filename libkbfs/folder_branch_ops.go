@@ -513,19 +513,8 @@ func (fbo *folderBranchOps) setHeadLocked(
 	if !isFirstHead {
 		wasReadable = fbo.head.IsReadable()
 
-		mdID, err := md.MetadataID(fbo.config.Crypto())
-		if err != nil {
-			return err
-		}
-
-		headID, err := fbo.head.MetadataID(fbo.config.Crypto())
-		if err != nil {
-			return err
-		}
-
-		if headID == mdID {
-			// only save this new MD if the MDID has changed
-			return nil
+		if fbo.head.mdID == md.mdID {
+			panic(fmt.Errorf("Re-putting the same MD: %s", md.mdID))
 		}
 	}
 
@@ -1012,17 +1001,17 @@ func (fbo *folderBranchOps) initMDLocked(
 		return err
 	}
 
+	mdID, err := fbo.config.Crypto().MakeMdID(&md.BareRootMetadata)
+	if err != nil {
+		return err
+	}
+
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
 	if fbo.head != (ImmutableRootMetadata{}) {
-		headID, _ := fbo.head.MetadataID(fbo.config.Crypto())
 		return fmt.Errorf(
 			"%v: Unexpected MD ID during new MD initialization: %v",
-			md.ID, headID)
-	}
-	mdID, err := md.MetadataID(fbo.config.Crypto())
-	if err != nil {
-		return err
+			md.ID, fbo.head.mdID)
 	}
 	fbo.setNewInitialHeadLocked(ctx, lState, MakeImmutableRootMetadata(md, mdID))
 	if err != nil {
@@ -1933,12 +1922,13 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		return err
 	}
 
-	fbo.headLock.Lock(lState)
-	defer fbo.headLock.Unlock(lState)
-	mdID, err := md.MetadataID(fbo.config.Crypto())
+	mdID, err := fbo.config.Crypto().MakeMdID(&md.BareRootMetadata)
 	if err != nil {
 		return err
 	}
+
+	fbo.headLock.Lock(lState)
+	defer fbo.headLock.Unlock(lState)
 	err = fbo.setHeadSuccessorLocked(ctx, lState, MakeImmutableRootMetadata(md, mdID))
 	if err != nil {
 		return err
@@ -1972,14 +1962,15 @@ func (fbo *folderBranchOps) finalizeMDRekeyWriteLocked(ctx context.Context,
 		return err
 	}
 
+	mdID, err := fbo.config.Crypto().MakeMdID(&md.BareRootMetadata)
+	if err != nil {
+		return err
+	}
+
 	fbo.setBranchIDLocked(lState, NullBranchID)
 
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	mdID, err := md.MetadataID(fbo.config.Crypto())
-	if err != nil {
-		return err
-	}
 	return fbo.setHeadSuccessorLocked(ctx, lState, MakeImmutableRootMetadata(md, mdID))
 }
 
@@ -2039,15 +2030,16 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 		return err
 	}
 
+	mdID, err := fbo.config.Crypto().MakeMdID(&md.BareRootMetadata)
+	if err != nil {
+		return err
+	}
+
 	fbo.setBranchIDLocked(lState, NullBranchID)
 	md.swapCachedBlockChanges()
 
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	mdID, err := md.MetadataID(fbo.config.Crypto())
-	if err != nil {
-		return err
-	}
 	err = fbo.setHeadSuccessorLocked(ctx, lState, MakeImmutableRootMetadata(md, mdID))
 	if err != nil {
 		return err
@@ -3433,12 +3425,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			return err
 		}
 
-		mdID, err := rmd.MetadataID(fbo.config.Crypto())
-		if err != nil {
-			return err
-		}
-
-		err = fbo.setHeadSuccessorLocked(ctx, lState, MakeImmutableRootMetadata(rmd.RootMetadata, mdID))
+		err := fbo.setHeadSuccessorLocked(ctx, lState, rmd)
 		if err != nil {
 			return err
 		}
@@ -3485,11 +3472,7 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 		// TODO: Check that the revisions are equal only for
 		// the first iteration.
 		if rmd.Revision < fbo.getCurrMDRevisionLocked(lState) {
-			mdID, err := rmd.MetadataID(fbo.config.Crypto())
-			if err != nil {
-				return err
-			}
-			err = fbo.setHeadPredecessorLocked(ctx, lState, MakeImmutableRootMetadata(rmd.RootMetadata, mdID))
+			err := fbo.setHeadPredecessorLocked(ctx, lState, rmd)
 			if err != nil {
 				return err
 			}
@@ -4234,6 +4217,12 @@ func (fbo *folderBranchOps) finalizeResolution(ctx context.Context,
 	if err != nil {
 		return err
 	}
+
+	mdID, err := fbo.config.Crypto().MakeMdID(&md.BareRootMetadata)
+	if err != nil {
+		return err
+	}
+
 	err = fbo.config.MDServer().PruneBranch(ctx, fbo.id(), fbo.bid)
 	if err != nil {
 		return err
@@ -4247,10 +4236,6 @@ func (fbo *folderBranchOps) finalizeResolution(ctx context.Context,
 	// Set the head to the new MD.
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	mdID, err := md.MetadataID(fbo.config.Crypto())
-	if err != nil {
-		return err
-	}
 	err = fbo.setHeadConflictResolvedLocked(ctx, lState, MakeImmutableRootMetadata(md, mdID))
 	if err != nil {
 		fbo.log.CWarningf(ctx, "Couldn't set local MD head after a "+
