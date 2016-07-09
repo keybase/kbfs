@@ -3605,11 +3605,7 @@ func (fbo *folderBranchOps) undoUnmergedMDUpdatesLocked(
 	err = func() error {
 		fbo.headLock.Lock(lState)
 		defer fbo.headLock.Unlock(lState)
-		mdID, err := rmds[0].MetadataID(fbo.config.Crypto())
-		if err != nil {
-			return err
-		}
-		err = fbo.setHeadPredecessorLocked(ctx, lState, MakeImmutableRootMetadata(rmds[0].RootMetadata, mdID))
+		err = fbo.setHeadPredecessorLocked(ctx, lState, rmds[0])
 		if err != nil {
 			return err
 		}

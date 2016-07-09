@@ -188,7 +188,7 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 		return ImmutableRootMetadata{}, err
 	}
 
-	mdID, err := rmd.MetadataID(md.config.Crypto())
+	mdID, err := md.config.Crypto().MakeMdID(&rmd.BareRootMetadata)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -364,12 +364,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 		}
 
 		if prevMD != (ImmutableRootMetadata{}) {
-			prevMDID, err := prevMD.MetadataID(md.config.Crypto())
-			if err != nil {
-				return nil, err
-			}
-
-			err = prevMD.BareRootMetadata.CheckValidSuccessor(prevMDID, &r.MD)
+			err = prevMD.BareRootMetadata.CheckValidSuccessor(prevMD.mdID, &r.MD)
 			if err != nil {
 				return nil, MDMismatchError{
 					handle.GetCanonicalPath(),
