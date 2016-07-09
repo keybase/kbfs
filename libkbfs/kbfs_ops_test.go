@@ -460,7 +460,7 @@ func testKBFSOpsGetRootNodeCreateNewSuccess(t *testing.T, public bool) {
 	config.mockBops.EXPECT().Put(ctx, MakeConstRootMetadata(rmd), ptrMatcher{rootPtr}, readyBlockData).
 		Return(nil)
 	config.mockMdops.EXPECT().Put(gomock.Any(), rmd).Return(nil)
-	config.mockMdcache.EXPECT().Put(MakeConstRootMetadata(rmd)).Return(nil)
+	config.mockMdcache.EXPECT().Put(MakeImmutableRootMetadata(rmd, MdID{})).Return(nil)
 
 	ops := getOps(config, id)
 	assert.False(t, fboIdentityDone(ops))
@@ -993,7 +993,7 @@ func expectSyncBlockHelper(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
 	uid keybase1.UID, id TlfID, name string, p path, rmd *RootMetadata,
 	newEntry bool, skipSync int, refBytes uint64, unrefBytes uint64,
-	newRmd *ConstRootMetadata, newBlockIDs []BlockID, isUnmerged bool) (
+	newRmd *ImmutableRootMetadata, newBlockIDs []BlockID, isUnmerged bool) (
 	path, *gomock.Call) {
 	// construct new path
 	newPath := path{
@@ -1058,7 +1058,7 @@ func expectSyncBlockHelper(
 				}).Return(nil)
 		}
 		config.mockMdcache.EXPECT().Put(gomock.Any()).
-			Do(func(rmd ConstRootMetadata) {
+			Do(func(rmd ImmutableRootMetadata) {
 				*newRmd = rmd
 				// Check that the ref bytes are correct.
 				if rmd.RefBytes != refBytes {
@@ -1078,7 +1078,7 @@ func expectSyncBlock(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
 	uid keybase1.UID, id TlfID, name string, p path, rmd *RootMetadata,
 	newEntry bool, skipSync int, refBytes uint64, unrefBytes uint64,
-	newRmd *ConstRootMetadata, newBlockIDs []BlockID) (path, *gomock.Call) {
+	newRmd *ImmutableRootMetadata, newBlockIDs []BlockID) (path, *gomock.Call) {
 	return expectSyncBlockHelper(t, config, lastCall, uid, id, name, p, rmd,
 		newEntry, skipSync, refBytes, unrefBytes, newRmd, newBlockIDs, false)
 }
@@ -1087,7 +1087,7 @@ func expectSyncBlockUnmerged(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
 	uid keybase1.UID, id TlfID, name string, p path, rmd *RootMetadata,
 	newEntry bool, skipSync int, refBytes uint64, unrefBytes uint64,
-	newRmd *ConstRootMetadata, newBlockIDs []BlockID) (path, *gomock.Call) {
+	newRmd *ImmutableRootMetadata, newBlockIDs []BlockID) (path, *gomock.Call) {
 	return expectSyncBlockHelper(t, config, lastCall, uid, id, name, p, rmd,
 		newEntry, skipSync, refBytes, unrefBytes, newRmd, newBlockIDs, true)
 }
@@ -1287,7 +1287,7 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 	testPutBlockInCache(t, config, aNode.BlockPointer, id, aBlock)
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 3)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "b", p, rmd,
@@ -1312,7 +1312,7 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 		t.Errorf("Got error on create: %v", err)
 	}
 	require.NotNil(t, newRmd)
-	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+	checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 		entryType, "b", false)
 	b1 :=
 		getDirBlockFromCache(t, config, newP.path[1].BlockPointer, newP.Branch)
@@ -1708,7 +1708,7 @@ func testKBFSOpsRemoveFileSuccess(t *testing.T, et EntryType) {
 	testPutBlockInCache(t, config, p.tailPointer(), id, block)
 
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blockIDs := make([]BlockID, len(dirPath.path))
 	// a block of size 1 is being unreferenced
 	var unrefBytes uint64 = 1
@@ -1719,7 +1719,7 @@ func testKBFSOpsRemoveFileSuccess(t *testing.T, et EntryType) {
 	require.NoError(t, err)
 
 	newDirPath := ops.nodeCache.PathFromNode(n)
-	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
+	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd.ConstRootMetadata,
 		blockIDs, et, "", false)
 	newParentDirBlock := getDirBlockFromCache(
 		t, config, newDirPath.tailPointer(), newDirPath.Branch)
@@ -1732,7 +1732,7 @@ func testKBFSOpsRemoveFileSuccess(t *testing.T, et EntryType) {
 	checkBlockCache(t, config, blockIDs, nil)
 
 	unrefBlocks := []BlockPointer{p.tailPointer()}
-	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, unrefBlocks)
+	checkRmOp(t, entryName, newRmd.ConstRootMetadata, dirPath, newDirPath, unrefBlocks)
 }
 
 func TestKBFSOpsRemoveFileSuccess(t *testing.T) {
@@ -1766,7 +1766,7 @@ func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
 	n := nodeFromPath(t, ops, dirPath)
 
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blockIDs := make([]BlockID, len(dirPath.path))
 	// a block of size 1 is being unreferenced
 	var unrefBytes uint64 = 1
@@ -1777,7 +1777,7 @@ func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	newDirPath := ops.nodeCache.PathFromNode(n)
-	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
+	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd.ConstRootMetadata,
 		blockIDs, Dir, "", false)
 	newParentBlock := getDirBlockFromCache(
 		t, config, newDirPath.tailPointer(), newDirPath.Branch)
@@ -1790,7 +1790,7 @@ func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
 	checkBlockCache(t, config, blockIDs, nil)
 
 	unrefBlocks := []BlockPointer{p.tailPointer()}
-	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, unrefBlocks)
+	checkRmOp(t, entryName, newRmd.ConstRootMetadata, dirPath, newDirPath, unrefBlocks)
 }
 
 func TestKBFSOpsRemoveSymSuccess(t *testing.T) {
@@ -1818,7 +1818,7 @@ func TestKBFSOpsRemoveSymSuccess(t *testing.T) {
 	makeSym(dirPath, parentDirBlock, entryName)
 
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blockIDs := make([]BlockID, len(dirPath.path))
 	// No block is being referenced.
 	var unrefBytes uint64
@@ -1829,7 +1829,7 @@ func TestKBFSOpsRemoveSymSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	newDirPath := ops.nodeCache.PathFromNode(n)
-	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
+	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd.ConstRootMetadata,
 		blockIDs, Sym, "", false)
 	newParentDirBlock := getDirBlockFromCache(
 		t, config, newDirPath.tailPointer(), newDirPath.Branch)
@@ -1841,7 +1841,7 @@ func TestKBFSOpsRemoveSymSuccess(t *testing.T) {
 	}
 	checkBlockCache(t, config, blockIDs, nil)
 
-	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, nil)
+	checkRmOp(t, entryName, newRmd.ConstRootMetadata, dirPath, newDirPath, nil)
 }
 
 func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
@@ -1911,7 +1911,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 	// sync block
 	blockIDs := make([]BlockID, len(dirPath.path))
 	unrefBytes := uint64(1 + 4*5) // fileBlock + 4 indirect blocks
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
 		dirPath, rmd, false, 0, 0, unrefBytes, &newRmd, blockIDs)
 
@@ -1919,7 +1919,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	newDirPath := ops.nodeCache.PathFromNode(n)
-	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd, blockIDs,
+	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd.ConstRootMetadata, blockIDs,
 		File, "", false)
 	newParentDirBlock := getDirBlockFromCache(
 		t, config, newDirPath.tailPointer(), newDirPath.Branch)
@@ -1939,7 +1939,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 		fileBlock.IPtrs[2].BlockPointer,
 		fileBlock.IPtrs[3].BlockPointer,
 	}
-	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, unrefBlocks)
+	checkRmOp(t, entryName, newRmd.ConstRootMetadata, dirPath, newDirPath, unrefBlocks)
 }
 
 func TestRemoveDirFailNonEmpty(t *testing.T) {
@@ -2001,7 +2001,7 @@ func testKBFSOpsRemoveFileMissingBlockSuccess(t *testing.T, et EntryType) {
 		gomock.Any()).Return(BServerErrorBlockNonExistent{}).MinTimes(1)
 
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blockIDs := make([]BlockID, len(dirPath.path))
 	// a block of size 1 is being unreferenced
 	var unrefBytes uint64 = 1
@@ -2012,7 +2012,7 @@ func testKBFSOpsRemoveFileMissingBlockSuccess(t *testing.T, et EntryType) {
 	require.NoError(t, err)
 
 	newDirPath := ops.nodeCache.PathFromNode(n)
-	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
+	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd.ConstRootMetadata,
 		blockIDs, File, "", false)
 	newParentDirBlock := getDirBlockFromCache(
 		t, config, newDirPath.tailPointer(), newDirPath.Branch)
@@ -2025,7 +2025,7 @@ func testKBFSOpsRemoveFileMissingBlockSuccess(t *testing.T, et EntryType) {
 	checkBlockCache(t, config, blockIDs, nil)
 
 	unrefBlocks := []BlockPointer{p.tailPointer()}
-	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, unrefBlocks)
+	checkRmOp(t, entryName, newRmd.ConstRootMetadata, dirPath, newDirPath, unrefBlocks)
 }
 
 func TestKBFSOpsRemoveFileMissingBlockSuccess(t *testing.T) {
@@ -2062,7 +2062,7 @@ func TestKBFSOpsRemoveDirMissingBlock(t *testing.T) {
 		gomock.Any()).Return(BServerErrorBlockNonExistent{}).MinTimes(1)
 
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blockIDs := make([]BlockID, len(dirPath.path))
 	// a block of size 1 is being unreferenced
 	var unrefBytes uint64 = 1
@@ -2073,7 +2073,7 @@ func TestKBFSOpsRemoveDirMissingBlock(t *testing.T) {
 	require.NoError(t, err)
 
 	newDirPath := ops.nodeCache.PathFromNode(n)
-	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
+	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd.ConstRootMetadata,
 		blockIDs, Dir, "", false)
 	newParentDirBlock := getDirBlockFromCache(
 		t, config, newDirPath.tailPointer(), newDirPath.Branch)
@@ -2086,7 +2086,7 @@ func TestKBFSOpsRemoveDirMissingBlock(t *testing.T) {
 	checkBlockCache(t, config, blockIDs, nil)
 
 	unrefBlocks := []BlockPointer{p.tailPointer()}
-	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, unrefBlocks)
+	checkRmOp(t, entryName, newRmd.ConstRootMetadata, dirPath, newDirPath, unrefBlocks)
 }
 
 func TestRemoveDirFailNoSuchName(t *testing.T) {
@@ -2146,7 +2146,7 @@ func TestRenameInDirSuccess(t *testing.T) {
 	testPutBlockInCache(t, config, aNode.BlockPointer, id, aBlock)
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 3)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false,
@@ -2158,7 +2158,7 @@ func TestRenameInDirSuccess(t *testing.T) {
 	}
 	newP := ops.nodeCache.PathFromNode(n)
 
-	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+	checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 		File, "c", true)
 	b1 := getDirBlockFromCache(
 		t, config, newP.path[1].BlockPointer, newP.Branch)
@@ -2239,7 +2239,7 @@ func TestRenameInDirOverEntrySuccess(t *testing.T) {
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 	testPutBlockInCache(t, config, cNode.BlockPointer, id, cBlock)
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 3)
 	unrefBytes := uint64(1)
 	expectedPath, _ :=
@@ -2252,7 +2252,7 @@ func TestRenameInDirOverEntrySuccess(t *testing.T) {
 	}
 	newP := ops.nodeCache.PathFromNode(n)
 
-	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+	checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 		File, "c", true)
 	b1 := getDirBlockFromCache(
 		t, config, newP.path[1].BlockPointer, newP.Branch)
@@ -2313,7 +2313,7 @@ func TestRenameInRootSuccess(t *testing.T) {
 	// renaming "a" to "b"
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false,
@@ -2325,7 +2325,7 @@ func TestRenameInRootSuccess(t *testing.T) {
 	}
 	newP := ops.nodeCache.PathFromNode(n)
 
-	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+	checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 		File, "b", true)
 	b0 := getDirBlockFromCache(
 		t, config, newP.path[0].BlockPointer, newP.Branch)
@@ -2410,7 +2410,7 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks1 := make([]BlockID, 2)
 	expectedPath1, lastCall :=
 		expectSyncBlock(t, config, nil, uid, id, "", p1, rmd, false,
@@ -2434,9 +2434,9 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 	// fix up blocks1 -- the first partial sync stops at aBlock, and
 	// checkNewPath expects {rootBlock, aBlock}
 	blocks1 = []BlockID{blocks2[0], blocks1[0]}
-	checkNewPath(t, ctx, config, newP1, expectedPath1, newRmd, blocks1,
+	checkNewPath(t, ctx, config, newP1, expectedPath1, newRmd.ConstRootMetadata, blocks1,
 		File, "", true)
-	checkNewPath(t, ctx, config, newP2, expectedPath2, newRmd, blocks2,
+	checkNewPath(t, ctx, config, newP2, expectedPath2, newRmd.ConstRootMetadata, blocks2,
 		File, "c", true)
 	b0 := getDirBlockFromCache(
 		t, config, newP1.path[0].BlockPointer, newP1.Branch)
@@ -2524,7 +2524,7 @@ func TestRenameAcrossPrefixSuccess(t *testing.T) {
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 4)
 	expectedPath2, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p2, rmd, false,
@@ -2558,7 +2558,7 @@ func TestRenameAcrossPrefixSuccess(t *testing.T) {
 	aDe.Ctime = 0
 	b0.Children["a"] = aDe
 
-	checkNewPath(t, ctx, config, newP2, expectedPath2, newRmd, blocks,
+	checkNewPath(t, ctx, config, newP2, expectedPath2, newRmd.ConstRootMetadata, blocks,
 		File, "c", true)
 	b1 := getDirBlockFromCache(
 		t, config, newP1.path[1].BlockPointer, newP1.Branch)
@@ -2622,7 +2622,7 @@ func TestRenameAcrossOtherPrefixSuccess(t *testing.T) {
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks1 := make([]BlockID, 3)
 	expectedPath1, lastCall :=
 		expectSyncBlock(t, config, nil, uid, id, "", p1, rmd, false,
@@ -2667,7 +2667,7 @@ func TestRenameAcrossOtherPrefixSuccess(t *testing.T) {
 		t.Errorf("d's ctime didn't change")
 	}
 
-	checkNewPath(t, ctx, config, newP1, expectedPath1, newRmd, blocks2,
+	checkNewPath(t, ctx, config, newP1, expectedPath1, newRmd.ConstRootMetadata, blocks2,
 		File, "c", true)
 	b2 := getDirBlockFromCache(
 		t, config, newP1.path[2].BlockPointer, newP1.Branch)
@@ -3913,7 +3913,7 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 	}
 
 	var expectedPath path
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	var blocks []BlockID
 	if entryType != Sym {
 		// sync block
@@ -3954,7 +3954,7 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 			// SetEx() should always change the ctime of
 			// non-symlinks.
 			// pretend it's a rename so only ctime gets checked
-			checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+			checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 				expectedType, "", true)
 		}
 	}
@@ -4068,7 +4068,7 @@ func TestSetMtimeSuccess(t *testing.T) {
 
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 2)
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
 		*p.parentPath(), rmd, false, 0, 0, 0, &newRmd, blocks)
@@ -4085,7 +4085,7 @@ func TestSetMtimeSuccess(t *testing.T) {
 	if b0.Children["a"].Mtime != newMtime.UnixNano() {
 		t.Errorf("a has wrong mtime: %v", b0.Children["a"].Mtime)
 	} else {
-		checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+		checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 			Exec, "", false)
 	}
 	blocks = blocks[:len(blocks)-1] // last block is never in the cache
@@ -4228,7 +4228,7 @@ func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
 	// root block has the correct file size.
 
 	// sync block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 2)
 	var expectedPath path
 	if isUnmerged {
@@ -4248,7 +4248,7 @@ func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
 		t.Errorf("Got unexpected error on sync: %v", err)
 	}
 	newP := ops.nodeCache.PathFromNode(n)
-	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+	checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 		Exec, "", false)
 	checkBlockCache(t, config, append(blocks, rootID), nil)
 
@@ -4425,7 +4425,7 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 	refBytes := uint64((len(block2.Contents) + pad2) +
 		(len(block4.Contents) + pad4))
 	unrefBytes := uint64(5 + 5) // blocks 1 and 3
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false, 0,
@@ -4447,7 +4447,7 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 	} else if fileBlock.IPtrs[3].EncodedSize != 13 {
 		t.Errorf("Indirect pointer encoded size4 wrong: %d", fileBlock.IPtrs[3].EncodedSize)
 	} else {
-		checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+		checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 			Exec, "", false)
 	}
 	checkBlockCache(t, config,
@@ -4532,7 +4532,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 		Return(refNonce, nil)
 
 	// sync block (but skip the last block)
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 1)
 	unrefBytes := uint64(1) // unref'd block b
 	refBytes := uint64(len(readyBlockData.buf))
@@ -4554,7 +4554,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 		t.Errorf("Got unexpected error on sync: %v", err)
 	}
 	newP := ops.nodeCache.PathFromNode(n)
-	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+	checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 		Exec, "", false)
 	// block b shouldn't be anywhere in the cache
 	checkBlockCache(t, config, append(blocks[0:1], rootID, aID), nil)
@@ -4738,7 +4738,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 		(len(block3.Contents) + extraBytesFor3 + pad3) +
 		(len(block4.Contents) + pad4) + pad5)
 	unrefBytes := uint64(0) // no encoded sizes on dirty blocks
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, c4, uid, id, "", p, rmd, false, 0,
@@ -4795,7 +4795,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 	} else if !bytes.Equal([]byte{17, 16}, newBlock5.Contents) {
 		t.Errorf("Block 5 has the wrong data: %v", newBlock5.Contents)
 	} else {
-		checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+		checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 			Exec, "", false)
 	}
 }
@@ -4934,7 +4934,7 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 		(len(block3.Contents) + pad3) +
 		(len(block4.Contents) - int(split4At) + pad4))
 	unrefBytes := uint64(10 + 15) // id2 and id4
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false, 0,
@@ -4978,7 +4978,7 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 	} else if !bytes.Equal([]byte{17, 16}, newBlock4.Contents) {
 		t.Errorf("Block 4 has the wrong data: %v", newBlock4.Contents)
 	} else {
-		checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+		checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 			Exec, "", false)
 	}
 }
@@ -5022,7 +5022,7 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 
 	// sync block
 	refBytes := uint64(1) // 1 new block changes block
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 2)
 	expectedPath, lastCall := expectSyncBlock(t, config, nil, uid, id, "", p,
 		rmd, false, 0, refBytes, 0, &newRmd, blocks)
@@ -5049,7 +5049,7 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 		t.Errorf("Got unexpected changeBlocks pointer: %v vs %v",
 			newRmd.data.cachedChanges.Info.ID, changeBlockID)
 	} else {
-		checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+		checkNewPath(t, ctx, config, newP, expectedPath, newRmd.ConstRootMetadata, blocks,
 			Exec, "", false)
 	}
 	checkBlockCache(t, config, append(blocks, rootID, changeBlockID), nil)
@@ -5167,7 +5167,7 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 	}
 
 	// expect a sync to happen in the background
-	var newRmd ConstRootMetadata
+	var newRmd ImmutableRootMetadata
 	blocks := make([]BlockID, 2)
 	expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false, 0, 0, 0,
 		&newRmd, blocks)
@@ -5198,7 +5198,7 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 			block.Contents = data
 		}).Return(int64(len(data)))
 	// expect another sync to happen in the background
-	var newRmd2 ConstRootMetadata
+	var newRmd2 ImmutableRootMetadata
 	blocks = make([]BlockID, 2)
 	expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false, 0, 0, 0,
 		&newRmd2, blocks)

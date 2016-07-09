@@ -530,7 +530,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 	}
 
 	fbo.log.CDebugf(ctx, "Setting head revision to %d", md.Revision)
-	err := fbo.config.MDCache().Put(md.ConstRootMetadata)
+	err := fbo.config.MDCache().Put(md)
 	if err != nil {
 		return err
 	}

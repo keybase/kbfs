@@ -71,7 +71,7 @@ func TestCRInput(t *testing.T) {
 	config.mockMdcache.EXPECT().Put(gomock.Any()).AnyTimes().Return(nil)
 	for i := unmergedHead; i >= branchPoint+1; i-- {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
-			MakeConstRootMetadata(&RootMetadata{
+			MakeImmutableRootMetadata(&RootMetadata{
 				BareRootMetadata: BareRootMetadata{
 					WriterMetadata: WriterMetadata{
 						ID:     FakeTlfID(0x1, false),
@@ -81,18 +81,18 @@ func TestCRInput(t *testing.T) {
 					Revision: i,
 				},
 				tlfHandle: &TlfHandle{name: "fake"},
-			}), nil)
+			}, MdID{}), nil)
 	}
 	for i := MetadataRevisionInitial; i <= branchPoint; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
-			ConstRootMetadata{}, NoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
+			ImmutableRootMetadata{}, NoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
 	}
 	config.mockMdops.EXPECT().GetUnmergedRange(gomock.Any(), cr.fbo.id(),
 		cr.fbo.bid, MetadataRevisionInitial, branchPoint).Return(nil, nil)
 
 	for i := branchPoint + 1; i <= mergedHead; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
-			MakeConstRootMetadata(&RootMetadata{
+			MakeImmutableRootMetadata(&RootMetadata{
 				BareRootMetadata: BareRootMetadata{
 					WriterMetadata: WriterMetadata{
 						ID: FakeTlfID(0x1, false),
@@ -100,11 +100,11 @@ func TestCRInput(t *testing.T) {
 					Revision: i,
 				},
 				tlfHandle: &TlfHandle{name: "fake"},
-			}), nil)
+			}, MdID{}), nil)
 	}
 	for i := mergedHead + 1; i <= branchPoint+2*maxMDsAtATime; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
-			ConstRootMetadata{}, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
+			ImmutableRootMetadata{}, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
 	}
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(), mergedHead+1,
 		gomock.Any()).Return(nil, nil)
@@ -121,7 +121,7 @@ func TestCRInput(t *testing.T) {
 	cr.Wait(ctx)
 	// Make sure sure the input is up-to-date
 	if cr.currInput.merged != mergedHead {
-		t.Fatalf("Unexpected merged input: %d\n", cr.currInput.merged)
+		t.Fatalf("Unexpected merged input: %d", cr.currInput.merged)
 	}
 
 	// Now make sure we ignore future inputs with lesser MDs
@@ -155,7 +155,7 @@ func TestCRInputFracturedRange(t *testing.T) {
 	config.mockMdcache.EXPECT().Put(gomock.Any()).AnyTimes().Return(nil)
 	for i := unmergedHead; i >= branchPoint+1; i-- {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
-			MakeConstRootMetadata(&RootMetadata{
+			MakeImmutableRootMetadata(&RootMetadata{
 				BareRootMetadata: BareRootMetadata{
 					Revision: i,
 					WriterMetadata: WriterMetadata{
@@ -165,11 +165,11 @@ func TestCRInputFracturedRange(t *testing.T) {
 					},
 				},
 				tlfHandle: &TlfHandle{name: "fake"},
-			}), nil)
+			}, MdID{}), nil)
 	}
 	for i := MetadataRevisionInitial; i <= branchPoint; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
-			ConstRootMetadata{}, NoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
+			ImmutableRootMetadata{}, NoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
 	}
 	config.mockMdops.EXPECT().GetUnmergedRange(gomock.Any(), cr.fbo.id(),
 		cr.fbo.bid, MetadataRevisionInitial, branchPoint).Return(nil, nil)
@@ -181,7 +181,7 @@ func TestCRInputFracturedRange(t *testing.T) {
 		if i != skipCacheRevision {
 			config.mockMdcache.EXPECT().Get(cr.fbo.id(), i,
 				NullBranchID).Return(
-				MakeConstRootMetadata(&RootMetadata{
+				MakeImmutableRootMetadata(&RootMetadata{
 					BareRootMetadata: BareRootMetadata{
 						WriterMetadata: WriterMetadata{
 							ID: FakeTlfID(0x1, false),
@@ -189,11 +189,11 @@ func TestCRInputFracturedRange(t *testing.T) {
 						Revision: i,
 					},
 					tlfHandle: &TlfHandle{name: "fake"},
-				}), nil)
+				}, fakeMdID(1)), nil)
 		} else {
 			config.mockMdcache.EXPECT().Get(cr.fbo.id(), i,
 				NullBranchID).Return(
-				ConstRootMetadata{}, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
+				ImmutableRootMetadata{}, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
 		}
 	}
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(),
@@ -209,7 +209,7 @@ func TestCRInputFracturedRange(t *testing.T) {
 		})}, nil)
 	for i := mergedHead + 1; i <= branchPoint+2*maxMDsAtATime; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
-			ConstRootMetadata{}, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
+			ImmutableRootMetadata{}, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
 	}
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(), mergedHead+1,
 		gomock.Any()).Return(nil, nil)
@@ -226,7 +226,7 @@ func TestCRInputFracturedRange(t *testing.T) {
 	cr.Wait(ctx)
 	// Make sure sure the input is up-to-date
 	if cr.currInput.merged != mergedHead {
-		t.Fatalf("Unexpected merged input: %d\n", cr.currInput.merged)
+		t.Fatalf("Unexpected merged input: %d", cr.currInput.merged)
 	}
 }
 

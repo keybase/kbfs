@@ -33,14 +33,14 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 	minSlot := int(end-start) + 1
 	maxSlot := -1
 	for i := start; i <= end; i++ {
-		rmd, err := mdcache.Get(id, i, bid)
+		irmd, err := mdcache.Get(id, i, bid)
+		var crmd ConstRootMetadata
 		if err != nil {
 			if len(toDownload) == 0 ||
 				toDownload[len(toDownload)-1].end != i-1 {
 				toDownload = append(toDownload, mdRange{i, i})
 			}
 			toDownload[len(toDownload)-1].end = i
-			rmd = ConstRootMetadata{}
 		} else {
 			slot := len(rmds)
 			if slot < minSlot {
@@ -49,8 +49,9 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 			if slot > maxSlot {
 				maxSlot = slot
 			}
+			crmd = irmd.ConstRootMetadata
 		}
-		rmds = append(rmds, rmd)
+		rmds = append(rmds, crmd)
 	}
 
 	// Try to fetch the rest from the server.  TODO: parallelize me.
@@ -80,7 +81,12 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 			}
 
 			rmds[slot] = rmd
-			if err := mdcache.Put(rmd); err != nil {
+			mdID, err := config.Crypto().MakeMdID(&rmd.BareRootMetadata)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := mdcache.Put(MakeImmutableRootMetadata(rmd.RootMetadata, mdID)); err != nil {
 				config.MakeLogger("").CDebugf(ctx, "Error putting md "+
 					"%d into the cache: %v", rmd.Revision, err)
 			}
@@ -155,8 +161,12 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 				rmdCopy, latestRmd); err != nil {
 				return nil, err
 			}
+			mdID, err := config.Crypto().MakeMdID(&rmdCopy.BareRootMetadata)
+			if err != nil {
+				return nil, err
+			}
 			// Overwrite the cached copy with the new copy
-			if err := config.MDCache().Put(MakeConstRootMetadata(rmdCopy)); err != nil {
+			if err := config.MDCache().Put(MakeImmutableRootMetadata(rmdCopy, mdID)); err != nil {
 				return nil, err
 			}
 			mergedRmds[i] = MakeConstRootMetadata(rmdCopy)
