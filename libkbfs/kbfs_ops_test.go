@@ -1556,15 +1556,14 @@ func TestCreateLinkFailKBFSPrefix(t *testing.T) {
 	testCreateEntryFailKBFSPrefix(t, Sym)
 }
 
-// makeDir creates a block tree for the given path components, sets
-// the rmd to the root of that block tree, and returns a path and the
-// list of blocks. Each entry in the nodes of the returned path
-// corresponds to the block at the same index of the returned list of
-// blocks. If n components are given, then the path will have n+1
-// nodes (one extra for the root node).
-func makeDir(uid keybase1.UID, id TlfID, rmd *RootMetadata,
-	components ...string) (path, []*DirBlock) {
-	var idCounter byte = 41
+// makeDirTree creates a block tree for the given path components and
+// returns the DirEntry for the root block, a path, and the
+// corresponding list of blocks. If n components are given, then the
+// path will have n+1 nodes (one extra for the root node), and there
+// will be n+1 corresponding blocks.
+func makeDirTree(id TlfID, uid keybase1.UID, components ...string) (
+	DirEntry, path, []*DirBlock) {
+	var idCounter byte = 0x10
 	makeBlockID := func() BlockID {
 		id := fakeBlockID(idCounter)
 		idCounter++
@@ -1575,7 +1574,7 @@ func makeDir(uid keybase1.UID, id TlfID, rmd *RootMetadata,
 
 	bid := makeBlockID()
 	bi := makeBIFromID(bid, uid)
-	rmd.data.Dir = DirEntry{
+	rootEntry := DirEntry{
 		BlockInfo: bi,
 		EntryInfo: EntryInfo{
 			Type: Dir,
@@ -1604,7 +1603,50 @@ func makeDir(uid keybase1.UID, id TlfID, rmd *RootMetadata,
 		parentDirBlock = dirBlock
 	}
 
-	return path{FolderBranch{Tlf: id}, nodes}, blocks
+	return rootEntry, path{FolderBranch{Tlf: id}, nodes}, blocks
+}
+
+func makeFile(dir path, parentDirBlock *DirBlock, name string, et EntryType) (
+	path, *FileBlock) {
+	if et != File && et != Exec {
+		panic(fmt.Sprintf("Unexpected type %s", et))
+	}
+	bid := fakeBlockIDAdd(dir.tailPointer().ID, 1)
+	bi := makeBIFromID(bid, dir.tailPointer().Creator)
+
+	parentDirBlock.Children[name] = DirEntry{
+		BlockInfo: bi,
+		EntryInfo: EntryInfo{
+			Type: et,
+		},
+	}
+
+	p := dir.ChildPath(name, bi.BlockPointer)
+	return p, NewFileBlock().(*FileBlock)
+}
+
+func makeDir(dir path, parentDirBlock *DirBlock, name string) (
+	path, *DirBlock) {
+	bid := fakeBlockIDAdd(dir.tailPointer().ID, 1)
+	bi := makeBIFromID(bid, dir.tailPointer().Creator)
+
+	parentDirBlock.Children[name] = DirEntry{
+		BlockInfo: bi,
+		EntryInfo: EntryInfo{
+			Type: Dir,
+		},
+	}
+
+	p := dir.ChildPath(name, bi.BlockPointer)
+	return p, NewDirBlock().(*DirBlock)
+}
+
+func makeSym(dir path, parentDirBlock *DirBlock, name string) {
+	parentDirBlock.Children[name] = DirEntry{
+		EntryInfo: EntryInfo{
+			Type: Sym,
+		},
+	}
 }
 
 // makePath creates a block tree for the given path components, and
@@ -1619,42 +1661,33 @@ func makePath(uid keybase1.UID, id TlfID, rmd *RootMetadata, et EntryType,
 	dirComponents := components[:len(components)-1]
 	entryComponent := components[len(components)-1]
 
-	dirPath, dirBlocks := makeDir(uid, id, rmd, dirComponents...)
+	rootEntry, dirPath, dirBlocks := makeDirTree(id, uid, dirComponents...)
+	rmd.data.Dir = rootEntry
 
 	parentDirBlock := dirBlocks[len(dirBlocks)-1]
+
 	blocks := make([]Block, len(dirBlocks))
 	for i, dirBlock := range dirBlocks {
 		blocks[i] = dirBlock
 	}
-	bid := fakeBlockID(105)
-	bi := makeBIFromID(bid, uid)
-	if et == Sym {
-		parentDirBlock.Children[entryComponent] = DirEntry{
-			EntryInfo: EntryInfo{
-				Type: et,
-			},
-		}
 
-		return dirPath, blocks
-	}
-
-	parentDirBlock.Children[entryComponent] = DirEntry{
-		BlockInfo: bi,
-		EntryInfo: EntryInfo{
-			Type: et,
-		},
-	}
-	p := dirPath.ChildPath(entryComponent, bi.BlockPointer)
 	switch et {
-	case Dir:
-		blocks = append(blocks, NewDirBlock())
 	case File, Exec:
-		blocks = append(blocks, NewFileBlock())
-	case Sym:
-		panic("Unexpected Sym type")
-	}
+		p, block := makeFile(
+			dirPath, parentDirBlock, entryComponent, et)
+		return p, append(blocks, block)
 
-	return p, blocks
+	case Dir:
+		p, block := makeDir(dirPath, parentDirBlock, entryComponent)
+		return p, append(blocks, block)
+
+	case Sym:
+		makeSym(dirPath, parentDirBlock, entryComponent)
+		return dirPath, blocks
+
+	default:
+		panic(fmt.Sprintf("Unexpected type %s", et))
+	}
 }
 
 func checkRmOp(t *testing.T, entryName string, newRmd *RootMetadata,
