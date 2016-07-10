@@ -2055,7 +2055,7 @@ func TestKBFSOpsRemoveFileMissingBlock(t *testing.T) {
 	if _, ok := b1.Children[entryName]; ok {
 		t.Errorf("entry for %s is still around after removal", entryName)
 	}
-	for _, n := range p.path {
+	for _, n := range dirPath.path {
 		blockIDs = append(blockIDs, n.ID)
 	}
 	checkBlockCache(t, config, blockIDs, nil)
@@ -2113,7 +2113,7 @@ func TestKBFSOpsRemoveDirMissingBlock(t *testing.T) {
 	if _, ok := b1.Children[entryName]; ok {
 		t.Errorf("entry for %s is still around after removal", entryName)
 	}
-	for _, n := range p.path {
+	for _, n := range dirPath.path {
 		blockIDs = append(blockIDs, n.ID)
 	}
 	checkBlockCache(t, config, blockIDs, nil)
