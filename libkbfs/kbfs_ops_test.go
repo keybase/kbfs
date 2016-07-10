@@ -1691,30 +1691,20 @@ func makePath(uid keybase1.UID, id TlfID, rmd *RootMetadata, et EntryType,
 }
 
 func checkRmOp(t *testing.T, entryName string, newRmd *RootMetadata,
-	p, newParentPath path, et EntryType) {
+	dirPath, newDirPath path, unrefBlocks []BlockPointer) {
 	// make sure the rmOp is correct
 	ro, ok := newRmd.data.Changes.Ops[0].(*rmOp)
 	require.True(t, ok)
-	var unrefBlocks []BlockPointer
-	if et != Sym {
-		unrefBlocks = []BlockPointer{p.tailPointer()}
-	}
-	var parentPath path
-	if et == Sym {
-		parentPath = p
-	} else {
-		parentPath = *p.parentPath()
-	}
 	var updates []blockUpdate
-	for i := 0; i < len(parentPath.path)-1; i++ {
+	for i := 0; i < len(dirPath.path)-1; i++ {
 		updates = append(updates, blockUpdate{
-			parentPath.path[i].BlockPointer,
-			newParentPath.path[i].BlockPointer,
+			dirPath.path[i].BlockPointer,
+			newDirPath.path[i].BlockPointer,
 		})
 	}
 	checkOp(t, ro.OpCommon, nil, unrefBlocks, updates)
 	dirUpdate := blockUpdate{
-		parentPath.tailPointer(), newParentPath.tailPointer(),
+		dirPath.tailPointer(), newDirPath.tailPointer(),
 	}
 	require.Equal(t, dirUpdate, ro.Dir)
 	require.Equal(t, entryName, ro.OldName)
@@ -1799,7 +1789,11 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	}
 	checkBlockCache(t, config, blockIDs, nil)
 
-	checkRmOp(t, entryName, newRmd, p, newDirPath, entryType)
+	var unrefBlocks []BlockPointer
+	if entryType != Sym {
+		unrefBlocks = append(unrefBlocks, p.tailPointer())
+	}
+	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, unrefBlocks)
 }
 
 func TestKBFSOpsRemoveFileSuccess(t *testing.T) {
