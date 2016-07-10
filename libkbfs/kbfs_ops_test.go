@@ -1726,33 +1726,52 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	entryName := "e"
-	p, blocks := makePath(uid, id, rmd, entryType,
-		"a", "b", "c", "d", entryName)
-	ops := getOps(config, id)
-	var parentPath path
-	if entryType == Sym {
-		parentPath = p
-	} else {
-		parentPath = *p.parentPath()
-	}
-	n := nodeFromPath(t, ops, parentPath)
+	rootEntry, dirPath, dirBlocks := makeDirTree(id, uid, "a", "b", "c", "d")
+	rmd.data.Dir = rootEntry
 
-	// Prime cache with all blocks.
-	for i := 0; i < len(p.path); i++ {
+	// Prime cache with all dir blocks.
+	for i, dirBlock := range dirBlocks {
 		testPutBlockInCache(
-			t, config, p.path[i].BlockPointer, id, blocks[i])
+			t, config, dirPath.path[i].BlockPointer, id, dirBlock)
 	}
+
+	parentDirBlock := dirBlocks[len(dirBlocks)-1]
+
+	ops := getOps(config, id)
+	n := nodeFromPath(t, ops, dirPath)
+
+	entryName := "e"
+	var p path
+	switch entryType {
+	case File, Exec:
+		var block *FileBlock
+		p, block = makeFile(
+			dirPath, parentDirBlock, entryName, entryType)
+		testPutBlockInCache(t, config, p.tailPointer(), id, block)
+
+	case Dir:
+		var block *DirBlock
+		p, block = makeDir(dirPath, parentDirBlock, entryName)
+		testPutBlockInCache(t, config, p.tailPointer(), id, block)
+
+	case Sym:
+		p = dirPath
+		makeSym(dirPath, parentDirBlock, entryName)
+
+	default:
+		panic(fmt.Sprintf("Unexpected type %s", entryType))
+	}
+
 	// sync block
 	var newRmd *RootMetadata
-	blockIDs := make([]BlockID, len(parentPath.path))
+	blockIDs := make([]BlockID, len(dirPath.path))
 	var unrefBytes uint64
 	if entryType != Sym {
 		// a block of size 1 is being unreferenced
 		unrefBytes = 1
 	}
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
-		parentPath, rmd, false, 0, 0, unrefBytes, &newRmd, blockIDs)
+		dirPath, rmd, false, 0, 0, unrefBytes, &newRmd, blockIDs)
 
 	var err error
 	if entryType == Dir {
@@ -1763,16 +1782,16 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	if err != nil {
 		t.Fatalf("Got error on removal: %v", err)
 	}
-	newParentPath := ops.nodeCache.PathFromNode(n)
+	newDirPath := ops.nodeCache.PathFromNode(n)
 
-	checkNewPath(t, ctx, config, newParentPath, expectedPath, newRmd,
+	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
 		blockIDs, entryType, "", false)
 	b1 := getDirBlockFromCache(
-		t, config, newParentPath.tailPointer(), newParentPath.Branch)
+		t, config, newDirPath.tailPointer(), newDirPath.Branch)
 	if _, ok := b1.Children[entryName]; ok {
 		t.Errorf("entry for %s is still around after removal", entryName)
 	}
-	for _, n := range parentPath.path {
+	for _, n := range dirPath.path {
 		blockIDs = append(blockIDs, n.ID)
 	}
 	if entryType != Sym {
@@ -1780,7 +1799,7 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	}
 	checkBlockCache(t, config, blockIDs, nil)
 
-	checkRmOp(t, entryName, newRmd, p, newParentPath, entryType)
+	checkRmOp(t, entryName, newRmd, p, newDirPath, entryType)
 }
 
 func TestKBFSOpsRemoveFileSuccess(t *testing.T) {
