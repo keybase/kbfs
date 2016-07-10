@@ -1648,11 +1648,19 @@ func checkRmOp(t *testing.T, entryName string, newRmd *RootMetadata,
 	if et != Sym {
 		unrefBlocks = []BlockPointer{p.tailPointer()}
 	}
-	parentPath := *p.parentPath()
-	updates := []blockUpdate{{
-		parentPath.path[0].BlockPointer,
-		newParentPath.path[0].BlockPointer,
-	}}
+	var parentPath path
+	if et == Sym {
+		parentPath = p
+	} else {
+		parentPath = *p.parentPath()
+	}
+	var updates []blockUpdate
+	for i := 0; i < len(parentPath.path)-1; i++ {
+		updates = append(updates, blockUpdate{
+			parentPath.path[i].BlockPointer,
+			newParentPath.path[i].BlockPointer,
+		})
+	}
 	checkOp(t, ro.OpCommon, nil, unrefBlocks, updates)
 	dirUpdate := blockUpdate{
 		parentPath.tailPointer(), newParentPath.tailPointer(),
