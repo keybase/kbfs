@@ -1714,8 +1714,8 @@ func testKBFSOpsRemoveFileSuccess(t *testing.T, et EntryType) {
 
 	err := config.KBFSOps().RemoveEntry(ctx, n, entryName)
 	require.NoError(t, err)
-	newDirPath := ops.nodeCache.PathFromNode(n)
 
+	newDirPath := ops.nodeCache.PathFromNode(n)
 	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
 		blockIDs, et, "", false)
 	newParentDirBlock := getDirBlockFromCache(
@@ -1772,8 +1772,8 @@ func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
 
 	err := config.KBFSOps().RemoveDir(ctx, n, entryName)
 	require.NoError(t, err)
-	newDirPath := ops.nodeCache.PathFromNode(n)
 
+	newDirPath := ops.nodeCache.PathFromNode(n)
 	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
 		blockIDs, Dir, "", false)
 	newParentBlock := getDirBlockFromCache(
@@ -1824,8 +1824,8 @@ func TestKBFSOpsRemoveSymSuccess(t *testing.T) {
 
 	err := config.KBFSOps().RemoveEntry(ctx, n, entryName)
 	require.NoError(t, err)
-	newDirPath := ops.nodeCache.PathFromNode(n)
 
+	newDirPath := ops.nodeCache.PathFromNode(n)
 	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
 		blockIDs, Sym, "", false)
 	newParentDirBlock := getDirBlockFromCache(
@@ -1847,7 +1847,8 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootEntry, dirPath, dirBlocks := makeDirTree(id, uid, "a", "b", "c", "d")
+	rootEntry, dirPath, dirBlocks :=
+		makeDirTree(id, uid, "a", "b", "c", "d")
 	rmd.data.Dir = rootEntry
 
 	// Prime cache with all dir blocks.
@@ -1858,7 +1859,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 
 	parentDirBlock := dirBlocks[len(dirBlocks)-1]
 
-	entryName := "e"
+	entryName := "multiBlockFile"
 	lastBID := dirPath.tailPointer().ID
 	fileBID := fakeBlockIDAdd(lastBID, 1)
 	fileBI := makeBIFromID(fileBID, dirPath.tailPointer().Creator)
@@ -1897,7 +1898,6 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 
 	// let the top block be uncached, so we have to fetch it from BlockOps.
 	expectBlock(config, rmd, fileBP, fileBlock, nil)
-
 	testPutBlockInCache(t, config, fileBlock.IPtrs[0].BlockPointer, id, block1)
 	testPutBlockInCache(t, config, fileBlock.IPtrs[1].BlockPointer, id, block2)
 	testPutBlockInCache(t, config, fileBlock.IPtrs[2].BlockPointer, id, block3)
@@ -1911,17 +1911,16 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 		dirPath, rmd, false, 0, 0, unrefBytes, &newRmd, blockIDs)
 
 	err := config.KBFSOps().RemoveEntry(ctx, n, entryName)
+	require.NoError(t, err)
+
 	newDirPath := ops.nodeCache.PathFromNode(n)
-	if err != nil {
-		t.Errorf("Got error on removal: %v", err)
-	}
 	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd, blockIDs,
 		File, "", false)
-	b0 :=
-		getDirBlockFromCache(t, config, newDirPath.tailPointer(), newDirPath.Branch)
-	if _, ok := b0.Children[entryName]; ok {
-		t.Errorf("entry for %s is still around after removal", entryName)
-	}
+	newParentDirBlock := getDirBlockFromCache(
+		t, config, newDirPath.tailPointer(), newDirPath.Branch)
+	_, ok := newParentDirBlock.Children[entryName]
+	require.False(t, ok)
+
 	for _, n := range p.path {
 		blockIDs = append(blockIDs, n.ID)
 	}
