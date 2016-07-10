@@ -1556,53 +1556,125 @@ func TestCreateLinkFailKBFSPrefix(t *testing.T) {
 	testCreateEntryFailKBFSPrefix(t, Sym)
 }
 
+// makePath creates a block tree for the given path components, and
+// returns a path and the list of blocks. Each entry in the nodes of
+// the returned path corresponds to the block at the same index of the
+// returned list of blocks. If n components are given, then the path
+// will have n+1 nodes (one extra for the root node), unless the given
+// EntryType is Sym, in which case it'll have n nodes (since there's
+// no node for the link itself).
+func makePath(uid keybase1.UID, id TlfID, rmd *RootMetadata, et EntryType,
+	firstComponent string, rest ...string) (path, []Block) {
+	components := append([]string{firstComponent}, rest...)
+	dirComponents := components[:len(components)-1]
+	entryComponent := components[len(components)-1]
+
+	var idCounter byte = 41
+	makeBlockID := func() BlockID {
+		id := fakeBlockID(idCounter)
+		idCounter++
+		return id
+	}
+
+	// Handle first (root) block...
+
+	bid := makeBlockID()
+	bi := makeBIFromID(bid, uid)
+	rmd.data.Dir = DirEntry{
+		BlockInfo: bi,
+		EntryInfo: EntryInfo{
+			Type: Dir,
+		},
+	}
+	nodes := []pathNode{{bi.BlockPointer, "{root}"}}
+	rootBlock := NewDirBlock().(*DirBlock)
+	blocks := []Block{rootBlock}
+
+	// Handle all but the first and last block...
+	parentDirBlock := rootBlock
+	for _, component := range dirComponents {
+		bid := makeBlockID()
+		bi := makeBIFromID(bid, uid)
+		parentDirBlock.Children[component] = DirEntry{
+			BlockInfo: bi,
+			EntryInfo: EntryInfo{
+				Type: Dir,
+			},
+		}
+		nodes = append(nodes, pathNode{bi.BlockPointer, component})
+		dirBlock := NewDirBlock().(*DirBlock)
+		blocks = append(blocks, dirBlock)
+
+		parentDirBlock = dirBlock
+	}
+
+	// Then handle the last block.
+
+	bid = makeBlockID()
+	bi = makeBIFromID(bid, uid)
+	if et == Sym {
+		parentDirBlock.Children[entryComponent] = DirEntry{
+			EntryInfo: EntryInfo{
+				Type: et,
+			},
+		}
+	} else {
+		parentDirBlock.Children[entryComponent] = DirEntry{
+			BlockInfo: bi,
+			EntryInfo: EntryInfo{
+				Type: et,
+			},
+		}
+		nodes = append(nodes, pathNode{bi.BlockPointer, entryComponent})
+	}
+	switch et {
+	case Dir:
+		blocks = append(blocks, NewDirBlock())
+	case File, Exec:
+		blocks = append(blocks, NewFileBlock())
+	case Sym:
+		// Do nothing.
+	}
+
+	return path{FolderBranch{Tlf: id}, nodes}, blocks
+}
+
 func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	mockCtrl, config, ctx := kbfsOpsInit(t, true)
 	defer kbfsTestShutdown(mockCtrl, config)
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(41)
-	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(42)
-	bID := fakeBlockID(43)
-	rootBlock := NewDirBlock().(*DirBlock)
-	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, uid),
-		EntryInfo: EntryInfo{
-			Type: Dir,
-		},
-	}
-	aBlock := NewDirBlock().(*DirBlock)
-	aBlock.Children["b"] = DirEntry{
-		BlockInfo: makeBIFromID(bID, uid),
-		EntryInfo: EntryInfo{
-			Type: entryType,
-		},
-	}
-	bBlock := NewFileBlock()
-	if entryType == Dir {
-		bBlock = NewDirBlock()
-	}
-	node := pathNode{makeBP(rootID, rmd, config, uid), "p"}
-	aNode := pathNode{makeBP(aID, rmd, config, uid), "a"}
-	bNode := pathNode{makeBP(bID, rmd, config, uid), "b"}
-	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
+	p, blocks := makePath(uid, id, rmd, entryType, "a", "b")
 	ops := getOps(config, id)
-	n := nodeFromPath(t, ops, p)
+	var parentPath path
+	if entryType == Sym {
+		parentPath = p
+	} else {
+		parentPath = *p.parentPath()
+	}
+	n := nodeFromPath(t, ops, parentPath)
 
 	// deleting "a/b"
-	if entryType != Sym {
-		testPutBlockInCache(t, config, bNode.BlockPointer, id, bBlock)
+	for i := 0; i < len(parentPath.path); i++ {
+		testPutBlockInCache(
+			t, config, parentPath.path[i].BlockPointer,
+			id, blocks[i])
 	}
-	testPutBlockInCache(t, config, aNode.BlockPointer, id, aBlock)
-	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
+	if entryType != Sym {
+		testPutBlockInCache(
+			t, config, p.tailPointer(), id, blocks[len(blocks)-1])
+	}
 	// sync block
 	var newRmd *RootMetadata
-	blocks := make([]BlockID, 2)
-	unrefBytes := uint64(1) // a block of size 1 is being unreferenced
+	blockIDs := make([]BlockID, len(parentPath.path))
+	var unrefBytes uint64
+	if entryType != Sym {
+		// a block of size 1 is being unreferenced
+		unrefBytes = 1
+	}
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
-		p, rmd, false, 0, 0, unrefBytes, &newRmd, blocks)
+		parentPath, rmd, false, 0, 0, unrefBytes, &newRmd, blockIDs)
 
 	var err error
 	if entryType == Dir {
@@ -1613,32 +1685,40 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	if err != nil {
 		t.Fatalf("Got error on removal: %v", err)
 	}
-	newP := ops.nodeCache.PathFromNode(n)
+	newParentPath := ops.nodeCache.PathFromNode(n)
 
-	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
-		entryType, "", false)
-	b1 :=
-		getDirBlockFromCache(t, config, newP.path[1].BlockPointer, newP.Branch)
+	checkNewPath(t, ctx, config, newParentPath, expectedPath, newRmd,
+		blockIDs, entryType, "", false)
+	b1 := getDirBlockFromCache(
+		t, config, newParentPath.tailPointer(), newParentPath.Branch)
 	if _, ok := b1.Children["b"]; ok {
 		t.Errorf("entry for b is still around after removal")
 	}
-	if entryType != Sym {
-		blocks = append(blocks, bID)
+	for _, n := range parentPath.path {
+		blockIDs = append(blockIDs, n.ID)
 	}
-	checkBlockCache(t, config, append(blocks, rootID, aID), nil)
+	if entryType != Sym {
+		blockIDs = append(blockIDs, p.tailPointer().ID)
+	}
+	checkBlockCache(t, config, blockIDs, nil)
 
 	// make sure the rmOp is correct
 	ro, ok := newRmd.data.Changes.Ops[0].(*rmOp)
 	if !ok {
 		t.Errorf("Couldn't find the rmOp")
 	}
-	unrefBlocks := []BlockPointer{bNode.BlockPointer}
-	updates := []blockUpdate{
-		{rmd.data.Dir.BlockPointer, newP.path[0].BlockPointer},
+	var unrefBlocks []BlockPointer
+	if entryType != Sym {
+		unrefBlocks = []BlockPointer{p.tailPointer()}
 	}
+	updates := []blockUpdate{{
+		parentPath.path[0].BlockPointer,
+		newParentPath.path[0].BlockPointer,
+	}}
 	checkOp(t, ro.OpCommon, nil, unrefBlocks, updates)
-	dirUpdate := blockUpdate{rootBlock.Children["a"].BlockPointer,
-		newP.path[1].BlockPointer}
+	dirUpdate := blockUpdate{
+		parentPath.tailPointer(), newParentPath.tailPointer(),
+	}
 	if ro.Dir != dirUpdate {
 		t.Errorf("Incorrect dir update in op: %v vs. %v", ro.Dir, dirUpdate)
 	} else if ro.OldName != "b" {
