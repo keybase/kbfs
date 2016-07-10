@@ -1639,13 +1639,37 @@ func makePath(uid keybase1.UID, id TlfID, rmd *RootMetadata, et EntryType,
 	return path{FolderBranch{Tlf: id}, nodes}, blocks
 }
 
+func checkRmOp(t *testing.T, entryName string, newRmd *RootMetadata,
+	p, newParentPath path, et EntryType) {
+	// make sure the rmOp is correct
+	ro, ok := newRmd.data.Changes.Ops[0].(*rmOp)
+	require.True(t, ok)
+	var unrefBlocks []BlockPointer
+	if et != Sym {
+		unrefBlocks = []BlockPointer{p.tailPointer()}
+	}
+	parentPath := *p.parentPath()
+	updates := []blockUpdate{{
+		parentPath.path[0].BlockPointer,
+		newParentPath.path[0].BlockPointer,
+	}}
+	checkOp(t, ro.OpCommon, nil, unrefBlocks, updates)
+	dirUpdate := blockUpdate{
+		parentPath.tailPointer(), newParentPath.tailPointer(),
+	}
+	require.Equal(t, dirUpdate, ro.Dir)
+	require.Equal(t, entryName, ro.OldName)
+}
+
 func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	mockCtrl, config, ctx := kbfsOpsInit(t, true)
 	defer kbfsTestShutdown(mockCtrl, config)
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	p, blocks := makePath(uid, id, rmd, entryType, "a", "b")
+	entryName := "e"
+	p, blocks := makePath(uid, id, rmd, entryType,
+		"a", "b", "c", "d", entryName)
 	ops := getOps(config, id)
 	var parentPath path
 	if entryType == Sym {
@@ -1655,15 +1679,10 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	}
 	n := nodeFromPath(t, ops, parentPath)
 
-	// deleting "a/b"
-	for i := 0; i < len(parentPath.path); i++ {
+	// Prime cache with all blocks.
+	for i := 0; i < len(p.path); i++ {
 		testPutBlockInCache(
-			t, config, parentPath.path[i].BlockPointer,
-			id, blocks[i])
-	}
-	if entryType != Sym {
-		testPutBlockInCache(
-			t, config, p.tailPointer(), id, blocks[len(blocks)-1])
+			t, config, p.path[i].BlockPointer, id, blocks[i])
 	}
 	// sync block
 	var newRmd *RootMetadata
@@ -1678,9 +1697,9 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 
 	var err error
 	if entryType == Dir {
-		err = config.KBFSOps().RemoveDir(ctx, n, "b")
+		err = config.KBFSOps().RemoveDir(ctx, n, entryName)
 	} else {
-		err = config.KBFSOps().RemoveEntry(ctx, n, "b")
+		err = config.KBFSOps().RemoveEntry(ctx, n, entryName)
 	}
 	if err != nil {
 		t.Fatalf("Got error on removal: %v", err)
@@ -1691,8 +1710,8 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 		blockIDs, entryType, "", false)
 	b1 := getDirBlockFromCache(
 		t, config, newParentPath.tailPointer(), newParentPath.Branch)
-	if _, ok := b1.Children["b"]; ok {
-		t.Errorf("entry for b is still around after removal")
+	if _, ok := b1.Children[entryName]; ok {
+		t.Errorf("entry for %s is still around after removal", entryName)
 	}
 	for _, n := range parentPath.path {
 		blockIDs = append(blockIDs, n.ID)
@@ -1702,36 +1721,19 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	}
 	checkBlockCache(t, config, blockIDs, nil)
 
-	// make sure the rmOp is correct
-	ro, ok := newRmd.data.Changes.Ops[0].(*rmOp)
-	if !ok {
-		t.Errorf("Couldn't find the rmOp")
-	}
-	var unrefBlocks []BlockPointer
-	if entryType != Sym {
-		unrefBlocks = []BlockPointer{p.tailPointer()}
-	}
-	updates := []blockUpdate{{
-		parentPath.path[0].BlockPointer,
-		newParentPath.path[0].BlockPointer,
-	}}
-	checkOp(t, ro.OpCommon, nil, unrefBlocks, updates)
-	dirUpdate := blockUpdate{
-		parentPath.tailPointer(), newParentPath.tailPointer(),
-	}
-	if ro.Dir != dirUpdate {
-		t.Errorf("Incorrect dir update in op: %v vs. %v", ro.Dir, dirUpdate)
-	} else if ro.OldName != "b" {
-		t.Errorf("Incorrect name in op: %v", ro.OldName)
-	}
-}
-
-func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
-	testRemoveEntrySuccess(t, Dir)
+	checkRmOp(t, entryName, newRmd, p, newParentPath, entryType)
 }
 
 func TestKBFSOpsRemoveFileSuccess(t *testing.T) {
 	testRemoveEntrySuccess(t, File)
+}
+
+func TestKBFSOpsRemoveExecSuccess(t *testing.T) {
+	testRemoveEntrySuccess(t, Exec)
+}
+
+func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
+	testRemoveEntrySuccess(t, Dir)
 }
 
 func TestKBFSOpsRemoveSymlinkSuccess(t *testing.T) {
