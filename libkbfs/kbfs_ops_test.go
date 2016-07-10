@@ -2126,32 +2126,23 @@ func TestRemoveDirFailNoSuchName(t *testing.T) {
 	mockCtrl, config, ctx := kbfsOpsInit(t, false)
 	defer kbfsTestShutdown(mockCtrl, config)
 
-	u, id, rmd := injectNewRMD(t, config)
+	uid, id, _ := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(41)
-	aID := fakeBlockID(42)
-	bID := fakeBlockID(43)
-	rootBlock := NewDirBlock().(*DirBlock)
-	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: makeBIFromID(aID, u),
-		EntryInfo: EntryInfo{
-			Type: Dir,
-		},
+	_, dirPath, dirBlocks := makeDirTree(id, uid, "a", "b", "c", "d", "e")
+	// Don't actually set rmd.data.Dir. Stuff should work anyway.
+
+	// Prime cache with all dir blocks.
+	for i, dirBlock := range dirBlocks {
+		testPutBlockInCache(
+			t, config, dirPath.path[i].BlockPointer, id, dirBlock)
 	}
-	aBlock := NewDirBlock().(*DirBlock)
-	bBlock := NewDirBlock().(*DirBlock)
-	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
-	aNode := pathNode{makeBP(aID, rmd, config, u), "a"}
-	bNode := pathNode{makeBP(bID, rmd, config, u), "b"}
-	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
+
 	ops := getOps(config, id)
-	n := nodeFromPath(t, ops, p)
+	n := nodeFromPath(t, ops, dirPath)
 
-	testPutBlockInCache(t, config, bNode.BlockPointer, id, bBlock)
-	testPutBlockInCache(t, config, aNode.BlockPointer, id, aBlock)
-	expectedErr := NoSuchNameError{bNode.Name}
+	expectedErr := NoSuchNameError{"nonexistent"}
 
-	if err := config.KBFSOps().RemoveDir(ctx, n, "b"); err == nil {
+	if err := config.KBFSOps().RemoveDir(ctx, n, "nonexistent"); err == nil {
 		t.Errorf("Got no expected error on removal")
 	} else if err != expectedErr {
 		t.Errorf("Got unexpected error on removal: %v", err)
