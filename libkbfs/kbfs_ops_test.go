@@ -1649,47 +1649,6 @@ func makeSym(dir path, parentDirBlock *DirBlock, name string) {
 	}
 }
 
-// makePath creates a block tree for the given path components, and
-// returns a path and the list of blocks. Each entry in the nodes of
-// the returned path corresponds to the block at the same index of the
-// returned list of blocks. If n components are given, then the path
-// will have n+1 nodes (one extra for the root node), unless the given
-// EntryType is Sym, in which case it'll have n nodes (since there's
-// no node for the link itself).
-func makePath(uid keybase1.UID, id TlfID, rmd *RootMetadata, et EntryType,
-	components ...string) (path, []Block) {
-	dirComponents := components[:len(components)-1]
-	entryComponent := components[len(components)-1]
-
-	rootEntry, dirPath, dirBlocks := makeDirTree(id, uid, dirComponents...)
-	rmd.data.Dir = rootEntry
-
-	parentDirBlock := dirBlocks[len(dirBlocks)-1]
-
-	blocks := make([]Block, len(dirBlocks))
-	for i, dirBlock := range dirBlocks {
-		blocks[i] = dirBlock
-	}
-
-	switch et {
-	case File, Exec:
-		p, block := makeFile(
-			dirPath, parentDirBlock, entryComponent, et)
-		return p, append(blocks, block)
-
-	case Dir:
-		p, block := makeDir(dirPath, parentDirBlock, entryComponent)
-		return p, append(blocks, block)
-
-	case Sym:
-		makeSym(dirPath, parentDirBlock, entryComponent)
-		return dirPath, blocks
-
-	default:
-		panic(fmt.Sprintf("Unexpected type %s", et))
-	}
-}
-
 func checkRmOp(t *testing.T, entryName string, newRmd *RootMetadata,
 	dirPath, newDirPath path, unrefBlocks []BlockPointer) {
 	// make sure the rmOp is correct
@@ -1929,31 +1888,40 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
-	fileID := fakeBlockID(43)
-	id1 := fakeBlockID(44)
-	id2 := fakeBlockID(45)
-	id3 := fakeBlockID(46)
-	id4 := fakeBlockID(47)
-	rootBlock := NewDirBlock().(*DirBlock)
-	// TODO(akalin): Figure out actual Size value.
-	rootBlock.Children["a"] = DirEntry{
-		BlockInfo: BlockInfo{
-			BlockPointer: BlockPointer{ID: fileID, KeyGen: 1},
-			EncodedSize:  10,
-		},
+	rootEntry, dirPath, dirBlocks := makeDirTree(id, uid, "a", "b", "c", "d")
+	rmd.data.Dir = rootEntry
+
+	// Prime cache with all dir blocks.
+	for i, dirBlock := range dirBlocks {
+		testPutBlockInCache(
+			t, config, dirPath.path[i].BlockPointer, id, dirBlock)
+	}
+
+	parentDirBlock := dirBlocks[len(dirBlocks)-1]
+
+	entryName := "e"
+	lastBID := dirPath.tailPointer().ID
+	fileBID := fakeBlockIDAdd(lastBID, 1)
+	fileBI := makeBIFromID(fileBID, dirPath.tailPointer().Creator)
+
+	parentDirBlock.Children[entryName] = DirEntry{
+		BlockInfo: fileBI,
 		EntryInfo: EntryInfo{
-			Size: 20,
+			Type: File,
 		},
 	}
+
+	bid1 := fakeBlockIDAdd(lastBID, 2)
+	bid2 := fakeBlockIDAdd(lastBID, 3)
+	bid3 := fakeBlockIDAdd(lastBID, 4)
+	bid4 := fakeBlockIDAdd(lastBID, 5)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
-		makeIFP(id1, rmd, config, uid, 5, 0),
-		makeIFP(id2, rmd, config, uid, 5, 5),
-		makeIFP(id3, rmd, config, uid, 5, 10),
-		makeIFP(id4, rmd, config, uid, 5, 15),
+		makeIFP(bid1, rmd, config, uid, 5, 0),
+		makeIFP(bid2, rmd, config, uid, 5, 5),
+		makeIFP(bid3, rmd, config, uid, 5, 10),
+		makeIFP(bid4, rmd, config, uid, 5, 15),
 	}
 	block1 := NewFileBlock().(*FileBlock)
 	block1.Contents = []byte{5, 4, 3, 2, 1}
@@ -1963,16 +1931,13 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 	block3.Contents = []byte{15, 14, 13, 12, 11}
 	block4 := NewFileBlock().(*FileBlock)
 	block4.Contents = []byte{20, 19, 18, 17, 16}
-	node := pathNode{makeBP(rootID, rmd, config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, rmd, config, uid), "a"}
-	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
+	fileBP := makeBP(fileBID, rmd, config, uid)
+	p := dirPath.ChildPath(entryName, fileBP)
 	ops := getOps(config, id)
-	n := nodeFromPath(t, ops, p)
-
-	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
+	n := nodeFromPath(t, ops, dirPath)
 
 	// let the top block be uncached, so we have to fetch it from BlockOps.
-	expectBlock(config, rmd, fileNode.BlockPointer, fileBlock, nil)
+	expectBlock(config, rmd, fileBP, fileBlock, nil)
 
 	testPutBlockInCache(t, config, fileBlock.IPtrs[0].BlockPointer, id, block1)
 	testPutBlockInCache(t, config, fileBlock.IPtrs[1].BlockPointer, id, block2)
@@ -1980,47 +1945,38 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 	testPutBlockInCache(t, config, fileBlock.IPtrs[3].BlockPointer, id, block4)
 
 	// sync block
-	unrefBytes := uint64(10 + 4*5) // fileBlock + 4 indirect blocks
+	blockIDs := make([]BlockID, len(dirPath.path))
+	unrefBytes := uint64(1 + 4*5) // fileBlock + 4 indirect blocks
 	var newRmd *RootMetadata
-	blocks := make([]BlockID, 1)
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
-		p, rmd, false, 0, 0, unrefBytes, &newRmd, blocks)
+		dirPath, rmd, false, 0, 0, unrefBytes, &newRmd, blockIDs)
 
-	err := config.KBFSOps().RemoveEntry(ctx, n, "a")
-	newP := ops.nodeCache.PathFromNode(n)
+	err := config.KBFSOps().RemoveEntry(ctx, n, entryName)
+	newDirPath := ops.nodeCache.PathFromNode(n)
 	if err != nil {
 		t.Errorf("Got error on removal: %v", err)
 	}
-	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd, blockIDs,
 		File, "", false)
 	b0 :=
-		getDirBlockFromCache(t, config, newP.path[0].BlockPointer, newP.Branch)
-	if _, ok := b0.Children["a"]; ok {
-		t.Errorf("entry for a is still around after removal")
+		getDirBlockFromCache(t, config, newDirPath.tailPointer(), newDirPath.Branch)
+	if _, ok := b0.Children[entryName]; ok {
+		t.Errorf("entry for %s is still around after removal", entryName)
 	}
-	checkBlockCache(t, config,
-		append(blocks, rootID, fileID, id1, id2, id3, id4), nil)
+	for _, n := range p.path {
+		blockIDs = append(blockIDs, n.ID)
+	}
+	blockIDs = append(blockIDs, bid1, bid2, bid3, bid4)
+	checkBlockCache(t, config, blockIDs, nil)
 
-	// make sure the rmOp is correct
-	ro, ok := newRmd.data.Changes.Ops[0].(*rmOp)
-	if !ok {
-		t.Errorf("Couldn't find the rmOp")
-	}
 	unrefBlocks := []BlockPointer{
-		{ID: fileID, KeyGen: 1},
+		fileBP,
 		fileBlock.IPtrs[0].BlockPointer,
 		fileBlock.IPtrs[1].BlockPointer,
 		fileBlock.IPtrs[2].BlockPointer,
 		fileBlock.IPtrs[3].BlockPointer,
 	}
-	checkOp(t, ro.OpCommon, nil, unrefBlocks, nil)
-	dirUpdate := blockUpdate{rmd.data.Dir.BlockPointer,
-		newP.path[0].BlockPointer}
-	if ro.Dir != dirUpdate {
-		t.Errorf("Incorrect dir update in op: %v vs. %v", ro.Dir, dirUpdate)
-	} else if ro.OldName != "a" {
-		t.Errorf("Incorrect name in op: %v", ro.OldName)
-	}
+	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, unrefBlocks)
 }
 
 func TestRemoveDirFailNonEmpty(t *testing.T) {
