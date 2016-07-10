@@ -1556,6 +1556,9 @@ func TestCreateLinkFailKBFSPrefix(t *testing.T) {
 	testCreateEntryFailKBFSPrefix(t, Sym)
 }
 
+// TODO: Currently only the remove tests use makeDirTree(),
+// makeFile(), et al. Make the other tests use these functions, too.
+
 // makeDirTree creates a block tree for the given path components and
 // returns the DirEntry for the root block, a path, and the
 // corresponding list of blocks. If n components are given, then the
@@ -1669,13 +1672,18 @@ func checkRmOp(t *testing.T, entryName string, newRmd *RootMetadata,
 	require.Equal(t, entryName, ro.OldName)
 }
 
-func TestKBFSOpsRemoveFileSuccess(t *testing.T) {
+func testKBFSOpsRemoveFileSuccess(t *testing.T, et EntryType) {
+	if et != File && et != Exec {
+		panic(fmt.Sprintf("Unexpected type %s", et))
+	}
+
 	mockCtrl, config, ctx := kbfsOpsInit(t, true)
 	defer kbfsTestShutdown(mockCtrl, config)
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootEntry, dirPath, dirBlocks := makeDirTree(id, uid, "a", "b", "c", "d")
+	rootEntry, dirPath, dirBlocks :=
+		makeDirTree(id, uid, "a", "b", "c", "d")
 	rmd.data.Dir = rootEntry
 
 	// Prime cache with all dir blocks.
@@ -1689,8 +1697,11 @@ func TestKBFSOpsRemoveFileSuccess(t *testing.T) {
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, dirPath)
 
-	entryName := "e"
-	p, block := makeFile(dirPath, parentDirBlock, entryName, File)
+	entryName := "file"
+	if et == Exec {
+		entryName += ".exe"
+	}
+	p, block := makeFile(dirPath, parentDirBlock, entryName, et)
 	testPutBlockInCache(t, config, p.tailPointer(), id, block)
 
 	// sync block
@@ -1702,18 +1713,16 @@ func TestKBFSOpsRemoveFileSuccess(t *testing.T) {
 		dirPath, rmd, false, 0, 0, unrefBytes, &newRmd, blockIDs)
 
 	err := config.KBFSOps().RemoveEntry(ctx, n, entryName)
-	if err != nil {
-		t.Fatalf("Got error on removal: %v", err)
-	}
+	require.NoError(t, err)
 	newDirPath := ops.nodeCache.PathFromNode(n)
 
 	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
-		blockIDs, File, "", false)
-	b1 := getDirBlockFromCache(
+		blockIDs, et, "", false)
+	newParentDirBlock := getDirBlockFromCache(
 		t, config, newDirPath.tailPointer(), newDirPath.Branch)
-	if _, ok := b1.Children[entryName]; ok {
-		t.Errorf("entry for %s is still around after removal", entryName)
-	}
+	_, ok := newParentDirBlock.Children[entryName]
+	require.False(t, ok)
+
 	for _, n := range p.path {
 		blockIDs = append(blockIDs, n.ID)
 	}
@@ -1723,58 +1732,12 @@ func TestKBFSOpsRemoveFileSuccess(t *testing.T) {
 	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, unrefBlocks)
 }
 
+func TestKBFSOpsRemoveFileSuccess(t *testing.T) {
+	testKBFSOpsRemoveFileSuccess(t, File)
+}
+
 func TestKBFSOpsRemoveExecSuccess(t *testing.T) {
-	mockCtrl, config, ctx := kbfsOpsInit(t, true)
-	defer kbfsTestShutdown(mockCtrl, config)
-
-	uid, id, rmd := injectNewRMD(t, config)
-
-	rootEntry, dirPath, dirBlocks := makeDirTree(id, uid, "a", "b", "c", "d")
-	rmd.data.Dir = rootEntry
-
-	// Prime cache with all dir blocks.
-	for i, dirBlock := range dirBlocks {
-		testPutBlockInCache(
-			t, config, dirPath.path[i].BlockPointer, id, dirBlock)
-	}
-
-	parentDirBlock := dirBlocks[len(dirBlocks)-1]
-
-	ops := getOps(config, id)
-	n := nodeFromPath(t, ops, dirPath)
-
-	entryName := "e"
-	p, block := makeFile(dirPath, parentDirBlock, entryName, Exec)
-	testPutBlockInCache(t, config, p.tailPointer(), id, block)
-
-	// sync block
-	var newRmd *RootMetadata
-	blockIDs := make([]BlockID, len(dirPath.path))
-	// a block of size 1 is being unreferenced
-	var unrefBytes uint64 = 1
-	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
-		dirPath, rmd, false, 0, 0, unrefBytes, &newRmd, blockIDs)
-
-	err := config.KBFSOps().RemoveEntry(ctx, n, entryName)
-	if err != nil {
-		t.Fatalf("Got error on removal: %v", err)
-	}
-	newDirPath := ops.nodeCache.PathFromNode(n)
-
-	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
-		blockIDs, Exec, "", false)
-	b1 := getDirBlockFromCache(
-		t, config, newDirPath.tailPointer(), newDirPath.Branch)
-	if _, ok := b1.Children[entryName]; ok {
-		t.Errorf("entry for %s is still around after removal", entryName)
-	}
-	for _, n := range p.path {
-		blockIDs = append(blockIDs, n.ID)
-	}
-	checkBlockCache(t, config, blockIDs, nil)
-
-	unrefBlocks := []BlockPointer{p.tailPointer()}
-	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, unrefBlocks)
+	testKBFSOpsRemoveFileSuccess(t, Exec)
 }
 
 func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
@@ -1783,23 +1746,21 @@ func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootEntry, dirPath, dirBlocks := makeDirTree(id, uid, "a", "b", "c", "d")
+	entryName := "dir"
+	rootEntry, p, blocks := makeDirTree(
+		id, uid, "a", "b", "c", "d", entryName)
 	rmd.data.Dir = rootEntry
 
-	// Prime cache with all dir blocks.
-	for i, dirBlock := range dirBlocks {
+	// Prime cache with all blocks.
+	for i, dirBlock := range blocks {
 		testPutBlockInCache(
-			t, config, dirPath.path[i].BlockPointer, id, dirBlock)
+			t, config, p.path[i].BlockPointer, id, dirBlock)
 	}
 
-	parentDirBlock := dirBlocks[len(dirBlocks)-1]
+	dirPath := *p.parentPath()
 
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, dirPath)
-
-	entryName := "e"
-	p, block := makeDir(dirPath, parentDirBlock, entryName)
-	testPutBlockInCache(t, config, p.tailPointer(), id, block)
 
 	// sync block
 	var newRmd *RootMetadata
@@ -1810,18 +1771,16 @@ func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
 		dirPath, rmd, false, 0, 0, unrefBytes, &newRmd, blockIDs)
 
 	err := config.KBFSOps().RemoveDir(ctx, n, entryName)
-	if err != nil {
-		t.Fatalf("Got error on removal: %v", err)
-	}
+	require.NoError(t, err)
 	newDirPath := ops.nodeCache.PathFromNode(n)
 
 	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
 		blockIDs, Dir, "", false)
-	b1 := getDirBlockFromCache(
+	newParentBlock := getDirBlockFromCache(
 		t, config, newDirPath.tailPointer(), newDirPath.Branch)
-	if _, ok := b1.Children[entryName]; ok {
-		t.Errorf("entry for %s is still around after removal", entryName)
-	}
+	_, ok := newParentBlock.Children[entryName]
+	require.False(t, ok)
+
 	for _, n := range p.path {
 		blockIDs = append(blockIDs, n.ID)
 	}
@@ -1831,13 +1790,14 @@ func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
 	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, unrefBlocks)
 }
 
-func TestKBFSOpsRemoveSymlinkSuccess(t *testing.T) {
+func TestKBFSOpsRemoveSymSuccess(t *testing.T) {
 	mockCtrl, config, ctx := kbfsOpsInit(t, true)
 	defer kbfsTestShutdown(mockCtrl, config)
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootEntry, dirPath, dirBlocks := makeDirTree(id, uid, "a", "b", "c", "d")
+	rootEntry, dirPath, dirBlocks :=
+		makeDirTree(id, uid, "a", "b", "c", "d")
 	rmd.data.Dir = rootEntry
 
 	// Prime cache with all dir blocks.
@@ -1851,34 +1811,33 @@ func TestKBFSOpsRemoveSymlinkSuccess(t *testing.T) {
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, dirPath)
 
-	entryName := "e"
+	entryName := "sym"
 	makeSym(dirPath, parentDirBlock, entryName)
 
 	// sync block
 	var newRmd *RootMetadata
 	blockIDs := make([]BlockID, len(dirPath.path))
-	// no block is being referenced
+	// No block is being referenced.
 	var unrefBytes uint64 = 0
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
 		dirPath, rmd, false, 0, 0, unrefBytes, &newRmd, blockIDs)
 
 	err := config.KBFSOps().RemoveEntry(ctx, n, entryName)
-	if err != nil {
-		t.Fatalf("Got error on removal: %v", err)
-	}
+	require.NoError(t, err)
 	newDirPath := ops.nodeCache.PathFromNode(n)
 
 	checkNewPath(t, ctx, config, newDirPath, expectedPath, newRmd,
 		blockIDs, Sym, "", false)
-	b1 := getDirBlockFromCache(
+	newParentDirBlock := getDirBlockFromCache(
 		t, config, newDirPath.tailPointer(), newDirPath.Branch)
-	if _, ok := b1.Children[entryName]; ok {
-		t.Errorf("entry for %s is still around after removal", entryName)
-	}
+	_, ok := newParentDirBlock.Children[entryName]
+	require.False(t, ok)
+
 	for _, n := range dirPath.path {
 		blockIDs = append(blockIDs, n.ID)
 	}
 	checkBlockCache(t, config, blockIDs, nil)
+
 	checkRmOp(t, entryName, newRmd, dirPath, newDirPath, nil)
 }
 
