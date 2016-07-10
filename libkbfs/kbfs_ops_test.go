@@ -1563,7 +1563,7 @@ func TestCreateLinkFailKBFSPrefix(t *testing.T) {
 // blocks. If n components are given, then the path will have n+1
 // nodes (one extra for the root node).
 func makeDir(uid keybase1.UID, id TlfID, rmd *RootMetadata,
-	components ...string) (path, []Block) {
+	components ...string) (path, []*DirBlock) {
 	var idCounter byte = 41
 	makeBlockID := func() BlockID {
 		id := fakeBlockID(idCounter)
@@ -1583,7 +1583,7 @@ func makeDir(uid keybase1.UID, id TlfID, rmd *RootMetadata,
 	}
 	nodes := []pathNode{{bi.BlockPointer, "{root}"}}
 	rootBlock := NewDirBlock().(*DirBlock)
-	blocks := []Block{rootBlock}
+	blocks := []*DirBlock{rootBlock}
 
 	// Handle the rest.
 
@@ -1619,9 +1619,13 @@ func makePath(uid keybase1.UID, id TlfID, rmd *RootMetadata, et EntryType,
 	dirComponents := components[:len(components)-1]
 	entryComponent := components[len(components)-1]
 
-	dirPath, blocks := makeDir(uid, id, rmd, dirComponents...)
+	dirPath, dirBlocks := makeDir(uid, id, rmd, dirComponents...)
 
-	parentDirBlock := blocks[len(blocks)-1].(*DirBlock)
+	parentDirBlock := dirBlocks[len(dirBlocks)-1]
+	blocks := make([]Block, len(dirBlocks))
+	for i, dirBlock := range dirBlocks {
+		blocks[i] = dirBlock
+	}
 	bid := fakeBlockID(105)
 	bi := makeBIFromID(bid, uid)
 	if et == Sym {
