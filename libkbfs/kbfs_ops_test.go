@@ -1841,9 +1841,10 @@ func TestKBFSOpsRemoveFileMissingBlock(t *testing.T) {
 	// deleting "a/b"
 	testPutBlockInCache(t, config, aNode.BlockPointer, id, aBlock)
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
+	// The operation might be retried several times.
 	config.mockBops.EXPECT().Get(
 		gomock.Any(), gomock.Any(), bNode.BlockPointer,
-		gomock.Any()).Return(BServerErrorBlockNonExistent{})
+		gomock.Any()).Return(BServerErrorBlockNonExistent{}).MinTimes(1)
 	// sync block
 	var newRmd *RootMetadata
 	blocks := make([]BlockID, 2)
@@ -1919,9 +1920,10 @@ func TestKBFSOpsRemoveDirMissingBlock(t *testing.T) {
 	// deleting "a/b"
 	testPutBlockInCache(t, config, aNode.BlockPointer, id, aBlock)
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
+	// The operation might be retried several times.
 	config.mockBops.EXPECT().Get(
 		gomock.Any(), gomock.Any(), bNode.BlockPointer,
-		gomock.Any()).Return(BServerErrorBlockNonExistent{})
+		gomock.Any()).Return(BServerErrorBlockNonExistent{}).MinTimes(1)
 	// sync block
 	var newRmd *RootMetadata
 	blocks := make([]BlockID, 2)
