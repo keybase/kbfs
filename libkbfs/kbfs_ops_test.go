@@ -1885,6 +1885,84 @@ func TestKBFSOpsRemoveFileMissingBlock(t *testing.T) {
 	}
 }
 
+func TestKBFSOpsRemoveDirMissingBlock(t *testing.T) {
+	mockCtrl, config, ctx := kbfsOpsInit(t, true)
+	defer kbfsTestShutdown(mockCtrl, config)
+
+	uid, id, rmd := injectNewRMD(t, config)
+
+	rootID := fakeBlockID(41)
+	rmd.data.Dir.ID = rootID
+	aID := fakeBlockID(42)
+	bID := fakeBlockID(43)
+	rootBlock := NewDirBlock().(*DirBlock)
+	rootBlock.Children["a"] = DirEntry{
+		BlockInfo: makeBIFromID(aID, uid),
+		EntryInfo: EntryInfo{
+			Type: Dir,
+		},
+	}
+	aBlock := NewDirBlock().(*DirBlock)
+	aBlock.Children["b"] = DirEntry{
+		BlockInfo: makeBIFromID(bID, uid),
+		EntryInfo: EntryInfo{
+			Type: Dir,
+		},
+	}
+	node := pathNode{makeBP(rootID, rmd, config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd, config, uid), "a"}
+	bNode := pathNode{makeBP(bID, rmd, config, uid), "b"}
+	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
+	ops := getOps(config, id)
+	n := nodeFromPath(t, ops, p)
+
+	// deleting "a/b"
+	testPutBlockInCache(t, config, aNode.BlockPointer, id, aBlock)
+	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
+	config.mockBops.EXPECT().Get(
+		gomock.Any(), gomock.Any(), bNode.BlockPointer,
+		gomock.Any()).Return(BServerErrorBlockNonExistent{})
+	// sync block
+	var newRmd *RootMetadata
+	blocks := make([]BlockID, 2)
+	unrefBytes := uint64(1) // a block of size 1 is being unreferenced
+	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
+		p, rmd, false, 0, 0, unrefBytes, &newRmd, blocks)
+
+	err := config.KBFSOps().RemoveDir(ctx, n, "b")
+	if err != nil {
+		t.Fatalf("Got error on removal: %v", err)
+	}
+	newP := ops.nodeCache.PathFromNode(n)
+
+	checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
+		Dir, "", false)
+	b1 :=
+		getDirBlockFromCache(t, config, newP.path[1].BlockPointer, newP.Branch)
+	if _, ok := b1.Children["b"]; ok {
+		t.Errorf("entry for b is still around after removal")
+	}
+	checkBlockCache(t, config, append(blocks, rootID, aID), nil)
+
+	// make sure the rmOp is correct
+	ro, ok := newRmd.data.Changes.Ops[0].(*rmOp)
+	if !ok {
+		t.Errorf("Couldn't find the rmOp")
+	}
+	unrefBlocks := []BlockPointer{bNode.BlockPointer}
+	updates := []blockUpdate{
+		{rmd.data.Dir.BlockPointer, newP.path[0].BlockPointer},
+	}
+	checkOp(t, ro.OpCommon, nil, unrefBlocks, updates)
+	dirUpdate := blockUpdate{rootBlock.Children["a"].BlockPointer,
+		newP.path[1].BlockPointer}
+	if ro.Dir != dirUpdate {
+		t.Errorf("Incorrect dir update in op: %v vs. %v", ro.Dir, dirUpdate)
+	} else if ro.OldName != "b" {
+		t.Errorf("Incorrect name in op: %v", ro.OldName)
+	}
+}
+
 func TestRemoveDirFailNoSuchName(t *testing.T) {
 	mockCtrl, config, ctx := kbfsOpsInit(t, false)
 	defer kbfsTestShutdown(mockCtrl, config)
