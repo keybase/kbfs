@@ -1871,6 +1871,8 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 		},
 	}
 
+	// TODO: Write a helper function for making a file with
+	// indirect blocks and use it in other tests.
 	bid1 := fakeBlockIDAdd(lastBID, 2)
 	bid2 := fakeBlockIDAdd(lastBID, 3)
 	bid3 := fakeBlockIDAdd(lastBID, 4)
