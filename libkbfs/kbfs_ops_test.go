@@ -1967,8 +1967,6 @@ func testKBFSOpsRemoveFileMissingBlockSuccess(t *testing.T, et EntryType) {
 		panic(fmt.Sprintf("Unexpected type %s", et))
 	}
 
-	t.Skip()
-
 	mockCtrl, config, ctx := kbfsOpsInit(t, true)
 	defer kbfsTestShutdown(mockCtrl, config)
 
@@ -2036,7 +2034,6 @@ func TestKBFSOpsRemoveExecMissingBlockSuccess(t *testing.T) {
 }
 
 func TestKBFSOpsRemoveDirMissingBlock(t *testing.T) {
-	t.Skip()
 	mockCtrl, config, ctx := kbfsOpsInit(t, true)
 	defer kbfsTestShutdown(mockCtrl, config)
 
