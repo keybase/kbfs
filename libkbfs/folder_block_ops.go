@@ -142,7 +142,7 @@ type folderBlockOps struct {
 	// For writes and truncates, track the modified (but not yet
 	// committed) directory entries. Maps the entry blockRef to a
 	// modified entry.
-	deCache map[IFCERFTBlockRef]DirEntry
+	deCache map[IFCERFTBlockRef]IFCERFTDirEntry
 
 	// Writes and truncates for blocks that were being sync'd, and
 	// need to be replayed after the sync finishes on top of the new
@@ -262,16 +262,16 @@ func (fbo *folderBlockOps) getBlockHelperLocked(ctx context.Context,
 // notifications, and can be empty.
 func (fbo *folderBlockOps) getFileBlockHelperLocked(ctx context.Context,
 	lState *lockState, md *IFCERFTRootMetadata, ptr IFCERFTBlockPointer, branch IFCERFTBranchName, p IFCERFTPath) (
-	*FileBlock, error) {
+	*IFCERFTFileBlock, error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 
 	block, err := fbo.getBlockHelperLocked(
-		ctx, lState, md, ptr, branch, NewFileBlock, true, p)
+		ctx, lState, md, ptr, branch, IFCERFTNewFileBlock, true, p)
 	if err != nil {
 		return nil, err
 	}
 
-	fblock, ok := block.(*FileBlock)
+	fblock, ok := block.(*IFCERFTFileBlock)
 	if !ok {
 		return nil, IFCERFTNotFileBlockError{ptr, branch, p}
 	}
@@ -293,7 +293,7 @@ func (fbo *folderBlockOps) GetBlockForReading(ctx context.Context,
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
 	return fbo.getBlockHelperLocked(ctx, lState, md, ptr, branch,
-		NewCommonBlock, false, IFCERFTPath{})
+		IFCERFTNewCommonBlock, false, IFCERFTPath{})
 }
 
 // getDirBlockHelperLocked retrieves the block pointed to by ptr, which
@@ -305,18 +305,18 @@ func (fbo *folderBlockOps) GetBlockForReading(ctx context.Context,
 //
 // p is used only when reporting errors, and can be empty.
 func (fbo *folderBlockOps) getDirBlockHelperLocked(ctx context.Context,
-	lState *lockState, md *IFCERFTRootMetadata, ptr IFCERFTBlockPointer, branch IFCERFTBranchName, p IFCERFTPath) (*DirBlock, error) {
+	lState *lockState, md *IFCERFTRootMetadata, ptr IFCERFTBlockPointer, branch IFCERFTBranchName, p IFCERFTPath) (*IFCERFTDirBlock, error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 
 	// Pass in an empty notify path because notifications should only
 	// trigger for file reads.
 	block, err := fbo.getBlockHelperLocked(
-		ctx, lState, md, ptr, branch, NewDirBlock, true, IFCERFTPath{})
+		ctx, lState, md, ptr, branch, IFCERFTNewDirBlock, true, IFCERFTPath{})
 	if err != nil {
 		return nil, err
 	}
 
-	dblock, ok := block.(*DirBlock)
+	dblock, ok := block.(*IFCERFTDirBlock)
 	if !ok {
 		return nil, IFCERFTNotDirBlockError{ptr, branch, p}
 	}
@@ -334,7 +334,7 @@ func (fbo *folderBlockOps) getDirBlockHelperLocked(ctx context.Context,
 //
 // p is used only when reporting errors, and can be empty.
 func (fbo *folderBlockOps) GetFileBlockForReading(ctx context.Context,
-	lState *lockState, md *IFCERFTRootMetadata, ptr IFCERFTBlockPointer, branch IFCERFTBranchName, p IFCERFTPath) (*FileBlock, error) {
+	lState *lockState, md *IFCERFTRootMetadata, ptr IFCERFTBlockPointer, branch IFCERFTBranchName, p IFCERFTPath) (*IFCERFTFileBlock, error) {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
 	return fbo.getFileBlockHelperLocked(ctx, lState, md, ptr, branch, p)
@@ -350,7 +350,7 @@ func (fbo *folderBlockOps) GetFileBlockForReading(ctx context.Context,
 //
 // p is used only when reporting errors, and can be empty.
 func (fbo *folderBlockOps) GetDirBlockForReading(ctx context.Context,
-	lState *lockState, md *IFCERFTRootMetadata, ptr IFCERFTBlockPointer, branch IFCERFTBranchName, p IFCERFTPath) (*DirBlock, error) {
+	lState *lockState, md *IFCERFTRootMetadata, ptr IFCERFTBlockPointer, branch IFCERFTBranchName, p IFCERFTPath) (*IFCERFTDirBlock, error) {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
 	return fbo.getDirBlockHelperLocked(ctx, lState, md, ptr, branch, p)
@@ -382,7 +382,7 @@ func (fbo *folderBlockOps) GetDirBlockForReading(ctx context.Context,
 // almost always need to modify that block, and so will pass in
 // blockWrite.
 func (fbo *folderBlockOps) getFileBlockLocked(ctx context.Context,
-	lState *lockState, md *IFCERFTRootMetadata, ptr IFCERFTBlockPointer, file IFCERFTPath, rtype blockReqType) (*FileBlock, error) {
+	lState *lockState, md *IFCERFTRootMetadata, ptr IFCERFTBlockPointer, file IFCERFTPath, rtype blockReqType) (*IFCERFTFileBlock, error) {
 	if rtype == blockRead {
 		fbo.blockLock.AssertRLocked(lState)
 	} else {
@@ -420,7 +420,7 @@ func (fbo *folderBlockOps) getFileBlockLocked(ctx context.Context,
 
 // getFileLocked is getFileBlockLocked called with file.tailPointer().
 func (fbo *folderBlockOps) getFileLocked(ctx context.Context,
-	lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath, rtype blockReqType) (*FileBlock, error) {
+	lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath, rtype blockReqType) (*IFCERFTFileBlock, error) {
 	return fbo.getFileBlockLocked(
 		ctx, lState, md, file.TailPointer(), file, rtype)
 }
@@ -430,7 +430,7 @@ func (fbo *folderBlockOps) getFileLocked(ctx context.Context,
 func (fbo *folderBlockOps) GetIndirectFileBlockInfos(ctx context.Context,
 	lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath) ([]IFCERFTBlockInfo, error) {
 	// TODO: handle multiple levels of indirection.
-	fBlock, err := func() (*FileBlock, error) {
+	fBlock, err := func() (*IFCERFTFileBlock, error) {
 		fbo.blockLock.RLock(lState)
 		defer fbo.blockLock.RUnlock(lState)
 		return fbo.getFileBlockLocked(
@@ -471,7 +471,7 @@ func (fbo *folderBlockOps) GetIndirectFileBlockInfos(ctx context.Context,
 // operations do need to copy dir blocks for modifications.
 func (fbo *folderBlockOps) getDirLocked(ctx context.Context,
 	lState *lockState, md *IFCERFTRootMetadata, dir IFCERFTPath, rtype blockReqType) (
-	*DirBlock, error) {
+	*IFCERFTDirBlock, error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 
 	// Callers should have already done this check, but it doesn't
@@ -514,17 +514,16 @@ func (fbo *folderBlockOps) getDirLocked(ctx context.Context,
 // block within a single operation, it is the caller's responsibility
 // to write that block back to the cache as dirty.
 func (fbo *folderBlockOps) GetDir(
-	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, dir IFCERFTPath, rtype blockReqType) (*DirBlock, error) {
+	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, dir IFCERFTPath, rtype blockReqType) (*IFCERFTDirBlock, error) {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
 	return fbo.getDirLocked(ctx, lState, md, dir, rtype)
 }
 
 func (fbo *folderBlockOps) getFileBlockAtOffsetLocked(ctx context.Context,
-	lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath, topBlock *FileBlock,
-	off int64, rtype blockReqType) (
-	ptr IFCERFTBlockPointer, parentBlock *FileBlock, indexInParent int,
-	block *FileBlock, nextBlockStartOff, startOff int64, err error) {
+	lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath, topBlock *IFCERFTFileBlock, off int64, rtype blockReqType) (
+	ptr IFCERFTBlockPointer, parentBlock *IFCERFTFileBlock, indexInParent int,
+	block *IFCERFTFileBlock, nextBlockStartOff, startOff int64, err error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 
 	// find the block matching the offset, if it exists
@@ -571,7 +570,7 @@ func (fbo *folderBlockOps) getFileBlockAtOffsetLocked(ctx context.Context,
 // the ones in deCache and returns it. If not, it just returns the
 // given one.
 func (fbo *folderBlockOps) updateWithDirtyEntriesLocked(ctx context.Context,
-	lState *lockState, block *DirBlock) (*DirBlock, error) {
+	lState *lockState, block *IFCERFTDirBlock) (*IFCERFTDirBlock, error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 	// see if this directory has any outstanding writes/truncates that
 	// require an updated DirEntry
@@ -582,7 +581,7 @@ func (fbo *folderBlockOps) updateWithDirtyEntriesLocked(ctx context.Context,
 		return block, nil
 	}
 
-	var dblockCopy *DirBlock
+	var dblockCopy *IFCERFTDirBlock
 	for k, v := range block.Children {
 		de, ok := fbo.deCache[v.ref()]
 		if !ok {
@@ -613,7 +612,7 @@ func (fbo *folderBlockOps) updateWithDirtyEntriesLocked(ctx context.Context,
 // itself.
 func (fbo *folderBlockOps) getDirtyDirLocked(ctx context.Context,
 	lState *lockState, md *IFCERFTRootMetadata, dir IFCERFTPath, rtype blockReqType) (
-	*DirBlock, error) {
+	*IFCERFTDirBlock, error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 
 	dblock, err := fbo.getDirLocked(ctx, lState, md, dir, rtype)
@@ -629,7 +628,7 @@ func (fbo *folderBlockOps) getDirtyDirLocked(ctx context.Context,
 func (fbo *folderBlockOps) GetDirtyDirChildren(
 	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, dir IFCERFTPath) (
 	map[string]IFCERFTEntryInfo, error) {
-	dblock, err := func() (*DirBlock, error) {
+	dblock, err := func() (*IFCERFTDirBlock, error) {
 		fbo.blockLock.RLock(lState)
 		defer fbo.blockLock.RUnlock(lState)
 		dblock, err := fbo.getDirtyDirLocked(
@@ -653,25 +652,25 @@ func (fbo *folderBlockOps) GetDirtyDirChildren(
 // file must have a valid parent.
 func (fbo *folderBlockOps) getDirtyParentAndEntryLocked(ctx context.Context,
 	lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath, rtype blockReqType) (
-	*DirBlock, DirEntry, error) {
+	*IFCERFTDirBlock, IFCERFTDirEntry, error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 
 	if !file.HasValidParent() {
-		return nil, DirEntry{}, IFCERFTInvalidParentPathError{file}
+		return nil, IFCERFTDirEntry{}, IFCERFTInvalidParentPathError{file}
 	}
 
 	parentPath := file.ParentPath()
 	dblock, err := fbo.getDirtyDirLocked(
 		ctx, lState, md, *parentPath, rtype)
 	if err != nil {
-		return nil, DirEntry{}, err
+		return nil, IFCERFTDirEntry{}, err
 	}
 
 	// make sure it exists
 	name := file.TailName()
 	de, ok := dblock.Children[name]
 	if !ok {
-		return nil, DirEntry{}, IFCERFTNoSuchNameError{name}
+		return nil, IFCERFTDirEntry{}, IFCERFTNoSuchNameError{name}
 	}
 
 	return dblock, de, err
@@ -684,7 +683,7 @@ func (fbo *folderBlockOps) getDirtyParentAndEntryLocked(ctx context.Context,
 // GetDirtyEntry() if you only need the DirEntry.
 func (fbo *folderBlockOps) GetDirtyParentAndEntry(
 	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath) (
-	*DirBlock, DirEntry, error) {
+	*IFCERFTDirBlock, IFCERFTDirEntry, error) {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
 	return fbo.getDirtyParentAndEntryLocked(
@@ -693,7 +692,7 @@ func (fbo *folderBlockOps) GetDirtyParentAndEntry(
 
 // file must have a valid parent.
 func (fbo *folderBlockOps) getDirtyEntryLocked(ctx context.Context,
-	lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath) (DirEntry, error) {
+	lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath) (IFCERFTDirEntry, error) {
 	// TODO: Since we only need a single DirEntry, avoid having to
 	// look up every entry in the DirBlock.
 	_, de, err := fbo.getDirtyParentAndEntryLocked(
@@ -704,7 +703,7 @@ func (fbo *folderBlockOps) getDirtyEntryLocked(ctx context.Context,
 // GetDirtyEntry returns the possibly-dirty DirEntry of the given file
 // in its parent DirBlock. file must have a valid parent.
 func (fbo *folderBlockOps) GetDirtyEntry(
-	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath) (DirEntry, error) {
+	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath) (IFCERFTDirEntry, error) {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
 	return fbo.getDirtyEntryLocked(ctx, lState, md, file)
@@ -746,8 +745,7 @@ func (fbo *folderBlockOps) cacheBlockIfNotYetDirtyLocked(
 }
 
 func (fbo *folderBlockOps) newRightBlockLocked(
-	ctx context.Context, lState *lockState, ptr IFCERFTBlockPointer, file IFCERFTPath, pblock *FileBlock,
-	off int64, md *IFCERFTRootMetadata) error {
+	ctx context.Context, lState *lockState, ptr IFCERFTBlockPointer, file IFCERFTPath, pblock *IFCERFTFileBlock, off int64, md *IFCERFTRootMetadata) error {
 	fbo.blockLock.AssertLocked(lState)
 
 	newRID, err := fbo.config.Crypto().MakeTemporaryBlockID()
@@ -758,19 +756,19 @@ func (fbo *folderBlockOps) newRightBlockLocked(
 	if err != nil {
 		return err
 	}
-	rblock := &FileBlock{}
+	rblock := &IFCERFTFileBlock{}
 
 	newPtr := IFCERFTBlockPointer{
 		ID:      newRID,
 		KeyGen:  md.LatestKeyGeneration(),
-		DataVer: DefaultNewBlockDataVersion(fbo.config, false),
+		DataVer: IFCERFTDefaultNewBlockDataVersion(fbo.config, false),
 		IFCERFTBlockContext: IFCERFTBlockContext{
 			Creator:  uid,
 			RefNonce: IFCERFTZeroBlockRefNonce,
 		},
 	}
 
-	pblock.IPtrs = append(pblock.IPtrs, IndirectFilePtr{
+	pblock.IPtrs = append(pblock.IPtrs, IFCERFTIndirectFilePtr{
 		IFCERFTBlockInfo: IFCERFTBlockInfo{
 			IFCERFTBlockPointer: newPtr,
 			EncodedSize:         0,
@@ -790,7 +788,7 @@ func (fbo *folderBlockOps) newRightBlockLocked(
 }
 
 func (fbo *folderBlockOps) getOrCreateSyncInfoLocked(
-	lState *lockState, de DirEntry) *syncInfo {
+	lState *lockState, de IFCERFTDirEntry) *syncInfo {
 	fbo.blockLock.AssertLocked(lState)
 	ref := de.ref()
 	si, ok := fbo.unrefCache[ref]
@@ -856,7 +854,7 @@ func (fbo *folderBlockOps) fixChildBlocksAfterRecoverableError(
 
 	dirtyBcache := fbo.config.DirtyBlockCache()
 	topBlock, err := dirtyBcache.Get(file.TailPointer(), fbo.branch())
-	fblock, ok := topBlock.(*FileBlock)
+	fblock, ok := topBlock.(*IFCERFTFileBlock)
 	if err != nil || !ok {
 		fbo.log.CWarningf(ctx, "Couldn't find dirtied "+
 			"top-block for %v: %v", file.TailPointer(), err)
@@ -905,7 +903,7 @@ func (fbo *folderBlockOps) nowUnixNano() int64 {
 // which must be a copy.
 func (fbo *folderBlockOps) PrepRename(
 	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, oldParent IFCERFTPath, oldName string, newParent IFCERFTPath, newName string) (
-	oldPBlock, newPBlock *DirBlock, newDe DirEntry, lbc localBcache,
+	oldPBlock, newPBlock *IFCERFTDirBlock, newDe IFCERFTDirEntry, lbc localBcache,
 	err error) {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
@@ -914,12 +912,12 @@ func (fbo *folderBlockOps) PrepRename(
 	oldPBlock, err = fbo.getDirLocked(
 		ctx, lState, md, oldParent, blockWrite)
 	if err != nil {
-		return nil, nil, DirEntry{}, nil, err
+		return nil, nil, IFCERFTDirEntry{}, nil, err
 	}
 	newDe, ok := oldPBlock.Children[oldName]
 	// does the name exist?
 	if !ok {
-		return nil, nil, DirEntry{}, nil, IFCERFTNoSuchNameError{oldName}
+		return nil, nil, IFCERFTDirEntry{}, nil, IFCERFTNoSuchNameError{oldName}
 	}
 
 	md.AddOp(newRenameOp(oldName, oldParent.TailPointer(), newName,
@@ -934,7 +932,7 @@ func (fbo *folderBlockOps) PrepRename(
 		newPBlock, err = fbo.getDirLocked(
 			ctx, lState, md, newParent, blockWrite)
 		if err != nil {
-			return nil, nil, DirEntry{}, nil, err
+			return nil, nil, IFCERFTDirEntry{}, nil, err
 		}
 		now := fbo.nowUnixNano()
 
@@ -947,7 +945,7 @@ func (fbo *folderBlockOps) PrepRename(
 			if oldGrandparent.TailPointer().ID != newParent.TailPointer().ID {
 				b, err := fbo.getDirLocked(ctx, lState, md, oldGrandparent, blockWrite)
 				if err != nil {
-					return nil, nil, DirEntry{}, nil, err
+					return nil, nil, IFCERFTDirEntry{}, nil, err
 				}
 				if de, ok := b.Children[oldParent.TailName()]; ok {
 					de.Ctime = now
@@ -1112,7 +1110,7 @@ func (fbo *folderBlockOps) pathFromNodeForBlockWriteLocked(
 // writeGetFileLocked checks write permissions explicitly for
 // writeDataLocked, truncateLocked etc and returns
 func (fbo *folderBlockOps) writeGetFileLocked(
-	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath) (*FileBlock, keybase1.UID, error) {
+	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath) (*IFCERFTFileBlock, keybase1.UID, error) {
 	fbo.blockLock.AssertLocked(lState)
 
 	username, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
@@ -1134,17 +1132,17 @@ func (fbo *folderBlockOps) writeGetFileLocked(
 // the new indirect block that becomes the parent.
 func (fbo *folderBlockOps) createIndirectBlockLocked(lState *lockState,
 	md *IFCERFTRootMetadata, file IFCERFTPath, uid keybase1.UID, dver IFCERFTDataVer) (
-	*FileBlock, error) {
+	*IFCERFTFileBlock, error) {
 
 	newID, err := fbo.config.Crypto().MakeTemporaryBlockID()
 	if err != nil {
 		return nil, err
 	}
-	fblock := &FileBlock{
-		CommonBlock: CommonBlock{
+	fblock := &IFCERFTFileBlock{
+		IFCERFTCommonBlock: IFCERFTCommonBlock{
 			IsInd: true,
 		},
-		IPtrs: []IndirectFilePtr{
+		IPtrs: []IFCERFTIndirectFilePtr{
 			{
 				IFCERFTBlockInfo: IFCERFTBlockInfo{
 					IFCERFTBlockPointer: IFCERFTBlockPointer{
@@ -1249,7 +1247,7 @@ func (fbo *folderBlockOps) writeDataLocked(
 			// If the block doesn't already have a parent block, make one.
 			if ptr == file.TailPointer() {
 				fblock, err = fbo.createIndirectBlockLocked(lState, md, file,
-					uid, DefaultNewBlockDataVersion(fbo.config, false))
+					uid, IFCERFTDefaultNewBlockDataVersion(fbo.config, false))
 				if err != nil {
 					return WriteRange{}, nil, newlyDirtiedChildBytes, err
 				}
@@ -1421,7 +1419,7 @@ func (fbo *folderBlockOps) truncateExtendLocked(
 		fbo.log.CDebugf(ctx, "truncateExtendLocked: making block indirect %v", file.TailPointer())
 		old := fblock
 		fblock, err = fbo.createIndirectBlockLocked(lState, md, file, uid,
-			DefaultNewBlockDataVersion(fbo.config, true))
+			IFCERFTDefaultNewBlockDataVersion(fbo.config, true))
 		if err != nil {
 			return WriteRange{}, nil, err
 		}
@@ -1742,7 +1740,7 @@ func (fbo *folderBlockOps) revertSyncInfoAfterRecoverableError(
 func (fbo *folderBlockOps) ReadyBlock(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock, uid keybase1.UID) (
 	info IFCERFTBlockInfo, plainSize int, readyBlockData IFCERFTReadyBlockData, err error) {
 	var ptr IFCERFTBlockPointer
-	if fBlock, ok := block.(*FileBlock); ok && !fBlock.IsInd {
+	if fBlock, ok := block.(*IFCERFTFileBlock); ok && !fBlock.IsInd {
 		// first see if we are duplicating any known blocks in this folder
 		ptr, err = fbo.config.BlockCache().CheckForKnownPtr(fbo.id(), fBlock)
 		if err != nil {
@@ -1790,7 +1788,7 @@ type fileSyncState struct {
 	// If fblock is non-nil, the (dirty, indirect, cached) block
 	// it points to will be set to savedFblock on a recoverable
 	// error.
-	fblock, savedFblock *FileBlock
+	fblock, savedFblock *IFCERFTFileBlock
 
 	// redirtyOnRecoverableError, which is non-nil only when fblock is
 	// non-nil, contains pointers that need to be re-dirtied if the
@@ -1827,7 +1825,7 @@ type fileSyncState struct {
 // done while write-locking blockLock.
 func (fbo *folderBlockOps) startSyncWriteLocked(ctx context.Context,
 	lState *lockState, md *IFCERFTRootMetadata, uid keybase1.UID, file IFCERFTPath) (
-	fblock *FileBlock, bps *blockPutState, syncState fileSyncState,
+	fblock *IFCERFTFileBlock, bps *blockPutState, syncState fileSyncState,
 	err error) {
 	fbo.blockLock.Lock(lState)
 	defer fbo.blockLock.Unlock(lState)
@@ -2106,7 +2104,7 @@ func (fbo *folderBlockOps) makeLocalBcache(ctx context.Context,
 //	... = ...fbo.FinishSync(ctx, lState, file, ..., syncState)
 func (fbo *folderBlockOps) StartSync(ctx context.Context,
 	lState *lockState, md *IFCERFTRootMetadata, uid keybase1.UID, file IFCERFTPath) (
-	fblock *FileBlock, bps *blockPutState, lbc localBcache,
+	fblock *IFCERFTFileBlock, bps *blockPutState, lbc localBcache,
 	syncState fileSyncState, err error) {
 	fblock, bps, syncState, err = fbo.startSyncWriteLocked(
 		ctx, lState, md, uid, file)
@@ -2382,7 +2380,7 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 // corresponding to a cached dirty entry. If there is no dirty or
 // clean entry, nil is returned.
 func (fbo *folderBlockOps) getUndirtiedEntry(
-	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath) (*DirEntry, error) {
+	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath) (*IFCERFTDirEntry, error) {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
 
@@ -2408,7 +2406,7 @@ func (fbo *folderBlockOps) getUndirtiedEntry(
 
 func (fbo *folderBlockOps) setCachedAttr(
 	ctx context.Context, lState *lockState,
-	ref IFCERFTBlockRef, op *setAttrOp, realEntry *DirEntry) {
+	ref IFCERFTBlockRef, op *setAttrOp, realEntry *IFCERFTDirEntry) {
 	fbo.blockLock.Lock(lState)
 	defer fbo.blockLock.Unlock(lState)
 

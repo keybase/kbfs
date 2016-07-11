@@ -481,7 +481,7 @@ type IFCERFTBlockCache interface {
 	// associated with that ID, including key and data versions.
 	// If no ID is known, return an uninitialized BlockPointer and
 	// a nil error.
-	CheckForKnownPtr(tlf IFCERFTTlfID, block *FileBlock) (IFCERFTBlockPointer, error)
+	CheckForKnownPtr(tlf IFCERFTTlfID, block *IFCERFTFileBlock) (IFCERFTBlockPointer, error)
 	// Put stores the final (content-addressable) block associated
 	// with the given block ID. If lifetime is TransientEntry,
 	// then it is assumed that the block exists on the server and
@@ -504,7 +504,7 @@ type IFCERFTBlockCache interface {
 	DeletePermanent(id IFCERFTBlockID) error
 	// DeleteKnownPtr removes the cached ID for the given file
 	// block. It does not remove the block itself.
-	DeleteKnownPtr(tlf IFCERFTTlfID, block *FileBlock) error
+	DeleteKnownPtr(tlf IFCERFTTlfID, block *IFCERFTFileBlock) error
 }
 
 // DirtyPermChan is a channel that gets closed when the holder has
@@ -908,13 +908,13 @@ type IFCERFTBlockSplitter interface {
 	// that block boundaries will be fixed later. Return how much was
 	// copied.
 	CopyUntilSplit(
-		block *FileBlock, lastBlock bool, data []byte, off int64) int64
+		block *IFCERFTFileBlock, lastBlock bool, data []byte, off int64) int64
 
 	// CheckSplit, given a block, figures out whether it ends at the
 	// right place.  If so, return 0.  If not, return either the
 	// offset in the block where it should be split, or -1 if more
 	// bytes from the next block should be appended.
-	CheckSplit(block *FileBlock) int64
+	CheckSplit(block *IFCERFTFileBlock) int64
 
 	// ShouldEmbedBlockChanges decides whether we should keep the
 	// block changes embedded in the MD or not.
@@ -1157,15 +1157,13 @@ type IFCERFTCrAction interface {
 	// corresponding to the returned BlockPointer instead of
 	// unmergedBlock when calling do().  If BlockPointer{} is zeroPtr
 	// (and true is returned), just swap in the regular mergedBlock.
-	swapUnmergedBlock(unmergedChains *crChains, mergedChains *crChains,
-		unmergedBlock *DirBlock) (bool, IFCERFTBlockPointer, error)
+	swapUnmergedBlock(unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains, unmergedBlock *IFCERFTDirBlock) (bool, IFCERFTBlockPointer, error)
 	// do modifies the given merged block in place to resolve the
 	// conflict, and potential uses the provided blockCopyFetchers to
 	// obtain copies of other blocks (along with new BlockPointers)
 	// when requiring a block copy.
 	do(ctx context.Context, unmergedCopier fileBlockDeepCopier,
-		mergedCopier fileBlockDeepCopier, unmergedBlock *DirBlock,
-		mergedBlock *DirBlock) error
+		mergedCopier fileBlockDeepCopier, unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock) error
 	// updateOps potentially modifies, in place, the slices of
 	// unmerged and merged operations stored in the corresponding
 	// crChains for the given unmerged and merged most recent
@@ -1183,8 +1181,7 @@ type IFCERFTCrAction interface {
 	// * updateOps doesn't necessarily result in correct BlockPointers within
 	//   each of those ops; that must happen in a later phase.
 	// * mergedBlock can be nil if the chain is for a file.
-	updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *DirBlock, mergedBlock *DirBlock,
-		unmergedChains *crChains, mergedChains *crChains) error
+	updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock, unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains) error
 	// String returns a string representation for this crAction, used
 	// for debugging.
 	String() string

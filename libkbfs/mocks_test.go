@@ -1139,7 +1139,7 @@ func (_mr *_MockBlockCacheRecorder) Get(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0)
 }
 
-func (_m *MockBlockCache) CheckForKnownPtr(tlf IFCERFTTlfID, block *FileBlock) (IFCERFTBlockPointer, error) {
+func (_m *MockBlockCache) CheckForKnownPtr(tlf IFCERFTTlfID, block *IFCERFTFileBlock) (IFCERFTBlockPointer, error) {
 	ret := _m.ctrl.Call(_m, "CheckForKnownPtr", tlf, block)
 	ret0, _ := ret[0].(IFCERFTBlockPointer)
 	ret1, _ := ret[1].(error)
@@ -1180,7 +1180,7 @@ func (_mr *_MockBlockCacheRecorder) DeletePermanent(arg0 interface{}) *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeletePermanent", arg0)
 }
 
-func (_m *MockBlockCache) DeleteKnownPtr(tlf IFCERFTTlfID, block *FileBlock) error {
+func (_m *MockBlockCache) DeleteKnownPtr(tlf IFCERFTTlfID, block *IFCERFTFileBlock) error {
 	ret := _m.ctrl.Call(_m, "DeleteKnownPtr", tlf, block)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2844,7 +2844,7 @@ func (_m *MockBlockSplitter) EXPECT() *_MockBlockSplitterRecorder {
 	return _m.recorder
 }
 
-func (_m *MockBlockSplitter) CopyUntilSplit(block *FileBlock, lastBlock bool, data []byte, off int64) int64 {
+func (_m *MockBlockSplitter) CopyUntilSplit(block *IFCERFTFileBlock, lastBlock bool, data []byte, off int64) int64 {
 	ret := _m.ctrl.Call(_m, "CopyUntilSplit", block, lastBlock, data, off)
 	ret0, _ := ret[0].(int64)
 	return ret0
@@ -2854,7 +2854,7 @@ func (_mr *_MockBlockSplitterRecorder) CopyUntilSplit(arg0, arg1, arg2, arg3 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CopyUntilSplit", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockSplitter) CheckSplit(block *FileBlock) int64 {
+func (_m *MockBlockSplitter) CheckSplit(block *IFCERFTFileBlock) int64 {
 	ret := _m.ctrl.Call(_m, "CheckSplit", block)
 	ret0, _ := ret[0].(int64)
 	return ret0
@@ -3780,7 +3780,7 @@ func (_m *MockcrAction) EXPECT() *_MockcrActionRecorder {
 	return _m.recorder
 }
 
-func (_m *MockcrAction) swapUnmergedBlock(unmergedChains *crChains, mergedChains *crChains, unmergedBlock *DirBlock) (bool, IFCERFTBlockPointer, error) {
+func (_m *MockcrAction) swapUnmergedBlock(unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains, unmergedBlock *IFCERFTDirBlock) (bool, IFCERFTBlockPointer, error) {
 	ret := _m.ctrl.Call(_m, "swapUnmergedBlock", unmergedChains, mergedChains, unmergedBlock)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(IFCERFTBlockPointer)
@@ -3792,7 +3792,7 @@ func (_mr *_MockcrActionRecorder) swapUnmergedBlock(arg0, arg1, arg2 interface{}
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "swapUnmergedBlock", arg0, arg1, arg2)
 }
 
-func (_m *MockcrAction) do(ctx context.Context, unmergedCopier fileBlockDeepCopier, mergedCopier fileBlockDeepCopier, unmergedBlock *DirBlock, mergedBlock *DirBlock) error {
+func (_m *MockcrAction) do(ctx context.Context, unmergedCopier fileBlockDeepCopier, mergedCopier fileBlockDeepCopier, unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock) error {
 	ret := _m.ctrl.Call(_m, "do", ctx, unmergedCopier, mergedCopier, unmergedBlock, mergedBlock)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3802,7 +3802,7 @@ func (_mr *_MockcrActionRecorder) do(arg0, arg1, arg2, arg3, arg4 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "do", arg0, arg1, arg2, arg3, arg4)
 }
 
-func (_m *MockcrAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *DirBlock, mergedBlock *DirBlock, unmergedChains *crChains, mergedChains *crChains) error {
+func (_m *MockcrAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock, unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains) error {
 	ret := _m.ctrl.Call(_m, "updateOps", unmergedMostRecent, mergedMostRecent, unmergedBlock, mergedBlock, unmergedChains, mergedChains)
 	ret0, _ := ret[0].(error)
 	return ret0

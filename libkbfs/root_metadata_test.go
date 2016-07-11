@@ -25,7 +25,7 @@ type privateMetadataFuture struct {
 
 func (pmf privateMetadataFuture) toCurrent() IFCERFTPrivateMetadata {
 	pm := pmf.IFCERFTPrivateMetadata
-	pm.Dir = DirEntry(pmf.Dir.toCurrent())
+	pm.Dir = IFCERFTDirEntry(pmf.Dir.toCurrent())
 	pm.Changes.Ops = make(IFCERFTOpsList, len(pmf.Changes.Ops))
 	for i, opFuture := range pmf.Changes.Ops {
 		currentOp := opFuture.(futureStruct).toCurrentStruct()
@@ -53,7 +53,7 @@ func makeFakePrivateMetadataFuture(t *testing.T) privateMetadataFuture {
 
 	pmf := privateMetadataFuture{
 		IFCERFTPrivateMetadata{
-			DirEntry{},
+			IFCERFTDirEntry{},
 			IFCERFTMakeTLFPrivateKey([32]byte{0xb}),
 			AddBPSize{
 				makeFakeBlockInfo(t),

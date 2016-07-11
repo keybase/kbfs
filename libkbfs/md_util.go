@@ -269,7 +269,7 @@ func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecryp
 		// needed since these change blocks are read-only.
 		block, err := config.BlockCache().Get(info.IFCERFTBlockPointer)
 		if err != nil {
-			block = NewFileBlock()
+			block = IFCERFTNewFileBlock()
 			if err := config.BlockOps().Get(ctx, rmdWithKeys,
 				info.IFCERFTBlockPointer, block); err != nil {
 				return err
@@ -280,7 +280,7 @@ func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecryp
 			}
 		}
 
-		fblock, ok := block.(*FileBlock)
+		fblock, ok := block.(*IFCERFTFileBlock)
 		if !ok {
 			return IFCERFTNotFileBlockError{info.IFCERFTBlockPointer, IFCERFTMasterBranch, IFCERFTPath{}}
 		}

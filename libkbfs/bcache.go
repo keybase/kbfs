@@ -94,7 +94,7 @@ func getCachedBlockSize(block IFCERFTBlock) uint32 {
 	// length of the plaintext contents.  For everything else, just
 	// approximate the plaintext size using the encoding size.
 	switch b := block.(type) {
-	case *FileBlock:
+	case *IFCERFTFileBlock:
 		if b.IsInd {
 			return b.GetEncodedSize()
 		}
@@ -116,7 +116,7 @@ func (b *BlockCacheStandard) onEvict(key interface{}, value interface{}) {
 }
 
 // CheckForKnownPtr implements the BlockCache interface for BlockCacheStandard.
-func (b *BlockCacheStandard) CheckForKnownPtr(tlf IFCERFTTlfID, block *FileBlock) (
+func (b *BlockCacheStandard) CheckForKnownPtr(tlf IFCERFTTlfID, block *IFCERFTFileBlock) (
 	IFCERFTBlockPointer, error) {
 	if block.IsInd {
 		return IFCERFTBlockPointer{}, IFCERFTNotDirectFileBlockError{}
@@ -182,7 +182,7 @@ func (b *BlockCacheStandard) Put(
 	ptr IFCERFTBlockPointer, tlf IFCERFTTlfID, block IFCERFTBlock, lifetime IFCERFTBlockCacheLifetime) error {
 	// If it's the right type of block and lifetime, store the
 	// hash -> ID mapping.
-	if fBlock, ok := block.(*FileBlock); b.ids != nil && lifetime == IFCERFTTransientEntry && ok && !fBlock.IsInd {
+	if fBlock, ok := block.(*IFCERFTFileBlock); b.ids != nil && lifetime == IFCERFTTransientEntry && ok && !fBlock.IsInd {
 		if fBlock.hash == nil {
 			_, hash := IFCERFTDoRawDefaultHash(fBlock.Contents)
 			fBlock.hash = &hash
@@ -248,7 +248,7 @@ func (b *BlockCacheStandard) DeleteTransient(
 		}
 
 		// Remove the key if it exists
-		if fBlock, ok := block.(*FileBlock); b.ids != nil && ok &&
+		if fBlock, ok := block.(*IFCERFTFileBlock); b.ids != nil && ok &&
 			!fBlock.IsInd {
 			_, hash := IFCERFTDoRawDefaultHash(fBlock.Contents)
 			key := idCacheKey{tlf, hash}
@@ -261,7 +261,7 @@ func (b *BlockCacheStandard) DeleteTransient(
 }
 
 // DeleteKnownPtr implements the BlockCache interface for BlockCacheStandard.
-func (b *BlockCacheStandard) DeleteKnownPtr(tlf IFCERFTTlfID, block *FileBlock) error {
+func (b *BlockCacheStandard) DeleteKnownPtr(tlf IFCERFTTlfID, block *IFCERFTFileBlock) error {
 	if block.IsInd {
 		return IFCERFTNotDirectFileBlockError{}
 	}

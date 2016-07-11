@@ -22,7 +22,7 @@ import (
 // directories
 type IFCERFTPrivateMetadata struct {
 	// directory entry for the root directory block
-	Dir DirEntry
+	Dir IFCERFTDirEntry
 
 	// m_f as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
 	TLFPrivateKey IFCERFTTLFPrivateKey

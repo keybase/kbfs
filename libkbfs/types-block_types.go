@@ -8,7 +8,7 @@ import "github.com/keybase/go-codec/codec"
 
 // IndirectDirPtr pairs an indirect dir block with the start of that
 // block's range of directory entries (inclusive)
-type IndirectDirPtr struct {
+type IFCERFTIndirectDirPtr struct {
 	// TODO: Make sure that the block is not dirty when the EncodedSize
 	// field is non-zero.
 	IFCERFTBlockInfo
@@ -19,7 +19,7 @@ type IndirectDirPtr struct {
 
 // IndirectFilePtr pairs an indirect file block with the start of that
 // block's range of bytes (inclusive)
-type IndirectFilePtr struct {
+type IFCERFTIndirectFilePtr struct {
 	// When the EncodedSize field is non-zero, the block must not
 	// be dirty.
 	IFCERFTBlockInfo
@@ -32,7 +32,7 @@ type IndirectFilePtr struct {
 
 // CommonBlock holds block data that is common for both subdirectories
 // and files.
-type CommonBlock struct {
+type IFCERFTCommonBlock struct {
 	// IsInd indicates where this block is so big it requires indirect pointers
 	IsInd bool `codec:"s"`
 
@@ -44,61 +44,61 @@ type CommonBlock struct {
 }
 
 // GetEncodedSize implements the Block interface for CommonBlock
-func (cb CommonBlock) GetEncodedSize() uint32 {
+func (cb IFCERFTCommonBlock) GetEncodedSize() uint32 {
 	return cb.cachedEncodedSize
 }
 
 // SetEncodedSize implements the Block interface for CommonBlock
-func (cb *CommonBlock) SetEncodedSize(size uint32) {
+func (cb *IFCERFTCommonBlock) SetEncodedSize(size uint32) {
 	cb.cachedEncodedSize = size
 }
 
 // DataVersion returns data version for this block.
-func (cb *CommonBlock) DataVersion() IFCERFTDataVer {
+func (cb *IFCERFTCommonBlock) DataVersion() IFCERFTDataVer {
 	return IFCERFTFirstValidDataVer
 }
 
 // NewCommonBlock returns a generic block, unsuitable for caching.
-func NewCommonBlock() IFCERFTBlock {
-	return &CommonBlock{}
+func IFCERFTNewCommonBlock() IFCERFTBlock {
+	return &IFCERFTCommonBlock{}
 }
 
 // DirBlock is the contents of a directory
-type DirBlock struct {
-	CommonBlock
+type IFCERFTDirBlock struct {
+	IFCERFTCommonBlock
 	// if not indirect, a map of path name to directory entry
-	Children map[string]DirEntry `codec:"c,omitempty"`
+	Children map[string]IFCERFTDirEntry `codec:"c,omitempty"`
 	// if indirect, contains the indirect pointers to the next level of blocks
-	IPtrs []IndirectDirPtr `codec:"i,omitempty"`
+	IPtrs []IFCERFTIndirectDirPtr `codec:"i,omitempty"`
 }
 
 // NewDirBlock creates a new, empty DirBlock.
-func NewDirBlock() IFCERFTBlock {
-	return &DirBlock{
-		Children: make(map[string]DirEntry),
+func IFCERFTNewDirBlock() IFCERFTBlock {
+	return &IFCERFTDirBlock{
+		Children: make(map[string]IFCERFTDirEntry),
 	}
 }
 
 // DeepCopy makes a complete copy of a DirBlock
-func (db DirBlock) DeepCopy(codec IFCERFTCodec) (*DirBlock, error) {
-	var dirBlockCopy DirBlock
+func (db IFCERFTDirBlock) DeepCopy(codec IFCERFTCodec) (*IFCERFTDirBlock, error) {
+	var dirBlockCopy IFCERFTDirBlock
 	err := CodecUpdate(codec, &dirBlockCopy, db)
 	if err != nil {
 		return nil, err
 	}
 	if dirBlockCopy.Children == nil {
-		dirBlockCopy.Children = make(map[string]DirEntry)
+		dirBlockCopy.Children = make(map[string]IFCERFTDirEntry)
 	}
 	return &dirBlockCopy, nil
 }
 
 // FileBlock is the contents of a file
-type FileBlock struct {
-	CommonBlock
+type IFCERFTFileBlock struct {
+	IFCERFTCommonBlock
 	// if not indirect, the full contents of this block
 	Contents []byte `codec:"c,omitempty"`
 	// if indirect, contains the indirect pointers to the next level of blocks
-	IPtrs []IndirectFilePtr `codec:"i,omitempty"`
+	IPtrs []IFCERFTIndirectFilePtr `codec:"i,omitempty"`
 
 	// this is used for caching plaintext (block.Contents) hash. It is used by
 	// only direct blocks.
@@ -106,14 +106,14 @@ type FileBlock struct {
 }
 
 // NewFileBlock creates a new, empty FileBlock.
-func NewFileBlock() IFCERFTBlock {
-	return &FileBlock{
+func IFCERFTNewFileBlock() IFCERFTBlock {
+	return &IFCERFTFileBlock{
 		Contents: make([]byte, 0, 0),
 	}
 }
 
 // DataVersion returns data version for this block.
-func (fb *FileBlock) DataVersion() IFCERFTDataVer {
+func (fb *IFCERFTFileBlock) DataVersion() IFCERFTDataVer {
 	for i := range fb.IPtrs {
 		if fb.IPtrs[i].Holes {
 			return IFCERFTFilesWithHolesDataVer
@@ -123,8 +123,8 @@ func (fb *FileBlock) DataVersion() IFCERFTDataVer {
 }
 
 // DeepCopy makes a complete copy of a FileBlock
-func (fb FileBlock) DeepCopy(codec IFCERFTCodec) (*FileBlock, error) {
-	var fileBlockCopy FileBlock
+func (fb IFCERFTFileBlock) DeepCopy(codec IFCERFTCodec) (*IFCERFTFileBlock, error) {
+	var fileBlockCopy IFCERFTFileBlock
 	err := CodecUpdate(codec, &fileBlockCopy, fb)
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func (fb FileBlock) DeepCopy(codec IFCERFTCodec) (*FileBlock, error) {
 }
 
 // DefaultNewBlockDataVersion returns the default data version for new blocks.
-func DefaultNewBlockDataVersion(c IFCERFTConfig, holes bool) IFCERFTDataVer {
+func IFCERFTDefaultNewBlockDataVersion(c IFCERFTConfig, holes bool) IFCERFTDataVer {
 	if holes {
 		return IFCERFTFilesWithHolesDataVer
 	}

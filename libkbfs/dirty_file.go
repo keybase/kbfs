@@ -160,7 +160,7 @@ func (df *dirtyFile) setBlockSyncing(ptr IFCERFTBlockPointer) error {
 		// version of the block.
 		panic(err)
 	}
-	fblock, ok := block.(*FileBlock)
+	fblock, ok := block.(*IFCERFTFileBlock)
 	if !ok {
 		panic("Dirty file syncing a non-file block")
 	}

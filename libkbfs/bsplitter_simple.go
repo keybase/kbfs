@@ -28,7 +28,7 @@ func NewBlockSplitterSimple(desiredBlockSize int64,
 
 	// Make a FileBlock of the expected size to see what the encoded
 	// overhead is.
-	block := NewFileBlock().(*FileBlock)
+	block := IFCERFTNewFileBlock().(*IFCERFTFileBlock)
 	fullData := make([]byte, desiredBlockSize)
 	// Fill in the block with varying data to make sure not to trigger
 	// any encoding optimizations.
@@ -77,7 +77,7 @@ func NewBlockSplitterSimple(desiredBlockSize int64,
 // CopyUntilSplit implements the BlockSplitter interface for
 // BlockSplitterSimple.
 func (b *BlockSplitterSimple) CopyUntilSplit(
-	block *FileBlock, lastBlock bool, data []byte, off int64) int64 {
+	block *IFCERFTFileBlock, lastBlock bool, data []byte, off int64) int64 {
 	n := int64(len(data))
 	currLen := int64(len(block.Contents))
 	// lastBlock is irrelevant since we only copy fixed sizes
@@ -114,7 +114,7 @@ func (b *BlockSplitterSimple) CopyUntilSplit(
 
 // CheckSplit implements the BlockSplitter interface for
 // BlockSplitterSimple.
-func (b *BlockSplitterSimple) CheckSplit(block *FileBlock) int64 {
+func (b *BlockSplitterSimple) CheckSplit(block *IFCERFTFileBlock) int64 {
 	// The split will always be right
 	return 0
 }

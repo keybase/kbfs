@@ -25,11 +25,11 @@ type copyUnmergedEntryAction struct {
 	symPath       string
 	sizeOnly      bool
 	unique        bool
-	unmergedEntry DirEntry
+	unmergedEntry IFCERFTDirEntry
 	attr          []attrChange
 }
 
-func fixupNamesInOps(fromName string, toName string, ops []IFCERFTOps, chains *crChains) (retOps []IFCERFTOps) {
+func fixupNamesInOps(fromName string, toName string, ops []IFCERFTOps, chains *IFCERFTCrChains) (retOps []IFCERFTOps) {
 	retOps = make([]IFCERFTOps, 0, len(ops))
 	for _, uop := range ops {
 		done := false
@@ -51,7 +51,7 @@ func fixupNamesInOps(fromName string, toName string, ops []IFCERFTOps, chains *c
 						original = renamed
 					}
 					if ri, ok := chains.renamedOriginals[original]; ok {
-						ri.newName = toName
+						ri.NewName = toName
 						chains.renamedOriginals[original] = ri
 					}
 				}
@@ -72,8 +72,7 @@ func fixupNamesInOps(fromName string, toName string, ops []IFCERFTOps, chains *c
 }
 
 func (cuea *copyUnmergedEntryAction) swapUnmergedBlock(
-	unmergedChains *crChains, mergedChains *crChains,
-	unmergedBlock *DirBlock) (bool, IFCERFTBlockPointer, error) {
+	unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains, unmergedBlock *IFCERFTDirBlock) (bool, IFCERFTBlockPointer, error) {
 	if cuea.symPath != "" {
 		return false, zeroPtr, nil
 	}
@@ -107,13 +106,13 @@ func (cuea *copyUnmergedEntryAction) swapUnmergedBlock(
 		ptr = chain.original
 	}
 	if _, ok := mergedChains.byOriginal[ptr]; !ok ||
-		mergedChains.isDeleted(ptr) {
+		mergedChains.IsDeleted(ptr) {
 		return false, zeroPtr, nil
 	}
 
 	// If this entry was renamed, use the new parent; otherwise,
 	// return zeroPtr.
-	parentOrig, newName, ok := mergedChains.renamedParentAndName(ptr)
+	parentOrig, newName, ok := mergedChains.RenamedParentAndName(ptr)
 	cuea.unmergedEntry = unmergedEntry
 	cuea.sizeOnly = true
 	if !ok {
@@ -122,11 +121,11 @@ func (cuea *copyUnmergedEntryAction) swapUnmergedBlock(
 		if !ok {
 			return true, zeroPtr, nil
 		}
-		parentOrig = ri.originalOldParent
-		newName = ri.oldName
+		parentOrig = ri.OriginalOldParent
+		newName = ri.OldName
 	}
 	parentMostRecent, err :=
-		mergedChains.mostRecentFromOriginalOrSame(parentOrig)
+		mergedChains.MostRecentFromOriginalOrSame(parentOrig)
 	if err != nil {
 		return false, zeroPtr, err
 	}
@@ -134,7 +133,7 @@ func (cuea *copyUnmergedEntryAction) swapUnmergedBlock(
 	return true, parentMostRecent, nil
 }
 
-func uniquifyName(block *DirBlock, name string) (string, error) {
+func uniquifyName(block *IFCERFTDirBlock, name string) (string, error) {
 	if _, ok := block.Children[name]; !ok {
 		return name, nil
 	}
@@ -152,7 +151,7 @@ func uniquifyName(block *DirBlock, name string) (string, error) {
 
 func (cuea *copyUnmergedEntryAction) do(ctx context.Context,
 	unmergedCopier fileBlockDeepCopier, mergedCopier fileBlockDeepCopier,
-	unmergedBlock *DirBlock, mergedBlock *DirBlock) error {
+	unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock) error {
 	// Find the unmerged entry
 	unmergedEntry, ok := unmergedBlock.Children[cuea.fromName]
 	if !ok {
@@ -197,12 +196,11 @@ func (cuea *copyUnmergedEntryAction) do(ctx context.Context,
 	return nil
 }
 
-func prependOpsToChain(mostRecent IFCERFTBlockPointer, chains *crChains,
-	newOps ...IFCERFTOps) error {
+func prependOpsToChain(mostRecent IFCERFTBlockPointer, chains *IFCERFTCrChains, newOps ...IFCERFTOps) error {
 	chain := chains.byMostRecent[mostRecent]
 	// Create the chain if it doesn't exist yet.
 	if chain == nil && len(newOps) > 0 {
-		err := chains.makeChainForNewOp(mostRecent, newOps[0])
+		err := chains.MakeChainForNewOp(mostRecent, newOps[0])
 		if err != nil {
 			return err
 		}
@@ -214,8 +212,7 @@ func prependOpsToChain(mostRecent IFCERFTBlockPointer, chains *crChains,
 	return nil
 }
 
-func crActionConvertSymlink(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedChain *crChain,
-	mergedChains *crChains, fromName string, toName string) error {
+func crActionConvertSymlink(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedChain *IFCERFTCrChain, mergedChains *IFCERFTCrChains, fromName string, toName string) error {
 	// If this was turned into a symlink, then we have to simulate
 	// rm/create at the beginning of the mergedOps list.
 	ro := newRmOp(fromName, mergedMostRecent)
@@ -240,16 +237,14 @@ func crActionConvertSymlink(unmergedMostRecent IFCERFTBlockPointer, mergedMostRe
 	return nil
 }
 
-func (cuea *copyUnmergedEntryAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *DirBlock,
-	mergedBlock *DirBlock, unmergedChains *crChains,
-	mergedChains *crChains) error {
+func (cuea *copyUnmergedEntryAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock, unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains) error {
 	unmergedChain, ok := unmergedChains.byMostRecent[unmergedMostRecent]
 	if !ok {
 		return fmt.Errorf("Couldn't find unmerged chain for %v",
 			unmergedMostRecent)
 	}
 
-	if cuea.symPath != "" && !unmergedChain.isFile() {
+	if cuea.symPath != "" && !unmergedChain.IsFile() {
 		err := crActionConvertSymlink(unmergedMostRecent, mergedMostRecent,
 			unmergedChain, mergedChains, cuea.fromName, cuea.toName)
 		if err != nil {
@@ -285,14 +280,13 @@ type copyUnmergedAttrAction struct {
 }
 
 func (cuaa *copyUnmergedAttrAction) swapUnmergedBlock(
-	unmergedChains *crChains, mergedChains *crChains,
-	unmergedBlock *DirBlock) (bool, IFCERFTBlockPointer, error) {
+	unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains, unmergedBlock *IFCERFTDirBlock) (bool, IFCERFTBlockPointer, error) {
 	return false, zeroPtr, nil
 }
 
 func (cuaa *copyUnmergedAttrAction) do(ctx context.Context,
 	unmergedCopier fileBlockDeepCopier, mergedCopier fileBlockDeepCopier,
-	unmergedBlock *DirBlock, mergedBlock *DirBlock) error {
+	unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock) error {
 	// Find the unmerged entry
 	unmergedEntry, ok := unmergedBlock.Children[cuaa.fromName]
 	if !ok {
@@ -320,9 +314,7 @@ func (cuaa *copyUnmergedAttrAction) do(ctx context.Context,
 	return nil
 }
 
-func (cuaa *copyUnmergedAttrAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *DirBlock,
-	mergedBlock *DirBlock, unmergedChains *crChains,
-	mergedChains *crChains) error {
+func (cuaa *copyUnmergedAttrAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock, unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains) error {
 	unmergedChain, ok := unmergedChains.byMostRecent[unmergedMostRecent]
 	if !ok {
 		return fmt.Errorf("Couldn't find unmerged chain for %v",
@@ -353,14 +345,13 @@ type rmMergedEntryAction struct {
 }
 
 func (rmea *rmMergedEntryAction) swapUnmergedBlock(
-	unmergedChains *crChains, mergedChains *crChains,
-	unmergedBlock *DirBlock) (bool, IFCERFTBlockPointer, error) {
+	unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains, unmergedBlock *IFCERFTDirBlock) (bool, IFCERFTBlockPointer, error) {
 	return false, zeroPtr, nil
 }
 
 func (rmea *rmMergedEntryAction) do(ctx context.Context,
 	unmergedCopier fileBlockDeepCopier, mergedCopier fileBlockDeepCopier,
-	unmergedBlock *DirBlock, mergedBlock *DirBlock) error {
+	unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock) error {
 	if _, ok := mergedBlock.Children[rmea.name]; !ok {
 		return IFCERFTNoSuchNameError{rmea.name}
 	}
@@ -368,9 +359,7 @@ func (rmea *rmMergedEntryAction) do(ctx context.Context,
 	return nil
 }
 
-func (rmea *rmMergedEntryAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *DirBlock,
-	mergedBlock *DirBlock, unmergedChains *crChains,
-	mergedChains *crChains) error {
+func (rmea *rmMergedEntryAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock, unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains) error {
 	return nil
 }
 
@@ -395,7 +384,7 @@ type renameUnmergedAction struct {
 
 func crActionCopyFile(ctx context.Context, copier fileBlockDeepCopier,
 	fromName string, toName string, toSymPath string,
-	fromBlock *DirBlock, toBlock *DirBlock) (
+	fromBlock *IFCERFTDirBlock, toBlock *IFCERFTDirBlock) (
 	IFCERFTBlockPointer, string, error) {
 	// Find the source entry.
 	fromEntry, ok := fromBlock.Children[fromName]
@@ -441,14 +430,13 @@ func crActionCopyFile(ctx context.Context, copier fileBlockDeepCopier,
 }
 
 func (rua *renameUnmergedAction) swapUnmergedBlock(
-	unmergedChains *crChains, mergedChains *crChains,
-	unmergedBlock *DirBlock) (bool, IFCERFTBlockPointer, error) {
+	unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains, unmergedBlock *IFCERFTDirBlock) (bool, IFCERFTBlockPointer, error) {
 	return false, zeroPtr, nil
 }
 
 func (rua *renameUnmergedAction) do(ctx context.Context,
 	unmergedCopier fileBlockDeepCopier, mergedCopier fileBlockDeepCopier,
-	unmergedBlock *DirBlock, mergedBlock *DirBlock) error {
+	unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock) error {
 	_, name, err := crActionCopyFile(ctx, unmergedCopier, rua.fromName,
 		rua.toName, rua.symPath, unmergedBlock, mergedBlock)
 	if err != nil {
@@ -458,16 +446,14 @@ func (rua *renameUnmergedAction) do(ctx context.Context,
 	return nil
 }
 
-func (rua *renameUnmergedAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *DirBlock,
-	mergedBlock *DirBlock, unmergedChains *crChains,
-	mergedChains *crChains) error {
+func (rua *renameUnmergedAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock, unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains) error {
 	unmergedChain, ok := unmergedChains.byMostRecent[unmergedMostRecent]
 	if !ok {
 		return fmt.Errorf("Couldn't find unmerged chain for %v",
 			unmergedMostRecent)
 	}
 
-	if rua.symPath != "" && !unmergedChain.isFile() {
+	if rua.symPath != "" && !unmergedChain.IsFile() {
 		err := crActionConvertSymlink(unmergedMostRecent, mergedMostRecent,
 			unmergedChain, mergedChains, rua.fromName, rua.toName)
 		if err != nil {
@@ -486,7 +472,7 @@ func (rua *renameUnmergedAction) updateOps(unmergedMostRecent IFCERFTBlockPointe
 		return IFCERFTNoSuchNameError{rua.toName}
 	}
 
-	if unmergedChain.isFile() {
+	if unmergedChain.IsFile() {
 		// Replace the updates on all file operations
 		for _, op := range unmergedChain.ops {
 			switch realOp := op.(type) {
@@ -609,14 +595,13 @@ type renameMergedAction struct {
 }
 
 func (rma *renameMergedAction) swapUnmergedBlock(
-	unmergedChains *crChains, mergedChains *crChains,
-	unmergedBlock *DirBlock) (bool, IFCERFTBlockPointer, error) {
+	unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains, unmergedBlock *IFCERFTDirBlock) (bool, IFCERFTBlockPointer, error) {
 	return false, zeroPtr, nil
 }
 
 func (rma *renameMergedAction) do(ctx context.Context,
 	unmergedCopier fileBlockDeepCopier, mergedCopier fileBlockDeepCopier,
-	unmergedBlock *DirBlock, mergedBlock *DirBlock) error {
+	unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock) error {
 	// Find the merged entry
 	mergedEntry, ok := mergedBlock.Children[rma.fromName]
 	if !ok {
@@ -646,16 +631,14 @@ func (rma *renameMergedAction) do(ctx context.Context,
 	return nil
 }
 
-func (rma *renameMergedAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *DirBlock,
-	mergedBlock *DirBlock, unmergedChains *crChains,
-	mergedChains *crChains) error {
+func (rma *renameMergedAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock, unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains) error {
 	unmergedChain, ok := unmergedChains.byMostRecent[unmergedMostRecent]
 	if !ok {
 		return fmt.Errorf("Couldn't find unmerged chain for %v",
 			unmergedMostRecent)
 	}
 
-	if rma.symPath != "" && !unmergedChain.isFile() {
+	if rma.symPath != "" && !unmergedChain.IsFile() {
 		err := crActionConvertSymlink(unmergedMostRecent, mergedMostRecent,
 			unmergedChain, mergedChains, rma.fromName, rma.fromName)
 		if err != nil {
@@ -671,7 +654,7 @@ func (rma *renameMergedAction) updateOps(unmergedMostRecent IFCERFTBlockPointer,
 				mergedChains)
 	}
 
-	if !unmergedChain.isFile() {
+	if !unmergedChain.IsFile() {
 		// The entry that gets renamed in the unmerged branch:
 		mergedEntry, ok := mergedBlock.Children[rma.toName]
 		if !ok {
@@ -721,20 +704,17 @@ type dropUnmergedAction struct {
 }
 
 func (dua *dropUnmergedAction) swapUnmergedBlock(
-	unmergedChains *crChains, mergedChains *crChains,
-	unmergedBlock *DirBlock) (bool, IFCERFTBlockPointer, error) {
+	unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains, unmergedBlock *IFCERFTDirBlock) (bool, IFCERFTBlockPointer, error) {
 	return false, zeroPtr, nil
 }
 
 func (dua *dropUnmergedAction) do(ctx context.Context,
 	unmergedCopier fileBlockDeepCopier, mergedCopier fileBlockDeepCopier,
-	unmergedBlock *DirBlock, mergedBlock *DirBlock) error {
+	unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock) error {
 	return nil
 }
 
-func (dua *dropUnmergedAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *DirBlock,
-	mergedBlock *DirBlock, unmergedChains *crChains,
-	mergedChains *crChains) error {
+func (dua *dropUnmergedAction) updateOps(unmergedMostRecent IFCERFTBlockPointer, mergedMostRecent IFCERFTBlockPointer, unmergedBlock *IFCERFTDirBlock, mergedBlock *IFCERFTDirBlock, unmergedChains *IFCERFTCrChains, mergedChains *IFCERFTCrChains) error {
 	unmergedChain, ok := unmergedChains.byMostRecent[unmergedMostRecent]
 	if !ok {
 		return fmt.Errorf("Couldn't find unmerged chain for %v",

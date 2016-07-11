@@ -22,8 +22,8 @@ type IFCERFTFolderBranchStatus struct {
 
 	// If we're in the staged state, these summaries show the
 	// diverging operations per-file
-	Unmerged []*crChainSummary
-	Merged   []*crChainSummary
+	Unmerged []*IFCERFTCrChainSummary
+	Merged   []*IFCERFTCrChainSummary
 }
 
 // StatusUpdate is a dummy type used to indicate status has been updated.

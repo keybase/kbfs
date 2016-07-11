@@ -33,7 +33,7 @@ func makeFakeBlockInfo(t *testing.T) IFCERFTBlockInfo {
 	}
 }
 
-type indirectDirPtrCurrent IndirectDirPtr
+type indirectDirPtrCurrent IFCERFTIndirectDirPtr
 
 type indirectDirPtrFuture struct {
 	indirectDirPtrCurrent
@@ -63,7 +63,7 @@ func TestIndirectDirPtrUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeIndirectDirPtrFuture(t))
 }
 
-type indirectFilePtrCurrent IndirectFilePtr
+type indirectFilePtrCurrent IFCERFTIndirectFilePtr
 
 type indirectFilePtrFuture struct {
 	indirectFilePtrCurrent
@@ -94,7 +94,7 @@ func TestIndirectFilePtrUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeIndirectFilePtrFuture(t))
 }
 
-type dirBlockCurrent DirBlock
+type dirBlockCurrent IFCERFTDirBlock
 
 type dirBlockFuture struct {
 	dirBlockCurrent
@@ -107,13 +107,13 @@ type dirBlockFuture struct {
 
 func (dbf dirBlockFuture) toCurrent() dirBlockCurrent {
 	db := dbf.dirBlockCurrent
-	db.Children = make(map[string]DirEntry, len(dbf.Children))
+	db.Children = make(map[string]IFCERFTDirEntry, len(dbf.Children))
 	for k, v := range dbf.Children {
-		db.Children[k] = DirEntry(v.toCurrent())
+		db.Children[k] = IFCERFTDirEntry(v.toCurrent())
 	}
-	db.IPtrs = make([]IndirectDirPtr, len(dbf.IPtrs))
+	db.IPtrs = make([]IFCERFTIndirectDirPtr, len(dbf.IPtrs))
 	for i, v := range dbf.IPtrs {
-		db.IPtrs[i] = IndirectDirPtr(v.toCurrent())
+		db.IPtrs[i] = IFCERFTIndirectDirPtr(v.toCurrent())
 	}
 	return db
 }
@@ -125,7 +125,7 @@ func (dbf dirBlockFuture) toCurrentStruct() currentStruct {
 func makeFakeDirBlockFuture(t *testing.T) dirBlockFuture {
 	return dirBlockFuture{
 		dirBlockCurrent{
-			CommonBlock{
+			IFCERFTCommonBlock{
 				true,
 				codec.UnknownFieldSetHandler{},
 				0,
@@ -147,7 +147,7 @@ func TestDirBlockUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeDirBlockFuture(t))
 }
 
-type fileBlockCurrent FileBlock
+type fileBlockCurrent IFCERFTFileBlock
 
 type fileBlockFuture struct {
 	fileBlockCurrent
@@ -158,9 +158,9 @@ type fileBlockFuture struct {
 
 func (fbf fileBlockFuture) toCurrent() fileBlockCurrent {
 	fb := fbf.fileBlockCurrent
-	fb.IPtrs = make([]IndirectFilePtr, len(fbf.IPtrs))
+	fb.IPtrs = make([]IFCERFTIndirectFilePtr, len(fbf.IPtrs))
 	for i, v := range fbf.IPtrs {
-		fb.IPtrs[i] = IndirectFilePtr(v.toCurrent())
+		fb.IPtrs[i] = IFCERFTIndirectFilePtr(v.toCurrent())
 	}
 	return fb
 }
@@ -172,7 +172,7 @@ func (fbf fileBlockFuture) toCurrentStruct() currentStruct {
 func makeFakeFileBlockFuture(t *testing.T) fileBlockFuture {
 	return fileBlockFuture{
 		fileBlockCurrent{
-			CommonBlock{
+			IFCERFTCommonBlock{
 				false,
 				codec.UnknownFieldSetHandler{},
 				0,

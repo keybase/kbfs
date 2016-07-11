@@ -11,12 +11,12 @@ import (
 )
 
 type dirEntryFuture struct {
-	DirEntry
+	IFCERFTDirEntry
 	extra
 }
 
-func (cof dirEntryFuture) toCurrent() DirEntry {
-	return cof.DirEntry
+func (cof dirEntryFuture) toCurrent() IFCERFTDirEntry {
+	return cof.IFCERFTDirEntry
 }
 
 func (cof dirEntryFuture) toCurrentStruct() currentStruct {
@@ -25,7 +25,7 @@ func (cof dirEntryFuture) toCurrentStruct() currentStruct {
 
 func makeFakeDirEntryFuture(t *testing.T) dirEntryFuture {
 	cof := dirEntryFuture{
-		DirEntry{
+		IFCERFTDirEntry{
 			makeFakeBlockInfo(t),
 			IFCERFTEntryInfo{
 				IFCERFTDir,

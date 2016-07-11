@@ -12,7 +12,7 @@ import (
 )
 
 func testDirtyBcachePut(t *testing.T, id IFCERFTBlockID, dirtyBcache IFCERFTDirtyBlockCache) {
-	block := NewFileBlock()
+	block := IFCERFTNewFileBlock()
 	ptr := IFCERFTBlockPointer{ID: id}
 	branch := IFCERFTMasterBranch
 
@@ -60,7 +60,7 @@ func TestDirtyBcachePutDuplicate(t *testing.T) {
 	// Dirty a specific reference nonce, and make sure the
 	// original is still not found.
 	newNonce := IFCERFTBlockRefNonce([8]byte{1, 0, 0, 0, 0, 0, 0, 0})
-	newNonceBlock := NewFileBlock()
+	newNonceBlock := IFCERFTNewFileBlock()
 	bp1 := IFCERFTBlockPointer{ID: id1}
 	bp2 := IFCERFTBlockPointer{
 		ID:                  id1,
@@ -80,7 +80,7 @@ func TestDirtyBcachePutDuplicate(t *testing.T) {
 	// Then dirty a different branch, and make sure the
 	// original is still clean
 	newBranch := IFCERFTBranchName("dirtyBranch")
-	newBranchBlock := NewFileBlock()
+	newBranchBlock := IFCERFTNewFileBlock()
 	err = dirtyBcache.Put(bp1, newBranch, newBranchBlock)
 	if err != nil {
 		t.Errorf("Unexpected error on PutDirty: %v", err)
@@ -104,7 +104,7 @@ func TestDirtyBcacheDelete(t *testing.T) {
 	id1 := fakeBlockID(1)
 	testDirtyBcachePut(t, id1, dirtyBcache)
 	newBranch := IFCERFTBranchName("dirtyBranch")
-	newBranchBlock := NewFileBlock()
+	newBranchBlock := IFCERFTNewFileBlock()
 	err := dirtyBcache.Put(IFCERFTBlockPointer{ID: id1}, newBranch, newBranchBlock)
 	if err != nil {
 		t.Errorf("Unexpected error on PutDirty: %v", err)

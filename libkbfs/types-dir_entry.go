@@ -7,7 +7,7 @@ package libkbfs
 import "github.com/keybase/go-codec/codec"
 
 // DirEntry is all the data info a directory know about its child.
-type DirEntry struct {
+type IFCERFTDirEntry struct {
 	IFCERFTBlockInfo
 	IFCERFTEntryInfo
 
@@ -15,6 +15,6 @@ type DirEntry struct {
 }
 
 // IsInitialized returns true if this DirEntry has been initialized.
-func (de *DirEntry) IsInitialized() bool {
+func (de *IFCERFTDirEntry) IsInitialized() bool {
 	return de.IFCERFTBlockPointer.IsInitialized()
 }

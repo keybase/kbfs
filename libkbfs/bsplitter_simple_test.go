@@ -11,7 +11,7 @@ import (
 
 func TestBsplitterEmptyCopyAll(t *testing.T) {
 	bsplit := &BlockSplitterSimple{10, 10}
-	fblock := NewFileBlock().(*FileBlock)
+	fblock := IFCERFTNewFileBlock().(*IFCERFTFileBlock)
 	data := []byte{1, 2, 3, 4, 5}
 
 	if n := bsplit.CopyUntilSplit(fblock, false, data, 0); n != 5 {
@@ -23,7 +23,7 @@ func TestBsplitterEmptyCopyAll(t *testing.T) {
 
 func TestBsplitterNonemptyCopyAll(t *testing.T) {
 	bsplit := &BlockSplitterSimple{10, 10}
-	fblock := NewFileBlock().(*FileBlock)
+	fblock := IFCERFTNewFileBlock().(*IFCERFTFileBlock)
 	fblock.Contents = []byte{10, 9}
 	data := []byte{1, 2, 3, 4, 5}
 
@@ -36,7 +36,7 @@ func TestBsplitterNonemptyCopyAll(t *testing.T) {
 
 func TestBsplitterAppendAll(t *testing.T) {
 	bsplit := &BlockSplitterSimple{10, 10}
-	fblock := NewFileBlock().(*FileBlock)
+	fblock := IFCERFTNewFileBlock().(*IFCERFTFileBlock)
 	fblock.Contents = []byte{10, 9}
 	data := []byte{1, 2, 3, 4, 5}
 
@@ -49,7 +49,7 @@ func TestBsplitterAppendAll(t *testing.T) {
 
 func TestBsplitterAppendExact(t *testing.T) {
 	bsplit := &BlockSplitterSimple{10, 10}
-	fblock := NewFileBlock().(*FileBlock)
+	fblock := IFCERFTNewFileBlock().(*IFCERFTFileBlock)
 	fblock.Contents = []byte{10, 9, 8, 7, 6}
 	data := []byte{1, 2, 3, 4, 5}
 
@@ -63,7 +63,7 @@ func TestBsplitterAppendExact(t *testing.T) {
 
 func TestBsplitterSplitOne(t *testing.T) {
 	bsplit := &BlockSplitterSimple{10, 10}
-	fblock := NewFileBlock().(*FileBlock)
+	fblock := IFCERFTNewFileBlock().(*IFCERFTFileBlock)
 	fblock.Contents = []byte{10, 9, 8, 7, 6}
 	data := []byte{1, 2, 3, 4, 5, 6}
 
@@ -77,7 +77,7 @@ func TestBsplitterSplitOne(t *testing.T) {
 
 func TestBsplitterOverwriteMaxSizeBlock(t *testing.T) {
 	bsplit := &BlockSplitterSimple{5, 10}
-	fblock := NewFileBlock().(*FileBlock)
+	fblock := IFCERFTNewFileBlock().(*IFCERFTFileBlock)
 	fblock.Contents = []byte{10, 9, 8, 7, 6}
 	data := []byte{1, 2, 3, 4, 5, 6, 7, 8}
 
@@ -90,7 +90,7 @@ func TestBsplitterOverwriteMaxSizeBlock(t *testing.T) {
 
 func TestBsplitterBlockTooBig(t *testing.T) {
 	bsplit := &BlockSplitterSimple{3, 10}
-	fblock := NewFileBlock().(*FileBlock)
+	fblock := IFCERFTNewFileBlock().(*IFCERFTFileBlock)
 	fblock.Contents = []byte{10, 9, 8, 7, 6}
 	data := []byte{1, 2, 3, 4, 5, 6}
 
@@ -103,7 +103,7 @@ func TestBsplitterBlockTooBig(t *testing.T) {
 
 func TestBsplitterOffTooBig(t *testing.T) {
 	bsplit := &BlockSplitterSimple{10, 10}
-	fblock := NewFileBlock().(*FileBlock)
+	fblock := IFCERFTNewFileBlock().(*IFCERFTFileBlock)
 	fblock.Contents = []byte{10, 9, 8, 7, 6}
 	data := []byte{1, 2, 3, 4, 5, 6}
 
@@ -146,7 +146,7 @@ func TestBsplitterOverhead(t *testing.T) {
 	}
 
 	// Test that an encoded, padded block matches this desired block size
-	block := NewFileBlock().(*FileBlock)
+	block := IFCERFTNewFileBlock().(*IFCERFTFileBlock)
 	block.Contents = make([]byte, bsplit.maxSize)
 	for i := range block.Contents {
 		block.Contents[i] = byte(i)
