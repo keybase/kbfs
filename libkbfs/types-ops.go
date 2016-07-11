@@ -4,6 +4,8 @@
 
 package libkbfs
 
+import "github.com/keybase/go-codec/codec"
+
 // op represents a single file-system remote-sync operation
 type IFCERFTOps interface {
 	AddRefBlock(ptr IFCERFTBlockPointer)
@@ -55,3 +57,49 @@ type IFCERFTBlockUpdate struct {
 }
 
 type IFCERFTOpsList []IFCERFTOps
+
+// WriteRange represents a file modification.  Len is 0 for a
+// truncate.
+type IFCERFTWriteRange struct {
+	Off uint64 `codec:"o"`
+	Len uint64 `codec:"l,omitempty"` // 0 for truncates
+
+	codec.UnknownFieldSetHandler
+}
+
+func (w IFCERFTWriteRange) IsTruncate() bool {
+	return w.Len == 0
+}
+
+// End returns the index of the largest byte not affected by this
+// write.  It only makes sense to call this for non-truncates.
+func (w IFCERFTWriteRange) End() uint64 {
+	if w.IsTruncate() {
+		panic("Truncates don't have an end")
+	}
+	return w.Off + w.Len
+}
+
+// Affects returns true if the regions affected by this write
+// operation and `other` overlap in some way.  Specifically, it
+// returns true if:
+//
+// - both operations are writes and their write ranges overlap;
+// - one operation is a write and one is a truncate, and the truncate is
+//   within the write's range or before it; or
+// - both operations are truncates.
+func (w IFCERFTWriteRange) Affects(other IFCERFTWriteRange) bool {
+	if w.IsTruncate() {
+		if other.IsTruncate() {
+			return true
+		}
+		// A truncate affects a write if it lands inside or before the
+		// write.
+		return other.End() > w.Off
+	} else if other.IsTruncate() {
+		return w.End() > other.Off
+	}
+	// Both are writes -- do their ranges overlap?
+	return (w.Off <= other.End() && other.End() <= w.End()) ||
+		(other.Off <= w.End() && w.End() <= other.End())
+}

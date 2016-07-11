@@ -28,3 +28,14 @@ type IFCERFTFolderBranchStatus struct {
 
 // StatusUpdate is a dummy type used to indicate status has been updated.
 type IFCERFTStatusUpdate struct{}
+
+// KBFSStatus represents the content of the top-level status file. It is
+// suitable for encoding directly as JSON.
+// TODO: implement magical status update like FolderBranchStatus
+type IFCERFTKBFSStatus struct {
+	CurrentUser     string
+	IsConnected     bool
+	UsageBytes      int64
+	LimitBytes      int64
+	FailingServices map[string]error
+}

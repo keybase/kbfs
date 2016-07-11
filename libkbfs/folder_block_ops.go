@@ -1176,15 +1176,15 @@ func (fbo *folderBlockOps) createIndirectBlockLocked(lState *lockState,
 // Returns the set of blocks dirtied during this write that might need
 // to be cleaned up if the write is deferred.
 func (fbo *folderBlockOps) writeDataLocked(
-	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath, data []byte, off int64) (latestWrite WriteRange, dirtyPtrs []IFCERFTBlockPointer, newlyDirtiedChildBytes int64, err error) {
+	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath, data []byte, off int64) (latestWrite IFCERFTWriteRange, dirtyPtrs []IFCERFTBlockPointer, newlyDirtiedChildBytes int64, err error) {
 	if sz := off + int64(len(data)); uint64(sz) > fbo.config.MaxFileBytes() {
-		return WriteRange{}, nil, 0,
+		return IFCERFTWriteRange{}, nil, 0,
 			IFCERFTFileTooBigError{file, sz, fbo.config.MaxFileBytes()}
 	}
 
 	fblock, uid, err := fbo.writeGetFileLocked(ctx, lState, md, file)
 	if err != nil {
-		return WriteRange{}, nil, 0, err
+		return IFCERFTWriteRange{}, nil, 0, err
 	}
 
 	dirtyBcache := fbo.config.DirtyBlockCache()
@@ -1210,7 +1210,7 @@ func (fbo *folderBlockOps) writeDataLocked(
 
 	de, err := fbo.getDirtyEntryLocked(ctx, lState, md, file)
 	if err != nil {
-		return WriteRange{}, nil, 0, err
+		return IFCERFTWriteRange{}, nil, 0, err
 	}
 	oldSize := de.Size
 
@@ -1221,7 +1221,7 @@ func (fbo *folderBlockOps) writeDataLocked(
 				ctx, lState, md, file, fblock,
 				off+nCopied, blockWrite)
 		if err != nil {
-			return WriteRange{}, nil, newlyDirtiedChildBytes, err
+			return IFCERFTWriteRange{}, nil, newlyDirtiedChildBytes, err
 		}
 
 		oldLen := len(block.Contents)
@@ -1249,7 +1249,7 @@ func (fbo *folderBlockOps) writeDataLocked(
 				fblock, err = fbo.createIndirectBlockLocked(lState, md, file,
 					uid, IFCERFTDefaultNewBlockDataVersion(fbo.config, false))
 				if err != nil {
-					return WriteRange{}, nil, newlyDirtiedChildBytes, err
+					return IFCERFTWriteRange{}, nil, newlyDirtiedChildBytes, err
 				}
 				ptr = fblock.IPtrs[0].IFCERFTBlockPointer
 			}
@@ -1259,14 +1259,14 @@ func (fbo *folderBlockOps) writeDataLocked(
 			err = fbo.newRightBlockLocked(ctx, lState, file.TailPointer(),
 				file, fblock, startOff+int64(len(block.Contents)), md)
 			if err != nil {
-				return WriteRange{}, nil, newlyDirtiedChildBytes, err
+				return IFCERFTWriteRange{}, nil, newlyDirtiedChildBytes, err
 			}
 		} else if nCopied < n && off+nCopied < nextBlockOff {
 			// We need a new block to be inserted here
 			err = fbo.newRightBlockLocked(ctx, lState, file.TailPointer(),
 				file, fblock, startOff+int64(len(block.Contents)), md)
 			if err != nil {
-				return WriteRange{}, nil, newlyDirtiedChildBytes, err
+				return IFCERFTWriteRange{}, nil, newlyDirtiedChildBytes, err
 			}
 			// And push the indirect pointers to right
 			newb := fblock.IPtrs[len(fblock.IPtrs)-1]
@@ -1298,7 +1298,7 @@ func (fbo *folderBlockOps) writeDataLocked(
 		// keep the old block ID while it's dirty
 		if err = fbo.cacheBlockIfNotYetDirtyLocked(lState, ptr, file,
 			block); err != nil {
-			return WriteRange{}, nil, newlyDirtiedChildBytes, err
+			return IFCERFTWriteRange{}, nil, newlyDirtiedChildBytes, err
 		}
 		dirtyPtrs = append(dirtyPtrs, ptr)
 	}
@@ -1312,7 +1312,7 @@ func (fbo *folderBlockOps) writeDataLocked(
 		// the dirtyFiles map.
 		if err = fbo.cacheBlockIfNotYetDirtyLocked(lState,
 			file.TailPointer(), file, fblock); err != nil {
-			return WriteRange{}, nil, newlyDirtiedChildBytes, err
+			return IFCERFTWriteRange{}, nil, newlyDirtiedChildBytes, err
 		}
 		dirtyPtrs = append(dirtyPtrs, file.TailPointer())
 
@@ -1401,15 +1401,15 @@ func (fbo *folderBlockOps) Write(
 // truncateExtendLocked is called by truncateLocked to extend a file and
 // creates a hole.
 func (fbo *folderBlockOps) truncateExtendLocked(
-	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath, size uint64) (WriteRange, []IFCERFTBlockPointer, error) {
+	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath, size uint64) (IFCERFTWriteRange, []IFCERFTBlockPointer, error) {
 
 	if size > fbo.config.MaxFileBytes() {
-		return WriteRange{}, nil, IFCERFTFileTooBigError{file, int64(size), fbo.config.MaxFileBytes()}
+		return IFCERFTWriteRange{}, nil, IFCERFTFileTooBigError{file, int64(size), fbo.config.MaxFileBytes()}
 	}
 
 	fblock, uid, err := fbo.writeGetFileLocked(ctx, lState, md, file)
 	if err != nil {
-		return WriteRange{}, nil, err
+		return IFCERFTWriteRange{}, nil, err
 	}
 
 	var dirtyPtrs []IFCERFTBlockPointer
@@ -1421,13 +1421,13 @@ func (fbo *folderBlockOps) truncateExtendLocked(
 		fblock, err = fbo.createIndirectBlockLocked(lState, md, file, uid,
 			IFCERFTDefaultNewBlockDataVersion(fbo.config, true))
 		if err != nil {
-			return WriteRange{}, nil, err
+			return IFCERFTWriteRange{}, nil, err
 		}
 		fblock.IPtrs[0].Holes = true
 		err = fbo.cacheBlockIfNotYetDirtyLocked(lState,
 			fblock.IPtrs[0].IFCERFTBlockPointer, file, old)
 		if err != nil {
-			return WriteRange{}, nil, err
+			return IFCERFTWriteRange{}, nil, err
 		}
 		dirtyPtrs = append(dirtyPtrs, fblock.IPtrs[0].IFCERFTBlockPointer)
 		fbo.log.CDebugf(ctx, "truncateExtendLocked: new zero data block %v", fblock.IPtrs[0].IFCERFTBlockPointer)
@@ -1440,7 +1440,7 @@ func (fbo *folderBlockOps) truncateExtendLocked(
 	err = fbo.newRightBlockLocked(ctx, lState, file.TailPointer(),
 		file, fblock, int64(size), md)
 	if err != nil {
-		return WriteRange{}, nil, err
+		return IFCERFTWriteRange{}, nil, err
 	}
 	dirtyPtrs = append(dirtyPtrs, fblock.IPtrs[len(fblock.IPtrs)-1].IFCERFTBlockPointer)
 	fbo.log.CDebugf(ctx, "truncateExtendLocked: new right data block %v",
@@ -1448,7 +1448,7 @@ func (fbo *folderBlockOps) truncateExtendLocked(
 
 	de, err := fbo.getDirtyEntryLocked(ctx, lState, md, file)
 	if err != nil {
-		return WriteRange{}, nil, err
+		return IFCERFTWriteRange{}, nil, err
 	}
 
 	si := fbo.getOrCreateSyncInfoLocked(lState, de)
@@ -1472,7 +1472,7 @@ func (fbo *folderBlockOps) truncateExtendLocked(
 	err = fbo.cacheBlockIfNotYetDirtyLocked(lState,
 		file.TailPointer(), file, fblock)
 	if err != nil {
-		return WriteRange{}, nil, err
+		return IFCERFTWriteRange{}, nil, err
 	}
 	dirtyPtrs = append(dirtyPtrs, file.TailPointer())
 	latestWrite := si.op.addTruncate(size)
@@ -1498,10 +1498,10 @@ const truncateExtendCutoffPoint = 128 * 1024
 // Returns the set of newly-ID'd blocks created during this truncate
 // that might need to be cleaned up if the truncate is deferred.
 func (fbo *folderBlockOps) truncateLocked(
-	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath, size uint64) (*WriteRange, []IFCERFTBlockPointer, int64, error) {
+	ctx context.Context, lState *lockState, md *IFCERFTRootMetadata, file IFCERFTPath, size uint64) (*IFCERFTWriteRange, []IFCERFTBlockPointer, int64, error) {
 	fblock, _, err := fbo.writeGetFileLocked(ctx, lState, md, file)
 	if err != nil {
-		return &WriteRange{}, nil, 0, err
+		return &IFCERFTWriteRange{}, nil, 0, err
 	}
 
 	// find the block where the file should now end

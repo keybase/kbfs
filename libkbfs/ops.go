@@ -337,57 +337,11 @@ func (ro *renameOp) GetDefaultAction(mergedPath IFCERFTPath) IFCERFTCrAction {
 	return nil
 }
 
-// WriteRange represents a file modification.  Len is 0 for a
-// truncate.
-type WriteRange struct {
-	Off uint64 `codec:"o"`
-	Len uint64 `codec:"l,omitempty"` // 0 for truncates
-
-	codec.UnknownFieldSetHandler
-}
-
-func (w WriteRange) isTruncate() bool {
-	return w.Len == 0
-}
-
-// End returns the index of the largest byte not affected by this
-// write.  It only makes sense to call this for non-truncates.
-func (w WriteRange) End() uint64 {
-	if w.isTruncate() {
-		panic("Truncates don't have an end")
-	}
-	return w.Off + w.Len
-}
-
-// Affects returns true if the regions affected by this write
-// operation and `other` overlap in some way.  Specifically, it
-// returns true if:
-//
-// - both operations are writes and their write ranges overlap;
-// - one operation is a write and one is a truncate, and the truncate is
-//   within the write's range or before it; or
-// - both operations are truncates.
-func (w WriteRange) Affects(other WriteRange) bool {
-	if w.isTruncate() {
-		if other.isTruncate() {
-			return true
-		}
-		// A truncate affects a write if it lands inside or before the
-		// write.
-		return other.End() > w.Off
-	} else if other.isTruncate() {
-		return w.End() > other.Off
-	}
-	// Both are writes -- do their ranges overlap?
-	return (w.Off <= other.End() && other.End() <= w.End()) ||
-		(other.Off <= w.End() && w.End() <= other.End())
-}
-
 // syncOp is an op that represents a series of writes to a file.
 type syncOp struct {
 	OpCommon
-	File   IFCERFTBlockUpdate `codec:"f"`
-	Writes []WriteRange       `codec:"w"`
+	File   IFCERFTBlockUpdate  `codec:"f"`
+	Writes []IFCERFTWriteRange `codec:"w"`
 }
 
 func newSyncOp(oldFile IFCERFTBlockPointer) *syncOp {
@@ -409,14 +363,14 @@ func (so *syncOp) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPoint
 	so.OpCommon.AddUpdate(oldPtr, newPtr)
 }
 
-func (so *syncOp) addWrite(off uint64, length uint64) WriteRange {
-	latestWrite := WriteRange{Off: off, Len: length}
+func (so *syncOp) addWrite(off uint64, length uint64) IFCERFTWriteRange {
+	latestWrite := IFCERFTWriteRange{Off: off, Len: length}
 	so.Writes = append(so.Writes, latestWrite)
 	return latestWrite
 }
 
-func (so *syncOp) addTruncate(off uint64) WriteRange {
-	latestWrite := WriteRange{Off: off, Len: 0}
+func (so *syncOp) addTruncate(off uint64) IFCERFTWriteRange {
+	latestWrite := IFCERFTWriteRange{Off: off, Len: 0}
 	so.Writes = append(so.Writes, latestWrite)
 	return latestWrite
 }
@@ -483,27 +437,26 @@ func (so *syncOp) GetDefaultAction(mergedPath IFCERFTPath) IFCERFTCrAction {
 // new write is {5, 100}, and `existingWrites` = [{7,5}, {18,10},
 // {98,10}], the returned write will be {5,103}.  There may be a
 // truncate at the end of the returned slice as well.
-func coalesceWrites(existingWrites []WriteRange,
-	wNew WriteRange) []WriteRange {
-	if wNew.isTruncate() {
+func coalesceWrites(existingWrites []IFCERFTWriteRange, wNew IFCERFTWriteRange) []IFCERFTWriteRange {
+	if wNew.IsTruncate() {
 		panic("coalesceWrites cannot be called with a new truncate.")
 	}
 	if len(existingWrites) == 0 {
-		return []WriteRange{wNew}
+		return []IFCERFTWriteRange{wNew}
 	}
 	newOff := wNew.Off
 	newEnd := wNew.End()
 	wOldHead := existingWrites[0]
 	wOldTail := existingWrites[len(existingWrites)-1]
-	if !wOldTail.isTruncate() && wOldTail.End() > newEnd {
+	if !wOldTail.IsTruncate() && wOldTail.End() > newEnd {
 		newEnd = wOldTail.End()
 	}
-	if !wOldHead.isTruncate() && wOldHead.Off < newOff {
+	if !wOldHead.IsTruncate() && wOldHead.Off < newOff {
 		newOff = wOldHead.Off
 	}
-	ret := []WriteRange{{Off: newOff, Len: newEnd - newOff}}
-	if wOldTail.isTruncate() {
-		ret = append(ret, WriteRange{Off: newEnd})
+	ret := []IFCERFTWriteRange{{Off: newOff, Len: newEnd - newOff}}
+	if wOldTail.IsTruncate() {
+		ret = append(ret, IFCERFTWriteRange{Off: newEnd})
 	}
 	return ret
 }
@@ -511,8 +464,7 @@ func coalesceWrites(existingWrites []WriteRange,
 // Assumes writes is already collapsed, i.e. a sequence of
 // non-overlapping writes with strictly increasing Off, and maybe a
 // trailing truncate (with strictly greater Off).
-func addToCollapsedWriteRange(writes []WriteRange,
-	wNew WriteRange) []WriteRange {
+func addToCollapsedWriteRange(writes []IFCERFTWriteRange, wNew IFCERFTWriteRange) []IFCERFTWriteRange {
 	// Form three regions: head, mid, and tail: head is the maximal prefix
 	// of writes less than (with respect to Off) and unaffected by wNew,
 	// tail is the maximal suffix of writes greater than (with respect to
@@ -527,21 +479,21 @@ func addToCollapsedWriteRange(writes []WriteRange,
 	}
 	head := writes[:headEnd]
 
-	if wNew.isTruncate() {
+	if wNew.IsTruncate() {
 		// end is empty, since a truncate affects a suffix of writes.
 		mid := writes[headEnd:]
 
 		if len(mid) == 0 {
 			// Truncate past the last write.
 			return append(head, wNew)
-		} else if mid[0].isTruncate() {
+		} else if mid[0].IsTruncate() {
 			// Min truncate wins
 			if mid[0].Off < wNew.Off {
 				return append(head, mid[0])
 			}
 			return append(head, wNew)
 		} else if mid[0].Off < wNew.Off {
-			return append(head, WriteRange{
+			return append(head, IFCERFTWriteRange{
 				Off: mid[0].Off,
 				Len: wNew.Off - mid[0].Off,
 			}, wNew)
@@ -577,8 +529,8 @@ func addToCollapsedWriteRange(writes []WriteRange,
 // NOTE: Truncates past a file's end get turned into writes by
 // folderBranchOps, but in the future we may have bona fide truncate
 // WriteRanges past a file's end.
-func (so *syncOp) collapseWriteRange(writes []WriteRange) (
-	newWrites []WriteRange) {
+func (so *syncOp) collapseWriteRange(writes []IFCERFTWriteRange) (
+	newWrites []IFCERFTWriteRange) {
 	newWrites = writes
 	for _, wNew := range so.Writes {
 		newWrites = addToCollapsedWriteRange(newWrites, wNew)
@@ -815,7 +767,7 @@ func invertOpForLocalNotifications(oldOp IFCERFTOps) IFCERFTOps {
 		// will do the right job of marking the right bytes as
 		// invalid.
 		newOp = newSyncOp(op.File.Ref)
-		newOp.(*syncOp).Writes = make([]WriteRange, len(op.Writes))
+		newOp.(*syncOp).Writes = make([]IFCERFTWriteRange, len(op.Writes))
 		copy(newOp.(*syncOp).Writes, op.Writes)
 	case *setAttrOp:
 		newOp = newSetAttrOp(op.Name, op.Dir.Ref, op.Attr, op.File)

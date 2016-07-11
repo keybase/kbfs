@@ -60,7 +60,7 @@ func (r *RemoteStatus) loop(ctx context.Context, log logger.Logger, config libkb
 	}
 }
 
-func (r *RemoteStatus) update(st libkbfs.KBFSStatus) {
+func (r *RemoteStatus) update(st libkbfs.IFCERFTKBFSStatus) {
 	r.Lock()
 	defer r.Unlock()
 

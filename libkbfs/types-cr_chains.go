@@ -64,11 +64,11 @@ func (cc *IFCERFTCrChain) Collapse() {
 	}
 }
 
-func (cc *IFCERFTCrChain) GetCollapsedWriteRange() []WriteRange {
+func (cc *IFCERFTCrChain) GetCollapsedWriteRange() []IFCERFTWriteRange {
 	if !cc.IsFile() {
 		return nil
 	}
-	var wr []WriteRange
+	var wr []IFCERFTWriteRange
 	for _, op := range cc.ops {
 		syncOp, ok := op.(*syncOp)
 		if !ok {
@@ -99,8 +99,8 @@ func (cc *IFCERFTCrChain) GetActionsToMerge(renamer IFCERFTConflictRenamer, merg
 		// TODO: In the future we may be able to do smarter merging
 		// here if the write ranges don't overlap, though maybe only
 		// for certain file types?
-		if len(myWriteRange) == 1 && myWriteRange[0].isTruncate() &&
-			len(mergedWriteRange) == 1 && mergedWriteRange[0].isTruncate() &&
+		if len(myWriteRange) == 1 && myWriteRange[0].IsTruncate() &&
+			len(mergedWriteRange) == 1 && mergedWriteRange[0].IsTruncate() &&
 			myWriteRange[0].Off == mergedWriteRange[0].Off {
 			// drop all sync ops
 			for i, op := range cc.ops {

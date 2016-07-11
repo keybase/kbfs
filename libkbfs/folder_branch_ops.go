@@ -2962,8 +2962,8 @@ func (fbo *folderBranchOps) FolderStatus(
 
 func (fbo *folderBranchOps) Status(
 	ctx context.Context) (
-	fbs KBFSStatus, updateChan <-chan IFCERFTStatusUpdate, err error) {
-	return KBFSStatus{}, nil, IFCERFTInvalidOpError{}
+	fbs IFCERFTKBFSStatus, updateChan <-chan IFCERFTStatusUpdate, err error) {
+	return IFCERFTKBFSStatus{}, nil, IFCERFTInvalidOpError{}
 }
 
 // RegisterForChanges registers a single Observer to receive

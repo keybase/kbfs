@@ -92,16 +92,16 @@ func (c CryptoCommon) MakeMdID(md *IFCERFTRootMetadata) (IFCERFTMdID, error) {
 }
 
 // MakeMerkleHash implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeMerkleHash(md *IFCERFTRootMetadataSigned) (MerkleHash, error) {
+func (c CryptoCommon) MakeMerkleHash(md *IFCERFTRootMetadataSigned) (IFCERFTMerkleHash, error) {
 	buf, err := c.codec.Encode(md)
 	if err != nil {
-		return MerkleHash{}, err
+		return IFCERFTMerkleHash{}, err
 	}
 	h, err := IFCERFTDefaultHash(buf)
 	if err != nil {
-		return MerkleHash{}, err
+		return IFCERFTMerkleHash{}, err
 	}
-	return MerkleHash{h}, nil
+	return IFCERFTMerkleHash{h}, nil
 }
 
 // MakeTemporaryBlockID implements the Crypto interface for CryptoCommon.
@@ -488,7 +488,7 @@ func (c CryptoCommon) VerifyTLFCryptKeyServerHalfID(serverHalfID IFCERFTTLFCrypt
 }
 
 // EncryptMerkleLeaf encrypts a Merkle leaf node with the TLFPublicKey.
-func (c CryptoCommon) EncryptMerkleLeaf(leaf MerkleLeaf, pubKey IFCERFTTLFPublicKey, nonce *[24]byte, ePrivKey IFCERFTTLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error) {
+func (c CryptoCommon) EncryptMerkleLeaf(leaf IFCERFTMerkleLeaf, pubKey IFCERFTTLFPublicKey, nonce *[24]byte, ePrivKey IFCERFTTLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error) {
 	// encode the clear-text leaf
 	leafBytes, err := c.codec.Encode(leaf)
 	if err != nil {
@@ -503,7 +503,7 @@ func (c CryptoCommon) EncryptMerkleLeaf(leaf MerkleLeaf, pubKey IFCERFTTLFPublic
 }
 
 // DecryptMerkleLeaf decrypts a Merkle leaf node with the TLFPrivateKey.
-func (c CryptoCommon) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey IFCERFTTLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error) {
+func (c CryptoCommon) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey IFCERFTTLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*IFCERFTMerkleLeaf, error) {
 	if encryptedLeaf.Version != IFCERFTEncryptionSecretbox {
 		return nil, IFCERFTUnknownEncryptionVer{encryptedLeaf.Version}
 	}
@@ -512,7 +512,7 @@ func (c CryptoCommon) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf
 		return nil, libkb.DecryptionError{}
 	}
 	// decode the leaf
-	var leaf MerkleLeaf
+	var leaf IFCERFTMerkleLeaf
 	if err := c.codec.Decode(leafBytes, &leaf); err != nil {
 		return nil, err
 	}

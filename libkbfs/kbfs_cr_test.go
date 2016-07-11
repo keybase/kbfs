@@ -37,7 +37,7 @@ type testCRObserver struct {
 	changes []IFCERFTNodeChange
 }
 
-func (t *testCRObserver) LocalChange(ctx context.Context, node IFCERFTNode, write WriteRange) {
+func (t *testCRObserver) LocalChange(ctx context.Context, node IFCERFTNode, write IFCERFTWriteRange) {
 	// ignore
 }
 

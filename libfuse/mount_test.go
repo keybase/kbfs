@@ -2324,7 +2324,7 @@ type testMountObserver struct {
 	c chan<- struct{}
 }
 
-func (t *testMountObserver) LocalChange(ctx context.Context, node libkbfs.IFCERFTNode, write libkbfs.WriteRange) {
+func (t *testMountObserver) LocalChange(ctx context.Context, node libkbfs.IFCERFTNode, write libkbfs.IFCERFTWriteRange) {
 	// ignore
 }
 

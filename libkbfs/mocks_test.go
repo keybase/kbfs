@@ -419,9 +419,9 @@ func (_mr *_MockKBFSOpsRecorder) FolderStatus(arg0, arg1 interface{}) *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "FolderStatus", arg0, arg1)
 }
 
-func (_m *MockKBFSOps) Status(ctx context.Context) (KBFSStatus, <-chan IFCERFTStatusUpdate, error) {
+func (_m *MockKBFSOps) Status(ctx context.Context) (IFCERFTKBFSStatus, <-chan IFCERFTStatusUpdate, error) {
 	ret := _m.ctrl.Call(_m, "Status", ctx)
-	ret0, _ := ret[0].(KBFSStatus)
+	ret0, _ := ret[0].(IFCERFTKBFSStatus)
 	ret1, _ := ret[1].(<-chan IFCERFTStatusUpdate)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -1369,9 +1369,9 @@ func (_mr *_MockcryptoPureRecorder) MakeMdID(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeMdID", arg0)
 }
 
-func (_m *MockcryptoPure) MakeMerkleHash(md *IFCERFTRootMetadataSigned) (MerkleHash, error) {
+func (_m *MockcryptoPure) MakeMerkleHash(md *IFCERFTRootMetadataSigned) (IFCERFTMerkleHash, error) {
 	ret := _m.ctrl.Call(_m, "MakeMerkleHash", md)
-	ret0, _ := ret[0].(MerkleHash)
+	ret0, _ := ret[0].(IFCERFTMerkleHash)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1579,7 +1579,7 @@ func (_mr *_MockcryptoPureRecorder) VerifyTLFCryptKeyServerHalfID(arg0, arg1, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "VerifyTLFCryptKeyServerHalfID", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockcryptoPure) EncryptMerkleLeaf(leaf MerkleLeaf, pubKey IFCERFTTLFPublicKey, nonce *[24]byte, ePrivKey IFCERFTTLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error) {
+func (_m *MockcryptoPure) EncryptMerkleLeaf(leaf IFCERFTMerkleLeaf, pubKey IFCERFTTLFPublicKey, nonce *[24]byte, ePrivKey IFCERFTTLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error) {
 	ret := _m.ctrl.Call(_m, "EncryptMerkleLeaf", leaf, pubKey, nonce, ePrivKey)
 	ret0, _ := ret[0].(IFCERFTEncryptedMerkleLeaf)
 	ret1, _ := ret[1].(error)
@@ -1590,9 +1590,9 @@ func (_mr *_MockcryptoPureRecorder) EncryptMerkleLeaf(arg0, arg1, arg2, arg3 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptMerkleLeaf", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockcryptoPure) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey IFCERFTTLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error) {
+func (_m *MockcryptoPure) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey IFCERFTTLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*IFCERFTMerkleLeaf, error) {
 	ret := _m.ctrl.Call(_m, "DecryptMerkleLeaf", encryptedLeaf, privKey, nonce, ePubKey)
-	ret0, _ := ret[0].(*MerkleLeaf)
+	ret0, _ := ret[0].(*IFCERFTMerkleLeaf)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1655,9 +1655,9 @@ func (_mr *_MockCryptoRecorder) MakeMdID(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeMdID", arg0)
 }
 
-func (_m *MockCrypto) MakeMerkleHash(md *IFCERFTRootMetadataSigned) (MerkleHash, error) {
+func (_m *MockCrypto) MakeMerkleHash(md *IFCERFTRootMetadataSigned) (IFCERFTMerkleHash, error) {
 	ret := _m.ctrl.Call(_m, "MakeMerkleHash", md)
-	ret0, _ := ret[0].(MerkleHash)
+	ret0, _ := ret[0].(IFCERFTMerkleHash)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1865,7 +1865,7 @@ func (_mr *_MockCryptoRecorder) VerifyTLFCryptKeyServerHalfID(arg0, arg1, arg2, 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "VerifyTLFCryptKeyServerHalfID", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockCrypto) EncryptMerkleLeaf(leaf MerkleLeaf, pubKey IFCERFTTLFPublicKey, nonce *[24]byte, ePrivKey IFCERFTTLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error) {
+func (_m *MockCrypto) EncryptMerkleLeaf(leaf IFCERFTMerkleLeaf, pubKey IFCERFTTLFPublicKey, nonce *[24]byte, ePrivKey IFCERFTTLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error) {
 	ret := _m.ctrl.Call(_m, "EncryptMerkleLeaf", leaf, pubKey, nonce, ePrivKey)
 	ret0, _ := ret[0].(IFCERFTEncryptedMerkleLeaf)
 	ret1, _ := ret[1].(error)
@@ -1876,9 +1876,9 @@ func (_mr *_MockCryptoRecorder) EncryptMerkleLeaf(arg0, arg1, arg2, arg3 interfa
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptMerkleLeaf", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockCrypto) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey IFCERFTTLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error) {
+func (_m *MockCrypto) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey IFCERFTTLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*IFCERFTMerkleLeaf, error) {
 	ret := _m.ctrl.Call(_m, "DecryptMerkleLeaf", encryptedLeaf, privKey, nonce, ePubKey)
-	ret0, _ := ret[0].(*MerkleLeaf)
+	ret0, _ := ret[0].(*IFCERFTMerkleLeaf)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2955,7 +2955,7 @@ func (_m *MockObserver) EXPECT() *_MockObserverRecorder {
 	return _m.recorder
 }
 
-func (_m *MockObserver) LocalChange(ctx context.Context, node IFCERFTNode, write WriteRange) {
+func (_m *MockObserver) LocalChange(ctx context.Context, node IFCERFTNode, write IFCERFTWriteRange) {
 	_m.ctrl.Call(_m, "LocalChange", ctx, node, write)
 }
 

@@ -19,7 +19,7 @@ type FakeObserver struct {
 }
 
 func (fn *FakeObserver) LocalChange(ctx context.Context,
-	node IFCERFTNode, write WriteRange) {
+	node IFCERFTNode, write IFCERFTWriteRange) {
 	fn.localChange = node
 	fn.ctx = ctx
 }

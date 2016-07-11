@@ -12,10 +12,10 @@ import (
 )
 
 // MerkleRootVersion is the current Merkle root version.
-const MerkleRootVersion = 1
+const IFCERFTMerkleRootVersion = 1
 
 // MerkleRoot represents a signed Merkle tree root.
-type MerkleRoot struct {
+type IFCERFTMerkleRoot struct {
 	Version   int                           `codec:"v"`
 	TreeID    keybase1.MerkleTreeID         `codec:"t"`
 	SeqNo     int64                         `codec:"sn"`
@@ -27,59 +27,59 @@ type MerkleRoot struct {
 }
 
 // MerkleLeaf is the value of a Merkle leaf node.
-type MerkleLeaf struct {
+type IFCERFTMerkleLeaf struct {
 	_struct   bool `codec:",toarray"`
 	Revision  IFCERFTMetadataRevision
-	Hash      MerkleHash // hash of the signed metadata object
+	Hash      IFCERFTMerkleHash // hash of the signed metadata object
 	Timestamp int64
 }
 
-var _ merkle.ValueConstructor = (*MerkleLeaf)(nil)
+var _ merkle.ValueConstructor = (*IFCERFTMerkleLeaf)(nil)
 
 // Construct implements the go-merkle-tree.ValueConstructor interface.
-func (l MerkleLeaf) Construct() interface{} {
+func (l IFCERFTMerkleLeaf) Construct() interface{} {
 	// In the Merkle tree leaves are simply byte slices.
 	return []byte{}
 }
 
 // MerkleHash is the hash of a RootMetadataSigned block.
-type MerkleHash struct {
+type IFCERFTMerkleHash struct {
 	h IFCERFTHash
 }
 
-var _ encoding.BinaryMarshaler = MerkleHash{}
-var _ encoding.BinaryUnmarshaler = (*MerkleHash)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTMerkleHash{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTMerkleHash)(nil)
 
 // MerkleHashFromBytes creates a new MerkleHash from the given bytes. If the
 // returned error is nil, the returned MerkleHash is valid.
-func MerkleHashFromBytes(data []byte) (MerkleHash, error) {
+func IFCERFTMerkleHashFromBytes(data []byte) (IFCERFTMerkleHash, error) {
 	h, err := IFCERFTHashFromBytes(data)
 	if err != nil {
-		return MerkleHash{}, err
+		return IFCERFTMerkleHash{}, err
 	}
-	return MerkleHash{h}, nil
+	return IFCERFTMerkleHash{h}, nil
 }
 
 // Bytes returns the bytes of the MerkleHash.
-func (h MerkleHash) Bytes() []byte {
+func (h IFCERFTMerkleHash) Bytes() []byte {
 	return h.h.Bytes()
 }
 
 // String returns the string form of the MerkleHash.
-func (h MerkleHash) String() string {
+func (h IFCERFTMerkleHash) String() string {
 	return h.h.String()
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for
 // MerkleHash. Returns an error if the MerkleHash is invalid and not the
 // zero MerkleHash.
-func (h MerkleHash) MarshalBinary() (data []byte, err error) {
+func (h IFCERFTMerkleHash) MarshalBinary() (data []byte, err error) {
 	return h.h.MarshalBinary()
 }
 
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface
 // for MerkleHash. Returns an error if the given byte array is non-empty and
 // the MerkleHash is invalid.
-func (h *MerkleHash) UnmarshalBinary(data []byte) error {
+func (h *IFCERFTMerkleHash) UnmarshalBinary(data []byte) error {
 	return h.h.UnmarshalBinary(data)
 }

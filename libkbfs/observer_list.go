@@ -40,7 +40,7 @@ func (ol *observerList) remove(o IFCERFTObserver) {
 }
 
 func (ol *observerList) localChange(
-	ctx context.Context, node IFCERFTNode, write WriteRange) {
+	ctx context.Context, node IFCERFTNode, write IFCERFTWriteRange) {
 	ol.lock.RLock()
 	defer ol.lock.RUnlock()
 	for _, o := range ol.observers {

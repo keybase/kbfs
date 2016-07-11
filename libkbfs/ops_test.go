@@ -118,12 +118,12 @@ func TestSetAttrOpCustomUpdate(t *testing.T) {
 }
 
 type writeRangeFuture struct {
-	WriteRange
+	IFCERFTWriteRange
 	extra
 }
 
-func (wrf writeRangeFuture) toCurrent() WriteRange {
-	return wrf.WriteRange
+func (wrf writeRangeFuture) toCurrent() IFCERFTWriteRange {
+	return wrf.IFCERFTWriteRange
 }
 
 func (wrf writeRangeFuture) toCurrentStruct() currentStruct {
@@ -132,7 +132,7 @@ func (wrf writeRangeFuture) toCurrentStruct() currentStruct {
 
 func makeFakeWriteRangeFuture(t *testing.T) writeRangeFuture {
 	wrf := writeRangeFuture{
-		WriteRange{
+		IFCERFTWriteRange{
 			5,
 			10,
 			codec.UnknownFieldSetHandler{},
@@ -314,7 +314,7 @@ type syncOpFuture struct {
 
 func (sof syncOpFuture) toCurrent() syncOp {
 	so := sof.syncOp
-	so.Writes = make([]WriteRange, len(sof.Writes))
+	so.Writes = make([]IFCERFTWriteRange, len(sof.Writes))
 	for i, w := range sof.Writes {
 		so.Writes[i] = w.toCurrent()
 	}
@@ -619,17 +619,17 @@ func TestOpsCollapseWriteRange(t *testing.T) {
 			}
 		}
 
-		var wrComputed []WriteRange
+		var wrComputed []IFCERFTWriteRange
 		for _, op := range syncOps {
 			wrComputed = op.collapseWriteRange(wrComputed)
 		}
 
-		var wrExpected []WriteRange
+		var wrExpected []IFCERFTWriteRange
 		inWrite := false
 		for j := 0; j < int(lastByte); j++ {
 			if !inWrite && file[j] {
 				inWrite = true
-				wrExpected = append(wrExpected, WriteRange{Off: uint64(j)})
+				wrExpected = append(wrExpected, IFCERFTWriteRange{Off: uint64(j)})
 			} else if inWrite && !file[j] {
 				inWrite = false
 				wrExpected[len(wrExpected)-1].Len =
@@ -641,7 +641,7 @@ func TestOpsCollapseWriteRange(t *testing.T) {
 				lastByte - wrExpected[len(wrExpected)-1].Off
 		}
 		if lastByteIsTruncate {
-			wrExpected = append(wrExpected, WriteRange{Off: lastByte})
+			wrExpected = append(wrExpected, IFCERFTWriteRange{Off: lastByte})
 		}
 
 		// Verify that the write range represents what's in the file.
@@ -660,14 +660,14 @@ func TestOpsCollapseWriteRange(t *testing.T) {
 
 func ExamplecoalesceWrites() {
 	fmt.Println(coalesceWrites(
-		[]WriteRange{{Off: 7, Len: 5}, {Off: 18, Len: 10},
-			{Off: 98, Len: 10}}, WriteRange{Off: 5, Len: 100}))
+		[]IFCERFTWriteRange{{Off: 7, Len: 5}, {Off: 18, Len: 10},
+			{Off: 98, Len: 10}}, IFCERFTWriteRange{Off: 5, Len: 100}))
 	// Output: [{5 103 {{map[]}}}]
 }
 
 func ExamplecoalesceWrites_withOldTruncate() {
 	fmt.Println(coalesceWrites(
-		[]WriteRange{{Off: 7, Len: 5}, {Off: 18, Len: 10},
-			{Off: 98, Len: 0}}, WriteRange{Off: 5, Len: 100}))
+		[]IFCERFTWriteRange{{Off: 7, Len: 5}, {Off: 18, Len: 10},
+			{Off: 98, Len: 0}}, IFCERFTWriteRange{Off: 5, Len: 100}))
 	// Output: [{5 100 {{map[]}}} {105 0 {{map[]}}}]
 }

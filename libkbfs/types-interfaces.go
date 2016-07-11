@@ -227,7 +227,7 @@ type IFCERFTKBFSOps interface {
 	// polling this method). KBFSStatus can be non-empty even if there is an
 	// error.
 	Status(ctx context.Context) (
-		KBFSStatus, <-chan IFCERFTStatusUpdate, error)
+		IFCERFTKBFSStatus, <-chan IFCERFTStatusUpdate, error)
 	// UnstageForTesting clears out this device's staged state, if
 	// any, and fast-forwards to the current head of this
 	// folder-branch.
@@ -949,7 +949,7 @@ type IFCERFTNodeChange struct {
 	Node IFCERFTNode
 	// Basenames of entries added/removed.
 	DirUpdated  []string
-	FileUpdated []WriteRange
+	FileUpdated []IFCERFTWriteRange
 }
 
 // Observer can be notified that there is an available update for a
@@ -960,7 +960,7 @@ type IFCERFTNodeChange struct {
 type IFCERFTObserver interface {
 	// LocalChange announces that the file at this Node has been
 	// updated locally, but not yet saved at the server.
-	LocalChange(ctx context.Context, node IFCERFTNode, write WriteRange)
+	LocalChange(ctx context.Context, node IFCERFTNode, write IFCERFTWriteRange)
 	// BatchChanges announces that the nodes have all been updated
 	// together atomically.  Each NodeChange in changes affects the
 	// same top-level folder and branch.
@@ -1229,7 +1229,7 @@ type cryptoPure interface {
 
 	// MakeMerkleHash computes the hash of a RootMetadataSigned object
 	// for inclusion into the KBFS Merkle tree.
-	MakeMerkleHash(md *IFCERFTRootMetadataSigned) (MerkleHash, error)
+	MakeMerkleHash(md *IFCERFTRootMetadataSigned) (IFCERFTMerkleHash, error)
 
 	// MakeTemporaryBlockID generates a temporary block ID using a
 	// CSPRNG. This is used for indirect blocks before they're
@@ -1303,9 +1303,9 @@ type cryptoPure interface {
 		deviceKID keybase1.KID, serverHalf IFCERFTTLFCryptKeyServerHalf) error
 
 	// EncryptMerkleLeaf encrypts a Merkle leaf node with the TLFPublicKey.
-	EncryptMerkleLeaf(leaf MerkleLeaf, pubKey IFCERFTTLFPublicKey, nonce *[24]byte,
+	EncryptMerkleLeaf(leaf IFCERFTMerkleLeaf, pubKey IFCERFTTLFPublicKey, nonce *[24]byte,
 		ePrivKey IFCERFTTLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error)
 
 	// DecryptMerkleLeaf decrypts a Merkle leaf node with the TLFPrivateKey.
-	DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey IFCERFTTLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error)
+	DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey IFCERFTTLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*IFCERFTMerkleLeaf, error)
 }

@@ -895,7 +895,7 @@ func (rmds *IFCERFTRootMetadataSigned) VerifyRootMetadata(codec IFCERFTCodec, cr
 
 // MerkleHash computes a hash of this RootMetadataSigned object for inclusion
 // into the KBFS Merkle tree.
-func (rmds *IFCERFTRootMetadataSigned) MerkleHash(config IFCERFTConfig) (MerkleHash, error) {
+func (rmds *IFCERFTRootMetadataSigned) MerkleHash(config IFCERFTConfig) (IFCERFTMerkleHash, error) {
 	return config.Crypto().MakeMerkleHash(rmds)
 }
 

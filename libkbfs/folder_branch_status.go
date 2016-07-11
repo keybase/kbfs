@@ -10,17 +10,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// KBFSStatus represents the content of the top-level status file. It is
-// suitable for encoding directly as JSON.
-// TODO: implement magical status update like FolderBranchStatus
-type KBFSStatus struct {
-	CurrentUser     string
-	IsConnected     bool
-	UsageBytes      int64
-	LimitBytes      int64
-	FailingServices map[string]error
-}
-
 // folderBranchStatusKeeper holds and updates the status for a given
 // folder-branch, and produces FolderBranchStatus instances suitable
 // for callers outside this package to consume.

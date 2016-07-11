@@ -418,7 +418,7 @@ func (fs *KBFSOpsStandard) FolderStatus(
 
 // Status implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Status(ctx context.Context) (
-	KBFSStatus, <-chan IFCERFTStatusUpdate, error) {
+	IFCERFTKBFSStatus, <-chan IFCERFTStatusUpdate, error) {
 	username, _, err := fs.config.KBPKI().GetCurrentUserInfo(ctx)
 	var usageBytes int64 = -1
 	var limitBytes int64 = -1
@@ -438,7 +438,7 @@ func (fs *KBFSOpsStandard) Status(ctx context.Context) (
 		}
 	}
 	failures, ch := fs.currentStatus.CurrentStatus()
-	return KBFSStatus{
+	return IFCERFTKBFSStatus{
 		CurrentUser:     username.String(),
 		IsConnected:     fs.config.MDServer().IsConnected(),
 		UsageBytes:      usageBytes,

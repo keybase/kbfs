@@ -2708,7 +2708,7 @@ func TestKBFSOpsServerReadFailNoSuchBlock(t *testing.T) {
 	}
 }
 
-func checkSyncOp(t *testing.T, codec IFCERFTCodec, so *syncOp, filePtr IFCERFTBlockPointer, writes []WriteRange) {
+func checkSyncOp(t *testing.T, codec IFCERFTCodec, so *syncOp, filePtr IFCERFTBlockPointer, writes []IFCERFTWriteRange) {
 	if so == nil {
 		t.Error("No sync info for written file!")
 	}
@@ -2732,7 +2732,7 @@ func checkSyncOp(t *testing.T, codec IFCERFTCodec, so *syncOp, filePtr IFCERFTBl
 }
 
 func checkSyncOpInCache(t *testing.T, codec IFCERFTCodec, ops *folderBranchOps,
-	filePtr IFCERFTBlockPointer, writes []WriteRange) {
+	filePtr IFCERFTBlockPointer, writes []IFCERFTWriteRange) {
 	// check the in-progress syncOp
 	si, ok := ops.blocks.unrefCache[filePtr.ref()]
 	if !ok {
@@ -2814,7 +2814,7 @@ func TestKBFSOpsWriteNewBlockSuccess(t *testing.T) {
 			fileNode.IFCERFTBlockPointer: p.Branch,
 		})
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.IFCERFTBlockPointer,
-		[]WriteRange{{Off: 0, Len: uint64(len(data))}})
+		[]IFCERFTWriteRange{{Off: 0, Len: uint64(len(data))}})
 }
 
 func TestKBFSOpsWriteExtendSuccess(t *testing.T) {
@@ -2875,7 +2875,7 @@ func TestKBFSOpsWriteExtendSuccess(t *testing.T) {
 			fileNode.IFCERFTBlockPointer: p.Branch,
 		})
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.IFCERFTBlockPointer,
-		[]WriteRange{{Off: 5, Len: uint64(len(data))}})
+		[]IFCERFTWriteRange{{Off: 5, Len: uint64(len(data))}})
 }
 
 func TestKBFSOpsWritePastEndSuccess(t *testing.T) {
@@ -2936,7 +2936,7 @@ func TestKBFSOpsWritePastEndSuccess(t *testing.T) {
 			fileNode.IFCERFTBlockPointer: p.Branch,
 		})
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.IFCERFTBlockPointer,
-		[]WriteRange{{Off: 7, Len: uint64(len(data))}})
+		[]IFCERFTWriteRange{{Off: 7, Len: uint64(len(data))}})
 }
 
 func TestKBFSOpsWriteCauseSplit(t *testing.T) {
@@ -3047,7 +3047,7 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 			pblock.IPtrs[1].IFCERFTBlockPointer: p.Branch,
 		})
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.IFCERFTBlockPointer,
-		[]WriteRange{{Off: 1, Len: uint64(len(newData))}})
+		[]IFCERFTWriteRange{{Off: 1, Len: uint64(len(newData))}})
 }
 
 func mergeUnrefCache(
@@ -3147,7 +3147,7 @@ func TestKBFSOpsWriteOverMultipleBlocks(t *testing.T) {
 
 	// merge the unref cache to make it easy to check for changes
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.IFCERFTBlockPointer,
-		[]WriteRange{{Off: 2, Len: uint64(len(data))}})
+		[]IFCERFTWriteRange{{Off: 2, Len: uint64(len(data))}})
 	mergeUnrefCache(ops, lState, p, rmd)
 	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID, id1, id2},
 		map[IFCERFTBlockPointer]IFCERFTBranchName{
@@ -3260,7 +3260,7 @@ func TestKBFSOpsTruncateToZeroSuccess(t *testing.T) {
 			fileNode.IFCERFTBlockPointer: p.Branch,
 		})
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.IFCERFTBlockPointer,
-		[]WriteRange{{Off: 0, Len: 0}})
+		[]IFCERFTWriteRange{{Off: 0, Len: 0}})
 }
 
 func TestKBFSOpsTruncateSameSize(t *testing.T) {
@@ -3353,7 +3353,7 @@ func TestKBFSOpsTruncateSmallerSuccess(t *testing.T) {
 			fileNode.IFCERFTBlockPointer: p.Branch,
 		})
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.IFCERFTBlockPointer,
-		[]WriteRange{{Off: 5, Len: 0}})
+		[]IFCERFTWriteRange{{Off: 5, Len: 0}})
 }
 
 func TestKBFSOpsTruncateShortensLastBlock(t *testing.T) {
@@ -3412,7 +3412,7 @@ func TestKBFSOpsTruncateShortensLastBlock(t *testing.T) {
 
 	// merge unref changes so we can easily check the block changes
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.IFCERFTBlockPointer,
-		[]WriteRange{{Off: 7, Len: 0}})
+		[]IFCERFTWriteRange{{Off: 7, Len: 0}})
 	mergeUnrefCache(ops, lState, p, rmd)
 
 	if len(ops.nodeCache.PathFromNode(config.observer.localChange).path) !=
@@ -3493,7 +3493,7 @@ func TestKBFSOpsTruncateRemovesABlock(t *testing.T) {
 
 	// merge unref changes so we can easily check the block changes
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.IFCERFTBlockPointer,
-		[]WriteRange{{Off: 4, Len: 0}})
+		[]IFCERFTWriteRange{{Off: 4, Len: 0}})
 	mergeUnrefCache(ops, lState, p, rmd)
 
 	if len(ops.nodeCache.PathFromNode(config.observer.localChange).path) !=
@@ -3578,7 +3578,7 @@ func TestKBFSOpsTruncateBiggerSuccess(t *testing.T) {
 	// A truncate past the end of the file actually translates into a
 	// write for the difference
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.IFCERFTBlockPointer,
-		[]WriteRange{{Off: 5, Len: 5}})
+		[]IFCERFTWriteRange{{Off: 5, Len: 5}})
 }
 
 func testSetExSuccess(t *testing.T, entryType IFCERFTEntryType, ex bool) {
@@ -3964,7 +3964,7 @@ func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
 	}
 	// make sure the write is propagated
 	checkSyncOp(t, config.Codec(), so,
-		aNode.IFCERFTBlockPointer, []WriteRange{{Off: 0, Len: 10}})
+		aNode.IFCERFTBlockPointer, []IFCERFTWriteRange{{Off: 0, Len: 10}})
 }
 
 func TestSyncDirtySuccess(t *testing.T) {
@@ -4278,7 +4278,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	}
 	// make sure the write is propagated
 	checkSyncOp(t, config.Codec(), so,
-		bNode.IFCERFTBlockPointer, []WriteRange{{Off: 0, Len: 10}})
+		bNode.IFCERFTBlockPointer, []IFCERFTWriteRange{{Off: 0, Len: 10}})
 }
 
 func putAndCleanAnyBlock(config *ConfigMock, p IFCERFTPath) {
@@ -4802,7 +4802,7 @@ type testBGObserver struct {
 	c chan<- struct{}
 }
 
-func (t *testBGObserver) LocalChange(ctx context.Context, node IFCERFTNode, write WriteRange) {
+func (t *testBGObserver) LocalChange(ctx context.Context, node IFCERFTNode, write IFCERFTWriteRange) {
 	// ignore
 }
 

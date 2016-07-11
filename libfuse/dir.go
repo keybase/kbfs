@@ -145,7 +145,7 @@ var _ libkbfs.IFCERFTObserver = (*Folder)(nil)
 //
 //     - Len < 0: "forget data in range Off..infinity"
 //     - Len > 0: "forget data in range Off..Off+Len"
-func (f *Folder) invalidateNodeDataRange(node fs.Node, write libkbfs.WriteRange) error {
+func (f *Folder) invalidateNodeDataRange(node fs.Node, write libkbfs.IFCERFTWriteRange) error {
 	off := int64(write.Off)
 	size := int64(write.Len)
 	if write.Off > math.MaxInt64 || write.Len > math.MaxInt64 {
@@ -166,7 +166,7 @@ func (f *Folder) invalidateNodeDataRange(node fs.Node, write libkbfs.WriteRange)
 }
 
 // LocalChange is called for changes originating within in this process.
-func (f *Folder) LocalChange(ctx context.Context, node libkbfs.IFCERFTNode, write libkbfs.WriteRange) {
+func (f *Folder) LocalChange(ctx context.Context, node libkbfs.IFCERFTNode, write libkbfs.IFCERFTWriteRange) {
 	if !f.fs.conn.Protocol().HasInvalidate() {
 		// OSXFUSE 2.x does not support notifications
 		return
@@ -180,7 +180,7 @@ func (f *Folder) LocalChange(ctx context.Context, node libkbfs.IFCERFTNode, writ
 	f.fs.queueNotification(func() { f.localChangeInvalidate(ctx, node, write) })
 }
 
-func (f *Folder) localChangeInvalidate(ctx context.Context, node libkbfs.IFCERFTNode, write libkbfs.WriteRange) {
+func (f *Folder) localChangeInvalidate(ctx context.Context, node libkbfs.IFCERFTNode, write libkbfs.IFCERFTWriteRange) {
 	f.nodesMu.Lock()
 	n, ok := f.nodes[node.GetID()]
 	f.nodesMu.Unlock()
