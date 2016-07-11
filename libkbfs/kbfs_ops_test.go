@@ -1818,7 +1818,7 @@ func TestKBFSOpsRemoveSymSuccess(t *testing.T) {
 	var newRmd *RootMetadata
 	blockIDs := make([]BlockID, len(dirPath.path))
 	// No block is being referenced.
-	var unrefBytes uint64 = 0
+	var unrefBytes uint64
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
 		dirPath, rmd, false, 0, 0, unrefBytes, &newRmd, blockIDs)
 
