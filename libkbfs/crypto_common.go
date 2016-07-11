@@ -105,30 +105,30 @@ func (c CryptoCommon) MakeMerkleHash(md *IFCERFTRootMetadataSigned) (MerkleHash,
 }
 
 // MakeTemporaryBlockID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeTemporaryBlockID() (BlockID, error) {
+func (c CryptoCommon) MakeTemporaryBlockID() (IFCERFTBlockID, error) {
 	var dh IFCERFTRawDefaultHash
 	err := cryptoRandRead(dh[:])
 	if err != nil {
-		return BlockID{}, err
+		return IFCERFTBlockID{}, err
 	}
 	h, err := IFCERFTHashFromRaw(IFCERFTDefaultHashType, dh[:])
 	if err != nil {
-		return BlockID{}, err
+		return IFCERFTBlockID{}, err
 	}
-	return BlockID{h}, nil
+	return IFCERFTBlockID{h}, nil
 }
 
 // MakePermanentBlockID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakePermanentBlockID(encodedEncryptedData []byte) (BlockID, error) {
+func (c CryptoCommon) MakePermanentBlockID(encodedEncryptedData []byte) (IFCERFTBlockID, error) {
 	h, err := IFCERFTDefaultHash(encodedEncryptedData)
 	if err != nil {
-		return BlockID{}, nil
+		return IFCERFTBlockID{}, nil
 	}
-	return BlockID{h}, nil
+	return IFCERFTBlockID{h}, nil
 }
 
 // VerifyBlockID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) VerifyBlockID(encodedEncryptedData []byte, id BlockID) error {
+func (c CryptoCommon) VerifyBlockID(encodedEncryptedData []byte, id IFCERFTBlockID) error {
 	return id.h.Verify(encodedEncryptedData)
 }
 

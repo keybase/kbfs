@@ -35,7 +35,7 @@ const (
 )
 
 // RandomBlockID returns a randomly-generated BlockID for testing.
-func RandomBlockID() BlockID {
+func RandomBlockID() IFCERFTBlockID {
 	var dh IFCERFTRawDefaultHash
 	err := cryptoRandRead(dh[:])
 	if err != nil {
@@ -45,7 +45,7 @@ func RandomBlockID() BlockID {
 	if err != nil {
 		panic(err)
 	}
-	return BlockID{h}
+	return IFCERFTBlockID{h}
 }
 
 func fakeMdID(b byte) IFCERFTMdID {

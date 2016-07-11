@@ -14,7 +14,7 @@ func blockCacheTestInit(t *testing.T, capacity int,
 	return config
 }
 
-func testBcachePutWithBlock(t *testing.T, id BlockID, bcache IFCERFTBlockCache, lifetime IFCERFTBlockCacheLifetime, block IFCERFTBlock) {
+func testBcachePutWithBlock(t *testing.T, id IFCERFTBlockID, bcache IFCERFTBlockCache, lifetime IFCERFTBlockCacheLifetime, block IFCERFTBlock) {
 	ptr := IFCERFTBlockPointer{ID: id}
 	tlf := FakeTlfID(1, false)
 
@@ -31,12 +31,12 @@ func testBcachePutWithBlock(t *testing.T, id BlockID, bcache IFCERFTBlockCache, 
 	}
 }
 
-func testBcachePut(t *testing.T, id BlockID, bcache IFCERFTBlockCache, lifetime IFCERFTBlockCacheLifetime) {
+func testBcachePut(t *testing.T, id IFCERFTBlockID, bcache IFCERFTBlockCache, lifetime IFCERFTBlockCacheLifetime) {
 	block := NewFileBlock()
 	testBcachePutWithBlock(t, id, bcache, lifetime, block)
 }
 
-func testExpectedMissing(t *testing.T, id BlockID, bcache IFCERFTBlockCache) {
+func testExpectedMissing(t *testing.T, id IFCERFTBlockID, bcache IFCERFTBlockCache) {
 	expectedErr := IFCERFTNoSuchBlockError{id}
 	ptr := IFCERFTBlockPointer{ID: id}
 	if _, err := bcache.Get(ptr); err == nil {

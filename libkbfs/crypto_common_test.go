@@ -30,7 +30,7 @@ func TestCryptoCommonRandomBlockID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if b1 == (BlockID{}) {
+	if b1 == (IFCERFTBlockID{}) {
 		t.Errorf("zero BlockID (b1)")
 	}
 
@@ -39,7 +39,7 @@ func TestCryptoCommonRandomBlockID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if b2 == (BlockID{}) {
+	if b2 == (IFCERFTBlockID{}) {
 		t.Errorf("zero BlockID (b2)")
 	}
 

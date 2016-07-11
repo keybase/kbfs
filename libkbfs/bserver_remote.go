@@ -182,7 +182,7 @@ func (b *BlockServerRemote) ShouldRetryOnConnect(err error) bool {
 	return !inputCanceled
 }
 
-func makeBlockIDCombo(id BlockID, context IFCERFTBlockContext) keybase1.BlockIdCombo {
+func makeBlockIDCombo(id IFCERFTBlockID, context IFCERFTBlockContext) keybase1.BlockIdCombo {
 	// ChargedTo is somewhat confusing when this BlockIdCombo is
 	// used in a BlockReference -- it just refers to the original
 	// creator of the block, i.e. the original user charged for
@@ -195,7 +195,7 @@ func makeBlockIDCombo(id BlockID, context IFCERFTBlockContext) keybase1.BlockIdC
 	}
 }
 
-func makeBlockReference(id BlockID, context IFCERFTBlockContext) keybase1.BlockReference {
+func makeBlockReference(id IFCERFTBlockID, context IFCERFTBlockContext) keybase1.BlockReference {
 	return keybase1.BlockReference{
 		Bid: makeBlockIDCombo(id, context),
 		// The actual writer to modify quota for.
@@ -205,7 +205,7 @@ func makeBlockReference(id BlockID, context IFCERFTBlockContext) keybase1.BlockR
 }
 
 // Get implements the BlockServer interface for BlockServerRemote.
-func (b *BlockServerRemote) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
+func (b *BlockServerRemote) Get(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	var err error
 	size := -1
 	defer func() {
@@ -241,7 +241,7 @@ func (b *BlockServerRemote) Get(ctx context.Context, id BlockID, tlfID IFCERFTTl
 }
 
 // Put implements the BlockServer interface for BlockServerRemote.
-func (b *BlockServerRemote) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
+func (b *BlockServerRemote) Put(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
 	serverHalf IFCERFTBlockCryptKeyServerHalf) error {
 	var err error
 	size := len(buf)
@@ -271,8 +271,7 @@ func (b *BlockServerRemote) Put(ctx context.Context, id BlockID, tlfID IFCERFTTl
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerRemote
-func (b *BlockServerRemote) AddBlockReference(ctx context.Context, id BlockID,
-	tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
+func (b *BlockServerRemote) AddBlockReference(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
 	var err error
 	defer func() {
 		if err != nil {
@@ -296,7 +295,7 @@ func (b *BlockServerRemote) AddBlockReference(ctx context.Context, id BlockID,
 // RemoveBlockReference implements the BlockServer interface for
 // BlockServerRemote
 func (b *BlockServerRemote) RemoveBlockReference(ctx context.Context,
-	tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) (liveCounts map[BlockID]int, err error) {
+	tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) (liveCounts map[IFCERFTBlockID]int, err error) {
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(ctx, "RemoveBlockReference batch size=%d err=%v", len(contexts), err)
@@ -305,7 +304,7 @@ func (b *BlockServerRemote) RemoveBlockReference(ctx context.Context,
 		}
 	}()
 	doneRefs, err := b.batchDowngradeReferences(ctx, tlfID, contexts, false)
-	liveCounts = make(map[BlockID]int)
+	liveCounts = make(map[IFCERFTBlockID]int)
 	for id, nonces := range doneRefs {
 		for _, count := range nonces {
 			if existing, ok := liveCounts[id]; !ok || existing > count {
@@ -320,7 +319,7 @@ func (b *BlockServerRemote) RemoveBlockReference(ctx context.Context,
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerRemote
 func (b *BlockServerRemote) ArchiveBlockReferences(ctx context.Context,
-	tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) (err error) {
+	tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) (err error) {
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(ctx, "ArchiveBlockReferences batch size=%d err=%v", len(contexts), err)
@@ -334,10 +333,10 @@ func (b *BlockServerRemote) ArchiveBlockReferences(ctx context.Context,
 
 // batchDowngradeReferences archives or deletes a batch of references
 func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
-	tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext, archive bool) (
-	doneRefs map[BlockID]map[IFCERFTBlockRefNonce]int, finalError error) {
+	tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext, archive bool) (
+	doneRefs map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]int, finalError error) {
 	tries := 0
-	doneRefs = make(map[BlockID]map[IFCERFTBlockRefNonce]int)
+	doneRefs = make(map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]int)
 	notDone := b.getNotDone(contexts, doneRefs)
 	var res keybase1.DowngradeReferenceRes
 	var err error
@@ -367,7 +366,7 @@ func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 			_, tmpErr := err.(BServerErrorThrottle)
 			if !tmpErr {
 				finalError = err
-				bid, err := BlockIDFromString(res.Failed.Bid.BlockHash)
+				bid, err := IFCERFTBlockIDFromString(res.Failed.Bid.BlockHash)
 				if err == nil {
 					if refs, ok := contexts[bid]; ok {
 						for i := range refs {
@@ -391,7 +390,7 @@ func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 
 		//update the set of completed reference
 		for _, ref := range res.Completed {
-			bid, err := BlockIDFromString(ref.Ref.Bid.BlockHash)
+			bid, err := IFCERFTBlockIDFromString(ref.Ref.Bid.BlockHash)
 			if err != nil {
 				continue
 			}
@@ -426,7 +425,7 @@ func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 }
 
 // getNotDone returns the set of block references in "all" that do not yet appear in "results"
-func (b *BlockServerRemote) getNotDone(all map[BlockID][]IFCERFTBlockContext, doneRefs map[BlockID]map[IFCERFTBlockRefNonce]int) (
+func (b *BlockServerRemote) getNotDone(all map[IFCERFTBlockID][]IFCERFTBlockContext, doneRefs map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]int) (
 	notDone []keybase1.BlockReference) {
 	for id, idContexts := range all {
 		for _, context := range idContexts {

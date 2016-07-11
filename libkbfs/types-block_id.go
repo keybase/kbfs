@@ -7,52 +7,52 @@ package libkbfs
 import "encoding"
 
 // BlockID is the (usually content-based) ID for a data block.
-type BlockID struct {
+type IFCERFTBlockID struct {
 	h IFCERFTHash
 }
 
-var _ encoding.BinaryMarshaler = BlockID{}
-var _ encoding.BinaryUnmarshaler = (*BlockID)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTBlockID{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTBlockID)(nil)
 
 // MaxBlockIDStringLength is the maximum length of the string
 // representation of a BlockID.
-const MaxBlockIDStringLength = IFCERFTMaxHashStringLength
+const IFCERFTMaxBlockIDStringLength = IFCERFTMaxHashStringLength
 
 // BlockIDFromString creates a BlockID from the given string. If the
 // returned error is nil, the returned BlockID is valid.
-func BlockIDFromString(dataStr string) (BlockID, error) {
+func IFCERFTBlockIDFromString(dataStr string) (IFCERFTBlockID, error) {
 	h, err := IFCERFTHashFromString(dataStr)
 	if err != nil {
-		return BlockID{}, err
+		return IFCERFTBlockID{}, err
 	}
-	return BlockID{h}, nil
+	return IFCERFTBlockID{h}, nil
 }
 
 // IsValid returns whether the block ID is valid. A zero block ID is
 // considered invalid.
-func (id BlockID) IsValid() bool {
+func (id IFCERFTBlockID) IsValid() bool {
 	return id.h.IsValid()
 }
 
 // Bytes returns the bytes of the block ID.
-func (id BlockID) Bytes() []byte {
+func (id IFCERFTBlockID) Bytes() []byte {
 	return id.h.Bytes()
 }
 
-func (id BlockID) String() string {
+func (id IFCERFTBlockID) String() string {
 	return id.h.String()
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for
 // BlockID. Returns an error if the BlockID is invalid and not the zero
 // BlockID.
-func (id BlockID) MarshalBinary() (data []byte, err error) {
+func (id IFCERFTBlockID) MarshalBinary() (data []byte, err error) {
 	return id.h.MarshalBinary()
 }
 
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface
 // for BlockID. Returns an error if the given byte array is non-empty and
 // the BlockID is invalid.
-func (id *BlockID) UnmarshalBinary(data []byte) error {
+func (id *IFCERFTBlockID) UnmarshalBinary(data []byte) error {
 	return id.h.UnmarshalBinary(data)
 }

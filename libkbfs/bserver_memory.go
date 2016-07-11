@@ -114,7 +114,7 @@ type BlockServerMemory struct {
 
 	lock sync.RWMutex
 	// m is nil after Shutdown() is called.
-	m map[BlockID]blockMemEntry
+	m map[IFCERFTBlockID]blockMemEntry
 }
 
 var _ IFCERFTBlockServer = (*BlockServerMemory)(nil)
@@ -126,14 +126,14 @@ func NewBlockServerMemory(config IFCERFTConfig) *BlockServerMemory {
 		config.Crypto(),
 		config.MakeLogger("BSM"),
 		sync.RWMutex{},
-		make(map[BlockID]blockMemEntry),
+		make(map[IFCERFTBlockID]blockMemEntry),
 	}
 }
 
 var errBlockServerMemoryShutdown = errors.New("BlockServerMemory is shutdown")
 
 // Get implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
+func (b *BlockServerMemory) Get(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	b.log.CDebugf(ctx, "BlockServerMemory.Get id=%s tlfID=%s context=%s",
 		id, tlfID, context)
 	b.lock.RLock()
@@ -163,7 +163,7 @@ func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID IFCERFTTl
 }
 
 func validateBlockServerPut(
-	crypto cryptoPure, id BlockID, context IFCERFTBlockContext, buf []byte) error {
+	crypto cryptoPure, id IFCERFTBlockID, context IFCERFTBlockContext, buf []byte) error {
 	if context.GetCreator() != context.GetWriter() {
 		return fmt.Errorf("Can't Put() a block with creator=%s != writer=%s",
 			context.GetCreator(), context.GetWriter())
@@ -187,7 +187,7 @@ func validateBlockServerPut(
 }
 
 // Put implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
+func (b *BlockServerMemory) Put(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
 	serverHalf IFCERFTBlockCryptKeyServerHalf) error {
 	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s tlfID=%s context=%s "+
 		"size=%d", id, tlfID, context, len(buf))
@@ -243,8 +243,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID IFCERFTTl
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
-	tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
+func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerMemory.AddBlockReference id=%s "+
 		"tlfID=%s context=%s", id, tlfID, context)
 
@@ -276,7 +275,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 }
 
 func (b *BlockServerMemory) removeBlockReferences(
-	id BlockID, tlfID IFCERFTTlfID, contexts []IFCERFTBlockContext) (int, error) {
+	id IFCERFTBlockID, tlfID IFCERFTTlfID, contexts []IFCERFTBlockContext) (int, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -311,11 +310,11 @@ func (b *BlockServerMemory) removeBlockReferences(
 // RemoveBlockReference implements the BlockServer interface for
 // BlockServerMemory.
 func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
-	tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) (
-	liveCounts map[BlockID]int, err error) {
+	tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) (
+	liveCounts map[IFCERFTBlockID]int, err error) {
 	b.log.CDebugf(ctx, "BlockServerMemory.RemoveBlockReference "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
-	liveCounts = make(map[BlockID]int)
+	liveCounts = make(map[IFCERFTBlockID]int)
 	for id, idContexts := range contexts {
 		count, err := b.removeBlockReferences(id, tlfID, idContexts)
 		if err != nil {
@@ -327,7 +326,7 @@ func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
 }
 
 func (b *BlockServerMemory) archiveBlockReference(
-	id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
+	id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -360,7 +359,7 @@ func (b *BlockServerMemory) archiveBlockReference(
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerMemory.
 func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
-	tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) error {
+	tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerMemory.ArchiveBlockReferences "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
 
@@ -379,8 +378,8 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 // getAll returns all the known block references, and should only be
 // used during testing.
 func (b *BlockServerMemory) getAll(tlfID IFCERFTTlfID) (
-	map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error) {
-	res := make(map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus)
+	map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error) {
+	res := make(map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus)
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 

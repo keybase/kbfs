@@ -76,7 +76,7 @@ func (f *stallingBlockOps) Get(
 
 func (f *stallingBlockOps) Ready(
 	ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (
-	id BlockID, plainSize int, readyBlockData IFCERFTReadyBlockData, err error) {
+	id IFCERFTBlockID, plainSize int, readyBlockData IFCERFTReadyBlockData, err error) {
 	f.maybeStall(ctx, "Ready")
 	return f.delegate().Ready(ctx, md, block)
 }
@@ -99,7 +99,7 @@ func (f *stallingBlockOps) Put(
 }
 
 func (f *stallingBlockOps) Delete(
-	ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) (map[BlockID]int, error) {
+	ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) (map[IFCERFTBlockID]int, error) {
 	f.maybeStall(ctx, "Delete")
 	return f.delegate().Delete(ctx, md, ptrs)
 }

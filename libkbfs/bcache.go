@@ -29,7 +29,7 @@ type BlockCacheStandard struct {
 	cleanTransient *lru.Cache
 
 	cleanLock      sync.RWMutex
-	cleanPermanent map[BlockID]IFCERFTBlock
+	cleanPermanent map[IFCERFTBlockID]IFCERFTBlock
 
 	bytesLock       sync.Mutex
 	cleanTotalBytes uint64
@@ -46,7 +46,7 @@ func NewBlockCacheStandard(config IFCERFTConfig, transientCapacity int,
 	b := &BlockCacheStandard{
 		config:             config,
 		cleanBytesCapacity: cleanBytesCapacity,
-		cleanPermanent:     make(map[BlockID]IFCERFTBlock),
+		cleanPermanent:     make(map[IFCERFTBlockID]IFCERFTBlock),
 	}
 
 	if transientCapacity > 0 {
@@ -219,7 +219,7 @@ func (b *BlockCacheStandard) Put(
 
 // DeletePermanent implements the BlockCache interface for
 // BlockCacheStandard.
-func (b *BlockCacheStandard) DeletePermanent(id BlockID) error {
+func (b *BlockCacheStandard) DeletePermanent(id IFCERFTBlockID) error {
 	b.cleanLock.Lock()
 	defer b.cleanLock.Unlock()
 	block, ok := b.cleanPermanent[id]

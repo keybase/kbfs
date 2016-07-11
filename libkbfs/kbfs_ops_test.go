@@ -32,7 +32,7 @@ func (cbo *CheckBlockOps) Get(ctx context.Context, md *IFCERFTRootMetadata, bloc
 	return cbo.delegate.Get(ctx, md, blockPtr, block)
 }
 
-func (cbo *CheckBlockOps) Ready(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (id BlockID, plainSize int, readyBlockData IFCERFTReadyBlockData, err error) {
+func (cbo *CheckBlockOps) Ready(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (id IFCERFTBlockID, plainSize int, readyBlockData IFCERFTReadyBlockData, err error) {
 	id, plainSize, readyBlockData, err = cbo.delegate.Ready(ctx, md, block)
 	encodedSize := readyBlockData.GetEncodedSize()
 	if plainSize > encodedSize {
@@ -46,7 +46,7 @@ func (cbo *CheckBlockOps) Put(ctx context.Context, md *IFCERFTRootMetadata, bloc
 	return cbo.delegate.Put(ctx, md, blockPtr, readyBlockData)
 }
 
-func (cbo *CheckBlockOps) Delete(ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) (map[BlockID]int, error) {
+func (cbo *CheckBlockOps) Delete(ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) (map[IFCERFTBlockID]int, error) {
 	return cbo.delegate.Delete(ctx, md, ptrs)
 }
 
@@ -139,8 +139,7 @@ func kbfsOpsInitNoMocks(t *testing.T, users ...libkb.NormalizedUsername) (
 }
 
 func checkBlockCache(t *testing.T, config *ConfigMock,
-	expectedCleanBlocks []BlockID,
-	expectedDirtyBlocks map[IFCERFTBlockPointer]IFCERFTBranchName) {
+	expectedCleanBlocks []IFCERFTBlockID, expectedDirtyBlocks map[IFCERFTBlockPointer]IFCERFTBranchName) {
 	bcache := config.BlockCache().(*BlockCacheStandard)
 	// make sure the LRU consists of exactly the right set of clean blocks
 	for _, id := range expectedCleanBlocks {
@@ -565,7 +564,7 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 	}
 }
 
-func makeBP(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybase1.UID) IFCERFTBlockPointer {
+func makeBP(id IFCERFTBlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybase1.UID) IFCERFTBlockPointer {
 	return IFCERFTBlockPointer{
 		ID:      id,
 		KeyGen:  rmd.LatestKeyGeneration(),
@@ -578,14 +577,14 @@ func makeBP(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybas
 	}
 }
 
-func makeBI(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybase1.UID, encodedSize uint32) IFCERFTBlockInfo {
+func makeBI(id IFCERFTBlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybase1.UID, encodedSize uint32) IFCERFTBlockInfo {
 	return IFCERFTBlockInfo{
 		IFCERFTBlockPointer: makeBP(id, rmd, config, u),
 		EncodedSize:         encodedSize,
 	}
 }
 
-func makeIFP(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybase1.UID, encodedSize uint32, off int64) IndirectFilePtr {
+func makeIFP(id IFCERFTBlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keybase1.UID, encodedSize uint32, off int64) IndirectFilePtr {
 	return IndirectFilePtr{
 		IFCERFTBlockInfo{
 			IFCERFTBlockPointer: makeBP(id, rmd, config, u),
@@ -597,7 +596,7 @@ func makeIFP(id BlockID, rmd *IFCERFTRootMetadata, config IFCERFTConfig, u keyba
 	}
 }
 
-func makeBIFromID(id BlockID, user keybase1.UID) IFCERFTBlockInfo {
+func makeBIFromID(id IFCERFTBlockID, user keybase1.UID) IFCERFTBlockInfo {
 	return IFCERFTBlockInfo{
 		IFCERFTBlockPointer: IFCERFTBlockPointer{
 			ID: id, KeyGen: 1, DataVer: 1,
@@ -976,7 +975,7 @@ func TestKBFSOpsStatSuccess(t *testing.T) {
 func expectSyncBlockHelper(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
 	uid keybase1.UID, id IFCERFTTlfID, name string, p IFCERFTPath, rmd *IFCERFTRootMetadata, newEntry bool, skipSync int, refBytes uint64, unrefBytes uint64,
-	newRmd **IFCERFTRootMetadata, newBlockIDs []BlockID, isUnmerged bool) (
+	newRmd **IFCERFTRootMetadata, newBlockIDs []IFCERFTBlockID, isUnmerged bool) (
 	IFCERFTPath, *gomock.Call) {
 	// construct new path
 	newPath := IFCERFTPath{
@@ -1060,7 +1059,7 @@ func expectSyncBlockHelper(
 func expectSyncBlock(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
 	uid keybase1.UID, id IFCERFTTlfID, name string, p IFCERFTPath, rmd *IFCERFTRootMetadata, newEntry bool, skipSync int, refBytes uint64, unrefBytes uint64,
-	newRmd **IFCERFTRootMetadata, newBlockIDs []BlockID) (IFCERFTPath, *gomock.Call) {
+	newRmd **IFCERFTRootMetadata, newBlockIDs []IFCERFTBlockID) (IFCERFTPath, *gomock.Call) {
 	return expectSyncBlockHelper(t, config, lastCall, uid, id, name, p, rmd,
 		newEntry, skipSync, refBytes, unrefBytes, newRmd, newBlockIDs, false)
 }
@@ -1068,7 +1067,7 @@ func expectSyncBlock(
 func expectSyncBlockUnmerged(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
 	uid keybase1.UID, id IFCERFTTlfID, name string, p IFCERFTPath, rmd *IFCERFTRootMetadata, newEntry bool, skipSync int, refBytes uint64, unrefBytes uint64,
-	newRmd **IFCERFTRootMetadata, newBlockIDs []BlockID) (IFCERFTPath, *gomock.Call) {
+	newRmd **IFCERFTRootMetadata, newBlockIDs []IFCERFTBlockID) (IFCERFTPath, *gomock.Call) {
 	return expectSyncBlockHelper(t, config, lastCall, uid, id, name, p, rmd,
 		newEntry, skipSync, refBytes, unrefBytes, newRmd, newBlockIDs, true)
 }
@@ -1104,8 +1103,7 @@ func getFileBlockFromCache(t *testing.T, config IFCERFTConfig, ptr IFCERFTBlockP
 	return fblock
 }
 
-func checkNewPath(t *testing.T, ctx context.Context, config IFCERFTConfig, newPath IFCERFTPath, expectedPath IFCERFTPath, rmd *IFCERFTRootMetadata, blocks []BlockID,
-	entryType IFCERFTEntryType, newName string, rename bool) {
+func checkNewPath(t *testing.T, ctx context.Context, config IFCERFTConfig, newPath IFCERFTPath, expectedPath IFCERFTPath, rmd *IFCERFTRootMetadata, blocks []IFCERFTBlockID, entryType IFCERFTEntryType, newName string, rename bool) {
 	// TODO: check that the observer updates match the expectedPath as
 	// well (but need to handle the rename case where there can be
 	// multiple updates).  For now, just check that there's at least
@@ -1263,7 +1261,7 @@ func testCreateEntrySuccess(t *testing.T, entryType IFCERFTEntryType) {
 	testPutBlockInCache(config, node.IFCERFTBlockPointer, id, rootBlock)
 	// sync block
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 3)
+	blocks := make([]IFCERFTBlockID, 3)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "b", p, rmd,
 			entryType != IFCERFTSym, 0, 0, 0, &newRmd, blocks)
@@ -1577,7 +1575,7 @@ func testRemoveEntrySuccess(t *testing.T, entryType IFCERFTEntryType) {
 	testPutBlockInCache(config, node.IFCERFTBlockPointer, id, rootBlock)
 	// sync block
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]IFCERFTBlockID, 2)
 	unrefBytes := uint64(1) // a block of size 1 is being unreferenced
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
 		p, rmd, false, 0, 0, unrefBytes, &newRmd, blocks)
@@ -1695,7 +1693,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 	// sync block
 	unrefBytes := uint64(10 + 4*5) // fileBlock + 4 indirect blocks
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 1)
+	blocks := make([]IFCERFTBlockID, 1)
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
 		p, rmd, false, 0, 0, unrefBytes, &newRmd, blocks)
 
@@ -1856,7 +1854,7 @@ func TestRenameInDirSuccess(t *testing.T) {
 	testPutBlockInCache(config, node.IFCERFTBlockPointer, id, rootBlock)
 	// sync block
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 3)
+	blocks := make([]IFCERFTBlockID, 3)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false,
 			0, 0, 0, &newRmd, blocks)
@@ -1949,7 +1947,7 @@ func TestRenameInDirOverEntrySuccess(t *testing.T) {
 	testPutBlockInCache(config, cNode.IFCERFTBlockPointer, id, cBlock)
 	// sync block
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 3)
+	blocks := make([]IFCERFTBlockID, 3)
 	unrefBytes := uint64(1)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false,
@@ -2023,7 +2021,7 @@ func TestRenameInRootSuccess(t *testing.T) {
 	testPutBlockInCache(config, node.IFCERFTBlockPointer, id, rootBlock)
 	// sync block
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]IFCERFTBlockID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false,
 			0, 0, 0, &newRmd, blocks)
@@ -2120,11 +2118,11 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 
 	// sync block
 	var newRmd *IFCERFTRootMetadata
-	blocks1 := make([]BlockID, 2)
+	blocks1 := make([]IFCERFTBlockID, 2)
 	expectedPath1, lastCall :=
 		expectSyncBlock(t, config, nil, uid, id, "", p1, rmd, false,
 			1, 0, 0, nil, blocks1)
-	blocks2 := make([]BlockID, 3)
+	blocks2 := make([]IFCERFTBlockID, 3)
 	refBytes := uint64(1)   // need to include directory "a"
 	unrefBytes := uint64(1) // need to include directory "a"
 	expectedPath2, _ :=
@@ -2142,7 +2140,7 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 
 	// fix up blocks1 -- the first partial sync stops at aBlock, and
 	// checkNewPath expects {rootBlock, aBlock}
-	blocks1 = []BlockID{blocks2[0], blocks1[0]}
+	blocks1 = []IFCERFTBlockID{blocks2[0], blocks1[0]}
 	checkNewPath(t, ctx, config, newP1, expectedPath1, newRmd, blocks1,
 		IFCERFTFile, "", true)
 	checkNewPath(t, ctx, config, newP2, expectedPath2, newRmd, blocks2,
@@ -2234,7 +2232,7 @@ func TestRenameAcrossPrefixSuccess(t *testing.T) {
 
 	// sync block
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 4)
+	blocks := make([]IFCERFTBlockID, 4)
 	expectedPath2, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p2, rmd, false,
 			0, 0, 0, &newRmd, blocks)
@@ -2332,11 +2330,11 @@ func TestRenameAcrossOtherPrefixSuccess(t *testing.T) {
 
 	// sync block
 	var newRmd *IFCERFTRootMetadata
-	blocks1 := make([]BlockID, 3)
+	blocks1 := make([]IFCERFTBlockID, 3)
 	expectedPath1, lastCall :=
 		expectSyncBlock(t, config, nil, uid, id, "", p1, rmd, false,
 			2, 0, 0, &newRmd, blocks1)
-	blocks2 := make([]BlockID, 3)
+	blocks2 := make([]IFCERFTBlockID, 3)
 	refBytes := uint64(1)   // need to include directory "d"
 	unrefBytes := uint64(1) // need to include directory "d"
 	expectedPath2, _ :=
@@ -2811,7 +2809,7 @@ func TestKBFSOpsWriteNewBlockSuccess(t *testing.T) {
 		t.Errorf("Wrong size for written file: %d",
 			newRootBlock.Children["f"].Size)
 	}
-	checkBlockCache(t, config, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID},
 		map[IFCERFTBlockPointer]IFCERFTBranchName{
 			fileNode.IFCERFTBlockPointer: p.Branch,
 		})
@@ -2872,7 +2870,7 @@ func TestKBFSOpsWriteExtendSuccess(t *testing.T) {
 	} else if !bytes.Equal(expectedFullData, newFileBlock.Contents) {
 		t.Errorf("Wrote bad contents: %v", data)
 	}
-	checkBlockCache(t, config, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID},
 		map[IFCERFTBlockPointer]IFCERFTBranchName{
 			fileNode.IFCERFTBlockPointer: p.Branch,
 		})
@@ -2933,7 +2931,7 @@ func TestKBFSOpsWritePastEndSuccess(t *testing.T) {
 	} else if !bytes.Equal(expectedFullData, newFileBlock.Contents) {
 		t.Errorf("Wrote bad contents: %v", data)
 	}
-	checkBlockCache(t, config, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID},
 		map[IFCERFTBlockPointer]IFCERFTBranchName{
 			fileNode.IFCERFTBlockPointer: p.Branch,
 		})
@@ -3042,7 +3040,7 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 			newRootBlock.Children["f"].Size)
 	}
 
-	checkBlockCache(t, config, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID},
 		map[IFCERFTBlockPointer]IFCERFTBranchName{
 			fileNode.IFCERFTBlockPointer:        p.Branch,
 			pblock.IPtrs[0].IFCERFTBlockPointer: p.Branch,
@@ -3151,7 +3149,7 @@ func TestKBFSOpsWriteOverMultipleBlocks(t *testing.T) {
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.IFCERFTBlockPointer,
 		[]WriteRange{{Off: 2, Len: uint64(len(data))}})
 	mergeUnrefCache(ops, lState, p, rmd)
-	checkBlockCache(t, config, []BlockID{rootID, fileID, id1, id2},
+	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID, id1, id2},
 		map[IFCERFTBlockPointer]IFCERFTBranchName{
 			fileNode.IFCERFTBlockPointer:           p.Branch,
 			fileBlock.IPtrs[0].IFCERFTBlockPointer: p.Branch,
@@ -3257,7 +3255,7 @@ func TestKBFSOpsTruncateToZeroSuccess(t *testing.T) {
 		t.Errorf("Wrong size for written file: %d",
 			newRootBlock.Children["f"].Size)
 	}
-	checkBlockCache(t, config, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID},
 		map[IFCERFTBlockPointer]IFCERFTBranchName{
 			fileNode.IFCERFTBlockPointer: p.Branch,
 		})
@@ -3300,7 +3298,7 @@ func TestKBFSOpsTruncateSameSize(t *testing.T) {
 	} else if !bytes.Equal(data, fileBlock.Contents) {
 		t.Errorf("Wrote bad contents: %v", data)
 	}
-	checkBlockCache(t, config, []BlockID{rootID, fileID}, nil)
+	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID}, nil)
 }
 
 func TestKBFSOpsTruncateSmallerSuccess(t *testing.T) {
@@ -3350,7 +3348,7 @@ func TestKBFSOpsTruncateSmallerSuccess(t *testing.T) {
 	} else if !bytes.Equal(data, newFileBlock.Contents) {
 		t.Errorf("Wrote bad contents: %v", data)
 	}
-	checkBlockCache(t, config, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID},
 		map[IFCERFTBlockPointer]IFCERFTBranchName{
 			fileNode.IFCERFTBlockPointer: p.Branch,
 		})
@@ -3435,7 +3433,7 @@ func TestKBFSOpsTruncateShortensLastBlock(t *testing.T) {
 		t.Errorf("Truncated block not correctly unref'd, unrefBytes = %d",
 			rmd.UnrefBytes)
 	}
-	checkBlockCache(t, config, []BlockID{rootID, fileID, id1, id2},
+	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID, id1, id2},
 		map[IFCERFTBlockPointer]IFCERFTBranchName{
 			fileNode.IFCERFTBlockPointer:           p.Branch,
 			fileBlock.IPtrs[1].IFCERFTBlockPointer: p.Branch,
@@ -3514,7 +3512,7 @@ func TestKBFSOpsTruncateRemovesABlock(t *testing.T) {
 		t.Errorf("Truncated block not correctly unref'd, unrefBytes = %d",
 			rmd.UnrefBytes)
 	}
-	checkBlockCache(t, config, []BlockID{rootID, fileID, id1},
+	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID, id1},
 		map[IFCERFTBlockPointer]IFCERFTBranchName{
 			fileNode.IFCERFTBlockPointer:           p.Branch,
 			fileBlock.IPtrs[0].IFCERFTBlockPointer: p.Branch,
@@ -3573,7 +3571,7 @@ func TestKBFSOpsTruncateBiggerSuccess(t *testing.T) {
 	} else if !bytes.Equal(data, newFileBlock.Contents) {
 		t.Errorf("Wrote bad contents: %v", data)
 	}
-	checkBlockCache(t, config, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, []IFCERFTBlockID{rootID, fileID},
 		map[IFCERFTBlockPointer]IFCERFTBranchName{
 			fileNode.IFCERFTBlockPointer: p.Branch,
 		})
@@ -3616,10 +3614,10 @@ func testSetExSuccess(t *testing.T, entryType IFCERFTEntryType, ex bool) {
 
 	var expectedPath IFCERFTPath
 	var newRmd *IFCERFTRootMetadata
-	var blocks []BlockID
+	var blocks []IFCERFTBlockID
 	if entryType != IFCERFTSym {
 		// sync block
-		blocks = make([]BlockID, 2)
+		blocks = make([]IFCERFTBlockID, 2)
 		expectedPath, _ = expectSyncBlock(t, config, nil, uid, id, "",
 			*p.ParentPath(), rmd, false, 0, 0, 0, &newRmd, blocks)
 		expectedPath.path = append(expectedPath.path, aNode)
@@ -3770,7 +3768,7 @@ func TestSetMtimeSuccess(t *testing.T) {
 	testPutBlockInCache(config, node.IFCERFTBlockPointer, id, rootBlock)
 	// sync block
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]IFCERFTBlockID, 2)
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
 		*p.ParentPath(), rmd, false, 0, 0, 0, &newRmd, blocks)
 	expectedPath.path = append(expectedPath.path, aNode)
@@ -3927,7 +3925,7 @@ func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
 
 	// sync block
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]IFCERFTBlockID, 2)
 	var expectedPath IFCERFTPath
 	if isUnmerged {
 		// Turn off the conflict resolver to avoid unexpected mock
@@ -4122,7 +4120,7 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 		(len(block4.Contents) + pad4))
 	unrefBytes := uint64(5 + 5) // blocks 1 and 3
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]IFCERFTBlockID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false, 0,
 			refBytes, unrefBytes, &newRmd, blocks)
@@ -4228,7 +4226,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 
 	// sync block (but skip the last block)
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 1)
+	blocks := make([]IFCERFTBlockID, 1)
 	unrefBytes := uint64(1) // unref'd block b
 	refBytes := uint64(len(readyBlockData.buf))
 	rootP := IFCERFTPath{IFCERFTFolderBranch: p.IFCERFTFolderBranch, path: []IFCERFTPathNode{p.path[0]}}
@@ -4408,7 +4406,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 	pad5 := 1
 	c4 := expectSyncDirtyBlock(config, rmd, p, fileBlock.IPtrs[3].IFCERFTBlockPointer,
 		block4, int64(3), pad4, false)
-	var newID5 BlockID
+	var newID5 IFCERFTBlockID
 	var newBlock5 *FileBlock
 	id5 := fakeBlockID(48)
 	config.mockCrypto.EXPECT().MakeTemporaryBlockID().Return(id5, nil)
@@ -4434,7 +4432,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 		(len(block4.Contents) + pad4) + pad5)
 	unrefBytes := uint64(0) // no encoded sizes on dirty blocks
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]IFCERFTBlockID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, c4, uid, id, "", p, rmd, false, 0,
 			refBytes, unrefBytes, &newRmd, blocks)
@@ -4630,7 +4628,7 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 		(len(block4.Contents) - int(split4At) + pad4))
 	unrefBytes := uint64(10 + 15) // id2 and id4
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]IFCERFTBlockID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false, 0,
 			refBytes, unrefBytes, &newRmd, blocks)
@@ -4718,7 +4716,7 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 	// sync block
 	refBytes := uint64(1) // 1 new block changes block
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]IFCERFTBlockID, 2)
 	expectedPath, lastCall := expectSyncBlock(t, config, nil, uid, id, "", p,
 		rmd, false, 0, refBytes, 0, &newRmd, blocks)
 
@@ -4861,7 +4859,7 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 
 	// expect a sync to happen in the background
 	var newRmd *IFCERFTRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]IFCERFTBlockID, 2)
 	expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false, 0, 0, 0,
 		&newRmd, blocks)
 
@@ -5066,7 +5064,7 @@ type corruptBlockServer struct {
 	IFCERFTBlockServer
 }
 
-func (cbs corruptBlockServer) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
+func (cbs corruptBlockServer) Get(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	data, keyServerHalf, err := cbs.IFCERFTBlockServer.Get(ctx, id, tlfID, context)
 	if err != nil {
 		return nil, IFCERFTBlockCryptKeyServerHalf{}, err

@@ -15,7 +15,7 @@ func makeFakeBlockPointer(t *testing.T) IFCERFTBlockPointer {
 	h, err := IFCERFTDefaultHash([]byte("fake buf"))
 	require.NoError(t, err)
 	return IFCERFTBlockPointer{
-		BlockID{h},
+		IFCERFTBlockID{h},
 		5,
 		1,
 		IFCERFTBlockContext{

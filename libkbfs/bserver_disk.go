@@ -111,7 +111,7 @@ func (b *BlockServerDisk) getJournal(tlfID IFCERFTTlfID) (*bserverTlfJournal, er
 }
 
 // Get implements the BlockServer interface for BlockServerDisk.
-func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
+func (b *BlockServerDisk) Get(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	b.log.CDebugf(ctx, "BlockServerDisk.Get id=%s tlfID=%s context=%s",
 		id, tlfID, context)
 	diskJournal, err := b.getJournal(tlfID)
@@ -126,7 +126,7 @@ func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfI
 }
 
 // Put implements the BlockServer interface for BlockServerDisk.
-func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
+func (b *BlockServerDisk) Put(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
 	serverHalf IFCERFTBlockCryptKeyServerHalf) error {
 	b.log.CDebugf(ctx, "BlockServerDisk.Put id=%s tlfID=%s context=%s size=%d",
 		id, tlfID, context, len(buf))
@@ -143,8 +143,7 @@ func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfI
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerDisk.
-func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
-	tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
+func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerDisk.AddBlockReference id=%s "+
 		"tlfID=%s context=%s", id, tlfID, context)
 	diskJournal, err := b.getJournal(tlfID)
@@ -157,8 +156,8 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
 // RemoveBlockReference implements the BlockServer interface for
 // BlockServerDisk.
 func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
-	tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) (
-	liveCounts map[BlockID]int, err error) {
+	tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) (
+	liveCounts map[IFCERFTBlockID]int, err error) {
 	b.log.CDebugf(ctx, "BlockServerDisk.RemoveBlockReference "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
 	diskJournal, err := b.getJournal(tlfID)
@@ -166,7 +165,7 @@ func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
 		return nil, err
 	}
 
-	liveCounts = make(map[BlockID]int)
+	liveCounts = make(map[IFCERFTBlockID]int)
 	for id, idContexts := range contexts {
 		count, err := diskJournal.removeReferences(id, idContexts)
 		if err != nil {
@@ -180,7 +179,7 @@ func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerDisk.
 func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
-	tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) error {
+	tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerDisk.ArchiveBlockReferences "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
 	diskJournal, err := b.getJournal(tlfID)
@@ -201,7 +200,7 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 // getAll returns all the known block references, and should only be
 // used during testing.
 func (b *BlockServerDisk) getAll(tlfID IFCERFTTlfID) (
-	map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error) {
+	map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error) {
 	diskJournal, err := b.getJournal(tlfID)
 	if err != nil {
 		return nil, err

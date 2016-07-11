@@ -72,7 +72,7 @@ func (fc *FakeBServerClient) PutBlock(ctx context.Context, arg keybase1.PutBlock
 		return err
 	}
 
-	id, err := BlockIDFromString(arg.Bid.BlockHash)
+	id, err := IFCERFTBlockIDFromString(arg.Bid.BlockHash)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlock
 		return keybase1.GetBlockRes{}, err
 	}
 
-	id, err := BlockIDFromString(arg.Bid.BlockHash)
+	id, err := IFCERFTBlockIDFromString(arg.Bid.BlockHash)
 	if err != nil {
 		return keybase1.GetBlockRes{}, err
 	}
@@ -131,7 +131,7 @@ func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlock
 }
 
 func (fc *FakeBServerClient) AddReference(ctx context.Context, arg keybase1.AddReferenceArg) error {
-	id, err := BlockIDFromString(arg.Ref.Bid.BlockHash)
+	id, err := IFCERFTBlockIDFromString(arg.Ref.Bid.BlockHash)
 	if err != nil {
 		return err
 	}

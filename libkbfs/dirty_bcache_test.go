@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func testDirtyBcachePut(t *testing.T, id BlockID, dirtyBcache IFCERFTDirtyBlockCache) {
+func testDirtyBcachePut(t *testing.T, id IFCERFTBlockID, dirtyBcache IFCERFTDirtyBlockCache) {
 	block := NewFileBlock()
 	ptr := IFCERFTBlockPointer{ID: id}
 	branch := IFCERFTMasterBranch
@@ -34,8 +34,7 @@ func testDirtyBcachePut(t *testing.T, id BlockID, dirtyBcache IFCERFTDirtyBlockC
 	}
 }
 
-func testExpectedMissingDirty(t *testing.T, id BlockID,
-	dirtyBcache IFCERFTDirtyBlockCache) {
+func testExpectedMissingDirty(t *testing.T, id IFCERFTBlockID, dirtyBcache IFCERFTDirtyBlockCache) {
 	expectedErr := IFCERFTNoSuchBlockError{id}
 	ptr := IFCERFTBlockPointer{ID: id}
 	if _, err := dirtyBcache.Get(ptr, IFCERFTMasterBranch); err == nil {

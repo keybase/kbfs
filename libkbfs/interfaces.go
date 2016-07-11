@@ -57,16 +57,16 @@ type cryptoPure interface {
 	// MakeTemporaryBlockID generates a temporary block ID using a
 	// CSPRNG. This is used for indirect blocks before they're
 	// committed to the server.
-	MakeTemporaryBlockID() (BlockID, error)
+	MakeTemporaryBlockID() (IFCERFTBlockID, error)
 
 	// MakePermanentBlockID computes the permanent ID of a block
 	// given its encoded and encrypted contents.
-	MakePermanentBlockID(encodedEncryptedData []byte) (BlockID, error)
+	MakePermanentBlockID(encodedEncryptedData []byte) (IFCERFTBlockID, error)
 
 	// VerifyBlockID verifies that the given block ID is the
 	// permanent block ID for the given encoded and encrypted
 	// data.
-	VerifyBlockID(encodedEncryptedData []byte, id BlockID) error
+	VerifyBlockID(encodedEncryptedData []byte, id IFCERFTBlockID) error
 
 	// MakeRefNonce generates a block reference nonce using a
 	// CSPRNG. This is used for distinguishing different references to
@@ -156,7 +156,7 @@ type blockServerLocal interface {
 	IFCERFTBlockServer
 	// getAll returns all the known block references, and should only be
 	// used during testing.
-	getAll(tlfID IFCERFTTlfID) (map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error)
+	getAll(tlfID IFCERFTTlfID) (map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error)
 }
 
 // fileBlockDeepCopier fetches a file block, makes a deep copy of it

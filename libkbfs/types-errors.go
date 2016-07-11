@@ -276,7 +276,7 @@ func (e IFCERFTBlockDecodeError) Error() string {
 
 // BadDataError indicates that KBFS is storing corrupt data for a block.
 type IFCERFTBadDataError struct {
-	ID BlockID
+	ID IFCERFTBlockID
 }
 
 // Error implements the error interface for BadDataError
@@ -286,7 +286,7 @@ func (e IFCERFTBadDataError) Error() string {
 
 // NoSuchBlockError indicates that a block for the associated ID doesn't exist.
 type IFCERFTNoSuchBlockError struct {
-	ID BlockID
+	ID IFCERFTBlockID
 }
 
 // Error implements the error interface for NoSuchBlockError
@@ -296,7 +296,7 @@ func (e IFCERFTNoSuchBlockError) Error() string {
 
 // BadCryptoError indicates that KBFS performed a bad crypto operation.
 type IFCERFTBadCryptoError struct {
-	ID BlockID
+	ID IFCERFTBlockID
 }
 
 // Error implements the error interface for BadCryptoError

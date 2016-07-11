@@ -1169,7 +1169,7 @@ func TestKBFSOpsConcurWriteParallelBlocksError(t *testing.T) {
 	errPtrChan := make(chan IFCERFTBlockPointer)
 	c = b.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any()).
-		Do(func(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
+		Do(func(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
 			serverHalf IFCERFTBlockCryptKeyServerHalf) {
 			errPtrChan <- IFCERFTBlockPointer{
 				ID:                  id,
@@ -1180,7 +1180,7 @@ func TestKBFSOpsConcurWriteParallelBlocksError(t *testing.T) {
 	proceedChan := make(chan struct{})
 	b.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any()).AnyTimes().
-		Do(func(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
+		Do(func(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte,
 			serverHalf IFCERFTBlockCryptKeyServerHalf) {
 			<-proceedChan
 		}).After(c).Return(nil)

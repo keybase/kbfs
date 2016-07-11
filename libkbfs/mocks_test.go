@@ -1170,7 +1170,7 @@ func (_mr *_MockBlockCacheRecorder) DeleteTransient(arg0, arg1 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeleteTransient", arg0, arg1)
 }
 
-func (_m *MockBlockCache) DeletePermanent(id BlockID) error {
+func (_m *MockBlockCache) DeletePermanent(id IFCERFTBlockID) error {
 	ret := _m.ctrl.Call(_m, "DeletePermanent", id)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -1380,9 +1380,9 @@ func (_mr *_MockcryptoPureRecorder) MakeMerkleHash(arg0 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeMerkleHash", arg0)
 }
 
-func (_m *MockcryptoPure) MakeTemporaryBlockID() (BlockID, error) {
+func (_m *MockcryptoPure) MakeTemporaryBlockID() (IFCERFTBlockID, error) {
 	ret := _m.ctrl.Call(_m, "MakeTemporaryBlockID")
-	ret0, _ := ret[0].(BlockID)
+	ret0, _ := ret[0].(IFCERFTBlockID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1391,9 +1391,9 @@ func (_mr *_MockcryptoPureRecorder) MakeTemporaryBlockID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeTemporaryBlockID")
 }
 
-func (_m *MockcryptoPure) MakePermanentBlockID(encodedEncryptedData []byte) (BlockID, error) {
+func (_m *MockcryptoPure) MakePermanentBlockID(encodedEncryptedData []byte) (IFCERFTBlockID, error) {
 	ret := _m.ctrl.Call(_m, "MakePermanentBlockID", encodedEncryptedData)
-	ret0, _ := ret[0].(BlockID)
+	ret0, _ := ret[0].(IFCERFTBlockID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1402,7 +1402,7 @@ func (_mr *_MockcryptoPureRecorder) MakePermanentBlockID(arg0 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakePermanentBlockID", arg0)
 }
 
-func (_m *MockcryptoPure) VerifyBlockID(encodedEncryptedData []byte, id BlockID) error {
+func (_m *MockcryptoPure) VerifyBlockID(encodedEncryptedData []byte, id IFCERFTBlockID) error {
 	ret := _m.ctrl.Call(_m, "VerifyBlockID", encodedEncryptedData, id)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -1666,9 +1666,9 @@ func (_mr *_MockCryptoRecorder) MakeMerkleHash(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeMerkleHash", arg0)
 }
 
-func (_m *MockCrypto) MakeTemporaryBlockID() (BlockID, error) {
+func (_m *MockCrypto) MakeTemporaryBlockID() (IFCERFTBlockID, error) {
 	ret := _m.ctrl.Call(_m, "MakeTemporaryBlockID")
-	ret0, _ := ret[0].(BlockID)
+	ret0, _ := ret[0].(IFCERFTBlockID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1677,9 +1677,9 @@ func (_mr *_MockCryptoRecorder) MakeTemporaryBlockID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeTemporaryBlockID")
 }
 
-func (_m *MockCrypto) MakePermanentBlockID(encodedEncryptedData []byte) (BlockID, error) {
+func (_m *MockCrypto) MakePermanentBlockID(encodedEncryptedData []byte) (IFCERFTBlockID, error) {
 	ret := _m.ctrl.Call(_m, "MakePermanentBlockID", encodedEncryptedData)
-	ret0, _ := ret[0].(BlockID)
+	ret0, _ := ret[0].(IFCERFTBlockID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1688,7 +1688,7 @@ func (_mr *_MockCryptoRecorder) MakePermanentBlockID(arg0 interface{}) *gomock.C
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakePermanentBlockID", arg0)
 }
 
-func (_m *MockCrypto) VerifyBlockID(encodedEncryptedData []byte, id BlockID) error {
+func (_m *MockCrypto) VerifyBlockID(encodedEncryptedData []byte, id IFCERFTBlockID) error {
 	ret := _m.ctrl.Call(_m, "VerifyBlockID", encodedEncryptedData, id)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2199,9 +2199,9 @@ func (_mr *_MockBlockOpsRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockOps) Ready(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (BlockID, int, IFCERFTReadyBlockData, error) {
+func (_m *MockBlockOps) Ready(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (IFCERFTBlockID, int, IFCERFTReadyBlockData, error) {
 	ret := _m.ctrl.Call(_m, "Ready", ctx, md, block)
-	ret0, _ := ret[0].(BlockID)
+	ret0, _ := ret[0].(IFCERFTBlockID)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(IFCERFTReadyBlockData)
 	ret3, _ := ret[3].(error)
@@ -2222,9 +2222,9 @@ func (_mr *_MockBlockOpsRecorder) Put(arg0, arg1, arg2, arg3 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockOps) Delete(ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) (map[BlockID]int, error) {
+func (_m *MockBlockOps) Delete(ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) (map[IFCERFTBlockID]int, error) {
 	ret := _m.ctrl.Call(_m, "Delete", ctx, md, ptrs)
-	ret0, _ := ret[0].(map[BlockID]int)
+	ret0, _ := ret[0].(map[IFCERFTBlockID]int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2639,7 +2639,7 @@ func (_mr *_MockBlockServerRecorder) RefreshAuthToken(arg0 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RefreshAuthToken", arg0)
 }
 
-func (_m *MockBlockServer) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
+func (_m *MockBlockServer) Get(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	ret := _m.ctrl.Call(_m, "Get", ctx, id, tlfID, context)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(IFCERFTBlockCryptKeyServerHalf)
@@ -2651,7 +2651,7 @@ func (_mr *_MockBlockServerRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockServer) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte, serverHalf IFCERFTBlockCryptKeyServerHalf) error {
+func (_m *MockBlockServer) Put(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte, serverHalf IFCERFTBlockCryptKeyServerHalf) error {
 	ret := _m.ctrl.Call(_m, "Put", ctx, id, tlfID, context, buf, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2661,7 +2661,7 @@ func (_mr *_MockBlockServerRecorder) Put(arg0, arg1, arg2, arg3, arg4, arg5 inte
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockBlockServer) AddBlockReference(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
+func (_m *MockBlockServer) AddBlockReference(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
 	ret := _m.ctrl.Call(_m, "AddBlockReference", ctx, id, tlfID, context)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2671,9 +2671,9 @@ func (_mr *_MockBlockServerRecorder) AddBlockReference(arg0, arg1, arg2, arg3 in
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddBlockReference", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockServer) RemoveBlockReference(ctx context.Context, tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) (map[BlockID]int, error) {
+func (_m *MockBlockServer) RemoveBlockReference(ctx context.Context, tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) (map[IFCERFTBlockID]int, error) {
 	ret := _m.ctrl.Call(_m, "RemoveBlockReference", ctx, tlfID, contexts)
-	ret0, _ := ret[0].(map[BlockID]int)
+	ret0, _ := ret[0].(map[IFCERFTBlockID]int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2682,7 +2682,7 @@ func (_mr *_MockBlockServerRecorder) RemoveBlockReference(arg0, arg1, arg2 inter
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RemoveBlockReference", arg0, arg1, arg2)
 }
 
-func (_m *MockBlockServer) ArchiveBlockReferences(ctx context.Context, tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) error {
+func (_m *MockBlockServer) ArchiveBlockReferences(ctx context.Context, tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) error {
 	ret := _m.ctrl.Call(_m, "ArchiveBlockReferences", ctx, tlfID, contexts)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2740,7 +2740,7 @@ func (_mr *_MockblockServerLocalRecorder) RefreshAuthToken(arg0 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RefreshAuthToken", arg0)
 }
 
-func (_m *MockblockServerLocal) Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
+func (_m *MockblockServerLocal) Get(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) ([]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	ret := _m.ctrl.Call(_m, "Get", ctx, id, tlfID, context)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(IFCERFTBlockCryptKeyServerHalf)
@@ -2752,7 +2752,7 @@ func (_mr *_MockblockServerLocalRecorder) Get(arg0, arg1, arg2, arg3 interface{}
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockblockServerLocal) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte, serverHalf IFCERFTBlockCryptKeyServerHalf) error {
+func (_m *MockblockServerLocal) Put(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte, serverHalf IFCERFTBlockCryptKeyServerHalf) error {
 	ret := _m.ctrl.Call(_m, "Put", ctx, id, tlfID, context, buf, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2762,7 +2762,7 @@ func (_mr *_MockblockServerLocalRecorder) Put(arg0, arg1, arg2, arg3, arg4, arg5
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockblockServerLocal) AddBlockReference(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
+func (_m *MockblockServerLocal) AddBlockReference(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error {
 	ret := _m.ctrl.Call(_m, "AddBlockReference", ctx, id, tlfID, context)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2772,9 +2772,9 @@ func (_mr *_MockblockServerLocalRecorder) AddBlockReference(arg0, arg1, arg2, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddBlockReference", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockblockServerLocal) RemoveBlockReference(ctx context.Context, tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) (map[BlockID]int, error) {
+func (_m *MockblockServerLocal) RemoveBlockReference(ctx context.Context, tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) (map[IFCERFTBlockID]int, error) {
 	ret := _m.ctrl.Call(_m, "RemoveBlockReference", ctx, tlfID, contexts)
-	ret0, _ := ret[0].(map[BlockID]int)
+	ret0, _ := ret[0].(map[IFCERFTBlockID]int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2783,7 +2783,7 @@ func (_mr *_MockblockServerLocalRecorder) RemoveBlockReference(arg0, arg1, arg2 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RemoveBlockReference", arg0, arg1, arg2)
 }
 
-func (_m *MockblockServerLocal) ArchiveBlockReferences(ctx context.Context, tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) error {
+func (_m *MockblockServerLocal) ArchiveBlockReferences(ctx context.Context, tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) error {
 	ret := _m.ctrl.Call(_m, "ArchiveBlockReferences", ctx, tlfID, contexts)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2812,9 +2812,9 @@ func (_mr *_MockblockServerLocalRecorder) GetUserQuotaInfo(arg0 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserQuotaInfo", arg0)
 }
 
-func (_m *MockblockServerLocal) getAll(tlfID IFCERFTTlfID) (map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error) {
+func (_m *MockblockServerLocal) getAll(tlfID IFCERFTTlfID) (map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error) {
 	ret := _m.ctrl.Call(_m, "getAll", tlfID)
-	ret0, _ := ret[0].(map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus)
+	ret0, _ := ret[0].(map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

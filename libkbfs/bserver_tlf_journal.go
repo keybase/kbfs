@@ -62,7 +62,7 @@ type bserverTlfJournal struct {
 	// instead.
 	lock       sync.RWMutex
 	j          diskJournal
-	refs       map[BlockID]blockRefMap
+	refs       map[IFCERFTBlockID]blockRefMap
 	isShutdown bool
 }
 
@@ -81,7 +81,7 @@ const (
 type bserverJournalEntry struct {
 	// Must be one of the four ops above.
 	Op bserverOpName
-	ID BlockID
+	ID IFCERFTBlockID
 	// Must have exactly one entry for blockPutOp and addRefOp.
 	Contexts []IFCERFTBlockContext
 }
@@ -119,16 +119,16 @@ func (j *bserverTlfJournal) blocksPath() string {
 	return filepath.Join(j.dir, "blocks")
 }
 
-func (j *bserverTlfJournal) blockPath(id BlockID) string {
+func (j *bserverTlfJournal) blockPath(id IFCERFTBlockID) string {
 	idStr := id.String()
 	return filepath.Join(j.blocksPath(), idStr[:4], idStr[4:])
 }
 
-func (j *bserverTlfJournal) blockDataPath(id BlockID) string {
+func (j *bserverTlfJournal) blockDataPath(id IFCERFTBlockID) string {
 	return filepath.Join(j.blockPath(id), "data")
 }
 
-func (j *bserverTlfJournal) keyServerHalfPath(id BlockID) string {
+func (j *bserverTlfJournal) keyServerHalfPath(id IFCERFTBlockID) string {
 	return filepath.Join(j.blockPath(id), "key_server_half")
 }
 
@@ -147,8 +147,8 @@ func (j *bserverTlfJournal) readJournalEntryLocked(o journalOrdinal) (
 // readJournalLocked reads the journal and returns a map of all the
 // block references in the journal.
 func (j *bserverTlfJournal) readJournalLocked() (
-	map[BlockID]blockRefMap, error) {
-	refs := make(map[BlockID]blockRefMap)
+	map[IFCERFTBlockID]blockRefMap, error) {
+	refs := make(map[IFCERFTBlockID]blockRefMap)
 
 	first, err := j.j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
@@ -206,7 +206,7 @@ func (j *bserverTlfJournal) writeJournalEntryLocked(
 }
 
 func (j *bserverTlfJournal) appendJournalEntryLocked(
-	op bserverOpName, id BlockID, contexts []IFCERFTBlockContext) error {
+	op bserverOpName, id IFCERFTBlockID, contexts []IFCERFTBlockContext) error {
 	return j.j.appendJournalEntry(nil, bserverJournalEntry{
 		Op:       op,
 		ID:       id,
@@ -221,7 +221,7 @@ func (j *bserverTlfJournal) journalLength() (uint64, error) {
 }
 
 func (j *bserverTlfJournal) getRefEntryLocked(
-	id BlockID, refNonce IFCERFTBlockRefNonce) (blockRefEntry, error) {
+	id IFCERFTBlockID, refNonce IFCERFTBlockRefNonce) (blockRefEntry, error) {
 	refs := j.refs[id]
 	if refs == nil {
 		return blockRefEntry{}, BServerErrorBlockNonExistent{}
@@ -237,7 +237,7 @@ func (j *bserverTlfJournal) getRefEntryLocked(
 
 // getDataLocked verifies the block data for the given ID and context
 // and returns it.
-func (j *bserverTlfJournal) getDataLocked(id BlockID, context IFCERFTBlockContext) (
+func (j *bserverTlfJournal) getDataLocked(id IFCERFTBlockID, context IFCERFTBlockContext) (
 	[]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	// Check arguments.
 
@@ -292,7 +292,7 @@ func (j *bserverTlfJournal) getDataLocked(id BlockID, context IFCERFTBlockContex
 }
 
 func (j *bserverTlfJournal) putRefEntryLocked(
-	id BlockID, refEntry blockRefEntry) error {
+	id IFCERFTBlockID, refEntry blockRefEntry) error {
 	existingRefEntry, err := j.getRefEntryLocked(
 		id, refEntry.Context.GetRefNonce())
 	var exists bool
@@ -324,7 +324,7 @@ func (j *bserverTlfJournal) putRefEntryLocked(
 
 var errBserverTlfJournalShutdown = errors.New("bserverTlfJournal is shutdown")
 
-func (j *bserverTlfJournal) getData(id BlockID, context IFCERFTBlockContext) (
+func (j *bserverTlfJournal) getData(id IFCERFTBlockID, context IFCERFTBlockContext) (
 	[]byte, IFCERFTBlockCryptKeyServerHalf, error) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
@@ -338,7 +338,7 @@ func (j *bserverTlfJournal) getData(id BlockID, context IFCERFTBlockContext) (
 }
 
 func (j *bserverTlfJournal) getAll() (
-	map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error) {
+	map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus, error) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
 
@@ -346,7 +346,7 @@ func (j *bserverTlfJournal) getAll() (
 		return nil, errBserverTlfJournalShutdown
 	}
 
-	res := make(map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus)
+	res := make(map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus)
 
 	for id, refs := range j.refs {
 		if len(refs) == 0 {
@@ -363,7 +363,7 @@ func (j *bserverTlfJournal) getAll() (
 }
 
 func (j *bserverTlfJournal) putData(
-	id BlockID, context IFCERFTBlockContext, buf []byte,
+	id IFCERFTBlockID, context IFCERFTBlockContext, buf []byte,
 	serverHalf IFCERFTBlockCryptKeyServerHalf) error {
 	err := validateBlockServerPut(j.crypto, id, context, buf)
 	if err != nil {
@@ -433,7 +433,7 @@ func (j *bserverTlfJournal) putData(
 		blockPutOp, id, []IFCERFTBlockContext{context})
 }
 
-func (j *bserverTlfJournal) addReference(id BlockID, context IFCERFTBlockContext) error {
+func (j *bserverTlfJournal) addReference(id IFCERFTBlockID, context IFCERFTBlockContext) error {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
@@ -479,7 +479,7 @@ func (j *bserverTlfJournal) addReference(id BlockID, context IFCERFTBlockContext
 }
 
 func (j *bserverTlfJournal) removeReferences(
-	id BlockID, contexts []IFCERFTBlockContext) (int, error) {
+	id IFCERFTBlockID, contexts []IFCERFTBlockContext) (int, error) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
@@ -527,7 +527,7 @@ func (j *bserverTlfJournal) removeReferences(
 }
 
 func (j *bserverTlfJournal) archiveReferences(
-	id BlockID, contexts []IFCERFTBlockContext) error {
+	id IFCERFTBlockID, contexts []IFCERFTBlockContext) error {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 

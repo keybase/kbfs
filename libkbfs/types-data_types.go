@@ -260,7 +260,7 @@ func (c IFCERFTBlockContext) String() string {
 // NOTE: Don't add or modify anything in this struct without
 // considering how old clients will handle them.
 type IFCERFTBlockPointer struct {
-	ID      BlockID        `codec:"i"`
+	ID      IFCERFTBlockID `codec:"i"`
 	KeyGen  IFCERFTKeyGen  `codec:"k"` // if valid, which generation of the TLFKeyBundle to use.
 	DataVer IFCERFTDataVer `codec:"d"` // if valid, which version of the KBFS data structures is pointed to
 	IFCERFTBlockContext
@@ -285,7 +285,7 @@ func (p IFCERFTBlockPointer) String() string {
 
 // IsInitialized returns whether or not this BlockPointer has non-nil data.
 func (p IFCERFTBlockPointer) IsInitialized() bool {
-	return p.ID != BlockID{}
+	return p.ID != IFCERFTBlockID{}
 }
 
 func (p IFCERFTBlockPointer) ref() IFCERFTBlockRef {
@@ -376,7 +376,7 @@ func (nonce IFCERFTBlockRefNonce) String() string {
 // blockRef is a block ID/ref nonce pair, which defines a unique
 // reference to a block.
 type IFCERFTBlockRef struct {
-	id       BlockID
+	id       IFCERFTBlockID
 	refNonce IFCERFTBlockRefNonce
 }
 

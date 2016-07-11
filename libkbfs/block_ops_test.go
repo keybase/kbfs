@@ -377,13 +377,13 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 	// expect one call to delete several blocks
 	rmd := makeRMD()
 
-	contexts := make(map[BlockID][]IFCERFTBlockContext)
+	contexts := make(map[IFCERFTBlockID][]IFCERFTBlockContext)
 	b1 := IFCERFTBlockPointer{ID: fakeBlockID(1)}
 	contexts[b1.ID] = []IFCERFTBlockContext{b1.IFCERFTBlockContext}
 	b2 := IFCERFTBlockPointer{ID: fakeBlockID(2)}
 	contexts[b2.ID] = []IFCERFTBlockContext{b2.IFCERFTBlockContext}
 	blockPtrs := []IFCERFTBlockPointer{b1, b2}
-	var liveCounts map[BlockID]int
+	var liveCounts map[IFCERFTBlockID]int
 	config.mockBserv.EXPECT().RemoveBlockReference(ctx, rmd.ID, contexts).
 		Return(liveCounts, nil)
 
@@ -399,14 +399,14 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 	// fail the delete call
 	rmd := makeRMD()
 
-	contexts := make(map[BlockID][]IFCERFTBlockContext)
+	contexts := make(map[IFCERFTBlockID][]IFCERFTBlockContext)
 	b1 := IFCERFTBlockPointer{ID: fakeBlockID(1)}
 	contexts[b1.ID] = []IFCERFTBlockContext{b1.IFCERFTBlockContext}
 	b2 := IFCERFTBlockPointer{ID: fakeBlockID(2)}
 	contexts[b2.ID] = []IFCERFTBlockContext{b2.IFCERFTBlockContext}
 	blockPtrs := []IFCERFTBlockPointer{b1, b2}
 	err := errors.New("Fake fail")
-	var liveCounts map[BlockID]int
+	var liveCounts map[IFCERFTBlockID]int
 	config.mockBserv.EXPECT().RemoveBlockReference(ctx, rmd.ID, contexts).
 		Return(liveCounts, err)
 

@@ -320,7 +320,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf IFCERFTTlfID) 
 		return err
 	}
 
-	blockRefsByID := make(map[BlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus)
+	blockRefsByID := make(map[IFCERFTBlockID]map[IFCERFTBlockRefNonce]blockRefLocalStatus)
 	for ptr := range expectedLiveBlocks {
 		if _, ok := blockRefsByID[ptr.ID]; !ok {
 			blockRefsByID[ptr.ID] = make(map[IFCERFTBlockRefNonce]blockRefLocalStatus)

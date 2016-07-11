@@ -501,7 +501,7 @@ type IFCERFTBlockCache interface {
 	// Delete removes the permanent entry for the non-dirty block
 	// associated with the given block ID from the cache.  No
 	// error is returned if no block exists for the given ID.
-	DeletePermanent(id BlockID) error
+	DeletePermanent(id IFCERFTBlockID) error
 	// DeleteKnownPtr removes the cached ID for the given file
 	// block. It does not remove the block itself.
 	DeleteKnownPtr(tlf IFCERFTTlfID, block *FileBlock) error
@@ -722,7 +722,7 @@ type IFCERFTBlockOps interface {
 	// block puts in parallel for every write. Ready() must
 	// guarantee that plainSize <= readyBlockData.QuotaSize().
 	Ready(ctx context.Context, md *IFCERFTRootMetadata, block IFCERFTBlock) (
-		id BlockID, plainSize int, readyBlockData IFCERFTReadyBlockData, err error)
+		id IFCERFTBlockID, plainSize int, readyBlockData IFCERFTReadyBlockData, err error)
 
 	// Put stores the readied block data under the given block
 	// pointer (which belongs to the TLF with the given metadata)
@@ -733,7 +733,7 @@ type IFCERFTBlockOps interface {
 	// It returns the number of not-yet deleted references to
 	// each block reference
 	Delete(ctx context.Context, md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) (
-		liveCounts map[BlockID]int, err error)
+		liveCounts map[IFCERFTBlockID]int, err error)
 
 	// Archive instructs the server to mark the given block references
 	// as "archived"; that is, they are not being used in the current
@@ -839,7 +839,7 @@ type IFCERFTBlockServer interface {
 	// the block, and fills in the provided block object with its
 	// contents, if the logged-in user has read permission for that
 	// block.
-	Get(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) (
+	Get(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) (
 		[]byte, IFCERFTBlockCryptKeyServerHalf, error)
 	// Put stores the (encrypted) block data under the given ID and
 	// context on the server, along with the server half of the block
@@ -854,7 +854,7 @@ type IFCERFTBlockServer interface {
 	// If this returns a BServerErrorOverQuota, with Throttled=false,
 	// the caller can treat it as informational and otherwise ignore
 	// the error.
-	Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte, serverHalf IFCERFTBlockCryptKeyServerHalf) error
+	Put(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext, buf []byte, serverHalf IFCERFTBlockCryptKeyServerHalf) error
 
 	// AddBlockReference adds a new reference to the given block,
 	// defined by the given context (which should contain a non-zero
@@ -871,7 +871,7 @@ type IFCERFTBlockServer interface {
 	// If this returns a BServerErrorOverQuota, with Throttled=false,
 	// the caller can treat it as informational and otherwise ignore
 	// the error.
-	AddBlockReference(ctx context.Context, id BlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error
+	AddBlockReference(ctx context.Context, id IFCERFTBlockID, tlfID IFCERFTTlfID, context IFCERFTBlockContext) error
 	// RemoveBlockReference removes the reference to the given block
 	// ID defined by the given context.  If no references to the block
 	// remain after this call, the server is allowed to delete the
@@ -879,7 +879,7 @@ type IFCERFTBlockServer interface {
 	// the count has already been removed, the call is a no-op.
 	// It returns the number of remaining not-yet-deleted references after this
 	// reference has been removed
-	RemoveBlockReference(ctx context.Context, tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) (liveCounts map[BlockID]int, err error)
+	RemoveBlockReference(ctx context.Context, tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) (liveCounts map[IFCERFTBlockID]int, err error)
 
 	// ArchiveBlockReferences marks the given block references as
 	// "archived"; that is, they are not being used in the current
@@ -890,7 +890,7 @@ type IFCERFTBlockServer interface {
 	// be idempotent, although it should also return an error if
 	// any of the other fields of the context differ from previous
 	// calls with the same ID/refnonce pair.
-	ArchiveBlockReferences(ctx context.Context, tlfID IFCERFTTlfID, contexts map[BlockID][]IFCERFTBlockContext) error
+	ArchiveBlockReferences(ctx context.Context, tlfID IFCERFTTlfID, contexts map[IFCERFTBlockID][]IFCERFTBlockContext) error
 
 	// Shutdown is called to shutdown a BlockServer connection.
 	Shutdown()

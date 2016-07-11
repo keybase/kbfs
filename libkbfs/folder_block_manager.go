@@ -232,7 +232,7 @@ func (fbm *folderBlockManager) forceQuotaReclamation() {
 // a list of block IDs that no longer have any references.
 func (fbm *folderBlockManager) doChunkedDowngrades(ctx context.Context,
 	md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer, archive bool) (
-	[]BlockID, error) {
+	[]IFCERFTBlockID, error) {
 	fbm.log.CDebugf(ctx, "Downgrading %d pointers (archive=%t)",
 		len(ptrs), archive)
 	bops := fbm.config.BlockOps()
@@ -253,7 +253,7 @@ func (fbm *folderBlockManager) doChunkedDowngrades(ctx context.Context,
 	defer cancel()
 
 	type workerResult struct {
-		zeroRefCounts []BlockID
+		zeroRefCounts []IFCERFTBlockID
 		err           error
 	}
 
@@ -266,7 +266,7 @@ func (fbm *folderBlockManager) doChunkedDowngrades(ctx context.Context,
 			if archive {
 				res.err = bops.Archive(ctx, md, chunk)
 			} else {
-				var liveCounts map[BlockID]int
+				var liveCounts map[IFCERFTBlockID]int
 				liveCounts, res.err = bops.Delete(ctx, md, chunk)
 				if res.err == nil {
 					for id, count := range liveCounts {
@@ -299,7 +299,7 @@ func (fbm *folderBlockManager) doChunkedDowngrades(ctx context.Context,
 	}
 	close(chunks)
 
-	var zeroRefCounts []BlockID
+	var zeroRefCounts []IFCERFTBlockID
 	for i := 0; i < numChunks; i++ {
 		result := <-chunkResults
 		if result.err != nil {
@@ -315,7 +315,7 @@ func (fbm *folderBlockManager) doChunkedDowngrades(ctx context.Context,
 // for the given block pointers.  It returns a list of block IDs that
 // no longer have any references.
 func (fbm *folderBlockManager) deleteBlockRefs(ctx context.Context,
-	md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) ([]BlockID, error) {
+	md *IFCERFTRootMetadata, ptrs []IFCERFTBlockPointer) ([]IFCERFTBlockID, error) {
 	return fbm.doChunkedDowngrades(ctx, md, ptrs, false)
 }
 
@@ -694,8 +694,7 @@ outer:
 }
 
 func (fbm *folderBlockManager) finalizeReclamation(ctx context.Context,
-	ptrs []IFCERFTBlockPointer, zeroRefCounts []BlockID,
-	latestRev IFCERFTMetadataRevision) error {
+	ptrs []IFCERFTBlockPointer, zeroRefCounts []IFCERFTBlockID, latestRev IFCERFTMetadataRevision) error {
 	gco := newGCOp(latestRev)
 	for _, id := range zeroRefCounts {
 		gco.AddUnrefBlock(IFCERFTBlockPointer{ID: id})

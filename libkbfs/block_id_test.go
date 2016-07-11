@@ -9,20 +9,20 @@ import (
 	"testing"
 )
 
-func fakeBlockID(b byte) BlockID {
+func fakeBlockID(b byte) IFCERFTBlockID {
 	dh := IFCERFTRawDefaultHash{b}
 	h, err := IFCERFTHashFromRaw(IFCERFTDefaultHashType, dh[:])
 	if err != nil {
 		panic(err)
 	}
-	return BlockID{h}
+	return IFCERFTBlockID{h}
 }
 
-func fakeBlockIDAdd(id BlockID, b byte) BlockID {
+func fakeBlockIDAdd(id IFCERFTBlockID, b byte) IFCERFTBlockID {
 	return fakeBlockID(id.h.hashData()[0] + b)
 }
 
-func fakeBlockIDMul(id BlockID, b byte) BlockID {
+func fakeBlockIDMul(id IFCERFTBlockID, b byte) IFCERFTBlockID {
 	return fakeBlockID(id.h.hashData()[0] * b)
 }
 
@@ -46,7 +46,7 @@ func TestBlockIDEncodeDecode(t *testing.T) {
 			IFCERFTDefaultHashByteLength+overhead, len(encodedBlockID))
 	}
 
-	var id2 BlockID
+	var id2 IFCERFTBlockID
 	err = codec.Decode(encodedBlockID, &id2)
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func TestBlockIDEncodeDecode(t *testing.T) {
 // Make sure the zero BlockID value encodes and decodes properly.
 func TestBlockIDEncodeDecodeZero(t *testing.T) {
 	codec := NewCodecMsgpack()
-	encodedBlockID, err := codec.Encode(BlockID{})
+	encodedBlockID, err := codec.Encode(IFCERFTBlockID{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,13 +71,13 @@ func TestBlockIDEncodeDecodeZero(t *testing.T) {
 			expectedEncodedBlockID, encodedBlockID)
 	}
 
-	var id BlockID
+	var id IFCERFTBlockID
 	err = codec.Decode(encodedBlockID, &id)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if id != (BlockID{}) {
+	if id != (IFCERFTBlockID{}) {
 		t.Errorf("expected empty block ID, got %s", id)
 	}
 }
