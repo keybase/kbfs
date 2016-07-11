@@ -64,7 +64,7 @@ func (verifyingKeyType) makeZero() interface{} {
 }
 
 func (verifyingKeyType) makeFromKID(kid keybase1.KID) interface{} {
-	return MakeVerifyingKey(kid)
+	return IFCERFTMakeVerifyingKey(kid)
 }
 
 func (verifyingKeyType) decode(codec *CodecMsgpack, data []byte) (interface{}, error) {
@@ -111,11 +111,11 @@ func testByte32ContainerEncodeDecode(t *testing.T, bt byte32ContainerType) {
 type tlfPrivateKeyType struct{}
 
 func (tlfPrivateKeyType) makeZero() interface{} {
-	return TLFPrivateKey{}
+	return IFCERFTTLFPrivateKey{}
 }
 
 func (tlfPrivateKeyType) makeFromData(data [32]byte) interface{} {
-	return MakeTLFPrivateKey(data)
+	return IFCERFTMakeTLFPrivateKey(data)
 }
 
 // Make sure TLFPrivateKey encodes and decodes properly with minimal
@@ -127,11 +127,11 @@ func TestTLFPrivateKeyEncodeDecode(t *testing.T) {
 type tlfPublicKeyType struct{}
 
 func (tlfPublicKeyType) makeZero() interface{} {
-	return TLFPublicKey{}
+	return IFCERFTTLFPublicKey{}
 }
 
 func (tlfPublicKeyType) makeFromData(data [32]byte) interface{} {
-	return MakeTLFPublicKey(data)
+	return IFCERFTMakeTLFPublicKey(data)
 }
 
 // Make sure TLFPublicKey encodes and decodes properly with minimal
@@ -143,11 +143,11 @@ func TestTLFPublicKeyEncodeDecode(t *testing.T) {
 type tlfEphemeralPrivateKeyType struct{}
 
 func (tlfEphemeralPrivateKeyType) makeZero() interface{} {
-	return TLFEphemeralPrivateKey{}
+	return IFCERFTTLFEphemeralPrivateKey{}
 }
 
 func (tlfEphemeralPrivateKeyType) makeFromData(data [32]byte) interface{} {
-	return MakeTLFEphemeralPrivateKey(data)
+	return IFCERFTMakeTLFEphemeralPrivateKey(data)
 }
 
 // Make sure TLFEphemeralPrivateKey encodes and decodes properly with minimal
@@ -163,7 +163,7 @@ func (cryptPublicKeyType) makeZero() interface{} {
 }
 
 func (cryptPublicKeyType) makeFromKID(kid keybase1.KID) interface{} {
-	return MakeCryptPublicKey(kid)
+	return IFCERFTMakeCryptPublicKey(kid)
 }
 
 func (cryptPublicKeyType) decode(codec *CodecMsgpack, data []byte) (interface{}, error) {
@@ -191,7 +191,7 @@ func (tlfEphemeralPublicKeyType) makeZero() interface{} {
 }
 
 func (tlfEphemeralPublicKeyType) makeFromData(data [32]byte) interface{} {
-	return MakeTLFEphemeralPublicKey(data)
+	return IFCERFTMakeTLFEphemeralPublicKey(data)
 }
 
 // Make sure TLFEphemeralPublicKey encodes and decodes properly with minimal
@@ -203,11 +203,11 @@ func TestTLFEphemeralPublicKeyEncodeDecode(t *testing.T) {
 type tlfCryptKeyServerHalfType struct{}
 
 func (tlfCryptKeyServerHalfType) makeZero() interface{} {
-	return TLFCryptKeyServerHalf{}
+	return IFCERFTTLFCryptKeyServerHalf{}
 }
 
 func (tlfCryptKeyServerHalfType) makeFromData(data [32]byte) interface{} {
-	return MakeTLFCryptKeyServerHalf(data)
+	return IFCERFTMakeTLFCryptKeyServerHalf(data)
 }
 
 // Make sure TLFCryptKeyServerHalf encodes and decodes properly with
@@ -219,11 +219,11 @@ func TestTLFCryptKeyServerHalfEncodeDecode(t *testing.T) {
 type tlfCryptKeyClientHalfType struct{}
 
 func (tlfCryptKeyClientHalfType) makeZero() interface{} {
-	return TLFCryptKeyClientHalf{}
+	return IFCERFTTLFCryptKeyClientHalf{}
 }
 
 func (tlfCryptKeyClientHalfType) makeFromData(data [32]byte) interface{} {
-	return MakeTLFCryptKeyClientHalf(data)
+	return IFCERFTMakeTLFCryptKeyClientHalf(data)
 }
 
 // Make sure TLFCryptKeyClientHalf encodes and decodes properly with
@@ -239,7 +239,7 @@ func (tlfCryptKeyType) makeZero() interface{} {
 }
 
 func (tlfCryptKeyType) makeFromData(data [32]byte) interface{} {
-	return MakeTLFCryptKey(data)
+	return IFCERFTMakeTLFCryptKey(data)
 }
 
 // Make sure TLFCryptKey encodes and decodes properly with minimal
@@ -255,7 +255,7 @@ func (blockCryptKeyServerHalfType) makeZero() interface{} {
 }
 
 func (blockCryptKeyServerHalfType) makeFromData(data [32]byte) interface{} {
-	return MakeTLFCryptKey(data)
+	return IFCERFTMakeTLFCryptKey(data)
 }
 
 // Make sure BlockCryptKeyServerHalf encodes and decodes properly with
@@ -271,7 +271,7 @@ func (blockCryptKeyType) makeZero() interface{} {
 }
 
 func (blockCryptKeyType) makeFromData(data [32]byte) interface{} {
-	return MakeTLFCryptKey(data)
+	return IFCERFTMakeTLFCryptKey(data)
 }
 
 // Make sure BlockCryptKey encodes and decodes properly with minimal

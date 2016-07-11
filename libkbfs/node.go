@@ -8,17 +8,17 @@ import "runtime"
 
 // nodeCore holds info shared among one or more nodeStandard objects.
 type nodeCore struct {
-	pathNode *pathNode
+	pathNode *IFCERFTPathNode
 	parent   *nodeStandard
 	cache    *nodeCacheStandard
 	// used only when parent is nil (the object has been unlinked)
-	cachedPath path
+	cachedPath IFCERFTPath
 }
 
 func newNodeCore(ptr IFCERFTBlockPointer, name string, parent *nodeStandard,
 	cache *nodeCacheStandard) *nodeCore {
 	return &nodeCore{
-		pathNode: &pathNode{
+		pathNode: &IFCERFTPathNode{
 			IFCERFTBlockPointer: ptr,
 			Name:                name,
 		},

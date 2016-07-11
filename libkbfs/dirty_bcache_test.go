@@ -36,7 +36,7 @@ func testDirtyBcachePut(t *testing.T, id BlockID, dirtyBcache IFCERFTDirtyBlockC
 
 func testExpectedMissingDirty(t *testing.T, id BlockID,
 	dirtyBcache IFCERFTDirtyBlockCache) {
-	expectedErr := NoSuchBlockError{id}
+	expectedErr := IFCERFTNoSuchBlockError{id}
 	ptr := IFCERFTBlockPointer{ID: id}
 	if _, err := dirtyBcache.Get(ptr, IFCERFTMasterBranch); err == nil {
 		t.Errorf("No expected error on 1st get: %v", err)

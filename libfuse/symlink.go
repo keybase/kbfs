@@ -35,7 +35,7 @@ func (s *Symlink) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 
 	_, de, err := s.parent.folder.fs.config.KBFSOps().Lookup(ctx, s.parent.node, s.name)
 	if err != nil {
-		if _, ok := err.(libkbfs.NoSuchNameError); ok {
+		if _, ok := err.(libkbfs.IFCERFTNoSuchNameError); ok {
 			return fuse.ESTALE
 		}
 		return err

@@ -18,11 +18,11 @@ import (
 const (
 	// MinHashByteLength is the minimum number of bytes a valid
 	// keybase hash can be, including the 1 byte for the type.
-	MinHashByteLength = 33
+	IFCERFTMinHashByteLength = 33
 
 	// DefaultHashByteLength is the number of bytes in a default
 	// keybase hash.
-	DefaultHashByteLength = 1 + sha256.Size
+	IFCERFTDefaultHashByteLength = 1 + sha256.Size
 
 	// MaxHashByteLength is the maximum number of bytes a valid
 	// keybase hash can be, including the 1 byte for the type.
@@ -31,32 +31,32 @@ const (
 	// MinHashStringLength is the minimum number of characters in
 	// the string representation (hex encoding) of a valid keybase
 	// hash.
-	MinHashStringLength = 2 * MinHashByteLength
+	IFCERFTMinHashStringLength = 2 * IFCERFTMinHashByteLength
 
 	// DefaultHashStringLength is the number of characters in the
 	// string representation of a default keybase hash.
-	DefaultHashStringLength = 2 * DefaultHashByteLength
+	IFCERFTDefaultHashStringLength = 2 * IFCERFTDefaultHashByteLength
 
 	// MaxHashStringLength is the maximum number of characters the
 	// string representation of a valid keybase hash can be.
-	MaxHashStringLength = 2 * MaxHashByteLength
+	IFCERFTMaxHashStringLength = 2 * MaxHashByteLength
 )
 
 // HashType is the type of a keybase hash.
-type HashType byte
+type IFCERFTHashType byte
 
 const (
 	// InvalidHash is the zero HashType value, which is invalid.
-	InvalidHash HashType = 0
+	IFCERFTInvalidHash IFCERFTHashType = 0
 	// SHA256Hash is the type of a SHA256 hash.
-	SHA256Hash HashType = 1
+	IFCERFTSHA256Hash IFCERFTHashType = 1
 )
 
-func (t HashType) String() string {
+func (t IFCERFTHashType) String() string {
 	switch t {
-	case InvalidHash:
+	case IFCERFTInvalidHash:
 		return "InvalidHash"
-	case SHA256Hash:
+	case IFCERFTSHA256Hash:
 		return "SHA256Hash"
 	default:
 		return fmt.Sprintf("HashType(%d)", t)
@@ -64,83 +64,83 @@ func (t HashType) String() string {
 }
 
 // DefaultHashType is the current default keybase hash type.
-const DefaultHashType HashType = SHA256Hash
+const IFCERFTDefaultHashType IFCERFTHashType = IFCERFTSHA256Hash
 
 // DefaultHashNew is a function that creates a new hash.Hash object
 // with the default hash.
-var DefaultHashNew = sha256.New
+var IFCERFTDefaultHashNew = sha256.New
 
 // RawDefaultHash is the type for the raw bytes of a default keybase
 // hash. This is exposed for use as in-memory keys.
-type RawDefaultHash [sha256.Size]byte
+type IFCERFTRawDefaultHash [sha256.Size]byte
 
 // DoRawDefaultHash computes the default keybase hash of the given
 // data, and returns the type and the raw hash bytes.
-func DoRawDefaultHash(p []byte) (HashType, RawDefaultHash) {
-	return DefaultHashType, RawDefaultHash(sha256.Sum256(p))
+func IFCERFTDoRawDefaultHash(p []byte) (IFCERFTHashType, IFCERFTRawDefaultHash) {
+	return IFCERFTDefaultHashType, IFCERFTRawDefaultHash(sha256.Sum256(p))
 }
 
 // Hash is the type of a keybase hash.
-type Hash struct {
+type IFCERFTHash struct {
 	// Stored as a string so that this can be used as a map key.
 	h string
 }
 
-var _ encoding.BinaryMarshaler = Hash{}
-var _ encoding.BinaryUnmarshaler = (*Hash)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTHash{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTHash)(nil)
 
 // HashFromRaw creates a hash from a type and raw hash data. If the
 // returned error is nil, the returned Hash is valid.
-func HashFromRaw(hashType HashType, rawHash []byte) (Hash, error) {
-	return HashFromBytes(append([]byte{byte(hashType)}, rawHash...))
+func IFCERFTHashFromRaw(hashType IFCERFTHashType, rawHash []byte) (IFCERFTHash, error) {
+	return IFCERFTHashFromBytes(append([]byte{byte(hashType)}, rawHash...))
 }
 
 // HashFromBytes creates a hash from the given byte array. If the
 // returned error is nil, the returned Hash is valid.
-func HashFromBytes(data []byte) (Hash, error) {
-	h := Hash{string(data)}
+func IFCERFTHashFromBytes(data []byte) (IFCERFTHash, error) {
+	h := IFCERFTHash{string(data)}
 	if !h.IsValid() {
-		return Hash{}, InvalidHashError{h}
+		return IFCERFTHash{}, IFCERFTInvalidHashError{h}
 	}
 	return h, nil
 }
 
 // HashFromString creates a hash from the given string. If the
 // returned error is nil, the returned Hash is valid.
-func HashFromString(dataStr string) (Hash, error) {
+func IFCERFTHashFromString(dataStr string) (IFCERFTHash, error) {
 	data, err := hex.DecodeString(dataStr)
 	if err != nil {
-		return Hash{}, err
+		return IFCERFTHash{}, err
 	}
-	return HashFromBytes(data)
+	return IFCERFTHashFromBytes(data)
 }
 
 // DefaultHash computes the hash of the given data with the default
 // hash type.
-func DefaultHash(buf []byte) (Hash, error) {
-	hashType, rawHash := DoRawDefaultHash(buf)
-	return HashFromRaw(hashType, rawHash[:])
+func IFCERFTDefaultHash(buf []byte) (IFCERFTHash, error) {
+	hashType, rawHash := IFCERFTDoRawDefaultHash(buf)
+	return IFCERFTHashFromRaw(hashType, rawHash[:])
 }
 
-func (h Hash) hashType() HashType {
-	return HashType(h.h[0])
+func (h IFCERFTHash) hashType() IFCERFTHashType {
+	return IFCERFTHashType(h.h[0])
 }
 
-func (h Hash) hashData() []byte {
+func (h IFCERFTHash) hashData() []byte {
 	return []byte(h.h[1:])
 }
 
 // IsValid returns whether the hash is valid. Note that a hash with an
 // unknown version is still valid.
-func (h Hash) IsValid() bool {
-	if len(h.h) < MinHashByteLength {
+func (h IFCERFTHash) IsValid() bool {
+	if len(h.h) < IFCERFTMinHashByteLength {
 		return false
 	}
 	if len(h.h) > MaxHashByteLength {
 		return false
 	}
 
-	if h.hashType() == InvalidHash {
+	if h.hashType() == IFCERFTInvalidHash {
 		return false
 	}
 
@@ -148,24 +148,24 @@ func (h Hash) IsValid() bool {
 }
 
 // Bytes returns the bytes of the hash.
-func (h Hash) Bytes() []byte {
+func (h IFCERFTHash) Bytes() []byte {
 	return []byte(h.h)
 }
 
-func (h Hash) String() string {
+func (h IFCERFTHash) String() string {
 	return hex.EncodeToString([]byte(h.h))
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for
 // Hash. Returns an error if the hash is invalid and not the zero
 // hash.
-func (h Hash) MarshalBinary() (data []byte, err error) {
-	if h == (Hash{}) {
+func (h IFCERFTHash) MarshalBinary() (data []byte, err error) {
+	if h == (IFCERFTHash{}) {
 		return nil, nil
 	}
 
 	if !h.IsValid() {
-		return nil, InvalidHashError{h}
+		return nil, IFCERFTInvalidHashError{h}
 	}
 
 	return []byte(h.h), nil
@@ -174,16 +174,16 @@ func (h Hash) MarshalBinary() (data []byte, err error) {
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface
 // for Hash. Returns an error if the given byte array is non-empty and
 // the hash is invalid.
-func (h *Hash) UnmarshalBinary(data []byte) error {
+func (h *IFCERFTHash) UnmarshalBinary(data []byte) error {
 	if len(data) == 0 {
-		*h = Hash{}
+		*h = IFCERFTHash{}
 		return nil
 	}
 
 	h.h = string(data)
 	if !h.IsValid() {
-		err := InvalidHashError{*h}
-		*h = Hash{}
+		err := IFCERFTInvalidHashError{*h}
+		*h = IFCERFTHash{}
 		return err
 	}
 
@@ -192,23 +192,23 @@ func (h *Hash) UnmarshalBinary(data []byte) error {
 
 // Verify makes sure that the hash matches the given data and returns
 // an error otherwise.
-func (h Hash) Verify(buf []byte) error {
+func (h IFCERFTHash) Verify(buf []byte) error {
 	if !h.IsValid() {
-		return InvalidHashError{h}
+		return IFCERFTInvalidHashError{h}
 	}
 
 	// Once we have multiple hash types we'll need to expand this.
 	t := h.hashType()
-	if t != DefaultHashType {
-		return UnknownHashTypeError{t}
+	if t != IFCERFTDefaultHashType {
+		return IFCERFTUnknownHashTypeError{t}
 	}
 
-	expectedH, err := DefaultHash(buf)
+	expectedH, err := IFCERFTDefaultHash(buf)
 	if err != nil {
 		return err
 	}
 	if h != expectedH {
-		return HashMismatchError{expectedH, h}
+		return IFCERFTHashMismatchError{expectedH, h}
 	}
 	return nil
 }
@@ -216,80 +216,80 @@ func (h Hash) Verify(buf []byte) error {
 // HMAC is the type of a keybase hash that is an HMAC.
 //
 // All the constants for Hash also apply to HMAC.
-type HMAC struct {
-	h Hash
+type IFCERFTHMAC struct {
+	h IFCERFTHash
 }
 
-var _ encoding.BinaryMarshaler = HMAC{}
-var _ encoding.BinaryUnmarshaler = (*HMAC)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTHMAC{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTHMAC)(nil)
 
 // DefaultHMAC computes the HMAC with the given key of the given data
 // using the default hash.
-func DefaultHMAC(key, buf []byte) (HMAC, error) {
-	mac := hmac.New(DefaultHashNew, key)
+func IFCERFTDefaultHMAC(key, buf []byte) (IFCERFTHMAC, error) {
+	mac := hmac.New(IFCERFTDefaultHashNew, key)
 	mac.Write(buf)
-	h, err := HashFromRaw(DefaultHashType, mac.Sum(nil))
+	h, err := IFCERFTHashFromRaw(IFCERFTDefaultHashType, mac.Sum(nil))
 	if err != nil {
-		return HMAC{}, err
+		return IFCERFTHMAC{}, err
 	}
-	return HMAC{h}, nil
+	return IFCERFTHMAC{h}, nil
 }
 
-func (hmac HMAC) hashType() HashType {
+func (hmac IFCERFTHMAC) hashType() IFCERFTHashType {
 	return hmac.h.hashType()
 }
 
-func (hmac HMAC) hashData() []byte {
+func (hmac IFCERFTHMAC) hashData() []byte {
 	return hmac.h.hashData()
 }
 
 // IsValid returns whether the HMAC is valid. Note that an HMAC with an
 // unknown version is still valid.
-func (hmac HMAC) IsValid() bool {
+func (hmac IFCERFTHMAC) IsValid() bool {
 	return hmac.h.IsValid()
 }
 
 // Bytes returns the bytes of the HMAC.
-func (hmac HMAC) Bytes() []byte {
+func (hmac IFCERFTHMAC) Bytes() []byte {
 	return hmac.h.Bytes()
 }
 
-func (hmac HMAC) String() string {
+func (hmac IFCERFTHMAC) String() string {
 	return hmac.h.String()
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for
 // HMAC. Returns an error if the HMAC is invalid and not the zero
 // HMAC.
-func (hmac HMAC) MarshalBinary() (data []byte, err error) {
+func (hmac IFCERFTHMAC) MarshalBinary() (data []byte, err error) {
 	return hmac.h.MarshalBinary()
 }
 
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface
 // for HMAC. Returns an error if the given byte array is non-empty and
 // the HMAC is invalid.
-func (hmac *HMAC) UnmarshalBinary(data []byte) error {
+func (hmac *IFCERFTHMAC) UnmarshalBinary(data []byte) error {
 	return hmac.h.UnmarshalBinary(data)
 }
 
 // Verify makes sure that the HMAC matches the given data.
-func (hmac HMAC) Verify(key, buf []byte) error {
+func (hmac IFCERFTHMAC) Verify(key, buf []byte) error {
 	if !hmac.IsValid() {
-		return InvalidHashError{hmac.h}
+		return IFCERFTInvalidHashError{hmac.h}
 	}
 
 	// Once we have multiple hash types we'll need to expand this.
 	t := hmac.hashType()
-	if t != DefaultHashType {
-		return UnknownHashTypeError{t}
+	if t != IFCERFTDefaultHashType {
+		return IFCERFTUnknownHashTypeError{t}
 	}
 
-	expectedHMAC, err := DefaultHMAC(key, buf)
+	expectedHMAC, err := IFCERFTDefaultHMAC(key, buf)
 	if err != nil {
 		return err
 	}
 	if hmac != expectedHMAC {
-		return HashMismatchError{expectedHMAC.h, hmac.h}
+		return IFCERFTHashMismatchError{expectedHMAC.h, hmac.h}
 	}
 	return nil
 }

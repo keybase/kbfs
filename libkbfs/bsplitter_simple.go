@@ -122,6 +122,6 @@ func (b *BlockSplitterSimple) CheckSplit(block *FileBlock) int64 {
 // ShouldEmbedBlockChanges implements the BlockSplitter interface for
 // BlockSplitterSimple.
 func (b *BlockSplitterSimple) ShouldEmbedBlockChanges(
-	bc *IFCERFTBlockChanges) bool {
+	bc *AddBPSize) bool {
 	return bc.sizeEstimate <= b.blockChangeEmbedMaxSize
 }

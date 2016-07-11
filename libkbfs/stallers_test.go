@@ -146,23 +146,23 @@ func (m *stallingMDOps) GetForTLF(ctx context.Context, id IFCERFTTlfID) (
 }
 
 func (m *stallingMDOps) GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (
-	BareTlfHandle, error) {
+	IFCERFTBareTlfHandle, error) {
 	m.maybeStall(ctx, "GetLatestHandleForTLF")
 	return m.delegate.GetLatestHandleForTLF(ctx, id)
 }
 
-func (m *stallingMDOps) GetUnmergedForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID) (*IFCERFTRootMetadata, error) {
+func (m *stallingMDOps) GetUnmergedForTLF(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID) (*IFCERFTRootMetadata, error) {
 	m.maybeStall(ctx, "GetUnmergedForTLF")
 	return m.delegate.GetUnmergedForTLF(ctx, id, bid)
 }
 
-func (m *stallingMDOps) GetRange(ctx context.Context, id IFCERFTTlfID, start, stop MetadataRevision) (
+func (m *stallingMDOps) GetRange(ctx context.Context, id IFCERFTTlfID, start, stop IFCERFTMetadataRevision) (
 	[]*IFCERFTRootMetadata, error) {
 	m.maybeStall(ctx, "GetRange")
 	return m.delegate.GetRange(ctx, id, start, stop)
 }
 
-func (m *stallingMDOps) GetUnmergedRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, start, stop MetadataRevision) ([]*IFCERFTRootMetadata, error) {
+func (m *stallingMDOps) GetUnmergedRange(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, start, stop IFCERFTMetadataRevision) ([]*IFCERFTRootMetadata, error) {
 	m.maybeStall(ctx, "GetUnmergedRange")
 	return m.delegate.GetUnmergedRange(ctx, id, bid, start, stop)
 }
@@ -186,7 +186,7 @@ func (m *stallingMDOps) Put(ctx context.Context, md *IFCERFTRootMetadata) error 
 	}
 }
 
-func (m *stallingMDOps) PutUnmerged(ctx context.Context, md *IFCERFTRootMetadata, bid BranchID) error {
+func (m *stallingMDOps) PutUnmerged(ctx context.Context, md *IFCERFTRootMetadata, bid IFCERFTBranchID) error {
 	m.maybeStall(ctx, "PutUnmerged")
 	select {
 	case <-ctx.Done():

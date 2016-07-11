@@ -12,59 +12,59 @@ import (
 	"bazil.org/fuse"
 )
 
-var _ fuse.ErrorNumber = NoSuchUserError{""}
+var _ fuse.ErrorNumber = IFCERFTNoSuchUserError{""}
 
 // Errno implements the fuse.ErrorNumber interface for
 // NoSuchUserError
-func (e NoSuchUserError) Errno() fuse.Errno {
+func (e IFCERFTNoSuchUserError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.ENOENT)
 }
 
-var _ fuse.ErrorNumber = DirNotEmptyError{""}
+var _ fuse.ErrorNumber = IFCERFTDirNotEmptyError{""}
 
 // Errno implements the fuse.ErrorNumber interface for
 // DirNotEmptyError
-func (e DirNotEmptyError) Errno() fuse.Errno {
+func (e IFCERFTDirNotEmptyError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.ENOTEMPTY)
 }
 
-var _ fuse.ErrorNumber = ReadAccessError{}
+var _ fuse.ErrorNumber = IFCERFTReadAccessError{}
 
 // Errno implements the fuse.ErrorNumber interface for
 // ReadAccessError.
-func (e ReadAccessError) Errno() fuse.Errno {
+func (e IFCERFTReadAccessError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EACCES)
 }
 
-var _ fuse.ErrorNumber = WriteAccessError{}
+var _ fuse.ErrorNumber = IFCERFTWriteAccessError{}
 
 // Errno implements the fuse.ErrorNumber interface for
 // WriteAccessError.
-func (e WriteAccessError) Errno() fuse.Errno {
+func (e IFCERFTWriteAccessError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EACCES)
 }
 
-var _ fuse.ErrorNumber = NeedSelfRekeyError{}
+var _ fuse.ErrorNumber = IFCERFTNeedSelfRekeyError{}
 
 // Errno implements the fuse.ErrorNumber interface for
 // NeedSelfRekeyError.
-func (e NeedSelfRekeyError) Errno() fuse.Errno {
+func (e IFCERFTNeedSelfRekeyError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EACCES)
 }
 
-var _ fuse.ErrorNumber = NeedOtherRekeyError{}
+var _ fuse.ErrorNumber = IFCERFTNeedOtherRekeyError{}
 
 // Errno implements the fuse.ErrorNumber interface for
 // NeedOtherRekeyError.
-func (e NeedOtherRekeyError) Errno() fuse.Errno {
+func (e IFCERFTNeedOtherRekeyError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EACCES)
 }
 
-var _ fuse.ErrorNumber = DisallowedPrefixError{}
+var _ fuse.ErrorNumber = IFCERFTDisallowedPrefixError{}
 
 // Errno implements the fuse.ErrorNumber interface for
 // DisallowedPrefixError.
-func (e DisallowedPrefixError) Errno() fuse.Errno {
+func (e IFCERFTDisallowedPrefixError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EINVAL)
 }
 
@@ -82,31 +82,31 @@ func (e MDServerErrorUnauthorized) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EACCES)
 }
 
-var _ fuse.ErrorNumber = FileTooBigError{}
+var _ fuse.ErrorNumber = IFCERFTFileTooBigError{}
 
 // Errno implements the fuse.ErrorNumber interface for FileTooBigError.
-func (e FileTooBigError) Errno() fuse.Errno {
+func (e IFCERFTFileTooBigError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EFBIG)
 }
 
-var _ fuse.ErrorNumber = NameTooLongError{}
+var _ fuse.ErrorNumber = IFCERFTNameTooLongError{}
 
 // Errno implements the fuse.ErrorNumber interface for NameTooLongError.
-func (e NameTooLongError) Errno() fuse.Errno {
+func (e IFCERFTNameTooLongError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.ENAMETOOLONG)
 }
 
-var _ fuse.ErrorNumber = DirTooBigError{}
+var _ fuse.ErrorNumber = IFCERFTDirTooBigError{}
 
 // Errno implements the fuse.ErrorNumber interface for DirTooBigError.
-func (e DirTooBigError) Errno() fuse.Errno {
+func (e IFCERFTDirTooBigError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EFBIG)
 }
 
-var _ fuse.ErrorNumber = NoCurrentSessionError{}
+var _ fuse.ErrorNumber = IFCERFTNoCurrentSessionError{}
 
 // Errno implements the fuse.ErrorNumber interface for NoCurrentSessionError.
-func (e NoCurrentSessionError) Errno() fuse.Errno {
+func (e IFCERFTNoCurrentSessionError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EACCES)
 }
 
@@ -117,10 +117,10 @@ func (e MDServerErrorWriteAccess) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EACCES)
 }
 
-var _ fuse.ErrorNumber = NoSuchFolderListError{}
+var _ fuse.ErrorNumber = IFCERFTNoSuchFolderListError{}
 
 // Errno implements the fuse.ErrorNumber interface for
 // NoSuchFolderListError
-func (e NoSuchFolderListError) Errno() fuse.Errno {
+func (e IFCERFTNoSuchFolderListError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.ENOENT)
 }

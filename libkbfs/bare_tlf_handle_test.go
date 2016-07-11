@@ -41,7 +41,7 @@ func TestMakeBareTlfHandle(t *testing.T) {
 		},
 	}
 
-	h, err := MakeBareTlfHandle(w, r, uw, ur, nil)
+	h, err := IFCERFTMakeBareTlfHandle(w, r, uw, ur, nil)
 	require.NoError(t, err)
 	require.Equal(t, []keybase1.UID{
 		keybase1.MakeTestUID(3),
@@ -74,8 +74,8 @@ func TestMakeBareTlfHandle(t *testing.T) {
 }
 
 func TestMakeBareTlfHandleFailures(t *testing.T) {
-	_, err := MakeBareTlfHandle(nil, nil, nil, nil, nil)
-	assert.Equal(t, ErrNoWriters, err)
+	_, err := IFCERFTMakeBareTlfHandle(nil, nil, nil, nil, nil)
+	assert.Equal(t, IFCERFTErrNoWriters, err)
 
 	w := []keybase1.UID{
 		keybase1.MakeTestUID(4),
@@ -87,11 +87,11 @@ func TestMakeBareTlfHandleFailures(t *testing.T) {
 		keybase1.MakeTestUID(2),
 	}
 
-	_, err = MakeBareTlfHandle(r, nil, nil, nil, nil)
-	assert.Equal(t, ErrInvalidWriter, err)
+	_, err = IFCERFTMakeBareTlfHandle(r, nil, nil, nil, nil)
+	assert.Equal(t, IFCERFTErrInvalidWriter, err)
 
-	_, err = MakeBareTlfHandle(w, r, nil, nil, nil)
-	assert.Equal(t, ErrInvalidReader, err)
+	_, err = IFCERFTMakeBareTlfHandle(w, r, nil, nil, nil)
+	assert.Equal(t, IFCERFTErrInvalidReader, err)
 
 	ur := []keybase1.SocialAssertion{
 		{
@@ -100,8 +100,8 @@ func TestMakeBareTlfHandleFailures(t *testing.T) {
 		},
 	}
 
-	_, err = MakeBareTlfHandle(w, r[:1], nil, ur, nil)
-	assert.Equal(t, ErrInvalidReader, err)
+	_, err = IFCERFTMakeBareTlfHandle(w, r[:1], nil, ur, nil)
+	assert.Equal(t, IFCERFTErrInvalidReader, err)
 }
 
 func TestBareTlfHandleAccessorsPrivate(t *testing.T) {
@@ -137,7 +137,7 @@ func TestBareTlfHandleAccessorsPrivate(t *testing.T) {
 		},
 	}
 
-	h, err := MakeBareTlfHandle(w, r, uw, ur, nil)
+	h, err := IFCERFTMakeBareTlfHandle(w, r, uw, ur, nil)
 	require.NoError(t, err)
 
 	require.False(t, h.IsPublic())
@@ -204,7 +204,7 @@ func TestBareTlfHandleAccessorsPublic(t *testing.T) {
 		},
 	}
 
-	h, err := MakeBareTlfHandle(
+	h, err := IFCERFTMakeBareTlfHandle(
 		w, []keybase1.UID{keybase1.PUBLIC_UID}, uw, nil, nil)
 	require.NoError(t, err)
 
@@ -268,7 +268,7 @@ func TestBareTlfHandleHasUnresolvedUsers(t *testing.T) {
 		},
 	}
 
-	h, err := MakeBareTlfHandle(w, nil, uw, ur, nil)
+	h, err := IFCERFTMakeBareTlfHandle(w, nil, uw, ur, nil)
 	require.NoError(t, err)
 	require.True(t, h.HasUnresolvedUsers())
 
@@ -336,7 +336,7 @@ func TestBareTlfHandleResolveAssertions(t *testing.T) {
 		},
 	}
 
-	h, err := MakeBareTlfHandle(w, r, uw, ur, nil)
+	h, err := IFCERFTMakeBareTlfHandle(w, r, uw, ur, nil)
 	require.NoError(t, err)
 
 	assertions := make(map[keybase1.SocialAssertion]keybase1.UID)

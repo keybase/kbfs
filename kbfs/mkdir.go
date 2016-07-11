@@ -60,7 +60,7 @@ func mkdirOne(ctx context.Context, config libkbfs.IFCERFTConfig, dirPathStr stri
 			}
 
 			nextNode, err := createDir(ctx, kbfsOps, currNode, dirname, currP.String(), verbose)
-			if err == (libkbfs.NameExistsError{Name: dirname}) {
+			if err == (libkbfs.IFCERFTNameExistsError{Name: dirname}) {
 				nextNode, _, err = kbfsOps.Lookup(ctx, currNode, dirname)
 			}
 			if err != nil {
@@ -70,7 +70,7 @@ func mkdirOne(ctx context.Context, config libkbfs.IFCERFTConfig, dirPathStr stri
 		}
 	} else {
 		if p.PathType != fsrpc.TLFPathType {
-			return libkbfs.NameExistsError{Name: p.String()}
+			return libkbfs.IFCERFTNameExistsError{Name: p.String()}
 		}
 
 		parentDir, dirname, err := p.DirAndBasename()

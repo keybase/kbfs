@@ -46,20 +46,20 @@ func TestCRInput(t *testing.T) {
 	ctx := context.Background()
 
 	// First try a completely unknown revision
-	cr.Resolve(MetadataRevisionUninitialized, MetadataRevisionUninitialized)
+	cr.Resolve(IFCERFTMetadataRevisionUninitialized, IFCERFTMetadataRevisionUninitialized)
 	// This should return without doing anything (i.e., without
 	// calling any mock methods)
 	cr.Wait(ctx)
 
 	// Next, try resolving a few items
-	branchPoint := MetadataRevision(2)
-	unmergedHead := MetadataRevision(5)
-	mergedHead := MetadataRevision(15)
+	branchPoint := IFCERFTMetadataRevision(2)
+	unmergedHead := IFCERFTMetadataRevision(5)
+	mergedHead := IFCERFTMetadataRevision(15)
 
 	cr.fbo.head = &IFCERFTRootMetadata{
-		WriterMetadata: WriterMetadata{
+		IFCERFTWriterMetadata: IFCERFTWriterMetadata{
 			ID:     FakeTlfID(0x1, false),
-			WFlags: MetadataFlagUnmerged,
+			WFlags: IFCERFTMetadataFlagUnmerged,
 		},
 		Revision:  unmergedHead,
 		tlfHandle: &IFCERFTTlfHandle{name: "fake"},
@@ -69,26 +69,26 @@ func TestCRInput(t *testing.T) {
 	for i := unmergedHead; i >= branchPoint+1; i-- {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
 			&IFCERFTRootMetadata{
-				WriterMetadata: WriterMetadata{
+				IFCERFTWriterMetadata: IFCERFTWriterMetadata{
 					ID:     FakeTlfID(0x1, false),
-					WFlags: MetadataFlagUnmerged,
+					WFlags: IFCERFTMetadataFlagUnmerged,
 					BID:    cr.fbo.bid,
 				},
 				Revision:  i,
 				tlfHandle: &IFCERFTTlfHandle{name: "fake"},
 			}, nil)
 	}
-	for i := MetadataRevisionInitial; i <= branchPoint; i++ {
+	for i := IFCERFTMetadataRevisionInitial; i <= branchPoint; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
-			nil, NoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
+			nil, IFCERFTNoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
 	}
 	config.mockMdops.EXPECT().GetUnmergedRange(gomock.Any(), cr.fbo.id(),
-		cr.fbo.bid, MetadataRevisionInitial, branchPoint).Return(nil, nil)
+		cr.fbo.bid, IFCERFTMetadataRevisionInitial, branchPoint).Return(nil, nil)
 
 	for i := branchPoint + 1; i <= mergedHead; i++ {
-		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
+		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, IFCERFTNullBranchID).Return(
 			&IFCERFTRootMetadata{
-				WriterMetadata: WriterMetadata{
+				IFCERFTWriterMetadata: IFCERFTWriterMetadata{
 					ID: FakeTlfID(0x1, false),
 				},
 				Revision:  i,
@@ -96,21 +96,21 @@ func TestCRInput(t *testing.T) {
 			}, nil)
 	}
 	for i := mergedHead + 1; i <= branchPoint+2*maxMDsAtATime; i++ {
-		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
-			nil, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
+		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, IFCERFTNullBranchID).Return(
+			nil, IFCERFTNoSuchMDError{cr.fbo.id(), i, IFCERFTNullBranchID})
 	}
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(), mergedHead+1,
 		gomock.Any()).Return(nil, nil)
 
 	// CR doesn't see any operations and so it does resolution early.
 	// Just cause an error so it doesn't bother the mocks too much.
-	config.mockCrypto.EXPECT().MakeMdID(gomock.Any()).Return(MdID{},
+	config.mockCrypto.EXPECT().MakeMdID(gomock.Any()).Return(IFCERFTMdID{},
 		errors.New("Stopping resolution process early"))
 	config.mockRep.EXPECT().ReportErr(gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any(), gomock.Any())
 
 	// First try a completely unknown revision
-	cr.Resolve(unmergedHead, MetadataRevisionUninitialized)
+	cr.Resolve(unmergedHead, IFCERFTMetadataRevisionUninitialized)
 	cr.Wait(ctx)
 	// Make sure sure the input is up-to-date
 	if cr.currInput.merged != mergedHead {
@@ -118,7 +118,7 @@ func TestCRInput(t *testing.T) {
 	}
 
 	// Now make sure we ignore future inputs with lesser MDs
-	cr.Resolve(MetadataRevisionUninitialized, mergedHead-1)
+	cr.Resolve(IFCERFTMetadataRevisionUninitialized, mergedHead-1)
 	// This should return without doing anything (i.e., without
 	// calling any mock methods)
 	cr.Wait(ctx)
@@ -130,14 +130,14 @@ func TestCRInputFracturedRange(t *testing.T) {
 	ctx := context.Background()
 
 	// Next, try resolving a few items
-	branchPoint := MetadataRevision(2)
-	unmergedHead := MetadataRevision(5)
-	mergedHead := MetadataRevision(15)
+	branchPoint := IFCERFTMetadataRevision(2)
+	unmergedHead := IFCERFTMetadataRevision(5)
+	mergedHead := IFCERFTMetadataRevision(15)
 
 	cr.fbo.head = &IFCERFTRootMetadata{
-		WriterMetadata: WriterMetadata{
+		IFCERFTWriterMetadata: IFCERFTWriterMetadata{
 			ID:     FakeTlfID(0x1, false),
-			WFlags: MetadataFlagUnmerged,
+			WFlags: IFCERFTMetadataFlagUnmerged,
 		},
 		Revision:  unmergedHead,
 		tlfHandle: &IFCERFTTlfHandle{name: "fake"},
@@ -148,29 +148,29 @@ func TestCRInputFracturedRange(t *testing.T) {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
 			&IFCERFTRootMetadata{
 				Revision: i,
-				WriterMetadata: WriterMetadata{
+				IFCERFTWriterMetadata: IFCERFTWriterMetadata{
 					ID:     FakeTlfID(0x1, false),
-					WFlags: MetadataFlagUnmerged,
+					WFlags: IFCERFTMetadataFlagUnmerged,
 					BID:    cr.fbo.bid,
 				},
 				tlfHandle: &IFCERFTTlfHandle{name: "fake"},
 			}, nil)
 	}
-	for i := MetadataRevisionInitial; i <= branchPoint; i++ {
+	for i := IFCERFTMetadataRevisionInitial; i <= branchPoint; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
-			nil, NoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
+			nil, IFCERFTNoSuchMDError{cr.fbo.id(), branchPoint, cr.fbo.bid})
 	}
 	config.mockMdops.EXPECT().GetUnmergedRange(gomock.Any(), cr.fbo.id(),
-		cr.fbo.bid, MetadataRevisionInitial, branchPoint).Return(nil, nil)
+		cr.fbo.bid, IFCERFTMetadataRevisionInitial, branchPoint).Return(nil, nil)
 
-	skipCacheRevision := MetadataRevision(10)
+	skipCacheRevision := IFCERFTMetadataRevision(10)
 	for i := branchPoint + 1; i <= mergedHead; i++ {
 		// Pretend that revision 10 isn't in the cache, and needs to
 		// be fetched from the server.
 		if i != skipCacheRevision {
 			config.mockMdcache.EXPECT().Get(cr.fbo.id(), i,
-				NullBranchID).Return(&IFCERFTRootMetadata{
-				WriterMetadata: WriterMetadata{
+				IFCERFTNullBranchID).Return(&IFCERFTRootMetadata{
+				IFCERFTWriterMetadata: IFCERFTWriterMetadata{
 					ID: FakeTlfID(0x1, false),
 				},
 				Revision:  i,
@@ -178,35 +178,35 @@ func TestCRInputFracturedRange(t *testing.T) {
 			}, nil)
 		} else {
 			config.mockMdcache.EXPECT().Get(cr.fbo.id(), i,
-				NullBranchID).Return(
-				nil, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
+				IFCERFTNullBranchID).Return(
+				nil, IFCERFTNoSuchMDError{cr.fbo.id(), i, IFCERFTNullBranchID})
 		}
 	}
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(),
 		skipCacheRevision, skipCacheRevision).Return(
 		[]*IFCERFTRootMetadata{{
-			WriterMetadata: WriterMetadata{
+			IFCERFTWriterMetadata: IFCERFTWriterMetadata{
 				ID: FakeTlfID(0x1, false),
 			},
 			Revision:  skipCacheRevision,
 			tlfHandle: &IFCERFTTlfHandle{name: "fake"},
 		}}, nil)
 	for i := mergedHead + 1; i <= branchPoint+2*maxMDsAtATime; i++ {
-		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
-			nil, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
+		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, IFCERFTNullBranchID).Return(
+			nil, IFCERFTNoSuchMDError{cr.fbo.id(), i, IFCERFTNullBranchID})
 	}
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(), mergedHead+1,
 		gomock.Any()).Return(nil, nil)
 
 	// CR doesn't see any operations and so it does resolution early.
 	// Just cause an error so it doesn't bother the mocks too much.
-	config.mockCrypto.EXPECT().MakeMdID(gomock.Any()).Return(MdID{},
+	config.mockCrypto.EXPECT().MakeMdID(gomock.Any()).Return(IFCERFTMdID{},
 		errors.New("Stopping resolution process early"))
 	config.mockRep.EXPECT().ReportErr(gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any(), gomock.Any())
 
 	// Resolve the fractured revision list
-	cr.Resolve(unmergedHead, MetadataRevisionUninitialized)
+	cr.Resolve(unmergedHead, IFCERFTMetadataRevisionUninitialized)
 	cr.Wait(ctx)
 	// Make sure sure the input is up-to-date
 	if cr.currInput.merged != mergedHead {
@@ -225,7 +225,7 @@ func testCRSharedFolderForUsers(t *testing.T, name string, createAs keybase1.UID
 	dir := rootNode
 	for _, d := range dirs {
 		dirNext, _, err := kbfsOps.CreateDir(ctx, dir, d)
-		if _, ok := err.(NameExistsError); ok {
+		if _, ok := err.(IFCERFTNameExistsError); ok {
 			dirNext, _, err = kbfsOps.Lookup(ctx, dir, d)
 			if err != nil {
 				t.Fatalf("Couldn't lookup dir: %v", err)
@@ -259,8 +259,7 @@ func testCRSharedFolderForUsers(t *testing.T, name string, createAs keybase1.UID
 }
 
 func testCRCheckPathsAndActions(t *testing.T, cr *ConflictResolver,
-	expectedUnmergedPaths []path, expectedMergedPaths map[IFCERFTBlockPointer]path,
-	expectedRecreateOps []*createOp,
+	expectedUnmergedPaths []IFCERFTPath, expectedMergedPaths map[IFCERFTBlockPointer]IFCERFTPath, expectedRecreateOps []*createOp,
 	expectedActions map[IFCERFTBlockPointer]crActionList) {
 	ctx := context.Background()
 	lState := makeFBOLockState()
@@ -274,13 +273,13 @@ func testCRCheckPathsAndActions(t *testing.T, cr *ConflictResolver,
 
 	// we don't care about the order of the unmerged paths, so put
 	// them into maps for comparison
-	eUPathMap := make(map[IFCERFTBlockPointer]path)
+	eUPathMap := make(map[IFCERFTBlockPointer]IFCERFTPath)
 	for _, p := range expectedUnmergedPaths {
-		eUPathMap[p.tailPointer()] = p
+		eUPathMap[p.TailPointer()] = p
 	}
-	uPathMap := make(map[IFCERFTBlockPointer]path)
+	uPathMap := make(map[IFCERFTBlockPointer]IFCERFTPath)
 	for _, p := range unmergedPaths {
-		uPathMap[p.tailPointer()] = p
+		uPathMap[p.TailPointer()] = p
 	}
 
 	if !reflect.DeepEqual(eUPathMap, uPathMap) {
@@ -330,7 +329,7 @@ func testCRCheckPathsAndActions(t *testing.T, cr *ConflictResolver,
 			switch x := v[i].(type) {
 			case *dropUnmergedAction:
 				y := v2[i].(*dropUnmergedAction)
-				y.op.setWriterInfo(x.op.getWriterInfo())
+				y.op.SetWriterInfo(x.op.GetWriterInfo())
 			}
 		}
 	}
@@ -406,15 +405,15 @@ func TestCRMergedChainsSimple(t *testing.T) {
 	}
 
 	// Now step through conflict resolution manually for user 2
-	mergedPaths := make(map[IFCERFTBlockPointer]path)
+	mergedPaths := make(map[IFCERFTBlockPointer]IFCERFTPath)
 	expectedUnmergedPath := cr2.fbo.nodeCache.PathFromNode(dir2)
 	mergedPath := cr1.fbo.nodeCache.PathFromNode(dir1)
-	mergedPaths[expectedUnmergedPath.tailPointer()] = mergedPath
+	mergedPaths[expectedUnmergedPath.TailPointer()] = mergedPath
 	expectedActions := map[IFCERFTBlockPointer]crActionList{
-		mergedPath.tailPointer(): {&copyUnmergedEntryAction{
+		mergedPath.TailPointer(): {&copyUnmergedEntryAction{
 			"file2", "file2", "", false, false, DirEntry{}, nil}},
 	}
-	testCRCheckPathsAndActions(t, cr2, []path{expectedUnmergedPath},
+	testCRCheckPathsAndActions(t, cr2, []IFCERFTPath{expectedUnmergedPath},
 		mergedPaths, nil, expectedActions)
 }
 
@@ -468,15 +467,15 @@ func TestCRMergedChainsDifferentDirectories(t *testing.T) {
 	}
 
 	// Now step through conflict resolution manually for user 2
-	mergedPaths := make(map[IFCERFTBlockPointer]path)
+	mergedPaths := make(map[IFCERFTBlockPointer]IFCERFTPath)
 	expectedUnmergedPath := cr2.fbo.nodeCache.PathFromNode(dirB2)
 	mergedPath := cr1.fbo.nodeCache.PathFromNode(dirB1)
-	mergedPaths[expectedUnmergedPath.tailPointer()] = mergedPath
+	mergedPaths[expectedUnmergedPath.TailPointer()] = mergedPath
 	expectedActions := map[IFCERFTBlockPointer]crActionList{
-		mergedPath.tailPointer(): {&copyUnmergedEntryAction{
+		mergedPath.TailPointer(): {&copyUnmergedEntryAction{
 			"file2", "file2", "", false, false, DirEntry{}, nil}},
 	}
-	testCRCheckPathsAndActions(t, cr2, []path{expectedUnmergedPath},
+	testCRCheckPathsAndActions(t, cr2, []IFCERFTPath{expectedUnmergedPath},
 		mergedPaths, nil, expectedActions)
 }
 
@@ -514,9 +513,9 @@ func TestCRMergedChainsDeletedDirectories(t *testing.T) {
 	nodesC := testCRSharedFolderForUsers(t, name, uid1, configs,
 		[]string{"dirA", "dirB", "dirC"})
 	dirC2 := nodesC[uid2]
-	dirAPtr := cr1.fbo.nodeCache.PathFromNode(dirA1).tailPointer()
-	dirBPtr := cr1.fbo.nodeCache.PathFromNode(dirB1).tailPointer()
-	dirCPtr := cr2.fbo.nodeCache.PathFromNode(dirC2).tailPointer()
+	dirAPtr := cr1.fbo.nodeCache.PathFromNode(dirA1).TailPointer()
+	dirBPtr := cr1.fbo.nodeCache.PathFromNode(dirB1).TailPointer()
+	dirCPtr := cr2.fbo.nodeCache.PathFromNode(dirC2).TailPointer()
 
 	// pause user 2
 	_, err = DisableUpdatesForTesting(config2, fb)
@@ -546,22 +545,22 @@ func TestCRMergedChainsDeletedDirectories(t *testing.T) {
 	// The merged path will consist of the latest root and dirA
 	// components, plus the original blockpointers of the deleted
 	// nodes.
-	mergedPaths := make(map[IFCERFTBlockPointer]path)
+	mergedPaths := make(map[IFCERFTBlockPointer]IFCERFTPath)
 	mergedPath := cr1.fbo.nodeCache.PathFromNode(dirA1)
-	mergedPath.path = append(mergedPath.path, pathNode{
+	mergedPath.path = append(mergedPath.path, IFCERFTPathNode{
 		IFCERFTBlockPointer: dirBPtr,
 		Name:                "dirB",
 	})
-	mergedPath.path = append(mergedPath.path, pathNode{
+	mergedPath.path = append(mergedPath.path, IFCERFTPathNode{
 		IFCERFTBlockPointer: dirCPtr,
 		Name:                "dirC",
 	})
-	mergedPaths[expectedUnmergedPath.tailPointer()] = mergedPath
+	mergedPaths[expectedUnmergedPath.TailPointer()] = mergedPath
 
 	coB := newCreateOp("dirB", dirAPtr, IFCERFTDir)
 	coC := newCreateOp("dirC", dirBPtr, IFCERFTDir)
 
-	dirAPtr1 := cr1.fbo.nodeCache.PathFromNode(dirA1).tailPointer()
+	dirAPtr1 := cr1.fbo.nodeCache.PathFromNode(dirA1).TailPointer()
 	expectedActions := map[IFCERFTBlockPointer]crActionList{
 		dirCPtr: {&copyUnmergedEntryAction{"file2", "file2", "",
 			false, false, DirEntry{}, nil}},
@@ -571,7 +570,7 @@ func TestCRMergedChainsDeletedDirectories(t *testing.T) {
 			DirEntry{}, nil}},
 	}
 
-	testCRCheckPathsAndActions(t, cr2, []path{expectedUnmergedPath},
+	testCRCheckPathsAndActions(t, cr2, []IFCERFTPath{expectedUnmergedPath},
 		mergedPaths, []*createOp{coB, coC}, expectedActions)
 }
 
@@ -610,7 +609,7 @@ func TestCRMergedChainsRenamedDirectory(t *testing.T) {
 		[]string{"dirA", "dirB", "dirC"})
 	dirC1 := nodesC[uid1]
 	dirC2 := nodesC[uid2]
-	dirCPtr := cr1.fbo.nodeCache.PathFromNode(dirC1).tailPointer()
+	dirCPtr := cr1.fbo.nodeCache.PathFromNode(dirC1).TailPointer()
 
 	// pause user 2
 	_, err = DisableUpdatesForTesting(config2, fb)
@@ -638,20 +637,20 @@ func TestCRMergedChainsRenamedDirectory(t *testing.T) {
 
 	expectedUnmergedPath := cr2.fbo.nodeCache.PathFromNode(dirC2)
 	// The merged path will be the dirD/dirC path
-	mergedPaths := make(map[IFCERFTBlockPointer]path)
+	mergedPaths := make(map[IFCERFTBlockPointer]IFCERFTPath)
 	mergedPath := cr1.fbo.nodeCache.PathFromNode(dirD1)
-	mergedPath.path = append(mergedPath.path, pathNode{
+	mergedPath.path = append(mergedPath.path, IFCERFTPathNode{
 		IFCERFTBlockPointer: dirCPtr,
 		Name:                "dirC",
 	})
-	mergedPaths[expectedUnmergedPath.tailPointer()] = mergedPath
+	mergedPaths[expectedUnmergedPath.TailPointer()] = mergedPath
 
 	expectedActions := map[IFCERFTBlockPointer]crActionList{
-		mergedPath.tailPointer(): {&copyUnmergedEntryAction{
+		mergedPath.TailPointer(): {&copyUnmergedEntryAction{
 			"file2", "file2", "", false, false, DirEntry{}, nil}},
 	}
 
-	testCRCheckPathsAndActions(t, cr2, []path{expectedUnmergedPath},
+	testCRCheckPathsAndActions(t, cr2, []IFCERFTPath{expectedUnmergedPath},
 		mergedPaths, nil, expectedActions)
 }
 
@@ -706,15 +705,15 @@ func TestCRMergedChainsComplex(t *testing.T) {
 	nodesF := testCRSharedFolderForUsers(t, name, uid1, configs,
 		[]string{"dirE", "dirF"})
 	dirF2 := nodesF[uid2]
-	dirEPtr := cr2.fbo.nodeCache.PathFromNode(dirE1).tailPointer()
-	dirFPtr := cr2.fbo.nodeCache.PathFromNode(dirF2).tailPointer()
+	dirEPtr := cr2.fbo.nodeCache.PathFromNode(dirE1).TailPointer()
+	dirFPtr := cr2.fbo.nodeCache.PathFromNode(dirF2).TailPointer()
 	nodesG := testCRSharedFolderForUsers(t, name, uid1, configs, []string{"dirG"})
 	dirG1 := nodesG[uid1]
 	nodesH := testCRSharedFolderForUsers(t, name, uid1, configs,
 		[]string{"dirG", "dirH"})
 	dirH1 := nodesH[uid1]
 	dirH2 := nodesH[uid2]
-	dirHPtr := cr1.fbo.nodeCache.PathFromNode(dirH1).tailPointer()
+	dirHPtr := cr1.fbo.nodeCache.PathFromNode(dirH1).TailPointer()
 
 	_, _, err = config1.KBFSOps().CreateFile(ctx, dirD1, "file5", false, IFCERFTNoEXCL)
 	if err != nil {
@@ -795,46 +794,46 @@ func TestCRMergedChainsComplex(t *testing.T) {
 	// no expected unmerged path for dirD
 	uPathB2 := cr2.fbo.nodeCache.PathFromNode(dirB2)
 
-	mergedPaths := make(map[IFCERFTBlockPointer]path)
+	mergedPaths := make(map[IFCERFTBlockPointer]IFCERFTPath)
 	// Both users updated A
 	mergedPathA := cr1.fbo.nodeCache.PathFromNode(dirA1)
-	mergedPaths[uPathA2.tailPointer()] = mergedPathA
+	mergedPaths[uPathA2.TailPointer()] = mergedPathA
 	// user 1 deleted dirF, so reconstruct
 	mergedPathF := cr1.fbo.nodeCache.PathFromNode(dirE1)
-	mergedPathF.path = append(mergedPathF.path, pathNode{
+	mergedPathF.path = append(mergedPathF.path, IFCERFTPathNode{
 		IFCERFTBlockPointer: dirFPtr,
 		Name:                "dirF",
 	})
-	mergedPaths[uPathF2.tailPointer()] = mergedPathF
+	mergedPaths[uPathF2.TailPointer()] = mergedPathF
 	// dirH from user 2 is /dirA/dirI for user 1
 	mergedPathH := cr1.fbo.nodeCache.PathFromNode(dirA1)
-	mergedPathH.path = append(mergedPathH.path, pathNode{
+	mergedPathH.path = append(mergedPathH.path, IFCERFTPathNode{
 		IFCERFTBlockPointer: dirHPtr,
 		Name:                "dirI",
 	})
-	mergedPaths[uPathH2.tailPointer()] = mergedPathH
+	mergedPaths[uPathH2.TailPointer()] = mergedPathH
 	// dirB wasn't touched by user 1
 	mergedPathB := cr1.fbo.nodeCache.PathFromNode(dirB1)
-	mergedPaths[uPathB2.tailPointer()] = mergedPathB
+	mergedPaths[uPathB2.TailPointer()] = mergedPathB
 
 	coF := newCreateOp("dirF", dirEPtr, IFCERFTDir)
 
 	mergedPathE := cr1.fbo.nodeCache.PathFromNode(dirE1)
 	expectedActions := map[IFCERFTBlockPointer]crActionList{
-		mergedPathA.tailPointer(): {&copyUnmergedEntryAction{
+		mergedPathA.TailPointer(): {&copyUnmergedEntryAction{
 			"dirJ", "dirJ", "", false, false, DirEntry{}, nil}},
-		mergedPathE.tailPointer(): {&copyUnmergedEntryAction{
+		mergedPathE.TailPointer(): {&copyUnmergedEntryAction{
 			"dirF", "dirF", "", false, false, DirEntry{}, nil}},
-		mergedPathF.tailPointer(): {&copyUnmergedEntryAction{
+		mergedPathF.TailPointer(): {&copyUnmergedEntryAction{
 			"file3", "file3", "", false, false, DirEntry{}, nil}},
-		mergedPathH.tailPointer(): {&copyUnmergedEntryAction{
+		mergedPathH.TailPointer(): {&copyUnmergedEntryAction{
 			"file4", "file4", "", false, false, DirEntry{}, nil}},
-		mergedPathB.tailPointer(): {&rmMergedEntryAction{"dirD"}},
+		mergedPathB.TailPointer(): {&rmMergedEntryAction{"dirD"}},
 	}
 	// `rm file5` doesn't get an action because the parent directory
 	// was deleted in the unmerged branch.
 
-	testCRCheckPathsAndActions(t, cr2, []path{uPathA2, uPathF2, uPathH2,
+	testCRCheckPathsAndActions(t, cr2, []IFCERFTPath{uPathA2, uPathF2, uPathH2,
 		uPathB2}, mergedPaths, []*createOp{coF}, expectedActions)
 }
 
@@ -874,7 +873,7 @@ func TestCRMergedChainsRenameCycleSimple(t *testing.T) {
 	cr2 := testCRGetCROrBust(t, config2, fb)
 	cr2.Shutdown()
 
-	dirRootPtr := cr2.fbo.nodeCache.PathFromNode(dirRoot2).tailPointer()
+	dirRootPtr := cr2.fbo.nodeCache.PathFromNode(dirRoot2).TailPointer()
 
 	// pause user 2
 	_, err = DisableUpdatesForTesting(config2, fb)
@@ -896,28 +895,28 @@ func TestCRMergedChainsRenameCycleSimple(t *testing.T) {
 
 	// Now step through conflict resolution manually for user 2
 
-	mergedPaths := make(map[IFCERFTBlockPointer]path)
+	mergedPaths := make(map[IFCERFTBlockPointer]IFCERFTPath)
 
 	// root
 	unmergedPathRoot := cr2.fbo.nodeCache.PathFromNode(dirRoot2)
 	mergedPathRoot := cr1.fbo.nodeCache.PathFromNode(dirRoot1)
-	mergedPaths[unmergedPathRoot.tailPointer()] = mergedPathRoot
+	mergedPaths[unmergedPathRoot.TailPointer()] = mergedPathRoot
 	unmergedPathB := cr2.fbo.nodeCache.PathFromNode(dirB2)
 	mergedPathB := cr1.fbo.nodeCache.PathFromNode(dirB1)
-	mergedPaths[unmergedPathB.tailPointer()] = mergedPathB
+	mergedPaths[unmergedPathB.TailPointer()] = mergedPathB
 
 	ro := newRmOp("dirA", dirRootPtr)
-	ro.Dir.Ref = unmergedPathRoot.tailPointer()
+	ro.Dir.Ref = unmergedPathRoot.TailPointer()
 	ro.dropThis = true
-	ro.setWriterInfo(writerInfo{name: "u2"})
-	ro.setFinalPath(unmergedPathRoot)
+	ro.SetWriterInfo(IFCERFTWriterInfo{Name: "u2"})
+	ro.SetFinalPath(unmergedPathRoot)
 	expectedActions := map[IFCERFTBlockPointer]crActionList{
-		mergedPathRoot.tailPointer(): {&dropUnmergedAction{ro}},
-		mergedPathB.tailPointer(): {&copyUnmergedEntryAction{
+		mergedPathRoot.TailPointer(): {&dropUnmergedAction{ro}},
+		mergedPathB.TailPointer(): {&copyUnmergedEntryAction{
 			"dirA", "dirA", "./../", false, false, DirEntry{}, nil}},
 	}
 
-	testCRCheckPathsAndActions(t, cr2, []path{unmergedPathRoot, unmergedPathB},
+	testCRCheckPathsAndActions(t, cr2, []IFCERFTPath{unmergedPathRoot, unmergedPathB},
 		mergedPaths, nil, expectedActions)
 }
 
@@ -970,22 +969,22 @@ func TestCRMergedChainsConflictSimple(t *testing.T) {
 	}
 
 	// Now step through conflict resolution manually for user 2
-	mergedPaths := make(map[IFCERFTBlockPointer]path)
+	mergedPaths := make(map[IFCERFTBlockPointer]IFCERFTPath)
 
 	// root
 	unmergedPathRoot := cr2.fbo.nodeCache.PathFromNode(dirRoot2)
 	mergedPathRoot := cr1.fbo.nodeCache.PathFromNode(dirRoot1)
-	mergedPaths[unmergedPathRoot.tailPointer()] = mergedPathRoot
+	mergedPaths[unmergedPathRoot.TailPointer()] = mergedPathRoot
 
 	cre := WriterDeviceDateConflictRenamer{}
 	expectedActions := map[IFCERFTBlockPointer]crActionList{
-		mergedPathRoot.tailPointer(): {&renameUnmergedAction{
+		mergedPathRoot.TailPointer(): {&renameUnmergedAction{
 			"file1",
 			cre.ConflictRenameHelper(now, "u2", "dev1", "file1"),
 			"", 0, false, zeroPtr, zeroPtr}},
 	}
 
-	testCRCheckPathsAndActions(t, cr2, []path{unmergedPathRoot},
+	testCRCheckPathsAndActions(t, cr2, []IFCERFTPath{unmergedPathRoot},
 		mergedPaths, nil, expectedActions)
 }
 
@@ -1035,8 +1034,8 @@ func TestCRMergedChainsConflictFileCollapse(t *testing.T) {
 		t.Fatalf("Couldn't lookup file: %v", err)
 	}
 
-	filePtr := cr2.fbo.nodeCache.PathFromNode(file2).tailPointer()
-	dirRootPtr := cr2.fbo.nodeCache.PathFromNode(dirRoot2).tailPointer()
+	filePtr := cr2.fbo.nodeCache.PathFromNode(file2).TailPointer()
+	dirRootPtr := cr2.fbo.nodeCache.PathFromNode(dirRoot2).TailPointer()
 
 	// pause user 2
 	_, err = DisableUpdatesForTesting(config2, fb)
@@ -1069,16 +1068,16 @@ func TestCRMergedChainsConflictFileCollapse(t *testing.T) {
 	}
 
 	// Now step through conflict resolution manually for user 2
-	mergedPaths := make(map[IFCERFTBlockPointer]path)
+	mergedPaths := make(map[IFCERFTBlockPointer]IFCERFTPath)
 
 	// file (needs to be recreated)
 	unmergedPathFile := cr2.fbo.nodeCache.PathFromNode(file2)
 	mergedPathFile := cr1.fbo.nodeCache.PathFromNode(dirRoot1)
-	mergedPathFile.path = append(mergedPathFile.path, pathNode{
+	mergedPathFile.path = append(mergedPathFile.path, IFCERFTPathNode{
 		IFCERFTBlockPointer: filePtr,
 		Name:                "file",
 	})
-	mergedPaths[unmergedPathFile.tailPointer()] = mergedPathFile
+	mergedPaths[unmergedPathFile.TailPointer()] = mergedPathFile
 
 	coFile := newCreateOp("file", dirRootPtr, IFCERFTExec)
 
@@ -1086,13 +1085,13 @@ func TestCRMergedChainsConflictFileCollapse(t *testing.T) {
 	mergedPathRoot := cr1.fbo.nodeCache.PathFromNode(dirRoot1)
 	// Both unmerged actions should collapse into just one rename operation
 	expectedActions := map[IFCERFTBlockPointer]crActionList{
-		mergedPathRoot.tailPointer(): {&renameUnmergedAction{
+		mergedPathRoot.TailPointer(): {&renameUnmergedAction{
 			"file",
 			cre.ConflictRenameHelper(now, "u2", "dev1", "file"),
 			"", 0, false, zeroPtr, zeroPtr}},
 	}
 
-	testCRCheckPathsAndActions(t, cr2, []path{unmergedPathFile},
+	testCRCheckPathsAndActions(t, cr2, []IFCERFTPath{unmergedPathFile},
 		mergedPaths, []*createOp{coFile}, expectedActions)
 }
 
@@ -1167,7 +1166,7 @@ func TestCRDoActionsSimple(t *testing.T) {
 
 	// Does the merged block contain both entries?
 	mergedRootPath := cr1.fbo.nodeCache.PathFromNode(dir1)
-	block1, ok := lbc[mergedRootPath.tailPointer()]
+	block1, ok := lbc[mergedRootPath.TailPointer()]
 	if !ok {
 		t.Fatalf("Couldn't find merged block at path %s", mergedRootPath)
 	}
@@ -1288,9 +1287,9 @@ func TestCRDoActionsWriteConflict(t *testing.T) {
 	if len(newFileBlocks) != 1 {
 		t.Errorf("Unexpected new file blocks!")
 	}
-	if blocks, ok := newFileBlocks[mergedRootPath.tailPointer()]; !ok {
+	if blocks, ok := newFileBlocks[mergedRootPath.TailPointer()]; !ok {
 		t.Errorf("No blocks for dir merged ptr: %v",
-			mergedRootPath.tailPointer())
+			mergedRootPath.TailPointer())
 	} else if len(blocks) != 1 {
 		t.Errorf("Unexpected number of blocks")
 	} else if fblock, ok := blocks[mergedName]; !ok {

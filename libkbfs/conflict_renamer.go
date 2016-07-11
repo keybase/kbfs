@@ -20,10 +20,10 @@ type WriterDeviceDateConflictRenamer struct {
 
 // ConflictRename implements the ConflictRename interface for
 // TimeAndWriterConflictRenamer.
-func (cr WriterDeviceDateConflictRenamer) ConflictRename(op op, original string) string {
+func (cr WriterDeviceDateConflictRenamer) ConflictRename(op IFCERFTOps, original string) string {
 	now := cr.config.Clock().Now()
-	winfo := op.getWriterInfo()
-	return cr.ConflictRenameHelper(now, string(winfo.name), winfo.deviceName, original)
+	winfo := op.GetWriterInfo()
+	return cr.ConflictRenameHelper(now, string(winfo.Name), winfo.DeviceName, original)
 }
 
 // ConflictRenameHelper is a helper for ConflictRename especially useful from
@@ -59,11 +59,11 @@ func splitExtension(path string) (string, string) {
 	return path, ""
 }
 
-func newWriterInfo(ctx context.Context, cfg IFCERFTConfig, uid keybase1.UID, kid keybase1.KID) (writerInfo, error) {
+func newWriterInfo(ctx context.Context, cfg IFCERFTConfig, uid keybase1.UID, kid keybase1.KID) (IFCERFTWriterInfo, error) {
 	ui, err := cfg.KeybaseDaemon().LoadUserPlusKeys(ctx, uid)
 	if err != nil {
-		return writerInfo{}, err
+		return IFCERFTWriterInfo{}, err
 	}
 
-	return writerInfo{name: ui.Name, kid: kid, deviceName: ui.KIDNames[kid]}, nil
+	return IFCERFTWriterInfo{Name: ui.Name, Kid: kid, DeviceName: ui.KIDNames[kid]}, nil
 }

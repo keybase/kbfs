@@ -12,16 +12,15 @@ import (
 )
 
 type mdRange struct {
-	start MetadataRevision
-	end   MetadataRevision
+	start IFCERFTMetadataRevision
+	end   IFCERFTMetadataRevision
 }
 
-func getMDRange(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, bid BranchID,
-	start MetadataRevision, end MetadataRevision, mStatus IFCERFTMergeStatus) (
+func getMDRange(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, bid IFCERFTBranchID, start IFCERFTMetadataRevision, end IFCERFTMetadataRevision, mStatus IFCERFTMergeStatus) (
 	rmds []*IFCERFTRootMetadata, err error) {
 	// The range is invalid.  Don't treat as an error though; it just
 	// indicates that we don't yet know about any revisions.
-	if start < MetadataRevisionInitial || end < MetadataRevisionInitial {
+	if start < IFCERFTMetadataRevisionInitial || end < IFCERFTMetadataRevisionInitial {
 		return nil, nil
 	}
 
@@ -110,17 +109,17 @@ func getMDRange(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, bid 
 //
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
-func getMergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, startRev MetadataRevision) (mergedRmds []*IFCERFTRootMetadata, err error) {
+func getMergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, startRev IFCERFTMetadataRevision) (mergedRmds []*IFCERFTRootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
-	if startRev < MetadataRevisionInitial {
+	if startRev < IFCERFTMetadataRevisionInitial {
 		return nil, nil
 	}
 
 	start := startRev
 	for {
 		end := start + maxMDsAtATime - 1 // range is inclusive
-		rmds, err := getMDRange(ctx, config, id, NullBranchID, start, end,
+		rmds, err := getMDRange(ctx, config, id, IFCERFTNullBranchID, start, end,
 			IFCERFTMerged)
 		if err != nil {
 			return nil, err
@@ -141,11 +140,11 @@ func getMergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTTlf
 	// readable until the newer revision, containing the key for this
 	// device, is processed.
 	for _, rmd := range mergedRmds {
-		if err := rmd.isReadableOrError(ctx, config); err != nil {
+		if err := rmd.IsReadableOrError(ctx, config); err != nil {
 			// The right secret key for the given rmd's key generation
 			// may only be present in the most recent rmd.
 			latestRmd, err := mergedRmds[len(mergedRmds)-1].
-				deepCopy(config.Codec(), true)
+				DeepCopy(config.Codec(), true)
 			if err != nil {
 				return nil, err
 			}
@@ -170,12 +169,12 @@ func getMergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTTlf
 //
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
-func getUnmergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, bid BranchID, startRev MetadataRevision) (
-	currHead MetadataRevision, unmergedRmds []*IFCERFTRootMetadata, err error) {
+func getUnmergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTTlfID, bid IFCERFTBranchID, startRev IFCERFTMetadataRevision) (
+	currHead IFCERFTMetadataRevision, unmergedRmds []*IFCERFTRootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
-	if startRev < MetadataRevisionInitial {
-		return MetadataRevisionUninitialized, nil, nil
+	if startRev < IFCERFTMetadataRevisionInitial {
+		return IFCERFTMetadataRevisionUninitialized, nil, nil
 	}
 
 	// walk backwards until we find one that is merged
@@ -183,14 +182,14 @@ func getUnmergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTT
 	for {
 		// first look up all unmerged MD revisions older than my current head
 		startRev := currHead - maxMDsAtATime + 1 // (MetadataRevision is signed)
-		if startRev < MetadataRevisionInitial {
-			startRev = MetadataRevisionInitial
+		if startRev < IFCERFTMetadataRevisionInitial {
+			startRev = IFCERFTMetadataRevisionInitial
 		}
 
 		rmds, err := getMDRange(ctx, config, id, bid, startRev, currHead,
 			IFCERFTUnmerged)
 		if err != nil {
-			return MetadataRevisionUninitialized, nil, err
+			return IFCERFTMetadataRevisionUninitialized, nil, err
 		}
 
 		numNew := len(rmds)
@@ -201,8 +200,8 @@ func getUnmergedMDUpdates(ctx context.Context, config IFCERFTConfig, id IFCERFTT
 		if numNew > 0 {
 			currHead = rmds[0].Revision - 1
 		}
-		if currHead < MetadataRevisionInitial {
-			return MetadataRevisionUninitialized, nil,
+		if currHead < IFCERFTMetadataRevisionInitial {
+			return IFCERFTMetadataRevisionUninitialized, nil,
 				errors.New("Ran out of MD updates to unstage!")
 		}
 		// TODO: limit the number of MDs we're allowed to hold in
@@ -235,7 +234,7 @@ func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecryp
 		k, err := config.KeyManager().GetTLFCryptKeyForMDDecryption(ctx,
 			rmdToDecrypt, rmdWithKeys)
 
-		privateMetadata := &PrivateMetadata{}
+		privateMetadata := &IFCERFTPrivateMetadata{}
 		if err != nil {
 			// Get current UID.
 			_, uid, uidErr := config.KBPKI().GetCurrentUserInfo(ctx)
@@ -243,8 +242,8 @@ func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecryp
 				return uidErr
 			}
 			isReader := handle.IsReader(uid)
-			_, isSelfRekeyError := err.(NeedSelfRekeyError)
-			_, isOtherRekeyError := err.(NeedOtherRekeyError)
+			_, isSelfRekeyError := err.(IFCERFTNeedSelfRekeyError)
+			_, isOtherRekeyError := err.(IFCERFTNeedOtherRekeyError)
 			if isReader && (isOtherRekeyError || isSelfRekeyError) {
 				// Rekey errors are expected if this client is a
 				// valid folder participant but doesn't have the
@@ -283,7 +282,7 @@ func decryptMDPrivateData(ctx context.Context, config IFCERFTConfig, rmdToDecryp
 
 		fblock, ok := block.(*FileBlock)
 		if !ok {
-			return NotFileBlockError{info.IFCERFTBlockPointer, IFCERFTMasterBranch, path{}}
+			return IFCERFTNotFileBlockError{info.IFCERFTBlockPointer, IFCERFTMasterBranch, IFCERFTPath{}}
 		}
 
 		err = config.Codec().Decode(fblock.Contents, &rmdToDecrypt.data.Changes)

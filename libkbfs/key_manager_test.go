@@ -39,19 +39,19 @@ func expectCachedGetTLFCryptKey(config *ConfigMock, rmd *IFCERFTRootMetadata, ke
 
 func expectUncachedGetTLFCryptKey(config *ConfigMock, rmd *IFCERFTRootMetadata, keyGen IFCERFTKeyGen, uid keybase1.UID, subkey IFCERFTCryptPublicKey, encrypt bool) {
 	config.mockKcache.EXPECT().GetTLFCryptKey(rmd.ID, keyGen).
-		Return(IFCERFTTLFCryptKey{}, KeyCacheMissError{})
+		Return(IFCERFTTLFCryptKey{}, IFCERFTKeyCacheMissError{})
 
 	// get the xor'd key out of the metadata
 	config.mockKbpki.EXPECT().GetCurrentCryptPublicKey(gomock.Any()).
 		Return(subkey, nil)
 	config.mockCrypto.EXPECT().DecryptTLFCryptKeyClientHalf(gomock.Any(),
 		IFCERFTTLFEphemeralPublicKey{}, gomock.Any()).
-		Return(TLFCryptKeyClientHalf{}, nil)
+		Return(IFCERFTTLFCryptKeyClientHalf{}, nil)
 
 	// get the server-side half and retrieve the real secret key
 	config.mockKops.EXPECT().GetTLFCryptKeyServerHalf(gomock.Any(),
-		gomock.Any(), gomock.Any()).Return(TLFCryptKeyServerHalf{}, nil)
-	config.mockCrypto.EXPECT().UnmaskTLFCryptKey(TLFCryptKeyServerHalf{}, TLFCryptKeyClientHalf{}).Return(IFCERFTTLFCryptKey{}, nil)
+		gomock.Any(), gomock.Any()).Return(IFCERFTTLFCryptKeyServerHalf{}, nil)
+	config.mockCrypto.EXPECT().UnmaskTLFCryptKey(IFCERFTTLFCryptKeyServerHalf{}, IFCERFTTLFCryptKeyClientHalf{}).Return(IFCERFTTLFCryptKey{}, nil)
 
 	// now put the key into the cache
 	if !encrypt {
@@ -62,18 +62,18 @@ func expectUncachedGetTLFCryptKey(config *ConfigMock, rmd *IFCERFTRootMetadata, 
 
 func expectUncachedGetTLFCryptKeyAnyDevice(config *ConfigMock, rmd *IFCERFTRootMetadata, keyGen IFCERFTKeyGen, uid keybase1.UID, subkey IFCERFTCryptPublicKey, encrypt bool) {
 	config.mockKcache.EXPECT().GetTLFCryptKey(rmd.ID, keyGen).
-		Return(IFCERFTTLFCryptKey{}, KeyCacheMissError{})
+		Return(IFCERFTTLFCryptKey{}, IFCERFTKeyCacheMissError{})
 
 	// get the xor'd key out of the metadata
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), uid).
 		Return([]IFCERFTCryptPublicKey{subkey}, nil)
 	config.mockCrypto.EXPECT().DecryptTLFCryptKeyClientHalfAny(gomock.Any(),
-		gomock.Any(), false).Return(TLFCryptKeyClientHalf{}, 0, nil)
+		gomock.Any(), false).Return(IFCERFTTLFCryptKeyClientHalf{}, 0, nil)
 
 	// get the server-side half and retrieve the real secret key
 	config.mockKops.EXPECT().GetTLFCryptKeyServerHalf(gomock.Any(),
-		gomock.Any(), gomock.Any()).Return(TLFCryptKeyServerHalf{}, nil)
-	config.mockCrypto.EXPECT().UnmaskTLFCryptKey(TLFCryptKeyServerHalf{}, TLFCryptKeyClientHalf{}).Return(IFCERFTTLFCryptKey{}, nil)
+		gomock.Any(), gomock.Any()).Return(IFCERFTTLFCryptKeyServerHalf{}, nil)
+	config.mockCrypto.EXPECT().UnmaskTLFCryptKey(IFCERFTTLFCryptKeyServerHalf{}, IFCERFTTLFCryptKeyClientHalf{}).Return(IFCERFTTLFCryptKey{}, nil)
 
 	// now put the key into the cache
 	if !encrypt {
@@ -90,18 +90,18 @@ func expectRekey(config *ConfigMock, rmd *IFCERFTRootMetadata, numDevices int, h
 	}
 
 	// generate new keys
-	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(TLFPublicKey{}, TLFPrivateKey{}, IFCERFTTLFEphemeralPublicKey{}, TLFEphemeralPrivateKey{}, IFCERFTTLFCryptKey{}, nil)
-	config.mockCrypto.EXPECT().MakeRandomTLFCryptKeyServerHalf().Return(TLFCryptKeyServerHalf{}, nil).Times(numDevices)
+	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(IFCERFTTLFPublicKey{}, IFCERFTTLFPrivateKey{}, IFCERFTTLFEphemeralPublicKey{}, IFCERFTTLFEphemeralPrivateKey{}, IFCERFTTLFCryptKey{}, nil)
+	config.mockCrypto.EXPECT().MakeRandomTLFCryptKeyServerHalf().Return(IFCERFTTLFCryptKeyServerHalf{}, nil).Times(numDevices)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), gomock.Any()).
 		Return([]IFCERFTCryptPublicKey{subkey}, nil).Times(numDevices)
 
 	// make keys for the one device
-	config.mockCrypto.EXPECT().MaskTLFCryptKey(TLFCryptKeyServerHalf{}, IFCERFTTLFCryptKey{}).Return(TLFCryptKeyClientHalf{}, nil).Times(numDevices)
-	config.mockCrypto.EXPECT().EncryptTLFCryptKeyClientHalf(TLFEphemeralPrivateKey{}, subkey, TLFCryptKeyClientHalf{}).Return(IFCERFTEncryptedTLFCryptKeyClientHalf{}, nil).Times(numDevices)
+	config.mockCrypto.EXPECT().MaskTLFCryptKey(IFCERFTTLFCryptKeyServerHalf{}, IFCERFTTLFCryptKey{}).Return(IFCERFTTLFCryptKeyClientHalf{}, nil).Times(numDevices)
+	config.mockCrypto.EXPECT().EncryptTLFCryptKeyClientHalf(IFCERFTTLFEphemeralPrivateKey{}, subkey, IFCERFTTLFCryptKeyClientHalf{}).Return(IFCERFTEncryptedTLFCryptKeyClientHalf{}, nil).Times(numDevices)
 	config.mockKops.EXPECT().PutTLFCryptKeyServerHalves(gomock.Any(), gomock.Any()).Return(nil)
-	config.mockCrypto.EXPECT().GetTLFCryptKeyServerHalfID(gomock.Any(), gomock.Any(), gomock.Any()).Return(TLFCryptKeyServerHalfID{}, nil).Times(numDevices)
+	config.mockCrypto.EXPECT().GetTLFCryptKeyServerHalfID(gomock.Any(), gomock.Any(), gomock.Any()).Return(IFCERFTTLFCryptKeyServerHalfID{}, nil).Times(numDevices)
 
 	// Ignore Notify and Flush calls for now
 	config.mockRep.EXPECT().Notify(gomock.Any(), gomock.Any()).AnyTimes()
@@ -203,11 +203,11 @@ func TestKeyManagerCachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 }
 
 // makeDirRKeyBundle creates a new bundle with a reader key.
-func makeDirRKeyBundle(uid keybase1.UID, cryptPublicKey IFCERFTCryptPublicKey) TLFReaderKeyBundle {
-	return TLFReaderKeyBundle{
-		RKeys: UserDeviceKeyInfoMap{
+func makeDirRKeyBundle(uid keybase1.UID, cryptPublicKey IFCERFTCryptPublicKey) IFCERFTTLFReaderKeyBundle {
+	return IFCERFTTLFReaderKeyBundle{
+		RKeys: IFCERFTUserDeviceKeyInfoMap{
 			uid: {
-				cryptPublicKey.kid: TLFCryptKeyInfo{
+				cryptPublicKey.kid: IFCERFTTLFCryptKeyInfo{
 					EPubKeyIndex: -1,
 				},
 			},
@@ -581,8 +581,8 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 	// Now resolve which gets rid of the unresolved writers, but
 	// doesn't otherwise change the handle since bob is already in it.
 	oldKeyGen = rmd.LatestKeyGeneration()
-	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(TLFPublicKey{},
-		TLFPrivateKey{}, IFCERFTTLFEphemeralPublicKey{}, TLFEphemeralPrivateKey{},
+	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(IFCERFTTLFPublicKey{},
+		IFCERFTTLFPrivateKey{}, IFCERFTTLFEphemeralPublicKey{}, IFCERFTTLFEphemeralPrivateKey{},
 		IFCERFTTLFCryptKey{}, nil)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
@@ -660,7 +660,7 @@ func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 	// user 2 should be unable to read the data now since its device
 	// wasn't registered when the folder was originally created.
 	_, err = GetRootNodeForTest(config2Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 
@@ -878,11 +878,11 @@ func TestKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T) {
 	// device wasn't registered when the folder was originally
 	// created.
 	_, err = GetRootNodeForTest(config2Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 	_, err = GetRootNodeForTest(config3, name, false)
-	if _, ok := err.(NeedOtherRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedOtherRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 
@@ -955,7 +955,7 @@ func TestKeyManagerSelfRekeyAcrossDevices(t *testing.T) {
 	// user 2 device 2 should be unable to read the data now since its device
 	// wasn't registered when the folder was originally created.
 	_, err = GetRootNodeForTest(config2Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 
@@ -1049,7 +1049,7 @@ func TestKeyManagerReaderRekey(t *testing.T) {
 	// wasn't registered when the folder was originally created.
 	kbfsOps2Dev2 := config2Dev2.KBFSOps()
 	_, err = GetRootNodeForTest(config2Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 
@@ -1067,7 +1067,7 @@ func TestKeyManagerReaderRekey(t *testing.T) {
 
 	t.Log("User 1 device 2 should still be unable to read")
 	_, err = GetRootNodeForTest(config1Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 
@@ -1131,7 +1131,7 @@ func TestKeyManagerReaderRekeyAndRevoke(t *testing.T) {
 	// user 2 device 3 should be unable to read the data now since its device
 	// wasn't registered when the folder was originally created.
 	_, err = GetRootNodeForTest(config2Dev3, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 
@@ -1223,7 +1223,7 @@ func TestKeyManagerRekeyBit(t *testing.T) {
 	// user 2 should be unable to read the data now since its device
 	// wasn't registered when the folder was originally created.
 	_, err = GetRootNodeForTest(config2Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 
@@ -1284,7 +1284,7 @@ func TestKeyManagerRekeyBit(t *testing.T) {
 	// user 3 dev 2 should be unable to read the data now since its device
 	// wasn't registered when the folder was originally created.
 	_, err = GetRootNodeForTest(config3Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 
@@ -1377,7 +1377,7 @@ func TestKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T) {
 	// wasn't registered when the folder was originally created.
 	kbfsOps2Dev2 := config2Dev2.KBFSOps()
 	_, err = GetRootNodeForTest(config2Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 
@@ -1456,7 +1456,7 @@ type cryptoLocalTrapAny struct {
 func (clta *cryptoLocalTrapAny) DecryptTLFCryptKeyClientHalfAny(
 	ctx context.Context,
 	keys []IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
-	TLFCryptKeyClientHalf, int, error) {
+	IFCERFTTLFCryptKeyClientHalf, int, error) {
 	clta.promptCh <- promptPaper
 	// Decrypt the key half with the given config object
 	return clta.cryptoToUse.DecryptTLFCryptKeyClientHalfAny(
@@ -1747,7 +1747,7 @@ func TestKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T) {
 	// One failed decryption attempt
 	<-c
 	err = <-errCh
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 

@@ -16,8 +16,8 @@ type MDCacheStandard struct {
 
 type mdCacheKey struct {
 	tlf IFCERFTTlfID
-	rev MetadataRevision
-	bid BranchID
+	rev IFCERFTMetadataRevision
+	bid IFCERFTBranchID
 }
 
 // NewMDCacheStandard constructs a new MDCacheStandard using the given
@@ -31,16 +31,16 @@ func NewMDCacheStandard(capacity int) *MDCacheStandard {
 }
 
 // Get implements the MDCache interface for MDCacheStandard.
-func (md *MDCacheStandard) Get(tlf IFCERFTTlfID, rev MetadataRevision, bid BranchID) (
+func (md *MDCacheStandard) Get(tlf IFCERFTTlfID, rev IFCERFTMetadataRevision, bid IFCERFTBranchID) (
 	*IFCERFTRootMetadata, error) {
 	key := mdCacheKey{tlf, rev, bid}
 	if tmp, ok := md.lru.Get(key); ok {
 		if rmd, ok := tmp.(*IFCERFTRootMetadata); ok {
 			return rmd, nil
 		}
-		return nil, BadMDError{tlf}
+		return nil, IFCERFTBadMDError{tlf}
 	}
-	return nil, NoSuchMDError{tlf, rev, bid}
+	return nil, IFCERFTNoSuchMDError{tlf, rev, bid}
 }
 
 // Put implements the MDCache interface for MDCacheStandard.

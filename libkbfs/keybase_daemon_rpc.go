@@ -126,9 +126,9 @@ func processKey(publicKey keybase1.PublicKey,
 		return err
 	}
 	if publicKey.IsSibkey {
-		addVerifyingKey(MakeVerifyingKey(key.GetKID()))
+		addVerifyingKey(IFCERFTMakeVerifyingKey(key.GetKID()))
 	} else {
-		addCryptPublicKey(MakeCryptPublicKey(key.GetKID()))
+		addCryptPublicKey(IFCERFTMakeCryptPublicKey(key.GetKID()))
 	}
 	if publicKey.DeviceDescription != "" {
 		kidNames[publicKey.KID] = publicKey.DeviceDescription
@@ -510,9 +510,9 @@ func (k *KeybaseDaemonRPC) ShouldRetryOnConnect(err error) bool {
 func convertIdentifyError(assertion string, err error) error {
 	switch err.(type) {
 	case libkb.NotFoundError:
-		return NoSuchUserError{assertion}
+		return IFCERFTNoSuchUserError{assertion}
 	case libkb.ResolutionError:
-		return NoSuchUserError{assertion}
+		return IFCERFTNoSuchUserError{assertion}
 	}
 	return err
 }
@@ -633,8 +633,8 @@ func (k *KeybaseDaemonRPC) CurrentSession(ctx context.Context, sessionID int) (
 
 	res, err := k.sessionClient.CurrentSession(ctx, sessionID)
 	if err != nil {
-		if ncs := (NoCurrentSessionError{}); err.Error() ==
-			NoCurrentSessionExpectedError {
+		if ncs := (IFCERFTNoCurrentSessionError{}); err.Error() ==
+			IFCERFTNoCurrentSessionExpectedError {
 			// Use an error with a proper OS error code attached to
 			// it.  TODO: move ErrNoSession from client/go/service to
 			// client/go/libkb, so we can use types for the check
@@ -652,8 +652,8 @@ func (k *KeybaseDaemonRPC) CurrentSession(ctx context.Context, sessionID int) (
 	if err != nil {
 		return IFCERFTSessionInfo{}, err
 	}
-	cryptPublicKey := MakeCryptPublicKey(deviceSubkey.GetKID())
-	verifyingKey := MakeVerifyingKey(deviceSibkey.GetKID())
+	cryptPublicKey := IFCERFTMakeCryptPublicKey(deviceSubkey.GetKID())
+	verifyingKey := IFCERFTMakeVerifyingKey(deviceSibkey.GetKID())
 	s := IFCERFTSessionInfo{
 		Name:           libkb.NewNormalizedUsername(res.Username),
 		UID:            keybase1.UID(res.Uid),

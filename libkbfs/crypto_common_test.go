@@ -63,11 +63,11 @@ func TestCryptoCommonRandomTLFKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if a1 == (TLFPublicKey{}) {
+	if a1 == (IFCERFTTLFPublicKey{}) {
 		t.Errorf("zero TLFPublicKey (a1)")
 	}
 
-	if a2 == (TLFPrivateKey{}) {
+	if a2 == (IFCERFTTLFPrivateKey{}) {
 		t.Errorf("zero TLFPrivateKey (a2)")
 	}
 
@@ -75,7 +75,7 @@ func TestCryptoCommonRandomTLFKeys(t *testing.T) {
 		t.Errorf("zero TLFEphemeralPublicKey (a3)")
 	}
 
-	if a4 == (TLFEphemeralPrivateKey{}) {
+	if a4 == (IFCERFTTLFEphemeralPrivateKey{}) {
 		t.Errorf("zero TLFEphemeralPrivateKey (a4)")
 	}
 
@@ -83,11 +83,11 @@ func TestCryptoCommonRandomTLFKeys(t *testing.T) {
 		t.Errorf("zero TLFCryptKey (a5)")
 	}
 
-	if b1 == (TLFPublicKey{}) {
+	if b1 == (IFCERFTTLFPublicKey{}) {
 		t.Errorf("zero TLFPublicKey (1)")
 	}
 
-	if b2 == (TLFPrivateKey{}) {
+	if b2 == (IFCERFTTLFPrivateKey{}) {
 		t.Errorf("zero TLFPrivateKey (b2)")
 	}
 
@@ -95,7 +95,7 @@ func TestCryptoCommonRandomTLFKeys(t *testing.T) {
 		t.Errorf("zero TLFEphemeralPublicKey (b3)")
 	}
 
-	if b4 == (TLFEphemeralPrivateKey{}) {
+	if b4 == (IFCERFTTLFEphemeralPrivateKey{}) {
 		t.Errorf("zero TLFEphemeralPrivateKey (b4)")
 	}
 
@@ -134,7 +134,7 @@ func TestCryptoCommonRandomTLFCryptKeyServerHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if k1 == (TLFCryptKeyServerHalf{}) {
+	if k1 == (IFCERFTTLFCryptKeyServerHalf{}) {
 		t.Errorf("zero TLFCryptKeyServerHalf k1")
 	}
 
@@ -143,7 +143,7 @@ func TestCryptoCommonRandomTLFCryptKeyServerHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if k2 == (TLFCryptKeyServerHalf{}) {
+	if k2 == (IFCERFTTLFCryptKeyServerHalf{}) {
 		t.Errorf("zero TLFCryptKeyServerHalf k2")
 	}
 
@@ -252,7 +252,7 @@ func TestCryptoCommonEncryptDecryptBlock(t *testing.T) {
 	c := makeTestCryptoCommon(t)
 
 	block := TestBlock{42}
-	key := BlockCryptKey{}
+	key := IFCERFTBlockCryptKey{}
 
 	_, encryptedBlock, err := c.EncryptBlock(block, key)
 	if err != nil {
@@ -289,7 +289,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 
 	sigInfoWrongVersion := sigInfo.deepCopy()
 	sigInfoWrongVersion.Version++
-	expectedErr = UnknownSigVer{sigInfoWrongVersion.Version}
+	expectedErr = IFCERFTUnknownSigVer{sigInfoWrongVersion.Version}
 	err = c.Verify(msg, sigInfoWrongVersion)
 	if err != expectedErr {
 		t.Errorf("Expected %v, got %v", expectedErr, err)
@@ -409,14 +409,14 @@ func TestCryptoCommonEncryptTLFCryptKeyClientHalf(t *testing.T) {
 		t.Fatalf("Expected decrypted data length %d, got %d", len(clientHalf.data), len(decryptedData))
 	}
 
-	var clientHalf2 TLFCryptKeyClientHalf
+	var clientHalf2 IFCERFTTLFCryptKeyClientHalf
 	copy(clientHalf2.data[:], decryptedData)
 	if clientHalf != clientHalf2 {
 		t.Fatal("client half != decrypted client half")
 	}
 }
 
-func checkSecretboxOpen(t *testing.T, encryptedData encryptedData, key [32]byte) (encodedData []byte) {
+func checkSecretboxOpen(t *testing.T, encryptedData IFCERFTEncryptedDat, key [32]byte) (encodedData []byte) {
 	if encryptedData.Version != IFCERFTEncryptionSecretbox {
 		t.Errorf("Expected version %v, got %v", IFCERFTEncryptionSecretbox, encryptedData.Version)
 	}
@@ -449,7 +449,7 @@ func TestEncryptPrivateMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	privateMetadata := PrivateMetadata{
+	privateMetadata := IFCERFTPrivateMetadata{
 		TLFPrivateKey: tlfPrivateKey,
 	}
 	expectedEncodedPrivateMetadata, err := c.codec.Encode(privateMetadata)
@@ -462,14 +462,14 @@ func TestEncryptPrivateMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	encodedPrivateMetadata := checkSecretboxOpen(t, encryptedData(encryptedPrivateMetadata), cryptKey.data)
+	encodedPrivateMetadata := checkSecretboxOpen(t, IFCERFTEncryptedDat(encryptedPrivateMetadata), cryptKey.data)
 
 	if string(encodedPrivateMetadata) != string(expectedEncodedPrivateMetadata) {
 		t.Fatalf("Expected encoded data %v, got %v", expectedEncodedPrivateMetadata, encodedPrivateMetadata)
 	}
 }
 
-func secretboxSeal(t *testing.T, c *CryptoCommon, data interface{}, key [32]byte) encryptedData {
+func secretboxSeal(t *testing.T, c *CryptoCommon, data interface{}, key [32]byte) IFCERFTEncryptedDat {
 	encodedData, err := c.codec.Encode(data)
 	if err != nil {
 		t.Fatal(err)
@@ -478,7 +478,7 @@ func secretboxSeal(t *testing.T, c *CryptoCommon, data interface{}, key [32]byte
 	return secretboxSealEncoded(t, c, encodedData, key)
 }
 
-func secretboxSealEncoded(t *testing.T, c *CryptoCommon, encodedData []byte, key [32]byte) encryptedData {
+func secretboxSealEncoded(t *testing.T, c *CryptoCommon, encodedData []byte, key [32]byte) IFCERFTEncryptedDat {
 	var nonce [24]byte
 	err := cryptoRandRead(nonce[:])
 	if err != nil {
@@ -487,7 +487,7 @@ func secretboxSealEncoded(t *testing.T, c *CryptoCommon, encodedData []byte, key
 
 	sealedPmd := secretbox.Seal(nil, encodedData, &nonce, &key)
 
-	return encryptedData{
+	return IFCERFTEncryptedDat{
 		Version:       IFCERFTEncryptionSecretbox,
 		Nonce:         nonce[:],
 		EncryptedData: sealedPmd,
@@ -505,7 +505,7 @@ func TestDecryptPrivateMetadataSecretboxSeal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	privateMetadata := PrivateMetadata{
+	privateMetadata := IFCERFTPrivateMetadata{
 		TLFPrivateKey: tlfPrivateKey,
 	}
 
@@ -537,7 +537,7 @@ func TestDecryptEncryptedPrivateMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	privateMetadata := PrivateMetadata{
+	privateMetadata := IFCERFTPrivateMetadata{
 		TLFPrivateKey: tlfPrivateKey,
 	}
 
@@ -562,8 +562,8 @@ func TestDecryptEncryptedPrivateMetadata(t *testing.T) {
 }
 
 func checkDecryptionFailures(
-	t *testing.T, encryptedData encryptedData, key interface{},
-	decryptFn func(encryptedData encryptedData, key interface{}) error,
+	t *testing.T, encryptedData IFCERFTEncryptedDat, key interface{},
+	decryptFn func(encryptedData IFCERFTEncryptedDat, key interface{}) error,
 	corruptKeyFn func(interface{}) interface{}) {
 	var err, expectedErr error
 
@@ -571,7 +571,7 @@ func checkDecryptionFailures(
 
 	encryptedDataWrongVersion := encryptedData
 	encryptedDataWrongVersion.Version++
-	expectedErr = UnknownEncryptionVer{encryptedDataWrongVersion.Version}
+	expectedErr = IFCERFTUnknownEncryptionVer{encryptedDataWrongVersion.Version}
 	err = decryptFn(encryptedDataWrongVersion, key)
 	if err != expectedErr {
 		t.Errorf("Expected %v, got %v", expectedErr, err)
@@ -581,7 +581,7 @@ func checkDecryptionFailures(
 
 	encryptedDataWrongNonceSize := encryptedData
 	encryptedDataWrongNonceSize.Nonce = encryptedDataWrongNonceSize.Nonce[:len(encryptedDataWrongNonceSize.Nonce)-1]
-	expectedErr = InvalidNonceError{encryptedDataWrongNonceSize.Nonce}
+	expectedErr = IFCERFTInvalidNonceError{encryptedDataWrongNonceSize.Nonce}
 	err = decryptFn(encryptedDataWrongNonceSize, key)
 	if err.Error() != expectedErr.Error() {
 		t.Errorf("Expected %v, got %v", expectedErr, err)
@@ -616,7 +616,7 @@ func TestDecryptPrivateMetadataFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	privateMetadata := PrivateMetadata{
+	privateMetadata := IFCERFTPrivateMetadata{
 		TLFPrivateKey: tlfPrivateKey,
 	}
 
@@ -625,8 +625,8 @@ func TestDecryptPrivateMetadataFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	checkDecryptionFailures(t, encryptedData(encryptedPrivateMetadata), cryptKey,
-		func(encryptedData encryptedData, key interface{}) error {
+	checkDecryptionFailures(t, IFCERFTEncryptedDat(encryptedPrivateMetadata), cryptKey,
+		func(encryptedData IFCERFTEncryptedDat, key interface{}) error {
 			_, err = c.DecryptPrivateMetadata(IFCERFTEncryptedPrivateMetadata(encryptedData), key.(IFCERFTTLFCryptKey))
 			return err
 		},
@@ -638,8 +638,8 @@ func TestDecryptPrivateMetadataFailures(t *testing.T) {
 		})
 }
 
-func makeFakeBlockCryptKey(t *testing.T) BlockCryptKey {
-	var blockCryptKey BlockCryptKey
+func makeFakeBlockCryptKey(t *testing.T) IFCERFTBlockCryptKey {
+	var blockCryptKey IFCERFTBlockCryptKey
 	err := cryptoRandRead(blockCryptKey.data[:])
 	if err != nil {
 		t.Fatal(err)
@@ -669,7 +669,7 @@ func TestEncryptBlock(t *testing.T) {
 		t.Errorf("Expected plain size %d, got %d", len(expectedEncodedBlock), plainSize)
 	}
 
-	paddedBlock := checkSecretboxOpen(t, encryptedData(encryptedBlock), cryptKey.data)
+	paddedBlock := checkSecretboxOpen(t, IFCERFTEncryptedDat(encryptedBlock), cryptKey.data)
 	encodedBlock, err := c.depadBlock(paddedBlock)
 	if err != nil {
 		t.Fatal(err)
@@ -750,13 +750,13 @@ func TestDecryptBlockFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	checkDecryptionFailures(t, encryptedData(encryptedBlock), cryptKey,
-		func(encryptedData encryptedData, key interface{}) error {
+	checkDecryptionFailures(t, IFCERFTEncryptedDat(encryptedBlock), cryptKey,
+		func(encryptedData IFCERFTEncryptedDat, key interface{}) error {
 			var dummy TestBlock
-			return c.DecryptBlock(IFCERFTEncryptedBlock(encryptedData), key.(BlockCryptKey), &dummy)
+			return c.DecryptBlock(IFCERFTEncryptedBlock(encryptedData), key.(IFCERFTBlockCryptKey), &dummy)
 		},
 		func(key interface{}) interface{} {
-			cryptKey := key.(BlockCryptKey)
+			cryptKey := key.(IFCERFTBlockCryptKey)
 			cryptKeyCorrupt := cryptKey
 			cryptKeyCorrupt.data[0] = ^cryptKeyCorrupt.data[0]
 			return cryptKeyCorrupt
@@ -852,7 +852,7 @@ func TestSecretboxEncryptedLen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cryptKeys := make([]BlockCryptKey, iterations)
+	cryptKeys := make([]IFCERFTBlockCryptKey, iterations)
 	for j := 0; j < iterations; j++ {
 		cryptKeys[j] = makeFakeBlockCryptKey(t)
 	}
@@ -880,7 +880,7 @@ func (tba testBlockArray) GetEncodedSize() uint32 {
 func (tba testBlockArray) SetEncodedSize(size uint32) {
 }
 
-func (testBlockArray) DataVersion() IFCERFTDataVer { return FirstValidDataVer }
+func (testBlockArray) DataVersion() IFCERFTDataVer { return IFCERFTFirstValidDataVer }
 
 // Test that block encrypted data length is the same for data
 // length within same power of 2.

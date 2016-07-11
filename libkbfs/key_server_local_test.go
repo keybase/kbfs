@@ -35,14 +35,14 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	serverHalf1 := MakeTLFCryptKeyServerHalf([32]byte{1})
-	serverHalf2 := MakeTLFCryptKeyServerHalf([32]byte{2})
-	serverHalf3 := MakeTLFCryptKeyServerHalf([32]byte{3})
-	serverHalf4 := MakeTLFCryptKeyServerHalf([32]byte{4})
+	serverHalf1 := IFCERFTMakeTLFCryptKeyServerHalf([32]byte{1})
+	serverHalf2 := IFCERFTMakeTLFCryptKeyServerHalf([32]byte{2})
+	serverHalf3 := IFCERFTMakeTLFCryptKeyServerHalf([32]byte{3})
+	serverHalf4 := IFCERFTMakeTLFCryptKeyServerHalf([32]byte{4})
 
 	// write 1
-	keyHalves := make(map[keybase1.UID]map[keybase1.KID]TLFCryptKeyServerHalf)
-	deviceHalves := make(map[keybase1.KID]TLFCryptKeyServerHalf)
+	keyHalves := make(map[keybase1.UID]map[keybase1.KID]IFCERFTTLFCryptKeyServerHalf)
+	deviceHalves := make(map[keybase1.KID]IFCERFTTLFCryptKeyServerHalf)
 	deviceHalves[publicKey1.kid] = serverHalf1
 	keyHalves[uid1] = deviceHalves
 
@@ -52,8 +52,8 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 	}
 
 	// write 2
-	keyHalves = make(map[keybase1.UID]map[keybase1.KID]TLFCryptKeyServerHalf)
-	deviceHalves = make(map[keybase1.KID]TLFCryptKeyServerHalf)
+	keyHalves = make(map[keybase1.UID]map[keybase1.KID]IFCERFTTLFCryptKeyServerHalf)
+	deviceHalves = make(map[keybase1.KID]IFCERFTTLFCryptKeyServerHalf)
 	deviceHalves[publicKey1.kid] = serverHalf2
 	keyHalves[uid1] = deviceHalves
 
@@ -63,9 +63,9 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 	}
 
 	// write 3 and 4 together
-	keyHalves = make(map[keybase1.UID]map[keybase1.KID]TLFCryptKeyServerHalf)
-	deviceHalves1 := make(map[keybase1.KID]TLFCryptKeyServerHalf)
-	deviceHalves2 := make(map[keybase1.KID]TLFCryptKeyServerHalf)
+	keyHalves = make(map[keybase1.UID]map[keybase1.KID]IFCERFTTLFCryptKeyServerHalf)
+	deviceHalves1 := make(map[keybase1.KID]IFCERFTTLFCryptKeyServerHalf)
+	deviceHalves2 := make(map[keybase1.KID]IFCERFTTLFCryptKeyServerHalf)
 	deviceHalves1[publicKey1.kid] = serverHalf3
 	keyHalves[uid1] = deviceHalves1
 	deviceHalves2[publicKey2.kid] = serverHalf4

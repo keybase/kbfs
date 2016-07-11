@@ -80,13 +80,13 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 	}
 
 	if keyGen < IFCERFTFirstValidKeyGen {
-		return IFCERFTTLFCryptKey{}, InvalidKeyGenerationError{md.GetTlfHandle(), keyGen}
+		return IFCERFTTLFCryptKey{}, IFCERFTInvalidKeyGenerationError{md.GetTlfHandle(), keyGen}
 	}
 	// Is this some key we don't know yet?  Shouldn't really ever happen,
 	// since we must have seen the MD that led us to this block, which
 	// should include all the latest keys.  Consider this a failsafe.
 	if keyGen > md.LatestKeyGeneration() {
-		return IFCERFTTLFCryptKey{}, NewKeyGenerationError{md.GetTlfHandle(), keyGen}
+		return IFCERFTTLFCryptKey{}, IFCERFTNewKeyGenerationError{md.GetTlfHandle(), keyGen}
 	}
 
 	// look in the cache first
@@ -95,7 +95,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 	switch err := err.(type) {
 	case nil:
 		return tlfCryptKey, nil
-	case KeyCacheMissError:
+	case IFCERFTKeyCacheMissError:
 		break
 	default:
 		return IFCERFTTLFCryptKey{}, err
@@ -118,12 +118,12 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 				h.GetCanonicalPath(), err)
 			resolvedHandle = h
 		}
-		return makeRekeyReadError(
+		return IFCERFTMakeRekeyReadError(
 			md, resolvedHandle, keyGen, uid, username)
 	}
 
-	var clientHalf TLFCryptKeyClientHalf
-	var info TLFCryptKeyInfo
+	var clientHalf IFCERFTTLFCryptKeyClientHalf
+	var info IFCERFTTLFCryptKeyInfo
 	var cryptPublicKey IFCERFTCryptPublicKey
 	crypto := km.config.Crypto()
 
@@ -135,7 +135,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 
 		keys := make([]IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, 0,
 			len(publicKeys))
-		keysInfo := make([]TLFCryptKeyInfo, 0, len(publicKeys))
+		keysInfo := make([]IFCERFTTLFCryptKeyInfo, 0, len(publicKeys))
 		publicKeyLookup := make([]int, 0, len(publicKeys))
 
 		for i, k := range publicKeys {
@@ -223,13 +223,13 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) updateKeyBundle(ctx context.Context,
-	md *IFCERFTRootMetadata, keyGen IFCERFTKeyGen, wKeys map[keybase1.UID][]IFCERFTCryptPublicKey, rKeys map[keybase1.UID][]IFCERFTCryptPublicKey, ePubKey IFCERFTTLFEphemeralPublicKey, ePrivKey TLFEphemeralPrivateKey, tlfCryptKey IFCERFTTLFCryptKey) error {
-	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
+	md *IFCERFTRootMetadata, keyGen IFCERFTKeyGen, wKeys map[keybase1.UID][]IFCERFTCryptPublicKey, rKeys map[keybase1.UID][]IFCERFTCryptPublicKey, ePubKey IFCERFTTLFEphemeralPublicKey, ePrivKey IFCERFTTLFEphemeralPrivateKey, tlfCryptKey IFCERFTTLFCryptKey) error {
+	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
 	if err != nil {
 		return err
 	}
 
-	newServerKeys, err := fillInDevices(km.config.Crypto(),
+	newServerKeys, err := IFCERFTFillInDevices(km.config.Crypto(),
 		wkb, rkb, wKeys, rKeys,
 		ePubKey, ePrivKey, tlfCryptKey)
 	if err != nil {
@@ -246,8 +246,7 @@ func (km *KeyManagerStandard) updateKeyBundle(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
-	md *IFCERFTRootMetadata, keyInfoMap UserDeviceKeyInfoMap,
-	expectedKeys map[keybase1.UID][]IFCERFTCryptPublicKey) map[keybase1.UID]bool {
+	md *IFCERFTRootMetadata, keyInfoMap IFCERFTUserDeviceKeyInfoMap, expectedKeys map[keybase1.UID][]IFCERFTCryptPublicKey) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
 	for u, keys := range expectedKeys {
 		kids, ok := keyInfoMap[u]
@@ -273,8 +272,7 @@ func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
-	md *IFCERFTRootMetadata, keyInfoMap UserDeviceKeyInfoMap,
-	expectedKeys map[keybase1.UID][]IFCERFTCryptPublicKey) map[keybase1.UID]bool {
+	md *IFCERFTRootMetadata, keyInfoMap IFCERFTUserDeviceKeyInfoMap, expectedKeys map[keybase1.UID][]IFCERFTCryptPublicKey) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
 	for u, kids := range keyInfoMap {
 		keys, ok := expectedKeys[u]
@@ -304,8 +302,7 @@ func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) deleteKeysForRemovedDevices(ctx context.Context,
-	md *IFCERFTRootMetadata, info UserDeviceKeyInfoMap,
-	expectedKeys map[keybase1.UID][]IFCERFTCryptPublicKey) error {
+	md *IFCERFTRootMetadata, info IFCERFTUserDeviceKeyInfoMap, expectedKeys map[keybase1.UID][]IFCERFTCryptPublicKey) error {
 	kops := km.config.KeyOps()
 	var usersToDelete []keybase1.UID
 	for u, kids := range info {
@@ -467,7 +464,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 				md.ID)
 			return false, nil, nil
 		}
-		return true, nil, md.updateFromTlfHandle(resolvedHandle)
+		return true, nil, md.UpdateFromTlfHandle(resolvedHandle)
 	}
 
 	// Decide whether we have a new device and/or a revoked device, or neither.
@@ -477,7 +474,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 
 	if !isWriter && incKeyGen {
 		// Readers cannot create the first key generation
-		return false, nil, NewReadAccessError(resolvedHandle, username)
+		return false, nil, IFCERFTNewReadAccessError(resolvedHandle, username)
 	}
 
 	// All writer keys in the desired keyset
@@ -504,7 +501,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 	if !incKeyGen {
 		// See if there is at least one new device in relation to the
 		// current key bundle
-		wkb, rkb, err := md.getTLFKeyBundles(currKeyGen)
+		wkb, rkb, err := md.GetTLFKeyBundles(currKeyGen)
 		if err != nil {
 			return false, nil, err
 		}
@@ -565,7 +562,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 		} else {
 			// No new reader device for our user, so the reader can't do
 			// anything
-			return false, nil, RekeyIncompleteError{}
+			return false, nil, IFCERFTRekeyIncompleteError{}
 		}
 	}
 
@@ -594,7 +591,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 
 			// If there are readers that need to be promoted to writers, do
 			// that here.
-			wkb, rkb, err := md.getTLFKeyBundles(keyGen)
+			wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
 			if err != nil {
 				return false, nil, err
 			}
@@ -624,9 +621,9 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 	defer func() {
 		// On our way back out, update the md with the resolved handle
 		// if at least part of a rekey was performed.
-		_, isRekeyIncomplete := err.(RekeyIncompleteError)
+		_, isRekeyIncomplete := err.(IFCERFTRekeyIncompleteError)
 		if err == nil || isRekeyIncomplete {
-			updateErr := md.updateFromTlfHandle(resolvedHandle)
+			updateErr := md.UpdateFromTlfHandle(resolvedHandle)
 			if updateErr != nil {
 				err = updateErr
 			}
@@ -637,7 +634,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 		if len(newReaderUsers) > 0 || addNewWriterDevice || incKeyGen {
 			// If we're a reader but we haven't completed all the work, return
 			// RekeyIncompleteError.
-			return addNewReaderDeviceForSelf, nil, RekeyIncompleteError{}
+			return addNewReaderDeviceForSelf, nil, IFCERFTRekeyIncompleteError{}
 		}
 		// Otherwise, there's nothing left to do!
 		return true, nil, nil
@@ -651,13 +648,13 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 	km.config.Reporter().Notify(ctx, rekeyNotification(ctx, km.config, resolvedHandle,
 		false))
 
-	newWriterKeys := TLFWriterKeyBundle{
-		WKeys:        make(UserDeviceKeyInfoMap),
+	newWriterKeys := IFCERFTTLFWriterKeyBundle{
+		WKeys:        make(IFCERFTUserDeviceKeyInfoMap),
 		TLFPublicKey: pubKey,
 		// TLFEphemeralPublicKeys will be filled in by updateKeyBundle
 	}
-	newReaderKeys := TLFReaderKeyBundle{
-		RKeys: make(UserDeviceKeyInfoMap),
+	newReaderKeys := IFCERFTTLFReaderKeyBundle{
+		RKeys: make(IFCERFTUserDeviceKeyInfoMap),
 		// TLFReaderEphemeralPublicKeys will be filled in by updateKeyBundle
 	}
 	err = md.AddNewKeys(newWriterKeys, newReaderKeys)
@@ -674,7 +671,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *IFCERFTRootMetadata
 
 	// Delete server-side key halves for any revoked devices.
 	for keygen := IFCERFTKeyGen(IFCERFTFirstValidKeyGen); keygen <= currKeyGen; keygen++ {
-		wkb, rkb, err := md.getTLFKeyBundles(keygen)
+		wkb, rkb, err := md.GetTLFKeyBundles(keygen)
 		if err != nil {
 			return false, nil, err
 		}

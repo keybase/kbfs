@@ -83,8 +83,8 @@ func (e MDServerErrorBadRequest) Error() string {
 // MDServerErrorConflictRevision is returned when the passed MD block is inconsistent with current history.
 type MDServerErrorConflictRevision struct {
 	Desc     string
-	Expected MetadataRevision
-	Actual   MetadataRevision
+	Expected IFCERFTMetadataRevision
+	Actual   IFCERFTMetadataRevision
 }
 
 // Error implements the Error interface for MDServerErrorConflictRevision.
@@ -106,8 +106,8 @@ func (e MDServerErrorConflictRevision) ToStatus() (s keybase1.Status) {
 // MDServerErrorConflictPrevRoot is returned when the passed MD block is inconsistent with current history.
 type MDServerErrorConflictPrevRoot struct {
 	Desc     string
-	Expected MdID
-	Actual   MdID
+	Expected IFCERFTMdID
+	Actual   IFCERFTMdID
 }
 
 // Error implements the Error interface for MDServerErrorConflictPrevRoot.

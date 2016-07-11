@@ -22,7 +22,7 @@ type mdHandleKey string
 
 type mdBlockKey struct {
 	tlfID    IFCERFTTlfID
-	branchID BranchID
+	branchID IFCERFTBranchID
 }
 
 type mdBranchKey struct {
@@ -37,7 +37,7 @@ type mdBlockMem struct {
 }
 
 type mdBlockMemList struct {
-	initialRevision MetadataRevision
+	initialRevision IFCERFTMetadataRevision
 	blocks          []mdBlockMem
 }
 
@@ -49,11 +49,11 @@ type mdServerMemShared struct {
 	// Bare TLF handle -> TLF ID
 	handleDb map[mdHandleKey]IFCERFTTlfID
 	// TLF ID -> latest bare TLF handle
-	latestHandleDb map[IFCERFTTlfID]BareTlfHandle
+	latestHandleDb map[IFCERFTTlfID]IFCERFTBareTlfHandle
 	// (TLF ID, branch ID) -> list of MDs
 	mdDb map[mdBlockKey]mdBlockMemList
 	// (TLF ID, device KID) -> branch ID
-	branchDb            map[mdBranchKey]BranchID
+	branchDb            map[mdBranchKey]IFCERFTBranchID
 	truncateLockManager *mdServerLocalTruncateLockManager
 
 	updateManager *mdServerLocalUpdateManager
@@ -73,9 +73,9 @@ var _ mdServerLocal = (*MDServerMemory)(nil)
 // all data in-memory.
 func NewMDServerMemory(config IFCERFTConfig) (*MDServerMemory, error) {
 	handleDb := make(map[mdHandleKey]IFCERFTTlfID)
-	latestHandleDb := make(map[IFCERFTTlfID]BareTlfHandle)
+	latestHandleDb := make(map[IFCERFTTlfID]IFCERFTBareTlfHandle)
 	mdDb := make(map[mdBlockKey]mdBlockMemList)
-	branchDb := make(map[mdBranchKey]BranchID)
+	branchDb := make(map[mdBranchKey]IFCERFTBranchID)
 	log := config.MakeLogger("")
 	truncateLockManager := newMDServerLocalTruncatedLockManager()
 	shared := mdServerMemShared{
@@ -92,17 +92,16 @@ func NewMDServerMemory(config IFCERFTConfig) (*MDServerMemory, error) {
 
 var errMDServerMemoryShutdown = errors.New("MDServerMemory is shutdown")
 
-func (md *MDServerMemory) getHandleID(ctx context.Context, handle BareTlfHandle,
-	mStatus IFCERFTMergeStatus) (tlfID IFCERFTTlfID, created bool, err error) {
+func (md *MDServerMemory) getHandleID(ctx context.Context, handle IFCERFTBareTlfHandle, mStatus IFCERFTMergeStatus) (tlfID IFCERFTTlfID, created bool, err error) {
 	handleBytes, err := md.config.Codec().Encode(handle)
 	if err != nil {
-		return NullTlfID, false, MDServerError{err}
+		return IFCERFTNullTlfID, false, MDServerError{err}
 	}
 
 	md.lock.Lock()
 	defer md.lock.Unlock()
 	if md.handleDb == nil {
-		return NullTlfID, false, errMDServerDiskShutdown
+		return IFCERFTNullTlfID, false, errMDServerDiskShutdown
 	}
 
 	id, ok := md.handleDb[mdHandleKey(handleBytes)]
@@ -113,16 +112,16 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle BareTlfHandle,
 	// Non-readers shouldn't be able to create the dir.
 	_, uid, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
-		return NullTlfID, false, MDServerError{err}
+		return IFCERFTNullTlfID, false, MDServerError{err}
 	}
 	if !handle.IsReader(uid) {
-		return NullTlfID, false, MDServerErrorUnauthorized{}
+		return IFCERFTNullTlfID, false, MDServerErrorUnauthorized{}
 	}
 
 	// Allocate a new random ID.
 	id, err = md.config.Crypto().MakeRandomTlfID(handle.IsPublic())
 	if err != nil {
-		return NullTlfID, false, MDServerError{err}
+		return IFCERFTNullTlfID, false, MDServerError{err}
 	}
 
 	md.handleDb[mdHandleKey(handleBytes)] = id
@@ -131,54 +130,53 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle BareTlfHandle,
 }
 
 // GetForHandle implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) GetForHandle(ctx context.Context, handle BareTlfHandle,
-	mStatus IFCERFTMergeStatus) (IFCERFTTlfID, *RootMetadataSigned, error) {
+func (md *MDServerMemory) GetForHandle(ctx context.Context, handle IFCERFTBareTlfHandle, mStatus IFCERFTMergeStatus) (IFCERFTTlfID, *IFCERFTRootMetadataSigned, error) {
 	id, created, err := md.getHandleID(ctx, handle, mStatus)
 	if err != nil {
-		return NullTlfID, nil, err
+		return IFCERFTNullTlfID, nil, err
 	}
 
 	if created {
 		return id, nil, nil
 	}
 
-	rmds, err := md.GetForTLF(ctx, id, NullBranchID, mStatus)
+	rmds, err := md.GetForTLF(ctx, id, IFCERFTNullBranchID, mStatus)
 	if err != nil {
-		return NullTlfID, nil, err
+		return IFCERFTNullTlfID, nil, err
 	}
 	return id, rmds, nil
 }
 
 func (md *MDServerMemory) checkGetParams(
-	ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (
-	newBid BranchID, err error) {
-	if mStatus == IFCERFTMerged && bid != NullBranchID {
-		return NullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+	ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus) (
+	newBid IFCERFTBranchID, err error) {
+	if mStatus == IFCERFTMerged && bid != IFCERFTNullBranchID {
+		return IFCERFTNullBranchID, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
 	// Check permissions
 
 	mergedMasterHead, err :=
-		md.getHeadForTLF(ctx, id, NullBranchID, IFCERFTMerged)
+		md.getHeadForTLF(ctx, id, IFCERFTNullBranchID, IFCERFTMerged)
 	if err != nil {
-		return NullBranchID, MDServerError{err}
+		return IFCERFTNullBranchID, MDServerError{err}
 	}
 
 	_, currentUID, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
-		return NullBranchID, MDServerError{err}
+		return IFCERFTNullBranchID, MDServerError{err}
 	}
 
 	ok, err := isReader(currentUID, mergedMasterHead)
 	if err != nil {
-		return NullBranchID, MDServerError{err}
+		return IFCERFTNullBranchID, MDServerError{err}
 	}
 	if !ok {
-		return NullBranchID, MDServerErrorUnauthorized{}
+		return IFCERFTNullBranchID, MDServerErrorUnauthorized{}
 	}
 
 	// Lookup the branch ID if not supplied
-	if mStatus == IFCERFTUnmerged && bid == NullBranchID {
+	if mStatus == IFCERFTUnmerged && bid == IFCERFTNullBranchID {
 		return md.getBranchID(ctx, id)
 	}
 
@@ -186,12 +184,12 @@ func (md *MDServerMemory) checkGetParams(
 }
 
 // GetForTLF implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (*RootMetadataSigned, error) {
+func (md *MDServerMemory) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus) (*IFCERFTRootMetadataSigned, error) {
 	bid, err := md.checkGetParams(ctx, id, bid, mStatus)
 	if err != nil {
 		return nil, err
 	}
-	if mStatus == IFCERFTUnmerged && bid == NullBranchID {
+	if mStatus == IFCERFTUnmerged && bid == IFCERFTNullBranchID {
 		return nil, nil
 	}
 
@@ -202,7 +200,7 @@ func (md *MDServerMemory) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid Br
 	return rmds, nil
 }
 
-func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (*RootMetadataSigned, error) {
+func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus) (*IFCERFTRootMetadataSigned, error) {
 	key, err := md.getMDKey(id, bid, mStatus)
 	if err != nil {
 		return nil, err
@@ -218,7 +216,7 @@ func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id IFCERFTTlfID, bi
 		return nil, nil
 	}
 	blocks := blockList.blocks
-	var rmds RootMetadataSigned
+	var rmds IFCERFTRootMetadataSigned
 	err = md.config.Codec().Decode(blocks[len(blocks)-1].encodedMd, &rmds)
 	if err != nil {
 		return nil, err
@@ -227,8 +225,8 @@ func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id IFCERFTTlfID, bi
 }
 
 func (md *MDServerMemory) getMDKey(
-	id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (mdBlockKey, error) {
-	if (mStatus == IFCERFTMerged) != (bid == NullBranchID) {
+	id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus) (mdBlockKey, error) {
+	if (mStatus == IFCERFTMerged) != (bid == IFCERFTNullBranchID) {
 		return mdBlockKey{},
 			fmt.Errorf("mstatus=%v is inconsistent with bid=%v",
 				mStatus, bid)
@@ -255,14 +253,14 @@ func (md *MDServerMemory) getCurrentDeviceKID(ctx context.Context) (keybase1.KID
 }
 
 // GetRange implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus, start, stop MetadataRevision) (
-	[]*RootMetadataSigned, error) {
+func (md *MDServerMemory) GetRange(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus, start, stop IFCERFTMetadataRevision) (
+	[]*IFCERFTRootMetadataSigned, error) {
 	md.log.CDebugf(ctx, "GetRange %d %d (%s)", start, stop, mStatus)
 	bid, err := md.checkGetParams(ctx, id, bid, mStatus)
 	if err != nil {
 		return nil, err
 	}
-	if mStatus == IFCERFTUnmerged && bid == NullBranchID {
+	if mStatus == IFCERFTUnmerged && bid == IFCERFTNullBranchID {
 		return nil, nil
 	}
 
@@ -292,14 +290,14 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id IFCERFTTlfID, bid Bra
 		endI = len(blocks)
 	}
 
-	var rmdses []*RootMetadataSigned
+	var rmdses []*IFCERFTRootMetadataSigned
 	for i := startI; i < endI; i++ {
-		var rmds RootMetadataSigned
+		var rmds IFCERFTRootMetadataSigned
 		err = md.config.Codec().Decode(blocks[i].encodedMd, &rmds)
 		if err != nil {
 			return nil, MDServerError{err}
 		}
-		expectedRevision := blockList.initialRevision + MetadataRevision(i)
+		expectedRevision := blockList.initialRevision + IFCERFTMetadataRevision(i)
 		if expectedRevision != rmds.MD.Revision {
 			panic(fmt.Errorf("expected revision %v, got %v",
 				expectedRevision, rmds.MD.Revision))
@@ -311,11 +309,11 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id IFCERFTTlfID, bid Bra
 }
 
 // Put implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) error {
+func (md *MDServerMemory) Put(ctx context.Context, rmds *IFCERFTRootMetadataSigned) error {
 	mStatus := rmds.MD.MergedStatus()
 	bid := rmds.MD.BID
 
-	if (mStatus == IFCERFTMerged) != (bid == NullBranchID) {
+	if (mStatus == IFCERFTMerged) != (bid == IFCERFTNullBranchID) {
 		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
@@ -329,7 +327,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 	}
 
 	mergedMasterHead, err :=
-		md.getHeadForTLF(ctx, id, NullBranchID, IFCERFTMerged)
+		md.getHeadForTLF(ctx, id, IFCERFTNullBranchID, IFCERFTMerged)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -353,7 +351,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 	if mStatus == IFCERFTUnmerged && head == nil {
 		// currHead for unmerged history might be on the main branch
 		prevRev := rmds.MD.Revision - 1
-		rmdses, err := md.GetRange(ctx, id, NullBranchID, IFCERFTMerged, prevRev, prevRev)
+		rmdses, err := md.GetRange(ctx, id, IFCERFTNullBranchID, IFCERFTMerged, prevRev, prevRev)
 		if err != nil {
 			return MDServerError{err}
 		}
@@ -436,8 +434,8 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 }
 
 // PruneBranch implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid BranchID) error {
-	if bid == NullBranchID {
+func (md *MDServerMemory) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID) error {
+	if bid == IFCERFTNullBranchID {
 		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
@@ -445,7 +443,7 @@ func (md *MDServerMemory) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid 
 	if err != nil {
 		return err
 	}
-	if currBID == NullBranchID || bid != currBID {
+	if currBID == IFCERFTNullBranchID || bid != currBID {
 		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
@@ -466,26 +464,26 @@ func (md *MDServerMemory) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid 
 	return nil
 }
 
-func (md *MDServerMemory) getBranchID(ctx context.Context, id IFCERFTTlfID) (BranchID, error) {
+func (md *MDServerMemory) getBranchID(ctx context.Context, id IFCERFTTlfID) (IFCERFTBranchID, error) {
 	branchKey, err := md.getBranchKey(ctx, id)
 	if err != nil {
-		return NullBranchID, MDServerError{err}
+		return IFCERFTNullBranchID, MDServerError{err}
 	}
 	md.lock.Lock()
 	defer md.lock.Unlock()
 	if md.branchDb == nil {
-		return NullBranchID, errMDServerMemoryShutdown
+		return IFCERFTNullBranchID, errMDServerMemoryShutdown
 	}
 
 	bid, ok := md.branchDb[branchKey]
 	if !ok {
-		return NullBranchID, nil
+		return IFCERFTNullBranchID, nil
 	}
 	return bid, nil
 }
 
 // RegisterForUpdate implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead MetadataRevision) (<-chan error, error) {
+func (md *MDServerMemory) RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead IFCERFTMetadataRevision) (<-chan error, error) {
 	// are we already past this revision?  If so, fire observer
 	// immediately
 	currMergedHeadRev, err := md.getCurrentMergedHeadRevision(ctx, id)
@@ -604,7 +602,7 @@ func (md *MDServerMemory) addNewAssertionForTest(uid keybase1.UID,
 	// Iterate through all the handles, and add handles for ones
 	// containing newAssertion to now include the uid.
 	for hBytes, id := range md.handleDb {
-		var h BareTlfHandle
+		var h IFCERFTBareTlfHandle
 		err := md.config.Codec().Decode([]byte(hBytes), &h)
 		if err != nil {
 			return err
@@ -626,8 +624,8 @@ func (md *MDServerMemory) addNewAssertionForTest(uid keybase1.UID,
 }
 
 func (md *MDServerMemory) getCurrentMergedHeadRevision(
-	ctx context.Context, id IFCERFTTlfID) (rev MetadataRevision, err error) {
-	head, err := md.GetForTLF(ctx, id, NullBranchID, IFCERFTMerged)
+	ctx context.Context, id IFCERFTTlfID) (rev IFCERFTMetadataRevision, err error) {
+	head, err := md.GetForTLF(ctx, id, IFCERFTNullBranchID, IFCERFTMerged)
 	if err != nil {
 		return 0, err
 	}
@@ -639,11 +637,11 @@ func (md *MDServerMemory) getCurrentMergedHeadRevision(
 
 // GetLatestHandleForTLF implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetLatestHandleForTLF(_ context.Context, id IFCERFTTlfID) (
-	BareTlfHandle, error) {
+	IFCERFTBareTlfHandle, error) {
 	md.lock.RLock()
 	defer md.lock.RUnlock()
 	if md.latestHandleDb == nil {
-		return BareTlfHandle{}, errMDServerMemoryShutdown
+		return IFCERFTBareTlfHandle{}, errMDServerMemoryShutdown
 	}
 
 	return md.latestHandleDb[id], nil

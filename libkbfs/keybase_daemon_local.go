@@ -22,7 +22,7 @@ type localUserMap map[keybase1.UID]LocalUser
 func (m localUserMap) getLocalUser(uid keybase1.UID) (LocalUser, error) {
 	user, ok := m[uid]
 	if !ok {
-		return LocalUser{}, NoSuchUserError{uid.String()}
+		return LocalUser{}, IFCERFTNoSuchUserError{uid.String()}
 	}
 	return user, nil
 }
@@ -150,7 +150,7 @@ func (k *KeybaseDaemonLocal) assertionToUIDLocked(ctx context.Context,
 			var ok bool
 			currUID, ok = k.asserts[a]
 			if !ok {
-				return keybase1.UID(""), NoSuchUserError{a}
+				return keybase1.UID(""), IFCERFTNoSuchUserError{a}
 			}
 		}
 		if uid != keybase1.UID("") && currUID != uid {

@@ -481,7 +481,7 @@ func TestQuotaReclamationFailAfterRekeyRequest(t *testing.T) {
 	// user 2 should be unable to read the data now since its device
 	// wasn't registered when the folder was originally created.
 	_, err = GetRootNodeForTest(config2Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 
@@ -498,7 +498,7 @@ func TestQuotaReclamationFailAfterRekeyRequest(t *testing.T) {
 	timer := time.NewTimer(config2Dev2.QuotaReclamationPeriod())
 	ops.fbm.reclamationGroup.Add(1)
 	err = ops.fbm.doReclamation(timer)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Unexpected rekey error: %v", err)
 	}
 

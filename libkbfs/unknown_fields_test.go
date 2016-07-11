@@ -14,16 +14,16 @@ import (
 // extra contains some fake extra fields that can be embedded into a
 // struct to test handling of unknown fields.
 type extra struct {
-	Extra1 encryptedData
-	Extra2 HMAC
+	Extra1 IFCERFTEncryptedDat
+	Extra2 IFCERFTHMAC
 	Extra3 string
 }
 
 func makeExtraOrBust(prefix string, t *testing.T) extra {
-	extraHMAC, err := DefaultHMAC([]byte("fake extra key"), []byte("fake extra buf"))
+	extraHMAC, err := IFCERFTDefaultHMAC([]byte("fake extra key"), []byte("fake extra buf"))
 	require.NoError(t, err)
 	return extra{
-		Extra1: encryptedData{
+		Extra1: IFCERFTEncryptedDat{
 			Version:       IFCERFTEncryptionSecretbox + 1,
 			EncryptedData: []byte(prefix + " fake extra encrypted data"),
 			Nonce:         []byte(prefix + " fake extra nonce"),

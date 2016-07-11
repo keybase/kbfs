@@ -84,7 +84,7 @@ func NewKeyServerTempDir(config IFCERFTConfig) (*KeyServerLocal, error) {
 // GetTLFCryptKeyServerHalf implements the KeyServer interface for
 // KeyServerLocal.
 func (ks *KeyServerLocal) GetTLFCryptKeyServerHalf(ctx context.Context,
-	serverHalfID TLFCryptKeyServerHalfID, key IFCERFTCryptPublicKey) (serverHalf TLFCryptKeyServerHalf, err error) {
+	serverHalfID IFCERFTTLFCryptKeyServerHalfID, key IFCERFTCryptPublicKey) (serverHalf IFCERFTTLFCryptKeyServerHalf, err error) {
 	ks.shutdownLock.RLock()
 	defer ks.shutdownLock.RUnlock()
 	if *ks.shutdown {
@@ -98,26 +98,26 @@ func (ks *KeyServerLocal) GetTLFCryptKeyServerHalf(ctx context.Context,
 
 	err = ks.config.Codec().Decode(buf, &serverHalf)
 	if err != nil {
-		return TLFCryptKeyServerHalf{}, err
+		return IFCERFTTLFCryptKeyServerHalf{}, err
 	}
 
 	_, uid, err := ks.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
-		return TLFCryptKeyServerHalf{}, err
+		return IFCERFTTLFCryptKeyServerHalf{}, err
 	}
 
 	err = ks.config.Crypto().VerifyTLFCryptKeyServerHalfID(
 		serverHalfID, uid, key.kid, serverHalf)
 	if err != nil {
 		ks.log.CDebugf(ctx, "error verifying server half ID: %s", err)
-		return TLFCryptKeyServerHalf{}, MDServerErrorUnauthorized{}
+		return IFCERFTTLFCryptKeyServerHalf{}, MDServerErrorUnauthorized{}
 	}
 	return serverHalf, nil
 }
 
 // PutTLFCryptKeyServerHalves implements the KeyOps interface for KeyServerLocal.
 func (ks *KeyServerLocal) PutTLFCryptKeyServerHalves(ctx context.Context,
-	serverKeyHalves map[keybase1.UID]map[keybase1.KID]TLFCryptKeyServerHalf) error {
+	serverKeyHalves map[keybase1.UID]map[keybase1.KID]IFCERFTTLFCryptKeyServerHalf) error {
 	ks.shutdownLock.RLock()
 	defer ks.shutdownLock.RUnlock()
 	if *ks.shutdown {
@@ -147,7 +147,7 @@ func (ks *KeyServerLocal) PutTLFCryptKeyServerHalves(ctx context.Context,
 // KeyServerLocal.
 func (ks *KeyServerLocal) DeleteTLFCryptKeyServerHalf(ctx context.Context,
 	_ keybase1.UID, _ keybase1.KID,
-	serverHalfID TLFCryptKeyServerHalfID) error {
+	serverHalfID IFCERFTTLFCryptKeyServerHalfID) error {
 	ks.shutdownLock.RLock()
 	defer ks.shutdownLock.RUnlock()
 	if *ks.shutdown {

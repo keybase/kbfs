@@ -141,7 +141,7 @@ func (fl *FolderList) Lookup(ctx context.Context, req *fuse.LookupRequest, resp 
 			return nil, err
 		}
 
-	case libkbfs.TlfNameNotCanonical:
+	case libkbfs.IFCERFTTlfNameNotCanonical:
 
 		// Only permit Aliases to targets that contain no errors.
 		if !fl.isValidAliasTarget(ctx, err.NameToTry) {
@@ -154,7 +154,7 @@ func (fl *FolderList) Lookup(ctx context.Context, req *fuse.LookupRequest, resp 
 		}
 		return n, nil
 
-	case libkbfs.NoSuchNameError, libkbfs.BadTLFNameError:
+	case libkbfs.IFCERFTNoSuchNameError, libkbfs.IFCERFTBadTLFNameError:
 		// Invalid public TLF.
 		return nil, fuse.ENOENT
 
@@ -245,7 +245,7 @@ func (fl *FolderList) Remove(ctx context.Context, req *fuse.RemoveRequest) (err 
 		// the favorite.
 		return fl.fs.config.KBFSOps().DeleteFavorite(ctx, h.ToFavorite())
 
-	case libkbfs.TlfNameNotCanonical:
+	case libkbfs.IFCERFTTlfNameNotCanonical:
 		return nil
 
 	default:
@@ -254,7 +254,7 @@ func (fl *FolderList) Remove(ctx context.Context, req *fuse.RemoveRequest) (err 
 }
 
 func isTlfNameNotCanonical(err error) bool {
-	_, ok := err.(libkbfs.TlfNameNotCanonical)
+	_, ok := err.(libkbfs.IFCERFTTlfNameNotCanonical)
 	return ok
 }
 

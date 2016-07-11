@@ -37,7 +37,7 @@ func testBcachePut(t *testing.T, id BlockID, bcache IFCERFTBlockCache, lifetime 
 }
 
 func testExpectedMissing(t *testing.T, id BlockID, bcache IFCERFTBlockCache) {
-	expectedErr := NoSuchBlockError{id}
+	expectedErr := IFCERFTNoSuchBlockError{id}
 	ptr := IFCERFTBlockPointer{ID: id}
 	if _, err := bcache.Get(ptr); err == nil {
 		t.Errorf("No expected error on 1st get: %v", err)
@@ -220,7 +220,7 @@ func TestBcacheEmptyTransient(t *testing.T) {
 	}
 
 	_, err := bcache.Get(ptr)
-	if _, ok := err.(NoSuchBlockError); !ok {
+	if _, ok := err.(IFCERFTNoSuchBlockError); !ok {
 		t.Errorf("Got unexpected error %v", err)
 	}
 
@@ -368,7 +368,7 @@ func TestPutNoHashCalculation(t *testing.T) {
 
 	// this is an invalid hash; if Put() does not calculate hash, it should go
 	// into the cache
-	block.hash = &RawDefaultHash{}
+	block.hash = &IFCERFTRawDefaultHash{}
 	if err := bcache.Put(ptr, tlf, block, IFCERFTTransientEntry); err != nil {
 		t.Errorf("Got error on Put for block %s: %v", ptr.ID, err)
 	}

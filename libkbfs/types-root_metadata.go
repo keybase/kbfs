@@ -20,62 +20,62 @@ import (
 
 // PrivateMetadata contains the portion of metadata that's secret for private
 // directories
-type PrivateMetadata struct {
+type IFCERFTPrivateMetadata struct {
 	// directory entry for the root directory block
 	Dir DirEntry
 
 	// m_f as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
-	TLFPrivateKey TLFPrivateKey
+	TLFPrivateKey IFCERFTTLFPrivateKey
 	// The block changes done as part of the update that created this MD
-	Changes IFCERFTBlockChanges
+	Changes AddBPSize
 
 	codec.UnknownFieldSetHandler
 
 	// When the above Changes field gets unembedded into its own
 	// block, we may want to temporarily keep around the old
 	// BlockChanges for easy reference.
-	cachedChanges IFCERFTBlockChanges
+	cachedChanges AddBPSize
 }
 
 // MetadataFlags bitfield.
-type MetadataFlags byte
+type IFCERFTMetadataFlags byte
 
 // Possible flags set in the MetadataFlags bitfield.
 const (
-	MetadataFlagRekey MetadataFlags = 1 << iota
-	MetadataFlagWriterMetadataCopied
-	MetadataFlagFinal
+	IFCERFTMetadataFlagRekey IFCERFTMetadataFlags = 1 << iota
+	IFCERFTMetadataFlagWriterMetadataCopied
+	IFCERFTMetadataFlagFinal
 )
 
 // WriterFlags bitfield.
-type WriterFlags byte
+type IFCERFTWriterFlags byte
 
 // Possible flags set in the WriterFlags bitfield.
 const (
-	MetadataFlagUnmerged WriterFlags = 1 << iota
+	IFCERFTMetadataFlagUnmerged IFCERFTWriterFlags = 1 << iota
 )
 
 // MetadataRevision is the type for the revision number.
 // This is currently int64 since that's the type of Avro's long.
-type MetadataRevision int64
+type IFCERFTMetadataRevision int64
 
 // String converts a MetadataRevision to its string form.
-func (mr MetadataRevision) String() string {
+func (mr IFCERFTMetadataRevision) String() string {
 	return strconv.FormatInt(mr.Number(), 10)
 }
 
 // Number casts a MetadataRevision to it's primitive type.
-func (mr MetadataRevision) Number() int64 {
+func (mr IFCERFTMetadataRevision) Number() int64 {
 	return int64(mr)
 }
 
 const (
 	// MetadataRevisionUninitialized indicates that a top-level folder has
 	// not yet been initialized.
-	MetadataRevisionUninitialized = MetadataRevision(0)
+	IFCERFTMetadataRevisionUninitialized = IFCERFTMetadataRevision(0)
 	// MetadataRevisionInitial is always the first revision for an
 	// initialized top-level folder.
-	MetadataRevisionInitial = MetadataRevision(1)
+	IFCERFTMetadataRevisionInitial = IFCERFTMetadataRevision(1)
 )
 
 // WriterMetadata stores the metadata for a TLF that is
@@ -85,7 +85,7 @@ const (
 // WriterMetadataExtra. This is because we want old clients to
 // preserve unknown fields, and we're unable to do that for
 // WriterMetadata directly because it's embedded in RootMetadata.
-type WriterMetadata struct {
+type IFCERFTWriterMetadata struct {
 	// Serialized, possibly encrypted, version of the PrivateMetadata
 	SerializedPrivateMetadata []byte `codec:"data"`
 	// The last KB user with writer permissions to this TLF
@@ -96,13 +96,13 @@ type WriterMetadata struct {
 	// For private TLFs. Writer key generations for this metadata. The
 	// most recent one is last in the array. Must be same length as
 	// RootMetadata.RKeys.
-	WKeys TLFWriterKeyGenerations `codec:",omitempty"`
+	WKeys IFCERFTTLFWriterKeyGenerations `codec:",omitempty"`
 	// The directory ID, signed over to make verification easier
 	ID IFCERFTTlfID
 	// The branch ID, currently only set if this is in unmerged per-device history.
-	BID BranchID
+	BID IFCERFTBranchID
 	// Flags
-	WFlags WriterFlags
+	WFlags IFCERFTWriterFlags
 	// Estimated disk usage at this revision
 	DiskUsage uint64
 
@@ -111,12 +111,12 @@ type WriterMetadata struct {
 	// The total number of bytes in unreferenced blocks
 	UnrefBytes uint64
 
-	Extra WriterMetadataExtra `codec:"x,omitempty,omitemptycheckstruct"`
+	Extra IFCERFTWriterMetadataExtra `codec:"x,omitempty,omitemptycheckstruct"`
 }
 
 // WriterMetadataExtra stores more fields for WriterMetadata. (See
 // WriterMetadata comments as to why this type is needed.)
-type WriterMetadataExtra struct {
+type IFCERFTWriterMetadataExtra struct {
 	UnresolvedWriters []keybase1.SocialAssertion `codec:"uw,omitempty"`
 	codec.UnknownFieldSetHandler
 }
@@ -129,7 +129,7 @@ type IFCERFTRootMetadata struct {
 	// without having to be backwards-compatible, WriterMetadata
 	// should be unembedded; see comments to WriterMetadata as for
 	// why.
-	WriterMetadata
+	IFCERFTWriterMetadata
 
 	// The signature for the writer metadata, to prove
 	// that it's only been changed by writers.
@@ -138,31 +138,31 @@ type IFCERFTRootMetadata struct {
 	// The last KB user who modified this RootMetadata
 	LastModifyingUser keybase1.UID
 	// Flags
-	Flags MetadataFlags
+	Flags IFCERFTMetadataFlags
 	// The revision number
-	Revision MetadataRevision
+	Revision IFCERFTMetadataRevision
 	// Pointer to the previous root block ID
-	PrevRoot MdID
+	PrevRoot IFCERFTMdID
 	// For private TLFs. Reader key generations for this metadata. The
 	// most recent one is last in the array. Must be same length as
 	// WriterMetadata.WKeys. If there are no readers, each generation
 	// is empty.
-	RKeys TLFReaderKeyGenerations `codec:",omitempty"`
+	RKeys IFCERFTTLFReaderKeyGenerations `codec:",omitempty"`
 	// For private TLFs. Any unresolved social assertions for readers.
 	UnresolvedReaders []keybase1.SocialAssertion `codec:"ur,omitempty"`
 
 	// ConflictInfo is set if there's a conflict for the given folder's
 	// handle after a social assertion resolution.
-	ConflictInfo *TlfHandleExtension `codec:"ci,omitempty"`
+	ConflictInfo *IFCERFTTlfHandleExtension `codec:"ci,omitempty"`
 
 	// FinalizedInfo is set if there are no more valid writer keys capable
 	// of writing to the given folder.
-	FinalizedInfo *TlfHandleExtension `codec:"fi,omitempty"`
+	FinalizedInfo *IFCERFTTlfHandleExtension `codec:"fi,omitempty"`
 
 	codec.UnknownFieldSetHandler
 
 	// The plaintext, deserialized PrivateMetadata
-	data PrivateMetadata
+	data IFCERFTPrivateMetadata
 
 	// The TLF handle for this MD. May be nil if this object was
 	// deserialized (more common on the server side).
@@ -170,10 +170,10 @@ type IFCERFTRootMetadata struct {
 
 	// The cached ID for this MD structure (hash)
 	mdIDLock sync.RWMutex
-	mdID     MdID
+	mdID     IFCERFTMdID
 }
 
-func (md *IFCERFTRootMetadata) haveOnlyUserRKeysChanged(codec IFCERFTCodec, prevMD *IFCERFTRootMetadata, user keybase1.UID) (bool, error) {
+func (md *IFCERFTRootMetadata) HaveOnlyUserRKeysChanged(codec IFCERFTCodec, prevMD *IFCERFTRootMetadata, user keybase1.UID) (bool, error) {
 	// Require the same number of generations
 	if len(md.RKeys) != len(prevMD.RKeys) {
 		return false, nil
@@ -207,7 +207,7 @@ func (md *IFCERFTRootMetadata) IsValidRekeyRequest(codec IFCERFTCodec, prevMd *I
 		return false, nil
 	}
 	writerEqual, err := CodecEqual(
-		codec, md.WriterMetadata, prevMd.WriterMetadata)
+		codec, md.IFCERFTWriterMetadata, prevMd.IFCERFTWriterMetadata)
 	if err != nil {
 		return false, err
 	}
@@ -224,7 +224,7 @@ func (md *IFCERFTRootMetadata) IsValidRekeyRequest(codec IFCERFTCodec, prevMd *I
 		// Signature/public key mismatch.
 		return false, nil
 	}
-	onlyUserRKeysChanged, err := md.haveOnlyUserRKeysChanged(
+	onlyUserRKeysChanged, err := md.HaveOnlyUserRKeysChanged(
 		codec, prevMd, user)
 	if err != nil {
 		return false, err
@@ -239,7 +239,7 @@ func (md *IFCERFTRootMetadata) IsValidRekeyRequest(codec IFCERFTCodec, prevMd *I
 // MergedStatus returns the status of this update -- has it been
 // merged into the main folder or not?
 func (md *IFCERFTRootMetadata) MergedStatus() IFCERFTMergeStatus {
-	if md.WFlags&MetadataFlagUnmerged != 0 {
+	if md.WFlags&IFCERFTMetadataFlagUnmerged != 0 {
 		return IFCERFTUnmerged
 	}
 	return IFCERFTMerged
@@ -247,19 +247,19 @@ func (md *IFCERFTRootMetadata) MergedStatus() IFCERFTMergeStatus {
 
 // IsRekeySet returns true if the rekey bit is set.
 func (md *IFCERFTRootMetadata) IsRekeySet() bool {
-	return md.Flags&MetadataFlagRekey != 0
+	return md.Flags&IFCERFTMetadataFlagRekey != 0
 }
 
 // IsWriterMetadataCopiedSet returns true if the bit is set indicating the writer metadata
 // was copied.
 func (md *IFCERFTRootMetadata) IsWriterMetadataCopiedSet() bool {
-	return md.Flags&MetadataFlagWriterMetadataCopied != 0
+	return md.Flags&IFCERFTMetadataFlagWriterMetadataCopied != 0
 }
 
 // IsFinal returns true if this is the last metadata block for a given folder.  This is
 // only expected to be set for folder resets.
 func (md *IFCERFTRootMetadata) IsFinal() bool {
-	return md.Flags&MetadataFlagFinal != 0
+	return md.Flags&IFCERFTMetadataFlagFinal != 0
 }
 
 // IsWriter returns whether or not the user+device is an authorized writer.
@@ -287,22 +287,22 @@ func (md *IFCERFTRootMetadata) IsReader(user keybase1.UID, deviceKID keybase1.KI
 // RootMetadata object with the given TlfID and TlfHandle. Note that
 // if the given ID/handle are private, rekeying must be done
 // separately.
-func updateNewRootMetadata(rmd *IFCERFTRootMetadata, id IFCERFTTlfID, h BareTlfHandle) error {
+func IFCERFTUpdateNewRootMetadata(rmd *IFCERFTRootMetadata, id IFCERFTTlfID, h IFCERFTBareTlfHandle) error {
 	if id.IsPublic() != h.IsPublic() {
 		return errors.New("TlfID and TlfHandle disagree on public status")
 	}
 
 	var writers []keybase1.UID
-	var wKeys TLFWriterKeyGenerations
-	var rKeys TLFReaderKeyGenerations
+	var wKeys IFCERFTTLFWriterKeyGenerations
+	var rKeys IFCERFTTLFReaderKeyGenerations
 	if id.IsPublic() {
 		writers = make([]keybase1.UID, len(h.Writers))
 		copy(writers, h.Writers)
 	} else {
-		wKeys = make(TLFWriterKeyGenerations, 0, 1)
-		rKeys = make(TLFReaderKeyGenerations, 0, 1)
+		wKeys = make(IFCERFTTLFWriterKeyGenerations, 0, 1)
+		rKeys = make(IFCERFTTLFReaderKeyGenerations, 0, 1)
 	}
-	rmd.WriterMetadata = WriterMetadata{
+	rmd.IFCERFTWriterMetadata = IFCERFTWriterMetadata{
 		Writers: writers,
 		WKeys:   wKeys,
 		ID:      id,
@@ -312,7 +312,7 @@ func updateNewRootMetadata(rmd *IFCERFTRootMetadata, id IFCERFTTlfID, h BareTlfH
 		copy(rmd.Extra.UnresolvedWriters, h.UnresolvedWriters)
 	}
 
-	rmd.Revision = MetadataRevisionInitial
+	rmd.Revision = IFCERFTMetadataRevisionInitial
 	rmd.RKeys = rKeys
 	if len(h.UnresolvedReaders) > 0 {
 		rmd.UnresolvedReaders = make([]keybase1.SocialAssertion, len(h.UnresolvedReaders))
@@ -322,7 +322,7 @@ func updateNewRootMetadata(rmd *IFCERFTRootMetadata, id IFCERFTTlfID, h BareTlfH
 }
 
 // Data returns the private metadata of this RootMetadata.
-func (md *IFCERFTRootMetadata) Data() *PrivateMetadata {
+func (md *IFCERFTRootMetadata) Data() *IFCERFTPrivateMetadata {
 	return &md.data
 }
 
@@ -331,21 +331,21 @@ func (md *IFCERFTRootMetadata) IsReadable() bool {
 	return md.ID.IsPublic() || md.data.Dir.IsInitialized()
 }
 
-func (md *IFCERFTRootMetadata) clearLastRevision() {
+func (md *IFCERFTRootMetadata) ClearLastRevision() {
 	md.ClearBlockChanges()
 	// remove the copied flag (if any.)
-	md.Flags &= ^MetadataFlagWriterMetadataCopied
+	md.Flags &= ^IFCERFTMetadataFlagWriterMetadataCopied
 }
 
-func (md *IFCERFTRootMetadata) deepCopy(codec IFCERFTCodec, copyHandle bool) (*IFCERFTRootMetadata, error) {
+func (md *IFCERFTRootMetadata) DeepCopy(codec IFCERFTCodec, copyHandle bool) (*IFCERFTRootMetadata, error) {
 	var newMd IFCERFTRootMetadata
-	if err := md.deepCopyInPlace(codec, copyHandle, &newMd); err != nil {
+	if err := md.DeepCopyInPlac(codec, copyHandle, &newMd); err != nil {
 		return nil, err
 	}
 	return &newMd, nil
 }
 
-func (md *IFCERFTRootMetadata) deepCopyInPlace(codec IFCERFTCodec, copyHandle bool,
+func (md *IFCERFTRootMetadata) DeepCopyInPlac(codec IFCERFTCodec, copyHandle bool,
 	newMd *IFCERFTRootMetadata) error {
 	if err := CodecUpdate(codec, newMd, md); err != nil {
 		return err
@@ -368,7 +368,7 @@ func (md *IFCERFTRootMetadata) deepCopyInPlace(codec IFCERFTCodec, copyHandle bo
 // MakeSuccessor() instead.
 func (md *IFCERFTRootMetadata) DeepCopyForServerTest(
 	codec IFCERFTCodec) (*IFCERFTRootMetadata, error) {
-	return md.deepCopy(codec, false)
+	return md.DeepCopy(codec, false)
 }
 
 // MakeSuccessor returns a complete copy of this RootMetadata (but
@@ -376,22 +376,22 @@ func (md *IFCERFTRootMetadata) DeepCopyForServerTest(
 // with the revision incremented and a correct backpointer.
 func (md *IFCERFTRootMetadata) MakeSuccessor(config IFCERFTConfig, isWriter bool) (*IFCERFTRootMetadata, error) {
 	if md.IsFinal() {
-		return nil, MetadataIsFinalError{}
+		return nil, IFCERFTMetadataIsFinalError{}
 	}
-	newMd, err := md.deepCopy(config.Codec(), true)
+	newMd, err := md.DeepCopy(config.Codec(), true)
 	if err != nil {
 		return nil, err
 	}
 
 	if md.IsReadable() && isWriter {
-		newMd.clearLastRevision()
+		newMd.ClearLastRevision()
 		// clear the serialized data.
 		newMd.SerializedPrivateMetadata = nil
 	} else {
 		// if we can't read it it means we're simply setting the rekey bit
 		// and copying the previous data.
-		newMd.Flags |= MetadataFlagRekey
-		newMd.Flags |= MetadataFlagWriterMetadataCopied
+		newMd.Flags |= IFCERFTMetadataFlagRekey
+		newMd.Flags |= IFCERFTMetadataFlagWriterMetadataCopied
 	}
 
 	newMd.PrevRoot, err = md.MetadataID(config.Crypto())
@@ -399,7 +399,7 @@ func (md *IFCERFTRootMetadata) MakeSuccessor(config IFCERFTConfig, isWriter bool
 		return nil, err
 	}
 	// bump revision
-	if md.Revision < MetadataRevisionInitial {
+	if md.Revision < IFCERFTMetadataRevisionInitial {
 		return nil, errors.New("MD with invalid revision")
 	}
 	newMd.Revision = md.Revision + 1
@@ -412,12 +412,12 @@ func (md *IFCERFTRootMetadata) CheckValidSuccessor(
 	crypto cryptoPure, nextMd *IFCERFTRootMetadata) error {
 	// (1) Verify current metadata is non-final.
 	if md.IsFinal() {
-		return MetadataIsFinalError{}
+		return IFCERFTMetadataIsFinalError{}
 	}
 
 	// (2) Check TLF ID.
 	if nextMd.ID != md.ID {
-		return MDTlfIDMismatch{
+		return IFCERFTMDTlfIDMismatch{
 			currID: md.ID,
 			nextID: nextMd.ID,
 		}
@@ -425,7 +425,7 @@ func (md *IFCERFTRootMetadata) CheckValidSuccessor(
 
 	// (2) Check revision.
 	if nextMd.Revision != md.Revision+1 {
-		return MDRevisionMismatch{
+		return IFCERFTMDRevisionMismatch{
 			rev:  nextMd.Revision,
 			curr: md.Revision,
 		}
@@ -437,7 +437,7 @@ func (md *IFCERFTRootMetadata) CheckValidSuccessor(
 		return err
 	}
 	if nextMd.PrevRoot != currRoot {
-		return MDPrevRootMismatch{
+		return IFCERFTMDPrevRootMismatch{
 			prevRoot: nextMd.PrevRoot,
 			currRoot: currRoot,
 		}
@@ -448,7 +448,7 @@ func (md *IFCERFTRootMetadata) CheckValidSuccessor(
 		expectedUsage += nextMd.RefBytes - nextMd.UnrefBytes
 	}
 	if nextMd.DiskUsage != expectedUsage {
-		return MDDiskUsageMismatch{
+		return IFCERFTMDDiskUsageMismatch{
 			expectedDiskUsage: expectedUsage,
 			actualDiskUsage:   nextMd.DiskUsage,
 		}
@@ -469,19 +469,19 @@ func (md *IFCERFTRootMetadata) CheckValidSuccessorForServer(
 	case nil:
 		break
 
-	case MDRevisionMismatch:
+	case IFCERFTMDRevisionMismatch:
 		return MDServerErrorConflictRevision{
 			Expected: err.curr + 1,
 			Actual:   err.rev,
 		}
 
-	case MDPrevRootMismatch:
+	case IFCERFTMDPrevRootMismatch:
 		return MDServerErrorConflictPrevRoot{
 			Expected: err.currRoot,
 			Actual:   err.prevRoot,
 		}
 
-	case MDDiskUsageMismatch:
+	case IFCERFTMDDiskUsageMismatch:
 		return MDServerErrorConflictDiskUsage{
 			Expected: err.expectedDiskUsage,
 			Actual:   err.actualDiskUsage,
@@ -494,17 +494,17 @@ func (md *IFCERFTRootMetadata) CheckValidSuccessorForServer(
 	return nil
 }
 
-func (md *IFCERFTRootMetadata) getTLFKeyBundles(keyGen IFCERFTKeyGen) (*TLFWriterKeyBundle, *TLFReaderKeyBundle, error) {
+func (md *IFCERFTRootMetadata) GetTLFKeyBundles(keyGen IFCERFTKeyGen) (*IFCERFTTLFWriterKeyBundle, *IFCERFTTLFReaderKeyBundle, error) {
 	if md.ID.IsPublic() {
-		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundle"}
+		return nil, nil, IFCERFTInvalidPublicTLFOperation{md.ID, "getTLFKeyBundle"}
 	}
 
 	if keyGen < IFCERFTFirstValidKeyGen {
-		return nil, nil, InvalidKeyGenerationError{md.GetTlfHandle(), keyGen}
+		return nil, nil, IFCERFTInvalidKeyGenerationError{md.GetTlfHandle(), keyGen}
 	}
 	i := int(keyGen - IFCERFTFirstValidKeyGen)
 	if i >= len(md.WKeys) || i >= len(md.RKeys) {
-		return nil, nil, NewKeyGenerationError{md.GetTlfHandle(), keyGen}
+		return nil, nil, IFCERFTNewKeyGenerationError{md.GetTlfHandle(), keyGen}
 	}
 	return &md.WKeys[i], &md.RKeys[i], nil
 }
@@ -513,10 +513,10 @@ func (md *IFCERFTRootMetadata) getTLFKeyBundles(keyGen IFCERFTKeyGen) (*TLFWrite
 // and device at the given key generation.
 func (md *IFCERFTRootMetadata) GetTLFCryptKeyInfo(keyGen IFCERFTKeyGen, user keybase1.UID,
 	currentCryptPublicKey IFCERFTCryptPublicKey) (
-	info TLFCryptKeyInfo, ok bool, err error) {
-	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
+	info IFCERFTTLFCryptKeyInfo, ok bool, err error) {
+	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
 	if err != nil {
-		return TLFCryptKeyInfo{}, false, err
+		return IFCERFTTLFCryptKeyInfo{}, false, err
 	}
 
 	key := currentCryptPublicKey.kid
@@ -527,14 +527,14 @@ func (md *IFCERFTRootMetadata) GetTLFCryptKeyInfo(keyGen IFCERFTKeyGen, user key
 		info, ok := u[key]
 		return info, ok, nil
 	}
-	return TLFCryptKeyInfo{}, false, nil
+	return IFCERFTTLFCryptKeyInfo{}, false, nil
 }
 
 // GetTLFCryptPublicKeys returns the public crypt keys for the given user
 // at the given key generation.
 func (md *IFCERFTRootMetadata) GetTLFCryptPublicKeys(keyGen IFCERFTKeyGen, user keybase1.UID) (
 	[]keybase1.KID, bool) {
-	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
+	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
 	if err != nil {
 		return nil, false
 	}
@@ -552,7 +552,7 @@ func (md *IFCERFTRootMetadata) GetTLFCryptPublicKeys(keyGen IFCERFTKeyGen, user 
 func (md *IFCERFTRootMetadata) GetTLFEphemeralPublicKey(
 	keyGen IFCERFTKeyGen, user keybase1.UID,
 	currentCryptPublicKey IFCERFTCryptPublicKey) (IFCERFTTLFEphemeralPublicKey, error) {
-	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
+	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
 	if err != nil {
 		return IFCERFTTLFEphemeralPublicKey{}, err
 	}
@@ -564,7 +564,7 @@ func (md *IFCERFTRootMetadata) GetTLFEphemeralPublicKey(
 	}
 	if !ok {
 		return IFCERFTTLFEphemeralPublicKey{},
-			TLFEphemeralPublicKeyNotFoundError{
+			IFCERFTTLFEphemeralPublicKeyNotFoundError{
 				user, currentCryptPublicKey.kid}
 	}
 
@@ -585,9 +585,9 @@ func (md *IFCERFTRootMetadata) LatestKeyGeneration() IFCERFTKeyGen {
 // AddNewKeys makes a new key generation for this RootMetadata using the
 // given TLFKeyBundles.
 func (md *IFCERFTRootMetadata) AddNewKeys(
-	wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) error {
+	wkb IFCERFTTLFWriterKeyBundle, rkb IFCERFTTLFReaderKeyBundle) error {
 	if md.ID.IsPublic() {
-		return InvalidPublicTLFOperation{md.ID, "AddNewKeys"}
+		return IFCERFTInvalidPublicTLFOperation{md.ID, "AddNewKeys"}
 	}
 	md.WKeys = append(md.WKeys, wkb)
 	md.RKeys = append(md.RKeys, rkb)
@@ -603,18 +603,18 @@ func (md *IFCERFTRootMetadata) GetTlfHandle() *IFCERFTTlfHandle {
 	return md.tlfHandle
 }
 
-func (md *IFCERFTRootMetadata) makeBareTlfHandle() (BareTlfHandle, error) {
+func (md *IFCERFTRootMetadata) makeBareTlfHandle() (IFCERFTBareTlfHandle, error) {
 	var writers, readers []keybase1.UID
 	if md.ID.IsPublic() {
 		writers = md.Writers
 		readers = []keybase1.UID{keybase1.PublicUID}
 	} else {
 		if len(md.WKeys) == 0 {
-			return BareTlfHandle{}, errors.New("No writer key generations; need rekey?")
+			return IFCERFTBareTlfHandle{}, errors.New("No writer key generations; need rekey?")
 		}
 
 		if len(md.RKeys) == 0 {
-			return BareTlfHandle{}, errors.New("No reader key generations; need rekey?")
+			return IFCERFTBareTlfHandle{}, errors.New("No reader key generations; need rekey?")
 		}
 
 		wkb := md.WKeys[len(md.WKeys)-1]
@@ -636,7 +636,7 @@ func (md *IFCERFTRootMetadata) makeBareTlfHandle() (BareTlfHandle, error) {
 		}
 	}
 
-	return MakeBareTlfHandle(
+	return IFCERFTMakeBareTlfHandle(
 		writers, readers,
 		md.Extra.UnresolvedWriters, md.UnresolvedReaders,
 		md.TlfHandleExtensions())
@@ -644,7 +644,7 @@ func (md *IFCERFTRootMetadata) makeBareTlfHandle() (BareTlfHandle, error) {
 
 // MakeBareTlfHandle makes a BareTlfHandle for this
 // RootMetadata. Should be used only by servers and MDOps.
-func (md *IFCERFTRootMetadata) MakeBareTlfHandle() (BareTlfHandle, error) {
+func (md *IFCERFTRootMetadata) MakeBareTlfHandle() (IFCERFTBareTlfHandle, error) {
 	if md.tlfHandle != nil {
 		panic(errors.New("MakeBareTlfHandle called when md.tlfHandle exists"))
 	}
@@ -663,19 +663,19 @@ func (md *IFCERFTRootMetadata) IsInitialized() bool {
 }
 
 // MetadataID computes and caches the MdID for this RootMetadata
-func (md *IFCERFTRootMetadata) MetadataID(crypto cryptoPure) (MdID, error) {
-	mdID := func() MdID {
+func (md *IFCERFTRootMetadata) MetadataID(crypto cryptoPure) (IFCERFTMdID, error) {
+	mdID := func() IFCERFTMdID {
 		md.mdIDLock.RLock()
 		defer md.mdIDLock.RUnlock()
 		return md.mdID
 	}()
-	if mdID != (MdID{}) {
+	if mdID != (IFCERFTMdID{}) {
 		return mdID, nil
 	}
 
 	mdID, err := crypto.MakeMdID(md)
 	if err != nil {
-		return MdID{}, err
+		return IFCERFTMdID{}, err
 	}
 
 	md.mdIDLock.Lock()
@@ -685,10 +685,10 @@ func (md *IFCERFTRootMetadata) MetadataID(crypto cryptoPure) (MdID, error) {
 }
 
 // clearMetadataID forgets the cached version of the RootMetadata's MdID
-func (md *IFCERFTRootMetadata) clearCachedMetadataIDForTest() {
+func (md *IFCERFTRootMetadata) ClearCachedMetadataIDForTest() {
 	md.mdIDLock.Lock()
 	defer md.mdIDLock.Unlock()
-	md.mdID = MdID{}
+	md.mdID = IFCERFTMdID{}
 }
 
 // AddRefBlock adds the newly-referenced block to the add block change list.
@@ -721,7 +721,7 @@ func (md *IFCERFTRootMetadata) AddUpdate(oldInfo IFCERFTBlockInfo, newInfo IFCER
 // AddOp starts a new operation for this MD update.  Subsequent
 // AddRefBlock, AddUnrefBlock, and AddUpdate calls will be applied to
 // this operation.
-func (md *IFCERFTRootMetadata) AddOp(o op) {
+func (md *IFCERFTRootMetadata) AddOp(o IFCERFTOps) {
 	md.data.Changes.AddOp(o)
 }
 
@@ -737,7 +737,7 @@ func (md *IFCERFTRootMetadata) ClearBlockChanges() {
 
 // Helper which returns nil if the md block is uninitialized or readable by
 // the current user. Otherwise an appropriate read access error is returned.
-func (md *IFCERFTRootMetadata) isReadableOrError(ctx context.Context, config IFCERFTConfig) error {
+func (md *IFCERFTRootMetadata) IsReadableOrError(ctx context.Context, config IFCERFTConfig) error {
 	if !md.IsInitialized() || md.IsReadable() {
 		return nil
 	}
@@ -752,12 +752,12 @@ func (md *IFCERFTRootMetadata) isReadableOrError(ctx context.Context, config IFC
 	if err != nil {
 		return err
 	}
-	return makeRekeyReadError(md, resolvedHandle, md.LatestKeyGeneration(),
+	return IFCERFTMakeRekeyReadError(md, resolvedHandle, md.LatestKeyGeneration(),
 		uid, username)
 }
 
 // writerKID returns the KID of the writer.
-func (md *IFCERFTRootMetadata) writerKID() keybase1.KID {
+func (md *IFCERFTRootMetadata) WriterKID() keybase1.KID {
 	return md.WriterMetadataSigInfo.VerifyingKey.KID()
 }
 
@@ -766,7 +766,7 @@ func (md *IFCERFTRootMetadata) writerKID() keybase1.KID {
 func (md *IFCERFTRootMetadata) VerifyWriterMetadata(codec IFCERFTCodec, crypto IFCERFTCrypto) error {
 	// We have to re-marshal the WriterMetadata, since it's
 	// embedded.
-	buf, err := codec.Encode(md.WriterMetadata)
+	buf, err := codec.Encode(md.IFCERFTWriterMetadata)
 	if err != nil {
 		return err
 	}
@@ -782,7 +782,7 @@ func (md *IFCERFTRootMetadata) VerifyWriterMetadata(codec IFCERFTCodec, crypto I
 // updateFromTlfHandle updates the current RootMetadata's fields to
 // reflect the given handle, which must be the result of running the
 // current handle with ResolveAgain().
-func (md *IFCERFTRootMetadata) updateFromTlfHandle(newHandle *IFCERFTTlfHandle) error {
+func (md *IFCERFTRootMetadata) UpdateFromTlfHandle(newHandle *IFCERFTTlfHandle) error {
 	// TODO: Strengthen check, e.g. make sure every writer/reader
 	// in the old handle is also a writer/reader of the new
 	// handle.
@@ -824,7 +824,7 @@ func (md *IFCERFTRootMetadata) updateFromTlfHandle(newHandle *IFCERFTTlfHandle) 
 // swapCachedBlockChanges swaps any cached block changes so that
 // future local accesses to this MD (from the cache) can directly
 // access the ops without needing to re-embed the block changes.
-func (md *IFCERFTRootMetadata) swapCachedBlockChanges() {
+func (md *IFCERFTRootMetadata) SwapCachedBlockChanges() {
 	if md.data.Changes.Ops == nil {
 		md.data.Changes, md.data.cachedChanges =
 			md.data.cachedChanges, md.data.Changes
@@ -834,7 +834,7 @@ func (md *IFCERFTRootMetadata) swapCachedBlockChanges() {
 }
 
 // TlfHandleExtensions returns a list of handle extensions associated with the TLf.
-func (md *IFCERFTRootMetadata) TlfHandleExtensions() (extensions []TlfHandleExtension) {
+func (md *IFCERFTRootMetadata) TlfHandleExtensions() (extensions []IFCERFTTlfHandleExtension) {
 	if md.ConflictInfo != nil {
 		extensions = append(extensions, *md.ConflictInfo)
 	}
@@ -845,7 +845,7 @@ func (md *IFCERFTRootMetadata) TlfHandleExtensions() (extensions []TlfHandleExte
 }
 
 // RootMetadataSigned is the top-level MD object stored in MD server
-type RootMetadataSigned struct {
+type IFCERFTRootMetadataSigned struct {
 	// signature over the root metadata by the private signing key
 	SigInfo IFCERFTSignatureInfo `codec:",omitempty"`
 	// all the metadata
@@ -857,24 +857,24 @@ type RootMetadataSigned struct {
 
 // IsInitialized returns whether or not this RootMetadataSigned object
 // has been finalized by some writer.
-func (rmds *RootMetadataSigned) IsInitialized() bool {
+func (rmds *IFCERFTRootMetadataSigned) IsInitialized() bool {
 	// The data is initialized only if there is a signature.
 	return !rmds.SigInfo.IsNil()
 }
 
 // VerifyRootMetadata verifies rmd's MD against rmd's SigInfo,
 // assuming the verifying key there is valid.
-func (rmds *RootMetadataSigned) VerifyRootMetadata(codec IFCERFTCodec, crypto IFCERFTCrypto) error {
+func (rmds *IFCERFTRootMetadataSigned) VerifyRootMetadata(codec IFCERFTCodec, crypto IFCERFTCrypto) error {
 	md := &rmds.MD
 	if rmds.MD.IsFinal() {
 		var err error
-		md, err = rmds.MD.deepCopy(codec, false)
+		md, err = rmds.MD.DeepCopy(codec, false)
 		if err != nil {
 			return err
 		}
 		// Mask out finalized additions.  These are the only things allowed
 		// to change in the finalized metadata block.
-		md.Flags &= ^MetadataFlagFinal
+		md.Flags &= ^IFCERFTMetadataFlagFinal
 		md.Revision--
 		md.FinalizedInfo = nil
 	}
@@ -895,13 +895,13 @@ func (rmds *RootMetadataSigned) VerifyRootMetadata(codec IFCERFTCodec, crypto IF
 
 // MerkleHash computes a hash of this RootMetadataSigned object for inclusion
 // into the KBFS Merkle tree.
-func (rmds *RootMetadataSigned) MerkleHash(config IFCERFTConfig) (MerkleHash, error) {
+func (rmds *IFCERFTRootMetadataSigned) MerkleHash(config IFCERFTConfig) (MerkleHash, error) {
 	return config.Crypto().MakeMerkleHash(rmds)
 }
 
 // Version returns the metadata version of this MD block, depending on
 // which features it uses.
-func (rmds *RootMetadataSigned) Version() IFCERFTMetadataVer {
+func (rmds *IFCERFTRootMetadataSigned) Version() IFCERFTMetadataVer {
 	// Only folders with unresolved assertions orconflict info get the
 	// new version.
 	if len(rmds.MD.Extra.UnresolvedWriters) > 0 ||
@@ -912,25 +912,25 @@ func (rmds *RootMetadataSigned) Version() IFCERFTMetadataVer {
 	}
 	// Let other types of MD objects use the older version since they
 	// are still compatible with older clients.
-	return PreExtraMetadataVer
+	return IFCERFTPreExtraMetadataVer
 }
 
 // MakeFinalCopy returns a complete copy of this RootMetadataSigned (but with
 // cleared serialized metadata), with the revision incremented and the final bit set.
-func (rmds *RootMetadataSigned) MakeFinalCopy(config IFCERFTConfig) (
-	*RootMetadataSigned, error) {
+func (rmds *IFCERFTRootMetadataSigned) MakeFinalCopy(config IFCERFTConfig) (
+	*IFCERFTRootMetadataSigned, error) {
 	if rmds.MD.IsFinal() {
-		return nil, MetadataIsFinalError{}
+		return nil, IFCERFTMetadataIsFinalError{}
 	}
-	var newRmds RootMetadataSigned
-	err := rmds.MD.deepCopyInPlace(config.Codec(), false, &newRmds.MD)
+	var newRmds IFCERFTRootMetadataSigned
+	err := rmds.MD.DeepCopyInPlac(config.Codec(), false, &newRmds.MD)
 	if err != nil {
 		return nil, err
 	}
 	// Copy the signature.
 	newRmds.SigInfo = rmds.SigInfo.deepCopy()
 	// Set the final flag.
-	newRmds.MD.Flags |= MetadataFlagFinal
+	newRmds.MD.Flags |= IFCERFTMetadataFlagFinal
 	// Increment revision but keep the PrevRoot --
 	// We want the client to be able to verify the signature by masking out the final
 	// bit, decrementing the revision, and nulling out the finalized extension info.
@@ -942,7 +942,7 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(config IFCERFTConfig) (
 	return &newRmds, nil
 }
 
-func makeRekeyReadError(
+func IFCERFTMakeRekeyReadError(
 	md *IFCERFTRootMetadata, resolvedHandle *IFCERFTTlfHandle, keyGen IFCERFTKeyGen, uid keybase1.UID, username libkb.NormalizedUsername) error {
 	// If the user is not a legitimate reader of the folder, this is a
 	// normal read access error.
@@ -950,13 +950,13 @@ func makeRekeyReadError(
 		panic("makeRekeyReadError called on public folder")
 	}
 	if !resolvedHandle.IsReader(uid) {
-		return NewReadAccessError(resolvedHandle, username)
+		return IFCERFTNewReadAccessError(resolvedHandle, username)
 	}
 
 	// Otherwise, this folder needs to be rekeyed for this device.
 	tlfName := resolvedHandle.GetCanonicalName()
 	if keys, _ := md.GetTLFCryptPublicKeys(keyGen, uid); len(keys) > 0 {
-		return NeedSelfRekeyError{tlfName}
+		return IFCERFTNeedSelfRekeyError{tlfName}
 	}
-	return NeedOtherRekeyError{tlfName}
+	return IFCERFTNeedOtherRekeyError{tlfName}
 }

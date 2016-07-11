@@ -69,7 +69,7 @@ func testCRInitPtrs(n int) (currPtr byte, ptrs []IFCERFTBlockPointer, revPtrs ma
 }
 
 func testCRFillOpPtrs(currPtr byte,
-	expected map[IFCERFTBlockPointer]IFCERFTBlockPointer, revPtrs map[IFCERFTBlockPointer]IFCERFTBlockPointer, affectedPtrs []IFCERFTBlockPointer, op op) (nextCurrPtr byte) {
+	expected map[IFCERFTBlockPointer]IFCERFTBlockPointer, revPtrs map[IFCERFTBlockPointer]IFCERFTBlockPointer, affectedPtrs []IFCERFTBlockPointer, op IFCERFTOps) (nextCurrPtr byte) {
 	for _, ptr := range affectedPtrs {
 		newPtr := IFCERFTBlockPointer{ID: fakeBlockID(currPtr)}
 		currPtr++
@@ -81,7 +81,7 @@ func testCRFillOpPtrs(currPtr byte,
 }
 
 // If one of the ops is a rename, it doesn't check for exact equality
-func testCRCheckOps(t *testing.T, cc *crChains, original IFCERFTBlockPointer, expectedOps []op) {
+func testCRCheckOps(t *testing.T, cc *crChains, original IFCERFTBlockPointer, expectedOps []IFCERFTOps) {
 	chain, ok := cc.byOriginal[original]
 	if !ok {
 		t.Fatalf("No chain at %v", original)
@@ -163,7 +163,7 @@ func TestCRChainsSingleOp(t *testing.T) {
 		rootPtrUnref, cc, true)
 
 	// check for the create op
-	testCRCheckOps(t, cc, dir2Unref, []op{co})
+	testCRCheckOps(t, cc, dir2Unref, []IFCERFTOps{co})
 }
 
 func TestCRChainsRenameOp(t *testing.T) {
@@ -198,9 +198,9 @@ func TestCRChainsRenameOp(t *testing.T) {
 
 	co := newCreateOp(newName, dir2Unref, IFCERFTFile)
 	co.renamed = true
-	testCRCheckOps(t, cc, dir2Unref, []op{co})
+	testCRCheckOps(t, cc, dir2Unref, []IFCERFTOps{co})
 	rmo := newRmOp(oldName, dir1Unref)
-	testCRCheckOps(t, cc, dir1Unref, []op{rmo})
+	testCRCheckOps(t, cc, dir1Unref, []IFCERFTOps{rmo})
 }
 
 // Test multiple operations, both in one MD and across multiple MDs
@@ -299,25 +299,25 @@ func TestCRChainsMultiOps(t *testing.T) {
 	checkExpectedChains(t, expected, expectedRenames, rootPtrUnref, cc, true)
 
 	// root should have no direct ops
-	testCRCheckOps(t, cc, rootPtrUnref, []op{})
+	testCRCheckOps(t, cc, rootPtrUnref, []IFCERFTOps{})
 
 	// dir1 should have two creates (one of which is a rename)
 	co1 := newCreateOp(f4, op3.NewDir.Unref, IFCERFTFile)
 	co1.renamed = true
-	testCRCheckOps(t, cc, dir1Unref, []op{op2, co1})
+	testCRCheckOps(t, cc, dir1Unref, []IFCERFTOps{op2, co1})
 
 	// dir2 should have one rm op
-	testCRCheckOps(t, cc, dir2Unref, []op{op5})
+	testCRCheckOps(t, cc, dir2Unref, []IFCERFTOps{op5})
 
 	// dir3 should have the rm part of a rename
 	ro3 := newRmOp(f2, op3.OldDir.Unref)
-	testCRCheckOps(t, cc, dir3Unref, []op{ro3})
+	testCRCheckOps(t, cc, dir3Unref, []IFCERFTOps{ro3})
 
 	// file2 should have the setattr
-	testCRCheckOps(t, cc, file2Ptr, []op{op1})
+	testCRCheckOps(t, cc, file2Ptr, []IFCERFTOps{op1})
 
 	// file4 should have one op
-	testCRCheckOps(t, cc, file4Unref, []op{op4})
+	testCRCheckOps(t, cc, file4Unref, []IFCERFTOps{op4})
 
 	// now make sure the chain of MDs gets the same answers
 	config = testCRChainsFillInWriter(t, multiRmds)
@@ -447,17 +447,17 @@ func TestCRChainsCollapse(t *testing.T) {
 		false /*tail ref pointer won't match due to collapsing*/)
 
 	// root should have no direct ops
-	testCRCheckOps(t, cc, rootPtrUnref, []op{})
+	testCRCheckOps(t, cc, rootPtrUnref, []IFCERFTOps{})
 
 	// dir1 should only have one createOp (the final rename)
 	co1 := newCreateOp(f3, op9.OldDir.Unref, IFCERFTFile)
 	co1.renamed = true
-	testCRCheckOps(t, cc, dir1Unref, []op{co1})
+	testCRCheckOps(t, cc, dir1Unref, []IFCERFTOps{co1})
 
 	// dir2 should have the rm part of a rename
 	ro2 := newRmOp(f1, op6.OldDir.Unref)
-	testCRCheckOps(t, cc, dir2Unref, []op{ro2})
+	testCRCheckOps(t, cc, dir2Unref, []IFCERFTOps{ro2})
 
 	// file1 should have the setattr
-	testCRCheckOps(t, cc, file1Ptr, []op{op2})
+	testCRCheckOps(t, cc, file1Ptr, []IFCERFTOps{op2})
 }

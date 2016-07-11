@@ -248,7 +248,7 @@ outer:
 			// No error.
 			break outer
 
-		case libkbfs.TlfNameNotCanonical:
+		case libkbfs.IFCERFTTlfNameNotCanonical:
 			// Non-canonical name, so try again.
 			name = parseErr.NameToTry
 

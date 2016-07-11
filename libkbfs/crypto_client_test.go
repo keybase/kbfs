@@ -78,7 +78,7 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 			return err
 		}
 		arg := args.([]interface{})[0].(keybase1.UnboxBytes32Arg)
-		publicKey := MakeTLFEphemeralPublicKey(arg.PeersPublicKey)
+		publicKey := IFCERFTMakeTLFEphemeralPublicKey(arg.PeersPublicKey)
 		encryptedClientHalf := IFCERFTEncryptedTLFCryptKeyClientHalf{
 			Version:       IFCERFTEncryptionSecretbox,
 			EncryptedData: arg.EncryptedBytes32[:],
@@ -100,7 +100,7 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 		arg := args.([]interface{})[0].(keybase1.UnboxBytes32AnyArg)
 		keys := make([]IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, 0, len(arg.Bundles))
 		for _, k := range arg.Bundles {
-			ePublicKey := MakeTLFEphemeralPublicKey(k.PublicKey)
+			ePublicKey := IFCERFTMakeTLFEphemeralPublicKey(k.PublicKey)
 			encryptedClientHalf := IFCERFTEncryptedTLFCryptKeyClientHalf{
 				Version:       IFCERFTEncryptionSecretbox,
 				EncryptedData: make([]byte, len(k.Ciphertext)),
@@ -111,7 +111,7 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 			keys = append(keys, IFCERFTEncryptedTLFCryptKeyClientAndEphemeral{
 				EPubKey:    ePublicKey,
 				ClientHalf: encryptedClientHalf,
-				PubKey:     MakeCryptPublicKey(k.Kid),
+				PubKey:     IFCERFTMakeCryptPublicKey(k.Kid),
 			})
 		}
 		clientHalf, index, err := fc.Local.DecryptTLFCryptKeyClientHalfAny(
@@ -122,7 +122,7 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 		res := res.(*keybase1.UnboxAnyRes)
 		res.Plaintext = clientHalf.data
 		res.Index = index
-		res.Kid = keys[index].PubKey.kidContainer.kid
+		res.Kid = keys[index].PubKey.IFCERFTKidContainer.kid
 		return nil
 
 	default:
@@ -290,7 +290,7 @@ func TestCryptoClientDecryptEmptyEncryptedTLFCryptKeyClientHalfAny(t *testing.T)
 
 	_, _, err := c.DecryptTLFCryptKeyClientHalfAny(
 		context.Background(), keys, false)
-	if _, ok := err.(NoKeysError); !ok {
+	if _, ok := err.(IFCERFTNoKeysError); !ok {
 		t.Fatalf("expected NoKeysError. Actual error: %v", err)
 	}
 }
@@ -305,7 +305,7 @@ func TestCryptoClientDecryptEncryptedTLFCryptKeyClientHalfAny(t *testing.T) {
 	c := newCryptoClientWithClient(config, fc)
 
 	keys := make([]IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, 0, 4)
-	clientHalves := make([]TLFCryptKeyClientHalf, 0, 4)
+	clientHalves := make([]IFCERFTTLFCryptKeyClientHalf, 0, 4)
 	for i := 0; i < 4; i++ {
 		_, _, ephPublicKey, ephPrivateKey, cryptKey, err := c.MakeRandomTLFKeys()
 		if err != nil {
@@ -478,7 +478,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 
 	encryptedClientHalfWrongVersion := encryptedClientHalf
 	encryptedClientHalfWrongVersion.Version++
-	expectedErr = UnknownEncryptionVer{encryptedClientHalfWrongVersion.Version}
+	expectedErr = IFCERFTUnknownEncryptionVer{encryptedClientHalfWrongVersion.Version}
 	ctx := context.Background()
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfWrongVersion)
@@ -499,7 +499,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 
 	encryptedClientHalfWrongNonceSize := encryptedClientHalf
 	encryptedClientHalfWrongNonceSize.Nonce = encryptedClientHalfWrongNonceSize.Nonce[:len(encryptedClientHalfWrongNonceSize.Nonce)-1]
-	expectedErr = InvalidNonceError{encryptedClientHalfWrongNonceSize.Nonce}
+	expectedErr = IFCERFTInvalidNonceError{encryptedClientHalfWrongNonceSize.Nonce}
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfWrongNonceSize)
 	if err.Error() != expectedErr.Error() {

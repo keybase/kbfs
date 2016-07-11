@@ -39,7 +39,7 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 
 	require.Equal(t, 0, getBlockJournalLength(t, j))
 
-	bCtx := IFCERFTBlockContext{uid1, "", zeroBlockRefNonce}
+	bCtx := IFCERFTBlockContext{uid1, "", IFCERFTZeroBlockRefNonce}
 
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
@@ -113,7 +113,7 @@ func TestBserverTlfJournalRemoveReferences(t *testing.T) {
 
 	require.Equal(t, 0, getBlockJournalLength(t, j))
 
-	bCtx := IFCERFTBlockContext{uid1, "", zeroBlockRefNonce}
+	bCtx := IFCERFTBlockContext{uid1, "", IFCERFTZeroBlockRefNonce}
 
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
@@ -167,7 +167,7 @@ func TestBserverTlfJournalArchiveReferences(t *testing.T) {
 
 	require.Equal(t, 0, getBlockJournalLength(t, j))
 
-	bCtx := IFCERFTBlockContext{uid1, "", zeroBlockRefNonce}
+	bCtx := IFCERFTBlockContext{uid1, "", IFCERFTZeroBlockRefNonce}
 
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)

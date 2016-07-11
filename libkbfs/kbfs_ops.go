@@ -161,7 +161,7 @@ func (fs *KBFSOpsStandard) DeleteFavorite(ctx context.Context,
 	}()
 	if ops != nil {
 		err := ops.deleteFromFavorites(ctx, fs.favs)
-		if _, ok := err.(OpsCantHandleFavorite); !ok {
+		if _, ok := err.(IFCERFTOpsCantHandleFavorite); !ok {
 			return err
 		}
 		// If the ops couldn't handle the delete, fall through to
@@ -256,7 +256,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 
 	// we might not be able to read the metadata if we aren't in the
 	// key group yet.
-	if err := md.isReadableOrError(ctx, fs.config); err != nil {
+	if err := md.IsReadableOrError(ctx, fs.config); err != nil {
 		fs.opsLock.Lock()
 		defer fs.opsLock.Unlock()
 		// If we already have an FBO for this ID, trigger a rekey
@@ -359,7 +359,7 @@ func (fs *KBFSOpsStandard) Rename(
 
 	// only works for nodes within the same topdir
 	if oldFB != newFB {
-		return RenameAcrossDirsError{}
+		return IFCERFTRenameAcrossDirsError{}
 	}
 
 	ops := fs.getOpsByNode(ctx, oldParent)

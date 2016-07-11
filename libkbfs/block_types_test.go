@@ -12,7 +12,7 @@ import (
 )
 
 func makeFakeBlockPointer(t *testing.T) IFCERFTBlockPointer {
-	h, err := DefaultHash([]byte("fake buf"))
+	h, err := IFCERFTDefaultHash([]byte("fake buf"))
 	require.NoError(t, err)
 	return IFCERFTBlockPointer{
 		BlockID{h},

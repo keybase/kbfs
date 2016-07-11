@@ -17,27 +17,27 @@ import (
 func TestCreateOpCustomUpdate(t *testing.T) {
 	oldDir := makeFakeBlockPointer(t)
 	co := newCreateOp("name", oldDir, IFCERFTExec)
-	require.Equal(t, blockUpdate{Unref: oldDir}, co.Dir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldDir}, co.Dir)
 
 	// Update to oldDir should update co.Dir.
 	newDir := oldDir
 	newDir.ID = fakeBlockID(42)
 	co.AddUpdate(oldDir, newDir)
 	require.Nil(t, co.Updates)
-	require.Equal(t, blockUpdate{Unref: oldDir, Ref: newDir}, co.Dir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldDir, Ref: newDir}, co.Dir)
 }
 
 func TestRmOpCustomUpdate(t *testing.T) {
 	oldDir := makeFakeBlockPointer(t)
 	ro := newRmOp("name", oldDir)
-	require.Equal(t, blockUpdate{Unref: oldDir}, ro.Dir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldDir}, ro.Dir)
 
 	// Update to oldDir should update ro.Dir.
 	newDir := oldDir
 	newDir.ID = fakeBlockID(42)
 	ro.AddUpdate(oldDir, newDir)
 	require.Nil(t, ro.Updates)
-	require.Equal(t, blockUpdate{Unref: oldDir, Ref: newDir}, ro.Dir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldDir, Ref: newDir}, ro.Dir)
 }
 
 func TestRenameOpCustomUpdateWithinDir(t *testing.T) {
@@ -47,7 +47,7 @@ func TestRenameOpCustomUpdateWithinDir(t *testing.T) {
 	ro := newRenameOp(
 		"old name", oldDir, "new name", oldDir,
 		renamed, IFCERFTExec)
-	require.Equal(t, blockUpdate{Unref: oldDir}, ro.OldDir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldDir}, ro.OldDir)
 	require.Equal(t, IFCERFTBlockPointer{}, ro.NewDir.Unref)
 	require.Equal(t, IFCERFTBlockPointer{}, ro.NewDir.Ref)
 
@@ -56,8 +56,8 @@ func TestRenameOpCustomUpdateWithinDir(t *testing.T) {
 	newDir.ID = fakeBlockID(43)
 	ro.AddUpdate(oldDir, newDir)
 	require.Nil(t, ro.Updates)
-	require.Equal(t, blockUpdate{Unref: oldDir, Ref: newDir}, ro.OldDir)
-	require.Equal(t, blockUpdate{}, ro.NewDir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldDir, Ref: newDir}, ro.OldDir)
+	require.Equal(t, IFCERFTBlockUpdate{}, ro.NewDir)
 }
 
 func TestRenameOpCustomUpdateAcrossDirs(t *testing.T) {
@@ -69,37 +69,37 @@ func TestRenameOpCustomUpdateAcrossDirs(t *testing.T) {
 	ro := newRenameOp(
 		"old name", oldOldDir, "new name", oldNewDir,
 		renamed, IFCERFTExec)
-	require.Equal(t, blockUpdate{Unref: oldOldDir}, ro.OldDir)
-	require.Equal(t, blockUpdate{Unref: oldNewDir}, ro.NewDir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldOldDir}, ro.OldDir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldNewDir}, ro.NewDir)
 
 	// Update to oldOldDir should update ro.OldDir.
 	newOldDir := oldOldDir
 	newOldDir.ID = fakeBlockID(44)
 	ro.AddUpdate(oldOldDir, newOldDir)
 	require.Nil(t, ro.Updates)
-	require.Equal(t, blockUpdate{Unref: oldOldDir, Ref: newOldDir}, ro.OldDir)
-	require.Equal(t, blockUpdate{Unref: oldNewDir}, ro.NewDir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldOldDir, Ref: newOldDir}, ro.OldDir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldNewDir}, ro.NewDir)
 
 	// Update to oldNewDir should update ro.OldDir.
 	newNewDir := oldNewDir
 	newNewDir.ID = fakeBlockID(45)
 	ro.AddUpdate(oldNewDir, newNewDir)
 	require.Nil(t, ro.Updates)
-	require.Equal(t, blockUpdate{Unref: oldOldDir, Ref: newOldDir}, ro.OldDir)
-	require.Equal(t, blockUpdate{Unref: oldNewDir, Ref: newNewDir}, ro.NewDir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldOldDir, Ref: newOldDir}, ro.OldDir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldNewDir, Ref: newNewDir}, ro.NewDir)
 }
 
 func TestSyncOpCustomUpdate(t *testing.T) {
 	oldFile := makeFakeBlockPointer(t)
 	so := newSyncOp(oldFile)
-	require.Equal(t, blockUpdate{Unref: oldFile}, so.File)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldFile}, so.File)
 
 	// Update to oldFile should update so.File.
 	newFile := oldFile
 	newFile.ID = fakeBlockID(42)
 	so.AddUpdate(oldFile, newFile)
 	require.Nil(t, so.Updates)
-	require.Equal(t, blockUpdate{Unref: oldFile, Ref: newFile}, so.File)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldFile, Ref: newFile}, so.File)
 }
 
 func TestSetAttrOpCustomUpdate(t *testing.T) {
@@ -107,14 +107,14 @@ func TestSetAttrOpCustomUpdate(t *testing.T) {
 	file := oldDir
 	file.ID = fakeBlockID(42)
 	sao := newSetAttrOp("name", oldDir, mtimeAttr, file)
-	require.Equal(t, blockUpdate{Unref: oldDir}, sao.Dir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldDir}, sao.Dir)
 
 	// Update to oldDir should update sao.Dir.
 	newDir := oldDir
 	newDir.ID = fakeBlockID(42)
 	sao.AddUpdate(oldDir, newDir)
 	require.Nil(t, sao.Updates)
-	require.Equal(t, blockUpdate{Unref: oldDir, Ref: newDir}, sao.Dir)
+	require.Equal(t, IFCERFTBlockUpdate{Unref: oldDir, Ref: newDir}, sao.Dir)
 }
 
 type writeRangeFuture struct {
@@ -174,15 +174,15 @@ func opPointerizerFuture(iface interface{}) reflect.Value {
 }
 
 func registerOpsFuture(codec IFCERFTCodec) {
-	codec.RegisterType(reflect.TypeOf(createOpFuture{}), createOpCode)
-	codec.RegisterType(reflect.TypeOf(rmOpFuture{}), rmOpCode)
-	codec.RegisterType(reflect.TypeOf(renameOpFuture{}), renameOpCode)
-	codec.RegisterType(reflect.TypeOf(syncOpFuture{}), syncOpCode)
-	codec.RegisterType(reflect.TypeOf(setAttrOpFuture{}), setAttrOpCode)
-	codec.RegisterType(reflect.TypeOf(resolutionOpFuture{}), resolutionOpCode)
-	codec.RegisterType(reflect.TypeOf(rekeyOpFuture{}), rekeyOpCode)
-	codec.RegisterType(reflect.TypeOf(gcOpFuture{}), gcOpCode)
-	codec.RegisterIfaceSliceType(reflect.TypeOf(opsList{}), opsListCode,
+	codec.RegisterType(reflect.TypeOf(createOpFuture{}), IFCERFTCreateOpCode)
+	codec.RegisterType(reflect.TypeOf(rmOpFuture{}), IFCERFTRmOpCode)
+	codec.RegisterType(reflect.TypeOf(renameOpFuture{}), IFCERFTRenameOpCode)
+	codec.RegisterType(reflect.TypeOf(syncOpFuture{}), IFCERFTSyncOpCode)
+	codec.RegisterType(reflect.TypeOf(setAttrOpFuture{}), IFCERFTSetAttrOpCode)
+	codec.RegisterType(reflect.TypeOf(resolutionOpFuture{}), IFCERFTResolutionOpCode)
+	codec.RegisterType(reflect.TypeOf(rekeyOpFuture{}), IFCERFTRekeyOpCode)
+	codec.RegisterType(reflect.TypeOf(gcOpFuture{}), IFCERFTGcOpCode)
+	codec.RegisterIfaceSliceType(reflect.TypeOf(IFCERFTOpsList{}), opsListCode,
 		opPointerizerFuture)
 }
 
@@ -199,8 +199,8 @@ func (cof createOpFuture) toCurrentStruct() currentStruct {
 	return cof.toCurrent()
 }
 
-func makeFakeBlockUpdate(t *testing.T) blockUpdate {
-	return blockUpdate{
+func makeFakeBlockUpdate(t *testing.T) IFCERFTBlockUpdate {
+	return IFCERFTBlockUpdate{
 		makeFakeBlockPointer(t),
 		makeFakeBlockPointer(t),
 	}
@@ -214,10 +214,10 @@ func makeFakeOpCommon(t *testing.T, withRefBlocks bool) OpCommon {
 	oc := OpCommon{
 		refBlocks,
 		[]IFCERFTBlockPointer{makeFakeBlockPointer(t)},
-		[]blockUpdate{makeFakeBlockUpdate(t)},
+		[]IFCERFTBlockUpdate{makeFakeBlockUpdate(t)},
 		codec.UnknownFieldSetHandler{},
-		writerInfo{},
-		path{},
+		IFCERFTWriterInfo{},
+		IFCERFTPath{},
 	}
 	return oc
 }

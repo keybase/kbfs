@@ -10,7 +10,7 @@ import (
 )
 
 func setupNodeCache(t *testing.T, id IFCERFTTlfID, branch IFCERFTBranchName, flat bool) (
-	ncs *nodeCacheStandard, parentNode IFCERFTNode, childNode1 IFCERFTNode, childNode2 IFCERFTNode, childPath1 []pathNode, childPath2 []pathNode) {
+	ncs *nodeCacheStandard, parentNode IFCERFTNode, childNode1 IFCERFTNode, childNode2 IFCERFTNode, childPath1 []IFCERFTPathNode, childPath2 []IFCERFTPathNode) {
 	ncs = newNodeCacheStandard(IFCERFTFolderBranch{id, branch})
 
 	parentPtr := IFCERFTBlockPointer{ID: fakeBlockID(0)}
@@ -50,7 +50,7 @@ func setupNodeCache(t *testing.T, id IFCERFTTlfID, branch IFCERFTBranchName, fla
 		t.Errorf("Expected basename %s, got %s", childName2, childNode2.GetBasename())
 	}
 
-	childPath1 = []pathNode{
+	childPath1 = []IFCERFTPathNode{
 		{
 			IFCERFTBlockPointer: parentPtr,
 			Name:                parentName,
@@ -61,7 +61,7 @@ func setupNodeCache(t *testing.T, id IFCERFTTlfID, branch IFCERFTBranchName, fla
 		},
 	}
 	if flat {
-		childPath2 = []pathNode{
+		childPath2 = []IFCERFTPathNode{
 			{
 				IFCERFTBlockPointer: parentPtr,
 				Name:                parentName,
@@ -72,7 +72,7 @@ func setupNodeCache(t *testing.T, id IFCERFTTlfID, branch IFCERFTBranchName, fla
 			},
 		}
 	} else {
-		childPath2 = []pathNode{
+		childPath2 = []IFCERFTPathNode{
 			{
 				IFCERFTBlockPointer: parentPtr,
 				Name:                parentName,
@@ -168,7 +168,7 @@ func TestNodeCacheGetOrCreateNoParent(t *testing.T) {
 	// now try to create a child node for that parent
 	childPtr1 := IFCERFTBlockPointer{ID: fakeBlockID(1)}
 	_, err = ncs.GetOrCreate(childPtr1, "child", parentNode)
-	expectedErr := ParentNodeNotFoundError{parentPtr.ref()}
+	expectedErr := IFCERFTParentNodeNotFoundError{parentPtr.ref()}
 	if err != expectedErr {
 		t.Errorf("Got unexpected error when creating w/o parent: %v", err)
 	}
@@ -239,13 +239,13 @@ func TestNodeCacheMoveNoParent(t *testing.T) {
 
 	// now move child2 under child1
 	err := ncs.Move(childPtr2.ref(), childNode1, "child3")
-	expectedErr := ParentNodeNotFoundError{childPtr1.ref()}
+	expectedErr := IFCERFTParentNodeNotFoundError{childPtr1.ref()}
 	if err != expectedErr {
 		t.Errorf("Got unexpected error when updating parent: %v", err)
 	}
 }
 
-func checkNodeCachePath(t *testing.T, id IFCERFTTlfID, branch IFCERFTBranchName, path path, expectedPath []pathNode) {
+func checkNodeCachePath(t *testing.T, id IFCERFTTlfID, branch IFCERFTBranchName, path IFCERFTPath, expectedPath []IFCERFTPathNode) {
 	if len(path.path) != len(expectedPath) {
 		t.Errorf("Bad path length: %v vs %v", len(path.path), len(expectedPath))
 	}

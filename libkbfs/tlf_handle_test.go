@@ -38,11 +38,11 @@ func TestParseTlfHandleEarlyFailure(t *testing.T) {
 
 	name := "w1,w2#r1"
 	_, err := IFCERFTParseTlfHandle(ctx, nil, name, true)
-	assert.Equal(t, NoSuchNameError{Name: name}, err)
+	assert.Equal(t, IFCERFTNoSuchNameError{Name: name}, err)
 
 	nonCanonicalName := "W1,w2#r1"
 	_, err = IFCERFTParseTlfHandle(ctx, nil, nonCanonicalName, false)
-	assert.Equal(t, TlfNameNotCanonical{nonCanonicalName, name}, err)
+	assert.Equal(t, IFCERFTTlfNameNotCanonical{nonCanonicalName, name}, err)
 }
 
 func TestParseTlfHandleNoUserFailure(t *testing.T) {
@@ -61,7 +61,7 @@ func TestParseTlfHandleNoUserFailure(t *testing.T) {
 	name := "u2,u3#u4"
 	_, err := IFCERFTParseTlfHandle(ctx, kbpki, name, false)
 	assert.Equal(t, 0, kbpki.getIdentifyCalls())
-	assert.Equal(t, NoSuchUserError{"u4"}, err)
+	assert.Equal(t, IFCERFTNoSuchUserError{"u4"}, err)
 }
 
 func TestParseTlfHandleNotReaderFailure(t *testing.T) {
@@ -80,7 +80,7 @@ func TestParseTlfHandleNotReaderFailure(t *testing.T) {
 	name := "u2,u3"
 	_, err := IFCERFTParseTlfHandle(ctx, kbpki, name, false)
 	assert.Equal(t, 0, kbpki.getIdentifyCalls())
-	assert.Equal(t, ReadAccessError{"u1", IFCERFTCanonicalTlfName(name), false}, err)
+	assert.Equal(t, IFCERFTReadAccessError{"u1", IFCERFTCanonicalTlfName(name), false}, err)
 }
 
 func TestParseTlfHandleAssertionNotCanonicalFailure(t *testing.T) {
@@ -103,7 +103,7 @@ func TestParseTlfHandleAssertionNotCanonicalFailure(t *testing.T) {
 	// Names with assertions should be identified before the error
 	// is returned.
 	assert.Equal(t, 3, kbpki.getIdentifyCalls())
-	assert.Equal(t, TlfNameNotCanonical{nonCanonicalName, name}, err)
+	assert.Equal(t, IFCERFTTlfNameNotCanonical{nonCanonicalName, name}, err)
 }
 
 func TestParseTlfHandleAssertionPrivateSuccess(t *testing.T) {
@@ -290,10 +290,10 @@ func TestTlfHandleConflictInfo(t *testing.T) {
 	err := h.UpdateConflictInfo(codec, nil)
 	require.NoError(t, err)
 
-	info := TlfHandleExtension{
+	info := IFCERFTTlfHandleExtension{
 		Date:   100,
 		Number: 50,
-		Type:   TlfHandleExtensionConflict,
+		Type:   IFCERFTTlfHandleExtensionConflict,
 	}
 	err = h.UpdateConflictInfo(codec, &info)
 	require.NoError(t, err)
@@ -306,7 +306,7 @@ func TestTlfHandleConflictInfo(t *testing.T) {
 	err = h.UpdateConflictInfo(codec, &info)
 	require.NoError(t, err)
 
-	expectedErr := TlfHandleExtensionMismatchError{
+	expectedErr := IFCERFTTlfHandleExtensionMismatchError{
 		Expected: *h.ConflictInfo(),
 		Actual:   nil,
 	}
@@ -314,7 +314,7 @@ func TestTlfHandleConflictInfo(t *testing.T) {
 	require.Equal(t, expectedErr, err)
 	require.Equal(t, "Folder handle extension mismatch, expected: (conflicted copy 1970-01-01 #50), actual: <nil>", err.Error())
 
-	expectedErr = TlfHandleExtensionMismatchError{
+	expectedErr = IFCERFTTlfHandleExtensionMismatchError{
 		Expected: *h.ConflictInfo(),
 		Actual:   &info,
 	}
@@ -330,10 +330,10 @@ func TestTlfHandleFinalizedInfo(t *testing.T) {
 	var h IFCERFTTlfHandle
 
 	require.Nil(t, h.FinalizedInfo())
-	info := TlfHandleExtension{
+	info := IFCERFTTlfHandleExtension{
 		Date:   100,
 		Number: 50,
-		Type:   TlfHandleExtensionFinalized,
+		Type:   IFCERFTTlfHandleExtensionFinalized,
 	}
 
 	h.SetFinalizedInfo(&info)
@@ -399,10 +399,10 @@ func TestTlfHandlEqual(t *testing.T) {
 
 	h2, err = IFCERFTParseTlfHandle(ctx, kbpki, name1, false)
 	require.NoError(t, err)
-	info := TlfHandleExtension{
+	info := IFCERFTTlfHandleExtension{
 		Date:   100,
 		Number: 50,
-		Type:   TlfHandleExtensionConflict,
+		Type:   IFCERFTTlfHandleExtensionConflict,
 	}
 	err = h2.UpdateConflictInfo(codec, &info)
 	require.NoError(t, err)
@@ -471,7 +471,7 @@ func TestParseTlfHandleUIDAssertion(t *testing.T) {
 	a := currentUID.String() + "@uid"
 	_, err := IFCERFTParseTlfHandle(ctx, kbpki, a, false)
 	assert.Equal(t, 1, kbpki.getIdentifyCalls())
-	assert.Equal(t, TlfNameNotCanonical{a, "u1"}, err)
+	assert.Equal(t, IFCERFTTlfNameNotCanonical{a, "u1"}, err)
 }
 
 func TestParseTlfHandleAndAssertion(t *testing.T) {
@@ -491,7 +491,7 @@ func TestParseTlfHandleAndAssertion(t *testing.T) {
 	a := currentUID.String() + "@uid+u1@twitter"
 	_, err := IFCERFTParseTlfHandle(ctx, kbpki, a, false)
 	assert.Equal(t, 1, kbpki.getIdentifyCalls())
-	assert.Equal(t, TlfNameNotCanonical{a, "u1"}, err)
+	assert.Equal(t, IFCERFTTlfNameNotCanonical{a, "u1"}, err)
 }
 
 func TestParseTlfHandleConflictSuffix(t *testing.T) {
@@ -505,10 +505,10 @@ func TestParseTlfHandleConflictSuffix(t *testing.T) {
 		daemon: daemon,
 	}
 
-	ci := &TlfHandleExtension{
+	ci := &IFCERFTTlfHandleExtension{
 		Date:   1462838400,
 		Number: 1,
-		Type:   TlfHandleExtensionConflict,
+		Type:   IFCERFTTlfHandleExtensionConflict,
 	}
 
 	a := "u1 " + ci.String()
@@ -638,7 +638,7 @@ func TestResolveAgainConflict(t *testing.T) {
 	assert.Equal(t, IFCERFTCanonicalTlfName(name), h.GetCanonicalName())
 
 	daemon.addNewAssertionForTestOrBust("u3", "u3@twitter")
-	ext, err := NewTlfHandleExtension(TlfHandleExtensionConflict, 1)
+	ext, err := IFCERFTNewTlfHandleExtension(IFCERFTTlfHandleExtensionConflict, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -688,10 +688,10 @@ func TestTlfHandleResolvesTo(t *testing.T) {
 
 	h2, err = IFCERFTParseTlfHandle(ctx, kbpki, name1, false)
 	require.NoError(t, err)
-	info := TlfHandleExtension{
+	info := IFCERFTTlfHandleExtension{
 		Date:   100,
 		Number: 50,
-		Type:   TlfHandleExtensionConflict,
+		Type:   IFCERFTTlfHandleExtensionConflict,
 	}
 	err = h2.UpdateConflictInfo(codec, &info)
 	require.NoError(t, err)
@@ -782,18 +782,18 @@ func TestParseTlfHandleNoncanonicalExtensions(t *testing.T) {
 	name := "u1,u2#u3 (conflicted copy 2016-03-14 #3) (finalized 2016-03-14 #2)"
 	h, err := IFCERFTParseTlfHandle(ctx, kbpki, name, false)
 	require.Nil(t, err)
-	assert.Equal(t, TlfHandleExtension{
-		Type:   TlfHandleExtensionConflict,
-		Date:   TlfHandleExtensionStaticTestDate,
+	assert.Equal(t, IFCERFTTlfHandleExtension{
+		Type:   IFCERFTTlfHandleExtensionConflict,
+		Date:   IFCERFTTlfHandleExtensionStaticTestDate,
 		Number: 3,
 	}, *h.ConflictInfo())
-	assert.Equal(t, TlfHandleExtension{
-		Type:   TlfHandleExtensionFinalized,
-		Date:   TlfHandleExtensionStaticTestDate,
+	assert.Equal(t, IFCERFTTlfHandleExtension{
+		Type:   IFCERFTTlfHandleExtensionFinalized,
+		Date:   IFCERFTTlfHandleExtensionStaticTestDate,
 		Number: 2,
 	}, *h.FinalizedInfo())
 
 	nonCanonicalName := "u1,u2#u3 (finalized 2016-03-14 #2) (conflicted copy 2016-03-14 #3)"
 	_, err = IFCERFTParseTlfHandle(ctx, kbpki, nonCanonicalName, false)
-	assert.Equal(t, TlfNameNotCanonical{nonCanonicalName, name}, err)
+	assert.Equal(t, IFCERFTTlfNameNotCanonical{nonCanonicalName, name}, err)
 }

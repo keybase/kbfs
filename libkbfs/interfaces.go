@@ -45,14 +45,14 @@ type cryptoPure interface {
 	MakeRandomTlfID(isPublic bool) (IFCERFTTlfID, error)
 
 	// MakeRandomBranchID generates a per-device branch ID using a CSPRNG.
-	MakeRandomBranchID() (BranchID, error)
+	MakeRandomBranchID() (IFCERFTBranchID, error)
 
 	// MakeMdID computes the MD ID of a RootMetadata object.
-	MakeMdID(md *IFCERFTRootMetadata) (MdID, error)
+	MakeMdID(md *IFCERFTRootMetadata) (IFCERFTMdID, error)
 
 	// MakeMerkleHash computes the hash of a RootMetadataSigned object
 	// for inclusion into the KBFS Merkle tree.
-	MakeMerkleHash(md *RootMetadataSigned) (MerkleHash, error)
+	MakeMerkleHash(md *IFCERFTRootMetadataSigned) (MerkleHash, error)
 
 	// MakeTemporaryBlockID generates a temporary block ID using a
 	// CSPRNG. This is used for indirect blocks before they're
@@ -74,22 +74,21 @@ type cryptoPure interface {
 	MakeBlockRefNonce() (IFCERFTBlockRefNonce, error)
 
 	// MakeRandomTLFKeys generates top-level folder keys using a CSPRNG.
-	MakeRandomTLFKeys() (TLFPublicKey, TLFPrivateKey, IFCERFTTLFEphemeralPublicKey, TLFEphemeralPrivateKey, IFCERFTTLFCryptKey, error)
+	MakeRandomTLFKeys() (IFCERFTTLFPublicKey, IFCERFTTLFPrivateKey, IFCERFTTLFEphemeralPublicKey, IFCERFTTLFEphemeralPrivateKey, IFCERFTTLFCryptKey, error)
 	// MakeRandomTLFCryptKeyServerHalf generates the server-side of a
 	// top-level folder crypt key.
-	MakeRandomTLFCryptKeyServerHalf() (TLFCryptKeyServerHalf, error)
+	MakeRandomTLFCryptKeyServerHalf() (IFCERFTTLFCryptKeyServerHalf, error)
 	// MakeRandomBlockCryptKeyServerHalf generates the server-side of
 	// a block crypt key.
 	MakeRandomBlockCryptKeyServerHalf() (IFCERFTBlockCryptKeyServerHalf, error)
 
 	// MaskTLFCryptKey returns the client-side of a top-level folder crypt key.
-	MaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, key IFCERFTTLFCryptKey) (
-		TLFCryptKeyClientHalf, error)
+	MaskTLFCryptKey(serverHalf IFCERFTTLFCryptKeyServerHalf, key IFCERFTTLFCryptKey) (
+		IFCERFTTLFCryptKeyClientHalf, error)
 	// UnmaskTLFCryptKey returns the top-level folder crypt key.
-	UnmaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf,
-		clientHalf TLFCryptKeyClientHalf) (IFCERFTTLFCryptKey, error)
+	UnmaskTLFCryptKey(serverHalf IFCERFTTLFCryptKeyServerHalf, clientHalf IFCERFTTLFCryptKeyClientHalf) (IFCERFTTLFCryptKey, error)
 	// UnmaskBlockCryptKey returns the block crypt key.
-	UnmaskBlockCryptKey(serverHalf IFCERFTBlockCryptKeyServerHalf, tlfCryptKey IFCERFTTLFCryptKey) (BlockCryptKey, error)
+	UnmaskBlockCryptKey(serverHalf IFCERFTBlockCryptKeyServerHalf, tlfCryptKey IFCERFTTLFCryptKey) (IFCERFTBlockCryptKey, error)
 
 	// Verify verifies that sig matches msg being signed with the
 	// private key that corresponds to verifyingKey.
@@ -97,43 +96,41 @@ type cryptoPure interface {
 
 	// EncryptTLFCryptKeyClientHalf encrypts a TLFCryptKeyClientHalf
 	// using both a TLF's ephemeral private key and a device pubkey.
-	EncryptTLFCryptKeyClientHalf(privateKey TLFEphemeralPrivateKey,
-		publicKey IFCERFTCryptPublicKey, clientHalf TLFCryptKeyClientHalf) (
+	EncryptTLFCryptKeyClientHalf(privateKey IFCERFTTLFEphemeralPrivateKey, publicKey IFCERFTCryptPublicKey, clientHalf IFCERFTTLFCryptKeyClientHalf) (
 		IFCERFTEncryptedTLFCryptKeyClientHalf, error)
 
 	// EncryptPrivateMetadata encrypts a PrivateMetadata object.
-	EncryptPrivateMetadata(pmd *PrivateMetadata, key IFCERFTTLFCryptKey) (IFCERFTEncryptedPrivateMetadata, error)
+	EncryptPrivateMetadata(pmd *IFCERFTPrivateMetadata, key IFCERFTTLFCryptKey) (IFCERFTEncryptedPrivateMetadata, error)
 	// DecryptPrivateMetadata decrypts a PrivateMetadata object.
-	DecryptPrivateMetadata(encryptedPMD IFCERFTEncryptedPrivateMetadata, key IFCERFTTLFCryptKey) (*PrivateMetadata, error)
+	DecryptPrivateMetadata(encryptedPMD IFCERFTEncryptedPrivateMetadata, key IFCERFTTLFCryptKey) (*IFCERFTPrivateMetadata, error)
 
 	// EncryptBlocks encrypts a block. plainSize is the size of the encoded
 	// block; EncryptBlock() must guarantee that plainSize <=
 	// len(encryptedBlock).
-	EncryptBlock(block IFCERFTBlock, key BlockCryptKey) (
+	EncryptBlock(block IFCERFTBlock, key IFCERFTBlockCryptKey) (
 		plainSize int, encryptedBlock IFCERFTEncryptedBlock, err error)
 
 	// DecryptBlock decrypts a block. Similar to EncryptBlock(),
 	// DecryptBlock() must guarantee that (size of the decrypted
 	// block) <= len(encryptedBlock).
-	DecryptBlock(encryptedBlock IFCERFTEncryptedBlock, key BlockCryptKey, block IFCERFTBlock) error
+	DecryptBlock(encryptedBlock IFCERFTEncryptedBlock, key IFCERFTBlockCryptKey, block IFCERFTBlock) error
 
 	// GetTLFCryptKeyServerHalfID creates a unique ID for this particular
 	// TLFCryptKeyServerHalf.
 	GetTLFCryptKeyServerHalfID(
 		user keybase1.UID, deviceKID keybase1.KID,
-		serverHalf TLFCryptKeyServerHalf) (TLFCryptKeyServerHalfID, error)
+		serverHalf IFCERFTTLFCryptKeyServerHalf) (IFCERFTTLFCryptKeyServerHalfID, error)
 
 	// VerifyTLFCryptKeyServerHalfID verifies the ID is the proper HMAC result.
-	VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID,
-		deviceKID keybase1.KID, serverHalf TLFCryptKeyServerHalf) error
+	VerifyTLFCryptKeyServerHalfID(serverHalfID IFCERFTTLFCryptKeyServerHalfID, user keybase1.UID,
+		deviceKID keybase1.KID, serverHalf IFCERFTTLFCryptKeyServerHalf) error
 
 	// EncryptMerkleLeaf encrypts a Merkle leaf node with the TLFPublicKey.
-	EncryptMerkleLeaf(leaf MerkleLeaf, pubKey TLFPublicKey, nonce *[24]byte,
-		ePrivKey TLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error)
+	EncryptMerkleLeaf(leaf MerkleLeaf, pubKey IFCERFTTLFPublicKey, nonce *[24]byte,
+		ePrivKey IFCERFTTLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error)
 
 	// DecryptMerkleLeaf decrypts a Merkle leaf node with the TLFPrivateKey.
-	DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey TLFPrivateKey,
-		nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error)
+	DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey IFCERFTTLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error)
 }
 
 type mdServerLocal interface {
@@ -141,7 +138,7 @@ type mdServerLocal interface {
 	addNewAssertionForTest(
 		uid keybase1.UID, newAssertion keybase1.SocialAssertion) error
 	getCurrentMergedHeadRevision(ctx context.Context, id IFCERFTTlfID) (
-		rev MetadataRevision, err error)
+		rev IFCERFTMetadataRevision, err error)
 	isShutdown() bool
 	copy(config IFCERFTConfig) mdServerLocal
 }

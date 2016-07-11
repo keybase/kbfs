@@ -55,7 +55,7 @@ func (cb *CommonBlock) SetEncodedSize(size uint32) {
 
 // DataVersion returns data version for this block.
 func (cb *CommonBlock) DataVersion() IFCERFTDataVer {
-	return FirstValidDataVer
+	return IFCERFTFirstValidDataVer
 }
 
 // NewCommonBlock returns a generic block, unsuitable for caching.
@@ -102,7 +102,7 @@ type FileBlock struct {
 
 	// this is used for caching plaintext (block.Contents) hash. It is used by
 	// only direct blocks.
-	hash *RawDefaultHash
+	hash *IFCERFTRawDefaultHash
 }
 
 // NewFileBlock creates a new, empty FileBlock.
@@ -116,10 +116,10 @@ func NewFileBlock() IFCERFTBlock {
 func (fb *FileBlock) DataVersion() IFCERFTDataVer {
 	for i := range fb.IPtrs {
 		if fb.IPtrs[i].Holes {
-			return FilesWithHolesDataVer
+			return IFCERFTFilesWithHolesDataVer
 		}
 	}
-	return FirstValidDataVer
+	return IFCERFTFirstValidDataVer
 }
 
 // DeepCopy makes a complete copy of a FileBlock
@@ -135,7 +135,7 @@ func (fb FileBlock) DeepCopy(codec IFCERFTCodec) (*FileBlock, error) {
 // DefaultNewBlockDataVersion returns the default data version for new blocks.
 func DefaultNewBlockDataVersion(c IFCERFTConfig, holes bool) IFCERFTDataVer {
 	if holes {
-		return FilesWithHolesDataVer
+		return IFCERFTFilesWithHolesDataVer
 	}
-	return FirstValidDataVer
+	return IFCERFTFirstValidDataVer
 }

@@ -14,14 +14,14 @@ import (
 // All section references below are to https://keybase.io/blog/kbfs-crypto
 // (version 1.3).
 
-type kidContainer struct {
+type IFCERFTKidContainer struct {
 	kid keybase1.KID
 }
 
-var _ encoding.BinaryMarshaler = kidContainer{}
-var _ encoding.BinaryUnmarshaler = (*kidContainer)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTKidContainer{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTKidContainer)(nil)
 
-func (k kidContainer) MarshalBinary() (data []byte, err error) {
+func (k IFCERFTKidContainer) MarshalBinary() (data []byte, err error) {
 	if k.kid.IsNil() {
 		return nil, nil
 	}
@@ -29,15 +29,15 @@ func (k kidContainer) MarshalBinary() (data []byte, err error) {
 	// TODO: Use the more stringent checks from
 	// KIDFromStringChecked instead.
 	if !k.kid.IsValid() {
-		return nil, InvalidKIDError{k.kid}
+		return nil, IFCERFTInvalidKIDError{k.kid}
 	}
 
 	return k.kid.ToBytes(), nil
 }
 
-func (k *kidContainer) UnmarshalBinary(data []byte) error {
+func (k *IFCERFTKidContainer) UnmarshalBinary(data []byte) error {
 	if len(data) == 0 {
-		*k = kidContainer{}
+		*k = IFCERFTKidContainer{}
 		return nil
 	}
 
@@ -45,8 +45,8 @@ func (k *kidContainer) UnmarshalBinary(data []byte) error {
 	// TODO: Use the more stringent checks from
 	// KIDFromStringChecked instead.
 	if !k.kid.IsValid() {
-		err := InvalidKIDError{k.kid}
-		*k = kidContainer{}
+		err := IFCERFTInvalidKIDError{k.kid}
+		*k = IFCERFTKidContainer{}
 		return err
 	}
 
@@ -55,11 +55,11 @@ func (k *kidContainer) UnmarshalBinary(data []byte) error {
 
 // Needed by mdserver/server_test.go. TODO: Figure out how to avoid
 // this.
-func (k kidContainer) KID() keybase1.KID {
+func (k IFCERFTKidContainer) KID() keybase1.KID {
 	return k.kid
 }
 
-func (k kidContainer) String() string {
+func (k IFCERFTKidContainer) String() string {
 	return k.kid.String()
 }
 
@@ -77,15 +77,15 @@ type IFCERFTVerifyingKey struct {
 	// Even though we currently use NaclSignatures, we use a KID
 	// here (which encodes the key type) as we may end up storing
 	// other kinds of signatures.
-	kidContainer
+	IFCERFTKidContainer
 }
 
 var _ encoding.BinaryMarshaler = IFCERFTVerifyingKey{}
 var _ encoding.BinaryUnmarshaler = (*IFCERFTVerifyingKey)(nil)
 
 // MakeVerifyingKey returns a VerifyingKey containing the given KID.
-func MakeVerifyingKey(kid keybase1.KID) IFCERFTVerifyingKey {
-	return IFCERFTVerifyingKey{kidContainer{kid}}
+func IFCERFTMakeVerifyingKey(kid keybase1.KID) IFCERFTVerifyingKey {
+	return IFCERFTVerifyingKey{IFCERFTKidContainer{kid}}
 }
 
 // IsNil returns true if the VerifyingKey is nil.
@@ -106,7 +106,7 @@ func (c byte32Container) MarshalBinary() (data []byte, err error) {
 
 func (c *byte32Container) UnmarshalBinary(data []byte) error {
 	if len(data) != len(c.data) {
-		err := InvalidByte32DataError{data}
+		err := IFCERFTInvalidByte32DataError{data}
 		*c = byte32Container{}
 		return err
 	}
@@ -123,18 +123,18 @@ func (c byte32Container) String() string {
 // keypair associated with a TLF. (See 4.1.1, 5.3.)
 //
 // Copies of TLFPrivateKey objects are deep copies.
-type TLFPrivateKey struct {
+type IFCERFTTLFPrivateKey struct {
 	// Should only be used by implementations of Crypto.
 	byte32Container
 }
 
-var _ encoding.BinaryMarshaler = TLFPrivateKey{}
-var _ encoding.BinaryUnmarshaler = (*TLFPrivateKey)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTTLFPrivateKey{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTTLFPrivateKey)(nil)
 
 // MakeTLFPrivateKey returns a TLFPrivateKey containing the given
 // data.
-func MakeTLFPrivateKey(data [32]byte) TLFPrivateKey {
-	return TLFPrivateKey{byte32Container{data}}
+func IFCERFTMakeTLFPrivateKey(data [32]byte) IFCERFTTLFPrivateKey {
+	return IFCERFTTLFPrivateKey{byte32Container{data}}
 }
 
 // A TLFPublicKey (M_f) is the public half of the permanent keypair
@@ -142,18 +142,18 @@ func MakeTLFPrivateKey(data [32]byte) TLFPrivateKey {
 // Merkle tree. (See 4.1.1, 5.3.)
 //
 // Copies of TLFPublicKey objects are deep copies.
-type TLFPublicKey struct {
+type IFCERFTTLFPublicKey struct {
 	// Should only be used by implementations of Crypto.
 	byte32Container
 }
 
-var _ encoding.BinaryMarshaler = TLFPublicKey{}
-var _ encoding.BinaryUnmarshaler = (*TLFPublicKey)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTTLFPublicKey{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTTLFPublicKey)(nil)
 
 // MakeTLFPublicKey returns a TLFPublicKey containing the given
 // data.
-func MakeTLFPublicKey(data [32]byte) TLFPublicKey {
-	return TLFPublicKey{byte32Container{data}}
+func IFCERFTMakeTLFPublicKey(data [32]byte) IFCERFTTLFPublicKey {
+	return IFCERFTTLFPublicKey{byte32Container{data}}
 }
 
 // TLFEphemeralPrivateKey (m_e) is used (with a CryptPublicKey) to
@@ -161,19 +161,19 @@ func MakeTLFPublicKey(data [32]byte) TLFPublicKey {
 // directories. (See 4.1.1.)
 //
 // Copies of TLFEphemeralPrivateKey objects are deep copies.
-type TLFEphemeralPrivateKey struct {
+type IFCERFTTLFEphemeralPrivateKey struct {
 	// Should only be used by implementations of Crypto. Meant to
 	// be converted to libkb.NaclDHKeyPrivate.
 	byte32Container
 }
 
-var _ encoding.BinaryMarshaler = TLFEphemeralPrivateKey{}
-var _ encoding.BinaryUnmarshaler = (*TLFEphemeralPrivateKey)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTTLFEphemeralPrivateKey{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTTLFEphemeralPrivateKey)(nil)
 
 // MakeTLFEphemeralPrivateKey returns a TLFEphemeralPrivateKey
 // containing the given data.
-func MakeTLFEphemeralPrivateKey(data [32]byte) TLFEphemeralPrivateKey {
-	return TLFEphemeralPrivateKey{byte32Container{data}}
+func IFCERFTMakeTLFEphemeralPrivateKey(data [32]byte) IFCERFTTLFEphemeralPrivateKey {
+	return IFCERFTTLFEphemeralPrivateKey{byte32Container{data}}
 }
 
 // CryptPublicKey (M_u^i) is used (with a TLFEphemeralPrivateKey) to
@@ -188,12 +188,12 @@ type IFCERFTCryptPublicKey struct {
 	// Even though we currently use nacl/box, we use a KID here
 	// (which encodes the key type) as we may end up storing other
 	// kinds of keys.
-	kidContainer
+	IFCERFTKidContainer
 }
 
 // MakeCryptPublicKey returns a CryptPublicKey containing the given KID.
-func MakeCryptPublicKey(kid keybase1.KID) IFCERFTCryptPublicKey {
-	return IFCERFTCryptPublicKey{kidContainer{kid}}
+func IFCERFTMakeCryptPublicKey(kid keybase1.KID) IFCERFTCryptPublicKey {
+	return IFCERFTCryptPublicKey{IFCERFTKidContainer{kid}}
 }
 
 var _ encoding.BinaryMarshaler = IFCERFTCryptPublicKey{}
@@ -215,7 +215,7 @@ var _ encoding.BinaryUnmarshaler = (*IFCERFTTLFEphemeralPublicKey)(nil)
 
 // MakeTLFEphemeralPublicKey returns a TLFEphemeralPublicKey
 // containing the given data.
-func MakeTLFEphemeralPublicKey(data [32]byte) IFCERFTTLFEphemeralPublicKey {
+func IFCERFTMakeTLFEphemeralPublicKey(data [32]byte) IFCERFTTLFEphemeralPublicKey {
 	return IFCERFTTLFEphemeralPublicKey{byte32Container{data}}
 }
 
@@ -224,18 +224,18 @@ func MakeTLFEphemeralPublicKey(data [32]byte) IFCERFTTLFEphemeralPublicKey {
 // halves. (See 4.1.1.)
 //
 // Copies of TLFCryptKeyServerHalf objects are deep copies.
-type TLFCryptKeyServerHalf struct {
+type IFCERFTTLFCryptKeyServerHalf struct {
 	// Should only be used by implementations of Crypto.
 	byte32Container
 }
 
-var _ encoding.BinaryMarshaler = TLFCryptKeyServerHalf{}
-var _ encoding.BinaryUnmarshaler = (*TLFCryptKeyServerHalf)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTTLFCryptKeyServerHalf{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTTLFCryptKeyServerHalf)(nil)
 
 // MakeTLFCryptKeyServerHalf returns a TLFCryptKeyServerHalf
 // containing the given data.
-func MakeTLFCryptKeyServerHalf(data [32]byte) TLFCryptKeyServerHalf {
-	return TLFCryptKeyServerHalf{byte32Container{data}}
+func IFCERFTMakeTLFCryptKeyServerHalf(data [32]byte) IFCERFTTLFCryptKeyServerHalf {
+	return IFCERFTTLFCryptKeyServerHalf{byte32Container{data}}
 }
 
 // TLFCryptKeyClientHalf (t_u^{f,0,i}) is the masked, client-side half
@@ -243,18 +243,18 @@ func MakeTLFCryptKeyServerHalf(data [32]byte) TLFCryptKeyServerHalf {
 // halves. (See 4.1.1.)
 //
 // Copies of TLFCryptKeyClientHalf objects are deep copies.
-type TLFCryptKeyClientHalf struct {
+type IFCERFTTLFCryptKeyClientHalf struct {
 	// Should only be used by implementations of Crypto.
 	byte32Container
 }
 
-var _ encoding.BinaryMarshaler = TLFCryptKeyClientHalf{}
-var _ encoding.BinaryUnmarshaler = (*TLFCryptKeyClientHalf)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTTLFCryptKeyClientHalf{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTTLFCryptKeyClientHalf)(nil)
 
 // MakeTLFCryptKeyClientHalf returns a TLFCryptKeyClientHalf
 // containing the given data.
-func MakeTLFCryptKeyClientHalf(data [32]byte) TLFCryptKeyClientHalf {
-	return TLFCryptKeyClientHalf{byte32Container{data}}
+func IFCERFTMakeTLFCryptKeyClientHalf(data [32]byte) IFCERFTTLFCryptKeyClientHalf {
+	return IFCERFTTLFCryptKeyClientHalf{byte32Container{data}}
 }
 
 // TLFCryptKey (s^{f,0}) is used to encrypt/decrypt the private
@@ -271,7 +271,7 @@ var _ encoding.BinaryMarshaler = IFCERFTTLFCryptKey{}
 var _ encoding.BinaryUnmarshaler = (*IFCERFTTLFCryptKey)(nil)
 
 // MakeTLFCryptKey returns a TLFCryptKey containing the given data.
-func MakeTLFCryptKey(data [32]byte) IFCERFTTLFCryptKey {
+func IFCERFTMakeTLFCryptKey(data [32]byte) IFCERFTTLFCryptKey {
 	return IFCERFTTLFCryptKey{byte32Container{data}}
 }
 
@@ -279,7 +279,7 @@ func MakeTLFCryptKey(data [32]byte) IFCERFTTLFCryptKey {
 // means that anyone with just the block key for a public TLF can
 // decrypt that block. This is not the zero TLFCryptKey so that we can
 // distinguish it from an (erroneously?) unset TLFCryptKey.
-var PublicTLFCryptKey = MakeTLFCryptKey([32]byte{
+var PublicTLFCryptKey = IFCERFTMakeTLFCryptKey([32]byte{
 	0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18,
 	0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18,
 	0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18,
@@ -301,13 +301,13 @@ var _ encoding.BinaryUnmarshaler = (*IFCERFTBlockCryptKeyServerHalf)(nil)
 
 // MakeBlockCryptKeyServerHalf returns a BlockCryptKeyServerHalf
 // containing the given data.
-func MakeBlockCryptKeyServerHalf(data [32]byte) IFCERFTBlockCryptKeyServerHalf {
+func IFCERFTMakeBlockCryptKeyServerHalf(data [32]byte) IFCERFTBlockCryptKeyServerHalf {
 	return IFCERFTBlockCryptKeyServerHalf{byte32Container{data}}
 }
 
 // ParseBlockCryptKeyServerHalf returns a BlockCryptKeyServerHalf
 // containing the given hex-encoded data, or an error.
-func ParseBlockCryptKeyServerHalf(s string) (IFCERFTBlockCryptKeyServerHalf, error) {
+func IFCERFTParseBlockCryptKeyServerHalf(s string) (IFCERFTBlockCryptKeyServerHalf, error) {
 	buf, err := hex.DecodeString(s)
 	if err != nil {
 		return IFCERFTBlockCryptKeyServerHalf{}, err
@@ -321,18 +321,18 @@ func ParseBlockCryptKeyServerHalf(s string) (IFCERFTBlockCryptKeyServerHalf, err
 }
 
 // BlockCryptKey is used to encrypt/decrypt block data. (See 4.1.2.)
-type BlockCryptKey struct {
+type IFCERFTBlockCryptKey struct {
 	// Should only be used by implementations of Crypto.
 	byte32Container
 }
 
-var _ encoding.BinaryMarshaler = BlockCryptKey{}
-var _ encoding.BinaryUnmarshaler = (*BlockCryptKey)(nil)
+var _ encoding.BinaryMarshaler = IFCERFTBlockCryptKey{}
+var _ encoding.BinaryUnmarshaler = (*IFCERFTBlockCryptKey)(nil)
 
 // MakeBlockCryptKey returns a BlockCryptKey containing the given
 // data.
 //
 // Copies of BlockCryptKey objects are deep copies.
-func MakeBlockCryptKey(data [32]byte) BlockCryptKey {
-	return BlockCryptKey{byte32Container{data}}
+func IFCERFTMakeBlockCryptKey(data [32]byte) IFCERFTBlockCryptKey {
+	return IFCERFTBlockCryptKey{byte32Container{data}}
 }

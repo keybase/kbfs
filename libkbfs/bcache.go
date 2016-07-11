@@ -13,7 +13,7 @@ import (
 
 type idCacheKey struct {
 	tlf           IFCERFTTlfID
-	plaintextHash RawDefaultHash
+	plaintextHash IFCERFTRawDefaultHash
 }
 
 // BlockCacheStandard implements the BlockCache interface by storing
@@ -71,7 +71,7 @@ func (b *BlockCacheStandard) Get(ptr IFCERFTBlockPointer) (IFCERFTBlock, error) 
 		if tmp, ok := b.cleanTransient.Get(ptr.ID); ok {
 			block, ok := tmp.(IFCERFTBlock)
 			if !ok {
-				return nil, BadDataError{ptr.ID}
+				return nil, IFCERFTBadDataError{ptr.ID}
 			}
 			return block, nil
 		}
@@ -86,7 +86,7 @@ func (b *BlockCacheStandard) Get(ptr IFCERFTBlockPointer) (IFCERFTBlock, error) 
 		return block, nil
 	}
 
-	return nil, NoSuchBlockError{ptr.ID}
+	return nil, IFCERFTNoSuchBlockError{ptr.ID}
 }
 
 func getCachedBlockSize(block IFCERFTBlock) uint32 {
@@ -119,14 +119,14 @@ func (b *BlockCacheStandard) onEvict(key interface{}, value interface{}) {
 func (b *BlockCacheStandard) CheckForKnownPtr(tlf IFCERFTTlfID, block *FileBlock) (
 	IFCERFTBlockPointer, error) {
 	if block.IsInd {
-		return IFCERFTBlockPointer{}, NotDirectFileBlockError{}
+		return IFCERFTBlockPointer{}, IFCERFTNotDirectFileBlockError{}
 	}
 
 	if b.ids == nil {
 		return IFCERFTBlockPointer{}, nil
 	}
 
-	_, hash := DoRawDefaultHash(block.Contents)
+	_, hash := IFCERFTDoRawDefaultHash(block.Contents)
 	block.hash = &hash
 	key := idCacheKey{tlf, *block.hash}
 	tmp, ok := b.ids.Get(key)
@@ -184,13 +184,13 @@ func (b *BlockCacheStandard) Put(
 	// hash -> ID mapping.
 	if fBlock, ok := block.(*FileBlock); b.ids != nil && lifetime == IFCERFTTransientEntry && ok && !fBlock.IsInd {
 		if fBlock.hash == nil {
-			_, hash := DoRawDefaultHash(fBlock.Contents)
+			_, hash := IFCERFTDoRawDefaultHash(fBlock.Contents)
 			fBlock.hash = &hash
 		}
 
 		key := idCacheKey{tlf, *fBlock.hash}
 		// zero out the refnonce, it doesn't matter
-		ptr.RefNonce = zeroBlockRefNonce
+		ptr.RefNonce = IFCERFTZeroBlockRefNonce
 		b.ids.Add(key, ptr)
 	}
 
@@ -244,13 +244,13 @@ func (b *BlockCacheStandard) DeleteTransient(
 	if tmp, ok := b.cleanTransient.Get(ptr.ID); ok {
 		block, ok := tmp.(IFCERFTBlock)
 		if !ok {
-			return BadDataError{ptr.ID}
+			return IFCERFTBadDataError{ptr.ID}
 		}
 
 		// Remove the key if it exists
 		if fBlock, ok := block.(*FileBlock); b.ids != nil && ok &&
 			!fBlock.IsInd {
-			_, hash := DoRawDefaultHash(fBlock.Contents)
+			_, hash := IFCERFTDoRawDefaultHash(fBlock.Contents)
 			key := idCacheKey{tlf, hash}
 			b.ids.Remove(key)
 		}
@@ -263,14 +263,14 @@ func (b *BlockCacheStandard) DeleteTransient(
 // DeleteKnownPtr implements the BlockCache interface for BlockCacheStandard.
 func (b *BlockCacheStandard) DeleteKnownPtr(tlf IFCERFTTlfID, block *FileBlock) error {
 	if block.IsInd {
-		return NotDirectFileBlockError{}
+		return IFCERFTNotDirectFileBlockError{}
 	}
 
 	if b.ids == nil {
 		return nil
 	}
 
-	_, hash := DoRawDefaultHash(block.Contents)
+	_, hash := IFCERFTDoRawDefaultHash(block.Contents)
 	key := idCacheKey{tlf, hash}
 	b.ids.Remove(key)
 	return nil

@@ -77,18 +77,18 @@ func (fc *FakeBServerClient) PutBlock(ctx context.Context, arg keybase1.PutBlock
 		return err
 	}
 
-	tlfID, err := ParseTlfID(arg.Folder)
+	tlfID, err := IFCERFTParseTlfID(arg.Folder)
 	if err != nil {
 		return err
 	}
 
-	serverHalf, err := ParseBlockCryptKeyServerHalf(arg.BlockKey)
+	serverHalf, err := IFCERFTParseBlockCryptKeyServerHalf(arg.BlockKey)
 	if err != nil {
 		return err
 	}
 
 	bCtx := IFCERFTBlockContext{
-		RefNonce: zeroBlockRefNonce,
+		RefNonce: IFCERFTZeroBlockRefNonce,
 		Creator:  arg.Bid.ChargedTo,
 	}
 	return fc.bserverMem.Put(ctx, id, tlfID, bCtx, arg.Buf, serverHalf)
@@ -106,7 +106,7 @@ func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlock
 		return keybase1.GetBlockRes{}, err
 	}
 
-	tlfID, err := ParseTlfID(arg.Folder)
+	tlfID, err := IFCERFTParseTlfID(arg.Folder)
 	if err != nil {
 		return keybase1.GetBlockRes{}, err
 	}
@@ -116,7 +116,7 @@ func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlock
 	// all the info from the block context passed into
 	// BlockServer.Get().
 	bCtx := IFCERFTBlockContext{
-		RefNonce: zeroBlockRefNonce,
+		RefNonce: IFCERFTZeroBlockRefNonce,
 		Creator:  arg.Bid.ChargedTo,
 	}
 
@@ -136,7 +136,7 @@ func (fc *FakeBServerClient) AddReference(ctx context.Context, arg keybase1.AddR
 		return err
 	}
 
-	tlfID, err := ParseTlfID(arg.Folder)
+	tlfID, err := IFCERFTParseTlfID(arg.Folder)
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	b := newBlockServerRemoteWithClient(config, fc)
 
 	tlfID := FakeTlfID(2, false)
-	bCtx := IFCERFTBlockContext{currentUID, "", zeroBlockRefNonce}
+	bCtx := IFCERFTBlockContext{currentUID, "", IFCERFTZeroBlockRefNonce}
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
 	if err != nil {
@@ -262,7 +262,7 @@ func TestBServerRemotePutCanceled(t *testing.T) {
 	f := func(ctx context.Context) error {
 		bID := fakeBlockID(1)
 		tlfID := FakeTlfID(2, false)
-		bCtx := IFCERFTBlockContext{currentUID, "", zeroBlockRefNonce}
+		bCtx := IFCERFTBlockContext{currentUID, "", IFCERFTZeroBlockRefNonce}
 		data := []byte{1, 2, 3, 4}
 		serverHalf, err :=
 			config.Crypto().MakeRandomBlockCryptKeyServerHalf()

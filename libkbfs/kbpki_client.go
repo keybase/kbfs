@@ -169,7 +169,7 @@ func (k *KBPKIClient) HasVerifyingKey(ctx context.Context, uid keybase1.UID,
 		return err
 	}
 	if !ok {
-		return KeyNotFoundError{verifyingKey.kid}
+		return IFCERFTKeyNotFoundError{verifyingKey.kid}
 	}
 	return nil
 }
@@ -190,7 +190,7 @@ func (k *KBPKIClient) HasUnverifiedVerifyingKey(ctx context.Context, uid keybase
 		return err
 	}
 	if !ok {
-		return KeyNotFoundError{verifyingKey.kid}
+		return IFCERFTKeyNotFoundError{verifyingKey.kid}
 	}
 	return nil
 }

@@ -521,7 +521,7 @@ func (c *ConfigLocal) MetadataVersion() IFCERFTMetadataVer {
 
 // DataVersion implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) DataVersion() IFCERFTDataVer {
-	return FilesWithHolesDataVer
+	return IFCERFTFilesWithHolesDataVer
 }
 
 // DoBackgroundFlushes implements the Config interface for ConfigLocal.

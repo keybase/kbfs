@@ -444,7 +444,7 @@ type IFCERFTReporter interface {
 type IFCERFTMDCache interface {
 	// Get gets the metadata object associated with the given TlfID,
 	// revision number, and branch ID (NullBranchID for merged MD).
-	Get(tlf IFCERFTTlfID, rev MetadataRevision, bid BranchID) (*IFCERFTRootMetadata, error)
+	Get(tlf IFCERFTTlfID, rev IFCERFTMetadataRevision, bid IFCERFTBranchID) (*IFCERFTRootMetadata, error)
 	// Put stores the metadata object.
 	Put(md *IFCERFTRootMetadata) error
 }
@@ -598,7 +598,7 @@ type IFCERFTCrypto interface {
 	// public key.
 	DecryptTLFCryptKeyClientHalf(ctx context.Context,
 		publicKey IFCERFTTLFEphemeralPublicKey, encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf) (
-		TLFCryptKeyClientHalf, error)
+		IFCERFTTLFCryptKeyClientHalf, error)
 
 	// DecryptTLFCryptKeyClientHalfAny decrypts one of the
 	// TLFCryptKeyClientHalf using the available private keys and the
@@ -606,7 +606,7 @@ type IFCERFTCrypto interface {
 	// prompt the user for any unlocked paper keys.
 	DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 		keys []IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
-		TLFCryptKeyClientHalf, int, error)
+		IFCERFTTLFCryptKeyClientHalf, int, error)
 
 	// Shutdown frees any resources associated with this instance.
 	Shutdown()
@@ -623,7 +623,7 @@ type IFCERFTCodec interface {
 	// struct that will be encoded/decoded by the codec.  Each must
 	// have a unique extCode.  Types that include other extension
 	// types are not supported.
-	RegisterType(rt reflect.Type, code extCode)
+	RegisterType(rt reflect.Type, code IFCERFTExtCode)
 	// RegisterIfaceSliceType should be called for all encoded slices
 	// that contain ambiguous interface types.  Each must have a
 	// unique extCode.  Slice element types that include other
@@ -634,8 +634,7 @@ type IFCERFTCodec interface {
 	// by the rest of the code.  This is needed, for example, when the
 	// codec cannot decode interface types to their desired pointer
 	// form.
-	RegisterIfaceSliceType(rt reflect.Type, code extCode,
-		typer func(interface{}) reflect.Value)
+	RegisterIfaceSliceType(rt reflect.Type, code IFCERFTExtCode, typer func(interface{}) reflect.Value)
 }
 
 // MDOps gets and puts root metadata to an MDServer.  On a get, it
@@ -661,18 +660,17 @@ type IFCERFTMDOps interface {
 
 	// GetUnmergedForTLF is the same as the above but for unmerged
 	// metadata.
-	GetUnmergedForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID) (
+	GetUnmergedForTLF(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID) (
 		*IFCERFTRootMetadata, error)
 
 	// GetRange returns a range of metadata objects corresponding to
 	// the passed revision numbers (inclusive).
-	GetRange(ctx context.Context, id IFCERFTTlfID, start, stop MetadataRevision) (
+	GetRange(ctx context.Context, id IFCERFTTlfID, start, stop IFCERFTMetadataRevision) (
 		[]*IFCERFTRootMetadata, error)
 
 	// GetUnmergedRange is the same as the above but for unmerged
 	// metadata history (inclusive).
-	GetUnmergedRange(ctx context.Context, id IFCERFTTlfID, bid BranchID,
-		start, stop MetadataRevision) ([]*IFCERFTRootMetadata, error)
+	GetUnmergedRange(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, start, stop IFCERFTMetadataRevision) ([]*IFCERFTRootMetadata, error)
 
 	// Put stores the metadata object for the given
 	// top-level folder.
@@ -680,13 +678,13 @@ type IFCERFTMDOps interface {
 
 	// PutUnmerged is the same as the above but for unmerged
 	// metadata history.
-	PutUnmerged(ctx context.Context, rmd *IFCERFTRootMetadata, bid BranchID) error
+	PutUnmerged(ctx context.Context, rmd *IFCERFTRootMetadata, bid IFCERFTBranchID) error
 
 	// GetLatestHandleForTLF returns the server's idea of the latest handle for the TLF,
 	// which may not yet be reflected in the MD if the TLF hasn't been rekeyed since it
 	// entered into a conflicting state.
 	GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (
-		BareTlfHandle, error)
+		IFCERFTBareTlfHandle, error)
 }
 
 // KeyOps fetches server-side key halves from the key server.
@@ -694,19 +692,18 @@ type IFCERFTKeyOps interface {
 	// GetTLFCryptKeyServerHalf gets a server-side key half for a
 	// device given the key half ID.
 	GetTLFCryptKeyServerHalf(ctx context.Context,
-		serverHalfID TLFCryptKeyServerHalfID,
-		cryptPublicKey IFCERFTCryptPublicKey) (TLFCryptKeyServerHalf, error)
+		serverHalfID IFCERFTTLFCryptKeyServerHalfID, cryptPublicKey IFCERFTCryptPublicKey) (IFCERFTTLFCryptKeyServerHalf, error)
 
 	// PutTLFCryptKeyServerHalves stores a server-side key halves for a
 	// set of users and devices.
 	PutTLFCryptKeyServerHalves(ctx context.Context,
-		serverKeyHalves map[keybase1.UID]map[keybase1.KID]TLFCryptKeyServerHalf) error
+		serverKeyHalves map[keybase1.UID]map[keybase1.KID]IFCERFTTLFCryptKeyServerHalf) error
 
 	// DeleteTLFCryptKeyServerHalf deletes a server-side key half for a
 	// device given the key half ID.
 	DeleteTLFCryptKeyServerHalf(ctx context.Context,
 		uid keybase1.UID, kid keybase1.KID,
-		serverHalfID TLFCryptKeyServerHalfID) error
+		serverHalfID IFCERFTTLFCryptKeyServerHalfID) error
 }
 
 // BlockOps gets and puts data blocks to a BlockServer. It performs
@@ -763,27 +760,26 @@ type IFCERFTMDServer interface {
 	// the logged-in user has read permission on the folder.  It
 	// creates the folder if one doesn't exist yet, and the logged-in
 	// user has permission to do so.
-	GetForHandle(ctx context.Context, handle BareTlfHandle,
-		mStatus IFCERFTMergeStatus) (IFCERFTTlfID, *RootMetadataSigned, error)
+	GetForHandle(ctx context.Context, handle IFCERFTBareTlfHandle, mStatus IFCERFTMergeStatus) (IFCERFTTlfID, *IFCERFTRootMetadataSigned, error)
 
 	// GetForTLF returns the current (signed/encrypted) metadata object
 	// corresponding to the given top-level folder, if the logged-in
 	// user has read permission on the folder.
-	GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (
-		*RootMetadataSigned, error)
+	GetForTLF(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus) (
+		*IFCERFTRootMetadataSigned, error)
 
 	// GetRange returns a range of (signed/encrypted) metadata objects
 	// corresponding to the passed revision numbers (inclusive).
-	GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus, start, stop MetadataRevision) ([]*RootMetadataSigned, error)
+	GetRange(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus, start, stop IFCERFTMetadataRevision) ([]*IFCERFTRootMetadataSigned, error)
 
 	// Put stores the (signed/encrypted) metadata object for the given
 	// top-level folder. Note: If the unmerged bit is set in the metadata
 	// block's flags bitmask it will be appended to the unmerged per-device
 	// history.
-	Put(ctx context.Context, rmds *RootMetadataSigned) error
+	Put(ctx context.Context, rmds *IFCERFTRootMetadataSigned) error
 
 	// PruneBranch prunes all unmerged history for the given TLF branch.
-	PruneBranch(ctx context.Context, id IFCERFTTlfID, bid BranchID) error
+	PruneBranch(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID) error
 
 	// RegisterForUpdate tells the MD server to inform the caller when
 	// there is a merged update with a revision number greater than
@@ -796,7 +792,7 @@ type IFCERFTMDServer interface {
 	// MD server may have failed). In either case, the caller must
 	// re-register to get a new chan that can receive future update
 	// notifications.
-	RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead MetadataRevision) (<-chan error, error)
+	RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead IFCERFTMetadataRevision) (<-chan error, error)
 
 	// CheckForRekeys initiates the rekey checking process on the
 	// server.  The server is allowed to delay this request, and so it
@@ -828,7 +824,7 @@ type IFCERFTMDServer interface {
 	// entered into a conflicting state.  For the highest level of confidence, the caller
 	// should verify the mapping with a Merkle tree lookup.
 	GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (
-		BareTlfHandle, error)
+		IFCERFTBareTlfHandle, error)
 }
 
 // BlockServer gets and puts opaque data blocks.  The instantiation
@@ -922,7 +918,7 @@ type IFCERFTBlockSplitter interface {
 
 	// ShouldEmbedBlockChanges decides whether we should keep the
 	// block changes embedded in the MD or not.
-	ShouldEmbedBlockChanges(bc *IFCERFTBlockChanges) bool
+	ShouldEmbedBlockChanges(bc *AddBPSize) bool
 }
 
 // KeyServer fetches/writes server-side key halves from/to the key server.
@@ -930,19 +926,18 @@ type IFCERFTKeyServer interface {
 	// GetTLFCryptKeyServerHalf gets a server-side key half for a
 	// device given the key half ID.
 	GetTLFCryptKeyServerHalf(ctx context.Context,
-		serverHalfID TLFCryptKeyServerHalfID,
-		cryptPublicKey IFCERFTCryptPublicKey) (TLFCryptKeyServerHalf, error)
+		serverHalfID IFCERFTTLFCryptKeyServerHalfID, cryptPublicKey IFCERFTCryptPublicKey) (IFCERFTTLFCryptKeyServerHalf, error)
 
 	// PutTLFCryptKeyServerHalves stores a server-side key halves for a
 	// set of users and devices.
 	PutTLFCryptKeyServerHalves(ctx context.Context,
-		serverKeyHalves map[keybase1.UID]map[keybase1.KID]TLFCryptKeyServerHalf) error
+		serverKeyHalves map[keybase1.UID]map[keybase1.KID]IFCERFTTLFCryptKeyServerHalf) error
 
 	// DeleteTLFCryptKeyServerHalf deletes a server-side key half for a
 	// device given the key half ID.
 	DeleteTLFCryptKeyServerHalf(ctx context.Context,
 		uid keybase1.UID, kid keybase1.KID,
-		serverHalfID TLFCryptKeyServerHalfID) error
+		serverHalfID IFCERFTTLFCryptKeyServerHalfID) error
 
 	// Shutdown is called to free any KeyServer resources.
 	Shutdown()
@@ -1001,7 +996,7 @@ type IFCERFTClock interface {
 // ConflictRenamer deals with names for conflicting directory entries.
 type IFCERFTConflictRenamer interface {
 	// ConflictRename returns the appropriately modified filename.
-	ConflictRename(op op, original string) string
+	ConflictRename(op IFCERFTOps, original string) string
 }
 
 // Config collects all the singleton instance instantiations needed to
@@ -1118,25 +1113,25 @@ type IFCERFTNodeCache interface {
 	GetOrCreate(ptr IFCERFTBlockPointer, name string, parent IFCERFTNode) (IFCERFTNode, error)
 	// Get returns the Node associated with the given ptr if one
 	// already exists.  Otherwise, it returns nil.
-	Get(ref blockRef) IFCERFTNode
+	Get(ref IFCERFTBlockRef) IFCERFTNode
 	// UpdatePointer updates the BlockPointer for the corresponding
 	// Node.  NodeCache ignores this call when oldRef is not cached in
 	// any Node.
-	UpdatePointer(oldRef blockRef, newPtr IFCERFTBlockPointer)
+	UpdatePointer(oldRef IFCERFTBlockRef, newPtr IFCERFTBlockPointer)
 	// Move swaps the parent node for the corresponding Node, and
 	// updates the node's name.  NodeCache ignores the call when ptr
 	// is not cached.  Returns an error if newParent cannot be found.
 	// If newParent is nil, it treats the ptr's corresponding node as
 	// being unlinked from the old parent completely.
-	Move(ref blockRef, newParent IFCERFTNode, newName string) error
+	Move(ref IFCERFTBlockRef, newParent IFCERFTNode, newName string) error
 	// Unlink set the corresponding node's parent to nil and caches
 	// the provided path in case the node is still open. NodeCache
 	// ignores the call when ptr is not cached.  The path is required
 	// because the caller may have made changes to the parent nodes
 	// already that shouldn't be reflected in the cached path.
-	Unlink(ref blockRef, oldPath path)
+	Unlink(ref IFCERFTBlockRef, oldPath IFCERFTPath)
 	// PathFromNode creates the path up to a given Node.
-	PathFromNode(node IFCERFTNode) path
+	PathFromNode(node IFCERFTNode) IFCERFTPath
 }
 
 // RekeyQueue is a managed queue of folders needing some rekey action taken upon them

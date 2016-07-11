@@ -14,7 +14,7 @@ import (
 // Make sure Hash encodes and decodes properly with minimal overhead.
 func TestHashEncodeDecode(t *testing.T) {
 	codec := NewCodecMsgpack()
-	h, err := DefaultHash([]byte{1})
+	h, err := IFCERFTDefaultHash([]byte{1})
 	require.NoError(t, err)
 
 	encodedH, err := codec.Encode(h)
@@ -24,9 +24,9 @@ func TestHashEncodeDecode(t *testing.T) {
 	// https://github.com/msgpack/msgpack/blob/master/spec.md#formats-bin
 	// for why there are two bytes of overhead.
 	const overhead = 2
-	assert.Equal(t, DefaultHashByteLength+overhead, len(encodedH))
+	assert.Equal(t, IFCERFTDefaultHashByteLength+overhead, len(encodedH))
 
-	var h2 Hash
+	var h2 IFCERFTHash
 	err = codec.Decode(encodedH, &h2)
 	require.NoError(t, err)
 
@@ -36,23 +36,23 @@ func TestHashEncodeDecode(t *testing.T) {
 // Make sure the zero Hash value encodes and decodes properly.
 func TestHashEncodeDecodeZero(t *testing.T) {
 	codec := NewCodecMsgpack()
-	encodedH, err := codec.Encode(Hash{})
+	encodedH, err := codec.Encode(IFCERFTHash{})
 	require.NoError(t, err)
 
 	expectedEncodedH := []byte{0xc0}
 	assert.Equal(t, expectedEncodedH, encodedH)
 
-	var h Hash
+	var h IFCERFTHash
 	err = codec.Decode(encodedH, &h)
 	require.NoError(t, err)
 
-	assert.Equal(t, Hash{}, h)
+	assert.Equal(t, IFCERFTHash{}, h)
 }
 
 // Make sure that default hash gives a valid hash that verifies.
 func TestDefaultHash(t *testing.T) {
 	data := []byte{1, 2, 3, 4, 5}
-	h, err := DefaultHash(data)
+	h, err := IFCERFTDefaultHash(data)
 	require.NoError(t, err)
 
 	assert.True(t, h.IsValid())
@@ -63,29 +63,29 @@ func TestDefaultHash(t *testing.T) {
 
 // hashFromRawNoCheck() is like HashFromRaw() except it doesn't check
 // validity.
-func hashFromRawNoCheck(hashType HashType, rawHash []byte) Hash {
-	return Hash{string(append([]byte{byte(hashType)}, rawHash...))}
+func hashFromRawNoCheck(hashType IFCERFTHashType, rawHash []byte) IFCERFTHash {
+	return IFCERFTHash{string(append([]byte{byte(hashType)}, rawHash...))}
 }
 
 // Make sure Hash.IsValid() fails properly.
 func TestHashIsValid(t *testing.T) {
 	data := []byte{1, 2, 3, 4, 5}
-	validH, err := DefaultHash(data)
+	validH, err := IFCERFTDefaultHash(data)
 	require.NoError(t, err)
 
 	// Zero hash.
-	assert.False(t, (Hash{}).IsValid())
+	assert.False(t, (IFCERFTHash{}).IsValid())
 
-	var smallH Hash
-	smallH.h = validH.h[:MinHashByteLength-1]
+	var smallH IFCERFTHash
+	smallH.h = validH.h[:IFCERFTMinHashByteLength-1]
 	assert.False(t, smallH.IsValid())
 
-	var largeH Hash
+	var largeH IFCERFTHash
 	padding := make([]byte, MaxHashByteLength-len(validH.h)+1)
 	largeH.h = string(append([]byte(validH.h), padding...))
 	assert.False(t, largeH.IsValid())
 
-	invalidH := hashFromRawNoCheck(InvalidHash, validH.hashData())
+	invalidH := hashFromRawNoCheck(IFCERFTInvalidHash, validH.hashData())
 	assert.False(t, invalidH.IsValid())
 
 	// A hash with an unknown version is still valid.
@@ -98,38 +98,38 @@ func TestHashVerify(t *testing.T) {
 	data := []byte{1, 2, 3, 4, 5}
 
 	// Zero (invalid) hash.
-	err := (Hash{}).Verify(data)
-	assert.Equal(t, InvalidHashError{Hash{}}, err)
+	err := (IFCERFTHash{}).Verify(data)
+	assert.Equal(t, IFCERFTInvalidHashError{IFCERFTHash{}}, err)
 
-	validH, err := DefaultHash(data)
+	validH, err := IFCERFTDefaultHash(data)
 	require.NoError(t, err)
 
 	corruptData := make([]byte, len(data))
 	copy(corruptData, data)
 	corruptData[0] ^= 1
 	err = validH.Verify(corruptData)
-	assert.IsType(t, HashMismatchError{}, err)
+	assert.IsType(t, IFCERFTHashMismatchError{}, err)
 
-	invalidH := hashFromRawNoCheck(InvalidHash, validH.hashData())
+	invalidH := hashFromRawNoCheck(IFCERFTInvalidHash, validH.hashData())
 	err = invalidH.Verify(data)
-	assert.Equal(t, InvalidHashError{invalidH}, err)
+	assert.Equal(t, IFCERFTInvalidHashError{invalidH}, err)
 
 	unknownType := validH.hashType() + 1
 	unknownH := hashFromRawNoCheck(unknownType, validH.hashData())
 	err = unknownH.Verify(data)
-	assert.Equal(t, UnknownHashTypeError{unknownType}, err)
+	assert.Equal(t, IFCERFTUnknownHashTypeError{unknownType}, err)
 
 	hashData := validH.hashData()
 	hashData[0] ^= 1
 	corruptH := hashFromRawNoCheck(validH.hashType(), hashData)
 	err = corruptH.Verify(data)
-	assert.IsType(t, HashMismatchError{}, err)
+	assert.IsType(t, IFCERFTHashMismatchError{}, err)
 }
 
 // Make sure HMAC encodes and decodes properly with minimal overhead.
 func TestHMACEncodeDecode(t *testing.T) {
 	codec := NewCodecMsgpack()
-	hmac, err := DefaultHMAC([]byte{1}, []byte{2})
+	hmac, err := IFCERFTDefaultHMAC([]byte{1}, []byte{2})
 	require.NoError(t, err)
 
 	encodedHMAC, err := codec.Encode(hmac)
@@ -139,9 +139,9 @@ func TestHMACEncodeDecode(t *testing.T) {
 	// https://github.com/msgpack/msgpack/blob/master/spec.md#formats-bin
 	// for why there are two bytes of overhead.
 	const overhead = 2
-	assert.Equal(t, DefaultHashByteLength+overhead, len(encodedHMAC))
+	assert.Equal(t, IFCERFTDefaultHashByteLength+overhead, len(encodedHMAC))
 
-	var hmac2 HMAC
+	var hmac2 IFCERFTHMAC
 	err = codec.Decode(encodedHMAC, &hmac2)
 	require.NoError(t, err)
 
@@ -151,24 +151,24 @@ func TestHMACEncodeDecode(t *testing.T) {
 // Make sure the zero Hash value encodes and decodes properly.
 func TestHMACEncodeDecodeZero(t *testing.T) {
 	codec := NewCodecMsgpack()
-	encodedHMAC, err := codec.Encode(HMAC{})
+	encodedHMAC, err := codec.Encode(IFCERFTHMAC{})
 	require.NoError(t, err)
 
 	expectedEncodedHMAC := []byte{0xc0}
 	assert.Equal(t, expectedEncodedHMAC, encodedHMAC)
 
-	var hmac HMAC
+	var hmac IFCERFTHMAC
 	err = codec.Decode(encodedHMAC, &hmac)
 	require.NoError(t, err)
 
-	assert.Equal(t, HMAC{}, hmac)
+	assert.Equal(t, IFCERFTHMAC{}, hmac)
 }
 
 // Make sure that default HMAC gives a valid HMAC that verifies.
 func TestDefaultHMAC(t *testing.T) {
 	key := []byte{1, 2}
 	data := []byte{1, 2, 3, 4, 5}
-	hmac, err := DefaultHMAC(key, data)
+	hmac, err := IFCERFTDefaultHMAC(key, data)
 	require.NoError(t, err)
 
 	assert.True(t, hmac.IsValid())
@@ -181,9 +181,9 @@ func TestDefaultHMAC(t *testing.T) {
 
 // hmacFromRawNoCheck() is like HmacFromRaw() except it doesn't check
 // validity.
-func hmacFromRawNoCheck(hashType HashType, rawHash []byte) HMAC {
+func hmacFromRawNoCheck(hashType IFCERFTHashType, rawHash []byte) IFCERFTHMAC {
 	h := hashFromRawNoCheck(hashType, rawHash)
-	return HMAC{h}
+	return IFCERFTHMAC{h}
 }
 
 // Make sure HMAC.Verify() fails properly.
@@ -192,36 +192,36 @@ func TestVerify(t *testing.T) {
 	data := []byte{1, 2, 3, 4, 5}
 
 	// Zero (invalid) HMAC.
-	err := (HMAC{}).Verify(key, data)
-	assert.Equal(t, InvalidHashError{Hash{}}, err)
+	err := (IFCERFTHMAC{}).Verify(key, data)
+	assert.Equal(t, IFCERFTInvalidHashError{IFCERFTHash{}}, err)
 
-	validHMAC, err := DefaultHMAC(key, data)
+	validHMAC, err := IFCERFTDefaultHMAC(key, data)
 	require.NoError(t, err)
 
 	corruptKey := make([]byte, len(key))
 	copy(corruptKey, key)
 	corruptKey[0] ^= 1
 	err = validHMAC.Verify(corruptKey, data)
-	assert.IsType(t, HashMismatchError{}, err)
+	assert.IsType(t, IFCERFTHashMismatchError{}, err)
 
 	corruptData := make([]byte, len(data))
 	copy(corruptData, data)
 	corruptData[0] ^= 1
 	err = validHMAC.Verify(key, corruptData)
-	assert.IsType(t, HashMismatchError{}, err)
+	assert.IsType(t, IFCERFTHashMismatchError{}, err)
 
-	invalidHMAC := hmacFromRawNoCheck(InvalidHash, validHMAC.hashData())
+	invalidHMAC := hmacFromRawNoCheck(IFCERFTInvalidHash, validHMAC.hashData())
 	err = invalidHMAC.Verify(key, data)
-	assert.Equal(t, InvalidHashError{invalidHMAC.h}, err)
+	assert.Equal(t, IFCERFTInvalidHashError{invalidHMAC.h}, err)
 
 	unknownType := validHMAC.hashType() + 1
 	unknownHMAC := hmacFromRawNoCheck(unknownType, validHMAC.hashData())
 	err = unknownHMAC.Verify(key, data)
-	assert.Equal(t, UnknownHashTypeError{unknownType}, err)
+	assert.Equal(t, IFCERFTUnknownHashTypeError{unknownType}, err)
 
 	hashData := validHMAC.hashData()
 	hashData[0] ^= 1
 	corruptHMAC := hmacFromRawNoCheck(validHMAC.hashType(), hashData)
 	err = corruptHMAC.Verify(key, data)
-	assert.IsType(t, HashMismatchError{}, err)
+	assert.IsType(t, IFCERFTHashMismatchError{}, err)
 }

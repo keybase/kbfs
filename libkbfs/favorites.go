@@ -21,7 +21,7 @@ type favToAdd struct {
 }
 
 func (f favToAdd) toKBFolder() keybase1.Folder {
-	return f.IFCERFTFavorite.toKBFolder(f.created)
+	return f.IFCERFTFavorite.ToKBFolder(f.created)
 }
 
 // favReq represents a request to access the logged-in user's
@@ -134,7 +134,7 @@ func (f *Favorites) handleReq(req *favReq) (err error) {
 	for _, fav := range req.toDel {
 		// Since our cache isn't necessarily up-to-date, always delete
 		// the favorite.
-		folder := fav.toKBFolder(false)
+		folder := fav.ToKBFolder(false)
 		err := kbpki.FavoriteDelete(req.ctx, folder)
 		if err != nil {
 			return err
@@ -228,7 +228,7 @@ func (f *Favorites) startOrJoinAddReq(
 // Add adds a favorite to your favorites list.
 func (f *Favorites) Add(ctx context.Context, fav favToAdd) error {
 	if f.hasShutdown() {
-		return ShutdownHappenedError{}
+		return IFCERFTShutdownHappenedError{}
 	}
 	doAdd := true
 	var err error
@@ -270,7 +270,7 @@ func (f *Favorites) AddAsync(ctx context.Context, fav favToAdd) {
 // idempotent.
 func (f *Favorites) Delete(ctx context.Context, fav IFCERFTFavorite) error {
 	if f.hasShutdown() {
-		return ShutdownHappenedError{}
+		return IFCERFTShutdownHappenedError{}
 	}
 	return f.sendReq(ctx, &favReq{
 		ctx:   ctx,
@@ -302,7 +302,7 @@ func (f *Favorites) RefreshCache(ctx context.Context) {
 // doesn't use the cache.
 func (f *Favorites) Get(ctx context.Context) ([]IFCERFTFavorite, error) {
 	if f.hasShutdown() {
-		return nil, ShutdownHappenedError{}
+		return nil, IFCERFTShutdownHappenedError{}
 	}
 	favChan := make(chan []IFCERFTFavorite, 1)
 	req := &favReq{

@@ -84,7 +84,7 @@ func writeHelper(ctx context.Context, config libkbfs.IFCERFTConfig, args []strin
 
 	kbfsOps := config.KBFSOps()
 
-	noSuchFileErr := libkbfs.NoSuchNameError{Name: filename}
+	noSuchFileErr := libkbfs.IFCERFTNoSuchNameError{Name: filename}
 
 	// The operations below are racy, but that is inherent to a
 	// distributed FS.

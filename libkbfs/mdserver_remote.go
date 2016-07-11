@@ -130,7 +130,7 @@ func (md *MDServerRemote) OnConnect(ctx context.Context,
 	pingIntervalSeconds, err := md.resetAuth(ctx, c)
 	switch err.(type) {
 	case nil:
-	case NoCurrentSessionError:
+	case IFCERFTNoCurrentSessionError:
 	default:
 		return err
 	}
@@ -158,7 +158,7 @@ func (md *MDServerRemote) resetAuth(ctx context.Context, c keybase1.MetadataClie
 	_, _, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		md.log.Debug("MDServerRemote: User logged out, skipping resetAuth")
-		return MdServerDefaultPingIntervalSeconds, NoCurrentSessionError{}
+		return MdServerDefaultPingIntervalSeconds, IFCERFTNoCurrentSessionError{}
 	}
 
 	challenge, err := c.GetChallenge(ctx)
@@ -211,7 +211,7 @@ func (md *MDServerRemote) RefreshAuthToken(ctx context.Context) {
 	switch err.(type) {
 	case nil:
 		md.log.Debug("MDServerRemote: auth token refreshed")
-	case NoCurrentSessionError:
+	case IFCERFTNoCurrentSessionError:
 		md.log.Debug("MDServerRemote: no session available, connection remains anonymous")
 	default:
 		md.log.Debug("MDServerRemote: error refreshing auth token: %v", err)
@@ -314,7 +314,7 @@ func (md *MDServerRemote) cancelObservers() {
 	defer md.observerMu.Unlock()
 	// fire errors for any registered observers
 	for id, observerChan := range md.observers {
-		md.signalObserverLocked(observerChan, id, MDServerDisconnected{})
+		md.signalObserverLocked(observerChan, id, IFCERFTMDServerDisconnected{})
 	}
 }
 
@@ -326,9 +326,9 @@ func (md *MDServerRemote) signalObserverLocked(observerChan chan<- error, id IFC
 }
 
 // Helper used to retrieve metadata blocks from the MD server.
-func (md *MDServerRemote) get(ctx context.Context, id IFCERFTTlfID, handle *BareTlfHandle, bid BranchID, mStatus IFCERFTMergeStatus, start, stop MetadataRevision) (IFCERFTTlfID, []*RootMetadataSigned, error) {
+func (md *MDServerRemote) get(ctx context.Context, id IFCERFTTlfID, handle *IFCERFTBareTlfHandle, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus, start, stop IFCERFTMetadataRevision) (IFCERFTTlfID, []*IFCERFTRootMetadataSigned, error) {
 	// figure out which args to send
-	if id == NullTlfID && handle == nil {
+	if id == IFCERFTNullTlfID && handle == nil {
 		panic("nil TlfID and handle passed into MDServerRemote.get")
 	}
 	arg := keybase1.GetMetadataArg{
@@ -340,7 +340,7 @@ func (md *MDServerRemote) get(ctx context.Context, id IFCERFTTlfID, handle *Bare
 	}
 
 	var err error
-	if id == NullTlfID {
+	if id == IFCERFTNullTlfID {
 		arg.FolderHandle, err = md.config.Codec().Encode(handle)
 		if err != nil {
 			return id, nil, err
@@ -356,22 +356,22 @@ func (md *MDServerRemote) get(ctx context.Context, id IFCERFTTlfID, handle *Bare
 	}
 
 	// response
-	id, err = ParseTlfID(response.FolderID)
+	id, err = IFCERFTParseTlfID(response.FolderID)
 	if err != nil {
 		return id, nil, err
 	}
 
 	// deserialize blocks
-	rmdses := make([]*RootMetadataSigned, len(response.MdBlocks))
+	rmdses := make([]*IFCERFTRootMetadataSigned, len(response.MdBlocks))
 	for i, block := range response.MdBlocks {
 		ver := IFCERFTMetadataVer(block.Version)
-		if ver < FirstValidMetadataVer {
-			return id, nil, InvalidMetadataVersionError{id, ver}
+		if ver < IFCERFTFirstValidMetadataVer {
+			return id, nil, IFCERFTInvalidMetadataVersionError{id, ver}
 		} else if ver > md.config.MetadataVersion() {
-			return id, nil, NewMetadataVersionError{id, ver}
+			return id, nil, IFCERFTNewMetadataVersionError{id, ver}
 		}
 
-		var rmds RootMetadataSigned
+		var rmds IFCERFTRootMetadataSigned
 		err = md.config.Codec().Decode(block.Block, &rmds)
 		if err != nil {
 			return id, rmdses, err
@@ -384,11 +384,11 @@ func (md *MDServerRemote) get(ctx context.Context, id IFCERFTTlfID, handle *Bare
 
 // GetForHandle implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetForHandle(ctx context.Context,
-	handle BareTlfHandle, mStatus IFCERFTMergeStatus) (
-	IFCERFTTlfID, *RootMetadataSigned, error) {
-	id, rmdses, err := md.get(ctx, NullTlfID, &handle, NullBranchID,
+	handle IFCERFTBareTlfHandle, mStatus IFCERFTMergeStatus) (
+	IFCERFTTlfID, *IFCERFTRootMetadataSigned, error) {
+	id, rmdses, err := md.get(ctx, IFCERFTNullTlfID, &handle, IFCERFTNullBranchID,
 		mStatus,
-		MetadataRevisionUninitialized, MetadataRevisionUninitialized)
+		IFCERFTMetadataRevisionUninitialized, IFCERFTMetadataRevisionUninitialized)
 	if err != nil {
 		return id, nil, err
 	}
@@ -399,9 +399,9 @@ func (md *MDServerRemote) GetForHandle(ctx context.Context,
 }
 
 // GetForTLF implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (*RootMetadataSigned, error) {
+func (md *MDServerRemote) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus) (*IFCERFTRootMetadataSigned, error) {
 	_, rmdses, err := md.get(ctx, id, nil, bid, mStatus,
-		MetadataRevisionUninitialized, MetadataRevisionUninitialized)
+		IFCERFTMetadataRevisionUninitialized, IFCERFTMetadataRevisionUninitialized)
 	if err != nil {
 		return nil, err
 	}
@@ -412,14 +412,14 @@ func (md *MDServerRemote) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid Br
 }
 
 // GetRange implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus, start, stop MetadataRevision) (
-	[]*RootMetadataSigned, error) {
+func (md *MDServerRemote) GetRange(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus, start, stop IFCERFTMetadataRevision) (
+	[]*IFCERFTRootMetadataSigned, error) {
 	_, rmds, err := md.get(ctx, id, nil, bid, mStatus, start, stop)
 	return rmds, err
 }
 
 // Put implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned) error {
+func (md *MDServerRemote) Put(ctx context.Context, rmds *IFCERFTRootMetadataSigned) error {
 	// encode MD block
 	rmdsBytes, err := md.config.Codec().Encode(rmds)
 	if err != nil {
@@ -438,7 +438,7 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned) err
 }
 
 // PruneBranch implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid BranchID) error {
+func (md *MDServerRemote) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID) error {
 	arg := keybase1.PruneBranchArg{
 		FolderID: id.String(),
 		BranchID: bid.String(),
@@ -449,7 +449,7 @@ func (md *MDServerRemote) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid 
 
 // MetadataUpdate implements the MetadataUpdateProtocol interface.
 func (md *MDServerRemote) MetadataUpdate(_ context.Context, arg keybase1.MetadataUpdateArg) error {
-	id, err := ParseTlfID(arg.FolderID)
+	id, err := IFCERFTParseTlfID(arg.FolderID)
 	if err != nil {
 		return err
 	}
@@ -469,7 +469,7 @@ func (md *MDServerRemote) MetadataUpdate(_ context.Context, arg keybase1.Metadat
 
 // FolderNeedsRekey implements the MetadataUpdateProtocol interface.
 func (md *MDServerRemote) FolderNeedsRekey(_ context.Context, arg keybase1.FolderNeedsRekeyArg) error {
-	id, err := ParseTlfID(arg.FolderID)
+	id, err := IFCERFTParseTlfID(arg.FolderID)
 	if err != nil {
 		return err
 	}
@@ -492,7 +492,7 @@ func (md *MDServerRemote) FolderNeedsRekey(_ context.Context, arg keybase1.Folde
 }
 
 // RegisterForUpdate implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead MetadataRevision) (<-chan error, error) {
+func (md *MDServerRemote) RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead IFCERFTMetadataRevision) (<-chan error, error) {
 	arg := keybase1.RegisterForUpdatesArg{
 		FolderID:     id.String(),
 		CurrRevision: currHead.Number(),
@@ -566,14 +566,14 @@ func (md *MDServerRemote) TruncateUnlock(ctx context.Context, id IFCERFTTlfID) (
 
 // GetLatestHandleForTLF implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (
-	BareTlfHandle, error) {
+	IFCERFTBareTlfHandle, error) {
 	buf, err := md.client.GetLatestFolderHandle(ctx, id.String())
 	if err != nil {
-		return BareTlfHandle{}, err
+		return IFCERFTBareTlfHandle{}, err
 	}
-	var handle BareTlfHandle
+	var handle IFCERFTBareTlfHandle
 	if err := md.config.Codec().Decode(buf, &handle); err != nil {
-		return BareTlfHandle{}, err
+		return IFCERFTBareTlfHandle{}, err
 	}
 	return handle, nil
 }
@@ -647,7 +647,7 @@ func (md *MDServerRemote) IsConnected() bool {
 
 // GetTLFCryptKeyServerHalf is an implementation of the KeyServer interface.
 func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
-	serverHalfID TLFCryptKeyServerHalfID, cryptKey IFCERFTCryptPublicKey) (serverHalf TLFCryptKeyServerHalf, err error) {
+	serverHalfID IFCERFTTLFCryptKeyServerHalfID, cryptKey IFCERFTCryptPublicKey) (serverHalf IFCERFTTLFCryptKeyServerHalf, err error) {
 	// encode the ID
 	idBytes, err := md.config.Codec().Encode(serverHalfID)
 	if err != nil {
@@ -676,7 +676,7 @@ func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
 
 // PutTLFCryptKeyServerHalves is an implementation of the KeyServer interface.
 func (md *MDServerRemote) PutTLFCryptKeyServerHalves(ctx context.Context,
-	serverKeyHalves map[keybase1.UID]map[keybase1.KID]TLFCryptKeyServerHalf) error {
+	serverKeyHalves map[keybase1.UID]map[keybase1.KID]IFCERFTTLFCryptKeyServerHalf) error {
 	// flatten out the map into an array
 	var keyHalves []keybase1.KeyHalf
 	for user, deviceMap := range serverKeyHalves {
@@ -704,7 +704,7 @@ func (md *MDServerRemote) PutTLFCryptKeyServerHalves(ctx context.Context,
 // DeleteTLFCryptKeyServerHalf is an implementation of the KeyServer interface.
 func (md *MDServerRemote) DeleteTLFCryptKeyServerHalf(ctx context.Context,
 	uid keybase1.UID, kid keybase1.KID,
-	serverHalfID TLFCryptKeyServerHalfID) error {
+	serverHalfID IFCERFTTLFCryptKeyServerHalfID) error {
 	// encode the ID
 	idBytes, err := md.config.Codec().Encode(serverHalfID)
 	if err != nil {

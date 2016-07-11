@@ -59,7 +59,7 @@ type TestBlock struct {
 }
 
 func (TestBlock) DataVersion() IFCERFTDataVer {
-	return FirstValidDataVer
+	return IFCERFTFirstValidDataVer
 }
 
 func (tb TestBlock) GetEncodedSize() uint32 {
@@ -90,11 +90,11 @@ func expectBlockEncrypt(config *ConfigMock, rmd *IFCERFTRootMetadata, decData IF
 	config.mockCrypto.EXPECT().MakeRandomBlockCryptKeyServerHalf().
 		Return(IFCERFTBlockCryptKeyServerHalf{}, nil)
 	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(
-		IFCERFTBlockCryptKeyServerHalf{}, IFCERFTTLFCryptKey{}).Return(BlockCryptKey{}, nil)
+		IFCERFTBlockCryptKeyServerHalf{}, IFCERFTTLFCryptKey{}).Return(IFCERFTBlockCryptKey{}, nil)
 	encryptedBlock := IFCERFTEncryptedBlock{
 		EncryptedData: encData,
 	}
-	config.mockCrypto.EXPECT().EncryptBlock(decData, BlockCryptKey{}).
+	config.mockCrypto.EXPECT().EncryptBlock(decData, IFCERFTBlockCryptKey{}).
 		Return(plainSize, encryptedBlock, err)
 	if err == nil {
 		config.mockCodec.EXPECT().Encode(encryptedBlock).Return(encData, nil)
@@ -105,10 +105,10 @@ func expectBlockDecrypt(config *ConfigMock, rmd *IFCERFTRootMetadata, blockPtr I
 	config.mockCrypto.EXPECT().VerifyBlockID(encData, blockPtr.ID).Return(nil)
 	expectGetTLFCryptKeyForBlockDecryption(config, rmd, blockPtr)
 	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(gomock.Any(), gomock.Any()).
-		Return(BlockCryptKey{}, nil)
+		Return(IFCERFTBlockCryptKey{}, nil)
 	config.mockCodec.EXPECT().Decode(encData, gomock.Any()).Return(nil)
-	config.mockCrypto.EXPECT().DecryptBlock(gomock.Any(), BlockCryptKey{}, gomock.Any()).
-		Do(func(encryptedBlock IFCERFTEncryptedBlock, key BlockCryptKey, b IFCERFTBlock) {
+	config.mockCrypto.EXPECT().DecryptBlock(gomock.Any(), IFCERFTBlockCryptKey{}, gomock.Any()).
+		Do(func(encryptedBlock IFCERFTEncryptedBlock, key IFCERFTBlockCryptKey, b IFCERFTBlock) {
 			if b != nil {
 				tb := b.(*TestBlock)
 				*tb = block
@@ -118,7 +118,7 @@ func expectBlockDecrypt(config *ConfigMock, rmd *IFCERFTRootMetadata, blockPtr I
 
 func makeRMD() *IFCERFTRootMetadata {
 	tlfID := FakeTlfID(0, false)
-	return &IFCERFTRootMetadata{WriterMetadata: WriterMetadata{ID: tlfID}}
+	return &IFCERFTRootMetadata{IFCERFTWriterMetadata: IFCERFTWriterMetadata{ID: tlfID}}
 }
 
 func TestBlockOpsGetSuccess(t *testing.T) {
@@ -245,7 +245,7 @@ func TestBlockOpsReadyFailTooLowByteCount(t *testing.T) {
 	expectBlockEncrypt(config, rmd, decData, 4, encData, nil)
 
 	_, _, _, err := config.BlockOps().Ready(ctx, rmd, decData)
-	if _, ok := err.(TooLowByteCountError); !ok {
+	if _, ok := err.(IFCERFTTooLowByteCountError); !ok {
 		t.Errorf("Unexpectedly did not get TooLowByteCountError; "+
 			"instead got %v", err)
 	}

@@ -226,7 +226,7 @@ func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.L
 		return nil, fuse.ENOENT
 	}
 
-	return nil, libkbfs.NoSuchFolderListError{
+	return nil, libkbfs.IFCERFTNoSuchFolderListError{
 		Name:     req.Name,
 		PrivName: PrivateName,
 		PubName:  PublicName,

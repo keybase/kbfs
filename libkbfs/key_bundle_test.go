@@ -14,12 +14,12 @@ import (
 )
 
 type tlfCryptKeyInfoFuture struct {
-	TLFCryptKeyInfo
+	IFCERFTTLFCryptKeyInfo
 	extra
 }
 
-func (cki tlfCryptKeyInfoFuture) toCurrent() TLFCryptKeyInfo {
-	return cki.TLFCryptKeyInfo
+func (cki tlfCryptKeyInfoFuture) toCurrent() IFCERFTTLFCryptKeyInfo {
+	return cki.IFCERFTTLFCryptKeyInfo
 }
 
 func (cki tlfCryptKeyInfoFuture) toCurrentStruct() currentStruct {
@@ -27,15 +27,15 @@ func (cki tlfCryptKeyInfoFuture) toCurrentStruct() currentStruct {
 }
 
 func makeFakeTLFCryptKeyInfoFuture(t *testing.T) tlfCryptKeyInfoFuture {
-	hmac, err := DefaultHMAC([]byte("fake key"), []byte("fake buf"))
+	hmac, err := IFCERFTDefaultHMAC([]byte("fake key"), []byte("fake buf"))
 	require.NoError(t, err)
-	cki := TLFCryptKeyInfo{
+	cki := IFCERFTTLFCryptKeyInfo{
 		IFCERFTEncryptedTLFCryptKeyClientHalf{
 			IFCERFTEncryptionSecretbox,
 			[]byte("fake encrypted data"),
 			[]byte("fake nonce"),
 		},
-		TLFCryptKeyServerHalfID{hmac},
+		IFCERFTTLFCryptKeyServerHalfID{hmac},
 		5,
 		codec.UnknownFieldSetHandler{},
 	}
@@ -60,7 +60,7 @@ func testKeyBundleGetKeysOrBust(t *testing.T, config IFCERFTConfig, uid keybase1
 }
 
 func testKeyBundleCheckKeys(t *testing.T, config IFCERFTConfig, uid keybase1.UID,
-	wkb TLFWriterKeyBundle, ePubKey IFCERFTTLFEphemeralPublicKey, tlfCryptKey IFCERFTTLFCryptKey, serverMap serverKeyMap) {
+	wkb IFCERFTTLFWriterKeyBundle, ePubKey IFCERFTTLFEphemeralPublicKey, tlfCryptKey IFCERFTTLFCryptKey, serverMap IFCERFTServerKeyMap) {
 	ctx := context.Background()
 	// Check that every user can recover the crypt key
 	cryptPublicKey, err := config.KBPKI().GetCurrentCryptPublicKey(ctx)
@@ -120,8 +120,8 @@ func TestKeyBundleFillInDevices(t *testing.T) {
 	}
 
 	// Make a wkb with empty writer key maps
-	wkb := TLFWriterKeyBundle{
-		WKeys: make(UserDeviceKeyInfoMap),
+	wkb := IFCERFTTLFWriterKeyBundle{
+		WKeys: make(IFCERFTUserDeviceKeyInfoMap),
 		TLFEphemeralPublicKeys: make(IFCERFTTLFEphemeralPublicKeys, 1),
 	}
 
@@ -138,8 +138,8 @@ func TestKeyBundleFillInDevices(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't make keys: %v", err)
 	}
-	serverMap, err := fillInDevices(
-		config1.Crypto(), &wkb, &TLFReaderKeyBundle{},
+	serverMap, err := IFCERFTFillInDevices(
+		config1.Crypto(), &wkb, &IFCERFTTLFReaderKeyBundle{},
 		wKeys, nil, ePubKey, ePrivKey, tlfCryptKey)
 	if err != nil {
 		t.Fatalf("Fill in devices failed: %v", err)
@@ -166,8 +166,8 @@ func TestKeyBundleFillInDevices(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't make keys: %v", err)
 	}
-	serverMap2, err := fillInDevices(
-		config1.Crypto(), &wkb, &TLFReaderKeyBundle{},
+	serverMap2, err := IFCERFTFillInDevices(
+		config1.Crypto(), &wkb, &IFCERFTTLFReaderKeyBundle{},
 		wKeys, nil, ePubKey2, ePrivKey2, tlfCryptKey)
 	if err != nil {
 		t.Fatalf("Fill in devices failed: %v", err)
@@ -183,19 +183,19 @@ func TestKeyBundleFillInDevices(t *testing.T) {
 
 type deviceKeyInfoMapFuture map[keybase1.KID]tlfCryptKeyInfoFuture
 
-func (dkimf deviceKeyInfoMapFuture) toCurrent() DeviceKeyInfoMap {
-	dkim := make(DeviceKeyInfoMap, len(dkimf))
+func (dkimf deviceKeyInfoMapFuture) toCurrent() IFCERFTFillInDeviceInf {
+	dkim := make(IFCERFTFillInDeviceInf, len(dkimf))
 	for k, kif := range dkimf {
 		ki := kif.toCurrent()
-		dkim[k] = TLFCryptKeyInfo(ki)
+		dkim[k] = IFCERFTTLFCryptKeyInfo(ki)
 	}
 	return dkim
 }
 
 type userDeviceKeyInfoMapFuture map[keybase1.UID]deviceKeyInfoMapFuture
 
-func (udkimf userDeviceKeyInfoMapFuture) toCurrent() UserDeviceKeyInfoMap {
-	udkim := make(UserDeviceKeyInfoMap)
+func (udkimf userDeviceKeyInfoMapFuture) toCurrent() IFCERFTUserDeviceKeyInfoMap {
+	udkim := make(IFCERFTUserDeviceKeyInfoMap)
 	for u, dkimf := range udkimf {
 		dkim := dkimf.toCurrent()
 		udkim[u] = dkim
@@ -204,14 +204,14 @@ func (udkimf userDeviceKeyInfoMapFuture) toCurrent() UserDeviceKeyInfoMap {
 }
 
 type tlfWriterKeyBundleFuture struct {
-	TLFWriterKeyBundle
+	IFCERFTTLFWriterKeyBundle
 	// Override TLFWriterKeyBundle.WKeys.
 	WKeys userDeviceKeyInfoMapFuture
 	extra
 }
 
-func (wkbf tlfWriterKeyBundleFuture) toCurrent() TLFWriterKeyBundle {
-	wkb := wkbf.TLFWriterKeyBundle
+func (wkbf tlfWriterKeyBundleFuture) toCurrent() IFCERFTTLFWriterKeyBundle {
+	wkb := wkbf.IFCERFTTLFWriterKeyBundle
 	wkb.WKeys = wkbf.WKeys.toCurrent()
 	return wkb
 }
@@ -229,11 +229,11 @@ func makeFakeDeviceKeyInfoMapFuture(t *testing.T) userDeviceKeyInfoMapFuture {
 }
 
 func makeFakeTLFWriterKeyBundleFuture(t *testing.T) tlfWriterKeyBundleFuture {
-	wkb := TLFWriterKeyBundle{
+	wkb := IFCERFTTLFWriterKeyBundle{
 		nil,
-		MakeTLFPublicKey([32]byte{0xa}),
+		IFCERFTMakeTLFPublicKey([32]byte{0xa}),
 		IFCERFTTLFEphemeralPublicKeys{
-			MakeTLFEphemeralPublicKey([32]byte{0xb}),
+			IFCERFTMakeTLFEphemeralPublicKey([32]byte{0xb}),
 		},
 		codec.UnknownFieldSetHandler{},
 	}
@@ -249,14 +249,14 @@ func TestTLFWriterKeyBundleUnknownFields(t *testing.T) {
 }
 
 type tlfReaderKeyBundleFuture struct {
-	TLFReaderKeyBundle
+	IFCERFTTLFReaderKeyBundle
 	// Override TLFReaderKeyBundle.WKeys.
 	RKeys userDeviceKeyInfoMapFuture
 	extra
 }
 
-func (rkbf tlfReaderKeyBundleFuture) toCurrent() TLFReaderKeyBundle {
-	rkb := rkbf.TLFReaderKeyBundle
+func (rkbf tlfReaderKeyBundleFuture) toCurrent() IFCERFTTLFReaderKeyBundle {
+	rkb := rkbf.IFCERFTTLFReaderKeyBundle
 	rkb.RKeys = rkbf.RKeys.toCurrent()
 	return rkb
 }
@@ -266,10 +266,10 @@ func (rkbf tlfReaderKeyBundleFuture) toCurrentStruct() currentStruct {
 }
 
 func makeFakeTLFReaderKeyBundleFuture(t *testing.T) tlfReaderKeyBundleFuture {
-	rkb := TLFReaderKeyBundle{
+	rkb := IFCERFTTLFReaderKeyBundle{
 		nil,
 		IFCERFTTLFEphemeralPublicKeys{
-			MakeTLFEphemeralPublicKey([32]byte{0xc}),
+			IFCERFTMakeTLFEphemeralPublicKey([32]byte{0xc}),
 		},
 		codec.UnknownFieldSetHandler{},
 	}

@@ -44,7 +44,7 @@ type dirtyBlockState struct {
 // dirtyFile represents a particular file that's been written to, but
 // has not yet completed syncing its dirty blocks to the server.
 type dirtyFile struct {
-	path        path
+	path        IFCERFTPath
 	dirtyBcache IFCERFTDirtyBlockCache
 
 	// Protects access to the fields below.  Most, but not all,
@@ -82,7 +82,7 @@ type dirtyFile struct {
 	errListeners []chan<- error
 }
 
-func newDirtyFile(file path, dirtyBcache IFCERFTDirtyBlockCache) *dirtyFile {
+func newDirtyFile(file IFCERFTPath, dirtyBcache IFCERFTDirtyBlockCache) *dirtyFile {
 	return &dirtyFile{
 		path:            file,
 		dirtyBcache:     dirtyBcache,
@@ -250,9 +250,9 @@ func (df *dirtyFile) finishSync() error {
 			if found {
 				return fmt.Errorf("Unexpected syncing block %v", ptr)
 			}
-			if ptr != df.path.tailPointer() {
+			if ptr != df.path.TailPointer() {
 				return fmt.Errorf("Unexpected syncing block %v; expected %v",
-					ptr, df.path.tailPointer())
+					ptr, df.path.TailPointer())
 			}
 			found = true
 			err := df.setBlockSyncedLocked(ptr)

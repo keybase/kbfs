@@ -73,7 +73,7 @@ func TestRekeyQueueBasic(t *testing.T) {
 	// wasn't registered when the folder was originally created.
 	for _, name := range names {
 		_, err := GetRootNodeForTest(config2Dev2, name, false)
-		if _, ok := err.(NeedSelfRekeyError); !ok {
+		if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 			t.Fatalf("Got unexpected error when reading with new key: %v", err)
 		}
 	}

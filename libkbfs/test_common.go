@@ -36,25 +36,25 @@ const (
 
 // RandomBlockID returns a randomly-generated BlockID for testing.
 func RandomBlockID() BlockID {
-	var dh RawDefaultHash
+	var dh IFCERFTRawDefaultHash
 	err := cryptoRandRead(dh[:])
 	if err != nil {
 		panic(err)
 	}
-	h, err := HashFromRaw(DefaultHashType, dh[:])
+	h, err := IFCERFTHashFromRaw(IFCERFTDefaultHashType, dh[:])
 	if err != nil {
 		panic(err)
 	}
 	return BlockID{h}
 }
 
-func fakeMdID(b byte) MdID {
-	dh := RawDefaultHash{b}
-	h, err := HashFromRaw(DefaultHashType, dh[:])
+func fakeMdID(b byte) IFCERFTMdID {
+	dh := IFCERFTRawDefaultHash{b}
+	h, err := IFCERFTHashFromRaw(IFCERFTDefaultHashType, dh[:])
 	if err != nil {
 		panic(err)
 	}
-	return MdID{h}
+	return IFCERFTMdID{h}
 }
 
 func testLoggerMaker(t logger.TestLogBackend) func(m string) logger.Logger {
@@ -253,11 +253,11 @@ func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *C
 // FakeTlfID creates a fake public or private TLF ID from the given
 // byte.
 func FakeTlfID(b byte, public bool) IFCERFTTlfID {
-	bytes := [TlfIDByteLen]byte{b}
+	bytes := [IFCERFTTlfIDByteLen]byte{b}
 	if public {
-		bytes[TlfIDByteLen-1] = PubTlfIDSuffix
+		bytes[IFCERFTTlfIDByteLen-1] = IFCERFTPubTlfIDSuffix
 	} else {
-		bytes[TlfIDByteLen-1] = TlfIDSuffix
+		bytes[IFCERFTTlfIDByteLen-1] = IFCERFTTlfIDSuffix
 	}
 	return IFCERFTTlfID{bytes}
 }
@@ -268,27 +268,27 @@ func fakeTlfIDByte(id IFCERFTTlfID) byte {
 
 // FakeBranchID creates a fake branch ID from the given
 // byte.
-func FakeBranchID(b byte) BranchID {
-	bytes := [BranchIDByteLen]byte{b}
-	return BranchID{bytes}
+func FakeBranchID(b byte) IFCERFTBranchID {
+	bytes := [IFCERFTBranchIDByteLen]byte{b}
+	return IFCERFTBranchID{bytes}
 }
 
 // NewEmptyTLFWriterKeyBundle creates a new empty TLFWriterKeyBundle
-func NewEmptyTLFWriterKeyBundle() TLFWriterKeyBundle {
-	return TLFWriterKeyBundle{
-		WKeys: make(UserDeviceKeyInfoMap, 0),
+func NewEmptyTLFWriterKeyBundle() IFCERFTTLFWriterKeyBundle {
+	return IFCERFTTLFWriterKeyBundle{
+		WKeys: make(IFCERFTUserDeviceKeyInfoMap, 0),
 	}
 }
 
 // NewEmptyTLFReaderKeyBundle creates a new empty TLFReaderKeyBundle
-func NewEmptyTLFReaderKeyBundle() TLFReaderKeyBundle {
-	return TLFReaderKeyBundle{
-		RKeys: make(UserDeviceKeyInfoMap, 0),
+func NewEmptyTLFReaderKeyBundle() IFCERFTTLFReaderKeyBundle {
+	return IFCERFTTLFReaderKeyBundle{
+		RKeys: make(IFCERFTUserDeviceKeyInfoMap, 0),
 	}
 }
 
 // AddNewKeysOrBust adds new keys to root metadata and blows up on error.
-func AddNewKeysOrBust(t logger.TestLogBackend, rmd *IFCERFTRootMetadata, wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) {
+func AddNewKeysOrBust(t logger.TestLogBackend, rmd *IFCERFTRootMetadata, wkb IFCERFTTLFWriterKeyBundle, rkb IFCERFTTLFReaderKeyBundle) {
 	if err := rmd.AddNewKeys(wkb, rkb); err != nil {
 		t.Fatal(err)
 	}
@@ -473,7 +473,7 @@ func RestartCRForTesting(baseCtx context.Context, config IFCERFTConfig, folderBr
 	lState := makeFBOLockState()
 	if !ops.isMasterBranch(lState) {
 		ops.cr.Resolve(ops.getCurrMDRevision(lState),
-			MetadataRevisionUninitialized)
+			IFCERFTMetadataRevisionUninitialized)
 	}
 	return nil
 }

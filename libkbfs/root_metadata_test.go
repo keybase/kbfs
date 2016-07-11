@@ -18,21 +18,21 @@ import (
 )
 
 type privateMetadataFuture struct {
-	PrivateMetadata
+	IFCERFTPrivateMetadata
 	Dir dirEntryFuture
 	extra
 }
 
-func (pmf privateMetadataFuture) toCurrent() PrivateMetadata {
-	pm := pmf.PrivateMetadata
+func (pmf privateMetadataFuture) toCurrent() IFCERFTPrivateMetadata {
+	pm := pmf.IFCERFTPrivateMetadata
 	pm.Dir = DirEntry(pmf.Dir.toCurrent())
-	pm.Changes.Ops = make(opsList, len(pmf.Changes.Ops))
+	pm.Changes.Ops = make(IFCERFTOpsList, len(pmf.Changes.Ops))
 	for i, opFuture := range pmf.Changes.Ops {
 		currentOp := opFuture.(futureStruct).toCurrentStruct()
 		// A generic version of "v := currentOp; ...Ops[i] = &v".
 		v := reflect.New(reflect.TypeOf(currentOp))
 		v.Elem().Set(reflect.ValueOf(currentOp))
-		pm.Changes.Ops[i] = v.Interface().(op)
+		pm.Changes.Ops[i] = v.Interface().(IFCERFTOps)
 	}
 	return pm
 }
@@ -52,12 +52,12 @@ func makeFakePrivateMetadataFuture(t *testing.T) privateMetadataFuture {
 	gcOp := makeFakeGcOpFuture(t)
 
 	pmf := privateMetadataFuture{
-		PrivateMetadata{
+		IFCERFTPrivateMetadata{
 			DirEntry{},
-			MakeTLFPrivateKey([32]byte{0xb}),
-			IFCERFTBlockChanges{
+			IFCERFTMakeTLFPrivateKey([32]byte{0xb}),
+			AddBPSize{
 				makeFakeBlockInfo(t),
-				opsList{
+				IFCERFTOpsList{
 					&createOp,
 					&rmOp,
 					&renameOp,
@@ -70,7 +70,7 @@ func makeFakePrivateMetadataFuture(t *testing.T) privateMetadataFuture {
 				0,
 			},
 			codec.UnknownFieldSetHandler{},
-			IFCERFTBlockChanges{},
+			AddBPSize{},
 		},
 		makeFakeDirEntryFuture(t),
 		makeExtraOrBust("PrivateMetadata", t),
@@ -100,7 +100,7 @@ func makeFakeTlfHandle(
 func newRootMetadataOrBust(
 	t *testing.T, tlfID IFCERFTTlfID, h *IFCERFTTlfHandle) *IFCERFTRootMetadata {
 	var rmd IFCERFTRootMetadata
-	err := updateNewRootMetadata(&rmd, tlfID, h.ToBareHandleOrBust())
+	err := IFCERFTUpdateNewRootMetadata(&rmd, tlfID, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 	rmd.tlfHandle = h
 	return &rmd
@@ -218,12 +218,12 @@ func TestWriterMetadataUnchangedEncoding(t *testing.T) {
 		0xa, 0xb,
 	}
 
-	expectedWm := WriterMetadata{
+	expectedWm := IFCERFTWriterMetadata{
 		SerializedPrivateMetadata: []byte{0xa, 0xb},
 		LastModifyingWriter:       "uid1",
 		Writers:                   []keybase1.UID{"uid1", "uid2"},
 		ID:                        FakeTlfID(1, false),
-		BID:                       NullBranchID,
+		BID:                       IFCERFTNullBranchID,
 		WFlags:                    0xa,
 		DiskUsage:                 100,
 		RefBytes:                  99,
@@ -232,7 +232,7 @@ func TestWriterMetadataUnchangedEncoding(t *testing.T) {
 
 	c := NewCodecMsgpack()
 
-	var wm WriterMetadata
+	var wm IFCERFTWriterMetadata
 	err := c.Decode(encodedWm, &wm)
 	require.NoError(t, err)
 
@@ -249,11 +249,11 @@ func TestWriterMetadataEncodedFields(t *testing.T) {
 	sa2, _ := libkb.NormalizeSocialAssertion("uid2@twitter")
 	// Usually exactly one of Writers/WKeys is filled in, but we
 	// fill in both here for testing.
-	wm := WriterMetadata{
+	wm := IFCERFTWriterMetadata{
 		ID:      FakeTlfID(0xa, false),
 		Writers: []keybase1.UID{"uid1", "uid2"},
-		WKeys:   TLFWriterKeyGenerations{{}},
-		Extra: WriterMetadataExtra{
+		WKeys:   IFCERFTTLFWriterKeyGenerations{{}},
+		Extra: IFCERFTWriterMetadataExtra{
 			UnresolvedWriters: []keybase1.SocialAssertion{sa1, sa2},
 		},
 	}
@@ -290,18 +290,18 @@ func TestWriterMetadataEncodedFields(t *testing.T) {
 }
 
 type writerMetadataExtraFuture struct {
-	WriterMetadataExtra
+	IFCERFTWriterMetadataExtra
 	extra
 }
 
-func (wmef writerMetadataExtraFuture) toCurrent() WriterMetadataExtra {
-	return wmef.WriterMetadataExtra
+func (wmef writerMetadataExtraFuture) toCurrent() IFCERFTWriterMetadataExtra {
+	return wmef.IFCERFTWriterMetadataExtra
 }
 
 type tlfWriterKeyGenerationsFuture []*tlfWriterKeyBundleFuture
 
-func (wkgf tlfWriterKeyGenerationsFuture) toCurrent() TLFWriterKeyGenerations {
-	wkg := make(TLFWriterKeyGenerations, len(wkgf))
+func (wkgf tlfWriterKeyGenerationsFuture) toCurrent() IFCERFTTLFWriterKeyGenerations {
+	wkg := make(IFCERFTTLFWriterKeyGenerations, len(wkgf))
 	for i, wkbf := range wkgf {
 		wkb := wkbf.toCurrent()
 		wkg[i] = wkb
@@ -310,15 +310,15 @@ func (wkgf tlfWriterKeyGenerationsFuture) toCurrent() TLFWriterKeyGenerations {
 }
 
 type writerMetadataFuture struct {
-	WriterMetadata
+	IFCERFTWriterMetadata
 	// Override WriterMetadata.WKeys.
 	WKeys tlfWriterKeyGenerationsFuture
 	// Override WriterMetadata.Extra.
 	Extra writerMetadataExtraFuture `codec:"x,omitempty,omitemptycheckstruct"`
 }
 
-func (wmf writerMetadataFuture) toCurrent() WriterMetadata {
-	wm := wmf.WriterMetadata
+func (wmf writerMetadataFuture) toCurrent() IFCERFTWriterMetadata {
+	wm := wmf.IFCERFTWriterMetadata
 	wm.WKeys = wmf.WKeys.toCurrent()
 	wm.Extra = wmf.Extra.toCurrent()
 	return wm
@@ -329,7 +329,7 @@ func (wmf writerMetadataFuture) toCurrentStruct() currentStruct {
 }
 
 func makeFakeWriterMetadataFuture(t *testing.T) writerMetadataFuture {
-	wmd := WriterMetadata{
+	wmd := IFCERFTWriterMetadata{
 		// This needs to be list format so it fails to compile if new fields
 		// are added, effectively checking at compile time whether new fields
 		// have been added
@@ -338,12 +338,12 @@ func makeFakeWriterMetadataFuture(t *testing.T) writerMetadataFuture {
 		[]keybase1.UID{"uid1", "uid2"},
 		nil,
 		FakeTlfID(1, false),
-		NullBranchID,
+		IFCERFTNullBranchID,
 		0xa,
 		100,
 		99,
 		101,
-		WriterMetadataExtra{},
+		IFCERFTWriterMetadataExtra{},
 	}
 	wkb := makeFakeTLFWriterKeyBundleFuture(t)
 	sa, _ := libkb.NormalizeSocialAssertion("foo@twitter")
@@ -351,7 +351,7 @@ func makeFakeWriterMetadataFuture(t *testing.T) writerMetadataFuture {
 		wmd,
 		tlfWriterKeyGenerationsFuture{&wkb},
 		writerMetadataExtraFuture{
-			WriterMetadataExtra{
+			IFCERFTWriterMetadataExtra{
 				// This needs to be list format so it fails to compile if new
 				// fields are added, effectively checking at compile time
 				// whether new fields have been added
@@ -369,8 +369,8 @@ func TestWriterMetadataUnknownFields(t *testing.T) {
 
 type tlfReaderKeyGenerationsFuture []*tlfReaderKeyBundleFuture
 
-func (rkgf tlfReaderKeyGenerationsFuture) toCurrent() TLFReaderKeyGenerations {
-	rkg := make(TLFReaderKeyGenerations, len(rkgf))
+func (rkgf tlfReaderKeyGenerationsFuture) toCurrent() IFCERFTTLFReaderKeyGenerations {
+	rkg := make(IFCERFTTLFReaderKeyGenerations, len(rkgf))
 	for i, rkbf := range rkgf {
 		rkb := rkbf.toCurrent()
 		rkg[i] = rkb
@@ -400,7 +400,7 @@ type rootMetadataFuture struct {
 
 func (rmf *rootMetadataFuture) toCurrent() *IFCERFTRootMetadata {
 	rm := rmf.rootMetadataWrapper.IFCERFTRootMetadata
-	rm.WriterMetadata = WriterMetadata(rmf.writerMetadataFuture.toCurrent())
+	rm.IFCERFTWriterMetadata = IFCERFTWriterMetadata(rmf.writerMetadataFuture.toCurrent())
 	rm.RKeys = rmf.RKeys.toCurrent()
 	return &rm
 }
@@ -412,7 +412,7 @@ func (rmf *rootMetadataFuture) toCurrentStruct() currentStruct {
 func makeFakeRootMetadataFuture(t *testing.T) *rootMetadataFuture {
 	wmf := makeFakeWriterMetadataFuture(t)
 	rkb := makeFakeTLFReaderKeyBundleFuture(t)
-	h, err := DefaultHash([]byte("fake buf"))
+	h, err := IFCERFTDefaultHash([]byte("fake buf"))
 	require.NoError(t, err)
 	sa, _ := libkb.NormalizeSocialAssertion("bar@github")
 	rmf := rootMetadataFuture{
@@ -422,7 +422,7 @@ func makeFakeRootMetadataFuture(t *testing.T) *rootMetadataFuture {
 				// This needs to be list format so it fails to compile if new
 				// fields are added, effectively checking at compile time
 				// whether new fields have been added
-				WriterMetadata{},
+				IFCERFTWriterMetadata{},
 				IFCERFTSignatureInfo{
 					100,
 					[]byte{0xc},
@@ -431,16 +431,16 @@ func makeFakeRootMetadataFuture(t *testing.T) *rootMetadataFuture {
 				"uid1",
 				0xb,
 				5,
-				MdID{h},
+				IFCERFTMdID{h},
 				nil,
 				[]keybase1.SocialAssertion{sa},
 				nil,
 				nil,
 				codec.UnknownFieldSetHandler{},
-				PrivateMetadata{},
+				IFCERFTPrivateMetadata{},
 				nil,
 				sync.RWMutex{},
-				MdID{},
+				IFCERFTMdID{},
 			},
 		},
 		[]*tlfReaderKeyBundleFuture{&rkb},
@@ -463,7 +463,7 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	rmd := newRootMetadataOrBust(t, id, h)
 
-	buf, err := config.Codec().Encode(rmd.WriterMetadata)
+	buf, err := config.Codec().Encode(rmd.IFCERFTWriterMetadata)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -485,13 +485,13 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	}
 
 	// Set the copy bit; note the writer metadata is the same.
-	newRmd.Flags |= MetadataFlagWriterMetadataCopied
+	newRmd.Flags |= IFCERFTMetadataFlagWriterMetadataCopied
 
 	// Writer metadata siginfo mismatch.
 	config2 := MakeTestConfigOrBust(t, "bob")
 	defer config2.Shutdown()
 
-	buf, err = config2.Codec().Encode(newRmd.WriterMetadata)
+	buf, err = config2.Codec().Encode(newRmd.IFCERFTWriterMetadata)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -529,7 +529,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob@twitter", false)
 	rmd := newRootMetadataOrBust(t, id, h)
-	rmds := RootMetadataSigned{MD: *rmd}
+	rmds := IFCERFTRootMetadataSigned{MD: *rmd}
 	if g, e := rmds.Version(), config.MetadataVersion(); g != e {
 		t.Errorf("MD with unresolved users got wrong version %d, expected %d",
 			g, e)
@@ -539,8 +539,8 @@ func TestRootMetadataVersion(t *testing.T) {
 	id2 := FakeTlfID(2, false)
 	h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
 	rmd2 := newRootMetadataOrBust(t, id2, h2)
-	rmds2 := RootMetadataSigned{MD: *rmd2}
-	if g, e := rmds2.Version(), IFCERFTMetadataVer(PreExtraMetadataVer); g != e {
+	rmds2 := IFCERFTRootMetadataSigned{MD: *rmd2}
+	if g, e := rmds2.Version(), IFCERFTMetadataVer(IFCERFTPreExtraMetadataVer); g != e {
 		t.Errorf("MD without unresolved users got wrong version %d, "+
 			"expected %d", g, e)
 	}
@@ -561,12 +561,12 @@ func TestRootMetadataVersion(t *testing.T) {
 		t.Fatalf("Couldn't make MD successor: %v", err)
 	}
 	FakeInitialRekey(rmd3, h3.ToBareHandleOrBust())
-	err = rmd3.updateFromTlfHandle(h3)
+	err = rmd3.UpdateFromTlfHandle(h3)
 	if err != nil {
 		t.Fatalf("Couldn't update TLF handle: %v", err)
 	}
-	rmds3 := RootMetadataSigned{MD: *rmd3}
-	if g, e := rmds3.Version(), IFCERFTMetadataVer(PreExtraMetadataVer); g != e {
+	rmds3 := IFCERFTRootMetadataSigned{MD: *rmd3}
+	if g, e := rmds3.Version(), IFCERFTMetadataVer(IFCERFTPreExtraMetadataVer); g != e {
 		t.Errorf("MD without unresolved users got wrong version %d, "+
 			"expected %d", g, e)
 	}
@@ -584,16 +584,16 @@ func TestMakeRekeyReadError(t *testing.T) {
 	u, uid, err := config.KBPKI().Resolve(context.Background(), "bob")
 	require.NoError(t, err)
 
-	err = makeRekeyReadError(rmd, h, IFCERFTFirstValidKeyGen, uid, u)
-	require.Equal(t, NewReadAccessError(h, u), err)
+	err = IFCERFTMakeRekeyReadError(rmd, h, IFCERFTFirstValidKeyGen, uid, u)
+	require.Equal(t, IFCERFTNewReadAccessError(h, u), err)
 
-	err = makeRekeyReadError(
+	err = IFCERFTMakeRekeyReadError(
 		rmd, h, IFCERFTFirstValidKeyGen, h.FirstResolvedWriter(), "alice")
-	require.Equal(t, NeedSelfRekeyError{"alice"}, err)
+	require.Equal(t, IFCERFTNeedSelfRekeyError{"alice"}, err)
 
-	err = makeRekeyReadError(
+	err = IFCERFTMakeRekeyReadError(
 		rmd, h, IFCERFTFirstValidKeyGen+1, h.FirstResolvedWriter(), "alice")
-	require.Equal(t, NeedOtherRekeyError{"alice"}, err)
+	require.Equal(t, IFCERFTNeedOtherRekeyError{"alice"}, err)
 }
 
 func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
@@ -611,8 +611,8 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	u, uid, err := config.KBPKI().Resolve(ctx, "bob")
 	require.NoError(t, err)
 
-	err = makeRekeyReadError(rmd, h, IFCERFTFirstValidKeyGen, uid, u)
-	require.Equal(t, NewReadAccessError(h, u), err)
+	err = IFCERFTMakeRekeyReadError(rmd, h, IFCERFTFirstValidKeyGen, uid, u)
+	require.Equal(t, IFCERFTNewReadAccessError(h, u), err)
 
 	config.KeybaseDaemon().(*KeybaseDaemonLocal).addNewAssertionForTestOrBust(
 		"bob", "bob@twitter")
@@ -620,8 +620,8 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	resolvedHandle, err := h.ResolveAgain(ctx, config.KBPKI())
 	require.NoError(t, err)
 
-	err = makeRekeyReadError(rmd, resolvedHandle, IFCERFTFirstValidKeyGen, uid, u)
-	require.Equal(t, NeedOtherRekeyError{"alice,bob"}, err)
+	err = IFCERFTMakeRekeyReadError(rmd, resolvedHandle, IFCERFTFirstValidKeyGen, uid, u)
+	require.Equal(t, IFCERFTNeedOtherRekeyError{"alice,bob"}, err)
 }
 
 // Test that MakeSuccessor fails when the final bit is set.
@@ -629,9 +629,9 @@ func TestRootMetadataFinalIsFinal(t *testing.T) {
 	tlfID := FakeTlfID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
 	rmd := newRootMetadataOrBust(t, tlfID, h)
-	rmd.Flags |= MetadataFlagFinal
+	rmd.Flags |= IFCERFTMetadataFlagFinal
 	_, err := rmd.MakeSuccessor(nil, true)
-	_, isFinalError := err.(MetadataIsFinalError)
+	_, isFinalError := err.(IFCERFTMetadataIsFinalError)
 	require.Equal(t, isFinalError, true)
 }
 
@@ -652,7 +652,7 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 	FakeInitialRekey(&rmds.MD, h)
-	buf, err := config.Codec().Encode(rmds.MD.WriterMetadata)
+	buf, err := config.Codec().Encode(rmds.MD.IFCERFTWriterMetadata)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -684,7 +684,7 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	}
 
 	// add the extension
-	rmds2.MD.FinalizedInfo, err = NewTestTlfHandleExtensionStaticTime(TlfHandleExtensionFinalized, 1)
+	rmds2.MD.FinalizedInfo, err = IFCERFTNewTestTlfHandleExtensionStaticTime(IFCERFTTlfHandleExtensionFinalized, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -703,7 +703,7 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 
 	// touch something the server shouldn't be allowed to edit for finalized metadata
 	// and verify verification failure.
-	rmds2.MD.Flags |= MetadataFlagRekey
+	rmds2.MD.Flags |= IFCERFTMetadataFlagRekey
 	err = rmds2.VerifyRootMetadata(config.Codec(), config.Crypto())
 	if err == nil {
 		t.Fatalf("expected error")

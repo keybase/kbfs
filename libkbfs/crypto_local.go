@@ -40,7 +40,7 @@ func NewSigningKey(kp libkb.NaclSigningKeyPair) SigningKey {
 
 // GetVerifyingKey returns the public key half of this signing key.
 func (k SigningKey) GetVerifyingKey() IFCERFTVerifyingKey {
-	return MakeVerifyingKey(k.kp.Public.GetKID())
+	return IFCERFTMakeVerifyingKey(k.kp.Public.GetKID())
 }
 
 // CryptPrivateKeySecretSize is the size of a CryptPrivateKeySecret.
@@ -71,7 +71,7 @@ func makeCryptPrivateKey(secret CryptPrivateKeySecret) (CryptPrivateKey, error) 
 // GetPublicKey returns the public key corresponding to this private
 // key.
 func (k CryptPrivateKey) getPublicKey() IFCERFTCryptPublicKey {
-	return MakeCryptPublicKey(k.kp.Public.GetKID())
+	return IFCERFTMakeCryptPublicKey(k.kp.Public.GetKID())
 }
 
 // CryptoLocal implements the Crypto interface by using a local
@@ -110,10 +110,10 @@ func (c *CryptoLocal) SignToString(ctx context.Context, msg []byte) (
 	return
 }
 
-func (c *CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf, clientHalf TLFCryptKeyClientHalf) (
+func (c *CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf, clientHalf IFCERFTTLFCryptKeyClientHalf) (
 	nonce [24]byte, err error) {
 	if encryptedClientHalf.Version != IFCERFTEncryptionSecretbox {
-		err = UnknownEncryptionVer{encryptedClientHalf.Version}
+		err = IFCERFTUnknownEncryptionVer{encryptedClientHalf.Version}
 		return
 	}
 
@@ -125,7 +125,7 @@ func (c *CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf IFCERFTEn
 	}
 
 	if len(encryptedClientHalf.Nonce) != len(nonce) {
-		err = InvalidNonceError{encryptedClientHalf.Nonce}
+		err = IFCERFTInvalidNonceError{encryptedClientHalf.Nonce}
 		return
 	}
 	copy(nonce[:], encryptedClientHalf.Nonce)
@@ -136,7 +136,7 @@ func (c *CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf IFCERFTEn
 // CryptoLocal.
 func (c *CryptoLocal) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 	publicKey IFCERFTTLFEphemeralPublicKey, encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf) (
-	clientHalf TLFCryptKeyClientHalf, err error) {
+	clientHalf IFCERFTTLFCryptKeyClientHalf, err error) {
 	nonce, err := c.prepareTLFCryptKeyClientHalf(encryptedClientHalf, clientHalf)
 	if err != nil {
 		return
@@ -161,9 +161,9 @@ func (c *CryptoLocal) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 // CryptoLocal.
 func (c *CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 	keys []IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, _ bool) (
-	clientHalf TLFCryptKeyClientHalf, index int, err error) {
+	clientHalf IFCERFTTLFCryptKeyClientHalf, index int, err error) {
 	if len(keys) == 0 {
-		return clientHalf, index, NoKeysError{}
+		return clientHalf, index, IFCERFTNoKeysError{}
 	}
 	for i, k := range keys {
 		nonce, err := c.prepareTLFCryptKeyClientHalf(k.ClientHalf, clientHalf)

@@ -11,26 +11,26 @@ import (
 // writers.
 //
 // TODO: Have separate types for writers vs. readers.
-type BareTlfHandle struct {
+type IFCERFTBareTlfHandle struct {
 	Writers           []keybase1.UID             `codec:"w,omitempty"`
 	Readers           []keybase1.UID             `codec:"r,omitempty"`
 	UnresolvedWriters []keybase1.SocialAssertion `codec:"uw,omitempty"`
 	UnresolvedReaders []keybase1.SocialAssertion `codec:"ur,omitempty"`
-	ConflictInfo      *TlfHandleExtension        `codec:"ci,omitempty"`
-	FinalizedInfo     *TlfHandleExtension        `codec:"fi,omitempty"`
+	ConflictInfo      *IFCERFTTlfHandleExtension `codec:"ci,omitempty"`
+	FinalizedInfo     *IFCERFTTlfHandleExtension `codec:"fi,omitempty"`
 }
 
 // ErrNoWriters is the error returned by MakeBareTlfHandle if it is
 // passed an empty list of writers.
-var ErrNoWriters = errors.New("Cannot make TLF handle with no writers; need rekey?")
+var IFCERFTErrNoWriters = errors.New("Cannot make TLF handle with no writers; need rekey?")
 
 // ErrInvalidWriter is the error returned by MakeBareTlfHandle if it
 // is passed an invalid writer.
-var ErrInvalidWriter = errors.New("Cannot make TLF handle with invalid writer")
+var IFCERFTErrInvalidWriter = errors.New("Cannot make TLF handle with invalid writer")
 
 // ErrInvalidReader is the error returned by MakeBareTlfHandle if it
 // is passed an invalid reader.
-var ErrInvalidReader = errors.New("Cannot make TLF handle with invalid reader")
+var IFCERFTErrInvalidReader = errors.New("Cannot make TLF handle with invalid reader")
 
 // uidList can be used to lexicographically sort UIDs.
 type uidList []keybase1.UID
@@ -69,17 +69,17 @@ func (u socialAssertionList) Swap(i, j int) {
 // keybase1.PUBLIC_UID, then the returned handle will be for a public
 // folder. Otherwise, it will be private. PUBLIC_UID shouldn't be in
 // any list in any other case.
-func MakeBareTlfHandle(
+func IFCERFTMakeBareTlfHandle(
 	writers, readers []keybase1.UID,
 	unresolvedWriters, unresolvedReaders []keybase1.SocialAssertion,
-	extensions []TlfHandleExtension) (BareTlfHandle, error) {
+	extensions []IFCERFTTlfHandleExtension) (IFCERFTBareTlfHandle, error) {
 	if len(writers) == 0 {
-		return BareTlfHandle{}, ErrNoWriters
+		return IFCERFTBareTlfHandle{}, IFCERFTErrNoWriters
 	}
 
 	for _, w := range writers {
 		if w == keybase1.PUBLIC_UID {
-			return BareTlfHandle{}, ErrInvalidWriter
+			return IFCERFTBareTlfHandle{}, IFCERFTErrInvalidWriter
 		}
 	}
 
@@ -88,7 +88,7 @@ func MakeBareTlfHandle(
 		// should be the public UID.
 		for _, r := range readers {
 			if r == keybase1.PUBLIC_UID {
-				return BareTlfHandle{}, ErrInvalidReader
+				return IFCERFTBareTlfHandle{}, IFCERFTErrInvalidReader
 			}
 		}
 	}
@@ -121,9 +121,9 @@ func MakeBareTlfHandle(
 		sort.Sort(socialAssertionList(unresolvedReadersCopy))
 	}
 
-	conflictInfo, finalizedInfo := tlfHandleExtensionList(extensions).Splat()
+	conflictInfo, finalizedInfo := IFCERFTtlfHandleExtensionList(extensions).Splat()
 
-	return BareTlfHandle{
+	return IFCERFTBareTlfHandle{
 		Writers:           writersCopy,
 		Readers:           readersCopy,
 		UnresolvedWriters: unresolvedWritersCopy,
@@ -135,11 +135,11 @@ func MakeBareTlfHandle(
 
 // IsPublic returns whether or not this BareTlfHandle represents a
 // public top-level folder.
-func (h BareTlfHandle) IsPublic() bool {
+func (h IFCERFTBareTlfHandle) IsPublic() bool {
 	return len(h.Readers) == 1 && h.Readers[0].Equal(keybase1.PublicUID)
 }
 
-func (h BareTlfHandle) findUserInList(user keybase1.UID,
+func (h IFCERFTBareTlfHandle) findUserInList(user keybase1.UID,
 	users []keybase1.UID) bool {
 	for _, u := range users {
 		if u == user {
@@ -151,20 +151,20 @@ func (h BareTlfHandle) findUserInList(user keybase1.UID,
 
 // IsWriter returns whether or not the given user is a writer for the
 // top-level folder represented by this BareTlfHandle.
-func (h BareTlfHandle) IsWriter(user keybase1.UID) bool {
+func (h IFCERFTBareTlfHandle) IsWriter(user keybase1.UID) bool {
 	return h.findUserInList(user, h.Writers)
 }
 
 // IsReader returns whether or not the given user is a reader for the
 // top-level folder represented by this BareTlfHandle.
-func (h BareTlfHandle) IsReader(user keybase1.UID) bool {
+func (h IFCERFTBareTlfHandle) IsReader(user keybase1.UID) bool {
 	return h.IsPublic() || h.findUserInList(user, h.Readers) || h.IsWriter(user)
 }
 
 // ResolvedUsers returns the concatenation of h.Writers and h.Readers,
 // except if the handle is public, the returned list won't contain
 // PUBLIC_UID.
-func (h BareTlfHandle) ResolvedUsers() []keybase1.UID {
+func (h IFCERFTBareTlfHandle) ResolvedUsers() []keybase1.UID {
 	var resolvedUsers []keybase1.UID
 	resolvedUsers = append(resolvedUsers, h.Writers...)
 	if !h.IsPublic() {
@@ -175,13 +175,13 @@ func (h BareTlfHandle) ResolvedUsers() []keybase1.UID {
 
 // HasUnresolvedUsers returns true if this handle has any unresolved
 // writers or readers.
-func (h BareTlfHandle) HasUnresolvedUsers() bool {
+func (h IFCERFTBareTlfHandle) HasUnresolvedUsers() bool {
 	return len(h.UnresolvedWriters) > 0 || len(h.UnresolvedReaders) > 0
 }
 
 // UnresolvedUsers returns the concatenation of h.UnresolvedWriters
 // and h.UnresolvedReaders.
-func (h BareTlfHandle) UnresolvedUsers() []keybase1.SocialAssertion {
+func (h IFCERFTBareTlfHandle) UnresolvedUsers() []keybase1.SocialAssertion {
 	var unresolvedUsers []keybase1.SocialAssertion
 	unresolvedUsers = append(unresolvedUsers, h.UnresolvedWriters...)
 	unresolvedUsers = append(unresolvedUsers, h.UnresolvedReaders...)
@@ -234,8 +234,8 @@ func assertionSetToSlice(m map[keybase1.SocialAssertion]bool) (s []keybase1.Soci
 
 // ResolveAssertions creates a new BareTlfHandle given an existing one with
 // while resolving the passed assertions.
-func (h BareTlfHandle) ResolveAssertions(
-	assertions map[keybase1.SocialAssertion]keybase1.UID) BareTlfHandle {
+func (h IFCERFTBareTlfHandle) ResolveAssertions(
+	assertions map[keybase1.SocialAssertion]keybase1.UID) IFCERFTBareTlfHandle {
 	if len(assertions) == 0 || (len(h.UnresolvedWriters) == 0 && len(h.UnresolvedReaders) == 0) || h.IsFinal() {
 		return h
 	}
@@ -255,7 +255,7 @@ func (h BareTlfHandle) ResolveAssertions(
 }
 
 // Extensions returns a list of extensions for the given handle.
-func (h BareTlfHandle) Extensions() (extensions []TlfHandleExtension) {
+func (h IFCERFTBareTlfHandle) Extensions() (extensions []IFCERFTTlfHandleExtension) {
 	if h.ConflictInfo != nil {
 		extensions = append(extensions, *h.ConflictInfo)
 	}
@@ -266,6 +266,6 @@ func (h BareTlfHandle) Extensions() (extensions []TlfHandleExtension) {
 }
 
 // IsFinal returns true if the handle has been finalized.
-func (h BareTlfHandle) IsFinal() bool {
+func (h IFCERFTBareTlfHandle) IsFinal() bool {
 	return h.FinalizedInfo != nil
 }

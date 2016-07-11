@@ -15,7 +15,7 @@ import (
 // access TLF metadata. mergedMasterHead can be nil, in which case
 // true is returned.
 func isReader(currentUID keybase1.UID,
-	mergedMasterHead *RootMetadataSigned) (bool, error) {
+	mergedMasterHead *IFCERFTRootMetadataSigned) (bool, error) {
 	if mergedMasterHead == nil {
 		// TODO: the real mdserver will actually reverse
 		// lookup the folder handle and check that the UID is
@@ -33,8 +33,7 @@ func isReader(currentUID keybase1.UID,
 // access TLF metadata. mergedMasterHead can be nil, in which case
 // true is returned.
 func isWriterOrValidRekey(codec IFCERFTCodec, currentUID keybase1.UID,
-	mergedMasterHead *RootMetadataSigned,
-	newMd *RootMetadataSigned) (bool, error) {
+	mergedMasterHead *IFCERFTRootMetadataSigned, newMd *IFCERFTRootMetadataSigned) (bool, error) {
 	if mergedMasterHead == nil {
 		// TODO: the real mdserver will actually reverse
 		// lookup the folder handle and check that the UID is
@@ -143,8 +142,7 @@ func (m *mdServerLocalUpdateManager) setHead(id IFCERFTTlfID, server mdServerLoc
 }
 
 func (m *mdServerLocalUpdateManager) registerForUpdate(
-	id IFCERFTTlfID, currHead, currMergedHeadRev MetadataRevision,
-	server mdServerLocal) <-chan error {
+	id IFCERFTTlfID, currHead, currMergedHeadRev IFCERFTMetadataRevision, server mdServerLocal) <-chan error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 

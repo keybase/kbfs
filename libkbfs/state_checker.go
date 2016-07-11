@@ -31,10 +31,9 @@ func NewStateChecker(config IFCERFTConfig) *StateChecker {
 // the blocksFound map, if the given path represents an indirect
 // block.
 func (sc *StateChecker) findAllFileBlocks(ctx context.Context,
-	lState *lockState, ops *folderBranchOps, md *IFCERFTRootMetadata, file path,
-	blockSizes map[IFCERFTBlockPointer]uint32) error {
+	lState *lockState, ops *folderBranchOps, md *IFCERFTRootMetadata, file IFCERFTPath, blockSizes map[IFCERFTBlockPointer]uint32) error {
 	fblock, err := ops.blocks.GetFileBlockForReading(ctx, lState, md,
-		file.tailPointer(), file.Branch, file)
+		file.TailPointer(), file.Branch, file)
 	if err != nil {
 		return err
 	}
@@ -43,10 +42,10 @@ func (sc *StateChecker) findAllFileBlocks(ctx context.Context,
 		return nil
 	}
 
-	parentPath := file.parentPath()
+	parentPath := file.ParentPath()
 	for _, childPtr := range fblock.IPtrs {
 		blockSizes[childPtr.IFCERFTBlockPointer] = childPtr.EncodedSize
-		p := parentPath.ChildPath(file.tailName(), childPtr.IFCERFTBlockPointer)
+		p := parentPath.ChildPath(file.TailName(), childPtr.IFCERFTBlockPointer)
 		err := sc.findAllFileBlocks(ctx, lState, ops, md, p, blockSizes)
 		if err != nil {
 			return err
@@ -59,10 +58,9 @@ func (sc *StateChecker) findAllFileBlocks(ctx context.Context,
 // the blockSizes map, and then recursively checks all
 // subdirectories.
 func (sc *StateChecker) findAllBlocksInPath(ctx context.Context,
-	lState *lockState, ops *folderBranchOps, md *IFCERFTRootMetadata, dir path,
-	blockSizes map[IFCERFTBlockPointer]uint32) error {
+	lState *lockState, ops *folderBranchOps, md *IFCERFTRootMetadata, dir IFCERFTPath, blockSizes map[IFCERFTBlockPointer]uint32) error {
 	dblock, err := ops.blocks.GetDirBlockForReading(ctx, lState, md,
-		dir.tailPointer(), dir.Branch, dir)
+		dir.TailPointer(), dir.Branch, dir)
 	if err != nil {
 		return err
 	}
@@ -126,7 +124,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf IFCERFTTlfID) 
 	// Fetch all the MD updates for this folder, and use the block
 	// change lists to build up the set of currently referenced blocks.
 	rmds, err := getMergedMDUpdates(ctx, sc.config, tlf,
-		MetadataRevisionInitial)
+		IFCERFTMetadataRevisionInitial)
 	if err != nil {
 		return err
 	}
@@ -156,7 +154,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf IFCERFTTlfID) 
 	// See what the last GC op revision is.  All unref'd pointers from
 	// that revision or earlier should be deleted from the block
 	// server.
-	gcRevision := MetadataRevisionUninitialized
+	gcRevision := IFCERFTMetadataRevisionUninitialized
 	for _, rmd := range rmds {
 		// Don't process copies.
 		if rmd.IsWriterMetadataCopiedSet() {
@@ -267,11 +265,11 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf IFCERFTTlfID) 
 		return err
 	}
 	rootPath := ops.nodeCache.PathFromNode(rootNode)
-	if g, e := rootPath.tailPointer(), currMD.data.Dir.IFCERFTBlockPointer; g != e {
+	if g, e := rootPath.TailPointer(), currMD.data.Dir.IFCERFTBlockPointer; g != e {
 		return fmt.Errorf("Current MD root pointer %v doesn't match root "+
 			"node pointer %v", e, g)
 	}
-	actualLiveBlocks[rootPath.tailPointer()] = currMD.data.Dir.EncodedSize
+	actualLiveBlocks[rootPath.TailPointer()] = currMD.data.Dir.EncodedSize
 	if err := sc.findAllBlocksInPath(ctx, lState, ops, currMD, rootPath,
 		actualLiveBlocks); err != nil {
 		return err

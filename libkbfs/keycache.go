@@ -39,9 +39,9 @@ func (k *KeyCacheStandard) GetTLFCryptKey(tlf IFCERFTTlfID, keyGen IFCERFTKeyGen
 			return key, nil
 		}
 		// shouldn't really be possible
-		return IFCERFTTLFCryptKey{}, KeyCacheHitError{tlf, keyGen}
+		return IFCERFTTLFCryptKey{}, IFCERFTKeyCacheHitError{tlf, keyGen}
 	}
-	return IFCERFTTLFCryptKey{}, KeyCacheMissError{tlf, keyGen}
+	return IFCERFTTLFCryptKey{}, IFCERFTKeyCacheMissError{tlf, keyGen}
 }
 
 // PutTLFCryptKey implements the KeyCache interface for KeyCacheStandard.

@@ -32,13 +32,13 @@ func mdOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	mockCtrl.Finish()
 }
 
-func addFakeRMDSData(rmds *RootMetadataSigned, h *IFCERFTTlfHandle) {
+func addFakeRMDSData(rmds *IFCERFTRootMetadataSigned, h *IFCERFTTlfHandle) {
 	rmds.MD.tlfHandle = h
 
 	// Need to do this to avoid calls to the mocked-out MakeMdID.
 	rmds.MD.mdID = fakeMdID(fakeTlfIDByte(rmds.MD.ID))
 
-	rmds.MD.Revision = MetadataRevision(1)
+	rmds.MD.Revision = IFCERFTMetadataRevision(1)
 	rmds.MD.LastModifyingWriter = h.FirstResolvedWriter()
 	rmds.MD.LastModifyingUser = h.FirstResolvedWriter()
 	rmds.SigInfo = IFCERFTSignatureInfo{
@@ -52,12 +52,12 @@ func addFakeRMDSData(rmds *RootMetadataSigned, h *IFCERFTTlfHandle) {
 	}
 }
 
-func newRMDS(t *testing.T, config IFCERFTConfig, public bool) *RootMetadataSigned {
+func newRMDS(t *testing.T, config IFCERFTConfig, public bool) *IFCERFTRootMetadataSigned {
 	id := FakeTlfID(1, public)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", public)
-	rmds := &RootMetadataSigned{}
-	err := updateNewRootMetadata(&rmds.MD, id, h.ToBareHandleOrBust())
+	rmds := &IFCERFTRootMetadataSigned{}
+	err := IFCERFTUpdateNewRootMetadata(&rmds.MD, id, h.ToBareHandleOrBust())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,8 +67,7 @@ func newRMDS(t *testing.T, config IFCERFTConfig, public bool) *RootMetadataSigne
 	return rmds
 }
 
-func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
-	hasVerifyingKeyErr error, verifyErr error) {
+func verifyMDForPublic(config *ConfigMock, rmds *IFCERFTRootMetadataSigned, hasVerifyingKeyErr error, verifyErr error) {
 	packedData := []byte{4, 3, 2, 1}
 	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(packedData, nil).AnyTimes()
 
@@ -85,7 +84,7 @@ func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
 	}
 }
 
-func verifyMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
+func verifyMDForPrivate(config *ConfigMock, rmds *IFCERFTRootMetadataSigned) {
 	packedData := []byte{4, 3, 2, 1}
 	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(packedData, nil).AnyTimes()
 
@@ -111,7 +110,7 @@ func verifyMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
 	config.mockCrypto.EXPECT().Verify(packedData, rmds.MD.WriterMetadataSigInfo).Return(nil)
 }
 
-func putMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
+func putMDForPrivate(config *ConfigMock, rmds *IFCERFTRootMetadataSigned) {
 	expectGetTLFCryptKeyForEncryption(config, &rmds.MD)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
 		&rmds.MD.data, IFCERFTTLFCryptKey{}).Return(IFCERFTEncryptedPrivateMetadata{}, nil)
@@ -146,7 +145,7 @@ func TestMDOpsGetForHandlePublicSuccess(t *testing.T) {
 	// 'deserialized' RMDS.
 	rmds.MD.tlfHandle = nil
 
-	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(NullTlfID, rmds, nil)
+	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(IFCERFTNullTlfID, rmds, nil)
 
 	if rmd2, err := config.MDOps().GetForHandle(ctx, h); err != nil {
 		t.Errorf("Got error on get: %v", err)
@@ -172,7 +171,7 @@ func TestMDOpsGetForHandlePrivateSuccess(t *testing.T) {
 	// 'deserialized' RMDS.
 	rmds.MD.tlfHandle = nil
 
-	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(NullTlfID, rmds, nil)
+	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(IFCERFTNullTlfID, rmds, nil)
 
 	if rmd2, err := config.MDOps().GetForHandle(ctx, h); err != nil {
 		t.Errorf("Got error on get: %v", err)
@@ -202,11 +201,11 @@ func TestMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	config.mockMdserv.EXPECT().GetForHandle(ctx, hUnresolved.ToBareHandleOrBust(), IFCERFTMerged).Return(NullTlfID, rmds, nil).Times(2)
+	config.mockMdserv.EXPECT().GetForHandle(ctx, hUnresolved.ToBareHandleOrBust(), IFCERFTMerged).Return(IFCERFTNullTlfID, rmds, nil).Times(2)
 
 	// First time should fail.
 	_, err = config.MDOps().GetForHandle(ctx, hUnresolved)
-	if _, ok := err.(MDMismatchError); !ok {
+	if _, ok := err.(IFCERFTMDMismatchError); !ok {
 		t.Errorf("Got unexpected error on bad handle check test: %v", err)
 	}
 
@@ -237,18 +236,18 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 		"alice,bob@twitter,charlie@twitter", true)
 	require.NoError(t, err)
 
-	rmds1 := &RootMetadataSigned{}
-	err = updateNewRootMetadata(&rmds1.MD, id, mdHandle1.ToBareHandleOrBust())
+	rmds1 := &IFCERFTRootMetadataSigned{}
+	err = IFCERFTUpdateNewRootMetadata(&rmds1.MD, id, mdHandle1.ToBareHandleOrBust())
 	require.NoError(t, err)
 	addFakeRMDSData(rmds1, mdHandle1)
 
-	rmds2 := &RootMetadataSigned{}
-	err = updateNewRootMetadata(&rmds2.MD, id, mdHandle2.ToBareHandleOrBust())
+	rmds2 := &IFCERFTRootMetadataSigned{}
+	err = IFCERFTUpdateNewRootMetadata(&rmds2.MD, id, mdHandle2.ToBareHandleOrBust())
 	require.NoError(t, err)
 	addFakeRMDSData(rmds2, mdHandle2)
 
-	rmds3 := &RootMetadataSigned{}
-	err = updateNewRootMetadata(&rmds3.MD, id, mdHandle3.ToBareHandleOrBust())
+	rmds3 := &IFCERFTRootMetadataSigned{}
+	err = IFCERFTUpdateNewRootMetadata(&rmds3.MD, id, mdHandle3.ToBareHandleOrBust())
 	require.NoError(t, err)
 	addFakeRMDSData(rmds3, mdHandle3)
 
@@ -268,11 +267,11 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(NullTlfID, rmds1, nil)
+	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(IFCERFTNullTlfID, rmds1, nil)
 
 	// First time should fail.
 	_, err = config.MDOps().GetForHandle(ctx, h)
-	if _, ok := err.(MDMismatchError); !ok {
+	if _, ok := err.(IFCERFTMDMismatchError); !ok {
 		t.Errorf("Got unexpected error on bad handle check test: %v", err)
 	}
 
@@ -280,14 +279,14 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
 	daemon.addNewAssertionForTestOrBust("charlie", "charlie@twitter")
 
-	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(NullTlfID, rmds2, nil)
+	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(IFCERFTNullTlfID, rmds2, nil)
 
 	// Second and time should succeed.
 	if _, err := config.MDOps().GetForHandle(ctx, h); err != nil {
 		t.Errorf("Got error on get: %v", err)
 	}
 
-	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(NullTlfID, rmds3, nil)
+	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(IFCERFTNullTlfID, rmds3, nil)
 
 	if _, err := config.MDOps().GetForHandle(ctx, h); err != nil {
 		t.Errorf("Got error on get: %v", err)
@@ -313,11 +312,11 @@ func TestMDOpsGetForUnresolvedHandlePublicFailure(t *testing.T) {
 	daemon := config.KeybaseDaemon().(*KeybaseDaemonLocal)
 	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
 
-	config.mockMdserv.EXPECT().GetForHandle(ctx, hUnresolved.ToBareHandleOrBust(), IFCERFTMerged).Return(NullTlfID, rmds, nil)
+	config.mockMdserv.EXPECT().GetForHandle(ctx, hUnresolved.ToBareHandleOrBust(), IFCERFTMerged).Return(IFCERFTNullTlfID, rmds, nil)
 
 	// Should still fail.
 	_, err = config.MDOps().GetForHandle(ctx, hUnresolved)
-	if _, ok := err.(MDMismatchError); !ok {
+	if _, ok := err.(IFCERFTMDMismatchError); !ok {
 		t.Errorf("Got unexpected error on bad handle check test: %v", err)
 	}
 }
@@ -329,7 +328,7 @@ func TestMDOpsGetForHandlePublicFailFindKey(t *testing.T) {
 	rmds := newRMDS(t, config, true)
 
 	// Do this before setting tlfHandle to nil.
-	verifyMDForPublic(config, rmds, KeyNotFoundError{}, nil)
+	verifyMDForPublic(config, rmds, IFCERFTKeyNotFoundError{}, nil)
 
 	h := rmds.MD.GetTlfHandle()
 
@@ -337,10 +336,10 @@ func TestMDOpsGetForHandlePublicFailFindKey(t *testing.T) {
 	// 'deserialized' RMDS.
 	rmds.MD.tlfHandle = nil
 
-	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(NullTlfID, rmds, nil)
+	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(IFCERFTNullTlfID, rmds, nil)
 
 	_, err := config.MDOps().GetForHandle(ctx, h)
-	if _, ok := err.(UnverifiableTlfUpdateError); !ok {
+	if _, ok := err.(IFCERFTUnverifiableTlfUpdateError); !ok {
 		t.Errorf("Got unexpected error on get: %v", err)
 	}
 }
@@ -361,7 +360,7 @@ func TestMDOpsGetForHandlePublicFailVerify(t *testing.T) {
 	// 'deserialized' RMDS.
 	rmds.MD.tlfHandle = nil
 
-	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(NullTlfID, rmds, nil)
+	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(IFCERFTNullTlfID, rmds, nil)
 
 	if _, err := config.MDOps().GetForHandle(ctx, h); err != expectedErr {
 		t.Errorf("Got unexpected error on get: %v", err)
@@ -377,7 +376,7 @@ func TestMDOpsGetForHandleFailGet(t *testing.T) {
 	err := errors.New("Fake fail")
 
 	// only the get happens, no verify needed with a blank sig
-	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(NullTlfID, nil, err)
+	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), IFCERFTMerged).Return(IFCERFTNullTlfID, nil, err)
 
 	if _, err2 := config.MDOps().GetForHandle(ctx, h); err2 != err {
 		t.Errorf("Got bad error on get: %v", err2)
@@ -396,10 +395,10 @@ func TestMDOpsGetForHandleFailHandleCheck(t *testing.T) {
 
 	// Make a different handle.
 	otherH := parseTlfHandleOrBust(t, config, "alice", false)
-	config.mockMdserv.EXPECT().GetForHandle(ctx, otherH.ToBareHandleOrBust(), IFCERFTMerged).Return(NullTlfID, rmds, nil)
+	config.mockMdserv.EXPECT().GetForHandle(ctx, otherH.ToBareHandleOrBust(), IFCERFTMerged).Return(IFCERFTNullTlfID, rmds, nil)
 
 	_, err := config.MDOps().GetForHandle(ctx, otherH)
-	if _, ok := err.(MDMismatchError); !ok {
+	if _, ok := err.(IFCERFTMDMismatchError); !ok {
 		t.Errorf("Got unexpected error on bad handle check test: %v", err)
 	}
 }
@@ -417,7 +416,7 @@ func TestMDOpsGetSuccess(t *testing.T) {
 	// 'deserialized' RMDS.
 	rmds.MD.tlfHandle = nil
 
-	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.ID, NullBranchID, IFCERFTMerged).Return(rmds, nil)
+	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.ID, IFCERFTNullBranchID, IFCERFTMerged).Return(rmds, nil)
 
 	if rmd2, err := config.MDOps().GetForTLF(ctx, rmds.MD.ID); err != nil {
 		t.Errorf("Got error on get: %v", err)
@@ -438,7 +437,7 @@ func TestMDOpsGetBlankSigFailure(t *testing.T) {
 	rmds.MD.tlfHandle = nil
 
 	// only the get happens, no verify needed with a blank sig
-	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.ID, NullBranchID, IFCERFTMerged).Return(rmds, nil)
+	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.ID, IFCERFTNullBranchID, IFCERFTMerged).Return(rmds, nil)
 
 	if _, err := config.MDOps().GetForTLF(ctx, rmds.MD.ID); err == nil {
 		t.Error("Got no error on get")
@@ -453,7 +452,7 @@ func TestMDOpsGetFailGet(t *testing.T) {
 	err := errors.New("Fake fail")
 
 	// only the get happens, no verify needed with a blank sig
-	config.mockMdserv.EXPECT().GetForTLF(ctx, id, NullBranchID, IFCERFTMerged).Return(nil, err)
+	config.mockMdserv.EXPECT().GetForTLF(ctx, id, IFCERFTNullBranchID, IFCERFTMerged).Return(nil, err)
 
 	if _, err2 := config.MDOps().GetForTLF(ctx, id); err2 != err {
 		t.Errorf("Got bad error on get: %v", err2)
@@ -472,11 +471,11 @@ func TestMDOpsGetFailIdCheck(t *testing.T) {
 	// 'deserialized' RMDS.
 	rmds.MD.tlfHandle = nil
 
-	config.mockMdserv.EXPECT().GetForTLF(ctx, id2, NullBranchID, IFCERFTMerged).Return(rmds, nil)
+	config.mockMdserv.EXPECT().GetForTLF(ctx, id2, IFCERFTNullBranchID, IFCERFTMerged).Return(rmds, nil)
 
 	if _, err := config.MDOps().GetForTLF(ctx, id2); err == nil {
 		t.Errorf("Got no error on bad id check test")
-	} else if _, ok := err.(MDMismatchError); !ok {
+	} else if _, ok := err.(IFCERFTMDMismatchError); !ok {
 		t.Errorf("Got unexpected error on bad id check test: %v", err)
 	}
 }
@@ -502,7 +501,7 @@ func testMDOpsGetRangeSuccess(t *testing.T, fromStart bool) {
 	rmds3.MD.PrevRoot = mdID4
 	rmds3.MD.Revision = 100
 
-	start, stop := MetadataRevision(100), MetadataRevision(102)
+	start, stop := IFCERFTMetadataRevision(100), IFCERFTMetadataRevision(102)
 	if fromStart {
 		start = 0
 	}
@@ -518,9 +517,9 @@ func testMDOpsGetRangeSuccess(t *testing.T, fromStart bool) {
 	rmds2.MD.tlfHandle = nil
 	rmds3.MD.tlfHandle = nil
 
-	allRMDSs := []*RootMetadataSigned{rmds3, rmds2, rmds1}
+	allRMDSs := []*IFCERFTRootMetadataSigned{rmds3, rmds2, rmds1}
 
-	config.mockMdserv.EXPECT().GetRange(ctx, rmds1.MD.ID, NullBranchID, IFCERFTMerged, start,
+	config.mockMdserv.EXPECT().GetRange(ctx, rmds1.MD.ID, IFCERFTNullBranchID, IFCERFTMerged, start,
 		stop).Return(allRMDSs, nil)
 
 	allRMDs, err := config.MDOps().GetRange(ctx, rmds1.MD.ID, start, stop)
@@ -570,16 +569,16 @@ func TestMDOpsGetRangeFailBadPrevRoot(t *testing.T) {
 	rmds2.MD.tlfHandle = nil
 	rmds3.MD.tlfHandle = nil
 
-	allRMDSs := []*RootMetadataSigned{rmds3, rmds2, rmds1}
+	allRMDSs := []*IFCERFTRootMetadataSigned{rmds3, rmds2, rmds1}
 
-	start, stop := MetadataRevision(200), MetadataRevision(202)
-	config.mockMdserv.EXPECT().GetRange(ctx, rmds1.MD.ID, NullBranchID, IFCERFTMerged, start,
+	start, stop := IFCERFTMetadataRevision(200), IFCERFTMetadataRevision(202)
+	config.mockMdserv.EXPECT().GetRange(ctx, rmds1.MD.ID, IFCERFTNullBranchID, IFCERFTMerged, start,
 		stop).Return(allRMDSs, nil)
 
 	_, err := config.MDOps().GetRange(ctx, rmds1.MD.ID, start, stop)
 	if err == nil {
 		t.Errorf("Got no expected error on GetSince")
-	} else if _, ok := err.(MDMismatchError); !ok {
+	} else if _, ok := err.(IFCERFTMDMismatchError); !ok {
 		t.Errorf("Got unexpected error on GetSince with bad PrevRoot chain: %v",
 			err)
 	}
@@ -589,17 +588,17 @@ type fakeMDServerPut struct {
 	IFCERFTMDServer
 
 	lastRmdsLock sync.Mutex
-	lastRmds     *RootMetadataSigned
+	lastRmds     *IFCERFTRootMetadataSigned
 }
 
-func (s *fakeMDServerPut) Put(ctx context.Context, rmds *RootMetadataSigned) error {
+func (s *fakeMDServerPut) Put(ctx context.Context, rmds *IFCERFTRootMetadataSigned) error {
 	s.lastRmdsLock.Lock()
 	defer s.lastRmdsLock.Unlock()
 	s.lastRmds = rmds
 	return nil
 }
 
-func (s *fakeMDServerPut) getLastRmds() *RootMetadataSigned {
+func (s *fakeMDServerPut) getLastRmds() *IFCERFTRootMetadataSigned {
 	s.lastRmdsLock.Lock()
 	defer s.lastRmdsLock.Unlock()
 	return s.lastRmds
@@ -608,7 +607,7 @@ func (s *fakeMDServerPut) getLastRmds() *RootMetadataSigned {
 func (s *fakeMDServerPut) Shutdown() {}
 
 func validatePutPublicRMDS(
-	ctx context.Context, t *testing.T, config IFCERFTConfig, expectedRmd *IFCERFTRootMetadata, rmds *RootMetadataSigned) {
+	ctx context.Context, t *testing.T, config IFCERFTConfig, expectedRmd *IFCERFTRootMetadata, rmds *IFCERFTRootMetadataSigned) {
 	// TODO: Handle private RMDS, too.
 
 	// Verify LastModifying* fields.
@@ -618,13 +617,13 @@ func validatePutPublicRMDS(
 	require.Equal(t, me, rmds.MD.LastModifyingUser)
 
 	// Verify signature of WriterMetadata.
-	buf, err := config.Codec().Encode(rmds.MD.WriterMetadata)
+	buf, err := config.Codec().Encode(rmds.MD.IFCERFTWriterMetadata)
 	require.NoError(t, err)
 	err = config.Crypto().Verify(buf, rmds.MD.WriterMetadataSigInfo)
 	require.NoError(t, err)
 
 	// Verify encoded PrivateMetadata.
-	var data PrivateMetadata
+	var data IFCERFTPrivateMetadata
 	err = config.Codec().Decode(rmds.MD.SerializedPrivateMetadata, &data)
 	require.NoError(t, err)
 
@@ -660,7 +659,7 @@ func TestMDOpsPutPublicSuccess(t *testing.T) {
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
 
 	var rmd IFCERFTRootMetadata
-	err := updateNewRootMetadata(&rmd, id, h.ToBareHandleOrBust())
+	err := IFCERFTUpdateNewRootMetadata(&rmd, id, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 	rmd.data = makeFakePrivateMetadataFuture(t).toCurrent()
 	rmd.tlfHandle = h
@@ -679,7 +678,7 @@ func TestMDOpsPutPrivateSuccess(t *testing.T) {
 	rmds := newRMDS(t, config, false)
 	putMDForPrivate(config, rmds)
 
-	if err := config.MDOps().PutUnmerged(ctx, &rmds.MD, NullBranchID); err != nil {
+	if err := config.MDOps().PutUnmerged(ctx, &rmds.MD, IFCERFTNullBranchID); err != nil {
 		t.Errorf("Got error on put: %v", err)
 	}
 }
@@ -719,7 +718,7 @@ func TestMDOpsGetRangeFailFinal(t *testing.T) {
 	rmds2.MD.Revision = 201
 	rmds2.MD.mdID = fakeMdID(41)
 	rmds2.MD.PrevRoot = rmds3.MD.mdID
-	rmds2.MD.Flags |= MetadataFlagFinal
+	rmds2.MD.Flags |= IFCERFTMetadataFlagFinal
 
 	rmds1.MD.Revision = 202
 	rmds1.MD.mdID = fakeMdID(42)
@@ -735,16 +734,16 @@ func TestMDOpsGetRangeFailFinal(t *testing.T) {
 	rmds2.MD.tlfHandle = nil
 	rmds3.MD.tlfHandle = nil
 
-	allRMDSs := []*RootMetadataSigned{rmds3, rmds2, rmds1}
+	allRMDSs := []*IFCERFTRootMetadataSigned{rmds3, rmds2, rmds1}
 
-	start, stop := MetadataRevision(200), MetadataRevision(202)
-	config.mockMdserv.EXPECT().GetRange(ctx, rmds1.MD.ID, NullBranchID, IFCERFTMerged, start,
+	start, stop := IFCERFTMetadataRevision(200), IFCERFTMetadataRevision(202)
+	config.mockMdserv.EXPECT().GetRange(ctx, rmds1.MD.ID, IFCERFTNullBranchID, IFCERFTMerged, start,
 		stop).Return(allRMDSs, nil)
 
 	_, err := config.MDOps().GetRange(ctx, rmds1.MD.ID, start, stop)
 	if err == nil {
 		t.Errorf("Got no expected error on GetRange")
-	} else if _, ok := err.(MDMismatchError); !ok {
+	} else if _, ok := err.(IFCERFTMDMismatchError); !ok {
 		t.Errorf("Got unexpected error on GetRange with final non-head revision: %v",
 			err)
 	}

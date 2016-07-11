@@ -130,7 +130,7 @@ func (c *CryptoClient) Sign(ctx context.Context, msg []byte) (
 	sigInfo = IFCERFTSignatureInfo{
 		Version:      IFCERFTSigED25519,
 		Signature:    ed25519SigInfo.Sig[:],
-		VerifyingKey: MakeVerifyingKey(libkb.NaclSigningKeyPublic(ed25519SigInfo.PublicKey).GetKID()),
+		VerifyingKey: IFCERFTMakeVerifyingKey(libkb.NaclSigningKeyPublic(ed25519SigInfo.PublicKey).GetKID()),
 	}
 	return
 }
@@ -155,7 +155,7 @@ func (c *CryptoClient) SignToString(ctx context.Context, msg []byte) (
 func (c *CryptoClient) prepareTLFCryptKeyClientHalf(encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf) (
 	encryptedData keybase1.EncryptedBytes32, nonce keybase1.BoxNonce, err error) {
 	if encryptedClientHalf.Version != IFCERFTEncryptionSecretbox {
-		err = UnknownEncryptionVer{encryptedClientHalf.Version}
+		err = IFCERFTUnknownEncryptionVer{encryptedClientHalf.Version}
 		return
 	}
 
@@ -166,7 +166,7 @@ func (c *CryptoClient) prepareTLFCryptKeyClientHalf(encryptedClientHalf IFCERFTE
 	copy(encryptedData[:], encryptedClientHalf.EncryptedData)
 
 	if len(encryptedClientHalf.Nonce) != len(nonce) {
-		err = InvalidNonceError{encryptedClientHalf.Nonce}
+		err = IFCERFTInvalidNonceError{encryptedClientHalf.Nonce}
 		return
 	}
 	copy(nonce[:], encryptedClientHalf.Nonce)
@@ -177,7 +177,7 @@ func (c *CryptoClient) prepareTLFCryptKeyClientHalf(encryptedClientHalf IFCERFTE
 // CryptoClient.
 func (c *CryptoClient) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 	publicKey IFCERFTTLFEphemeralPublicKey, encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf) (
-	clientHalf TLFCryptKeyClientHalf, err error) {
+	clientHalf IFCERFTTLFCryptKeyClientHalf, err error) {
 	c.log.CDebugf(ctx, "Decrypting TLF client key half")
 	defer func() {
 		c.deferLog.CDebugf(ctx, "Decrypted TLF client key half: %v", err)
@@ -199,7 +199,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 		return
 	}
 
-	clientHalf = MakeTLFCryptKeyClientHalf(decryptedClientHalf)
+	clientHalf = IFCERFTMakeTLFCryptKeyClientHalf(decryptedClientHalf)
 	return
 }
 
@@ -207,14 +207,14 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 // CryptoClient.
 func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 	keys []IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
-	clientHalf TLFCryptKeyClientHalf, index int, err error) {
+	clientHalf IFCERFTTLFCryptKeyClientHalf, index int, err error) {
 	c.log.CDebugf(ctx, "Decrypting TLF client key half with any key")
 	defer func() {
 		c.deferLog.CDebugf(ctx, "Decrypted TLF client key half with any key: %v",
 			err)
 	}()
 	if len(keys) == 0 {
-		return clientHalf, index, NoKeysError{}
+		return clientHalf, index, IFCERFTNoKeysError{}
 	}
 	bundles := make([]keybase1.CiphertextBundle, 0, len(keys))
 	errors := make([]error, 0, len(keys))
@@ -225,7 +225,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 			errors = append(errors, err)
 		} else {
 			bundles = append(bundles, keybase1.CiphertextBundle{
-				Kid:        k.PubKey.kidContainer.kid,
+				Kid:        k.PubKey.IFCERFTKidContainer.kid,
 				Ciphertext: encryptedData,
 				Nonce:      nonce,
 				PublicKey:  keybase1.BoxPublicKey(k.EPubKey.data),
@@ -247,7 +247,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 	if err != nil {
 		return
 	}
-	return MakeTLFCryptKeyClientHalf(res.Plaintext), indexLookup[res.Index], nil
+	return IFCERFTMakeTLFCryptKeyClientHalf(res.Plaintext), indexLookup[res.Index], nil
 }
 
 // Shutdown implements the Crypto interface for CryptoClient.

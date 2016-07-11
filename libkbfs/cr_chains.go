@@ -15,7 +15,7 @@ import (
 // given set of MD updates.  It also tracks the starting and ending
 // block pointers for the node.
 type crChain struct {
-	ops                  []op
+	ops                  []IFCERFTOps
 	original, mostRecent IFCERFTBlockPointer
 	file                 bool
 }
@@ -54,7 +54,7 @@ func (cc *crChain) collapse() {
 	}
 
 	if len(indicesToRemove) > 0 {
-		ops := make([]op, 0, len(cc.ops)-len(indicesToRemove))
+		ops := make([]IFCERFTOps, 0, len(cc.ops)-len(indicesToRemove))
 		for i, op := range cc.ops {
 			if !indicesToRemove[i] {
 				ops = append(ops, op)
@@ -79,8 +79,7 @@ func (cc *crChain) getCollapsedWriteRange() []WriteRange {
 	return wr
 }
 
-func (cc *crChain) getActionsToMerge(renamer IFCERFTConflictRenamer, mergedPath path,
-	mergedChain *crChain) (crActionList, error) {
+func (cc *crChain) getActionsToMerge(renamer IFCERFTConflictRenamer, mergedPath IFCERFTPath, mergedChain *crChain) (crActionList, error) {
 	var actions crActionList
 
 	// If this is a file, determine whether the unmerged chain
@@ -183,7 +182,7 @@ func (cc *crChain) identifyType(ctx context.Context, fbo *folderBlockOps,
 
 	parentOriginal, ok := chains.originals[parentDir]
 	if !ok {
-		return NoChainFoundError{parentDir}
+		return IFCERFTNoChainFoundError{parentDir}
 	}
 
 	// We have to find the current parent directory block.  If the
@@ -201,7 +200,7 @@ func (cc *crChain) identifyType(ctx context.Context, fbo *folderBlockOps,
 	// If we get down here, we have an ambiguity, and need to fetch
 	// the block to figure out the file type.
 	dblock, err := fbo.GetDirBlockForReading(ctx, makeFBOLockState(), md,
-		parentMostRecent, fbo.folderBranch.Branch, path{})
+		parentMostRecent, fbo.folderBranch.Branch, IFCERFTPath{})
 	if err != nil {
 		return err
 	}
@@ -279,7 +278,7 @@ type crChains struct {
 	originals map[IFCERFTBlockPointer]IFCERFTBlockPointer
 }
 
-func (ccs *crChains) addOp(ptr IFCERFTBlockPointer, op op) error {
+func (ccs *crChains) addOp(ptr IFCERFTBlockPointer, op IFCERFTOps) error {
 	currChain, ok := ccs.byMostRecent[ptr]
 	if !ok {
 		return fmt.Errorf("Could not find chain for most recent ptr %v", ptr)
@@ -289,7 +288,7 @@ func (ccs *crChains) addOp(ptr IFCERFTBlockPointer, op op) error {
 	return nil
 }
 
-func (ccs *crChains) makeChainForOp(op op) error {
+func (ccs *crChains) makeChainForOp(op IFCERFTOps) error {
 	// First set the pointers for all updates, and track what's been
 	// created and destroyed.
 	for _, update := range op.AllUpdates() {
@@ -344,7 +343,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 		// split rename op into two separate operations, one for
 		// remove and one for create
 		ro := newRmOp(realOp.OldName, realOp.OldDir.Unref)
-		ro.setWriterInfo(realOp.getWriterInfo())
+		ro.SetWriterInfo(realOp.GetWriterInfo())
 		ro.Dir.Ref = realOp.OldDir.Ref
 		err := ccs.addOp(realOp.OldDir.Ref, ro)
 		if err != nil {
@@ -353,7 +352,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 
 		ndu := realOp.NewDir.Unref
 		ndr := realOp.NewDir.Ref
-		if realOp.NewDir == (blockUpdate{}) {
+		if realOp.NewDir == (IFCERFTBlockUpdate{}) {
 			// this is a rename within the same directory
 			ndu = realOp.OldDir.Unref
 			ndr = realOp.OldDir.Ref
@@ -363,7 +362,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 			// Something was overwritten; make an explicit rm for it
 			// so we can check for conflicts.
 			roOverwrite := newRmOp(realOp.NewName, ndu)
-			roOverwrite.setWriterInfo(realOp.getWriterInfo())
+			roOverwrite.SetWriterInfo(realOp.GetWriterInfo())
 			roOverwrite.Dir.Ref = ndr
 			err = ccs.addOp(ndr, roOverwrite)
 			if err != nil {
@@ -376,7 +375,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 		}
 
 		co := newCreateOp(realOp.NewName, ndu, realOp.RenamedType)
-		co.setWriterInfo(realOp.getWriterInfo())
+		co.SetWriterInfo(realOp.GetWriterInfo())
 		co.renamed = true
 		co.Dir.Ref = ndr
 		err = ccs.addOp(ndr, co)
@@ -451,7 +450,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 }
 
 func (ccs *crChains) makeChainForNewOpWithUpdate(
-	targetPtr IFCERFTBlockPointer, newOp op, update *blockUpdate) error {
+	targetPtr IFCERFTBlockPointer, newOp IFCERFTOps, update *IFCERFTBlockUpdate) error {
 	oldUnref := update.Unref
 	update.Unref = targetPtr
 	update.Ref = update.Unref // so that most recent == original
@@ -473,7 +472,7 @@ func (ccs *crChains) makeChainForNewOpWithUpdate(
 // usual makeChainForOp method.  This function is not goroutine-safe
 // with respect to newOp.  Also note that rename ops will not be split
 // into two ops; they will be placed only in the new directory chain.
-func (ccs *crChains) makeChainForNewOp(targetPtr IFCERFTBlockPointer, newOp op) error {
+func (ccs *crChains) makeChainForNewOp(targetPtr IFCERFTBlockPointer, newOp IFCERFTOps) error {
 	switch realOp := newOp.(type) {
 	case *createOp:
 		return ccs.makeChainForNewOpWithUpdate(targetPtr, newOp, &realOp.Dir)
@@ -513,7 +512,7 @@ func (ccs *crChains) mostRecentFromOriginal(original IFCERFTBlockPointer) (
 	IFCERFTBlockPointer, error) {
 	chain, ok := ccs.byOriginal[original]
 	if !ok {
-		return IFCERFTBlockPointer{}, NoChainFoundError{original}
+		return IFCERFTBlockPointer{}, IFCERFTNoChainFoundError{original}
 	}
 	return chain.mostRecent, nil
 }
@@ -524,7 +523,7 @@ func (ccs *crChains) mostRecentFromOriginalOrSame(original IFCERFTBlockPointer) 
 	if err == nil {
 		// A satisfactory chain was found.
 		return ptr, nil
-	} else if _, ok := err.(NoChainFoundError); !ok {
+	} else if _, ok := err.(IFCERFTNoChainFoundError); !ok {
 		// An unexpected error!
 		return IFCERFTBlockPointer{}, err
 	}
@@ -535,7 +534,7 @@ func (ccs *crChains) originalFromMostRecent(mostRecent IFCERFTBlockPointer) (
 	IFCERFTBlockPointer, error) {
 	chain, ok := ccs.byMostRecent[mostRecent]
 	if !ok {
-		return IFCERFTBlockPointer{}, NoChainFoundError{mostRecent}
+		return IFCERFTBlockPointer{}, IFCERFTNoChainFoundError{mostRecent}
 	}
 	return chain.original, nil
 }
@@ -546,7 +545,7 @@ func (ccs *crChains) originalFromMostRecentOrSame(mostRecent IFCERFTBlockPointer
 	if err == nil {
 		// A satisfactory chain was found.
 		return ptr, nil
-	} else if _, ok := err.(NoChainFoundError); !ok {
+	} else if _, ok := err.(IFCERFTNoChainFoundError); !ok {
 		// An unexpected error!
 		return IFCERFTBlockPointer{}, err
 	}
@@ -596,7 +595,7 @@ func newCRChains(ctx context.Context, cfg IFCERFTConfig, rmds []*IFCERFTRootMeta
 			continue
 		}
 
-		winfo, err := newWriterInfo(ctx, cfg, rmd.LastModifyingWriter, rmd.writerKID())
+		winfo, err := newWriterInfo(ctx, cfg, rmd.LastModifyingWriter, rmd.WriterKID())
 		if err != nil {
 			return nil, err
 		}
@@ -606,7 +605,7 @@ func newCRChains(ctx context.Context, cfg IFCERFTConfig, rmds []*IFCERFTRootMeta
 		}
 
 		for _, op := range rmd.data.Changes.Ops {
-			op.setWriterInfo(winfo)
+			op.SetWriterInfo(winfo)
 			err := ccs.makeChainForOp(op)
 			if err != nil {
 				return nil, err
@@ -686,9 +685,9 @@ func (ccs *crChains) removeChain(ptr IFCERFTBlockPointer) {
 // copyOpAndRevertUnrefsToOriginals returns a shallow copy of the op,
 // modifying each custom BlockPointer field to reference the original
 // version of the corresponding blocks.
-func (ccs *crChains) copyOpAndRevertUnrefsToOriginals(currOp op) op {
+func (ccs *crChains) copyOpAndRevertUnrefsToOriginals(currOp IFCERFTOps) IFCERFTOps {
 	var unrefs []*IFCERFTBlockPointer
-	var newOp op
+	var newOp IFCERFTOps
 	switch realOp := currOp.(type) {
 	case *createOp:
 		newCreateOp := *realOp
@@ -728,7 +727,7 @@ func (ccs *crChains) copyOpAndRevertUnrefsToOriginals(currOp op) op {
 func (ccs *crChains) changeOriginal(oldOriginal IFCERFTBlockPointer, newOriginal IFCERFTBlockPointer) error {
 	chain, ok := ccs.byOriginal[oldOriginal]
 	if !ok {
-		return NoChainFoundError{oldOriginal}
+		return IFCERFTNoChainFoundError{oldOriginal}
 	}
 	if _, ok := ccs.byOriginal[newOriginal]; ok {
 		return fmt.Errorf("crChains.changeOriginal: New original %v "+

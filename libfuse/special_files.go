@@ -13,7 +13,7 @@ import (
 
 func handleSpecialFile(name string, fs *FS, resp *fuse.LookupResponse) fs.Node {
 	switch name {
-	case libkbfs.ErrorFile:
+	case libkbfs.IFCERFTErrorFile:
 		return NewErrorFile(fs, resp)
 	case libfs.MetricsFileName:
 		return NewMetricsFile(fs, resp)

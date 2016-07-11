@@ -19,9 +19,9 @@ func TestTlfIDEncodeDecode(t *testing.T) {
 	// https://github.com/msgpack/msgpack/blob/master/spec.md#formats-bin
 	// for why there are two bytes of overhead.
 	const overhead = 2
-	if len(encodedID) != TlfIDByteLen+overhead {
+	if len(encodedID) != IFCERFTTlfIDByteLen+overhead {
 		t.Errorf("expected encoded length %d, got %d",
-			TlfIDByteLen+overhead, len(encodedID))
+			IFCERFTTlfIDByteLen+overhead, len(encodedID))
 	}
 
 	var id2 IFCERFTTlfID

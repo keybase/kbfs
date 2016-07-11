@@ -29,7 +29,7 @@ type MerkleRoot struct {
 // MerkleLeaf is the value of a Merkle leaf node.
 type MerkleLeaf struct {
 	_struct   bool `codec:",toarray"`
-	Revision  MetadataRevision
+	Revision  IFCERFTMetadataRevision
 	Hash      MerkleHash // hash of the signed metadata object
 	Timestamp int64
 }
@@ -44,7 +44,7 @@ func (l MerkleLeaf) Construct() interface{} {
 
 // MerkleHash is the hash of a RootMetadataSigned block.
 type MerkleHash struct {
-	h Hash
+	h IFCERFTHash
 }
 
 var _ encoding.BinaryMarshaler = MerkleHash{}
@@ -53,7 +53,7 @@ var _ encoding.BinaryUnmarshaler = (*MerkleHash)(nil)
 // MerkleHashFromBytes creates a new MerkleHash from the given bytes. If the
 // returned error is nil, the returned MerkleHash is valid.
 func MerkleHashFromBytes(data []byte) (MerkleHash, error) {
-	h, err := HashFromBytes(data)
+	h, err := IFCERFTHashFromBytes(data)
 	if err != nil {
 		return MerkleHash{}, err
 	}

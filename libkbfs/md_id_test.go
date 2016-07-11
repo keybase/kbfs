@@ -24,12 +24,12 @@ func TestMdIDEncodeDecode(t *testing.T) {
 	// https://github.com/msgpack/msgpack/blob/master/spec.md#formats-bin
 	// for why there are two bytes of overhead.
 	const overhead = 2
-	if len(encodedMdID) != DefaultHashByteLength+overhead {
+	if len(encodedMdID) != IFCERFTDefaultHashByteLength+overhead {
 		t.Errorf("expected encoded length %d, got %d",
-			DefaultHashByteLength+overhead, len(encodedMdID))
+			IFCERFTDefaultHashByteLength+overhead, len(encodedMdID))
 	}
 
-	var id2 MdID
+	var id2 IFCERFTMdID
 	err = codec.Decode(encodedMdID, &id2)
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +43,7 @@ func TestMdIDEncodeDecode(t *testing.T) {
 // Make sure the zero MdID value encodes and decodes properly.
 func TestMdIDEncodeDecodeZero(t *testing.T) {
 	codec := NewCodecMsgpack()
-	encodedMdID, err := codec.Encode(MdID{})
+	encodedMdID, err := codec.Encode(IFCERFTMdID{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,13 +54,13 @@ func TestMdIDEncodeDecodeZero(t *testing.T) {
 			expectedEncodedMdID, encodedMdID)
 	}
 
-	var id MdID
+	var id IFCERFTMdID
 	err = codec.Decode(encodedMdID, &id)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if id != (MdID{}) {
+	if id != (IFCERFTMdID{}) {
 		t.Errorf("expected empty block ID, got %s", id)
 	}
 }

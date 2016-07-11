@@ -128,7 +128,7 @@ func (d *DirtyBlockCacheStandard) Get(ptr IFCERFTBlockPointer, branch IFCERFTBra
 		return block, nil
 	}
 
-	return nil, NoSuchBlockError{ptr.ID}
+	return nil, IFCERFTNoSuchBlockError{ptr.ID}
 }
 
 // Put implements the DirtyBlockCache interface for
@@ -333,7 +333,7 @@ func (d *DirtyBlockCacheStandard) RequestPermissionToDirty(
 	d.shutdownLock.RLock()
 	defer d.shutdownLock.RUnlock()
 	if d.isShutdown {
-		return nil, ShutdownHappenedError{}
+		return nil, IFCERFTShutdownHappenedError{}
 	}
 
 	if estimatedDirtyBytes < 0 {

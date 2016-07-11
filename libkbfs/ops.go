@@ -12,80 +12,28 @@ import (
 	"github.com/keybase/go-codec/codec"
 )
 
-// op represents a single file-system remote-sync operation
-type op interface {
-	AddRefBlock(ptr IFCERFTBlockPointer)
-	AddUnrefBlock(ptr IFCERFTBlockPointer)
-	AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer)
-	SizeExceptUpdates() uint64
-	AllUpdates() []blockUpdate
-	Refs() []IFCERFTBlockPointer
-	Unrefs() []IFCERFTBlockPointer
-	String() string
-	setWriterInfo(writerInfo)
-	getWriterInfo() writerInfo
-	setFinalPath(p path)
-	getFinalPath() path
-	// CheckConflict compares the function's target op with the given
-	// op, and returns a resolution if one is needed (or nil
-	// otherwise).  The resulting action (if any) assumes that this
-	// method's target op is the unmerged op, and the given op is the
-	// merged op.
-	CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op, isFile bool) (
-		crAction, error)
-	// GetDefaultAction should be called on an unmerged op only after
-	// all conflicts with the corresponding change have been checked,
-	// and it returns the action to take against the merged branch
-	// given that there are no conflicts.
-	GetDefaultAction(mergedPath path) crAction
-}
-
-// op codes
-const (
-	createOpCode extCode = iota + extCodeOpsRangeStart
-	rmOpCode
-	renameOpCode
-	syncOpCode
-	setAttrOpCode
-	resolutionOpCode
-	rekeyOpCode
-	gcOpCode // for deleting old blocks during an MD history truncation
-)
-
-// blockUpdate represents a block that was updated to have a new
-// BlockPointer.
-//
-// NOTE: Don't add or modify anything in this struct without
-// considering how old clients will handle them.
-type blockUpdate struct {
-	Unref IFCERFTBlockPointer `codec:"u,omitempty"`
-	Ref   IFCERFTBlockPointer `codec:"r,omitempty"`
-}
-
 // list codes
 const (
-	opsListCode extCode = iota + extCodeListRangeStart
+	opsListCode IFCERFTExtCode = iota + IFCERFTExtCodeListRangeStart
 )
-
-type opsList []op
 
 // OpCommon are data structures needed by all ops.  It is only
 // exported for serialization purposes.
 type OpCommon struct {
 	RefBlocks   []IFCERFTBlockPointer `codec:"r,omitempty"`
 	UnrefBlocks []IFCERFTBlockPointer `codec:"u,omitempty"`
-	Updates     []blockUpdate         `codec:"o,omitempty"`
+	Updates     []IFCERFTBlockUpdate  `codec:"o,omitempty"`
 
 	codec.UnknownFieldSetHandler
 
 	// writerInfo is the keybase username and device that generated this
 	// operation.
 	// Not exported; only used during conflict resolution.
-	writerInfo writerInfo
+	writerInfo IFCERFTWriterInfo
 	// finalPath is the final resolved path to the node that this
 	// operation affects in a set of MD updates.  Not exported; only
 	// used during conflict resolution.
-	finalPath path
+	finalPath IFCERFTPath
 }
 
 // AddRefBlock adds this block to the list of newly-referenced blocks
@@ -103,7 +51,7 @@ func (oc *OpCommon) AddUnrefBlock(ptr IFCERFTBlockPointer) {
 // AddUpdate adds a mapping from an old block to the new version of
 // that block, for this op.
 func (oc *OpCommon) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPointer) {
-	oc.Updates = append(oc.Updates, blockUpdate{oldPtr, newPtr})
+	oc.Updates = append(oc.Updates, IFCERFTBlockUpdate{oldPtr, newPtr})
 }
 
 // Refs returns a slice containing all the blocks that were initially
@@ -118,28 +66,28 @@ func (oc *OpCommon) Unrefs() []IFCERFTBlockPointer {
 	return oc.UnrefBlocks
 }
 
-func (oc *OpCommon) setWriterInfo(info writerInfo) {
+func (oc *OpCommon) SetWriterInfo(info IFCERFTWriterInfo) {
 	oc.writerInfo = info
 }
 
-func (oc *OpCommon) getWriterInfo() writerInfo {
+func (oc *OpCommon) GetWriterInfo() IFCERFTWriterInfo {
 	return oc.writerInfo
 }
 
-func (oc *OpCommon) setFinalPath(p path) {
+func (oc *OpCommon) SetFinalPath(p IFCERFTPath) {
 	oc.finalPath = p
 }
 
-func (oc *OpCommon) getFinalPath() path {
+func (oc *OpCommon) GetFinalPath() IFCERFTPath {
 	return oc.finalPath
 }
 
 // createOp is an op representing a file or subdirectory creation
 type createOp struct {
 	OpCommon
-	NewName string           `codec:"n"`
-	Dir     blockUpdate      `codec:"d"`
-	Type    IFCERFTEntryType `codec:"t"`
+	NewName string             `codec:"n"`
+	Dir     IFCERFTBlockUpdate `codec:"d"`
+	Type    IFCERFTEntryType   `codec:"t"`
 
 	// If true, this create op represents half of a rename operation.
 	// This op should never be persisted.
@@ -177,8 +125,8 @@ func (co *createOp) SizeExceptUpdates() uint64 {
 	return uint64(len(co.NewName))
 }
 
-func (co *createOp) AllUpdates() []blockUpdate {
-	updates := make([]blockUpdate, len(co.Updates))
+func (co *createOp) AllUpdates() []IFCERFTBlockUpdate {
+	updates := make([]IFCERFTBlockUpdate, len(co.Updates))
 	copy(updates, co.Updates)
 	return append(updates, co.Dir)
 }
@@ -191,8 +139,7 @@ func (co *createOp) String() string {
 	return res
 }
 
-func (co *createOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
-	isFile bool) (crAction, error) {
+func (co *createOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *createOp:
 		// Conflicts if this creates the same name and one of them
@@ -240,7 +187,7 @@ func (co *createOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 	return nil, nil
 }
 
-func (co *createOp) GetDefaultAction(mergedPath path) crAction {
+func (co *createOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
 	if co.forceCopy {
 		return &renameUnmergedAction{
 			fromName: co.NewName,
@@ -258,8 +205,8 @@ func (co *createOp) GetDefaultAction(mergedPath path) crAction {
 // rmOp is an op representing a file or subdirectory removal
 type rmOp struct {
 	OpCommon
-	OldName string      `codec:"n"`
-	Dir     blockUpdate `codec:"d"`
+	OldName string             `codec:"n"`
+	Dir     IFCERFTBlockUpdate `codec:"d"`
 
 	// Indicates that the resolution process should skip this rm op.
 	// Likely indicates the rm half of a cycle-creating rename.
@@ -286,8 +233,8 @@ func (ro *rmOp) SizeExceptUpdates() uint64 {
 	return uint64(len(ro.OldName))
 }
 
-func (ro *rmOp) AllUpdates() []blockUpdate {
-	updates := make([]blockUpdate, len(ro.Updates))
+func (ro *rmOp) AllUpdates() []IFCERFTBlockUpdate {
+	updates := make([]IFCERFTBlockUpdate, len(ro.Updates))
 	copy(updates, ro.Updates)
 	return append(updates, ro.Dir)
 }
@@ -296,8 +243,7 @@ func (ro *rmOp) String() string {
 	return fmt.Sprintf("rm %s", ro.OldName)
 }
 
-func (ro *rmOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
-	isFile bool) (crAction, error) {
+func (ro *rmOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *createOp:
 		if realMergedOp.NewName == ro.OldName {
@@ -316,7 +262,7 @@ func (ro *rmOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 	return nil, nil
 }
 
-func (ro *rmOp) GetDefaultAction(mergedPath path) crAction {
+func (ro *rmOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
 	if ro.dropThis {
 		return &dropUnmergedAction{op: ro}
 	}
@@ -332,9 +278,9 @@ func (ro *rmOp) GetDefaultAction(mergedPath path) crAction {
 type renameOp struct {
 	OpCommon
 	OldName     string              `codec:"on"`
-	OldDir      blockUpdate         `codec:"od"`
+	OldDir      IFCERFTBlockUpdate  `codec:"od"`
 	NewName     string              `codec:"nn"`
-	NewDir      blockUpdate         `codec:"nd"`
+	NewDir      IFCERFTBlockUpdate  `codec:"nd"`
 	Renamed     IFCERFTBlockPointer `codec:"re"`
 	RenamedType IFCERFTEntryType    `codec:"rt"`
 }
@@ -359,7 +305,7 @@ func (ro *renameOp) AddUpdate(oldPtr IFCERFTBlockPointer, newPtr IFCERFTBlockPoi
 		ro.OldDir.Ref = newPtr
 		return
 	}
-	if ro.NewDir != (blockUpdate{}) && oldPtr == ro.NewDir.Unref {
+	if ro.NewDir != (IFCERFTBlockUpdate{}) && oldPtr == ro.NewDir.Unref {
 		ro.NewDir.Ref = newPtr
 		return
 	}
@@ -370,10 +316,10 @@ func (ro *renameOp) SizeExceptUpdates() uint64 {
 	return uint64(len(ro.NewName) + len(ro.NewName))
 }
 
-func (ro *renameOp) AllUpdates() []blockUpdate {
-	updates := make([]blockUpdate, len(ro.Updates))
+func (ro *renameOp) AllUpdates() []IFCERFTBlockUpdate {
+	updates := make([]IFCERFTBlockUpdate, len(ro.Updates))
 	copy(updates, ro.Updates)
-	if (ro.NewDir != blockUpdate{}) {
+	if (ro.NewDir != IFCERFTBlockUpdate{}) {
 		return append(updates, ro.NewDir, ro.OldDir)
 	}
 	return append(updates, ro.OldDir)
@@ -383,12 +329,11 @@ func (ro *renameOp) String() string {
 	return fmt.Sprintf("rename %s -> %s", ro.OldName, ro.NewName)
 }
 
-func (ro *renameOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
-	isFile bool) (crAction, error) {
+func (ro *renameOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
 	return nil, fmt.Errorf("Unexpected conflict check on a rename op: %s", ro)
 }
 
-func (ro *renameOp) GetDefaultAction(mergedPath path) crAction {
+func (ro *renameOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
 	return nil
 }
 
@@ -441,8 +386,8 @@ func (w WriteRange) Affects(other WriteRange) bool {
 // syncOp is an op that represents a series of writes to a file.
 type syncOp struct {
 	OpCommon
-	File   blockUpdate  `codec:"f"`
-	Writes []WriteRange `codec:"w"`
+	File   IFCERFTBlockUpdate `codec:"f"`
+	Writes []WriteRange       `codec:"w"`
 }
 
 func newSyncOp(oldFile IFCERFTBlockPointer) *syncOp {
@@ -480,8 +425,8 @@ func (so *syncOp) SizeExceptUpdates() uint64 {
 	return uint64(len(so.Writes) * 16)
 }
 
-func (so *syncOp) AllUpdates() []blockUpdate {
-	updates := make([]blockUpdate, len(so.Updates))
+func (so *syncOp) AllUpdates() []IFCERFTBlockUpdate {
+	updates := make([]IFCERFTBlockUpdate, len(so.Updates))
 	copy(updates, so.Updates)
 	return append(updates, so.File)
 }
@@ -494,38 +439,37 @@ func (so *syncOp) String() string {
 	return fmt.Sprintf("sync [%s]", strings.Join(writes, ", "))
 }
 
-func (so *syncOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
-	isFile bool) (crAction, error) {
+func (so *syncOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
 	switch mergedOp.(type) {
 	case *syncOp:
 		// Any sync on the same file is a conflict.  (TODO: add
 		// type-specific intelligent conflict resolvers for file
 		// contents?)
 		return &renameUnmergedAction{
-			fromName: so.getFinalPath().tailName(),
-			toName: renamer.ConflictRename(so, mergedOp.getFinalPath().
-				tailName()),
-			unmergedParentMostRecent: so.getFinalPath().parentPath().
-				tailPointer(),
-			mergedParentMostRecent: mergedOp.getFinalPath().parentPath().
-				tailPointer(),
+			fromName: so.GetFinalPath().TailName(),
+			toName: renamer.ConflictRename(so, mergedOp.GetFinalPath().
+				TailName()),
+			unmergedParentMostRecent: so.GetFinalPath().ParentPath().
+				TailPointer(),
+			mergedParentMostRecent: mergedOp.GetFinalPath().ParentPath().
+				TailPointer(),
 		}, nil
 	case *setAttrOp:
 		// Someone on the merged path explicitly set an attribute, so
 		// just copy the size and blockpointer over.
 		return &copyUnmergedAttrAction{
-			fromName: so.getFinalPath().tailName(),
-			toName:   mergedOp.getFinalPath().tailName(),
+			fromName: so.GetFinalPath().TailName(),
+			toName:   mergedOp.GetFinalPath().TailName(),
 			attr:     []attrChange{sizeAttr},
 		}, nil
 	}
 	return nil, nil
 }
 
-func (so *syncOp) GetDefaultAction(mergedPath path) crAction {
+func (so *syncOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
 	return &copyUnmergedEntryAction{
-		fromName: so.getFinalPath().tailName(),
-		toName:   mergedPath.tailName(),
+		fromName: so.GetFinalPath().TailName(),
+		toName:   mergedPath.TailName(),
 		symPath:  "",
 	}
 }
@@ -667,7 +611,7 @@ func (ac attrChange) String() string {
 type setAttrOp struct {
 	OpCommon
 	Name string              `codec:"n"`
-	Dir  blockUpdate         `codec:"d"`
+	Dir  IFCERFTBlockUpdate  `codec:"d"`
 	Attr attrChange          `codec:"a"`
 	File IFCERFTBlockPointer `codec:"f"`
 }
@@ -694,8 +638,8 @@ func (sao *setAttrOp) SizeExceptUpdates() uint64 {
 	return uint64(len(sao.Name))
 }
 
-func (sao *setAttrOp) AllUpdates() []blockUpdate {
-	updates := make([]blockUpdate, len(sao.Updates))
+func (sao *setAttrOp) AllUpdates() []IFCERFTBlockUpdate {
+	updates := make([]IFCERFTBlockUpdate, len(sao.Updates))
 	copy(updates, sao.Updates)
 	return append(updates, sao.Dir)
 }
@@ -704,8 +648,7 @@ func (sao *setAttrOp) String() string {
 	return fmt.Sprintf("setAttr %s (%s)", sao.Name, sao.Attr)
 }
 
-func (sao *setAttrOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
-	isFile bool) (crAction, error) {
+func (sao *setAttrOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *setAttrOp:
 		if realMergedOp.Attr == sao.Attr {
@@ -715,32 +658,32 @@ func (sao *setAttrOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
 				// A directory has a conflict on an mtime attribute.
 				// Create a symlink entry with the unmerged mtime
 				// pointing to the merged entry.
-				symPath = mergedOp.getFinalPath().tailName()
+				symPath = mergedOp.GetFinalPath().TailName()
 				causedByAttr = sao.Attr
 			}
 
 			// A set attr for the same attribute on the same file is a
 			// conflict.
 			return &renameUnmergedAction{
-				fromName: sao.getFinalPath().tailName(),
+				fromName: sao.GetFinalPath().TailName(),
 				toName: renamer.ConflictRename(
-					sao, mergedOp.getFinalPath().tailName()),
+					sao, mergedOp.GetFinalPath().TailName()),
 				symPath:      symPath,
 				causedByAttr: causedByAttr,
-				unmergedParentMostRecent: sao.getFinalPath().parentPath().
-					tailPointer(),
-				mergedParentMostRecent: mergedOp.getFinalPath().parentPath().
-					tailPointer(),
+				unmergedParentMostRecent: sao.GetFinalPath().ParentPath().
+					TailPointer(),
+				mergedParentMostRecent: mergedOp.GetFinalPath().ParentPath().
+					TailPointer(),
 			}, nil
 		}
 	}
 	return nil, nil
 }
 
-func (sao *setAttrOp) GetDefaultAction(mergedPath path) crAction {
+func (sao *setAttrOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
 	return &copyUnmergedAttrAction{
-		fromName: sao.getFinalPath().tailName(),
-		toName:   mergedPath.tailName(),
+		fromName: sao.GetFinalPath().TailName(),
+		toName:   mergedPath.TailName(),
 		attr:     []attrChange{sao.Attr},
 	}
 }
@@ -760,7 +703,7 @@ func (ro *resolutionOp) SizeExceptUpdates() uint64 {
 	return 0
 }
 
-func (ro *resolutionOp) AllUpdates() []blockUpdate {
+func (ro *resolutionOp) AllUpdates() []IFCERFTBlockUpdate {
 	return ro.Updates
 }
 
@@ -768,12 +711,11 @@ func (ro *resolutionOp) String() string {
 	return "resolution"
 }
 
-func (ro *resolutionOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
-	isFile bool) (crAction, error) {
+func (ro *resolutionOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
 	return nil, nil
 }
 
-func (ro *resolutionOp) GetDefaultAction(mergedPath path) crAction {
+func (ro *resolutionOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
 	return nil
 }
 
@@ -791,7 +733,7 @@ func (ro *rekeyOp) SizeExceptUpdates() uint64 {
 	return 0
 }
 
-func (ro *rekeyOp) AllUpdates() []blockUpdate {
+func (ro *rekeyOp) AllUpdates() []IFCERFTBlockUpdate {
 	return ro.Updates
 }
 
@@ -799,12 +741,11 @@ func (ro *rekeyOp) String() string {
 	return "rekey"
 }
 
-func (ro *rekeyOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
-	isFile bool) (crAction, error) {
+func (ro *rekeyOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
 	return nil, nil
 }
 
-func (ro *rekeyOp) GetDefaultAction(mergedPath path) crAction {
+func (ro *rekeyOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
 	return nil
 }
 
@@ -820,10 +761,10 @@ type gcOp struct {
 	//
 	// The codec name overrides the one for RefBlocks in OpCommon,
 	// which gcOp doesn't use.
-	LatestRev MetadataRevision `codec:"r"`
+	LatestRev IFCERFTMetadataRevision `codec:"r"`
 }
 
-func newGCOp(latestRev MetadataRevision) *gcOp {
+func newGCOp(latestRev IFCERFTMetadataRevision) *gcOp {
 	gco := &gcOp{
 		LatestRev: latestRev,
 	}
@@ -834,7 +775,7 @@ func (gco *gcOp) SizeExceptUpdates() uint64 {
 	return bpSize * uint64(len(gco.UnrefBlocks))
 }
 
-func (gco *gcOp) AllUpdates() []blockUpdate {
+func (gco *gcOp) AllUpdates() []IFCERFTBlockUpdate {
 	return gco.Updates
 }
 
@@ -842,12 +783,11 @@ func (gco *gcOp) String() string {
 	return fmt.Sprintf("gc %d", gco.LatestRev)
 }
 
-func (gco *gcOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp op,
-	isFile bool) (crAction, error) {
+func (gco *gcOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
 	return nil, nil
 }
 
-func (gco *gcOp) GetDefaultAction(mergedPath path) crAction {
+func (gco *gcOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
 	return nil
 }
 
@@ -856,8 +796,8 @@ func (gco *gcOp) GetDefaultAction(mergedPath path) crAction {
 // used for local notifications only, and would not be useful for
 // finding conflicts (for example, we lose information about the type
 // of the file in a rmOp that we are trying to re-create).
-func invertOpForLocalNotifications(oldOp op) op {
-	var newOp op
+func invertOpForLocalNotifications(oldOp IFCERFTOps) IFCERFTOps {
+	var newOp IFCERFTOps
 	switch op := oldOp.(type) {
 	default:
 		panic(fmt.Sprintf("Unrecognized operation: %v", op))
@@ -925,14 +865,14 @@ func opPointerizer(iface interface{}) reflect.Value {
 
 // RegisterOps registers all op types with the given codec.
 func RegisterOps(codec IFCERFTCodec) {
-	codec.RegisterType(reflect.TypeOf(createOp{}), createOpCode)
-	codec.RegisterType(reflect.TypeOf(rmOp{}), rmOpCode)
-	codec.RegisterType(reflect.TypeOf(renameOp{}), renameOpCode)
-	codec.RegisterType(reflect.TypeOf(syncOp{}), syncOpCode)
-	codec.RegisterType(reflect.TypeOf(setAttrOp{}), setAttrOpCode)
-	codec.RegisterType(reflect.TypeOf(resolutionOp{}), resolutionOpCode)
-	codec.RegisterType(reflect.TypeOf(rekeyOp{}), rekeyOpCode)
-	codec.RegisterType(reflect.TypeOf(gcOp{}), gcOpCode)
-	codec.RegisterIfaceSliceType(reflect.TypeOf(opsList{}), opsListCode,
+	codec.RegisterType(reflect.TypeOf(createOp{}), IFCERFTCreateOpCode)
+	codec.RegisterType(reflect.TypeOf(rmOp{}), IFCERFTRmOpCode)
+	codec.RegisterType(reflect.TypeOf(renameOp{}), IFCERFTRenameOpCode)
+	codec.RegisterType(reflect.TypeOf(syncOp{}), IFCERFTSyncOpCode)
+	codec.RegisterType(reflect.TypeOf(setAttrOp{}), IFCERFTSetAttrOpCode)
+	codec.RegisterType(reflect.TypeOf(resolutionOp{}), IFCERFTResolutionOpCode)
+	codec.RegisterType(reflect.TypeOf(rekeyOp{}), IFCERFTRekeyOpCode)
+	codec.RegisterType(reflect.TypeOf(gcOp{}), IFCERFTGcOpCode)
+	codec.RegisterIfaceSliceType(reflect.TypeOf(IFCERFTOpsList{}), opsListCode,
 		opPointerizer)
 }

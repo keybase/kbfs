@@ -10,8 +10,8 @@ import (
 )
 
 func fakeBlockID(b byte) BlockID {
-	dh := RawDefaultHash{b}
-	h, err := HashFromRaw(DefaultHashType, dh[:])
+	dh := IFCERFTRawDefaultHash{b}
+	h, err := IFCERFTHashFromRaw(IFCERFTDefaultHashType, dh[:])
 	if err != nil {
 		panic(err)
 	}
@@ -41,9 +41,9 @@ func TestBlockIDEncodeDecode(t *testing.T) {
 	// https://github.com/msgpack/msgpack/blob/master/spec.md#formats-bin
 	// for why there are two bytes of overhead.
 	const overhead = 2
-	if len(encodedBlockID) != DefaultHashByteLength+overhead {
+	if len(encodedBlockID) != IFCERFTDefaultHashByteLength+overhead {
 		t.Errorf("expected encoded length %d, got %d",
-			DefaultHashByteLength+overhead, len(encodedBlockID))
+			IFCERFTDefaultHashByteLength+overhead, len(encodedBlockID))
 	}
 
 	var id2 BlockID

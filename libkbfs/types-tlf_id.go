@@ -11,26 +11,26 @@ import (
 
 const (
 	// TlfIDByteLen is the number of bytes in a top-level folder ID
-	TlfIDByteLen = 16
+	IFCERFTTlfIDByteLen = 16
 	// TlfIDStringLen is the number of characters in the string
 	// representation of a top-level folder ID
-	TlfIDStringLen = 2 * TlfIDByteLen
+	IFCERFTTlfIDStringLen = 2 * IFCERFTTlfIDByteLen
 	// TlfIDSuffix is the last byte of a private top-level folder ID
-	TlfIDSuffix = 0x16
+	IFCERFTTlfIDSuffix = 0x16
 	// PubTlfIDSuffix is the last byte of a public top-level folder ID
-	PubTlfIDSuffix = 0x17
+	IFCERFTPubTlfIDSuffix = 0x17
 )
 
 // TlfID is a top-level folder ID
 type IFCERFTTlfID struct {
-	id [TlfIDByteLen]byte
+	id [IFCERFTTlfIDByteLen]byte
 }
 
 var _ encoding.BinaryMarshaler = IFCERFTTlfID{}
 var _ encoding.BinaryUnmarshaler = (*IFCERFTTlfID)(nil)
 
 // NullTlfID is an empty TlfID
-var NullTlfID = IFCERFTTlfID{}
+var IFCERFTNullTlfID = IFCERFTTlfID{}
 
 // Bytes returns the bytes of the TLF ID.
 func (id IFCERFTTlfID) Bytes() []byte {
@@ -44,9 +44,9 @@ func (id IFCERFTTlfID) String() string {
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for TlfID.
 func (id IFCERFTTlfID) MarshalBinary() (data []byte, err error) {
-	suffix := id.id[TlfIDByteLen-1]
-	if suffix != TlfIDSuffix && suffix != PubTlfIDSuffix {
-		return nil, InvalidTlfID{id.String()}
+	suffix := id.id[IFCERFTTlfIDByteLen-1]
+	if suffix != IFCERFTTlfIDSuffix && suffix != IFCERFTPubTlfIDSuffix {
+		return nil, IFCERFTInvalidTlfID{id.String()}
 	}
 	return id.id[:], nil
 }
@@ -54,12 +54,12 @@ func (id IFCERFTTlfID) MarshalBinary() (data []byte, err error) {
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface
 // for TlfID.
 func (id *IFCERFTTlfID) UnmarshalBinary(data []byte) error {
-	if len(data) != TlfIDByteLen {
-		return InvalidTlfID{hex.EncodeToString(data)}
+	if len(data) != IFCERFTTlfIDByteLen {
+		return IFCERFTInvalidTlfID{hex.EncodeToString(data)}
 	}
-	suffix := data[TlfIDByteLen-1]
-	if suffix != TlfIDSuffix && suffix != PubTlfIDSuffix {
-		return InvalidTlfID{hex.EncodeToString(data)}
+	suffix := data[IFCERFTTlfIDByteLen-1]
+	if suffix != IFCERFTTlfIDSuffix && suffix != IFCERFTPubTlfIDSuffix {
+		return IFCERFTInvalidTlfID{hex.EncodeToString(data)}
 	}
 	copy(id.id[:], data)
 	return nil
@@ -67,23 +67,23 @@ func (id *IFCERFTTlfID) UnmarshalBinary(data []byte) error {
 
 // IsPublic returns true if this TlfID is for a public top-level folder
 func (id IFCERFTTlfID) IsPublic() bool {
-	return id.id[TlfIDByteLen-1] == PubTlfIDSuffix
+	return id.id[IFCERFTTlfIDByteLen-1] == IFCERFTPubTlfIDSuffix
 }
 
 // ParseTlfID parses a hex encoded TlfID. Returns NullTlfID and an
 // InvalidTlfID on failure.
-func ParseTlfID(s string) (IFCERFTTlfID, error) {
-	if len(s) != TlfIDStringLen {
-		return NullTlfID, InvalidTlfID{s}
+func IFCERFTParseTlfID(s string) (IFCERFTTlfID, error) {
+	if len(s) != IFCERFTTlfIDStringLen {
+		return IFCERFTNullTlfID, IFCERFTInvalidTlfID{s}
 	}
 	bytes, err := hex.DecodeString(s)
 	if err != nil {
-		return NullTlfID, InvalidTlfID{s}
+		return IFCERFTNullTlfID, IFCERFTInvalidTlfID{s}
 	}
 	var id IFCERFTTlfID
 	err = id.UnmarshalBinary(bytes)
 	if err != nil {
-		return NullTlfID, InvalidTlfID{s}
+		return IFCERFTNullTlfID, IFCERFTInvalidTlfID{s}
 	}
 	return id, nil
 }

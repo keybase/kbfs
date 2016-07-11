@@ -32,8 +32,8 @@ type IFCERFTTlfHandle struct {
 	// sorted order.
 	unresolvedWriters []keybase1.SocialAssertion
 	unresolvedReaders []keybase1.SocialAssertion
-	conflictInfo      *TlfHandleExtension
-	finalizedInfo     *TlfHandleExtension
+	conflictInfo      *IFCERFTTlfHandleExtension
+	finalizedInfo     *IFCERFTTlfHandleExtension
 	// name can be computed from the other fields, but is cached
 	// for speed.
 	name IFCERFTCanonicalTlfName
@@ -129,7 +129,7 @@ func (h IFCERFTTlfHandle) UnresolvedReaders() []keybase1.SocialAssertion {
 }
 
 // ConflictInfo returns the handle's conflict info, if any.
-func (h IFCERFTTlfHandle) ConflictInfo() *TlfHandleExtension {
+func (h IFCERFTTlfHandle) ConflictInfo() *IFCERFTTlfHandleExtension {
 	if h.conflictInfo == nil {
 		return nil
 	}
@@ -142,7 +142,7 @@ func (h IFCERFTTlfHandle) ConflictInfo() *TlfHandleExtension {
 // also be nil.) Otherwise, the given conflict info must match the
 // existing one.
 func (h *IFCERFTTlfHandle) UpdateConflictInfo(
-	codec IFCERFTCodec, info *TlfHandleExtension) error {
+	codec IFCERFTCodec, info *IFCERFTTlfHandleExtension) error {
 	if h.conflictInfo == nil {
 		if info == nil {
 			// Nothing to do.
@@ -159,7 +159,7 @@ func (h *IFCERFTTlfHandle) UpdateConflictInfo(
 		return err
 	}
 	if !equal {
-		return TlfHandleExtensionMismatchError{
+		return IFCERFTTlfHandleExtensionMismatchError{
 			Expected: *h.ConflictInfo(),
 			Actual:   info,
 		}
@@ -168,7 +168,7 @@ func (h *IFCERFTTlfHandle) UpdateConflictInfo(
 }
 
 // FinalizedInfo returns the handle's finalized info, if any.
-func (h IFCERFTTlfHandle) FinalizedInfo() *TlfHandleExtension {
+func (h IFCERFTTlfHandle) FinalizedInfo() *IFCERFTTlfHandleExtension {
 	if h.finalizedInfo == nil {
 		return nil
 	}
@@ -178,7 +178,7 @@ func (h IFCERFTTlfHandle) FinalizedInfo() *TlfHandleExtension {
 
 // SetFinalizedInfo sets the handle's finalized info to the given one,
 // which may be nil.
-func (h *IFCERFTTlfHandle) SetFinalizedInfo(info *TlfHandleExtension) {
+func (h *IFCERFTTlfHandle) SetFinalizedInfo(info *IFCERFTTlfHandleExtension) {
 	if info == nil {
 		h.finalizedInfo = nil
 		return
@@ -188,7 +188,7 @@ func (h *IFCERFTTlfHandle) SetFinalizedInfo(info *TlfHandleExtension) {
 }
 
 // Extensions returns a list of extensions for the given handle.
-func (h IFCERFTTlfHandle) Extensions() (extensions []TlfHandleExtension) {
+func (h IFCERFTTlfHandle) Extensions() (extensions []IFCERFTTlfHandleExtension) {
 	if h.ConflictInfo() != nil {
 		extensions = append(extensions, *h.ConflictInfo())
 	}
@@ -254,14 +254,14 @@ func (h IFCERFTTlfHandle) Equals(codec IFCERFTCodec, other IFCERFTTlfHandle) (bo
 }
 
 // ToBareHandle returns a BareTlfHandle corresponding to this handle.
-func (h IFCERFTTlfHandle) ToBareHandle() (BareTlfHandle, error) {
+func (h IFCERFTTlfHandle) ToBareHandle() (IFCERFTBareTlfHandle, error) {
 	var readers []keybase1.UID
 	if h.public {
 		readers = []keybase1.UID{keybase1.PUBLIC_UID}
 	} else {
 		readers = h.unsortedResolvedReaders()
 	}
-	return MakeBareTlfHandle(
+	return IFCERFTMakeBareTlfHandle(
 		h.unsortedResolvedWriters(), readers,
 		h.unresolvedWriters, h.unresolvedReaders,
 		h.Extensions())
@@ -269,7 +269,7 @@ func (h IFCERFTTlfHandle) ToBareHandle() (BareTlfHandle, error) {
 
 // ToBareHandleOrBust returns a BareTlfHandle corresponding to this
 // handle, and panics if there's an error. Used by tests.
-func (h IFCERFTTlfHandle) ToBareHandleOrBust() BareTlfHandle {
+func (h IFCERFTTlfHandle) ToBareHandleOrBust() IFCERFTBareTlfHandle {
 	bh, err := h.ToBareHandle()
 	if err != nil {
 		panic(err)
@@ -320,7 +320,7 @@ func resolveOneUser(
 
 func makeTlfHandleHelper(
 	ctx context.Context, public bool, writers, readers []resolvableUser,
-	extensions []TlfHandleExtension) (*IFCERFTTlfHandle, error) {
+	extensions []IFCERFTTlfHandleExtension) (*IFCERFTTlfHandle, error) {
 	if public && len(readers) > 0 {
 		return nil, errors.New("public folder cannot have readers")
 	}
@@ -386,9 +386,9 @@ func makeTlfHandleHelper(
 		canonicalName += IFCERFTReaderSep + strings.Join(readerNames, ",")
 	}
 
-	sort.Sort(tlfHandleExtensionList(extensions))
-	canonicalName += NewTlfHandleExtensionSuffix(extensions)
-	conflictInfo, finalizedInfo := tlfHandleExtensionList(extensions).Splat()
+	sort.Sort(IFCERFTtlfHandleExtensionList(extensions))
+	canonicalName += IFCERFTNewTlfHandleExtensionSuffix(extensions)
+	conflictInfo, finalizedInfo := IFCERFTtlfHandleExtensionList(extensions).Splat()
 
 	h := &IFCERFTTlfHandle{
 		public:            public,
@@ -429,8 +429,7 @@ func (rsa resolvableSocialAssertion) resolve(ctx context.Context) (nameUIDPair, 
 // MakeTlfHandle creates a TlfHandle from the given BareTlfHandle and
 // the given normalizedUsernameGetter (which is usually a KBPKI).
 func MakeTlfHandle(
-	ctx context.Context, bareHandle BareTlfHandle,
-	nug normalizedUsernameGetter) (*IFCERFTTlfHandle, error) {
+	ctx context.Context, bareHandle IFCERFTBareTlfHandle, nug normalizedUsernameGetter) (*IFCERFTTlfHandle, error) {
 	writers := make([]resolvableUser, 0, len(bareHandle.Writers)+len(bareHandle.UnresolvedWriters))
 	for _, w := range bareHandle.Writers {
 		writers = append(writers, resolvableUID{nug, w})
@@ -616,7 +615,7 @@ func (pr partialResolver) Resolve(ctx context.Context, assertion string) (
 	if pr.unresolvedAssertions[assertion] {
 		// Force an unresolved assertion.
 		return libkb.NormalizedUsername(""),
-			keybase1.UID(""), NoSuchUserError{assertion}
+			keybase1.UID(""), IFCERFTNoSuchUserError{assertion}
 	}
 	return pr.delegate.Resolve(ctx, assertion)
 }
@@ -672,7 +671,7 @@ func splitAndNormalizeTLFName(name string, public bool) (
 
 	names := strings.SplitN(name, IFCERFTTlfHandleExtensionSep, 2)
 	if len(names) > 2 {
-		return nil, nil, "", BadTLFNameError{name}
+		return nil, nil, "", IFCERFTBadTLFNameError{name}
 	}
 	if len(names) > 1 {
 		extensionSuffix = names[1]
@@ -680,7 +679,7 @@ func splitAndNormalizeTLFName(name string, public bool) (
 
 	splitNames := strings.SplitN(names[0], IFCERFTReaderSep, 3)
 	if len(splitNames) > 2 {
-		return nil, nil, "", BadTLFNameError{name}
+		return nil, nil, "", IFCERFTBadTLFNameError{name}
 	}
 	writerNames = strings.Split(splitNames[0], ",")
 	if len(splitNames) > 1 {
@@ -691,7 +690,7 @@ func splitAndNormalizeTLFName(name string, public bool) (
 
 	if public && !hasPublic {
 		// No public folder exists for this folder.
-		return nil, nil, "", NoSuchNameError{Name: name}
+		return nil, nil, "", IFCERFTNoSuchNameError{Name: name}
 	}
 
 	normalizedName, err := normalizeNamesInTLF(
@@ -700,7 +699,7 @@ func splitAndNormalizeTLFName(name string, public bool) (
 		return nil, nil, "", err
 	}
 	if normalizedName != name {
-		return nil, nil, "", TlfNameNotCanonical{name, normalizedName}
+		return nil, nil, "", IFCERFTTlfNameNotCanonical{name, normalizedName}
 	}
 
 	return writerNames, readerNames, strings.ToLower(extensionSuffix), nil
@@ -726,7 +725,7 @@ func normalizeAssertionOrName(s string) (string, error) {
 		// "keybase" case and should be considered an error.
 		urls := expr.CollectUrls(nil)
 		if len(urls) == 1 && urls[0].IsKeybase() {
-			return "", NoSuchUserError{s}
+			return "", IFCERFTNoSuchUserError{s}
 		}
 
 		// Normalize and return.  Ideally `AssertionParseAndOnly`
@@ -737,7 +736,7 @@ func normalizeAssertionOrName(s string) (string, error) {
 		return strings.ToLower(s), nil
 	}
 
-	return "", BadTLFNameError{s}
+	return "", IFCERFTBadTLFNameError{s}
 }
 
 // normalizeNamesInTLF takes a split TLF name and, without doing any
@@ -789,7 +788,7 @@ func (ra resolvableAssertion) resolve(ctx context.Context) (
 	name, uid, err := ra.resolver.Resolve(ctx, ra.assertion)
 	if err == nil && ra.mustBeUser != keybase1.UID("") && ra.mustBeUser != uid {
 		// Force an unresolved assertion sinced the forced user doesn't match
-		err = NoSuchUserError{ra.assertion}
+		err = IFCERFTNoSuchUserError{ra.assertion}
 	}
 	switch err := err.(type) {
 	default:
@@ -799,7 +798,7 @@ func (ra resolvableAssertion) resolve(ctx context.Context) (
 			name: name,
 			uid:  uid,
 		}, keybase1.SocialAssertion{}, nil
-	case NoSuchUserError:
+	case IFCERFTNoSuchUserError:
 		socialAssertion, ok := libkb.NormalizeSocialAssertion(ra.assertion)
 		if !ok {
 			return nameUIDPair{}, keybase1.SocialAssertion{}, err
@@ -841,7 +840,7 @@ func IFCERFTParseTlfHandle(
 
 	if public && !hasPublic {
 		// No public folder exists for this folder.
-		return nil, NoSuchNameError{Name: name}
+		return nil, IFCERFTNoSuchNameError{Name: name}
 	}
 
 	normalizedName, err := normalizeNamesInTLF(
@@ -850,7 +849,7 @@ func IFCERFTParseTlfHandle(
 		return nil, err
 	}
 	if normalizedName != name {
-		return nil, TlfNameNotCanonical{name, normalizedName}
+		return nil, IFCERFTTlfNameNotCanonical{name, normalizedName}
 	}
 
 	writers := make([]resolvableUser, len(writerNames))
@@ -862,9 +861,9 @@ func IFCERFTParseTlfHandle(
 		readers[i] = resolvableAssertion{kbpki, r, keybase1.UID("")}
 	}
 
-	var extensions []TlfHandleExtension
+	var extensions []IFCERFTTlfHandleExtension
 	if len(extensionSuffix) != 0 {
-		extensions, err = ParseTlfHandleExtensionSuffix(extensionSuffix)
+		extensions, err = IFCERFTParseTlfHandleExtensionSuffix(extensionSuffix)
 		if err != nil {
 			return nil, err
 		}
@@ -882,7 +881,7 @@ func IFCERFTParseTlfHandle(
 		}
 
 		if !h.IsReader(currentUID) {
-			return nil, ReadAccessError{currentUsername, h.GetCanonicalName(), public}
+			return nil, IFCERFTReadAccessError{currentUsername, h.GetCanonicalName(), public}
 		}
 	}
 
@@ -899,7 +898,7 @@ func IFCERFTParseTlfHandle(
 		return nil, err
 	}
 
-	return nil, TlfNameNotCanonical{name, string(h.GetCanonicalName())}
+	return nil, IFCERFTTlfNameNotCanonical{name, string(h.GetCanonicalName())}
 }
 
 // CheckTlfHandleOffline does light checks whether a TLF handle looks ok,

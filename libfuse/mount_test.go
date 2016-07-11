@@ -2305,18 +2305,18 @@ func TestErrorFile(t *testing.T) {
 	}
 
 	// Make sure the root error file reads as expected
-	expectedErr := libkbfs.NoSuchUserError{Input: "janedoe"}
+	expectedErr := libkbfs.IFCERFTNoSuchUserError{Input: "janedoe"}
 
 	// test both the root error file and one in a directory
-	testForErrorText(t, path.Join(mnt.Dir, libkbfs.ErrorFile),
+	testForErrorText(t, path.Join(mnt.Dir, libkbfs.IFCERFTErrorFile),
 		expectedErr, "root")
-	testForErrorText(t, path.Join(mnt.Dir, PublicName, libkbfs.ErrorFile),
+	testForErrorText(t, path.Join(mnt.Dir, PublicName, libkbfs.IFCERFTErrorFile),
 		expectedErr, "root")
-	testForErrorText(t, path.Join(mnt.Dir, PrivateName, libkbfs.ErrorFile),
+	testForErrorText(t, path.Join(mnt.Dir, PrivateName, libkbfs.IFCERFTErrorFile),
 		expectedErr, "root")
-	testForErrorText(t, path.Join(mnt.Dir, PublicName, "jdoe", libkbfs.ErrorFile),
+	testForErrorText(t, path.Join(mnt.Dir, PublicName, "jdoe", libkbfs.IFCERFTErrorFile),
 		expectedErr, "dir")
-	testForErrorText(t, path.Join(mnt.Dir, PrivateName, "jdoe", libkbfs.ErrorFile),
+	testForErrorText(t, path.Join(mnt.Dir, PrivateName, "jdoe", libkbfs.IFCERFTErrorFile),
 		expectedErr, "dir")
 }
 

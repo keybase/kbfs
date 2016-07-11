@@ -1044,7 +1044,7 @@ func (_m *MockMDCache) EXPECT() *_MockMDCacheRecorder {
 	return _m.recorder
 }
 
-func (_m *MockMDCache) Get(tlf IFCERFTTlfID, rev MetadataRevision, bid BranchID) (*IFCERFTRootMetadata, error) {
+func (_m *MockMDCache) Get(tlf IFCERFTTlfID, rev IFCERFTMetadataRevision, bid IFCERFTBranchID) (*IFCERFTRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "Get", tlf, rev, bid)
 	ret0, _ := ret[0].(*IFCERFTRootMetadata)
 	ret1, _ := ret[1].(error)
@@ -1347,9 +1347,9 @@ func (_mr *_MockcryptoPureRecorder) MakeRandomTlfID(arg0 interface{}) *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomTlfID", arg0)
 }
 
-func (_m *MockcryptoPure) MakeRandomBranchID() (BranchID, error) {
+func (_m *MockcryptoPure) MakeRandomBranchID() (IFCERFTBranchID, error) {
 	ret := _m.ctrl.Call(_m, "MakeRandomBranchID")
-	ret0, _ := ret[0].(BranchID)
+	ret0, _ := ret[0].(IFCERFTBranchID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1358,9 +1358,9 @@ func (_mr *_MockcryptoPureRecorder) MakeRandomBranchID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomBranchID")
 }
 
-func (_m *MockcryptoPure) MakeMdID(md *IFCERFTRootMetadata) (MdID, error) {
+func (_m *MockcryptoPure) MakeMdID(md *IFCERFTRootMetadata) (IFCERFTMdID, error) {
 	ret := _m.ctrl.Call(_m, "MakeMdID", md)
-	ret0, _ := ret[0].(MdID)
+	ret0, _ := ret[0].(IFCERFTMdID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1369,7 +1369,7 @@ func (_mr *_MockcryptoPureRecorder) MakeMdID(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeMdID", arg0)
 }
 
-func (_m *MockcryptoPure) MakeMerkleHash(md *RootMetadataSigned) (MerkleHash, error) {
+func (_m *MockcryptoPure) MakeMerkleHash(md *IFCERFTRootMetadataSigned) (MerkleHash, error) {
 	ret := _m.ctrl.Call(_m, "MakeMerkleHash", md)
 	ret0, _ := ret[0].(MerkleHash)
 	ret1, _ := ret[1].(error)
@@ -1423,12 +1423,12 @@ func (_mr *_MockcryptoPureRecorder) MakeBlockRefNonce() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeBlockRefNonce")
 }
 
-func (_m *MockcryptoPure) MakeRandomTLFKeys() (TLFPublicKey, TLFPrivateKey, IFCERFTTLFEphemeralPublicKey, TLFEphemeralPrivateKey, IFCERFTTLFCryptKey, error) {
+func (_m *MockcryptoPure) MakeRandomTLFKeys() (IFCERFTTLFPublicKey, IFCERFTTLFPrivateKey, IFCERFTTLFEphemeralPublicKey, IFCERFTTLFEphemeralPrivateKey, IFCERFTTLFCryptKey, error) {
 	ret := _m.ctrl.Call(_m, "MakeRandomTLFKeys")
-	ret0, _ := ret[0].(TLFPublicKey)
-	ret1, _ := ret[1].(TLFPrivateKey)
+	ret0, _ := ret[0].(IFCERFTTLFPublicKey)
+	ret1, _ := ret[1].(IFCERFTTLFPrivateKey)
 	ret2, _ := ret[2].(IFCERFTTLFEphemeralPublicKey)
-	ret3, _ := ret[3].(TLFEphemeralPrivateKey)
+	ret3, _ := ret[3].(IFCERFTTLFEphemeralPrivateKey)
 	ret4, _ := ret[4].(IFCERFTTLFCryptKey)
 	ret5, _ := ret[5].(error)
 	return ret0, ret1, ret2, ret3, ret4, ret5
@@ -1438,9 +1438,9 @@ func (_mr *_MockcryptoPureRecorder) MakeRandomTLFKeys() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomTLFKeys")
 }
 
-func (_m *MockcryptoPure) MakeRandomTLFCryptKeyServerHalf() (TLFCryptKeyServerHalf, error) {
+func (_m *MockcryptoPure) MakeRandomTLFCryptKeyServerHalf() (IFCERFTTLFCryptKeyServerHalf, error) {
 	ret := _m.ctrl.Call(_m, "MakeRandomTLFCryptKeyServerHalf")
-	ret0, _ := ret[0].(TLFCryptKeyServerHalf)
+	ret0, _ := ret[0].(IFCERFTTLFCryptKeyServerHalf)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1460,9 +1460,9 @@ func (_mr *_MockcryptoPureRecorder) MakeRandomBlockCryptKeyServerHalf() *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomBlockCryptKeyServerHalf")
 }
 
-func (_m *MockcryptoPure) MaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, key IFCERFTTLFCryptKey) (TLFCryptKeyClientHalf, error) {
+func (_m *MockcryptoPure) MaskTLFCryptKey(serverHalf IFCERFTTLFCryptKeyServerHalf, key IFCERFTTLFCryptKey) (IFCERFTTLFCryptKeyClientHalf, error) {
 	ret := _m.ctrl.Call(_m, "MaskTLFCryptKey", serverHalf, key)
-	ret0, _ := ret[0].(TLFCryptKeyClientHalf)
+	ret0, _ := ret[0].(IFCERFTTLFCryptKeyClientHalf)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1471,7 +1471,7 @@ func (_mr *_MockcryptoPureRecorder) MaskTLFCryptKey(arg0, arg1 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaskTLFCryptKey", arg0, arg1)
 }
 
-func (_m *MockcryptoPure) UnmaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, clientHalf TLFCryptKeyClientHalf) (IFCERFTTLFCryptKey, error) {
+func (_m *MockcryptoPure) UnmaskTLFCryptKey(serverHalf IFCERFTTLFCryptKeyServerHalf, clientHalf IFCERFTTLFCryptKeyClientHalf) (IFCERFTTLFCryptKey, error) {
 	ret := _m.ctrl.Call(_m, "UnmaskTLFCryptKey", serverHalf, clientHalf)
 	ret0, _ := ret[0].(IFCERFTTLFCryptKey)
 	ret1, _ := ret[1].(error)
@@ -1482,9 +1482,9 @@ func (_mr *_MockcryptoPureRecorder) UnmaskTLFCryptKey(arg0, arg1 interface{}) *g
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "UnmaskTLFCryptKey", arg0, arg1)
 }
 
-func (_m *MockcryptoPure) UnmaskBlockCryptKey(serverHalf IFCERFTBlockCryptKeyServerHalf, tlfCryptKey IFCERFTTLFCryptKey) (BlockCryptKey, error) {
+func (_m *MockcryptoPure) UnmaskBlockCryptKey(serverHalf IFCERFTBlockCryptKeyServerHalf, tlfCryptKey IFCERFTTLFCryptKey) (IFCERFTBlockCryptKey, error) {
 	ret := _m.ctrl.Call(_m, "UnmaskBlockCryptKey", serverHalf, tlfCryptKey)
-	ret0, _ := ret[0].(BlockCryptKey)
+	ret0, _ := ret[0].(IFCERFTBlockCryptKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1503,7 +1503,7 @@ func (_mr *_MockcryptoPureRecorder) Verify(arg0, arg1 interface{}) *gomock.Call 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Verify", arg0, arg1)
 }
 
-func (_m *MockcryptoPure) EncryptTLFCryptKeyClientHalf(privateKey TLFEphemeralPrivateKey, publicKey IFCERFTCryptPublicKey, clientHalf TLFCryptKeyClientHalf) (IFCERFTEncryptedTLFCryptKeyClientHalf, error) {
+func (_m *MockcryptoPure) EncryptTLFCryptKeyClientHalf(privateKey IFCERFTTLFEphemeralPrivateKey, publicKey IFCERFTCryptPublicKey, clientHalf IFCERFTTLFCryptKeyClientHalf) (IFCERFTEncryptedTLFCryptKeyClientHalf, error) {
 	ret := _m.ctrl.Call(_m, "EncryptTLFCryptKeyClientHalf", privateKey, publicKey, clientHalf)
 	ret0, _ := ret[0].(IFCERFTEncryptedTLFCryptKeyClientHalf)
 	ret1, _ := ret[1].(error)
@@ -1514,7 +1514,7 @@ func (_mr *_MockcryptoPureRecorder) EncryptTLFCryptKeyClientHalf(arg0, arg1, arg
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptTLFCryptKeyClientHalf", arg0, arg1, arg2)
 }
 
-func (_m *MockcryptoPure) EncryptPrivateMetadata(pmd *PrivateMetadata, key IFCERFTTLFCryptKey) (IFCERFTEncryptedPrivateMetadata, error) {
+func (_m *MockcryptoPure) EncryptPrivateMetadata(pmd *IFCERFTPrivateMetadata, key IFCERFTTLFCryptKey) (IFCERFTEncryptedPrivateMetadata, error) {
 	ret := _m.ctrl.Call(_m, "EncryptPrivateMetadata", pmd, key)
 	ret0, _ := ret[0].(IFCERFTEncryptedPrivateMetadata)
 	ret1, _ := ret[1].(error)
@@ -1525,9 +1525,9 @@ func (_mr *_MockcryptoPureRecorder) EncryptPrivateMetadata(arg0, arg1 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptPrivateMetadata", arg0, arg1)
 }
 
-func (_m *MockcryptoPure) DecryptPrivateMetadata(encryptedPMD IFCERFTEncryptedPrivateMetadata, key IFCERFTTLFCryptKey) (*PrivateMetadata, error) {
+func (_m *MockcryptoPure) DecryptPrivateMetadata(encryptedPMD IFCERFTEncryptedPrivateMetadata, key IFCERFTTLFCryptKey) (*IFCERFTPrivateMetadata, error) {
 	ret := _m.ctrl.Call(_m, "DecryptPrivateMetadata", encryptedPMD, key)
-	ret0, _ := ret[0].(*PrivateMetadata)
+	ret0, _ := ret[0].(*IFCERFTPrivateMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1536,7 +1536,7 @@ func (_mr *_MockcryptoPureRecorder) DecryptPrivateMetadata(arg0, arg1 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptPrivateMetadata", arg0, arg1)
 }
 
-func (_m *MockcryptoPure) EncryptBlock(block IFCERFTBlock, key BlockCryptKey) (int, IFCERFTEncryptedBlock, error) {
+func (_m *MockcryptoPure) EncryptBlock(block IFCERFTBlock, key IFCERFTBlockCryptKey) (int, IFCERFTEncryptedBlock, error) {
 	ret := _m.ctrl.Call(_m, "EncryptBlock", block, key)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(IFCERFTEncryptedBlock)
@@ -1548,7 +1548,7 @@ func (_mr *_MockcryptoPureRecorder) EncryptBlock(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptBlock", arg0, arg1)
 }
 
-func (_m *MockcryptoPure) DecryptBlock(encryptedBlock IFCERFTEncryptedBlock, key BlockCryptKey, block IFCERFTBlock) error {
+func (_m *MockcryptoPure) DecryptBlock(encryptedBlock IFCERFTEncryptedBlock, key IFCERFTBlockCryptKey, block IFCERFTBlock) error {
 	ret := _m.ctrl.Call(_m, "DecryptBlock", encryptedBlock, key, block)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -1558,9 +1558,9 @@ func (_mr *_MockcryptoPureRecorder) DecryptBlock(arg0, arg1, arg2 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptBlock", arg0, arg1, arg2)
 }
 
-func (_m *MockcryptoPure) GetTLFCryptKeyServerHalfID(user protocol.UID, deviceKID protocol.KID, serverHalf TLFCryptKeyServerHalf) (TLFCryptKeyServerHalfID, error) {
+func (_m *MockcryptoPure) GetTLFCryptKeyServerHalfID(user protocol.UID, deviceKID protocol.KID, serverHalf IFCERFTTLFCryptKeyServerHalf) (IFCERFTTLFCryptKeyServerHalfID, error) {
 	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyServerHalfID", user, deviceKID, serverHalf)
-	ret0, _ := ret[0].(TLFCryptKeyServerHalfID)
+	ret0, _ := ret[0].(IFCERFTTLFCryptKeyServerHalfID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1569,7 +1569,7 @@ func (_mr *_MockcryptoPureRecorder) GetTLFCryptKeyServerHalfID(arg0, arg1, arg2 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalfID", arg0, arg1, arg2)
 }
 
-func (_m *MockcryptoPure) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user protocol.UID, deviceKID protocol.KID, serverHalf TLFCryptKeyServerHalf) error {
+func (_m *MockcryptoPure) VerifyTLFCryptKeyServerHalfID(serverHalfID IFCERFTTLFCryptKeyServerHalfID, user protocol.UID, deviceKID protocol.KID, serverHalf IFCERFTTLFCryptKeyServerHalf) error {
 	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, deviceKID, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -1579,7 +1579,7 @@ func (_mr *_MockcryptoPureRecorder) VerifyTLFCryptKeyServerHalfID(arg0, arg1, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "VerifyTLFCryptKeyServerHalfID", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockcryptoPure) EncryptMerkleLeaf(leaf MerkleLeaf, pubKey TLFPublicKey, nonce *[24]byte, ePrivKey TLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error) {
+func (_m *MockcryptoPure) EncryptMerkleLeaf(leaf MerkleLeaf, pubKey IFCERFTTLFPublicKey, nonce *[24]byte, ePrivKey IFCERFTTLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error) {
 	ret := _m.ctrl.Call(_m, "EncryptMerkleLeaf", leaf, pubKey, nonce, ePrivKey)
 	ret0, _ := ret[0].(IFCERFTEncryptedMerkleLeaf)
 	ret1, _ := ret[1].(error)
@@ -1590,7 +1590,7 @@ func (_mr *_MockcryptoPureRecorder) EncryptMerkleLeaf(arg0, arg1, arg2, arg3 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptMerkleLeaf", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockcryptoPure) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey TLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error) {
+func (_m *MockcryptoPure) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey IFCERFTTLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error) {
 	ret := _m.ctrl.Call(_m, "DecryptMerkleLeaf", encryptedLeaf, privKey, nonce, ePubKey)
 	ret0, _ := ret[0].(*MerkleLeaf)
 	ret1, _ := ret[1].(error)
@@ -1633,9 +1633,9 @@ func (_mr *_MockCryptoRecorder) MakeRandomTlfID(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomTlfID", arg0)
 }
 
-func (_m *MockCrypto) MakeRandomBranchID() (BranchID, error) {
+func (_m *MockCrypto) MakeRandomBranchID() (IFCERFTBranchID, error) {
 	ret := _m.ctrl.Call(_m, "MakeRandomBranchID")
-	ret0, _ := ret[0].(BranchID)
+	ret0, _ := ret[0].(IFCERFTBranchID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1644,9 +1644,9 @@ func (_mr *_MockCryptoRecorder) MakeRandomBranchID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomBranchID")
 }
 
-func (_m *MockCrypto) MakeMdID(md *IFCERFTRootMetadata) (MdID, error) {
+func (_m *MockCrypto) MakeMdID(md *IFCERFTRootMetadata) (IFCERFTMdID, error) {
 	ret := _m.ctrl.Call(_m, "MakeMdID", md)
-	ret0, _ := ret[0].(MdID)
+	ret0, _ := ret[0].(IFCERFTMdID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1655,7 +1655,7 @@ func (_mr *_MockCryptoRecorder) MakeMdID(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeMdID", arg0)
 }
 
-func (_m *MockCrypto) MakeMerkleHash(md *RootMetadataSigned) (MerkleHash, error) {
+func (_m *MockCrypto) MakeMerkleHash(md *IFCERFTRootMetadataSigned) (MerkleHash, error) {
 	ret := _m.ctrl.Call(_m, "MakeMerkleHash", md)
 	ret0, _ := ret[0].(MerkleHash)
 	ret1, _ := ret[1].(error)
@@ -1709,12 +1709,12 @@ func (_mr *_MockCryptoRecorder) MakeBlockRefNonce() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeBlockRefNonce")
 }
 
-func (_m *MockCrypto) MakeRandomTLFKeys() (TLFPublicKey, TLFPrivateKey, IFCERFTTLFEphemeralPublicKey, TLFEphemeralPrivateKey, IFCERFTTLFCryptKey, error) {
+func (_m *MockCrypto) MakeRandomTLFKeys() (IFCERFTTLFPublicKey, IFCERFTTLFPrivateKey, IFCERFTTLFEphemeralPublicKey, IFCERFTTLFEphemeralPrivateKey, IFCERFTTLFCryptKey, error) {
 	ret := _m.ctrl.Call(_m, "MakeRandomTLFKeys")
-	ret0, _ := ret[0].(TLFPublicKey)
-	ret1, _ := ret[1].(TLFPrivateKey)
+	ret0, _ := ret[0].(IFCERFTTLFPublicKey)
+	ret1, _ := ret[1].(IFCERFTTLFPrivateKey)
 	ret2, _ := ret[2].(IFCERFTTLFEphemeralPublicKey)
-	ret3, _ := ret[3].(TLFEphemeralPrivateKey)
+	ret3, _ := ret[3].(IFCERFTTLFEphemeralPrivateKey)
 	ret4, _ := ret[4].(IFCERFTTLFCryptKey)
 	ret5, _ := ret[5].(error)
 	return ret0, ret1, ret2, ret3, ret4, ret5
@@ -1724,9 +1724,9 @@ func (_mr *_MockCryptoRecorder) MakeRandomTLFKeys() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomTLFKeys")
 }
 
-func (_m *MockCrypto) MakeRandomTLFCryptKeyServerHalf() (TLFCryptKeyServerHalf, error) {
+func (_m *MockCrypto) MakeRandomTLFCryptKeyServerHalf() (IFCERFTTLFCryptKeyServerHalf, error) {
 	ret := _m.ctrl.Call(_m, "MakeRandomTLFCryptKeyServerHalf")
-	ret0, _ := ret[0].(TLFCryptKeyServerHalf)
+	ret0, _ := ret[0].(IFCERFTTLFCryptKeyServerHalf)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1746,9 +1746,9 @@ func (_mr *_MockCryptoRecorder) MakeRandomBlockCryptKeyServerHalf() *gomock.Call
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomBlockCryptKeyServerHalf")
 }
 
-func (_m *MockCrypto) MaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, key IFCERFTTLFCryptKey) (TLFCryptKeyClientHalf, error) {
+func (_m *MockCrypto) MaskTLFCryptKey(serverHalf IFCERFTTLFCryptKeyServerHalf, key IFCERFTTLFCryptKey) (IFCERFTTLFCryptKeyClientHalf, error) {
 	ret := _m.ctrl.Call(_m, "MaskTLFCryptKey", serverHalf, key)
-	ret0, _ := ret[0].(TLFCryptKeyClientHalf)
+	ret0, _ := ret[0].(IFCERFTTLFCryptKeyClientHalf)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1757,7 +1757,7 @@ func (_mr *_MockCryptoRecorder) MaskTLFCryptKey(arg0, arg1 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaskTLFCryptKey", arg0, arg1)
 }
 
-func (_m *MockCrypto) UnmaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, clientHalf TLFCryptKeyClientHalf) (IFCERFTTLFCryptKey, error) {
+func (_m *MockCrypto) UnmaskTLFCryptKey(serverHalf IFCERFTTLFCryptKeyServerHalf, clientHalf IFCERFTTLFCryptKeyClientHalf) (IFCERFTTLFCryptKey, error) {
 	ret := _m.ctrl.Call(_m, "UnmaskTLFCryptKey", serverHalf, clientHalf)
 	ret0, _ := ret[0].(IFCERFTTLFCryptKey)
 	ret1, _ := ret[1].(error)
@@ -1768,9 +1768,9 @@ func (_mr *_MockCryptoRecorder) UnmaskTLFCryptKey(arg0, arg1 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "UnmaskTLFCryptKey", arg0, arg1)
 }
 
-func (_m *MockCrypto) UnmaskBlockCryptKey(serverHalf IFCERFTBlockCryptKeyServerHalf, tlfCryptKey IFCERFTTLFCryptKey) (BlockCryptKey, error) {
+func (_m *MockCrypto) UnmaskBlockCryptKey(serverHalf IFCERFTBlockCryptKeyServerHalf, tlfCryptKey IFCERFTTLFCryptKey) (IFCERFTBlockCryptKey, error) {
 	ret := _m.ctrl.Call(_m, "UnmaskBlockCryptKey", serverHalf, tlfCryptKey)
-	ret0, _ := ret[0].(BlockCryptKey)
+	ret0, _ := ret[0].(IFCERFTBlockCryptKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1789,7 +1789,7 @@ func (_mr *_MockCryptoRecorder) Verify(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Verify", arg0, arg1)
 }
 
-func (_m *MockCrypto) EncryptTLFCryptKeyClientHalf(privateKey TLFEphemeralPrivateKey, publicKey IFCERFTCryptPublicKey, clientHalf TLFCryptKeyClientHalf) (IFCERFTEncryptedTLFCryptKeyClientHalf, error) {
+func (_m *MockCrypto) EncryptTLFCryptKeyClientHalf(privateKey IFCERFTTLFEphemeralPrivateKey, publicKey IFCERFTCryptPublicKey, clientHalf IFCERFTTLFCryptKeyClientHalf) (IFCERFTEncryptedTLFCryptKeyClientHalf, error) {
 	ret := _m.ctrl.Call(_m, "EncryptTLFCryptKeyClientHalf", privateKey, publicKey, clientHalf)
 	ret0, _ := ret[0].(IFCERFTEncryptedTLFCryptKeyClientHalf)
 	ret1, _ := ret[1].(error)
@@ -1800,7 +1800,7 @@ func (_mr *_MockCryptoRecorder) EncryptTLFCryptKeyClientHalf(arg0, arg1, arg2 in
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptTLFCryptKeyClientHalf", arg0, arg1, arg2)
 }
 
-func (_m *MockCrypto) EncryptPrivateMetadata(pmd *PrivateMetadata, key IFCERFTTLFCryptKey) (IFCERFTEncryptedPrivateMetadata, error) {
+func (_m *MockCrypto) EncryptPrivateMetadata(pmd *IFCERFTPrivateMetadata, key IFCERFTTLFCryptKey) (IFCERFTEncryptedPrivateMetadata, error) {
 	ret := _m.ctrl.Call(_m, "EncryptPrivateMetadata", pmd, key)
 	ret0, _ := ret[0].(IFCERFTEncryptedPrivateMetadata)
 	ret1, _ := ret[1].(error)
@@ -1811,9 +1811,9 @@ func (_mr *_MockCryptoRecorder) EncryptPrivateMetadata(arg0, arg1 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptPrivateMetadata", arg0, arg1)
 }
 
-func (_m *MockCrypto) DecryptPrivateMetadata(encryptedPMD IFCERFTEncryptedPrivateMetadata, key IFCERFTTLFCryptKey) (*PrivateMetadata, error) {
+func (_m *MockCrypto) DecryptPrivateMetadata(encryptedPMD IFCERFTEncryptedPrivateMetadata, key IFCERFTTLFCryptKey) (*IFCERFTPrivateMetadata, error) {
 	ret := _m.ctrl.Call(_m, "DecryptPrivateMetadata", encryptedPMD, key)
-	ret0, _ := ret[0].(*PrivateMetadata)
+	ret0, _ := ret[0].(*IFCERFTPrivateMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1822,7 +1822,7 @@ func (_mr *_MockCryptoRecorder) DecryptPrivateMetadata(arg0, arg1 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptPrivateMetadata", arg0, arg1)
 }
 
-func (_m *MockCrypto) EncryptBlock(block IFCERFTBlock, key BlockCryptKey) (int, IFCERFTEncryptedBlock, error) {
+func (_m *MockCrypto) EncryptBlock(block IFCERFTBlock, key IFCERFTBlockCryptKey) (int, IFCERFTEncryptedBlock, error) {
 	ret := _m.ctrl.Call(_m, "EncryptBlock", block, key)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(IFCERFTEncryptedBlock)
@@ -1834,7 +1834,7 @@ func (_mr *_MockCryptoRecorder) EncryptBlock(arg0, arg1 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptBlock", arg0, arg1)
 }
 
-func (_m *MockCrypto) DecryptBlock(encryptedBlock IFCERFTEncryptedBlock, key BlockCryptKey, block IFCERFTBlock) error {
+func (_m *MockCrypto) DecryptBlock(encryptedBlock IFCERFTEncryptedBlock, key IFCERFTBlockCryptKey, block IFCERFTBlock) error {
 	ret := _m.ctrl.Call(_m, "DecryptBlock", encryptedBlock, key, block)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -1844,9 +1844,9 @@ func (_mr *_MockCryptoRecorder) DecryptBlock(arg0, arg1, arg2 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptBlock", arg0, arg1, arg2)
 }
 
-func (_m *MockCrypto) GetTLFCryptKeyServerHalfID(user protocol.UID, deviceKID protocol.KID, serverHalf TLFCryptKeyServerHalf) (TLFCryptKeyServerHalfID, error) {
+func (_m *MockCrypto) GetTLFCryptKeyServerHalfID(user protocol.UID, deviceKID protocol.KID, serverHalf IFCERFTTLFCryptKeyServerHalf) (IFCERFTTLFCryptKeyServerHalfID, error) {
 	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyServerHalfID", user, deviceKID, serverHalf)
-	ret0, _ := ret[0].(TLFCryptKeyServerHalfID)
+	ret0, _ := ret[0].(IFCERFTTLFCryptKeyServerHalfID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1855,7 +1855,7 @@ func (_mr *_MockCryptoRecorder) GetTLFCryptKeyServerHalfID(arg0, arg1, arg2 inte
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalfID", arg0, arg1, arg2)
 }
 
-func (_m *MockCrypto) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user protocol.UID, deviceKID protocol.KID, serverHalf TLFCryptKeyServerHalf) error {
+func (_m *MockCrypto) VerifyTLFCryptKeyServerHalfID(serverHalfID IFCERFTTLFCryptKeyServerHalfID, user protocol.UID, deviceKID protocol.KID, serverHalf IFCERFTTLFCryptKeyServerHalf) error {
 	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, deviceKID, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -1865,7 +1865,7 @@ func (_mr *_MockCryptoRecorder) VerifyTLFCryptKeyServerHalfID(arg0, arg1, arg2, 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "VerifyTLFCryptKeyServerHalfID", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockCrypto) EncryptMerkleLeaf(leaf MerkleLeaf, pubKey TLFPublicKey, nonce *[24]byte, ePrivKey TLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error) {
+func (_m *MockCrypto) EncryptMerkleLeaf(leaf MerkleLeaf, pubKey IFCERFTTLFPublicKey, nonce *[24]byte, ePrivKey IFCERFTTLFEphemeralPrivateKey) (IFCERFTEncryptedMerkleLeaf, error) {
 	ret := _m.ctrl.Call(_m, "EncryptMerkleLeaf", leaf, pubKey, nonce, ePrivKey)
 	ret0, _ := ret[0].(IFCERFTEncryptedMerkleLeaf)
 	ret1, _ := ret[1].(error)
@@ -1876,7 +1876,7 @@ func (_mr *_MockCryptoRecorder) EncryptMerkleLeaf(arg0, arg1, arg2, arg3 interfa
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "EncryptMerkleLeaf", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockCrypto) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey TLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error) {
+func (_m *MockCrypto) DecryptMerkleLeaf(encryptedLeaf IFCERFTEncryptedMerkleLeaf, privKey IFCERFTTLFPrivateKey, nonce *[24]byte, ePubKey IFCERFTTLFEphemeralPublicKey) (*MerkleLeaf, error) {
 	ret := _m.ctrl.Call(_m, "DecryptMerkleLeaf", encryptedLeaf, privKey, nonce, ePubKey)
 	ret0, _ := ret[0].(*MerkleLeaf)
 	ret1, _ := ret[1].(error)
@@ -1909,9 +1909,9 @@ func (_mr *_MockCryptoRecorder) SignToString(arg0, arg1 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SignToString", arg0, arg1)
 }
 
-func (_m *MockCrypto) DecryptTLFCryptKeyClientHalf(ctx context.Context, publicKey IFCERFTTLFEphemeralPublicKey, encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf) (TLFCryptKeyClientHalf, error) {
+func (_m *MockCrypto) DecryptTLFCryptKeyClientHalf(ctx context.Context, publicKey IFCERFTTLFEphemeralPublicKey, encryptedClientHalf IFCERFTEncryptedTLFCryptKeyClientHalf) (IFCERFTTLFCryptKeyClientHalf, error) {
 	ret := _m.ctrl.Call(_m, "DecryptTLFCryptKeyClientHalf", ctx, publicKey, encryptedClientHalf)
-	ret0, _ := ret[0].(TLFCryptKeyClientHalf)
+	ret0, _ := ret[0].(IFCERFTTLFCryptKeyClientHalf)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1920,9 +1920,9 @@ func (_mr *_MockCryptoRecorder) DecryptTLFCryptKeyClientHalf(arg0, arg1, arg2 in
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptTLFCryptKeyClientHalf", arg0, arg1, arg2)
 }
 
-func (_m *MockCrypto) DecryptTLFCryptKeyClientHalfAny(ctx context.Context, keys []IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (TLFCryptKeyClientHalf, int, error) {
+func (_m *MockCrypto) DecryptTLFCryptKeyClientHalfAny(ctx context.Context, keys []IFCERFTEncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (IFCERFTTLFCryptKeyClientHalf, int, error) {
 	ret := _m.ctrl.Call(_m, "DecryptTLFCryptKeyClientHalfAny", ctx, keys, promptPaper)
-	ret0, _ := ret[0].(TLFCryptKeyClientHalf)
+	ret0, _ := ret[0].(IFCERFTTLFCryptKeyClientHalf)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -1982,7 +1982,7 @@ func (_mr *_MockCodecRecorder) Encode(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Encode", arg0)
 }
 
-func (_m *MockCodec) RegisterType(rt reflect.Type, code extCode) {
+func (_m *MockCodec) RegisterType(rt reflect.Type, code IFCERFTExtCode) {
 	_m.ctrl.Call(_m, "RegisterType", rt, code)
 }
 
@@ -1990,7 +1990,7 @@ func (_mr *_MockCodecRecorder) RegisterType(arg0, arg1 interface{}) *gomock.Call
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RegisterType", arg0, arg1)
 }
 
-func (_m *MockCodec) RegisterIfaceSliceType(rt reflect.Type, code extCode, typer func(interface{}) reflect.Value) {
+func (_m *MockCodec) RegisterIfaceSliceType(rt reflect.Type, code IFCERFTExtCode, typer func(interface{}) reflect.Value) {
 	_m.ctrl.Call(_m, "RegisterIfaceSliceType", rt, code, typer)
 }
 
@@ -2052,7 +2052,7 @@ func (_mr *_MockMDOpsRecorder) GetForTLF(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetForTLF", arg0, arg1)
 }
 
-func (_m *MockMDOps) GetUnmergedForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID) (*IFCERFTRootMetadata, error) {
+func (_m *MockMDOps) GetUnmergedForTLF(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID) (*IFCERFTRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "GetUnmergedForTLF", ctx, id, bid)
 	ret0, _ := ret[0].(*IFCERFTRootMetadata)
 	ret1, _ := ret[1].(error)
@@ -2063,7 +2063,7 @@ func (_mr *_MockMDOpsRecorder) GetUnmergedForTLF(arg0, arg1, arg2 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUnmergedForTLF", arg0, arg1, arg2)
 }
 
-func (_m *MockMDOps) GetRange(ctx context.Context, id IFCERFTTlfID, start MetadataRevision, stop MetadataRevision) ([]*IFCERFTRootMetadata, error) {
+func (_m *MockMDOps) GetRange(ctx context.Context, id IFCERFTTlfID, start IFCERFTMetadataRevision, stop IFCERFTMetadataRevision) ([]*IFCERFTRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "GetRange", ctx, id, start, stop)
 	ret0, _ := ret[0].([]*IFCERFTRootMetadata)
 	ret1, _ := ret[1].(error)
@@ -2074,7 +2074,7 @@ func (_mr *_MockMDOpsRecorder) GetRange(arg0, arg1, arg2, arg3 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetRange", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockMDOps) GetUnmergedRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, start MetadataRevision, stop MetadataRevision) ([]*IFCERFTRootMetadata, error) {
+func (_m *MockMDOps) GetUnmergedRange(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, start IFCERFTMetadataRevision, stop IFCERFTMetadataRevision) ([]*IFCERFTRootMetadata, error) {
 	ret := _m.ctrl.Call(_m, "GetUnmergedRange", ctx, id, bid, start, stop)
 	ret0, _ := ret[0].([]*IFCERFTRootMetadata)
 	ret1, _ := ret[1].(error)
@@ -2095,7 +2095,7 @@ func (_mr *_MockMDOpsRecorder) Put(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1)
 }
 
-func (_m *MockMDOps) PutUnmerged(ctx context.Context, rmd *IFCERFTRootMetadata, bid BranchID) error {
+func (_m *MockMDOps) PutUnmerged(ctx context.Context, rmd *IFCERFTRootMetadata, bid IFCERFTBranchID) error {
 	ret := _m.ctrl.Call(_m, "PutUnmerged", ctx, rmd, bid)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2105,9 +2105,9 @@ func (_mr *_MockMDOpsRecorder) PutUnmerged(arg0, arg1, arg2 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PutUnmerged", arg0, arg1, arg2)
 }
 
-func (_m *MockMDOps) GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (BareTlfHandle, error) {
+func (_m *MockMDOps) GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (IFCERFTBareTlfHandle, error) {
 	ret := _m.ctrl.Call(_m, "GetLatestHandleForTLF", ctx, id)
-	ret0, _ := ret[0].(BareTlfHandle)
+	ret0, _ := ret[0].(IFCERFTBareTlfHandle)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2137,9 +2137,9 @@ func (_m *MockKeyOps) EXPECT() *_MockKeyOpsRecorder {
 	return _m.recorder
 }
 
-func (_m *MockKeyOps) GetTLFCryptKeyServerHalf(ctx context.Context, serverHalfID TLFCryptKeyServerHalfID, cryptPublicKey IFCERFTCryptPublicKey) (TLFCryptKeyServerHalf, error) {
+func (_m *MockKeyOps) GetTLFCryptKeyServerHalf(ctx context.Context, serverHalfID IFCERFTTLFCryptKeyServerHalfID, cryptPublicKey IFCERFTCryptPublicKey) (IFCERFTTLFCryptKeyServerHalf, error) {
 	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyServerHalf", ctx, serverHalfID, cryptPublicKey)
-	ret0, _ := ret[0].(TLFCryptKeyServerHalf)
+	ret0, _ := ret[0].(IFCERFTTLFCryptKeyServerHalf)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2148,7 +2148,7 @@ func (_mr *_MockKeyOpsRecorder) GetTLFCryptKeyServerHalf(arg0, arg1, arg2 interf
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalf", arg0, arg1, arg2)
 }
 
-func (_m *MockKeyOps) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves map[protocol.UID]map[protocol.KID]TLFCryptKeyServerHalf) error {
+func (_m *MockKeyOps) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves map[protocol.UID]map[protocol.KID]IFCERFTTLFCryptKeyServerHalf) error {
 	ret := _m.ctrl.Call(_m, "PutTLFCryptKeyServerHalves", ctx, serverKeyHalves)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2158,7 +2158,7 @@ func (_mr *_MockKeyOpsRecorder) PutTLFCryptKeyServerHalves(arg0, arg1 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PutTLFCryptKeyServerHalves", arg0, arg1)
 }
 
-func (_m *MockKeyOps) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid protocol.UID, kid protocol.KID, serverHalfID TLFCryptKeyServerHalfID) error {
+func (_m *MockKeyOps) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid protocol.UID, kid protocol.KID, serverHalfID IFCERFTTLFCryptKeyServerHalfID) error {
 	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, kid, serverHalfID)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2272,10 +2272,10 @@ func (_mr *_MockMDServerRecorder) RefreshAuthToken(arg0 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RefreshAuthToken", arg0)
 }
 
-func (_m *MockMDServer) GetForHandle(ctx context.Context, handle BareTlfHandle, mStatus IFCERFTMergeStatus) (IFCERFTTlfID, *RootMetadataSigned, error) {
+func (_m *MockMDServer) GetForHandle(ctx context.Context, handle IFCERFTBareTlfHandle, mStatus IFCERFTMergeStatus) (IFCERFTTlfID, *IFCERFTRootMetadataSigned, error) {
 	ret := _m.ctrl.Call(_m, "GetForHandle", ctx, handle, mStatus)
 	ret0, _ := ret[0].(IFCERFTTlfID)
-	ret1, _ := ret[1].(*RootMetadataSigned)
+	ret1, _ := ret[1].(*IFCERFTRootMetadataSigned)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -2284,9 +2284,9 @@ func (_mr *_MockMDServerRecorder) GetForHandle(arg0, arg1, arg2 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetForHandle", arg0, arg1, arg2)
 }
 
-func (_m *MockMDServer) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (*RootMetadataSigned, error) {
+func (_m *MockMDServer) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus) (*IFCERFTRootMetadataSigned, error) {
 	ret := _m.ctrl.Call(_m, "GetForTLF", ctx, id, bid, mStatus)
-	ret0, _ := ret[0].(*RootMetadataSigned)
+	ret0, _ := ret[0].(*IFCERFTRootMetadataSigned)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2295,9 +2295,9 @@ func (_mr *_MockMDServerRecorder) GetForTLF(arg0, arg1, arg2, arg3 interface{}) 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetForTLF", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockMDServer) GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus, start MetadataRevision, stop MetadataRevision) ([]*RootMetadataSigned, error) {
+func (_m *MockMDServer) GetRange(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus, start IFCERFTMetadataRevision, stop IFCERFTMetadataRevision) ([]*IFCERFTRootMetadataSigned, error) {
 	ret := _m.ctrl.Call(_m, "GetRange", ctx, id, bid, mStatus, start, stop)
-	ret0, _ := ret[0].([]*RootMetadataSigned)
+	ret0, _ := ret[0].([]*IFCERFTRootMetadataSigned)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2306,7 +2306,7 @@ func (_mr *_MockMDServerRecorder) GetRange(arg0, arg1, arg2, arg3, arg4, arg5 in
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetRange", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockMDServer) Put(ctx context.Context, rmds *RootMetadataSigned) error {
+func (_m *MockMDServer) Put(ctx context.Context, rmds *IFCERFTRootMetadataSigned) error {
 	ret := _m.ctrl.Call(_m, "Put", ctx, rmds)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2316,7 +2316,7 @@ func (_mr *_MockMDServerRecorder) Put(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1)
 }
 
-func (_m *MockMDServer) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid BranchID) error {
+func (_m *MockMDServer) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID) error {
 	ret := _m.ctrl.Call(_m, "PruneBranch", ctx, id, bid)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2326,7 +2326,7 @@ func (_mr *_MockMDServerRecorder) PruneBranch(arg0, arg1, arg2 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PruneBranch", arg0, arg1, arg2)
 }
 
-func (_m *MockMDServer) RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead MetadataRevision) (<-chan error, error) {
+func (_m *MockMDServer) RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead IFCERFTMetadataRevision) (<-chan error, error) {
 	ret := _m.ctrl.Call(_m, "RegisterForUpdate", ctx, id, currHead)
 	ret0, _ := ret[0].(<-chan error)
 	ret1, _ := ret[1].(error)
@@ -2395,9 +2395,9 @@ func (_mr *_MockMDServerRecorder) IsConnected() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsConnected")
 }
 
-func (_m *MockMDServer) GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (BareTlfHandle, error) {
+func (_m *MockMDServer) GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (IFCERFTBareTlfHandle, error) {
 	ret := _m.ctrl.Call(_m, "GetLatestHandleForTLF", ctx, id)
-	ret0, _ := ret[0].(BareTlfHandle)
+	ret0, _ := ret[0].(IFCERFTBareTlfHandle)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2435,10 +2435,10 @@ func (_mr *_MockmdServerLocalRecorder) RefreshAuthToken(arg0 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RefreshAuthToken", arg0)
 }
 
-func (_m *MockmdServerLocal) GetForHandle(ctx context.Context, handle BareTlfHandle, mStatus IFCERFTMergeStatus) (IFCERFTTlfID, *RootMetadataSigned, error) {
+func (_m *MockmdServerLocal) GetForHandle(ctx context.Context, handle IFCERFTBareTlfHandle, mStatus IFCERFTMergeStatus) (IFCERFTTlfID, *IFCERFTRootMetadataSigned, error) {
 	ret := _m.ctrl.Call(_m, "GetForHandle", ctx, handle, mStatus)
 	ret0, _ := ret[0].(IFCERFTTlfID)
-	ret1, _ := ret[1].(*RootMetadataSigned)
+	ret1, _ := ret[1].(*IFCERFTRootMetadataSigned)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -2447,9 +2447,9 @@ func (_mr *_MockmdServerLocalRecorder) GetForHandle(arg0, arg1, arg2 interface{}
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetForHandle", arg0, arg1, arg2)
 }
 
-func (_m *MockmdServerLocal) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus) (*RootMetadataSigned, error) {
+func (_m *MockmdServerLocal) GetForTLF(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus) (*IFCERFTRootMetadataSigned, error) {
 	ret := _m.ctrl.Call(_m, "GetForTLF", ctx, id, bid, mStatus)
-	ret0, _ := ret[0].(*RootMetadataSigned)
+	ret0, _ := ret[0].(*IFCERFTRootMetadataSigned)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2458,9 +2458,9 @@ func (_mr *_MockmdServerLocalRecorder) GetForTLF(arg0, arg1, arg2, arg3 interfac
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetForTLF", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockmdServerLocal) GetRange(ctx context.Context, id IFCERFTTlfID, bid BranchID, mStatus IFCERFTMergeStatus, start MetadataRevision, stop MetadataRevision) ([]*RootMetadataSigned, error) {
+func (_m *MockmdServerLocal) GetRange(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID, mStatus IFCERFTMergeStatus, start IFCERFTMetadataRevision, stop IFCERFTMetadataRevision) ([]*IFCERFTRootMetadataSigned, error) {
 	ret := _m.ctrl.Call(_m, "GetRange", ctx, id, bid, mStatus, start, stop)
-	ret0, _ := ret[0].([]*RootMetadataSigned)
+	ret0, _ := ret[0].([]*IFCERFTRootMetadataSigned)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2469,7 +2469,7 @@ func (_mr *_MockmdServerLocalRecorder) GetRange(arg0, arg1, arg2, arg3, arg4, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetRange", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockmdServerLocal) Put(ctx context.Context, rmds *RootMetadataSigned) error {
+func (_m *MockmdServerLocal) Put(ctx context.Context, rmds *IFCERFTRootMetadataSigned) error {
 	ret := _m.ctrl.Call(_m, "Put", ctx, rmds)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2479,7 +2479,7 @@ func (_mr *_MockmdServerLocalRecorder) Put(arg0, arg1 interface{}) *gomock.Call 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1)
 }
 
-func (_m *MockmdServerLocal) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid BranchID) error {
+func (_m *MockmdServerLocal) PruneBranch(ctx context.Context, id IFCERFTTlfID, bid IFCERFTBranchID) error {
 	ret := _m.ctrl.Call(_m, "PruneBranch", ctx, id, bid)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2489,7 +2489,7 @@ func (_mr *_MockmdServerLocalRecorder) PruneBranch(arg0, arg1, arg2 interface{})
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PruneBranch", arg0, arg1, arg2)
 }
 
-func (_m *MockmdServerLocal) RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead MetadataRevision) (<-chan error, error) {
+func (_m *MockmdServerLocal) RegisterForUpdate(ctx context.Context, id IFCERFTTlfID, currHead IFCERFTMetadataRevision) (<-chan error, error) {
 	ret := _m.ctrl.Call(_m, "RegisterForUpdate", ctx, id, currHead)
 	ret0, _ := ret[0].(<-chan error)
 	ret1, _ := ret[1].(error)
@@ -2558,9 +2558,9 @@ func (_mr *_MockmdServerLocalRecorder) IsConnected() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsConnected")
 }
 
-func (_m *MockmdServerLocal) GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (BareTlfHandle, error) {
+func (_m *MockmdServerLocal) GetLatestHandleForTLF(ctx context.Context, id IFCERFTTlfID) (IFCERFTBareTlfHandle, error) {
 	ret := _m.ctrl.Call(_m, "GetLatestHandleForTLF", ctx, id)
-	ret0, _ := ret[0].(BareTlfHandle)
+	ret0, _ := ret[0].(IFCERFTBareTlfHandle)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2579,9 +2579,9 @@ func (_mr *_MockmdServerLocalRecorder) addNewAssertionForTest(arg0, arg1 interfa
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "addNewAssertionForTest", arg0, arg1)
 }
 
-func (_m *MockmdServerLocal) getCurrentMergedHeadRevision(ctx context.Context, id IFCERFTTlfID) (MetadataRevision, error) {
+func (_m *MockmdServerLocal) getCurrentMergedHeadRevision(ctx context.Context, id IFCERFTTlfID) (IFCERFTMetadataRevision, error) {
 	ret := _m.ctrl.Call(_m, "getCurrentMergedHeadRevision", ctx, id)
-	ret0, _ := ret[0].(MetadataRevision)
+	ret0, _ := ret[0].(IFCERFTMetadataRevision)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2864,7 +2864,7 @@ func (_mr *_MockBlockSplitterRecorder) CheckSplit(arg0 interface{}) *gomock.Call
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckSplit", arg0)
 }
 
-func (_m *MockBlockSplitter) ShouldEmbedBlockChanges(bc *IFCERFTBlockChanges) bool {
+func (_m *MockBlockSplitter) ShouldEmbedBlockChanges(bc *AddBPSize) bool {
 	ret := _m.ctrl.Call(_m, "ShouldEmbedBlockChanges", bc)
 	ret0, _ := ret[0].(bool)
 	return ret0
@@ -2895,9 +2895,9 @@ func (_m *MockKeyServer) EXPECT() *_MockKeyServerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockKeyServer) GetTLFCryptKeyServerHalf(ctx context.Context, serverHalfID TLFCryptKeyServerHalfID, cryptPublicKey IFCERFTCryptPublicKey) (TLFCryptKeyServerHalf, error) {
+func (_m *MockKeyServer) GetTLFCryptKeyServerHalf(ctx context.Context, serverHalfID IFCERFTTLFCryptKeyServerHalfID, cryptPublicKey IFCERFTCryptPublicKey) (IFCERFTTLFCryptKeyServerHalf, error) {
 	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyServerHalf", ctx, serverHalfID, cryptPublicKey)
-	ret0, _ := ret[0].(TLFCryptKeyServerHalf)
+	ret0, _ := ret[0].(IFCERFTTLFCryptKeyServerHalf)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2906,7 +2906,7 @@ func (_mr *_MockKeyServerRecorder) GetTLFCryptKeyServerHalf(arg0, arg1, arg2 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalf", arg0, arg1, arg2)
 }
 
-func (_m *MockKeyServer) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves map[protocol.UID]map[protocol.KID]TLFCryptKeyServerHalf) error {
+func (_m *MockKeyServer) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves map[protocol.UID]map[protocol.KID]IFCERFTTLFCryptKeyServerHalf) error {
 	ret := _m.ctrl.Call(_m, "PutTLFCryptKeyServerHalves", ctx, serverKeyHalves)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2916,7 +2916,7 @@ func (_mr *_MockKeyServerRecorder) PutTLFCryptKeyServerHalves(arg0, arg1 interfa
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PutTLFCryptKeyServerHalves", arg0, arg1)
 }
 
-func (_m *MockKeyServer) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid protocol.UID, kid protocol.KID, serverHalfID TLFCryptKeyServerHalfID) error {
+func (_m *MockKeyServer) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid protocol.UID, kid protocol.KID, serverHalfID IFCERFTTLFCryptKeyServerHalfID) error {
 	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, kid, serverHalfID)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3072,7 +3072,7 @@ func (_m *MockConflictRenamer) EXPECT() *_MockConflictRenamerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockConflictRenamer) ConflictRename(op op, original string) string {
+func (_m *MockConflictRenamer) ConflictRename(op IFCERFTOps, original string) string {
 	ret := _m.ctrl.Call(_m, "ConflictRename", op, original)
 	ret0, _ := ret[0].(string)
 	return ret0
@@ -3713,7 +3713,7 @@ func (_mr *_MockNodeCacheRecorder) GetOrCreate(arg0, arg1, arg2 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetOrCreate", arg0, arg1, arg2)
 }
 
-func (_m *MockNodeCache) Get(ref blockRef) IFCERFTNode {
+func (_m *MockNodeCache) Get(ref IFCERFTBlockRef) IFCERFTNode {
 	ret := _m.ctrl.Call(_m, "Get", ref)
 	ret0, _ := ret[0].(IFCERFTNode)
 	return ret0
@@ -3723,7 +3723,7 @@ func (_mr *_MockNodeCacheRecorder) Get(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0)
 }
 
-func (_m *MockNodeCache) UpdatePointer(oldRef blockRef, newPtr IFCERFTBlockPointer) {
+func (_m *MockNodeCache) UpdatePointer(oldRef IFCERFTBlockRef, newPtr IFCERFTBlockPointer) {
 	_m.ctrl.Call(_m, "UpdatePointer", oldRef, newPtr)
 }
 
@@ -3731,7 +3731,7 @@ func (_mr *_MockNodeCacheRecorder) UpdatePointer(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdatePointer", arg0, arg1)
 }
 
-func (_m *MockNodeCache) Move(ref blockRef, newParent IFCERFTNode, newName string) error {
+func (_m *MockNodeCache) Move(ref IFCERFTBlockRef, newParent IFCERFTNode, newName string) error {
 	ret := _m.ctrl.Call(_m, "Move", ref, newParent, newName)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3741,7 +3741,7 @@ func (_mr *_MockNodeCacheRecorder) Move(arg0, arg1, arg2 interface{}) *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Move", arg0, arg1, arg2)
 }
 
-func (_m *MockNodeCache) Unlink(ref blockRef, oldPath path) {
+func (_m *MockNodeCache) Unlink(ref IFCERFTBlockRef, oldPath IFCERFTPath) {
 	_m.ctrl.Call(_m, "Unlink", ref, oldPath)
 }
 
@@ -3749,9 +3749,9 @@ func (_mr *_MockNodeCacheRecorder) Unlink(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Unlink", arg0, arg1)
 }
 
-func (_m *MockNodeCache) PathFromNode(node IFCERFTNode) path {
+func (_m *MockNodeCache) PathFromNode(node IFCERFTNode) IFCERFTPath {
 	ret := _m.ctrl.Call(_m, "PathFromNode", node)
-	ret0, _ := ret[0].(path)
+	ret0, _ := ret[0].(IFCERFTPath)
 	return ret0
 }
 

@@ -19,7 +19,7 @@ type nodeCacheEntry struct {
 // fields to construct paths.
 type nodeCacheStandard struct {
 	folderBranch IFCERFTFolderBranch
-	nodes        map[blockRef]*nodeCacheEntry
+	nodes        map[IFCERFTBlockRef]*nodeCacheEntry
 	lock         sync.RWMutex
 }
 
@@ -28,7 +28,7 @@ var _ IFCERFTNodeCache = (*nodeCacheStandard)(nil)
 func newNodeCacheStandard(fb IFCERFTFolderBranch) *nodeCacheStandard {
 	return &nodeCacheStandard{
 		folderBranch: fb,
-		nodes:        make(map[blockRef]*nodeCacheEntry),
+		nodes:        make(map[IFCERFTBlockRef]*nodeCacheEntry),
 	}
 }
 
@@ -61,16 +61,16 @@ func (ncs *nodeCacheStandard) forget(core *nodeCore) {
 func (ncs *nodeCacheStandard) newChildForParentLocked(parent IFCERFTNode) (*nodeStandard, error) {
 	nodeStandard, ok := parent.(*nodeStandard)
 	if !ok {
-		return nil, ParentNodeNotFoundError{blockRef{}}
+		return nil, IFCERFTParentNodeNotFoundError{IFCERFTBlockRef{}}
 	}
 
 	ref := nodeStandard.core.pathNode.ref()
 	entry, ok := ncs.nodes[ref]
 	if !ok {
-		return nil, ParentNodeNotFoundError{ref}
+		return nil, IFCERFTParentNodeNotFoundError{ref}
 	}
 	if nodeStandard.core != entry.core {
-		return nil, ParentNodeNotFoundError{ref}
+		return nil, IFCERFTParentNodeNotFoundError{ref}
 	}
 	return nodeStandard, nil
 }
@@ -86,11 +86,11 @@ func (ncs *nodeCacheStandard) GetOrCreate(
 	if !ptr.IsValid() {
 		// Temporary code to track down bad block
 		// pointers. Remove when not needed anymore.
-		panic(InvalidBlockRefError{ptr.ref()})
+		panic(IFCERFTInvalidBlockRefError{ptr.ref()})
 	}
 
 	if name == "" {
-		return nil, EmptyNameError{ptr.ref()}
+		return nil, IFCERFTEmptyNameError{ptr.ref()}
 	}
 
 	ncs.lock.Lock()
@@ -126,15 +126,15 @@ func (ncs *nodeCacheStandard) GetOrCreate(
 }
 
 // Get implements the NodeCache interface for nodeCacheStandard.
-func (ncs *nodeCacheStandard) Get(ref blockRef) IFCERFTNode {
-	if ref == (blockRef{}) {
+func (ncs *nodeCacheStandard) Get(ref IFCERFTBlockRef) IFCERFTNode {
+	if ref == (IFCERFTBlockRef{}) {
 		return nil
 	}
 
 	// Temporary code to track down bad block pointers. Remove (or
 	// return an error) when not needed anymore.
 	if !ref.IsValid() {
-		panic(InvalidBlockRefError{ref})
+		panic(IFCERFTInvalidBlockRefError{ref})
 	}
 
 	ncs.lock.Lock()
@@ -148,8 +148,8 @@ func (ncs *nodeCacheStandard) Get(ref blockRef) IFCERFTNode {
 
 // UpdatePointer implements the NodeCache interface for nodeCacheStandard.
 func (ncs *nodeCacheStandard) UpdatePointer(
-	oldRef blockRef, newPtr IFCERFTBlockPointer) {
-	if oldRef == (blockRef{}) && newPtr == (IFCERFTBlockPointer{}) {
+	oldRef IFCERFTBlockRef, newPtr IFCERFTBlockPointer) {
+	if oldRef == (IFCERFTBlockRef{}) && newPtr == (IFCERFTBlockPointer{}) {
 		return
 	}
 
@@ -180,19 +180,19 @@ func (ncs *nodeCacheStandard) UpdatePointer(
 
 // Move implements the NodeCache interface for nodeCacheStandard.
 func (ncs *nodeCacheStandard) Move(
-	ref blockRef, newParent IFCERFTNode, newName string) error {
-	if ref == (blockRef{}) {
+	ref IFCERFTBlockRef, newParent IFCERFTNode, newName string) error {
+	if ref == (IFCERFTBlockRef{}) {
 		return nil
 	}
 
 	// Temporary code to track down bad block pointers. Remove (or
 	// return an error) when not needed anymore.
 	if !ref.IsValid() {
-		panic(InvalidBlockRefError{ref})
+		panic(IFCERFTInvalidBlockRefError{ref})
 	}
 
 	if newName == "" {
-		return EmptyNameError{ref}
+		return IFCERFTEmptyNameError{ref}
 	}
 
 	ncs.lock.Lock()
@@ -213,15 +213,15 @@ func (ncs *nodeCacheStandard) Move(
 }
 
 // Unlink implements the NodeCache interface for nodeCacheStandard.
-func (ncs *nodeCacheStandard) Unlink(ref blockRef, oldPath path) {
-	if ref == (blockRef{}) {
+func (ncs *nodeCacheStandard) Unlink(ref IFCERFTBlockRef, oldPath IFCERFTPath) {
+	if ref == (IFCERFTBlockRef{}) {
 		return
 	}
 
 	// Temporary code to track down bad block pointers. Remove (or
 	// return an error) when not needed anymore.
 	if !ref.IsValid() {
-		panic(InvalidBlockRefError{ref})
+		panic(IFCERFTInvalidBlockRefError{ref})
 	}
 
 	ncs.lock.Lock()
@@ -238,7 +238,7 @@ func (ncs *nodeCacheStandard) Unlink(ref blockRef, oldPath path) {
 }
 
 // PathFromNode implements the NodeCache interface for nodeCacheStandard.
-func (ncs *nodeCacheStandard) PathFromNode(node IFCERFTNode) (p path) {
+func (ncs *nodeCacheStandard) PathFromNode(node IFCERFTNode) (p IFCERFTPath) {
 	ncs.lock.RLock()
 	defer ncs.lock.RUnlock()
 

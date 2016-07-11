@@ -115,7 +115,7 @@ outer:
 		switch err := err.(type) {
 		case nil:
 			break outer
-		case libkbfs.TlfNameNotCanonical:
+		case libkbfs.IFCERFTTlfNameNotCanonical:
 			tlfName = err.NameToTry
 		default:
 			return nil, err

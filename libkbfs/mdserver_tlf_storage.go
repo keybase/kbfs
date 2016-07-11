@@ -58,7 +58,7 @@ type mdServerTlfStorage struct {
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
 	lock           sync.RWMutex
-	branchJournals map[BranchID]mdServerBranchJournal
+	branchJournals map[IFCERFTBranchID]mdServerBranchJournal
 }
 
 func makeMDServerTlfStorage(
@@ -67,7 +67,7 @@ func makeMDServerTlfStorage(
 		codec:          codec,
 		crypto:         crypto,
 		dir:            dir,
-		branchJournals: make(map[BranchID]mdServerBranchJournal),
+		branchJournals: make(map[IFCERFTBranchID]mdServerBranchJournal),
 	}
 	return journal
 }
@@ -82,7 +82,7 @@ func (s *mdServerTlfStorage) mdsPath() string {
 	return filepath.Join(s.dir, "mds")
 }
 
-func (s *mdServerTlfStorage) mdPath(id MdID) string {
+func (s *mdServerTlfStorage) mdPath(id IFCERFTMdID) string {
 	idStr := id.String()
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
 }
@@ -91,8 +91,8 @@ func (s *mdServerTlfStorage) mdPath(id MdID) string {
 // given ID and returns it.
 //
 // TODO: Verify signature?
-func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
-	*RootMetadataSigned, error) {
+func (s *mdServerTlfStorage) getMDReadLocked(id IFCERFTMdID) (
+	*IFCERFTRootMetadataSigned, error) {
 	// Read file.
 
 	path := s.mdPath(id)
@@ -101,7 +101,7 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 		return nil, err
 	}
 
-	var rmds RootMetadataSigned
+	var rmds IFCERFTRootMetadataSigned
 	err = s.codec.Decode(data, &rmds)
 	if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 	return &rmds, nil
 }
 
-func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
+func (s *mdServerTlfStorage) putMDLocked(rmds *IFCERFTRootMetadataSigned) error {
 	id, err := rmds.MD.MetadataID(s.crypto)
 	if err != nil {
 		return err
@@ -161,7 +161,7 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) error {
 }
 
 func (s *mdServerTlfStorage) getOrCreateBranchJournalLocked(
-	bid BranchID) (mdServerBranchJournal, error) {
+	bid IFCERFTBranchID) (mdServerBranchJournal, error) {
 	j, ok := s.branchJournals[bid]
 	if ok {
 		return j, nil
@@ -178,8 +178,8 @@ func (s *mdServerTlfStorage) getOrCreateBranchJournalLocked(
 	return j, nil
 }
 
-func (s *mdServerTlfStorage) getHeadForTLFReadLocked(bid BranchID) (
-	rmds *RootMetadataSigned, err error) {
+func (s *mdServerTlfStorage) getHeadForTLFReadLocked(bid IFCERFTBranchID) (
+	rmds *IFCERFTRootMetadataSigned, err error) {
 	j, ok := s.branchJournals[bid]
 	if !ok {
 		return nil, nil
@@ -188,15 +188,15 @@ func (s *mdServerTlfStorage) getHeadForTLFReadLocked(bid BranchID) (
 	if err != nil {
 		return nil, err
 	}
-	if headID == (MdID{}) {
+	if headID == (IFCERFTMdID{}) {
 		return nil, nil
 	}
 	return s.getMDReadLocked(headID)
 }
 
 func (s *mdServerTlfStorage) checkGetParamsReadLocked(
-	currentUID keybase1.UID, deviceKID keybase1.KID, bid BranchID) error {
-	mergedMasterHead, err := s.getHeadForTLFReadLocked(NullBranchID)
+	currentUID keybase1.UID, deviceKID keybase1.KID, bid IFCERFTBranchID) error {
+	mergedMasterHead, err := s.getHeadForTLFReadLocked(IFCERFTNullBranchID)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -214,8 +214,8 @@ func (s *mdServerTlfStorage) checkGetParamsReadLocked(
 
 func (s *mdServerTlfStorage) getRangeReadLocked(
 	currentUID keybase1.UID, deviceKID keybase1.KID,
-	bid BranchID, start, stop MetadataRevision) (
-	[]*RootMetadataSigned, error) {
+	bid IFCERFTBranchID, start, stop IFCERFTMetadataRevision) (
+	[]*IFCERFTRootMetadataSigned, error) {
 	err := s.checkGetParamsReadLocked(currentUID, deviceKID, bid)
 	if err != nil {
 		return nil, err
@@ -230,9 +230,9 @@ func (s *mdServerTlfStorage) getRangeReadLocked(
 	if err != nil {
 		return nil, err
 	}
-	var rmdses []*RootMetadataSigned
+	var rmdses []*IFCERFTRootMetadataSigned
 	for i, mdID := range mdIDs {
-		expectedRevision := realStart + MetadataRevision(i)
+		expectedRevision := realStart + IFCERFTMetadataRevision(i)
 		rmds, err := s.getMDReadLocked(mdID)
 		if err != nil {
 			return nil, MDServerError{err}
@@ -255,7 +255,7 @@ func (s *mdServerTlfStorage) isShutdownReadLocked() bool {
 
 var errMDServerTlfStorageShutdown = errors.New("mdServerTlfStorage is shutdown")
 
-func (s *mdServerTlfStorage) journalLength(bid BranchID) (uint64, error) {
+func (s *mdServerTlfStorage) journalLength(bid IFCERFTBranchID) (uint64, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -273,7 +273,7 @@ func (s *mdServerTlfStorage) journalLength(bid BranchID) (uint64, error) {
 
 func (s *mdServerTlfStorage) getForTLF(
 	currentUID keybase1.UID, deviceKID keybase1.KID,
-	bid BranchID) (*RootMetadataSigned, error) {
+	bid IFCERFTBranchID) (*IFCERFTRootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -295,8 +295,8 @@ func (s *mdServerTlfStorage) getForTLF(
 
 func (s *mdServerTlfStorage) getRange(
 	currentUID keybase1.UID, deviceKID keybase1.KID,
-	bid BranchID, start, stop MetadataRevision) (
-	[]*RootMetadataSigned, error) {
+	bid IFCERFTBranchID, start, stop IFCERFTMetadataRevision) (
+	[]*IFCERFTRootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -309,7 +309,7 @@ func (s *mdServerTlfStorage) getRange(
 
 func (s *mdServerTlfStorage) put(
 	currentUID keybase1.UID, deviceKID keybase1.KID,
-	rmds *RootMetadataSigned) (recordBranchID bool, err error) {
+	rmds *IFCERFTRootMetadataSigned) (recordBranchID bool, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -320,13 +320,13 @@ func (s *mdServerTlfStorage) put(
 	mStatus := rmds.MD.MergedStatus()
 	bid := rmds.MD.BID
 
-	if (mStatus == IFCERFTMerged) != (bid == NullBranchID) {
+	if (mStatus == IFCERFTMerged) != (bid == IFCERFTNullBranchID) {
 		return false, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
 	// Check permissions
 
-	mergedMasterHead, err := s.getHeadForTLFReadLocked(NullBranchID)
+	mergedMasterHead, err := s.getHeadForTLFReadLocked(IFCERFTNullBranchID)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -349,7 +349,7 @@ func (s *mdServerTlfStorage) put(
 		// currHead for unmerged history might be on the main branch
 		prevRev := rmds.MD.Revision - 1
 		rmdses, err := s.getRangeReadLocked(
-			currentUID, deviceKID, NullBranchID, prevRev, prevRev)
+			currentUID, deviceKID, IFCERFTNullBranchID, prevRev, prevRev)
 		if err != nil {
 			return false, MDServerError{err}
 		}

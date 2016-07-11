@@ -23,21 +23,21 @@ type mdServerBranchJournal struct {
 }
 
 func makeMDServerBranchJournal(codec IFCERFTCodec, dir string) mdServerBranchJournal {
-	j := makeDiskJournal(codec, dir, reflect.TypeOf(MdID{}))
+	j := makeDiskJournal(codec, dir, reflect.TypeOf(IFCERFTMdID{}))
 	return mdServerBranchJournal{j}
 }
 
-func ordinalToRevision(o journalOrdinal) (MetadataRevision, error) {
-	r := MetadataRevision(o)
-	if r < MetadataRevisionInitial {
-		return MetadataRevisionUninitialized,
+func ordinalToRevision(o journalOrdinal) (IFCERFTMetadataRevision, error) {
+	r := IFCERFTMetadataRevision(o)
+	if r < IFCERFTMetadataRevisionInitial {
+		return IFCERFTMetadataRevisionUninitialized,
 			fmt.Errorf("Cannot convert ordinal %s to a MetadataRevision", o)
 	}
 	return r, nil
 }
 
-func revisionToOrdinal(r MetadataRevision) (journalOrdinal, error) {
-	if r < MetadataRevisionInitial {
+func revisionToOrdinal(r IFCERFTMetadataRevision) (journalOrdinal, error) {
+	if r < IFCERFTMetadataRevisionInitial {
 		return journalOrdinal(0),
 			fmt.Errorf("Cannot convert revision %s to an ordinal", r)
 	}
@@ -48,17 +48,17 @@ func revisionToOrdinal(r MetadataRevision) (journalOrdinal, error) {
 // below in memory.
 
 func (j mdServerBranchJournal) readEarliestRevision() (
-	MetadataRevision, error) {
+	IFCERFTMetadataRevision, error) {
 	o, err := j.j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
-		return MetadataRevisionUninitialized, nil
+		return IFCERFTMetadataRevisionUninitialized, nil
 	} else if err != nil {
-		return MetadataRevisionUninitialized, err
+		return IFCERFTMetadataRevisionUninitialized, err
 	}
 	return ordinalToRevision(o)
 }
 
-func (j mdServerBranchJournal) writeEarliestRevision(r MetadataRevision) error {
+func (j mdServerBranchJournal) writeEarliestRevision(r IFCERFTMetadataRevision) error {
 	o, err := revisionToOrdinal(r)
 	if err != nil {
 		return err
@@ -67,17 +67,17 @@ func (j mdServerBranchJournal) writeEarliestRevision(r MetadataRevision) error {
 }
 
 func (j mdServerBranchJournal) readLatestRevision() (
-	MetadataRevision, error) {
+	IFCERFTMetadataRevision, error) {
 	o, err := j.j.readLatestOrdinal()
 	if os.IsNotExist(err) {
-		return MetadataRevisionUninitialized, nil
+		return IFCERFTMetadataRevisionUninitialized, nil
 	} else if err != nil {
-		return MetadataRevisionUninitialized, err
+		return IFCERFTMetadataRevisionUninitialized, err
 	}
 	return ordinalToRevision(o)
 }
 
-func (j mdServerBranchJournal) writeLatestRevision(r MetadataRevision) error {
+func (j mdServerBranchJournal) writeLatestRevision(r IFCERFTMetadataRevision) error {
 	o, err := revisionToOrdinal(r)
 	if err != nil {
 		return err
@@ -85,18 +85,18 @@ func (j mdServerBranchJournal) writeLatestRevision(r MetadataRevision) error {
 	return j.j.writeLatestOrdinal(o)
 }
 
-func (j mdServerBranchJournal) readMdID(r MetadataRevision) (MdID, error) {
+func (j mdServerBranchJournal) readMdID(r IFCERFTMetadataRevision) (IFCERFTMdID, error) {
 	o, err := revisionToOrdinal(r)
 	if err != nil {
-		return MdID{}, err
+		return IFCERFTMdID{}, err
 	}
 	e, err := j.j.readJournalEntry(o)
 	if err != nil {
-		return MdID{}, err
+		return IFCERFTMdID{}, err
 	}
 
 	// TODO: Validate MdID?
-	return e.(MdID), nil
+	return e.(IFCERFTMdID), nil
 }
 
 // All functions below are public functions.
@@ -105,30 +105,30 @@ func (j mdServerBranchJournal) journalLength() (uint64, error) {
 	return j.j.journalLength()
 }
 
-func (j mdServerBranchJournal) getHead() (MdID, error) {
+func (j mdServerBranchJournal) getHead() (IFCERFTMdID, error) {
 	latestRevision, err := j.readLatestRevision()
 	if err != nil {
-		return MdID{}, err
-	} else if latestRevision == MetadataRevisionUninitialized {
-		return MdID{}, nil
+		return IFCERFTMdID{}, err
+	} else if latestRevision == IFCERFTMetadataRevisionUninitialized {
+		return IFCERFTMdID{}, nil
 	}
 	return j.readMdID(latestRevision)
 }
 
 func (j mdServerBranchJournal) getRange(
-	start, stop MetadataRevision) (MetadataRevision, []MdID, error) {
+	start, stop IFCERFTMetadataRevision) (IFCERFTMetadataRevision, []IFCERFTMdID, error) {
 	earliestRevision, err := j.readEarliestRevision()
 	if err != nil {
-		return MetadataRevisionUninitialized, nil, err
-	} else if earliestRevision == MetadataRevisionUninitialized {
-		return MetadataRevisionUninitialized, nil, nil
+		return IFCERFTMetadataRevisionUninitialized, nil, err
+	} else if earliestRevision == IFCERFTMetadataRevisionUninitialized {
+		return IFCERFTMetadataRevisionUninitialized, nil, nil
 	}
 
 	latestRevision, err := j.readLatestRevision()
 	if err != nil {
-		return MetadataRevisionUninitialized, nil, err
-	} else if latestRevision == MetadataRevisionUninitialized {
-		return MetadataRevisionUninitialized, nil, nil
+		return IFCERFTMetadataRevisionUninitialized, nil, err
+	} else if latestRevision == IFCERFTMetadataRevisionUninitialized {
+		return IFCERFTMetadataRevisionUninitialized, nil, nil
 	}
 
 	if start < earliestRevision {
@@ -140,21 +140,21 @@ func (j mdServerBranchJournal) getRange(
 	}
 
 	if stop < start {
-		return MetadataRevisionUninitialized, nil, nil
+		return IFCERFTMetadataRevisionUninitialized, nil, nil
 	}
 
-	var mdIDs []MdID
+	var mdIDs []IFCERFTMdID
 	for i := start; i <= stop; i++ {
 		mdID, err := j.readMdID(i)
 		if err != nil {
-			return MetadataRevisionUninitialized, nil, err
+			return IFCERFTMetadataRevisionUninitialized, nil, err
 		}
 		mdIDs = append(mdIDs, mdID)
 	}
 	return start, mdIDs, nil
 }
 
-func (j mdServerBranchJournal) append(r MetadataRevision, mdID MdID) error {
+func (j mdServerBranchJournal) append(r IFCERFTMetadataRevision, mdID IFCERFTMdID) error {
 	o, err := revisionToOrdinal(r)
 	if err != nil {
 		return err

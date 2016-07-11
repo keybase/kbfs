@@ -516,7 +516,7 @@ func TestBasicCRNoConflict(t *testing.T) {
 
 type registerForUpdateRecord struct {
 	id       IFCERFTTlfID
-	currHead MetadataRevision
+	currHead IFCERFTMetadataRevision
 }
 
 type mdServerLocalRecordingRegisterForUpdate struct {
@@ -536,7 +536,7 @@ func newMDServerLocalRecordingRegisterForUpdate(mdServerRaw mdServerLocal) (
 
 func (md mdServerLocalRecordingRegisterForUpdate) RegisterForUpdate(
 	ctx context.Context,
-	id IFCERFTTlfID, currHead MetadataRevision) (<-chan error, error) {
+	id IFCERFTTlfID, currHead IFCERFTMetadataRevision) (<-chan error, error) {
 	md.ch <- registerForUpdateRecord{id: id, currHead: currHead}
 	return md.mdServerLocal.RegisterForUpdate(ctx, id, currHead)
 }
@@ -1124,7 +1124,7 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 	// user2 device 2 should be unable to read the data now since its device
 	// wasn't registered when the folder was originally created.
 	_, err = GetRootNodeForTest(config2Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 
@@ -1310,7 +1310,7 @@ func TestBasicCRFileConflictWithMergedRekey(t *testing.T) {
 	// user2 device 2 should be unable to read the data now since its device
 	// wasn't registered when the folder was originally created.
 	_, err = GetRootNodeForTest(config2Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
+	if _, ok := err.(IFCERFTNeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
 

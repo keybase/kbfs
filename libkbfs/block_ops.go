@@ -113,7 +113,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, md *IFCERFTRootMetadata, b
 
 	encodedSize := readyBlockData.GetEncodedSize()
 	if encodedSize < plainSize {
-		err = TooLowByteCountError{
+		err = IFCERFTTooLowByteCountError{
 			ExpectedMinByteCount: plainSize,
 			ByteCount:            encodedSize,
 		}
@@ -135,7 +135,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, md *IFCERFTRootMetadata, b
 func (b *BlockOpsStandard) Put(ctx context.Context, md *IFCERFTRootMetadata, blockPtr IFCERFTBlockPointer, readyBlockData IFCERFTReadyBlockData) error {
 	bserv := b.config.BlockServer()
 	var err error
-	if blockPtr.RefNonce == zeroBlockRefNonce {
+	if blockPtr.RefNonce == IFCERFTZeroBlockRefNonce {
 		err = bserv.Put(ctx, blockPtr.ID, md.ID, blockPtr.IFCERFTBlockContext,
 			readyBlockData.buf, readyBlockData.serverHalf)
 	} else {
@@ -147,7 +147,7 @@ func (b *BlockOpsStandard) Put(ctx context.Context, md *IFCERFTRootMetadata, blo
 	if qe, ok := err.(BServerErrorOverQuota); ok && !qe.Throttled {
 		name := md.GetTlfHandle().GetCanonicalName()
 		b.config.Reporter().ReportErr(ctx, name, md.ID.IsPublic(),
-			IFCERFTWriteMode, OverQuotaWarning{qe.Usage, qe.Limit})
+			IFCERFTWriteMode, IFCERFTOverQuotaWarning{qe.Usage, qe.Limit})
 		return nil
 	}
 	return err

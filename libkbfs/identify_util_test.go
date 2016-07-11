@@ -24,7 +24,7 @@ func (g testNormalizedUsernameGetter) GetNormalizedUsername(
 	name, ok := g[uid]
 	if !ok {
 		return libkb.NormalizedUsername(""),
-			NoSuchUserError{fmt.Sprintf("uid:%s", uid)}
+			IFCERFTNoSuchUserError{fmt.Sprintf("uid:%s", uid)}
 	}
 	return name, nil
 }
@@ -39,7 +39,7 @@ func (ti *testIdentifier) Identify(
 	ctx context.Context, assertion, reason string) (IFCERFTUserInfo, error) {
 	userInfo, ok := ti.assertions[assertion]
 	if !ok {
-		return IFCERFTUserInfo{}, NoSuchUserError{assertion}
+		return IFCERFTUserInfo{}, IFCERFTNoSuchUserError{assertion}
 	}
 
 	func() {

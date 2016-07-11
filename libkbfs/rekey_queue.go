@@ -134,7 +134,7 @@ func (rkq *RekeyQueueStandard) processRekeys(ctx context.Context, hasWorkCh chan
 		case <-hasWorkCh:
 			for {
 				id := rkq.peek()
-				if id == NullTlfID {
+				if id == IFCERFTNullTlfID {
 					break
 				}
 				func() {
@@ -166,7 +166,7 @@ func (rkq *RekeyQueueStandard) peek() IFCERFTTlfID {
 	if len(rkq.queue) != 0 {
 		return rkq.queue[0].id
 	}
-	return NullTlfID
+	return IFCERFTNullTlfID
 }
 
 func (rkq *RekeyQueueStandard) dequeue() chan<- error {

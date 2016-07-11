@@ -131,7 +131,7 @@ func (b *BlockServerDisk) Put(ctx context.Context, id BlockID, tlfID IFCERFTTlfI
 	b.log.CDebugf(ctx, "BlockServerDisk.Put id=%s tlfID=%s context=%s size=%d",
 		id, tlfID, context, len(buf))
 
-	if context.GetRefNonce() != zeroBlockRefNonce {
+	if context.GetRefNonce() != IFCERFTZeroBlockRefNonce {
 		return fmt.Errorf("Can't Put() a block with a non-zero refnonce.")
 	}
 

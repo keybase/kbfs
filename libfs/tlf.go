@@ -20,7 +20,7 @@ func FilterTLFEarlyExitError(ctx context.Context, err error, log logger.Logger, 
 		// No error.
 		return false, nil
 
-	case libkbfs.WriteAccessError:
+	case libkbfs.IFCERFTWriteAccessError:
 		// No permission to create TLF, so pretend it's still
 		// empty.
 		//

@@ -7,30 +7,8 @@ package libkbfs
 import (
 	"sync"
 
-	"github.com/keybase/client/go/libkb"
-
 	"golang.org/x/net/context"
 )
-
-// FolderBranchStatus is a simple data structure describing the
-// current status of a particular folder-branch.  It is suitable for
-// encoding directly as JSON.
-type IFCERFTFolderBranchStatus struct {
-	Staged       bool
-	HeadWriter   libkb.NormalizedUsername
-	DiskUsage    uint64
-	RekeyPending bool
-	FolderID     string
-
-	// DirtyPaths are files that have been written, but not flushed.
-	// They do not represent unstaged changes in your local instance.
-	DirtyPaths []string
-
-	// If we're in the staged state, these summaries show the
-	// diverging operations per-file
-	Unmerged []*crChainSummary
-	Merged   []*crChainSummary
-}
 
 // KBFSStatus represents the content of the top-level status file. It is
 // suitable for encoding directly as JSON.
@@ -42,9 +20,6 @@ type KBFSStatus struct {
 	LimitBytes      int64
 	FailingServices map[string]error
 }
-
-// StatusUpdate is a dummy type used to indicate status has been updated.
-type IFCERFTStatusUpdate struct{}
 
 // folderBranchStatusKeeper holds and updates the status for a given
 // folder-branch, and produces FolderBranchStatus instances suitable
@@ -159,7 +134,7 @@ func (fbsk *folderBranchStatusKeeper) getStatus(ctx context.Context) (
 	var fbs IFCERFTFolderBranchStatus
 
 	if fbsk.md != nil {
-		fbs.Staged = (fbsk.md.WFlags & MetadataFlagUnmerged) != 0
+		fbs.Staged = (fbsk.md.WFlags & IFCERFTMetadataFlagUnmerged) != 0
 		name, err := fbsk.config.KBPKI().GetNormalizedUsername(ctx, fbsk.md.LastModifyingWriter)
 		if err != nil {
 			return IFCERFTFolderBranchStatus{}, nil, err

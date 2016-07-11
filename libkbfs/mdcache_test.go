@@ -27,20 +27,19 @@ func mdCacheShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	mockCtrl.Finish()
 }
 
-func testMdcachePut(t *testing.T, tlf IFCERFTTlfID, rev MetadataRevision,
-	mStatus IFCERFTMergeStatus, bid BranchID, h *IFCERFTTlfHandle, config *ConfigMock) {
+func testMdcachePut(t *testing.T, tlf IFCERFTTlfID, rev IFCERFTMetadataRevision, mStatus IFCERFTMergeStatus, bid IFCERFTBranchID, h *IFCERFTTlfHandle, config *ConfigMock) {
 	rmd := &IFCERFTRootMetadata{
-		WriterMetadata: WriterMetadata{
+		IFCERFTWriterMetadata: IFCERFTWriterMetadata{
 			ID:    tlf,
-			WKeys: make(TLFWriterKeyGenerations, 1, 1),
+			WKeys: make(IFCERFTTLFWriterKeyGenerations, 1, 1),
 			BID:   bid,
 		},
 		Revision: rev,
-		RKeys:    make(TLFReaderKeyGenerations, 1, 1),
+		RKeys:    make(IFCERFTTLFReaderKeyGenerations, 1, 1),
 	}
 	rmd.WKeys[0] = NewEmptyTLFWriterKeyBundle()
 	if mStatus == IFCERFTUnmerged {
-		rmd.WFlags |= MetadataFlagUnmerged
+		rmd.WFlags |= IFCERFTMetadataFlagUnmerged
 	}
 
 	// put the md
@@ -64,7 +63,7 @@ func TestMdcachePut(t *testing.T) {
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	h.resolvedWriters[keybase1.MakeTestUID(0)] = "test_user0"
 
-	testMdcachePut(t, id, 1, IFCERFTMerged, NullBranchID, h, config)
+	testMdcachePut(t, id, 1, IFCERFTMerged, IFCERFTNullBranchID, h, config)
 }
 
 func TestMdcachePutPastCapacity(t *testing.T) {
@@ -80,15 +79,15 @@ func TestMdcachePutPastCapacity(t *testing.T) {
 	id2 := FakeTlfID(3, false)
 	h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
 
-	testMdcachePut(t, id0, 0, IFCERFTMerged, NullBranchID, h0, config)
+	testMdcachePut(t, id0, 0, IFCERFTMerged, IFCERFTNullBranchID, h0, config)
 	bid := FakeBranchID(1)
 	testMdcachePut(t, id1, 0, IFCERFTUnmerged, bid, h1, config)
-	testMdcachePut(t, id2, 1, IFCERFTMerged, NullBranchID, h2, config)
+	testMdcachePut(t, id2, 1, IFCERFTMerged, IFCERFTNullBranchID, h2, config)
 
 	// id 0 should no longer be in the cache
 	// make sure we can get it successfully
-	expectedErr := NoSuchMDError{id0, 0, NullBranchID}
-	if _, err := config.MDCache().Get(id0, 0, NullBranchID); err == nil {
+	expectedErr := IFCERFTNoSuchMDError{id0, 0, IFCERFTNullBranchID}
+	if _, err := config.MDCache().Get(id0, 0, IFCERFTNullBranchID); err == nil {
 		t.Errorf("No expected error on get")
 	} else if err != expectedErr {
 		t.Errorf("Got unexpected error on get: %v", err)

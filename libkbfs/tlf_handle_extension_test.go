@@ -12,15 +12,15 @@ import (
 )
 
 func TestTlfHandleExtension(t *testing.T) {
-	for _, et := range []TlfHandleExtensionType{
-		TlfHandleExtensionConflict,
-		TlfHandleExtensionFinalized,
+	for _, et := range []IFCERFTTlfHandleExtensionType{
+		IFCERFTTlfHandleExtensionConflict,
+		IFCERFTTlfHandleExtensionFinalized,
 	} {
-		e, err := NewTlfHandleExtension(et, 1)
+		e, err := IFCERFTNewTlfHandleExtension(et, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
-		exts, err := ParseTlfHandleExtensionSuffix(e.String())
+		exts, err := IFCERFTParseTlfHandleExtensionSuffix(e.String())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -41,15 +41,15 @@ func TestTlfHandleExtension(t *testing.T) {
 }
 
 func TestTlfHandleExtensionNumber(t *testing.T) {
-	for _, et := range []TlfHandleExtensionType{
-		TlfHandleExtensionConflict,
-		TlfHandleExtensionFinalized,
+	for _, et := range []IFCERFTTlfHandleExtensionType{
+		IFCERFTTlfHandleExtensionConflict,
+		IFCERFTTlfHandleExtensionFinalized,
 	} {
-		e, err := NewTlfHandleExtension(et, 2)
+		e, err := IFCERFTNewTlfHandleExtension(et, 2)
 		if err != nil {
 			t.Fatal(err)
 		}
-		exts, err := ParseTlfHandleExtensionSuffix(e.String())
+		exts, err := IFCERFTParseTlfHandleExtensionSuffix(e.String())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,19 +70,19 @@ func TestTlfHandleExtensionNumber(t *testing.T) {
 }
 
 func TestTlfHandleExtensionKnownTime(t *testing.T) {
-	e := &TlfHandleExtension{
+	e := &IFCERFTTlfHandleExtension{
 		Date:   1462838400,
 		Number: 1,
-		Type:   TlfHandleExtensionFinalized,
+		Type:   IFCERFTTlfHandleExtensionFinalized,
 	}
 	expect := "(finalized 2016-05-10)"
 	if e.String() != expect {
 		t.Fatalf("Expected %s, got: %s", expect, e)
 	}
-	e2 := &TlfHandleExtension{
+	e2 := &IFCERFTTlfHandleExtension{
 		Date:   1462838400,
 		Number: 12345,
-		Type:   TlfHandleExtensionConflict,
+		Type:   IFCERFTTlfHandleExtensionConflict,
 	}
 	expect = "(conflicted copy 2016-05-10 #12345)"
 	if e2.String() != expect {
@@ -91,48 +91,48 @@ func TestTlfHandleExtensionKnownTime(t *testing.T) {
 }
 
 func TestTlfHandleExtensionErrors(t *testing.T) {
-	_, err := NewTlfHandleExtension(TlfHandleExtensionConflict, 0)
-	if err != ErrTlfHandleExtensionInvalidNumber {
+	_, err := IFCERFTNewTlfHandleExtension(IFCERFTTlfHandleExtensionConflict, 0)
+	if err != IFCERFTErrTlfHandleExtensionInvalidNumber {
 		t.Fatalf("Expected ErrTlfHandleExtensionInvalidNumber, got: %v", err)
 	}
-	_, err = ParseTlfHandleExtensionSuffix("(conflicted copy 2016-05-10 #0)")
-	if err != ErrTlfHandleExtensionInvalidNumber {
+	_, err = IFCERFTParseTlfHandleExtensionSuffix("(conflicted copy 2016-05-10 #0)")
+	if err != IFCERFTErrTlfHandleExtensionInvalidNumber {
 		t.Fatalf("Expected ErrTlfHandleExtensionInvalidNumber, got: %v", err)
 	}
-	_, err = ParseTlfHandleExtensionSuffix("(conflicted copy 2016-05-10 #1)")
-	if err != ErrTlfHandleExtensionInvalidNumber {
+	_, err = IFCERFTParseTlfHandleExtensionSuffix("(conflicted copy 2016-05-10 #1)")
+	if err != IFCERFTErrTlfHandleExtensionInvalidNumber {
 		t.Fatalf("Expected ErrTlfHandleExtensionInvalidNumber, got: %v", err)
 	}
-	_, err = ParseTlfHandleExtensionSuffix("nope")
-	if err != ErrTlfHandleExtensionInvalidString {
+	_, err = IFCERFTParseTlfHandleExtensionSuffix("nope")
+	if err != IFCERFTErrTlfHandleExtensionInvalidString {
 		t.Fatalf("Expected ErrTlfHandleExtensionInvalidString, got: %v", err)
 	}
-	_, err = ParseTlfHandleExtensionSuffix("(conflicted copy #2)")
-	if err != ErrTlfHandleExtensionInvalidString {
+	_, err = IFCERFTParseTlfHandleExtensionSuffix("(conflicted copy #2)")
+	if err != IFCERFTErrTlfHandleExtensionInvalidString {
 		t.Fatalf("Expected ErrTlfHandleExtensionInvalidString, got: %v", err)
 	}
-	_, err = ParseTlfHandleExtensionSuffix("(conflicted copy 2016-05-10 #)")
-	if err != ErrTlfHandleExtensionInvalidString {
+	_, err = IFCERFTParseTlfHandleExtensionSuffix("(conflicted copy 2016-05-10 #)")
+	if err != IFCERFTErrTlfHandleExtensionInvalidString {
 		t.Fatalf("Expected ErrTlfHandleExtensionInvalidString, got: %v", err)
 	}
 }
 
 type tlfHandleExtensionFuture struct {
-	TlfHandleExtension
+	IFCERFTTlfHandleExtension
 	extra
 }
 
 func (ci tlfHandleExtensionFuture) toCurrentStruct() currentStruct {
-	return ci.TlfHandleExtension
+	return ci.IFCERFTTlfHandleExtension
 }
 
 func TestTlfHandleExtensionUnknownFields(t *testing.T) {
 	testStructUnknownFields(t,
 		tlfHandleExtensionFuture{
-			TlfHandleExtension{
+			IFCERFTTlfHandleExtension{
 				time.Now().UTC().Unix(),
 				2,
-				TlfHandleExtensionFinalized,
+				IFCERFTTlfHandleExtensionFinalized,
 				codec.UnknownFieldSetHandler{},
 			},
 			makeExtraOrBust("TlfHandleExtension", t),
@@ -140,21 +140,21 @@ func TestTlfHandleExtensionUnknownFields(t *testing.T) {
 }
 
 func TestTlfHandleExtensionMultiple(t *testing.T) {
-	e, err := NewTestTlfHandleExtensionStaticTime(TlfHandleExtensionConflict, 1)
+	e, err := IFCERFTNewTestTlfHandleExtensionStaticTime(IFCERFTTlfHandleExtensionConflict, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	e2, err := NewTestTlfHandleExtensionStaticTime(TlfHandleExtensionFinalized, 2)
+	e2, err := IFCERFTNewTestTlfHandleExtensionStaticTime(IFCERFTTlfHandleExtensionFinalized, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	exts := []TlfHandleExtension{*e, *e2}
-	suffix := NewTlfHandleExtensionSuffix(exts)
+	exts := []IFCERFTTlfHandleExtension{*e, *e2}
+	suffix := IFCERFTNewTlfHandleExtensionSuffix(exts)
 	expectSuffix := " (conflicted copy 2016-03-14) (finalized 2016-03-14 #2)"
 	if suffix != expectSuffix {
 		t.Fatalf("Expected suffix '%s', got: '%s'", expectSuffix, suffix)
 	}
-	exts2, err := ParseTlfHandleExtensionSuffix(suffix)
+	exts2, err := IFCERFTParseTlfHandleExtensionSuffix(suffix)
 	if err != nil {
 		t.Fatal(err)
 	}
