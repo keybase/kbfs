@@ -139,7 +139,7 @@ func (co *createOp) String() string {
 	return res
 }
 
-func (co *createOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
+func (co *createOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (IFCERFTCrAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *createOp:
 		// Conflicts if this creates the same name and one of them
@@ -187,7 +187,7 @@ func (co *createOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCER
 	return nil, nil
 }
 
-func (co *createOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
+func (co *createOp) GetDefaultAction(mergedPath IFCERFTPath) IFCERFTCrAction {
 	if co.forceCopy {
 		return &renameUnmergedAction{
 			fromName: co.NewName,
@@ -243,7 +243,7 @@ func (ro *rmOp) String() string {
 	return fmt.Sprintf("rm %s", ro.OldName)
 }
 
-func (ro *rmOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
+func (ro *rmOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (IFCERFTCrAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *createOp:
 		if realMergedOp.NewName == ro.OldName {
@@ -262,7 +262,7 @@ func (ro *rmOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOp
 	return nil, nil
 }
 
-func (ro *rmOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
+func (ro *rmOp) GetDefaultAction(mergedPath IFCERFTPath) IFCERFTCrAction {
 	if ro.dropThis {
 		return &dropUnmergedAction{op: ro}
 	}
@@ -329,11 +329,11 @@ func (ro *renameOp) String() string {
 	return fmt.Sprintf("rename %s -> %s", ro.OldName, ro.NewName)
 }
 
-func (ro *renameOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
+func (ro *renameOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (IFCERFTCrAction, error) {
 	return nil, fmt.Errorf("Unexpected conflict check on a rename op: %s", ro)
 }
 
-func (ro *renameOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
+func (ro *renameOp) GetDefaultAction(mergedPath IFCERFTPath) IFCERFTCrAction {
 	return nil
 }
 
@@ -439,7 +439,7 @@ func (so *syncOp) String() string {
 	return fmt.Sprintf("sync [%s]", strings.Join(writes, ", "))
 }
 
-func (so *syncOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
+func (so *syncOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (IFCERFTCrAction, error) {
 	switch mergedOp.(type) {
 	case *syncOp:
 		// Any sync on the same file is a conflict.  (TODO: add
@@ -466,7 +466,7 @@ func (so *syncOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFT
 	return nil, nil
 }
 
-func (so *syncOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
+func (so *syncOp) GetDefaultAction(mergedPath IFCERFTPath) IFCERFTCrAction {
 	return &copyUnmergedEntryAction{
 		fromName: so.GetFinalPath().TailName(),
 		toName:   mergedPath.TailName(),
@@ -648,7 +648,7 @@ func (sao *setAttrOp) String() string {
 	return fmt.Sprintf("setAttr %s (%s)", sao.Name, sao.Attr)
 }
 
-func (sao *setAttrOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
+func (sao *setAttrOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (IFCERFTCrAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *setAttrOp:
 		if realMergedOp.Attr == sao.Attr {
@@ -680,7 +680,7 @@ func (sao *setAttrOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFC
 	return nil, nil
 }
 
-func (sao *setAttrOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
+func (sao *setAttrOp) GetDefaultAction(mergedPath IFCERFTPath) IFCERFTCrAction {
 	return &copyUnmergedAttrAction{
 		fromName: sao.GetFinalPath().TailName(),
 		toName:   mergedPath.TailName(),
@@ -711,11 +711,11 @@ func (ro *resolutionOp) String() string {
 	return "resolution"
 }
 
-func (ro *resolutionOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
+func (ro *resolutionOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (IFCERFTCrAction, error) {
 	return nil, nil
 }
 
-func (ro *resolutionOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
+func (ro *resolutionOp) GetDefaultAction(mergedPath IFCERFTPath) IFCERFTCrAction {
 	return nil
 }
 
@@ -741,11 +741,11 @@ func (ro *rekeyOp) String() string {
 	return "rekey"
 }
 
-func (ro *rekeyOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
+func (ro *rekeyOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (IFCERFTCrAction, error) {
 	return nil, nil
 }
 
-func (ro *rekeyOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
+func (ro *rekeyOp) GetDefaultAction(mergedPath IFCERFTPath) IFCERFTCrAction {
 	return nil
 }
 
@@ -783,11 +783,11 @@ func (gco *gcOp) String() string {
 	return fmt.Sprintf("gc %d", gco.LatestRev)
 }
 
-func (gco *gcOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (crAction, error) {
+func (gco *gcOp) CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (IFCERFTCrAction, error) {
 	return nil, nil
 }
 
-func (gco *gcOp) GetDefaultAction(mergedPath IFCERFTPath) crAction {
+func (gco *gcOp) GetDefaultAction(mergedPath IFCERFTPath) IFCERFTCrAction {
 	return nil
 }
 

@@ -24,12 +24,12 @@ type IFCERFTOps interface {
 	// method's target op is the unmerged op, and the given op is the
 	// merged op.
 	CheckConflict(renamer IFCERFTConflictRenamer, mergedOp IFCERFTOps, isFile bool) (
-		crAction, error)
+		IFCERFTCrAction, error)
 	// GetDefaultAction should be called on an unmerged op only after
 	// all conflicts with the corresponding change have been checked,
 	// and it returns the action to take against the merged branch
 	// given that there are no conflicts.
-	GetDefaultAction(mergedPath IFCERFTPath) crAction
+	GetDefaultAction(mergedPath IFCERFTPath) IFCERFTCrAction
 }
 
 // op codes

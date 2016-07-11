@@ -770,13 +770,13 @@ func (dua *dropUnmergedAction) String() string {
 }
 
 type collapseActionInfo struct {
-	topAction      crAction
+	topAction      IFCERFTCrAction
 	topActionIndex int
 }
 
-type crActionList []crAction
+type crActionList []IFCERFTCrAction
 
-func setTopAction(action crAction, fromName string, index int,
+func setTopAction(action IFCERFTCrAction, fromName string, index int,
 	infoMap map[string]collapseActionInfo, indicesToRemove map[int]bool) {
 	info, ok := infoMap[fromName]
 	if ok {
