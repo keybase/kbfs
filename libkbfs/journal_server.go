@@ -81,6 +81,28 @@ func (j *JournalServer) Flush(tlfID TlfID) (err error) {
 	return nil
 }
 
+func (j *JournalServer) Disable(tlfID TlfID) (err error) {
+	j.log.Debug("Disabling journal for %s", tlfID)
+	defer func() {
+		j.deferLog.Debug("Error when disabling journal for %s: %v",
+			tlfID, err)
+	}()
+
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	_, ok := j.tlfBundles[tlfID]
+	if !ok {
+		j.log.Debug("Journal already disabled for %s", tlfID)
+		return nil
+	}
+
+	// TODO: Either return an error if there are still entries in
+	// the journal, or flush them.
+
+	delete(j.tlfBundles, tlfID)
+	return nil
+}
+
 type journalBlockServer struct {
 	jServer *JournalServer
 	BlockServer

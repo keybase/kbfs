@@ -125,7 +125,7 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 	flag.Var(SizeFlag{&params.LogFileConfig.MaxSize}, "log-file-max-size", "Maximum size of a log file before rotation")
 	// The default is to *DELETE* old log files for kbfs.
 	flag.IntVar(&params.LogFileConfig.MaxKeepFiles, "log-file-max-keep-files", defaultParams.LogFileConfig.MaxKeepFiles, "Maximum number of log files for this service, older ones are deleted. 0 for infinite.")
-	flags.BoolVar(&params.WriteJournalRoot, "write-journal-root-this-may-lose-data", false, "If non-empty, permits write journals to be turned on for TLFs which will be put in the given directory")
+	flags.StringVar(&params.WriteJournalRoot, "write-journal-root-this-may-lose-data", "", "If non-empty, permits write journals to be turned on for TLFs which will be put in the given directory")
 	return &params
 }
 
@@ -363,7 +363,7 @@ func Init(ctx Context, params InitParams, keybaseDaemonFn KeybaseDaemonFn, onInt
 
 	config.SetBlockServer(bserv)
 
-	if params.WriteJournalRoot {
+	if len(params.WriteJournalRoot) > 0 {
 		// TODO: Sanity-check the root directory, e.g. create
 		// it if it doesn't exist, make sure that it doesn't
 		// point to /keybase itself, etc.
