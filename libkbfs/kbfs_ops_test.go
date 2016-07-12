@@ -450,7 +450,7 @@ func testKBFSOpsGetRootNodeCreateNewSuccess(t *testing.T, public bool) {
 	// create a new MD
 	config.mockMdops.EXPECT().GetUnmergedForTLF(
 		gomock.Any(), id, gomock.Any()).Return(ImmutableRootMetadata{}, nil)
-	irmd := MakeImmutableRootMetadata(rmd, MdID{})
+	irmd := MakeImmutableRootMetadata(rmd, fakeMdID(1))
 	config.mockMdops.EXPECT().GetForTLF(gomock.Any(), id).Return(irmd, nil)
 	config.mockMdcache.EXPECT().Put(irmd).Return(nil)
 
@@ -505,11 +505,11 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 	config.mockMdops.EXPECT().GetUnmergedForHandle(gomock.Any(), h).Return(
 		ImmutableRootMetadata{}, nil)
 	config.mockMdops.EXPECT().GetForHandle(gomock.Any(), h).Return(
-		TlfID{}, MakeImmutableRootMetadata(rmd, MdID{}), nil)
+		TlfID{}, MakeImmutableRootMetadata(rmd, fakeMdID(1)), nil)
 	ops := getOps(config, id)
 	assert.False(t, fboIdentityDone(ops))
 
-	ops.head = MakeImmutableRootMetadata(rmd, MdID{})
+	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(2))
 	n, ei, err :=
 		config.KBFSOps().GetOrCreateRootNode(ctx, h, MasterBranch)
 	require.NoError(t, err)
@@ -678,7 +678,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailNonReader(t *testing.T) {
 	n := nodeFromPath(t, ops, p)
 
 	// won't even try getting the block if the user isn't a reader
-	ops.head = MakeImmutableRootMetadata(rmd, MdID{})
+	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(1))
 	expectedErr := ReadAccessError{"alice", h.GetCanonicalName(), false}
 	if _, err := config.KBFSOps().GetDirChildren(ctx, n); err == nil {
 		t.Errorf("Got no expected error on getdir")
@@ -719,7 +719,7 @@ func TestKBFSOpsGetNestedDirChildrenCacheSuccess(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = MakeImmutableRootMetadata(rmd, MdID{})
+	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 
@@ -759,7 +759,7 @@ func TestKBFSOpsLookupSuccess(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = MakeImmutableRootMetadata(rmd, MdID{})
+	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 
@@ -802,7 +802,7 @@ func TestKBFSOpsLookupSymlinkSuccess(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = MakeImmutableRootMetadata(rmd, MdID{})
+	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -840,7 +840,7 @@ func TestKBFSOpsLookupNoSuchNameFail(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = MakeImmutableRootMetadata(rmd, MdID{})
+	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -875,7 +875,7 @@ func TestKBFSOpsLookupNewDataVersionFail(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = MakeImmutableRootMetadata(rmd, MdID{})
+	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -916,7 +916,7 @@ func TestKBFSOpsStatSuccess(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = MakeImmutableRootMetadata(rmd, MdID{})
+	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -5019,7 +5019,7 @@ func TestKBFSOpsStatRootSuccess(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = MakeImmutableRootMetadata(rmd, MdID{})
+	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -5039,7 +5039,7 @@ func TestKBFSOpsFailingRootOps(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	ops := getOps(config, id)
-	ops.head = MakeImmutableRootMetadata(rmd, MdID{})
+	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)

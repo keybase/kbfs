@@ -46,14 +46,14 @@ func testMdcachePut(t *testing.T, tlf TlfID, rev MetadataRevision,
 	}
 
 	// put the md
-	if err := config.MDCache().Put(MakeImmutableRootMetadata(rmd, MdID{})); err != nil {
+	if err := config.MDCache().Put(MakeImmutableRootMetadata(rmd, fakeMdID(1))); err != nil {
 		t.Errorf("Got error on put on md %v: %v", tlf, err)
 	}
 
 	// make sure we can get it successfully
 	if rmd2, err := config.MDCache().Get(tlf, rev, bid); err != nil {
 		t.Errorf("Got error on get for md %v: %v", tlf, err)
-	} else if rmd2 != (MakeImmutableRootMetadata(rmd, MdID{})) {
+	} else if rmd2 != (MakeImmutableRootMetadata(rmd, fakeMdID(1))) {
 		t.Errorf("Got back unexpected metadata: %v", rmd2)
 	}
 }

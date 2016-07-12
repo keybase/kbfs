@@ -419,6 +419,9 @@ type ImmutableRootMetadata struct {
 // the given RMD and its corresponding MdID.
 func MakeImmutableRootMetadata(
 	rmd *RootMetadata, mdID MdID) ImmutableRootMetadata {
+	if mdID == (MdID{}) {
+		panic("zero mdID passed to MakeImmutableRootMetadata")
+	}
 	return ImmutableRootMetadata{ConstRootMetadata{rmd}, mdID}
 }
 
