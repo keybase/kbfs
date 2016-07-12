@@ -408,7 +408,8 @@ func MakeConstRootMetadata(rmd *RootMetadata) ConstRootMetadata {
 
 // ImmutableRootMetadata is a thin wrapper around a ConstRootMetadata
 // that takes ownership of it and does not ever modify it again. Thus,
-// its MdID can be calculated and stored.
+// its MdID can be calculated and stored. Unlike ConstRootMetadata,
+// ImmutableRootMetadata objects can be stored.
 type ImmutableRootMetadata struct {
 	ConstRootMetadata
 	mdID MdID
