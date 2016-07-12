@@ -10,6 +10,54 @@ import (
 
 import "golang.org/x/net/context"
 
+type stallableOp string
+
+// StallableBlockOp defines an Op that is stallable using StallBlockOp
+type StallableBlockOp stallableOp
+
+// StallableMDOp defines an Op that is stallable using StallMDOp
+type StallableMDOp stallableOp
+
+// stallable Block Ops and MD Ops
+const (
+	StallableBlockGet     StallableBlockOp = "Get"
+	StallableBlockReady   StallableBlockOp = "Ready"
+	StallableBlockPut     StallableBlockOp = "Put"
+	StallableBlockDelete  StallableBlockOp = "Delete"
+	StallableBlockArchive StallableBlockOp = "Archive"
+
+	StallableMDGetForHandle          StallableMDOp = "GetForHandle"
+	StallableMDGetUnmergedForHandle  StallableMDOp = "GetUnmergedForHandle"
+	StallableMDGetForTLF             StallableMDOp = "GetForTLF"
+	StallableMDGetLatestHandleForTLF StallableMDOp = "GetLatestHandleForTLF"
+	StallableMDGetUnmergedForTLF     StallableMDOp = "GetUnmergedForTLF"
+	StallableMDGetRange              StallableMDOp = "GetRange"
+	StallableMDGetUnmergedRange      StallableMDOp = "GetUnmergedRange"
+	StallableMDPut                   StallableMDOp = "Put"
+	StallableMDAfterPut              StallableMDOp = "AfterPut"
+	StallableMDPutUnmerged           StallableMDOp = "PutUnmerged"
+)
+
+// StallMDOp sets a wrapped MDOps in config so that the specified Op,
+// stalledOp, is stalled. Caller should use the returned newCtx for subsequent
+// operations for the stall to be effective. onStalled is a channel to notify
+// the caller when the stall has happened. unstall is a channel for caller to
+// unstall an Op.
+func StallMDOp(ctx context.Context, config Config, stalledOp stallableOp) (
+	onStalled <-chan struct{}, unstall chan<- struct{}, newCtx context.Context) {
+	return
+}
+
+// StallBlockOp sets a wrapped BlockOps in config so that the specified Op, stalledOp,
+// is stalled. Caller should use the returned newCtx for subsequent operations
+// for the stall to be effective. onStalled is a channel to notify the caller
+// when the stall has happened. unstall is a channel for caller to unstall an
+// Op.
+func StallBlockOp(ctx context.Context, config Config, stalledOp stallableOp) (
+	onStalled <-chan struct{}, unstall chan<- struct{}, newCtx context.Context) {
+	return
+}
+
 // staller is a pair of channels. Whenever something is to be
 // stalled, a value is sent on stalled (if not blocked), and then
 // unstall is waited on.
@@ -18,8 +66,9 @@ type staller struct {
 	unstall <-chan struct{}
 }
 
-func maybeStall(ctx context.Context, opName string, stallOpName string,
-	stallKey interface{}, stallMap map[interface{}]staller) {
+func maybeStall(ctx context.Context, opName stallableOp,
+	stallOpName stallableOp, stallKey interface{},
+	stallMap map[interface{}]staller) {
 	if opName != stallOpName {
 		return
 	}
@@ -42,7 +91,7 @@ func maybeStall(ctx context.Context, opName string, stallOpName string,
 // stallOpName, and ctx.Value(stallKey) is a key in the corresponding
 // staller is used to stall the operation.
 type stallingBlockOps struct {
-	stallOpName string
+	stallOpName StallableBlockOp
 	stallKey    interface{}
 	stallMap    map[interface{}]staller
 	// lock protects only delegate at the moment
@@ -64,28 +113,29 @@ func (f *stallingBlockOps) setDelegate(bops BlockOps) {
 	f.internalDelegate = bops
 }
 
-func (f *stallingBlockOps) maybeStall(ctx context.Context, opName string) {
-	maybeStall(ctx, opName, f.stallOpName, f.stallKey, f.stallMap)
+func (f *stallingBlockOps) maybeStall(ctx context.Context, opName StallableBlockOp) {
+	maybeStall(ctx, stallableOp(opName), stallableOp(f.stallOpName),
+		f.stallKey, f.stallMap)
 }
 
 func (f *stallingBlockOps) Get(
 	ctx context.Context, md *RootMetadata, blockPtr BlockPointer,
 	block Block) error {
-	f.maybeStall(ctx, "Get")
+	f.maybeStall(ctx, StallableBlockGet)
 	return f.delegate().Get(ctx, md, blockPtr, block)
 }
 
 func (f *stallingBlockOps) Ready(
 	ctx context.Context, md *RootMetadata, block Block) (
 	id BlockID, plainSize int, readyBlockData ReadyBlockData, err error) {
-	f.maybeStall(ctx, "Ready")
+	f.maybeStall(ctx, StallableBlockReady)
 	return f.delegate().Ready(ctx, md, block)
 }
 
 func (f *stallingBlockOps) Put(
 	ctx context.Context, md *RootMetadata, blockPtr BlockPointer,
 	readyBlockData ReadyBlockData) error {
-	f.maybeStall(ctx, "Put")
+	f.maybeStall(ctx, StallableBlockPut)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -103,13 +153,13 @@ func (f *stallingBlockOps) Put(
 func (f *stallingBlockOps) Delete(
 	ctx context.Context, md *RootMetadata,
 	ptrs []BlockPointer) (map[BlockID]int, error) {
-	f.maybeStall(ctx, "Delete")
+	f.maybeStall(ctx, StallableBlockDelete)
 	return f.delegate().Delete(ctx, md, ptrs)
 }
 
 func (f *stallingBlockOps) Archive(
 	ctx context.Context, md *RootMetadata, ptrs []BlockPointer) error {
-	f.maybeStall(ctx, "Archive")
+	f.maybeStall(ctx, StallableBlockArchive)
 	return f.delegate().Archive(ctx, md, ptrs)
 }
 
@@ -118,7 +168,7 @@ func (f *stallingBlockOps) Archive(
 // stallOpName, and ctx.Value(stallKey) is a key in the corresponding
 // staller is used to stall the operation.
 type stallingMDOps struct {
-	stallOpName string
+	stallOpName StallableMDOp
 	stallKey    interface{}
 	stallMap    map[interface{}]staller
 	delegate    MDOps
@@ -126,62 +176,63 @@ type stallingMDOps struct {
 
 var _ MDOps = (*stallingMDOps)(nil)
 
-func (m *stallingMDOps) maybeStall(ctx context.Context, opName string) {
-	maybeStall(ctx, opName, m.stallOpName, m.stallKey, m.stallMap)
+func (m *stallingMDOps) maybeStall(ctx context.Context, opName StallableMDOp) {
+	maybeStall(ctx, stallableOp(opName), stallableOp(m.stallOpName),
+		m.stallKey, m.stallMap)
 }
 
 func (m *stallingMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
 	*RootMetadata, error) {
-	m.maybeStall(ctx, "GetForHandle")
+	m.maybeStall(ctx, StallableMDGetForHandle)
 	return m.delegate.GetForHandle(ctx, handle)
 }
 
 func (m *stallingMDOps) GetUnmergedForHandle(ctx context.Context,
 	handle *TlfHandle) (*RootMetadata, error) {
-	m.maybeStall(ctx, "GetUnmergedForHandle")
+	m.maybeStall(ctx, StallableMDGetUnmergedForHandle)
 	return m.delegate.GetUnmergedForHandle(ctx, handle)
 }
 
 func (m *stallingMDOps) GetForTLF(ctx context.Context, id TlfID) (
 	*RootMetadata, error) {
-	m.maybeStall(ctx, "GetForTLF")
+	m.maybeStall(ctx, StallableMDGetForTLF)
 	return m.delegate.GetForTLF(ctx, id)
 }
 
 func (m *stallingMDOps) GetLatestHandleForTLF(ctx context.Context, id TlfID) (
 	BareTlfHandle, error) {
-	m.maybeStall(ctx, "GetLatestHandleForTLF")
+	m.maybeStall(ctx, StallableMDGetLatestHandleForTLF)
 	return m.delegate.GetLatestHandleForTLF(ctx, id)
 }
 
 func (m *stallingMDOps) GetUnmergedForTLF(ctx context.Context, id TlfID,
 	bid BranchID) (*RootMetadata, error) {
-	m.maybeStall(ctx, "GetUnmergedForTLF")
+	m.maybeStall(ctx, StallableMDGetUnmergedForTLF)
 	return m.delegate.GetUnmergedForTLF(ctx, id, bid)
 }
 
 func (m *stallingMDOps) GetRange(ctx context.Context, id TlfID,
 	start, stop MetadataRevision) (
 	[]*RootMetadata, error) {
-	m.maybeStall(ctx, "GetRange")
+	m.maybeStall(ctx, StallableMDGetRange)
 	return m.delegate.GetRange(ctx, id, start, stop)
 }
 
 func (m *stallingMDOps) GetUnmergedRange(ctx context.Context, id TlfID,
 	bid BranchID, start, stop MetadataRevision) ([]*RootMetadata, error) {
-	m.maybeStall(ctx, "GetUnmergedRange")
+	m.maybeStall(ctx, StallableMDGetUnmergedRange)
 	return m.delegate.GetUnmergedRange(ctx, id, bid, start, stop)
 }
 
 func (m *stallingMDOps) Put(ctx context.Context, md *RootMetadata) error {
-	m.maybeStall(ctx, "Put")
+	m.maybeStall(ctx, StallableMDPut)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
 	}
 	err := m.delegate.Put(ctx, md)
-	m.maybeStall(ctx, "AfterPut")
+	m.maybeStall(ctx, StallableMDAfterPut)
 	// If the Put was canceled, return the cancel error.  This
 	// emulates the Put being canceled while the RPC is outstanding.
 	select {
@@ -194,7 +245,7 @@ func (m *stallingMDOps) Put(ctx context.Context, md *RootMetadata) error {
 
 func (m *stallingMDOps) PutUnmerged(ctx context.Context, md *RootMetadata,
 	bid BranchID) error {
-	m.maybeStall(ctx, "PutUnmerged")
+	m.maybeStall(ctx, StallableMDPutUnmerged)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

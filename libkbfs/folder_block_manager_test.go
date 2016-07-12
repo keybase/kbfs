@@ -375,7 +375,7 @@ func TestQuotaReclamationDeletedBlocks(t *testing.T) {
 	stallKey := "requestName"
 	writeValue := "write"
 	config2.SetBlockOps(&stallingBlockOps{
-		stallOpName: "Put",
+		stallOpName: StallableBlockPut,
 		stallKey:    stallKey,
 		stallMap: map[interface{}]staller{
 			writeValue: staller{

@@ -958,7 +958,7 @@ func TestCRDouble(t *testing.T) {
 	stallKey := "requestName"
 	syncValue := "sync"
 	config2.SetMDOps(&stallingMDOps{
-		stallOpName: "PutUnmerged",
+		stallOpName: StallableMDPutUnmerged,
 		stallKey:    stallKey,
 		stallMap: map[interface{}]staller{
 			syncValue: staller{
@@ -1512,7 +1512,7 @@ func TestCRSyncParallelBlocksErrorCleanup(t *testing.T) {
 	syncValue := "sync"
 
 	config2.SetBlockOps(&stallingBlockOps{
-		stallOpName: "Put",
+		stallOpName: StallableBlockPut,
 		stallKey:    stallKey,
 		stallMap: map[interface{}]staller{
 			syncValue: staller{

@@ -62,7 +62,7 @@ func TestKBFSOpsConcurDoubleMDGet(t *testing.T) {
 	getValue := "get"
 
 	config.SetMDOps(&stallingMDOps{
-		stallOpName: "GetForTLF",
+		stallOpName: StallableMDGetForTLF,
 		stallKey:    stallKey,
 		stallMap: map[interface{}]staller{
 			getValue: staller{
@@ -119,9 +119,9 @@ func setStallingMDOpsForPut(ctx context.Context, config Config,
 
 	stallKey := "requestName"
 	putValue := "put"
-	opName := "Put"
+	opName := StallableMDPut
 	if stallAfterPut {
-		opName = "AfterPut"
+		opName = StallableMDAfterPut
 	}
 
 	config.SetMDOps(&stallingMDOps{
@@ -474,7 +474,7 @@ func TestKBFSOpsConcurBlockReadWrite(t *testing.T) {
 	writeValue := "write"
 
 	config.SetBlockOps(&stallingBlockOps{
-		stallOpName: "Get",
+		stallOpName: StallableBlockGet,
 		stallKey:    stallKey,
 		stallMap: map[interface{}]staller{
 			readValue: staller{
@@ -625,7 +625,7 @@ func TestKBFSOpsConcurBlockSyncWrite(t *testing.T) {
 	syncValue := "sync"
 
 	config.SetBlockOps(&stallingBlockOps{
-		stallOpName: "Get",
+		stallOpName: StallableBlockGet,
 		stallKey:    stallKey,
 		stallMap: map[interface{}]staller{
 			syncValue: staller{
@@ -730,7 +730,7 @@ func TestKBFSOpsConcurBlockSyncTruncate(t *testing.T) {
 	syncValue := "sync"
 
 	config.SetBlockOps(&stallingBlockOps{
-		stallOpName: "Get",
+		stallOpName: StallableBlockGet,
 		stallKey:    stallKey,
 		stallMap: map[interface{}]staller{
 			syncValue: staller{
@@ -1237,7 +1237,7 @@ func TestKBFSOpsMultiBlockWriteDuringRetriedSync(t *testing.T) {
 	syncValue := "sync"
 
 	config.SetBlockOps(&stallingBlockOps{
-		stallOpName: "Put",
+		stallOpName: StallableBlockPut,
 		stallKey:    stallKey,
 		stallMap: map[interface{}]staller{
 			syncValue: staller{
@@ -1451,7 +1451,7 @@ func TestKBFSOpsTruncateWithDupBlockCanceled(t *testing.T) {
 	syncValue := "sync"
 
 	config.SetBlockOps(&stallingBlockOps{
-		stallOpName: "Put",
+		stallOpName: StallableBlockPut,
 		stallKey:    stallKey,
 		stallMap: map[interface{}]staller{
 			syncValue: staller{
@@ -1559,7 +1559,7 @@ func TestKBFSOpsErrorOnBlockedWriteDuringSync(t *testing.T) {
 
 	realBlockOps := config.BlockOps()
 	staller := &stallingBlockOps{
-		stallOpName: "Put",
+		stallOpName: StallableBlockPut,
 		stallKey:    stallKey,
 		stallMap: map[interface{}]staller{
 			syncValue: staller{
