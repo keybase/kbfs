@@ -9,35 +9,16 @@ import (
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
+	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
-
-type journalAction int
-
-const (
-	journalEnable journalAction = iota
-	journalFlush
-	journalDisable
-)
-
-func (a journalAction) String() string {
-	switch a {
-	case journalEnable:
-		return "Enable journal"
-	case journalFlush:
-		return "Flush journal"
-	case journalDisable:
-		return "Disable journal"
-	}
-	return fmt.Sprintf("journalAction(%d)", int(a))
-}
 
 // JournalControlFile is a special file used to control journal
 // settings.
 type JournalControlFile struct {
 	folder *Folder
-	action journalAction
+	action libfs.JournalAction
 }
 
 var _ fs.Node = (*JournalControlFile)(nil)
@@ -69,20 +50,20 @@ func (f *JournalControlFile) Write(ctx context.Context, req *fuse.WriteRequest,
 	}
 
 	switch f.action {
-	case journalEnable:
+	case libfs.JournalEnable:
 		err := jServer.Enable(f.folder.getFolderBranch().Tlf)
 		if err != nil {
 			return err
 		}
 
-	case journalFlush:
-		jServer.Flush(f.folder.getFolderBranch().Tlf)
+	case libfs.JournalFlush:
+		err := jServer.Flush(f.folder.getFolderBranch().Tlf)
 		if err != nil {
 			return err
 		}
 
-	case journalDisable:
-		jServer.Flush(f.folder.getFolderBranch().Tlf)
+	case libfs.JournalDisable:
+		err := jServer.Disable(f.folder.getFolderBranch().Tlf)
 		if err != nil {
 			return err
 		}
