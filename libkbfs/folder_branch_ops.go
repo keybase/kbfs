@@ -967,7 +967,8 @@ func (fbo *folderBranchOps) initMDLocked(
 		return InvalidKeyGenerationError{handle, keyGen}
 	}
 	info, plainSize, readyBlockData, err :=
-		fbo.blocks.ReadyBlock(ctx, MakeConstRootMetadata(md), newDblock, uid)
+		fbo.blocks.ReadyBlock(
+			ctx, MakeConstRootMetadata(md), newDblock, uid)
 	if err != nil {
 		return err
 	}
@@ -987,7 +988,8 @@ func (fbo *folderBranchOps) initMDLocked(
 	md.AddRefBlock(md.data.Dir.BlockInfo)
 	md.UnrefBytes = 0
 
-	if err = fbo.config.BlockOps().Put(ctx, MakeConstRootMetadata(md), info.BlockPointer,
+	if err = fbo.config.BlockOps().Put(
+		ctx, MakeConstRootMetadata(md), info.BlockPointer,
 		readyBlockData); err != nil {
 		return err
 	}
@@ -1307,7 +1309,8 @@ func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 
 		childPath := dirPath.ChildPathNoPtr(name)
 
-		de, err = fbo.blocks.GetDirtyEntry(ctx, lState, md.ConstRootMetadata, childPath)
+		de, err = fbo.blocks.GetDirtyEntry(
+			ctx, lState, md.ConstRootMetadata, childPath)
 		if err != nil {
 			return err
 		}
@@ -1362,7 +1365,8 @@ func (fbo *folderBranchOps) statEntry(ctx context.Context, node Node) (
 	}
 
 	if nodePath.hasValidParent() {
-		de, err = fbo.blocks.GetDirtyEntry(ctx, lState, md.ConstRootMetadata, nodePath)
+		de, err = fbo.blocks.GetDirtyEntry(
+			ctx, lState, md.ConstRootMetadata, nodePath)
 		if err != nil {
 			return DirEntry{}, err
 		}
@@ -1434,8 +1438,8 @@ func (bps *blockPutState) DeepCopy() *blockPutState {
 }
 
 func (fbo *folderBranchOps) readyBlockMultiple(ctx context.Context,
-	md ConstRootMetadata, currBlock Block, uid keybase1.UID, bps *blockPutState) (
-	info BlockInfo, plainSize int, err error) {
+	md ConstRootMetadata, currBlock Block, uid keybase1.UID,
+	bps *blockPutState) (info BlockInfo, plainSize int, err error) {
 	info, plainSize, readyBlockData, err :=
 		fbo.blocks.ReadyBlock(ctx, md, currBlock, uid)
 	if err != nil {
@@ -1455,7 +1459,8 @@ func (fbo *folderBranchOps) unembedBlockChanges(
 	}
 	block := NewFileBlock().(*FileBlock)
 	block.Contents = buf
-	info, _, err := fbo.readyBlockMultiple(ctx, MakeConstRootMetadata(md), block, uid, bps)
+	info, _, err := fbo.readyBlockMultiple(
+		ctx, MakeConstRootMetadata(md), block, uid, bps)
 	if err != nil {
 		return
 	}
@@ -1508,8 +1513,8 @@ func (fbo *folderBranchOps) syncBlock(
 	doSetTime := true
 	now := fbo.nowUnixNano()
 	for len(newPath.path) < len(dir.path)+1 {
-		info, plainSize, err :=
-			fbo.readyBlockMultiple(ctx, MakeConstRootMetadata(md), currBlock, uid, bps)
+		info, plainSize, err := fbo.readyBlockMultiple(
+			ctx, MakeConstRootMetadata(md), currBlock, uid, bps)
 		if err != nil {
 			return path{}, DirEntry{}, nil, err
 		}
@@ -1545,7 +1550,8 @@ func (fbo *folderBranchOps) syncBlock(
 				// modified while holding mdWriterLock, so it's
 				// safe to fetch them one at a time.
 				prevDblock, err = fbo.blocks.GetDir(
-					ctx, lState, MakeConstRootMetadata(md), prevDir, blockWrite)
+					ctx, lState, MakeConstRootMetadata(md),
+					prevDir, blockWrite)
 				if err != nil {
 					return path{}, DirEntry{}, nil, err
 				}
@@ -2008,11 +2014,14 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 
 		defer func() {
 			if err != nil {
-				fbo.fbm.cleanUpBlockState(MakeConstRootMetadata(md), bps, blockDeleteOnMDFail)
+				fbo.fbm.cleanUpBlockState(
+					MakeConstRootMetadata(md),
+					bps, blockDeleteOnMDFail)
 			}
 		}()
 
-		ptrsToDelete, err := fbo.doBlockPuts(ctx, MakeConstRootMetadata(md), *bps)
+		ptrsToDelete, err := fbo.doBlockPuts(
+			ctx, MakeConstRootMetadata(md), *bps)
 		if err != nil {
 			return err
 		}
@@ -2063,7 +2072,9 @@ func (fbo *folderBranchOps) syncBlockAndFinalizeLocked(ctx context.Context,
 
 	defer func() {
 		if err != nil {
-			fbo.fbm.cleanUpBlockState(MakeConstRootMetadata(md), bps, blockDeleteOnMDFail)
+			fbo.fbm.cleanUpBlockState(
+				MakeConstRootMetadata(md),
+				bps, blockDeleteOnMDFail)
 		}
 	}()
 
@@ -2088,7 +2099,8 @@ func checkDisallowedPrefixes(name string) error {
 }
 
 func (fbo *folderBranchOps) checkNewDirSize(ctx context.Context,
-	lState *lockState, md ConstRootMetadata, dirPath path, newName string) error {
+	lState *lockState, md ConstRootMetadata,
+	dirPath path, newName string) error {
 	// Check that the directory isn't past capacity already.
 	var currSize uint64
 	if dirPath.hasValidParent() {
@@ -2138,7 +2150,8 @@ func (fbo *folderBranchOps) createEntryLocked(
 		return nil, DirEntry{}, err
 	}
 
-	dblock, err := fbo.blocks.GetDir(ctx, lState, MakeConstRootMetadata(md), dirPath, blockWrite)
+	dblock, err := fbo.blocks.GetDir(
+		ctx, lState, MakeConstRootMetadata(md), dirPath, blockWrite)
 	if err != nil {
 		return nil, DirEntry{}, err
 	}
@@ -2148,7 +2161,8 @@ func (fbo *folderBranchOps) createEntryLocked(
 		return nil, DirEntry{}, NameExistsError{name}
 	}
 
-	if err := fbo.checkNewDirSize(ctx, lState, MakeConstRootMetadata(md), dirPath, name); err != nil {
+	if err := fbo.checkNewDirSize(
+		ctx, lState, MakeConstRootMetadata(md), dirPath, name); err != nil {
 		return nil, DirEntry{}, err
 	}
 
@@ -2318,7 +2332,8 @@ func (fbo *folderBranchOps) createLinkLocked(
 		return DirEntry{}, err
 	}
 
-	dblock, err := fbo.blocks.GetDir(ctx, lState, MakeConstRootMetadata(md), dirPath, blockWrite)
+	dblock, err := fbo.blocks.GetDir(
+		ctx, lState, MakeConstRootMetadata(md), dirPath, blockWrite)
 	if err != nil {
 		return DirEntry{}, err
 	}
@@ -2420,7 +2435,8 @@ func (fbo *folderBranchOps) removeEntryLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata, dir path, name string) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 
-	pblock, err := fbo.blocks.GetDir(ctx, lState, MakeConstRootMetadata(md), dir, blockWrite)
+	pblock, err := fbo.blocks.GetDir(
+		ctx, lState, MakeConstRootMetadata(md), dir, blockWrite)
 	if err != nil {
 		return err
 	}
@@ -2469,7 +2485,8 @@ func (fbo *folderBranchOps) removeDirLocked(ctx context.Context,
 		return err
 	}
 
-	pblock, err := fbo.blocks.GetDir(ctx, lState, MakeConstRootMetadata(md), dirPath, blockRead)
+	pblock, err := fbo.blocks.GetDir(
+		ctx, lState, MakeConstRootMetadata(md), dirPath, blockRead)
 	de, ok := pblock.Children[dirName]
 	if !ok {
 		return NoSuchNameError{dirName}
@@ -2548,7 +2565,8 @@ func (fbo *folderBranchOps) renameLocked(
 	}
 
 	oldPBlock, newPBlock, newDe, lbc, err := fbo.blocks.PrepRename(
-		ctx, lState, MakeConstRootMetadata(md), oldParent, oldName, newParent, newName)
+		ctx, lState, MakeConstRootMetadata(md),
+		oldParent, oldName, newParent, newName)
 
 	if err != nil {
 		return err
@@ -2664,7 +2682,9 @@ func (fbo *folderBranchOps) renameLocked(
 
 	defer func() {
 		if err != nil {
-			fbo.fbm.cleanUpBlockState(MakeConstRootMetadata(md), newBps, blockDeleteOnMDFail)
+			fbo.fbm.cleanUpBlockState(
+				MakeConstRootMetadata(md),
+				newBps, blockDeleteOnMDFail)
 		}
 	}()
 
@@ -2740,7 +2760,8 @@ func (fbo *folderBranchOps) Read(
 			return err
 		}
 
-		bytesRead, err = fbo.blocks.Read(ctx, lState, md.ConstRootMetadata, filePath, dest, off)
+		bytesRead, err = fbo.blocks.Read(
+			ctx, lState, md.ConstRootMetadata, filePath, dest, off)
 		return err
 	})
 	if err != nil {
@@ -2770,7 +2791,8 @@ func (fbo *folderBranchOps) Write(
 			return err
 		}
 
-		err = fbo.blocks.Write(ctx, lState, md.ConstRootMetadata, file, data, off)
+		err = fbo.blocks.Write(
+			ctx, lState, md.ConstRootMetadata, file, data, off)
 		if err != nil {
 			return err
 		}
@@ -2801,7 +2823,8 @@ func (fbo *folderBranchOps) Truncate(
 			return err
 		}
 
-		err = fbo.blocks.Truncate(ctx, lState, md.ConstRootMetadata, file, size)
+		err = fbo.blocks.Truncate(
+			ctx, lState, md.ConstRootMetadata, file, size)
 		if err != nil {
 			return err
 		}
@@ -3034,7 +3057,8 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 	// don't want them cleaned up in that case.  Instead, the
 	// FinishSync call below will take care of that.
 
-	blocksToRemove, err = fbo.doBlockPuts(ctx, MakeConstRootMetadata(md), *bps)
+	blocksToRemove, err = fbo.doBlockPuts(
+		ctx, MakeConstRootMetadata(md), *bps)
 	if err != nil {
 		return true, err
 	}
@@ -3055,7 +3079,8 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 	// and the new paths will see the writes that happened during
 	// the sync.
 
-	return fbo.blocks.FinishSync(ctx, lState, file, newPath, MakeConstRootMetadata(md), syncState, fbo.fbm)
+	return fbo.blocks.FinishSync(ctx, lState, file, newPath,
+		MakeConstRootMetadata(md), syncState, fbo.fbm)
 }
 
 func (fbo *folderBranchOps) Sync(ctx context.Context, file Node) (err error) {
@@ -4245,7 +4270,8 @@ func (fbo *folderBranchOps) finalizeResolution(ctx context.Context,
 
 	// notifyOneOp for every fixed-up merged op.
 	for _, op := range newOps {
-		fbo.notifyOneOpLocked(ctx, lState, op, MakeConstRootMetadata(md))
+		fbo.notifyOneOpLocked(
+			ctx, lState, op, MakeConstRootMetadata(md))
 	}
 	return nil
 }

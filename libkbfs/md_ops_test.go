@@ -664,48 +664,9 @@ func TestMDOpsGetRangeFailFinal(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
 
-<<<<<<< 28aab7769404f987745b36964c1ae7078144d588
-	rmds1, _ := newRMDS(t, config, false)
-	rmds1.MD.PrevRoot = fakeMdID(42)
-	rmds1.MD.SerializedPrivateMetadata = []byte{1}
-	rmds1.MD.Revision = 100
-
-	rmds2, _ := newRMDS(t, config, false)
-	rmds2.MD.PrevRoot = rmds1.MD.PrevRoot
-	rmds2.MD.SerializedPrivateMetadata = []byte{1}
-	rmds2.MD.Revision = 101
-	rmds2.MD.Flags |= MetadataFlagFinal
-	rmds2ID, err := config.Crypto().MakeMdID(&rmds2.MD)
-	require.NoError(t, err)
-
-	rmds3, _ := newRMDS(t, config, false)
-	rmds3.MD.PrevRoot = rmds2ID
-	rmds3.MD.SerializedPrivateMetadata = []byte{1}
-	rmds3.MD.Revision = 102
-||||||| merged common ancestors
-	rmds1, _ := newRMDS(t, config, false)
-	rmds1.MD.PrevRoot = fakeMdID(42)
-	rmds1.MD.SerializedPrivateMetadata = []byte{1}
-	rmds1.MD.Revision = 100
-	rmds1ID, err := config.Crypto().MakeMdID(&rmds1.MD)
-	require.NoError(t, err)
-
-	rmds2, _ := newRMDS(t, config, false)
-	rmds2.MD.PrevRoot = rmds1ID
-	rmds2.MD.SerializedPrivateMetadata = []byte{1}
-	rmds2.MD.Revision = 101
-	rmds2.MD.Flags |= MetadataFlagFinal
-	rmds2ID, err := config.Crypto().MakeMdID(&rmds2.MD)
-	require.NoError(t, err)
-
-	rmds3, _ := newRMDS(t, config, false)
-	rmds3.MD.PrevRoot = rmds2ID
-	rmds3.MD.SerializedPrivateMetadata = []byte{1}
-	rmds3.MD.Revision = 102
-=======
 	rmdses := makeRMDSRange(t, config, 100, 5)
 	rmdses[2].MD.Flags |= MetadataFlagFinal
->>>>>>> Clean up mdops test
+	rmdses[2].MD.PrevRoot = rmdses[1].MD.PrevRoot
 
 	start := MetadataRevision(100)
 	stop := start + MetadataRevision(len(rmdses))

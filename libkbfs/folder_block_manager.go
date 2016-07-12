@@ -208,11 +208,11 @@ func (fbm *folderBlockManager) shutdown() {
 //
 //  defer func() {
 //    if err != nil {
-//      ...cleanUpBlockState(md, bps)
+//      ...cleanUpBlockState(MakeConstRootMetadata(md), bps)
 //    }
 //  }()
 //
-//  ... = ...doBlockPuts(ctx, md, *bps)
+//  ... = ...doBlockPuts(ctx, MakeConstRootMetadata(md), *bps)
 //
 // The exception is for when blocks might get reused across multiple
 // attempts at the same operation (like for a Sync).  In that case,
