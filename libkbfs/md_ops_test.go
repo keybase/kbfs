@@ -26,7 +26,10 @@ func (c shimCrypto) MakeMdID(md *BareRootMetadata) (MdID, error) {
 }
 
 func injectShimCrypto(t *testing.T, config Config) {
-	crypto := shimCrypto{config.Crypto(), MakeCryptoCommon(NewCodecMsgpack(), logger.NewTestLogger(t))}
+	crypto := shimCrypto{
+		config.Crypto(),
+		MakeCryptoCommon(NewCodecMsgpack(), logger.NewTestLogger(t)),
+	}
 	config.SetCrypto(crypto)
 }
 
@@ -49,7 +52,6 @@ func mdOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 }
 
 func addFakeRMDData(rmd *RootMetadata, h *TlfHandle) {
-	// Need to do this to avoid calls to the mocked-out MakeMdID.
 	rmd.Revision = MetadataRevision(1)
 	rmd.LastModifyingWriter = h.FirstResolvedWriter()
 	rmd.LastModifyingUser = h.FirstResolvedWriter()
@@ -59,12 +61,14 @@ func addFakeRMDData(rmd *RootMetadata, h *TlfHandle) {
 	}
 }
 
-func newRMD(t *testing.T, config Config, public bool) (*RootMetadata, *TlfHandle) {
+func newRMD(t *testing.T, config Config, public bool) (
+	*RootMetadata, *TlfHandle) {
 	id := FakeTlfID(1, public)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", public)
 	rmd := &RootMetadata{}
-	err := updateNewRootMetadata(&rmd.BareRootMetadata, id, h.ToBareHandleOrBust())
+	err := updateNewRootMetadata(
+		&rmd.BareRootMetadata, id, h.ToBareHandleOrBust())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +95,8 @@ func addFakeRMDSData(rmds *RootMetadataSigned, h *TlfHandle) {
 	}
 }
 
-func newRMDS(t *testing.T, config Config, public bool) (*RootMetadataSigned, *TlfHandle) {
+func newRMDS(t *testing.T, config Config, public bool) (
+	*RootMetadataSigned, *TlfHandle) {
 	id := FakeTlfID(1, public)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", public)
@@ -128,7 +133,7 @@ func verifyMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
 	packedData := []byte{4, 3, 2, 1}
 	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(packedData, nil).AnyTimes()
 
-	// TODO: FIgure out why we need AnyTimes here for FailFinal.
+	// TODO: Figure out why we need AnyTimes here for FailFinal.
 	config.mockCodec.EXPECT().Decode(rmds.MD.SerializedPrivateMetadata, gomock.Any()).
 		Return(nil).AnyTimes()
 	fakeRMD := RootMetadata{
@@ -143,8 +148,11 @@ func verifyMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
 		config.mockKbpki.EXPECT().HasUnverifiedVerifyingKey(gomock.Any(), gomock.Any(),
 			gomock.Any()).AnyTimes().Return(nil)
 
-		// These are for the deepCopy done in VerifyRootMetadata when metadata is final.
-		// TODO: Figure ouy why we need any times here for FailFinal.
+		// These are for the deepCopy done in
+		// VerifyRootMetadata when metadata is final.
+		//
+		// TODO: Figure ouy why we need AnyTimes here for
+		// FailFinal.
 		config.mockCodec.EXPECT().Decode(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 		config.mockCodec.EXPECT().Decode(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	} else {
@@ -656,6 +664,7 @@ func TestMDOpsGetRangeFailFinal(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
 
+<<<<<<< 28aab7769404f987745b36964c1ae7078144d588
 	rmds1, _ := newRMDS(t, config, false)
 	rmds1.MD.PrevRoot = fakeMdID(42)
 	rmds1.MD.SerializedPrivateMetadata = []byte{1}
@@ -673,17 +682,42 @@ func TestMDOpsGetRangeFailFinal(t *testing.T) {
 	rmds3.MD.PrevRoot = rmds2ID
 	rmds3.MD.SerializedPrivateMetadata = []byte{1}
 	rmds3.MD.Revision = 102
+||||||| merged common ancestors
+	rmds1, _ := newRMDS(t, config, false)
+	rmds1.MD.PrevRoot = fakeMdID(42)
+	rmds1.MD.SerializedPrivateMetadata = []byte{1}
+	rmds1.MD.Revision = 100
+	rmds1ID, err := config.Crypto().MakeMdID(&rmds1.MD)
+	require.NoError(t, err)
 
-	// Do this before setting tlfHandle to nil.
-	verifyMDForPrivate(config, rmds1)
-	verifyMDForPrivate(config, rmds2)
+	rmds2, _ := newRMDS(t, config, false)
+	rmds2.MD.PrevRoot = rmds1ID
+	rmds2.MD.SerializedPrivateMetadata = []byte{1}
+	rmds2.MD.Revision = 101
+	rmds2.MD.Flags |= MetadataFlagFinal
+	rmds2ID, err := config.Crypto().MakeMdID(&rmds2.MD)
+	require.NoError(t, err)
 
-	allRMDSs := []*RootMetadataSigned{rmds1, rmds2, rmds3}
+	rmds3, _ := newRMDS(t, config, false)
+	rmds3.MD.PrevRoot = rmds2ID
+	rmds3.MD.SerializedPrivateMetadata = []byte{1}
+	rmds3.MD.Revision = 102
+=======
+	rmdses := makeRMDSRange(t, config, 100, 5)
+	rmdses[2].MD.Flags |= MetadataFlagFinal
+>>>>>>> Clean up mdops test
 
-	start, stop := MetadataRevision(100), MetadataRevision(102)
-	config.mockMdserv.EXPECT().GetRange(ctx, rmds1.MD.ID, NullBranchID, Merged, start,
-		stop).Return(allRMDSs, nil)
+	start := MetadataRevision(100)
+	stop := start + MetadataRevision(len(rmdses))
 
-	_, err = config.MDOps().GetRange(ctx, rmds1.MD.ID, start, stop)
+	for i := 0; i <= 2; i++ {
+		verifyMDForPrivate(config, rmdses[i])
+	}
+
+	config.mockMdserv.EXPECT().GetRange(
+		ctx, rmdses[0].MD.ID, NullBranchID, Merged, start, stop).Return(
+		rmdses, nil)
+
+	_, err := config.MDOps().GetRange(ctx, rmdses[0].MD.ID, start, stop)
 	require.IsType(t, MDMismatchError{}, err)
 }
