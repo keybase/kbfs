@@ -391,14 +391,34 @@ func (md *RootMetadata) swapCachedBlockChanges() {
 	}
 }
 
-// ConstRootMetadata is a pointer to a const RootMetadata.
+// A ConstRootMetadata is a thin wrapper around a
+// *RootMetadata. Functions that take a ConstRootMetadata parameter
+// must not store the parameter or modify it. Therefore, code that
+// passes a ConstRootMetadata to a function can assume that it is
+// neither modified nor stored.
 type ConstRootMetadata struct {
 	*RootMetadata
 }
 
-// MakeConstRootMetadata makes a new ConstRootMetadata.
+// MakeConstRootMetadata makes a new ConstRootMetadata from the given
+// one.
 func MakeConstRootMetadata(rmd *RootMetadata) ConstRootMetadata {
 	return ConstRootMetadata{rmd}
+}
+
+// ImmutableRootMetadata is a thin wrapper around a ConstRootMetadata
+// that takes ownership of it and does not ever modify it again. Thus,
+// its MdID can be calculated and stored.
+type ImmutableRootMetadata struct {
+	ConstRootMetadata
+	mdID MdID
+}
+
+// MakeImmutableRootMetadata makes a new ImmutableRootMetadata from
+// the given RMD and its corresponding MdID.
+func MakeImmutableRootMetadata(
+	rmd *RootMetadata, mdID MdID) ImmutableRootMetadata {
+	return ImmutableRootMetadata{ConstRootMetadata{rmd}, mdID}
 }
 
 // RootMetadataSigned is the top-level MD object stored in MD server
@@ -517,15 +537,4 @@ func makeRekeyReadError(
 		return NeedSelfRekeyError{tlfName}
 	}
 	return NeedOtherRekeyError{tlfName}
-}
-
-// ImmutableRootMetadata is an immutable version of mdID.
-type ImmutableRootMetadata struct {
-	ConstRootMetadata
-	mdID MdID
-}
-
-// MakeImmutableRootMetadata makes a new ImmutableRootMetadata.
-func MakeImmutableRootMetadata(rmd *RootMetadata, mdID MdID) ImmutableRootMetadata {
-	return ImmutableRootMetadata{ConstRootMetadata{rmd}, mdID}
 }
