@@ -17,9 +17,9 @@ type JournalAction int
 const (
 	// JournalEnable is to turn the journal on.
 	JournalEnable JournalAction = iota
-	// JournalEnable is to flush the journal.
+	// JournalFlush is to flush the journal.
 	JournalFlush
-	// JournalEnable is to disable the journal.
+	// JournalDisable is to disable the journal.
 	JournalDisable
 )
 

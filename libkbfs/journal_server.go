@@ -16,6 +16,12 @@ type tlfJournalBundle struct {
 	// TODO: Fill in with a block journal and an MD journal.
 }
 
+// JournalServer is the server that handles write journals. It
+// interposes itself between BlockServer and MDOps. It uses MDOps
+// instead of MDServer because it has to potentially modify the
+// RootMetadata passed in, and by the time it hits MDServer it's
+// already too late. However, this assumes that all MD ops go through
+// MDOps.
 type JournalServer struct {
 	config Config
 
@@ -38,6 +44,7 @@ func (j *JournalServer) getBundle(tlfID TlfID) (*tlfJournalBundle, bool) {
 	return bundle, ok
 }
 
+// Enable turns on the write journal for the given TLF.
 func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 	j.log.Debug("Enabling journal for %s", tlfID)
 	defer func() {
@@ -57,6 +64,7 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 	return nil
 }
 
+// Enable flushes the write journal for the given TLF.
 func (j *JournalServer) Flush(tlfID TlfID) (err error) {
 	j.log.Debug("Flushing journal for %s", tlfID)
 	defer func() {
@@ -81,6 +89,7 @@ func (j *JournalServer) Flush(tlfID TlfID) (err error) {
 	return nil
 }
 
+// Disable turns off the write journal for the given TLF.
 func (j *JournalServer) Disable(tlfID TlfID) (err error) {
 	j.log.Debug("Disabling journal for %s", tlfID)
 	defer func() {
