@@ -146,6 +146,9 @@ func (md *RootMetadata) MakeSuccessor(
 	return newMd, nil
 }
 
+// TODO: Move more functions below to BareRootMetadata (and remove the
+// dependence on md.GetTlfHandle()).
+
 func (md *RootMetadata) getTLFKeyBundles(keyGen KeyGen) (
 	*TLFWriterKeyBundle, *TLFReaderKeyBundle, error) {
 	if md.ID.IsPublic() {
