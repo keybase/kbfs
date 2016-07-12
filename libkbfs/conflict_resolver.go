@@ -217,13 +217,14 @@ func (cr *ConflictResolver) checkDone(ctx context.Context) error {
 func (cr *ConflictResolver) getMDs(ctx context.Context, lState *lockState) (
 	unmerged []*RootMetadata, merged []*RootMetadata, err error) {
 	// first get all outstanding unmerged MDs for this device
-	branchPoint, unmergedC, err := cr.fbo.getUnmergedMDUpdates(ctx, lState)
+	branchPoint, unmergedImmutable, err :=
+		cr.fbo.getUnmergedMDUpdates(ctx, lState)
 	if err != nil {
 		return nil, nil, err
 	}
-	unmerged = make([]*RootMetadata, len(unmergedC))
+	unmerged = make([]*RootMetadata, len(unmergedImmutable))
 	// Deep copy because CR may change them.
-	for i, md := range unmergedC {
+	for i, md := range unmergedImmutable {
 		mdCopy, err := md.deepCopy(cr.config.Codec(), true)
 		if err != nil {
 			return nil, nil, err
@@ -232,14 +233,14 @@ func (cr *ConflictResolver) getMDs(ctx context.Context, lState *lockState) (
 	}
 
 	// now get all the merged MDs, starting from after the branch point
-	mergedC, err := getMergedMDUpdates(ctx, cr.fbo.config, cr.fbo.id(),
-		branchPoint+1)
+	mergedImmutable, err := getMergedMDUpdates(
+		ctx, cr.fbo.config, cr.fbo.id(), branchPoint+1)
 	if err != nil {
 		return nil, nil, err
 	}
-	merged = make([]*RootMetadata, len(mergedC))
+	merged = make([]*RootMetadata, len(mergedImmutable))
 	// Deep copy because CR may change them.
-	for i, md := range mergedC {
+	for i, md := range mergedImmutable {
 		mdCopy, err := md.deepCopy(cr.config.Codec(), true)
 		if err != nil {
 			return nil, nil, err
@@ -351,7 +352,8 @@ func (cr *ConflictResolver) getPathsFromChains(ctx context.Context,
 	}
 
 	nodeMap, err := cr.fbo.blocks.SearchForNodes(
-		ctx, nodeCache, ptrs, newPtrs, MakeConstRootMetadata(chains.mostRecentMD))
+		ctx, nodeCache, ptrs, newPtrs,
+		MakeConstRootMetadata(chains.mostRecentMD))
 	if err != nil {
 		return nil, err
 	}
@@ -581,7 +583,8 @@ func (cr *ConflictResolver) addChildBlocksIfIndirectFile(ctx context.Context,
 	// For files with indirect pointers, and all child blocks
 	// as refblocks for the re-created file.
 	fblock, err := cr.fbo.blocks.GetFileBlockForReading(ctx, lState,
-		MakeConstRootMetadata(unmergedChains.mostRecentMD), mostRecent, currPath.Branch, currPath)
+		MakeConstRootMetadata(unmergedChains.mostRecentMD),
+		mostRecent, currPath.Branch, currPath)
 	if err != nil {
 		return err
 	}
@@ -692,8 +695,9 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 			}
 		}
 
-		de, err := cr.fbo.blocks.GetDirtyEntry(
-			ctx, lState, MakeConstRootMetadata(unmergedChains.mostRecentMD), currPath)
+		de, err := cr.fbo.blocks.GetDirtyEntry(ctx, lState,
+			MakeConstRootMetadata(unmergedChains.mostRecentMD),
+			currPath)
 		if err != nil {
 			return path{}, BlockPointer{}, nil, err
 		}
@@ -937,7 +941,8 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 
 	mergedNodeCache := newNodeCacheStandard(cr.fbo.folderBranch)
 	nodeMap, err := cr.fbo.blocks.SearchForNodes(
-		ctx, mergedNodeCache, ptrs, newPtrs, MakeConstRootMetadata(mergedChains.mostRecentMD))
+		ctx, mergedNodeCache, ptrs, newPtrs,
+		MakeConstRootMetadata(mergedChains.mostRecentMD))
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -1458,7 +1463,8 @@ func (cr *ConflictResolver) fixRenameConflicts(ctx context.Context,
 
 	mergedNodeCache := newNodeCacheStandard(cr.fbo.folderBranch)
 	nodeMap, err := cr.fbo.blocks.SearchForNodes(
-		ctx, mergedNodeCache, ptrs, newPtrs, MakeConstRootMetadata(mergedChains.mostRecentMD))
+		ctx, mergedNodeCache, ptrs, newPtrs,
+		MakeConstRootMetadata(mergedChains.mostRecentMD))
 	if err != nil {
 		return nil, err
 	}
@@ -1855,7 +1861,8 @@ func (cr *ConflictResolver) makeFileBlockDeepCopy(ctx context.Context,
 	name string, ptr BlockPointer, blocks fileBlockMap) (
 	BlockPointer, error) {
 	md := chains.mostRecentMD
-	fblock, err := cr.fbo.blocks.GetFileBlockForReading(ctx, lState, MakeConstRootMetadata(md), ptr,
+	fblock, err := cr.fbo.blocks.GetFileBlockForReading(
+		ctx, lState, MakeConstRootMetadata(md), ptr,
 		parentPath.Branch, parentPath.ChildPath(name, ptr))
 	if err != nil {
 		return BlockPointer{}, err
@@ -1979,8 +1986,9 @@ func (cr *ConflictResolver) doActions(ctx context.Context,
 
 		actions := actionMap[mergedPath.tailPointer()]
 		// Now get the directory blocks.
-		unmergedBlock, err := cr.fetchDirBlockCopy(ctx,
-			lState, MakeConstRootMetadata(unmergedChains.mostRecentMD), unmergedPath, lbc)
+		unmergedBlock, err := cr.fetchDirBlockCopy(ctx, lState,
+			MakeConstRootMetadata(unmergedChains.mostRecentMD),
+			unmergedPath, lbc)
 		if err != nil {
 			return err
 		}
@@ -1994,9 +2002,9 @@ func (cr *ConflictResolver) doActions(ctx context.Context,
 			mergedBlock = NewDirBlock().(*DirBlock)
 			lbc[mergedPath.tailPointer()] = mergedBlock
 		} else {
-			mergedBlock, err = cr.fetchDirBlockCopy(ctx,
-				lState, MakeConstRootMetadata(mergedChains.mostRecentMD), mergedPath,
-				lbc)
+			mergedBlock, err = cr.fetchDirBlockCopy(ctx, lState,
+				MakeConstRootMetadata(mergedChains.mostRecentMD),
+				mergedPath, lbc)
 			if err != nil {
 				return err
 			}
@@ -2689,8 +2697,8 @@ func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 			// from other sources as well (such as its directory entry
 			// or its indirect file block) if we happened to have come
 			// across it before.
-			block, err = cr.fbo.blocks.GetBlockForReading(ctx, lState, MakeConstRootMetadata(md), ptr,
-				cr.fbo.branch())
+			block, err = cr.fbo.blocks.GetBlockForReading(ctx, lState,
+				MakeConstRootMetadata(md), ptr, cr.fbo.branch())
 			if err != nil {
 				return err
 			}
