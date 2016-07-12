@@ -5145,11 +5145,6 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 	// Make sure we get the notification
 	<-c
 
-	// Since in the mock test all MDs get the same MD ID, manually
-	// alter head's md ID so it doesn't look the same as the next MD
-	// (which would cause setHeadRevision to panic).
-	newRmd.mdID = fakeMdID(fakeTlfIDByte(id) + 100)
-
 	// Make sure we get a sync even if we overwrite (not extend) the file
 	data[1] = 0
 	config.mockBsplit.EXPECT().CopyUntilSplit(
