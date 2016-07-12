@@ -96,7 +96,9 @@ type WriterMetadataExtra struct {
 	codec.UnknownFieldSetHandler
 }
 
-// BareRootMetadata is the MD that is signed by the reader or writer.
+// BareRootMetadata is the MD that is signed by the reader or
+// writer. Unlike RootMetadata, it contains exactly the serializable
+// metadata.
 type BareRootMetadata struct {
 	// The metadata that is only editable by the writer.
 	//
@@ -137,7 +139,8 @@ type BareRootMetadata struct {
 	codec.UnknownFieldSetHandler
 }
 
-func (md *BareRootMetadata) haveOnlyUserRKeysChanged(codec Codec, prevMD *BareRootMetadata, user keybase1.UID) (bool, error) {
+func (md *BareRootMetadata) haveOnlyUserRKeysChanged(
+	codec Codec, prevMD *BareRootMetadata, user keybase1.UID) (bool, error) {
 	// Require the same number of generations
 	if len(md.RKeys) != len(prevMD.RKeys) {
 		return false, nil
@@ -165,7 +168,8 @@ func (md *BareRootMetadata) haveOnlyUserRKeysChanged(codec Codec, prevMD *BareRo
 
 // IsValidRekeyRequest returns true if the current block is a simple rekey wrt
 // the passed block.
-func (md *BareRootMetadata) IsValidRekeyRequest(codec Codec, prevMd *BareRootMetadata, user keybase1.UID) (bool, error) {
+func (md *BareRootMetadata) IsValidRekeyRequest(
+	codec Codec, prevMd *BareRootMetadata, user keybase1.UID) (bool, error) {
 	if !md.IsWriterMetadataCopiedSet() {
 		// Not a copy.
 		return false, nil
@@ -214,20 +218,21 @@ func (md *BareRootMetadata) IsRekeySet() bool {
 	return md.Flags&MetadataFlagRekey != 0
 }
 
-// IsWriterMetadataCopiedSet returns true if the bit is set indicating the writer metadata
-// was copied.
+// IsWriterMetadataCopiedSet returns true if the bit is set indicating
+// the writer metadata was copied.
 func (md *BareRootMetadata) IsWriterMetadataCopiedSet() bool {
 	return md.Flags&MetadataFlagWriterMetadataCopied != 0
 }
 
-// IsFinal returns true if this is the last metadata block for a given folder.  This is
-// only expected to be set for folder resets.
+// IsFinal returns true if this is the last metadata block for a given
+// folder.  This is only expected to be set for folder resets.
 func (md *BareRootMetadata) IsFinal() bool {
 	return md.Flags&MetadataFlagFinal != 0
 }
 
 // IsWriter returns whether or not the user+device is an authorized writer.
-func (md *BareRootMetadata) IsWriter(user keybase1.UID, deviceKID keybase1.KID) bool {
+func (md *BareRootMetadata) IsWriter(
+	user keybase1.UID, deviceKID keybase1.KID) bool {
 	if md.ID.IsPublic() {
 		for _, w := range md.Writers {
 			if w == user {
@@ -240,7 +245,8 @@ func (md *BareRootMetadata) IsWriter(user keybase1.UID, deviceKID keybase1.KID) 
 }
 
 // IsReader returns whether or not the user+device is an authorized reader.
-func (md *BareRootMetadata) IsReader(user keybase1.UID, deviceKID keybase1.KID) bool {
+func (md *BareRootMetadata) IsReader(
+	user keybase1.UID, deviceKID keybase1.KID) bool {
 	if md.ID.IsPublic() {
 		return true
 	}
@@ -251,7 +257,8 @@ func (md *BareRootMetadata) IsReader(user keybase1.UID, deviceKID keybase1.KID) 
 // RootMetadata object with the given TlfID and TlfHandle. Note that
 // if the given ID/handle are private, rekeying must be done
 // separately.
-func updateNewRootMetadata(rmd *BareRootMetadata, id TlfID, h BareTlfHandle) error {
+func updateNewRootMetadata(
+	rmd *BareRootMetadata, id TlfID, h BareTlfHandle) error {
 	if id.IsPublic() != h.IsPublic() {
 		return errors.New("TlfID and TlfHandle disagree on public status")
 	}
@@ -448,7 +455,8 @@ func (md *BareRootMetadata) writerKID() keybase1.KID {
 
 // VerifyWriterMetadata verifies md's WriterMetadata against md's
 // WriterMetadataSigInfo, assuming the verifying key there is valid.
-func (md *BareRootMetadata) VerifyWriterMetadata(codec Codec, crypto Crypto) error {
+func (md *BareRootMetadata) VerifyWriterMetadata(
+	codec Codec, crypto Crypto) error {
 	// We have to re-marshal the WriterMetadata, since it's
 	// embedded.
 	buf, err := codec.Encode(md.WriterMetadata)
@@ -465,7 +473,8 @@ func (md *BareRootMetadata) VerifyWriterMetadata(codec Codec, crypto Crypto) err
 }
 
 // TlfHandleExtensions returns a list of handle extensions associated with the TLf.
-func (md *BareRootMetadata) TlfHandleExtensions() (extensions []TlfHandleExtension) {
+func (md *BareRootMetadata) TlfHandleExtensions() (
+	extensions []TlfHandleExtension) {
 	if md.ConflictInfo != nil {
 		extensions = append(extensions, *md.ConflictInfo)
 	}
