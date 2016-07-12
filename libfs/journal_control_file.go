@@ -10,11 +10,16 @@ import (
 	"github.com/keybase/kbfs/libkbfs"
 )
 
+// JournalAction enumerates all the possible actions to take on a
+// TLF's journal.
 type JournalAction int
 
 const (
+	// JournalEnable is to turn the journal on.
 	JournalEnable JournalAction = iota
+	// JournalEnable is to flush the journal.
 	JournalFlush
+	// JournalEnable is to disable the journal.
 	JournalDisable
 )
 
@@ -30,6 +35,8 @@ func (a JournalAction) String() string {
 	return fmt.Sprintf("JournalAction(%d)", int(a))
 }
 
+// Execute performs the action on the given JournalServer for the
+// given TLF.
 func (a JournalAction) Execute(
 	jServer *libkbfs.JournalServer, tlf libkbfs.TlfID) error {
 	switch a {
