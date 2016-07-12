@@ -52,6 +52,10 @@ type InitParams struct {
 
 	// LogFileConfig tells us where to log and rotation config.
 	LogFileConfig logger.LogFileConfig
+
+	// PermitWriteJournals, if true, permits write journals to be
+	// turned on for any TLF.
+	PermitWriteJournals bool
 }
 
 // GetDefaultBServer returns the default value for the -bserver flag.
@@ -120,6 +124,7 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 	flag.Var(SizeFlag{&params.LogFileConfig.MaxSize}, "log-file-max-size", "Maximum size of a log file before rotation")
 	// The default is to *DELETE* old log files for kbfs.
 	flag.IntVar(&params.LogFileConfig.MaxKeepFiles, "log-file-max-keep-files", defaultParams.LogFileConfig.MaxKeepFiles, "Maximum number of log files for this service, older ones are deleted. 0 for infinite.")
+	flags.BoolVar(&params.PermitWriteJournals, "permit-write-journals-which-may-lose-data", false, "Permit write journals to be created for TLFs (EXPERIMENTAL)")
 	return &params
 }
 
@@ -356,6 +361,17 @@ func Init(ctx Context, params InitParams, keybaseDaemonFn KeybaseDaemonFn, onInt
 	}
 
 	config.SetBlockServer(bserv)
+
+	if params.PermitWriteJournals {
+		log := config.MakeLogger("")
+		jServer := makeJournalServer(
+			config, log,
+			// TODO: Figure out the right path to use.
+			"/tmp/kbfs_journal",
+			config.BlockServer(), config.MDOps())
+		config.SetBlockServer(jServer.blockServer())
+		config.SetMDOps(jServer.mdOps())
+	}
 
 	return config, nil
 }
