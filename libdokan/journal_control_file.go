@@ -29,37 +29,9 @@ func (f *JournalControlFile) WriteFile(
 		f.folder.fs,
 		fmt.Sprintf("JournalQuotaFile (action=%s) Write", action))
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err, cancel) }()
-	if len(req.Data) == 0 {
-		return nil
+	if len(bs) == 0 {
+		return 0, nil
 	}
-
-	jServer, err := libkbfs.GetJournalServer(f.folder.fs.config)
-	if err != nil {
-		return 0, err
-	}
-
-	switch f.action {
-	case libfs.JournalEnable:
-		err := jServer.Enable(f.folder.getFolderBranch().Tlf)
-		if err != nil {
-			return 0, err
-		}
-
-	case libfs.JournalFlush:
-		err := jServer.Flush(f.folder.getFolderBranch().Tlf)
-		if err != nil {
-			return 0, err
-		}
-
-	case libfs.JournalDisable:
-		err := jServer.Disable(f.folder.getFolderBranch().Tlf)
-		if err != nil {
-			return 0, err
-		}
-
-	default:
-		return 0, fmt.Errorf("Unknown action %s", f.action)
-	}
-
+	err = f.action.Execute(jServer, f.folder.getFolderBranch().Tlf)
 	return len(bs), err
 }

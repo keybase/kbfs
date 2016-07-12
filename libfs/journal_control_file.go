@@ -4,7 +4,11 @@
 
 package libfs
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/keybase/kbfs/libkbfs"
+)
 
 type JournalAction int
 
@@ -24,4 +28,32 @@ func (a JournalAction) String() string {
 		return "Disable journal"
 	}
 	return fmt.Sprintf("JournalAction(%d)", int(a))
+}
+
+func (a JournalAction) Execute(
+	jServer *libkbfs.JournalServer, tlf libkbfs.TlfID) error {
+	switch a {
+	case JournalEnable:
+		err := jServer.Enable(tlf)
+		if err != nil {
+			return err
+		}
+
+	case JournalFlush:
+		err := jServer.Flush(tlf)
+		if err != nil {
+			return err
+		}
+
+	case JournalDisable:
+		err := jServer.Disable(tlf)
+		if err != nil {
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Unknown action %s", a)
+	}
+
+	return nil
 }

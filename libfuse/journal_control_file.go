@@ -5,8 +5,6 @@
 package libfuse
 
 import (
-	"fmt"
-
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"github.com/keybase/kbfs/libfs"
@@ -49,27 +47,9 @@ func (f *JournalControlFile) Write(ctx context.Context, req *fuse.WriteRequest,
 		return err
 	}
 
-	switch f.action {
-	case libfs.JournalEnable:
-		err := jServer.Enable(f.folder.getFolderBranch().Tlf)
-		if err != nil {
-			return err
-		}
-
-	case libfs.JournalFlush:
-		err := jServer.Flush(f.folder.getFolderBranch().Tlf)
-		if err != nil {
-			return err
-		}
-
-	case libfs.JournalDisable:
-		err := jServer.Disable(f.folder.getFolderBranch().Tlf)
-		if err != nil {
-			return err
-		}
-
-	default:
-		return fmt.Errorf("Unknown action %s", f.action)
+	err = f.action.Execute(jServer, f.folder.getFolderBranch().Tlf)
+	if err != nil {
+		return err
 	}
 
 	resp.Size = len(req.Data)
