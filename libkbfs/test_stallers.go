@@ -5,10 +5,10 @@
 package libkbfs
 
 import (
-	"sync"
-)
+	"fmt"
 
-import "golang.org/x/net/context"
+	"golang.org/x/net/context"
+)
 
 type stallableOp string
 
@@ -38,24 +38,57 @@ const (
 	StallableMDPutUnmerged           StallableMDOp = "PutUnmerged"
 )
 
-// StallMDOp sets a wrapped MDOps in config so that the specified Op,
-// stalledOp, is stalled. Caller should use the returned newCtx for subsequent
-// operations for the stall to be effective. onStalled is a channel to notify
-// the caller when the stall has happened. unstall is a channel for caller to
-// unstall an Op.
-func StallMDOp(ctx context.Context, config Config, stalledOp stallableOp) (
-	onStalled <-chan struct{}, unstall chan<- struct{}, newCtx context.Context) {
-	return
-}
-
 // StallBlockOp sets a wrapped BlockOps in config so that the specified Op, stalledOp,
 // is stalled. Caller should use the returned newCtx for subsequent operations
 // for the stall to be effective. onStalled is a channel to notify the caller
 // when the stall has happened. unstall is a channel for caller to unstall an
 // Op.
-func StallBlockOp(ctx context.Context, config Config, stalledOp stallableOp) (
+func StallBlockOp(ctx context.Context, config Config, stalledOp StallableBlockOp) (
 	onStalled <-chan struct{}, unstall chan<- struct{}, newCtx context.Context) {
-	return
+	onStalledCh := make(chan struct{}, 1)
+	unstallCh := make(chan struct{})
+	stallKey := newStallKey()
+	config.SetBlockOps(&stallingBlockOps{
+		stallOpName: stalledOp,
+		stallKey:    stallKey,
+		staller: staller{
+			stalled: onStalledCh,
+			unstall: unstallCh,
+		},
+		delegate: config.BlockOps(),
+	})
+	newCtx = context.WithValue(ctx, stallKey, true)
+	return onStalledCh, unstallCh, newCtx
+}
+
+// StallMDOp sets a wrapped MDOps in config so that the specified Op,
+// stalledOp, is stalled. Caller should use the returned newCtx for subsequent
+// operations for the stall to be effective. onStalled is a channel to notify
+// the caller when the stall has happened. unstall is a channel for caller to
+// unstall an Op.
+func StallMDOp(ctx context.Context, config Config, stalledOp StallableMDOp) (
+	onStalled <-chan struct{}, unstall chan<- struct{}, newCtx context.Context) {
+	onStalledCh := make(chan struct{}, 1)
+	unstallCh := make(chan struct{})
+	stallKey := newStallKey()
+	config.SetMDOps(&stallingMDOps{
+		stallOpName: stalledOp,
+		stallKey:    stallKey,
+		staller: staller{
+			stalled: onStalledCh,
+			unstall: unstallCh,
+		},
+		delegate: config.MDOps(),
+	})
+	newCtx = context.WithValue(ctx, stallKey, true)
+	return onStalledCh, unstallCh, newCtx
+}
+
+var stallerCounter uint64
+
+func newStallKey() string {
+	stallerCounter++
+	return fmt.Sprintf("stallKey-%d", stallerCounter)
 }
 
 // staller is a pair of channels. Whenever something is to be
@@ -67,23 +100,22 @@ type staller struct {
 }
 
 func maybeStall(ctx context.Context, opName stallableOp,
-	stallOpName stallableOp, stallKey interface{},
-	stallMap map[interface{}]staller) {
+	stallOpName stallableOp, stallKey string,
+	staller staller) {
 	if opName != stallOpName {
 		return
 	}
 
-	v := ctx.Value(stallKey)
-	chans, ok := stallMap[v]
-	if !ok {
+	v, ok := ctx.Value(stallKey).(bool)
+	if !ok || !v {
 		return
 	}
 
 	select {
-	case chans.stalled <- struct{}{}:
+	case staller.stalled <- struct{}{}:
 	default:
 	}
-	<-chans.unstall
+	<-staller.unstall
 }
 
 // stallingBlockOps is an implementation of BlockOps whose operations
@@ -92,44 +124,33 @@ func maybeStall(ctx context.Context, opName stallableOp,
 // staller is used to stall the operation.
 type stallingBlockOps struct {
 	stallOpName StallableBlockOp
-	stallKey    interface{}
-	stallMap    map[interface{}]staller
-	// lock protects only delegate at the moment
-	lock             sync.Mutex
-	internalDelegate BlockOps
+	// stallKey is a key for switching on/off stalling. If it's present in ctx,
+	// and equal to `true`, the operation is stalled. This allows us to use the
+	// ctx to control stallings
+	stallKey string
+	staller  staller
+	delegate BlockOps
 }
 
 var _ BlockOps = (*stallingBlockOps)(nil)
 
-func (f *stallingBlockOps) delegate() BlockOps {
-	f.lock.Lock()
-	defer f.lock.Unlock()
-	return f.internalDelegate
-}
-
-func (f *stallingBlockOps) setDelegate(bops BlockOps) {
-	f.lock.Lock()
-	defer f.lock.Unlock()
-	f.internalDelegate = bops
-}
-
 func (f *stallingBlockOps) maybeStall(ctx context.Context, opName StallableBlockOp) {
 	maybeStall(ctx, stallableOp(opName), stallableOp(f.stallOpName),
-		f.stallKey, f.stallMap)
+		f.stallKey, f.staller)
 }
 
 func (f *stallingBlockOps) Get(
 	ctx context.Context, md *RootMetadata, blockPtr BlockPointer,
 	block Block) error {
 	f.maybeStall(ctx, StallableBlockGet)
-	return f.delegate().Get(ctx, md, blockPtr, block)
+	return f.delegate.Get(ctx, md, blockPtr, block)
 }
 
 func (f *stallingBlockOps) Ready(
 	ctx context.Context, md *RootMetadata, block Block) (
 	id BlockID, plainSize int, readyBlockData ReadyBlockData, err error) {
 	f.maybeStall(ctx, StallableBlockReady)
-	return f.delegate().Ready(ctx, md, block)
+	return f.delegate.Ready(ctx, md, block)
 }
 
 func (f *stallingBlockOps) Put(
@@ -141,7 +162,7 @@ func (f *stallingBlockOps) Put(
 		return ctx.Err()
 	default:
 	}
-	err := f.delegate().Put(ctx, md, blockPtr, readyBlockData)
+	err := f.delegate.Put(ctx, md, blockPtr, readyBlockData)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -154,13 +175,13 @@ func (f *stallingBlockOps) Delete(
 	ctx context.Context, md *RootMetadata,
 	ptrs []BlockPointer) (map[BlockID]int, error) {
 	f.maybeStall(ctx, StallableBlockDelete)
-	return f.delegate().Delete(ctx, md, ptrs)
+	return f.delegate.Delete(ctx, md, ptrs)
 }
 
 func (f *stallingBlockOps) Archive(
 	ctx context.Context, md *RootMetadata, ptrs []BlockPointer) error {
 	f.maybeStall(ctx, StallableBlockArchive)
-	return f.delegate().Archive(ctx, md, ptrs)
+	return f.delegate.Archive(ctx, md, ptrs)
 }
 
 // stallingMDOps is an implementation of MDOps whose operations
@@ -169,16 +190,19 @@ func (f *stallingBlockOps) Archive(
 // staller is used to stall the operation.
 type stallingMDOps struct {
 	stallOpName StallableMDOp
-	stallKey    interface{}
-	stallMap    map[interface{}]staller
-	delegate    MDOps
+	// stallKey is a key for switching on/off stalling. If it's present in ctx,
+	// and equal to `true`, the operation is stalled. This allows us to use the
+	// ctx to control stallings
+	stallKey string
+	staller  staller
+	delegate MDOps
 }
 
 var _ MDOps = (*stallingMDOps)(nil)
 
 func (m *stallingMDOps) maybeStall(ctx context.Context, opName StallableMDOp) {
 	maybeStall(ctx, stallableOp(opName), stallableOp(m.stallOpName),
-		m.stallKey, m.stallMap)
+		m.stallKey, m.staller)
 }
 
 func (m *stallingMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
