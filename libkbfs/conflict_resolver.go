@@ -2219,7 +2219,6 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 	lState *lockState, unmergedPaths []path, unmergedChains *crChains,
 	mergedChains *crChains) (*RootMetadata, error) {
 	currMD := mergedChains.mostRecentMD
-	// TODO: Is mostRecentMD always const?
 	currMDID, err := cr.config.Crypto().MakeMdID(&currMD.BareRootMetadata)
 	if err != nil {
 		return nil, err
