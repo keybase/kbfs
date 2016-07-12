@@ -45,12 +45,17 @@ func (p PrivateMetadata) checkValid() error {
 	return nil
 }
 
-// RootMetadata is the MD that is signed by the reader or writer, with
-// some additional data.
+// A RootMetadata is a BareRootMetadata but with a deserialized
+// PrivateMetadata. However, note that it is possible that the
+// PrivateMetadata has to be left unserialized due to not having the
+// right keys.
 type RootMetadata struct {
 	BareRootMetadata
 
 	// The plaintext, deserialized PrivateMetadata
+	//
+	// TODO: This should really be a pointer so that it's more
+	// clear when the data has been successfully deserialized.
 	data PrivateMetadata
 
 	// The TLF handle for this MD. May be nil if this object was
@@ -111,7 +116,8 @@ func (md *RootMetadata) DeepCopyForServerTest(
 // MakeSuccessor returns a complete copy of this RootMetadata (but
 // with cleared block change lists and cleared serialized metadata),
 // with the revision incremented and a correct backpointer.
-func (md *RootMetadata) MakeSuccessor(config Config, mdID MdID, isWriter bool) (*RootMetadata, error) {
+func (md *RootMetadata) MakeSuccessor(
+	config Config, mdID MdID, isWriter bool) (*RootMetadata, error) {
 	if md.IsFinal() {
 		return nil, MetadataIsFinalError{}
 	}
@@ -140,7 +146,8 @@ func (md *RootMetadata) MakeSuccessor(config Config, mdID MdID, isWriter bool) (
 	return newMd, nil
 }
 
-func (md *RootMetadata) getTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundle, *TLFReaderKeyBundle, error) {
+func (md *RootMetadata) getTLFKeyBundles(keyGen KeyGen) (
+	*TLFWriterKeyBundle, *TLFReaderKeyBundle, error) {
 	if md.ID.IsPublic() {
 		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundle"}
 	}
@@ -178,7 +185,8 @@ func (md *RootMetadata) GetTLFCryptKeyInfo(keyGen KeyGen, user keybase1.UID,
 
 // GetTLFCryptPublicKeys returns the public crypt keys for the given user
 // at the given key generation.
-func (md *RootMetadata) GetTLFCryptPublicKeys(keyGen KeyGen, user keybase1.UID) (
+func (md *RootMetadata) GetTLFCryptPublicKeys(
+	keyGen KeyGen, user keybase1.UID) (
 	[]keybase1.KID, bool) {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
