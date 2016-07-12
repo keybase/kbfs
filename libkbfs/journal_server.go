@@ -64,7 +64,7 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 	return nil
 }
 
-// Enable flushes the write journal for the given TLF.
+// Flush flushes the write journal for the given TLF.
 func (j *JournalServer) Flush(tlfID TlfID) (err error) {
 	j.log.Debug("Flushing journal for %s", tlfID)
 	defer func() {
