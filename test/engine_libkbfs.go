@@ -447,6 +447,11 @@ func (k *LibKBFS) DisableUpdatesForTesting(u User, tlfName string, isPublic bool
 	return nil
 }
 
+// GetConfig implements the Engine interface
+func (k *LibKBFS) GetConfig(u User) libkbfs.Config {
+	return u.(*libkbfs.ConfigLocal)
+}
+
 // ReenableUpdates implements the Engine interface.
 func (k *LibKBFS) ReenableUpdates(u User, tlfName string, isPublic bool) error {
 	config := u.(*libkbfs.ConfigLocal)

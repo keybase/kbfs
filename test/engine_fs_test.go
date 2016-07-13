@@ -244,6 +244,10 @@ func (*fsEngine) DisableUpdatesForTesting(user User, tlfName string, isPublic bo
 		[]byte("off"), 0644)
 }
 
+func (*fsEngine) GetConfig(u User) libkbfs.Config {
+	return u.(*fsUser).config
+}
+
 // ReenableUpdatesForTesting is called by the test harness as the given user to resume updates
 // if previously disabled for testing.
 func (*fsEngine) ReenableUpdates(user User, tlfName string, isPublic bool) (err error) {
