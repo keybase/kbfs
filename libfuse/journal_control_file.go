@@ -35,7 +35,7 @@ var _ fs.HandleWriter = (*JournalControlFile)(nil)
 // Write implements the fs.HandleWriter interface for JournalControlFile.
 func (f *JournalControlFile) Write(ctx context.Context, req *fuse.WriteRequest,
 	resp *fuse.WriteResponse) (err error) {
-	f.folder.fs.log.CDebugf(ctx, "JournalControlFile (action=%s) Write",
+	f.folder.fs.log.CDebugf(ctx, "JournalControlFile (f.action=%s) Write",
 		f.action)
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 	if len(req.Data) == 0 {

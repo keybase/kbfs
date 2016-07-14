@@ -27,7 +27,7 @@ func (f *JournalControlFile) WriteFile(
 	fi *dokan.FileInfo, bs []byte, offset int64) (n int, err error) {
 	ctx, cancel := NewContextWithOpID(
 		f.folder.fs,
-		fmt.Sprintf("JournalQuotaFile (action=%s) Write", f.action))
+		fmt.Sprintf("JournalQuotaFile (f.action=%s) Write", f.action))
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err, cancel) }()
 	if len(bs) == 0 {
 		return 0, nil
