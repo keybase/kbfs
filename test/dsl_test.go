@@ -251,7 +251,7 @@ func as(user username, fops ...fileOp) optionOp {
 			opt:  o,
 			user: o.users[libkb.NewNormalizedUsername(string(user))],
 		}
-		ctx.staller = libkbfs.NewNaïveStaller(ctx.engine.GetConfig(ctx.user))
+		ctx.staller = ctx.engine.MakeNaïveStaller(ctx.user)
 
 		for _, fop := range fops {
 			desc, err := runFileOp(ctx, fop)

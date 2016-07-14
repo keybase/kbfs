@@ -447,9 +447,9 @@ func (k *LibKBFS) DisableUpdatesForTesting(u User, tlfName string, isPublic bool
 	return nil
 }
 
-// GetConfig implements the Engine interface
-func (k *LibKBFS) GetConfig(u User) libkbfs.Config {
-	return u.(*libkbfs.ConfigLocal)
+// MakeNaïveStaller implements the Engine interface.
+func (*LibKBFS) MakeNaïveStaller(u User) *libkbfs.NaïveStaller {
+	return libkbfs.NewNaïveStaller(u.(*libkbfs.ConfigLocal))
 }
 
 // ReenableUpdates implements the Engine interface.

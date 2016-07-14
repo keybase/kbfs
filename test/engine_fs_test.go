@@ -244,8 +244,9 @@ func (*fsEngine) DisableUpdatesForTesting(user User, tlfName string, isPublic bo
 		[]byte("off"), 0644)
 }
 
-func (*fsEngine) GetConfig(u User) libkbfs.Config {
-	return u.(*fsUser).config
+// MakeNaïveStaller implements the Engine interface.
+func (*fsEngine) MakeNaïveStaller(u User) *libkbfs.NaïveStaller {
+	return libkbfs.NewNaïveStaller(u.(*fsUser).config)
 }
 
 // ReenableUpdatesForTesting is called by the test harness as the given user to resume updates
