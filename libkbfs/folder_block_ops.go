@@ -2148,8 +2148,7 @@ func (fbo *folderBlockOps) startSyncWrite(ctx context.Context,
 	// Capture the current de before we release the block lock, so
 	// other deferred writes don't slip in.
 	if de, ok := fbo.deCache[fileRef]; ok {
-		deCopy := de
-		dirtyDe = &deCopy
+		dirtyDe = &de
 	}
 
 	// TODO: Returning si.bps in this way is racy, since si is a
