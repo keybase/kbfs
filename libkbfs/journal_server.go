@@ -48,8 +48,11 @@ func (j *JournalServer) getBundle(tlfID TlfID) (*tlfJournalBundle, bool) {
 func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 	j.log.Debug("Enabling journal for %s", tlfID)
 	defer func() {
-		j.deferLog.Debug("Error when enabling journal for %s: %v",
-			tlfID, err)
+		if err != nil {
+			j.deferLog.Debug(
+				"Error when enabling journal for %s: %v",
+				tlfID, err)
+		}
 	}()
 
 	j.lock.Lock()
@@ -60,6 +63,8 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 		return nil
 	}
 
+	j.log.Debug("Enabled journal for %s", tlfID)
+
 	j.tlfBundles[tlfID] = &tlfJournalBundle{}
 	return nil
 }
@@ -67,9 +72,16 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 // Flush flushes the write journal for the given TLF.
 func (j *JournalServer) Flush(tlfID TlfID) (err error) {
 	j.log.Debug("Flushing journal for %s", tlfID)
+	flushedBlockEntries := 0
+	flushedMDEntries := 0
 	defer func() {
-		j.deferLog.Debug("Error when flushing journal for %s: %v",
-			tlfID, err)
+		if err != nil {
+			j.deferLog.Debug(
+				"Flushed %d block entries and %d MD entries "+
+					"for %s, but got error %v",
+				flushedBlockEntries, flushedMDEntries,
+				tlfID, err)
+		}
 	}()
 	_, ok := j.getBundle(tlfID)
 	if !ok {
@@ -77,11 +89,7 @@ func (j *JournalServer) Flush(tlfID TlfID) (err error) {
 		return nil
 	}
 
-	flushedBlockEntries := 0
-	// TODO: Flush block journal.
-
-	flushedMDEntries := 0
-	// TODO: Flush MD journal.
+	// TODO: Flush block and MD journal.
 
 	j.log.Debug("Flushed %d block entries and %d MD entries for %s",
 		flushedBlockEntries, flushedMDEntries, tlfID)
@@ -93,8 +101,11 @@ func (j *JournalServer) Flush(tlfID TlfID) (err error) {
 func (j *JournalServer) Disable(tlfID TlfID) (err error) {
 	j.log.Debug("Disabling journal for %s", tlfID)
 	defer func() {
-		j.deferLog.Debug("Error when disabling journal for %s: %v",
-			tlfID, err)
+		if err != nil {
+			j.deferLog.Debug(
+				"Error when disabling journal for %s: %v",
+				tlfID, err)
+		}
 	}()
 
 	j.lock.Lock()
@@ -107,6 +118,8 @@ func (j *JournalServer) Disable(tlfID TlfID) (err error) {
 
 	// TODO: Either return an error if there are still entries in
 	// the journal, or flush them.
+
+	j.log.Debug("Disabled journal for %s", tlfID)
 
 	delete(j.tlfBundles, tlfID)
 	return nil
