@@ -27,11 +27,17 @@ func (f *JournalControlFile) WriteFile(
 	fi *dokan.FileInfo, bs []byte, offset int64) (n int, err error) {
 	ctx, cancel := NewContextWithOpID(
 		f.folder.fs,
-		fmt.Sprintf("JournalQuotaFile (action=%s) Write", action))
+		fmt.Sprintf("JournalQuotaFile (action=%s) Write", f.action))
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err, cancel) }()
 	if len(bs) == 0 {
 		return 0, nil
 	}
+
+	jServer, err := libkbfs.GetJournalServer(f.folder.fs.config)
+	if err != nil {
+		return err
+	}
+
 	err = f.action.Execute(jServer, f.folder.getFolderBranch().Tlf)
 	return len(bs), err
 }
