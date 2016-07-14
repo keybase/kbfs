@@ -39,7 +39,7 @@ const (
 	StallableMDPutUnmerged           StallableMDOp = "PutUnmerged"
 )
 
-const stallKeyStallEveryThing = ""
+const stallKeyStallEverything = ""
 
 type naïveStallInfo struct {
 	onStalled   <-chan struct{}
@@ -101,7 +101,7 @@ func (s *NaïveStaller) StallBlockOp(stalledOp StallableBlockOp) {
 	oldBlockOps := s.config.BlockOps()
 	s.config.SetBlockOps(&stallingBlockOps{
 		stallOpName: stalledOp,
-		stallKey:    stallKeyStallEveryThing,
+		stallKey:    stallKeyStallEverything,
 		staller: staller{
 			stalled: onStalledCh,
 			unstall: unstallCh,
@@ -125,7 +125,7 @@ func (s *NaïveStaller) StallMDOp(stalledOp StallableMDOp) {
 	oldMDOps := s.config.MDOps()
 	s.config.SetMDOps(&stallingMDOps{
 		stallOpName: stalledOp,
-		stallKey:    stallKeyStallEveryThing,
+		stallKey:    stallKeyStallEverything,
 		staller: staller{
 			stalled: onStalledCh,
 			unstall: unstallCh,
@@ -257,7 +257,7 @@ func maybeStall(ctx context.Context, opName stallableOp,
 		return
 	}
 
-	if stallKey != stallKeyStallEveryThing {
+	if stallKey != stallKeyStallEverything {
 		if v, ok := ctx.Value(stallKey).(bool); !ok || !v {
 			return
 		}
