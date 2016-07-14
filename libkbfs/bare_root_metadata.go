@@ -59,7 +59,7 @@ const (
 // NOTE: Don't add new fields to this type! Instead, add them to
 // WriterMetadataExtra. This is because we want old clients to
 // preserve unknown fields, and we're unable to do that for
-// WriterMetadata directly because it's embedded in RootMetadata.
+// WriterMetadata directly because it's embedded in BareRootMetadata.
 type WriterMetadata struct {
 	// Serialized, possibly encrypted, version of the PrivateMetadata
 	SerializedPrivateMetadata []byte `codec:"data"`
@@ -70,7 +70,7 @@ type WriterMetadata struct {
 	Writers []keybase1.UID `codec:",omitempty"`
 	// For private TLFs. Writer key generations for this metadata. The
 	// most recent one is last in the array. Must be same length as
-	// RootMetadata.RKeys.
+	// BareRootMetadata.RKeys.
 	WKeys TLFWriterKeyGenerations `codec:",omitempty"`
 	// The directory ID, signed over to make verification easier
 	ID TlfID
@@ -102,7 +102,7 @@ type WriterMetadataExtra struct {
 type BareRootMetadata struct {
 	// The metadata that is only editable by the writer.
 	//
-	// TODO: If we ever get a chance to update RootMetadata
+	// TODO: If we ever get a chance to update BareRootMetadata
 	// without having to be backwards-compatible, WriterMetadata
 	// should be unembedded; see comments to WriterMetadata as for
 	// why.
@@ -112,7 +112,7 @@ type BareRootMetadata struct {
 	// that it's only been changed by writers.
 	WriterMetadataSigInfo SignatureInfo
 
-	// The last KB user who modified this RootMetadata
+	// The last KB user who modified this BareRootMetadata
 	LastModifyingUser keybase1.UID
 	// Flags
 	Flags MetadataFlags
@@ -307,7 +307,7 @@ func (md *BareRootMetadata) deepCopyInPlace(codec Codec, newMd *BareRootMetadata
 	return nil
 }
 
-// CheckValidSuccessor makes sure the given RootMetadata is a valid
+// CheckValidSuccessor makes sure the given BareRootMetadata is a valid
 // successor to the current one, and returns an error otherwise.
 func (md *BareRootMetadata) CheckValidSuccessor(
 	currID MdID, nextMd *BareRootMetadata) error {
@@ -361,7 +361,7 @@ func (md *BareRootMetadata) CheckValidSuccessor(
 	return nil
 }
 
-// LatestKeyGeneration returns the newest key generation for this RootMetadata.
+// LatestKeyGeneration returns the newest key generation for this BareRootMetadata.
 func (md *BareRootMetadata) LatestKeyGeneration() KeyGen {
 	if md.ID.IsPublic() {
 		return PublicKeyGen
@@ -443,7 +443,7 @@ func (md *BareRootMetadata) makeBareTlfHandle() (BareTlfHandle, error) {
 }
 
 // MakeBareTlfHandle makes a BareTlfHandle for this
-// RootMetadata. Should be used only by servers and MDOps.
+// BareRootMetadata. Should be used only by servers and MDOps.
 func (md *BareRootMetadata) MakeBareTlfHandle() (BareTlfHandle, error) {
 	return md.makeBareTlfHandle()
 }
