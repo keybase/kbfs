@@ -17,7 +17,7 @@ type tlfJournalBundle struct {
 }
 
 // JournalServer is the server that handles write journals. It
-// interposes itself between BlockServer and MDOps. It uses MDOps
+// interposes itself in front of BlockServer and MDOps. It uses MDOps
 // instead of MDServer because it has to potentially modify the
 // RootMetadata passed in, and by the time it hits MDServer it's
 // already too late. However, this assumes that all MD ops go through
