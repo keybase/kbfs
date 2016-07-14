@@ -47,7 +47,7 @@ func (p PrivateMetadata) checkValid() error {
 
 // A RootMetadata is a BareRootMetadata but with a deserialized
 // PrivateMetadata. However, note that it is possible that the
-// PrivateMetadata has to be left unserialized due to not having the
+// PrivateMetadata has to be left serialized due to not having the
 // right keys.
 type RootMetadata struct {
 	BareRootMetadata
