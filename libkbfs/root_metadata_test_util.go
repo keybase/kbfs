@@ -10,7 +10,7 @@ package libkbfs
 // NewRootMetadataSignedForTest returns a new RootMetadataSigned for testing.
 func NewRootMetadataSignedForTest(id TlfID, h BareTlfHandle) (*RootMetadataSigned, error) {
 	rmds := &RootMetadataSigned{}
-	err := updateNewRootMetadata(&rmds.MD, id, h)
+	err := updateNewBareRootMetadata(&rmds.MD, id, h)
 	if err != nil {
 		return nil, err
 	}

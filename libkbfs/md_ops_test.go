@@ -67,7 +67,7 @@ func newRMD(t *testing.T, config Config, public bool) (
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", public)
 	rmd := &RootMetadata{}
-	err := updateNewRootMetadata(
+	err := updateNewBareRootMetadata(
 		&rmd.BareRootMetadata, id, h.ToBareHandleOrBust())
 	if err != nil {
 		t.Fatal(err)
@@ -101,7 +101,7 @@ func newRMDS(t *testing.T, config Config, public bool) (
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", public)
 	rmds := &RootMetadataSigned{}
-	err := updateNewRootMetadata(&rmds.MD, id, h.ToBareHandleOrBust())
+	err := updateNewBareRootMetadata(&rmds.MD, id, h.ToBareHandleOrBust())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,17 +265,17 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	rmds1 := &RootMetadataSigned{}
-	err = updateNewRootMetadata(&rmds1.MD, id, mdHandle1.ToBareHandleOrBust())
+	err = updateNewBareRootMetadata(&rmds1.MD, id, mdHandle1.ToBareHandleOrBust())
 	require.NoError(t, err)
 	addFakeRMDSData(rmds1, mdHandle1)
 
 	rmds2 := &RootMetadataSigned{}
-	err = updateNewRootMetadata(&rmds2.MD, id, mdHandle2.ToBareHandleOrBust())
+	err = updateNewBareRootMetadata(&rmds2.MD, id, mdHandle2.ToBareHandleOrBust())
 	require.NoError(t, err)
 	addFakeRMDSData(rmds2, mdHandle2)
 
 	rmds3 := &RootMetadataSigned{}
-	err = updateNewRootMetadata(&rmds3.MD, id, mdHandle3.ToBareHandleOrBust())
+	err = updateNewBareRootMetadata(&rmds3.MD, id, mdHandle3.ToBareHandleOrBust())
 	require.NoError(t, err)
 	addFakeRMDSData(rmds3, mdHandle3)
 
@@ -616,7 +616,7 @@ func TestMDOpsPutPublicSuccess(t *testing.T) {
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
 
 	var rmd RootMetadata
-	err := updateNewRootMetadata(&rmd.BareRootMetadata, id, h.ToBareHandleOrBust())
+	err := updateNewBareRootMetadata(&rmd.BareRootMetadata, id, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 	rmd.data = makeFakePrivateMetadataFuture(t).toCurrent()
 	rmd.tlfHandle = h

@@ -1127,7 +1127,7 @@ func (fbo *folderBranchOps) InitNewMD(ctx context.Context, id TlfID, handle *Tlf
 	}
 
 	var rmd RootMetadata
-	err = updateNewRootMetadata(&rmd.BareRootMetadata, id, bh)
+	err = updateNewBareRootMetadata(&rmd.BareRootMetadata, id, bh)
 	if err != nil {
 		return err
 	}

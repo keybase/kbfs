@@ -253,11 +253,11 @@ func (md *BareRootMetadata) IsReader(
 	return md.RKeys.IsReader(user, deviceKID)
 }
 
-// updateNewRootMetadata initializes the given freshly-created
-// RootMetadata object with the given TlfID and TlfHandle. Note that
-// if the given ID/handle are private, rekeying must be done
-// separately.
-func updateNewRootMetadata(
+// updateNewBareRootMetadata initializes the given freshly-created
+// BareRootMetadata object with the given TlfID and
+// BareTlfHandle. Note that if the given ID/handle are private,
+// rekeying must be done separately.
+func updateNewBareRootMetadata(
 	rmd *BareRootMetadata, id TlfID, h BareTlfHandle) error {
 	if id.IsPublic() != h.IsPublic() {
 		return errors.New("TlfID and TlfHandle disagree on public status")
