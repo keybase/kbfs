@@ -35,9 +35,13 @@ func (f *JournalControlFile) WriteFile(
 
 	jServer, err := libkbfs.GetJournalServer(f.folder.fs.config)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	err = f.action.Execute(jServer, f.folder.getFolderBranch().Tlf)
-	return len(bs), err
+	if err != nil {
+		return 0, err
+	}
+
+	return len(bs), nil
 }
