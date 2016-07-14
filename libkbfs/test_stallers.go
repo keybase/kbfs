@@ -39,13 +39,13 @@ const (
 	StallableMDPutUnmerged           StallableMDOp = "PutUnmerged"
 )
 
-type naïveStallContext struct {
+type naïveStall struct {
 	onStalled <-chan struct{}
 	unstall   chan<- struct{}
 	undoStall func()
 }
 
-// NaïveStaller is used to stall certain ops in BlockOps or MDOps . Unlike
+// NaïveStaller is used to stall certain ops in BlockOps or MDOps. Unlike
 // StallBlockOp and StallMDOp which provides a way to precisely control which
 // particular op is stalled by passing in ctx with corresponding stallKey,
 // NaïveStaller simply stalls all instances of specified op.
@@ -53,8 +53,8 @@ type NaïveStaller struct {
 	config Config
 
 	mu             *sync.RWMutex
-	blockOpsStalls map[StallableBlockOp]*naïveStallContext
-	mdOpsStalls    map[StallableMDOp]*naïveStallContext
+	blockOpsStalls map[StallableBlockOp]*naïveStall
+	mdOpsStalls    map[StallableMDOp]*naïveStall
 }
 
 // NewNaïveStaller returns a new NaïveStaller
@@ -62,20 +62,20 @@ func NewNaïveStaller(config Config) *NaïveStaller {
 	return &NaïveStaller{
 		config:         config,
 		mu:             new(sync.RWMutex),
-		blockOpsStalls: make(map[StallableBlockOp]*naïveStallContext),
-		mdOpsStalls:    make(map[StallableMDOp]*naïveStallContext),
+		blockOpsStalls: make(map[StallableBlockOp]*naïveStall),
+		mdOpsStalls:    make(map[StallableMDOp]*naïveStall),
 	}
 }
 
-func (s *NaïveStaller) getNaïveStallerContextForBlockOp(
-	stalledOp StallableBlockOp) *naïveStallContext {
+func (s *NaïveStaller) getNaïveStallForBlockOp(
+	stalledOp StallableBlockOp) *naïveStall {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.blockOpsStalls[stalledOp]
 }
 
-func (s *NaïveStaller) getNaïveStallerContextForMDOp(
-	stalledOp StallableMDOp) *naïveStallContext {
+func (s *NaïveStaller) getNaïveStallForMDOp(
+	stalledOp StallableMDOp) *naïveStall {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.mdOpsStalls[stalledOp]
@@ -98,11 +98,13 @@ func (s *NaïveStaller) StallBlockOp(stalledOp StallableBlockOp) {
 	})
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.blockOpsStalls[stalledOp] = &naïveStallContext{
+	s.blockOpsStalls[stalledOp] = &naïveStall{
 		onStalled: onStalledCh,
 		unstall:   unstallCh,
 		undoStall: func() {
 			s.config.SetBlockOps(oldBlockOps)
+			// Unstall any stalled Ops since we won't have another chance.
+			close(unstallCh)
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			delete(s.blockOpsStalls, stalledOp)
@@ -127,11 +129,13 @@ func (s *NaïveStaller) StallMDOp(stalledOp StallableMDOp) {
 	})
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.mdOpsStalls[stalledOp] = &naïveStallContext{
+	s.mdOpsStalls[stalledOp] = &naïveStall{
 		onStalled: onStalledCh,
 		unstall:   unstallCh,
 		undoStall: func() {
 			s.config.SetMDOps(oldMDOps)
+			// Unstall any stalled Ops since we won't have another chance.
+			close(unstallCh)
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			delete(s.mdOpsStalls, stalledOp)
@@ -142,61 +146,61 @@ func (s *NaïveStaller) StallMDOp(stalledOp StallableMDOp) {
 // WaitForStallBlockOp blocks until stalledOp is stalled. StallBlockOp should
 // have been called upon stalledOp, otherwise this is a no-op.
 func (s *NaïveStaller) WaitForStallBlockOp(stalledOp StallableBlockOp) {
-	ctx := s.getNaïveStallerContextForBlockOp(stalledOp)
-	if ctx == nil {
+	ns := s.getNaïveStallForBlockOp(stalledOp)
+	if ns == nil {
 		return
 	}
-	<-ctx.onStalled
+	<-ns.onStalled
 }
 
 // WaitForStallMDOp blocks until stalledOp is stalled. StallMDOp should
 // have been called upon stalledOp, otherwise this is a no-op.
 func (s *NaïveStaller) WaitForStallMDOp(stalledOp StallableMDOp) {
-	ctx := s.getNaïveStallerContextForMDOp(stalledOp)
-	if ctx == nil {
+	ns := s.getNaïveStallForMDOp(stalledOp)
+	if ns == nil {
 		return
 	}
-	<-ctx.onStalled
+	<-ns.onStalled
 }
 
 // UnstallOneBlockOp unstalls exactly one stalled stalledOp. StallBlockOp
 // should have been called upon stalledOp, otherwise this is a no-op.
 func (s *NaïveStaller) UnstallOneBlockOp(stalledOp StallableBlockOp) {
-	ctx := s.getNaïveStallerContextForBlockOp(stalledOp)
-	if ctx == nil {
+	ns := s.getNaïveStallForBlockOp(stalledOp)
+	if ns == nil {
 		return
 	}
-	ctx.unstall <- struct{}{}
+	ns.unstall <- struct{}{}
 }
 
 // UnstallOneMDOp unstalls exactly one stalled stalledOp. StallMDOp
 // should have been called upon stalledOp, otherwise this is a no-op.
 func (s *NaïveStaller) UnstallOneMDOp(stalledOp StallableMDOp) {
-	ctx := s.getNaïveStallerContextForMDOp(stalledOp)
-	if ctx == nil {
+	ns := s.getNaïveStallForMDOp(stalledOp)
+	if ns == nil {
 		return
 	}
-	ctx.unstall <- struct{}{}
+	ns.unstall <- struct{}{}
 }
 
 // UndoStallBlockOp reverts StallBlockOp so that future stalledOp are not
-// stalled anymore.
+// stalled anymore. It also unstalls any stalled stalledOp.
 func (s *NaïveStaller) UndoStallBlockOp(stalledOp StallableBlockOp) {
-	ctx := s.getNaïveStallerContextForBlockOp(stalledOp)
-	if ctx == nil {
+	ns := s.getNaïveStallForBlockOp(stalledOp)
+	if ns == nil {
 		return
 	}
-	ctx.undoStall()
+	ns.undoStall()
 }
 
 // UndoStallMDOp reverts StallMDOp so that future stalledOp are not
-// stalled anymore.
+// stalled anymore. It also unstalls any stalled stalledOp.
 func (s *NaïveStaller) UndoStallMDOp(stalledOp StallableMDOp) {
-	ctx := s.getNaïveStallerContextForMDOp(stalledOp)
-	if ctx == nil {
+	ns := s.getNaïveStallForMDOp(stalledOp)
+	if ns == nil {
 		return
 	}
-	ctx.undoStall()
+	ns.undoStall()
 }
 
 // StallBlockOp sets a wrapped BlockOps in config so that the specified Op, stalledOp,
