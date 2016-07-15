@@ -565,3 +565,14 @@ func (md *BareRootMetadata) GetTLFEphemeralPublicKey(
 	}
 	return wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex], nil
 }
+
+// DeepCopyForServerTest returns a complete copy of this BareRootMetadata
+// for testing.
+func (md *BareRootMetadata) DeepCopyForServerTest(codec Codec) (
+	*BareRootMetadata, error) {
+	var newMd BareRootMetadata
+	if err := CodecUpdate(codec, &newMd, md); err != nil {
+		return nil, err
+	}
+	return &newMd, nil
+}

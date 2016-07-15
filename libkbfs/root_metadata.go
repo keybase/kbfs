@@ -105,14 +105,6 @@ func (md *RootMetadata) deepCopyInPlace(codec Codec, copyHandle bool,
 	return nil
 }
 
-// DeepCopyForServerTest returns a complete copy of this RootMetadata
-// for testing, except for tlfHandle. Non-test code should use
-// MakeSuccessor() instead.
-func (md *RootMetadata) DeepCopyForServerTest(
-	codec Codec) (*RootMetadata, error) {
-	return md.deepCopy(codec, false)
-}
-
 // MakeSuccessor returns a complete copy of this RootMetadata (but
 // with cleared block change lists and cleared serialized metadata),
 // with the revision incremented and a correct backpointer.
