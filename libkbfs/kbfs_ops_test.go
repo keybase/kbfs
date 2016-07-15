@@ -461,17 +461,11 @@ func testKBFSOpsGetRootNodeCreateNewSuccess(t *testing.T, public bool) {
 	assert.True(t, fboIdentityDone(ops))
 
 	p := ops.nodeCache.PathFromNode(n)
-	if p.Tlf != id {
-		t.Errorf("Got bad MD back: directory %v", p.Tlf)
-	} else if len(p.path) != 1 {
-		t.Errorf("Got bad MD back: path size %d", len(p.path))
-	} else if p.path[0].ID != rmd.data.Dir.BlockInfo.ID {
-		t.Errorf("Got bad MD back: root ID %v", p.path[0].ID)
-	} else if ei.Type != Dir {
-		t.Error("Got bad MD non-dir rootID back")
-	} else if h != rmd.GetTlfHandle() {
-		t.Errorf("Got bad handle back: handle %v", h)
-	}
+	require.Equal(t, id, p.Tlf)
+	require.Equal(t, 1, len(p.path))
+	require.Equal(t, rmd.data.Dir.ID, p.path[0].ID)
+	require.Equal(t, rmd.data.Dir.EntryInfo, ei)
+	require.Equal(t, rmd.GetTlfHandle(), h)
 }
 
 func TestKBFSOpsGetRootNodeCreateNewSuccessPublic(t *testing.T) {
