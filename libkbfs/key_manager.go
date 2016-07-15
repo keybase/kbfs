@@ -511,13 +511,15 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			return false, nil, err
 		}
 
-		newWriterUsers = km.usersWithNewDevices(ctx, md.ReadOnly(), wkb.WKeys, wKeys)
-		newReaderUsers = km.usersWithNewDevices(ctx, md.ReadOnly(), rkb.RKeys, rKeys)
+		romd := md.ReadOnly()
+
+		newWriterUsers = km.usersWithNewDevices(ctx, romd, wkb.WKeys, wKeys)
+		newReaderUsers = km.usersWithNewDevices(ctx, romd, rkb.RKeys, rKeys)
 		addNewWriterDevice = len(newWriterUsers) > 0
 		addNewReaderDevice = len(newReaderUsers) > 0
 
-		wRemoved := km.usersWithRemovedDevices(ctx, md.ReadOnly(), wkb.WKeys, wKeys)
-		rRemoved := km.usersWithRemovedDevices(ctx, md.ReadOnly(), rkb.RKeys, rKeys)
+		wRemoved := km.usersWithRemovedDevices(ctx, romd, wkb.WKeys, wKeys)
+		rRemoved := km.usersWithRemovedDevices(ctx, romd, rkb.RKeys, rKeys)
 		incKeyGen = len(wRemoved) > 0 || len(rRemoved) > 0
 
 		promotedReaders = make(map[keybase1.UID]bool, len(rRemoved))
@@ -543,7 +545,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			newWriterUsers[u] = true
 		}
 
-		if err := km.identifyUIDSets(ctx, md.ReadOnly(), newWriterUsers, newReaderUsers); err != nil {
+		if err := km.identifyUIDSets(ctx, romd, newWriterUsers, newReaderUsers); err != nil {
 			return false, nil, err
 		}
 	}
