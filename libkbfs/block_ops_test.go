@@ -154,8 +154,7 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	expectBlockDecrypt(config, rmd, blockPtr, encData, decData, nil)
 
 	var gotBlock TestBlock
-	err := config.BlockOps().Get(
-		ctx, rmd.ReadOnly(), blockPtr, &gotBlock)
+	err := config.BlockOps().Get(ctx, rmd.ReadOnly(), blockPtr, &gotBlock)
 	if err != nil {
 		t.Fatalf("Got error on get: %v", err)
 	}
@@ -240,8 +239,7 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 	config.mockCrypto.EXPECT().MakePermanentBlockID(encData).Return(id, nil)
 
 	id2, plainSize, readyBlockData, err :=
-		config.BlockOps().Ready(
-			ctx, rmd.ReadOnly(), decData)
+		config.BlockOps().Ready(ctx, rmd.ReadOnly(), decData)
 	if err != nil {
 		t.Errorf("Got error on ready: %v", err)
 	} else if id2 != id {
@@ -265,8 +263,7 @@ func TestBlockOpsReadyFailTooLowByteCount(t *testing.T) {
 
 	expectBlockEncrypt(config, rmd, decData, 4, encData, nil)
 
-	_, _, _, err := config.BlockOps().Ready(
-		ctx, rmd.ReadOnly(), decData)
+	_, _, _, err := config.BlockOps().Ready(ctx, rmd.ReadOnly(), decData)
 	if _, ok := err.(TooLowByteCountError); !ok {
 		t.Errorf("Unexpectedly did not get TooLowByteCountError; "+
 			"instead got %v", err)
