@@ -538,7 +538,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 	}
 
 	fbo.head = md
-	fbo.status.setRootMetadata(md.ReadOnlyRootMetadata)
+	fbo.status.setRootMetadata(md.ReadOnly())
 	if isFirstHead {
 		// Start registering for updates right away, using this MD
 		// as a starting point. For now only the master branch can
@@ -750,7 +750,7 @@ func (fbo *folderBranchOps) getMDLocked(
 		if err != nil || rtype == mdReadNoIdentify || rtype == mdRekey {
 			return
 		}
-		err = fbo.identifyOnce(ctx, md.ReadOnlyRootMetadata)
+		err = fbo.identifyOnce(ctx, md.ReadOnly())
 	}()
 
 	md = fbo.getHead(lState)
@@ -1074,7 +1074,7 @@ func (fbo *folderBranchOps) SetInitialHeadFromServer(
 		// user is not a valid writer.)  Also, we want to make sure we
 		// fail before we set the head, otherwise future calls will
 		// succeed incorrectly.
-		err = fbo.identifyOnce(ctx, md.ReadOnlyRootMetadata)
+		err = fbo.identifyOnce(ctx, md.ReadOnly())
 		if err != nil {
 			return err
 		}
@@ -1273,7 +1273,7 @@ func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
 		}
 
 		children, err = fbo.blocks.GetDirtyDirChildren(
-			ctx, lState, md.ReadOnlyRootMetadata, dirPath)
+			ctx, lState, md.ReadOnly(), dirPath)
 		if err != nil {
 			return err
 		}
@@ -1312,7 +1312,7 @@ func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 		childPath := dirPath.ChildPathNoPtr(name)
 
 		de, err = fbo.blocks.GetDirtyEntry(
-			ctx, lState, md.ReadOnlyRootMetadata, childPath)
+			ctx, lState, md.ReadOnly(), childPath)
 		if err != nil {
 			return err
 		}
@@ -1368,7 +1368,7 @@ func (fbo *folderBranchOps) statEntry(ctx context.Context, node Node) (
 
 	if nodePath.hasValidParent() {
 		de, err = fbo.blocks.GetDirtyEntry(
-			ctx, lState, md.ReadOnlyRootMetadata, nodePath)
+			ctx, lState, md.ReadOnly(), nodePath)
 		if err != nil {
 			return DirEntry{}, err
 		}
@@ -1944,9 +1944,9 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	}
 
 	// Archive the old, unref'd blocks
-	fbo.fbm.archiveUnrefBlocks(irmd.ReadOnlyRootMetadata)
+	fbo.fbm.archiveUnrefBlocks(irmd.ReadOnly())
 
-	fbo.notifyBatchLocked(ctx, lState, irmd.ReadOnlyRootMetadata)
+	fbo.notifyBatchLocked(ctx, lState, irmd.ReadOnly())
 	return nil
 }
 
@@ -2058,7 +2058,7 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 		return err
 	}
 
-	fbo.notifyBatchLocked(ctx, lState, irmd.ReadOnlyRootMetadata)
+	fbo.notifyBatchLocked(ctx, lState, irmd.ReadOnly())
 	return nil
 }
 
@@ -2765,7 +2765,7 @@ func (fbo *folderBranchOps) Read(
 		}
 
 		bytesRead, err = fbo.blocks.Read(
-			ctx, lState, md.ReadOnlyRootMetadata, filePath, dest, off)
+			ctx, lState, md.ReadOnly(), filePath, dest, off)
 		return err
 	})
 	if err != nil {
@@ -2796,7 +2796,7 @@ func (fbo *folderBranchOps) Write(
 		}
 
 		err = fbo.blocks.Write(
-			ctx, lState, md.ReadOnlyRootMetadata, file, data, off)
+			ctx, lState, md.ReadOnly(), file, data, off)
 		if err != nil {
 			return err
 		}
@@ -2828,7 +2828,7 @@ func (fbo *folderBranchOps) Truncate(
 		}
 
 		err = fbo.blocks.Truncate(
-			ctx, lState, md.ReadOnlyRootMetadata, file, size)
+			ctx, lState, md.ReadOnly(), file, size)
 		if err != nil {
 			return err
 		}
@@ -3463,7 +3463,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			continue
 		}
 		for _, op := range rmd.data.Changes.Ops {
-			fbo.notifyOneOpLocked(ctx, lState, op, rmd.ReadOnlyRootMetadata)
+			fbo.notifyOneOpLocked(ctx, lState, op, rmd.ReadOnly())
 		}
 	}
 	return nil
@@ -3522,7 +3522,7 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 					err, ops[j])
 				continue
 			}
-			fbo.notifyOneOpLocked(ctx, lState, io, rmd.ReadOnlyRootMetadata)
+			fbo.notifyOneOpLocked(ctx, lState, io, rmd.ReadOnly())
 		}
 	}
 	return nil
@@ -4271,12 +4271,12 @@ func (fbo *folderBranchOps) finalizeResolution(ctx context.Context,
 	fbo.setBranchIDLocked(lState, NullBranchID)
 
 	// Archive the old, unref'd blocks
-	fbo.fbm.archiveUnrefBlocks(irmd.ReadOnlyRootMetadata)
+	fbo.fbm.archiveUnrefBlocks(irmd.ReadOnly())
 
 	// notifyOneOp for every fixed-up merged op.
 	for _, op := range newOps {
 		fbo.notifyOneOpLocked(
-			ctx, lState, op, irmd.ReadOnlyRootMetadata)
+			ctx, lState, op, irmd.ReadOnly())
 	}
 	return nil
 }

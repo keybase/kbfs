@@ -153,7 +153,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 			}
 			latestRmd := mergedRmds[len(mergedRmds)-1]
 			if err := decryptMDPrivateData(ctx, config,
-				rmdCopy, latestRmd.ReadOnlyRootMetadata); err != nil {
+				rmdCopy, latestRmd.ReadOnly()); err != nil {
 				return nil, err
 			}
 			// Overwrite the cached copy with the new copy

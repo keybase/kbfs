@@ -448,7 +448,7 @@ func (fbm *folderBlockManager) processBlocksToDelete(ctx context.Context, toDele
 				"archiving it", rmds[0].Revision)
 			// Don't block on archiving the MD, because that could
 			// lead to deadlock.
-			fbm.archiveUnrefBlocksNoWait(rmds[0].ReadOnlyRootMetadata)
+			fbm.archiveUnrefBlocksNoWait(rmds[0].ReadOnly())
 			return nil
 		}
 
@@ -660,7 +660,7 @@ func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
 		for i := len(rmds) - 1; i >= 0; i-- {
 			rmd := rmds[i]
 			if mostRecentOldEnoughRev == MetadataRevisionUninitialized &&
-				fbm.isOldEnough(rmd.ReadOnlyRootMetadata) {
+				fbm.isOldEnough(rmd.ReadOnly()) {
 				fbm.log.CDebugf(ctx, "Revision %d is older than the unref "+
 					"age %s", rmd.Revision,
 					fbm.config.QuotaReclamationMinUnrefAge())
@@ -871,7 +871,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 		return NewWriteAccessError(head.GetTlfHandle(), username)
 	}
 
-	if !fbm.isQRNecessary(head.ReadOnlyRootMetadata) {
+	if !fbm.isQRNecessary(head.ReadOnly()) {
 		// Nothing has changed since last time, so no need to do any QR.
 		return nil
 	}
@@ -910,7 +910,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 
 	mostRecentOldEnoughRev, lastGCRev, err :=
 		fbm.getMostRecentOldEnoughAndGCRevisions(
-			ctx, head.ReadOnlyRootMetadata)
+			ctx, head.ReadOnly())
 	if err != nil {
 		return err
 	}
@@ -950,7 +950,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 	}
 
 	zeroRefCounts, err := fbm.deleteBlockRefs(
-		ctx, head.ReadOnlyRootMetadata, ptrs)
+		ctx, head.ReadOnly(), ptrs)
 	if err != nil {
 		return err
 	}
