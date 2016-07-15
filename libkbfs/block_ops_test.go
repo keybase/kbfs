@@ -25,9 +25,9 @@ func getRMD(x interface{}) (*RootMetadata, bool) {
 	if ok {
 		return rmd, true
 	}
-	crmd, ok := x.(ReadOnlyRootMetadata)
+	rormd, ok := x.(ReadOnlyRootMetadata)
 	if ok {
-		return crmd.RootMetadata, true
+		return rormd.RootMetadata, true
 	}
 	return nil, false
 }
