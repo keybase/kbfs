@@ -333,8 +333,28 @@ func (md *RootMetadata) isReadableOrError(ctx context.Context, config Config) er
 	if err != nil {
 		return err
 	}
-	return makeRekeyReadError(MakeConstRootMetadata(md), resolvedHandle, md.LatestKeyGeneration(),
+	return md.makeRekeyReadError(resolvedHandle, md.LatestKeyGeneration(),
 		uid, username)
+}
+
+func (md *RootMetadata) makeRekeyReadError(
+	resolvedHandle *TlfHandle, keyGen KeyGen,
+	uid keybase1.UID, username libkb.NormalizedUsername) error {
+	if resolvedHandle.IsPublic() {
+		panic("makeRekeyReadError called on public folder")
+	}
+	// If the user is not a legitimate reader of the folder, this is a
+	// normal read access error.
+	if !resolvedHandle.IsReader(uid) {
+		return NewReadAccessError(resolvedHandle, username)
+	}
+
+	// Otherwise, this folder needs to be rekeyed for this device.
+	tlfName := resolvedHandle.GetCanonicalName()
+	if keys, _ := md.GetTLFCryptPublicKeys(keyGen, uid); len(keys) > 0 {
+		return NeedSelfRekeyError{tlfName}
+	}
+	return NeedOtherRekeyError{tlfName}
 }
 
 // updateFromTlfHandle updates the current RootMetadata's fields to
@@ -521,24 +541,4 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(config Config) (
 	// the head revision - 1.
 	newRmds.MD.Revision = rmds.MD.Revision + 1
 	return &newRmds, nil
-}
-
-func makeRekeyReadError(
-	md ConstRootMetadata, resolvedHandle *TlfHandle, keyGen KeyGen,
-	uid keybase1.UID, username libkb.NormalizedUsername) error {
-	if resolvedHandle.IsPublic() {
-		panic("makeRekeyReadError called on public folder")
-	}
-	// If the user is not a legitimate reader of the folder, this is a
-	// normal read access error.
-	if !resolvedHandle.IsReader(uid) {
-		return NewReadAccessError(resolvedHandle, username)
-	}
-
-	// Otherwise, this folder needs to be rekeyed for this device.
-	tlfName := resolvedHandle.GetCanonicalName()
-	if keys, _ := md.GetTLFCryptPublicKeys(keyGen, uid); len(keys) > 0 {
-		return NeedSelfRekeyError{tlfName}
-	}
-	return NeedOtherRekeyError{tlfName}
 }
