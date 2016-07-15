@@ -538,7 +538,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 	}
 
 	fbo.head = md
-	fbo.status.setRootMetadata(md.ReadOnly())
+	fbo.status.setRootMetadata(md)
 	if isFirstHead {
 		// Start registering for updates right away, using this MD
 		// as a starting point. For now only the master branch can
@@ -987,9 +987,8 @@ func (fbo *folderBranchOps) initMDLocked(
 	md.AddRefBlock(md.data.Dir.BlockInfo)
 	md.UnrefBytes = 0
 
-	if err = fbo.config.BlockOps().Put(
-		ctx, md.ReadOnly(), info.BlockPointer,
-		readyBlockData); err != nil {
+	if err = fbo.config.BlockOps().Put(ctx, md.ReadOnly(),
+		info.BlockPointer, readyBlockData); err != nil {
 		return err
 	}
 	if err = fbo.config.BlockCache().Put(
@@ -2018,13 +2017,11 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 		defer func() {
 			if err != nil {
 				fbo.fbm.cleanUpBlockState(
-					md.ReadOnly(),
-					bps, blockDeleteOnMDFail)
+					md.ReadOnly(), bps, blockDeleteOnMDFail)
 			}
 		}()
 
-		ptrsToDelete, err := fbo.doBlockPuts(
-			ctx, md.ReadOnly(), *bps)
+		ptrsToDelete, err := fbo.doBlockPuts(ctx, md.ReadOnly(), *bps)
 		if err != nil {
 			return err
 		}
@@ -2077,8 +2074,7 @@ func (fbo *folderBranchOps) syncBlockAndFinalizeLocked(ctx context.Context,
 	defer func() {
 		if err != nil {
 			fbo.fbm.cleanUpBlockState(
-				md.ReadOnly(),
-				bps, blockDeleteOnMDFail)
+				md.ReadOnly(), bps, blockDeleteOnMDFail)
 		}
 	}()
 
@@ -2687,8 +2683,7 @@ func (fbo *folderBranchOps) renameLocked(
 	defer func() {
 		if err != nil {
 			fbo.fbm.cleanUpBlockState(
-				md.ReadOnly(),
-				newBps, blockDeleteOnMDFail)
+				md.ReadOnly(), newBps, blockDeleteOnMDFail)
 		}
 	}()
 
