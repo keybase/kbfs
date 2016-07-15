@@ -419,7 +419,9 @@ func (md *RootMetadata) swapCachedBlockChanges() {
 // *RootMetadata to a ReadOnlyRootMetadata may still modify the
 // underlying RootMetadata through the original pointer, so care must
 // be taken if a function stores a ReadOnlyRootMetadata object past
-// the end of the function.
+// the end of the function, or when a function takes both a
+// *RootMetadata and a ReadOnlyRootMetadata (see
+// decryptMDPrivateData).
 type ReadOnlyRootMetadata struct {
 	*RootMetadata
 }
