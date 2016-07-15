@@ -18,9 +18,9 @@ func NewRootMetadataSignedForTest(id TlfID, h BareTlfHandle) (*RootMetadataSigne
 }
 
 // FakeInitialRekey fakes the initial rekey for the given
-// RootMetadata. This is necessary since newly-created RootMetadata
-// objects don't have enough data to build a TlfHandle from until the
-// first rekey.
+// BareRootMetadata. This is necessary since newly-created
+// BareRootMetadata objects don't have enough data to build a
+// TlfHandle from until the first rekey.
 func FakeInitialRekey(rmd *BareRootMetadata, h BareTlfHandle) {
 	if rmd.ID.IsPublic() {
 		panic("Called FakeInitialRekey on public TLF")
