@@ -460,7 +460,7 @@ func MakeImmutableRootMetadata(
 	if mdID == (MdID{}) {
 		panic("zero mdID passed to MakeImmutableRootMetadata")
 	}
-	return ImmutableRootMetadata{ReadOnlyRootMetadata{rmd}, mdID}
+	return ImmutableRootMetadata{rmd.ReadOnly(), mdID}
 }
 
 // RootMetadataSigned is the top-level MD object stored in MD server
