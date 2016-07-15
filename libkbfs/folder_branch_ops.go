@@ -1945,7 +1945,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	// Archive the old, unref'd blocks
 	fbo.fbm.archiveUnrefBlocks(irmd.ReadOnly())
 
-	fbo.notifyBatchLocked(ctx, lState, irmd.ReadOnly())
+	fbo.notifyBatchLocked(ctx, lState, irmd)
 	return nil
 }
 
@@ -2055,7 +2055,7 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 		return err
 	}
 
-	fbo.notifyBatchLocked(ctx, lState, irmd.ReadOnly())
+	fbo.notifyBatchLocked(ctx, lState, irmd)
 	return nil
 }
 
@@ -3155,7 +3155,7 @@ func (fbo *folderBranchOps) UnregisterFromChanges(obs Observer) error {
 // notifyBatchLocked sends out a notification for the most recent op
 // in md.
 func (fbo *folderBranchOps) notifyBatchLocked(
-	ctx context.Context, lState *lockState, md ReadOnlyRootMetadata) {
+	ctx context.Context, lState *lockState, md ImmutableRootMetadata) {
 	fbo.headLock.AssertLocked(lState)
 
 	lastOp := md.data.Changes.Ops[len(md.data.Changes.Ops)-1]
@@ -3224,7 +3224,7 @@ func (fbo *folderBranchOps) updatePointers(op op) {
 }
 
 func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
-	lState *lockState, op op, md ReadOnlyRootMetadata) {
+	lState *lockState, op op, md ImmutableRootMetadata) {
 	fbo.headLock.AssertLocked(lState)
 
 	fbo.updatePointers(op)
@@ -3309,7 +3309,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 					// the updates.
 					var err error
 					newNode, err =
-						fbo.searchForNode(ctx, realOp.NewDir.Ref, md)
+						fbo.searchForNode(ctx, realOp.NewDir.Ref, md.ReadOnly())
 					if newNode == nil {
 						fbo.log.CErrorf(ctx, "Couldn't find the new node: %v",
 							err)
@@ -3364,7 +3364,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 		}
 
 		childNode, err := fbo.blocks.UpdateCachedEntryAttributes(
-			ctx, lState, md, p, realOp)
+			ctx, lState, md.ReadOnly(), p, realOp)
 		if err != nil {
 			// TODO: Log error?
 			return
@@ -3458,7 +3458,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			continue
 		}
 		for _, op := range rmd.data.Changes.Ops {
-			fbo.notifyOneOpLocked(ctx, lState, op, rmd.ReadOnly())
+			fbo.notifyOneOpLocked(ctx, lState, op, rmd)
 		}
 	}
 	return nil
@@ -3517,7 +3517,7 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 					err, ops[j])
 				continue
 			}
-			fbo.notifyOneOpLocked(ctx, lState, io, rmd.ReadOnly())
+			fbo.notifyOneOpLocked(ctx, lState, io, rmd)
 		}
 	}
 	return nil
@@ -4270,8 +4270,7 @@ func (fbo *folderBranchOps) finalizeResolution(ctx context.Context,
 
 	// notifyOneOp for every fixed-up merged op.
 	for _, op := range newOps {
-		fbo.notifyOneOpLocked(
-			ctx, lState, op, irmd.ReadOnly())
+		fbo.notifyOneOpLocked(ctx, lState, op, irmd)
 	}
 	return nil
 }
