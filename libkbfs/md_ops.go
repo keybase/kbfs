@@ -361,8 +361,8 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 	}
 
 	// Verify that the given MD objects form a valid sequence.
-	var prevMD ImmutableRootMetadata
-	rmds := make([]ImmutableRootMetadata, 0, len(rmdses))
+	var prevIRMD ImmutableRootMetadata
+	irmds := make([]ImmutableRootMetadata, 0, len(rmdses))
 	for _, r := range rmdses {
 		bareHandle, err := r.MD.MakeBareTlfHandle()
 		if err != nil {
@@ -373,12 +373,15 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 			return nil, err
 		}
 
-		if prevMD != (ImmutableRootMetadata{}) {
-			// This is safe, since CheckValidSuccessor on
-			// BareRootMetadata doesn't modify its
-			// argument.
-			err = prevMD.BareRootMetadata.CheckValidSuccessor(
-				prevMD.mdID, &r.MD)
+		if prevIRMD != (ImmutableRootMetadata{}) {
+			// Ideally, we'd call
+			// ReadOnlyRootMetadata.CheckValidSuccessor()
+			// instead. However, we only convert r.MD to
+			// an ImmutableRootMetadata in
+			// processMetadataWithID below, and we want to
+			// do this check before then.
+			err = prevIRMD.BareRootMetadata.CheckValidSuccessor(
+				prevIRMD.mdID, &r.MD)
 			if err != nil {
 				return nil, MDMismatchError{
 					handle.GetCanonicalPath(),
@@ -387,12 +390,12 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 			}
 		}
 
-		rmd, err := md.processMetadataWithID(ctx, id, bid, handle, r)
+		irmd, err := md.processMetadataWithID(ctx, id, bid, handle, r)
 		if err != nil {
 			return nil, err
 		}
-		prevMD = rmd
-		rmds = append(rmds, rmd)
+		prevIRMD = irmd
+		irmds = append(irmds, irmd)
 	}
 
 	// TODO: in the case where lastRoot == MdID{}, should we verify
@@ -401,7 +404,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 	// indeed valid, this probably isn't a huge deal, but it may let
 	// the server rollback or truncate unmerged history...
 
-	return rmds, nil
+	return irmds, nil
 }
 
 func (md *MDOpsStandard) getRange(ctx context.Context, id TlfID,
