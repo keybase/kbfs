@@ -424,10 +424,10 @@ type ReadOnlyRootMetadata struct {
 	*RootMetadata
 }
 
-// MakeReadOnlyRootMetadata makes a new ReadOnlyRootMetadata from the given
-// one.
-func MakeReadOnlyRootMetadata(rmd *RootMetadata) ReadOnlyRootMetadata {
-	return ReadOnlyRootMetadata{rmd}
+// ReadOnly makes a ReadOnlyRootMetadata from the current
+// *RootMetadata.
+func (md *RootMetadata) ReadOnly() ReadOnlyRootMetadata {
+	return ReadOnlyRootMetadata{md}
 }
 
 // ImmutableRootMetadata is a thin wrapper around a ReadOnlyRootMetadata

@@ -75,7 +75,7 @@ func (si *syncInfo) DeepCopy(codec Codec) (*syncInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		newSi.toCleanIfUnused[i].md = MakeReadOnlyRootMetadata(copyMd)
+		newSi.toCleanIfUnused[i].md = copyMd.ReadOnly()
 		newSi.toCleanIfUnused[i].bps = toClean.bps.DeepCopy()
 	}
 	return newSi, nil
@@ -1960,7 +1960,7 @@ func (fbo *folderBlockOps) startSyncWrite(ctx context.Context,
 
 	// update the parent directories, and write all the new blocks out
 	// to disk
-	fblock, err = fbo.getFileLocked(ctx, lState, MakeReadOnlyRootMetadata(md), file, blockWrite)
+	fblock, err = fbo.getFileLocked(ctx, lState, md.ReadOnly(), file, blockWrite)
 	if err != nil {
 		return nil, nil, syncState, nil, err
 	}
@@ -2039,7 +2039,7 @@ func (fbo *folderBlockOps) startSyncWrite(ctx context.Context,
 			if isDirty {
 				_, _, _, block, nextBlockOff, _, err :=
 					fbo.getFileBlockAtOffsetLocked(
-						ctx, lState, MakeReadOnlyRootMetadata(md), file, fblock,
+						ctx, lState, md.ReadOnly(), file, fblock,
 						ptr.Off, blockWrite)
 				if err != nil {
 					return nil, nil, syncState, nil, err
@@ -2058,13 +2058,13 @@ func (fbo *folderBlockOps) startSyncWrite(ctx context.Context,
 						// need to make a new block
 						if err := fbo.newRightBlockLocked(
 							ctx, lState, file.tailPointer(), file, fblock,
-							endOfBlock, MakeReadOnlyRootMetadata(md)); err != nil {
+							endOfBlock, md.ReadOnly()); err != nil {
 							return nil, nil, syncState, nil, err
 						}
 					}
 					rPtr, _, _, rblock, _, _, err :=
 						fbo.getFileBlockAtOffsetLocked(
-							ctx, lState, MakeReadOnlyRootMetadata(md), file, fblock,
+							ctx, lState, md.ReadOnly(), file, fblock,
 							endOfBlock, blockWrite)
 					if err != nil {
 						return nil, nil, syncState, nil, err
@@ -2086,7 +2086,7 @@ func (fbo *folderBlockOps) startSyncWrite(ctx context.Context,
 					endOfBlock := ptr.Off + int64(len(block.Contents))
 					rPtr, _, _, rblock, _, _, err :=
 						fbo.getFileBlockAtOffsetLocked(
-							ctx, lState, MakeReadOnlyRootMetadata(md), file, fblock,
+							ctx, lState, md.ReadOnly(), file, fblock,
 							endOfBlock, blockWrite)
 					if err != nil {
 						return nil, nil, syncState, nil, err
@@ -2130,13 +2130,13 @@ func (fbo *folderBlockOps) startSyncWrite(ctx context.Context,
 			}
 			if isDirty {
 				_, _, _, block, _, _, err := fbo.getFileBlockAtOffsetLocked(
-					ctx, lState, MakeReadOnlyRootMetadata(md), file, fblock, ptr.Off, blockWrite)
+					ctx, lState, md.ReadOnly(), file, fblock, ptr.Off, blockWrite)
 				if err != nil {
 					return nil, nil, syncState, nil, err
 				}
 
 				newInfo, _, readyBlockData, err :=
-					fbo.ReadyBlock(ctx, MakeReadOnlyRootMetadata(md), block, uid)
+					fbo.ReadyBlock(ctx, md.ReadOnly(), block, uid)
 				if err != nil {
 					return nil, nil, syncState, nil, err
 				}
@@ -2201,7 +2201,7 @@ func (fbo *folderBlockOps) makeLocalBcache(ctx context.Context,
 	parentPath := file.parentPath()
 
 	dblock, err := fbo.getDirLocked(
-		ctx, lState, MakeReadOnlyRootMetadata(md), *parentPath, blockWrite)
+		ctx, lState, md.ReadOnly(), *parentPath, blockWrite)
 	if err != nil {
 		return nil, err
 	}

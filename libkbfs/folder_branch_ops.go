@@ -967,7 +967,7 @@ func (fbo *folderBranchOps) initMDLocked(
 	}
 	info, plainSize, readyBlockData, err :=
 		fbo.blocks.ReadyBlock(
-			ctx, MakeReadOnlyRootMetadata(md), newDblock, uid)
+			ctx, md.ReadOnly(), newDblock, uid)
 	if err != nil {
 		return err
 	}
@@ -988,7 +988,7 @@ func (fbo *folderBranchOps) initMDLocked(
 	md.UnrefBytes = 0
 
 	if err = fbo.config.BlockOps().Put(
-		ctx, MakeReadOnlyRootMetadata(md), info.BlockPointer,
+		ctx, md.ReadOnly(), info.BlockPointer,
 		readyBlockData); err != nil {
 		return err
 	}
@@ -1046,11 +1046,11 @@ func (fbo *folderBranchOps) checkNode(node Node) error {
 	return nil
 }
 
-// SetInitialHead sets the head to the given ImmutableRootMetadata,
-// which must be retrieved from the MD server.
-func (fbo *folderBranchOps) SetInitialHead(
+// SetInitialHeadFromServer sets the head to the given
+// ImmutableRootMetadata, which must be retrieved from the MD server.
+func (fbo *folderBranchOps) SetInitialHeadFromServer(
 	ctx context.Context, md ImmutableRootMetadata) (err error) {
-	fbo.log.CDebugf(ctx, "SetInitialHead, revision=%d (%s)",
+	fbo.log.CDebugf(ctx, "SetInitialHeadFromServer, revision=%d (%s)",
 		md.Revision, md.MergedStatus())
 	defer func() {
 		fbo.deferLog.CDebugf(ctx, "Done: %v", err)
@@ -1114,11 +1114,11 @@ func (fbo *folderBranchOps) SetInitialHead(
 	})
 }
 
-// SetNewHead creates a brand-new RootMetadata object and sets the head
-// to that.
-func (fbo *folderBranchOps) SetNewHead(
+// SetInitialHeadToNew creates a brand-new ImmutableRootMetadata
+// object and sets the head to that.
+func (fbo *folderBranchOps) SetInitialHeadToNew(
 	ctx context.Context, id TlfID, handle *TlfHandle) (err error) {
-	fbo.log.CDebugf(ctx, "SetNewHead")
+	fbo.log.CDebugf(ctx, "SetInitialHeadToNew")
 	defer func() {
 		fbo.deferLog.CDebugf(ctx, "Done: %v", err)
 	}()
@@ -1150,7 +1150,7 @@ func (fbo *folderBranchOps) SetNewHead(
 		// user is not a valid writer.)  Also, we want to make sure we
 		// fail before we set the head, otherwise future calls will
 		// succeed incorrectly.
-		err = fbo.identifyOnce(ctx, MakeReadOnlyRootMetadata(&rmd))
+		err = fbo.identifyOnce(ctx, rmd.ReadOnly())
 		if err != nil {
 			return err
 		}
@@ -1462,7 +1462,7 @@ func (fbo *folderBranchOps) unembedBlockChanges(
 	block := NewFileBlock().(*FileBlock)
 	block.Contents = buf
 	info, _, err := fbo.readyBlockMultiple(
-		ctx, MakeReadOnlyRootMetadata(md), block, uid, bps)
+		ctx, md.ReadOnly(), block, uid, bps)
 	if err != nil {
 		return
 	}
@@ -1516,7 +1516,7 @@ func (fbo *folderBranchOps) syncBlock(
 	now := fbo.nowUnixNano()
 	for len(newPath.path) < len(dir.path)+1 {
 		info, plainSize, err := fbo.readyBlockMultiple(
-			ctx, MakeReadOnlyRootMetadata(md), currBlock, uid, bps)
+			ctx, md.ReadOnly(), currBlock, uid, bps)
 		if err != nil {
 			return path{}, DirEntry{}, nil, err
 		}
@@ -1552,7 +1552,7 @@ func (fbo *folderBranchOps) syncBlock(
 				// modified while holding mdWriterLock, so it's
 				// safe to fetch them one at a time.
 				prevDblock, err = fbo.blocks.GetDir(
-					ctx, lState, MakeReadOnlyRootMetadata(md),
+					ctx, lState, md.ReadOnly(),
 					prevDir, blockWrite)
 				if err != nil {
 					return path{}, DirEntry{}, nil, err
@@ -2018,13 +2018,13 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 		defer func() {
 			if err != nil {
 				fbo.fbm.cleanUpBlockState(
-					MakeReadOnlyRootMetadata(md),
+					md.ReadOnly(),
 					bps, blockDeleteOnMDFail)
 			}
 		}()
 
 		ptrsToDelete, err := fbo.doBlockPuts(
-			ctx, MakeReadOnlyRootMetadata(md), *bps)
+			ctx, md.ReadOnly(), *bps)
 		if err != nil {
 			return err
 		}
@@ -2077,12 +2077,12 @@ func (fbo *folderBranchOps) syncBlockAndFinalizeLocked(ctx context.Context,
 	defer func() {
 		if err != nil {
 			fbo.fbm.cleanUpBlockState(
-				MakeReadOnlyRootMetadata(md),
+				md.ReadOnly(),
 				bps, blockDeleteOnMDFail)
 		}
 	}()
 
-	_, err = fbo.doBlockPuts(ctx, MakeReadOnlyRootMetadata(md), *bps)
+	_, err = fbo.doBlockPuts(ctx, md.ReadOnly(), *bps)
 	if err != nil {
 		return DirEntry{}, err
 	}
@@ -2155,7 +2155,7 @@ func (fbo *folderBranchOps) createEntryLocked(
 	}
 
 	dblock, err := fbo.blocks.GetDir(
-		ctx, lState, MakeReadOnlyRootMetadata(md), dirPath, blockWrite)
+		ctx, lState, md.ReadOnly(), dirPath, blockWrite)
 	if err != nil {
 		return nil, DirEntry{}, err
 	}
@@ -2166,7 +2166,7 @@ func (fbo *folderBranchOps) createEntryLocked(
 	}
 
 	if err := fbo.checkNewDirSize(
-		ctx, lState, MakeReadOnlyRootMetadata(md), dirPath, name); err != nil {
+		ctx, lState, md.ReadOnly(), dirPath, name); err != nil {
 		return nil, DirEntry{}, err
 	}
 
@@ -2337,7 +2337,7 @@ func (fbo *folderBranchOps) createLinkLocked(
 	}
 
 	dblock, err := fbo.blocks.GetDir(
-		ctx, lState, MakeReadOnlyRootMetadata(md), dirPath, blockWrite)
+		ctx, lState, md.ReadOnly(), dirPath, blockWrite)
 	if err != nil {
 		return DirEntry{}, err
 	}
@@ -2349,7 +2349,7 @@ func (fbo *folderBranchOps) createLinkLocked(
 		return DirEntry{}, NameExistsError{fromName}
 	}
 
-	if err := fbo.checkNewDirSize(ctx, lState, MakeReadOnlyRootMetadata(md),
+	if err := fbo.checkNewDirSize(ctx, lState, md.ReadOnly(),
 		dirPath, fromName); err != nil {
 		return DirEntry{}, err
 	}
@@ -2420,7 +2420,7 @@ func (fbo *folderBranchOps) unrefEntry(ctx context.Context,
 	// here.
 	if de.Type == File || de.Type == Exec {
 		blockInfos, err := fbo.blocks.GetIndirectFileBlockInfos(
-			ctx, lState, MakeReadOnlyRootMetadata(md), childPath)
+			ctx, lState, md.ReadOnly(), childPath)
 		if isRecoverableBlockErrorForRemoval(err) {
 			msg := fmt.Sprintf("Recoverable block error encountered for unrefEntry(%v); continuing", childPath)
 			fbo.log.CWarningf(ctx, "%s", msg)
@@ -2440,7 +2440,7 @@ func (fbo *folderBranchOps) removeEntryLocked(ctx context.Context,
 	fbo.mdWriterLock.AssertLocked(lState)
 
 	pblock, err := fbo.blocks.GetDir(
-		ctx, lState, MakeReadOnlyRootMetadata(md), dir, blockWrite)
+		ctx, lState, md.ReadOnly(), dir, blockWrite)
 	if err != nil {
 		return err
 	}
@@ -2490,7 +2490,7 @@ func (fbo *folderBranchOps) removeDirLocked(ctx context.Context,
 	}
 
 	pblock, err := fbo.blocks.GetDir(
-		ctx, lState, MakeReadOnlyRootMetadata(md), dirPath, blockRead)
+		ctx, lState, md.ReadOnly(), dirPath, blockRead)
 	de, ok := pblock.Children[dirName]
 	if !ok {
 		return NoSuchNameError{dirName}
@@ -2500,7 +2500,7 @@ func (fbo *folderBranchOps) removeDirLocked(ctx context.Context,
 	childPath := dirPath.ChildPath(dirName, de.BlockPointer)
 
 	childBlock, err := fbo.blocks.GetDir(
-		ctx, lState, MakeReadOnlyRootMetadata(md), childPath, blockRead)
+		ctx, lState, md.ReadOnly(), childPath, blockRead)
 	if isRecoverableBlockErrorForRemoval(err) {
 		msg := fmt.Sprintf("Recoverable block error encountered for removeDirLocked(%v); continuing", childPath)
 		fbo.log.CWarningf(ctx, "%s", msg)
@@ -2569,7 +2569,7 @@ func (fbo *folderBranchOps) renameLocked(
 	}
 
 	oldPBlock, newPBlock, newDe, lbc, err := fbo.blocks.PrepRename(
-		ctx, lState, MakeReadOnlyRootMetadata(md),
+		ctx, lState, md.ReadOnly(),
 		oldParent, oldName, newParent, newName)
 
 	if err != nil {
@@ -2588,7 +2588,7 @@ func (fbo *folderBranchOps) renameLocked(
 		if de.Type == Dir {
 			// The directory must be empty.
 			oldTargetDir, err := fbo.blocks.GetDirBlockForReading(ctx, lState,
-				MakeReadOnlyRootMetadata(md), de.BlockPointer, newParent.Branch,
+				md.ReadOnly(), de.BlockPointer, newParent.Branch,
 				newParent.ChildPathNoPtr(newName))
 			if err != nil {
 				return err
@@ -2687,12 +2687,12 @@ func (fbo *folderBranchOps) renameLocked(
 	defer func() {
 		if err != nil {
 			fbo.fbm.cleanUpBlockState(
-				MakeReadOnlyRootMetadata(md),
+				md.ReadOnly(),
 				newBps, blockDeleteOnMDFail)
 		}
 	}()
 
-	_, err = fbo.doBlockPuts(ctx, MakeReadOnlyRootMetadata(md), *newBps)
+	_, err = fbo.doBlockPuts(ctx, md.ReadOnly(), *newBps)
 	if err != nil {
 		return err
 	}
@@ -2850,7 +2850,7 @@ func (fbo *folderBranchOps) setExLocked(
 	}
 
 	dblock, de, err := fbo.blocks.GetDirtyParentAndEntry(
-		ctx, lState, MakeReadOnlyRootMetadata(md), file)
+		ctx, lState, md.ReadOnly(), file)
 	if err != nil {
 		return err
 	}
@@ -2930,7 +2930,7 @@ func (fbo *folderBranchOps) setMtimeLocked(
 	}
 
 	dblock, de, err := fbo.blocks.GetDirtyParentAndEntry(
-		ctx, lState, MakeReadOnlyRootMetadata(md), file)
+		ctx, lState, md.ReadOnly(), file)
 	if err != nil {
 		return err
 	}
@@ -3039,7 +3039,7 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 		fbo.blocks.StartSync(ctx, lState, md, uid, file)
 	defer func() {
 		fbo.blocks.CleanupSyncState(
-			ctx, lState, MakeReadOnlyRootMetadata(md), file, blocksToRemove, syncState, err)
+			ctx, lState, md.ReadOnly(), file, blocksToRemove, syncState, err)
 	}()
 	if err != nil {
 		return true, err
@@ -3062,7 +3062,7 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 	// FinishSync call below will take care of that.
 
 	blocksToRemove, err = fbo.doBlockPuts(
-		ctx, MakeReadOnlyRootMetadata(md), *bps)
+		ctx, md.ReadOnly(), *bps)
 	if err != nil {
 		return true, err
 	}
@@ -3084,7 +3084,7 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 	// the sync.
 
 	return fbo.blocks.FinishSync(ctx, lState, file, newPath,
-		MakeReadOnlyRootMetadata(md), syncState, fbo.fbm)
+		md.ReadOnly(), syncState, fbo.fbm)
 }
 
 func (fbo *folderBranchOps) Sync(ctx context.Context, file Node) (err error) {

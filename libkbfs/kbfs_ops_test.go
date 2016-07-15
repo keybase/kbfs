@@ -611,7 +611,7 @@ func TestKBFSOpsGetBaseDirChildrenCacheSuccess(t *testing.T) {
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["a"] = DirEntry{EntryInfo: EntryInfo{Type: File}}
 	dirBlock.Children["b"] = DirEntry{EntryInfo: EntryInfo{Type: Dir}}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	testPutBlockInCache(t, config, node.BlockPointer, id, dirBlock)
 	ops := getOps(config, id)
@@ -640,7 +640,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedSuccess(t *testing.T) {
 
 	rootID := fakeBlockID(42)
 	dirBlock := NewDirBlock().(*DirBlock)
-	blockPtr := makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u)
+	blockPtr := makeBP(rootID, rmd.ReadOnly(), config, u)
 	node := pathNode{blockPtr, "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	ops := getOps(config, id)
@@ -672,7 +672,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailNonReader(t *testing.T) {
 	}
 
 	rootID := fakeBlockID(42)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -695,7 +695,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailMissingBlock(t *testing.T) {
 
 	rootID := fakeBlockID(42)
 	dirBlock := NewDirBlock().(*DirBlock)
-	blockPtr := makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u)
+	blockPtr := makeBP(rootID, rmd.ReadOnly(), config, u)
 	node := pathNode{blockPtr, "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	ops := getOps(config, id)
@@ -729,9 +729,9 @@ func TestKBFSOpsGetNestedDirChildrenCacheSuccess(t *testing.T) {
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["a"] = DirEntry{EntryInfo: EntryInfo{Type: Exec}}
 	dirBlock.Children["b"] = DirEntry{EntryInfo: EntryInfo{Type: Sym}}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
-	bNode := pathNode{makeBP(bID, MakeReadOnlyRootMetadata(rmd), config, u), "b"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, u), "a"}
+	bNode := pathNode{makeBP(bID, rmd.ReadOnly(), config, u), "b"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode, bNode}}
 	n := nodeFromPath(t, ops, p)
 
@@ -773,8 +773,8 @@ func TestKBFSOpsLookupSuccess(t *testing.T) {
 			Type: Dir,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, u), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	n := nodeFromPath(t, ops, p)
 
@@ -785,7 +785,7 @@ func TestKBFSOpsLookupSuccess(t *testing.T) {
 		t.Errorf("Error on Lookup: %v", err)
 	}
 	bPath := ops.nodeCache.PathFromNode(bn)
-	expectedBNode := pathNode{makeBP(bID, MakeReadOnlyRootMetadata(rmd), config, u), "b"}
+	expectedBNode := pathNode{makeBP(bID, rmd.ReadOnly(), config, u), "b"}
 	expectedBNode.KeyGen = 1
 	if ei != dirBlock.Children["b"].EntryInfo {
 		t.Errorf("Lookup returned a bad entry info: %v vs %v",
@@ -815,8 +815,8 @@ func TestKBFSOpsLookupSymlinkSuccess(t *testing.T) {
 			Type: Sym,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, u), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	n := nodeFromPath(t, ops, p)
 
@@ -853,8 +853,8 @@ func TestKBFSOpsLookupNoSuchNameFail(t *testing.T) {
 			Type: Dir,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, u), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	n := nodeFromPath(t, ops, p)
 
@@ -890,9 +890,9 @@ func TestKBFSOpsLookupNewDataVersionFail(t *testing.T) {
 			Type: Dir,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
-	bNode := pathNode{makeBP(bID, MakeReadOnlyRootMetadata(rmd), config, u), "b"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, u), "a"}
+	bNode := pathNode{makeBP(bID, rmd.ReadOnly(), config, u), "b"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	n := nodeFromPath(t, ops, p)
 
@@ -929,9 +929,9 @@ func TestKBFSOpsStatSuccess(t *testing.T) {
 			Type: Dir,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
-	bNode := pathNode{makeBP(bID, MakeReadOnlyRootMetadata(rmd), config, u), "b"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, u), "a"}
+	bNode := pathNode{makeBP(bID, rmd.ReadOnly(), config, u), "b"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode, bNode}}
 	n := nodeFromPath(t, ops, p)
 
@@ -1235,8 +1235,8 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 		},
 	}
 	aBlock := NewDirBlock().(*DirBlock)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, uid), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -1346,7 +1346,7 @@ func testCreateEntryFailDupName(t *testing.T, isDir bool) {
 			Type: Dir,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -1385,7 +1385,7 @@ func testCreateEntryFailNameTooLong(t *testing.T, isDir bool) {
 
 	rootID := fakeBlockID(42)
 	rootBlock := NewDirBlock().(*DirBlock)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -1426,7 +1426,7 @@ func testCreateEntryFailDirTooBig(t *testing.T, isDir bool) {
 
 	rootID := fakeBlockID(42)
 	rootBlock := NewDirBlock().(*DirBlock)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -1474,7 +1474,7 @@ func testCreateEntryFailKBFSPrefix(t *testing.T, et EntryType) {
 			Type: Dir,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -1841,10 +1841,10 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
-		makeIFP(bid1, MakeReadOnlyRootMetadata(rmd), config, uid, 5, 0),
-		makeIFP(bid2, MakeReadOnlyRootMetadata(rmd), config, uid, 5, 5),
-		makeIFP(bid3, MakeReadOnlyRootMetadata(rmd), config, uid, 5, 10),
-		makeIFP(bid4, MakeReadOnlyRootMetadata(rmd), config, uid, 5, 15),
+		makeIFP(bid1, rmd.ReadOnly(), config, uid, 5, 0),
+		makeIFP(bid2, rmd.ReadOnly(), config, uid, 5, 5),
+		makeIFP(bid3, rmd.ReadOnly(), config, uid, 5, 10),
+		makeIFP(bid4, rmd.ReadOnly(), config, uid, 5, 15),
 	}
 	block1 := NewFileBlock().(*FileBlock)
 	block1.Contents = []byte{5, 4, 3, 2, 1}
@@ -1854,7 +1854,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 	block3.Contents = []byte{15, 14, 13, 12, 11}
 	block4 := NewFileBlock().(*FileBlock)
 	block4.Contents = []byte{20, 19, 18, 17, 16}
-	fileBP := makeBP(fileBID, MakeReadOnlyRootMetadata(rmd), config, uid)
+	fileBP := makeBP(fileBID, rmd.ReadOnly(), config, uid)
 	p := dirPath.ChildPath(entryName, fileBP)
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, dirPath)
@@ -2094,8 +2094,8 @@ func TestRenameInDirSuccess(t *testing.T) {
 			Type: File,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, uid), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -2185,9 +2185,9 @@ func TestRenameInDirOverEntrySuccess(t *testing.T) {
 		},
 	}
 	cBlock := NewFileBlock().(*FileBlock)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
-	cNode := pathNode{makeBP(cID, MakeReadOnlyRootMetadata(rmd), config, uid), "c"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, uid), "a"}
+	cNode := pathNode{makeBP(cID, rmd.ReadOnly(), config, uid), "c"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -2263,7 +2263,7 @@ func TestRenameInRootSuccess(t *testing.T) {
 			Type: File,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -2344,8 +2344,8 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 			Type: File,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, uid), "a"}
 	p1 := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n1 := nodeFromPath(t, ops, p1)
@@ -2358,7 +2358,7 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 		},
 	}
 	dBlock := NewDirBlock().(*DirBlock)
-	dNode := pathNode{makeBP(dID, MakeReadOnlyRootMetadata(rmd), config, uid), "d"}
+	dNode := pathNode{makeBP(dID, rmd.ReadOnly(), config, uid), "d"}
 	p2 := path{FolderBranch{Tlf: id}, []pathNode{node, dNode}}
 	n2 := nodeFromPath(t, ops, p2)
 
@@ -2466,9 +2466,9 @@ func TestRenameAcrossPrefixSuccess(t *testing.T) {
 		},
 	}
 	dBlock := NewDirBlock().(*DirBlock)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
-	dNode := pathNode{makeBP(dID, MakeReadOnlyRootMetadata(rmd), config, uid), "d"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, uid), "a"}
+	dNode := pathNode{makeBP(dID, rmd.ReadOnly(), config, uid), "d"}
 	p1 := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	p2 := path{FolderBranch{Tlf: id}, []pathNode{node, aNode, dNode}}
 	ops := getOps(config, id)
@@ -2565,9 +2565,9 @@ func TestRenameAcrossOtherPrefixSuccess(t *testing.T) {
 			Type: File,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
-	dNode := pathNode{makeBP(dID, MakeReadOnlyRootMetadata(rmd), config, uid), "d"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, uid), "a"}
+	dNode := pathNode{makeBP(dID, rmd.ReadOnly(), config, uid), "d"}
 	p1 := path{FolderBranch{Tlf: id}, []pathNode{node, aNode, dNode}}
 	p2 := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
@@ -2657,16 +2657,16 @@ func TestRenameFailAcrossTopLevelFolders(t *testing.T) {
 
 	rootID1 := fakeBlockID(41)
 	aID1 := fakeBlockID(42)
-	node1 := pathNode{makeBP(rootID1, MakeReadOnlyRootMetadata(rmd1), config, uid1), "p"}
-	aNode1 := pathNode{makeBP(aID1, MakeReadOnlyRootMetadata(rmd1), config, uid1), "a"}
+	node1 := pathNode{makeBP(rootID1, rmd1.ReadOnly(), config, uid1), "p"}
+	aNode1 := pathNode{makeBP(aID1, rmd1.ReadOnly(), config, uid1), "a"}
 	p1 := path{FolderBranch{Tlf: id1}, []pathNode{node1, aNode1}}
 	ops1 := getOps(config, id1)
 	n1 := nodeFromPath(t, ops1, p1)
 
 	rootID2 := fakeBlockID(38)
 	aID2 := fakeBlockID(39)
-	node2 := pathNode{makeBP(rootID2, MakeReadOnlyRootMetadata(rmd2), config, uid2), "p"}
-	aNode2 := pathNode{makeBP(aID2, MakeReadOnlyRootMetadata(rmd2), config, uid2), "a"}
+	node2 := pathNode{makeBP(rootID2, rmd2.ReadOnly(), config, uid2), "p"}
+	aNode2 := pathNode{makeBP(aID2, rmd2.ReadOnly(), config, uid2), "a"}
 	p2 := path{FolderBranch{Tlf: id2}, []pathNode{node2, aNode2}}
 	ops2 := getOps(config, id2)
 	n2 := nodeFromPath(t, ops2, p2)
@@ -2691,8 +2691,8 @@ func TestRenameFailAcrossBranches(t *testing.T) {
 	uid1 := h1.FirstResolvedWriter()
 	rootID1 := fakeBlockID(41)
 	aID1 := fakeBlockID(42)
-	node1 := pathNode{makeBP(rootID1, MakeReadOnlyRootMetadata(rmd1), config, uid1), "p"}
-	aNode1 := pathNode{makeBP(aID1, MakeReadOnlyRootMetadata(rmd1), config, uid1), "a"}
+	node1 := pathNode{makeBP(rootID1, rmd1.ReadOnly(), config, uid1), "p"}
+	aNode1 := pathNode{makeBP(aID1, rmd1.ReadOnly(), config, uid1), "a"}
 	p1 := path{FolderBranch{Tlf: id1}, []pathNode{node1, aNode1}}
 	p2 := path{FolderBranch{id1, "test"}, []pathNode{node1, aNode1}}
 	ops1 := getOps(config, id1)
@@ -2719,8 +2719,8 @@ func TestKBFSOpsCacheReadFullSuccess(t *testing.T) {
 	fileID := fakeBlockID(43)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, u), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, u), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	pNode := nodeFromPath(t, ops, p)
@@ -2748,8 +2748,8 @@ func TestKBFSOpsCacheReadPartialSuccess(t *testing.T) {
 	fileID := fakeBlockID(43)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, u), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, u), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	pNode := nodeFromPath(t, ops, p)
@@ -2781,10 +2781,10 @@ func TestKBFSOpsCacheReadFullMultiBlockSuccess(t *testing.T) {
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
-		makeIFP(id1, MakeReadOnlyRootMetadata(rmd), config, u, 0, 0),
-		makeIFP(id2, MakeReadOnlyRootMetadata(rmd), config, u, 6, 5),
-		makeIFP(id3, MakeReadOnlyRootMetadata(rmd), config, u, 7, 10),
-		makeIFP(id4, MakeReadOnlyRootMetadata(rmd), config, u, 8, 15),
+		makeIFP(id1, rmd.ReadOnly(), config, u, 0, 0),
+		makeIFP(id2, rmd.ReadOnly(), config, u, 6, 5),
+		makeIFP(id3, rmd.ReadOnly(), config, u, 7, 10),
+		makeIFP(id4, rmd.ReadOnly(), config, u, 8, 15),
 	}
 	block1 := NewFileBlock().(*FileBlock)
 	block1.Contents = []byte{5, 4, 3, 2, 1}
@@ -2794,8 +2794,8 @@ func TestKBFSOpsCacheReadFullMultiBlockSuccess(t *testing.T) {
 	block3.Contents = []byte{15, 14, 13, 12, 11}
 	block4 := NewFileBlock().(*FileBlock)
 	block4.Contents = []byte{20, 19, 18, 17, 16}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, u), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	pNode := nodeFromPath(t, ops, p)
@@ -2835,10 +2835,10 @@ func TestKBFSOpsCacheReadPartialMultiBlockSuccess(t *testing.T) {
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
-		makeIFP(id1, MakeReadOnlyRootMetadata(rmd), config, u, 0, 0),
-		makeIFP(id2, MakeReadOnlyRootMetadata(rmd), config, u, 6, 5),
-		makeIFP(id3, MakeReadOnlyRootMetadata(rmd), config, u, 7, 10),
-		makeIFP(id4, MakeReadOnlyRootMetadata(rmd), config, u, 8, 15),
+		makeIFP(id1, rmd.ReadOnly(), config, u, 0, 0),
+		makeIFP(id2, rmd.ReadOnly(), config, u, 6, 5),
+		makeIFP(id3, rmd.ReadOnly(), config, u, 7, 10),
+		makeIFP(id4, rmd.ReadOnly(), config, u, 8, 15),
 	}
 	block1 := NewFileBlock().(*FileBlock)
 	block1.Contents = []byte{5, 4, 3, 2, 1}
@@ -2848,8 +2848,8 @@ func TestKBFSOpsCacheReadPartialMultiBlockSuccess(t *testing.T) {
 	block3.Contents = []byte{15, 14, 13, 12, 11}
 	block4 := NewFileBlock().(*FileBlock)
 	block4.Contents = []byte{20, 19, 18, 17, 16}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, u), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	pNode := nodeFromPath(t, ops, p)
@@ -2882,8 +2882,8 @@ func TestKBFSOpsCacheReadFailPastEnd(t *testing.T) {
 	fileID := fakeBlockID(43)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, u), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, u), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	pNode := nodeFromPath(t, ops, p)
@@ -2908,8 +2908,8 @@ func TestKBFSOpsServerReadFullSuccess(t *testing.T) {
 	fileID := fakeBlockID(43)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	fileBlockPtr := makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, u)
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	fileBlockPtr := makeBP(fileID, rmd.ReadOnly(), config, u)
 	fileNode := pathNode{fileBlockPtr, "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
@@ -2939,8 +2939,8 @@ func TestKBFSOpsServerReadFailNoSuchBlock(t *testing.T) {
 	fileID := fakeBlockID(43)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	fileBlockPtr := makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, u)
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	fileBlockPtr := makeBP(fileID, rmd.ReadOnly(), config, u)
 	fileNode := pathNode{fileBlockPtr, "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
@@ -3011,7 +3011,7 @@ func TestKBFSOpsWriteNewBlockSuccess(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
-			BlockPointer: makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid),
+			BlockPointer: makeBP(fileID, rmd.ReadOnly(), config, uid),
 			EncodedSize:  1,
 		},
 		EntryInfo: EntryInfo{
@@ -3019,8 +3019,8 @@ func TestKBFSOpsWriteNewBlockSuccess(t *testing.T) {
 		},
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3080,7 +3080,7 @@ func TestKBFSOpsWriteExtendSuccess(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
-			BlockPointer: makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid),
+			BlockPointer: makeBP(fileID, rmd.ReadOnly(), config, uid),
 			EncodedSize:  1,
 		},
 		EntryInfo: EntryInfo{
@@ -3089,8 +3089,8 @@ func TestKBFSOpsWriteExtendSuccess(t *testing.T) {
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3141,7 +3141,7 @@ func TestKBFSOpsWritePastEndSuccess(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
-			BlockPointer: makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid),
+			BlockPointer: makeBP(fileID, rmd.ReadOnly(), config, uid),
 			EncodedSize:  1,
 		},
 		EntryInfo: EntryInfo{
@@ -3150,8 +3150,8 @@ func TestKBFSOpsWritePastEndSuccess(t *testing.T) {
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3202,7 +3202,7 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
-			BlockPointer: makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid),
+			BlockPointer: makeBP(fileID, rmd.ReadOnly(), config, uid),
 			EncodedSize:  1,
 		},
 		EntryInfo: EntryInfo{
@@ -3211,8 +3211,8 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3255,9 +3255,9 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 
 	b, _ = config.DirtyBlockCache().Get(fileNode.BlockPointer, p.Branch)
 	pblock := b.(*FileBlock)
-	b, _ = config.DirtyBlockCache().Get(makeBP(id1, MakeReadOnlyRootMetadata(rmd), config, uid), p.Branch)
+	b, _ = config.DirtyBlockCache().Get(makeBP(id1, rmd.ReadOnly(), config, uid), p.Branch)
 	block1 := b.(*FileBlock)
-	b, _ = config.DirtyBlockCache().Get(makeBP(id2, MakeReadOnlyRootMetadata(rmd), config, uid), p.Branch)
+	b, _ = config.DirtyBlockCache().Get(makeBP(id2, rmd.ReadOnly(), config, uid), p.Branch)
 	block2 := b.(*FileBlock)
 
 	if len(ops.nodeCache.PathFromNode(config.observer.localChange).path) !=
@@ -3337,15 +3337,15 @@ func TestKBFSOpsWriteOverMultipleBlocks(t *testing.T) {
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
-		makeIFP(id1, MakeReadOnlyRootMetadata(rmd), config, uid, 5, 0),
-		makeIFP(id2, MakeReadOnlyRootMetadata(rmd), config, uid, 6, 5),
+		makeIFP(id1, rmd.ReadOnly(), config, uid, 5, 0),
+		makeIFP(id2, rmd.ReadOnly(), config, uid, 6, 5),
 	}
 	block1 := NewFileBlock().(*FileBlock)
 	block1.Contents = []byte{5, 4, 3, 2, 1}
 	block2 := NewFileBlock().(*FileBlock)
 	block2.Contents = []byte{10, 9, 8, 7, 6}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3422,7 +3422,7 @@ func TestKBFSOpsWriteFailTooBig(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
-			BlockPointer: makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid),
+			BlockPointer: makeBP(fileID, rmd.ReadOnly(), config, uid),
 			EncodedSize:  1,
 		},
 		EntryInfo: EntryInfo{
@@ -3432,8 +3432,8 @@ func TestKBFSOpsWriteFailTooBig(t *testing.T) {
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3463,7 +3463,7 @@ func TestKBFSOpsTruncateToZeroSuccess(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
-			BlockPointer: makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid),
+			BlockPointer: makeBP(fileID, rmd.ReadOnly(), config, uid),
 			EncodedSize:  1,
 		},
 		EntryInfo: EntryInfo{
@@ -3472,8 +3472,8 @@ func TestKBFSOpsTruncateToZeroSuccess(t *testing.T) {
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3534,8 +3534,8 @@ func TestKBFSOpsTruncateSameSize(t *testing.T) {
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, u), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, u), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3566,7 +3566,7 @@ func TestKBFSOpsTruncateSmallerSuccess(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
-			BlockPointer: makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid),
+			BlockPointer: makeBP(fileID, rmd.ReadOnly(), config, uid),
 			EncodedSize:  1,
 		},
 		EntryInfo: EntryInfo{
@@ -3575,8 +3575,8 @@ func TestKBFSOpsTruncateSmallerSuccess(t *testing.T) {
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3631,15 +3631,15 @@ func TestKBFSOpsTruncateShortensLastBlock(t *testing.T) {
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
-		makeIFP(id1, MakeReadOnlyRootMetadata(rmd), config, uid, 5, 0),
-		makeIFP(id2, MakeReadOnlyRootMetadata(rmd), config, uid, 6, 5),
+		makeIFP(id1, rmd.ReadOnly(), config, uid, 5, 0),
+		makeIFP(id2, rmd.ReadOnly(), config, uid, 6, 5),
 	}
 	block1 := NewFileBlock().(*FileBlock)
 	block1.Contents = []byte{5, 4, 3, 2, 1}
 	block2 := NewFileBlock().(*FileBlock)
 	block2.Contents = []byte{10, 9, 8, 7, 6}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3717,15 +3717,15 @@ func TestKBFSOpsTruncateRemovesABlock(t *testing.T) {
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
-		makeIFP(id1, MakeReadOnlyRootMetadata(rmd), config, uid, 5, 0),
-		makeIFP(id2, MakeReadOnlyRootMetadata(rmd), config, uid, 6, 5),
+		makeIFP(id1, rmd.ReadOnly(), config, uid, 5, 0),
+		makeIFP(id2, rmd.ReadOnly(), config, uid, 6, 5),
 	}
 	block1 := NewFileBlock().(*FileBlock)
 	block1.Contents = []byte{5, 4, 3, 2, 1}
 	block2 := NewFileBlock().(*FileBlock)
 	block2.Contents = []byte{10, 9, 8, 7, 6}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3788,7 +3788,7 @@ func TestKBFSOpsTruncateBiggerSuccess(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
-			BlockPointer: makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid),
+			BlockPointer: makeBP(fileID, rmd.ReadOnly(), config, uid),
 			EncodedSize:  1,
 		},
 		EntryInfo: EntryInfo{
@@ -3797,8 +3797,8 @@ func TestKBFSOpsTruncateBiggerSuccess(t *testing.T) {
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3856,8 +3856,8 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 			Type: entryType,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, uid), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -3983,8 +3983,8 @@ func TestSetExFailNoSuchName(t *testing.T) {
 	rmd.data.Dir.ID = rootID
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, u), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -4018,8 +4018,8 @@ func TestSetMtimeSuccess(t *testing.T) {
 			Type: File,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, uid), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -4084,8 +4084,8 @@ func TestSetMtimeNull(t *testing.T) {
 			Mtime: oldMtime,
 		},
 	}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, u), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -4112,8 +4112,8 @@ func TestMtimeFailNoSuchName(t *testing.T) {
 	rmd.data.Dir.ID = rootID
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, u), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -4166,8 +4166,8 @@ func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
 	}
 	aBlock := NewFileBlock().(*FileBlock)
 	aBlock.Contents = []byte{1, 2, 3, 4, 5}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, uid), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -4246,8 +4246,8 @@ func TestSyncCleanSuccess(t *testing.T) {
 	rootID := fakeBlockID(42)
 	rmd.data.Dir.ID = rootID
 	aID := fakeBlockID(43)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, u), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, u), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -4335,11 +4335,11 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
-		makeIFP(id1, MakeReadOnlyRootMetadata(rmd), config, uid, 5, 0),
-		makeIFP(id2, MakeReadOnlyRootMetadata(rmd), config,
+		makeIFP(id1, rmd.ReadOnly(), config, uid, 5, 0),
+		makeIFP(id2, rmd.ReadOnly(), config,
 			keybase1.MakeTestUID(0), 0, 5),
-		makeIFP(id3, MakeReadOnlyRootMetadata(rmd), config, uid, 7, 10),
-		makeIFP(id4, MakeReadOnlyRootMetadata(rmd), config, uid, 0, 15),
+		makeIFP(id3, rmd.ReadOnly(), config, uid, 7, 10),
+		makeIFP(id4, rmd.ReadOnly(), config, uid, 0, 15),
 	}
 	block1 := NewFileBlock().(*FileBlock)
 	block1.Contents = []byte{5, 4, 3, 2, 1}
@@ -4349,8 +4349,8 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 	block3.Contents = []byte{15, 14, 13, 12, 11}
 	block4 := NewFileBlock().(*FileBlock)
 	block4.Contents = []byte{20, 19, 18, 17, 16}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -4363,8 +4363,8 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 	si.op.addWrite(5, 5)
 	si.op.addWrite(15, 5)
 	si.unrefs = append(si.unrefs,
-		makeBI(id2, MakeReadOnlyRootMetadata(rmd), config, keybase1.MakeTestUID(0), 5),
-		makeBI(id4, MakeReadOnlyRootMetadata(rmd), config, keybase1.MakeTestUID(0), 5))
+		makeBI(id2, rmd.ReadOnly(), config, keybase1.MakeTestUID(0), 5),
+		makeBI(id4, rmd.ReadOnly(), config, keybase1.MakeTestUID(0), 5))
 
 	// fsync a, only block 2 is dirty
 	config.DirtyBlockCache().Put(fileNode.BlockPointer, p.Branch, fileBlock)
@@ -4420,8 +4420,8 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 	refBlocks := []BlockPointer{fileBlock.IPtrs[1].BlockPointer,
 		fileBlock.IPtrs[3].BlockPointer}
 	unrefBlocks := []BlockPointer{
-		makeBP(id2, MakeReadOnlyRootMetadata(rmd), config, keybase1.MakeTestUID(0)),
-		makeBP(id4, MakeReadOnlyRootMetadata(rmd), config, keybase1.MakeTestUID(0)),
+		makeBP(id2, rmd.ReadOnly(), config, keybase1.MakeTestUID(0)),
+		makeBP(id4, rmd.ReadOnly(), config, keybase1.MakeTestUID(0)),
 	}
 	updates := []blockUpdate{
 		{rmd.data.Dir.BlockPointer, newP.path[0].BlockPointer},
@@ -4461,9 +4461,9 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	aBlock.Contents = []byte{1, 2, 3, 4, 5}
 	bBlock := NewFileBlock().(*FileBlock)
 	bBlock.Contents = aBlock.Contents
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
-	bNode := pathNode{makeBP(bID, MakeReadOnlyRootMetadata(rmd), config, uid), "b"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, uid), "a"}
+	bNode := pathNode{makeBP(bID, rmd.ReadOnly(), config, uid), "b"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, bNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -4594,10 +4594,10 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
-		makeIFP(id1, MakeReadOnlyRootMetadata(rmd), config, uid, 10, 0),
-		makeIFP(id2, MakeReadOnlyRootMetadata(rmd), config, uid, 0, 5),
-		makeIFP(id3, MakeReadOnlyRootMetadata(rmd), config, uid, 0, 10),
-		makeIFP(id4, MakeReadOnlyRootMetadata(rmd), config, uid, 0, 15),
+		makeIFP(id1, rmd.ReadOnly(), config, uid, 10, 0),
+		makeIFP(id2, rmd.ReadOnly(), config, uid, 0, 5),
+		makeIFP(id3, rmd.ReadOnly(), config, uid, 0, 10),
+		makeIFP(id4, rmd.ReadOnly(), config, uid, 0, 15),
 	}
 	block1 := NewFileBlock().(*FileBlock)
 	block1.Contents = []byte{5, 4, 3, 2, 1}
@@ -4607,8 +4607,8 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 	block3.Contents = []byte{15, 14, 13, 12, 11}
 	block4 := NewFileBlock().(*FileBlock)
 	block4.Contents = []byte{20, 19, 18, 17, 16}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -4792,10 +4792,10 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
-		makeIFP(id1, MakeReadOnlyRootMetadata(rmd), config, uid, 0, 0),
-		makeIFP(id2, MakeReadOnlyRootMetadata(rmd), config, uid, 10, 5),
-		makeIFP(id3, MakeReadOnlyRootMetadata(rmd), config, uid, 0, 10),
-		makeIFP(id4, MakeReadOnlyRootMetadata(rmd), config, uid, 15, 15),
+		makeIFP(id1, rmd.ReadOnly(), config, uid, 0, 0),
+		makeIFP(id2, rmd.ReadOnly(), config, uid, 10, 5),
+		makeIFP(id3, rmd.ReadOnly(), config, uid, 0, 10),
+		makeIFP(id4, rmd.ReadOnly(), config, uid, 15, 15),
 	}
 	block1 := NewFileBlock().(*FileBlock)
 	block1.Contents = []byte{5, 4, 3, 2, 1}
@@ -4805,8 +4805,8 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 	block3.Contents = []byte{15, 14, 13, 12, 11}
 	block4 := NewFileBlock().(*FileBlock)
 	block4.Contents = []byte{20, 19, 18, 17, 16}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -4959,8 +4959,8 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 	}
 	aBlock := NewFileBlock().(*FileBlock)
 	aBlock.Contents = []byte{1, 2, 3, 4, 5}
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	aNode := pathNode{makeBP(aID, MakeReadOnlyRootMetadata(rmd), config, uid), "a"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	aNode := pathNode{makeBP(aID, rmd.ReadOnly(), config, uid), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
@@ -5023,7 +5023,7 @@ func TestKBFSOpsStatRootSuccess(t *testing.T) {
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u), "p"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, u), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	n := nodeFromPath(t, ops, p)
 
@@ -5043,7 +5043,7 @@ func TestKBFSOpsFailingRootOps(t *testing.T) {
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.BlockPointer = makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, u)
+	rmd.data.Dir.BlockPointer = makeBP(rootID, rmd.ReadOnly(), config, u)
 	node := pathNode{rmd.data.Dir.BlockPointer, "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	n := nodeFromPath(t, ops, p)
@@ -5101,7 +5101,7 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
-			BlockPointer: makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid),
+			BlockPointer: makeBP(fileID, rmd.ReadOnly(), config, uid),
 			EncodedSize:  1,
 		},
 		EntryInfo: EntryInfo{
@@ -5109,8 +5109,8 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 		},
 	}
 	fileBlock := NewFileBlock().(*FileBlock)
-	node := pathNode{makeBP(rootID, MakeReadOnlyRootMetadata(rmd), config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, MakeReadOnlyRootMetadata(rmd), config, uid), "f"}
+	node := pathNode{makeBP(rootID, rmd.ReadOnly(), config, uid), "p"}
+	fileNode := pathNode{makeBP(fileID, rmd.ReadOnly(), config, uid), "f"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)

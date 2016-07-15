@@ -267,7 +267,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 			fb := FolderBranch{Tlf: id, Branch: branch}
 			ops := fs.getOpsByHandle(ctx, h, fb)
 
-			err = ops.SetNewHead(ctx, id, h)
+			err = ops.SetInitialHeadToNew(ctx, id, h)
 			if err != nil {
 				return nil, EntryInfo{}, err
 			}
@@ -306,7 +306,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 
 	ops := fs.getOpsByHandle(ctx, h, fb)
 
-	err = ops.SetInitialHead(ctx, md)
+	err = ops.SetInitialHeadFromServer(ctx, md)
 	if err != nil {
 		return nil, EntryInfo{}, err
 	}

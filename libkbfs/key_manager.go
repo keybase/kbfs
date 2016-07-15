@@ -511,13 +511,13 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			return false, nil, err
 		}
 
-		newWriterUsers = km.usersWithNewDevices(ctx, MakeReadOnlyRootMetadata(md), wkb.WKeys, wKeys)
-		newReaderUsers = km.usersWithNewDevices(ctx, MakeReadOnlyRootMetadata(md), rkb.RKeys, rKeys)
+		newWriterUsers = km.usersWithNewDevices(ctx, md.ReadOnly(), wkb.WKeys, wKeys)
+		newReaderUsers = km.usersWithNewDevices(ctx, md.ReadOnly(), rkb.RKeys, rKeys)
 		addNewWriterDevice = len(newWriterUsers) > 0
 		addNewReaderDevice = len(newReaderUsers) > 0
 
-		wRemoved := km.usersWithRemovedDevices(ctx, MakeReadOnlyRootMetadata(md), wkb.WKeys, wKeys)
-		rRemoved := km.usersWithRemovedDevices(ctx, MakeReadOnlyRootMetadata(md), rkb.RKeys, rKeys)
+		wRemoved := km.usersWithRemovedDevices(ctx, md.ReadOnly(), wkb.WKeys, wKeys)
+		rRemoved := km.usersWithRemovedDevices(ctx, md.ReadOnly(), rkb.RKeys, rKeys)
 		incKeyGen = len(wRemoved) > 0 || len(rRemoved) > 0
 
 		promotedReaders = make(map[keybase1.UID]bool, len(rRemoved))
@@ -543,7 +543,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			newWriterUsers[u] = true
 		}
 
-		if err := km.identifyUIDSets(ctx, MakeReadOnlyRootMetadata(md), newWriterUsers, newReaderUsers); err != nil {
+		if err := km.identifyUIDSets(ctx, md.ReadOnly(), newWriterUsers, newReaderUsers); err != nil {
 			return false, nil, err
 		}
 	}
@@ -589,7 +589,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			if promptPaper {
 				flags |= getTLFCryptKeyPromptPaper
 			}
-			currTlfCryptKey, err := km.getTLFCryptKey(ctx, MakeReadOnlyRootMetadata(md), keyGen, flags)
+			currTlfCryptKey, err := km.getTLFCryptKey(ctx, md.ReadOnly(), keyGen, flags)
 			if err != nil {
 				return false, nil, err
 			}
@@ -618,7 +618,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	// decryptMDPrivateData assumes that the MD is always encrypted
 	// using the latest key gen.
 	if !md.IsReadable() && len(md.SerializedPrivateMetadata) > 0 {
-		if err := decryptMDPrivateData(ctx, km.config, md, MakeReadOnlyRootMetadata(md)); err != nil {
+		if err := decryptMDPrivateData(ctx, km.config, md, md.ReadOnly()); err != nil {
 			return false, nil, err
 		}
 	}

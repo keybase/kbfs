@@ -187,7 +187,7 @@ func (md *MDOpsStandard) processMetadata(
 	// doesn't work, a future MD may contain more keys and will be
 	// tried later.
 	err = decryptMDPrivateData(
-		ctx, md.config, &rmd, MakeReadOnlyRootMetadata(&rmd))
+		ctx, md.config, &rmd, rmd.ReadOnly())
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -449,7 +449,7 @@ func (md *MDOpsStandard) readyMD(ctx context.Context, rmd *RootMetadata) (
 		} else if !rmd.IsWriterMetadataCopiedSet() {
 			// Encrypt and encode the private metadata
 			k, err := md.config.KeyManager().GetTLFCryptKeyForEncryption(
-				ctx, MakeReadOnlyRootMetadata(rmd))
+				ctx, rmd.ReadOnly())
 			if err != nil {
 				return nil, err
 			}

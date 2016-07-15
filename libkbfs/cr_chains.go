@@ -201,7 +201,7 @@ func (cc *crChain) identifyType(ctx context.Context, fbo *folderBlockOps,
 	// If we get down here, we have an ambiguity, and need to fetch
 	// the block to figure out the file type.
 	dblock, err := fbo.GetDirBlockForReading(ctx, makeFBOLockState(),
-		MakeReadOnlyRootMetadata(md),
+		md.ReadOnly(),
 		parentMostRecent, fbo.folderBranch.Branch, path{})
 	if err != nil {
 		return err
