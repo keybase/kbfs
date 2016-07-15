@@ -1114,11 +1114,11 @@ func (fbo *folderBranchOps) SetInitialHead(
 	})
 }
 
-// InitNewMD creates a brand-new RootMetadata object and sets the head
+// SetNewHead creates a brand-new RootMetadata object and sets the head
 // to that.
-func (fbo *folderBranchOps) InitNewMD(
+func (fbo *folderBranchOps) SetNewHead(
 	ctx context.Context, id TlfID, handle *TlfHandle) (err error) {
-	fbo.log.CDebugf(ctx, "InitNewMD")
+	fbo.log.CDebugf(ctx, "SetNewHead")
 	defer func() {
 		fbo.deferLog.CDebugf(ctx, "Done: %v", err)
 	}()
