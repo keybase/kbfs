@@ -6,6 +6,8 @@ package libkbfs
 
 import "github.com/rcrowley/go-metrics"
 
+// CryptoMeasured delegates to another Crypto instance but also keeps
+// track of (some) stats.
 type CryptoMeasured struct {
 	Crypto
 	// Add timers for other Crypto functions as needed.
