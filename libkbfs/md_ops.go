@@ -374,7 +374,11 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 		}
 
 		if prevMD != (ImmutableRootMetadata{}) {
-			err = prevMD.CheckValidSuccessor(prevMD.mdID, &r.MD)
+			// This is safe, since CheckValidSuccessor on
+			// BareRootMetadata doesn't modify its
+			// argument.
+			err = prevMD.BareRootMetadata.CheckValidSuccessor(
+				prevMD.mdID, &r.MD)
 			if err != nil {
 				return nil, MDMismatchError{
 					handle.GetCanonicalPath(),

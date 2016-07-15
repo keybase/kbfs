@@ -426,6 +426,14 @@ type ReadOnlyRootMetadata struct {
 	*RootMetadata
 }
 
+// CheckValidSuccessor makes sure the given ReadOnlyRootMetadata is a
+// valid successor to the current one, and returns an error otherwise.
+func (md ReadOnlyRootMetadata) CheckValidSuccessor(
+	currID MdID, nextMd ReadOnlyRootMetadata) error {
+	return md.BareRootMetadata.CheckValidSuccessor(
+		currID, &nextMd.BareRootMetadata)
+}
+
 // ReadOnly makes a ReadOnlyRootMetadata from the current
 // *RootMetadata.
 func (md *RootMetadata) ReadOnly() ReadOnlyRootMetadata {
