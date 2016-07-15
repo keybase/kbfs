@@ -159,11 +159,11 @@ func (md *RootMetadata) getTLFKeyBundles(keyGen KeyGen) (
 	}
 
 	if keyGen < FirstValidKeyGen {
-		return nil, nil, InvalidKeyGenerationError{md.GetTlfHandle(), keyGen}
+		return nil, nil, InvalidKeyGenerationError{md.ID, keyGen}
 	}
 	i := int(keyGen - FirstValidKeyGen)
 	if i >= len(md.WKeys) || i >= len(md.RKeys) {
-		return nil, nil, NewKeyGenerationError{md.GetTlfHandle(), keyGen}
+		return nil, nil, NewKeyGenerationError{md.ID, keyGen}
 	}
 	return &md.WKeys[i], &md.RKeys[i], nil
 }
