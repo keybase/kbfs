@@ -1046,11 +1046,11 @@ func (fbo *folderBranchOps) checkNode(node Node) error {
 	return nil
 }
 
-// CheckForNewMDAndInit sees whether the given MD object has been
-// initialized yet; if not, it does so.
-func (fbo *folderBranchOps) SetInitialMD(
+// SetInitialHead sets the head to the given ImmutableRootMetadata,
+// which must be retrieved from the MD server.
+func (fbo *folderBranchOps) SetInitialHead(
 	ctx context.Context, md ImmutableRootMetadata) (err error) {
-	fbo.log.CDebugf(ctx, "SetInitialMD, revision=%d (%s)",
+	fbo.log.CDebugf(ctx, "SetInitialHead, revision=%d (%s)",
 		md.Revision, md.MergedStatus())
 	defer func() {
 		fbo.deferLog.CDebugf(ctx, "Done: %v", err)
@@ -1114,7 +1114,10 @@ func (fbo *folderBranchOps) SetInitialMD(
 	})
 }
 
-func (fbo *folderBranchOps) InitNewMD(ctx context.Context, id TlfID, handle *TlfHandle) (err error) {
+// InitNewMD creates a brand-new RootMetadata object and sets the head
+// to that.
+func (fbo *folderBranchOps) InitNewMD(
+	ctx context.Context, id TlfID, handle *TlfHandle) (err error) {
 	fbo.log.CDebugf(ctx, "InitNewMD")
 	defer func() {
 		fbo.deferLog.CDebugf(ctx, "Done: %v", err)

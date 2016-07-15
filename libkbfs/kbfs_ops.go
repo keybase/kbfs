@@ -306,7 +306,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 
 	ops := fs.getOpsByHandle(ctx, h, fb)
 
-	err = ops.SetInitialMD(ctx, md)
+	err = ops.SetInitialHead(ctx, md)
 	if err != nil {
 		return nil, EntryInfo{}, err
 	}
