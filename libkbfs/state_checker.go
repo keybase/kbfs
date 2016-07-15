@@ -33,7 +33,7 @@ func NewStateChecker(config Config) *StateChecker {
 func (sc *StateChecker) findAllFileBlocks(ctx context.Context,
 	lState *lockState, ops *folderBranchOps, md ImmutableRootMetadata, file path,
 	blockSizes map[BlockPointer]uint32) error {
-	fblock, err := ops.blocks.GetFileBlockForReading(ctx, lState, md.ConstRootMetadata,
+	fblock, err := ops.blocks.GetFileBlockForReading(ctx, lState, md.ReadOnlyRootMetadata,
 		file.tailPointer(), file.Branch, file)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (sc *StateChecker) findAllFileBlocks(ctx context.Context,
 func (sc *StateChecker) findAllBlocksInPath(ctx context.Context,
 	lState *lockState, ops *folderBranchOps, md ImmutableRootMetadata, dir path,
 	blockSizes map[BlockPointer]uint32) error {
-	dblock, err := ops.blocks.GetDirBlockForReading(ctx, lState, md.ConstRootMetadata,
+	dblock, err := ops.blocks.GetDirBlockForReading(ctx, lState, md.ReadOnlyRootMetadata,
 		dir.tailPointer(), dir.Branch, dir)
 	if err != nil {
 		return err

@@ -310,7 +310,7 @@ func (f *stallingBlockOps) maybeStall(ctx context.Context, opName StallableBlock
 }
 
 func (f *stallingBlockOps) Get(
-	ctx context.Context, md ConstRootMetadata, blockPtr BlockPointer,
+	ctx context.Context, md ReadOnlyRootMetadata, blockPtr BlockPointer,
 	block Block) error {
 	f.maybeStall(ctx, StallableBlockGet)
 	return runWithContextCheck(ctx, func(ctx context.Context) error {
@@ -319,7 +319,7 @@ func (f *stallingBlockOps) Get(
 }
 
 func (f *stallingBlockOps) Ready(
-	ctx context.Context, md ConstRootMetadata, block Block) (
+	ctx context.Context, md ReadOnlyRootMetadata, block Block) (
 	id BlockID, plainSize int, readyBlockData ReadyBlockData, err error) {
 	f.maybeStall(ctx, StallableBlockReady)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
@@ -331,7 +331,7 @@ func (f *stallingBlockOps) Ready(
 }
 
 func (f *stallingBlockOps) Put(
-	ctx context.Context, md ConstRootMetadata, blockPtr BlockPointer,
+	ctx context.Context, md ReadOnlyRootMetadata, blockPtr BlockPointer,
 	readyBlockData ReadyBlockData) error {
 	f.maybeStall(ctx, StallableBlockPut)
 	return runWithContextCheck(ctx, func(ctx context.Context) error {
@@ -340,7 +340,7 @@ func (f *stallingBlockOps) Put(
 }
 
 func (f *stallingBlockOps) Delete(
-	ctx context.Context, md ConstRootMetadata,
+	ctx context.Context, md ReadOnlyRootMetadata,
 	ptrs []BlockPointer) (notDeleted map[BlockID]int, err error) {
 	f.maybeStall(ctx, StallableBlockDelete)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
@@ -352,7 +352,7 @@ func (f *stallingBlockOps) Delete(
 }
 
 func (f *stallingBlockOps) Archive(
-	ctx context.Context, md ConstRootMetadata, ptrs []BlockPointer) error {
+	ctx context.Context, md ReadOnlyRootMetadata, ptrs []BlockPointer) error {
 	f.maybeStall(ctx, StallableBlockArchive)
 	return runWithContextCheck(ctx, func(ctx context.Context) error {
 		return f.delegate.Archive(ctx, md, ptrs)

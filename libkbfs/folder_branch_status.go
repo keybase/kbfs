@@ -53,7 +53,7 @@ type folderBranchStatusKeeper struct {
 	config    Config
 	nodeCache NodeCache
 
-	md         ConstRootMetadata
+	md         ReadOnlyRootMetadata
 	dirtyNodes map[NodeID]Node
 	unmerged   *crChains
 	merged     *crChains
@@ -83,7 +83,7 @@ func (fbsk *folderBranchStatusKeeper) signalChangeLocked() {
 
 // setRootMetadata sets the current head metadata for the
 // corresponding folder-branch.
-func (fbsk *folderBranchStatusKeeper) setRootMetadata(md ConstRootMetadata) {
+func (fbsk *folderBranchStatusKeeper) setRootMetadata(md ReadOnlyRootMetadata) {
 	fbsk.dataMutex.Lock()
 	defer fbsk.dataMutex.Unlock()
 	if fbsk.md == md {
@@ -158,7 +158,7 @@ func (fbsk *folderBranchStatusKeeper) getStatus(ctx context.Context) (
 
 	var fbs FolderBranchStatus
 
-	if fbsk.md != (ConstRootMetadata{}) {
+	if fbsk.md != (ReadOnlyRootMetadata{}) {
 		fbs.Staged = (fbsk.md.WFlags & MetadataFlagUnmerged) != 0
 		name, err := fbsk.config.KBPKI().GetNormalizedUsername(ctx, fbsk.md.LastModifyingWriter)
 		if err != nil {

@@ -579,15 +579,13 @@ func TestMakeRekeyReadError(t *testing.T) {
 	u, uid, err := config.KBPKI().Resolve(context.Background(), "bob")
 	require.NoError(t, err)
 
-	err = makeRekeyReadError(MakeConstRootMetadata(rmd), h, FirstValidKeyGen, uid, u)
+	err = rmd.makeRekeyReadError(h, FirstValidKeyGen, uid, u)
 	require.Equal(t, NewReadAccessError(h, u), err)
 
-	err = makeRekeyReadError(
-		MakeConstRootMetadata(rmd), h, FirstValidKeyGen, h.FirstResolvedWriter(), "alice")
+	err = rmd.makeRekeyReadError(h, FirstValidKeyGen, h.FirstResolvedWriter(), "alice")
 	require.Equal(t, NeedSelfRekeyError{"alice"}, err)
 
-	err = makeRekeyReadError(
-		MakeConstRootMetadata(rmd), h, FirstValidKeyGen+1, h.FirstResolvedWriter(), "alice")
+	err = rmd.makeRekeyReadError(h, FirstValidKeyGen+1, h.FirstResolvedWriter(), "alice")
 	require.Equal(t, NeedOtherRekeyError{"alice"}, err)
 }
 
@@ -606,7 +604,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	u, uid, err := config.KBPKI().Resolve(ctx, "bob")
 	require.NoError(t, err)
 
-	err = makeRekeyReadError(MakeConstRootMetadata(rmd), h, FirstValidKeyGen, uid, u)
+	err = rmd.makeRekeyReadError(h, FirstValidKeyGen, uid, u)
 	require.Equal(t, NewReadAccessError(h, u), err)
 
 	config.KeybaseDaemon().(*KeybaseDaemonLocal).addNewAssertionForTestOrBust(
@@ -615,7 +613,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	resolvedHandle, err := h.ResolveAgain(ctx, config.KBPKI())
 	require.NoError(t, err)
 
-	err = makeRekeyReadError(MakeConstRootMetadata(rmd), resolvedHandle, FirstValidKeyGen, uid, u)
+	err = rmd.makeRekeyReadError(resolvedHandle, FirstValidKeyGen, uid, u)
 	require.Equal(t, NeedOtherRekeyError{"alice,bob"}, err)
 }
 

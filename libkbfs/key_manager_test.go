@@ -115,7 +115,7 @@ func TestKeyManagerPublicTLFCryptKey(t *testing.T) {
 
 	id := FakeTlfID(1, true)
 	h := parseTlfHandleOrBust(t, config, "alice", true)
-	rmd := MakeConstRootMetadata(newRootMetadataOrBust(t, id, h))
+	rmd := MakeReadOnlyRootMetadata(newRootMetadataOrBust(t, id, h))
 
 	tlfCryptKey, err := config.KeyManager().
 		GetTLFCryptKeyForEncryption(ctx, rmd)
@@ -160,7 +160,7 @@ func TestKeyManagerCachedSecretKeyForEncryptionSuccess(t *testing.T) {
 	expectCachedGetTLFCryptKey(config, rmd, rmd.LatestKeyGeneration())
 
 	if _, err := config.KeyManager().
-		GetTLFCryptKeyForEncryption(ctx, MakeConstRootMetadata(rmd)); err != nil {
+		GetTLFCryptKeyForEncryption(ctx, MakeReadOnlyRootMetadata(rmd)); err != nil {
 		t.Errorf("Got error on GetTLFCryptKeyForEncryption: %v", err)
 	}
 }
@@ -177,7 +177,7 @@ func TestKeyManagerCachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 	expectCachedGetTLFCryptKey(config, rmd, rmd.LatestKeyGeneration())
 
 	if _, err := config.KeyManager().
-		GetTLFCryptKeyForMDDecryption(ctx, MakeConstRootMetadata(rmd), MakeConstRootMetadata(rmd)); err != nil {
+		GetTLFCryptKeyForMDDecryption(ctx, MakeReadOnlyRootMetadata(rmd), MakeReadOnlyRootMetadata(rmd)); err != nil {
 		t.Errorf("Got error on GetTLFCryptKeyForMDDecryption: %v", err)
 	}
 }
@@ -197,7 +197,7 @@ func TestKeyManagerCachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	expectCachedGetTLFCryptKey(config, rmd, keyGen)
 
 	if _, err := config.KeyManager().GetTLFCryptKeyForBlockDecryption(
-		ctx, MakeConstRootMetadata(rmd), BlockPointer{KeyGen: keyGen}); err != nil {
+		ctx, MakeReadOnlyRootMetadata(rmd), BlockPointer{KeyGen: keyGen}); err != nil {
 		t.Errorf("Got error on GetTLFCryptKeyForBlockDecryption: %v", err)
 	}
 }
@@ -231,7 +231,7 @@ func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
 	expectUncachedGetTLFCryptKey(config, rmd, rmd.LatestKeyGeneration(), uid, subkey, true)
 
 	if _, err := config.KeyManager().
-		GetTLFCryptKeyForEncryption(ctx, MakeConstRootMetadata(rmd)); err != nil {
+		GetTLFCryptKeyForEncryption(ctx, MakeReadOnlyRootMetadata(rmd)); err != nil {
 		t.Errorf("Got error on GetTLFCryptKeyForEncryption: %v", err)
 	}
 }
@@ -251,7 +251,7 @@ func TestKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 	expectUncachedGetTLFCryptKeyAnyDevice(config, rmd, rmd.LatestKeyGeneration(), uid, subkey, false)
 
 	if _, err := config.KeyManager().
-		GetTLFCryptKeyForMDDecryption(ctx, MakeConstRootMetadata(rmd), MakeConstRootMetadata(rmd)); err != nil {
+		GetTLFCryptKeyForMDDecryption(ctx, MakeReadOnlyRootMetadata(rmd), MakeReadOnlyRootMetadata(rmd)); err != nil {
 		t.Errorf("Got error on GetTLFCryptKeyForMDDecryption: %v", err)
 	}
 }
@@ -273,7 +273,7 @@ func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	expectUncachedGetTLFCryptKey(config, rmd, keyGen, uid, subkey, false)
 
 	if _, err := config.KeyManager().GetTLFCryptKeyForBlockDecryption(
-		ctx, MakeConstRootMetadata(rmd), BlockPointer{KeyGen: keyGen}); err != nil {
+		ctx, MakeReadOnlyRootMetadata(rmd), BlockPointer{KeyGen: keyGen}); err != nil {
 		t.Errorf("Got error on GetTLFCryptKeyForBlockDecryption: %v", err)
 	}
 }
@@ -817,7 +817,7 @@ func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 		t.Fatal("Wrong kind of key manager for config2")
 	}
 	for keyGen := KeyGen(FirstValidKeyGen); keyGen <= currKeyGen; keyGen++ {
-		_, err = km2.getTLFCryptKeyUsingCurrentDevice(ctx, rmd.ConstRootMetadata, keyGen, true)
+		_, err = km2.getTLFCryptKeyUsingCurrentDevice(ctx, rmd.ReadOnlyRootMetadata, keyGen, true)
 		if err == nil {
 			t.Errorf("User 2 could still fetch a key for keygen %d", keyGen)
 		}

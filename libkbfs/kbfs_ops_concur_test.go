@@ -485,13 +485,13 @@ func (km *mdRecordingKeyManager) setLastMD(md *RootMetadata) {
 }
 
 func (km *mdRecordingKeyManager) GetTLFCryptKeyForEncryption(
-	ctx context.Context, md ConstRootMetadata) (TLFCryptKey, error) {
+	ctx context.Context, md ReadOnlyRootMetadata) (TLFCryptKey, error) {
 	km.setLastMD(md.RootMetadata)
 	return km.delegate.GetTLFCryptKeyForEncryption(ctx, md)
 }
 
 func (km *mdRecordingKeyManager) GetTLFCryptKeyForMDDecryption(
-	ctx context.Context, mdToDecrypt, mdWithKeys ConstRootMetadata) (
+	ctx context.Context, mdToDecrypt, mdWithKeys ReadOnlyRootMetadata) (
 	TLFCryptKey, error) {
 	km.setLastMD(mdToDecrypt.RootMetadata)
 	return km.delegate.GetTLFCryptKeyForMDDecryption(ctx,
@@ -499,7 +499,7 @@ func (km *mdRecordingKeyManager) GetTLFCryptKeyForMDDecryption(
 }
 
 func (km *mdRecordingKeyManager) GetTLFCryptKeyForBlockDecryption(
-	ctx context.Context, md ConstRootMetadata, blockPtr BlockPointer) (
+	ctx context.Context, md ReadOnlyRootMetadata, blockPtr BlockPointer) (
 	TLFCryptKey, error) {
 	km.setLastMD(md.RootMetadata)
 	return km.delegate.GetTLFCryptKeyForBlockDecryption(ctx, md, blockPtr)
@@ -1395,7 +1395,7 @@ type blockOpsOverQuota struct {
 	BlockOps
 }
 
-func (booq *blockOpsOverQuota) Put(ctx context.Context, md ConstRootMetadata,
+func (booq *blockOpsOverQuota) Put(ctx context.Context, md ReadOnlyRootMetadata,
 	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
 	return BServerErrorOverQuota{
 		Throttled: true,

@@ -420,22 +420,22 @@ func (md *RootMetadata) swapCachedBlockChanges() {
 // underlying RootMetadata through the original pointer, so care must
 // be taken if a function stores a ReadOnlyRootMetadata object past
 // the end of the function.
-type ConstRootMetadata struct {
+type ReadOnlyRootMetadata struct {
 	*RootMetadata
 }
 
-// MakeConstRootMetadata makes a new ConstRootMetadata from the given
+// MakeReadOnlyRootMetadata makes a new ReadOnlyRootMetadata from the given
 // one.
-func MakeConstRootMetadata(rmd *RootMetadata) ConstRootMetadata {
-	return ConstRootMetadata{rmd}
+func MakeReadOnlyRootMetadata(rmd *RootMetadata) ReadOnlyRootMetadata {
+	return ReadOnlyRootMetadata{rmd}
 }
 
-// ImmutableRootMetadata is a thin wrapper around a ConstRootMetadata
+// ImmutableRootMetadata is a thin wrapper around a ReadOnlyRootMetadata
 // that takes ownership of it and does not ever modify it again. Thus,
-// its MdID can be calculated and stored. Unlike ConstRootMetadata,
+// its MdID can be calculated and stored. Unlike ReadOnlyRootMetadata,
 // ImmutableRootMetadata objects can be stored.
 type ImmutableRootMetadata struct {
-	ConstRootMetadata
+	ReadOnlyRootMetadata
 	mdID MdID
 }
 
@@ -446,7 +446,7 @@ func MakeImmutableRootMetadata(
 	if mdID == (MdID{}) {
 		panic("zero mdID passed to MakeImmutableRootMetadata")
 	}
-	return ImmutableRootMetadata{ConstRootMetadata{rmd}, mdID}
+	return ImmutableRootMetadata{ReadOnlyRootMetadata{rmd}, mdID}
 }
 
 // RootMetadataSigned is the top-level MD object stored in MD server
