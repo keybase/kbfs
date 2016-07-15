@@ -42,22 +42,32 @@ const (
 const stallKeyStallEverything = ""
 
 type naïveStallInfo struct {
-	onStalled   <-chan struct{}
-	unstall     chan<- struct{}
-	oldBlockOps BlockOps
-	oldMDOps    MDOps
+	onStalled <-chan struct{}
+	unstall   chan<- struct{}
+
+	// A blockOps or mdOps stores the stalling Ops associates with this
+	// naïveStallInfo.
+	blockOps *stallingBlockOps
+	mdOps    *stallingMDOps
+
+	// outter is associated with the stalling Ops that uses this stalling Ops as
+	// internal delegate to perform actual ops.
+	outter *naïveStallInfo
 }
 
 // NaïveStaller is used to stall certain ops in BlockOps or MDOps. Unlike
 // StallBlockOp and StallMDOp which provides a way to precisely control which
 // particular op is stalled by passing in ctx with corresponding stallKey,
-// NaïveStaller simply stalls all instances of specified op.
+// NaïveStaller simply stalls all instances of specified op. Internally
+// NaïveStaller uses a delegate chain in order to be able to remove a specific
+// stall.
 type NaïveStaller struct {
-	config Config
-
+	// protects the entire delegate chain
 	mu             sync.RWMutex
+	config         Config
 	blockOpsStalls map[StallableBlockOp]*naïveStallInfo
 	mdOpsStalls    map[StallableMDOp]*naïveStallInfo
+	head           *naïveStallInfo
 }
 
 // NewNaïveStaller returns a new NaïveStaller
@@ -69,10 +79,8 @@ func NewNaïveStaller(config Config) *NaïveStaller {
 	}
 }
 
-func (s *NaïveStaller) getNaïveStallInfoForBlockOpOrBust(
+func (s *NaïveStaller) getNaïveStallInfoForBlockOpOrBustLocked(
 	stalledOp StallableBlockOp) *naïveStallInfo {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	info, ok := s.blockOpsStalls[stalledOp]
 	if !ok {
 		panic("naïveStallInfo is not found." +
@@ -81,10 +89,8 @@ func (s *NaïveStaller) getNaïveStallInfoForBlockOpOrBust(
 	return info
 }
 
-func (s *NaïveStaller) getNaïveStallInfoForMDOpOrBust(
+func (s *NaïveStaller) getNaïveStallInfoForMDOpOrBustLocked(
 	stalledOp StallableMDOp) *naïveStallInfo {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	info, ok := s.mdOpsStalls[stalledOp]
 	if !ok {
 		panic("naïveStallInfo is not found." +
@@ -93,13 +99,29 @@ func (s *NaïveStaller) getNaïveStallInfoForMDOpOrBust(
 	return info
 }
 
+func (s *NaïveStaller) getNaïveStallInfoForBlockOpOrBust(
+	stalledOp StallableBlockOp) *naïveStallInfo {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.getNaïveStallInfoForBlockOpOrBustLocked(stalledOp)
+}
+
+func (s *NaïveStaller) getNaïveStallInfoForMDOpOrBust(
+	stalledOp StallableMDOp) *naïveStallInfo {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.getNaïveStallInfoForMDOpOrBustLocked(stalledOp)
+}
+
 // StallBlockOp wraps the internal BlockOps so that all subsequent stalledOp
 // will be stalled. This can be undone by calling UndoStallBlockOp.
 func (s *NaïveStaller) StallBlockOp(stalledOp StallableBlockOp) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	onStalledCh := make(chan struct{}, 1)
 	unstallCh := make(chan struct{})
 	oldBlockOps := s.config.BlockOps()
-	s.config.SetBlockOps(&stallingBlockOps{
+	stallingOps := &stallingBlockOps{
 		stallOpName: stalledOp,
 		stallKey:    stallKeyStallEverything,
 		staller: staller{
@@ -107,23 +129,32 @@ func (s *NaïveStaller) StallBlockOp(stalledOp StallableBlockOp) {
 			unstall: unstallCh,
 		},
 		delegate: oldBlockOps,
-	})
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.blockOpsStalls[stalledOp] = &naïveStallInfo{
-		onStalled:   onStalledCh,
-		unstall:     unstallCh,
-		oldBlockOps: oldBlockOps,
 	}
+	s.config.SetBlockOps(stallingOps)
+	stallInfo := &naïveStallInfo{
+		onStalled: onStalledCh,
+		unstall:   unstallCh,
+		blockOps:  stallingOps,
+	}
+	if _, ok := s.blockOpsStalls[stalledOp]; ok {
+		panic("incorrect use of NaïveStaller; requested Op is already stalled")
+	}
+	s.blockOpsStalls[stalledOp] = stallInfo
+	if s.head != nil {
+		s.head.outter = stallInfo
+	}
+	s.head = stallInfo
 }
 
 // StallMDOp wraps the internal MDOps so that all subsequent stalledOp
 // will be stalled. This can be undone by calling UndoStallMDOp.
 func (s *NaïveStaller) StallMDOp(stalledOp StallableMDOp) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	onStalledCh := make(chan struct{}, 1)
 	unstallCh := make(chan struct{})
 	oldMDOps := s.config.MDOps()
-	s.config.SetMDOps(&stallingMDOps{
+	stallingOps := &stallingMDOps{
 		stallOpName: stalledOp,
 		stallKey:    stallKeyStallEverything,
 		staller: staller{
@@ -131,14 +162,21 @@ func (s *NaïveStaller) StallMDOp(stalledOp StallableMDOp) {
 			unstall: unstallCh,
 		},
 		delegate: oldMDOps,
-	})
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.mdOpsStalls[stalledOp] = &naïveStallInfo{
+	}
+	s.config.SetMDOps(stallingOps)
+	stallInfo := &naïveStallInfo{
 		onStalled: onStalledCh,
 		unstall:   unstallCh,
-		oldMDOps:  oldMDOps,
+		mdOps:     stallingOps,
 	}
+	if _, ok := s.mdOpsStalls[stalledOp]; ok {
+		panic("incorrect use of NaïveStaller; requested Op is already stalled")
+	}
+	s.mdOpsStalls[stalledOp] = stallInfo
+	if s.head != nil {
+		s.head.outter = stallInfo
+	}
+	s.head = stallInfo
 }
 
 // WaitForStallBlockOp blocks until stalledOp is stalled. StallBlockOp should
@@ -169,11 +207,15 @@ func (s *NaïveStaller) UnstallOneMDOp(stalledOp StallableMDOp) {
 // stalled anymore. It also unstalls any stalled stalledOp. StallBlockOp
 // should have been called upon stalledOp, otherwise this would panic.
 func (s *NaïveStaller) UndoStallBlockOp(stalledOp StallableBlockOp) {
-	ns := s.getNaïveStallInfoForBlockOpOrBust(stalledOp)
-	s.config.SetBlockOps(ns.oldBlockOps)
-	close(ns.unstall)
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	ns := s.getNaïveStallInfoForBlockOpOrBustLocked(stalledOp)
+	if ns.outter != nil {
+		ns.outter.blockOps.setDelegate(ns.blockOps.getDelegate())
+	} else {
+		s.config.SetBlockOps(ns.blockOps.getDelegate())
+	}
+	close(ns.unstall)
 	delete(s.blockOpsStalls, stalledOp)
 }
 
@@ -181,11 +223,15 @@ func (s *NaïveStaller) UndoStallBlockOp(stalledOp StallableBlockOp) {
 // stalled anymore. It also unstalls any stalled stalledOp. StallMDOp
 // should have been called upon stalledOp, otherwise this would panic.
 func (s *NaïveStaller) UndoStallMDOp(stalledOp StallableMDOp) {
-	ns := s.getNaïveStallInfoForMDOpOrBust(stalledOp)
-	s.config.SetMDOps(ns.oldMDOps)
-	close(ns.unstall)
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	ns := s.getNaïveStallInfoForMDOpOrBustLocked(stalledOp)
+	if ns.outter != nil {
+		ns.outter.mdOps.setDelegate(ns.mdOps.getDelegate())
+	} else {
+		s.config.SetMDOps(ns.mdOps.getDelegate())
+	}
+	close(ns.unstall)
 	delete(s.mdOpsStalls, stalledOp)
 }
 
@@ -299,10 +345,24 @@ type stallingBlockOps struct {
 	// ctx to control stallings
 	stallKey string
 	staller  staller
+
+	mu       sync.RWMutex
 	delegate BlockOps
 }
 
 var _ BlockOps = (*stallingBlockOps)(nil)
+
+func (f *stallingBlockOps) getDelegate() BlockOps {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return f.delegate
+}
+
+func (f *stallingBlockOps) setDelegate(delegate BlockOps) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.delegate = delegate
+}
 
 func (f *stallingBlockOps) maybeStall(ctx context.Context, opName StallableBlockOp) {
 	maybeStall(ctx, stallableOp(opName), stallableOp(f.stallOpName),
@@ -314,7 +374,7 @@ func (f *stallingBlockOps) Get(
 	block Block) error {
 	f.maybeStall(ctx, StallableBlockGet)
 	return runWithContextCheck(ctx, func(ctx context.Context) error {
-		return f.delegate.Get(ctx, md, blockPtr, block)
+		return f.getDelegate().Get(ctx, md, blockPtr, block)
 	})
 }
 
@@ -324,7 +384,7 @@ func (f *stallingBlockOps) Ready(
 	f.maybeStall(ctx, StallableBlockReady)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errReady error
-		id, plainSize, readyBlockData, errReady = f.delegate.Ready(ctx, md, block)
+		id, plainSize, readyBlockData, errReady = f.getDelegate().Ready(ctx, md, block)
 		return errReady
 	})
 	return id, plainSize, readyBlockData, err
@@ -335,7 +395,7 @@ func (f *stallingBlockOps) Put(
 	readyBlockData ReadyBlockData) error {
 	f.maybeStall(ctx, StallableBlockPut)
 	return runWithContextCheck(ctx, func(ctx context.Context) error {
-		return f.delegate.Put(ctx, md, blockPtr, readyBlockData)
+		return f.getDelegate().Put(ctx, md, blockPtr, readyBlockData)
 	})
 }
 
@@ -345,7 +405,7 @@ func (f *stallingBlockOps) Delete(
 	f.maybeStall(ctx, StallableBlockDelete)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errDelete error
-		notDeleted, errDelete = f.delegate.Delete(ctx, md, ptrs)
+		notDeleted, errDelete = f.getDelegate().Delete(ctx, md, ptrs)
 		return errDelete
 	})
 	return notDeleted, err
@@ -355,7 +415,7 @@ func (f *stallingBlockOps) Archive(
 	ctx context.Context, md *RootMetadata, ptrs []BlockPointer) error {
 	f.maybeStall(ctx, StallableBlockArchive)
 	return runWithContextCheck(ctx, func(ctx context.Context) error {
-		return f.delegate.Archive(ctx, md, ptrs)
+		return f.getDelegate().Archive(ctx, md, ptrs)
 	})
 }
 
@@ -370,10 +430,24 @@ type stallingMDOps struct {
 	// ctx to control stallings
 	stallKey string
 	staller  staller
+
+	mu       sync.RWMutex
 	delegate MDOps
 }
 
 var _ MDOps = (*stallingMDOps)(nil)
+
+func (m *stallingMDOps) getDelegate() MDOps {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.delegate
+}
+
+func (m *stallingMDOps) setDelegate(delegate MDOps) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.delegate = delegate
+}
 
 func (m *stallingMDOps) maybeStall(ctx context.Context, opName StallableMDOp) {
 	maybeStall(ctx, stallableOp(opName), stallableOp(m.stallOpName),
@@ -385,7 +459,7 @@ func (m *stallingMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
 	m.maybeStall(ctx, StallableMDGetForHandle)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetForHandle error
-		md, errGetForHandle = m.delegate.GetForHandle(ctx, handle)
+		md, errGetForHandle = m.getDelegate().GetForHandle(ctx, handle)
 		return errGetForHandle
 	})
 	return md, err
@@ -396,7 +470,7 @@ func (m *stallingMDOps) GetUnmergedForHandle(ctx context.Context,
 	m.maybeStall(ctx, StallableMDGetUnmergedForHandle)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetUnmergedForHandle error
-		md, errGetUnmergedForHandle = m.delegate.GetUnmergedForHandle(ctx, handle)
+		md, errGetUnmergedForHandle = m.getDelegate().GetUnmergedForHandle(ctx, handle)
 		return errGetUnmergedForHandle
 	})
 	return md, err
@@ -407,7 +481,7 @@ func (m *stallingMDOps) GetForTLF(ctx context.Context, id TlfID) (
 	m.maybeStall(ctx, StallableMDGetForTLF)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetForTLF error
-		md, errGetForTLF = m.delegate.GetForTLF(ctx, id)
+		md, errGetForTLF = m.getDelegate().GetForTLF(ctx, id)
 		return errGetForTLF
 	})
 	return md, err
@@ -418,7 +492,7 @@ func (m *stallingMDOps) GetLatestHandleForTLF(ctx context.Context, id TlfID) (
 	m.maybeStall(ctx, StallableMDGetLatestHandleForTLF)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetLatestHandleForTLF error
-		h, errGetLatestHandleForTLF = m.delegate.GetLatestHandleForTLF(ctx, id)
+		h, errGetLatestHandleForTLF = m.getDelegate().GetLatestHandleForTLF(ctx, id)
 		return errGetLatestHandleForTLF
 	})
 	return h, err
@@ -429,7 +503,7 @@ func (m *stallingMDOps) GetUnmergedForTLF(ctx context.Context, id TlfID,
 	m.maybeStall(ctx, StallableMDGetUnmergedForTLF)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetUnmergedForTLF error
-		md, errGetUnmergedForTLF = m.delegate.GetUnmergedForTLF(ctx, id, bid)
+		md, errGetUnmergedForTLF = m.getDelegate().GetUnmergedForTLF(ctx, id, bid)
 		return errGetUnmergedForTLF
 	})
 	return md, err
@@ -441,7 +515,7 @@ func (m *stallingMDOps) GetRange(ctx context.Context, id TlfID,
 	m.maybeStall(ctx, StallableMDGetRange)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetRange error
-		mds, errGetRange = m.delegate.GetRange(ctx, id, start, stop)
+		mds, errGetRange = m.getDelegate().GetRange(ctx, id, start, stop)
 		return errGetRange
 	})
 	return mds, err
@@ -452,7 +526,7 @@ func (m *stallingMDOps) GetUnmergedRange(ctx context.Context, id TlfID,
 	m.maybeStall(ctx, StallableMDGetUnmergedRange)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetUnmergedRange error
-		mds, errGetUnmergedRange = m.delegate.GetUnmergedRange(ctx, id, bid, start, stop)
+		mds, errGetUnmergedRange = m.getDelegate().GetUnmergedRange(ctx, id, bid, start, stop)
 		return errGetUnmergedRange
 	})
 	return mds, err
@@ -463,7 +537,7 @@ func (m *stallingMDOps) Put(ctx context.Context, md *RootMetadata) error {
 	// If the Put was canceled, return the cancel error.  This
 	// emulates the Put being canceled while the RPC is outstanding.
 	return runWithContextCheck(ctx, func(ctx context.Context) error {
-		err := m.delegate.Put(ctx, md)
+		err := m.getDelegate().Put(ctx, md)
 		m.maybeStall(ctx, StallableMDAfterPut)
 		return err
 	})
@@ -476,6 +550,6 @@ func (m *stallingMDOps) PutUnmerged(ctx context.Context, md *RootMetadata,
 	// emulates the PutUnmerged being canceled while the RPC is
 	// outstanding.
 	return runWithContextCheck(ctx, func(ctx context.Context) error {
-		return m.delegate.PutUnmerged(ctx, md, bid)
+		return m.getDelegate().PutUnmerged(ctx, md, bid)
 	})
 }
