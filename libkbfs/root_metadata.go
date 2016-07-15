@@ -526,11 +526,11 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(config Config) (
 func makeRekeyReadError(
 	md ConstRootMetadata, resolvedHandle *TlfHandle, keyGen KeyGen,
 	uid keybase1.UID, username libkb.NormalizedUsername) error {
-	// If the user is not a legitimate reader of the folder, this is a
-	// normal read access error.
 	if resolvedHandle.IsPublic() {
 		panic("makeRekeyReadError called on public folder")
 	}
+	// If the user is not a legitimate reader of the folder, this is a
+	// normal read access error.
 	if !resolvedHandle.IsReader(uid) {
 		return NewReadAccessError(resolvedHandle, username)
 	}
