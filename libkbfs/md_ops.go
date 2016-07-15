@@ -215,7 +215,8 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 
 	if rmds == nil {
 		if mStatus == Unmerged {
-			// The caller ignores the id argument.
+			// The caller ignores the id argument for
+			// mStatus == Unmerged.
 			return TlfID{}, ImmutableRootMetadata{}, nil
 		}
 		return id, ImmutableRootMetadata{}, nil
