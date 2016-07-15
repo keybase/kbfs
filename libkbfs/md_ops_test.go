@@ -132,9 +132,8 @@ func verifyMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
 	packedData := []byte{4, 3, 2, 1}
 	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(packedData, nil).AnyTimes()
 
-	// TODO: Figure out why we need AnyTimes here for FailFinal.
 	config.mockCodec.EXPECT().Decode(rmds.MD.SerializedPrivateMetadata, gomock.Any()).
-		Return(nil).AnyTimes()
+		Return(nil)
 	fakeRMD := RootMetadata{
 		BareRootMetadata: rmds.MD,
 	}
@@ -146,14 +145,6 @@ func verifyMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
 	if rmds.MD.IsFinal() {
 		config.mockKbpki.EXPECT().HasUnverifiedVerifyingKey(gomock.Any(), gomock.Any(),
 			gomock.Any()).AnyTimes().Return(nil)
-
-		// These are for the deepCopy done in
-		// VerifyRootMetadata when metadata is final.
-		//
-		// TODO: Figure ouy why we need AnyTimes here for
-		// FailFinal.
-		config.mockCodec.EXPECT().Decode(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-		config.mockCodec.EXPECT().Decode(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	} else {
 		config.mockKbpki.EXPECT().HasVerifyingKey(gomock.Any(), gomock.Any(),
 			gomock.Any(), gomock.Any()).AnyTimes().Return(nil)

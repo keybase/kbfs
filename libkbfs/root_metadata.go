@@ -486,16 +486,18 @@ func (rmds *RootMetadataSigned) IsInitialized() bool {
 func (rmds *RootMetadataSigned) VerifyRootMetadata(codec Codec, crypto Crypto) error {
 	md := &rmds.MD
 	if rmds.MD.IsFinal() {
-		var err error
-		md, err = rmds.MD.deepCopy(codec)
-		if err != nil {
-			return err
-		}
-		// Mask out finalized additions.  These are the only things allowed
-		// to change in the finalized metadata block.
-		md.Flags &= ^MetadataFlagFinal
-		md.Revision--
-		md.FinalizedInfo = nil
+		// Since we're just working with the immediate fields
+		// of RootMetadata, we can get away with a shallow
+		// copy here.
+		mdCopy := rmds.MD
+
+		// Mask out finalized additions.  These are the only
+		// things allowed to change in the finalized metadata
+		// block.
+		mdCopy.Flags &= ^MetadataFlagFinal
+		mdCopy.Revision--
+		mdCopy.FinalizedInfo = nil
+		md = &mdCopy
 	}
 	// Re-marshal the whole RootMetadata. This is not avoidable
 	// without support from ugorji/codec.
