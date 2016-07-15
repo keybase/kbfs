@@ -623,7 +623,7 @@ func TestRootMetadataFinalIsFinal(t *testing.T) {
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
 	rmd := newRootMetadataOrBust(t, tlfID, h)
 	rmd.Flags |= MetadataFlagFinal
-	_, err := rmd.MakeSuccessor(nil, MdID{}, true)
+	_, err := rmd.MakeSuccessor(nil, fakeMdID(1), true)
 	_, isFinalError := err.(MetadataIsFinalError)
 	require.Equal(t, isFinalError, true)
 }

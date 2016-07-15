@@ -118,6 +118,9 @@ func (md *RootMetadata) DeepCopyForServerTest(
 // with the revision incremented and a correct backpointer.
 func (md *RootMetadata) MakeSuccessor(
 	config Config, mdID MdID, isWriter bool) (*RootMetadata, error) {
+	if mdID == (MdID{}) {
+		return nil, errors.New("Empty MdID in MakeSuccessor")
+	}
 	if md.IsFinal() {
 		return nil, MetadataIsFinalError{}
 	}
