@@ -79,7 +79,6 @@ func newRMD(t *testing.T, config Config, public bool) (
 }
 
 func addFakeRMDSData(rmds *RootMetadataSigned, h *TlfHandle) {
-	// Need to do this to avoid calls to the mocked-out MakeMdID.
 	rmds.MD.Revision = MetadataRevision(1)
 	rmds.MD.SerializedPrivateMetadata = []byte{1}
 	rmds.MD.LastModifyingWriter = h.FirstResolvedWriter()
