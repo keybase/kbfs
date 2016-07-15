@@ -411,11 +411,15 @@ func (md *RootMetadata) swapCachedBlockChanges() {
 	}
 }
 
-// A ConstRootMetadata is a thin wrapper around a
-// *RootMetadata. Functions that take a ConstRootMetadata parameter
-// must not store the parameter or modify it. Therefore, code that
-// passes a ConstRootMetadata to a function can assume that it is
-// neither modified nor stored.
+// A ReadOnlyRootMetadata is a thin wrapper around a
+// *RootMetadata. Functions that take a ReadOnlyRootMetadata parameter
+// must not modify it, and therefore code that passes a
+// ReadOnlyRootMetadata to a function can assume that it is not
+// modified by that function. However, callers that convert a
+// *RootMetadata to a ReadOnlyRootMetadata may still modify the
+// underlying RootMetadata through the original pointer, so care must
+// be taken if a function stores a ReadOnlyRootMetadata object past
+// the end of the function.
 type ConstRootMetadata struct {
 	*RootMetadata
 }
