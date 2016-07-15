@@ -909,8 +909,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 	}()
 
 	mostRecentOldEnoughRev, lastGCRev, err :=
-		fbm.getMostRecentOldEnoughAndGCRevisions(
-			ctx, head.ReadOnly())
+		fbm.getMostRecentOldEnoughAndGCRevisions(ctx, head.ReadOnly())
 	if err != nil {
 		return err
 	}
@@ -949,8 +948,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 		return nil
 	}
 
-	zeroRefCounts, err := fbm.deleteBlockRefs(
-		ctx, head.ReadOnly(), ptrs)
+	zeroRefCounts, err := fbm.deleteBlockRefs(ctx, head.ReadOnly(), ptrs)
 	if err != nil {
 		return err
 	}
