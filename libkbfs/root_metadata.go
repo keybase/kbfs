@@ -443,10 +443,11 @@ func (md *RootMetadata) ReadOnly() ReadOnlyRootMetadata {
 	return ReadOnlyRootMetadata{md}
 }
 
-// ImmutableRootMetadata is a thin wrapper around a ReadOnlyRootMetadata
-// that takes ownership of it and does not ever modify it again. Thus,
-// its MdID can be calculated and stored. Unlike ReadOnlyRootMetadata,
-// ImmutableRootMetadata objects can be stored.
+// ImmutableRootMetadata is a thin wrapper around a
+// ReadOnlyRootMetadata that takes ownership of it and does not ever
+// modify it again. Thus, its MdID can be calculated and
+// stored. Unlike ReadOnlyRootMetadata, ImmutableRootMetadata objects
+// can be assumed to never alias a (modifiable) *RootMetadata.
 type ImmutableRootMetadata struct {
 	ReadOnlyRootMetadata
 	mdID MdID
