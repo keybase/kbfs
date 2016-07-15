@@ -1937,15 +1937,16 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	err = fbo.setHeadSuccessorLocked(ctx, lState, MakeImmutableRootMetadata(md, mdID))
+	irmd := MakeImmutableRootMetadata(md, mdID)
+	err = fbo.setHeadSuccessorLocked(ctx, lState, irmd)
 	if err != nil {
 		return err
 	}
 
 	// Archive the old, unref'd blocks
-	fbo.fbm.archiveUnrefBlocks(MakeReadOnlyRootMetadata(md))
+	fbo.fbm.archiveUnrefBlocks(irmd.ReadOnlyRootMetadata)
 
-	fbo.notifyBatchLocked(ctx, lState, MakeReadOnlyRootMetadata(md))
+	fbo.notifyBatchLocked(ctx, lState, irmd.ReadOnlyRootMetadata)
 	return nil
 }
 
@@ -2051,12 +2052,13 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	err = fbo.setHeadSuccessorLocked(ctx, lState, MakeImmutableRootMetadata(md, mdID))
+	irmd := MakeImmutableRootMetadata(md, mdID)
+	err = fbo.setHeadSuccessorLocked(ctx, lState, irmd)
 	if err != nil {
 		return err
 	}
 
-	fbo.notifyBatchLocked(ctx, lState, MakeReadOnlyRootMetadata(md))
+	fbo.notifyBatchLocked(ctx, lState, irmd.ReadOnlyRootMetadata)
 	return nil
 }
 
@@ -4259,7 +4261,8 @@ func (fbo *folderBranchOps) finalizeResolution(ctx context.Context,
 	// Set the head to the new MD.
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	err = fbo.setHeadConflictResolvedLocked(ctx, lState, MakeImmutableRootMetadata(md, mdID))
+	irmd := MakeImmutableRootMetadata(md, mdID)
+	err = fbo.setHeadConflictResolvedLocked(ctx, lState, irmd)
 	if err != nil {
 		fbo.log.CWarningf(ctx, "Couldn't set local MD head after a "+
 			"successful put: %v", err)
@@ -4268,12 +4271,12 @@ func (fbo *folderBranchOps) finalizeResolution(ctx context.Context,
 	fbo.setBranchIDLocked(lState, NullBranchID)
 
 	// Archive the old, unref'd blocks
-	fbo.fbm.archiveUnrefBlocks(MakeReadOnlyRootMetadata(md))
+	fbo.fbm.archiveUnrefBlocks(irmd.ReadOnlyRootMetadata)
 
 	// notifyOneOp for every fixed-up merged op.
 	for _, op := range newOps {
 		fbo.notifyOneOpLocked(
-			ctx, lState, op, MakeReadOnlyRootMetadata(md))
+			ctx, lState, op, irmd.ReadOnlyRootMetadata)
 	}
 	return nil
 }
