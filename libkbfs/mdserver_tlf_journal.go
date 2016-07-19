@@ -123,57 +123,8 @@ func (s *mdServerTlfJournal) getMDReadLocked(id MdID) (
 	return &rmd, nil
 }
 
-func (s *mdServerTlfJournal) putMDLocked(
-	rmd *RootMetadata, me keybase1.UID) error {
-	codec := s.codec
-	crypto := s.config.Crypto()
-	ctx := context.Background()
-
-	if rmd.ID.IsPublic() || !rmd.IsWriterMetadataCopiedSet() {
-		// Record the last writer to modify this writer metadata
-		rmd.LastModifyingWriter = me
-
-		if rmd.ID.IsPublic() {
-			// Encode the private metadata
-			encodedPrivateMetadata, err := codec.Encode(rmd.data)
-			if err != nil {
-				return err
-			}
-			rmd.SerializedPrivateMetadata = encodedPrivateMetadata
-		} else if !rmd.IsWriterMetadataCopiedSet() {
-			// Encrypt and encode the private metadata
-			k, err := s.config.KeyManager().GetTLFCryptKeyForEncryption(ctx, rmd.ReadOnly())
-			if err != nil {
-				return err
-			}
-			encryptedPrivateMetadata, err := crypto.EncryptPrivateMetadata(&rmd.data, k)
-			if err != nil {
-				return err
-			}
-			encodedEncryptedPrivateMetadata, err := codec.Encode(encryptedPrivateMetadata)
-			if err != nil {
-				return err
-			}
-			rmd.SerializedPrivateMetadata = encodedEncryptedPrivateMetadata
-		}
-
-		// Sign the writer metadata
-		buf, err := codec.Encode(rmd.WriterMetadata)
-		if err != nil {
-			return err
-		}
-
-		sigInfo, err := crypto.Sign(ctx, buf)
-		if err != nil {
-			return err
-		}
-		rmd.WriterMetadataSigInfo = sigInfo
-	}
-
-	// Record the last user to modify this metadata
-	rmd.LastModifyingUser = me
-
-	id, err := s.crypto.MakeMdID(&rmd.BareRootMetadata)
+func (s *mdServerTlfJournal) putMDLocked(rmd *BareRootMetadata) error {
+	id, err := s.crypto.MakeMdID(rmd)
 	if err != nil {
 		return err
 	}
@@ -320,7 +271,7 @@ func (s *mdServerTlfJournal) getRange(
 }
 
 func (s *mdServerTlfJournal) put(
-	currentUID keybase1.UID, rmd *RootMetadata) (err error) {
+	ctx context.Context, currentUID keybase1.UID, rmd *RootMetadata) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -389,7 +340,14 @@ func (s *mdServerTlfJournal) put(
 		}
 	}
 
-	err = s.putMDLocked(rmd, currentUID)
+	var brmd BareRootMetadata
+	err = encryptMDPrivateData(
+		ctx, s.config, currentUID, rmd.ReadOnly(), &brmd)
+	if err != nil {
+		return MDServerError{err}
+	}
+
+	err = s.putMDLocked(&brmd)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -407,8 +365,8 @@ func (s *mdServerTlfJournal) put(
 	return nil
 }
 
-func (s *mdServerTlfJournal) convertToBranch(
-	currentUID keybase1.UID, log logger.Logger) (BranchID, MdID, error) {
+func (s *mdServerTlfJournal) convertToBranch(log logger.Logger) (
+	BranchID, MdID, error) {
 	earliestRevision, err := s.j.readEarliestRevision()
 	if err != nil {
 		return NullBranchID, MdID{}, err
@@ -452,20 +410,17 @@ func (s *mdServerTlfJournal) convertToBranch(
 			brmd.PrevRoot = prevID
 		}
 
-		var rmd RootMetadata
-		rmd.BareRootMetadata = *brmd
-
-		err = s.putMDLocked(&rmd, currentUID)
+		err = s.putMDLocked(brmd)
 		if err != nil {
 			return NullBranchID, MdID{}, err
 		}
 
-		o, err := revisionToOrdinal(rmd.Revision)
+		o, err := revisionToOrdinal(brmd.Revision)
 		if err != nil {
 			return NullBranchID, MdID{}, err
 		}
 
-		newID, err := s.crypto.MakeMdID(&rmd.BareRootMetadata)
+		newID, err := s.crypto.MakeMdID(brmd)
 		if err != nil {
 			return NullBranchID, MdID{}, err
 		}
@@ -478,15 +433,14 @@ func (s *mdServerTlfJournal) convertToBranch(
 		prevID = newID
 
 		log.Debug("Changing ID for rev=%s from %s to %s",
-			rmd.Revision, id, newID)
+			brmd.Revision, id, newID)
 	}
 
 	return bid, prevID, err
 }
 
 func (s *mdServerTlfJournal) flushOne(
-	ctx context.Context, currentUID keybase1.UID,
-	mdserver MDServer, log logger.Logger) (bool, error) {
+	ctx context.Context, mdserver MDServer, log logger.Logger) (bool, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -537,7 +491,7 @@ func (s *mdServerTlfJournal) flushOne(
 		if doUnmergedPut {
 			log.Debug("Conflict detected %v", cErr)
 
-			bid, latestID, err := s.convertToBranch(currentUID, log)
+			bid, latestID, err := s.convertToBranch(log)
 			if err != nil {
 				return false, err
 			}
