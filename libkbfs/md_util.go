@@ -219,6 +219,96 @@ func getUnmergedMDUpdates(ctx context.Context, config Config, id TlfID,
 	return currHead, unmergedRmds, nil
 }
 
+func encryptMDPrivateData(
+	ctx context.Context, config Config, rmd ReadOnlyRootMetadata,
+	brmd *BareRootMetadata) error {
+	err := rmd.data.checkValid()
+	if err != nil {
+		return err
+	}
+
+	_, me, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return err
+	}
+
+	codec := config.Codec()
+	crypto := config.Crypto()
+
+	*brmd = rmd.BareRootMetadata
+	privateData := &rmd.data
+
+	if brmd.ID.IsPublic() || !brmd.IsWriterMetadataCopiedSet() {
+		// Record the last writer to modify this writer metadata
+		brmd.LastModifyingWriter = me
+
+		if brmd.ID.IsPublic() {
+			// Encode the private metadata
+			encodedPrivateMetadata, err := codec.Encode(privateData)
+			if err != nil {
+				return err
+			}
+			brmd.SerializedPrivateMetadata = encodedPrivateMetadata
+		} else if !brmd.IsWriterMetadataCopiedSet() {
+			// Encrypt and encode the private metadata
+			k, err := config.KeyManager().GetTLFCryptKeyForEncryption(
+				ctx, rmd)
+			if err != nil {
+				return err
+			}
+			encryptedPrivateMetadata, err := crypto.EncryptPrivateMetadata(privateData, k)
+			if err != nil {
+				return err
+			}
+			encodedEncryptedPrivateMetadata, err := codec.Encode(encryptedPrivateMetadata)
+			if err != nil {
+				return err
+			}
+			brmd.SerializedPrivateMetadata = encodedEncryptedPrivateMetadata
+		}
+	}
+
+	// Record the last user to modify this metadata
+	brmd.LastModifyingUser = me
+
+	return nil
+}
+
+func signMD(
+	ctx context.Context, config Config, rmds *RootMetadataSigned) error {
+	codec := config.Codec()
+	crypto := config.Crypto()
+
+	if rmds.MD.ID.IsPublic() || !rmds.MD.IsWriterMetadataCopiedSet() {
+		// Sign the writer metadata
+		buf, err := codec.Encode(rmds.MD.WriterMetadata)
+		if err != nil {
+			return err
+		}
+
+		sigInfo, err := crypto.Sign(ctx, buf)
+		if err != nil {
+			return err
+		}
+		rmds.MD.WriterMetadataSigInfo = sigInfo
+	}
+
+	// encode the root metadata and sign it
+	buf, err := codec.Encode(rmds.MD)
+	if err != nil {
+		return err
+	}
+
+	// Sign normally using the local device private key
+	sigInfo, err := crypto.Sign(ctx, buf)
+	if err != nil {
+		return err
+	}
+	rmds.SigInfo = sigInfo
+
+	return nil
+}
+
 func decryptMDPrivateData(ctx context.Context, config Config,
 	rmdToDecrypt *RootMetadata, rmdWithKeys ReadOnlyRootMetadata) error {
 	handle := rmdToDecrypt.GetTlfHandle()

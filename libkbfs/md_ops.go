@@ -434,95 +434,20 @@ func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id TlfID,
 	return md.getRange(ctx, id, bid, Unmerged, start, stop)
 }
 
-func (md *MDOpsStandard) readyMD(ctx context.Context, rmd *RootMetadata) (
-	rms *RootMetadataSigned, err error) {
-	_, me, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	codec := md.config.Codec()
-	crypto := md.config.Crypto()
-
-	if rmd.ID.IsPublic() || !rmd.IsWriterMetadataCopiedSet() {
-		// Record the last writer to modify this writer metadata
-		rmd.LastModifyingWriter = me
-
-		if rmd.ID.IsPublic() {
-			// Encode the private metadata
-			encodedPrivateMetadata, err := codec.Encode(rmd.data)
-			if err != nil {
-				return nil, err
-			}
-			rmd.SerializedPrivateMetadata = encodedPrivateMetadata
-		} else if !rmd.IsWriterMetadataCopiedSet() {
-			// Encrypt and encode the private metadata
-			k, err := md.config.KeyManager().GetTLFCryptKeyForEncryption(
-				ctx, rmd.ReadOnly())
-			if err != nil {
-				return nil, err
-			}
-			encryptedPrivateMetadata, err := crypto.EncryptPrivateMetadata(&rmd.data, k)
-			if err != nil {
-				return nil, err
-			}
-			encodedEncryptedPrivateMetadata, err := codec.Encode(encryptedPrivateMetadata)
-			if err != nil {
-				return nil, err
-			}
-			rmd.SerializedPrivateMetadata = encodedEncryptedPrivateMetadata
-		}
-
-		// Sign the writer metadata
-		buf, err := codec.Encode(rmd.WriterMetadata)
-		if err != nil {
-			return nil, err
-		}
-
-		sigInfo, err := crypto.Sign(ctx, buf)
-		if err != nil {
-			return nil, err
-		}
-		rmd.WriterMetadataSigInfo = sigInfo
-	}
-
-	// Record the last user to modify this metadata
-	rmd.LastModifyingUser = me
-
-	// encode the root metadata and sign it
-	buf, err := codec.Encode(rmd)
-	if err != nil {
-		return nil, err
-	}
-
-	rmds := &RootMetadataSigned{}
-	err = codec.Decode(buf, &rmds.MD)
-	if err != nil {
-		return nil, err
-	}
-
-	// Sign normally using the local device private key
-	sigInfo, err := crypto.Sign(ctx, buf)
-	if err != nil {
-		return nil, err
-	}
-	rmds.SigInfo = sigInfo
-
-	return rmds, nil
-}
-
 func (md *MDOpsStandard) put(
 	ctx context.Context, rmd *RootMetadata) (MdID, error) {
-	err := rmd.data.checkValid()
+	var rmds RootMetadataSigned
+	err := encryptMDPrivateData(ctx, md.config, rmd.ReadOnly(), &rmds.MD)
 	if err != nil {
 		return MdID{}, err
 	}
 
-	rmds, err := md.readyMD(ctx, rmd)
+	err = signMD(ctx, md.config, &rmds)
 	if err != nil {
 		return MdID{}, err
 	}
-	err = md.config.MDServer().Put(ctx, rmds)
+
+	err = md.config.MDServer().Put(ctx, &rmds)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -532,6 +457,7 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
+	rmd.BareRootMetadata = rmds.MD
 	return mdID, nil
 }
 
