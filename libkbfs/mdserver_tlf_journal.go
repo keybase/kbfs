@@ -55,10 +55,11 @@ type mdServerTlfJournal struct {
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
-	lock           sync.RWMutex
-	isShutdown     bool
-	j              mdServerBranchJournal
-	justBranchedID BranchID
+	lock                 sync.RWMutex
+	isShutdown           bool
+	j                    mdServerBranchJournal
+	justBranchedBranchID BranchID
+	justBranchedMdID     MdID
 }
 
 func makeMDServerTlfJournal(config Config, dir string) *mdServerTlfJournal {
@@ -353,19 +354,14 @@ func (s *mdServerTlfJournal) put(
 	}
 
 	if mStatus == Merged {
-		if s.justBranchedID != NullBranchID {
+		if s.justBranchedBranchID != NullBranchID {
 			rmd.WFlags |= MetadataFlagUnmerged
 			// head may be nil if the journal is fully
 			// flushed.
-			rmd.BID = s.justBranchedID
-			if head != nil {
-				headID, err := s.crypto.MakeMdID(head)
-				if err != nil {
-					return MDServerError{err}
-				}
-				rmd.PrevRoot = headID
-			}
-			s.justBranchedID = NullBranchID
+			rmd.BID = s.justBranchedBranchID
+			rmd.PrevRoot = s.justBranchedMdID
+			s.justBranchedBranchID = NullBranchID
+			s.justBranchedMdID = MdID{}
 		} else if head != nil && head.MergedStatus() != Merged {
 			// Conflict resolution shouldn't happen.
 			return MDServerError{
@@ -567,7 +563,8 @@ func (s *mdServerTlfJournal) flushOne(
 				return false, err
 			}
 
-			s.justBranchedID = bid
+			s.justBranchedBranchID = bid
+			s.justBranchedMdID = earliestID
 		} else if cErr != nil {
 			return false, cErr
 		}
