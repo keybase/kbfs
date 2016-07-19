@@ -485,7 +485,8 @@ func (s *mdServerTlfJournal) convertToBranch(
 }
 
 func (s *mdServerTlfJournal) flushOne(
-	currentUID keybase1.UID, mdOps MDOps, log logger.Logger) (bool, error) {
+	ctx context.Context, currentUID keybase1.UID,
+	mdserver MDServer, log logger.Logger) (bool, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -501,34 +502,37 @@ func (s *mdServerTlfJournal) flushOne(
 		return false, nil
 	}
 
-	brmd, err := s.getMDReadLocked(earliestID)
+	rmd, err := s.getMDReadLocked(earliestID)
 	if err != nil {
 		return false, err
 	}
 
-	h, err := brmd.MakeBareTlfHandle()
+	codec := s.codec
+	crypto := s.config.Crypto()
+
+	// encode the root metadata and sign it
+	buf, err := codec.Encode(rmd)
 	if err != nil {
 		return false, err
 	}
 
-	var rmd RootMetadata
-	rmd.BareRootMetadata = *brmd
-
-	ctx := context.Background()
-	rmd.tlfHandle, err = MakeTlfHandle(ctx, h, s.config.KBPKI())
+	var rmds RootMetadataSigned
+	err = codec.Decode(buf, &rmds.MD)
 	if err != nil {
 		return false, err
 	}
 
-	err = decryptMDPrivateData(ctx, s.config, &rmd, rmd.ReadOnly())
+	// Sign normally using the local device private key
+	sigInfo, err := crypto.Sign(ctx, buf)
 	if err != nil {
 		return false, err
 	}
+	rmds.SigInfo = sigInfo
 
 	log.Debug("Flushing MD put id=%s, rev=%s", earliestID, rmd.Revision)
 
 	if rmd.MergedStatus() == Merged {
-		cErr := mdOps.Put(context.Background(), &rmd)
+		cErr := mdserver.Put(ctx, &rmds)
 		doUnmergedPut := isRevisionConflict(cErr)
 		if doUnmergedPut {
 			log.Debug("Conflict detected %v", cErr)
@@ -543,31 +547,30 @@ func (s *mdServerTlfJournal) flushOne(
 				return false, err
 			}
 
-			brmd, err := s.getMDReadLocked(earliestID)
+			rmd, err := s.getMDReadLocked(earliestID)
 			if err != nil {
 				return false, err
 			}
 
-			var rmd RootMetadata
-			rmd.BareRootMetadata = *brmd
-
-			h, err := rmd.MakeBareTlfHandle()
+			// encode the root metadata and sign it
+			buf, err := codec.Encode(rmd)
 			if err != nil {
 				return false, err
 			}
 
-			ctx := context.Background()
-			rmd.tlfHandle, err = MakeTlfHandle(ctx, h, s.config.KBPKI())
+			var rmds RootMetadataSigned
+			err = codec.Decode(buf, &rmds.MD)
 			if err != nil {
 				return false, err
 			}
 
-			err = decryptMDPrivateData(ctx, s.config, &rmd, rmd.ReadOnly())
+			// Sign normally using the local device private key
+			sigInfo, err := crypto.Sign(ctx, buf)
 			if err != nil {
 				return false, err
 			}
-
-			err = mdOps.PutUnmerged(context.Background(), &rmd)
+			rmds.SigInfo = sigInfo
+			err = mdserver.Put(ctx, &rmds)
 			if err != nil {
 				return false, err
 			}
@@ -578,7 +581,7 @@ func (s *mdServerTlfJournal) flushOne(
 			return false, cErr
 		}
 	} else {
-		err = mdOps.PutUnmerged(context.Background(), &rmd)
+		err = mdserver.Put(ctx, &rmds)
 		if err != nil {
 			return false, err
 		}
