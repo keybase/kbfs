@@ -436,8 +436,13 @@ func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id TlfID,
 
 func (md *MDOpsStandard) put(
 	ctx context.Context, rmd *RootMetadata) (MdID, error) {
+	_, me, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return MdID{}, err
+	}
+
 	var rmds RootMetadataSigned
-	err := encryptMDPrivateData(ctx, md.config, rmd.ReadOnly(), &rmds.MD)
+	err = encryptMDPrivateData(ctx, md.config, me, rmd.ReadOnly(), &rmds.MD)
 	if err != nil {
 		return MdID{}, err
 	}

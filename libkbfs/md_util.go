@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/keybase/client/go/protocol"
+
 	"golang.org/x/net/context"
 )
 
@@ -220,14 +222,9 @@ func getUnmergedMDUpdates(ctx context.Context, config Config, id TlfID,
 }
 
 func encryptMDPrivateData(
-	ctx context.Context, config Config, rmd ReadOnlyRootMetadata,
-	brmd *BareRootMetadata) error {
+	ctx context.Context, config Config, me keybase1.UID,
+	rmd ReadOnlyRootMetadata, brmd *BareRootMetadata) error {
 	err := rmd.data.checkValid()
-	if err != nil {
-		return err
-	}
-
-	_, me, err := config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return err
 	}
