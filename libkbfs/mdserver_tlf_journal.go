@@ -407,6 +407,83 @@ func (s *mdServerTlfJournal) put(
 	return nil
 }
 
+func (s *mdServerTlfJournal) convertToBranch(
+	currentUID keybase1.UID, log logger.Logger) (BranchID, MdID, error) {
+	earliestRevision, err := s.j.readEarliestRevision()
+	if err != nil {
+		return NullBranchID, MdID{}, err
+	}
+
+	latestRevision, err := s.j.readLatestRevision()
+	if err != nil {
+		return NullBranchID, MdID{}, err
+	}
+
+	log.Debug("rewriting MDs %s to %s", earliestRevision, latestRevision)
+
+	_, allMdIDs, err := s.j.getRange(earliestRevision, latestRevision)
+	if err != nil {
+		return NullBranchID, MdID{}, err
+	}
+
+	bid, err := s.crypto.MakeRandomBranchID()
+	if err != nil {
+		return NullBranchID, MdID{}, err
+	}
+
+	log.Debug("New branch ID=%s", bid)
+
+	// TODO: Do the below atomically.
+
+	var prevID MdID
+
+	for i, id := range allMdIDs {
+		brmd, err := s.getMDReadLocked(id)
+		if err != nil {
+			return NullBranchID, MdID{}, err
+		}
+		brmd.WFlags |= MetadataFlagUnmerged
+		brmd.BID = bid
+
+		log.Debug("Old prev root of rev=%s is %s", brmd.Revision, brmd.PrevRoot)
+
+		if i > 0 {
+			log.Debug("Changing prev root of rev=%s to %s", brmd.Revision, prevID)
+			brmd.PrevRoot = prevID
+		}
+
+		var rmd RootMetadata
+		rmd.BareRootMetadata = *brmd
+
+		err = s.putMDLocked(&rmd, currentUID)
+		if err != nil {
+			return NullBranchID, MdID{}, err
+		}
+
+		o, err := revisionToOrdinal(rmd.Revision)
+		if err != nil {
+			return NullBranchID, MdID{}, err
+		}
+
+		newID, err := s.crypto.MakeMdID(&rmd.BareRootMetadata)
+		if err != nil {
+			return NullBranchID, MdID{}, err
+		}
+
+		err = s.j.j.writeJournalEntry(o, newID)
+		if err != nil {
+			return NullBranchID, MdID{}, err
+		}
+
+		prevID = newID
+
+		log.Debug("Changing ID for rev=%s from %s to %s",
+			rmd.Revision, id, newID)
+	}
+
+	return bid, prevID, err
+}
+
 func (s *mdServerTlfJournal) flushOne(
 	currentUID keybase1.UID, mdOps MDOps, log logger.Logger) (bool, error) {
 	s.lock.Lock()
@@ -455,77 +532,11 @@ func (s *mdServerTlfJournal) flushOne(
 		var fakeFBO *folderBranchOps
 		doUnmergedPut := fakeFBO.isRevisionConflict(cErr)
 		if doUnmergedPut {
-			earliestRevision, err := s.j.readEarliestRevision()
+			log.Debug("Conflict detected %v", cErr)
+
+			bid, latestID, err := s.convertToBranch(currentUID, log)
 			if err != nil {
 				return false, err
-			}
-
-			latestRevision, err := s.j.readLatestRevision()
-			if err != nil {
-				return false, err
-			}
-
-			log.Debug("Conflict detected %v; rewriting MDs %s to %s",
-				cErr, earliestRevision, latestRevision)
-
-			_, allMdIDs, err := s.j.getRange(earliestRevision, latestRevision)
-			if err != nil {
-				return false, err
-			}
-
-			bid, err := s.crypto.MakeRandomBranchID()
-			if err != nil {
-				return false, err
-			}
-
-			log.Debug("New branch ID=%s", bid)
-
-			// TODO: Do the below atomically.
-
-			var prevID MdID
-
-			for i, id := range allMdIDs {
-				brmd, err := s.getMDReadLocked(id)
-				if err != nil {
-					return false, err
-				}
-				brmd.WFlags |= MetadataFlagUnmerged
-				brmd.BID = bid
-
-				log.Debug("Old prev root of rev=%s is %s", brmd.Revision, brmd.PrevRoot)
-
-				if i > 0 {
-					log.Debug("Changing prev root of rev=%s to %s", brmd.Revision, prevID)
-					brmd.PrevRoot = prevID
-				}
-
-				var rmd RootMetadata
-				rmd.BareRootMetadata = *brmd
-
-				err = s.putMDLocked(&rmd, currentUID)
-				if err != nil {
-					return false, err
-				}
-
-				o, err := revisionToOrdinal(rmd.Revision)
-				if err != nil {
-					return false, err
-				}
-
-				newID, err := s.crypto.MakeMdID(&rmd.BareRootMetadata)
-				if err != nil {
-					return false, err
-				}
-
-				err = s.j.j.writeJournalEntry(o, newID)
-				if err != nil {
-					return false, err
-				}
-
-				prevID = newID
-
-				log.Debug("Changing ID for rev=%s from %s to %s",
-					rmd.Revision, id, newID)
 			}
 
 			earliestID, err := s.j.getEarliest()
@@ -564,7 +575,7 @@ func (s *mdServerTlfJournal) flushOne(
 			}
 
 			s.justBranchedBranchID = bid
-			s.justBranchedMdID = earliestID
+			s.justBranchedMdID = latestID
 		} else if cErr != nil {
 			return false, cErr
 		}
