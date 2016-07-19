@@ -2301,6 +2301,17 @@ func (fbo *folderBranchOps) doMDWriteWithRetry(ctx context.Context,
 	}
 }
 
+func (fbo *folderBranchOps) doMDWriteWithRetryWithoutCancelInCritical(
+	ctx context.Context, fn func(lState *lockState) error) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		lState := makeFBOLockState()
+		return fbo.doMDWriteWithRetry(context.Background(), lState, fn)
+	}
+}
+
 func (fbo *folderBranchOps) doMDWriteWithRetryUnlessCanceled(
 	ctx context.Context, fn func(lState *lockState) error) error {
 	return runUnlessCanceled(ctx, func() error {
@@ -2377,7 +2388,7 @@ func (fbo *folderBranchOps) CreateFile(
 
 	var retNode Node
 	var retEntryInfo EntryInfo
-	err = fbo.doMDWriteWithRetryUnlessCanceled(ctx,
+	err = fbo.doMDWriteWithRetryWithoutCancelInCritical(ctx,
 		func(lState *lockState) error {
 			// Don't set node and ei directly, as that can cause a
 			// race when the Create is canceled.

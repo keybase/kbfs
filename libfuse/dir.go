@@ -319,6 +319,7 @@ var _ DirInterface = (*Dir)(nil)
 
 // Attr implements the fs.Node interface for Dir.
 func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) (err error) {
+	ctx = context.Background()
 	d.folder.fs.log.CDebugf(ctx, "Dir Attr")
 	defer func() { d.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
