@@ -157,18 +157,7 @@ func putMDForPrivate(config *ConfigMock, rmd *RootMetadata) {
 	expectGetTLFCryptKeyForEncryption(config, rmd)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
 		&rmd.data, TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
-
-	packedData := []byte{4, 3, 2, 1}
-	// TODO make these EXPECTs more specific.
-	// Encodes:
-	// 1) encrypted rmds.MD.data
-	// 2) rmds.MD.WriterMetadata
-	// 3) rmds.MD
-	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(packedData, nil).Times(3).Return([]byte{}, nil)
-
 	config.mockCrypto.EXPECT().Sign(gomock.Any(), gomock.Any()).Times(2).Return(SignatureInfo{}, nil)
-
-	config.mockCodec.EXPECT().Decode([]byte{}, gomock.Any()).Return(nil)
 
 	config.mockMdserv.EXPECT().Put(gomock.Any(), gomock.Any()).Return(nil)
 }
@@ -611,7 +600,7 @@ func TestMDOpsPutPublicSuccess(t *testing.T) {
 	rmd.tlfHandle = h
 
 	ctx := context.Background()
-	err = config.MDOps().Put(ctx, &rmd)
+	_, err = config.MDOps().Put(ctx, &rmd)
 
 	rmds := mdServer.getLastRmds()
 	validatePutPublicRMDS(ctx, t, config, &rmd.BareRootMetadata, rmds)
@@ -621,10 +610,12 @@ func TestMDOpsPutPrivateSuccess(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
 
+	config.SetCodec(NewCodecMsgpack())
+
 	rmd, _ := newRMD(t, config, false)
 	putMDForPrivate(config, rmd)
 
-	if err := config.MDOps().Put(ctx, rmd); err != nil {
+	if _, err := config.MDOps().Put(ctx, rmd); err != nil {
 		t.Errorf("Got error on put: %v", err)
 	}
 }
@@ -644,7 +635,7 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 	err := errors.New("Fake fail")
 	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(nil, err)
 
-	if err2 := config.MDOps().Put(ctx, rmd); err2 != err {
+	if _, err2 := config.MDOps().Put(ctx, rmd); err2 != err {
 		t.Errorf("Got bad error on put: %v", err2)
 	}
 }

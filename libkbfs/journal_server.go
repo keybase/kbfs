@@ -184,7 +184,8 @@ type journalMDOps struct {
 
 var _ MDOps = journalMDOps{}
 
-func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) error {
+func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
+	MdID, error) {
 	_, ok := j.jServer.getBundle(rmd.ID)
 	if ok {
 		// TODO: Delegate to bundle's MD journal.
@@ -193,7 +194,8 @@ func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) error {
 	return j.MDOps.Put(ctx, rmd)
 }
 
-func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) error {
+func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
+	MdID, error) {
 	_, ok := j.jServer.getBundle(rmd.ID)
 	if ok {
 		// TODO: Delegate to bundle's MD journal.

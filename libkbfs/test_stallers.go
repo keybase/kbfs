@@ -478,25 +478,29 @@ func (m *stallingMDOps) GetUnmergedRange(ctx context.Context, id TlfID,
 	return mds, err
 }
 
-func (m *stallingMDOps) Put(ctx context.Context, md *RootMetadata) error {
+func (m *stallingMDOps) Put(ctx context.Context, md *RootMetadata) (
+	mdID MdID, err error) {
 	m.maybeStall(ctx, StallableMDPut)
 	// If the Put was canceled, return the cancel error.  This
 	// emulates the Put being canceled while the RPC is outstanding.
-	return runWithContextCheck(ctx, func(ctx context.Context) error {
-		err := m.delegate.Put(ctx, md)
+	err = runWithContextCheck(ctx, func(ctx context.Context) error {
+		mdID, err = m.delegate.Put(ctx, md)
 		m.maybeStall(ctx, StallableMDAfterPut)
 		return err
 	})
+	return mdID, err
 }
 
-func (m *stallingMDOps) PutUnmerged(ctx context.Context, md *RootMetadata) error {
+func (m *stallingMDOps) PutUnmerged(ctx context.Context, md *RootMetadata) (
+	mdID MdID, err error) {
 	m.maybeStall(ctx, StallableMDPutUnmerged)
 	// If the PutUnmerged was canceled, return the cancel error.  This
 	// emulates the PutUnmerged being canceled while the RPC is
 	// outstanding.
-	return runWithContextCheck(ctx, func(ctx context.Context) error {
-		err := m.delegate.PutUnmerged(ctx, md)
+	err = runWithContextCheck(ctx, func(ctx context.Context) error {
+		mdID, err = m.delegate.PutUnmerged(ctx, md)
 		m.maybeStall(ctx, StallableMDAfterPutUnmerged)
 		return err
 	})
+	return mdID, err
 }

@@ -945,6 +945,28 @@ func TestKBFSOpsStatSuccess(t *testing.T) {
 	}
 }
 
+type shimMDOps struct {
+	isUnmerged bool
+	crypto     cryptoPure
+	MDOps
+}
+
+func (s shimMDOps) Put(ctx context.Context, rmd *RootMetadata) (MdID, error) {
+	if s.isUnmerged {
+		return MdID{}, MDServerErrorConflictRevision{}
+	}
+	rmd.SerializedPrivateMetadata = []byte{0x1}
+	return s.crypto.MakeMdID(&rmd.BareRootMetadata)
+}
+
+func (s shimMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (MdID, error) {
+	if !s.isUnmerged {
+		panic("Unexpected PutUnmerged call")
+	}
+	rmd.SerializedPrivateMetadata = []byte{0x2}
+	return s.crypto.MakeMdID(&rmd.BareRootMetadata)
+}
+
 func expectSyncBlockHelper(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
 	uid keybase1.UID, id TlfID, name string, p path, rmd *RootMetadata,
@@ -995,20 +1017,14 @@ func expectSyncBlockHelper(
 	}
 	if skipSync == 0 {
 		// sign the MD and put it
-		if isUnmerged {
-			config.mockMdops.EXPECT().Put(gomock.Any(), gomock.Any()).Return(MDServerErrorConflictRevision{})
-			config.mockMdops.EXPECT().PutUnmerged(
-				gomock.Any(), gomock.Any()).
-				Do(func(ctx context.Context, rmd *RootMetadata) {
-					// add some serialized metadata to satisfy the check
-					rmd.SerializedPrivateMetadata = make([]byte, 1)
-				}).Return(nil)
+		oldMDOps := config.MDOps()
+		if oldShim, ok := oldMDOps.(shimMDOps); ok {
+			if oldShim.isUnmerged != isUnmerged {
+				panic("old shim with different isUnmerged")
+			}
 		} else {
-			config.mockMdops.EXPECT().Put(gomock.Any(), gomock.Any()).
-				Do(func(ctx context.Context, rmd *RootMetadata) {
-					// add some serialized metadata to satisfy the check
-					rmd.SerializedPrivateMetadata = make([]byte, 1)
-				}).Return(nil)
+			mdOps := shimMDOps{isUnmerged, config.Crypto(), oldMDOps}
+			config.SetMDOps(mdOps)
 		}
 		config.mockMdcache.EXPECT().Put(gomock.Any()).
 			Do(func(rmd ImmutableRootMetadata) {

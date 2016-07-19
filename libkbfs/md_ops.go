@@ -511,39 +511,48 @@ func (md *MDOpsStandard) readyMD(ctx context.Context, rmd *RootMetadata) (
 	return rmds, nil
 }
 
-func (md *MDOpsStandard) put(ctx context.Context, rmd *RootMetadata) error {
+func (md *MDOpsStandard) put(
+	ctx context.Context, rmd *RootMetadata) (MdID, error) {
 	err := rmd.data.checkValid()
 	if err != nil {
-		return err
+		return MdID{}, err
 	}
 
 	rmds, err := md.readyMD(ctx, rmd)
 	if err != nil {
-		return err
+		return MdID{}, err
 	}
 	err = md.config.MDServer().Put(ctx, rmds)
 	if err != nil {
-		return err
+		return MdID{}, err
 	}
-	return nil
+
+	mdID, err := md.config.Crypto().MakeMdID(&rmds.MD)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	return mdID, nil
 }
 
 // Put implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) Put(ctx context.Context, rmd *RootMetadata) error {
+func (md *MDOpsStandard) Put(
+	ctx context.Context, rmd *RootMetadata) (MdID, error) {
 	if rmd.MergedStatus() == Unmerged {
-		return UnexpectedUnmergedPutError{}
+		return MdID{}, UnexpectedUnmergedPutError{}
 	}
 	return md.put(ctx, rmd)
 }
 
 // PutUnmerged implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) PutUnmerged(ctx context.Context, rmd *RootMetadata) error {
+func (md *MDOpsStandard) PutUnmerged(
+	ctx context.Context, rmd *RootMetadata) (MdID, error) {
 	rmd.WFlags |= MetadataFlagUnmerged
 	if rmd.BID == NullBranchID {
 		// new branch ID
 		bid, err := md.config.Crypto().MakeRandomBranchID()
 		if err != nil {
-			return err
+			return MdID{}, err
 		}
 		rmd.BID = bid
 	}
