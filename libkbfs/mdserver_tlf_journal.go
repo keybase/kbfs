@@ -529,8 +529,7 @@ func (s *mdServerTlfJournal) flushOne(
 
 	if rmd.MergedStatus() == Merged {
 		cErr := mdOps.Put(context.Background(), &rmd)
-		var fakeFBO *folderBranchOps
-		doUnmergedPut := fakeFBO.isRevisionConflict(cErr)
+		doUnmergedPut := isRevisionConflict(cErr)
 		if doUnmergedPut {
 			log.Debug("Conflict detected %v", cErr)
 
@@ -568,8 +567,7 @@ func (s *mdServerTlfJournal) flushOne(
 				return false, err
 			}
 
-			// TODO: Fix.
-			err = mdOps.PutUnmerged(context.Background(), &rmd, NullBranchID)
+			err = mdOps.PutUnmerged(context.Background(), &rmd)
 			if err != nil {
 				return false, err
 			}
@@ -580,8 +578,7 @@ func (s *mdServerTlfJournal) flushOne(
 			return false, cErr
 		}
 	} else {
-		// TODO: Fix.
-		err = mdOps.PutUnmerged(context.Background(), &rmd, NullBranchID)
+		err = mdOps.PutUnmerged(context.Background(), &rmd)
 		if err != nil {
 			return false, err
 		}

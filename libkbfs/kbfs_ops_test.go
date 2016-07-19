@@ -997,12 +997,9 @@ func expectSyncBlockHelper(
 		// sign the MD and put it
 		if isUnmerged {
 			config.mockMdops.EXPECT().Put(gomock.Any(), gomock.Any()).Return(MDServerErrorConflictRevision{})
-			if rmd.BID == NullBranchID {
-				config.mockCrypto.EXPECT().MakeRandomBranchID().Return(BranchID{}, nil)
-			}
 			config.mockMdops.EXPECT().PutUnmerged(
-				gomock.Any(), gomock.Any(), gomock.Any()).
-				Do(func(ctx context.Context, rmd *RootMetadata, bid BranchID) {
+				gomock.Any(), gomock.Any()).
+				Do(func(ctx context.Context, rmd *RootMetadata) {
 					// add some serialized metadata to satisfy the check
 					rmd.SerializedPrivateMetadata = make([]byte, 1)
 				}).Return(nil)

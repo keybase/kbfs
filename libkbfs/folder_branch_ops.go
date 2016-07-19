@@ -1874,7 +1874,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	// finally, write out the new metadata
 	mdops := fbo.config.MDOps()
 
-	doUnmergedPut, wasMasterBranch := true, fbo.isMasterBranchLocked(lState)
+	doUnmergedPut := true
 	mergedRev := MetadataRevisionUninitialized
 
 	if fbo.isMasterBranchLocked(lState) {
@@ -1905,17 +1905,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	if doUnmergedPut {
 		// We're out of date, and this is not an exclusive write, so put it as an
 		// unmerged MD.
-		var bid BranchID
-		if wasMasterBranch {
-			// new branch ID
-			crypto := fbo.config.Crypto()
-			if bid, err = crypto.MakeRandomBranchID(); err != nil {
-				return err
-			}
-		} else {
-			bid = fbo.bid
-		}
-		err := mdops.PutUnmerged(ctx, md, bid)
+		err := mdops.PutUnmerged(ctx, md)
 		if isRevisionConflict(err) {
 			// Self-conflicts are retried in `doMDWriteWithRetry`.
 			err = UnmergedSelfConflictError{err}
@@ -1923,6 +1913,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		if err != nil {
 			return err
 		}
+		bid := md.BID
 		fbo.setBranchIDLocked(lState, bid)
 		fbo.cr.Resolve(md.Revision, mergedRev)
 	} else {

@@ -193,14 +193,13 @@ func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) error {
 	return j.MDOps.Put(ctx, rmd)
 }
 
-func (j journalMDOps) PutUnmerged(
-	ctx context.Context, rmd *RootMetadata, bid BranchID) error {
+func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) error {
 	_, ok := j.jServer.getBundle(rmd.ID)
 	if ok {
 		// TODO: Delegate to bundle's MD journal.
 	}
 
-	return j.MDOps.PutUnmerged(ctx, rmd, bid)
+	return j.MDOps.PutUnmerged(ctx, rmd)
 }
 
 func (j *JournalServer) blockServer() journalBlockServer {

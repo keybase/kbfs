@@ -816,7 +816,7 @@ type MDOps interface {
 
 	// PutUnmerged is the same as the above but for unmerged
 	// metadata history.
-	PutUnmerged(ctx context.Context, rmd *RootMetadata, bid BranchID) error
+	PutUnmerged(ctx context.Context, rmd *RootMetadata) error
 
 	// GetLatestHandleForTLF returns the server's idea of the latest handle for the TLF,
 	// which may not yet be reflected in the MD if the TLF hasn't been rekeyed since it
