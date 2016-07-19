@@ -270,6 +270,12 @@ func (s *mdServerTlfJournal) getRange(
 	return s.getRangeReadLocked(currentUID, start, stop)
 }
 
+type MDJournalConflictError struct{}
+
+func (e MDJournalConflictError) Error() string {
+	return "MD journal conflict error"
+}
+
 func (s *mdServerTlfJournal) put(
 	ctx context.Context, currentUID keybase1.UID, rmd *RootMetadata) (err error) {
 	s.lock.Lock()
@@ -306,25 +312,21 @@ func (s *mdServerTlfJournal) put(
 
 	if mStatus == Merged {
 		if s.justBranchedBranchID != NullBranchID {
-			rmd.WFlags |= MetadataFlagUnmerged
-			// head may be nil if the journal is fully
-			// flushed.
-			rmd.BID = s.justBranchedBranchID
-			rmd.PrevRoot = s.justBranchedMdID
-			s.justBranchedBranchID = NullBranchID
-			s.justBranchedMdID = MdID{}
+			return MDJournalConflictError{}
 		} else if head != nil && head.MergedStatus() != Merged {
 			// Conflict resolution shouldn't happen.
 			return MDServerError{
 				Err: errors.New("Shouldn't be doing conflict res"),
 			}
 		}
-	} else {
-		if head == nil {
-			return MDServerError{
-				Err: errors.New("Unexpectedly unmerged while empty"),
-			}
-		}
+	} else if s.justBranchedBranchID != NullBranchID {
+		// head may be nil if the journal is fully
+		// flushed.
+		rmd.BID = s.justBranchedBranchID
+		rmd.PrevRoot = s.justBranchedMdID
+		// TODO: Clear only on success.
+		s.justBranchedBranchID = NullBranchID
+		s.justBranchedMdID = MdID{}
 	}
 
 	// Consistency checks

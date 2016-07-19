@@ -1858,9 +1858,10 @@ func isRevisionConflict(err error) bool {
 	_, isConflictDiskUsage := err.(MDServerErrorConflictDiskUsage)
 	_, isConditionFailed := err.(MDServerErrorConditionFailed)
 	_, isConflictFolderMapping := err.(MDServerErrorConflictFolderMapping)
+	_, isJournal := err.(MDJournalConflictError)
 	return isConflictRevision || isConflictPrevRoot ||
 		isConflictDiskUsage || isConditionFailed ||
-		isConflictFolderMapping
+		isConflictFolderMapping || isJournal
 }
 
 func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
