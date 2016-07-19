@@ -439,6 +439,43 @@ func (s *mdServerTlfJournal) convertToBranch(log logger.Logger) (
 	return bid, prevID, err
 }
 
+var errMDServerTlfJournalEmpty = errors.New("mdServerTlfJournal is empty")
+
+var errMDServerTlfJournalNeedBranchConversion = errors.New("mdServerTlfJournal needs branch conversion")
+
+func (s *mdServerTlfJournal) putEarliest(
+	ctx context.Context, mdserver MDServer, log logger.Logger) error {
+	earliestID, err := s.j.getEarliest()
+	if err != nil {
+		return err
+	}
+	if earliestID == (MdID{}) {
+		return errMDServerTlfJournalEmpty
+	}
+
+	rmd, err := s.getMDReadLocked(earliestID)
+	if err != nil {
+		return err
+	}
+
+	log.Debug("Flushing MD put id=%s, rev=%s", earliestID, rmd.Revision)
+
+	var rmds RootMetadataSigned
+	rmds.MD = *rmd
+	err = signMD(ctx, s.config, &rmds)
+	if err != nil {
+		return err
+	}
+	err = mdserver.Put(ctx, &rmds)
+	if isRevisionConflict(err) && rmd.MergedStatus() == Merged {
+		return errMDServerTlfJournalNeedBranchConversion
+	} else if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *mdServerTlfJournal) flushOne(
 	ctx context.Context, mdserver MDServer, log logger.Logger) (bool, error) {
 	s.lock.Lock()
@@ -448,97 +485,32 @@ func (s *mdServerTlfJournal) flushOne(
 		return false, errMDServerTlfJournalShutdown
 	}
 
-	earliestID, err := s.j.getEarliest()
-	if err != nil {
-		return false, err
-	}
-	if earliestID == (MdID{}) {
+	err := s.putEarliest(ctx, mdserver, log)
+	switch err {
+	case errMDServerTlfJournalEmpty:
 		return false, nil
-	}
 
-	rmd, err := s.getMDReadLocked(earliestID)
-	if err != nil {
-		return false, err
-	}
+	case errMDServerTlfJournalNeedBranchConversion:
+		log.Debug("Conflict detected %v", err)
 
-	codec := s.codec
-	crypto := s.config.Crypto()
-
-	// encode the root metadata and sign it
-	buf, err := codec.Encode(rmd)
-	if err != nil {
-		return false, err
-	}
-
-	var rmds RootMetadataSigned
-	err = codec.Decode(buf, &rmds.MD)
-	if err != nil {
-		return false, err
-	}
-
-	// Sign normally using the local device private key
-	sigInfo, err := crypto.Sign(ctx, buf)
-	if err != nil {
-		return false, err
-	}
-	rmds.SigInfo = sigInfo
-
-	log.Debug("Flushing MD put id=%s, rev=%s", earliestID, rmd.Revision)
-
-	if rmd.MergedStatus() == Merged {
-		cErr := mdserver.Put(ctx, &rmds)
-		doUnmergedPut := isRevisionConflict(cErr)
-		if doUnmergedPut {
-			log.Debug("Conflict detected %v", cErr)
-
-			bid, latestID, err := s.convertToBranch(log)
-			if err != nil {
-				return false, err
-			}
-
-			earliestID, err := s.j.getEarliest()
-			if err != nil {
-				return false, err
-			}
-
-			rmd, err := s.getMDReadLocked(earliestID)
-			if err != nil {
-				return false, err
-			}
-
-			// encode the root metadata and sign it
-			buf, err := codec.Encode(rmd)
-			if err != nil {
-				return false, err
-			}
-
-			var rmds RootMetadataSigned
-			err = codec.Decode(buf, &rmds.MD)
-			if err != nil {
-				return false, err
-			}
-
-			// Sign normally using the local device private key
-			sigInfo, err := crypto.Sign(ctx, buf)
-			if err != nil {
-				return false, err
-			}
-			rmds.SigInfo = sigInfo
-			err = mdserver.Put(ctx, &rmds)
-			if err != nil {
-				return false, err
-			}
-
-			s.justBranchedBranchID = bid
-			s.justBranchedMdID = latestID
-		} else if cErr != nil {
-			return false, cErr
-		}
-	} else {
-		err = mdserver.Put(ctx, &rmds)
+		bid, latestID, err := s.convertToBranch(log)
 		if err != nil {
 			return false, err
 		}
+
+		s.justBranchedBranchID = bid
+		s.justBranchedMdID = latestID
+
+		err = s.putEarliest(ctx, mdserver, log)
+		if err != nil {
+			return false, err
+		}
+
+	case nil:
+		break
+
+	default:
+		return false, err
 	}
 
 	err = s.j.removeEarliest()
