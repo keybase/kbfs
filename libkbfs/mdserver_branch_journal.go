@@ -105,6 +105,20 @@ func (j mdServerBranchJournal) journalLength() (uint64, error) {
 	return j.j.journalLength()
 }
 
+func (j mdServerBranchJournal) getEarliest() (MdID, error) {
+	earliestRevision, err := j.readEarliestRevision()
+	if err != nil {
+		return MdID{}, err
+	} else if earliestRevision == MetadataRevisionUninitialized {
+		return MdID{}, nil
+	}
+	mdID, err := j.readMdID(earliestRevision)
+	if err != nil {
+		return MdID{}, err
+	}
+	return mdID, nil
+}
+
 func (j mdServerBranchJournal) getHead() (MdID, error) {
 	latestRevision, err := j.readLatestRevision()
 	if err != nil {
@@ -160,4 +174,8 @@ func (j mdServerBranchJournal) append(r MetadataRevision, mdID MdID) error {
 		return err
 	}
 	return j.j.appendJournalEntry(&o, mdID)
+}
+
+func (j mdServerBranchJournal) removeEarliest() error {
+	return j.j.removeEarliest()
 }

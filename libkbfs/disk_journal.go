@@ -118,6 +118,32 @@ func (j diskJournal) writeLatestOrdinal(o journalOrdinal) error {
 	return j.writeOrdinal(j.latestPath(), o)
 }
 
+func (j diskJournal) clearOrdinals() error {
+	err := os.Remove(j.earliestPath())
+	if err != nil {
+		return err
+	}
+	return os.Remove(j.latestPath())
+}
+
+func (j diskJournal) removeEarliest() error {
+	earliestOrdinal, err := j.readEarliestOrdinal()
+	if err != nil {
+		return err
+	}
+
+	latestOrdinal, err := j.readLatestOrdinal()
+	if err != nil {
+		return err
+	}
+
+	if earliestOrdinal == latestOrdinal {
+		return j.clearOrdinals()
+	}
+
+	return j.writeEarliestOrdinal(earliestOrdinal + 1)
+}
+
 // The functions below are for reading and writing journal entries.
 
 func (j diskJournal) readJournalEntry(o journalOrdinal) (

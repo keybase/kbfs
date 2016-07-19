@@ -206,12 +206,14 @@ func (s *mdServerTlfStorage) checkGetParamsReadLocked(
 		return MDServerError{err}
 	}
 
-	ok, err := isReader(currentUID, mergedMasterHead)
-	if err != nil {
-		return MDServerError{err}
-	}
-	if !ok {
-		return MDServerErrorUnauthorized{}
+	if mergedMasterHead != nil {
+		ok, err := isReader(currentUID, &mergedMasterHead.MD)
+		if err != nil {
+			return MDServerError{err}
+		}
+		if !ok {
+			return MDServerErrorUnauthorized{}
+		}
 	}
 
 	return nil
@@ -333,13 +335,16 @@ func (s *mdServerTlfStorage) put(
 		return false, MDServerError{err}
 	}
 
-	ok, err := isWriterOrValidRekey(
-		s.codec, currentUID, mergedMasterHead, rmds)
-	if err != nil {
-		return false, MDServerError{err}
-	}
-	if !ok {
-		return false, MDServerErrorUnauthorized{}
+	// TODO: Figure out nil case.
+	if mergedMasterHead != nil {
+		ok, err := isWriterOrValidRekey(
+			s.codec, currentUID, &mergedMasterHead.MD, &rmds.MD)
+		if err != nil {
+			return false, MDServerError{err}
+		}
+		if !ok {
+			return false, MDServerErrorUnauthorized{}
+		}
 	}
 
 	bid := rmds.MD.BID
