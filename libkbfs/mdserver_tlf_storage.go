@@ -58,7 +58,7 @@ type mdServerTlfStorage struct {
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
 	lock           sync.RWMutex
-	branchJournals map[BranchID]mdServerBranchJournal
+	branchJournals map[BranchID]mdIDJournal
 }
 
 func makeMDServerTlfStorage(
@@ -67,7 +67,7 @@ func makeMDServerTlfStorage(
 		codec:          codec,
 		crypto:         crypto,
 		dir:            dir,
-		branchJournals: make(map[BranchID]mdServerBranchJournal),
+		branchJournals: make(map[BranchID]mdIDJournal),
 	}
 	return journal
 }
@@ -166,7 +166,7 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) (MdID, error)
 }
 
 func (s *mdServerTlfStorage) getOrCreateBranchJournalLocked(
-	bid BranchID) (mdServerBranchJournal, error) {
+	bid BranchID) (mdIDJournal, error) {
 	j, ok := s.branchJournals[bid]
 	if ok {
 		return j, nil
@@ -175,7 +175,7 @@ func (s *mdServerTlfStorage) getOrCreateBranchJournalLocked(
 	dir := filepath.Join(s.branchJournalsPath(), bid.String())
 	err := os.MkdirAll(dir, 0700)
 	if err != nil {
-		return mdServerBranchJournal{}, err
+		return mdIDJournal{}, err
 	}
 
 	j = makeMDServerBranchJournal(s.codec, dir)
@@ -189,7 +189,7 @@ func (s *mdServerTlfStorage) getHeadForTLFReadLocked(bid BranchID) (
 	if !ok {
 		return nil, nil
 	}
-	headID, err := j.getHead()
+	headID, err := j.getLatest()
 	if err != nil {
 		return nil, err
 	}

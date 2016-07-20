@@ -56,7 +56,7 @@ type mdServerTlfJournal struct {
 	// instead.
 	lock                 sync.RWMutex
 	isShutdown           bool
-	j                    mdServerBranchJournal
+	j                    mdIDJournal
 	justBranchedBranchID BranchID
 	justBranchedMdID     MdID
 }
@@ -154,7 +154,7 @@ func (s *mdServerTlfJournal) putMDLocked(rmd *BareRootMetadata) error {
 
 func (s *mdServerTlfJournal) getHeadReadLocked() (
 	rmd *BareRootMetadata, err error) {
-	headID, err := s.j.getHead()
+	headID, err := s.j.getLatest()
 	if err != nil {
 		return nil, err
 	}
