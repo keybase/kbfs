@@ -347,7 +347,7 @@ func (s *mdJournal) setHead(mdID MdID, rmd *BareRootMetadata) error {
 	if err != nil {
 		return err
 	}
-	if length == 0 {
+	if length != 0 {
 		return errors.New("setHead called when not empty")
 	}
 
