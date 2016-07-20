@@ -288,6 +288,12 @@ func (s *mdServerTlfJournal) put(
 	mStatus := rmd.MergedStatus()
 	bid := rmd.BID
 
+	if (mStatus == Unmerged) && (bid == NullBranchID) && (s.justBranchedBranchID != NullBranchID) {
+		rmd.BID = s.justBranchedBranchID
+		rmd.PrevRoot = s.justBranchedMdID
+		bid = rmd.BID
+	}
+
 	if (mStatus == Merged) != (bid == NullBranchID) {
 		return MdID{}, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
@@ -320,10 +326,6 @@ func (s *mdServerTlfJournal) put(
 			}
 		}
 	} else if s.justBranchedBranchID != NullBranchID {
-		// head may be nil if the journal is fully
-		// flushed.
-		rmd.BID = s.justBranchedBranchID
-		rmd.PrevRoot = s.justBranchedMdID
 		// TODO: Clear only on success.
 		s.justBranchedBranchID = NullBranchID
 		s.justBranchedMdID = MdID{}
