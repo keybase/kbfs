@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/keybase/client/go/logger"
 	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/stretchr/testify/require"
 )
@@ -36,7 +37,7 @@ func TestMDServerTlfJournalBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := makeTestCryptoCommon(t)
 
-	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_storage")
+	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
 	require.NoError(t, err)
 	defer func() {
 		err := os.RemoveAll(tempdir)
@@ -100,6 +101,76 @@ func TestMDServerTlfJournalBasic(t *testing.T) {
 	for i := MetadataRevision(1); i <= 10; i++ {
 		require.Equal(t, i, rmds[i-1].Revision)
 	}
+
+	require.Equal(t, 10, getTlfJournalLength(t, s))
+}
+
+func TestMDServerTlfJournalBranchConversion(t *testing.T) {
+	codec := NewCodecMsgpack()
+	crypto := makeTestCryptoCommon(t)
+
+	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
+	require.NoError(t, err)
+	defer func() {
+		err := os.RemoveAll(tempdir)
+		require.NoError(t, err)
+	}()
+
+	s := makeMDServerTlfJournal(codec, crypto, tempdir)
+	defer s.shutdown()
+
+	require.Equal(t, 0, getTlfJournalLength(t, s))
+
+	uid := keybase1.MakeTestUID(1)
+	id := FakeTlfID(1, false)
+	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	// (2) Push some new metadata blocks.
+
+	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
+
+	prevRoot := MdID{}
+	for i := MetadataRevision(1); i <= 10; i++ {
+		var md RootMetadata
+		err := updateNewBareRootMetadata(&md.BareRootMetadata, id, h)
+		require.NoError(t, err)
+
+		md.SerializedPrivateMetadata = []byte{0x1}
+		md.Revision = MetadataRevision(i)
+		FakeInitialRekey(&md.BareRootMetadata, h)
+		if i > 1 {
+			md.PrevRoot = prevRoot
+		}
+		ctx := context.Background()
+		mdID, err := s.put(ctx, ekg, uid, &md)
+		require.NoError(t, err, "i=%d", i)
+		prevRoot = mdID
+	}
+
+	log := logger.NewTestLogger(t)
+	bid, lastMdID, err := s.convertToBranch(log)
+	require.NoError(t, err)
+
+	rmds, err := s.getRange(uid, 1, 100)
+	require.NoError(t, err)
+	require.Equal(t, 10, len(rmds))
+	prevRoot = MdID{}
+	// TODO: Check first PrevRoot.
+	for i := MetadataRevision(1); i <= 10; i++ {
+		require.Equal(t, i, rmds[i-1].Revision)
+		require.Equal(t, bid, rmds[i-1].BID)
+		require.Equal(t, Unmerged, rmds[i-1].MergedStatus())
+
+		if prevRoot != (MdID{}) {
+			require.Equal(t, prevRoot, rmds[i-1].PrevRoot)
+		}
+
+		currRoot, err := crypto.MakeMdID(rmds[i-1])
+		require.NoError(t, err)
+		prevRoot = currRoot
+	}
+	require.Equal(t, lastMdID, prevRoot)
 
 	require.Equal(t, 10, getTlfJournalLength(t, s))
 }

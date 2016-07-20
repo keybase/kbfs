@@ -274,6 +274,7 @@ func (e MDJournalConflictError) Error() string {
 	return "MD journal conflict error"
 }
 
+// TODO: Enforce that all entries must have the same branch ID.
 func (s *mdServerTlfJournal) put(
 	ctx context.Context, ekg encryptionKeyGetter,
 	currentUID keybase1.UID, rmd *RootMetadata) (MdID, error) {
@@ -367,6 +368,8 @@ func (s *mdServerTlfJournal) put(
 	return id, nil
 }
 
+// TODO: Enforce that this function isn't called unless the branch ID
+// is empty.
 func (s *mdServerTlfJournal) convertToBranch(log logger.Logger) (
 	BranchID, MdID, error) {
 	earliestRevision, err := s.j.readEarliestRevision()
