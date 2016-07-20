@@ -149,13 +149,14 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	}
 
 	log := logger.NewTestLogger(t)
-	bid, lastMdID, err := s.convertToBranch(log)
+	err = s.convertToBranch(log)
 	require.NoError(t, err)
 
 	rmds, err := s.getRange(uid, 1, 100)
 	require.NoError(t, err)
 	require.Equal(t, 10, len(rmds))
 	prevRoot = MdID{}
+	bid := rmds[0].BID
 	// TODO: Check first PrevRoot.
 	for i := MetadataRevision(1); i <= 10; i++ {
 		require.Equal(t, i, rmds[i-1].Revision)
@@ -170,7 +171,6 @@ func TestMDJournalBranchConversion(t *testing.T) {
 		require.NoError(t, err)
 		prevRoot = currRoot
 	}
-	require.Equal(t, lastMdID, prevRoot)
 
 	require.Equal(t, 10, getTlfJournalLength(t, s))
 }

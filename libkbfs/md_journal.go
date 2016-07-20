@@ -48,14 +48,11 @@ type mdJournal struct {
 	crypto cryptoPure
 	dir    string
 
-	// Protects any IO operations in dir or any of its children,
-	// as well as branchJournals and its contents.
-	//
-	// TODO: Consider using https://github.com/pkg/singlefile
-	// instead.
-	j                    mdIDJournal
-	justBranchedBranchID BranchID
-	justBranchedMdID     MdID
+	j mdIDJournal
+
+	// Set only when the journal is empty.
+	headMdID MdID
+	head     *BareRootMetadata
 }
 
 func makeMDJournal(codec Codec, crypto cryptoPure, dir string) *mdJournal {
@@ -148,20 +145,23 @@ func (s *mdJournal) putMD(rmd *BareRootMetadata) error {
 	return ioutil.WriteFile(path, buf, 0600)
 }
 
-func (s *mdJournal) getHead() (
-	rmd *BareRootMetadata, err error) {
+func (s *mdJournal) getHead() (mdID MdID, rmd *BareRootMetadata, err error) {
 	headID, err := s.j.getLatest()
 	if err != nil {
-		return nil, err
+		return MdID{}, nil, err
 	}
 	if headID == (MdID{}) {
-		return nil, nil
+		return s.headMdID, s.head, nil
 	}
-	return s.getMD(headID)
+	rmd, err = s.getMD(headID)
+	if err != nil {
+		return MdID{}, nil, err
+	}
+	return headID, rmd, nil
 }
 
 func (s *mdJournal) checkGetParams(currentUID keybase1.UID) error {
-	head, err := s.getHead()
+	_, head, err := s.getHead()
 	if err != nil {
 		return err
 	}
@@ -180,30 +180,36 @@ func (s *mdJournal) checkGetParams(currentUID keybase1.UID) error {
 	return nil
 }
 
-// TODO: Enforce that this function isn't called unless the branch ID
-// is empty.
-func (s *mdJournal) convertToBranch(log logger.Logger) (
-	BranchID, MdID, error) {
+func (s *mdJournal) convertToBranch(log logger.Logger) error {
+	_, head, err := s.getHead()
+	if err != nil {
+		return err
+	}
+
+	if head.BID != NullBranchID {
+		return fmt.Errorf("convertToBranch called with BID=%s", head.BID)
+	}
+
 	earliestRevision, err := s.j.readEarliestRevision()
 	if err != nil {
-		return NullBranchID, MdID{}, err
+		return err
 	}
 
 	latestRevision, err := s.j.readLatestRevision()
 	if err != nil {
-		return NullBranchID, MdID{}, err
+		return err
 	}
 
 	log.Debug("rewriting MDs %s to %s", earliestRevision, latestRevision)
 
 	_, allMdIDs, err := s.j.getRange(earliestRevision, latestRevision)
 	if err != nil {
-		return NullBranchID, MdID{}, err
+		return err
 	}
 
 	bid, err := s.crypto.MakeRandomBranchID()
 	if err != nil {
-		return NullBranchID, MdID{}, err
+		return err
 	}
 
 	log.Debug("New branch ID=%s", bid)
@@ -215,7 +221,7 @@ func (s *mdJournal) convertToBranch(log logger.Logger) (
 	for i, id := range allMdIDs {
 		brmd, err := s.getMD(id)
 		if err != nil {
-			return NullBranchID, MdID{}, err
+			return err
 		}
 		brmd.WFlags |= MetadataFlagUnmerged
 		brmd.BID = bid
@@ -229,22 +235,22 @@ func (s *mdJournal) convertToBranch(log logger.Logger) (
 
 		err = s.putMD(brmd)
 		if err != nil {
-			return NullBranchID, MdID{}, err
+			return err
 		}
 
 		o, err := revisionToOrdinal(brmd.Revision)
 		if err != nil {
-			return NullBranchID, MdID{}, err
+			return err
 		}
 
 		newID, err := s.crypto.MakeMdID(brmd)
 		if err != nil {
-			return NullBranchID, MdID{}, err
+			return err
 		}
 
 		err = s.j.j.writeJournalEntry(o, newID)
 		if err != nil {
-			return NullBranchID, MdID{}, err
+			return err
 		}
 
 		prevID = newID
@@ -253,23 +259,23 @@ func (s *mdJournal) convertToBranch(log logger.Logger) (
 			brmd.Revision, id, newID)
 	}
 
-	return bid, prevID, err
+	return err
 }
 
 func (s *mdJournal) pushEarliestToServer(
 	ctx context.Context, signer cryptoSigner, mdserver MDServer,
-	log logger.Logger) (bool, MergeStatus, error) {
+	log logger.Logger) (MdID, *BareRootMetadata, error) {
 	earliestID, err := s.j.getEarliest()
 	if err != nil {
-		return false, 0, err
+		return MdID{}, nil, err
 	}
 	if earliestID == (MdID{}) {
-		return false, 0, nil
+		return MdID{}, nil, nil
 	}
 
 	rmd, err := s.getMD(earliestID)
 	if err != nil {
-		return false, 0, err
+		return MdID{}, nil, err
 	}
 
 	log.Debug("Flushing MD put id=%s, rev=%s", earliestID, rmd.Revision)
@@ -278,14 +284,14 @@ func (s *mdJournal) pushEarliestToServer(
 	rmds.MD = *rmd
 	err = signMD(ctx, s.codec, signer, &rmds)
 	if err != nil {
-		return false, 0, err
+		return MdID{}, nil, err
 	}
 	err = mdserver.Put(ctx, &rmds)
 	if err != nil {
-		return false, 0, err
+		return earliestID, rmd, err
 	}
 
-	return true, rmd.MergedStatus(), nil
+	return earliestID, rmd, nil
 }
 
 // All functions below are public functions.
@@ -300,7 +306,7 @@ func (s *mdJournal) get(currentUID keybase1.UID) (*BareRootMetadata, error) {
 		return nil, err
 	}
 
-	rmd, err := s.getHead()
+	_, rmd, err := s.getHead()
 	if err != nil {
 		return nil, err
 	}
@@ -336,6 +342,20 @@ func (s *mdJournal) getRange(
 	return rmds, nil
 }
 
+func (s *mdJournal) setHead(mdID MdID, rmd *BareRootMetadata) error {
+	length, err := s.length()
+	if err != nil {
+		return err
+	}
+	if length == 0 {
+		return errors.New("setHead called when not empty")
+	}
+
+	s.headMdID = mdID
+	s.head = rmd
+	return nil
+}
+
 // MDJournalConflictError is an error that is returned when a put
 // detects a rewritten journal.
 type MDJournalConflictError struct{}
@@ -344,16 +364,20 @@ func (e MDJournalConflictError) Error() string {
 	return "MD journal conflict error"
 }
 
-// TODO: Enforce that all entries must have the same branch ID.
 func (s *mdJournal) put(
 	ctx context.Context, signer cryptoSigner, ekg encryptionKeyGetter,
 	currentUID keybase1.UID, rmd *RootMetadata) (MdID, error) {
+	headID, head, err := s.getHead()
+	if err != nil {
+		return MdID{}, err
+	}
+
 	mStatus := rmd.MergedStatus()
 	bid := rmd.BID
 
-	if (mStatus == Unmerged) && (bid == NullBranchID) && (s.justBranchedBranchID != NullBranchID) {
-		rmd.BID = s.justBranchedBranchID
-		rmd.PrevRoot = s.justBranchedMdID
+	if (mStatus == Unmerged) && (bid == NullBranchID) && (head != nil) {
+		rmd.BID = head.BID
+		rmd.PrevRoot = headID
 		bid = rmd.BID
 	}
 
@@ -362,11 +386,6 @@ func (s *mdJournal) put(
 	}
 
 	// Check permissions
-
-	head, err := s.getHead()
-	if err != nil {
-		return MdID{}, err
-	}
 
 	// TODO: Figure out nil case.
 	if head != nil {
@@ -380,25 +399,24 @@ func (s *mdJournal) put(
 		}
 	}
 
-	if mStatus == Merged {
-		if s.justBranchedBranchID != NullBranchID {
-			return MdID{}, MDJournalConflictError{}
-		} else if head != nil && head.MergedStatus() != Merged {
-			// Conflict resolution shouldn't happen.
-			return MdID{}, errors.New("Shouldn't be doing conflict res")
-		}
-	} else if s.justBranchedBranchID != NullBranchID {
-		// TODO: Clear only on success.
-		s.justBranchedBranchID = NullBranchID
-		s.justBranchedMdID = MdID{}
+	if mStatus == Merged && head != nil && head.BID != NullBranchID {
+		return MdID{}, MDJournalConflictError{}
 	}
 
 	// Consistency checks
-	if head != nil {
-		headID, err := s.crypto.MakeMdID(head)
-		if err != nil {
-			return MdID{}, err
+	if head == nil {
+		if rmd.Revision != MetadataRevisionInitial {
+			return MdID{}, fmt.Errorf("Expected initial revision")
 		}
+
+		if rmd.PrevRoot != (MdID{}) {
+			return MdID{}, fmt.Errorf("Expected no PrevRoot for initial revision")
+		}
+
+		if rmd.BID != NullBranchID {
+			return MdID{}, fmt.Errorf("Expected no branch ID for initial revision")
+		}
+	} else {
 		err = head.CheckValidSuccessorForServer(
 			headID, &rmd.BareRootMetadata)
 		if err != nil {
@@ -435,32 +453,34 @@ func (s *mdJournal) put(
 func (s *mdJournal) flushOne(
 	ctx context.Context, signer cryptoSigner, mdserver MDServer,
 	log logger.Logger) (bool, error) {
-	pushed, mergedStatus, pushErr := s.pushEarliestToServer(
+	earliestID, rmd, pushErr := s.pushEarliestToServer(
 		ctx, signer, mdserver, log)
-	if isRevisionConflict(pushErr) && mergedStatus == Merged {
+	if isRevisionConflict(pushErr) && rmd.MergedStatus() == Merged {
 		log.Debug("Conflict detected %v", pushErr)
 
-		bid, latestID, err := s.convertToBranch(log)
+		err := s.convertToBranch(log)
 		if err != nil {
 			return false, err
 		}
 
-		s.justBranchedBranchID = bid
-		s.justBranchedMdID = latestID
-
-		pushed, _, pushErr = s.pushEarliestToServer(
+		earliestID, rmd, pushErr = s.pushEarliestToServer(
 			ctx, signer, mdserver, log)
 	}
 	if pushErr != nil {
 		return false, pushErr
 	}
-	if !pushed {
+	if earliestID == (MdID{}) {
 		return false, nil
 	}
 
-	err := s.j.removeEarliest()
+	cleared, err := s.j.removeEarliest()
 	if err != nil {
 		return false, err
+	}
+
+	if cleared {
+		s.headMdID = earliestID
+		s.head = rmd
 	}
 
 	return true, nil
