@@ -306,14 +306,13 @@ func (j journalMDOps) GetForHandle(
 	return tlfID, rmd, nil
 }
 
-func (j journalMDOps) GetForTLF(
-	ctx context.Context, id TlfID) (ImmutableRootMetadata, error) {
+func (j journalMDOps) getForTLF(
+	ctx context.Context, id TlfID, mStatus MergeStatus) (
+	ImmutableRootMetadata, error) {
 	rmd, err := j.MDOps.GetForTLF(ctx, id)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
-
-	mStatus := Merged
 
 	if rmd == (ImmutableRootMetadata{}) {
 		// If server doesn't know of an RMD, look in the
@@ -401,15 +400,15 @@ func (j journalMDOps) GetForTLF(
 	return rmd, nil
 }
 
+func (j journalMDOps) GetForTLF(
+	ctx context.Context, id TlfID) (ImmutableRootMetadata, error) {
+	return j.getForTLF(ctx, id, Merged)
+}
+
 func (j journalMDOps) GetUnmergedForTLF(
 	ctx context.Context, id TlfID, bid BranchID) (
 	ImmutableRootMetadata, error) {
-	_, ok := j.jServer.getBundle(id)
-	if ok {
-		// TODO: Delegate to bundle's MD journal.
-	}
-
-	return j.MDOps.GetUnmergedForTLF(ctx, id, bid)
+	return j.getForTLF(ctx, id, Unmerged)
 }
 
 func (j journalMDOps) GetRange(
