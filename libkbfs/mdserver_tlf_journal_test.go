@@ -64,6 +64,7 @@ func TestMDServerTlfJournalBasic(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
+	var signer fakeSigner
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
 	prevRoot := MdID{}
@@ -79,7 +80,7 @@ func TestMDServerTlfJournalBasic(t *testing.T) {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		mdID, err := s.put(ctx, ekg, uid, &md)
+		mdID, err := s.put(ctx, signer, ekg, uid, &md)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
@@ -128,6 +129,7 @@ func TestMDServerTlfJournalBranchConversion(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
+	var signer fakeSigner
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
 	prevRoot := MdID{}
@@ -143,7 +145,7 @@ func TestMDServerTlfJournalBranchConversion(t *testing.T) {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		mdID, err := s.put(ctx, ekg, uid, &md)
+		mdID, err := s.put(ctx, signer, ekg, uid, &md)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
@@ -224,6 +226,7 @@ func TestMDServerTlfJournalFlushBasic(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
+	var signer fakeSigner
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
 	prevRoot := MdID{}
@@ -239,13 +242,12 @@ func TestMDServerTlfJournalFlushBasic(t *testing.T) {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		mdID, err := s.put(ctx, ekg, uid, &md)
+		mdID, err := s.put(ctx, signer, ekg, uid, &md)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
 
 	ctx := context.Background()
-	var signer fakeSigner
 	var mdserver shimMDServer
 	log := logger.NewTestLogger(t)
 	for {
@@ -298,6 +300,7 @@ func TestMDServerTlfJournalFlushConflict(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
+	var signer fakeSigner
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
 	prevRoot := MdID{}
@@ -313,13 +316,12 @@ func TestMDServerTlfJournalFlushConflict(t *testing.T) {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		mdID, err := s.put(ctx, ekg, uid, &md)
+		mdID, err := s.put(ctx, signer, ekg, uid, &md)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
 
 	ctx := context.Background()
-	var signer fakeSigner
 	var mdserver shimMDServer
 	log := logger.NewTestLogger(t)
 
@@ -341,11 +343,11 @@ func TestMDServerTlfJournalFlushConflict(t *testing.T) {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		mdID, err := s.put(ctx, ekg, uid, &md)
+		mdID, err := s.put(ctx, signer, ekg, uid, &md)
 		require.IsType(t, MDJournalConflictError{}, err)
 
 		md.WFlags |= MetadataFlagUnmerged
-		mdID, err = s.put(ctx, ekg, uid, &md)
+		mdID, err = s.put(ctx, signer, ekg, uid, &md)
 		require.NoError(t, err)
 
 		prevRoot = mdID

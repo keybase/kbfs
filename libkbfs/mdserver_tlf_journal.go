@@ -276,7 +276,7 @@ func (e MDJournalConflictError) Error() string {
 
 // TODO: Enforce that all entries must have the same branch ID.
 func (s *mdServerTlfJournal) put(
-	ctx context.Context, ekg encryptionKeyGetter,
+	ctx context.Context, signer cryptoSigner, ekg encryptionKeyGetter,
 	currentUID keybase1.UID, rmd *RootMetadata) (MdID, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -346,7 +346,7 @@ func (s *mdServerTlfJournal) put(
 
 	var brmd BareRootMetadata
 	err = encryptMDPrivateData(
-		ctx, s.codec, s.crypto, ekg,
+		ctx, s.codec, s.crypto, signer, ekg,
 		currentUID, rmd.ReadOnly(), &brmd)
 	if err != nil {
 		return MdID{}, MDServerError{err}
