@@ -277,7 +277,8 @@ func (e MDJournalConflictError) Error() string {
 }
 
 func (s *mdServerTlfJournal) put(
-	ctx context.Context, keyManager KeyManager, currentUID keybase1.UID, rmd *RootMetadata) (err error) {
+	ctx context.Context, ekg encryptionKeyGetter,
+	currentUID keybase1.UID, rmd *RootMetadata) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -344,7 +345,7 @@ func (s *mdServerTlfJournal) put(
 
 	var brmd BareRootMetadata
 	err = encryptMDPrivateData(
-		ctx, s.codec, s.crypto, keyManager,
+		ctx, s.codec, s.crypto, ekg,
 		currentUID, rmd.ReadOnly(), &brmd)
 	if err != nil {
 		return MDServerError{err}

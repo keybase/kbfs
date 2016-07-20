@@ -15,6 +15,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type singleEncryptionKeyGetter struct {
+	k TLFCryptKey
+}
+
+func (g singleEncryptionKeyGetter) GetTLFCryptKeyForEncryption(
+	ctx context.Context, md ReadOnlyRootMetadata) (TLFCryptKey, error) {
+	return g.k, nil
+}
+
 func getTlfJournalLength(t *testing.T, s *mdServerTlfJournal) int {
 	len, err := s.journalLength()
 	require.NoError(t, err)
@@ -54,6 +63,8 @@ func TestMDServerTlfJournalBasic(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
+	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
+
 	prevRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
 		var md RootMetadata
@@ -67,7 +78,7 @@ func TestMDServerTlfJournalBasic(t *testing.T) {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		err = s.put(ctx, nil, uid, &md)
+		err = s.put(ctx, ekg, uid, &md)
 		require.NoError(t, err)
 		prevRoot, err = crypto.MakeMdID(&md.BareRootMetadata)
 		require.NoError(t, err)
