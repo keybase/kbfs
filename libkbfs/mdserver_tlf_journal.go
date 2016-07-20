@@ -268,6 +268,8 @@ func (s *mdServerTlfJournal) getRange(
 	return s.getRangeReadLocked(currentUID, start, stop)
 }
 
+// MDJournalConflictError is an error that is returned when a put
+// detects a rewritten journal.
 type MDJournalConflictError struct{}
 
 func (e MDJournalConflictError) Error() string {
