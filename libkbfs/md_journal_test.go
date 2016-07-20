@@ -63,7 +63,12 @@ func TestMDJournalBasic(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
-	var signer fakeSigner
+	log := logger.NewTestLogger(t)
+	signer := &CryptoLocal{
+		MakeCryptoCommon(codec, log),
+		MakeFakeSigningKeyOrBust("fake seed"),
+		MakeFakeCryptPrivateKeyOrBust("fake seed"),
+	}
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
 	prevRoot := MdID{}
@@ -127,7 +132,12 @@ func TestMDJournalBranchConversion(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
-	var signer fakeSigner
+	log := logger.NewTestLogger(t)
+	signer := &CryptoLocal{
+		MakeCryptoCommon(codec, log),
+		MakeFakeSigningKeyOrBust("fake seed"),
+		MakeFakeCryptPrivateKeyOrBust("fake seed"),
+	}
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
 	prevRoot := MdID{}
@@ -148,7 +158,6 @@ func TestMDJournalBranchConversion(t *testing.T) {
 		prevRoot = mdID
 	}
 
-	log := logger.NewTestLogger(t)
 	err = s.convertToBranch(log)
 	require.NoError(t, err)
 
@@ -173,16 +182,6 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	}
 
 	require.Equal(t, 10, getTlfJournalLength(t, s))
-}
-
-type fakeSigner struct{}
-
-func (fakeSigner) Sign(ctx context.Context, msg []byte) (sigInfo SignatureInfo, err error) {
-	return SignatureInfo{
-		Version:      1,
-		Signature:    []byte{0x1},
-		VerifyingKey: VerifyingKey{},
-	}, nil
 }
 
 type shimMDServer struct {
@@ -223,7 +222,12 @@ func TestMDJournalFlushBasic(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
-	var signer fakeSigner
+	log := logger.NewTestLogger(t)
+	signer := &CryptoLocal{
+		MakeCryptoCommon(codec, log),
+		MakeFakeSigningKeyOrBust("fake seed"),
+		MakeFakeCryptPrivateKeyOrBust("fake seed"),
+	}
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
 	prevRoot := MdID{}
@@ -246,7 +250,6 @@ func TestMDJournalFlushBasic(t *testing.T) {
 
 	ctx := context.Background()
 	var mdserver shimMDServer
-	log := logger.NewTestLogger(t)
 	for {
 		flushed, err := s.flushOne(ctx, signer, &mdserver, log)
 		require.NoError(t, err)
@@ -296,7 +299,12 @@ func TestMDJournalFlushConflict(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
-	var signer fakeSigner
+	log := logger.NewTestLogger(t)
+	signer := &CryptoLocal{
+		MakeCryptoCommon(codec, log),
+		MakeFakeSigningKeyOrBust("fake seed"),
+		MakeFakeCryptPrivateKeyOrBust("fake seed"),
+	}
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
 	prevRoot := MdID{}
@@ -319,7 +327,6 @@ func TestMDJournalFlushConflict(t *testing.T) {
 
 	ctx := context.Background()
 	var mdserver shimMDServer
-	log := logger.NewTestLogger(t)
 
 	mdserver.err = MDServerErrorConflictRevision{}
 
