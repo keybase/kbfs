@@ -37,6 +37,7 @@ type JournalServer struct {
 
 	delegateBlockServer BlockServer
 	delegateMDOps       MDOps
+	delegateMDServer    MDServer
 
 	lock       sync.RWMutex
 	tlfBundles map[TlfID]*tlfJournalBundle
@@ -213,11 +214,76 @@ func (j journalBlockServer) ArchiveBlockReferences(
 }
 
 type journalMDOps struct {
-	jServer *JournalServer
 	MDOps
+	jServer  *JournalServer
+	mdServer MDServer
 }
 
 var _ MDOps = journalMDOps{}
+
+func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
+	TlfID, ImmutableRootMetadata, error) {
+	tlfID, rmd, err := j.MDOps.GetForHandle(ctx, handle)
+	if err != nil {
+		return TlfID{}, ImmutableRootMetadata{}, err
+	}
+
+	return tlfID, rmd, nil
+}
+
+func (j journalMDOps) GetUnmergedForHandle(
+	ctx context.Context, handle *TlfHandle) (
+	ImmutableRootMetadata, error) {
+	rmd, err := j.MDOps.GetUnmergedForHandle(ctx, handle)
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+
+	return rmd, nil
+}
+
+func (j journalMDOps) GetForTLF(
+	ctx context.Context, id TlfID) (ImmutableRootMetadata, error) {
+	_, ok := j.jServer.getBundle(id)
+	if ok {
+		// TODO: Delegate to bundle's MD journal.
+	}
+
+	return j.MDOps.GetForTLF(ctx, id)
+}
+
+func (j journalMDOps) GetUnmergedForTLF(
+	ctx context.Context, id TlfID, bid BranchID) (
+	ImmutableRootMetadata, error) {
+	_, ok := j.jServer.getBundle(id)
+	if ok {
+		// TODO: Delegate to bundle's MD journal.
+	}
+
+	return j.MDOps.GetUnmergedForTLF(ctx, id, bid)
+}
+
+func (j journalMDOps) GetRange(
+	ctx context.Context, id TlfID, start, stop MetadataRevision) (
+	[]ImmutableRootMetadata, error) {
+	_, ok := j.jServer.getBundle(id)
+	if ok {
+		// TODO: Delegate to bundle's MD journal.
+	}
+
+	return j.MDOps.GetRange(ctx, id, start, stop)
+}
+
+func (j journalMDOps) GetUnmergedRange(
+	ctx context.Context, id TlfID, bid BranchID,
+	start, stop MetadataRevision) ([]ImmutableRootMetadata, error) {
+	_, ok := j.jServer.getBundle(id)
+	if ok {
+		// TODO: Delegate to bundle's MD journal.
+	}
+
+	return j.MDOps.GetUnmergedRange(ctx, id, bid, start, stop)
+}
 
 func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
@@ -239,17 +305,28 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 	return j.MDOps.PutUnmerged(ctx, rmd)
 }
 
+func (j journalMDOps) PruneBranch(
+	ctx context.Context, id TlfID, bid BranchID) error {
+	_, ok := j.jServer.getBundle(id)
+	if ok {
+		// TODO: Delegate to bundle's MD journal.
+	}
+
+	return j.MDOps.PruneBranch(ctx, id, bid)
+}
+
 func (j *JournalServer) blockServer() journalBlockServer {
 	return journalBlockServer{j, j.delegateBlockServer}
 }
 
 func (j *JournalServer) mdOps() journalMDOps {
-	return journalMDOps{j, j.delegateMDOps}
+	return journalMDOps{j.delegateMDOps, j, j.delegateMDServer}
 }
 
 func makeJournalServer(
 	config Config, log logger.Logger,
-	dir string, bserver BlockServer, mdOps MDOps) *JournalServer {
+	dir string, bserver BlockServer,
+	mdOps MDOps, mdServer MDServer) *JournalServer {
 	jServer := JournalServer{
 		config:              config,
 		log:                 log,
@@ -257,6 +334,7 @@ func makeJournalServer(
 		dir:                 dir,
 		delegateBlockServer: bserver,
 		delegateMDOps:       mdOps,
+		delegateMDServer:    mdServer,
 		tlfBundles:          make(map[TlfID]*tlfJournalBundle),
 	}
 	return &jServer
