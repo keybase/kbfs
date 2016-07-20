@@ -35,6 +35,8 @@ func TestJournalMDOpsBasics(t *testing.T) {
 		config, log, tempdir,
 		config.BlockServer(), config.MDOps(), config.MDServer())
 	config.SetBlockServer(jServer.blockServer())
+
+	oldMDOps := config.MDOps()
 	config.SetMDOps(jServer.mdOps())
 
 	mdOps := config.MDOps()
@@ -72,7 +74,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 
 	// (2) push some new metadata blocks
 	middleRoot := MdID{}
-	for i := MetadataRevision(2); i <= 10; i++ {
+	for i := MetadataRevision(2); i < 8; i++ {
 		rmd.Revision = MetadataRevision(i)
 		rmd.PrevRoot = prevRoot
 		mdID, err := mdOps.Put(ctx, &rmd)
@@ -87,16 +89,30 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	require.NoError(t, err)
 
 	// (3) trigger a conflict
-	rmd.Revision = MetadataRevision(10)
+	rmd.Revision = MetadataRevision(8)
 	rmd.PrevRoot = prevRoot
-	_, err = mdOps.Put(ctx, &rmd)
-	require.IsType(t, MDServerErrorConflictRevision{}, err)
+	_, err = oldMDOps.Put(ctx, &rmd)
+	require.NoError(t, err)
+
+	for i := MetadataRevision(8); i <= 10; i++ {
+		rmd.Revision = MetadataRevision(i)
+		rmd.PrevRoot = prevRoot
+		mdID, err := mdOps.Put(ctx, &rmd)
+		require.NoError(t, err, "i=%d", i)
+		prevRoot = mdID
+		if i == 5 {
+			middleRoot = prevRoot
+		}
+	}
+
+	err = jServer.Flush(ctx, id)
+	require.NoError(t, err)
 
 	// (4) push some new unmerged metadata blocks linking to the
 	//     middle merged block.
 	prevRoot = middleRoot
 	var bid BranchID
-	for i := MetadataRevision(6); i < 41; i++ {
+	for i := MetadataRevision(11); i < 41; i++ {
 		rmd.Revision = MetadataRevision(i)
 		rmd.PrevRoot = prevRoot
 		mdID, err := mdOps.PutUnmerged(ctx, &rmd)
