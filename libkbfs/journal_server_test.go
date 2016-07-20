@@ -73,16 +73,12 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	prevRoot := mdID
 
 	// (2) push some new metadata blocks
-	middleRoot := MdID{}
 	for i := MetadataRevision(2); i < 8; i++ {
 		rmd.Revision = MetadataRevision(i)
 		rmd.PrevRoot = prevRoot
 		mdID, err := mdOps.Put(ctx, &rmd)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
-		if i == 5 {
-			middleRoot = prevRoot
-		}
 	}
 
 	err = jServer.Flush(ctx, id)
@@ -100,9 +96,6 @@ func TestJournalMDOpsBasics(t *testing.T) {
 		mdID, err := mdOps.Put(ctx, &rmd)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
-		if i == 5 {
-			middleRoot = prevRoot
-		}
 	}
 
 	err = jServer.Flush(ctx, id)
@@ -110,13 +103,12 @@ func TestJournalMDOpsBasics(t *testing.T) {
 
 	// (4) push some new unmerged metadata blocks linking to the
 	//     middle merged block.
-	prevRoot = middleRoot
 	var bid BranchID
 	for i := MetadataRevision(11); i < 41; i++ {
 		rmd.Revision = MetadataRevision(i)
 		rmd.PrevRoot = prevRoot
 		mdID, err := mdOps.PutUnmerged(ctx, &rmd)
-		require.NoError(t, err)
+		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 		bid = rmd.BID
 		require.NoError(t, err)

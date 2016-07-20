@@ -462,15 +462,6 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 		}
 
 		rmd.WFlags |= MetadataFlagUnmerged
-		if rmd.BID == NullBranchID {
-			// new branch ID
-			bid, err := j.jServer.config.Crypto().MakeRandomBranchID()
-			if err != nil {
-				return MdID{}, err
-			}
-			rmd.BID = bid
-		}
-
 		bundle.lock.Lock()
 		defer bundle.lock.Unlock()
 		return bundle.mdJournal.put(ctx, j.jServer.config.Crypto(),
