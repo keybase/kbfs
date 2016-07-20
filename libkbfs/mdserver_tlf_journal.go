@@ -127,8 +127,6 @@ func (s *mdServerTlfJournal) putMDLocked(rmd *BareRootMetadata) error {
 		return err
 	}
 
-	fmt.Printf("post-putMDLocked ID = %s\n", id)
-
 	_, err = s.getMDReadLocked(id)
 	if os.IsNotExist(err) {
 		// Continue on.
@@ -278,45 +276,45 @@ func (e MDJournalConflictError) Error() string {
 
 func (s *mdServerTlfJournal) put(
 	ctx context.Context, ekg encryptionKeyGetter,
-	currentUID keybase1.UID, rmd *RootMetadata) (err error) {
+	currentUID keybase1.UID, rmd *RootMetadata) (MdID, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if s.isShutdownReadLocked() {
-		return errMDServerTlfJournalShutdown
+		return MdID{}, errMDServerTlfJournalShutdown
 	}
 
 	mStatus := rmd.MergedStatus()
 	bid := rmd.BID
 
 	if (mStatus == Merged) != (bid == NullBranchID) {
-		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+		return MdID{}, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
 	// Check permissions
 
 	head, err := s.getHeadReadLocked()
 	if err != nil {
-		return MDServerError{err}
+		return MdID{}, MDServerError{err}
 	}
 
 	// TODO: Figure out nil case.
 	if head != nil {
 		ok, err := isWriterOrValidRekey(s.codec, currentUID, head, &rmd.BareRootMetadata)
 		if err != nil {
-			return MDServerError{err}
+			return MdID{}, MDServerError{err}
 		}
 		if !ok {
-			return MDServerErrorUnauthorized{}
+			return MdID{}, MDServerErrorUnauthorized{}
 		}
 	}
 
 	if mStatus == Merged {
 		if s.justBranchedBranchID != NullBranchID {
-			return MDJournalConflictError{}
+			return MdID{}, MDJournalConflictError{}
 		} else if head != nil && head.MergedStatus() != Merged {
 			// Conflict resolution shouldn't happen.
-			return MDServerError{
+			return MdID{}, MDServerError{
 				Err: errors.New("Shouldn't be doing conflict res"),
 			}
 		}
@@ -334,12 +332,12 @@ func (s *mdServerTlfJournal) put(
 	if head != nil {
 		headID, err := s.crypto.MakeMdID(head)
 		if err != nil {
-			return MDServerError{err}
+			return MdID{}, MDServerError{err}
 		}
 		err = head.CheckValidSuccessorForServer(
 			headID, &rmd.BareRootMetadata)
 		if err != nil {
-			return err
+			return MdID{}, err
 		}
 	}
 
@@ -348,25 +346,25 @@ func (s *mdServerTlfJournal) put(
 		ctx, s.codec, s.crypto, ekg,
 		currentUID, rmd.ReadOnly(), &brmd)
 	if err != nil {
-		return MDServerError{err}
+		return MdID{}, MDServerError{err}
 	}
 
 	err = s.putMDLocked(&brmd)
 	if err != nil {
-		return MDServerError{err}
+		return MdID{}, MDServerError{err}
 	}
 
 	id, err := s.crypto.MakeMdID(&rmd.BareRootMetadata)
 	if err != nil {
-		return MDServerError{err}
+		return MdID{}, MDServerError{err}
 	}
 
 	err = s.j.append(rmd.Revision, id)
 	if err != nil {
-		return MDServerError{err}
+		return MdID{}, MDServerError{err}
 	}
 
-	return nil
+	return id, nil
 }
 
 func (s *mdServerTlfJournal) convertToBranch(log logger.Logger) (

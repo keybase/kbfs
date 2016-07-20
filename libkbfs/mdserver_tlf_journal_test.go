@@ -78,10 +78,9 @@ func TestMDServerTlfJournalBasic(t *testing.T) {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		err = s.put(ctx, ekg, uid, &md)
-		require.NoError(t, err)
-		prevRoot, err = crypto.MakeMdID(&md.BareRootMetadata)
-		require.NoError(t, err)
+		mdID, err := s.put(ctx, ekg, uid, &md)
+		require.NoError(t, err, "i=%d", i)
+		prevRoot = mdID
 	}
 
 	require.Equal(t, 10, getTlfJournalLength(t, s))
