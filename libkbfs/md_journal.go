@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/keybase/client/go/logger"
 
@@ -54,14 +53,12 @@ type mdJournal struct {
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
-	lock                 sync.RWMutex
-	isShutdown           bool
 	j                    mdIDJournal
 	justBranchedBranchID BranchID
 	justBranchedMdID     MdID
 }
 
-func makeMDServerTlfJournal(codec Codec, crypto cryptoPure, dir string) *mdJournal {
+func makeMDJournal(codec Codec, crypto cryptoPure, dir string) *mdJournal {
 	journal := &mdJournal{
 		codec:  codec,
 		crypto: crypto,
@@ -90,8 +87,7 @@ func (s *mdJournal) mdPath(id MdID) string {
 // given ID and returns it.
 //
 // TODO: Verify signature?
-func (s *mdJournal) getMDReadLocked(id MdID) (
-	*BareRootMetadata, error) {
+func (s *mdJournal) getMD(id MdID) (*BareRootMetadata, error) {
 	// Read file.
 
 	path := s.mdPath(id)
@@ -121,13 +117,13 @@ func (s *mdJournal) getMDReadLocked(id MdID) (
 	return &rmd, nil
 }
 
-func (s *mdJournal) putMDLocked(rmd *BareRootMetadata) error {
+func (s *mdJournal) putMD(rmd *BareRootMetadata) error {
 	id, err := s.crypto.MakeMdID(rmd)
 	if err != nil {
 		return err
 	}
 
-	_, err = s.getMDReadLocked(id)
+	_, err = s.getMD(id)
 	if os.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
@@ -152,7 +148,7 @@ func (s *mdJournal) putMDLocked(rmd *BareRootMetadata) error {
 	return ioutil.WriteFile(path, buf, 0600)
 }
 
-func (s *mdJournal) getHeadReadLocked() (
+func (s *mdJournal) getHead() (
 	rmd *BareRootMetadata, err error) {
 	headID, err := s.j.getLatest()
 	if err != nil {
@@ -161,12 +157,11 @@ func (s *mdJournal) getHeadReadLocked() (
 	if headID == (MdID{}) {
 		return nil, nil
 	}
-	return s.getMDReadLocked(headID)
+	return s.getMD(headID)
 }
 
-func (s *mdJournal) checkGetParamsReadLocked(
-	currentUID keybase1.UID) error {
-	head, err := s.getHeadReadLocked()
+func (s *mdJournal) checkGetParams(currentUID keybase1.UID) error {
+	head, err := s.getHead()
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -184,10 +179,105 @@ func (s *mdJournal) checkGetParamsReadLocked(
 	return nil
 }
 
-func (s *mdJournal) getRangeReadLocked(
+// TODO: Enforce that this function isn't called unless the branch ID
+// is empty.
+func (s *mdJournal) convertToBranch(log logger.Logger) (
+	BranchID, MdID, error) {
+	earliestRevision, err := s.j.readEarliestRevision()
+	if err != nil {
+		return NullBranchID, MdID{}, err
+	}
+
+	latestRevision, err := s.j.readLatestRevision()
+	if err != nil {
+		return NullBranchID, MdID{}, err
+	}
+
+	log.Debug("rewriting MDs %s to %s", earliestRevision, latestRevision)
+
+	_, allMdIDs, err := s.j.getRange(earliestRevision, latestRevision)
+	if err != nil {
+		return NullBranchID, MdID{}, err
+	}
+
+	bid, err := s.crypto.MakeRandomBranchID()
+	if err != nil {
+		return NullBranchID, MdID{}, err
+	}
+
+	log.Debug("New branch ID=%s", bid)
+
+	// TODO: Do the below atomically.
+
+	var prevID MdID
+
+	for i, id := range allMdIDs {
+		brmd, err := s.getMD(id)
+		if err != nil {
+			return NullBranchID, MdID{}, err
+		}
+		brmd.WFlags |= MetadataFlagUnmerged
+		brmd.BID = bid
+
+		log.Debug("Old prev root of rev=%s is %s", brmd.Revision, brmd.PrevRoot)
+
+		if i > 0 {
+			log.Debug("Changing prev root of rev=%s to %s", brmd.Revision, prevID)
+			brmd.PrevRoot = prevID
+		}
+
+		err = s.putMD(brmd)
+		if err != nil {
+			return NullBranchID, MdID{}, err
+		}
+
+		o, err := revisionToOrdinal(brmd.Revision)
+		if err != nil {
+			return NullBranchID, MdID{}, err
+		}
+
+		newID, err := s.crypto.MakeMdID(brmd)
+		if err != nil {
+			return NullBranchID, MdID{}, err
+		}
+
+		err = s.j.j.writeJournalEntry(o, newID)
+		if err != nil {
+			return NullBranchID, MdID{}, err
+		}
+
+		prevID = newID
+
+		log.Debug("Changing ID for rev=%s from %s to %s",
+			brmd.Revision, id, newID)
+	}
+
+	return bid, prevID, err
+}
+
+// All functions below are public functions.
+
+func (s *mdJournal) journalLength() (uint64, error) {
+	return s.j.journalLength()
+}
+
+func (s *mdJournal) get(currentUID keybase1.UID) (*BareRootMetadata, error) {
+	err := s.checkGetParams(currentUID)
+	if err != nil {
+		return nil, err
+	}
+
+	rmd, err := s.getHead()
+	if err != nil {
+		return nil, MDServerError{err}
+	}
+	return rmd, nil
+}
+
+func (s *mdJournal) getRange(
 	currentUID keybase1.UID, start, stop MetadataRevision) (
 	[]*BareRootMetadata, error) {
-	err := s.checkGetParamsReadLocked(currentUID)
+	err := s.checkGetParams(currentUID)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +289,7 @@ func (s *mdJournal) getRangeReadLocked(
 	var rmds []*BareRootMetadata
 	for i, mdID := range mdIDs {
 		expectedRevision := realStart + MetadataRevision(i)
-		rmd, err := s.getMDReadLocked(mdID)
+		rmd, err := s.getMD(mdID)
 		if err != nil {
 			return nil, MDServerError{err}
 		}
@@ -211,59 +301,6 @@ func (s *mdJournal) getRangeReadLocked(
 	}
 
 	return rmds, nil
-}
-
-func (s *mdJournal) isShutdownReadLocked() bool {
-	return s.isShutdown
-}
-
-// All functions below are public functions.
-
-var errMDServerTlfJournalShutdown = errors.New("mdJournal is shutdown")
-
-func (s *mdJournal) journalLength() (uint64, error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	if s.isShutdownReadLocked() {
-		return 0, errMDServerTlfJournalShutdown
-	}
-
-	return s.j.journalLength()
-}
-
-func (s *mdJournal) get(
-	currentUID keybase1.UID) (*BareRootMetadata, error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	if s.isShutdownReadLocked() {
-		return nil, errMDServerTlfJournalShutdown
-	}
-
-	err := s.checkGetParamsReadLocked(currentUID)
-	if err != nil {
-		return nil, err
-	}
-
-	rmd, err := s.getHeadReadLocked()
-	if err != nil {
-		return nil, MDServerError{err}
-	}
-	return rmd, nil
-}
-
-func (s *mdJournal) getRange(
-	currentUID keybase1.UID, start, stop MetadataRevision) (
-	[]*BareRootMetadata, error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	if s.isShutdownReadLocked() {
-		return nil, errMDServerTlfJournalShutdown
-	}
-
-	return s.getRangeReadLocked(currentUID, start, stop)
 }
 
 // MDJournalConflictError is an error that is returned when a put
@@ -278,13 +315,6 @@ func (e MDJournalConflictError) Error() string {
 func (s *mdJournal) put(
 	ctx context.Context, signer cryptoSigner, ekg encryptionKeyGetter,
 	currentUID keybase1.UID, rmd *RootMetadata) (MdID, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if s.isShutdownReadLocked() {
-		return MdID{}, errMDServerTlfJournalShutdown
-	}
-
 	mStatus := rmd.MergedStatus()
 	bid := rmd.BID
 
@@ -300,7 +330,7 @@ func (s *mdJournal) put(
 
 	// Check permissions
 
-	head, err := s.getHeadReadLocked()
+	head, err := s.getHead()
 	if err != nil {
 		return MdID{}, MDServerError{err}
 	}
@@ -352,7 +382,7 @@ func (s *mdJournal) put(
 		return MdID{}, MDServerError{err}
 	}
 
-	err = s.putMDLocked(&brmd)
+	err = s.putMD(&brmd)
 	if err != nil {
 		return MdID{}, MDServerError{err}
 	}
@@ -370,85 +400,7 @@ func (s *mdJournal) put(
 	return id, nil
 }
 
-// TODO: Enforce that this function isn't called unless the branch ID
-// is empty.
-func (s *mdJournal) convertToBranch(log logger.Logger) (
-	BranchID, MdID, error) {
-	earliestRevision, err := s.j.readEarliestRevision()
-	if err != nil {
-		return NullBranchID, MdID{}, err
-	}
-
-	latestRevision, err := s.j.readLatestRevision()
-	if err != nil {
-		return NullBranchID, MdID{}, err
-	}
-
-	log.Debug("rewriting MDs %s to %s", earliestRevision, latestRevision)
-
-	_, allMdIDs, err := s.j.getRange(earliestRevision, latestRevision)
-	if err != nil {
-		return NullBranchID, MdID{}, err
-	}
-
-	bid, err := s.crypto.MakeRandomBranchID()
-	if err != nil {
-		return NullBranchID, MdID{}, err
-	}
-
-	log.Debug("New branch ID=%s", bid)
-
-	// TODO: Do the below atomically.
-
-	var prevID MdID
-
-	for i, id := range allMdIDs {
-		brmd, err := s.getMDReadLocked(id)
-		if err != nil {
-			return NullBranchID, MdID{}, err
-		}
-		brmd.WFlags |= MetadataFlagUnmerged
-		brmd.BID = bid
-
-		log.Debug("Old prev root of rev=%s is %s", brmd.Revision, brmd.PrevRoot)
-
-		if i > 0 {
-			log.Debug("Changing prev root of rev=%s to %s", brmd.Revision, prevID)
-			brmd.PrevRoot = prevID
-		}
-
-		err = s.putMDLocked(brmd)
-		if err != nil {
-			return NullBranchID, MdID{}, err
-		}
-
-		o, err := revisionToOrdinal(brmd.Revision)
-		if err != nil {
-			return NullBranchID, MdID{}, err
-		}
-
-		newID, err := s.crypto.MakeMdID(brmd)
-		if err != nil {
-			return NullBranchID, MdID{}, err
-		}
-
-		err = s.j.j.writeJournalEntry(o, newID)
-		if err != nil {
-			return NullBranchID, MdID{}, err
-		}
-
-		prevID = newID
-
-		log.Debug("Changing ID for rev=%s from %s to %s",
-			brmd.Revision, id, newID)
-	}
-
-	return bid, prevID, err
-}
-
-var errMDServerTlfJournalEmpty = errors.New("mdJournal is empty")
-
-var errMDServerTlfJournalNeedBranchConversion = errors.New("mdJournal needs branch conversion")
+var errMDJournalEmpty = errors.New("mdJournal is empty")
 
 func (s *mdJournal) putEarliest(
 	ctx context.Context, signer cryptoSigner, mdserver MDServer, log logger.Logger) error {
@@ -457,10 +409,10 @@ func (s *mdJournal) putEarliest(
 		return err
 	}
 	if earliestID == (MdID{}) {
-		return errMDServerTlfJournalEmpty
+		return errMDJournalEmpty
 	}
 
-	rmd, err := s.getMDReadLocked(earliestID)
+	rmd, err := s.getMD(earliestID)
 	if err != nil {
 		return err
 	}
@@ -475,7 +427,7 @@ func (s *mdJournal) putEarliest(
 	}
 	err = mdserver.Put(ctx, &rmds)
 	if isRevisionConflict(err) && rmd.MergedStatus() == Merged {
-		return errMDServerTlfJournalNeedBranchConversion
+		return errMDJournalNeedBranchConversion
 	} else if err != nil {
 		return err
 	}
@@ -483,21 +435,16 @@ func (s *mdJournal) putEarliest(
 	return nil
 }
 
+var errMDJournalNeedBranchConversion = errors.New("mdJournal needs branch conversion")
+
 func (s *mdJournal) flushOne(
 	ctx context.Context, signer cryptoSigner, mdserver MDServer, log logger.Logger) (bool, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if s.isShutdownReadLocked() {
-		return false, errMDServerTlfJournalShutdown
-	}
-
 	err := s.putEarliest(ctx, signer, mdserver, log)
 	switch err {
-	case errMDServerTlfJournalEmpty:
+	case errMDJournalEmpty:
 		return false, nil
 
-	case errMDServerTlfJournalNeedBranchConversion:
+	case errMDJournalNeedBranchConversion:
 		log.Debug("Conflict detected %v", err)
 
 		bid, latestID, err := s.convertToBranch(log)
@@ -526,10 +473,4 @@ func (s *mdJournal) flushOne(
 	}
 
 	return true, nil
-}
-
-func (s *mdJournal) shutdown() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	s.isShutdown = true
 }

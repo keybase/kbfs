@@ -45,7 +45,6 @@ func TestMDJournalBasic(t *testing.T) {
 	}()
 
 	s := makeMDJournal(codec, crypto, tempdir)
-	defer s.shutdown()
 
 	require.Equal(t, 0, getTlfJournalLength(t, s))
 
@@ -118,7 +117,6 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	}()
 
 	s := makeMDJournal(codec, crypto, tempdir)
-	defer s.shutdown()
 
 	require.Equal(t, 0, getTlfJournalLength(t, s))
 
@@ -215,7 +213,6 @@ func TestMDJournalFlushBasic(t *testing.T) {
 	}()
 
 	s := makeMDJournal(codec, crypto, tempdir)
-	defer s.shutdown()
 
 	require.Equal(t, 0, getTlfJournalLength(t, s))
 
@@ -289,7 +286,6 @@ func TestMDJournalFlushConflict(t *testing.T) {
 	}()
 
 	s := makeMDJournal(codec, crypto, tempdir)
-	defer s.shutdown()
 
 	require.Equal(t, 0, getTlfJournalLength(t, s))
 
