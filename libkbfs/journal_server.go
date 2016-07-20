@@ -436,9 +436,17 @@ func (j journalMDOps) GetUnmergedRange(
 
 func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
-	_, ok := j.jServer.getBundle(rmd.ID)
+	bundle, ok := j.jServer.getBundle(rmd.ID)
 	if ok {
-		// TODO: Delegate to bundle's MD journal.
+		_, uid, err := j.jServer.config.KBPKI().GetCurrentUserInfo(ctx)
+		if err != nil {
+			return MdID{}, err
+		}
+
+		bundle.lock.Lock()
+		defer bundle.lock.Unlock()
+		return bundle.mdJournal.put(ctx, j.jServer.config.Crypto(),
+			j.jServer.config.KeyManager(), uid, rmd)
 	}
 
 	return j.MDOps.Put(ctx, rmd)
@@ -446,9 +454,27 @@ func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
 
 func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
-	_, ok := j.jServer.getBundle(rmd.ID)
+	bundle, ok := j.jServer.getBundle(rmd.ID)
 	if ok {
-		// TODO: Delegate to bundle's MD journal.
+		_, uid, err := j.jServer.config.KBPKI().GetCurrentUserInfo(ctx)
+		if err != nil {
+			return MdID{}, err
+		}
+
+		rmd.WFlags |= MetadataFlagUnmerged
+		if rmd.BID == NullBranchID {
+			// new branch ID
+			bid, err := j.jServer.config.Crypto().MakeRandomBranchID()
+			if err != nil {
+				return MdID{}, err
+			}
+			rmd.BID = bid
+		}
+
+		bundle.lock.Lock()
+		defer bundle.lock.Unlock()
+		return bundle.mdJournal.put(ctx, j.jServer.config.Crypto(),
+			j.jServer.config.KeyManager(), uid, rmd)
 	}
 
 	return j.MDOps.PutUnmerged(ctx, rmd)
