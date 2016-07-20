@@ -63,7 +63,7 @@ func makeMDJournal(codec Codec, crypto cryptoPure, dir string) *mdJournal {
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
-		j:      makeMDServerBranchJournal(codec, dir),
+		j:      makeMdIDJournal(codec, dir),
 	}
 	return journal
 }

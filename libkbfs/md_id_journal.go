@@ -21,7 +21,7 @@ type mdIDJournal struct {
 	j diskJournal
 }
 
-func makeMDServerBranchJournal(codec Codec, dir string) mdIDJournal {
+func makeMdIDJournal(codec Codec, dir string) mdIDJournal {
 	j := makeDiskJournal(codec, dir, reflect.TypeOf(MdID{}))
 	return mdIDJournal{j}
 }

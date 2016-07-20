@@ -178,7 +178,7 @@ func (s *mdServerTlfStorage) getOrCreateBranchJournalLocked(
 		return mdIDJournal{}, err
 	}
 
-	j = makeMDServerBranchJournal(s.codec, dir)
+	j = makeMdIDJournal(s.codec, dir)
 	s.branchJournals[bid] = j
 	return j, nil
 }
