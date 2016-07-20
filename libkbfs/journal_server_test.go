@@ -54,6 +54,9 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ImmutableRootMetadata{}, irmd)
 
+	err = jServer.Enable(id)
+	require.NoError(t, err)
+
 	var rmd RootMetadata
 	err = updateNewBareRootMetadata(&rmd.BareRootMetadata, id, bh)
 	require.NoError(t, err)
