@@ -255,6 +255,38 @@ func (s *mdJournal) convertToBranch(log logger.Logger) (
 	return bid, prevID, err
 }
 
+func (s *mdJournal) pushEarliestToServer(
+	ctx context.Context, signer cryptoSigner, mdserver MDServer,
+	log logger.Logger) (bool, MergeStatus, error) {
+	earliestID, err := s.j.getEarliest()
+	if err != nil {
+		return false, 0, err
+	}
+	if earliestID == (MdID{}) {
+		return false, 0, nil
+	}
+
+	rmd, err := s.getMD(earliestID)
+	if err != nil {
+		return false, 0, err
+	}
+
+	log.Debug("Flushing MD put id=%s, rev=%s", earliestID, rmd.Revision)
+
+	var rmds RootMetadataSigned
+	rmds.MD = *rmd
+	err = signMD(ctx, s.codec, signer, &rmds)
+	if err != nil {
+		return false, 0, err
+	}
+	err = mdserver.Put(ctx, &rmds)
+	if err != nil {
+		return false, 0, err
+	}
+
+	return true, rmd.MergedStatus(), nil
+}
+
 // All functions below are public functions.
 
 func (s *mdJournal) journalLength() (uint64, error) {
@@ -400,52 +432,13 @@ func (s *mdJournal) put(
 	return id, nil
 }
 
-var errMDJournalEmpty = errors.New("mdJournal is empty")
-
-func (s *mdJournal) putEarliest(
-	ctx context.Context, signer cryptoSigner, mdserver MDServer, log logger.Logger) error {
-	earliestID, err := s.j.getEarliest()
-	if err != nil {
-		return err
-	}
-	if earliestID == (MdID{}) {
-		return errMDJournalEmpty
-	}
-
-	rmd, err := s.getMD(earliestID)
-	if err != nil {
-		return err
-	}
-
-	log.Debug("Flushing MD put id=%s, rev=%s", earliestID, rmd.Revision)
-
-	var rmds RootMetadataSigned
-	rmds.MD = *rmd
-	err = signMD(ctx, s.codec, signer, &rmds)
-	if err != nil {
-		return err
-	}
-	err = mdserver.Put(ctx, &rmds)
-	if isRevisionConflict(err) && rmd.MergedStatus() == Merged {
-		return errMDJournalNeedBranchConversion
-	} else if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-var errMDJournalNeedBranchConversion = errors.New("mdJournal needs branch conversion")
-
 func (s *mdJournal) flushOne(
-	ctx context.Context, signer cryptoSigner, mdserver MDServer, log logger.Logger) (bool, error) {
-	err := s.putEarliest(ctx, signer, mdserver, log)
-	switch err {
-	case errMDJournalEmpty:
-		return false, nil
-
-	case errMDJournalNeedBranchConversion:
-		log.Debug("Conflict detected %v", err)
+	ctx context.Context, signer cryptoSigner, mdserver MDServer,
+	log logger.Logger) (bool, error) {
+	pushed, mergedStatus, pushErr := s.pushEarliestToServer(
+		ctx, signer, mdserver, log)
+	if isRevisionConflict(pushErr) && mergedStatus == Merged {
+		log.Debug("Conflict detected %v", pushErr)
 
 		bid, latestID, err := s.convertToBranch(log)
 		if err != nil {
@@ -455,19 +448,17 @@ func (s *mdJournal) flushOne(
 		s.justBranchedBranchID = bid
 		s.justBranchedMdID = latestID
 
-		err = s.putEarliest(ctx, signer, mdserver, log)
-		if err != nil {
-			return false, err
-		}
-
-	case nil:
-		break
-
-	default:
-		return false, err
+		pushed, _, pushErr = s.pushEarliestToServer(
+			ctx, signer, mdserver, log)
+	}
+	if pushErr != nil {
+		return false, pushErr
+	}
+	if !pushed {
+		return false, nil
 	}
 
-	err = s.j.removeEarliest()
+	err := s.j.removeEarliest()
 	if err != nil {
 		return false, err
 	}
