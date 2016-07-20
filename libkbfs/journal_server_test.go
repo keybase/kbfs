@@ -83,6 +83,9 @@ func TestJournalMDOpsBasics(t *testing.T) {
 		}
 	}
 
+	err = jServer.Flush(ctx, id)
+	require.NoError(t, err)
+
 	// (3) trigger a conflict
 	rmd.Revision = MetadataRevision(10)
 	rmd.PrevRoot = prevRoot
