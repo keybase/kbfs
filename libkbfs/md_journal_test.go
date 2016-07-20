@@ -25,15 +25,15 @@ func (g singleEncryptionKeyGetter) GetTLFCryptKeyForEncryption(
 	return g.k, nil
 }
 
-func getTlfJournalLength(t *testing.T, s *mdServerTlfJournal) int {
+func getTlfJournalLength(t *testing.T, s *mdJournal) int {
 	len, err := s.journalLength()
 	require.NoError(t, err)
 	return int(len)
 }
 
-// TestMDServerTlfJournalBasic copies TestMDServerBasics, but for a
-// single mdServerTlfJournal.
-func TestMDServerTlfJournalBasic(t *testing.T) {
+// TestMDJournalBasic copies TestMDServerBasics, but for a
+// single mdJournal.
+func TestMDJournalBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := makeTestCryptoCommon(t)
 
@@ -44,7 +44,7 @@ func TestMDServerTlfJournalBasic(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	s := makeMDServerTlfJournal(codec, crypto, tempdir)
+	s := makeMDJournal(codec, crypto, tempdir)
 	defer s.shutdown()
 
 	require.Equal(t, 0, getTlfJournalLength(t, s))
@@ -106,7 +106,7 @@ func TestMDServerTlfJournalBasic(t *testing.T) {
 	require.Equal(t, 10, getTlfJournalLength(t, s))
 }
 
-func TestMDServerTlfJournalBranchConversion(t *testing.T) {
+func TestMDJournalBranchConversion(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := makeTestCryptoCommon(t)
 
@@ -117,7 +117,7 @@ func TestMDServerTlfJournalBranchConversion(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	s := makeMDServerTlfJournal(codec, crypto, tempdir)
+	s := makeMDJournal(codec, crypto, tempdir)
 	defer s.shutdown()
 
 	require.Equal(t, 0, getTlfJournalLength(t, s))
@@ -203,7 +203,7 @@ func (s *shimMDServer) Put(ctx context.Context, rmds *RootMetadataSigned) error 
 	return nil
 }
 
-func TestMDServerTlfJournalFlushBasic(t *testing.T) {
+func TestMDJournalFlushBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := makeTestCryptoCommon(t)
 
@@ -214,7 +214,7 @@ func TestMDServerTlfJournalFlushBasic(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	s := makeMDServerTlfJournal(codec, crypto, tempdir)
+	s := makeMDJournal(codec, crypto, tempdir)
 	defer s.shutdown()
 
 	require.Equal(t, 0, getTlfJournalLength(t, s))
@@ -277,7 +277,7 @@ func TestMDServerTlfJournalFlushBasic(t *testing.T) {
 	require.Equal(t, 0, getTlfJournalLength(t, s))
 }
 
-func TestMDServerTlfJournalFlushConflict(t *testing.T) {
+func TestMDJournalFlushConflict(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := makeTestCryptoCommon(t)
 
@@ -288,7 +288,7 @@ func TestMDServerTlfJournalFlushConflict(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	s := makeMDServerTlfJournal(codec, crypto, tempdir)
+	s := makeMDJournal(codec, crypto, tempdir)
 	defer s.shutdown()
 
 	require.Equal(t, 0, getTlfJournalLength(t, s))

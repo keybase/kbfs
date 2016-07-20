@@ -19,7 +19,7 @@ import (
 	keybase1 "github.com/keybase/client/go/protocol"
 )
 
-// mdServerTlfJournal stores a single ordered list of metadata IDs for
+// mdJournal stores a single ordered list of metadata IDs for
 // a single TLF, along with the associated metadata objects, in flat
 // files on disk.
 //
@@ -44,7 +44,7 @@ import (
 // plus the first byte of the hash data -- using the first four
 // characters of the name to keep the number of directories in dir
 // itself to a manageable number, similar to git.
-type mdServerTlfJournal struct {
+type mdJournal struct {
 	codec  Codec
 	crypto cryptoPure
 	dir    string
@@ -61,8 +61,8 @@ type mdServerTlfJournal struct {
 	justBranchedMdID     MdID
 }
 
-func makeMDServerTlfJournal(codec Codec, crypto cryptoPure, dir string) *mdServerTlfJournal {
-	journal := &mdServerTlfJournal{
+func makeMDServerTlfJournal(codec Codec, crypto cryptoPure, dir string) *mdJournal {
+	journal := &mdJournal{
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
@@ -73,15 +73,15 @@ func makeMDServerTlfJournal(codec Codec, crypto cryptoPure, dir string) *mdServe
 
 // The functions below are for building various paths.
 
-func (s *mdServerTlfJournal) journalPath() string {
+func (s *mdJournal) journalPath() string {
 	return filepath.Join(s.dir, "md_journal")
 }
 
-func (s *mdServerTlfJournal) mdsPath() string {
+func (s *mdJournal) mdsPath() string {
 	return filepath.Join(s.dir, "mds")
 }
 
-func (s *mdServerTlfJournal) mdPath(id MdID) string {
+func (s *mdJournal) mdPath(id MdID) string {
 	idStr := id.String()
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
 }
@@ -90,7 +90,7 @@ func (s *mdServerTlfJournal) mdPath(id MdID) string {
 // given ID and returns it.
 //
 // TODO: Verify signature?
-func (s *mdServerTlfJournal) getMDReadLocked(id MdID) (
+func (s *mdJournal) getMDReadLocked(id MdID) (
 	*BareRootMetadata, error) {
 	// Read file.
 
@@ -121,7 +121,7 @@ func (s *mdServerTlfJournal) getMDReadLocked(id MdID) (
 	return &rmd, nil
 }
 
-func (s *mdServerTlfJournal) putMDLocked(rmd *BareRootMetadata) error {
+func (s *mdJournal) putMDLocked(rmd *BareRootMetadata) error {
 	id, err := s.crypto.MakeMdID(rmd)
 	if err != nil {
 		return err
@@ -152,7 +152,7 @@ func (s *mdServerTlfJournal) putMDLocked(rmd *BareRootMetadata) error {
 	return ioutil.WriteFile(path, buf, 0600)
 }
 
-func (s *mdServerTlfJournal) getHeadReadLocked() (
+func (s *mdJournal) getHeadReadLocked() (
 	rmd *BareRootMetadata, err error) {
 	headID, err := s.j.getLatest()
 	if err != nil {
@@ -164,7 +164,7 @@ func (s *mdServerTlfJournal) getHeadReadLocked() (
 	return s.getMDReadLocked(headID)
 }
 
-func (s *mdServerTlfJournal) checkGetParamsReadLocked(
+func (s *mdJournal) checkGetParamsReadLocked(
 	currentUID keybase1.UID) error {
 	head, err := s.getHeadReadLocked()
 	if err != nil {
@@ -184,7 +184,7 @@ func (s *mdServerTlfJournal) checkGetParamsReadLocked(
 	return nil
 }
 
-func (s *mdServerTlfJournal) getRangeReadLocked(
+func (s *mdJournal) getRangeReadLocked(
 	currentUID keybase1.UID, start, stop MetadataRevision) (
 	[]*BareRootMetadata, error) {
 	err := s.checkGetParamsReadLocked(currentUID)
@@ -213,15 +213,15 @@ func (s *mdServerTlfJournal) getRangeReadLocked(
 	return rmds, nil
 }
 
-func (s *mdServerTlfJournal) isShutdownReadLocked() bool {
+func (s *mdJournal) isShutdownReadLocked() bool {
 	return s.isShutdown
 }
 
 // All functions below are public functions.
 
-var errMDServerTlfJournalShutdown = errors.New("mdServerTlfJournal is shutdown")
+var errMDServerTlfJournalShutdown = errors.New("mdJournal is shutdown")
 
-func (s *mdServerTlfJournal) journalLength() (uint64, error) {
+func (s *mdJournal) journalLength() (uint64, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -232,7 +232,7 @@ func (s *mdServerTlfJournal) journalLength() (uint64, error) {
 	return s.j.journalLength()
 }
 
-func (s *mdServerTlfJournal) get(
+func (s *mdJournal) get(
 	currentUID keybase1.UID) (*BareRootMetadata, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -253,7 +253,7 @@ func (s *mdServerTlfJournal) get(
 	return rmd, nil
 }
 
-func (s *mdServerTlfJournal) getRange(
+func (s *mdJournal) getRange(
 	currentUID keybase1.UID, start, stop MetadataRevision) (
 	[]*BareRootMetadata, error) {
 	s.lock.RLock()
@@ -275,7 +275,7 @@ func (e MDJournalConflictError) Error() string {
 }
 
 // TODO: Enforce that all entries must have the same branch ID.
-func (s *mdServerTlfJournal) put(
+func (s *mdJournal) put(
 	ctx context.Context, signer cryptoSigner, ekg encryptionKeyGetter,
 	currentUID keybase1.UID, rmd *RootMetadata) (MdID, error) {
 	s.lock.Lock()
@@ -372,7 +372,7 @@ func (s *mdServerTlfJournal) put(
 
 // TODO: Enforce that this function isn't called unless the branch ID
 // is empty.
-func (s *mdServerTlfJournal) convertToBranch(log logger.Logger) (
+func (s *mdJournal) convertToBranch(log logger.Logger) (
 	BranchID, MdID, error) {
 	earliestRevision, err := s.j.readEarliestRevision()
 	if err != nil {
@@ -446,11 +446,11 @@ func (s *mdServerTlfJournal) convertToBranch(log logger.Logger) (
 	return bid, prevID, err
 }
 
-var errMDServerTlfJournalEmpty = errors.New("mdServerTlfJournal is empty")
+var errMDServerTlfJournalEmpty = errors.New("mdJournal is empty")
 
-var errMDServerTlfJournalNeedBranchConversion = errors.New("mdServerTlfJournal needs branch conversion")
+var errMDServerTlfJournalNeedBranchConversion = errors.New("mdJournal needs branch conversion")
 
-func (s *mdServerTlfJournal) putEarliest(
+func (s *mdJournal) putEarliest(
 	ctx context.Context, signer cryptoSigner, mdserver MDServer, log logger.Logger) error {
 	earliestID, err := s.j.getEarliest()
 	if err != nil {
@@ -483,7 +483,7 @@ func (s *mdServerTlfJournal) putEarliest(
 	return nil
 }
 
-func (s *mdServerTlfJournal) flushOne(
+func (s *mdJournal) flushOne(
 	ctx context.Context, signer cryptoSigner, mdserver MDServer, log logger.Logger) (bool, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -528,7 +528,7 @@ func (s *mdServerTlfJournal) flushOne(
 	return true, nil
 }
 
-func (s *mdServerTlfJournal) shutdown() {
+func (s *mdJournal) shutdown() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.isShutdown = true
