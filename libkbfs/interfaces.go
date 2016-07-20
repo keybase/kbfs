@@ -926,6 +926,8 @@ type MDServer interface {
 	Put(ctx context.Context, rmds *RootMetadataSigned) error
 
 	// PruneBranch prunes all unmerged history for the given TLF branch.
+	//
+	// TODO: Add hooks for this in MDOps.
 	PruneBranch(ctx context.Context, id TlfID, bid BranchID) error
 
 	// RegisterForUpdate tells the MD server to inform the caller when
