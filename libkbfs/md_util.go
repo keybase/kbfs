@@ -269,7 +269,7 @@ func encryptMDPrivateData(
 }
 
 func signMD(
-	ctx context.Context, codec Codec, crypto Crypto,
+	ctx context.Context, codec Codec, signer cryptoSigner,
 	rmds *RootMetadataSigned) error {
 	if rmds.MD.ID.IsPublic() || !rmds.MD.IsWriterMetadataCopiedSet() {
 		// Sign the writer metadata
@@ -278,7 +278,7 @@ func signMD(
 			return err
 		}
 
-		sigInfo, err := crypto.Sign(ctx, buf)
+		sigInfo, err := signer.Sign(ctx, buf)
 		if err != nil {
 			return err
 		}
@@ -292,7 +292,7 @@ func signMD(
 	}
 
 	// Sign normally using the local device private key
-	sigInfo, err := crypto.Sign(ctx, buf)
+	sigInfo, err := signer.Sign(ctx, buf)
 	if err != nil {
 		return err
 	}
