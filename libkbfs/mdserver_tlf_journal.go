@@ -45,7 +45,6 @@ import (
 // characters of the name to keep the number of directories in dir
 // itself to a manageable number, similar to git.
 type mdServerTlfJournal struct {
-	config Config
 	codec  Codec
 	crypto cryptoPure
 	dir    string
@@ -62,13 +61,12 @@ type mdServerTlfJournal struct {
 	justBranchedMdID     MdID
 }
 
-func makeMDServerTlfJournal(config Config, dir string) *mdServerTlfJournal {
+func makeMDServerTlfJournal(codec Codec, crypto cryptoPure, dir string) *mdServerTlfJournal {
 	journal := &mdServerTlfJournal{
-		config: config,
-		codec:  config.Codec(),
-		crypto: config.Crypto(),
+		codec:  codec,
+		crypto: crypto,
 		dir:    dir,
-		j:      makeMDServerBranchJournal(config.Codec(), dir),
+		j:      makeMDServerBranchJournal(codec, dir),
 	}
 	return journal
 }
@@ -277,7 +275,7 @@ func (e MDJournalConflictError) Error() string {
 }
 
 func (s *mdServerTlfJournal) put(
-	ctx context.Context, currentUID keybase1.UID, rmd *RootMetadata) (err error) {
+	ctx context.Context, keyManager KeyManager, currentUID keybase1.UID, rmd *RootMetadata) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -344,7 +342,7 @@ func (s *mdServerTlfJournal) put(
 
 	var brmd BareRootMetadata
 	err = encryptMDPrivateData(
-		ctx, s.codec, s.crypto, s.config.KeyManager(),
+		ctx, s.codec, s.crypto, keyManager,
 		currentUID, rmd.ReadOnly(), &brmd)
 	if err != nil {
 		return MDServerError{err}
@@ -447,7 +445,7 @@ var errMDServerTlfJournalEmpty = errors.New("mdServerTlfJournal is empty")
 var errMDServerTlfJournalNeedBranchConversion = errors.New("mdServerTlfJournal needs branch conversion")
 
 func (s *mdServerTlfJournal) putEarliest(
-	ctx context.Context, mdserver MDServer, log logger.Logger) error {
+	ctx context.Context, crypto Crypto, mdserver MDServer, log logger.Logger) error {
 	earliestID, err := s.j.getEarliest()
 	if err != nil {
 		return err
@@ -465,7 +463,7 @@ func (s *mdServerTlfJournal) putEarliest(
 
 	var rmds RootMetadataSigned
 	rmds.MD = *rmd
-	err = signMD(ctx, s.codec, s.config.Crypto(), &rmds)
+	err = signMD(ctx, s.codec, crypto, &rmds)
 	if err != nil {
 		return err
 	}
@@ -480,7 +478,7 @@ func (s *mdServerTlfJournal) putEarliest(
 }
 
 func (s *mdServerTlfJournal) flushOne(
-	ctx context.Context, mdserver MDServer, log logger.Logger) (bool, error) {
+	ctx context.Context, crypto Crypto, mdserver MDServer, log logger.Logger) (bool, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -488,7 +486,7 @@ func (s *mdServerTlfJournal) flushOne(
 		return false, errMDServerTlfJournalShutdown
 	}
 
-	err := s.putEarliest(ctx, mdserver, log)
+	err := s.putEarliest(ctx, crypto, mdserver, log)
 	switch err {
 	case errMDServerTlfJournalEmpty:
 		return false, nil
@@ -504,7 +502,7 @@ func (s *mdServerTlfJournal) flushOne(
 		s.justBranchedBranchID = bid
 		s.justBranchedMdID = latestID
 
-		err = s.putEarliest(ctx, mdserver, log)
+		err = s.putEarliest(ctx, crypto, mdserver, log)
 		if err != nil {
 			return false, err
 		}
