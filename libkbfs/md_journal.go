@@ -80,10 +80,8 @@ func (s *mdJournal) mdPath(id MdID) string {
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
 }
 
-// getDataLocked verifies the MD data (but not the signature) for the
-// given ID and returns it.
-//
-// TODO: Verify signature?
+// getDataLocked verifies the MD data and the signature (but not the
+// key) for the given ID and returns it.
 func (s *mdJournal) getMD(id MdID) (*BareRootMetadata, error) {
 	// Read file.
 
@@ -109,6 +107,11 @@ func (s *mdJournal) getMD(id MdID) (*BareRootMetadata, error) {
 	if id != mdID {
 		return nil, fmt.Errorf(
 			"Metadata ID mismatch: expected %s, got %s", id, mdID)
+	}
+
+	err = rmd.VerifyWriterMetadata(s.codec, s.crypto)
+	if err != nil {
+		return nil, err
 	}
 
 	return &rmd, nil
