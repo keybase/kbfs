@@ -5,6 +5,8 @@
 package libkbfs
 
 import (
+	"fmt"
+	"path/filepath"
 	"sync"
 
 	"github.com/keybase/client/go/logger"
@@ -13,7 +15,10 @@ import (
 )
 
 type tlfJournalBundle struct {
-	// TODO: Fill in with a block journal and an MD journal.
+	lock sync.RWMutex
+
+	// TODO: Fill in with a block journal.
+	mdJournal *mdJournal
 }
 
 // JournalServer is the server that handles write journals. It
@@ -65,12 +70,17 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 
 	j.log.Debug("Enabled journal for %s", tlfID)
 
-	j.tlfBundles[tlfID] = &tlfJournalBundle{}
+	tlfDir := filepath.Join(j.dir, tlfID.String())
+	mdJournal := makeMDJournal(j.config.Codec(), j.config.Crypto(), tlfDir)
+
+	j.tlfBundles[tlfID] = &tlfJournalBundle{
+		mdJournal: mdJournal,
+	}
 	return nil
 }
 
 // Flush flushes the write journal for the given TLF.
-func (j *JournalServer) Flush(tlfID TlfID) (err error) {
+func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	j.log.Debug("Flushing journal for %s", tlfID)
 	flushedBlockEntries := 0
 	flushedMDEntries := 0
@@ -83,13 +93,30 @@ func (j *JournalServer) Flush(tlfID TlfID) (err error) {
 				tlfID, err)
 		}
 	}()
-	_, ok := j.getBundle(tlfID)
+	bundle, ok := j.getBundle(tlfID)
 	if !ok {
 		j.log.Debug("Journal not enabled for %s", tlfID)
 		return nil
 	}
 
-	// TODO: Flush block and MD journal.
+	// TODO: Flush block journal.
+
+	for {
+		flushed, err := func() (bool, error) {
+			bundle.lock.Lock()
+			defer bundle.lock.Unlock()
+			return bundle.mdJournal.flushOne(
+				ctx, j.config.Crypto(), j.config.MDServer(),
+				j.log)
+		}()
+		if err != nil {
+			return err
+		}
+		if !flushed {
+			break
+		}
+		flushedMDEntries++
+	}
 
 	j.log.Debug("Flushed %d block entries and %d MD entries for %s",
 		flushedBlockEntries, flushedMDEntries, tlfID)
@@ -110,14 +137,22 @@ func (j *JournalServer) Disable(tlfID TlfID) (err error) {
 
 	j.lock.Lock()
 	defer j.lock.Unlock()
-	_, ok := j.tlfBundles[tlfID]
+	bundle, ok := j.tlfBundles[tlfID]
 	if !ok {
 		j.log.Debug("Journal already disabled for %s", tlfID)
 		return nil
 	}
 
-	// TODO: Either return an error if there are still entries in
-	// the journal, or flush them.
+	bundle.lock.RLock()
+	defer bundle.lock.RUnlock()
+	length, err := bundle.mdJournal.length()
+	if err != nil {
+		return err
+	}
+
+	if length != 0 {
+		return fmt.Errorf("Journal still has %d entries", length)
+	}
 
 	j.log.Debug("Disabled journal for %s", tlfID)
 
