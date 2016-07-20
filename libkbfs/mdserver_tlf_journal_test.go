@@ -257,8 +257,19 @@ func TestMDServerTlfJournalFlushBasic(t *testing.T) {
 	}
 
 	require.Equal(t, 10, len(mdserver.rmdses))
+	var prev *RootMetadataSigned
+	var prevID MdID
 	for i := MetadataRevision(1); i <= 10; i++ {
 		require.Equal(t, i, mdserver.rmdses[i-1].MD.Revision)
+		if prev != nil {
+			err := prev.MD.CheckValidSuccessorForServer(
+				prevID, &mdserver.rmdses[i-1].MD)
+			require.NoError(t, err, "i=%d", i)
+		}
+		prev = mdserver.rmdses[i-1]
+		var err error
+		prevID, err = crypto.MakeMdID(&prev.MD)
+		require.NoError(t, err)
 	}
 
 	require.Equal(t, 0, getTlfJournalLength(t, s))
@@ -349,8 +360,19 @@ func TestMDServerTlfJournalFlushConflict(t *testing.T) {
 	}
 
 	require.Equal(t, 10, len(mdserver.rmdses))
+	var prev *RootMetadataSigned
+	var prevID MdID
 	for i := MetadataRevision(1); i <= 10; i++ {
 		require.Equal(t, i, mdserver.rmdses[i-1].MD.Revision)
+		if prev != nil {
+			err := prev.MD.CheckValidSuccessorForServer(
+				prevID, &mdserver.rmdses[i-1].MD)
+			require.NoError(t, err, "i=%d", i)
+		}
+		prev = mdserver.rmdses[i-1]
+		var err error
+		prevID, err = crypto.MakeMdID(&prev.MD)
+		require.NoError(t, err)
 	}
 
 	require.Equal(t, 0, getTlfJournalLength(t, s))
