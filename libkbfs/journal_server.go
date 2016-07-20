@@ -230,6 +230,8 @@ func (j journalMDOps) GetForHandle(
 	}
 
 	if rmd == (ImmutableRootMetadata{}) {
+		// If server doesn't know of an RMD, look in the
+		// journal.
 		bundle, ok := j.jServer.getBundle(tlfID)
 		if !ok {
 			return tlfID, ImmutableRootMetadata{}, nil
@@ -241,6 +243,10 @@ func (j journalMDOps) GetForHandle(
 		headID, head, err := bundle.mdJournal.getHead()
 		if err != nil {
 			return TlfID{}, ImmutableRootMetadata{}, err
+		}
+
+		if head.MergedStatus() != mStatus {
+			return tlfID, ImmutableRootMetadata{}, nil
 		}
 
 		rmd := RootMetadata{
@@ -256,6 +262,9 @@ func (j journalMDOps) GetForHandle(
 
 		return TlfID{}, MakeImmutableRootMetadata(&rmd, headID), nil
 	}
+
+	// If server does know of an RMD, let the journal know (if
+	// it's empty).
 
 	bundle, ok := j.jServer.getBundle(rmd.ID)
 	if !ok {
@@ -279,11 +288,11 @@ func (j journalMDOps) GetForHandle(
 		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
-	// Don't override any existing unmerged head.
-	if head != nil && head.BID != NullBranchID {
+	// Don't override an existing unmerged head with a merged one.
+	if head != nil && head.BID != NullBranchID && rmd.BID == NullBranchID {
 		return tlfID, rmd, nil
 	}
-	p
+
 	// TODO: Make a deep copy?
 	err = bundle.mdJournal.setHead(rmd.mdID, &rmd.BareRootMetadata)
 	if err != nil {
