@@ -26,7 +26,7 @@ func (g singleEncryptionKeyGetter) GetTLFCryptKeyForEncryption(
 }
 
 func getTlfJournalLength(t *testing.T, s *mdJournal) int {
-	len, err := s.journalLength()
+	len, err := s.length()
 	require.NoError(t, err)
 	return int(len)
 }

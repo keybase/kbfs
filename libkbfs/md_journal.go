@@ -289,8 +289,8 @@ func (s *mdJournal) pushEarliestToServer(
 
 // All functions below are public functions.
 
-func (s *mdJournal) journalLength() (uint64, error) {
-	return s.j.journalLength()
+func (s *mdJournal) length() (uint64, error) {
+	return s.j.length()
 }
 
 func (s *mdJournal) get(currentUID keybase1.UID) (*BareRootMetadata, error) {

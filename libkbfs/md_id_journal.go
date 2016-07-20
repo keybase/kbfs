@@ -100,8 +100,8 @@ func (j mdIDJournal) readMdID(r MetadataRevision) (MdID, error) {
 
 // All functions below are public functions.
 
-func (j mdIDJournal) journalLength() (uint64, error) {
-	return j.j.journalLength()
+func (j mdIDJournal) length() (uint64, error) {
+	return j.j.length()
 }
 
 func (j mdIDJournal) getEarliest() (MdID, error) {

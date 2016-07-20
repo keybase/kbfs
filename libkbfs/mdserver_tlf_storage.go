@@ -274,7 +274,7 @@ func (s *mdServerTlfStorage) journalLength(bid BranchID) (uint64, error) {
 		return 0, nil
 	}
 
-	return j.journalLength()
+	return j.length()
 }
 
 func (s *mdServerTlfStorage) getForTLF(

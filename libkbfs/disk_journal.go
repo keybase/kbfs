@@ -236,7 +236,7 @@ func (j diskJournal) appendJournalEntry(
 	return j.writeLatestOrdinal(next)
 }
 
-func (j diskJournal) journalLength() (uint64, error) {
+func (j diskJournal) length() (uint64, error) {
 	first, err := j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
 		return 0, nil
