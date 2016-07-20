@@ -292,7 +292,7 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 		}
 	}
 	// Make sure the signed-over branch ID matches
-	if bid != rmds.MD.BID {
+	if bid != NullBranchID && bid != rmds.MD.BID {
 		return ImmutableRootMetadata{}, MDMismatchError{
 			id.String(),
 			fmt.Errorf("MD contained unexpected branch id %s, expected %s, "+
