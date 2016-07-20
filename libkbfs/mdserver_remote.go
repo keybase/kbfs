@@ -256,8 +256,8 @@ func (md *MDServerRemote) resetPingTicker(intervalSeconds int) {
 }
 
 // OnConnectError implements the ConnectionHandler interface.
-func (md *MDServerRemote) OnConnectError(err error, wait time.Duration) {
-	md.log.Warning("MDServerRemote: connection error: %q; retrying in %s",
+func (md *MDServerRemote) OnConnectError(ctx context.Context, err error, wait time.Duration) {
+	md.log.CWarningf(ctx, "MDServerRemote: connection error: %q; retrying in %s",
 		err, wait)
 	// TODO: it might make sense to show something to the user if this is
 	// due to authentication, for example.
@@ -271,8 +271,8 @@ func (md *MDServerRemote) OnConnectError(err error, wait time.Duration) {
 }
 
 // OnDoCommandError implements the ConnectionHandler interface.
-func (md *MDServerRemote) OnDoCommandError(err error, wait time.Duration) {
-	md.log.Warning("MDServerRemote: DoCommand error: %q; retrying in %s",
+func (md *MDServerRemote) OnDoCommandError(ctx context.Context, err error, wait time.Duration) {
+	md.log.CWarningf(ctx, "MDServerRemote: DoCommand error: %q; retrying in %s",
 		err, wait)
 	md.config.KBFSOps().PushConnectionStatusChange(MDServiceName, err)
 }
@@ -280,7 +280,7 @@ func (md *MDServerRemote) OnDoCommandError(err error, wait time.Duration) {
 // OnDisconnected implements the ConnectionHandler interface.
 func (md *MDServerRemote) OnDisconnected(ctx context.Context,
 	status rpc.DisconnectStatus) {
-	md.log.Warning("MDServerRemote is disconnected: %v", status)
+	md.log.CWarningf(ctx, "MDServerRemote is disconnected: %v", status)
 	md.config.Reporter().Notify(ctx,
 		connectionNotification(connectionStatusDisconnected))
 	md.cancelObservers()
@@ -297,13 +297,13 @@ func (md *MDServerRemote) OnDisconnected(ctx context.Context,
 }
 
 // ShouldRetry implements the ConnectionHandler interface.
-func (md *MDServerRemote) ShouldRetry(name string, err error) bool {
+func (md *MDServerRemote) ShouldRetry(_ context.Context, name string, err error) bool {
 	_, shouldThrottle := err.(MDServerErrorThrottle)
 	return shouldThrottle
 }
 
 // ShouldRetryOnConnect implements the ConnectionHandler interface.
-func (md *MDServerRemote) ShouldRetryOnConnect(err error) bool {
+func (md *MDServerRemote) ShouldRetryOnConnect(_ context.Context, err error) bool {
 	_, inputCanceled := err.(libkb.InputCanceledError)
 	return !inputCanceled
 }

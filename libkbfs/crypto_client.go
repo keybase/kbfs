@@ -66,15 +66,15 @@ func (c *CryptoClient) OnConnect(ctx context.Context, conn *rpc.Connection,
 }
 
 // OnConnectError implements the ConnectionHandler interface.
-func (c *CryptoClient) OnConnectError(err error, wait time.Duration) {
-	c.log.Warning("CryptoClient: connection error: %q; retrying in %s",
+func (c *CryptoClient) OnConnectError(ctx context.Context, err error, wait time.Duration) {
+	c.log.CWarningf(ctx, "CryptoClient: connection error: %q; retrying in %s",
 		err, wait)
 	c.config.KBFSOps().PushConnectionStatusChange(KeybaseServiceName, err)
 }
 
 // OnDoCommandError implements the ConnectionHandler interface.
-func (c *CryptoClient) OnDoCommandError(err error, wait time.Duration) {
-	c.log.Warning("CryptoClient: docommand error: %q; retrying in %s",
+func (c *CryptoClient) OnDoCommandError(ctx context.Context, err error, wait time.Duration) {
+	c.log.CWarningf(ctx, "CryptoClient: docommand error: %q; retrying in %s",
 		err, wait)
 	c.config.KBFSOps().PushConnectionStatusChange(KeybaseServiceName, err)
 }
@@ -89,12 +89,12 @@ func (c *CryptoClient) OnDisconnected(_ context.Context,
 }
 
 // ShouldRetry implements the ConnectionHandler interface.
-func (c *CryptoClient) ShouldRetry(rpcName string, err error) bool {
+func (c *CryptoClient) ShouldRetry(_ context.Context, rpcName string, err error) bool {
 	return false
 }
 
 // ShouldRetryOnConnect implements the ConnectionHandler interface.
-func (c *CryptoClient) ShouldRetryOnConnect(err error) bool {
+func (c *CryptoClient) ShouldRetryOnConnect(_ context.Context, err error) bool {
 	_, inputCanceled := err.(libkb.InputCanceledError)
 	return !inputCanceled
 }

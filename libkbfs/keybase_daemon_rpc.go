@@ -482,14 +482,14 @@ func (k *KeybaseDaemonRPC) OnConnect(ctx context.Context,
 }
 
 // OnConnectError implements the ConnectionHandler interface.
-func (k *KeybaseDaemonRPC) OnConnectError(err error, wait time.Duration) {
-	k.log.Warning("KeybaseDaemonRPC: connection error: %q; retrying in %s",
+func (k *KeybaseDaemonRPC) OnConnectError(ctx context.Context, err error, wait time.Duration) {
+	k.log.CWarningf(ctx, "KeybaseDaemonRPC: connection error: %q; retrying in %s",
 		err, wait)
 }
 
 // OnDoCommandError implements the ConnectionHandler interface.
-func (k *KeybaseDaemonRPC) OnDoCommandError(err error, wait time.Duration) {
-	k.log.Warning("KeybaseDaemonRPC: docommand error: %q; retrying in %s",
+func (k *KeybaseDaemonRPC) OnDoCommandError(ctx context.Context, err error, wait time.Duration) {
+	k.log.CWarningf(ctx, "KeybaseDaemonRPC: docommand error: %q; retrying in %s",
 		err, wait)
 }
 
@@ -504,12 +504,12 @@ func (k *KeybaseDaemonRPC) OnDisconnected(_ context.Context,
 }
 
 // ShouldRetry implements the ConnectionHandler interface.
-func (k *KeybaseDaemonRPC) ShouldRetry(rpcName string, err error) bool {
+func (k *KeybaseDaemonRPC) ShouldRetry(_ context.Context, rpcName string, err error) bool {
 	return false
 }
 
 // ShouldRetryOnConnect implements the ConnectionHandler interface.
-func (k *KeybaseDaemonRPC) ShouldRetryOnConnect(err error) bool {
+func (k *KeybaseDaemonRPC) ShouldRetryOnConnect(_ context.Context, err error) bool {
 	_, inputCanceled := err.(libkb.InputCanceledError)
 	return !inputCanceled
 }

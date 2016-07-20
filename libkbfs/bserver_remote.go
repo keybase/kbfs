@@ -129,8 +129,8 @@ func (b *BlockServerRemote) RefreshAuthToken(ctx context.Context) {
 }
 
 // OnConnectError implements the ConnectionHandler interface.
-func (b *BlockServerRemote) OnConnectError(err error, wait time.Duration) {
-	b.log.Warning("connection error: %v; retrying in %s",
+func (b *BlockServerRemote) OnConnectError(ctx context.Context, err error, wait time.Duration) {
+	b.deferLog.CWarningf(ctx, "connection error: %v; retrying in %s",
 		err, wait)
 	if b.authToken != nil {
 		b.authToken.Shutdown()
@@ -140,8 +140,8 @@ func (b *BlockServerRemote) OnConnectError(err error, wait time.Duration) {
 }
 
 // OnDoCommandError implements the ConnectionHandler interface.
-func (b *BlockServerRemote) OnDoCommandError(err error, wait time.Duration) {
-	b.log.Warning("DoCommand error: %v; retrying in %s",
+func (b *BlockServerRemote) OnDoCommandError(ctx context.Context, err error, wait time.Duration) {
+	b.deferLog.CWarningf(ctx, "DoCommand error: %v; retrying in %s",
 		err, wait)
 }
 
@@ -157,7 +157,7 @@ func (b *BlockServerRemote) OnDisconnected(ctx context.Context,
 }
 
 // ShouldRetry implements the ConnectionHandler interface.
-func (b *BlockServerRemote) ShouldRetry(rpcName string, err error) bool {
+func (b *BlockServerRemote) ShouldRetry(_ context.Context, rpcName string, err error) bool {
 	//do not let connection.go's DoCommand retry any batch rpcs automatically
 	//because i will manually retry them without successfully completed references
 	switch rpcName {
@@ -178,7 +178,7 @@ func (b *BlockServerRemote) ShouldRetry(rpcName string, err error) bool {
 }
 
 // ShouldRetryOnConnect implements the ConnectionHandler interface.
-func (b *BlockServerRemote) ShouldRetryOnConnect(err error) bool {
+func (b *BlockServerRemote) ShouldRetryOnConnect(_ context.Context, err error) bool {
 	_, inputCanceled := err.(libkb.InputCanceledError)
 	return !inputCanceled
 }
