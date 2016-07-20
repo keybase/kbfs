@@ -354,12 +354,12 @@ func (s *mdServerTlfJournal) put(
 		return MdID{}, MDServerError{err}
 	}
 
-	id, err := s.crypto.MakeMdID(&rmd.BareRootMetadata)
+	id, err := s.crypto.MakeMdID(&brmd)
 	if err != nil {
 		return MdID{}, MDServerError{err}
 	}
 
-	err = s.j.append(rmd.Revision, id)
+	err = s.j.append(brmd.Revision, id)
 	if err != nil {
 		return MdID{}, MDServerError{err}
 	}
