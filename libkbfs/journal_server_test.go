@@ -137,7 +137,8 @@ func TestJournalMDOpsBasics(t *testing.T) {
 
 	head, err = oldMDOps.GetUnmergedForTLF(ctx, id, NullBranchID)
 	require.NoError(t, err)
-	require.Equal(t, ImmutableRootMetadata{}, head)
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(10), head.Revision)
 
 	// (4) push some new unmerged metadata blocks linking to the
 	//     middle merged block.
@@ -157,6 +158,11 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, head)
 	require.Equal(t, MetadataRevision(40), head.Revision)
+
+	head, err = oldMDOps.GetUnmergedForTLF(ctx, id, bid)
+	require.NoError(t, err)
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(10), head.Revision)
 
 	// (6a) try to get unmerged range
 	rmdses, err := mdOps.GetUnmergedRange(ctx, id, bid, 1, 100)
