@@ -485,3 +485,13 @@ func (s *mdJournal) flushOne(
 
 	return true, nil
 }
+
+func (s *mdJournal) clear() error {
+	err := s.j.clear()
+	if err != nil {
+		return err
+	}
+	s.headMdID = MdID{}
+	s.head = nil
+	return nil
+}

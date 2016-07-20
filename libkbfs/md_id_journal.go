@@ -178,3 +178,7 @@ func (j mdIDJournal) append(r MetadataRevision, mdID MdID) error {
 func (j mdIDJournal) removeEarliest() (bool, error) {
 	return j.j.removeEarliest()
 }
+
+func (j mdIDJournal) clear() error {
+	return j.j.clearOrdinals()
+}
