@@ -38,6 +38,7 @@ const (
 	StallableMDAfterPut              StallableMDOp = "AfterPut"
 	StallableMDPutUnmerged           StallableMDOp = "PutUnmerged"
 	StallableMDAfterPutUnmerged      StallableMDOp = "AfterPutUnmerged"
+	StallableMDPruneBranch           StallableMDOp = "PruneBranch"
 )
 
 const stallKeyStallEverything = ""
@@ -481,8 +482,6 @@ func (m *stallingMDOps) GetUnmergedRange(ctx context.Context, id TlfID,
 func (m *stallingMDOps) Put(ctx context.Context, md *RootMetadata) (
 	mdID MdID, err error) {
 	m.maybeStall(ctx, StallableMDPut)
-	// If the Put was canceled, return the cancel error.  This
-	// emulates the Put being canceled while the RPC is outstanding.
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		mdID, err = m.delegate.Put(ctx, md)
 		m.maybeStall(ctx, StallableMDAfterPut)
@@ -494,13 +493,18 @@ func (m *stallingMDOps) Put(ctx context.Context, md *RootMetadata) (
 func (m *stallingMDOps) PutUnmerged(ctx context.Context, md *RootMetadata) (
 	mdID MdID, err error) {
 	m.maybeStall(ctx, StallableMDPutUnmerged)
-	// If the PutUnmerged was canceled, return the cancel error.  This
-	// emulates the PutUnmerged being canceled while the RPC is
-	// outstanding.
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		mdID, err = m.delegate.PutUnmerged(ctx, md)
 		m.maybeStall(ctx, StallableMDAfterPutUnmerged)
 		return err
 	})
 	return mdID, err
+}
+
+func (m *stallingMDOps) PruneBranch(
+	ctx context.Context, id TlfID, bid BranchID) error {
+	m.maybeStall(ctx, StallableMDPruneBranch)
+	return runWithContextCheck(ctx, func(ctx context.Context) error {
+		return m.delegate.PruneBranch(ctx, id, bid)
+	})
 }

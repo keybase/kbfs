@@ -493,6 +493,12 @@ func (md *MDOpsStandard) PutUnmerged(
 	return md.put(ctx, rmd)
 }
 
+// PruneBranch implements the MDOps interface for MDOpsStandard.
+func (md *MDOpsStandard) PruneBranch(
+	ctx context.Context, id TlfID, bid BranchID) error {
+	return md.config.MDServer().PruneBranch(ctx, id, bid)
+}
+
 // GetLatestHandleForTLF implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetLatestHandleForTLF(ctx context.Context, id TlfID) (
 	BareTlfHandle, error) {

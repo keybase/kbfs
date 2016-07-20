@@ -900,6 +900,38 @@ func (_mr *_MockKBPKIRecorder) Notify(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Notify", arg0, arg1)
 }
 
+// Mock of encryptionKeyGetter interface
+type MockencryptionKeyGetter struct {
+	ctrl     *gomock.Controller
+	recorder *_MockencryptionKeyGetterRecorder
+}
+
+// Recorder for MockencryptionKeyGetter (not exported)
+type _MockencryptionKeyGetterRecorder struct {
+	mock *MockencryptionKeyGetter
+}
+
+func NewMockencryptionKeyGetter(ctrl *gomock.Controller) *MockencryptionKeyGetter {
+	mock := &MockencryptionKeyGetter{ctrl: ctrl}
+	mock.recorder = &_MockencryptionKeyGetterRecorder{mock}
+	return mock
+}
+
+func (_m *MockencryptionKeyGetter) EXPECT() *_MockencryptionKeyGetterRecorder {
+	return _m.recorder
+}
+
+func (_m *MockencryptionKeyGetter) GetTLFCryptKeyForEncryption(ctx context.Context, md ReadOnlyRootMetadata) (TLFCryptKey, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyForEncryption", ctx, md)
+	ret0, _ := ret[0].(TLFCryptKey)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockencryptionKeyGetterRecorder) GetTLFCryptKeyForEncryption(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForEncryption", arg0, arg1)
+}
+
 // Mock of KeyManager interface
 type MockKeyManager struct {
 	ctrl     *gomock.Controller
@@ -1599,6 +1631,38 @@ func (_mr *_MockcryptoPureRecorder) DecryptMerkleLeaf(arg0, arg1, arg2, arg3 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptMerkleLeaf", arg0, arg1, arg2, arg3)
 }
 
+// Mock of cryptoSigner interface
+type MockcryptoSigner struct {
+	ctrl     *gomock.Controller
+	recorder *_MockcryptoSignerRecorder
+}
+
+// Recorder for MockcryptoSigner (not exported)
+type _MockcryptoSignerRecorder struct {
+	mock *MockcryptoSigner
+}
+
+func NewMockcryptoSigner(ctrl *gomock.Controller) *MockcryptoSigner {
+	mock := &MockcryptoSigner{ctrl: ctrl}
+	mock.recorder = &_MockcryptoSignerRecorder{mock}
+	return mock
+}
+
+func (_m *MockcryptoSigner) EXPECT() *_MockcryptoSignerRecorder {
+	return _m.recorder
+}
+
+func (_m *MockcryptoSigner) Sign(ctx context.Context, msg []byte) (SignatureInfo, error) {
+	ret := _m.ctrl.Call(_m, "Sign", ctx, msg)
+	ret0, _ := ret[0].(SignatureInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockcryptoSignerRecorder) Sign(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Sign", arg0, arg1)
+}
+
 // Mock of Crypto interface
 type MockCrypto struct {
 	ctrl     *gomock.Controller
@@ -2104,6 +2168,16 @@ func (_m *MockMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (MdID, 
 
 func (_mr *_MockMDOpsRecorder) PutUnmerged(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PutUnmerged", arg0, arg1)
+}
+
+func (_m *MockMDOps) PruneBranch(ctx context.Context, id TlfID, bid BranchID) error {
+	ret := _m.ctrl.Call(_m, "PruneBranch", ctx, id, bid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockMDOpsRecorder) PruneBranch(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "PruneBranch", arg0, arg1, arg2)
 }
 
 func (_m *MockMDOps) GetLatestHandleForTLF(ctx context.Context, id TlfID) (BareTlfHandle, error) {

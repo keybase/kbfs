@@ -3752,7 +3752,7 @@ func (fbo *folderBranchOps) unstageLocked(ctx context.Context,
 
 	// let the server know we no longer have need
 	if !wasMasterBranch {
-		err = fbo.config.MDServer().PruneBranch(ctx, fbo.id(), bid)
+		err = fbo.config.MDOps().PruneBranch(ctx, fbo.id(), bid)
 		if err != nil {
 			return err
 		}
@@ -4319,7 +4319,7 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 		return err
 	}
 
-	err = fbo.config.MDServer().PruneBranch(ctx, fbo.id(), fbo.bid)
+	err = fbo.config.MDOps().PruneBranch(ctx, fbo.id(), fbo.bid)
 	if err != nil {
 		return err
 	}
