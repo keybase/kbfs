@@ -81,8 +81,27 @@ func TestJournalMDOpsBasics(t *testing.T) {
 		prevRoot = mdID
 	}
 
+	head, err := mdOps.GetForTLF(ctx, id)
+	require.NoError(t, err)
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(7), head.Revision)
+
+	head, err = oldMDOps.GetForTLF(ctx, id)
+	require.NoError(t, err)
+	require.Equal(t, ImmutableRootMetadata{}, head)
+
 	err = jServer.Flush(ctx, id)
 	require.NoError(t, err)
+
+	head, err = mdOps.GetForTLF(ctx, id)
+	require.NoError(t, err)
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(7), head.Revision)
+
+	head, err = oldMDOps.GetForTLF(ctx, id)
+	require.NoError(t, err)
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(7), head.Revision)
 
 	// (3) trigger a conflict
 	rmd.Revision = MetadataRevision(8)
@@ -101,6 +120,25 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	err = jServer.Flush(ctx, id)
 	require.NoError(t, err)
 
+	head, err = mdOps.GetForTLF(ctx, id)
+	require.NoError(t, err)
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(8), head.Revision)
+
+	head, err = oldMDOps.GetForTLF(ctx, id)
+	require.NoError(t, err)
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(8), head.Revision)
+
+	head, err = mdOps.GetUnmergedForTLF(ctx, id, NullBranchID)
+	require.NoError(t, err)
+	require.NotNil(t, head)
+	require.Equal(t, MetadataRevision(10), head.Revision)
+
+	head, err = oldMDOps.GetUnmergedForTLF(ctx, id, NullBranchID)
+	require.NoError(t, err)
+	require.Equal(t, ImmutableRootMetadata{}, head)
+
 	// (4) push some new unmerged metadata blocks linking to the
 	//     middle merged block.
 	var bid BranchID
@@ -115,7 +153,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	}
 
 	// (5) check for proper unmerged head
-	head, err := mdOps.GetUnmergedForTLF(ctx, id, bid)
+	head, err = mdOps.GetUnmergedForTLF(ctx, id, bid)
 	require.NoError(t, err)
 	require.NotNil(t, head)
 	require.Equal(t, MetadataRevision(40), head.Revision)
