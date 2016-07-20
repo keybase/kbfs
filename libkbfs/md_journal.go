@@ -163,15 +163,16 @@ func (s *mdJournal) getHead() (
 func (s *mdJournal) checkGetParams(currentUID keybase1.UID) error {
 	head, err := s.getHead()
 	if err != nil {
-		return MDServerError{err}
+		return err
 	}
 
 	if head != nil {
 		ok, err := isReader(currentUID, head)
 		if err != nil {
-			return MDServerError{err}
+			return err
 		}
 		if !ok {
+			// TODO: Better error?
 			return MDServerErrorUnauthorized{}
 		}
 	}
@@ -301,7 +302,7 @@ func (s *mdJournal) get(currentUID keybase1.UID) (*BareRootMetadata, error) {
 
 	rmd, err := s.getHead()
 	if err != nil {
-		return nil, MDServerError{err}
+		return nil, err
 	}
 	return rmd, nil
 }
@@ -323,7 +324,7 @@ func (s *mdJournal) getRange(
 		expectedRevision := realStart + MetadataRevision(i)
 		rmd, err := s.getMD(mdID)
 		if err != nil {
-			return nil, MDServerError{err}
+			return nil, err
 		}
 		if expectedRevision != rmd.Revision {
 			panic(fmt.Errorf("expected revision %v, got %v",
@@ -357,23 +358,24 @@ func (s *mdJournal) put(
 	}
 
 	if (mStatus == Merged) != (bid == NullBranchID) {
-		return MdID{}, MDServerErrorBadRequest{Reason: "Invalid branch ID"}
+		return MdID{}, errors.New("Invalid branch ID")
 	}
 
 	// Check permissions
 
 	head, err := s.getHead()
 	if err != nil {
-		return MdID{}, MDServerError{err}
+		return MdID{}, err
 	}
 
 	// TODO: Figure out nil case.
 	if head != nil {
 		ok, err := isWriterOrValidRekey(s.codec, currentUID, head, &rmd.BareRootMetadata)
 		if err != nil {
-			return MdID{}, MDServerError{err}
+			return MdID{}, err
 		}
 		if !ok {
+			// TODO: Better error?
 			return MdID{}, MDServerErrorUnauthorized{}
 		}
 	}
@@ -383,9 +385,7 @@ func (s *mdJournal) put(
 			return MdID{}, MDJournalConflictError{}
 		} else if head != nil && head.MergedStatus() != Merged {
 			// Conflict resolution shouldn't happen.
-			return MdID{}, MDServerError{
-				Err: errors.New("Shouldn't be doing conflict res"),
-			}
+			return MdID{}, errors.New("Shouldn't be doing conflict res")
 		}
 	} else if s.justBranchedBranchID != NullBranchID {
 		// TODO: Clear only on success.
@@ -397,7 +397,7 @@ func (s *mdJournal) put(
 	if head != nil {
 		headID, err := s.crypto.MakeMdID(head)
 		if err != nil {
-			return MdID{}, MDServerError{err}
+			return MdID{}, err
 		}
 		err = head.CheckValidSuccessorForServer(
 			headID, &rmd.BareRootMetadata)
@@ -411,22 +411,22 @@ func (s *mdJournal) put(
 		ctx, s.codec, s.crypto, signer, ekg,
 		currentUID, rmd.ReadOnly(), &brmd)
 	if err != nil {
-		return MdID{}, MDServerError{err}
+		return MdID{}, err
 	}
 
 	err = s.putMD(&brmd)
 	if err != nil {
-		return MdID{}, MDServerError{err}
+		return MdID{}, err
 	}
 
 	id, err := s.crypto.MakeMdID(&brmd)
 	if err != nil {
-		return MdID{}, MDServerError{err}
+		return MdID{}, err
 	}
 
 	err = s.j.append(brmd.Revision, id)
 	if err != nil {
-		return MdID{}, MDServerError{err}
+		return MdID{}, err
 	}
 
 	return id, nil
