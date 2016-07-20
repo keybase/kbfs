@@ -223,8 +223,8 @@ func getUnmergedMDUpdates(ctx context.Context, config Config, id TlfID,
 
 func encryptMDPrivateData(
 	ctx context.Context, codec Codec, crypto cryptoPure,
-	keyManager KeyManager, me keybase1.UID, rmd ReadOnlyRootMetadata,
-	brmd *BareRootMetadata) error {
+	ekg encryptionKeyGetter, me keybase1.UID,
+	rmd ReadOnlyRootMetadata, brmd *BareRootMetadata) error {
 	err := rmd.data.checkValid()
 	if err != nil {
 		return err
@@ -246,8 +246,7 @@ func encryptMDPrivateData(
 			brmd.SerializedPrivateMetadata = encodedPrivateMetadata
 		} else if !brmd.IsWriterMetadataCopiedSet() {
 			// Encrypt and encode the private metadata
-			k, err := keyManager.GetTLFCryptKeyForEncryption(
-				ctx, rmd)
+			k, err := ekg.GetTLFCryptKeyForEncryption(ctx, rmd)
 			if err != nil {
 				return err
 			}

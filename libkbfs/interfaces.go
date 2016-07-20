@@ -413,14 +413,18 @@ type KBPKI interface {
 	Notify(ctx context.Context, notification *keybase1.FSNotification) error
 }
 
-// KeyManager fetches and constructs the keys needed for KBFS file
-// operations.
-type KeyManager interface {
+type encryptionKeyGetter interface {
 	// GetTLFCryptKeyForEncryption gets the crypt key to use for
 	// encryption (i.e., with the latest key generation) for the
 	// TLF with the given metadata.
 	GetTLFCryptKeyForEncryption(ctx context.Context, md ReadOnlyRootMetadata) (
 		TLFCryptKey, error)
+}
+
+// KeyManager fetches and constructs the keys needed for KBFS file
+// operations.
+type KeyManager interface {
+	encryptionKeyGetter
 
 	// GetTLFCryptKeyForMDDecryption gets the crypt key to use for the
 	// TLF with the given metadata to decrypt the private portion of
