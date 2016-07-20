@@ -270,10 +270,8 @@ func encryptMDPrivateData(
 }
 
 func signMD(
-	ctx context.Context, config Config, rmds *RootMetadataSigned) error {
-	codec := config.Codec()
-	crypto := config.Crypto()
-
+	ctx context.Context, codec Codec, crypto Crypto,
+	rmds *RootMetadataSigned) error {
 	if rmds.MD.ID.IsPublic() || !rmds.MD.IsWriterMetadataCopiedSet() {
 		// Sign the writer metadata
 		buf, err := codec.Encode(rmds.MD.WriterMetadata)

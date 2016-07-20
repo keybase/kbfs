@@ -465,7 +465,7 @@ func (s *mdServerTlfJournal) putEarliest(
 
 	var rmds RootMetadataSigned
 	rmds.MD = *rmd
-	err = signMD(ctx, s.config, &rmds)
+	err = signMD(ctx, s.codec, s.config.Crypto(), &rmds)
 	if err != nil {
 		return err
 	}

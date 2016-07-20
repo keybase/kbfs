@@ -449,7 +449,7 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
-	err = signMD(ctx, md.config, &rmds)
+	err = signMD(ctx, md.config.Codec(), md.config.Crypto(), &rmds)
 	if err != nil {
 		return MdID{}, err
 	}
