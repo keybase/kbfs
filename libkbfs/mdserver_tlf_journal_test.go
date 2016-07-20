@@ -175,6 +175,26 @@ func TestMDServerTlfJournalBranchConversion(t *testing.T) {
 	require.Equal(t, 10, getTlfJournalLength(t, s))
 }
 
+type fakeSigner struct{}
+
+func (fakeSigner) Sign(ctx context.Context, msg []byte) (sigInfo SignatureInfo, err error) {
+	return SignatureInfo{
+		Version:      1,
+		Signature:    []byte{0x1},
+		VerifyingKey: VerifyingKey{},
+	}, nil
+}
+
+type shimMDServer struct {
+	MDServer
+	rmdses []*RootMetadataSigned
+}
+
+func (s *shimMDServer) Put(ctx context.Context, rmds *RootMetadataSigned) error {
+	s.rmdses = append(s.rmdses, rmds)
+	return nil
+}
+
 func TestMDServerTlfJournalFlushBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := makeTestCryptoCommon(t)
@@ -219,14 +239,21 @@ func TestMDServerTlfJournalFlushBasic(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	var realCrypto Crypto
-	var mdserver MDServer
+	var signer fakeSigner
+	var mdserver shimMDServer
 	log := logger.NewTestLogger(t)
 	for {
-		flushed, err := s.flushOne(ctx, realCrypto, mdserver, log)
+		flushed, err := s.flushOne(ctx, signer, &mdserver, log)
 		require.NoError(t, err)
 		if !flushed {
 			break
 		}
 	}
+
+	require.Equal(t, 10, len(mdserver.rmdses))
+	for i := MetadataRevision(1); i <= 10; i++ {
+		require.Equal(t, i, mdserver.rmdses[i-1].MD.Revision)
+	}
+
+	require.Equal(t, 0, getTlfJournalLength(t, s))
 }
