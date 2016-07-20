@@ -54,21 +54,24 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ImmutableRootMetadata{}, irmd)
 
+	var rmd RootMetadata
+	err = updateNewBareRootMetadata(&rmd.BareRootMetadata, id, bh)
+	require.NoError(t, err)
+	rmd.tlfHandle = h
+	rmd.Revision = MetadataRevision(1)
+	rekeyDone, _, err := config.KeyManager().Rekey(ctx, &rmd, false)
+	require.NoError(t, err)
+	require.True(t, rekeyDone)
+
+	mdID, err := mdOps.Put(ctx, &rmd)
+	require.NoError(t, err)
+	prevRoot := mdID
+
 	// (2) push some new metadata blocks
-	prevRoot := MdID{}
 	middleRoot := MdID{}
-	for i := MetadataRevision(1); i <= 10; i++ {
-		var rmd RootMetadata
-		err := updateNewBareRootMetadata(&rmd.BareRootMetadata, id, bh)
-		require.NoError(t, err)
-		rmd.tlfHandle = h
-		rmd.SerializedPrivateMetadata = make([]byte, 1)
-		rmd.SerializedPrivateMetadata[0] = 0x1
+	for i := MetadataRevision(2); i <= 10; i++ {
 		rmd.Revision = MetadataRevision(i)
-		FakeInitialRekey(&rmd.BareRootMetadata, bh)
-		if i > 1 {
-			rmd.PrevRoot = prevRoot
-		}
+		rmd.PrevRoot = prevRoot
 		mdID, err := mdOps.Put(ctx, &rmd)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
@@ -78,14 +81,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	}
 
 	// (3) trigger a conflict
-	var rmd RootMetadata
-	err = updateNewBareRootMetadata(&rmd.BareRootMetadata, id, bh)
-	require.NoError(t, err)
-	rmd.tlfHandle = h
 	rmd.Revision = MetadataRevision(10)
-	rmd.SerializedPrivateMetadata = make([]byte, 1)
-	rmd.SerializedPrivateMetadata[0] = 0x1
-	FakeInitialRekey(&rmd.BareRootMetadata, bh)
 	rmd.PrevRoot = prevRoot
 	_, err = mdOps.Put(ctx, &rmd)
 	require.IsType(t, MDServerErrorConflictRevision{}, err)
@@ -93,23 +89,14 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	// (4) push some new unmerged metadata blocks linking to the
 	//     middle merged block.
 	prevRoot = middleRoot
-	bid, err := config.Crypto().MakeRandomBranchID()
-	require.NoError(t, err)
+	var bid BranchID
 	for i := MetadataRevision(6); i < 41; i++ {
-		var rmd RootMetadata
-		err := updateNewBareRootMetadata(&rmd.BareRootMetadata, id, bh)
-		require.NoError(t, err)
-		rmd.tlfHandle = h
 		rmd.Revision = MetadataRevision(i)
-		rmd.SerializedPrivateMetadata = make([]byte, 1)
-		rmd.SerializedPrivateMetadata[0] = 0x1
 		rmd.PrevRoot = prevRoot
-		FakeInitialRekey(&rmd.BareRootMetadata, bh)
-		rmd.WFlags |= MetadataFlagUnmerged
-		rmd.BID = bid
-		mdID, err := mdOps.Put(ctx, &rmd)
+		mdID, err := mdOps.PutUnmerged(ctx, &rmd)
 		require.NoError(t, err)
 		prevRoot = mdID
+		bid = rmd.BID
 		require.NoError(t, err)
 	}
 
@@ -142,7 +129,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	// (8) verify head is pruned
 	head, err = mdOps.GetUnmergedForTLF(ctx, id, NullBranchID)
 	require.NoError(t, err)
-	require.Nil(t, head)
+	require.Equal(t, ImmutableRootMetadata{}, head)
 
 	// (9) verify revision history is pruned
 	rmdses, err = mdOps.GetUnmergedRange(ctx, id, NullBranchID, 1, 100)
