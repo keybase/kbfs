@@ -786,13 +786,9 @@ type MDOps interface {
 	// the logged-in user has read permission on the folder.  It
 	// creates the folder if one doesn't exist yet, and the logged-in
 	// user has permission to do so.
-	GetForHandle(ctx context.Context, handle *TlfHandle) (
+	GetForHandle(
+		ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (
 		TlfID, ImmutableRootMetadata, error)
-
-	// GetUnmergedForHandle is the same as the above but for unmerged
-	// metadata history.
-	GetUnmergedForHandle(ctx context.Context, handle *TlfHandle) (
-		ImmutableRootMetadata, error)
 
 	// GetForTLF returns the current metadata object
 	// corresponding to the given top-level folder, if the logged-in

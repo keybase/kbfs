@@ -28,7 +28,6 @@ const (
 	StallableBlockArchive StallableBlockOp = "Archive"
 
 	StallableMDGetForHandle          StallableMDOp = "GetForHandle"
-	StallableMDGetUnmergedForHandle  StallableMDOp = "GetUnmergedForHandle"
 	StallableMDGetForTLF             StallableMDOp = "GetForTLF"
 	StallableMDGetLatestHandleForTLF StallableMDOp = "GetLatestHandleForTLF"
 	StallableMDGetUnmergedForTLF     StallableMDOp = "GetUnmergedForTLF"
@@ -400,27 +399,17 @@ func (m *stallingMDOps) maybeStall(ctx context.Context, opName StallableMDOp) {
 		m.stallKey, m.staller)
 }
 
-func (m *stallingMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
+func (m *stallingMDOps) GetForHandle(
+	ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (
 	tlfID TlfID, md ImmutableRootMetadata, err error) {
 	m.maybeStall(ctx, StallableMDGetForHandle)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetForHandle error
 		tlfID, md, errGetForHandle =
-			m.delegate.GetForHandle(ctx, handle)
+			m.delegate.GetForHandle(ctx, handle, mStatus)
 		return errGetForHandle
 	})
 	return tlfID, md, err
-}
-
-func (m *stallingMDOps) GetUnmergedForHandle(ctx context.Context,
-	handle *TlfHandle) (md ImmutableRootMetadata, err error) {
-	m.maybeStall(ctx, StallableMDGetUnmergedForHandle)
-	err = runWithContextCheck(ctx, func(ctx context.Context) error {
-		var errGetUnmergedForHandle error
-		md, errGetUnmergedForHandle = m.delegate.GetUnmergedForHandle(ctx, handle)
-		return errGetUnmergedForHandle
-	})
-	return md, err
 }
 
 func (m *stallingMDOps) GetForTLF(ctx context.Context, id TlfID) (

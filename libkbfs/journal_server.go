@@ -221,9 +221,10 @@ type journalMDOps struct {
 
 var _ MDOps = journalMDOps{}
 
-func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
+func (j journalMDOps) GetForHandle(
+	ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (
 	TlfID, ImmutableRootMetadata, error) {
-	tlfID, rmd, err := j.MDOps.GetForHandle(ctx, handle)
+	tlfID, rmd, err := j.MDOps.GetForHandle(ctx, handle, mStatus)
 	if err != nil {
 		return TlfID{}, ImmutableRootMetadata{}, err
 	}
@@ -282,7 +283,7 @@ func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
 	if head != nil && head.BID != NullBranchID {
 		return tlfID, rmd, nil
 	}
-
+	p
 	// TODO: Make a deep copy?
 	err = bundle.mdJournal.setHead(rmd.mdID, &rmd.BareRootMetadata)
 	if err != nil {
@@ -290,49 +291,6 @@ func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
 	}
 
 	return tlfID, rmd, nil
-}
-
-func (j journalMDOps) GetUnmergedForHandle(
-	ctx context.Context, handle *TlfHandle) (
-	ImmutableRootMetadata, error) {
-	rmd, err := j.MDOps.GetUnmergedForHandle(ctx, handle)
-	if err != nil {
-		return ImmutableRootMetadata{}, err
-	}
-
-	if rmd != (ImmutableRootMetadata{}) {
-		bundle, ok := j.jServer.getBundle(rmd.ID)
-		if ok {
-			err := func() error {
-				bundle.lock.Lock()
-				defer bundle.lock.Unlock()
-
-				length, err := bundle.mdJournal.length()
-				if err != nil {
-					return err
-				}
-
-				if length != 0 {
-					return nil
-				}
-
-				// Override any existing
-				// (merged) head.
-				//
-				// TODO: Should probably make
-				// a deep copy.
-				bundle.mdJournal.setHead(
-					rmd.mdID, &rmd.BareRootMetadata)
-
-				return nil
-			}()
-			if err != nil {
-				return ImmutableRootMetadata{}, err
-			}
-		}
-	}
-
-	return rmd, nil
 }
 
 func (j journalMDOps) GetForTLF(

@@ -2081,27 +2081,16 @@ func (_m *MockMDOps) EXPECT() *_MockMDOpsRecorder {
 	return _m.recorder
 }
 
-func (_m *MockMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (TlfID, ImmutableRootMetadata, error) {
-	ret := _m.ctrl.Call(_m, "GetForHandle", ctx, handle)
+func (_m *MockMDOps) GetForHandle(ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (TlfID, ImmutableRootMetadata, error) {
+	ret := _m.ctrl.Call(_m, "GetForHandle", ctx, handle, mStatus)
 	ret0, _ := ret[0].(TlfID)
 	ret1, _ := ret[1].(ImmutableRootMetadata)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-func (_mr *_MockMDOpsRecorder) GetForHandle(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetForHandle", arg0, arg1)
-}
-
-func (_m *MockMDOps) GetUnmergedForHandle(ctx context.Context, handle *TlfHandle) (ImmutableRootMetadata, error) {
-	ret := _m.ctrl.Call(_m, "GetUnmergedForHandle", ctx, handle)
-	ret0, _ := ret[0].(ImmutableRootMetadata)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockMDOpsRecorder) GetUnmergedForHandle(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUnmergedForHandle", arg0, arg1)
+func (_mr *_MockMDOpsRecorder) GetForHandle(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetForHandle", arg0, arg1, arg2)
 }
 
 func (_m *MockMDOps) GetForTLF(ctx context.Context, id TlfID) (ImmutableRootMetadata, error) {

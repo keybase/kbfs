@@ -200,7 +200,8 @@ func (md *MDOpsStandard) processMetadata(
 	return MakeImmutableRootMetadata(&rmd, mdID), nil
 }
 
-func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
+// GetForHandle implements the MDOps interface for MDOpsStandard.
+func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle,
 	mStatus MergeStatus) (TlfID, ImmutableRootMetadata, error) {
 	mdserv := md.config.MDServer()
 	bh, err := handle.ToBareHandle()
@@ -277,19 +278,6 @@ func (md *MDOpsStandard) getForHandle(ctx context.Context, handle *TlfHandle,
 	}
 
 	return id, rmd, nil
-}
-
-// GetForHandle implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle) (
-	TlfID, ImmutableRootMetadata, error) {
-	return md.getForHandle(ctx, handle, Merged)
-}
-
-// GetUnmergedForHandle implements the MDOps interface for MDOpsStandard.
-func (md *MDOpsStandard) GetUnmergedForHandle(ctx context.Context, handle *TlfHandle) (
-	ImmutableRootMetadata, error) {
-	_, rmd, err := md.getForHandle(ctx, handle, Unmerged)
-	return rmd, err
 }
 
 func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
