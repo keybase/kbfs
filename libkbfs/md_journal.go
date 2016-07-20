@@ -183,7 +183,8 @@ func (s *mdJournal) checkGetParams(currentUID keybase1.UID) error {
 	return nil
 }
 
-func (s *mdJournal) convertToBranch(log logger.Logger) error {
+func (s *mdJournal) convertToBranch(
+	ctx context.Context, signer cryptoSigner, log logger.Logger) error {
 	_, head, err := s.getHead()
 	if err != nil {
 		return err
@@ -228,6 +229,18 @@ func (s *mdJournal) convertToBranch(log logger.Logger) error {
 		}
 		brmd.WFlags |= MetadataFlagUnmerged
 		brmd.BID = bid
+
+		// Re-sign the writer metadata
+		buf, err := s.codec.Encode(brmd.WriterMetadata)
+		if err != nil {
+			return err
+		}
+
+		sigInfo, err := signer.Sign(ctx, buf)
+		if err != nil {
+			return err
+		}
+		brmd.WriterMetadataSigInfo = sigInfo
 
 		log.Debug("Old prev root of rev=%s is %s", brmd.Revision, brmd.PrevRoot)
 
@@ -461,7 +474,7 @@ func (s *mdJournal) flushOne(
 	if isRevisionConflict(pushErr) && rmd.MergedStatus() == Merged {
 		log.Debug("Conflict detected %v", pushErr)
 
-		err := s.convertToBranch(log)
+		err := s.convertToBranch(ctx, signer, log)
 		if err != nil {
 			return false, err
 		}

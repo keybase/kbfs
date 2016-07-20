@@ -140,6 +140,8 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	}
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
+	ctx := context.Background()
+
 	prevRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
 		var md RootMetadata
@@ -152,13 +154,12 @@ func TestMDJournalBranchConversion(t *testing.T) {
 		if i > 1 {
 			md.PrevRoot = prevRoot
 		}
-		ctx := context.Background()
 		mdID, err := s.put(ctx, signer, ekg, uid, &md)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
 
-	err = s.convertToBranch(log)
+	err = s.convertToBranch(ctx, signer, log)
 	require.NoError(t, err)
 
 	rmds, err := s.getRange(uid, 1, 100)
