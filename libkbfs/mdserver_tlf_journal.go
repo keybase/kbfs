@@ -344,7 +344,8 @@ func (s *mdServerTlfJournal) put(
 
 	var brmd BareRootMetadata
 	err = encryptMDPrivateData(
-		ctx, s.config, currentUID, rmd.ReadOnly(), &brmd)
+		ctx, s.codec, s.crypto, s.config.KeyManager(),
+		currentUID, rmd.ReadOnly(), &brmd)
 	if err != nil {
 		return MDServerError{err}
 	}
