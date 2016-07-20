@@ -221,6 +221,8 @@ type journalMDOps struct {
 
 var _ MDOps = journalMDOps{}
 
+// TODO: Consult both, take latest (?)
+
 func (j journalMDOps) GetForHandle(
 	ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (
 	TlfID, ImmutableRootMetadata, error) {
@@ -307,7 +309,7 @@ func (j journalMDOps) GetForHandle(
 }
 
 func (j journalMDOps) getForTLF(
-	ctx context.Context, id TlfID, mStatus MergeStatus) (
+	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus) (
 	ImmutableRootMetadata, error) {
 	rmd, err := j.MDOps.GetForTLF(ctx, id)
 	if err != nil {
@@ -336,6 +338,11 @@ func (j journalMDOps) getForTLF(
 
 		if head.MergedStatus() != mStatus {
 			return ImmutableRootMetadata{}, nil
+		}
+
+		if mStatus == Unmerged && bid != NullBranchID && head.BID != bid {
+			return ImmutableRootMetadata{},
+				fmt.Errorf("Expected BID %s, got %s", bid, head.BID)
 		}
 
 		bareHandle, err := head.MakeBareTlfHandle()
@@ -402,13 +409,13 @@ func (j journalMDOps) getForTLF(
 
 func (j journalMDOps) GetForTLF(
 	ctx context.Context, id TlfID) (ImmutableRootMetadata, error) {
-	return j.getForTLF(ctx, id, Merged)
+	return j.getForTLF(ctx, id, NullBranchID, Merged)
 }
 
 func (j journalMDOps) GetUnmergedForTLF(
 	ctx context.Context, id TlfID, bid BranchID) (
 	ImmutableRootMetadata, error) {
-	return j.getForTLF(ctx, id, Unmerged)
+	return j.getForTLF(ctx, id, bid, Unmerged)
 }
 
 func (j journalMDOps) GetRange(
