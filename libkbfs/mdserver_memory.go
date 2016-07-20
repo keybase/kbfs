@@ -17,6 +17,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+// TODO: Verify sigs.
+
 // An mdHandleKey is an encoded BareTlfHandle.
 type mdHandleKey string
 
