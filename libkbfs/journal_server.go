@@ -228,45 +228,65 @@ func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle) (
 		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
-	if rmd != (ImmutableRootMetadata{}) {
-		bundle, ok := j.jServer.getBundle(rmd.ID)
-		if ok {
-			err := func() error {
-				bundle.lock.Lock()
-				defer bundle.lock.Unlock()
-
-				length, err := bundle.mdJournal.length()
-				if err != nil {
-					return err
-				}
-
-				if length != 0 {
-					return nil
-				}
-
-				_, head, err := bundle.mdJournal.getHead()
-				if err != nil {
-					return err
-				}
-
-				// Don't override any existing
-				// unmerged head.
-				//
-				if head != nil && head.BID != NullBranchID {
-					return nil
-				}
-
-				// TODO: Should probably make
-				// a deep copy.
-				bundle.mdJournal.setHead(
-					rmd.mdID, &rmd.BareRootMetadata)
-
-				return nil
-			}()
-			if err != nil {
-				return TlfID{}, ImmutableRootMetadata{}, err
-			}
+	if rmd == (ImmutableRootMetadata{}) {
+		bundle, ok := j.jServer.getBundle(tlfID)
+		if !ok {
+			return tlfID, ImmutableRootMetadata{}, nil
 		}
+
+		bundle.lock.RLock()
+		defer bundle.lock.RUnlock()
+
+		headID, head, err := bundle.mdJournal.getHead()
+		if err != nil {
+			return TlfID{}, ImmutableRootMetadata{}, err
+		}
+
+		rmd := RootMetadata{
+			BareRootMetadata: *head,
+			tlfHandle:        handle,
+		}
+
+		err = decryptMDPrivateData(
+			ctx, j.jServer.config, &rmd, rmd.ReadOnly())
+		if err != nil {
+			return TlfID{}, ImmutableRootMetadata{}, err
+		}
+
+		return TlfID{}, MakeImmutableRootMetadata(&rmd, headID), nil
+	}
+
+	bundle, ok := j.jServer.getBundle(rmd.ID)
+	if !ok {
+		return tlfID, rmd, nil
+	}
+
+	bundle.lock.Lock()
+	defer bundle.lock.Unlock()
+
+	length, err := bundle.mdJournal.length()
+	if err != nil {
+		return TlfID{}, ImmutableRootMetadata{}, err
+	}
+
+	if length != 0 {
+		return tlfID, rmd, nil
+	}
+
+	_, head, err := bundle.mdJournal.getHead()
+	if err != nil {
+		return TlfID{}, ImmutableRootMetadata{}, err
+	}
+
+	// Don't override any existing unmerged head.
+	if head != nil && head.BID != NullBranchID {
+		return tlfID, rmd, nil
+	}
+
+	// TODO: Make a deep copy?
+	err = bundle.mdJournal.setHead(rmd.mdID, &rmd.BareRootMetadata)
+	if err != nil {
+		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
 	return tlfID, rmd, nil
