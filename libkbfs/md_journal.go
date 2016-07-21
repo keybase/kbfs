@@ -325,11 +325,14 @@ func (s *mdJournal) get(currentUID keybase1.UID) (*BareRootMetadata, error) {
 	return rmd, nil
 }
 
+// ImmutableBareRootMetadata is a BRMD with an MdID.
 type ImmutableBareRootMetadata struct {
 	*BareRootMetadata
 	mdID MdID
 }
 
+// MakeImmutableBareRootMetadata makes a new ImmutableBareRootMetadata
+// from the given args.
 func MakeImmutableBareRootMetadata(
 	rmd *BareRootMetadata, mdID MdID) ImmutableBareRootMetadata {
 	if mdID == (MdID{}) {
