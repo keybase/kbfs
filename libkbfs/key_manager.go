@@ -41,7 +41,9 @@ func (km *KeyManagerStandard) GetTLFCryptKeyForEncryption(ctx context.Context,
 func (km *KeyManagerStandard) GetTLFCryptKeyForMDDecryption(
 	ctx context.Context, mdToDecrypt, mdWithKeys ReadOnlyRootMetadata) (
 	tlfCryptKey TLFCryptKey, err error) {
-	return km.getTLFCryptKey(ctx, mdWithKeys, mdToDecrypt.LatestKeyGeneration(),
+	return km.getTLFCryptKey(
+		ctx, mdWithKeys.GetTlfHandle(), &mdWithKeys.BareRootMetadata,
+		mdToDecrypt.LatestKeyGeneration(),
 		getTLFCryptKeyAnyDevice|getTLFCryptKeyDoCache)
 }
 
@@ -60,7 +62,8 @@ func (km *KeyManagerStandard) getTLFCryptKeyUsingCurrentDevice(
 	if cache {
 		flags = getTLFCryptKeyDoCache
 	}
-	return km.getTLFCryptKey(ctx, md, keyGen, flags)
+	return km.getTLFCryptKey(
+		ctx, md.GetTlfHandle(), &md.BareRootMetadata, keyGen, flags)
 }
 
 type getTLFCryptKeyFlags byte
@@ -72,8 +75,8 @@ const (
 )
 
 func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
-	md ReadOnlyRootMetadata, keyGen KeyGen, flags getTLFCryptKeyFlags) (
-	TLFCryptKey, error) {
+	h *TlfHandle, md *BareRootMetadata, keyGen KeyGen,
+	flags getTLFCryptKeyFlags) (TLFCryptKey, error) {
 
 	if md.ID.IsPublic() {
 		return PublicTLFCryptKey, nil
@@ -109,7 +112,6 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 	}
 
 	localMakeRekeyReadError := func() error {
-		h := md.GetTlfHandle()
 		resolvedHandle, err := h.ResolveAgain(ctx, km.config.KBPKI())
 		if err != nil {
 			// Ignore error and pretend h is already fully
@@ -596,7 +598,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			if promptPaper {
 				flags |= getTLFCryptKeyPromptPaper
 			}
-			currTlfCryptKey, err := km.getTLFCryptKey(ctx, md.ReadOnly(), keyGen, flags)
+			currTlfCryptKey, err := km.getTLFCryptKey(ctx, md.GetTlfHandle(), &md.BareRootMetadata, keyGen, flags)
 			if err != nil {
 				return false, nil, err
 			}

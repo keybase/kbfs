@@ -579,13 +579,16 @@ func TestMakeRekeyReadError(t *testing.T) {
 	u, uid, err := config.KBPKI().Resolve(context.Background(), "bob")
 	require.NoError(t, err)
 
-	err = rmd.makeRekeyReadError(h, FirstValidKeyGen, uid, u)
+	bh := h.ToBareHandleOrBust()
+	tlfName := h.GetCanonicalName()
+
+	err = rmd.makeRekeyReadError(bh, tlfName, FirstValidKeyGen, uid, u)
 	require.Equal(t, NewReadAccessError(h, u), err)
 
-	err = rmd.makeRekeyReadError(h, FirstValidKeyGen, h.FirstResolvedWriter(), "alice")
+	err = rmd.makeRekeyReadError(bh, tlfName, FirstValidKeyGen, h.FirstResolvedWriter(), "alice")
 	require.Equal(t, NeedSelfRekeyError{"alice"}, err)
 
-	err = rmd.makeRekeyReadError(h, FirstValidKeyGen+1, h.FirstResolvedWriter(), "alice")
+	err = rmd.makeRekeyReadError(bh, tlfName, FirstValidKeyGen+1, h.FirstResolvedWriter(), "alice")
 	require.Equal(t, NeedOtherRekeyError{"alice"}, err)
 }
 
@@ -604,7 +607,10 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	u, uid, err := config.KBPKI().Resolve(ctx, "bob")
 	require.NoError(t, err)
 
-	err = rmd.makeRekeyReadError(h, FirstValidKeyGen, uid, u)
+	bh := h.ToBareHandleOrBust()
+	tlfName := h.GetCanonicalName()
+
+	err = rmd.makeRekeyReadError(bh, tlfName, FirstValidKeyGen, uid, u)
 	require.Equal(t, NewReadAccessError(h, u), err)
 
 	config.KeybaseDaemon().(*KeybaseDaemonLocal).addNewAssertionForTestOrBust(
@@ -613,7 +619,10 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	resolvedHandle, err := h.ResolveAgain(ctx, config.KBPKI())
 	require.NoError(t, err)
 
-	err = rmd.makeRekeyReadError(resolvedHandle, FirstValidKeyGen, uid, u)
+	rbh := resolvedHandle.ToBareHandleOrBust()
+	rTlfName := resolvedHandle.GetCanonicalName()
+
+	err = rmd.makeRekeyReadError(rbh, rTlfName, FirstValidKeyGen, uid, u)
 	require.Equal(t, NeedOtherRekeyError{"alice,bob"}, err)
 }
 
@@ -636,10 +645,7 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	// create and sign a revision
 	id := FakeTlfID(1, false)
 	handle := parseTlfHandleOrBust(t, config, "alice", false)
-	h, err := handle.ToBareHandle()
-	if err != nil {
-		t.Fatal(err)
-	}
+	h := handle.ToBareHandleOrBust()
 	rmds, err := NewRootMetadataSignedForTest(id, h)
 	if err != nil {
 		t.Fatal(err)
