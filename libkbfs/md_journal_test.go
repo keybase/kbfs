@@ -177,9 +177,8 @@ func TestMDJournalBranchConversion(t *testing.T) {
 			require.Equal(t, prevRoot, rmds[i-1].PrevRoot)
 		}
 
-		currRoot, err := crypto.MakeMdID(rmds[i-1])
 		require.NoError(t, err)
-		prevRoot = currRoot
+		prevRoot = rmds[i-1].mdID
 	}
 
 	require.Equal(t, 10, getTlfJournalLength(t, s))

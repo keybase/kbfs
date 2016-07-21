@@ -325,9 +325,22 @@ func (s *mdJournal) get(currentUID keybase1.UID) (*BareRootMetadata, error) {
 	return rmd, nil
 }
 
+type ImmutableBareRootMetadata struct {
+	*BareRootMetadata
+	mdID MdID
+}
+
+func MakeImmutableBareRootMetadata(
+	rmd *BareRootMetadata, mdID MdID) ImmutableBareRootMetadata {
+	if mdID == (MdID{}) {
+		panic("zero mdID passed to MakeImmutableBareRootMetadata")
+	}
+	return ImmutableBareRootMetadata{rmd, mdID}
+}
+
 func (s *mdJournal) getRange(
 	currentUID keybase1.UID, start, stop MetadataRevision) (
-	[]*BareRootMetadata, error) {
+	[]ImmutableBareRootMetadata, error) {
 	err := s.checkGetParams(currentUID)
 	if err != nil {
 		return nil, err
@@ -337,7 +350,7 @@ func (s *mdJournal) getRange(
 	if err != nil {
 		return nil, err
 	}
-	var rmds []*BareRootMetadata
+	var rmds []ImmutableBareRootMetadata
 	for i, mdID := range mdIDs {
 		expectedRevision := realStart + MetadataRevision(i)
 		rmd, err := s.getMD(mdID)
@@ -348,7 +361,8 @@ func (s *mdJournal) getRange(
 			panic(fmt.Errorf("expected revision %v, got %v",
 				expectedRevision, rmd.Revision))
 		}
-		rmds = append(rmds, rmd)
+		irmd := MakeImmutableBareRootMetadata(rmd, mdID)
+		rmds = append(rmds, irmd)
 	}
 
 	return rmds, nil
