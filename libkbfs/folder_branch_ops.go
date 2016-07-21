@@ -600,7 +600,7 @@ func (fbo *folderBranchOps) setInitialHeadTrustedLocked(ctx context.Context,
 // setHeadSuccessorLocked is for when we're applying updates from the
 // server or when we're applying new updates we created ourselves.
 func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
-	lState *lockState, md ImmutableRootMetadata) error {
+	lState *lockState, md ImmutableRootMetadata, rebased bool) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
 	if fbo.head == (ImmutableRootMetadata{}) {
@@ -608,14 +608,12 @@ func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 		return fbo.setInitialHeadTrustedLocked(ctx, lState, md)
 	}
 
-	// TODO: Handle case where the successor is "rebased" by the
-	// journal server.
-	/*
+	if !rebased {
 		err := fbo.head.CheckValidSuccessor(fbo.head.mdID, md.ReadOnly())
 		if err != nil {
 			return err
 		}
-	*/
+	}
 
 	oldHandle := fbo.head.GetTlfHandle()
 	newHandle := md.GetTlfHandle()
@@ -1878,6 +1876,8 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	doUnmergedPut := true
 	mergedRev := MetadataRevisionUninitialized
 
+	oldPrevRoot := md.PrevRoot
+
 	var mdID MdID
 
 	if fbo.isMasterBranchLocked(lState) {
@@ -1941,10 +1941,17 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		return err
 	}
 
+	rebased := (oldPrevRoot != md.PrevRoot)
+	if rebased {
+		bid := md.BID
+		fbo.setBranchIDLocked(lState, bid)
+		fbo.cr.Resolve(md.Revision, MetadataRevisionUninitialized)
+	}
+
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
 	irmd := MakeImmutableRootMetadata(md, mdID)
-	err = fbo.setHeadSuccessorLocked(ctx, lState, irmd)
+	err = fbo.setHeadSuccessorLocked(ctx, lState, irmd, rebased)
 	if err != nil {
 		return err
 	}
@@ -1959,6 +1966,8 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 func (fbo *folderBranchOps) finalizeMDRekeyWriteLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata) (err error) {
 	fbo.mdWriterLock.AssertLocked(lState)
+
+	oldPrevRoot := md.PrevRoot
 
 	// finally, write out the new metadata
 	mdID, err := fbo.config.MDOps().Put(ctx, md)
@@ -1979,9 +1988,16 @@ func (fbo *folderBranchOps) finalizeMDRekeyWriteLocked(ctx context.Context,
 
 	fbo.setBranchIDLocked(lState, NullBranchID)
 
+	rebased := (oldPrevRoot != md.PrevRoot)
+	if rebased {
+		bid := md.BID
+		fbo.setBranchIDLocked(lState, bid)
+		fbo.cr.Resolve(md.Revision, MetadataRevisionUninitialized)
+	}
+
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	return fbo.setHeadSuccessorLocked(ctx, lState, MakeImmutableRootMetadata(md, mdID))
+	return fbo.setHeadSuccessorLocked(ctx, lState, MakeImmutableRootMetadata(md, mdID), rebased)
 }
 
 func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
@@ -2033,6 +2049,8 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 		}
 	}
 
+	oldPrevRoot := md.PrevRoot
+
 	// finally, write out the new metadata
 	mdID, err := fbo.config.MDOps().Put(ctx, md)
 	if err != nil {
@@ -2044,10 +2062,17 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 	fbo.setBranchIDLocked(lState, NullBranchID)
 	md.swapCachedBlockChanges()
 
+	rebased := (oldPrevRoot != md.PrevRoot)
+	if rebased {
+		bid := md.BID
+		fbo.setBranchIDLocked(lState, bid)
+		fbo.cr.Resolve(md.Revision, MetadataRevisionUninitialized)
+	}
+
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
 	irmd := MakeImmutableRootMetadata(md, mdID)
-	err = fbo.setHeadSuccessorLocked(ctx, lState, irmd)
+	err = fbo.setHeadSuccessorLocked(ctx, lState, irmd, rebased)
 	if err != nil {
 		return err
 	}
@@ -3490,7 +3515,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			return err
 		}
 
-		err := fbo.setHeadSuccessorLocked(ctx, lState, rmd)
+		err := fbo.setHeadSuccessorLocked(ctx, lState, rmd, false)
 		if err != nil {
 			return err
 		}
