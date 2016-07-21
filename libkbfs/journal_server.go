@@ -221,7 +221,59 @@ type journalMDOps struct {
 
 var _ MDOps = journalMDOps{}
 
-// TODO: Consult both, take latest (?)
+func (j journalMDOps) getFromJournal(
+	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
+	handle *TlfHandle) (
+	ImmutableRootMetadata, error) {
+	bundle, ok := j.jServer.getBundle(id)
+	if !ok {
+		return ImmutableRootMetadata{}, nil
+	}
+
+	bundle.lock.RLock()
+	defer bundle.lock.RUnlock()
+
+	headID, head, err := bundle.mdJournal.getHead()
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+
+	if head == nil {
+		return ImmutableRootMetadata{}, nil
+	}
+
+	if head.MergedStatus() != mStatus {
+		return ImmutableRootMetadata{}, nil
+	}
+
+	if mStatus == Unmerged && bid != NullBranchID && bid != head.BID {
+		return ImmutableRootMetadata{}, nil
+	}
+
+	if handle == nil {
+		bareHandle, err := head.MakeBareTlfHandle()
+		if err != nil {
+			return ImmutableRootMetadata{}, err
+		}
+		handle, err = MakeTlfHandle(ctx, bareHandle, j.jServer.config.KBPKI())
+		if err != nil {
+			return ImmutableRootMetadata{}, err
+		}
+	}
+
+	rmd := RootMetadata{
+		BareRootMetadata: *head,
+		tlfHandle:        handle,
+	}
+
+	err = decryptMDPrivateData(
+		ctx, j.jServer.config, &rmd, rmd.ReadOnly())
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+
+	return MakeImmutableRootMetadata(&rmd, headID), nil
+}
 
 func (j journalMDOps) GetForHandle(
 	ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (
@@ -231,179 +283,47 @@ func (j journalMDOps) GetForHandle(
 		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
-	if rmd == (ImmutableRootMetadata{}) {
-		// If server doesn't know of an RMD, look in the
-		// journal.
-		bundle, ok := j.jServer.getBundle(tlfID)
-		if !ok {
-			return tlfID, ImmutableRootMetadata{}, nil
-		}
-
-		bundle.lock.RLock()
-		defer bundle.lock.RUnlock()
-
-		headID, head, err := bundle.mdJournal.getHead()
-		if err != nil {
-			return TlfID{}, ImmutableRootMetadata{}, err
-		}
-
-		if head == nil {
-			return tlfID, ImmutableRootMetadata{}, nil
-		}
-
-		if head.MergedStatus() != mStatus {
-			return tlfID, ImmutableRootMetadata{}, nil
-		}
-
-		rmd := RootMetadata{
-			BareRootMetadata: *head,
-			tlfHandle:        handle,
-		}
-
-		err = decryptMDPrivateData(
-			ctx, j.jServer.config, &rmd, rmd.ReadOnly())
-		if err != nil {
-			return TlfID{}, ImmutableRootMetadata{}, err
-		}
-
-		return TlfID{}, MakeImmutableRootMetadata(&rmd, headID), nil
+	lookupTlfID := tlfID
+	if rmd != (ImmutableRootMetadata{}) {
+		lookupTlfID = rmd.ID
 	}
 
-	// If server does know of an RMD, let the journal know (if
-	// it's empty).
-
-	bundle, ok := j.jServer.getBundle(rmd.ID)
-	if !ok {
-		return tlfID, rmd, nil
-	}
-
-	bundle.lock.Lock()
-	defer bundle.lock.Unlock()
-
-	length, err := bundle.mdJournal.length()
+	irmd, err := j.getFromJournal(ctx, lookupTlfID, NullBranchID, mStatus, handle)
 	if err != nil {
 		return TlfID{}, ImmutableRootMetadata{}, err
 	}
-
-	if length != 0 {
-		return tlfID, rmd, nil
-	}
-
-	_, head, err := bundle.mdJournal.getHead()
-	if err != nil {
-		return TlfID{}, ImmutableRootMetadata{}, err
-	}
-
-	// Don't override an existing unmerged head with a merged one.
-	if head != nil && head.BID != NullBranchID && rmd.BID == NullBranchID {
-		return tlfID, rmd, nil
+	if irmd != (ImmutableRootMetadata{}) {
+		return TlfID{}, irmd, nil
 	}
 
 	return tlfID, rmd, nil
 }
 
-func (j journalMDOps) getForTLF(
-	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus) (
-	ImmutableRootMetadata, error) {
-	rmd, err := j.MDOps.GetForTLF(ctx, id)
-	if err != nil {
-		return ImmutableRootMetadata{}, err
-	}
-
-	if rmd == (ImmutableRootMetadata{}) {
-		// If server doesn't know of an RMD, look in the
-		// journal.
-		bundle, ok := j.jServer.getBundle(id)
-		if !ok {
-			return ImmutableRootMetadata{}, nil
-		}
-
-		bundle.lock.RLock()
-		defer bundle.lock.RUnlock()
-
-		headID, head, err := bundle.mdJournal.getHead()
-		if err != nil {
-			return ImmutableRootMetadata{}, err
-		}
-
-		if head == nil {
-			return ImmutableRootMetadata{}, nil
-		}
-
-		if head.MergedStatus() != mStatus {
-			return ImmutableRootMetadata{}, nil
-		}
-
-		if mStatus == Unmerged && bid != NullBranchID && head.BID != bid {
-			return ImmutableRootMetadata{},
-				fmt.Errorf("Expected BID %s, got %s", bid, head.BID)
-		}
-
-		bareHandle, err := head.MakeBareTlfHandle()
-		if err != nil {
-			return ImmutableRootMetadata{}, err
-		}
-		handle, err := MakeTlfHandle(ctx, bareHandle, j.jServer.config.KBPKI())
-		if err != nil {
-			return ImmutableRootMetadata{}, err
-		}
-
-		rmd := RootMetadata{
-			BareRootMetadata: *head,
-			tlfHandle:        handle,
-		}
-
-		err = decryptMDPrivateData(
-			ctx, j.jServer.config, &rmd, rmd.ReadOnly())
-		if err != nil {
-			return ImmutableRootMetadata{}, err
-		}
-
-		return MakeImmutableRootMetadata(&rmd, headID), nil
-	}
-
-	// If server does know of an RMD, let the journal know (if
-	// it's empty).
-
-	bundle, ok := j.jServer.getBundle(rmd.ID)
-	if !ok {
-		return rmd, nil
-	}
-
-	bundle.lock.Lock()
-	defer bundle.lock.Unlock()
-
-	length, err := bundle.mdJournal.length()
-	if err != nil {
-		return ImmutableRootMetadata{}, err
-	}
-
-	if length != 0 {
-		return rmd, nil
-	}
-
-	_, head, err := bundle.mdJournal.getHead()
-	if err != nil {
-		return ImmutableRootMetadata{}, err
-	}
-
-	// Don't override an existing unmerged head with a merged one.
-	if head != nil && head.BID != NullBranchID && rmd.BID == NullBranchID {
-		return rmd, nil
-	}
-
-	return rmd, nil
-}
-
 func (j journalMDOps) GetForTLF(
 	ctx context.Context, id TlfID) (ImmutableRootMetadata, error) {
-	return j.getForTLF(ctx, id, NullBranchID, Merged)
+	irmd, err := j.getFromJournal(ctx, id, NullBranchID, Merged, nil)
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+	if irmd != (ImmutableRootMetadata{}) {
+		return irmd, nil
+	}
+
+	return j.MDOps.GetForTLF(ctx, id)
 }
 
 func (j journalMDOps) GetUnmergedForTLF(
 	ctx context.Context, id TlfID, bid BranchID) (
 	ImmutableRootMetadata, error) {
-	return j.getForTLF(ctx, id, bid, Unmerged)
+	irmd, err := j.getFromJournal(ctx, id, bid, Unmerged, nil)
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+	if irmd != (ImmutableRootMetadata{}) {
+		return irmd, nil
+	}
+
+	return j.MDOps.GetUnmergedForTLF(ctx, id, bid)
 }
 
 func (j journalMDOps) GetRange(
@@ -456,6 +376,24 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 		}
 
 		rmd.WFlags |= MetadataFlagUnmerged
+		if rmd.BID == NullBranchID {
+			// TODO: Figure out race with PruneBranch.
+			head, err := j.GetUnmergedForTLF(ctx, rmd.ID, NullBranchID)
+			if err != nil {
+				return MdID{}, err
+			}
+			if head == (ImmutableRootMetadata{}) {
+				// new branch ID
+				bid, err := j.jServer.config.Crypto().MakeRandomBranchID()
+				if err != nil {
+					return MdID{}, err
+				}
+				rmd.BID = bid
+			} else {
+				rmd.BID = head.BID
+			}
+		}
+
 		bundle.lock.Lock()
 		defer bundle.lock.Unlock()
 		return bundle.mdJournal.put(ctx, j.jServer.config.Crypto(),
