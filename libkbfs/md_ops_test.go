@@ -59,6 +59,8 @@ func addFakeRMDData(rmd *RootMetadata, h *TlfHandle) {
 	if !h.IsPublic() {
 		FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
 	}
+
+	rmd.tlfHandle = h
 }
 
 func newRMD(t *testing.T, config Config, public bool) (
@@ -134,10 +136,7 @@ func verifyMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
 
 	config.mockCodec.EXPECT().Decode(rmds.MD.SerializedPrivateMetadata, gomock.Any()).
 		Return(nil)
-	fakeRMD := RootMetadata{
-		BareRootMetadata: rmds.MD,
-	}
-	expectGetTLFCryptKeyForMDDecryption(config, &fakeRMD)
+	expectGetTLFCryptKeyForMDDecryption(config, &rmds.MD)
 	var pmd PrivateMetadata
 	config.mockCrypto.EXPECT().DecryptPrivateMetadata(
 		gomock.Any(), TLFCryptKey{}).Return(&pmd, nil)
@@ -155,7 +154,7 @@ func verifyMDForPrivate(config *ConfigMock, rmds *RootMetadataSigned) {
 }
 
 func putMDForPrivate(config *ConfigMock, rmd *RootMetadata) {
-	expectGetTLFCryptKeyForEncryption(config, rmd)
+	expectGetTLFCryptKeyForEncryption(config, &rmd.BareRootMetadata)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
 		&rmd.data, TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
 
@@ -638,7 +637,7 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
 	rmd := newRootMetadataOrBust(t, id, h)
 
-	expectGetTLFCryptKeyForEncryption(config, rmd)
+	expectGetTLFCryptKeyForEncryption(config, &rmd.BareRootMetadata)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
 		&rmd.data, TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
 

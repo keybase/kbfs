@@ -17,17 +17,21 @@ import (
 // RootMetadata objects. We can't just compare pointers as copies are
 // made for mutations.
 type rmdMatcher struct {
-	rmd *RootMetadata
+	rmd *BareRootMetadata
 }
 
-func getRMD(x interface{}) (*RootMetadata, bool) {
+func getRMD(x interface{}) (*BareRootMetadata, bool) {
+	brmd, ok := x.(*BareRootMetadata)
+	if ok {
+		return brmd, true
+	}
 	rmd, ok := x.(*RootMetadata)
 	if ok {
-		return rmd, true
+		return &rmd.BareRootMetadata, true
 	}
 	rormd, ok := x.(ReadOnlyRootMetadata)
 	if ok {
-		return rormd.RootMetadata, true
+		return &rormd.BareRootMetadata, true
 	}
 	return nil, false
 }
@@ -47,23 +51,23 @@ func (m rmdMatcher) String() string {
 	return fmt.Sprintf("Matches RMD %v", m.rmd)
 }
 
-func expectGetTLFCryptKeyForEncryption(config *ConfigMock, rmd *RootMetadata) {
+func expectGetTLFCryptKeyForEncryption(config *ConfigMock, rmd *BareRootMetadata) {
 	config.mockKeyman.EXPECT().GetTLFCryptKeyForEncryption(gomock.Any(),
-		rmdMatcher{rmd}).Return(TLFCryptKey{}, nil)
+		gomock.Any(), rmdMatcher{rmd}).Return(TLFCryptKey{}, nil)
 }
 
-func expectGetTLFCryptKeyForMDDecryption(config *ConfigMock, rmd *RootMetadata) {
+func expectGetTLFCryptKeyForMDDecryption(config *ConfigMock, rmd *BareRootMetadata) {
 	config.mockKeyman.EXPECT().GetTLFCryptKeyForMDDecryption(gomock.Any(),
-		rmdMatcher{rmd}, rmdMatcher{rmd}).Return(TLFCryptKey{}, nil)
+		gomock.Any(), rmdMatcher{rmd}, rmdMatcher{rmd}).Return(TLFCryptKey{}, nil)
 }
 
 // TODO: Add test coverage for decryption of blocks with an old key
 // generation.
 
 func expectGetTLFCryptKeyForBlockDecryption(
-	config *ConfigMock, rmd *RootMetadata, blockPtr BlockPointer) {
+	config *ConfigMock, rmd *BareRootMetadata, blockPtr BlockPointer) {
 	config.mockKeyman.EXPECT().GetTLFCryptKeyForBlockDecryption(gomock.Any(),
-		rmdMatcher{rmd}, blockPtr).Return(TLFCryptKey{}, nil)
+		gomock.Any(), rmdMatcher{rmd}, blockPtr).Return(TLFCryptKey{}, nil)
 }
 
 type TestBlock struct {
@@ -98,7 +102,7 @@ func blockOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 }
 
 func expectBlockEncrypt(config *ConfigMock, rmd *RootMetadata, decData Block, plainSize int, encData []byte, err error) {
-	expectGetTLFCryptKeyForEncryption(config, rmd)
+	expectGetTLFCryptKeyForEncryption(config, &rmd.BareRootMetadata)
 	config.mockCrypto.EXPECT().MakeRandomBlockCryptKeyServerHalf().
 		Return(BlockCryptKeyServerHalf{}, nil)
 	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(
@@ -115,7 +119,7 @@ func expectBlockEncrypt(config *ConfigMock, rmd *RootMetadata, decData Block, pl
 
 func expectBlockDecrypt(config *ConfigMock, rmd *RootMetadata, blockPtr BlockPointer, encData []byte, block TestBlock, err error) {
 	config.mockCrypto.EXPECT().VerifyBlockID(encData, blockPtr.ID).Return(nil)
-	expectGetTLFCryptKeyForBlockDecryption(config, rmd, blockPtr)
+	expectGetTLFCryptKeyForBlockDecryption(config, &rmd.BareRootMetadata, blockPtr)
 	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(gomock.Any(), gomock.Any()).
 		Return(BlockCryptKey{}, nil)
 	config.mockCodec.EXPECT().Decode(encData, gomock.Any()).Return(nil)
@@ -130,10 +134,12 @@ func expectBlockDecrypt(config *ConfigMock, rmd *RootMetadata, blockPtr BlockPoi
 
 func makeRMD() *RootMetadata {
 	tlfID := FakeTlfID(0, false)
+	h := &TlfHandle{}
 	return &RootMetadata{
 		BareRootMetadata: BareRootMetadata{
 			WriterMetadata: WriterMetadata{ID: tlfID},
 		},
+		tlfHandle: h,
 	}
 }
 

@@ -382,7 +382,7 @@ func TestKBFSOpsGetRootNodeCacheIdentifyFail(t *testing.T) {
 }
 
 func expectBlock(config *ConfigMock, rmd *RootMetadata, blockPtr BlockPointer, block Block, err error) {
-	config.mockBops.EXPECT().Get(gomock.Any(), rmdMatcher{rmd},
+	config.mockBops.EXPECT().Get(gomock.Any(), rmdMatcher{&rmd.BareRootMetadata},
 		ptrMatcher{blockPtr}, gomock.Any()).
 		Do(func(ctx context.Context, md ReadOnlyRootMetadata,
 			blockPtr BlockPointer, getBlock Block) {
@@ -981,7 +981,7 @@ func expectSyncBlockHelper(
 		readyBlockData := ReadyBlockData{
 			buf: newBuf,
 		}
-		call := config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{rmd},
+		call := config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{&rmd.BareRootMetadata},
 			gomock.Any()).Return(newID, len(newBuf), readyBlockData, nil)
 		if lastCall != nil {
 			call = call.After(lastCall)
@@ -989,7 +989,7 @@ func expectSyncBlockHelper(
 		lastCall = call
 		newPath.path[i].ID = newID
 		newBlockIDs[i] = newID
-		config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{rmd},
+		config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{&rmd.BareRootMetadata},
 			ptrMatcher{newPath.path[i].BlockPointer}, readyBlockData).
 			Return(nil)
 	}
@@ -4293,7 +4293,7 @@ func expectSyncDirtyBlock(config *ConfigMock, rmd *RootMetadata,
 	readyBlockData := ReadyBlockData{
 		buf: newEncBuf,
 	}
-	c2 := config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{rmd}, block).
+	c2 := config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{&rmd.BareRootMetadata}, block).
 		After(c1).Return(newID, len(block.Contents), readyBlockData, nil)
 
 	newPtr := BlockPointer{ID: newID}
@@ -4305,7 +4305,7 @@ func expectSyncDirtyBlock(config *ConfigMock, rmd *RootMetadata,
 		// removed.
 	}
 
-	config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{rmd},
+	config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{&rmd.BareRootMetadata},
 		ptrMatcher{newPtr}, gomock.Any()).Return(nil)
 	return c2
 }
@@ -4480,7 +4480,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	readyBlockData := ReadyBlockData{
 		buf: []byte{6, 7, 8, 9, 10, 11, 12},
 	}
-	config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{rmd}, bBlock).
+	config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{&rmd.BareRootMetadata}, bBlock).
 		Return(bID, len(bBlock.Contents), readyBlockData, nil)
 
 	refNonce := BlockRefNonce{1}
@@ -4500,7 +4500,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	// manually add b
 	expectedPath.path = append(expectedPath.path,
 		pathNode{BlockPointer{ID: aID, BlockContext: BlockContext{RefNonce: refNonce}}, "b"})
-	config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{rmd},
+	config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{&rmd.BareRootMetadata},
 		ptrMatcher{expectedPath.path[1].BlockPointer}, readyBlockData).
 		Return(nil)
 
@@ -4990,10 +4990,10 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 	changeReadyBlockData := ReadyBlockData{
 		buf: changeBuf,
 	}
-	lastCall = config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{rmd},
+	lastCall = config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{&rmd.BareRootMetadata},
 		gomock.Any()).Return(changeBlockID, changePlainSize,
 		changeReadyBlockData, nil).After(lastCall)
-	config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{rmd},
+	config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{&rmd.BareRootMetadata},
 		ptrMatcher{BlockPointer{ID: changeBlockID}}, changeReadyBlockData).
 		Return(nil)
 

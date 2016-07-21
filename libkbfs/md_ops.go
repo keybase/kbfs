@@ -458,7 +458,7 @@ func (md *MDOpsStandard) readyMD(ctx context.Context, rmd *RootMetadata) (
 		} else if !rmd.IsWriterMetadataCopiedSet() {
 			// Encrypt and encode the private metadata
 			k, err := md.config.KeyManager().GetTLFCryptKeyForEncryption(
-				ctx, rmd.ReadOnly())
+				ctx, rmd.GetTlfHandle(), &rmd.BareRootMetadata)
 			if err != nil {
 				return nil, err
 			}

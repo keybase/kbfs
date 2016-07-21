@@ -921,37 +921,37 @@ func (_m *MockKeyManager) EXPECT() *_MockKeyManagerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockKeyManager) GetTLFCryptKeyForEncryption(ctx context.Context, md ReadOnlyRootMetadata) (TLFCryptKey, error) {
-	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyForEncryption", ctx, md)
+func (_m *MockKeyManager) GetTLFCryptKeyForEncryption(ctx context.Context, h *TlfHandle, md *BareRootMetadata) (TLFCryptKey, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyForEncryption", ctx, h, md)
 	ret0, _ := ret[0].(TLFCryptKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockKeyManagerRecorder) GetTLFCryptKeyForEncryption(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForEncryption", arg0, arg1)
+func (_mr *_MockKeyManagerRecorder) GetTLFCryptKeyForEncryption(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForEncryption", arg0, arg1, arg2)
 }
 
-func (_m *MockKeyManager) GetTLFCryptKeyForMDDecryption(ctx context.Context, mdToDecrypt ReadOnlyRootMetadata, mdWithKeys ReadOnlyRootMetadata) (TLFCryptKey, error) {
-	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyForMDDecryption", ctx, mdToDecrypt, mdWithKeys)
+func (_m *MockKeyManager) GetTLFCryptKeyForMDDecryption(ctx context.Context, h *TlfHandle, mdToDecrypt *BareRootMetadata, mdWithKeys *BareRootMetadata) (TLFCryptKey, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyForMDDecryption", ctx, h, mdToDecrypt, mdWithKeys)
 	ret0, _ := ret[0].(TLFCryptKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockKeyManagerRecorder) GetTLFCryptKeyForMDDecryption(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForMDDecryption", arg0, arg1, arg2)
+func (_mr *_MockKeyManagerRecorder) GetTLFCryptKeyForMDDecryption(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForMDDecryption", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockKeyManager) GetTLFCryptKeyForBlockDecryption(ctx context.Context, md ReadOnlyRootMetadata, blockPtr BlockPointer) (TLFCryptKey, error) {
-	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyForBlockDecryption", ctx, md, blockPtr)
+func (_m *MockKeyManager) GetTLFCryptKeyForBlockDecryption(ctx context.Context, h *TlfHandle, md *BareRootMetadata, blockPtr BlockPointer) (TLFCryptKey, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyForBlockDecryption", ctx, h, md, blockPtr)
 	ret0, _ := ret[0].(TLFCryptKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockKeyManagerRecorder) GetTLFCryptKeyForBlockDecryption(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForBlockDecryption", arg0, arg1, arg2)
+func (_mr *_MockKeyManagerRecorder) GetTLFCryptKeyForBlockDecryption(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForBlockDecryption", arg0, arg1, arg2, arg3)
 }
 
 func (_m *MockKeyManager) Rekey(ctx context.Context, md *RootMetadata, promptPaper bool) (bool, *TLFCryptKey, error) {

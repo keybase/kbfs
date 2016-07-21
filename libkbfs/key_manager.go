@@ -31,39 +31,37 @@ func NewKeyManagerStandard(config Config) *KeyManagerStandard {
 // GetTLFCryptKeyForEncryption implements the KeyManager interface for
 // KeyManagerStandard.
 func (km *KeyManagerStandard) GetTLFCryptKeyForEncryption(ctx context.Context,
-	md ReadOnlyRootMetadata) (tlfCryptKey TLFCryptKey, err error) {
-	return km.getTLFCryptKeyUsingCurrentDevice(ctx, md,
+	h *TlfHandle, md *BareRootMetadata) (tlfCryptKey TLFCryptKey, err error) {
+	return km.getTLFCryptKeyUsingCurrentDevice(ctx, h, md,
 		md.LatestKeyGeneration(), false)
 }
 
 // GetTLFCryptKeyForMDDecryption implements the KeyManager interface
 // for KeyManagerStandard.
 func (km *KeyManagerStandard) GetTLFCryptKeyForMDDecryption(
-	ctx context.Context, mdToDecrypt, mdWithKeys ReadOnlyRootMetadata) (
+	ctx context.Context, h *TlfHandle, mdToDecrypt, mdWithKeys *BareRootMetadata) (
 	tlfCryptKey TLFCryptKey, err error) {
 	return km.getTLFCryptKey(
-		ctx, mdWithKeys.GetTlfHandle(), &mdWithKeys.BareRootMetadata,
-		mdToDecrypt.LatestKeyGeneration(),
+		ctx, h, mdWithKeys, mdToDecrypt.LatestKeyGeneration(),
 		getTLFCryptKeyAnyDevice|getTLFCryptKeyDoCache)
 }
 
 // GetTLFCryptKeyForBlockDecryption implements the KeyManager interface for
 // KeyManagerStandard.
 func (km *KeyManagerStandard) GetTLFCryptKeyForBlockDecryption(
-	ctx context.Context, md ReadOnlyRootMetadata, blockPtr BlockPointer) (
+	ctx context.Context, h *TlfHandle, md *BareRootMetadata, blockPtr BlockPointer) (
 	tlfCryptKey TLFCryptKey, err error) {
-	return km.getTLFCryptKeyUsingCurrentDevice(ctx, md, blockPtr.KeyGen, true)
+	return km.getTLFCryptKeyUsingCurrentDevice(ctx, h, md, blockPtr.KeyGen, true)
 }
 
 func (km *KeyManagerStandard) getTLFCryptKeyUsingCurrentDevice(
-	ctx context.Context, md ReadOnlyRootMetadata, keyGen KeyGen, cache bool) (
+	ctx context.Context, h *TlfHandle, md *BareRootMetadata, keyGen KeyGen, cache bool) (
 	tlfCryptKey TLFCryptKey, err error) {
 	flags := getTLFCryptKeyFlags(0)
 	if cache {
 		flags = getTLFCryptKeyDoCache
 	}
-	return km.getTLFCryptKey(
-		ctx, md.GetTlfHandle(), &md.BareRootMetadata, keyGen, flags)
+	return km.getTLFCryptKey(ctx, h, md, keyGen, flags)
 }
 
 type getTLFCryptKeyFlags byte
