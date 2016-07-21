@@ -608,10 +608,14 @@ func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 		return fbo.setInitialHeadTrustedLocked(ctx, lState, md)
 	}
 
-	err := fbo.head.CheckValidSuccessor(fbo.head.mdID, md.ReadOnly())
-	if err != nil {
-		return err
-	}
+	// TODO: Handle case where the successor is "rebased" by the
+	// journal server.
+	/*
+		err := fbo.head.CheckValidSuccessor(fbo.head.mdID, md.ReadOnly())
+		if err != nil {
+			return err
+		}
+	*/
 
 	oldHandle := fbo.head.GetTlfHandle()
 	newHandle := md.GetTlfHandle()
