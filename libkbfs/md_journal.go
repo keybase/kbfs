@@ -52,20 +52,18 @@ type mdJournal struct {
 }
 
 func makeMDJournal(codec Codec, crypto cryptoPure, dir string) *mdJournal {
+	journalDir := filepath.Join(dir, "md_journal")
+
 	journal := &mdJournal{
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
-		j:      makeMdIDJournal(codec, dir),
+		j:      makeMdIDJournal(codec, journalDir),
 	}
 	return journal
 }
 
 // The functions below are for building various paths.
-
-func (s *mdJournal) journalPath() string {
-	return filepath.Join(s.dir, "md_journal")
-}
 
 func (s *mdJournal) mdsPath() string {
 	return filepath.Join(s.dir, "mds")
