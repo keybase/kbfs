@@ -69,9 +69,9 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 		return nil
 	}
 
-	j.log.Debug("Enabled journal for %s", tlfID)
-
 	tlfDir := filepath.Join(j.dir, tlfID.String())
+	j.log.Debug("Enabled journal for %s with path ", tlfID, tlfDir)
+
 	mdJournal := makeMDJournal(j.config.Codec(), j.config.Crypto(), tlfDir)
 
 	j.tlfBundles[tlfID] = &tlfJournalBundle{
