@@ -326,6 +326,73 @@ func (j journalMDOps) GetUnmergedForTLF(
 	return j.MDOps.GetUnmergedForTLF(ctx, id, bid)
 }
 
+func (j journalMDOps) getRangeFromJournal(
+	ctx context.Context, id TlfID, bid BranchID,
+	start, stop MetadataRevision, mStatus MergeStatus) (
+	[]ImmutableRootMetadata, error) {
+	bundle, ok := j.jServer.getBundle(id)
+	if !ok {
+		return nil, nil
+	}
+
+	_, uid, err := j.jServer.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	bundle.lock.RLock()
+	defer bundle.lock.RUnlock()
+
+	ibrmds, err := bundle.mdJournal.getRange(uid, start, stop)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ibrmds) == 0 {
+		return nil, nil
+	}
+
+	head := ibrmds[len(ibrmds)-1]
+
+	if head.MergedStatus() != mStatus {
+		return nil, nil
+	}
+
+	if mStatus == Unmerged && bid != NullBranchID && bid != head.BID {
+		return nil, nil
+	}
+
+	bareHandle, err := head.MakeBareTlfHandle()
+	if err != nil {
+		return nil, err
+	}
+	handle, err := MakeTlfHandle(ctx, bareHandle, j.jServer.config.KBPKI())
+	if err != nil {
+		return nil, err
+	}
+
+	irmds := make([]ImmutableRootMetadata, 0, len(ibrmds))
+
+	for _, ibrmd := range ibrmds {
+		rmd := RootMetadata{
+			BareRootMetadata: *ibrmd.BareRootMetadata,
+			tlfHandle:        handle,
+		}
+
+		// TODO: Use head?
+		err = decryptMDPrivateData(
+			ctx, j.jServer.config, &rmd, rmd.ReadOnly())
+		if err != nil {
+			return nil, err
+		}
+
+		irmd := MakeImmutableRootMetadata(&rmd, ibrmd.mdID)
+		irmds = append(irmds, irmd)
+	}
+
+	return irmds, nil
+}
+
 func (j journalMDOps) GetRange(
 	ctx context.Context, id TlfID, start, stop MetadataRevision) (
 	[]ImmutableRootMetadata, error) {
