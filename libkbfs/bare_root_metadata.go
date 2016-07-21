@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strconv"
 
+	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol"
 	"github.com/keybase/go-codec/codec"
 )
@@ -575,4 +576,24 @@ func (md *BareRootMetadata) DeepCopyForServerTest(codec Codec) (
 		return nil, err
 	}
 	return &newMd, nil
+}
+
+func (md *BareRootMetadata) makeRekeyReadError(
+	resolvedHandle *TlfHandle, keyGen KeyGen,
+	uid keybase1.UID, username libkb.NormalizedUsername) error {
+	if resolvedHandle.IsPublic() {
+		panic("makeRekeyReadError called on public folder")
+	}
+	// If the user is not a legitimate reader of the folder, this is a
+	// normal read access error.
+	if !resolvedHandle.IsReader(uid) {
+		return NewReadAccessError(resolvedHandle, username)
+	}
+
+	// Otherwise, this folder needs to be rekeyed for this device.
+	tlfName := resolvedHandle.GetCanonicalName()
+	if keys, _ := md.GetTLFCryptPublicKeys(keyGen, uid); len(keys) > 0 {
+		return NeedSelfRekeyError{tlfName}
+	}
+	return NeedOtherRekeyError{tlfName}
 }
