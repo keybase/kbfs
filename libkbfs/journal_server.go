@@ -221,6 +221,8 @@ type journalMDOps struct {
 
 var _ MDOps = journalMDOps{}
 
+// TODO: Prefer server updates to journal updates.
+
 // TODO: Figure out locking.
 func (j journalMDOps) getFromJournal(
 	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
