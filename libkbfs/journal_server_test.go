@@ -167,17 +167,17 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	// (6a) try to get unmerged range
 	rmdses, err := mdOps.GetUnmergedRange(ctx, id, bid, 1, 100)
 	require.NoError(t, err)
-	require.Equal(t, 35, len(rmdses))
-	for i := MetadataRevision(6); i < 16; i++ {
-		require.Equal(t, i, rmdses[i-6].Revision)
+	require.Equal(t, 33, len(rmdses))
+	for i := MetadataRevision(8); i < 41; i++ {
+		require.Equal(t, i, rmdses[i-8].Revision)
 	}
 
 	// (6b) try to get unmerged range subset.
 	rmdses, err = mdOps.GetUnmergedRange(ctx, id, bid, 7, 14)
 	require.NoError(t, err)
-	require.Equal(t, 8, len(rmdses))
-	for i := MetadataRevision(7); i <= 14; i++ {
-		require.Equal(t, i, rmdses[i-7].Revision)
+	require.Equal(t, 7, len(rmdses))
+	for i := MetadataRevision(8); i <= 14; i++ {
+		require.Equal(t, i, rmdses[i-8].Revision)
 	}
 
 	// (7) prune unmerged

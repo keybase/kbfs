@@ -430,12 +430,35 @@ func (j journalMDOps) GetRange(
 func (j journalMDOps) GetUnmergedRange(
 	ctx context.Context, id TlfID, bid BranchID,
 	start, stop MetadataRevision) ([]ImmutableRootMetadata, error) {
-	_, ok := j.jServer.getBundle(id)
-	if ok {
-		// TODO: Delegate to bundle's MD journal.
+	jirmds, err := j.getRangeFromJournal(
+		ctx, id, bid, start, stop, Unmerged)
+	if err != nil {
+		return nil, err
 	}
 
-	return j.MDOps.GetUnmergedRange(ctx, id, bid, start, stop)
+	if len(jirmds) == 0 {
+		return j.MDOps.GetUnmergedRange(ctx, id, bid, start, stop)
+	}
+
+	if jirmds[0].Revision == start {
+		return jirmds, nil
+	}
+
+	serverStop := jirmds[0].Revision - 1
+	irmds, err := j.MDOps.GetUnmergedRange(ctx, id, bid, start, serverStop)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(irmds) == 0 {
+		return jirmds, nil
+	}
+
+	if irmds[len(irmds)-1].Revision != serverStop {
+		return nil, fmt.Errorf("Expected server rev %d, got %d", serverStop, irmds[len(irmds)-1].Revision)
+	}
+
+	return append(irmds, jirmds...), nil
 }
 
 func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
