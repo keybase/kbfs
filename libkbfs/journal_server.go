@@ -299,12 +299,6 @@ func (j journalMDOps) GetForHandle(
 		return tlfID, rmd, nil
 	}
 
-	// TODO: Make a deep copy?
-	err = bundle.mdJournal.setHead(rmd.mdID, &rmd.BareRootMetadata)
-	if err != nil {
-		return TlfID{}, ImmutableRootMetadata{}, err
-	}
-
 	return tlfID, rmd, nil
 }
 
@@ -396,12 +390,6 @@ func (j journalMDOps) getForTLF(
 	// Don't override an existing unmerged head with a merged one.
 	if head != nil && head.BID != NullBranchID && rmd.BID == NullBranchID {
 		return rmd, nil
-	}
-
-	// TODO: Make a deep copy?
-	err = bundle.mdJournal.setHead(rmd.mdID, &rmd.BareRootMetadata)
-	if err != nil {
-		return ImmutableRootMetadata{}, err
 	}
 
 	return rmd, nil

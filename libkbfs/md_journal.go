@@ -49,10 +49,6 @@ type mdJournal struct {
 	dir    string
 
 	j mdIDJournal
-
-	// Set only when the journal is empty.
-	headMdID MdID
-	head     *BareRootMetadata
 }
 
 func makeMDJournal(codec Codec, crypto cryptoPure, dir string) *mdJournal {
@@ -154,7 +150,7 @@ func (s *mdJournal) getHead() (mdID MdID, rmd *BareRootMetadata, err error) {
 		return MdID{}, nil, err
 	}
 	if headID == (MdID{}) {
-		return s.headMdID, s.head, nil
+		return MdID{}, nil, nil
 	}
 	rmd, err = s.getMD(headID)
 	if err != nil {
@@ -358,20 +354,6 @@ func (s *mdJournal) getRange(
 	return rmds, nil
 }
 
-func (s *mdJournal) setHead(mdID MdID, rmd *BareRootMetadata) error {
-	length, err := s.length()
-	if err != nil {
-		return err
-	}
-	if length != 0 {
-		return errors.New("setHead called when not empty")
-	}
-
-	s.headMdID = mdID
-	s.head = rmd
-	return nil
-}
-
 // MDJournalConflictError is an error that is returned when a put
 // detects a rewritten journal.
 type MDJournalConflictError struct{}
@@ -420,19 +402,7 @@ func (s *mdJournal) put(
 	}
 
 	// Consistency checks
-	if head == nil {
-		if rmd.Revision != MetadataRevisionInitial {
-			return MdID{}, fmt.Errorf("Expected initial revision")
-		}
-
-		if rmd.PrevRoot != (MdID{}) {
-			return MdID{}, fmt.Errorf("Expected no PrevRoot for initial revision")
-		}
-
-		if rmd.BID != NullBranchID {
-			return MdID{}, fmt.Errorf("Expected no branch ID for initial revision")
-		}
-	} else {
+	if head != nil {
 		err = head.CheckValidSuccessorForServer(
 			headID, &rmd.BareRootMetadata)
 		if err != nil {
@@ -489,25 +459,14 @@ func (s *mdJournal) flushOne(
 		return false, nil
 	}
 
-	cleared, err := s.j.removeEarliest()
+	err := s.j.removeEarliest()
 	if err != nil {
 		return false, err
-	}
-
-	if cleared {
-		s.headMdID = earliestID
-		s.head = rmd
 	}
 
 	return true, nil
 }
 
 func (s *mdJournal) clear() error {
-	err := s.j.clear()
-	if err != nil {
-		return err
-	}
-	s.headMdID = MdID{}
-	s.head = nil
-	return nil
+	return s.j.clear()
 }
