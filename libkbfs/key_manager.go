@@ -118,8 +118,13 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 				h.GetCanonicalPath(), err)
 			resolvedHandle = h
 		}
+		resolvedBareHandle, err := resolvedHandle.ToBareHandle()
+		if err != nil {
+			return err
+		}
 		return md.makeRekeyReadError(
-			resolvedHandle, keyGen, uid, username)
+			resolvedBareHandle, resolvedHandle.GetCanonicalName(),
+			keyGen, uid, username)
 	}
 
 	var clientHalf TLFCryptKeyClientHalf

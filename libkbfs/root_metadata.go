@@ -239,10 +239,17 @@ func (md *RootMetadata) isReadableOrError(ctx context.Context, config Config) er
 	h := md.GetTlfHandle()
 	resolvedHandle, err := h.ResolveAgain(ctx, config.KBPKI())
 	if err != nil {
+		// Ignore error and pretend h is already fully
+		// resolved.
+		resolvedHandle = h
+	}
+	resolvedBareHandle, err := resolvedHandle.ToBareHandle()
+	if err != nil {
 		return err
 	}
-	return md.makeRekeyReadError(resolvedHandle, md.LatestKeyGeneration(),
-		uid, username)
+	return md.makeRekeyReadError(
+		resolvedBareHandle, resolvedHandle.GetCanonicalName(),
+		md.LatestKeyGeneration(), uid, username)
 }
 
 // updateFromTlfHandle updates the current RootMetadata's fields to

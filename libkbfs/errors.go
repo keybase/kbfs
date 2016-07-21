@@ -156,6 +156,13 @@ func (e ReadAccessError) Error() string {
 		e.User, buildCanonicalPath(e.Public, e.Tlf))
 }
 
+// NewReadAccessError constructs a ReadAccessError for the given
+// directory and user.
+func NewReadAccessError(h *TlfHandle, username libkb.NormalizedUsername) error {
+	tlfname := h.GetCanonicalName()
+	return ReadAccessError{username, tlfname, h.IsPublic()}
+}
+
 // WriteAccessError indicates that the user tried to read from a
 // top-level folder without read permission.
 type WriteAccessError struct {
@@ -168,13 +175,6 @@ type WriteAccessError struct {
 func (e WriteAccessError) Error() string {
 	return fmt.Sprintf("%s does not have write access to directory %s",
 		e.User, buildCanonicalPath(e.Public, e.Tlf))
-}
-
-// NewReadAccessError constructs a ReadAccessError for the given
-// directory and user.
-func NewReadAccessError(h *TlfHandle, username libkb.NormalizedUsername) error {
-	tlfname := h.GetCanonicalName()
-	return ReadAccessError{username, tlfname, h.IsPublic()}
 }
 
 // NewWriteAccessError constructs a WriteAccessError for the given

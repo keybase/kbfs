@@ -579,7 +579,7 @@ func (md *BareRootMetadata) DeepCopyForServerTest(codec Codec) (
 }
 
 func (md *BareRootMetadata) makeRekeyReadError(
-	resolvedHandle *TlfHandle, keyGen KeyGen,
+	resolvedHandle BareTlfHandle, tlfName CanonicalTlfName, keyGen KeyGen,
 	uid keybase1.UID, username libkb.NormalizedUsername) error {
 	if resolvedHandle.IsPublic() {
 		panic("makeRekeyReadError called on public folder")
@@ -587,11 +587,12 @@ func (md *BareRootMetadata) makeRekeyReadError(
 	// If the user is not a legitimate reader of the folder, this is a
 	// normal read access error.
 	if !resolvedHandle.IsReader(uid) {
-		return NewReadAccessError(resolvedHandle, username)
+		return ReadAccessError{
+			username, tlfName, resolvedHandle.IsPublic(),
+		}
 	}
 
 	// Otherwise, this folder needs to be rekeyed for this device.
-	tlfName := resolvedHandle.GetCanonicalName()
 	if keys, _ := md.GetTLFCryptPublicKeys(keyGen, uid); len(keys) > 0 {
 		return NeedSelfRekeyError{tlfName}
 	}
