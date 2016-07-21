@@ -198,13 +198,13 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	head, err = mdOps.GetForTLF(ctx, id)
 	require.NoError(t, err)
 	require.NotNil(t, head)
-	require.Equal(t, MetadataRevision(10), head.Revision)
+	require.Equal(t, MetadataRevision(8), head.Revision)
 
 	// (11) try to get merged range
 	rmdses, err = mdOps.GetRange(ctx, id, 1, 100)
 	require.NoError(t, err)
-	require.Equal(t, 10, len(rmdses))
-	for i := MetadataRevision(1); i <= 10; i++ {
+	require.Equal(t, 8, len(rmdses))
+	for i := MetadataRevision(1); i <= 8; i++ {
 		require.Equal(t, i, rmdses[i-1].Revision)
 	}
 }

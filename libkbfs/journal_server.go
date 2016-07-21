@@ -221,6 +221,7 @@ type journalMDOps struct {
 
 var _ MDOps = journalMDOps{}
 
+// TODO: Figure out locking.
 func (j journalMDOps) getFromJournal(
 	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
 	handle *TlfHandle) (
@@ -518,9 +519,18 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 
 func (j journalMDOps) PruneBranch(
 	ctx context.Context, id TlfID, bid BranchID) error {
-	_, ok := j.jServer.getBundle(id)
+	bundle, ok := j.jServer.getBundle(id)
 	if ok {
-		// TODO: Delegate to bundle's MD journal.
+		irmd, err := j.getFromJournal(ctx, id, bid, Unmerged, nil)
+		if err != nil {
+			return err
+		}
+		if irmd.BID == bid {
+			err := bundle.mdJournal.clear()
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return j.MDOps.PruneBranch(ctx, id, bid)
