@@ -111,6 +111,7 @@ type BareRootMetadata struct {
 
 	// The signature for the writer metadata, to prove
 	// that it's only been changed by writers.
+
 	WriterMetadataSigInfo SignatureInfo
 
 	// The last KB user who modified this BareRootMetadata
@@ -585,10 +586,25 @@ func (md *BareRootMetadata) DeepCopyForServerTest(codec Codec) (
 func (md *BareRootMetadata) IsValidAndSigned(
 	codec Codec, crypto cryptoPure,
 	currentUID keybase1.UID, currentKID keybase1.KID) error {
-	mStatus := md.MergedStatus()
-	bid := md.BID
+	if md.Revision < MetadataRevisionInitial {
+		return errors.New("Invalid revision")
+	}
 
-	if (mStatus == Merged) != (bid == NullBranchID) {
+	if md.Revision == MetadataRevisionInitial {
+		if md.PrevRoot != (MdID{}) {
+			return errors.New("Invalid PrevRoot for initial revision")
+		}
+	} else {
+		if md.PrevRoot == (MdID{}) {
+			return errors.New("No PrevRoot for non-initial revision")
+		}
+	}
+
+	if len(md.SerializedPrivateMetadata) == 0 {
+		return errors.New("No private metadata")
+	}
+
+	if (md.MergedStatus() == Merged) != (md.BID == NullBranchID) {
 		return errors.New("Branch ID doesn't match merged status")
 	}
 

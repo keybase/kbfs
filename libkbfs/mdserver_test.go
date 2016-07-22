@@ -13,6 +13,43 @@ import (
 	"golang.org/x/net/context"
 )
 
+func makeRMDSForTest(t *testing.T, id TlfID, h BareTlfHandle,
+	revision MetadataRevision, uid keybase1.UID,
+	prevRoot MdID) *RootMetadataSigned {
+	rmds, err := NewRootMetadataSignedForTest(id, h)
+	require.NoError(t, err)
+	rmds.MD.SerializedPrivateMetadata = []byte{0x1}
+	rmds.MD.Revision = revision
+	rmds.MD.LastModifyingWriter = uid
+	rmds.MD.LastModifyingUser = uid
+	FakeInitialRekey(&rmds.MD, h)
+	rmds.MD.PrevRoot = prevRoot
+	return rmds
+}
+
+func signRMDSForTest(t *testing.T, config Config, rmds *RootMetadataSigned) {
+	codec := config.Codec()
+	crypto := config.Crypto()
+
+	ctx := context.Background()
+
+	// Encode and sign writer metadata.
+	buf, err := codec.Encode(rmds.MD.WriterMetadata)
+	require.NoError(t, err)
+
+	sigInfo, err := crypto.Sign(ctx, buf)
+	require.NoError(t, err)
+	rmds.MD.WriterMetadataSigInfo = sigInfo
+
+	// Encode and sign root metadata.
+	buf, err = codec.Encode(rmds.MD)
+	require.NoError(t, err)
+
+	sigInfo, err = crypto.Sign(ctx, buf)
+	require.NoError(t, err)
+	rmds.SigInfo = sigInfo
+}
+
 // This should pass for both local and remote servers.
 func TestMDServerBasics(t *testing.T) {
 	// setup
@@ -36,17 +73,8 @@ func TestMDServerBasics(t *testing.T) {
 	prevRoot := MdID{}
 	middleRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
-		rmds, err := NewRootMetadataSignedForTest(id, h)
-		require.NoError(t, err)
-		rmds.MD.SerializedPrivateMetadata = make([]byte, 1)
-		rmds.MD.SerializedPrivateMetadata[0] = 0x1
-		rmds.MD.Revision = MetadataRevision(i)
-		rmds.MD.LastModifyingWriter = uid
-		rmds.MD.LastModifyingUser = uid
-		FakeInitialRekey(&rmds.MD, h)
-		if i > 1 {
-			rmds.MD.PrevRoot = prevRoot
-		}
+		rmds := makeRMDSForTest(t, id, h, i, uid, prevRoot)
+		signRMDSForTest(t, config, rmds)
 		err = mdServer.Put(ctx, rmds)
 		require.NoError(t, err)
 		prevRoot, err = config.Crypto().MakeMdID(&rmds.MD)
@@ -57,13 +85,7 @@ func TestMDServerBasics(t *testing.T) {
 	}
 
 	// (3) trigger a conflict
-	rmds, err = NewRootMetadataSignedForTest(id, h)
-	require.NoError(t, err)
-	rmds.MD.Revision = MetadataRevision(10)
-	rmds.MD.SerializedPrivateMetadata = make([]byte, 1)
-	rmds.MD.SerializedPrivateMetadata[0] = 0x1
-	FakeInitialRekey(&rmds.MD, h)
-	rmds.MD.PrevRoot = prevRoot
+	rmds = makeRMDSForTest(t, id, h, 10, uid, prevRoot)
 	err = mdServer.Put(ctx, rmds)
 	require.IsType(t, MDServerErrorConflictRevision{}, err)
 
@@ -73,15 +95,10 @@ func TestMDServerBasics(t *testing.T) {
 	bid, err := config.Crypto().MakeRandomBranchID()
 	require.NoError(t, err)
 	for i := MetadataRevision(6); i < 41; i++ {
-		rmds, err := NewRootMetadataSignedForTest(id, h)
-		require.NoError(t, err)
-		rmds.MD.Revision = MetadataRevision(i)
-		rmds.MD.SerializedPrivateMetadata = make([]byte, 1)
-		rmds.MD.SerializedPrivateMetadata[0] = 0x1
-		rmds.MD.PrevRoot = prevRoot
-		FakeInitialRekey(&rmds.MD, h)
+		rmds := makeRMDSForTest(t, id, h, i, uid, prevRoot)
 		rmds.MD.WFlags |= MetadataFlagUnmerged
 		rmds.MD.BID = bid
+		signRMDSForTest(t, config, rmds)
 		err = mdServer.Put(ctx, rmds)
 		require.NoError(t, err)
 		prevRoot, err = config.Crypto().MakeMdID(&rmds.MD)
