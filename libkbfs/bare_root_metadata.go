@@ -579,11 +579,19 @@ func (md *BareRootMetadata) DeepCopyForServerTest(codec Codec) (
 }
 
 // IsValidAndSigned verifies the BareRootMetadata given the current
-// user and device, checks the writer signature, and returns an error
-// if a problem was found.
+// user and device (identified by the KID of the device verifying
+// key), checks the writer signature, and returns an error if a
+// problem was found.
 func (md *BareRootMetadata) IsValidAndSigned(
 	codec Codec, crypto cryptoPure,
 	currentUID keybase1.UID, currentKID keybase1.KID) error {
+	mStatus := md.MergedStatus()
+	bid := md.BID
+
+	if (mStatus == Merged) != (bid == NullBranchID) {
+		return errors.New("Branch ID doesn't match merged status")
+	}
+
 	handle, err := md.MakeBareTlfHandle()
 	if err != nil {
 		return err
