@@ -24,6 +24,9 @@ func getMDJournalLength(t *testing.T, s *mdServerTlfStorage, bid BranchID) int {
 func TestMDServerTlfStorageBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := makeTestCryptoCommon(t)
+	signingKey := MakeFakeSigningKeyOrBust("test key")
+	verifyingKey := MakeFakeVerifyingKeyOrBust("test key")
+	signer := cryptoSignerLocal{signingKey}
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_storage")
 	require.NoError(t, err)
@@ -42,8 +45,6 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	key := MakeFakeVerifyingKeyOrBust("test key")
-
 	// (1) Validate merged branch is empty.
 
 	head, err := s.getForTLF(uid, NullBranchID)
@@ -58,7 +59,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	middleRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
 		rmds := makeRMDSForTest(t, id, h, i, uid, prevRoot)
-		recordBranchID, err := s.put(uid, key, rmds)
+		signRMDSForTest(t, codec, signer, rmds)
+		recordBranchID, err := s.put(uid, verifyingKey, rmds)
 		require.NoError(t, err)
 		require.False(t, recordBranchID)
 		prevRoot, err = crypto.MakeMdID(&rmds.MD)
@@ -73,7 +75,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	// (3) Trigger a conflict.
 
 	rmds := makeRMDSForTest(t, id, h, 10, uid, prevRoot)
-	_, err = s.put(uid, key, rmds)
+	signRMDSForTest(t, codec, signer, rmds)
+	_, err = s.put(uid, verifyingKey, rmds)
 	require.IsType(t, MDServerErrorConflictRevision{}, err)
 
 	require.Equal(t, 10, getMDJournalLength(t, s, NullBranchID))
@@ -87,7 +90,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		rmds := makeRMDSForTest(t, id, h, i, uid, prevRoot)
 		rmds.MD.WFlags |= MetadataFlagUnmerged
 		rmds.MD.BID = bid
-		recordBranchID, err := s.put(uid, key, rmds)
+		signRMDSForTest(t, codec, signer, rmds)
+		recordBranchID, err := s.put(uid, verifyingKey, rmds)
 		require.NoError(t, err)
 		require.Equal(t, i == MetadataRevision(6), recordBranchID)
 		prevRoot, err = crypto.MakeMdID(&rmds.MD)
