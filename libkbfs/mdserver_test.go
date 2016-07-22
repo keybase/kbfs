@@ -27,17 +27,15 @@ func makeRMDSForTest(t *testing.T, id TlfID, h BareTlfHandle,
 	return rmds
 }
 
-func signRMDSForTest(t *testing.T, config Config, rmds *RootMetadataSigned) {
-	codec := config.Codec()
-	crypto := config.Crypto()
-
+func signRMDSForTest(t *testing.T, codec Codec, signer cryptoSigner,
+	rmds *RootMetadataSigned) {
 	ctx := context.Background()
 
 	// Encode and sign writer metadata.
 	buf, err := codec.Encode(rmds.MD.WriterMetadata)
 	require.NoError(t, err)
 
-	sigInfo, err := crypto.Sign(ctx, buf)
+	sigInfo, err := signer.Sign(ctx, buf)
 	require.NoError(t, err)
 	rmds.MD.WriterMetadataSigInfo = sigInfo
 
@@ -45,7 +43,7 @@ func signRMDSForTest(t *testing.T, config Config, rmds *RootMetadataSigned) {
 	buf, err = codec.Encode(rmds.MD)
 	require.NoError(t, err)
 
-	sigInfo, err = crypto.Sign(ctx, buf)
+	sigInfo, err = signer.Sign(ctx, buf)
 	require.NoError(t, err)
 	rmds.SigInfo = sigInfo
 }
@@ -74,7 +72,7 @@ func TestMDServerBasics(t *testing.T) {
 	middleRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
 		rmds := makeRMDSForTest(t, id, h, i, uid, prevRoot)
-		signRMDSForTest(t, config, rmds)
+		signRMDSForTest(t, config.Codec(), config.Crypto(), rmds)
 		err = mdServer.Put(ctx, rmds)
 		require.NoError(t, err)
 		prevRoot, err = config.Crypto().MakeMdID(&rmds.MD)
@@ -86,7 +84,7 @@ func TestMDServerBasics(t *testing.T) {
 
 	// (3) trigger a conflict
 	rmds = makeRMDSForTest(t, id, h, 10, uid, prevRoot)
-	signRMDSForTest(t, config, rmds)
+	signRMDSForTest(t, config.Codec(), config.Crypto(), rmds)
 	err = mdServer.Put(ctx, rmds)
 	require.IsType(t, MDServerErrorConflictRevision{}, err)
 
@@ -99,7 +97,7 @@ func TestMDServerBasics(t *testing.T) {
 		rmds := makeRMDSForTest(t, id, h, i, uid, prevRoot)
 		rmds.MD.WFlags |= MetadataFlagUnmerged
 		rmds.MD.BID = bid
-		signRMDSForTest(t, config, rmds)
+		signRMDSForTest(t, config.Codec(), config.Crypto(), rmds)
 		err = mdServer.Put(ctx, rmds)
 		require.NoError(t, err)
 		prevRoot, err = config.Crypto().MakeMdID(&rmds.MD)
