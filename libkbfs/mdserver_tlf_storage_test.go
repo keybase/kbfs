@@ -23,7 +23,7 @@ func getMDJournalLength(t *testing.T, s *mdServerTlfStorage, bid BranchID) int {
 // single mdServerTlfStorage.
 func TestMDServerTlfStorageBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
-	crypto := makeTestCryptoCommon(t)
+	crypto := MakeCryptoCommon(codec)
 	signingKey := MakeFakeSigningKeyOrBust("test key")
 	verifyingKey := MakeFakeVerifyingKeyOrBust("test key")
 	signer := cryptoSignerLocal{signingKey}
