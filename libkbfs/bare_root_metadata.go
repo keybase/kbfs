@@ -510,21 +510,21 @@ func (md *BareRootMetadata) getTLFKeyBundles(keyGen KeyGen) (
 	return &md.WKeys[i], &md.RKeys[i], nil
 }
 
-// GetTLFEphemeralPublicKey returns the ephemeral public key used for
-// the TLFCryptKeyInfo for the given user and device.
-func (md *BareRootMetadata) GetTLFEphemeralPublicKey(
-	keyGen KeyGen, user keybase1.UID,
-	currentCryptPublicKey CryptPublicKey) (
-	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf, TLFCryptKeyServerHalfID, error) {
+// GetTLFCryptKeyInfo returns all the necessary info to construct the
+// TLF crypt key for the given key generation, user, and device
+// (identified by its crypt public key), or false if not found.
+func (md *BareRootMetadata) GetTLFCryptKeyInfo(
+	keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
+	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
+	TLFCryptKeyServerHalfID, bool, error) {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
 			TLFCryptKeyServerHalfID{},
-			err
+			false, err
 	}
 
-	key := currentCryptPublicKey.kid
 	dkim := wkb.WKeys[user]
 	if dkim == nil {
 		dkim = rkb.RKeys[user]
@@ -532,22 +532,22 @@ func (md *BareRootMetadata) GetTLFEphemeralPublicKey(
 			return TLFEphemeralPublicKey{},
 				EncryptedTLFCryptKeyClientHalf{},
 				TLFCryptKeyServerHalfID{},
-				TLFEphemeralPublicKeyNotFoundError{user, key}
+				false, nil
 		}
 	}
-	info, ok := dkim[key]
+	info, ok := dkim[key.kid]
 	if !ok {
 		return TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
 			TLFCryptKeyServerHalfID{},
-			TLFEphemeralPublicKeyNotFoundError{user, key}
+			false, nil
 	}
 
 	if info.EPubKeyIndex < 0 {
 		return rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex],
-			info.ClientHalf, info.ServerHalfID, nil
+			info.ClientHalf, info.ServerHalfID, true, nil
 	}
-	return wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex], info.ClientHalf, info.ServerHalfID, nil
+	return wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex], info.ClientHalf, info.ServerHalfID, true, nil
 }
 
 // DeepCopyForServerTest returns a complete copy of this BareRootMetadata

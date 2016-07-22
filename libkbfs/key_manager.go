@@ -139,8 +139,12 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 		publicKeyLookup := make([]int, 0, len(publicKeys))
 
 		for i, k := range publicKeys {
-			ePublicKey, encryptedClientHalf, serverHalfID, err := md.GetTLFEphemeralPublicKey(keyGen, uid, k)
+			ePublicKey, encryptedClientHalf, serverHalfID, found, err := md.GetTLFCryptKeyInfo(keyGen, uid, k)
 			if err != nil {
+				km.log.CDebugf(ctx, "Got error for GetTLFCryptKeyInfo(%d, %v, %v); skipping: %v", keyGen, uid, k, err)
+				continue
+			}
+			if !found {
 				continue
 			}
 
@@ -174,13 +178,12 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 			return TLFCryptKey{}, err
 		}
 
-		ePublicKey, encryptedClientHalf, foundServerHalfID, err :=
-			md.GetTLFEphemeralPublicKey(
-				keyGen, uid, cryptPublicKey)
-		if _, ok := err.(TLFEphemeralPublicKeyNotFoundError); ok {
-			return TLFCryptKey{}, localMakeRekeyReadError()
-		} else if err != nil {
+		ePublicKey, encryptedClientHalf, foundServerHalfID, found, err :=
+			md.GetTLFCryptKeyInfo(keyGen, uid, cryptPublicKey)
+		if err != nil {
 			return TLFCryptKey{}, err
+		} else if !found {
+			return TLFCryptKey{}, localMakeRekeyReadError()
 		}
 
 		clientHalf, err = crypto.DecryptTLFCryptKeyClientHalf(
