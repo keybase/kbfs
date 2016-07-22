@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/keybase/client/go/protocol"
@@ -456,7 +457,7 @@ func (md *BareRootMetadata) writerKID() keybase1.KID {
 // VerifyWriterMetadata verifies md's WriterMetadata against md's
 // WriterMetadataSigInfo, assuming the verifying key there is valid.
 func (md *BareRootMetadata) VerifyWriterMetadata(
-	codec Codec, crypto Crypto) error {
+	codec Codec, crypto cryptoPure) error {
 	// We have to re-marshal the WriterMetadata, since it's
 	// embedded.
 	buf, err := codec.Encode(md.WriterMetadata)
@@ -575,4 +576,47 @@ func (md *BareRootMetadata) DeepCopyForServerTest(codec Codec) (
 		return nil, err
 	}
 	return &newMd, nil
+}
+
+// IsValidAndSigned verifies the BareRootMetadata given the current
+// user and device, checks the writer signature, and returns an error
+// if a problem was found.
+func (md *BareRootMetadata) IsValidAndSigned(
+	codec Codec, crypto cryptoPure,
+	currentUID keybase1.UID, currentKID keybase1.KID) error {
+	handle, err := md.MakeBareTlfHandle()
+	if err != nil {
+		return err
+	}
+
+	writer := md.LastModifyingWriter
+
+	// Make sure the last writer is valid.
+	if !handle.IsWriter(writer) {
+		return errors.New("Invalid modifying writer")
+	}
+
+	// Verify the user and device are the writer.
+	if !md.IsWriterMetadataCopiedSet() {
+		if writer != currentUID {
+			return errors.New("Last writer and current user mismatch")
+		}
+		kid := md.WriterMetadataSigInfo.VerifyingKey.KID()
+		if kid != currentKID {
+			return errors.New("Last writer key and current device mismatch")
+		}
+	}
+
+	// Verify the user and device are the last modifier.
+	if md.LastModifyingUser != currentUID {
+		return errors.New("Last modifier and current user mismatch")
+	}
+
+	// Verify signature.
+	err = md.VerifyWriterMetadata(codec, crypto)
+	if err != nil {
+		return fmt.Errorf("Could not verify writer metadata: %v", err)
+	}
+
+	return nil
 }
