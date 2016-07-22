@@ -230,12 +230,6 @@ func (c CryptoCommon) UnmaskBlockCryptKey(serverHalf BlockCryptKeyServerHalf, tl
 
 // Verify implements the Crypto interface for CryptoCommon.
 func (c CryptoCommon) Verify(msg []byte, sigInfo SignatureInfo) (err error) {
-	defer func() {
-		c.deferLog.Debug(
-			"Verify result for %d-byte message with %s: %v",
-			len(msg), sigInfo, err)
-	}()
-
 	if sigInfo.Version != SigED25519 {
 		err = UnknownSigVer{sigInfo.Version}
 		return
