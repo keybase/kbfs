@@ -123,7 +123,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 	}
 
 	var clientHalf TLFCryptKeyClientHalf
-	var info TLFCryptKeyInfo
+	var serverHalfID TLFCryptKeyServerHalfID
 	var cryptPublicKey CryptPublicKey
 	crypto := km.config.Crypto()
 
@@ -135,25 +135,22 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 
 		keys := make([]EncryptedTLFCryptKeyClientAndEphemeral, 0,
 			len(publicKeys))
-		keysInfo := make([]TLFCryptKeyInfo, 0, len(publicKeys))
+		serverHalfIDs := make([]TLFCryptKeyServerHalfID, 0, len(publicKeys))
 		publicKeyLookup := make([]int, 0, len(publicKeys))
 
 		for i, k := range publicKeys {
-			info, ok, _ := md.GetTLFCryptKeyInfo(keyGen, uid, k)
-			if ok {
-				ePublicKey, _, err := md.GetTLFEphemeralPublicKey(keyGen, uid, k)
-				if err != nil {
-					continue
-				}
-
-				keysInfo = append(keysInfo, info)
-				keys = append(keys, EncryptedTLFCryptKeyClientAndEphemeral{
-					PubKey:     k,
-					ClientHalf: info.ClientHalf,
-					EPubKey:    ePublicKey,
-				})
-				publicKeyLookup = append(publicKeyLookup, i)
+			ePublicKey, encryptedClientHalf, serverHalfID, err := md.GetTLFEphemeralPublicKey(keyGen, uid, k)
+			if err != nil {
+				continue
 			}
+
+			serverHalfIDs = append(serverHalfIDs, serverHalfID)
+			keys = append(keys, EncryptedTLFCryptKeyClientAndEphemeral{
+				PubKey:     k,
+				ClientHalf: encryptedClientHalf,
+				EPubKey:    ePublicKey,
+			})
+			publicKeyLookup = append(publicKeyLookup, i)
 		}
 		if len(keys) == 0 {
 			return TLFCryptKey{}, localMakeRekeyReadError()
@@ -169,7 +166,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 		} else if err != nil {
 			return TLFCryptKey{}, err
 		}
-		info = keysInfo[index]
+		serverHalfID = serverHalfIDs[index]
 		cryptPublicKey = publicKeys[publicKeyLookup[index]]
 	} else {
 		cryptPublicKey, err = kbpki.GetCurrentCryptPublicKey(ctx)
@@ -177,32 +174,28 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 			return TLFCryptKey{}, err
 		}
 
-		var ok bool
-		info, ok, err = md.GetTLFCryptKeyInfo(keyGen, uid, cryptPublicKey)
-		if err != nil {
-			return TLFCryptKey{}, err
-		}
-		if !ok {
+		ePublicKey, encryptedClientHalf, foundServerHalfID, err :=
+			md.GetTLFEphemeralPublicKey(
+				keyGen, uid, cryptPublicKey)
+		if _, ok := err.(TLFEphemeralPublicKeyNotFoundError); ok {
 			return TLFCryptKey{}, localMakeRekeyReadError()
+		} else if err != nil {
+			return TLFCryptKey{}, err
 		}
 
-		ePublicKey, _, err := md.GetTLFEphemeralPublicKey(keyGen, uid,
-			cryptPublicKey)
+		clientHalf, err = crypto.DecryptTLFCryptKeyClientHalf(
+			ctx, ePublicKey, encryptedClientHalf)
 		if err != nil {
 			return TLFCryptKey{}, err
 		}
 
-		clientHalf, err = crypto.DecryptTLFCryptKeyClientHalf(ctx, ePublicKey,
-			info.ClientHalf)
-		if err != nil {
-			return TLFCryptKey{}, err
-		}
+		serverHalfID = foundServerHalfID
 	}
 
 	// get the server-side key-half, do the unmasking, possibly cache the result, return
 	// TODO: can parallelize the get() with decryption
 	kops := km.config.KeyOps()
-	serverHalf, err := kops.GetTLFCryptKeyServerHalf(ctx, info.ServerHalfID,
+	serverHalf, err := kops.GetTLFCryptKeyServerHalf(ctx, serverHalfID,
 		cryptPublicKey)
 	if err != nil {
 		return TLFCryptKey{}, err

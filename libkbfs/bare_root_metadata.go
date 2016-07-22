@@ -510,37 +510,17 @@ func (md *BareRootMetadata) getTLFKeyBundles(keyGen KeyGen) (
 	return &md.WKeys[i], &md.RKeys[i], nil
 }
 
-// GetTLFCryptKeyInfo returns the TLFCryptKeyInfo entry for the given user
-// and device at the given key generation.
-func (md *BareRootMetadata) GetTLFCryptKeyInfo(keyGen KeyGen, user keybase1.UID,
-	currentCryptPublicKey CryptPublicKey) (
-	info TLFCryptKeyInfo, ok bool, err error) {
-	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
-	if err != nil {
-		return TLFCryptKeyInfo{}, false, err
-	}
-
-	key := currentCryptPublicKey.kid
-	if u, ok1 := wkb.WKeys[user]; ok1 {
-		info, ok := u[key]
-		return info, ok, nil
-	} else if u, ok1 = rkb.RKeys[user]; ok1 {
-		info, ok := u[key]
-		return info, ok, nil
-	}
-	return TLFCryptKeyInfo{}, false, nil
-}
-
 // GetTLFEphemeralPublicKey returns the ephemeral public key used for
 // the TLFCryptKeyInfo for the given user and device.
 func (md *BareRootMetadata) GetTLFEphemeralPublicKey(
 	keyGen KeyGen, user keybase1.UID,
 	currentCryptPublicKey CryptPublicKey) (
-	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf, error) {
+	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf, TLFCryptKeyServerHalfID, error) {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
+			TLFCryptKeyServerHalfID{},
 			err
 	}
 
@@ -551,6 +531,7 @@ func (md *BareRootMetadata) GetTLFEphemeralPublicKey(
 		if dkim == nil {
 			return TLFEphemeralPublicKey{},
 				EncryptedTLFCryptKeyClientHalf{},
+				TLFCryptKeyServerHalfID{},
 				TLFEphemeralPublicKeyNotFoundError{user, key}
 		}
 	}
@@ -558,14 +539,15 @@ func (md *BareRootMetadata) GetTLFEphemeralPublicKey(
 	if !ok {
 		return TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
+			TLFCryptKeyServerHalfID{},
 			TLFEphemeralPublicKeyNotFoundError{user, key}
 	}
 
 	if info.EPubKeyIndex < 0 {
 		return rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex],
-			info.ClientHalf, nil
+			info.ClientHalf, info.ServerHalfID, nil
 	}
-	return wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex], info.ClientHalf, nil
+	return wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex], info.ClientHalf, info.ServerHalfID, nil
 }
 
 // DeepCopyForServerTest returns a complete copy of this BareRootMetadata
