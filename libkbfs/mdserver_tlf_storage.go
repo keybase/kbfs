@@ -310,7 +310,7 @@ func (s *mdServerTlfStorage) getRange(
 }
 
 func (s *mdServerTlfStorage) put(
-	currentUID keybase1.UID, currentKID keybase1.KID,
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
 	rmds *RootMetadataSigned) (
 	recordBranchID bool, err error) {
 	s.lock.Lock()
@@ -321,7 +321,7 @@ func (s *mdServerTlfStorage) put(
 	}
 
 	err = rmds.IsValidAndSigned(
-		s.codec, s.crypto, currentUID, currentKID)
+		s.codec, s.crypto, currentUID, currentVerifyingKey)
 	if err != nil {
 		return false, MDServerErrorBadRequest{Reason: err.Error()}
 	}

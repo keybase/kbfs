@@ -58,7 +58,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	middleRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
 		rmds := makeRMDSForTest(t, id, h, i, uid, prevRoot)
-		recordBranchID, err := s.put(uid, key.KID(), rmds)
+		recordBranchID, err := s.put(uid, key, rmds)
 		require.NoError(t, err)
 		require.False(t, recordBranchID)
 		prevRoot, err = crypto.MakeMdID(&rmds.MD)
@@ -73,7 +73,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	// (3) Trigger a conflict.
 
 	rmds := makeRMDSForTest(t, id, h, 10, uid, prevRoot)
-	_, err = s.put(uid, key.KID(), rmds)
+	_, err = s.put(uid, key, rmds)
 	require.IsType(t, MDServerErrorConflictRevision{}, err)
 
 	require.Equal(t, 10, getMDJournalLength(t, s, NullBranchID))
@@ -87,7 +87,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		rmds := makeRMDSForTest(t, id, h, i, uid, prevRoot)
 		rmds.MD.WFlags |= MetadataFlagUnmerged
 		rmds.MD.BID = bid
-		recordBranchID, err := s.put(uid, key.KID(), rmds)
+		recordBranchID, err := s.put(uid, key, rmds)
 		require.NoError(t, err)
 		require.Equal(t, i == MetadataRevision(6), recordBranchID)
 		prevRoot, err = crypto.MakeMdID(&rmds.MD)

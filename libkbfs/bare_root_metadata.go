@@ -585,7 +585,7 @@ func (md *BareRootMetadata) DeepCopyForServerTest(codec Codec) (
 // problem was found.
 func (md *BareRootMetadata) IsValidAndSigned(
 	codec Codec, crypto cryptoPure,
-	currentUID keybase1.UID, currentKID keybase1.KID) error {
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
 	if md.Revision < MetadataRevisionInitial {
 		return errors.New("Invalid revision")
 	}
@@ -625,9 +625,8 @@ func (md *BareRootMetadata) IsValidAndSigned(
 		if writer != currentUID {
 			return errors.New("Last writer and current user mismatch")
 		}
-		kid := md.WriterMetadataSigInfo.VerifyingKey.KID()
-		if kid != currentKID {
-			return errors.New("Last writer key and current device mismatch")
+		if md.WriterMetadataSigInfo.VerifyingKey != currentVerifyingKey {
+			return errors.New("Last writer verifying key and current verifying key mismatch")
 		}
 	}
 

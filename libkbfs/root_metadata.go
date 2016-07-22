@@ -476,14 +476,15 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(config Config) (
 // if a problem was found.
 func (rmds *RootMetadataSigned) IsValidAndSigned(
 	codec Codec, crypto cryptoPure,
-	currentUID keybase1.UID, currentKID keybase1.KID) error {
-	err := rmds.MD.IsValidAndSigned(codec, crypto, currentUID, currentKID)
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
+	err := rmds.MD.IsValidAndSigned(
+		codec, crypto, currentUID, currentVerifyingKey)
 	if err != nil {
 		return err
 	}
 
-	if rmds.SigInfo.VerifyingKey.KID() != currentKID {
-		return errors.New("Last modifier key and current device mismatch")
+	if rmds.SigInfo.VerifyingKey != currentVerifyingKey {
+		return errors.New("Last modifier verifying key and current verifying key mismatch")
 	}
 
 	err = rmds.VerifyRootMetadata(codec, crypto)
