@@ -102,15 +102,6 @@ func (kim DeviceKeyInfoMap) fillInDeviceInfo(crypto Crypto,
 	return serverMap, nil
 }
 
-// GetKIDs returns the KIDs for the given bundle.
-func (kim DeviceKeyInfoMap) GetKIDs() []keybase1.KID {
-	var keys []keybase1.KID
-	for k := range kim {
-		keys = append(keys, k)
-	}
-	return keys
-}
-
 // UserDeviceKeyInfoMap maps a user's keybase UID to their DeviceKeyInfoMap
 type UserDeviceKeyInfoMap map[keybase1.UID]DeviceKeyInfoMap
 

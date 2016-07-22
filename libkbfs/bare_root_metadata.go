@@ -531,24 +531,6 @@ func (md *BareRootMetadata) GetTLFCryptKeyInfo(keyGen KeyGen, user keybase1.UID,
 	return TLFCryptKeyInfo{}, false, nil
 }
 
-// GetTLFCryptPublicKeys returns the public crypt keys for the given user
-// at the given key generation.
-func (md *BareRootMetadata) GetTLFCryptPublicKeys(
-	keyGen KeyGen, user keybase1.UID) (
-	[]keybase1.KID, bool) {
-	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
-	if err != nil {
-		return nil, false
-	}
-
-	if u, ok1 := wkb.WKeys[user]; ok1 {
-		return u.GetKIDs(), true
-	} else if u, ok1 = rkb.RKeys[user]; ok1 {
-		return u.GetKIDs(), true
-	}
-	return nil, false
-}
-
 // GetTLFEphemeralPublicKey returns the ephemeral public key used for
 // the TLFCryptKeyInfo for the given user and device.
 func (md *BareRootMetadata) GetTLFEphemeralPublicKey(

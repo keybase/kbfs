@@ -247,6 +247,19 @@ func (md *RootMetadata) isReadableOrError(ctx context.Context, config Config) er
 		uid, username)
 }
 
+// hasKeyForUser returns whether or not the given user has keys for at
+// least one device at the given key generation. Returns false if the
+// TLF is public, or if the given key generation is invalid.
+func (md *RootMetadata) hasKeyForUser(
+	keyGen KeyGen, user keybase1.UID) bool {
+	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
+	if err != nil {
+		return false
+	}
+
+	return (len(wkb.WKeys[user]) > 0) || (len(rkb.RKeys[user]) > 0)
+}
+
 func (md *RootMetadata) makeRekeyReadError(
 	resolvedHandle *TlfHandle, keyGen KeyGen,
 	uid keybase1.UID, username libkb.NormalizedUsername) error {
@@ -261,7 +274,7 @@ func (md *RootMetadata) makeRekeyReadError(
 
 	// Otherwise, this folder needs to be rekeyed for this device.
 	tlfName := resolvedHandle.GetCanonicalName()
-	if keys, _ := md.GetTLFCryptPublicKeys(keyGen, uid); len(keys) > 0 {
+	if hasKeys := md.hasKeyForUser(keyGen, uid); hasKeys {
 		return NeedSelfRekeyError{tlfName}
 	}
 	return NeedOtherRekeyError{tlfName}
