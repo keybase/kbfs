@@ -86,6 +86,7 @@ func TestMDServerBasics(t *testing.T) {
 
 	// (3) trigger a conflict
 	rmds = makeRMDSForTest(t, id, h, 10, uid, prevRoot)
+	signRMDSForTest(t, config, rmds)
 	err = mdServer.Put(ctx, rmds)
 	require.IsType(t, MDServerErrorConflictRevision{}, err)
 
