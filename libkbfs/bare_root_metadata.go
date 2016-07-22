@@ -535,27 +535,37 @@ func (md *BareRootMetadata) GetTLFCryptKeyInfo(keyGen KeyGen, user keybase1.UID,
 // the TLFCryptKeyInfo for the given user and device.
 func (md *BareRootMetadata) GetTLFEphemeralPublicKey(
 	keyGen KeyGen, user keybase1.UID,
-	currentCryptPublicKey CryptPublicKey) (TLFEphemeralPublicKey, error) {
+	currentCryptPublicKey CryptPublicKey) (
+	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf, error) {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
-		return TLFEphemeralPublicKey{}, err
+		return TLFEphemeralPublicKey{},
+			EncryptedTLFCryptKeyClientHalf{},
+			err
 	}
 
-	info, ok, err := md.GetTLFCryptKeyInfo(
-		keyGen, user, currentCryptPublicKey)
-	if err != nil {
-		return TLFEphemeralPublicKey{}, err
+	key := currentCryptPublicKey.kid
+	dkim := wkb.WKeys[user]
+	if dkim == nil {
+		dkim = rkb.RKeys[user]
+		if dkim == nil {
+			return TLFEphemeralPublicKey{},
+				EncryptedTLFCryptKeyClientHalf{},
+				TLFEphemeralPublicKeyNotFoundError{user, key}
+		}
 	}
+	info, ok := dkim[key]
 	if !ok {
 		return TLFEphemeralPublicKey{},
-			TLFEphemeralPublicKeyNotFoundError{
-				user, currentCryptPublicKey.kid}
+			EncryptedTLFCryptKeyClientHalf{},
+			TLFEphemeralPublicKeyNotFoundError{user, key}
 	}
 
 	if info.EPubKeyIndex < 0 {
-		return rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex], nil
+		return rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex],
+			info.ClientHalf, nil
 	}
-	return wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex], nil
+	return wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex], info.ClientHalf, nil
 }
 
 // DeepCopyForServerTest returns a complete copy of this BareRootMetadata

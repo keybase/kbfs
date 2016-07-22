@@ -141,7 +141,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 		for i, k := range publicKeys {
 			info, ok, _ := md.GetTLFCryptKeyInfo(keyGen, uid, k)
 			if ok {
-				ePublicKey, err := md.GetTLFEphemeralPublicKey(keyGen, uid, k)
+				ePublicKey, _, err := md.GetTLFEphemeralPublicKey(keyGen, uid, k)
 				if err != nil {
 					continue
 				}
@@ -186,7 +186,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 			return TLFCryptKey{}, localMakeRekeyReadError()
 		}
 
-		ePublicKey, err := md.GetTLFEphemeralPublicKey(keyGen, uid,
+		ePublicKey, _, err := md.GetTLFEphemeralPublicKey(keyGen, uid,
 			cryptPublicKey)
 		if err != nil {
 			return TLFCryptKey{}, err
