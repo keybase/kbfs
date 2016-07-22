@@ -111,7 +111,6 @@ type BareRootMetadata struct {
 
 	// The signature for the writer metadata, to prove
 	// that it's only been changed by writers.
-
 	WriterMetadataSigInfo SignatureInfo
 
 	// The last KB user who modified this BareRootMetadata
