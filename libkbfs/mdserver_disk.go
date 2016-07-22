@@ -364,12 +364,17 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error
 		return MDServerError{err}
 	}
 
+	key, err := md.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return MDServerError{err}
+	}
+
 	tlfStorage, err := md.getStorage(rmds.MD.ID)
 	if err != nil {
 		return err
 	}
 
-	recordBranchID, err := tlfStorage.put(currentUID, rmds)
+	recordBranchID, err := tlfStorage.put(currentUID, key.KID(), rmds)
 	if err != nil {
 		return err
 	}

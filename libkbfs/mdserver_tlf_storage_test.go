@@ -42,6 +42,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
+	key := MakeFakeVerifyingKeyOrBust("test key")
+
 	// (1) Validate merged branch is empty.
 
 	head, err := s.getForTLF(uid, NullBranchID)
@@ -64,7 +66,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		if i > 1 {
 			rmds.MD.PrevRoot = prevRoot
 		}
-		recordBranchID, err := s.put(uid, rmds)
+		recordBranchID, err := s.put(uid, key.KID(), rmds)
 		require.NoError(t, err)
 		require.False(t, recordBranchID)
 		prevRoot, err = crypto.MakeMdID(&rmds.MD)
@@ -85,7 +87,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	rmds.MD.SerializedPrivateMetadata[0] = 0x1
 	FakeInitialRekey(&rmds.MD, h)
 	rmds.MD.PrevRoot = prevRoot
-	_, err = s.put(uid, rmds)
+	_, err = s.put(uid, key.KID(), rmds)
 	require.IsType(t, MDServerErrorConflictRevision{}, err)
 
 	require.Equal(t, 10, getMDJournalLength(t, s, NullBranchID))
@@ -104,7 +106,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		FakeInitialRekey(&rmds.MD, h)
 		rmds.MD.WFlags |= MetadataFlagUnmerged
 		rmds.MD.BID = bid
-		recordBranchID, err := s.put(uid, rmds)
+		recordBranchID, err := s.put(uid, key.KID(), rmds)
 		require.NoError(t, err)
 		require.Equal(t, i == MetadataRevision(6), recordBranchID)
 		prevRoot, err = crypto.MakeMdID(&rmds.MD)
