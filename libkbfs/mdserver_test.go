@@ -41,6 +41,8 @@ func TestMDServerBasics(t *testing.T) {
 		rmds.MD.SerializedPrivateMetadata = make([]byte, 1)
 		rmds.MD.SerializedPrivateMetadata[0] = 0x1
 		rmds.MD.Revision = MetadataRevision(i)
+		rmds.MD.LastModifyingWriter = uid
+		rmds.MD.LastModifyingUser = uid
 		FakeInitialRekey(&rmds.MD, h)
 		if i > 1 {
 			rmds.MD.PrevRoot = prevRoot
