@@ -1451,10 +1451,10 @@ func (bps *blockPutState) DeepCopy() *blockPutState {
 }
 
 func (fbo *folderBranchOps) readyBlockMultiple(ctx context.Context,
-	md ReadOnlyRootMetadata, currBlock Block, uid keybase1.UID,
+	kmd KeyMetadata, currBlock Block, uid keybase1.UID,
 	bps *blockPutState) (info BlockInfo, plainSize int, err error) {
 	info, plainSize, readyBlockData, err :=
-		fbo.blocks.ReadyBlock(ctx, md, currBlock, uid)
+		fbo.blocks.ReadyBlock(ctx, kmd, currBlock, uid)
 	if err != nil {
 		return
 	}
