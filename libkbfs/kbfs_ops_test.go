@@ -991,7 +991,7 @@ func expectSyncBlockHelper(
 		lastCall = call
 		newPath.path[i].ID = newID
 		newBlockIDs[i] = newID
-		config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{rmd},
+		config.mockBops.EXPECT().Put(gomock.Any(), rmd.ID,
 			ptrMatcher{newPath.path[i].BlockPointer}, readyBlockData).
 			Return(nil)
 	}
@@ -4298,7 +4298,7 @@ func expectSyncDirtyBlock(config *ConfigMock, rmd *RootMetadata,
 		// removed.
 	}
 
-	config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{rmd},
+	config.mockBops.EXPECT().Put(gomock.Any(), rmd.ID,
 		ptrMatcher{newPtr}, gomock.Any()).Return(nil)
 	return c2
 }
@@ -4493,7 +4493,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	// manually add b
 	expectedPath.path = append(expectedPath.path,
 		pathNode{BlockPointer{ID: aID, BlockContext: BlockContext{RefNonce: refNonce}}, "b"})
-	config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{rmd},
+	config.mockBops.EXPECT().Put(gomock.Any(), rmd.ID,
 		ptrMatcher{expectedPath.path[1].BlockPointer}, readyBlockData).
 		Return(nil)
 
@@ -4986,7 +4986,7 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 	lastCall = config.mockBops.EXPECT().Ready(gomock.Any(), rmdMatcher{rmd},
 		gomock.Any()).Return(changeBlockID, changePlainSize,
 		changeReadyBlockData, nil).After(lastCall)
-	config.mockBops.EXPECT().Put(gomock.Any(), rmdMatcher{rmd},
+	config.mockBops.EXPECT().Put(gomock.Any(), rmd.ID,
 		ptrMatcher{BlockPointer{ID: changeBlockID}}, changeReadyBlockData).
 		Return(nil)
 

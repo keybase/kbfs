@@ -1395,7 +1395,7 @@ type blockOpsOverQuota struct {
 	BlockOps
 }
 
-func (booq *blockOpsOverQuota) Put(ctx context.Context, kmd KeyMetadata,
+func (booq *blockOpsOverQuota) Put(ctx context.Context, tlfID TlfID,
 	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
 	return BServerErrorOverQuota{
 		Throttled: true,

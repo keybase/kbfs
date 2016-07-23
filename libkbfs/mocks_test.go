@@ -2362,8 +2362,8 @@ func (_mr *_MockBlockOpsRecorder) Ready(arg0, arg1, arg2 interface{}) *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Ready", arg0, arg1, arg2)
 }
 
-func (_m *MockBlockOps) Put(ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
-	ret := _m.ctrl.Call(_m, "Put", ctx, kmd, blockPtr, readyBlockData)
+func (_m *MockBlockOps) Put(ctx context.Context, tlfID TlfID, blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
+	ret := _m.ctrl.Call(_m, "Put", ctx, tlfID, blockPtr, readyBlockData)
 	ret0, _ := ret[0].(error)
 	return ret0
 }

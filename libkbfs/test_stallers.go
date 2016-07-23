@@ -350,11 +350,11 @@ func (f *stallingBlockOps) Ready(
 }
 
 func (f *stallingBlockOps) Put(
-	ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer,
+	ctx context.Context, tlfID TlfID, blockPtr BlockPointer,
 	readyBlockData ReadyBlockData) error {
 	f.maybeStall(ctx, StallableBlockPut)
 	return runWithContextCheck(ctx, func(ctx context.Context) error {
-		return f.delegate.Put(ctx, kmd, blockPtr, readyBlockData)
+		return f.delegate.Put(ctx, tlfID, blockPtr, readyBlockData)
 	})
 }
 

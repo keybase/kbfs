@@ -328,7 +328,7 @@ func TestBlockOpsPutNewBlockSuccess(t *testing.T) {
 		readyBlockData.buf, readyBlockData.serverHalf).Return(nil)
 
 	if err := config.BlockOps().Put(
-		ctx, rmd.ReadOnly(), blockPtr, readyBlockData); err != nil {
+		ctx, rmd.ID, blockPtr, readyBlockData); err != nil {
 		t.Errorf("Got error on put: %v", err)
 	}
 }
@@ -358,7 +358,7 @@ func TestBlockOpsPutIncRefSuccess(t *testing.T) {
 		Return(nil)
 
 	if err := config.BlockOps().Put(
-		ctx, rmd.ReadOnly(), blockPtr, readyBlockData); err != nil {
+		ctx, rmd.ID, blockPtr, readyBlockData); err != nil {
 		t.Errorf("Got error on put: %v", err)
 	}
 }
@@ -384,7 +384,7 @@ func TestBlockOpsPutFail(t *testing.T) {
 		readyBlockData.buf, readyBlockData.serverHalf).Return(err)
 
 	if err2 := config.BlockOps().Put(
-		ctx, rmd.ReadOnly(), blockPtr, readyBlockData); err2 != err {
+		ctx, rmd.ID, blockPtr, readyBlockData); err2 != err {
 		t.Errorf("Got bad error on put: %v", err2)
 	}
 }

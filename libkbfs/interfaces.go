@@ -882,7 +882,7 @@ type BlockOps interface {
 	// Put stores the readied block data under the given block
 	// pointer (which belongs to the TLF with the given metadata)
 	// on the server.
-	Put(ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer,
+	Put(ctx context.Context, tlfID TlfID, blockPtr BlockPointer,
 		readyBlockData ReadyBlockData) error
 
 	// Delete instructs the server to delete the given block references.

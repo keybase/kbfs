@@ -927,6 +927,18 @@ func (fbo *folderBranchOps) nowUnixNano() int64 {
 	return fbo.config.Clock().Now().UnixNano()
 }
 
+func (fbo *folderBranchOps) putBlockCheckQuota(
+	ctx context.Context, tlfID TlfID, blockPtr BlockPointer,
+	readyBlockData ReadyBlockData, tlfName CanonicalTlfName) error {
+	err := fbo.config.BlockOps().Put(ctx, tlfID, blockPtr, readyBlockData)
+	if qe, ok := err.(BServerErrorOverQuota); ok && !qe.Throttled {
+		fbo.config.Reporter().ReportErr(ctx, tlfName, tlfID.IsPublic(),
+			WriteMode, OverQuotaWarning{qe.Usage, qe.Limit})
+		return nil
+	}
+	return err
+}
+
 func (fbo *folderBranchOps) initMDLocked(
 	ctx context.Context, lState *lockState, md *RootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
@@ -990,8 +1002,9 @@ func (fbo *folderBranchOps) initMDLocked(
 	md.AddRefBlock(md.data.Dir.BlockInfo)
 	md.UnrefBytes = 0
 
-	if err = fbo.config.BlockOps().Put(ctx, md.ReadOnly(),
-		info.BlockPointer, readyBlockData); err != nil {
+	if err = fbo.putBlockCheckQuota(
+		ctx, md.ID, info.BlockPointer, readyBlockData,
+		md.GetTlfHandle().GetCanonicalName()); err != nil {
 		return err
 	}
 	if err = fbo.config.BlockCache().Put(
@@ -1733,8 +1746,9 @@ func isRetriableError(err error, retries int) bool {
 func (fbo *folderBranchOps) doOneBlockPut(ctx context.Context,
 	md ReadOnlyRootMetadata, blockState blockState,
 	errChan chan error, blocksToRemoveChan chan *FileBlock) {
-	err := fbo.config.BlockOps().
-		Put(ctx, md, blockState.blockPtr, blockState.readyBlockData)
+	err := fbo.putBlockCheckQuota(
+		ctx, md.ID, blockState.blockPtr, blockState.readyBlockData,
+		md.GetTlfHandle().GetCanonicalName())
 	if err == nil && blockState.syncedCb != nil {
 		err = blockState.syncedCb()
 	}

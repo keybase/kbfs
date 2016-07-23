@@ -135,24 +135,18 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
 }
 
 // Put implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Put(ctx context.Context, kmd KeyMetadata,
+func (b *BlockOpsStandard) Put(ctx context.Context, tlfID TlfID,
 	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
 	bserv := b.config.BlockServer()
 	var err error
 	if blockPtr.RefNonce == zeroBlockRefNonce {
-		err = bserv.Put(ctx, blockPtr.ID, kmd.TlfID(), blockPtr.BlockContext,
+		err = bserv.Put(ctx, blockPtr.ID, tlfID, blockPtr.BlockContext,
 			readyBlockData.buf, readyBlockData.serverHalf)
 	} else {
 		// non-zero block refnonce means this is a new reference to an
 		// existing block.
-		err = bserv.AddBlockReference(ctx, blockPtr.ID, kmd.TlfID(),
+		err = bserv.AddBlockReference(ctx, blockPtr.ID, tlfID,
 			blockPtr.BlockContext)
-	}
-	if qe, ok := err.(BServerErrorOverQuota); ok && !qe.Throttled {
-		name := kmd.GetTlfHandle().GetCanonicalName()
-		b.config.Reporter().ReportErr(ctx, name, kmd.TlfID().IsPublic(),
-			WriteMode, OverQuotaWarning{qe.Usage, qe.Limit})
-		return nil
 	}
 	return err
 }
