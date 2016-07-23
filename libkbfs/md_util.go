@@ -360,7 +360,7 @@ func signMD(
 }
 
 func decryptMDPrivateData(ctx context.Context, config Config,
-	rmdToDecrypt *RootMetadata, rmdWithKeys ReadOnlyRootMetadata) error {
+	rmdToDecrypt *RootMetadata, rmdWithKeys KeyMetadata) error {
 	handle := rmdToDecrypt.GetTlfHandle()
 	crypto := config.Crypto()
 	codec := config.Codec()
