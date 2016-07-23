@@ -467,48 +467,48 @@ func TestKBFSOpsConcurBlockReadWrite(t *testing.T) {
 // mdRecordingKeyManager records the last *RootMetadata argument seen
 // in its KeyManager methods.
 type mdRecordingKeyManager struct {
-	lastMD   *RootMetadata
-	lastMDMu sync.RWMutex
-	delegate KeyManager
+	lastKMDMu sync.RWMutex
+	lastKMD   KeyMetadata
+	delegate  KeyManager
 }
 
-func (km *mdRecordingKeyManager) getLastMD() *RootMetadata {
-	km.lastMDMu.RLock()
-	defer km.lastMDMu.RUnlock()
-	return km.lastMD
+func (km *mdRecordingKeyManager) getLastKMD() KeyMetadata {
+	km.lastKMDMu.RLock()
+	defer km.lastKMDMu.RUnlock()
+	return km.lastKMD
 }
 
-func (km *mdRecordingKeyManager) setLastMD(md *RootMetadata) {
-	km.lastMDMu.Lock()
-	defer km.lastMDMu.Unlock()
-	km.lastMD = md
+func (km *mdRecordingKeyManager) setLastKMD(md KeyMetadata) {
+	km.lastKMDMu.Lock()
+	defer km.lastKMDMu.Unlock()
+	km.lastKMD = md
 }
 
 func (km *mdRecordingKeyManager) GetTLFCryptKeyForEncryption(
-	ctx context.Context, md ReadOnlyRootMetadata) (TLFCryptKey, error) {
-	km.setLastMD(md.RootMetadata)
-	return km.delegate.GetTLFCryptKeyForEncryption(ctx, md)
+	ctx context.Context, kmd KeyMetadata) (TLFCryptKey, error) {
+	km.setLastKMD(kmd)
+	return km.delegate.GetTLFCryptKeyForEncryption(ctx, kmd)
 }
 
 func (km *mdRecordingKeyManager) GetTLFCryptKeyForMDDecryption(
-	ctx context.Context, mdToDecrypt, mdWithKeys ReadOnlyRootMetadata) (
+	ctx context.Context, kmdToDecrypt, kmdWithKeys KeyMetadata) (
 	TLFCryptKey, error) {
-	km.setLastMD(mdToDecrypt.RootMetadata)
+	km.setLastKMD(kmdToDecrypt)
 	return km.delegate.GetTLFCryptKeyForMDDecryption(ctx,
-		mdToDecrypt, mdWithKeys)
+		kmdToDecrypt, kmdWithKeys)
 }
 
 func (km *mdRecordingKeyManager) GetTLFCryptKeyForBlockDecryption(
-	ctx context.Context, md ReadOnlyRootMetadata, blockPtr BlockPointer) (
+	ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer) (
 	TLFCryptKey, error) {
-	km.setLastMD(md.RootMetadata)
-	return km.delegate.GetTLFCryptKeyForBlockDecryption(ctx, md, blockPtr)
+	km.setLastKMD(kmd)
+	return km.delegate.GetTLFCryptKeyForBlockDecryption(ctx, kmd, blockPtr)
 }
 
 func (km *mdRecordingKeyManager) Rekey(
 	ctx context.Context, md *RootMetadata, promptPaper bool) (
 	bool, *TLFCryptKey, error) {
-	km.setLastMD(md)
+	km.setLastKMD(md)
 	return km.delegate.Rekey(ctx, md, promptPaper)
 }
 
@@ -592,10 +592,10 @@ func TestKBFSOpsConcurBlockSyncWrite(t *testing.T) {
 		t.Errorf("Couldn't get MD: %v", err)
 	}
 
-	lastMD := km.getLastMD()
+	lastKMD := km.getLastKMD()
 
-	if md.RootMetadata != lastMD {
-		t.Error("Last MD seen by key manager != head")
+	if md != lastKMD && md.ReadOnlyRootMetadata != lastKMD && md.RootMetadata != lastKMD {
+		t.Errorf("Last MD seen by key manager != head")
 	}
 }
 
@@ -679,9 +679,9 @@ func TestKBFSOpsConcurBlockSyncTruncate(t *testing.T) {
 		t.Errorf("Couldn't get MD: %v", err)
 	}
 
-	lastMD := km.getLastMD()
+	lastKMD := km.getLastKMD()
 
-	if md.RootMetadata != lastMD {
+	if md != lastKMD && md.ReadOnlyRootMetadata != lastKMD && md.RootMetadata != lastKMD {
 		t.Error("Last MD seen by key manager != head")
 	}
 }

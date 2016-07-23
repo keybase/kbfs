@@ -31,36 +31,36 @@ func NewKeyManagerStandard(config Config) *KeyManagerStandard {
 // GetTLFCryptKeyForEncryption implements the KeyManager interface for
 // KeyManagerStandard.
 func (km *KeyManagerStandard) GetTLFCryptKeyForEncryption(ctx context.Context,
-	md ReadOnlyRootMetadata) (tlfCryptKey TLFCryptKey, err error) {
-	return km.getTLFCryptKeyUsingCurrentDevice(ctx, md,
-		md.LatestKeyGeneration(), false)
+	kmd KeyMetadata) (tlfCryptKey TLFCryptKey, err error) {
+	return km.getTLFCryptKeyUsingCurrentDevice(ctx, kmd,
+		kmd.LatestKeyGeneration(), false)
 }
 
 // GetTLFCryptKeyForMDDecryption implements the KeyManager interface
 // for KeyManagerStandard.
 func (km *KeyManagerStandard) GetTLFCryptKeyForMDDecryption(
-	ctx context.Context, mdToDecrypt, mdWithKeys ReadOnlyRootMetadata) (
+	ctx context.Context, kmdToDecrypt, kmdWithKeys KeyMetadata) (
 	tlfCryptKey TLFCryptKey, err error) {
-	return km.getTLFCryptKey(ctx, mdWithKeys, mdToDecrypt.LatestKeyGeneration(),
+	return km.getTLFCryptKey(ctx, kmdWithKeys, kmdToDecrypt.LatestKeyGeneration(),
 		getTLFCryptKeyAnyDevice|getTLFCryptKeyDoCache)
 }
 
 // GetTLFCryptKeyForBlockDecryption implements the KeyManager interface for
 // KeyManagerStandard.
 func (km *KeyManagerStandard) GetTLFCryptKeyForBlockDecryption(
-	ctx context.Context, md ReadOnlyRootMetadata, blockPtr BlockPointer) (
+	ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer) (
 	tlfCryptKey TLFCryptKey, err error) {
-	return km.getTLFCryptKeyUsingCurrentDevice(ctx, md, blockPtr.KeyGen, true)
+	return km.getTLFCryptKeyUsingCurrentDevice(ctx, kmd, blockPtr.KeyGen, true)
 }
 
 func (km *KeyManagerStandard) getTLFCryptKeyUsingCurrentDevice(
-	ctx context.Context, md ReadOnlyRootMetadata, keyGen KeyGen, cache bool) (
+	ctx context.Context, kmd KeyMetadata, keyGen KeyGen, cache bool) (
 	tlfCryptKey TLFCryptKey, err error) {
 	flags := getTLFCryptKeyFlags(0)
 	if cache {
 		flags = getTLFCryptKeyDoCache
 	}
-	return km.getTLFCryptKey(ctx, md, keyGen, flags)
+	return km.getTLFCryptKey(ctx, kmd, keyGen, flags)
 }
 
 type getTLFCryptKeyFlags byte
@@ -72,26 +72,27 @@ const (
 )
 
 func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
-	md ReadOnlyRootMetadata, keyGen KeyGen, flags getTLFCryptKeyFlags) (
+	kmd KeyMetadata, keyGen KeyGen, flags getTLFCryptKeyFlags) (
 	TLFCryptKey, error) {
+	tlfID := kmd.TlfID()
 
-	if md.ID.IsPublic() {
+	if tlfID.IsPublic() {
 		return PublicTLFCryptKey, nil
 	}
 
 	if keyGen < FirstValidKeyGen {
-		return TLFCryptKey{}, InvalidKeyGenerationError{md.ID, keyGen}
+		return TLFCryptKey{}, InvalidKeyGenerationError{tlfID, keyGen}
 	}
 	// Is this some key we don't know yet?  Shouldn't really ever happen,
 	// since we must have seen the MD that led us to this block, which
 	// should include all the latest keys.  Consider this a failsafe.
-	if keyGen > md.LatestKeyGeneration() {
-		return TLFCryptKey{}, NewKeyGenerationError{md.ID, keyGen}
+	if keyGen > kmd.LatestKeyGeneration() {
+		return TLFCryptKey{}, NewKeyGenerationError{tlfID, keyGen}
 	}
 
 	// look in the cache first
 	kcache := km.config.KeyCache()
-	tlfCryptKey, err := kcache.GetTLFCryptKey(md.ID, keyGen)
+	tlfCryptKey, err := kcache.GetTLFCryptKey(tlfID, keyGen)
 	switch err := err.(type) {
 	case nil:
 		return tlfCryptKey, nil
@@ -109,7 +110,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 	}
 
 	localMakeRekeyReadError := func() error {
-		return makeRekeyReadError(ctx, km.config, md, keyGen, uid, username)
+		return makeRekeyReadError(ctx, km.config, kmd, keyGen, uid, username)
 	}
 
 	var clientHalf TLFCryptKeyClientHalf
@@ -129,7 +130,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 		publicKeyLookup := make([]int, 0, len(publicKeys))
 
 		for i, k := range publicKeys {
-			ePublicKey, encryptedClientHalf, serverHalfID, found, err := md.GetTLFCryptKeyInfo(keyGen, uid, k)
+			ePublicKey, encryptedClientHalf, serverHalfID, found, err := kmd.GetTLFCryptKeyInfo(keyGen, uid, k)
 			if err != nil {
 				km.log.CDebugf(ctx, "Got error for GetTLFCryptKeyInfo(%d, %v, %v); skipping: %v", keyGen, uid, k, err)
 				continue
@@ -169,7 +170,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 		}
 
 		ePublicKey, encryptedClientHalf, foundServerHalfID, found, err :=
-			md.GetTLFCryptKeyInfo(keyGen, uid, cryptPublicKey)
+			kmd.GetTLFCryptKeyInfo(keyGen, uid, cryptPublicKey)
 		if err != nil {
 			return TLFCryptKey{}, err
 		} else if !found {
@@ -200,7 +201,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 	}
 
 	if flags&getTLFCryptKeyDoCache != 0 {
-		if err = kcache.PutTLFCryptKey(md.ID, keyGen, tlfCryptKey); err != nil {
+		if err = kcache.PutTLFCryptKey(tlfID, keyGen, tlfCryptKey); err != nil {
 			return TLFCryptKey{}, err
 		}
 	}

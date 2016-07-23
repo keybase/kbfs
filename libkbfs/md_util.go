@@ -20,7 +20,7 @@ type mdRange struct {
 }
 
 func makeRekeyReadErrorHelper(
-	md ReadOnlyRootMetadata, resolvedHandle *TlfHandle, keyGen KeyGen,
+	kmd KeyMetadata, resolvedHandle *TlfHandle, keyGen KeyGen,
 	uid keybase1.UID, username libkb.NormalizedUsername) error {
 	if resolvedHandle.IsPublic() {
 		panic("makeRekeyReadError called on public folder")
@@ -33,16 +33,16 @@ func makeRekeyReadErrorHelper(
 
 	// Otherwise, this folder needs to be rekeyed for this device.
 	tlfName := resolvedHandle.GetCanonicalName()
-	if hasKeys := md.HasKeyForUser(keyGen, uid); hasKeys {
+	if hasKeys := kmd.HasKeyForUser(keyGen, uid); hasKeys {
 		return NeedSelfRekeyError{tlfName}
 	}
 	return NeedOtherRekeyError{tlfName}
 }
 
 func makeRekeyReadError(
-	ctx context.Context, config Config, md ReadOnlyRootMetadata, keyGen KeyGen,
+	ctx context.Context, config Config, kmd KeyMetadata, keyGen KeyGen,
 	uid keybase1.UID, username libkb.NormalizedUsername) error {
-	h := md.GetTlfHandle()
+	h := kmd.GetTlfHandle()
 	resolvedHandle, err := h.ResolveAgain(ctx, config.KBPKI())
 	if err != nil {
 		// Ignore error and pretend h is already fully
@@ -50,7 +50,7 @@ func makeRekeyReadError(
 		resolvedHandle = h
 	}
 	return makeRekeyReadErrorHelper(
-		md, resolvedHandle, keyGen, uid, username)
+		kmd, resolvedHandle, keyGen, uid, username)
 }
 
 // Helper which returns nil if the md block is uninitialized or readable by
