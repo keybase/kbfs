@@ -2339,8 +2339,8 @@ func (_m *MockBlockOps) EXPECT() *_MockBlockOpsRecorder {
 	return _m.recorder
 }
 
-func (_m *MockBlockOps) Get(ctx context.Context, md ReadOnlyRootMetadata, blockPtr BlockPointer, block Block) error {
-	ret := _m.ctrl.Call(_m, "Get", ctx, md, blockPtr, block)
+func (_m *MockBlockOps) Get(ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer, block Block) error {
+	ret := _m.ctrl.Call(_m, "Get", ctx, kmd, blockPtr, block)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -2349,8 +2349,8 @@ func (_mr *_MockBlockOpsRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockOps) Ready(ctx context.Context, md ReadOnlyRootMetadata, block Block) (BlockID, int, ReadyBlockData, error) {
-	ret := _m.ctrl.Call(_m, "Ready", ctx, md, block)
+func (_m *MockBlockOps) Ready(ctx context.Context, kmd KeyMetadata, block Block) (BlockID, int, ReadyBlockData, error) {
+	ret := _m.ctrl.Call(_m, "Ready", ctx, kmd, block)
 	ret0, _ := ret[0].(BlockID)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(ReadyBlockData)
@@ -2362,8 +2362,8 @@ func (_mr *_MockBlockOpsRecorder) Ready(arg0, arg1, arg2 interface{}) *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Ready", arg0, arg1, arg2)
 }
 
-func (_m *MockBlockOps) Put(ctx context.Context, md ReadOnlyRootMetadata, blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
-	ret := _m.ctrl.Call(_m, "Put", ctx, md, blockPtr, readyBlockData)
+func (_m *MockBlockOps) Put(ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
+	ret := _m.ctrl.Call(_m, "Put", ctx, kmd, blockPtr, readyBlockData)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -2372,8 +2372,8 @@ func (_mr *_MockBlockOpsRecorder) Put(arg0, arg1, arg2, arg3 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockOps) Delete(ctx context.Context, md ReadOnlyRootMetadata, ptrs []BlockPointer) (map[BlockID]int, error) {
-	ret := _m.ctrl.Call(_m, "Delete", ctx, md, ptrs)
+func (_m *MockBlockOps) Delete(ctx context.Context, kmd KeyMetadata, ptrs []BlockPointer) (map[BlockID]int, error) {
+	ret := _m.ctrl.Call(_m, "Delete", ctx, kmd, ptrs)
 	ret0, _ := ret[0].(map[BlockID]int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -2383,8 +2383,8 @@ func (_mr *_MockBlockOpsRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock.C
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Delete", arg0, arg1, arg2)
 }
 
-func (_m *MockBlockOps) Archive(ctx context.Context, md ReadOnlyRootMetadata, ptrs []BlockPointer) error {
-	ret := _m.ctrl.Call(_m, "Archive", ctx, md, ptrs)
+func (_m *MockBlockOps) Archive(ctx context.Context, kmd KeyMetadata, ptrs []BlockPointer) error {
+	ret := _m.ctrl.Call(_m, "Archive", ctx, kmd, ptrs)
 	ret0, _ := ret[0].(error)
 	return ret0
 }

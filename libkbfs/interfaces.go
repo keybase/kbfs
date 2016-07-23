@@ -868,7 +868,7 @@ type BlockOps interface {
 	// decrypts it if necessary, and fills in the provided block
 	// object with its contents, if the logged-in user has read
 	// permission for that block.
-	Get(ctx context.Context, md ReadOnlyRootMetadata, blockPtr BlockPointer,
+	Get(ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer,
 		block Block) error
 
 	// Ready turns the given block (which belongs to the TLF with
@@ -876,26 +876,26 @@ type BlockOps interface {
 	// calculates its ID and size, so that we can do a bunch of
 	// block puts in parallel for every write. Ready() must
 	// guarantee that plainSize <= readyBlockData.QuotaSize().
-	Ready(ctx context.Context, md ReadOnlyRootMetadata, block Block) (
+	Ready(ctx context.Context, kmd KeyMetadata, block Block) (
 		id BlockID, plainSize int, readyBlockData ReadyBlockData, err error)
 
 	// Put stores the readied block data under the given block
 	// pointer (which belongs to the TLF with the given metadata)
 	// on the server.
-	Put(ctx context.Context, md ReadOnlyRootMetadata, blockPtr BlockPointer,
+	Put(ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer,
 		readyBlockData ReadyBlockData) error
 
 	// Delete instructs the server to delete the given block references.
 	// It returns the number of not-yet deleted references to
 	// each block reference
-	Delete(ctx context.Context, md ReadOnlyRootMetadata, ptrs []BlockPointer) (
+	Delete(ctx context.Context, kmd KeyMetadata, ptrs []BlockPointer) (
 		liveCounts map[BlockID]int, err error)
 
 	// Archive instructs the server to mark the given block references
 	// as "archived"; that is, they are not being used in the current
 	// view of the folder, and shouldn't be served to anyone other
 	// than folder writers.
-	Archive(ctx context.Context, md ReadOnlyRootMetadata, ptrs []BlockPointer) error
+	Archive(ctx context.Context, kmd KeyMetadata, ptrs []BlockPointer) error
 }
 
 // MDServer gets and puts metadata for each top-level directory.  The

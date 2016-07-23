@@ -22,42 +22,22 @@ import (
 )
 
 type CheckBlockOps struct {
-	delegate BlockOps
-	tr       gomock.TestReporter
+	BlockOps
+	tr gomock.TestReporter
 }
 
 var _ BlockOps = (*CheckBlockOps)(nil)
 
-func (cbo *CheckBlockOps) Get(ctx context.Context, md ReadOnlyRootMetadata,
-	blockPtr BlockPointer, block Block) error {
-	return cbo.delegate.Get(ctx, md, blockPtr, block)
-}
-
-func (cbo *CheckBlockOps) Ready(ctx context.Context, md ReadOnlyRootMetadata,
+func (cbo *CheckBlockOps) Ready(ctx context.Context, kmd KeyMetadata,
 	block Block) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
 	err error) {
-	id, plainSize, readyBlockData, err = cbo.delegate.Ready(ctx, md, block)
+	id, plainSize, readyBlockData, err = cbo.BlockOps.Ready(ctx, kmd, block)
 	encodedSize := readyBlockData.GetEncodedSize()
 	if plainSize > encodedSize {
 		cbo.tr.Errorf("expected plainSize <= encodedSize, got plainSize = %d, "+
 			"encodedSize = %d", plainSize, encodedSize)
 	}
 	return
-}
-
-func (cbo *CheckBlockOps) Put(ctx context.Context, md ReadOnlyRootMetadata,
-	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
-	return cbo.delegate.Put(ctx, md, blockPtr, readyBlockData)
-}
-
-func (cbo *CheckBlockOps) Delete(ctx context.Context, md ReadOnlyRootMetadata,
-	ptrs []BlockPointer) (map[BlockID]int, error) {
-	return cbo.delegate.Delete(ctx, md, ptrs)
-}
-
-func (cbo *CheckBlockOps) Archive(ctx context.Context, md ReadOnlyRootMetadata,
-	ptrs []BlockPointer) error {
-	return cbo.delegate.Archive(ctx, md, ptrs)
 }
 
 var tCtxID = "kbfs-ops-test-id"
