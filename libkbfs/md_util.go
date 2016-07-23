@@ -19,7 +19,7 @@ type mdRange struct {
 	end   MetadataRevision
 }
 
-func makeRekeyReadError(
+func makeRekeyReadErrorHelper(
 	md ReadOnlyRootMetadata, resolvedHandle *TlfHandle, keyGen KeyGen,
 	uid keybase1.UID, username libkb.NormalizedUsername) error {
 	if resolvedHandle.IsPublic() {
@@ -39,6 +39,20 @@ func makeRekeyReadError(
 	return NeedOtherRekeyError{tlfName}
 }
 
+func makeRekeyReadError(
+	ctx context.Context, config Config, md ReadOnlyRootMetadata, keyGen KeyGen,
+	uid keybase1.UID, username libkb.NormalizedUsername) error {
+	h := md.GetTlfHandle()
+	resolvedHandle, err := h.ResolveAgain(ctx, config.KBPKI())
+	if err != nil {
+		// Ignore error and pretend h is already fully
+		// resolved.
+		resolvedHandle = h
+	}
+	return makeRekeyReadErrorHelper(
+		md, resolvedHandle, keyGen, uid, username)
+}
+
 // Helper which returns nil if the md block is uninitialized or readable by
 // the current user. Otherwise an appropriate read access error is returned.
 func isReadableOrError(
@@ -52,15 +66,8 @@ func isReadableOrError(
 	if err != nil {
 		return err
 	}
-	h := md.GetTlfHandle()
-	resolvedHandle, err := h.ResolveAgain(ctx, config.KBPKI())
-	if err != nil {
-		// Ignore error and pretend h is already fully
-		// resolved.
-		resolvedHandle = h
-	}
-	return makeRekeyReadError(md, resolvedHandle, md.LatestKeyGeneration(),
-		uid, username)
+	return makeRekeyReadError(
+		ctx, config, md, md.LatestKeyGeneration(), uid, username)
 }
 
 func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,

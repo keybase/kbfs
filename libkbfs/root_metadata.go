@@ -140,7 +140,7 @@ func (md *RootMetadata) MakeSuccessor(
 }
 
 // AddNewKeys makes a new key generation for this RootMetadata using the
-// given TLFKeyBundles.
+// given TLF key bundles.
 func (md *RootMetadata) AddNewKeys(
 	wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) error {
 	if md.ID.IsPublic() {

@@ -497,7 +497,7 @@ func (md *BareRootMetadata) TlfHandleExtensions() (
 func (md *BareRootMetadata) getTLFKeyBundles(keyGen KeyGen) (
 	*TLFWriterKeyBundle, *TLFReaderKeyBundle, error) {
 	if md.ID.IsPublic() {
-		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundle"}
+		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundles"}
 	}
 
 	if keyGen < FirstValidKeyGen {

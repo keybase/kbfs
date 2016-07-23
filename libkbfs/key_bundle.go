@@ -12,9 +12,6 @@ import (
 // All section references below are to https://keybase.io/blog/kbfs-crypto
 // (version 1.3).
 
-// TODO once TLFKeyBundle is removed, ensure that methods take
-// value receivers unless they mutate the receiver.
-
 // TLFCryptKeyServerHalfID is the identifier type for a server-side key half.
 type TLFCryptKeyServerHalfID struct {
 	ID HMAC // Exported for serialization.

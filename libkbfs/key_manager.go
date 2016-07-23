@@ -109,17 +109,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 	}
 
 	localMakeRekeyReadError := func() error {
-		h := md.GetTlfHandle()
-		resolvedHandle, err := h.ResolveAgain(ctx, km.config.KBPKI())
-		if err != nil {
-			// Ignore error and pretend h is already fully
-			// resolved.
-			km.log.CWarningf(ctx, "ResolveAgain for %v error: %v",
-				h.GetCanonicalPath(), err)
-			resolvedHandle = h
-		}
-		return makeRekeyReadError(
-			md, resolvedHandle, keyGen, uid, username)
+		return makeRekeyReadError(ctx, km.config, md, keyGen, uid, username)
 	}
 
 	var clientHalf TLFCryptKeyClientHalf
