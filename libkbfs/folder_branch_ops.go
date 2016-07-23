@@ -2652,8 +2652,7 @@ func (fbo *folderBranchOps) renameLocked(
 	}
 
 	oldPBlock, newPBlock, newDe, lbc, err := fbo.blocks.PrepRename(
-		ctx, lState, md.ReadOnly(),
-		oldParent, oldName, newParent, newName)
+		ctx, lState, md, oldParent, oldName, newParent, newName)
 
 	if err != nil {
 		return err
