@@ -319,7 +319,7 @@ var _ DirInterface = (*Dir)(nil)
 
 // Attr implements the fs.Node interface for Dir.
 func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) (err error) {
-	ctx = context.Background()
+	ctx = libkbfs.NewContextWithReplayFrom(ctx)
 	d.folder.fs.log.CDebugf(ctx, "Dir Attr")
 	defer func() { d.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
@@ -345,6 +345,7 @@ func (d *Dir) attr(ctx context.Context, a *fuse.Attr) (err error) {
 
 // Lookup implements the fs.NodeRequestLookuper interface for Dir.
 func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
+	ctx = libkbfs.NewContextWithReplayFrom(ctx)
 	d.folder.fs.log.CDebugf(ctx, "Dir Lookup %s", req.Name)
 	defer func() { d.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
@@ -505,6 +506,7 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 // Mkdir implements the fs.NodeMkdirer interface for Dir.
 func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (
 	node fs.Node, err error) {
+	ctx = libkbfs.NewContextWithReplayFrom(ctx)
 	d.folder.fs.log.CDebugf(ctx, "Dir Mkdir %s", req.Name)
 	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 

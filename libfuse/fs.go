@@ -81,10 +81,7 @@ func (f *FS) LaunchNotificationProcessor(ctx context.Context) {
 	f.notifications.LaunchProcessor(ctx)
 }
 
-// WithContext adds app- and request-specific values to the context.
-// It is called by FUSE for normal runs, but may be called explicitly
-// in other settings, such as tests.
-func (f *FS) WithContext(ctx context.Context) context.Context {
+func (f *FS) withContext(ctx context.Context) context.Context {
 	ctx = context.WithValue(ctx, CtxAppIDKey, f)
 	logTags := make(logger.CtxLogTags)
 	logTags[CtxIDKey] = CtxOpID
@@ -114,11 +111,19 @@ func (f *FS) WithContext(ctx context.Context) context.Context {
 	return ctx
 }
 
+// WithContextReplayable adds app- and request-specific values to the context.
+// Such action is also attached to a replay func to be used by
+// libkbfs.NewContextWithReplayFrom.  It is called by FUSE for normal runs, but
+// may be called explicitly in other settings, such as tests.
+func (f *FS) WithContextReplayable(ctx context.Context) context.Context {
+	return libkbfs.NewContextReplayable(ctx, f.withContext)
+}
+
 // Serve FS. Will block.
 func (f *FS) Serve(ctx context.Context) error {
 	srv := fs.New(f.conn, &fs.Config{
 		WithContext: func(ctx context.Context, _ fuse.Request) context.Context {
-			return f.WithContext(ctx)
+			return f.WithContextReplayable(ctx)
 		},
 	})
 	f.fuse = srv

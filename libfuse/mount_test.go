@@ -55,7 +55,7 @@ func makeFS(t testing.TB, config *libkbfs.ConfigLocal) (
 	options := GetPlatformSpecificMountOptionsForTest()
 	mnt, err := fstestutil.MountedFuncT(t, fn, &fs.Config{
 		WithContext: func(ctx context.Context, req fuse.Request) context.Context {
-			return filesys.WithContext(ctx)
+			return filesys.WithContextReplayable(ctx)
 		},
 	}, options...)
 	if err != nil {
