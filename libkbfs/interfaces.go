@@ -888,14 +888,14 @@ type BlockOps interface {
 	// Delete instructs the server to delete the given block references.
 	// It returns the number of not-yet deleted references to
 	// each block reference
-	Delete(ctx context.Context, kmd KeyMetadata, ptrs []BlockPointer) (
+	Delete(ctx context.Context, tlfID TlfID, ptrs []BlockPointer) (
 		liveCounts map[BlockID]int, err error)
 
 	// Archive instructs the server to mark the given block references
 	// as "archived"; that is, they are not being used in the current
 	// view of the folder, and shouldn't be served to anyone other
 	// than folder writers.
-	Archive(ctx context.Context, kmd KeyMetadata, ptrs []BlockPointer) error
+	Archive(ctx context.Context, tlfID TlfID, ptrs []BlockPointer) error
 }
 
 // MDServer gets and puts metadata for each top-level directory.  The

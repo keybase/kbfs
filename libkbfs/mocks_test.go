@@ -2372,8 +2372,8 @@ func (_mr *_MockBlockOpsRecorder) Put(arg0, arg1, arg2, arg3 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockOps) Delete(ctx context.Context, kmd KeyMetadata, ptrs []BlockPointer) (map[BlockID]int, error) {
-	ret := _m.ctrl.Call(_m, "Delete", ctx, kmd, ptrs)
+func (_m *MockBlockOps) Delete(ctx context.Context, tlfID TlfID, ptrs []BlockPointer) (map[BlockID]int, error) {
+	ret := _m.ctrl.Call(_m, "Delete", ctx, tlfID, ptrs)
 	ret0, _ := ret[0].(map[BlockID]int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -2383,8 +2383,8 @@ func (_mr *_MockBlockOpsRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock.C
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Delete", arg0, arg1, arg2)
 }
 
-func (_m *MockBlockOps) Archive(ctx context.Context, kmd KeyMetadata, ptrs []BlockPointer) error {
-	ret := _m.ctrl.Call(_m, "Archive", ctx, kmd, ptrs)
+func (_m *MockBlockOps) Archive(ctx context.Context, tlfID TlfID, ptrs []BlockPointer) error {
+	ret := _m.ctrl.Call(_m, "Archive", ctx, tlfID, ptrs)
 	ret0, _ := ret[0].(error)
 	return ret0
 }

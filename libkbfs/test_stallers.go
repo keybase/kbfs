@@ -359,22 +359,22 @@ func (f *stallingBlockOps) Put(
 }
 
 func (f *stallingBlockOps) Delete(
-	ctx context.Context, kmd KeyMetadata,
+	ctx context.Context, tlfID TlfID,
 	ptrs []BlockPointer) (notDeleted map[BlockID]int, err error) {
 	f.maybeStall(ctx, StallableBlockDelete)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errDelete error
-		notDeleted, errDelete = f.delegate.Delete(ctx, kmd, ptrs)
+		notDeleted, errDelete = f.delegate.Delete(ctx, tlfID, ptrs)
 		return errDelete
 	})
 	return notDeleted, err
 }
 
 func (f *stallingBlockOps) Archive(
-	ctx context.Context, kmd KeyMetadata, ptrs []BlockPointer) error {
+	ctx context.Context, tlfID TlfID, ptrs []BlockPointer) error {
 	f.maybeStall(ctx, StallableBlockArchive)
 	return runWithContextCheck(ctx, func(ctx context.Context) error {
-		return f.delegate.Archive(ctx, kmd, ptrs)
+		return f.delegate.Archive(ctx, tlfID, ptrs)
 	})
 }
 

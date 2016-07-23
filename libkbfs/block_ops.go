@@ -158,22 +158,22 @@ func (b *BlockOpsStandard) Put(ctx context.Context, kmd KeyMetadata,
 }
 
 // Delete implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Delete(ctx context.Context, kmd KeyMetadata,
+func (b *BlockOpsStandard) Delete(ctx context.Context, tlfID TlfID,
 	ptrs []BlockPointer) (liveCounts map[BlockID]int, err error) {
 	contexts := make(map[BlockID][]BlockContext)
 	for _, ptr := range ptrs {
 		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.BlockContext)
 	}
-	return b.config.BlockServer().RemoveBlockReference(ctx, kmd.TlfID(), contexts)
+	return b.config.BlockServer().RemoveBlockReference(ctx, tlfID, contexts)
 }
 
 // Archive implements the BlockOps interface for BlockOpsStandard.
-func (b *BlockOpsStandard) Archive(ctx context.Context, kmd KeyMetadata,
+func (b *BlockOpsStandard) Archive(ctx context.Context, tlfID TlfID,
 	ptrs []BlockPointer) error {
 	contexts := make(map[BlockID][]BlockContext)
 	for _, ptr := range ptrs {
 		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.BlockContext)
 	}
 
-	return b.config.BlockServer().ArchiveBlockReferences(ctx, kmd.TlfID(), contexts)
+	return b.config.BlockServer().ArchiveBlockReferences(ctx, tlfID, contexts)
 }

@@ -407,7 +407,7 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 		Return(liveCounts, nil)
 
 	if _, err := config.BlockOps().Delete(
-		ctx, rmd.ReadOnly(), blockPtrs); err != nil {
+		ctx, rmd.ID, blockPtrs); err != nil {
 		t.Errorf("Got error on delete: %v", err)
 	}
 }
@@ -431,7 +431,7 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 		Return(liveCounts, err)
 
 	if _, err2 := config.BlockOps().Delete(
-		ctx, rmd.ReadOnly(), blockPtrs); err2 != err {
+		ctx, rmd.ID, blockPtrs); err2 != err {
 		t.Errorf("Got bad error on delete: %v", err2)
 	}
 }
