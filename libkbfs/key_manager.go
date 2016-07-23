@@ -235,7 +235,7 @@ func (km *KeyManagerStandard) updateKeyBundle(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
-	md ReadOnlyRootMetadata, keyInfoMap UserDeviceKeyInfoMap,
+	tlfID TlfID, keyInfoMap UserDeviceKeyInfoMap,
 	expectedKeys map[keybase1.UID][]CryptPublicKey) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
 	for u, keys := range expectedKeys {
@@ -244,7 +244,7 @@ func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
 			// Currently there probably shouldn't be any new users
 			// in the handle, but don't error just in case we ever
 			// want to support that in the future.
-			km.log.CInfof(ctx, "Rekey %s: adding new user %s", md.ID, u)
+			km.log.CInfof(ctx, "Rekey %s: adding new user %s", tlfID, u)
 			users[u] = true
 			continue
 		}
@@ -252,7 +252,7 @@ func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
 			km.log.CDebugf(ctx, "Checking key %v", k.kid)
 			if _, ok := kids[k.kid]; !ok {
 				km.log.CInfof(ctx, "Rekey %s: adding new device %s for user %s",
-					md.ID, k.kid, u)
+					tlfID, k.kid, u)
 				users[u] = true
 				break
 			}
@@ -262,7 +262,7 @@ func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
-	md ReadOnlyRootMetadata, keyInfoMap UserDeviceKeyInfoMap,
+	tlfID TlfID, keyInfoMap UserDeviceKeyInfoMap,
 	expectedKeys map[keybase1.UID][]CryptPublicKey) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
 	for u, kids := range keyInfoMap {
@@ -271,7 +271,7 @@ func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
 			// Currently there probably shouldn't be any users removed
 			// from the handle, but don't error just in case we ever
 			// want to support that in the future.
-			km.log.CInfof(ctx, "Rekey %s: removing user %s", md.ID, u)
+			km.log.CInfof(ctx, "Rekey %s: removing user %s", tlfID, u)
 			users[u] = true
 			continue
 		}
@@ -283,7 +283,7 @@ func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
 			// Make sure every kid has an expected key
 			if !keyLookup[kid] {
 				km.log.CInfof(ctx,
-					"Rekey %s: removing device %s for user %s", md.ID, kid, u)
+					"Rekey %s: removing device %s for user %s", tlfID, kid, u)
 				users[u] = true
 				break
 			}
@@ -346,7 +346,7 @@ func (km *KeyManagerStandard) deleteKeysForRemovedDevices(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) identifyUIDSets(ctx context.Context,
-	md ReadOnlyRootMetadata, writersToIdentify map[keybase1.UID]bool,
+	tlfID TlfID, writersToIdentify map[keybase1.UID]bool,
 	readersToIdentify map[keybase1.UID]bool) error {
 	uids := make([]keybase1.UID, 0, len(writersToIdentify)+len(readersToIdentify))
 	for u := range writersToIdentify {
@@ -356,7 +356,7 @@ func (km *KeyManagerStandard) identifyUIDSets(ctx context.Context,
 		uids = append(uids, u)
 	}
 	kbpki := km.config.KBPKI()
-	return identifyUserList(ctx, kbpki, kbpki, uids, md.ID.IsPublic())
+	return identifyUserList(ctx, kbpki, kbpki, uids, tlfID.IsPublic())
 }
 
 func (km *KeyManagerStandard) generateKeyMapForUsers(ctx context.Context, users []keybase1.UID) (map[keybase1.UID][]CryptPublicKey, error) {
@@ -500,13 +500,13 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 		romd := md.ReadOnly()
 
-		newWriterUsers = km.usersWithNewDevices(ctx, romd, wkb.WKeys, wKeys)
-		newReaderUsers = km.usersWithNewDevices(ctx, romd, rkb.RKeys, rKeys)
+		newWriterUsers = km.usersWithNewDevices(ctx, romd.ID, wkb.WKeys, wKeys)
+		newReaderUsers = km.usersWithNewDevices(ctx, romd.ID, rkb.RKeys, rKeys)
 		addNewWriterDevice = len(newWriterUsers) > 0
 		addNewReaderDevice = len(newReaderUsers) > 0
 
-		wRemoved := km.usersWithRemovedDevices(ctx, romd, wkb.WKeys, wKeys)
-		rRemoved := km.usersWithRemovedDevices(ctx, romd, rkb.RKeys, rKeys)
+		wRemoved := km.usersWithRemovedDevices(ctx, romd.ID, wkb.WKeys, wKeys)
+		rRemoved := km.usersWithRemovedDevices(ctx, romd.ID, rkb.RKeys, rKeys)
 		incKeyGen = len(wRemoved) > 0 || len(rRemoved) > 0
 
 		promotedReaders = make(map[keybase1.UID]bool, len(rRemoved))
@@ -532,7 +532,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			newWriterUsers[u] = true
 		}
 
-		if err := km.identifyUIDSets(ctx, romd, newWriterUsers, newReaderUsers); err != nil {
+		if err := km.identifyUIDSets(ctx, romd.ID, newWriterUsers, newReaderUsers); err != nil {
 			return false, nil, err
 		}
 	}
