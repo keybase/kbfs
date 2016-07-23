@@ -13,7 +13,6 @@ import (
 	"github.com/keybase/client/go/libkb"
 	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/keybase/go-codec/codec"
-	"golang.org/x/net/context"
 )
 
 // PrivateMetadata contains the portion of metadata that's secret for private
@@ -224,27 +223,6 @@ func (md *RootMetadata) ClearBlockChanges() {
 	md.data.Changes.sizeEstimate = 0
 	md.data.Changes.Info = BlockInfo{}
 	md.data.Changes.Ops = nil
-}
-
-// Helper which returns nil if the md block is uninitialized or readable by
-// the current user. Otherwise an appropriate read access error is returned.
-func (md *RootMetadata) isReadableOrError(ctx context.Context, config Config) error {
-	if !md.IsInitialized() || md.IsReadable() {
-		return nil
-	}
-	// this should only be the case if we're a new device not yet
-	// added to the set of reader/writer keys.
-	username, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return err
-	}
-	h := md.GetTlfHandle()
-	resolvedHandle, err := h.ResolveAgain(ctx, config.KBPKI())
-	if err != nil {
-		return err
-	}
-	return md.makeRekeyReadError(resolvedHandle, md.LatestKeyGeneration(),
-		uid, username)
 }
 
 // hasKeyForUser returns whether or not the given user has keys for at

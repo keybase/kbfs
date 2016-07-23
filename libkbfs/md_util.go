@@ -18,6 +18,30 @@ type mdRange struct {
 	end   MetadataRevision
 }
 
+// Helper which returns nil if the md block is uninitialized or readable by
+// the current user. Otherwise an appropriate read access error is returned.
+func isReadableOrError(
+	ctx context.Context, config Config, md ImmutableRootMetadata) error {
+	if !md.IsInitialized() || md.IsReadable() {
+		return nil
+	}
+	// this should only be the case if we're a new device not yet
+	// added to the set of reader/writer keys.
+	username, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return err
+	}
+	h := md.GetTlfHandle()
+	resolvedHandle, err := h.ResolveAgain(ctx, config.KBPKI())
+	if err != nil {
+		// Ignore error and pretend h is already fully
+		// resolved.
+		resolvedHandle = h
+	}
+	return md.makeRekeyReadError(resolvedHandle, md.LatestKeyGeneration(),
+		uid, username)
+}
+
 func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 	start MetadataRevision, end MetadataRevision, mStatus MergeStatus) (
 	rmds []ImmutableRootMetadata, err error) {
@@ -145,7 +169,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 	// readable until the newer revision, containing the key for this
 	// device, is processed.
 	for i, rmd := range mergedRmds {
-		if err := rmd.isReadableOrError(ctx, config); err != nil {
+		if err := isReadableOrError(ctx, config, rmd); err != nil {
 			// The right secret key for the given rmd's
 			// key generation may only be present in the
 			// most recent rmd.
