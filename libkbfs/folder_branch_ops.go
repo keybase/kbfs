@@ -1207,7 +1207,7 @@ func (fbo *folderBranchOps) getRootNode(ctx context.Context) (
 	}
 
 	// we may be an unkeyed client
-	if err := isReadableOrError(ctx, fbo.config, md); err != nil {
+	if err := isReadableOrError(ctx, fbo.config, md.ReadOnly()); err != nil {
 		return nil, EntryInfo{}, nil, err
 	}
 
@@ -3511,7 +3511,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			// Already caught up!
 			continue
 		}
-		if err := isReadableOrError(ctx, fbo.config, rmd); err != nil {
+		if err := isReadableOrError(ctx, fbo.config, rmd.ReadOnly()); err != nil {
 			return err
 		}
 

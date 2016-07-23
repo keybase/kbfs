@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/keybase/client/go/libkb"
 	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/keybase/go-codec/codec"
 )
@@ -236,26 +235,6 @@ func (md *RootMetadata) hasKeyForUser(
 	}
 
 	return (len(wkb.WKeys[user]) > 0) || (len(rkb.RKeys[user]) > 0)
-}
-
-func (md *RootMetadata) makeRekeyReadError(
-	resolvedHandle *TlfHandle, keyGen KeyGen,
-	uid keybase1.UID, username libkb.NormalizedUsername) error {
-	if resolvedHandle.IsPublic() {
-		panic("makeRekeyReadError called on public folder")
-	}
-	// If the user is not a legitimate reader of the folder, this is a
-	// normal read access error.
-	if !resolvedHandle.IsReader(uid) {
-		return NewReadAccessError(resolvedHandle, username)
-	}
-
-	// Otherwise, this folder needs to be rekeyed for this device.
-	tlfName := resolvedHandle.GetCanonicalName()
-	if hasKeys := md.hasKeyForUser(keyGen, uid); hasKeys {
-		return NeedSelfRekeyError{tlfName}
-	}
-	return NeedOtherRekeyError{tlfName}
 }
 
 // updateFromTlfHandle updates the current RootMetadata's fields to

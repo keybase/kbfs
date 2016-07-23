@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol"
 
 	"golang.org/x/net/context"
@@ -18,10 +19,30 @@ type mdRange struct {
 	end   MetadataRevision
 }
 
+func makeRekeyReadError(
+	md ReadOnlyRootMetadata, resolvedHandle *TlfHandle, keyGen KeyGen,
+	uid keybase1.UID, username libkb.NormalizedUsername) error {
+	if resolvedHandle.IsPublic() {
+		panic("makeRekeyReadError called on public folder")
+	}
+	// If the user is not a legitimate reader of the folder, this is a
+	// normal read access error.
+	if !resolvedHandle.IsReader(uid) {
+		return NewReadAccessError(resolvedHandle, username)
+	}
+
+	// Otherwise, this folder needs to be rekeyed for this device.
+	tlfName := resolvedHandle.GetCanonicalName()
+	if hasKeys := md.hasKeyForUser(keyGen, uid); hasKeys {
+		return NeedSelfRekeyError{tlfName}
+	}
+	return NeedOtherRekeyError{tlfName}
+}
+
 // Helper which returns nil if the md block is uninitialized or readable by
 // the current user. Otherwise an appropriate read access error is returned.
 func isReadableOrError(
-	ctx context.Context, config Config, md ImmutableRootMetadata) error {
+	ctx context.Context, config Config, md ReadOnlyRootMetadata) error {
 	if !md.IsInitialized() || md.IsReadable() {
 		return nil
 	}
@@ -38,7 +59,7 @@ func isReadableOrError(
 		// resolved.
 		resolvedHandle = h
 	}
-	return md.makeRekeyReadError(resolvedHandle, md.LatestKeyGeneration(),
+	return makeRekeyReadError(md, resolvedHandle, md.LatestKeyGeneration(),
 		uid, username)
 }
 
@@ -169,7 +190,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 	// readable until the newer revision, containing the key for this
 	// device, is processed.
 	for i, rmd := range mergedRmds {
-		if err := isReadableOrError(ctx, config, rmd); err != nil {
+		if err := isReadableOrError(ctx, config, rmd.ReadOnly()); err != nil {
 			// The right secret key for the given rmd's
 			// key generation may only be present in the
 			// most recent rmd.
