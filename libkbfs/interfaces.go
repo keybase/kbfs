@@ -413,6 +413,17 @@ type KBPKI interface {
 	Notify(ctx context.Context, notification *keybase1.FSNotification) error
 }
 
+type KeyMetadata interface {
+	TlfID() TlfID
+	GetTlfHandle() *TlfHandle
+	LatestKeyGeneration() KeyGen
+	HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool
+	GetTLFCryptKeyInfo(
+		keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
+		TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
+		TLFCryptKeyServerHalfID, bool, error)
+}
+
 type encryptionKeyGetter interface {
 	// GetTLFCryptKeyForEncryption gets the crypt key to use for
 	// encryption (i.e., with the latest key generation) for the
