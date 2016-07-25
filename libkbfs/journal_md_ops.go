@@ -10,6 +10,19 @@ import (
 	"golang.org/x/net/context"
 )
 
+// A journalMDOps is an implementation of MDOps that delegates to a
+// TLF's mdJournal, if one exists. Specifically, it intercepts put
+// calls to write to the journal instead of the MDServer, where
+// something else is presumably flushing the journal to the MDServer.
+//
+// It then intercepts get calls to provide a combined view of the MDs
+// from the journal and the server when the journal is
+// non-empty. Specifically, if rev is the earliest revision in the
+// journal, and BID is the branch ID of the journal (which can only
+// have one), then any requests for revisions >= rev on BID will be
+// served from the journal instead of the server. If BID is empty,
+// i.e. the journal is holding merged revisions, then this means that
+// all merged revisions on the server from rev are hidden.
 type journalMDOps struct {
 	MDOps
 	jServer  *JournalServer
