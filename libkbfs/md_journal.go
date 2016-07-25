@@ -74,7 +74,7 @@ func (s *mdJournal) mdPath(id MdID) string {
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
 }
 
-// getDataLocked verifies the MD data and the signature (but not the
+// getMD verifies the MD data and the writer signature (but not the
 // key) for the given ID and returns it.
 func (s *mdJournal) getMD(id MdID) (*BareRootMetadata, error) {
 	// Read file.
@@ -111,35 +111,42 @@ func (s *mdJournal) getMD(id MdID) (*BareRootMetadata, error) {
 	return &rmd, nil
 }
 
-func (s *mdJournal) putMD(rmd *BareRootMetadata) error {
+// putMD stores the given metadata under its ID, if it's not already
+// stored.
+func (s *mdJournal) putMD(rmd *BareRootMetadata) (MdID, error) {
 	id, err := s.crypto.MakeMdID(rmd)
 	if err != nil {
-		return err
+		return MdID{}, err
 	}
 
 	_, err = s.getMD(id)
 	if os.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
-		return err
+		return MdID{}, err
 	} else {
 		// Entry exists, so nothing else to do.
-		return nil
+		return MdID{}, nil
 	}
 
 	path := s.mdPath(id)
 
 	err = os.MkdirAll(filepath.Dir(path), 0700)
 	if err != nil {
-		return err
+		return MdID{}, err
 	}
 
 	buf, err := s.codec.Encode(rmd)
 	if err != nil {
-		return err
+		return MdID{}, err
 	}
 
-	return ioutil.WriteFile(path, buf, 0600)
+	err = ioutil.WriteFile(path, buf, 0600)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	return id, nil
 }
 
 func (s *mdJournal) getHead() (mdID MdID, rmd *BareRootMetadata, err error) {
@@ -169,7 +176,7 @@ func (s *mdJournal) checkGetParams(currentUID keybase1.UID) error {
 			return err
 		}
 		if !ok {
-			// TODO: Better error?
+			// TODO: Use a non-server error.
 			return MDServerErrorUnauthorized{}
 		}
 	}
@@ -185,7 +192,8 @@ func (s *mdJournal) convertToBranch(
 	}
 
 	if head.BID != NullBranchID {
-		return fmt.Errorf("convertToBranch called with BID=%s", head.BID)
+		return fmt.Errorf(
+			"convertToBranch called with BID=%s", head.BID)
 	}
 
 	earliestRevision, err := s.j.readEarliestRevision()
@@ -224,7 +232,7 @@ func (s *mdJournal) convertToBranch(
 		brmd.WFlags |= MetadataFlagUnmerged
 		brmd.BID = bid
 
-		// Re-sign the writer metadata
+		// Re-sign the writer metadata.
 		buf, err := s.codec.Encode(brmd.WriterMetadata)
 		if err != nil {
 			return err
@@ -236,24 +244,21 @@ func (s *mdJournal) convertToBranch(
 		}
 		brmd.WriterMetadataSigInfo = sigInfo
 
-		log.Debug("Old prev root of rev=%s is %s", brmd.Revision, brmd.PrevRoot)
+		log.Debug("Old prev root of rev=%s is %s",
+			brmd.Revision, brmd.PrevRoot)
 
 		if i > 0 {
-			log.Debug("Changing prev root of rev=%s to %s", brmd.Revision, prevID)
+			log.Debug("Changing prev root of rev=%s to %s",
+				brmd.Revision, prevID)
 			brmd.PrevRoot = prevID
 		}
 
-		err = s.putMD(brmd)
+		newID, err := s.putMD(brmd)
 		if err != nil {
 			return err
 		}
 
 		o, err := revisionToOrdinal(brmd.Revision)
-		if err != nil {
-			return err
-		}
-
-		newID, err := s.crypto.MakeMdID(brmd)
 		if err != nil {
 			return err
 		}
@@ -433,12 +438,7 @@ func (s *mdJournal) put(
 		return MdID{}, err
 	}
 
-	err = s.putMD(&brmd)
-	if err != nil {
-		return MdID{}, err
-	}
-
-	id, err := s.crypto.MakeMdID(&brmd)
+	id, err := s.putMD(&brmd)
 	if err != nil {
 		return MdID{}, err
 	}
