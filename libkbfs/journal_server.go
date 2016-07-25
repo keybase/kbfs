@@ -102,13 +102,23 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 
 	// TODO: Flush block journal.
 
+	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return err
+	}
+
+	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return err
+	}
+
 	for {
 		flushed, err := func() (bool, error) {
 			bundle.lock.Lock()
 			defer bundle.lock.Unlock()
 			return bundle.mdJournal.flushOne(
 				ctx, j.config.Crypto(), j.config.MDServer(),
-				j.log)
+				j.log, uid, key)
 		}()
 		if err != nil {
 			return err
@@ -473,10 +483,15 @@ func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
 			return MdID{}, err
 		}
 
+		key, err := j.jServer.config.KBPKI().GetCurrentVerifyingKey(ctx)
+		if err != nil {
+			return MdID{}, err
+		}
+
 		bundle.lock.Lock()
 		defer bundle.lock.Unlock()
 		return bundle.mdJournal.put(ctx, j.jServer.config.Crypto(),
-			j.jServer.config.KeyManager(), uid, rmd)
+			j.jServer.config.KeyManager(), uid, key, rmd)
 	}
 
 	return j.MDOps.Put(ctx, rmd)
@@ -487,6 +502,11 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 	bundle, ok := j.jServer.getBundle(rmd.ID)
 	if ok {
 		_, uid, err := j.jServer.config.KBPKI().GetCurrentUserInfo(ctx)
+		if err != nil {
+			return MdID{}, err
+		}
+
+		key, err := j.jServer.config.KBPKI().GetCurrentVerifyingKey(ctx)
 		if err != nil {
 			return MdID{}, err
 		}
@@ -513,7 +533,7 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 		bundle.lock.Lock()
 		defer bundle.lock.Unlock()
 		return bundle.mdJournal.put(ctx, j.jServer.config.Crypto(),
-			j.jServer.config.KeyManager(), uid, rmd)
+			j.jServer.config.KeyManager(), uid, key, rmd)
 	}
 
 	return j.MDOps.PutUnmerged(ctx, rmd)

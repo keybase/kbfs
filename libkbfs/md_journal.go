@@ -113,7 +113,15 @@ func (s *mdJournal) getMD(id MdID) (*BareRootMetadata, error) {
 
 // putMD stores the given metadata under its ID, if it's not already
 // stored.
-func (s *mdJournal) putMD(rmd *BareRootMetadata) (MdID, error) {
+func (s *mdJournal) putMD(
+	rmd *BareRootMetadata, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey) (MdID, error) {
+	err := rmd.IsValidAndSigned(
+		s.codec, s.crypto, currentUID, currentVerifyingKey)
+	if err != nil {
+		return MdID{}, err
+	}
+
 	id, err := s.crypto.MakeMdID(rmd)
 	if err != nil {
 		return MdID{}, err
@@ -185,7 +193,8 @@ func (s *mdJournal) checkGetParams(currentUID keybase1.UID) error {
 }
 
 func (s *mdJournal) convertToBranch(
-	ctx context.Context, signer cryptoSigner, log logger.Logger) error {
+	ctx context.Context, signer cryptoSigner, log logger.Logger,
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
 	_, head, err := s.getHead()
 	if err != nil {
 		return err
@@ -253,7 +262,7 @@ func (s *mdJournal) convertToBranch(
 			brmd.PrevRoot = prevID
 		}
 
-		newID, err := s.putMD(brmd)
+		newID, err := s.putMD(brmd, currentUID, currentVerifyingKey)
 		if err != nil {
 			return err
 		}
@@ -303,6 +312,8 @@ func (s *mdJournal) pushEarliestToServer(
 	}
 	err = mdserver.Put(ctx, &rmds)
 	if err != nil {
+		// Still return the ID and RMD so that they can be
+		// consulted.
 		return earliestID, rmd, err
 	}
 
@@ -384,7 +395,8 @@ func (e MDJournalConflictError) Error() string {
 
 func (s *mdJournal) put(
 	ctx context.Context, signer cryptoSigner, ekg encryptionKeyGetter,
-	currentUID keybase1.UID, rmd *RootMetadata) (MdID, error) {
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
+	rmd *RootMetadata) (MdID, error) {
 	headID, head, err := s.getHead()
 	if err != nil {
 		return MdID{}, err
@@ -403,26 +415,23 @@ func (s *mdJournal) put(
 		return MdID{}, errors.New("Invalid branch ID")
 	}
 
-	// Check permissions
-
-	// TODO: Figure out nil case.
+	// Check permissions and consistency with head, if it exists.
 	if head != nil {
-		ok, err := isWriterOrValidRekey(s.codec, currentUID, head, &rmd.BareRootMetadata)
+		ok, err := isWriterOrValidRekey(
+			s.codec, currentUID, head, &rmd.BareRootMetadata)
 		if err != nil {
 			return MdID{}, err
 		}
 		if !ok {
-			// TODO: Better error?
+			// TODO: Use a non-server error.
 			return MdID{}, MDServerErrorUnauthorized{}
 		}
-	}
 
-	if mStatus == Merged && head != nil && head.BID != NullBranchID {
-		return MdID{}, MDJournalConflictError{}
-	}
+		if mStatus == Merged && head.BID != NullBranchID {
+			return MdID{}, MDJournalConflictError{}
+		}
 
-	// Consistency checks
-	if head != nil {
+		// Consistency checks
 		err = head.CheckValidSuccessorForServer(
 			headID, &rmd.BareRootMetadata)
 		if err != nil {
@@ -438,7 +447,7 @@ func (s *mdJournal) put(
 		return MdID{}, err
 	}
 
-	id, err := s.putMD(&brmd)
+	id, err := s.putMD(&brmd, currentUID, currentVerifyingKey)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -453,13 +462,15 @@ func (s *mdJournal) put(
 
 func (s *mdJournal) flushOne(
 	ctx context.Context, signer cryptoSigner, mdserver MDServer,
-	log logger.Logger) (bool, error) {
+	log logger.Logger, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey) (bool, error) {
 	earliestID, rmd, pushErr := s.pushEarliestToServer(
 		ctx, signer, mdserver, log)
 	if isRevisionConflict(pushErr) && rmd.MergedStatus() == Merged {
 		log.Debug("Conflict detected %v", pushErr)
 
-		err := s.convertToBranch(ctx, signer, log)
+		err := s.convertToBranch(
+			ctx, signer, log, currentUID, currentVerifyingKey)
 		if err != nil {
 			return false, err
 		}
