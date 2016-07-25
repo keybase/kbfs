@@ -63,6 +63,18 @@ func teardownMDJournalTest(t *testing.T, tempdir string) {
 	require.NoError(t, err)
 }
 
+func makeMDForTest(t *testing.T, id TlfID, h BareTlfHandle,
+	revision MetadataRevision, uid keybase1.UID,
+	prevRoot MdID) *RootMetadata {
+	var md RootMetadata
+	err := updateNewBareRootMetadata(&md.BareRootMetadata, id, h)
+	require.NoError(t, err)
+	md.Revision = revision
+	FakeInitialRekey(&md.BareRootMetadata, h)
+	md.PrevRoot = prevRoot
+	return &md
+}
+
 func TestMDJournalBasic(t *testing.T) {
 	uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
 		setupMDJournalTest(t)
@@ -81,16 +93,9 @@ func TestMDJournalBasic(t *testing.T) {
 
 	prevRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
-		var md RootMetadata
-		err := updateNewBareRootMetadata(&md.BareRootMetadata, id, h)
+		md := makeMDForTest(t, id, h, i, uid, prevRoot)
+		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.NoError(t, err)
-		md.Revision = MetadataRevision(i)
-		FakeInitialRekey(&md.BareRootMetadata, h)
-		if i > 1 {
-			md.PrevRoot = prevRoot
-		}
-		mdID, err := j.put(ctx, signer, ekg, &md, uid, verifyingKey)
-		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
 
