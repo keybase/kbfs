@@ -191,14 +191,15 @@ func TestMDJournalBranchConversion(t *testing.T) {
 
 type shimMDServer struct {
 	MDServer
-	rmdses []*RootMetadataSigned
-	err    error
+	rmdses  []*RootMetadataSigned
+	nextErr error
 }
 
-func (s *shimMDServer) Put(ctx context.Context, rmds *RootMetadataSigned) error {
-	if s.err != nil {
-		err := s.err
-		s.err = nil
+func (s *shimMDServer) Put(
+	ctx context.Context, rmds *RootMetadataSigned) error {
+	if s.nextErr != nil {
+		err := s.nextErr
+		s.nextErr = nil
 		return err
 	}
 	s.rmdses = append(s.rmdses, rmds)
@@ -227,6 +228,7 @@ func TestMDJournalFlushBasic(t *testing.T) {
 
 	log := logger.NewTestLogger(t)
 	var mdserver shimMDServer
+	// TODO: Bound loop.
 	for {
 		flushed, err := j.flushOne(
 			ctx, log, signer, uid, verifyingKey, &mdserver)
@@ -257,66 +259,81 @@ func TestMDJournalFlushBasic(t *testing.T) {
 }
 
 func TestMDJournalFlushConflict(t *testing.T) {
-	_, crypto, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
+	codec, crypto, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
-	// (2) Push some new metadata blocks.
-
 	ctx := context.Background()
 
-	prevRoot := MdID{}
-	for i := MetadataRevision(1); i <= 9; i++ {
-		md := makeMDForTest(t, id, h, i, uid, prevRoot)
+	firstRevision := MetadataRevision(10)
+	firstPrevRoot := fakeMdID(1)
+	mdCount := 10
+
+	prevRoot := firstPrevRoot
+	for i := 0; i < mdCount/2; i++ {
+		revision := firstRevision + MetadataRevision(i)
+		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
 		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
-		require.NoError(t, err, "i=%d", i)
+		require.NoError(t, err)
 		prevRoot = mdID
 	}
 
 	var mdserver shimMDServer
-
-	mdserver.err = MDServerErrorConflictRevision{}
+	mdserver.nextErr = MDServerErrorConflictRevision{}
 
 	log := logger.NewTestLogger(t)
-	flushed, err := j.flushOne(ctx, log, signer, uid, verifyingKey, &mdserver)
+	flushed, err := j.flushOne(
+		ctx, log, signer, uid, verifyingKey, &mdserver)
 	require.NoError(t, err)
 	require.True(t, flushed)
 
-	for i := MetadataRevision(10); i <= 10; i++ {
-		md := makeMDForTest(t, id, h, i, uid, prevRoot)
-		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
+	{
+		revision := firstRevision + MetadataRevision(mdCount/2)
+		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+		_, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.IsType(t, MDJournalConflictError{}, err)
 
 		md.WFlags |= MetadataFlagUnmerged
-		mdID, err = j.put(ctx, signer, ekg, md, uid, verifyingKey)
+		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.NoError(t, err)
-
 		prevRoot = mdID
 	}
 
+	for i := mdCount/2 + 1; i < mdCount; i++ {
+		revision := firstRevision + MetadataRevision(i)
+		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+		md.WFlags |= MetadataFlagUnmerged
+		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
+		require.NoError(t, err)
+		prevRoot = mdID
+	}
+
+	// TODO: bound loop.
 	for {
-		flushed, err := j.flushOne(ctx, log, signer, uid, verifyingKey, &mdserver)
+		flushed, err := j.flushOne(
+			ctx, log, signer, uid, verifyingKey, &mdserver)
 		require.NoError(t, err)
 		if !flushed {
 			break
 		}
 	}
+	require.Equal(t, 0, getTlfJournalLength(t, j))
+	require.Equal(t, mdCount, len(mdserver.rmdses))
 
-	require.Equal(t, 10, len(mdserver.rmdses))
-	var prev *RootMetadataSigned
-	var prevID MdID
-	for i := MetadataRevision(1); i <= 10; i++ {
-		require.Equal(t, i, mdserver.rmdses[i-1].MD.Revision)
-		if prev != nil {
-			err := prev.MD.CheckValidSuccessorForServer(
-				prevID, &mdserver.rmdses[i-1].MD)
-			require.NoError(t, err, "i=%d", i)
-		}
-		prev = mdserver.rmdses[i-1]
-		var err error
-		prevID, err = crypto.MakeMdID(&prev.MD)
+	rmdses := mdserver.rmdses
+
+	require.Equal(t, firstRevision, rmdses[0].MD.Revision)
+	require.Equal(t, firstPrevRoot, rmdses[0].MD.PrevRoot)
+	err = rmdses[0].IsValidAndSigned(codec, crypto, uid, verifyingKey)
+	require.NoError(t, err)
+
+	for i := 1; i < len(rmdses); i++ {
+		err := rmdses[i].IsValidAndSigned(
+			codec, crypto, uid, verifyingKey)
+		require.NoError(t, err)
+		prevID, err := crypto.MakeMdID(&rmdses[i-1].MD)
+		require.NoError(t, err)
+		err = rmdses[i-1].MD.CheckValidSuccessor(prevID, &rmdses[i].MD)
 		require.NoError(t, err)
 	}
-
-	require.Equal(t, 0, getTlfJournalLength(t, j))
 }
