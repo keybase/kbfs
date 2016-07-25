@@ -15,6 +15,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+// TODO: Clean up the test below.
+
 func TestJournalMDOpsBasics(t *testing.T) {
 	// setup
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_md_ops")
@@ -27,9 +29,6 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	config := MakeTestConfigOrBust(t, "test_user")
 	defer config.Shutdown()
 
-	// TODO: Sanity-check the root directory, e.g. create
-	// it if it doesn't exist, make sure that it doesn't
-	// point to /keybase itself, etc.
 	log := config.MakeLogger("")
 	jServer := makeJournalServer(
 		config, log, tempdir,
