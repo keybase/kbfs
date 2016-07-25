@@ -427,6 +427,9 @@ func (s *mdJournal) put(
 			return MdID{}, MDServerErrorUnauthorized{}
 		}
 
+		// If we're trying to push a merged MD onto a branch,
+		// return a conflict error so the caller can retry
+		// with an unmerged MD.
 		if mStatus == Merged && head.BID != NullBranchID {
 			return MdID{}, MDJournalConflictError{}
 		}
@@ -460,10 +463,13 @@ func (s *mdJournal) put(
 	return id, nil
 }
 
+// flushOne sends the earliest MD in the journal to the given MDServer
+// if one exists, and then removes it. Returns whether there was an MD
+// that was put.
 func (s *mdJournal) flushOne(
 	ctx context.Context, log logger.Logger, signer cryptoSigner,
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
-	mdserver MDServer) (bool, error) {
+	mdserver MDServer) (flushed bool, err error) {
 	earliestID, rmd, pushErr := s.pushEarliestToServer(
 		ctx, log, signer, mdserver)
 	if isRevisionConflict(pushErr) && rmd.MergedStatus() == Merged {
