@@ -251,12 +251,12 @@ func (j journalMDOps) getFromJournal(
 	bundle.lock.RLock()
 	defer bundle.lock.RUnlock()
 
-	headID, head, err := bundle.mdJournal.getHead(uid)
+	head, err := bundle.mdJournal.getHead(uid)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
 
-	if head == nil {
+	if head == (ImmutableBareRootMetadata{}) {
 		return ImmutableRootMetadata{}, nil
 	}
 
@@ -280,7 +280,7 @@ func (j journalMDOps) getFromJournal(
 	}
 
 	rmd := RootMetadata{
-		BareRootMetadata: *head,
+		BareRootMetadata: *head.BareRootMetadata,
 		tlfHandle:        handle,
 	}
 
@@ -290,7 +290,7 @@ func (j journalMDOps) getFromJournal(
 		return ImmutableRootMetadata{}, err
 	}
 
-	return MakeImmutableRootMetadata(&rmd, headID), nil
+	return MakeImmutableRootMetadata(&rmd, head.mdID), nil
 }
 
 func (j journalMDOps) GetForHandle(

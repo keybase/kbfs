@@ -82,10 +82,9 @@ func TestMDJournalBasic(t *testing.T) {
 
 	// Should start off as empty.
 
-	headID, head, err := j.getHead(uid)
+	head, err := j.getHead(uid)
 	require.NoError(t, err)
-	require.Equal(t, MdID{}, headID)
-	require.Nil(t, head)
+	require.Equal(t, ImmutableBareRootMetadata{}, head)
 	require.Equal(t, 0, getTlfJournalLength(t, j))
 
 	// Push some new metadata blocks.
@@ -119,10 +118,9 @@ func TestMDJournalBasic(t *testing.T) {
 		require.Equal(t, MetadataRevision(i+10), rmd.Revision)
 	}
 
-	headID, head, err = j.getHead(uid)
+	head, err = j.getHead(uid)
 	require.NoError(t, err)
-	require.Equal(t, rmds[len(rmds)-1].mdID, headID)
-	require.Equal(t, rmds[len(rmds)-1].BareRootMetadata, head)
+	require.Equal(t, rmds[len(rmds)-1], head)
 }
 
 func TestMDJournalBranchConversion(t *testing.T) {

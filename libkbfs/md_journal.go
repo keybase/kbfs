@@ -18,6 +18,29 @@ import (
 	keybase1 "github.com/keybase/client/go/protocol"
 )
 
+// ImmutableBareRootMetadata is a thin wrapper around a
+// *BareRootMetadata that takes ownership of it and does not ever
+// modify it again. Thus, its MdID can be calculated and
+// stored. ImmutableBareRootMetadata objects can be assumed to never
+// alias a (modifiable) *BareRootMetadata.
+//
+// TODO: Move this to bare_root_metadata.go if it's used in more
+// places.
+type ImmutableBareRootMetadata struct {
+	*BareRootMetadata
+	mdID MdID
+}
+
+// MakeImmutableBareRootMetadata makes a new ImmutableBareRootMetadata
+// from the given BareRootMetadata and its corresponding MdID.
+func MakeImmutableBareRootMetadata(
+	rmd *BareRootMetadata, mdID MdID) ImmutableBareRootMetadata {
+	if mdID == (MdID{}) {
+		panic("zero mdID passed to MakeImmutableBareRootMetadata")
+	}
+	return ImmutableBareRootMetadata{rmd, mdID}
+}
+
 // mdJournal stores a single ordered list of metadata IDs for
 // a single TLF, along with the associated metadata objects, in flat
 // files on disk.
@@ -157,46 +180,47 @@ func (j mdJournal) putMD(
 	return id, nil
 }
 
-func (j mdJournal) getHeadHelper() (
-	mdID MdID, rmd *BareRootMetadata, err error) {
+func (j mdJournal) getHeadHelper() (ImmutableBareRootMetadata, error) {
 	headID, err := j.j.getLatest()
 	if err != nil {
-		return MdID{}, nil, err
+		return ImmutableBareRootMetadata{}, err
 	}
 	if headID == (MdID{}) {
-		return MdID{}, nil, nil
+		return ImmutableBareRootMetadata{}, nil
 	}
-	rmd, err = j.getMD(headID)
+	head, err := j.getMD(headID)
 	if err != nil {
-		return MdID{}, nil, err
+		return ImmutableBareRootMetadata{}, err
 	}
-	return headID, rmd, nil
+	return MakeImmutableBareRootMetadata(head, headID), nil
 }
 
-func (j mdJournal) checkGetParams(currentUID keybase1.UID) error {
-	_, head, err := j.getHeadHelper()
+func (j mdJournal) checkGetParams(currentUID keybase1.UID) (
+	ImmutableBareRootMetadata, error) {
+	head, err := j.getHeadHelper()
 	if err != nil {
-		return err
+		return ImmutableBareRootMetadata{}, err
 	}
 
-	if head != nil {
-		ok, err := isReader(currentUID, head)
+	if head != (ImmutableBareRootMetadata{}) {
+		ok, err := isReader(currentUID, head.BareRootMetadata)
 		if err != nil {
-			return err
+			return ImmutableBareRootMetadata{}, err
 		}
 		if !ok {
 			// TODO: Use a non-server error.
-			return MDServerErrorUnauthorized{}
+			return ImmutableBareRootMetadata{},
+				MDServerErrorUnauthorized{}
 		}
 	}
 
-	return nil
+	return head, nil
 }
 
 func (j mdJournal) convertToBranch(
 	ctx context.Context, log logger.Logger, signer cryptoSigner,
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
-	_, head, err := j.getHeadHelper()
+	head, err := j.getHeadHelper()
 	if err != nil {
 		return err
 	}
@@ -328,39 +352,14 @@ func (j mdJournal) length() (uint64, error) {
 }
 
 func (j mdJournal) getHead(currentUID keybase1.UID) (
-	MdID, *BareRootMetadata, error) {
-	err := j.checkGetParams(currentUID)
-	if err != nil {
-		return MdID{}, nil, err
-	}
-
-	id, rmd, err := j.getHeadHelper()
-	if err != nil {
-		return MdID{}, nil, err
-	}
-	return id, rmd, nil
-}
-
-// ImmutableBareRootMetadata is a BRMD with an MdID.
-type ImmutableBareRootMetadata struct {
-	*BareRootMetadata
-	mdID MdID
-}
-
-// MakeImmutableBareRootMetadata makes a new ImmutableBareRootMetadata
-// from the given args.
-func MakeImmutableBareRootMetadata(
-	rmd *BareRootMetadata, mdID MdID) ImmutableBareRootMetadata {
-	if mdID == (MdID{}) {
-		panic("zero mdID passed to MakeImmutableBareRootMetadata")
-	}
-	return ImmutableBareRootMetadata{rmd, mdID}
+	ImmutableBareRootMetadata, error) {
+	return j.checkGetParams(currentUID)
 }
 
 func (j mdJournal) getRange(
 	currentUID keybase1.UID, start, stop MetadataRevision) (
 	[]ImmutableBareRootMetadata, error) {
-	err := j.checkGetParams(currentUID)
+	_, err := j.checkGetParams(currentUID)
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +398,7 @@ func (j mdJournal) put(
 	ctx context.Context, signer cryptoSigner, ekg encryptionKeyGetter,
 	rmd *RootMetadata, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey) (MdID, error) {
-	headID, head, err := j.getHeadHelper()
+	head, err := j.getHeadHelper()
 	if err != nil {
 		return MdID{}, err
 	}
@@ -407,9 +406,10 @@ func (j mdJournal) put(
 	mStatus := rmd.MergedStatus()
 	bid := rmd.BID
 
-	if (mStatus == Unmerged) && (bid == NullBranchID) && (head != nil) {
+	if (mStatus == Unmerged) && (bid == NullBranchID) &&
+		(head != ImmutableBareRootMetadata{}) {
 		rmd.BID = head.BID
-		rmd.PrevRoot = headID
+		rmd.PrevRoot = head.mdID
 		bid = rmd.BID
 	}
 
@@ -418,9 +418,10 @@ func (j mdJournal) put(
 	}
 
 	// Check permissions and consistency with head, if it exists.
-	if head != nil {
+	if head != (ImmutableBareRootMetadata{}) {
 		ok, err := isWriterOrValidRekey(
-			j.codec, currentUID, head, &rmd.BareRootMetadata)
+			j.codec, currentUID, head.BareRootMetadata,
+			&rmd.BareRootMetadata)
 		if err != nil {
 			return MdID{}, err
 		}
@@ -438,7 +439,7 @@ func (j mdJournal) put(
 
 		// Consistency checks
 		err = head.CheckValidSuccessorForServer(
-			headID, &rmd.BareRootMetadata)
+			head.mdID, &rmd.BareRootMetadata)
 		if err != nil {
 			return MdID{}, err
 		}
