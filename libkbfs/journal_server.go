@@ -18,7 +18,7 @@ type tlfJournalBundle struct {
 	lock sync.RWMutex
 
 	// TODO: Fill in with a block journal.
-	mdJournal *mdJournal
+	mdJournal mdJournal
 }
 
 // JournalServer is the server that handles write journals. It

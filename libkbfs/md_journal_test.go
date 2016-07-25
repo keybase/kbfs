@@ -25,88 +25,91 @@ func (g singleEncryptionKeyGetter) GetTLFCryptKeyForEncryption(
 	return g.k, nil
 }
 
-func getTlfJournalLength(t *testing.T, s *mdJournal) int {
-	len, err := s.length()
+func getTlfJournalLength(t *testing.T, j mdJournal) int {
+	len, err := j.length()
 	require.NoError(t, err)
 	return int(len)
 }
 
-// TestMDJournalBasic copies TestMDServerBasics, but for a
-// single mdJournal.
-func TestMDJournalBasic(t *testing.T) {
+func setupMDJournalTest(t *testing.T) (
+	uid keybase1.UID, id TlfID, h BareTlfHandle,
+	signer cryptoSigner, verifyingKey VerifyingKey,
+	ekg singleEncryptionKeyGetter, tempdir string, j mdJournal) {
 	codec := NewCodecMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
-	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
-	require.NoError(t, err)
-	defer func() {
-		err := os.RemoveAll(tempdir)
-		require.NoError(t, err)
-	}()
-
-	s := makeMDJournal(codec, crypto, tempdir)
-
-	require.Equal(t, 0, getTlfJournalLength(t, s))
-
-	uid := keybase1.MakeTestUID(1)
-	id := FakeTlfID(1, false)
+	uid = keybase1.MakeTestUID(1)
+	id = FakeTlfID(1, false)
 	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	// (1) Validate merged branch is empty.
+	signingKey := MakeFakeSigningKeyOrBust("fake seed")
+	signer = cryptoSignerLocal{signingKey}
+	verifyingKey = signingKey.GetVerifyingKey()
+	ekg = singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
-	head, err := s.get(uid)
+	// Do this last so we don't have to worry about cleaning up
+	// the tempdir if anything else errors.
+	tempdir, err = ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
+	require.NoError(t, err)
+
+	j = makeMDJournal(codec, crypto, tempdir)
+
+	return uid, id, h, signer, verifyingKey, ekg, tempdir, j
+}
+
+func teardownMDJournalTest(t *testing.T, tempdir string) {
+	err := os.RemoveAll(tempdir)
+	require.NoError(t, err)
+}
+
+func TestMDJournalBasic(t *testing.T) {
+	uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
+		setupMDJournalTest(t)
+	defer teardownMDJournalTest(t, tempdir)
+
+	// Should start off as empty.
+
+	head, err := j.get(uid)
 	require.NoError(t, err)
 	require.Nil(t, head)
+	require.Equal(t, 0, getTlfJournalLength(t, j))
 
-	require.Equal(t, 0, getTlfJournalLength(t, s))
-
-	// (2) Push some new metadata blocks.
-
-	signingKey := MakeFakeSigningKeyOrBust("fake seed")
-	verifyingKey := signingKey.GetVerifyingKey()
-	signer := cryptoSignerLocal{
-		signingKey,
-	}
-	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
+	// Push some new metadata blocks.
 
 	prevRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
 		var md RootMetadata
 		err := updateNewBareRootMetadata(&md.BareRootMetadata, id, h)
 		require.NoError(t, err)
-
-		md.SerializedPrivateMetadata = []byte{0x1}
 		md.Revision = MetadataRevision(i)
 		FakeInitialRekey(&md.BareRootMetadata, h)
 		if i > 1 {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		mdID, err := s.put(ctx, signer, ekg, &md, uid, verifyingKey)
+		mdID, err := j.put(ctx, signer, ekg, &md, uid, verifyingKey)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
 
-	require.Equal(t, 10, getTlfJournalLength(t, s))
+	require.Equal(t, 10, getTlfJournalLength(t, j))
 
-	// (10) Check for proper merged head.
+	// Should now be non-empty.
 
-	head, err = s.get(uid)
+	head, err = j.get(uid)
 	require.NoError(t, err)
 	require.NotNil(t, head)
 	require.Equal(t, MetadataRevision(10), head.Revision)
 
-	// (11) Try to get merged range.
-
-	rmds, err := s.getRange(uid, 1, 100)
+	rmds, err := j.getRange(uid, 1, 100)
 	require.NoError(t, err)
 	require.Equal(t, 10, len(rmds))
 	for i := MetadataRevision(1); i <= 10; i++ {
 		require.Equal(t, i, rmds[i-1].Revision)
 	}
 
-	require.Equal(t, 10, getTlfJournalLength(t, s))
+	require.Equal(t, 10, getTlfJournalLength(t, j))
 }
 
 func TestMDJournalBranchConversion(t *testing.T) {
