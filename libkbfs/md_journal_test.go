@@ -337,8 +337,12 @@ func TestMDJournalFlushConflict(t *testing.T) {
 	err = rmdses[0].IsValidAndSigned(codec, crypto, uid, verifyingKey)
 	require.NoError(t, err)
 
+	bid := rmdses[0].MD.BID
+	require.NotEqual(t, NullBranchID, bid)
+
 	for i := 1; i < len(rmdses); i++ {
 		require.Equal(t, Unmerged, rmdses[i].MD.MergedStatus())
+		require.Equal(t, bid, rmdses[i].MD.BID)
 		err := rmdses[i].IsValidAndSigned(
 			codec, crypto, uid, verifyingKey)
 		require.NoError(t, err)
