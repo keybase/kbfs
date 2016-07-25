@@ -127,18 +127,9 @@ func TestMDJournalBranchConversion(t *testing.T) {
 
 	prevRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
-		var md RootMetadata
-		err := updateNewBareRootMetadata(&md.BareRootMetadata, id, h)
+		md := makeMDForTest(t, id, h, i, uid, prevRoot)
+		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.NoError(t, err)
-
-		md.SerializedPrivateMetadata = []byte{0x1}
-		md.Revision = MetadataRevision(i)
-		FakeInitialRekey(&md.BareRootMetadata, h)
-		if i > 1 {
-			md.PrevRoot = prevRoot
-		}
-		mdID, err := j.put(ctx, signer, ekg, &md, uid, verifyingKey)
-		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
 
@@ -195,17 +186,8 @@ func TestMDJournalFlushBasic(t *testing.T) {
 
 	prevRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
-		var md RootMetadata
-		err := updateNewBareRootMetadata(&md.BareRootMetadata, id, h)
-		require.NoError(t, err)
-
-		md.SerializedPrivateMetadata = []byte{0x1}
-		md.Revision = MetadataRevision(i)
-		FakeInitialRekey(&md.BareRootMetadata, h)
-		if i > 1 {
-			md.PrevRoot = prevRoot
-		}
-		mdID, err := j.put(ctx, signer, ekg, &md, uid, verifyingKey)
+		md := makeMDForTest(t, id, h, i, uid, prevRoot)
+		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
@@ -252,17 +234,8 @@ func TestMDJournalFlushConflict(t *testing.T) {
 
 	prevRoot := MdID{}
 	for i := MetadataRevision(1); i <= 9; i++ {
-		var md RootMetadata
-		err := updateNewBareRootMetadata(&md.BareRootMetadata, id, h)
-		require.NoError(t, err)
-
-		md.SerializedPrivateMetadata = []byte{0x1}
-		md.Revision = MetadataRevision(i)
-		FakeInitialRekey(&md.BareRootMetadata, h)
-		if i > 1 {
-			md.PrevRoot = prevRoot
-		}
-		mdID, err := j.put(ctx, signer, ekg, &md, uid, verifyingKey)
+		md := makeMDForTest(t, id, h, i, uid, prevRoot)
+		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
@@ -277,21 +250,12 @@ func TestMDJournalFlushConflict(t *testing.T) {
 	require.True(t, flushed)
 
 	for i := MetadataRevision(10); i <= 10; i++ {
-		var md RootMetadata
-		err := updateNewBareRootMetadata(&md.BareRootMetadata, id, h)
-		require.NoError(t, err)
-
-		md.SerializedPrivateMetadata = []byte{0x1}
-		md.Revision = MetadataRevision(i)
-		FakeInitialRekey(&md.BareRootMetadata, h)
-		if i > 1 {
-			md.PrevRoot = prevRoot
-		}
-		mdID, err := j.put(ctx, signer, ekg, &md, uid, verifyingKey)
+		md := makeMDForTest(t, id, h, i, uid, prevRoot)
+		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.IsType(t, MDJournalConflictError{}, err)
 
 		md.WFlags |= MetadataFlagUnmerged
-		mdID, err = j.put(ctx, signer, ekg, &md, uid, verifyingKey)
+		mdID, err = j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.NoError(t, err)
 
 		prevRoot = mdID
