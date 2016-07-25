@@ -328,10 +328,13 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 			return MdID{}, err
 		}
 
+		// TODO: The code below races with PruneBranch. Fix
+		// this.
+
 		rmd.WFlags |= MetadataFlagUnmerged
 		if rmd.BID == NullBranchID {
-			// TODO: Figure out race with PruneBranch.
-			head, err := j.GetUnmergedForTLF(ctx, rmd.ID, NullBranchID)
+			head, err := j.GetUnmergedForTLF(
+				ctx, rmd.ID, NullBranchID)
 			if err != nil {
 				return MdID{}, err
 			}
@@ -360,6 +363,7 @@ func (j journalMDOps) PruneBranch(
 	ctx context.Context, id TlfID, bid BranchID) error {
 	bundle, ok := j.jServer.getBundle(id)
 	if ok {
+		// Prune both the journal and the server.
 		irmd, err := j.getFromJournal(ctx, id, bid, Unmerged, nil)
 		if err != nil {
 			return err
