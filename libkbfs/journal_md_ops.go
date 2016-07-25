@@ -294,6 +294,7 @@ func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
 	bundle, ok := j.jServer.getBundle(rmd.ID)
 	if ok {
+		// Just route to the journal.
 		_, uid, err := j.jServer.config.KBPKI().GetCurrentUserInfo(ctx)
 		if err != nil {
 			return MdID{}, err
