@@ -91,8 +91,8 @@ func TestMDJournalBasic(t *testing.T) {
 
 	ctx := context.Background()
 
-	prevRoot := MdID{}
-	for i := MetadataRevision(1); i <= 10; i++ {
+	prevRoot := fakeMdID(1)
+	for i := MetadataRevision(10); i < 20; i++ {
 		md := makeMDForTest(t, id, h, i, uid, prevRoot)
 		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.NoError(t, err)
@@ -106,16 +106,14 @@ func TestMDJournalBasic(t *testing.T) {
 	head, err = j.get(uid)
 	require.NoError(t, err)
 	require.NotNil(t, head)
-	require.Equal(t, MetadataRevision(10), head.Revision)
+	require.Equal(t, MetadataRevision(19), head.Revision)
 
 	rmds, err := j.getRange(uid, 1, 100)
 	require.NoError(t, err)
 	require.Equal(t, 10, len(rmds))
-	for i := MetadataRevision(1); i <= 10; i++ {
-		require.Equal(t, i, rmds[i-1].Revision)
+	for i, rmd := range rmds {
+		require.Equal(t, MetadataRevision(i+10), rmd.Revision)
 	}
-
-	require.Equal(t, 10, getTlfJournalLength(t, j))
 }
 
 func TestMDJournalBranchConversion(t *testing.T) {
@@ -125,8 +123,8 @@ func TestMDJournalBranchConversion(t *testing.T) {
 
 	ctx := context.Background()
 
-	prevRoot := MdID{}
-	for i := MetadataRevision(1); i <= 10; i++ {
+	prevRoot := fakeMdID(1)
+	for i := MetadataRevision(10); i < 20; i++ {
 		md := makeMDForTest(t, id, h, i, uid, prevRoot)
 		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.NoError(t, err)
@@ -143,17 +141,17 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	prevRoot = MdID{}
 	bid := rmds[0].BID
 	// TODO: Check first PrevRoot.
-	for i := MetadataRevision(1); i <= 10; i++ {
-		require.Equal(t, i, rmds[i-1].Revision)
-		require.Equal(t, bid, rmds[i-1].BID)
-		require.Equal(t, Unmerged, rmds[i-1].MergedStatus())
+	for i, rmd := range rmds {
+		require.Equal(t, MetadataRevision(i+10), rmd.Revision)
+		require.Equal(t, bid, rmd.BID)
+		require.Equal(t, Unmerged, rmd.MergedStatus())
 
 		if prevRoot != (MdID{}) {
-			require.Equal(t, prevRoot, rmds[i-1].PrevRoot)
+			require.Equal(t, prevRoot, rmd.PrevRoot)
 		}
 
 		require.NoError(t, err)
-		prevRoot = rmds[i-1].mdID
+		prevRoot = rmd.mdID
 	}
 
 	require.Equal(t, 10, getTlfJournalLength(t, j))
