@@ -83,7 +83,7 @@ func TestMDJournalBasic(t *testing.T) {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		mdID, err := s.put(ctx, signer, ekg, uid, verifyingKey, &md)
+		mdID, err := s.put(ctx, signer, ekg, &md, uid, verifyingKey)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
@@ -152,13 +152,13 @@ func TestMDJournalBranchConversion(t *testing.T) {
 		if i > 1 {
 			md.PrevRoot = prevRoot
 		}
-		mdID, err := s.put(ctx, signer, ekg, uid, verifyingKey, &md)
+		mdID, err := s.put(ctx, signer, ekg, &md, uid, verifyingKey)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
 
 	log := logger.NewTestLogger(t)
-	err = s.convertToBranch(ctx, signer, log, uid, verifyingKey)
+	err = s.convertToBranch(ctx, log, signer, uid, verifyingKey)
 	require.NoError(t, err)
 
 	rmds, err := s.getRange(uid, 1, 100)
@@ -241,7 +241,7 @@ func TestMDJournalFlushBasic(t *testing.T) {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		mdID, err := s.put(ctx, signer, ekg, uid, verifyingKey, &md)
+		mdID, err := s.put(ctx, signer, ekg, &md, uid, verifyingKey)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
@@ -250,7 +250,7 @@ func TestMDJournalFlushBasic(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	var mdserver shimMDServer
 	for {
-		flushed, err := s.flushOne(ctx, signer, &mdserver, log, uid, verifyingKey)
+		flushed, err := s.flushOne(ctx, log, signer, uid, verifyingKey, &mdserver)
 		require.NoError(t, err)
 		if !flushed {
 			break
@@ -318,7 +318,7 @@ func TestMDJournalFlushConflict(t *testing.T) {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		mdID, err := s.put(ctx, signer, ekg, uid, verifyingKey, &md)
+		mdID, err := s.put(ctx, signer, ekg, &md, uid, verifyingKey)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
@@ -329,7 +329,7 @@ func TestMDJournalFlushConflict(t *testing.T) {
 	mdserver.err = MDServerErrorConflictRevision{}
 
 	log := logger.NewTestLogger(t)
-	flushed, err := s.flushOne(ctx, signer, &mdserver, log, uid, verifyingKey)
+	flushed, err := s.flushOne(ctx, log, signer, uid, verifyingKey, &mdserver)
 	require.NoError(t, err)
 	require.True(t, flushed)
 
@@ -345,18 +345,18 @@ func TestMDJournalFlushConflict(t *testing.T) {
 			md.PrevRoot = prevRoot
 		}
 		ctx := context.Background()
-		mdID, err := s.put(ctx, signer, ekg, uid, verifyingKey, &md)
+		mdID, err := s.put(ctx, signer, ekg, &md, uid, verifyingKey)
 		require.IsType(t, MDJournalConflictError{}, err)
 
 		md.WFlags |= MetadataFlagUnmerged
-		mdID, err = s.put(ctx, signer, ekg, uid, verifyingKey, &md)
+		mdID, err = s.put(ctx, signer, ekg, &md, uid, verifyingKey)
 		require.NoError(t, err)
 
 		prevRoot = mdID
 	}
 
 	for {
-		flushed, err := s.flushOne(ctx, signer, &mdserver, log, uid, verifyingKey)
+		flushed, err := s.flushOne(ctx, log, signer, uid, verifyingKey, &mdserver)
 		require.NoError(t, err)
 		if !flushed {
 			break

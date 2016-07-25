@@ -193,7 +193,7 @@ func (s *mdJournal) checkGetParams(currentUID keybase1.UID) error {
 }
 
 func (s *mdJournal) convertToBranch(
-	ctx context.Context, signer cryptoSigner, log logger.Logger,
+	ctx context.Context, log logger.Logger, signer cryptoSigner,
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
 	_, head, err := s.getHead()
 	if err != nil {
@@ -287,8 +287,8 @@ func (s *mdJournal) convertToBranch(
 }
 
 func (s *mdJournal) pushEarliestToServer(
-	ctx context.Context, signer cryptoSigner, mdserver MDServer,
-	log logger.Logger) (MdID, *BareRootMetadata, error) {
+	ctx context.Context, log logger.Logger, signer cryptoSigner,
+	mdserver MDServer) (MdID, *BareRootMetadata, error) {
 	earliestID, err := s.j.getEarliest()
 	if err != nil {
 		return MdID{}, nil, err
@@ -395,8 +395,8 @@ func (e MDJournalConflictError) Error() string {
 
 func (s *mdJournal) put(
 	ctx context.Context, signer cryptoSigner, ekg encryptionKeyGetter,
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
-	rmd *RootMetadata) (MdID, error) {
+	rmd *RootMetadata, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey) (MdID, error) {
 	headID, head, err := s.getHead()
 	if err != nil {
 		return MdID{}, err
@@ -461,22 +461,22 @@ func (s *mdJournal) put(
 }
 
 func (s *mdJournal) flushOne(
-	ctx context.Context, signer cryptoSigner, mdserver MDServer,
-	log logger.Logger, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey) (bool, error) {
+	ctx context.Context, log logger.Logger, signer cryptoSigner,
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
+	mdserver MDServer) (bool, error) {
 	earliestID, rmd, pushErr := s.pushEarliestToServer(
-		ctx, signer, mdserver, log)
+		ctx, log, signer, mdserver)
 	if isRevisionConflict(pushErr) && rmd.MergedStatus() == Merged {
 		log.Debug("Conflict detected %v", pushErr)
 
 		err := s.convertToBranch(
-			ctx, signer, log, currentUID, currentVerifyingKey)
+			ctx, log, signer, currentUID, currentVerifyingKey)
 		if err != nil {
 			return false, err
 		}
 
 		earliestID, rmd, pushErr = s.pushEarliestToServer(
-			ctx, signer, mdserver, log)
+			ctx, log, signer, mdserver)
 	}
 	if pushErr != nil {
 		return false, pushErr
