@@ -113,10 +113,12 @@ func TestMDJournalBasic(t *testing.T) {
 		uid, 1, firstRevision+MetadataRevision(2*mdCount))
 	require.NoError(t, err)
 	require.Equal(t, mdCount, len(ibrmds))
+
 	require.Equal(t, firstRevision, ibrmds[0].Revision)
 	require.Equal(t, firstPrevRoot, ibrmds[0].PrevRoot)
 	err = ibrmds[0].IsValidAndSigned(codec, crypto, uid, verifyingKey)
 	require.NoError(t, err)
+
 	for i := 1; i < len(ibrmds); i++ {
 		err := ibrmds[i].IsValidAndSigned(
 			codec, crypto, uid, verifyingKey)
@@ -132,15 +134,20 @@ func TestMDJournalBasic(t *testing.T) {
 }
 
 func TestMDJournalBranchConversion(t *testing.T) {
-	_, _, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
+	codec, crypto, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
 	ctx := context.Background()
 
-	prevRoot := fakeMdID(1)
-	for i := MetadataRevision(10); i < 20; i++ {
-		md := makeMDForTest(t, id, h, i, uid, prevRoot)
+	firstRevision := MetadataRevision(10)
+	firstPrevRoot := fakeMdID(1)
+	mdCount := 10
+
+	prevRoot := firstPrevRoot
+	for i := 0; i < mdCount; i++ {
+		revision := firstRevision + MetadataRevision(i)
+		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
 		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.NoError(t, err)
 		prevRoot = mdID
@@ -150,26 +157,35 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	err := j.convertToBranch(ctx, log, signer, uid, verifyingKey)
 	require.NoError(t, err)
 
-	rmds, err := j.getRange(uid, 1, 100)
+	ibrmds, err := j.getRange(
+		uid, 1, firstRevision+MetadataRevision(2*mdCount))
 	require.NoError(t, err)
-	require.Equal(t, 10, len(rmds))
-	prevRoot = MdID{}
-	bid := rmds[0].BID
-	// TODO: Check first PrevRoot.
-	for i, rmd := range rmds {
-		require.Equal(t, MetadataRevision(i+10), rmd.Revision)
-		require.Equal(t, bid, rmd.BID)
-		require.Equal(t, Unmerged, rmd.MergedStatus())
+	require.Equal(t, mdCount, len(ibrmds))
 
-		if prevRoot != (MdID{}) {
-			require.Equal(t, prevRoot, rmd.PrevRoot)
-		}
+	require.Equal(t, firstRevision, ibrmds[0].Revision)
+	require.Equal(t, firstPrevRoot, ibrmds[0].PrevRoot)
+	require.Equal(t, Unmerged, ibrmds[0].MergedStatus())
+	err = ibrmds[0].IsValidAndSigned(codec, crypto, uid, verifyingKey)
+	bid := ibrmds[0].BID
+	require.NotEqual(t, NullBranchID, bid)
 
+	require.NoError(t, err)
+	for i := 1; i < len(ibrmds); i++ {
+		require.Equal(t, Unmerged, ibrmds[i].MergedStatus())
+		require.Equal(t, bid, ibrmds[i].BID)
+		err := ibrmds[i].IsValidAndSigned(
+			codec, crypto, uid, verifyingKey)
 		require.NoError(t, err)
-		prevRoot = rmd.mdID
+		err = ibrmds[i-1].CheckValidSuccessor(
+			ibrmds[i-1].mdID, ibrmds[i].BareRootMetadata)
+		require.NoError(t, err)
 	}
 
 	require.Equal(t, 10, getTlfJournalLength(t, j))
+
+	head, err := j.getHead(uid)
+	require.NoError(t, err)
+	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 }
 
 type shimMDServer struct {
