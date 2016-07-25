@@ -23,6 +23,9 @@ import (
 // served from the journal instead of the server. If BID is empty,
 // i.e. the journal is holding merged revisions, then this means that
 // all merged revisions on the server from rev are hidden.
+//
+// TODO: This makes server updates meaningless for revisions >=
+// rev. Fix this.
 type journalMDOps struct {
 	MDOps
 	jServer  *JournalServer
