@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"fmt"
 
-	"github.com/keybase/client/go/logger"
 	"golang.org/x/net/context"
 )
 
@@ -349,29 +348,4 @@ func (j journalMDOps) PruneBranch(
 	}
 
 	return j.MDOps.PruneBranch(ctx, id, bid)
-}
-
-func (j *JournalServer) blockServer() journalBlockServer {
-	return journalBlockServer{j, j.delegateBlockServer}
-}
-
-func (j *JournalServer) mdOps() journalMDOps {
-	return journalMDOps{j.delegateMDOps, j, j.delegateMDServer}
-}
-
-func makeJournalServer(
-	config Config, log logger.Logger,
-	dir string, bserver BlockServer,
-	mdOps MDOps, mdServer MDServer) *JournalServer {
-	jServer := JournalServer{
-		config:              config,
-		log:                 log,
-		deferLog:            log.CloneWithAddedDepth(1),
-		dir:                 dir,
-		delegateBlockServer: bserver,
-		delegateMDOps:       mdOps,
-		delegateMDServer:    mdServer,
-		tlfBundles:          make(map[TlfID]*tlfJournalBundle),
-	}
-	return &jServer
 }
