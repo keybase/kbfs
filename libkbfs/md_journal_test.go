@@ -226,25 +226,29 @@ func TestMDJournalFlushBasic(t *testing.T) {
 		prevRoot = mdID
 	}
 
+	// Flush all entries.
 	log := logger.NewTestLogger(t)
 	var mdserver shimMDServer
-	// TODO: Bound loop.
-	for {
+	for i := 0; i < mdCount; i++ {
 		flushed, err := j.flushOne(
 			ctx, log, signer, uid, verifyingKey, &mdserver)
 		require.NoError(t, err)
-		if !flushed {
-			break
-		}
+		require.True(t, flushed)
 	}
+	flushed, err := j.flushOne(
+		ctx, log, signer, uid, verifyingKey, &mdserver)
+	require.NoError(t, err)
+	require.False(t, flushed)
 	require.Equal(t, 0, getTlfJournalLength(t, j))
-	require.Equal(t, mdCount, len(mdserver.rmdses))
 
 	rmdses := mdserver.rmdses
+	require.Equal(t, mdCount, len(rmdses))
+
+	// Check RMDSes on the server.
 
 	require.Equal(t, firstRevision, rmdses[0].MD.Revision)
 	require.Equal(t, firstPrevRoot, rmdses[0].MD.PrevRoot)
-	err := rmdses[0].IsValidAndSigned(codec, crypto, uid, verifyingKey)
+	err = rmdses[0].IsValidAndSigned(codec, crypto, uid, verifyingKey)
 	require.NoError(t, err)
 
 	for i := 1; i < len(rmdses); i++ {
@@ -281,16 +285,17 @@ func TestMDJournalFlushConflict(t *testing.T) {
 	var mdserver shimMDServer
 	mdserver.nextErr = MDServerErrorConflictRevision{}
 
+	// Simulate a flush with a conflict error halfway through.
 	log := logger.NewTestLogger(t)
-	flushed, err := j.flushOne(
-		ctx, log, signer, uid, verifyingKey, &mdserver)
-	require.NoError(t, err)
-	require.True(t, flushed)
-
 	{
+		flushed, err := j.flushOne(
+			ctx, log, signer, uid, verifyingKey, &mdserver)
+		require.NoError(t, err)
+		require.True(t, flushed)
+
 		revision := firstRevision + MetadataRevision(mdCount/2)
 		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
-		_, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
+		_, err = j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.IsType(t, MDJournalConflictError{}, err)
 
 		md.WFlags |= MetadataFlagUnmerged
@@ -308,26 +313,32 @@ func TestMDJournalFlushConflict(t *testing.T) {
 		prevRoot = mdID
 	}
 
-	// TODO: bound loop.
-	for {
+	// Flush remaining entries.
+	for i := 0; i < mdCount-1; i++ {
 		flushed, err := j.flushOne(
 			ctx, log, signer, uid, verifyingKey, &mdserver)
 		require.NoError(t, err)
-		if !flushed {
-			break
-		}
+		require.True(t, flushed)
 	}
+	flushed, err := j.flushOne(
+		ctx, log, signer, uid, verifyingKey, &mdserver)
+	require.NoError(t, err)
+	require.False(t, flushed)
 	require.Equal(t, 0, getTlfJournalLength(t, j))
-	require.Equal(t, mdCount, len(mdserver.rmdses))
 
 	rmdses := mdserver.rmdses
+	require.Equal(t, mdCount, len(rmdses))
+
+	// Check RMDSes on the server.
 
 	require.Equal(t, firstRevision, rmdses[0].MD.Revision)
 	require.Equal(t, firstPrevRoot, rmdses[0].MD.PrevRoot)
+	require.Equal(t, Unmerged, rmdses[0].MD.MergedStatus())
 	err = rmdses[0].IsValidAndSigned(codec, crypto, uid, verifyingKey)
 	require.NoError(t, err)
 
 	for i := 1; i < len(rmdses); i++ {
+		require.Equal(t, Unmerged, rmdses[i].MD.MergedStatus())
 		err := rmdses[i].IsValidAndSigned(
 			codec, crypto, uid, verifyingKey)
 		require.NoError(t, err)
