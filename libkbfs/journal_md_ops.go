@@ -92,8 +92,8 @@ func (j journalMDOps) getFromJournal(
 }
 
 func (j journalMDOps) getRangeFromJournal(
-	ctx context.Context, id TlfID, bid BranchID,
-	start, stop MetadataRevision, mStatus MergeStatus) (
+	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
+	start, stop MetadataRevision) (
 	[]ImmutableRootMetadata, error) {
 	bundle, ok := j.jServer.getBundle(id)
 	if !ok {
@@ -223,19 +223,24 @@ func (j journalMDOps) GetUnmergedForTLF(
 	return j.getForTLF(ctx, id, bid, Unmerged, delegateFn)
 }
 
-func (j journalMDOps) GetRange(
-	ctx context.Context, id TlfID, start, stop MetadataRevision) (
+// TODO: Combine the two GetForTLF functions in MDOps to avoid the
+// need for these helper functions.
+func (j journalMDOps) getRange(
+	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
+	start, stop MetadataRevision,
+	delegateFn func(ctx context.Context, id TlfID,
+		start, stop MetadataRevision) (
+		[]ImmutableRootMetadata, error)) (
 	[]ImmutableRootMetadata, error) {
 	// Grab the range from the journal first.
-	jirmds, err := j.getRangeFromJournal(
-		ctx, id, NullBranchID, start, stop, Merged)
+	jirmds, err := j.getRangeFromJournal(ctx, id, bid, mStatus, start, stop)
 	if err != nil {
 		return nil, err
 	}
 
 	// If it's empty, just fall back to the server.
 	if len(jirmds) == 0 {
-		return j.MDOps.GetRange(ctx, id, start, stop)
+		return delegateFn(ctx, id, start, stop)
 	}
 
 	// If the first revision from the journal is the first
@@ -247,7 +252,7 @@ func (j journalMDOps) GetRange(
 
 	// Otherwise, fetch the rest from the server and prepend them.
 	serverStop := jirmds[0].Revision - 1
-	irmds, err := j.MDOps.GetRange(ctx, id, start, serverStop)
+	irmds, err := delegateFn(ctx, id, start, stop)
 	if err != nil {
 		return nil, err
 	}
@@ -266,38 +271,23 @@ func (j journalMDOps) GetRange(
 	return append(irmds, jirmds...), nil
 }
 
+func (j journalMDOps) GetRange(
+	ctx context.Context, id TlfID, start, stop MetadataRevision) (
+	[]ImmutableRootMetadata, error) {
+	return j.getRange(ctx, id, NullBranchID, Merged, start, stop,
+		j.MDOps.GetRange)
+}
+
 func (j journalMDOps) GetUnmergedRange(
 	ctx context.Context, id TlfID, bid BranchID,
 	start, stop MetadataRevision) ([]ImmutableRootMetadata, error) {
-	jirmds, err := j.getRangeFromJournal(
-		ctx, id, bid, start, stop, Unmerged)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(jirmds) == 0 {
+	delegateFn := func(ctx context.Context, id TlfID,
+		start, stop MetadataRevision) (
+		[]ImmutableRootMetadata, error) {
 		return j.MDOps.GetUnmergedRange(ctx, id, bid, start, stop)
 	}
-
-	if jirmds[0].Revision == start {
-		return jirmds, nil
-	}
-
-	serverStop := jirmds[0].Revision - 1
-	irmds, err := j.MDOps.GetUnmergedRange(ctx, id, bid, start, serverStop)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(irmds) == 0 {
-		return jirmds, nil
-	}
-
-	if irmds[len(irmds)-1].Revision != serverStop {
-		return nil, fmt.Errorf("Expected server rev %d, got %d", serverStop, irmds[len(irmds)-1].Revision)
-	}
-
-	return append(irmds, jirmds...), nil
+	return j.getRange(ctx, id, bid, Unmerged, start, stop,
+		delegateFn)
 }
 
 func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
