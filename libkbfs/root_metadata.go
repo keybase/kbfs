@@ -63,6 +63,7 @@ type RootMetadata struct {
 
 var _ KeyMetadata = (*RootMetadata)(nil)
 
+// TlfID returns the ID of the TLF this RootMetadata is for.
 func (md *RootMetadata) TlfID() TlfID {
 	return md.ID
 }

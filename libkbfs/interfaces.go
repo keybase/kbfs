@@ -413,6 +413,8 @@ type KBPKI interface {
 	Notify(ctx context.Context, notification *keybase1.FSNotification) error
 }
 
+// KeyMetadata is an interface for something that holds key
+// information. This is usually implemented by RootMetadata.
 type KeyMetadata interface {
 	TlfID() TlfID
 	GetTlfHandle() *TlfHandle
