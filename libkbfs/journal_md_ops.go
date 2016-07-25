@@ -31,8 +31,6 @@ type journalMDOps struct {
 
 var _ MDOps = journalMDOps{}
 
-// TODO: Prefer server updates to journal updates.
-
 // TODO: Figure out locking.
 func (j journalMDOps) getFromJournal(
 	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
@@ -96,6 +94,10 @@ func (j journalMDOps) getFromJournal(
 func (j journalMDOps) GetForHandle(
 	ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (
 	TlfID, ImmutableRootMetadata, error) {
+	// Need to always consult the server to get the tlfID. No need
+	// to optimize this, since all subsequent lookups will be by
+	// TLF. Although if we did want to, we could store a handle ->
+	// TLF ID mapping with the journals.
 	tlfID, rmd, err := j.MDOps.GetForHandle(ctx, handle, mStatus)
 	if err != nil {
 		return TlfID{}, ImmutableRootMetadata{}, err
@@ -106,7 +108,9 @@ func (j journalMDOps) GetForHandle(
 		lookupTlfID = rmd.ID
 	}
 
-	irmd, err := j.getFromJournal(ctx, lookupTlfID, NullBranchID, mStatus, handle)
+	// If the journal has a head, use that.
+	irmd, err := j.getFromJournal(
+		ctx, lookupTlfID, NullBranchID, mStatus, handle)
 	if err != nil {
 		return TlfID{}, ImmutableRootMetadata{}, err
 	}
@@ -114,11 +118,16 @@ func (j journalMDOps) GetForHandle(
 		return TlfID{}, irmd, nil
 	}
 
+	// Otherwise, use the server's head.
 	return tlfID, rmd, nil
 }
 
+// TODO: Should probably combine the two functions below in the MDOps
+// interface.
+
 func (j journalMDOps) GetForTLF(
 	ctx context.Context, id TlfID) (ImmutableRootMetadata, error) {
+	// If the journal has a head, use that.
 	irmd, err := j.getFromJournal(ctx, id, NullBranchID, Merged, nil)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
@@ -127,12 +136,14 @@ func (j journalMDOps) GetForTLF(
 		return irmd, nil
 	}
 
+	// Otherwise, consult the server instead.
 	return j.MDOps.GetForTLF(ctx, id)
 }
 
 func (j journalMDOps) GetUnmergedForTLF(
 	ctx context.Context, id TlfID, bid BranchID) (
 	ImmutableRootMetadata, error) {
+	// If the journal has a head, use that.
 	irmd, err := j.getFromJournal(ctx, id, bid, Unmerged, nil)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
@@ -141,6 +152,7 @@ func (j journalMDOps) GetUnmergedForTLF(
 		return irmd, nil
 	}
 
+	// Otherwise, fall back to the server instead.
 	return j.MDOps.GetUnmergedForTLF(ctx, id, bid)
 }
 
@@ -214,20 +226,26 @@ func (j journalMDOps) getRangeFromJournal(
 func (j journalMDOps) GetRange(
 	ctx context.Context, id TlfID, start, stop MetadataRevision) (
 	[]ImmutableRootMetadata, error) {
+	// Grab the range from the journal first.
 	jirmds, err := j.getRangeFromJournal(
 		ctx, id, NullBranchID, start, stop, Merged)
 	if err != nil {
 		return nil, err
 	}
 
+	// If it's empty, just fall back to the server.
 	if len(jirmds) == 0 {
 		return j.MDOps.GetRange(ctx, id, start, stop)
 	}
 
+	// If the first revision from the journal is the first
+	// revision we asked for, then just return the range from the
+	// journal.
 	if jirmds[0].Revision == start {
 		return jirmds, nil
 	}
 
+	// Otherwise, fetch the rest from the server and prepend them.
 	serverStop := jirmds[0].Revision - 1
 	irmds, err := j.MDOps.GetRange(ctx, id, start, serverStop)
 	if err != nil {
@@ -238,8 +256,11 @@ func (j journalMDOps) GetRange(
 		return jirmds, nil
 	}
 
-	if irmds[len(irmds)-1].Revision != serverStop {
-		return nil, fmt.Errorf("Expected server rev %d, got %d", serverStop, irmds[len(irmds)-1].Revision)
+	lastRev := irmds[len(irmds)-1].Revision
+	if lastRev != serverStop {
+		return nil, fmt.Errorf(
+			"Expected last server rev %d, got %d",
+			serverStop, lastRev)
 	}
 
 	return append(irmds, jirmds...), nil
