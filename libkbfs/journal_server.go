@@ -243,10 +243,15 @@ func (j journalMDOps) getFromJournal(
 		return ImmutableRootMetadata{}, nil
 	}
 
+	_, uid, err := j.jServer.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+
 	bundle.lock.RLock()
 	defer bundle.lock.RUnlock()
 
-	headID, head, err := bundle.mdJournal.getHead()
+	headID, head, err := bundle.mdJournal.getHead(uid)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}

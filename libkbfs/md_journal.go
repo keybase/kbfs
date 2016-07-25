@@ -157,7 +157,8 @@ func (j mdJournal) putMD(
 	return id, nil
 }
 
-func (j mdJournal) getHead() (mdID MdID, rmd *BareRootMetadata, err error) {
+func (j mdJournal) getHeadHelper() (
+	mdID MdID, rmd *BareRootMetadata, err error) {
 	headID, err := j.j.getLatest()
 	if err != nil {
 		return MdID{}, nil, err
@@ -173,7 +174,7 @@ func (j mdJournal) getHead() (mdID MdID, rmd *BareRootMetadata, err error) {
 }
 
 func (j mdJournal) checkGetParams(currentUID keybase1.UID) error {
-	_, head, err := j.getHead()
+	_, head, err := j.getHeadHelper()
 	if err != nil {
 		return err
 	}
@@ -195,7 +196,7 @@ func (j mdJournal) checkGetParams(currentUID keybase1.UID) error {
 func (j mdJournal) convertToBranch(
 	ctx context.Context, log logger.Logger, signer cryptoSigner,
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
-	_, head, err := j.getHead()
+	_, head, err := j.getHeadHelper()
 	if err != nil {
 		return err
 	}
@@ -326,17 +327,18 @@ func (j mdJournal) length() (uint64, error) {
 	return j.j.length()
 }
 
-func (j mdJournal) get(currentUID keybase1.UID) (*BareRootMetadata, error) {
+func (j mdJournal) getHead(currentUID keybase1.UID) (
+	MdID, *BareRootMetadata, error) {
 	err := j.checkGetParams(currentUID)
 	if err != nil {
-		return nil, err
+		return MdID{}, nil, err
 	}
 
-	_, rmd, err := j.getHead()
+	id, rmd, err := j.getHeadHelper()
 	if err != nil {
-		return nil, err
+		return MdID{}, nil, err
 	}
-	return rmd, nil
+	return id, rmd, nil
 }
 
 // ImmutableBareRootMetadata is a BRMD with an MdID.
@@ -397,7 +399,7 @@ func (j mdJournal) put(
 	ctx context.Context, signer cryptoSigner, ekg encryptionKeyGetter,
 	rmd *RootMetadata, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey) (MdID, error) {
-	headID, head, err := j.getHead()
+	headID, head, err := j.getHeadHelper()
 	if err != nil {
 		return MdID{}, err
 	}

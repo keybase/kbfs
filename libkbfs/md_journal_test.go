@@ -82,8 +82,9 @@ func TestMDJournalBasic(t *testing.T) {
 
 	// Should start off as empty.
 
-	head, err := j.get(uid)
+	headID, head, err := j.getHead(uid)
 	require.NoError(t, err)
+	require.Equal(t, MdID{}, headID)
 	require.Nil(t, head)
 	require.Equal(t, 0, getTlfJournalLength(t, j))
 
@@ -118,8 +119,9 @@ func TestMDJournalBasic(t *testing.T) {
 		require.Equal(t, MetadataRevision(i+10), rmd.Revision)
 	}
 
-	head, err = j.get(uid)
+	headID, head, err = j.getHead(uid)
 	require.NoError(t, err)
+	require.Equal(t, rmds[len(rmds)-1].mdID, headID)
 	require.Equal(t, rmds[len(rmds)-1].BareRootMetadata, head)
 }
 
