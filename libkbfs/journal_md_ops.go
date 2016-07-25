@@ -31,8 +31,7 @@ type journalMDOps struct {
 
 var _ MDOps = journalMDOps{}
 
-// TODO: Figure out locking.
-func (j journalMDOps) getFromJournal(
+func (j journalMDOps) getHeadFromJournal(
 	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
 	handle *TlfHandle) (
 	ImmutableRootMetadata, error) {
@@ -71,7 +70,8 @@ func (j journalMDOps) getFromJournal(
 		if err != nil {
 			return ImmutableRootMetadata{}, err
 		}
-		handle, err = MakeTlfHandle(ctx, bareHandle, j.jServer.config.KBPKI())
+		handle, err = MakeTlfHandle(
+			ctx, bareHandle, j.jServer.config.KBPKI())
 		if err != nil {
 			return ImmutableRootMetadata{}, err
 		}
@@ -144,7 +144,6 @@ func (j journalMDOps) getRangeFromJournal(
 			tlfHandle:        handle,
 		}
 
-		// TODO: Use head?
 		err = decryptMDPrivateData(
 			ctx, j.jServer.config, &rmd, rmd.ReadOnly())
 		if err != nil {
@@ -176,7 +175,7 @@ func (j journalMDOps) GetForHandle(
 	}
 
 	// If the journal has a head, use that.
-	irmd, err := j.getFromJournal(
+	irmd, err := j.getHeadFromJournal(
 		ctx, lookupTlfID, NullBranchID, mStatus, handle)
 	if err != nil {
 		return TlfID{}, ImmutableRootMetadata{}, err
@@ -196,7 +195,7 @@ func (j journalMDOps) getForTLF(
 	delegateFn func(context.Context, TlfID) (ImmutableRootMetadata, error)) (
 	ImmutableRootMetadata, error) {
 	// If the journal has a head, use that.
-	irmd, err := j.getFromJournal(ctx, id, bid, mStatus, nil)
+	irmd, err := j.getHeadFromJournal(ctx, id, bid, mStatus, nil)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -364,7 +363,7 @@ func (j journalMDOps) PruneBranch(
 	bundle, ok := j.jServer.getBundle(id)
 	if ok {
 		// Prune both the journal and the server.
-		irmd, err := j.getFromJournal(ctx, id, bid, Unmerged, nil)
+		irmd, err := j.getHeadFromJournal(ctx, id, bid, Unmerged, nil)
 		if err != nil {
 			return err
 		}
