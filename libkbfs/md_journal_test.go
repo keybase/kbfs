@@ -32,11 +32,12 @@ func getTlfJournalLength(t *testing.T, j mdJournal) int {
 }
 
 func setupMDJournalTest(t *testing.T) (
+	codec Codec, crypto CryptoCommon,
 	uid keybase1.UID, id TlfID, h BareTlfHandle,
 	signer cryptoSigner, verifyingKey VerifyingKey,
 	ekg singleEncryptionKeyGetter, tempdir string, j mdJournal) {
-	codec := NewCodecMsgpack()
-	crypto := MakeCryptoCommon(codec)
+	codec = NewCodecMsgpack()
+	crypto = MakeCryptoCommon(codec)
 
 	uid = keybase1.MakeTestUID(1)
 	id = FakeTlfID(1, false)
@@ -55,7 +56,7 @@ func setupMDJournalTest(t *testing.T) (
 
 	j = makeMDJournal(codec, crypto, tempdir)
 
-	return uid, id, h, signer, verifyingKey, ekg, tempdir, j
+	return codec, crypto, uid, id, h, signer, verifyingKey, ekg, tempdir, j
 }
 
 func teardownMDJournalTest(t *testing.T, tempdir string) {
@@ -76,7 +77,7 @@ func makeMDForTest(t *testing.T, id TlfID, h BareTlfHandle,
 }
 
 func TestMDJournalBasic(t *testing.T) {
-	uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
+	codec, crypto, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -108,23 +109,30 @@ func TestMDJournalBasic(t *testing.T) {
 
 	// Should now be non-empty.
 
-	rmds, err := j.getRange(
+	ibrmds, err := j.getRange(
 		uid, 1, firstRevision+MetadataRevision(2*mdCount))
 	require.NoError(t, err)
-	require.Equal(t, mdCount, len(rmds))
-	require.Equal(t, firstRevision, rmds[0].Revision)
-	require.Equal(t, firstPrevRoot, rmds[0].PrevRoot)
-	for i, rmd := range rmds {
-		require.Equal(t, MetadataRevision(i+10), rmd.Revision)
+	require.Equal(t, mdCount, len(ibrmds))
+	require.Equal(t, firstRevision, ibrmds[0].Revision)
+	require.Equal(t, firstPrevRoot, ibrmds[0].PrevRoot)
+	err = ibrmds[0].IsValidAndSigned(codec, crypto, uid, verifyingKey)
+	require.NoError(t, err)
+	for i := 1; i < len(ibrmds); i++ {
+		err := ibrmds[i].IsValidAndSigned(
+			codec, crypto, uid, verifyingKey)
+		require.NoError(t, err)
+		err = ibrmds[i-1].CheckValidSuccessor(
+			ibrmds[i-1].mdID, ibrmds[i].BareRootMetadata)
+		require.NoError(t, err)
 	}
 
 	head, err = j.getHead(uid)
 	require.NoError(t, err)
-	require.Equal(t, rmds[len(rmds)-1], head)
+	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 }
 
 func TestMDJournalBranchConversion(t *testing.T) {
-	uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
+	_, _, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -181,7 +189,7 @@ func (s *shimMDServer) Put(ctx context.Context, rmds *RootMetadataSigned) error 
 }
 
 func TestMDJournalFlushBasic(t *testing.T) {
-	uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
+	_, crypto, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -208,8 +216,6 @@ func TestMDJournalFlushBasic(t *testing.T) {
 	}
 
 	require.Equal(t, 10, len(mdserver.rmdses))
-	codec := NewCodecMsgpack()
-	crypto := MakeCryptoCommon(codec)
 	var prev *RootMetadataSigned
 	var prevID MdID
 	for i := MetadataRevision(1); i <= 10; i++ {
@@ -229,7 +235,7 @@ func TestMDJournalFlushBasic(t *testing.T) {
 }
 
 func TestMDJournalFlushConflict(t *testing.T) {
-	uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
+	_, crypto, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -275,8 +281,6 @@ func TestMDJournalFlushConflict(t *testing.T) {
 	}
 
 	require.Equal(t, 10, len(mdserver.rmdses))
-	codec := NewCodecMsgpack()
-	crypto := MakeCryptoCommon(codec)
 	var prev *RootMetadataSigned
 	var prevID MdID
 	for i := MetadataRevision(1); i <= 10; i++ {
