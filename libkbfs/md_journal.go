@@ -491,7 +491,7 @@ func (s *mdJournal) flushOne(
 		return false, nil
 	}
 
-	err := s.j.removeEarliest()
+	err = s.j.removeEarliest()
 	if err != nil {
 		return false, err
 	}
