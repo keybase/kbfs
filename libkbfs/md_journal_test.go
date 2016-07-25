@@ -91,29 +91,36 @@ func TestMDJournalBasic(t *testing.T) {
 
 	ctx := context.Background()
 
-	prevRoot := fakeMdID(1)
-	for i := MetadataRevision(10); i < 20; i++ {
-		md := makeMDForTest(t, id, h, i, uid, prevRoot)
+	firstRevision := MetadataRevision(10)
+	firstPrevRoot := fakeMdID(1)
+	mdCount := 10
+
+	prevRoot := firstPrevRoot
+	for i := 0; i < mdCount; i++ {
+		revision := firstRevision + MetadataRevision(i)
+		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
 		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.NoError(t, err)
 		prevRoot = mdID
 	}
 
-	require.Equal(t, 10, getTlfJournalLength(t, j))
+	require.Equal(t, mdCount, getTlfJournalLength(t, j))
 
 	// Should now be non-empty.
 
-	head, err = j.get(uid)
+	rmds, err := j.getRange(
+		uid, 1, firstRevision+MetadataRevision(2*mdCount))
 	require.NoError(t, err)
-	require.NotNil(t, head)
-	require.Equal(t, MetadataRevision(19), head.Revision)
-
-	rmds, err := j.getRange(uid, 1, 100)
-	require.NoError(t, err)
-	require.Equal(t, 10, len(rmds))
+	require.Equal(t, mdCount, len(rmds))
+	require.Equal(t, firstRevision, rmds[0].Revision)
+	require.Equal(t, firstPrevRoot, rmds[0].PrevRoot)
 	for i, rmd := range rmds {
 		require.Equal(t, MetadataRevision(i+10), rmd.Revision)
 	}
+
+	head, err = j.get(uid)
+	require.NoError(t, err)
+	require.Equal(t, rmds[len(rmds)-1].BareRootMetadata, head)
 }
 
 func TestMDJournalBranchConversion(t *testing.T) {
