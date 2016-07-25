@@ -35,7 +35,7 @@ func getTlfJournalLength(t *testing.T, s *mdJournal) int {
 // single mdJournal.
 func TestMDJournalBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
-	crypto := makeTestCryptoCommon(t)
+	crypto := MakeCryptoCommon(codec)
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
 	require.NoError(t, err)
@@ -63,11 +63,8 @@ func TestMDJournalBasic(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
-	log := logger.NewTestLogger(t)
-	signer := &CryptoLocal{
-		MakeCryptoCommon(codec, log),
+	signer := cryptoSignerLocal{
 		MakeFakeSigningKeyOrBust("fake seed"),
-		MakeFakeCryptPrivateKeyOrBust("fake seed"),
 	}
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
@@ -112,7 +109,7 @@ func TestMDJournalBasic(t *testing.T) {
 
 func TestMDJournalBranchConversion(t *testing.T) {
 	codec := NewCodecMsgpack()
-	crypto := makeTestCryptoCommon(t)
+	crypto := MakeCryptoCommon(codec)
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
 	require.NoError(t, err)
@@ -132,11 +129,8 @@ func TestMDJournalBranchConversion(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
-	log := logger.NewTestLogger(t)
-	signer := &CryptoLocal{
-		MakeCryptoCommon(codec, log),
+	signer := cryptoSignerLocal{
 		MakeFakeSigningKeyOrBust("fake seed"),
-		MakeFakeCryptPrivateKeyOrBust("fake seed"),
 	}
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
@@ -159,6 +153,7 @@ func TestMDJournalBranchConversion(t *testing.T) {
 		prevRoot = mdID
 	}
 
+	log := logger.NewTestLogger(t)
 	err = s.convertToBranch(ctx, signer, log)
 	require.NoError(t, err)
 
@@ -202,7 +197,7 @@ func (s *shimMDServer) Put(ctx context.Context, rmds *RootMetadataSigned) error 
 
 func TestMDJournalFlushBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
-	crypto := makeTestCryptoCommon(t)
+	crypto := MakeCryptoCommon(codec)
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
 	require.NoError(t, err)
@@ -222,11 +217,8 @@ func TestMDJournalFlushBasic(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
-	log := logger.NewTestLogger(t)
-	signer := &CryptoLocal{
-		MakeCryptoCommon(codec, log),
+	signer := cryptoSignerLocal{
 		MakeFakeSigningKeyOrBust("fake seed"),
-		MakeFakeCryptPrivateKeyOrBust("fake seed"),
 	}
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
@@ -249,6 +241,7 @@ func TestMDJournalFlushBasic(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	log := logger.NewTestLogger(t)
 	var mdserver shimMDServer
 	for {
 		flushed, err := s.flushOne(ctx, signer, &mdserver, log)
@@ -279,7 +272,7 @@ func TestMDJournalFlushBasic(t *testing.T) {
 
 func TestMDJournalFlushConflict(t *testing.T) {
 	codec := NewCodecMsgpack()
-	crypto := makeTestCryptoCommon(t)
+	crypto := MakeCryptoCommon(codec)
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
 	require.NoError(t, err)
@@ -299,11 +292,8 @@ func TestMDJournalFlushConflict(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
-	log := logger.NewTestLogger(t)
-	signer := &CryptoLocal{
-		MakeCryptoCommon(codec, log),
+	signer := cryptoSignerLocal{
 		MakeFakeSigningKeyOrBust("fake seed"),
-		MakeFakeCryptPrivateKeyOrBust("fake seed"),
 	}
 	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
@@ -330,6 +320,7 @@ func TestMDJournalFlushConflict(t *testing.T) {
 
 	mdserver.err = MDServerErrorConflictRevision{}
 
+	log := logger.NewTestLogger(t)
 	flushed, err := s.flushOne(ctx, signer, &mdserver, log)
 	require.NoError(t, err)
 	require.True(t, flushed)
