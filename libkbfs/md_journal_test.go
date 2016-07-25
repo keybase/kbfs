@@ -77,6 +77,8 @@ func TestMDJournalBasic(t *testing.T) {
 
 	// Push some new metadata blocks.
 
+	ctx := context.Background()
+
 	prevRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
 		var md RootMetadata
@@ -87,7 +89,6 @@ func TestMDJournalBasic(t *testing.T) {
 		if i > 1 {
 			md.PrevRoot = prevRoot
 		}
-		ctx := context.Background()
 		mdID, err := j.put(ctx, signer, ekg, &md, uid, verifyingKey)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
@@ -116,8 +117,6 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
-
-	// (2) Push some new metadata blocks.
 
 	ctx := context.Background()
 
@@ -187,6 +186,8 @@ func TestMDJournalFlushBasic(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
+	ctx := context.Background()
+
 	prevRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
 		var md RootMetadata
@@ -199,13 +200,11 @@ func TestMDJournalFlushBasic(t *testing.T) {
 		if i > 1 {
 			md.PrevRoot = prevRoot
 		}
-		ctx := context.Background()
 		mdID, err := j.put(ctx, signer, ekg, &md, uid, verifyingKey)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
 
-	ctx := context.Background()
 	log := logger.NewTestLogger(t)
 	var mdserver shimMDServer
 	for {
@@ -244,6 +243,8 @@ func TestMDJournalFlushConflict(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
+	ctx := context.Background()
+
 	prevRoot := MdID{}
 	for i := MetadataRevision(1); i <= 9; i++ {
 		var md RootMetadata
@@ -256,13 +257,11 @@ func TestMDJournalFlushConflict(t *testing.T) {
 		if i > 1 {
 			md.PrevRoot = prevRoot
 		}
-		ctx := context.Background()
 		mdID, err := j.put(ctx, signer, ekg, &md, uid, verifyingKey)
 		require.NoError(t, err, "i=%d", i)
 		prevRoot = mdID
 	}
 
-	ctx := context.Background()
 	var mdserver shimMDServer
 
 	mdserver.err = MDServerErrorConflictRevision{}
@@ -283,7 +282,6 @@ func TestMDJournalFlushConflict(t *testing.T) {
 		if i > 1 {
 			md.PrevRoot = prevRoot
 		}
-		ctx := context.Background()
 		mdID, err := j.put(ctx, signer, ekg, &md, uid, verifyingKey)
 		require.IsType(t, MDJournalConflictError{}, err)
 
