@@ -781,11 +781,11 @@ type Codec interface {
 // MDOps gets and puts root metadata to an MDServer.  On a get, it
 // verifies the metadata is signed by the metadata's signing key.
 type MDOps interface {
-	// GetForHandle returns the current metadata
-	// object corresponding to the given top-level folder's handle, if
-	// the logged-in user has read permission on the folder.  It
-	// creates the folder if one doesn't exist yet, and the logged-in
-	// user has permission to do so.
+	// GetForHandle returns the current metadata object
+	// corresponding to the given top-level folder's handle and
+	// merge status, if the logged-in user has read permission on
+	// the folder.  It creates the folder if one doesn't exist
+	// yet, and the logged-in user has permission to do so.
 	GetForHandle(
 		ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (
 		TlfID, ImmutableRootMetadata, error)
