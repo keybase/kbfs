@@ -506,6 +506,16 @@ func (j mdJournal) flushOne(
 	return true, nil
 }
 
-func (j mdJournal) clear() error {
+func (j mdJournal) clear(currentUID keybase1.UID, bid BranchID) error {
+	head, err := j.getHead(currentUID)
+	if err != nil {
+		return err
+	}
+
+	if head.BID != bid {
+		// Nothing to do.
+		return nil
+	}
+
 	return j.j.clear()
 }
