@@ -31,8 +31,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 
 	log := config.MakeLogger("")
 	jServer := makeJournalServer(
-		config, log, tempdir,
-		config.BlockServer(), config.MDOps(), config.MDServer())
+		config, log, tempdir, config.BlockServer(), config.MDOps())
 	config.SetBlockServer(jServer.blockServer())
 
 	oldMDOps := config.MDOps()

@@ -28,8 +28,7 @@ import (
 // rev. Fix this.
 type journalMDOps struct {
 	MDOps
-	jServer  *JournalServer
-	mdServer MDServer
+	jServer *JournalServer
 }
 
 var _ MDOps = journalMDOps{}

@@ -376,7 +376,7 @@ func Init(ctx Context, params InitParams, keybaseDaemonFn KeybaseDaemonFn, onInt
 		log := config.MakeLogger("")
 		jServer := makeJournalServer(
 			config, log, params.WriteJournalRoot,
-			config.BlockServer(), config.MDOps(), config.MDServer())
+			config.BlockServer(), config.MDOps())
 		config.SetBlockServer(jServer.blockServer())
 		config.SetMDOps(jServer.mdOps())
 	}

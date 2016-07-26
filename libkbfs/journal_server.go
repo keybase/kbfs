@@ -37,7 +37,6 @@ type JournalServer struct {
 
 	delegateBlockServer BlockServer
 	delegateMDOps       MDOps
-	delegateMDServer    MDServer
 
 	lock       sync.RWMutex
 	tlfBundles map[TlfID]*tlfJournalBundle
@@ -176,13 +175,12 @@ func (j *JournalServer) blockServer() journalBlockServer {
 }
 
 func (j *JournalServer) mdOps() journalMDOps {
-	return journalMDOps{j.delegateMDOps, j, j.delegateMDServer}
+	return journalMDOps{j.delegateMDOps, j}
 }
 
 func makeJournalServer(
-	config Config, log logger.Logger,
-	dir string, bserver BlockServer,
-	mdOps MDOps, mdServer MDServer) *JournalServer {
+	config Config, log logger.Logger, dir string,
+	bserver BlockServer, mdOps MDOps) *JournalServer {
 	jServer := JournalServer{
 		config:              config,
 		log:                 log,
@@ -190,7 +188,6 @@ func makeJournalServer(
 		dir:                 dir,
 		delegateBlockServer: bserver,
 		delegateMDOps:       mdOps,
-		delegateMDServer:    mdServer,
 		tlfBundles:          make(map[TlfID]*tlfJournalBundle),
 	}
 	return &jServer
