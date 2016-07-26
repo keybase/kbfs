@@ -76,15 +76,33 @@ func (j journalMDOps) getHeadFromJournal(
 				bid, head.BID)
 	}
 
+	headBareHandle, err := head.MakeBareTlfHandle()
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+
 	if handle == nil {
-		bareHandle, err := head.MakeBareTlfHandle()
+		handle, err = MakeTlfHandle(
+			ctx, headBareHandle, j.jServer.config.KBPKI())
 		if err != nil {
 			return ImmutableRootMetadata{}, err
 		}
-		handle, err = MakeTlfHandle(
-			ctx, bareHandle, j.jServer.config.KBPKI())
+	} else {
+		bareHandle, err := handle.ToBareHandle()
 		if err != nil {
 			return ImmutableRootMetadata{}, err
+		}
+		ok, err := CodecEqual(j.jServer.config.Codec(),
+			headBareHandle, bareHandle)
+		if err != nil {
+			return ImmutableRootMetadata{}, err
+		}
+		// TODO: Figure out if either handle can be more
+		// resolved.
+		if !ok {
+			return ImmutableRootMetadata{},
+				fmt.Errorf("Expected bare handle %v, got %v",
+					bareHandle, headBareHandle)
 		}
 	}
 
