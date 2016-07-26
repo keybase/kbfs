@@ -449,15 +449,14 @@ func (j mdJournal) put(
 		}
 	}
 
-	var brmd BareRootMetadata
-	err = encryptMDPrivateData(
+	brmd, err := encryptMDPrivateData(
 		ctx, j.codec, j.crypto, signer, ekg,
-		currentUID, rmd.ReadOnly(), &brmd)
+		currentUID, rmd.ReadOnly())
 	if err != nil {
 		return MdID{}, err
 	}
 
-	id, err := j.putMD(&brmd, currentUID, currentVerifyingKey)
+	id, err := j.putMD(brmd, currentUID, currentVerifyingKey)
 	if err != nil {
 		return MdID{}, err
 	}

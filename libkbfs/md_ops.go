@@ -429,13 +429,15 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
-	var rmds RootMetadataSigned
-	err = encryptMDPrivateData(
+	brmd, err := encryptMDPrivateData(
 		ctx, md.config.Codec(), md.config.Crypto(),
-		md.config.Crypto(), md.config.KeyManager(),
-		me, rmd.ReadOnly(), &rmds.MD)
+		md.config.Crypto(), md.config.KeyManager(), me, rmd.ReadOnly())
 	if err != nil {
 		return MdID{}, err
+	}
+
+	rmds := RootMetadataSigned{
+		MD: *brmd,
 	}
 
 	err = signMD(ctx, md.config.Codec(), md.config.Crypto(), &rmds)
