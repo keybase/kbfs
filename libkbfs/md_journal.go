@@ -66,6 +66,9 @@ func MakeImmutableBareRootMetadata(
 // plus the first byte of the hash data -- using the first four
 // characters of the name to keep the number of directories in dir
 // itself to a manageable number, similar to git.
+//
+// mdJournal is not goroutine-safe, so any code that uses it must
+// guarantee that only one goroutine at a time calls its functions.
 type mdJournal struct {
 	codec  Codec
 	crypto cryptoPure
@@ -235,10 +238,7 @@ func (j mdJournal) convertToBranch(
 		return err
 	}
 
-	latestRevision, err := j.j.readLatestRevision()
-	if err != nil {
-		return err
-	}
+	latestRevision := head.Revision
 
 	log.Debug("rewriting MDs %s to %s", earliestRevision, latestRevision)
 
