@@ -29,6 +29,8 @@ const (
 	// Default time after setting the rekey bit before prompting for a
 	// paper key.
 	rekeyWithPromptWaitTimeDefault = 10 * time.Minute
+	// see Config doc for the purpose of GracePeriod
+	gracePeriodDefault = 2 * time.Second
 	// How often do we check for stuff to reclaim?
 	qrPeriodDefault = 1 * time.Minute
 	// How long must something be unreferenced before we reclaim it?
@@ -72,8 +74,9 @@ type ConfigLocal struct {
 	maxDirBytes  uint64
 	rekeyQueue   RekeyQueue
 
-	qrPeriod   time.Duration
-	qrUnrefAge time.Duration
+	qrPeriod    time.Duration
+	qrUnrefAge  time.Duration
+	gracePeriod time.Duration
 
 	// allKnownConfigsForTesting is used for testing, and contains all created
 	// Config objects in this test.
@@ -204,6 +207,7 @@ func NewConfigLocal() *ConfigLocal {
 	config.maxDirBytes = maxDirBytesDefault
 	config.rwpWaitTime = rekeyWithPromptWaitTimeDefault
 
+	config.gracePeriod = gracePeriodDefault
 	config.qrPeriod = qrPeriodDefault
 	config.qrUnrefAge = qrUnrefAgeDefault
 
@@ -541,6 +545,16 @@ func (c *ConfigLocal) SetDoBackgroundFlushes(doBGFlush bool) {
 // ConfigLocal.
 func (c *ConfigLocal) RekeyWithPromptWaitTime() time.Duration {
 	return c.rwpWaitTime
+}
+
+// GracePeriod implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) GracePeriod() time.Duration {
+	return c.gracePeriod
+}
+
+// SetGracePeriod implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) SetGracePeriod(d time.Duration) {
+	c.gracePeriod = d
 }
 
 // QuotaReclamationPeriod implements the Config interface for ConfigLocal.

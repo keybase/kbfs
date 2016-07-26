@@ -65,10 +65,13 @@ func NewFS(ctx context.Context, config libkbfs.Config, log logger.Logger) (*FS, 
 			aliasCache: map[string]string{},
 		}}
 
-	ctx = context.WithValue(ctx, CtxAppIDKey, f)
-	logTags := make(logger.CtxLogTags)
-	logTags[CtxIDKey] = CtxOpID
-	ctx = logger.NewContextWithLogTags(ctx, logTags)
+	ctx := libkbfs.NewContextReplayable(ctx, func(ctx context.Context) context.Context {
+		ctx = context.WithValue(ctx, CtxAppIDKey, f)
+		logTags := make(logger.CtxLogTags)
+		logTags[CtxIDKey] = CtxOpID
+		ctx = logger.NewContextWithLogTags(ctx, logTags)
+		return ctx
+	})
 	f.context = ctx
 
 	f.remoteStatus.Init(ctx, f.log, f.config)

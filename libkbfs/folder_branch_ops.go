@@ -1883,23 +1883,74 @@ func isRevisionConflict(err error) bool {
 		isConflictFolderMapping || isJournal
 }
 
+// doPutWithCancellationCheck is a wrapper for any MD put Ops (e.g. Put and
+// PutUnmerged). If context is canceled during the Op, it checks the latest MD
+// and finds out whether the cancellation was successful (meaning the put
+// didn't go through) or unsuccessful (meaning the put did go through). This
+// allows us to maintain a state consistent with what's returned to application
+// and not conflict with ourselves.
+//
+// If bid == NullBranchID, doPutWithCancellationCheck does a regular Put.
+// Otherwise, it does a PutUnmerged.
+//
+// A case that we are trying to solve here is: when a O_EXCL create is
+// interrupted by SIGALRM (e.g. in git). This results in a canceled context and
+// EINTR is returned. However, the MD put could still have gone through. But
+// with EINTR, the application assumes the file was not created and retries.
+// The retry would fail because previous create was successful.
+func (fbo *folderBranchOps) doPutWithCancellationCheck(ctx context.Context,
+	lState *lockState, md *RootMetadata, unmerged bool) (MdID, error) {
+	oldRevision := fbo.getCurrMDRevision(lState)
+	mdID, err := fbo.config.Crypto().MakeMdID(&md.BareRootMetadata)
+	if err != nil {
+		return mdID, err
+	}
+	var errPut error
+	if !unmerged {
+		mdID, errPut = fbo.config.MDOps().Put(ctx, md)
+	} else {
+		mdID, errPut = fbo.config.MDOps().PutUnmerged(ctx, md)
+	}
+	if errPut == context.Canceled {
+		ctx, err = NewContextWithDelayedCancellation(ctx, fbo.config.GracePeriod())
+		if err != nil {
+			return mdID, err
+		}
+		var rmds []ImmutableRootMetadata
+		if !unmerged {
+			rmds, err = getMergedMDUpdates(ctx, fbo.config, fbo.id(), oldRevision+1)
+		} else {
+			_, rmds, err = getUnmergedMDUpdates(
+				ctx, fbo.config, fbo.id(),
+				NullBranchID /* this is not correct after this rebase, but not fixing it since this is removed in next commit(s) */, oldRevision+1)
+		}
+		if err != nil {
+			return mdID, err
+		}
+		if len(rmds) > 0 && rmds[0].mdID == mdID {
+			// our put succeeded; we should not return the context.Canceled error
+			return mdID, nil
+		}
+	}
+	// let the caller take care of other errors if any
+	return mdID, errPut
+}
+
 func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata, bps *blockPutState, excl Excl) (err error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
-	// finally, write out the new metadata
-	mdops := fbo.config.MDOps()
+	oldPrevRoot := md.PrevRoot
 
 	doUnmergedPut := true
 	mergedRev := MetadataRevisionUninitialized
-
-	oldPrevRoot := md.PrevRoot
 
 	var mdID MdID
 
 	if fbo.isMasterBranchLocked(lState) {
 		// only do a normal Put if we're not already staged.
-		mdID, err = mdops.Put(ctx, md)
+		mdID, err = fbo.doPutWithCancellationCheck(ctx, lState, md, false)
+
 		if doUnmergedPut = isRevisionConflict(err); doUnmergedPut {
 			fbo.log.CDebugf(ctx, "Conflict: %v", err)
 			mergedRev = md.Revision
@@ -1924,7 +1975,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	if doUnmergedPut {
 		// We're out of date, and this is not an exclusive write, so put it as an
 		// unmerged MD.
-		mdID, err = mdops.PutUnmerged(ctx, md)
+		mdID, err = fbo.doPutWithCancellationCheck(ctx, lState, md, true)
 		if isRevisionConflict(err) {
 			// Self-conflicts are retried in `doMDWriteWithRetry`.
 			err = UnmergedSelfConflictError{err}
@@ -2301,18 +2352,6 @@ func (fbo *folderBranchOps) doMDWriteWithRetry(ctx context.Context,
 	}
 }
 
-func (fbo *folderBranchOps) doMDWriteWithRetryWithoutCancelInCritical(
-	ctx context.Context, fn func(lState *lockState) error) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-		lState := makeFBOLockState()
-		ctx = NewContextWithReplayFrom(ctx)
-		return fbo.doMDWriteWithRetry(ctx, lState, fn)
-	}
-}
-
 func (fbo *folderBranchOps) doMDWriteWithRetryUnlessCanceled(
 	ctx context.Context, fn func(lState *lockState) error) error {
 	return runUnlessCanceled(ctx, func() error {
@@ -2389,7 +2428,7 @@ func (fbo *folderBranchOps) CreateFile(
 
 	var retNode Node
 	var retEntryInfo EntryInfo
-	err = fbo.doMDWriteWithRetryWithoutCancelInCritical(ctx,
+	err = fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
 			// Don't set node and ei directly, as that can cause a
 			// race when the Create is canceled.

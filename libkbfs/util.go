@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/keybase/client/go/logger"
 	"golang.org/x/net/context"
@@ -135,25 +136,40 @@ type CtxReplayFunc func(ctx context.Context) context.Context
 // NewContextReplayable creates a new context from ctx, with change applied. It
 // also makes this change replayable by NewContextWithReplayFrom. When
 // replayed, the resulting context is replayable as well.
-func NewContextReplayable(ctx context.Context, change CtxReplayFunc) context.Context {
+func NewContextReplayable(
+	ctx context.Context, change CtxReplayFunc) context.Context {
 	var replay CtxReplayFunc
 	replay = func(ctx context.Context) context.Context {
-		return context.WithValue(change(ctx), CtxReplayKey, replay)
+		ctx = change(ctx)
+		// _ is necessary to avoid panic if nil
+		replays, _ := ctx.Value(CtxReplayKey).([]CtxReplayFunc)
+		replays = append(replays, replay)
+		return context.WithValue(ctx, CtxReplayKey, replays)
 	}
 	return replay(ctx)
 }
 
-// NewContextWithReplayFrom creates a new ctx and replays previous context
-// changes by calling a function stored in ctx. If CtxReplayKey is not found in
-// ctx, nothing is replayed and a context.Background() is returned.
+// NewContextWithDelayedCancellation makes it possible to delay
+// cancellation on context. It delays the cancellation by listening on
+// ctx.Done() and waits for delay duration before canceling newCtx. newCtx is
+// created out of ctx, that is, the CtxReplayFunc passed in
+// NewContextReplayable when it was constructed is called on newCtx.
 //
-// This is an awful hack for reverting a context.WithCancel. It's useful for
-// avoiding some "fast" fuse handlers, such as Mkdir, Attr, from being
-// canceled by interrupt and returning EINTR.
-func NewContextWithReplayFrom(ctx context.Context) (newCtx context.Context) {
-	ret := context.Background()
-	if replay, ok := ctx.Value(CtxReplayKey).(CtxReplayFunc); ok {
-		return replay(ret)
+// ctx has to be replayable (i.e. constructed from NewContextReplayable)
+func NewContextWithDelayedCancellation(
+	ctx context.Context, delay time.Duration) (context.Context, error) {
+	if replays, ok := ctx.Value(CtxReplayKey).([]CtxReplayFunc); ok {
+		newCtx := context.Background()
+		for _, replay := range replays {
+			newCtx = replay(newCtx)
+		}
+		newCtx, cancel := context.WithCancel(newCtx)
+		go func() {
+			<-ctx.Done()
+			time.Sleep(delay)
+			cancel()
+		}()
+		return newCtx, nil
 	}
-	return ret
+	return nil, CtxNotReplayable{}
 }
