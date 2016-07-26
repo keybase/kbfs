@@ -10,7 +10,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-// A journalMDOps is an implementation of MDOps that delegates to a
+// journalMDOps is an implementation of MDOps that delegates to a
 // TLF's mdJournal, if one exists. Specifically, it intercepts put
 // calls to write to the journal instead of the MDServer, where
 // something else is presumably flushing the journal to the MDServer.
