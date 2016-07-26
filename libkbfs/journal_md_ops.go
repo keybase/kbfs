@@ -284,7 +284,7 @@ func (j journalMDOps) getRange(
 
 	// Otherwise, fetch the rest from the server and prepend them.
 	serverStop := jirmds[0].Revision - 1
-	irmds, err := delegateFn(ctx, id, start, stop)
+	irmds, err := delegateFn(ctx, id, start, serverStop)
 	if err != nil {
 		return nil, err
 	}

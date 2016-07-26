@@ -206,3 +206,6 @@ func TestJournalMDOpsBasics(t *testing.T) {
 		require.Equal(t, i, rmdses[i-1].Revision)
 	}
 }
+
+// TODO: Add a test for GetRange where the server has an overlapping
+// range with the journal.
