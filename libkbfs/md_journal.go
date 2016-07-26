@@ -394,6 +394,10 @@ func (e MDJournalConflictError) Error() string {
 	return "MD journal conflict error"
 }
 
+// put verifies and stores the given RootMetadata in the journal,
+// modifying it as needed. In particular, if this is an unmerged
+// RootMetadata but the branch ID isn't set, it will be set to the
+// journal's branch ID, which is assumed to be non-zero.
 func (j mdJournal) put(
 	ctx context.Context, signer cryptoSigner, ekg encryptionKeyGetter,
 	rmd *RootMetadata, currentUID keybase1.UID,
