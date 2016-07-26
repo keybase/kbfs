@@ -1020,7 +1020,7 @@ func expectSyncBlockHelper(
 		oldMDOps := config.MDOps()
 		if oldShim, ok := oldMDOps.(shimMDOps); ok {
 			if oldShim.isUnmerged != isUnmerged {
-				panic("old shim with different isUnmerged")
+				t.Fatal("old shim with different isUnmerged")
 			}
 		} else {
 			mdOps := shimMDOps{isUnmerged, config.Crypto(), oldMDOps}
@@ -1646,7 +1646,7 @@ func checkRmOp(t *testing.T, entryName string, newRmd ReadOnlyRootMetadata,
 
 func testKBFSOpsRemoveFileSuccess(t *testing.T, et EntryType) {
 	if et != File && et != Exec {
-		panic(fmt.Sprintf("Unexpected type %s", et))
+		t.Fatalf("Unexpected type %s", et)
 	}
 
 	mockCtrl, config, ctx := kbfsOpsInit(t, true)
@@ -1936,7 +1936,7 @@ func TestRemoveDirFailNonEmpty(t *testing.T) {
 
 func testKBFSOpsRemoveFileMissingBlockSuccess(t *testing.T, et EntryType) {
 	if et != File && et != Exec {
-		panic(fmt.Sprintf("Unexpected type %s", et))
+		t.Fatalf("Unexpected type %s", et)
 	}
 
 	mockCtrl, config, ctx := kbfsOpsInit(t, true)
