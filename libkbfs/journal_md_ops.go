@@ -201,14 +201,15 @@ func (j journalMDOps) GetForHandle(
 		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
-	lookupTlfID := tlfID
-	if rmd != (ImmutableRootMetadata{}) {
-		lookupTlfID = rmd.ID
+	if rmd != (ImmutableRootMetadata{}) && (rmd.ID != tlfID) {
+		return TlfID{}, ImmutableRootMetadata{},
+			fmt.Errorf("Expected RMD to have TLF ID %s, but got %s",
+				tlfID, rmd.ID)
 	}
 
 	// If the journal has a head, use that.
 	irmd, err := j.getHeadFromJournal(
-		ctx, lookupTlfID, NullBranchID, mStatus, handle)
+		ctx, tlfID, NullBranchID, mStatus, handle)
 	if err != nil {
 		return TlfID{}, ImmutableRootMetadata{}, err
 	}
@@ -221,7 +222,7 @@ func (j journalMDOps) GetForHandle(
 }
 
 // TODO: Combine the two GetForTLF functions in MDOps to avoid the
-// need for these helper functions.
+// need for this helper function.
 func (j journalMDOps) getForTLF(
 	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
 	delegateFn func(context.Context, TlfID) (ImmutableRootMetadata, error)) (
@@ -254,8 +255,8 @@ func (j journalMDOps) GetUnmergedForTLF(
 	return j.getForTLF(ctx, id, bid, Unmerged, delegateFn)
 }
 
-// TODO: Combine the two GetForTLF functions in MDOps to avoid the
-// need for these helper functions.
+// TODO: Combine the two GetRange functions in MDOps to avoid the need
+// for this helper function.
 func (j journalMDOps) getRange(
 	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
 	start, stop MetadataRevision,
