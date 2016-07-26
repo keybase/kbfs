@@ -33,6 +33,11 @@ type journalMDOps struct {
 
 var _ MDOps = journalMDOps{}
 
+// getHeadFromJournal returns the head RootMetadata for the TLF with
+// the given ID stored in the journal, assuming it exists and matches
+// the given branch ID and merge status. As a special case, if bid is
+// NullBranchID and mStatus is Unmerged, the branch ID check is
+// skipped.
 func (j journalMDOps) getHeadFromJournal(
 	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
 	handle *TlfHandle) (
@@ -64,7 +69,11 @@ func (j journalMDOps) getHeadFromJournal(
 	}
 
 	if mStatus == Unmerged && bid != NullBranchID && bid != head.BID {
-		return ImmutableRootMetadata{}, nil
+		// The given branch ID doesn't match the one in the
+		// journal, which can only be an error.
+		return ImmutableRootMetadata{},
+			fmt.Errorf("Expected branch ID %s, got %s",
+				bid, head.BID)
 	}
 
 	if handle == nil {
@@ -126,7 +135,10 @@ func (j journalMDOps) getRangeFromJournal(
 	}
 
 	if mStatus == Unmerged && bid != NullBranchID && bid != head.BID {
-		return nil, nil
+		// The given branch ID doesn't match the one in the
+		// journal, which can only be an error.
+		return nil, fmt.Errorf("Expected branch ID %s, got %s",
+			bid, head.BID)
 	}
 
 	bareHandle, err := head.MakeBareTlfHandle()
