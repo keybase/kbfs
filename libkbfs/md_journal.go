@@ -74,16 +74,20 @@ type mdJournal struct {
 	crypto cryptoPure
 	dir    string
 
+	log logger.Logger
+
 	j mdIDJournal
 }
 
-func makeMDJournal(codec Codec, crypto cryptoPure, dir string) mdJournal {
+func makeMDJournal(codec Codec, crypto cryptoPure, dir string,
+	log logger.Logger) mdJournal {
 	journalDir := filepath.Join(dir, "md_journal")
 
 	journal := mdJournal{
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
+		log:    log,
 		j:      makeMdIDJournal(codec, journalDir),
 	}
 	return journal
@@ -221,7 +225,7 @@ func (j mdJournal) checkGetParams(currentUID keybase1.UID) (
 }
 
 func (j mdJournal) convertToBranch(
-	ctx context.Context, log logger.Logger, signer cryptoSigner,
+	ctx context.Context, signer cryptoSigner,
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
 	head, err := j.getHeadHelper()
 	if err != nil {
@@ -240,7 +244,7 @@ func (j mdJournal) convertToBranch(
 
 	latestRevision := head.Revision
 
-	log.Debug("rewriting MDs %s to %s", earliestRevision, latestRevision)
+	j.log.Debug("rewriting MDs %s to %s", earliestRevision, latestRevision)
 
 	_, allMdIDs, err := j.j.getRange(earliestRevision, latestRevision)
 	if err != nil {
@@ -252,7 +256,7 @@ func (j mdJournal) convertToBranch(
 		return err
 	}
 
-	log.Debug("New branch ID=%s", bid)
+	j.log.Debug("New branch ID=%s", bid)
 
 	// TODO: Do the below atomically.
 
@@ -278,11 +282,11 @@ func (j mdJournal) convertToBranch(
 		}
 		brmd.WriterMetadataSigInfo = sigInfo
 
-		log.Debug("Old prev root of rev=%s is %s",
+		j.log.Debug("Old prev root of rev=%s is %s",
 			brmd.Revision, brmd.PrevRoot)
 
 		if i > 0 {
-			log.Debug("Changing prev root of rev=%s to %s",
+			j.log.Debug("Changing prev root of rev=%s to %s",
 				brmd.Revision, prevID)
 			brmd.PrevRoot = prevID
 		}
@@ -304,7 +308,7 @@ func (j mdJournal) convertToBranch(
 
 		prevID = newID
 
-		log.Debug("Changing ID for rev=%s from %s to %s",
+		j.log.Debug("Changing ID for rev=%s from %s to %s",
 			brmd.Revision, id, newID)
 	}
 
@@ -312,8 +316,8 @@ func (j mdJournal) convertToBranch(
 }
 
 func (j mdJournal) pushEarliestToServer(
-	ctx context.Context, log logger.Logger, signer cryptoSigner,
-	mdserver MDServer) (MdID, *BareRootMetadata, error) {
+	ctx context.Context, signer cryptoSigner, mdserver MDServer) (
+	MdID, *BareRootMetadata, error) {
 	earliestID, err := j.j.getEarliest()
 	if err != nil {
 		return MdID{}, nil, err
@@ -327,7 +331,7 @@ func (j mdJournal) pushEarliestToServer(
 		return MdID{}, nil, err
 	}
 
-	log.Debug("Flushing MD put id=%s, rev=%s", earliestID, rmd.Revision)
+	j.log.Debug("Flushing MD put id=%s, rev=%s", earliestID, rmd.Revision)
 
 	var rmds RootMetadataSigned
 	rmds.MD = *rmd
@@ -473,22 +477,22 @@ func (j mdJournal) put(
 // if one exists, and then removes it. Returns whether there was an MD
 // that was put.
 func (j mdJournal) flushOne(
-	ctx context.Context, log logger.Logger, signer cryptoSigner,
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
-	mdserver MDServer) (flushed bool, err error) {
+	ctx context.Context, signer cryptoSigner, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, mdserver MDServer) (
+	flushed bool, err error) {
 	earliestID, rmd, pushErr := j.pushEarliestToServer(
-		ctx, log, signer, mdserver)
+		ctx, signer, mdserver)
 	if isRevisionConflict(pushErr) && rmd.MergedStatus() == Merged {
-		log.Debug("Conflict detected %v", pushErr)
+		j.log.Debug("Conflict detected %v", pushErr)
 
 		err := j.convertToBranch(
-			ctx, log, signer, currentUID, currentVerifyingKey)
+			ctx, signer, currentUID, currentVerifyingKey)
 		if err != nil {
 			return false, err
 		}
 
 		earliestID, rmd, pushErr = j.pushEarliestToServer(
-			ctx, log, signer, mdserver)
+			ctx, signer, mdserver)
 	}
 	if pushErr != nil {
 		return false, pushErr

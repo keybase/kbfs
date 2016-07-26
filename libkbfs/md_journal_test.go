@@ -54,7 +54,8 @@ func setupMDJournalTest(t *testing.T) (
 	tempdir, err = ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
 	require.NoError(t, err)
 
-	j = makeMDJournal(codec, crypto, tempdir)
+	log := logger.NewTestLogger(t)
+	j = makeMDJournal(codec, crypto, tempdir, log)
 
 	return codec, crypto, uid, id, h, signer, verifyingKey, ekg, tempdir, j
 }
@@ -153,8 +154,7 @@ func TestMDJournalBranchConversion(t *testing.T) {
 		prevRoot = mdID
 	}
 
-	log := logger.NewTestLogger(t)
-	err := j.convertToBranch(ctx, log, signer, uid, verifyingKey)
+	err := j.convertToBranch(ctx, signer, uid, verifyingKey)
 	require.NoError(t, err)
 
 	ibrmds, err := j.getRange(
@@ -227,16 +227,14 @@ func TestMDJournalFlushBasic(t *testing.T) {
 	}
 
 	// Flush all entries.
-	log := logger.NewTestLogger(t)
 	var mdserver shimMDServer
 	for i := 0; i < mdCount; i++ {
 		flushed, err := j.flushOne(
-			ctx, log, signer, uid, verifyingKey, &mdserver)
+			ctx, signer, uid, verifyingKey, &mdserver)
 		require.NoError(t, err)
 		require.True(t, flushed)
 	}
-	flushed, err := j.flushOne(
-		ctx, log, signer, uid, verifyingKey, &mdserver)
+	flushed, err := j.flushOne(ctx, signer, uid, verifyingKey, &mdserver)
 	require.NoError(t, err)
 	require.False(t, flushed)
 	require.Equal(t, 0, getTlfJournalLength(t, j))
@@ -286,10 +284,9 @@ func TestMDJournalFlushConflict(t *testing.T) {
 	mdserver.nextErr = MDServerErrorConflictRevision{}
 
 	// Simulate a flush with a conflict error halfway through.
-	log := logger.NewTestLogger(t)
 	{
 		flushed, err := j.flushOne(
-			ctx, log, signer, uid, verifyingKey, &mdserver)
+			ctx, signer, uid, verifyingKey, &mdserver)
 		require.NoError(t, err)
 		require.True(t, flushed)
 
@@ -316,12 +313,11 @@ func TestMDJournalFlushConflict(t *testing.T) {
 	// Flush remaining entries.
 	for i := 0; i < mdCount-1; i++ {
 		flushed, err := j.flushOne(
-			ctx, log, signer, uid, verifyingKey, &mdserver)
+			ctx, signer, uid, verifyingKey, &mdserver)
 		require.NoError(t, err)
 		require.True(t, flushed)
 	}
-	flushed, err := j.flushOne(
-		ctx, log, signer, uid, verifyingKey, &mdserver)
+	flushed, err := j.flushOne(ctx, signer, uid, verifyingKey, &mdserver)
 	require.NoError(t, err)
 	require.False(t, flushed)
 	require.Equal(t, 0, getTlfJournalLength(t, j))

@@ -42,6 +42,21 @@ type JournalServer struct {
 	tlfBundles map[TlfID]*tlfJournalBundle
 }
 
+func makeJournalServer(
+	config Config, log logger.Logger, dir string,
+	bserver BlockServer, mdOps MDOps) *JournalServer {
+	jServer := JournalServer{
+		config:              config,
+		log:                 log,
+		deferLog:            log.CloneWithAddedDepth(1),
+		dir:                 dir,
+		delegateBlockServer: bserver,
+		delegateMDOps:       mdOps,
+		tlfBundles:          make(map[TlfID]*tlfJournalBundle),
+	}
+	return &jServer
+}
+
 func (j *JournalServer) getBundle(tlfID TlfID) (*tlfJournalBundle, bool) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
@@ -71,7 +86,9 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 	tlfDir := filepath.Join(j.dir, tlfID.String())
 	j.log.Debug("Enabled journal for %s with path %s", tlfID, tlfDir)
 
-	mdJournal := makeMDJournal(j.config.Codec(), j.config.Crypto(), tlfDir)
+	log := j.config.MakeLogger("")
+	mdJournal := makeMDJournal(
+		j.config.Codec(), j.config.Crypto(), tlfDir, log)
 
 	j.tlfBundles[tlfID] = &tlfJournalBundle{
 		mdJournal: mdJournal,
@@ -116,8 +133,8 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 			bundle.lock.Lock()
 			defer bundle.lock.Unlock()
 			return bundle.mdJournal.flushOne(
-				ctx, j.log, j.config.Crypto(),
-				uid, key, j.config.MDServer())
+				ctx, j.config.Crypto(), uid, key,
+				j.config.MDServer())
 		}()
 		if err != nil {
 			return err
@@ -176,21 +193,6 @@ func (j *JournalServer) blockServer() journalBlockServer {
 
 func (j *JournalServer) mdOps() journalMDOps {
 	return journalMDOps{j.delegateMDOps, j}
-}
-
-func makeJournalServer(
-	config Config, log logger.Logger, dir string,
-	bserver BlockServer, mdOps MDOps) *JournalServer {
-	jServer := JournalServer{
-		config:              config,
-		log:                 log,
-		deferLog:            log.CloneWithAddedDepth(1),
-		dir:                 dir,
-		delegateBlockServer: bserver,
-		delegateMDOps:       mdOps,
-		tlfBundles:          make(map[TlfID]*tlfJournalBundle),
-	}
-	return &jServer
 }
 
 type journalBlockServer struct {
