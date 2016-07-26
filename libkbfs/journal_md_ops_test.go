@@ -27,7 +27,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	}()
 
 	config := MakeTestConfigOrBust(t, "test_user")
-	defer config.Shutdown()
+	defer CheckConfigAndShutdown(t, config)
 
 	log := config.MakeLogger("")
 	jServer := makeJournalServer(
