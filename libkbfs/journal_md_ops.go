@@ -395,16 +395,15 @@ func (j journalMDOps) PruneBranch(
 	ctx context.Context, id TlfID, bid BranchID) error {
 	bundle, ok := j.jServer.getBundle(id)
 	if ok {
+		_, uid, err := j.jServer.config.KBPKI().GetCurrentUserInfo(ctx)
+		if err != nil {
+			return err
+		}
+
+		// Prune the journal, too.
 		err := func() error {
 			bundle.lock.Lock()
 			defer bundle.lock.Unlock()
-
-			_, uid, err := j.jServer.config.KBPKI().GetCurrentUserInfo(ctx)
-			if err != nil {
-				return err
-			}
-
-			// Prune the journal, too.
 			return bundle.mdJournal.clear(uid, bid)
 		}()
 		if err != nil {
