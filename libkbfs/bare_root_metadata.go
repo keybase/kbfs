@@ -140,12 +140,14 @@ type BareRootMetadata struct {
 	codec.UnknownFieldSetHandler
 }
 
-// TlfID implements KeyMetadata.
+// TlfID returns the ID of the TLF for which this object holds key
+// info.
 func (md *BareRootMetadata) TlfID() TlfID {
 	return md.ID
 }
 
-// LatestKeyGeneration implements KeyMetadata.
+// LatestKeyGeneration returns the most recent key generation with key
+// data in this object, or PublicKeyGen if this TLF is public.
 func (md *BareRootMetadata) LatestKeyGeneration() KeyGen {
 	if md.ID.IsPublic() {
 		return PublicKeyGen
@@ -530,7 +532,8 @@ func (md *RootMetadata) HasKeyForUser(
 
 // GetTLFCryptKeyInfo returns all the necessary info to construct the
 // TLF crypt key for the given key generation, user, and device
-// (identified by its crypt public key), or false if not found.
+// (identified by its crypt public key), or false if not found. This
+// returns an error if the TLF is public.
 func (md *BareRootMetadata) GetTLFCryptKeyInfo(
 	keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
 	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,

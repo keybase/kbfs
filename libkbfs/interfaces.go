@@ -427,7 +427,9 @@ type KeyMetadata interface {
 
 	// GetTlfHandle returns the handle for the TLF.
 	//
-	// TODO: Remove the need for this function in this interface.
+	// TODO: Remove the need for this function in this interface,
+	// so that BareRootMetadata can implement this interface
+	// fully.
 	GetTlfHandle() *TlfHandle
 
 	// HasKeyForUser returns whether or not the given user has
