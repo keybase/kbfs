@@ -140,14 +140,13 @@ type BareRootMetadata struct {
 	codec.UnknownFieldSetHandler
 }
 
-// TlfID returns the ID of the TLF for which this object holds key
-// info.
+// TlfID returns the ID of the TLF this BareRootMetadata is for.
 func (md *BareRootMetadata) TlfID() TlfID {
 	return md.ID
 }
 
-// LatestKeyGeneration returns the most recent key generation with key
-// data in this object, or PublicKeyGen if this TLF is public.
+// LatestKeyGeneration returns the most recent key generation in this
+// BareRootMetadata, or PublicKeyGen if this TLF is public.
 func (md *BareRootMetadata) LatestKeyGeneration() KeyGen {
 	if md.ID.IsPublic() {
 		return PublicKeyGen
