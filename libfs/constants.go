@@ -50,3 +50,12 @@ const FlushJournalFileName = ".kbfs_flush_journal"
 // DisableJournalFileName is the name of the journal-disabling
 // file. It can be reached anywhere within a top-level folder.
 const DisableJournalFileName = ".kbfs_disable_journal"
+
+// VolIconFileName is the name of the special icon file in macOS for
+// the mount.
+const VolIconFileName = ".VolumeIcon.icns"
+
+// ExtendedAttributeSelfFileName is the name of an extended attribute
+// file (on macOS) for the current (.) directory.
+// This is used to tell the root mount to look for a volume icon file.
+const ExtendedAttributeSelfFileName = "._."
