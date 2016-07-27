@@ -22,7 +22,8 @@ var _ BlockOps = (*BlockOpsStandard)(nil)
 func (b *BlockOpsStandard) Get(ctx context.Context, kmd KeyMetadata,
 	blockPtr BlockPointer, block Block) error {
 	bserv := b.config.BlockServer()
-	buf, blockServerHalf, err := bserv.Get(ctx, blockPtr.ID, kmd.TlfID(), blockPtr.BlockContext)
+	buf, blockServerHalf, err := bserv.Get(
+		ctx, blockPtr.ID, kmd.TlfID(), blockPtr.BlockContext)
 	if err != nil {
 		// Temporary code to track down bad block
 		// requests. Remove when not needed anymore.
