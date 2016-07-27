@@ -6,8 +6,10 @@ package libfuse
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math"
 	"os"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -342,6 +344,9 @@ func (d *Dir) attr(ctx context.Context, a *fuse.Attr) (err error) {
 	return nil
 }
 
+var dotIconData []byte
+var dotAppleData []byte
+
 // Lookup implements the fs.NodeRequestLookuper interface for Dir.
 func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Lookup %s", req.Name)
@@ -423,6 +428,22 @@ func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.Lo
 			action: libfs.JournalDisable,
 		}
 		return child, nil
+
+	case "._Icon\r":
+		if dotIconData == nil {
+			dotIconData, _ = ioutil.ReadFile("/Users/gabe/doticon")
+		}
+		return NewByteFile(dotIconData, resp), nil
+
+	case "Icon\r":
+		return NewByteFile([]byte{}, resp), nil
+	}
+
+	if strings.HasPrefix(req.Name, "._") {
+		if dotAppleData == nil {
+			dotAppleData, _ = ioutil.ReadFile("/Users/gabe/dotapple")
+		}
+		return NewByteFile(dotAppleData, resp), nil
 	}
 
 	newNode, de, err := d.folder.fs.config.KBFSOps().Lookup(ctx, d.node, req.Name)
@@ -617,6 +638,17 @@ func (d *Dir) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 		return nil, err
 	}
 
+	fdeIcon := fuse.Dirent{
+		Name: "._Icon\r",
+		Type: fuse.DT_File,
+	}
+	res = append(res, fdeIcon)
+	fdeIconPlaceholder := fuse.Dirent{
+		Name: "Icon\r",
+		Type: fuse.DT_File,
+	}
+	res = append(res, fdeIconPlaceholder)
+
 	for name, ei := range children {
 		fde := fuse.Dirent{
 			Name: name,
@@ -630,6 +662,14 @@ func (d *Dir) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 			fde.Type = fuse.DT_Link
 		}
 		res = append(res, fde)
+
+		if ei.Type == libkbfs.Dir {
+			fdeDirDot := fuse.Dirent{
+				Name: "._" + name,
+				Type: fuse.DT_File,
+			}
+			res = append(res, fdeDirDot)
+		}
 	}
 	return res, nil
 }

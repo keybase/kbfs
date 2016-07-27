@@ -187,6 +187,7 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 type Root struct {
 	private *FolderList
 	public  *FolderList
+	volIcon *File
 }
 
 var _ fs.Node = (*Root)(nil)
@@ -204,12 +205,15 @@ func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.L
 	r.private.fs.log.CDebugf(ctx, "FS Lookup %s", req.Name)
 	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
 
-	specialNode := handleSpecialFile(req.Name, r.private.fs, resp)
-	if specialNode != nil {
+	if specialNode := handleSpecialFile(req.Name, r.private.fs, resp); specialNode != nil {
 		return specialNode, nil
 	}
 
 	switch req.Name {
+	case libfs.VolumeIconFileName:
+		return NewExternalFile("/Users/gabe/KeybaseFolder.icns", resp), nil
+	case "._.":
+		return NewExternalFile("/Users/gabe/dotapple", resp), nil
 	case libfs.StatusFileName:
 		return NewStatusFile(r.private.fs, nil, resp), nil
 	case PrivateName:
@@ -249,6 +253,10 @@ func (r *Root) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 		{
 			Type: fuse.DT_Dir,
 			Name: PublicName,
+		},
+		{
+			Type: fuse.DT_File,
+			Name: libfs.VolumeIconFileName,
 		},
 	}
 

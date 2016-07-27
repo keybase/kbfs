@@ -55,3 +55,18 @@ func (f *SpecialReadFile) Open(ctx context.Context, req *fuse.OpenRequest,
 	resp.Flags |= fuse.OpenDirectIO
 	return fs.DataHandle(data), nil
 }
+
+// // SpecialReadCachedFile returns a SpecialFile that returns cached version
+// type SpecialReadCachedFile struct {
+// 	file     *SpecialReadFile
+// 	readData []byte
+// 	readTime time.Time
+// 	readErr  error
+// }
+//
+// func (f *SpecialReadCachedFile) read(ctx context.Context) ([]byte, time.Time, error) {
+// 	if f.readData == nil {
+// 		f.readData, f.readTime, f.readErr = f.file.read(ctx)
+// 	}
+// 	return f.readData, f.readTime, f.readErr
+// }
