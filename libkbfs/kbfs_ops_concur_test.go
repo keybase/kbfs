@@ -478,10 +478,10 @@ func (km *mdRecordingKeyManager) getLastKMD() KeyMetadata {
 	return km.lastKMD
 }
 
-func (km *mdRecordingKeyManager) setLastKMD(md KeyMetadata) {
+func (km *mdRecordingKeyManager) setLastKMD(kmd KeyMetadata) {
 	km.lastKMDMu.Lock()
 	defer km.lastKMDMu.Unlock()
-	km.lastKMD = md
+	km.lastKMD = kmd
 }
 
 func (km *mdRecordingKeyManager) GetTLFCryptKeyForEncryption(
@@ -594,7 +594,9 @@ func TestKBFSOpsConcurBlockSyncWrite(t *testing.T) {
 
 	lastKMD := km.getLastKMD()
 
-	if md != lastKMD && md.ReadOnlyRootMetadata != lastKMD && md.RootMetadata != lastKMD {
+	if md != lastKMD &&
+		md.ReadOnlyRootMetadata != lastKMD &&
+		md.RootMetadata != lastKMD {
 		t.Errorf("Last MD seen by key manager != head")
 	}
 }
