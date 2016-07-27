@@ -140,6 +140,19 @@ type BareRootMetadata struct {
 	codec.UnknownFieldSetHandler
 }
 
+// TlfID implements KeyMetadata.
+func (md *BareRootMetadata) TlfID() TlfID {
+	return md.ID
+}
+
+// LatestKeyGeneration implements KeyMetadata.
+func (md *BareRootMetadata) LatestKeyGeneration() KeyGen {
+	if md.ID.IsPublic() {
+		return PublicKeyGen
+	}
+	return md.WKeys.LatestKeyGeneration()
+}
+
 func (md *BareRootMetadata) haveOnlyUserRKeysChanged(
 	codec Codec, prevMD *BareRootMetadata, user keybase1.UID) (bool, error) {
 	// Require the same number of generations
@@ -371,14 +384,6 @@ func (md *BareRootMetadata) CheckValidSuccessor(
 	return nil
 }
 
-// LatestKeyGeneration returns the newest key generation for this BareRootMetadata.
-func (md *BareRootMetadata) LatestKeyGeneration() KeyGen {
-	if md.ID.IsPublic() {
-		return PublicKeyGen
-	}
-	return md.WKeys.LatestKeyGeneration()
-}
-
 // CheckValidSuccessorForServer is like CheckValidSuccessor but with
 // server-specific error messages.
 func (md *BareRootMetadata) CheckValidSuccessorForServer(
@@ -508,6 +513,19 @@ func (md *BareRootMetadata) getTLFKeyBundles(keyGen KeyGen) (
 		return nil, nil, NewKeyGenerationError{md.ID, keyGen}
 	}
 	return &md.WKeys[i], &md.RKeys[i], nil
+}
+
+// HasKeyForUser returns whether or not the given user has keys for at
+// least one device at the given key generation. Returns false if the
+// TLF is public, or if the given key generation is invalid.
+func (md *RootMetadata) HasKeyForUser(
+	keyGen KeyGen, user keybase1.UID) bool {
+	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
+	if err != nil {
+		return false
+	}
+
+	return (len(wkb.WKeys[user]) > 0) || (len(rkb.RKeys[user]) > 0)
 }
 
 // GetTLFCryptKeyInfo returns all the necessary info to construct the

@@ -63,11 +63,6 @@ type RootMetadata struct {
 
 var _ KeyMetadata = (*RootMetadata)(nil)
 
-// TlfID returns the ID of the TLF this RootMetadata is for.
-func (md *RootMetadata) TlfID() TlfID {
-	return md.ID
-}
-
 // Data returns the private metadata of this RootMetadata.
 func (md *RootMetadata) Data() *PrivateMetadata {
 	return &md.data
@@ -229,19 +224,6 @@ func (md *RootMetadata) ClearBlockChanges() {
 	md.data.Changes.sizeEstimate = 0
 	md.data.Changes.Info = BlockInfo{}
 	md.data.Changes.Ops = nil
-}
-
-// HasKeyForUser returns whether or not the given user has keys for at
-// least one device at the given key generation. Returns false if the
-// TLF is public, or if the given key generation is invalid.
-func (md *RootMetadata) HasKeyForUser(
-	keyGen KeyGen, user keybase1.UID) bool {
-	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
-	if err != nil {
-		return false
-	}
-
-	return (len(wkb.WKeys[user]) > 0) || (len(rkb.RKeys[user]) > 0)
 }
 
 // updateFromTlfHandle updates the current RootMetadata's fields to
