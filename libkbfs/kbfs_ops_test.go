@@ -511,11 +511,11 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 // the helper functions below, but all the callers would have to go
 // md.ReadOnly(), which doesn't buy us much in tests.
 
-func makeBP(id BlockID, rmd *RootMetadata, config Config,
+func makeBP(id BlockID, kmd KeyMetadata, config Config,
 	u keybase1.UID) BlockPointer {
 	return BlockPointer{
 		ID:      id,
-		KeyGen:  rmd.LatestKeyGeneration(),
+		KeyGen:  kmd.LatestKeyGeneration(),
 		DataVer: DefaultNewBlockDataVersion(config, false),
 		BlockContext: BlockContext{
 			Creator: u,
@@ -525,19 +525,19 @@ func makeBP(id BlockID, rmd *RootMetadata, config Config,
 	}
 }
 
-func makeBI(id BlockID, rmd *RootMetadata, config Config,
+func makeBI(id BlockID, kmd KeyMetadata, config Config,
 	u keybase1.UID, encodedSize uint32) BlockInfo {
 	return BlockInfo{
-		BlockPointer: makeBP(id, rmd, config, u),
+		BlockPointer: makeBP(id, kmd, config, u),
 		EncodedSize:  encodedSize,
 	}
 }
 
-func makeIFP(id BlockID, rmd *RootMetadata, config Config,
+func makeIFP(id BlockID, kmd KeyMetadata, config Config,
 	u keybase1.UID, encodedSize uint32, off int64) IndirectFilePtr {
 	return IndirectFilePtr{
 		BlockInfo{
-			BlockPointer: makeBP(id, rmd, config, u),
+			BlockPointer: makeBP(id, kmd, config, u),
 			EncodedSize:  encodedSize,
 		},
 		off,
@@ -1025,19 +1025,19 @@ func expectSyncBlockHelper(
 
 func expectSyncBlock(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
-	uid keybase1.UID, id TlfID, name string, p path, rmd *RootMetadata,
+	uid keybase1.UID, id TlfID, name string, p path, kmd KeyMetadata,
 	newEntry bool, skipSync int, refBytes uint64, unrefBytes uint64,
 	newRmd *ImmutableRootMetadata, newBlockIDs []BlockID) (path, *gomock.Call) {
-	return expectSyncBlockHelper(t, config, lastCall, uid, id, name, p, rmd,
+	return expectSyncBlockHelper(t, config, lastCall, uid, id, name, p, kmd,
 		newEntry, skipSync, refBytes, unrefBytes, newRmd, newBlockIDs, false)
 }
 
 func expectSyncBlockUnmerged(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
-	uid keybase1.UID, id TlfID, name string, p path, rmd *RootMetadata,
+	uid keybase1.UID, id TlfID, name string, p path, kmd KeyMetadata,
 	newEntry bool, skipSync int, refBytes uint64, unrefBytes uint64,
 	newRmd *ImmutableRootMetadata, newBlockIDs []BlockID) (path, *gomock.Call) {
-	return expectSyncBlockHelper(t, config, lastCall, uid, id, name, p, rmd,
+	return expectSyncBlockHelper(t, config, lastCall, uid, id, name, p, kmd,
 		newEntry, skipSync, refBytes, unrefBytes, newRmd, newBlockIDs, true)
 }
 
