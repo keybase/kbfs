@@ -464,7 +464,7 @@ func TestKBFSOpsConcurBlockReadWrite(t *testing.T) {
 	}
 }
 
-// mdRecordingKeyManager records the last *RootMetadata argument seen
+// mdRecordingKeyManager records the last KeyMetadata argument seen
 // in its KeyManager methods.
 type mdRecordingKeyManager struct {
 	lastKMDMu sync.RWMutex
@@ -594,10 +594,8 @@ func TestKBFSOpsConcurBlockSyncWrite(t *testing.T) {
 
 	lastKMD := km.getLastKMD()
 
-	if md != lastKMD &&
-		md.ReadOnlyRootMetadata != lastKMD &&
-		md.RootMetadata != lastKMD {
-		t.Errorf("Last MD seen by key manager != head")
+	if md.ReadOnlyRootMetadata != lastKMD {
+		t.Error("Last MD seen by key manager != head")
 	}
 }
 
@@ -683,7 +681,7 @@ func TestKBFSOpsConcurBlockSyncTruncate(t *testing.T) {
 
 	lastKMD := km.getLastKMD()
 
-	if md != lastKMD && md.ReadOnlyRootMetadata != lastKMD && md.RootMetadata != lastKMD {
+	if md.ReadOnlyRootMetadata != lastKMD {
 		t.Error("Last MD seen by key manager != head")
 	}
 }
