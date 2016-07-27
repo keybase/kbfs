@@ -136,6 +136,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 				continue
 			}
 			if !found {
+				km.log.CDebugf(ctx, "Could not find key info for(%d, %v, %v); skipping", keyGen, uid, k)
 				continue
 			}
 
