@@ -206,6 +206,8 @@ func makeDirRKeyBundle(uid keybase1.UID, cryptPublicKey CryptPublicKey) TLFReade
 	}
 }
 
+// TODO: Can change the tests below to use a fake KeyMetadata object.
+
 func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
 	mockCtrl, config, ctx := keyManagerInit(t)
 	defer keyManagerShutdown(mockCtrl, config)
