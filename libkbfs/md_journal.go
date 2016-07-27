@@ -74,7 +74,8 @@ type mdJournal struct {
 	crypto cryptoPure
 	dir    string
 
-	log logger.Logger
+	log      logger.Logger
+	deferLog logger.Logger
 
 	j mdIDJournal
 }
@@ -83,12 +84,14 @@ func makeMDJournal(codec Codec, crypto cryptoPure, dir string,
 	log logger.Logger) mdJournal {
 	journalDir := filepath.Join(dir, "md_journal")
 
+	deferLog := log.CloneWithAddedDepth(1)
 	journal := mdJournal{
-		codec:  codec,
-		crypto: crypto,
-		dir:    dir,
-		log:    log,
-		j:      makeMdIDJournal(codec, journalDir),
+		codec:    codec,
+		crypto:   crypto,
+		dir:      dir,
+		log:      log,
+		deferLog: deferLog,
+		j:        makeMdIDJournal(codec, journalDir),
 	}
 	return journal
 }
@@ -331,7 +334,8 @@ func (j mdJournal) pushEarliestToServer(
 		return MdID{}, nil, err
 	}
 
-	j.log.Debug("Flushing MD put id=%s, rev=%s", earliestID, rmd.Revision)
+	j.log.Debug("Flushing MD for TLF=%s with id=%s, rev=%s, bid=%s",
+		rmd.ID, earliestID, rmd.Revision, rmd.BID)
 
 	var rmds RootMetadataSigned
 	rmds.MD = *rmd
@@ -405,7 +409,17 @@ func (e MDJournalConflictError) Error() string {
 func (j mdJournal) put(
 	ctx context.Context, signer cryptoSigner, ekg encryptionKeyGetter,
 	rmd *RootMetadata, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey) (MdID, error) {
+	currentVerifyingKey VerifyingKey) (mdID MdID, err error) {
+	j.log.Debug("Putting MD for TLF=%s with rev=%s bid=%s",
+		rmd.ID, rmd.Revision, rmd.BID)
+	defer func() {
+		if err != nil {
+			j.deferLog.Debug(
+				"Put MD for TLF=%s with rev=%s bid=%s failed with %v",
+				rmd.ID, rmd.Revision, rmd.BID, err)
+		}
+	}()
+
 	head, err := j.getHeadHelper()
 	if err != nil {
 		return MdID{}, err
@@ -480,6 +494,13 @@ func (j mdJournal) flushOne(
 	ctx context.Context, signer cryptoSigner, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, mdserver MDServer) (
 	flushed bool, err error) {
+	j.log.Debug("Flushing one MD to server")
+	defer func() {
+		if err != nil {
+			j.deferLog.Debug("Flush failed with %v", err)
+		}
+	}()
+
 	earliestID, rmd, pushErr := j.pushEarliestToServer(
 		ctx, signer, mdserver)
 	if isRevisionConflict(pushErr) && rmd.MergedStatus() == Merged {
