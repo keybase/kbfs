@@ -889,7 +889,7 @@ type KeyOps interface {
 // the necessary crypto operations on each block.
 type BlockOps interface {
 	// Get gets the block associated with the given block pointer
-	// (which belongs to the TLF with the given metadata),
+	// (which belongs to the TLF with the given key metadata),
 	// decrypts it if necessary, and fills in the provided block
 	// object with its contents, if the logged-in user has read
 	// permission for that block.
@@ -897,16 +897,16 @@ type BlockOps interface {
 		block Block) error
 
 	// Ready turns the given block (which belongs to the TLF with
-	// the given metadata) into encoded (and encrypted) data, and
-	// calculates its ID and size, so that we can do a bunch of
-	// block puts in parallel for every write. Ready() must
+	// the given key metadata) into encoded (and encrypted) data,
+	// and calculates its ID and size, so that we can do a bunch
+	// of block puts in parallel for every write. Ready() must
 	// guarantee that plainSize <= readyBlockData.QuotaSize().
 	Ready(ctx context.Context, kmd KeyMetadata, block Block) (
 		id BlockID, plainSize int, readyBlockData ReadyBlockData, err error)
 
 	// Put stores the readied block data under the given block
-	// pointer (which belongs to the TLF with the given metadata)
-	// on the server.
+	// pointer (which belongs to the TLF with the given ID) on the
+	// server.
 	Put(ctx context.Context, tlfID TlfID, blockPtr BlockPointer,
 		readyBlockData ReadyBlockData) error
 
