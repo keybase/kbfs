@@ -13,57 +13,43 @@ import (
 	"golang.org/x/net/context"
 )
 
-// rmdMatcher implements the gomock.Matcher interface to compare
-// RootMetadata objects. We can't just compare pointers as copies are
-// made for mutations.
-type rmdMatcher struct {
-	rmd *RootMetadata
+// kmdMatcher implements the gomock.Matcher interface to compare
+// KeyMetadata objects.
+type kmdMatcher struct {
+	kmd KeyMetadata
 }
 
-func getRMD(x interface{}) (*RootMetadata, bool) {
-	rmd, ok := x.(*RootMetadata)
-	if ok {
-		return rmd, true
-	}
-	rormd, ok := x.(ReadOnlyRootMetadata)
-	if ok {
-		return rormd.RootMetadata, true
-	}
-	return nil, false
-}
-
-// Matches returns whether x is a *RootMetadata and it has the same ID
-// and latest key generation as m.rmd.
-func (m rmdMatcher) Matches(x interface{}) bool {
-	rmd, ok := getRMD(x)
+func (m kmdMatcher) Matches(x interface{}) bool {
+	kmd, ok := x.(KeyMetadata)
 	if !ok {
 		return false
 	}
-	return (rmd.ID == m.rmd.ID) && (rmd.LatestKeyGeneration() == m.rmd.LatestKeyGeneration())
+	return (m.kmd.TlfID() == kmd.TlfID()) &&
+		(m.kmd.LatestKeyGeneration() == kmd.LatestKeyGeneration())
 }
 
-// String implements the Matcher interface for rmdMatcher.
-func (m rmdMatcher) String() string {
-	return fmt.Sprintf("Matches RMD %v", m.rmd)
+func (m kmdMatcher) String() string {
+	return fmt.Sprintf("Matches KeyMetadata with TlfID=%s and key generation %d",
+		m.kmd.TlfID(), m.kmd.LatestKeyGeneration())
 }
 
-func expectGetTLFCryptKeyForEncryption(config *ConfigMock, rmd *RootMetadata) {
+func expectGetTLFCryptKeyForEncryption(config *ConfigMock, kmd KeyMetadata) {
 	config.mockKeyman.EXPECT().GetTLFCryptKeyForEncryption(gomock.Any(),
-		rmdMatcher{rmd}).Return(TLFCryptKey{}, nil)
+		kmdMatcher{kmd}).Return(TLFCryptKey{}, nil)
 }
 
-func expectGetTLFCryptKeyForMDDecryption(config *ConfigMock, rmd *RootMetadata) {
+func expectGetTLFCryptKeyForMDDecryption(config *ConfigMock, kmd KeyMetadata) {
 	config.mockKeyman.EXPECT().GetTLFCryptKeyForMDDecryption(gomock.Any(),
-		rmdMatcher{rmd}, rmdMatcher{rmd}).Return(TLFCryptKey{}, nil)
+		kmdMatcher{kmd}, kmdMatcher{kmd}).Return(TLFCryptKey{}, nil)
 }
 
 // TODO: Add test coverage for decryption of blocks with an old key
 // generation.
 
 func expectGetTLFCryptKeyForBlockDecryption(
-	config *ConfigMock, rmd *RootMetadata, blockPtr BlockPointer) {
+	config *ConfigMock, kmd KeyMetadata, blockPtr BlockPointer) {
 	config.mockKeyman.EXPECT().GetTLFCryptKeyForBlockDecryption(gomock.Any(),
-		rmdMatcher{rmd}, blockPtr).Return(TLFCryptKey{}, nil)
+		kmdMatcher{kmd}, blockPtr).Return(TLFCryptKey{}, nil)
 }
 
 type TestBlock struct {
