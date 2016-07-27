@@ -530,7 +530,7 @@ func (j mdJournal) flushOne(
 	return true, nil
 }
 
-func (j mdJournal) clear(currentUID keybase1.UID, bid BranchID) error {
+func (j mdJournal) clear(currentUID keybase1.UID, bid BranchID) (err error) {
 	j.log.Debug("Clearing journal for branch %s", bid)
 	defer func() {
 		if err != nil {
