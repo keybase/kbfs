@@ -3665,7 +3665,7 @@ func (fbo *folderBranchOps) getAndApplyNewestUnmergedHead(ctx context.Context,
 
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	if err := fbo.setHeadSuccessorLocked(ctx, lState, md); err != nil {
+	if err := fbo.setHeadSuccessorLocked(ctx, lState, md, false); err != nil {
 		return err
 	}
 	fbo.notifyBatchLocked(ctx, lState, md)
