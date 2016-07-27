@@ -83,8 +83,8 @@ func blockOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	mockCtrl.Finish()
 }
 
-func expectBlockEncrypt(config *ConfigMock, rmd *RootMetadata, decData Block, plainSize int, encData []byte, err error) {
-	expectGetTLFCryptKeyForEncryption(config, rmd)
+func expectBlockEncrypt(config *ConfigMock, kmd KeyMetadata, decData Block, plainSize int, encData []byte, err error) {
+	expectGetTLFCryptKeyForEncryption(config, kmd)
 	config.mockCrypto.EXPECT().MakeRandomBlockCryptKeyServerHalf().
 		Return(BlockCryptKeyServerHalf{}, nil)
 	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(
@@ -99,9 +99,9 @@ func expectBlockEncrypt(config *ConfigMock, rmd *RootMetadata, decData Block, pl
 	}
 }
 
-func expectBlockDecrypt(config *ConfigMock, rmd *RootMetadata, blockPtr BlockPointer, encData []byte, block TestBlock, err error) {
+func expectBlockDecrypt(config *ConfigMock, kmd KeyMetadata, blockPtr BlockPointer, encData []byte, block TestBlock, err error) {
 	config.mockCrypto.EXPECT().VerifyBlockID(encData, blockPtr.ID).Return(nil)
-	expectGetTLFCryptKeyForBlockDecryption(config, rmd, blockPtr)
+	expectGetTLFCryptKeyForBlockDecryption(config, kmd, blockPtr)
 	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(gomock.Any(), gomock.Any()).
 		Return(BlockCryptKey{}, nil)
 	config.mockCodec.EXPECT().Decode(encData, gomock.Any()).Return(nil)
