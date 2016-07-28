@@ -560,31 +560,27 @@ func (md *BareRootMetadata) GetTLFCryptKeyParams(
 			TLFCryptKeyServerHalfID{}, false, nil
 	}
 
-	if info.EPubKeyIndex < 0 {
-		index := -1 - info.EPubKeyIndex
-		keyCount := len(rkb.TLFReaderEphemeralPublicKeys)
-		if index >= keyCount {
-			return TLFEphemeralPublicKey{},
-				EncryptedTLFCryptKeyClientHalf{},
-				TLFCryptKeyServerHalfID{}, false,
-				fmt.Errorf("Invalid reader key index %d >= %d",
-					index, keyCount)
-		}
-		return rkb.TLFReaderEphemeralPublicKeys[index],
-			info.ClientHalf, info.ServerHalfID, true, nil
+	var index int
+	var publicKeys TLFEphemeralPublicKeys
+	var keyType string
+	if info.EPubKeyIndex >= 0 {
+		index = info.EPubKeyIndex
+		publicKeys = wkb.TLFEphemeralPublicKeys
+		keyType = "writer"
+	} else {
+		index = -1 - info.EPubKeyIndex
+		publicKeys = rkb.TLFReaderEphemeralPublicKeys
+		keyType = "reader"
 	}
-
-	index := info.EPubKeyIndex
-	keyCount := len(wkb.TLFEphemeralPublicKeys)
+	keyCount := len(publicKeys)
 	if index >= keyCount {
 		return TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
 			TLFCryptKeyServerHalfID{}, false,
-			fmt.Errorf("Invalid writer key index %d >= %d",
-				index, keyCount)
+			fmt.Errorf("Invalid %s key index %d >= %d",
+				keyType, index, keyCount)
 	}
-	return wkb.TLFEphemeralPublicKeys[index], info.ClientHalf,
-		info.ServerHalfID, true, nil
+	return publicKeys[index], info.ClientHalf, info.ServerHalfID, true, nil
 }
 
 // DeepCopyForServerTest returns a complete copy of this BareRootMetadata
