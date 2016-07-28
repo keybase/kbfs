@@ -425,7 +425,8 @@ type KeyMetadata interface {
 	// is public.
 	LatestKeyGeneration() KeyGen
 
-	// GetTlfHandle returns the handle for the TLF.
+	// GetTlfHandle returns the handle for the TLF. It must not
+	// return nil.
 	//
 	// TODO: Remove the need for this function in this interface,
 	// so that BareRootMetadata can implement this interface

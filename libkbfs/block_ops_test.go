@@ -126,6 +126,9 @@ func (kmd emptyKeyMetadata) TlfID() TlfID {
 	return kmd.tlfID
 }
 
+// GetTlfHandle just returns nil. This contradicts the requirements
+// for KeyMetadata, but emptyKeyMetadata shouldn't be used in contexts
+// that actually use GetTlfHandle().
 func (kmd emptyKeyMetadata) GetTlfHandle() *TlfHandle {
 	return nil
 }
