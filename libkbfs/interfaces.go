@@ -438,12 +438,12 @@ type KeyMetadata interface {
 	// given key generation is invalid.
 	HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool
 
-	// GetTLFCryptKeyInfo returns all the necessary info to
+	// GetTLFCryptKeyParams returns all the necessary info to
 	// construct the TLF crypt key for the given key generation,
 	// user, and device (identified by its crypt public key), or
 	// false if not found. This returns an error if the TLF is
 	// public.
-	GetTLFCryptKeyInfo(
+	GetTLFCryptKeyParams(
 		keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
 		TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 		TLFCryptKeyServerHalfID, bool, error)

@@ -529,11 +529,11 @@ func (md *RootMetadata) HasKeyForUser(
 	return (len(wkb.WKeys[user]) > 0) || (len(rkb.RKeys[user]) > 0)
 }
 
-// GetTLFCryptKeyInfo returns all the necessary info to construct the
-// TLF crypt key for the given key generation, user, and device
+// GetTLFCryptKeyParams returns all the necessary info to construct
+// the TLF crypt key for the given key generation, user, and device
 // (identified by its crypt public key), or false if not found. This
 // returns an error if the TLF is public.
-func (md *BareRootMetadata) GetTLFCryptKeyInfo(
+func (md *BareRootMetadata) GetTLFCryptKeyParams(
 	keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
 	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {

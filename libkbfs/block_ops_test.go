@@ -139,7 +139,7 @@ func (kmd emptyKeyMetadata) HasKeyForUser(
 	return false
 }
 
-func (kmd emptyKeyMetadata) GetTLFCryptKeyInfo(
+func (kmd emptyKeyMetadata) GetTLFCryptKeyParams(
 	keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
 	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {

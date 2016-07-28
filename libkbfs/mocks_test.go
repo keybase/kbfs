@@ -931,16 +931,6 @@ func (_mr *_MockKeyMetadataRecorder) TlfID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "TlfID")
 }
 
-func (_m *MockKeyMetadata) GetTlfHandle() *TlfHandle {
-	ret := _m.ctrl.Call(_m, "GetTlfHandle")
-	ret0, _ := ret[0].(*TlfHandle)
-	return ret0
-}
-
-func (_mr *_MockKeyMetadataRecorder) GetTlfHandle() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTlfHandle")
-}
-
 func (_m *MockKeyMetadata) LatestKeyGeneration() KeyGen {
 	ret := _m.ctrl.Call(_m, "LatestKeyGeneration")
 	ret0, _ := ret[0].(KeyGen)
@@ -949,6 +939,16 @@ func (_m *MockKeyMetadata) LatestKeyGeneration() KeyGen {
 
 func (_mr *_MockKeyMetadataRecorder) LatestKeyGeneration() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "LatestKeyGeneration")
+}
+
+func (_m *MockKeyMetadata) GetTlfHandle() *TlfHandle {
+	ret := _m.ctrl.Call(_m, "GetTlfHandle")
+	ret0, _ := ret[0].(*TlfHandle)
+	return ret0
+}
+
+func (_mr *_MockKeyMetadataRecorder) GetTlfHandle() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTlfHandle")
 }
 
 func (_m *MockKeyMetadata) HasKeyForUser(keyGen KeyGen, user protocol.UID) bool {
@@ -961,8 +961,8 @@ func (_mr *_MockKeyMetadataRecorder) HasKeyForUser(arg0, arg1 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "HasKeyForUser", arg0, arg1)
 }
 
-func (_m *MockKeyMetadata) GetTLFCryptKeyInfo(keyGen KeyGen, user protocol.UID, key CryptPublicKey) (TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf, TLFCryptKeyServerHalfID, bool, error) {
-	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyInfo", keyGen, user, key)
+func (_m *MockKeyMetadata) GetTLFCryptKeyParams(keyGen KeyGen, user protocol.UID, key CryptPublicKey) (TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf, TLFCryptKeyServerHalfID, bool, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyParams", keyGen, user, key)
 	ret0, _ := ret[0].(TLFEphemeralPublicKey)
 	ret1, _ := ret[1].(EncryptedTLFCryptKeyClientHalf)
 	ret2, _ := ret[2].(TLFCryptKeyServerHalfID)
@@ -971,8 +971,8 @@ func (_m *MockKeyMetadata) GetTLFCryptKeyInfo(keyGen KeyGen, user protocol.UID, 
 	return ret0, ret1, ret2, ret3, ret4
 }
 
-func (_mr *_MockKeyMetadataRecorder) GetTLFCryptKeyInfo(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyInfo", arg0, arg1, arg2)
+func (_mr *_MockKeyMetadataRecorder) GetTLFCryptKeyParams(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyParams", arg0, arg1, arg2)
 }
 
 // Mock of encryptionKeyGetter interface
