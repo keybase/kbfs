@@ -4,14 +4,15 @@
 package libkbfs
 
 import (
+	reflect "reflect"
+	time "time"
+
 	gomock "github.com/golang/mock/gomock"
 	libkb "github.com/keybase/client/go/libkb"
 	logger "github.com/keybase/client/go/logger"
 	protocol "github.com/keybase/client/go/protocol"
 	go_metrics "github.com/rcrowley/go-metrics"
 	context "golang.org/x/net/context"
-	reflect "reflect"
-	time "time"
 )
 
 // Mock of AuthTokenRefreshHandler interface
@@ -3563,22 +3564,22 @@ func (_mr *_MockConfigRecorder) SetKeyServer(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKeyServer", arg0)
 }
 
-func (_m *MockConfig) KeybaseService() KeybaseDaemon {
-	ret := _m.ctrl.Call(_m, "KeybaseDaemon")
-	ret0, _ := ret[0].(KeybaseDaemon)
+func (_m *MockConfig) KeybaseService() KeybaseService {
+	ret := _m.ctrl.Call(_m, "KeybaseService")
+	ret0, _ := ret[0].(KeybaseService)
 	return ret0
 }
 
 func (_mr *_MockConfigRecorder) KeybaseService() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "KeybaseDaemon")
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "KeybaseService")
 }
 
-func (_m *MockConfig) SetKeybaseService(_param0 KeybaseDaemon) {
-	_m.ctrl.Call(_m, "SetKeybaseDaemon", _param0)
+func (_m *MockConfig) SetKeybaseService(_param0 KeybaseService) {
+	_m.ctrl.Call(_m, "SetKeybaseService", _param0)
 }
 
 func (_mr *_MockConfigRecorder) SetKeybaseService(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKeybaseDaemon", arg0)
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKeybaseService", arg0)
 }
 
 func (_m *MockConfig) BlockSplitter() BlockSplitter {
