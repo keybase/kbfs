@@ -12,6 +12,9 @@ import (
 	"path/filepath"
 	"reflect"
 	"sync"
+
+	"github.com/keybase/client/go/logger"
+	"golang.org/x/net/context"
 )
 
 // bserverTlfJournal stores an ordered list of BlockServer mutating
@@ -582,4 +585,94 @@ func (j *bserverTlfJournal) shutdown() {
 	if !reflect.DeepEqual(refs, j.refs) {
 		panic(fmt.Sprintf("refs = %v != j.refs = %v", refs, j.refs))
 	}
+}
+
+func (j *bserverTlfJournal) flushOne(
+	ctx context.Context, bserver BlockServer, tlfID TlfID,
+	log logger.Logger) (bool, error) {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+
+	if j.isShutdown {
+		return false, errBserverTlfJournalShutdown
+	}
+
+	earliestOrdinal, err := j.j.readEarliestOrdinal()
+	if os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	e, err := j.readJournalEntryLocked(earliestOrdinal)
+	if err != nil {
+		return false, err
+	}
+
+	log.Debug("Flushing block op %v", e)
+
+	switch e.Op {
+	case blockPutOp:
+		if len(e.Contexts) != 1 {
+			return false, fmt.Errorf(
+				"Op %s for id=%s doesn't have exactly one context: %v",
+				e.Op, e.ID, e.Contexts)
+		}
+
+		bContext := e.Contexts[0]
+		data, serverHalf, err := j.getDataLocked(e.ID, bContext)
+		if err != nil {
+			return false, err
+		}
+
+		err = bserver.Put(ctx, e.ID, tlfID,
+			bContext, data, serverHalf)
+		if err != nil {
+			return false, err
+		}
+
+	case addRefOp:
+		if len(e.Contexts) != 1 {
+			return false, fmt.Errorf(
+				"Op %s for id=%s doesn't have exactly one context: %v",
+				e.Op, e.ID, e.Contexts)
+		}
+
+		bContext := e.Contexts[0]
+		err = bserver.AddBlockReference(
+			ctx, e.ID, tlfID, bContext)
+		if err != nil {
+			return false, err
+		}
+
+	case removeRefsOp:
+		// TODO: Combine multiple remove refs.
+		_, err = bserver.RemoveBlockReferences(
+			ctx, tlfID, map[BlockID][]BlockContext{
+				e.ID: e.Contexts,
+			})
+		if err != nil {
+			return false, err
+		}
+
+	case archiveRefsOp:
+		// TODO: Combine multiple archive refs.
+		err = bserver.ArchiveBlockReferences(
+			ctx, tlfID, map[BlockID][]BlockContext{
+				e.ID: e.Contexts,
+			})
+		if err != nil {
+			return false, err
+		}
+
+	default:
+		return false, fmt.Errorf("Unknown op %s", e.Op)
+	}
+
+	err = j.j.removeEarliest()
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

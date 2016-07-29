@@ -122,7 +122,26 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 		return nil
 	}
 
-	// TODO: Flush block journal.
+	// TODO: Interleave block flushes with their related MD
+	// flushes.
+
+	// TODO: Parallelize block puts.
+
+	for {
+		flushed, err := func() (bool, error) {
+			bundle.lock.Lock()
+			defer bundle.lock.Unlock()
+			return bundle.blockJournal.flushOne(
+				ctx, j.config.BlockServer(), tlfID, j.log)
+		}()
+		if err != nil {
+			return err
+		}
+		if !flushed {
+			break
+		}
+		flushedMDEntries++
+	}
 
 	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
