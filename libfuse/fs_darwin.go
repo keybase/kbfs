@@ -18,21 +18,9 @@ import (
 func (r *Root) platformLookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	switch req.Name {
 	case VolIconFileName:
-		volIcon, err := newExternalBundleResourceFile("KeybaseFolder.icns")
-		if err != nil {
-			return nil, err
-		} else if volIcon != nil {
-			resp.EntryValid = 0
-			return volIcon, nil
-		}
+		return newExternalBundleResourceFile("KeybaseFolder.icns")
 	case ExtendedAttributeSelfFileName:
-		xattrSelf, err := newExternalBundleResourceFile("ExtendedAttributeFinderInfo.bin")
-		if err != nil {
-			return nil, err
-		} else if xattrSelf != nil {
-			resp.EntryValid = 0
-			return xattrSelf, nil
-		}
+		return newExternalBundleResourceFile("ExtendedAttributeFinderInfo.bin")
 	}
 	return nil, nil
 }
