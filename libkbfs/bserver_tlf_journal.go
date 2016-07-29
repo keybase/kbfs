@@ -60,7 +60,7 @@ type bserverTlfJournal struct {
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
-	lock       sync.RWMutex
+	lock       *sync.RWMutex
 	j          diskJournal
 	refs       map[BlockID]blockRefMap
 	isShutdown bool
@@ -88,7 +88,8 @@ type bserverJournalEntry struct {
 
 // makeBserverTlfJournal returns a new bserverTlfJournal for the given
 // directory. Any existing journal entries are read.
-func makeBserverTlfJournal(codec Codec, crypto cryptoPure, dir string) (
+func makeBserverTlfJournal(
+	codec Codec, crypto cryptoPure, dir string, lock *sync.RWMutex) (
 	*bserverTlfJournal, error) {
 	journalPath := filepath.Join(dir, "block_journal")
 	j := makeDiskJournal(
@@ -97,11 +98,10 @@ func makeBserverTlfJournal(codec Codec, crypto cryptoPure, dir string) (
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
+		lock:   lock,
 		j:      j,
 	}
 
-	// Locking here is not strictly necessary, but do it anyway
-	// for consistency.
 	journal.lock.Lock()
 	defer journal.lock.Unlock()
 	refs, err := journal.readJournalLocked()

@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/keybase/client/go/protocol"
@@ -33,7 +34,7 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBserverTlfJournal(codec, crypto, tempdir)
+	j, err := makeBserverTlfJournal(codec, crypto, tempdir, &sync.RWMutex{})
 	require.NoError(t, err)
 	defer j.shutdown()
 
@@ -75,7 +76,7 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 
 	// Shutdown and restart.
 	j.shutdown()
-	j, err = makeBserverTlfJournal(codec, crypto, tempdir)
+	j, err = makeBserverTlfJournal(codec, crypto, tempdir, &sync.RWMutex{})
 	require.NoError(t, err)
 
 	require.Equal(t, 2, getBlockJournalLength(t, j))
@@ -107,7 +108,7 @@ func TestBserverTlfJournalRemoveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBserverTlfJournal(codec, crypto, tempdir)
+	j, err := makeBserverTlfJournal(codec, crypto, tempdir, &sync.RWMutex{})
 	require.NoError(t, err)
 	defer j.shutdown()
 
@@ -161,7 +162,7 @@ func TestBserverTlfJournalArchiveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBserverTlfJournal(codec, crypto, tempdir)
+	j, err := makeBserverTlfJournal(codec, crypto, tempdir, &sync.RWMutex{})
 	require.NoError(t, err)
 	defer j.shutdown()
 

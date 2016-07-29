@@ -101,7 +101,7 @@ func (b *BlockServerDisk) getJournal(tlfID TlfID) (*bserverTlfJournal, error) {
 	}
 
 	path := filepath.Join(b.dirPath, tlfID.String())
-	storage, err = makeBserverTlfJournal(b.codec, b.crypto, path)
+	storage, err = makeBserverTlfJournal(b.codec, b.crypto, path, &sync.RWMutex{})
 	if err != nil {
 		return nil, err
 	}

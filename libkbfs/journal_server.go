@@ -17,8 +17,8 @@ import (
 type tlfJournalBundle struct {
 	lock sync.RWMutex
 
-	// TODO: Fill in with a block journal.
-	mdJournal mdJournal
+	blockJournal *bserverTlfJournal
+	mdJournal    mdJournal
 }
 
 // JournalServer is the server that handles write journals. It
@@ -87,12 +87,18 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 	j.log.Debug("Enabled journal for %s with path %s", tlfID, tlfDir)
 
 	log := j.config.MakeLogger("")
+	bundle := &tlfJournalBundle{}
+	blockJournal, err := makeBserverTlfJournal(
+		j.config.Codec(), j.config.Crypto(), tlfDir, &bundle.lock)
+	if err != nil {
+		return err
+	}
+
+	bundle.blockJournal = blockJournal
 	mdJournal := makeMDJournal(
 		j.config.Codec(), j.config.Crypto(), tlfDir, log)
-
-	j.tlfBundles[tlfID] = &tlfJournalBundle{
-		mdJournal: mdJournal,
-	}
+	bundle.mdJournal = mdJournal
+	j.tlfBundles[tlfID] = bundle
 	return nil
 }
 
