@@ -238,7 +238,7 @@ func InitLog(params InitParams, ctx Context) (logger.Logger, error) {
 // defer).
 //
 // The keybaseDaemonFn argument is to temporarily support KBFS on
-// mobile (for using a custom KeybaseDaemon implementation) and will
+// mobile (for using a custom KeybaseService implementation) and will
 // be removed in the future, when we use a non-RPC implementation.
 func Init(ctx Context, params InitParams, keybaseServiceFn KeybaseServiceFn, onInterruptFn func(), log logger.Logger) (Config, error) {
 

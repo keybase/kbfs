@@ -490,7 +490,7 @@ func (_mr *_MockKBFSOpsRecorder) PushConnectionStatusChange(arg0, arg1 interface
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PushConnectionStatusChange", arg0, arg1)
 }
 
-// Mock of KeybaseDaemon interface
+// Mock of KeybaseService interface
 type MockKeybaseDaemon struct {
 	ctrl     *gomock.Controller
 	recorder *_MockKeybaseDaemonRecorder
