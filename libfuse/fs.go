@@ -8,7 +8,6 @@ import (
 	"os"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"bazil.org/fuse"
@@ -188,7 +187,6 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 type Root struct {
 	private *FolderList
 	public  *FolderList
-	volIcon fs.Node // Volume icon (only used for macOS/darwin)
 }
 
 var _ fs.Node = (*Root)(nil)
@@ -203,7 +201,7 @@ var _ fs.NodeRequestLookuper = (*Root)(nil)
 
 // Lookup implements the fs.NodeRequestLookuper interface for Root.
 func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
-	r.private.fs.log.CDebugf(ctx, "FS Lookup %s", req.Name)
+	r.log().CDebugf(ctx, "FS Lookup %s", req.Name)
 	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
 
 	specialNode := handleSpecialFile(req.Name, r.private.fs, resp)
@@ -223,19 +221,9 @@ func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.L
 		return &SpecialReadFile{r.private.fs.remoteStatus.NewSpecialReadFunc}, nil
 	}
 
-	// Special files for macOS/darwin
-	if runtime.GOOS == "darwin" {
-		switch req.Name {
-		case libfs.VolIconFileName:
-			r.loadVolIcon(ctx)
-			if r.volIcon != nil {
-				resp.EntryValid = 0
-				return r.volIcon, nil
-			}
-		case libfs.ExtendedAttributeSelfFileName:
-			resp.EntryValid = 0
-			return newFinderInfoExtendedAttributeFile()
-		}
+	platformNode := r.platformLookup(ctx, req, resp)
+	if platformNode != nil {
+		return platformNode, nil
 	}
 
 	// Don't want to pop up errors on special OS files.
@@ -256,7 +244,7 @@ var _ fs.HandleReadDirAller = (*Root)(nil)
 
 // ReadDirAll implements the ReadDirAll interface for Root.
 func (r *Root) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
-	r.private.fs.log.CDebugf(ctx, "FS ReadDirAll")
+	r.log().CDebugf(ctx, "FS ReadDirAll")
 	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
 	res = []fuse.Dirent{
 		{
@@ -277,23 +265,4 @@ func (r *Root) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 
 func (r *Root) log() logger.Logger {
 	return r.private.fs.log
-}
-
-var loadVolIconOnce sync.Once
-
-func (r *Root) loadVolIcon(ctx context.Context) {
-	loadVolIconOnce.Do(func() {
-		iconPath, err := bundleResourcePath("KeybaseFolder.icns")
-		if err != nil {
-			r.log().CErrorf(ctx, "Error getting bundle resource path: %s", err)
-			return
-		}
-		volIcon, err := newExternalFile(iconPath)
-		if err != nil {
-			r.log().CErrorf(ctx, "Error reading icon path: %s", err)
-			return
-		}
-		r.log().CDebugf(ctx, "Loaded icon file")
-		r.volIcon = volIcon
-	})
 }

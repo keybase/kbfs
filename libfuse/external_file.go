@@ -10,37 +10,45 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 
-	"github.com/kardianos/osext"
-
 	"golang.org/x/net/context"
-)
 
-// newByteFile constructs a special file from bytes
-func newByteFile(data []byte, t time.Time) *SpecialReadFile {
-	return &SpecialReadFile{
-		read: func(context.Context) ([]byte, time.Time, error) {
-			return data, t, nil
-		},
-	}
-}
+	"github.com/kardianos/osext"
+)
 
 func newExternalFile(path string) (*SpecialReadFile, error) {
 	if path == "" {
 		return nil, fmt.Errorf("No path for external file")
 	}
 
-	info, err := os.Stat(path)
+	var once sync.Once
+	var data []byte
+	var err error
+	var fileTime time.Time
+	return &SpecialReadFile{
+		read: func(context.Context) ([]byte, time.Time, error) {
+			once.Do(func() {
+				var info os.FileInfo
+				info, err = os.Stat(path)
+				if err != nil {
+					return
+				}
+				fileTime = info.ModTime()
+				data, err = ioutil.ReadFile(path)
+			})
+			return data, fileTime, err
+		},
+	}, nil
+}
+
+func newExternalBundleResourceFile(path string) (*SpecialReadFile, error) {
+	bpath, err := bundleResourcePath(path)
 	if err != nil {
 		return nil, err
 	}
-	fileTime := info.ModTime()
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return newByteFile(data, fileTime), nil
+	return newExternalFile(bpath)
 }
 
 func bundleResourcePath(path string) (string, error) {
