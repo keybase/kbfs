@@ -159,7 +159,7 @@ func (b *BlockOpsStandard) Delete(ctx context.Context, tlfID TlfID,
 	for _, ptr := range ptrs {
 		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.BlockContext)
 	}
-	return b.config.BlockServer().RemoveBlockReference(ctx, tlfID, contexts)
+	return b.config.BlockServer().RemoveBlockReferences(ctx, tlfID, contexts)
 }
 
 // Archive implements the BlockOps interface for BlockOpsStandard.

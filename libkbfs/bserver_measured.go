@@ -16,7 +16,7 @@ type BlockServerMeasured struct {
 	getTimer                    metrics.Timer
 	putTimer                    metrics.Timer
 	addBlockReferenceTimer      metrics.Timer
-	removeBlockReferenceTimer   metrics.Timer
+	removeBlockReferencesTimer  metrics.Timer
 	archiveBlockReferencesTimer metrics.Timer
 }
 
@@ -28,14 +28,14 @@ func NewBlockServerMeasured(delegate BlockServer, r metrics.Registry) BlockServe
 	getTimer := metrics.GetOrRegisterTimer("BlockServer.Get", r)
 	putTimer := metrics.GetOrRegisterTimer("BlockServer.Put", r)
 	addBlockReferenceTimer := metrics.GetOrRegisterTimer("BlockServer.AddBlockReference", r)
-	removeBlockReferenceTimer := metrics.GetOrRegisterTimer("BlockServer.RemoveBlockReference", r)
+	removeBlockReferencesTimer := metrics.GetOrRegisterTimer("BlockServer.RemoveBlockReferences", r)
 	archiveBlockReferencesTimer := metrics.GetOrRegisterTimer("BlockServer.ArchiveBlockReferences", r)
 	return BlockServerMeasured{
 		delegate:                    delegate,
 		getTimer:                    getTimer,
 		putTimer:                    putTimer,
 		addBlockReferenceTimer:      addBlockReferenceTimer,
-		removeBlockReferenceTimer:   removeBlockReferenceTimer,
+		removeBlockReferencesTimer:  removeBlockReferencesTimer,
 		archiveBlockReferencesTimer: archiveBlockReferencesTimer,
 	}
 }
@@ -70,13 +70,14 @@ func (b BlockServerMeasured) AddBlockReference(ctx context.Context, id BlockID,
 	return err
 }
 
-// RemoveBlockReference implements the BlockServer interface for
+// RemoveBlockReferences implements the BlockServer interface for
 // BlockServerMeasured.
-func (b BlockServerMeasured) RemoveBlockReference(ctx context.Context,
+func (b BlockServerMeasured) RemoveBlockReferences(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
-	b.removeBlockReferenceTimer.Time(func() {
-		liveCounts, err = b.delegate.RemoveBlockReference(ctx, tlfID, contexts)
+	b.removeBlockReferencesTimer.Time(func() {
+		liveCounts, err = b.delegate.RemoveBlockReferences(
+			ctx, tlfID, contexts)
 	})
 	return liveCounts, err
 }

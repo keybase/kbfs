@@ -277,7 +277,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 	return entry.refs.put(context, liveBlockRef)
 }
 
-func (b *BlockServerMemory) removeBlockReferences(
+func (b *BlockServerMemory) removeBlockReference(
 	id BlockID, tlfID TlfID, contexts []BlockContext) (int, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -310,16 +310,16 @@ func (b *BlockServerMemory) removeBlockReferences(
 	return count, nil
 }
 
-// RemoveBlockReference implements the BlockServer interface for
+// RemoveBlockReferences implements the BlockServer interface for
 // BlockServerMemory.
-func (b *BlockServerMemory) RemoveBlockReference(ctx context.Context,
+func (b *BlockServerMemory) RemoveBlockReferences(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
 	b.log.CDebugf(ctx, "BlockServerMemory.RemoveBlockReference "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
 	liveCounts = make(map[BlockID]int)
 	for id, idContexts := range contexts {
-		count, err := b.removeBlockReferences(id, tlfID, idContexts)
+		count, err := b.removeBlockReference(id, tlfID, idContexts)
 		if err != nil {
 			return nil, err
 		}

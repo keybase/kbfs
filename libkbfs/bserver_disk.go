@@ -156,9 +156,9 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, id BlockID,
 	return diskJournal.addReference(id, context)
 }
 
-// RemoveBlockReference implements the BlockServer interface for
+// RemoveBlockReferences implements the BlockServer interface for
 // BlockServerDisk.
-func (b *BlockServerDisk) RemoveBlockReference(ctx context.Context,
+func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 	tlfID TlfID, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
 	b.log.CDebugf(ctx, "BlockServerDisk.RemoveBlockReference "+

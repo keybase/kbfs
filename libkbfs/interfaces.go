@@ -1076,14 +1076,14 @@ type BlockServer interface {
 	// the error.
 	AddBlockReference(ctx context.Context, id BlockID, tlfID TlfID,
 		context BlockContext) error
-	// RemoveBlockReference removes the reference to the given block
-	// ID defined by the given context.  If no references to the block
+	// RemoveBlockReferences removes the references to the given block
+	// ID defined by the given contexts.  If no references to the block
 	// remain after this call, the server is allowed to delete the
 	// corresponding block permanently.  If the reference defined by
 	// the count has already been removed, the call is a no-op.
 	// It returns the number of remaining not-yet-deleted references after this
 	// reference has been removed
-	RemoveBlockReference(ctx context.Context, tlfID TlfID,
+	RemoveBlockReferences(ctx context.Context, tlfID TlfID,
 		contexts map[BlockID][]BlockContext) (liveCounts map[BlockID]int, err error)
 
 	// ArchiveBlockReferences marks the given block references as

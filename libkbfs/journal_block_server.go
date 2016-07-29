@@ -46,7 +46,7 @@ func (j journalBlockServer) AddBlockReference(
 	return j.BlockServer.AddBlockReference(ctx, id, tlfID, context)
 }
 
-func (j journalBlockServer) RemoveBlockReference(
+func (j journalBlockServer) RemoveBlockReferences(
 	ctx context.Context, tlfID TlfID,
 	contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
@@ -55,7 +55,7 @@ func (j journalBlockServer) RemoveBlockReference(
 		// TODO: Delegate to bundle's block journal.
 	}
 
-	return j.BlockServer.RemoveBlockReference(ctx, tlfID, contexts)
+	return j.BlockServer.RemoveBlockReferences(ctx, tlfID, contexts)
 }
 
 func (j journalBlockServer) ArchiveBlockReferences(

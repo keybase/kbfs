@@ -420,7 +420,7 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 	blockPtrs := []BlockPointer{b1, b2}
 	var liveCounts map[BlockID]int
 	tlfID := FakeTlfID(1, false)
-	config.mockBserv.EXPECT().RemoveBlockReference(ctx, tlfID, contexts).
+	config.mockBserv.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
 		Return(liveCounts, nil)
 
 	if _, err := config.BlockOps().Delete(
@@ -444,7 +444,7 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 	err := errors.New("Fake fail")
 	var liveCounts map[BlockID]int
 	tlfID := FakeTlfID(1, false)
-	config.mockBserv.EXPECT().RemoveBlockReference(ctx, tlfID, contexts).
+	config.mockBserv.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
 		Return(liveCounts, err)
 
 	if _, err2 := config.BlockOps().Delete(
