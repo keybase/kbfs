@@ -11,10 +11,10 @@ import (
 	"golang.org/x/net/context"
 )
 
-// KeybaseDaemonMeasured delegates to another KeybaseDaemon instance
+// KeybaseServiceMeasured delegates to another KeybaseService instance
 // but also keeps track of stats.
-type KeybaseDaemonMeasured struct {
-	delegate                KeybaseDaemon
+type KeybaseServiceMeasured struct {
+	delegate                KeybaseService
 	resolveTimer            metrics.Timer
 	identifyTimer           metrics.Timer
 	loadUserPlusKeysTimer   metrics.Timer
@@ -26,21 +26,21 @@ type KeybaseDaemonMeasured struct {
 	notifyTimer             metrics.Timer
 }
 
-var _ KeybaseDaemon = KeybaseDaemonMeasured{}
+var _ KeybaseService = KeybaseServiceMeasured{}
 
-// NewKeybaseDaemonMeasured creates and returns a new KeybaseDaemonMeasured
+// NewKeybaseServiceMeasured creates and returns a new KeybaseServiceMeasured
 // instance with the given delegate and registry.
-func NewKeybaseDaemonMeasured(delegate KeybaseDaemon, r metrics.Registry) KeybaseDaemonMeasured {
-	resolveTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.Resolve", r)
-	identifyTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.Identify", r)
-	loadUserPlusKeysTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.LoadUserPlusKeys", r)
-	loadUnverifiedKeysTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.LoadUnverifiedKeys", r)
-	currentSessionTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.CurrentSession", r)
-	favoriteAddTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.FavoriteAdd", r)
-	favoriteDeleteTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.FavoriteDelete", r)
-	favoriteListTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.FavoriteList", r)
-	notifyTimer := metrics.GetOrRegisterTimer("KeybaseDaemon.Notify", r)
-	return KeybaseDaemonMeasured{
+func NewKeybaseServiceMeasured(delegate KeybaseService, r metrics.Registry) KeybaseServiceMeasured {
+	resolveTimer := metrics.GetOrRegisterTimer("KeybaseService.Resolve", r)
+	identifyTimer := metrics.GetOrRegisterTimer("KeybaseService.Identify", r)
+	loadUserPlusKeysTimer := metrics.GetOrRegisterTimer("KeybaseService.LoadUserPlusKeys", r)
+	loadUnverifiedKeysTimer := metrics.GetOrRegisterTimer("KeybaseService.LoadUnverifiedKeys", r)
+	currentSessionTimer := metrics.GetOrRegisterTimer("KeybaseService.CurrentSession", r)
+	favoriteAddTimer := metrics.GetOrRegisterTimer("KeybaseService.FavoriteAdd", r)
+	favoriteDeleteTimer := metrics.GetOrRegisterTimer("KeybaseService.FavoriteDelete", r)
+	favoriteListTimer := metrics.GetOrRegisterTimer("KeybaseService.FavoriteList", r)
+	notifyTimer := metrics.GetOrRegisterTimer("KeybaseService.Notify", r)
+	return KeybaseServiceMeasured{
 		delegate:                delegate,
 		resolveTimer:            resolveTimer,
 		identifyTimer:           identifyTimer,
@@ -54,8 +54,8 @@ func NewKeybaseDaemonMeasured(delegate KeybaseDaemon, r metrics.Registry) Keybas
 	}
 }
 
-// Resolve implements the KeybaseDaemon interface for KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) Resolve(ctx context.Context, assertion string) (
+// Resolve implements the KeybaseService interface for KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) Resolve(ctx context.Context, assertion string) (
 	name libkb.NormalizedUsername, uid keybase1.UID, err error) {
 	k.resolveTimer.Time(func() {
 		name, uid, err = k.delegate.Resolve(ctx, assertion)
@@ -63,8 +63,8 @@ func (k KeybaseDaemonMeasured) Resolve(ctx context.Context, assertion string) (
 	return name, uid, err
 }
 
-// Identify implements the KeybaseDaemon interface for KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) Identify(ctx context.Context, assertion, reason string) (
+// Identify implements the KeybaseService interface for KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) Identify(ctx context.Context, assertion, reason string) (
 	userInfo UserInfo, err error) {
 	k.identifyTimer.Time(func() {
 		userInfo, err = k.delegate.Identify(ctx, assertion, reason)
@@ -72,8 +72,8 @@ func (k KeybaseDaemonMeasured) Identify(ctx context.Context, assertion, reason s
 	return userInfo, err
 }
 
-// LoadUserPlusKeys implements the KeybaseDaemon interface for KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID) (
+// LoadUserPlusKeys implements the KeybaseService interface for KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID) (
 	userInfo UserInfo, err error) {
 	k.loadUserPlusKeysTimer.Time(func() {
 		userInfo, err = k.delegate.LoadUserPlusKeys(ctx, uid)
@@ -81,8 +81,8 @@ func (k KeybaseDaemonMeasured) LoadUserPlusKeys(ctx context.Context, uid keybase
 	return userInfo, err
 }
 
-// LoadUnverifiedKeys implements the KeybaseDaemon interface for KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) LoadUnverifiedKeys(ctx context.Context, uid keybase1.UID) (
+// LoadUnverifiedKeys implements the KeybaseService interface for KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) LoadUnverifiedKeys(ctx context.Context, uid keybase1.UID) (
 	keys []keybase1.PublicKey, err error) {
 	k.loadUnverifiedKeysTimer.Time(func() {
 		keys, err = k.delegate.LoadUnverifiedKeys(ctx, uid)
@@ -90,9 +90,9 @@ func (k KeybaseDaemonMeasured) LoadUnverifiedKeys(ctx context.Context, uid keyba
 	return keys, err
 }
 
-// CurrentSession implements the KeybaseDaemon interface for
-// KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) CurrentSession(ctx context.Context, sessionID int) (
+// CurrentSession implements the KeybaseService interface for
+// KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) CurrentSession(ctx context.Context, sessionID int) (
 	sessionInfo SessionInfo, err error) {
 	k.currentSessionTimer.Time(func() {
 		sessionInfo, err = k.delegate.CurrentSession(ctx, sessionID)
@@ -100,27 +100,27 @@ func (k KeybaseDaemonMeasured) CurrentSession(ctx context.Context, sessionID int
 	return sessionInfo, err
 }
 
-// FavoriteAdd implements the KeybaseDaemon interface for
-// KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) FavoriteAdd(ctx context.Context, folder keybase1.Folder) (err error) {
+// FavoriteAdd implements the KeybaseService interface for
+// KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) FavoriteAdd(ctx context.Context, folder keybase1.Folder) (err error) {
 	k.favoriteAddTimer.Time(func() {
 		err = k.delegate.FavoriteAdd(ctx, folder)
 	})
 	return err
 }
 
-// FavoriteDelete implements the KeybaseDaemon interface for
-// KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) FavoriteDelete(ctx context.Context, folder keybase1.Folder) (err error) {
+// FavoriteDelete implements the KeybaseService interface for
+// KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) FavoriteDelete(ctx context.Context, folder keybase1.Folder) (err error) {
 	k.favoriteDeleteTimer.Time(func() {
 		err = k.delegate.FavoriteDelete(ctx, folder)
 	})
 	return err
 }
 
-// FavoriteList implements the KeybaseDaemon interface for
-// KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) FavoriteList(ctx context.Context, sessionID int) (
+// FavoriteList implements the KeybaseService interface for
+// KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) FavoriteList(ctx context.Context, sessionID int) (
 	favorites []keybase1.Folder, err error) {
 	k.favoriteListTimer.Time(func() {
 		favorites, err = k.delegate.FavoriteList(ctx, sessionID)
@@ -128,30 +128,30 @@ func (k KeybaseDaemonMeasured) FavoriteList(ctx context.Context, sessionID int) 
 	return favorites, err
 }
 
-// Notify implements the KeybaseDaemon interface for KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) Notify(ctx context.Context, notification *keybase1.FSNotification) (err error) {
+// Notify implements the KeybaseService interface for KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) Notify(ctx context.Context, notification *keybase1.FSNotification) (err error) {
 	k.notifyTimer.Time(func() {
 		err = k.delegate.Notify(ctx, notification)
 	})
 	return err
 }
 
-// FlushUserFromLocalCache implements the KeybaseDaemon interface for
-// KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) FlushUserFromLocalCache(
+// FlushUserFromLocalCache implements the KeybaseService interface for
+// KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) FlushUserFromLocalCache(
 	ctx context.Context, uid keybase1.UID) {
 	k.delegate.FlushUserFromLocalCache(ctx, uid)
 }
 
-// FlushUserUnverifiedKeysFromLocalCache implements the KeybaseDaemon interface for
-// KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) FlushUserUnverifiedKeysFromLocalCache(
+// FlushUserUnverifiedKeysFromLocalCache implements the KeybaseService interface for
+// KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) FlushUserUnverifiedKeysFromLocalCache(
 	ctx context.Context, uid keybase1.UID) {
 	k.delegate.FlushUserUnverifiedKeysFromLocalCache(ctx, uid)
 }
 
-// Shutdown implements the KeybaseDaemon interface for
-// KeybaseDaemonMeasured.
-func (k KeybaseDaemonMeasured) Shutdown() {
+// Shutdown implements the KeybaseService interface for
+// KeybaseServiceMeasured.
+func (k KeybaseServiceMeasured) Shutdown() {
 	k.delegate.Shutdown()
 }

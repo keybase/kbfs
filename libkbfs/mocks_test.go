@@ -3563,21 +3563,21 @@ func (_mr *_MockConfigRecorder) SetKeyServer(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKeyServer", arg0)
 }
 
-func (_m *MockConfig) KeybaseDaemon() KeybaseDaemon {
+func (_m *MockConfig) KeybaseService() KeybaseDaemon {
 	ret := _m.ctrl.Call(_m, "KeybaseDaemon")
 	ret0, _ := ret[0].(KeybaseDaemon)
 	return ret0
 }
 
-func (_mr *_MockConfigRecorder) KeybaseDaemon() *gomock.Call {
+func (_mr *_MockConfigRecorder) KeybaseService() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "KeybaseDaemon")
 }
 
-func (_m *MockConfig) SetKeybaseDaemon(_param0 KeybaseDaemon) {
+func (_m *MockConfig) SetKeybaseService(_param0 KeybaseDaemon) {
 	_m.ctrl.Call(_m, "SetKeybaseDaemon", _param0)
 }
 
-func (_mr *_MockConfigRecorder) SetKeybaseDaemon(arg0 interface{}) *gomock.Call {
+func (_mr *_MockConfigRecorder) SetKeybaseService(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetKeybaseDaemon", arg0)
 }
 

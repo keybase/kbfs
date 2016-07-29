@@ -395,7 +395,7 @@ func TestReaddirPublic(t *testing.T) {
 }
 
 type kbdaemonBrokenIdentify struct {
-	libkbfs.KeybaseDaemon
+	libkbfs.KeybaseService
 }
 
 func (k kbdaemonBrokenIdentify) Identify(ctx context.Context, assertion,
@@ -425,8 +425,8 @@ func TestReaddirPublicFailedIdentifyViaOSCall(t *testing.T) {
 	}
 
 	// Make u1 get failures for every identify call.
-	config1.SetKeybaseDaemon(kbdaemonBrokenIdentify{
-		KeybaseDaemon: config1.KeybaseDaemon(),
+	config1.SetKeybaseService(kbdaemonBrokenIdentify{
+		KeybaseService: config1.KeybaseService(),
 	})
 
 	// A private non-existing home folder, with write permissions, fails.
