@@ -8,14 +8,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
-	"runtime"
 	"sync"
 	"time"
 
 	"golang.org/x/net/context"
-
-	"github.com/kardianos/osext"
 )
 
 func newExternalFile(path string) (*SpecialReadFile, error) {
@@ -41,23 +37,4 @@ func newExternalFile(path string) (*SpecialReadFile, error) {
 			return data, fileTime, err
 		},
 	}, nil
-}
-
-func newExternalBundleResourceFile(path string) (*SpecialReadFile, error) {
-	bpath, err := bundleResourcePath(path)
-	if err != nil {
-		return nil, err
-	}
-	return newExternalFile(bpath)
-}
-
-func bundleResourcePath(path string) (string, error) {
-	if runtime.GOOS != "darwin" {
-		return "", fmt.Errorf("Bundle resource path only available on macOS/darwin")
-	}
-	execPath, err := osext.Executable()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(execPath, "..", "..", "..", "Resources", path), nil
 }

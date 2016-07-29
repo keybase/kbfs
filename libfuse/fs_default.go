@@ -12,6 +12,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (r *Root) platformLookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) fs.Node {
-	return nil
+func (r *Root) platformLookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
+	return nil, nil
 }

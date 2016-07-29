@@ -200,7 +200,7 @@ func (*Root) Attr(ctx context.Context, a *fuse.Attr) error {
 var _ fs.NodeRequestLookuper = (*Root)(nil)
 
 // Lookup implements the fs.NodeRequestLookuper interface for Root.
-func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
+func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (_ fs.Node, err error) {
 	r.log().CDebugf(ctx, "FS Lookup %s", req.Name)
 	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
 
@@ -221,9 +221,9 @@ func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.L
 		return &SpecialReadFile{r.private.fs.remoteStatus.NewSpecialReadFunc}, nil
 	}
 
-	platformNode := r.platformLookup(ctx, req, resp)
-	if platformNode != nil {
-		return platformNode, nil
+	platformNode, err := r.platformLookup(ctx, req, resp)
+	if platformNode != nil || err != nil {
+		return platformNode, err
 	}
 
 	// Don't want to pop up errors on special OS files.
