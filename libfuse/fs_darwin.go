@@ -20,8 +20,7 @@ func (r *Root) platformLookup(ctx context.Context, req *fuse.LookupRequest, resp
 	case VolIconFileName:
 		volIcon, err := newExternalBundleResourceFile("KeybaseFolder.icns")
 		if err != nil {
-			r.log().CWarningf(ctx, "Error getting bundle resource path: %s", err)
-			return nil, nil
+			return nil, err
 		} else if volIcon != nil {
 			resp.EntryValid = 0
 			return volIcon, nil
@@ -29,8 +28,7 @@ func (r *Root) platformLookup(ctx context.Context, req *fuse.LookupRequest, resp
 	case ExtendedAttributeSelfFileName:
 		xattrSelf, err := newExternalBundleResourceFile("ExtendedAttributeFinderInfo.bin")
 		if err != nil {
-			r.log().CWarningf(ctx, "Error getting bundle resource path: %s", err)
-			return nil, nil
+			return nil, err
 		} else if xattrSelf != nil {
 			resp.EntryValid = 0
 			return xattrSelf, nil
