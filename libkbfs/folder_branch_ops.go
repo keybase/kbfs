@@ -1904,17 +1904,11 @@ func isRevisionConflict(err error) bool {
 // The retry would fail because previous create was successful.
 func (fbo *folderBranchOps) doPutWithCancellationCheck(ctx context.Context,
 	lState *lockState, md *RootMetadata, unmerged bool) (
-	newCtx context.Context, mdID MdID, err error) {
+	mdID MdID, err error) {
 
-	defer func() {
-		if err == nil {
-			// The put succeeded. At this point, we should try to avoid cancellation to
-			// avoid inconsistent state by giving an extra grace period to ctx to
-			// allow subsequent ops (e.g. setHeadSuccessorLocked) to finish.
-			newCtx, err = NewContextWithDelayedCancellation(
-				ctx, fbo.config.GracePeriod())
-		}
-	}()
+	if err = EnterCriticalWithTimeout(ctx, fbo.config.GracePeriod()); err != nil {
+		return mdID, err
+	}
 
 	oldRevision := fbo.getCurrMDRevision(lState)
 	var errPut error
@@ -1925,15 +1919,20 @@ func (fbo *folderBranchOps) doPutWithCancellationCheck(ctx context.Context,
 	}
 	mdID, err = fbo.config.Crypto().MakeMdID(&md.BareRootMetadata)
 	if err != nil {
-		return ctx, mdID, err
+		return mdID, err
 	}
 	if errPut == context.Canceled {
+		fbo.log.CDebugf(
+			ctx, "context is canceled; will check if Put has made it to the server")
+
 		// Put a deadline here since the original ctx was canceled and there's no
 		// way for user to cancel now.
-		ctx, err = NewContextWithDelayedCancellation(ctx, fbo.config.GracePeriod())
+		ctx, err = NewContextWithReplayFrom(ctx)
 		if err != nil {
-			return ctx, mdID, err
+			panic(err) // we shouldn't let this happen
 		}
+		ctx, _ = context.WithTimeout(ctx, fbo.config.GracePeriod())
+
 		var rmds []ImmutableRootMetadata
 		if !unmerged {
 			rmds, err = getMergedMDUpdates(ctx, fbo.config, fbo.id(), oldRevision+1)
@@ -1943,19 +1942,22 @@ func (fbo *folderBranchOps) doPutWithCancellationCheck(ctx context.Context,
 				NullBranchID /* this is not correct after this rebase, but not fixing it since this is removed in next commit(s) */, oldRevision+1)
 		}
 		if err != nil {
-			return ctx, mdID, err
+			return mdID, err
 		}
 		if len(rmds) == 0 || rmds[0].mdID != mdID {
 			// MD put didn't make it to the server. So just return the
 			// context.Canceled error
-			return ctx, mdID, errPut
+			fbo.log.CDebugf(ctx, "Put didn't make it to the server")
+			return mdID, errPut
 		}
+		fbo.log.CDebugf(
+			ctx, "Put made it to the server; will ignore context.Canceled")
 		// And our put succeeded. At this point we should just return nil error.
-		return ctx, mdID, nil
+		return mdID, nil
 	}
 
 	// let the caller handle other errors
-	return ctx, mdID, errPut
+	return mdID, errPut
 }
 
 func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
@@ -1971,7 +1973,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 
 	if fbo.isMasterBranchLocked(lState) {
 		// only do a normal Put if we're not already staged.
-		ctx, mdID, err = fbo.doPutWithCancellationCheck(ctx, lState, md, false)
+		mdID, err = fbo.doPutWithCancellationCheck(ctx, lState, md, false)
 
 		if doUnmergedPut = isRevisionConflict(err); doUnmergedPut {
 			fbo.log.CDebugf(ctx, "Conflict: %v", err)
@@ -1997,7 +1999,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	if doUnmergedPut {
 		// We're out of date, and this is not an exclusive write, so put it as an
 		// unmerged MD.
-		ctx, mdID, err = fbo.doPutWithCancellationCheck(ctx, lState, md, true)
+		mdID, err = fbo.doPutWithCancellationCheck(ctx, lState, md, true)
 		if isRevisionConflict(err) {
 			// Self-conflicts are retried in `doMDWriteWithRetry`.
 			err = UnmergedSelfConflictError{err}
@@ -3927,7 +3929,7 @@ func (fbo *folderBranchOps) UnstageForTesting(
 		// notifications if we do.  But we still want to wait for the
 		// context to cancel.
 		c := make(chan error, 1)
-		ctxWithTags := fbo.ctxWithFBOID(context.Background())
+		ctxWithTags, cancel := fbo.newCtxWithFBID()
 		freshCtx, cancel := context.WithCancel(ctxWithTags)
 		defer cancel()
 		fbo.log.CDebugf(freshCtx, "Launching new context for UnstageForTesting")
@@ -4100,14 +4102,16 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 
 func (fbo *folderBranchOps) rekeyWithPrompt() {
 	var err error
-	ctx := ctxWithRandomID(context.Background(), CtxRekeyIDKey, CtxRekeyOpID,
-		fbo.log)
-
+	ctx := ctxWithRandomIDReplayable(
+		context.Background(), CtxRekeyIDKey, CtxRekeyOpID, fbo.log)
 	// Only give the user limited time to enter their paper key, so we
 	// don't wait around forever.
 	d := fbo.config.RekeyWithPromptWaitTime()
 	ctx, cancel := context.WithTimeout(ctx, d)
 	defer cancel()
+	if ctx, err = NewContextWithCriticalAwareness(ctx); err != nil {
+		panic(err)
+	}
 
 	fbo.log.CDebugf(ctx, "rekeyWithPrompt")
 	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %v", err) }()
@@ -4201,13 +4205,22 @@ const (
 const CtxFBOOpID = "FBOID"
 
 func (fbo *folderBranchOps) ctxWithFBOID(ctx context.Context) context.Context {
-	return ctxWithRandomID(ctx, CtxFBOIDKey, CtxFBOOpID, fbo.log)
+	return ctxWithRandomIDReplayable(ctx, CtxFBOIDKey, CtxFBOOpID, fbo.log)
+}
+
+func (fbo *folderBranchOps) newCtxWithFBID() (context.Context, context.CancelFunc) {
+	ctx := NewContextReplayable(context.Background(), fbo.ctxWithFBOID)
+	ctx, cancelFunc := context.WithCancel(ctx)
+	ctx, err := NewContextWithCriticalAwareness(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return ctx, cancelFunc
 }
 
 // Run the passed function with a context that's canceled on shutdown.
 func (fbo *folderBranchOps) runUnlessShutdown(fn func(ctx context.Context) error) error {
-	ctx := fbo.ctxWithFBOID(context.Background())
-	ctx, cancelFunc := context.WithCancel(ctx)
+	ctx, cancelFunc := fbo.newCtxWithFBID()
 	defer cancelFunc()
 	errChan := make(chan error, 1)
 	go func() {
@@ -4361,7 +4374,10 @@ func (fbo *folderBranchOps) backgroundFlusher(betweenFlushes time.Duration) {
 		fbo.runUnlessShutdown(func(ctx context.Context) (err error) {
 			// Denote that these are coming from a background
 			// goroutine, not directly from any user.
-			ctx = context.WithValue(ctx, CtxBackgroundSyncKey, "1")
+			ctx = NewContextReplayable(ctx,
+				func(ctx context.Context) context.Context {
+					return context.WithValue(ctx, CtxBackgroundSyncKey, "1")
+				})
 			// Just in case network access or a bug gets stuck for a
 			// long time, time out the sync eventually.
 			longCtx, longCancel :=

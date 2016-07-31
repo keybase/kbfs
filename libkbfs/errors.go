@@ -1162,12 +1162,3 @@ type UnmergedSelfConflictError struct {
 func (e UnmergedSelfConflictError) Error() string {
 	return fmt.Sprintf("Unmerged self conflict: %v", e.Err)
 }
-
-// CtxNotReplayable is returned when NewContextWithReplayFrom is called on a
-// ctx with no replay func.
-type CtxNotReplayable struct {
-}
-
-func (e CtxNotReplayable) Error() string {
-	return "Unable to replay on ctx"
-}

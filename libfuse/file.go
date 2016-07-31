@@ -21,13 +21,14 @@ var _ fs.Node = (*File)(nil)
 
 // Attr implements the fs.Node interface for File.
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
-	ctx, err = libkbfs.NewContextWithDelayedCancellation(
+	f.folder.fs.log.CDebugf(ctx, "File Attr")
+	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
+
+	err = libkbfs.EnterCriticalWithTimeout(
 		ctx, f.folder.fs.config.GracePeriod())
 	if err != nil {
 		return err
 	}
-	f.folder.fs.log.CDebugf(ctx, "File Attr")
-	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
 	return f.attr(ctx, a)
 }

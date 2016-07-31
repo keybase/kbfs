@@ -81,49 +81,60 @@ func (f *FS) LaunchNotificationProcessor(ctx context.Context) {
 	f.notifications.LaunchProcessor(ctx)
 }
 
-func (f *FS) withContext(ctx context.Context) context.Context {
-	ctx = context.WithValue(ctx, CtxAppIDKey, f)
-	logTags := make(logger.CtxLogTags)
-	logTags[CtxIDKey] = CtxOpID
-	ctx = logger.NewContextWithLogTags(ctx, logTags)
-
-	// Add a unique ID to this context, identifying a particular
-	// request.
-	id, err := libkbfs.MakeRandomRequestID()
-	if err != nil {
-		f.log.Errorf("Couldn't make request ID: %v", err)
-	} else {
-		ctx = context.WithValue(ctx, CtxIDKey, id)
+// WithContext adds app- and request-specific values to the context.
+// libkbfs.NewContextWithCriticalAwareness is called before returning the
+// context to ensure the cancellation is controllable.
+//
+// It is called by FUSE for normal runs, but may be called explicitly in other
+// settings, such as tests.
+func (f *FS) WithContext(ctx context.Context) context.Context {
+	id, errRandomReqID := libkbfs.MakeRandomRequestID()
+	if errRandomReqID != nil {
+		f.log.Errorf("Couldn't make request ID: %v", errRandomReqID)
 	}
 
-	if runtime.GOOS == "darwin" {
-		// Timeout operations before they hit the osxfuse time limit,
-		// so we don't hose the entire mount (Fixed in OSXFUSE 3.2.0).
-		// The timeout is 60 seconds, but it looks like sometimes it
-		// tries multiple attempts within that 60 seconds, so let's go
-		// a little under 60/3 to be safe.
-		//
-		// It should be safe to ignore the CancelFunc here because our
-		// parent context will be canceled by the FUSE serve loop.
-		ctx, _ = context.WithTimeout(ctx, 19*time.Second)
+	ctx, err := libkbfs.NewContextWithCriticalAwareness(
+		libkbfs.NewContextReplayable(ctx, func(ctx context.Context) context.Context {
+
+			ctx = context.WithValue(ctx, CtxAppIDKey, f)
+			logTags := make(logger.CtxLogTags)
+			logTags[CtxIDKey] = CtxOpID
+			ctx = logger.NewContextWithLogTags(ctx, logTags)
+
+			if errRandomReqID == nil {
+				// Add a unique ID to this context, identifying a particular
+				// request.
+				ctx = context.WithValue(ctx, CtxIDKey, id)
+			}
+
+			if runtime.GOOS == "darwin" {
+				// Timeout operations before they hit the osxfuse time limit,
+				// so we don't hose the entire mount (Fixed in OSXFUSE 3.2.0).
+				// The timeout is 60 seconds, but it looks like sometimes it
+				// tries multiple attempts within that 60 seconds, so let's go
+				// a little under 60/3 to be safe.
+				//
+				// It should be safe to ignore the CancelFunc here because our
+				// parent context will be canceled by the FUSE serve loop.
+				ctx, _ = context.WithTimeout(ctx, 19*time.Second)
+			}
+
+			return ctx
+
+		}))
+
+	if err != nil {
+		panic(err) // this should never happen
 	}
 
 	return ctx
-}
-
-// WithContextReplayable adds app- and request-specific values to the context.
-// Such action is also attached to a replay func to be used by
-// libkbfs.NewContextWithReplayFrom.  It is called by FUSE for normal runs, but
-// may be called explicitly in other settings, such as tests.
-func (f *FS) WithContextReplayable(ctx context.Context) context.Context {
-	return libkbfs.NewContextReplayable(ctx, f.withContext)
 }
 
 // Serve FS. Will block.
 func (f *FS) Serve(ctx context.Context) error {
 	srv := fs.New(f.conn, &fs.Config{
 		WithContext: func(ctx context.Context, _ fuse.Request) context.Context {
-			return f.WithContextReplayable(ctx)
+			return f.WithContext(ctx)
 		},
 	})
 	f.fuse = srv

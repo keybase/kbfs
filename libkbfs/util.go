@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/keybase/client/go/logger"
 	"golang.org/x/net/context"
@@ -98,21 +97,21 @@ const (
 	CtxBackgroundSyncKey = "kbfs-background"
 )
 
-func ctxWithRandomID(ctx context.Context, tagKey interface{},
+func ctxWithRandomIDReplayable(ctx context.Context, tagKey interface{},
 	tagName string, log logger.Logger) context.Context {
-	// Tag each request with a unique ID
-	logTags := make(logger.CtxLogTags)
-	logTags[tagKey] = tagName
-	newCtx := logger.NewContextWithLogTags(ctx, logTags)
 	id, err := MakeRandomRequestID()
-	if err != nil {
-		if log != nil {
-			log.Warning("Couldn't generate a random request ID: %v", err)
-		}
-	} else {
-		newCtx = context.WithValue(newCtx, tagKey, id)
+	if err != nil && log != nil {
+		log.Warning("Couldn't generate a random request ID: %v", err)
 	}
-	return newCtx
+	return NewContextReplayable(ctx, func(ctx context.Context) context.Context {
+		logTags := make(logger.CtxLogTags)
+		logTags[tagKey] = tagName
+		newCtx := logger.NewContextWithLogTags(ctx, logTags)
+		if err == nil {
+			newCtx = context.WithValue(newCtx, tagKey, id)
+		}
+		return newCtx
+	})
 }
 
 // LogTagsFromContext is a wrapper around logger.LogTagsFromContext
@@ -121,55 +120,4 @@ func ctxWithRandomID(ctx context.Context, tagKey interface{},
 func LogTagsFromContext(ctx context.Context) (map[interface{}]string, bool) {
 	tags, ok := logger.LogTagsFromContext(ctx)
 	return map[interface{}]string(tags), ok
-}
-
-const (
-	// CtxReplayKey is a context key for CtxReplayFunc used by
-	// NewContextWithReplayFrom
-	CtxReplayKey = "libkbfs-replay"
-)
-
-// CtxReplayFunc is a function for replaying a series of changes done on a
-// context.
-type CtxReplayFunc func(ctx context.Context) context.Context
-
-// NewContextReplayable creates a new context from ctx, with change applied. It
-// also makes this change replayable by NewContextWithReplayFrom. When
-// replayed, the resulting context is replayable as well.
-func NewContextReplayable(
-	ctx context.Context, change CtxReplayFunc) context.Context {
-	var replay CtxReplayFunc
-	replay = func(ctx context.Context) context.Context {
-		ctx = change(ctx)
-		// _ is necessary to avoid panic if nil
-		replays, _ := ctx.Value(CtxReplayKey).([]CtxReplayFunc)
-		replays = append(replays, replay)
-		return context.WithValue(ctx, CtxReplayKey, replays)
-	}
-	return replay(ctx)
-}
-
-// NewContextWithDelayedCancellation makes it possible to delay
-// cancellation on context. It delays the cancellation by listening on
-// ctx.Done() and waits for delay duration before canceling newCtx. newCtx is
-// created out of ctx, that is, the CtxReplayFunc passed in
-// NewContextReplayable when it was constructed is called on newCtx.
-//
-// ctx has to be replayable (i.e. constructed from NewContextReplayable)
-func NewContextWithDelayedCancellation(
-	ctx context.Context, delay time.Duration) (context.Context, error) {
-	if replays, ok := ctx.Value(CtxReplayKey).([]CtxReplayFunc); ok {
-		newCtx := context.Background()
-		for _, replay := range replays {
-			newCtx = replay(newCtx)
-		}
-		newCtx, cancel := context.WithCancel(newCtx)
-		go func() {
-			<-ctx.Done()
-			time.Sleep(delay)
-			cancel()
-		}()
-		return newCtx, nil
-	}
-	return nil, CtxNotReplayable{}
 }
