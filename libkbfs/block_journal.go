@@ -608,7 +608,7 @@ func (j *blockJournal) flushOne(
 			return false, err
 		}
 
-		err = bserver.Put(ctx, e.ID, tlfID,
+		err = bserver.Put(ctx, tlfID, e.ID,
 			e.Contexts[0], data, serverHalf)
 		if err != nil {
 			return false, err
@@ -622,8 +622,7 @@ func (j *blockJournal) flushOne(
 		}
 
 		bContext := e.Contexts[0]
-		err = bserver.AddBlockReference(
-			ctx, e.ID, tlfID, bContext)
+		err = bserver.AddBlockReference(ctx, tlfID, e.ID, bContext)
 		if err != nil {
 			return false, err
 		}

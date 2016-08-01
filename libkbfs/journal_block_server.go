@@ -14,11 +14,11 @@ type journalBlockServer struct {
 var _ BlockServer = journalBlockServer{}
 
 func (j journalBlockServer) Get(
-	ctx context.Context, id BlockID, tlfID TlfID, context BlockContext) (
+	ctx context.Context, tlfID TlfID, id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
 	bundle, ok := j.jServer.getBundle(tlfID)
 	if !ok {
-		return j.BlockServer.Get(ctx, id, tlfID, context)
+		return j.BlockServer.Get(ctx, tlfID, id, context)
 	}
 
 	data, serverHalf, err := func() (
@@ -28,7 +28,7 @@ func (j journalBlockServer) Get(
 		return bundle.blockJournal.getDataWithContext(id, context)
 	}()
 	if _, ok := err.(BServerErrorBlockNonExistent); ok {
-		return j.BlockServer.Get(ctx, id, tlfID, context)
+		return j.BlockServer.Get(ctx, tlfID, id, context)
 	} else if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
@@ -37,7 +37,7 @@ func (j journalBlockServer) Get(
 }
 
 func (j journalBlockServer) Put(
-	ctx context.Context, id BlockID, tlfID TlfID, context BlockContext,
+	ctx context.Context, tlfID TlfID, id BlockID, context BlockContext,
 	buf []byte, serverHalf BlockCryptKeyServerHalf) error {
 	bundle, ok := j.jServer.getBundle(tlfID)
 	if ok {
@@ -47,11 +47,11 @@ func (j journalBlockServer) Put(
 			id, context, buf, serverHalf)
 	}
 
-	return j.BlockServer.Put(ctx, id, tlfID, context, buf, serverHalf)
+	return j.BlockServer.Put(ctx, tlfID, id, context, buf, serverHalf)
 }
 
 func (j journalBlockServer) AddBlockReference(
-	ctx context.Context, id BlockID, tlfID TlfID,
+	ctx context.Context, tlfID TlfID, id BlockID,
 	context BlockContext) error {
 	_, ok := j.jServer.getBundle(tlfID)
 	bundle, ok := j.jServer.getBundle(tlfID)
@@ -61,7 +61,7 @@ func (j journalBlockServer) AddBlockReference(
 		return bundle.blockJournal.addReference(id, context)
 	}
 
-	return j.BlockServer.AddBlockReference(ctx, id, tlfID, context)
+	return j.BlockServer.AddBlockReference(ctx, tlfID, id, context)
 }
 
 func (j journalBlockServer) RemoveBlockReferences(

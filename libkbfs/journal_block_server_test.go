@@ -63,11 +63,11 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 	// Put a block.
 	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
-	err = blockServer.Put(ctx, bID, tlfID, bCtx, data, serverHalf)
+	err = blockServer.Put(ctx, tlfID, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 
 	// Now get the same block back.
-	buf, key, err := blockServer.Get(ctx, bID, tlfID, bCtx)
+	buf, key, err := blockServer.Get(ctx, tlfID, bID, bCtx)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -77,11 +77,11 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx2)
+	err = blockServer.AddBlockReference(ctx, tlfID, bID, bCtx2)
 	require.NoError(t, err)
 
 	// Now get the same block back.
-	buf, key, err = blockServer.Get(ctx, bID, tlfID, bCtx2)
+	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -108,7 +108,7 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 	// Put a block.
 	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
-	err = blockServer.Put(ctx, bID, tlfID, bCtx, data, serverHalf)
+	err = blockServer.Put(ctx, tlfID, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 
 	// Add some references.
@@ -117,13 +117,13 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx2)
+	err = blockServer.AddBlockReference(ctx, tlfID, bID, bCtx2)
 
 	require.NoError(t, err)
 	nonce2, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx3 := BlockContext{uid1, uid2, nonce2}
-	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx3)
+	err = blockServer.AddBlockReference(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
 
 	// Remove the references, including a non-existent one, but
@@ -164,7 +164,7 @@ func TestJournalBlockServerArchiveBlockReferences(t *testing.T) {
 	// Put a block.
 	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
-	err = blockServer.Put(ctx, bID, tlfID, bCtx, data, serverHalf)
+	err = blockServer.Put(ctx, tlfID, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 
 	// Add a reference.
@@ -172,7 +172,7 @@ func TestJournalBlockServerArchiveBlockReferences(t *testing.T) {
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx2)
+	err = blockServer.AddBlockReference(ctx, tlfID, bID, bCtx2)
 
 	// Archive the references.
 	require.NoError(t, err)
@@ -204,7 +204,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	// Put a block.
 	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
-	err = blockServer.Put(ctx, bID, tlfID, bCtx, data, serverHalf)
+	err = blockServer.Put(ctx, tlfID, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 
 	// Add some references.
@@ -213,13 +213,13 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx2)
+	err = blockServer.AddBlockReference(ctx, tlfID, bID, bCtx2)
 
 	require.NoError(t, err)
 	nonce2, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx3 := BlockContext{uid1, uid2, nonce2}
-	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx3)
+	err = blockServer.AddBlockReference(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
 
 	// Remove some references.
@@ -262,7 +262,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 
 	flush()
 
-	buf, key, err := oldBlockServer.Get(ctx, bID, tlfID, bCtx)
+	buf, key, err := oldBlockServer.Get(ctx, tlfID, bID, bCtx)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -271,14 +271,14 @@ func TestJournalBlockServerFlush(t *testing.T) {
 
 	flush()
 
-	buf, key, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx2)
+	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
 
 	flush()
 
-	buf, key, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx3)
+	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -287,13 +287,13 @@ func TestJournalBlockServerFlush(t *testing.T) {
 
 	flush()
 
-	_, _, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx)
+	_, _, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
-	_, _, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx2)
+	_, _, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx2)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
-	buf, key, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx3)
+	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -302,7 +302,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 
 	flush()
 
-	buf, key, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx3)
+	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -311,7 +311,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 
 	flush()
 
-	buf, key, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx3)
+	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
 	flushed, err := bundle.blockJournal.flushOne(

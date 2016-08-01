@@ -133,7 +133,7 @@ func NewBlockServerMemory(config Config) *BlockServerMemory {
 var errBlockServerMemoryShutdown = errors.New("BlockServerMemory is shutdown")
 
 // Get implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) Get(ctx context.Context, id BlockID, tlfID TlfID,
+func (b *BlockServerMemory) Get(ctx context.Context, tlfID TlfID, id BlockID,
 	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
 	b.log.CDebugf(ctx, "BlockServerMemory.Get id=%s tlfID=%s context=%s",
 		id, tlfID, context)
@@ -188,7 +188,7 @@ func validateBlockServerPut(
 }
 
 // Put implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
+func (b *BlockServerMemory) Put(ctx context.Context, tlfID TlfID, id BlockID,
 	context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
 	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s tlfID=%s context=%s "+
@@ -245,8 +245,8 @@ func (b *BlockServerMemory) Put(ctx context.Context, id BlockID, tlfID TlfID,
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
-	tlfID TlfID, context BlockContext) error {
+func (b *BlockServerMemory) AddBlockReference(ctx context.Context, tlfID TlfID,
+	id BlockID, context BlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerMemory.AddBlockReference id=%s "+
 		"tlfID=%s context=%s", id, tlfID, context)
 
@@ -278,7 +278,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, id BlockID,
 }
 
 func (b *BlockServerMemory) removeBlockReference(
-	id BlockID, tlfID TlfID, contexts []BlockContext) (int, error) {
+	tlfID TlfID, id BlockID, contexts []BlockContext) (int, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -319,7 +319,7 @@ func (b *BlockServerMemory) RemoveBlockReferences(ctx context.Context,
 		"tlfID=%s contexts=%v", tlfID, contexts)
 	liveCounts = make(map[BlockID]int)
 	for id, idContexts := range contexts {
-		count, err := b.removeBlockReference(id, tlfID, idContexts)
+		count, err := b.removeBlockReference(tlfID, id, idContexts)
 		if err != nil {
 			return nil, err
 		}
@@ -329,7 +329,7 @@ func (b *BlockServerMemory) RemoveBlockReferences(ctx context.Context,
 }
 
 func (b *BlockServerMemory) archiveBlockReference(
-	id BlockID, tlfID TlfID, context BlockContext) error {
+	tlfID TlfID, id BlockID, context BlockContext) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -368,7 +368,7 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
-			err := b.archiveBlockReference(id, tlfID, context)
+			err := b.archiveBlockReference(tlfID, id, context)
 			if err != nil {
 				return err
 			}
