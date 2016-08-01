@@ -137,7 +137,8 @@ func TestBserverTlfJournalRemoveReferences(t *testing.T) {
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
 	// Remove references.
-	liveCount, err := j.removeReferences(bID, []BlockContext{bCtx, bCtx2})
+	liveCount, err := j.removeReferences(
+		bID, []BlockContext{bCtx, bCtx2}, true)
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 	require.Equal(t, 3, getBlockJournalLength(t, j))

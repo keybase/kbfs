@@ -170,7 +170,7 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 
 	liveCounts = make(map[BlockID]int)
 	for id, idContexts := range contexts {
-		count, err := diskJournal.removeReferences(id, idContexts)
+		count, err := diskJournal.removeReferences(id, idContexts, true)
 		if err != nil {
 			return nil, err
 		}

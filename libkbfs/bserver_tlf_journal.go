@@ -502,7 +502,8 @@ func (j *bserverTlfJournal) addReference(id BlockID, context BlockContext) error
 }
 
 func (j *bserverTlfJournal) removeReferences(
-	id BlockID, contexts []BlockContext) (int, error) {
+	id BlockID, contexts []BlockContext,
+	removeBlockIfNoReferences bool) (int, error) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
@@ -531,7 +532,7 @@ func (j *bserverTlfJournal) removeReferences(
 	}
 
 	count := len(refs)
-	if count == 0 {
+	if count == 0 && removeBlockIfNoReferences {
 		err := os.RemoveAll(j.blockPath(id))
 		if err != nil {
 			return 0, err

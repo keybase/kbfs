@@ -238,6 +238,15 @@ func TestJournalBlockServerFlush(t *testing.T) {
 		})
 	require.NoError(t, err)
 
+	// Then remove them.
+	require.NoError(t, err)
+	liveCounts, err = blockServer.RemoveBlockReferences(
+		ctx, tlfID, map[BlockID][]BlockContext{
+			bID: {bCtx3},
+		})
+	require.NoError(t, err)
+	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
+
 	oldBlockServer := jServer.delegateBlockServer
 	bundle, ok := jServer.getBundle(tlfID)
 	require.True(t, ok)
