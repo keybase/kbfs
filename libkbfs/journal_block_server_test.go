@@ -38,8 +38,6 @@ type shutdownOnlyBlockServer struct{ BlockServer }
 
 func (shutdownOnlyBlockServer) Shutdown() {}
 
-// Test that putting a block, getting it back, and adding a reference,
-// all work.
 func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 	tempdir, config, jServer := setupJournalBlockServerTest(t)
 	defer teardownJournalBlockServerTest(t, tempdir, config)
@@ -114,6 +112,7 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add some references.
+
 	uid2 := keybase1.MakeTestUID(2)
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
@@ -175,11 +174,98 @@ func TestJournalBlockServerArchiveBlockReferences(t *testing.T) {
 	bCtx2 := BlockContext{uid1, uid2, nonce}
 	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx2)
 
-	// Archive the references, including a non-existent one.
+	// Archive the references.
 	require.NoError(t, err)
 	err = blockServer.ArchiveBlockReferences(
 		ctx, tlfID, map[BlockID][]BlockContext{
 			bID: {bCtx, bCtx2},
 		})
 	require.NoError(t, err)
+}
+
+func TestJournalBlockServerFlush(t *testing.T) {
+	tempdir, config, jServer := setupJournalBlockServerTest(t)
+	defer teardownJournalBlockServerTest(t, tempdir, config)
+
+	tlfID := FakeTlfID(2, false)
+	err := jServer.Enable(tlfID)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	blockServer := config.BlockServer()
+	crypto := config.Crypto()
+
+	uid1 := keybase1.MakeTestUID(1)
+	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
+	data := []byte{1, 2, 3, 4}
+	bID, err := crypto.MakePermanentBlockID(data)
+	require.NoError(t, err)
+
+	// Put a block.
+	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
+	err = blockServer.Put(ctx, bID, tlfID, bCtx, data, serverHalf)
+	require.NoError(t, err)
+
+	// Add some references.
+
+	uid2 := keybase1.MakeTestUID(2)
+	nonce, err := crypto.MakeBlockRefNonce()
+	require.NoError(t, err)
+	bCtx2 := BlockContext{uid1, uid2, nonce}
+	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx2)
+
+	require.NoError(t, err)
+	nonce2, err := crypto.MakeBlockRefNonce()
+	require.NoError(t, err)
+	bCtx3 := BlockContext{uid1, uid2, nonce2}
+	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx3)
+	require.NoError(t, err)
+
+	// Remove some references.
+	liveCounts, err := blockServer.RemoveBlockReferences(
+		ctx, tlfID, map[BlockID][]BlockContext{
+			bID: {bCtx, bCtx2},
+		})
+	require.NoError(t, err)
+	require.Equal(t, map[BlockID]int{bID: 1}, liveCounts)
+
+	// Archive the rest.
+	require.NoError(t, err)
+	err = blockServer.ArchiveBlockReferences(
+		ctx, tlfID, map[BlockID][]BlockContext{
+			bID: {bCtx3},
+		})
+	require.NoError(t, err)
+
+	oldBlockServer := jServer.delegateBlockServer
+	bundle, ok := jServer.getBundle(tlfID)
+	require.True(t, ok)
+
+	// Flush the block put.
+
+	log := config.MakeLogger("")
+	flushed, err := bundle.blockJournal.flushOne(
+		ctx, oldBlockServer, tlfID, log)
+	require.NoError(t, err)
+	require.True(t, flushed)
+
+	buf, key, err := oldBlockServer.Get(ctx, bID, tlfID, bCtx)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
+
+	// Flush the reference add.
+
+	flushed, err = bundle.blockJournal.flushOne(
+		ctx, oldBlockServer, tlfID, log)
+	require.NoError(t, err)
+	require.True(t, flushed)
+
+	buf, key, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx2)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
+
+	// TODO: Flush everything else.
 }
