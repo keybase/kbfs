@@ -14,11 +14,17 @@ import (
 	"golang.org/x/net/context"
 )
 
-func setupJournalBlockServerTest(t *testing.T) (tempdir string, config Config) {
+func setupJournalBlockServerTest(t *testing.T) (
+	tempdir string, config Config, jServer *JournalServer) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_block_server")
 	require.NoError(t, err)
 	config = MakeTestConfigOrBust(t, "test_user")
-	return tempdir, config
+	log := config.MakeLogger("")
+	jServer = makeJournalServer(
+		config, log, tempdir, config.BlockServer(), config.MDOps())
+	config.SetBlockServer(jServer.blockServer())
+	config.SetMDOps(jServer.mdOps())
+	return tempdir, config, jServer
 }
 
 func teardownJournalBlockServerTest(
@@ -35,17 +41,12 @@ func (shutdownOnlyBlockServer) Shutdown() {}
 // Test that putting a block, getting it back, and adding a reference,
 // all work.
 func TestJournalBlockServerPutGetAddReference(t *testing.T) {
-	tempdir, config := setupJournalBlockServerTest(t)
+	tempdir, config, jServer := setupJournalBlockServerTest(t)
 	defer teardownJournalBlockServerTest(t, tempdir, config)
 
 	// Use a shutdown-only BlockServer so that it errors if the
 	// journal tries to access it.
-	config.SetBlockServer(shutdownOnlyBlockServer{})
-	log := config.MakeLogger("")
-	jServer := makeJournalServer(
-		config, log, tempdir, config.BlockServer(), config.MDOps())
-	config.SetBlockServer(jServer.blockServer())
-	config.SetMDOps(jServer.mdOps())
+	jServer.delegateBlockServer = shutdownOnlyBlockServer{}
 
 	tlfID := FakeTlfID(2, false)
 	err := jServer.Enable(tlfID)
@@ -89,14 +90,8 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 }
 
 func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
-	tempdir, config := setupJournalBlockServerTest(t)
+	tempdir, config, jServer := setupJournalBlockServerTest(t)
 	defer teardownJournalBlockServerTest(t, tempdir, config)
-
-	log := config.MakeLogger("")
-	jServer := makeJournalServer(
-		config, log, tempdir, config.BlockServer(), config.MDOps())
-	config.SetBlockServer(jServer.blockServer())
-	config.SetMDOps(jServer.mdOps())
 
 	tlfID := FakeTlfID(2, false)
 	err := jServer.Enable(tlfID)
@@ -146,14 +141,12 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 }
 
 func TestJournalBlockServerArchiveBlockReferences(t *testing.T) {
-	tempdir, config := setupJournalBlockServerTest(t)
+	tempdir, config, jServer := setupJournalBlockServerTest(t)
 	defer teardownJournalBlockServerTest(t, tempdir, config)
 
-	log := config.MakeLogger("")
-	jServer := makeJournalServer(
-		config, log, tempdir, config.BlockServer(), config.MDOps())
-	config.SetBlockServer(jServer.blockServer())
-	config.SetMDOps(jServer.mdOps())
+	// Use a shutdown-only BlockServer so that it errors if the
+	// journal tries to access it.
+	jServer.delegateBlockServer = shutdownOnlyBlockServer{}
 
 	tlfID := FakeTlfID(2, false)
 	err := jServer.Enable(tlfID)
