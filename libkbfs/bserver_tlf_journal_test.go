@@ -55,7 +55,7 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 	require.Equal(t, 1, getBlockJournalLength(t, j))
 
 	// Make sure we get the same block back.
-	buf, key, err := j.getData(bID, bCtx)
+	buf, key, err := j.getDataWithContext(bID, bCtx)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -69,7 +69,7 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
 	// Make sure we get the same block via that reference.
-	buf, key, err = j.getData(bID, bCtx2)
+	buf, key, err = j.getDataWithContext(bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -83,12 +83,12 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 
 	// Make sure we get the same block for both refs.
 
-	buf, key, err = j.getData(bID, bCtx)
+	buf, key, err = j.getDataWithContext(bID, bCtx)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
 
-	buf, key, err = j.getData(bID, bCtx2)
+	buf, key, err = j.getDataWithContext(bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)

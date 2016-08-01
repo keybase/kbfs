@@ -240,22 +240,8 @@ func (j *bserverTlfJournal) getRefEntryLocked(
 
 // getDataLocked verifies the block data for the given ID and context
 // and returns it.
-func (j *bserverTlfJournal) getDataLocked(id BlockID, context BlockContext) (
+func (j *bserverTlfJournal) getDataLocked(id BlockID) (
 	[]byte, BlockCryptKeyServerHalf, error) {
-	// Check arguments.
-
-	refEntry, err := j.getRefEntryLocked(id, context.GetRefNonce())
-	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	err = refEntry.checkContext(context)
-	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	// Read files.
-
 	data, err := ioutil.ReadFile(j.blockDataPath(id))
 	if os.IsNotExist(err) {
 		return nil, BlockCryptKeyServerHalf{},
@@ -294,6 +280,26 @@ func (j *bserverTlfJournal) getDataLocked(id BlockID, context BlockContext) (
 	return data, serverHalf, nil
 }
 
+// getDataLocked verifies the block data for the given ID and context
+// and returns it.
+func (j *bserverTlfJournal) getDataWithContextLocked(
+	id BlockID, context BlockContext) (
+	[]byte, BlockCryptKeyServerHalf, error) {
+	// Check arguments.
+
+	refEntry, err := j.getRefEntryLocked(id, context.GetRefNonce())
+	if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	err = refEntry.checkContext(context)
+	if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	return j.getDataLocked(id)
+}
+
 func (j *bserverTlfJournal) putRefEntryLocked(
 	id BlockID, refEntry blockRefEntry) error {
 	existingRefEntry, err := j.getRefEntryLocked(
@@ -327,7 +333,7 @@ func (j *bserverTlfJournal) putRefEntryLocked(
 
 var errBserverTlfJournalShutdown = errors.New("bserverTlfJournal is shutdown")
 
-func (j *bserverTlfJournal) getData(id BlockID, context BlockContext) (
+func (j *bserverTlfJournal) getData(id BlockID) (
 	[]byte, BlockCryptKeyServerHalf, error) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
@@ -337,7 +343,21 @@ func (j *bserverTlfJournal) getData(id BlockID, context BlockContext) (
 			errBserverTlfJournalShutdown
 	}
 
-	return j.getDataLocked(id, context)
+	return j.getDataLocked(id)
+}
+
+func (j *bserverTlfJournal) getDataWithContext(
+	id BlockID, context BlockContext) (
+	[]byte, BlockCryptKeyServerHalf, error) {
+	j.lock.RLock()
+	defer j.lock.RUnlock()
+
+	if j.isShutdown {
+		return nil, BlockCryptKeyServerHalf{},
+			errBserverTlfJournalShutdown
+	}
+
+	return j.getDataWithContextLocked(id, context)
 }
 
 func (j *bserverTlfJournal) getAll() (
@@ -380,7 +400,7 @@ func (j *bserverTlfJournal) putData(
 		return errBserverTlfJournalShutdown
 	}
 
-	_, existingServerHalf, err := j.getDataLocked(id, context)
+	_, existingServerHalf, err := j.getDataWithContextLocked(id, context)
 	var exists bool
 	switch err.(type) {
 	case BServerErrorBlockNonExistent:
@@ -619,14 +639,13 @@ func (j *bserverTlfJournal) flushOne(
 				e.Op, e.ID, e.Contexts)
 		}
 
-		bContext := e.Contexts[0]
-		data, serverHalf, err := j.getDataLocked(e.ID, bContext)
+		data, serverHalf, err := j.getDataLocked(e.ID)
 		if err != nil {
 			return false, err
 		}
 
 		err = bserver.Put(ctx, e.ID, tlfID,
-			bContext, data, serverHalf)
+			e.Contexts[0], data, serverHalf)
 		if err != nil {
 			return false, err
 		}

@@ -119,7 +119,7 @@ func (b *BlockServerDisk) Get(ctx context.Context, id BlockID, tlfID TlfID,
 	if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
-	data, keyServerHalf, err := diskJournal.getData(id, context)
+	data, keyServerHalf, err := diskJournal.getDataWithContext(id, context)
 	if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
 	}

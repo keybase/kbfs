@@ -20,7 +20,8 @@ func (j journalBlockServer) Get(
 	if !ok {
 		return j.BlockServer.Get(ctx, id, tlfID, context)
 	}
-	data, serverHalf, err := bundle.blockJournal.getData(id, context)
+	data, serverHalf, err := bundle.blockJournal.getDataWithContext(
+		id, context)
 	if _, ok := err.(BServerErrorBlockNonExistent); ok {
 		return j.BlockServer.Get(ctx, id, tlfID, context)
 	} else if err != nil {
