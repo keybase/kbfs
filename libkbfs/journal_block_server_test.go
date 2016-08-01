@@ -94,9 +94,6 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 	config := MakeTestConfigOrBust(t, "test_user")
 	defer CheckConfigAndShutdown(t, config)
 
-	// Use a shutdown-only BlockServer so that it errors if the
-	// journal tries to access it.
-	config.SetBlockServer(shutdownOnlyBlockServer{})
 	log := config.MakeLogger("")
 	jServer := makeJournalServer(
 		config, log, tempdir, config.BlockServer(), config.MDOps())
