@@ -49,10 +49,6 @@ import (
 // has data, which is the raw block data that should hash to the block
 // ID, and key_server_half, which contains the raw data for the
 // associated key server half.
-//
-// TODO: Add a mode which doesn't assume that this is the only storage
-// for TLF data, i.e. that doesn't remove files when the (known)
-// refcount drops to zero, etc.
 type bserverTlfJournal struct {
 	codec  Codec
 	crypto cryptoPure
