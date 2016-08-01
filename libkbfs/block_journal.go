@@ -59,7 +59,7 @@ type blockJournal struct {
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
-	lock       *sync.RWMutex
+	lock       sync.RWMutex
 	j          diskJournal
 	refs       map[BlockID]blockRefMap
 	isShutdown bool
@@ -88,7 +88,7 @@ type bserverJournalEntry struct {
 // makeBlockJournal returns a new blockJournal for the given
 // directory. Any existing journal entries are read.
 func makeBlockJournal(
-	codec Codec, crypto cryptoPure, dir string, lock *sync.RWMutex) (
+	codec Codec, crypto cryptoPure, dir string) (
 	*blockJournal, error) {
 	journalPath := filepath.Join(dir, "block_journal")
 	j := makeDiskJournal(
@@ -97,7 +97,6 @@ func makeBlockJournal(
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
-		lock:   lock,
 		j:      j,
 	}
 

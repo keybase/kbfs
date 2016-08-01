@@ -15,6 +15,10 @@ import (
 )
 
 type tlfJournalBundle struct {
+	// Protects all operations on blockJournal and mdJournal.
+	//
+	// TODO: Consider using https://github.com/pkg/singlefile
+	// instead.
 	lock sync.RWMutex
 
 	blockJournal *blockJournal
@@ -89,7 +93,7 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 	log := j.config.MakeLogger("")
 	bundle := &tlfJournalBundle{}
 	blockJournal, err := makeBlockJournal(
-		j.config.Codec(), j.config.Crypto(), tlfDir, &sync.RWMutex{})
+		j.config.Codec(), j.config.Crypto(), tlfDir)
 	if err != nil {
 		return err
 	}

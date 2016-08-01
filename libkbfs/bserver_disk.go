@@ -108,8 +108,7 @@ func (b *BlockServerDisk) getStorage(tlfID TlfID) (
 	}
 
 	path := filepath.Join(b.dirPath, tlfID.String())
-	journal, err := makeBlockJournal(
-		b.codec, b.crypto, path, &sync.RWMutex{})
+	journal, err := makeBlockJournal(b.codec, b.crypto, path)
 	if err != nil {
 		return blockServerDiskTlfStorage{}, err
 	}

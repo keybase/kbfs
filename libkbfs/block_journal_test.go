@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"io/ioutil"
 	"os"
-	"sync"
 	"testing"
 
 	"github.com/keybase/client/go/protocol"
@@ -34,7 +33,7 @@ func TestBlockJournalBasic(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBlockJournal(codec, crypto, tempdir, &sync.RWMutex{})
+	j, err := makeBlockJournal(codec, crypto, tempdir)
 	require.NoError(t, err)
 	defer j.shutdown()
 
@@ -76,7 +75,7 @@ func TestBlockJournalBasic(t *testing.T) {
 
 	// Shutdown and restart.
 	j.shutdown()
-	j, err = makeBlockJournal(codec, crypto, tempdir, &sync.RWMutex{})
+	j, err = makeBlockJournal(codec, crypto, tempdir)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, getBlockJournalLength(t, j))
@@ -108,7 +107,7 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBlockJournal(codec, crypto, tempdir, &sync.RWMutex{})
+	j, err := makeBlockJournal(codec, crypto, tempdir)
 	require.NoError(t, err)
 	defer j.shutdown()
 
@@ -163,7 +162,7 @@ func TestBlockJournalArchiveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBlockJournal(codec, crypto, tempdir, &sync.RWMutex{})
+	j, err := makeBlockJournal(codec, crypto, tempdir)
 	require.NoError(t, err)
 	defer j.shutdown()
 
