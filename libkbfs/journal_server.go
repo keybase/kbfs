@@ -93,7 +93,7 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 	log := j.config.MakeLogger("")
 	bundle := &tlfJournalBundle{}
 	blockJournal, err := makeBlockJournal(
-		j.config.Codec(), j.config.Crypto(), tlfDir)
+		j.config.Codec(), j.config.Crypto(), tlfDir, log)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 			bundle.lock.Lock()
 			defer bundle.lock.Unlock()
 			return bundle.blockJournal.flushOne(
-				ctx, j.config.BlockServer(), tlfID, j.log)
+				ctx, j.config.BlockServer(), tlfID)
 		}()
 		if err != nil {
 			return err

@@ -251,10 +251,9 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	bundle, ok := jServer.getBundle(tlfID)
 	require.True(t, ok)
 
-	log := config.MakeLogger("")
 	flush := func() {
 		flushed, err := bundle.blockJournal.flushOne(
-			ctx, oldBlockServer, tlfID, log)
+			ctx, oldBlockServer, tlfID)
 		require.NoError(t, err)
 		require.True(t, flushed)
 	}
@@ -316,7 +315,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
 	flushed, err := bundle.blockJournal.flushOne(
-		ctx, oldBlockServer, tlfID, log)
+		ctx, oldBlockServer, tlfID)
 	require.NoError(t, err)
 	require.False(t, flushed)
 }

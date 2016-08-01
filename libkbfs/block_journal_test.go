@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +34,8 @@ func TestBlockJournalBasic(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBlockJournal(codec, crypto, tempdir)
+	log := logger.NewTestLogger(t)
+	j, err := makeBlockJournal(codec, crypto, tempdir, log)
 	require.NoError(t, err)
 	defer j.shutdown()
 
@@ -75,7 +77,7 @@ func TestBlockJournalBasic(t *testing.T) {
 
 	// Shutdown and restart.
 	j.shutdown()
-	j, err = makeBlockJournal(codec, crypto, tempdir)
+	j, err = makeBlockJournal(codec, crypto, tempdir, log)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, getBlockJournalLength(t, j))
@@ -107,7 +109,8 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBlockJournal(codec, crypto, tempdir)
+	log := logger.NewTestLogger(t)
+	j, err := makeBlockJournal(codec, crypto, tempdir, log)
 	require.NoError(t, err)
 	defer j.shutdown()
 
@@ -162,7 +165,8 @@ func TestBlockJournalArchiveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBlockJournal(codec, crypto, tempdir)
+	log := logger.NewTestLogger(t)
+	j, err := makeBlockJournal(codec, crypto, tempdir, log)
 	require.NoError(t, err)
 	defer j.shutdown()
 

@@ -56,6 +56,9 @@ type blockJournal struct {
 	crypto cryptoPure
 	dir    string
 
+	log      logger.Logger
+	deferLog logger.Logger
+
 	j          diskJournal
 	refs       map[BlockID]blockRefMap
 	isShutdown bool
@@ -84,16 +87,19 @@ type bserverJournalEntry struct {
 // makeBlockJournal returns a new blockJournal for the given
 // directory. Any existing journal entries are read.
 func makeBlockJournal(
-	codec Codec, crypto cryptoPure, dir string) (
+	codec Codec, crypto cryptoPure, dir string, log logger.Logger) (
 	*blockJournal, error) {
 	journalPath := filepath.Join(dir, "block_journal")
+	deferLog := log.CloneWithAddedDepth(1)
 	j := makeDiskJournal(
 		codec, journalPath, reflect.TypeOf(bserverJournalEntry{}))
 	journal := &blockJournal{
-		codec:  codec,
-		crypto: crypto,
-		dir:    dir,
-		j:      j,
+		codec:    codec,
+		crypto:   crypto,
+		dir:      dir,
+		log:      log,
+		deferLog: deferLog,
+		j:        j,
 	}
 
 	refs, err := journal.readJournalLocked()
@@ -570,8 +576,7 @@ func (j *blockJournal) shutdown() {
 }
 
 func (j *blockJournal) flushOne(
-	ctx context.Context, bserver BlockServer, tlfID TlfID,
-	log logger.Logger) (bool, error) {
+	ctx context.Context, bserver BlockServer, tlfID TlfID) (bool, error) {
 	if j.isShutdown {
 		return false, errBlockJournalShutdown
 	}
@@ -588,7 +593,7 @@ func (j *blockJournal) flushOne(
 		return false, err
 	}
 
-	log.Debug("Flushing block op %v", e)
+	j.log.Debug("Flushing block op %v", e)
 
 	switch e.Op {
 	case blockPutOp:
