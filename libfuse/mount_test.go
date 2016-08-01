@@ -394,11 +394,11 @@ func TestReaddirPublic(t *testing.T) {
 	})
 }
 
-type kbdaemonBrokenIdentify struct {
+type kbserviceBrokenIdentify struct {
 	libkbfs.KeybaseService
 }
 
-func (k kbdaemonBrokenIdentify) Identify(ctx context.Context, assertion,
+func (k kbserviceBrokenIdentify) Identify(ctx context.Context, assertion,
 	reason string) (libkbfs.UserInfo, error) {
 	return libkbfs.UserInfo{}, errors.New("Fake identify error")
 }
@@ -425,7 +425,7 @@ func TestReaddirPublicFailedIdentifyViaOSCall(t *testing.T) {
 	}
 
 	// Make u1 get failures for every identify call.
-	config1.SetKeybaseService(kbdaemonBrokenIdentify{
+	config1.SetKeybaseService(kbserviceBrokenIdentify{
 		KeybaseService: config1.KeybaseService(),
 	})
 
