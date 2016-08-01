@@ -27,7 +27,7 @@ type BlockServerDisk struct {
 
 	diskJournalLock sync.RWMutex
 	// diskJournal is nil after Shutdown() is called.
-	diskJournal map[TlfID]*bserverTlfJournal
+	diskJournal map[TlfID]*blockJournal
 }
 
 var _ BlockServer = (*BlockServerDisk)(nil)
@@ -43,7 +43,7 @@ func newBlockServerDisk(
 		dirPath,
 		shutdownFunc,
 		sync.RWMutex{},
-		make(map[TlfID]*bserverTlfJournal),
+		make(map[TlfID]*blockJournal),
 	}
 	return bserv
 }
@@ -71,8 +71,8 @@ func NewBlockServerTempDir(config Config) (*BlockServerDisk, error) {
 
 var errBlockServerDiskShutdown = errors.New("BlockServerDisk is shutdown")
 
-func (b *BlockServerDisk) getJournal(tlfID TlfID) (*bserverTlfJournal, error) {
-	storage, err := func() (*bserverTlfJournal, error) {
+func (b *BlockServerDisk) getJournal(tlfID TlfID) (*blockJournal, error) {
+	storage, err := func() (*blockJournal, error) {
 		b.diskJournalLock.RLock()
 		defer b.diskJournalLock.RUnlock()
 		if b.diskJournal == nil {
@@ -101,7 +101,7 @@ func (b *BlockServerDisk) getJournal(tlfID TlfID) (*bserverTlfJournal, error) {
 	}
 
 	path := filepath.Join(b.dirPath, tlfID.String())
-	storage, err = makeBserverTlfJournal(b.codec, b.crypto, path, &sync.RWMutex{})
+	storage, err = makeBlockJournal(b.codec, b.crypto, path, &sync.RWMutex{})
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func (b *BlockServerDisk) getAll(tlfID TlfID) (
 
 // Shutdown implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) Shutdown() {
-	diskJournal := func() map[TlfID]*bserverTlfJournal {
+	diskJournal := func() map[TlfID]*blockJournal {
 		b.diskJournalLock.Lock()
 		defer b.diskJournalLock.Unlock()
 		// Make further accesses error out.

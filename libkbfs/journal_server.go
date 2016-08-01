@@ -17,7 +17,7 @@ import (
 type tlfJournalBundle struct {
 	lock sync.RWMutex
 
-	blockJournal *bserverTlfJournal
+	blockJournal *blockJournal
 	mdJournal    mdJournal
 }
 
@@ -88,7 +88,7 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 
 	log := j.config.MakeLogger("")
 	bundle := &tlfJournalBundle{}
-	blockJournal, err := makeBserverTlfJournal(
+	blockJournal, err := makeBlockJournal(
 		j.config.Codec(), j.config.Crypto(), tlfDir, &bundle.lock)
 	if err != nil {
 		return err

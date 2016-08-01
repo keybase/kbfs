@@ -17,9 +17,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-// bserverTlfJournal stores an ordered list of BlockServer mutating
-// operations for a single TLF, along with associated block data, in
-// flat files in a directory on disk.
+// blockJournal stores a single ordered list of block operations for a
+// single TLF, along with the associated block data, in flat files in
+// a directory on disk.
 //
 // The directory layout looks like:
 //
@@ -49,7 +49,7 @@ import (
 // has data, which is the raw block data that should hash to the block
 // ID, and key_server_half, which contains the raw data for the
 // associated key server half.
-type bserverTlfJournal struct {
+type blockJournal struct {
 	codec  Codec
 	crypto cryptoPure
 	dir    string
@@ -85,15 +85,15 @@ type bserverJournalEntry struct {
 	Contexts []BlockContext
 }
 
-// makeBserverTlfJournal returns a new bserverTlfJournal for the given
+// makeBlockJournal returns a new blockJournal for the given
 // directory. Any existing journal entries are read.
-func makeBserverTlfJournal(
+func makeBlockJournal(
 	codec Codec, crypto cryptoPure, dir string, lock *sync.RWMutex) (
-	*bserverTlfJournal, error) {
+	*blockJournal, error) {
 	journalPath := filepath.Join(dir, "block_journal")
 	j := makeDiskJournal(
 		codec, journalPath, reflect.TypeOf(bserverJournalEntry{}))
-	journal := &bserverTlfJournal{
+	journal := &blockJournal{
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
@@ -114,26 +114,26 @@ func makeBserverTlfJournal(
 
 // The functions below are for building various non-journal paths.
 
-func (j *bserverTlfJournal) blocksPath() string {
+func (j *blockJournal) blocksPath() string {
 	return filepath.Join(j.dir, "blocks")
 }
 
-func (j *bserverTlfJournal) blockPath(id BlockID) string {
+func (j *blockJournal) blockPath(id BlockID) string {
 	idStr := id.String()
 	return filepath.Join(j.blocksPath(), idStr[:4], idStr[4:])
 }
 
-func (j *bserverTlfJournal) blockDataPath(id BlockID) string {
+func (j *blockJournal) blockDataPath(id BlockID) string {
 	return filepath.Join(j.blockPath(id), "data")
 }
 
-func (j *bserverTlfJournal) keyServerHalfPath(id BlockID) string {
+func (j *blockJournal) keyServerHalfPath(id BlockID) string {
 	return filepath.Join(j.blockPath(id), "key_server_half")
 }
 
 // The functions below are for reading and writing journal entries.
 
-func (j *bserverTlfJournal) readJournalEntryLocked(o journalOrdinal) (
+func (j *blockJournal) readJournalEntryLocked(o journalOrdinal) (
 	bserverJournalEntry, error) {
 	entry, err := j.j.readJournalEntry(o)
 	if err != nil {
@@ -145,7 +145,7 @@ func (j *bserverTlfJournal) readJournalEntryLocked(o journalOrdinal) (
 
 // readJournalLocked reads the journal and returns a map of all the
 // block references in the journal.
-func (j *bserverTlfJournal) readJournalLocked() (
+func (j *blockJournal) readJournalLocked() (
 	map[BlockID]blockRefMap, error) {
 	refs := make(map[BlockID]blockRefMap)
 
@@ -199,12 +199,12 @@ func (j *bserverTlfJournal) readJournalLocked() (
 	return refs, nil
 }
 
-func (j *bserverTlfJournal) writeJournalEntryLocked(
+func (j *blockJournal) writeJournalEntryLocked(
 	o journalOrdinal, entry bserverJournalEntry) error {
 	return j.j.writeJournalEntry(o, entry)
 }
 
-func (j *bserverTlfJournal) appendJournalEntryLocked(
+func (j *blockJournal) appendJournalEntryLocked(
 	op bserverOpName, id BlockID, contexts []BlockContext) error {
 	return j.j.appendJournalEntry(nil, bserverJournalEntry{
 		Op:       op,
@@ -213,13 +213,13 @@ func (j *bserverTlfJournal) appendJournalEntryLocked(
 	})
 }
 
-func (j *bserverTlfJournal) length() (uint64, error) {
+func (j *blockJournal) length() (uint64, error) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
 	return j.j.length()
 }
 
-func (j *bserverTlfJournal) getRefEntryLocked(
+func (j *blockJournal) getRefEntryLocked(
 	id BlockID, refNonce BlockRefNonce) (blockRefEntry, error) {
 	refs := j.refs[id]
 	if refs == nil {
@@ -236,7 +236,7 @@ func (j *bserverTlfJournal) getRefEntryLocked(
 
 // getDataLocked verifies the block data for the given ID and context
 // and returns it.
-func (j *bserverTlfJournal) getDataLocked(id BlockID) (
+func (j *blockJournal) getDataLocked(id BlockID) (
 	[]byte, BlockCryptKeyServerHalf, error) {
 	data, err := ioutil.ReadFile(j.blockDataPath(id))
 	if os.IsNotExist(err) {
@@ -278,7 +278,7 @@ func (j *bserverTlfJournal) getDataLocked(id BlockID) (
 
 // getDataLocked verifies the block data for the given ID and context
 // and returns it.
-func (j *bserverTlfJournal) getDataWithContextLocked(
+func (j *blockJournal) getDataWithContextLocked(
 	id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
 	// Check arguments.
@@ -296,7 +296,7 @@ func (j *bserverTlfJournal) getDataWithContextLocked(
 	return j.getDataLocked(id)
 }
 
-func (j *bserverTlfJournal) putRefEntryLocked(
+func (j *blockJournal) putRefEntryLocked(
 	id BlockID, refEntry blockRefEntry) error {
 	existingRefEntry, err := j.getRefEntryLocked(
 		id, refEntry.Context.GetRefNonce())
@@ -327,22 +327,22 @@ func (j *bserverTlfJournal) putRefEntryLocked(
 
 // All functions below are public functions.
 
-var errBserverTlfJournalShutdown = errors.New("bserverTlfJournal is shutdown")
+var errBlockJournalShutdown = errors.New("blockJournal is shutdown")
 
-func (j *bserverTlfJournal) getData(id BlockID) (
+func (j *blockJournal) getData(id BlockID) (
 	[]byte, BlockCryptKeyServerHalf, error) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
 
 	if j.isShutdown {
 		return nil, BlockCryptKeyServerHalf{},
-			errBserverTlfJournalShutdown
+			errBlockJournalShutdown
 	}
 
 	return j.getDataLocked(id)
 }
 
-func (j *bserverTlfJournal) getDataWithContext(
+func (j *blockJournal) getDataWithContext(
 	id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
 	j.lock.RLock()
@@ -350,19 +350,19 @@ func (j *bserverTlfJournal) getDataWithContext(
 
 	if j.isShutdown {
 		return nil, BlockCryptKeyServerHalf{},
-			errBserverTlfJournalShutdown
+			errBlockJournalShutdown
 	}
 
 	return j.getDataWithContextLocked(id, context)
 }
 
-func (j *bserverTlfJournal) getAll() (
+func (j *blockJournal) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
 
 	if j.isShutdown {
-		return nil, errBserverTlfJournalShutdown
+		return nil, errBlockJournalShutdown
 	}
 
 	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
@@ -381,7 +381,7 @@ func (j *bserverTlfJournal) getAll() (
 	return res, nil
 }
 
-func (j *bserverTlfJournal) putData(
+func (j *blockJournal) putData(
 	id BlockID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
 	err := validateBlockServerPut(j.crypto, id, context, buf)
@@ -393,7 +393,7 @@ func (j *bserverTlfJournal) putData(
 	defer j.lock.Unlock()
 
 	if j.isShutdown {
-		return errBserverTlfJournalShutdown
+		return errBlockJournalShutdown
 	}
 
 	_, existingServerHalf, err := j.getDataWithContextLocked(id, context)
@@ -452,12 +452,12 @@ func (j *bserverTlfJournal) putData(
 		blockPutOp, id, []BlockContext{context})
 }
 
-func (j *bserverTlfJournal) addReference(id BlockID, context BlockContext) error {
+func (j *blockJournal) addReference(id BlockID, context BlockContext) error {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
 	if j.isShutdown {
-		return errBserverTlfJournalShutdown
+		return errBlockJournalShutdown
 	}
 
 	refs := j.refs[id]
@@ -497,14 +497,14 @@ func (j *bserverTlfJournal) addReference(id BlockID, context BlockContext) error
 		addRefOp, id, []BlockContext{context})
 }
 
-func (j *bserverTlfJournal) removeReferences(
+func (j *blockJournal) removeReferences(
 	id BlockID, contexts []BlockContext,
 	removeBlockIfNoReferences bool) (int, error) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
 	if j.isShutdown {
-		return 0, errBserverTlfJournalShutdown
+		return 0, errBlockJournalShutdown
 	}
 
 	refs := j.refs[id]
@@ -543,13 +543,13 @@ func (j *bserverTlfJournal) removeReferences(
 	return count, nil
 }
 
-func (j *bserverTlfJournal) archiveReferences(
+func (j *blockJournal) archiveReferences(
 	id BlockID, contexts []BlockContext) error {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
 	if j.isShutdown {
-		return errBserverTlfJournalShutdown
+		return errBlockJournalShutdown
 	}
 
 	for _, context := range contexts {
@@ -585,7 +585,7 @@ func (j *bserverTlfJournal) archiveReferences(
 	return j.appendJournalEntryLocked(archiveRefsOp, id, contexts)
 }
 
-func (j *bserverTlfJournal) shutdown() {
+func (j *blockJournal) shutdown() {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	j.isShutdown = true
@@ -601,14 +601,14 @@ func (j *bserverTlfJournal) shutdown() {
 	}
 }
 
-func (j *bserverTlfJournal) flushOne(
+func (j *blockJournal) flushOne(
 	ctx context.Context, bserver BlockServer, tlfID TlfID,
 	log logger.Logger) (bool, error) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
 	if j.isShutdown {
-		return false, errBserverTlfJournalShutdown
+		return false, errBlockJournalShutdown
 	}
 
 	earliestOrdinal, err := j.j.readEarliestOrdinal()

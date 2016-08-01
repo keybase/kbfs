@@ -14,13 +14,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getBlockJournalLength(t *testing.T, j *bserverTlfJournal) int {
+func getBlockJournalLength(t *testing.T, j *blockJournal) int {
 	len, err := j.length()
 	require.NoError(t, err)
 	return int(len)
 }
 
-func TestBserverTlfJournalBasic(t *testing.T) {
+func TestBlockJournalBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
@@ -34,7 +34,7 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBserverTlfJournal(codec, crypto, tempdir, &sync.RWMutex{})
+	j, err := makeBlockJournal(codec, crypto, tempdir, &sync.RWMutex{})
 	require.NoError(t, err)
 	defer j.shutdown()
 
@@ -76,7 +76,7 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 
 	// Shutdown and restart.
 	j.shutdown()
-	j, err = makeBserverTlfJournal(codec, crypto, tempdir, &sync.RWMutex{})
+	j, err = makeBlockJournal(codec, crypto, tempdir, &sync.RWMutex{})
 	require.NoError(t, err)
 
 	require.Equal(t, 2, getBlockJournalLength(t, j))
@@ -94,7 +94,7 @@ func TestBserverTlfJournalBasic(t *testing.T) {
 	require.Equal(t, serverHalf, key)
 }
 
-func TestBserverTlfJournalRemoveReferences(t *testing.T) {
+func TestBlockJournalRemoveReferences(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
@@ -108,7 +108,7 @@ func TestBserverTlfJournalRemoveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBserverTlfJournal(codec, crypto, tempdir, &sync.RWMutex{})
+	j, err := makeBlockJournal(codec, crypto, tempdir, &sync.RWMutex{})
 	require.NoError(t, err)
 	defer j.shutdown()
 
@@ -149,7 +149,7 @@ func TestBserverTlfJournalRemoveReferences(t *testing.T) {
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 }
 
-func TestBserverTlfJournalArchiveReferences(t *testing.T) {
+func TestBlockJournalArchiveReferences(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
@@ -163,7 +163,7 @@ func TestBserverTlfJournalArchiveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
-	j, err := makeBserverTlfJournal(codec, crypto, tempdir, &sync.RWMutex{})
+	j, err := makeBlockJournal(codec, crypto, tempdir, &sync.RWMutex{})
 	require.NoError(t, err)
 	defer j.shutdown()
 
