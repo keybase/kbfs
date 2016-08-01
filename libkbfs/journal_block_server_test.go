@@ -146,3 +146,57 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, map[BlockID]int{bID: 1}, liveCounts)
 }
+
+func TestJournalBlockServerArchiveBlockReferences(t *testing.T) {
+	// setup
+	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_block_server")
+	require.NoError(t, err)
+	defer func() {
+		err := os.RemoveAll(tempdir)
+		require.NoError(t, err)
+	}()
+
+	config := MakeTestConfigOrBust(t, "test_user")
+	defer CheckConfigAndShutdown(t, config)
+
+	log := config.MakeLogger("")
+	jServer := makeJournalServer(
+		config, log, tempdir, config.BlockServer(), config.MDOps())
+	config.SetBlockServer(jServer.blockServer())
+	config.SetMDOps(jServer.mdOps())
+
+	tlfID := FakeTlfID(2, false)
+	err = jServer.Enable(tlfID)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	blockServer := config.BlockServer()
+	crypto := config.Crypto()
+
+	uid1 := keybase1.MakeTestUID(1)
+	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
+	data := []byte{1, 2, 3, 4}
+	bID, err := crypto.MakePermanentBlockID(data)
+	require.NoError(t, err)
+
+	// Put a block.
+	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
+	err = blockServer.Put(ctx, bID, tlfID, bCtx, data, serverHalf)
+	require.NoError(t, err)
+
+	// Add a reference.
+	uid2 := keybase1.MakeTestUID(2)
+	nonce, err := crypto.MakeBlockRefNonce()
+	require.NoError(t, err)
+	bCtx2 := BlockContext{uid1, uid2, nonce}
+	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx2)
+
+	// Archive the references, including a non-existent one.
+	require.NoError(t, err)
+	err = blockServer.ArchiveBlockReferences(
+		ctx, tlfID, map[BlockID][]BlockContext{
+			bID: {bCtx, bCtx2},
+		})
+	require.NoError(t, err)
+}
