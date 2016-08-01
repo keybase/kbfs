@@ -538,9 +538,6 @@ func (j *bserverTlfJournal) removeReferences(
 		}
 	}
 
-	// TODO: Figure out what to do with live count when we have a
-	// real block server backend.
-
 	err := j.appendJournalEntryLocked(removeRefsOp, id, contexts)
 	if err != nil {
 		return 0, err
