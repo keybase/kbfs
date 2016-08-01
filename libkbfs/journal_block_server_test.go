@@ -14,6 +14,20 @@ import (
 	"golang.org/x/net/context"
 )
 
+func setupJournalBlockServerTest(t *testing.T) (tempdir string, config Config) {
+	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_block_server")
+	require.NoError(t, err)
+	config = MakeTestConfigOrBust(t, "test_user")
+	return tempdir, config
+}
+
+func teardownJournalBlockServerTest(
+	t *testing.T, tempdir string, config Config) {
+	err := os.RemoveAll(tempdir)
+	require.NoError(t, err)
+	CheckConfigAndShutdown(t, config)
+}
+
 type shutdownOnlyBlockServer struct{ BlockServer }
 
 func (shutdownOnlyBlockServer) Shutdown() {}
@@ -21,16 +35,8 @@ func (shutdownOnlyBlockServer) Shutdown() {}
 // Test that putting a block, getting it back, and adding a reference,
 // all work.
 func TestJournalBlockServerPutGetAddReference(t *testing.T) {
-	// setup
-	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_block_server")
-	require.NoError(t, err)
-	defer func() {
-		err := os.RemoveAll(tempdir)
-		require.NoError(t, err)
-	}()
-
-	config := MakeTestConfigOrBust(t, "test_user")
-	defer CheckConfigAndShutdown(t, config)
+	tempdir, config := setupJournalBlockServerTest(t)
+	defer teardownJournalBlockServerTest(t, tempdir, config)
 
 	// Use a shutdown-only BlockServer so that it errors if the
 	// journal tries to access it.
@@ -42,7 +48,7 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 	config.SetMDOps(jServer.mdOps())
 
 	tlfID := FakeTlfID(2, false)
-	err = jServer.Enable(tlfID)
+	err := jServer.Enable(tlfID)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -83,16 +89,8 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 }
 
 func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
-	// setup
-	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_block_server")
-	require.NoError(t, err)
-	defer func() {
-		err := os.RemoveAll(tempdir)
-		require.NoError(t, err)
-	}()
-
-	config := MakeTestConfigOrBust(t, "test_user")
-	defer CheckConfigAndShutdown(t, config)
+	tempdir, config := setupJournalBlockServerTest(t)
+	defer teardownJournalBlockServerTest(t, tempdir, config)
 
 	log := config.MakeLogger("")
 	jServer := makeJournalServer(
@@ -101,7 +99,7 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 	config.SetMDOps(jServer.mdOps())
 
 	tlfID := FakeTlfID(2, false)
-	err = jServer.Enable(tlfID)
+	err := jServer.Enable(tlfID)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -148,16 +146,8 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 }
 
 func TestJournalBlockServerArchiveBlockReferences(t *testing.T) {
-	// setup
-	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_block_server")
-	require.NoError(t, err)
-	defer func() {
-		err := os.RemoveAll(tempdir)
-		require.NoError(t, err)
-	}()
-
-	config := MakeTestConfigOrBust(t, "test_user")
-	defer CheckConfigAndShutdown(t, config)
+	tempdir, config := setupJournalBlockServerTest(t)
+	defer teardownJournalBlockServerTest(t, tempdir, config)
 
 	log := config.MakeLogger("")
 	jServer := makeJournalServer(
@@ -166,7 +156,7 @@ func TestJournalBlockServerArchiveBlockReferences(t *testing.T) {
 	config.SetMDOps(jServer.mdOps())
 
 	tlfID := FakeTlfID(2, false)
-	err = jServer.Enable(tlfID)
+	err := jServer.Enable(tlfID)
 	require.NoError(t, err)
 
 	ctx := context.Background()
