@@ -61,6 +61,7 @@ func (j journalBlockServer) RemoveBlockReferences(
 	_, ok := j.jServer.getBundle(tlfID)
 	bundle, ok := j.jServer.getBundle(tlfID)
 	if ok {
+		liveCounts = make(map[BlockID]int)
 		for id, idContexts := range contexts {
 			liveCount, err := bundle.blockJournal.removeReferences(
 				id, idContexts)
