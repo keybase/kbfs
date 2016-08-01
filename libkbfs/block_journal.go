@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sync"
 
 	"github.com/keybase/client/go/logger"
 	"golang.org/x/net/context"
@@ -49,17 +48,14 @@ import (
 // has data, which is the raw block data that should hash to the block
 // ID, and key_server_half, which contains the raw data for the
 // associated key server half.
+//
+// blockJournal is not goroutine-safe, so any code that uses it must
+// guarantee that only one goroutine at a time calls its functions.
 type blockJournal struct {
 	codec  Codec
 	crypto cryptoPure
 	dir    string
 
-	// Protects any IO operations in dir or any of its children,
-	// as well as j, refs, and isShutdown.
-	//
-	// TODO: Consider using https://github.com/pkg/singlefile
-	// instead.
-	lock       sync.RWMutex
 	j          diskJournal
 	refs       map[BlockID]blockRefMap
 	isShutdown bool
@@ -100,8 +96,6 @@ func makeBlockJournal(
 		j:      j,
 	}
 
-	journal.lock.Lock()
-	defer journal.lock.Unlock()
 	refs, err := journal.readJournalLocked()
 	if err != nil {
 		return nil, err
@@ -213,8 +207,6 @@ func (j *blockJournal) appendJournalEntryLocked(
 }
 
 func (j *blockJournal) length() (uint64, error) {
-	j.lock.RLock()
-	defer j.lock.RUnlock()
 	return j.j.length()
 }
 
@@ -330,9 +322,6 @@ var errBlockJournalShutdown = errors.New("blockJournal is shutdown")
 
 func (j *blockJournal) getData(id BlockID) (
 	[]byte, BlockCryptKeyServerHalf, error) {
-	j.lock.RLock()
-	defer j.lock.RUnlock()
-
 	if j.isShutdown {
 		return nil, BlockCryptKeyServerHalf{},
 			errBlockJournalShutdown
@@ -344,9 +333,6 @@ func (j *blockJournal) getData(id BlockID) (
 func (j *blockJournal) getDataWithContext(
 	id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
-	j.lock.RLock()
-	defer j.lock.RUnlock()
-
 	if j.isShutdown {
 		return nil, BlockCryptKeyServerHalf{},
 			errBlockJournalShutdown
@@ -357,9 +343,6 @@ func (j *blockJournal) getDataWithContext(
 
 func (j *blockJournal) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	j.lock.RLock()
-	defer j.lock.RUnlock()
-
 	if j.isShutdown {
 		return nil, errBlockJournalShutdown
 	}
@@ -387,9 +370,6 @@ func (j *blockJournal) putData(
 	if err != nil {
 		return err
 	}
-
-	j.lock.Lock()
-	defer j.lock.Unlock()
 
 	if j.isShutdown {
 		return errBlockJournalShutdown
@@ -452,9 +432,6 @@ func (j *blockJournal) putData(
 }
 
 func (j *blockJournal) addReference(id BlockID, context BlockContext) error {
-	j.lock.Lock()
-	defer j.lock.Unlock()
-
 	if j.isShutdown {
 		return errBlockJournalShutdown
 	}
@@ -499,9 +476,6 @@ func (j *blockJournal) addReference(id BlockID, context BlockContext) error {
 func (j *blockJournal) removeReferences(
 	id BlockID, contexts []BlockContext,
 	removeBlockIfNoReferences bool) (int, error) {
-	j.lock.Lock()
-	defer j.lock.Unlock()
-
 	if j.isShutdown {
 		return 0, errBlockJournalShutdown
 	}
@@ -544,9 +518,6 @@ func (j *blockJournal) removeReferences(
 
 func (j *blockJournal) archiveReferences(
 	id BlockID, contexts []BlockContext) error {
-	j.lock.Lock()
-	defer j.lock.Unlock()
-
 	if j.isShutdown {
 		return errBlockJournalShutdown
 	}
@@ -585,8 +556,6 @@ func (j *blockJournal) archiveReferences(
 }
 
 func (j *blockJournal) shutdown() {
-	j.lock.Lock()
-	defer j.lock.Unlock()
 	j.isShutdown = true
 
 	// Double-check the on-disk journal with the in-memory one.
@@ -603,9 +572,6 @@ func (j *blockJournal) shutdown() {
 func (j *blockJournal) flushOne(
 	ctx context.Context, bserver BlockServer, tlfID TlfID,
 	log logger.Logger) (bool, error) {
-	j.lock.Lock()
-	defer j.lock.Unlock()
-
 	if j.isShutdown {
 		return false, errBlockJournalShutdown
 	}
