@@ -18,8 +18,9 @@ type shutdownOnlyBlockServer struct{ BlockServer }
 
 func (shutdownOnlyBlockServer) Shutdown() {}
 
-// Test that putting a block, and getting it back, works.
-func TestJournalBlockServerPutAndGet(t *testing.T) {
+// Test that putting a block, getting it back, and adding a reference,
+// all work.
+func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 	// setup
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_block_server")
 	require.NoError(t, err)
