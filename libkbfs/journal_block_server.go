@@ -20,8 +20,13 @@ func (j journalBlockServer) Get(
 	if !ok {
 		return j.BlockServer.Get(ctx, id, tlfID, context)
 	}
-	data, serverHalf, err := bundle.blockJournal.getDataWithContext(
-		id, context)
+
+	data, serverHalf, err := func() (
+		[]byte, BlockCryptKeyServerHalf, error) {
+		bundle.lock.RLock()
+		defer bundle.lock.RUnlock()
+		return bundle.blockJournal.getDataWithContext(id, context)
+	}()
 	if _, ok := err.(BServerErrorBlockNonExistent); ok {
 		return j.BlockServer.Get(ctx, id, tlfID, context)
 	} else if err != nil {
@@ -36,6 +41,8 @@ func (j journalBlockServer) Put(
 	buf []byte, serverHalf BlockCryptKeyServerHalf) error {
 	bundle, ok := j.jServer.getBundle(tlfID)
 	if ok {
+		bundle.lock.Lock()
+		defer bundle.lock.Unlock()
 		return bundle.blockJournal.putData(
 			id, context, buf, serverHalf)
 	}
@@ -49,6 +56,8 @@ func (j journalBlockServer) AddBlockReference(
 	_, ok := j.jServer.getBundle(tlfID)
 	bundle, ok := j.jServer.getBundle(tlfID)
 	if ok {
+		bundle.lock.Lock()
+		defer bundle.lock.Unlock()
 		return bundle.blockJournal.addReference(id, context)
 	}
 
@@ -63,13 +72,22 @@ func (j journalBlockServer) RemoveBlockReferences(
 	bundle, ok := j.jServer.getBundle(tlfID)
 	if ok {
 		liveCounts = make(map[BlockID]int)
-		for id, idContexts := range contexts {
-			liveCount, err := bundle.blockJournal.removeReferences(
-				id, idContexts, false)
-			if err != nil {
-				return nil, err
+		err := func() error {
+			bundle.lock.Lock()
+			defer bundle.lock.Unlock()
+
+			for id, idContexts := range contexts {
+				liveCount, err := bundle.blockJournal.removeReferences(
+					id, idContexts, false)
+				if err != nil {
+					return err
+				}
+				liveCounts[id] = liveCount
 			}
-			liveCounts[id] = liveCount
+			return nil
+		}()
+		if err != nil {
+			return nil, err
 		}
 
 		serverCounts, err := j.BlockServer.RemoveBlockReferences(
@@ -93,6 +111,8 @@ func (j journalBlockServer) ArchiveBlockReferences(
 	_, ok := j.jServer.getBundle(tlfID)
 	bundle, ok := j.jServer.getBundle(tlfID)
 	if ok {
+		bundle.lock.Lock()
+		defer bundle.lock.Unlock()
 		for id, idContexts := range contexts {
 			err := bundle.blockJournal.archiveReferences(
 				id, idContexts)

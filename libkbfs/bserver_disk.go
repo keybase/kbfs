@@ -253,7 +253,11 @@ func (b *BlockServerDisk) Shutdown() {
 	}()
 
 	for _, s := range tlfStorage {
-		s.journal.shutdown()
+		func() {
+			s.lock.Lock()
+			defer s.lock.Unlock()
+			s.journal.shutdown()
+		}()
 	}
 
 	if b.shutdownFunc != nil {
