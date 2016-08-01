@@ -899,16 +899,13 @@ func UserInfoFromProtocol(upk keybase1.UserPlusKeys) (UserInfo, error) {
 		return UserInfo{}, err
 	}
 
-	revokedVerifyingKeys, revokedCryptPublicKeys, revokedKidNames, err :=
-		filterRevokedKeys(upk.RevokedDeviceKeys)
+	revokedVerifyingKeys, revokedCryptPublicKeys, revokedKidNames, err := filterRevokedKeys(upk.RevokedDeviceKeys)
 	if err != nil {
 		return UserInfo{}, err
 	}
 
-	if len(revokedKidNames) > 0 {
-		for k, v := range revokedKidNames {
-			kidNames[k] = v
-		}
+	for k, v := range revokedKidNames {
+		kidNames[k] = v
 	}
 
 	return UserInfo{
