@@ -140,7 +140,7 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 		if !flushed {
 			break
 		}
-		flushedMDEntries++
+		flushedBlockEntries++
 	}
 
 	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
