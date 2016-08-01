@@ -14,6 +14,10 @@ import (
 	"golang.org/x/net/context"
 )
 
+type shutdownOnlyBlockServer struct{ BlockServer }
+
+func (shutdownOnlyBlockServer) Shutdown() {}
+
 // Test that putting a block, and getting it back, works.
 func TestJournalBlockServerPutAndGet(t *testing.T) {
 	// setup
@@ -27,18 +31,24 @@ func TestJournalBlockServerPutAndGet(t *testing.T) {
 	config := MakeTestConfigOrBust(t, "test_user")
 	defer CheckConfigAndShutdown(t, config)
 
+	// Use a shutdown-only BlockServer so that it errors if the
+	// journal tries to access it.
+	config.SetBlockServer(shutdownOnlyBlockServer{})
 	log := config.MakeLogger("")
 	jServer := makeJournalServer(
 		config, log, tempdir, config.BlockServer(), config.MDOps())
 	config.SetBlockServer(jServer.blockServer())
 	config.SetMDOps(jServer.mdOps())
 
+	tlfID := FakeTlfID(2, false)
+	err = jServer.Enable(tlfID)
+	require.NoError(t, err)
+
 	ctx := context.Background()
 	blockServer := config.BlockServer()
 	crypto := config.Crypto()
 
 	uid1 := keybase1.MakeTestUID(1)
-	tlfID := FakeTlfID(2, false)
 	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
