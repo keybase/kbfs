@@ -298,4 +298,25 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
+
+	// Flush the reference archival.
+
+	flush()
+
+	buf, key, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx3)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
+
+	// Flush the last removal.
+
+	flush()
+
+	buf, key, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx3)
+	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+
+	flushed, err := bundle.blockJournal.flushOne(
+		ctx, oldBlockServer, tlfID, log)
+	require.NoError(t, err)
+	require.False(t, flushed)
 }
