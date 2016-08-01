@@ -251,30 +251,51 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	bundle, ok := jServer.getBundle(tlfID)
 	require.True(t, ok)
 
+	log := config.MakeLogger("")
+	flush := func() {
+		flushed, err := bundle.blockJournal.flushOne(
+			ctx, oldBlockServer, tlfID, log)
+		require.NoError(t, err)
+		require.True(t, flushed)
+	}
+
 	// Flush the block put.
 
-	log := config.MakeLogger("")
-	flushed, err := bundle.blockJournal.flushOne(
-		ctx, oldBlockServer, tlfID, log)
-	require.NoError(t, err)
-	require.True(t, flushed)
+	flush()
 
 	buf, key, err := oldBlockServer.Get(ctx, bID, tlfID, bCtx)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
 
-	// Flush the reference add.
+	// Flush the reference adds.
 
-	flushed, err = bundle.blockJournal.flushOne(
-		ctx, oldBlockServer, tlfID, log)
-	require.NoError(t, err)
-	require.True(t, flushed)
+	flush()
 
 	buf, key, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
 
-	// TODO: Flush everything else.
+	flush()
+
+	buf, key, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx3)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
+
+	// Flush the reference removals.
+
+	flush()
+
+	_, _, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx)
+	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+
+	_, _, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx2)
+	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+
+	buf, key, err = oldBlockServer.Get(ctx, bID, tlfID, bCtx3)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
 }
