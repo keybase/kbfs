@@ -91,6 +91,13 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 	tempdir, config, jServer := setupJournalBlockServerTest(t)
 	defer teardownJournalBlockServerTest(t, tempdir, config)
 
+	// Use a shutdown-only BlockServer so that it errors if the
+	// journal tries to access it.
+	//
+	// TODO: Remove this once we merge live counts with the
+	// server.
+	jServer.delegateBlockServer = shutdownOnlyBlockServer{}
+
 	tlfID := FakeTlfID(2, false)
 	err := jServer.Enable(tlfID)
 	require.NoError(t, err)
