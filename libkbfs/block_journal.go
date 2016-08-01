@@ -79,9 +79,9 @@ const (
 type bserverJournalEntry struct {
 	// Must be one of the four ops above.
 	Op bserverOpName
-	ID BlockID
-	// Must have exactly one entry for blockPutOp and addRefOp.
-	Contexts []BlockContext
+	// Must have exactly one entry with one context for blockPutOp
+	// and addRefOp.
+	Contexts map[BlockID][]BlockContext
 }
 
 // makeBlockJournal returns a new blockJournal for the given
@@ -165,34 +165,47 @@ func (j *blockJournal) readJournalLocked() (
 			return nil, err
 		}
 
-		blockRefs := refs[e.ID]
-		if blockRefs == nil {
-			blockRefs = make(blockRefMap)
-			refs[e.ID] = blockRefs
-		}
-
+		// Check parameters.
 		switch e.Op {
 		case blockPutOp, addRefOp:
 			if len(e.Contexts) != 1 {
 				return nil, fmt.Errorf(
-					"Op %s for id=%s doesn't have exactly one context: %v",
-					e.Op, e.ID, e.Contexts)
+					"Op %s doesn't have exactly one context: %v",
+					e.Op, e.Contexts)
+			}
+			for id, idContexts := range e.Contexts {
+				if len(idContexts) != 1 {
+					return nil, fmt.Errorf(
+						"Op %s doesn't have exactly one context for id=%s: %v",
+						e.Op, id, idContexts)
+				}
+			}
+		}
+
+		for id, idContexts := range e.Contexts {
+			blockRefs := refs[id]
+			if blockRefs == nil {
+				blockRefs = make(blockRefMap)
+				refs[id] = blockRefs
 			}
 
-			blockRefs.put(e.Contexts[0], liveBlockRef)
+			switch e.Op {
+			case blockPutOp, addRefOp:
+				blockRefs.put(idContexts[0], liveBlockRef)
 
-		case removeRefsOp:
-			for _, context := range e.Contexts {
-				delete(blockRefs, context.GetRefNonce())
+			case removeRefsOp:
+				for _, context := range idContexts {
+					delete(blockRefs, context.GetRefNonce())
+				}
+
+			case archiveRefsOp:
+				for _, context := range idContexts {
+					blockRefs.put(context, archivedBlockRef)
+				}
+
+			default:
+				return nil, fmt.Errorf("Unknown op %s", e.Op)
 			}
-
-		case archiveRefsOp:
-			for _, context := range e.Contexts {
-				blockRefs.put(context, archivedBlockRef)
-			}
-
-		default:
-			return nil, fmt.Errorf("Unknown op %s", e.Op)
 		}
 	}
 	return refs, nil
@@ -204,10 +217,9 @@ func (j *blockJournal) writeJournalEntryLocked(
 }
 
 func (j *blockJournal) appendJournalEntryLocked(
-	op bserverOpName, id BlockID, contexts []BlockContext) error {
+	op bserverOpName, contexts map[BlockID][]BlockContext) error {
 	return j.j.appendJournalEntry(nil, bserverJournalEntry{
 		Op:       op,
-		ID:       id,
 		Contexts: contexts,
 	})
 }
@@ -434,7 +446,7 @@ func (j *blockJournal) putData(
 	}
 
 	return j.appendJournalEntryLocked(
-		blockPutOp, id, []BlockContext{context})
+		blockPutOp, map[BlockID][]BlockContext{id: {context}})
 }
 
 func (j *blockJournal) addReference(id BlockID, context BlockContext) error {
@@ -476,89 +488,96 @@ func (j *blockJournal) addReference(id BlockID, context BlockContext) error {
 	}
 
 	return j.appendJournalEntryLocked(
-		addRefOp, id, []BlockContext{context})
+		addRefOp, map[BlockID][]BlockContext{id: {context}})
 }
 
 func (j *blockJournal) removeReferences(
-	id BlockID, contexts []BlockContext,
-	removeBlockIfNoReferences bool) (int, error) {
+	contexts map[BlockID][]BlockContext,
+	removeBlockIfNoReferences bool) (map[BlockID]int, error) {
 	if j.isShutdown {
-		return 0, errBlockJournalShutdown
+		return nil, errBlockJournalShutdown
 	}
 
-	refs := j.refs[id]
-	if refs == nil {
-		// This block is already gone; no error.
-		return 0, nil
-	}
+	liveCounts := make(map[BlockID]int)
 
-	for _, context := range contexts {
-		refNonce := context.GetRefNonce()
-		// If this check fails, this ref is already gone,
-		// which is not an error.
-		if refEntry, ok := refs[refNonce]; ok {
-			err := refEntry.checkContext(context)
-			if err != nil {
-				return 0, err
+	for id, idContexts := range contexts {
+		refs := j.refs[id]
+		if refs == nil {
+			// This block is already gone; no error.
+			return nil, nil
+		}
+
+		for _, context := range idContexts {
+			refNonce := context.GetRefNonce()
+			// If this check fails, this ref is already gone,
+			// which is not an error.
+			if refEntry, ok := refs[refNonce]; ok {
+				err := refEntry.checkContext(context)
+				if err != nil {
+					return nil, err
+				}
+
+				delete(refs, refNonce)
 			}
-
-			delete(refs, refNonce)
 		}
+
+		count := len(refs)
+		if count == 0 && removeBlockIfNoReferences {
+			err := os.RemoveAll(j.blockPath(id))
+			if err != nil {
+				return nil, err
+			}
+		}
+		liveCounts[id] = count
 	}
 
-	count := len(refs)
-	if count == 0 && removeBlockIfNoReferences {
-		err := os.RemoveAll(j.blockPath(id))
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	err := j.appendJournalEntryLocked(removeRefsOp, id, contexts)
+	err := j.appendJournalEntryLocked(removeRefsOp, contexts)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	return count, nil
+	return liveCounts, nil
 }
 
 func (j *blockJournal) archiveReferences(
-	id BlockID, contexts []BlockContext) error {
+	contexts map[BlockID][]BlockContext) error {
 	if j.isShutdown {
 		return errBlockJournalShutdown
 	}
 
-	for _, context := range contexts {
-		refNonce := context.GetRefNonce()
-		refEntry, err := j.getRefEntryLocked(id, refNonce)
-		switch err.(type) {
-		case BServerErrorBlockNonExistent:
-			return BServerErrorBlockNonExistent{
-				fmt.Sprintf(
-					"Block ID %s (ref %s) doesn't "+
-						"exist and cannot be archived.",
-					id, refNonce),
+	for id, idContexts := range contexts {
+		for _, context := range idContexts {
+			refNonce := context.GetRefNonce()
+			refEntry, err := j.getRefEntryLocked(id, refNonce)
+			switch err.(type) {
+			case BServerErrorBlockNonExistent:
+				return BServerErrorBlockNonExistent{
+					fmt.Sprintf(
+						"Block ID %s (ref %s) doesn't "+
+							"exist and cannot be archived.",
+						id, refNonce),
+				}
+			case nil:
+				break
+
+			default:
+				return err
 			}
-		case nil:
-			break
 
-		default:
-			return err
-		}
+			err = refEntry.checkContext(context)
+			if err != nil {
+				return err
+			}
 
-		err = refEntry.checkContext(context)
-		if err != nil {
-			return err
-		}
-
-		refEntry.Status = archivedBlockRef
-		err = j.putRefEntryLocked(id, refEntry)
-		if err != nil {
-			return err
+			refEntry.Status = archivedBlockRef
+			err = j.putRefEntryLocked(id, refEntry)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	return j.appendJournalEntryLocked(archiveRefsOp, id, contexts)
+	return j.appendJournalEntryLocked(archiveRefsOp, contexts)
 }
 
 func (j *blockJournal) shutdown() {
@@ -595,54 +614,55 @@ func (j *blockJournal) flushOne(
 
 	j.log.Debug("Flushing block op %v", e)
 
+	// Check parameters.
 	switch e.Op {
-	case blockPutOp:
+	case blockPutOp, addRefOp:
 		if len(e.Contexts) != 1 {
 			return false, fmt.Errorf(
-				"Op %s for id=%s doesn't have exactly one context: %v",
-				e.Op, e.ID, e.Contexts)
+				"Op %s doesn't have exactly one context: %v",
+				e.Op, e.Contexts)
 		}
-
-		data, serverHalf, err := j.getDataLocked(e.ID)
-		if err != nil {
-			return false, err
+		for id, idContexts := range e.Contexts {
+			if len(idContexts) != 1 {
+				return false, fmt.Errorf(
+					"Op %s doesn't have exactly one context for id=%s: %v",
+					e.Op, id, idContexts)
+			}
 		}
+	}
 
-		err = bserver.Put(ctx, tlfID, e.ID,
-			e.Contexts[0], data, serverHalf)
-		if err != nil {
-			return false, err
+	switch e.Op {
+	case blockPutOp:
+		for id, idContexts := range e.Contexts {
+			data, serverHalf, err := j.getDataLocked(id)
+			if err != nil {
+				return false, err
+			}
+
+			err = bserver.Put(ctx, tlfID, id,
+				idContexts[0], data, serverHalf)
+			if err != nil {
+				return false, err
+			}
 		}
 
 	case addRefOp:
-		if len(e.Contexts) != 1 {
-			return false, fmt.Errorf(
-				"Op %s for id=%s doesn't have exactly one context: %v",
-				e.Op, e.ID, e.Contexts)
-		}
-
-		bContext := e.Contexts[0]
-		err = bserver.AddBlockReference(ctx, tlfID, e.ID, bContext)
-		if err != nil {
-			return false, err
+		for id, idContexts := range e.Contexts {
+			bContext := idContexts[0]
+			err = bserver.AddBlockReference(ctx, tlfID, id, bContext)
+			if err != nil {
+				return false, err
+			}
 		}
 
 	case removeRefsOp:
-		// TODO: Combine multiple remove refs.
-		_, err = bserver.RemoveBlockReferences(
-			ctx, tlfID, map[BlockID][]BlockContext{
-				e.ID: e.Contexts,
-			})
+		_, err = bserver.RemoveBlockReferences(ctx, tlfID, e.Contexts)
 		if err != nil {
 			return false, err
 		}
 
 	case archiveRefsOp:
-		// TODO: Combine multiple archive refs.
-		err = bserver.ArchiveBlockReferences(
-			ctx, tlfID, map[BlockID][]BlockContext{
-				e.ID: e.Contexts,
-			})
+		err = bserver.ArchiveBlockReferences(ctx, tlfID, e.Contexts)
 		if err != nil {
 			return false, err
 		}

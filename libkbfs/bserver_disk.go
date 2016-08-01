@@ -190,16 +190,7 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 
 	tlfStorage.lock.Lock()
 	defer tlfStorage.lock.Unlock()
-	liveCounts = make(map[BlockID]int)
-	for id, idContexts := range contexts {
-		count, err := tlfStorage.journal.removeReferences(
-			id, idContexts, true)
-		if err != nil {
-			return nil, err
-		}
-		liveCounts[id] = count
-	}
-	return liveCounts, nil
+	return tlfStorage.journal.removeReferences(contexts, true)
 }
 
 // ArchiveBlockReferences implements the BlockServer interface for
@@ -215,14 +206,7 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 
 	tlfStorage.lock.Lock()
 	defer tlfStorage.lock.Unlock()
-	for id, idContexts := range contexts {
-		err := tlfStorage.journal.archiveReferences(id, idContexts)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return tlfStorage.journal.archiveReferences(contexts)
 }
 
 // getAll returns all the known block references, and should only be

@@ -139,10 +139,10 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
 	// Remove references.
-	liveCount, err := j.removeReferences(
-		bID, []BlockContext{bCtx, bCtx2}, true)
+	liveCounts, err := j.removeReferences(
+		map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, true)
 	require.NoError(t, err)
-	require.Equal(t, 0, liveCount)
+	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 
 	// Add reference back, which should error.
@@ -195,7 +195,8 @@ func TestBlockJournalArchiveReferences(t *testing.T) {
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
 	// Archive references.
-	err = j.archiveReferences(bID, []BlockContext{bCtx, bCtx2})
+	err = j.archiveReferences(
+		map[BlockID][]BlockContext{bID: {bCtx, bCtx2}})
 	require.NoError(t, err)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 

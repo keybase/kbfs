@@ -71,34 +71,18 @@ func (j journalBlockServer) RemoveBlockReferences(
 	_, ok := j.jServer.getBundle(tlfID)
 	bundle, ok := j.jServer.getBundle(tlfID)
 	if ok {
-		liveCounts = make(map[BlockID]int)
-		err := func() error {
+		liveCounts, err := func() (map[BlockID]int, error) {
 			bundle.lock.Lock()
 			defer bundle.lock.Unlock()
-
-			for id, idContexts := range contexts {
-				liveCount, err := bundle.blockJournal.removeReferences(
-					id, idContexts, false)
-				if err != nil {
-					return err
-				}
-				liveCounts[id] = liveCount
-			}
-			return nil
+			return bundle.blockJournal.removeReferences(
+				contexts, false)
 		}()
 		if err != nil {
 			return nil, err
 		}
 
-		serverCounts, err := j.BlockServer.RemoveBlockReferences(
-			ctx, tlfID, contexts)
-		if err != nil {
-			return nil, err
-		}
-
-		for id, serverCount := range serverCounts {
-			liveCounts[id] += serverCount
-		}
+		// TODO: Get server counts without making a
+		// RemoveBlockReferences call and merge it.
 		return liveCounts, nil
 	}
 
@@ -113,14 +97,7 @@ func (j journalBlockServer) ArchiveBlockReferences(
 	if ok {
 		bundle.lock.Lock()
 		defer bundle.lock.Unlock()
-		for id, idContexts := range contexts {
-			err := bundle.blockJournal.archiveReferences(
-				id, idContexts)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		return bundle.blockJournal.archiveReferences(contexts)
 	}
 
 	return j.BlockServer.ArchiveBlockReferences(ctx, tlfID, contexts)
