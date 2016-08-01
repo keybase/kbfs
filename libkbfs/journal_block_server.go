@@ -80,6 +80,7 @@ func (j journalBlockServer) RemoveBlockReferences(
 		for id, serverCount := range serverCounts {
 			liveCounts[id] += serverCount
 		}
+		return liveCounts, nil
 	}
 
 	return j.BlockServer.RemoveBlockReferences(ctx, tlfID, contexts)
