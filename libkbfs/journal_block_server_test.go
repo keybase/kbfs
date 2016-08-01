@@ -123,22 +123,29 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 	err = blockServer.Put(ctx, bID, tlfID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 
-	// Add a reference.
+	// Add some references.
 	uid2 := keybase1.MakeTestUID(2)
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
 	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx2)
-	require.NoError(t, err)
 
-	// Remove the references, including a non-existent one.
+	require.NoError(t, err)
 	nonce2, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx3 := BlockContext{uid1, uid2, nonce2}
+	err = blockServer.AddBlockReference(ctx, bID, tlfID, bCtx3)
+	require.NoError(t, err)
+
+	// Remove the references, including a non-existent one, but
+	// leave one.
+	nonce3, err := crypto.MakeBlockRefNonce()
+	require.NoError(t, err)
+	bCtx4 := BlockContext{uid1, uid2, nonce3}
 	liveCounts, err := blockServer.RemoveBlockReferences(
 		ctx, tlfID, map[BlockID][]BlockContext{
-			bID: {bCtx, bCtx2, bCtx3},
+			bID: {bCtx, bCtx2, bCtx4},
 		})
 	require.NoError(t, err)
-	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
+	require.Equal(t, map[BlockID]int{bID: 1}, liveCounts)
 }
