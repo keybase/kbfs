@@ -128,12 +128,8 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	// TODO: Parallelize block puts.
 
 	for {
-		flushed, err := func() (bool, error) {
-			bundle.lock.Lock()
-			defer bundle.lock.Unlock()
-			return bundle.blockJournal.flushOne(
-				ctx, j.config.BlockServer(), tlfID, j.log)
-		}()
+		flushed, err := bundle.blockJournal.flushOne(
+			ctx, j.config.BlockServer(), tlfID, j.log)
 		if err != nil {
 			return err
 		}
