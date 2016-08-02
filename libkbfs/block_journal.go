@@ -265,7 +265,7 @@ func (j *blockJournal) getRefEntry(
 	return e, nil
 }
 
-func (j *blockJournal) putRefEntryLocked(
+func (j *blockJournal) putRefEntry(
 	id BlockID, refEntry blockRefEntry) error {
 	existingRefEntry, err := j.getRefEntry(
 		id, refEntry.Context.GetRefNonce())
@@ -442,7 +442,7 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	err = j.putRefEntryLocked(id, blockRefEntry{
+	err = j.putRefEntry(id, blockRefEntry{
 		Status:  liveBlockRef,
 		Context: context,
 	})
@@ -484,7 +484,7 @@ func (j *blockJournal) addReference(id BlockID, context BlockContext) error {
 	// no references at all. Also figure out what to do with an
 	// addReference without a preceding Put.
 
-	err := j.putRefEntryLocked(id, blockRefEntry{
+	err := j.putRefEntry(id, blockRefEntry{
 		Status:  liveBlockRef,
 		Context: context,
 	})
@@ -575,7 +575,7 @@ func (j *blockJournal) archiveReferences(
 			}
 
 			refEntry.Status = archivedBlockRef
-			err = j.putRefEntryLocked(id, refEntry)
+			err = j.putRefEntry(id, refEntry)
 			if err != nil {
 				return err
 			}
