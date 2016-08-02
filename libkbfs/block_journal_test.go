@@ -24,7 +24,7 @@ func TestBlockJournalBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
-	tempdir, err := ioutil.TempDir(os.TempDir(), "bserver_tlf_journal")
+	tempdir, err := ioutil.TempDir(os.TempDir(), "block_journal")
 	require.NoError(t, err)
 	defer func() {
 		err := os.RemoveAll(tempdir)
