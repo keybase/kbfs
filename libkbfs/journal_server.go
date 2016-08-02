@@ -201,13 +201,22 @@ func (j *JournalServer) Disable(tlfID TlfID) (err error) {
 
 	bundle.lock.RLock()
 	defer bundle.lock.RUnlock()
-	length, err := bundle.mdJournal.length()
+	length, err := bundle.blockJournal.length()
 	if err != nil {
 		return err
 	}
 
 	if length != 0 {
-		return fmt.Errorf("Journal still has %d entries", length)
+		return fmt.Errorf("Journal still has %d block entries", length)
+	}
+
+	length, err = bundle.mdJournal.length()
+	if err != nil {
+		return err
+	}
+
+	if length != 0 {
+		return fmt.Errorf("Journal still has %d MD entries", length)
 	}
 
 	j.log.Debug("Disabled journal for %s", tlfID)
