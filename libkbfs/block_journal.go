@@ -581,20 +581,6 @@ func (j *blockJournal) archiveReferences(
 	return j.appendJournalEntry(archiveRefsOp, contexts)
 }
 
-func (j *blockJournal) shutdown() {
-	j.isShutdown = true
-
-	// Double-check the on-disk journal with the in-memory one.
-	refs, err := j.readJournal()
-	if err != nil {
-		panic(err)
-	}
-
-	if !reflect.DeepEqual(refs, j.refs) {
-		panic(fmt.Sprintf("refs = %v != j.refs = %v", refs, j.refs))
-	}
-}
-
 func (j *blockJournal) flushOne(
 	ctx context.Context, bserver BlockServer, tlfID TlfID) (bool, error) {
 	if j.isShutdown {
@@ -665,4 +651,18 @@ func (j *blockJournal) flushOne(
 	}
 
 	return true, nil
+}
+
+func (j *blockJournal) shutdown() {
+	j.isShutdown = true
+
+	// Double-check the on-disk journal with the in-memory one.
+	refs, err := j.readJournal()
+	if err != nil {
+		panic(err)
+	}
+
+	if !reflect.DeepEqual(refs, j.refs) {
+		panic(fmt.Sprintf("refs = %v != j.refs = %v", refs, j.refs))
+	}
 }
