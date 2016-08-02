@@ -265,68 +265,6 @@ func (j *blockJournal) getRefEntry(
 	return e, nil
 }
 
-// getDataLocked verifies the block data for the given ID and context
-// and returns it.
-func (j *blockJournal) getDataLocked(id BlockID) (
-	[]byte, BlockCryptKeyServerHalf, error) {
-	data, err := ioutil.ReadFile(j.blockDataPath(id))
-	if os.IsNotExist(err) {
-		return nil, BlockCryptKeyServerHalf{},
-			BServerErrorBlockNonExistent{}
-	} else if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	keyServerHalfPath := j.keyServerHalfPath(id)
-	buf, err := ioutil.ReadFile(keyServerHalfPath)
-	if os.IsNotExist(err) {
-		return nil, BlockCryptKeyServerHalf{},
-			BServerErrorBlockNonExistent{}
-	} else if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	// Check integrity.
-
-	dataID, err := j.crypto.MakePermanentBlockID(data)
-	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	if id != dataID {
-		return nil, BlockCryptKeyServerHalf{}, fmt.Errorf(
-			"Block ID mismatch: expected %s, got %s", id, dataID)
-	}
-
-	var serverHalf BlockCryptKeyServerHalf
-	err = serverHalf.UnmarshalBinary(buf)
-	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	return data, serverHalf, nil
-}
-
-// getDataLocked verifies the block data for the given ID and context
-// and returns it.
-func (j *blockJournal) getDataWithContextLocked(
-	id BlockID, context BlockContext) (
-	[]byte, BlockCryptKeyServerHalf, error) {
-	// Check arguments.
-
-	refEntry, err := j.getRefEntry(id, context.GetRefNonce())
-	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	err = refEntry.checkContext(context)
-	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	return j.getDataLocked(id)
-}
-
 func (j *blockJournal) putRefEntryLocked(
 	id BlockID, refEntry blockRefEntry) error {
 	existingRefEntry, err := j.getRefEntry(
@@ -367,7 +305,42 @@ func (j *blockJournal) getData(id BlockID) (
 			errBlockJournalShutdown
 	}
 
-	return j.getDataLocked(id)
+	data, err := ioutil.ReadFile(j.blockDataPath(id))
+	if os.IsNotExist(err) {
+		return nil, BlockCryptKeyServerHalf{},
+			BServerErrorBlockNonExistent{}
+	} else if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	keyServerHalfPath := j.keyServerHalfPath(id)
+	buf, err := ioutil.ReadFile(keyServerHalfPath)
+	if os.IsNotExist(err) {
+		return nil, BlockCryptKeyServerHalf{},
+			BServerErrorBlockNonExistent{}
+	} else if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	// Check integrity.
+
+	dataID, err := j.crypto.MakePermanentBlockID(data)
+	if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	if id != dataID {
+		return nil, BlockCryptKeyServerHalf{}, fmt.Errorf(
+			"Block ID mismatch: expected %s, got %s", id, dataID)
+	}
+
+	var serverHalf BlockCryptKeyServerHalf
+	err = serverHalf.UnmarshalBinary(buf)
+	if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	return data, serverHalf, nil
 }
 
 func (j *blockJournal) getDataWithContext(
@@ -378,7 +351,17 @@ func (j *blockJournal) getDataWithContext(
 			errBlockJournalShutdown
 	}
 
-	return j.getDataWithContextLocked(id, context)
+	refEntry, err := j.getRefEntry(id, context.GetRefNonce())
+	if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	err = refEntry.checkContext(context)
+	if err != nil {
+		return nil, BlockCryptKeyServerHalf{}, err
+	}
+
+	return j.getData(id)
 }
 
 func (j *blockJournal) getAll() (
@@ -415,7 +398,7 @@ func (j *blockJournal) putData(
 		return errBlockJournalShutdown
 	}
 
-	_, existingServerHalf, err := j.getDataWithContextLocked(id, context)
+	_, existingServerHalf, err := j.getDataWithContext(id, context)
 	var exists bool
 	switch err.(type) {
 	case BServerErrorBlockNonExistent:
@@ -643,7 +626,7 @@ func (j *blockJournal) flushOne(
 			return false, err
 		}
 
-		data, serverHalf, err := j.getDataLocked(id)
+		data, serverHalf, err := j.getData(id)
 		if err != nil {
 			return false, err
 		}
