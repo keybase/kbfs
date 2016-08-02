@@ -83,6 +83,7 @@ func (j journalBlockServer) RemoveBlockReferences(
 
 		// TODO: Get server counts without making a
 		// RemoveBlockReferences call and merge it.
+
 		return liveCounts, nil
 	}
 

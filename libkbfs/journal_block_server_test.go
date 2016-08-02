@@ -209,6 +209,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	require.NoError(t, err)
 
 	// Put a block.
+
 	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 	err = blockServer.Put(ctx, tlfID, bID, bCtx, data, serverHalf)
@@ -230,6 +231,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	require.NoError(t, err)
 
 	// Remove some references.
+
 	liveCounts, err := blockServer.RemoveBlockReferences(
 		ctx, tlfID, map[BlockID][]BlockContext{
 			bID: {bCtx, bCtx2},
@@ -238,6 +240,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	require.Equal(t, map[BlockID]int{bID: 1}, liveCounts)
 
 	// Archive the rest.
+
 	require.NoError(t, err)
 	err = blockServer.ArchiveBlockReferences(
 		ctx, tlfID, map[BlockID][]BlockContext{
@@ -246,6 +249,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	require.NoError(t, err)
 
 	// Then remove them.
+
 	require.NoError(t, err)
 	liveCounts, err = blockServer.RemoveBlockReferences(
 		ctx, tlfID, map[BlockID][]BlockContext{
