@@ -102,7 +102,7 @@ func makeBlockJournal(
 		j:        j,
 	}
 
-	refs, err := journal.readJournalLocked()
+	refs, err := journal.readJournal()
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (j *blockJournal) keyServerHalfPath(id BlockID) string {
 
 // The functions below are for reading and writing journal entries.
 
-func (j *blockJournal) readJournalEntryLocked(o journalOrdinal) (
+func (j *blockJournal) readJournalEntry(o journalOrdinal) (
 	bserverJournalEntry, error) {
 	entry, err := j.j.readJournalEntry(o)
 	if err != nil {
@@ -142,9 +142,9 @@ func (j *blockJournal) readJournalEntryLocked(o journalOrdinal) (
 	return entry.(bserverJournalEntry), nil
 }
 
-// readJournalLocked reads the journal and returns a map of all the
-// block references in the journal.
-func (j *blockJournal) readJournalLocked() (
+// readJournal reads the journal and returns a map of all the block
+// references in the journal.
+func (j *blockJournal) readJournal() (
 	map[BlockID]blockRefMap, error) {
 	refs := make(map[BlockID]blockRefMap)
 
@@ -160,7 +160,7 @@ func (j *blockJournal) readJournalLocked() (
 	}
 
 	for i := first; i <= last; i++ {
-		e, err := j.readJournalEntryLocked(i)
+		e, err := j.readJournalEntry(i)
 		if err != nil {
 			return nil, err
 		}
@@ -211,12 +211,12 @@ func (j *blockJournal) readJournalLocked() (
 	return refs, nil
 }
 
-func (j *blockJournal) writeJournalEntryLocked(
+func (j *blockJournal) writeJournalEntry(
 	o journalOrdinal, entry bserverJournalEntry) error {
 	return j.j.writeJournalEntry(o, entry)
 }
 
-func (j *blockJournal) appendJournalEntryLocked(
+func (j *blockJournal) appendJournalEntry(
 	op bserverOpName, contexts map[BlockID][]BlockContext) error {
 	return j.j.appendJournalEntry(nil, bserverJournalEntry{
 		Op:       op,
@@ -228,7 +228,7 @@ func (j *blockJournal) length() (uint64, error) {
 	return j.j.length()
 }
 
-func (j *blockJournal) getRefEntryLocked(
+func (j *blockJournal) getRefEntry(
 	id BlockID, refNonce BlockRefNonce) (blockRefEntry, error) {
 	refs := j.refs[id]
 	if refs == nil {
@@ -292,7 +292,7 @@ func (j *blockJournal) getDataWithContextLocked(
 	[]byte, BlockCryptKeyServerHalf, error) {
 	// Check arguments.
 
-	refEntry, err := j.getRefEntryLocked(id, context.GetRefNonce())
+	refEntry, err := j.getRefEntry(id, context.GetRefNonce())
 	if err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
@@ -307,7 +307,7 @@ func (j *blockJournal) getDataWithContextLocked(
 
 func (j *blockJournal) putRefEntryLocked(
 	id BlockID, refEntry blockRefEntry) error {
-	existingRefEntry, err := j.getRefEntryLocked(
+	existingRefEntry, err := j.getRefEntry(
 		id, refEntry.Context.GetRefNonce())
 	var exists bool
 	switch err.(type) {
@@ -445,7 +445,7 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	return j.appendJournalEntryLocked(
+	return j.appendJournalEntry(
 		blockPutOp, map[BlockID][]BlockContext{id: {context}})
 }
 
@@ -487,7 +487,7 @@ func (j *blockJournal) addReference(id BlockID, context BlockContext) error {
 		return err
 	}
 
-	return j.appendJournalEntryLocked(
+	return j.appendJournalEntry(
 		addRefOp, map[BlockID][]BlockContext{id: {context}})
 }
 
@@ -531,7 +531,7 @@ func (j *blockJournal) removeReferences(
 		liveCounts[id] = count
 	}
 
-	err := j.appendJournalEntryLocked(removeRefsOp, contexts)
+	err := j.appendJournalEntry(removeRefsOp, contexts)
 	if err != nil {
 		return nil, err
 	}
@@ -548,7 +548,7 @@ func (j *blockJournal) archiveReferences(
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
 			refNonce := context.GetRefNonce()
-			refEntry, err := j.getRefEntryLocked(id, refNonce)
+			refEntry, err := j.getRefEntry(id, refNonce)
 			switch err.(type) {
 			case BServerErrorBlockNonExistent:
 				return BServerErrorBlockNonExistent{
@@ -577,14 +577,14 @@ func (j *blockJournal) archiveReferences(
 		}
 	}
 
-	return j.appendJournalEntryLocked(archiveRefsOp, contexts)
+	return j.appendJournalEntry(archiveRefsOp, contexts)
 }
 
 func (j *blockJournal) shutdown() {
 	j.isShutdown = true
 
 	// Double-check the on-disk journal with the in-memory one.
-	refs, err := j.readJournalLocked()
+	refs, err := j.readJournal()
 	if err != nil {
 		panic(err)
 	}
@@ -607,7 +607,7 @@ func (j *blockJournal) flushOne(
 		return false, err
 	}
 
-	e, err := j.readJournalEntryLocked(earliestOrdinal)
+	e, err := j.readJournalEntry(earliestOrdinal)
 	if err != nil {
 		return false, err
 	}
