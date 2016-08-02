@@ -99,7 +99,7 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
-	tempdir, err := ioutil.TempDir(os.TempDir(), "bserver_tlf_storage")
+	tempdir, err := ioutil.TempDir(os.TempDir(), "block_journal")
 	require.NoError(t, err)
 	defer func() {
 		err := os.RemoveAll(tempdir)
@@ -155,7 +155,7 @@ func TestBlockJournalArchiveReferences(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
-	tempdir, err := ioutil.TempDir(os.TempDir(), "bserver_tlf_storage")
+	tempdir, err := ioutil.TempDir(os.TempDir(), "block_journal")
 	require.NoError(t, err)
 	defer func() {
 		err := os.RemoveAll(tempdir)
