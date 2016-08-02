@@ -84,6 +84,30 @@ type bserverJournalEntry struct {
 	Contexts map[BlockID][]BlockContext
 }
 
+func (e bserverJournalEntry) getSingleContext() (
+	BlockID, BlockContext, error) {
+	// Check parameters.
+	switch e.Op {
+	case blockPutOp, addRefOp:
+		if len(e.Contexts) != 1 {
+			return BlockID{}, BlockContext{}, fmt.Errorf(
+				"Op %s doesn't have exactly one context: %v",
+				e.Op, e.Contexts)
+		}
+		for id, idContexts := range e.Contexts {
+			if len(idContexts) != 1 {
+				return BlockID{}, BlockContext{}, fmt.Errorf(
+					"Op %s doesn't have exactly one context for id=%s: %v",
+					e.Op, id, idContexts)
+			}
+			return id, idContexts[0], nil
+		}
+	}
+
+	return BlockID{}, BlockContext{}, fmt.Errorf(
+		"getSingleContext() erroneously called on op %s", e.Op)
+}
+
 // makeBlockJournal returns a new blockJournal for the given
 // directory. Any existing journal entries are read.
 func makeBlockJournal(
@@ -165,21 +189,22 @@ func (j *blockJournal) readJournal() (
 			return nil, err
 		}
 
-		// Check parameters.
+		// Handle single ops separately.
 		switch e.Op {
 		case blockPutOp, addRefOp:
-			if len(e.Contexts) != 1 {
-				return nil, fmt.Errorf(
-					"Op %s doesn't have exactly one context: %v",
-					e.Op, e.Contexts)
+			id, context, err := e.getSingleContext()
+			if err != nil {
+				return nil, err
 			}
-			for id, idContexts := range e.Contexts {
-				if len(idContexts) != 1 {
-					return nil, fmt.Errorf(
-						"Op %s doesn't have exactly one context for id=%s: %v",
-						e.Op, id, idContexts)
-				}
+
+			blockRefs := refs[id]
+			if blockRefs == nil {
+				blockRefs = make(blockRefMap)
+				refs[id] = blockRefs
 			}
+
+			blockRefs.put(context, liveBlockRef)
+			continue
 		}
 
 		for id, idContexts := range e.Contexts {
@@ -190,9 +215,6 @@ func (j *blockJournal) readJournal() (
 			}
 
 			switch e.Op {
-			case blockPutOp, addRefOp:
-				blockRefs.put(idContexts[0], liveBlockRef)
-
 			case removeRefsOp:
 				for _, context := range idContexts {
 					delete(blockRefs, context.GetRefNonce())
@@ -614,45 +636,32 @@ func (j *blockJournal) flushOne(
 
 	j.log.Debug("Flushing block op %v", e)
 
-	// Check parameters.
-	switch e.Op {
-	case blockPutOp, addRefOp:
-		if len(e.Contexts) != 1 {
-			return false, fmt.Errorf(
-				"Op %s doesn't have exactly one context: %v",
-				e.Op, e.Contexts)
-		}
-		for id, idContexts := range e.Contexts {
-			if len(idContexts) != 1 {
-				return false, fmt.Errorf(
-					"Op %s doesn't have exactly one context for id=%s: %v",
-					e.Op, id, idContexts)
-			}
-		}
-	}
-
 	switch e.Op {
 	case blockPutOp:
-		for id, idContexts := range e.Contexts {
-			data, serverHalf, err := j.getDataLocked(id)
-			if err != nil {
-				return false, err
-			}
+		id, context, err := e.getSingleContext()
+		if err != nil {
+			return false, err
+		}
 
-			err = bserver.Put(ctx, tlfID, id,
-				idContexts[0], data, serverHalf)
-			if err != nil {
-				return false, err
-			}
+		data, serverHalf, err := j.getDataLocked(id)
+		if err != nil {
+			return false, err
+		}
+
+		err = bserver.Put(ctx, tlfID, id, context, data, serverHalf)
+		if err != nil {
+			return false, err
 		}
 
 	case addRefOp:
-		for id, idContexts := range e.Contexts {
-			bContext := idContexts[0]
-			err = bserver.AddBlockReference(ctx, tlfID, id, bContext)
-			if err != nil {
-				return false, err
-			}
+		id, context, err := e.getSingleContext()
+		if err != nil {
+			return false, err
+		}
+
+		err = bserver.AddBlockReference(ctx, tlfID, id, context)
+		if err != nil {
+			return false, err
 		}
 
 	case removeRefsOp:
