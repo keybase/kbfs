@@ -295,17 +295,8 @@ func (j *blockJournal) putRefEntry(
 	return nil
 }
 
-// All functions below are public functions.
-
-var errBlockJournalShutdown = errors.New("blockJournal is shutdown")
-
 func (j *blockJournal) getData(id BlockID) (
 	[]byte, BlockCryptKeyServerHalf, error) {
-	if j.isShutdown {
-		return nil, BlockCryptKeyServerHalf{},
-			errBlockJournalShutdown
-	}
-
 	data, err := ioutil.ReadFile(j.blockDataPath(id))
 	if os.IsNotExist(err) {
 		return nil, BlockCryptKeyServerHalf{},
@@ -343,6 +334,10 @@ func (j *blockJournal) getData(id BlockID) (
 
 	return data, serverHalf, nil
 }
+
+// All functions below are public functions.
+
+var errBlockJournalShutdown = errors.New("blockJournal is shutdown")
 
 func (j *blockJournal) getDataWithContext(
 	id BlockID, context BlockContext) (
