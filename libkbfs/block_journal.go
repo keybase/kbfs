@@ -84,9 +84,10 @@ type bserverJournalEntry struct {
 	Contexts map[BlockID][]BlockContext
 }
 
+// Get the single context stored in this entry. Only applicable to
+// blockPutOp and addRefOp.
 func (e bserverJournalEntry) getSingleContext() (
 	BlockID, BlockContext, error) {
-	// Check parameters.
 	switch e.Op {
 	case blockPutOp, addRefOp:
 		if len(e.Contexts) != 1 {
