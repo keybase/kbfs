@@ -44,7 +44,7 @@ func (j journalBlockServer) Put(
 		bundle.lock.Lock()
 		defer bundle.lock.Unlock()
 		return bundle.blockJournal.putData(
-			id, context, buf, serverHalf)
+			ctx, id, context, buf, serverHalf)
 	}
 
 	return j.BlockServer.Put(ctx, tlfID, id, context, buf, serverHalf)
@@ -58,7 +58,7 @@ func (j journalBlockServer) AddBlockReference(
 	if ok {
 		bundle.lock.Lock()
 		defer bundle.lock.Unlock()
-		return bundle.blockJournal.addReference(id, context)
+		return bundle.blockJournal.addReference(ctx, id, context)
 	}
 
 	return j.BlockServer.AddBlockReference(ctx, tlfID, id, context)
@@ -82,7 +82,7 @@ func (j journalBlockServer) RemoveBlockReferences(
 			// that case and avoid having to flush the
 			// put.
 			return bundle.blockJournal.removeReferences(
-				contexts, false)
+				ctx, contexts, false)
 		}()
 		if err != nil {
 			return nil, err
@@ -105,7 +105,7 @@ func (j journalBlockServer) ArchiveBlockReferences(
 	if ok {
 		bundle.lock.Lock()
 		defer bundle.lock.Unlock()
-		return bundle.blockJournal.archiveReferences(contexts)
+		return bundle.blockJournal.archiveReferences(ctx, contexts)
 	}
 
 	return j.BlockServer.ArchiveBlockReferences(ctx, tlfID, contexts)

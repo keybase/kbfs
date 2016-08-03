@@ -112,8 +112,8 @@ func (e bserverJournalEntry) getSingleContext() (
 // makeBlockJournal returns a new blockJournal for the given
 // directory. Any existing journal entries are read.
 func makeBlockJournal(
-	codec Codec, crypto cryptoPure, dir string, log logger.Logger) (
-	*blockJournal, error) {
+	ctx context.Context, codec Codec, crypto cryptoPure, dir string,
+	log logger.Logger) (*blockJournal, error) {
 	journalPath := filepath.Join(dir, "block_journal")
 	deferLog := log.CloneWithAddedDepth(1)
 	j := makeDiskJournal(
@@ -127,7 +127,7 @@ func makeBlockJournal(
 		j:        j,
 	}
 
-	refs, err := journal.readJournal()
+	refs, err := journal.readJournal(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (j *blockJournal) readJournalEntry(o journalOrdinal) (
 
 // readJournal reads the journal and returns a map of all the block
 // references in the journal.
-func (j *blockJournal) readJournal() (
+func (j *blockJournal) readJournal(ctx context.Context) (
 	map[BlockID]blockRefMap, error) {
 	refs := make(map[BlockID]blockRefMap)
 
@@ -184,7 +184,7 @@ func (j *blockJournal) readJournal() (
 		return nil, err
 	}
 
-	j.log.Debug("Reading journal entries %d to %d", first, last)
+	j.log.CDebugf(ctx, "Reading journal entries %d to %d", first, last)
 
 	for i := first; i <= last; i++ {
 		e, err := j.readJournalEntry(i)
@@ -405,9 +405,9 @@ func (j *blockJournal) getAll() (
 }
 
 func (j *blockJournal) putData(
-	id BlockID, context BlockContext, buf []byte,
+	ctx context.Context, id BlockID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) (err error) {
-	j.log.Debug("Putting %d bytes of data for block %s with context %v",
+	j.log.CDebugf(ctx, "Putting %d bytes of data for block %s with context %v",
 		len(buf), id, context)
 	defer func() {
 		if err != nil {
@@ -483,9 +483,10 @@ func (j *blockJournal) putData(
 		blockPutOp, map[BlockID][]BlockContext{id: {context}})
 }
 
-func (j *blockJournal) addReference(id BlockID, context BlockContext) (
+func (j *blockJournal) addReference(
+	ctx context.Context, id BlockID, context BlockContext) (
 	err error) {
-	j.log.Debug("Adding reference for block %s with context %v",
+	j.log.CDebugf(ctx, "Adding reference for block %s with context %v",
 		id, context)
 	defer func() {
 		if err != nil {
@@ -537,9 +538,9 @@ func (j *blockJournal) addReference(id BlockID, context BlockContext) (
 }
 
 func (j *blockJournal) removeReferences(
-	contexts map[BlockID][]BlockContext, removeUnreferencedBlocks bool) (
-	liveCounts map[BlockID]int, err error) {
-	j.log.Debug("Removing references for %v (remove unreferened blocks=%t)",
+	ctx context.Context, contexts map[BlockID][]BlockContext,
+	removeUnreferencedBlocks bool) (liveCounts map[BlockID]int, err error) {
+	j.log.CDebugf(ctx, "Removing references for %v (remove unreferened blocks=%t)",
 		contexts, removeUnreferencedBlocks)
 	defer func() {
 		if err != nil {
@@ -591,8 +592,8 @@ func (j *blockJournal) removeReferences(
 }
 
 func (j *blockJournal) archiveReferences(
-	contexts map[BlockID][]BlockContext) (err error) {
-	j.log.Debug("Archiving references for %v", contexts)
+	ctx context.Context, contexts map[BlockID][]BlockContext) (err error) {
+	j.log.CDebugf(ctx, "Archiving references for %v", contexts)
 	defer func() {
 		if err != nil {
 			j.deferLog.Debug(
@@ -657,7 +658,7 @@ func (j *blockJournal) flushOne(
 		return false, err
 	}
 
-	j.log.Debug("Flushing block op %v", e)
+	j.log.CDebugf(ctx, "Flushing block op %v", e)
 
 	switch e.Op {
 	case blockPutOp:
@@ -687,7 +688,7 @@ func (j *blockJournal) flushOne(
 		err = bserver.AddBlockReference(ctx, tlfID, id, context)
 		if err != nil {
 			if isRecoverableBlockError(err) {
-				j.log.Warning(
+				j.log.CWarningf(ctx,
 					"Recoverable block error encountered on AddBlockReference: %v", err)
 			}
 			return false, err
@@ -721,7 +722,8 @@ func (j *blockJournal) shutdown() {
 	j.isShutdown = true
 
 	// Double-check the on-disk journal with the in-memory one.
-	refs, err := j.readJournal()
+	ctx := context.Background()
+	refs, err := j.readJournal(ctx)
 	if err != nil {
 		panic(err)
 	}

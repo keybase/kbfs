@@ -69,7 +69,7 @@ func (j *JournalServer) getBundle(tlfID TlfID) (*tlfJournalBundle, bool) {
 }
 
 // Enable turns on the write journal for the given TLF.
-func (j *JournalServer) Enable(tlfID TlfID) (err error) {
+func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID) (err error) {
 	j.log.Debug("Enabling journal for %s", tlfID)
 	defer func() {
 		if err != nil {
@@ -93,7 +93,7 @@ func (j *JournalServer) Enable(tlfID TlfID) (err error) {
 	log := j.config.MakeLogger("")
 	bundle := &tlfJournalBundle{}
 	blockJournal, err := makeBlockJournal(
-		j.config.Codec(), j.config.Crypto(), tlfDir, log)
+		ctx, j.config.Codec(), j.config.Crypto(), tlfDir, log)
 	if err != nil {
 		return err
 	}

@@ -46,11 +46,12 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 	// journal tries to access it.
 	jServer.delegateBlockServer = shutdownOnlyBlockServer{}
 
+	ctx := context.Background()
+
 	tlfID := FakeTlfID(2, false)
-	err := jServer.Enable(tlfID)
+	err := jServer.Enable(ctx, tlfID)
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	blockServer := config.BlockServer()
 	crypto := config.Crypto()
 
@@ -98,11 +99,12 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 	// server.
 	jServer.delegateBlockServer = shutdownOnlyBlockServer{}
 
+	ctx := context.Background()
+
 	tlfID := FakeTlfID(2, false)
-	err := jServer.Enable(tlfID)
+	err := jServer.Enable(ctx, tlfID)
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	blockServer := config.BlockServer()
 	crypto := config.Crypto()
 
@@ -154,11 +156,12 @@ func TestJournalBlockServerArchiveBlockReferences(t *testing.T) {
 	// journal tries to access it.
 	jServer.delegateBlockServer = shutdownOnlyBlockServer{}
 
+	ctx := context.Background()
+
 	tlfID := FakeTlfID(2, false)
-	err := jServer.Enable(tlfID)
+	err := jServer.Enable(ctx, tlfID)
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	blockServer := config.BlockServer()
 	crypto := config.Crypto()
 
@@ -194,11 +197,12 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	tempdir, config, jServer := setupJournalBlockServerTest(t)
 	defer teardownJournalBlockServerTest(t, tempdir, config)
 
+	ctx := context.Background()
+
 	tlfID := FakeTlfID(2, false)
-	err := jServer.Enable(tlfID)
+	err := jServer.Enable(ctx, tlfID)
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	blockServer := config.BlockServer()
 	crypto := config.Crypto()
 

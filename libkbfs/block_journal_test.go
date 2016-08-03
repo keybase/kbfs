@@ -9,6 +9,8 @@ import (
 	"os"
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol"
 	"github.com/stretchr/testify/require"
@@ -34,8 +36,10 @@ func TestBlockJournalBasic(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
+	ctx := context.Background()
+
 	log := logger.NewTestLogger(t)
-	j, err := makeBlockJournal(codec, crypto, tempdir, log)
+	j, err := makeBlockJournal(ctx, codec, crypto, tempdir, log)
 	require.NoError(t, err)
 	defer j.shutdown()
 
@@ -51,7 +55,7 @@ func TestBlockJournalBasic(t *testing.T) {
 	require.NoError(t, err)
 
 	// Put the block.
-	err = j.putData(bID, bCtx, data, serverHalf)
+	err = j.putData(ctx, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 	require.Equal(t, 1, getBlockJournalLength(t, j))
 
@@ -65,7 +69,7 @@ func TestBlockJournalBasic(t *testing.T) {
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = j.addReference(bID, bCtx2)
+	err = j.addReference(ctx, bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
@@ -77,7 +81,7 @@ func TestBlockJournalBasic(t *testing.T) {
 
 	// Shutdown and restart.
 	j.shutdown()
-	j, err = makeBlockJournal(codec, crypto, tempdir, log)
+	j, err = makeBlockJournal(ctx, codec, crypto, tempdir, log)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, getBlockJournalLength(t, j))
@@ -109,8 +113,10 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
+	ctx := context.Background()
+
 	log := logger.NewTestLogger(t)
-	j, err := makeBlockJournal(codec, crypto, tempdir, log)
+	j, err := makeBlockJournal(ctx, codec, crypto, tempdir, log)
 	require.NoError(t, err)
 	defer j.shutdown()
 
@@ -126,7 +132,7 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 	require.NoError(t, err)
 
 	// Put the block.
-	err = j.putData(bID, bCtx, data, serverHalf)
+	err = j.putData(ctx, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 	require.Equal(t, 1, getBlockJournalLength(t, j))
 
@@ -134,19 +140,19 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = j.addReference(bID, bCtx2)
+	err = j.addReference(ctx, bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
 	// Remove references.
 	liveCounts, err := j.removeReferences(
-		map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, true)
+		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, true)
 	require.NoError(t, err)
 	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 
 	// Add reference back, which should error.
-	err = j.addReference(bID, bCtx2)
+	err = j.addReference(ctx, bID, bCtx2)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 }
@@ -165,8 +171,10 @@ func TestBlockJournalArchiveReferences(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 
+	ctx := context.Background()
+
 	log := logger.NewTestLogger(t)
-	j, err := makeBlockJournal(codec, crypto, tempdir, log)
+	j, err := makeBlockJournal(ctx, codec, crypto, tempdir, log)
 	require.NoError(t, err)
 	defer j.shutdown()
 
@@ -182,7 +190,7 @@ func TestBlockJournalArchiveReferences(t *testing.T) {
 	require.NoError(t, err)
 
 	// Put the block.
-	err = j.putData(bID, bCtx, data, serverHalf)
+	err = j.putData(ctx, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 	require.Equal(t, 1, getBlockJournalLength(t, j))
 
@@ -190,18 +198,18 @@ func TestBlockJournalArchiveReferences(t *testing.T) {
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = j.addReference(bID, bCtx2)
+	err = j.addReference(ctx, bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
 	// Archive references.
 	err = j.archiveReferences(
-		map[BlockID][]BlockContext{bID: {bCtx, bCtx2}})
+		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}})
 	require.NoError(t, err)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 
 	// Add reference back, which should error.
-	err = j.addReference(bID, bCtx2)
+	err = j.addReference(ctx, bID, bCtx2)
 	require.IsType(t, BServerErrorBlockArchived{}, err)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 }
