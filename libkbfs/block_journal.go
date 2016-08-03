@@ -204,7 +204,10 @@ func (j *blockJournal) readJournal() (
 				refs[id] = blockRefs
 			}
 
-			blockRefs.put(context, liveBlockRef)
+			err = blockRefs.put(context, liveBlockRef)
+			if err != nil {
+				return nil, err
+			}
 			continue
 		}
 
@@ -218,12 +221,19 @@ func (j *blockJournal) readJournal() (
 			switch e.Op {
 			case removeRefsOp:
 				for _, context := range idContexts {
-					delete(blockRefs, context.GetRefNonce())
+					err := blockRefs.remove(context)
+					if err != nil {
+						return nil, err
+					}
 				}
 
 			case archiveRefsOp:
 				for _, context := range idContexts {
-					blockRefs.put(context, archivedBlockRef)
+					err := blockRefs.put(
+						context, archivedBlockRef)
+					if err != nil {
+						return nil, err
+					}
 				}
 
 			default:
@@ -291,8 +301,7 @@ func (j *blockJournal) putRefEntry(
 		j.refs[id] = make(blockRefMap)
 	}
 
-	j.refs[id].put(refEntry.Context, refEntry.Status)
-	return nil
+	return j.refs[id].put(refEntry.Context, refEntry.Status)
 }
 
 func (j *blockJournal) getData(id BlockID) (
@@ -509,16 +518,9 @@ func (j *blockJournal) removeReferences(
 		}
 
 		for _, context := range idContexts {
-			refNonce := context.GetRefNonce()
-			// If this check fails, this ref is already gone,
-			// which is not an error.
-			if refEntry, ok := refs[refNonce]; ok {
-				err := refEntry.checkContext(context)
-				if err != nil {
-					return nil, err
-				}
-
-				delete(refs, refNonce)
+			err := refs.remove(context)
+			if err != nil {
+				return nil, err
 			}
 		}
 
