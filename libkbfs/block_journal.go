@@ -404,8 +404,18 @@ func (j *blockJournal) getAll() (
 
 func (j *blockJournal) putData(
 	id BlockID, context BlockContext, buf []byte,
-	serverHalf BlockCryptKeyServerHalf) error {
-	err := validateBlockServerPut(j.crypto, id, context, buf)
+	serverHalf BlockCryptKeyServerHalf) (err error) {
+	j.log.Debug("Putting %d bytes of data for block %s with context %v",
+		len(buf), id, context)
+	defer func() {
+		if err != nil {
+			j.deferLog.Debug(
+				"Put for block %s with context %v failed with %v",
+				id, context, err)
+		}
+	}()
+
+	err = validateBlockServerPut(j.crypto, id, context, buf)
 	if err != nil {
 		return err
 	}
@@ -471,7 +481,18 @@ func (j *blockJournal) putData(
 		blockPutOp, map[BlockID][]BlockContext{id: {context}})
 }
 
-func (j *blockJournal) addReference(id BlockID, context BlockContext) error {
+func (j *blockJournal) addReference(id BlockID, context BlockContext) (
+	err error) {
+	j.log.Debug("Adding reference for block %s with context %v",
+		id, context)
+	defer func() {
+		if err != nil {
+			j.deferLog.Debug(
+				"Adding reference for block %s with context %v failed with %v",
+				id, context, err)
+		}
+	}()
+
 	if j.isShutdown {
 		return errBlockJournalShutdown
 	}
@@ -501,7 +522,7 @@ func (j *blockJournal) addReference(id BlockID, context BlockContext) error {
 	// no references at all. Also figure out what to do with an
 	// addReference without a preceding Put.
 
-	err := j.putRefEntry(id, blockRefEntry{
+	err = j.putRefEntry(id, blockRefEntry{
 		Status:  liveBlockRef,
 		Context: context,
 	})
@@ -514,13 +535,23 @@ func (j *blockJournal) addReference(id BlockID, context BlockContext) error {
 }
 
 func (j *blockJournal) removeReferences(
-	contexts map[BlockID][]BlockContext,
-	removeBlockIfNoReferences bool) (map[BlockID]int, error) {
+	contexts map[BlockID][]BlockContext, removeUnreferencedBlocks bool) (
+	liveCounts map[BlockID]int, err error) {
+	j.log.Debug("Removing references for %v (remove unreferened blocks=%t)",
+		contexts, removeUnreferencedBlocks)
+	defer func() {
+		if err != nil {
+			j.deferLog.Debug(
+				"Removing references for %v (remove unreferened blocks=%t)",
+				contexts, removeUnreferencedBlocks, err)
+		}
+	}()
+
 	if j.isShutdown {
 		return nil, errBlockJournalShutdown
 	}
 
-	liveCounts := make(map[BlockID]int)
+	liveCounts = make(map[BlockID]int)
 
 	for id, idContexts := range contexts {
 		refs := j.refs[id]
@@ -539,7 +570,7 @@ func (j *blockJournal) removeReferences(
 		count := len(refs)
 		if count == 0 {
 			delete(j.refs, id)
-			if removeBlockIfNoReferences {
+			if removeUnreferencedBlocks {
 				err := os.RemoveAll(j.blockPath(id))
 				if err != nil {
 					return nil, err
@@ -549,7 +580,7 @@ func (j *blockJournal) removeReferences(
 		liveCounts[id] = count
 	}
 
-	err := j.appendJournalEntry(removeRefsOp, contexts)
+	err = j.appendJournalEntry(removeRefsOp, contexts)
 	if err != nil {
 		return nil, err
 	}
@@ -558,7 +589,15 @@ func (j *blockJournal) removeReferences(
 }
 
 func (j *blockJournal) archiveReferences(
-	contexts map[BlockID][]BlockContext) error {
+	contexts map[BlockID][]BlockContext) (err error) {
+	j.log.Debug("Archiving references for %v", contexts)
+	defer func() {
+		if err != nil {
+			j.deferLog.Debug(
+				"Archiving references for %v,", contexts, err)
+		}
+	}()
+
 	if j.isShutdown {
 		return errBlockJournalShutdown
 	}
