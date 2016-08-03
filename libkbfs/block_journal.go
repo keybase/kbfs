@@ -184,6 +184,8 @@ func (j *blockJournal) readJournal() (
 		return nil, err
 	}
 
+	j.log.Debug("Reading journal entries %d to %d", first, last)
+
 	for i := first; i <= last; i++ {
 		e, err := j.readJournalEntry(i)
 		if err != nil {
