@@ -414,6 +414,7 @@ func (j *blockJournal) putData(
 		return errBlockJournalShutdown
 	}
 
+	// Check the data and retrieve the server half, if they exist.
 	_, existingServerHalf, err := j.getDataWithContext(id, context)
 	var exists bool
 	switch err.(type) {
@@ -430,8 +431,8 @@ func (j *blockJournal) putData(
 		// the same, except for possibly additional
 		// references.
 
-		// We checked that both buf and existingData hash to
-		// id, so no need to check that they're both equal.
+		// We checked that both buf and the existing data hash
+		// to id, so no need to check that they're both equal.
 
 		if existingServerHalf != serverHalf {
 			return fmt.Errorf(
