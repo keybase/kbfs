@@ -686,6 +686,10 @@ func (j *blockJournal) flushOne(
 		// Put. This is tricky: see KBFS-1148 and KBFS-1255.
 		err = bserver.AddBlockReference(ctx, tlfID, id, context)
 		if err != nil {
+			if isRecoverableBlockError(err) {
+				j.log.Warning(
+					"Recoverable block error encountered on AddBlockReference: %v", err)
+			}
 			return false, err
 		}
 
