@@ -641,6 +641,8 @@ func (j *blockJournal) flushOne(
 			return false, err
 		}
 
+		// TODO: If the reference add fails, retry with a
+		// Put. This is tricky: see KBFS-1148 and KBFS-1255.
 		err = bserver.AddBlockReference(ctx, tlfID, id, context)
 		if err != nil {
 			return false, err
