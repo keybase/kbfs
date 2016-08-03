@@ -213,13 +213,15 @@ func (j *blockJournal) readJournal() (
 
 		for id, idContexts := range e.Contexts {
 			blockRefs := refs[id]
-			if blockRefs == nil {
-				blockRefs = make(blockRefMap)
-				refs[id] = blockRefs
-			}
 
 			switch e.Op {
 			case removeRefsOp:
+				if blockRefs == nil {
+					// All refs are already gone,
+					// which is not an error.
+					continue
+				}
+
 				for _, context := range idContexts {
 					err := blockRefs.remove(context)
 					if err != nil {
@@ -227,7 +229,16 @@ func (j *blockJournal) readJournal() (
 					}
 				}
 
+				if len(blockRefs) == 0 {
+					delete(refs, id)
+				}
+
 			case archiveRefsOp:
+				if blockRefs == nil {
+					blockRefs = make(blockRefMap)
+					refs[id] = blockRefs
+				}
+
 				for _, context := range idContexts {
 					err := blockRefs.put(
 						context, archivedBlockRef)
@@ -514,7 +525,7 @@ func (j *blockJournal) removeReferences(
 		refs := j.refs[id]
 		if refs == nil {
 			// This block is already gone; no error.
-			return nil, nil
+			continue
 		}
 
 		for _, context := range idContexts {
@@ -525,10 +536,13 @@ func (j *blockJournal) removeReferences(
 		}
 
 		count := len(refs)
-		if count == 0 && removeBlockIfNoReferences {
-			err := os.RemoveAll(j.blockPath(id))
-			if err != nil {
-				return nil, err
+		if count == 0 {
+			delete(j.refs, id)
+			if removeBlockIfNoReferences {
+				err := os.RemoveAll(j.blockPath(id))
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 		liveCounts[id] = count

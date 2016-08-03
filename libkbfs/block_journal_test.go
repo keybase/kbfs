@@ -147,7 +147,7 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 
 	// Add reference back, which should error.
 	err = j.addReference(bID, bCtx2)
-	require.IsType(t, BServerErrorBlockArchived{}, err)
+	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 }
 
