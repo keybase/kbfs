@@ -1883,98 +1883,28 @@ func isRevisionConflict(err error) bool {
 		isConflictFolderMapping || isJournal
 }
 
-// doPutWithCancellationCheck is a wrapper for any MD put Ops (e.g. Put and
-// PutUnmerged). If context is canceled during the Op, it checks the latest MD
-// and finds out whether the cancellation was successful (meaning the put
-// didn't go through) or unsuccessful (meaning the put did go through). This
-// allows us to maintain a state consistent with what's returned to application
-// and not conflict with ourselves.
-//
-// If MD puts succeeds, we should try to avoid any cancellation afterwards. As
-// a result, if put succeeds, doPutWithCancellationCheck also returns a new ctx
-// which adds extra grace period to the ctx for cancellation.
-//
-// If bid == NullBranchID, doPutWithCancellationCheck does a regular Put.
-// Otherwise, it does a PutUnmerged.
-//
-// A case that we are trying to solve here is: when a O_EXCL create is
-// interrupted by SIGALRM (e.g. in git). This results in a canceled context and
-// EINTR is returned. However, the MD put could still have gone through. But
-// with EINTR, the application assumes the file was not created and retries.
-// The retry would fail because previous create was successful.
-func (fbo *folderBranchOps) doPutWithCancellationCheck(ctx context.Context,
-	lState *lockState, md *RootMetadata, unmerged bool) (
-	mdID MdID, err error) {
-
-	if err = EnterCriticalWithTimeout(ctx, fbo.config.GracePeriod()); err != nil {
-		return mdID, err
-	}
-
-	oldRevision := fbo.getCurrMDRevision(lState)
-	var errPut error
-	if !unmerged {
-		mdID, errPut = fbo.config.MDOps().Put(ctx, md)
-	} else {
-		mdID, errPut = fbo.config.MDOps().PutUnmerged(ctx, md)
-	}
-	mdID, err = fbo.config.Crypto().MakeMdID(&md.BareRootMetadata)
-	if err != nil {
-		return mdID, err
-	}
-	if errPut == context.Canceled {
-		fbo.log.CDebugf(
-			ctx, "context is canceled; will check if Put has made it to the server")
-
-		// Put a deadline here since the original ctx was canceled and there's no
-		// way for user to cancel now.
-		ctx, err = NewContextWithReplayFrom(ctx)
-		if err != nil {
-			panic(err) // we shouldn't let this happen
-		}
-		ctx, _ = context.WithTimeout(ctx, fbo.config.GracePeriod())
-
-		var rmds []ImmutableRootMetadata
-		if !unmerged {
-			rmds, err = getMergedMDUpdates(ctx, fbo.config, fbo.id(), oldRevision+1)
-		} else {
-			_, rmds, err = getUnmergedMDUpdates(
-				ctx, fbo.config, fbo.id(),
-				NullBranchID /* this is not correct after this rebase, but not fixing it since this is removed in next commit(s) */, oldRevision+1)
-		}
-		if err != nil {
-			return mdID, err
-		}
-		if len(rmds) == 0 || rmds[0].mdID != mdID {
-			// MD put didn't make it to the server. So just return the
-			// context.Canceled error
-			fbo.log.CDebugf(ctx, "Put didn't make it to the server")
-			return mdID, errPut
-		}
-		fbo.log.CDebugf(
-			ctx, "Put made it to the server; will ignore context.Canceled")
-		// And our put succeeded. At this point we should just return nil error.
-		return mdID, nil
-	}
-
-	// let the caller handle other errors
-	return mdID, errPut
-}
-
 func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata, bps *blockPutState, excl Excl) (err error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
-	oldPrevRoot := md.PrevRoot
+	// finally, write out the new metadata
+	mdops := fbo.config.MDOps()
 
 	doUnmergedPut := true
 	mergedRev := MetadataRevisionUninitialized
 
+	oldPrevRoot := md.PrevRoot
+
 	var mdID MdID
+
+	if err = EnterCriticalWithTimeout(ctx, fbo.config.GracePeriod()); err != nil {
+		return err
+	}
+	defer ExitCritical(ctx)
 
 	if fbo.isMasterBranchLocked(lState) {
 		// only do a normal Put if we're not already staged.
-		mdID, err = fbo.doPutWithCancellationCheck(ctx, lState, md, false)
-
+		mdID, err = mdops.Put(ctx, md)
 		if doUnmergedPut = isRevisionConflict(err); doUnmergedPut {
 			fbo.log.CDebugf(ctx, "Conflict: %v", err)
 			mergedRev = md.Revision
@@ -1999,7 +1929,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	if doUnmergedPut {
 		// We're out of date, and this is not an exclusive write, so put it as an
 		// unmerged MD.
-		mdID, err = fbo.doPutWithCancellationCheck(ctx, lState, md, true)
+		mdID, err = mdops.PutUnmerged(ctx, md)
 		if isRevisionConflict(err) {
 			// Self-conflicts are retried in `doMDWriteWithRetry`.
 			err = UnmergedSelfConflictError{err}

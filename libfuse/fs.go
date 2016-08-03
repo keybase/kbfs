@@ -93,6 +93,7 @@ func (f *FS) WithContext(ctx context.Context) context.Context {
 		f.log.Errorf("Couldn't make request ID: %v", errRandomReqID)
 	}
 
+	start := f.config.Clock().Now()
 	ctx, err := libkbfs.NewContextWithCriticalAwareness(
 		libkbfs.NewContextReplayable(ctx, func(ctx context.Context) context.Context {
 
@@ -116,7 +117,7 @@ func (f *FS) WithContext(ctx context.Context) context.Context {
 				//
 				// It should be safe to ignore the CancelFunc here because our
 				// parent context will be canceled by the FUSE serve loop.
-				ctx, _ = context.WithTimeout(ctx, 19*time.Second)
+				ctx, _ = context.WithDeadline(ctx, start.Add(19*time.Second))
 			}
 
 			return ctx

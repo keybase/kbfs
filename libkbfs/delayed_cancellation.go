@@ -49,16 +49,6 @@ func (e ContextAlreadyHasCriticalAwarenessError) Error() string {
 	return "Context already has critical awareness; only one layer is supported."
 }
 
-// CtxAlreadyCanceledOrTimerAlreadyFiredError is returned when
-// EnterCriticalWithTimeout is called after the context is already canceled or
-// the timer for ExitCritical is already fired.
-type CtxAlreadyCanceledOrTimerAlreadyFiredError struct{}
-
-func (e CtxAlreadyCanceledOrTimerAlreadyFiredError) Error() string {
-	return "Unable to EnterCriticalWithTimeout because the context " +
-		"is already canceled or the timer for ExitCritical is already fired."
-}
-
 // NewContextReplayable creates a new context from ctx, with change applied. It
 // also makes this change replayable by NewContextWithReplayFrom. When
 // replayed, the resulting context is replayable as well.
@@ -97,6 +87,7 @@ type criticalAwareness struct {
 	isCritical bool
 	timer      *time.Timer
 	canceled   bool
+	done       chan struct{}
 }
 
 func newCriticalAwareness() *criticalAwareness {
@@ -105,6 +96,7 @@ func newCriticalAwareness() *criticalAwareness {
 		isCritical: false,
 		timer:      nil,
 		canceled:   false,
+		done:       make(chan struct{}),
 	}
 }
 
@@ -139,7 +131,10 @@ func NewContextWithCriticalAwareness(
 		})
 	newCtx, cancel := context.WithCancel(newCtx)
 	go func() {
-		<-ctx.Done()
+		select {
+		case <-ctx.Done():
+		case <-c.done:
+		}
 		c.L.Lock()
 		for c.isCritical {
 			c.Wait()
@@ -161,19 +156,31 @@ func EnterCriticalWithTimeout(ctx context.Context, timeout time.Duration) error 
 		c.L.Lock()
 		defer c.L.Unlock()
 		if c.canceled || (c.timer != nil && !c.timer.Stop()) {
-			//too late! timer already fired
-			return CtxAlreadyCanceledOrTimerAlreadyFiredError{}
+			// Too late! The context is already canceled or the timer for
+			// ExitCritical is already fired.
+			return context.Canceled
 		}
 		if !c.isCritical {
 			c.isCritical = true
 			c.Broadcast()
 		}
-		c.timer = time.AfterFunc(timeout, func() {
-			ExitCritical(ctx)
-		})
+		c.timer = time.AfterFunc(timeout, c.exitCritical)
 		return nil
 	}
 	return NoCriticalAwarenessError{}
+}
+
+func (c *criticalAwareness) exitCritical() {
+	c.L.Lock()
+	defer c.L.Unlock()
+	c.exitCriticalLocked()
+}
+
+func (c *criticalAwareness) exitCriticalLocked() {
+	if c.isCritical {
+		c.isCritical = false
+		c.Broadcast()
+	}
 }
 
 // ExitCritical can be called on a "critical aware" context produced by
@@ -184,16 +191,39 @@ func ExitCritical(ctx context.Context) error {
 	if c, ok := ctx.Value(CtxCriticalAwarenessKey).(*criticalAwareness); ok {
 		c.L.Lock()
 		defer c.L.Unlock()
-		if c.isCritical {
-			c.isCritical = false
-			c.Broadcast()
+		if c.timer == nil {
+			// already exited
+			return nil
+		}
+		c.timer.Stop()
+		c.timer = nil
+		c.exitCriticalLocked()
+		return nil
+	}
+	return NoCriticalAwarenessError{}
+}
+
+// CleanupCriticalAwareContext cleans up a context with critical awareness
+// (ctx) and makes the go routine spawned in NewContextWithCriticalAwareness
+// exit. As part of the cleanup, this also causes the critical aware context to
+// be canceled, since otherwise the cancelFunc would never be called.
+//
+// Ideally, the parent ctx's cancelFunc is always called upon completion of
+// handling a request, in which case this wouldn't be necessary.
+func CleanupCriticalAwareContext(ctx context.Context) error {
+	if c, ok := ctx.Value(CtxCriticalAwarenessKey).(*criticalAwareness); ok {
+		select {
+		case c.done <- struct{}{}:
+		default:
 		}
 		return nil
 	}
 	return NoCriticalAwarenessError{}
 }
 
-func dummyBackgroundContextWithCriticalAwareness() context.Context {
+// DummyBackgroundContextWithCriticalAwarenessForTest generate a "Background"
+// context that is critical aware.
+func DummyBackgroundContextWithCriticalAwarenessForTest() context.Context {
 	if ctx, err := NewContextWithCriticalAwareness(NewContextReplayable(
 		context.Background(), func(c context.Context) context.Context {
 			return c
