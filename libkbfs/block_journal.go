@@ -540,12 +540,12 @@ func (j *blockJournal) addReference(
 func (j *blockJournal) removeReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext,
 	removeUnreferencedBlocks bool) (liveCounts map[BlockID]int, err error) {
-	j.log.CDebugf(ctx, "Removing references for %v (remove unreferened blocks=%t)",
+	j.log.CDebugf(ctx, "Removing references for %v (remove unreferenced blocks=%t)",
 		contexts, removeUnreferencedBlocks)
 	defer func() {
 		if err != nil {
 			j.deferLog.Debug(
-				"Removing references for %v (remove unreferened blocks=%t)",
+				"Removing references for %v (remove unreferenced blocks=%t)",
 				contexts, removeUnreferencedBlocks, err)
 		}
 	}()
