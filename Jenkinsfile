@@ -131,73 +131,99 @@ if (env.CHANGE_TITLE && env.CHANGE_TITLE.contains('[ci-skip]')) {
 
                     stage "Test"
                     parallel (
-                        test_linux: {
-                            withEnv([
-                                "PATH=${env.PATH}:${env.GOPATH}/bin",
-                            ]) {
-                                runNixTest('linux_')
-                            }
-                        },
-                        //test_windows: {
-                        //    helpers.nodeWithCleanup('windows', {}, {}) {
+                        //test_linux: {
                         //    withEnv([
-                        //        'GOROOT=C:\\tools\\go',
-                        //        "GOPATH=\"${pwd()}\\go\"",
-                        //        'PATH+TOOLS="C:\\tools\\go\\bin";"C:\\Program Files (x86)\\GNU\\GnuPG";',
-                        //        "KEYBASE_SERVER_URI=http://${kbwebNodePrivateIP}:3000",
-                        //        "KEYBASE_PUSH_SERVER_URI=fmprpc://${kbwebNodePublicIP}:9911",
+                        //        "PATH=${env.PATH}:${env.GOPATH}/bin",
                         //    ]) {
-                        //    deleteDir()
-                        //    ws("${pwd()}/src/github.com/keybase/client") {
-                        //        println "Checkout Windows"
-                        //        checkout scm
-
-                        //        println "Test Windows"
-                        //        // TODO Implement Windows test
-                        //    }}}
+                        //        runNixTest('linux_')
+                        //    }
                         //},
-                        test_osx: {
-                            helpers.nodeWithCleanup('osx', {}, {}) {
+                        test_windows: {
+                            // TODO change to 'windows' before merge
+                            helpers.nodeWithCleanup('windows-dokan', {}, {}) {
                                 def BASEDIR=pwd()
-                                def GOPATH="${BASEDIR}/go"
+                                def GOPATH="${BASEDIR}\\go"
                                 withEnv([
-                                    "PATH=${env.PATH}:${GOPATH}/bin",
-                                    "GOPATH=${GOPATH}",
-                                    "KEYBASE_SERVER_URI=http://${kbwebNodePublicIP}:3000",
+                                    'GOROOT=C:\\tools\\go',
+                                    "GOPATH=\"${GOPATH}\"",
+                                    'PATH+TOOLS="C:\\tools\\go\\bin";"C:\\Program Files (x86)\\GNU\\GnuPG";"C:\\tools\\mingw32\\bin";',
+                                    "KEYBASE_SERVER_URI=http://${kbwebNodePrivateIP}:3000",
                                     "KEYBASE_PUSH_SERVER_URI=fmprpc://${kbwebNodePublicIP}:9911",
+                                    'CGO_ENABLED=1',
+                                    'GOARCH=386',
+                                    'CC=C:\\tools\\mingw32\\bin\\gcc',
+                                    'CPATH=c:\\tools\\mingw32\\include',
                                 ]) {
-                                    ws("${GOPATH}/src/github.com/keybase/kbfs") {
-                                        println "Checkout OS X"
+                                    ws("${GOPATH}\\src\\github.com\\keybase\\kbfs") {
+                                        println "Checkout Windows"
                                         checkout scm
 
-                                        println "Test OS X"
-                                        runNixTest('osx_')
+                                        println "Test Windows"
+                                        bat 'go get -t ./dokan/... ./kbfsdokan/... ./test/...'
+                                        dir('dokan') {
+                                            bat 'go test -i'
+                                            bat 'go test -c'
+                                        }
+                                        dir('kbfsdokan') {
+                                            bat 'go install'
+                                        }
+                                        dir('test') {
+                                            bat 'go test -i'
+                                        }
+                                        bat 'echo github.com/keybase/kbfs/libkbfs > testlist.txt'
+                                        bat 'echo github.com/keybase/kbfs/libdokan >> testlist.txt'
+                                        bat 'echo github.com/keybase/kbfs/test >> testlist.txt'
+                                        bat "for /f %%i in (testlist.txt) do (go test -timeout 5m %%i || exit /B 1)"
+                                        dir('test') {
+                                            bat 'go test -c -tags dokan'
+                                            bat '.\\test.test -tags dokan'
+                                        }
                                     }
                                 }
                             }
                         },
-                        integrate: {
-                            sh "go install github.com/keybase/kbfs/kbfsfuse"
-                            sh "cp ${env.GOPATH}/bin/kbfsfuse ./kbfsfuse/kbfsfuse"
-                            withCredentials([[$class: 'StringBinding', credentialsId: 'kbfs-docker-cert-b64', variable: 'KBFS_DOCKER_CERT_B64']]) {
-                                println "Building Docker"
-                                sh '''
-                                    set +x
-                                    docker build -t keybaseprivate/kbfsfuse --build-arg KEYBASE_TEST_ROOT_CERT_PEM_B64=\"$KBFS_DOCKER_CERT_B64\" kbfsfuse
-                                '''
-                            }
-                            sh "docker save keybaseprivate/kbfsfuse | gzip > kbfsfuse.tar.gz"
-                            archive("kbfsfuse.tar.gz")
-                            build([
-                                job: "/kbfs-server/master",
-                                parameters: [
-                                    [$class: 'StringParameterValue',
-                                        name: 'kbfsProjectName',
-                                        value: env.JOB_NAME,
-                                    ],
-                                ]
-                            ])
-                        },
+                        //test_osx: {
+                        //    helpers.nodeWithCleanup('osx', {}, {}) {
+                        //        def BASEDIR=pwd()
+                        //        def GOPATH="${BASEDIR}/go"
+                        //        withEnv([
+                        //            "PATH=${env.PATH}:${GOPATH}/bin",
+                        //            "GOPATH=${GOPATH}",
+                        //            "KEYBASE_SERVER_URI=http://${kbwebNodePublicIP}:3000",
+                        //            "KEYBASE_PUSH_SERVER_URI=fmprpc://${kbwebNodePublicIP}:9911",
+                        //        ]) {
+                        //            ws("${GOPATH}/src/github.com/keybase/kbfs") {
+                        //                println "Checkout OS X"
+                        //                checkout scm
+
+                        //                println "Test OS X"
+                        //                runNixTest('osx_')
+                        //            }
+                        //        }
+                        //    }
+                        //},
+                        //integrate: {
+                        //    sh "go install github.com/keybase/kbfs/kbfsfuse"
+                        //    sh "cp ${env.GOPATH}/bin/kbfsfuse ./kbfsfuse/kbfsfuse"
+                        //    withCredentials([[$class: 'StringBinding', credentialsId: 'kbfs-docker-cert-b64', variable: 'KBFS_DOCKER_CERT_B64']]) {
+                        //        println "Building Docker"
+                        //        sh '''
+                        //            set +x
+                        //            docker build -t keybaseprivate/kbfsfuse --build-arg KEYBASE_TEST_ROOT_CERT_PEM_B64=\"$KBFS_DOCKER_CERT_B64\" kbfsfuse
+                        //        '''
+                        //    }
+                        //    sh "docker save keybaseprivate/kbfsfuse | gzip > kbfsfuse.tar.gz"
+                        //    archive("kbfsfuse.tar.gz")
+                        //    build([
+                        //        job: "/kbfs-server/master",
+                        //        parameters: [
+                        //            [$class: 'StringParameterValue',
+                        //                name: 'kbfsProjectName',
+                        //                value: env.JOB_NAME,
+                        //            ],
+                        //        ]
+                        //    ])
+                        //},
                     )
                 } catch (ex) {
                     println "Gregor logs:"
