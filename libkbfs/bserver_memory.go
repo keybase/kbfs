@@ -117,7 +117,7 @@ type BlockServerMemory struct {
 	m map[BlockID]blockMemEntry
 }
 
-var _ BlockServer = (*BlockServerMemory)(nil)
+var _ blockServerLocal = (*BlockServerMemory)(nil)
 
 // NewBlockServerMemory constructs a new BlockServerMemory that stores
 // its data in memory.

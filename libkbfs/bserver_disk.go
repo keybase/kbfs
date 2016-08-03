@@ -35,7 +35,7 @@ type BlockServerDisk struct {
 	tlfStorage map[TlfID]*blockServerDiskTlfStorage
 }
 
-var _ BlockServer = (*BlockServerDisk)(nil)
+var _ blockServerLocal = (*BlockServerDisk)(nil)
 
 // newBlockServerDisk constructs a new BlockServerDisk that stores
 // its data in the given directory.
