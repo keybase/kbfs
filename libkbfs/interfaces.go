@@ -1118,7 +1118,8 @@ type blockServerLocal interface {
 	BlockServer
 	// getAll returns all the known block references, and should only be
 	// used during testing.
-	getAll(tlfID TlfID) (map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error)
+	getAll(ctx context.Context, tlfID TlfID) (
+		map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error)
 }
 
 // BlockSplitter decides when a file or directory block needs to be split
