@@ -74,6 +74,13 @@ func (j journalBlockServer) RemoveBlockReferences(
 		liveCounts, err := func() (map[BlockID]int, error) {
 			bundle.lock.Lock()
 			defer bundle.lock.Unlock()
+			// Don't remove the block data if we remove
+			// the last reference; we still need it to
+			// flush the initial put operation.
+			//
+			// TODO: It would be nice if we could detect
+			// that case and avoid having to flush the
+			// put.
 			return bundle.blockJournal.removeReferences(
 				contexts, false)
 		}()
