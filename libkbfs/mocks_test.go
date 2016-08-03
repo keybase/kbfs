@@ -2984,15 +2984,15 @@ func (_mr *_MockblockServerLocalRecorder) GetUserQuotaInfo(arg0 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserQuotaInfo", arg0)
 }
 
-func (_m *MockblockServerLocal) getAll(tlfID TlfID) (map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	ret := _m.ctrl.Call(_m, "getAll", tlfID)
+func (_m *MockblockServerLocal) getAll(ctx context.Context, tlfID TlfID) (map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
+	ret := _m.ctrl.Call(_m, "getAll", ctx, tlfID)
 	ret0, _ := ret[0].(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockblockServerLocalRecorder) getAll(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "getAll", arg0)
+func (_mr *_MockblockServerLocalRecorder) getAll(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "getAll", arg0, arg1)
 }
 
 // Mock of BlockSplitter interface
