@@ -13,23 +13,12 @@ import (
 	"golang.org/x/net/context"
 )
 
-// CryptoClientProvider should match keybase1.CryptoClient for signing
-// and unboxing.
-type CryptoClientProvider interface {
-	SignED25519(ctx context.Context, arg keybase1.SignED25519Arg) (keybase1.ED25519SignatureInfo, error)
-	SignToString(ctx context.Context, arg keybase1.SignToStringArg) (string, error)
-	UnboxBytes32(ctx context.Context, arg keybase1.UnboxBytes32Arg) (keybase1.Bytes32, error)
-	UnboxBytes32Any(ctx context.Context, arg keybase1.UnboxBytes32AnyArg) (keybase1.UnboxAnyRes, error)
-}
-
-var _ CryptoClientProvider = (*keybase1.CryptoClient)(nil)
-
-// CryptoClient is a CryptoClientProvider based implementation for Crypto.
+// CryptoClient is a keybase1.CryptoInterface based implementation for Crypto.
 type CryptoClient struct {
 	CryptoCommon
 	log        logger.Logger
 	deferLog   logger.Logger
-	client     CryptoClientProvider
+	client     keybase1.CryptoInterface
 	shutdownFn func()
 	config     Config
 }
@@ -40,8 +29,8 @@ const cryptoWarningTime = 2 * time.Minute
 
 var _ Crypto = (*CryptoClient)(nil)
 
-// NewCryptoClient constructs a crypto client for a CryptoClientProvider.
-func NewCryptoClient(config Config, client CryptoClientProvider, log logger.Logger) *CryptoClient {
+// NewCryptoClient constructs a crypto client for a keybase1.CryptoInterface.
+func NewCryptoClient(config Config, client keybase1.CryptoInterface, log logger.Logger) *CryptoClient {
 	deferLog := log.CloneWithAddedDepth(1)
 	return &CryptoClient{
 		CryptoCommon: MakeCryptoCommon(config.Codec()),
