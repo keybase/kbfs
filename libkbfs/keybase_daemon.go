@@ -13,10 +13,10 @@ import (
 	"github.com/keybase/client/go/logger"
 )
 
-// KeybaseServiceFn defines a constructor for a KeybaseService
-type KeybaseServiceFn func(config Config, params InitParams, ctx Context, log logger.Logger) (KeybaseService, error)
+// keybaseDaemonCn is the default
+type keybaseDaemonCn struct{}
 
-func makeKeybaseDaemon(config Config, params InitParams, ctx Context, log logger.Logger) (KeybaseService, error) {
+func (k keybaseDaemonCn) NewKeybaseService(config Config, params InitParams, ctx Context, log logger.Logger) (KeybaseService, error) {
 	localUser := libkb.NewNormalizedUsername(params.LocalUser)
 	if len(localUser) == 0 {
 		ctx.ConfigureSocketInfo()
@@ -57,4 +57,17 @@ func makeKeybaseDaemon(config Config, params InitParams, ctx Context, log logger
 	}
 
 	return nil, errors.New("Can't user localuser without a local server")
+}
+
+func (k keybaseDaemonCn) NewCrypto(config Config, params InitParams, ctx Context, log logger.Logger) (Crypto, error) {
+	var crypto Crypto
+	localUser := libkb.NewNormalizedUsername(params.LocalUser)
+	if localUser == "" {
+		crypto = NewCryptoClientRPC(config, ctx)
+	} else {
+		signingKey := MakeLocalUserSigningKeyOrBust(localUser)
+		cryptPrivateKey := MakeLocalUserCryptPrivateKeyOrBust(localUser)
+		crypto = NewCryptoLocal(config, signingKey, cryptPrivateKey)
+	}
+	return crypto, nil
 }
