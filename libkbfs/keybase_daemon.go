@@ -13,7 +13,8 @@ import (
 	"github.com/keybase/client/go/logger"
 )
 
-// keybaseDaemonCn is the default
+// keybaseDaemonCn is the default KeybaseServiceCn implementation,
+// which can be RPC based or local.
 type keybaseDaemonCn struct{}
 
 func (k keybaseDaemonCn) NewKeybaseService(config Config, params InitParams, ctx Context, log logger.Logger) (KeybaseService, error) {
