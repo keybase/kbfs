@@ -20,7 +20,7 @@ type CryptoClientRPC struct {
 
 var _ rpc.ConnectionHandler = (*CryptoClientRPC)(nil)
 
-// NewCryptoClientRPC constructs a new CryptoClient.
+// NewCryptoClientRPC constructs a new RPC based Crypto implementation.
 func NewCryptoClientRPC(config Config, kbCtx Context) *CryptoClientRPC {
 	log := config.MakeLogger("")
 	deferLog := log.CloneWithAddedDepth(1)
