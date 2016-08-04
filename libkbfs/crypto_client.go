@@ -13,7 +13,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-// CryptoClientProvider defines signing and unboxing methods for CryptoClient
+// CryptoClientProvider should match keybase1.CryptoClient for signing
+// and unboxing.
 type CryptoClientProvider interface {
 	SignED25519(ctx context.Context, arg keybase1.SignED25519Arg) (keybase1.ED25519SignatureInfo, error)
 	SignToString(ctx context.Context, arg keybase1.SignToStringArg) (string, error)
@@ -21,11 +22,9 @@ type CryptoClientProvider interface {
 	UnboxBytes32Any(ctx context.Context, arg keybase1.UnboxBytes32AnyArg) (keybase1.UnboxAnyRes, error)
 }
 
-// CryptoClientProvider should match keybase1.CryptoClient
 var _ CryptoClientProvider = (*keybase1.CryptoClient)(nil)
 
-// CryptoClient is an keybase.CryptoClient based implementation for
-// Crypto.
+// CryptoClient is a CryptoClientProvider based implementation for Crypto.
 type CryptoClient struct {
 	CryptoCommon
 	log        logger.Logger
@@ -41,7 +40,7 @@ const cryptoWarningTime = 2 * time.Minute
 
 var _ Crypto = (*CryptoClient)(nil)
 
-// NewCryptoClient constructs a crypto client for a keybase1.CryptoClient.
+// NewCryptoClient constructs a crypto client for a CryptoClientProvider.
 func NewCryptoClient(config Config, client CryptoClientProvider, log logger.Logger) *CryptoClient {
 	deferLog := log.CloneWithAddedDepth(1)
 	return &CryptoClient{
