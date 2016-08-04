@@ -4150,7 +4150,6 @@ func makeBlockStateDirty(config Config, kmd KeyMetadata, p path,
 // SetMtime failure cases are all the same as any other block sync
 
 func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
-	return // TODO
 	mockCtrl, config, ctx := kbfsOpsInit(t, true)
 	defer kbfsTestShutdown(mockCtrl, config)
 

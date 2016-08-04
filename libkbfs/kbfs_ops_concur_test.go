@@ -1222,7 +1222,6 @@ func TestKBFSOpsMultiBlockWriteDuringRetriedSync(t *testing.T) {
 
 // Test that a Sync that is canceled during a successful MD put works.
 func TestKBFSOpsConcurCanceledSyncSucceeds(t *testing.T) {
-	return // TODO
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
 	defer CheckConfigAndShutdown(t, config)
 
