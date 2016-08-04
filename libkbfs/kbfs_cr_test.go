@@ -482,7 +482,8 @@ func TestBasicCRNoConflict(t *testing.T) {
 
 	// re-enable updates, and wait for CR to complete
 	c <- struct{}{}
-	err = RestartCRForTesting(context.Background(), config2,
+	err = RestartCRForTesting(
+		DummyBackgroundContextWithCriticalAwarenessForTest(), config2,
 		rootNode2.GetFolderBranch())
 	if err != nil {
 		t.Fatalf("Couldn't disable updates: %v", err)
@@ -733,7 +734,8 @@ func TestBasicCRFileConflict(t *testing.T) {
 
 	// re-enable updates, and wait for CR to complete
 	c <- struct{}{}
-	err = RestartCRForTesting(context.Background(), config2,
+	err = RestartCRForTesting(
+		DummyBackgroundContextWithCriticalAwarenessForTest(), config2,
 		rootNode2.GetFolderBranch())
 	if err != nil {
 		t.Fatalf("Couldn't disable updates: %v", err)
@@ -846,7 +848,8 @@ func TestBasicCRFileCreateUnmergedWriteConflict(t *testing.T) {
 
 	// re-enable updates, and wait for CR to complete
 	c <- struct{}{}
-	err = RestartCRForTesting(context.Background(), config2,
+	err = RestartCRForTesting(
+		DummyBackgroundContextWithCriticalAwarenessForTest(), config2,
 		rootNode2.GetFolderBranch())
 	if err != nil {
 		t.Fatalf("Couldn't disable updates: %v", err)
@@ -981,7 +984,8 @@ func TestCRDouble(t *testing.T) {
 
 	// Do one CR.
 	c <- struct{}{}
-	err = RestartCRForTesting(context.Background(), config2,
+	err = RestartCRForTesting(
+		DummyBackgroundContextWithCriticalAwarenessForTest(), config2,
 		rootNode2.GetFolderBranch())
 	if err != nil {
 		t.Fatalf("Couldn't disable updates: %v", err)
@@ -1038,7 +1042,8 @@ func TestCRDouble(t *testing.T) {
 
 	// Do a second CR.
 	c <- struct{}{}
-	err = RestartCRForTesting(context.Background(), config2,
+	err = RestartCRForTesting(
+		DummyBackgroundContextWithCriticalAwarenessForTest(), config2,
 		rootNode2.GetFolderBranch())
 	if err != nil {
 		t.Fatalf("Couldn't disable updates: %v", err)
@@ -1181,7 +1186,8 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 	// re-enable updates, and wait for CR to complete.
 	// this should also cause a rekey of the folder.
 	c <- struct{}{}
-	err = RestartCRForTesting(context.Background(), config2,
+	err = RestartCRForTesting(
+		DummyBackgroundContextWithCriticalAwarenessForTest(), config2,
 		rootNode2.GetFolderBranch())
 	if err != nil {
 		t.Fatalf("Couldn't disable updates: %v", err)
@@ -1350,7 +1356,8 @@ func TestBasicCRFileConflictWithMergedRekey(t *testing.T) {
 	// re-enable updates, and wait for CR to complete.
 	// this should also cause a rekey of the folder.
 	c <- struct{}{}
-	err = RestartCRForTesting(context.Background(), config1,
+	err = RestartCRForTesting(
+		DummyBackgroundContextWithCriticalAwarenessForTest(), config1,
 		rootNode2.GetFolderBranch())
 	if err != nil {
 		t.Fatalf("Couldn't disable updates: %v", err)
@@ -1506,7 +1513,8 @@ func TestCRSyncParallelBlocksErrorCleanup(t *testing.T) {
 	// Start the sync and wait for it to stall.
 	var wg sync.WaitGroup
 	wg.Add(1)
-	syncCtx, cancel := context.WithCancel(context.Background())
+	syncCtx, cancel := context.WithCancel(
+		DummyBackgroundContextWithCriticalAwarenessForTest())
 
 	// Now user 2 makes a big write where most of the blocks get canceled.
 	// We only need to know the first time we stall.
@@ -1563,7 +1571,8 @@ func TestCRSyncParallelBlocksErrorCleanup(t *testing.T) {
 	}
 
 	c <- struct{}{}
-	err = RestartCRForTesting(context.Background(), config2,
+	err = RestartCRForTesting(
+		DummyBackgroundContextWithCriticalAwarenessForTest(), config2,
 		rootNode2.GetFolderBranch())
 	if err != nil {
 		t.Fatalf("Couldn't disable updates: %v", err)
@@ -1696,7 +1705,8 @@ func TestCRCanceledAfterNewOperation(t *testing.T) {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
 	c <- struct{}{}
-	err = RestartCRForTesting(context.Background(), config2,
+	err = RestartCRForTesting(
+		DummyBackgroundContextWithCriticalAwarenessForTest(), config2,
 		rootNode2.GetFolderBranch())
 	if err != nil {
 		t.Fatalf("Couldn't disable updates: %v", err)
@@ -1982,7 +1992,8 @@ func TestUnmergedPutAfterCanceledUnmergedPut(t *testing.T) {
 	}
 
 	c <- struct{}{}
-	err = RestartCRForTesting(context.Background(), config2,
+	err = RestartCRForTesting(
+		DummyBackgroundContextWithCriticalAwarenessForTest(), config2,
 		rootNode2.GetFolderBranch())
 	if err != nil {
 		t.Fatalf("Couldn't disable updates: %v", err)

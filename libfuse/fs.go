@@ -93,7 +93,9 @@ func (f *FS) WithContext(ctx context.Context) context.Context {
 		f.log.Errorf("Couldn't make request ID: %v", errRandomReqID)
 	}
 
-	start := f.config.Clock().Now()
+	// context.WithDeadline uses clock from `time` package, so we are not using
+	// f.config.Clock() here
+	start := time.Now()
 	ctx, err := libkbfs.NewContextWithCriticalAwareness(
 		libkbfs.NewContextReplayable(ctx, func(ctx context.Context) context.Context {
 

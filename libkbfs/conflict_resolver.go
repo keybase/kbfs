@@ -90,7 +90,7 @@ func NewConflictResolver(
 		},
 	}
 
-	cr.startProcessing(context.Background())
+	cr.startProcessing(DummyBackgroundContextWithCriticalAwarenessForTest())
 	return cr
 }
 
