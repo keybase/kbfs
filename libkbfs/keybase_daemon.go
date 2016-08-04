@@ -13,11 +13,11 @@ import (
 	"github.com/keybase/client/go/logger"
 )
 
-// keybaseDaemonCn is the default KeybaseServiceCn implementation,
-// which can be RPC based or local.
-type keybaseDaemonCn struct{}
+// keybaseDaemon is the default KeybaseServiceCn implementation, which
+// can use the RPC or local (for debug).
+type keybaseDaemon struct{}
 
-func (k keybaseDaemonCn) NewKeybaseService(config Config, params InitParams, ctx Context, log logger.Logger) (KeybaseService, error) {
+func (k keybaseDaemon) NewKeybaseService(config Config, params InitParams, ctx Context, log logger.Logger) (KeybaseService, error) {
 	localUser := libkb.NewNormalizedUsername(params.LocalUser)
 	if len(localUser) == 0 {
 		ctx.ConfigureSocketInfo()
@@ -60,7 +60,7 @@ func (k keybaseDaemonCn) NewKeybaseService(config Config, params InitParams, ctx
 	return nil, errors.New("Can't user localuser without a local server")
 }
 
-func (k keybaseDaemonCn) NewCrypto(config Config, params InitParams, ctx Context, log logger.Logger) (Crypto, error) {
+func (k keybaseDaemon) NewCrypto(config Config, params InitParams, ctx Context, log logger.Logger) (Crypto, error) {
 	var crypto Crypto
 	localUser := libkb.NewNormalizedUsername(params.LocalUser)
 	if localUser == "" {

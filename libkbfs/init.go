@@ -324,7 +324,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 	config.SetKeyServer(keyServer)
 
 	if keybaseServiceCn == nil {
-		keybaseServiceCn = keybaseDaemonCn{}
+		keybaseServiceCn = keybaseDaemon{}
 	}
 	service, err := keybaseServiceCn.NewKeybaseService(config, params, ctx, config.MakeLogger(""))
 	if err != nil {
