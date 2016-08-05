@@ -348,3 +348,88 @@ func TestMDJournalFlushConflict(t *testing.T) {
 		require.NoError(t, err)
 	}
 }
+
+func TestMDJournalPreservesBranchID(t *testing.T) {
+	codec, crypto, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
+		setupMDJournalTest(t)
+	defer teardownMDJournalTest(t, tempdir)
+
+	ctx := context.Background()
+
+	firstRevision := MetadataRevision(10)
+	firstPrevRoot := fakeMdID(1)
+	mdCount := 10
+
+	prevRoot := firstPrevRoot
+	for i := 0; i < mdCount-1; i++ {
+		revision := firstRevision + MetadataRevision(i)
+		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
+		require.NoError(t, err)
+		prevRoot = mdID
+	}
+
+	var mdserver shimMDServer
+	mdserver.nextErr = MDServerErrorConflictRevision{}
+
+	// Flush all entries, with the first one encountering a
+	// conflict error.
+	for i := 0; i < mdCount-1; i++ {
+		flushed, err := j.flushOne(
+			ctx, signer, uid, verifyingKey, &mdserver)
+		require.NoError(t, err)
+		require.True(t, flushed)
+	}
+
+	flushed, err := j.flushOne(ctx, signer, uid, verifyingKey, &mdserver)
+	require.NoError(t, err)
+	require.False(t, flushed)
+	require.Equal(t, 0, getTlfJournalLength(t, j))
+
+	// Put last revision and flush it.
+	{
+		revision := firstRevision + MetadataRevision(mdCount-1)
+		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
+		require.NoError(t, err)
+		prevRoot = mdID
+
+		flushed, err := j.flushOne(
+			ctx, signer, uid, verifyingKey, &mdserver)
+		require.NoError(t, err)
+		require.True(t, flushed)
+
+		flushed, err = j.flushOne(
+			ctx, signer, uid, verifyingKey, &mdserver)
+		require.NoError(t, err)
+		require.False(t, flushed)
+		require.Equal(t, 0, getTlfJournalLength(t, j))
+	}
+
+	rmdses := mdserver.rmdses
+	require.Equal(t, mdCount, len(rmdses))
+
+	// Check RMDSes on the server. In particular, the BranchID of
+	// the last put MD should match the rest.
+
+	require.Equal(t, firstRevision, rmdses[0].MD.Revision)
+	require.Equal(t, firstPrevRoot, rmdses[0].MD.PrevRoot)
+	require.Equal(t, Unmerged, rmdses[0].MD.MergedStatus())
+	err = rmdses[0].IsValidAndSigned(codec, crypto, uid, verifyingKey)
+	require.NoError(t, err)
+
+	bid := rmdses[0].MD.BID
+	require.NotEqual(t, NullBranchID, bid)
+
+	for i := 1; i < len(rmdses); i++ {
+		require.Equal(t, Unmerged, rmdses[i].MD.MergedStatus())
+		require.Equal(t, bid, rmdses[i].MD.BID)
+		err := rmdses[i].IsValidAndSigned(
+			codec, crypto, uid, verifyingKey)
+		require.NoError(t, err)
+		prevID, err := crypto.MakeMdID(&rmdses[i-1].MD)
+		require.NoError(t, err)
+		err = rmdses[i-1].MD.CheckValidSuccessor(prevID, &rmdses[i].MD)
+		require.NoError(t, err)
+	}
+}
