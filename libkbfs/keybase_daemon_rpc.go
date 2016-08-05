@@ -18,7 +18,7 @@ import (
 // KeybaseDaemonRPC implements the KeybaseService interface using RPC
 // calls.
 type KeybaseDaemonRPC struct {
-	*KeybaseServiceBase
+	KeybaseServiceBase
 	daemonLog logger.Logger
 
 	// Only used when there's a real connection (i.e., not in
@@ -63,8 +63,12 @@ func newKeybaseDaemonRPCWithClient(kbCtx Context, client rpc.GenericClient,
 }
 
 func newKeybaseDaemonRPC(config Config, kbCtx Context, log logger.Logger) *KeybaseDaemonRPC {
+	serviceBase := NewKeybaseServiceBase(config, kbCtx, log)
+	if serviceBase == nil {
+		return nil
+	}
 	k := KeybaseDaemonRPC{
-		KeybaseServiceBase: NewKeybaseServiceBase(config, kbCtx, log),
+		KeybaseServiceBase: *serviceBase,
 	}
 	return &k
 }
