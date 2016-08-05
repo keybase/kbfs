@@ -25,7 +25,7 @@ func (g singleEncryptionKeyGetter) GetTLFCryptKeyForEncryption(
 	return g.k, nil
 }
 
-func getTlfJournalLength(t *testing.T, j mdJournal) int {
+func getTlfJournalLength(t *testing.T, j *mdJournal) int {
 	len, err := j.length()
 	require.NoError(t, err)
 	return int(len)
@@ -35,7 +35,7 @@ func setupMDJournalTest(t *testing.T) (
 	codec Codec, crypto CryptoCommon,
 	uid keybase1.UID, id TlfID, h BareTlfHandle,
 	signer cryptoSigner, verifyingKey VerifyingKey,
-	ekg singleEncryptionKeyGetter, tempdir string, j mdJournal) {
+	ekg singleEncryptionKeyGetter, tempdir string, j *mdJournal) {
 	codec = NewCodecMsgpack()
 	crypto = MakeCryptoCommon(codec)
 
@@ -394,6 +394,10 @@ func TestMDJournalPreservesBranchID(t *testing.T) {
 		revision := firstRevision + MetadataRevision(mdCount-1)
 		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
 		mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
+		require.IsType(t, MDJournalConflictError{}, err)
+
+		md.WFlags |= MetadataFlagUnmerged
+		mdID, err = j.put(ctx, signer, ekg, md, uid, verifyingKey)
 		require.NoError(t, err)
 		prevRoot = mdID
 
