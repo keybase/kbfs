@@ -51,7 +51,7 @@ func NewKeybaseServiceBase(config Config, kbCtx Context, log logger.Logger) *Key
 	return &k
 }
 
-// SetClients sets the client protocol implementations needed for a KeybaseService.
+// FillClients sets the client protocol implementations needed for a KeybaseService.
 func (k *KeybaseServiceBase) FillClients(identifyClient keybase1.IdentifyInterface,
 	userClient keybase1.UserInterface, sessionClient keybase1.SessionInterface,
 	favoriteClient keybase1.FavoriteInterface, kbfsClient keybase1.KbfsInterface) {
