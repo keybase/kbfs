@@ -10,7 +10,6 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	keybase1 "github.com/keybase/client/go/protocol"
-	rpc "github.com/keybase/go-framed-msgpack-rpc"
 	"golang.org/x/net/context"
 )
 
@@ -39,16 +38,6 @@ type KeybaseServiceBase struct {
 	lastNotificationFilenameLock sync.Mutex
 	lastNotificationFilename     string
 }
-
-var _ keybase1.NotifySessionInterface = (*KeybaseDaemonRPC)(nil)
-
-var _ keybase1.NotifyKeyfamilyInterface = (*KeybaseDaemonRPC)(nil)
-
-var _ keybase1.NotifyPaperKeyInterface = (*KeybaseDaemonRPC)(nil)
-
-var _ rpc.ConnectionHandler = (*KeybaseDaemonRPC)(nil)
-
-var _ KeybaseService = (*KeybaseDaemonRPC)(nil)
 
 // NewKeybaseServiceBase makes a new KeybaseService.
 func NewKeybaseServiceBase(config Config, kbCtx Context, log logger.Logger) *KeybaseServiceBase {
