@@ -269,7 +269,7 @@ func ConvertIdentifyError(assertion string, err error) error {
 	return err
 }
 
-// Resolve implements the KeybaseService interface for KeybaseDaemonRPC.
+// Resolve implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) Resolve(ctx context.Context, assertion string) (
 	libkb.NormalizedUsername, keybase1.UID, error) {
 	user, err := k.identifyClient.Resolve2(ctx, assertion)
@@ -280,7 +280,7 @@ func (k *KeybaseServiceBase) Resolve(ctx context.Context, assertion string) (
 	return libkb.NewNormalizedUsername(user.Username), user.Uid, nil
 }
 
-// Identify implements the KeybaseService interface for KeybaseDaemonRPC.
+// Identify implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) Identify(ctx context.Context, assertion, reason string) (
 	UserInfo, error) {
 	// setting UseDelegateUI to true here will cause daemon to use
@@ -299,7 +299,7 @@ func (k *KeybaseServiceBase) Identify(ctx context.Context, assertion, reason str
 	return k.processUserPlusKeys(res.Upk)
 }
 
-// LoadUserPlusKeys implements the KeybaseService interface for KeybaseDaemonRPC.
+// LoadUserPlusKeys implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID) (
 	UserInfo, error) {
 	cachedUserInfo := k.getCachedUserInfo(uid)
@@ -349,7 +349,7 @@ func (k *KeybaseServiceBase) processUserPlusKeys(upk keybase1.UserPlusKeys) (
 	return u, nil
 }
 
-// LoadUnverifiedKeys implements the KeybaseService interface for KeybaseDaemonRPC.
+// LoadUnverifiedKeys implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) LoadUnverifiedKeys(ctx context.Context, uid keybase1.UID) (
 	[]keybase1.PublicKey, error) {
 	if keys, ok := k.getCachedUnverifiedKeys(uid); ok {
@@ -366,7 +366,7 @@ func (k *KeybaseServiceBase) LoadUnverifiedKeys(ctx context.Context, uid keybase
 	return keys, nil
 }
 
-// CurrentSession implements the KeybaseService interface for KeybaseDaemonRPC.
+// CurrentSession implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) CurrentSession(ctx context.Context, sessionID int) (
 	SessionInfo, error) {
 	cachedCurrentSession := k.getCachedCurrentSession()
@@ -400,18 +400,18 @@ func (k *KeybaseServiceBase) CurrentSession(ctx context.Context, sessionID int) 
 	return s, nil
 }
 
-// FavoriteAdd implements the KeybaseService interface for KeybaseDaemonRPC.
+// FavoriteAdd implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) FavoriteAdd(ctx context.Context, folder keybase1.Folder) error {
 	return k.favoriteClient.FavoriteAdd(ctx, keybase1.FavoriteAddArg{Folder: folder})
 }
 
-// FavoriteDelete implements the KeybaseService interface for KeybaseDaemonRPC.
+// FavoriteDelete implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) FavoriteDelete(ctx context.Context, folder keybase1.Folder) error {
 	return k.favoriteClient.FavoriteIgnore(ctx,
 		keybase1.FavoriteIgnoreArg{Folder: folder})
 }
 
-// FavoriteList implements the KeybaseService interface for KeybaseDaemonRPC.
+// FavoriteList implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) FavoriteList(ctx context.Context, sessionID int) ([]keybase1.Folder, error) {
 	results, err := k.favoriteClient.GetFavorites(ctx, sessionID)
 	if err != nil {
@@ -420,7 +420,7 @@ func (k *KeybaseServiceBase) FavoriteList(ctx context.Context, sessionID int) ([
 	return results.FavoriteFolders, nil
 }
 
-// Notify implements the KeybaseService interface for KeybaseDaemonRPC.
+// Notify implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) Notify(ctx context.Context, notification *keybase1.FSNotification) error {
 	// Reduce log spam by not repeating log lines for
 	// notifications with the same filename.
@@ -438,7 +438,7 @@ func (k *KeybaseServiceBase) Notify(ctx context.Context, notification *keybase1.
 }
 
 // FlushUserFromLocalCache implements the KeybaseService interface for
-// KeybaseDaemonRPC.
+// KeybaseServiceBase.
 func (k *KeybaseServiceBase) FlushUserFromLocalCache(ctx context.Context,
 	uid keybase1.UID) {
 	k.log.CDebugf(ctx, "Flushing cache for user %s", uid)
@@ -446,7 +446,7 @@ func (k *KeybaseServiceBase) FlushUserFromLocalCache(ctx context.Context,
 }
 
 // FlushUserUnverifiedKeysFromLocalCache implements the KeybaseService interface for
-// KeybaseDaemonRPC.
+// KeybaseServiceBase.
 func (k *KeybaseServiceBase) FlushUserUnverifiedKeysFromLocalCache(ctx context.Context,
 	uid keybase1.UID) {
 	k.log.CDebugf(ctx, "Flushing cache of unverified keys for user %s", uid)
