@@ -221,9 +221,9 @@ func CleanupCriticalAwareContext(ctx context.Context) error {
 	return NoCriticalAwarenessError{}
 }
 
-// DummyBackgroundContextWithCriticalAwarenessForTest generate a "Background"
+// BackgroundContextWithCriticalAwareness generate a "Background"
 // context that is critical aware.
-func DummyBackgroundContextWithCriticalAwarenessForTest() context.Context {
+func BackgroundContextWithCriticalAwareness() context.Context {
 	if ctx, err := NewContextWithCriticalAwareness(NewContextReplayable(
 		context.Background(), func(c context.Context) context.Context {
 			return c

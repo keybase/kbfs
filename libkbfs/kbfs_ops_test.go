@@ -129,7 +129,7 @@ func kbfsOpsInitNoMocks(t *testing.T, users ...libkb.NormalizedUsername) (
 		t.Fatal(err)
 	}
 
-	ctx := DummyBackgroundContextWithCriticalAwarenessForTest()
+	ctx := BackgroundContextWithCriticalAwareness()
 	return config, currentUID, ctx
 }
 
