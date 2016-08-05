@@ -349,6 +349,9 @@ func TestMDJournalFlushConflict(t *testing.T) {
 	}
 }
 
+// TestMDJournalPreservesBranchID tests that the branch ID is
+// preserved even if the journal is fully drained. This is a
+// regression test for KBFS-1344.
 func TestMDJournalPreservesBranchID(t *testing.T) {
 	codec, crypto, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
 		setupMDJournalTest(t)
