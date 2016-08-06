@@ -39,6 +39,7 @@ type JournalServer struct {
 
 	dir string
 
+	delegateBlockCache  BlockCache
 	delegateBlockServer BlockServer
 	delegateMDOps       MDOps
 
@@ -48,12 +49,13 @@ type JournalServer struct {
 
 func makeJournalServer(
 	config Config, log logger.Logger, dir string,
-	bserver BlockServer, mdOps MDOps) *JournalServer {
+	bcache BlockCache, bserver BlockServer, mdOps MDOps) *JournalServer {
 	jServer := JournalServer{
 		config:              config,
 		log:                 log,
 		deferLog:            log.CloneWithAddedDepth(1),
 		dir:                 dir,
+		delegateBlockCache:  bcache,
 		delegateBlockServer: bserver,
 		delegateMDOps:       mdOps,
 		tlfBundles:          make(map[TlfID]*tlfJournalBundle),
@@ -223,6 +225,10 @@ func (j *JournalServer) Disable(tlfID TlfID) (err error) {
 
 	delete(j.tlfBundles, tlfID)
 	return nil
+}
+
+func (j *JournalServer) blockCache() journalBlockCache {
+	return journalBlockCache{j, j.delegateBlockCache}
 }
 
 func (j *JournalServer) blockServer() journalBlockServer {
