@@ -159,6 +159,7 @@ if (env.CHANGE_TITLE && env.CHANGE_TITLE.contains('[ci-skip]')) {
                                         checkout scm
 
                                         println "Test Windows"
+                                        bat 'gcc -v'
                                         bat 'go get -t ./dokan/... ./kbfsdokan/... ./test/...'
                                         dir('dokan') {
                                             bat 'go test -i'
