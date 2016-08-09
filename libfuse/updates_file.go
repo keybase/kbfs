@@ -51,7 +51,7 @@ func (f *UpdatesFile) Write(ctx context.Context, req *fuse.WriteRequest,
 			return errors.New("Updates are already enabled")
 		}
 		err = libkbfs.RestartCRForTesting(
-			libkbfs.BackgroundContextWithCriticalAwareness(),
+			libkbfs.BackgroundContextWithCancellationDelayer(),
 			f.folder.fs.config, f.folder.getFolderBranch())
 		if err != nil {
 			return err

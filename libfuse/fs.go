@@ -82,7 +82,7 @@ func (f *FS) LaunchNotificationProcessor(ctx context.Context) {
 }
 
 // WithContext adds app- and request-specific values to the context.
-// libkbfs.NewContextWithCriticalAwareness is called before returning the
+// libkbfs.NewContextWithCancellationDelayer is called before returning the
 // context to ensure the cancellation is controllable.
 //
 // It is called by FUSE for normal runs, but may be called explicitly in other
@@ -96,7 +96,7 @@ func (f *FS) WithContext(ctx context.Context) context.Context {
 	// context.WithDeadline uses clock from `time` package, so we are not using
 	// f.config.Clock() here
 	start := time.Now()
-	ctx, err := libkbfs.NewContextWithCriticalAwareness(
+	ctx, err := libkbfs.NewContextWithCancellationDelayer(
 		libkbfs.NewContextReplayable(ctx, func(ctx context.Context) context.Context {
 
 			ctx = context.WithValue(ctx, CtxAppIDKey, f)

@@ -90,7 +90,7 @@ func NewConflictResolver(
 		},
 	}
 
-	cr.startProcessing(BackgroundContextWithCriticalAwareness())
+	cr.startProcessing(BackgroundContextWithCancellationDelayer())
 	return cr
 }
 

@@ -93,7 +93,7 @@ func (f *FS) WithContext(ctx context.Context) (context.Context, context.CancelFu
 	// context.WithDeadline uses clock from `time` package, so we are not using
 	// f.config.Clock() here
 	start := time.Now()
-	ctx, err = libkbfs.NewContextWithCriticalAwareness(
+	ctx, err = libkbfs.NewContextWithCancellationDelayer(
 		libkbfs.NewContextReplayable(ctx, func(ctx context.Context) context.Context {
 			ctx = wrapContext(context.WithValue(ctx, CtxIDKey, id), f)
 			ctx, _ = context.WithDeadline(ctx, start.Add(29*time.Second))

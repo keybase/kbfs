@@ -44,7 +44,7 @@ func crTestShutdown(mockCtrl *gomock.Controller, config *ConfigMock,
 func TestCRInput(t *testing.T) {
 	mockCtrl, config, cr := crTestInit(t)
 	defer crTestShutdown(mockCtrl, config, cr)
-	ctx := BackgroundContextWithCriticalAwareness()
+	ctx := BackgroundContextWithCancellationDelayer()
 
 	// First try a completely unknown revision
 	cr.Resolve(MetadataRevisionUninitialized, MetadataRevisionUninitialized)
@@ -134,7 +134,7 @@ func TestCRInput(t *testing.T) {
 func TestCRInputFracturedRange(t *testing.T) {
 	mockCtrl, config, cr := crTestInit(t)
 	defer crTestShutdown(mockCtrl, config, cr)
-	ctx := BackgroundContextWithCriticalAwareness()
+	ctx := BackgroundContextWithCancellationDelayer()
 
 	// Next, try resolving a few items
 	branchPoint := MetadataRevision(2)
@@ -237,7 +237,7 @@ func testCRSharedFolderForUsers(t *testing.T, name string, createAs keybase1.UID
 	// create by the first user
 	kbfsOps := configs[createAs].KBFSOps()
 	rootNode := GetRootNodeOrBust(t, configs[createAs], name, false)
-	ctx := BackgroundContextWithCriticalAwareness()
+	ctx := BackgroundContextWithCancellationDelayer()
 	dir := rootNode
 	for _, d := range dirs {
 		dirNext, _, err := kbfsOps.CreateDir(ctx, dir, d)
@@ -278,7 +278,7 @@ func testCRCheckPathsAndActions(t *testing.T, cr *ConflictResolver,
 	expectedUnmergedPaths []path, expectedMergedPaths map[BlockPointer]path,
 	expectedRecreateOps []*createOp,
 	expectedActions map[BlockPointer]crActionList) {
-	ctx := BackgroundContextWithCriticalAwareness()
+	ctx := BackgroundContextWithCancellationDelayer()
 	lState := makeFBOLockState()
 
 	// Step 1 -- check the chains and paths

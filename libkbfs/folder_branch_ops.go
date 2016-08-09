@@ -1904,10 +1904,18 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 
 	var mdID MdID
 
-	if err = EnterCriticalWithTimeout(ctx, fbo.config.GracePeriod()); err != nil {
+	if err = EnableDelayedCancellationWithGracePeriod(
+		ctx, fbo.config.GracePeriod()); err != nil {
 		return err
 	}
-	defer ExitCritical(ctx)
+	// we don't explicitly clean up (by using a defer) CancellationDelayer here
+	// because sometimes fuse makes another call using the same ctx.  For example, in
+	// fuse's Create call handler, a dir.Create is followed by an Attr call. If
+	// we do a deferred cleanup here, if an interrupt has been received, it can
+	// cause ctx to be canceled before Attr call finishes, which causes FUSE to
+	// return EINTR for the Create request. But at this point, the request may
+	// have already succeeded. Returning EINTR makes application thinks the file
+	// is not created successfully.
 
 	if fbo.isMasterBranchLocked(lState) {
 		// only do a normal Put if we're not already staged.
@@ -4046,7 +4054,7 @@ func (fbo *folderBranchOps) rekeyWithPrompt() {
 	d := fbo.config.RekeyWithPromptWaitTime()
 	ctx, cancel := context.WithTimeout(ctx, d)
 	defer cancel()
-	if ctx, err = NewContextWithCriticalAwareness(ctx); err != nil {
+	if ctx, err = NewContextWithCancellationDelayer(ctx); err != nil {
 		panic(err)
 	}
 
@@ -4148,7 +4156,7 @@ func (fbo *folderBranchOps) ctxWithFBOID(ctx context.Context) context.Context {
 func (fbo *folderBranchOps) newCtxWithFBID() (context.Context, context.CancelFunc) {
 	ctx := NewContextReplayable(context.Background(), fbo.ctxWithFBOID)
 	ctx, cancelFunc := context.WithCancel(ctx)
-	ctx, err := NewContextWithCriticalAwareness(ctx)
+	ctx, err := NewContextWithCancellationDelayer(ctx)
 	if err != nil {
 		panic(err)
 	}

@@ -102,7 +102,7 @@ func (k *LibKBFS) newContext() (context.Context, context.CancelFunc) {
 	}
 
 	id, errRandomRequestID := libkbfs.MakeRandomRequestID()
-	ctx, err := libkbfs.NewContextWithCriticalAwareness(libkbfs.NewContextReplayable(
+	ctx, err := libkbfs.NewContextWithCancellationDelayer(libkbfs.NewContextReplayable(
 		ctx, func(ctx context.Context) context.Context {
 			logTags := make(logger.CtxLogTags)
 			logTags[CtxIDKey] = CtxOpID

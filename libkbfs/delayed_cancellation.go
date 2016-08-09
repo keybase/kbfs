@@ -15,8 +15,8 @@ const (
 	// CtxReplayKey is a context key for CtxReplayFunc
 	CtxReplayKey = "libkbfs-replay"
 
-	// CtxCriticalAwarenessKey is a context key for using criticalAwareness
-	CtxCriticalAwarenessKey = "libkbfs-critical"
+	// CtxCancellationDelayerKey is a context key for using cancellationDelayer
+	CtxCancellationDelayerKey = "libkbfs-cancellation-delayer"
 )
 
 // CtxReplayFunc is a function for replaying a series of changes done on a
@@ -31,21 +31,21 @@ func (e CtxNotReplayableError) Error() string {
 	return "Unable to replay on ctx"
 }
 
-// NoCriticalAwarenessError is returned when EnterCriticalWithTimeout or
+// NoCancellationDelayerError is returned when EnableDelayedCancellationWithGracePeriod or
 // ExitCritical are called on a ctx without Critical Awareness
-type NoCriticalAwarenessError struct{}
+type NoCancellationDelayerError struct{}
 
-func (e NoCriticalAwarenessError) Error() string {
-	return "Context doesn't have critical awareness or CtxCriticalAwarenessKey " +
-		"already exists in ctx but is not of type *criticalAwareness"
+func (e NoCancellationDelayerError) Error() string {
+	return "Context doesn't have critical awareness or CtxCancellationDelayerKey " +
+		"already exists in ctx but is not of type *cancellationDelayer"
 }
 
-// ContextAlreadyHasCriticalAwarenessError is returned when
-// NewContextWithCriticalAwareness is called second time on the same ctx, which
+// ContextAlreadyHasCancellationDelayerError is returned when
+// NewContextWithCancellationDelayer is called second time on the same ctx, which
 // is not supported yet.
-type ContextAlreadyHasCriticalAwarenessError struct{}
+type ContextAlreadyHasCancellationDelayerError struct{}
 
-func (e ContextAlreadyHasCriticalAwarenessError) Error() string {
+func (e ContextAlreadyHasCancellationDelayerError) Error() string {
 	return "Context already has critical awareness; only one layer is supported."
 }
 
@@ -55,7 +55,7 @@ func (e ContextAlreadyHasCriticalAwarenessError) Error() string {
 //
 // It is important that all WithValue-isu mutations on ctx is done "replayably"
 // (with NewContextReplayable) if any delayed cancellation is used, e.g.
-// through EnterCriticalWithTimeout,
+// through EnableDelayedCancellationWithGracePeriod,
 func NewContextReplayable(
 	ctx context.Context, change CtxReplayFunc) context.Context {
 	var replay CtxReplayFunc
@@ -82,52 +82,58 @@ func NewContextWithReplayFrom(ctx context.Context) (context.Context, error) {
 	return nil, CtxNotReplayableError{}
 }
 
-type criticalAwareness struct {
+type cancellationDelayer struct {
 	*sync.Cond
-	isCritical bool
-	timer      *time.Timer
-	canceled   bool
-	done       chan struct{}
+	delayEnabled bool
+	timer        *time.Timer
+	canceled     bool
+	done         chan struct{}
 }
 
-func newCriticalAwareness() *criticalAwareness {
-	return &criticalAwareness{
-		Cond:       sync.NewCond(&sync.Mutex{}),
-		isCritical: false,
-		timer:      nil,
-		canceled:   false,
-		done:       make(chan struct{}),
+func newCancellationDelayer() *cancellationDelayer {
+	return &cancellationDelayer{
+		Cond:         sync.NewCond(&sync.Mutex{}),
+		delayEnabled: false,
+		timer:        nil,
+		canceled:     false,
+		done:         make(chan struct{}),
 	}
 }
 
-// NewContextWithCriticalAwareness creates a new context out of ctx. All replay
+// NewContextWithCancellationDelayer creates a new context out of ctx. All replay
 // functions attached to ctx are run on the new new context. In addition, the
-// new context is made "critical aware". That is, it disconnects the cancelFunc
+// new context is made "cancellation delayable". That is, it disconnects the cancelFunc
 // from ctx, and watch for the cancellation. When cancellation happens, it
-// checks if the associated context is in critical state, and wait until it
-// exits the critical state before cancelling the new context. This provides a
-// hacky way to allow finer control over cancellation.
+// checks if delayed cancellation is enabled for the associated context. If so,
+// it waits until it's disabled before cancelling the new context. This
+// provides a hacky way to allow finer control over cancellation.
 //
 // Note that, it's important to call context.WithCancel (or its friends) before
-// this function if those cancellations need to be controllable (critical
-// aware). Otherwise, the new cancelFunc is inheriently NOT "critical aware".
-func NewContextWithCriticalAwareness(
+// this function if those cancellations need to be controllable ("cancellation
+// delayable"). Otherwise, the new cancelFunc is inheriently NOT ("cancellation
+// delayable").
+//
+// If this function is called, it is caller's responsibility to either 1)
+// cancel ctx (the context passed in); or 2) call CleanupCancellationDelayer;
+// when operations associated with the context is done. Otherwise it leaks go
+// routines!
+func NewContextWithCancellationDelayer(
 	ctx context.Context) (newCtx context.Context, err error) {
-	v := ctx.Value(CtxCriticalAwarenessKey)
+	v := ctx.Value(CtxCancellationDelayerKey)
 	if v != nil {
-		if _, ok := v.(*criticalAwareness); ok {
-			return nil, ContextAlreadyHasCriticalAwarenessError{}
+		if _, ok := v.(*cancellationDelayer); ok {
+			return nil, ContextAlreadyHasCancellationDelayerError{}
 		}
-		return nil, NoCriticalAwarenessError{}
+		return nil, NoCancellationDelayerError{}
 	}
 
 	if newCtx, err = NewContextWithReplayFrom(ctx); err != nil {
 		return nil, err
 	}
-	c := newCriticalAwareness()
+	c := newCancellationDelayer()
 	newCtx = NewContextReplayable(newCtx,
 		func(ctx context.Context) context.Context {
-			return context.WithValue(ctx, CtxCriticalAwarenessKey, c)
+			return context.WithValue(ctx, CtxCancellationDelayerKey, c)
 		})
 	newCtx, cancel := context.WithCancel(newCtx)
 	go func() {
@@ -136,7 +142,7 @@ func NewContextWithCriticalAwareness(
 		case <-c.done:
 		}
 		c.L.Lock()
-		for c.isCritical {
+		for c.delayEnabled {
 			c.Wait()
 		}
 		c.canceled = true
@@ -146,85 +152,68 @@ func NewContextWithCriticalAwareness(
 	return newCtx, nil
 }
 
-// EnterCriticalWithTimeout can be called on a "critical aware" context
-// produced by NewContextWithCriticalAwareness, to indicate that the
+// EnableDelayedCancellationWithGracePeriod can be called on a "cancellation
+// delayable" context produced by NewContextWithCancellationDelayer, to enable
+// delayed cancellation for ctx. This is useful to indicate that the
 // operation(s) associated with the context has entered a critical state, and
-// it should not be canceled until ExitCritical is called either explicitly or
-// automatically after timeout.
-func EnterCriticalWithTimeout(ctx context.Context, timeout time.Duration) error {
-	if c, ok := ctx.Value(CtxCriticalAwarenessKey).(*criticalAwareness); ok {
+// it should not be canceled until after timeout or CleanupCancellationDelayer
+// is called.
+func EnableDelayedCancellationWithGracePeriod(ctx context.Context, timeout time.Duration) error {
+	if c, ok := ctx.Value(CtxCancellationDelayerKey).(*cancellationDelayer); ok {
 		c.L.Lock()
 		defer c.L.Unlock()
 		if c.canceled || (c.timer != nil && !c.timer.Stop()) {
 			// Too late! The context is already canceled or the timer for
-			// ExitCritical is already fired.
+			// disableDelay is already fired.
 			return context.Canceled
 		}
-		if !c.isCritical {
-			c.isCritical = true
+		if !c.delayEnabled {
+			c.delayEnabled = true
 			c.Broadcast()
 		}
-		c.timer = time.AfterFunc(timeout, c.exitCritical)
+		c.timer = time.AfterFunc(timeout, c.disableDelay)
 		return nil
 	}
-	return NoCriticalAwarenessError{}
+	return NoCancellationDelayerError{}
 }
 
-func (c *criticalAwareness) exitCritical() {
+func (c *cancellationDelayer) disableDelay() {
 	c.L.Lock()
 	defer c.L.Unlock()
-	c.exitCriticalLocked()
+	c.disableDelayLocked()
 }
 
-func (c *criticalAwareness) exitCriticalLocked() {
-	if c.isCritical {
-		c.isCritical = false
+func (c *cancellationDelayer) disableDelayLocked() {
+	if c.delayEnabled {
+		c.delayEnabled = false
 		c.Broadcast()
 	}
 }
 
-// ExitCritical can be called on a "critical aware" context produced by
-// NewContextWithCriticalAwareness, to indicate that the operation(s)
-// associated with the context has exited a critical state and it is safe to be
-// canceled.
-func ExitCritical(ctx context.Context) error {
-	if c, ok := ctx.Value(CtxCriticalAwarenessKey).(*criticalAwareness); ok {
-		c.L.Lock()
-		defer c.L.Unlock()
-		if c.timer == nil {
-			// already exited
-			return nil
-		}
-		c.timer.Stop()
-		c.timer = nil
-		c.exitCriticalLocked()
-		return nil
-	}
-	return NoCriticalAwarenessError{}
-}
-
-// CleanupCriticalAwareContext cleans up a context with critical awareness
-// (ctx) and makes the go routine spawned in NewContextWithCriticalAwareness
-// exit. As part of the cleanup, this also causes the critical aware context to
-// be canceled, since otherwise the cancelFunc would never be called.
+// CleanupCancellationDelayer cleans up a context (ctx) that is cancellation
+// delayable and makes the go routine spawned in
+// NewContextWithCancellationDelayer exit. As part of the cleanup, this also
+// causes the cancellation delayable context to be canceled, no matter the
+// timeout passed into the EnableDelayedCancellationWithGracePeriod has passed
+// or not.
 //
 // Ideally, the parent ctx's cancelFunc is always called upon completion of
 // handling a request, in which case this wouldn't be necessary.
-func CleanupCriticalAwareContext(ctx context.Context) error {
-	if c, ok := ctx.Value(CtxCriticalAwarenessKey).(*criticalAwareness); ok {
+func CleanupCancellationDelayer(ctx context.Context) error {
+	if c, ok := ctx.Value(CtxCancellationDelayerKey).(*cancellationDelayer); ok {
 		select {
 		case c.done <- struct{}{}:
 		default:
 		}
 		return nil
 	}
-	return NoCriticalAwarenessError{}
+	return NoCancellationDelayerError{}
 }
 
-// BackgroundContextWithCriticalAwareness generate a "Background"
-// context that is critical aware.
-func BackgroundContextWithCriticalAwareness() context.Context {
-	if ctx, err := NewContextWithCriticalAwareness(NewContextReplayable(
+// BackgroundContextWithCancellationDelayer generate a "Background"
+// context that is cancellation delayable
+func BackgroundContextWithCancellationDelayer() context.Context {
+	if ctx, err := NewContextWithCancellationDelayer(NewContextReplayable(
 		context.Background(), func(c context.Context) context.Context {
 			return c
 		})); err != nil {

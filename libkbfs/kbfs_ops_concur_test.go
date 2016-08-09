@@ -1002,7 +1002,7 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 	fc.readyChan = nil
 	fc.goChan = nil
 	fc.finishChan = nil
-	ctx = BackgroundContextWithCriticalAwareness()
+	ctx = BackgroundContextWithCancellationDelayer()
 	if err := kbfsOps.Sync(ctx, fileNode); err != nil {
 		t.Fatalf("Second sync failed: %v", err)
 	}

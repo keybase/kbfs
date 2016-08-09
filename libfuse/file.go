@@ -24,7 +24,7 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File Attr")
 	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
-	err = libkbfs.EnterCriticalWithTimeout(
+	err = libkbfs.EnableDelayedCancellationWithGracePeriod(
 		ctx, f.folder.fs.config.GracePeriod())
 	if err != nil {
 		return err

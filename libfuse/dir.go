@@ -126,7 +126,7 @@ func (f *Folder) forgetNode(node libkbfs.Node) {
 
 	delete(f.nodes, node.GetID())
 	if len(f.nodes) == 0 {
-		ctx := libkbfs.BackgroundContextWithCriticalAwareness()
+		ctx := libkbfs.BackgroundContextWithCancellationDelayer()
 		f.unsetFolderBranch(ctx)
 		f.list.forgetFolder(string(f.name()))
 	}
@@ -322,7 +322,7 @@ func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Attr")
 	defer func() { d.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
-	err = libkbfs.EnterCriticalWithTimeout(
+	err = libkbfs.EnableDelayedCancellationWithGracePeriod(
 		ctx, d.folder.fs.config.GracePeriod())
 	if err != nil {
 		return err
@@ -353,7 +353,7 @@ func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.Lo
 	d.folder.fs.log.CDebugf(ctx, "Dir Lookup %s", req.Name)
 	defer func() { d.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
-	err = libkbfs.EnterCriticalWithTimeout(
+	err = libkbfs.EnableDelayedCancellationWithGracePeriod(
 		ctx, d.folder.fs.config.GracePeriod())
 	if err != nil {
 		return nil, err
@@ -519,7 +519,7 @@ func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (
 	d.folder.fs.log.CDebugf(ctx, "Dir Mkdir %s", req.Name)
 	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
-	err = libkbfs.EnterCriticalWithTimeout(
+	err = libkbfs.EnableDelayedCancellationWithGracePeriod(
 		ctx, d.folder.fs.config.GracePeriod())
 	if err != nil {
 		return nil, err
