@@ -107,6 +107,12 @@ type KBFSOps interface {
 	// isn't favorited.
 	DeleteFavorite(ctx context.Context, fav Favorite) error
 
+	// GetOrInitializeNewMDMaster gets the existing MD or initialize a new MD for
+	// master branch
+	GetOrInitializeNewMDMaster(ctx context.Context, mdops MDOps, h *TlfHandle) (
+		initialized bool, md ImmutableRootMetadata,
+		id TlfID, err error)
+
 	// GetOrCreateRootNode returns the root node and root entry
 	// info associated with the given TLF handle and branch, if
 	// the logged-in user has read permissions to the top-level
@@ -490,6 +496,12 @@ type KeyManager interface {
 	// pointed to by the given pointer.
 	GetTLFCryptKeyForBlockDecryption(ctx context.Context, kmd KeyMetadata,
 		blockPtr BlockPointer) (TLFCryptKey, error)
+
+	// GetTLFCryptKeyFromAllGenerations gets the crypt keys of all generations
+	// for current devices. keys contains crypt keys from all generations, in
+	// order, starting from FirstValidKeyGen.
+	GetTLFCryptKeyFromAllGenerations(ctx context.Context, kmd KeyMetadata) (
+		keys []TLFCryptKey, err error)
 
 	// Rekey checks the given MD object, if it is a private TLF,
 	// against the current set of device keys for all valid

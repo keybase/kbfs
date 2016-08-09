@@ -1046,6 +1046,14 @@ func (fbo *folderBranchOps) initMDLocked(
 	return nil
 }
 
+func (fbo *folderBranchOps) GetOrInitializeNewMDMaster(
+	ctx context.Context, mdops MDOps, h *TlfHandle) (initialized bool,
+	md ImmutableRootMetadata, id TlfID, err error) {
+	err = errors.New("GetOrInitializeNewMDMaster is not supported by " +
+		"folderBranchOps")
+	return
+}
+
 func (fbo *folderBranchOps) GetOrCreateRootNode(
 	ctx context.Context, h *TlfHandle, branch BranchName) (
 	node Node, ei EntryInfo, err error) {
