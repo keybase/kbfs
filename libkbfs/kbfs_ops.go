@@ -233,9 +233,22 @@ func (fs *KBFSOpsStandard) getOpsByHandle(ctx context.Context,
 	return ops
 }
 
-// GetOrInitializeNewMDMaster implements the KBFSOps interface for
+// GetTLFCryptKeys implements the KBFSOps interface for
 // KBFSOpsStandard
-func (fs *KBFSOpsStandard) GetOrInitializeNewMDMaster(
+func (fs *KBFSOpsStandard) GetTLFCryptKeys(ctx context.Context,
+	tlfHandle *TlfHandle) (keys []TLFCryptKey, id TlfID, err error) {
+	var rmd ImmutableRootMetadata
+	_, rmd, id, err = fs.getOrInitializeNewMDMaster(
+		ctx, fs.config.MDOps(), tlfHandle)
+	if err != nil {
+		return keys, id, err
+	}
+
+	keys, err = fs.config.KeyManager().GetTLFCryptKeyOfAllGenerations(ctx, rmd)
+	return keys, id, err
+}
+
+func (fs *KBFSOpsStandard) getOrInitializeNewMDMaster(
 	ctx context.Context, mdops MDOps, h *TlfHandle) (initialized bool,
 	md ImmutableRootMetadata, id TlfID, err error) {
 	id, md, err = mdops.GetForHandle(ctx, h, Merged)
@@ -289,7 +302,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 	if md == (ImmutableRootMetadata{}) {
 		var initialized bool
 		var id TlfID
-		initialized, md, id, err = fs.GetOrInitializeNewMDMaster(
+		initialized, md, id, err = fs.getOrInitializeNewMDMaster(
 			ctx, mdops, h)
 		if err != nil {
 			return nil, EntryInfo{}, err

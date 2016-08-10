@@ -235,15 +235,14 @@ func (_mr *_MockKBFSOpsRecorder) DeleteFavorite(arg0, arg1 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeleteFavorite", arg0, arg1)
 }
 
-func (_m *MockKBFSOps) GetOrInitializeNewMDMaster(
-	ctx context.Context, mdops MDOps, h *TlfHandle) (
-	bool, ImmutableRootMetadata, TlfID, error) {
-	ret := _m.ctrl.Call(_m, "GetOrInitializeNewMDMaster", ctx, mdops, h)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(ImmutableRootMetadata)
-	ret2, _ := ret[2].(TlfID)
-	ret3, _ := ret[3].(error)
-	return ret0, ret1, ret2, ret3
+func (_m *MockKBFSOps) GetTLFCryptKeys(
+	ctx context.Context, h *TlfHandle) (
+	[]TLFCryptKey, TlfID, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeys", ctx, h)
+	ret0, _ := ret[0].([]TLFCryptKey)
+	ret1, _ := ret[1].(TlfID)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 func (_m *MockKBFSOps) GetOrCreateRootNode(ctx context.Context, h *TlfHandle, branch BranchName) (Node, EntryInfo, error) {
@@ -1080,9 +1079,9 @@ func (_m *MockKeyManager) GetTLFCryptKeyForBlockDecryption(ctx context.Context, 
 	return ret0, ret1
 }
 
-func (_m *MockKeyManager) GetTLFCryptKeyFromAllGenerations(
+func (_m *MockKeyManager) GetTLFCryptKeyOfAllGenerations(
 	ctx context.Context, kmd KeyMetadata) (keys []TLFCryptKey, err error) {
-	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyFromAllGenerations", ctx, kmd)
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyOfAllGenerations", ctx, kmd)
 	ret0, _ := ret[0].([]TLFCryptKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1

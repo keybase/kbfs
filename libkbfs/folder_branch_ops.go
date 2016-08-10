@@ -1046,11 +1046,9 @@ func (fbo *folderBranchOps) initMDLocked(
 	return nil
 }
 
-func (fbo *folderBranchOps) GetOrInitializeNewMDMaster(
-	ctx context.Context, mdops MDOps, h *TlfHandle) (initialized bool,
-	md ImmutableRootMetadata, id TlfID, err error) {
-	err = errors.New("GetOrInitializeNewMDMaster is not supported by " +
-		"folderBranchOps")
+func (fbo *folderBranchOps) GetTLFCryptKeys(ctx context.Context,
+	h *TlfHandle) (keys []TLFCryptKey, id TlfID, err error) {
+	err = errors.New("GetTLFCryptKeys is not supported by folderBranchOps")
 	return
 }
 

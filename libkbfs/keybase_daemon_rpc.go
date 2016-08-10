@@ -311,6 +311,7 @@ func (k *KeybaseDaemonRPC) Shutdown() {
 // KeybaseDaemonRPC.
 func (k *KeybaseDaemonRPC) GetTLFCryptKeys(
 	ctx context.Context, tlfName string) (res keybase1.TLFCryptKeys, err error) {
+
 	var tlfHandle *TlfHandle
 
 getHandle:
@@ -328,24 +329,20 @@ getHandle:
 
 	res.CanonicalName = keybase1.CanonicalTlfName(tlfHandle.GetCanonicalName())
 
-	var rmd ImmutableRootMetadata
+	var keys []TLFCryptKey
 	var id TlfID
-	_, rmd, id, err = k.config.KBFSOps().GetOrInitializeNewMDMaster(
-		ctx, k.config.MDOps(), tlfHandle)
+	keys, id, err = k.config.KBFSOps().GetTLFCryptKeys(ctx, tlfHandle)
 	if err != nil {
 		return res, err
 	}
 	res.TlfID = keybase1.TLFID(id.String())
 
-	var keys []TLFCryptKey
-	keys, err = k.config.KeyManager().GetTLFCryptKeyFromAllGenerations(ctx, rmd)
-	if err != nil {
-		return res, err
+	for i, key := range keys {
+		res.CryptKeys = append(res.CryptKeys, keybase1.CryptKey{
+			KeyGeneration: FirstValidKeyGen + i,
+			Key:           keybase1.Bytes32(key.data),
+		})
 	}
 
-	res.FirstValidKeyGen = FirstValidKeyGen
-	for _, key := range keys {
-		res.CryptKeys = append(res.CryptKeys, keybase1.Bytes32(key.data))
-	}
 	return res, nil
 }
