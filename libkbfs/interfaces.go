@@ -108,7 +108,8 @@ type KBFSOps interface {
 	DeleteFavorite(ctx context.Context, fav Favorite) error
 
 	// GetTLFCryptKeys gets crypt key of all generations as well as
-	// TLF ID for tlfHandle.
+	// TLF ID for tlfHandle. The returned keys (the keys slice) are ordered by
+	// generation, starting with the key for FirstValidKeyGen.
 	GetTLFCryptKeys(ctx context.Context, tlfHandle *TlfHandle) (
 		keys []TLFCryptKey, id TlfID, err error)
 

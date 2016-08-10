@@ -311,7 +311,6 @@ func (k *KeybaseDaemonRPC) Shutdown() {
 // KeybaseDaemonRPC.
 func (k *KeybaseDaemonRPC) GetTLFCryptKeys(
 	ctx context.Context, tlfName string) (res keybase1.TLFCryptKeys, err error) {
-
 	var tlfHandle *TlfHandle
 
 getHandle:
@@ -329,9 +328,7 @@ getHandle:
 
 	res.CanonicalName = keybase1.CanonicalTlfName(tlfHandle.GetCanonicalName())
 
-	var keys []TLFCryptKey
-	var id TlfID
-	keys, id, err = k.config.KBFSOps().GetTLFCryptKeys(ctx, tlfHandle)
+	keys, id, err := k.config.KBFSOps().GetTLFCryptKeys(ctx, tlfHandle)
 	if err != nil {
 		return res, err
 	}
