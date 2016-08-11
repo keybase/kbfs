@@ -516,11 +516,11 @@ func (md *BareRootMetadata) getTLFKeyBundles(keyGen KeyGen) (
 	return &md.WKeys[i], &md.RKeys[i], nil
 }
 
-// GetTLFCryptPublicKeys returns the public crypt keys for the given
+// GetDeviceKIDs returns the KIDs for all known devices for the given
 // user at the given key generation, if any.  Returns an error if the
 // TLF is public, or if the given key generation is invalid.
-func (md *BareRootMetadata) GetTLFCryptPublicKeys(
-	keyGen KeyGen, user keybase1.UID) ([]CryptPublicKey, error) {
+func (md *BareRootMetadata) GetDeviceKIDs(
+	keyGen KeyGen, user keybase1.UID) ([]keybase1.KID, error) {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return nil, err
@@ -531,17 +531,20 @@ func (md *BareRootMetadata) GetTLFCryptPublicKeys(
 		dkim = rkb.RKeys[user]
 	}
 
-	var keys []CryptPublicKey
+	var kids []keybase1.KID
 	for kid, _ := range dkim {
-		keys = append(keys, MakeCryptPublicKey(kid))
+		kids = append(kids, kid)
 	}
 
-	return keys, nil
+	return kids, nil
 }
 
 // HasKeyForUser returns whether or not the given user has keys for at
 // least one device at the given key generation. Returns false if the
-// TLF is public, or if the given key generation is invalid.
+// TLF is public, or if the given key generation is invalid. Equivalent to:
+//
+//   kids, err := GetDevice(kids(keyGen, user))
+//   return (err == nil) && (len(kids) > 0)
 func (md *BareRootMetadata) HasKeyForUser(
 	keyGen KeyGen, user keybase1.UID) bool {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
