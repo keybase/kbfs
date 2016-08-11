@@ -1311,7 +1311,7 @@ func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 	node Node, ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "Lookup %p %v %s", dir.GetID(), fbo.nodeCache.PathFromNode(dir).path, name)
 	defer func() {
-		fbo.deferLog.CDebugf(ctx, "Done: %p %v %v", node.GetID(), fbo.nodeCache.PathFromNode(node).path, err)
+		fbo.deferLog.CDebugf(ctx, "Done: %v", err)
 	}()
 
 	err = fbo.checkNode(dir)
@@ -3278,8 +3278,8 @@ func (fbo *folderBranchOps) searchForNode(ctx context.Context,
 		}
 	}
 
-	nodeMap, err := fbo.blocks.SearchForNodes(ctx, fbo.nodeCache, []BlockPointer{ptr},
-		newPtrs, md)
+	nodeMap, _, err := fbo.blocks.SearchForNodes(ctx, fbo.nodeCache,
+		[]BlockPointer{ptr}, newPtrs, md)
 	if err != nil {
 		return nil, err
 	}

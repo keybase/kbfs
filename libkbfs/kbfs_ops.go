@@ -289,7 +289,7 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 	node Node, ei EntryInfo, err error) {
 	fs.log.CDebugf(ctx, "GetOrCreateRootNode(%s, %v)",
 		h.GetCanonicalPath(), branch)
-	defer func() { fs.deferLog.CDebugf(ctx, "Done: %p %#v", node.GetID(), err) }()
+	defer func() { fs.deferLog.CDebugf(ctx, "Done: %#v", err) }()
 
 	// Do GetForHandle() unlocked -- no cache lookups, should be fine
 	mdops := fs.config.MDOps()

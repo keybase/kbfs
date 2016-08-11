@@ -2532,18 +2532,10 @@ func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 	return numNodesFound, nil
 }
 
-// SearchForNodes tries to resolve all the given pointers to a Node
-// object, using only the updated pointers specified in newPtrs.
-// Returns an error if any subset of the pointer paths do not exist;
-// it is the caller's responsibility to decide to error on particular
-// unresolved nodes.
-func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
-	cache NodeCache, ptrs []BlockPointer, newPtrs map[BlockPointer]bool,
-	md ReadOnlyRootMetadata) (map[BlockPointer]Node, error) {
-	lState := makeFBOLockState()
-	fbo.blockLock.RLock(lState)
-	defer fbo.blockLock.RUnlock(lState)
-
+func (fbo *folderBlockOps) searchForNodesLocked(ctx context.Context,
+	lState *lockState, cache NodeCache, ptrs []BlockPointer,
+	newPtrs map[BlockPointer]bool, md ReadOnlyRootMetadata) (
+	map[BlockPointer]Node, NodeCache, error) {
 	// Start with the root node
 	rootPtr := md.data.Dir.BlockPointer
 	var nodeMap map[BlockPointer]Node
@@ -2560,7 +2552,7 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 		}
 
 		if len(ptrs) == 0 {
-			return nodeMap, nil
+			return nodeMap, cache, nil
 		}
 
 		var node Node
@@ -2582,7 +2574,7 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 			node, err = cache.GetOrCreate(rootPtr,
 				string(md.GetTlfHandle().GetCanonicalName()), nil)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			fbo.log.CDebugf(ctx, "Make node %p for ptr %v", node.GetID(), rootPtr)
 		}
@@ -2594,30 +2586,77 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 			nodeMap[rootPtr] = node
 			numNodesFound++
 			if numNodesFound >= len(nodeMap) {
-				return nodeMap, nil
+				return nodeMap, cache, nil
 			}
 		}
 
 		rootPath := cache.PathFromNode(node)
 		if len(rootPath.path) != 1 {
-			return nil, fmt.Errorf("Invalid root path for %v: %s",
+			return nil, nil, fmt.Errorf("Invalid root path for %v: %s",
 				md.data.Dir.BlockPointer, rootPath)
 		}
 
 		_, err := fbo.searchForNodesInDirLocked(ctx, lState, cache, newPtrs, md,
 			node, rootPath, nodeMap, numNodesFound)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		attempts--
 		finalRootPtr = cache.PathFromNode(node).tailPointer()
 	}
 	for attempts == 0 && rootPtr != finalRootPtr {
-		return nil, fmt.Errorf("Unable to search because of pointer updates")
+		return nil, nil,
+			fmt.Errorf("Unable to search because of pointer updates")
 	}
 
 	// Return the whole map even if some nodes weren't found.
-	return nodeMap, nil
+	return nodeMap, cache, nil
+}
+
+// SearchForNodes tries to resolve all the given pointers to a Node
+// object, using only the updated pointers specified in newPtrs.
+// Returns an error if any subset of the pointer paths do not exist;
+// it is the caller's responsibility to decide to error on particular
+// unresolved nodes.
+func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
+	cache NodeCache, ptrs []BlockPointer, newPtrs map[BlockPointer]bool,
+	md ReadOnlyRootMetadata) (map[BlockPointer]Node, NodeCache, error) {
+	lState := makeFBOLockState()
+	fbo.blockLock.RLock(lState)
+	defer fbo.blockLock.RUnlock(lState)
+	return fbo.searchForNodesLocked(ctx, lState, cache, ptrs, newPtrs, md)
+}
+
+// SearchForPaths is like SearchForNodes, except it returns a
+// consistent view of all the paths of the searched-for pointers.
+func (fbo *folderBlockOps) SearchForPaths(ctx context.Context,
+	cache NodeCache, ptrs []BlockPointer, newPtrs map[BlockPointer]bool,
+	md ReadOnlyRootMetadata) (map[BlockPointer]path, error) {
+	lState := makeFBOLockState()
+	// Hold the lock while processing the paths so they can't be changed.
+	fbo.blockLock.RLock(lState)
+	defer fbo.blockLock.RUnlock(lState)
+	nodeMap, cache, err :=
+		fbo.searchForNodesLocked(ctx, lState, cache, ptrs, newPtrs, md)
+	if err != nil {
+		return nil, err
+	}
+
+	paths := make(map[BlockPointer]path)
+	for ptr, n := range nodeMap {
+		if n == nil {
+			paths[ptr] = path{}
+			continue
+		}
+
+		p := cache.PathFromNode(n)
+		if p.tailPointer() != ptr {
+			return nil, NodeNotFoundError{ptr}
+		}
+		paths[ptr] = p
+	}
+
+	return paths, nil
 }
 
 // getUndirtiedEntry returns the clean entry for the given path
