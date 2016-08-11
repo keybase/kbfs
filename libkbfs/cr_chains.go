@@ -861,6 +861,7 @@ func (ccs *crChains) getPaths(ctx context.Context, blocks *folderBlockOps,
 			log.CErrorf(ctx, "Couldn't find chain for found path: %v", ptr)
 			continue
 		}
+		log.CDebugf(ctx, "Setting final path to %s (%v) on chain %v", p, p.path, ptr)
 		for _, op := range chain.ops {
 			op.setFinalPath(p)
 		}

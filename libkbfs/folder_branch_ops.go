@@ -242,7 +242,7 @@ type folderBranchOps struct {
 	//     write/truncate must call PathFromNode() under
 	//     blockLock.
 	//
-	//     Furthermore, calls to UpdatePointer() must happen
+	//     Furthermore, calls to UpdatePointers() must happen
 	//     before the copy-on-write mode induced by Sync() is
 	//     finished.
 	nodeCache NodeCache
@@ -1349,13 +1349,10 @@ func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 				return err
 			}
 
-			fbo.log.CDebugf(ctx, "Making path from dir %v for child %v", dirPath.path, de.BlockPointer)
-			fmt.Printf("Making path from dir %v for child %v\n", dirPath.path, de.BlockPointer)
 			node, err = fbo.nodeCache.GetOrCreate(de.BlockPointer, name, dir)
 			if err != nil {
 				return err
 			}
-			fbo.log.CDebugf(ctx, "Made path %v, parent ID %p", fbo.nodeCache.PathFromNode(node).path, node.GetID().ParentID())
 		}
 		return nil
 	})
