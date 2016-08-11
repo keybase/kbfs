@@ -519,7 +519,7 @@ func (md *BareRootMetadata) getTLFKeyBundles(keyGen KeyGen) (
 // HasKeyForUser returns whether or not the given user has keys for at
 // least one device at the given key generation. Returns false if the
 // TLF is public, or if the given key generation is invalid.
-func (md *RootMetadata) HasKeyForUser(
+func (md *BareRootMetadata) HasKeyForUser(
 	keyGen KeyGen, user keybase1.UID) bool {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
