@@ -516,9 +516,10 @@ func (md *BareRootMetadata) getTLFKeyBundles(keyGen KeyGen) (
 	return &md.WKeys[i], &md.RKeys[i], nil
 }
 
-// GetDeviceKIDs returns the KIDs for all known devices for the given
-// user at the given key generation, if any.  Returns an error if the
-// TLF is public, or if the given key generation is invalid.
+// GetDeviceKIDs returns the KIDs (of CryptPublicKeys) for all known
+// devices for the given user at the given key generation, if any.
+// Returns an error if the TLF is public, or if the given key
+// generation is invalid.
 func (md *BareRootMetadata) GetDeviceKIDs(
 	keyGen KeyGen, user keybase1.UID) ([]keybase1.KID, error) {
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
