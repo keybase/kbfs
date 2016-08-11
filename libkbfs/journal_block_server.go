@@ -53,15 +53,11 @@ func (j journalBlockServer) Put(
 func (j journalBlockServer) AddBlockReference(
 	ctx context.Context, tlfID TlfID, id BlockID,
 	context BlockContext) error {
-	_, ok := j.jServer.getBundle(tlfID)
-	bundle, ok := j.jServer.getBundle(tlfID)
-	if ok {
-		bundle.lock.Lock()
-		defer bundle.lock.Unlock()
-		return bundle.blockJournal.addReference(ctx, id, context)
-	}
-
-	return j.BlockServer.AddBlockReference(ctx, tlfID, id, context)
+	// TODO: Temporarily return an error until KBFS-1149 is
+	// fixed. This is needed despite
+	// journalBlockCache.CheckForBlockPtr, since CheckForBlockPtr
+	// may be called before journaling is turned on for a TLF.
+	return BServerErrorBlockNonExistent{}
 }
 
 func (j journalBlockServer) RemoveBlockReferences(

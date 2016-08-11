@@ -20,6 +20,7 @@ func (j journalBlockCache) CheckForKnownPtr(
 	}
 
 	// Temporarily disable de-duping for the journal server until
-	// KBFS-1149 is fixed.
+	// KBFS-1149 is fixed. (See also
+	// journalBlockServer.AddReference.)
 	return BlockPointer{}, nil
 }
