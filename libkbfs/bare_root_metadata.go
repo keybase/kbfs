@@ -516,6 +516,29 @@ func (md *BareRootMetadata) getTLFKeyBundles(keyGen KeyGen) (
 	return &md.WKeys[i], &md.RKeys[i], nil
 }
 
+// GetTLFCryptPublicKeys returns the public crypt keys for the given
+// user at the given key generation, if any.  Returns an error if the
+// TLF is public, or if the given key generation is invalid.
+func (md *BareRootMetadata) GetTLFCryptPublicKeys(
+	keyGen KeyGen, user keybase1.UID) ([]CryptPublicKey, error) {
+	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
+	if err != nil {
+		return nil, err
+	}
+
+	dkim := wkb.WKeys[user]
+	if len(dkim) == 0 {
+		dkim = rkb.RKeys[user]
+	}
+
+	var keys []CryptPublicKey
+	for kid, _ := range dkim {
+		keys = append(keys, MakeCryptPublicKey(kid))
+	}
+
+	return keys, nil
+}
+
 // HasKeyForUser returns whether or not the given user has keys for at
 // least one device at the given key generation. Returns false if the
 // TLF is public, or if the given key generation is invalid.
