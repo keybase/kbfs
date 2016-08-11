@@ -50,6 +50,7 @@ func GetPlatformSpecificMountOptionsForTest() []fuse.MountOption {
 	// TODO: Consider mandate testing with kbfuse?
 	return []fuse.MountOption{
 		fuse.OSXFUSELocations(kbfusePath, fuse.OSXFUSELocationV3),
+		fuse.ExclCreate(),
 	}
 }
 
