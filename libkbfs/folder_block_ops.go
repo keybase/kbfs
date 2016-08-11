@@ -2504,6 +2504,7 @@ func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 				if err != nil {
 					return 0, err
 				}
+				fbo.log.CDebugf(ctx, "Make node %p for ptr %v", n.GetID(), pn.BlockPointer)
 			}
 			nodeMap[de.BlockPointer] = n
 			numNodesFound++
@@ -2574,6 +2575,7 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+		fbo.log.CDebugf(ctx, "Make node %p for ptr %v", node.GetID(), rootPtr)
 	}
 
 	// are they looking for the root directory?
@@ -2717,6 +2719,7 @@ func (fbo *folderBlockOps) UpdatePointers(lState *lockState, op op) {
 	fbo.blockLock.Lock(lState)
 	defer fbo.blockLock.Unlock(lState)
 	for _, update := range op.AllUpdates() {
+		fbo.log.CDebugf(nil, "Update nodecache %v -> %v", update.Unref, update.Ref)
 		oldRef := update.Unref.ref()
 		fbo.nodeCache.UpdatePointer(oldRef, update.Ref)
 	}

@@ -1214,7 +1214,7 @@ func (fbo *folderBranchOps) getRootNode(ctx context.Context) (
 		} else {
 			// node may still be nil if we're unwinding
 			// from a panic.
-			fbo.deferLog.CDebugf(ctx, "Done: %v", node)
+			fbo.deferLog.CDebugf(ctx, "Done: %p", node)
 		}
 	}()
 
@@ -1309,8 +1309,10 @@ func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
 
 func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 	node Node, ei EntryInfo, err error) {
-	fbo.log.CDebugf(ctx, "Lookup %p %s", dir.GetID(), name)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %v", err) }()
+	fbo.log.CDebugf(ctx, "Lookup %p %v %s", dir.GetID(), fbo.nodeCache.PathFromNode(dir).path, name)
+	defer func() {
+		fbo.deferLog.CDebugf(ctx, "Done: %p %v %v", node.GetID(), fbo.nodeCache.PathFromNode(node).path, err)
+	}()
 
 	err = fbo.checkNode(dir)
 	if err != nil {
@@ -1347,10 +1349,13 @@ func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 				return err
 			}
 
+			fbo.log.CDebugf(ctx, "Making path from dir %v for child %v", dirPath.path, de.BlockPointer)
+			fmt.Printf("Making path from dir %v for child %v\n", dirPath.path, de.BlockPointer)
 			node, err = fbo.nodeCache.GetOrCreate(de.BlockPointer, name, dir)
 			if err != nil {
 				return err
 			}
+			fbo.log.CDebugf(ctx, "Made path %v, parent ID %p", fbo.nodeCache.PathFromNode(node).path, node.GetID().ParentID())
 		}
 		return nil
 	})
@@ -3106,8 +3111,9 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 	// implies we are using a cached path, which implies the node has
 	// been unlinked.  In that case, we can safely ignore this sync.
 	if md.data.Dir.BlockPointer != file.path[0].BlockPointer {
-		fbo.log.CDebugf(ctx, "Skipping sync for a removed file %v",
-			file.tailPointer())
+		fbo.log.CDebugf(ctx, "Skipping sync for a removed file %v; %v vs %v",
+			file.tailPointer(), md.data.Dir.BlockPointer,
+			file.path[0].BlockPointer)
 		// Removing the cached info here is a little sketchy,
 		// since there's no guarantee that this sync comes
 		// from closing the file, and we still want to serve

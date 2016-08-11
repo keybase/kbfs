@@ -123,12 +123,14 @@ func TestLongTlfEditHistory(t *testing.T) {
 	var userName1, userName2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, userName1, userName2)
 	defer CheckConfigAndShutdown(t, config1)
+	ctx1 := ctxWithRandomID(ctx, 92929, "TID1", config1.MakeLogger(""))
 
 	clock, now := newTestClockAndTimeNow()
 	config1.SetClock(clock)
 
 	config2 := ConfigAsUser(config1.(*ConfigLocal), userName2)
 	defer CheckConfigAndShutdown(t, config2)
+	ctx2 := ctxWithRandomID(ctx, 92928, "TID2", config1.MakeLogger(""))
 
 	name := userName1.String() + "," + userName2.String()
 
@@ -141,7 +143,7 @@ func TestLongTlfEditHistory(t *testing.T) {
 	// history.
 	i := 0
 	for ; i < 50; i++ {
-		_, _, err := kbfsOps1.CreateFile(ctx, rootNode1,
+		_, _, err := kbfsOps1.CreateFile(ctx1, rootNode1,
 			fmt.Sprintf("file%d", i), false, NoExcl)
 		require.NoError(t, err)
 	}
@@ -170,14 +172,14 @@ func TestLongTlfEditHistory(t *testing.T) {
 			createRemainders, expectedEdits)
 	}
 
-	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
+	err = kbfsOps1.SyncFromServerForTesting(ctx1, rootNode1.GetFolderBranch())
 	require.NoError(t, err)
-	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
+	err = kbfsOps2.SyncFromServerForTesting(ctx2, rootNode2.GetFolderBranch())
 	require.NoError(t, err)
 
-	edits1, err := kbfsOps1.GetEditHistory(ctx, rootNode1.GetFolderBranch())
+	edits1, err := kbfsOps1.GetEditHistory(ctx1, rootNode1.GetFolderBranch())
 	require.NoError(t, err)
-	edits2, err := kbfsOps2.GetEditHistory(ctx, rootNode2.GetFolderBranch())
+	edits2, err := kbfsOps2.GetEditHistory(ctx2, rootNode2.GetFolderBranch())
 	require.NoError(t, err)
 
 	require.Equal(t, expectedEdits, edits1, "User1 has unexpected edit history")
@@ -223,30 +225,30 @@ func TestLongTlfEditHistory(t *testing.T) {
 		LocalTime: oldNow,
 	}}, expectedEdits[uid2]...)
 
-	err = kbfsOps1.RemoveEntry(ctx, rootNode1, rmFile1)
+	err = kbfsOps1.RemoveEntry(ctx1, rootNode1, rmFile1)
 	require.NoError(t, err)
-	err = kbfsOps1.RemoveEntry(ctx, rootNode1, rmFile2)
+	err = kbfsOps1.RemoveEntry(ctx1, rootNode1, rmFile2)
 	require.NoError(t, err)
-	err = kbfsOps1.Rename(ctx, rootNode1, renameFile, rootNode1,
+	err = kbfsOps1.Rename(ctx1, rootNode1, renameFile, rootNode1,
 		renameFile+".New")
 
-	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
+	err = kbfsOps2.SyncFromServerForTesting(ctx2, rootNode2.GetFolderBranch())
 	require.NoError(t, err)
-	editNode, _, err := kbfsOps2.Lookup(ctx, rootNode2, editFile)
+	editNode, _, err := kbfsOps2.Lookup(ctx2, rootNode2, editFile)
 	require.NoError(t, err)
-	err = kbfsOps2.Write(ctx, editNode, []byte{1}, 1)
+	err = kbfsOps2.Write(ctx2, editNode, []byte{1}, 1)
 	require.NoError(t, err)
-	err = kbfsOps2.Sync(ctx, editNode)
-	require.NoError(t, err)
-
-	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
-	require.NoError(t, err)
-	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
+	err = kbfsOps2.Sync(ctx2, editNode)
 	require.NoError(t, err)
 
-	edits1, err = kbfsOps1.GetEditHistory(ctx, rootNode1.GetFolderBranch())
+	err = kbfsOps1.SyncFromServerForTesting(ctx1, rootNode1.GetFolderBranch())
 	require.NoError(t, err)
-	edits2, err = kbfsOps2.GetEditHistory(ctx, rootNode2.GetFolderBranch())
+	err = kbfsOps2.SyncFromServerForTesting(ctx2, rootNode2.GetFolderBranch())
+	require.NoError(t, err)
+
+	edits1, err = kbfsOps1.GetEditHistory(ctx1, rootNode1.GetFolderBranch())
+	require.NoError(t, err)
+	edits2, err = kbfsOps2.GetEditHistory(ctx2, rootNode2.GetFolderBranch())
 	require.NoError(t, err)
 
 	require.Equal(t, expectedEdits, edits1, "User1 has unexpected edit history")

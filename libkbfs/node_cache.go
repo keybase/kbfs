@@ -105,6 +105,7 @@ func (ncs *nodeCacheStandard) GetOrCreate(
 		if parent != nil && entry.core.parent == nil {
 			delete(ncs.nodes, ptr.ref())
 		} else {
+			fmt.Printf("Returning cached path for %v\n", ptr)
 			return makeNodeStandardForEntry(entry), nil
 		}
 	}
@@ -165,11 +166,15 @@ func (ncs *nodeCacheStandard) UpdatePointer(
 	defer ncs.lock.Unlock()
 	entry, ok := ncs.nodes[oldRef]
 	if !ok {
+		fmt.Printf("Skipping update for non-existant oldptr %v\n", oldRef)
 		return
 	}
 
+	fmt.Printf("Updating %p %v -> %v\n", entry.core, oldRef, newPtr)
+
 	// Cannot update the pointer for an unlinked node
 	if len(entry.core.cachedPath.path) > 0 {
+		fmt.Printf("Skipping update for unlinked entry %v\n", entry.core.cachedPath.path)
 		return
 	}
 
