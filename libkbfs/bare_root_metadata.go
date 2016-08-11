@@ -530,9 +530,12 @@ func (md *BareRootMetadata) GetDeviceKIDs(
 	dkim := wkb.WKeys[user]
 	if len(dkim) == 0 {
 		dkim = rkb.RKeys[user]
+		if len(dkim) == 0 {
+			return nil, nil
+		}
 	}
 
-	var kids []keybase1.KID
+	kids := make([]keybase1.KID, 0, len(dkim))
 	for kid := range dkim {
 		kids = append(kids, kid)
 	}
