@@ -242,7 +242,7 @@ type folderBranchOps struct {
 	//     write/truncate must call PathFromNode() under
 	//     blockLock.
 	//
-	//     Furthermore, calls to UpdatePointers() must happen
+	//     Furthermore, calls to UpdatePointer() must happen
 	//     before the copy-on-write mode induced by Sync() is
 	//     finished.
 	nodeCache NodeCache
