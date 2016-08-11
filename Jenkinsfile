@@ -160,7 +160,7 @@ if (env.CHANGE_TITLE && env.CHANGE_TITLE.contains('[ci-skip]')) {
 
                                         println "Test Windows"
                                         bat 'gcc -v'
-                                        bat 'go get -t ./dokan/... ./kbfsdokan/... ./test/...'
+                                        bat 'go get -v -x -t ./dokan/... ./kbfsdokan/... ./test/...'
                                         dir('dokan') {
                                             bat 'go test -i'
                                             bat 'go test -c'
