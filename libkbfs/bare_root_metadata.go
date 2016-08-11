@@ -544,7 +544,7 @@ func (md *BareRootMetadata) GetDeviceKIDs(
 // least one device at the given key generation. Returns false if the
 // TLF is public, or if the given key generation is invalid. Equivalent to:
 //
-//   kids, err := GetDevice(kids(keyGen, user))
+//   kids, err := GetDeviceKIDs(keyGen, user)
 //   return (err == nil) && (len(kids) > 0)
 func (md *BareRootMetadata) HasKeyForUser(
 	keyGen KeyGen, user keybase1.UID) bool {
