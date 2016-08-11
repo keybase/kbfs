@@ -3423,6 +3423,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 					fbo.log.CErrorf(ctx, "Couldn't unlink from cache: %v", err)
 					return
 				}
+				fbo.log.CDebugf(ctx, "Moving %v to new node %p", realOp.Renamed.ref(), newNode)
 				err = fbo.nodeCache.Move(realOp.Renamed.ref(), newNode, realOp.NewName)
 				if err != nil {
 					fbo.log.CErrorf(ctx, "Couldn't move node in cache: %v", err)
@@ -3531,6 +3532,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 		return errors.New("Ignoring MD updates while writes are dirty")
 	}
 
+	appliedRevs := make([]ImmutableRootMetadata, 0, len(rmds))
 	for _, rmd := range rmds {
 		// check that we're applying the expected MD revision
 		if rmd.Revision <= fbo.getCurrMDRevisionLocked(lState) {
@@ -3552,8 +3554,11 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 		for _, op := range rmd.data.Changes.Ops {
 			fbo.notifyOneOpLocked(ctx, lState, op, rmd)
 		}
+		appliedRevs = append(appliedRevs, rmd)
 	}
-	fbo.editHistory.UpdateHistory(ctx, rmds)
+	if len(appliedRevs) > 0 {
+		fbo.editHistory.UpdateHistory(ctx, appliedRevs)
+	}
 	return nil
 }
 
