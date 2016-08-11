@@ -2479,7 +2479,7 @@ func (fbo *folderBlockOps) notifyErrListenersLocked(lState *lockState,
 // Returns the number of nodes found by this invocation.
 func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 	lState *lockState, cache NodeCache, newPtrs map[BlockPointer]bool,
-	kmd KeyMetadata, currDir path, nodeMap map[BlockPointer]Node,
+	kmd KeyMetadata, rootNode Node, currDir path, nodeMap map[BlockPointer]Node,
 	numNodesFoundSoFar int) (int, error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 
@@ -2498,8 +2498,8 @@ func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 		if _, ok := nodeMap[de.BlockPointer]; ok {
 			childPath := currDir.ChildPath(name, de.BlockPointer)
 			// make a node for every pathnode
-			var n Node
-			for _, pn := range childPath.path {
+			n := rootNode
+			for _, pn := range childPath.path[1:] {
 				n, err = cache.GetOrCreate(pn.BlockPointer, pn.Name, n)
 				if err != nil {
 					return 0, err
@@ -2516,8 +2516,9 @@ func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 		// otherwise, recurse if this represents an updated block
 		if _, ok := newPtrs[de.BlockPointer]; de.Type == Dir && ok {
 			childPath := currDir.ChildPath(name, de.BlockPointer)
-			n, err := fbo.searchForNodesInDirLocked(ctx, lState, cache, newPtrs, kmd,
-				childPath, nodeMap, numNodesFoundSoFar+numNodesFound)
+			n, err := fbo.searchForNodesInDirLocked(ctx, lState, cache,
+				newPtrs, kmd, rootNode, childPath, nodeMap,
+				numNodesFoundSoFar+numNodesFound)
 			if err != nil {
 				return 0, err
 			}
@@ -2554,6 +2555,11 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 
 	// Start with the root node
 	rootPtr := md.data.Dir.BlockPointer
+	//  Node must be referenced until the end of the function;
+	//  otherwise it could get garbage collected if no outside users
+	//  are holding a reference.  TODO: In Go 1.7 we can use
+	//  runtime.KeepAlive instead of passing it into
+	//  searchForNodesInDirLocked.
 	var node Node
 	if cache == fbo.nodeCache {
 		// Root node should already exist if we have an up-to-date md.
@@ -2594,8 +2600,8 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 			md.data.Dir.BlockPointer, rootPath)
 	}
 
-	_, err := fbo.searchForNodesInDirLocked(ctx, lState, cache, newPtrs, md, rootPath,
-		nodeMap, numNodesFound)
+	_, err := fbo.searchForNodesInDirLocked(ctx, lState, cache, newPtrs, md,
+		node, rootPath, nodeMap, numNodesFound)
 	if err != nil {
 		return nil, err
 	}
