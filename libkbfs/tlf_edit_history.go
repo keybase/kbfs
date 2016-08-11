@@ -292,13 +292,11 @@ outer:
 
 				writer := op.getWriterInfo().uid
 				createdPath := op.getFinalPath().ChildPathNoPtr(realOp.NewName)
-				x := TlfEdit{
+				edits[writer] = append(edits[writer], TlfEdit{
 					Filepath:  createdPath.String(),
 					Type:      FileCreated,
 					LocalTime: op.getLocalTimestamp(),
-				}
-				edits[writer] = append(edits[writer], x)
-				teh.log.CDebugf(ctx, "New create file: %s %s %s", x.Filepath, x.LocalTime, writer)
+				})
 			case *syncOp:
 				lastOp := op
 				// Only the final writer matters, so find the last
@@ -315,13 +313,11 @@ outer:
 				if chains.isCreated(ptr) {
 					t = FileCreated
 				}
-				x := TlfEdit{
+				edits[writer] = append(edits[writer], TlfEdit{
 					Filepath:  lastOp.getFinalPath().String(),
 					Type:      t,
 					LocalTime: lastOp.getLocalTimestamp(),
-				}
-				edits[writer] = append(edits[writer], x)
-				teh.log.CDebugf(ctx, "New edit file %s %s %s", x.Filepath, x.LocalTime, writer)
+				})
 				// We know there will be no creates in this chain
 				// since it's a file, so it's safe to skip to the next
 				// chain.

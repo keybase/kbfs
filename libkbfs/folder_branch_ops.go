@@ -1214,7 +1214,7 @@ func (fbo *folderBranchOps) getRootNode(ctx context.Context) (
 		} else {
 			// node may still be nil if we're unwinding
 			// from a panic.
-			fbo.deferLog.CDebugf(ctx, "Done: %p", node)
+			fbo.deferLog.CDebugf(ctx, "Done: %v", node)
 		}
 	}()
 
@@ -1309,10 +1309,8 @@ func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
 
 func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 	node Node, ei EntryInfo, err error) {
-	fbo.log.CDebugf(ctx, "Lookup %p %v %s", dir.GetID(), fbo.nodeCache.PathFromNode(dir).path, name)
-	defer func() {
-		fbo.deferLog.CDebugf(ctx, "Done: %v", err)
-	}()
+	fbo.log.CDebugf(ctx, "Lookup %p %s", dir.GetID(), name)
+	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %v", err) }()
 
 	err = fbo.checkNode(dir)
 	if err != nil {
@@ -3108,9 +3106,8 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 	// implies we are using a cached path, which implies the node has
 	// been unlinked.  In that case, we can safely ignore this sync.
 	if md.data.Dir.BlockPointer != file.path[0].BlockPointer {
-		fbo.log.CDebugf(ctx, "Skipping sync for a removed file %v; %v vs %v",
-			file.tailPointer(), md.data.Dir.BlockPointer,
-			file.path[0].BlockPointer)
+		fbo.log.CDebugf(ctx, "Skipping sync for a removed file %v",
+			file.tailPointer())
 		// Removing the cached info here is a little sketchy,
 		// since there's no guarantee that this sync comes
 		// from closing the file, and we still want to serve
@@ -3423,7 +3420,6 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 					fbo.log.CErrorf(ctx, "Couldn't unlink from cache: %v", err)
 					return
 				}
-				fbo.log.CDebugf(ctx, "Moving %v to new node %p", realOp.Renamed.ref(), newNode)
 				err = fbo.nodeCache.Move(realOp.Renamed.ref(), newNode, realOp.NewName)
 				if err != nil {
 					fbo.log.CErrorf(ctx, "Couldn't move node in cache: %v", err)

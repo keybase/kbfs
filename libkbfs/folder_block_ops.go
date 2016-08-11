@@ -2504,7 +2504,6 @@ func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 				if err != nil {
 					return 0, err
 				}
-				fbo.log.CDebugf(ctx, "Make node %p for ptr %v, child %s", n.GetID(), pn.BlockPointer, pn.Name)
 			}
 			nodeMap[de.BlockPointer] = n
 			numNodesFound++
@@ -2576,9 +2575,7 @@ func (fbo *folderBlockOps) searchForNodesLocked(ctx context.Context,
 			if err != nil {
 				return nil, nil, err
 			}
-			fbo.log.CDebugf(ctx, "Make node %p for ptr %v", node.GetID(), rootPtr)
 		}
-		fbo.log.CDebugf(ctx, "%p: Root node for %v is %p", fbo, rootPtr, node.GetID())
 
 		// are they looking for the root directory?
 		numNodesFound := 0
@@ -2617,7 +2614,10 @@ func (fbo *folderBlockOps) searchForNodesLocked(ctx context.Context,
 // object, using only the updated pointers specified in newPtrs.
 // Returns an error if any subset of the pointer paths do not exist;
 // it is the caller's responsibility to decide to error on particular
-// unresolved nodes.
+// unresolved nodes.  It also returns the cache that ultimately
+// contains the nodes -- this might differ from the passed-in cache if
+// another goroutine updated that cache and it no longer contains the
+// root pointer specified in md.
 func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 	cache NodeCache, ptrs []BlockPointer, newPtrs map[BlockPointer]bool,
 	md ReadOnlyRootMetadata) (map[BlockPointer]Node, NodeCache, error) {
