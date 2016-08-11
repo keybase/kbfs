@@ -533,7 +533,7 @@ func (md *BareRootMetadata) GetDeviceKIDs(
 	}
 
 	var kids []keybase1.KID
-	for kid, _ := range dkim {
+	for kid := range dkim {
 		kids = append(kids, kid)
 	}
 
