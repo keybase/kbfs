@@ -9,6 +9,7 @@ import "golang.org/x/net/context"
 type journalBlockServer struct {
 	jServer *JournalServer
 	BlockServer
+	enableAddBlockReference bool
 }
 
 var _ BlockServer = journalBlockServer{}
@@ -53,11 +54,23 @@ func (j journalBlockServer) Put(
 func (j journalBlockServer) AddBlockReference(
 	ctx context.Context, tlfID TlfID, id BlockID,
 	context BlockContext) error {
-	// TODO: Temporarily return an error until KBFS-1149 is
-	// fixed. This is needed despite
-	// journalBlockCache.CheckForBlockPtr, since CheckForBlockPtr
-	// may be called before journaling is turned on for a TLF.
-	return BServerErrorBlockNonExistent{}
+	if !j.enableAddBlockReference {
+		// TODO: Temporarily return an error until KBFS-1149 is
+		// fixed. This is needed despite
+		// journalBlockCache.CheckForBlockPtr, since CheckForBlockPtr
+		// may be called before journaling is turned on for a TLF.
+		return BServerErrorBlockNonExistent{}
+	}
+
+	_, ok := j.jServer.getBundle(tlfID)
+	bundle, ok := j.jServer.getBundle(tlfID)
+	if ok {
+		bundle.lock.Lock()
+		defer bundle.lock.Unlock()
+		return bundle.blockJournal.addReference(ctx, id, context)
+	}
+
+	return j.BlockServer.AddBlockReference(ctx, tlfID, id, context)
 }
 
 func (j journalBlockServer) RemoveBlockReferences(

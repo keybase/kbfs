@@ -232,7 +232,7 @@ func (j *JournalServer) blockCache() journalBlockCache {
 }
 
 func (j *JournalServer) blockServer() journalBlockServer {
-	return journalBlockServer{j, j.delegateBlockServer}
+	return journalBlockServer{j, j.delegateBlockServer, false}
 }
 
 func (j *JournalServer) mdOps() journalMDOps {
