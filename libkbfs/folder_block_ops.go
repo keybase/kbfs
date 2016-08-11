@@ -2470,13 +2470,23 @@ func (fbo *folderBlockOps) notifyErrListenersLocked(lState *lockState,
 	}
 }
 
+type searchWithOutOfDateCacheError struct {
+}
+
+func (e searchWithOutOfDateCacheError) Error() string {
+	return fmt.Sprintf("Search is using an out-of-date node cache; " +
+		"try again with a clean cache.")
+}
+
 // searchForNodesInDirLocked recursively tries to find a path, and
 // ultimately a node, to ptr, given the set of pointers that were
 // updated in a particular operation.  The keys in nodeMap make up the
 // set of BlockPointers that are being searched for, and nodeMap is
 // updated in place to include the corresponding discovered nodes.
 //
-// Returns the number of nodes found by this invocation.
+// Returns the number of nodes found by this invocation.  If the error
+// it returns is searchWithOutOfDateCache, the search should be
+// retried by the caller with a clean cache.
 func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 	lState *lockState, cache NodeCache, newPtrs map[BlockPointer]bool,
 	kmd KeyMetadata, rootNode Node, currDir path, nodeMap map[BlockPointer]Node,
@@ -2487,6 +2497,16 @@ func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 		ctx, lState, kmd, currDir, blockRead)
 	if err != nil {
 		return 0, err
+	}
+
+	// getDirLocked may have unlocked blockLock, which means the cache
+	// could have changed out from under us.  Verify that didn't
+	// happen, so we can avoid messing it up with nodes from an old MD
+	// version.  If it did happen, return a special error that lets
+	// the caller know they should retry with a fresh cache.
+	if currDir.path[0].BlockPointer !=
+		cache.PathFromNode(rootNode).tailPointer() {
+		return 0, searchWithOutOfDateCacheError{}
 	}
 
 	if numNodesFoundSoFar >= len(nodeMap) {
@@ -2531,79 +2551,95 @@ func (fbo *folderBlockOps) searchForNodesInDirLocked(ctx context.Context,
 	return numNodesFound, nil
 }
 
+func (fbo *folderBlockOps) trySearchWithCacheLocked(ctx context.Context,
+	lState *lockState, cache NodeCache, ptrs []BlockPointer,
+	newPtrs map[BlockPointer]bool, md ReadOnlyRootMetadata) (
+	map[BlockPointer]Node, error) {
+	fbo.blockLock.AssertAnyLocked(lState)
+
+	nodeMap := make(map[BlockPointer]Node)
+	for _, ptr := range ptrs {
+		nodeMap[ptr] = nil
+	}
+
+	if len(ptrs) == 0 {
+		return nodeMap, nil
+	}
+
+	rootPtr := md.data.Dir.BlockPointer
+	var node Node
+	if cache == fbo.nodeCache {
+		// Root node should already exist if we have an up-to-date md.
+		node = cache.Get(rootPtr.ref())
+		if node == nil {
+			return nil, searchWithOutOfDateCacheError{}
+		}
+	} else {
+		// Root node may or may not exist.
+		var err error
+		node, err = cache.GetOrCreate(rootPtr,
+			string(md.GetTlfHandle().GetCanonicalName()), nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if node == nil {
+		return nil, fmt.Errorf("Cannot find root node corresponding to %v",
+			rootPtr)
+	}
+
+	// are they looking for the root directory?
+	numNodesFound := 0
+	if _, ok := nodeMap[rootPtr]; ok {
+		nodeMap[rootPtr] = node
+		numNodesFound++
+		if numNodesFound >= len(nodeMap) {
+			return nodeMap, nil
+		}
+	}
+
+	rootPath := cache.PathFromNode(node)
+	if len(rootPath.path) != 1 {
+		return nil, fmt.Errorf("Invalid root path for %v: %s",
+			md.data.Dir.BlockPointer, rootPath)
+	}
+
+	_, err := fbo.searchForNodesInDirLocked(ctx, lState, cache, newPtrs, md,
+		node, rootPath, nodeMap, numNodesFound)
+	if err != nil {
+		return nil, err
+	}
+
+	if rootPtr != cache.PathFromNode(node).tailPointer() {
+		return nil, searchWithOutOfDateCacheError{}
+	}
+
+	return nodeMap, nil
+}
+
 func (fbo *folderBlockOps) searchForNodesLocked(ctx context.Context,
 	lState *lockState, cache NodeCache, ptrs []BlockPointer,
 	newPtrs map[BlockPointer]bool, md ReadOnlyRootMetadata) (
 	map[BlockPointer]Node, NodeCache, error) {
-	// Start with the root node
-	rootPtr := md.data.Dir.BlockPointer
-	var nodeMap map[BlockPointer]Node
-	var finalRootPtr BlockPointer
-	attempts := 10
-	for attempts > 0 && rootPtr != finalRootPtr {
-		if attempts < 10 {
-			fbo.log.CDebugf(ctx, "Trying search again due to an updated "+
-				"root pointer: %v vs %v", rootPtr, finalRootPtr)
-		}
-		nodeMap = make(map[BlockPointer]Node)
-		for _, ptr := range ptrs {
-			nodeMap[ptr] = nil
-		}
+	fbo.blockLock.AssertAnyLocked(lState)
 
-		if len(ptrs) == 0 {
-			return nodeMap, cache, nil
-		}
-
-		var node Node
-		if cache == fbo.nodeCache {
-			// Root node should already exist if we have an up-to-date md.
-			node = cache.Get(rootPtr.ref())
-			if node == nil {
-				// The md is out-of-date, so use a throwaway cache so we
-				// don't pollute the real node cache with stale nodes.
-				fbo.log.CDebugf(ctx, "Root node %v doesn't exist in the node "+
-					"cache; using a throwaway node cache instead", rootPtr)
-				cache = newNodeCacheStandard(fbo.folderBranch)
-			}
-		}
-
-		if node == nil {
-			// Root node may or may not exist.
-			var err error
-			node, err = cache.GetOrCreate(rootPtr,
-				string(md.GetTlfHandle().GetCanonicalName()), nil)
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-
-		// are they looking for the root directory?
-		numNodesFound := 0
-		if _, ok := nodeMap[rootPtr]; ok {
-			nodeMap[rootPtr] = node
-			numNodesFound++
-			if numNodesFound >= len(nodeMap) {
-				return nodeMap, cache, nil
-			}
-		}
-
-		rootPath := cache.PathFromNode(node)
-		if len(rootPath.path) != 1 {
-			return nil, nil, fmt.Errorf("Invalid root path for %v: %s",
-				md.data.Dir.BlockPointer, rootPath)
-		}
-
-		_, err := fbo.searchForNodesInDirLocked(ctx, lState, cache, newPtrs, md,
-			node, rootPath, nodeMap, numNodesFound)
-		if err != nil {
-			return nil, nil, err
-		}
-		attempts--
-		finalRootPtr = cache.PathFromNode(node).tailPointer()
+	// First try the passed-in cache.  If it doesn't work because the
+	// cache is out of date, try again with a clean cache.
+	nodeMap, err := fbo.trySearchWithCacheLocked(ctx, lState, cache, ptrs,
+		newPtrs, md)
+	if _, ok := err.(searchWithOutOfDateCacheError); ok {
+		// The md is out-of-date, so use a throwaway cache so we
+		// don't pollute the real node cache with stale nodes.
+		fbo.log.CDebugf(ctx, "Root node %v doesn't exist in the node "+
+			"cache; using a throwaway node cache instead",
+			md.data.Dir.BlockPointer)
+		cache = newNodeCacheStandard(fbo.folderBranch)
+		nodeMap, err = fbo.trySearchWithCacheLocked(ctx, lState, cache, ptrs,
+			newPtrs, md)
 	}
-	for attempts == 0 && rootPtr != finalRootPtr {
-		return nil, nil,
-			fmt.Errorf("Unable to search because of pointer updates")
+
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Return the whole map even if some nodes weren't found.
