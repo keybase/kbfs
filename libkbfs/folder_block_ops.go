@@ -2555,9 +2555,18 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 	rootPtr := md.data.Dir.BlockPointer
 	var node Node
 	if cache == fbo.nodeCache {
-		// Root node should already exist.
+		// Root node should already exist if we have an up-to-date md.
 		node = cache.Get(rootPtr.ref())
-	} else {
+		if node == nil {
+			// The md is out-of-date, so use a throwaway cache so we
+			// don't pollute the real node cache with stale nodes.
+			fbo.log.CDebugf(ctx, "Root node %v doesn't exist in the node "+
+				"cache; using a throwaway node cache instead", rootPtr)
+			cache = newNodeCacheStandard(fbo.folderBranch)
+		}
+	}
+
+	if node == nil {
 		// Root node may or may not exist.
 		var err error
 		node, err = cache.GetOrCreate(rootPtr,
@@ -2565,10 +2574,6 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-	}
-	if node == nil {
-		return nil, fmt.Errorf("Cannot find root node corresponding to %v",
-			rootPtr)
 	}
 
 	// are they looking for the root directory?
@@ -2702,4 +2707,17 @@ func (fbo *folderBlockOps) getDeferredWriteCountForTest(lState *lockState) int {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
 	return len(fbo.deferredWrites)
+}
+
+// UpdatePointers updates all the pointers in the node cache
+// atomically.
+func (fbo *folderBlockOps) UpdatePointers(lState *lockState, op op) {
+	// We need to take the lock in case SearchForNodes is running
+	// against the same node cache.
+	fbo.blockLock.Lock(lState)
+	defer fbo.blockLock.Unlock(lState)
+	for _, update := range op.AllUpdates() {
+		oldRef := update.Unref.ref()
+		fbo.nodeCache.UpdatePointer(oldRef, update.Ref)
+	}
 }

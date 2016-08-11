@@ -3312,18 +3312,11 @@ func (fbo *folderBranchOps) unlinkFromCache(op op, oldDir BlockPointer,
 	return nil
 }
 
-func (fbo *folderBranchOps) updatePointers(op op) {
-	for _, update := range op.AllUpdates() {
-		oldRef := update.Unref.ref()
-		fbo.nodeCache.UpdatePointer(oldRef, update.Ref)
-	}
-}
-
 func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 	lState *lockState, op op, md ImmutableRootMetadata) {
 	fbo.headLock.AssertLocked(lState)
 
-	fbo.updatePointers(op)
+	fbo.blocks.UpdatePointers(lState, op)
 
 	var changes []NodeChange
 	switch realOp := op.(type) {
