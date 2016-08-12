@@ -2568,6 +2568,35 @@ func (fbo *folderBlockOps) trySearchWithCacheLocked(ctx context.Context,
 
 	rootPtr := md.data.Dir.BlockPointer
 	var node Node
+	// The node cache used by the main part of KBFS is
+	// fbo.nodeCache. This basically maps from BlockPointers to
+	// Nodes. Nodes are used by the callers of the library, but
+	// internally we need to know the series of BlockPointers and
+	// file/dir names that make up the path of the corresponding
+	// file/dir. fbo.nodeCache is long-lived and never invalidated.
+	//
+	// As folderBranchOps gets informed of new local or remote MD
+	// updates, which change the BlockPointers of some subset of the
+	// nodes in this TLF, it calls nodeCache.UpdatePointer for each
+	// change. Then, when a caller passes some old Node they have
+	// lying around into an FBO call, we can translate it to its
+	// current path using fbo.nodeCache. Note that on every TLF
+	// modification, we are guaranteed that the BlockPointer of the
+	// root directory will change (because of the merkle-ish tree of
+	// content hashes we use to assign BlockPointers).
+	//
+	// fbo.nodeCache needs to maintain the absolute latest mappings
+	// for the TLF, or else FBO calls won't see up-to-date data. The
+	// tension in search comes from the fact that we are trying to
+	// discover the BlockPointers of certain files at a specific point
+	// in the MD history, which is not necessarily the same as the
+	// most-recently-seen MD update. Specifically, some callers
+	// process a specific range of MDs, but folderBranchOps may have
+	// heard about a newer one before, or during, when the caller
+	// started processing. That means fbo.nodeCache may have been
+	// updated to reflect the newest BlockPointers, and is no longer
+	// correct as a cache for our search for the data at the old point
+	// in time.
 	if cache == fbo.nodeCache {
 		// Root node should already exist if we have an up-to-date md.
 		node = cache.Get(rootPtr.ref())
