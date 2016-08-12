@@ -519,6 +519,9 @@ func (j *mdJournal) put(
 
 	if head != (ImmutableBareRootMetadata{}) &&
 		rmd.Revision == head.Revision {
+		j.log.CDebugf(
+			ctx, "Replacing head MD for TLF=%s with rev=%s bid=%s",
+			rmd.ID, rmd.Revision, rmd.BID)
 		err = j.j.replaceHead(id)
 		if err != nil {
 			return MdID{}, err
