@@ -305,6 +305,8 @@ func (j *JournalServer) mdOps() journalMDOps {
 	return journalMDOps{j.delegateMDOps, j}
 }
 
+// Status returns a JournalServerStatus object suitable for
+// diagnostics.
 func (j *JournalServer) Status() JournalServerStatus {
 	journalCount := func() int {
 		j.lock.RLock()
@@ -317,6 +319,8 @@ func (j *JournalServer) Status() JournalServerStatus {
 	}
 }
 
+// JournalStatus returns a TLFServerStatus object for the given TLF
+// suitable for diagnostics.
 func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 	bundle, ok := j.getBundle(tlfID)
 	if !ok {
