@@ -177,10 +177,7 @@ func (fbsk *folderBranchStatusKeeper) getStatus(ctx context.Context) (
 		fbs.Revision = fbsk.md.Revision
 
 		jServer, err := GetJournalServer(fbsk.config)
-		if err != nil {
-			log := fbsk.config.MakeLogger("")
-			log.CWarningf(ctx, "Error getting journal server: %v", err)
-		} else {
+		if err == nil {
 			jStatus, err := jServer.JournalStatus(fbsk.md.ID)
 			if err != nil {
 				log := fbsk.config.MakeLogger("")

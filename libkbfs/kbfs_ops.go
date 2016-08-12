@@ -511,9 +511,7 @@ func (fs *KBFSOpsStandard) Status(ctx context.Context) (
 	failures, ch := fs.currentStatus.CurrentStatus()
 	var jServerStatus *JournalServerStatus
 	jServer, err := GetJournalServer(fs.config)
-	if err != nil {
-		fs.log.CWarningf(ctx, "Error getting journal server: %v", err)
-	} else {
+	if err == nil {
 		status := jServer.Status()
 		jServerStatus = &status
 	}
