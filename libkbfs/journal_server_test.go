@@ -112,5 +112,5 @@ func TestJournalServerRestart(t *testing.T) {
 
 	head, err := mdOps.GetForTLF(ctx, tlfID)
 	require.NoError(t, err)
-	require.Equal(t, head, rmd)
+	require.Equal(t, rmd.Revision, head.Revision)
 }
