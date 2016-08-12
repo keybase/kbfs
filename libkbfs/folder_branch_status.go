@@ -32,6 +32,8 @@ type FolderBranchStatus struct {
 	// diverging operations per-file
 	Unmerged []*crChainSummary
 	Merged   []*crChainSummary
+
+	Journal *TLFJournalStatus
 }
 
 // KBFSStatus represents the content of the top-level status file. It is
@@ -173,11 +175,26 @@ func (fbsk *folderBranchStatusKeeper) getStatus(ctx context.Context) (
 		fbs.RekeyPending = fbsk.config.RekeyQueue().IsRekeyPending(fbsk.md.ID)
 		fbs.FolderID = fbsk.md.ID.String()
 		fbs.Revision = fbsk.md.Revision
+
+		jServer, err := GetJournalServer(fbsk.config)
+		if err != nil {
+			log := fbsk.config.MakeLogger("")
+			log.CWarningf(ctx, "Error getting journal server: %v", err)
+		} else {
+			jStatus, err := jServer.JournalStatus(fbsk.md.ID)
+			if err != nil {
+				log := fbsk.config.MakeLogger("")
+				log.CWarningf(ctx, "Error getting journal status for %s: %v", fbsk.md.ID, err)
+			} else {
+				fbs.Journal = &jStatus
+			}
+		}
 	}
 
 	fbs.DirtyPaths = fbsk.convertNodesToPathsLocked(fbsk.dirtyNodes)
 
 	fbs.Unmerged = fbsk.unmerged
 	fbs.Merged = fbsk.merged
+
 	return fbs, fbsk.updateChan, nil
 }

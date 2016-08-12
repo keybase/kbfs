@@ -35,6 +35,15 @@ type JournalServerStatus struct {
 	JournalCount int
 }
 
+// TLFJournalStatus represents the status of a TLF's journal for
+// display in diagnostics. It is suitable for encoding directly as
+// JSON.
+type TLFJournalStatus struct {
+	RevisionStart MetadataRevision
+	RevisionEnd   MetadataRevision
+	BlockOpCount  uint64
+}
+
 // JournalServer is the server that handles write journals. It
 // interposes itself in front of BlockServer and MDOps. It uses MDOps
 // instead of MDServer because it has to potentially modify the
@@ -306,4 +315,8 @@ func (j *JournalServer) Status() JournalServerStatus {
 		RootDir:      j.dir,
 		JournalCount: journalCount,
 	}
+}
+
+func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
+	return TLFJournalStatus{}, nil
 }
