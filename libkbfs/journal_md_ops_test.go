@@ -33,6 +33,8 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	jServer := makeJournalServer(
 		config, log, tempdir, config.BlockCache(),
 		config.BlockServer(), config.MDOps())
+	err = jServer.EnableExistingJournals()
+	require.NoError(t, err)
 	config.SetBlockCache(jServer.blockCache())
 	config.SetBlockServer(jServer.blockServer())
 

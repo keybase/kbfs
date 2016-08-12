@@ -376,9 +376,14 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 			config, log, params.WriteJournalRoot,
 			config.BlockCache(),
 			config.BlockServer(), config.MDOps())
-		config.SetBlockCache(jServer.blockCache())
-		config.SetBlockServer(jServer.blockServer())
-		config.SetMDOps(jServer.mdOps())
+		err := jServer.EnableExistingJournals()
+		if err == nil {
+			config.SetBlockCache(jServer.blockCache())
+			config.SetBlockServer(jServer.blockServer())
+			config.SetMDOps(jServer.mdOps())
+		} else {
+			log.Warning("Failed to enable existing journals: %v", err)
+		}
 	}
 
 	return config, nil

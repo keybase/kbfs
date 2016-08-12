@@ -23,6 +23,8 @@ func setupJournalBlockServerTest(t *testing.T) (
 	jServer = makeJournalServer(
 		config, log, tempdir, config.BlockCache(),
 		config.BlockServer(), config.MDOps())
+	err = jServer.EnableExistingJournals()
+	require.NoError(t, err)
 	config.SetBlockCache(jServer.blockCache())
 	blockServer := jServer.blockServer()
 	// Turn this on for testing.

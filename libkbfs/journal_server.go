@@ -70,6 +70,14 @@ func (j *JournalServer) getBundle(tlfID TlfID) (*tlfJournalBundle, bool) {
 	return bundle, ok
 }
 
+// EnableExistingJournals turns on the write journal for all TLFs with
+// an existing journal. This must be the first thing done to a
+// JournalServer. Any returned error is fatal, and means that the
+// JournalServer must not be used.
+func (j *JournalServer) EnableExistingJournals() (err error) {
+	return nil
+}
+
 // Enable turns on the write journal for the given TLF.
 func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID) (err error) {
 	j.log.Debug("Enabling journal for %s", tlfID)
