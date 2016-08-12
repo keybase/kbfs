@@ -27,6 +27,14 @@ type tlfJournalBundle struct {
 	mdJournal    *mdJournal
 }
 
+// JournalServerStatus represents the overall status of the
+// JournalServer for display in diagnostics. It is suitable for
+// encoding directly as JSON.
+type JournalServerStatus struct {
+	RootDir      string
+	JournalCount int
+}
+
 // JournalServer is the server that handles write journals. It
 // interposes itself in front of BlockServer and MDOps. It uses MDOps
 // instead of MDServer because it has to potentially modify the
@@ -286,4 +294,16 @@ func (j *JournalServer) blockServer() journalBlockServer {
 
 func (j *JournalServer) mdOps() journalMDOps {
 	return journalMDOps{j.delegateMDOps, j}
+}
+
+func (j *JournalServer) Status() JournalServerStatus {
+	journalCount := func() int {
+		j.lock.RLock()
+		defer j.lock.RUnlock()
+		return len(j.tlfBundles)
+	}()
+	return JournalServerStatus{
+		RootDir:      j.dir,
+		JournalCount: journalCount,
+	}
 }
