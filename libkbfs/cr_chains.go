@@ -848,6 +848,7 @@ func (ccs *crChains) getPaths(ctx context.Context, blocks *folderBlockOps,
 			ccs.removeChain(ptr)
 			continue
 		}
+		paths = append(paths, p)
 
 		// update the unmerged final paths
 		chain, ok := ccs.byMostRecent[ptr]
@@ -858,7 +859,6 @@ func (ccs *crChains) getPaths(ctx context.Context, blocks *folderBlockOps,
 		for _, op := range chain.ops {
 			op.setFinalPath(p)
 		}
-		paths = append(paths, p)
 	}
 
 	// Order by descending path length.
