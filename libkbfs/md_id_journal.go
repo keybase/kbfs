@@ -163,6 +163,14 @@ func (j mdIDJournal) getRange(
 	return start, mdIDs, nil
 }
 
+func (j mdIDJournal) replaceHead(mdID MdID) error {
+	o, err := j.j.readLatestOrdinal()
+	if err != nil {
+		return err
+	}
+	return j.j.writeJournalEntry(o, mdID)
+}
+
 func (j mdIDJournal) append(r MetadataRevision, mdID MdID) error {
 	o, err := revisionToOrdinal(r)
 	if err != nil {
