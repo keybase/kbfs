@@ -160,8 +160,6 @@ if (env.CHANGE_TITLE && env.CHANGE_TITLE.contains('[ci-skip]')) {
 
                                         println "Test Windows"
                                         bat 'gcc -v'
-                                        bat 'go build -v -x -compiler gccgo -gccgoflags "-debug-gcc -debug-define" runtime/cgo'
-                                        bat 'go get -t -compiler gccgo ./dokan/... ./kbfsdokan/... ./test/...'
                                         dir('dokan') {
                                             bat 'go test -i'
                                             bat 'go test -c -compiler gccgo'
