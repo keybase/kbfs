@@ -161,14 +161,14 @@ if (env.CHANGE_TITLE && env.CHANGE_TITLE.contains('[ci-skip]')) {
                                         println "Test Windows"
                                         bat 'gcc -v'
                                         dir('dokan') {
-                                            bat 'go test -i'
+                                            bat 'go test -i -compiler gccgo'
                                             bat 'go test -c -compiler gccgo'
                                         }
                                         dir('kbfsdokan') {
                                             bat 'go install -compiler gccgo'
                                         }
                                         dir('test') {
-                                            bat 'go test -i'
+                                            bat 'go test -i -compiler gccgo'
                                         }
                                         def tests = [
                                             'github.com/keybase/kbfs/libkbfs',
