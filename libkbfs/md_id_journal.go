@@ -17,6 +17,9 @@ import (
 // other stuff besides metadata puts. But doing so would be difficult,
 // since then we would require the ordinals to be something other than
 // MetadataRevisions.
+//
+// TODO: Write unit tests for this. For now, we're relying on
+// md_journal.go's unit tests.
 type mdIDJournal struct {
 	j diskJournal
 }
