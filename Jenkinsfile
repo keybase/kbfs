@@ -161,23 +161,27 @@ if (env.CHANGE_TITLE && env.CHANGE_TITLE.contains('[ci-skip]')) {
                                         println "Test Windows"
                                         bat 'gcc -v'
                                         bat 'go build -v -x -compiler gccgo -gccgoflags "-debug-gcc -debug-define" runtime/cgo'
-                                        bat 'go get -v -x -t ./dokan/... ./kbfsdokan/... ./test/...'
+                                        bat 'go get -t -compiler gccgo ./dokan/... ./kbfsdokan/... ./test/...'
                                         dir('dokan') {
                                             bat 'go test -i'
-                                            bat 'go test -c'
+                                            bat 'go test -c -compiler gccgo'
                                         }
                                         dir('kbfsdokan') {
-                                            bat 'go install'
+                                            bat 'go install -compiler gccgo'
                                         }
                                         dir('test') {
                                             bat 'go test -i'
                                         }
-                                        bat 'echo github.com/keybase/kbfs/libkbfs > testlist.txt'
-                                        bat 'echo github.com/keybase/kbfs/libdokan >> testlist.txt'
-                                        bat 'echo github.com/keybase/kbfs/test >> testlist.txt'
-                                        bat "for /f %%i in (testlist.txt) do (go test -timeout 5m %%i || exit /B 1)"
+                                        def tests = [
+                                            'github.com/keybase/kbfs/libkbfs',
+                                            'github.com/keybase/kbfs/libdokan',
+                                            'github.com/keybase/kbfs/test',
+                                        ]
+                                        for (test in tests) {
+                                            bat "go test -compiler gccgo -timeout 5m ${test}"
+                                        }
                                         dir('test') {
-                                            bat 'go test -c -tags dokan'
+                                            bat 'go test -c -tags dokan -compiler gccgo'
                                             bat '.\\test.test -tags dokan'
                                         }
                                     }
