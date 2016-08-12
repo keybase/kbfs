@@ -159,7 +159,6 @@ if (env.CHANGE_TITLE && env.CHANGE_TITLE.contains('[ci-skip]')) {
                                         checkout scm
 
                                         println "Test Windows"
-                                        bat 'dir vendor\\golang.org\\x\\net\\context'
                                         dir('dokan') {
                                             bat 'go test -i -compiler gccgo'
                                             bat 'go test -c -compiler gccgo'
