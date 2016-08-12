@@ -318,5 +318,28 @@ func (j *JournalServer) Status() JournalServerStatus {
 }
 
 func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
-	return TLFJournalStatus{}, nil
+	bundle, ok := j.getBundle(tlfID)
+	if !ok {
+		return TLFJournalStatus{}, fmt.Errorf("Journal not enabled for %s", tlfID)
+	}
+
+	bundle.lock.RLock()
+	defer bundle.lock.RUnlock()
+	earliestRevision, err := bundle.mdJournal.readEarliestRevision()
+	if err != nil {
+		return TLFJournalStatus{}, err
+	}
+	latestRevision, err := bundle.mdJournal.readLatestRevision()
+	if err != nil {
+		return TLFJournalStatus{}, err
+	}
+	blockOpCount, err := bundle.blockJournal.length()
+	if err != nil {
+		return TLFJournalStatus{}, err
+	}
+	return TLFJournalStatus{
+		RevisionStart: earliestRevision,
+		RevisionEnd:   latestRevision,
+		BlockOpCount:  blockOpCount,
+	}, nil
 }
