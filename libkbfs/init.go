@@ -14,6 +14,8 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 )
@@ -376,7 +378,8 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 			config, log, params.WriteJournalRoot,
 			config.BlockCache(),
 			config.BlockServer(), config.MDOps())
-		err := jServer.EnableExistingJournals()
+		ctx := context.Background()
+		err := jServer.EnableExistingJournals(ctx)
 		if err == nil {
 			config.SetBlockCache(jServer.blockCache())
 			config.SetBlockServer(jServer.blockServer())

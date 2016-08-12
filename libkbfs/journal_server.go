@@ -6,6 +6,8 @@ package libkbfs
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -74,7 +76,46 @@ func (j *JournalServer) getBundle(tlfID TlfID) (*tlfJournalBundle, bool) {
 // an existing journal. This must be the first thing done to a
 // JournalServer. Any returned error is fatal, and means that the
 // JournalServer must not be used.
-func (j *JournalServer) EnableExistingJournals() (err error) {
+func (j *JournalServer) EnableExistingJournals(
+	ctx context.Context) (err error) {
+	// TODO: Use CDebugf
+	j.log.Debug("Enabling existing journals")
+	defer func() {
+		if err != nil {
+			j.deferLog.Debug(
+				"Error when enabling existing journals: %v",
+				err)
+		}
+	}()
+
+	fileInfos, err := ioutil.ReadDir(j.dir)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	for _, fi := range fileInfos {
+		name := fi.Name()
+		if !fi.IsDir() {
+			j.log.Debug("Skipping file %q", name)
+			continue
+		}
+		tlfID, err := ParseTlfID(fi.Name())
+		if err != nil {
+			j.log.Debug("Skipping non-TLF dir %q", name)
+			continue
+		}
+
+		err = j.Enable(ctx, tlfID)
+		if err != nil {
+			// Don't treat per-TLF errors as fatal.
+			j.log.Warning("Error when enabling existing journal for %s: %v",
+				tlfID, err)
+			continue
+		}
+	}
+
 	return nil
 }
 
