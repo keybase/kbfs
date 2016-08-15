@@ -33,7 +33,7 @@ type FolderBranchStatus struct {
 	Unmerged []*crChainSummary
 	Merged   []*crChainSummary
 
-	Journal *TLFJournalStatus
+	Journal *TLFJournalStatus `json:",omitempty"`
 }
 
 // KBFSStatus represents the content of the top-level status file. It is
@@ -45,7 +45,7 @@ type KBFSStatus struct {
 	UsageBytes      int64
 	LimitBytes      int64
 	FailingServices map[string]error
-	JournalServer   *JournalServerStatus
+	JournalServer   *JournalServerStatus `json:",omitempty"`
 }
 
 // StatusUpdate is a dummy type used to indicate status has been updated.
