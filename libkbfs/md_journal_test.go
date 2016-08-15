@@ -249,6 +249,13 @@ func (s *shimMDServer) Put(
 		return err
 	}
 	s.rmdses = append(s.rmdses, rmds)
+
+	// Pretend all cancels happen after the actual put.
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
 	return nil
 }
 
@@ -502,9 +509,16 @@ func TestMDJournalDoubleFlush(t *testing.T) {
 	prevRoot = mdID
 
 	var mdserver shimMDServer
-	mdserver.nextErr = MDServerErrorConflictRevision{}
 
-	flushed, err := j.flushOne(ctx, signer, uid, verifyingKey, &mdserver)
+	ctx2, cancel := context.WithCancel(ctx)
+	cancel()
+	flushed, err := j.flushOne(ctx2, signer, uid, verifyingKey, &mdserver)
+	require.Equal(t, ctx2.Err(), err)
+	require.False(t, flushed)
+
+	mdserver.nextErr = MDServerErrorConflictRevision{}
+	mdserver.nextGetRange = mdserver.rmdses
+	flushed, err = j.flushOne(ctx, signer, uid, verifyingKey, &mdserver)
 	require.NoError(t, err)
 	require.True(t, flushed)
 	require.Equal(t, Merged, mdserver.rmdses[0].MD.MergedStatus())
