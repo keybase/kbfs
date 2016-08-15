@@ -477,3 +477,26 @@ func TestMDJournalPreservesBranchID(t *testing.T) {
 		require.NoError(t, err)
 	}
 }
+
+func TestMDJournalDoubleFlush(t *testing.T) {
+	_, _, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
+		setupMDJournalTest(t)
+	defer teardownMDJournalTest(t, tempdir)
+
+	ctx := context.Background()
+
+	prevRoot := fakeMdID(1)
+	revision := MetadataRevision(10)
+	md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+	mdID, err := j.put(ctx, signer, ekg, md, uid, verifyingKey)
+	require.NoError(t, err)
+	prevRoot = mdID
+
+	var mdserver shimMDServer
+	mdserver.nextErr = MDServerErrorConflictRevision{}
+
+	flushed, err := j.flushOne(ctx, signer, uid, verifyingKey, &mdserver)
+	require.NoError(t, err)
+	require.True(t, flushed)
+	require.Equal(t, Merged, mdserver.rmdses[0].MD.MergedStatus())
+}
