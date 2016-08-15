@@ -228,8 +228,17 @@ func TestMDJournalBranchConversion(t *testing.T) {
 
 type shimMDServer struct {
 	MDServer
-	rmdses  []*RootMetadataSigned
-	nextErr error
+	rmdses       []*RootMetadataSigned
+	nextGetRange []*RootMetadataSigned
+	nextErr      error
+}
+
+func (s *shimMDServer) GetRange(
+	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
+	start, stop MetadataRevision) ([]*RootMetadataSigned, error) {
+	rmdses := s.nextGetRange
+	s.nextGetRange = nil
+	return rmdses, nil
 }
 
 func (s *shimMDServer) Put(
