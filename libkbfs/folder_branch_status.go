@@ -154,7 +154,8 @@ func (fbsk *folderBranchStatusKeeper) convertNodesToPathsLocked(
 }
 
 // getStatus returns a FolderBranchStatus-representation of the
-// current status.
+// current status. The returned channel is closed whenever the status
+// changes, except for journal status changes.
 func (fbsk *folderBranchStatusKeeper) getStatus(ctx context.Context) (
 	FolderBranchStatus, <-chan StatusUpdate, error) {
 	fbsk.dataMutex.Lock()
@@ -176,6 +177,9 @@ func (fbsk *folderBranchStatusKeeper) getStatus(ctx context.Context) (
 		fbs.FolderID = fbsk.md.ID.String()
 		fbs.Revision = fbsk.md.Revision
 
+		// TODO: Ideally, the journal would push status
+		// updates to this object instead, so we can notify
+		// listeners.
 		jServer, err := GetJournalServer(fbsk.config)
 		if err == nil {
 			jStatus, err := jServer.JournalStatus(fbsk.md.ID)
