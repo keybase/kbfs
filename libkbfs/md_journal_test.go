@@ -494,6 +494,8 @@ func TestMDJournalPreservesBranchID(t *testing.T) {
 	}
 }
 
+// TestMDJournalDoubleFlush tests that flushing handles the case where
+// the correct MD is already present.
 func TestMDJournalDoubleFlush(t *testing.T) {
 	_, _, uid, id, h, signer, verifyingKey, ekg, tempdir, j :=
 		setupMDJournalTest(t)
@@ -510,12 +512,16 @@ func TestMDJournalDoubleFlush(t *testing.T) {
 
 	var mdserver shimMDServer
 
+	// Simulate a flush that is cancelled but succeeds anyway.
 	ctx2, cancel := context.WithCancel(ctx)
 	cancel()
 	flushed, err := j.flushOne(ctx2, signer, uid, verifyingKey, &mdserver)
 	require.Equal(t, ctx2.Err(), err)
 	require.False(t, flushed)
+	require.Equal(t, 1, len(mdserver.rmdses))
 
+	// Simulate the conflict error and GetRange call resulting
+	// from the successful put.
 	mdserver.nextErr = MDServerErrorConflictRevision{}
 	mdserver.nextGetRange = mdserver.rmdses
 	flushed, err = j.flushOne(ctx, signer, uid, verifyingKey, &mdserver)
