@@ -9,19 +9,29 @@ import (
 	"golang.org/x/net/context"
 )
 
-func mdDumpTlf(ctx context.Context, config libkbfs.Config, tlfIDStr string) error {
-	tlfID, err := libkbfs.ParseTlfID(tlfIDStr)
+func mdGet(ctx context.Context, config libkbfs.Config, input string) (
+	libkbfs.ImmutableRootMetadata, error) {
+	tlfID, err := libkbfs.ParseTlfID(input)
 	if err != nil {
-		return err
+		return libkbfs.ImmutableRootMetadata{}, err
 	}
 
 	mdOps := config.MDOps()
 
 	rmd, err := mdOps.GetForTLF(ctx, tlfID)
 	if err != nil {
-		return err
+		return libkbfs.ImmutableRootMetadata{}, err
 	}
 
+	if rmd == (libkbfs.ImmutableRootMetadata{}) {
+		return libkbfs.ImmutableRootMetadata{},
+			fmt.Errorf("Metadata object for %s not found", input)
+	}
+
+	return rmd, nil
+}
+
+func dumpMd(rmd libkbfs.ImmutableRootMetadata, config libkbfs.Config) error {
 	mdID, err := config.Crypto().MakeMdID(&rmd.BareRootMetadata)
 	if err != nil {
 		return err
@@ -57,14 +67,20 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 	flags := flag.NewFlagSet("kbfs md dump", flag.ContinueOnError)
 	flags.Parse(args)
 
-	tlfIDStrs := flags.Args()
-	if len(tlfIDStrs) == 0 {
-		printError("md dump", errors.New("at least one TLF ID must be specified"))
+	inputs := flags.Args()
+	if len(inputs) == 0 {
+		printError("md dump", errors.New("at least one string must be specified"))
 		return 1
 	}
 
-	for _, tlfIDStr := range tlfIDStrs {
-		err := mdDumpTlf(ctx, config, tlfIDStr)
+	for _, input := range inputs {
+		rmd, err := mdGet(ctx, config, input)
+		if err != nil {
+			printError("md dump", err)
+			return 1
+		}
+
+		err = dumpMd(rmd, config)
 		if err != nil {
 			printError("md dump", err)
 			return 1
