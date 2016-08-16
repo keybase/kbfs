@@ -24,6 +24,8 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	// /keybase/(public|private)/tlfname:<BranchID>
 	// /keybase/(public|private)/tlfname:<BranchID>@<Revision>
 	//
+	// TODO: Support Foo@bar also.
+	//
 	// If the BranchID is omitted, the unmerged branch for the
 	// current device is used, or the master branch if there is no
 	// unmerged branch. If the Revision is omitted, the latest
