@@ -37,28 +37,46 @@ func dumpMd(rmd libkbfs.ImmutableRootMetadata, config libkbfs.Config) error {
 		return err
 	}
 
-	fmt.Print("Public info\n")
-	fmt.Print("-----------\n")
-	fmt.Printf("MD ID: %s\n", mdID)
-	fmt.Printf("Prev: %s\n", rmd.PrevRoot)
+	fmt.Printf("MD ID: %s\n\n", mdID)
+
+	fmt.Print("Reader/writer metadata\n")
+	fmt.Print("----------------------\n")
+	fmt.Printf("Last modifying user: %s\n", rmd.LastModifyingUser)
+	// TODO: Print flags.
+	fmt.Printf("Revision: %s\n", rmd.Revision)
+	fmt.Printf("Prev MD ID: %s\n", rmd.PrevRoot)
+	// TODO: Print RKeys, unresolved readers, conflict info,
+	// finalized info, and unknown fields.
+	fmt.Print("\n")
+
+	fmt.Print("Writer metadata\n")
+	fmt.Print("---------------\n")
+	fmt.Printf("Last modifying writer: %s\n", rmd.LastModifyingWriter)
+	// TODO: Print Writers/WKeys and unresolved writers.
 	fmt.Printf("TLF ID: %s\n", rmd.ID)
 	fmt.Printf("Branch ID: %s\n", rmd.BID)
-	fmt.Printf("Revision: %s\n", rmd.Revision)
-	// TODO: Print flags.
+	// TODO: Print writer flags.
 	fmt.Printf("Disk usage: %d\n", rmd.DiskUsage)
 	fmt.Printf("Bytes in new blocks: %d\n", rmd.RefBytes)
 	fmt.Printf("Bytes in unreferenced blocks: %d\n", rmd.UnrefBytes)
-	// TODO: Print Writers/Keys.
-
+	// TODO: Print unknown fields.
 	fmt.Print("\n")
-	fmt.Print("Private info\n")
-	fmt.Print("------------\n")
+
+	fmt.Print("Private metadata\n")
+	fmt.Print("----------------\n")
+	fmt.Printf("Serialized size: %d bytes\n", len(rmd.SerializedPrivateMetadata))
 
 	data := rmd.Data()
 	// TODO: Clean up output.
 	fmt.Printf("Dir: %s\n", data.Dir)
 	fmt.Print("TLF private key: {32 bytes}\n")
-	// TODO: Print changes.
+	if data.Changes.Info != (libkbfs.BlockInfo{}) {
+		fmt.Printf("Block changes block: %v\n", data.Changes.Info)
+	}
+	for i, op := range data.Changes.Ops {
+		fmt.Printf("Op[%d]: %v\n", i, op)
+	}
+	// TODO: Print unknown fields.
 
 	return nil
 }
