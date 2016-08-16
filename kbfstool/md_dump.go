@@ -242,11 +242,15 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 			return 1
 		}
 
+		fmt.Printf("Result for %q:\n\n", input)
+
 		err = mdDumpOne(ctx, config, irmd)
 		if err != nil {
 			printError("md dump", err)
 			return 1
 		}
+
+		fmt.Print("\n")
 	}
 
 	return 0
