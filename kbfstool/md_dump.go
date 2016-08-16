@@ -170,9 +170,19 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 
 	if *branchID == libkbfs.NullBranchID {
 		if revision == libkbfs.MetadataRevisionUninitialized {
-			panic("Unimplemented")
+			return mdOps.GetForTLF(ctx, tlfID)
 		}
-		panic("Unimplemented")
+
+		irmds, err := mdOps.GetRange(ctx, tlfID, revision, revision)
+		if err != nil {
+			return libkbfs.ImmutableRootMetadata{}, err
+		}
+
+		if len(irmds) >= 1 {
+			return irmds[0], nil
+		}
+
+		return libkbfs.ImmutableRootMetadata{}, nil
 	}
 
 	if revision == libkbfs.MetadataRevisionUninitialized {
