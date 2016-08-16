@@ -22,7 +22,7 @@ func mdGetTlf(ctx context.Context, config libkbfs.Config, tlfIDStr string) error
 		return err
 	}
 
-	mdID, err := rmd.MetadataID(config.Crypto())
+	mdID, err := config.Crypto().MakeMdID(&rmd.BareRootMetadata)
 	if err != nil {
 		return err
 	}
