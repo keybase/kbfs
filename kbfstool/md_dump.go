@@ -4,43 +4,162 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/keybase/client/go/protocol"
+	"github.com/keybase/kbfs/fsrpc"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
 
 func mdGet(ctx context.Context, config libkbfs.Config, input string) (
-	[]libkbfs.ImmutableRootMetadata, error) {
-	tlfID, err := libkbfs.ParseTlfID(input)
+	libkbfs.ImmutableRootMetadata, error) {
+	// Accepts strings in the format:
+	//
+	// <TlfID>
+	// <TlfID>:<BranchID>
+	// <TlfID>:<BranchID>@<Revision>
+	// /keybase/(public|private)/tlfname
+	// /keybase/(public|private)/tlfname:<BranchID>
+	// /keybase/(public|private)/tlfname:<BranchID>@<Revision>
+	//
+	// If the BranchID is omitted, the unmerged branch for the
+	// current device is used, or the master branch if there is no
+	// unmerged branch. If the Revision is omitted, the latest
+	// revision for the branch is used.
+
+	parts := strings.SplitN(input, ":", 2)
+	tlfPart := parts[0]
+	var rem string
+	if len(parts) > 1 {
+		rem = parts[1]
+	}
+
+	tlfID, err := libkbfs.ParseTlfID(tlfPart)
+	var tlfHandle *libkbfs.TlfHandle
 	if err != nil {
-		return nil, err
+		tlfID = libkbfs.TlfID{}
+		p, err := fsrpc.NewPath(tlfPart)
+		if err != nil {
+			return libkbfs.ImmutableRootMetadata{}, err
+		}
+		if len(p.TLFComponents) > 0 {
+			return libkbfs.ImmutableRootMetadata{}, fmt.Errorf("%q is not a TLF path", tlfPart)
+		}
+		name := p.TLFName
+	outer:
+		for {
+			var parseErr error
+			tlfHandle, parseErr = libkbfs.ParseTlfHandle(ctx, config.KBPKI(), name, p.Public)
+			switch parseErr := parseErr.(type) {
+			case nil:
+				// No error.
+				break outer
+
+			case libkbfs.TlfNameNotCanonical:
+				// Non-canonical name, so try again.
+				name = parseErr.NameToTry
+
+			default:
+				// Some other error.
+				return libkbfs.ImmutableRootMetadata{}, parseErr
+			}
+		}
+	}
+
+	parts = strings.SplitN(rem, "@", 2)
+	branchPart := parts[0]
+
+	var branchID *libkbfs.BranchID
+	if len(branchPart) > 0 {
+		parsedBranchID := libkbfs.ParseBranchID(branchPart)
+		if parsedBranchID == libkbfs.NullBranchID {
+			return libkbfs.ImmutableRootMetadata{}, fmt.Errorf("%q is not a valid branch ID", branchPart)
+		}
+		branchID = &parsedBranchID
+	}
+
+	var revPart string
+	if len(parts) > 1 {
+		revPart = parts[1]
+	}
+
+	var revision libkbfs.MetadataRevision
+	if len(revPart) > 0 {
+		u, err := strconv.ParseUint(revPart, 16, 64)
+		if err != nil {
+			return libkbfs.ImmutableRootMetadata{}, err
+		}
+		revision = libkbfs.MetadataRevision(u)
 	}
 
 	mdOps := config.MDOps()
 
-	var irmds []libkbfs.ImmutableRootMetadata
+	if tlfID == (libkbfs.TlfID{}) {
+		// Use tlfHandle.
+		if branchID == nil {
+			if revision == libkbfs.MetadataRevisionUninitialized {
+				_, irmd, err := mdOps.GetForHandle(
+					ctx, tlfHandle, libkbfs.Unmerged)
+				if err != nil {
+					return libkbfs.ImmutableRootMetadata{}, err
+				}
 
-	rmdUnmerged, err := mdOps.GetUnmergedForTLF(
-		ctx, tlfID, libkbfs.NullBranchID)
-	if err != nil {
-		return nil, err
+				if irmd != (libkbfs.ImmutableRootMetadata{}) {
+					return irmd, nil
+				}
+
+				_, irmd, err = mdOps.GetForHandle(
+					ctx, tlfHandle, libkbfs.Merged)
+				return irmd, err
+			}
+			panic("Unimplemented")
+		}
+
+		if *branchID == libkbfs.NullBranchID {
+			if revision == libkbfs.MetadataRevisionUninitialized {
+				panic("Unimplemented")
+			}
+			panic("Unimplemented")
+		}
+
+		if revision == libkbfs.MetadataRevisionUninitialized {
+			panic("Unimplemented")
+		}
+		panic("Unimplemented")
 	}
 
-	if rmdUnmerged != (libkbfs.ImmutableRootMetadata{}) {
-		irmds = append(irmds, rmdUnmerged)
+	// Use tlfID.
+	if branchID == nil {
+		if revision == libkbfs.MetadataRevisionUninitialized {
+			irmd, err := mdOps.GetUnmergedForTLF(
+				ctx, tlfID, libkbfs.NullBranchID)
+			if err != nil {
+				return libkbfs.ImmutableRootMetadata{}, err
+			}
+
+			if irmd != (libkbfs.ImmutableRootMetadata{}) {
+				return irmd, nil
+			}
+
+			return mdOps.GetForTLF(ctx, tlfID)
+		}
+
+		panic("Unimplemented")
 	}
 
-	rmdMerged, err := mdOps.GetForTLF(ctx, tlfID)
-	if err != nil {
-		return nil, err
+	if *branchID == libkbfs.NullBranchID {
+		if revision == libkbfs.MetadataRevisionUninitialized {
+			panic("Unimplemented")
+		}
+		panic("Unimplemented")
 	}
 
-	if rmdMerged != (libkbfs.ImmutableRootMetadata{}) {
-		irmds = append(irmds, rmdMerged)
+	if revision == libkbfs.MetadataRevisionUninitialized {
+		panic("Unimplemented")
 	}
-
-	return irmds, nil
+	panic("Unimplemented")
 }
 
 func getUserString(ctx context.Context, config libkbfs.Config, uid keybase1.UID) string {
@@ -117,23 +236,17 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 	}
 
 	for _, input := range inputs {
-		rmds, err := mdGet(ctx, config, input)
+		irmd, err := mdGet(ctx, config, input)
 		if err != nil {
 			printError("md dump", err)
 			return 1
 		}
 
-		fmt.Printf("Results for %s:\n\n", input)
-
-		for _, rmd := range rmds {
-			err = mdDumpOne(ctx, config, rmd)
-			if err != nil {
-				printError("md dump", err)
-				return 1
-			}
+		err = mdDumpOne(ctx, config, irmd)
+		if err != nil {
+			printError("md dump", err)
+			return 1
 		}
-
-		fmt.Print("\n")
 	}
 
 	return 0
