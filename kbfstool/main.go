@@ -75,6 +75,8 @@ func realMain() (exitStatus int) {
 
 	log := logger.NewWithCallDepth("", 1)
 
+	// TODO: Turn off the rekey queue and other background tasks.
+
 	config, err := libkbfs.Init(kbCtx, *kbfsParams, nil, nil, log)
 	if err != nil {
 		printError("kbfs", err)
