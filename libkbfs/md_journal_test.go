@@ -556,7 +556,7 @@ func TestMDJournalClear(t *testing.T) {
 
 	head, err := j.getHead(uid)
 	require.NoError(t, err)
-	require.NotNil(t, head)
+	require.NotEqual(t, ImmutableBareRootMetadata{}, head)
 
 	// Clearing the correct branch ID should clear the entire
 	// journal.
@@ -565,7 +565,7 @@ func TestMDJournalClear(t *testing.T) {
 
 	head, err = j.getHead(uid)
 	require.NoError(t, err)
-	require.Nil(t, head)
+	require.Equal(t, ImmutableBareRootMetadata{}, head)
 
 	// Clearing twice should do nothing.
 
@@ -573,5 +573,5 @@ func TestMDJournalClear(t *testing.T) {
 
 	head, err = j.getHead(uid)
 	require.NoError(t, err)
-	require.Nil(t, head)
+	require.Equal(t, ImmutableBareRootMetadata{}, head)
 }
