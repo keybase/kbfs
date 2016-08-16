@@ -19,16 +19,28 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 
 	mdOps := config.MDOps()
 
-	rmd, err := mdOps.GetForTLF(ctx, tlfID)
+	var irmds []libkbfs.ImmutableRootMetadata
+
+	rmdUnmerged, err := mdOps.GetUnmergedForTLF(
+		ctx, tlfID, libkbfs.NullBranchID)
 	if err != nil {
 		return nil, err
 	}
 
-	if rmd == (libkbfs.ImmutableRootMetadata{}) {
-		return nil, nil
+	if rmdUnmerged != (libkbfs.ImmutableRootMetadata{}) {
+		irmds = append(irmds, rmdUnmerged)
 	}
 
-	return []libkbfs.ImmutableRootMetadata{rmd}, nil
+	rmdMerged, err := mdOps.GetForTLF(ctx, tlfID)
+	if err != nil {
+		return nil, err
+	}
+
+	if rmdMerged != (libkbfs.ImmutableRootMetadata{}) {
+		irmds = append(irmds, rmdMerged)
+	}
+
+	return irmds, nil
 }
 
 func getUserString(ctx context.Context, config libkbfs.Config, uid keybase1.UID) string {
@@ -120,6 +132,8 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 				return 1
 			}
 		}
+
+		fmt.Print("\n")
 	}
 
 	return 0
