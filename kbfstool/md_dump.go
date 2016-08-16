@@ -4,14 +4,16 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/keybase/client/go/protocol"
 	"github.com/keybase/kbfs/fsrpc"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
+
+var mdGetRe = regexp.MustCompile("^(.+?)(?::(.*?))?(?:@(.*?))?$")
 
 func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	libkbfs.ImmutableRootMetadata, error) {
@@ -31,12 +33,15 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	// unmerged branch. If the Revision is omitted, the latest
 	// revision for the branch is used.
 
-	parts := strings.SplitN(input, ":", 2)
-	tlfPart := parts[0]
-	var rem string
-	if len(parts) > 1 {
-		rem = parts[1]
+	parts := mdGetRe.FindStringSubmatch(input)
+	if parts == nil {
+		return libkbfs.ImmutableRootMetadata{},
+			fmt.Errorf("Could not parse %q", input)
 	}
+
+	tlfPart := parts[1]
+	branchPart := parts[2]
+	revPart := parts[3]
 
 	tlfID, err := libkbfs.ParseTlfID(tlfPart)
 	var tlfHandle *libkbfs.TlfHandle
@@ -70,21 +75,13 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 		}
 	}
 
-	parts = strings.SplitN(rem, "@", 2)
-	branchPart := parts[0]
-
 	var branchID *libkbfs.BranchID
 	if len(branchPart) > 0 {
 		parsedBranchID := libkbfs.ParseBranchID(branchPart)
-		if parsedBranchID == libkbfs.NullBranchID {
+		if parsedBranchID == libkbfs.NullBranchID && branchPart != "00000000000000000000000000000000" {
 			return libkbfs.ImmutableRootMetadata{}, fmt.Errorf("%q is not a valid branch ID", branchPart)
 		}
 		branchID = &parsedBranchID
-	}
-
-	var revPart string
-	if len(parts) > 1 {
-		revPart = parts[1]
 	}
 
 	var revision libkbfs.MetadataRevision
@@ -261,6 +258,11 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 		if err != nil {
 			printError("md dump", err)
 			return 1
+		}
+
+		if irmd == (libkbfs.ImmutableRootMetadata{}) {
+			fmt.Printf("No result found for %q\n\n", input)
+			continue
 		}
 
 		fmt.Printf("Result for %q:\n\n", input)
