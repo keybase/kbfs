@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/keybase/client/go/protocol"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
@@ -31,7 +32,18 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	return rmd, nil
 }
 
-func dumpMd(rmd libkbfs.ImmutableRootMetadata, config libkbfs.Config) error {
+func getUserString(ctx context.Context, config libkbfs.Config, uid keybase1.UID) string {
+	username, _, err := config.KeybaseService().Resolve(
+		ctx, fmt.Sprintf("uid:%s", uid))
+	if err != nil {
+		printError("md dump", err)
+		return uid.String()
+	}
+	return fmt.Sprintf("%s (uid:%s)", username, uid)
+}
+
+func dumpMd(ctx context.Context, config libkbfs.Config,
+	rmd libkbfs.ImmutableRootMetadata) error {
 	mdID, err := config.Crypto().MakeMdID(&rmd.BareRootMetadata)
 	if err != nil {
 		return err
@@ -41,7 +53,8 @@ func dumpMd(rmd libkbfs.ImmutableRootMetadata, config libkbfs.Config) error {
 
 	fmt.Print("Reader/writer metadata\n")
 	fmt.Print("----------------------\n")
-	fmt.Printf("Last modifying user: %s\n", rmd.LastModifyingUser)
+	fmt.Printf("Last modifying user: %s\n",
+		getUserString(ctx, config, rmd.LastModifyingUser))
 	// TODO: Print flags.
 	fmt.Printf("Revision: %s\n", rmd.Revision)
 	fmt.Printf("Prev MD ID: %s\n", rmd.PrevRoot)
@@ -51,7 +64,8 @@ func dumpMd(rmd libkbfs.ImmutableRootMetadata, config libkbfs.Config) error {
 
 	fmt.Print("Writer metadata\n")
 	fmt.Print("---------------\n")
-	fmt.Printf("Last modifying writer: %s\n", rmd.LastModifyingWriter)
+	fmt.Printf("Last modifying writer: %s\n",
+		getUserString(ctx, config, rmd.LastModifyingWriter))
 	// TODO: Print Writers/WKeys and unresolved writers.
 	fmt.Printf("TLF ID: %s\n", rmd.ID)
 	fmt.Printf("Branch ID: %s\n", rmd.BID)
@@ -98,7 +112,7 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 			return 1
 		}
 
-		err = dumpMd(rmd, config)
+		err = dumpMd(ctx, config, rmd)
 		if err != nil {
 			printError("md dump", err)
 			return 1
