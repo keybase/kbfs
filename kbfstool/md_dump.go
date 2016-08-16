@@ -11,25 +11,24 @@ import (
 )
 
 func mdGet(ctx context.Context, config libkbfs.Config, input string) (
-	libkbfs.ImmutableRootMetadata, error) {
+	[]libkbfs.ImmutableRootMetadata, error) {
 	tlfID, err := libkbfs.ParseTlfID(input)
 	if err != nil {
-		return libkbfs.ImmutableRootMetadata{}, err
+		return nil, err
 	}
 
 	mdOps := config.MDOps()
 
 	rmd, err := mdOps.GetForTLF(ctx, tlfID)
 	if err != nil {
-		return libkbfs.ImmutableRootMetadata{}, err
+		return nil, err
 	}
 
 	if rmd == (libkbfs.ImmutableRootMetadata{}) {
-		return libkbfs.ImmutableRootMetadata{},
-			fmt.Errorf("Metadata object for %s not found", input)
+		return nil, nil
 	}
 
-	return rmd, nil
+	return []libkbfs.ImmutableRootMetadata{rmd}, nil
 }
 
 func getUserString(ctx context.Context, config libkbfs.Config, uid keybase1.UID) string {
@@ -42,7 +41,7 @@ func getUserString(ctx context.Context, config libkbfs.Config, uid keybase1.UID)
 	return fmt.Sprintf("%s (uid:%s)", username, uid)
 }
 
-func dumpMd(ctx context.Context, config libkbfs.Config,
+func mdDumpOne(ctx context.Context, config libkbfs.Config,
 	rmd libkbfs.ImmutableRootMetadata) error {
 	mdID, err := config.Crypto().MakeMdID(&rmd.BareRootMetadata)
 	if err != nil {
@@ -106,16 +105,20 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 	}
 
 	for _, input := range inputs {
-		rmd, err := mdGet(ctx, config, input)
+		rmds, err := mdGet(ctx, config, input)
 		if err != nil {
 			printError("md dump", err)
 			return 1
 		}
 
-		err = dumpMd(ctx, config, rmd)
-		if err != nil {
-			printError("md dump", err)
-			return 1
+		fmt.Printf("Results for %s:\n\n", input)
+
+		for _, rmd := range rmds {
+			err = mdDumpOne(ctx, config, rmd)
+			if err != nil {
+				printError("md dump", err)
+				return 1
+			}
 		}
 	}
 
