@@ -41,6 +41,7 @@ The possible commands are:
   mkdir		Make directories
   read		Dump file to stdout
   write		Write stdin to file
+  md            Operate on metadata objects
 
 `
 

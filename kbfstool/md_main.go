@@ -1,17 +1,23 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
 
+const mdUsageStr = `Usage:
+  kbfstool md [<subcommand>] [<args>]
+
+The possible subcommands are:
+  dump		Dump metadata objects
+
+`
+
 func mdMain(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
 	if len(args) < 1 {
-		// TODO: Print usage.
-		printError("md", errors.New("a subcommand needs to be specified"))
+		fmt.Print(mdUsageStr)
 		return 1
 	}
 
@@ -19,8 +25,8 @@ func mdMain(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 	args = args[1:]
 
 	switch cmd {
-	case "get":
-		return mdGet(ctx, config, args)
+	case "dump":
+		return mdDump(ctx, config, args)
 	default:
 		printError("md", fmt.Errorf("unknown command '%s'", cmd))
 		return 1

@@ -9,7 +9,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func mdGetTlf(ctx context.Context, config libkbfs.Config, tlfIDStr string) error {
+func mdDumpTlf(ctx context.Context, config libkbfs.Config, tlfIDStr string) error {
 	tlfID, err := libkbfs.ParseTlfID(tlfIDStr)
 	if err != nil {
 		return err
@@ -53,20 +53,20 @@ func mdGetTlf(ctx context.Context, config libkbfs.Config, tlfIDStr string) error
 	return nil
 }
 
-func mdGet(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
-	flags := flag.NewFlagSet("kbfs md get", flag.ContinueOnError)
+func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
+	flags := flag.NewFlagSet("kbfs md dump", flag.ContinueOnError)
 	flags.Parse(args)
 
 	tlfIDStrs := flags.Args()
 	if len(tlfIDStrs) == 0 {
-		printError("md get", errors.New("at least one TLF ID must be specified"))
+		printError("md dump", errors.New("at least one TLF ID must be specified"))
 		return 1
 	}
 
 	for _, tlfIDStr := range tlfIDStrs {
-		err := mdGetTlf(ctx, config, tlfIDStr)
+		err := mdDumpTlf(ctx, config, tlfIDStr)
 		if err != nil {
-			printError("md get", err)
+			printError("md dump", err)
 			return 1
 		}
 	}
