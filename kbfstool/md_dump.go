@@ -86,7 +86,8 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 
 	var revision libkbfs.MetadataRevision
 	if len(revPart) > 0 {
-		u, err := strconv.ParseUint(revPart, 16, 64)
+		// TODO: Figure out when to use base 10 or base 16.
+		u, err := strconv.ParseUint(revPart, 10, 64)
 		if err != nil {
 			return libkbfs.ImmutableRootMetadata{}, err
 		}
