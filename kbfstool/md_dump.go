@@ -243,8 +243,8 @@ func mdDumpOne(ctx context.Context, config libkbfs.Config,
 	// TODO: Clean up output.
 	fmt.Printf("Dir: %s\n", data.Dir)
 	fmt.Print("TLF private key: {32 bytes}\n")
-	if data.Changes.Info != (libkbfs.BlockInfo{}) {
-		fmt.Printf("Block changes block: %v\n", data.Changes.Info)
+	if data.ChangesBlockInfo() != (libkbfs.BlockInfo{}) {
+		fmt.Printf("Block changes block: %v\n", data.ChangesBlockInfo())
 	}
 	for i, op := range data.Changes.Ops {
 		fmt.Printf("Op[%d]: %v\n", i, op)

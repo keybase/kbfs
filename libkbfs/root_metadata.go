@@ -43,6 +43,12 @@ func (p PrivateMetadata) checkValid() error {
 	return nil
 }
 
+// EmbeddedChangesBlockInfo returns the block info for any unembedded
+// changes.
+func (p PrivateMetadata) ChangesBlockInfo() BlockInfo {
+	return p.cachedChanges.Info
+}
+
 // A RootMetadata is a BareRootMetadata but with a deserialized
 // PrivateMetadata. However, note that it is possible that the
 // PrivateMetadata has to be left serialized due to not having the
