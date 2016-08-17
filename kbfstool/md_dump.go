@@ -323,21 +323,35 @@ func mdDumpOne(ctx context.Context, config libkbfs.Config,
 const mdDumpUsageStr = `Usage:
   kbfstool md dump input [inputs...]
 
-Each input can be in any of the following formats:
+Each input must be in the following format:
 
-  TlfID
-  TlfID:BranchID
-  TlfID^Revision
-  TlfID:BranchID^Revision
+  TlfPart
+  TlfPart:BranchPart
+  TlfPart^RevisionPart
+  TlfPart:BranchPart^RevisionPart
 
-  /keybase/(public|private)/tlfname
-  /keybase/(public|private)/tlfname:BranchID
-  /keybase/(public|private)/tlfname^Revision
-  /keybase/(public|private)/tlfname:BranchID^Revision
+where TlfPart can be:
 
-If BranchID is omitted, the unmerged branch for the current device is
-used, or the master branch if there is no unmerged branch. If Revision
-is omitted, the latest revision for the branch is used.
+  - a TLF ID string (32 hex digits),
+  - or a keybase TLF path (e.g., "/keybase/public/user1,user2", or
+    "/keybase/private/user1,assertion2");
+
+BranchPart can be:
+
+  - a Branch ID string (32 hex digits),
+  - the string "device", which indicates the unmerged branch for the
+    current device, or the master branch if there is no unmerged branch,
+  - the string "master", which is a shorthand for
+    the ID of the master branch "00000000000000000000000000000000", or
+  - omitted, in which case it is treated as if it were the string "device";
+
+and RevisionPart can be:
+
+  - a hex number prefixed with "0x",
+  - a decimal number with no prefix,
+  - the string "latest", which indicates the latest revision for the
+    branch, or
+  - omitted, in which case it is treated as if it were the string "latest".
 
 `
 
