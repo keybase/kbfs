@@ -245,7 +245,7 @@ func (j mdJournal) checkGetParams(currentUID keybase1.UID) (
 
 func (j mdJournal) convertToBranch(
 	ctx context.Context, signer cryptoSigner,
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (err error) {
 	head, err := j.getHeadHelper()
 	if err != nil {
 		return err
@@ -278,7 +278,24 @@ func (j mdJournal) convertToBranch(
 
 	j.log.CDebugf(ctx, "New branch ID=%s", bid)
 
-	// TODO: Do the below atomically.
+	journalTempDirName, err := ioutil.TempDir(j.dir, "md_journal")
+	if err != nil {
+		return err
+	}
+	journalTempDir := filepath.Join(j.dir, journalTempDirName)
+	j.log.CDebugf(ctx, "Using temp dir %s for rewriting", journalTempDir)
+	defer func() {
+		if err != nil {
+			j.log.CDebugf(ctx, "Removing temp dir %s", journalTempDir)
+			removeErr := os.RemoveAll(journalTempDir)
+			if removeErr != nil {
+				j.log.CWarningf(ctx,
+					"Error when removing temp dir %s: %v", journalTempDir, removeErr)
+			}
+		}
+	}()
+
+	tempJournal := makeMdIDJournal(j.codec, journalTempDir)
 
 	var prevID MdID
 
@@ -322,12 +339,7 @@ func (j mdJournal) convertToBranch(
 			return err
 		}
 
-		o, err := revisionToOrdinal(brmd.Revision)
-		if err != nil {
-			return err
-		}
-
-		err = j.j.j.writeJournalEntry(o, newID)
+		err = tempJournal.append(brmd.Revision, newID)
 		if err != nil {
 			return err
 		}
@@ -337,6 +349,20 @@ func (j mdJournal) convertToBranch(
 		j.log.CDebugf(ctx, "Changing ID for rev=%s from %s to %s",
 			brmd.Revision, id, newID)
 	}
+
+	// TODO: Do the below atomically on the filesystem level.
+
+	oldDir, err := j.j.move(journalTempDir + ".old")
+	if err != nil {
+		return err
+	}
+
+	_, err = tempJournal.move(oldDir)
+	if err != nil {
+		return err
+	}
+
+	j.j = tempJournal
 
 	return err
 }
