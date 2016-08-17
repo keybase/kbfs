@@ -82,14 +82,15 @@ type mdJournal struct {
 
 	j mdIDJournal
 
+	// This doesn't need to be persisted, even if the journal
+	// becomes empty, since on a restart the branch ID is
+	// retrieved from the server (via GetUnmergedForTLF).
 	branchID BranchID
 
 	// Set only when the journal becomes empty due to
-	// flushing. This doesn't need to be persisted, since on a
-	// restart this info is retrieved from the server (via
-	// GetUnmergedForTLF).
-	lastMdID     MdID
-	lastBranchID BranchID
+	// flushing. This doesn't need to be persisted for the same
+	// reason as branchID.
+	lastMdID MdID
 }
 
 func makeMDJournal(codec Codec, crypto cryptoPure, dir string,
@@ -530,7 +531,7 @@ func (j *mdJournal) put(
 	var lastBranchID BranchID
 	if head == (ImmutableBareRootMetadata{}) {
 		lastMdID = j.lastMdID
-		lastBranchID = j.lastBranchID
+		lastBranchID = j.branchID
 	} else {
 		lastMdID = head.mdID
 		lastBranchID = head.BID
@@ -613,9 +614,8 @@ func (j *mdJournal) put(
 		}
 	}
 
-	// Since the journal is now non-empty, clear these fields.
+	// Since the journal is now non-empty, clear lastMdID.
 	j.lastMdID = MdID{}
-	j.lastBranchID = BranchID{}
 
 	return id, nil
 }
@@ -692,13 +692,11 @@ func (j *mdJournal) flushOne(
 		return false, err
 	}
 
-	// Since the journal is now empty, set these fields.
+	// Since the journal is now empty, set lastMdID.
 	if empty {
 		j.log.CDebugf(ctx,
-			"Journal is now empty; saving last MdID=%s and last Branch ID=%s",
-			rmd.mdID, rmd.BID)
+			"Journal is now empty; saving last MdID=%s", rmd.mdID)
 		j.lastMdID = rmd.mdID
-		j.lastBranchID = rmd.BID
 	}
 
 	return true, nil
@@ -732,7 +730,7 @@ func (j *mdJournal) clear(
 
 	j.branchID = NullBranchID
 
-	// No need to set lastMdID or lastBranchID in this case.
+	// No need to set lastMdID in this case.
 
 	return j.j.clear()
 }
