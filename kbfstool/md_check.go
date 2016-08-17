@@ -15,9 +15,40 @@ Each input must be in the same format as in md dump.
 
 `
 
+func checkDirBlock(ctx context.Context, config libkbfs.Config,
+	info libkbfs.BlockInfo) error {
+	panic("Not implemented")
+}
+
+func checkFileBlock(ctx context.Context, config libkbfs.Config,
+	info libkbfs.BlockInfo) error {
+	panic("Not implemented")
+}
+
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	rmd libkbfs.ImmutableRootMetadata) error {
-	panic("Not implemented")
+	data := rmd.Data()
+
+	if data.ChangesBlockInfo() == (libkbfs.BlockInfo{}) {
+		fmt.Print("No MD changes block to check; skipping\n")
+	} else {
+		bi := data.ChangesBlockInfo()
+		fmt.Printf("Checking MD changes block %v...\n", bi)
+		err := checkFileBlock(ctx, config, bi)
+		if err != nil {
+			fmt.Printf("Got error while checking MD changes block %v: %v\n",
+				bi, err)
+		}
+	}
+
+	fmt.Printf("Checking dir block %v...\n", data.Dir)
+	err := checkDirBlock(ctx, config, data.Dir.BlockInfo)
+	if err != nil {
+		fmt.Printf("Got error while checking dir block %v: %v\n",
+			data.Dir, err)
+	}
+
+	return nil
 }
 
 func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
