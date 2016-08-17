@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"regexp"
@@ -17,22 +16,6 @@ var mdGetRe = regexp.MustCompile("^(.+?)(?::(.*?))?(?:\\^(.*?))?$")
 
 func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	libkbfs.ImmutableRootMetadata, error) {
-	// Accepts strings in the format:
-	//
-	// <TlfID>
-	// <TlfID>:<BranchID>
-	// <TlfID>^<Revision>
-	// <TlfID>:<BranchID>^<Revision>
-	// /keybase/(public|private)/tlfname
-	// /keybase/(public|private)/tlfname:<BranchID>
-	// /keybase/(public|private)/tlfname^<Revision>
-	// /keybase/(public|private)/tlfname:<BranchID>^<Revision>
-	//
-	// If the BranchID is omitted, the unmerged branch for the
-	// current device is used, or the master branch if there is no
-	// unmerged branch. If the Revision is omitted, the latest
-	// revision for the branch is used.
-
 	parts := mdGetRe.FindStringSubmatch(input)
 	if parts == nil {
 		return libkbfs.ImmutableRootMetadata{},
@@ -261,13 +244,34 @@ func mdDumpOne(ctx context.Context, config libkbfs.Config,
 	return nil
 }
 
+const mdDumpUsageStr = `Usage:
+  kbfstool md dump input [inputs...]
+
+Each input can be in any of the following formats:
+
+  TlfID
+  TlfID:BranchID
+  TlfID^Revision
+  TlfID:BranchID^Revision
+
+  /keybase/(public|private)/tlfname
+  /keybase/(public|private)/tlfname:BranchID
+  /keybase/(public|private)/tlfname^Revision
+  /keybase/(public|private)/tlfname:BranchID^Revision
+
+If BranchID is omitted, the unmerged branch for the current device is
+used, or the master branch if there is no unmerged branch. If Revision
+is omitted, the latest revision for the branch is used.
+
+`
+
 func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
 	flags := flag.NewFlagSet("kbfs md dump", flag.ContinueOnError)
 	flags.Parse(args)
 
 	inputs := flags.Args()
-	if len(inputs) == 0 {
-		printError("md dump", errors.New("at least one string must be specified"))
+	if len(inputs) < 1 {
+		fmt.Print(mdDumpUsageStr)
 		return 1
 	}
 
