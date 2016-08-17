@@ -208,7 +208,14 @@ func mdDumpOne(ctx context.Context, config libkbfs.Config,
 		return err
 	}
 
-	fmt.Printf("MD ID: %s\n\n", mdID)
+	fmt.Printf("MD ID: %s\n", mdID)
+
+	buf, err := config.Codec().Encode(&rmd.BareRootMetadata)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("MD size: %d bytes\n\n", len(buf))
 
 	fmt.Print("Reader/writer metadata\n")
 	fmt.Print("----------------------\n")
