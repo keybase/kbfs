@@ -629,9 +629,14 @@ func TestMDJournalClear(t *testing.T) {
 
 	bid := j.branchID
 
+	// Clearing the master branch shouldn't work.
+	err = j.clear(ctx, uid, NullBranchID)
+	require.Error(t, err)
+
 	// Clearing a different branch ID should do nothing.
 
-	j.clear(ctx, uid, FakeBranchID(1))
+	err = j.clear(ctx, uid, FakeBranchID(1))
+	require.NoError(t, err)
 	require.Equal(t, bid, j.branchID)
 
 	head, err := j.getHead(uid)
@@ -641,7 +646,8 @@ func TestMDJournalClear(t *testing.T) {
 	// Clearing the correct branch ID should clear the entire
 	// journal, and reset the branch ID.
 
-	j.clear(ctx, uid, bid)
+	err = j.clear(ctx, uid, bid)
+	require.NoError(t, err)
 	require.Equal(t, NullBranchID, j.branchID)
 
 	head, err = j.getHead(uid)
@@ -650,7 +656,8 @@ func TestMDJournalClear(t *testing.T) {
 
 	// Clearing twice should do nothing.
 
-	j.clear(ctx, uid, bid)
+	err = j.clear(ctx, uid, bid)
+	require.NoError(t, err)
 	require.Equal(t, NullBranchID, j.branchID)
 
 	head, err = j.getHead(uid)

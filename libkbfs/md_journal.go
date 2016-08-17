@@ -709,6 +709,10 @@ func (j *mdJournal) clear(
 		}
 	}()
 
+	if bid == NullBranchID {
+		return errors.New("Cannot clear master branch")
+	}
+
 	head, err := j.getHead(currentUID)
 	if err != nil {
 		return err
