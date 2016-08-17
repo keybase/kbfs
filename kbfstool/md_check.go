@@ -16,13 +16,23 @@ Each input must be in the same format as in md dump.
 `
 
 func checkDirBlock(ctx context.Context, config libkbfs.Config,
-	info libkbfs.BlockInfo) error {
-	panic("Not implemented")
+	kmd libkbfs.KeyMetadata, info libkbfs.BlockInfo) error {
+	var dirBlock libkbfs.DirBlock
+	err := config.BlockOps().Get(ctx, kmd, info.BlockPointer, &dirBlock)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func checkFileBlock(ctx context.Context, config libkbfs.Config,
-	info libkbfs.BlockInfo) error {
-	panic("Not implemented")
+	kmd libkbfs.KeyMetadata, info libkbfs.BlockInfo) error {
+	var fileBlock libkbfs.FileBlock
+	err := config.BlockOps().Get(ctx, kmd, info.BlockPointer, &fileBlock)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
@@ -34,7 +44,7 @@ func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	} else {
 		bi := data.ChangesBlockInfo()
 		fmt.Printf("Checking MD changes block %v...\n", bi)
-		err := checkFileBlock(ctx, config, bi)
+		err := checkFileBlock(ctx, config, rmd, bi)
 		if err != nil {
 			fmt.Printf("Got error while checking MD changes block %v: %v\n",
 				bi, err)
@@ -42,7 +52,7 @@ func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	}
 
 	fmt.Printf("Checking dir block %v...\n", data.Dir)
-	err := checkDirBlock(ctx, config, data.Dir.BlockInfo)
+	err := checkDirBlock(ctx, config, rmd, data.Dir.BlockInfo)
 	if err != nil {
 		fmt.Printf("Got error while checking dir block %v: %v\n",
 			data.Dir, err)
