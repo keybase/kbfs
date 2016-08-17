@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/keybase/client/go/protocol"
 	"github.com/keybase/kbfs/fsrpc"
@@ -102,8 +103,13 @@ func parseRevisionPart(revisionPartStr string) (revisionPart, error) {
 	if len(revisionPartStr) == 0 {
 		return revisionPart{partType: latestRevision}, nil
 	}
-	// TODO: Figure out when to use base 10 or base 16.
-	u, err := strconv.ParseUint(revisionPartStr, 10, 64)
+	base := 10
+	revisionStr := revisionPartStr
+	if strings.HasPrefix(revisionStr, "0x") {
+		base = 16
+		revisionStr = strings.TrimPrefix(revisionStr, "0x")
+	}
+	u, err := strconv.ParseUint(revisionStr, base, 64)
 	if err != nil {
 		return revisionPart{}, err
 	}
