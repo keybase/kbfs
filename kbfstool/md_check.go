@@ -16,9 +16,18 @@ Each input must be in the same format as in md dump.
 `
 
 func checkDirBlock(ctx context.Context, config libkbfs.Config,
-	kmd libkbfs.KeyMetadata, info libkbfs.BlockInfo) error {
+	name string, kmd libkbfs.KeyMetadata, info libkbfs.BlockInfo) (
+	err error) {
+	fmt.Printf("Checking %s (dir block %v)...\n", name, info)
+	defer func() {
+		if err != nil {
+			fmt.Printf("Got error while checking %s: %v\n",
+				name, err)
+		}
+	}()
+
 	var dirBlock libkbfs.DirBlock
-	err := config.BlockOps().Get(ctx, kmd, info.BlockPointer, &dirBlock)
+	err = config.BlockOps().Get(ctx, kmd, info.BlockPointer, &dirBlock)
 	if err != nil {
 		return err
 	}
@@ -26,9 +35,18 @@ func checkDirBlock(ctx context.Context, config libkbfs.Config,
 }
 
 func checkFileBlock(ctx context.Context, config libkbfs.Config,
-	kmd libkbfs.KeyMetadata, info libkbfs.BlockInfo) error {
+	name string, kmd libkbfs.KeyMetadata, info libkbfs.BlockInfo) (
+	err error) {
+	fmt.Printf("Checking %s (file block %v)...\n", name, info)
+	defer func() {
+		if err != nil {
+			fmt.Printf("Got error while checking %s: %v\n",
+				name, err)
+		}
+	}()
+
 	var fileBlock libkbfs.FileBlock
-	err := config.BlockOps().Get(ctx, kmd, info.BlockPointer, &fileBlock)
+	err = config.BlockOps().Get(ctx, kmd, info.BlockPointer, &fileBlock)
 	if err != nil {
 		return err
 	}
@@ -36,28 +54,19 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 }
 
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
-	rmd libkbfs.ImmutableRootMetadata) error {
+	input string, rmd libkbfs.ImmutableRootMetadata) error {
 	data := rmd.Data()
 
 	if data.ChangesBlockInfo() == (libkbfs.BlockInfo{}) {
 		fmt.Print("No MD changes block to check; skipping\n")
 	} else {
 		bi := data.ChangesBlockInfo()
-		fmt.Printf("Checking MD changes block %v...\n", bi)
-		err := checkFileBlock(ctx, config, rmd, bi)
-		if err != nil {
-			fmt.Printf("Got error while checking MD changes block %v: %v\n",
-				bi, err)
-		}
+		_ = checkFileBlock(ctx, config, "MD changes block", rmd, bi)
 	}
 
-	fmt.Printf("Checking dir block %v...\n", data.Dir)
-	err := checkDirBlock(ctx, config, rmd, data.Dir.BlockInfo)
-	if err != nil {
-		fmt.Printf("Got error while checking dir block %v: %v\n",
-			data.Dir, err)
-	}
-
+	_ = checkDirBlock(
+		ctx, config, fmt.Sprintf("%s root block", input), rmd,
+		data.Dir.BlockInfo)
 	return nil
 }
 
@@ -83,7 +92,7 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (exitSta
 			continue
 		}
 
-		err = mdCheckOne(ctx, config, irmd)
+		err = mdCheckOne(ctx, config, input, irmd)
 		if err != nil {
 			printError("md check", err)
 			return 1
