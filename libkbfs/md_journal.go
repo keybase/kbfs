@@ -287,7 +287,7 @@ func (j mdJournal) checkGetParams(currentUID keybase1.UID) (
 	return head, nil
 }
 
-func (j mdJournal) convertToBranch(
+func (j *mdJournal) convertToBranch(
 	ctx context.Context, signer cryptoSigner,
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (err error) {
 	head, err := j.getLatest()
@@ -407,6 +407,7 @@ func (j mdJournal) convertToBranch(
 	}
 
 	j.j = tempJournal
+	j.branchID = bid
 
 	return err
 }
@@ -696,7 +697,7 @@ func (j *mdJournal) flushOne(
 	return true, nil
 }
 
-func (j mdJournal) clear(
+func (j *mdJournal) clear(
 	ctx context.Context, currentUID keybase1.UID, bid BranchID) (
 	err error) {
 	j.log.CDebugf(ctx, "Clearing journal for branch %s", bid)
@@ -717,6 +718,8 @@ func (j mdJournal) clear(
 		// Nothing to do.
 		return nil
 	}
+
+	j.branchID = NullBranchID
 
 	// No need to set lastMdID or lastBranchID in this case.
 

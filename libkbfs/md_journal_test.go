@@ -623,18 +623,26 @@ func TestMDJournalClear(t *testing.T) {
 		prevRoot = mdID
 	}
 
+	err := j.convertToBranch(ctx, signer, uid, verifyingKey)
+	require.NoError(t, err)
+	require.NotEqual(t, NullBranchID, j.branchID)
+
+	bid := j.branchID
+
 	// Clearing a different branch ID should do nothing.
 
 	j.clear(ctx, uid, FakeBranchID(1))
+	require.Equal(t, bid, j.branchID)
 
 	head, err := j.getHead(uid)
 	require.NoError(t, err)
 	require.NotEqual(t, ImmutableBareRootMetadata{}, head)
 
 	// Clearing the correct branch ID should clear the entire
-	// journal.
+	// journal, and reset the branch ID.
 
-	j.clear(ctx, uid, NullBranchID)
+	j.clear(ctx, uid, bid)
+	require.Equal(t, NullBranchID, j.branchID)
 
 	head, err = j.getHead(uid)
 	require.NoError(t, err)
@@ -642,7 +650,8 @@ func TestMDJournalClear(t *testing.T) {
 
 	// Clearing twice should do nothing.
 
-	j.clear(ctx, uid, NullBranchID)
+	j.clear(ctx, uid, bid)
+	require.Equal(t, NullBranchID, j.branchID)
 
 	head, err = j.getHead(uid)
 	require.NoError(t, err)
