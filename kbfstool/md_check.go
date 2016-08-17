@@ -17,9 +17,13 @@ Each input must be in the same format as in md dump.
 `
 
 func checkDirBlock(ctx context.Context, config libkbfs.Config,
-	name string, kmd libkbfs.KeyMetadata, info libkbfs.BlockInfo) (
-	err error) {
-	fmt.Printf("Checking %s (dir block %v)...\n", name, info)
+	name string, kmd libkbfs.KeyMetadata, info libkbfs.BlockInfo,
+	verbose bool) (err error) {
+	if verbose {
+		fmt.Printf("Checking %s (dir block %v)...\n", name, info)
+	} else {
+		fmt.Printf("Checking %s...\n", name)
+	}
 	defer func() {
 		if err != nil {
 			fmt.Printf("Got error while checking %s: %v\n",
@@ -38,14 +42,16 @@ func checkDirBlock(ctx context.Context, config libkbfs.Config,
 		case libkbfs.File, libkbfs.Exec:
 			_ = checkFileBlock(
 				ctx, config, filepath.Join(name, entryName),
-				kmd, entry.BlockInfo)
+				kmd, entry.BlockInfo, verbose)
 		case libkbfs.Dir:
 			_ = checkDirBlock(
 				ctx, config, filepath.Join(name, entryName),
-				kmd, entry.BlockInfo)
+				kmd, entry.BlockInfo, verbose)
 		case libkbfs.Sym:
-			fmt.Printf("Skipping symlink %s -> %s\n",
-				entryName, entry.SymPath)
+			if verbose {
+				fmt.Printf("Skipping symlink %s -> %s\n",
+					entryName, entry.SymPath)
+			}
 			continue
 		default:
 			fmt.Printf("Entry %s has unknown type %s",
@@ -57,9 +63,13 @@ func checkDirBlock(ctx context.Context, config libkbfs.Config,
 }
 
 func checkFileBlock(ctx context.Context, config libkbfs.Config,
-	name string, kmd libkbfs.KeyMetadata, info libkbfs.BlockInfo) (
-	err error) {
-	fmt.Printf("Checking %s (file block %v)...\n", name, info)
+	name string, kmd libkbfs.KeyMetadata, info libkbfs.BlockInfo,
+	verbose bool) (err error) {
+	if verbose {
+		fmt.Printf("Checking %s (file block %v)...\n", name, info)
+	} else {
+		fmt.Printf("Checking %s...\n", name)
+	}
 	defer func() {
 		if err != nil {
 			fmt.Printf("Got error while checking %s: %v\n",
@@ -76,24 +86,28 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 }
 
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
-	input string, rmd libkbfs.ImmutableRootMetadata) error {
+	input string, rmd libkbfs.ImmutableRootMetadata, verbose bool) error {
 	data := rmd.Data()
 
 	if data.ChangesBlockInfo() == (libkbfs.BlockInfo{}) {
-		fmt.Print("No MD changes block to check; skipping\n")
+		if verbose {
+			fmt.Print("No MD changes block to check; skipping\n")
+		}
 	} else {
 		bi := data.ChangesBlockInfo()
-		_ = checkFileBlock(ctx, config, "MD changes block", rmd, bi)
+		_ = checkFileBlock(
+			ctx, config, "MD changes block", rmd, bi, verbose)
 	}
 
 	_ = checkDirBlock(
 		ctx, config, fmt.Sprintf("%s root block", input), rmd,
-		data.Dir.BlockInfo)
+		data.Dir.BlockInfo, verbose)
 	return nil
 }
 
 func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
 	flags := flag.NewFlagSet("kbfs md check", flag.ContinueOnError)
+	verbose := flags.Bool("v", false, "Print verbose output.")
 	flags.Parse(args)
 
 	inputs := flags.Args()
@@ -114,7 +128,7 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (exitSta
 			continue
 		}
 
-		err = mdCheckOne(ctx, config, input, irmd)
+		err = mdCheckOne(ctx, config, input, irmd, *verbose)
 		if err != nil {
 			printError("md check", err)
 			return 1
