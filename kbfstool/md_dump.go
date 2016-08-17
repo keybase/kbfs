@@ -70,34 +70,25 @@ outer:
 	return irmd.ID, nil
 }
 
-type branchPartType int
-
-const (
-	deviceBranch branchPartType = iota
-	specifiedBranch
-)
-
-type branchPart struct {
-	partType branchPartType
-	id       libkbfs.BranchID
-}
-
-func parseBranchPart(branchPartStr string) (branchPart, error) {
-	if len(branchPartStr) == 0 || branchPartStr == "device" {
-		return branchPart{partType: deviceBranch}, nil
-	}
-
+func getBranchID(ctx context.Context, config libkbfs.Config,
+	tlfID libkbfs.TlfID, branchPartStr string) (libkbfs.BranchID, error) {
 	if branchPartStr == "master" {
-		return branchPart{
-			partType: specifiedBranch, id: libkbfs.NullBranchID,
-		}, nil
+		return libkbfs.NullBranchID, nil
 	}
 
-	branchID, err := libkbfs.ParseBranchID(branchPartStr)
-	if err != nil {
-		return branchPart{}, err
+	if len(branchPartStr) == 0 || branchPartStr == "device" {
+		irmd, err := config.MDOps().GetUnmergedForTLF(
+			ctx, tlfID, libkbfs.NullBranchID)
+		if err != nil {
+			return libkbfs.NullBranchID, err
+		}
+		if irmd == (libkbfs.ImmutableRootMetadata{}) {
+			return libkbfs.NullBranchID, nil
+		}
+		return irmd.BID, nil
 	}
-	return branchPart{partType: specifiedBranch, id: branchID}, nil
+
+	return libkbfs.ParseBranchID(branchPartStr)
 }
 
 type revisionPartType int
@@ -134,48 +125,11 @@ func parseRevisionPart(revisionPartStr string) (revisionPart, error) {
 }
 
 func mdGet(ctx context.Context, config libkbfs.Config,
-	tlfID libkbfs.TlfID, branchPart branchPart, revisionPart revisionPart) (
+	tlfID libkbfs.TlfID, branchID libkbfs.BranchID, revisionPart revisionPart) (
 	libkbfs.ImmutableRootMetadata, error) {
 	mdOps := config.MDOps()
 
-	if branchPart.partType == deviceBranch {
-		if revisionPart.partType == latestRevision {
-			irmd, err := mdOps.GetUnmergedForTLF(
-				ctx, tlfID, libkbfs.NullBranchID)
-			if err != nil {
-				return libkbfs.ImmutableRootMetadata{}, err
-			}
-
-			if irmd != (libkbfs.ImmutableRootMetadata{}) {
-				return irmd, nil
-			}
-
-			return mdOps.GetForTLF(ctx, tlfID)
-		}
-
-		irmds, err := mdOps.GetUnmergedRange(
-			ctx, tlfID, libkbfs.NullBranchID, revisionPart.revision, revisionPart.revision)
-		if err != nil {
-			return libkbfs.ImmutableRootMetadata{}, err
-		}
-
-		if len(irmds) >= 1 {
-			return irmds[0], nil
-		}
-
-		irmds, err = mdOps.GetRange(ctx, tlfID, revisionPart.revision, revisionPart.revision)
-		if err != nil {
-			return libkbfs.ImmutableRootMetadata{}, err
-		}
-
-		if len(irmds) >= 1 {
-			return irmds[0], nil
-		}
-
-		return libkbfs.ImmutableRootMetadata{}, nil
-	}
-
-	if branchPart.id == libkbfs.NullBranchID {
+	if branchID == libkbfs.NullBranchID {
 		if revisionPart.partType == latestRevision {
 			return mdOps.GetForTLF(ctx, tlfID)
 		}
@@ -215,7 +169,7 @@ func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 		return libkbfs.ImmutableRootMetadata{}, err
 	}
 
-	branchPart, err := parseBranchPart(branchPartStr)
+	branchID, err := getBranchID(ctx, config, tlfID, branchPartStr)
 	if err != nil {
 		return libkbfs.ImmutableRootMetadata{}, err
 	}
@@ -225,7 +179,7 @@ func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 		return libkbfs.ImmutableRootMetadata{}, err
 	}
 
-	return mdGet(ctx, config, tlfID, branchPart, revisionPart)
+	return mdGet(ctx, config, tlfID, branchID, revisionPart)
 }
 
 func getUserString(
