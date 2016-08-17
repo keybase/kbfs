@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-var mdGetRe = regexp.MustCompile("^(.+?)(?::(.*?))?(?:@(.*?))?$")
+var mdGetRe = regexp.MustCompile("^(.+?)(?::(.*?))?(?:^(.*?))?$")
 
 func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	libkbfs.ImmutableRootMetadata, error) {
@@ -21,12 +21,12 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	//
 	// <TlfID>
 	// <TlfID>:<BranchID>
-	// <TlfID>:<BranchID>@<Revision>
+	// <TlfID>^<Revision>
+	// <TlfID>:<BranchID>^<Revision>
 	// /keybase/(public|private)/tlfname
 	// /keybase/(public|private)/tlfname:<BranchID>
+	// /keybase/(public|private)/tlfname^<Revision>
 	// /keybase/(public|private)/tlfname:<BranchID>@<Revision>
-	//
-	// TODO: Support Foo@bar also.
 	//
 	// If the BranchID is omitted, the unmerged branch for the
 	// current device is used, or the master branch if there is no
