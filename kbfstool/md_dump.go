@@ -66,7 +66,7 @@ outer:
 type branchPartType int
 
 const (
-	defaultBranch branchPartType = iota
+	deviceBranch branchPartType = iota
 	specifiedBranch
 )
 
@@ -76,15 +76,21 @@ type branchPart struct {
 }
 
 func parseBranchPart(branchPartStr string) (branchPart, error) {
-	if len(branchPartStr) == 0 {
-		return branchPart{partType: defaultBranch}, nil
+	if len(branchPartStr) == 0 || branchPartStr == "device" {
+		return branchPart{partType: deviceBranch}, nil
+	}
+
+	if branchPartStr == "master" {
+		return branchPart{
+			partType: specifiedBranch, id: libkbfs.NullBranchID,
+		}, nil
 	}
 
 	branchID, err := libkbfs.ParseBranchID(branchPartStr)
 	if err != nil {
 		return branchPart{}, err
 	}
-	return branchPart{id: branchID}, nil
+	return branchPart{partType: specifiedBranch, id: branchID}, nil
 }
 
 type revisionPartType int
@@ -100,9 +106,10 @@ type revisionPart struct {
 }
 
 func parseRevisionPart(revisionPartStr string) (revisionPart, error) {
-	if len(revisionPartStr) == 0 {
+	if len(revisionPartStr) == 0 || revisionPartStr == "latest" {
 		return revisionPart{partType: latestRevision}, nil
 	}
+
 	base := 10
 	revisionStr := revisionPartStr
 	if strings.HasPrefix(revisionStr, "0x") {
@@ -113,7 +120,10 @@ func parseRevisionPart(revisionPartStr string) (revisionPart, error) {
 	if err != nil {
 		return revisionPart{}, err
 	}
-	return revisionPart{revision: libkbfs.MetadataRevision(u)}, nil
+	return revisionPart{
+		partType: latestRevision,
+		revision: libkbfs.MetadataRevision(u),
+	}, nil
 }
 
 func mdGet(ctx context.Context, config libkbfs.Config, input string) (
@@ -147,7 +157,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 
 	if tlfPart.id == (libkbfs.TlfID{}) {
 		// Use tlfHandle.
-		if branchPart.partType == defaultBranch {
+		if branchPart.partType == deviceBranch {
 			if revisionPart.partType == latestRevision {
 				_, irmd, err := mdOps.GetForHandle(
 					ctx, tlfPart.handle, libkbfs.Unmerged)
@@ -180,7 +190,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	}
 
 	// Use tlfID.
-	if branchPart.partType == defaultBranch {
+	if branchPart.partType == deviceBranch {
 		if revisionPart.partType == latestRevision {
 			irmd, err := mdOps.GetUnmergedForTLF(
 				ctx, tlfPart.id, libkbfs.NullBranchID)
