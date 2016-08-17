@@ -166,12 +166,17 @@ func (j mdJournal) getMD(id MdID) (*BareRootMetadata, time.Time, error) {
 
 	// Check integrity.
 
+	if rmd.BID != j.branchID {
+		return nil, time.Time{}, fmt.Errorf(
+			"Branch ID mismatch: expected %s, got %s", j.branchID, rmd.BID)
+	}
+
 	mdID, err := j.crypto.MakeMdID(&rmd)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
 
-	if id != mdID {
+	if mdID != id {
 		return nil, time.Time{}, fmt.Errorf(
 			"Metadata ID mismatch: expected %s, got %s", id, mdID)
 	}
@@ -290,14 +295,9 @@ func (j mdJournal) checkGetParams(currentUID keybase1.UID) (
 func (j *mdJournal) convertToBranch(
 	ctx context.Context, signer cryptoSigner,
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (err error) {
-	head, err := j.getLatest()
-	if err != nil {
-		return err
-	}
-
-	if head.BID != NullBranchID {
+	if j.branchID != NullBranchID {
 		return fmt.Errorf(
-			"convertToBranch called with BID=%s", head.BID)
+			"convertToBranch called with BID=%s", j.branchID)
 	}
 
 	earliestRevision, err := j.j.readEarliestRevision()
@@ -305,7 +305,10 @@ func (j *mdJournal) convertToBranch(
 		return err
 	}
 
-	latestRevision := head.Revision
+	latestRevision, err := j.j.readLatestRevision()
+	if err != nil {
+		return err
+	}
 
 	j.log.CDebugf(
 		ctx, "rewriting MDs %s to %s", earliestRevision, latestRevision)
@@ -534,18 +537,16 @@ func (j *mdJournal) put(
 	}
 
 	mStatus := rmd.MergedStatus()
-	bid := rmd.BID
 
-	if (mStatus == Unmerged) && (bid == NullBranchID) {
+	if (mStatus == Unmerged) && (rmd.BID == NullBranchID) {
 		j.log.CDebugf(
 			ctx, "Changing branch ID to %s and prev root to %s for MD for TLF=%s with rev=%s",
 			lastBranchID, lastMdID, rmd.ID, rmd.Revision, rmd.BID)
 		rmd.BID = lastBranchID
 		rmd.PrevRoot = lastMdID
-		bid = rmd.BID
 	}
 
-	if (mStatus == Merged) != (bid == NullBranchID) {
+	if (mStatus == Merged) != (rmd.BID == NullBranchID) {
 		return MdID{}, errors.New("Invalid branch ID")
 	}
 
@@ -553,6 +554,12 @@ func (j *mdJournal) put(
 	// conflict error so the caller can retry with an unmerged MD.
 	if mStatus == Merged && lastBranchID != NullBranchID {
 		return MdID{}, MDJournalConflictError{}
+	}
+
+	if rmd.BID != j.branchID {
+		return MdID{}, fmt.Errorf(
+			"Branch ID mismatch: expected %s, got %s",
+			j.branchID, rmd.BID)
 	}
 
 	// Check permissions and consistency with head, if it exists.
