@@ -82,6 +82,17 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 	if err != nil {
 		return err
 	}
+
+	if fileBlock.IsInd {
+		// TODO: Check continuity of off+len if Holes is false
+		// for all blocks.
+		for _, iptr := range fileBlock.IPtrs {
+			_ = checkFileBlock(
+				ctx, config,
+				fmt.Sprintf("%s (off=%d)", name, iptr.Off),
+				kmd, iptr.BlockInfo, verbose)
+		}
+	}
 	return nil
 }
 
