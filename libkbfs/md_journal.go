@@ -206,24 +206,39 @@ func (j mdJournal) putMD(
 	return id, nil
 }
 
-func (j mdJournal) getHeadHelper() (ImmutableBareRootMetadata, error) {
-	headID, err := j.j.getLatest()
+func (j mdJournal) getEarliest() (ImmutableBareRootMetadata, error) {
+	earliestID, err := j.j.getEarliest()
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
-	if headID == (MdID{}) {
+	if earliestID == (MdID{}) {
 		return ImmutableBareRootMetadata{}, nil
 	}
-	head, ts, err := j.getMD(headID)
+	earliest, ts, err := j.getMD(earliestID)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
-	return MakeImmutableBareRootMetadata(head, headID, ts), nil
+	return MakeImmutableBareRootMetadata(earliest, earliestID, ts), nil
+}
+
+func (j mdJournal) getLatest() (ImmutableBareRootMetadata, error) {
+	latestID, err := j.j.getLatest()
+	if err != nil {
+		return ImmutableBareRootMetadata{}, err
+	}
+	if latestID == (MdID{}) {
+		return ImmutableBareRootMetadata{}, nil
+	}
+	latest, ts, err := j.getMD(latestID)
+	if err != nil {
+		return ImmutableBareRootMetadata{}, err
+	}
+	return MakeImmutableBareRootMetadata(latest, latestID, ts), nil
 }
 
 func (j mdJournal) checkGetParams(currentUID keybase1.UID) (
 	ImmutableBareRootMetadata, error) {
-	head, err := j.getHeadHelper()
+	head, err := j.getLatest()
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
@@ -246,7 +261,7 @@ func (j mdJournal) checkGetParams(currentUID keybase1.UID) (
 func (j mdJournal) convertToBranch(
 	ctx context.Context, signer cryptoSigner,
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (err error) {
-	head, err := j.getHeadHelper()
+	head, err := j.getLatest()
 	if err != nil {
 		return err
 	}
@@ -369,37 +384,31 @@ func (j mdJournal) convertToBranch(
 
 func (j mdJournal) pushEarliestToServer(
 	ctx context.Context, signer cryptoSigner, mdserver MDServer) (
-	MdID, *BareRootMetadata, error) {
-	earliestID, err := j.j.getEarliest()
+	ImmutableBareRootMetadata, error) {
+	rmd, err := j.getEarliest()
 	if err != nil {
-		return MdID{}, nil, err
+		return ImmutableBareRootMetadata{}, err
 	}
-	if earliestID == (MdID{}) {
-		return MdID{}, nil, nil
-	}
-
-	rmd, _, err := j.getMD(earliestID)
-	if err != nil {
-		return MdID{}, nil, err
+	if rmd == (ImmutableBareRootMetadata{}) {
+		return ImmutableBareRootMetadata{}, nil
 	}
 
 	j.log.CDebugf(ctx, "Flushing MD for TLF=%s with id=%s, rev=%s, bid=%s",
-		rmd.ID, earliestID, rmd.Revision, rmd.BID)
+		rmd.ID, rmd.mdID, rmd.Revision, rmd.BID)
 
 	var rmds RootMetadataSigned
-	rmds.MD = *rmd
+	rmds.MD = *rmd.BareRootMetadata
 	err = signMD(ctx, j.codec, signer, &rmds)
 	if err != nil {
-		return MdID{}, nil, err
+		return ImmutableBareRootMetadata{}, err
 	}
 	err = mdserver.Put(ctx, &rmds)
 	if err != nil {
-		// Still return the ID and RMD so that they can be
-		// consulted.
-		return earliestID, rmd, err
+		// Still return the RMD so that it can be consulted.
+		return rmd, err
 	}
 
-	return earliestID, rmd, nil
+	return rmd, nil
 }
 
 // All functions below are public functions.
@@ -479,7 +488,7 @@ func (j *mdJournal) put(
 		}
 	}()
 
-	head, err := j.getHeadHelper()
+	head, err := j.getLatest()
 	if err != nil {
 		return MdID{}, err
 	}
@@ -606,8 +615,7 @@ func (j *mdJournal) flushOne(
 		}
 	}()
 
-	earliestID, rmd, pushErr := j.pushEarliestToServer(
-		ctx, signer, mdserver)
+	rmd, pushErr := j.pushEarliestToServer(ctx, signer, mdserver)
 	if isRevisionConflict(pushErr) {
 		mdID, err := getMdID(
 			ctx, mdserver, j.crypto, rmd.ID, rmd.BID,
@@ -616,8 +624,8 @@ func (j *mdJournal) flushOne(
 			j.log.CWarningf(ctx,
 				"getMdID failed for TLF %s, BID %s, and revision %d: %v",
 				rmd.ID, rmd.BID, rmd.Revision, err)
-		} else if mdID == earliestID {
-			if earliestID == (MdID{}) {
+		} else if mdID == rmd.mdID {
+			if rmd.mdID == (MdID{}) {
 				panic("nil earliestID and revision conflict error returned by pushEarliestToServer")
 			}
 			// We must have already flushed this MD, so continue.
@@ -631,14 +639,14 @@ func (j *mdJournal) flushOne(
 				return false, err
 			}
 
-			earliestID, rmd, pushErr = j.pushEarliestToServer(
+			rmd, pushErr = j.pushEarliestToServer(
 				ctx, signer, mdserver)
 		}
 	}
 	if pushErr != nil {
 		return false, pushErr
 	}
-	if earliestID == (MdID{}) {
+	if rmd.mdID == (MdID{}) {
 		return false, nil
 	}
 
@@ -651,8 +659,8 @@ func (j *mdJournal) flushOne(
 	if empty {
 		j.log.CDebugf(ctx,
 			"Journal is now empty; saving last MdID=%s and last Branch ID=%s",
-			earliestID, rmd.BID)
-		j.lastMdID = earliestID
+			rmd.mdID, rmd.BID)
+		j.lastMdID = rmd.mdID
 		j.lastBranchID = rmd.BID
 	}
 
