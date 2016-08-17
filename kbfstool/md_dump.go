@@ -126,33 +126,9 @@ func parseRevisionPart(revisionPartStr string) (revisionPart, error) {
 	}, nil
 }
 
-func mdGet(ctx context.Context, config libkbfs.Config, input string) (
+func mdGet(ctx context.Context, config libkbfs.Config,
+	tlfPart tlfPart, branchPart branchPart, revisionPart revisionPart) (
 	libkbfs.ImmutableRootMetadata, error) {
-	parts := mdGetRe.FindStringSubmatch(input)
-	if parts == nil {
-		return libkbfs.ImmutableRootMetadata{},
-			fmt.Errorf("Could not parse %q", input)
-	}
-
-	tlfPartStr := parts[1]
-	branchPartStr := parts[2]
-	revisionPartStr := parts[3]
-
-	tlfPart, err := parseTlfPart(ctx, config, tlfPartStr)
-	if err != nil {
-		return libkbfs.ImmutableRootMetadata{}, err
-	}
-
-	branchPart, err := parseBranchPart(branchPartStr)
-	if err != nil {
-		return libkbfs.ImmutableRootMetadata{}, err
-	}
-
-	revisionPart, err := parseRevisionPart(revisionPartStr)
-	if err != nil {
-		return libkbfs.ImmutableRootMetadata{}, err
-	}
-
 	mdOps := config.MDOps()
 
 	if tlfPart.id == (libkbfs.TlfID{}) {
@@ -250,7 +226,38 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	panic("Unimplemented")
 }
 
-func getUserString(ctx context.Context, config libkbfs.Config, uid keybase1.UID) string {
+func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
+	libkbfs.ImmutableRootMetadata, error) {
+	parts := mdGetRe.FindStringSubmatch(input)
+	if parts == nil {
+		return libkbfs.ImmutableRootMetadata{},
+			fmt.Errorf("Could not parse %q", input)
+	}
+
+	tlfPartStr := parts[1]
+	branchPartStr := parts[2]
+	revisionPartStr := parts[3]
+
+	tlfPart, err := parseTlfPart(ctx, config, tlfPartStr)
+	if err != nil {
+		return libkbfs.ImmutableRootMetadata{}, err
+	}
+
+	branchPart, err := parseBranchPart(branchPartStr)
+	if err != nil {
+		return libkbfs.ImmutableRootMetadata{}, err
+	}
+
+	revisionPart, err := parseRevisionPart(revisionPartStr)
+	if err != nil {
+		return libkbfs.ImmutableRootMetadata{}, err
+	}
+
+	return mdGet(ctx, config, tlfPart, branchPart, revisionPart)
+}
+
+func getUserString(
+	ctx context.Context, config libkbfs.Config, uid keybase1.UID) string {
 	username, _, err := config.KeybaseService().Resolve(
 		ctx, fmt.Sprintf("uid:%s", uid))
 	if err != nil {
@@ -366,7 +373,7 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 	}
 
 	for _, input := range inputs {
-		irmd, err := mdGet(ctx, config, input)
+		irmd, err := mdParseAndGet(ctx, config, input)
 		if err != nil {
 			printError("md dump", err)
 			return 1
