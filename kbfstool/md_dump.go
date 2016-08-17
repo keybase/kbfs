@@ -79,9 +79,9 @@ func parseBranchPart(branchPartStr string) (branchPart, error) {
 		return branchPart{partType: defaultBranch}, nil
 	}
 
-	branchID := libkbfs.ParseBranchID(branchPartStr)
-	if branchID == libkbfs.NullBranchID && branchPartStr != "00000000000000000000000000000000" {
-		return branchPart{}, fmt.Errorf("%q is not a valid branch ID", branchPart)
+	branchID, err := libkbfs.ParseBranchID(branchPartStr)
+	if err != nil {
+		return branchPart{}, err
 	}
 	return branchPart{id: branchID}, nil
 }

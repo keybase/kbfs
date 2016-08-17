@@ -54,19 +54,20 @@ func (id *BranchID) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// ParseBranchID parses a hex encoded BranchID. Returns NullBranchID on failure.
-func ParseBranchID(s string) BranchID {
+// ParseBranchID parses a hex encoded BranchID. Returns NullBranchID
+// and an InvalidBranchID on falire.
+func ParseBranchID(s string) (BranchID, error) {
 	if len(s) != BranchIDStringLen {
-		return NullBranchID
+		return NullBranchID, InvalidBranchID{s}
 	}
 	bytes, err := hex.DecodeString(s)
 	if err != nil {
-		return NullBranchID
+		return NullBranchID, InvalidBranchID{s}
 	}
 	var id BranchID
 	err = id.UnmarshalBinary(bytes)
 	if err != nil {
-		id = NullBranchID
+		return NullBranchID, InvalidBranchID{s}
 	}
-	return id
+	return id, nil
 }
