@@ -14,7 +14,7 @@ const (
 	// BranchIDByteLen is the number of bytes in a per-device per-TLF branch ID.
 	BranchIDByteLen = 16
 	// BranchIDStringLen is the number of characters in the string
-	// representation of a per-device pr-TLF branch ID.
+	// representation of a per-device per-TLF branch ID.
 	BranchIDStringLen = 2 * BranchIDByteLen
 )
 
