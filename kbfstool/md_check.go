@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"path/filepath"
 
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
@@ -31,6 +32,27 @@ func checkDirBlock(ctx context.Context, config libkbfs.Config,
 	if err != nil {
 		return err
 	}
+
+	for entryName, entry := range dirBlock.Children {
+		switch entry.Type {
+		case libkbfs.File, libkbfs.Exec:
+			_ = checkFileBlock(
+				ctx, config, filepath.Join(name, entryName),
+				kmd, entry.BlockInfo)
+		case libkbfs.Dir:
+			_ = checkDirBlock(
+				ctx, config, filepath.Join(name, entryName),
+				kmd, entry.BlockInfo)
+		case libkbfs.Sym:
+			fmt.Printf("Skipping symlink %s -> %s\n",
+				entryName, entry.SymPath)
+			continue
+		default:
+			fmt.Printf("Entry %s has unknown type %s",
+				entryName, entry.Type)
+		}
+	}
+
 	return nil
 }
 
