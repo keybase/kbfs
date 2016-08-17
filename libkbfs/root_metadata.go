@@ -43,8 +43,7 @@ func (p PrivateMetadata) checkValid() error {
 	return nil
 }
 
-// EmbeddedChangesBlockInfo returns the block info for any unembedded
-// changes.
+// ChangesBlockInfo returns the block info for any unembedded changes.
 func (p PrivateMetadata) ChangesBlockInfo() BlockInfo {
 	return p.cachedChanges.Info
 }
