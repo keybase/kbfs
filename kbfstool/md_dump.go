@@ -62,6 +62,30 @@ outer:
 	return tlfPart{handle: handle}, nil
 }
 
+type branchPartType int
+
+const (
+	defaultBranch branchPartType = iota
+	idBranch
+)
+
+type branchPart struct {
+	partType branchPartType
+	id       libkbfs.BranchID
+}
+
+func parseBranchPart(branchPartStr string) (branchPart, error) {
+	if len(branchPartStr) == 0 {
+		return branchPart{partType: defaultBranch}, nil
+	}
+
+	branchID := libkbfs.ParseBranchID(branchPartStr)
+	if branchID == libkbfs.NullBranchID && branchPartStr != "00000000000000000000000000000000" {
+		return branchPart{}, fmt.Errorf("%q is not a valid branch ID", branchPart)
+	}
+	return branchPart{id: branchID}, nil
+}
+
 func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	libkbfs.ImmutableRootMetadata, error) {
 	parts := mdGetRe.FindStringSubmatch(input)
@@ -71,7 +95,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	}
 
 	tlfPartStr := parts[1]
-	branchPart := parts[2]
+	branchPartStr := parts[2]
 	revPart := parts[3]
 
 	tlfPart, err := parseTlfPart(ctx, config, tlfPartStr)
@@ -79,13 +103,9 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 		return libkbfs.ImmutableRootMetadata{}, err
 	}
 
-	var branchID *libkbfs.BranchID
-	if len(branchPart) > 0 {
-		parsedBranchID := libkbfs.ParseBranchID(branchPart)
-		if parsedBranchID == libkbfs.NullBranchID && branchPart != "00000000000000000000000000000000" {
-			return libkbfs.ImmutableRootMetadata{}, fmt.Errorf("%q is not a valid branch ID", branchPart)
-		}
-		branchID = &parsedBranchID
+	branchPart, err := parseBranchPart(branchPartStr)
+	if err != nil {
+		return libkbfs.ImmutableRootMetadata{}, err
 	}
 
 	var revision libkbfs.MetadataRevision
@@ -102,7 +122,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 
 	if tlfPart.id == (libkbfs.TlfID{}) {
 		// Use tlfHandle.
-		if branchID == nil {
+		if branchPart.partType == defaultBranch {
 			if revision == libkbfs.MetadataRevisionUninitialized {
 				_, irmd, err := mdOps.GetForHandle(
 					ctx, tlfPart.handle, libkbfs.Unmerged)
@@ -121,7 +141,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 			panic("Unimplemented")
 		}
 
-		if *branchID == libkbfs.NullBranchID {
+		if branchPart.id == libkbfs.NullBranchID {
 			if revision == libkbfs.MetadataRevisionUninitialized {
 				panic("Unimplemented")
 			}
@@ -135,7 +155,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	}
 
 	// Use tlfID.
-	if branchID == nil {
+	if branchPart.partType == defaultBranch {
 		if revision == libkbfs.MetadataRevisionUninitialized {
 			irmd, err := mdOps.GetUnmergedForTLF(
 				ctx, tlfPart.id, libkbfs.NullBranchID)
@@ -172,7 +192,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 		return libkbfs.ImmutableRootMetadata{}, nil
 	}
 
-	if *branchID == libkbfs.NullBranchID {
+	if branchPart.id == libkbfs.NullBranchID {
 		if revision == libkbfs.MetadataRevisionUninitialized {
 			return mdOps.GetForTLF(ctx, tlfPart.id)
 		}
