@@ -82,6 +82,8 @@ type mdJournal struct {
 
 	j mdIDJournal
 
+	branchID BranchID
+
 	// Set only when the journal becomes empty due to
 	// flushing. This doesn't need to be persisted, since on a
 	// restart this info is retrieved from the server (via
@@ -91,7 +93,7 @@ type mdJournal struct {
 }
 
 func makeMDJournal(codec Codec, crypto cryptoPure, dir string,
-	log logger.Logger) *mdJournal {
+	log logger.Logger) (*mdJournal, error) {
 	journalDir := filepath.Join(dir, "md_journal")
 
 	deferLog := log.CloneWithAddedDepth(1)
@@ -103,7 +105,34 @@ func makeMDJournal(codec Codec, crypto cryptoPure, dir string,
 		deferLog: deferLog,
 		j:        makeMdIDJournal(codec, journalDir),
 	}
-	return &journal
+
+	earliest, err := journal.getEarliest()
+	if err != nil {
+		return nil, err
+	}
+
+	latest, err := journal.getLatest()
+	if err != nil {
+		return nil, err
+	}
+
+	if (earliest == ImmutableBareRootMetadata{}) !=
+		(latest == ImmutableBareRootMetadata{}) {
+		return nil, fmt.Errorf("has earliest=%t != has latest=%t",
+			earliest != ImmutableBareRootMetadata{},
+			latest != ImmutableBareRootMetadata{})
+	}
+
+	if earliest != (ImmutableBareRootMetadata{}) {
+		if earliest.BID != latest.BID {
+			return nil, fmt.Errorf(
+				"earliest.BID=%s != latest.BID=%s",
+				earliest.BID, latest.BID)
+		}
+		journal.branchID = earliest.BID
+	}
+
+	return &journal, nil
 }
 
 // The functions below are for building various paths.

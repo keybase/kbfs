@@ -56,7 +56,8 @@ func setupMDJournalTest(t *testing.T) (
 	require.NoError(t, err)
 
 	log := logger.NewTestLogger(t)
-	j = makeMDJournal(codec, crypto, tempdir, log)
+	j, err = makeMDJournal(codec, crypto, tempdir, log)
+	require.NoError(t, err)
 
 	return codec, crypto, uid, id, h, signer, verifyingKey, ekg, tempdir, j
 }
