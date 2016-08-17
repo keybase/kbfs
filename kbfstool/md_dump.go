@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-var mdGetRe = regexp.MustCompile("^(.+?)(?::(.*?))?(?:\\^(.*?))?$")
+var mdGetRegexp = regexp.MustCompile("^(.+?)(?::(.*?))?(?:\\^(.*?))?$")
 
 func getTlfID(
 	ctx context.Context, config libkbfs.Config, tlfStr string) (
@@ -151,7 +151,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, tlfID libkbfs.TlfID,
 
 func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 	libkbfs.ImmutableRootMetadata, error) {
-	matches := mdGetRe.FindStringSubmatch(input)
+	matches := mdGetRegexp.FindStringSubmatch(input)
 	if matches == nil {
 		return libkbfs.ImmutableRootMetadata{},
 			fmt.Errorf("Could not parse %q", input)
