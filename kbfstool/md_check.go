@@ -110,12 +110,11 @@ func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	} else {
 		bi := data.ChangesBlockInfo()
 		_ = checkFileBlock(
-			ctx, config, "MD changes block", rmd, bi, verbose)
+			ctx, config, fmt.Sprintf("%s MD changes block", input),
+			rmd, bi, verbose)
 	}
 
-	_ = checkDirBlock(
-		ctx, config, fmt.Sprintf("%s root block", input), rmd,
-		data.Dir.BlockInfo, verbose)
+	_ = checkDirBlock(ctx, config, input, rmd, data.Dir.BlockInfo, verbose)
 	return nil
 }
 
