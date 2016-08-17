@@ -14,6 +14,54 @@ import (
 
 var mdGetRe = regexp.MustCompile("^(.+?)(?::(.*?))?(?:\\^(.*?))?$")
 
+type tlfPart struct {
+	id     libkbfs.TlfID
+	handle *libkbfs.TlfHandle
+}
+
+func parseTlfPart(
+	ctx context.Context, config libkbfs.Config, tlfPartStr string) (
+	tlfPart, error) {
+	tlfID, err := libkbfs.ParseTlfID(tlfPartStr)
+	if err == nil {
+		return tlfPart{id: tlfID}, nil
+	}
+
+	var handle *libkbfs.TlfHandle
+	p, err := fsrpc.NewPath(tlfPartStr)
+	if err != nil {
+		return tlfPart{}, err
+	}
+	if p.PathType != fsrpc.TLFPathType {
+		return tlfPart{}, fmt.Errorf("%q is not a TLF path", tlfPartStr)
+	}
+	if len(p.TLFComponents) > 0 {
+		return tlfPart{}, fmt.Errorf("%q is not the root path of a TLF", tlfPartStr)
+	}
+	name := p.TLFName
+outer:
+	for {
+		var err error
+		handle, err = libkbfs.ParseTlfHandle(
+			ctx, config.KBPKI(), name, p.Public)
+		switch err := err.(type) {
+		case nil:
+			// No error.
+			break outer
+
+		case libkbfs.TlfNameNotCanonical:
+			// Non-canonical name, so try again.
+			name = err.NameToTry
+
+		default:
+			// Some other error.
+			return tlfPart{}, err
+		}
+	}
+
+	return tlfPart{handle: handle}, nil
+}
+
 func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	libkbfs.ImmutableRootMetadata, error) {
 	parts := mdGetRe.FindStringSubmatch(input)
@@ -22,40 +70,13 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 			fmt.Errorf("Could not parse %q", input)
 	}
 
-	tlfPart := parts[1]
+	tlfPartStr := parts[1]
 	branchPart := parts[2]
 	revPart := parts[3]
 
-	tlfID, err := libkbfs.ParseTlfID(tlfPart)
-	var tlfHandle *libkbfs.TlfHandle
+	tlfPart, err := parseTlfPart(ctx, config, tlfPartStr)
 	if err != nil {
-		tlfID = libkbfs.TlfID{}
-		p, err := fsrpc.NewPath(tlfPart)
-		if err != nil {
-			return libkbfs.ImmutableRootMetadata{}, err
-		}
-		if len(p.TLFComponents) > 0 {
-			return libkbfs.ImmutableRootMetadata{}, fmt.Errorf("%q is not a TLF path", tlfPart)
-		}
-		name := p.TLFName
-	outer:
-		for {
-			var parseErr error
-			tlfHandle, parseErr = libkbfs.ParseTlfHandle(ctx, config.KBPKI(), name, p.Public)
-			switch parseErr := parseErr.(type) {
-			case nil:
-				// No error.
-				break outer
-
-			case libkbfs.TlfNameNotCanonical:
-				// Non-canonical name, so try again.
-				name = parseErr.NameToTry
-
-			default:
-				// Some other error.
-				return libkbfs.ImmutableRootMetadata{}, parseErr
-			}
-		}
+		return libkbfs.ImmutableRootMetadata{}, err
 	}
 
 	var branchID *libkbfs.BranchID
@@ -79,12 +100,12 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 
 	mdOps := config.MDOps()
 
-	if tlfID == (libkbfs.TlfID{}) {
+	if tlfPart.id == (libkbfs.TlfID{}) {
 		// Use tlfHandle.
 		if branchID == nil {
 			if revision == libkbfs.MetadataRevisionUninitialized {
 				_, irmd, err := mdOps.GetForHandle(
-					ctx, tlfHandle, libkbfs.Unmerged)
+					ctx, tlfPart.handle, libkbfs.Unmerged)
 				if err != nil {
 					return libkbfs.ImmutableRootMetadata{}, err
 				}
@@ -94,7 +115,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 				}
 
 				_, irmd, err = mdOps.GetForHandle(
-					ctx, tlfHandle, libkbfs.Merged)
+					ctx, tlfPart.handle, libkbfs.Merged)
 				return irmd, err
 			}
 			panic("Unimplemented")
@@ -117,7 +138,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 	if branchID == nil {
 		if revision == libkbfs.MetadataRevisionUninitialized {
 			irmd, err := mdOps.GetUnmergedForTLF(
-				ctx, tlfID, libkbfs.NullBranchID)
+				ctx, tlfPart.id, libkbfs.NullBranchID)
 			if err != nil {
 				return libkbfs.ImmutableRootMetadata{}, err
 			}
@@ -126,11 +147,11 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 				return irmd, nil
 			}
 
-			return mdOps.GetForTLF(ctx, tlfID)
+			return mdOps.GetForTLF(ctx, tlfPart.id)
 		}
 
 		irmds, err := mdOps.GetUnmergedRange(
-			ctx, tlfID, libkbfs.NullBranchID, revision, revision)
+			ctx, tlfPart.id, libkbfs.NullBranchID, revision, revision)
 		if err != nil {
 			return libkbfs.ImmutableRootMetadata{}, err
 		}
@@ -139,7 +160,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 			return irmds[0], nil
 		}
 
-		irmds, err = mdOps.GetRange(ctx, tlfID, revision, revision)
+		irmds, err = mdOps.GetRange(ctx, tlfPart.id, revision, revision)
 		if err != nil {
 			return libkbfs.ImmutableRootMetadata{}, err
 		}
@@ -153,10 +174,10 @@ func mdGet(ctx context.Context, config libkbfs.Config, input string) (
 
 	if *branchID == libkbfs.NullBranchID {
 		if revision == libkbfs.MetadataRevisionUninitialized {
-			return mdOps.GetForTLF(ctx, tlfID)
+			return mdOps.GetForTLF(ctx, tlfPart.id)
 		}
 
-		irmds, err := mdOps.GetRange(ctx, tlfID, revision, revision)
+		irmds, err := mdOps.GetRange(ctx, tlfPart.id, revision, revision)
 		if err != nil {
 			return libkbfs.ImmutableRootMetadata{}, err
 		}
