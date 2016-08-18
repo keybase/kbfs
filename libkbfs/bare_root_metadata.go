@@ -406,26 +406,19 @@ func (md *BareRootMetadataV2) MakeBareTlfHandle() (BareTlfHandle, error) {
 		md.TlfHandleExtensions())
 }
 
-// VerifyWriterMetadata implements the BareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) VerifyWriterMetadata(
-	codec Codec, crypto cryptoPure) error {
-	// We have to re-marshal the WriterMetadata, since it's
-	// embedded.
-	buf, err := codec.Encode(md.WriterMetadataV2)
-	if err != nil {
-		return err
-	}
-
-	err = crypto.Verify(buf, md.WriterMetadataSigInfo)
-	if err != nil {
-		return err
-	}
-
-	return nil
+// MakeBareTlfHandle makes a BareTlfHandle for this
+// BareRootMetadata. Should be used only by servers and MDOps.
+func (md *BareRootMetadata) MakeBareTlfHandle() (BareTlfHandle, error) {
+	return md.makeBareTlfHandle()
 }
 
-// TlfHandleExtensions implements the BareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) TlfHandleExtensions() (
+// writerKID returns the KID of the writer.
+func (md *BareRootMetadata) writerKID() keybase1.KID {
+	return md.WriterMetadataSigInfo.VerifyingKey.KID()
+}
+
+// TlfHandleExtensions returns a list of handle extensions associated with the TLf.
+func (md *BareRootMetadata) TlfHandleExtensions() (
 	extensions []TlfHandleExtension) {
 	if md.ConflictInfo != nil {
 		extensions = append(extensions, *md.ConflictInfo)
@@ -548,22 +541,42 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 		return errors.New("Missing WriterMetadata signature")
 	}
 
-	if md.Revision < MetadataRevisionInitial {
-		return fmt.Errorf("Invalid revision %d", md.Revision)
-	}
+	if md.IsFinal() {
+		if md.Revision < MetadataRevisionInitial+1 {
+			return fmt.Errorf("Invalid final revision %d", md.Revision)
+		}
 
-	if md.Revision == MetadataRevisionInitial {
-		if md.PrevRoot != (MdID{}) {
-			return fmt.Errorf("Invalid PrevRoot %s for initial revision", md.PrevRoot)
+		if md.Revision == (MetadataRevisionInitial + 1) {
+			if md.PrevRoot != (MdID{}) {
+				return fmt.Errorf("Invalid PrevRoot %s for initial final revision", md.PrevRoot)
+			}
+		} else {
+			if md.PrevRoot == (MdID{}) {
+				return errors.New("No PrevRoot for non-initial final revision")
+			}
+		}
+
+		if len(md.SerializedPrivateMetadata) != 0 {
+			return errors.New("Non-empty private metadata for final revision")
 		}
 	} else {
-		if md.PrevRoot == (MdID{}) {
-			return errors.New("No PrevRoot for non-initial revision")
+		if md.Revision < MetadataRevisionInitial {
+			return fmt.Errorf("Invalid revision %d", md.Revision)
 		}
-	}
 
-	if len(md.SerializedPrivateMetadata) == 0 {
-		return errors.New("No private metadata")
+		if md.Revision == MetadataRevisionInitial {
+			if md.PrevRoot != (MdID{}) {
+				return fmt.Errorf("Invalid PrevRoot %s for initial revision", md.PrevRoot)
+			}
+		} else {
+			if md.PrevRoot == (MdID{}) {
+				return errors.New("No PrevRoot for non-initial revision")
+			}
+		}
+
+		if len(md.SerializedPrivateMetadata) == 0 {
+			return errors.New("No private metadata for non-final revision")
+		}
 	}
 
 	if (md.MergedStatus() == Merged) != (md.BID() == NullBranchID) {
@@ -588,8 +601,14 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 		return fmt.Errorf("Invalid modifying user %s", user)
 	}
 
-	// Verify signature.
-	err = md.VerifyWriterMetadata(codec, crypto)
+	// Verify signature. We have to re-marshal the WriterMetadata,
+	// since it's embedded.
+	buf, err := codec.Encode(md.WriterMetadata)
+	if err != nil {
+		return err
+	}
+
+	err = crypto.Verify(buf, md.WriterMetadataSigInfo)
 	if err != nil {
 		return fmt.Errorf("Could not verify writer metadata: %v", err)
 	}

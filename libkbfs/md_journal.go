@@ -183,7 +183,7 @@ func (j mdJournal) getMD(id MdID) (BareRootMetadata, time.Time, error) {
 			"Metadata ID mismatch: expected %s, got %s", id, mdID)
 	}
 
-	err = rmd.VerifyWriterMetadata(j.codec, j.crypto)
+	err = rmd.IsValidAndSigned(j.codec, j.crypto)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
