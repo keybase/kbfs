@@ -541,8 +541,7 @@ func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 
 // IsValidAndSigned implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) IsValidAndSigned(
-	codec Codec, crypto cryptoPure,
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
+	codec Codec, crypto cryptoPure) error {
 	// Optimization -- if the WriterMetadata signature is nil, it
 	// will fail verification.
 	if md.WriterMetadataSigInfo.IsNil() {
@@ -577,14 +576,35 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 		return err
 	}
 
-	writer := md.LastModifyingWriter()
-
 	// Make sure the last writer is valid.
+	writer := md.LastModifyingWriter()
 	if !handle.IsWriter(writer) {
 		return fmt.Errorf("Invalid modifying writer %s", writer)
 	}
 
+	// Make sure the last modifier is valid.
+	user := md.LastModifyingUser
+	if !handle.IsReader(user) {
+		return fmt.Errorf("Invalid modifying user %s", user)
+	}
+
+	// Verify signature.
+	err = md.VerifyWriterMetadata(codec, crypto)
+	if err != nil {
+		return fmt.Errorf("Could not verify writer metadata: %v", err)
+	}
+
+	return nil
+}
+
+// IsLastModifiedBy verifies that the BareRootMetadata is written by
+// the given user and device (identified by the KID of the device
+// verifying key), and returns an error if not. Should be called only
+// after IsValidAndSigned.
+func (md *BareRootMetadata) IsLastModifiedBy(
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
 	// Verify the user and device are the writer.
+	writer := md.LastModifyingWriter
 	if !md.IsWriterMetadataCopiedSet() {
 		if writer != currentUID {
 			return fmt.Errorf(
@@ -598,23 +618,12 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 		}
 	}
 
-	// Make sure the last modifier is valid.
-	user := md.GetLastModifyingUser()
-	if !handle.IsReader(user) {
-		return fmt.Errorf("Invalid modifying user %s", user)
-	}
-
 	// Verify the user and device are the last modifier.
+	user := md.GetLastModifyingUser()
 	if user != currentUID {
 		return fmt.Errorf(
 			"Last modifier %s doesn't match current user %s",
 			user, currentUID)
-	}
-
-	// Verify signature.
-	err = md.VerifyWriterMetadata(codec, crypto)
-	if err != nil {
-		return fmt.Errorf("Could not verify writer metadata: %v", err)
 	}
 
 	return nil

@@ -201,8 +201,12 @@ func (j mdJournal) getMD(id MdID) (BareRootMetadata, time.Time, error) {
 func (j mdJournal) putMD(
 	rmd BareRootMetadata, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey) (MdID, error) {
-	err := rmd.IsValidAndSigned(
-		j.codec, j.crypto, currentUID, currentVerifyingKey)
+	err := rmd.IsValidAndSigned(j.codec, j.crypto)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	err = rmd.IsLastModifiedBy(currentUID, currentVerifyingKey)
 	if err != nil {
 		return MdID{}, err
 	}

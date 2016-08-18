@@ -754,20 +754,36 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(config Config) (
 	return &newRmds, nil
 }
 
-// IsValidAndSigned verifies the RootMetadataSigned given the current
-// user and device, checks the writer signature, and returns an error
-// if a problem was found.
+// IsValidAndSigned verifies the RootMetadataSigned, checks the root
+// signature, and returns an error if a problem was found.
 func (rmds *RootMetadataSigned) IsValidAndSigned(
-	codec Codec, crypto cryptoPure,
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
+	codec Codec, crypto cryptoPure) error {
 	// Optimization -- if the RootMetadata signature is nil, it
 	// will fail verification.
 	if rmds.SigInfo.IsNil() {
 		return errors.New("Missing RootMetadata signature")
 	}
 
-	err := rmds.MD.IsValidAndSigned(
-		codec, crypto, currentUID, currentVerifyingKey)
+	err := rmds.MD.IsValidAndSigned(codec, crypto)
+	if err != nil {
+		return err
+	}
+
+	err = rmds.VerifyRootMetadata(codec, crypto)
+	if err != nil {
+		return fmt.Errorf("Could not verify root metadata: %v", err)
+	}
+
+	return nil
+}
+
+// IsLastModifiedBy verifies that the RootMetadataSigned is written by
+// the given user and device (identified by the KID of the device
+// verifying key), and returns an error if not. Should be called only
+// after IsValidAndSigned.
+func (rmds *RootMetadataSigned) IsLastModifiedBy(
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
+	err := rmds.MD.IsLastModifiedBy(currentUID, currentVerifyingKey)
 	if err != nil {
 		return err
 	}
@@ -776,11 +792,6 @@ func (rmds *RootMetadataSigned) IsValidAndSigned(
 		return fmt.Errorf(
 			"Last modifier verifying key %v doesn't match current verifying key %v",
 			rmds.SigInfo.VerifyingKey, currentVerifyingKey)
-	}
-
-	err = rmds.VerifyRootMetadata(codec, crypto)
-	if err != nil {
-		return fmt.Errorf("Could not verify root metadata: %v", err)
 	}
 
 	return nil
