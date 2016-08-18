@@ -57,6 +57,12 @@ func addFakeRMDData(rmd *RootMetadata, h *TlfHandle) {
 	rmd.SetRevision(MetadataRevision(1))
 	rmd.SetLastModifyingWriter(h.FirstResolvedWriter())
 	rmd.SetLastModifyingUser(h.FirstResolvedWriter())
+	fakeVerifyingKey := MakeFakeVerifyingKeyOrBust("fake key")
+	rmd.SetWriterMetadataSigInfo(SignatureInfo{
+		Version:      SigED25519,
+		Signature:    []byte{41},
+		VerifyingKey: fakeVerifyingKey,
+	})
 
 	if !h.IsPublic() {
 		rmd.FakeInitialRekey(h.ToBareHandleOrBust())
@@ -84,10 +90,15 @@ func addFakeRMDSData(rmds *RootMetadataSigned, h *TlfHandle) {
 	rmds.MD.SetSerializedPrivateMetadata([]byte{1})
 	rmds.MD.SetLastModifyingWriter(h.FirstResolvedWriter())
 	rmds.MD.SetLastModifyingUser(h.FirstResolvedWriter())
+	rmds.MD.SetWriterMetadataSigInfo(SignatureInfo{
+		Version:      SigED25519,
+		Signature:    []byte{41},
+		VerifyingKey: fakeVerifyingKey,
+	})
 	rmds.SigInfo = SignatureInfo{
 		Version:      SigED25519,
 		Signature:    []byte{42},
-		VerifyingKey: MakeFakeVerifyingKeyOrBust("fake key"),
+		VerifyingKey: fakeVerifyingKey,
 	}
 	rmds.untrustedServerTimestamp = time.Now()
 
@@ -112,21 +123,24 @@ func newRMDS(t *testing.T, config Config, public bool) (
 }
 
 func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
-	hasVerifyingKeyErr error, verifyErr error) {
+	verifyErr, hasVerifyingKeyErr error) {
 	packedData := []byte{4, 3, 2, 1}
 	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(packedData, nil).AnyTimes()
 
+	config.mockCrypto.EXPECT().Verify(packedData, rmds.MD.WriterMetadataSigInfo).Return(nil)
+	config.mockCrypto.EXPECT().Verify(packedData, rmds.SigInfo).Return(verifyErr)
+	if verifyErr != nil {
+		return
+	}
 	config.mockKbpki.EXPECT().HasVerifyingKey(gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any()).AnyTimes().Return(hasVerifyingKeyErr)
-	if hasVerifyingKeyErr == nil {
-		config.mockCrypto.EXPECT().Verify(packedData, rmds.MD.GetWriterMetadataSigInfo()).Return(nil)
-		config.mockCrypto.EXPECT().Verify(packedData, rmds.SigInfo).Return(verifyErr)
-		if verifyErr == nil {
-			config.mockCodec.EXPECT().Decode(
-				rmds.MD.GetSerializedPrivateMetadata(),
-				gomock.Any()).Return(nil)
-		}
+
+	if hasVerifyingKeyErr != nil {
+		return
 	}
+
+	config.mockCodec.EXPECT().Decode(
+		rmds.MD.SerializedPrivateMetadata, gomock.Any()).Return(nil)
 }
 
 func verifyMDForPrivateHelper(
@@ -340,7 +354,7 @@ func TestMDOpsGetForHandlePublicFailFindKey(t *testing.T) {
 	rmds, h := newRMDS(t, config, true)
 
 	// Do this before setting tlfHandle to nil.
-	verifyMDForPublic(config, rmds, KeyNotFoundError{}, nil)
+	verifyMDForPublic(config, rmds, nil, KeyNotFoundError{})
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(NullTlfID, rmds, nil)
 
@@ -358,7 +372,7 @@ func TestMDOpsGetForHandlePublicFailVerify(t *testing.T) {
 
 	// Do this before setting tlfHandle to nil.
 	expectedErr := libkb.VerificationError{}
-	verifyMDForPublic(config, rmds, nil, expectedErr)
+	verifyMDForPublic(config, rmds, expectedErr, nil)
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(NullTlfID, rmds, nil)
 
