@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 
@@ -123,60 +122,33 @@ func (md *MDOpsStandard) verifyWriterKey(
 func (md *MDOpsStandard) processMetadata(
 	ctx context.Context, handle *TlfHandle, rmds *RootMetadataSigned) (
 	ImmutableRootMetadata, error) {
-	// A blank sig means this is a brand new MD object, and
-	// there's nothing to do.
-	if rmds.SigInfo.IsNil() {
-		return ImmutableRootMetadata{}, errors.New(
-			"Missing RootMetadata signature")
-	}
-
-	// Otherwise, verify signatures and deserialize private data.
-
-	// Make sure the last writer is really a valid writer
-	writer := rmds.MD.LastModifyingWriter()
-	if !handle.IsWriter(writer) {
+	// First, verify validity and signatures.
+	err := rmds.IsValidAndSigned(md.config.Codec(), md.config.Crypto())
+	if err != nil {
+		// TODO: Annotate MDMismatchError with more info, like
+		// MDID, Revision, etc.
 		return ImmutableRootMetadata{}, MDMismatchError{
-			handle.GetCanonicalPath(),
-			fmt.Errorf("Writer MD (id=%s) was written by a non-writer %s",
-				rmds.MD.TlfID(), writer)}
-	}
-
-	// Make sure the last user to change the blob is really a valid reader
-	user := rmds.MD.GetLastModifyingUser()
-	if !handle.IsReader(user) {
-		return ImmutableRootMetadata{}, MDMismatchError{
-			handle.GetCanonicalPath(),
-			fmt.Errorf("MD (id=%s) was changed by a non-reader %s",
-				rmds.MD.TlfID(), user),
+			handle.GetCanonicalPath(), err,
 		}
 	}
 
+	// Then, verify the verifying keys.
 	if err := md.verifyWriterKey(ctx, rmds, handle); err != nil {
 		return ImmutableRootMetadata{}, err
 	}
 
-	codec := md.config.Codec()
-	crypto := md.config.Crypto()
-
-	err := rmds.MD.VerifyWriterMetadata(codec, crypto)
-	if err != nil {
-		return ImmutableRootMetadata{}, err
-	}
-
 	if handle.IsFinal() {
-		err = md.config.KBPKI().HasUnverifiedVerifyingKey(ctx, user,
+		err = md.config.KBPKI().HasUnverifiedVerifyingKey(
+			ctx, rmds.MD.LastModifyingUser,
 			rmds.SigInfo.VerifyingKey)
 	} else {
-		err = md.config.KBPKI().HasVerifyingKey(ctx, user,
-			rmds.SigInfo.VerifyingKey, rmds.untrustedServerTimestamp)
+		err = md.config.KBPKI().HasVerifyingKey(
+			ctx, rmds.MD.LastModifyingUser,
+			rmds.SigInfo.VerifyingKey,
+			rmds.untrustedServerTimestamp)
 	}
 	if err != nil {
 		return ImmutableRootMetadata{}, md.convertVerifyingKeyError(ctx, rmds, handle, err)
-	}
-
-	err = rmds.VerifyRootMetadata(codec, crypto)
-	if err != nil {
-		return ImmutableRootMetadata{}, err
 	}
 
 	rmd := RootMetadata{
