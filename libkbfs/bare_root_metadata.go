@@ -598,11 +598,17 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 		}
 	}
 
+	// Make sure the last modifier is valid.
+	user := md.GetLastModifyingUser()
+	if !handle.IsReader(user) {
+		return fmt.Errorf("Invalid modifying user %s", user)
+	}
+
 	// Verify the user and device are the last modifier.
-	if md.GetLastModifyingUser() != currentUID {
+	if user != currentUID {
 		return fmt.Errorf(
 			"Last modifier %s doesn't match current user %s",
-			md.LastModifyingUser, currentUID)
+			user, currentUID)
 	}
 
 	// Verify signature.
