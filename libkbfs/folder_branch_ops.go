@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -2848,6 +2849,32 @@ func (fbo *folderBranchOps) Read(
 		return 0, err
 	}
 
+	filePath, err := fbo.pathFromNodeForRead(file)
+	if err != nil {
+		return 0, err
+	}
+
+	{
+		// It seems git isn't handling EINTR from some of read calls (likely
+		// fread), which causes it to get corrupted data (which leads to coredumps
+		// later) when a read system call on pack files gets interrupted. This
+		// enables delayed cancellation for Read if the file path contains `.git`.
+		//
+		// TODO: get a patch in git, wait for sufficiently long time for people to
+		// upgrade, and remove this.
+
+		// allow turning this feature off by env var to make life easier when we
+		// try to fix git.
+		if _, isSet := os.LookupEnv("KBFS_DISABLE_GIT_SPECIAL_CASE"); !isSet {
+			for _, n := range filePath.path {
+				if n.Name == ".git" {
+					EnableDelayedCancellationWithGracePeriod(ctx, fbo.config.GracePeriod())
+					break
+				}
+			}
+		}
+	}
+
 	// Don't let the goroutine below write directly to the return
 	// variable, since if the context is canceled the goroutine might
 	// outlast this function call, and end up in a read/write race
@@ -2858,11 +2885,6 @@ func (fbo *folderBranchOps) Read(
 
 		// verify we have permission to read
 		md, err := fbo.getMDForReadNeedIdentify(ctx, lState)
-		if err != nil {
-			return err
-		}
-
-		filePath, err := fbo.pathFromNodeForRead(file)
 		if err != nil {
 			return err
 		}
