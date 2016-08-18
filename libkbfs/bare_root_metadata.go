@@ -543,13 +543,19 @@ func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 func (md *BareRootMetadataV2) IsValidAndSigned(
 	codec Codec, crypto cryptoPure,
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
+	// Optimization -- if the WriterMetadata signature is nil, it
+	// will fail verification.
+	if md.WriterMetadataSigInfo.IsNil() {
+		return errors.New("Missing WriterMetadata signature")
+	}
+
 	if md.Revision < MetadataRevisionInitial {
-		return errors.New("Invalid revision")
+		return fmt.Errorf("Invalid revision %d", md.Revision)
 	}
 
 	if md.Revision == MetadataRevisionInitial {
 		if md.PrevRoot != (MdID{}) {
-			return errors.New("Invalid PrevRoot for initial revision")
+			return fmt.Errorf("Invalid PrevRoot %s for initial revision", md.PrevRoot)
 		}
 	} else {
 		if md.PrevRoot == (MdID{}) {
@@ -562,7 +568,8 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 	}
 
 	if (md.MergedStatus() == Merged) != (md.BID() == NullBranchID) {
-		return errors.New("Branch ID doesn't match merged status")
+		return fmt.Errorf("Branch ID %s doesn't match merged status %s",
+			md.BID, md.MergedStatus())
 	}
 
 	handle, err := md.MakeBareTlfHandle()
@@ -574,22 +581,28 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 
 	// Make sure the last writer is valid.
 	if !handle.IsWriter(writer) {
-		return errors.New("Invalid modifying writer")
+		return fmt.Errorf("Invalid modifying writer %s", writer)
 	}
 
 	// Verify the user and device are the writer.
 	if !md.IsWriterMetadataCopiedSet() {
 		if writer != currentUID {
-			return errors.New("Last writer and current user mismatch")
+			return fmt.Errorf(
+				"Last writer %s doesn't match current user %s",
+				writer, currentUID)
 		}
 		if md.WriterMetadataSigInfo.VerifyingKey != currentVerifyingKey {
-			return errors.New("Last writer verifying key and current verifying key mismatch")
+			return fmt.Errorf(
+				"Last writer verifying key %v doesn't match current verifying key %v",
+				md.WriterMetadataSigInfo.VerifyingKey, currentVerifyingKey)
 		}
 	}
 
 	// Verify the user and device are the last modifier.
 	if md.GetLastModifyingUser() != currentUID {
-		return errors.New("Last modifier and current user mismatch")
+		return fmt.Errorf(
+			"Last modifier %s doesn't match current user %s",
+			md.LastModifyingUser, currentUID)
 	}
 
 	// Verify signature.
