@@ -256,18 +256,18 @@ const mdDumpUsageStr = `Usage:
 
 Each input must be in the following format:
 
-  TlfPart
-  TlfPart:BranchPart
-  TlfPart^RevisionPart
-  TlfPart:BranchPart^RevisionPart
+  TLF
+  TLF:Branch
+  TLF^Revision
+  TLF:Branch^Revision
 
-where TlfPart can be:
+where TLF can be:
 
   - a TLF ID string (32 hex digits),
   - or a keybase TLF path (e.g., "/keybase/public/user1,user2", or
     "/keybase/private/user1,assertion2");
 
-BranchPart can be:
+Branch can be:
 
   - a Branch ID string (32 hex digits),
   - the string "device", which indicates the unmerged branch for the
@@ -276,7 +276,7 @@ BranchPart can be:
     the ID of the master branch "00000000000000000000000000000000", or
   - omitted, in which case it is treated as if it were the string "device";
 
-and RevisionPart can be:
+and Revision can be:
 
   - a hex number prefixed with "0x",
   - a decimal number with no prefix,
