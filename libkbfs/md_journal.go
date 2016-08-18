@@ -398,7 +398,10 @@ func (j *mdJournal) convertToBranch(
 			brmd.Revision, id, newID)
 	}
 
-	// TODO: Do the below atomically on the filesystem level.
+	// TODO: Do the below atomically on the filesystem
+	// level. Specifically, make "md_journal" always be a symlink,
+	// and then perform the swap by atomically changing the
+	// symlink to point to the new journal directory.
 
 	oldDir, err := j.j.move(journalTempDir + ".old")
 	if err != nil {
