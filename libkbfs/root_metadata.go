@@ -672,43 +672,6 @@ func NewRootMetadataSigned() *RootMetadataSigned {
 	return &RootMetadataSigned{MD: &BareRootMetadataV2{}}
 }
 
-// VerifyRootMetadata verifies rmd's MD against rmd's SigInfo,
-// assuming the verifying key there is valid.
-func (rmds *RootMetadataSigned) VerifyRootMetadata(
-	codec Codec, crypto cryptoPure) error {
-	md := rmds.MD
-	if rmds.MD.IsFinal() {
-		mdCopy, err := md.DeepCopy(codec)
-		if err != nil {
-			return err
-		}
-		mutableMdCopy, ok := mdCopy.(MutableBareRootMetadata)
-		if !ok {
-			return MutableBareRootMetadataNoImplError{}
-		}
-		// Mask out finalized additions.  These are the only
-		// things allowed to change in the finalized metadata
-		// block.
-		mutableMdCopy.ClearFinalBit()
-		mutableMdCopy.SetRevision(md.RevisionNumber() - 1)
-		mutableMdCopy.SetFinalizedInfo(nil)
-		md = mutableMdCopy
-	}
-	// Re-marshal the whole RootMetadata. This is not avoidable
-	// without support from ugorji/codec.
-	buf, err := codec.Encode(md)
-	if err != nil {
-		return err
-	}
-
-	err = crypto.Verify(buf, rmds.SigInfo)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // MerkleHash computes a hash of this RootMetadataSigned object for inclusion
 // into the KBFS Merkle tree.
 func (rmds *RootMetadataSigned) MerkleHash(config Config) (MerkleHash, error) {
@@ -721,8 +684,8 @@ func (rmds *RootMetadataSigned) Version() MetadataVer {
 	return rmds.MD.Version()
 }
 
-// MakeFinalCopy returns a complete copy of this RootMetadataSigned (but with
-// cleared serialized metadata), with the revision incremented and the final bit set.
+// MakeFinalCopy returns a complete copy of this RootMetadataSigned
+// with the revision incremented and the final bit set.
 func (rmds *RootMetadataSigned) MakeFinalCopy(config Config) (
 	*RootMetadataSigned, error) {
 	if rmds.MD.IsFinal() {
@@ -769,7 +732,29 @@ func (rmds *RootMetadataSigned) IsValidAndSigned(
 		return err
 	}
 
-	err = rmds.VerifyRootMetadata(codec, crypto)
+	md := &rmds.MD
+	if rmds.MD.IsFinal() {
+		// Since we're just working with the immediate fields
+		// of RootMetadata, we can get away with a shallow
+		// copy here.
+		mdCopy := rmds.MD
+
+		// Mask out finalized additions.  These are the only
+		// things allowed to change in the finalized metadata
+		// block.
+		mdCopy.Flags &= ^MetadataFlagFinal
+		mdCopy.Revision--
+		mdCopy.FinalizedInfo = nil
+		md = &mdCopy
+	}
+	// Re-marshal the whole RootMetadata. This is not avoidable
+	// without support from ugorji/codec.
+	buf, err := codec.Encode(md)
+	if err != nil {
+		return err
+	}
+
+	err = crypto.Verify(buf, rmds.SigInfo)
 	if err != nil {
 		return fmt.Errorf("Could not verify root metadata: %v", err)
 	}

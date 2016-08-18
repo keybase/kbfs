@@ -555,10 +555,6 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 				return errors.New("No PrevRoot for non-initial final revision")
 			}
 		}
-
-		if len(md.SerializedPrivateMetadata) != 0 {
-			return errors.New("Non-empty private metadata for final revision")
-		}
 	} else {
 		if md.Revision < MetadataRevisionInitial {
 			return fmt.Errorf("Invalid revision %d", md.Revision)
@@ -573,10 +569,10 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 				return errors.New("No PrevRoot for non-initial revision")
 			}
 		}
+	}
 
-		if len(md.SerializedPrivateMetadata) == 0 {
-			return errors.New("No private metadata for non-final revision")
-		}
+	if len(md.SerializedPrivateMetadata) == 0 {
+		return errors.New("No private metadata")
 	}
 
 	if (md.MergedStatus() == Merged) != (md.BID() == NullBranchID) {

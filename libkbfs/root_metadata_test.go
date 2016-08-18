@@ -648,6 +648,7 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	FakeInitialRekey(&rmds.MD, h)
 	rmds.MD.LastModifyingWriter = h.Writers[0]
 	rmds.MD.LastModifyingUser = h.Writers[0]
+	rmds.MD.SerializedPrivateMetadata = []byte{42}
 
 	buf, err := config.Codec().Encode(rmds.MD.WriterMetadata)
 	if err != nil {
@@ -669,7 +670,7 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	rmds.SigInfo = sigInfo
 
 	// verify it
-	err = rmds.VerifyRootMetadata(config.Codec(), config.Crypto())
+	err = rmds.IsValidAndSigned(config.Codec(), config.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
