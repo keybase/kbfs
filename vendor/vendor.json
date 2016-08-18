@@ -3,10 +3,10 @@
 	"ignore": "test appengine appenginevm",
 	"package": [
 		{
-			"checksumSHA1": "xCAVewAtJpNeqReS0fRzarfwfjA=",
+			"checksumSHA1": "68e5AeuAwK7lLjVXWYhkZYsIAZs=",
 			"path": "bazil.org/fuse",
-			"revision": "0dfaa72ce1313ab5a43f1cb501fd87e2f367283f",
-			"revisionTime": "2015-11-25T17:25:30Z"
+			"revision": "10bcf1a918ef53457198345dd94a52c977328db6",
+			"revisionTime": "2016-08-09T21:03:52Z"
 		},
 		{
 			"checksumSHA1": "389JFJTJADMtZkTIfdSnsmHVOUs=",
@@ -155,16 +155,16 @@
 			"revisionTime": "2016-07-11T12:37:48-07:00"
 		},
 		{
-			"checksumSHA1": "XhCyoYv9MobH4lRuM0iBWMUWDI4=",
+			"checksumSHA1": "jgyp+kDYeVWZKxMqVO7cDA1FAy8=",
 			"path": "github.com/keybase/client/go/logger",
-			"revision": "58bf9734974215ebd99da9c18fb06eb09991cb55",
-			"revisionTime": "2016-07-11T12:37:48-07:00"
+			"revision": "ec3ba16149ab777daf126277bdcea148af12f1b7",
+			"revisionTime": "2016-08-09T17:38:28Z"
 		},
 		{
-			"checksumSHA1": "lZ4fqdEV+0CrpHWPV04wQ3a5pHI=",
+			"checksumSHA1": "mBJOT60W61+UZVkI7iccHgLOslo=",
 			"path": "github.com/keybase/client/go/protocol",
-			"revision": "23acbd6e479fc939bdb4a5b72b780941f2c93ece",
-			"revisionTime": "2016-07-22T18:23:30Z"
+			"revision": "5ac281ce9e61821675d3916e0019a29a38146fcb",
+			"revisionTime": "2016-08-10T15:59:00Z"
 		},
 		{
 			"path": "github.com/keybase/go-codec/codec",
@@ -212,10 +212,10 @@
 			"revisionTime": "2016-03-16T16:25:20-04:00"
 		},
 		{
-			"checksumSHA1": "Ao/ZFbwpEQ2kdtaim/5borAcVKE=",
+			"checksumSHA1": "wjZgw3Uk/a6hIeLltwi2N1awOvI=",
 			"path": "github.com/keybase/go-framed-msgpack-rpc",
-			"revision": "090895b12240aa18b8d6a759a2638f0c1065c7d0",
-			"revisionTime": "2016-06-15T10:04:14-04:00"
+			"revision": "0a70c4c69a35782a1e3011d33503c6625567bb69",
+			"revisionTime": "2016-08-09T17:17:08Z"
 		},
 		{
 			"path": "github.com/keybase/go-jsonw",
