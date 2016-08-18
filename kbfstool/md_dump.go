@@ -113,7 +113,6 @@ func getRevision(ctx context.Context, config libkbfs.Config,
 	}
 
 	base := 10
-	revisionStr := revisionStr
 	if strings.HasPrefix(revisionStr, "0x") {
 		base = 16
 		revisionStr = strings.TrimPrefix(revisionStr, "0x")
@@ -193,12 +192,7 @@ func getUserString(
 
 func mdDumpOne(ctx context.Context, config libkbfs.Config,
 	rmd libkbfs.ImmutableRootMetadata) error {
-	mdID, err := config.Crypto().MakeMdID(&rmd.BareRootMetadata)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("MD ID: %s\n", mdID)
+	fmt.Printf("MD ID: %s\n", rmd.MdID())
 
 	buf, err := config.Codec().Encode(&rmd.BareRootMetadata)
 	if err != nil {

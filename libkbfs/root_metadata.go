@@ -348,6 +348,12 @@ func MakeImmutableRootMetadata(
 	return ImmutableRootMetadata{rmd.ReadOnly(), mdID, localTimestamp}
 }
 
+// MdID returns the pre-computed MdID of the contained RootMetadata
+// object.
+func (irmd ImmutableRootMetadata) MdID() MdID {
+	return irmd.mdID
+}
+
 // RootMetadataSigned is the top-level MD object stored in MD server
 type RootMetadataSigned struct {
 	// signature over the root metadata by the private signing key
