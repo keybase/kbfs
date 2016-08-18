@@ -545,6 +545,12 @@ func (d *Dir) Symlink(ctx context.Context, req *fuse.SymlinkRequest) (
 		req.NewName, req.Target)
 	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
+	err = libkbfs.EnableDelayedCancellationWithGracePeriod(
+		ctx, d.folder.fs.config.GracePeriod())
+	if err != nil {
+		return nil, err
+	}
+
 	if _, err := d.folder.fs.config.KBFSOps().CreateLink(
 		ctx, d.node, req.NewName, req.Target); err != nil {
 		return nil, err
