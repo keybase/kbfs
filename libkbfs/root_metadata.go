@@ -672,13 +672,6 @@ func NewRootMetadataSigned() *RootMetadataSigned {
 	return &RootMetadataSigned{MD: &BareRootMetadataV2{}}
 }
 
-// IsInitialized returns whether or not this RootMetadataSigned object
-// has been finalized by some writer.
-func (rmds *RootMetadataSigned) IsInitialized() bool {
-	// The data is initialized only if there is a signature.
-	return !rmds.SigInfo.IsNil()
-}
-
 // VerifyRootMetadata verifies rmd's MD against rmd's SigInfo,
 // assuming the verifying key there is valid.
 func (rmds *RootMetadataSigned) VerifyRootMetadata(

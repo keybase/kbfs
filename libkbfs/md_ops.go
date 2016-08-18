@@ -125,7 +125,7 @@ func (md *MDOpsStandard) processMetadata(
 	ImmutableRootMetadata, error) {
 	// A blank sig means this is a brand new MD object, and
 	// there's nothing to do.
-	if !rmds.IsInitialized() {
+	if rmds.SigInfo.IsNil() {
 		return ImmutableRootMetadata{}, errors.New(
 			"Missing RootMetadata signature")
 	}
