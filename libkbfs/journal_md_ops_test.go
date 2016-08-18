@@ -31,14 +31,19 @@ func TestJournalMDOpsBasics(t *testing.T) {
 
 	log := config.MakeLogger("")
 	jServer := makeJournalServer(
-		config, log, tempdir, config.BlockServer(), config.MDOps())
+		config, log, tempdir, config.BlockCache(),
+		config.BlockServer(), config.MDOps())
+
+	ctx := context.Background()
+	err = jServer.EnableExistingJournals(ctx)
+	require.NoError(t, err)
+	config.SetBlockCache(jServer.blockCache())
 	config.SetBlockServer(jServer.blockServer())
 
 	oldMDOps := config.MDOps()
 	config.SetMDOps(jServer.mdOps())
 
 	mdOps := config.MDOps()
-	ctx := context.Background()
 
 	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
 	require.NoError(t, err)

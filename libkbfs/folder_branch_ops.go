@@ -863,6 +863,10 @@ func (fbo *folderBranchOps) getMDForReadNeedIdentify(
 	return fbo.getMDForReadHelper(ctx, lState, mdReadNeedIdentify)
 }
 
+// getMDForWriteLocked returns a new RootMetadata object with an
+// incremented version number for modification. If the returned object
+// is put to the MDServer (via MDOps), mdWriterLock must be held until
+// then. (See comments for mdWriterLock above.)
 func (fbo *folderBranchOps) getMDForWriteLocked(
 	ctx context.Context, lState *lockState) (*RootMetadata, error) {
 	fbo.mdWriterLock.AssertLocked(lState)
@@ -1049,16 +1053,19 @@ func (fbo *folderBranchOps) initMDLocked(
 
 func (fbo *folderBranchOps) GetTLFCryptKeys(ctx context.Context,
 	h *TlfHandle) (keys []TLFCryptKey, id TlfID, err error) {
-	err = errors.New("GetTLFCryptKeys is not supported by folderBranchOps")
-	return
+	return nil, TlfID{}, errors.New("GetTLFCryptKeys is not supported by folderBranchOps")
 }
 
 func (fbo *folderBranchOps) GetOrCreateRootNode(
 	ctx context.Context, h *TlfHandle, branch BranchName) (
 	node Node, ei EntryInfo, err error) {
-	err = errors.New("GetOrCreateRootNode is not supported by " +
-		"folderBranchOps")
-	return
+	return nil, EntryInfo{}, errors.New("GetOrCreateRootNode is not supported by folderBranchOps")
+}
+
+func (fbo *folderBranchOps) GetRootNode(
+	ctx context.Context, h *TlfHandle, branch BranchName) (
+	node Node, ei EntryInfo, err error) {
+	return nil, EntryInfo{}, errors.New("GetRootNode is not supported by folderBranchOps")
 }
 
 func (fbo *folderBranchOps) checkNode(node Node) error {
@@ -3310,8 +3317,8 @@ func (fbo *folderBranchOps) searchForNode(ctx context.Context,
 		}
 	}
 
-	nodeMap, err := fbo.blocks.SearchForNodes(ctx, fbo.nodeCache, []BlockPointer{ptr},
-		newPtrs, md)
+	nodeMap, _, err := fbo.blocks.SearchForNodes(ctx, fbo.nodeCache,
+		[]BlockPointer{ptr}, newPtrs, md)
 	if err != nil {
 		return nil, err
 	}
@@ -3347,18 +3354,11 @@ func (fbo *folderBranchOps) unlinkFromCache(op op, oldDir BlockPointer,
 	return nil
 }
 
-func (fbo *folderBranchOps) updatePointers(op op) {
-	for _, update := range op.AllUpdates() {
-		oldRef := update.Unref.ref()
-		fbo.nodeCache.UpdatePointer(oldRef, update.Ref)
-	}
-}
-
 func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 	lState *lockState, op op, md ImmutableRootMetadata) {
 	fbo.headLock.AssertLocked(lState)
 
-	fbo.updatePointers(op)
+	fbo.blocks.UpdatePointers(lState, op)
 
 	var changes []NodeChange
 	switch realOp := op.(type) {
@@ -3570,6 +3570,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 		return errors.New("Ignoring MD updates while writes are dirty")
 	}
 
+	appliedRevs := make([]ImmutableRootMetadata, 0, len(rmds))
 	for _, rmd := range rmds {
 		// check that we're applying the expected MD revision
 		if rmd.Revision <= fbo.getCurrMDRevisionLocked(lState) {
@@ -3591,8 +3592,11 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 		for _, op := range rmd.data.Changes.Ops {
 			fbo.notifyOneOpLocked(ctx, lState, op, rmd)
 		}
+		appliedRevs = append(appliedRevs, rmd)
 	}
-	fbo.editHistory.UpdateHistory(ctx, rmds)
+	if len(appliedRevs) > 0 {
+		fbo.editHistory.UpdateHistory(ctx, appliedRevs)
+	}
 	return nil
 }
 
@@ -3985,7 +3989,19 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 		}
 		// Clear the rekey bit if any.
 		md.Flags &= ^MetadataFlagRekey
-		md.clearLastRevision()
+		_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+		if err != nil {
+			return err
+		}
+		// Readers can't clear the last revision, because:
+		// 1) They don't have access to the writer metadata, so can't clear the
+		//    block changes.
+		// 2) Readers need the MetadataFlagWriterMetadataCopied bit set for
+		//	  MDServer to authorize the write.
+		// Without this check, MDServer returns an Unauthorized error.
+		if md.GetTlfHandle().IsWriter(uid) {
+			md.clearLastRevision()
+		}
 
 	case RekeyIncompleteError:
 		if !rekeyDone && rekeyWasSet {

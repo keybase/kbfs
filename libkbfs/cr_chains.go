@@ -300,6 +300,14 @@ func (ccs *crChains) addOp(ptr BlockPointer, op op) error {
 }
 
 func (ccs *crChains) makeChainForOp(op op) error {
+	// Ignore gc ops -- their unref semantics differ from the other
+	// ops.  Note that this only matters for old gcOps: new gcOps
+	// only unref the block ID, and not the whole pointer, so they
+	// wouldn't confuse chain creation.
+	if _, isGCOp := op.(*gcOp); isGCOp {
+		return nil
+	}
+
 	// First set the pointers for all updates, and track what's been
 	// created and destroyed.
 	for _, update := range op.AllUpdates() {
@@ -358,6 +366,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 			return err
 		}
 		ro.setWriterInfo(realOp.getWriterInfo())
+		ro.setLocalTimestamp(realOp.getLocalTimestamp())
 		// realOp.OldDir.Ref may be zero if this is a
 		// post-resolution chain, so set ro.Dir.Ref manually.
 		ro.Dir.Ref = realOp.OldDir.Ref
@@ -401,6 +410,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 			return err
 		}
 		co.setWriterInfo(realOp.getWriterInfo())
+		co.setLocalTimestamp(realOp.getLocalTimestamp())
 		co.renamed = true
 		// ndr may be zero if this is a post-resolution chain,
 		// so set co.Dir.Ref manually.
@@ -835,23 +845,18 @@ func (ccs *crChains) getPaths(ctx context.Context, blocks *folderBlockOps,
 		}
 	}
 
-	nodeMap, err := blocks.SearchForNodes(ctx, nodeCache, ptrs, newPtrs,
-		ccs.mostRecentMD.ReadOnly())
+	pathMap, err := blocks.SearchForPaths(ctx, nodeCache, ptrs,
+		newPtrs, ccs.mostRecentMD.ReadOnly())
 	if err != nil {
 		return nil, err
 	}
 
-	paths := make([]path, 0, len(nodeMap))
-	for ptr, n := range nodeMap {
-		if n == nil {
+	paths := make([]path, 0, len(pathMap))
+	for ptr, p := range pathMap {
+		if len(p.path) == 0 {
 			log.CDebugf(ctx, "Ignoring pointer with no found path: %v", ptr)
 			ccs.removeChain(ptr)
 			continue
-		}
-
-		p := nodeCache.PathFromNode(n)
-		if p.tailPointer() != ptr {
-			return nil, NodeNotFoundError{ptr}
 		}
 		paths = append(paths, p)
 

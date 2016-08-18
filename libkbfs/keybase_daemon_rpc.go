@@ -18,7 +18,7 @@ import (
 // KeybaseDaemonRPC implements the KeybaseService interface using RPC
 // calls.
 type KeybaseDaemonRPC struct {
-	KeybaseServiceBase
+	*KeybaseServiceBase
 	daemonLog logger.Logger
 
 	// Only used when there's a real connection (i.e., not in
@@ -68,7 +68,7 @@ func newKeybaseDaemonRPC(config Config, kbCtx Context, log logger.Logger) *Keyba
 		return nil
 	}
 	k := KeybaseDaemonRPC{
-		KeybaseServiceBase: *serviceBase,
+		KeybaseServiceBase: serviceBase,
 	}
 	return &k
 }
@@ -305,41 +305,4 @@ func (k *KeybaseDaemonRPC) Shutdown() {
 	if k.shutdownFn != nil {
 		k.shutdownFn()
 	}
-}
-
-// GetTLFCryptKeys implements the TlfKeysInterface interface for
-// KeybaseDaemonRPC.
-func (k *KeybaseDaemonRPC) GetTLFCryptKeys(
-	ctx context.Context, tlfName string) (res keybase1.TLFCryptKeys, err error) {
-	var tlfHandle *TlfHandle
-
-getHandle:
-	for {
-		tlfHandle, err = ParseTlfHandle(ctx, k.config.KBPKI(), tlfName, false)
-		switch e := err.(type) {
-		case TlfNameNotCanonical:
-			tlfName = e.NameToTry
-		case nil:
-			break getHandle
-		default:
-			return res, err
-		}
-	}
-
-	res.CanonicalName = keybase1.CanonicalTlfName(tlfHandle.GetCanonicalName())
-
-	keys, id, err := k.config.KBFSOps().GetTLFCryptKeys(ctx, tlfHandle)
-	if err != nil {
-		return res, err
-	}
-	res.TlfID = keybase1.TLFID(id.String())
-
-	for i, key := range keys {
-		res.CryptKeys = append(res.CryptKeys, keybase1.CryptKey{
-			KeyGeneration: FirstValidKeyGen + i,
-			Key:           keybase1.Bytes32(key.data),
-		})
-	}
-
-	return res, nil
 }

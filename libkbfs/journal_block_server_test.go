@@ -21,8 +21,16 @@ func setupJournalBlockServerTest(t *testing.T) (
 	config = MakeTestConfigOrBust(t, "test_user")
 	log := config.MakeLogger("")
 	jServer = makeJournalServer(
-		config, log, tempdir, config.BlockServer(), config.MDOps())
-	config.SetBlockServer(jServer.blockServer())
+		config, log, tempdir, config.BlockCache(),
+		config.BlockServer(), config.MDOps())
+	ctx := context.Background()
+	err = jServer.EnableExistingJournals(ctx)
+	require.NoError(t, err)
+	config.SetBlockCache(jServer.blockCache())
+	blockServer := jServer.blockServer()
+	// Turn this on for testing.
+	blockServer.enableAddBlockReference = true
+	config.SetBlockServer(blockServer)
 	config.SetMDOps(jServer.mdOps())
 	return tempdir, config, jServer
 }
