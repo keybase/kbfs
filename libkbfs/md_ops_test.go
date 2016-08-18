@@ -376,9 +376,8 @@ func TestMDOpsGetForHandlePublicFailVerify(t *testing.T) {
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(NullTlfID, rmds, nil)
 
-	if _, _, err := config.MDOps().GetForHandle(ctx, h, Merged); err != expectedErr {
-		t.Errorf("Got unexpected error on get: %v", err)
-	}
+	_, _, err := config.MDOps().GetForHandle(ctx, h, Merged)
+	require.IsType(t, MDMismatchError{}, err)
 }
 
 func TestMDOpsGetForHandleFailGet(t *testing.T) {
@@ -477,9 +476,8 @@ func TestMDOpsGetFailIdCheck(t *testing.T) {
 }
 
 func makeRMDSRange(t *testing.T, config Config,
-	start MetadataRevision, count int) []*RootMetadataSigned {
+	start MetadataRevision, count int, prevID MdID) []*RootMetadataSigned {
 	var rmdses []*RootMetadataSigned
-	var prevID MdID
 	for i := 0; i < count; i++ {
 		rmds, _ := newRMDS(t, config, false)
 		rmds.MD.SetPrevRoot(prevID)
@@ -496,7 +494,7 @@ func testMDOpsGetRangeSuccess(t *testing.T, fromStart bool) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
 
-	rmdses := makeRMDSRange(t, config, 100, 5)
+	rmdses := makeRMDSRange(t, config, 100, 5, fakeMdID(1))
 
 	start := MetadataRevision(100)
 	stop := start + MetadataRevision(len(rmdses))
@@ -531,7 +529,7 @@ func TestMDOpsGetRangeFailBadPrevRoot(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
 
-	rmdses := makeRMDSRange(t, config, 100, 5)
+	rmdses := makeRMDSRange(t, config, 100, 5, fakeMdID(1))
 
 	rmdses[2].MD.SetPrevRoot(fakeMdID(1))
 
@@ -676,7 +674,7 @@ func TestMDOpsGetRangeFailFinal(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
 
-	rmdses := makeRMDSRange(t, config, 100, 5)
+	rmdses := makeRMDSRange(t, config, 100, 5, fakeMdID(1))
 	rmdses[2].MD.SetFinalBit()
 	rmdses[2].MD.SetPrevRoot(rmdses[1].MD.GetPrevRoot())
 
