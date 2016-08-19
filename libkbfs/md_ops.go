@@ -125,10 +125,9 @@ func (md *MDOpsStandard) processMetadata(
 	// First, verify validity and signatures.
 	err := rmds.IsValidAndSigned(md.config.Codec(), md.config.Crypto())
 	if err != nil {
-		// TODO: Annotate MDMismatchError with more info, like
-		// MDID, Revision, etc.
 		return ImmutableRootMetadata{}, MDMismatchError{
-			handle.GetCanonicalPath(), err,
+			rmds.MD.Revision, handle.GetCanonicalPath(),
+			rmds.MD.ID, err,
 		}
 	}
 
@@ -230,10 +229,11 @@ func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle,
 	mdHandlePath := mdHandle.GetCanonicalPath()
 	if !handleResolvesToMdHandle && !mdHandleResolvesToHandle {
 		return TlfID{}, ImmutableRootMetadata{}, MDMismatchError{
-			handle.GetCanonicalPath(),
+			rmds.MD.Revision, handle.GetCanonicalPath(),
+			rmds.MD.ID,
 			fmt.Errorf(
-				"MD (id=%s) contained unexpected handle path %s (%s -> %s) (%s -> %s)",
-				rmds.MD.TlfID(), mdHandlePath,
+				"MD contained unexpected handle path %s (%s -> %s) (%s -> %s)",
+				mdHandlePath,
 				handle.GetCanonicalPath(),
 				partialResolvedHandle.GetCanonicalPath(),
 				mdHandle.GetCanonicalPath(),
@@ -264,7 +264,7 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 	// Make sure the signed-over ID matches
 	if id != rmds.MD.TlfID() {
 		return ImmutableRootMetadata{}, MDMismatchError{
-			id.String(),
+			rmds.MD.Revision, id.String(), rmds.MD.ID,
 			fmt.Errorf("MD contained unexpected folder id %s, expected %s",
 				rmds.MD.TlfID().String(), id.String()),
 		}
@@ -272,7 +272,7 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 	// Make sure the signed-over branch ID matches
 	if bid != NullBranchID && bid != rmds.MD.BID() {
 		return ImmutableRootMetadata{}, MDMismatchError{
-			id.String(),
+			rmds.MD.Revision, id.String(), rmds.MD.ID,
 			fmt.Errorf("MD contained unexpected branch id %s, expected %s, "+
 				"folder id %s", rmds.MD.BID().String(), bid.String(), id.String()),
 		}
@@ -417,8 +417,9 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 				prevIRMD.mdID, irmd.bareMd)
 			if err != nil {
 				return nil, MDMismatchError{
+					prevIRMD.Revision,
 					irmd.GetTlfHandle().GetCanonicalPath(),
-					err,
+					prevIRMD.ID, err,
 				}
 			}
 		}
