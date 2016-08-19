@@ -1515,11 +1515,15 @@ type BareRootMetadata interface {
 	GetTLFCryptKeyParams(keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
 		TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 		TLFCryptKeyServerHalfID, bool, error)
-	// IsValidAndSigned verifies the BareRootMetadata given the current
-	// user and device (identified by the KID of the device verifying
-	// key), checks the writer signature, and returns an error if a
-	// problem was found.
-	IsValidAndSigned(codec Codec, crypto cryptoPure,
+	// IsValidAndSigned verifies the BareRootMetadata, checks the
+	// writer signature, and returns an error if a problem was
+	// found.
+	IsValidAndSigned(codec Codec, crypto cryptoPure) error
+	// IsLastModifiedBy verifies that the BareRootMetadata is written by
+	// the given user and device (identified by the KID of the device
+	// verifying key), and returns an error if not. Should be called only
+	// after IsValidAndSigned.
+	IsLastModifiedBy(
 		currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error
 	// LastModifyingWriter return the UID of the last user to modify the writer metadata.
 	LastModifyingWriter() keybase1.UID

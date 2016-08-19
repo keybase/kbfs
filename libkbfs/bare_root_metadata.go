@@ -406,19 +406,8 @@ func (md *BareRootMetadataV2) MakeBareTlfHandle() (BareTlfHandle, error) {
 		md.TlfHandleExtensions())
 }
 
-// MakeBareTlfHandle makes a BareTlfHandle for this
-// BareRootMetadata. Should be used only by servers and MDOps.
-func (md *BareRootMetadata) MakeBareTlfHandle() (BareTlfHandle, error) {
-	return md.makeBareTlfHandle()
-}
-
-// writerKID returns the KID of the writer.
-func (md *BareRootMetadata) writerKID() keybase1.KID {
-	return md.WriterMetadataSigInfo.VerifyingKey.KID()
-}
-
 // TlfHandleExtensions returns a list of handle extensions associated with the TLf.
-func (md *BareRootMetadata) TlfHandleExtensions() (
+func (md *BareRootMetadataV2) TlfHandleExtensions() (
 	extensions []TlfHandleExtension) {
 	if md.ConflictInfo != nil {
 		extensions = append(extensions, *md.ConflictInfo)
@@ -612,11 +601,9 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 	return nil
 }
 
-// IsLastModifiedBy verifies that the BareRootMetadata is written by
-// the given user and device (identified by the KID of the device
-// verifying key), and returns an error if not. Should be called only
-// after IsValidAndSigned.
-func (md *BareRootMetadata) IsLastModifiedBy(
+// IsLastModifiedBy implements the BareRootMetadata interface for
+// BareRootMetadataV2.
+func (md *BareRootMetadataV2) IsLastModifiedBy(
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
 	// Verify the user and device are the writer.
 	writer := md.LastModifyingWriter
