@@ -57,7 +57,7 @@ func setupMDJournalTest(t *testing.T) (
 	require.NoError(t, err)
 
 	log := logger.NewTestLogger(t)
-	j, err = makeMDJournal(codec, crypto, tempdir, log)
+	j, err = makeMDJournal(codec, crypto, uid, verifyingKey, tempdir, log)
 	require.NoError(t, err)
 
 	bsplit = &BlockSplitterSimple{64 * 1024, 8 * 1024}
@@ -90,7 +90,7 @@ func TestMDJournalBasic(t *testing.T) {
 
 	// Should start off as empty.
 
-	head, err := j.getHead(uid)
+	head, err := j.getHead(uid, verifyingKey)
 	require.NoError(t, err)
 	require.Equal(t, ImmutableBareRootMetadata{}, head)
 	require.Equal(t, 0, getTlfJournalLength(t, j))
@@ -117,7 +117,7 @@ func TestMDJournalBasic(t *testing.T) {
 	// Should now be non-empty.
 
 	ibrmds, err := j.getRange(
-		uid, 1, firstRevision+MetadataRevision(2*mdCount))
+		uid, verifyingKey, 1, firstRevision+MetadataRevision(2*mdCount))
 	require.NoError(t, err)
 	require.Equal(t, mdCount, len(ibrmds))
 
@@ -138,7 +138,7 @@ func TestMDJournalBasic(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	head, err = j.getHead(uid)
+	head, err = j.getHead(uid, verifyingKey)
 	require.NoError(t, err)
 	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 }
@@ -174,7 +174,7 @@ func TestMDJournalReplaceHead(t *testing.T) {
 	_, err := j.put(ctx, signer, ekg, bsplit, md, uid, verifyingKey)
 	require.NoError(t, err)
 
-	head, err := j.getHead(uid)
+	head, err := j.getHead(uid, verifyingKey)
 	require.NoError(t, err)
 	require.Equal(t, md.Revision(), head.RevisionNumber())
 	require.Equal(t, md.DiskUsage(), head.DiskUsage())
@@ -204,7 +204,7 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	require.NoError(t, err)
 
 	ibrmds, err := j.getRange(
-		uid, 1, firstRevision+MetadataRevision(2*mdCount))
+		uid, verifyingKey, 1, firstRevision+MetadataRevision(2*mdCount))
 	require.NoError(t, err)
 	require.Equal(t, mdCount, len(ibrmds))
 
@@ -233,7 +233,7 @@ func TestMDJournalBranchConversion(t *testing.T) {
 
 	require.Equal(t, 10, getTlfJournalLength(t, j))
 
-	head, err := j.getHead(uid)
+	head, err := j.getHead(uid, verifyingKey)
 	require.NoError(t, err)
 	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 }
@@ -281,7 +281,7 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 	// encountered an error.
 
 	ibrmds, err := j.getRange(
-		uid, 1, firstRevision+MetadataRevision(2*mdCount))
+		uid, verifyingKey, 1, firstRevision+MetadataRevision(2*mdCount))
 	require.NoError(t, err)
 	require.Equal(t, mdCount, len(ibrmds))
 
@@ -307,7 +307,7 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 
 	require.Equal(t, 10, getTlfJournalLength(t, j))
 
-	head, err := j.getHead(uid)
+	head, err := j.getHead(uid, verifyingKey)
 	require.NoError(t, err)
 	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 }
@@ -652,37 +652,37 @@ func TestMDJournalClear(t *testing.T) {
 	bid := j.branchID
 
 	// Clearing the master branch shouldn't work.
-	err = j.clear(ctx, uid, NullBranchID)
+	err = j.clear(ctx, uid, verifyingKey, NullBranchID)
 	require.Error(t, err)
 
 	// Clearing a different branch ID should do nothing.
 
-	err = j.clear(ctx, uid, FakeBranchID(1))
+	err = j.clear(ctx, uid, verifyingKey, FakeBranchID(1))
 	require.NoError(t, err)
 	require.Equal(t, bid, j.branchID)
 
-	head, err := j.getHead(uid)
+	head, err := j.getHead(uid, verifyingKey)
 	require.NoError(t, err)
 	require.NotEqual(t, ImmutableBareRootMetadata{}, head)
 
 	// Clearing the correct branch ID should clear the entire
 	// journal, and reset the branch ID.
 
-	err = j.clear(ctx, uid, bid)
+	err = j.clear(ctx, uid, verifyingKey, bid)
 	require.NoError(t, err)
 	require.Equal(t, NullBranchID, j.branchID)
 
-	head, err = j.getHead(uid)
+	head, err = j.getHead(uid, verifyingKey)
 	require.NoError(t, err)
 	require.Equal(t, ImmutableBareRootMetadata{}, head)
 
 	// Clearing twice should do nothing.
 
-	err = j.clear(ctx, uid, bid)
+	err = j.clear(ctx, uid, verifyingKey, bid)
 	require.NoError(t, err)
 	require.Equal(t, NullBranchID, j.branchID)
 
-	head, err = j.getHead(uid)
+	head, err = j.getHead(uid, verifyingKey)
 	require.NoError(t, err)
 	require.Equal(t, ImmutableBareRootMetadata{}, head)
 }

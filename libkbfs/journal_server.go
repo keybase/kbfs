@@ -166,9 +166,19 @@ func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID) (err error) {
 		return err
 	}
 
+	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return err
+	}
+
+	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return err
+	}
+
 	bundle.blockJournal = blockJournal
 	mdJournal, err := makeMDJournal(
-		j.config.Codec(), j.config.Crypto(), tlfDir, log)
+		j.config.Codec(), j.config.Crypto(), uid, key, tlfDir, log)
 	if err != nil {
 		return err
 	}
