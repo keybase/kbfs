@@ -130,6 +130,10 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (exitSta
 	}
 
 	for _, input := range inputs {
+		// The returned RMD is already verified, so we don't
+		// have to do anything else.
+		//
+		// TODO: Check the validity of the entire MD chain.
 		irmd, err := mdParseAndGet(ctx, config, input)
 		if err != nil {
 			printError("md check", err)
