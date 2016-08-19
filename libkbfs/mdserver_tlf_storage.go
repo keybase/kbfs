@@ -324,8 +324,6 @@ func (s *mdServerTlfStorage) put(
 		return false, MDServerErrorBadRequest{Reason: err.Error()}
 	}
 
-	// Assume that currentVerifyingKey is valid.
-
 	err = rmds.IsLastModifiedBy(currentUID, currentVerifyingKey)
 	if err != nil {
 		return false, MDServerErrorBadRequest{Reason: err.Error()}

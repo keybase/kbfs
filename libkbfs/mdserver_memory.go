@@ -339,8 +339,6 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 		return MDServerErrorBadRequest{Reason: err.Error()}
 	}
 
-	// Assume that currentVerifyingKey is valid.
-
 	err = rmds.IsLastModifiedBy(currentUID, currentVerifyingKey)
 	if err != nil {
 		return MDServerErrorBadRequest{Reason: err.Error()}
