@@ -168,11 +168,7 @@ func (j mdJournal) getMD(id MdID) (BareRootMetadata, time.Time, error) {
 
 	// Check integrity.
 
-	if rmd.BID() != j.branchID {
-		return nil, time.Time{}, fmt.Errorf(
-			"Branch ID mismatch: expected %s, got %s", j.branchID, rmd.BID())
-	}
-
+	// TODO: MakeMdID serializes rmd -- use data instead.
 	mdID, err := j.crypto.MakeMdID(&rmd)
 	if err != nil {
 		return nil, time.Time{}, err
@@ -183,9 +179,18 @@ func (j mdJournal) getMD(id MdID) (BareRootMetadata, time.Time, error) {
 			"Metadata ID mismatch: expected %s, got %s", id, mdID)
 	}
 
+	// Verify RMD. TODO: Also verify the verifying keys, like in
+	// MDOpsStandard.processMetadata(). May have to do this in
+	// journalMDOps.
+
 	err = rmd.IsValidAndSigned(j.codec, j.crypto)
 	if err != nil {
 		return nil, time.Time{}, err
+	}
+
+	if rmd.BID() != j.branchID {
+		return nil, time.Time{}, fmt.Errorf(
+			"Branch ID mismatch: expected %s, got %s", j.branchID, rmd.BID())
 	}
 
 	fi, err := os.Stat(path)
@@ -201,6 +206,9 @@ func (j mdJournal) getMD(id MdID) (BareRootMetadata, time.Time, error) {
 func (j mdJournal) putMD(
 	rmd BareRootMetadata, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey) (MdID, error) {
+	// TODO: Also verify the verifying keys, like in
+	// MDOpsStandard.processMetadata(). May have to do this in
+	// journalMDOps.
 	err := rmd.IsValidAndSigned(j.codec, j.crypto)
 	if err != nil {
 		return MdID{}, err
