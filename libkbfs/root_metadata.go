@@ -770,16 +770,15 @@ func (rmds *RootMetadataSigned) IsValidAndSigned(
 // verifying key), and returns an error if not. Should be called only
 // after IsValidAndSigned.
 func (rmds *RootMetadataSigned) IsLastModifiedBy(
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
-	err := rmds.MD.IsLastModifiedBy(currentUID, currentVerifyingKey)
+	uid keybase1.UID, key VerifyingKey) error {
+	err := rmds.MD.IsLastModifiedBy(uid, key)
 	if err != nil {
 		return err
 	}
 
-	if rmds.SigInfo.VerifyingKey != currentVerifyingKey {
-		return fmt.Errorf(
-			"Last modifier verifying key %v doesn't match current verifying key %v",
-			rmds.SigInfo.VerifyingKey, currentVerifyingKey)
+	if rmds.SigInfo.VerifyingKey != key {
+		return fmt.Errorf("Last modifier verifying key %v != %v",
+			rmds.SigInfo.VerifyingKey, Key)
 	}
 
 	return nil

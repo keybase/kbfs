@@ -604,28 +604,24 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 // IsLastModifiedBy implements the BareRootMetadata interface for
 // BareRootMetadataV2.
 func (md *BareRootMetadataV2) IsLastModifiedBy(
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
+	uid keybase1.UID, key VerifyingKey) error {
 	// Verify the user and device are the writer.
 	writer := md.LastModifyingWriter()
 	if !md.IsWriterMetadataCopiedSet() {
-		if writer != currentUID {
-			return fmt.Errorf(
-				"Last writer %s doesn't match current user %s",
-				writer, currentUID)
+		if writer != uid {
+			return fmt.Errorf("Last writer %s != %s", writer, uid)
 		}
-		if md.WriterMetadataSigInfo.VerifyingKey != currentVerifyingKey {
+		if md.WriterMetadataSigInfo.VerifyingKey != key {
 			return fmt.Errorf(
-				"Last writer verifying key %v doesn't match current verifying key %v",
-				md.WriterMetadataSigInfo.VerifyingKey, currentVerifyingKey)
+				"Last writer verifying key %v != %v",
+				md.WriterMetadataSigInfo.VerifyingKey, key)
 		}
 	}
 
 	// Verify the user and device are the last modifier.
 	user := md.GetLastModifyingUser()
-	if user != currentUID {
-		return fmt.Errorf(
-			"Last modifier %s doesn't match current user %s",
-			user, currentUID)
+	if user != uid {
+		return fmt.Errorf("Last modifier %s != %s", user, uid)
 	}
 
 	return nil
