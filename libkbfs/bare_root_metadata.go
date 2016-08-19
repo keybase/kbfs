@@ -406,7 +406,7 @@ func (md *BareRootMetadataV2) MakeBareTlfHandle() (BareTlfHandle, error) {
 		md.TlfHandleExtensions())
 }
 
-// TlfHandleExtensions returns a list of handle extensions associated with the TLf.
+// TlfHandleExtensions implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) TlfHandleExtensions() (
 	extensions []TlfHandleExtension) {
 	if md.ConflictInfo != nil {
