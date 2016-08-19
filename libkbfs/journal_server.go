@@ -178,7 +178,7 @@ func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID) (err error) {
 
 	bundle.blockJournal = blockJournal
 	mdJournal, err := makeMDJournal(
-		j.config.Codec(), j.config.Crypto(), uid, key, tlfDir, log)
+		uid, key, j.config.Codec(), j.config.Crypto(), tlfDir, log)
 	if err != nil {
 		return err
 	}
@@ -244,7 +244,7 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 			bundle.lock.Lock()
 			defer bundle.lock.Unlock()
 			return bundle.mdJournal.flushOne(
-				ctx, j.config.Crypto(), uid, key,
+				ctx, uid, key, j.config.Crypto(),
 				j.config.MDServer())
 		}()
 		if err != nil {
