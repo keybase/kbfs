@@ -718,7 +718,9 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(config Config) (
 }
 
 // IsValidAndSigned verifies the RootMetadataSigned, checks the root
-// signature, and returns an error if a problem was found.
+// signature, and returns an error if a problem was found.  This
+// should be the first thing checked on an RMDS retrieved from an
+// untrusted source.
 func (rmds *RootMetadataSigned) IsValidAndSigned(
 	codec Codec, crypto cryptoPure) error {
 	// Optimization -- if the RootMetadata signature is nil, it

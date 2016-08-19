@@ -1517,7 +1517,8 @@ type BareRootMetadata interface {
 		TLFCryptKeyServerHalfID, bool, error)
 	// IsValidAndSigned verifies the BareRootMetadata, checks the
 	// writer signature, and returns an error if a problem was
-	// found.
+	// found. This should be the first thing checked on a BRMD
+	// retrieved from an untrusted source.
 	IsValidAndSigned(codec Codec, crypto cryptoPure) error
 	// IsLastModifiedBy verifies that the BareRootMetadata is
 	// written by the given user and device (identified by the KID
