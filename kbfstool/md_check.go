@@ -19,6 +19,8 @@ Each input must be in the same format as in md dump.
 // TODO: The below checks could be sped up by fetching blocks in
 // parallel.
 
+// TODO: Factor out common code with StateChecker.findAllBlocksInPath.
+
 func checkDirBlock(ctx context.Context, config libkbfs.Config,
 	name string, kmd libkbfs.KeyMetadata, info libkbfs.BlockInfo,
 	verbose bool) (err error) {
