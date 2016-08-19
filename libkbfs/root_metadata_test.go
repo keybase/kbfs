@@ -645,12 +645,12 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	FakeInitialRekey(&rmds.MD, h)
-	rmds.MD.LastModifyingWriter = h.Writers[0]
-	rmds.MD.LastModifyingUser = h.Writers[0]
-	rmds.MD.SerializedPrivateMetadata = []byte{42}
+	rmds.MD.FakeInitialRekey(h)
+	rmds.MD.SetLastModifyingWriter(h.Writers[0])
+	rmds.MD.SetLastModifyingUser(h.Writers[0])
+	rmds.MD.SetSerializedPrivateMetadata([]byte{42})
 
-	buf, err := config.Codec().Encode(rmds.MD.WriterMetadata)
+	buf, err := rmds.MD.GetSerializedWriterMetadata(config.Codec())
 	if err != nil {
 		t.Fatal(err)
 	}

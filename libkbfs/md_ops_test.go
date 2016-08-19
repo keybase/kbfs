@@ -90,6 +90,7 @@ func addFakeRMDSData(rmds *RootMetadataSigned, h *TlfHandle) {
 	rmds.MD.SetSerializedPrivateMetadata([]byte{1})
 	rmds.MD.SetLastModifyingWriter(h.FirstResolvedWriter())
 	rmds.MD.SetLastModifyingUser(h.FirstResolvedWriter())
+	fakeVerifyingKey := MakeFakeVerifyingKeyOrBust("fake key")
 	rmds.MD.SetWriterMetadataSigInfo(SignatureInfo{
 		Version:      SigED25519,
 		Signature:    []byte{41},
@@ -127,7 +128,7 @@ func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
 	packedData := []byte{4, 3, 2, 1}
 	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(packedData, nil).AnyTimes()
 
-	config.mockCrypto.EXPECT().Verify(packedData, rmds.MD.WriterMetadataSigInfo).Return(nil)
+	config.mockCrypto.EXPECT().Verify(packedData, rmds.MD.GetWriterMetadataSigInfo()).Return(nil)
 	config.mockCrypto.EXPECT().Verify(packedData, rmds.SigInfo).Return(verifyErr)
 	if verifyErr != nil {
 		return
@@ -140,7 +141,7 @@ func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
 	}
 
 	config.mockCodec.EXPECT().Decode(
-		rmds.MD.SerializedPrivateMetadata, gomock.Any()).Return(nil)
+		rmds.MD.GetSerializedPrivateMetadata(), gomock.Any()).Return(nil)
 }
 
 func verifyMDForPrivateHelper(
