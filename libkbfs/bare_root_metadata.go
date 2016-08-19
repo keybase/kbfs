@@ -566,7 +566,7 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 
 	if (md.MergedStatus() == Merged) != (md.BID() == NullBranchID) {
 		return fmt.Errorf("Branch ID %s doesn't match merged status %s",
-			md.BID, md.MergedStatus())
+			md.BID(), md.MergedStatus())
 	}
 
 	handle, err := md.MakeBareTlfHandle()
