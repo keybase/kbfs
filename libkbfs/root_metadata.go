@@ -779,7 +779,7 @@ func (rmds *RootMetadataSigned) IsLastModifiedBy(
 
 	if rmds.SigInfo.VerifyingKey != key {
 		return fmt.Errorf("Last modifier verifying key %v != %v",
-			rmds.SigInfo.VerifyingKey, Key)
+			rmds.SigInfo.VerifyingKey, key)
 	}
 
 	return nil
