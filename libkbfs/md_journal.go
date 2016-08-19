@@ -179,9 +179,8 @@ func (j mdJournal) getMD(id MdID) (BareRootMetadata, time.Time, error) {
 			"Metadata ID mismatch: expected %s, got %s", id, mdID)
 	}
 
-	// Verify RMD. TODO: Also verify the verifying keys, like in
-	// MDOpsStandard.processMetadata(). May have to do this in
-	// journalMDOps.
+	// TODO: Plumb through currentUID and currentVerifyingKey and
+	// call IsLastModifiedBy().
 
 	err = rmd.IsValidAndSigned(j.codec, j.crypto)
 	if err != nil {
@@ -206,9 +205,6 @@ func (j mdJournal) getMD(id MdID) (BareRootMetadata, time.Time, error) {
 func (j mdJournal) putMD(
 	rmd BareRootMetadata, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey) (MdID, error) {
-	// TODO: Also verify the verifying keys, like in
-	// MDOpsStandard.processMetadata(). May have to do this in
-	// journalMDOps.
 	err := rmd.IsValidAndSigned(j.codec, j.crypto)
 	if err != nil {
 		return MdID{}, err
