@@ -767,8 +767,7 @@ func (rmds *RootMetadataSigned) IsValidAndSigned(
 
 // IsLastModifiedBy verifies that the RootMetadataSigned is written by
 // the given user and device (identified by the KID of the device
-// verifying key), and returns an error if not. Should be called only
-// after IsValidAndSigned.
+// verifying key), and returns an error if not.
 func (rmds *RootMetadataSigned) IsLastModifiedBy(
 	uid keybase1.UID, key VerifyingKey) error {
 	err := rmds.MD.IsLastModifiedBy(uid, key)
