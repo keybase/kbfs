@@ -1518,7 +1518,10 @@ type BareRootMetadata interface {
 	// IsValidAndSigned verifies the BareRootMetadata, checks the
 	// writer signature, and returns an error if a problem was
 	// found. This should be the first thing checked on a BRMD
-	// retrieved from an untrusted source.
+	// retrieved from an untrusted source, and then the signing
+	// user and key should be validated, either by comparing to
+	// the current device key (using IsLastModifiedBy), or by
+	// checking with KBPKI.
 	IsValidAndSigned(codec Codec, crypto cryptoPure) error
 	// IsLastModifiedBy verifies that the BareRootMetadata is
 	// written by the given user and device (identified by the KID
