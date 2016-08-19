@@ -328,7 +328,8 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 		return MDServerError{err}
 	}
 
-	currentVerifyingKey, err := md.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	currentVerifyingKey, err :=
+		md.config.KBPKI().GetCurrentVerifyingKey(ctx)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -337,6 +338,8 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 	if err != nil {
 		return MDServerErrorBadRequest{Reason: err.Error()}
 	}
+
+	// Assume that currentVerifyingKey is valid.
 
 	err = rmds.IsLastModifiedBy(currentUID, currentVerifyingKey)
 	if err != nil {
