@@ -1494,9 +1494,6 @@ type BareRootMetadata interface {
 	// MakeBareTlfHandle makes a BareTlfHandle for this
 	// BareRootMetadata. Should be used only by servers and MDOps.
 	MakeBareTlfHandle() (BareTlfHandle, error)
-	// VerifyWriterMetadata verifies md's WriterMetadata against md's
-	// WriterMetadataSigInfo, assuming the verifying key there is valid.
-	VerifyWriterMetadata(codec Codec, crypto cryptoPure) error
 	// TlfHandleExtensions returns a list of handle extensions associated with the TLf.
 	TlfHandleExtensions() (extensions []TlfHandleExtension)
 	// GetDeviceKIDs returns the KIDs (of CryptPublicKeys) for all known

@@ -195,7 +195,7 @@ func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
 
 // Test that old encoded WriterMetadata objects (i.e., without any
 // extra fields) can be deserialized and serialized to the same form,
-// which is important for RootMetadata.VerifyWriterMetadata().
+// which is important for RootMetadata.IsValidAndSigned().
 func TestWriterMetadataUnchangedEncoding(t *testing.T) {
 	encodedWm := []byte{
 		0x89, 0xa3, 0x42, 0x49, 0x44, 0xc4, 0x10, 0x0,

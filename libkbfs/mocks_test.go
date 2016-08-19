@@ -4314,16 +4314,6 @@ func (_mr *_MockBareRootMetadataRecorder) MakeBareTlfHandle() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeBareTlfHandle")
 }
 
-func (_m *MockBareRootMetadata) VerifyWriterMetadata(codec Codec, crypto cryptoPure) error {
-	ret := _m.ctrl.Call(_m, "VerifyWriterMetadata", codec, crypto)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockBareRootMetadataRecorder) VerifyWriterMetadata(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "VerifyWriterMetadata", arg0, arg1)
-}
-
 func (_m *MockBareRootMetadata) TlfHandleExtensions() []TlfHandleExtension {
 	ret := _m.ctrl.Call(_m, "TlfHandleExtensions")
 	ret0, _ := ret[0].([]TlfHandleExtension)
@@ -4672,16 +4662,6 @@ func (_m *MockMutableBareRootMetadata) MakeBareTlfHandle() (BareTlfHandle, error
 
 func (_mr *_MockMutableBareRootMetadataRecorder) MakeBareTlfHandle() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeBareTlfHandle")
-}
-
-func (_m *MockMutableBareRootMetadata) VerifyWriterMetadata(codec Codec, crypto cryptoPure) error {
-	ret := _m.ctrl.Call(_m, "VerifyWriterMetadata", codec, crypto)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockMutableBareRootMetadataRecorder) VerifyWriterMetadata(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "VerifyWriterMetadata", arg0, arg1)
 }
 
 func (_m *MockMutableBareRootMetadata) TlfHandleExtensions() []TlfHandleExtension {
