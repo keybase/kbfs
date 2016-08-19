@@ -189,7 +189,8 @@ func (j mdJournal) getMD(id MdID) (BareRootMetadata, time.Time, error) {
 
 	if rmd.BID() != j.branchID {
 		return nil, time.Time{}, fmt.Errorf(
-			"Branch ID mismatch: expected %s, got %s", j.branchID, rmd.BID())
+			"Branch ID mismatch: expected %s, got %s",
+			j.branchID, rmd.BID())
 	}
 
 	fi, err := os.Stat(path)
