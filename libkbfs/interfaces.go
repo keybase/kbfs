@@ -1519,12 +1519,10 @@ type BareRootMetadata interface {
 	// writer signature, and returns an error if a problem was
 	// found.
 	IsValidAndSigned(codec Codec, crypto cryptoPure) error
-	// IsLastModifiedBy verifies that the BareRootMetadata is written by
-	// the given user and device (identified by the KID of the device
-	// verifying key), and returns an error if not. Should be called only
-	// after IsValidAndSigned.
-	IsLastModifiedBy(
-		currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error
+	// IsLastModifiedBy verifies that the BareRootMetadata is
+	// written by the given user and device (identified by the KID
+	// of the device verifying key), and returns an error if not.
+	IsLastModifiedBy(uid keybase1.UID, key VerifyingKey) error
 	// LastModifyingWriter return the UID of the last user to modify the writer metadata.
 	LastModifyingWriter() keybase1.UID
 	// LastModifyingWriterKID returns the KID of the last device to modify the writer metadata.
