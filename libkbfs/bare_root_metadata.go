@@ -588,7 +588,7 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 
 	// Verify signature. We have to re-marshal the WriterMetadata,
 	// since it's embedded.
-	buf, err := codec.Encode(md.WriterMetadata)
+	buf, err := codec.Encode(md.WriterMetadataV2)
 	if err != nil {
 		return err
 	}
@@ -606,7 +606,7 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 func (md *BareRootMetadataV2) IsLastModifiedBy(
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) error {
 	// Verify the user and device are the writer.
-	writer := md.LastModifyingWriter
+	writer := md.LastModifyingWriter()
 	if !md.IsWriterMetadataCopiedSet() {
 		if writer != currentUID {
 			return fmt.Errorf(

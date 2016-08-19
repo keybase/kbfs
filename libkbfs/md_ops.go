@@ -126,8 +126,8 @@ func (md *MDOpsStandard) processMetadata(
 	err := rmds.IsValidAndSigned(md.config.Codec(), md.config.Crypto())
 	if err != nil {
 		return ImmutableRootMetadata{}, MDMismatchError{
-			rmds.MD.Revision, handle.GetCanonicalPath(),
-			rmds.MD.ID, err,
+			rmds.MD.RevisionNumber(), handle.GetCanonicalPath(),
+			rmds.MD.TlfID(), err,
 		}
 	}
 
@@ -138,11 +138,11 @@ func (md *MDOpsStandard) processMetadata(
 
 	if handle.IsFinal() {
 		err = md.config.KBPKI().HasUnverifiedVerifyingKey(
-			ctx, rmds.MD.LastModifyingUser,
+			ctx, rmds.MD.GetLastModifyingUser(),
 			rmds.SigInfo.VerifyingKey)
 	} else {
 		err = md.config.KBPKI().HasVerifyingKey(
-			ctx, rmds.MD.LastModifyingUser,
+			ctx, rmds.MD.GetLastModifyingUser(),
 			rmds.SigInfo.VerifyingKey,
 			rmds.untrustedServerTimestamp)
 	}
@@ -229,8 +229,8 @@ func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle,
 	mdHandlePath := mdHandle.GetCanonicalPath()
 	if !handleResolvesToMdHandle && !mdHandleResolvesToHandle {
 		return TlfID{}, ImmutableRootMetadata{}, MDMismatchError{
-			rmds.MD.Revision, handle.GetCanonicalPath(),
-			rmds.MD.ID,
+			rmds.MD.RevisionNumber(), handle.GetCanonicalPath(),
+			rmds.MD.TlfID(),
 			fmt.Errorf(
 				"MD contained unexpected handle path %s (%s -> %s) (%s -> %s)",
 				mdHandlePath,
@@ -264,7 +264,7 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 	// Make sure the signed-over ID matches
 	if id != rmds.MD.TlfID() {
 		return ImmutableRootMetadata{}, MDMismatchError{
-			rmds.MD.Revision, id.String(), rmds.MD.ID,
+			rmds.MD.RevisionNumber(), id.String(), rmds.MD.TlfID(),
 			fmt.Errorf("MD contained unexpected folder id %s, expected %s",
 				rmds.MD.TlfID().String(), id.String()),
 		}
@@ -272,7 +272,7 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 	// Make sure the signed-over branch ID matches
 	if bid != NullBranchID && bid != rmds.MD.BID() {
 		return ImmutableRootMetadata{}, MDMismatchError{
-			rmds.MD.Revision, id.String(), rmds.MD.ID,
+			rmds.MD.RevisionNumber(), id.String(), rmds.MD.TlfID(),
 			fmt.Errorf("MD contained unexpected branch id %s, expected %s, "+
 				"folder id %s", rmds.MD.BID().String(), bid.String(), id.String()),
 		}
@@ -417,9 +417,9 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 				prevIRMD.mdID, irmd.bareMd)
 			if err != nil {
 				return nil, MDMismatchError{
-					prevIRMD.Revision,
+					prevIRMD.Revision(),
 					irmd.GetTlfHandle().GetCanonicalPath(),
-					prevIRMD.ID, err,
+					prevIRMD.TlfID(), err,
 				}
 			}
 		}

@@ -732,7 +732,7 @@ func (rmds *RootMetadataSigned) IsValidAndSigned(
 		return err
 	}
 
-	md := &rmds.MD
+	md := rmds.MD
 	if rmds.MD.IsFinal() {
 		// Since we're just working with the immediate fields
 		// of RootMetadata, we can get away with a shallow
@@ -742,10 +742,10 @@ func (rmds *RootMetadataSigned) IsValidAndSigned(
 		// Mask out finalized additions.  These are the only
 		// things allowed to change in the finalized metadata
 		// block.
-		mdCopy.Flags &= ^MetadataFlagFinal
-		mdCopy.Revision--
-		mdCopy.FinalizedInfo = nil
-		md = &mdCopy
+		mdCopy.SetFinalBit()
+		mdCopy.SetRevision(md.RevisionNumber() - 1)
+		mdCopy.SetFinalizedInfo(nil)
+		md = mdCopy
 	}
 	// Re-marshal the whole RootMetadata. This is not avoidable
 	// without support from ugorji/codec.
