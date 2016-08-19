@@ -4369,8 +4369,8 @@ func (_mr *_MockBareRootMetadataRecorder) IsValidAndSigned(arg0, arg1 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsValidAndSigned", arg0, arg1)
 }
 
-func (_m *MockBareRootMetadata) IsLastModifiedBy(currentUID protocol.UID, currentVerifyingKey VerifyingKey) error {
-	ret := _m.ctrl.Call(_m, "IsLastModifiedBy", currentUID, currentVerifyingKey)
+func (_m *MockBareRootMetadata) IsLastModifiedBy(uid protocol.UID, key VerifyingKey) error {
+	ret := _m.ctrl.Call(_m, "IsLastModifiedBy", uid, key)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -4729,8 +4729,8 @@ func (_mr *_MockMutableBareRootMetadataRecorder) IsValidAndSigned(arg0, arg1 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsValidAndSigned", arg0, arg1)
 }
 
-func (_m *MockMutableBareRootMetadata) IsLastModifiedBy(currentUID protocol.UID, currentVerifyingKey VerifyingKey) error {
-	ret := _m.ctrl.Call(_m, "IsLastModifiedBy", currentUID, currentVerifyingKey)
+func (_m *MockMutableBareRootMetadata) IsLastModifiedBy(uid protocol.UID, key VerifyingKey) error {
+	ret := _m.ctrl.Call(_m, "IsLastModifiedBy", uid, key)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
