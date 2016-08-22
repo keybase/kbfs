@@ -14,6 +14,8 @@ import (
 	"github.com/keybase/client/go/logger"
 
 	"golang.org/x/net/context"
+
+	keybase1 "github.com/keybase/client/go/protocol"
 )
 
 type tlfJournalBundle struct {
@@ -42,6 +44,41 @@ func makeTlfJournalBundle(
 		blockJournal: blockJournal,
 		mdJournal:    mdJournal,
 	}
+}
+
+func (b *tlfJournalBundle) flushOneBlockOp(
+	ctx context.Context, delegateBlockServer BlockServer,
+	tlfID TlfID) (bool, error) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	return b.blockJournal.flushOne(ctx, delegateBlockServer, tlfID)
+}
+
+func (b *tlfJournalBundle) flushOneMDOp(
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, signer cryptoSigner,
+	mdServer MDServer) (bool, error) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	return b.mdJournal.flushOne(
+		ctx, currentUID, currentVerifyingKey, signer, mdServer)
+}
+
+func (b *tlfJournalBundle) getJournalEntryCounts() (
+	blockEntryCount, mdEntryCount uint64, err error) {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	blockEntryCount, err = b.blockJournal.length()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	mdEntryCount, err = b.mdJournal.length()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return blockEntryCount, mdEntryCount, nil
 }
 
 // TODO: JournalServer isn't really a server, although it can create
@@ -371,12 +408,8 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	// TODO: Parallelize block puts.
 
 	for {
-		flushed, err := func() (bool, error) {
-			bundle.lock.Lock()
-			defer bundle.lock.Unlock()
-			return bundle.blockJournal.flushOne(
-				ctx, j.delegateBlockServer, tlfID)
-		}()
+		flushed, err := bundle.flushOneBlockOp(
+			ctx, j.delegateBlockServer, tlfID)
 		if err != nil {
 			return err
 		}
@@ -397,13 +430,8 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	}
 
 	for {
-		flushed, err := func() (bool, error) {
-			bundle.lock.Lock()
-			defer bundle.lock.Unlock()
-			return bundle.mdJournal.flushOne(
-				ctx, uid, key, j.config.Crypto(),
-				j.config.MDServer())
-		}()
+		flushed, err := bundle.flushOneMDOp(
+			ctx, uid, key, j.config.Crypto(), j.config.MDServer())
 		if err != nil {
 			return err
 		}
@@ -438,24 +466,15 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID TlfID) (err error) {
 		return nil
 	}
 
-	bundle.lock.RLock()
-	defer bundle.lock.RUnlock()
-	length, err := bundle.blockJournal.length()
+	blockEntryCount, mdEntryCount, err := bundle.getJournalEntryCounts()
 	if err != nil {
 		return err
 	}
 
-	if length != 0 {
-		return fmt.Errorf("Journal still has %d block entries", length)
-	}
-
-	length, err = bundle.mdJournal.length()
-	if err != nil {
-		return err
-	}
-
-	if length != 0 {
-		return fmt.Errorf("Journal still has %d MD entries", length)
+	if (blockEntryCount != 0) || (mdEntryCount != 0) {
+		return fmt.Errorf(
+			"Journal still has %d block entries and %d md entries",
+			blockEntryCount, mdEntryCount)
 	}
 
 	select {
@@ -513,14 +532,14 @@ func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 	if err != nil {
 		return TLFJournalStatus{}, err
 	}
-	blockOpCount, err := bundle.blockJournal.length()
+	blockEntryCount, err := bundle.blockJournal.length()
 	if err != nil {
 		return TLFJournalStatus{}, err
 	}
 	return TLFJournalStatus{
 		RevisionStart: earliestRevision,
 		RevisionEnd:   latestRevision,
-		BlockOpCount:  blockOpCount,
+		BlockOpCount:  blockEntryCount,
 	}, nil
 }
 
