@@ -57,10 +57,7 @@ func (j journalMDOps) getHeadFromJournal(
 		return ImmutableRootMetadata{}, err
 	}
 
-	bundle.lock.RLock()
-	defer bundle.lock.RUnlock()
-
-	head, err := bundle.mdJournal.getHead(uid, key)
+	head, err := bundle.getMDHead(uid, key)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -150,10 +147,7 @@ func (j journalMDOps) getRangeFromJournal(
 		return nil, err
 	}
 
-	bundle.lock.RLock()
-	defer bundle.lock.RUnlock()
-
-	ibrmds, err := bundle.mdJournal.getRange(uid, key, start, stop)
+	ibrmds, err := bundle.getMDRange(uid, key, start, stop)
 	if err != nil {
 		return nil, err
 	}

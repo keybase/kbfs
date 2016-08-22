@@ -22,12 +22,7 @@ func (j journalBlockServer) Get(
 		return j.BlockServer.Get(ctx, tlfID, id, context)
 	}
 
-	data, serverHalf, err := func() (
-		[]byte, BlockCryptKeyServerHalf, error) {
-		bundle.lock.RLock()
-		defer bundle.lock.RUnlock()
-		return bundle.blockJournal.getDataWithContext(id, context)
-	}()
+	data, serverHalf, err := bundle.getBlockDataWithContext(id, context)
 	if _, ok := err.(BServerErrorBlockNonExistent); ok {
 		return j.BlockServer.Get(ctx, tlfID, id, context)
 	} else if err != nil {

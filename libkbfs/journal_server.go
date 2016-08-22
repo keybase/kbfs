@@ -46,6 +46,32 @@ func makeTlfJournalBundle(
 	}
 }
 
+func (b *tlfJournalBundle) getBlockDataWithContext(
+	id BlockID, context BlockContext) (
+	[]byte, BlockCryptKeyServerHalf, error) {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	return b.blockJournal.getDataWithContext(id, context)
+}
+
+func (b *tlfJournalBundle) getMDHead(
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
+	ImmutableBareRootMetadata, error) {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	return b.mdJournal.getHead(currentUID, currentVerifyingKey)
+}
+
+func (b *tlfJournalBundle) getMDRange(
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
+	start, stop MetadataRevision) (
+	[]ImmutableBareRootMetadata, error) {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	return b.mdJournal.getRange(
+		currentUID, currentVerifyingKey, start, stop)
+}
+
 func (b *tlfJournalBundle) flushOneBlockOp(
 	ctx context.Context, delegateBlockServer BlockServer,
 	tlfID TlfID) (bool, error) {
