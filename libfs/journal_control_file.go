@@ -21,6 +21,10 @@ const (
 	JournalEnable JournalAction = iota
 	// JournalFlush is to flush the journal.
 	JournalFlush
+	// JournalPause is to pause journal auto-flushing.
+	JournalPause
+	// JournalResume is to resume journal auto-flushing.
+	JournalResume
 	// JournalDisable is to disable the journal.
 	JournalDisable
 )
@@ -31,6 +35,10 @@ func (a JournalAction) String() string {
 		return "Enable journal"
 	case JournalFlush:
 		return "Flush journal"
+	case JournalPause:
+		return "Pause journal auto-flushing"
+	case JournalResume:
+		return "Resume journal auto-flushing"
 	case JournalDisable:
 		return "Disable journal"
 	}
@@ -54,6 +62,12 @@ func (a JournalAction) Execute(
 		if err != nil {
 			return err
 		}
+
+	case JournalPause:
+		jServer.PauseAutoFlush(ctx, tlf)
+
+	case JournalResume:
+		jServer.ResumeAutoFlush(ctx, tlf)
 
 	case JournalDisable:
 		err := jServer.Disable(ctx, tlf)

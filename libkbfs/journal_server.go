@@ -287,7 +287,8 @@ func (j *JournalServer) autoFlush(
 
 // PauseAutoFlush pauses the background auto-flush goroutine, if it's
 // not already paused.
-func (j *JournalServer) PauseAutoFlush(tlfID TlfID) error {
+func (j *JournalServer) PauseAutoFlush(ctx context.Context, tlfID TlfID) {
+	j.log.CDebugf(ctx, "Signaling pause for %s", tlfID)
 	bundle, ok := j.getBundle(tlfID)
 	if !ok {
 		j.log.CDebugf(ctx,
@@ -303,7 +304,8 @@ func (j *JournalServer) PauseAutoFlush(tlfID TlfID) error {
 
 // ResumeAutoFlush resumes the background auto-flush goroutine, if it's
 // not already resumed.
-func (j *JournalServer) ResumeAutoFlush(tlfID TlfID) error {
+func (j *JournalServer) ResumeAutoFlush(ctx context.Context, tlfID TlfID) {
+	j.log.CDebugf(ctx, "Signaling resume for %s", tlfID)
 	bundle, ok := j.getBundle(tlfID)
 	if !ok {
 		j.log.CDebugf(ctx,
