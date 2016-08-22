@@ -289,6 +289,23 @@ func (j *JournalServer) ResumeAutoFlush(tlfID TlfID) error {
 	panic("Not implemented")
 }
 
+func (j *JournalServer) signalWork(ctx context.Context, tlfID TlfID) {
+	j.log.CDebugf(ctx, "Signaling work for %s", tlfID)
+	// This can happen if the journal is disabled right after some
+	// work has been done.
+	bundle, ok := j.getBundle(tlfID)
+	if !ok {
+		j.log.CDebugf(ctx,
+			"Could not find bundle for %s; dropping work signal",
+			tlfID)
+	}
+
+	select {
+	case bundle.hasWorkCh <- struct{}{}:
+	default:
+	}
+}
+
 // Flush flushes the write journal for the given TLF.
 func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	j.log.CDebugf(ctx, "Flushing journal for %s", tlfID)

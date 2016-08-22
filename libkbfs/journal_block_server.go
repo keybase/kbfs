@@ -44,8 +44,14 @@ func (j journalBlockServer) Put(
 	if ok {
 		bundle.lock.Lock()
 		defer bundle.lock.Unlock()
-		return bundle.blockJournal.putData(
+		err := bundle.blockJournal.putData(
 			ctx, id, context, buf, serverHalf)
+		if err != nil {
+			return err
+		}
+
+		j.jServer.signalWork(ctx, tlfID)
+		return nil
 	}
 
 	return j.BlockServer.Put(ctx, tlfID, id, context, buf, serverHalf)
@@ -67,7 +73,13 @@ func (j journalBlockServer) AddBlockReference(
 	if ok {
 		bundle.lock.Lock()
 		defer bundle.lock.Unlock()
-		return bundle.blockJournal.addReference(ctx, id, context)
+		err := bundle.blockJournal.addReference(ctx, id, context)
+		if err != nil {
+			return err
+		}
+
+		j.jServer.signalWork(ctx, tlfID)
+		return nil
 	}
 
 	return j.BlockServer.AddBlockReference(ctx, tlfID, id, context)
@@ -80,22 +92,21 @@ func (j journalBlockServer) RemoveBlockReferences(
 	_, ok := j.jServer.getBundle(tlfID)
 	bundle, ok := j.jServer.getBundle(tlfID)
 	if ok {
-		liveCounts, err := func() (map[BlockID]int, error) {
-			bundle.lock.Lock()
-			defer bundle.lock.Unlock()
-			// Don't remove the block data if we remove
-			// the last reference; we still need it to
-			// flush the initial put operation.
-			//
-			// TODO: It would be nice if we could detect
-			// that case and avoid having to flush the
-			// put.
-			return bundle.blockJournal.removeReferences(
-				ctx, contexts, false)
-		}()
+		bundle.lock.Lock()
+		defer bundle.lock.Unlock()
+		// Don't remove the block data if we remove the last
+		// reference; we still need it to flush the initial
+		// put operation.
+		//
+		// TODO: It would be nice if we could detect that case
+		// and avoid having to flush the put.
+		liveCounts, err := bundle.blockJournal.removeReferences(
+			ctx, contexts, false)
 		if err != nil {
 			return nil, err
 		}
+
+		j.jServer.signalWork(ctx, tlfID)
 
 		// TODO: Get server counts without making a
 		// RemoveBlockReferences call and merge it.
@@ -114,7 +125,13 @@ func (j journalBlockServer) ArchiveBlockReferences(
 	if ok {
 		bundle.lock.Lock()
 		defer bundle.lock.Unlock()
-		return bundle.blockJournal.archiveReferences(ctx, contexts)
+		err := bundle.blockJournal.archiveReferences(ctx, contexts)
+		if err != nil {
+			return err
+		}
+
+		j.jServer.signalWork(ctx, tlfID)
+		return nil
 	}
 
 	return j.BlockServer.ArchiveBlockReferences(ctx, tlfID, contexts)
