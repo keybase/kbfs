@@ -106,10 +106,16 @@ func (j *JournalServer) getBundle(tlfID TlfID) (*tlfJournalBundle, bool) {
 	return bundle, ok
 }
 
+// JournalAutoFlushStatus indicates whether a journal should be
+// auto-flushing or not.
 type JournalAutoFlushStatus int
 
 const (
+	// JournalAutoFlushDisabled indicates that the journal should
+	// not be auto-flushing.
 	JournalAutoFlushDisabled JournalAutoFlushStatus = iota
+	// JournalAutoFlushEnabled indicates that the journal should
+	// be auto-flushing.
 	JournalAutoFlushEnabled
 )
 
