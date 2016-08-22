@@ -220,8 +220,16 @@ func (j *JournalServer) Enable(
 
 	bundle := makeTlfJournalBundle(blockJournal, mdJournal)
 	j.tlfBundles[tlfID] = bundle
+
 	go j.autoFlush(tlfID, afs, bundle.hasWorkCh, bundle.pauseCh,
 		bundle.resumeCh, bundle.shutdownCh)
+
+	// Signal work to pick up any existing journal entries.
+	select {
+	case bundle.hasWorkCh <- struct{}{}:
+	default:
+	}
+
 	return nil
 }
 
