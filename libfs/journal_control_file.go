@@ -44,7 +44,7 @@ func (a JournalAction) Execute(
 	tlf libkbfs.TlfID) error {
 	switch a {
 	case JournalEnable:
-		err := jServer.Enable(ctx, tlf)
+		err := jServer.Enable(ctx, tlf, libkbfs.JournalAutoFlushEnabled)
 		if err != nil {
 			return err
 		}
