@@ -139,37 +139,37 @@
 		{
 			"checksumSHA1": "hajIhCr8Znf3CAx6HrkWMTzeoPE=",
 			"path": "github.com/keybase/client/go/auth",
-			"revision": "e6e56186edeb7b0acc7cfeee81d99c42643e8180",
-			"revisionTime": "2016-08-22T13:23:07-07:00"
+			"revision": "a49bc9e6eb4a3165ca43f03fb0321fcf9b5be0a7",
+			"revisionTime": "2016-08-22T12:28:47-07:00"
 		},
 		{
 			"path": "github.com/keybase/client/go/externals",
-			"revision": "e6e56186edeb7b0acc7cfeee81d99c42643e8180",
-			"revisionTime": "2016-08-22T13:23:07-07:00"
+			"revision": "a49bc9e6eb4a3165ca43f03fb0321fcf9b5be0a7",
+			"revisionTime": "2016-08-22T12:28:47-07:00"
 		},
 		{
 			"checksumSHA1": "v0Wur7mWA+MgfyuSCk6F7UkL9zo=",
 			"path": "github.com/keybase/client/go/kex2",
-			"revision": "e6e56186edeb7b0acc7cfeee81d99c42643e8180",
-			"revisionTime": "2016-08-22T13:23:07-07:00"
+			"revision": "a49bc9e6eb4a3165ca43f03fb0321fcf9b5be0a7",
+			"revisionTime": "2016-08-22T12:28:47-07:00"
 		},
 		{
 			"checksumSHA1": "6MFlG+YnM+N/hTDK7lzyVmN+Tzc=",
 			"path": "github.com/keybase/client/go/libkb",
-			"revision": "e6e56186edeb7b0acc7cfeee81d99c42643e8180",
-			"revisionTime": "2016-08-22T13:23:07-07:00"
+			"revision": "a49bc9e6eb4a3165ca43f03fb0321fcf9b5be0a7",
+			"revisionTime": "2016-08-22T12:28:47-07:00"
 		},
 		{
 			"checksumSHA1": "jgyp+kDYeVWZKxMqVO7cDA1FAy8=",
 			"path": "github.com/keybase/client/go/logger",
-			"revision": "e6e56186edeb7b0acc7cfeee81d99c42643e8180",
-			"revisionTime": "2016-08-22T13:23:07-07:00"
+			"revision": "a49bc9e6eb4a3165ca43f03fb0321fcf9b5be0a7",
+			"revisionTime": "2016-08-22T12:28:47-07:00"
 		},
 		{
 			"checksumSHA1": "bvhkBfa0vUX7Uvy3+RxL9f3WKDU=",
 			"path": "github.com/keybase/client/go/protocol",
-			"revision": "e6e56186edeb7b0acc7cfeee81d99c42643e8180",
-			"revisionTime": "2016-08-22T13:23:07-07:00"
+			"revision": "a49bc9e6eb4a3165ca43f03fb0321fcf9b5be0a7",
+			"revisionTime": "2016-08-22T12:28:47-07:00"
 		},
 		{
 			"path": "github.com/keybase/go-codec/codec",
