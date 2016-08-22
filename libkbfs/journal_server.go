@@ -288,13 +288,33 @@ func (j *JournalServer) autoFlush(
 // PauseAutoFlush pauses the background auto-flush goroutine, if it's
 // not already paused.
 func (j *JournalServer) PauseAutoFlush(tlfID TlfID) error {
-	panic("Not implemented")
+	bundle, ok := j.getBundle(tlfID)
+	if !ok {
+		j.log.CDebugf(ctx,
+			"Could not find bundle for %s; dropping pause signal",
+			tlfID)
+	}
+
+	select {
+	case bundle.pauseCh <- struct{}{}:
+	default:
+	}
 }
 
 // ResumeAutoFlush resumes the background auto-flush goroutine, if it's
 // not already resumed.
 func (j *JournalServer) ResumeAutoFlush(tlfID TlfID) error {
-	panic("Not implemented")
+	bundle, ok := j.getBundle(tlfID)
+	if !ok {
+		j.log.CDebugf(ctx,
+			"Could not find bundle for %s; dropping resume signal",
+			tlfID)
+	}
+
+	select {
+	case bundle.resumeCh <- struct{}{}:
+	default:
+	}
 }
 
 func (j *JournalServer) signalWork(ctx context.Context, tlfID TlfID) {
