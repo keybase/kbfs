@@ -188,6 +188,32 @@ func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID) (err error) {
 	return nil
 }
 
+func (j *JournalServer) autoFlush(
+	tlfID TlfID, hasWorkCh chan struct{}, shutdownCh chan struct{}) {
+	ctx := context.Background()
+	j.log.CDebugf(ctx, "Starting auto-flush goroutine for %s", tlfID)
+	for {
+		j.log.CDebugf(ctx, "Waiting for event for %s", tlfID)
+		select {
+		case <-hasWorkCh:
+			j.log.CDebugf(ctx, "Got work event for %s; flushing", tlfID)
+			err := j.Flush(ctx, tlfID)
+			if err != nil {
+				j.log.CWarningf(ctx,
+					"Error when flushing %s: %v", tlfID, err)
+			}
+
+			// TODO: Add pause case.
+
+		case <-shutdownCh:
+			j.log.CDebugf(ctx,
+				"Got shutdown event; stopping auto-flush goroutine for %s",
+				tlfID)
+			return
+		}
+	}
+}
+
 // Flush flushes the write journal for the given TLF.
 func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	j.log.CDebugf(ctx, "Flushing journal for %s", tlfID)
