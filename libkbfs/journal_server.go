@@ -200,6 +200,8 @@ func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID) (err error) {
 
 	bundle := makeTlfJournalBundle(blockJournal, mdJournal)
 	j.tlfBundles[tlfID] = bundle
+	go j.autoFlush(tlfID, bundle.hasWorkCh, bundle.pauseCh,
+		bundle.resumeCh, bundle.shutdownCh)
 	return nil
 }
 
