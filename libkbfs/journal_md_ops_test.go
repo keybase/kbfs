@@ -35,7 +35,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 		config.BlockServer(), config.MDOps())
 
 	ctx := context.Background()
-	err = jServer.EnableExistingJournals(ctx)
+	err = jServer.EnableExistingJournals(ctx, JournalAutoFlushDisabled)
 	require.NoError(t, err)
 	config.SetBlockCache(jServer.blockCache())
 	config.SetBlockServer(jServer.blockServer())
@@ -59,7 +59,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ImmutableRootMetadata{}, irmd)
 
-	err = jServer.Enable(ctx, id)
+	err = jServer.Enable(ctx, id, JournalAutoFlushDisabled)
 	require.NoError(t, err)
 
 	rmd := NewRootMetadata()

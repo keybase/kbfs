@@ -106,13 +106,31 @@ func (j *JournalServer) getBundle(tlfID TlfID) (*tlfJournalBundle, bool) {
 	return bundle, ok
 }
 
+type JournalAutoFlushStatus int
+
+const (
+	JournalAutoFlushDisabled JournalAutoFlushStatus = iota
+	JournalAutoFlushEnabled
+)
+
+func (afs JournalAutoFlushStatus) String() string {
+	switch afs {
+	case JournalAutoFlushEnabled:
+		return "Auto-flush enabled"
+	case JournalAutoFlushDisabled:
+		return "Auto-flush disabled"
+	default:
+		return fmt.Sprintf("JournalAutoFlushEnabled(%d)", afs)
+	}
+}
+
 // EnableExistingJournals turns on the write journal for all TLFs with
 // an existing journal. This must be the first thing done to a
 // JournalServer. Any returned error is fatal, and means that the
 // JournalServer must not be used.
 func (j *JournalServer) EnableExistingJournals(
-	ctx context.Context) (err error) {
-	j.log.CDebugf(ctx, "Enabling existing journals")
+	ctx context.Context, afs JournalAutoFlushStatus) (err error) {
+	j.log.CDebugf(ctx, "Enabling existing journals (%s)", afs)
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
@@ -140,7 +158,7 @@ func (j *JournalServer) EnableExistingJournals(
 			continue
 		}
 
-		err = j.Enable(ctx, tlfID)
+		err = j.Enable(ctx, tlfID, afs)
 		if err != nil {
 			// Don't treat per-TLF errors as fatal.
 			j.log.CWarningf(
@@ -154,8 +172,10 @@ func (j *JournalServer) EnableExistingJournals(
 }
 
 // Enable turns on the write journal for the given TLF.
-func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID) (err error) {
-	j.log.CDebugf(ctx, "Enabling journal for %s", tlfID)
+func (j *JournalServer) Enable(
+	ctx context.Context, tlfID TlfID,
+	afs JournalAutoFlushStatus) (err error) {
+	j.log.CDebugf(ctx, "Enabling journal for %s (%s)", tlfID, afs)
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
@@ -200,32 +220,20 @@ func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID) (err error) {
 
 	bundle := makeTlfJournalBundle(blockJournal, mdJournal)
 	j.tlfBundles[tlfID] = bundle
-	go j.autoFlush(tlfID, bundle.hasWorkCh, bundle.pauseCh,
+	go j.autoFlush(tlfID, afs, bundle.hasWorkCh, bundle.pauseCh,
 		bundle.resumeCh, bundle.shutdownCh)
 	return nil
 }
 
 func (j *JournalServer) autoFlush(
-	tlfID TlfID, hasWorkCh, pauseCh, resumeCh, shutdownCh chan struct{}) {
+	tlfID TlfID, afs JournalAutoFlushStatus,
+	hasWorkCh, pauseCh, resumeCh, shutdownCh chan struct{}) {
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", j.log)
-	paused := false
 	for {
-		j.log.CDebugf(ctx, "Waiting for events for %s (paused=%t)",
-			tlfID, paused)
-		if paused {
-			select {
-			case <-resumeCh:
-				j.log.CDebugf(ctx,
-					"Got resume event for %s", tlfID)
-				paused = false
-
-			case <-shutdownCh:
-				j.log.CDebugf(ctx,
-					"Got shutdown event for %s", tlfID)
-				return
-			}
-		} else {
+		j.log.CDebugf(ctx, "Waiting for events for %s (%s)", tlfID, afs)
+		switch afs {
+		case JournalAutoFlushEnabled:
 			select {
 			case <-hasWorkCh:
 				j.log.CDebugf(
@@ -240,15 +248,45 @@ func (j *JournalServer) autoFlush(
 			case <-pauseCh:
 				j.log.CDebugf(ctx,
 					"Got pause event for %s", tlfID)
-				paused = true
+				afs = JournalAutoFlushDisabled
 
 			case <-shutdownCh:
 				j.log.CDebugf(ctx,
 					"Got shutdown event for %s", tlfID)
 				return
 			}
+
+		case JournalAutoFlushDisabled:
+			select {
+			case <-resumeCh:
+				j.log.CDebugf(ctx,
+					"Got resume event for %s", tlfID)
+				afs = JournalAutoFlushEnabled
+
+			case <-shutdownCh:
+				j.log.CDebugf(ctx,
+					"Got shutdown event for %s", tlfID)
+				return
+			}
+
+		default:
+			j.log.CErrorf(
+				ctx, "Unknown JournalAutoFlushStatus %s", afs)
+			return
 		}
 	}
+}
+
+// PauseAutoFlush pauses the background auto-flush goroutine, if it's
+// not already paused.
+func (j *JournalServer) PauseAutoFlush(tlfID TlfID) error {
+	panic("Not implemented")
+}
+
+// ResumeAutoFlush resumes the background auto-flush goroutine, if it's
+// not already resumed.
+func (j *JournalServer) ResumeAutoFlush(tlfID TlfID) error {
+	panic("Not implemented")
 }
 
 // Flush flushes the write journal for the given TLF.
