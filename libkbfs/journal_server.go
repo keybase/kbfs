@@ -429,3 +429,15 @@ func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 		BlockOpCount:  blockOpCount,
 	}, nil
 }
+
+func (j *JournalServer) shutdown() {
+	j.log.CDebugf(context.Background(), "Shutting down journal")
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	for _, bundle := range j.tlfBundles {
+		select {
+		case bundle.shutdownCh <- struct{}{}:
+		default:
+		}
+	}
+}

@@ -119,3 +119,7 @@ func (j journalBlockServer) ArchiveBlockReferences(
 
 	return j.BlockServer.ArchiveBlockReferences(ctx, tlfID, contexts)
 }
+
+func (j journalBlockServer) Shutdown() {
+	j.jServer.shutdown()
+}
