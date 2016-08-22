@@ -362,6 +362,11 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID TlfID) (err error) {
 		return fmt.Errorf("Journal still has %d MD entries", length)
 	}
 
+	select {
+	case bundle.shutdownCh <- struct{}{}:
+	default:
+	}
+
 	j.log.CDebugf(ctx, "Disabled journal for %s", tlfID)
 
 	delete(j.tlfBundles, tlfID)
