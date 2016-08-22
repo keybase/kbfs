@@ -17,6 +17,9 @@ import (
 )
 
 type tlfJournalBundle struct {
+	hasWorkCh chan struct{}
+	stopCh    chan struct{}
+
 	// Protects all operations on blockJournal and mdJournal.
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
@@ -25,6 +28,16 @@ type tlfJournalBundle struct {
 
 	blockJournal *blockJournal
 	mdJournal    *mdJournal
+}
+
+func makeTlfJournalBundle(
+	blockJournal *blockJournal, mdJournal *mdJournal) *tlfJournalBundle {
+	return &tlfJournalBundle{
+		hasWorkCh:    make(chan struct{}, 1),
+		stopCh:       make(chan struct{}, 1),
+		blockJournal: blockJournal,
+		mdJournal:    mdJournal,
+	}
 }
 
 // JournalServerStatus represents the overall status of the
@@ -159,7 +172,6 @@ func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID) (err error) {
 	j.log.CDebugf(ctx, "Enabled journal for %s with path %s", tlfID, tlfDir)
 
 	log := j.config.MakeLogger("")
-	bundle := &tlfJournalBundle{}
 	blockJournal, err := makeBlockJournal(
 		ctx, j.config.Codec(), j.config.Crypto(), tlfDir, log)
 	if err != nil {
@@ -176,39 +188,35 @@ func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID) (err error) {
 		return err
 	}
 
-	bundle.blockJournal = blockJournal
 	mdJournal, err := makeMDJournal(
 		uid, key, j.config.Codec(), j.config.Crypto(), tlfDir, log)
 	if err != nil {
 		return err
 	}
 
-	bundle.mdJournal = mdJournal
+	bundle := makeTlfJournalBundle(blockJournal, mdJournal)
 	j.tlfBundles[tlfID] = bundle
 	return nil
 }
 
 func (j *JournalServer) autoFlush(
-	tlfID TlfID, hasWorkCh chan struct{}, shutdownCh chan struct{}) {
-	ctx := context.Background()
-	j.log.CDebugf(ctx, "Starting auto-flush goroutine for %s", tlfID)
+	tlfID TlfID, hasWorkCh chan struct{}, stopCh chan struct{}) {
+	ctx := ctxWithRandomID(
+		context.Background(), "journal-auto-flush", "1", j.log)
 	for {
-		j.log.CDebugf(ctx, "Waiting for event for %s", tlfID)
+		j.log.CDebugf(ctx, "Waiting for events for %s", tlfID)
 		select {
 		case <-hasWorkCh:
-			j.log.CDebugf(ctx, "Got work event for %s; flushing", tlfID)
+			j.log.CDebugf(ctx, "Got work event for %s", tlfID)
 			err := j.Flush(ctx, tlfID)
 			if err != nil {
 				j.log.CWarningf(ctx,
-					"Error when flushing %s: %v", tlfID, err)
+					"Error when flushing %s: %v",
+					tlfID, err)
 			}
 
-			// TODO: Add pause case.
-
-		case <-shutdownCh:
-			j.log.CDebugf(ctx,
-				"Got shutdown event; stopping auto-flush goroutine for %s",
-				tlfID)
+		case <-stopCh:
+			j.log.CDebugf(ctx, "Got stop event for %s", tlfID)
 			return
 		}
 	}
