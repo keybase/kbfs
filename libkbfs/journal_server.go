@@ -17,8 +17,10 @@ import (
 )
 
 type tlfJournalBundle struct {
-	hasWorkCh chan struct{}
-	stopCh    chan struct{}
+	hasWorkCh  chan struct{}
+	pauseCh    chan struct{}
+	resumeCh   chan struct{}
+	shutdownCh chan struct{}
 
 	// Protects all operations on blockJournal and mdJournal.
 	//
@@ -34,7 +36,9 @@ func makeTlfJournalBundle(
 	blockJournal *blockJournal, mdJournal *mdJournal) *tlfJournalBundle {
 	return &tlfJournalBundle{
 		hasWorkCh:    make(chan struct{}, 1),
-		stopCh:       make(chan struct{}, 1),
+		pauseCh:      make(chan struct{}, 1),
+		resumeCh:     make(chan struct{}, 1),
+		shutdownCh:   make(chan struct{}, 1),
 		blockJournal: blockJournal,
 		mdJournal:    mdJournal,
 	}
@@ -200,24 +204,47 @@ func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID) (err error) {
 }
 
 func (j *JournalServer) autoFlush(
-	tlfID TlfID, hasWorkCh chan struct{}, stopCh chan struct{}) {
+	tlfID TlfID, hasWorkCh, pauseCh, resumeCh, shutdownCh chan struct{}) {
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", j.log)
+	paused := false
 	for {
-		j.log.CDebugf(ctx, "Waiting for events for %s", tlfID)
-		select {
-		case <-hasWorkCh:
-			j.log.CDebugf(ctx, "Got work event for %s", tlfID)
-			err := j.Flush(ctx, tlfID)
-			if err != nil {
-				j.log.CWarningf(ctx,
-					"Error when flushing %s: %v",
-					tlfID, err)
-			}
+		j.log.CDebugf(ctx, "Waiting for events for %s (paused=%t)",
+			tlfID, paused)
+		if paused {
+			select {
+			case <-resumeCh:
+				j.log.CDebugf(ctx,
+					"Got resume event for %s", tlfID)
+				paused = false
 
-		case <-stopCh:
-			j.log.CDebugf(ctx, "Got stop event for %s", tlfID)
-			return
+			case <-shutdownCh:
+				j.log.CDebugf(ctx,
+					"Got shutdown event for %s", tlfID)
+				return
+			}
+		} else {
+			select {
+			case <-hasWorkCh:
+				j.log.CDebugf(
+					ctx, "Got work event for %s", tlfID)
+				err := j.Flush(ctx, tlfID)
+				if err != nil {
+					j.log.CWarningf(ctx,
+						"Error when flushing %s: %v",
+						tlfID, err)
+				}
+
+			case <-pauseCh:
+				j.log.CDebugf(ctx,
+					"Got pause event for %s", tlfID)
+				paused = true
+
+			case <-shutdownCh:
+				j.log.CDebugf(ctx,
+					"Got shutdown event for %s", tlfID)
+				return
+			}
 		}
 	}
 }
