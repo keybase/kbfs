@@ -44,6 +44,9 @@ func makeTlfJournalBundle(
 	}
 }
 
+// TODO: JournalServer isn't really a server, although it can create
+// objects that act as servers. Rename to JournalManager.
+
 // JournalServerStatus represents the overall status of the
 // JournalServer for display in diagnostics. It is suitable for
 // encoding directly as JSON.
