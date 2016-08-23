@@ -56,6 +56,10 @@ func (afs TLFJournalAutoFlushStatus) String() string {
 	}
 }
 
+// A tlfJournal contains all the journals for a TLF and controls the
+// synchronization between the objects that are adding to those
+// journals (via journalBlockServer or journalMDOps) and a background
+// goroutine that flushes journal entries to the servers.
 type tlfJournal struct {
 	tlfID               TlfID
 	config              tlfJournalConfig
@@ -63,12 +67,19 @@ type tlfJournal struct {
 	log                 logger.Logger
 	deferLog            logger.Logger
 
-	hasWorkCh  chan struct{}
-	pauseCh    chan struct{}
-	resumeCh   chan struct{}
-	shutdownCh chan struct{}
+	// All the channels below are used as simple on/off
+	// signals. They're buffered for one object, and all sends are
+	// asynchronous, so multiple sends get collapsed into one
+	// signal.
+	hasWorkCh      chan struct{}
+	needPauseCh    chan struct{}
+	needResumeCh   chan struct{}
+	needShutdownCh chan struct{}
 
 	// Protects all operations on blockJournal and mdJournal.
+	//
+	// TODO: Don't let flushing block put operations. See
+	// KBFS-1433.
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
@@ -113,9 +124,9 @@ func makeTlfJournal(
 		log:                 log,
 		deferLog:            log.CloneWithAddedDepth(1),
 		hasWorkCh:           make(chan struct{}, 1),
-		pauseCh:             make(chan struct{}, 1),
-		resumeCh:            make(chan struct{}, 1),
-		shutdownCh:          make(chan struct{}, 1),
+		needPauseCh:         make(chan struct{}, 1),
+		needResumeCh:        make(chan struct{}, 1),
+		needShutdownCh:      make(chan struct{}, 1),
 		blockJournal:        blockJournal,
 		mdJournal:           mdJournal,
 	}
@@ -150,12 +161,12 @@ func (j *tlfJournal) autoFlush(afs TLFJournalAutoFlushStatus) {
 						j.tlfID, err)
 				}
 
-			case <-j.pauseCh:
+			case <-j.needPauseCh:
 				j.log.CDebugf(ctx,
 					"Got pause event for %s", j.tlfID)
 				afs = TLFJournalAutoFlushDisabled
 
-			case <-j.shutdownCh:
+			case <-j.needShutdownCh:
 				j.log.CDebugf(ctx,
 					"Got shutdown event for %s", j.tlfID)
 				return
@@ -163,12 +174,12 @@ func (j *tlfJournal) autoFlush(afs TLFJournalAutoFlushStatus) {
 
 		case TLFJournalAutoFlushDisabled:
 			select {
-			case <-j.resumeCh:
+			case <-j.needResumeCh:
 				j.log.CDebugf(ctx,
 					"Got resume event for %s", j.tlfID)
 				afs = TLFJournalAutoFlushEnabled
 
-			case <-j.shutdownCh:
+			case <-j.needShutdownCh:
 				j.log.CDebugf(ctx,
 					"Got shutdown event for %s", j.tlfID)
 				return
@@ -229,14 +240,14 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 
 func (j *tlfJournal) pauseAutoFlush() {
 	select {
-	case j.pauseCh <- struct{}{}:
+	case j.needPauseCh <- struct{}{}:
 	default:
 	}
 }
 
 func (j *tlfJournal) resumeAutoFlush() {
 	select {
-	case j.resumeCh <- struct{}{}:
+	case j.needResumeCh <- struct{}{}:
 	default:
 	}
 }
@@ -439,7 +450,7 @@ func (j *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
 
 func (j *tlfJournal) shutdown() {
 	select {
-	case j.shutdownCh <- struct{}{}:
+	case j.needShutdownCh <- struct{}{}:
 	default:
 	}
 }
