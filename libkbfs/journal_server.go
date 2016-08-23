@@ -236,6 +236,13 @@ func (b *tlfJournalBundle) getJournalStatus() (TLFJournalStatus, error) {
 	}, nil
 }
 
+func (b *tlfJournalBundle) shutdown() {
+	select {
+	case b.shutdownCh <- struct{}{}:
+	default:
+	}
+}
+
 // TODO: JournalServer isn't really a server, although it can create
 // objects that act as servers. Rename to JournalManager.
 
@@ -422,12 +429,12 @@ func (j *JournalServer) Enable(
 	bundle := makeTlfJournalBundle(blockJournal, mdJournal)
 	j.tlfBundles[tlfID] = bundle
 
-	go j.autoFlush(tlfID, afs, b.hasWorkCh, b.pauseCh,
-		b.resumeCh, b.shutdownCh)
+	go j.autoFlush(tlfID, afs, bundle.hasWorkCh, bundle.pauseCh,
+		bundle.resumeCh, bundle.shutdownCh)
 
 	// Signal work to pick up any existing journal entries.
 	select {
-	case b.hasWorkCh <- struct{}{}:
+	case bundle.hasWorkCh <- struct{}{}:
 	default:
 	}
 
@@ -498,7 +505,7 @@ func (j *JournalServer) PauseAutoFlush(ctx context.Context, tlfID TlfID) {
 	}
 
 	select {
-	case b.pauseCh <- struct{}{}:
+	case bundle.pauseCh <- struct{}{}:
 	default:
 	}
 }
@@ -515,7 +522,7 @@ func (j *JournalServer) ResumeAutoFlush(ctx context.Context, tlfID TlfID) {
 	}
 
 	select {
-	case b.resumeCh <- struct{}{}:
+	case bundle.resumeCh <- struct{}{}:
 	default:
 	}
 }
@@ -532,7 +539,7 @@ func (j *JournalServer) signalWork(ctx context.Context, tlfID TlfID) {
 	}
 
 	select {
-	case b.hasWorkCh <- struct{}{}:
+	case bundle.hasWorkCh <- struct{}{}:
 	default:
 	}
 }
@@ -563,7 +570,7 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	// TODO: Parallelize block puts.
 
 	for {
-		flushed, err := b.flushOneBlockOp(
+		flushed, err := bundle.flushOneBlockOp(
 			ctx, j.delegateBlockServer, tlfID)
 		if err != nil {
 			return err
@@ -585,7 +592,7 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	}
 
 	for {
-		flushed, err := b.flushOneMDOp(
+		flushed, err := bundle.flushOneMDOp(
 			ctx, uid, key, j.config.Crypto(), j.config.MDServer())
 		if err != nil {
 			return err
@@ -621,7 +628,7 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID TlfID) (err error) {
 		return nil
 	}
 
-	blockEntryCount, mdEntryCount, err := b.getJournalEntryCounts()
+	blockEntryCount, mdEntryCount, err := bundle.getJournalEntryCounts()
 	if err != nil {
 		return err
 	}
@@ -632,10 +639,7 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID TlfID) (err error) {
 			blockEntryCount, mdEntryCount)
 	}
 
-	select {
-	case b.shutdownCh <- struct{}{}:
-	default:
-	}
+	bundle.shutdown()
 
 	j.log.CDebugf(ctx, "Disabled journal for %s", tlfID)
 
@@ -685,9 +689,6 @@ func (j *JournalServer) shutdown() {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	for _, bundle := range j.tlfBundles {
-		select {
-		case b.shutdownCh <- struct{}{}:
-		default:
-		}
+		bundle.shutdown()
 	}
 }
