@@ -81,6 +81,7 @@ func (bws bwState) String() string {
 // tlfJournalBWDelegate is used by tests to know what the background
 // goroutine is doing.
 type tlfJournalBWDelegate interface {
+	WrapContext(ctx context.Context) context.Context
 	OnNewState(ctx context.Context, bws bwState)
 	OnShutdown(ctx context.Context)
 }
@@ -181,6 +182,9 @@ func makeTLFJournal(
 func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", j.log)
+	if j.bwDelegate != nil {
+		ctx = j.bwDelegate.WrapContext(ctx)
+	}
 	defer func() {
 		if j.bwDelegate != nil {
 			j.bwDelegate.OnShutdown(ctx)
@@ -190,7 +194,7 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 	// TLFJournalBackgroundWorkEnabled and there's work being done
 	// in the background.
 	var errCh <-chan error
-	var bwCancel func()
+	var bwCancel context.CancelFunc
 	for {
 		switch {
 		case bws == TLFJournalBackgroundWorkEnabled && errCh != nil:

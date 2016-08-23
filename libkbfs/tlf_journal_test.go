@@ -5,9 +5,11 @@
 package libkbfs
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/stretchr/testify/assert"
@@ -16,28 +18,39 @@ import (
 )
 
 type testBWDelegate struct {
+	cancel     context.CancelFunc
 	stateCh    chan bwState
 	shutdownCh chan struct{}
 }
 
-func (d testBWDelegate) OnNewState(ctx context.Context, bws bwState) {
+func (d *testBWDelegate) WrapContext(ctx context.Context) context.Context {
+	if d.cancel != nil {
+		panic(fmt.Sprintf("WrapContext should only be called once"))
+	}
+	// Time out individual tests after 10 seconds.
+	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	d.cancel = cancel
+	return newCtx
+}
+
+func (d *testBWDelegate) OnNewState(ctx context.Context, bws bwState) {
 	d.stateCh <- bws
 }
 
-func (d testBWDelegate) OnShutdown(ctx context.Context) {
+func (d *testBWDelegate) OnShutdown(ctx context.Context) {
 	d.shutdownCh <- struct{}{}
 }
 
 func setupTLFJournalTest(t *testing.T) (
 	tempdir string, config Config, tlfJournal *tlfJournal,
-	delegate testBWDelegate) {
+	delegate *testBWDelegate) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "tlf_journal")
 	require.NoError(t, err)
 	config = MakeTestConfigOrBust(t, "test_user")
 	log := config.MakeLogger("")
 	ctx := context.Background()
 	tlfID := FakeTlfID(1, false)
-	delegate = testBWDelegate{
+	delegate = &testBWDelegate{
 		stateCh:    make(chan bwState),
 		shutdownCh: make(chan struct{}),
 	}
@@ -59,8 +72,9 @@ func setupTLFJournalTest(t *testing.T) (
 }
 
 func teardownTLFJournalTest(
-	t *testing.T, tlfJournal *tlfJournal, delegate testBWDelegate,
+	t *testing.T, tlfJournal *tlfJournal, delegate *testBWDelegate,
 	tempdir string, config Config) {
+	delegate.cancel()
 	tlfJournal.shutdown()
 	<-delegate.shutdownCh
 	select {
