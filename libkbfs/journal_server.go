@@ -54,6 +54,83 @@ func (b *tlfJournalBundle) getBlockDataWithContext(
 	return b.blockJournal.getDataWithContext(id, context)
 }
 
+func (b *tlfJournalBundle) putBlockData(
+	ctx context.Context, id BlockID, context BlockContext, buf []byte,
+	serverHalf BlockCryptKeyServerHalf) error {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	err := b.blockJournal.putData(ctx, id, context, buf, serverHalf)
+	if err != nil {
+		return err
+	}
+
+	select {
+	case b.hasWorkCh <- struct{}{}:
+	default:
+	}
+
+	return nil
+}
+
+func (b *tlfJournalBundle) addBlockReference(
+	ctx context.Context, id BlockID, context BlockContext) error {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	err := b.blockJournal.addReference(ctx, id, context)
+	if err != nil {
+		return err
+	}
+
+	select {
+	case b.hasWorkCh <- struct{}{}:
+	default:
+	}
+
+	return nil
+}
+
+func (b *tlfJournalBundle) removeBlockReferences(
+	ctx context.Context, contexts map[BlockID][]BlockContext) (
+	liveCounts map[BlockID]int, err error) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	// Don't remove the block data if we remove the last
+	// reference; we still need it to flush the initial put
+	// operation.
+	//
+	// TODO: It would be nice if we could detect that case and
+	// avoid having to flush the put.
+	liveCounts, err = b.blockJournal.removeReferences(
+		ctx, contexts, false)
+	if err != nil {
+		return nil, err
+	}
+
+	select {
+	case b.hasWorkCh <- struct{}{}:
+	default:
+	}
+
+	return liveCounts, nil
+}
+
+func (b *tlfJournalBundle) archiveBlockReferences(
+	ctx context.Context, contexts map[BlockID][]BlockContext) error {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	err := b.blockJournal.archiveReferences(ctx, contexts)
+	if err != nil {
+		return err
+	}
+
+	select {
+	case b.hasWorkCh <- struct{}{}:
+	default:
+	}
+
+	return nil
+}
+
 func (b *tlfJournalBundle) getMDHead(
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
 	ImmutableBareRootMetadata, error) {

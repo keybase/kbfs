@@ -17,36 +17,26 @@ var _ BlockServer = journalBlockServer{}
 func (j journalBlockServer) Get(
 	ctx context.Context, tlfID TlfID, id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
-	bundle, ok := j.jServer.getBundle(tlfID)
-	if !ok {
-		return j.BlockServer.Get(ctx, tlfID, id, context)
+	if bundle, ok := j.jServer.getBundle(tlfID); ok {
+		data, serverHalf, err := bundle.getBlockDataWithContext(
+			id, context)
+		if _, ok := err.(BServerErrorBlockNonExistent); ok {
+			return j.BlockServer.Get(ctx, tlfID, id, context)
+		} else if err != nil {
+			return nil, BlockCryptKeyServerHalf{}, err
+		}
+
+		return data, serverHalf, nil
 	}
 
-	data, serverHalf, err := bundle.getBlockDataWithContext(id, context)
-	if _, ok := err.(BServerErrorBlockNonExistent); ok {
-		return j.BlockServer.Get(ctx, tlfID, id, context)
-	} else if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	return data, serverHalf, nil
+	return j.BlockServer.Get(ctx, tlfID, id, context)
 }
 
 func (j journalBlockServer) Put(
 	ctx context.Context, tlfID TlfID, id BlockID, context BlockContext,
 	buf []byte, serverHalf BlockCryptKeyServerHalf) error {
-	bundle, ok := j.jServer.getBundle(tlfID)
-	if ok {
-		bundle.lock.Lock()
-		defer bundle.lock.Unlock()
-		err := bundle.blockJournal.putData(
-			ctx, id, context, buf, serverHalf)
-		if err != nil {
-			return err
-		}
-
-		j.jServer.signalWork(ctx, tlfID)
-		return nil
+	if bundle, ok := j.jServer.getBundle(tlfID); ok {
+		return bundle.putBlockData(ctx, id, context, buf, serverHalf)
 	}
 
 	return j.BlockServer.Put(ctx, tlfID, id, context, buf, serverHalf)
@@ -63,18 +53,8 @@ func (j journalBlockServer) AddBlockReference(
 		return BServerErrorBlockNonExistent{}
 	}
 
-	_, ok := j.jServer.getBundle(tlfID)
-	bundle, ok := j.jServer.getBundle(tlfID)
-	if ok {
-		bundle.lock.Lock()
-		defer bundle.lock.Unlock()
-		err := bundle.blockJournal.addReference(ctx, id, context)
-		if err != nil {
-			return err
-		}
-
-		j.jServer.signalWork(ctx, tlfID)
-		return nil
+	if bundle, ok := j.jServer.getBundle(tlfID); ok {
+		return bundle.addBlockReference(ctx, id, context)
 	}
 
 	return j.BlockServer.AddBlockReference(ctx, tlfID, id, context)
@@ -84,29 +64,10 @@ func (j journalBlockServer) RemoveBlockReferences(
 	ctx context.Context, tlfID TlfID,
 	contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
-	_, ok := j.jServer.getBundle(tlfID)
-	bundle, ok := j.jServer.getBundle(tlfID)
-	if ok {
-		bundle.lock.Lock()
-		defer bundle.lock.Unlock()
-		// Don't remove the block data if we remove the last
-		// reference; we still need it to flush the initial
-		// put operation.
-		//
-		// TODO: It would be nice if we could detect that case
-		// and avoid having to flush the put.
-		liveCounts, err := bundle.blockJournal.removeReferences(
-			ctx, contexts, false)
-		if err != nil {
-			return nil, err
-		}
-
-		j.jServer.signalWork(ctx, tlfID)
-
+	if bundle, ok := j.jServer.getBundle(tlfID); ok {
 		// TODO: Get server counts without making a
 		// RemoveBlockReferences call and merge it.
-
-		return liveCounts, nil
+		return bundle.removeBlockReferences(ctx, contexts)
 	}
 
 	return j.BlockServer.RemoveBlockReferences(ctx, tlfID, contexts)
@@ -115,18 +76,8 @@ func (j journalBlockServer) RemoveBlockReferences(
 func (j journalBlockServer) ArchiveBlockReferences(
 	ctx context.Context, tlfID TlfID,
 	contexts map[BlockID][]BlockContext) error {
-	_, ok := j.jServer.getBundle(tlfID)
-	bundle, ok := j.jServer.getBundle(tlfID)
-	if ok {
-		bundle.lock.Lock()
-		defer bundle.lock.Unlock()
-		err := bundle.blockJournal.archiveReferences(ctx, contexts)
-		if err != nil {
-			return err
-		}
-
-		j.jServer.signalWork(ctx, tlfID)
-		return nil
+	if bundle, ok := j.jServer.getBundle(tlfID); ok {
+		return bundle.archiveBlockReferences(ctx, contexts)
 	}
 
 	return j.BlockServer.ArchiveBlockReferences(ctx, tlfID, contexts)
