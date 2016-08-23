@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -51,6 +52,11 @@ func teardownTLFJournalTest(
 	tempdir string, config Config) {
 	tlfJournal.shutdown()
 	<-delegate.shutdownCh
+	select {
+	case bws := <-delegate.stateCh:
+		assert.Fail(t, "Unexpected state %s", bws)
+	default:
+	}
 	err := os.RemoveAll(tempdir)
 	require.NoError(t, err)
 	CheckConfigAndShutdown(t, config)
