@@ -287,16 +287,16 @@ func openSpecialFile(name string, folder *Folder) dokan.File {
 			action: libfs.JournalFlush,
 		}
 
-	case libfs.PauseJournalBGWorkFileName:
+	case libfs.PauseJournalBackgroundWorkFileName:
 		return &JournalControlFile{
 			folder: folder,
-			action: libfs.JournalPause,
+			action: libfs.JournalPauseBackgroundWork,
 		}
 
-	case libfs.ResumeJournalBGWorkFileName:
+	case libfs.ResumeJournalBackgroundWorkFileName:
 		return &JournalControlFile{
 			folder: folder,
-			action: libfs.JournalResume,
+			action: libfs.JournalResumeBackgroundWork,
 		}
 
 	case libfs.DisableJournalFileName:
