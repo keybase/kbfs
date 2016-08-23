@@ -90,8 +90,7 @@ func putBlock(t *testing.T, config Config, tlfJournal *tlfJournal) {
 
 func TestTLFJournalBasic(t *testing.T) {
 	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
-
-	// Put a block.
+	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
 
 	putBlock(t, config, tlfJournal)
 
@@ -101,18 +100,15 @@ func TestTLFJournalBasic(t *testing.T) {
 	require.Equal(t, bwBusy, bws)
 	bws = <-delegate.stateCh
 	require.Equal(t, bwIdle, bws)
-
-	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
 }
 
 func TestTLFJournalPauseResume(t *testing.T) {
 	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
 
 	tlfJournal.pauseBackgroundWork()
 	bws := <-delegate.stateCh
 	require.Equal(t, bwPaused, bws)
-
-	// Put a block.
 
 	putBlock(t, config, tlfJournal)
 
@@ -125,6 +121,57 @@ func TestTLFJournalPauseResume(t *testing.T) {
 	require.Equal(t, bwBusy, bws)
 	bws = <-delegate.stateCh
 	require.Equal(t, bwIdle, bws)
+}
 
+func TestTLFJournalPauseShutdown(t *testing.T) {
+	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
+
+	tlfJournal.pauseBackgroundWork()
+	bws := <-delegate.stateCh
+	require.Equal(t, bwPaused, bws)
+
+	putBlock(t, config, tlfJournal)
+
+	// Should still be able to shut down while paused.
+}
+
+type hangingBlockServer struct {
+	BlockServer
+}
+
+func (hangingBlockServer) Put(
+	ctx context.Context, tlfID TlfID, id BlockID, context BlockContext,
+	buf []byte, serverHalf BlockCryptKeyServerHalf) error {
+	// Hang until the context is cancelled.
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func TestTLFJournalBusyPause(t *testing.T) {
+	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
+
+	putBlock(t, config, tlfJournal)
+
+	bws := <-delegate.stateCh
+	require.Equal(t, bwBusy, bws)
+
+	// Should still be able to pause while busy.
+
+	tlfJournal.pauseBackgroundWork()
+	bws = <-delegate.stateCh
+	require.Equal(t, bwPaused, bws)
+}
+
+func TestTLFJournalBusyShutdown(t *testing.T) {
+	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
+
+	putBlock(t, config, tlfJournal)
+
+	bws := <-delegate.stateCh
+	require.Equal(t, bwBusy, bws)
+
+	// Should still be able to shut down while busy.
 }
