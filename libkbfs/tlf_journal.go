@@ -131,7 +131,7 @@ func makeTlfJournal(
 		mdJournal:           mdJournal,
 	}
 
-	go j.autoFlush(afs)
+	go j.doBackgroundWork(afs)
 
 	// Signal work to pick up any existing journal entries.
 	select {
@@ -143,11 +143,11 @@ func makeTlfJournal(
 	return j, nil
 }
 
-// autoFlush is the main function for the background auto-flush
-// goroutine.
+// doBackgroundWork is the main function for the background
+// goroutine. Currently it just does auto-flushing.
 //
 // TODO: Handle garbage collection too, somehow.
-func (j *tlfJournal) autoFlush(afs TLFJournalAutoFlushStatus) {
+func (j *tlfJournal) doBackgroundWork(afs TLFJournalAutoFlushStatus) {
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", j.log)
 	for {
@@ -199,6 +199,20 @@ func (j *tlfJournal) autoFlush(afs TLFJournalAutoFlushStatus) {
 	}
 }
 
+func (j *tlfJournal) pauseAutoFlush() {
+	select {
+	case j.needPauseCh <- struct{}{}:
+	default:
+	}
+}
+
+func (j *tlfJournal) resumeAutoFlush() {
+	select {
+	case j.needResumeCh <- struct{}{}:
+	default:
+	}
+}
+
 func (j *tlfJournal) flush(ctx context.Context) (err error) {
 	flushedBlockEntries := 0
 	flushedMDEntries := 0
@@ -244,16 +258,72 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 	return nil
 }
 
-func (j *tlfJournal) pauseAutoFlush() {
-	select {
-	case j.needPauseCh <- struct{}{}:
-	default:
-	}
+func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.blockJournal.flushOne(ctx, j.delegateBlockServer, j.tlfID)
 }
 
-func (j *tlfJournal) resumeAutoFlush() {
+func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
+	_, currentUID, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	currentVerifyingKey, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.mdJournal.flushOne(
+		ctx, currentUID, currentVerifyingKey, j.config.Crypto(),
+		j.config.MDServer())
+}
+
+func (j *tlfJournal) getJournalEntryCounts() (
+	blockEntryCount, mdEntryCount uint64, err error) {
+	j.lock.RLock()
+	defer j.lock.RUnlock()
+	blockEntryCount, err = j.blockJournal.length()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	mdEntryCount, err = j.mdJournal.length()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return blockEntryCount, mdEntryCount, nil
+}
+
+func (j *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
+	j.lock.RLock()
+	defer j.lock.RUnlock()
+	earliestRevision, err := j.mdJournal.readEarliestRevision()
+	if err != nil {
+		return TLFJournalStatus{}, err
+	}
+	latestRevision, err := j.mdJournal.readLatestRevision()
+	if err != nil {
+		return TLFJournalStatus{}, err
+	}
+	blockEntryCount, err := j.blockJournal.length()
+	if err != nil {
+		return TLFJournalStatus{}, err
+	}
+	return TLFJournalStatus{
+		RevisionStart: earliestRevision,
+		RevisionEnd:   latestRevision,
+		BlockOpCount:  blockEntryCount,
+	}, nil
+}
+
+func (j *tlfJournal) shutdown() {
 	select {
-	case j.needResumeCh <- struct{}{}:
+	case j.needShutdownCh <- struct{}{}:
 	default:
 	}
 }
@@ -389,74 +459,4 @@ func (j *tlfJournal) clearMDs(
 	defer j.lock.Unlock()
 	// No need to signal work in this case.
 	return j.mdJournal.clear(ctx, currentUID, currentVerifyingKey, bid)
-}
-
-func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
-	j.lock.Lock()
-	defer j.lock.Unlock()
-	return j.blockJournal.flushOne(ctx, j.delegateBlockServer, j.tlfID)
-}
-
-func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
-	_, currentUID, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	currentVerifyingKey, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	j.lock.Lock()
-	defer j.lock.Unlock()
-	return j.mdJournal.flushOne(
-		ctx, currentUID, currentVerifyingKey, j.config.Crypto(),
-		j.config.MDServer())
-}
-
-func (j *tlfJournal) getJournalEntryCounts() (
-	blockEntryCount, mdEntryCount uint64, err error) {
-	j.lock.RLock()
-	defer j.lock.RUnlock()
-	blockEntryCount, err = j.blockJournal.length()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	mdEntryCount, err = j.mdJournal.length()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return blockEntryCount, mdEntryCount, nil
-}
-
-func (j *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
-	j.lock.RLock()
-	defer j.lock.RUnlock()
-	earliestRevision, err := j.mdJournal.readEarliestRevision()
-	if err != nil {
-		return TLFJournalStatus{}, err
-	}
-	latestRevision, err := j.mdJournal.readLatestRevision()
-	if err != nil {
-		return TLFJournalStatus{}, err
-	}
-	blockEntryCount, err := j.blockJournal.length()
-	if err != nil {
-		return TLFJournalStatus{}, err
-	}
-	return TLFJournalStatus{
-		RevisionStart: earliestRevision,
-		RevisionEnd:   latestRevision,
-		BlockOpCount:  blockEntryCount,
-	}, nil
-}
-
-func (j *tlfJournal) shutdown() {
-	select {
-	case j.needShutdownCh <- struct{}{}:
-	default:
-	}
 }
