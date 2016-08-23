@@ -56,6 +56,13 @@ func (bws TLFJournalBackgroundWorkStatus) String() string {
 	}
 }
 
+// tlfJournalBWDelegate is used by tests to know what the background
+// goroutine is doing.
+type tlfJournalBWDelegate interface {
+	OnNewState(bws TLFJournalBackgroundWorkStatus, doingWork bool)
+	OnShutdown()
+}
+
 // A tlfJournal contains all the journals for a TLF and controls the
 // synchronization between the objects that are adding to those
 // journals (via journalBlockServer or journalMDOps) and a background
@@ -87,12 +94,15 @@ type tlfJournal struct {
 
 	blockJournal *blockJournal
 	mdJournal    *mdJournal
+
+	bwDelegate tlfJournalBWDelegate
 }
 
 func makeTLFJournal(
 	ctx context.Context, dir string, tlfID TlfID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, log logger.Logger,
-	bws TLFJournalBackgroundWorkStatus) (*tlfJournal, error) {
+	bws TLFJournalBackgroundWorkStatus,
+	bwDelegate tlfJournalBWDelegate) (*tlfJournal, error) {
 	tlfDir := filepath.Join(dir, tlfID.String())
 
 	blockJournal, err := makeBlockJournal(
@@ -129,6 +139,7 @@ func makeTLFJournal(
 		needShutdownCh:      make(chan struct{}, 1),
 		blockJournal:        blockJournal,
 		mdJournal:           mdJournal,
+		bwDelegate:          bwDelegate,
 	}
 
 	go j.doBackgroundWorkLoop(bws)
@@ -146,6 +157,11 @@ func makeTLFJournal(
 // doBackgroundWorkLoop is the main function for the background
 // goroutine. It just calls doBackgroundWork whenever there is work.
 func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
+	defer func() {
+		if j.bwDelegate != nil {
+			j.bwDelegate.OnShutdown()
+		}
+	}()
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", j.log)
 	// errCh and bwCancel are non-nil only when bws ==
@@ -154,14 +170,18 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 	var errCh <-chan error
 	var bwCancel func()
 	for {
-		j.log.CDebugf(ctx, "Waiting for events for %s (%s)",
-			j.tlfID, bws)
+		if j.bwDelegate != nil {
+			j.bwDelegate.OnNewState(bws, errCh != nil)
+		}
 		switch {
 		case bws == TLFJournalBackgroundWorkEnabled && errCh != nil:
-			needShutdown := false
 			// Busy state. We exit this state exactly when
 			// the background work is done, canceling it
 			// if necessary.
+			j.log.CDebugf(
+				ctx, "Waiting for background work to be done for %s",
+				j.tlfID)
+			needShutdown := false
 			select {
 			case err := <-errCh:
 				if err != nil {
@@ -190,6 +210,9 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 
 		case bws == TLFJournalBackgroundWorkEnabled && errCh == nil:
 			// Idle state.
+			j.log.CDebugf(
+				ctx, "Waiting for the work signal for %s",
+				j.tlfID)
 			select {
 			case <-j.hasWorkCh:
 				j.log.CDebugf(
@@ -211,6 +234,9 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 
 		case bws == TLFJournalBackgroundWorkPaused:
 			// Paused state.
+			j.log.CDebugf(
+				ctx, "Waiting to resume background work for %s",
+				j.tlfID)
 			select {
 			case <-j.needResumeCh:
 				j.log.CDebugf(ctx,

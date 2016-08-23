@@ -35,9 +35,9 @@ func setupJournalServerTest(t *testing.T) (
 
 func teardownJournalServerTest(
 	t *testing.T, tempdir string, config Config) {
+	CheckConfigAndShutdown(t, config)
 	err := os.RemoveAll(tempdir)
 	require.NoError(t, err)
-	CheckConfigAndShutdown(t, config)
 }
 
 func TestJournalServerRestart(t *testing.T) {
