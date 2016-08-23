@@ -131,7 +131,7 @@ func makeTlfJournal(
 		mdJournal:           mdJournal,
 	}
 
-	go j.doBackgroundWork(bws)
+	go j.doBackgroundWorkLoop(bws)
 
 	// Signal work to pick up any existing journal entries.
 	select {
@@ -143,28 +143,60 @@ func makeTlfJournal(
 	return j, nil
 }
 
-// doBackgroundWork is the main function for the background
-// goroutine. Currently it just does auto-flushing.
-//
-// TODO: Handle garbage collection too.
-func (j *tlfJournal) doBackgroundWork(bws TLFJournalBackgroundWorkStatus) {
+// doBackgroundWorkLoop is the main function for the background
+// goroutine. It just calls doBackgroundWork whenever there is work.
+func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", j.log)
+	// errCh and bwCancel are non-nil only when bws ==
+	// TLFJournalBackgroundWorkEnabled and there's work being done
+	// in the background.
+	var errCh <-chan error
+	var bwCancel func()
 	for {
 		j.log.CDebugf(ctx, "Waiting for events for %s (%s)",
 			j.tlfID, bws)
-		switch bws {
-		case TLFJournalBackgroundWorkEnabled:
+		switch {
+		case bws == TLFJournalBackgroundWorkEnabled && errCh != nil:
+			needShutdown := false
+			// Busy state. We exit this state exactly when
+			// the background work is done, canceling it
+			// if necessary.
+			select {
+			case err := <-errCh:
+				if err != nil {
+					j.log.CWarningf(ctx,
+						"Background work error for %s: %v",
+						j.tlfID, err)
+				}
+
+			case <-j.needPauseCh:
+				j.log.CDebugf(ctx,
+					"Got pause signal for %s", j.tlfID)
+				bws = TLFJournalBackgroundWorkPaused
+
+			case <-j.needShutdownCh:
+				j.log.CDebugf(ctx,
+					"Got shutdown signal for %s", j.tlfID)
+				needShutdown = true
+			}
+
+			errCh = nil
+			bwCancel()
+			bwCancel = nil
+			if needShutdown {
+				return
+			}
+
+		case bws == TLFJournalBackgroundWorkEnabled && errCh == nil:
+			// Idle state.
 			select {
 			case <-j.hasWorkCh:
 				j.log.CDebugf(
 					ctx, "Got work signal for %s", j.tlfID)
-				err := j.flush(ctx)
-				if err != nil {
-					j.log.CWarningf(ctx,
-						"Error when flushing %s: %v",
-						j.tlfID, err)
-				}
+				bwCtx, cancel := context.WithCancel(ctx)
+				errCh = j.doBackgroundWork(bwCtx)
+				bwCancel = cancel
 
 			case <-j.needPauseCh:
 				j.log.CDebugf(ctx,
@@ -177,7 +209,8 @@ func (j *tlfJournal) doBackgroundWork(bws TLFJournalBackgroundWorkStatus) {
 				return
 			}
 
-		case TLFJournalBackgroundWorkPaused:
+		case bws == TLFJournalBackgroundWorkPaused:
+			// Paused state.
 			select {
 			case <-j.needResumeCh:
 				j.log.CDebugf(ctx,
@@ -197,6 +230,18 @@ func (j *tlfJournal) doBackgroundWork(bws TLFJournalBackgroundWorkStatus) {
 			return
 		}
 	}
+}
+
+// doBackgroundWork currently only does auto-flushing. It assumes that
+// ctx is canceled when the background processing should stop.
+//
+// TODO: Handle garbage collection too.
+func (j *tlfJournal) doBackgroundWork(ctx context.Context) <-chan error {
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- j.flush(ctx)
+	}()
+	return errCh
 }
 
 // We don't guarantee that pause/resume requests will be processed in
