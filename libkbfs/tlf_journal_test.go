@@ -73,13 +73,9 @@ func teardownTLFJournalTest(
 	CheckConfigAndShutdown(t, config)
 }
 
-func TestTLFJournalBasic(t *testing.T) {
-	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
-
+func putBlock(t *testing.T, config Config, tlfJournal *tlfJournal) {
 	ctx := context.Background()
 	crypto := config.Crypto()
-
-	// Put a block.
 
 	uid := keybase1.MakeTestUID(1)
 	data := []byte{1, 2, 3, 4}
@@ -90,9 +86,41 @@ func TestTLFJournalBasic(t *testing.T) {
 	require.NoError(t, err)
 	err = tlfJournal.putBlockData(ctx, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
+}
+
+func TestTLFJournalBasic(t *testing.T) {
+	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
+
+	// Put a block.
+
+	putBlock(t, config, tlfJournal)
 
 	// Wait for it to be processed.
 
+	bws := <-delegate.stateCh
+	require.Equal(t, bwBusy, bws)
+	bws = <-delegate.stateCh
+	require.Equal(t, bwIdle, bws)
+
+	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
+}
+
+func TestTLFJournalPauseResume(t *testing.T) {
+	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
+
+	tlfJournal.pauseBackgroundWork()
+	bws := <-delegate.stateCh
+	require.Equal(t, bwPaused, bws)
+
+	// Put a block.
+
+	putBlock(t, config, tlfJournal)
+
+	// Unpause and wait for it to be processed.
+
+	tlfJournal.resumeBackgroundWork()
+	bws = <-delegate.stateCh
+	require.Equal(t, bwIdle, bws)
 	bws = <-delegate.stateCh
 	require.Equal(t, bwBusy, bws)
 	bws = <-delegate.stateCh
