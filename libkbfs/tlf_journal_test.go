@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -18,39 +17,40 @@ import (
 )
 
 type testBWDelegate struct {
-	cancel     context.CancelFunc
+	// Store a context so that the tlfJournal's background context
+	// will also obey the test timeout.
+	testCtx    context.Context
 	stateCh    chan bwState
 	shutdownCh chan struct{}
 }
 
-func (d *testBWDelegate) WrapContext(ctx context.Context) context.Context {
-	if d.cancel != nil {
-		panic(fmt.Sprintf("WrapContext should only be called once"))
-	}
-	// Time out individual tests after 10 seconds.
-	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	d.cancel = cancel
-	return newCtx
+func (d testBWDelegate) GetBackgroundContext() context.Context {
+	return d.testCtx
 }
 
-func (d *testBWDelegate) OnNewState(ctx context.Context, bws bwState) {
+func (d testBWDelegate) OnNewState(ctx context.Context, bws bwState) {
 	d.stateCh <- bws
 }
 
-func (d *testBWDelegate) OnShutdown(ctx context.Context) {
+func (d testBWDelegate) OnShutdown(ctx context.Context) {
 	d.shutdownCh <- struct{}{}
 }
 
 func setupTLFJournalTest(t *testing.T) (
-	tempdir string, config Config, tlfJournal *tlfJournal,
-	delegate *testBWDelegate) {
+	tempdir string, config Config, ctx context.Context,
+	cancel context.CancelFunc, tlfJournal *tlfJournal,
+	delegate testBWDelegate) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "tlf_journal")
 	require.NoError(t, err)
 	config = MakeTestConfigOrBust(t, "test_user")
 	log := config.MakeLogger("")
-	ctx := context.Background()
+
+	// Time out individual tests after 10 seconds.
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+
 	tlfID := FakeTlfID(1, false)
-	delegate = &testBWDelegate{
+	delegate = testBWDelegate{
+		testCtx:    ctx,
 		stateCh:    make(chan bwState),
 		shutdownCh: make(chan struct{}),
 	}
@@ -68,13 +68,14 @@ func setupTLFJournalTest(t *testing.T) (
 	bws = <-delegate.stateCh
 	require.Equal(t, bwIdle, bws)
 
-	return tempdir, config, tlfJournal, delegate
+	return tempdir, config, ctx, cancel, tlfJournal, delegate
 }
 
 func teardownTLFJournalTest(
-	t *testing.T, tlfJournal *tlfJournal, delegate *testBWDelegate,
+	t *testing.T, cancel context.CancelFunc,
+	tlfJournal *tlfJournal, delegate testBWDelegate,
 	tempdir string, config Config) {
-	delegate.cancel()
+	cancel()
 	tlfJournal.shutdown()
 	<-delegate.shutdownCh
 	select {
@@ -87,8 +88,8 @@ func teardownTLFJournalTest(
 	CheckConfigAndShutdown(t, config)
 }
 
-func putBlock(t *testing.T, config Config, tlfJournal *tlfJournal) {
-	ctx := context.Background()
+func putBlock(ctx context.Context,
+	t *testing.T, config Config, tlfJournal *tlfJournal) {
 	crypto := config.Crypto()
 
 	uid := keybase1.MakeTestUID(1)
@@ -103,10 +104,12 @@ func putBlock(t *testing.T, config Config, tlfJournal *tlfJournal) {
 }
 
 func TestTLFJournalBasic(t *testing.T) {
-	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
-	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(
+		t, cancel, tlfJournal, delegate, tempdir, config)
 
-	putBlock(t, config, tlfJournal)
+	putBlock(ctx, t, config, tlfJournal)
 
 	// Wait for it to be processed.
 
@@ -117,14 +120,16 @@ func TestTLFJournalBasic(t *testing.T) {
 }
 
 func TestTLFJournalPauseResume(t *testing.T) {
-	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
-	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(
+		t, cancel, tlfJournal, delegate, tempdir, config)
 
 	tlfJournal.pauseBackgroundWork()
 	bws := <-delegate.stateCh
 	require.Equal(t, bwPaused, bws)
 
-	putBlock(t, config, tlfJournal)
+	putBlock(ctx, t, config, tlfJournal)
 
 	// Unpause and wait for it to be processed.
 
@@ -138,14 +143,16 @@ func TestTLFJournalPauseResume(t *testing.T) {
 }
 
 func TestTLFJournalPauseShutdown(t *testing.T) {
-	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
-	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(
+		t, cancel, tlfJournal, delegate, tempdir, config)
 
 	tlfJournal.pauseBackgroundWork()
 	bws := <-delegate.stateCh
 	require.Equal(t, bwPaused, bws)
 
-	putBlock(t, config, tlfJournal)
+	putBlock(ctx, t, config, tlfJournal)
 
 	// Should still be able to shut down while paused.
 }
@@ -163,10 +170,12 @@ func (hangingBlockServer) Put(
 }
 
 func TestTLFJournalBusyPause(t *testing.T) {
-	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
-	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(
+		t, cancel, tlfJournal, delegate, tempdir, config)
 
-	putBlock(t, config, tlfJournal)
+	putBlock(ctx, t, config, tlfJournal)
 
 	bws := <-delegate.stateCh
 	require.Equal(t, bwBusy, bws)
@@ -179,10 +188,12 @@ func TestTLFJournalBusyPause(t *testing.T) {
 }
 
 func TestTLFJournalBusyShutdown(t *testing.T) {
-	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
-	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(
+		t, cancel, tlfJournal, delegate, tempdir, config)
 
-	putBlock(t, config, tlfJournal)
+	putBlock(ctx, t, config, tlfJournal)
 
 	bws := <-delegate.stateCh
 	require.Equal(t, bwBusy, bws)

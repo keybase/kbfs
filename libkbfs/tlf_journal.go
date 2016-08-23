@@ -79,9 +79,10 @@ func (bws bwState) String() string {
 }
 
 // tlfJournalBWDelegate is used by tests to know what the background
-// goroutine is doing.
+// goroutine is doing, and also to enforce a timeout (via the
+// context).
 type tlfJournalBWDelegate interface {
-	WrapContext(ctx context.Context) context.Context
+	GetBackgroundContext() context.Context
 	OnNewState(ctx context.Context, bws bwState)
 	OnShutdown(ctx context.Context)
 }
@@ -180,11 +181,11 @@ func makeTLFJournal(
 // doBackgroundWorkLoop is the main function for the background
 // goroutine. It just calls doBackgroundWork whenever there is work.
 func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
-	ctx := ctxWithRandomID(
-		context.Background(), "journal-auto-flush", "1", j.log)
+	ctx := context.Background()
 	if j.bwDelegate != nil {
-		ctx = j.bwDelegate.WrapContext(ctx)
+		ctx = j.bwDelegate.GetBackgroundContext()
 	}
+	ctx = ctxWithRandomID(ctx, "journal-auto-flush", "1", j.log)
 	defer func() {
 		if j.bwDelegate != nil {
 			j.bwDelegate.OnShutdown(ctx)
