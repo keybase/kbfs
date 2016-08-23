@@ -14,6 +14,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+// tlfJournalConfig is the subset of the Config interface needed by
+// tlfJournal.
 type tlfJournalConfig interface {
 	Codec() Codec
 	Crypto() Crypto
@@ -54,7 +56,7 @@ func (afs JournalAutoFlushStatus) String() string {
 	}
 }
 
-type tlfJournalBundle struct {
+type tlfJournal struct {
 	tlfID               TlfID
 	config              tlfJournalConfig
 	delegateBlockServer BlockServer
@@ -79,7 +81,7 @@ type tlfJournalBundle struct {
 func makeTlfJournalBundle(
 	ctx context.Context, dir string, tlfID TlfID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, log logger.Logger,
-	afs JournalAutoFlushStatus) (*tlfJournalBundle, error) {
+	afs JournalAutoFlushStatus) (*tlfJournal, error) {
 	tlfDir := filepath.Join(dir, tlfID.String())
 
 	blockJournal, err := makeBlockJournal(
@@ -104,7 +106,7 @@ func makeTlfJournalBundle(
 		return nil, err
 	}
 
-	b := &tlfJournalBundle{
+	b := &tlfJournal{
 		tlfID:               tlfID,
 		config:              config,
 		delegateBlockServer: delegateBlockServer,
@@ -130,7 +132,7 @@ func makeTlfJournalBundle(
 	return b, nil
 }
 
-func (b *tlfJournalBundle) autoFlush(afs JournalAutoFlushStatus) {
+func (b *tlfJournal) autoFlush(afs JournalAutoFlushStatus) {
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", b.log)
 	for {
@@ -180,7 +182,7 @@ func (b *tlfJournalBundle) autoFlush(afs JournalAutoFlushStatus) {
 	}
 }
 
-func (b *tlfJournalBundle) flush(ctx context.Context) (err error) {
+func (b *tlfJournal) flush(ctx context.Context) (err error) {
 	flushedBlockEntries := 0
 	flushedMDEntries := 0
 	defer func() {
@@ -225,21 +227,21 @@ func (b *tlfJournalBundle) flush(ctx context.Context) (err error) {
 	return nil
 }
 
-func (b *tlfJournalBundle) pauseAutoFlush() {
+func (b *tlfJournal) pauseAutoFlush() {
 	select {
 	case b.pauseCh <- struct{}{}:
 	default:
 	}
 }
 
-func (b *tlfJournalBundle) resumeAutoFlush() {
+func (b *tlfJournal) resumeAutoFlush() {
 	select {
 	case b.resumeCh <- struct{}{}:
 	default:
 	}
 }
 
-func (b *tlfJournalBundle) getBlockDataWithContext(
+func (b *tlfJournal) getBlockDataWithContext(
 	id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
 	b.lock.RLock()
@@ -247,7 +249,7 @@ func (b *tlfJournalBundle) getBlockDataWithContext(
 	return b.blockJournal.getDataWithContext(id, context)
 }
 
-func (b *tlfJournalBundle) putBlockData(
+func (b *tlfJournal) putBlockData(
 	ctx context.Context, id BlockID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
 	b.lock.Lock()
@@ -265,7 +267,7 @@ func (b *tlfJournalBundle) putBlockData(
 	return nil
 }
 
-func (b *tlfJournalBundle) addBlockReference(
+func (b *tlfJournal) addBlockReference(
 	ctx context.Context, id BlockID, context BlockContext) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -282,7 +284,7 @@ func (b *tlfJournalBundle) addBlockReference(
 	return nil
 }
 
-func (b *tlfJournalBundle) removeBlockReferences(
+func (b *tlfJournal) removeBlockReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
 	b.lock.Lock()
@@ -307,7 +309,7 @@ func (b *tlfJournalBundle) removeBlockReferences(
 	return liveCounts, nil
 }
 
-func (b *tlfJournalBundle) archiveBlockReferences(
+func (b *tlfJournal) archiveBlockReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -324,7 +326,7 @@ func (b *tlfJournalBundle) archiveBlockReferences(
 	return nil
 }
 
-func (b *tlfJournalBundle) getMDHead(
+func (b *tlfJournal) getMDHead(
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
 	ImmutableBareRootMetadata, error) {
 	b.lock.RLock()
@@ -332,7 +334,7 @@ func (b *tlfJournalBundle) getMDHead(
 	return b.mdJournal.getHead(currentUID, currentVerifyingKey)
 }
 
-func (b *tlfJournalBundle) getMDRange(
+func (b *tlfJournal) getMDRange(
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
 	start, stop MetadataRevision) (
 	[]ImmutableBareRootMetadata, error) {
@@ -342,7 +344,7 @@ func (b *tlfJournalBundle) getMDRange(
 		currentUID, currentVerifyingKey, start, stop)
 }
 
-func (b *tlfJournalBundle) putMD(
+func (b *tlfJournal) putMD(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, signer cryptoSigner,
 	ekg encryptionKeyGetter, bsplit BlockSplitter, rmd *RootMetadata) (
@@ -363,7 +365,7 @@ func (b *tlfJournalBundle) putMD(
 	return mdID, nil
 }
 
-func (b *tlfJournalBundle) clearMDs(
+func (b *tlfJournal) clearMDs(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, bid BranchID) error {
 	b.lock.Lock()
@@ -372,13 +374,13 @@ func (b *tlfJournalBundle) clearMDs(
 	return b.mdJournal.clear(ctx, currentUID, currentVerifyingKey, bid)
 }
 
-func (b *tlfJournalBundle) flushOneBlockOp(ctx context.Context) (bool, error) {
+func (b *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	return b.blockJournal.flushOne(ctx, b.delegateBlockServer, b.tlfID)
 }
 
-func (b *tlfJournalBundle) flushOneMDOp(ctx context.Context) (bool, error) {
+func (b *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 	_, currentUID, err := b.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return false, err
@@ -396,7 +398,7 @@ func (b *tlfJournalBundle) flushOneMDOp(ctx context.Context) (bool, error) {
 		b.config.MDServer())
 }
 
-func (b *tlfJournalBundle) getJournalEntryCounts() (
+func (b *tlfJournal) getJournalEntryCounts() (
 	blockEntryCount, mdEntryCount uint64, err error) {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
@@ -413,7 +415,7 @@ func (b *tlfJournalBundle) getJournalEntryCounts() (
 	return blockEntryCount, mdEntryCount, nil
 }
 
-func (b *tlfJournalBundle) getJournalStatus() (TLFJournalStatus, error) {
+func (b *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 	earliestRevision, err := b.mdJournal.readEarliestRevision()
@@ -435,7 +437,7 @@ func (b *tlfJournalBundle) getJournalStatus() (TLFJournalStatus, error) {
 	}, nil
 }
 
-func (b *tlfJournalBundle) shutdown() {
+func (b *tlfJournal) shutdown() {
 	select {
 	case b.shutdownCh <- struct{}{}:
 	default:

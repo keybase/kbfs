@@ -45,7 +45,7 @@ type JournalServer struct {
 	delegateMDOps       MDOps
 
 	lock       sync.RWMutex
-	tlfBundles map[TlfID]*tlfJournalBundle
+	tlfBundles map[TlfID]*tlfJournal
 }
 
 func makeJournalServer(
@@ -59,12 +59,12 @@ func makeJournalServer(
 		delegateBlockCache:  bcache,
 		delegateBlockServer: bserver,
 		delegateMDOps:       mdOps,
-		tlfBundles:          make(map[TlfID]*tlfJournalBundle),
+		tlfBundles:          make(map[TlfID]*tlfJournal),
 	}
 	return &jServer
 }
 
-func (j *JournalServer) getBundle(tlfID TlfID) (*tlfJournalBundle, bool) {
+func (j *JournalServer) getBundle(tlfID TlfID) (*tlfJournal, bool) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
 	bundle, ok := j.tlfBundles[tlfID]
