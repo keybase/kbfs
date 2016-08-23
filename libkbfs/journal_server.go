@@ -133,13 +133,12 @@ func (j *JournalServer) Enable(
 
 	j.lock.Lock()
 	defer j.lock.Unlock()
-	_, ok := j.tlfJournals[tlfID]
-	if ok {
+	if _, ok := j.tlfJournals[tlfID]; ok {
 		j.log.CDebugf(ctx, "Journal already enabled for %s", tlfID)
 		return nil
 	}
 
-	tlfJournal, err := makeTlfJournal(ctx, j.dir, tlfID, j.config,
+	tlfJournal, err := makeTLFJournal(ctx, j.dir, tlfID, j.config,
 		j.delegateBlockServer, j.log, afs)
 	if err != nil {
 		return err
@@ -153,40 +152,39 @@ func (j *JournalServer) Enable(
 // not already paused.
 func (j *JournalServer) PauseBackgroundWork(ctx context.Context, tlfID TlfID) {
 	j.log.CDebugf(ctx, "Signaling pause for %s", tlfID)
-	tlfJournal, ok := j.getTLFJournal(tlfID)
-	if !ok {
-		j.log.CDebugf(ctx,
-			"Could not find journal for %s; dropping pause signal",
-			tlfID)
+	if tlfJournal, ok := j.getTLFJournal(tlfID); ok {
+		tlfJournal.pauseBackgroundWork()
+		return
 	}
 
-	tlfJournal.pauseBackgroundWork()
+	j.log.CDebugf(ctx,
+		"Could not find journal for %s; dropping pause signal",
+		tlfID)
 }
 
 // ResumeBackgroundWork resumes the background auto-flush goroutine, if it's
 // not already resumed.
 func (j *JournalServer) ResumeBackgroundWork(ctx context.Context, tlfID TlfID) {
 	j.log.CDebugf(ctx, "Signaling resume for %s", tlfID)
-	tlfJournal, ok := j.getTLFJournal(tlfID)
-	if !ok {
-		j.log.CDebugf(ctx,
-			"Could not find journal for %s; dropping resume signal",
-			tlfID)
+	if tlfJournal, ok := j.getTLFJournal(tlfID); ok {
+		tlfJournal.resumeBackgroundWork()
+		return
 	}
 
-	tlfJournal.resumeBackgroundWork()
+	j.log.CDebugf(ctx,
+		"Could not find journal for %s; dropping resume signal",
+		tlfID)
 }
 
 // Flush flushes the write journal for the given TLF.
 func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	j.log.CDebugf(ctx, "Flushing journal for %s", tlfID)
-	tlfJournal, ok := j.getTLFJournal(tlfID)
-	if !ok {
-		j.log.CDebugf(ctx, "Journal not enabled for %s", tlfID)
-		return nil
+	if tlfJournal, ok := j.getTLFJournal(tlfID); ok {
+		return tlfJournal.flush(ctx)
 	}
 
-	return tlfJournal.flush(ctx)
+	j.log.CDebugf(ctx, "Journal not enabled for %s", tlfID)
+	return nil
 }
 
 // Disable turns off the write journal for the given TLF.

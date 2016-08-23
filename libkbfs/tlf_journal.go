@@ -89,7 +89,7 @@ type tlfJournal struct {
 	mdJournal    *mdJournal
 }
 
-func makeTlfJournal(
+func makeTLFJournal(
 	ctx context.Context, dir string, tlfID TlfID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, log logger.Logger,
 	bws TLFJournalBackgroundWorkStatus) (*tlfJournal, error) {
