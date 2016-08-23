@@ -162,14 +162,25 @@ func TestTLFJournalPauseShutdown(t *testing.T) {
 
 type hangingBlockServer struct {
 	BlockServer
+	// Closed on put.
+	onPutCh chan struct{}
 }
 
-func (hangingBlockServer) Put(
+func (bs hangingBlockServer) Put(
 	ctx context.Context, tlfID TlfID, id BlockID, context BlockContext,
 	buf []byte, serverHalf BlockCryptKeyServerHalf) error {
+	close(bs.onPutCh)
 	// Hang until the context is cancelled.
 	<-ctx.Done()
 	return ctx.Err()
+}
+
+func (bs hangingBlockServer) waitForPut(ctx context.Context, t *testing.T) {
+	select {
+	case <-bs.onPutCh:
+	case <-ctx.Done():
+		require.FailNow(t, ctx.Err().Error())
+	}
 }
 
 func TestTLFJournalBusyPause(t *testing.T) {
@@ -178,11 +189,13 @@ func TestTLFJournalBusyPause(t *testing.T) {
 	defer teardownTLFJournalTest(
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
-	tlfJournal.delegateBlockServer =
-		hangingBlockServer{tlfJournal.delegateBlockServer}
+	bs := hangingBlockServer{tlfJournal.delegateBlockServer,
+		make(chan struct{})}
+	tlfJournal.delegateBlockServer = bs
 
 	putBlock(ctx, t, config, tlfJournal)
 
+	bs.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, t, bwBusy)
 
 	// Should still be able to pause while busy.
@@ -197,11 +210,13 @@ func TestTLFJournalBusyShutdown(t *testing.T) {
 	defer teardownTLFJournalTest(
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
-	tlfJournal.delegateBlockServer =
-		hangingBlockServer{tlfJournal.delegateBlockServer}
+	bs := hangingBlockServer{tlfJournal.delegateBlockServer,
+		make(chan struct{})}
+	tlfJournal.delegateBlockServer = bs
 
 	putBlock(ctx, t, config, tlfJournal)
 
+	bs.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, t, bwBusy)
 
 	// Should still be able to shut down while busy.
