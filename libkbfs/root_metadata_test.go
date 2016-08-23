@@ -471,8 +471,9 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 
 	// Copy bit unset.
 	newRmd := newRootMetadataOrBust(t, id, h)
+	// XXX TODO: pass reader key bundles
 	ok, err := newRmd.bareMd.IsValidRekeyRequest(
-		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter())
+		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -496,8 +497,9 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 		t.Fatal(err)
 	}
 	newRmd.SetWriterMetadataSigInfo(sigInfo2)
+	// XXX TODO: pass reader key bundles
 	ok, err = newRmd.bareMd.IsValidRekeyRequest(
-		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter())
+		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -507,8 +509,9 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 
 	// Replace with copied signature.
 	newRmd.SetWriterMetadataSigInfo(sigInfo)
+	// XXX TODO: pass readerkey bundles
 	ok, err = newRmd.bareMd.IsValidRekeyRequest(
-		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter())
+		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
