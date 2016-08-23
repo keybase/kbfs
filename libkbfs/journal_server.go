@@ -170,6 +170,20 @@ func (b *tlfJournalBundle) flush(ctx context.Context) (err error) {
 	return nil
 }
 
+func (b *tlfJournalBundle) pauseAutoFlush() {
+	select {
+	case b.pauseCh <- struct{}{}:
+	default:
+	}
+}
+
+func (b *tlfJournalBundle) resumeAutoFlush() {
+	select {
+	case b.resumeCh <- struct{}{}:
+	default:
+	}
+}
+
 func (b *tlfJournalBundle) getBlockDataWithContext(
 	id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
@@ -574,10 +588,7 @@ func (j *JournalServer) PauseAutoFlush(ctx context.Context, tlfID TlfID) {
 			tlfID)
 	}
 
-	select {
-	case bundle.pauseCh <- struct{}{}:
-	default:
-	}
+	bundle.pauseAutoFlush()
 }
 
 // ResumeAutoFlush resumes the background auto-flush goroutine, if it's
@@ -591,10 +602,7 @@ func (j *JournalServer) ResumeAutoFlush(ctx context.Context, tlfID TlfID) {
 			tlfID)
 	}
 
-	select {
-	case bundle.resumeCh <- struct{}{}:
-	default:
-	}
+	bundle.resumeAutoFlush()
 }
 
 // Flush flushes the write journal for the given TLF.
