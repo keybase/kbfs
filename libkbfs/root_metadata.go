@@ -131,15 +131,23 @@ func (md *RootMetadata) clearLastRevision() {
 	md.clearWriterMetadataCopiedBit()
 }
 
-func (md *RootMetadata) deepCopy(codec Codec, copyHandle bool) (*RootMetadata, error) {
+func (md *RootMetadata) makeSuccessor(codec Codec) (*RootMetadata, error) {
 	var newMd RootMetadata
-	if err := md.deepCopyInPlace(codec, copyHandle, &newMd); err != nil {
+	if err := md.deepCopyInPlace(codec, true, true, &newMd); err != nil {
 		return nil, err
 	}
 	return &newMd, nil
 }
 
-func (md *RootMetadata) deepCopyInPlace(codec Codec, copyHandle bool,
+func (md *RootMetadata) deepCopy(codec Codec, copyHandle bool) (*RootMetadata, error) {
+	var newMd RootMetadata
+	if err := md.deepCopyInPlace(codec, copyHandle, false, &newMd); err != nil {
+		return nil, err
+	}
+	return &newMd, nil
+}
+
+func (md *RootMetadata) deepCopyInPlace(codec Codec, copyHandle, successorCopy bool,
 	newMd *RootMetadata) error {
 	if err := CodecUpdate(codec, newMd, md); err != nil {
 		return err
@@ -147,8 +155,13 @@ func (md *RootMetadata) deepCopyInPlace(codec Codec, copyHandle bool,
 	if err := CodecUpdate(codec, &newMd.data, md.data); err != nil {
 		return err
 	}
-
-	brmdCopy, err := md.bareMd.DeepCopy(codec)
+	var err error
+	var brmdCopy BareRootMetadata
+	if successorCopy {
+		brmdCopy, err = md.bareMd.MakeSuccessor(codec)
+	} else {
+		brmdCopy, err = md.bareMd.DeepCopy(codec)
+	}
 	if err != nil {
 		return err
 	}
@@ -179,7 +192,7 @@ func (md *RootMetadata) MakeSuccessor(
 	if md.IsFinal() {
 		return nil, MetadataIsFinalError{}
 	}
-	newMd, err := md.deepCopy(config.Codec(), true)
+	newMd, err := md.makeSuccessor(config.Codec())
 	if err != nil {
 		return nil, err
 	}
