@@ -76,8 +76,8 @@ func (j *JournalServer) getTLFJournal(tlfID TlfID) (*tlfJournal, bool) {
 // JournalServer. Any returned error is fatal, and means that the
 // JournalServer must not be used.
 func (j *JournalServer) EnableExistingJournals(
-	ctx context.Context, afs TLFJournalBackgroundWorkStatus) (err error) {
-	j.log.CDebugf(ctx, "Enabling existing journals (%s)", afs)
+	ctx context.Context, bws TLFJournalBackgroundWorkStatus) (err error) {
+	j.log.CDebugf(ctx, "Enabling existing journals (%s)", bws)
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
@@ -105,7 +105,7 @@ func (j *JournalServer) EnableExistingJournals(
 			continue
 		}
 
-		err = j.Enable(ctx, tlfID, afs)
+		err = j.Enable(ctx, tlfID, bws)
 		if err != nil {
 			// Don't treat per-TLF errors as fatal.
 			j.log.CWarningf(
@@ -121,8 +121,8 @@ func (j *JournalServer) EnableExistingJournals(
 // Enable turns on the write journal for the given TLF.
 func (j *JournalServer) Enable(
 	ctx context.Context, tlfID TlfID,
-	afs TLFJournalBackgroundWorkStatus) (err error) {
-	j.log.CDebugf(ctx, "Enabling journal for %s (%s)", tlfID, afs)
+	bws TLFJournalBackgroundWorkStatus) (err error) {
+	j.log.CDebugf(ctx, "Enabling journal for %s (%s)", tlfID, bws)
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
@@ -139,7 +139,7 @@ func (j *JournalServer) Enable(
 	}
 
 	tlfJournal, err := makeTLFJournal(ctx, j.dir, tlfID, j.config,
-		j.delegateBlockServer, j.log, afs, nil)
+		j.delegateBlockServer, j.log, bws, nil)
 	if err != nil {
 		return err
 	}
