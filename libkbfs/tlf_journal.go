@@ -380,6 +380,9 @@ func (j *tlfJournal) shutdown() {
 	}
 }
 
+// All the functions below just do the equivalent blockJournal or
+// mdJournal function under j.lock.
+
 func (j *tlfJournal) getBlockDataWithContext(
 	id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
@@ -466,32 +469,57 @@ func (j *tlfJournal) archiveBlockReferences(
 }
 
 func (j *tlfJournal) getMDHead(
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
-	ImmutableBareRootMetadata, error) {
+	ctx context.Context) (ImmutableBareRootMetadata, error) {
+	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return ImmutableBareRootMetadata{}, err
+	}
+
+	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return ImmutableBareRootMetadata{}, err
+	}
+
 	j.lock.RLock()
 	defer j.lock.RUnlock()
-	return j.mdJournal.getHead(currentUID, currentVerifyingKey)
+	return j.mdJournal.getHead(uid, key)
 }
 
 func (j *tlfJournal) getMDRange(
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
-	start, stop MetadataRevision) (
+	ctx context.Context, start, stop MetadataRevision) (
 	[]ImmutableBareRootMetadata, error) {
+	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	j.lock.RLock()
 	defer j.lock.RUnlock()
-	return j.mdJournal.getRange(
-		currentUID, currentVerifyingKey, start, stop)
+	return j.mdJournal.getRange(uid, key, start, stop)
 }
 
 func (j *tlfJournal) putMD(
-	ctx context.Context, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey, signer cryptoSigner,
+	ctx context.Context, signer cryptoSigner,
 	ekg encryptionKeyGetter, bsplit BlockSplitter, rmd *RootMetadata) (
 	MdID, error) {
+	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return MdID{}, err
+	}
+
 	j.lock.Lock()
 	defer j.lock.Unlock()
-	mdID, err := j.mdJournal.put(ctx, currentUID, currentVerifyingKey,
-		signer, ekg, bsplit, rmd)
+	mdID, err := j.mdJournal.put(ctx, uid, key, signer, ekg, bsplit, rmd)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -507,8 +535,18 @@ func (j *tlfJournal) putMD(
 func (j *tlfJournal) clearMDs(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, bid BranchID) error {
+	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return err
+	}
+
+	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return err
+	}
+
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	// No need to signal work in this case.
-	return j.mdJournal.clear(ctx, currentUID, currentVerifyingKey, bid)
+	return j.mdJournal.clear(ctx, uid, key, bid)
 }
