@@ -76,7 +76,7 @@ func (j *JournalServer) getTLFJournal(tlfID TlfID) (*tlfJournal, bool) {
 // JournalServer. Any returned error is fatal, and means that the
 // JournalServer must not be used.
 func (j *JournalServer) EnableExistingJournals(
-	ctx context.Context, afs JournalAutoFlushStatus) (err error) {
+	ctx context.Context, afs TLFJournalAutoFlushStatus) (err error) {
 	j.log.CDebugf(ctx, "Enabling existing journals (%s)", afs)
 	defer func() {
 		if err != nil {
@@ -121,7 +121,7 @@ func (j *JournalServer) EnableExistingJournals(
 // Enable turns on the write journal for the given TLF.
 func (j *JournalServer) Enable(
 	ctx context.Context, tlfID TlfID,
-	afs JournalAutoFlushStatus) (err error) {
+	afs TLFJournalAutoFlushStatus) (err error) {
 	j.log.CDebugf(ctx, "Enabling journal for %s (%s)", tlfID, afs)
 	defer func() {
 		if err != nil {

@@ -15,7 +15,7 @@ import (
 )
 
 // tlfJournalConfig is the subset of the Config interface needed by
-// tlfJournal.
+// tlfJournal (for ease of testing).
 type tlfJournalConfig interface {
 	Codec() Codec
 	Crypto() Crypto
@@ -32,27 +32,27 @@ type TLFJournalStatus struct {
 	BlockOpCount  uint64
 }
 
-// JournalAutoFlushStatus indicates whether a journal should be
+// TLFJournalAutoFlushStatus indicates whether a journal should be
 // auto-flushing or not.
-type JournalAutoFlushStatus int
+type TLFJournalAutoFlushStatus int
 
 const (
-	// JournalAutoFlushDisabled indicates that the journal should
+	// TLFJournalAutoFlushDisabled indicates that the journal should
 	// not be auto-flushing.
-	JournalAutoFlushDisabled JournalAutoFlushStatus = iota
-	// JournalAutoFlushEnabled indicates that the journal should
+	TLFJournalAutoFlushDisabled TLFJournalAutoFlushStatus = iota
+	// TLFJournalAutoFlushEnabled indicates that the journal should
 	// be auto-flushing.
-	JournalAutoFlushEnabled
+	TLFJournalAutoFlushEnabled
 )
 
-func (afs JournalAutoFlushStatus) String() string {
+func (afs TLFJournalAutoFlushStatus) String() string {
 	switch afs {
-	case JournalAutoFlushEnabled:
+	case TLFJournalAutoFlushEnabled:
 		return "Auto-flush enabled"
-	case JournalAutoFlushDisabled:
+	case TLFJournalAutoFlushDisabled:
 		return "Auto-flush disabled"
 	default:
-		return fmt.Sprintf("JournalAutoFlushEnabled(%d)", afs)
+		return fmt.Sprintf("TLFJournalAutoFlushEnabled(%d)", afs)
 	}
 }
 
@@ -81,7 +81,7 @@ type tlfJournal struct {
 func makeTlfJournal(
 	ctx context.Context, dir string, tlfID TlfID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, log logger.Logger,
-	afs JournalAutoFlushStatus) (*tlfJournal, error) {
+	afs TLFJournalAutoFlushStatus) (*tlfJournal, error) {
 	tlfDir := filepath.Join(dir, tlfID.String())
 
 	blockJournal, err := makeBlockJournal(
@@ -132,13 +132,13 @@ func makeTlfJournal(
 	return j, nil
 }
 
-func (j *tlfJournal) autoFlush(afs JournalAutoFlushStatus) {
+func (j *tlfJournal) autoFlush(afs TLFJournalAutoFlushStatus) {
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", j.log)
 	for {
 		j.log.CDebugf(ctx, "Waiting for events for %s (%s)", j.tlfID, afs)
 		switch afs {
-		case JournalAutoFlushEnabled:
+		case TLFJournalAutoFlushEnabled:
 			select {
 			case <-j.hasWorkCh:
 				j.log.CDebugf(
@@ -153,7 +153,7 @@ func (j *tlfJournal) autoFlush(afs JournalAutoFlushStatus) {
 			case <-j.pauseCh:
 				j.log.CDebugf(ctx,
 					"Got pause event for %s", j.tlfID)
-				afs = JournalAutoFlushDisabled
+				afs = TLFJournalAutoFlushDisabled
 
 			case <-j.shutdownCh:
 				j.log.CDebugf(ctx,
@@ -161,12 +161,12 @@ func (j *tlfJournal) autoFlush(afs JournalAutoFlushStatus) {
 				return
 			}
 
-		case JournalAutoFlushDisabled:
+		case TLFJournalAutoFlushDisabled:
 			select {
 			case <-j.resumeCh:
 				j.log.CDebugf(ctx,
 					"Got resume event for %s", j.tlfID)
-				afs = JournalAutoFlushEnabled
+				afs = TLFJournalAutoFlushEnabled
 
 			case <-j.shutdownCh:
 				j.log.CDebugf(ctx,
@@ -176,7 +176,7 @@ func (j *tlfJournal) autoFlush(afs JournalAutoFlushStatus) {
 
 		default:
 			j.log.CErrorf(
-				ctx, "Unknown JournalAutoFlushStatus %s", afs)
+				ctx, "Unknown TLFJournalAutoFlushStatus %s", afs)
 			return
 		}
 	}
