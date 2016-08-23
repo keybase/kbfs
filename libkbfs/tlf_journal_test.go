@@ -78,12 +78,16 @@ func setupTLFJournalTest(t *testing.T) (
 }
 
 func teardownTLFJournalTest(
-	t *testing.T, cancel context.CancelFunc,
+	t *testing.T, ctx context.Context, cancel context.CancelFunc,
 	tlfJournal *tlfJournal, delegate testBWDelegate,
 	tempdir string, config Config) {
 	cancel()
 	tlfJournal.shutdown()
-	<-delegate.shutdownCh
+	select {
+	case <-delegate.shutdownCh:
+	case <-ctx.Done():
+		require.FailNow(t, ctx.Err().Error())
+	}
 	select {
 	case bws := <-delegate.stateCh:
 		assert.Fail(t, "Unexpected state %s", bws)
@@ -113,7 +117,7 @@ func TestTLFJournalBasic(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, cancel, tlfJournal, delegate, tempdir, config)
+		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
 	putBlock(ctx, t, config, tlfJournal)
 
@@ -127,11 +131,10 @@ func TestTLFJournalPauseResume(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, cancel, tlfJournal, delegate, tempdir, config)
+		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
 	tlfJournal.pauseBackgroundWork()
-	bws := <-delegate.stateCh
-	require.Equal(t, bwPaused, bws)
+	delegate.requireNextState(ctx, t, bwPaused)
 
 	putBlock(ctx, t, config, tlfJournal)
 
@@ -147,7 +150,7 @@ func TestTLFJournalPauseShutdown(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, cancel, tlfJournal, delegate, tempdir, config)
+		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, t, bwPaused)
@@ -173,7 +176,7 @@ func TestTLFJournalBusyPause(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, cancel, tlfJournal, delegate, tempdir, config)
+		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
 	putBlock(ctx, t, config, tlfJournal)
 
@@ -189,7 +192,7 @@ func TestTLFJournalBusyShutdown(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, cancel, tlfJournal, delegate, tempdir, config)
+		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
 	putBlock(ctx, t, config, tlfJournal)
 
