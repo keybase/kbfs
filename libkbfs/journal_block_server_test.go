@@ -24,7 +24,8 @@ func setupJournalBlockServerTest(t *testing.T) (
 		config, log, tempdir, config.BlockCache(),
 		config.BlockServer(), config.MDOps())
 	ctx := context.Background()
-	err = jServer.EnableExistingJournals(ctx, TLFJournalAutoFlushDisabled)
+	err = jServer.EnableExistingJournals(
+		ctx, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 	config.SetBlockCache(jServer.blockCache())
 	blockServer := jServer.blockServer()
@@ -57,7 +58,7 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 	ctx := context.Background()
 
 	tlfID := FakeTlfID(2, false)
-	err := jServer.Enable(ctx, tlfID, TLFJournalAutoFlushDisabled)
+	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 
 	blockServer := config.BlockServer()
@@ -110,7 +111,7 @@ func TestJournalBlockServerRemoveBlockReferences(t *testing.T) {
 	ctx := context.Background()
 
 	tlfID := FakeTlfID(2, false)
-	err := jServer.Enable(ctx, tlfID, TLFJournalAutoFlushDisabled)
+	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 
 	blockServer := config.BlockServer()
@@ -167,7 +168,7 @@ func TestJournalBlockServerArchiveBlockReferences(t *testing.T) {
 	ctx := context.Background()
 
 	tlfID := FakeTlfID(2, false)
-	err := jServer.Enable(ctx, tlfID, TLFJournalAutoFlushDisabled)
+	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 
 	blockServer := config.BlockServer()
@@ -208,7 +209,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	ctx := context.Background()
 
 	tlfID := FakeTlfID(2, false)
-	err := jServer.Enable(ctx, tlfID, TLFJournalAutoFlushDisabled)
+	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 
 	blockServer := config.BlockServer()

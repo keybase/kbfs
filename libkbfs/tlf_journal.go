@@ -39,7 +39,7 @@ type TLFJournalBackgroundWorkStatus int
 const (
 	// TLFJournalBackgroundWorkPaused indicates that the journal
 	// should not currently be doing background work.
-	TLFJournalBackgroundWorkPaused TLFJournalBackgroundStatus = iota
+	TLFJournalBackgroundWorkPaused TLFJournalBackgroundWorkStatus = iota
 	// TLFJournalBackgroundWorkEnabled indicates that the journal
 	// should be doing background work.
 	TLFJournalBackgroundWorkEnabled
@@ -47,9 +47,9 @@ const (
 
 func (bws TLFJournalBackgroundWorkStatus) String() string {
 	switch bws {
-	case TLFJournalBackgroundEnabled:
+	case TLFJournalBackgroundWorkEnabled:
 		return "Background work enabled"
-	case TLFJournalBackgroundPaused:
+	case TLFJournalBackgroundWorkPaused:
 		return "Background work paused"
 	default:
 		return fmt.Sprintf("TLFJournalBackgroundWorkStatus(%d)", bws)
@@ -92,7 +92,7 @@ type tlfJournal struct {
 func makeTlfJournal(
 	ctx context.Context, dir string, tlfID TlfID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, log logger.Logger,
-	bws TLFJournalBackgroundStatus) (*tlfJournal, error) {
+	bws TLFJournalBackgroundWorkStatus) (*tlfJournal, error) {
 	tlfDir := filepath.Join(dir, tlfID.String())
 
 	blockJournal, err := makeBlockJournal(
@@ -147,7 +147,7 @@ func makeTlfJournal(
 // goroutine. Currently it just does auto-flushing.
 //
 // TODO: Handle garbage collection too.
-func (j *tlfJournal) doBackgroundWork(bws TLFJournalBackgroundStatus) {
+func (j *tlfJournal) doBackgroundWork(bws TLFJournalBackgroundWorkStatus) {
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", j.log)
 	for {
@@ -169,7 +169,7 @@ func (j *tlfJournal) doBackgroundWork(bws TLFJournalBackgroundStatus) {
 			case <-j.needPauseCh:
 				j.log.CDebugf(ctx,
 					"Got pause signal for %s", j.tlfID)
-				bws = TLFJournalBackgroundPaused
+				bws = TLFJournalBackgroundWorkPaused
 
 			case <-j.needShutdownCh:
 				j.log.CDebugf(ctx,
@@ -182,7 +182,7 @@ func (j *tlfJournal) doBackgroundWork(bws TLFJournalBackgroundStatus) {
 			case <-j.needResumeCh:
 				j.log.CDebugf(ctx,
 					"Got resume signal for %s", j.tlfID)
-				bws = TLFJournalBackgroundEnabled
+				bws = TLFJournalBackgroundWorkEnabled
 
 			case <-j.needShutdownCh:
 				j.log.CDebugf(ctx,

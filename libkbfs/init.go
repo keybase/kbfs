@@ -380,7 +380,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 			config.BlockServer(), config.MDOps())
 		ctx := context.Background()
 		err := jServer.EnableExistingJournals(
-			ctx, TLFJournalAutoFlushEnabled)
+			ctx, TLFJournalBackgroundWorkEnabled)
 		if err == nil {
 			config.SetBlockCache(jServer.blockCache())
 			config.SetBlockServer(jServer.blockServer())

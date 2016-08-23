@@ -76,7 +76,7 @@ func (j *JournalServer) getTLFJournal(tlfID TlfID) (*tlfJournal, bool) {
 // JournalServer. Any returned error is fatal, and means that the
 // JournalServer must not be used.
 func (j *JournalServer) EnableExistingJournals(
-	ctx context.Context, afs TLFJournalAutoFlushStatus) (err error) {
+	ctx context.Context, afs TLFJournalBackgroundWorkStatus) (err error) {
 	j.log.CDebugf(ctx, "Enabling existing journals (%s)", afs)
 	defer func() {
 		if err != nil {
@@ -121,7 +121,7 @@ func (j *JournalServer) EnableExistingJournals(
 // Enable turns on the write journal for the given TLF.
 func (j *JournalServer) Enable(
 	ctx context.Context, tlfID TlfID,
-	afs TLFJournalAutoFlushStatus) (err error) {
+	afs TLFJournalBackgroundWorkStatus) (err error) {
 	j.log.CDebugf(ctx, "Enabling journal for %s (%s)", tlfID, afs)
 	defer func() {
 		if err != nil {
@@ -149,9 +149,9 @@ func (j *JournalServer) Enable(
 	return nil
 }
 
-// PauseAutoFlush pauses the background auto-flush goroutine, if it's
+// PauseBackgroundWork pauses the background auto-flush goroutine, if it's
 // not already paused.
-func (j *JournalServer) PauseAutoFlush(ctx context.Context, tlfID TlfID) {
+func (j *JournalServer) PauseBackgroundWork(ctx context.Context, tlfID TlfID) {
 	j.log.CDebugf(ctx, "Signaling pause for %s", tlfID)
 	tlfJournal, ok := j.getTLFJournal(tlfID)
 	if !ok {
@@ -160,12 +160,12 @@ func (j *JournalServer) PauseAutoFlush(ctx context.Context, tlfID TlfID) {
 			tlfID)
 	}
 
-	tlfJournal.pauseAutoFlush()
+	tlfJournal.pauseBackgroundWork()
 }
 
-// ResumeAutoFlush resumes the background auto-flush goroutine, if it's
+// ResumeBackgroundWork resumes the background auto-flush goroutine, if it's
 // not already resumed.
-func (j *JournalServer) ResumeAutoFlush(ctx context.Context, tlfID TlfID) {
+func (j *JournalServer) ResumeBackgroundWork(ctx context.Context, tlfID TlfID) {
 	j.log.CDebugf(ctx, "Signaling resume for %s", tlfID)
 	tlfJournal, ok := j.getTLFJournal(tlfID)
 	if !ok {
@@ -174,7 +174,7 @@ func (j *JournalServer) ResumeAutoFlush(ctx context.Context, tlfID TlfID) {
 			tlfID)
 	}
 
-	tlfJournal.resumeAutoFlush()
+	tlfJournal.resumeBackgroundWork()
 }
 
 // Flush flushes the write journal for the given TLF.
