@@ -11,6 +11,43 @@ import (
 	"golang.org/x/net/context"
 )
 
+// This file defines a set of functions for delaying context concellations.
+// It's a hacky implementation and some functions require extra caution in when
+// they should be called.
+//
+// For KBFS, this is mainly used to coupe with EINTR. Interrupts can happen
+// very regularly commonly. For example, git relies SIGALRM for periodical
+// progress report. Everytime SIGALRM reaches, current I/O operation gets an
+// interrupt. bazil/fuse calls Cancel on context when getting an interrupt. If
+// we return an error on this cancellation, application gets an EINTR. However,
+// with a lot of remote operations filesystem state can sometimes be
+// unpredictable, and returning EINTR might introduce inconsistency between
+// application's perception of state and the real state. In addition,
+// applications may not be ready in all scenarios to handle EINTR. By using
+// delayed cancellation, these issues are mitigated. Specifically, KBFS uses
+// this in following situations:
+//
+// 1. In a local filesystem, some operations (e.g. Attr) are considered "fast"
+// operations. So unlike slow ones like Read or Create whose manuals explicitly
+// say EINTR can happen and needs to be handled, a "fast" operation's
+// documentation doesn't list EINTR as possible errors. As a result, some
+// applications are not ready to handle EINTR in some of filesystem calls.
+// Using delayed cancellation for such operations means if there's an interrupt
+// received in the middle of the operation, it doesn't get cancelled right
+// away, but instead waits for a grace period before effectively cancelling the
+// context. This should allow the operation to finish in most cases -- unless
+// the network condition is too bad, in which case we choose to let application
+// error instead of making things unresponsive to Ctrl-C (i.e. still cancel the
+// context after the grace period).
+//
+// 2. To be responsive to Ctrl-C, we are using runUnlessCanceled, which returns
+// immediately if the context gets canceled, despite that the actual operation
+// routing may still be waiting on a lock or remote operations. This means
+// that, once we start a MD write, the filesystem state becomes unpredictable.
+// We enable delayed cancellation here to try to avoid context being canceled
+// in the middle of a MD write, also with a grace period timeout. See comments
+// in folder_branch_ops.go in finalizedMDWriteLocked for more.
+
 const (
 	// CtxReplayKey is a context key for CtxReplayFunc
 	CtxReplayKey = "libkbfs-replay"
@@ -41,8 +78,8 @@ func (e NoCancellationDelayerError) Error() string {
 }
 
 // ContextAlreadyHasCancellationDelayerError is returned when
-// NewContextWithCancellationDelayer is called second time on the same ctx, which
-// is not supported yet.
+// NewContextWithCancellationDelayer is called for the second time on the same
+// ctx, which is not supported yet.
 type ContextAlreadyHasCancellationDelayerError struct{}
 
 func (e ContextAlreadyHasCancellationDelayerError) Error() string {
@@ -53,20 +90,16 @@ func (e ContextAlreadyHasCancellationDelayerError) Error() string {
 // also makes this change replayable by NewContextWithReplayFrom. When
 // replayed, the resulting context is replayable as well.
 //
-// It is important that all WithValue-isu mutations on ctx is done "replayably"
+// It is important that all WithValue-ish mutations on ctx is done "replayably"
 // (with NewContextReplayable) if any delayed cancellation is used, e.g.
 // through EnableDelayedCancellationWithGracePeriod,
 func NewContextReplayable(
 	ctx context.Context, change CtxReplayFunc) context.Context {
-	var replay CtxReplayFunc
-	replay = func(ctx context.Context) context.Context {
-		ctx = change(ctx)
-		// _ is necessary to avoid panic if nil
-		replays, _ := ctx.Value(CtxReplayKey).([]CtxReplayFunc)
-		replays = append(replays, replay)
-		return context.WithValue(ctx, CtxReplayKey, replays)
-	}
-	return replay(ctx)
+	ctx = change(ctx)
+	replays, _ := ctx.Value(CtxReplayKey).([]CtxReplayFunc)
+	replays = append(replays, change)
+	ctx = context.WithValue(ctx, CtxReplayKey, replays)
+	return ctx
 }
 
 // NewContextWithReplayFrom constructs a new context out of ctx by calling all
@@ -77,6 +110,8 @@ func NewContextWithReplayFrom(ctx context.Context) (context.Context, error) {
 		for _, replay := range replays {
 			newCtx = replay(newCtx)
 		}
+		replays, _ := ctx.Value(CtxReplayKey).([]CtxReplayFunc)
+		newCtx = context.WithValue(newCtx, CtxReplayKey, replays)
 		return newCtx, nil
 	}
 	return nil, CtxNotReplayableError{}
@@ -92,11 +127,8 @@ type cancellationDelayer struct {
 
 func newCancellationDelayer() *cancellationDelayer {
 	return &cancellationDelayer{
-		Cond:         sync.NewCond(&sync.Mutex{}),
-		delayEnabled: false,
-		timer:        nil,
-		canceled:     false,
-		done:         make(chan struct{}),
+		Cond: sync.NewCond(&sync.Mutex{}),
+		done: make(chan struct{}),
 	}
 }
 
@@ -180,10 +212,6 @@ func EnableDelayedCancellationWithGracePeriod(ctx context.Context, timeout time.
 func (c *cancellationDelayer) disableDelay() {
 	c.L.Lock()
 	defer c.L.Unlock()
-	c.disableDelayLocked()
-}
-
-func (c *cancellationDelayer) disableDelayLocked() {
 	if c.delayEnabled {
 		c.delayEnabled = false
 		c.Broadcast()
@@ -193,18 +221,15 @@ func (c *cancellationDelayer) disableDelayLocked() {
 // CleanupCancellationDelayer cleans up a context (ctx) that is cancellation
 // delayable and makes the go routine spawned in
 // NewContextWithCancellationDelayer exit. As part of the cleanup, this also
-// causes the cancellation delayable context to be canceled, no matter the
-// timeout passed into the EnableDelayedCancellationWithGracePeriod has passed
-// or not.
+// causes the cancellation delayable context to be canceled, no matter whether
+// the timeout passed into the EnableDelayedCancellationWithGracePeriod has
+// passed or not.
 //
 // Ideally, the parent ctx's cancelFunc is always called upon completion of
 // handling a request, in which case this wouldn't be necessary.
 func CleanupCancellationDelayer(ctx context.Context) error {
 	if c, ok := ctx.Value(CtxCancellationDelayerKey).(*cancellationDelayer); ok {
-		select {
-		case c.done <- struct{}{}:
-		default:
-		}
+		close(c.done)
 		return nil
 	}
 	return NoCancellationDelayerError{}

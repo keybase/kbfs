@@ -1915,8 +1915,26 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 
 	var mdID MdID
 
+	// This puts on a delay on any cancellations arriving to ctx. It is intended
+	// to work sort of like a critical section, except that there isn't an
+	// explicit call to exit the critical section. The cancellation, if any, is
+	// triggered after a timeout (i.e.
+	// fbo.config.DelayedCancellationGracePeriod()).
+	//
+	// The purpose of trying to avoid cancellation once we start MD write is to
+	// avoid having an unpredictable perceived MD state. That is, when
+	// runUnlessCanceled returns Canceled on cancellation, application receives
+	// an EINTR, and would assume the operation didn't succeed. But the MD write
+	// continues, and there's a chance the write will succeed, meaning the
+	// operation succeeds. This contradicts with the application's perception
+	// through error code and can lead to horrible situations. An easily caught
+	// situation is when application calls Create with O_EXCL set, gets an EINTR
+	// while MD write succeeds, retries and gets an EEXIST error. If users hit
+	// Ctrl-C, this might not be a big deal. However, it also happens for other
+	// interrupts.  For applications that use signals to communicate, e.g.
+	// SIGALRM and SIGUSR1, this can happen pretty often, which renders broken.
 	if err = EnableDelayedCancellationWithGracePeriod(
-		ctx, fbo.config.GracePeriod()); err != nil {
+		ctx, fbo.config.DelayedCancellationGracePeriod()); err != nil {
 		return err
 	}
 	// we don't explicitly clean up (by using a defer) CancellationDelayer here
@@ -2865,7 +2883,7 @@ func (fbo *folderBranchOps) Read(
 	}
 
 	{
-		// It seems git isn't handling EINTR from some of read calls (likely
+		// It seems git isn't handling EINTR from some of its read calls (likely
 		// fread), which causes it to get corrupted data (which leads to coredumps
 		// later) when a read system call on pack files gets interrupted. This
 		// enables delayed cancellation for Read if the file path contains `.git`.
@@ -2878,7 +2896,7 @@ func (fbo *folderBranchOps) Read(
 		if _, isSet := os.LookupEnv("KBFS_DISABLE_GIT_SPECIAL_CASE"); !isSet {
 			for _, n := range filePath.path {
 				if n.Name == ".git" {
-					EnableDelayedCancellationWithGracePeriod(ctx, fbo.config.GracePeriod())
+					EnableDelayedCancellationWithGracePeriod(ctx, fbo.config.DelayedCancellationGracePeriod())
 					break
 				}
 			}
@@ -3906,8 +3924,7 @@ func (fbo *folderBranchOps) UnstageForTesting(
 		// notifications if we do.  But we still want to wait for the
 		// context to cancel.
 		c := make(chan error, 1)
-		ctxWithTags, cancel := fbo.newCtxWithFBID()
-		freshCtx, cancel := context.WithCancel(ctxWithTags)
+		freshCtx, cancel := fbo.newCtxWithFBOID()
 		defer cancel()
 		fbo.log.CDebugf(freshCtx, "Launching new context for UnstageForTesting")
 		go func() {
@@ -4200,8 +4217,10 @@ func (fbo *folderBranchOps) ctxWithFBOID(ctx context.Context) context.Context {
 	return ctxWithRandomIDReplayable(ctx, CtxFBOIDKey, CtxFBOOpID, fbo.log)
 }
 
-func (fbo *folderBranchOps) newCtxWithFBID() (context.Context, context.CancelFunc) {
-	ctx := NewContextReplayable(context.Background(), fbo.ctxWithFBOID)
+func (fbo *folderBranchOps) newCtxWithFBOID() (context.Context, context.CancelFunc) {
+	// No need to call NewContextReplayable since ctxWithFBOID calls
+	// ctxWithRandomIDReplayable, which attaches replayably.
+	ctx := fbo.ctxWithFBOID(context.Background())
 	ctx, cancelFunc := context.WithCancel(ctx)
 	ctx, err := NewContextWithCancellationDelayer(ctx)
 	if err != nil {
@@ -4212,7 +4231,7 @@ func (fbo *folderBranchOps) newCtxWithFBID() (context.Context, context.CancelFun
 
 // Run the passed function with a context that's canceled on shutdown.
 func (fbo *folderBranchOps) runUnlessShutdown(fn func(ctx context.Context) error) error {
-	ctx, cancelFunc := fbo.newCtxWithFBID()
+	ctx, cancelFunc := fbo.newCtxWithFBOID()
 	defer cancelFunc()
 	errChan := make(chan error, 1)
 	go func() {
