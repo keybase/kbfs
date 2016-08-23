@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/keybase/client/go/logger"
@@ -140,36 +139,13 @@ func (j *JournalServer) Enable(
 		return nil
 	}
 
-	tlfDir := filepath.Join(j.dir, tlfID.String())
-	j.log.CDebugf(ctx, "Enabled journal for %s with path %s", tlfID, tlfDir)
-
-	log := j.config.MakeLogger("")
-	blockJournal, err := makeBlockJournal(
-		ctx, j.config.Codec(), j.config.Crypto(), tlfDir, log)
+	bundle, err := makeTlfJournalBundle(ctx, j.dir, tlfID, j.config,
+		j.delegateBlockServer, j.log, afs)
 	if err != nil {
 		return err
 	}
 
-	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return err
-	}
-
-	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		return err
-	}
-
-	mdJournal, err := makeMDJournal(
-		uid, key, j.config.Codec(), j.config.Crypto(), tlfDir, log)
-	if err != nil {
-		return err
-	}
-
-	bundle := makeTlfJournalBundle(tlfID, j.config,
-		j.delegateBlockServer, j.log, blockJournal, mdJournal, afs)
 	j.tlfBundles[tlfID] = bundle
-
 	return nil
 }
 

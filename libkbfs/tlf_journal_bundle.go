@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"fmt"
+	"path/filepath"
 	"sync"
 
 	"github.com/keybase/client/go/logger"
@@ -14,6 +15,7 @@ import (
 )
 
 type tlfJournalConfig interface {
+	Codec() Codec
 	Crypto() Crypto
 	KBPKI() KBPKI
 	MDServer() MDServer
@@ -74,10 +76,34 @@ type tlfJournalBundle struct {
 	mdJournal    *mdJournal
 }
 
-func makeTlfJournalBundle(tlfID TlfID, config tlfJournalConfig,
+func makeTlfJournalBundle(
+	ctx context.Context, dir string, tlfID TlfID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, log logger.Logger,
-	blockJournal *blockJournal, mdJournal *mdJournal,
-	afs JournalAutoFlushStatus) *tlfJournalBundle {
+	afs JournalAutoFlushStatus) (*tlfJournalBundle, error) {
+	tlfDir := filepath.Join(dir, tlfID.String())
+
+	blockJournal, err := makeBlockJournal(
+		ctx, config.Codec(), config.Crypto(), tlfDir, log)
+	if err != nil {
+		return nil, err
+	}
+
+	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	mdJournal, err := makeMDJournal(
+		uid, key, config.Codec(), config.Crypto(), tlfDir, log)
+	if err != nil {
+		return nil, err
+	}
+
 	b := &tlfJournalBundle{
 		tlfID:               tlfID,
 		config:              config,
@@ -100,7 +126,8 @@ func makeTlfJournalBundle(tlfID TlfID, config tlfJournalConfig,
 	default:
 	}
 
-	return b
+	b.log.CDebugf(ctx, "Enabled journal for %s with path %s", tlfID, tlfDir)
+	return b, nil
 }
 
 func (b *tlfJournalBundle) autoFlush(afs JournalAutoFlushStatus) {
