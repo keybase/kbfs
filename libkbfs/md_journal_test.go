@@ -124,13 +124,15 @@ func TestMDJournalBasic(t *testing.T) {
 
 	require.Equal(t, firstRevision, ibrmds[0].RevisionNumber())
 	require.Equal(t, firstPrevRoot, ibrmds[0].GetPrevRoot())
-	err = ibrmds[0].IsValidAndSigned(codec, crypto)
+	// XXX TODO: pass key bundles when needed
+	err = ibrmds[0].IsValidAndSigned(codec, crypto, nil, nil)
 	require.NoError(t, err)
 	err = ibrmds[0].IsLastModifiedBy(uid, verifyingKey)
 	require.NoError(t, err)
 
 	for i := 1; i < len(ibrmds); i++ {
-		err := ibrmds[i].IsValidAndSigned(codec, crypto)
+		// XXX TODO: pass key bundles when needed
+		err := ibrmds[i].IsValidAndSigned(codec, crypto, nil, nil)
 		require.NoError(t, err)
 		err = ibrmds[i].IsLastModifiedBy(uid, verifyingKey)
 		require.NoError(t, err)
@@ -215,7 +217,8 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	require.Equal(t, firstRevision, ibrmds[0].RevisionNumber())
 	require.Equal(t, firstPrevRoot, ibrmds[0].GetPrevRoot())
 	require.Equal(t, Unmerged, ibrmds[0].MergedStatus())
-	err = ibrmds[0].IsValidAndSigned(codec, crypto)
+	// XXX TODO: pass key bundles when needed
+	err = ibrmds[0].IsValidAndSigned(codec, crypto, nil, nil)
 	require.NoError(t, err)
 	err = ibrmds[0].IsLastModifiedBy(uid, verifyingKey)
 	require.NoError(t, err)
@@ -226,7 +229,8 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	for i := 1; i < len(ibrmds); i++ {
 		require.Equal(t, Unmerged, ibrmds[i].MergedStatus())
 		require.Equal(t, bid, ibrmds[i].BID())
-		err := ibrmds[i].IsValidAndSigned(codec, crypto)
+		// XXX TODO: pass key bundles when needed
+		err := ibrmds[i].IsValidAndSigned(codec, crypto, nil, nil)
 		require.NoError(t, err)
 		err = ibrmds[i].IsLastModifiedBy(uid, verifyingKey)
 		require.NoError(t, err)
@@ -293,7 +297,8 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 	require.Equal(t, firstRevision, ibrmds[0].RevisionNumber())
 	require.Equal(t, firstPrevRoot, ibrmds[0].GetPrevRoot())
 	require.Equal(t, Merged, ibrmds[0].MergedStatus())
-	err = ibrmds[0].IsValidAndSigned(codec, crypto)
+	// XXX TODO: pass key bundles when needed
+	err = ibrmds[0].IsValidAndSigned(codec, crypto, nil, nil)
 	require.NoError(t, err)
 	err = ibrmds[0].IsLastModifiedBy(uid, verifyingKey)
 	require.NoError(t, err)
@@ -301,7 +306,8 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 	for i := 1; i < len(ibrmds); i++ {
 		require.Equal(t, Merged, ibrmds[i].MergedStatus())
 		require.Equal(t, NullBranchID, ibrmds[i].BID())
-		err := ibrmds[i].IsValidAndSigned(codec, crypto)
+		// XXX TODO: pass key bundles when needed
+		err := ibrmds[i].IsValidAndSigned(codec, crypto, nil, nil)
 		require.NoError(t, err)
 		err = ibrmds[i].IsLastModifiedBy(uid, verifyingKey)
 		require.NoError(t, err)

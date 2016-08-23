@@ -244,7 +244,8 @@ func (md *RootMetadata) MakeBareTlfHandle() (BareTlfHandle, error) {
 		panic(errors.New("MakeBareTlfHandle called when md.tlfHandle exists"))
 	}
 
-	return md.bareMd.MakeBareTlfHandle()
+	// XXX TODO: pass key bundles when needed
+	return md.bareMd.MakeBareTlfHandle(nil, nil)
 }
 
 // IsInitialized returns whether or not this RootMetadata has been initialized
@@ -324,7 +325,8 @@ func (md *RootMetadata) updateFromTlfHandle(newHandle *TlfHandle) error {
 	md.SetConflictInfo(newHandle.ConflictInfo())
 	md.SetFinalizedInfo(newHandle.FinalizedInfo())
 
-	bareHandle, err := md.bareMd.MakeBareTlfHandle()
+	// XXX TODO: pass key bundles when needed
+	bareHandle, err := md.bareMd.MakeBareTlfHandle(nil, nil)
 	if err != nil {
 		return err
 	}
@@ -583,7 +585,8 @@ func (md *RootMetadata) SetTlfID(tlf TlfID) {
 
 // HasKeyForUser wraps the respective method of the underlying BareRootMetadata for convenience.
 func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool {
-	return md.bareMd.HasKeyForUser(keyGen, user)
+	// XXX TODO: pass key bundles
+	return md.bareMd.HasKeyForUser(keyGen, user, nil, nil)
 }
 
 // FakeInitialRekey wraps the respective method of the underlying BareRootMetadata for convenience.
@@ -744,7 +747,8 @@ func (rmds *RootMetadataSigned) IsValidAndSigned(
 		return errors.New("Missing RootMetadata signature")
 	}
 
-	err := rmds.MD.IsValidAndSigned(codec, crypto)
+	// XXX TODO: pass key bundles when needed
+	err := rmds.MD.IsValidAndSigned(codec, crypto, nil, nil)
 	if err != nil {
 		return err
 	}

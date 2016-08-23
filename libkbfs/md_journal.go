@@ -187,7 +187,8 @@ func (j mdJournal) getMD(currentUID keybase1.UID,
 		return nil, time.Time{}, err
 	}
 
-	err = rmd.IsValidAndSigned(j.codec, j.crypto)
+	// XXX TODO: pass key bundles when needed
+	err = rmd.IsValidAndSigned(j.codec, j.crypto, nil, nil)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
@@ -211,7 +212,8 @@ func (j mdJournal) getMD(currentUID keybase1.UID,
 func (j mdJournal) putMD(
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
 	rmd BareRootMetadata) (MdID, error) {
-	err := rmd.IsValidAndSigned(j.codec, j.crypto)
+	// XXX TODO: pass key bundles when needed
+	err := rmd.IsValidAndSigned(j.codec, j.crypto, nil, nil)
 	if err != nil {
 		return MdID{}, err
 	}

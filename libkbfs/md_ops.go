@@ -201,7 +201,8 @@ func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle,
 		return id, ImmutableRootMetadata{}, nil
 	}
 
-	bareMdHandle, err := rmds.MD.MakeBareTlfHandle()
+	// XXX TODO: pass key bunldes when needed
+	bareMdHandle, err := rmds.MD.MakeBareTlfHandle(nil, nil)
 	if err != nil {
 		return TlfID{}, ImmutableRootMetadata{}, err
 	}
@@ -292,7 +293,8 @@ func (md *MDOpsStandard) getForTLF(ctx context.Context, id TlfID,
 		// Possible if mStatus is Unmerged
 		return ImmutableRootMetadata{}, nil
 	}
-	bareHandle, err := rmds.MD.MakeBareTlfHandle()
+	// XXX TODO:pass key bundle when needed
+	bareHandle, err := rmds.MD.MakeBareTlfHandle(nil, nil)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -342,7 +344,8 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 	worker := func() {
 		defer wg.Done()
 		for rmds := range rmdsChan {
-			bareHandle, err := rmds.MD.MakeBareTlfHandle()
+			// XXX TODO: pass key bundles when needed
+			bareHandle, err := rmds.MD.MakeBareTlfHandle(nil, nil)
 			if err != nil {
 				select {
 				case errChan <- err:

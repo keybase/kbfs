@@ -16,7 +16,8 @@ import (
 // true is returned.
 func isReader(currentUID keybase1.UID,
 	mergedMasterHead BareRootMetadata) (bool, error) {
-	h, err := mergedMasterHead.MakeBareTlfHandle()
+	// XXX TODO: pass key bundles when needed
+	h, err := mergedMasterHead.MakeBareTlfHandle(nil, nil)
 	if err != nil {
 		return false, err
 	}
@@ -28,7 +29,8 @@ func isReader(currentUID keybase1.UID,
 // true is returned.
 func isWriterOrValidRekey(codec Codec, currentUID keybase1.UID,
 	mergedMasterHead, newMd BareRootMetadata) (bool, error) {
-	h, err := mergedMasterHead.MakeBareTlfHandle()
+	// XXX TODO: pass key bundles when needed
+	h, err := mergedMasterHead.MakeBareTlfHandle(nil, nil)
 	if err != nil {
 		return false, err
 	}
@@ -38,9 +40,9 @@ func isWriterOrValidRekey(codec Codec, currentUID keybase1.UID,
 
 	if h.IsReader(currentUID) {
 		// if this is a reader, are they acting within their
-		// restrictions?
+		// restrictions? XXX TODO: pass any reader key bundles.
 		return newMd.IsValidRekeyRequest(
-			codec, mergedMasterHead, currentUID)
+			codec, mergedMasterHead, currentUID, nil, nil)
 	}
 
 	return false, nil
