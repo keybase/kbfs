@@ -81,13 +81,17 @@ func teardownTLFJournalTest(
 	t *testing.T, ctx context.Context, cancel context.CancelFunc,
 	tlfJournal *tlfJournal, delegate testBWDelegate,
 	tempdir string, config Config) {
-	cancel()
+	// Shutdown first so we don't get the Done() signal (from the
+	// cancel() call) spuriously.
 	tlfJournal.shutdown()
 	select {
 	case <-delegate.shutdownCh:
 	case <-ctx.Done():
 		require.FailNow(t, ctx.Err().Error())
 	}
+
+	cancel()
+
 	select {
 	case bws := <-delegate.stateCh:
 		assert.Fail(t, "Unexpected state %s", bws)
