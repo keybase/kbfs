@@ -47,13 +47,15 @@ const EnableJournalFileName = ".kbfs_enable_journal"
 // can be reached anywhere within a top-level folder.
 const FlushJournalFileName = ".kbfs_flush_journal"
 
-// PauseJournalFileName is the name of the journal-pausing file. It
-// can be reached anywhere within a top-level folder.
-const PauseJournalFileName = ".kbfs_pause_journal"
+// PauseJournalBGWorkFileName is the name of the file that pauses the
+// background work of a journal. It can be reached anywhere within a
+// top-level folder.
+const PauseJournalBGWorkFileName = ".kbfs_pause_journal_bg_work"
 
-// ResumeJournalFileName is the name of the journal-resuming file. It
-// can be reached anywhere within a top-level folder.
-const ResumeJournalFileName = ".kbfs_resume_journal"
+// ResumeJournalBGWorkFileName is the name of the file that resumes
+// the background work of a journal. It can be reached anywhere within
+// a top-level folder.
+const ResumeJournalBGWorkFileName = ".kbfs_resume_journal_bg_work"
 
 // DisableJournalFileName is the name of the journal-disabling
 // file. It can be reached anywhere within a top-level folder.

@@ -148,7 +148,7 @@ func (j *JournalServer) Enable(
 	return nil
 }
 
-// PauseBackgroundWork pauses the background auto-flush goroutine, if it's
+// PauseBackgroundWork pauses the background work goroutine, if it's
 // not already paused.
 func (j *JournalServer) PauseBackgroundWork(ctx context.Context, tlfID TlfID) {
 	j.log.CDebugf(ctx, "Signaling pause for %s", tlfID)
@@ -162,7 +162,7 @@ func (j *JournalServer) PauseBackgroundWork(ctx context.Context, tlfID TlfID) {
 		tlfID)
 }
 
-// ResumeBackgroundWork resumes the background auto-flush goroutine, if it's
+// ResumeBackgroundWork resumes the background work goroutine, if it's
 // not already resumed.
 func (j *JournalServer) ResumeBackgroundWork(ctx context.Context, tlfID TlfID) {
 	j.log.CDebugf(ctx, "Signaling resume for %s", tlfID)

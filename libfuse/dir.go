@@ -424,13 +424,13 @@ func openSpecialInFolder(name string, folder *Folder, resp *fuse.LookupResponse)
 			action: libfs.JournalFlush,
 		}
 
-	case libfs.PauseJournalFileName:
+	case libfs.PauseJournalBGWorkFileName:
 		return &JournalControlFile{
 			folder: folder,
 			action: libfs.JournalPause,
 		}
 
-	case libfs.ResumeJournalFileName:
+	case libfs.ResumeJournalBGWorkFileName:
 		return &JournalControlFile{
 			folder: folder,
 			action: libfs.JournalResume,
