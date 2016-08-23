@@ -32,27 +32,27 @@ type TLFJournalStatus struct {
 	BlockOpCount  uint64
 }
 
-// TLFJournalAutoFlushStatus indicates whether a journal should be
-// auto-flushing or not.
-type TLFJournalAutoFlushStatus int
+// TLFJournalBackgroundWorkStatus indicates whether a journal should
+// be doing background work or not.
+type TLFJournalBackgroundWorkStatus int
 
 const (
-	// TLFJournalAutoFlushDisabled indicates that the journal should
-	// not be auto-flushing.
-	TLFJournalAutoFlushDisabled TLFJournalAutoFlushStatus = iota
-	// TLFJournalAutoFlushEnabled indicates that the journal should
-	// be auto-flushing.
-	TLFJournalAutoFlushEnabled
+	// TLFJournalBackgroundWorkPaused indicates that the journal
+	// should not currently be doing background work.
+	TLFJournalBackgroundWorkPaused TLFJournalBackgroundStatus = iota
+	// TLFJournalBackgroundWorkEnabled indicates that the journal
+	// should be doing background work.
+	TLFJournalBackgroundWorkEnabled
 )
 
-func (afs TLFJournalAutoFlushStatus) String() string {
-	switch afs {
-	case TLFJournalAutoFlushEnabled:
-		return "Auto-flush enabled"
-	case TLFJournalAutoFlushDisabled:
-		return "Auto-flush disabled"
+func (bws TLFJournalBackgroundWorkStatus) String() string {
+	switch bws {
+	case TLFJournalBackgroundEnabled:
+		return "Background work enabled"
+	case TLFJournalBackgroundPaused:
+		return "Background work paused"
 	default:
-		return fmt.Sprintf("TLFJournalAutoFlushEnabled(%d)", afs)
+		return fmt.Sprintf("TLFJournalBackgroundWorkStatus(%d)", bws)
 	}
 }
 
@@ -92,7 +92,7 @@ type tlfJournal struct {
 func makeTlfJournal(
 	ctx context.Context, dir string, tlfID TlfID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, log logger.Logger,
-	afs TLFJournalAutoFlushStatus) (*tlfJournal, error) {
+	bws TLFJournalBackgroundStatus) (*tlfJournal, error) {
 	tlfDir := filepath.Join(dir, tlfID.String())
 
 	blockJournal, err := makeBlockJournal(
@@ -131,7 +131,7 @@ func makeTlfJournal(
 		mdJournal:           mdJournal,
 	}
 
-	go j.doBackgroundWork(afs)
+	go j.doBackgroundWork(bws)
 
 	// Signal work to pick up any existing journal entries.
 	select {
@@ -146,15 +146,15 @@ func makeTlfJournal(
 // doBackgroundWork is the main function for the background
 // goroutine. Currently it just does auto-flushing.
 //
-// TODO: Handle garbage collection too, somehow.
-func (j *tlfJournal) doBackgroundWork(afs TLFJournalAutoFlushStatus) {
+// TODO: Handle garbage collection too.
+func (j *tlfJournal) doBackgroundWork(bws TLFJournalBackgroundStatus) {
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", j.log)
 	for {
 		j.log.CDebugf(ctx, "Waiting for events for %s (%s)",
-			j.tlfID, afs)
-		switch afs {
-		case TLFJournalAutoFlushEnabled:
+			j.tlfID, bws)
+		switch bws {
+		case TLFJournalBackgroundWorkEnabled:
 			select {
 			case <-j.hasWorkCh:
 				j.log.CDebugf(
@@ -169,7 +169,7 @@ func (j *tlfJournal) doBackgroundWork(afs TLFJournalAutoFlushStatus) {
 			case <-j.needPauseCh:
 				j.log.CDebugf(ctx,
 					"Got pause signal for %s", j.tlfID)
-				afs = TLFJournalAutoFlushDisabled
+				bws = TLFJournalBackgroundPaused
 
 			case <-j.needShutdownCh:
 				j.log.CDebugf(ctx,
@@ -177,12 +177,12 @@ func (j *tlfJournal) doBackgroundWork(afs TLFJournalAutoFlushStatus) {
 				return
 			}
 
-		case TLFJournalAutoFlushDisabled:
+		case TLFJournalBackgroundWorkPaused:
 			select {
 			case <-j.needResumeCh:
 				j.log.CDebugf(ctx,
 					"Got resume signal for %s", j.tlfID)
-				afs = TLFJournalAutoFlushEnabled
+				bws = TLFJournalBackgroundEnabled
 
 			case <-j.needShutdownCh:
 				j.log.CDebugf(ctx,
@@ -192,21 +192,28 @@ func (j *tlfJournal) doBackgroundWork(afs TLFJournalAutoFlushStatus) {
 
 		default:
 			j.log.CErrorf(
-				ctx, "Unknown TLFJournalAutoFlushStatus %s",
-				afs)
+				ctx, "Unknown TLFJournalBackgroundStatus %s",
+				bws)
 			return
 		}
 	}
 }
 
-func (j *tlfJournal) pauseAutoFlush() {
+// We don't guarantee that pause/resume requests will be processed in
+// strict FIFO order. In particular, multiple pause requests are
+// collapsed into one (also multiple resume requests), so it's
+// possible that a pause-resume-pause sequence will be processed as
+// pause-resume. But that's okay, since these are just for infrequent
+// ad-hoc testing.
+
+func (j *tlfJournal) pauseBackgroundWork() {
 	select {
 	case j.needPauseCh <- struct{}{}:
 	default:
 	}
 }
 
-func (j *tlfJournal) resumeAutoFlush() {
+func (j *tlfJournal) resumeBackgroundWork() {
 	select {
 	case j.needResumeCh <- struct{}{}:
 	default:
