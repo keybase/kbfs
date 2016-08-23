@@ -14,11 +14,12 @@ import (
 )
 
 type testBWDelegate struct {
+	stateCh    chan bwState
 	shutdownCh chan struct{}
 }
 
-func (d testBWDelegate) OnNewState(
-	bws TLFJournalBackgroundWorkStatus, doingWork bool) {
+func (d testBWDelegate) OnNewState(bws bwState) {
+	d.stateCh <- bws
 }
 
 func (d testBWDelegate) OnShutdown() {
@@ -35,11 +36,12 @@ func setupTLFJournalTest(t *testing.T) (
 	ctx := context.Background()
 	tlfID := FakeTlfID(1, false)
 	delegate = testBWDelegate{
+		stateCh:    make(chan bwState),
 		shutdownCh: make(chan struct{}),
 	}
 	tlfJournal, err = makeTLFJournal(
 		ctx, tempdir, tlfID, config, config.BlockServer(), log,
-		TLFJournalBackgroundWorkPaused, delegate)
+		TLFJournalBackgroundWorkEnabled, delegate)
 	require.NoError(t, err)
 	return tempdir, config, tlfJournal, delegate
 }
@@ -56,5 +58,12 @@ func teardownTLFJournalTest(
 
 func TestTLFJournalBasic(t *testing.T) {
 	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
+	bws := <-delegate.stateCh
+	require.Equal(t, bwIdle, bws)
+	bws = <-delegate.stateCh
+	require.Equal(t, bwBusy, bws)
+	bws = <-delegate.stateCh
+	require.Equal(t, bwIdle, bws)
+
 	defer teardownTLFJournalTest(t, tlfJournal, delegate, tempdir, config)
 }

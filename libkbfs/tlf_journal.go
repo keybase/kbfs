@@ -56,10 +56,32 @@ func (bws TLFJournalBackgroundWorkStatus) String() string {
 	}
 }
 
+// bwState indicates the state of the background work goroutine.
+type bwState int
+
+const (
+	bwBusy bwState = iota
+	bwIdle
+	bwPaused
+)
+
+func (bws bwState) String() string {
+	switch bws {
+	case bwBusy:
+		return "bwBusy"
+	case bwIdle:
+		return "bwIdle"
+	case bwPaused:
+		return "bwPaused"
+	default:
+		return fmt.Sprintf("bwState(%d)", bws)
+	}
+}
+
 // tlfJournalBWDelegate is used by tests to know what the background
 // goroutine is doing.
 type tlfJournalBWDelegate interface {
-	OnNewState(bws TLFJournalBackgroundWorkStatus, doingWork bool)
+	OnNewState(bws bwState)
 	OnShutdown()
 }
 
@@ -170,11 +192,11 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 	var errCh <-chan error
 	var bwCancel func()
 	for {
-		if j.bwDelegate != nil {
-			j.bwDelegate.OnNewState(bws, errCh != nil)
-		}
 		switch {
 		case bws == TLFJournalBackgroundWorkEnabled && errCh != nil:
+			if j.bwDelegate != nil {
+				j.bwDelegate.OnNewState(bwBusy)
+			}
 			// Busy state. We exit this state exactly when
 			// the background work is done, canceling it
 			// if necessary.
@@ -209,6 +231,9 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 			}
 
 		case bws == TLFJournalBackgroundWorkEnabled && errCh == nil:
+			if j.bwDelegate != nil {
+				j.bwDelegate.OnNewState(bwIdle)
+			}
 			// Idle state.
 			j.log.CDebugf(
 				ctx, "Waiting for the work signal for %s",
@@ -233,6 +258,9 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 			}
 
 		case bws == TLFJournalBackgroundWorkPaused:
+			if j.bwDelegate != nil {
+				j.bwDelegate.OnNewState(bwPaused)
+			}
 			// Paused state.
 			j.log.CDebugf(
 				ctx, "Waiting to resume background work for %s",
