@@ -258,7 +258,8 @@ func (j *JournalServer) Status() JournalServerStatus {
 func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 	bundle, ok := j.getBundle(tlfID)
 	if !ok {
-		return TLFJournalStatus{}, fmt.Errorf("Journal not enabled for %s", tlfID)
+		return TLFJournalStatus{},
+			fmt.Errorf("Journal not enabled for %s", tlfID)
 	}
 
 	return bundle.getJournalStatus()
