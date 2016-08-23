@@ -271,6 +271,12 @@ func (md *BareRootMetadataV2) DeepCopy(codec Codec) (BareRootMetadata, error) {
 	return &newMd, nil
 }
 
+// MakeSuccessor implements the ImmutableBareRootMetadata interface for BareRootMetadataV2.
+func (md *BareRootMetadataV2) MakeSuccessor(codec Codec) (BareRootMetadata, error) {
+	// TODO: Make a v3 successor.
+	return md.DeepCopy(codec)
+}
+
 // CheckValidSuccessor implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) CheckValidSuccessor(
 	currID MdID, nextMd BareRootMetadata) error {

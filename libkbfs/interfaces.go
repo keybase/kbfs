@@ -1485,6 +1485,8 @@ type BareRootMetadata interface {
 	IsReader(user keybase1.UID, deviceKID keybase1.KID) bool
 	// DeepCopy returns a deep copy of the underlying data structure.
 	DeepCopy(codec Codec) (BareRootMetadata, error)
+	// MakeSuccessor returns a newly constructed successor to this metadata revision.
+	MakeSuccessor(codec Codec) (BareRootMetadata, error)
 	// CheckValidSuccessor makes sure the given BareRootMetadata is a valid
 	// successor to the current one, and returns an error otherwise.
 	CheckValidSuccessor(currID MdID, nextMd BareRootMetadata) error
