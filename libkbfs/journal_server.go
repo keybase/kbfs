@@ -149,6 +149,36 @@ func (b *tlfJournalBundle) getMDRange(
 		currentUID, currentVerifyingKey, start, stop)
 }
 
+func (b *tlfJournalBundle) putMD(
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, signer cryptoSigner,
+	ekg encryptionKeyGetter, bsplit BlockSplitter, rmd *RootMetadata) (
+	MdID, error) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	mdID, err := b.mdJournal.put(ctx, currentUID, currentVerifyingKey,
+		signer, ekg, bsplit, rmd)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	select {
+	case b.hasWorkCh <- struct{}{}:
+	default:
+	}
+
+	return mdID, nil
+}
+
+func (b *tlfJournalBundle) clearMDs(
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, bid BranchID) error {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	// No need to signal work in this case.
+	return b.mdJournal.clear(ctx, currentUID, currentVerifyingKey, bid)
+}
+
 func (b *tlfJournalBundle) flushOneBlockOp(
 	ctx context.Context, delegateBlockServer BlockServer,
 	tlfID TlfID) (bool, error) {
@@ -182,6 +212,28 @@ func (b *tlfJournalBundle) getJournalEntryCounts() (
 	}
 
 	return blockEntryCount, mdEntryCount, nil
+}
+
+func (b *tlfJournalBundle) getJournalStatus() (TLFJournalStatus, error) {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	earliestRevision, err := b.mdJournal.readEarliestRevision()
+	if err != nil {
+		return TLFJournalStatus{}, err
+	}
+	latestRevision, err := b.mdJournal.readLatestRevision()
+	if err != nil {
+		return TLFJournalStatus{}, err
+	}
+	blockEntryCount, err := b.blockJournal.length()
+	if err != nil {
+		return TLFJournalStatus{}, err
+	}
+	return TLFJournalStatus{
+		RevisionStart: earliestRevision,
+		RevisionEnd:   latestRevision,
+		BlockOpCount:  blockEntryCount,
+	}, nil
 }
 
 // TODO: JournalServer isn't really a server, although it can create
@@ -370,12 +422,12 @@ func (j *JournalServer) Enable(
 	bundle := makeTlfJournalBundle(blockJournal, mdJournal)
 	j.tlfBundles[tlfID] = bundle
 
-	go j.autoFlush(tlfID, afs, bundle.hasWorkCh, bundle.pauseCh,
-		bundle.resumeCh, bundle.shutdownCh)
+	go j.autoFlush(tlfID, afs, b.hasWorkCh, b.pauseCh,
+		b.resumeCh, b.shutdownCh)
 
 	// Signal work to pick up any existing journal entries.
 	select {
-	case bundle.hasWorkCh <- struct{}{}:
+	case b.hasWorkCh <- struct{}{}:
 	default:
 	}
 
@@ -446,7 +498,7 @@ func (j *JournalServer) PauseAutoFlush(ctx context.Context, tlfID TlfID) {
 	}
 
 	select {
-	case bundle.pauseCh <- struct{}{}:
+	case b.pauseCh <- struct{}{}:
 	default:
 	}
 }
@@ -463,7 +515,7 @@ func (j *JournalServer) ResumeAutoFlush(ctx context.Context, tlfID TlfID) {
 	}
 
 	select {
-	case bundle.resumeCh <- struct{}{}:
+	case b.resumeCh <- struct{}{}:
 	default:
 	}
 }
@@ -480,7 +532,7 @@ func (j *JournalServer) signalWork(ctx context.Context, tlfID TlfID) {
 	}
 
 	select {
-	case bundle.hasWorkCh <- struct{}{}:
+	case b.hasWorkCh <- struct{}{}:
 	default:
 	}
 }
@@ -511,7 +563,7 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	// TODO: Parallelize block puts.
 
 	for {
-		flushed, err := bundle.flushOneBlockOp(
+		flushed, err := b.flushOneBlockOp(
 			ctx, j.delegateBlockServer, tlfID)
 		if err != nil {
 			return err
@@ -533,7 +585,7 @@ func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	}
 
 	for {
-		flushed, err := bundle.flushOneMDOp(
+		flushed, err := b.flushOneMDOp(
 			ctx, uid, key, j.config.Crypto(), j.config.MDServer())
 		if err != nil {
 			return err
@@ -569,7 +621,7 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID TlfID) (err error) {
 		return nil
 	}
 
-	blockEntryCount, mdEntryCount, err := bundle.getJournalEntryCounts()
+	blockEntryCount, mdEntryCount, err := b.getJournalEntryCounts()
 	if err != nil {
 		return err
 	}
@@ -581,7 +633,7 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID TlfID) (err error) {
 	}
 
 	select {
-	case bundle.shutdownCh <- struct{}{}:
+	case b.shutdownCh <- struct{}{}:
 	default:
 	}
 
@@ -625,25 +677,7 @@ func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 		return TLFJournalStatus{}, fmt.Errorf("Journal not enabled for %s", tlfID)
 	}
 
-	bundle.lock.RLock()
-	defer bundle.lock.RUnlock()
-	earliestRevision, err := bundle.mdJournal.readEarliestRevision()
-	if err != nil {
-		return TLFJournalStatus{}, err
-	}
-	latestRevision, err := bundle.mdJournal.readLatestRevision()
-	if err != nil {
-		return TLFJournalStatus{}, err
-	}
-	blockEntryCount, err := bundle.blockJournal.length()
-	if err != nil {
-		return TLFJournalStatus{}, err
-	}
-	return TLFJournalStatus{
-		RevisionStart: earliestRevision,
-		RevisionEnd:   latestRevision,
-		BlockOpCount:  blockEntryCount,
-	}, nil
+	return bundle.getJournalStatus()
 }
 
 func (j *JournalServer) shutdown() {
@@ -652,7 +686,7 @@ func (j *JournalServer) shutdown() {
 	defer j.lock.Unlock()
 	for _, bundle := range j.tlfBundles {
 		select {
-		case bundle.shutdownCh <- struct{}{}:
+		case b.shutdownCh <- struct{}{}:
 		default:
 		}
 	}

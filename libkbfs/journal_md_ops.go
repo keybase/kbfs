@@ -352,18 +352,10 @@ func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
 			return MdID{}, err
 		}
 
-		bundle.lock.Lock()
-		defer bundle.lock.Unlock()
-		mdID, err := bundle.mdJournal.put(ctx, uid, key,
+		return bundle.putMD(ctx, uid, key,
 			j.jServer.config.Crypto(),
 			j.jServer.config.KeyManager(),
 			j.jServer.config.BlockSplitter(), rmd)
-		if err != nil {
-			return MdID{}, err
-		}
-
-		j.jServer.signalWork(ctx, rmd.TlfID())
-		return mdID, nil
 	}
 
 	return j.MDOps.Put(ctx, rmd)
@@ -383,8 +375,10 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 			return MdID{}, err
 		}
 
-		// TODO: The code below races with PruneBranch. Fix
-		// this.
+		// TODO: The code below races with PruneBranch, since
+		// the branch may get prunes after the
+		// GerUnmergedForTLF call and before the putMD
+		// call. Fix this.
 
 		rmd.SetUnmerged()
 		if rmd.BID() == NullBranchID {
@@ -405,18 +399,10 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 			}
 		}
 
-		bundle.lock.Lock()
-		defer bundle.lock.Unlock()
-		mdID, err := bundle.mdJournal.put(ctx, uid, key,
+		return bundle.putMD(ctx, uid, key,
 			j.jServer.config.Crypto(),
 			j.jServer.config.KeyManager(),
 			j.jServer.config.BlockSplitter(), rmd)
-		if err != nil {
-			return MdID{}, err
-		}
-
-		j.jServer.signalWork(ctx, rmd.TlfID())
-		return mdID, nil
 	}
 
 	return j.MDOps.PutUnmerged(ctx, rmd)
@@ -437,11 +423,7 @@ func (j journalMDOps) PruneBranch(
 		}
 
 		// Prune the journal, too.
-		err = func() error {
-			bundle.lock.Lock()
-			defer bundle.lock.Unlock()
-			return bundle.mdJournal.clear(ctx, uid, key, bid)
-		}()
+		bundle.clearMDs(ctx, uid, key, bid)
 		if err != nil {
 			return err
 		}
