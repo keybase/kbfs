@@ -143,17 +143,22 @@ func makeTlfJournal(
 	return j, nil
 }
 
+// autoFlush is the main function for the background auto-flush
+// goroutine.
+//
+// TODO: Handle garbage collection too, somehow.
 func (j *tlfJournal) autoFlush(afs TLFJournalAutoFlushStatus) {
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", j.log)
 	for {
-		j.log.CDebugf(ctx, "Waiting for events for %s (%s)", j.tlfID, afs)
+		j.log.CDebugf(ctx, "Waiting for events for %s (%s)",
+			j.tlfID, afs)
 		switch afs {
 		case TLFJournalAutoFlushEnabled:
 			select {
 			case <-j.hasWorkCh:
 				j.log.CDebugf(
-					ctx, "Got work event for %s", j.tlfID)
+					ctx, "Got work signal for %s", j.tlfID)
 				err := j.flush(ctx)
 				if err != nil {
 					j.log.CWarningf(ctx,
@@ -163,12 +168,12 @@ func (j *tlfJournal) autoFlush(afs TLFJournalAutoFlushStatus) {
 
 			case <-j.needPauseCh:
 				j.log.CDebugf(ctx,
-					"Got pause event for %s", j.tlfID)
+					"Got pause signal for %s", j.tlfID)
 				afs = TLFJournalAutoFlushDisabled
 
 			case <-j.needShutdownCh:
 				j.log.CDebugf(ctx,
-					"Got shutdown event for %s", j.tlfID)
+					"Got shutdown signal for %s", j.tlfID)
 				return
 			}
 
@@ -176,18 +181,19 @@ func (j *tlfJournal) autoFlush(afs TLFJournalAutoFlushStatus) {
 			select {
 			case <-j.needResumeCh:
 				j.log.CDebugf(ctx,
-					"Got resume event for %s", j.tlfID)
+					"Got resume signal for %s", j.tlfID)
 				afs = TLFJournalAutoFlushEnabled
 
 			case <-j.needShutdownCh:
 				j.log.CDebugf(ctx,
-					"Got shutdown event for %s", j.tlfID)
+					"Got shutdown signal for %s", j.tlfID)
 				return
 			}
 
 		default:
 			j.log.CErrorf(
-				ctx, "Unknown TLFJournalAutoFlushStatus %s", afs)
+				ctx, "Unknown TLFJournalAutoFlushStatus %s",
+				afs)
 			return
 		}
 	}
