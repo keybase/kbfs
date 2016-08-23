@@ -271,11 +271,11 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
 
 	oldBlockServer := jServer.delegateBlockServer
-	bundle, ok := jServer.getBundle(tlfID)
+	tlfJournal, ok := jServer.getTLFJournal(tlfID)
 	require.True(t, ok)
 
 	flush := func() {
-		flushed, err := bundle.blockJournal.flushOne(
+		flushed, err := tlfJournal.blockJournal.flushOne(
 			ctx, oldBlockServer, tlfID)
 		require.NoError(t, err)
 		require.True(t, flushed)
@@ -337,7 +337,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
-	flushed, err := bundle.blockJournal.flushOne(
+	flushed, err := tlfJournal.blockJournal.flushOne(
 		ctx, oldBlockServer, tlfID)
 	require.NoError(t, err)
 	require.False(t, flushed)

@@ -78,7 +78,7 @@ type tlfJournal struct {
 	mdJournal    *mdJournal
 }
 
-func makeTlfJournalBundle(
+func makeTlfJournal(
 	ctx context.Context, dir string, tlfID TlfID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, log logger.Logger,
 	afs JournalAutoFlushStatus) (*tlfJournal, error) {
@@ -106,7 +106,7 @@ func makeTlfJournalBundle(
 		return nil, err
 	}
 
-	b := &tlfJournal{
+	j := &tlfJournal{
 		tlfID:               tlfID,
 		config:              config,
 		delegateBlockServer: delegateBlockServer,
@@ -120,78 +120,78 @@ func makeTlfJournalBundle(
 		mdJournal:           mdJournal,
 	}
 
-	go b.autoFlush(afs)
+	go j.autoFlush(afs)
 
 	// Signal work to pick up any existing journal entries.
 	select {
-	case b.hasWorkCh <- struct{}{}:
+	case j.hasWorkCh <- struct{}{}:
 	default:
 	}
 
-	b.log.CDebugf(ctx, "Enabled journal for %s with path %s", tlfID, tlfDir)
-	return b, nil
+	j.log.CDebugf(ctx, "Enabled journal for %s with path %s", tlfID, tlfDir)
+	return j, nil
 }
 
-func (b *tlfJournal) autoFlush(afs JournalAutoFlushStatus) {
+func (j *tlfJournal) autoFlush(afs JournalAutoFlushStatus) {
 	ctx := ctxWithRandomID(
-		context.Background(), "journal-auto-flush", "1", b.log)
+		context.Background(), "journal-auto-flush", "1", j.log)
 	for {
-		b.log.CDebugf(ctx, "Waiting for events for %s (%s)", b.tlfID, afs)
+		j.log.CDebugf(ctx, "Waiting for events for %s (%s)", j.tlfID, afs)
 		switch afs {
 		case JournalAutoFlushEnabled:
 			select {
-			case <-b.hasWorkCh:
-				b.log.CDebugf(
-					ctx, "Got work event for %s", b.tlfID)
-				err := b.flush(ctx)
+			case <-j.hasWorkCh:
+				j.log.CDebugf(
+					ctx, "Got work event for %s", j.tlfID)
+				err := j.flush(ctx)
 				if err != nil {
-					b.log.CWarningf(ctx,
+					j.log.CWarningf(ctx,
 						"Error when flushing %s: %v",
-						b.tlfID, err)
+						j.tlfID, err)
 				}
 
-			case <-b.pauseCh:
-				b.log.CDebugf(ctx,
-					"Got pause event for %s", b.tlfID)
+			case <-j.pauseCh:
+				j.log.CDebugf(ctx,
+					"Got pause event for %s", j.tlfID)
 				afs = JournalAutoFlushDisabled
 
-			case <-b.shutdownCh:
-				b.log.CDebugf(ctx,
-					"Got shutdown event for %s", b.tlfID)
+			case <-j.shutdownCh:
+				j.log.CDebugf(ctx,
+					"Got shutdown event for %s", j.tlfID)
 				return
 			}
 
 		case JournalAutoFlushDisabled:
 			select {
-			case <-b.resumeCh:
-				b.log.CDebugf(ctx,
-					"Got resume event for %s", b.tlfID)
+			case <-j.resumeCh:
+				j.log.CDebugf(ctx,
+					"Got resume event for %s", j.tlfID)
 				afs = JournalAutoFlushEnabled
 
-			case <-b.shutdownCh:
-				b.log.CDebugf(ctx,
-					"Got shutdown event for %s", b.tlfID)
+			case <-j.shutdownCh:
+				j.log.CDebugf(ctx,
+					"Got shutdown event for %s", j.tlfID)
 				return
 			}
 
 		default:
-			b.log.CErrorf(
+			j.log.CErrorf(
 				ctx, "Unknown JournalAutoFlushStatus %s", afs)
 			return
 		}
 	}
 }
 
-func (b *tlfJournal) flush(ctx context.Context) (err error) {
+func (j *tlfJournal) flush(ctx context.Context) (err error) {
 	flushedBlockEntries := 0
 	flushedMDEntries := 0
 	defer func() {
 		if err != nil {
-			b.deferLog.CDebugf(ctx,
+			j.deferLog.CDebugf(ctx,
 				"Flushed %d block entries and %d MD entries "+
 					"for %s, but got error %v",
 				flushedBlockEntries, flushedMDEntries,
-				b.tlfID, err)
+				j.tlfID, err)
 		}
 	}()
 
@@ -201,7 +201,7 @@ func (b *tlfJournal) flush(ctx context.Context) (err error) {
 	// TODO: Parallelize block puts.
 
 	for {
-		flushed, err := b.flushOneBlockOp(ctx)
+		flushed, err := j.flushOneBlockOp(ctx)
 		if err != nil {
 			return err
 		}
@@ -212,7 +212,7 @@ func (b *tlfJournal) flush(ctx context.Context) (err error) {
 	}
 
 	for {
-		flushed, err := b.flushOneMDOp(ctx)
+		flushed, err := j.flushOneMDOp(ctx)
 		if err != nil {
 			return err
 		}
@@ -222,192 +222,192 @@ func (b *tlfJournal) flush(ctx context.Context) (err error) {
 		flushedMDEntries++
 	}
 
-	b.log.CDebugf(ctx, "Flushed %d block entries and %d MD entries for %s",
-		flushedBlockEntries, flushedMDEntries, b.tlfID)
+	j.log.CDebugf(ctx, "Flushed %d block entries and %d MD entries for %s",
+		flushedBlockEntries, flushedMDEntries, j.tlfID)
 	return nil
 }
 
-func (b *tlfJournal) pauseAutoFlush() {
+func (j *tlfJournal) pauseAutoFlush() {
 	select {
-	case b.pauseCh <- struct{}{}:
+	case j.pauseCh <- struct{}{}:
 	default:
 	}
 }
 
-func (b *tlfJournal) resumeAutoFlush() {
+func (j *tlfJournal) resumeAutoFlush() {
 	select {
-	case b.resumeCh <- struct{}{}:
+	case j.resumeCh <- struct{}{}:
 	default:
 	}
 }
 
-func (b *tlfJournal) getBlockDataWithContext(
+func (j *tlfJournal) getBlockDataWithContext(
 	id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
-	return b.blockJournal.getDataWithContext(id, context)
+	j.lock.RLock()
+	defer j.lock.RUnlock()
+	return j.blockJournal.getDataWithContext(id, context)
 }
 
-func (b *tlfJournal) putBlockData(
+func (j *tlfJournal) putBlockData(
 	ctx context.Context, id BlockID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	err := b.blockJournal.putData(ctx, id, context, buf, serverHalf)
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	err := j.blockJournal.putData(ctx, id, context, buf, serverHalf)
 	if err != nil {
 		return err
 	}
 
 	select {
-	case b.hasWorkCh <- struct{}{}:
+	case j.hasWorkCh <- struct{}{}:
 	default:
 	}
 
 	return nil
 }
 
-func (b *tlfJournal) addBlockReference(
+func (j *tlfJournal) addBlockReference(
 	ctx context.Context, id BlockID, context BlockContext) error {
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	err := b.blockJournal.addReference(ctx, id, context)
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	err := j.blockJournal.addReference(ctx, id, context)
 	if err != nil {
 		return err
 	}
 
 	select {
-	case b.hasWorkCh <- struct{}{}:
+	case j.hasWorkCh <- struct{}{}:
 	default:
 	}
 
 	return nil
 }
 
-func (b *tlfJournal) removeBlockReferences(
+func (j *tlfJournal) removeBlockReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
-	b.lock.Lock()
-	defer b.lock.Unlock()
+	j.lock.Lock()
+	defer j.lock.Unlock()
 	// Don't remove the block data if we remove the last
 	// reference; we still need it to flush the initial put
 	// operation.
 	//
 	// TODO: It would be nice if we could detect that case and
 	// avoid having to flush the put.
-	liveCounts, err = b.blockJournal.removeReferences(
+	liveCounts, err = j.blockJournal.removeReferences(
 		ctx, contexts, false)
 	if err != nil {
 		return nil, err
 	}
 
 	select {
-	case b.hasWorkCh <- struct{}{}:
+	case j.hasWorkCh <- struct{}{}:
 	default:
 	}
 
 	return liveCounts, nil
 }
 
-func (b *tlfJournal) archiveBlockReferences(
+func (j *tlfJournal) archiveBlockReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) error {
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	err := b.blockJournal.archiveReferences(ctx, contexts)
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	err := j.blockJournal.archiveReferences(ctx, contexts)
 	if err != nil {
 		return err
 	}
 
 	select {
-	case b.hasWorkCh <- struct{}{}:
+	case j.hasWorkCh <- struct{}{}:
 	default:
 	}
 
 	return nil
 }
 
-func (b *tlfJournal) getMDHead(
+func (j *tlfJournal) getMDHead(
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
 	ImmutableBareRootMetadata, error) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
-	return b.mdJournal.getHead(currentUID, currentVerifyingKey)
+	j.lock.RLock()
+	defer j.lock.RUnlock()
+	return j.mdJournal.getHead(currentUID, currentVerifyingKey)
 }
 
-func (b *tlfJournal) getMDRange(
+func (j *tlfJournal) getMDRange(
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
 	start, stop MetadataRevision) (
 	[]ImmutableBareRootMetadata, error) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
-	return b.mdJournal.getRange(
+	j.lock.RLock()
+	defer j.lock.RUnlock()
+	return j.mdJournal.getRange(
 		currentUID, currentVerifyingKey, start, stop)
 }
 
-func (b *tlfJournal) putMD(
+func (j *tlfJournal) putMD(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, signer cryptoSigner,
 	ekg encryptionKeyGetter, bsplit BlockSplitter, rmd *RootMetadata) (
 	MdID, error) {
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	mdID, err := b.mdJournal.put(ctx, currentUID, currentVerifyingKey,
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	mdID, err := j.mdJournal.put(ctx, currentUID, currentVerifyingKey,
 		signer, ekg, bsplit, rmd)
 	if err != nil {
 		return MdID{}, err
 	}
 
 	select {
-	case b.hasWorkCh <- struct{}{}:
+	case j.hasWorkCh <- struct{}{}:
 	default:
 	}
 
 	return mdID, nil
 }
 
-func (b *tlfJournal) clearMDs(
+func (j *tlfJournal) clearMDs(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, bid BranchID) error {
-	b.lock.Lock()
-	defer b.lock.Unlock()
+	j.lock.Lock()
+	defer j.lock.Unlock()
 	// No need to signal work in this case.
-	return b.mdJournal.clear(ctx, currentUID, currentVerifyingKey, bid)
+	return j.mdJournal.clear(ctx, currentUID, currentVerifyingKey, bid)
 }
 
-func (b *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	return b.blockJournal.flushOne(ctx, b.delegateBlockServer, b.tlfID)
+func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.blockJournal.flushOne(ctx, j.delegateBlockServer, j.tlfID)
 }
 
-func (b *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
-	_, currentUID, err := b.config.KBPKI().GetCurrentUserInfo(ctx)
+func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
+	_, currentUID, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	currentVerifyingKey, err := b.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	currentVerifyingKey, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	return b.mdJournal.flushOne(
-		ctx, currentUID, currentVerifyingKey, b.config.Crypto(),
-		b.config.MDServer())
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.mdJournal.flushOne(
+		ctx, currentUID, currentVerifyingKey, j.config.Crypto(),
+		j.config.MDServer())
 }
 
-func (b *tlfJournal) getJournalEntryCounts() (
+func (j *tlfJournal) getJournalEntryCounts() (
 	blockEntryCount, mdEntryCount uint64, err error) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
-	blockEntryCount, err = b.blockJournal.length()
+	j.lock.RLock()
+	defer j.lock.RUnlock()
+	blockEntryCount, err = j.blockJournal.length()
 	if err != nil {
 		return 0, 0, err
 	}
 
-	mdEntryCount, err = b.mdJournal.length()
+	mdEntryCount, err = j.mdJournal.length()
 	if err != nil {
 		return 0, 0, err
 	}
@@ -415,18 +415,18 @@ func (b *tlfJournal) getJournalEntryCounts() (
 	return blockEntryCount, mdEntryCount, nil
 }
 
-func (b *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
-	earliestRevision, err := b.mdJournal.readEarliestRevision()
+func (j *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
+	j.lock.RLock()
+	defer j.lock.RUnlock()
+	earliestRevision, err := j.mdJournal.readEarliestRevision()
 	if err != nil {
 		return TLFJournalStatus{}, err
 	}
-	latestRevision, err := b.mdJournal.readLatestRevision()
+	latestRevision, err := j.mdJournal.readLatestRevision()
 	if err != nil {
 		return TLFJournalStatus{}, err
 	}
-	blockEntryCount, err := b.blockJournal.length()
+	blockEntryCount, err := j.blockJournal.length()
 	if err != nil {
 		return TLFJournalStatus{}, err
 	}
@@ -437,9 +437,9 @@ func (b *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
 	}, nil
 }
 
-func (b *tlfJournal) shutdown() {
+func (j *tlfJournal) shutdown() {
 	select {
-	case b.shutdownCh <- struct{}{}:
+	case j.shutdownCh <- struct{}{}:
 	default:
 	}
 }

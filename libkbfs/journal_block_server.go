@@ -17,8 +17,8 @@ var _ BlockServer = journalBlockServer{}
 func (j journalBlockServer) Get(
 	ctx context.Context, tlfID TlfID, id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
-	if bundle, ok := j.jServer.getBundle(tlfID); ok {
-		data, serverHalf, err := bundle.getBlockDataWithContext(
+	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
+		data, serverHalf, err := tlfJournal.getBlockDataWithContext(
 			id, context)
 		if _, ok := err.(BServerErrorBlockNonExistent); ok {
 			return j.BlockServer.Get(ctx, tlfID, id, context)
@@ -35,8 +35,8 @@ func (j journalBlockServer) Get(
 func (j journalBlockServer) Put(
 	ctx context.Context, tlfID TlfID, id BlockID, context BlockContext,
 	buf []byte, serverHalf BlockCryptKeyServerHalf) error {
-	if bundle, ok := j.jServer.getBundle(tlfID); ok {
-		return bundle.putBlockData(ctx, id, context, buf, serverHalf)
+	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
+		return tlfJournal.putBlockData(ctx, id, context, buf, serverHalf)
 	}
 
 	return j.BlockServer.Put(ctx, tlfID, id, context, buf, serverHalf)
@@ -53,8 +53,8 @@ func (j journalBlockServer) AddBlockReference(
 		return BServerErrorBlockNonExistent{}
 	}
 
-	if bundle, ok := j.jServer.getBundle(tlfID); ok {
-		return bundle.addBlockReference(ctx, id, context)
+	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
+		return tlfJournal.addBlockReference(ctx, id, context)
 	}
 
 	return j.BlockServer.AddBlockReference(ctx, tlfID, id, context)
@@ -64,10 +64,10 @@ func (j journalBlockServer) RemoveBlockReferences(
 	ctx context.Context, tlfID TlfID,
 	contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
-	if bundle, ok := j.jServer.getBundle(tlfID); ok {
+	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
 		// TODO: Get server counts without making a
 		// RemoveBlockReferences call and merge it.
-		return bundle.removeBlockReferences(ctx, contexts)
+		return tlfJournal.removeBlockReferences(ctx, contexts)
 	}
 
 	return j.BlockServer.RemoveBlockReferences(ctx, tlfID, contexts)
@@ -76,8 +76,8 @@ func (j journalBlockServer) RemoveBlockReferences(
 func (j journalBlockServer) ArchiveBlockReferences(
 	ctx context.Context, tlfID TlfID,
 	contexts map[BlockID][]BlockContext) error {
-	if bundle, ok := j.jServer.getBundle(tlfID); ok {
-		return bundle.archiveBlockReferences(ctx, contexts)
+	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
+		return tlfJournal.archiveBlockReferences(ctx, contexts)
 	}
 
 	return j.BlockServer.ArchiveBlockReferences(ctx, tlfID, contexts)

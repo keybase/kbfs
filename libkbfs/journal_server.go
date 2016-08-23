@@ -44,8 +44,8 @@ type JournalServer struct {
 	delegateBlockServer BlockServer
 	delegateMDOps       MDOps
 
-	lock       sync.RWMutex
-	tlfBundles map[TlfID]*tlfJournal
+	lock        sync.RWMutex
+	tlfJournals map[TlfID]*tlfJournal
 }
 
 func makeJournalServer(
@@ -59,16 +59,16 @@ func makeJournalServer(
 		delegateBlockCache:  bcache,
 		delegateBlockServer: bserver,
 		delegateMDOps:       mdOps,
-		tlfBundles:          make(map[TlfID]*tlfJournal),
+		tlfJournals:         make(map[TlfID]*tlfJournal),
 	}
 	return &jServer
 }
 
-func (j *JournalServer) getBundle(tlfID TlfID) (*tlfJournal, bool) {
+func (j *JournalServer) getTLFJournal(tlfID TlfID) (*tlfJournal, bool) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
-	bundle, ok := j.tlfBundles[tlfID]
-	return bundle, ok
+	tlfJournal, ok := j.tlfJournals[tlfID]
+	return tlfJournal, ok
 }
 
 // EnableExistingJournals turns on the write journal for all TLFs with
@@ -133,19 +133,19 @@ func (j *JournalServer) Enable(
 
 	j.lock.Lock()
 	defer j.lock.Unlock()
-	_, ok := j.tlfBundles[tlfID]
+	_, ok := j.tlfJournals[tlfID]
 	if ok {
 		j.log.CDebugf(ctx, "Journal already enabled for %s", tlfID)
 		return nil
 	}
 
-	bundle, err := makeTlfJournalBundle(ctx, j.dir, tlfID, j.config,
+	tlfJournal, err := makeTlfJournal(ctx, j.dir, tlfID, j.config,
 		j.delegateBlockServer, j.log, afs)
 	if err != nil {
 		return err
 	}
 
-	j.tlfBundles[tlfID] = bundle
+	j.tlfJournals[tlfID] = tlfJournal
 	return nil
 }
 
@@ -153,40 +153,40 @@ func (j *JournalServer) Enable(
 // not already paused.
 func (j *JournalServer) PauseAutoFlush(ctx context.Context, tlfID TlfID) {
 	j.log.CDebugf(ctx, "Signaling pause for %s", tlfID)
-	bundle, ok := j.getBundle(tlfID)
+	tlfJournal, ok := j.getTLFJournal(tlfID)
 	if !ok {
 		j.log.CDebugf(ctx,
-			"Could not find bundle for %s; dropping pause signal",
+			"Could not find journal for %s; dropping pause signal",
 			tlfID)
 	}
 
-	bundle.pauseAutoFlush()
+	tlfJournal.pauseAutoFlush()
 }
 
 // ResumeAutoFlush resumes the background auto-flush goroutine, if it's
 // not already resumed.
 func (j *JournalServer) ResumeAutoFlush(ctx context.Context, tlfID TlfID) {
 	j.log.CDebugf(ctx, "Signaling resume for %s", tlfID)
-	bundle, ok := j.getBundle(tlfID)
+	tlfJournal, ok := j.getTLFJournal(tlfID)
 	if !ok {
 		j.log.CDebugf(ctx,
-			"Could not find bundle for %s; dropping resume signal",
+			"Could not find journal for %s; dropping resume signal",
 			tlfID)
 	}
 
-	bundle.resumeAutoFlush()
+	tlfJournal.resumeAutoFlush()
 }
 
 // Flush flushes the write journal for the given TLF.
 func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	j.log.CDebugf(ctx, "Flushing journal for %s", tlfID)
-	bundle, ok := j.getBundle(tlfID)
+	tlfJournal, ok := j.getTLFJournal(tlfID)
 	if !ok {
 		j.log.CDebugf(ctx, "Journal not enabled for %s", tlfID)
 		return nil
 	}
 
-	return bundle.flush(ctx)
+	return tlfJournal.flush(ctx)
 }
 
 // Disable turns off the write journal for the given TLF.
@@ -202,13 +202,13 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID TlfID) (err error) {
 
 	j.lock.Lock()
 	defer j.lock.Unlock()
-	bundle, ok := j.tlfBundles[tlfID]
+	tlfJournal, ok := j.tlfJournals[tlfID]
 	if !ok {
 		j.log.CDebugf(ctx, "Journal already disabled for %s", tlfID)
 		return nil
 	}
 
-	blockEntryCount, mdEntryCount, err := bundle.getJournalEntryCounts()
+	blockEntryCount, mdEntryCount, err := tlfJournal.getJournalEntryCounts()
 	if err != nil {
 		return err
 	}
@@ -219,11 +219,11 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID TlfID) (err error) {
 			blockEntryCount, mdEntryCount)
 	}
 
-	bundle.shutdown()
+	tlfJournal.shutdown()
 
 	j.log.CDebugf(ctx, "Disabled journal for %s", tlfID)
 
-	delete(j.tlfBundles, tlfID)
+	delete(j.tlfJournals, tlfID)
 	return nil
 }
 
@@ -245,7 +245,7 @@ func (j *JournalServer) Status() JournalServerStatus {
 	journalCount := func() int {
 		j.lock.RLock()
 		defer j.lock.RUnlock()
-		return len(j.tlfBundles)
+		return len(j.tlfJournals)
 	}()
 	return JournalServerStatus{
 		RootDir:      j.dir,
@@ -256,20 +256,20 @@ func (j *JournalServer) Status() JournalServerStatus {
 // JournalStatus returns a TLFServerStatus object for the given TLF
 // suitable for diagnostics.
 func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
-	bundle, ok := j.getBundle(tlfID)
+	tlfJournal, ok := j.getTLFJournal(tlfID)
 	if !ok {
 		return TLFJournalStatus{},
 			fmt.Errorf("Journal not enabled for %s", tlfID)
 	}
 
-	return bundle.getJournalStatus()
+	return tlfJournal.getJournalStatus()
 }
 
 func (j *JournalServer) shutdown() {
 	j.log.CDebugf(context.Background(), "Shutting down journal")
 	j.lock.Lock()
 	defer j.lock.Unlock()
-	for _, bundle := range j.tlfBundles {
-		bundle.shutdown()
+	for _, tlfJournal := range j.tlfJournals {
+		tlfJournal.shutdown()
 	}
 }
