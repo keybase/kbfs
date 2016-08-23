@@ -36,6 +36,16 @@ func (d testBWDelegate) OnShutdown(ctx context.Context) {
 	d.shutdownCh <- struct{}{}
 }
 
+func (d testBWDelegate) requireNextState(
+	ctx context.Context, t *testing.T, expectedState bwState) {
+	select {
+	case bws := <-d.stateCh:
+		require.Equal(t, expectedState, bws)
+	case <-ctx.Done():
+		require.FailNow(t, ctx.Err().Error())
+	}
+}
+
 func setupTLFJournalTest(t *testing.T) (
 	tempdir string, config Config, ctx context.Context,
 	cancel context.CancelFunc, tlfJournal *tlfJournal,
@@ -61,13 +71,9 @@ func setupTLFJournalTest(t *testing.T) (
 
 	// Read the state changes triggered by the initial work
 	// signal.
-	bws := <-delegate.stateCh
-	require.Equal(t, bwIdle, bws)
-	bws = <-delegate.stateCh
-	require.Equal(t, bwBusy, bws)
-	bws = <-delegate.stateCh
-	require.Equal(t, bwIdle, bws)
-
+	delegate.requireNextState(ctx, t, bwIdle)
+	delegate.requireNextState(ctx, t, bwBusy)
+	delegate.requireNextState(ctx, t, bwIdle)
 	return tempdir, config, ctx, cancel, tlfJournal, delegate
 }
 
@@ -113,10 +119,8 @@ func TestTLFJournalBasic(t *testing.T) {
 
 	// Wait for it to be processed.
 
-	bws := <-delegate.stateCh
-	require.Equal(t, bwBusy, bws)
-	bws = <-delegate.stateCh
-	require.Equal(t, bwIdle, bws)
+	delegate.requireNextState(ctx, t, bwBusy)
+	delegate.requireNextState(ctx, t, bwIdle)
 }
 
 func TestTLFJournalPauseResume(t *testing.T) {
@@ -134,12 +138,9 @@ func TestTLFJournalPauseResume(t *testing.T) {
 	// Unpause and wait for it to be processed.
 
 	tlfJournal.resumeBackgroundWork()
-	bws = <-delegate.stateCh
-	require.Equal(t, bwIdle, bws)
-	bws = <-delegate.stateCh
-	require.Equal(t, bwBusy, bws)
-	bws = <-delegate.stateCh
-	require.Equal(t, bwIdle, bws)
+	delegate.requireNextState(ctx, t, bwIdle)
+	delegate.requireNextState(ctx, t, bwBusy)
+	delegate.requireNextState(ctx, t, bwIdle)
 }
 
 func TestTLFJournalPauseShutdown(t *testing.T) {
@@ -149,8 +150,7 @@ func TestTLFJournalPauseShutdown(t *testing.T) {
 		t, cancel, tlfJournal, delegate, tempdir, config)
 
 	tlfJournal.pauseBackgroundWork()
-	bws := <-delegate.stateCh
-	require.Equal(t, bwPaused, bws)
+	delegate.requireNextState(ctx, t, bwPaused)
 
 	putBlock(ctx, t, config, tlfJournal)
 
@@ -177,14 +177,12 @@ func TestTLFJournalBusyPause(t *testing.T) {
 
 	putBlock(ctx, t, config, tlfJournal)
 
-	bws := <-delegate.stateCh
-	require.Equal(t, bwBusy, bws)
+	delegate.requireNextState(ctx, t, bwBusy)
 
 	// Should still be able to pause while busy.
 
 	tlfJournal.pauseBackgroundWork()
-	bws = <-delegate.stateCh
-	require.Equal(t, bwPaused, bws)
+	delegate.requireNextState(ctx, t, bwPaused)
 }
 
 func TestTLFJournalBusyShutdown(t *testing.T) {
@@ -195,8 +193,7 @@ func TestTLFJournalBusyShutdown(t *testing.T) {
 
 	putBlock(ctx, t, config, tlfJournal)
 
-	bws := <-delegate.stateCh
-	require.Equal(t, bwBusy, bws)
+	delegate.requireNextState(ctx, t, bwBusy)
 
 	// Should still be able to shut down while busy.
 }
