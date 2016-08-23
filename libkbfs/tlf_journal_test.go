@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	keybase1 "github.com/keybase/client/go/protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -44,6 +45,16 @@ func setupTLFJournalTest(t *testing.T) (
 		ctx, tempdir, tlfID, config, config.BlockServer(), log,
 		TLFJournalBackgroundWorkEnabled, delegate)
 	require.NoError(t, err)
+
+	// Read the state changes triggered by the initial work
+	// signal.
+	bws := <-delegate.stateCh
+	require.Equal(t, bwIdle, bws)
+	bws = <-delegate.stateCh
+	require.Equal(t, bwBusy, bws)
+	bws = <-delegate.stateCh
+	require.Equal(t, bwIdle, bws)
+
 	return tempdir, config, tlfJournal, delegate
 }
 
@@ -64,8 +75,24 @@ func teardownTLFJournalTest(
 
 func TestTLFJournalBasic(t *testing.T) {
 	tempdir, config, tlfJournal, delegate := setupTLFJournalTest(t)
-	bws := <-delegate.stateCh
-	require.Equal(t, bwIdle, bws)
+
+	ctx := context.Background()
+	crypto := config.Crypto()
+
+	// Put a block.
+
+	uid := keybase1.MakeTestUID(1)
+	data := []byte{1, 2, 3, 4}
+	bID, err := crypto.MakePermanentBlockID(data)
+	require.NoError(t, err)
+	bCtx := BlockContext{uid, "", zeroBlockRefNonce}
+	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
+	err = tlfJournal.putBlockData(ctx, bID, bCtx, data, serverHalf)
+	require.NoError(t, err)
+
+	// Wait for it to be processed.
+
 	bws = <-delegate.stateCh
 	require.Equal(t, bwBusy, bws)
 	bws = <-delegate.stateCh
