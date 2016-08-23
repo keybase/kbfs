@@ -20,11 +20,11 @@ type testBWDelegate struct {
 	shutdownCh chan struct{}
 }
 
-func (d testBWDelegate) OnNewState(bws bwState) {
+func (d testBWDelegate) OnNewState(ctx context.Context, bws bwState) {
 	d.stateCh <- bws
 }
 
-func (d testBWDelegate) OnShutdown() {
+func (d testBWDelegate) OnShutdown(ctx context.Context) {
 	d.shutdownCh <- struct{}{}
 }
 

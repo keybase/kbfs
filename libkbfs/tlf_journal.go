@@ -81,8 +81,8 @@ func (bws bwState) String() string {
 // tlfJournalBWDelegate is used by tests to know what the background
 // goroutine is doing.
 type tlfJournalBWDelegate interface {
-	OnNewState(bws bwState)
-	OnShutdown()
+	OnNewState(ctx context.Context, bws bwState)
+	OnShutdown(ctx context.Context)
 }
 
 // A tlfJournal contains all the journals for a TLF and controls the
@@ -179,13 +179,13 @@ func makeTLFJournal(
 // doBackgroundWorkLoop is the main function for the background
 // goroutine. It just calls doBackgroundWork whenever there is work.
 func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
-	defer func() {
-		if j.bwDelegate != nil {
-			j.bwDelegate.OnShutdown()
-		}
-	}()
 	ctx := ctxWithRandomID(
 		context.Background(), "journal-auto-flush", "1", j.log)
+	defer func() {
+		if j.bwDelegate != nil {
+			j.bwDelegate.OnShutdown(ctx)
+		}
+	}()
 	// errCh and bwCancel are non-nil only when bws ==
 	// TLFJournalBackgroundWorkEnabled and there's work being done
 	// in the background.
@@ -195,7 +195,7 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 		switch {
 		case bws == TLFJournalBackgroundWorkEnabled && errCh != nil:
 			if j.bwDelegate != nil {
-				j.bwDelegate.OnNewState(bwBusy)
+				j.bwDelegate.OnNewState(ctx, bwBusy)
 			}
 			// Busy state. We exit this state exactly when
 			// the background work is done, canceling it
@@ -232,7 +232,7 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 
 		case bws == TLFJournalBackgroundWorkEnabled && errCh == nil:
 			if j.bwDelegate != nil {
-				j.bwDelegate.OnNewState(bwIdle)
+				j.bwDelegate.OnNewState(ctx, bwIdle)
 			}
 			// Idle state.
 			j.log.CDebugf(
@@ -259,7 +259,7 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 
 		case bws == TLFJournalBackgroundWorkPaused:
 			if j.bwDelegate != nil {
-				j.bwDelegate.OnNewState(bwPaused)
+				j.bwDelegate.OnNewState(ctx, bwPaused)
 			}
 			// Paused state.
 			j.log.CDebugf(
