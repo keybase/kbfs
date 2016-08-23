@@ -178,6 +178,9 @@ func TestTLFJournalBusyPause(t *testing.T) {
 	defer teardownTLFJournalTest(
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
+	tlfJournal.delegateBlockServer =
+		hangingBlockServer{tlfJournal.delegateBlockServer}
+
 	putBlock(ctx, t, config, tlfJournal)
 
 	delegate.requireNextState(ctx, t, bwBusy)
@@ -193,6 +196,9 @@ func TestTLFJournalBusyShutdown(t *testing.T) {
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+
+	tlfJournal.delegateBlockServer =
+		hangingBlockServer{tlfJournal.delegateBlockServer}
 
 	putBlock(ctx, t, config, tlfJournal)
 
