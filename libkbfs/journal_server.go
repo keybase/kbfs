@@ -18,7 +18,19 @@ import (
 	keybase1 "github.com/keybase/client/go/protocol"
 )
 
+type tlfJournalConfig interface {
+	Crypto() Crypto
+	KBPKI() KBPKI
+	MDServer() MDServer
+}
+
 type tlfJournalBundle struct {
+	tlfID               TlfID
+	config              tlfJournalConfig
+	delegateBlockServer BlockServer
+	log                 logger.Logger
+	deferLog            logger.Logger
+
 	hasWorkCh  chan struct{}
 	pauseCh    chan struct{}
 	resumeCh   chan struct{}
@@ -34,16 +46,128 @@ type tlfJournalBundle struct {
 	mdJournal    *mdJournal
 }
 
-func makeTlfJournalBundle(
-	blockJournal *blockJournal, mdJournal *mdJournal) *tlfJournalBundle {
-	return &tlfJournalBundle{
-		hasWorkCh:    make(chan struct{}, 1),
-		pauseCh:      make(chan struct{}, 1),
-		resumeCh:     make(chan struct{}, 1),
-		shutdownCh:   make(chan struct{}, 1),
-		blockJournal: blockJournal,
-		mdJournal:    mdJournal,
+func makeTlfJournalBundle(tlfID TlfID, config tlfJournalConfig,
+	delegateBlockServer BlockServer, log logger.Logger,
+	blockJournal *blockJournal, mdJournal *mdJournal,
+	afs JournalAutoFlushStatus) *tlfJournalBundle {
+	b := &tlfJournalBundle{
+		tlfID:               tlfID,
+		config:              config,
+		delegateBlockServer: delegateBlockServer,
+		log:                 log,
+		deferLog:            log.CloneWithAddedDepth(1),
+		hasWorkCh:           make(chan struct{}, 1),
+		pauseCh:             make(chan struct{}, 1),
+		resumeCh:            make(chan struct{}, 1),
+		shutdownCh:          make(chan struct{}, 1),
+		blockJournal:        blockJournal,
+		mdJournal:           mdJournal,
 	}
+
+	go b.autoFlush(afs)
+
+	// Signal work to pick up any existing journal entries.
+	select {
+	case b.hasWorkCh <- struct{}{}:
+	default:
+	}
+
+	return b
+}
+
+func (b *tlfJournalBundle) autoFlush(afs JournalAutoFlushStatus) {
+	ctx := ctxWithRandomID(
+		context.Background(), "journal-auto-flush", "1", b.log)
+	for {
+		b.log.CDebugf(ctx, "Waiting for events for %s (%s)", b.tlfID, afs)
+		switch afs {
+		case JournalAutoFlushEnabled:
+			select {
+			case <-b.hasWorkCh:
+				b.log.CDebugf(
+					ctx, "Got work event for %s", b.tlfID)
+				err := b.flush(ctx)
+				if err != nil {
+					b.log.CWarningf(ctx,
+						"Error when flushing %s: %v",
+						b.tlfID, err)
+				}
+
+			case <-b.pauseCh:
+				b.log.CDebugf(ctx,
+					"Got pause event for %s", b.tlfID)
+				afs = JournalAutoFlushDisabled
+
+			case <-b.shutdownCh:
+				b.log.CDebugf(ctx,
+					"Got shutdown event for %s", b.tlfID)
+				return
+			}
+
+		case JournalAutoFlushDisabled:
+			select {
+			case <-b.resumeCh:
+				b.log.CDebugf(ctx,
+					"Got resume event for %s", b.tlfID)
+				afs = JournalAutoFlushEnabled
+
+			case <-b.shutdownCh:
+				b.log.CDebugf(ctx,
+					"Got shutdown event for %s", b.tlfID)
+				return
+			}
+
+		default:
+			b.log.CErrorf(
+				ctx, "Unknown JournalAutoFlushStatus %s", afs)
+			return
+		}
+	}
+}
+
+func (b *tlfJournalBundle) flush(ctx context.Context) (err error) {
+	flushedBlockEntries := 0
+	flushedMDEntries := 0
+	defer func() {
+		if err != nil {
+			b.deferLog.CDebugf(ctx,
+				"Flushed %d block entries and %d MD entries "+
+					"for %s, but got error %v",
+				flushedBlockEntries, flushedMDEntries,
+				b.tlfID, err)
+		}
+	}()
+
+	// TODO: Interleave block flushes with their related MD
+	// flushes.
+
+	// TODO: Parallelize block puts.
+
+	for {
+		flushed, err := b.flushOneBlockOp(ctx)
+		if err != nil {
+			return err
+		}
+		if !flushed {
+			break
+		}
+		flushedBlockEntries++
+	}
+
+	for {
+		flushed, err := b.flushOneMDOp(ctx)
+		if err != nil {
+			return err
+		}
+		if !flushed {
+			break
+		}
+		flushedMDEntries++
+	}
+
+	b.log.CDebugf(ctx, "Flushed %d block entries and %d MD entries for %s",
+		flushedBlockEntries, flushedMDEntries, b.tlfID)
+	return nil
 }
 
 func (b *tlfJournalBundle) getBlockDataWithContext(
@@ -179,22 +303,28 @@ func (b *tlfJournalBundle) clearMDs(
 	return b.mdJournal.clear(ctx, currentUID, currentVerifyingKey, bid)
 }
 
-func (b *tlfJournalBundle) flushOneBlockOp(
-	ctx context.Context, delegateBlockServer BlockServer,
-	tlfID TlfID) (bool, error) {
+func (b *tlfJournalBundle) flushOneBlockOp(ctx context.Context) (bool, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
-	return b.blockJournal.flushOne(ctx, delegateBlockServer, tlfID)
+	return b.blockJournal.flushOne(ctx, b.delegateBlockServer, b.tlfID)
 }
 
-func (b *tlfJournalBundle) flushOneMDOp(
-	ctx context.Context, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey, signer cryptoSigner,
-	mdServer MDServer) (bool, error) {
+func (b *tlfJournalBundle) flushOneMDOp(ctx context.Context) (bool, error) {
+	_, currentUID, err := b.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	currentVerifyingKey, err := b.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return false, err
+	}
+
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	return b.mdJournal.flushOne(
-		ctx, currentUID, currentVerifyingKey, signer, mdServer)
+		ctx, currentUID, currentVerifyingKey, b.config.Crypto(),
+		b.config.MDServer())
 }
 
 func (b *tlfJournalBundle) getJournalEntryCounts() (
@@ -426,71 +556,11 @@ func (j *JournalServer) Enable(
 		return err
 	}
 
-	bundle := makeTlfJournalBundle(blockJournal, mdJournal)
+	bundle := makeTlfJournalBundle(tlfID, j.config,
+		j.delegateBlockServer, j.log, blockJournal, mdJournal, afs)
 	j.tlfBundles[tlfID] = bundle
 
-	go j.autoFlush(tlfID, afs, bundle.hasWorkCh, bundle.pauseCh,
-		bundle.resumeCh, bundle.shutdownCh)
-
-	// Signal work to pick up any existing journal entries.
-	select {
-	case bundle.hasWorkCh <- struct{}{}:
-	default:
-	}
-
 	return nil
-}
-
-func (j *JournalServer) autoFlush(
-	tlfID TlfID, afs JournalAutoFlushStatus,
-	hasWorkCh, pauseCh, resumeCh, shutdownCh chan struct{}) {
-	ctx := ctxWithRandomID(
-		context.Background(), "journal-auto-flush", "1", j.log)
-	for {
-		j.log.CDebugf(ctx, "Waiting for events for %s (%s)", tlfID, afs)
-		switch afs {
-		case JournalAutoFlushEnabled:
-			select {
-			case <-hasWorkCh:
-				j.log.CDebugf(
-					ctx, "Got work event for %s", tlfID)
-				err := j.Flush(ctx, tlfID)
-				if err != nil {
-					j.log.CWarningf(ctx,
-						"Error when flushing %s: %v",
-						tlfID, err)
-				}
-
-			case <-pauseCh:
-				j.log.CDebugf(ctx,
-					"Got pause event for %s", tlfID)
-				afs = JournalAutoFlushDisabled
-
-			case <-shutdownCh:
-				j.log.CDebugf(ctx,
-					"Got shutdown event for %s", tlfID)
-				return
-			}
-
-		case JournalAutoFlushDisabled:
-			select {
-			case <-resumeCh:
-				j.log.CDebugf(ctx,
-					"Got resume event for %s", tlfID)
-				afs = JournalAutoFlushEnabled
-
-			case <-shutdownCh:
-				j.log.CDebugf(ctx,
-					"Got shutdown event for %s", tlfID)
-				return
-			}
-
-		default:
-			j.log.CErrorf(
-				ctx, "Unknown JournalAutoFlushStatus %s", afs)
-			return
-		}
-	}
 }
 
 // PauseAutoFlush pauses the background auto-flush goroutine, if it's
@@ -527,86 +597,16 @@ func (j *JournalServer) ResumeAutoFlush(ctx context.Context, tlfID TlfID) {
 	}
 }
 
-func (j *JournalServer) signalWork(ctx context.Context, tlfID TlfID) {
-	j.log.CDebugf(ctx, "Signaling work for %s", tlfID)
-	// This can happen if the journal is disabled right after some
-	// work has been done.
-	bundle, ok := j.getBundle(tlfID)
-	if !ok {
-		j.log.CDebugf(ctx,
-			"Could not find bundle for %s; dropping work signal",
-			tlfID)
-	}
-
-	select {
-	case bundle.hasWorkCh <- struct{}{}:
-	default:
-	}
-}
-
 // Flush flushes the write journal for the given TLF.
 func (j *JournalServer) Flush(ctx context.Context, tlfID TlfID) (err error) {
 	j.log.CDebugf(ctx, "Flushing journal for %s", tlfID)
-	flushedBlockEntries := 0
-	flushedMDEntries := 0
-	defer func() {
-		if err != nil {
-			j.deferLog.CDebugf(ctx,
-				"Flushed %d block entries and %d MD entries "+
-					"for %s, but got error %v",
-				flushedBlockEntries, flushedMDEntries,
-				tlfID, err)
-		}
-	}()
 	bundle, ok := j.getBundle(tlfID)
 	if !ok {
 		j.log.CDebugf(ctx, "Journal not enabled for %s", tlfID)
 		return nil
 	}
 
-	// TODO: Interleave block flushes with their related MD
-	// flushes.
-
-	// TODO: Parallelize block puts.
-
-	for {
-		flushed, err := bundle.flushOneBlockOp(
-			ctx, j.delegateBlockServer, tlfID)
-		if err != nil {
-			return err
-		}
-		if !flushed {
-			break
-		}
-		flushedBlockEntries++
-	}
-
-	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return err
-	}
-
-	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		return err
-	}
-
-	for {
-		flushed, err := bundle.flushOneMDOp(
-			ctx, uid, key, j.config.Crypto(), j.config.MDServer())
-		if err != nil {
-			return err
-		}
-		if !flushed {
-			break
-		}
-		flushedMDEntries++
-	}
-
-	j.log.CDebugf(ctx, "Flushed %d block entries and %d MD entries for %s",
-		flushedBlockEntries, flushedMDEntries, tlfID)
-
-	return nil
+	return bundle.flush(ctx)
 }
 
 // Disable turns off the write journal for the given TLF.
