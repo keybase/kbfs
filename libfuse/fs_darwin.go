@@ -15,6 +15,10 @@ import (
 	"golang.org/x/net/context"
 )
 
+func init() {
+	untitledFolderName = "untitled folder"
+}
+
 func (r *Root) platformLookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	switch req.Name {
 	case VolIconFileName:

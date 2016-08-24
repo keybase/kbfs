@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"bazil.org/fuse"
@@ -16,6 +17,67 @@ import (
 	"golang.org/x/net/context"
 )
 
+func init() {
+	untitledFolderName = "untitled folder"
+}
+
+type UntitledFolder struct{}
+
+// Attr implements the fs.Node interface.
+func (*UntitledFolder) Attr(ctx context.Context, a *fuse.Attr) error {
+	a.Mode = os.ModeDir | 0755
+	return nil
+}
+
+var _ fs.Node = (*UntitledFolder)(nil)
+var untitledFolderName string
+
+func isUntitledFolderName(c string) bool {
+	return untitledFolderName != "" && c == untitledFolderName
+}
+
+// Rename implements the fs.NodeRenamer interface for FolderList.
+func (fl *FolderList) Rename(ctx context.Context, req *fuse.RenameRequest,
+	newDir fs.Node) (err error) {
+	fl.fs.log.CDebugf(ctx, "FolderList Rename %s -> %s",
+		req.OldName, req.NewName)
+	defer func() { fl.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
+	// Only renames inside the same folderlist
+	if fl2, _ := newDir.(*FolderList); fl2 != fl {
+		return fuse.Errno(syscall.EXDEV)
+	}
+	if !isUntitledFolderName(req.OldName) {
+		return fuse.Errno(syscall.EPERM)
+	}
+	_, err = libkbfs.ParseTlfHandle(
+		ctx, fl.fs.config.KBPKI(), req.NewName, fl.public)
+	if err != nil {
+		return fuse.Errno(syscall.EPERM)
+	}
+	fl.mu.Lock()
+	defer fl.mu.Unlock()
+	fl.hasUntitledFolder = false
+	return nil
+}
+
+// Mkdir implements the fs.NodeMkdirer interface for FolderList
+func (fl *FolderList) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (
+	node fs.Node, err error) {
+	fl.fs.log.CDebugf(ctx, "FolderList Mkdir %s", req.Name)
+	defer func() { fl.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
+
+	fl.mu.Lock()
+	defer fl.mu.Unlock()
+
+	if !isUntitledFolderName(req.Name) || fl.hasUntitledFolder {
+		return nil, syscall.EEXIST
+	}
+
+	fl.hasUntitledFolder = true
+
+	return &UntitledFolder{}, nil
+}
+
 // FolderList is a node that can list all of the logged-in user's
 // favorite top-level folders, on either a public or private basis.
 type FolderList struct {
@@ -23,8 +85,9 @@ type FolderList struct {
 	// only accept public folders
 	public bool
 
-	mu      sync.Mutex
-	folders map[string]*TLF
+	mu                sync.Mutex
+	folders           map[string]*TLF
+	hasUntitledFolder bool
 
 	muRecentlyRemoved sync.RWMutex
 	recentlyRemoved   map[libkbfs.CanonicalTlfName]bool
@@ -119,6 +182,13 @@ func (fl *FolderList) Lookup(ctx context.Context, req *fuse.LookupRequest, resp 
 		return nil, fuse.ENOENT
 	}
 
+	if isUntitledFolderName(req.Name) {
+		if !fl.hasUntitledFolder {
+			return nil, fuse.ENOENT
+		}
+		return &UntitledFolder{}, nil
+	}
+
 	h, err := libkbfs.ParseTlfHandle(
 		ctx, fl.fs.config.KBPKI(), req.Name, fl.public)
 	switch err := err.(type) {
@@ -193,6 +263,16 @@ func (fl *FolderList) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err er
 			Name: fav.Name,
 		})
 	}
+
+	fl.mu.Lock()
+	defer fl.mu.Unlock()
+	if fl.hasUntitledFolder {
+		res = append(res, fuse.Dirent{
+			Type: fuse.DT_Dir,
+			Name: untitledFolderName,
+		})
+	}
+
 	return res, nil
 }
 
@@ -202,6 +282,13 @@ var _ fs.NodeRemover = (*FolderList)(nil)
 func (fl *FolderList) Remove(ctx context.Context, req *fuse.RemoveRequest) (err error) {
 	fl.fs.log.CDebugf(ctx, "FolderList Remove %s", req.Name)
 	defer func() { fl.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
+
+	if isUntitledFolderName(req.Name) {
+		fl.mu.Lock()
+		defer fl.mu.Unlock()
+		fl.hasUntitledFolder = false
+		return nil
+	}
 
 	h, err := libkbfs.ParseTlfHandle(
 		ctx, fl.fs.config.KBPKI(), req.Name, fl.public)
