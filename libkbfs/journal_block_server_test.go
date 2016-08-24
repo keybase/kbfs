@@ -276,10 +276,14 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	require.True(t, ok)
 
 	flush := func() {
-		flushed, err := tlfJournal.blockJournal.flushOne(
-			ctx, oldBlockServer, tlfID)
+		e, err := tlfJournal.blockJournal.getNextOpToFlush(ctx)
 		require.NoError(t, err)
-		require.True(t, flushed)
+		require.NotNil(t, e)
+		err = tlfJournal.blockJournal.flushOp(
+			ctx, oldBlockServer, tlfID, *e)
+		require.NoError(t, err)
+		err = tlfJournal.blockJournal.removeFlushedOp()
+		require.NoError(t, err)
 	}
 
 	// Flush the block put.
@@ -338,8 +342,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
-	flushed, err := tlfJournal.blockJournal.flushOne(
-		ctx, oldBlockServer, tlfID)
+	e, err := tlfJournal.blockJournal.getNextOpToFlush(ctx)
 	require.NoError(t, err)
-	require.False(t, flushed)
+	require.Nil(t, e)
 }
