@@ -326,3 +326,22 @@ func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
 
 	// Should still be able to shutdown while busy.
 }
+
+func TestTLFJournalBlockOpWhileBusyMDOp(t *testing.T) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(
+		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+
+	md := hangingMDServer{config.MDServer(), make(chan struct{})}
+	config.SetMDServer(md)
+
+	putMD(ctx, t, config, tlfJournal, MetadataRevisionInitial, MdID{})
+
+	md.waitForPut(ctx, t)
+	delegate.requireNextState(ctx, t, bwBusy)
+
+	// Should still be able to put a block while busy.
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+
+}
