@@ -38,9 +38,9 @@ func setupJournalBlockServerTest(t *testing.T) (
 
 func teardownJournalBlockServerTest(
 	t *testing.T, tempdir string, config Config) {
+	CheckConfigAndShutdown(t, config)
 	err := os.RemoveAll(tempdir)
 	require.NoError(t, err)
-	CheckConfigAndShutdown(t, config)
 }
 
 type shutdownOnlyBlockServer struct{ BlockServer }
@@ -276,13 +276,15 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	require.True(t, ok)
 
 	flush := func() {
-		e, err := tlfJournal.blockJournal.getNextOpToFlush(ctx)
+		o, e, data, serverHalf, err :=
+			tlfJournal.blockJournal.getNextOpToFlush(ctx)
 		require.NoError(t, err)
 		require.NotNil(t, e)
-		err = tlfJournal.blockJournal.flushOp(
-			ctx, oldBlockServer, tlfID, *e)
+		err = flushBlockOp(
+			ctx, tlfJournal.log, oldBlockServer, tlfID,
+			*e, data, serverHalf)
 		require.NoError(t, err)
-		err = tlfJournal.blockJournal.removeFlushedOp()
+		err = tlfJournal.blockJournal.removeFlushedOp(ctx, o, *e)
 		require.NoError(t, err)
 	}
 
@@ -342,7 +344,7 @@ func TestJournalBlockServerFlush(t *testing.T) {
 	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
-	e, err := tlfJournal.blockJournal.getNextOpToFlush(ctx)
+	_, e, _, _, err := tlfJournal.blockJournal.getNextOpToFlush(ctx)
 	require.NoError(t, err)
 	require.Nil(t, e)
 }

@@ -640,40 +640,52 @@ func (j *blockJournal) archiveReferences(
 	return j.appendJournalEntry(archiveRefsOp, contexts)
 }
 
-func (j *blockJournal) getNextOpToFlush(
-	ctx context.Context) (*blockJournalEntry, error) {
+func (j *blockJournal) getNextOpToFlush(ctx context.Context) (
+	journalOrdinal, *blockJournalEntry, []byte,
+	BlockCryptKeyServerHalf, error) {
 	if j.isShutdown {
-		return nil, errBlockJournalShutdown
+		return 0, nil, nil, BlockCryptKeyServerHalf{},
+			errBlockJournalShutdown
 	}
 
 	earliestOrdinal, err := j.j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
-		return nil, nil
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, nil
 	} else if err != nil {
-		return nil, err
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, err
 	}
 
 	e, err := j.readJournalEntry(earliestOrdinal)
 	if err != nil {
-		return nil, err
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, err
 	}
-	return &e, nil
+
+	var data []byte
+	var serverHalf BlockCryptKeyServerHalf
+	if e.Op == blockPutOp {
+		id, _, err := e.getSingleContext()
+		if err != nil {
+			return 0, nil, nil, BlockCryptKeyServerHalf{}, err
+		}
+
+		data, serverHalf, err = j.getData(id)
+		if err != nil {
+			return 0, nil, nil, BlockCryptKeyServerHalf{}, err
+		}
+	}
+
+	return earliestOrdinal, &e, data, serverHalf, nil
 }
 
-func (j *blockJournal) flushOp(
-	ctx context.Context, bserver BlockServer, tlfID TlfID,
-	e blockJournalEntry) error {
-
-	j.log.CDebugf(ctx, "Flushing block op %v", e)
+func flushBlockOp(
+	ctx context.Context, log logger.Logger,
+	bserver BlockServer, tlfID TlfID, e blockJournalEntry, data []byte,
+	serverHalf BlockCryptKeyServerHalf) error {
+	log.CDebugf(ctx, "Flushing block op %v", e)
 
 	switch e.Op {
 	case blockPutOp:
 		id, context, err := e.getSingleContext()
-		if err != nil {
-			return err
-		}
-
-		data, serverHalf, err := j.getData(id)
 		if err != nil {
 			return err
 		}
@@ -694,7 +706,7 @@ func (j *blockJournal) flushOp(
 		err = bserver.AddBlockReference(ctx, tlfID, id, context)
 		if err != nil {
 			if isRecoverableBlockError(err) {
-				j.log.CWarningf(ctx,
+				log.CWarningf(ctx,
 					"Recoverable block error encountered on AddBlockReference: %v", err)
 			}
 			return err
@@ -719,9 +731,38 @@ func (j *blockJournal) flushOp(
 	return nil
 }
 
-func (j *blockJournal) removeFlushedOp() error {
-	_, err := j.j.removeEarliest()
-	return err
+func (j *blockJournal) removeFlushedOp(
+	ctx context.Context, o journalOrdinal, e blockJournalEntry) error {
+	if j.isShutdown {
+		// TODO: This creates a race condition if we shut down
+		// after we've flushed an op but before we remove
+		// it. Make sure we handle re-flushed ops
+		// idempotently.
+		return errBlockJournalShutdown
+	}
+
+	earliestOrdinal, err := j.j.readEarliestOrdinal()
+	if err != nil {
+		return err
+	}
+
+	if o != earliestOrdinal {
+		return fmt.Errorf("Expected ordinal %d, got %d",
+			o, earliestOrdinal)
+	}
+
+	_, err = j.j.removeEarliest()
+	if err != nil {
+		return err
+	}
+
+	refs, err := j.readJournal(ctx)
+	if err != nil {
+		return err
+	}
+	j.refs = refs
+
+	return nil
 }
 
 func (j *blockJournal) shutdown() {

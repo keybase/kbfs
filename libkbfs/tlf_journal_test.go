@@ -97,9 +97,9 @@ func teardownTLFJournalTest(
 		assert.Fail(t, "Unexpected state %s", bws)
 	default:
 	}
+	CheckConfigAndShutdown(t, config)
 	err := os.RemoveAll(tempdir)
 	require.NoError(t, err)
-	CheckConfigAndShutdown(t, config)
 }
 
 func putBlock(ctx context.Context,

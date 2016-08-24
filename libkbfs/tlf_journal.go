@@ -404,18 +404,19 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
-	e, err := j.blockJournal.getNextOpToFlush(ctx)
+	o, e, data, serverHalf, err := j.blockJournal.getNextOpToFlush(ctx)
 	if err != nil {
 		return false, err
 	}
 	if e == nil {
 		return false, nil
 	}
-	err = j.blockJournal.flushOp(ctx, j.delegateBlockServer, j.tlfID, *e)
+	err = flushBlockOp(ctx, j.log, j.delegateBlockServer, j.tlfID, *e,
+		data, serverHalf)
 	if err != nil {
 		return false, err
 	}
-	err = j.blockJournal.removeFlushedOp()
+	err = j.blockJournal.removeFlushedOp(ctx, o, *e)
 	if err != nil {
 		return false, err
 	}
