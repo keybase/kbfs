@@ -484,6 +484,10 @@ func (j *tlfJournal) shutdown() {
 	case j.needShutdownCh <- struct{}{}:
 	default:
 	}
+
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	j.blockJournal.shutdown()
 }
 
 // All the functions below just do the equivalent blockJournal or
