@@ -442,6 +442,32 @@ func (j *mdJournal) convertToBranch(
 	return err
 }
 
+func (j mdJournal) getNextMDToFlush(
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, signer cryptoSigner) (
+	MdID, *RootMetadataSigned, error) {
+	rmd, err := j.getEarliest(currentUID, currentVerifyingKey)
+	if err != nil {
+		return MdID{}, nil, err
+	}
+	if rmd == (ImmutableBareRootMetadata{}) {
+		return MdID{}, nil, nil
+	}
+
+	mbrmd, ok := rmd.BareRootMetadata.(MutableBareRootMetadata)
+	if !ok {
+		return MdID{}, nil, MutableBareRootMetadataNoImplError{}
+	}
+
+	rmds := RootMetadataSigned{MD: mbrmd}
+	err = signMD(ctx, j.codec, signer, &rmds)
+	if err != nil {
+		return MdID{}, nil, err
+	}
+
+	return rmd.mdID, &rmds, nil
+}
+
 func (j mdJournal) pushEarliestToServer(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, signer cryptoSigner,

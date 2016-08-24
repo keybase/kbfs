@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -450,12 +451,6 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	j.flushLock.Lock()
-	defer j.flushLock.Unlock()
-
-	j.journalLock.Lock()
-	defer j.journalLock.Unlock()
-
 	j.log.CDebugf(ctx, "Flushing one MD to server")
 	defer func() {
 		if err != nil {
@@ -463,46 +458,72 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 		}
 	}()
 
-	signer := j.config.Crypto()
-	mdserver := j.config.MDServer()
+	j.flushLock.Lock()
+	defer j.flushLock.Unlock()
 
-	rmd, pushErr := j.mdJournal.pushEarliestToServer(
-		ctx, currentUID, currentVerifyingKey, signer, mdserver)
+	signer := j.config.Crypto()
+	mdServer := j.config.MDServer()
+
+	mdID, rmds, err := func() (MdID, *RootMetadataSigned, error) {
+		j.journalLock.Lock()
+		defer j.journalLock.Unlock()
+		return j.mdJournal.getNextMDToFlush(
+			ctx, currentUID, currentVerifyingKey, signer)
+	}()
+	if err != nil {
+		return false, err
+	}
+	if mdID == (MdID{}) {
+		return false, nil
+	}
+
+	j.log.CDebugf(ctx, "Flushing MD for TLF=%s with id=%s, rev=%s, bid=%s",
+		rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID)
+	pushErr := mdServer.Put(ctx, rmds)
 	if isRevisionConflict(pushErr) {
-		mdID, err := getMdID(
-			ctx, mdserver, j.mdJournal.crypto, rmd.TlfID(), rmd.BID(),
-			rmd.MergedStatus(), rmd.RevisionNumber())
+		headMdID, err := getMdID(
+			ctx, mdServer, j.mdJournal.crypto, rmds.MD.TlfID(), rmds.MD.BID(),
+			rmds.MD.MergedStatus(), rmds.MD.RevisionNumber())
 		if err != nil {
 			j.log.CWarningf(ctx,
 				"getMdID failed for TLF %s, BID %s, and revision %d: %v",
-				rmd.TlfID(), rmd.BID(), rmd.RevisionNumber(), err)
-		} else if mdID == rmd.mdID {
-			if rmd.mdID == (MdID{}) {
+				rmds.MD.TlfID(), rmds.MD.BID(), rmds.MD.RevisionNumber(), err)
+		} else if headMdID == mdID {
+			if headMdID == (MdID{}) {
 				panic("nil earliestID and revision conflict error returned by pushEarliestToServer")
 			}
 			// We must have already flushed this MD, so continue.
 			pushErr = nil
-		} else if rmd.MergedStatus() == Merged {
+		} else if rmds.MD.MergedStatus() == Merged {
 			j.log.CDebugf(ctx, "Conflict detected %v", pushErr)
 
-			err := j.mdJournal.convertToBranch(
-				ctx, currentUID, currentVerifyingKey, signer)
+			mdID, rmds, err = func() (MdID, *RootMetadataSigned, error) {
+				j.journalLock.Lock()
+				defer j.journalLock.Unlock()
+				err := j.mdJournal.convertToBranch(
+					ctx, currentUID, currentVerifyingKey, signer)
+				if err != nil {
+					return MdID{}, nil, err
+				}
+
+				return j.mdJournal.getNextMDToFlush(
+					ctx, currentUID, currentVerifyingKey, signer)
+			}()
 			if err != nil {
 				return false, err
 			}
-
-			rmd, pushErr = j.mdJournal.pushEarliestToServer(
-				ctx, currentUID, currentVerifyingKey,
-				signer, mdserver)
+			if mdID == (MdID{}) {
+				return false, errors.New("Unexpected nil MdID")
+			}
+			pushErr = mdServer.Put(ctx, rmds)
 		}
 	}
 	if pushErr != nil {
 		return false, pushErr
 	}
-	if rmd.mdID == (MdID{}) {
-		return false, nil
-	}
 
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
 	empty, err := j.mdJournal.j.removeEarliest()
 	if err != nil {
 		return false, err
@@ -511,8 +532,8 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 	// Since the journal is now empty, set lastMdID.
 	if empty {
 		j.log.CDebugf(ctx,
-			"Journal is now empty; saving last MdID=%s", rmd.mdID)
-		j.mdJournal.lastMdID = rmd.mdID
+			"Journal is now empty; saving last MdID=%s", mdID)
+		j.mdJournal.lastMdID = mdID
 	}
 
 	return true, nil
