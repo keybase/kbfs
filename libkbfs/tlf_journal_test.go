@@ -185,7 +185,7 @@ func (bs hangingBlockServer) waitForPut(ctx context.Context, t *testing.T) {
 	}
 }
 
-func TestTLFJournalBusyPause(t *testing.T) {
+func TestTLFJournalBlockOpBusyPause(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
@@ -206,7 +206,7 @@ func TestTLFJournalBusyPause(t *testing.T) {
 	delegate.requireNextState(ctx, t, bwPaused)
 }
 
-func TestTLFJournalBusyShutdown(t *testing.T) {
+func TestTLFJournalBlockOpBusyShutdown(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
@@ -241,4 +241,71 @@ func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
 
 	// Should still be able to put a second block while busy.
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4, 5})
+}
+
+type hangingMDServer struct {
+	MDServer
+	// Closed on put.
+	onPutCh chan struct{}
+}
+
+func (md hangingMDServer) Put(
+	ctx context.Context, rmds *RootMetadataSigned) error {
+	close(md.onPutCh)
+	// Hang until the context is cancelled.
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func (md hangingMDServer) waitForPut(ctx context.Context, t *testing.T) {
+	select {
+	case <-md.onPutCh:
+	case <-ctx.Done():
+		require.FailNow(t, ctx.Err().Error())
+	}
+}
+
+func putMD(ctx context.Context, t *testing.T, config Config,
+	tlfJournal *tlfJournal, revision MetadataRevision, prevRoot MdID) {
+	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	require.NoError(t, err)
+	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	h, err := MakeTlfHandle(ctx, bh, config.KBPKI())
+	require.NoError(t, err)
+
+	rmd := NewRootMetadata()
+	err = rmd.Update(tlfJournal.tlfID, bh)
+	require.NoError(t, err)
+	rmd.tlfHandle = h
+	rmd.SetRevision(revision)
+	rekeyDone, _, err := config.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, rekeyDone)
+
+	_, err = tlfJournal.putMD(
+		ctx, config.Crypto(), config.KeyManager(),
+		config.BlockSplitter(), rmd)
+	require.NoError(t, err)
+}
+
+func TestTLFJournalMDServerBusyPause(t *testing.T) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(
+		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+
+	md := hangingMDServer{config.MDServer(), make(chan struct{})}
+	config.SetMDServer(md)
+
+	putMD(ctx, t, config, tlfJournal, MetadataRevisionInitial, MdID{})
+
+	md.waitForPut(ctx, t)
+	delegate.requireNextState(ctx, t, bwBusy)
+
+	// Should still be able to pause while busy.
+
+	tlfJournal.pauseBackgroundWork()
+	delegate.requireNextState(ctx, t, bwPaused)
 }
