@@ -103,11 +103,9 @@ func teardownTLFJournalTest(
 }
 
 func putBlock(ctx context.Context,
-	t *testing.T, config Config, tlfJournal *tlfJournal) {
+	t *testing.T, config Config, tlfJournal *tlfJournal, data []byte) {
 	crypto := config.Crypto()
-
 	uid := keybase1.MakeTestUID(1)
-	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
 	require.NoError(t, err)
 	bCtx := BlockContext{uid, "", zeroBlockRefNonce}
@@ -123,7 +121,7 @@ func TestTLFJournalBasic(t *testing.T) {
 	defer teardownTLFJournalTest(
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
-	putBlock(ctx, t, config, tlfJournal)
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
 	// Wait for it to be processed.
 
@@ -140,7 +138,7 @@ func TestTLFJournalPauseResume(t *testing.T) {
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, t, bwPaused)
 
-	putBlock(ctx, t, config, tlfJournal)
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
 	// Unpause and wait for it to be processed.
 
@@ -159,7 +157,7 @@ func TestTLFJournalPauseShutdown(t *testing.T) {
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, t, bwPaused)
 
-	putBlock(ctx, t, config, tlfJournal)
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
 	// Should still be able to shut down while paused.
 }
@@ -197,7 +195,7 @@ func TestTLFJournalBusyPause(t *testing.T) {
 		make(chan struct{})}
 	tlfJournal.delegateBlockServer = bs
 
-	putBlock(ctx, t, config, tlfJournal)
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
 	bs.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, t, bwBusy)
@@ -218,10 +216,29 @@ func TestTLFJournalBusyShutdown(t *testing.T) {
 		make(chan struct{})}
 	tlfJournal.delegateBlockServer = bs
 
-	putBlock(ctx, t, config, tlfJournal)
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
 	bs.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, t, bwBusy)
 
 	// Should still be able to shut down while busy.
+}
+
+func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(
+		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+
+	bs := hangingBlockServer{tlfJournal.delegateBlockServer,
+		make(chan struct{})}
+	tlfJournal.delegateBlockServer = bs
+
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+
+	bs.waitForPut(ctx, t)
+	delegate.requireNextState(ctx, t, bwBusy)
+
+	// Should still be able to put a second block while busy.
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4, 5})
 }
