@@ -450,6 +450,9 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
+	j.flushLock.Lock()
+	defer j.flushLock.Unlock()
+
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	return j.mdJournal.flushOne(
