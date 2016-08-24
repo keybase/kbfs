@@ -114,7 +114,7 @@ type tlfJournal struct {
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
-	lock sync.RWMutex
+	journalLock sync.RWMutex
 
 	blockJournal *blockJournal
 	mdJournal    *mdJournal
@@ -402,8 +402,8 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 }
 
 func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
-	j.lock.Lock()
-	defer j.lock.Unlock()
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
 	o, e, data, serverHalf, err := j.blockJournal.getNextOpToFlush(ctx)
 	if err != nil {
 		return false, err
@@ -434,8 +434,8 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	j.lock.Lock()
-	defer j.lock.Unlock()
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
 	return j.mdJournal.flushOne(
 		ctx, currentUID, currentVerifyingKey, j.config.Crypto(),
 		j.config.MDServer())
@@ -443,8 +443,8 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 
 func (j *tlfJournal) getJournalEntryCounts() (
 	blockEntryCount, mdEntryCount uint64, err error) {
-	j.lock.RLock()
-	defer j.lock.RUnlock()
+	j.journalLock.RLock()
+	defer j.journalLock.RUnlock()
 	blockEntryCount, err = j.blockJournal.length()
 	if err != nil {
 		return 0, 0, err
@@ -459,8 +459,8 @@ func (j *tlfJournal) getJournalEntryCounts() (
 }
 
 func (j *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
-	j.lock.RLock()
-	defer j.lock.RUnlock()
+	j.journalLock.RLock()
+	defer j.journalLock.RUnlock()
 	earliestRevision, err := j.mdJournal.readEarliestRevision()
 	if err != nil {
 		return TLFJournalStatus{}, err
@@ -486,27 +486,27 @@ func (j *tlfJournal) shutdown() {
 	default:
 	}
 
-	j.lock.Lock()
-	defer j.lock.Unlock()
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
 	j.blockJournal.shutdown()
 }
 
 // All the functions below just do the equivalent blockJournal or
-// mdJournal function under j.lock.
+// mdJournal function under j.journalLock.
 
 func (j *tlfJournal) getBlockDataWithContext(
 	id BlockID, context BlockContext) (
 	[]byte, BlockCryptKeyServerHalf, error) {
-	j.lock.RLock()
-	defer j.lock.RUnlock()
+	j.journalLock.RLock()
+	defer j.journalLock.RUnlock()
 	return j.blockJournal.getDataWithContext(id, context)
 }
 
 func (j *tlfJournal) putBlockData(
 	ctx context.Context, id BlockID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
-	j.lock.Lock()
-	defer j.lock.Unlock()
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
 	err := j.blockJournal.putData(ctx, id, context, buf, serverHalf)
 	if err != nil {
 		return err
@@ -519,8 +519,8 @@ func (j *tlfJournal) putBlockData(
 
 func (j *tlfJournal) addBlockReference(
 	ctx context.Context, id BlockID, context BlockContext) error {
-	j.lock.Lock()
-	defer j.lock.Unlock()
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
 	err := j.blockJournal.addReference(ctx, id, context)
 	if err != nil {
 		return err
@@ -534,8 +534,8 @@ func (j *tlfJournal) addBlockReference(
 func (j *tlfJournal) removeBlockReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
-	j.lock.Lock()
-	defer j.lock.Unlock()
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
 	// Don't remove the block data if we remove the last
 	// reference; we still need it to flush the initial put
 	// operation.
@@ -555,8 +555,8 @@ func (j *tlfJournal) removeBlockReferences(
 
 func (j *tlfJournal) archiveBlockReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) error {
-	j.lock.Lock()
-	defer j.lock.Unlock()
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
 	err := j.blockJournal.archiveReferences(ctx, contexts)
 	if err != nil {
 		return err
@@ -579,8 +579,8 @@ func (j *tlfJournal) getMDHead(
 		return ImmutableBareRootMetadata{}, err
 	}
 
-	j.lock.RLock()
-	defer j.lock.RUnlock()
+	j.journalLock.RLock()
+	defer j.journalLock.RUnlock()
 	return j.mdJournal.getHead(uid, key)
 }
 
@@ -597,8 +597,8 @@ func (j *tlfJournal) getMDRange(
 		return nil, err
 	}
 
-	j.lock.RLock()
-	defer j.lock.RUnlock()
+	j.journalLock.RLock()
+	defer j.journalLock.RUnlock()
 	return j.mdJournal.getRange(uid, key, start, stop)
 }
 
@@ -616,8 +616,8 @@ func (j *tlfJournal) putMD(
 		return MdID{}, err
 	}
 
-	j.lock.Lock()
-	defer j.lock.Unlock()
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
 	mdID, err := j.mdJournal.put(ctx, uid, key, signer, ekg, bsplit, rmd)
 	if err != nil {
 		return MdID{}, err
@@ -641,8 +641,8 @@ func (j *tlfJournal) clearMDs(
 		return err
 	}
 
-	j.lock.Lock()
-	defer j.lock.Unlock()
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
 	// No need to signal work in this case.
 	return j.mdJournal.clear(ctx, uid, key, bid)
 }
