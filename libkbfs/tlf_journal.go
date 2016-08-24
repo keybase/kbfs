@@ -455,9 +455,67 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	return j.mdJournal.flushOne(
-		ctx, currentUID, currentVerifyingKey, j.config.Crypto(),
-		j.config.MDServer())
+
+	j.log.CDebugf(ctx, "Flushing one MD to server")
+	defer func() {
+		if err != nil {
+			j.deferLog.CDebugf(ctx, "Flush failed with %v", err)
+		}
+	}()
+
+	signer := j.config.Crypto()
+	mdserver := j.config.MDServer()
+
+	rmd, pushErr := j.mdJournal.pushEarliestToServer(
+		ctx, currentUID, currentVerifyingKey, signer, mdserver)
+	if isRevisionConflict(pushErr) {
+		mdID, err := getMdID(
+			ctx, mdserver, j.mdJournal.crypto, rmd.TlfID(), rmd.BID(),
+			rmd.MergedStatus(), rmd.RevisionNumber())
+		if err != nil {
+			j.log.CWarningf(ctx,
+				"getMdID failed for TLF %s, BID %s, and revision %d: %v",
+				rmd.TlfID(), rmd.BID(), rmd.RevisionNumber(), err)
+		} else if mdID == rmd.mdID {
+			if rmd.mdID == (MdID{}) {
+				panic("nil earliestID and revision conflict error returned by pushEarliestToServer")
+			}
+			// We must have already flushed this MD, so continue.
+			pushErr = nil
+		} else if rmd.MergedStatus() == Merged {
+			j.log.CDebugf(ctx, "Conflict detected %v", pushErr)
+
+			err := j.mdJournal.convertToBranch(
+				ctx, currentUID, currentVerifyingKey, signer)
+			if err != nil {
+				return false, err
+			}
+
+			rmd, pushErr = j.mdJournal.pushEarliestToServer(
+				ctx, currentUID, currentVerifyingKey,
+				signer, mdserver)
+		}
+	}
+	if pushErr != nil {
+		return false, pushErr
+	}
+	if rmd.mdID == (MdID{}) {
+		return false, nil
+	}
+
+	empty, err := j.mdJournal.j.removeEarliest()
+	if err != nil {
+		return false, err
+	}
+
+	// Since the journal is now empty, set lastMdID.
+	if empty {
+		j.log.CDebugf(ctx,
+			"Journal is now empty; saving last MdID=%s", rmd.mdID)
+		j.mdJournal.lastMdID = rmd.mdID
+	}
+
+	return true, nil
 }
 
 func (j *tlfJournal) getJournalEntryCounts() (
