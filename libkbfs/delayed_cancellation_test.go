@@ -77,12 +77,9 @@ func TestDelayedCancellationCancelWhileNotEnabled(t *testing.T) {
 
 	cancel()
 
-	// wait until the go routine spawned in NewContextWithCancellationDelayer
-	// actually cancels
-	time.Sleep(10 * time.Millisecond)
 	select {
 	case <-ctx.Done():
-	default:
+	case <-time.After(100 * time.Millisecond):
 		t.Fatalf("Cancellation did not happen even though " +
 			"EnableDelayedCancellationWithGracePeriod has not been called yet")
 	}
@@ -97,12 +94,9 @@ func TestDelayedCancellationCleanupWhileNotEnabled(t *testing.T) {
 		t.Fatalf("calling CleanupCancellationDelayer error: %s", err)
 	}
 
-	// wait until the go routine spawned in NewContextWithCancellationDelayer
-	// actually cancels
-	time.Sleep(10 * time.Millisecond)
 	select {
 	case <-ctx.Done():
-	default:
+	case <-time.After(100 * time.Millisecond):
 		t.Fatalf("Cancellation did not happen even though " +
 			"EnableDelayedCancellationWithGracePeriod has not been called yet")
 	}
@@ -116,20 +110,15 @@ func TestDelayedCancellationEnabled(t *testing.T) {
 
 	cancel()
 
-	// wait until any (presumably) wrong cancellation in the go routine spawned
-	// in NewContextWithCancellationDelayer actually cancels
-	time.Sleep(time.Millisecond * 10)
 	select {
 	case <-ctx.Done():
 		t.Fatalf("Cancellation is not delayed")
-	default:
+	case <-time.After(10 * time.Millisecond):
 	}
 
-	// wait a bit longer and cancellation should happen
-	time.Sleep(time.Millisecond * 10)
 	select {
 	case <-ctx.Done():
-	default:
+	case <-time.After(10 * time.Millisecond):
 		t.Fatalf("Cancellation did not happen after grace period")
 	}
 }
