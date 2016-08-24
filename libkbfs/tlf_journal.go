@@ -515,6 +515,8 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 			if mdID == (MdID{}) {
 				return false, errors.New("Unexpected nil MdID")
 			}
+			j.log.CDebugf(ctx, "Flushing MD for TLF=%s with id=%s, rev=%s, bid=%s",
+				rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID)
 			pushErr = mdServer.Put(ctx, rmds)
 		}
 	}
