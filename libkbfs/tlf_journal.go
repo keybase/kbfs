@@ -107,6 +107,9 @@ type tlfJournal struct {
 	needResumeCh   chan struct{}
 	needShutdownCh chan struct{}
 
+	// Serializes all flushes.
+	flushLock sync.Mutex
+
 	// Protects all operations on blockJournal and mdJournal.
 	//
 	// TODO: Don't let flushing block put operations. See
@@ -402,20 +405,33 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 }
 
 func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
-	j.journalLock.Lock()
-	defer j.journalLock.Unlock()
-	o, e, data, serverHalf, err := j.blockJournal.getNextOpToFlush(ctx)
+	j.flushLock.Lock()
+	defer j.flushLock.Unlock()
+
+	o, e, data, serverHalf, err := func() (
+		journalOrdinal, *blockJournalEntry, []byte,
+		BlockCryptKeyServerHalf, error) {
+		j.journalLock.RLock()
+		defer j.journalLock.RUnlock()
+		return j.blockJournal.getNextOpToFlush(ctx)
+	}()
 	if err != nil {
 		return false, err
 	}
 	if e == nil {
 		return false, nil
 	}
+
 	err = flushBlockOp(ctx, j.log, j.delegateBlockServer, j.tlfID, *e,
 		data, serverHalf)
 	if err != nil {
 		return false, err
 	}
+
+	// We're the only thing removing from the block journal, so we
+	// can assume that the earliest op is the one we just got.
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
 	err = j.blockJournal.removeFlushedOp(ctx, o, *e)
 	if err != nil {
 		return false, err
