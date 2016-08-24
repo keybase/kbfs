@@ -148,6 +148,11 @@
 			"revisionTime": "2016-08-24T12:44:35-05:00"
 		},
 		{
+			"path": "github.com/keybase/client/go/gregor",
+			"revision": "55d9d492c07457931a3ff9e9d513124cc430af34",
+			"revisionTime": "2016-08-24T12:44:35-05:00"
+		},
+		{
 			"checksumSHA1": "v0Wur7mWA+MgfyuSCk6F7UkL9zo=",
 			"path": "github.com/keybase/client/go/kex2",
 			"revision": "55d9d492c07457931a3ff9e9d513124cc430af34",
