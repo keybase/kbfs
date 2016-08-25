@@ -152,12 +152,8 @@ func makeTLFJournal(
 		return nil, err
 	}
 
-	_, uid, err := config.currentInfoGetter().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
+	uid, key, err :=
+		getCurrentUIDAndVerifyingKey(ctx, config.currentInfoGetter())
 	if err != nil {
 		return nil, err
 	}
@@ -454,12 +450,8 @@ func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 }
 
 func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
-	_, currentUID, err := j.config.currentInfoGetter().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	currentVerifyingKey, err := j.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
+	uid, key, err :=
+		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
 	if err != nil {
 		return false, err
 	}
@@ -480,8 +472,7 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 	mdID, rmds, err := func() (MdID, *RootMetadataSigned, error) {
 		j.journalLock.Lock()
 		defer j.journalLock.Unlock()
-		return j.mdJournal.getNextMDToFlush(
-			ctx, currentUID, currentVerifyingKey, signer)
+		return j.mdJournal.getNextMDToFlush(ctx, uid, key, signer)
 	}()
 	if err != nil {
 		return false, err
@@ -514,13 +505,13 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 				j.journalLock.Lock()
 				defer j.journalLock.Unlock()
 				err := j.mdJournal.convertToBranch(
-					ctx, currentUID, currentVerifyingKey, signer)
+					ctx, uid, key, signer)
 				if err != nil {
 					return MdID{}, nil, err
 				}
 
 				return j.mdJournal.getNextMDToFlush(
-					ctx, currentUID, currentVerifyingKey, signer)
+					ctx, uid, key, signer)
 			}()
 			if err != nil {
 				return false, err
@@ -682,12 +673,8 @@ func (j *tlfJournal) archiveBlockReferences(
 
 func (j *tlfJournal) getMDHead(
 	ctx context.Context) (ImmutableBareRootMetadata, error) {
-	_, uid, err := j.config.currentInfoGetter().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return ImmutableBareRootMetadata{}, err
-	}
-
-	key, err := j.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
+	uid, key, err :=
+		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
@@ -700,12 +687,8 @@ func (j *tlfJournal) getMDHead(
 func (j *tlfJournal) getMDRange(
 	ctx context.Context, start, stop MetadataRevision) (
 	[]ImmutableBareRootMetadata, error) {
-	_, uid, err := j.config.currentInfoGetter().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := j.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
+	uid, key, err :=
+		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
 	if err != nil {
 		return nil, err
 	}
@@ -717,12 +700,8 @@ func (j *tlfJournal) getMDRange(
 
 func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
-	_, uid, err := j.config.currentInfoGetter().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return MdID{}, err
-	}
-
-	key, err := j.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
+	uid, key, err :=
+		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
 	if err != nil {
 		return MdID{}, err
 	}
@@ -741,12 +720,8 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 }
 
 func (j *tlfJournal) clearMDs(ctx context.Context, bid BranchID) error {
-	_, uid, err := j.config.currentInfoGetter().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return err
-	}
-
-	key, err := j.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
+	uid, key, err :=
+		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
 	if err != nil {
 		return err
 	}
