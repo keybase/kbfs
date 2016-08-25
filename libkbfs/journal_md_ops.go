@@ -319,8 +319,7 @@ func (j journalMDOps) GetUnmergedRange(
 
 func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
-	tlfJournal, ok := j.jServer.getTLFJournal(rmd.TlfID())
-	if ok {
+	if tlfJournal, ok := j.jServer.getTLFJournal(rmd.TlfID()); ok {
 		// Just route to the journal.
 		return tlfJournal.putMD(ctx, rmd)
 	}
@@ -330,8 +329,7 @@ func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
 
 func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
-	tlfJournal, ok := j.jServer.getTLFJournal(rmd.TlfID())
-	if ok {
+	if tlfJournal, ok := j.jServer.getTLFJournal(rmd.TlfID()); ok {
 		// TODO: The code below races with PruneBranch, since
 		// the branch may get prunes after the
 		// GerUnmergedForTLF call and before the putMD
@@ -364,8 +362,7 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 
 func (j journalMDOps) PruneBranch(
 	ctx context.Context, id TlfID, bid BranchID) error {
-	tlfJournal, ok := j.jServer.getTLFJournal(id)
-	if ok {
+	if tlfJournal, ok := j.jServer.getTLFJournal(id); ok {
 		// Prune the journal, too.
 		err := tlfJournal.clearMDs(ctx, bid)
 		if err != nil {
