@@ -5,24 +5,59 @@
 package libkbfs
 
 import (
+	"context"
 	"testing"
 
+	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/client/go/protocol/keybase1"
 )
 
-type testMDServerLocalConfig struct {
-	t                  *testing.T
-	clock              Clock
-	codec              Codec
-	crypto             cryptoPure
-	_currentInfoGetter currentInfoGetter
+type singleCurrentInfoGetter struct {
+	token          string
+	name           libkb.NormalizedUsername
+	uid            keybase1.UID
+	cryptPublicKey CryptPublicKey
+	verifyingKey   VerifyingKey
 }
 
-func newTestMDServerLocalConfig(t *testing.T) testMDServerLocalConfig {
+func (cig singleCurrentInfoGetter) GetCurrentToken(
+	ctx context.Context) (string, error) {
+	return cig.token, nil
+}
+
+func (cig singleCurrentInfoGetter) GetCurrentUserInfo(ctx context.Context) (
+	libkb.NormalizedUsername, keybase1.UID, error) {
+	return cig.name, cig.uid, nil
+}
+
+func (cig singleCurrentInfoGetter) GetCurrentCryptPublicKey(
+	ctx context.Context) (CryptPublicKey, error) {
+	return cig.cryptPublicKey, nil
+}
+
+func (cig singleCurrentInfoGetter) GetCurrentVerifyingKey(
+	ctx context.Context) (VerifyingKey, error) {
+	return cig.verifyingKey, nil
+}
+
+type testMDServerLocalConfig struct {
+	t      *testing.T
+	clock  Clock
+	codec  Codec
+	crypto cryptoPure
+	cig    currentInfoGetter
+}
+
+func newTestMDServerLocalConfig(
+	t *testing.T, cig currentInfoGetter) testMDServerLocalConfig {
+	codec := NewCodecMsgpack()
 	return testMDServerLocalConfig{
-		t:     t,
-		clock: newTestClockNow(),
-		codec: NewCodecMsgpack(),
+		t:      t,
+		clock:  newTestClockNow(),
+		codec:  codec,
+		crypto: MakeCryptoCommon(codec),
+		cig:    cig,
 	}
 }
 
@@ -39,7 +74,7 @@ func (c testMDServerLocalConfig) cryptoPure() cryptoPure {
 }
 
 func (c testMDServerLocalConfig) currentInfoGetter() currentInfoGetter {
-	return c._currentInfoGetter
+	return c.cig
 }
 
 func (c testMDServerLocalConfig) MetadataVersion() MetadataVer {
