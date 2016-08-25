@@ -183,7 +183,9 @@ func (j *tlfJournal) signalWork() {
 }
 
 // doBackgroundWorkLoop is the main function for the background
-// goroutine. It just calls doBackgroundWork whenever there is work.
+// goroutine. It spawns off a worker goroutine to call
+// doBackgroundWork whenever there is work, and can be paused and
+// resumed.
 func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 	ctx := context.Background()
 	if j.bwDelegate != nil {
@@ -195,55 +197,40 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 			j.bwDelegate.OnShutdown(ctx)
 		}
 	}()
-	// errCh and bwCancel are non-nil only when bws ==
-	// TLFJournalBackgroundWorkEnabled and there's work being done
-	// in the background.
+
+	// Below we have a state machine with three states:
+	//
+	// 1) Idle, where we wait for new work or to be paused;
+	// 2) Busy, where we wait for the worker goroutine to
+	//    finish, or to be paused;
+	// 3) Paused, where we wait to be resumed.
+	//
+	// We run this state machine until we are shutdown. Also, if
+	// we exit the busy state for any reason other than the worker
+	// goroutine finished, we stop the worker goroutine (via
+	// bwCancel below).
+
+	// errCh and bwCancel are non-nil only when we're in the busy
+	// state. errCh is the channel on which we receive the error
+	// from the worker goroutine, and bwCancel is the CancelFunc
+	// corresponding to the context passed to the worker
+	// goroutine.
 	var errCh <-chan error
 	var bwCancel context.CancelFunc
+	// Handle the case where we panic while in the busy state.
+	defer func() {
+		if bwCancel != nil {
+			bwCancel()
+		}
+	}()
+
 	for {
 		switch {
-		case bws == TLFJournalBackgroundWorkEnabled && errCh != nil:
-			if j.bwDelegate != nil {
-				j.bwDelegate.OnNewState(ctx, bwBusy)
-			}
-			// Busy state. We exit this state exactly when
-			// the background work is done, canceling it
-			// if necessary.
-			j.log.CDebugf(
-				ctx, "Waiting for background work to be done for %s",
-				j.tlfID)
-			needShutdown := false
-			select {
-			case err := <-errCh:
-				if err != nil {
-					j.log.CWarningf(ctx,
-						"Background work error for %s: %v",
-						j.tlfID, err)
-				}
-
-			case <-j.needPauseCh:
-				j.log.CDebugf(ctx,
-					"Got pause signal for %s", j.tlfID)
-				bws = TLFJournalBackgroundWorkPaused
-
-			case <-j.needShutdownCh:
-				j.log.CDebugf(ctx,
-					"Got shutdown signal for %s", j.tlfID)
-				needShutdown = true
-			}
-
-			errCh = nil
-			bwCancel()
-			bwCancel = nil
-			if needShutdown {
-				return
-			}
-
 		case bws == TLFJournalBackgroundWorkEnabled && errCh == nil:
+			// 1) Idle.
 			if j.bwDelegate != nil {
 				j.bwDelegate.OnNewState(ctx, bwIdle)
 			}
-			// Idle state.
 			j.log.CDebugf(
 				ctx, "Waiting for the work signal for %s",
 				j.tlfID)
@@ -266,11 +253,48 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 				return
 			}
 
+		case bws == TLFJournalBackgroundWorkEnabled && errCh != nil:
+			// 2) Busy.
+			if j.bwDelegate != nil {
+				j.bwDelegate.OnNewState(ctx, bwBusy)
+			}
+			j.log.CDebugf(ctx,
+				"Waiting for background work to be done for %s",
+				j.tlfID)
+			needShutdown := false
+			select {
+			case err := <-errCh:
+				if err != nil {
+					j.log.CWarningf(ctx,
+						"Background work error for %s: %v",
+						j.tlfID, err)
+				}
+
+			case <-j.needPauseCh:
+				j.log.CDebugf(ctx,
+					"Got pause signal for %s", j.tlfID)
+				bws = TLFJournalBackgroundWorkPaused
+
+			case <-j.needShutdownCh:
+				j.log.CDebugf(ctx,
+					"Got shutdown signal for %s", j.tlfID)
+				needShutdown = true
+			}
+
+			errCh = nil
+			// Cancel the worker goroutine as we exit this
+			// state.
+			bwCancel()
+			bwCancel = nil
+			if needShutdown {
+				return
+			}
+
 		case bws == TLFJournalBackgroundWorkPaused:
+			// 3) Paused
 			if j.bwDelegate != nil {
 				j.bwDelegate.OnNewState(ctx, bwPaused)
 			}
-			// Paused state.
 			j.log.CDebugf(
 				ctx, "Waiting to resume background work for %s",
 				j.tlfID)
