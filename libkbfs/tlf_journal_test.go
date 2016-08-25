@@ -291,12 +291,19 @@ func putMD(ctx context.Context, t *testing.T, config Config,
 	require.NoError(t, err)
 	rmd.tlfHandle = h
 	rmd.SetRevision(revision)
-	rekeyDone, _, err := config.KeyManager().Rekey(ctx, rmd, false)
-	require.NoError(t, err)
-	require.True(t, rekeyDone)
+	rmd.FakeInitialRekey(bh)
 
 	_, err = tlfJournal.putMD(ctx, rmd)
 	require.NoError(t, err)
+}
+
+type kmWrapper struct {
+	KeyManager
+}
+
+type shimKeyManager struct {
+	kmWrapper
+	singleEncryptionKeyGetter
 }
 
 func TestTLFJournalMDServerBusyPause(t *testing.T) {
@@ -304,6 +311,12 @@ func TestTLFJournalMDServerBusyPause(t *testing.T) {
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+
+	config.SetKeyManager(shimKeyManager{
+		singleEncryptionKeyGetter: singleEncryptionKeyGetter{
+			MakeTLFCryptKey([32]byte{0x1}),
+		},
+	})
 
 	md := hangingMDServer{config.MDServer(), make(chan struct{})}
 	config.SetMDServer(md)
@@ -325,6 +338,12 @@ func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
 	defer teardownTLFJournalTest(
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
+	config.SetKeyManager(shimKeyManager{
+		singleEncryptionKeyGetter: singleEncryptionKeyGetter{
+			MakeTLFCryptKey([32]byte{0x1}),
+		},
+	})
+
 	md := hangingMDServer{config.MDServer(), make(chan struct{})}
 	config.SetMDServer(md)
 
@@ -342,6 +361,12 @@ func TestTLFJournalBlockOpWhileBusyMDOp(t *testing.T) {
 	defer teardownTLFJournalTest(
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
+	config.SetKeyManager(shimKeyManager{
+		singleEncryptionKeyGetter: singleEncryptionKeyGetter{
+			MakeTLFCryptKey([32]byte{0x1}),
+		},
+	})
+
 	md := hangingMDServer{config.MDServer(), make(chan struct{})}
 	config.SetMDServer(md)
 
@@ -353,15 +378,6 @@ func TestTLFJournalBlockOpWhileBusyMDOp(t *testing.T) {
 	// Should still be able to put a block while busy.
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
-}
-
-type kmWrapper struct {
-	KeyManager
-}
-
-type shimKeyManager struct {
-	kmWrapper
-	singleEncryptionKeyGetter
 }
 
 func TestTLFJournalFlushMDBasic(t *testing.T) {
