@@ -20,13 +20,17 @@ type tlfJournalConfig interface {
 	BlockSplitter() BlockSplitter
 	Codec() Codec
 	Crypto() Crypto
-	KBPKI() KBPKI
+	currentInfoGetter() currentInfoGetter
 	encryptionKeyGetter() encryptionKeyGetter
 	MDServer() MDServer
 }
 
 type tlfJournalConfigWrapper struct {
 	Config
+}
+
+func (cw tlfJournalConfigWrapper) currentInfoGetter() currentInfoGetter {
+	return cw.Config.KBPKI()
 }
 
 func (cw tlfJournalConfigWrapper) encryptionKeyGetter() encryptionKeyGetter {
@@ -148,12 +152,12 @@ func makeTLFJournal(
 		return nil, err
 	}
 
-	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	_, uid, err := config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
+	key, err := config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -450,12 +454,12 @@ func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 }
 
 func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
-	_, currentUID, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	_, currentUID, err := j.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	currentVerifyingKey, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	currentVerifyingKey, err := j.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -678,12 +682,12 @@ func (j *tlfJournal) archiveBlockReferences(
 
 func (j *tlfJournal) getMDHead(
 	ctx context.Context) (ImmutableBareRootMetadata, error) {
-	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	_, uid, err := j.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
 
-	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	key, err := j.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
@@ -696,12 +700,12 @@ func (j *tlfJournal) getMDHead(
 func (j *tlfJournal) getMDRange(
 	ctx context.Context, start, stop MetadataRevision) (
 	[]ImmutableBareRootMetadata, error) {
-	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	_, uid, err := j.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	key, err := j.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -713,12 +717,12 @@ func (j *tlfJournal) getMDRange(
 
 func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
-	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	_, uid, err := j.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return MdID{}, err
 	}
 
-	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	key, err := j.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -737,12 +741,12 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 }
 
 func (j *tlfJournal) clearMDs(ctx context.Context, bid BranchID) error {
-	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
+	_, uid, err := j.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return err
 	}
 
-	key, err := j.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	key, err := j.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
 	if err != nil {
 		return err
 	}
