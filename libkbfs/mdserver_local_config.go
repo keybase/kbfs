@@ -11,7 +11,7 @@ import "github.com/keybase/client/go/logger"
 type mdServerLocalConfig interface {
 	Clock() Clock
 	Codec() Codec
-	Crypto() Crypto
+	cryptoPure() cryptoPure
 	currentInfoGetter() currentInfoGetter
 	MetadataVersion() MetadataVer
 	MakeLogger(module string) logger.Logger
@@ -21,6 +21,10 @@ type mdServerLocalConfig interface {
 // mdServerLocalConfig interface.
 type mdServerLocalConfigAdapter struct {
 	Config
+}
+
+func (ca mdServerLocalConfigAdapter) cryptoPure() cryptoPure {
+	return ca.Config.Crypto()
 }
 
 func (ca mdServerLocalConfigAdapter) currentInfoGetter() currentInfoGetter {

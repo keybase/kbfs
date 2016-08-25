@@ -135,7 +135,7 @@ func (md *MDServerDisk) getStorage(tlfID TlfID) (*mdServerTlfStorage, error) {
 
 	path := filepath.Join(md.dirPath, tlfID.String())
 	storage = makeMDServerTlfStorage(
-		md.config.Codec(), md.config.Crypto(), path)
+		md.config.Codec(), md.config.cryptoPure(), path)
 
 	md.tlfStorage[tlfID] = storage
 	return storage, nil
@@ -177,7 +177,7 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle BareTlfHandle,
 	}
 
 	// Allocate a new random ID.
-	id, err := md.config.Crypto().MakeRandomTlfID(handle.IsPublic())
+	id, err := md.config.cryptoPure().MakeRandomTlfID(handle.IsPublic())
 	if err != nil {
 		return NullTlfID, false, MDServerError{err}
 	}

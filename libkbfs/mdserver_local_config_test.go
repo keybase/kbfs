@@ -14,7 +14,7 @@ type testMDServerLocalConfig struct {
 	t                  *testing.T
 	clock              Clock
 	codec              Codec
-	crypto             Crypto
+	crypto             cryptoPure
 	_currentInfoGetter currentInfoGetter
 }
 
@@ -34,7 +34,7 @@ func (c testMDServerLocalConfig) Codec() Codec {
 	return c.codec
 }
 
-func (c testMDServerLocalConfig) Crypto() Crypto {
+func (c testMDServerLocalConfig) cryptoPure() cryptoPure {
 	return c.crypto
 }
 

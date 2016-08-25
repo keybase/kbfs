@@ -120,7 +120,7 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle BareTlfHandle,
 	}
 
 	// Allocate a new random ID.
-	id, err = md.config.Crypto().MakeRandomTlfID(handle.IsPublic())
+	id, err = md.config.cryptoPure().MakeRandomTlfID(handle.IsPublic())
 	if err != nil {
 		return NullTlfID, false, MDServerError{err}
 	}
@@ -329,7 +329,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 		return MDServerError{err}
 	}
 
-	err = rmds.IsValidAndSigned(md.config.Codec(), md.config.Crypto())
+	err = rmds.IsValidAndSigned(md.config.Codec(), md.config.cryptoPure())
 	if err != nil {
 		return MDServerErrorBadRequest{Reason: err.Error()}
 	}
@@ -390,7 +390,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 
 	// Consistency checks
 	if head != nil {
-		id, err := md.config.Crypto().MakeMdID(head.MD)
+		id, err := md.config.cryptoPure().MakeMdID(head.MD)
 		if err != nil {
 			return err
 		}
