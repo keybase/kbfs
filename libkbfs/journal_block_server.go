@@ -20,13 +20,14 @@ func (j journalBlockServer) Get(
 	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
 		data, serverHalf, err := tlfJournal.getBlockDataWithContext(
 			id, context)
-		if _, ok := err.(BServerErrorBlockNonExistent); ok {
+		switch err.(type) {
+		case nil:
+			return data, serverHalf, nil
+		case BServerErrorBlockNonExistent:
 			return j.BlockServer.Get(ctx, tlfID, id, context)
-		} else if err != nil {
+		default:
 			return nil, BlockCryptKeyServerHalf{}, err
 		}
-
-		return data, serverHalf, nil
 	}
 
 	return j.BlockServer.Get(ctx, tlfID, id, context)
