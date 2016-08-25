@@ -25,16 +25,18 @@ type tlfJournalConfig interface {
 	MDServer() MDServer
 }
 
-type tlfJournalConfigWrapper struct {
+// tlfJournalConfigWrapper is an adapter for Config objects to the
+// tlfJournalConfig interface.
+type tlfJournalConfigAdapter struct {
 	Config
 }
 
-func (cw tlfJournalConfigWrapper) currentInfoGetter() currentInfoGetter {
-	return cw.Config.KBPKI()
+func (ca tlfJournalConfigAdapter) currentInfoGetter() currentInfoGetter {
+	return ca.Config.KBPKI()
 }
 
-func (cw tlfJournalConfigWrapper) encryptionKeyGetter() encryptionKeyGetter {
-	return cw.Config.KeyManager()
+func (ca tlfJournalConfigAdapter) encryptionKeyGetter() encryptionKeyGetter {
+	return ca.Config.KeyManager()
 }
 
 // TLFJournalStatus represents the status of a TLF's journal for
