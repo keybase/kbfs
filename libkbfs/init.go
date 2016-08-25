@@ -135,13 +135,13 @@ func makeMDServer(config Config, serverInMemory bool, serverRootDir, mdserverAdd
 	MDServer, error) {
 	if serverInMemory {
 		// local in-memory MD server
-		return NewMDServerMemory(config)
+		return NewMDServerMemory(mdServerLocalConfigAdapter{config})
 	}
 
 	if len(serverRootDir) > 0 {
 		// local persistent MD server
 		mdPath := filepath.Join(serverRootDir, "kbfs_md")
-		return NewMDServerDir(config, mdPath)
+		return NewMDServerDir(mdServerLocalConfigAdapter{config}, mdPath)
 	}
 
 	if len(mdserverAddr) == 0 {

@@ -124,11 +124,13 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 	switch {
 	case mdServerAddr == TempdirServerAddr:
 		var err error
-		mdServer, err = NewMDServerTempDir(config)
+		mdServer, err = NewMDServerTempDir(
+			mdServerLocalConfigAdapter{config})
 		if err != nil {
 			t.Fatal(err)
 		}
-		keyServer, err = NewKeyServerTempDir(config)
+		keyServer, err = NewKeyServerTempDir(
+			mdServerLocalConfigAdapter{config})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -156,12 +158,14 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 	default:
 		var err error
 		// create in-memory server shim
-		mdServer, err = NewMDServerMemory(config)
+		mdServer, err = NewMDServerMemory(
+			mdServerLocalConfigAdapter{config})
 		if err != nil {
 			t.Fatal(err)
 		}
 		// shim for the key server too
-		keyServer, err = NewKeyServerMemory(config)
+		keyServer, err = NewKeyServerMemory(
+			mdServerLocalConfigAdapter{config})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -235,11 +239,11 @@ func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *C
 		// this way the current device KID is paired with
 		// the proper user yet the DB state is all shared.
 		mdServerToCopy := config.MDServer().(mdServerLocal)
-		mdServer = mdServerToCopy.copy(c)
+		mdServer = mdServerToCopy.copy(mdServerLocalConfigAdapter{c})
 
 		// use the same db but swap configs
 		keyServerToCopy := config.KeyServer().(*KeyServerLocal)
-		keyServer = keyServerToCopy.copy(c)
+		keyServer = keyServerToCopy.copy(mdServerLocalConfigAdapter{c})
 	}
 	c.SetMDServer(mdServer)
 	c.SetKeyServer(keyServer)

@@ -44,7 +44,7 @@ type mdServerDiskShared struct {
 // MDServerDisk stores all info on disk, either in levelDBs, or disk
 // journals and flat files for the actual MDs.
 type MDServerDisk struct {
-	config Config
+	config mdServerLocalConfig
 	log    logger.Logger
 
 	*mdServerDiskShared
@@ -52,7 +52,7 @@ type MDServerDisk struct {
 
 var _ mdServerLocal = (*MDServerDisk)(nil)
 
-func newMDServerDisk(config Config, dirPath string,
+func newMDServerDisk(config mdServerLocalConfig, dirPath string,
 	shutdownFunc func(logger.Logger)) (*MDServerDisk, error) {
 	handlePath := filepath.Join(dirPath, "handles")
 	handleDb, err := leveldb.OpenFile(handlePath, leveldbOptions)
@@ -82,13 +82,14 @@ func newMDServerDisk(config Config, dirPath string,
 
 // NewMDServerDir constructs a new MDServerDisk that stores its data
 // in the given directory.
-func NewMDServerDir(config Config, dirPath string) (*MDServerDisk, error) {
+func NewMDServerDir(
+	config mdServerLocalConfig, dirPath string) (*MDServerDisk, error) {
 	return newMDServerDisk(config, dirPath, nil)
 }
 
 // NewMDServerTempDir constructs a new MDServerDisk that stores its
 // data in a temp directory which is cleaned up on shutdown.
-func NewMDServerTempDir(config Config) (*MDServerDisk, error) {
+func NewMDServerTempDir(config mdServerLocalConfig) (*MDServerDisk, error) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "kbfs_mdserver_tmp")
 	if err != nil {
 		return nil, err
@@ -167,7 +168,7 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle BareTlfHandle,
 	}
 
 	// Non-readers shouldn't be able to create the dir.
-	_, uid, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	_, uid, err := md.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return NullTlfID, false, MDServerError{err}
 	}
@@ -215,7 +216,7 @@ func (md *MDServerDisk) getBranchKey(ctx context.Context, id TlfID) ([]byte, err
 		return nil, err
 	}
 	// add device KID
-	key, err := md.config.KBPKI().GetCurrentCryptPublicKey(ctx)
+	key, err := md.config.currentInfoGetter().GetCurrentCryptPublicKey(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +314,7 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id TlfID,
 		}
 	}
 
-	_, currentUID, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	_, currentUID, err := md.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return nil, MDServerError{err}
 	}
@@ -344,7 +345,7 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id TlfID,
 		}
 	}
 
-	_, currentUID, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	_, currentUID, err := md.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return nil, MDServerError{err}
 	}
@@ -360,7 +361,7 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id TlfID,
 // Put implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned) error {
 	currentUID, currentVerifyingKey, err :=
-		getCurrentUIDAndVerifyingKey(ctx, md.config.KBPKI())
+		getCurrentUIDAndVerifyingKey(ctx, md.config.currentInfoGetter())
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -444,7 +445,7 @@ func (md *MDServerDisk) RegisterForUpdate(ctx context.Context, id TlfID,
 // TruncateLock implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) TruncateLock(ctx context.Context, id TlfID) (
 	bool, error) {
-	key, err := md.config.KBPKI().GetCurrentCryptPublicKey(ctx)
+	key, err := md.config.currentInfoGetter().GetCurrentCryptPublicKey(ctx)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -461,7 +462,7 @@ func (md *MDServerDisk) TruncateLock(ctx context.Context, id TlfID) (
 // TruncateUnlock implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) TruncateUnlock(ctx context.Context, id TlfID) (
 	bool, error) {
-	key, err := md.config.KBPKI().GetCurrentCryptPublicKey(ctx)
+	key, err := md.config.currentInfoGetter().GetCurrentCryptPublicKey(ctx)
 	if err != nil {
 		return false, MDServerError{err}
 	}
@@ -512,7 +513,7 @@ func (md *MDServerDisk) IsConnected() bool {
 func (md *MDServerDisk) RefreshAuthToken(ctx context.Context) {}
 
 // This should only be used for testing with an in-memory server.
-func (md *MDServerDisk) copy(config Config) mdServerLocal {
+func (md *MDServerDisk) copy(config mdServerLocalConfig) mdServerLocal {
 	// NOTE: observers and sessionHeads are copied shallowly on
 	// purpose, so that the MD server that gets a Put will notify all
 	// observers correctly no matter where they got on the list.

@@ -1063,7 +1063,7 @@ type mdServerLocal interface {
 	getCurrentMergedHeadRevision(ctx context.Context, id TlfID) (
 		rev MetadataRevision, err error)
 	isShutdown() bool
-	copy(config Config) mdServerLocal
+	copy(config mdServerLocalConfig) mdServerLocal
 }
 
 // BlockServer gets and puts opaque data blocks.  The instantiation
