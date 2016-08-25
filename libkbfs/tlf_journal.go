@@ -169,13 +169,17 @@ func makeTLFJournal(
 	go j.doBackgroundWorkLoop(bws)
 
 	// Signal work to pick up any existing journal entries.
+	j.signalWork()
+
+	j.log.CDebugf(ctx, "Enabled journal for %s with path %s", tlfID, tlfDir)
+	return j, nil
+}
+
+func (j *tlfJournal) signalWork() {
 	select {
 	case j.hasWorkCh <- struct{}{}:
 	default:
 	}
-
-	j.log.CDebugf(ctx, "Enabled journal for %s with path %s", tlfID, tlfDir)
-	return j, nil
 }
 
 // doBackgroundWorkLoop is the main function for the background
@@ -460,10 +464,7 @@ func (j *tlfJournal) putBlockData(
 		return err
 	}
 
-	select {
-	case j.hasWorkCh <- struct{}{}:
-	default:
-	}
+	j.signalWork()
 
 	return nil
 }
@@ -477,10 +478,7 @@ func (j *tlfJournal) addBlockReference(
 		return err
 	}
 
-	select {
-	case j.hasWorkCh <- struct{}{}:
-	default:
-	}
+	j.signalWork()
 
 	return nil
 }
@@ -502,10 +500,7 @@ func (j *tlfJournal) removeBlockReferences(
 		return nil, err
 	}
 
-	select {
-	case j.hasWorkCh <- struct{}{}:
-	default:
-	}
+	j.signalWork()
 
 	return liveCounts, nil
 }
@@ -519,10 +514,7 @@ func (j *tlfJournal) archiveBlockReferences(
 		return err
 	}
 
-	select {
-	case j.hasWorkCh <- struct{}{}:
-	default:
-	}
+	j.signalWork()
 
 	return nil
 }
@@ -583,10 +575,7 @@ func (j *tlfJournal) putMD(
 		return MdID{}, err
 	}
 
-	select {
-	case j.hasWorkCh <- struct{}{}:
-	default:
-	}
+	j.signalWork()
 
 	return mdID, nil
 }
