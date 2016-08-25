@@ -283,13 +283,9 @@ func putMD(ctx context.Context, t *testing.T, config Config,
 	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	h, err := MakeTlfHandle(ctx, bh, config.KBPKI())
-	require.NoError(t, err)
-
 	rmd := NewRootMetadata()
 	err = rmd.Update(tlfJournal.tlfID, bh)
 	require.NoError(t, err)
-	rmd.tlfHandle = h
 	rmd.SetRevision(revision)
 	rmd.FakeInitialRekey(bh)
 
