@@ -17,6 +17,7 @@ import (
 )
 
 type testBWDelegate struct {
+	t *testing.T
 	// Store a context so that the tlfJournal's background context
 	// will also obey the test timeout.
 	testCtx    context.Context
@@ -29,11 +30,19 @@ func (d testBWDelegate) GetBackgroundContext() context.Context {
 }
 
 func (d testBWDelegate) OnNewState(ctx context.Context, bws bwState) {
-	d.stateCh <- bws
+	select {
+	case d.stateCh <- bws:
+	case <-ctx.Done():
+		d.t.Error(ctx.Err())
+	}
 }
 
 func (d testBWDelegate) OnShutdown(ctx context.Context) {
-	d.shutdownCh <- struct{}{}
+	select {
+	case d.shutdownCh <- struct{}{}:
+	case <-ctx.Done():
+		d.t.Error(ctx.Err())
+	}
 }
 
 func (d testBWDelegate) requireNextState(
@@ -60,6 +69,7 @@ func setupTLFJournalTest(t *testing.T) (
 
 	tlfID := FakeTlfID(1, false)
 	delegate = testBWDelegate{
+		t:          t,
 		testCtx:    ctx,
 		stateCh:    make(chan bwState),
 		shutdownCh: make(chan struct{}),
