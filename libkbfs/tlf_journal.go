@@ -21,8 +21,16 @@ type tlfJournalConfig interface {
 	Codec() Codec
 	Crypto() Crypto
 	KBPKI() KBPKI
-	KeyManager() KeyManager
+	encryptionKeyGetter() encryptionKeyGetter
 	MDServer() MDServer
+}
+
+type tlfJournalConfigWrapper struct {
+	Config
+}
+
+func (cw tlfJournalConfigWrapper) encryptionKeyGetter() encryptionKeyGetter {
+	return cw.Config.KeyManager()
 }
 
 // TLFJournalStatus represents the status of a TLF's journal for
@@ -717,9 +725,8 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	mdID, err := j.mdJournal.put(
-		ctx, uid, key, j.config.Crypto(), j.config.KeyManager(),
-		j.config.BlockSplitter(), rmd)
+	mdID, err := j.mdJournal.put(ctx, uid, key, j.config.Crypto(),
+		j.config.encryptionKeyGetter(), j.config.BlockSplitter(), rmd)
 	if err != nil {
 		return MdID{}, err
 	}

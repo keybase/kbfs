@@ -75,7 +75,8 @@ func setupTLFJournalTest(t *testing.T) (
 		shutdownCh: make(chan struct{}),
 	}
 	tlfJournal, err = makeTLFJournal(
-		ctx, tempdir, tlfID, config, config.BlockServer(), log,
+		ctx, tempdir, tlfID, tlfJournalConfigWrapper{config},
+		config.BlockServer(), log,
 		TLFJournalBackgroundWorkEnabled, delegate)
 	require.NoError(t, err)
 
