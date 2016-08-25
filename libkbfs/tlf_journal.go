@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/keybase/client/go/logger"
-	"github.com/keybase/client/go/protocol/keybase1"
 	"golang.org/x/net/context"
 )
 
@@ -728,9 +727,7 @@ func (j *tlfJournal) putMD(
 	return mdID, nil
 }
 
-func (j *tlfJournal) clearMDs(
-	ctx context.Context, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey, bid BranchID) error {
+func (j *tlfJournal) clearMDs(ctx context.Context, bid BranchID) error {
 	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return err

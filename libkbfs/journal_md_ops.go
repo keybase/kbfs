@@ -372,18 +372,8 @@ func (j journalMDOps) PruneBranch(
 	ctx context.Context, id TlfID, bid BranchID) error {
 	tlfJournal, ok := j.jServer.getTLFJournal(id)
 	if ok {
-		_, uid, err := j.jServer.config.KBPKI().GetCurrentUserInfo(ctx)
-		if err != nil {
-			return err
-		}
-
-		key, err := j.jServer.config.KBPKI().GetCurrentVerifyingKey(ctx)
-		if err != nil {
-			return err
-		}
-
 		// Prune the journal, too.
-		tlfJournal.clearMDs(ctx, uid, key, bid)
+		err := tlfJournal.clearMDs(ctx, bid)
 		if err != nil {
 			return err
 		}
