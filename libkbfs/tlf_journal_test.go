@@ -33,7 +33,7 @@ func (d testBWDelegate) OnNewState(ctx context.Context, bws bwState) {
 	select {
 	case d.stateCh <- bws:
 	case <-ctx.Done():
-		d.t.Error(ctx.Err())
+		assert.Fail(d.t, ctx.Err().Error())
 	}
 }
 
@@ -41,17 +41,17 @@ func (d testBWDelegate) OnShutdown(ctx context.Context) {
 	select {
 	case d.shutdownCh <- struct{}{}:
 	case <-ctx.Done():
-		d.t.Error(ctx.Err())
+		assert.Fail(d.t, ctx.Err().Error())
 	}
 }
 
 func (d testBWDelegate) requireNextState(
-	ctx context.Context, t *testing.T, expectedState bwState) {
+	ctx context.Context, expectedState bwState) {
 	select {
 	case bws := <-d.stateCh:
-		require.Equal(t, expectedState, bws)
+		require.Equal(d.t, expectedState, bws)
 	case <-ctx.Done():
-		require.FailNow(t, ctx.Err().Error())
+		assert.Fail(d.t, ctx.Err().Error())
 	}
 }
 
@@ -81,9 +81,9 @@ func setupTLFJournalTest(t *testing.T) (
 
 	// Read the state changes triggered by the initial work
 	// signal.
-	delegate.requireNextState(ctx, t, bwIdle)
-	delegate.requireNextState(ctx, t, bwBusy)
-	delegate.requireNextState(ctx, t, bwIdle)
+	delegate.requireNextState(ctx, bwIdle)
+	delegate.requireNextState(ctx, bwBusy)
+	delegate.requireNextState(ctx, bwIdle)
 	return tempdir, config, ctx, cancel, tlfJournal, delegate
 }
 
@@ -135,8 +135,8 @@ func TestTLFJournalBasic(t *testing.T) {
 
 	// Wait for it to be processed.
 
-	delegate.requireNextState(ctx, t, bwBusy)
-	delegate.requireNextState(ctx, t, bwIdle)
+	delegate.requireNextState(ctx, bwBusy)
+	delegate.requireNextState(ctx, bwIdle)
 }
 
 func TestTLFJournalPauseResume(t *testing.T) {
@@ -146,16 +146,16 @@ func TestTLFJournalPauseResume(t *testing.T) {
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
 	tlfJournal.pauseBackgroundWork()
-	delegate.requireNextState(ctx, t, bwPaused)
+	delegate.requireNextState(ctx, bwPaused)
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
 	// Unpause and wait for it to be processed.
 
 	tlfJournal.resumeBackgroundWork()
-	delegate.requireNextState(ctx, t, bwIdle)
-	delegate.requireNextState(ctx, t, bwBusy)
-	delegate.requireNextState(ctx, t, bwIdle)
+	delegate.requireNextState(ctx, bwIdle)
+	delegate.requireNextState(ctx, bwBusy)
+	delegate.requireNextState(ctx, bwIdle)
 }
 
 func TestTLFJournalPauseShutdown(t *testing.T) {
@@ -165,7 +165,7 @@ func TestTLFJournalPauseShutdown(t *testing.T) {
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
 	tlfJournal.pauseBackgroundWork()
-	delegate.requireNextState(ctx, t, bwPaused)
+	delegate.requireNextState(ctx, bwPaused)
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
@@ -208,12 +208,12 @@ func TestTLFJournalBlockOpBusyPause(t *testing.T) {
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
 	bs.waitForPut(ctx, t)
-	delegate.requireNextState(ctx, t, bwBusy)
+	delegate.requireNextState(ctx, bwBusy)
 
 	// Should still be able to pause while busy.
 
 	tlfJournal.pauseBackgroundWork()
-	delegate.requireNextState(ctx, t, bwPaused)
+	delegate.requireNextState(ctx, bwPaused)
 }
 
 func TestTLFJournalBlockOpBusyShutdown(t *testing.T) {
@@ -229,7 +229,7 @@ func TestTLFJournalBlockOpBusyShutdown(t *testing.T) {
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
 	bs.waitForPut(ctx, t)
-	delegate.requireNextState(ctx, t, bwBusy)
+	delegate.requireNextState(ctx, bwBusy)
 
 	// Should still be able to shut down while busy.
 }
@@ -247,7 +247,7 @@ func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
 	bs.waitForPut(ctx, t)
-	delegate.requireNextState(ctx, t, bwBusy)
+	delegate.requireNextState(ctx, bwBusy)
 
 	// Should still be able to put a second block while busy.
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4, 5})
@@ -310,12 +310,12 @@ func TestTLFJournalMDServerBusyPause(t *testing.T) {
 	putMD(ctx, t, config, tlfJournal, MetadataRevisionInitial, MdID{})
 
 	md.waitForPut(ctx, t)
-	delegate.requireNextState(ctx, t, bwBusy)
+	delegate.requireNextState(ctx, bwBusy)
 
 	// Should still be able to pause while busy.
 
 	tlfJournal.pauseBackgroundWork()
-	delegate.requireNextState(ctx, t, bwPaused)
+	delegate.requireNextState(ctx, bwPaused)
 }
 
 func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
@@ -330,7 +330,7 @@ func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
 	putMD(ctx, t, config, tlfJournal, MetadataRevisionInitial, MdID{})
 
 	md.waitForPut(ctx, t)
-	delegate.requireNextState(ctx, t, bwBusy)
+	delegate.requireNextState(ctx, bwBusy)
 
 	// Should still be able to shutdown while busy.
 }
@@ -347,7 +347,7 @@ func TestTLFJournalBlockOpWhileBusyMDOp(t *testing.T) {
 	putMD(ctx, t, config, tlfJournal, MetadataRevisionInitial, MdID{})
 
 	md.waitForPut(ctx, t)
-	delegate.requireNextState(ctx, t, bwBusy)
+	delegate.requireNextState(ctx, bwBusy)
 
 	// Should still be able to put a block while busy.
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
@@ -385,7 +385,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	})
 
 	tlfJournal.pauseBackgroundWork()
-	delegate.requireNextState(ctx, t, bwPaused)
+	delegate.requireNextState(ctx, bwPaused)
 
 	firstRevision := MetadataRevision(10)
 	firstPrevRoot := fakeMdID(1)
