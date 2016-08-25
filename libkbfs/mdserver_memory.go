@@ -323,13 +323,8 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id TlfID,
 
 // Put implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) error {
-	_, currentUID, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return MDServerError{err}
-	}
-
-	currentVerifyingKey, err :=
-		md.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	currentUID, currentVerifyingKey, err :=
+		getCurrentUIDAndVerifyingKey(ctx, md.config.KBPKI())
 	if err != nil {
 		return MDServerError{err}
 	}
