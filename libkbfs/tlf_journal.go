@@ -268,6 +268,10 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 					j.log.CWarningf(ctx,
 						"Background work error for %s: %v",
 						j.tlfID, err)
+
+					// TODO: Perhaps backoff and
+					// retry the background work
+					// again?
 				}
 
 			case <-j.needPauseCh:
