@@ -345,3 +345,78 @@ func TestTLFJournalBlockOpWhileBusyMDOp(t *testing.T) {
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
 }
+
+func TestTLFJournalFlushMDBasic(t *testing.T) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t)
+	defer teardownTLFJournalTest(
+		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+
+	codec := NewCodecMsgpack()
+	crypto := MakeCryptoCommon(codec)
+
+	uid := keybase1.MakeTestUID(1)
+	id := tlfJournal.tlfID
+	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	signer := config.Crypto().(CryptoLocal)
+	verifyingKey := signer.signingKey.GetVerifyingKey()
+	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
+
+	bsplit := &BlockSplitterSimple{64 * 1024, 8 * 1024}
+
+	tlfJournal.pauseBackgroundWork()
+	delegate.requireNextState(ctx, t, bwPaused)
+
+	firstRevision := MetadataRevision(10)
+	firstPrevRoot := fakeMdID(1)
+	mdCount := 10
+
+	prevRoot := firstPrevRoot
+	for i := 0; i < mdCount; i++ {
+		revision := firstRevision + MetadataRevision(i)
+		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+		mdID, err := tlfJournal.putMD(ctx, signer, ekg, bsplit, md)
+		require.NoError(t, err)
+		prevRoot = mdID
+	}
+
+	// Flush all entries.
+	var mdserver shimMDServer
+	config.SetMDServer(&mdserver)
+
+	for i := 0; i < mdCount; i++ {
+		flushed, err := tlfJournal.flushOneMDOp(ctx)
+		require.NoError(t, err)
+		require.True(t, flushed)
+	}
+	flushed, err := tlfJournal.flushOneMDOp(ctx)
+	require.NoError(t, err)
+	require.False(t, flushed)
+	// TODO: Fix.
+	require.Equal(t, 0, getMDJournalLength(t, tlfJournal.mdJournal))
+
+	rmdses := mdserver.rmdses
+	require.Equal(t, mdCount, len(rmdses))
+
+	// Check RMDSes on the server.
+
+	require.Equal(t, firstRevision, rmdses[0].MD.RevisionNumber())
+	require.Equal(t, firstPrevRoot, rmdses[0].MD.GetPrevRoot())
+	err = rmdses[0].IsValidAndSigned(codec, crypto)
+	require.NoError(t, err)
+	err = rmdses[0].IsLastModifiedBy(uid, verifyingKey)
+	require.NoError(t, err)
+
+	for i := 1; i < len(rmdses); i++ {
+		err := rmdses[i].IsValidAndSigned(codec, crypto)
+		require.NoError(t, err)
+		err = rmdses[i].IsLastModifiedBy(uid, verifyingKey)
+		require.NoError(t, err)
+		prevID, err := crypto.MakeMdID(rmdses[i-1].MD)
+		require.NoError(t, err)
+		err = rmdses[i-1].MD.CheckValidSuccessor(prevID, rmdses[i].MD)
+		require.NoError(t, err)
+	}
+}

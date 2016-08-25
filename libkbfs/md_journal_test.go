@@ -26,7 +26,7 @@ func (g singleEncryptionKeyGetter) GetTLFCryptKeyForEncryption(
 	return g.k, nil
 }
 
-func getTlfJournalLength(t *testing.T, j *mdJournal) int {
+func getMDJournalLength(t *testing.T, j *mdJournal) int {
 	len, err := j.length()
 	require.NoError(t, err)
 	return int(len)
@@ -93,7 +93,7 @@ func TestMDJournalBasic(t *testing.T) {
 	head, err := j.getHead(uid, verifyingKey)
 	require.NoError(t, err)
 	require.Equal(t, ImmutableBareRootMetadata{}, head)
-	require.Equal(t, 0, getTlfJournalLength(t, j))
+	require.Equal(t, 0, getMDJournalLength(t, j))
 
 	// Push some new metadata blocks.
 
@@ -113,7 +113,7 @@ func TestMDJournalBasic(t *testing.T) {
 		prevRoot = mdID
 	}
 
-	require.Equal(t, mdCount, getTlfJournalLength(t, j))
+	require.Equal(t, mdCount, getMDJournalLength(t, j))
 
 	// Should now be non-empty.
 
@@ -235,7 +235,7 @@ func TestMDJournalBranchConversion(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	require.Equal(t, 10, getTlfJournalLength(t, j))
+	require.Equal(t, 10, getMDJournalLength(t, j))
 
 	head, err := j.getHead(uid, verifyingKey)
 	require.NoError(t, err)
@@ -310,7 +310,7 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	require.Equal(t, 10, getTlfJournalLength(t, j))
+	require.Equal(t, 10, getMDJournalLength(t, j))
 
 	head, err := j.getHead(uid, verifyingKey)
 	require.NoError(t, err)
@@ -350,6 +350,9 @@ func (s *shimMDServer) Put(
 	return nil
 }
 
+func (s *shimMDServer) Shutdown() {
+}
+
 func TestMDJournalFlushBasic(t *testing.T) {
 	codec, crypto, uid, id, h, signer, verifyingKey, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
@@ -382,7 +385,7 @@ func TestMDJournalFlushBasic(t *testing.T) {
 	flushed, err := j.flushOne(ctx, uid, verifyingKey, signer, &mdserver)
 	require.NoError(t, err)
 	require.False(t, flushed)
-	require.Equal(t, 0, getTlfJournalLength(t, j))
+	require.Equal(t, 0, getMDJournalLength(t, j))
 
 	rmdses := mdserver.rmdses
 	require.Equal(t, mdCount, len(rmdses))
@@ -472,7 +475,7 @@ func TestMDJournalFlushConflict(t *testing.T) {
 	flushed, err := j.flushOne(ctx, uid, verifyingKey, signer, &mdserver)
 	require.NoError(t, err)
 	require.False(t, flushed)
-	require.Equal(t, 0, getTlfJournalLength(t, j))
+	require.Equal(t, 0, getMDJournalLength(t, j))
 
 	rmdses := mdserver.rmdses
 	require.Equal(t, mdCount, len(rmdses))
@@ -543,7 +546,7 @@ func TestMDJournalPreservesBranchID(t *testing.T) {
 	flushed, err := j.flushOne(ctx, uid, verifyingKey, signer, &mdserver)
 	require.NoError(t, err)
 	require.False(t, flushed)
-	require.Equal(t, 0, getTlfJournalLength(t, j))
+	require.Equal(t, 0, getMDJournalLength(t, j))
 
 	// Put last revision and flush it.
 	{
@@ -568,7 +571,7 @@ func TestMDJournalPreservesBranchID(t *testing.T) {
 			ctx, uid, verifyingKey, signer, &mdserver)
 		require.NoError(t, err)
 		require.False(t, flushed)
-		require.Equal(t, 0, getTlfJournalLength(t, j))
+		require.Equal(t, 0, getMDJournalLength(t, j))
 	}
 
 	rmdses := mdserver.rmdses
