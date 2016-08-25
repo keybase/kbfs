@@ -17,9 +17,11 @@ import (
 // tlfJournalConfig is the subset of the Config interface needed by
 // tlfJournal (for ease of testing).
 type tlfJournalConfig interface {
+	BlockSplitter() BlockSplitter
 	Codec() Codec
 	Crypto() Crypto
 	KBPKI() KBPKI
+	KeyManager() KeyManager
 	MDServer() MDServer
 }
 
@@ -701,9 +703,7 @@ func (j *tlfJournal) getMDRange(
 	return j.mdJournal.getRange(uid, key, start, stop)
 }
 
-func (j *tlfJournal) putMD(
-	ctx context.Context, signer cryptoSigner,
-	ekg encryptionKeyGetter, bsplit BlockSplitter, rmd *RootMetadata) (
+func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
 	_, uid, err := j.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
@@ -717,7 +717,9 @@ func (j *tlfJournal) putMD(
 
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	mdID, err := j.mdJournal.put(ctx, uid, key, signer, ekg, bsplit, rmd)
+	mdID, err := j.mdJournal.put(
+		ctx, uid, key, j.config.Crypto(), j.config.KeyManager(),
+		j.config.BlockSplitter(), rmd)
 	if err != nil {
 		return MdID{}, err
 	}

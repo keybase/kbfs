@@ -322,10 +322,7 @@ func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata) (
 	tlfJournal, ok := j.jServer.getTLFJournal(rmd.TlfID())
 	if ok {
 		// Just route to the journal.
-		return tlfJournal.putMD(ctx,
-			j.jServer.config.Crypto(),
-			j.jServer.config.KeyManager(),
-			j.jServer.config.BlockSplitter(), rmd)
+		return tlfJournal.putMD(ctx, rmd)
 	}
 
 	return j.MDOps.Put(ctx, rmd)
@@ -359,10 +356,7 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 			}
 		}
 
-		return tlfJournal.putMD(ctx,
-			j.jServer.config.Crypto(),
-			j.jServer.config.KeyManager(),
-			j.jServer.config.BlockSplitter(), rmd)
+		return tlfJournal.putMD(ctx, rmd)
 	}
 
 	return j.MDOps.PutUnmerged(ctx, rmd)

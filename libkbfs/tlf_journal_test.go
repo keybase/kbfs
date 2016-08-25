@@ -284,9 +284,7 @@ func putMD(ctx context.Context, t *testing.T, config Config,
 	require.NoError(t, err)
 	require.True(t, rekeyDone)
 
-	_, err = tlfJournal.putMD(
-		ctx, config.Crypto(), config.KeyManager(),
-		config.BlockSplitter(), rmd)
+	_, err = tlfJournal.putMD(ctx, rmd)
 	require.NoError(t, err)
 }
 
@@ -346,6 +344,15 @@ func TestTLFJournalBlockOpWhileBusyMDOp(t *testing.T) {
 
 }
 
+type kmWrapper struct {
+	KeyManager
+}
+
+type shimKeyManager struct {
+	kmWrapper
+	singleEncryptionKeyGetter
+}
+
 func TestTLFJournalFlushMDBasic(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
@@ -360,11 +367,12 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	signer := config.Crypto().(CryptoLocal)
-	verifyingKey := signer.signingKey.GetVerifyingKey()
-	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
-
-	bsplit := &BlockSplitterSimple{64 * 1024, 8 * 1024}
+	verifyingKey := config.Crypto().(CryptoLocal).signingKey.GetVerifyingKey()
+	config.SetKeyManager(shimKeyManager{
+		singleEncryptionKeyGetter: singleEncryptionKeyGetter{
+			MakeTLFCryptKey([32]byte{0x1}),
+		},
+	})
 
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, t, bwPaused)
@@ -377,7 +385,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	for i := 0; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
 		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
-		mdID, err := tlfJournal.putMD(ctx, signer, ekg, bsplit, md)
+		mdID, err := tlfJournal.putMD(ctx, md)
 		require.NoError(t, err)
 		prevRoot = mdID
 	}
