@@ -530,7 +530,7 @@ func TestTLFJournalFlushBlock(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
 
-	oldBlockServer := tlfJournal.delegateBlockServer
+	blockServer := tlfJournal.delegateBlockServer
 
 	flush := func() {
 		flushed, err := tlfJournal.flushOneBlockOp(ctx)
@@ -543,7 +543,7 @@ func TestTLFJournalFlushBlock(t *testing.T) {
 	flush()
 
 	tlfID := config.tlfID
-	buf, key, err := oldBlockServer.Get(ctx, tlfID, bID, bCtx)
+	buf, key, err := blockServer.Get(ctx, tlfID, bID, bCtx)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -552,14 +552,14 @@ func TestTLFJournalFlushBlock(t *testing.T) {
 
 	flush()
 
-	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx2)
+	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
 
 	flush()
 
-	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx3)
+	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -568,13 +568,13 @@ func TestTLFJournalFlushBlock(t *testing.T) {
 
 	flush()
 
-	_, _, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx)
+	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
-	_, _, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx2)
+	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx2)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
-	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx3)
+	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -583,7 +583,7 @@ func TestTLFJournalFlushBlock(t *testing.T) {
 
 	flush()
 
-	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx3)
+	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
@@ -592,7 +592,7 @@ func TestTLFJournalFlushBlock(t *testing.T) {
 
 	flush()
 
-	buf, key, err = oldBlockServer.Get(ctx, tlfID, bID, bCtx3)
+	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
 	_, e, _, _, err := tlfJournal.blockJournal.getNextOpToFlush(ctx)
