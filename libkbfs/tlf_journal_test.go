@@ -472,6 +472,11 @@ func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 }
 
+// The tests below test tlfJournal's block flushing behavior.
+
+// TODO: Flesh this out a bit more, and possibly move these tests to
+// block_journal_test.go.
+
 func TestTLFJournalFlushBlockBasic(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
