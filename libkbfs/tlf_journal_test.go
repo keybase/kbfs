@@ -370,7 +370,7 @@ func TestTLFJournalBlockOpBusyShutdown(t *testing.T) {
 	// Should still be able to shut down while busy.
 }
 
-func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
+func TestTLFJournalSecondBlockOpWhileBusy(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, TLFJournalBackgroundWorkEnabled)
 	defer teardownTLFJournalTest(
@@ -452,7 +452,7 @@ func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
 	// Should still be able to shutdown while busy.
 }
 
-func TestTLFJournalBlockOpWhileBusyMDOp(t *testing.T) {
+func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, TLFJournalBackgroundWorkEnabled)
 	defer teardownTLFJournalTest(
