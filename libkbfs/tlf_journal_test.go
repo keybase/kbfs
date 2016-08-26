@@ -517,6 +517,8 @@ func requireJournalEntryCounts(t *testing.T, j *tlfJournal,
 	require.Equal(t, expectedMDEntryCount, mdEntryCount)
 }
 
+// The tests below test tlfJournal's MD flushing behavior.
+
 func TestTLFJournalFlushMDBasic(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
@@ -550,12 +552,12 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	require.False(t, flushed)
 	requireJournalEntryCounts(t, tlfJournal, 0, 0)
 
-	rmdses := mdserver.rmdses
-	require.Equal(t, mdCount, len(rmdses))
-
 	// Check RMDSes on the server.
 
-	config.checkRange(rmdses, firstRevision, firstPrevRoot, Merged, NullBranchID)
+	rmdses := mdserver.rmdses
+	require.Equal(t, mdCount, len(rmdses))
+	config.checkRange(
+		rmdses, firstRevision, firstPrevRoot, Merged, NullBranchID)
 }
 
 func TestTLFJournalFlushMDConflict(t *testing.T) {
@@ -618,12 +620,12 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 	require.False(t, flushed)
 	requireJournalEntryCounts(t, tlfJournal, 0, 0)
 
-	rmdses := mdserver.rmdses
-	require.Equal(t, mdCount, len(rmdses))
-
 	// Check RMDSes on the server.
 
-	config.checkRange(rmdses, firstRevision, firstPrevRoot, Unmerged, rmdses[0].MD.BID())
+	rmdses := mdserver.rmdses
+	require.Equal(t, mdCount, len(rmdses))
+	config.checkRange(rmdses, firstRevision, firstPrevRoot,
+		Unmerged, rmdses[0].MD.BID())
 }
 
 // TestTLFJournalPreservesBranchID tests that the branch ID is
@@ -687,12 +689,10 @@ func TestTLFJournalPreservesBranchID(t *testing.T) {
 		requireJournalEntryCounts(t, tlfJournal, 0, 0)
 	}
 
-	rmdses := mdserver.rmdses
-	require.Equal(t, mdCount, len(rmdses))
-
 	// Check RMDSes on the server. In particular, the BranchID of
 	// the last put MD should match the rest.
-
+	rmdses := mdserver.rmdses
+	require.Equal(t, mdCount, len(rmdses))
 	config.checkRange(rmdses, firstRevision, firstPrevRoot, Unmerged,
 		rmdses[0].MD.BID())
 }
