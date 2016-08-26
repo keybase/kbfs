@@ -113,6 +113,39 @@ func (c testTLFJournalConfig) makeMDForTest(
 	return md
 }
 
+func (c testTLFJournalConfig) checkMD(rmds *RootMetadataSigned,
+	expectedRevision MetadataRevision, expectedPrevRoot MdID,
+	expectedMergeStatus MergeStatus) {
+	uid := c.cig.uid
+	verifyingKey := c.crypto.signingKey.GetVerifyingKey()
+
+	require.Equal(c.t, expectedRevision, rmds.MD.RevisionNumber())
+	require.Equal(c.t, expectedPrevRoot, rmds.MD.GetPrevRoot())
+	require.Equal(c.t, expectedMergeStatus, rmds.MD.MergedStatus())
+	err := rmds.IsValidAndSigned(c.Codec(), c.Crypto())
+	require.NoError(c.t, err)
+	err = rmds.IsLastModifiedBy(uid, verifyingKey)
+	require.NoError(c.t, err)
+
+	bid := rmds.MD.BID()
+	require.Equal(c.t, expectedMergeStatus == Merged, bid == NullBranchID)
+}
+
+func (c testTLFJournalConfig) checkRange(rmdses []*RootMetadataSigned,
+	firstRevision MetadataRevision, firstPrevRoot MdID,
+	mStatus MergeStatus) {
+	c.checkMD(rmdses[0], firstRevision, firstPrevRoot, mStatus)
+
+	for i := 1; i < len(rmdses); i++ {
+		prevID, err := c.Crypto().MakeMdID(rmdses[i-1].MD)
+		require.NoError(c.t, err)
+		c.checkMD(rmdses[i], firstRevision+MetadataRevision(i),
+			prevID, mStatus)
+		err = rmdses[i-1].MD.CheckValidSuccessor(prevID, rmdses[i].MD)
+		require.NoError(c.t, err)
+	}
+}
+
 func setupTLFJournalTest(
 	t *testing.T, bwStatus TLFJournalBackgroundWorkStatus) (
 	tempdir string, config *testTLFJournalConfig, ctx context.Context,
@@ -508,27 +541,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 
 	// Check RMDSes on the server.
 
-	uid := config.cig.uid
-	verifyingKey := config.crypto.signingKey.GetVerifyingKey()
-
-	require.Equal(t, firstRevision, rmdses[0].MD.RevisionNumber())
-	require.Equal(t, firstPrevRoot, rmdses[0].MD.GetPrevRoot())
-	err = rmdses[0].IsValidAndSigned(config.Codec(), config.Crypto())
-	require.NoError(t, err)
-	err = rmdses[0].IsLastModifiedBy(uid, verifyingKey)
-	require.NoError(t, err)
-
-	for i := 1; i < len(rmdses); i++ {
-		err := rmdses[i].IsValidAndSigned(
-			config.Codec(), config.Crypto())
-		require.NoError(t, err)
-		err = rmdses[i].IsLastModifiedBy(uid, verifyingKey)
-		require.NoError(t, err)
-		prevID, err := config.Crypto().MakeMdID(rmdses[i-1].MD)
-		require.NoError(t, err)
-		err = rmdses[i-1].MD.CheckValidSuccessor(prevID, rmdses[i].MD)
-		require.NoError(t, err)
-	}
+	config.checkRange(rmdses, firstRevision, firstPrevRoot, Merged)
 }
 
 func TestTLFJournalFlushMDConflict(t *testing.T) {
@@ -597,31 +610,5 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 
 	// Check RMDSes on the server.
 
-	uid := config.cig.uid
-	verifyingKey := config.crypto.signingKey.GetVerifyingKey()
-
-	require.Equal(t, firstRevision, rmdses[0].MD.RevisionNumber())
-	require.Equal(t, firstPrevRoot, rmdses[0].MD.GetPrevRoot())
-	require.Equal(t, Unmerged, rmdses[0].MD.MergedStatus())
-	err = rmdses[0].IsValidAndSigned(config.Codec(), config.Crypto())
-	require.NoError(t, err)
-	err = rmdses[0].IsLastModifiedBy(uid, verifyingKey)
-	require.NoError(t, err)
-
-	bid := rmdses[0].MD.BID()
-	require.NotEqual(t, NullBranchID, bid)
-
-	for i := 1; i < len(rmdses); i++ {
-		require.Equal(t, Unmerged, rmdses[i].MD.MergedStatus())
-		require.Equal(t, bid, rmdses[i].MD.BID())
-		err := rmdses[i].IsValidAndSigned(
-			config.Codec(), config.Crypto())
-		require.NoError(t, err)
-		err = rmdses[i].IsLastModifiedBy(uid, verifyingKey)
-		require.NoError(t, err)
-		prevID, err := config.Crypto().MakeMdID(rmdses[i-1].MD)
-		require.NoError(t, err)
-		err = rmdses[i-1].MD.CheckValidSuccessor(prevID, rmdses[i].MD)
-		require.NoError(t, err)
-	}
+	config.checkRange(rmdses, firstRevision, firstPrevRoot, Unmerged)
 }
