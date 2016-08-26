@@ -759,6 +759,8 @@ func (j *blockJournal) removeFlushedEntry(
 		return err
 	}
 
+	// TODO: This is a hack to work around KBFS-1439. Figure out a
+	// better way to update j.refs to reflect the removed entry.
 	refs, err := j.readJournal(ctx)
 	if err != nil {
 		return err
