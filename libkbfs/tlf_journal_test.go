@@ -244,7 +244,7 @@ func putBlock(ctx context.Context,
 	t *testing.T, config *testTLFJournalConfig,
 	tlfJournal *tlfJournal, data []byte) {
 	crypto := config.Crypto()
-	uid := keybase1.MakeTestUID(1)
+	uid := config.cig.uid
 	bID, err := crypto.MakePermanentBlockID(data)
 	require.NoError(t, err)
 	bCtx := BlockContext{uid, "", zeroBlockRefNonce}
@@ -253,6 +253,9 @@ func putBlock(ctx context.Context,
 	err = tlfJournal.putBlockData(ctx, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 }
+
+// The tests below primarily test the background work thread's
+// behavior.
 
 func TestTLFJournalBasic(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
