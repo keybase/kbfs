@@ -407,35 +407,20 @@ func (md hangingMDServer) waitForPut(ctx context.Context, t *testing.T) {
 	}
 }
 
-func putMD(ctx context.Context, t *testing.T, config *testTLFJournalConfig,
-	tlfJournal *tlfJournal, revision MetadataRevision, prevRoot MdID) {
-	_, uid, err := config.cig.GetCurrentUserInfo(ctx)
-	require.NoError(t, err)
-	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
-	require.NoError(t, err)
-
-	rmd := NewRootMetadata()
-	err = rmd.Update(config.tlfID, bh)
-	require.NoError(t, err)
-	rmd.SetRevision(revision)
-	rmd.FakeInitialRekey(bh)
-
-	_, err = tlfJournal.putMD(ctx, rmd)
-	require.NoError(t, err)
-}
-
 func TestTLFJournalMDServerBusyPause(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, TLFJournalBackgroundWorkEnabled)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	md := hangingMDServer{config.MDServer(), make(chan struct{})}
-	config.mdserver = md
+	mdserver := hangingMDServer{config.MDServer(), make(chan struct{})}
+	config.mdserver = mdserver
 
-	putMD(ctx, t, config, tlfJournal, MetadataRevisionInitial, MdID{})
+	md := config.makeMD(MetadataRevisionInitial, MdID{})
+	_, err := tlfJournal.putMD(ctx, md)
+	require.NoError(t, err)
 
-	md.waitForPut(ctx, t)
+	mdserver.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, bwBusy)
 
 	// Should still be able to pause while busy.
@@ -450,12 +435,14 @@ func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	md := hangingMDServer{config.MDServer(), make(chan struct{})}
-	config.mdserver = md
+	mdserver := hangingMDServer{config.MDServer(), make(chan struct{})}
+	config.mdserver = mdserver
 
-	putMD(ctx, t, config, tlfJournal, MetadataRevisionInitial, MdID{})
+	md := config.makeMD(MetadataRevisionInitial, MdID{})
+	_, err := tlfJournal.putMD(ctx, md)
+	require.NoError(t, err)
 
-	md.waitForPut(ctx, t)
+	mdserver.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, bwBusy)
 
 	// Should still be able to shutdown while busy.
@@ -467,12 +454,14 @@ func TestTLFJournalBlockOpWhileBusyMDOp(t *testing.T) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	md := hangingMDServer{config.MDServer(), make(chan struct{})}
-	config.mdserver = md
+	mdserver := hangingMDServer{config.MDServer(), make(chan struct{})}
+	config.mdserver = mdserver
 
-	putMD(ctx, t, config, tlfJournal, MetadataRevisionInitial, MdID{})
+	md := config.makeMD(MetadataRevisionInitial, MdID{})
+	_, err := tlfJournal.putMD(ctx, md)
+	require.NoError(t, err)
 
-	md.waitForPut(ctx, t)
+	mdserver.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, bwBusy)
 
 	// Should still be able to put a block while busy.
