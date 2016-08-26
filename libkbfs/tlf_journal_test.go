@@ -115,7 +115,7 @@ func (c testTLFJournalConfig) makeMDForTest(
 
 func (c testTLFJournalConfig) checkMD(rmds *RootMetadataSigned,
 	expectedRevision MetadataRevision, expectedPrevRoot MdID,
-	expectedMergeStatus MergeStatus) {
+	expectedMergeStatus MergeStatus, bid BranchID) {
 	uid := c.cig.uid
 	verifyingKey := c.crypto.signingKey.GetVerifyingKey()
 
@@ -127,20 +127,20 @@ func (c testTLFJournalConfig) checkMD(rmds *RootMetadataSigned,
 	err = rmds.IsLastModifiedBy(uid, verifyingKey)
 	require.NoError(c.t, err)
 
-	bid := rmds.MD.BID()
 	require.Equal(c.t, expectedMergeStatus == Merged, bid == NullBranchID)
+	require.Equal(c.t, bid, rmds.MD.BID())
 }
 
 func (c testTLFJournalConfig) checkRange(rmdses []*RootMetadataSigned,
 	firstRevision MetadataRevision, firstPrevRoot MdID,
-	mStatus MergeStatus) {
-	c.checkMD(rmdses[0], firstRevision, firstPrevRoot, mStatus)
+	mStatus MergeStatus, bid BranchID) {
+	c.checkMD(rmdses[0], firstRevision, firstPrevRoot, mStatus, bid)
 
 	for i := 1; i < len(rmdses); i++ {
 		prevID, err := c.Crypto().MakeMdID(rmdses[i-1].MD)
 		require.NoError(c.t, err)
 		c.checkMD(rmdses[i], firstRevision+MetadataRevision(i),
-			prevID, mStatus)
+			prevID, mStatus, bid)
 		err = rmdses[i-1].MD.CheckValidSuccessor(prevID, rmdses[i].MD)
 		require.NoError(c.t, err)
 	}
@@ -548,7 +548,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 
 	// Check RMDSes on the server.
 
-	config.checkRange(rmdses, firstRevision, firstPrevRoot, Merged)
+	config.checkRange(rmdses, firstRevision, firstPrevRoot, Merged, NullBranchID)
 }
 
 func TestTLFJournalFlushMDConflict(t *testing.T) {
@@ -616,5 +616,76 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 
 	// Check RMDSes on the server.
 
-	config.checkRange(rmdses, firstRevision, firstPrevRoot, Unmerged)
+	config.checkRange(rmdses, firstRevision, firstPrevRoot, Unmerged, rmdses[0].MD.BID())
+}
+
+// TestTLFJournalPreservesBranchID tests that the branch ID is
+// preserved even if the journal is fully drained. This is a
+// regression test for KBFS-1344.
+func TestTLFJournalPreservesBranchID(t *testing.T) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	firstRevision := MetadataRevision(10)
+	firstPrevRoot := fakeMdID(1)
+	mdCount := 10
+
+	prevRoot := firstPrevRoot
+	for i := 0; i < mdCount-1; i++ {
+		revision := firstRevision + MetadataRevision(i)
+		md := config.makeMDForTest(revision, prevRoot)
+		mdID, err := tlfJournal.putMD(ctx, md)
+		require.NoError(t, err)
+		prevRoot = mdID
+	}
+
+	var mdserver shimMDServer
+	config.mdserver = &mdserver
+	mdserver.nextErr = MDServerErrorConflictRevision{}
+
+	// Flush all entries, with the first one encountering a
+	// conflict error.
+	for i := 0; i < mdCount-1; i++ {
+		flushed, err := tlfJournal.flushOneMDOp(ctx)
+		require.NoError(t, err)
+		require.True(t, flushed)
+	}
+
+	flushed, err := tlfJournal.flushOneMDOp(ctx)
+	require.NoError(t, err)
+	require.False(t, flushed)
+	requireJournalEntryCounts(t, tlfJournal, 0, 0)
+
+	// Put last revision and flush it.
+	{
+		revision := firstRevision + MetadataRevision(mdCount-1)
+		md := config.makeMDForTest(revision, prevRoot)
+		mdID, err := tlfJournal.putMD(ctx, md)
+		require.IsType(t, MDJournalConflictError{}, err)
+
+		md.SetUnmerged()
+		mdID, err = tlfJournal.putMD(ctx, md)
+		require.NoError(t, err)
+		prevRoot = mdID
+
+		flushed, err := tlfJournal.flushOneMDOp(ctx)
+		require.NoError(t, err)
+		require.True(t, flushed)
+
+		flushed, err = tlfJournal.flushOneMDOp(ctx)
+		require.NoError(t, err)
+		require.False(t, flushed)
+		requireJournalEntryCounts(t, tlfJournal, 0, 0)
+	}
+
+	rmdses := mdserver.rmdses
+	require.Equal(t, mdCount, len(rmdses))
+
+	// Check RMDSes on the server. In particular, the BranchID of
+	// the last put MD should match the rest.
+
+	config.checkRange(rmdses, firstRevision, firstPrevRoot, Unmerged,
+		rmdses[0].MD.BID())
 }
