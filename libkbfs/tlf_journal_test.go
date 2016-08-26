@@ -502,6 +502,14 @@ func (s *shimMDServer) Put(
 func (s *shimMDServer) Shutdown() {
 }
 
+func requireJournalEntryCounts(t *testing.T, j *tlfJournal,
+	expectedBlockEntryCount, expectedMDEntryCount uint64) {
+	blockEntryCount, mdEntryCount, err := j.getJournalEntryCounts()
+	require.NoError(t, err)
+	require.Equal(t, expectedBlockEntryCount, blockEntryCount)
+	require.Equal(t, expectedMDEntryCount, mdEntryCount)
+}
+
 func TestTLFJournalFlushMDBasic(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
@@ -533,8 +541,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	flushed, err := tlfJournal.flushOneMDOp(ctx)
 	require.NoError(t, err)
 	require.False(t, flushed)
-	// TODO: Fix.
-	require.Equal(t, 0, getMDJournalLength(t, tlfJournal.mdJournal))
+	requireJournalEntryCounts(t, tlfJournal, 0, 0)
 
 	rmdses := mdserver.rmdses
 	require.Equal(t, mdCount, len(rmdses))
@@ -602,8 +609,7 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 	flushed, err := tlfJournal.flushOneMDOp(ctx)
 	require.NoError(t, err)
 	require.False(t, flushed)
-	// TODO: Fix.
-	require.Equal(t, 0, getMDJournalLength(t, tlfJournal.mdJournal))
+	requireJournalEntryCounts(t, tlfJournal, 0, 0)
 
 	rmdses := mdserver.rmdses
 	require.Equal(t, mdCount, len(rmdses))
