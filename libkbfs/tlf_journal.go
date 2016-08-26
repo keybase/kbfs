@@ -144,9 +144,10 @@ type tlfJournal struct {
 
 func makeTLFJournal(
 	ctx context.Context, dir string, tlfID TlfID, config tlfJournalConfig,
-	delegateBlockServer BlockServer, log logger.Logger,
-	bws TLFJournalBackgroundWorkStatus,
+	delegateBlockServer BlockServer, bws TLFJournalBackgroundWorkStatus,
 	bwDelegate tlfJournalBWDelegate) (*tlfJournal, error) {
+	log := config.MakeLogger("TLFJ")
+
 	tlfDir := filepath.Join(dir, tlfID.String())
 
 	blockJournal, err := makeBlockJournal(

@@ -161,8 +161,6 @@ func setupTLFJournalTest(
 	mdserver, err := NewMDServerMemory(newTestMDServerLocalConfig(t, cig))
 	require.NoError(t, err)
 
-	log := logger.NewTestLogger(t)
-
 	// Time out individual tests after 10 seconds.
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 
@@ -183,9 +181,8 @@ func setupTLFJournalTest(
 	tempdir, err = ioutil.TempDir(os.TempDir(), "tlf_journal")
 	require.NoError(t, err)
 
-	tlfJournal, err = makeTLFJournal(
-		ctx, tempdir, config.tlfID, config, bserver, log,
-		bwStatus, delegate)
+	tlfJournal, err = makeTLFJournal(ctx, tempdir, config.tlfID, config,
+		bserver, bwStatus, delegate)
 	require.NoError(t, err)
 
 	if bwStatus == TLFJournalBackgroundWorkEnabled {
