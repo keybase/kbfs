@@ -433,6 +433,42 @@ func TestTLFJournalBlockOpWhileBusyMDOp(t *testing.T) {
 
 }
 
+type shimMDServer struct {
+	MDServer
+	rmdses       []*RootMetadataSigned
+	nextGetRange []*RootMetadataSigned
+	nextErr      error
+}
+
+func (s *shimMDServer) GetRange(
+	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
+	start, stop MetadataRevision) ([]*RootMetadataSigned, error) {
+	rmdses := s.nextGetRange
+	s.nextGetRange = nil
+	return rmdses, nil
+}
+
+func (s *shimMDServer) Put(
+	ctx context.Context, rmds *RootMetadataSigned) error {
+	if s.nextErr != nil {
+		err := s.nextErr
+		s.nextErr = nil
+		return err
+	}
+	s.rmdses = append(s.rmdses, rmds)
+
+	// Pretend all cancels happen after the actual put.
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+	return nil
+}
+
+func (s *shimMDServer) Shutdown() {
+}
+
 func TestTLFJournalFlushMDBasic(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
@@ -483,6 +519,101 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 1; i < len(rmdses); i++ {
+		err := rmdses[i].IsValidAndSigned(
+			config.Codec(), config.Crypto())
+		require.NoError(t, err)
+		err = rmdses[i].IsLastModifiedBy(uid, verifyingKey)
+		require.NoError(t, err)
+		prevID, err := config.Crypto().MakeMdID(rmdses[i-1].MD)
+		require.NoError(t, err)
+		err = rmdses[i-1].MD.CheckValidSuccessor(prevID, rmdses[i].MD)
+		require.NoError(t, err)
+	}
+}
+
+func TestTLFJournalFlushMDConflict(t *testing.T) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	firstRevision := MetadataRevision(10)
+	firstPrevRoot := fakeMdID(1)
+	mdCount := 10
+
+	prevRoot := firstPrevRoot
+	for i := 0; i < mdCount/2; i++ {
+		revision := firstRevision + MetadataRevision(i)
+		md := config.makeMDForTest(revision, prevRoot)
+		mdID, err := tlfJournal.putMD(ctx, md)
+		require.NoError(t, err)
+		prevRoot = mdID
+	}
+
+	var mdserver shimMDServer
+	mdserver.nextErr = MDServerErrorConflictRevision{}
+	config.mdserver = &mdserver
+
+	// Simulate a flush with a conflict error halfway through.
+	{
+		flushed, err := tlfJournal.flushOneMDOp(ctx)
+		require.NoError(t, err)
+		require.True(t, flushed)
+
+		revision := firstRevision + MetadataRevision(mdCount/2)
+		md := config.makeMDForTest(revision, prevRoot)
+		_, err = tlfJournal.putMD(ctx, md)
+		require.IsType(t, MDJournalConflictError{}, err)
+
+		md.SetUnmerged()
+		mdID, err := tlfJournal.putMD(ctx, md)
+		require.NoError(t, err)
+		prevRoot = mdID
+	}
+
+	for i := mdCount/2 + 1; i < mdCount; i++ {
+		revision := firstRevision + MetadataRevision(i)
+		md := config.makeMDForTest(revision, prevRoot)
+		md.SetUnmerged()
+		mdID, err := tlfJournal.putMD(ctx, md)
+		require.NoError(t, err)
+		prevRoot = mdID
+	}
+
+	// Flush remaining entries.
+	for i := 0; i < mdCount-1; i++ {
+		flushed, err := tlfJournal.flushOneMDOp(ctx)
+		require.NoError(t, err)
+		require.True(t, flushed)
+	}
+	flushed, err := tlfJournal.flushOneMDOp(ctx)
+	require.NoError(t, err)
+	require.False(t, flushed)
+	// TODO: Fix.
+	require.Equal(t, 0, getMDJournalLength(t, tlfJournal.mdJournal))
+
+	rmdses := mdserver.rmdses
+	require.Equal(t, mdCount, len(rmdses))
+
+	// Check RMDSes on the server.
+
+	uid := config.cig.uid
+	verifyingKey := config.crypto.signingKey.GetVerifyingKey()
+
+	require.Equal(t, firstRevision, rmdses[0].MD.RevisionNumber())
+	require.Equal(t, firstPrevRoot, rmdses[0].MD.GetPrevRoot())
+	require.Equal(t, Unmerged, rmdses[0].MD.MergedStatus())
+	err = rmdses[0].IsValidAndSigned(config.Codec(), config.Crypto())
+	require.NoError(t, err)
+	err = rmdses[0].IsLastModifiedBy(uid, verifyingKey)
+	require.NoError(t, err)
+
+	bid := rmdses[0].MD.BID()
+	require.NotEqual(t, NullBranchID, bid)
+
+	for i := 1; i < len(rmdses); i++ {
+		require.Equal(t, Unmerged, rmdses[i].MD.MergedStatus())
+		require.Equal(t, bid, rmdses[i].MD.BID())
 		err := rmdses[i].IsValidAndSigned(
 			config.Codec(), config.Crypto())
 		require.NoError(t, err)

@@ -317,42 +317,6 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 }
 
-type shimMDServer struct {
-	MDServer
-	rmdses       []*RootMetadataSigned
-	nextGetRange []*RootMetadataSigned
-	nextErr      error
-}
-
-func (s *shimMDServer) GetRange(
-	ctx context.Context, id TlfID, bid BranchID, mStatus MergeStatus,
-	start, stop MetadataRevision) ([]*RootMetadataSigned, error) {
-	rmdses := s.nextGetRange
-	s.nextGetRange = nil
-	return rmdses, nil
-}
-
-func (s *shimMDServer) Put(
-	ctx context.Context, rmds *RootMetadataSigned) error {
-	if s.nextErr != nil {
-		err := s.nextErr
-		s.nextErr = nil
-		return err
-	}
-	s.rmdses = append(s.rmdses, rmds)
-
-	// Pretend all cancels happen after the actual put.
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-	return nil
-}
-
-func (s *shimMDServer) Shutdown() {
-}
-
 func TestMDJournalFlushBasic(t *testing.T) {
 	codec, crypto, uid, id, h, signer, verifyingKey, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
