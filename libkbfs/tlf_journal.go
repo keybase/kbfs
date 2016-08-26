@@ -23,6 +23,7 @@ type tlfJournalConfig interface {
 	currentInfoGetter() currentInfoGetter
 	encryptionKeyGetter() encryptionKeyGetter
 	MDServer() MDServer
+	MakeLogger(module string) logger.Logger
 }
 
 // tlfJournalConfigWrapper is an adapter for Config objects to the

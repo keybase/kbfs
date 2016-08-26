@@ -5,12 +5,12 @@
 package libkbfs
 
 import (
-	"context"
 	"testing"
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"golang.org/x/net/context"
 )
 
 type singleCurrentInfoGetter struct {

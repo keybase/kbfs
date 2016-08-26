@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,17 +56,80 @@ func (d testBWDelegate) requireNextState(
 	}
 }
 
+type testTLFJournalConfig struct {
+	t        *testing.T
+	splitter BlockSplitter
+	codec    Codec
+	crypto   Crypto
+	cig      currentInfoGetter
+	ekg      encryptionKeyGetter
+	mdserver MDServer
+}
+
+func (c testTLFJournalConfig) BlockSplitter() BlockSplitter {
+	return c.splitter
+}
+
+func (c testTLFJournalConfig) Codec() Codec {
+	return c.codec
+}
+
+func (c testTLFJournalConfig) Crypto() Crypto {
+	return c.crypto
+}
+
+func (c testTLFJournalConfig) cryptoPure() cryptoPure {
+	return c.crypto
+}
+
+func (c testTLFJournalConfig) currentInfoGetter() currentInfoGetter {
+	return c.cig
+}
+
+func (c testTLFJournalConfig) encryptionKeyGetter() encryptionKeyGetter {
+	return c.ekg
+}
+
+func (c testTLFJournalConfig) MDServer() MDServer {
+	return c.mdserver
+}
+
+func (c testTLFJournalConfig) MakeLogger(module string) logger.Logger {
+	return logger.NewTestLogger(c.t)
+}
+
 func setupTLFJournalTest(t *testing.T) (
-	tempdir string, config Config, ctx context.Context,
+	tempdir string, config *testTLFJournalConfig, ctx context.Context,
 	cancel context.CancelFunc, tlfJournal *tlfJournal,
 	delegate testBWDelegate) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "tlf_journal")
 	require.NoError(t, err)
-	config = MakeTestConfigOrBust(t, "test_user")
-	log := config.MakeLogger("")
+
+	bsplitter := &BlockSplitterSimple{64 * 1024, 8 * 1024}
+	codec := NewCodecMsgpack()
+	signingKey := MakeFakeSigningKeyOrBust("client sign")
+	cryptPrivateKey := MakeFakeCryptPrivateKeyOrBust("client crypt private")
+	crypto := NewCryptoLocal(codec, signingKey, cryptPrivateKey)
+	cig := singleCurrentInfoGetter{
+		name:         "fake_user",
+		uid:          keybase1.MakeTestUID(1),
+		verifyingKey: signingKey.GetVerifyingKey(),
+	}
+	ekg := singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
+	mdserver, err := NewMDServerMemory(newTestMDServerLocalConfig(t, cig))
+	require.NoError(t, err)
+
+	log := logger.NewTestLogger(t)
 
 	// Time out individual tests after 10 seconds.
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+
+	config = &testTLFJournalConfig{
+		t, bsplitter, codec, crypto,
+		cig, ekg, mdserver,
+	}
+
+	bserver := NewBlockServerMemory(config)
 
 	tlfID := FakeTlfID(1, false)
 	delegate = testBWDelegate{
@@ -75,8 +139,7 @@ func setupTLFJournalTest(t *testing.T) (
 		shutdownCh: make(chan struct{}),
 	}
 	tlfJournal, err = makeTLFJournal(
-		ctx, tempdir, tlfID, tlfJournalConfigAdapter{config},
-		config.BlockServer(), log,
+		ctx, tempdir, tlfID, config, bserver, log,
 		TLFJournalBackgroundWorkEnabled, delegate)
 	require.NoError(t, err)
 
@@ -91,7 +154,7 @@ func setupTLFJournalTest(t *testing.T) (
 func teardownTLFJournalTest(
 	t *testing.T, ctx context.Context, cancel context.CancelFunc,
 	tlfJournal *tlfJournal, delegate testBWDelegate,
-	tempdir string, config Config) {
+	tempdir string, config *testTLFJournalConfig) {
 	// Shutdown first so we don't get the Done() signal (from the
 	// cancel() call) spuriously.
 	tlfJournal.shutdown()
@@ -108,13 +171,15 @@ func teardownTLFJournalTest(
 		assert.Fail(t, "Unexpected state %s", bws)
 	default:
 	}
-	CheckConfigAndShutdown(t, config)
+	config.mdserver.Shutdown()
+	tlfJournal.delegateBlockServer.Shutdown()
 	err := os.RemoveAll(tempdir)
 	require.NoError(t, err)
 }
 
 func putBlock(ctx context.Context,
-	t *testing.T, config Config, tlfJournal *tlfJournal, data []byte) {
+	t *testing.T, config *testTLFJournalConfig,
+	tlfJournal *tlfJournal, data []byte) {
 	crypto := config.Crypto()
 	uid := keybase1.MakeTestUID(1)
 	bID, err := crypto.MakePermanentBlockID(data)
@@ -276,9 +341,9 @@ func (md hangingMDServer) waitForPut(ctx context.Context, t *testing.T) {
 	}
 }
 
-func putMD(ctx context.Context, t *testing.T, config Config,
+func putMD(ctx context.Context, t *testing.T, config *testTLFJournalConfig,
 	tlfJournal *tlfJournal, revision MetadataRevision, prevRoot MdID) {
-	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	_, uid, err := config.cig.GetCurrentUserInfo(ctx)
 	require.NoError(t, err)
 	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
@@ -293,29 +358,14 @@ func putMD(ctx context.Context, t *testing.T, config Config,
 	require.NoError(t, err)
 }
 
-type kmWrapper struct {
-	KeyManager
-}
-
-type shimKeyManager struct {
-	kmWrapper
-	singleEncryptionKeyGetter
-}
-
 func TestTLFJournalMDServerBusyPause(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
-	config.SetKeyManager(shimKeyManager{
-		singleEncryptionKeyGetter: singleEncryptionKeyGetter{
-			MakeTLFCryptKey([32]byte{0x1}),
-		},
-	})
-
 	md := hangingMDServer{config.MDServer(), make(chan struct{})}
-	config.SetMDServer(md)
+	config.mdserver = md
 
 	putMD(ctx, t, config, tlfJournal, MetadataRevisionInitial, MdID{})
 
@@ -334,14 +384,8 @@ func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
 	defer teardownTLFJournalTest(
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
-	config.SetKeyManager(shimKeyManager{
-		singleEncryptionKeyGetter: singleEncryptionKeyGetter{
-			MakeTLFCryptKey([32]byte{0x1}),
-		},
-	})
-
 	md := hangingMDServer{config.MDServer(), make(chan struct{})}
-	config.SetMDServer(md)
+	config.mdserver = md
 
 	putMD(ctx, t, config, tlfJournal, MetadataRevisionInitial, MdID{})
 
@@ -357,14 +401,8 @@ func TestTLFJournalBlockOpWhileBusyMDOp(t *testing.T) {
 	defer teardownTLFJournalTest(
 		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
 
-	config.SetKeyManager(shimKeyManager{
-		singleEncryptionKeyGetter: singleEncryptionKeyGetter{
-			MakeTLFCryptKey([32]byte{0x1}),
-		},
-	})
-
 	md := hangingMDServer{config.MDServer(), make(chan struct{})}
-	config.SetMDServer(md)
+	config.mdserver = md
 
 	putMD(ctx, t, config, tlfJournal, MetadataRevisionInitial, MdID{})
 
@@ -391,11 +429,6 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	require.NoError(t, err)
 
 	verifyingKey := config.Crypto().(CryptoLocal).signingKey.GetVerifyingKey()
-	config.SetKeyManager(shimKeyManager{
-		singleEncryptionKeyGetter: singleEncryptionKeyGetter{
-			MakeTLFCryptKey([32]byte{0x1}),
-		},
-	})
 
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, bwPaused)
@@ -415,7 +448,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 
 	// Flush all entries.
 	var mdserver shimMDServer
-	config.SetMDServer(&mdserver)
+	config.mdserver = &mdserver
 
 	for i := 0; i < mdCount; i++ {
 		flushed, err := tlfJournal.flushOneMDOp(ctx)

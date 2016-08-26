@@ -95,7 +95,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 
 	signingKey := MakeLocalUserSigningKeyOrBust(loggedInUser.Name)
 	cryptPrivateKey := MakeLocalUserCryptPrivateKeyOrBust(loggedInUser.Name)
-	crypto := NewCryptoLocal(config, signingKey, cryptPrivateKey)
+	crypto := NewCryptoLocal(config.Codec(), signingKey, cryptPrivateKey)
 	config.SetCrypto(crypto)
 
 	// see if a local remote server is specified
@@ -218,7 +218,7 @@ func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *C
 
 	signingKey := MakeLocalUserSigningKeyOrBust(loggedInUser)
 	cryptPrivateKey := MakeLocalUserCryptPrivateKeyOrBust(loggedInUser)
-	crypto := NewCryptoLocal(config, signingKey, cryptPrivateKey)
+	crypto := NewCryptoLocal(config.Codec(), signingKey, cryptPrivateKey)
 	c.SetCrypto(crypto)
 	c.noBGFlush = config.noBGFlush
 
@@ -373,7 +373,8 @@ func SwitchDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config, inde
 	keySalt := keySaltForUserDevice(name, index)
 	signingKey := MakeLocalUserSigningKeyOrBust(keySalt)
 	cryptPrivateKey := MakeLocalUserCryptPrivateKeyOrBust(keySalt)
-	config.SetCrypto(NewCryptoLocal(config, signingKey, cryptPrivateKey))
+	config.SetCrypto(
+		NewCryptoLocal(config.Codec(), signingKey, cryptPrivateKey))
 }
 
 // AddNewAssertionForTest makes newAssertion, which should be a single
