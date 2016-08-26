@@ -34,17 +34,14 @@ func getMDJournalLength(t *testing.T, j *mdJournal) int {
 
 func setupMDJournalTest(t *testing.T) (
 	codec Codec, crypto CryptoCommon,
-	uid keybase1.UID, id TlfID, h BareTlfHandle,
-	signer cryptoSigner, verifyingKey VerifyingKey,
-	ekg singleEncryptionKeyGetter, bsplit BlockSplitter,
-	tempdir string, j *mdJournal) {
+	uid keybase1.UID, id TlfID, signer cryptoSigner,
+	verifyingKey VerifyingKey, ekg singleEncryptionKeyGetter,
+	bsplit BlockSplitter, tempdir string, j *mdJournal) {
 	codec = NewCodecMsgpack()
 	crypto = MakeCryptoCommon(codec)
 
 	uid = keybase1.MakeTestUID(1)
 	id = FakeTlfID(1, false)
-	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
-	require.NoError(t, err)
 
 	signingKey := MakeFakeSigningKeyOrBust("fake seed")
 	signer = cryptoSignerLocal{signingKey}
@@ -53,7 +50,7 @@ func setupMDJournalTest(t *testing.T) (
 
 	// Do this last so we don't have to worry about cleaning up
 	// the tempdir if anything else errors.
-	tempdir, err = ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
+	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
 	require.NoError(t, err)
 
 	log := logger.NewTestLogger(t)
@@ -62,7 +59,7 @@ func setupMDJournalTest(t *testing.T) (
 
 	bsplit = &BlockSplitterSimple{64 * 1024, 8 * 1024}
 
-	return codec, crypto, uid, id, h, signer, verifyingKey, ekg,
+	return codec, crypto, uid, id, signer, verifyingKey, ekg,
 		bsplit, tempdir, j
 }
 
@@ -71,11 +68,12 @@ func teardownMDJournalTest(t *testing.T, tempdir string) {
 	require.NoError(t, err)
 }
 
-func makeMDForTest(t *testing.T, id TlfID, h BareTlfHandle,
-	revision MetadataRevision, uid keybase1.UID,
-	prevRoot MdID) *RootMetadata {
+func makeMDForTest(t *testing.T, id TlfID, revision MetadataRevision,
+	uid keybase1.UID, prevRoot MdID) *RootMetadata {
+	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	require.NoError(t, err)
 	md := NewRootMetadata()
-	err := md.Update(id, h)
+	err = md.Update(id, h)
 	require.NoError(t, err)
 	md.SetRevision(revision)
 	md.FakeInitialRekey(h)
@@ -84,7 +82,7 @@ func makeMDForTest(t *testing.T, id TlfID, h BareTlfHandle,
 }
 
 func TestMDJournalBasic(t *testing.T) {
-	codec, crypto, uid, id, h, signer, verifyingKey, ekg,
+	codec, crypto, uid, id, signer, verifyingKey, ekg,
 		bsplit, tempdir, j := setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -106,7 +104,7 @@ func TestMDJournalBasic(t *testing.T) {
 	prevRoot := firstPrevRoot
 	for i := 0; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
-		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+		md := makeMDForTest(t, id, revision, uid, prevRoot)
 		mdID, err := j.put(
 			ctx, uid, verifyingKey, signer, ekg, bsplit, md)
 		require.NoError(t, err)
@@ -145,7 +143,7 @@ func TestMDJournalBasic(t *testing.T) {
 }
 
 func TestMDJournalReplaceHead(t *testing.T) {
-	_, _, uid, id, h, signer, verifyingKey, ekg, bsplit, tempdir, j :=
+	_, _, uid, id, signer, verifyingKey, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -160,7 +158,7 @@ func TestMDJournalReplaceHead(t *testing.T) {
 	prevRoot := firstPrevRoot
 	for i := 0; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
-		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+		md := makeMDForTest(t, id, revision, uid, prevRoot)
 		mdID, err := j.put(
 			ctx, uid, verifyingKey, signer, ekg, bsplit, md)
 		md.SetDiskUsage(500)
@@ -171,7 +169,7 @@ func TestMDJournalReplaceHead(t *testing.T) {
 	// Should just replace the head.
 
 	revision := firstRevision + MetadataRevision(mdCount) - 1
-	md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+	md := makeMDForTest(t, id, revision, uid, prevRoot)
 	md.SetDiskUsage(501)
 	_, err := j.put(
 		ctx, uid, verifyingKey, signer, ekg, bsplit, md)
@@ -184,7 +182,7 @@ func TestMDJournalReplaceHead(t *testing.T) {
 }
 
 func TestMDJournalBranchConversion(t *testing.T) {
-	codec, crypto, uid, id, h, signer, verifyingKey, ekg, bsplit, tempdir, j :=
+	codec, crypto, uid, id, signer, verifyingKey, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -197,7 +195,7 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	prevRoot := firstPrevRoot
 	for i := 0; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
-		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+		md := makeMDForTest(t, id, revision, uid, prevRoot)
 		mdID, err := j.put(
 			ctx, uid, verifyingKey, signer, ekg, bsplit, md)
 		require.NoError(t, err)
@@ -257,7 +255,7 @@ func (s *limitedCryptoSigner) Sign(ctx context.Context, msg []byte) (
 }
 
 func TestMDJournalBranchConversionAtomic(t *testing.T) {
-	codec, crypto, uid, id, h, signer, verifyingKey, ekg, bsplit, tempdir, j :=
+	codec, crypto, uid, id, signer, verifyingKey, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -270,7 +268,7 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 	prevRoot := firstPrevRoot
 	for i := 0; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
-		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+		md := makeMDForTest(t, id, revision, uid, prevRoot)
 		mdID, err := j.put(
 			ctx, uid, verifyingKey, signer, ekg, bsplit, md)
 		require.NoError(t, err)
@@ -318,7 +316,7 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 }
 
 func TestMDJournalClear(t *testing.T) {
-	_, _, uid, id, h, signer, verifyingKey, ekg, bsplit, tempdir, j :=
+	_, _, uid, id, signer, verifyingKey, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -331,7 +329,7 @@ func TestMDJournalClear(t *testing.T) {
 	prevRoot := firstPrevRoot
 	for i := 0; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
-		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+		md := makeMDForTest(t, id, revision, uid, prevRoot)
 		mdID, err := j.put(
 			ctx, uid, verifyingKey, signer, ekg, bsplit, md)
 		require.NoError(t, err)

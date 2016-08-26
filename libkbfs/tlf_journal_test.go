@@ -101,16 +101,7 @@ func (c testTLFJournalConfig) MakeLogger(module string) logger.Logger {
 
 func (c testTLFJournalConfig) makeMDForTest(
 	revision MetadataRevision, prevRoot MdID) *RootMetadata {
-	h, err := MakeBareTlfHandle(
-		[]keybase1.UID{c.cig.uid}, nil, nil, nil, nil)
-	require.NoError(c.t, err)
-	md := NewRootMetadata()
-	err = md.Update(c.tlfID, h)
-	require.NoError(c.t, err)
-	md.SetRevision(revision)
-	md.FakeInitialRekey(h)
-	md.SetPrevRoot(prevRoot)
-	return md
+	return makeMDForTest(c.t, c.tlfID, revision, c.cig.uid, prevRoot)
 }
 
 func (c testTLFJournalConfig) checkMD(rmds *RootMetadataSigned,
