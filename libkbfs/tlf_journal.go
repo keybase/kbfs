@@ -487,7 +487,7 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 	}
 
 	j.log.CDebugf(ctx, "Flushing MD for TLF=%s with id=%s, rev=%s, bid=%s",
-		rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID)
+		rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID())
 	pushErr := mdServer.Put(ctx, rmds)
 	if isRevisionConflict(pushErr) {
 		headMdID, err := getMdID(
@@ -525,7 +525,7 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 				return false, errors.New("Unexpected nil MdID")
 			}
 			j.log.CDebugf(ctx, "Flushing MD for TLF=%s with id=%s, rev=%s, bid=%s",
-				rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID)
+				rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID())
 			pushErr = mdServer.Put(ctx, rmds)
 		}
 	}
@@ -535,7 +535,7 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err = j.mdJournal.removeFlushedEntry(ctx, mdID, rmds)
+	err = j.mdJournal.removeFlushedEntry(ctx, uid, key, mdID, rmds)
 	if err != nil {
 		return false, err
 	}

@@ -469,8 +469,29 @@ func (j mdJournal) getNextEntryToFlush(
 }
 
 func (j *mdJournal) removeFlushedEntry(
-	ctx context.Context, mdID MdID, rmds *RootMetadataSigned) error {
-	// TODO: Check mdID and rmds.
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, mdID MdID,
+	rmds *RootMetadataSigned) error {
+	rmd, err := j.getEarliest(currentUID, currentVerifyingKey)
+	if err != nil {
+		return err
+	}
+	if rmd == (ImmutableBareRootMetadata{}) {
+		return errors.New("mdJournal unexpectedly empty")
+	}
+
+	if mdID != rmd.mdID {
+		return fmt.Errorf("Expected mdID %s, got %s", mdID, rmd.mdID)
+	}
+
+	eq, err := CodecEqual(j.codec, rmd.BareRootMetadata, rmds.MD)
+	if err != nil {
+		return err
+	}
+	if !eq {
+		return errors.New(
+			"Given RootMetadataSigned doesn't match earliest")
+	}
 
 	empty, err := j.j.removeEarliest()
 	if err != nil {
