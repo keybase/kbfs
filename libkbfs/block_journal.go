@@ -640,7 +640,10 @@ func (j *blockJournal) archiveReferences(
 	return j.appendJournalEntry(archiveRefsOp, contexts)
 }
 
-func (j *blockJournal) getNextOpToFlush(ctx context.Context) (
+// getNextEntryToFlush returns the info for the next journal entry to
+// flush, if any. If there is no next journal entry to flush, the
+// returned blockJournalEntry will be nil.
+func (j *blockJournal) getNextEntryToFlush(ctx context.Context) (
 	journalOrdinal, *blockJournalEntry, []byte,
 	BlockCryptKeyServerHalf, error) {
 	if j.isShutdown {
@@ -677,7 +680,7 @@ func (j *blockJournal) getNextOpToFlush(ctx context.Context) (
 	return earliestOrdinal, &e, data, serverHalf, nil
 }
 
-func flushBlockOp(
+func flushBlockJournalEntry(
 	ctx context.Context, log logger.Logger,
 	bserver BlockServer, tlfID TlfID, e blockJournalEntry, data []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
@@ -731,7 +734,7 @@ func flushBlockOp(
 	return nil
 }
 
-func (j *blockJournal) removeFlushedOp(
+func (j *blockJournal) removeFlushedEntry(
 	ctx context.Context, o journalOrdinal, e blockJournalEntry) error {
 	if j.isShutdown {
 		// TODO: This creates a race condition if we shut down

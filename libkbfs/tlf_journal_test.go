@@ -595,7 +595,7 @@ func TestTLFJournalFlushBlock(t *testing.T) {
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
-	_, e, _, _, err := tlfJournal.blockJournal.getNextOpToFlush(ctx)
+	_, e, _, _, err := tlfJournal.blockJournal.getNextEntryToFlush(ctx)
 	require.NoError(t, err)
 	require.Nil(t, e)
 }
