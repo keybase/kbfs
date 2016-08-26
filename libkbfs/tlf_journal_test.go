@@ -472,7 +472,11 @@ func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 }
 
-// The tests below test tlfJournal's block flushing behavior.
+// The test below test tlfJournal's block flushing behavior.
+//
+// TODO: Move it to block_journal_test.go, since nothing in it depends
+// on tlfJournal. (Contrast with the MD flushing behavior, which
+// requires its locking behavior to be tested.)
 
 func TestTLFJournalFlushBlock(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
