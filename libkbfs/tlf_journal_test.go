@@ -58,6 +58,7 @@ func (d testBWDelegate) requireNextState(
 
 type testTLFJournalConfig struct {
 	t        *testing.T
+	tlfID    TlfID
 	splitter BlockSplitter
 	codec    Codec
 	crypto   CryptoLocal
@@ -98,13 +99,13 @@ func (c testTLFJournalConfig) MakeLogger(module string) logger.Logger {
 	return logger.NewTestLogger(c.t)
 }
 
-func (c testTLFJournalConfig) makeMDForTest(id TlfID,
+func (c testTLFJournalConfig) makeMDForTest(
 	revision MetadataRevision, prevRoot MdID) *RootMetadata {
 	h, err := MakeBareTlfHandle(
 		[]keybase1.UID{c.cig.uid}, nil, nil, nil, nil)
 	require.NoError(c.t, err)
 	md := NewRootMetadata()
-	err = md.Update(id, h)
+	err = md.Update(c.tlfID, h)
 	require.NoError(c.t, err)
 	md.SetRevision(revision)
 	md.FakeInitialRekey(h)
@@ -139,13 +140,12 @@ func setupTLFJournalTest(t *testing.T) (
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 
 	config = &testTLFJournalConfig{
-		t, bsplitter, codec, crypto,
+		t, FakeTlfID(1, false), bsplitter, codec, crypto,
 		cig, ekg, mdserver,
 	}
 
 	bserver := NewBlockServerMemory(config)
 
-	tlfID := FakeTlfID(1, false)
 	delegate = testBWDelegate{
 		t:          t,
 		testCtx:    ctx,
@@ -153,7 +153,7 @@ func setupTLFJournalTest(t *testing.T) (
 		shutdownCh: make(chan struct{}),
 	}
 	tlfJournal, err = makeTLFJournal(
-		ctx, tempdir, tlfID, config, bserver, log,
+		ctx, tempdir, config.tlfID, config, bserver, log,
 		TLFJournalBackgroundWorkEnabled, delegate)
 	require.NoError(t, err)
 
@@ -363,7 +363,7 @@ func putMD(ctx context.Context, t *testing.T, config *testTLFJournalConfig,
 	require.NoError(t, err)
 
 	rmd := NewRootMetadata()
-	err = rmd.Update(tlfJournal.tlfID, bh)
+	err = rmd.Update(config.tlfID, bh)
 	require.NoError(t, err)
 	rmd.SetRevision(revision)
 	rmd.FakeInitialRekey(bh)
@@ -437,8 +437,6 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
-	id := tlfJournal.tlfID
-
 	verifyingKey := config.crypto.signingKey.GetVerifyingKey()
 
 	tlfJournal.pauseBackgroundWork()
@@ -451,7 +449,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	prevRoot := firstPrevRoot
 	for i := 0; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
-		md := config.makeMDForTest(id, revision, prevRoot)
+		md := config.makeMDForTest(revision, prevRoot)
 		mdID, err := tlfJournal.putMD(ctx, md)
 		require.NoError(t, err)
 		prevRoot = mdID
