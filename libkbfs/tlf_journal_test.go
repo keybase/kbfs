@@ -166,29 +166,29 @@ func setupTLFJournalTest(t *testing.T) (
 }
 
 func teardownTLFJournalTest(
-	t *testing.T, ctx context.Context, cancel context.CancelFunc,
-	tlfJournal *tlfJournal, delegate testBWDelegate,
-	tempdir string, config *testTLFJournalConfig) {
+	tempdir string, config *testTLFJournalConfig, ctx context.Context,
+	cancel context.CancelFunc, tlfJournal *tlfJournal,
+	delegate testBWDelegate) {
 	// Shutdown first so we don't get the Done() signal (from the
 	// cancel() call) spuriously.
 	tlfJournal.shutdown()
 	select {
 	case <-delegate.shutdownCh:
 	case <-ctx.Done():
-		require.FailNow(t, ctx.Err().Error())
+		require.FailNow(config.t, ctx.Err().Error())
 	}
 
 	cancel()
 
 	select {
 	case bws := <-delegate.stateCh:
-		assert.Fail(t, "Unexpected state %s", bws)
+		assert.Fail(config.t, "Unexpected state %s", bws)
 	default:
 	}
 	config.mdserver.Shutdown()
 	tlfJournal.delegateBlockServer.Shutdown()
 	err := os.RemoveAll(tempdir)
-	require.NoError(t, err)
+	require.NoError(config.t, err)
 }
 
 func putBlock(ctx context.Context,
@@ -209,7 +209,7 @@ func TestTLFJournalBasic(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
@@ -223,7 +223,7 @@ func TestTLFJournalPauseResume(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, bwPaused)
@@ -242,7 +242,7 @@ func TestTLFJournalPauseShutdown(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, bwPaused)
@@ -279,7 +279,7 @@ func TestTLFJournalBlockOpBusyPause(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	bs := hangingBlockServer{tlfJournal.delegateBlockServer,
 		make(chan struct{})}
@@ -300,7 +300,7 @@ func TestTLFJournalBlockOpBusyShutdown(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	bs := hangingBlockServer{tlfJournal.delegateBlockServer,
 		make(chan struct{})}
@@ -318,7 +318,7 @@ func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	bs := hangingBlockServer{tlfJournal.delegateBlockServer,
 		make(chan struct{})}
@@ -376,7 +376,7 @@ func TestTLFJournalMDServerBusyPause(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	md := hangingMDServer{config.MDServer(), make(chan struct{})}
 	config.mdserver = md
@@ -396,7 +396,7 @@ func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	md := hangingMDServer{config.MDServer(), make(chan struct{})}
 	config.mdserver = md
@@ -413,7 +413,7 @@ func TestTLFJournalBlockOpWhileBusyMDOp(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	md := hangingMDServer{config.MDServer(), make(chan struct{})}
 	config.mdserver = md
@@ -432,12 +432,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t)
 	defer teardownTLFJournalTest(
-		t, ctx, cancel, tlfJournal, delegate, tempdir, config)
-
-	codec := NewCodecMsgpack()
-	crypto := MakeCryptoCommon(codec)
-
-	verifyingKey := config.crypto.signingKey.GetVerifyingKey()
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, bwPaused)
@@ -476,19 +471,22 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	// Check RMDSes on the server.
 
 	uid := config.cig.uid
+	verifyingKey := config.crypto.signingKey.GetVerifyingKey()
+
 	require.Equal(t, firstRevision, rmdses[0].MD.RevisionNumber())
 	require.Equal(t, firstPrevRoot, rmdses[0].MD.GetPrevRoot())
-	err = rmdses[0].IsValidAndSigned(codec, crypto)
+	err = rmdses[0].IsValidAndSigned(config.Codec(), config.Crypto())
 	require.NoError(t, err)
 	err = rmdses[0].IsLastModifiedBy(uid, verifyingKey)
 	require.NoError(t, err)
 
 	for i := 1; i < len(rmdses); i++ {
-		err := rmdses[i].IsValidAndSigned(codec, crypto)
+		err := rmdses[i].IsValidAndSigned(
+			config.Codec(), config.Crypto())
 		require.NoError(t, err)
 		err = rmdses[i].IsLastModifiedBy(uid, verifyingKey)
 		require.NoError(t, err)
-		prevID, err := crypto.MakeMdID(rmdses[i-1].MD)
+		prevID, err := config.Crypto().MakeMdID(rmdses[i-1].MD)
 		require.NoError(t, err)
 		err = rmdses[i-1].MD.CheckValidSuccessor(prevID, rmdses[i].MD)
 		require.NoError(t, err)
