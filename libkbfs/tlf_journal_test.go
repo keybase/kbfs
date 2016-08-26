@@ -98,6 +98,20 @@ func (c testTLFJournalConfig) MakeLogger(module string) logger.Logger {
 	return logger.NewTestLogger(c.t)
 }
 
+func (c testTLFJournalConfig) makeMDForTest(id TlfID,
+	revision MetadataRevision, prevRoot MdID) *RootMetadata {
+	h, err := MakeBareTlfHandle(
+		[]keybase1.UID{c.cig.uid}, nil, nil, nil, nil)
+	require.NoError(c.t, err)
+	md := NewRootMetadata()
+	err = md.Update(id, h)
+	require.NoError(c.t, err)
+	md.SetRevision(revision)
+	md.FakeInitialRekey(h)
+	md.SetPrevRoot(prevRoot)
+	return md
+}
+
 func setupTLFJournalTest(t *testing.T) (
 	tempdir string, config *testTLFJournalConfig, ctx context.Context,
 	cancel context.CancelFunc, tlfJournal *tlfJournal,
@@ -423,10 +437,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
-	uid := config.cig.uid
 	id := tlfJournal.tlfID
-	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
-	require.NoError(t, err)
 
 	verifyingKey := config.crypto.signingKey.GetVerifyingKey()
 
@@ -440,7 +451,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	prevRoot := firstPrevRoot
 	for i := 0; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
-		md := makeMDForTest(t, id, h, revision, uid, prevRoot)
+		md := config.makeMDForTest(id, revision, prevRoot)
 		mdID, err := tlfJournal.putMD(ctx, md)
 		require.NoError(t, err)
 		prevRoot = mdID
@@ -466,6 +477,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 
 	// Check RMDSes on the server.
 
+	uid := config.cig.uid
 	require.Equal(t, firstRevision, rmdses[0].MD.RevisionNumber())
 	require.Equal(t, firstPrevRoot, rmdses[0].MD.GetPrevRoot())
 	err = rmdses[0].IsValidAndSigned(codec, crypto)
