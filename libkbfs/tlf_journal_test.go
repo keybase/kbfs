@@ -17,6 +17,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+// testBWDelegate is a delegate we pass to tlfJournal to get info
+// about its state transitions.
 type testBWDelegate struct {
 	t *testing.T
 	// Store a context so that the tlfJournal's background context
@@ -56,6 +58,8 @@ func (d testBWDelegate) requireNextState(
 	}
 }
 
+// testTLFJournalConfig is the config we pass to the tlfJournal, and
+// also contains some helper functions for testing.
 type testTLFJournalConfig struct {
 	t        *testing.T
 	tlfID    TlfID
@@ -99,14 +103,14 @@ func (c testTLFJournalConfig) MakeLogger(module string) logger.Logger {
 	return logger.NewTestLogger(c.t)
 }
 
-func (c testTLFJournalConfig) makeMDForTest(
+func (c testTLFJournalConfig) makeMD(
 	revision MetadataRevision, prevRoot MdID) *RootMetadata {
 	return makeMDForTest(c.t, c.tlfID, revision, c.cig.uid, prevRoot)
 }
 
 func (c testTLFJournalConfig) checkMD(rmds *RootMetadataSigned,
 	expectedRevision MetadataRevision, expectedPrevRoot MdID,
-	expectedMergeStatus MergeStatus, bid BranchID) {
+	expectedMergeStatus MergeStatus, expectedBranchID BranchID) {
 	uid := c.cig.uid
 	verifyingKey := c.crypto.signingKey.GetVerifyingKey()
 
@@ -118,8 +122,9 @@ func (c testTLFJournalConfig) checkMD(rmds *RootMetadataSigned,
 	err = rmds.IsLastModifiedBy(uid, verifyingKey)
 	require.NoError(c.t, err)
 
-	require.Equal(c.t, expectedMergeStatus == Merged, bid == NullBranchID)
-	require.Equal(c.t, bid, rmds.MD.BID())
+	require.Equal(c.t, expectedMergeStatus == Merged,
+		expectedBranchID == NullBranchID)
+	require.Equal(c.t, expectedBranchID, rmds.MD.BID())
 }
 
 func (c testTLFJournalConfig) checkRange(rmdses []*RootMetadataSigned,
@@ -142,9 +147,6 @@ func setupTLFJournalTest(
 	tempdir string, config *testTLFJournalConfig, ctx context.Context,
 	cancel context.CancelFunc, tlfJournal *tlfJournal,
 	delegate testBWDelegate) {
-	tempdir, err := ioutil.TempDir(os.TempDir(), "tlf_journal")
-	require.NoError(t, err)
-
 	bsplitter := &BlockSplitterSimple{64 * 1024, 8 * 1024}
 	codec := NewCodecMsgpack()
 	signingKey := MakeFakeSigningKeyOrBust("client sign")
@@ -177,6 +179,10 @@ func setupTLFJournalTest(
 		stateCh:    make(chan bwState),
 		shutdownCh: make(chan struct{}),
 	}
+
+	tempdir, err = ioutil.TempDir(os.TempDir(), "tlf_journal")
+	require.NoError(t, err)
+
 	tlfJournal, err = makeTLFJournal(
 		ctx, tempdir, config.tlfID, config, bserver, log,
 		bwStatus, delegate)
@@ -514,7 +520,7 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	prevRoot := firstPrevRoot
 	for i := 0; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
-		md := config.makeMDForTest(revision, prevRoot)
+		md := config.makeMD(revision, prevRoot)
 		mdID, err := tlfJournal.putMD(ctx, md)
 		require.NoError(t, err)
 		prevRoot = mdID
@@ -555,7 +561,7 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 	prevRoot := firstPrevRoot
 	for i := 0; i < mdCount/2; i++ {
 		revision := firstRevision + MetadataRevision(i)
-		md := config.makeMDForTest(revision, prevRoot)
+		md := config.makeMD(revision, prevRoot)
 		mdID, err := tlfJournal.putMD(ctx, md)
 		require.NoError(t, err)
 		prevRoot = mdID
@@ -572,7 +578,7 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 		require.True(t, flushed)
 
 		revision := firstRevision + MetadataRevision(mdCount/2)
-		md := config.makeMDForTest(revision, prevRoot)
+		md := config.makeMD(revision, prevRoot)
 		_, err = tlfJournal.putMD(ctx, md)
 		require.IsType(t, MDJournalConflictError{}, err)
 
@@ -584,7 +590,7 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 
 	for i := mdCount/2 + 1; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
-		md := config.makeMDForTest(revision, prevRoot)
+		md := config.makeMD(revision, prevRoot)
 		md.SetUnmerged()
 		mdID, err := tlfJournal.putMD(ctx, md)
 		require.NoError(t, err)
@@ -626,7 +632,7 @@ func TestTLFJournalPreservesBranchID(t *testing.T) {
 	prevRoot := firstPrevRoot
 	for i := 0; i < mdCount-1; i++ {
 		revision := firstRevision + MetadataRevision(i)
-		md := config.makeMDForTest(revision, prevRoot)
+		md := config.makeMD(revision, prevRoot)
 		mdID, err := tlfJournal.putMD(ctx, md)
 		require.NoError(t, err)
 		prevRoot = mdID
@@ -652,7 +658,7 @@ func TestTLFJournalPreservesBranchID(t *testing.T) {
 	// Put last revision and flush it.
 	{
 		revision := firstRevision + MetadataRevision(mdCount-1)
-		md := config.makeMDForTest(revision, prevRoot)
+		md := config.makeMD(revision, prevRoot)
 		mdID, err := tlfJournal.putMD(ctx, md)
 		require.IsType(t, MDJournalConflictError{}, err)
 
