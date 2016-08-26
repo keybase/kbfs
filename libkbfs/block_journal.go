@@ -642,7 +642,7 @@ func (j *blockJournal) archiveReferences(
 
 // getNextEntryToFlush returns the info for the next journal entry to
 // flush, if any. If there is no next journal entry to flush, the
-// returned blockJournalEntry will be nil.
+// returned *blockJournalEntry will be nil.
 func (j *blockJournal) getNextEntryToFlush(ctx context.Context) (
 	journalOrdinal, *blockJournalEntry, []byte,
 	BlockCryptKeyServerHalf, error) {

@@ -442,6 +442,10 @@ func (j *mdJournal) convertToBranch(
 	return err
 }
 
+// getNextEntryToFlush returns the info for the next journal entry to
+// flush, if any. If there is no next journal entry to flush, the
+// returned MdID will be zero, and the returned *RootMetadataSigned
+// will be nil.
 func (j mdJournal) getNextEntryToFlush(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, signer cryptoSigner) (
