@@ -477,7 +477,7 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 	mdID, rmds, err := func() (MdID, *RootMetadataSigned, error) {
 		j.journalLock.Lock()
 		defer j.journalLock.Unlock()
-		return j.mdJournal.getNextMDToFlush(ctx, uid, key, signer)
+		return j.mdJournal.getNextEntryToFlush(ctx, uid, key, signer)
 	}()
 	if err != nil {
 		return false, err
@@ -515,7 +515,7 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 					return MdID{}, nil, err
 				}
 
-				return j.mdJournal.getNextMDToFlush(
+				return j.mdJournal.getNextEntryToFlush(
 					ctx, uid, key, signer)
 			}()
 			if err != nil {
@@ -535,16 +535,9 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	empty, err := j.mdJournal.j.removeEarliest()
+	err = j.mdJournal.removeFlushedEntry(ctx, mdID, rmds)
 	if err != nil {
 		return false, err
-	}
-
-	// Since the journal is now empty, set lastMdID.
-	if empty {
-		j.log.CDebugf(ctx,
-			"Journal is now empty; saving last MdID=%s", mdID)
-		j.mdJournal.lastMdID = mdID
 	}
 
 	return true, nil

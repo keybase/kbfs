@@ -442,7 +442,7 @@ func (j *mdJournal) convertToBranch(
 	return err
 }
 
-func (j mdJournal) getNextMDToFlush(
+func (j mdJournal) getNextEntryToFlush(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, signer cryptoSigner) (
 	MdID, *RootMetadataSigned, error) {
@@ -468,38 +468,23 @@ func (j mdJournal) getNextMDToFlush(
 	return rmd.mdID, &rmds, nil
 }
 
-func (j mdJournal) pushEarliestToServer(
-	ctx context.Context, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey, signer cryptoSigner,
-	mdserver MDServer) (ImmutableBareRootMetadata, error) {
-	rmd, err := j.getEarliest(currentUID, currentVerifyingKey)
+func (j *mdJournal) removeFlushedEntry(
+	ctx context.Context, mdID MdID, rmds *RootMetadataSigned) error {
+	// TODO: Check mdID and rmds.
+
+	empty, err := j.j.removeEarliest()
 	if err != nil {
-		return ImmutableBareRootMetadata{}, err
-	}
-	if rmd == (ImmutableBareRootMetadata{}) {
-		return ImmutableBareRootMetadata{}, nil
+		return err
 	}
 
-	j.log.CDebugf(ctx, "Flushing MD for TLF=%s with id=%s, rev=%s, bid=%s",
-		rmd.TlfID(), rmd.mdID, rmd.RevisionNumber(), rmd.BID)
-
-	mbrmd, ok := rmd.BareRootMetadata.(MutableBareRootMetadata)
-	if !ok {
-		return ImmutableBareRootMetadata{}, MutableBareRootMetadataNoImplError{}
+	// Since the journal is now empty, set lastMdID.
+	if empty {
+		j.log.CDebugf(ctx,
+			"Journal is now empty; saving last MdID=%s", mdID)
+		j.lastMdID = mdID
 	}
 
-	rmds := RootMetadataSigned{MD: mbrmd}
-	err = signMD(ctx, j.codec, signer, &rmds)
-	if err != nil {
-		return ImmutableBareRootMetadata{}, err
-	}
-	err = mdserver.Put(ctx, &rmds)
-	if err != nil {
-		// Still return the RMD so that it can be consulted.
-		return rmd, err
-	}
-
-	return rmd, nil
+	return nil
 }
 
 func getMdID(ctx context.Context, mdserver MDServer, crypto cryptoPure,
