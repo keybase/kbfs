@@ -60,9 +60,9 @@ type testTLFJournalConfig struct {
 	t        *testing.T
 	splitter BlockSplitter
 	codec    Codec
-	crypto   Crypto
-	cig      currentInfoGetter
-	ekg      encryptionKeyGetter
+	crypto   CryptoLocal
+	cig      singleCurrentInfoGetter
+	ekg      singleEncryptionKeyGetter
 	mdserver MDServer
 }
 
@@ -423,12 +423,12 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	codec := NewCodecMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
-	uid := keybase1.MakeTestUID(1)
+	uid := config.cig.uid
 	id := tlfJournal.tlfID
 	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	verifyingKey := config.Crypto().(CryptoLocal).signingKey.GetVerifyingKey()
+	verifyingKey := config.crypto.signingKey.GetVerifyingKey()
 
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, bwPaused)
