@@ -147,6 +147,7 @@ func setupTLFJournalTest(
 	tempdir string, config *testTLFJournalConfig, ctx context.Context,
 	cancel context.CancelFunc, tlfJournal *tlfJournal,
 	delegate testBWDelegate) {
+	// Set up config and dependencies.
 	bsplitter := &BlockSplitterSimple{64 * 1024, 8 * 1024}
 	codec := NewCodecMsgpack()
 	signingKey := MakeFakeSigningKeyOrBust("client sign")
@@ -161,15 +162,13 @@ func setupTLFJournalTest(
 	mdserver, err := NewMDServerMemory(newTestMDServerLocalConfig(t, cig))
 	require.NoError(t, err)
 
-	// Time out individual tests after 10 seconds.
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-
 	config = &testTLFJournalConfig{
 		t, FakeTlfID(1, false), bsplitter, codec, crypto,
 		cig, ekg, mdserver,
 	}
 
-	bserver := NewBlockServerMemory(config)
+	// Time out individual tests after 10 seconds.
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 
 	delegate = testBWDelegate{
 		t:          t,
@@ -189,6 +188,8 @@ func setupTLFJournalTest(
 			}
 		}
 	}()
+
+	bserver := NewBlockServerMemory(config)
 
 	tlfJournal, err = makeTLFJournal(ctx, tempdir, config.tlfID, config,
 		bserver, bwStatus, delegate)
@@ -231,8 +232,10 @@ func teardownTLFJournalTest(
 		assert.Fail(config.t, "Unexpected state %s", bws)
 	default:
 	}
+
 	config.mdserver.Shutdown()
 	tlfJournal.delegateBlockServer.Shutdown()
+
 	err := os.RemoveAll(tempdir)
 	require.NoError(config.t, err)
 }
