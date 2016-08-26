@@ -103,6 +103,16 @@ func (c testTLFJournalConfig) MakeLogger(module string) logger.Logger {
 	return logger.NewTestLogger(c.t)
 }
 
+func (c testTLFJournalConfig) makeBlock(data []byte) (
+	BlockID, BlockContext, BlockCryptKeyServerHalf) {
+	id, err := c.crypto.MakePermanentBlockID(data)
+	require.NoError(c.t, err)
+	bCtx := BlockContext{c.cig.uid, "", zeroBlockRefNonce}
+	serverHalf, err := c.crypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(c.t, err)
+	return id, bCtx, serverHalf
+}
+
 func (c testTLFJournalConfig) makeMD(
 	revision MetadataRevision, prevRoot MdID) *RootMetadata {
 	return makeMDForTest(c.t, c.tlfID, revision, c.cig.uid, prevRoot)
@@ -243,14 +253,8 @@ func teardownTLFJournalTest(
 func putBlock(ctx context.Context,
 	t *testing.T, config *testTLFJournalConfig,
 	tlfJournal *tlfJournal, data []byte) {
-	crypto := config.Crypto()
-	uid := config.cig.uid
-	bID, err := crypto.MakePermanentBlockID(data)
-	require.NoError(t, err)
-	bCtx := BlockContext{uid, "", zeroBlockRefNonce}
-	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
-	require.NoError(t, err)
-	err = tlfJournal.putBlockData(ctx, bID, bCtx, data, serverHalf)
+	id, bCtx, serverHalf := config.makeBlock(data)
+	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
 	require.NoError(t, err)
 }
 
