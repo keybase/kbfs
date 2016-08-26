@@ -189,10 +189,10 @@ func setupTLFJournalTest(
 		}
 	}()
 
-	bserver := NewBlockServerMemory(config)
+	delegateBlockServer := NewBlockServerMemory(config)
 
 	tlfJournal, err = makeTLFJournal(ctx, tempdir, config.tlfID, config,
-		bserver, bwStatus, delegate)
+		delegateBlockServer, bwStatus, delegate)
 	require.NoError(t, err)
 
 	switch bwStatus {
