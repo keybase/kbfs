@@ -129,9 +129,6 @@ type tlfJournal struct {
 
 	// Protects all operations on blockJournal and mdJournal.
 	//
-	// TODO: Don't let flushing block put operations. See
-	// KBFS-1433.
-	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
 	journalLock sync.RWMutex
