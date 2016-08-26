@@ -76,7 +76,7 @@ func NewMDServerMemory(config mdServerLocalConfig) (*MDServerMemory, error) {
 	latestHandleDb := make(map[TlfID]BareTlfHandle)
 	mdDb := make(map[mdBlockKey]mdBlockMemList)
 	branchDb := make(map[mdBranchKey]BranchID)
-	log := config.MakeLogger("")
+	log := config.MakeLogger("MDSM")
 	truncateLockManager := newMDServerLocalTruncatedLockManager()
 	shared := mdServerMemShared{
 		handleDb:            handleDb,

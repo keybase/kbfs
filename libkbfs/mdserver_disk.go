@@ -65,7 +65,7 @@ func newMDServerDisk(config mdServerLocalConfig, dirPath string,
 	if err != nil {
 		return nil, err
 	}
-	log := config.MakeLogger("")
+	log := config.MakeLogger("MDSD")
 	truncateLockManager := newMDServerLocalTruncatedLockManager()
 	shared := mdServerDiskShared{
 		dirPath:             dirPath,
