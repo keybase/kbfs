@@ -48,10 +48,17 @@ func setupMDJournalTest(t *testing.T) (
 	verifyingKey = signingKey.GetVerifyingKey()
 	ekg = singleEncryptionKeyGetter{MakeTLFCryptKey([32]byte{0x1})}
 
-	// Do this last so we don't have to worry about cleaning up
-	// the tempdir if anything else errors.
 	tempdir, err := ioutil.TempDir(os.TempDir(), "md_journal")
 	require.NoError(t, err)
+	// Clean up the tempdir if anything in the setup fails/panics.
+	defer func() {
+		if r := recover(); r != nil {
+			err := os.RemoveAll(tempdir)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+		}
+	}()
 
 	log := logger.NewTestLogger(t)
 	j, err = makeMDJournal(uid, verifyingKey, codec, crypto, tempdir, log)

@@ -180,19 +180,33 @@ func setupTLFJournalTest(
 
 	tempdir, err = ioutil.TempDir(os.TempDir(), "tlf_journal")
 	require.NoError(t, err)
+	// Clean up the tempdir if anything in the setup fails/panics.
+	defer func() {
+		if r := recover(); r != nil {
+			err := os.RemoveAll(tempdir)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+		}
+	}()
 
 	tlfJournal, err = makeTLFJournal(ctx, tempdir, config.tlfID, config,
 		bserver, bwStatus, delegate)
 	require.NoError(t, err)
 
-	if bwStatus == TLFJournalBackgroundWorkEnabled {
-		// Read the state changes triggered by the initial work
-		// signal.
+	switch bwStatus {
+	case TLFJournalBackgroundWorkEnabled:
+		// Read the state changes triggered by the initial
+		// work signal.
 		delegate.requireNextState(ctx, bwIdle)
 		delegate.requireNextState(ctx, bwBusy)
 		delegate.requireNextState(ctx, bwIdle)
-	} else {
+
+	case TLFJournalBackgroundWorkPaused:
 		delegate.requireNextState(ctx, bwPaused)
+
+	default:
+		require.FailNow(t, "Unknown bwStatus %s", bwStatus)
 	}
 	return tempdir, config, ctx, cancel, tlfJournal, delegate
 }
