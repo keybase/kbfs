@@ -50,7 +50,7 @@ func setupMDJournalTest(t *testing.T) (
 
 	// Do this last so we don't have to worry about cleaning up
 	// the tempdir if anything else errors.
-	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_journal")
+	tempdir, err := ioutil.TempDir(os.TempDir(), "md_journal")
 	require.NoError(t, err)
 
 	log := logger.NewTestLogger(t)
