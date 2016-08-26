@@ -470,7 +470,23 @@ func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
 
 	// Should still be able to put a block while busy.
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+}
 
+func TestTLFJournalFlushBlockBasic(t *testing.T) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+
+	flushed, err := tlfJournal.flushOneBlockOp(ctx)
+	require.NoError(t, err)
+	require.True(t, flushed)
+	flushed, err = tlfJournal.flushOneBlockOp(ctx)
+	require.NoError(t, err)
+	require.False(t, flushed)
+	requireJournalEntryCounts(t, tlfJournal, 0, 0)
 }
 
 type shimMDServer struct {
