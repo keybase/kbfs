@@ -81,7 +81,8 @@ type blockJournalEntry struct {
 	Op bserverOpName
 	// Must have exactly one entry with one context for blockPutOp
 	// and addRefOp.
-	Contexts map[BlockID][]BlockContext
+	Contexts     map[BlockID][]BlockContext
+	HeadRevision MetadataRevision
 }
 
 // Get the single context stored in this entry. Only applicable to
@@ -257,16 +258,13 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 	return refs, nil
 }
 
-func (j *blockJournal) writeJournalEntry(
-	ordinal journalOrdinal, entry blockJournalEntry) error {
-	return j.j.writeJournalEntry(ordinal, entry)
-}
-
 func (j *blockJournal) appendJournalEntry(
-	op bserverOpName, contexts map[BlockID][]BlockContext) error {
+	op bserverOpName, contexts map[BlockID][]BlockContext,
+	headRevision MetadataRevision) error {
 	return j.j.appendJournalEntry(nil, blockJournalEntry{
-		Op:       op,
-		Contexts: contexts,
+		Op:           op,
+		Contexts:     contexts,
+		HeadRevision: headRevision,
 	})
 }
 
@@ -480,8 +478,8 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	return j.appendJournalEntry(
-		blockPutOp, map[BlockID][]BlockContext{id: {context}})
+	return j.appendJournalEntry(blockPutOp,
+		map[BlockID][]BlockContext{id: {context}}, headRevision)
 }
 
 func (j *blockJournal) addReference(
@@ -534,8 +532,8 @@ func (j *blockJournal) addReference(
 		return err
 	}
 
-	return j.appendJournalEntry(
-		addRefOp, map[BlockID][]BlockContext{id: {context}})
+	return j.appendJournalEntry(addRefOp,
+		map[BlockID][]BlockContext{id: {context}}, headRevision)
 }
 
 func (j *blockJournal) removeReferences(
@@ -585,7 +583,7 @@ func (j *blockJournal) removeReferences(
 		liveCounts[id] = count
 	}
 
-	err = j.appendJournalEntry(removeRefsOp, contexts)
+	err = j.appendJournalEntry(removeRefsOp, contexts, headRevision)
 	if err != nil {
 		return nil, err
 	}
@@ -640,7 +638,7 @@ func (j *blockJournal) archiveReferences(
 		}
 	}
 
-	return j.appendJournalEntry(archiveRefsOp, contexts)
+	return j.appendJournalEntry(archiveRefsOp, contexts, headRevision)
 }
 
 // getNextEntryToFlush returns the info for the next journal entry to
