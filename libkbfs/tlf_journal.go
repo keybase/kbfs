@@ -430,11 +430,15 @@ func (j *tlfJournal) getNextBlockEntryToFlush(ctx context.Context) (
 	if e == nil {
 		return 0, nil, nil, BlockCryptKeyServerHalf{}, nil
 	}
-	headRevision, err := j.getHeadRevisionLocked(ctx)
+	_, rmds, err := j.mdJournal.getNextEntryToFlush(
+		ctx, uid, key, j.config.Crypto())
 	if err != nil {
 		return 0, nil, nil, BlockCryptKeyServerHalf{}, err
 	}
-	if e.HeadRevision > headRevision {
+	if rmds == nil {
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, nil
+	}
+	if e.HeadRevision >= rmds.MD.RevisionNumber() {
 		return 0, nil, nil, BlockCryptKeyServerHalf{}, nil
 	}
 	return o, e, data, serverHalf, nil
@@ -450,6 +454,12 @@ func (j *tlfJournal) removeFlushedBlockEntry(ctx context.Context,
 func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 	j.flushLock.Lock()
 	defer j.flushLock.Unlock()
+
+	uid, key, err :=
+		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
+	if err != nil {
+		return false, err
+	}
 
 	ordinal, entry, data, serverHalf, err := j.getNextBlockEntryToFlush(ctx)
 	if err != nil {
