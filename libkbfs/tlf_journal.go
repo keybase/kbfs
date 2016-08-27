@@ -422,7 +422,22 @@ func (j *tlfJournal) getNextBlockEntryToFlush(ctx context.Context) (
 	BlockCryptKeyServerHalf, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
-	return j.blockJournal.getNextEntryToFlush(ctx)
+	o, e, data, serverHalf, err :=
+		j.blockJournal.getNextEntryToFlush(ctx)
+	if err != nil {
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, err
+	}
+	if e == nil {
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, nil
+	}
+	headRevision, err := j.getHeadRevisionLocked(ctx)
+	if err != nil {
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, err
+	}
+	if e.HeadRevision > headRevision {
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, nil
+	}
+	return o, e, data, serverHalf, nil
 }
 
 func (j *tlfJournal) removeFlushedBlockEntry(ctx context.Context,
