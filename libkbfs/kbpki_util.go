@@ -5,7 +5,7 @@
 package libkbfs
 
 import (
-	"context"
+	"golang.org/x/net/context"
 
 	"github.com/keybase/client/go/protocol/keybase1"
 )
