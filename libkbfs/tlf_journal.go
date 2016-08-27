@@ -385,23 +385,20 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 		}
 	}()
 
-	// TODO: Interleave block flushes with their related MD
-	// flushes.
-
 	// TODO: Parallelize block puts.
 
 	for {
-		flushed, err := j.flushOneBlockOp(ctx)
-		if err != nil {
-			return err
+		for {
+			flushed, err := j.flushOneBlockOp(ctx)
+			if err != nil {
+				return err
+			}
+			if !flushed {
+				break
+			}
+			flushedBlockEntries++
 		}
-		if !flushed {
-			break
-		}
-		flushedBlockEntries++
-	}
 
-	for {
 		flushed, err := j.flushOneMDOp(ctx)
 		if err != nil {
 			return err
