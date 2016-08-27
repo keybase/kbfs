@@ -405,7 +405,8 @@ func (j *blockJournal) getAll() (
 }
 
 func (j *blockJournal) putData(
-	ctx context.Context, id BlockID, context BlockContext, buf []byte,
+	ctx context.Context, headRevision MetadataRevision,
+	id BlockID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) (err error) {
 	j.log.CDebugf(ctx, "Putting %d bytes of data for block %s with context %v",
 		len(buf), id, context)
@@ -484,8 +485,8 @@ func (j *blockJournal) putData(
 }
 
 func (j *blockJournal) addReference(
-	ctx context.Context, id BlockID, context BlockContext) (
-	err error) {
+	ctx context.Context, headRevision MetadataRevision,
+	id BlockID, context BlockContext) (err error) {
 	j.log.CDebugf(ctx, "Adding reference for block %s with context %v",
 		id, context)
 	defer func() {
@@ -538,7 +539,8 @@ func (j *blockJournal) addReference(
 }
 
 func (j *blockJournal) removeReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext,
+	ctx context.Context, headRevision MetadataRevision,
+	contexts map[BlockID][]BlockContext,
 	removeUnreferencedBlocks bool) (liveCounts map[BlockID]int, err error) {
 	j.log.CDebugf(ctx, "Removing references for %v (remove unreferenced blocks=%t)",
 		contexts, removeUnreferencedBlocks)
@@ -592,7 +594,8 @@ func (j *blockJournal) removeReferences(
 }
 
 func (j *blockJournal) archiveReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext) (err error) {
+	ctx context.Context, headRevision MetadataRevision,
+	contexts map[BlockID][]BlockContext) (err error) {
 	j.log.CDebugf(ctx, "Archiving references for %v", contexts)
 	defer func() {
 		if err != nil {

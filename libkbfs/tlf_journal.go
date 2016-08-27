@@ -625,12 +625,34 @@ func (j *tlfJournal) getBlockDataWithContext(
 	return j.blockJournal.getDataWithContext(id, context)
 }
 
+func (j *tlfJournal) getHeadRevisionLocked(
+	ctx context.Context) (MetadataRevision, error) {
+	uid, key, err :=
+		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
+	if err != nil {
+		return MetadataRevisionUninitialized, err
+	}
+	rmd, err := j.mdJournal.getHead(uid, key)
+	if err != nil {
+		return MetadataRevisionUninitialized, err
+	}
+	if rmd == (ImmutableBareRootMetadata{}) {
+		return MetadataRevisionUninitialized, nil
+	}
+	return rmd.RevisionNumber(), nil
+}
+
 func (j *tlfJournal) putBlockData(
 	ctx context.Context, id BlockID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.blockJournal.putData(ctx, id, context, buf, serverHalf)
+	headRevision, err := j.getHeadRevisionLocked(ctx)
+	if err != nil {
+		return err
+	}
+	err = j.blockJournal.putData(
+		ctx, headRevision, id, context, buf, serverHalf)
 	if err != nil {
 		return err
 	}
@@ -644,7 +666,11 @@ func (j *tlfJournal) addBlockReference(
 	ctx context.Context, id BlockID, context BlockContext) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.blockJournal.addReference(ctx, id, context)
+	headRevision, err := j.getHeadRevisionLocked(ctx)
+	if err != nil {
+		return err
+	}
+	err = j.blockJournal.addReference(ctx, headRevision, id, context)
 	if err != nil {
 		return err
 	}
@@ -659,6 +685,10 @@ func (j *tlfJournal) removeBlockReferences(
 	liveCounts map[BlockID]int, err error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
+	headRevision, err := j.getHeadRevisionLocked(ctx)
+	if err != nil {
+		return nil, err
+	}
 	// Don't remove the block data if we remove the last
 	// reference; we still need it to flush the initial put
 	// operation.
@@ -666,7 +696,7 @@ func (j *tlfJournal) removeBlockReferences(
 	// TODO: It would be nice if we could detect that case and
 	// avoid having to flush the put.
 	liveCounts, err = j.blockJournal.removeReferences(
-		ctx, contexts, false)
+		ctx, headRevision, contexts, false)
 	if err != nil {
 		return nil, err
 	}
@@ -680,7 +710,11 @@ func (j *tlfJournal) archiveBlockReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.blockJournal.archiveReferences(ctx, contexts)
+	headRevision, err := j.getHeadRevisionLocked(ctx)
+	if err != nil {
+		return err
+	}
+	err = j.blockJournal.archiveReferences(ctx, headRevision, contexts)
 	if err != nil {
 		return err
 	}

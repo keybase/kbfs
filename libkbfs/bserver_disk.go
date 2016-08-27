@@ -161,7 +161,8 @@ func (b *BlockServerDisk) Put(ctx context.Context, tlfID TlfID, id BlockID,
 
 	tlfStorage.lock.Lock()
 	defer tlfStorage.lock.Unlock()
-	return tlfStorage.journal.putData(ctx, id, context, buf, serverHalf)
+	return tlfStorage.journal.putData(ctx, MetadataRevisionUninitialized,
+		id, context, buf, serverHalf)
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerDisk.
@@ -176,7 +177,8 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID TlfID,
 
 	tlfStorage.lock.Lock()
 	defer tlfStorage.lock.Unlock()
-	return tlfStorage.journal.addReference(ctx, id, context)
+	return tlfStorage.journal.addReference(
+		ctx, MetadataRevisionUninitialized, id, context)
 }
 
 // RemoveBlockReferences implements the BlockServer interface for
@@ -193,7 +195,8 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 
 	tlfStorage.lock.Lock()
 	defer tlfStorage.lock.Unlock()
-	return tlfStorage.journal.removeReferences(ctx, contexts, true)
+	return tlfStorage.journal.removeReferences(
+		ctx, MetadataRevisionUninitialized, contexts, true)
 }
 
 // ArchiveBlockReferences implements the BlockServer interface for
@@ -209,7 +212,8 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 
 	tlfStorage.lock.Lock()
 	defer tlfStorage.lock.Unlock()
-	return tlfStorage.journal.archiveReferences(ctx, contexts)
+	return tlfStorage.journal.archiveReferences(
+		ctx, MetadataRevisionUninitialized, contexts)
 }
 
 // getAll returns all the known block references, and should only be

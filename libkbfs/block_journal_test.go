@@ -55,7 +55,8 @@ func TestBlockJournalBasic(t *testing.T) {
 	require.NoError(t, err)
 
 	// Put the block.
-	err = j.putData(ctx, bID, bCtx, data, serverHalf)
+	err = j.putData(
+		ctx, MetadataRevisionUninitialized, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 	require.Equal(t, 1, getBlockJournalLength(t, j))
 
@@ -69,7 +70,7 @@ func TestBlockJournalBasic(t *testing.T) {
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = j.addReference(ctx, bID, bCtx2)
+	err = j.addReference(ctx, MetadataRevisionUninitialized, bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
@@ -132,7 +133,8 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 	require.NoError(t, err)
 
 	// Put the block.
-	err = j.putData(ctx, bID, bCtx, data, serverHalf)
+	err = j.putData(
+		ctx, MetadataRevisionUninitialized, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 	require.Equal(t, 1, getBlockJournalLength(t, j))
 
@@ -140,19 +142,20 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = j.addReference(ctx, bID, bCtx2)
+	err = j.addReference(ctx, MetadataRevisionUninitialized, bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
 	// Remove references.
 	liveCounts, err := j.removeReferences(
-		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, true)
+		ctx, MetadataRevisionUninitialized,
+		map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, true)
 	require.NoError(t, err)
 	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 
 	// Add reference back, which should error.
-	err = j.addReference(ctx, bID, bCtx2)
+	err = j.addReference(ctx, MetadataRevisionUninitialized, bID, bCtx2)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 }
@@ -190,7 +193,8 @@ func TestBlockJournalArchiveReferences(t *testing.T) {
 	require.NoError(t, err)
 
 	// Put the block.
-	err = j.putData(ctx, bID, bCtx, data, serverHalf)
+	err = j.putData(
+		ctx, MetadataRevisionUninitialized, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 	require.Equal(t, 1, getBlockJournalLength(t, j))
 
@@ -198,18 +202,19 @@ func TestBlockJournalArchiveReferences(t *testing.T) {
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = j.addReference(ctx, bID, bCtx2)
+	err = j.addReference(ctx, MetadataRevisionUninitialized, bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, 2, getBlockJournalLength(t, j))
 
 	// Archive references.
 	err = j.archiveReferences(
-		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}})
+		ctx, MetadataRevisionUninitialized,
+		map[BlockID][]BlockContext{bID: {bCtx, bCtx2}})
 	require.NoError(t, err)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 
 	// Add reference back, which should error.
-	err = j.addReference(ctx, bID, bCtx2)
+	err = j.addReference(ctx, MetadataRevisionUninitialized, bID, bCtx2)
 	require.IsType(t, BServerErrorBlockArchived{}, err)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 }
