@@ -388,6 +388,8 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 	// TODO: Parallelize block puts.
 
 	for {
+		// Flush all the block ops done before the current MD
+		// op first.
 		for {
 			flushed, err := j.flushOneBlockOp(ctx)
 			if err != nil {
@@ -432,10 +434,9 @@ func (j *tlfJournal) getNextBlockEntryToFlush(ctx context.Context) (
 	if err != nil {
 		return 0, nil, nil, BlockCryptKeyServerHalf{}, err
 	}
-	if rmds == nil {
-		return 0, nil, nil, BlockCryptKeyServerHalf{}, nil
-	}
-	if e.HeadRevision >= rmds.MD.RevisionNumber() {
+	// If this block op is done after the earliest MD op,
+	// don't flush it.
+	if rmds == nil || e.HeadRevision >= rmds.MD.RevisionNumber() {
 		return 0, nil, nil, BlockCryptKeyServerHalf{}, nil
 	}
 	return o, e, data, serverHalf, nil
@@ -679,8 +680,6 @@ func (j *tlfJournal) putBlockData(
 		return err
 	}
 
-	j.signalWork()
-
 	return nil
 }
 
@@ -696,8 +695,6 @@ func (j *tlfJournal) addBlockReference(
 	if err != nil {
 		return err
 	}
-
-	j.signalWork()
 
 	return nil
 }
@@ -723,8 +720,6 @@ func (j *tlfJournal) removeBlockReferences(
 		return nil, err
 	}
 
-	j.signalWork()
-
 	return liveCounts, nil
 }
 
@@ -740,8 +735,6 @@ func (j *tlfJournal) archiveBlockReferences(
 	if err != nil {
 		return err
 	}
-
-	j.signalWork()
 
 	return nil
 }
@@ -789,6 +782,8 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 		return MdID{}, err
 	}
 
+	// Signal work only on MD ops, since any block ops done before
+	// this won't get flushed anyway.
 	j.signalWork()
 
 	return mdID, nil
