@@ -218,3 +218,59 @@ func TestBlockJournalArchiveReferences(t *testing.T) {
 	require.IsType(t, BServerErrorBlockArchived{}, err)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 }
+
+func TestBlockJournalHeadFlush(t *testing.T) {
+	codec := NewCodecMsgpack()
+	crypto := MakeCryptoCommon(codec)
+
+	tempdir, err := ioutil.TempDir(os.TempDir(), "block_journal")
+	require.NoError(t, err)
+	defer func() {
+		err := os.RemoveAll(tempdir)
+		require.NoError(t, err)
+	}()
+
+	uid1 := keybase1.MakeTestUID(1)
+
+	ctx := context.Background()
+
+	log := logger.NewTestLogger(t)
+	j, err := makeBlockJournal(ctx, codec, crypto, tempdir, log)
+	require.NoError(t, err)
+	defer j.shutdown()
+
+	require.Equal(t, 0, getBlockJournalLength(t, j))
+
+	bCtx := BlockContext{uid1, "", zeroBlockRefNonce}
+
+	data := []byte{1, 2, 3, 4}
+	bID, err := crypto.MakePermanentBlockID(data)
+	require.NoError(t, err)
+
+	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
+
+	for i := 0; i < 5; i++ {
+		err = j.putData(
+			ctx, MetadataRevisionInitial+MetadataRevision(i),
+			bID, bCtx, data, serverHalf)
+		require.NoError(t, err)
+		require.Equal(t, i+1, getBlockJournalLength(t, j))
+	}
+
+	for i := 0; i < 5; i++ {
+		o, e, _, _, err := j.getNextEntryToFlush(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, e)
+		require.Equal(t, MetadataRevisionInitial+MetadataRevision(i),
+			e.HeadRevision)
+		// The actual flushing is covered by tests in
+		// tlf_journal_test.go.
+		err = j.removeFlushedEntry(ctx, o, *e)
+		require.NoError(t, err)
+	}
+
+	_, e, _, _, err := j.getNextEntryToFlush(ctx)
+	require.NoError(t, err)
+	require.Nil(t, e)
+}
