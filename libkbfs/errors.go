@@ -1193,3 +1193,12 @@ type MutableBareRootMetadataNoImplError struct {
 func (e MutableBareRootMetadataNoImplError) Error() string {
 	return "Does not implement MutableBareRootMetadata"
 }
+
+// blockNonExistentError is returned when a block doesn't exist.
+type blockNonExistentError struct {
+	id BlockID
+}
+
+func (e blockNonExistentError) Error() string {
+	return fmt.Sprintf("block %s does not exist", e.id)
+}
