@@ -333,6 +333,25 @@ func putBlock(ctx context.Context,
 	require.NoError(t, err)
 }
 
+func TestTLFJournalBlockOpBasic(t *testing.T) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	flushed, err := tlfJournal.flushOneBlockOp(ctx)
+	require.NoError(t, err)
+	// Should not be flushable until an MD is put.
+	require.False(t, flushed)
+
+	putOneMD(ctx, config, tlfJournal)
+
+	flushed, err = tlfJournal.flushOneBlockOp(ctx)
+	require.NoError(t, err)
+	require.True(t, flushed)
+}
+
 func TestTLFJournalBlockOpBusyPause(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, TLFJournalBackgroundWorkEnabled)
