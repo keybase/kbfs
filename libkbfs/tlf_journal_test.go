@@ -245,14 +245,6 @@ func teardownTLFJournalTest(
 	require.NoError(config.t, err)
 }
 
-func putBlock(ctx context.Context,
-	t *testing.T, config *testTLFJournalConfig,
-	tlfJournal *tlfJournal, data []byte) {
-	id, bCtx, serverHalf := config.makeBlock(data)
-	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
-	require.NoError(t, err)
-}
-
 func putOneMD(ctx context.Context, config *testTLFJournalConfig,
 	tlfJournal *tlfJournal) {
 	md := config.makeMD(MetadataRevisionInitial, MdID{})
@@ -333,6 +325,14 @@ func (bs hangingBlockServer) waitForPut(ctx context.Context, t *testing.T) {
 	}
 }
 
+func putBlock(ctx context.Context,
+	t *testing.T, config *testTLFJournalConfig,
+	tlfJournal *tlfJournal, data []byte) {
+	id, bCtx, serverHalf := config.makeBlock(data)
+	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
+	require.NoError(t, err)
+}
+
 func TestTLFJournalBlockOpBusyPause(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, TLFJournalBackgroundWorkEnabled)
@@ -344,6 +344,9 @@ func TestTLFJournalBlockOpBusyPause(t *testing.T) {
 	tlfJournal.delegateBlockServer = bs
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+
+	// Needed to let the block put go through.
+	putOneMD(ctx, config, tlfJournal)
 
 	bs.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, bwBusy)
@@ -366,6 +369,9 @@ func TestTLFJournalBlockOpBusyShutdown(t *testing.T) {
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
+	// Needed to let the block put go through.
+	putOneMD(ctx, config, tlfJournal)
+
 	bs.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, bwBusy)
 
@@ -383,6 +389,9 @@ func TestTLFJournalSecondBlockOpWhileBusy(t *testing.T) {
 	tlfJournal.delegateBlockServer = bs
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+
+	// Needed to let the block put go through.
+	putOneMD(ctx, config, tlfJournal)
 
 	bs.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, bwBusy)
