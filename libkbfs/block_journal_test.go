@@ -264,8 +264,8 @@ func TestBlockJournalHeadFlush(t *testing.T) {
 		require.NotNil(t, e)
 		require.Equal(t, MetadataRevisionInitial+MetadataRevision(i),
 			e.HeadRevision)
-		// The actual flushing is covered by tests in
-		// tlf_journal_test.go.
+		// TODO: Move test of the actual flushing from
+		// tlf_journal_test.go to here.
 		err = j.removeFlushedEntry(ctx, o, *e)
 		require.NoError(t, err)
 	}
