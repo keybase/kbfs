@@ -253,6 +253,13 @@ func putBlock(ctx context.Context,
 	require.NoError(t, err)
 }
 
+func putOneMD(ctx context.Context, config *testTLFJournalConfig,
+	tlfJournal *tlfJournal) {
+	md := config.makeMD(MetadataRevisionInitial, MdID{})
+	_, err := tlfJournal.putMD(ctx, md)
+	require.NoError(config.t, err)
+}
+
 // The tests below primarily test the background work thread's
 // behavior.
 
@@ -262,7 +269,7 @@ func TestTLFJournalBasic(t *testing.T) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	putOneMD(ctx, config, tlfJournal)
 
 	// Wait for it to be processed.
 
@@ -279,7 +286,7 @@ func TestTLFJournalPauseResume(t *testing.T) {
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, bwPaused)
 
-	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	putOneMD(ctx, config, tlfJournal)
 
 	// Unpause and wait for it to be processed.
 
@@ -298,7 +305,7 @@ func TestTLFJournalPauseShutdown(t *testing.T) {
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, bwPaused)
 
-	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	putOneMD(ctx, config, tlfJournal)
 
 	// Should still be able to shut down while paused.
 }
