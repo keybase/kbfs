@@ -682,13 +682,13 @@ func (j *blockJournal) getNextEntryToFlush(ctx context.Context) (
 
 func flushBlockJournalEntry(
 	ctx context.Context, log logger.Logger,
-	bserver BlockServer, tlfID TlfID, e blockJournalEntry, data []byte,
+	bserver BlockServer, tlfID TlfID, entry blockJournalEntry, data []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
-	log.CDebugf(ctx, "Flushing block op %v", e)
+	log.CDebugf(ctx, "Flushing block op %v", entry)
 
-	switch e.Op {
+	switch entry.Op {
 	case blockPutOp:
-		id, context, err := e.getSingleContext()
+		id, context, err := entry.getSingleContext()
 		if err != nil {
 			return err
 		}
@@ -699,7 +699,7 @@ func flushBlockJournalEntry(
 		}
 
 	case addRefOp:
-		id, context, err := e.getSingleContext()
+		id, context, err := entry.getSingleContext()
 		if err != nil {
 			return err
 		}
@@ -716,26 +716,28 @@ func flushBlockJournalEntry(
 		}
 
 	case removeRefsOp:
-		_, err := bserver.RemoveBlockReferences(ctx, tlfID, e.Contexts)
+		_, err := bserver.RemoveBlockReferences(
+			ctx, tlfID, entry.Contexts)
 		if err != nil {
 			return err
 		}
 
 	case archiveRefsOp:
-		err := bserver.ArchiveBlockReferences(ctx, tlfID, e.Contexts)
+		err := bserver.ArchiveBlockReferences(
+			ctx, tlfID, entry.Contexts)
 		if err != nil {
 			return err
 		}
 
 	default:
-		return fmt.Errorf("Unknown op %s", e.Op)
+		return fmt.Errorf("Unknown op %s", entry.Op)
 	}
 
 	return nil
 }
 
 func (j *blockJournal) removeFlushedEntry(
-	ctx context.Context, o journalOrdinal, e blockJournalEntry) error {
+	ctx context.Context, o journalOrdinal, _ blockJournalEntry) error {
 	if j.isShutdown {
 		// TODO: This creates a race condition if we shut down
 		// after we've flushed an op but before we remove
