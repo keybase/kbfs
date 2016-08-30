@@ -157,9 +157,9 @@ func (j *blockJournal) keyServerHalfPath(id BlockID) string {
 
 // The functions below are for reading and writing journal entries.
 
-func (j *blockJournal) readJournalEntry(o journalOrdinal) (
+func (j *blockJournal) readJournalEntry(ordinal journalOrdinal) (
 	blockJournalEntry, error) {
-	entry, err := j.j.readJournalEntry(o)
+	entry, err := j.j.readJournalEntry(ordinal)
 	if err != nil {
 		return blockJournalEntry{}, err
 	}
@@ -258,8 +258,8 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 }
 
 func (j *blockJournal) writeJournalEntry(
-	o journalOrdinal, entry blockJournalEntry) error {
-	return j.j.writeJournalEntry(o, entry)
+	ordinal journalOrdinal, entry blockJournalEntry) error {
+	return j.j.writeJournalEntry(ordinal, entry)
 }
 
 func (j *blockJournal) appendJournalEntry(
@@ -736,8 +736,8 @@ func flushBlockJournalEntry(
 	return nil
 }
 
-func (j *blockJournal) removeFlushedEntry(
-	ctx context.Context, o journalOrdinal, _ blockJournalEntry) error {
+func (j *blockJournal) removeFlushedEntry(ctx context.Context,
+	ordinal journalOrdinal, _ blockJournalEntry) error {
 	if j.isShutdown {
 		// TODO: This creates a race condition if we shut down
 		// after we've flushed an op but before we remove
@@ -751,9 +751,9 @@ func (j *blockJournal) removeFlushedEntry(
 		return err
 	}
 
-	if o != earliestOrdinal {
+	if ordinal != earliestOrdinal {
 		return fmt.Errorf("Expected ordinal %d, got %d",
-			o, earliestOrdinal)
+			ordinal, earliestOrdinal)
 	}
 
 	_, err = j.j.removeEarliest()
