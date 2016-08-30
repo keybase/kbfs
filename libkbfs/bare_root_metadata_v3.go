@@ -407,7 +407,7 @@ func (md *BareRootMetadataV3) GetTLFKeyBundles(_ KeyGen) (
 		return nil, nil, InvalidPublicTLFOperation{md.TlfID(), "GetTLFKeyBundles"}
 	}
 	// v3 metadata contains no key bundles.
-	return nil, nil, nil
+	return nil, nil, errors.New("Not impmlemented")
 }
 
 // GetDeviceKIDs implements the BareRootMetadata interface for BareRootMetadataV3.
@@ -451,12 +451,52 @@ func (md *BareRootMetadataV3) HasKeyForUser(
 
 // GetTLFCryptKeyParams implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
-	keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
+	keyGen KeyGen, user keybase1.UID, key CryptPublicKey,
+	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundle) (
 	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
-	// XXX TODO: doesn't make sense for v3 as-is
-	return TLFEphemeralPublicKey{}, EncryptedTLFCryptKeyClientHalf{},
-		TLFCryptKeyServerHalfID{}, false, errors.New("Not implemented")
+	if rkb == nil || wkb == nil {
+		return TLFEphemeralPublicKey{},
+			EncryptedTLFCryptKeyClientHalf{},
+			TLFCryptKeyServerHalfID{}, false, errors.New("Missing key bundles")
+	}
+	dkim := wkb.Keys[user]
+	if dkim == nil {
+		dkim = rkb.RKeys[user]
+		if dkim == nil {
+			return TLFEphemeralPublicKey{},
+				EncryptedTLFCryptKeyClientHalf{},
+				TLFCryptKeyServerHalfID{}, false, nil
+		}
+	}
+	info, ok := dkim[key.kid]
+	if !ok {
+		return TLFEphemeralPublicKey{},
+			EncryptedTLFCryptKeyClientHalf{},
+			TLFCryptKeyServerHalfID{}, false, nil
+	}
+
+	var index int
+	var publicKeys TLFEphemeralPublicKeys
+	var keyType string
+	if info.EPubKeyIndex >= 0 {
+		index = info.EPubKeyIndex
+		publicKeys = wkb.TLFEphemeralPublicKeys
+		keyType = "writer"
+	} else {
+		index = -1 - info.EPubKeyIndex
+		publicKeys = rkb.TLFReaderEphemeralPublicKeys
+		keyType = "reader"
+	}
+	keyCount := len(publicKeys)
+	if index >= keyCount {
+		return TLFEphemeralPublicKey{},
+			EncryptedTLFCryptKeyClientHalf{},
+			TLFCryptKeyServerHalfID{}, false,
+			fmt.Errorf("Invalid %s key index %d >= %d",
+				keyType, index, keyCount)
+	}
+	return publicKeys[index], info.ClientHalf, info.ServerHalfID, true, nil
 }
 
 // IsValidAndSigned implements the BareRootMetadata interface for BareRootMetadataV3.
@@ -807,6 +847,23 @@ func (md *BareRootMetadataV3) AreKeyGenerationsEqual(codec Codec, other BareRoot
 // GetUnresolvedParticipants implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion) {
 	return md.UnresolvedReaders, md.WriterMetadata.UnresolvedWriters
+}
+
+// GetUserDeviceKeyInfoMaps implements the MutableBareRootMetadata interface for BareRootMetadataV3.
+func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(keyGen KeyGen,
+	rkb *TLFReaderKeyBundle, wkb *TLFWriterKeyBundleV2) (readers, writers UserDeviceKeyInfoMap, err error) {
+	if md.TlfID().IsPublic() {
+		return nil, nil, InvalidPublicTLFOperation{md.TlfID(), "GetTLFKeyBundles"}
+	}
+
+	if keyGen != md.LatestKeyGeneration() {
+		return nil, nil, InvalidKeyGenerationError{md.TlfID(), keyGen}
+	}
+
+	if rkb == nil || wkb == nil {
+		return nil, nil, errors.New("Key bundles missing")
+	}
+	return rkb.RKeys, wkb.Keys, nil
 }
 
 // BareRootMetadataSignedV3 is the MD that is signed by the reader or

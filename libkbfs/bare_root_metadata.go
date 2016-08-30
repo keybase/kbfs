@@ -481,7 +481,8 @@ func (md *BareRootMetadataV2) HasKeyForUser(
 
 // GetTLFCryptKeyParams implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
-	keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
+	keyGen KeyGen, user keybase1.UID, key CryptPublicKey,
+	_ *TLFWriterKeyBundleV2, _ *TLFReaderKeyBundle) (
 	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
 	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
@@ -912,6 +913,16 @@ func (md *BareRootMetadataV2) AreKeyGenerationsEqual(codec Codec, other BareRoot
 // GetUnresolvedParticipants implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion) {
 	return md.UnresolvedReaders, md.WriterMetadataV2.Extra.UnresolvedWriters
+}
+
+// GetUserDeviceKeyInfoMaps implements the MutableBareRootMetadata interface for BareRootMetadataV2.
+func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(keyGen KeyGen,
+	_ *TLFReaderKeyBundle, _ *TLFWriterKeyBundleV2) (readers, writers UserDeviceKeyInfoMap, err error) {
+	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
+	if err != nil {
+		return nil, nil, err
+	}
+	return rkb.RKeys, wkb.WKeys, nil
 }
 
 // BareRootMetadataSignedV2 is the MD that is signed by the reader or

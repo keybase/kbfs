@@ -1522,7 +1522,8 @@ type BareRootMetadata interface {
 	// the TLF crypt key for the given key generation, user, and device
 	// (identified by its crypt public key), or false if not found. This
 	// returns an error if the TLF is public.
-	GetTLFCryptKeyParams(keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
+	GetTLFCryptKeyParams(keyGen KeyGen, user keybase1.UID, key CryptPublicKey,
+		_ *TLFWriterKeyBundleV2, _ *TLFReaderKeyBundle) (
 		TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 		TLFCryptKeyServerHalfID, bool, error)
 	// IsValidAndSigned verifies the BareRootMetadata, checks the
@@ -1646,6 +1647,10 @@ type MutableBareRootMetadata interface {
 	Update(tlf TlfID, h BareTlfHandle) error
 	// Returns the TLF key bundles for this metadata at the given key generation.
 	GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundle, *TLFReaderKeyBundle, error)
+	// GetUserDeviceKeyInfoMaps returns the given user device key info maps for the given
+	// key generation. Note "wkb" and "rkb" are expcted to be nil for v1 and v2 metadata.
+	GetUserDeviceKeyInfoMaps(keyGen KeyGen, rkb *TLFReaderKeyBundle,
+		wkb *TLFWriterKeyBundleV2) (readers, writers UserDeviceKeyInfoMap, err error)
 }
 
 // KeyBundleCache is an interface to a key bundle cache for use with v3 metadata.
