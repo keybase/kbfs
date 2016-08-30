@@ -419,7 +419,7 @@ func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 	j.flushLock.Lock()
 	defer j.flushLock.Unlock()
 
-	o, e, data, serverHalf, err := func() (
+	ordinal, entry, data, serverHalf, err := func() (
 		journalOrdinal, *blockJournalEntry, []byte,
 		BlockCryptKeyServerHalf, error) {
 		j.journalLock.RLock()
@@ -429,12 +429,12 @@ func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if e == nil {
+	if entry == nil {
 		return false, nil
 	}
 
 	err = flushBlockJournalEntry(
-		ctx, j.log, j.delegateBlockServer, j.tlfID, *e,
+		ctx, j.log, j.delegateBlockServer, j.tlfID, *entry,
 		data, serverHalf)
 	if err != nil {
 		return false, err
@@ -444,7 +444,7 @@ func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 	// can assume that the earliest op is the one we just got.
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err = j.blockJournal.removeFlushedEntry(ctx, o, *e)
+	err = j.blockJournal.removeFlushedEntry(ctx, ordinal, *entry)
 	if err != nil {
 		return false, err
 	}
