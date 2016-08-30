@@ -343,6 +343,7 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 // TODO: Handle garbage collection too.
 func (j *tlfJournal) doBackgroundWork(ctx context.Context) <-chan error {
 	errCh := make(chan error, 1)
+	// TODO: Handle panics.
 	go func() {
 		errCh <- j.flush(ctx)
 	}()
