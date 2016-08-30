@@ -416,17 +416,26 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 	return nil
 }
 
+func (j *tlfJournal) getNextBlockEntryToFlush(ctx context.Context) (
+	journalOrdinal, *blockJournalEntry, []byte,
+	BlockCryptKeyServerHalf, error) {
+	j.journalLock.RLock()
+	defer j.journalLock.RUnlock()
+	return j.blockJournal.getNextEntryToFlush(ctx)
+}
+
+func (j *tlfJournal) removeFlushedBlockEntry(ctx context.Context,
+	ordinal journalOrdinal, entry blockJournalEntry) error {
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
+	return j.blockJournal.removeFlushedEntry(ctx, ordinal, entry)
+}
+
 func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 	j.flushLock.Lock()
 	defer j.flushLock.Unlock()
 
-	ordinal, entry, data, serverHalf, err := func() (
-		journalOrdinal, *blockJournalEntry, []byte,
-		BlockCryptKeyServerHalf, error) {
-		j.journalLock.RLock()
-		defer j.journalLock.RUnlock()
-		return j.blockJournal.getNextEntryToFlush(ctx)
-	}()
+	ordinal, entry, data, serverHalf, err := j.getNextBlockEntryToFlush(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -443,9 +452,7 @@ func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 
 	// We're the only thing removing from the block journal, so we
 	// can assume that the earliest op is the one we just got.
-	j.journalLock.Lock()
-	defer j.journalLock.Unlock()
-	err = j.blockJournal.removeFlushedEntry(ctx, ordinal, *entry)
+	err = j.removeFlushedBlockEntry(ctx, ordinal, *entry)
 	if err != nil {
 		return false, err
 	}
