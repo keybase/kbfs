@@ -472,8 +472,8 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 	mdServer := j.config.MDServer()
 
 	mdID, rmds, err := func() (MdID, *RootMetadataSigned, error) {
-		j.journalLock.Lock()
-		defer j.journalLock.Unlock()
+		j.journalLock.RLock()
+		defer j.journalLock.RUnlock()
 		return j.mdJournal.getNextEntryToFlush(ctx, uid, key, signer)
 	}()
 	if err != nil {
