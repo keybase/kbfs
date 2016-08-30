@@ -431,7 +431,7 @@ func (j *tlfJournal) getNextBlockEntryToFlush(ctx context.Context,
 		return 0, nil, nil, BlockCryptKeyServerHalf{}, nil
 	}
 	_, rmds, err := j.mdJournal.getNextEntryToFlush(
-		ctx, uid, key, j.config.Crypto())
+		ctx, currentUID, currentVerifyingKey, j.config.Crypto())
 	if err != nil {
 		return 0, nil, nil, BlockCryptKeyServerHalf{}, err
 	}
