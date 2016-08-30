@@ -509,18 +509,18 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	if !incKeyGen {
 		// See if there is at least one new device in relation to the
 		// current key bundle
-		wkb, rkb, err := md.bareMd.GetTLFKeyBundles(currKeyGen)
+		rDkim, wDkim, err := md.bareMd.GetUserDeviceKeyInfoMaps(currKeyGen, nil, nil)
 		if err != nil {
 			return false, nil, err
 		}
 
-		newWriterUsers = km.usersWithNewDevices(ctx, md.TlfID(), wkb.WKeys, wKeys)
-		newReaderUsers = km.usersWithNewDevices(ctx, md.TlfID(), rkb.RKeys, rKeys)
+		newWriterUsers = km.usersWithNewDevices(ctx, md.TlfID(), wDkim, wKeys)
+		newReaderUsers = km.usersWithNewDevices(ctx, md.TlfID(), rDkim, rKeys)
 		addNewWriterDevice = len(newWriterUsers) > 0
 		addNewReaderDevice = len(newReaderUsers) > 0
 
-		wRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), wkb.WKeys, wKeys)
-		rRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), rkb.RKeys, rKeys)
+		wRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), wDkim, wKeys)
+		rRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), rDkim, rKeys)
 		incKeyGen = len(wRemoved) > 0 || len(rRemoved) > 0
 
 		promotedReaders = make(map[keybase1.UID]bool, len(rRemoved))
@@ -599,13 +599,13 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 			// If there are readers that need to be promoted to writers, do
 			// that here.
-			wkb, rkb, err := md.bareMd.GetTLFKeyBundles(keyGen)
+			rDkim, wDkim, err := md.bareMd.GetUserDeviceKeyInfoMaps(keyGen, nil, nil)
 			if err != nil {
 				return false, nil, err
 			}
 			for u := range promotedReaders {
-				wkb.WKeys[u] = rkb.RKeys[u]
-				delete(rkb.RKeys, u)
+				wDkim[u] = rDkim[u]
+				delete(rDkim, u)
 			}
 
 			err = km.updateKeyBundle(ctx, md, keyGen, wKeys, rKeys,

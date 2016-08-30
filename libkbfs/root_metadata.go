@@ -362,7 +362,8 @@ func (md *RootMetadata) GetTLFCryptKeyParams(
 	keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
 	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
-	return md.bareMd.GetTLFCryptKeyParams(keyGen, user, key)
+	// XXX todo pass bundles
+	return md.bareMd.GetTLFCryptKeyParams(keyGen, user, key, nil, nil)
 }
 
 // LatestKeyGeneration wraps the respective method of the underlying BareRootMetadata for convenience.
