@@ -416,7 +416,8 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 	return nil
 }
 
-func (j *tlfJournal) getNextBlockEntryToFlush(ctx context.Context) (
+func (j *tlfJournal) getNextBlockEntryToFlush(ctx context.Context,
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
 	journalOrdinal, *blockJournalEntry, []byte,
 	BlockCryptKeyServerHalf, error) {
 	j.journalLock.RLock()
@@ -459,7 +460,8 @@ func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	ordinal, entry, data, serverHalf, err := j.getNextBlockEntryToFlush(ctx)
+	ordinal, entry, data, serverHalf, err :=
+		j.getNextBlockEntryToFlush(ctx, uid, key)
 	if err != nil {
 		return false, err
 	}
