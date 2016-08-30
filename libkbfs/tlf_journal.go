@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"golang.org/x/net/context"
 )
 
@@ -459,6 +460,39 @@ func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
+	MdID, *RootMetadataSigned, error) {
+	j.journalLock.RLock()
+	defer j.journalLock.RUnlock()
+	return j.mdJournal.getNextEntryToFlush(
+		ctx, currentUID, currentVerifyingKey, j.config.Crypto())
+}
+
+func (j *tlfJournal) convertMDsToBranch(
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey) (MdID, *RootMetadataSigned, error) {
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
+	err := j.mdJournal.convertToBranch(
+		ctx, currentUID, currentVerifyingKey, j.config.Crypto())
+	if err != nil {
+		return MdID{}, nil, err
+	}
+
+	return j.mdJournal.getNextEntryToFlush(
+		ctx, currentUID, currentVerifyingKey, j.config.Crypto())
+}
+
+func (j *tlfJournal) removeFlushedMDEntry(ctx context.Context,
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
+	mdID MdID, rmds *RootMetadataSigned) error {
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
+	return j.mdJournal.removeFlushedEntry(
+		ctx, currentUID, currentVerifyingKey, mdID, rmds)
+}
+
 func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 	uid, key, err :=
 		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
@@ -476,14 +510,9 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 	j.flushLock.Lock()
 	defer j.flushLock.Unlock()
 
-	signer := j.config.Crypto()
 	mdServer := j.config.MDServer()
 
-	mdID, rmds, err := func() (MdID, *RootMetadataSigned, error) {
-		j.journalLock.RLock()
-		defer j.journalLock.RUnlock()
-		return j.mdJournal.getNextEntryToFlush(ctx, uid, key, signer)
-	}()
+	mdID, rmds, err := j.getNextMDEntryToFlush(ctx, uid, key)
 	if err != nil {
 		return false, err
 	}
@@ -510,26 +539,15 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 			pushErr = nil
 		} else if rmds.MD.MergedStatus() == Merged {
 			j.log.CDebugf(ctx, "Conflict detected %v", pushErr)
-
-			mdID, rmds, err = func() (MdID, *RootMetadataSigned, error) {
-				j.journalLock.Lock()
-				defer j.journalLock.Unlock()
-				err := j.mdJournal.convertToBranch(
-					ctx, uid, key, signer)
-				if err != nil {
-					return MdID{}, nil, err
-				}
-
-				return j.mdJournal.getNextEntryToFlush(
-					ctx, uid, key, signer)
-			}()
+			// Convert MDs to a branch and retry the put.
+			mdID, rmds, err = j.convertMDsToBranch(ctx, uid, key)
 			if err != nil {
 				return false, err
 			}
 			if mdID == (MdID{}) {
 				return false, errors.New("Unexpected nil MdID")
 			}
-			j.log.CDebugf(ctx, "Flushing MD for TLF=%s with id=%s, rev=%s, bid=%s",
+			j.log.CDebugf(ctx, "Flushing newly-unmerged MD for TLF=%s with id=%s, rev=%s, bid=%s",
 				rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID())
 			pushErr = mdServer.Put(ctx, rmds)
 		}
@@ -538,9 +556,7 @@ func (j *tlfJournal) flushOneMDOp(ctx context.Context) (bool, error) {
 		return false, pushErr
 	}
 
-	j.journalLock.Lock()
-	defer j.journalLock.Unlock()
-	err = j.mdJournal.removeFlushedEntry(ctx, uid, key, mdID, rmds)
+	err = j.removeFlushedMDEntry(ctx, uid, key, mdID, rmds)
 	if err != nil {
 		return false, err
 	}
