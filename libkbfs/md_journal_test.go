@@ -75,17 +75,34 @@ func teardownMDJournalTest(t *testing.T, tempdir string) {
 	require.NoError(t, err)
 }
 
-func makeMDForTest(t *testing.T, id TlfID, revision MetadataRevision,
+func makeMDForTest(t *testing.T, tlfID TlfID, revision MetadataRevision,
 	uid keybase1.UID, prevRoot MdID) *RootMetadata {
 	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	md := NewRootMetadata()
-	err = md.Update(id, h)
+	err = md.Update(tlfID, h)
 	require.NoError(t, err)
 	md.SetRevision(revision)
 	md.FakeInitialRekey(h)
 	md.SetPrevRoot(prevRoot)
 	return md
+}
+
+func putMDRange(t *testing.T, uid keybase1.UID, verifyingKey VerifyingKey,
+	tlfID TlfID, signer cryptoSigner, ekg singleEncryptionKeyGetter,
+	bsplit BlockSplitter, firstRevision MetadataRevision,
+	firstPrevRoot MdID, mdCount int, j *mdJournal) MdID {
+	prevRoot := firstPrevRoot
+	ctx := context.Background()
+	for i := 0; i < mdCount; i++ {
+		revision := firstRevision + MetadataRevision(i)
+		md := makeMDForTest(t, tlfID, revision, uid, prevRoot)
+		mdID, err := j.put(
+			ctx, uid, verifyingKey, signer, ekg, bsplit, md)
+		require.NoError(t, err)
+		prevRoot = mdID
+	}
+	return prevRoot
 }
 
 func TestMDJournalBasic(t *testing.T) {
@@ -102,21 +119,11 @@ func TestMDJournalBasic(t *testing.T) {
 
 	// Push some new metadata blocks.
 
-	ctx := context.Background()
-
 	firstRevision := MetadataRevision(10)
 	firstPrevRoot := fakeMdID(1)
 	mdCount := 10
-
-	prevRoot := firstPrevRoot
-	for i := 0; i < mdCount; i++ {
-		revision := firstRevision + MetadataRevision(i)
-		md := makeMDForTest(t, id, revision, uid, prevRoot)
-		mdID, err := j.put(
-			ctx, uid, verifyingKey, signer, ekg, bsplit, md)
-		require.NoError(t, err)
-		prevRoot = mdID
-	}
+	putMDRange(t, uid, verifyingKey, id, signer, ekg, bsplit,
+		firstRevision, firstPrevRoot, mdCount, j)
 
 	require.Equal(t, mdCount, getMDJournalLength(t, j))
 
