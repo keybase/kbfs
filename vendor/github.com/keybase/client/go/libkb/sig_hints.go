@@ -4,7 +4,7 @@
 package libkb
 
 import (
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 	jsonw "github.com/keybase/go-jsonw"
 )
 
@@ -145,7 +145,6 @@ func (sh *SigHints) Refresh() error {
 			"uid": UIDArg(sh.uid),
 			"low": I{sh.version},
 		},
-		Contextified: NewContextified(sh.G()),
 	})
 	if err != nil {
 		return err

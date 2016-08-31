@@ -320,6 +320,40 @@ func TestCrUnmergedWriteToRemovedFile(t *testing.T) {
 	)
 }
 
+// bob writes to a file while alice renamed then removes it
+func TestCrUnmergedWriteToRenamedAndRemovedFile(t *testing.T) {
+	test(t,
+		users("alice", "bob"),
+		as(alice,
+			mkfile("a/b/c", "hello"),
+		),
+		as(bob,
+			disableUpdates(),
+		),
+		as(alice,
+			mkdir("d"),
+			rename("a/b/c", "d/c"),
+			rm("d/c"),
+		),
+		as(bob, noSync(),
+			write("a/b/c", "goodbye"),
+			reenableUpdates(),
+			lsdir("", m{"a": "DIR", "d": "DIR"}),
+			lsdir("a/", m{"b": "DIR"}),
+			lsdir("a/b/", m{"c": "FILE"}),
+			read("a/b/c", "goodbye"),
+			lsdir("d/", m{}),
+		),
+		as(alice,
+			lsdir("", m{"a": "DIR", "d": "DIR"}),
+			lsdir("a/", m{"b": "DIR"}),
+			lsdir("a/b/", m{"c": "FILE"}),
+			read("a/b/c", "goodbye"),
+			lsdir("d/", m{}),
+		),
+	)
+}
+
 // bob removes a file while alice writes to it
 func TestCrMergedWriteToRemovedFile(t *testing.T) {
 	test(t,
@@ -485,6 +519,76 @@ func TestCrDoubleResolution(t *testing.T) {
 			lsdir("a/b", m{"c": "FILE", "d": "FILE"}),
 			read("a/b/c", "hello"),
 			read("a/b/d", "goodbye"),
+		),
+	)
+}
+
+// Charlie has a resolution that touches a subdirectory that has been
+// deleted in Bob's resolution.
+func TestCrDoubleResolutionRmTree(t *testing.T) {
+	test(t,
+		users("alice", "bob", "charlie"),
+		as(alice,
+			write("a/b/c/d/e", "test1"),
+			write("a/b/c/d/f", "test2"),
+		),
+		as(bob,
+			disableUpdates(),
+		),
+		as(charlie,
+			disableUpdates(),
+		),
+		as(alice,
+			write("g", "hello"),
+		),
+		as(bob, noSync(),
+			// Remove a tree of files.
+			rm("a/b/c/d/e"),
+			rm("a/b/c/d/f"),
+			rm("a/b/c/d"),
+			rm("a/b/c"),
+			reenableUpdates(),
+			lsdir("", m{"a": "DIR", "g": "FILE"}),
+			lsdir("a", m{"b": "DIR"}),
+			lsdir("a/b", m{}),
+			read("g", "hello"),
+		),
+		as(alice,
+			lsdir("", m{"a": "DIR", "g": "FILE"}),
+			lsdir("a", m{"b": "DIR"}),
+			lsdir("a/b", m{}),
+			read("g", "hello"),
+		),
+		as(charlie, noSync(),
+			// Touch a subdirectory that was removed by bob.
+			// Unfortunately even though these are just rmOps, they
+			// still re-create "c/d".  Tracking a fix for that in
+			// KBFS-1423.
+			rm("a/b/c/d/e"),
+			rm("a/b/c/d/f"),
+			reenableUpdates(),
+			lsdir("", m{"a": "DIR", "g": "FILE"}),
+			lsdir("a", m{"b": "DIR"}),
+			lsdir("a/b", m{"c": "DIR"}),
+			lsdir("a/b/c", m{"d": "DIR"}),
+			lsdir("a/b/c/d", m{}),
+			read("g", "hello"),
+		),
+		as(alice,
+			lsdir("", m{"a": "DIR", "g": "FILE"}),
+			lsdir("a", m{"b": "DIR"}),
+			lsdir("a/b", m{"c": "DIR"}),
+			lsdir("a/b/c", m{"d": "DIR"}),
+			lsdir("a/b/c/d", m{}),
+			read("g", "hello"),
+		),
+		as(bob,
+			lsdir("", m{"a": "DIR", "g": "FILE"}),
+			lsdir("a", m{"b": "DIR"}),
+			lsdir("a/b", m{"c": "DIR"}),
+			lsdir("a/b/c", m{"d": "DIR"}),
+			lsdir("a/b/c/d", m{}),
+			read("g", "hello"),
 		),
 	)
 }

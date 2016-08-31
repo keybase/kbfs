@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -24,7 +24,8 @@ func setupJournalServerTest(t *testing.T) (
 		config, log, tempdir, config.BlockCache(),
 		config.BlockServer(), config.MDOps())
 	ctx := context.Background()
-	err = jServer.EnableExistingJournals(ctx)
+	err = jServer.EnableExistingJournals(
+		ctx, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 	config.SetBlockCache(jServer.blockCache())
 	config.SetBlockServer(jServer.blockServer())
@@ -34,9 +35,9 @@ func setupJournalServerTest(t *testing.T) (
 
 func teardownJournalServerTest(
 	t *testing.T, tempdir string, config Config) {
+	CheckConfigAndShutdown(t, config)
 	err := os.RemoveAll(tempdir)
 	require.NoError(t, err)
-	CheckConfigAndShutdown(t, config)
 }
 
 func TestJournalServerRestart(t *testing.T) {
@@ -50,7 +51,7 @@ func TestJournalServerRestart(t *testing.T) {
 	ctx := context.Background()
 
 	tlfID := FakeTlfID(2, false)
-	err := jServer.Enable(ctx, tlfID)
+	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 
 	blockServer := config.BlockServer()
@@ -78,16 +79,16 @@ func TestJournalServerRestart(t *testing.T) {
 
 	// Put an MD.
 
-	var rmd RootMetadata
-	err = updateNewBareRootMetadata(&rmd.BareRootMetadata, tlfID, bh)
+	rmd := NewRootMetadata()
+	err = rmd.Update(tlfID, bh)
 	require.NoError(t, err)
 	rmd.tlfHandle = h
-	rmd.Revision = MetadataRevision(1)
-	rekeyDone, _, err := config.KeyManager().Rekey(ctx, &rmd, false)
+	rmd.SetRevision(MetadataRevision(1))
+	rekeyDone, _, err := config.KeyManager().Rekey(ctx, rmd, false)
 	require.NoError(t, err)
 	require.True(t, rekeyDone)
 
-	_, err = mdOps.Put(ctx, &rmd)
+	_, err = mdOps.Put(ctx, rmd)
 	require.NoError(t, err)
 
 	// Simulate a restart.
@@ -95,7 +96,8 @@ func TestJournalServerRestart(t *testing.T) {
 	jServer = makeJournalServer(
 		config, jServer.log, tempdir, jServer.delegateBlockCache,
 		jServer.delegateBlockServer, jServer.delegateMDOps)
-	err = jServer.EnableExistingJournals(ctx)
+	err = jServer.EnableExistingJournals(
+		ctx, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 	config.SetBlockCache(jServer.blockCache())
 	config.SetBlockServer(jServer.blockServer())
@@ -112,5 +114,5 @@ func TestJournalServerRestart(t *testing.T) {
 
 	head, err := mdOps.GetForTLF(ctx, tlfID)
 	require.NoError(t, err)
-	require.Equal(t, rmd.Revision, head.Revision)
+	require.Equal(t, rmd.Revision(), head.Revision())
 }

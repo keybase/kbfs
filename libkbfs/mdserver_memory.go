@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"golang.org/x/net/context"
 )
 
@@ -61,7 +61,7 @@ type mdServerMemShared struct {
 
 // MDServerMemory just stores metadata objects in memory.
 type MDServerMemory struct {
-	config Config
+	config mdServerLocalConfig
 	log    logger.Logger
 
 	*mdServerMemShared
@@ -71,12 +71,12 @@ var _ mdServerLocal = (*MDServerMemory)(nil)
 
 // NewMDServerMemory constructs a new MDServerMemory object that stores
 // all data in-memory.
-func NewMDServerMemory(config Config) (*MDServerMemory, error) {
+func NewMDServerMemory(config mdServerLocalConfig) (*MDServerMemory, error) {
 	handleDb := make(map[mdHandleKey]TlfID)
 	latestHandleDb := make(map[TlfID]BareTlfHandle)
 	mdDb := make(map[mdBlockKey]mdBlockMemList)
 	branchDb := make(map[mdBranchKey]BranchID)
-	log := config.MakeLogger("")
+	log := config.MakeLogger("MDSM")
 	truncateLockManager := newMDServerLocalTruncatedLockManager()
 	shared := mdServerMemShared{
 		handleDb:            handleDb,
@@ -111,7 +111,7 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle BareTlfHandle,
 	}
 
 	// Non-readers shouldn't be able to create the dir.
-	_, uid, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	_, uid, err := md.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return NullTlfID, false, MDServerError{err}
 	}
@@ -120,7 +120,7 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle BareTlfHandle,
 	}
 
 	// Allocate a new random ID.
-	id, err = md.config.Crypto().MakeRandomTlfID(handle.IsPublic())
+	id, err = md.config.cryptoPure().MakeRandomTlfID(handle.IsPublic())
 	if err != nil {
 		return NullTlfID, false, MDServerError{err}
 	}
@@ -164,14 +164,14 @@ func (md *MDServerMemory) checkGetParams(
 		return NullBranchID, MDServerError{err}
 	}
 
-	_, currentUID, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	_, currentUID, err := md.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return NullBranchID, MDServerError{err}
 	}
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		ok, err := isReader(currentUID, &mergedMasterHead.MD)
+		ok, err := isReader(currentUID, mergedMasterHead.MD)
 		if err != nil {
 			return NullBranchID, MDServerError{err}
 		}
@@ -223,13 +223,14 @@ func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id TlfID,
 		return nil, nil
 	}
 	blocks := blockList.blocks
-	var rmds RootMetadataSigned
-	err = md.config.Codec().Decode(blocks[len(blocks)-1].encodedMd, &rmds)
+	ver := md.config.MetadataVersion()
+	buf := blocks[len(blocks)-1].encodedMd
+	rmds, err := DecodeRootMetadataSigned(md.config.Codec(), id, ver, ver, buf)
 	if err != nil {
 		return nil, err
 	}
 	rmds.untrustedServerTimestamp = blocks[len(blocks)-1].timestamp
-	return &rmds, nil
+	return rmds, nil
 }
 
 func (md *MDServerMemory) getMDKey(
@@ -253,7 +254,7 @@ func (md *MDServerMemory) getBranchKey(ctx context.Context, id TlfID) (
 }
 
 func (md *MDServerMemory) getCurrentDeviceKID(ctx context.Context) (keybase1.KID, error) {
-	key, err := md.config.KBPKI().GetCurrentCryptPublicKey(ctx)
+	key, err := md.config.currentInfoGetter().GetCurrentCryptPublicKey(ctx)
 	if err != nil {
 		return keybase1.KID(""), err
 	}
@@ -299,20 +300,22 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id TlfID,
 		endI = len(blocks)
 	}
 
+	ver := md.config.MetadataVersion()
+
 	var rmdses []*RootMetadataSigned
 	for i := startI; i < endI; i++ {
-		var rmds RootMetadataSigned
-		err = md.config.Codec().Decode(blocks[i].encodedMd, &rmds)
+		buf := blocks[i].encodedMd
+		rmds, err := DecodeRootMetadataSigned(md.config.Codec(), id, ver, ver, buf)
 		if err != nil {
 			return nil, MDServerError{err}
 		}
 		rmds.untrustedServerTimestamp = blocks[i].timestamp
 		expectedRevision := blockList.initialRevision + MetadataRevision(i)
-		if expectedRevision != rmds.MD.Revision {
+		if expectedRevision != rmds.MD.RevisionNumber() {
 			panic(fmt.Errorf("expected revision %v, got %v",
-				expectedRevision, rmds.MD.Revision))
+				expectedRevision, rmds.MD.RevisionNumber()))
 		}
-		rmdses = append(rmdses, &rmds)
+		rmdses = append(rmdses, rmds)
 	}
 
 	return rmdses, nil
@@ -320,24 +323,23 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id TlfID,
 
 // Put implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) error {
-	_, currentUID, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	currentUID, currentVerifyingKey, err :=
+		getCurrentUIDAndVerifyingKey(ctx, md.config.currentInfoGetter())
 	if err != nil {
 		return MDServerError{err}
 	}
 
-	currentVerifyingKey, err := md.config.KBPKI().GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		return MDServerError{err}
-	}
-
-	err = rmds.IsValidAndSigned(
-		md.config.Codec(), md.config.Crypto(),
-		currentUID, currentVerifyingKey)
+	err = rmds.IsValidAndSigned(md.config.Codec(), md.config.cryptoPure())
 	if err != nil {
 		return MDServerErrorBadRequest{Reason: err.Error()}
 	}
 
-	id := rmds.MD.ID
+	err = rmds.IsLastModifiedBy(currentUID, currentVerifyingKey)
+	if err != nil {
+		return MDServerErrorBadRequest{Reason: err.Error()}
+	}
+
+	id := rmds.MD.TlfID()
 
 	// Check permissions
 
@@ -351,7 +353,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 	if mergedMasterHead != nil {
 		ok, err := isWriterOrValidRekey(
 			md.config.Codec(), currentUID,
-			&mergedMasterHead.MD, &rmds.MD)
+			mergedMasterHead.MD, rmds.MD)
 		if err != nil {
 			return MDServerError{err}
 		}
@@ -360,7 +362,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 		}
 	}
 
-	bid := rmds.MD.BID
+	bid := rmds.MD.BID()
 	mStatus := rmds.MD.MergedStatus()
 
 	head, err := md.getHeadForTLF(ctx, id, bid, mStatus)
@@ -372,7 +374,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 
 	if mStatus == Unmerged && head == nil {
 		// currHead for unmerged history might be on the main branch
-		prevRev := rmds.MD.Revision - 1
+		prevRev := rmds.MD.RevisionNumber() - 1
 		rmdses, err := md.GetRange(ctx, id, NullBranchID, Merged, prevRev, prevRev)
 		if err != nil {
 			return MDServerError{err}
@@ -388,11 +390,11 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 
 	// Consistency checks
 	if head != nil {
-		id, err := md.config.Crypto().MakeMdID(&head.MD)
+		id, err := md.config.cryptoPure().MakeMdID(head.MD)
 		if err != nil {
 			return err
 		}
-		err = head.MD.CheckValidSuccessorForServer(id, &rmds.MD)
+		err = head.MD.CheckValidSuccessorForServer(id, rmds.MD)
 		if err != nil {
 			return err
 		}
@@ -443,7 +445,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned) err
 		md.mdDb[revKey] = blockList
 	} else {
 		md.mdDb[revKey] = mdBlockMemList{
-			initialRevision: rmds.MD.Revision,
+			initialRevision: rmds.MD.RevisionNumber(),
 			blocks:          []mdBlockMem{block},
 		}
 	}
@@ -588,7 +590,7 @@ func (md *MDServerMemory) IsConnected() bool {
 func (md *MDServerMemory) RefreshAuthToken(ctx context.Context) {}
 
 // This should only be used for testing with an in-memory server.
-func (md *MDServerMemory) copy(config Config) mdServerLocal {
+func (md *MDServerMemory) copy(config mdServerLocalConfig) mdServerLocal {
 	// NOTE: observers and sessionHeads are copied shallowly on
 	// purpose, so that the MD server that gets a Put will notify all
 	// observers correctly no matter where they got on the list.
@@ -656,7 +658,7 @@ func (md *MDServerMemory) getCurrentMergedHeadRevision(
 		return 0, err
 	}
 	if head != nil {
-		rev = head.MD.Revision
+		rev = head.MD.RevisionNumber()
 	}
 	return
 }

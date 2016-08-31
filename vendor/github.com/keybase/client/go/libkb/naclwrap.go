@@ -11,19 +11,21 @@ import (
 	"io"
 
 	"github.com/agl/ed25519"
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 	"golang.org/x/crypto/nacl/box"
 )
 
 type NaclSignature [ed25519.SignatureSize]byte
 
 type NaclSigInfo struct {
-	Kid      []byte        `codec:"key"`
-	Payload  []byte        `codec:"payload,omitempty"`
-	Sig      NaclSignature `codec:"sig"`
-	SigType  int           `codec:"sig_type"`
-	HashType int           `codec:"hash_type"`
-	Detached bool          `codec:"detached"`
+	Kid      keybase1.BinaryKID `codec:"key"`
+	Payload  []byte             `codec:"payload,omitempty"`
+	Sig      NaclSignature      `codec:"sig"`
+	SigType  int                `codec:"sig_type"`
+	HashType int                `codec:"hash_type"`
+	Detached bool               `codec:"detached"`
+	Version  int                `codec:"version,omitempty"`
+	Prefix   SignaturePrefix    `codec:"prefix,omitempty"`
 }
 
 type NaclEncryptionInfo struct {
@@ -179,6 +181,10 @@ func ImportNaclDHKeyPairFromHex(s string) (ret NaclDHKeyPair, err error) {
 }
 
 func (k NaclDHKeyPublic) GetKID() keybase1.KID {
+	return k.GetBinaryKID().ToKID()
+}
+
+func (k NaclDHKeyPublic) GetBinaryKID() keybase1.BinaryKID {
 	prefix := []byte{
 		byte(KeybaseKIDV1),
 		byte(KIDNaclDH),
@@ -186,7 +192,7 @@ func (k NaclDHKeyPublic) GetKID() keybase1.KID {
 	suffix := byte(IDSuffixKID)
 	out := append(prefix, k[:]...)
 	out = append(out, suffix)
-	return keybase1.KIDFromSlice(out)
+	return keybase1.BinaryKID(out)
 }
 
 func (k NaclDHKeyPair) GetFingerprintP() *PGPFingerprint {
@@ -201,7 +207,7 @@ func (k NaclSigningKeyPair) GetAlgoType() AlgoType {
 	return KIDNaclEddsa
 }
 
-func (k NaclSigningKeyPublic) GetKID() keybase1.KID {
+func (k NaclSigningKeyPublic) GetBinaryKID() keybase1.BinaryKID {
 	prefix := []byte{
 		byte(KeybaseKIDV1),
 		byte(KIDNaclEddsa),
@@ -209,11 +215,19 @@ func (k NaclSigningKeyPublic) GetKID() keybase1.KID {
 	suffix := byte(IDSuffixKID)
 	out := append(prefix, k[:]...)
 	out = append(out, suffix)
-	return keybase1.KIDFromSlice(out)
+	return keybase1.BinaryKID(out)
+}
+
+func (k NaclSigningKeyPublic) GetKID() keybase1.KID {
+	return k.GetBinaryKID().ToKID()
 }
 
 func (k NaclSigningKeyPair) GetKID() (ret keybase1.KID) {
 	return k.Public.GetKID()
+}
+
+func (k NaclSigningKeyPair) GetBinaryKID() (ret keybase1.BinaryKID) {
+	return k.Public.GetBinaryKID()
 }
 
 func (k NaclSigningKeyPair) ToShortIDString() string {
@@ -237,6 +251,9 @@ func (k NaclSigningKeyPair) GetFingerprintP() *PGPFingerprint {
 
 func (k NaclDHKeyPair) GetKID() keybase1.KID {
 	return k.Public.GetKID()
+}
+func (k NaclDHKeyPair) GetBinaryKID() (ret keybase1.BinaryKID) {
+	return k.Public.GetBinaryKID()
 }
 
 func (k NaclSigningKeyPair) CheckSecretKey() error {
@@ -277,13 +294,54 @@ func (k NaclSigningKeyPair) Sign(msg []byte) (ret *NaclSigInfo, err error) {
 		err = NoSecretKeyError{}
 		return
 	}
+
+	// Version 0 is just over the unprefixed message (assume version 0 if no version present)
+	// Version 1 is the same.
 	ret = &NaclSigInfo{
-		Kid:      k.GetKID().ToBytes(),
+		Kid:      k.GetBinaryKID(),
 		Payload:  msg,
 		Sig:      *k.Private.Sign(msg),
 		SigType:  SigKbEddsa,
 		HashType: HashPGPSha512,
 		Detached: true,
+		Version:  0,
+	}
+	return
+}
+
+type SignaturePrefix string
+
+func (p SignaturePrefix) hasNullByte() bool {
+	return bytes.IndexByte([]byte(p), byte(0)) != -1
+}
+
+func (p SignaturePrefix) Prefix(msg []byte) []byte {
+	prefix := append([]byte(p), 0)
+	return append(prefix, msg...)
+}
+
+func (k NaclSigningKeyPair) SignV2(msg []byte, prefix SignaturePrefix) (ret *NaclSigInfo, err error) {
+	if k.Private == nil {
+		err = NoSecretKeyError{}
+		return
+	}
+
+	if prefix.hasNullByte() || len(prefix) == 0 {
+		err = BadSignaturePrefixError{}
+		return
+	}
+
+	// Version 0 is just over the unprefixed message (assume version 0 if no version present)
+	// Version 1 is the same.
+	ret = &NaclSigInfo{
+		Kid:      k.GetBinaryKID(),
+		Payload:  msg,
+		Sig:      *k.Private.Sign(prefix.Prefix(msg)),
+		SigType:  SigKbEddsa,
+		HashType: HashPGPSha512,
+		Detached: true,
+		Version:  2,
+		Prefix:   prefix,
 	}
 	return
 }
@@ -309,7 +367,7 @@ func (k NaclSigningKeyPair) SignToString(msg []byte) (sig string, id keybase1.Si
 	return
 }
 
-func (k NaclSigningKeyPair) VerifyStringAndExtract(sig string) (msg []byte, id keybase1.SigID, err error) {
+func (k NaclSigningKeyPair) VerifyStringAndExtract(ctx VerifyContext, sig string) (msg []byte, id keybase1.SigID, err error) {
 	var keyInSignature GenericKey
 	var fullSigBody []byte
 	keyInSignature, msg, fullSigBody, err = NaclVerifyAndExtract(sig)
@@ -350,7 +408,7 @@ func NaclVerifyAndExtract(s string) (key GenericKey, payload []byte, fullBody []
 	}
 
 	var nk *NaclSigningKeyPublic
-	err, nk = naclSig.Verify()
+	nk, err = naclSig.Verify()
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -360,8 +418,8 @@ func NaclVerifyAndExtract(s string) (key GenericKey, payload []byte, fullBody []
 	return key, payload, fullBody, nil
 }
 
-func (k NaclSigningKeyPair) VerifyString(sig string, msg []byte) (id keybase1.SigID, err error) {
-	extractedMsg, resID, err := k.VerifyStringAndExtract(sig)
+func (k NaclSigningKeyPair) VerifyString(ctx VerifyContext, sig string, msg []byte) (id keybase1.SigID, err error) {
+	extractedMsg, resID, err := k.VerifyStringAndExtract(ctx, sig)
 	if err != nil {
 		return
 	}
@@ -378,12 +436,12 @@ func (k NaclDHKeyPair) SignToString(msg []byte) (sig string, id keybase1.SigID, 
 	return
 }
 
-func (k NaclDHKeyPair) VerifyStringAndExtract(sig string) (msg []byte, id keybase1.SigID, err error) {
+func (k NaclDHKeyPair) VerifyStringAndExtract(ctx VerifyContext, sig string) (msg []byte, id keybase1.SigID, err error) {
 	err = KeyCannotVerifyError{}
 	return
 }
 
-func (k NaclDHKeyPair) VerifyString(sig string, msg []byte) (id keybase1.SigID, err error) {
+func (k NaclDHKeyPair) VerifyString(ctx VerifyContext, sig string, msg []byte) (id keybase1.SigID, err error) {
 	err = KeyCannotVerifyError{}
 	return
 }
@@ -412,55 +470,38 @@ func KIDToNaclSigningKeyPublic(bk []byte) *NaclSigningKeyPublic {
 	return &ret
 }
 
-func (s NaclSigInfo) Verify() (error, *NaclSigningKeyPublic) {
+func (s NaclSigInfo) Verify() (*NaclSigningKeyPublic, error) {
 	key := KIDToNaclSigningKeyPublic(s.Kid)
 	if key == nil {
-		return BadKeyError{}, nil
+		return nil, BadKeyError{}
 	}
-	if !key.Verify(s.Payload, &s.Sig) {
-		return VerificationError{}, nil
+
+	switch s.Version {
+	case 0, 1:
+		if !key.Verify(s.Payload, &s.Sig) {
+			return nil, VerificationError{}
+		}
+	case 2:
+		if !key.Verify(s.Prefix.Prefix(s.Payload), &s.Sig) {
+			return nil, VerificationError{}
+		}
+	default:
+		return nil, UnhandledSignatureError{}
 	}
-	return nil, key
+
+	return key, nil
 }
 
 func (s *NaclSigInfo) ArmoredEncode() (ret string, err error) {
 	return PacketArmoredEncode(s)
 }
 
-// NaCl keys are never wrapped for the server.
-func (k NaclSigningKeyPair) ToServerSKB(gc *GlobalContext, t Triplesec, gen PassphraseGeneration) (*SKB, error) {
-	return nil, fmt.Errorf("NaCl keys should never be encrypted for the server.")
-}
-func (k NaclDHKeyPair) ToServerSKB(gc *GlobalContext, t Triplesec, gen PassphraseGeneration) (*SKB, error) {
-	return nil, fmt.Errorf("NaCl keys should never be encrypted for the server.")
+func (k NaclSigningKeyPair) ExportPublicAndPrivate() (RawPublicKey, RawPrivateKey, error) {
+	return RawPublicKey(k.GetKID().ToBytes()), RawPrivateKey(k.Private[:]), nil
 }
 
-func (k NaclSigningKeyPair) ToLksSKB(lks *LKSec) (*SKB, error) {
-	data, err := lks.Encrypt(k.Private[:])
-	if err != nil {
-		return nil, err
-	}
-	ret := NewSKB(lks.G())
-	ret.Pub = k.GetKID().ToBytes()
-	ret.Type = KIDNaclEddsa
-	ret.Priv.Encryption = LKSecVersion
-	ret.Priv.Data = data
-	ret.Priv.PassphraseGeneration = int(lks.Generation())
-	return ret, nil
-}
-
-func (k NaclDHKeyPair) ToLksSKB(lks *LKSec) (*SKB, error) {
-	data, err := lks.Encrypt(k.Private[:])
-	if err != nil {
-		return nil, err
-	}
-	ret := NewSKB(lks.G())
-	ret.Pub = k.GetKID().ToBytes()
-	ret.Type = KIDNaclDH
-	ret.Priv.Encryption = LKSecVersion
-	ret.Priv.Data = data
-	ret.Priv.PassphraseGeneration = int(lks.Generation())
-	return ret, nil
+func (k NaclDHKeyPair) ExportPublicAndPrivate() (RawPublicKey, RawPrivateKey, error) {
+	return RawPublicKey(k.GetKID().ToBytes()), RawPrivateKey(k.Private[:]), nil
 }
 
 func makeNaclSigningKeyPair(reader io.Reader) (NaclSigningKeyPair, error) {

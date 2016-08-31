@@ -6,7 +6,7 @@ package libkb
 import (
 	"path"
 
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 )
 
 // InviteArg contains optional invitation arguments.
@@ -55,7 +55,6 @@ func callSendInvitation(g *GlobalContext, params HTTPArgs) (*Invitation, error) 
 	arg := APIArg{
 		Endpoint:       "send_invitation",
 		NeedSession:    true,
-		Contextified:   NewContextified(g),
 		Args:           params,
 		AppStatusCodes: []int{SCOk, SCThrottleControl},
 	}

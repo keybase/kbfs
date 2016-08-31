@@ -228,7 +228,7 @@ func (fbm *folderBlockManager) shutdown() {
 // this should be called when the operation finally succeeds.
 func (fbm *folderBlockManager) cleanUpBlockState(
 	md ReadOnlyRootMetadata, bps *blockPutState, bdType blockDeleteType) {
-	fbm.log.CDebugf(nil, "Clean up md %d %s, bdType=%d", md.Revision,
+	fbm.log.CDebugf(nil, "Clean up md %d %s, bdType=%d", md.Revision(),
 		md.MergedStatus(), bdType)
 	toDelete := blocksToDelete{
 		md:     md,
@@ -432,14 +432,14 @@ func (fbm *folderBlockManager) processBlocksToDelete(ctx context.Context, toDele
 	defer fbm.blocksToDeleteWaitGroup.Done()
 
 	fbm.log.CDebugf(ctx, "Checking deleted blocks for revision %d",
-		toDelete.md.Revision)
+		toDelete.md.Revision())
 	// Make sure that the MD didn't actually become
 	// part of the folder history.  (This could happen
 	// if the Sync was canceled while the MD put was
 	// outstanding.)
 	if toDelete.bdType == blockDeleteOnMDFail {
-		rmds, err := getMDRange(ctx, fbm.config, fbm.id, toDelete.md.BID,
-			toDelete.md.Revision, toDelete.md.Revision,
+		rmds, err := getMDRange(ctx, fbm.config, fbm.id, toDelete.md.BID(),
+			toDelete.md.Revision(), toDelete.md.Revision(),
 			toDelete.md.MergedStatus())
 		if err != nil || len(rmds) == 0 {
 			// Don't re-enqueue immediately, since this might mean no
@@ -456,7 +456,7 @@ func (fbm *folderBlockManager) processBlocksToDelete(ctx context.Context, toDele
 			}
 			fbm.log.CDebugf(ctx, "Giving up on waiting for a new %d "+
 				"revision, and proceeding with the cleanup",
-				toDelete.md.Revision)
+				toDelete.md.Revision())
 		} else {
 			dirsEqual, err := CodecEqual(fbm.config.Codec(),
 				rmds[0].data.Dir, toDelete.md.data.Dir)
@@ -478,20 +478,21 @@ func (fbm *folderBlockManager) processBlocksToDelete(ctx context.Context, toDele
 		// Otherwise something else has been written over
 		// this MD, so get rid of the blocks.
 		fbm.log.CDebugf(ctx, "Cleaning up blocks for failed revision %d",
-			toDelete.md.Revision)
+			toDelete.md.Revision())
 	} else {
 		fbm.log.CDebugf(ctx, "Cleaning up blocks for revision %d",
-			toDelete.md.Revision)
+			toDelete.md.Revision())
 	}
 
-	_, err := fbm.deleteBlockRefs(ctx, toDelete.md.ID, toDelete.blocks)
+	_, err := fbm.deleteBlockRefs(ctx, toDelete.md.TlfID(), toDelete.blocks)
 	// Ignore permanent errors
 	_, isPermErr := err.(BServerError)
 	_, isNonceNonExistentErr := err.(BServerErrorNonceNonExistent)
+	_, isBadRequestErr := err.(BServerErrorBadRequest)
 	if err != nil {
 		fbm.log.CWarningf(ctx, "Couldn't delete some ref in batch %v: %v",
 			toDelete.blocks, err)
-		if !isPermErr && !isNonceNonExistentErr {
+		if !isPermErr && !isNonceNonExistentErr && !isBadRequestErr {
 			fbm.enqueueBlocksToDeleteNoWait(toDelete)
 			return nil
 		}
@@ -579,8 +580,8 @@ func (fbm *folderBlockManager) archiveBlocksInBackground() {
 				defer fbm.cancelArchive()
 
 				fbm.log.CDebugf(ctx, "Archiving %d block pointers as a result "+
-					"of revision %d", len(ptrs), md.Revision)
-				err = fbm.archiveBlockRefs(ctx, md.ID, ptrs)
+					"of revision %d", len(ptrs), md.Revision())
+				err = fbm.archiveBlockRefs(ctx, md.TlfID(), ptrs)
 				if err != nil {
 					fbm.log.CWarningf(ctx, "Couldn't archive blocks: %v", err)
 					return err
@@ -663,7 +664,7 @@ func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
 	mostRecentOldEnoughRev, lastGCRev MetadataRevision, err error) {
 	// Walk backwards until we find one that is old enough.  Also,
 	// look out for the previous gcOp.
-	currHead := head.Revision
+	currHead := head.Revision()
 	mostRecentOldEnoughRev = MetadataRevisionUninitialized
 	lastGCRev = MetadataRevisionUninitialized
 	for {
@@ -685,9 +686,9 @@ func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
 			if mostRecentOldEnoughRev == MetadataRevisionUninitialized &&
 				fbm.isOldEnough(rmd.ReadOnly()) {
 				fbm.log.CDebugf(ctx, "Revision %d is older than the unref "+
-					"age %s", rmd.Revision,
+					"age %s", rmd.Revision(),
 					fbm.config.QuotaReclamationMinUnrefAge())
-				mostRecentOldEnoughRev = rmd.Revision
+				mostRecentOldEnoughRev = rmd.Revision()
 			}
 
 			if lastGCRev == MetadataRevisionUninitialized {
@@ -710,7 +711,7 @@ func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
 		}
 
 		if numNew > 0 {
-			currHead = rmds[0].Revision - 1
+			currHead = rmds[0].Revision() - 1
 		}
 
 		if numNew < maxMDsAtATime || currHead < MetadataRevisionInitial {
@@ -766,16 +767,23 @@ outer:
 		numNew := len(rmds)
 		for i := len(rmds) - 1; i >= 0; i-- {
 			rmd := rmds[i]
-			if rmd.Revision <= earliestRev {
+			if rmd.Revision() <= earliestRev {
 				break outer
 			}
 			// Save the latest revision starting at this position:
-			revStartPositions[rmd.Revision] = len(ptrs)
+			revStartPositions[rmd.Revision()] = len(ptrs)
 			for _, op := range rmd.data.Changes.Ops {
 				if _, ok := op.(*gcOp); ok {
 					continue
 				}
-				ptrs = append(ptrs, op.Unrefs()...)
+				for _, ptr := range op.Unrefs() {
+					// Can be zeroPtr in weird failed sync scenarios.
+					// See syncInfo.replaceRemovedBlock for an example
+					// of how this can happen.
+					if ptr != zeroPtr {
+						ptrs = append(ptrs, ptr)
+					}
+				}
 				for _, update := range op.AllUpdates() {
 					// It's legal for there to be an "update" between
 					// two identical pointers (usually because of
@@ -795,7 +803,7 @@ outer:
 		}
 
 		if numNew > 0 {
-			currHead = rmds[0].Revision - 1
+			currHead = rmds[0].Revision() - 1
 		}
 
 		if numNew < maxMDsAtATime || currHead < MetadataRevisionInitial {
@@ -853,7 +861,7 @@ func (fbm *folderBlockManager) isQRNecessary(head ReadOnlyRootMetadata) bool {
 	// Do QR if:
 	//   * The head has changed since last time, OR
 	//   * The last QR did not completely clean every available thing
-	if head.Revision != fbm.lastQRHeadRev || !fbm.wasLastQRComplete {
+	if head.Revision() != fbm.lastQRHeadRev || !fbm.wasLastQRComplete {
 		return true
 	}
 
@@ -903,7 +911,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 	defer func() {
 		// Remember the QR we just performed.
 		if err == nil && head != (ImmutableRootMetadata{}) {
-			fbm.lastQRHeadRev = head.Revision
+			fbm.lastQRHeadRev = head.Revision()
 			fbm.lastQROldEnoughRev = mostRecentOldEnoughRev
 			fbm.wasLastQRComplete = complete
 		}
@@ -971,7 +979,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 		return nil
 	}
 
-	zeroRefCounts, err := fbm.deleteBlockRefs(ctx, head.ID, ptrs)
+	zeroRefCounts, err := fbm.deleteBlockRefs(ctx, head.TlfID(), ptrs)
 	if err != nil {
 		return err
 	}

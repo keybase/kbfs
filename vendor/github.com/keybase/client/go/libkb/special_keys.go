@@ -4,7 +4,7 @@
 package libkb
 
 import (
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 )
 
 // SpecialKeyRing holds blessed keys, like the one Keybase uses to sign
@@ -90,7 +90,6 @@ func (sk *SpecialKeyRing) Load(kid keybase1.KID) (GenericKey, error) {
 			Args: HTTPArgs{
 				"kid": S{kid.String()},
 			},
-			Contextified: NewContextified(sk.G()),
 		})
 		var w *Warnings
 		if err == nil {

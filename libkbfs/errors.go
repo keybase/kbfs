@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/keybase/client/go/libkb"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 )
 
 // ErrorFile is the name of the virtual file in KBFS that should
@@ -350,14 +350,16 @@ func (e MDMissingDataError) Error() string {
 // MDMismatchError indicates an inconsistent or unverifiable MD object
 // for the given top-level folder.
 type MDMismatchError struct {
-	Dir string
-	Err error
+	Revision MetadataRevision
+	Dir      string
+	TlfID    TlfID
+	Err      error
 }
 
 // Error implements the error interface for MDMismatchError
 func (e MDMismatchError) Error() string {
-	return fmt.Sprintf("Could not verify metadata for directory %s: %s",
-		e.Dir, e.Err)
+	return fmt.Sprintf("Could not verify metadata (revision=%d) for directory %s (id=%s): %s",
+		e.Revision, e.Dir, e.TlfID, e.Err)
 }
 
 // NoSuchMDError indicates that there is no MD object for the given
@@ -1180,4 +1182,14 @@ type UnmergedSelfConflictError struct {
 // Error implements the error interface for UnmergedSelfConflictError.
 func (e UnmergedSelfConflictError) Error() string {
 	return fmt.Sprintf("Unmerged self conflict: %v", e.Err)
+}
+
+// MutableBareRootMetadataNoImplError is returned when an interface expected
+// to implement MutableBareRootMetadata does not do so.
+type MutableBareRootMetadataNoImplError struct {
+}
+
+// Error implements the error interface for MutableBareRootMetadataNoImplError
+func (e MutableBareRootMetadataNoImplError) Error() string {
+	return "Does not implement MutableBareRootMetadata"
 }

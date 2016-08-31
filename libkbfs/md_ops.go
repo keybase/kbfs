@@ -37,12 +37,12 @@ func (md *MDOpsStandard) convertVerifyingKeyError(ctx context.Context,
 
 	tlf := handle.GetCanonicalPath()
 	writer, nameErr := md.config.KBPKI().GetNormalizedUsername(ctx,
-		rmds.MD.LastModifyingWriter)
+		rmds.MD.LastModifyingWriter())
 	if nameErr != nil {
 		writer = libkb.NormalizedUsername("uid: " +
-			rmds.MD.LastModifyingWriter.String())
+			rmds.MD.LastModifyingWriter().String())
 	}
-	md.log.CDebugf(ctx, "Unverifiable update for TLF %s", rmds.MD.ID)
+	md.log.CDebugf(ctx, "Unverifiable update for TLF %s", rmds.MD.TlfID())
 	return UnverifiableTlfUpdateError{tlf, writer, err}
 }
 
@@ -52,12 +52,12 @@ func (md *MDOpsStandard) verifyWriterKey(
 		var err error
 		if handle.IsFinal() {
 			err = md.config.KBPKI().HasUnverifiedVerifyingKey(ctx,
-				rmds.MD.LastModifyingWriter,
-				rmds.MD.WriterMetadataSigInfo.VerifyingKey)
+				rmds.MD.LastModifyingWriter(),
+				rmds.MD.GetWriterMetadataSigInfo().VerifyingKey)
 		} else {
 			err = md.config.KBPKI().HasVerifyingKey(ctx,
-				rmds.MD.LastModifyingWriter,
-				rmds.MD.WriterMetadataSigInfo.VerifyingKey,
+				rmds.MD.LastModifyingWriter(),
+				rmds.MD.GetWriterMetadataSigInfo().VerifyingKey,
 				rmds.untrustedServerTimestamp)
 		}
 		if err != nil {
@@ -71,7 +71,7 @@ func (md *MDOpsStandard) verifyWriterKey(
 	// writer MD was actually signed, since it was copied from a
 	// previous revision.  Search backwards for the most recent
 	// uncopied writer MD to get the right timestamp.
-	prevHead := rmds.MD.Revision - 1
+	prevHead := rmds.MD.RevisionNumber() - 1
 	for {
 		startRev := prevHead - maxMDsAtATime + 1
 		if startRev < MetadataRevisionInitial {
@@ -83,7 +83,7 @@ func (md *MDOpsStandard) verifyWriterKey(
 		// extra work by downloading the same MDs twice (for those
 		// that aren't yet in the cache).  That should be so rare that
 		// it's not worth optimizing.
-		prevMDs, err := getMDRange(ctx, md.config, rmds.MD.ID, rmds.MD.BID,
+		prevMDs, err := getMDRange(ctx, md.config, rmds.MD.TlfID(), rmds.MD.BID(),
 			startRev, prevHead, rmds.MD.MergedStatus())
 		if err != nil {
 			return err
@@ -92,16 +92,16 @@ func (md *MDOpsStandard) verifyWriterKey(
 		for i := len(prevMDs) - 1; i >= 0; i-- {
 			if !prevMDs[i].IsWriterMetadataCopiedSet() {
 				ok, err := CodecEqual(md.config.Codec(),
-					rmds.MD.WriterMetadataSigInfo,
-					prevMDs[i].WriterMetadataSigInfo)
+					rmds.MD.GetWriterMetadataSigInfo(),
+					prevMDs[i].GetWriterMetadataSigInfo())
 				if err != nil {
 					return err
 				}
 				if !ok {
 					return fmt.Errorf("Previous uncopied writer MD sig info "+
 						"for revision %d of folder %s doesn't match copied "+
-						"revision %d", prevMDs[i].Revision, rmds.MD.ID,
-						rmds.MD.Revision)
+						"revision %d", prevMDs[i].Revision(), rmds.MD.TlfID(),
+						rmds.MD.RevisionNumber())
 				}
 				// The fact the fact that we were able to process this
 				// MD correctly means that we already verified its key
@@ -114,74 +114,46 @@ func (md *MDOpsStandard) verifyWriterKey(
 		if len(prevMDs) < maxMDsAtATime {
 			return fmt.Errorf("Couldn't find uncopied MD previous to "+
 				"revision %d of folder %s for checking the writer "+
-				"timestamp", rmds.MD.Revision, rmds.MD.ID)
+				"timestamp", rmds.MD.RevisionNumber(), rmds.MD.TlfID())
 		}
-		prevHead = prevMDs[0].Revision - 1
+		prevHead = prevMDs[0].Revision() - 1
 	}
 }
 
 func (md *MDOpsStandard) processMetadata(
 	ctx context.Context, handle *TlfHandle, rmds *RootMetadataSigned) (
 	ImmutableRootMetadata, error) {
-	// A blank sig means this is a brand new MD object, and
-	// there's nothing to do.
-	if !rmds.IsInitialized() {
-		return ImmutableRootMetadata{}, errors.New(
-			"Missing RootMetadata signature")
-	}
-
-	// Otherwise, verify signatures and deserialize private data.
-
-	// Make sure the last writer is really a valid writer
-	writer := rmds.MD.LastModifyingWriter
-	if !handle.IsWriter(writer) {
+	// First, verify validity and signatures.
+	err := rmds.IsValidAndSigned(md.config.Codec(), md.config.Crypto())
+	if err != nil {
 		return ImmutableRootMetadata{}, MDMismatchError{
-			handle.GetCanonicalPath(),
-			fmt.Errorf("Writer MD (id=%s) was written by a non-writer %s",
-				rmds.MD.ID, writer)}
-	}
-
-	// Make sure the last user to change the blob is really a valid reader
-	user := rmds.MD.LastModifyingUser
-	if !handle.IsReader(user) {
-		return ImmutableRootMetadata{}, MDMismatchError{
-			handle.GetCanonicalPath(),
-			fmt.Errorf("MD (id=%s) was changed by a non-reader %s",
-				rmds.MD.ID, user),
+			rmds.MD.RevisionNumber(), handle.GetCanonicalPath(),
+			rmds.MD.TlfID(), err,
 		}
 	}
 
+	// Then, verify the verifying keys.
 	if err := md.verifyWriterKey(ctx, rmds, handle); err != nil {
 		return ImmutableRootMetadata{}, err
 	}
 
-	codec := md.config.Codec()
-	crypto := md.config.Crypto()
-
-	err := rmds.MD.VerifyWriterMetadata(codec, crypto)
-	if err != nil {
-		return ImmutableRootMetadata{}, err
-	}
-
 	if handle.IsFinal() {
-		err = md.config.KBPKI().HasUnverifiedVerifyingKey(ctx, user,
+		err = md.config.KBPKI().HasUnverifiedVerifyingKey(
+			ctx, rmds.MD.GetLastModifyingUser(),
 			rmds.SigInfo.VerifyingKey)
 	} else {
-		err = md.config.KBPKI().HasVerifyingKey(ctx, user,
-			rmds.SigInfo.VerifyingKey, rmds.untrustedServerTimestamp)
+		err = md.config.KBPKI().HasVerifyingKey(
+			ctx, rmds.MD.GetLastModifyingUser(),
+			rmds.SigInfo.VerifyingKey,
+			rmds.untrustedServerTimestamp)
 	}
 	if err != nil {
 		return ImmutableRootMetadata{}, md.convertVerifyingKeyError(ctx, rmds, handle, err)
 	}
 
-	err = rmds.VerifyRootMetadata(codec, crypto)
-	if err != nil {
-		return ImmutableRootMetadata{}, err
-	}
-
 	rmd := RootMetadata{
-		BareRootMetadata: rmds.MD,
-		tlfHandle:        handle,
+		bareMd:    rmds.MD,
+		tlfHandle: handle,
 	}
 
 	// Try to decrypt using the keys available in this md.  If that
@@ -193,7 +165,7 @@ func (md *MDOpsStandard) processMetadata(
 		return ImmutableRootMetadata{}, err
 	}
 
-	mdID, err := md.config.Crypto().MakeMdID(&rmd.BareRootMetadata)
+	mdID, err := md.config.Crypto().MakeMdID(rmd.bareMd)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -258,10 +230,11 @@ func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle,
 	mdHandlePath := mdHandle.GetCanonicalPath()
 	if !handleResolvesToMdHandle && !mdHandleResolvesToHandle {
 		return TlfID{}, ImmutableRootMetadata{}, MDMismatchError{
-			handle.GetCanonicalPath(),
+			rmds.MD.RevisionNumber(), handle.GetCanonicalPath(),
+			rmds.MD.TlfID(),
 			fmt.Errorf(
-				"MD (id=%s) contained unexpected handle path %s (%s -> %s) (%s -> %s)",
-				rmds.MD.ID, mdHandlePath,
+				"MD contained unexpected handle path %s (%s -> %s) (%s -> %s)",
+				mdHandlePath,
 				handle.GetCanonicalPath(),
 				partialResolvedHandle.GetCanonicalPath(),
 				mdHandle.GetCanonicalPath(),
@@ -290,19 +263,19 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 	id TlfID, bid BranchID, handle *TlfHandle, rmds *RootMetadataSigned) (
 	ImmutableRootMetadata, error) {
 	// Make sure the signed-over ID matches
-	if id != rmds.MD.ID {
+	if id != rmds.MD.TlfID() {
 		return ImmutableRootMetadata{}, MDMismatchError{
-			id.String(),
+			rmds.MD.RevisionNumber(), id.String(), rmds.MD.TlfID(),
 			fmt.Errorf("MD contained unexpected folder id %s, expected %s",
-				rmds.MD.ID.String(), id.String()),
+				rmds.MD.TlfID().String(), id.String()),
 		}
 	}
 	// Make sure the signed-over branch ID matches
-	if bid != NullBranchID && bid != rmds.MD.BID {
+	if bid != NullBranchID && bid != rmds.MD.BID() {
 		return ImmutableRootMetadata{}, MDMismatchError{
-			id.String(),
+			rmds.MD.RevisionNumber(), id.String(), rmds.MD.TlfID(),
 			fmt.Errorf("MD contained unexpected branch id %s, expected %s, "+
-				"folder id %s", rmds.MD.BID.String(), bid.String(), id.String()),
+				"folder id %s", rmds.MD.BID().String(), bid.String(), id.String()),
 		}
 	}
 
@@ -416,16 +389,16 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 
 	// Sort into slice based on revision.
 	irmds := make([]ImmutableRootMetadata, len(rmdses))
-	startRev := rmdses[0].MD.Revision
+	startRev := rmdses[0].MD.RevisionNumber()
 	numExpected := MetadataRevision(len(irmds))
 	for irmd := range irmdChan {
-		i := irmd.Revision - startRev
+		i := irmd.Revision() - startRev
 		if i < 0 || i >= numExpected {
 			return nil, fmt.Errorf("Unexpected revision %d; expected "+
-				"something between %d and %d inclusive", irmd.Revision,
+				"something between %d and %d inclusive", irmd.Revision(),
 				startRev, startRev+numExpected-1)
 		} else if irmds[i] != (ImmutableRootMetadata{}) {
-			return nil, fmt.Errorf("Got revision %d twice", irmd.Revision)
+			return nil, fmt.Errorf("Got revision %d twice", irmd.Revision())
 		}
 		irmds[i] = irmd
 	}
@@ -441,12 +414,13 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 			// an ImmutableRootMetadata in
 			// processMetadataWithID below, and we want to
 			// do this check before then.
-			err = prevIRMD.BareRootMetadata.CheckValidSuccessor(
-				prevIRMD.mdID, &irmd.BareRootMetadata)
+			err = prevIRMD.bareMd.CheckValidSuccessor(
+				prevIRMD.mdID, irmd.bareMd)
 			if err != nil {
 				return nil, MDMismatchError{
+					prevIRMD.Revision(),
 					irmd.GetTlfHandle().GetCanonicalPath(),
-					err,
+					prevIRMD.TlfID(), err,
 				}
 			}
 		}
@@ -496,6 +470,13 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
+	// Ensure that the block changes are properly unembedded.
+	if rmd.data.Changes.Info.BlockPointer == zeroPtr &&
+		!md.config.BlockSplitter().ShouldEmbedBlockChanges(&rmd.data.Changes) {
+		return MdID{},
+			errors.New("MD has embedded block changes, but shouldn't")
+	}
+
 	brmd, err := encryptMDPrivateData(
 		ctx, md.config.Codec(), md.config.Crypto(),
 		md.config.Crypto(), md.config.KeyManager(), me, rmd.ReadOnly())
@@ -503,9 +484,12 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
-	rmds := RootMetadataSigned{
-		MD: *brmd,
+	mbrmd, ok := brmd.(MutableBareRootMetadata)
+	if !ok {
+		return MdID{}, MutableBareRootMetadataNoImplError{}
 	}
+
+	rmds := RootMetadataSigned{MD: mbrmd}
 
 	err = signMD(ctx, md.config.Codec(), md.config.Crypto(), &rmds)
 	if err != nil {
@@ -517,12 +501,12 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
-	mdID, err := md.config.Crypto().MakeMdID(&rmds.MD)
+	mdID, err := md.config.Crypto().MakeMdID(rmds.MD)
 	if err != nil {
 		return MdID{}, err
 	}
 
-	rmd.BareRootMetadata = rmds.MD
+	rmd.bareMd = rmds.MD
 	return mdID, nil
 }
 
@@ -538,14 +522,14 @@ func (md *MDOpsStandard) Put(
 // PutUnmerged implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) PutUnmerged(
 	ctx context.Context, rmd *RootMetadata) (MdID, error) {
-	rmd.WFlags |= MetadataFlagUnmerged
-	if rmd.BID == NullBranchID {
+	rmd.SetUnmerged()
+	if rmd.BID() == NullBranchID {
 		// new branch ID
 		bid, err := md.config.Crypto().MakeRandomBranchID()
 		if err != nil {
 			return MdID{}, err
 		}
-		rmd.BID = bid
+		rmd.SetBranchID(bid)
 	}
 	return md.put(ctx, rmd)
 }

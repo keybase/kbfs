@@ -11,7 +11,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	metrics "github.com/rcrowley/go-metrics"
 	"golang.org/x/net/context"
 )
@@ -665,7 +665,7 @@ func NewConfigLocalWithCryptoForSigning(signingKey SigningKey) *ConfigLocal {
 		return logger.NewNull()
 	})
 	cryptPrivateKey := MakeLocalUserCryptPrivateKeyOrBust("nobody")
-	crypto := NewCryptoLocal(config, signingKey, cryptPrivateKey)
+	crypto := NewCryptoLocal(config.Codec(), signingKey, cryptPrivateKey)
 	config.SetCrypto(crypto)
 	return config
 }

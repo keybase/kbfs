@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 	jsonw "github.com/keybase/go-jsonw"
 )
 
@@ -672,11 +672,6 @@ func (f JSONConfigFile) GetUpdateDisabled() (bool, bool) {
 
 func (f JSONConfigFile) IsAdmin() (bool, bool) {
 	return f.GetBoolAtPath("is_admin")
-}
-
-func (f JSONConfigFile) GetAppStartMode() string {
-	s, _ := f.GetStringAtPath("app_start_mode")
-	return s
 }
 
 func (f JSONConfigFile) GetTimeAtPath(path string) keybase1.Time {

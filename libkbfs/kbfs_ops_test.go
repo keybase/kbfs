@@ -14,7 +14,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/libkb"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -250,12 +250,12 @@ func injectNewRMD(t *testing.T, config *ConfigMock) (
 			EncodedSize: 1,
 		},
 	}
-	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
+	rmd.FakeInitialRekey(h.ToBareHandleOrBust())
 
 	ops := getOps(config, id)
 	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(fakeTlfIDByte(id)),
 		time.Now())
-	rmd.SerializedPrivateMetadata = make([]byte, 1)
+	rmd.SetSerializedPrivateMetadata(make([]byte, 1))
 	config.Notifier().RegisterForChanges(
 		[]FolderBranch{{id, MasterBranch}}, config.observer)
 	uid := h.FirstResolvedWriter()
@@ -408,8 +408,8 @@ func (p ptrMatcher) String() string {
 }
 
 func fillInNewMD(t *testing.T, config *ConfigMock, rmd *RootMetadata) {
-	if !rmd.ID.IsPublic() {
-		FakeInitialRekey(&rmd.BareRootMetadata, rmd.GetTlfHandle().ToBareHandleOrBust())
+	if !rmd.TlfID().IsPublic() {
+		rmd.FakeInitialRekey(rmd.GetTlfHandle().ToBareHandleOrBust())
 	}
 	rootPtr := BlockPointer{
 		ID:      fakeBlockID(42),
@@ -945,16 +945,16 @@ func (s shimMDOps) Put(ctx context.Context, rmd *RootMetadata) (MdID, error) {
 	if s.isUnmerged {
 		return MdID{}, MDServerErrorConflictRevision{}
 	}
-	rmd.SerializedPrivateMetadata = []byte{0x1}
-	return s.crypto.MakeMdID(&rmd.BareRootMetadata)
+	rmd.SetSerializedPrivateMetadata([]byte{0x1})
+	return s.crypto.MakeMdID(rmd.bareMd)
 }
 
 func (s shimMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (MdID, error) {
 	if !s.isUnmerged {
 		panic("Unexpected PutUnmerged call")
 	}
-	rmd.SerializedPrivateMetadata = []byte{0x2}
-	return s.crypto.MakeMdID(&rmd.BareRootMetadata)
+	rmd.SetSerializedPrivateMetadata([]byte{0x2})
+	return s.crypto.MakeMdID(rmd.bareMd)
 }
 
 func expectSyncBlockHelper(
@@ -1020,13 +1020,13 @@ func expectSyncBlockHelper(
 			Do(func(rmd ImmutableRootMetadata) {
 				*newRmd = rmd
 				// Check that the ref bytes are correct.
-				if rmd.RefBytes != refBytes {
+				if rmd.RefBytes() != refBytes {
 					t.Errorf("Unexpected refbytes: %d vs %d",
-						rmd.RefBytes, refBytes)
+						rmd.RefBytes(), refBytes)
 				}
-				if rmd.UnrefBytes != unrefBytes {
+				if rmd.UnrefBytes() != unrefBytes {
 					t.Errorf("Unexpected unrefbytes: %d vs %d",
-						rmd.UnrefBytes, unrefBytes)
+						rmd.UnrefBytes(), unrefBytes)
 				}
 			}).Return(nil)
 	}
@@ -3685,10 +3685,10 @@ func TestKBFSOpsTruncateShortensLastBlock(t *testing.T) {
 		t.Errorf("Wrote bad contents for block 2: %v", newBlock2.Contents)
 	} else if len(newPBlock.IPtrs) != 2 {
 		t.Errorf("Wrong number of indirect pointers: %d", len(newPBlock.IPtrs))
-	} else if rmd.UnrefBytes != 0+6 {
+	} else if rmd.UnrefBytes() != 0+6 {
 		// The fileid and the last block was all modified and marked dirty
 		t.Errorf("Truncated block not correctly unref'd, unrefBytes = %d",
-			rmd.UnrefBytes)
+			rmd.UnrefBytes())
 	}
 	checkBlockCache(t, config, []BlockID{rootID, fileID, id1, id2},
 		map[BlockPointer]BranchName{
@@ -3766,10 +3766,10 @@ func TestKBFSOpsTruncateRemovesABlock(t *testing.T) {
 		t.Errorf("Wrote bad contents: %v", newBlock1.Contents)
 	} else if len(newPBlock.IPtrs) != 1 {
 		t.Errorf("Wrong number of indirect pointers: %d", len(newPBlock.IPtrs))
-	} else if rmd.UnrefBytes != 0+5+6 {
+	} else if rmd.UnrefBytes() != 0+5+6 {
 		// The fileid and both blocks were all modified and marked dirty
 		t.Errorf("Truncated block not correctly unref'd, unrefBytes = %d",
-			rmd.UnrefBytes)
+			rmd.UnrefBytes())
 	}
 	checkBlockCache(t, config, []BlockID{rootID, fileID, id1},
 		map[BlockPointer]BranchName{
@@ -3866,15 +3866,16 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 
 	expectedChanges := 1
-	// SetEx() should do nothing for symlinks.
-	if entryType == Sym {
+	// SetEx() should do nothing when the exec status doesn't change.
+	if entryType == Sym || entryType == Dir || (entryType == File && !ex) ||
+		(entryType == Exec && ex) {
 		expectedChanges = 0
 	}
 
 	var expectedPath path
 	var newRmd ImmutableRootMetadata
 	var blocks []BlockID
-	if entryType != Sym {
+	if expectedChanges > 0 {
 		// sync block
 		blocks = make([]BlockID, 2)
 		expectedPath, _ = expectSyncBlock(t, config, nil, uid, id, "",
@@ -3909,7 +3910,7 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 		if rootBlock.Children["a"].Type != expectedType {
 			t.Errorf("a has type %s, expected %s",
 				rootBlock.Children["a"].Type, expectedType)
-		} else if entryType != Sym {
+		} else if expectedChanges > 0 {
 			// SetEx() should always change the ctime of
 			// non-symlinks.
 			// pretend it's a rename so only ctime gets checked
@@ -3917,12 +3918,12 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 				expectedType, "", true)
 		}
 	}
-	if entryType != Sym {
+	if expectedChanges > 0 {
 		blocks = blocks[:len(blocks)-1] // last block is never in the cache
 	}
 	checkBlockCache(t, config, append(blocks, rootID), nil)
 
-	if entryType != Sym {
+	if expectedChanges > 0 {
 		// make sure the setAttrOp is correct
 		sao, ok := newRmd.data.Changes.Ops[0].(*setAttrOp)
 		if !ok {
@@ -4503,7 +4504,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	// manually add b
 	expectedPath.path = append(expectedPath.path,
 		pathNode{BlockPointer{ID: aID, BlockContext: BlockContext{RefNonce: refNonce}}, "b"})
-	config.mockBops.EXPECT().Put(gomock.Any(), rmd.ID,
+	config.mockBops.EXPECT().Put(gomock.Any(), rmd.TlfID(),
 		ptrMatcher{expectedPath.path[1].BlockPointer}, readyBlockData).
 		Return(nil)
 
@@ -4996,7 +4997,7 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 	lastCall = config.mockBops.EXPECT().Ready(gomock.Any(), kmdMatcher{rmd},
 		gomock.Any()).Return(changeBlockID, changePlainSize,
 		changeReadyBlockData, nil).After(lastCall)
-	config.mockBops.EXPECT().Put(gomock.Any(), rmd.ID,
+	config.mockBops.EXPECT().Put(gomock.Any(), rmd.TlfID(),
 		ptrMatcher{BlockPointer{ID: changeBlockID}}, changeReadyBlockData).
 		Return(nil)
 
@@ -5441,7 +5442,7 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	config2 := ConfigAsUser(config1, "mallory")
 	crypto2 := cryptoFixedTlf{config2.Crypto(), fb1.Tlf}
 	config2.SetCrypto(crypto2)
-	mdserver2, err := NewMDServerMemory(config2)
+	mdserver2, err := NewMDServerMemory(mdServerLocalConfigAdapter{config2})
 	require.NoError(t, err)
 	config2.MDServer().Shutdown()
 	config2.SetMDServer(mdserver2)
@@ -5461,7 +5462,7 @@ func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now route alice's TLF to mallory's MD server.
-	config1.SetMDServer(mdserver2.copy(config1))
+	config1.SetMDServer(mdserver2.copy(mdServerLocalConfigAdapter{config1}))
 
 	// Simulate the server triggering alice to update.
 	config1.SetKeyCache(NewKeyCacheStandard(1))

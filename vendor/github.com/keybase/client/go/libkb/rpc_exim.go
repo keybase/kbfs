@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-crypto/openpgp"
 	pgpErrors "github.com/keybase/go-crypto/openpgp/errors"
 	rpc "github.com/keybase/go-framed-msgpack-rpc"
@@ -339,10 +339,16 @@ func ImportStatusAsError(s *keybase1.Status) error {
 		return GPGUnavailableError{}
 	case SCNotFound:
 		return NotFoundError{Msg: s.Desc}
+	case SCDeleted:
+		return DeletedError{Msg: s.Desc}
 	case SCDecryptionError:
 		return DecryptionError{}
 	case SCKeyRevoked:
 		return KeyRevokedError{msg: s.Desc}
+	case SCDeviceNameInUse:
+		return DeviceNameInUseError{}
+	case SCDeviceBadName:
+		return DeviceBadNameError{}
 	case SCGenericAPIError:
 		var code int
 		for _, field := range s.Fields {
@@ -500,7 +506,8 @@ func ImportWarnings(v []string) Warnings {
 func (c CryptocurrencyChainLink) Export() (ret keybase1.Cryptocurrency) {
 	ret.Pkhash = c.pkhash
 	ret.Address = c.address
-	return
+	ret.SigID = c.GetSigID()
+	return ret
 }
 
 //=============================================================================
@@ -1039,7 +1046,7 @@ func (e ResolutionError) ToStatus() keybase1.Status {
 		Name: "SC_RESOLUTION_FAILED",
 		Desc: e.Msg,
 		Fields: []keybase1.StringKVPair{
-			{"input", e.Input},
+			{Key: "input", Value: e.Input},
 		},
 	}
 }
@@ -1050,7 +1057,7 @@ func (e IdentifyFailedError) ToStatus() keybase1.Status {
 		Name: "SC_IDENTIFY_FAILED",
 		Desc: e.Reason,
 		Fields: []keybase1.StringKVPair{
-			{"assertion", e.Assertion},
+			{Key: "assertion", Value: e.Assertion},
 		},
 	}
 }
@@ -1078,7 +1085,7 @@ func (e NoPGPEncryptionKeyError) ToStatus() keybase1.Status {
 	}
 	if e.HasDeviceKey {
 		ret.Fields = []keybase1.StringKVPair{
-			{"device", "1"},
+			{Key: "device", Value: "1"},
 		}
 	}
 	return ret
@@ -1092,7 +1099,7 @@ func (e NoNaClEncryptionKeyError) ToStatus() keybase1.Status {
 	}
 	if e.HasPGPKey {
 		ret.Fields = []keybase1.StringKVPair{
-			{"pgp", "1"},
+			{Key: "pgp", Value: "1"},
 		}
 	}
 	return ret
@@ -1104,8 +1111,8 @@ func (e WrongCryptoFormatError) ToStatus() keybase1.Status {
 		Name: "SC_WRONG_CRYPTO_FORMAT",
 		Desc: e.Operation,
 		Fields: []keybase1.StringKVPair{
-			{"wanted", string(e.Wanted)},
-			{"received", string(e.Received)},
+			{Key: "wanted", Value: string(e.Wanted)},
+			{Key: "received", Value: string(e.Received)},
 		},
 	}
 	return ret
@@ -1116,7 +1123,7 @@ func (e NoMatchingGPGKeysError) ToStatus() keybase1.Status {
 		Code: SCKeyNoMatchingGPG,
 		Name: "SC_KEY_NO_MATCHING_GPG",
 		Fields: []keybase1.StringKVPair{
-			{"fingerprints", strings.Join(e.Fingerprints, ",")},
+			{Key: "fingerprints", Value: strings.Join(e.Fingerprints, ",")},
 		},
 	}
 	if e.HasActiveDevice {
@@ -1171,6 +1178,14 @@ func (e NotFoundError) ToStatus() keybase1.Status {
 	}
 }
 
+func (e DeletedError) ToStatus() keybase1.Status {
+	return keybase1.Status{
+		Code: SCDeleted,
+		Name: "SC_DELETED",
+		Desc: e.Error(),
+	}
+}
+
 func (e DecryptionError) ToStatus() keybase1.Status {
 	return keybase1.Status{
 		Code: SCDecryptionError,
@@ -1200,7 +1215,15 @@ func (a *APIError) ToStatus() (s keybase1.Status) {
 	s.Name = "GENERIC_API_ERROR"
 	s.Desc = a.Msg
 	s.Fields = []keybase1.StringKVPair{
-		{"code", fmt.Sprintf("%d", a.Code)},
+		{Key: "code", Value: fmt.Sprintf("%d", a.Code)},
 	}
 	return
+}
+
+func (e DeviceNameInUseError) ToStatus() (s keybase1.Status) {
+	return keybase1.Status{
+		Code: SCDeviceNameInUse,
+		Name: "SC_DEVICE_NAME_IN_USE",
+		Desc: e.Error(),
+	}
 }

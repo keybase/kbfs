@@ -48,7 +48,7 @@ func (r *RemoteStatus) loop(ctx context.Context, log logger.Logger, config libkb
 		// No deferring inside loops, and no panics either here.
 		cancel()
 		if err != nil {
-			log.Warning("KBFS Status failed: %v", err)
+			log.Warning("KBFS Status failed: %v,%v", st, err)
 		}
 		r.update(st)
 		// Block on the channel or shutdown.
@@ -109,7 +109,7 @@ func (r *RemoteStatus) ExtraFileName() string {
 	r.Lock()
 	defer r.Unlock()
 
-	if r.extraFileName == "" || time.Since(r.failingSince) > failureDisplayThreshold {
+	if r.extraFileName == "" || time.Since(r.failingSince) < failureDisplayThreshold {
 		return ""
 	}
 

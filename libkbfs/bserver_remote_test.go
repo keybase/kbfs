@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/keybase/client/go/libkb"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc"
 	"golang.org/x/net/context"
 )
@@ -29,7 +29,8 @@ func NewFakeBServerClient(
 	goChan <-chan struct{},
 	finishChan chan<- struct{}) *FakeBServerClient {
 	return &FakeBServerClient{
-		bserverMem: NewBlockServerMemory(config),
+		bserverMem: NewBlockServerMemory(
+			blockServerLocalConfigAdapter{config}),
 		readyChan:  readyChan,
 		goChan:     goChan,
 		finishChan: finishChan,

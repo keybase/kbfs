@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 	jsonw "github.com/keybase/go-jsonw"
 )
 
@@ -251,7 +251,7 @@ func (s *Session) check() error {
 		return nil
 	}
 
-	arg := NewRetryAPIArg(s.G(), "sesscheck")
+	arg := NewRetryAPIArg("sesscheck")
 	arg.SessionR = s
 	arg.NeedSession = true
 	arg.AppStatusCodes = []int{SCOk, SCBadSession}

@@ -135,13 +135,13 @@ func makeMDServer(config Config, serverInMemory bool, serverRootDir, mdserverAdd
 	MDServer, error) {
 	if serverInMemory {
 		// local in-memory MD server
-		return NewMDServerMemory(config)
+		return NewMDServerMemory(mdServerLocalConfigAdapter{config})
 	}
 
 	if len(serverRootDir) > 0 {
 		// local persistent MD server
 		mdPath := filepath.Join(serverRootDir, "kbfs_md")
-		return NewMDServerDir(config, mdPath)
+		return NewMDServerDir(mdServerLocalConfigAdapter{config}, mdPath)
 	}
 
 	if len(mdserverAddr) == 0 {
@@ -183,13 +183,15 @@ func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverA
 	BlockServer, error) {
 	if serverInMemory {
 		// local in-memory block server
-		return NewBlockServerMemory(config), nil
+		return NewBlockServerMemory(
+			blockServerLocalConfigAdapter{config}), nil
 	}
 
 	if len(serverRootDir) > 0 {
 		// local persistent block server
 		blockPath := filepath.Join(serverRootDir, "kbfs_block")
-		return NewBlockServerDir(config, blockPath), nil
+		return NewBlockServerDir(
+			blockServerLocalConfigAdapter{config}, blockPath), nil
 	}
 
 	if len(bserverAddr) == 0 {
@@ -379,7 +381,8 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 			config.BlockCache(),
 			config.BlockServer(), config.MDOps())
 		ctx := context.Background()
-		err := jServer.EnableExistingJournals(ctx)
+		err := jServer.EnableExistingJournals(
+			ctx, TLFJournalBackgroundWorkEnabled)
 		if err == nil {
 			config.SetBlockCache(jServer.blockCache())
 			config.SetBlockServer(jServer.blockServer())

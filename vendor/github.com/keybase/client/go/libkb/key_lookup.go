@@ -4,7 +4,7 @@
 package libkb
 
 import (
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/saltpack"
 )
 
@@ -64,9 +64,8 @@ func keyLookup(g *GlobalContext, arg keyLookupArg) (username string, uid keybase
 
 	// lookup key on api server
 	args := APIArg{
-		Endpoint:     "key/basics",
-		Args:         httpArgs,
-		Contextified: NewContextified(g),
+		Endpoint: "key/basics",
+		Args:     httpArgs,
 	}
 
 	if err = g.API.GetDecode(args, &data); err != nil {

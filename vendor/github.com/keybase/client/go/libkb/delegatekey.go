@@ -6,7 +6,7 @@ package libkb
 import (
 	"encoding/hex"
 
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 	jsonw "github.com/keybase/go-jsonw"
 )
 
@@ -262,10 +262,9 @@ func (d *Delegator) post(lctx LoginContext) (err error) {
 	}
 
 	arg := APIArg{
-		Endpoint:     "key/add",
-		NeedSession:  true,
-		Args:         hargs,
-		Contextified: NewContextified(d.G()),
+		Endpoint:    "key/add",
+		NeedSession: true,
+		Args:        hargs,
 	}
 	if lctx != nil {
 		arg.SessionR = lctx.LocalSession()

@@ -8,7 +8,7 @@ import (
 	"io"
 	"time"
 
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 )
 
 type SigChain struct {
@@ -142,7 +142,6 @@ func (sc *SigChain) LoadFromServer(t *MerkleTriple, selfUID keybase1.UID) (dirty
 			"uid": UIDArg(sc.uid),
 			"low": I{int(low)},
 		},
-		Contextified: NewContextified(sc.G()),
 	})
 
 	if err != nil {

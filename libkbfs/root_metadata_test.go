@@ -9,8 +9,9 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/keybase/client/go/externals"
 	"github.com/keybase/client/go/libkb"
-	"github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -98,11 +99,11 @@ func makeFakeTlfHandle(
 
 func newRootMetadataOrBust(
 	t *testing.T, tlfID TlfID, h *TlfHandle) *RootMetadata {
-	var rmd RootMetadata
-	err := updateNewBareRootMetadata(&rmd.BareRootMetadata, tlfID, h.ToBareHandleOrBust())
+	rmd := NewRootMetadata()
+	err := rmd.Update(tlfID, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 	rmd.tlfHandle = h
-	return &rmd
+	return rmd
 }
 
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for
@@ -157,7 +158,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	h := makeFakeTlfHandle(t, 14, false, uw, ur)
 	tlfID := FakeTlfID(0, false)
 	rmd := newRootMetadataOrBust(t, tlfID, h)
-	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
+	rmd.FakeInitialRekey(h.ToBareHandleOrBust())
 
 	dirHandle := rmd.GetTlfHandle()
 	require.Equal(t, h, dirHandle)
@@ -176,7 +177,7 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 	if rmd.LatestKeyGeneration() != 0 {
 		t.Errorf("Expected key generation to be invalid (0)")
 	}
-	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
+	rmd.FakeInitialRekey(h.ToBareHandleOrBust())
 	if rmd.LatestKeyGeneration() != FirstValidKeyGen {
 		t.Errorf("Expected key generation to be valid(%d)", FirstValidKeyGen)
 	}
@@ -194,7 +195,7 @@ func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
 
 // Test that old encoded WriterMetadata objects (i.e., without any
 // extra fields) can be deserialized and serialized to the same form,
-// which is important for RootMetadata.VerifyWriterMetadata().
+// which is important for RootMetadata.IsValidAndSigned().
 func TestWriterMetadataUnchangedEncoding(t *testing.T) {
 	encodedWm := []byte{
 		0x89, 0xa3, 0x42, 0x49, 0x44, 0xc4, 0x10, 0x0,
@@ -217,7 +218,7 @@ func TestWriterMetadataUnchangedEncoding(t *testing.T) {
 		0xa, 0xb,
 	}
 
-	expectedWm := WriterMetadata{
+	expectedWm := WriterMetadataV2{
 		SerializedPrivateMetadata: []byte{0xa, 0xb},
 		LastModifyingWriter:       "uid1",
 		Writers:                   []keybase1.UID{"uid1", "uid2"},
@@ -231,7 +232,7 @@ func TestWriterMetadataUnchangedEncoding(t *testing.T) {
 
 	c := NewCodecMsgpack()
 
-	var wm WriterMetadata
+	var wm WriterMetadataV2
 	err := c.Decode(encodedWm, &wm)
 	require.NoError(t, err)
 
@@ -244,11 +245,11 @@ func TestWriterMetadataUnchangedEncoding(t *testing.T) {
 
 // Test that WriterMetadata has only a fixed (frozen) set of fields.
 func TestWriterMetadataEncodedFields(t *testing.T) {
-	sa1, _ := libkb.NormalizeSocialAssertion("uid1@twitter")
-	sa2, _ := libkb.NormalizeSocialAssertion("uid2@twitter")
+	sa1, _ := externals.NormalizeSocialAssertion("uid1@twitter")
+	sa2, _ := externals.NormalizeSocialAssertion("uid2@twitter")
 	// Usually exactly one of Writers/WKeys is filled in, but we
 	// fill in both here for testing.
-	wm := WriterMetadata{
+	wm := WriterMetadataV2{
 		ID:      FakeTlfID(0xa, false),
 		Writers: []keybase1.UID{"uid1", "uid2"},
 		WKeys:   TLFWriterKeyGenerations{{}},
@@ -309,15 +310,15 @@ func (wkgf tlfWriterKeyGenerationsFuture) toCurrent() TLFWriterKeyGenerations {
 }
 
 type writerMetadataFuture struct {
-	WriterMetadata
+	WriterMetadataV2
 	// Override WriterMetadata.WKeys.
 	WKeys tlfWriterKeyGenerationsFuture
 	// Override WriterMetadata.Extra.
 	Extra writerMetadataExtraFuture `codec:"x,omitempty,omitemptycheckstruct"`
 }
 
-func (wmf writerMetadataFuture) toCurrent() WriterMetadata {
-	wm := wmf.WriterMetadata
+func (wmf writerMetadataFuture) toCurrent() WriterMetadataV2 {
+	wm := wmf.WriterMetadataV2
 	wm.WKeys = wmf.WKeys.toCurrent()
 	wm.Extra = wmf.Extra.toCurrent()
 	return wm
@@ -328,7 +329,7 @@ func (wmf writerMetadataFuture) toCurrentStruct() currentStruct {
 }
 
 func makeFakeWriterMetadataFuture(t *testing.T) writerMetadataFuture {
-	wmd := WriterMetadata{
+	wmd := WriterMetadataV2{
 		// This needs to be list format so it fails to compile if new fields
 		// are added, effectively checking at compile time whether new fields
 		// have been added
@@ -345,7 +346,7 @@ func makeFakeWriterMetadataFuture(t *testing.T) writerMetadataFuture {
 		WriterMetadataExtra{},
 	}
 	wkb := makeFakeTLFWriterKeyBundleFuture(t)
-	sa, _ := libkb.NormalizeSocialAssertion("foo@twitter")
+	sa, _ := externals.NormalizeSocialAssertion("foo@twitter")
 	return writerMetadataFuture{
 		wmd,
 		tlfWriterKeyGenerationsFuture{&wkb},
@@ -381,7 +382,7 @@ func (rkgf tlfReaderKeyGenerationsFuture) toCurrent() TLFReaderKeyGenerations {
 // in RootMetadata, so that they may be overridden in
 // rootMetadataFuture.
 type bareRootMetadataWrapper struct {
-	BareRootMetadata
+	BareRootMetadataV2
 }
 
 type bareRootMetadataFuture struct {
@@ -397,9 +398,9 @@ type bareRootMetadataFuture struct {
 	extra
 }
 
-func (brmf *bareRootMetadataFuture) toCurrent() *BareRootMetadata {
-	rm := brmf.bareRootMetadataWrapper.BareRootMetadata
-	rm.WriterMetadata = WriterMetadata(brmf.writerMetadataFuture.toCurrent())
+func (brmf *bareRootMetadataFuture) toCurrent() BareRootMetadata {
+	rm := brmf.bareRootMetadataWrapper.BareRootMetadataV2
+	rm.WriterMetadataV2 = WriterMetadataV2(brmf.writerMetadataFuture.toCurrent())
 	rm.RKeys = brmf.RKeys.toCurrent()
 	return &rm
 }
@@ -413,15 +414,15 @@ func makeFakeBareRootMetadataFuture(t *testing.T) *bareRootMetadataFuture {
 	rkb := makeFakeTLFReaderKeyBundleFuture(t)
 	h, err := DefaultHash([]byte("fake buf"))
 	require.NoError(t, err)
-	sa, _ := libkb.NormalizeSocialAssertion("bar@github")
+	sa, _ := externals.NormalizeSocialAssertion("bar@github")
 	rmf := bareRootMetadataFuture{
 		wmf,
 		bareRootMetadataWrapper{
-			BareRootMetadata{
+			BareRootMetadataV2{
 				// This needs to be list format so it fails to compile if new
 				// fields are added, effectively checking at compile time
 				// whether new fields have been added
-				WriterMetadata{},
+				WriterMetadataV2{},
 				SignatureInfo{
 					100,
 					[]byte{0xc},
@@ -458,7 +459,7 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	rmd := newRootMetadataOrBust(t, id, h)
 
-	buf, err := config.Codec().Encode(rmd.WriterMetadata)
+	buf, err := rmd.GetSerializedWriterMetadata(config.Codec())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -466,12 +467,12 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmd.WriterMetadataSigInfo = sigInfo
+	rmd.SetWriterMetadataSigInfo(sigInfo)
 
 	// Copy bit unset.
 	newRmd := newRootMetadataOrBust(t, id, h)
-	ok, err := newRmd.IsValidRekeyRequest(
-		config.Codec(), &rmd.BareRootMetadata, newRmd.LastModifyingWriter)
+	ok, err := newRmd.bareMd.IsValidRekeyRequest(
+		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -480,13 +481,13 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	}
 
 	// Set the copy bit; note the writer metadata is the same.
-	newRmd.Flags |= MetadataFlagWriterMetadataCopied
+	newRmd.SetWriterMetadataCopiedBit()
 
 	// Writer metadata siginfo mismatch.
 	config2 := MakeTestConfigOrBust(t, "bob")
 	defer config2.Shutdown()
 
-	buf, err = config2.Codec().Encode(newRmd.WriterMetadata)
+	buf, err = newRmd.GetSerializedWriterMetadata(config2.Codec())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -494,9 +495,9 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newRmd.WriterMetadataSigInfo = sigInfo2
-	ok, err = newRmd.IsValidRekeyRequest(
-		config.Codec(), &rmd.BareRootMetadata, newRmd.LastModifyingWriter)
+	newRmd.SetWriterMetadataSigInfo(sigInfo2)
+	ok, err = newRmd.bareMd.IsValidRekeyRequest(
+		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -505,9 +506,9 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	}
 
 	// Replace with copied signature.
-	newRmd.WriterMetadataSigInfo = sigInfo
-	ok, err = newRmd.IsValidRekeyRequest(
-		config.Codec(), &rmd.BareRootMetadata, newRmd.LastModifyingWriter)
+	newRmd.SetWriterMetadataSigInfo(sigInfo)
+	ok, err = newRmd.bareMd.IsValidRekeyRequest(
+		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -524,7 +525,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob@twitter", false)
 	rmd := newRootMetadataOrBust(t, id, h)
-	rmds := RootMetadataSigned{MD: rmd.BareRootMetadata}
+	rmds := RootMetadataSigned{MD: rmd.bareMd}
 	if g, e := rmds.Version(), config.MetadataVersion(); g != e {
 		t.Errorf("MD with unresolved users got wrong version %d, expected %d",
 			g, e)
@@ -534,7 +535,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	id2 := FakeTlfID(2, false)
 	h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
 	rmd2 := newRootMetadataOrBust(t, id2, h2)
-	rmds2 := RootMetadataSigned{MD: rmd2.BareRootMetadata}
+	rmds2 := RootMetadataSigned{MD: rmd2.bareMd}
 	if g, e := rmds2.Version(), MetadataVer(PreExtraMetadataVer); g != e {
 		t.Errorf("MD without unresolved users got wrong version %d, "+
 			"expected %d", g, e)
@@ -542,9 +543,9 @@ func TestRootMetadataVersion(t *testing.T) {
 
 	// ... including if the assertions get resolved.
 	AddNewAssertionForTestOrBust(t, config, "bob", "bob@twitter")
-	rmd.SerializedPrivateMetadata = []byte{1} // MakeSuccessor requires this
-	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
-	if rmd.SerializedPrivateMetadata == nil {
+	rmd.SetSerializedPrivateMetadata([]byte{1}) // MakeSuccessor requires this
+	rmd.FakeInitialRekey(h.ToBareHandleOrBust())
+	if rmd.GetSerializedPrivateMetadata() == nil {
 		t.Fatalf("Nil private MD")
 	}
 	h3, err := h.ResolveAgain(context.Background(), config.KBPKI())
@@ -555,12 +556,12 @@ func TestRootMetadataVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't make MD successor: %v", err)
 	}
-	FakeInitialRekey(&rmd3.BareRootMetadata, h3.ToBareHandleOrBust())
+	rmd3.FakeInitialRekey(h3.ToBareHandleOrBust())
 	err = rmd3.updateFromTlfHandle(h3)
 	if err != nil {
 		t.Fatalf("Couldn't update TLF handle: %v", err)
 	}
-	rmds3 := RootMetadataSigned{MD: rmd3.BareRootMetadata}
+	rmds3 := RootMetadataSigned{MD: rmd3.bareMd}
 	if g, e := rmds3.Version(), MetadataVer(PreExtraMetadataVer); g != e {
 		t.Errorf("MD without unresolved users got wrong version %d, "+
 			"expected %d", g, e)
@@ -574,7 +575,7 @@ func TestMakeRekeyReadError(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	rmd := newRootMetadataOrBust(t, id, h)
-	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
+	rmd.FakeInitialRekey(h.ToBareHandleOrBust())
 
 	u, uid, err := config.KBPKI().Resolve(context.Background(), "bob")
 	require.NoError(t, err)
@@ -599,7 +600,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 		false)
 	require.NoError(t, err)
 	rmd := newRootMetadataOrBust(t, id, h)
-	FakeInitialRekey(&rmd.BareRootMetadata, h.ToBareHandleOrBust())
+	rmd.FakeInitialRekey(h.ToBareHandleOrBust())
 
 	u, uid, err := config.KBPKI().Resolve(ctx, "bob")
 	require.NoError(t, err)
@@ -622,7 +623,7 @@ func TestRootMetadataFinalIsFinal(t *testing.T) {
 	tlfID := FakeTlfID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
 	rmd := newRootMetadataOrBust(t, tlfID, h)
-	rmd.Flags |= MetadataFlagFinal
+	rmd.SetFinalBit()
 	_, err := rmd.MakeSuccessor(nil, fakeMdID(1), true)
 	_, isFinalError := err.(MetadataIsFinalError)
 	require.Equal(t, isFinalError, true)
@@ -644,8 +645,12 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	FakeInitialRekey(&rmds.MD, h)
-	buf, err := config.Codec().Encode(rmds.MD.WriterMetadata)
+	rmds.MD.FakeInitialRekey(h)
+	rmds.MD.SetLastModifyingWriter(h.Writers[0])
+	rmds.MD.SetLastModifyingUser(h.Writers[0])
+	rmds.MD.SetSerializedPrivateMetadata([]byte{42})
+
+	buf, err := rmds.MD.GetSerializedWriterMetadata(config.Codec())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -653,7 +658,7 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmds.MD.WriterMetadataSigInfo = sigInfo
+	rmds.MD.SetWriterMetadataSigInfo(sigInfo)
 	buf, err = config.Codec().Encode(rmds.MD)
 	if err != nil {
 		t.Fatal(err)
@@ -665,7 +670,7 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	rmds.SigInfo = sigInfo
 
 	// verify it
-	err = rmds.VerifyRootMetadata(config.Codec(), config.Crypto())
+	err = rmds.IsValidAndSigned(config.Codec(), config.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -677,27 +682,22 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	}
 
 	// add the extension
-	rmds2.MD.FinalizedInfo, err = NewTestTlfHandleExtensionStaticTime(TlfHandleExtensionFinalized, 1, "test")
+	fi, err := NewTestTlfHandleExtensionStaticTime(TlfHandleExtensionFinalized, 1, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
+	rmds2.MD.SetFinalizedInfo(fi)
 
 	// verify the finalized copy
-	err = rmds2.VerifyRootMetadata(config.Codec(), config.Crypto())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// verify the writer metadata too for good measure
-	err = rmds2.MD.VerifyWriterMetadata(config.Codec(), config.Crypto())
+	err = rmds2.IsValidAndSigned(config.Codec(), config.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// touch something the server shouldn't be allowed to edit for finalized metadata
 	// and verify verification failure.
-	rmds2.MD.Flags |= MetadataFlagRekey
-	err = rmds2.VerifyRootMetadata(config.Codec(), config.Crypto())
+	rmds2.MD.SetRekeyBit()
+	err = rmds2.IsValidAndSigned(config.Codec(), config.Crypto())
 	if err == nil {
 		t.Fatalf("expected error")
 	}

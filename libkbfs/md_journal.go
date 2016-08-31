@@ -16,19 +16,19 @@ import (
 
 	"golang.org/x/net/context"
 
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 )
 
 // ImmutableBareRootMetadata is a thin wrapper around a
-// *BareRootMetadata that takes ownership of it and does not ever
+// BareRootMetadata that takes ownership of it and does not ever
 // modify it again. Thus, its MdID can be calculated and
-// stored. ImmutableBareRootMetadata objects can be assumed to never
-// alias a (modifiable) *BareRootMetadata.
+// stored along with a local timestamp. ImmutableBareRootMetadata
+// objects can be assumed to never alias a (modifiable) BareRootMetadata.
 //
 // TODO: Move this to bare_root_metadata.go if it's used in more
 // places.
 type ImmutableBareRootMetadata struct {
-	*BareRootMetadata
+	BareRootMetadata
 	mdID           MdID
 	localTimestamp time.Time
 }
@@ -36,7 +36,7 @@ type ImmutableBareRootMetadata struct {
 // MakeImmutableBareRootMetadata makes a new ImmutableBareRootMetadata
 // from the given BareRootMetadata and its corresponding MdID.
 func MakeImmutableBareRootMetadata(
-	rmd *BareRootMetadata, mdID MdID,
+	rmd BareRootMetadata, mdID MdID,
 	localTimestamp time.Time) ImmutableBareRootMetadata {
 	if mdID == (MdID{}) {
 		panic("zero mdID passed to MakeImmutableBareRootMetadata")
@@ -93,7 +93,8 @@ type mdJournal struct {
 	lastMdID MdID
 }
 
-func makeMDJournal(codec Codec, crypto cryptoPure, dir string,
+func makeMDJournal(currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
+	codec Codec, crypto cryptoPure, dir string,
 	log logger.Logger) (*mdJournal, error) {
 	journalDir := filepath.Join(dir, "md_journal")
 
@@ -107,12 +108,12 @@ func makeMDJournal(codec Codec, crypto cryptoPure, dir string,
 		j:        makeMdIDJournal(codec, journalDir),
 	}
 
-	earliest, err := journal.getEarliest()
+	earliest, err := journal.getEarliest(currentUID, currentVerifyingKey)
 	if err != nil {
 		return nil, err
 	}
 
-	latest, err := journal.getLatest()
+	latest, err := journal.getLatest(currentUID, currentVerifyingKey)
 	if err != nil {
 		return nil, err
 	}
@@ -125,12 +126,12 @@ func makeMDJournal(codec Codec, crypto cryptoPure, dir string,
 	}
 
 	if earliest != (ImmutableBareRootMetadata{}) {
-		if earliest.BID != latest.BID {
+		if earliest.BID() != latest.BID() {
 			return nil, fmt.Errorf(
 				"earliest.BID=%s != latest.BID=%s",
-				earliest.BID, latest.BID)
+				earliest.BID(), latest.BID())
 		}
-		journal.branchID = earliest.BID
+		journal.branchID = earliest.BID()
 	}
 
 	return &journal, nil
@@ -150,7 +151,9 @@ func (j mdJournal) mdPath(id MdID) string {
 // getMD verifies the MD data and the writer signature (but not the
 // key) for the given ID and returns it. It also returns the
 // last-modified timestamp of the file.
-func (j mdJournal) getMD(id MdID) (*BareRootMetadata, time.Time, error) {
+func (j mdJournal) getMD(currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, id MdID) (
+	BareRootMetadata, time.Time, error) {
 	// Read file.
 
 	path := j.mdPath(id)
@@ -159,7 +162,8 @@ func (j mdJournal) getMD(id MdID) (*BareRootMetadata, time.Time, error) {
 		return nil, time.Time{}, err
 	}
 
-	var rmd BareRootMetadata
+	// TODO: the file needs to encode the version
+	var rmd BareRootMetadataV2
 	err = j.codec.Decode(data, &rmd)
 	if err != nil {
 		return nil, time.Time{}, err
@@ -167,11 +171,7 @@ func (j mdJournal) getMD(id MdID) (*BareRootMetadata, time.Time, error) {
 
 	// Check integrity.
 
-	if rmd.BID != j.branchID {
-		return nil, time.Time{}, fmt.Errorf(
-			"Branch ID mismatch: expected %s, got %s", j.branchID, rmd.BID)
-	}
-
+	// TODO: MakeMdID serializes rmd -- use data instead.
 	mdID, err := j.crypto.MakeMdID(&rmd)
 	if err != nil {
 		return nil, time.Time{}, err
@@ -182,9 +182,20 @@ func (j mdJournal) getMD(id MdID) (*BareRootMetadata, time.Time, error) {
 			"Metadata ID mismatch: expected %s, got %s", id, mdID)
 	}
 
-	err = rmd.VerifyWriterMetadata(j.codec, j.crypto)
+	err = rmd.IsLastModifiedBy(currentUID, currentVerifyingKey)
 	if err != nil {
 		return nil, time.Time{}, err
+	}
+
+	err = rmd.IsValidAndSigned(j.codec, j.crypto)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
+	if rmd.BID() != j.branchID {
+		return nil, time.Time{}, fmt.Errorf(
+			"Branch ID mismatch: expected %s, got %s",
+			j.branchID, rmd.BID())
 	}
 
 	fi, err := os.Stat(path)
@@ -198,10 +209,14 @@ func (j mdJournal) getMD(id MdID) (*BareRootMetadata, time.Time, error) {
 // putMD stores the given metadata under its ID, if it's not already
 // stored.
 func (j mdJournal) putMD(
-	rmd *BareRootMetadata, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey) (MdID, error) {
-	err := rmd.IsValidAndSigned(
-		j.codec, j.crypto, currentUID, currentVerifyingKey)
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
+	rmd BareRootMetadata) (MdID, error) {
+	err := rmd.IsValidAndSigned(j.codec, j.crypto)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	err = rmd.IsLastModifiedBy(currentUID, currentVerifyingKey)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -211,7 +226,7 @@ func (j mdJournal) putMD(
 		return MdID{}, err
 	}
 
-	_, _, err = j.getMD(id)
+	_, _, err = j.getMD(currentUID, currentVerifyingKey, id)
 	if os.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
@@ -241,7 +256,8 @@ func (j mdJournal) putMD(
 	return id, nil
 }
 
-func (j mdJournal) getEarliest() (ImmutableBareRootMetadata, error) {
+func (j mdJournal) getEarliest(currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey) (ImmutableBareRootMetadata, error) {
 	earliestID, err := j.j.getEarliest()
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
@@ -249,14 +265,16 @@ func (j mdJournal) getEarliest() (ImmutableBareRootMetadata, error) {
 	if earliestID == (MdID{}) {
 		return ImmutableBareRootMetadata{}, nil
 	}
-	earliest, ts, err := j.getMD(earliestID)
+	earliest, ts, err := j.getMD(
+		currentUID, currentVerifyingKey, earliestID)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
 	return MakeImmutableBareRootMetadata(earliest, earliestID, ts), nil
 }
 
-func (j mdJournal) getLatest() (ImmutableBareRootMetadata, error) {
+func (j mdJournal) getLatest(currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey) (ImmutableBareRootMetadata, error) {
 	latestID, err := j.j.getLatest()
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
@@ -264,16 +282,17 @@ func (j mdJournal) getLatest() (ImmutableBareRootMetadata, error) {
 	if latestID == (MdID{}) {
 		return ImmutableBareRootMetadata{}, nil
 	}
-	latest, ts, err := j.getMD(latestID)
+	latest, ts, err := j.getMD(
+		currentUID, currentVerifyingKey, latestID)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
 	return MakeImmutableBareRootMetadata(latest, latestID, ts), nil
 }
 
-func (j mdJournal) checkGetParams(currentUID keybase1.UID) (
-	ImmutableBareRootMetadata, error) {
-	head, err := j.getLatest()
+func (j mdJournal) checkGetParams(currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey) (ImmutableBareRootMetadata, error) {
+	head, err := j.getLatest(currentUID, currentVerifyingKey)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
@@ -294,8 +313,8 @@ func (j mdJournal) checkGetParams(currentUID keybase1.UID) (
 }
 
 func (j *mdJournal) convertToBranch(
-	ctx context.Context, signer cryptoSigner,
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (err error) {
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, signer cryptoSigner) (err error) {
 	if j.branchID != NullBranchID {
 		return fmt.Errorf(
 			"convertToBranch called with BID=%s", j.branchID)
@@ -348,15 +367,19 @@ func (j *mdJournal) convertToBranch(
 	var prevID MdID
 
 	for i, id := range allMdIDs {
-		brmd, _, err := j.getMD(id)
+		ibrmd, _, err := j.getMD(currentUID, currentVerifyingKey, id)
 		if err != nil {
 			return err
 		}
-		brmd.WFlags |= MetadataFlagUnmerged
-		brmd.BID = bid
+		brmd, ok := ibrmd.(MutableBareRootMetadata)
+		if !ok {
+			return MutableBareRootMetadataNoImplError{}
+		}
+		brmd.SetUnmerged()
+		brmd.SetBranchID(bid)
 
 		// Re-sign the writer metadata.
-		buf, err := j.codec.Encode(brmd.WriterMetadata)
+		buf, err := brmd.GetSerializedWriterMetadata(j.codec)
 		if err != nil {
 			return err
 		}
@@ -365,15 +388,15 @@ func (j *mdJournal) convertToBranch(
 		if err != nil {
 			return err
 		}
-		brmd.WriterMetadataSigInfo = sigInfo
+		brmd.SetWriterMetadataSigInfo(sigInfo)
 
 		j.log.CDebugf(ctx, "Old prev root of rev=%s is %s",
-			brmd.Revision, brmd.PrevRoot)
+			brmd.RevisionNumber(), brmd.GetPrevRoot())
 
 		if i > 0 {
 			j.log.CDebugf(ctx, "Changing prev root of rev=%s to %s",
-				brmd.Revision, prevID)
-			brmd.PrevRoot = prevID
+				brmd.RevisionNumber(), prevID)
+			brmd.SetPrevRoot(prevID)
 		}
 
 		// TODO: this rewrites the file, and so the modification time
@@ -382,12 +405,12 @@ func (j *mdJournal) convertToBranch(
 		// have a slightly wrong localTimestamp.  Instead, we might
 		// want to pass in the timestamp and do an explicit
 		// os.Chtimes() on the file after writing it.
-		newID, err := j.putMD(brmd, currentUID, currentVerifyingKey)
+		newID, err := j.putMD(currentUID, currentVerifyingKey, brmd)
 		if err != nil {
 			return err
 		}
 
-		err = tempJournal.append(brmd.Revision, newID)
+		err = tempJournal.append(brmd.RevisionNumber(), newID)
 		if err != nil {
 			return err
 		}
@@ -395,7 +418,7 @@ func (j *mdJournal) convertToBranch(
 		prevID = newID
 
 		j.log.CDebugf(ctx, "Changing ID for rev=%s from %s to %s",
-			brmd.Revision, id, newID)
+			brmd.RevisionNumber(), id, newID)
 	}
 
 	// TODO: Do the below atomically on the filesystem
@@ -419,33 +442,92 @@ func (j *mdJournal) convertToBranch(
 	return err
 }
 
-func (j mdJournal) pushEarliestToServer(
-	ctx context.Context, signer cryptoSigner, mdserver MDServer) (
-	ImmutableBareRootMetadata, error) {
-	rmd, err := j.getEarliest()
+// getNextEntryToFlush returns the info for the next journal entry to
+// flush, if any. If there is no next journal entry to flush, the
+// returned MdID will be zero, and the returned *RootMetadataSigned
+// will be nil.
+func (j mdJournal) getNextEntryToFlush(
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, signer cryptoSigner) (
+	MdID, *RootMetadataSigned, error) {
+	rmd, err := j.getEarliest(currentUID, currentVerifyingKey)
 	if err != nil {
-		return ImmutableBareRootMetadata{}, err
+		return MdID{}, nil, err
 	}
 	if rmd == (ImmutableBareRootMetadata{}) {
-		return ImmutableBareRootMetadata{}, nil
+		return MdID{}, nil, nil
 	}
 
-	j.log.CDebugf(ctx, "Flushing MD for TLF=%s with id=%s, rev=%s, bid=%s",
-		rmd.ID, rmd.mdID, rmd.Revision, rmd.BID)
+	mbrmd, ok := rmd.BareRootMetadata.(MutableBareRootMetadata)
+	if !ok {
+		return MdID{}, nil, MutableBareRootMetadataNoImplError{}
+	}
 
-	var rmds RootMetadataSigned
-	rmds.MD = *rmd.BareRootMetadata
+	rmds := RootMetadataSigned{MD: mbrmd}
 	err = signMD(ctx, j.codec, signer, &rmds)
 	if err != nil {
-		return ImmutableBareRootMetadata{}, err
-	}
-	err = mdserver.Put(ctx, &rmds)
-	if err != nil {
-		// Still return the RMD so that it can be consulted.
-		return rmd, err
+		return MdID{}, nil, err
 	}
 
-	return rmd, nil
+	return rmd.mdID, &rmds, nil
+}
+
+func (j *mdJournal) removeFlushedEntry(
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, mdID MdID,
+	rmds *RootMetadataSigned) error {
+	rmd, err := j.getEarliest(currentUID, currentVerifyingKey)
+	if err != nil {
+		return err
+	}
+	if rmd == (ImmutableBareRootMetadata{}) {
+		return errors.New("mdJournal unexpectedly empty")
+	}
+
+	if mdID != rmd.mdID {
+		return fmt.Errorf("Expected mdID %s, got %s", mdID, rmd.mdID)
+	}
+
+	eq, err := CodecEqual(j.codec, rmd.BareRootMetadata, rmds.MD)
+	if err != nil {
+		return err
+	}
+	if !eq {
+		return errors.New(
+			"Given RootMetadataSigned doesn't match earliest")
+	}
+
+	empty, err := j.j.removeEarliest()
+	if err != nil {
+		return err
+	}
+
+	// Since the journal is now empty, set lastMdID.
+	if empty {
+		j.log.CDebugf(ctx,
+			"Journal is now empty; saving last MdID=%s", mdID)
+		j.lastMdID = mdID
+	}
+
+	return nil
+}
+
+func getMdID(ctx context.Context, mdserver MDServer, crypto cryptoPure,
+	tlfID TlfID, bid BranchID, mStatus MergeStatus,
+	revision MetadataRevision) (MdID, error) {
+	rmdses, err := mdserver.GetRange(
+		ctx, tlfID, bid, mStatus, revision, revision)
+	if err != nil {
+		return MdID{}, err
+	} else if len(rmdses) == 0 {
+		return MdID{}, nil
+	} else if len(rmdses) > 1 {
+		return MdID{}, fmt.Errorf(
+			"Got more than one object when trying to get rev=%d for branch %s of TLF %s",
+			revision, bid, tlfID)
+	}
+
+	return crypto.MakeMdID(rmdses[0].MD)
 }
 
 // All functions below are public functions.
@@ -462,15 +544,17 @@ func (j mdJournal) length() (uint64, error) {
 	return j.j.length()
 }
 
-func (j mdJournal) getHead(currentUID keybase1.UID) (
+func (j mdJournal) getHead(
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
 	ImmutableBareRootMetadata, error) {
-	return j.checkGetParams(currentUID)
+	return j.checkGetParams(currentUID, currentVerifyingKey)
 }
 
 func (j mdJournal) getRange(
-	currentUID keybase1.UID, start, stop MetadataRevision) (
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
+	start, stop MetadataRevision) (
 	[]ImmutableBareRootMetadata, error) {
-	_, err := j.checkGetParams(currentUID)
+	_, err := j.checkGetParams(currentUID, currentVerifyingKey)
 	if err != nil {
 		return nil, err
 	}
@@ -482,13 +566,13 @@ func (j mdJournal) getRange(
 	var rmds []ImmutableBareRootMetadata
 	for i, mdID := range mdIDs {
 		expectedRevision := realStart + MetadataRevision(i)
-		rmd, ts, err := j.getMD(mdID)
+		rmd, ts, err := j.getMD(currentUID, currentVerifyingKey, mdID)
 		if err != nil {
 			return nil, err
 		}
-		if expectedRevision != rmd.Revision {
+		if expectedRevision != rmd.RevisionNumber() {
 			panic(fmt.Errorf("expected revision %v, got %v",
-				expectedRevision, rmd.Revision))
+				expectedRevision, rmd.RevisionNumber()))
 		}
 		irmd := MakeImmutableBareRootMetadata(rmd, mdID, ts)
 		rmds = append(rmds, irmd)
@@ -512,20 +596,21 @@ func (e MDJournalConflictError) Error() string {
 // case, if the revision of the given RootMetadata matches that of the
 // head, the given RootMetadata will replace the head.
 func (j *mdJournal) put(
-	ctx context.Context, signer cryptoSigner, ekg encryptionKeyGetter,
-	rmd *RootMetadata, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey) (mdID MdID, err error) {
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, signer cryptoSigner,
+	ekg encryptionKeyGetter, bsplit BlockSplitter, rmd *RootMetadata) (
+	mdID MdID, err error) {
 	j.log.CDebugf(ctx, "Putting MD for TLF=%s with rev=%s bid=%s",
-		rmd.ID, rmd.Revision, rmd.BID)
+		rmd.TlfID(), rmd.Revision(), rmd.BID())
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
 				"Put MD for TLF=%s with rev=%s bid=%s failed with %v",
-				rmd.ID, rmd.Revision, rmd.BID, err)
+				rmd.TlfID(), rmd.Revision(), rmd.BID(), err)
 		}
 	}()
 
-	head, err := j.getLatest()
+	head, err := j.getLatest(currentUID, currentVerifyingKey)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -537,20 +622,20 @@ func (j *mdJournal) put(
 		lastBranchID = j.branchID
 	} else {
 		lastMdID = head.mdID
-		lastBranchID = head.BID
+		lastBranchID = head.BID()
 	}
 
 	mStatus := rmd.MergedStatus()
 
-	if (mStatus == Unmerged) && (rmd.BID == NullBranchID) {
+	if (mStatus == Unmerged) && (rmd.BID() == NullBranchID) {
 		j.log.CDebugf(
 			ctx, "Changing branch ID to %s and prev root to %s for MD for TLF=%s with rev=%s",
-			lastBranchID, lastMdID, rmd.ID, rmd.Revision, rmd.BID)
-		rmd.BID = lastBranchID
-		rmd.PrevRoot = lastMdID
+			lastBranchID, lastMdID, rmd.TlfID(), rmd.Revision(), rmd.BID())
+		rmd.SetBranchID(lastBranchID)
+		rmd.SetPrevRoot(lastMdID)
 	}
 
-	if (mStatus == Merged) != (rmd.BID == NullBranchID) {
+	if (mStatus == Merged) != (rmd.BID() == NullBranchID) {
 		return MdID{}, errors.New("Invalid branch ID")
 	}
 
@@ -560,17 +645,16 @@ func (j *mdJournal) put(
 		return MdID{}, MDJournalConflictError{}
 	}
 
-	if rmd.BID != j.branchID {
+	if rmd.BID() != j.branchID {
 		return MdID{}, fmt.Errorf(
 			"Branch ID mismatch: expected %s, got %s",
-			j.branchID, rmd.BID)
+			j.branchID, rmd.BID())
 	}
 
 	// Check permissions and consistency with head, if it exists.
 	if head != (ImmutableBareRootMetadata{}) {
 		ok, err := isWriterOrValidRekey(
-			j.codec, currentUID, head.BareRootMetadata,
-			&rmd.BareRootMetadata)
+			j.codec, currentUID, head.BareRootMetadata, rmd.bareMd)
 		if err != nil {
 			return MdID{}, err
 		}
@@ -580,13 +664,19 @@ func (j *mdJournal) put(
 		}
 
 		// Consistency checks
-		if rmd.Revision != head.Revision {
-			err = head.CheckValidSuccessorForServer(
-				head.mdID, &rmd.BareRootMetadata)
+		if rmd.Revision() != head.RevisionNumber() {
+			err = head.CheckValidSuccessorForServer(head.mdID, rmd.bareMd)
 			if err != nil {
 				return MdID{}, err
 			}
 		}
+	}
+
+	// Ensure that the block changes are properly unembedded.
+	if rmd.data.Changes.Info.BlockPointer == zeroPtr &&
+		!bsplit.ShouldEmbedBlockChanges(&rmd.data.Changes) {
+		return MdID{},
+			errors.New("MD has embedded block changes, but shouldn't")
 	}
 
 	brmd, err := encryptMDPrivateData(
@@ -596,22 +686,22 @@ func (j *mdJournal) put(
 		return MdID{}, err
 	}
 
-	id, err := j.putMD(brmd, currentUID, currentVerifyingKey)
+	id, err := j.putMD(currentUID, currentVerifyingKey, brmd)
 	if err != nil {
 		return MdID{}, err
 	}
 
 	if head != (ImmutableBareRootMetadata{}) &&
-		rmd.Revision == head.Revision {
+		rmd.Revision() == head.RevisionNumber() {
 		j.log.CDebugf(
 			ctx, "Replacing head MD for TLF=%s with rev=%s bid=%s",
-			rmd.ID, rmd.Revision, rmd.BID)
+			rmd.TlfID(), rmd.Revision(), rmd.BID())
 		err = j.j.replaceHead(id)
 		if err != nil {
 			return MdID{}, err
 		}
 	} else {
-		err = j.j.append(brmd.Revision, id)
+		err = j.j.append(brmd.RevisionNumber(), id)
 		if err != nil {
 			return MdID{}, err
 		}
@@ -623,91 +713,9 @@ func (j *mdJournal) put(
 	return id, nil
 }
 
-func getMdID(ctx context.Context, mdserver MDServer, crypto cryptoPure,
-	tlfID TlfID, bid BranchID, mStatus MergeStatus,
-	revision MetadataRevision) (MdID, error) {
-	rmdses, err := mdserver.GetRange(
-		ctx, tlfID, bid, mStatus, revision, revision)
-	if err != nil {
-		return MdID{}, err
-	} else if len(rmdses) == 0 {
-		return MdID{}, nil
-	} else if len(rmdses) > 1 {
-		return MdID{}, fmt.Errorf(
-			"Got more than one object when trying to get rev=%d for branch %s of TLF %s",
-			revision, bid, tlfID)
-	}
-
-	return crypto.MakeMdID(&rmdses[0].MD)
-}
-
-// flushOne sends the earliest MD in the journal to the given MDServer
-// if one exists, and then removes it. Returns whether there was an MD
-// that was put.
-func (j *mdJournal) flushOne(
-	ctx context.Context, signer cryptoSigner, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey, mdserver MDServer) (
-	flushed bool, err error) {
-	j.log.CDebugf(ctx, "Flushing one MD to server")
-	defer func() {
-		if err != nil {
-			j.deferLog.CDebugf(ctx, "Flush failed with %v", err)
-		}
-	}()
-
-	rmd, pushErr := j.pushEarliestToServer(ctx, signer, mdserver)
-	if isRevisionConflict(pushErr) {
-		mdID, err := getMdID(
-			ctx, mdserver, j.crypto, rmd.ID, rmd.BID,
-			rmd.MergedStatus(), rmd.Revision)
-		if err != nil {
-			j.log.CWarningf(ctx,
-				"getMdID failed for TLF %s, BID %s, and revision %d: %v",
-				rmd.ID, rmd.BID, rmd.Revision, err)
-		} else if mdID == rmd.mdID {
-			if rmd.mdID == (MdID{}) {
-				panic("nil earliestID and revision conflict error returned by pushEarliestToServer")
-			}
-			// We must have already flushed this MD, so continue.
-			pushErr = nil
-		} else if rmd.MergedStatus() == Merged {
-			j.log.CDebugf(ctx, "Conflict detected %v", pushErr)
-
-			err := j.convertToBranch(
-				ctx, signer, currentUID, currentVerifyingKey)
-			if err != nil {
-				return false, err
-			}
-
-			rmd, pushErr = j.pushEarliestToServer(
-				ctx, signer, mdserver)
-		}
-	}
-	if pushErr != nil {
-		return false, pushErr
-	}
-	if rmd.mdID == (MdID{}) {
-		return false, nil
-	}
-
-	empty, err := j.j.removeEarliest()
-	if err != nil {
-		return false, err
-	}
-
-	// Since the journal is now empty, set lastMdID.
-	if empty {
-		j.log.CDebugf(ctx,
-			"Journal is now empty; saving last MdID=%s", rmd.mdID)
-		j.lastMdID = rmd.mdID
-	}
-
-	return true, nil
-}
-
 func (j *mdJournal) clear(
-	ctx context.Context, currentUID keybase1.UID, bid BranchID) (
-	err error) {
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey, bid BranchID) (err error) {
 	j.log.CDebugf(ctx, "Clearing journal for branch %s", bid)
 	defer func() {
 		if err != nil {
@@ -721,12 +729,12 @@ func (j *mdJournal) clear(
 		return errors.New("Cannot clear master branch")
 	}
 
-	head, err := j.getHead(currentUID)
+	head, err := j.getHead(currentUID, currentVerifyingKey)
 	if err != nil {
 		return err
 	}
 
-	if head == (ImmutableBareRootMetadata{}) || head.BID != bid {
+	if head == (ImmutableBareRootMetadata{}) || head.BID() != bid {
 		// Nothing to do.
 		return nil
 	}

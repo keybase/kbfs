@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 )
 
 func mdCacheInit(t *testing.T, cap int) (
@@ -31,19 +31,19 @@ func mdCacheShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 func testMdcachePut(t *testing.T, tlf TlfID, rev MetadataRevision,
 	mStatus MergeStatus, bid BranchID, h *TlfHandle, config *ConfigMock) {
 	rmd := &RootMetadata{
-		BareRootMetadata: BareRootMetadata{
-			WriterMetadata: WriterMetadata{
+		bareMd: &BareRootMetadataV2{
+			WriterMetadataV2: WriterMetadataV2{
 				ID:    tlf,
-				WKeys: make(TLFWriterKeyGenerations, 1, 1),
+				WKeys: make(TLFWriterKeyGenerations, 0, 1),
 				BID:   bid,
 			},
 			Revision: rev,
 			RKeys:    make(TLFReaderKeyGenerations, 1, 1),
 		},
 	}
-	rmd.WKeys[0] = NewEmptyTLFWriterKeyBundle()
+	rmd.AddNewKeys(NewEmptyTLFWriterKeyBundle(), TLFReaderKeyBundle{})
 	if mStatus == Unmerged {
-		rmd.WFlags |= MetadataFlagUnmerged
+		rmd.SetUnmerged()
 	}
 
 	// put the md

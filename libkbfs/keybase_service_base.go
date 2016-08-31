@@ -9,7 +9,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"golang.org/x/net/context"
 )
 
@@ -292,7 +292,15 @@ func (k *KeybaseServiceBase) Identify(ctx context.Context, assertion, reason str
 		Reason:        keybase1.IdentifyReason{Reason: reason},
 	}
 	res, err := k.identifyClient.Identify2(ctx, arg)
-	if err != nil {
+	// Identify2 still returns keybase1.UserPlusKeys data (sans keys),
+	// even if it gives a NoSigChainError, and in KBFS it's fine if
+	// the user doesn't have a full sigchain yet (e.g., it's just like
+	// the sharing before signup case, except the user already has a
+	// UID).
+	if _, ok := err.(libkb.NoSigChainError); ok {
+		k.log.CDebugf(ctx, "Ignoring error (%s) for user %s with no sigchain",
+			err, res.Upk.Username)
+	} else if err != nil {
 		return UserInfo{}, ConvertIdentifyError(assertion, err)
 	}
 

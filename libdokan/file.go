@@ -42,7 +42,8 @@ func (f *File) GetFileInformation(ctx context.Context, fi *dokan.FileInfo) (a *d
 
 // CanDeleteFile - return just nil
 // TODO check for permissions here.
-func (*File) CanDeleteFile(context.Context, *dokan.FileInfo) error {
+func (f *File) CanDeleteFile(ctx context.Context, fi *dokan.FileInfo) error {
+	f.folder.fs.logEnterf(ctx, "File CanDeleteFile for %q", f.name)
 	return nil
 }
 
@@ -54,7 +55,7 @@ func (f *File) Cleanup(ctx context.Context, fi *dokan.FileInfo) {
 
 	f.folder.fs.log.CDebugf(ctx, "Cleanup %v", *f)
 	if fi != nil && fi.IsDeleteOnClose() {
-		f.folder.fs.log.CDebugf(ctx, "Removing file in cleanup %s", f.name)
+		f.folder.fs.log.CDebugf(ctx, "Removing (Delete) file in cleanup %s", f.name)
 
 		err = f.folder.fs.config.KBFSOps().RemoveEntry(ctx, f.parent, f.name)
 	}
@@ -72,8 +73,7 @@ func (f *File) FlushFileBuffers(ctx context.Context, fi *dokan.FileInfo) (err er
 	f.folder.fs.logEnter(ctx, "File FlushFileBuffers")
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
-	err = f.folder.fs.config.KBFSOps().Sync(ctx, f.node)
-	return err
+	return f.folder.fs.config.KBFSOps().Sync(ctx, f.node)
 }
 
 // ReadFile for dokan reads.
@@ -101,8 +101,7 @@ func (f *File) WriteFile(ctx context.Context, fi *dokan.FileInfo, bs []byte, off
 		offset = int64(ei.Size)
 	}
 
-	err = f.folder.fs.config.KBFSOps().Write(
-		ctx, f.node, bs, offset)
+	err = f.folder.fs.config.KBFSOps().Write(ctx, f.node, bs, offset)
 	return len(bs), err
 }
 
@@ -125,10 +124,9 @@ func (f *File) SetAllocationSize(ctx context.Context, fi *dokan.FileInfo, newSiz
 	if err != nil {
 		return err
 	}
-	current := int64(ei.Size)
 
 	// Refuse to grow the file.
-	if current <= newSize {
+	if int64(ei.Size) <= newSize {
 		return nil
 	}
 

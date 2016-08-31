@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/keybase/client/go/libkb"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/net/context"
@@ -26,7 +26,8 @@ func NewFakeCryptoClient(config Config, signingKey SigningKey,
 	readyChan chan<- struct{},
 	goChan <-chan struct{}) *FakeCryptoClient {
 	return &FakeCryptoClient{
-		Local:     NewCryptoLocal(config, signingKey, cryptPrivateKey),
+		Local: NewCryptoLocal(
+			config.Codec(), signingKey, cryptPrivateKey),
 		readyChan: readyChan,
 		goChan:    goChan,
 	}

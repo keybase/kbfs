@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
-	"github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"golang.org/x/net/context"
 )
 
@@ -2012,16 +2012,16 @@ func (fbo *folderBlockOps) startSyncWrite(ctx context.Context,
 		si.bps = newBlockPutState(1)
 	} else {
 		// reinstate byte accounting from the previous Sync
-		md.RefBytes = si.refBytes
-		md.DiskUsage += si.refBytes
-		md.UnrefBytes = si.unrefBytes
-		md.DiskUsage -= si.unrefBytes
+		md.SetRefBytes(si.refBytes)
+		md.AddDiskUsage(si.refBytes)
+		md.SetUnrefBytes(si.unrefBytes)
+		md.SetDiskUsage(md.DiskUsage() - si.unrefBytes)
 		syncState.newIndirectFileBlockPtrs = append(
 			syncState.newIndirectFileBlockPtrs, si.op.Refs()...)
 	}
 	defer func() {
-		si.refBytes = md.RefBytes
-		si.unrefBytes = md.UnrefBytes
+		si.refBytes = md.RefBytes()
+		si.unrefBytes = md.UnrefBytes()
 	}()
 
 	bcache := fbo.config.BlockCache()
@@ -2382,7 +2382,7 @@ func (fbo *folderBlockOps) cleanUpUnusedBlocks(ctx context.Context,
 			failedBps.blockStates = append(failedBps.blockStates,
 				blockState{blockPtr: bs.blockPtr})
 			fbo.log.CDebugf(ctx, "Cleaning up block %v from a previous "+
-				"failed revision %d", bs.blockPtr, oldMD.md.Revision)
+				"failed revision %d", bs.blockPtr, oldMD.md.Revision())
 		}
 
 		if len(failedBps.blockStates) > 0 {

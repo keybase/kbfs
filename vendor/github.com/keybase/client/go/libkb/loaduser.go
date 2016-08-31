@@ -6,7 +6,7 @@ package libkb
 import (
 	"fmt"
 
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 	jsonw "github.com/keybase/go-jsonw"
 )
 
@@ -299,7 +299,6 @@ func LoadUserFromServer(g *GlobalContext, uid keybase1.UID, body *jsonw.Wrapper)
 			Args: HTTPArgs{
 				"uid": UIDArg(uid),
 			},
-			Contextified: NewContextified(g),
 		})
 
 		if err != nil {

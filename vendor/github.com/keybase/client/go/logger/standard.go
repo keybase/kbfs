@@ -13,7 +13,7 @@ import (
 	logging "github.com/keybase/go-logging"
 	"golang.org/x/net/context"
 
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 )
 
 const permDir os.FileMode = 0700
@@ -337,10 +337,15 @@ func PickFirstError(errors ...error) error {
 }
 
 func (log *Standard) CloneWithAddedDepth(depth int) Logger {
-	clone := *log
+	clone := Standard{
+		filename:        log.filename,
+		module:          log.module,
+		externalHandler: log.externalHandler,
+	}
 	cloneInternal := *log.internal
-	cloneInternal.ExtraCalldepth = log.internal.ExtraCalldepth + depth
 	clone.internal = &cloneInternal
+	clone.internal.ExtraCalldepth = log.internal.ExtraCalldepth + depth
+
 	return &clone
 }
 

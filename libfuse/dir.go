@@ -356,7 +356,7 @@ func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 func (d *Dir) attr(ctx context.Context, a *fuse.Attr) (err error) {
 	de, err := d.folder.fs.config.KBFSOps().Stat(ctx, d.node)
 	if err != nil {
-		if _, ok := err.(libkbfs.NoSuchNameError); ok {
+		if isNoSuchNameError(err) {
 			return fuse.ESTALE
 		}
 		return err
@@ -389,68 +389,65 @@ func openSpecialInFolder(name string, folder *Folder, resp *fuse.LookupResponse)
 		return NewTlfEditHistoryFile(folder.fs, folderBranch, resp)
 
 	case libfs.UnstageFileName:
-		resp.EntryValid = 0
-		child := &UnstageFile{
+		return &UnstageFile{
 			folder: folder,
 		}
-		return child
 
 	case libfs.DisableUpdatesFileName:
-		resp.EntryValid = 0
-		child := &UpdatesFile{
+		return &UpdatesFile{
 			folder: folder,
 		}
-		return child
 
 	case libfs.EnableUpdatesFileName:
-		resp.EntryValid = 0
-		child := &UpdatesFile{
+		return &UpdatesFile{
 			folder: folder,
 			enable: true,
 		}
-		return child
 
 	case libfs.RekeyFileName:
-		resp.EntryValid = 0
-		child := &RekeyFile{
+		return &RekeyFile{
 			folder: folder,
 		}
-		return child
 
 	case libfs.ReclaimQuotaFileName:
-		resp.EntryValid = 0
-		child := &ReclaimQuotaFile{
+		return &ReclaimQuotaFile{
 			folder: folder,
 		}
-		return child
 
 	case libfs.SyncFromServerFileName:
-		resp.EntryValid = 0
-		child := &SyncFromServerFile{
+		return &SyncFromServerFile{
 			folder: folder,
 		}
-		return child
 
 	case libfs.EnableJournalFileName:
-		child := &JournalControlFile{
+		return &JournalControlFile{
 			folder: folder,
 			action: libfs.JournalEnable,
 		}
-		return child
 
 	case libfs.FlushJournalFileName:
-		child := &JournalControlFile{
+		return &JournalControlFile{
 			folder: folder,
 			action: libfs.JournalFlush,
 		}
-		return child
+
+	case libfs.PauseJournalBackgroundWorkFileName:
+		return &JournalControlFile{
+			folder: folder,
+			action: libfs.JournalPauseBackgroundWork,
+		}
+
+	case libfs.ResumeJournalBackgroundWorkFileName:
+		return &JournalControlFile{
+			folder: folder,
+			action: libfs.JournalResumeBackgroundWork,
+		}
 
 	case libfs.DisableJournalFileName:
-		child := &JournalControlFile{
+		return &JournalControlFile{
 			folder: folder,
 			action: libfs.JournalDisable,
 		}
-		return child
 	}
 	return nil
 }
@@ -468,6 +465,7 @@ func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.Lo
 	}
 
 	if node := openSpecialInFolder(req.Name, d.folder, resp); node != nil {
+		resp.EntryValid = 0
 		return node, nil
 	}
 
@@ -894,6 +892,7 @@ func (tlf *TLF) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.
 	}
 	if exitEarly {
 		if node := openSpecialInFolder(req.Name, tlf.folder, resp); node != nil {
+			resp.EntryValid = 0
 			return node, nil
 		}
 		return nil, fuse.ENOENT
@@ -990,4 +989,10 @@ func (tlf *TLF) Open(ctx context.Context, req *fuse.OpenRequest,
 		return nil, err
 	}
 	return tlf, nil
+}
+
+// isNoSuchNameError checks for libkbfs.NoSuchNameError.
+func isNoSuchNameError(err error) bool {
+	_, ok := err.(libkbfs.NoSuchNameError)
+	return ok
 }

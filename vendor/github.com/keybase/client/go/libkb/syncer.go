@@ -6,11 +6,11 @@ package libkb
 import (
 	"sync"
 
-	keybase1 "github.com/keybase/client/go/protocol"
+	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 )
 
 type Syncer interface {
-	Contexitifier
+	Contextifier
 	sync.Locker
 	loadFromStorage(keybase1.UID) error
 	syncFromServer(keybase1.UID, SessionReader) error

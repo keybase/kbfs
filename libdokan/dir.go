@@ -245,41 +245,65 @@ func openSpecialFile(name string, folder *Folder) dokan.File {
 		return NewTlfEditHistoryFile(folder.fs, folderBranch)
 
 	case libfs.UnstageFileName:
-		child := &UnstageFile{
+		return &UnstageFile{
 			folder: folder,
 		}
-		return child
 
 	case libfs.DisableUpdatesFileName:
-		child := &UpdatesFile{
+		return &UpdatesFile{
 			folder: folder,
 		}
-		return child
 
 	case libfs.EnableUpdatesFileName:
-		child := &UpdatesFile{
+		return &UpdatesFile{
 			folder: folder,
 			enable: true,
 		}
-		return child
 
 	case libfs.RekeyFileName:
-		child := &RekeyFile{
+		return &RekeyFile{
 			folder: folder,
 		}
-		return child
 
 	case libfs.ReclaimQuotaFileName:
-		child := &ReclaimQuotaFile{
+		return &ReclaimQuotaFile{
 			folder: folder,
 		}
-		return child
 
 	case libfs.SyncFromServerFileName:
-		child := &SyncFromServerFile{
+		return &SyncFromServerFile{
 			folder: folder,
 		}
-		return child
+
+	case libfs.EnableJournalFileName:
+		return &JournalControlFile{
+			folder: folder,
+			action: libfs.JournalEnable,
+		}
+
+	case libfs.FlushJournalFileName:
+		return &JournalControlFile{
+			folder: folder,
+			action: libfs.JournalFlush,
+		}
+
+	case libfs.PauseJournalBackgroundWorkFileName:
+		return &JournalControlFile{
+			folder: folder,
+			action: libfs.JournalPauseBackgroundWork,
+		}
+
+	case libfs.ResumeJournalBackgroundWorkFileName:
+		return &JournalControlFile{
+			folder: folder,
+			action: libfs.JournalResumeBackgroundWork,
+		}
+
+	case libfs.DisableJournalFileName:
+		return &JournalControlFile{
+			folder: folder,
+			action: libfs.JournalDisable,
+		}
 	}
 
 	return nil
@@ -300,7 +324,7 @@ func (d *Dir) open(ctx context.Context, oc *openContext, path []string) (dokan.F
 		if c := lowerTranslateCandidate(oc, path[0]); c != "" {
 			var hit string
 			var nhits int
-			d.FindFiles(ctx, nil, func(ns *dokan.NamedStat) error {
+			d.FindFiles(ctx, nil, c, func(ns *dokan.NamedStat) error {
 				if strings.ToLower(ns.Name) == c {
 					hit = ns.Name
 					nhits++
@@ -459,7 +483,7 @@ func (d *Dir) mkdir(ctx context.Context, oc *openContext, name string) (f *Dir, 
 }
 
 // FindFiles does readdir for dokan.
-func (d *Dir) FindFiles(ctx context.Context, fi *dokan.FileInfo, callback func(*dokan.NamedStat) error) (err error) {
+func (d *Dir) FindFiles(ctx context.Context, fi *dokan.FileInfo, ignored string, callback func(*dokan.NamedStat) error) (err error) {
 	d.folder.fs.logEnter(ctx, "Dir FindFiles")
 	defer func() { d.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
@@ -489,7 +513,7 @@ func (d *Dir) FindFiles(ctx context.Context, fi *dokan.FileInfo, callback func(*
 // CanDeleteDirectory - return just nil
 // TODO check for permissions here.
 func (d *Dir) CanDeleteDirectory(ctx context.Context, fi *dokan.FileInfo) (err error) {
-	d.folder.fs.logEnter(ctx, "Dir CanDeleteDirectory")
+	d.folder.fs.logEnterf(ctx, "Dir CanDeleteDirectory %q", d.name)
 	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
 	children, err := d.folder.fs.config.KBFSOps().GetDirChildren(ctx, d.node)
@@ -506,11 +530,11 @@ func (d *Dir) CanDeleteDirectory(ctx context.Context, fi *dokan.FileInfo) (err e
 // Cleanup - forget references, perform deletions etc.
 func (d *Dir) Cleanup(ctx context.Context, fi *dokan.FileInfo) {
 	var err error
-	d.folder.fs.logEnter(ctx, "Dir Cleanup")
+	d.folder.fs.logEnterf(ctx, "Dir Cleanup %q delete=%v", d.name, fi.IsDeleteOnClose())
 	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
 	if fi != nil && fi.IsDeleteOnClose() && d.parent != nil {
-		d.folder.fs.log.CDebugf(ctx, "Removing dir in cleanup %s", d.name)
+		d.folder.fs.log.CDebugf(ctx, "Removing (Delete) dir in cleanup %s", d.name)
 
 		err = d.folder.fs.config.KBFSOps().RemoveDir(ctx, d.parent, d.name)
 	}

@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/libkb"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,8 +58,8 @@ func TestCRInput(t *testing.T) {
 	mergedHead := MetadataRevision(15)
 
 	cr.fbo.head = MakeImmutableRootMetadata(&RootMetadata{
-		BareRootMetadata: BareRootMetadata{
-			WriterMetadata: WriterMetadata{
+		bareMd: &BareRootMetadataV2{
+			WriterMetadataV2: WriterMetadataV2{
 				ID:     FakeTlfID(0x1, false),
 				WFlags: MetadataFlagUnmerged,
 			},
@@ -72,8 +72,8 @@ func TestCRInput(t *testing.T) {
 	for i := unmergedHead; i >= branchPoint+1; i-- {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
 			MakeImmutableRootMetadata(&RootMetadata{
-				BareRootMetadata: BareRootMetadata{
-					WriterMetadata: WriterMetadata{
+				bareMd: &BareRootMetadataV2{
+					WriterMetadataV2: WriterMetadataV2{
 						ID:     FakeTlfID(0x1, false),
 						WFlags: MetadataFlagUnmerged,
 						BID:    cr.fbo.bid,
@@ -93,8 +93,8 @@ func TestCRInput(t *testing.T) {
 	for i := branchPoint + 1; i <= mergedHead; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
 			MakeImmutableRootMetadata(&RootMetadata{
-				BareRootMetadata: BareRootMetadata{
-					WriterMetadata: WriterMetadata{
+				bareMd: &BareRootMetadataV2{
+					WriterMetadataV2: WriterMetadataV2{
 						ID: FakeTlfID(0x1, false),
 					},
 					Revision: i,
@@ -142,8 +142,8 @@ func TestCRInputFracturedRange(t *testing.T) {
 	mergedHead := MetadataRevision(15)
 
 	cr.fbo.head = MakeImmutableRootMetadata(&RootMetadata{
-		BareRootMetadata: BareRootMetadata{
-			WriterMetadata: WriterMetadata{
+		bareMd: &BareRootMetadataV2{
+			WriterMetadataV2: WriterMetadataV2{
 				ID:     FakeTlfID(0x1, false),
 				WFlags: MetadataFlagUnmerged,
 			},
@@ -156,9 +156,9 @@ func TestCRInputFracturedRange(t *testing.T) {
 	for i := unmergedHead; i >= branchPoint+1; i-- {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, cr.fbo.bid).Return(
 			MakeImmutableRootMetadata(&RootMetadata{
-				BareRootMetadata: BareRootMetadata{
+				bareMd: &BareRootMetadataV2{
 					Revision: i,
-					WriterMetadata: WriterMetadata{
+					WriterMetadataV2: WriterMetadataV2{
 						ID:     FakeTlfID(0x1, false),
 						WFlags: MetadataFlagUnmerged,
 						BID:    cr.fbo.bid,
@@ -182,8 +182,8 @@ func TestCRInputFracturedRange(t *testing.T) {
 			config.mockMdcache.EXPECT().Get(cr.fbo.id(), i,
 				NullBranchID).Return(
 				MakeImmutableRootMetadata(&RootMetadata{
-					BareRootMetadata: BareRootMetadata{
-						WriterMetadata: WriterMetadata{
+					bareMd: &BareRootMetadataV2{
+						WriterMetadataV2: WriterMetadataV2{
 							ID: FakeTlfID(0x1, false),
 						},
 						Revision: i,
@@ -199,8 +199,8 @@ func TestCRInputFracturedRange(t *testing.T) {
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(),
 		skipCacheRevision, skipCacheRevision).Return(
 		[]ImmutableRootMetadata{MakeImmutableRootMetadata(&RootMetadata{
-			BareRootMetadata: BareRootMetadata{
-				WriterMetadata: WriterMetadata{
+			bareMd: &BareRootMetadataV2{
+				WriterMetadataV2: WriterMetadataV2{
 					ID: FakeTlfID(0x1, false),
 				},
 				Revision: skipCacheRevision,

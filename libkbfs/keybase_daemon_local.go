@@ -11,8 +11,9 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/keybase/client/go/externals"
 	"github.com/keybase/client/go/libkb"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
@@ -128,7 +129,7 @@ var _ KeybaseService = &KeybaseDaemonLocal{}
 
 func (k *KeybaseDaemonLocal) assertionToUIDLocked(ctx context.Context,
 	assertion string) (uid keybase1.UID, err error) {
-	expr, err := libkb.AssertionParseAndOnly(assertion)
+	expr, err := externals.AssertionParseAndOnly(assertion)
 	if err != nil {
 		return keybase1.UID(""), err
 	}

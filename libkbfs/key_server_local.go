@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/keybase/client/go/logger"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"golang.org/x/net/context"
@@ -53,7 +53,7 @@ func newKeyServerDisk(
 	config Config, dirPath string, shutdownFunc func(logger.Logger)) (
 	*KeyServerLocal, error) {
 	keyPath := filepath.Join(dirPath, "keys")
-	storage, err := storage.OpenFile(keyPath)
+	storage, err := storage.OpenFile(keyPath, false)
 	if err != nil {
 		return nil, err
 	}

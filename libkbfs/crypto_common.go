@@ -11,7 +11,7 @@ import (
 	"io"
 
 	"github.com/keybase/client/go/libkb"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/secretbox"
 )
@@ -69,11 +69,11 @@ func (c CryptoCommon) MakeRandomBranchID() (BranchID, error) {
 }
 
 // MakeMdID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeMdID(md *BareRootMetadata) (MdID, error) {
+func (c CryptoCommon) MakeMdID(md BareRootMetadata) (MdID, error) {
 	// Make sure that the serialized metadata is set; otherwise we
 	// won't get the right MdID.
-	if md.SerializedPrivateMetadata == nil {
-		return MdID{}, MDMissingDataError{md.ID}
+	if md.GetSerializedPrivateMetadata() == nil {
+		return MdID{}, MDMissingDataError{md.TlfID()}
 	}
 
 	buf, err := c.codec.Encode(md)

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"golang.org/x/net/context"
 )
 
@@ -275,7 +275,7 @@ func (cr *ConflictResolver) updateCurrInput(ctx context.Context,
 	}()
 
 	if len(unmerged) > 0 {
-		rev := unmerged[len(unmerged)-1].Revision
+		rev := unmerged[len(unmerged)-1].bareMd.RevisionNumber()
 		if rev < cr.currInput.unmerged {
 			return fmt.Errorf("Unmerged revision %d is lower than the "+
 				"expected unmerged revision %d", rev, cr.currInput.unmerged)
@@ -283,7 +283,7 @@ func (cr *ConflictResolver) updateCurrInput(ctx context.Context,
 		cr.currInput.unmerged = rev
 	}
 	if len(merged) > 0 {
-		rev := merged[len(merged)-1].Revision
+		rev := merged[len(merged)-1].bareMd.RevisionNumber()
 		if rev < cr.currInput.merged {
 			return fmt.Errorf("Merged revision %d is lower than the "+
 				"expected merged revision %d", rev, cr.currInput.merged)
@@ -619,33 +619,38 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 
 		// Drop the merged rmOp since we're recreating it, and we
 		// don't want to replay that notification locally.
-		mergedChain, ok := mergedChains.byOriginal[parentOriginal]
-		if !ok {
-			continue
-		}
-		mergedMostRecent, err :=
-			mergedChains.mostRecentFromOriginalOrSame(currOriginal)
-		if err != nil {
-			return path{}, BlockPointer{}, nil, err
-		}
-	outer:
-		for i, op := range mergedChain.ops {
-			ro, ok := op.(*rmOp)
-			if !ok {
-				continue
+		if mergedChain, ok := mergedChains.byOriginal[parentOriginal]; ok {
+			mergedMostRecent, err :=
+				mergedChains.mostRecentFromOriginalOrSame(currOriginal)
+			if err != nil {
+				return path{}, BlockPointer{}, nil, err
 			}
-			// Use the unref'd pointer, and not the name, to identify
-			// the operation, since renames might have happened on the
-			// merged branch.
-			for _, unref := range ro.Unrefs() {
-				if unref != mergedMostRecent {
+		outer:
+			for i, op := range mergedChain.ops {
+				ro, ok := op.(*rmOp)
+				if !ok {
 					continue
 				}
+				// Use the unref'd pointer, and not the name, to identify
+				// the operation, since renames might have happened on the
+				// merged branch.
+				for _, unref := range ro.Unrefs() {
+					if unref != mergedMostRecent {
+						continue
+					}
 
-				mergedChain.ops =
-					append(mergedChain.ops[:i], mergedChain.ops[i+1:]...)
-				break outer
+					mergedChain.ops =
+						append(mergedChain.ops[:i], mergedChain.ops[i+1:]...)
+					break outer
+				}
 			}
+		} else {
+			// If there's no chain, then likely a previous resolution
+			// removed an entire directory tree, and so the individual
+			// rm operations aren't listed.  In that case, there's no
+			// rm op to remove.
+			cr.log.CDebugf(ctx, "No corresponding merged chain for parent "+
+				"%v; skipping rm removal", parentOriginal)
 		}
 
 		de, err := cr.fbo.blocks.GetDirtyEntry(ctx, lState,
@@ -676,7 +681,10 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 		if ri, ok := unmergedChains.renamedOriginals[currOriginal]; ok {
 			oldParent, ok := unmergedChains.byOriginal[ri.originalOldParent]
 			if !ok {
-				continue
+				cr.log.CDebugf(ctx, "Couldn't find chain for original "+
+					"old parent: %v", ri.originalOldParent)
+				return path{}, BlockPointer{}, nil,
+					NoChainFoundError{ri.originalOldParent}
 			}
 			for _, op := range oldParent.ops {
 				ro, ok := op.(*rmOp)
@@ -693,7 +701,10 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 			// which contains the proper refblock.
 			newParent, ok := unmergedChains.byOriginal[ri.originalNewParent]
 			if !ok {
-				continue
+				cr.log.CDebugf(ctx, "Couldn't find chain for original new "+
+					"parent: %v", ri.originalNewParent)
+				return path{}, BlockPointer{}, nil,
+					NoChainFoundError{ri.originalNewParent}
 			}
 			for i, op := range newParent.ops {
 				oldCo, ok := op.(*createOp)
@@ -1046,7 +1057,7 @@ func (cr *ConflictResolver) addRecreateOpsToUnmergedChains(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	winfo, err := newWriterInfo(ctx, cr.config, uid, unmergedChains.mostRecentMD.writerKID())
+	winfo, err := newWriterInfo(ctx, cr.config, uid, unmergedChains.mostRecentMD.LastModifyingWriterKID())
 	if err != nil {
 		return nil, err
 	}
@@ -1588,8 +1599,8 @@ func (cr *ConflictResolver) addMergedRecreates(ctx context.Context,
 					}
 					co.AddRefBlock(c.mostRecent)
 					winfo, err := newWriterInfo(ctx, cr.config,
-						mergedChains.mostRecentMD.LastModifyingWriter,
-						mergedChains.mostRecentMD.writerKID())
+						mergedChains.mostRecentMD.LastModifyingWriter(),
+						mergedChains.mostRecentMD.LastModifyingWriterKID())
 					if err != nil {
 						return err
 					}
@@ -2176,7 +2187,7 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 	lState *lockState, unmergedPaths []path, unmergedChains *crChains,
 	mergedChains *crChains) (*RootMetadata, error) {
 	currMD := mergedChains.mostRecentMD
-	currMDID, err := cr.config.Crypto().MakeMdID(&currMD.BareRootMetadata)
+	currMDID, err := cr.config.Crypto().MakeMdID(currMD.bareMd)
 	if err != nil {
 		return nil, err
 	}
@@ -2610,17 +2621,21 @@ func (cr *ConflictResolver) syncTree(ctx context.Context, lState *lockState,
 func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 	lState *lockState, md *RootMetadata, bps *blockPutState,
 	unmergedChains *crChains, mergedChains *crChains) error {
-	md.RefBytes = 0
-	md.UnrefBytes = 0
-	md.DiskUsage = mergedChains.mostRecentMD.DiskUsage
+	md.SetRefBytes(0)
+	md.SetUnrefBytes(0)
+	md.SetDiskUsage(mergedChains.mostRecentMD.DiskUsage())
 
 	// Track the refs and unrefs in a set, to ensure no duplicates
 	refs := make(map[BlockPointer]bool)
 	unrefs := make(map[BlockPointer]bool)
 	for _, op := range md.data.Changes.Ops {
 		for _, ptr := range op.Refs() {
-			// Don't add usage if it's an unembedded block change pointer.
-			if _, ok := unmergedChains.blockChangePointers[ptr]; !ok {
+			// Don't add usage if it's an unembedded block change
+			// pointer.  Also, we shouldn't be referencing this
+			// anymore!
+			if _, ok := unmergedChains.blockChangePointers[ptr]; ok {
+				op.DelRefBlock(ptr)
+			} else {
 				refs[ptr] = true
 			}
 		}
@@ -2668,8 +2683,8 @@ func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 
 		cr.log.CDebugf(ctx, "Ref'ing block %v", ptr)
 		size := uint64(block.GetEncodedSize())
-		md.RefBytes += size
-		md.DiskUsage += size
+		md.AddRefBytes(size)
+		md.AddDiskUsage(size)
 	}
 
 	// Subtract bytes for every unref'd block that wasn't created in
@@ -2703,8 +2718,8 @@ func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 
 		cr.log.CDebugf(ctx, "Unref'ing block %v", ptr)
 		size := uint64(block.GetEncodedSize())
-		md.UnrefBytes += size
-		md.DiskUsage -= size
+		md.AddUnrefBytes(size)
+		md.SetDiskUsage(md.DiskUsage() - size)
 	}
 
 	// Any blocks that were created on the unmerged branch, but didn't
@@ -3197,7 +3212,7 @@ func (cr *ConflictResolver) completeResolution(ctx context.Context,
 
 	// Put all the blocks.  TODO: deal with recoverable block errors?
 	_, err = cr.fbo.doBlockPuts(
-		ctx, md.ID, md.GetTlfHandle().GetCanonicalName(), *bps)
+		ctx, md.TlfID(), md.GetTlfHandle().GetCanonicalName(), *bps)
 	if err != nil {
 		return err
 	}
