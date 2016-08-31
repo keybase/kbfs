@@ -438,15 +438,22 @@ func (j *mdJournal) convertToBranch(
 	// and then perform the swap by atomically changing the
 	// symlink to point to the new journal directory.
 
-	oldDir, err := j.j.move(journalTempDir + ".old")
+	oldJournalNewDir := journalTempDir + ".old"
+	dir, err := j.j.move(oldJournalNewDir)
 	if err != nil {
 		return err
 	}
 
-	_, err = tempJournal.move(oldDir)
+	j.log.CDebugf(ctx, "Moved old journal from %s to %s",
+		dir, oldJournalNewDir)
+
+	newJournalOldDir, err := tempJournal.move(dir)
 	if err != nil {
 		return err
 	}
+
+	j.log.CDebugf(ctx, "Moved new journal from %s to %s",
+		newJournalOldDir, dir)
 
 	j.j = tempJournal
 	j.branchID = bid
