@@ -222,6 +222,16 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	err := j.convertToBranch(ctx, uid, verifyingKey, signer)
 	require.NoError(t, err)
 
+	// Branch conversion shouldn't leave old folders behind.
+	fileInfos, err := ioutil.ReadDir(j.dir)
+	require.NoError(t, err)
+	for _, fileInfo := range fileInfos {
+		t.Logf("name = %s", fileInfo.Name())
+	}
+	require.Equal(t, 2, len(fileInfos))
+	require.Equal(t, "md_journal", fileInfos[0].Name())
+	require.Equal(t, "mds", fileInfos[1].Name())
+
 	ibrmds, err := j.getRange(
 		uid, verifyingKey, 1, firstRevision+MetadataRevision(2*mdCount))
 	require.NoError(t, err)

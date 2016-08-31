@@ -356,20 +356,18 @@ func (j *mdJournal) convertToBranch(
 
 	j.log.CDebugf(ctx, "New branch ID=%s", bid)
 
-	journalTempDirName, err := ioutil.TempDir(j.dir, "md_journal")
+	journalTempDir, err := ioutil.TempDir(j.dir, "md_journal")
 	if err != nil {
 		return err
 	}
-	journalTempDir := filepath.Join(j.dir, journalTempDirName)
 	j.log.CDebugf(ctx, "Using temp dir %s for rewriting", journalTempDir)
 	defer func() {
-		if err != nil {
-			j.log.CDebugf(ctx, "Removing temp dir %s", journalTempDir)
-			removeErr := os.RemoveAll(journalTempDir)
-			if removeErr != nil {
-				j.log.CWarningf(ctx,
-					"Error when removing temp dir %s: %v", journalTempDir, removeErr)
-			}
+		j.log.CDebugf(ctx, "Removing temp dir %s", journalTempDir)
+		removeErr := os.RemoveAll(journalTempDir)
+		if removeErr != nil {
+			j.log.CWarningf(ctx,
+				"Error when removing temp dir %s: %v",
+				journalTempDir, removeErr)
 		}
 	}()
 
@@ -438,14 +436,14 @@ func (j *mdJournal) convertToBranch(
 	// and then perform the swap by atomically changing the
 	// symlink to point to the new journal directory.
 
-	oldJournalNewDir := journalTempDir + ".old"
-	dir, err := j.j.move(oldJournalNewDir)
+	oldJournalTempDir := journalTempDir + ".old"
+	dir, err := j.j.move(oldJournalTempDir)
 	if err != nil {
 		return err
 	}
 
 	j.log.CDebugf(ctx, "Moved old journal from %s to %s",
-		dir, oldJournalNewDir)
+		dir, oldJournalTempDir)
 
 	newJournalOldDir, err := tempJournal.move(dir)
 	if err != nil {
@@ -455,10 +453,13 @@ func (j *mdJournal) convertToBranch(
 	j.log.CDebugf(ctx, "Moved new journal from %s to %s",
 		newJournalOldDir, dir)
 
+	// Make the defer block above remove oldJournalTempDir.
+	journalTempDir = oldJournalTempDir
+
 	j.j = tempJournal
 	j.branchID = bid
 
-	return err
+	return nil
 }
 
 // getNextEntryToFlush returns the info for the next journal entry to
