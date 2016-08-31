@@ -227,28 +227,8 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, mdCount, len(ibrmds))
 
-	require.Equal(t, firstRevision, ibrmds[0].RevisionNumber())
-	require.Equal(t, firstPrevRoot, ibrmds[0].GetPrevRoot())
-	require.Equal(t, Unmerged, ibrmds[0].MergedStatus())
-	err = ibrmds[0].IsValidAndSigned(codec, crypto)
-	require.NoError(t, err)
-	err = ibrmds[0].IsLastModifiedBy(uid, verifyingKey)
-	require.NoError(t, err)
-
-	bid := ibrmds[0].BID()
-	require.NotEqual(t, NullBranchID, bid)
-
-	for i := 1; i < len(ibrmds); i++ {
-		require.Equal(t, Unmerged, ibrmds[i].MergedStatus())
-		require.Equal(t, bid, ibrmds[i].BID())
-		err := ibrmds[i].IsValidAndSigned(codec, crypto)
-		require.NoError(t, err)
-		err = ibrmds[i].IsLastModifiedBy(uid, verifyingKey)
-		require.NoError(t, err)
-		err = ibrmds[i-1].CheckValidSuccessor(
-			ibrmds[i-1].mdID, ibrmds[i].BareRootMetadata)
-		require.NoError(t, err)
-	}
+	checkIBRMDRange(t, uid, verifyingKey, codec, crypto,
+		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].BID())
 
 	require.Equal(t, 10, getMDJournalLength(t, j))
 
@@ -297,25 +277,8 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, mdCount, len(ibrmds))
 
-	require.Equal(t, firstRevision, ibrmds[0].RevisionNumber())
-	require.Equal(t, firstPrevRoot, ibrmds[0].GetPrevRoot())
-	require.Equal(t, Merged, ibrmds[0].MergedStatus())
-	err = ibrmds[0].IsValidAndSigned(codec, crypto)
-	require.NoError(t, err)
-	err = ibrmds[0].IsLastModifiedBy(uid, verifyingKey)
-	require.NoError(t, err)
-
-	for i := 1; i < len(ibrmds); i++ {
-		require.Equal(t, Merged, ibrmds[i].MergedStatus())
-		require.Equal(t, NullBranchID, ibrmds[i].BID())
-		err := ibrmds[i].IsValidAndSigned(codec, crypto)
-		require.NoError(t, err)
-		err = ibrmds[i].IsLastModifiedBy(uid, verifyingKey)
-		require.NoError(t, err)
-		err = ibrmds[i-1].CheckValidSuccessor(
-			ibrmds[i-1].mdID, ibrmds[i].BareRootMetadata)
-		require.NoError(t, err)
-	}
+	checkIBRMDRange(t, uid, verifyingKey, codec, crypto,
+		ibrmds, firstRevision, firstPrevRoot, Merged, NullBranchID)
 
 	require.Equal(t, 10, getMDJournalLength(t, j))
 
@@ -398,29 +361,13 @@ func TestMDJournalRestart(t *testing.T) {
 
 	require.Equal(t, mdCount, getMDJournalLength(t, j))
 
-	// Should now be non-empty.
-
 	ibrmds, err := j.getRange(
 		uid, verifyingKey, 1, firstRevision+MetadataRevision(2*mdCount))
 	require.NoError(t, err)
 	require.Equal(t, mdCount, len(ibrmds))
 
-	require.Equal(t, firstRevision, ibrmds[0].RevisionNumber())
-	require.Equal(t, firstPrevRoot, ibrmds[0].GetPrevRoot())
-	err = ibrmds[0].IsValidAndSigned(codec, crypto)
-	require.NoError(t, err)
-	err = ibrmds[0].IsLastModifiedBy(uid, verifyingKey)
-	require.NoError(t, err)
-
-	for i := 1; i < len(ibrmds); i++ {
-		err := ibrmds[i].IsValidAndSigned(codec, crypto)
-		require.NoError(t, err)
-		err = ibrmds[i].IsLastModifiedBy(uid, verifyingKey)
-		require.NoError(t, err)
-		err = ibrmds[i-1].CheckValidSuccessor(
-			ibrmds[i-1].mdID, ibrmds[i].BareRootMetadata)
-		require.NoError(t, err)
-	}
+	checkIBRMDRange(t, uid, verifyingKey, codec, crypto,
+		ibrmds, firstRevision, firstPrevRoot, Merged, NullBranchID)
 }
 
 func TestMDJournalRestartAfterBranchConversion(t *testing.T) {
@@ -450,27 +397,11 @@ func TestMDJournalRestartAfterBranchConversion(t *testing.T) {
 
 	require.Equal(t, mdCount, getMDJournalLength(t, j))
 
-	// Should now be non-empty.
-
 	ibrmds, err := j.getRange(
 		uid, verifyingKey, 1, firstRevision+MetadataRevision(2*mdCount))
 	require.NoError(t, err)
 	require.Equal(t, mdCount, len(ibrmds))
 
-	require.Equal(t, firstRevision, ibrmds[0].RevisionNumber())
-	require.Equal(t, firstPrevRoot, ibrmds[0].GetPrevRoot())
-	err = ibrmds[0].IsValidAndSigned(codec, crypto)
-	require.NoError(t, err)
-	err = ibrmds[0].IsLastModifiedBy(uid, verifyingKey)
-	require.NoError(t, err)
-
-	for i := 1; i < len(ibrmds); i++ {
-		err := ibrmds[i].IsValidAndSigned(codec, crypto)
-		require.NoError(t, err)
-		err = ibrmds[i].IsLastModifiedBy(uid, verifyingKey)
-		require.NoError(t, err)
-		err = ibrmds[i-1].CheckValidSuccessor(
-			ibrmds[i-1].mdID, ibrmds[i].BareRootMetadata)
-		require.NoError(t, err)
-	}
+	checkIBRMDRange(t, uid, verifyingKey, codec, crypto,
+		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].BID())
 }
