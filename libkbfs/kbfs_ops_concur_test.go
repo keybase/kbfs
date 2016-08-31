@@ -16,7 +16,6 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol"
 	"github.com/keybase/go-framed-msgpack-rpc"
-	_ "github.com/songgao/stacktraces/on/SIGUSR1"
 	"golang.org/x/net/context"
 )
 
@@ -1227,6 +1226,9 @@ func TestKBFSOpsMultiBlockWriteDuringRetriedSync(t *testing.T) {
 	}
 }
 
+// This tests the situation where cancellation happens when MD writes has
+// started, and cancellation is delayed. Since no extra delay greater than the
+// grace period in MD writes is introduced, Create should succeed.
 func TestKBFSOpsCanceledCreateNoError(t *testing.T) {
 	config, _, _ := kbfsOpsConcurInit(t, "test_user")
 	defer CheckConfigAndShutdown(t, config)
@@ -1273,6 +1275,53 @@ func TestKBFSOpsCanceledCreateNoError(t *testing.T) {
 	if _, _, err = kbfsOps.Lookup(
 		BackgroundContextWithCancellationDelayer(), rootNode, "a"); err != nil {
 		t.Fatalf("Lookup returned error: %v", err)
+	}
+}
+
+// This tests the situation where cancellation happens when MD writes has
+// started, and cancellation is delayed. A delay larger than the grace period
+// is introduced to MD write, so Create should fail. This is to ensure Ctrl-C
+// is able to interrupt the process eventually after the grace period.
+func TestKBFSOpsCanceledCreateDelayTimeoutErrors(t *testing.T) {
+	config, _, _ := kbfsOpsConcurInit(t, "test_user")
+	defer CheckConfigAndShutdown(t, config)
+
+	// This essentially fast-forwards the grace period timer, making cancellation
+	// happen much faster. This way we can avoid time.Sleep.
+	config.SetDelayedCancellationGracePeriod(0)
+
+	ctx := context.Background()
+
+	onPutStalledCh, putUnstallCh, ctx :=
+		StallMDOp(ctx, config, StallableMDPut)
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	ctx, err := NewContextWithCancellationDelayer(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
+
+	kbfsOps := config.KBFSOps()
+	errChan := make(chan error)
+	go func() {
+		_, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, WithExcl)
+		errChan <- err
+	}()
+
+	// Wait until Create gets stuck at MDOps.Put(). At this point, the delayed
+	// cancellation should have been enabled.
+	<-onPutStalledCh
+	cancel()
+	close(putUnstallCh)
+
+	// We expect canceled error
+	err = <-errChan
+	if err != context.Canceled {
+		t.Fatalf("Create didn't fail after grace period after cancellation."+
+			" Got %v; expecting context.Canceled", err)
 	}
 }
 
