@@ -50,3 +50,8 @@ func (k *KeyCacheStandard) PutTLFCryptKey(tlf TlfID, keyGen KeyGen, key TLFCrypt
 	k.lru.Add(cacheKey, key)
 	return nil
 }
+
+// Purge implements the KeyCache interface for KeyCacheStandard.
+func (k *KeyCacheStandard) Purge() {
+	k.lru.Purge()
+}

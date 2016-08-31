@@ -560,6 +560,8 @@ type KeyCache interface {
 	GetTLFCryptKey(TlfID, KeyGen) (TLFCryptKey, error)
 	// PutTLFCryptKey stores the crypt key for the given TLF.
 	PutTLFCryptKey(TlfID, KeyGen, TLFCryptKey) error
+	// Purge wipes the cache.
+	Purge()
 }
 
 // BlockCacheLifetime denotes the lifetime of an entry in BlockCache.
