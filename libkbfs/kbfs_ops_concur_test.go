@@ -1226,9 +1226,9 @@ func TestKBFSOpsMultiBlockWriteDuringRetriedSync(t *testing.T) {
 	}
 }
 
-// This tests the situation where cancellation happens when MD writes has
-// started, and cancellation is delayed. Since no extra delay greater than the
-// grace period in MD writes is introduced, Create should succeed.
+// This tests the situation where cancellation happens when the MD write has
+// already started, and cancellation is delayed. Since no extra delay greater
+// than the grace period in MD writes is introduced, Create should succeed.
 func TestKBFSOpsCanceledCreateNoError(t *testing.T) {
 	config, _, _ := kbfsOpsConcurInit(t, "test_user")
 	defer CheckConfigAndShutdown(t, config)
@@ -1266,22 +1266,16 @@ func TestKBFSOpsCanceledCreateNoError(t *testing.T) {
 		t.Fatalf("Create returned error: %v", err)
 	}
 
-	// SyncFromServerForTesting and make sure it worked.
-	err = kbfsOps.SyncFromServerForTesting(ctx, rootNode.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %v", err)
-	}
-
 	if _, _, err = kbfsOps.Lookup(
 		BackgroundContextWithCancellationDelayer(), rootNode, "a"); err != nil {
 		t.Fatalf("Lookup returned error: %v", err)
 	}
 }
 
-// This tests the situation where cancellation happens when MD writes has
-// started, and cancellation is delayed. A delay larger than the grace period
-// is introduced to MD write, so Create should fail. This is to ensure Ctrl-C
-// is able to interrupt the process eventually after the grace period.
+// This tests the situation where cancellation happens when the MD write has
+// already started, and cancellation is delayed. A delay larger than the grace
+// period is introduced to MD write, so Create should fail. This is to ensure
+// Ctrl-C is able to interrupt the process eventually after the grace period.
 func TestKBFSOpsCanceledCreateDelayTimeoutErrors(t *testing.T) {
 	config, _, _ := kbfsOpsConcurInit(t, "test_user")
 	defer CheckConfigAndShutdown(t, config)
@@ -1317,7 +1311,7 @@ func TestKBFSOpsCanceledCreateDelayTimeoutErrors(t *testing.T) {
 	cancel()
 	close(putUnstallCh)
 
-	// We expect canceled error
+	// We expect a canceled error
 	err = <-errChan
 	if err != context.Canceled {
 		t.Fatalf("Create didn't fail after grace period after cancellation."+
