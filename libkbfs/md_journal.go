@@ -152,7 +152,9 @@ func (j mdJournal) mdPath(id MdID) string {
 
 // getMD verifies the MD data and the writer signature (but not the
 // key) for the given ID and returns it. It also returns the
-// last-modified timestamp of the file.
+// last-modified timestamp of the file. verifyBranchID should be false
+// only when called from makeMDJournal, i.e. when figuring out what to
+// set j.branchID in the first place.
 func (j mdJournal) getMD(currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, id MdID, verifyBranchID bool) (
 	BareRootMetadata, time.Time, error) {
