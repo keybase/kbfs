@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol"
 	"github.com/keybase/go-framed-msgpack-rpc"
+	_ "github.com/songgao/stacktraces/on/SIGUSR1"
 	"golang.org/x/net/context"
 )
 
@@ -1223,6 +1224,55 @@ func TestKBFSOpsMultiBlockWriteDuringRetriedSync(t *testing.T) {
 	numDirtyBlocks := len(dbcs.cache)
 	if numDirtyBlocks != 0 {
 		t.Errorf("%d dirty blocks left after final sync", numDirtyBlocks)
+	}
+}
+
+func TestKBFSOpsCanceledCreateNoError(t *testing.T) {
+	config, _, _ := kbfsOpsConcurInit(t, "test_user")
+	defer CheckConfigAndShutdown(t, config)
+
+	ctx := context.Background()
+
+	onPutStalledCh, putUnstallCh, ctx :=
+		StallMDOp(ctx, config, StallableMDPut)
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	ctx, err := NewContextWithCancellationDelayer(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
+
+	kbfsOps := config.KBFSOps()
+	errChan := make(chan error)
+	go func() {
+		_, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, WithExcl)
+		errChan <- err
+	}()
+
+	// Wait until Create gets stuck at MDOps.Put(). At this point, the delayed
+	// cancellation should have been enabled.
+	<-onPutStalledCh
+	cancel()
+	close(putUnstallCh)
+
+	// We expect no canceled error
+	err = <-errChan
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	// SyncFromServerForTesting and make sure it worked.
+	err = kbfsOps.SyncFromServerForTesting(ctx, rootNode.GetFolderBranch())
+	if err != nil {
+		t.Fatalf("Couldn't sync from server: %v", err)
+	}
+
+	if _, _, err = kbfsOps.Lookup(
+		BackgroundContextWithCancellationDelayer(), rootNode, "a"); err != nil {
+		t.Fatalf("Lookup returned error: %v", err)
 	}
 }
 
