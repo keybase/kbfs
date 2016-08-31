@@ -78,7 +78,7 @@ func makeMDForTest(t *testing.T, id TlfID, h BareTlfHandle,
 	err := md.Update(id, h)
 	require.NoError(t, err)
 	md.SetRevision(revision)
-	md.FakeInitialRekey(h)
+	md.FakeInitialRekey(NewCodecMsgpack(), h)
 	md.SetPrevRoot(prevRoot)
 	return md
 }

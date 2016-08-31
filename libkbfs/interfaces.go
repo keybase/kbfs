@@ -1523,7 +1523,7 @@ type BareRootMetadata interface {
 	// (identified by its crypt public key), or false if not found. This
 	// returns an error if the TLF is public.
 	GetTLFCryptKeyParams(keyGen KeyGen, user keybase1.UID, key CryptPublicKey,
-		_ *TLFWriterKeyBundleV2, _ *TLFReaderKeyBundle) (
+		wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundle) (
 		TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 		TLFCryptKeyServerHalfID, bool, error)
 	// IsValidAndSigned verifies the BareRootMetadata, checks the
@@ -1569,7 +1569,8 @@ type BareRootMetadata interface {
 	// Version returns the metadata version.
 	Version() MetadataVer
 	// GetTLFPublicKey returns the TLF public key for the give key generation.
-	GetTLFPublicKey(KeyGen) (TLFPublicKey, bool)
+	// Note "wkb" is expected to be nil for v1 and v2 metadata.
+	GetTLFPublicKey(keyGen KeyGen, wkb *TLFWriterKeyBundleV2) (TLFPublicKey, bool)
 	// AreKeyGenerationsEqual returns true if all key generations in the passed metadata are equal to those
 	// in this revision.
 	AreKeyGenerationsEqual(Codec, BareRootMetadata) (bool, error)
@@ -1622,7 +1623,7 @@ type MutableBareRootMetadata interface {
 	// SetRevision sets the revision number of the underlying metadata.
 	SetRevision(revision MetadataRevision)
 	// AddNewKeys adds new writer and reader TLF key bundles to this revision of metadata.
-	AddNewKeys(wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle)
+	AddNewKeys(wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) error
 	// SetUnresolvedReaders sets the list of unresolved readers assoiated with this folder.
 	SetUnresolvedReaders(readers []keybase1.SocialAssertion)
 	// SetUnresolvedWriters sets the list of unresolved writers assoiated with this folder.
@@ -1639,7 +1640,9 @@ type MutableBareRootMetadata interface {
 	// BareRootMetadata. This is necessary since newly-created
 	// BareRootMetadata objects don't have enough data to build a
 	// TlfHandle from until the first rekey.
-	FakeInitialRekey(h BareTlfHandle)
+	// Note "wkb" and "rkb" are expcted to be nil for v1 and v2 metadata.
+	FakeInitialRekey(codec Codec, h BareTlfHandle) (
+		rkb *TLFReaderKeyBundle, wkb *TLFWriterKeyBundleV2, err error)
 	// Update initializes the given freshly-created BareRootMetadata object with
 	// the given TlfID and BareTlfHandle. Note that if the given ID/handle are private,
 	// rekeying must be done separately.

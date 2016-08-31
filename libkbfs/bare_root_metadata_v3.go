@@ -774,8 +774,8 @@ func (md *BareRootMetadataV3) SetRevision(revision MetadataRevision) {
 
 // AddNewKeys implements the MutableBareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) AddNewKeys(
-	wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) {
-	// XXX TODO: doesn't make sense for v3 as-is
+	wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) error {
+	return errors.New("This metadata version does not embed key bundles.")
 }
 
 // SetUnresolvedReaders implements the MutableBareRootMetadata interface for BareRootMetadataV3.
@@ -819,17 +819,58 @@ func (md *BareRootMetadataV3) Version() MetadataVer {
 }
 
 // FakeInitialRekey implements the MutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) FakeInitialRekey(h BareTlfHandle) {
+func (md *BareRootMetadataV3) FakeInitialRekey(codec Codec, h BareTlfHandle) (
+	rkb *TLFReaderKeyBundle, wkb *TLFWriterKeyBundleV2, err error) {
 	if md.TlfID().IsPublic() {
 		panic("Called FakeInitialRekey on public TLF")
 	}
-	// XXX TODO
+	wkb = &TLFWriterKeyBundleV2{
+		Keys: make(UserDeviceKeyInfoMap),
+	}
+	for _, w := range h.Writers {
+		k := MakeFakeCryptPublicKeyOrBust(string(w))
+		wkb.Keys[w] = DeviceKeyInfoMap{
+			k.kid: TLFCryptKeyInfo{},
+		}
+	}
+	buf, err := codec.Encode(wkb)
+	if err != nil {
+		return nil, nil, err
+	}
+	md.WriterMetadata.WKeyBundleID, err = TLFWriterKeyBundleIDFromBytes(buf)
+	if err != nil {
+		return nil, nil, err
+	}
+	rkb = &TLFReaderKeyBundle{
+		RKeys: make(UserDeviceKeyInfoMap),
+	}
+	for _, r := range h.Readers {
+		k := MakeFakeCryptPublicKeyOrBust(string(r))
+		rkb.RKeys[r] = DeviceKeyInfoMap{
+			k.kid: TLFCryptKeyInfo{},
+		}
+	}
+	buf, err = codec.Encode(rkb)
+	if err != nil {
+		return nil, nil, err
+	}
+	md.RKeyBundleID, err = TLFReaderKeyBundleIDFromBytes(buf)
+	if err != nil {
+		return nil, nil, err
+	}
+	return rkb, wkb, nil
 }
 
 // GetTLFPublicKey implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetTLFPublicKey(keyGen KeyGen) (TLFPublicKey, bool) {
-	// XXX TODO
-	return TLFPublicKey{}, false
+func (md *BareRootMetadataV3) GetTLFPublicKey(keyGen KeyGen, wkb *TLFWriterKeyBundleV2) (
+	TLFPublicKey, bool) {
+	if keyGen > md.LatestKeyGeneration() {
+		return TLFPublicKey{}, false
+	}
+	if wkb == nil {
+		return TLFPublicKey{}, false
+	}
+	return wkb.TLFPublicKeys[keyGen], true
 }
 
 // AreKeyGenerationsEqual implements the BareRootMetadata interface for BareRootMetadataV3.

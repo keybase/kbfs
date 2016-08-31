@@ -22,7 +22,7 @@ func makeRMDSForTest(t *testing.T, id TlfID, h BareTlfHandle,
 	rmds.MD.SetRevision(revision)
 	rmds.MD.SetLastModifyingWriter(uid)
 	rmds.MD.SetLastModifyingUser(uid)
-	rmds.MD.FakeInitialRekey(h)
+	rmds.MD.FakeInitialRekey(NewCodecMsgpack(), h)
 	rmds.MD.SetPrevRoot(prevRoot)
 	return rmds
 }

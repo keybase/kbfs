@@ -591,8 +591,8 @@ func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool {
 }
 
 // FakeInitialRekey wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) FakeInitialRekey(h BareTlfHandle) {
-	md.bareMd.FakeInitialRekey(h)
+func (md *RootMetadata) FakeInitialRekey(codec Codec, h BareTlfHandle) {
+	md.bareMd.FakeInitialRekey(codec, h)
 }
 
 // Update wraps the respective method of the underlying BareRootMetadata for convenience.

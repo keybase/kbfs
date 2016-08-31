@@ -799,9 +799,10 @@ func (md *BareRootMetadataV2) SetRevision(revision MetadataRevision) {
 
 // AddNewKeys implements the MutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) AddNewKeys(
-	wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) {
+	wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) error {
 	md.WKeys = append(md.WKeys, wkb)
 	md.RKeys = append(md.RKeys, rkb)
+	return nil
 }
 
 // SetUnresolvedReaders implements the MutableBareRootMetadata interface for BareRootMetadataV2.
@@ -854,7 +855,8 @@ func (md *BareRootMetadataV2) Version() MetadataVer {
 }
 
 // FakeInitialRekey implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) FakeInitialRekey(h BareTlfHandle) {
+func (md *BareRootMetadataV2) FakeInitialRekey(_ Codec, h BareTlfHandle) (
+	*TLFReaderKeyBundle, *TLFWriterKeyBundleV2, error) {
 	if md.ID.IsPublic() {
 		panic("Called FakeInitialRekey on public TLF")
 	}
@@ -879,10 +881,12 @@ func (md *BareRootMetadataV2) FakeInitialRekey(h BareTlfHandle) {
 		}
 	}
 	md.RKeys = TLFReaderKeyGenerations{rkb}
+	return nil, nil, nil
 }
 
 // GetTLFPublicKey implements the BareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) GetTLFPublicKey(keyGen KeyGen) (TLFPublicKey, bool) {
+func (md *BareRootMetadataV2) GetTLFPublicKey(keyGen KeyGen, _ *TLFWriterKeyBundleV2) (
+	TLFPublicKey, bool) {
 	if keyGen > md.LatestKeyGeneration() {
 		return TLFPublicKey{}, false
 	}
