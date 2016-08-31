@@ -20,3 +20,6 @@ func (k *KeyCacheNull) GetTLFCryptKey(TlfID, KeyGen) (TLFCryptKey, error) {
 func (k *KeyCacheNull) PutTLFCryptKey(TlfID, KeyGen, TLFCryptKey) error {
 	return nil
 }
+
+// Purge implements the KeyCache interface for KeyCacheNull.
+func (k *KeyCacheNull) Purge() {}

@@ -12,6 +12,7 @@ type KeyCacheMeasured struct {
 	delegate      KeyCache
 	getTimer      metrics.Timer
 	putTimer      metrics.Timer
+	purgeTimer    metrics.Timer
 	hitCountMeter metrics.Meter
 }
 
@@ -22,6 +23,7 @@ var _ KeyCache = KeyCacheMeasured{}
 func NewKeyCacheMeasured(delegate KeyCache, r metrics.Registry) KeyCacheMeasured {
 	getTimer := metrics.GetOrRegisterTimer("KeyCache.GetTLFCryptKey", r)
 	putTimer := metrics.GetOrRegisterTimer("KeyCache.PutTLFCryptKey", r)
+	purgeTimer := metrics.GetOrRegisterTimer("KeyCache.Purge", r)
 	// TODO: Implement RatioGauge (
 	// http://metrics.dropwizard.io/3.1.0/manual/core/#ratio-gauges
 	// ) so we can actually display a hit ratio.
@@ -30,6 +32,7 @@ func NewKeyCacheMeasured(delegate KeyCache, r metrics.Registry) KeyCacheMeasured
 		delegate:      delegate,
 		getTimer:      getTimer,
 		putTimer:      putTimer,
+		purgeTimer:    purgeTimer,
 		hitCountMeter: hitCountMeter,
 	}
 }
@@ -53,4 +56,11 @@ func (b KeyCacheMeasured) PutTLFCryptKey(tlfID TlfID, keyGen KeyGen, key TLFCryp
 		err = b.delegate.PutTLFCryptKey(tlfID, keyGen, key)
 	})
 	return err
+}
+
+// Purge implements the KeyCache interface for KeyCacheMeasured.
+func (b KeyCacheMeasured) Purge() {
+	b.purgeTimer.Time(func() {
+		b.delegate.Purge()
+	})
 }
