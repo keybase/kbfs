@@ -33,10 +33,10 @@ func getMDJournalLength(t *testing.T, j *mdJournal) int {
 }
 
 func setupMDJournalTest(t *testing.T) (
-	codec Codec, crypto CryptoCommon,
-	uid keybase1.UID, id TlfID, signer cryptoSigner,
-	verifyingKey VerifyingKey, ekg singleEncryptionKeyGetter,
-	bsplit BlockSplitter, tempdir string, j *mdJournal) {
+	uid keybase1.UID, verifyingKey VerifyingKey, codec Codec,
+	crypto CryptoCommon, id TlfID, signer cryptoSigner,
+	ekg singleEncryptionKeyGetter, bsplit BlockSplitter, tempdir string,
+	j *mdJournal) {
 	codec = NewCodecMsgpack()
 	crypto = MakeCryptoCommon(codec)
 
@@ -66,7 +66,7 @@ func setupMDJournalTest(t *testing.T) (
 
 	bsplit = &BlockSplitterSimple{64 * 1024, 8 * 1024}
 
-	return codec, crypto, uid, id, signer, verifyingKey, ekg,
+	return uid, verifyingKey, codec, crypto, id, signer, ekg,
 		bsplit, tempdir, j
 }
 
@@ -89,7 +89,7 @@ func makeMDForTest(t *testing.T, id TlfID, revision MetadataRevision,
 }
 
 func TestMDJournalBasic(t *testing.T) {
-	codec, crypto, uid, id, signer, verifyingKey, ekg,
+	uid, verifyingKey, codec, crypto, id, signer, ekg,
 		bsplit, tempdir, j := setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -150,7 +150,7 @@ func TestMDJournalBasic(t *testing.T) {
 }
 
 func TestMDJournalReplaceHead(t *testing.T) {
-	_, _, uid, id, signer, verifyingKey, ekg, bsplit, tempdir, j :=
+	uid, verifyingKey, _, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -189,7 +189,7 @@ func TestMDJournalReplaceHead(t *testing.T) {
 }
 
 func TestMDJournalBranchConversion(t *testing.T) {
-	codec, crypto, uid, id, signer, verifyingKey, ekg, bsplit, tempdir, j :=
+	uid, verifyingKey, codec, crypto, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -262,7 +262,7 @@ func (s *limitedCryptoSigner) Sign(ctx context.Context, msg []byte) (
 }
 
 func TestMDJournalBranchConversionAtomic(t *testing.T) {
-	codec, crypto, uid, id, signer, verifyingKey, ekg, bsplit, tempdir, j :=
+	uid, verifyingKey, codec, crypto, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -323,7 +323,7 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 }
 
 func TestMDJournalClear(t *testing.T) {
-	_, _, uid, id, signer, verifyingKey, ekg, bsplit, tempdir, j :=
+	uid, verifyingKey, _, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -386,7 +386,7 @@ func TestMDJournalClear(t *testing.T) {
 }
 
 func TestMDJournalRestart(t *testing.T) {
-	codec, crypto, uid, id, signer, verifyingKey, ekg,
+	uid, verifyingKey, codec, crypto, id, signer, ekg,
 		bsplit, tempdir, j := setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -440,7 +440,7 @@ func TestMDJournalRestart(t *testing.T) {
 }
 
 func TestMDJournalRestartAfterBranchConversion(t *testing.T) {
-	codec, crypto, uid, id, signer, verifyingKey, ekg,
+	uid, verifyingKey, codec, crypto, id, signer, ekg,
 		bsplit, tempdir, j := setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
 
