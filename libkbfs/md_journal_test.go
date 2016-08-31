@@ -106,6 +106,23 @@ func putMDRange(t *testing.T, uid keybase1.UID, verifyingKey VerifyingKey,
 	return prevRoot
 }
 
+func checkBRMD(t *testing.T, uid keybase1.UID, verifyingKey VerifyingKey,
+	codec Codec, crypto cryptoPure, brmd BareRootMetadata,
+	expectedRevision MetadataRevision, expectedPrevRoot MdID,
+	expectedMergeStatus MergeStatus, expectedBranchID BranchID) {
+	require.Equal(t, expectedRevision, brmd.RevisionNumber())
+	require.Equal(t, expectedPrevRoot, brmd.GetPrevRoot())
+	require.Equal(t, expectedMergeStatus, brmd.MergedStatus())
+	err := brmd.IsValidAndSigned(codec, crypto)
+	require.NoError(t, err)
+	err = brmd.IsLastModifiedBy(uid, verifyingKey)
+	require.NoError(t, err)
+
+	require.Equal(t, expectedMergeStatus == Merged,
+		expectedBranchID == NullBranchID)
+	require.Equal(t, expectedBranchID, brmd.BID())
+}
+
 func TestMDJournalBasic(t *testing.T) {
 	uid, verifyingKey, codec, crypto, id, signer, ekg,
 		bsplit, tempdir, j := setupMDJournalTest(t)
@@ -135,12 +152,9 @@ func TestMDJournalBasic(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, mdCount, len(ibrmds))
 
-	require.Equal(t, firstRevision, ibrmds[0].RevisionNumber())
-	require.Equal(t, firstPrevRoot, ibrmds[0].GetPrevRoot())
-	err = ibrmds[0].IsValidAndSigned(codec, crypto)
-	require.NoError(t, err)
-	err = ibrmds[0].IsLastModifiedBy(uid, verifyingKey)
-	require.NoError(t, err)
+	checkBRMD(t, uid, verifyingKey, codec, crypto,
+		ibrmds[0].BareRootMetadata, firstRevision, firstPrevRoot,
+		Merged, NullBranchID)
 
 	for i := 1; i < len(ibrmds); i++ {
 		err := ibrmds[i].IsValidAndSigned(codec, crypto)
