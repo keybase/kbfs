@@ -828,7 +828,8 @@ func (tlf *TLF) loadDirHelper(ctx context.Context, filterErr bool) (
 	}
 
 	tlf.folder.fs.log.CDebugf(ctx, "Loading root directory for folder %s "+
-		"(public: %t)", tlf.folder.name(), tlf.isPublic())
+		"(public: %t, filter error: %t)", tlf.folder.name(),
+		tlf.isPublic(), filterErr)
 	defer func() {
 		if filterErr {
 			exitEarly, err = libfs.FilterTLFEarlyExitError(ctx, err, tlf.folder.fs.log, tlf.folder.name())
