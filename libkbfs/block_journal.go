@@ -81,7 +81,8 @@ type blockJournalEntry struct {
 	Op bserverOpName
 	// Must have exactly one entry with one context for blockPutOp
 	// and addRefOp.
-	Contexts map[BlockID][]BlockContext
+	Contexts     map[BlockID][]BlockContext
+	HeadRevision MetadataRevision
 }
 
 // Get the single context stored in this entry. Only applicable to
@@ -257,16 +258,13 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 	return refs, nil
 }
 
-func (j *blockJournal) writeJournalEntry(
-	ordinal journalOrdinal, entry blockJournalEntry) error {
-	return j.j.writeJournalEntry(ordinal, entry)
-}
-
 func (j *blockJournal) appendJournalEntry(
-	op bserverOpName, contexts map[BlockID][]BlockContext) error {
+	op bserverOpName, contexts map[BlockID][]BlockContext,
+	headRevision MetadataRevision) error {
 	return j.j.appendJournalEntry(nil, blockJournalEntry{
-		Op:       op,
-		Contexts: contexts,
+		Op:           op,
+		Contexts:     contexts,
+		HeadRevision: headRevision,
 	})
 }
 
@@ -405,7 +403,8 @@ func (j *blockJournal) getAll() (
 }
 
 func (j *blockJournal) putData(
-	ctx context.Context, id BlockID, context BlockContext, buf []byte,
+	ctx context.Context, headRevision MetadataRevision,
+	id BlockID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) (err error) {
 	j.log.CDebugf(ctx, "Putting %d bytes of data for block %s with context %v",
 		len(buf), id, context)
@@ -479,13 +478,13 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	return j.appendJournalEntry(
-		blockPutOp, map[BlockID][]BlockContext{id: {context}})
+	return j.appendJournalEntry(blockPutOp,
+		map[BlockID][]BlockContext{id: {context}}, headRevision)
 }
 
 func (j *blockJournal) addReference(
-	ctx context.Context, id BlockID, context BlockContext) (
-	err error) {
+	ctx context.Context, headRevision MetadataRevision,
+	id BlockID, context BlockContext) (err error) {
 	j.log.CDebugf(ctx, "Adding reference for block %s with context %v",
 		id, context)
 	defer func() {
@@ -533,12 +532,13 @@ func (j *blockJournal) addReference(
 		return err
 	}
 
-	return j.appendJournalEntry(
-		addRefOp, map[BlockID][]BlockContext{id: {context}})
+	return j.appendJournalEntry(addRefOp,
+		map[BlockID][]BlockContext{id: {context}}, headRevision)
 }
 
 func (j *blockJournal) removeReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext,
+	ctx context.Context, headRevision MetadataRevision,
+	contexts map[BlockID][]BlockContext,
 	removeUnreferencedBlocks bool) (liveCounts map[BlockID]int, err error) {
 	j.log.CDebugf(ctx, "Removing references for %v (remove unreferenced blocks=%t)",
 		contexts, removeUnreferencedBlocks)
@@ -583,7 +583,7 @@ func (j *blockJournal) removeReferences(
 		liveCounts[id] = count
 	}
 
-	err = j.appendJournalEntry(removeRefsOp, contexts)
+	err = j.appendJournalEntry(removeRefsOp, contexts, headRevision)
 	if err != nil {
 		return nil, err
 	}
@@ -592,7 +592,8 @@ func (j *blockJournal) removeReferences(
 }
 
 func (j *blockJournal) archiveReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext) (err error) {
+	ctx context.Context, headRevision MetadataRevision,
+	contexts map[BlockID][]BlockContext) (err error) {
 	j.log.CDebugf(ctx, "Archiving references for %v", contexts)
 	defer func() {
 		if err != nil {
@@ -637,7 +638,7 @@ func (j *blockJournal) archiveReferences(
 		}
 	}
 
-	return j.appendJournalEntry(archiveRefsOp, contexts)
+	return j.appendJournalEntry(archiveRefsOp, contexts, headRevision)
 }
 
 // getNextEntryToFlush returns the info for the next journal entry to

@@ -245,12 +245,11 @@ func teardownTLFJournalTest(
 	require.NoError(config.t, err)
 }
 
-func putBlock(ctx context.Context,
-	t *testing.T, config *testTLFJournalConfig,
-	tlfJournal *tlfJournal, data []byte) {
-	id, bCtx, serverHalf := config.makeBlock(data)
-	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
-	require.NoError(t, err)
+func putOneMD(ctx context.Context, config *testTLFJournalConfig,
+	tlfJournal *tlfJournal) {
+	md := config.makeMD(MetadataRevisionInitial, MdID{})
+	_, err := tlfJournal.putMD(ctx, md)
+	require.NoError(config.t, err)
 }
 
 // The tests below primarily test the background work thread's
@@ -262,7 +261,7 @@ func TestTLFJournalBasic(t *testing.T) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	putOneMD(ctx, config, tlfJournal)
 
 	// Wait for it to be processed.
 
@@ -279,7 +278,7 @@ func TestTLFJournalPauseResume(t *testing.T) {
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, bwPaused)
 
-	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	putOneMD(ctx, config, tlfJournal)
 
 	// Unpause and wait for it to be processed.
 
@@ -298,7 +297,7 @@ func TestTLFJournalPauseShutdown(t *testing.T) {
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, bwPaused)
 
-	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	putOneMD(ctx, config, tlfJournal)
 
 	// Should still be able to shut down while paused.
 }
@@ -326,6 +325,33 @@ func (bs hangingBlockServer) waitForPut(ctx context.Context, t *testing.T) {
 	}
 }
 
+func putBlock(ctx context.Context,
+	t *testing.T, config *testTLFJournalConfig,
+	tlfJournal *tlfJournal, data []byte) {
+	id, bCtx, serverHalf := config.makeBlock(data)
+	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
+	require.NoError(t, err)
+}
+
+func TestTLFJournalBlockOpBasic(t *testing.T) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	flushed, err := tlfJournal.flushOneBlockOp(ctx)
+	require.NoError(t, err)
+	// Should not be flushable until an MD is put.
+	require.False(t, flushed)
+
+	putOneMD(ctx, config, tlfJournal)
+
+	flushed, err = tlfJournal.flushOneBlockOp(ctx)
+	require.NoError(t, err)
+	require.True(t, flushed)
+}
+
 func TestTLFJournalBlockOpBusyPause(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, TLFJournalBackgroundWorkEnabled)
@@ -337,6 +363,9 @@ func TestTLFJournalBlockOpBusyPause(t *testing.T) {
 	tlfJournal.delegateBlockServer = bs
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+
+	// Needed to let the block put go through.
+	putOneMD(ctx, config, tlfJournal)
 
 	bs.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, bwBusy)
@@ -359,6 +388,9 @@ func TestTLFJournalBlockOpBusyShutdown(t *testing.T) {
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
+	// Needed to let the block put go through.
+	putOneMD(ctx, config, tlfJournal)
+
 	bs.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, bwBusy)
 
@@ -376,6 +408,9 @@ func TestTLFJournalSecondBlockOpWhileBusy(t *testing.T) {
 	tlfJournal.delegateBlockServer = bs
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+
+	// Needed to let the block put go through.
+	putOneMD(ctx, config, tlfJournal)
 
 	bs.waitForPut(ctx, t)
 	delegate.requireNextState(ctx, bwBusy)
@@ -465,138 +500,6 @@ func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
 
 	// Should still be able to put a block while busy.
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
-}
-
-// The test below test tlfJournal's block flushing behavior.
-//
-// TODO: Move it to block_journal_test.go, since nothing in it depends
-// on tlfJournal. (Contrast with the MD flushing behavior, which
-// requires its locking behavior to be tested.)
-
-func TestTLFJournalFlushBlock(t *testing.T) {
-	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
-	defer teardownTLFJournalTest(
-		tempdir, config, ctx, cancel, tlfJournal, delegate)
-
-	// Put a block.
-
-	data := []byte{1, 2, 3, 4}
-	bID, bCtx, serverHalf := config.makeBlock(data)
-	err := tlfJournal.putBlockData(ctx, bID, bCtx, data, serverHalf)
-	require.NoError(t, err)
-
-	// Add some references.
-
-	uid2 := keybase1.MakeTestUID(2)
-	nonce, err := config.crypto.MakeBlockRefNonce()
-	require.NoError(t, err)
-	bCtx2 := BlockContext{config.cig.uid, uid2, nonce}
-	err = tlfJournal.addBlockReference(ctx, bID, bCtx2)
-
-	require.NoError(t, err)
-	nonce2, err := config.crypto.MakeBlockRefNonce()
-	require.NoError(t, err)
-	bCtx3 := BlockContext{config.cig.uid, uid2, nonce2}
-	err = tlfJournal.addBlockReference(ctx, bID, bCtx3)
-	require.NoError(t, err)
-
-	// Remove some references.
-
-	liveCounts, err := tlfJournal.removeBlockReferences(
-		ctx, map[BlockID][]BlockContext{
-			bID: {bCtx, bCtx2},
-		})
-	require.NoError(t, err)
-	require.Equal(t, map[BlockID]int{bID: 1}, liveCounts)
-
-	// Archive the rest.
-
-	require.NoError(t, err)
-	err = tlfJournal.archiveBlockReferences(
-		ctx, map[BlockID][]BlockContext{
-			bID: {bCtx3},
-		})
-	require.NoError(t, err)
-
-	// Then remove them.
-
-	require.NoError(t, err)
-	liveCounts, err = tlfJournal.removeBlockReferences(
-		ctx, map[BlockID][]BlockContext{
-			bID: {bCtx3},
-		})
-	require.NoError(t, err)
-	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
-
-	blockServer := tlfJournal.delegateBlockServer
-
-	flush := func() {
-		flushed, err := tlfJournal.flushOneBlockOp(ctx)
-		require.NoError(t, err)
-		require.True(t, flushed)
-	}
-
-	// Flush the block put.
-
-	flush()
-
-	tlfID := config.tlfID
-	buf, key, err := blockServer.Get(ctx, tlfID, bID, bCtx)
-	require.NoError(t, err)
-	require.Equal(t, data, buf)
-	require.Equal(t, serverHalf, key)
-
-	// Flush the reference adds.
-
-	flush()
-
-	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx2)
-	require.NoError(t, err)
-	require.Equal(t, data, buf)
-	require.Equal(t, serverHalf, key)
-
-	flush()
-
-	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
-	require.NoError(t, err)
-	require.Equal(t, data, buf)
-	require.Equal(t, serverHalf, key)
-
-	// Flush the reference removals.
-
-	flush()
-
-	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
-
-	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx2)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
-
-	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
-	require.NoError(t, err)
-	require.Equal(t, data, buf)
-	require.Equal(t, serverHalf, key)
-
-	// Flush the reference archival.
-
-	flush()
-
-	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
-	require.NoError(t, err)
-	require.Equal(t, data, buf)
-	require.Equal(t, serverHalf, key)
-
-	// Flush the last removal.
-
-	flush()
-
-	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
-
-	_, e, _, _, err := tlfJournal.blockJournal.getNextEntryToFlush(ctx)
-	require.NoError(t, err)
-	require.Nil(t, e)
 }
 
 type shimMDServer struct {

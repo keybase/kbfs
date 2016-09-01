@@ -386,23 +386,22 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 		}
 	}()
 
-	// TODO: Interleave block flushes with their related MD
-	// flushes.
-
 	// TODO: Parallelize block puts.
 
 	for {
-		flushed, err := j.flushOneBlockOp(ctx)
-		if err != nil {
-			return err
+		// Flush all the block ops done before the current MD
+		// op first.
+		for {
+			flushed, err := j.flushOneBlockOp(ctx)
+			if err != nil {
+				return err
+			}
+			if !flushed {
+				break
+			}
+			flushedBlockEntries++
 		}
-		if !flushed {
-			break
-		}
-		flushedBlockEntries++
-	}
 
-	for {
 		flushed, err := j.flushOneMDOp(ctx)
 		if err != nil {
 			return err
@@ -418,12 +417,31 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 	return nil
 }
 
-func (j *tlfJournal) getNextBlockEntryToFlush(ctx context.Context) (
+func (j *tlfJournal) getNextBlockEntryToFlush(ctx context.Context,
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
 	journalOrdinal, *blockJournalEntry, []byte,
 	BlockCryptKeyServerHalf, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
-	return j.blockJournal.getNextEntryToFlush(ctx)
+	o, e, data, serverHalf, err :=
+		j.blockJournal.getNextEntryToFlush(ctx)
+	if err != nil {
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, err
+	}
+	if e == nil {
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, nil
+	}
+	_, rmds, err := j.mdJournal.getNextEntryToFlush(
+		ctx, currentUID, currentVerifyingKey, j.config.Crypto())
+	if err != nil {
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, err
+	}
+	// If this block op is done after the earliest MD op,
+	// don't flush it.
+	if rmds == nil || e.HeadRevision >= rmds.MD.RevisionNumber() {
+		return 0, nil, nil, BlockCryptKeyServerHalf{}, nil
+	}
+	return o, e, data, serverHalf, nil
 }
 
 func (j *tlfJournal) removeFlushedBlockEntry(ctx context.Context,
@@ -437,7 +455,14 @@ func (j *tlfJournal) flushOneBlockOp(ctx context.Context) (bool, error) {
 	j.flushLock.Lock()
 	defer j.flushLock.Unlock()
 
-	ordinal, entry, data, serverHalf, err := j.getNextBlockEntryToFlush(ctx)
+	uid, key, err :=
+		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
+	if err != nil {
+		return false, err
+	}
+
+	ordinal, entry, data, serverHalf, err :=
+		j.getNextBlockEntryToFlush(ctx, uid, key)
 	if err != nil {
 		return false, err
 	}
@@ -627,17 +652,37 @@ func (j *tlfJournal) getBlockDataWithContext(
 	return j.blockJournal.getDataWithContext(id, context)
 }
 
+func (j *tlfJournal) getHeadRevisionLocked(
+	ctx context.Context) (MetadataRevision, error) {
+	uid, key, err :=
+		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
+	if err != nil {
+		return MetadataRevisionUninitialized, err
+	}
+	rmd, err := j.mdJournal.getHead(uid, key)
+	if err != nil {
+		return MetadataRevisionUninitialized, err
+	}
+	if rmd == (ImmutableBareRootMetadata{}) {
+		return MetadataRevisionUninitialized, nil
+	}
+	return rmd.RevisionNumber(), nil
+}
+
 func (j *tlfJournal) putBlockData(
 	ctx context.Context, id BlockID, context BlockContext, buf []byte,
 	serverHalf BlockCryptKeyServerHalf) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.blockJournal.putData(ctx, id, context, buf, serverHalf)
+	headRevision, err := j.getHeadRevisionLocked(ctx)
 	if err != nil {
 		return err
 	}
-
-	j.signalWork()
+	err = j.blockJournal.putData(
+		ctx, headRevision, id, context, buf, serverHalf)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -646,12 +691,14 @@ func (j *tlfJournal) addBlockReference(
 	ctx context.Context, id BlockID, context BlockContext) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.blockJournal.addReference(ctx, id, context)
+	headRevision, err := j.getHeadRevisionLocked(ctx)
 	if err != nil {
 		return err
 	}
-
-	j.signalWork()
+	err = j.blockJournal.addReference(ctx, headRevision, id, context)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -661,6 +708,10 @@ func (j *tlfJournal) removeBlockReferences(
 	liveCounts map[BlockID]int, err error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
+	headRevision, err := j.getHeadRevisionLocked(ctx)
+	if err != nil {
+		return nil, err
+	}
 	// Don't remove the block data if we remove the last
 	// reference; we still need it to flush the initial put
 	// operation.
@@ -668,12 +719,10 @@ func (j *tlfJournal) removeBlockReferences(
 	// TODO: It would be nice if we could detect that case and
 	// avoid having to flush the put.
 	liveCounts, err = j.blockJournal.removeReferences(
-		ctx, contexts, false)
+		ctx, headRevision, contexts, false)
 	if err != nil {
 		return nil, err
 	}
-
-	j.signalWork()
 
 	return liveCounts, nil
 }
@@ -682,12 +731,14 @@ func (j *tlfJournal) archiveBlockReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.blockJournal.archiveReferences(ctx, contexts)
+	headRevision, err := j.getHeadRevisionLocked(ctx)
 	if err != nil {
 		return err
 	}
-
-	j.signalWork()
+	err = j.blockJournal.archiveReferences(ctx, headRevision, contexts)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -735,6 +786,8 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 		return MdID{}, err
 	}
 
+	// Signal work only on MD ops, since any block ops done before
+	// this won't get flushed anyway.
 	j.signalWork()
 
 	return mdID, nil
