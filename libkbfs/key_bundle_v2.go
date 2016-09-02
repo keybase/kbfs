@@ -7,7 +7,7 @@ package libkbfs
 import (
 	"encoding"
 
-	keybase1 "github.com/keybase/client/go/protocol"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 )
 
@@ -26,7 +26,7 @@ type TLFWriterKeyBundleV2 struct {
 	TLFEphemeralPublicKeys TLFEphemeralPublicKeys `codec:"ePubKey"`
 
 	// M_f as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
-	TLFPublicKey TLFPublicKey `codec:"pubKey"`
+	TLFPublicKeys []TLFPublicKey `codec:"pubKey"`
 
 	// This is a time-ordered, serialized, and encrypted list of historic key
 	// generations. It is encrypted with the latest generation of the TLF crypt

@@ -1641,7 +1641,7 @@ type MutableBareRootMetadata interface {
 	// SetRevision sets the revision number of the underlying metadata.
 	SetRevision(revision MetadataRevision)
 	// AddNewKeys adds new writer and reader TLF key bundles to this revision of metadata.
-	AddNewKeys(wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) error
+	AddNewKeys(wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle)
 	// NewKeyGeneration adds a new key generation to this revision of metadata.
 	NewKeyGeneration(pubKey TLFPublicKey) (wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundle)
 	// SetUnresolvedReaders sets the list of unresolved readers assoiated with this folder.
