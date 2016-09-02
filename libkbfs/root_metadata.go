@@ -106,6 +106,10 @@ type RootMetadata struct {
 	// The TLF handle for this MD. May be nil if this object was
 	// deserialized (more common on the server side).
 	tlfHandle *TlfHandle
+
+	// Cached key bundles when using v3 metadata.
+	cachedWkb *TLFWriterKeyBundleV2
+	cachedRkb *TLFReaderKeyBundle
 }
 
 var _ KeyMetadata = (*RootMetadata)(nil)
@@ -603,6 +607,27 @@ func (md *RootMetadata) Update(id TlfID, h BareTlfHandle) error {
 // GetBareRootMetadata returns an interface to the underlying serializeable metadata.
 func (md *RootMetadata) GetBareRootMetadata() BareRootMetadata {
 	return md.bareMd
+}
+
+// NewKeyGeneration adds a new key generation to this revision of metadata.
+func (md *RootMetadata) NewKeyGeneration(pubKey TLFPublicKey) {
+	md.cachedWkb, md.cachedRkb = md.bareMd.NewKeyGeneration(pubKey)
+}
+
+func (md *RootMetadata) fillInDevices(crypto Crypto,
+	keyGen KeyGen, wKeys map[keybase1.UID][]CryptPublicKey,
+	rKeys map[keybase1.UID][]CryptPublicKey, ePubKey TLFEphemeralPublicKey,
+	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey TLFCryptKey) (serverKeyMap, error) {
+	// v3 bundles aren't embedded.
+	//wkb, rkb := md.cachedWkb, md.cachedRkb
+	// v1 & v2 bundles are embedded.
+	wkb, rkb, err := md.bareMd.GetTLFKeyBundles(keyGen)
+	if err != nil {
+		return serverKeyMap{}, err
+	}
+
+	return md.bareMd.fillInDevices(crypto, wkb, rkb, wKeys, rKeys,
+		ePubKey, ePrivKey, tlfCryptKey)
 }
 
 // A ReadOnlyRootMetadata is a thin wrapper around a

@@ -229,14 +229,9 @@ func (km *KeyManagerStandard) updateKeyBundle(ctx context.Context,
 	md *RootMetadata, keyGen KeyGen, wKeys map[keybase1.UID][]CryptPublicKey,
 	rKeys map[keybase1.UID][]CryptPublicKey, ePubKey TLFEphemeralPublicKey,
 	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey TLFCryptKey) error {
-	wkb, rkb, err := md.bareMd.GetTLFKeyBundles(keyGen)
-	if err != nil {
-		return err
-	}
 
-	newServerKeys, err := fillInDevices(km.config.Crypto(),
-		wkb, rkb, wKeys, rKeys,
-		ePubKey, ePrivKey, tlfCryptKey)
+	newServerKeys, err := md.fillInDevices(km.config.Crypto(),
+		keyGen, wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return err
 	}
@@ -656,19 +651,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	km.config.Reporter().Notify(ctx, rekeyNotification(ctx, km.config, resolvedHandle,
 		false))
 
-	newWriterKeys := TLFWriterKeyBundle{
-		WKeys:        make(UserDeviceKeyInfoMap),
-		TLFPublicKey: pubKey,
-		// TLFEphemeralPublicKeys will be filled in by updateKeyBundle
-	}
-	newReaderKeys := TLFReaderKeyBundle{
-		RKeys: make(UserDeviceKeyInfoMap),
-		// TLFReaderEphemeralPublicKeys will be filled in by updateKeyBundle
-	}
-	err = md.AddNewKeys(newWriterKeys, newReaderKeys)
-	if err != nil {
-		return false, nil, err
-	}
+	md.NewKeyGeneration(pubKey)
 	currKeyGen = md.LatestKeyGeneration()
 	err = km.updateKeyBundle(ctx, md, currKeyGen, wKeys, rKeys, ePubKey,
 		ePrivKey, tlfCryptKey)

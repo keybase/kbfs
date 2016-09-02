@@ -1624,6 +1624,8 @@ type MutableBareRootMetadata interface {
 	SetRevision(revision MetadataRevision)
 	// AddNewKeys adds new writer and reader TLF key bundles to this revision of metadata.
 	AddNewKeys(wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) error
+	// NewKeyGeneration adds a new key generation to this revision of metadata.
+	NewKeyGeneration(pubKey TLFPublicKey) (wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundle)
 	// SetUnresolvedReaders sets the list of unresolved readers assoiated with this folder.
 	SetUnresolvedReaders(readers []keybase1.SocialAssertion)
 	// SetUnresolvedWriters sets the list of unresolved writers assoiated with this folder.
@@ -1654,6 +1656,15 @@ type MutableBareRootMetadata interface {
 	// key generation. Note "wkb" and "rkb" are expcted to be nil for v1 and v2 metadata.
 	GetUserDeviceKeyInfoMaps(keyGen KeyGen, rkb *TLFReaderKeyBundle,
 		wkb *TLFWriterKeyBundleV2) (readers, writers UserDeviceKeyInfoMap, err error)
+	// fillInDevices ensures that every device for every writer and reader
+	// in the provided lists has complete TLF crypt key info, and uses the
+	// new ephemeral key pair to generate the info if it doesn't yet
+	// exist.
+	fillInDevices(crypto Crypto,
+		wkb *TLFWriterKeyBundle, rkb *TLFReaderKeyBundle,
+		wKeys map[keybase1.UID][]CryptPublicKey,
+		rKeys map[keybase1.UID][]CryptPublicKey, ePubKey TLFEphemeralPublicKey,
+		ePrivKey TLFEphemeralPrivateKey, tlfCryptKey TLFCryptKey) (serverKeyMap, error)
 }
 
 // KeyBundleCache is an interface to a key bundle cache for use with v3 metadata.
