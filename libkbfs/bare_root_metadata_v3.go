@@ -407,7 +407,8 @@ func (md *BareRootMetadataV3) GetTLFKeyBundles(_ KeyGen) (
 		return nil, nil, InvalidPublicTLFOperation{md.TlfID(), "GetTLFKeyBundles"}
 	}
 	// v3 metadata contains no key bundles.
-	return nil, nil, errors.New("Not impmlemented")
+	//panic("here")
+	return nil, nil, errors.New("Not implemented")
 }
 
 // GetDeviceKIDs implements the BareRootMetadata interface for BareRootMetadataV3.
@@ -774,8 +775,22 @@ func (md *BareRootMetadataV3) SetRevision(revision MetadataRevision) {
 
 // AddNewKeys implements the MutableBareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) AddNewKeys(
-	wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) {
-	// XXX TODO: doesn't make sense for v3 as-is
+	wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) error {
+	// XXX TODO: set IDs
+	return nil
+}
+
+// NewKeyGeneration implements the MutableBareRootMetadata interface for BareRootMetadataV3.
+func (md *BareRootMetadataV3) NewKeyGeneration(pubKey TLFPublicKey) (
+	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundle) {
+	newWriterKeys := &TLFWriterKeyBundleV2{
+		Keys: make(UserDeviceKeyInfoMap),
+	}
+	newReaderKeys := &TLFReaderKeyBundle{
+		RKeys: make(UserDeviceKeyInfoMap),
+	}
+	newWriterKeys.TLFPublicKeys = []TLFPublicKey{pubKey}
+	return newWriterKeys, newReaderKeys
 }
 
 // SetUnresolvedReaders implements the MutableBareRootMetadata interface for BareRootMetadataV3.
@@ -864,6 +879,17 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(keyGen KeyGen,
 		return nil, nil, errors.New("Key bundles missing")
 	}
 	return rkb.RKeys, wkb.Keys, nil
+}
+
+// fillInDevices implements the MutableBareRootMetadata interface for BareRootMetadataV3.
+func (md *BareRootMetadataV3) fillInDevices(crypto Crypto,
+	wkb *TLFWriterKeyBundle, rkb *TLFReaderKeyBundle,
+	wKeys map[keybase1.UID][]CryptPublicKey,
+	rKeys map[keybase1.UID][]CryptPublicKey, ePubKey TLFEphemeralPublicKey,
+	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey TLFCryptKey) (
+	serverKeyMap, error) {
+	// XXX TODO
+	return serverKeyMap{}, errors.New("Not implemented")
 }
 
 // BareRootMetadataSignedV3 is the MD that is signed by the reader or

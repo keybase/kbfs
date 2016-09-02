@@ -931,6 +931,56 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(keyGen KeyGen,
 	return rkb.RKeys, wkb.WKeys, nil
 }
 
+// NewKeyGeneration implements the MutableBareRootMetadata interface for BareRootMetadataV2.
+func (md *BareRootMetadataV2) NewKeyGeneration(pubKey TLFPublicKey) (
+	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundle) {
+	newWriterKeys := TLFWriterKeyBundle{
+		WKeys:        make(UserDeviceKeyInfoMap),
+		TLFPublicKey: pubKey,
+	}
+	newReaderKeys := TLFReaderKeyBundle{
+		RKeys: make(UserDeviceKeyInfoMap),
+	}
+	md.AddNewKeys(newWriterKeys, newReaderKeys)
+	return nil, nil
+}
+
+// fillInDevices implements the MutableBareRootMetadata interface for BareRootMetadataV2.
+func (md *BareRootMetadataV2) fillInDevices(crypto Crypto,
+	wkb *TLFWriterKeyBundle, rkb *TLFReaderKeyBundle,
+	wKeys map[keybase1.UID][]CryptPublicKey,
+	rKeys map[keybase1.UID][]CryptPublicKey, ePubKey TLFEphemeralPublicKey,
+	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey TLFCryptKey) (
+	serverKeyMap, error) {
+	var newIndex int
+	if len(wKeys) == 0 {
+		// This is VERY ugly, but we need it in order to avoid having to
+		// version the metadata. The index will be strictly negative for reader
+		// ephemeral public keys
+		rkb.TLFReaderEphemeralPublicKeys =
+			append(rkb.TLFReaderEphemeralPublicKeys, ePubKey)
+		newIndex = -len(rkb.TLFReaderEphemeralPublicKeys)
+	} else {
+		wkb.TLFEphemeralPublicKeys =
+			append(wkb.TLFEphemeralPublicKeys, ePubKey)
+		newIndex = len(wkb.TLFEphemeralPublicKeys) - 1
+	}
+
+	// now fill in the secret keys as needed
+	newServerKeys := serverKeyMap{}
+	err := fillInDevicesAndServerMap(crypto, newIndex, wKeys, wkb.WKeys,
+		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+	if err != nil {
+		return nil, err
+	}
+	err = fillInDevicesAndServerMap(crypto, newIndex, rKeys, rkb.RKeys,
+		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+	if err != nil {
+		return nil, err
+	}
+	return newServerKeys, nil
+}
+
 // BareRootMetadataSignedV2 is the MD that is signed by the reader or
 // writer including the signature info. Unlike RootMetadataSigned,
 // it contains exactly the serializable metadata and signature info.
