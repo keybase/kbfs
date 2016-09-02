@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/libkb"
@@ -1311,6 +1312,7 @@ func TestKBFSOpsCanceledCreateDelayTimeoutErrors(t *testing.T) {
 	// cancellation should have been enabled.
 	<-onPutStalledCh
 	cancel()
+	time.Sleep(20 * time.Millisecond) // make sure the cancellation is relayed
 	close(putUnstallCh)
 
 	// We expect a canceled error
