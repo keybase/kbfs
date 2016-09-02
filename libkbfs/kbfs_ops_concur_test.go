@@ -1321,6 +1321,13 @@ func TestKBFSOpsCanceledCreateDelayTimeoutErrors(t *testing.T) {
 		t.Fatalf("Create didn't fail after grace period after cancellation."+
 			" Got %v; expecting context.Canceled", err)
 	}
+
+	// do another Op, which generates a new revision, to make sure
+	// CheckConfigAndShutdown doesn't get stuck
+	if _, _, err = kbfsOps.CreateFile(BackgroundContextWithCancellationDelayer(),
+		rootNode, "b", false, NoExcl); err != nil {
+		t.Fatalf("throwaway op failed: %v", err)
+	}
 }
 
 // Test that a Sync that is canceled during a successful MD put works.
