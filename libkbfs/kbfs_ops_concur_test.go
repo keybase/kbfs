@@ -1312,7 +1312,17 @@ func TestKBFSOpsCanceledCreateDelayTimeoutErrors(t *testing.T) {
 	// cancellation should have been enabled.
 	<-onPutStalledCh
 	cancel()
-	time.Sleep(20 * time.Millisecond) // make sure the cancellation is relayed
+
+	select {
+	case <-ctx.Done():
+		// The cancellation delayer makes cancellation become async. This makes
+		// sure ctx is actually canceled before unstalling.
+	case <-time.After(time.Second):
+		// We have a grace period of 0s. This is too long; something must have gone
+		// wrong!
+		t.Fatalf("it took too long for cancellation to happen")
+	}
+
 	close(putUnstallCh)
 
 	// We expect a canceled error
