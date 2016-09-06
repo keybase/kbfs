@@ -11,7 +11,8 @@ import (
 
 // handleTLFSpecialFile handles special files that are within a TLF.
 func handleTLFSpecialFile(name string, folder *Folder) dokan.File {
-	// Error and metrics file already handled in fs.go.
+	// Common files (the equivalent of handleCommonSpecialFile
+	// from libfuse) are handled in fs.go.
 	switch name {
 	case libfs.StatusFileName:
 		return NewTLFStatusFile(folder.fs, folder)

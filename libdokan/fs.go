@@ -263,14 +263,22 @@ func (f *FS) open(ctx context.Context, oc *openContext, ps []string) (dokan.File
 		return nil, false, dokan.ErrObjectNameNotFound
 	case psl == 1 && ps[0] == ``:
 		return oc.returnDirNoCleanup(f.root)
+
+		// This section is equivalent to
+		// handleCommonSpecialFile in libfuse.
 	case libkbfs.ErrorFile == ps[psl-1]:
 		return NewErrorFile(f), false, nil
 	case libfs.MetricsFileName == ps[psl-1]:
 		return NewMetricsFile(f), false, nil
-	case libfs.StatusFileName == ps[0]:
-		return NewStatusFile(f.root.private.fs, nil), false, nil
+		// TODO: Port over ProfileList.
 	case libfs.ResetCachesFileName == ps[0]:
 		return &ResetCachesFile{fs: f.root.private.fs}, false, nil
+
+		// This section is equivalent to
+		// handleNonTLFSpecialFile in libfuse.
+	case libfs.StatusFileName == ps[0]:
+		return NewNonTLFStatusFile(f.root.private.fs), false, nil
+
 	// TODO
 	// Unfortunately sometimes we end up in this case while using
 	// reparse points.
