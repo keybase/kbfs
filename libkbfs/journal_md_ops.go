@@ -342,14 +342,7 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 			if err != nil {
 				return MdID{}, err
 			}
-			if head == (ImmutableRootMetadata{}) {
-				// new branch ID
-				bid, err := j.jServer.config.Crypto().MakeRandomBranchID()
-				if err != nil {
-					return MdID{}, err
-				}
-				rmd.SetBranchID(bid)
-			} else {
+			if head != (ImmutableRootMetadata{}) {
 				rmd.SetBranchID(head.BID())
 			}
 		}
