@@ -5,19 +5,20 @@
 package libfuse
 
 import (
-	"bazil.org/fuse"
+	"time"
+
 	"bazil.org/fuse/fs"
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
 )
 
 func handleGlobalSpecialFile(
-	name string, fs *FS, resp *fuse.LookupResponse) fs.Node {
+	name string, fs *FS, entryValid *time.Duration) fs.Node {
 	switch name {
 	case libkbfs.ErrorFile:
-		return NewErrorFile(fs, &resp.EntryValid)
+		return NewErrorFile(fs, entryValid)
 	case libfs.MetricsFileName:
-		return NewMetricsFile(fs, &resp.EntryValid)
+		return NewMetricsFile(fs, entryValid)
 	case libfs.ProfileListDirName:
 		return ProfileList{}
 	case libfs.ResetCachesFileName:
