@@ -234,3 +234,43 @@ func TestJournalMDOpsBasics(t *testing.T) {
 
 // TODO: Add a test for GetRange where the server has an overlapping
 // range with the journal.
+
+func TestJournalMDOpsPutUnmerged(t *testing.T) {
+	tempdir, config, _, jServer := setupJournalMDOpsTest(t)
+	defer teardownJournalMDOpsTest(t, tempdir, config)
+
+	ctx := context.Background()
+	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	require.NoError(t, err)
+
+	// (1) get metadata -- allocates an ID
+	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	h, err := MakeTlfHandle(ctx, bh, config.KBPKI())
+	require.NoError(t, err)
+
+	mdOps := jServer.mdOps()
+
+	id, irmd, err := mdOps.GetForHandle(ctx, h, Merged)
+	require.NoError(t, err)
+	require.Equal(t, ImmutableRootMetadata{}, irmd)
+
+	err = jServer.Enable(ctx, id, TLFJournalBackgroundWorkPaused)
+	require.NoError(t, err)
+
+	rmd := NewRootMetadata()
+	err = rmd.Update(id, bh)
+	require.NoError(t, err)
+	rmd.tlfHandle = h
+	rmd.SetRevision(MetadataRevision(1))
+	rekeyDone, _, err := config.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, rekeyDone)
+
+	_, err = mdOps.PutUnmerged(ctx, rmd)
+	require.NoError(t, err)
+
+	require.Equal(t, Unmerged, rmd.MergedStatus())
+	require.NotEqual(t, NullBranchID, rmd.BID())
+}
