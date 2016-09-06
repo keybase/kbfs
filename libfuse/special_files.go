@@ -5,6 +5,7 @@
 package libfuse
 
 import (
+	"errors"
 	"time"
 
 	"bazil.org/fuse/fs"
@@ -50,6 +51,8 @@ func handleFolderListSpecialFile(
 	name string, fs *FS, entryValid *time.Duration) fs.Node {
 	return handleCommonSpecialFile(name, fs, entryValid)
 }
+
+var errZeroFolderBranch = errors.New("TLF has no folder branch yet")
 
 func handleTLFSpecialFile(
 	name string, folder *Folder, entryValid *time.Duration) fs.Node {

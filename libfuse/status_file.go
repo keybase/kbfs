@@ -5,7 +5,6 @@
 package libfuse
 
 import (
-	"errors"
 	"time"
 
 	"golang.org/x/net/context"
@@ -32,8 +31,7 @@ func NewTLFStatusFile(
 		read: func(ctx context.Context) ([]byte, time.Time, error) {
 			folderBranch := folder.getFolderBranch()
 			if folderBranch == (libkbfs.FolderBranch{}) {
-				return nil, 0, errors.New(
-					"TLF has no folder branch yet")
+				return nil, time.Time{}, errZeroFolderBranch
 			}
 			return libfs.GetEncodedFolderStatus(
 				ctx, folder.fs.config, folderBranch)
