@@ -13,12 +13,12 @@ import (
 
 // NewTlfEditHistoryFile returns a special read file that contains a text
 // representation of the file edit history for that TLF.
-func NewTlfEditHistoryFile(fs *FS, folder *Folder) *SpecialReadFile {
+func NewTlfEditHistoryFile(folder *Folder) *SpecialReadFile {
 	return &SpecialReadFile{
 		read: func(ctx context.Context) ([]byte, time.Time, error) {
 			return libfs.GetEncodedTlfEditHistory(
-				ctx, fs.config, folder.getFolderBranch())
+				ctx, folder.fs.config, folder.getFolderBranch())
 		},
-		fs: fs,
+		fs: folder.fs,
 	}
 }

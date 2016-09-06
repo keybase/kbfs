@@ -30,6 +30,6 @@ func NewTLFStatusFile(folder *Folder) *SpecialReadFile {
 			return libfs.GetEncodedFolderStatus(
 				ctx, folder.fs.config, folder.getFolderBranch())
 		},
-		fs: fs,
+		fs: folder.fs,
 	}
 }
