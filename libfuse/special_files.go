@@ -28,7 +28,7 @@ func handleCommonSpecialFile(
 	return nil
 }
 
-func handleRootSpecialFile(
+func handleFSSpecialFile(
 	name string, fs *FS, entryValid *time.Duration) fs.Node {
 	specialNode := handleCommonSpecialFile(name, fs, entryValid)
 	if specialNode != nil {
@@ -44,11 +44,6 @@ func handleRootSpecialFile(
 	}
 
 	return nil
-}
-
-func handleFolderListSpecialFile(
-	name string, fs *FS, entryValid *time.Duration) fs.Node {
-	return handleCommonSpecialFile(name, fs, entryValid)
 }
 
 func handleTLFSpecialFile(
