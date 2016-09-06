@@ -15,9 +15,9 @@ func handleGlobalSpecialFile(
 	name string, fs *FS, resp *fuse.LookupResponse) fs.Node {
 	switch name {
 	case libkbfs.ErrorFile:
-		return NewErrorFile(fs, resp)
+		return NewErrorFile(fs, &resp.EntryValid)
 	case libfs.MetricsFileName:
-		return NewMetricsFile(fs, resp)
+		return NewMetricsFile(fs, &resp.EntryValid)
 	case libfs.ProfileListDirName:
 		return ProfileList{}
 	case libfs.ResetCachesFileName:
