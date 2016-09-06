@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
@@ -371,7 +372,7 @@ func (d *Dir) attr(ctx context.Context, a *fuse.Attr) (err error) {
 }
 
 func openSpecialInFolder(name string, folder *Folder, resp *fuse.LookupResponse) fs.Node {
-	specialNode := handleSpecialFile(name, folder.fs, resp)
+	specialNode := handleGlobalSpecialFile(name, folder.fs, resp)
 	if specialNode != nil {
 		return specialNode
 	}

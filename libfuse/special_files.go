@@ -11,7 +11,8 @@ import (
 	"github.com/keybase/kbfs/libkbfs"
 )
 
-func handleSpecialFile(name string, fs *FS, resp *fuse.LookupResponse) fs.Node {
+func handleGlobalSpecialFile(
+	name string, fs *FS, resp *fuse.LookupResponse) fs.Node {
 	switch name {
 	case libkbfs.ErrorFile:
 		return NewErrorFile(fs, resp)
