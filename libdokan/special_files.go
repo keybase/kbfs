@@ -15,12 +15,12 @@ func handleTLFSpecialFile(name string, folder *Folder) dokan.File {
 	// from libfuse) are handled in fs.go.
 	switch name {
 	case libfs.StatusFileName:
-		return NewTLFStatusFile(folder.fs, folder)
+		return NewTLFStatusFile(folder)
 
 		// TODO: Port over UpdateHistoryFile.
 
 	case libfs.EditHistoryName:
-		return NewTlfEditHistoryFile(folder.fs, folder)
+		return NewTlfEditHistoryFile(folder)
 
 	case libfs.UnstageFileName:
 		return &UnstageFile{
