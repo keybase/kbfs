@@ -66,9 +66,7 @@ func handleTLFSpecialFile(
 		return NewUpdateHistoryFile(folder, entryValid)
 
 	case libfs.EditHistoryName:
-		folderBranch := folder.getFolderBranch()
-		return NewTlfEditHistoryFile(
-			folder.fs, folderBranch, entryValid)
+		return NewTlfEditHistoryFile(folder, entryValid)
 
 	case libfs.UnstageFileName:
 		return &UnstageFile{

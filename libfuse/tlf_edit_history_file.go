@@ -10,18 +10,17 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/keybase/kbfs/libfs"
-	"github.com/keybase/kbfs/libkbfs"
 )
 
 // NewTlfEditHistoryFile returns a special read file that contains a text
 // representation of the file edit history for that TLF.
-func NewTlfEditHistoryFile(fs *FS, folderBranch libkbfs.FolderBranch,
-	entryValid *time.Duration) *SpecialReadFile {
+func NewTlfEditHistoryFile(
+	folder *Folder, entryValid *time.Duration) *SpecialReadFile {
 	*entryValid = 0
 	return &SpecialReadFile{
 		read: func(ctx context.Context) ([]byte, time.Time, error) {
 			return libfs.GetEncodedTlfEditHistory(
-				ctx, fs.config, folderBranch)
+				ctx, folder.fs.config, folder.getFolderBranch())
 		},
 	}
 }
