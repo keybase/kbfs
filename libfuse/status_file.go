@@ -5,11 +5,13 @@
 package libfuse
 
 import (
+	"errors"
 	"time"
 
 	"golang.org/x/net/context"
 
 	"github.com/keybase/kbfs/libfs"
+	"github.com/keybase/kbfs/libkbfs"
 )
 
 // NewGlobalStatusFile returns a special read file that contains a
@@ -28,8 +30,13 @@ func NewTLFStatusFile(
 	*entryValid = 0
 	return &SpecialReadFile{
 		read: func(ctx context.Context) ([]byte, time.Time, error) {
+			folderBranch := folder.getFolderBranch()
+			if folderBranch == (libkbfs.FolderBranch{}) {
+				return nil, 0, errors.New(
+					"TLF has no folder branch yet")
+			}
 			return libfs.GetEncodedFolderStatus(
-				ctx, folder.fs.config, folder.getFolderBranch())
+				ctx, folder.fs.config, folderBranch)
 		},
 	}
 }

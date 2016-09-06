@@ -207,6 +207,10 @@ func (fs *KBFSOpsStandard) getOpsNoAdd(fb FolderBranch) *folderBranchOps {
 
 func (fs *KBFSOpsStandard) getOps(
 	ctx context.Context, fb FolderBranch) *folderBranchOps {
+	if fb == (FolderBranch{}) {
+		panic("zero FolderBranch in getOps")
+	}
+
 	ops := fs.getOpsNoAdd(fb)
 	if err := ops.addToFavorites(ctx, fs.favs, false); err != nil {
 		// Failure to favorite shouldn't cause a failure.  Just log
