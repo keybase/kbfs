@@ -996,8 +996,9 @@ type MDServer interface {
 	// Put stores the (signed/encrypted) metadata object for the given
 	// top-level folder. Note: If the unmerged bit is set in the metadata
 	// block's flags bitmask it will be appended to the unmerged per-device
-	// history.
-	Put(ctx context.Context, rmds *RootMetadataSigned) error
+	// history. Note "rkb" and "wkb" are expected to be nil for pre-v3 metadata.
+	Put(ctx context.Context, rmds *RootMetadataSigned,
+		rkb *TLFReaderKeyBundle, wkb *TLFWriterKeyBundleV2) error
 
 	// PruneBranch prunes all unmerged history for the given TLF branch.
 	PruneBranch(ctx context.Context, id TlfID, bid BranchID) error
@@ -1542,7 +1543,7 @@ type BareRootMetadata interface {
 	// (identified by its crypt public key), or false if not found. This
 	// returns an error if the TLF is public.
 	GetTLFCryptKeyParams(keyGen KeyGen, user keybase1.UID, key CryptPublicKey,
-		_ *TLFWriterKeyBundleV2, _ *TLFReaderKeyBundle) (
+		wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundle) (
 		TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 		TLFCryptKeyServerHalfID, bool, error)
 	// IsValidAndSigned verifies the BareRootMetadata, checks the
@@ -1588,7 +1589,8 @@ type BareRootMetadata interface {
 	// Version returns the metadata version.
 	Version() MetadataVer
 	// GetTLFPublicKey returns the TLF public key for the give key generation.
-	GetTLFPublicKey(KeyGen) (TLFPublicKey, bool)
+	// Note the *TLFWriterKeyBundleV2 is expected to be nil for pre-v3 metadata.
+	GetTLFPublicKey(KeyGen, *TLFWriterKeyBundleV2) (TLFPublicKey, bool)
 	// AreKeyGenerationsEqual returns true if all key generations in the passed metadata are equal to those
 	// in this revision.
 	AreKeyGenerationsEqual(Codec, BareRootMetadata) (bool, error)
@@ -1660,7 +1662,7 @@ type MutableBareRootMetadata interface {
 	// BareRootMetadata. This is necessary since newly-created
 	// BareRootMetadata objects don't have enough data to build a
 	// TlfHandle from until the first rekey.
-	FakeInitialRekey(h BareTlfHandle)
+	FakeInitialRekey(c Codec, h BareTlfHandle) (*TLFReaderKeyBundle, *TLFWriterKeyBundleV2, error)
 	// Update initializes the given freshly-created BareRootMetadata object with
 	// the given TlfID and BareTlfHandle. Note that if the given ID/handle are private,
 	// rekeying must be done separately.
@@ -1677,7 +1679,7 @@ type MutableBareRootMetadata interface {
 	// new ephemeral key pair to generate the info if it doesn't yet
 	// exist.
 	fillInDevices(crypto Crypto,
-		wkb *TLFWriterKeyBundle, rkb *TLFReaderKeyBundle,
+		wkb *TLFWriterKeyBundle, wkb2 *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundle,
 		wKeys map[keybase1.UID][]CryptPublicKey,
 		rKeys map[keybase1.UID][]CryptPublicKey, ePubKey TLFEphemeralPublicKey,
 		ePrivKey TLFEphemeralPrivateKey, tlfCryptKey TLFCryptKey) (serverKeyMap, error)

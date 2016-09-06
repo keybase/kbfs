@@ -329,8 +329,7 @@ func (md *RootMetadata) updateFromTlfHandle(newHandle *TlfHandle) error {
 	md.SetConflictInfo(newHandle.ConflictInfo())
 	md.SetFinalizedInfo(newHandle.FinalizedInfo())
 
-	// XXX TODO: pass key bundles when needed
-	bareHandle, err := md.bareMd.MakeBareTlfHandle(nil, nil)
+	bareHandle, err := md.bareMd.MakeBareTlfHandle(md.cachedRkb, md.cachedWkb)
 	if err != nil {
 		return err
 	}
@@ -366,8 +365,7 @@ func (md *RootMetadata) GetTLFCryptKeyParams(
 	keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
 	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
-	// XXX todo pass bundles
-	return md.bareMd.GetTLFCryptKeyParams(keyGen, user, key, nil, nil)
+	return md.bareMd.GetTLFCryptKeyParams(keyGen, user, key, md.cachedWkb, md.cachedRkb)
 }
 
 // LatestKeyGeneration wraps the respective method of the underlying BareRootMetadata for convenience.
@@ -590,13 +588,14 @@ func (md *RootMetadata) SetTlfID(tlf TlfID) {
 
 // HasKeyForUser wraps the respective method of the underlying BareRootMetadata for convenience.
 func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool {
-	// XXX TODO: pass key bundles
-	return md.bareMd.HasKeyForUser(keyGen, user, nil, nil)
+	return md.bareMd.HasKeyForUser(keyGen, user, md.cachedRkb, md.cachedWkb)
 }
 
 // FakeInitialRekey wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) FakeInitialRekey(h BareTlfHandle) {
-	md.bareMd.FakeInitialRekey(h)
+func (md *RootMetadata) FakeInitialRekey(codec Codec, h BareTlfHandle) error {
+	var err error
+	md.cachedRkb, md.cachedWkb, err = md.bareMd.FakeInitialRekey(codec, h)
+	return err
 }
 
 // Update wraps the respective method of the underlying BareRootMetadata for convenience.
@@ -618,15 +617,21 @@ func (md *RootMetadata) fillInDevices(crypto Crypto,
 	keyGen KeyGen, wKeys map[keybase1.UID][]CryptPublicKey,
 	rKeys map[keybase1.UID][]CryptPublicKey, ePubKey TLFEphemeralPublicKey,
 	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey TLFCryptKey) (serverKeyMap, error) {
+	var err error
+	var wkb *TLFWriterKeyBundle
+
 	// v3 bundles aren't embedded.
-	//wkb, rkb := md.cachedWkb, md.cachedRkb
-	// v1 & v2 bundles are embedded.
-	wkb, rkb, err := md.bareMd.GetTLFKeyBundles(keyGen)
-	if err != nil {
-		return serverKeyMap{}, err
+	wkb2, rkb := md.cachedWkb, md.cachedRkb
+	if wkb2 == nil {
+		// v1 & v2 bundles are embedded.
+		wkb, rkb, err = md.bareMd.GetTLFKeyBundles(keyGen)
+		if err != nil {
+			return serverKeyMap{}, err
+		}
 	}
 
-	return md.bareMd.fillInDevices(crypto, wkb, rkb, wKeys, rKeys,
+	return md.bareMd.fillInDevices(crypto,
+		wkb, wkb2, rkb, wKeys, rKeys,
 		ePubKey, ePrivKey, tlfCryptKey)
 }
 
@@ -766,15 +771,14 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(config Config) (
 // validated, either by comparing to the current device key (using
 // IsLastModifiedBy), or by checking with KBPKI.
 func (rmds *RootMetadataSigned) IsValidAndSigned(
-	codec Codec, crypto cryptoPure) error {
+	codec Codec, crypto cryptoPure, wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundle) error {
 	// Optimization -- if the RootMetadata signature is nil, it
 	// will fail verification.
 	if rmds.SigInfo.IsNil() {
 		return errors.New("Missing RootMetadata signature")
 	}
 
-	// XXX TODO: pass key bundles when needed
-	err := rmds.MD.IsValidAndSigned(codec, crypto, nil, nil)
+	err := rmds.MD.IsValidAndSigned(codec, crypto, rkb, wkb)
 	if err != nil {
 		return err
 	}
@@ -838,12 +842,21 @@ func DecodeRootMetadataSigned(codec Codec, tlf TlfID, ver, max MetadataVer, buf 
 	} else if ver > max {
 		return nil, NewMetadataVersionError{tlf, ver}
 	}
-	// For now only v1 & v2 are supported (both by the same BareRootMetadataSignedV2 struct)
-	if ver > InitialExtraMetadataVer {
+	if ver > SegregatedKeyBundlesVer {
 		// Shouldn't be possible at the moment.
 		panic("Invalid metadata version")
 	}
-	var brmds BareRootMetadataSignedV2
+	if ver < SegregatedKeyBundlesVer {
+		var brmds BareRootMetadataSignedV2
+		if err := codec.Decode(buf, &brmds); err != nil {
+			return nil, err
+		}
+		return &RootMetadataSigned{
+			MD:      &brmds.MD,
+			SigInfo: brmds.SigInfo,
+		}, nil
+	}
+	var brmds BareRootMetadataSignedV3
 	if err := codec.Decode(buf, &brmds); err != nil {
 		return nil, err
 	}

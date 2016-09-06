@@ -662,16 +662,16 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 	// Delete server-side key halves for any revoked devices.
 	for keygen := KeyGen(FirstValidKeyGen); keygen <= currKeyGen; keygen++ {
-		wkb, rkb, err := md.bareMd.GetTLFKeyBundles(keygen)
+		rDkim, wDkim, err := md.bareMd.GetUserDeviceKeyInfoMaps(keygen, md.cachedRkb, md.cachedWkb)
 		if err != nil {
 			return false, nil, err
 		}
 
-		err = km.deleteKeysForRemovedDevices(ctx, md, wkb.WKeys, wKeys)
+		err = km.deleteKeysForRemovedDevices(ctx, md, wDkim, wKeys)
 		if err != nil {
 			return false, nil, err
 		}
-		err = km.deleteKeysForRemovedDevices(ctx, md, rkb.RKeys, rKeys)
+		err = km.deleteKeysForRemovedDevices(ctx, md, rDkim, rKeys)
 		if err != nil {
 			return false, nil, err
 		}

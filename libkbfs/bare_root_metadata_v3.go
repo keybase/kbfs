@@ -407,7 +407,6 @@ func (md *BareRootMetadataV3) GetTLFKeyBundles(_ KeyGen) (
 		return nil, nil, InvalidPublicTLFOperation{md.TlfID(), "GetTLFKeyBundles"}
 	}
 	// v3 metadata contains no key bundles.
-	//panic("here")
 	return nil, nil, errors.New("Not implemented")
 }
 
@@ -774,10 +773,8 @@ func (md *BareRootMetadataV3) SetRevision(revision MetadataRevision) {
 }
 
 // AddNewKeys implements the MutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) AddNewKeys(
-	wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) error {
-	// XXX TODO: set IDs
-	return nil
+func (md *BareRootMetadataV3) AddNewKeys(wkb TLFWriterKeyBundle, rkb TLFReaderKeyBundle) {
+	// MDv3 TODO: set IDs
 }
 
 // NewKeyGeneration implements the MutableBareRootMetadata interface for BareRootMetadataV3.
@@ -790,6 +787,7 @@ func (md *BareRootMetadataV3) NewKeyGeneration(pubKey TLFPublicKey) (
 		RKeys: make(UserDeviceKeyInfoMap),
 	}
 	newWriterKeys.TLFPublicKeys = []TLFPublicKey{pubKey}
+	md.WriterMetadata.LatestKeyGen++
 	return newWriterKeys, newReaderKeys
 }
 
@@ -834,24 +832,65 @@ func (md *BareRootMetadataV3) Version() MetadataVer {
 }
 
 // FakeInitialRekey implements the MutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) FakeInitialRekey(h BareTlfHandle) {
+func (md *BareRootMetadataV3) FakeInitialRekey(codec Codec, h BareTlfHandle) (
+	*TLFReaderKeyBundle, *TLFWriterKeyBundleV2, error) {
 	if md.TlfID().IsPublic() {
 		panic("Called FakeInitialRekey on public TLF")
 	}
-	// XXX TODO
+	wkb := &TLFWriterKeyBundleV2{
+		Keys: make(UserDeviceKeyInfoMap),
+	}
+	for _, w := range h.Writers {
+		k := MakeFakeCryptPublicKeyOrBust(string(w))
+		wkb.Keys[w] = DeviceKeyInfoMap{
+			k.kid: TLFCryptKeyInfo{},
+		}
+	}
+	buf, err := codec.Encode(wkb)
+	if err != nil {
+		return nil, nil, err
+	}
+	md.WriterMetadata.WKeyBundleID, err = TLFWriterKeyBundleIDFromBytes(buf)
+	if err != nil {
+		return nil, nil, err
+	}
+	rkb := &TLFReaderKeyBundle{
+		RKeys: make(UserDeviceKeyInfoMap),
+	}
+	for _, r := range h.Readers {
+		k := MakeFakeCryptPublicKeyOrBust(string(r))
+		rkb.RKeys[r] = DeviceKeyInfoMap{
+			k.kid: TLFCryptKeyInfo{},
+		}
+	}
+	buf, err = codec.Encode(rkb)
+	if err != nil {
+		return nil, nil, err
+	}
+	md.RKeyBundleID, err = TLFReaderKeyBundleIDFromBytes(buf)
+	if err != nil {
+		return nil, nil, err
+	}
+	return rkb, wkb, nil
 }
 
 // GetTLFPublicKey implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetTLFPublicKey(keyGen KeyGen) (TLFPublicKey, bool) {
-	// XXX TODO
-	return TLFPublicKey{}, false
+func (md *BareRootMetadataV3) GetTLFPublicKey(keyGen KeyGen, wkb *TLFWriterKeyBundleV2) (
+	TLFPublicKey, bool) {
+	if keyGen > md.LatestKeyGeneration() {
+		return TLFPublicKey{}, false
+	}
+	if wkb == nil {
+		return TLFPublicKey{}, false
+	}
+	return wkb.TLFPublicKeys[keyGen], true
 }
 
 // AreKeyGenerationsEqual implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) AreKeyGenerationsEqual(codec Codec, other BareRootMetadata) (bool, error) {
 	md3, ok := other.(*BareRootMetadataV3)
 	if !ok {
-		// XXX TODO: Is it ok for every upgrade to be considered a rekey?
+		// MDv3 TODO: handle comparisons across versions
 		return false, nil
 	}
 	rekey := md3.RKeyBundleID != md.RKeyBundleID ||
@@ -883,13 +922,38 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(keyGen KeyGen,
 
 // fillInDevices implements the MutableBareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) fillInDevices(crypto Crypto,
-	wkb *TLFWriterKeyBundle, rkb *TLFReaderKeyBundle,
+	_ *TLFWriterKeyBundle, wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundle,
 	wKeys map[keybase1.UID][]CryptPublicKey,
 	rKeys map[keybase1.UID][]CryptPublicKey, ePubKey TLFEphemeralPublicKey,
 	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey TLFCryptKey) (
 	serverKeyMap, error) {
-	// XXX TODO
-	return serverKeyMap{}, errors.New("Not implemented")
+	var newIndex int
+	if len(wKeys) == 0 {
+		// This is VERY ugly, but we need it in order to avoid having to
+		// version the metadata. The index will be strictly negative for reader
+		// ephemeral public keys
+		rkb.TLFReaderEphemeralPublicKeys =
+			append(rkb.TLFReaderEphemeralPublicKeys, ePubKey)
+		newIndex = -len(rkb.TLFReaderEphemeralPublicKeys)
+	} else {
+		wkb.TLFEphemeralPublicKeys =
+			append(wkb.TLFEphemeralPublicKeys, ePubKey)
+		newIndex = len(wkb.TLFEphemeralPublicKeys) - 1
+	}
+
+	// now fill in the secret keys as needed
+	newServerKeys := serverKeyMap{}
+	err := fillInDevicesAndServerMap(crypto, newIndex, wKeys, wkb.Keys,
+		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+	if err != nil {
+		return nil, err
+	}
+	err = fillInDevicesAndServerMap(crypto, newIndex, rKeys, rkb.RKeys,
+		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+	if err != nil {
+		return nil, err
+	}
+	return newServerKeys, nil
 }
 
 // BareRootMetadataSignedV3 is the MD that is signed by the reader or

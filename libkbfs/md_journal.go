@@ -303,15 +303,15 @@ func (j mdJournal) getLatest(currentUID keybase1.UID,
 	return MakeImmutableBareRootMetadata(latest, latestID, ts), nil
 }
 
-func (j mdJournal) checkGetParams(currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey) (ImmutableBareRootMetadata, error) {
+func (j mdJournal) checkGetParams(currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
+	rkb *TLFReaderKeyBundle, wkb *TLFWriterKeyBundleV2) (ImmutableBareRootMetadata, error) {
 	head, err := j.getLatest(currentUID, currentVerifyingKey, true)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
 
 	if head != (ImmutableBareRootMetadata{}) {
-		ok, err := isReader(currentUID, head.BareRootMetadata)
+		ok, err := isReader(currentUID, head.BareRootMetadata, rkb, wkb)
 		if err != nil {
 			return ImmutableBareRootMetadata{}, err
 		}
@@ -571,16 +571,17 @@ func (j mdJournal) getBranchID() BranchID {
 }
 
 func (j mdJournal) getHead(
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
-	ImmutableBareRootMetadata, error) {
-	return j.checkGetParams(currentUID, currentVerifyingKey)
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
+	rkb *TLFReaderKeyBundle, wkb *TLFWriterKeyBundleV2) (ImmutableBareRootMetadata, error) {
+	return j.checkGetParams(currentUID, currentVerifyingKey, rkb, wkb)
 }
 
 func (j mdJournal) getRange(
 	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
+	rkb *TLFReaderKeyBundle, wkb *TLFWriterKeyBundleV2,
 	start, stop MetadataRevision) (
 	[]ImmutableBareRootMetadata, error) {
-	_, err := j.checkGetParams(currentUID, currentVerifyingKey)
+	_, err := j.checkGetParams(currentUID, currentVerifyingKey, rkb, wkb)
 	if err != nil {
 		return nil, err
 	}
@@ -742,7 +743,8 @@ func (j *mdJournal) put(
 
 func (j *mdJournal) clear(
 	ctx context.Context, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey, bid BranchID) (err error) {
+	currentVerifyingKey VerifyingKey, bid BranchID,
+	rkb *TLFReaderKeyBundle, wkb *TLFWriterKeyBundleV2) (err error) {
 	j.log.CDebugf(ctx, "Clearing journal for branch %s", bid)
 	defer func() {
 		if err != nil {
@@ -756,7 +758,7 @@ func (j *mdJournal) clear(
 		return errors.New("Cannot clear master branch")
 	}
 
-	head, err := j.getHead(currentUID, currentVerifyingKey)
+	head, err := j.getHead(currentUID, currentVerifyingKey, rkb, wkb)
 	if err != nil {
 		return err
 	}

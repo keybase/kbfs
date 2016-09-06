@@ -124,7 +124,8 @@ func (md *MDOpsStandard) processMetadata(
 	ctx context.Context, handle *TlfHandle, rmds *RootMetadataSigned) (
 	ImmutableRootMetadata, error) {
 	// First, verify validity and signatures.
-	err := rmds.IsValidAndSigned(md.config.Codec(), md.config.Crypto())
+	// XXX TODO: pass key bundles
+	err := rmds.IsValidAndSigned(md.config.Codec(), md.config.Crypto(), nil, nil)
 	if err != nil {
 		return ImmutableRootMetadata{}, MDMismatchError{
 			rmds.MD.RevisionNumber(), handle.GetCanonicalPath(),
@@ -500,7 +501,7 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
-	err = md.config.MDServer().Put(ctx, &rmds)
+	err = md.config.MDServer().Put(ctx, &rmds, rmd.cachedRkb, rmd.cachedWkb)
 	if err != nil {
 		return MdID{}, err
 	}

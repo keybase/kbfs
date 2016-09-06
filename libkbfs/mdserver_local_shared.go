@@ -14,10 +14,9 @@ import (
 // Helper to aid in enforcement that only specified public keys can
 // access TLF metadata. mergedMasterHead can be nil, in which case
 // true is returned.
-func isReader(currentUID keybase1.UID,
-	mergedMasterHead BareRootMetadata) (bool, error) {
-	// XXX TODO: pass key bundles when needed
-	h, err := mergedMasterHead.MakeBareTlfHandle(nil, nil)
+func isReader(currentUID keybase1.UID, mergedMasterHead BareRootMetadata,
+	rkb *TLFReaderKeyBundle, wkb *TLFWriterKeyBundleV2) (bool, error) {
+	h, err := mergedMasterHead.MakeBareTlfHandle(rkb, wkb)
 	if err != nil {
 		return false, err
 	}
