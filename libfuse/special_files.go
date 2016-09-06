@@ -12,6 +12,8 @@ import (
 	"github.com/keybase/kbfs/libkbfs"
 )
 
+// handleCommonSpecialFile handles special files that are present both
+// within a TLF and outside a TLF.
 func handleCommonSpecialFile(
 	name string, fs *FS, entryValid *time.Duration) fs.Node {
 	switch name {
@@ -28,7 +30,9 @@ func handleCommonSpecialFile(
 	return nil
 }
 
-func handleFSSpecialFile(
+// handleNonTLFSpecialFile handles special files that are outside a TLF,
+// i.e. /keybase, /keybase/private, and /keybase/public.
+func handleNonTLFSpecialFile(
 	name string, fs *FS, entryValid *time.Duration) fs.Node {
 	specialNode := handleCommonSpecialFile(name, fs, entryValid)
 	if specialNode != nil {
@@ -46,6 +50,7 @@ func handleFSSpecialFile(
 	return nil
 }
 
+// handleTLFSpecialFile handles special files that are within a TLF.
 func handleTLFSpecialFile(
 	name string, folder *Folder, entryValid *time.Duration) fs.Node {
 	specialNode := handleCommonSpecialFile(name, folder.fs, entryValid)

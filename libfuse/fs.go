@@ -222,7 +222,7 @@ func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.L
 	r.log().CDebugf(ctx, "FS Lookup %s", req.Name)
 	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
 
-	specialNode := handleFSSpecialFile(
+	specialNode := handleNonTLFSpecialFile(
 		req.Name, r.private.fs, &resp.EntryValid)
 	if specialNode != nil {
 		return specialNode, nil
