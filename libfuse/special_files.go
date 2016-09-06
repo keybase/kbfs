@@ -41,7 +41,7 @@ func handleNonTLFSpecialFile(
 
 	switch name {
 	case libfs.StatusFileName:
-		return NewGlobalStatusFile(fs, entryValid)
+		return NewNonTLFStatusFile(fs, entryValid)
 	case libfs.HumanErrorFileName, libfs.HumanNoLoginFileName:
 		*entryValid = 0
 		return &SpecialReadFile{fs.remoteStatus.NewSpecialReadFunc}

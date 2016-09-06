@@ -14,12 +14,12 @@ func handleTLFSpecialFile(name string, folder *Folder) dokan.File {
 	// Error and metrics file already handled in fs.go.
 	switch name {
 	case libfs.StatusFileName:
-		folderBranch := folder.getFolderBranch()
-		return NewStatusFile(folder.fs, &folderBranch)
+		return NewTLFStatusFile(folder.fs, folder)
+
+		// TODO: Port over UpdateHistoryFile.
 
 	case libfs.EditHistoryName:
-		folderBranch := folder.getFolderBranch()
-		return NewTlfEditHistoryFile(folder.fs, folderBranch)
+		return NewTlfEditHistoryFile(folder.fs, folder)
 
 	case libfs.UnstageFileName:
 		return &UnstageFile{

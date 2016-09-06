@@ -12,9 +12,9 @@ import (
 	"github.com/keybase/kbfs/libfs"
 )
 
-// NewGlobalStatusFile returns a special read file that contains a
-// text representation of the status of the current TLF.
-func NewGlobalStatusFile(fs *FS, entryValid *time.Duration) *SpecialReadFile {
+// NewNonTLFStatusFile returns a special read file that contains a
+// text representation of the global KBFS status.
+func NewNonTLFStatusFile(fs *FS, entryValid *time.Duration) *SpecialReadFile {
 	*entryValid = 0
 	return &SpecialReadFile{
 		read: func(ctx context.Context) ([]byte, time.Time, error) {
@@ -23,6 +23,8 @@ func NewGlobalStatusFile(fs *FS, entryValid *time.Duration) *SpecialReadFile {
 	}
 }
 
+// NewTLFStatusFile returns a special read file that contains a text
+// representation of the status of the current TLF.
 func NewTLFStatusFile(
 	folder *Folder, entryValid *time.Duration) *SpecialReadFile {
 	*entryValid = 0
