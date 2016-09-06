@@ -7,7 +7,6 @@ package libfuse
 import (
 	"time"
 
-	"bazil.org/fuse"
 	"golang.org/x/net/context"
 
 	"github.com/keybase/kbfs/libfs"
@@ -17,11 +16,12 @@ import (
 // NewTlfEditHistoryFile returns a special read file that contains a text
 // representation of the file edit history for that TLF.
 func NewTlfEditHistoryFile(fs *FS, folderBranch libkbfs.FolderBranch,
-	resp *fuse.LookupResponse) *SpecialReadFile {
-	resp.EntryValid = 0
+	entryValid *time.Duration) *SpecialReadFile {
+	*entryValid = 0
 	return &SpecialReadFile{
 		read: func(ctx context.Context) ([]byte, time.Time, error) {
-			return libfs.GetEncodedTlfEditHistory(ctx, fs.config, folderBranch)
+			return libfs.GetEncodedTlfEditHistory(
+				ctx, fs.config, folderBranch)
 		},
 	}
 }

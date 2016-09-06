@@ -371,89 +371,6 @@ func (d *Dir) attr(ctx context.Context, a *fuse.Attr) (err error) {
 	return nil
 }
 
-func openSpecialInFolder(name string, folder *Folder, resp *fuse.LookupResponse) fs.Node {
-	specialNode := handleCommonSpecialFile(
-		name, folder.fs, &resp.EntryValid)
-	if specialNode != nil {
-		return specialNode
-	}
-
-	switch name {
-	case libfs.StatusFileName:
-		folderBranch := folder.getFolderBranch()
-		return NewStatusFile(folder.fs, &folderBranch, &resp.EntryValid)
-
-	case UpdateHistoryFileName:
-		return NewUpdateHistoryFile(folder, resp)
-
-	case libfs.EditHistoryName:
-		folderBranch := folder.getFolderBranch()
-		return NewTlfEditHistoryFile(folder.fs, folderBranch, resp)
-
-	case libfs.UnstageFileName:
-		return &UnstageFile{
-			folder: folder,
-		}
-
-	case libfs.DisableUpdatesFileName:
-		return &UpdatesFile{
-			folder: folder,
-		}
-
-	case libfs.EnableUpdatesFileName:
-		return &UpdatesFile{
-			folder: folder,
-			enable: true,
-		}
-
-	case libfs.RekeyFileName:
-		return &RekeyFile{
-			folder: folder,
-		}
-
-	case libfs.ReclaimQuotaFileName:
-		return &ReclaimQuotaFile{
-			folder: folder,
-		}
-
-	case libfs.SyncFromServerFileName:
-		return &SyncFromServerFile{
-			folder: folder,
-		}
-
-	case libfs.EnableJournalFileName:
-		return &JournalControlFile{
-			folder: folder,
-			action: libfs.JournalEnable,
-		}
-
-	case libfs.FlushJournalFileName:
-		return &JournalControlFile{
-			folder: folder,
-			action: libfs.JournalFlush,
-		}
-
-	case libfs.PauseJournalBackgroundWorkFileName:
-		return &JournalControlFile{
-			folder: folder,
-			action: libfs.JournalPauseBackgroundWork,
-		}
-
-	case libfs.ResumeJournalBackgroundWorkFileName:
-		return &JournalControlFile{
-			folder: folder,
-			action: libfs.JournalResumeBackgroundWork,
-		}
-
-	case libfs.DisableJournalFileName:
-		return &JournalControlFile{
-			folder: folder,
-			action: libfs.JournalDisable,
-		}
-	}
-	return nil
-}
-
 // Lookup implements the fs.NodeRequestLookuper interface for Dir.
 func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Lookup %s", req.Name)
@@ -466,9 +383,10 @@ func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.Lo
 		return nil, err
 	}
 
-	if node := openSpecialInFolder(req.Name, d.folder, resp); node != nil {
-		resp.EntryValid = 0
-		return node, nil
+	specialNode := handleTLFSpecialFile(
+		req.Name, d.folder, &resp.EntryValid)
+	if specialNode != nil {
+		return specialNode, nil
 	}
 
 	// Check if this is a per-file metainformation file, if so

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"bazil.org/fuse"
 	"golang.org/x/net/context"
 )
 
@@ -35,9 +34,9 @@ func getEncodedUpdateHistory(ctx context.Context, folder *Folder) (
 
 // NewUpdateHistoryFile returns a special read file that contains a text
 // representation of the update history of the current TLF.
-func NewUpdateHistoryFile(folder *Folder,
-	resp *fuse.LookupResponse) *SpecialReadFile {
-	resp.EntryValid = 0
+func NewUpdateHistoryFile(
+	folder *Folder, entryValid *time.Duration) *SpecialReadFile {
+	*entryValid = 0
 	return &SpecialReadFile{
 		read: func(ctx context.Context) ([]byte, time.Time, error) {
 			return getEncodedUpdateHistory(ctx, folder)
