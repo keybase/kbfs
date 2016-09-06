@@ -8,9 +8,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/keybase/kbfs/libfs"
-	"github.com/keybase/kbfs/libkbfs"
-
 	"golang.org/x/net/context"
 )
 
@@ -21,9 +18,6 @@ const UpdateHistoryFileName = ".kbfs_update_history"
 func getEncodedUpdateHistory(ctx context.Context, folder *Folder) (
 	data []byte, t time.Time, err error) {
 	folderBranch := folder.getFolderBranch()
-	if folderBranch == (libkbfs.FolderBranch{}) {
-		return nil, time.Time{}, libfs.ErrZeroFolderBranch
-	}
 	history, err := folder.fs.config.KBFSOps().GetUpdateHistory(
 		ctx, folderBranch)
 	if err != nil {
