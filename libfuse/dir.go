@@ -372,7 +372,7 @@ func (d *Dir) attr(ctx context.Context, a *fuse.Attr) (err error) {
 }
 
 func openSpecialInFolder(name string, folder *Folder, resp *fuse.LookupResponse) fs.Node {
-	specialNode := handleGlobalSpecialFile(
+	specialNode := handleCommonSpecialFile(
 		name, folder.fs, &resp.EntryValid)
 	if specialNode != nil {
 		return specialNode

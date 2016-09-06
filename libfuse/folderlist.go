@@ -105,7 +105,7 @@ func (fl *FolderList) Lookup(ctx context.Context, req *fuse.LookupRequest, resp 
 	fl.mu.Lock()
 	defer fl.mu.Unlock()
 
-	specialNode := handleGlobalSpecialFile(
+	specialNode := handleFolderListSpecialFile(
 		req.Name, fl.fs, &resp.EntryValid)
 	if specialNode != nil {
 		return specialNode, nil

@@ -12,7 +12,7 @@ import (
 	"github.com/keybase/kbfs/libkbfs"
 )
 
-func handleGlobalSpecialFile(
+func handleCommonSpecialFile(
 	name string, fs *FS, entryValid *time.Duration) fs.Node {
 	switch name {
 	case libkbfs.ErrorFile:
@@ -30,7 +30,7 @@ func handleGlobalSpecialFile(
 
 func handleRootSpecialFile(
 	name string, fs *FS, entryValid *time.Duration) fs.Node {
-	specialNode := handleGlobalSpecialFile(name, fs, entryValid)
+	specialNode := handleCommonSpecialFile(name, fs, entryValid)
 	if specialNode != nil {
 		return specialNode
 	}
@@ -44,4 +44,9 @@ func handleRootSpecialFile(
 	}
 
 	return nil
+}
+
+func handleFolderListSpecialFile(
+	name string, fs *FS, entryValid *time.Duration) fs.Node {
+	return handleCommonSpecialFile(name, fs, entryValid)
 }
