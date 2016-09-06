@@ -20,7 +20,7 @@ func NewStatusFile(fs *FS, folderBranch *libkbfs.FolderBranch) *SpecialReadFile 
 			if folderBranch == nil {
 				return libfs.GetEncodedStatus(ctx, fs.config)
 			}
-			return libfs.GetEncodedFolderStatus(ctx, fs.config, folderBranch)
+			return libfs.GetEncodedFolderStatus(ctx, fs.config, *folderBranch)
 		},
 		fs: fs,
 	}

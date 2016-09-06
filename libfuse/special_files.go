@@ -37,7 +37,7 @@ func handleRootSpecialFile(
 
 	switch name {
 	case libfs.StatusFileName:
-		return NewStatusFile(fs, nil, entryValid)
+		return NewGlobalStatusFile(fs, entryValid)
 	case libfs.HumanErrorFileName, libfs.HumanNoLoginFileName:
 		*entryValid = 0
 		return &SpecialReadFile{fs.remoteStatus.NewSpecialReadFunc}
@@ -60,8 +60,7 @@ func handleTLFSpecialFile(
 
 	switch name {
 	case libfs.StatusFileName:
-		folderBranch := folder.getFolderBranch()
-		return NewStatusFile(folder.fs, &folderBranch, entryValid)
+		return NewTLFStatusFile(folder, entryValid)
 
 	case UpdateHistoryFileName:
 		return NewUpdateHistoryFile(folder, entryValid)
