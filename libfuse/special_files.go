@@ -27,3 +27,21 @@ func handleGlobalSpecialFile(
 
 	return nil
 }
+
+func handleRootSpecialFile(
+	name string, fs *FS, entryValid *time.Duration) fs.Node {
+	specialNode := handleGlobalSpecialFile(name, fs, entryValid)
+	if specialNode != nil {
+		return specialNode
+	}
+
+	switch name {
+	case libfs.StatusFileName:
+		return NewStatusFile(fs, nil, entryValid)
+	case libfs.HumanErrorFileName, libfs.HumanNoLoginFileName:
+		*entryValid = 0
+		return &SpecialReadFile{fs.remoteStatus.NewSpecialReadFunc}
+	}
+
+	return nil
+}

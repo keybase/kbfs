@@ -222,27 +222,22 @@ func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.L
 	r.log().CDebugf(ctx, "FS Lookup %s", req.Name)
 	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
 
-	specialNode := handleGlobalSpecialFile(
+	specialNode := handleRootSpecialFile(
 		req.Name, r.private.fs, &resp.EntryValid)
 	if specialNode != nil {
 		return specialNode, nil
 	}
 
+	platformNode, err := r.platformLookup(ctx, req, resp)
+	if platformNode != nil || err != nil {
+		return platformNode, err
+	}
+
 	switch req.Name {
-	case libfs.StatusFileName:
-		return NewStatusFile(r.private.fs, nil, &resp.EntryValid), nil
 	case PrivateName:
 		return r.private, nil
 	case PublicName:
 		return r.public, nil
-	case libfs.HumanErrorFileName, libfs.HumanNoLoginFileName:
-		resp.EntryValid = 0
-		return &SpecialReadFile{r.private.fs.remoteStatus.NewSpecialReadFunc}, nil
-	}
-
-	platformNode, err := r.platformLookup(ctx, req, resp)
-	if platformNode != nil || err != nil {
-		return platformNode, err
 	}
 
 	// Don't want to pop up errors on special OS files.
