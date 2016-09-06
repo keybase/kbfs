@@ -10,7 +10,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/keybase/kbfs/libfs"
-	"github.com/keybase/kbfs/libkbfs"
 )
 
 // NewGlobalStatusFile returns a special read file that contains a
@@ -29,12 +28,8 @@ func NewTLFStatusFile(
 	*entryValid = 0
 	return &SpecialReadFile{
 		read: func(ctx context.Context) ([]byte, time.Time, error) {
-			folderBranch := folder.getFolderBranch()
-			if folderBranch == (libkbfs.FolderBranch{}) {
-				return nil, time.Time{}, errZeroFolderBranch
-			}
 			return libfs.GetEncodedFolderStatus(
-				ctx, folder.fs.config, folderBranch)
+				ctx, folder.fs.config, folder.getFolderBranch())
 		},
 	}
 }

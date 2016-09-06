@@ -16,6 +16,9 @@ import (
 func GetEncodedFolderStatus(ctx context.Context, config libkbfs.Config,
 	folderBranch libkbfs.FolderBranch) (
 	data []byte, t time.Time, err error) {
+	if folderBranch == (libkbfs.FolderBranch{}) {
+		return nil, time.Time{}, ErrZeroFolderBranch
+	}
 
 	var status libkbfs.FolderBranchStatus
 	status, _, err = config.KBFSOps().FolderStatus(ctx, folderBranch)
