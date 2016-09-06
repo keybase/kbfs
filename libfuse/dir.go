@@ -381,7 +381,7 @@ func openSpecialInFolder(name string, folder *Folder, resp *fuse.LookupResponse)
 	switch name {
 	case libfs.StatusFileName:
 		folderBranch := folder.getFolderBranch()
-		return NewStatusFile(folder.fs, &folderBranch, resp)
+		return NewStatusFile(folder.fs, &folderBranch, &resp.EntryValid)
 
 	case UpdateHistoryFileName:
 		return NewUpdateHistoryFile(folder, resp)

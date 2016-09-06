@@ -7,7 +7,6 @@ package libfuse
 import (
 	"time"
 
-	"bazil.org/fuse"
 	"golang.org/x/net/context"
 
 	"github.com/keybase/kbfs/libfs"
@@ -16,8 +15,9 @@ import (
 
 // NewStatusFile returns a special read file that contains a text
 // representation of the status of the current TLF.
-func NewStatusFile(fs *FS, folderBranch *libkbfs.FolderBranch, resp *fuse.LookupResponse) *SpecialReadFile {
-	resp.EntryValid = 0
+func NewStatusFile(fs *FS, folderBranch *libkbfs.FolderBranch,
+	entryValid *time.Duration) *SpecialReadFile {
+	*entryValid = 0
 	return &SpecialReadFile{
 		read: func(ctx context.Context) ([]byte, time.Time, error) {
 			if folderBranch == nil {

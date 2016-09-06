@@ -230,7 +230,7 @@ func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.L
 
 	switch req.Name {
 	case libfs.StatusFileName:
-		return NewStatusFile(r.private.fs, nil, resp), nil
+		return NewStatusFile(r.private.fs, nil, &resp.EntryValid), nil
 	case PrivateName:
 		return r.private, nil
 	case PublicName:
