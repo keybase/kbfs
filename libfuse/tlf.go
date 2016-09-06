@@ -155,7 +155,6 @@ func (tlf *TLF) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.
 	if exitEarly {
 		if node := handleTLFSpecialFile(
 			req.Name, tlf.folder, &resp.EntryValid); node != nil {
-			resp.EntryValid = 0
 			return node, nil
 		}
 		return nil, fuse.ENOENT
