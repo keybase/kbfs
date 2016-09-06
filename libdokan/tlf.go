@@ -166,8 +166,9 @@ func (tlf *TLF) open(ctx context.Context, oc *openContext, path []string) (dokan
 		return nil, false, err
 	}
 	if exitEarly {
-		if node := openSpecialFile(lastStr(path), tlf.folder); node != nil {
-			return node, false, nil
+		specialNode := handleTLFSpecialFile(lastStr(path), tlf.folder)
+		if specialNode != nil {
+			return specialNode, false, nil
 		}
 
 		return nil, false, dokan.ErrObjectNameNotFound
