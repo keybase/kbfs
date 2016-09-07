@@ -371,6 +371,19 @@ func TestMDJournalPutCase3EmptyAppend(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestMDJournalPutCase4(t *testing.T) {
+	uid, verifyingKey, _, _, id, signer, ekg,
+		bsplit, tempdir, j := setupMDJournalTest(t)
+	defer teardownMDJournalTest(t, tempdir)
+
+	ctx := context.Background()
+	md := makeMDForTest(t, id, MetadataRevision(10), uid, fakeMdID(1))
+	md.SetUnmerged()
+	md.SetBranchID(FakeBranchID(1))
+	_, err := j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md)
+	require.NoError(t, err)
+}
+
 func TestMDJournalBranchConversion(t *testing.T) {
 	uid, verifyingKey, codec, crypto, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
