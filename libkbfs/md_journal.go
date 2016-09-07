@@ -679,18 +679,36 @@ func (j *mdJournal) put(
 
 	mStatus := rmd.MergedStatus()
 
-	if (mStatus == Unmerged) && (rmd.BID() == NullBranchID) {
-		if lastBranchID == NullBranchID {
+	if mStatus == Unmerged {
+		if rmd.BID() == NullBranchID && lastBranchID == NullBranchID {
 			return MdID{}, errors.New(
 				"Unmerged put with rmd.BID() == j.branchID == NullBranchID")
 		}
 
-		allowReplace = false
-		j.log.CDebugf(
-			ctx, "Changing branch ID to %s and prev root to %s for MD for TLF=%s with rev=%s",
-			lastBranchID, lastMdID, rmd.TlfID(), rmd.Revision())
-		rmd.SetBranchID(lastBranchID)
-		rmd.SetPrevRoot(lastMdID)
+		if head == (ImmutableBareRootMetadata{}) &&
+			lastBranchID == NullBranchID {
+			// Case 4.
+			j.branchID = rmd.BID()
+			// Revert branch ID if we encounter an error.
+			defer func() {
+				if err != nil {
+					j.branchID = NullBranchID
+				}
+			}()
+		} else if rmd.BID() == NullBranchID {
+			// Case 2.
+			if lastBranchID == NullBranchID {
+				return MdID{}, errors.New(
+					"Unmerged put with rmd.BID() == j.branchID == NullBranchID")
+			}
+
+			allowReplace = false
+			j.log.CDebugf(
+				ctx, "Changing branch ID to %s and prev root to %s for MD for TLF=%s with rev=%s",
+				lastBranchID, lastMdID, rmd.TlfID(), rmd.Revision())
+			rmd.SetBranchID(lastBranchID)
+			rmd.SetPrevRoot(lastMdID)
+		}
 	}
 
 	if (mStatus == Merged) != (rmd.BID() == NullBranchID) {
