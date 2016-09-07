@@ -632,8 +632,9 @@ func (e MDJournalConflictError) Error() string {
 //  is set to the last known journal root. It doesn't matter if the
 //  journal is completely drained, since the last branch ID and root
 //  is remembered in memory. However, since this cache isn't persisted
-//  to disk, we need case 4. Also, unlike case 1, rmd must be the
-//  successor to the journal's head, if the head exists.
+//  to disk, we need case 4. Similarly to 1, if the journal is empty,
+//  then rmd is appended to it. Otherwise, rmd is either appended to
+//  the journal or replaces the journal's head.
 //
 //  3) rmd is unmerged and has a non-null branch ID, and the journal
 //  was non-empty at some time during this process's
@@ -642,9 +643,8 @@ func (e MDJournalConflictError) Error() string {
 //  or replaces the journal's head.
 //
 //  4) rmd is unmerged and has a non-null branch ID, and the journal
-//  has always been empty at some time during this process's
-//  lifetime. The branch ID is assumed to be correct, and rmd is
-//  appended to the journal.
+//  has always been empty during this process's lifetime. The branch
+//  ID is assumed to be correct, and rmd is appended to the journal.
 func (j *mdJournal) put(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, signer cryptoSigner,
@@ -659,8 +659,6 @@ func (j *mdJournal) put(
 				rmd.TlfID(), rmd.Revision(), rmd.BID(), err)
 		}
 	}()
-
-	allowReplace := true
 
 	head, err := j.getLatest(currentUID, currentVerifyingKey, true)
 	if err != nil {
@@ -702,7 +700,6 @@ func (j *mdJournal) put(
 					"Unmerged put with rmd.BID() == j.branchID == NullBranchID")
 			}
 
-			allowReplace = false
 			j.log.CDebugf(
 				ctx, "Changing branch ID to %s and prev root to %s for MD for TLF=%s with rev=%s",
 				lastBranchID, lastMdID, rmd.TlfID(), rmd.Revision())
@@ -769,11 +766,6 @@ func (j *mdJournal) put(
 
 	if head != (ImmutableBareRootMetadata{}) &&
 		rmd.Revision() == head.RevisionNumber() {
-		if !allowReplace {
-			return MdID{}, fmt.Errorf(
-				"Replacing revision %d disallowed",
-				rmd.Revision())
-		}
 
 		j.log.CDebugf(
 			ctx, "Replacing head MD for TLF=%s with rev=%s bid=%s",
