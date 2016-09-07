@@ -176,6 +176,21 @@ func TestMDJournalBasic(t *testing.T) {
 	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 }
 
+func TestMDJournalPutCase1Empty(t *testing.T) {
+	uid, verifyingKey, _, _, id, signer, ekg,
+		bsplit, tempdir, j := setupMDJournalTest(t)
+	defer teardownMDJournalTest(t, tempdir)
+
+	ctx := context.Background()
+	md := makeMDForTest(t, id, MetadataRevision(10), uid, fakeMdID(1))
+	_, err := j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md)
+	require.NoError(t, err)
+
+	head, err := j.getHead(uid, verifyingKey)
+	require.NoError(t, err)
+	require.Equal(t, md.bareMd, head.BareRootMetadata)
+}
+
 func TestMDJournalReplaceHead(t *testing.T) {
 	uid, verifyingKey, _, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
