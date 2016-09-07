@@ -676,7 +676,7 @@ func (j *mdJournal) put(
 
 	mStatus := rmd.MergedStatus()
 
-	// Make modifications for cases 2-4.
+	// Make modifications for the Unmerged cases.
 	if mStatus == Unmerged {
 		var lastMdID MdID
 		var lastBranchID BranchID
@@ -695,7 +695,7 @@ func (j *mdJournal) put(
 
 		if head == (ImmutableBareRootMetadata{}) &&
 			lastBranchID == NullBranchID {
-			// Case 4.
+			// Case Unmerged-3.
 			j.branchID = rmd.BID()
 			// Revert branch ID if we encounter an error.
 			defer func() {
@@ -704,19 +704,27 @@ func (j *mdJournal) put(
 				}
 			}()
 		} else if rmd.BID() == NullBranchID {
-			// Case 2.
-			if lastBranchID == NullBranchID {
-				return MdID{}, errors.New(
-					"Unmerged put with rmd.BID() == j.branchID == NullBranchID")
-			}
-
+			// Case Unmerged-1.
 			j.log.CDebugf(
 				ctx, "Changing branch ID to %s and prev root to %s for MD for TLF=%s with rev=%s",
 				lastBranchID, lastMdID, rmd.TlfID(), rmd.Revision())
 			rmd.SetBranchID(lastBranchID)
 			rmd.SetPrevRoot(lastMdID)
+		} else {
+			// Using de Morgan's laws, this branch is
+			// taken when both rmd.BID() is non-null, and
+			// either head is non-empty or lastBranchID is
+			// non-empty. So this is most of case
+			// Unmerged-2, and there's nothing to do.
+			//
+			// The remaining part of case Unmerged-2,
+			// where rmd.BID() is non-null, head is empty,
+			// and lastBranchID == j.branchID is empty, is
+			// an error case, handled below.
 		}
 	}
+
+	// The below is code common to all the cases.
 
 	if (mStatus == Merged) != (rmd.BID() == NullBranchID) {
 		return MdID{}, fmt.Errorf(
