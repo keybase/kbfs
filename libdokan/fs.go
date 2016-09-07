@@ -270,6 +270,8 @@ func (f *FS) open(ctx context.Context, oc *openContext, ps []string) (dokan.File
 		return NewErrorFile(f), false, nil
 	case libfs.MetricsFileName == ps[psl-1]:
 		return NewMetricsFile(f), false, nil
+		// TODO: Make the two cases below available from any
+		// directory.
 	case libfs.ProfileListDirName == ps[0]:
 		return (ProfileList{fs: f}).open(ctx, oc, ps[1:])
 	case libfs.ResetCachesFileName == ps[0]:
@@ -277,6 +279,9 @@ func (f *FS) open(ctx context.Context, oc *openContext, ps []string) (dokan.File
 
 		// This section is equivalent to
 		// handleNonTLFSpecialFile in libfuse.
+		//
+		// TODO: Make the two cases below available from any
+		// non-TLF directory.
 	case libfs.StatusFileName == ps[0]:
 		return NewNonTLFStatusFile(f.root.private.fs), false, nil
 	case libfs.HumanErrorFileName == ps[0], libfs.HumanNoLoginFileName == ps[0]:
