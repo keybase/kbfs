@@ -245,6 +245,36 @@ func TestJournalMDOpsBasics(t *testing.T) {
 // TODO: Add a test for GetRange where the server has an overlapping
 // range with the journal.
 
+func TestJournalMDOpsPutUnmerged(t *testing.T) {
+	tempdir, config, _, jServer := setupJournalMDOpsTest(t)
+	defer teardownJournalMDOpsTest(t, tempdir, config)
+
+	ctx := context.Background()
+	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	require.NoError(t, err)
+
+	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	h, err := MakeTlfHandle(ctx, bh, config.KBPKI())
+	require.NoError(t, err)
+
+	mdOps := jServer.mdOps()
+
+	id, irmd, err := mdOps.GetForHandle(ctx, h, Merged)
+	require.NoError(t, err)
+	require.Equal(t, ImmutableRootMetadata{}, irmd)
+
+	err = jServer.Enable(ctx, id, TLFJournalBackgroundWorkPaused)
+	require.NoError(t, err)
+
+	rmd := makeMDForJournalMDOpsTest(t, config, id, h, MetadataRevision(1))
+	rmd.SetBranchID(FakeBranchID(1))
+
+	_, err = mdOps.PutUnmerged(ctx, rmd)
+	require.NoError(t, err)
+}
+
 func TestJournalMDOpsPutUnmergedError(t *testing.T) {
 	tempdir, config, _, jServer := setupJournalMDOpsTest(t)
 	defer teardownJournalMDOpsTest(t, tempdir, config)
