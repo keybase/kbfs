@@ -636,10 +636,10 @@ func (e MDJournalConflictError) Error() string {
 // Merged returns with MDJournalConflictError. In this case, the rmd's
 // branch ID is set to the journal's branch ID and its prevRoot is set
 // to the last known journal root. It doesn't matter if the journal is
-// completely drained, since the last branch ID and root is remembered
-// in memory. However, since this cache isn't persisted to disk, we
-// need case Unmerged-3. Similarly to case Merged, this case then also
-// does append-or-replace.
+// completely drained, since the branch ID and last known root is
+// remembered in memory. However, since this cache isn't persisted to
+// disk, we need case Unmerged-3. Similarly to case Merged, this case
+// then also does append-or-replace.
 //
 // Unmerged-2
 // ----------
@@ -679,22 +679,19 @@ func (j *mdJournal) put(
 	// Make modifications for the Unmerged cases.
 	if mStatus == Unmerged {
 		var lastMdID MdID
-		var lastBranchID BranchID
 		if head == (ImmutableBareRootMetadata{}) {
 			lastMdID = j.lastMdID
-			lastBranchID = j.branchID
 		} else {
 			lastMdID = head.mdID
-			lastBranchID = head.BID()
 		}
 
-		if rmd.BID() == NullBranchID && lastBranchID == NullBranchID {
+		if rmd.BID() == NullBranchID && j.branchID == NullBranchID {
 			return MdID{}, errors.New(
 				"Unmerged put with rmd.BID() == j.branchID == NullBranchID")
 		}
 
 		if head == (ImmutableBareRootMetadata{}) &&
-			lastBranchID == NullBranchID {
+			j.branchID == NullBranchID {
 			// Case Unmerged-3.
 			j.branchID = rmd.BID()
 			// Revert branch ID if we encounter an error.
@@ -707,20 +704,20 @@ func (j *mdJournal) put(
 			// Case Unmerged-1.
 			j.log.CDebugf(
 				ctx, "Changing branch ID to %s and prev root to %s for MD for TLF=%s with rev=%s",
-				lastBranchID, lastMdID, rmd.TlfID(), rmd.Revision())
-			rmd.SetBranchID(lastBranchID)
+				j.branchID, lastMdID, rmd.TlfID(), rmd.Revision())
+			rmd.SetBranchID(j.branchID)
 			rmd.SetPrevRoot(lastMdID)
 		} else {
 			// Using de Morgan's laws, this branch is
 			// taken when both rmd.BID() is non-null, and
-			// either head is non-empty or lastBranchID is
+			// either head is non-empty or j.branchID is
 			// non-empty. So this is most of case
 			// Unmerged-2, and there's nothing to do.
 			//
 			// The remaining part of case Unmerged-2,
 			// where rmd.BID() is non-null, head is empty,
-			// and lastBranchID == j.branchID is empty, is
-			// an error case, handled below.
+			// and j.branchID is empty, is an error case,
+			// handled below.
 		}
 	}
 
@@ -733,7 +730,7 @@ func (j *mdJournal) put(
 
 	// If we're trying to push a merged MD onto a branch, return a
 	// conflict error so the caller can retry with an unmerged MD.
-	if mStatus == Merged && lastBranchID != NullBranchID {
+	if mStatus == Merged && j.branchID != NullBranchID {
 		return MdID{}, MDJournalConflictError{}
 	}
 
