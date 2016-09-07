@@ -632,8 +632,8 @@ func (e MDJournalConflictError) Error() string {
 //  is set to the last known journal root. It doesn't matter if the
 //  journal is completely drained, since the last branch ID and root
 //  is remembered in memory. However, since this cache isn't persisted
-//  to disk, we need case 4. TODO: Figure out whether the head can be
-//  replaced in this case, too.
+//  to disk, we need case 4. Also, unlike case 1, rmd must be the
+//  successor to the journal's head, if the head exists.
 //
 //  3) rmd is unmerged and has a non-null branch ID, and the journal
 //  was non-empty at some time during this process's
@@ -660,6 +660,8 @@ func (j *mdJournal) put(
 		}
 	}()
 
+	allowReplace := true
+
 	head, err := j.getLatest(currentUID, currentVerifyingKey, true)
 	if err != nil {
 		return MdID{}, err
@@ -683,6 +685,7 @@ func (j *mdJournal) put(
 				"Unmerged put with rmd.BID() == j.branchID == NullBranchID")
 		}
 
+		allowReplace = false
 		j.log.CDebugf(
 			ctx, "Changing branch ID to %s and prev root to %s for MD for TLF=%s with rev=%s",
 			lastBranchID, lastMdID, rmd.TlfID(), rmd.Revision())
@@ -748,6 +751,12 @@ func (j *mdJournal) put(
 
 	if head != (ImmutableBareRootMetadata{}) &&
 		rmd.Revision() == head.RevisionNumber() {
+		if !allowReplace {
+			return MdID{}, fmt.Errorf(
+				"Replacing revision %d disallowed",
+				rmd.Revision())
+		}
+
 		j.log.CDebugf(
 			ctx, "Replacing head MD for TLF=%s with rev=%s bid=%s",
 			rmd.TlfID(), rmd.Revision(), rmd.BID())

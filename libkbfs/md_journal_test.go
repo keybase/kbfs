@@ -240,7 +240,7 @@ func TestMDJournalPutCase1ReplaceHead(t *testing.T) {
 	require.Equal(t, md.DiskUsage(), head.DiskUsage())
 }
 
-func TestMDJournalPutCase2NonEmpty(t *testing.T) {
+func TestMDJournalPutCase2NonEmptyNoReplace(t *testing.T) {
 	uid, verifyingKey, _, _, id, signer, ekg,
 		bsplit, tempdir, j := setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
@@ -255,6 +255,25 @@ func TestMDJournalPutCase2NonEmpty(t *testing.T) {
 
 	md.SetUnmerged()
 	_, err = j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md)
+	require.Error(t, err, "Replacing revision 10 disallowed")
+}
+
+func TestMDJournalPutCase2NonEmptyAppend(t *testing.T) {
+	uid, verifyingKey, _, _, id, signer, ekg,
+		bsplit, tempdir, j := setupMDJournalTest(t)
+	defer teardownMDJournalTest(t, tempdir)
+
+	ctx := context.Background()
+	md := makeMDForTest(t, id, MetadataRevision(10), uid, fakeMdID(1))
+	mdID, err := j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md)
+	require.NoError(t, err)
+
+	err = j.convertToBranch(ctx, uid, verifyingKey, signer)
+	require.NoError(t, err)
+
+	md2 := makeMDForTest(t, id, MetadataRevision(11), uid, mdID)
+	md2.SetUnmerged()
+	_, err = j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md2)
 	require.NoError(t, err)
 }
 
