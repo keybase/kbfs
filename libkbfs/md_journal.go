@@ -615,11 +615,36 @@ func (e MDJournalConflictError) Error() string {
 }
 
 // put verifies and stores the given RootMetadata in the journal,
-// modifying it as needed. In particular, if this is an unmerged
-// RootMetadata but the branch ID isn't set, it will be set to the
-// journal's branch ID, which is assumed to be non-zero. As a special
-// case, if the revision of the given RootMetadata matches that of the
-// head, the given RootMetadata will replace the head.
+// modifying it as needed. In particular, there are three cases:
+//
+//  1) rmd is merged. If the journal is empty, then rmd is appended to
+//  it. Otherwise, if the journal has been converted to a branch, then
+//  an MDJournalConflictError error is returned, and the caller is
+//  expected to set the unmerged bit and retry (see case
+//  2). Otherwise, either rmd must be the successor to the journal's
+//  head, in which case it is appended, or it must have the same
+//  revision number as the journal's head, in which case it replaces
+//  the journal's head.
+//
+//  2) rmd is unmerged and has a null branch ID. This happens when
+//  case 1 returns with MDJournalConflictError. In this case, the
+//  rmd's branch ID is set to the journal's branch ID and its prevRoot
+//  is set to the last known journal root. It doesn't matter if the
+//  journal is completely drained, since the last branch ID and root
+//  is remembered in memory. However, since this cache isn't persisted
+//  to disk, we need case 4. TODO: Figure out whether the head can be
+//  replaced in this case, too.
+//
+//  3) rmd is unmerged and has a non-null branch ID, and the journal
+//  was non-empty at some time during this process's
+//  lifetime. Similarly to 1, if the journal is empty, then rmd is
+//  appended to it. Otherwise, rmd is either appended to the journal
+//  or replaces the journal's head.
+//
+//  4) rmd is unmerged and has a non-null branch ID, and the journal
+//  has always been empty at some time during this process's
+//  lifetime. The branch ID is assumed to be correct, and rmd is
+//  appended to the journal.
 func (j *mdJournal) put(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, signer cryptoSigner,
