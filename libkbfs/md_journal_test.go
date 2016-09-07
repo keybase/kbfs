@@ -191,6 +191,23 @@ func TestMDJournalPutCase1Empty(t *testing.T) {
 	require.Equal(t, md.bareMd, head.BareRootMetadata)
 }
 
+func TestMDJournalPutCase1Conflict(t *testing.T) {
+	uid, verifyingKey, _, _, id, signer, ekg,
+		bsplit, tempdir, j := setupMDJournalTest(t)
+	defer teardownMDJournalTest(t, tempdir)
+
+	ctx := context.Background()
+	md := makeMDForTest(t, id, MetadataRevision(10), uid, fakeMdID(1))
+	_, err := j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md)
+	require.NoError(t, err)
+
+	err = j.convertToBranch(ctx, uid, verifyingKey, signer)
+	require.NoError(t, err)
+
+	_, err = j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md)
+	require.Equal(t, MDJournalConflictError{}, err)
+}
+
 func TestMDJournalReplaceHead(t *testing.T) {
 	uid, verifyingKey, _, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
