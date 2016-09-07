@@ -271,8 +271,5 @@ func TestJournalMDOpsPutUnmerged(t *testing.T) {
 	rmd := makeMDForJournalMDOpsTest(t, config, id, h, MetadataRevision(1))
 
 	_, err = mdOps.PutUnmerged(ctx, rmd)
-	require.NoError(t, err)
-
-	require.Equal(t, Unmerged, rmd.MergedStatus())
-	require.NotEqual(t, NullBranchID, rmd.BID())
+	require.NotNil(t, err)
 }

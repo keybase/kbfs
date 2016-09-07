@@ -654,28 +654,10 @@ func (j *mdJournal) put(
 
 	if (mStatus == Unmerged) && (rmd.BID() == NullBranchID) {
 		if lastBranchID == NullBranchID {
-			if (head != ImmutableBareRootMetadata{}) {
-				return MdID{}, errors.New(
-					"Unmerged put with rmd.BID() == NullBranchID but a non-empty merged journal")
-			}
-
-			// Need a new branch ID.
-			bid, err := j.crypto.MakeRandomBranchID()
-			if err != nil {
-				return MdID{}, err
-			}
-
-			j.log.CDebugf(ctx, "Using new branch ID %s", bid)
-
-			lastBranchID = bid
-			j.branchID = bid
-			// Revert j.branchID if we run into an error.
-			defer func() {
-				if err != nil {
-					j.branchID = NullBranchID
-				}
-			}()
+			return MdID{}, errors.New(
+				"Unmerged put with rmd.BID() == j.branchID == NullBranchID")
 		}
+
 		j.log.CDebugf(
 			ctx, "Changing branch ID to %s and prev root to %s for MD for TLF=%s with rev=%s",
 			lastBranchID, lastMdID, rmd.TlfID(), rmd.Revision())
