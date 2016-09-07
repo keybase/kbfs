@@ -245,7 +245,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 // TODO: Add a test for GetRange where the server has an overlapping
 // range with the journal.
 
-func TestJournalMDOpsPutUnmerged(t *testing.T) {
+func TestJournalMDOpsPutUnmergedError(t *testing.T) {
 	tempdir, config, _, jServer := setupJournalMDOpsTest(t)
 	defer teardownJournalMDOpsTest(t, tempdir, config)
 
@@ -271,5 +271,5 @@ func TestJournalMDOpsPutUnmerged(t *testing.T) {
 	rmd := makeMDForJournalMDOpsTest(t, config, id, h, MetadataRevision(1))
 
 	_, err = mdOps.PutUnmerged(ctx, rmd)
-	require.NotNil(t, err)
+	require.Error(t, err, "Unmerged put with rmd.BID() == j.branchID == NullBranchID")
 }
