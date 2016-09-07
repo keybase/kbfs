@@ -208,7 +208,9 @@ func TestMDJournalPutCase1Conflict(t *testing.T) {
 	require.Equal(t, MDJournalConflictError{}, err)
 }
 
-func TestMDJournalReplaceHead(t *testing.T) {
+// The append portion of case 1 is covered by TestMDJournalBasic.
+
+func TestMDJournalPutCase1ReplaceHead(t *testing.T) {
 	uid, verifyingKey, _, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
@@ -236,6 +238,24 @@ func TestMDJournalReplaceHead(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, md.Revision(), head.RevisionNumber())
 	require.Equal(t, md.DiskUsage(), head.DiskUsage())
+}
+
+func TestMDJournalPutCase2NonEmpty(t *testing.T) {
+	uid, verifyingKey, _, _, id, signer, ekg,
+		bsplit, tempdir, j := setupMDJournalTest(t)
+	defer teardownMDJournalTest(t, tempdir)
+
+	ctx := context.Background()
+	md := makeMDForTest(t, id, MetadataRevision(10), uid, fakeMdID(1))
+	_, err := j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md)
+	require.NoError(t, err)
+
+	err = j.convertToBranch(ctx, uid, verifyingKey, signer)
+	require.NoError(t, err)
+
+	md.SetUnmerged()
+	_, err = j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md)
+	require.NoError(t, err)
 }
 
 func TestMDJournalBranchConversion(t *testing.T) {
