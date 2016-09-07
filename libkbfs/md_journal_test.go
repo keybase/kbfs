@@ -240,7 +240,7 @@ func TestMDJournalPutCase1ReplaceHead(t *testing.T) {
 	require.Equal(t, md.DiskUsage(), head.DiskUsage())
 }
 
-func TestMDJournalPutCase2NonEmptyNoReplace(t *testing.T) {
+func TestMDJournalPutCase2NonEmptyReplace(t *testing.T) {
 	uid, verifyingKey, _, _, id, signer, ekg,
 		bsplit, tempdir, j := setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
@@ -255,7 +255,7 @@ func TestMDJournalPutCase2NonEmptyNoReplace(t *testing.T) {
 
 	md.SetUnmerged()
 	_, err = j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md)
-	require.Error(t, err, "Replacing revision 10 disallowed")
+	require.NoError(t, err)
 }
 
 func TestMDJournalPutCase2NonEmptyAppend(t *testing.T) {
