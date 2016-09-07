@@ -346,6 +346,31 @@ func TestMDJournalPutCase3NonEmptyReplace(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestMDJournalPutCase3EmptyAppend(t *testing.T) {
+	uid, verifyingKey, _, _, id, signer, ekg,
+		bsplit, tempdir, j := setupMDJournalTest(t)
+	defer teardownMDJournalTest(t, tempdir)
+
+	ctx := context.Background()
+	md := makeMDForTest(t, id, MetadataRevision(10), uid, fakeMdID(1))
+	_, err := j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md)
+	require.NoError(t, err)
+
+	err = j.convertToBranch(ctx, uid, verifyingKey, signer)
+	require.NoError(t, err)
+
+	// Flush.
+	mdID, rmds, err := j.getNextEntryToFlush(ctx, uid, verifyingKey, signer)
+	require.NoError(t, err)
+	j.removeFlushedEntry(ctx, uid, verifyingKey, mdID, rmds)
+
+	md2 := makeMDForTest(t, id, MetadataRevision(11), uid, mdID)
+	md2.SetUnmerged()
+	md2.SetBranchID(j.branchID)
+	_, err = j.put(ctx, uid, verifyingKey, signer, ekg, bsplit, md2)
+	require.NoError(t, err)
+}
+
 func TestMDJournalBranchConversion(t *testing.T) {
 	uid, verifyingKey, codec, crypto, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t)
