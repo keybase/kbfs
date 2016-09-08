@@ -95,6 +95,10 @@ func handleTLFSpecialFile(
 		}
 
 	case libfs.SyncFromServerFileName:
+		// Don't cache the node so that the next lookup of
+		// this file will force the dir to be re-checked
+		// (i.e., loadDirHelper will be called again).
+		*entryValid = 0
 		return &SyncFromServerFile{
 			folder: folder,
 		}
