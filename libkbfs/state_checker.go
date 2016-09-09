@@ -317,7 +317,6 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 	if !ok {
 		if jbs, jok := sc.config.BlockServer().(journalBlockServer); jok {
 			bserverLocal, ok = jbs.BlockServer.(blockServerLocal)
-			sc.log.CDebugf(ctx, "BlockServer() is %v %T, jbs.BlockServer is %v %T", sc.config.BlockServer(), sc.config.BlockServer(), jbs.BlockServer, jbs.BlockServer)
 			if !ok {
 				sc.log.CDebugf(ctx, "Bad block server: %T", jbs.BlockServer)
 			}
