@@ -861,6 +861,9 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		return 0, err
 	}
 
+	// Remove any of the entry's refs that hasn't been modified by
+	// a subsequent block op (i.e., that has earliestOrdinal as a
+	// tag).
 	for id, idContexts := range entry.Contexts {
 		refs := j.refs[id]
 		if len(refs) == 0 {
