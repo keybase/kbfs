@@ -774,7 +774,8 @@ func (be blockEntriesToFlush) flushNeeded() bool {
 	return be.length() > 0
 }
 
-func (j *blockJournal) getNextEntriesToFlush(ctx context.Context) (
+// A limit of 0 is interpreted as infinite.
+func (j *blockJournal) getNextEntriesToFlush(ctx context.Context, limit int) (
 	entries blockEntriesToFlush, err error) {
 	if j.isShutdown {
 		return blockEntriesToFlush{}, errBlockJournalShutdown
@@ -789,6 +790,9 @@ func (j *blockJournal) getNextEntriesToFlush(ctx context.Context) (
 	last, err := j.j.readLatestOrdinal()
 	if err != nil {
 		return blockEntriesToFlush{}, err
+	}
+	if limit > 0 && (last-first)+1 > journalOrdinal(limit) {
+		last = first + journalOrdinal(limit) - 1
 	}
 
 	entries.puts = newBlockPutState(int(last-first) + 1)

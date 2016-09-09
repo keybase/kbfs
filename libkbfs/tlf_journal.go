@@ -471,7 +471,7 @@ func (j *tlfJournal) getBlockEntriesToFlush(ctx context.Context) (
 	entries blockEntriesToFlush, err error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
-	return j.blockJournal.getNextEntriesToFlush(ctx)
+	return j.blockJournal.getNextEntriesToFlush(ctx, 0)
 }
 
 func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
