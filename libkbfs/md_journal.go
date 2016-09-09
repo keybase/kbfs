@@ -468,17 +468,13 @@ func (j *mdJournal) convertToBranch(
 // will be nil.
 func (j mdJournal) getNextEntryToFlush(
 	ctx context.Context, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey, last MetadataRevision,
-	signer cryptoSigner) (
+	currentVerifyingKey VerifyingKey, signer cryptoSigner) (
 	MdID, *RootMetadataSigned, error) {
 	rmd, err := j.getEarliest(currentUID, currentVerifyingKey, true)
 	if err != nil {
 		return MdID{}, nil, err
 	}
 	if rmd == (ImmutableBareRootMetadata{}) {
-		return MdID{}, nil, nil
-	}
-	if rmd.RevisionNumber() > last {
 		return MdID{}, nil, nil
 	}
 

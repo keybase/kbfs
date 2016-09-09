@@ -479,13 +479,12 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 }
 
 func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
-	last MetadataRevision) (
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
 	MdID, *RootMetadataSigned, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	return j.mdJournal.getNextEntryToFlush(
-		ctx, currentUID, currentVerifyingKey, last, j.config.Crypto())
+		ctx, currentUID, currentVerifyingKey, j.config.Crypto())
 }
 
 func (j *tlfJournal) convertMDsToBranch(
@@ -500,7 +499,7 @@ func (j *tlfJournal) convertMDsToBranch(
 	}
 
 	return j.mdJournal.getNextEntryToFlush(
-		ctx, currentUID, currentVerifyingKey, last, j.config.Crypto())
+		ctx, currentUID, currentVerifyingKey, j.config.Crypto())
 }
 
 func (j *tlfJournal) getBlockEntriesToFlush(
@@ -578,11 +577,14 @@ func (j *tlfJournal) flushOneMDOp(
 
 	mdServer := j.config.MDServer()
 
-	mdID, rmds, err := j.getNextMDEntryToFlush(ctx, uid, key, last)
+	mdID, rmds, err := j.getNextMDEntryToFlush(ctx, uid, key)
 	if err != nil {
 		return false, err
 	}
-	if mdID == (MdID{}) {
+	// TODO: Doing the revision number check here is inefficient,
+	// since getNextMDEntryToFlush has already signed it. If this
+	// becomes a bottleneck, fix this.
+	if mdID == (MdID{}) || rmds.MD.RevisionNumber() > last {
 		return false, nil
 	}
 
