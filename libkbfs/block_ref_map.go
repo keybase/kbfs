@@ -73,7 +73,7 @@ func (refs blockRefMap) put(context BlockContext, status blockRefLocalStatus,
 	refs[refNonce] = blockRefEntry{
 		status:        status,
 		context:       context,
-		mostRecentTag: mostRecentTag,
+		mostRecentTag: tag,
 	}
 	return nil
 }

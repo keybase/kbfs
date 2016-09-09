@@ -489,8 +489,7 @@ func (j *tlfJournal) getNextBlockEntriesToFlush(
 	entries blockEntriesToFlush, err error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
-	err = j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return blockEntriesToFlush{}, err
 	}
 
@@ -501,8 +500,7 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 	entries blockEntriesToFlush) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return err
 	}
 
@@ -547,8 +545,7 @@ func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
 	MdID, *RootMetadataSigned, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
-	err := j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return MdID{}, nil, err
 	}
 
@@ -562,8 +559,7 @@ func (j *tlfJournal) convertMDsToBranchAndGetNextEntry(
 	nextEntryEnd MetadataRevision) (MdID, *RootMetadataSigned, error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return MdID{}, nil, err
 	}
 
@@ -588,8 +584,7 @@ func (j *tlfJournal) removeFlushedMDEntry(ctx context.Context,
 	mdID MdID, rmds *RootMetadataSigned) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return err
 	}
 
@@ -674,8 +669,7 @@ func (j *tlfJournal) getJournalEntryCounts() (
 	blockEntryCount, mdEntryCount uint64, err error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
-	err = j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return 0, 0, err
 	}
 
@@ -695,8 +689,7 @@ func (j *tlfJournal) getJournalEntryCounts() (
 func (j *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
-	err := j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return TLFJournalStatus{}, err
 	}
 
@@ -737,14 +730,13 @@ func (j *tlfJournal) shutdown() {
 	// but that's ok.
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		// Already shutdown.
 		return
 	}
 
 	ctx := context.Background()
-	err = j.blockJournal.checkInSync(ctx)
+	err := j.blockJournal.checkInSync(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -761,8 +753,7 @@ func (j *tlfJournal) getBlockDataWithContext(
 	[]byte, BlockCryptKeyServerHalf, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
-	err := j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return nil, BlockCryptKeyServerHalf{}, err
 	}
 
@@ -774,12 +765,11 @@ func (j *tlfJournal) putBlockData(
 	serverHalf BlockCryptKeyServerHalf) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return err
 	}
 
-	err = j.blockJournal.putData(ctx, id, context, buf, serverHalf)
+	err := j.blockJournal.putData(ctx, id, context, buf, serverHalf)
 	if err != nil {
 		return err
 	}
@@ -802,12 +792,11 @@ func (j *tlfJournal) addBlockReference(
 	ctx context.Context, id BlockID, context BlockContext) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return err
 	}
 
-	err = j.blockJournal.addReference(ctx, id, context)
+	err := j.blockJournal.addReference(ctx, id, context)
 	if err != nil {
 		return err
 	}
@@ -822,8 +811,7 @@ func (j *tlfJournal) removeBlockReferences(
 	liveCounts map[BlockID]int, err error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err = j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return nil, err
 	}
 
@@ -847,12 +835,11 @@ func (j *tlfJournal) archiveBlockReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err := j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return err
 	}
 
-	err = j.blockJournal.archiveReferences(ctx, contexts)
+	err := j.blockJournal.archiveReferences(ctx, contexts)
 	if err != nil {
 		return err
 	}
@@ -872,8 +859,7 @@ func (j *tlfJournal) getMDHead(
 
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
-	err = j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
 
@@ -891,8 +877,7 @@ func (j *tlfJournal) getMDRange(
 
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
-	err = j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return nil, err
 	}
 
@@ -909,8 +894,7 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err = j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return MdID{}, err
 	}
 
@@ -938,8 +922,7 @@ func (j *tlfJournal) clearMDs(ctx context.Context, bid BranchID) error {
 
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
-	err = j.checkShutdownLocked()
-	if err != nil {
+	if err := j.checkShutdownLocked(); err != nil {
 		return err
 	}
 
