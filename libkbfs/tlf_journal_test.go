@@ -500,7 +500,7 @@ type shimMDServer struct {
 	MDServer
 	rmdses       []*RootMetadataSigned
 	nextGetRange []*RootMetadataSigned
-	nextErr      error
+	onPut        func() error
 }
 
 func (s *shimMDServer) GetRange(
@@ -513,10 +513,12 @@ func (s *shimMDServer) GetRange(
 
 func (s *shimMDServer) Put(
 	ctx context.Context, rmds *RootMetadataSigned) error {
-	if s.nextErr != nil {
-		err := s.nextErr
-		s.nextErr = nil
-		return err
+	if s.onPut != nil {
+		err := s.onPut()
+		s.onPut = nil
+		if err != nil {
+			return err
+		}
 	}
 	s.rmdses = append(s.rmdses, rmds)
 
@@ -603,7 +605,9 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 	}
 
 	var mdserver shimMDServer
-	mdserver.nextErr = MDServerErrorConflictRevision{}
+	mdserver.onPut = func() error {
+		return MDServerErrorConflictRevision{}
+	}
 	config.mdserver = &mdserver
 
 	// Simulate a flush with a conflict error halfway through.
@@ -675,7 +679,9 @@ func TestTLFJournalPreservesBranchID(t *testing.T) {
 
 	var mdserver shimMDServer
 	config.mdserver = &mdserver
-	mdserver.nextErr = MDServerErrorConflictRevision{}
+	mdserver.onPut = func() error {
+		return MDServerErrorConflictRevision{}
+	}
 
 	// Flush all entries, with the first one encountering a
 	// conflict error.
@@ -718,4 +724,38 @@ func TestTLFJournalPreservesBranchID(t *testing.T) {
 	require.Equal(t, mdCount, len(rmdses))
 	config.checkRange(rmdses, firstRevision, firstPrevRoot, Unmerged,
 		rmdses[0].MD.BID())
+}
+
+// TestTLFJournalFlushOrdering tests that we don't naively push all
+// block ops, and then push all MD ops, skipping any block ops that
+// were added in the meantime.
+func TestTLFJournalFlushOrdering(t *testing.T) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	firstRevision := MetadataRevision(10)
+	firstPrevRoot := fakeMdID(1)
+	mdCount := 10
+
+	prevRoot := firstPrevRoot
+	for i := 0; i < mdCount; i++ {
+		revision := firstRevision + MetadataRevision(i)
+		md := config.makeMD(revision, prevRoot)
+		mdID, err := tlfJournal.putMD(ctx, md)
+		require.NoError(t, err)
+		prevRoot = mdID
+	}
+
+	var mdserver shimMDServer
+	config.mdserver = &mdserver
+	mdserver.onPut = func() error {
+		putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+		return nil
+	}
+
+	err := tlfJournal.flush(ctx)
+	require.NoError(t, err)
+	requireJournalEntryCounts(t, tlfJournal, 0, 0)
 }
