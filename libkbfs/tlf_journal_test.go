@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"io/ioutil"
 	"os"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -846,12 +847,21 @@ func TestTLFJournalFlushOrdering(t *testing.T) {
 	err = tlfJournal.flush(ctx)
 	require.NoError(t, err)
 	requireJournalEntryCounts(t, tlfJournal, 0, 0)
-	// This ordering depends on the exact flushing process, but
-	// there are other possible orderings which respect the above
-	// is-put-before constraints and also respect the
+	// These two orderings depend on the exact flushing process,
+	// but there are other possible orderings which respect the
+	// above is-put-before constraints and also respect the
 	// MetadataRevision ordering.
-	require.Equal(t, []interface{}{
+	expectedPuts1 := []interface{}{
 		bid1, MetadataRevision(10), bid2, bid3,
 		MetadataRevision(11), MetadataRevision(12),
-	}, puts)
+	}
+	// This is possible since block puts are done in parallel.
+	expectedPuts2 := []interface{}{
+		bid1, MetadataRevision(10), bid3, bid2,
+		MetadataRevision(11), MetadataRevision(12),
+	}
+	require.True(t, reflect.DeepEqual(puts, expectedPuts1) ||
+		reflect.DeepEqual(puts, expectedPuts2),
+		"Expected %v or %v, got %v", expectedPuts1,
+		expectedPuts2, puts)
 }
