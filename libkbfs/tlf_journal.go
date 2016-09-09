@@ -437,12 +437,13 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 			return err
 		}
 
-		j.log.CDebugf(ctx, "Flushing up to blockEnd=%d and mdEnd=%d",
-			blockEnd, mdEnd)
-
 		if blockEnd == 0 && mdEnd == MetadataRevisionUninitialized {
+			j.log.CDebugf(ctx, "Nothing else to flush")
 			break
 		}
+
+		j.log.CDebugf(ctx, "Flushing up to blockEnd=%d and mdEnd=%d",
+			blockEnd, mdEnd)
 
 		// Flush the block journal ops in parallel.
 		numFlushed, err := j.flushBlockEntries(ctx, blockEnd)
