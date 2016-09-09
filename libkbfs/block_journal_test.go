@@ -174,9 +174,14 @@ func TestBlockJournalFlush(t *testing.T) {
 			return
 		}
 		require.NoError(t, err)
+
+		// Test that the end parameter is respected.
+		partialEntries, err := j.getNextEntriesToFlush(ctx, last)
+		require.NoError(t, err)
+
 		entries, err := j.getNextEntriesToFlush(ctx, last+1)
 		require.NoError(t, err)
-		require.NotZero(t, entries.length())
+		require.Equal(t, partialEntries.length()+1, entries.length())
 
 		err = flushBlockEntries(ctx, log, blockServer,
 			bcache, reporter,
