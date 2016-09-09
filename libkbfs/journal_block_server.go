@@ -26,7 +26,7 @@ func (j journalBlockServer) Get(
 		switch err.(type) {
 		case nil:
 			return data, serverHalf, nil
-		case BServerErrorBlockNonExistent:
+		case blockNonExistentError:
 			return j.BlockServer.Get(ctx, tlfID, id, context)
 		default:
 			return nil, BlockCryptKeyServerHalf{}, err
