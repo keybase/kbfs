@@ -445,16 +445,11 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 		}
 
 		// Flush the block journal ops in parallel.
-		for {
-			numFlushed, err := j.flushBlockEntries(ctx, blockEnd)
-			if err != nil {
-				return err
-			}
-			if numFlushed == 0 {
-				break
-			}
-			flushedBlockEntries += numFlushed
+		numFlushed, err := j.flushBlockEntries(ctx, blockEnd)
+		if err != nil {
+			return err
 		}
+		flushedBlockEntries += numFlushed
 
 		for {
 			flushed, err := j.flushOneMDOp(ctx, mdEnd)
