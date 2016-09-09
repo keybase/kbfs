@@ -113,7 +113,7 @@ func makeMDJournal(currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
 		j:        makeMdIDJournal(codec, journalDir),
 	}
 
-	_, earliest, err := journal.getEarliest(
+	earliest, err := journal.getEarliest(
 		currentUID, currentVerifyingKey, false)
 	if err != nil {
 		return nil, err
@@ -267,24 +267,20 @@ func (j mdJournal) putMD(
 
 func (j mdJournal) getEarliest(currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, verifyBranchID bool) (
-	MetadataRevision, ImmutableBareRootMetadata, error) {
-	earliestRevision, earliestID, err := j.j.getEarliest()
+	ImmutableBareRootMetadata, error) {
+	earliestID, err := j.j.getEarliest()
 	if err != nil {
-		return MetadataRevisionUninitialized,
-			ImmutableBareRootMetadata{}, err
+		return ImmutableBareRootMetadata{}, err
 	}
 	if earliestID == (MdID{}) {
-		return MetadataRevisionUninitialized,
-			ImmutableBareRootMetadata{}, nil
+		return ImmutableBareRootMetadata{}, nil
 	}
 	earliest, ts, err := j.getMD(
 		currentUID, currentVerifyingKey, earliestID, verifyBranchID)
 	if err != nil {
-		return MetadataRevisionUninitialized,
-			ImmutableBareRootMetadata{}, err
+		return ImmutableBareRootMetadata{}, err
 	}
-	return earliestRevision,
-		MakeImmutableBareRootMetadata(earliest, earliestID, ts), nil
+	return MakeImmutableBareRootMetadata(earliest, earliestID, ts), nil
 }
 
 func (j mdJournal) getLatest(currentUID keybase1.UID,
@@ -475,14 +471,14 @@ func (j mdJournal) getNextEntryToFlush(
 	currentVerifyingKey VerifyingKey, last MetadataRevision,
 	signer cryptoSigner) (
 	MdID, *RootMetadataSigned, error) {
-	rev, rmd, err := j.getEarliest(currentUID, currentVerifyingKey, true)
+	rmd, err := j.getEarliest(currentUID, currentVerifyingKey, true)
 	if err != nil {
 		return MdID{}, nil, err
 	}
 	if rmd == (ImmutableBareRootMetadata{}) {
 		return MdID{}, nil, nil
 	}
-	if rev > last {
+	if rmd.RevisionNumber() > last {
 		return MdID{}, nil, nil
 	}
 
@@ -504,7 +500,7 @@ func (j *mdJournal) removeFlushedEntry(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, mdID MdID,
 	rmds *RootMetadataSigned) error {
-	_, rmd, err := j.getEarliest(currentUID, currentVerifyingKey, true)
+	rmd, err := j.getEarliest(currentUID, currentVerifyingKey, true)
 	if err != nil {
 		return err
 	}
