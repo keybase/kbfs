@@ -688,7 +688,6 @@ func (j *blockJournal) archiveReferences(
 type blockEntriesToFlush struct {
 	all   []blockJournalEntry
 	first journalOrdinal
-	last  journalOrdinal
 
 	puts  *blockPutState
 	adds  *blockPutState
@@ -769,7 +768,6 @@ func (j *blockJournal) getNextEntriesToFlush(
 		entries.all = append(entries.all, entry)
 	}
 	entries.first = first
-	entries.last = end - 1
 	return entries, nil
 }
 
@@ -915,9 +913,9 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 	}
 
 	// Remove them all!
-	for ordinal := entries.first; ordinal <= entries.last; ordinal++ {
-		entry := entries.all[ordinal-entries.first]
-		flushedBytes, err := j.removeFlushedEntry(ctx, ordinal, entry)
+	for i, entry := range entries.all {
+		flushedBytes, err := j.removeFlushedEntry(
+			ctx, entries.first+journalOrdinal(i), entry)
 		if err != nil {
 			return err
 		}
