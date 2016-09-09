@@ -519,17 +519,19 @@ func (j *tlfJournal) flushBlockEntries(
 }
 
 func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
-	currentUID keybase1.UID, currentVerifyingKey VerifyingKey) (
+	currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
+	end MetadataRevision) (
 	MdID, *RootMetadataSigned, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	return j.mdJournal.getNextEntryToFlush(
-		ctx, currentUID, currentVerifyingKey, j.config.Crypto())
+		ctx, currentUID, currentVerifyingKey, end, j.config.Crypto())
 }
 
 func (j *tlfJournal) convertMDsToBranch(
 	ctx context.Context, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey) (MdID, *RootMetadataSigned, error) {
+	currentVerifyingKey VerifyingKey,
+	end MetadataRevision) (MdID, *RootMetadataSigned, error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	err := j.mdJournal.convertToBranch(
@@ -539,7 +541,7 @@ func (j *tlfJournal) convertMDsToBranch(
 	}
 
 	return j.mdJournal.getNextEntryToFlush(
-		ctx, currentUID, currentVerifyingKey, j.config.Crypto())
+		ctx, currentUID, currentVerifyingKey, end, j.config.Crypto())
 }
 
 func (j *tlfJournal) removeFlushedMDEntry(ctx context.Context,
@@ -571,14 +573,11 @@ func (j *tlfJournal) flushOneMDOp(
 
 	mdServer := j.config.MDServer()
 
-	mdID, rmds, err := j.getNextMDEntryToFlush(ctx, uid, key)
+	mdID, rmds, err := j.getNextMDEntryToFlush(ctx, uid, key, end)
 	if err != nil {
 		return false, err
 	}
-	// TODO: Doing the revision number check here is inefficient,
-	// since getNextMDEntryToFlush has already signed it. If this
-	// becomes a bottleneck, fix this.
-	if mdID == (MdID{}) || rmds.MD.RevisionNumber() >= end {
+	if mdID == (MdID{}) {
 		return false, nil
 	}
 
@@ -602,16 +601,13 @@ func (j *tlfJournal) flushOneMDOp(
 		} else if rmds.MD.MergedStatus() == Merged {
 			j.log.CDebugf(ctx, "Conflict detected %v", pushErr)
 			// Convert MDs to a branch and retry the put.
-			mdID, rmds, err = j.convertMDsToBranch(ctx, uid, key)
+			mdID, rmds, err = j.convertMDsToBranch(
+				ctx, uid, key, end)
 			if err != nil {
 				return false, err
 			}
 			if mdID == (MdID{}) {
 				return false, errors.New("Unexpected nil MdID")
-			}
-			if rmds.MD.RevisionNumber() >= end {
-				return false, fmt.Errorf("%d unexpectedly >= end = %d",
-					rmds.MD.RevisionNumber(), end)
 			}
 			j.log.CDebugf(ctx, "Flushing newly-unmerged MD for TLF=%s with id=%s, rev=%s, bid=%s",
 				rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID())

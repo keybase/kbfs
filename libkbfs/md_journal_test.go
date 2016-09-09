@@ -291,7 +291,8 @@ func TestMDJournalPutCase2Empty(t *testing.T) {
 	require.NoError(t, err)
 
 	// Flush.
-	mdID, rmds, err := j.getNextEntryToFlush(ctx, uid, verifyingKey, signer)
+	mdID, rmds, err := j.getNextEntryToFlush(
+		ctx, uid, verifyingKey, md.Revision()+1, signer)
 	require.NoError(t, err)
 	j.removeFlushedEntry(ctx, uid, verifyingKey, mdID, rmds)
 
@@ -360,7 +361,8 @@ func TestMDJournalPutCase3EmptyAppend(t *testing.T) {
 	require.NoError(t, err)
 
 	// Flush.
-	mdID, rmds, err := j.getNextEntryToFlush(ctx, uid, verifyingKey, signer)
+	mdID, rmds, err := j.getNextEntryToFlush(
+		ctx, uid, verifyingKey, md.Revision()+1, signer)
 	require.NoError(t, err)
 	j.removeFlushedEntry(ctx, uid, verifyingKey, mdID, rmds)
 
