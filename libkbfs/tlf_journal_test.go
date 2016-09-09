@@ -255,12 +255,11 @@ func teardownTLFJournalTest(
 	require.NoError(config.t, err)
 }
 
-func putBlock(ctx context.Context,
-	t *testing.T, config *testTLFJournalConfig,
-	tlfJournal *tlfJournal, data []byte) {
-	id, bCtx, serverHalf := config.makeBlock(data)
-	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
-	require.NoError(t, err)
+func putOneMD(ctx context.Context, config *testTLFJournalConfig,
+	tlfJournal *tlfJournal) {
+	md := config.makeMD(MetadataRevisionInitial, MdID{})
+	_, err := tlfJournal.putMD(ctx, md)
+	require.NoError(config.t, err)
 }
 
 // The tests below primarily test the background work thread's
@@ -272,7 +271,7 @@ func TestTLFJournalBasic(t *testing.T) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	putOneMD(ctx, config, tlfJournal)
 
 	// Wait for it to be processed.
 
@@ -289,7 +288,7 @@ func TestTLFJournalPauseResume(t *testing.T) {
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, bwPaused)
 
-	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	putOneMD(ctx, config, tlfJournal)
 
 	// Unpause and wait for it to be processed.
 
@@ -308,7 +307,7 @@ func TestTLFJournalPauseShutdown(t *testing.T) {
 	tlfJournal.pauseBackgroundWork()
 	delegate.requireNextState(ctx, bwPaused)
 
-	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	putOneMD(ctx, config, tlfJournal)
 
 	// Should still be able to shut down while paused.
 }
@@ -334,6 +333,26 @@ func (bs hangingBlockServer) waitForPut(ctx context.Context, t *testing.T) {
 	case <-ctx.Done():
 		require.FailNow(t, ctx.Err().Error())
 	}
+}
+
+func putBlock(ctx context.Context,
+	t *testing.T, config *testTLFJournalConfig,
+	tlfJournal *tlfJournal, data []byte) {
+	id, bCtx, serverHalf := config.makeBlock(data)
+	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
+	require.NoError(t, err)
+}
+
+func TestTLFJournalBlockOpBasic(t *testing.T) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	numFlushed, err := tlfJournal.flushBlockEntries(ctx)
+	require.NoError(t, err)
+	require.NotZero(t, numFlushed)
 }
 
 func TestTLFJournalBlockOpBusyPause(t *testing.T) {
