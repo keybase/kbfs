@@ -118,33 +118,6 @@ func (e blockJournalEntry) getSingleContext() (
 		"getSingleContext() erroneously called on op %s", e.Op)
 }
 
-// classifyIntoBPS either puts the given block op entry into the given
-// "Put" blockPutState or the "addRef" blockPutState, depending on the
-// op type, or it returns false.
-func (e blockJournalEntry) classifyIntoBPS(buf []byte,
-	serverHalf BlockCryptKeyServerHalf, putBps *blockPutState,
-	addRefBps *blockPutState) (bool, error) {
-	switch e.Op {
-	case blockPutOp, addRefOp:
-		id, bctx, err := e.getSingleContext()
-		if err != nil {
-			return false, err
-		}
-
-		bps := putBps
-		if e.Op == addRefOp {
-			bps = addRefBps
-		}
-
-		bps.addNewBlock(BlockPointer{ID: id, BlockContext: bctx},
-			nil, /* only used by folderBranchOps */
-			ReadyBlockData{buf, serverHalf}, nil)
-		return true, nil
-	default:
-		return false, nil
-	}
-}
-
 // makeBlockJournal returns a new blockJournal for the given
 // directory. Any existing journal entries are read.
 func makeBlockJournal(
@@ -730,7 +703,8 @@ func (be blockEntriesToFlush) flushNeeded() bool {
 	return be.length() > 0
 }
 
-// A limit of 0 is interpreted as infinite.
+// Only entries with ordinals less than the given ordinal (assumed to
+// be <= latest ordinal + 1) are returned.
 func (j *blockJournal) getNextEntriesToFlush(
 	ctx context.Context, end journalOrdinal) (
 	entries blockEntriesToFlush, err error) {
@@ -759,8 +733,10 @@ func (j *blockJournal) getNextEntriesToFlush(
 
 		var data []byte
 		var serverHalf BlockCryptKeyServerHalf
-		if entry.Op == blockPutOp {
-			id, _, err := entry.getSingleContext()
+
+		switch entry.Op {
+		case blockPutOp:
+			id, bctx, err := entry.getSingleContext()
 			if err != nil {
 				return blockEntriesToFlush{}, err
 			}
@@ -769,21 +745,28 @@ func (j *blockJournal) getNextEntriesToFlush(
 			if err != nil {
 				return blockEntriesToFlush{}, err
 			}
-		}
 
-		isPut, err := entry.classifyIntoBPS(data, serverHalf,
-			entries.puts, entries.adds)
-		if err != nil {
-			return blockEntriesToFlush{}, err
-		}
-		if !isPut {
+			entries.puts.addNewBlock(
+				BlockPointer{ID: id, BlockContext: bctx},
+				nil, /* only used by folderBranchOps */
+				ReadyBlockData{data, serverHalf}, nil)
+
+		case addRefOp:
+			id, bctx, err := entry.getSingleContext()
+			if err != nil {
+				return blockEntriesToFlush{}, err
+			}
+
+			entries.adds.addNewBlock(
+				BlockPointer{ID: id, BlockContext: bctx},
+				nil, /* only used by folderBranchOps */
+				ReadyBlockData{}, nil)
+
+		default:
 			entries.other = append(entries.other, entry)
 		}
-		entries.all = append(entries.all, entry)
 
-		// TODO: return early if we have hit some maximum number of
-		// entries (along revision boundaries) -- we don't want
-		// earlier MD puts being blocked for too long.
+		entries.all = append(entries.all, entry)
 	}
 	entries.first = first
 	entries.last = end - 1
