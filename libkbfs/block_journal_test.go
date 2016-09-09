@@ -169,22 +169,21 @@ func TestBlockJournalFlush(t *testing.T) {
 	reporter := NewReporterSimple(nil, 0)
 
 	flush := func() {
-		last, err := j.j.readLatestOrdinal()
-		if os.IsNotExist(err) {
+		end, err := j.end()
+		require.NoError(t, err)
+		if end == 0 {
 			return
 		}
-		require.NoError(t, err)
 
 		// Test that the end parameter is respected.
-		partialEntries, err := j.getNextEntriesToFlush(ctx, last)
+		partialEntries, err := j.getNextEntriesToFlush(ctx, end-1)
 		require.NoError(t, err)
 
-		entries, err := j.getNextEntriesToFlush(ctx, last+1)
+		entries, err := j.getNextEntriesToFlush(ctx, end)
 		require.NoError(t, err)
 		require.Equal(t, partialEntries.length()+1, entries.length())
 
-		err = flushBlockEntries(ctx, log, blockServer,
-			bcache, reporter,
+		err = flushBlockEntries(ctx, log, blockServer, bcache, reporter,
 			tlfID, CanonicalTlfName("fake TLF"), entries)
 		require.NoError(t, err)
 
