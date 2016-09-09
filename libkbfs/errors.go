@@ -1194,7 +1194,9 @@ func (e MutableBareRootMetadataNoImplError) Error() string {
 	return "Does not implement MutableBareRootMetadata"
 }
 
-// blockNonExistentError is returned when a block doesn't exist.
+// blockNonExistentError is returned when a block doesn't exist. This
+// is a generic error, suitable for use by non-server types, whereas
+// BServerErrorBlockNonExistent is used only by servers.
 type blockNonExistentError struct {
 	id BlockID
 }
