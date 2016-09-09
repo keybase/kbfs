@@ -710,60 +710,16 @@ func (j *blockJournal) archiveReferences(
 	return j.appendJournalEntry(archiveRefsOp, contexts)
 }
 
-// getEntryToFlush returns the info for the given journal entry to
-// flush, if any. If there is no matching journal entry to flush, the
-// returned *blockJournalEntry will be nil.
-func (j *blockJournal) getEntryToFlush(ctx context.Context,
-	ordinal journalOrdinal) (*blockJournalEntry, []byte,
-	BlockCryptKeyServerHalf, error) {
-	if j.isShutdown {
-		return nil, nil, BlockCryptKeyServerHalf{},
-			errBlockJournalShutdown
-	}
-
-	last, err := j.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
-		// The journal is empty.
-		return nil, nil, BlockCryptKeyServerHalf{}, nil
-	} else if err != nil {
-		return nil, nil, BlockCryptKeyServerHalf{}, err
-	} else if last < ordinal {
-		// The given ordinal is past the end of the journal.
-		return nil, nil, BlockCryptKeyServerHalf{}, nil
-	}
-
-	e, err := j.readJournalEntry(ordinal)
-	if err != nil {
-		return nil, nil, BlockCryptKeyServerHalf{}, err
-	}
-
-	var data []byte
-	var serverHalf BlockCryptKeyServerHalf
-	if e.Op == blockPutOp {
-		id, _, err := e.getSingleContext()
-		if err != nil {
-			return nil, nil, BlockCryptKeyServerHalf{}, err
-		}
-
-		data, serverHalf, err = j.getData(id)
-		if err != nil {
-			return nil, nil, BlockCryptKeyServerHalf{}, err
-		}
-	}
-
-	return &e, data, serverHalf, nil
-}
-
 // blockEntriesToFlush is an internal data structure for blockJournal;
 // its fields shouldn't be accessed outside this file.
 type blockEntriesToFlush struct {
-	all   []*blockJournalEntry
+	all   []blockJournalEntry
 	first journalOrdinal
 	last  journalOrdinal
 
 	puts  *blockPutState
 	adds  *blockPutState
-	other []*blockJournalEntry
+	other []blockJournalEntry
 }
 
 func (be blockEntriesToFlush) length() int {
@@ -775,7 +731,8 @@ func (be blockEntriesToFlush) flushNeeded() bool {
 }
 
 // A limit of 0 is interpreted as infinite.
-func (j *blockJournal) getNextEntriesToFlush(ctx context.Context, limit int) (
+func (j *blockJournal) getNextEntriesToFlush(
+	ctx context.Context, end journalOrdinal) (
 	entries blockEntriesToFlush, err error) {
 	if j.isShutdown {
 		return blockEntriesToFlush{}, errBlockJournalShutdown
@@ -787,23 +744,34 @@ func (j *blockJournal) getNextEntriesToFlush(ctx context.Context, limit int) (
 	} else if err != nil {
 		return blockEntriesToFlush{}, err
 	}
-	last, err := j.j.readLatestOrdinal()
-	if err != nil {
-		return blockEntriesToFlush{}, err
-	}
-	if limit > 0 && (last-first)+1 > journalOrdinal(limit) {
-		last = first + journalOrdinal(limit) - 1
+
+	if first >= end {
+		return blockEntriesToFlush{}, nil
 	}
 
-	entries.puts = newBlockPutState(int(last-first) + 1)
-	entries.adds = newBlockPutState(int(last-first) + 1)
-	for ordinal := first; ordinal <= last; ordinal++ {
-		entry, buf, serverHalf, err := j.getEntryToFlush(ctx, ordinal)
+	entries.puts = newBlockPutState(int(end - first))
+	entries.adds = newBlockPutState(int(end - first))
+	for ordinal := first; ordinal < end; ordinal++ {
+		entry, err := j.readJournalEntry(ordinal)
 		if err != nil {
 			return blockEntriesToFlush{}, err
 		}
 
-		isPut, err := entry.classifyIntoBPS(buf, serverHalf,
+		var data []byte
+		var serverHalf BlockCryptKeyServerHalf
+		if entry.Op == blockPutOp {
+			id, _, err := entry.getSingleContext()
+			if err != nil {
+				return blockEntriesToFlush{}, err
+			}
+
+			data, serverHalf, err = j.getData(id)
+			if err != nil {
+				return blockEntriesToFlush{}, err
+			}
+		}
+
+		isPut, err := entry.classifyIntoBPS(data, serverHalf,
 			entries.puts, entries.adds)
 		if err != nil {
 			return blockEntriesToFlush{}, err
@@ -818,7 +786,7 @@ func (j *blockJournal) getNextEntriesToFlush(ctx context.Context, limit int) (
 		// earlier MD puts being blocked for too long.
 	}
 	entries.first = first
-	entries.last = last
+	entries.last = end - 1
 	return entries, nil
 }
 
@@ -891,7 +859,7 @@ func flushBlockEntries(ctx context.Context, log logger.Logger,
 	// Now do all the other, non-put/addref entries.  TODO:
 	// parallelize these as well.
 	for _, entry := range entries.other {
-		err := flushNonBPSBlockJournalEntry(ctx, log, bserver, tlfID, *entry)
+		err := flushNonBPSBlockJournalEntry(ctx, log, bserver, tlfID, entry)
 		if err != nil {
 			return err
 		}
@@ -966,7 +934,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 	// Remove them all!
 	for ordinal := entries.first; ordinal <= entries.last; ordinal++ {
 		entry := entries.all[ordinal-entries.first]
-		flushedBytes, err := j.removeFlushedEntry(ctx, ordinal, *entry)
+		flushedBytes, err := j.removeFlushedEntry(ctx, ordinal, entry)
 		if err != nil {
 			return err
 		}

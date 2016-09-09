@@ -169,11 +169,14 @@ func TestBlockJournalFlush(t *testing.T) {
 	reporter := NewReporterSimple(nil, 0)
 
 	flush := func() {
-		entries, err := j.getNextEntriesToFlush(ctx, 0)
-		require.NoError(t, err)
-		if entries.length() == 0 {
+		last, err := j.j.readLatestOrdinal()
+		if os.IsNotExist(err) {
 			return
 		}
+		require.NoError(t, err)
+		entries, err := j.getNextEntriesToFlush(ctx, last+1)
+		require.NoError(t, err)
+		require.NotZero(t, entries.length())
 
 		err = flushBlockEntries(ctx, log, blockServer,
 			bcache, reporter,

@@ -113,7 +113,7 @@ func makeMDJournal(currentUID keybase1.UID, currentVerifyingKey VerifyingKey,
 		j:        makeMdIDJournal(codec, journalDir),
 	}
 
-	earliest, err := journal.getEarliest(
+	_, earliest, err := journal.getEarliest(
 		currentUID, currentVerifyingKey, false)
 	if err != nil {
 		return nil, err
@@ -267,20 +267,24 @@ func (j mdJournal) putMD(
 
 func (j mdJournal) getEarliest(currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, verifyBranchID bool) (
-	ImmutableBareRootMetadata, error) {
-	earliestID, err := j.j.getEarliest()
+	MetadataRevision, ImmutableBareRootMetadata, error) {
+	earliestRevision, earliestID, err := j.j.getEarliest()
 	if err != nil {
-		return ImmutableBareRootMetadata{}, err
+		return MetadataRevisionUninitialized,
+			ImmutableBareRootMetadata{}, err
 	}
 	if earliestID == (MdID{}) {
-		return ImmutableBareRootMetadata{}, nil
+		return MetadataRevisionUninitialized,
+			ImmutableBareRootMetadata{}, nil
 	}
 	earliest, ts, err := j.getMD(
 		currentUID, currentVerifyingKey, earliestID, verifyBranchID)
 	if err != nil {
-		return ImmutableBareRootMetadata{}, err
+		return MetadataRevisionUninitialized,
+			ImmutableBareRootMetadata{}, err
 	}
-	return MakeImmutableBareRootMetadata(earliest, earliestID, ts), nil
+	return earliestRevision,
+		MakeImmutableBareRootMetadata(earliest, earliestID, ts), nil
 }
 
 func (j mdJournal) getLatest(currentUID keybase1.UID,
@@ -468,13 +472,17 @@ func (j *mdJournal) convertToBranch(
 // will be nil.
 func (j mdJournal) getNextEntryToFlush(
 	ctx context.Context, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey, signer cryptoSigner) (
+	currentVerifyingKey VerifyingKey, last MetadataRevision,
+	signer cryptoSigner) (
 	MdID, *RootMetadataSigned, error) {
-	rmd, err := j.getEarliest(currentUID, currentVerifyingKey, true)
+	rev, rmd, err := j.getEarliest(currentUID, currentVerifyingKey, true)
 	if err != nil {
 		return MdID{}, nil, err
 	}
 	if rmd == (ImmutableBareRootMetadata{}) {
+		return MdID{}, nil, nil
+	}
+	if rev > last {
 		return MdID{}, nil, nil
 	}
 
@@ -496,7 +504,7 @@ func (j *mdJournal) removeFlushedEntry(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey, mdID MdID,
 	rmds *RootMetadataSigned) error {
-	rmd, err := j.getEarliest(currentUID, currentVerifyingKey, true)
+	_, rmd, err := j.getEarliest(currentUID, currentVerifyingKey, true)
 	if err != nil {
 		return err
 	}

@@ -107,14 +107,18 @@ func (j mdIDJournal) length() (uint64, error) {
 	return j.j.length()
 }
 
-func (j mdIDJournal) getEarliest() (MdID, error) {
+func (j mdIDJournal) getEarliest() (MetadataRevision, MdID, error) {
 	earliestRevision, err := j.readEarliestRevision()
 	if err != nil {
-		return MdID{}, err
+		return MetadataRevisionUninitialized, MdID{}, err
 	} else if earliestRevision == MetadataRevisionUninitialized {
-		return MdID{}, nil
+		return MetadataRevisionUninitialized, MdID{}, nil
 	}
-	return j.readMdID(earliestRevision)
+	id, err := j.readMdID(earliestRevision)
+	if err != nil {
+		return MetadataRevisionUninitialized, MdID{}, err
+	}
+	return earliestRevision, id, nil
 }
 
 func (j mdIDJournal) getLatest() (MdID, error) {

@@ -350,9 +350,9 @@ func TestTLFJournalBlockOpBasic(t *testing.T) {
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
-	numFlushed, err := tlfJournal.flushBlockEntries(ctx)
+	numFlushed, err := tlfJournal.flushBlockEntries(ctx, 1)
 	require.NoError(t, err)
-	require.NotZero(t, numFlushed)
+	require.Equal(t, 1, numFlushed)
 }
 
 func TestTLFJournalBlockOpBusyPause(t *testing.T) {
@@ -567,12 +567,15 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 	var mdserver shimMDServer
 	config.mdserver = &mdserver
 
+	_, last, err := tlfJournal.getBlockEndAndRevision(ctx)
+	require.NoError(t, err)
+
 	for i := 0; i < mdCount; i++ {
-		flushed, err := tlfJournal.flushOneMDOp(ctx)
+		flushed, err := tlfJournal.flushOneMDOp(ctx, last)
 		require.NoError(t, err)
 		require.True(t, flushed)
 	}
-	flushed, err := tlfJournal.flushOneMDOp(ctx)
+	flushed, err := tlfJournal.flushOneMDOp(ctx, last)
 	require.NoError(t, err)
 	require.False(t, flushed)
 	requireJournalEntryCounts(t, tlfJournal, 0, 0)
@@ -610,9 +613,12 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 	}
 	config.mdserver = &mdserver
 
+	_, last, err := tlfJournal.getBlockEndAndRevision(ctx)
+	require.NoError(t, err)
+
 	// Simulate a flush with a conflict error halfway through.
 	{
-		flushed, err := tlfJournal.flushOneMDOp(ctx)
+		flushed, err := tlfJournal.flushOneMDOp(ctx, last)
 		require.NoError(t, err)
 		require.True(t, flushed)
 
@@ -636,13 +642,15 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 		prevRoot = mdID
 	}
 
+	last = firstRevision + MetadataRevision(mdCount)
+
 	// Flush remaining entries.
 	for i := 0; i < mdCount-1; i++ {
-		flushed, err := tlfJournal.flushOneMDOp(ctx)
+		flushed, err := tlfJournal.flushOneMDOp(ctx, last)
 		require.NoError(t, err)
 		require.True(t, flushed)
 	}
-	flushed, err := tlfJournal.flushOneMDOp(ctx)
+	flushed, err := tlfJournal.flushOneMDOp(ctx, last)
 	require.NoError(t, err)
 	require.False(t, flushed)
 	requireJournalEntryCounts(t, tlfJournal, 0, 0)
@@ -683,15 +691,18 @@ func TestTLFJournalPreservesBranchID(t *testing.T) {
 		return MDServerErrorConflictRevision{}
 	}
 
+	_, last, err := tlfJournal.getBlockEndAndRevision(ctx)
+	require.NoError(t, err)
+
 	// Flush all entries, with the first one encountering a
 	// conflict error.
 	for i := 0; i < mdCount-1; i++ {
-		flushed, err := tlfJournal.flushOneMDOp(ctx)
+		flushed, err := tlfJournal.flushOneMDOp(ctx, last)
 		require.NoError(t, err)
 		require.True(t, flushed)
 	}
 
-	flushed, err := tlfJournal.flushOneMDOp(ctx)
+	flushed, err := tlfJournal.flushOneMDOp(ctx, last)
 	require.NoError(t, err)
 	require.False(t, flushed)
 	requireJournalEntryCounts(t, tlfJournal, 0, 0)
@@ -708,11 +719,13 @@ func TestTLFJournalPreservesBranchID(t *testing.T) {
 		require.NoError(t, err)
 		prevRoot = mdID
 
-		flushed, err := tlfJournal.flushOneMDOp(ctx)
+		last++
+
+		flushed, err := tlfJournal.flushOneMDOp(ctx, last)
 		require.NoError(t, err)
 		require.True(t, flushed)
 
-		flushed, err = tlfJournal.flushOneMDOp(ctx)
+		flushed, err = tlfJournal.flushOneMDOp(ctx, last)
 		require.NoError(t, err)
 		require.False(t, flushed)
 		requireJournalEntryCounts(t, tlfJournal, 0, 0)
