@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -738,6 +739,7 @@ func TestTLFJournalPreservesBranchID(t *testing.T) {
 
 type orderedBlockServer struct {
 	BlockServer
+	lock      *sync.Mutex
 	puts      *[]interface{}
 	onceOnPut func()
 }
@@ -745,6 +747,8 @@ type orderedBlockServer struct {
 func (s *orderedBlockServer) Put(
 	ctx context.Context, tlfID TlfID, id BlockID, context BlockContext,
 	buf []byte, serverHalf BlockCryptKeyServerHalf) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	*s.puts = append(*s.puts, id)
 	if s.onceOnPut != nil {
 		s.onceOnPut()
@@ -758,12 +762,15 @@ func (s *orderedBlockServer) Shutdown() {
 
 type orderedMDServer struct {
 	MDServer
+	lock      *sync.Mutex
 	puts      *[]interface{}
 	onceOnPut func()
 }
 
 func (s *orderedMDServer) Put(
 	ctx context.Context, rmds *RootMetadataSigned) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	*s.puts = append(*s.puts, rmds.MD.RevisionNumber())
 	if s.onceOnPut != nil {
 		s.onceOnPut()
@@ -791,9 +798,11 @@ func TestTLFJournalFlushOrdering(t *testing.T) {
 
 	md1 := config.makeMD(MetadataRevision(10), fakeMdID(1))
 
+	var lock sync.Mutex
 	var puts []interface{}
 
 	bserver := orderedBlockServer{
+		lock: &lock,
 		puts: &puts,
 	}
 
@@ -801,6 +810,7 @@ func TestTLFJournalFlushOrdering(t *testing.T) {
 	tlfJournal.delegateBlockServer = &bserver
 
 	mdserver := orderedMDServer{
+		lock: &lock,
 		puts: &puts,
 	}
 
