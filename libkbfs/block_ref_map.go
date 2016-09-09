@@ -18,7 +18,10 @@ func (e blockContextMismatchError) Error() string {
 type blockRefEntry struct {
 	status  blockRefLocalStatus
 	context BlockContext
-	tag     interface{}
+	// mostRecentTag, if non-nil, is used by callers to figure out
+	// if an entry has been modified by something else. See
+	// blockRefMap.remove.
+	mostRecentTag interface{}
 }
 
 func (e blockRefEntry) checkContext(context BlockContext) error {
@@ -68,9 +71,9 @@ func (refs blockRefMap) put(context BlockContext, status blockRefLocalStatus,
 	}
 
 	refs[refNonce] = blockRefEntry{
-		status:  status,
-		context: context,
-		tag:     tag,
+		status:        status,
+		context:       context,
+		mostRecentTag: mostRecentTag,
 	}
 	return nil
 }
@@ -87,7 +90,7 @@ func (refs blockRefMap) remove(context BlockContext, tag interface{}) error {
 		if err != nil {
 			return err
 		}
-		if tag == nil || refEntry.tag == tag {
+		if tag == nil || refEntry.mostRecentTag == tag {
 			delete(refs, refNonce)
 		}
 	}
