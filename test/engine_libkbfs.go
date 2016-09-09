@@ -80,9 +80,6 @@ func (k *LibKBFS) InitTest(t testing.TB, blockSize int64, blockChangeSize int64,
 		userMap[name] = c
 		k.refs[c] = make(map[libkbfs.Node]bool)
 		k.updateChannels[c] = make(map[libkbfs.FolderBranch]chan<- struct{})
-		if journal && k.journalDir != "" {
-			c.EnableJournaling(filepath.Join(k.journalDir, name.String()))
-		}
 	}
 
 	if journal {
