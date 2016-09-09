@@ -451,6 +451,8 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 		}
 		flushedBlockEntries += numFlushed
 
+		// TODO: Flush MDs in batch.
+
 		for {
 			flushed, err := j.flushOneMDOp(ctx, mdEnd)
 			if err != nil {
