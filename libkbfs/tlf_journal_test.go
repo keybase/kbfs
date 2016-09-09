@@ -500,7 +500,7 @@ type shimMDServer struct {
 	MDServer
 	rmdses       []*RootMetadataSigned
 	nextGetRange []*RootMetadataSigned
-	onceOnPut    func() error
+	nextErr      error
 }
 
 func (s *shimMDServer) GetRange(
@@ -513,12 +513,10 @@ func (s *shimMDServer) GetRange(
 
 func (s *shimMDServer) Put(
 	ctx context.Context, rmds *RootMetadataSigned) error {
-	if s.onceOnPut != nil {
-		err := s.onceOnPut()
-		s.onceOnPut = nil
-		if err != nil {
-			return err
-		}
+	if s.nextErr != nil {
+		err := s.nextErr
+		s.nextErr = nil
+		return err
 	}
 	s.rmdses = append(s.rmdses, rmds)
 
@@ -608,9 +606,7 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 	}
 
 	var mdserver shimMDServer
-	mdserver.onceOnPut = func() error {
-		return MDServerErrorConflictRevision{}
-	}
+	mdserver.nextErr = MDServerErrorConflictRevision{}
 	config.mdserver = &mdserver
 
 	_, mdEnd, err := tlfJournal.getJournalEnds(ctx)
@@ -687,9 +683,7 @@ func TestTLFJournalPreservesBranchID(t *testing.T) {
 
 	var mdserver shimMDServer
 	config.mdserver = &mdserver
-	mdserver.onceOnPut = func() error {
-		return MDServerErrorConflictRevision{}
-	}
+	mdserver.nextErr = MDServerErrorConflictRevision{}
 
 	_, mdEnd, err := tlfJournal.getJournalEnds(ctx)
 	require.NoError(t, err)
