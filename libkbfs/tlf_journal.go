@@ -528,10 +528,10 @@ func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
 		ctx, currentUID, currentVerifyingKey, end, j.config.Crypto())
 }
 
-func (j *tlfJournal) convertMDsToBranch(
+func (j *tlfJournal) convertMDsToBranchAndGetNextEntry(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey,
-	end MetadataRevision) (MdID, *RootMetadataSigned, error) {
+	nextEntryEnd MetadataRevision) (MdID, *RootMetadataSigned, error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	err := j.mdJournal.convertToBranch(
@@ -541,7 +541,8 @@ func (j *tlfJournal) convertMDsToBranch(
 	}
 
 	return j.mdJournal.getNextEntryToFlush(
-		ctx, currentUID, currentVerifyingKey, end, j.config.Crypto())
+		ctx, currentUID, currentVerifyingKey, nextEntryEnd,
+		j.config.Crypto())
 }
 
 func (j *tlfJournal) removeFlushedMDEntry(ctx context.Context,
@@ -601,7 +602,7 @@ func (j *tlfJournal) flushOneMDOp(
 		} else if rmds.MD.MergedStatus() == Merged {
 			j.log.CDebugf(ctx, "Conflict detected %v", pushErr)
 			// Convert MDs to a branch and retry the put.
-			mdID, rmds, err = j.convertMDsToBranch(
+			mdID, rmds, err = j.convertMDsToBranchAndGetNextEntry(
 				ctx, uid, key, end)
 			if err != nil {
 				return false, err
