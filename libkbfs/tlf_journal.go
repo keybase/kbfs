@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 
@@ -403,24 +402,14 @@ func (j *tlfJournal) getJournalEnds(ctx context.Context) (
 	blockEnd journalOrdinal, mdEnd MetadataRevision, err error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
-	lastBlockOrdinal, err := j.blockJournal.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
-		blockEnd = 0
-	} else if err != nil {
-		return 0, 0, err
-	} else {
-		blockEnd = lastBlockOrdinal + 1
-	}
-
-	lastRevision, err := j.mdJournal.readLatestRevision()
+	blockEnd, err = j.blockJournal.end()
 	if err != nil {
 		return 0, 0, err
 	}
 
-	if lastRevision >= MetadataRevisionInitial {
-		mdEnd = lastRevision + 1
-	} else {
-		mdEnd = MetadataRevisionUninitialized
+	mdEnd, err = j.mdJournal.end()
+	if err != nil {
+		return 0, 0, err
 	}
 
 	return blockEnd, mdEnd, nil

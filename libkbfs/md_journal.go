@@ -564,6 +564,10 @@ func (j mdJournal) length() (uint64, error) {
 	return j.j.length()
 }
 
+func (j mdJournal) end() (MetadataRevision, error) {
+	return j.j.end()
+}
+
 func (j mdJournal) getBranchID() BranchID {
 	return j.branchID
 }

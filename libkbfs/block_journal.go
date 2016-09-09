@@ -303,6 +303,16 @@ func (j *blockJournal) length() (uint64, error) {
 	return j.j.length()
 }
 
+func (j *blockJournal) end() (journalOrdinal, error) {
+	last, err := j.j.readLatestOrdinal()
+	if os.IsNotExist(err) {
+		return 0, nil
+	} else if err != nil {
+		return 0, err
+	}
+	return last + 1, nil
+}
+
 func (j *blockJournal) getRefEntry(
 	id BlockID, refNonce BlockRefNonce) (blockRefEntry, error) {
 	refs := j.refs[id]
