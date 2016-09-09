@@ -56,8 +56,8 @@ func teardownBlockJournalTest(t *testing.T, tempdir string, j *blockJournal) {
 	require.NoError(t, err)
 }
 
-func putBlockDataWithRev(ctx context.Context, t *testing.T,
-	j *blockJournal, data []byte, rev MetadataRevision) (
+func putBlockData(
+	ctx context.Context, t *testing.T, j *blockJournal, data []byte) (
 	BlockID, BlockContext, BlockCryptKeyServerHalf) {
 	oldLength := getBlockJournalLength(t, j)
 
@@ -77,15 +77,9 @@ func putBlockDataWithRev(ctx context.Context, t *testing.T,
 	return bID, bCtx, serverHalf
 }
 
-func putBlockData(ctx context.Context, t *testing.T,
-	j *blockJournal, data []byte) (
-	BlockID, BlockContext, BlockCryptKeyServerHalf) {
-	return putBlockDataWithRev(
-		ctx, t, j, data, MetadataRevisionUninitialized)
-}
-
-func addBlockRefWithRev(ctx context.Context, t *testing.T, j *blockJournal,
-	bID BlockID, rev MetadataRevision) BlockContext {
+func addBlockRef(
+	ctx context.Context, t *testing.T, j *blockJournal,
+	bID BlockID) BlockContext {
 	oldLength := getBlockJournalLength(t, j)
 
 	nonce, err := j.crypto.MakeBlockRefNonce()
@@ -98,11 +92,6 @@ func addBlockRefWithRev(ctx context.Context, t *testing.T, j *blockJournal,
 	require.NoError(t, err)
 	require.Equal(t, oldLength+1, getBlockJournalLength(t, j))
 	return bCtx2
-}
-
-func addBlockRef(ctx context.Context, t *testing.T, j *blockJournal,
-	bID BlockID) BlockContext {
-	return addBlockRefWithRev(ctx, t, j, bID, MetadataRevisionUninitialized)
 }
 
 func getAndCheckBlockData(ctx context.Context, t *testing.T, j *blockJournal,
@@ -235,17 +224,110 @@ func TestBlockJournalFlush(t *testing.T) {
 
 	// Put a block.
 
-	rev := MetadataRevisionInitial
 	data := []byte{1, 2, 3, 4}
-	bID, bCtx, serverHalf := putBlockDataWithRev(ctx, t, j, data, rev)
+	bID, bCtx, serverHalf := putBlockData(ctx, t, j, data)
 
 	// Add some references.
 
-	rev++
-	bCtx2 := addBlockRefWithRev(ctx, t, j, bID, rev)
+	bCtx2 := addBlockRef(ctx, t, j, bID)
+	bCtx3 := addBlockRef(ctx, t, j, bID)
 
-	rev++
-	bCtx3 := addBlockRefWithRev(ctx, t, j, bID, rev)
+	// Archive one of the references.
+
+	err := j.archiveReferences(
+		ctx, map[BlockID][]BlockContext{
+			bID: {bCtx3},
+		})
+	require.NoError(t, err)
+
+	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t))
+
+	tlfID := FakeTlfID(1, false)
+
+	bcache := NewBlockCacheStandard(0, 0)
+	reporter := NewReporterSimple(nil, 0)
+
+	flush := func() {
+		end, err := j.end()
+		require.NoError(t, err)
+		if end == 0 {
+			return
+		}
+
+		// Test that the end parameter is respected.
+		partialEntries, err := j.getNextEntriesToFlush(ctx, end-1)
+		require.NoError(t, err)
+
+		entries, err := j.getNextEntriesToFlush(ctx, end)
+		require.NoError(t, err)
+		require.Equal(t, partialEntries.length()+1, entries.length())
+
+		err = flushBlockEntries(
+			ctx, j.log, blockServer, bcache, reporter,
+			tlfID, CanonicalTlfName("fake TLF"), entries)
+		require.NoError(t, err)
+
+		err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+		require.NoError(t, err)
+	}
+
+	flush()
+
+	// Check the Put.
+	buf, key, err := blockServer.Get(ctx, tlfID, bID, bCtx)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
+
+	// Check the AddReference.
+	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx2)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
+
+	// Check the archiving.
+	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
+
+	// Now remove all the references.
+	liveCounts, err := j.removeReferences(
+		ctx, map[BlockID][]BlockContext{
+			bID: {bCtx, bCtx2, bCtx3},
+		})
+	require.NoError(t, err)
+	require.Equal(t, map[BlockID]int{}, liveCounts)
+
+	flush()
+
+	// Check they're all gone.
+	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx)
+	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx2)
+	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
+	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+
+	length, err := j.length()
+	require.NoError(t, err)
+	require.Zero(t, length)
+	require.Zero(t, j.unflushedBytes)
+}
+
+func TestBlockJournalFlushInterleaved(t *testing.T) {
+	ctx, tempdir, j := setupBlockJournalTest(t)
+	defer teardownBlockJournalTest(t, tempdir, j)
+
+	// Put a block.
+
+	data := []byte{1, 2, 3, 4}
+	bID, bCtx, serverHalf := putBlockData(ctx, t, j, data)
+
+	// Add some references.
+
+	bCtx2 := addBlockRef(ctx, t, j, bID)
+	bCtx3 := addBlockRef(ctx, t, j, bID)
 
 	// Flush the block put. (Interleave flushes to test
 	// checkInSync in intermediate states.)
@@ -282,7 +364,6 @@ func TestBlockJournalFlush(t *testing.T) {
 
 	// Remove some references.
 
-	rev++
 	liveCounts, err := j.removeReferences(
 		ctx, map[BlockID][]BlockContext{
 			bID: {bCtx, bCtx2},
@@ -308,7 +389,6 @@ func TestBlockJournalFlush(t *testing.T) {
 
 	// Archive the rest.
 
-	rev++
 	err = j.archiveReferences(
 		ctx, map[BlockID][]BlockContext{
 			bID: {bCtx3},
@@ -332,7 +412,6 @@ func TestBlockJournalFlush(t *testing.T) {
 
 	// Remove the archived references.
 
-	rev++
 	liveCounts, err = j.removeReferences(
 		ctx, map[BlockID][]BlockContext{
 			bID: {bCtx3},
