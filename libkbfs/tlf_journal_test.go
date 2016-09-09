@@ -337,11 +337,10 @@ func (bs hangingBlockServer) waitForPut(ctx context.Context, t *testing.T) {
 
 func putBlock(ctx context.Context,
 	t *testing.T, config *testTLFJournalConfig,
-	tlfJournal *tlfJournal, data []byte) BlockID {
+	tlfJournal *tlfJournal, data []byte) {
 	id, bCtx, serverHalf := config.makeBlock(data)
 	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
 	require.NoError(t, err)
-	return id
 }
 
 func TestTLFJournalBlockOpBasic(t *testing.T) {
@@ -782,27 +781,26 @@ func (s *orderedMDServer) Put(
 func (s *orderedMDServer) Shutdown() {
 }
 
-// TestTLFJournalFlushOrdering tests that we don't naively push all
-// block ops, and then push all MD ops, skipping any block ops that
-// were added in the meantime.
+// TestTLFJournalFlushOrdering tests that we respect the relative
+// orderings of blocks and MD ops when flushing, i.e. if a block op
+// was added to the block journal before an MD op was added to the MD
+// journal, then that block op will be flushed before that MD op.
 func TestTLFJournalFlushOrdering(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, TLFJournalBackgroundWorkPaused)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	bid1 := putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	bid1, bCtx1, serverHalf1 := config.makeBlock([]byte{1})
+	bid2, bCtx2, serverHalf2 := config.makeBlock([]byte{2})
+	bid3, bCtx3, serverHalf3 := config.makeBlock([]byte{3})
 
 	md1 := config.makeMD(MetadataRevision(10), fakeMdID(1))
-	_, err := tlfJournal.putMD(ctx, md1)
-	require.NoError(t, err)
 
 	var puts []interface{}
 
 	bserver := orderedBlockServer{
 		puts: &puts,
-		onceOnPut: func() {
-		},
 	}
 
 	tlfJournal.delegateBlockServer.Shutdown()
@@ -810,16 +808,44 @@ func TestTLFJournalFlushOrdering(t *testing.T) {
 
 	mdserver := orderedMDServer{
 		puts: &puts,
-		onceOnPut: func() {
-		},
 	}
 
 	config.mdserver = &mdserver
 
+	err := tlfJournal.putBlockData(
+		ctx, bid1, bCtx1, []byte{1}, serverHalf1)
+	require.NoError(t, err)
+	prevRoot, err := tlfJournal.putMD(ctx, md1)
+	require.NoError(t, err)
+
+	bserver.onceOnPut = func() {
+		err := tlfJournal.putBlockData(
+			ctx, bid2, bCtx2, []byte{2}, serverHalf2)
+		require.NoError(t, err)
+		md2 := config.makeMD(MetadataRevision(11), prevRoot)
+		prevRoot, err = tlfJournal.putMD(ctx, md2)
+		require.NoError(t, err)
+	}
+
+	mdserver.onceOnPut = func() {
+		err := tlfJournal.putBlockData(
+			ctx, bid3, bCtx3, []byte{3}, serverHalf3)
+		require.NoError(t, err)
+		md3 := config.makeMD(MetadataRevision(12), prevRoot)
+		prevRoot, err = tlfJournal.putMD(ctx, md3)
+		require.NoError(t, err)
+	}
+
 	err = tlfJournal.flush(ctx)
 	require.NoError(t, err)
 	requireJournalEntryCounts(t, tlfJournal, 0, 0)
+	// This ordering depends on the exact flushing process, but
+	// any ordering where bid1 happens before
+	// MetadataRevision(10), bid2 happens before
+	// MetadataRevision(11), and bid3 happens before
+	// MetadataRevision(12) is correct.
 	require.Equal(t, []interface{}{
-		bid1, MetadataRevision(10),
+		bid1, MetadataRevision(10), bid2, bid3,
+		MetadataRevision(11), MetadataRevision(12),
 	}, puts)
 }
