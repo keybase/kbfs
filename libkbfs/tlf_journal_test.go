@@ -337,10 +337,11 @@ func (bs hangingBlockServer) waitForPut(ctx context.Context, t *testing.T) {
 
 func putBlock(ctx context.Context,
 	t *testing.T, config *testTLFJournalConfig,
-	tlfJournal *tlfJournal, data []byte) {
+	tlfJournal *tlfJournal, data []byte) BlockID {
 	id, bCtx, serverHalf := config.makeBlock(data)
 	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
 	require.NoError(t, err)
+	return id
 }
 
 func TestTLFJournalBlockOpBasic(t *testing.T) {
@@ -739,6 +740,48 @@ func TestTLFJournalPreservesBranchID(t *testing.T) {
 		rmdses[0].MD.BID())
 }
 
+// orderedBlockServer and orderedMDServer appends onto their shared
+// puts slice when their Put() methods are called.
+
+type orderedBlockServer struct {
+	BlockServer
+	puts      *[]interface{}
+	onceOnPut func()
+}
+
+func (s *orderedBlockServer) Put(
+	ctx context.Context, tlfID TlfID, id BlockID, context BlockContext,
+	buf []byte, serverHalf BlockCryptKeyServerHalf) error {
+	*s.puts = append(*s.puts, id)
+	if s.onceOnPut != nil {
+		s.onceOnPut()
+		s.onceOnPut = nil
+	}
+	return nil
+}
+
+func (s *orderedBlockServer) Shutdown() {
+}
+
+type orderedMDServer struct {
+	MDServer
+	puts      *[]interface{}
+	onceOnPut func()
+}
+
+func (s *orderedMDServer) Put(
+	ctx context.Context, rmds *RootMetadataSigned) error {
+	*s.puts = append(*s.puts, rmds.MD.RevisionNumber())
+	if s.onceOnPut != nil {
+		s.onceOnPut()
+		s.onceOnPut = nil
+	}
+	return nil
+}
+
+func (s *orderedMDServer) Shutdown() {
+}
+
 // TestTLFJournalFlushOrdering tests that we don't naively push all
 // block ops, and then push all MD ops, skipping any block ops that
 // were added in the meantime.
@@ -748,27 +791,35 @@ func TestTLFJournalFlushOrdering(t *testing.T) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	firstRevision := MetadataRevision(10)
-	firstPrevRoot := fakeMdID(1)
-	mdCount := 10
+	bid1 := putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
-	prevRoot := firstPrevRoot
-	for i := 0; i < mdCount; i++ {
-		revision := firstRevision + MetadataRevision(i)
-		md := config.makeMD(revision, prevRoot)
-		mdID, err := tlfJournal.putMD(ctx, md)
-		require.NoError(t, err)
-		prevRoot = mdID
+	md1 := config.makeMD(MetadataRevision(10), fakeMdID(1))
+	_, err := tlfJournal.putMD(ctx, md1)
+	require.NoError(t, err)
+
+	var puts []interface{}
+
+	bserver := orderedBlockServer{
+		puts: &puts,
+		onceOnPut: func() {
+		},
 	}
 
-	var mdserver shimMDServer
+	tlfJournal.delegateBlockServer.Shutdown()
+	tlfJournal.delegateBlockServer = &bserver
+
+	mdserver := orderedMDServer{
+		puts: &puts,
+		onceOnPut: func() {
+		},
+	}
+
 	config.mdserver = &mdserver
-	mdserver.onceOnPut = func() error {
-		putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
-		return nil
-	}
 
-	err := tlfJournal.flush(ctx)
+	err = tlfJournal.flush(ctx)
 	require.NoError(t, err)
 	requireJournalEntryCounts(t, tlfJournal, 0, 0)
+	require.Equal(t, []interface{}{
+		bid1, MetadataRevision(10),
+	}, puts)
 }
