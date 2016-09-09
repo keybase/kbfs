@@ -806,6 +806,7 @@ func TestTLFJournalFlushOrdering(t *testing.T) {
 
 	config.mdserver = &mdserver
 
+	// bid1 is-put-before MetadataRevision(10).
 	err := tlfJournal.putBlockData(
 		ctx, bid1, bCtx1, []byte{1}, serverHalf1)
 	require.NoError(t, err)
@@ -813,6 +814,7 @@ func TestTLFJournalFlushOrdering(t *testing.T) {
 	require.NoError(t, err)
 
 	bserver.onceOnPut = func() {
+		// bid2 is-put-before MetadataRevision(11).
 		err := tlfJournal.putBlockData(
 			ctx, bid2, bCtx2, []byte{2}, serverHalf2)
 		require.NoError(t, err)
@@ -822,6 +824,7 @@ func TestTLFJournalFlushOrdering(t *testing.T) {
 	}
 
 	mdserver.onceOnPut = func() {
+		// bid3 is-put-before MetadataRevision(12).
 		err := tlfJournal.putBlockData(
 			ctx, bid3, bCtx3, []byte{3}, serverHalf3)
 		require.NoError(t, err)
@@ -834,10 +837,9 @@ func TestTLFJournalFlushOrdering(t *testing.T) {
 	require.NoError(t, err)
 	requireJournalEntryCounts(t, tlfJournal, 0, 0)
 	// This ordering depends on the exact flushing process, but
-	// any ordering where bid1 happens before
-	// MetadataRevision(10), bid2 happens before
-	// MetadataRevision(11), and bid3 happens before
-	// MetadataRevision(12) is correct.
+	// there are other possible orderings which respect the above
+	// is-put-before constraints and also respect the
+	// MetadataRevision ordering.
 	require.Equal(t, []interface{}{
 		bid1, MetadataRevision(10), bid2, bid3,
 		MetadataRevision(11), MetadataRevision(12),
