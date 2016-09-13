@@ -34,7 +34,6 @@ dependencies:
     - rm -rf $HOME/client/react-native/node_modules # Clear node_modules cache, it appears to be getting out of sync
     - npm install
     - npm install -g react-native-cli
-    - mkdir -p $GOPATH/src/github.com/keybase
     - ln -s $HOME/kbfs $GOPATH/src/github.com/keybase/kbfs
     - (cd $GOPATH/src/github.com/keybase/client/react-native; npm run gobuild-android)
 test:
