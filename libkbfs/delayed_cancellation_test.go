@@ -112,12 +112,15 @@ func TestDelayedCancellationSecondEnable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("1st EnableDelayedCancellationWithGracePeriod failed: %v", err)
 	}
-	time.Sleep(5 * time.Millisecond) // make sure async ops sorts out
+	cancel()
+	<-ctx.Done()
 	// parent context is not canceled; second "enable" should succeed even it's
 	// after grace period
 	err = EnableDelayedCancellationWithGracePeriod(ctx, 0)
-	if err != nil {
-		t.Fatalf("2nd EnableDelayedCancellationWithGracePeriod failed: %v", err)
+	if err == nil {
+		t.Fatalf("2nd EnableDelayedCancellationWithGracePeriod succeeded even " +
+			"though more than grace period has passed since parent context was " +
+			"canceled")
 	}
 }
 
