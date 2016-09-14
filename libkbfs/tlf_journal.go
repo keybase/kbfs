@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -938,6 +939,10 @@ func (j *tlfJournal) clearMDs(ctx context.Context, bid BranchID) error {
 }
 
 func (j *tlfJournal) wait(ctx context.Context) error {
+	// Debugging
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	workLeft, err := j.wg.WaitUnlessPaused(ctx)
 	if err != nil {
 		return err
