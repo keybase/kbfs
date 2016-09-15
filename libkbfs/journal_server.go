@@ -361,4 +361,7 @@ func (j *JournalServer) shutdown() {
 	for _, tlfJournal := range j.tlfJournals {
 		tlfJournal.shutdown()
 	}
+
+	// Leave all the tlfJournals in j.tlfJournals, so that any
+	// access to them errors out instead of mutating the journal.
 }
