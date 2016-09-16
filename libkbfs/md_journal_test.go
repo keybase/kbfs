@@ -61,8 +61,7 @@ func setupMDJournalTest(t *testing.T) (
 	}()
 
 	log := logger.NewTestLogger(t)
-	j, err = makeMDJournal(
-		uid, verifyingKey, codec, crypto, tempdir, log)
+	j, err = makeMDJournal(uid, verifyingKey, codec, crypto, tempdir, log)
 	require.NoError(t, err)
 
 	bsplit = &BlockSplitterSimple{64 * 1024, 8 * 1024}
@@ -105,7 +104,7 @@ func putMDRange(t *testing.T, tlfID TlfID, signer cryptoSigner,
 	return prevRoot
 }
 
-func checkBRMD(t *testing.T, uid keybase1.UID, verifyingKey VerifyingKey,
+func checkBRMD(t *testing.T, uid keybase1.UID, key VerifyingKey,
 	codec Codec, crypto cryptoPure, brmd BareRootMetadata,
 	expectedRevision MetadataRevision, expectedPrevRoot MdID,
 	expectedMergeStatus MergeStatus, expectedBranchID BranchID) {
@@ -115,7 +114,7 @@ func checkBRMD(t *testing.T, uid keybase1.UID, verifyingKey VerifyingKey,
 	// MDv3 TODO: pass key bundles
 	err := brmd.IsValidAndSigned(codec, crypto, nil)
 	require.NoError(t, err)
-	err = brmd.IsLastModifiedBy(uid, verifyingKey)
+	err = brmd.IsLastModifiedBy(uid, key)
 	require.NoError(t, err)
 
 	require.Equal(t, expectedMergeStatus == Merged,
@@ -124,15 +123,15 @@ func checkBRMD(t *testing.T, uid keybase1.UID, verifyingKey VerifyingKey,
 }
 
 func checkIBRMDRange(t *testing.T, uid keybase1.UID,
-	verifyingKey VerifyingKey, codec Codec, crypto cryptoPure,
+	key VerifyingKey, codec Codec, crypto cryptoPure,
 	ibrmds []ImmutableBareRootMetadata, firstRevision MetadataRevision,
 	firstPrevRoot MdID, mStatus MergeStatus, bid BranchID) {
-	checkBRMD(t, uid, verifyingKey, codec, crypto, ibrmds[0],
+	checkBRMD(t, uid, key, codec, crypto, ibrmds[0],
 		firstRevision, firstPrevRoot, mStatus, bid)
 
 	for i := 1; i < len(ibrmds); i++ {
 		prevID := ibrmds[i-1].mdID
-		checkBRMD(t, uid, verifyingKey, codec, crypto, ibrmds[i],
+		checkBRMD(t, uid, key, codec, crypto, ibrmds[i],
 			firstRevision+MetadataRevision(i), prevID, mStatus, bid)
 		err := ibrmds[i-1].CheckValidSuccessor(prevID, ibrmds[i])
 		require.NoError(t, err)

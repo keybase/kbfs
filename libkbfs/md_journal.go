@@ -49,9 +49,9 @@ func MakeImmutableBareRootMetadata(
 	return ImmutableBareRootMetadata{rmd, mdID, localTimestamp}
 }
 
-// mdJournal stores a single ordered list of metadata IDs for
-// a single TLF, along with the associated metadata objects, in flat
-// files on disk.
+// mdJournal stores a single ordered list of metadata IDs for a single
+// (TLF, user, device) tuple, along with the associated metadata
+// objects, in flat files on disk.
 //
 // The directory layout looks like:
 //
@@ -78,8 +78,9 @@ func MakeImmutableBareRootMetadata(
 // mdJournal is not goroutine-safe, so any code that uses it must
 // guarantee that only one goroutine at a time calls its functions.
 type mdJournal struct {
-	// uid and key are assumed constant for the lifetime of this
-	// object.
+	// key is assumed to be the VerifyingKey of a device owned by
+	// uid, and both uid and key are assumed constant for the
+	// lifetime of this object.
 	uid keybase1.UID
 	key VerifyingKey
 
@@ -109,11 +110,11 @@ func makeMDJournal(uid keybase1.UID, key VerifyingKey, codec Codec,
 
 	deferLog := log.CloneWithAddedDepth(1)
 	journal := mdJournal{
+		uid:      uid,
+		key:      key,
 		codec:    codec,
 		crypto:   crypto,
 		dir:      dir,
-		uid:      uid,
-		key:      key,
 		log:      log,
 		deferLog: deferLog,
 		j:        makeMdIDJournal(codec, journalDir),
