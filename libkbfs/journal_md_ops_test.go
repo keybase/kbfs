@@ -38,8 +38,11 @@ func setupJournalMDOpsTest(t *testing.T) (
 		config.BlockServer(), config.MDOps(), nil, nil)
 
 	ctx := context.Background()
+	currentUID := keybase1.MakeTestUID(1)
+	currentVerifyingKey := MakeFakeVerifyingKeyOrBust("fake key")
 	err = jServer.EnableExistingJournals(
-		ctx, TLFJournalBackgroundWorkPaused)
+		ctx, currentUID, currentVerifyingKey,
+		TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 	config.SetBlockCache(jServer.blockCache())
 	config.SetBlockServer(jServer.blockServer())

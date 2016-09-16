@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/client/go/protocol/keybase1"
 
 	"golang.org/x/net/context"
 )
@@ -67,9 +68,11 @@ type JournalServer struct {
 	onBranchChange          branchChangeListener
 	onMDFlush               mdFlushListener
 
-	lock        sync.RWMutex
-	tlfJournals map[TlfID]*tlfJournal
-	dirtyOps    uint
+	lock                sync.RWMutex
+	currentUID          keybase1.UID
+	currentVerifyingKey VerifyingKey
+	tlfJournals         map[TlfID]*tlfJournal
+	dirtyOps            uint
 }
 
 func makeJournalServer(
@@ -112,7 +115,9 @@ func (j *JournalServer) hasTLFJournal(tlfID TlfID) bool {
 // JournalServer. Any returned error is fatal, and means that the
 // JournalServer must not be used.
 func (j *JournalServer) EnableExistingJournals(
-	ctx context.Context, bws TLFJournalBackgroundWorkStatus) (err error) {
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey,
+	bws TLFJournalBackgroundWorkStatus) (err error) {
 	j.log.CDebugf(ctx, "Enabling existing journals (%s)", bws)
 	defer func() {
 		if err != nil {

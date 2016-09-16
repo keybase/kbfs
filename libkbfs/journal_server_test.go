@@ -24,8 +24,11 @@ func setupJournalServerTest(t *testing.T) (
 		config, log, tempdir, config.BlockCache(), config.DirtyBlockCache(),
 		config.BlockServer(), config.MDOps(), nil, nil)
 	ctx := context.Background()
+	currentUID := keybase1.MakeTestUID(1)
+	currentVerifyingKey := MakeFakeVerifyingKeyOrBust("fake key")
 	err = jServer.EnableExistingJournals(
-		ctx, TLFJournalBackgroundWorkPaused)
+		ctx, currentUID, currentVerifyingKey,
+		TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 	config.SetBlockCache(jServer.blockCache())
 	config.SetBlockServer(jServer.blockServer())
@@ -93,12 +96,16 @@ func TestJournalServerRestart(t *testing.T) {
 
 	// Simulate a restart.
 
+	// TODO: Do under lock.
+	currentUID := jServer.currentUID
+	currentVerifyingKey := jServer.currentVerifyingKey
 	jServer = makeJournalServer(
 		config, jServer.log, tempdir, jServer.delegateBlockCache,
 		jServer.delegateDirtyBlockCache,
 		jServer.delegateBlockServer, jServer.delegateMDOps, nil, nil)
 	err = jServer.EnableExistingJournals(
-		ctx, TLFJournalBackgroundWorkPaused)
+		ctx, currentUID, currentVerifyingKey,
+		TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 	config.SetBlockCache(jServer.blockCache())
 	config.SetBlockServer(jServer.blockServer())
