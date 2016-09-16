@@ -9,7 +9,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -63,11 +62,11 @@ func TestJournalServerRestart(t *testing.T) {
 	mdOps := config.MDOps()
 	crypto := config.Crypto()
 
-	uid := keybase1.MakeTestUID(1)
-	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	h, err := ParseTlfHandle(ctx, config.KBPKI(), "test_user", false)
 	require.NoError(t, err)
+	uid := h.ResolvedWriters()[0]
 
-	h, err := MakeTlfHandle(ctx, bh, config.KBPKI())
+	bh, err := h.ToBareHandle()
 	require.NoError(t, err)
 
 	bCtx := BlockContext{uid, "", zeroBlockRefNonce}
