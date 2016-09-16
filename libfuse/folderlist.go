@@ -95,6 +95,20 @@ func (fl *FolderList) addToFavorite(ctx context.Context, h *libkbfs.TlfHandle) (
 	return nil
 }
 
+// Create implements the fs.NodeCreater interface for FolderList.
+func (fl *FolderList) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (_ fs.Node, _ fs.Handle, err error) {
+	fl.fs.log.CDebugf(ctx, "FolderList Create")
+	defer func() { fl.reportErr(ctx, libkbfs.WriteMode, "", err) }()
+	return nil, nil, fl.fs.writeAccessError(ctx, nil, libkbfs.buildCanonicalPath(fl.public, req.Name))
+}
+
+// Mkdir implements the fs.NodeMkdirer interface for FolderList.
+func (fl *FolderList) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (_ fs.Node, err error) {
+	fl.fs.log.CDebugf(ctx, "FolderList Mkdir")
+	defer func() { fl.reportErr(ctx, libkbfs.WriteMode, "", err) }()
+	return nil, fl.fs.writeAccessError(ctx, nil, libkbfs.buildCanonicalPath(fl.public, req.Name))
+}
+
 // Lookup implements the fs.NodeRequestLookuper interface.
 func (fl *FolderList) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
 	fl.fs.log.CDebugf(ctx, "FL Lookup %s", req.Name)

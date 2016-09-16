@@ -165,18 +165,22 @@ func (e ReadAccessError) Error() string {
 		e.User, buildCanonicalPath(e.Public, e.Tlf))
 }
 
-// WriteAccessError indicates that the user tried to read from a
-// top-level folder without read permission.
+// WriteAccessError indicates that the user tried to write a file
+// without permission.
 type WriteAccessError struct {
-	User   libkb.NormalizedUsername
-	Tlf    CanonicalTlfName
-	Public bool
+	User     libkb.NormalizedUsername
+	Filename string
+	Tlfname  CanonicalTlfName
+	Public   bool
 }
 
 // Error implements the error interface for WriteAccessError
 func (e WriteAccessError) Error() string {
-	return fmt.Sprintf("%s does not have write access to directory %s",
-		e.User, buildCanonicalPath(e.Public, e.Tlf))
+	if e.Tlfname != "" {
+		return fmt.Sprintf("%s does not have write access to directory %s",
+			e.User, buildCanonicalPath(e.Public, e.Tlfname))
+	}
+	return fmt.Sprintf("%s does not have write access to %s", e.User, e.Filename)
 }
 
 // NewReadAccessError constructs a ReadAccessError for the given
@@ -186,11 +190,21 @@ func NewReadAccessError(h *TlfHandle, username libkb.NormalizedUsername) error {
 	return ReadAccessError{username, tlfname, h.IsPublic()}
 }
 
-// NewWriteAccessError constructs a WriteAccessError for the given
-// directory and user.
-func NewWriteAccessError(h *TlfHandle, username libkb.NormalizedUsername) error {
-	tlfname := h.GetCanonicalName()
-	return WriteAccessError{username, tlfname, h.IsPublic()}
+// NewWriteAccessError constructs a WriteAccessError. If the access was
+// not inside a tlf, it may be nil.
+func NewWriteAccessError(h *TlfHandle, username libkb.NormalizedUsername, filename string) error {
+	tlfname := CanonicalTlfName("")
+	public := false
+	if h != nil {
+		tlfname = h.GetCanonicalName()
+		public = h.IsPublic()
+	}
+	return WriteAccessError{
+		User:     username,
+		Filename: filename,
+		Tlfname:  tlfname,
+		Public:   public,
+	}
 }
 
 // NeedSelfRekeyError indicates that the folder in question needs to
@@ -1024,7 +1038,7 @@ type NoSuchFolderListError struct {
 
 // Error implements the error interface for NoSuchFolderListError
 func (e NoSuchFolderListError) Error() string {
-	return fmt.Sprintf("/keybase/%s is not a Keybase folder.  "+
+	return fmt.Sprintf("/keybase/%s is not a Keybase folder. "+
 		"All folders begin with /keybase/%s or /keybase/%s.",
 		e.Name, e.PrivName, e.PubName)
 }

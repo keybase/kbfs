@@ -201,6 +201,14 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 	return nil
 }
 
+func (fs *FS) writeAccessError(ctx context.Context, h *libkbfs.TlfHandle, filename string) error {
+	username, _, err := fs.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return err
+	}
+	return libkbfs.NewWriteAccessError(h, username, filename)
+}
+
 // Root represents the root of the KBFS file system.
 type Root struct {
 	private *FolderList
@@ -250,6 +258,22 @@ func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.L
 		PrivName: PrivateName,
 		PubName:  PublicName,
 	}
+}
+
+var _ fs.NodeCreater = (*Root)(nil)
+
+// Create implements the fs.NodeCreater interface for Root.
+func (r *Root) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (_ fs.Node, _ fs.Handle, err error) {
+	r.log().CDebugf(ctx, "FS Create")
+	defer func() { r.private.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
+	return nil, nil, r.private.fs.writeAccessError(ctx, nil, "/keybase/"+req.Name)
+}
+
+// Mkdir implements the fs.NodeMkdirer interface for Root.
+func (r *Root) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (_ fs.Node, err error) {
+	r.log().CDebugf(ctx, "FS Mkdir")
+	defer func() { r.private.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
+	return nil, r.private.fs.writeAccessError(ctx, nil, "/keybase/"+req.Name)
 }
 
 var _ fs.Handle = (*Root)(nil)

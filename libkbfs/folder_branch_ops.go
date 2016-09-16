@@ -572,7 +572,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 		// Let any listeners know that this folder is now readable,
 		// which may indicate that a rekey successfully took place.
 		fbo.config.Reporter().Notify(ctx, mdReadSuccessNotification(
-			md.GetTlfHandle().GetCanonicalName(), md.TlfID().IsPublic()))
+			md.GetTlfHandle(), md.TlfID().IsPublic()))
 	}
 	return nil
 }
@@ -927,6 +927,11 @@ func (fbo *folderBranchOps) getMDForReadNeedIdentify(
 // then. (See comments for mdWriterLock above.)
 func (fbo *folderBranchOps) getMDForWriteLocked(
 	ctx context.Context, lState *lockState) (*RootMetadata, error) {
+	return fbo.getMDForWriteLockedForName(ctx, lState, "")
+}
+
+func (fbo *folderBranchOps) getMDForWriteLockedForName(
+	ctx context.Context, lState *lockState, name string) (*RootMetadata, error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
 	md, err := fbo.getMDLocked(ctx, lState, mdWrite)
@@ -939,8 +944,11 @@ func (fbo *folderBranchOps) getMDForWriteLocked(
 		return nil, err
 	}
 	if !md.GetTlfHandle().IsWriter(uid) {
-		return nil,
-			NewWriteAccessError(md.GetTlfHandle(), username)
+		filename := md.GetTlfHandle().GetCanonicalPath()
+		if name != "" {
+			filename += "/" + name
+		}
+		return nil, NewWriteAccessError(md.GetTlfHandle(), username, filename)
 	}
 
 	// Make a new successor of the current MD to hold the coming
@@ -1044,7 +1052,7 @@ func (fbo *folderBranchOps) initMDLocked(
 
 	// make sure we're a writer before rekeying or putting any blocks.
 	if !handle.IsWriter(uid) {
-		return NewWriteAccessError(handle, username)
+		return NewWriteAccessError(handle, username, handle.GetCanonicalPath())
 	}
 
 	newDblock := &DirBlock{
@@ -2221,7 +2229,7 @@ func (fbo *folderBranchOps) createEntryLocked(
 	}
 
 	// verify we have permission to write
-	md, err := fbo.getMDForWriteLocked(ctx, lState)
+	md, err := fbo.getMDForWriteLockedForName(ctx, lState, name)
 	if err != nil {
 		return nil, DirEntry{}, err
 	}
