@@ -201,8 +201,8 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 	return nil
 }
 
-func (fs *FS) writeAccessError(ctx context.Context, h *libkbfs.TlfHandle, filename string) error {
-	username, _, err := fs.config.KBPKI().GetCurrentUserInfo(ctx)
+func (f *FS) writeAccessError(ctx context.Context, h *libkbfs.TlfHandle, filename string) error {
+	username, _, err := f.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return err
 	}
