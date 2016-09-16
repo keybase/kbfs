@@ -128,13 +128,6 @@ func (j *JournalServer) EnableExistingJournals(
 		}
 	}()
 
-	fileInfos, err := ioutil.ReadDir(j.dir)
-	if os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-
 	err = func() error {
 		j.lock.Lock()
 		defer j.lock.Unlock()
@@ -149,6 +142,13 @@ func (j *JournalServer) EnableExistingJournals(
 		return nil
 	}()
 	if err != nil {
+		return err
+	}
+
+	fileInfos, err := ioutil.ReadDir(j.dir)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
 		return err
 	}
 
