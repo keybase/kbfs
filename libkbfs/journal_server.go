@@ -402,7 +402,7 @@ func (j *JournalServer) logOut(ctx context.Context) {
 		err := tlfJournal.wait(waitCtx)
 		if err != nil {
 			// This shouldn't really happen, since it only
-			// happens wait's passed-in context is
+			// happens when wait's passed-in context is
 			// cancelled.
 			j.log.CDebugf(ctx,
 				"Got unexpected error when shutting down journal for %s: %v",
