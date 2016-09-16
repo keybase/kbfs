@@ -354,6 +354,33 @@ func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 	return tlfJournal.getJournalStatus()
 }
 
+func (j *JournalServer) logOut(ctx context.Context) {
+	j.log.CDebugf(context.Background(), "Logging out journal")
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	for _, tlfJournal := range j.tlfJournals {
+		tlfJournal.shutdown()
+	}
+
+	// Logging out atomically is more important than respecting
+	// context deadlines.
+	waitCtx := context.Background()
+	for tlfID, tlfJournal := range j.tlfJournals {
+		err := tlfJournal.wait(waitCtx)
+		if err != nil {
+			// This shouldn't really happen, since it only
+			// happens wait's passed-in context is
+			// cancelled.
+			j.log.CDebugf(ctx,
+				"Got unexpected error when shutting down journal for %s: %v",
+				tlfID, err)
+
+		}
+	}
+
+	j.tlfJournals = make(map[TlfID]*tlfJournal)
+}
+
 func (j *JournalServer) shutdown() {
 	j.log.CDebugf(context.Background(), "Shutting down journal")
 	j.lock.Lock()
