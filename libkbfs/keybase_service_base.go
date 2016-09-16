@@ -202,7 +202,9 @@ func (k *KeybaseServiceBase) LoggedIn(ctx context.Context, name string) error {
 	k.log.CDebugf(ctx, "Current session logged in: %s", name)
 	// Since we don't have the whole session, just clear the cache.
 	k.setCachedCurrentSession(SessionInfo{})
-	serviceLoggedIn(ctx, k, k.config)
+	if k.config != nil {
+		serviceLoggedIn(ctx, k.log, name, k, k.config)
+	}
 	return nil
 }
 
@@ -210,7 +212,9 @@ func (k *KeybaseServiceBase) LoggedIn(ctx context.Context, name string) error {
 func (k *KeybaseServiceBase) LoggedOut(ctx context.Context) error {
 	k.log.CDebugf(ctx, "Current session logged out")
 	k.setCachedCurrentSession(SessionInfo{})
-	serviceLoggedOut(ctx, k.config)
+	if k.config != nil {
+		serviceLoggedOut(ctx, k.config)
+	}
 	return nil
 }
 
