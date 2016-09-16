@@ -165,32 +165,32 @@ func (e ReadAccessError) Error() string {
 		e.User, buildCanonicalPath(e.Public, e.Tlf))
 }
 
-// WriteErrorType indicates the type of write error
-type WriteErrorType string
-
-const (
-	// WriteErrorAccess is an access error (like permission denied)
-	WriteErrorAccess WriteErrorType = "access"
-	// WriteErrorUnsupported is an unsupported location to write to
-	WriteErrorUnsupported WriteErrorType = "unsupported"
-)
-
-// WriteError indicates an error when trying to write a file
-type WriteError struct {
+// WriteAccessError indicates an error when trying to write a file
+type WriteAccessError struct {
 	User     libkb.NormalizedUsername
 	Filename string
-	Type     WriteErrorType
 	Tlf      CanonicalTlfName
 	Public   bool
 }
 
 // Error implements the error interface for WriteAccessError
-func (e WriteError) Error() string {
+func (e WriteAccessError) Error() string {
 	if e.Tlf != "" {
 		return fmt.Sprintf("%s does not have write access to directory %s",
 			e.User, buildCanonicalPath(e.Public, e.Tlf))
 	}
 	return fmt.Sprintf("%s does not have write access to %s", e.User, e.Filename)
+}
+
+// WriteUnsupportedError indicates an error when trying to write a file
+type WriteUnsupportedError struct {
+	User     libkb.NormalizedUsername
+	Filename string
+}
+
+// Error implements the error interface for WriteAccessError
+func (e WriteUnsupportedError) Error() string {
+	return fmt.Sprintf("%s can't write to %s", e.User, e.Filename)
 }
 
 // NewReadAccessError constructs a ReadAccessError for the given
@@ -208,21 +208,19 @@ func NewWriteAccessError(h *TlfHandle, username libkb.NormalizedUsername, filena
 		tlf = h.GetCanonicalName()
 		public = h.IsPublic()
 	}
-	return WriteError{
+	return WriteAccessError{
 		User:     username,
 		Filename: filename,
-		Type:     WriteErrorAccess,
 		Tlf:      tlf,
 		Public:   public,
 	}
 }
 
-// NewWriteUnsupprtedError re
+// NewWriteUnsupportedError returns unsupported error trying to write a file
 func NewWriteUnsupportedError(username libkb.NormalizedUsername, filename string) error {
-	return WriteError{
+	return WriteUnsupportedError{
 		User:     username,
 		Filename: filename,
-		Type:     WriteErrorUnsupported,
 	}
 }
 
