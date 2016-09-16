@@ -378,6 +378,15 @@ func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 	return tlfJournal.getJournalStatus()
 }
 
+func (j *JournalServer) logIn(
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey) {
+	j.log.CDebugf(context.Background(), "Logging in journal with %s", currentUID)
+	// TODO: Preserve background work status.
+	j.EnableExistingJournals(ctx, currentUID, currentVerifyingKey,
+		TLFJournalBackgroundWorkEnabled)
+}
+
 func (j *JournalServer) logOut(ctx context.Context) {
 	j.log.CDebugf(context.Background(), "Logging out journal")
 	j.lock.Lock()

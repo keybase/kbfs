@@ -202,7 +202,15 @@ func (k *KeybaseServiceBase) LoggedIn(ctx context.Context, name string) error {
 	k.log.CDebugf(ctx, "Current session logged in: %s", name)
 	// Since we don't have the whole session, just clear the cache.
 	k.setCachedCurrentSession(SessionInfo{})
+	const sessionID = 0
+	session, err := k.CurrentSession(ctx, sessionID)
+	if err != nil {
+		return err
+	}
 	if k.config != nil {
+		if jServer, err := GetJournalServer(k.config); err == nil {
+			jServer.logIn(ctx, session.UID, session.VerifyingKey)
+		}
 		k.config.MDServer().RefreshAuthToken(ctx)
 		k.config.BlockServer().RefreshAuthToken(ctx)
 		k.config.KBFSOps().RefreshCachedFavorites(ctx)
