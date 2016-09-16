@@ -14,26 +14,13 @@ import (
 )
 
 func setupJournalServerTest(t *testing.T) (
-	tempdir string, config Config, jServer *JournalServer) {
+	tempdir string, config *ConfigLocal, jServer *JournalServer) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_server")
 	require.NoError(t, err)
 	config = MakeTestConfigOrBust(t, "test_user")
-	log := config.MakeLogger("")
-	jServer = makeJournalServer(
-		config, log, tempdir, config.BlockCache(), config.DirtyBlockCache(),
-		config.BlockServer(), config.MDOps(), nil, nil)
-	ctx := context.Background()
-	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	config.EnableJournaling(tempdir)
+	jServer, err = GetJournalServer(config)
 	require.NoError(t, err)
-	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
-	require.NoError(t, err)
-	err = jServer.EnableExistingJournals(
-		ctx, uid, key,
-		TLFJournalBackgroundWorkPaused)
-	require.NoError(t, err)
-	config.SetBlockCache(jServer.blockCache())
-	config.SetBlockServer(jServer.blockServer())
-	config.SetMDOps(jServer.mdOps())
 	return tempdir, config, jServer
 }
 
