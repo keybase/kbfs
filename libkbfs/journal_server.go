@@ -111,9 +111,10 @@ func (j *JournalServer) hasTLFJournal(tlfID TlfID) bool {
 	return ok
 }
 
-// EnableExistingJournals turns on the write journal for all TLFs with
-// an existing journal. Any returned error means that the
-// JournalServer may be used, but will pass through everything.
+// EnableExistingJournals turns on the write journal for all TLFs for
+// the given (UID, device) tuple (with the device identified by its
+// verifying key) with an existing journal. Any returned error means
+// that the JournalServer remains in the same state as it was before.
 func (j *JournalServer) EnableExistingJournals(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey,
@@ -412,16 +413,21 @@ func (j *JournalServer) logIn(
 		TLFJournalBackgroundWorkEnabled)
 }
 
-func (j *JournalServer) logOut(ctx context.Context) {
-	j.log.CDebugf(context.Background(), "Logging out journal")
+// loggedOut is called when the current user logs out, and shuts down
+// all write journals, sets the current UID and verifying key to zero,
+// and returns once all shutdowns are complete. It is safe to call
+// multiple times in a row.
+func (j *JournalServer) loggedOut(ctx context.Context) {
+	j.log.CDebugf(ctx, "Shutting down existing journals")
+
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	for _, tlfJournal := range j.tlfJournals {
 		tlfJournal.shutdown()
 	}
 
-	// Logging out atomically is more important than respecting
-	// context deadlines.
+	// Shutting down atomically is more important than respecting
+	// context cancellation.
 	waitCtx := context.Background()
 	for tlfID, tlfJournal := range j.tlfJournals {
 		err := tlfJournal.wait(waitCtx)

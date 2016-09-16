@@ -209,7 +209,9 @@ func (k *KeybaseServiceBase) LoggedIn(ctx context.Context, name string) error {
 	}
 	if k.config != nil {
 		if jServer, err := GetJournalServer(k.config); err == nil {
-			jServer.logIn(ctx, session.UID, session.VerifyingKey)
+			jServer.EnableExistingJournals(
+				ctx, session.UID, session.VerifyingKey,
+				TLFJournalBackgroundWorkEnabled)
 		}
 		k.config.MDServer().RefreshAuthToken(ctx)
 		k.config.BlockServer().RefreshAuthToken(ctx)
@@ -224,7 +226,7 @@ func (k *KeybaseServiceBase) LoggedOut(ctx context.Context) error {
 	k.setCachedCurrentSession(SessionInfo{})
 	if k.config != nil {
 		if jServer, err := GetJournalServer(k.config); err == nil {
-			jServer.logOut(ctx)
+			jServer.loggedOut(ctx)
 		}
 		k.config.ResetCaches()
 		k.config.MDServer().RefreshAuthToken(ctx)
