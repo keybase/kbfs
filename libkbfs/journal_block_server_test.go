@@ -15,27 +15,29 @@ import (
 )
 
 func setupJournalBlockServerTest(t *testing.T) (
-	tempdir string, config Config, jServer *JournalServer) {
+	tempdir string, config *ConfigLocal, jServer *JournalServer) {
+	config = MakeTestConfigOrBust(t, "test_user")
+
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_block_server")
 	require.NoError(t, err)
-	config = MakeTestConfigOrBust(t, "test_user")
-	log := config.MakeLogger("")
-	jServer = makeJournalServer(
-		config, log, tempdir, config.BlockCache(), config.DirtyBlockCache(),
-		config.BlockServer(), config.MDOps(), nil, nil)
-	ctx := context.Background()
-	currentUID := keybase1.MakeTestUID(1)
-	currentVerifyingKey := MakeFakeVerifyingKeyOrBust("fake key")
-	err = jServer.EnableExistingJournals(
-		ctx, currentUID, currentVerifyingKey,
-		TLFJournalBackgroundWorkPaused)
+	// Clean up the tempdir if anything in the setup fails/panics.
+	defer func() {
+		if r := recover(); r != nil {
+			CheckConfigAndShutdown(t, config)
+			err := os.RemoveAll(tempdir)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+		}
+	}()
+
+	config.EnableJournaling(tempdir)
+	jServer, err = GetJournalServer(config)
 	require.NoError(t, err)
-	config.SetBlockCache(jServer.blockCache())
 	blockServer := jServer.blockServer()
 	// Turn this on for testing.
 	blockServer.enableAddBlockReference = true
 	config.SetBlockServer(blockServer)
-	config.SetMDOps(jServer.mdOps())
 	return tempdir, config, jServer
 }
 

@@ -16,7 +16,8 @@ import (
 )
 
 func setupJournalMDOpsTest(t *testing.T) (
-	tempdir string, config Config, oldMDOps MDOps, jServer *JournalServer) {
+	tempdir string, config *ConfigLocal,
+	oldMDOps MDOps, jServer *JournalServer) {
 	config = MakeTestConfigOrBust(t, "test_user")
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_md_ops")
@@ -32,26 +33,10 @@ func setupJournalMDOpsTest(t *testing.T) (
 		}
 	}()
 
-	log := config.MakeLogger("")
-	jServer = makeJournalServer(
-		config, log, tempdir, config.BlockCache(), config.DirtyBlockCache(),
-		config.BlockServer(), config.MDOps(), nil, nil)
-
-	ctx := context.Background()
-	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
-	require.NoError(t, err)
-	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
-	require.NoError(t, err)
-	err = jServer.EnableExistingJournals(
-		ctx, uid, key,
-		TLFJournalBackgroundWorkPaused)
-	require.NoError(t, err)
-	config.SetBlockCache(jServer.blockCache())
-	config.SetBlockServer(jServer.blockServer())
-
 	oldMDOps = config.MDOps()
-	config.SetMDOps(jServer.mdOps())
-
+	config.EnableJournaling(tempdir)
+	jServer, err = GetJournalServer(config)
+	require.NoError(t, err)
 	return tempdir, config, oldMDOps, jServer
 }
 

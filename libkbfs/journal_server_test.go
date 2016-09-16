@@ -15,9 +15,21 @@ import (
 
 func setupJournalServerTest(t *testing.T) (
 	tempdir string, config *ConfigLocal, jServer *JournalServer) {
+	config = MakeTestConfigOrBust(t, "test_user1", "test_user2")
+
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_server")
 	require.NoError(t, err)
-	config = MakeTestConfigOrBust(t, "test_user1", "test_user2")
+	// Clean up the tempdir if anything in the setup fails/panics.
+	defer func() {
+		if r := recover(); r != nil {
+			CheckConfigAndShutdown(t, config)
+			err := os.RemoveAll(tempdir)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+		}
+	}()
+
 	config.EnableJournaling(tempdir)
 	jServer, err = GetJournalServer(config)
 	require.NoError(t, err)
