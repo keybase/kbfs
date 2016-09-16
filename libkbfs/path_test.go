@@ -17,4 +17,5 @@ func TestBuildCanonicalPath(t *testing.T) {
 	assert.Equal(t, "/keybase/private/u2", BuildCanonicalPath(PrivatePathType, "u2"))
 	assert.Equal(t, "/keybase/private/u3", BuildCanonicalPath(PrivatePathType, "", "u3"))
 	assert.Equal(t, "/keybase/private/u3", BuildCanonicalPath(PrivatePathType, "u3", ""))
+	assert.Equal(t, "/keybase/hi.txt", BuildCanonicalPath(KeybasePathType, "hi.txt"))
 }

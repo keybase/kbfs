@@ -10,8 +10,6 @@ import "strings"
 type PathType string
 
 const (
-	// RootPathType is a root path type (like /)
-	RootPathType PathType = ""
 	// KeybasePathType is the keybase root (like /keybase)
 	KeybasePathType PathType = "keybase"
 	// PublicPathType is the keybase public (like /keybase/public)
@@ -27,8 +25,6 @@ const (
 func BuildCanonicalPath(pathType PathType, paths ...string) string {
 	var prefix string
 	switch pathType {
-	case RootPathType:
-		prefix = "/"
 	case KeybasePathType:
 		prefix = "/" + string(KeybasePathType)
 	case PublicPathType:
