@@ -209,6 +209,14 @@ func (f *FS) writeAccessError(ctx context.Context, h *libkbfs.TlfHandle, filenam
 	return libkbfs.NewWriteAccessError(h, username, filename)
 }
 
+func (f *FS) writeUnsupportedError(ctx context.Context, filename string) error {
+	username, _, err := f.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return err
+	}
+	return libkbfs.NewWriteUnsupportedError(username, filename)
+}
+
 // Root represents the root of the KBFS file system.
 type Root struct {
 	private *FolderList
@@ -260,20 +268,25 @@ func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.L
 	}
 }
 
+// PathType returns PathType for this folder
+func (r *Root) PathType() libkbfs.PathType {
+	return libkbfs.RootPathType
+}
+
 var _ fs.NodeCreater = (*Root)(nil)
 
 // Create implements the fs.NodeCreater interface for Root.
 func (r *Root) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (_ fs.Node, _ fs.Handle, err error) {
 	r.log().CDebugf(ctx, "FS Create")
 	defer func() { r.private.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
-	return nil, nil, r.private.fs.writeAccessError(ctx, nil, "/keybase/"+req.Name)
+	return nil, nil, r.private.fs.writeUnsupportedError(ctx, libkbfs.BuildCanonicalPath(libkbfs.RootPathType, req.Name))
 }
 
 // Mkdir implements the fs.NodeMkdirer interface for Root.
 func (r *Root) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (_ fs.Node, err error) {
 	r.log().CDebugf(ctx, "FS Mkdir")
 	defer func() { r.private.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
-	return nil, r.private.fs.writeAccessError(ctx, nil, "/keybase/"+req.Name)
+	return nil, r.private.fs.writeUnsupportedError(ctx, libkbfs.BuildCanonicalPath(libkbfs.RootPathType, req.Name))
 }
 
 var _ fs.Handle = (*Root)(nil)

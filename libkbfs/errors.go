@@ -165,17 +165,27 @@ func (e ReadAccessError) Error() string {
 		e.User, buildCanonicalPath(e.Public, e.Tlf))
 }
 
-// WriteAccessError indicates that the user tried to write a file
-// without permission.
-type WriteAccessError struct {
+// WriteErrorType indicates the type of write error
+type WriteErrorType string
+
+const (
+	// WriteErrorAccess is an access error (like permission denied)
+	WriteErrorAccess WriteErrorType = "access"
+	// WriteErrorUnsupported is an unsupported location to write to
+	WriteErrorUnsupported WriteErrorType = "unsupported"
+)
+
+// WriteError indicates an error when trying to write a file
+type WriteError struct {
 	User     libkb.NormalizedUsername
 	Filename string
+	Type     WriteErrorType
 	Tlf      CanonicalTlfName
 	Public   bool
 }
 
 // Error implements the error interface for WriteAccessError
-func (e WriteAccessError) Error() string {
+func (e WriteError) Error() string {
 	if e.Tlf != "" {
 		return fmt.Sprintf("%s does not have write access to directory %s",
 			e.User, buildCanonicalPath(e.Public, e.Tlf))
@@ -190,8 +200,7 @@ func NewReadAccessError(h *TlfHandle, username libkb.NormalizedUsername) error {
 	return ReadAccessError{username, tlfname, h.IsPublic()}
 }
 
-// NewWriteAccessError constructs a WriteAccessError. If the access was
-// not inside a tlf, it may be nil.
+// NewWriteAccessError is an access error trying to write a file
 func NewWriteAccessError(h *TlfHandle, username libkb.NormalizedUsername, filename string) error {
 	tlf := CanonicalTlfName("")
 	public := false
@@ -199,11 +208,21 @@ func NewWriteAccessError(h *TlfHandle, username libkb.NormalizedUsername, filena
 		tlf = h.GetCanonicalName()
 		public = h.IsPublic()
 	}
-	return WriteAccessError{
+	return WriteError{
 		User:     username,
 		Filename: filename,
+		Type:     WriteErrorAccess,
 		Tlf:      tlf,
 		Public:   public,
+	}
+}
+
+// NewWriteUnsupprtedError re
+func NewWriteUnsupportedError(username libkb.NormalizedUsername, filename string) error {
+	return WriteError{
+		User:     username,
+		Filename: filename,
+		Type:     WriteErrorUnsupported,
 	}
 }
 

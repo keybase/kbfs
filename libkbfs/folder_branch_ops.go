@@ -2197,13 +2197,21 @@ func (fbo *folderBranchOps) checkNewDirSize(ctx context.Context,
 	return nil
 }
 
+// PathType returns path type
+func (fbo *folderBranchOps) PathType() PathType {
+	if fbo.folderBranch.Tlf.IsPublic() {
+		return PublicPathType
+	}
+	return PrivatePathType
+}
+
 // canonicalPath returns full canonical path for dir node and name.
 func (fbo *folderBranchOps) canonicalPath(ctx context.Context, dir Node, name string) (string, error) {
 	dirPath, err := fbo.pathFromNodeForRead(dir)
 	if err != nil {
 		return "", err
 	}
-	return BuildCanonicalPath(fbo.folderBranch.Tlf.IsPublic(), dirPath.String(), name), nil
+	return BuildCanonicalPath(fbo.PathType(), dirPath.String(), name), nil
 }
 
 // entryType must not by Sym.

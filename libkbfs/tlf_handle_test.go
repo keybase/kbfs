@@ -865,12 +865,3 @@ func TestParseTlfHandleNoncanonicalExtensions(t *testing.T) {
 	_, err = ParseTlfHandle(ctx, kbpki, nonCanonicalName, false)
 	assert.Equal(t, TlfNameNotCanonical{nonCanonicalName, name}, err)
 }
-
-func TestBuildCanonicalPath(t *testing.T) {
-	assert.Equal(t, "/keybase/public", BuildCanonicalPath(true, ""))
-	assert.Equal(t, "/keybase/private", BuildCanonicalPath(false, ""))
-	assert.Equal(t, "/keybase/public/u1", BuildCanonicalPath(true, "u1"))
-	assert.Equal(t, "/keybase/private/u2", BuildCanonicalPath(false, "u2"))
-	assert.Equal(t, "/keybase/private/u3", BuildCanonicalPath(false, "", "u3"))
-	assert.Equal(t, "/keybase/private/u3", BuildCanonicalPath(false, "u3", ""))
-}

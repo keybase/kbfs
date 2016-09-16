@@ -36,11 +36,14 @@ func (e ReadAccessError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EACCES)
 }
 
-var _ fuse.ErrorNumber = WriteAccessError{}
+var _ fuse.ErrorNumber = WriteError{}
 
 // Errno implements the fuse.ErrorNumber interface for
-// WriteAccessError.
-func (e WriteAccessError) Errno() fuse.Errno {
+// WriteError.
+func (e WriteError) Errno() fuse.Errno {
+	if e.Type == WriteErrorUnsupported {
+		return fuse.Errno(syscall.ENOENT)
+	}
 	return fuse.Errno(syscall.EACCES)
 }
 

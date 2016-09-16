@@ -1017,7 +1017,7 @@ func (fbm *folderBlockManager) reclaimQuotaInBackground() {
 		}
 
 		err := fbm.doReclamation(timer)
-		if _, ok := err.(WriteAccessError); ok {
+		if _, ok := err.(WriteError); ok {
 			// If we got a write access error, don't bother with the
 			// timer anymore. Don't completely shut down, since we
 			// don't want forced reclamations to hang.

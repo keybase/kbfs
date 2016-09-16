@@ -95,12 +95,20 @@ func (fl *FolderList) addToFavorite(ctx context.Context, h *libkbfs.TlfHandle) (
 	return nil
 }
 
+// PathType returns PathType for this folder
+func (fl *FolderList) PathType() libkbfs.PathType {
+	if fl.public {
+		return libkbfs.PublicPathType
+	}
+	return libkbfs.PrivatePathType
+}
+
 // Create implements the fs.NodeCreater interface for FolderList.
 func (fl *FolderList) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (_ fs.Node, _ fs.Handle, err error) {
 	fl.fs.log.CDebugf(ctx, "FL Create")
 	tlfName := libkbfs.CanonicalTlfName(req.Name)
 	defer func() { fl.reportErr(ctx, libkbfs.WriteMode, tlfName, err) }()
-	return nil, nil, fl.fs.writeAccessError(ctx, nil, libkbfs.BuildCanonicalPath(fl.public, string(tlfName)))
+	return nil, nil, fl.fs.writeUnsupportedError(ctx, libkbfs.BuildCanonicalPath(fl.PathType(), string(tlfName)))
 }
 
 // Mkdir implements the fs.NodeMkdirer interface for FolderList.
@@ -108,7 +116,7 @@ func (fl *FolderList) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (_ fs.N
 	fl.fs.log.CDebugf(ctx, "FL Mkdir")
 	tlfName := libkbfs.CanonicalTlfName(req.Name)
 	defer func() { fl.reportErr(ctx, libkbfs.WriteMode, tlfName, err) }()
-	return nil, fl.fs.writeAccessError(ctx, nil, libkbfs.BuildCanonicalPath(fl.public, string(tlfName)))
+	return nil, fl.fs.writeUnsupportedError(ctx, libkbfs.BuildCanonicalPath(fl.PathType(), string(tlfName)))
 }
 
 // Lookup implements the fs.NodeRequestLookuper interface.
