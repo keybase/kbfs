@@ -84,16 +84,15 @@ func TestJournalServerRestart(t *testing.T) {
 
 	// Simulate a restart.
 
-	// TODO: Do under lock.
-	currentUID := jServer.currentUID
-	currentVerifyingKey := jServer.currentVerifyingKey
 	jServer = makeJournalServer(
 		config, jServer.log, tempdir, jServer.delegateBlockCache,
 		jServer.delegateDirtyBlockCache,
 		jServer.delegateBlockServer, jServer.delegateMDOps, nil, nil)
+	uid, verifyingKey, err :=
+		getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
+	require.NoError(t, err)
 	err = jServer.EnableExistingJournals(
-		ctx, currentUID, currentVerifyingKey,
-		TLFJournalBackgroundWorkPaused)
+		ctx, uid, verifyingKey, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 	config.SetBlockCache(jServer.blockCache())
 	config.SetBlockServer(jServer.blockServer())
