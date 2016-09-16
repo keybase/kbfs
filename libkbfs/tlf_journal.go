@@ -24,7 +24,6 @@ type tlfJournalConfig interface {
 	BlockCache() BlockCache
 	MDCache() MDCache
 	Reporter() Reporter
-	currentInfoGetter() currentInfoGetter
 	encryptionKeyGetter() encryptionKeyGetter
 	MDServer() MDServer
 	MakeLogger(module string) logger.Logger
@@ -34,10 +33,6 @@ type tlfJournalConfig interface {
 // tlfJournalConfig interface.
 type tlfJournalConfigAdapter struct {
 	Config
-}
-
-func (ca tlfJournalConfigAdapter) currentInfoGetter() currentInfoGetter {
-	return ca.Config.KBPKI()
 }
 
 func (ca tlfJournalConfigAdapter) encryptionKeyGetter() encryptionKeyGetter {
@@ -115,6 +110,8 @@ type tlfJournalBWDelegate interface {
 // journals (via journalBlockServer or journalMDOps) and a background
 // goroutine that flushes journal entries to the servers.
 type tlfJournal struct {
+	uid                 keybase1.UID
+	key                 VerifyingKey
 	tlfID               TlfID
 	config              tlfJournalConfig
 	delegateBlockServer BlockServer
@@ -152,11 +149,20 @@ type tlfJournal struct {
 }
 
 func makeTLFJournal(
-	ctx context.Context, dir string, tlfID TlfID, config tlfJournalConfig,
+	ctx context.Context, currentUID keybase1.UID,
+	currentVerifyingKey VerifyingKey,
+	dir string, tlfID TlfID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, bws TLFJournalBackgroundWorkStatus,
 	bwDelegate tlfJournalBWDelegate, onBranchChange branchChangeListener,
 	onMDFlush mdFlushListener) (
 	*tlfJournal, error) {
+	if currentUID == keybase1.UID("") {
+		return nil, errors.New("Empty UID")
+	}
+	if currentVerifyingKey == (VerifyingKey{}) {
+		return nil, errors.New("Empty VerifyingKey")
+	}
+
 	log := config.MakeLogger("TLFJ")
 
 	tlfDir := filepath.Join(dir, tlfID.String())
@@ -167,19 +173,16 @@ func makeTLFJournal(
 		return nil, err
 	}
 
-	uid, key, err :=
-		getCurrentUIDAndVerifyingKey(ctx, config.currentInfoGetter())
-	if err != nil {
-		return nil, err
-	}
-
 	mdJournal, err := makeMDJournal(
-		uid, key, config.Codec(), config.Crypto(), tlfDir, log)
+		currentUID, currentVerifyingKey,
+		config.Codec(), config.Crypto(), tlfDir, log)
 	if err != nil {
 		return nil, err
 	}
 
 	j := &tlfJournal{
+		uid:                 currentUID,
+		key:                 currentVerifyingKey,
 		tlfID:               tlfID,
 		config:              config,
 		delegateBlockServer: delegateBlockServer,
@@ -604,13 +607,7 @@ func (j *tlfJournal) removeFlushedMDEntry(ctx context.Context,
 }
 
 func (j *tlfJournal) flushOneMDOp(
-	ctx context.Context, end MetadataRevision) (bool, error) {
-	uid, key, err :=
-		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
-	if err != nil {
-		return false, err
-	}
-
+	ctx context.Context, end MetadataRevision) (flushed bool, err error) {
 	j.log.CDebugf(ctx, "Flushing one MD to server")
 	defer func() {
 		if err != nil {
@@ -620,7 +617,7 @@ func (j *tlfJournal) flushOneMDOp(
 
 	mdServer := j.config.MDServer()
 
-	mdID, rmds, err := j.getNextMDEntryToFlush(ctx, uid, key, end)
+	mdID, rmds, err := j.getNextMDEntryToFlush(ctx, j.uid, j.key, end)
 	if err != nil {
 		return false, err
 	}
@@ -650,7 +647,7 @@ func (j *tlfJournal) flushOneMDOp(
 			j.log.CDebugf(ctx, "Conflict detected %v", pushErr)
 			// Convert MDs to a branch and retry the put.
 			mdID, rmds, err = j.convertMDsToBranchAndGetNextEntry(
-				ctx, uid, key, end)
+				ctx, j.uid, j.key, end)
 			if err != nil {
 				return false, err
 			}
@@ -672,7 +669,7 @@ func (j *tlfJournal) flushOneMDOp(
 			rmds.MD.RevisionNumber())
 	}
 
-	err = j.removeFlushedMDEntry(ctx, uid, key, mdID, rmds)
+	err = j.removeFlushedMDEntry(ctx, j.uid, j.key, mdID, rmds)
 	if err != nil {
 		return false, err
 	}
@@ -915,12 +912,6 @@ func (j *tlfJournal) archiveBlockReferences(
 
 func (j *tlfJournal) getMDHead(
 	ctx context.Context) (ImmutableBareRootMetadata, error) {
-	uid, key, err :=
-		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
-	if err != nil {
-		return ImmutableBareRootMetadata{}, err
-	}
-
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
@@ -928,18 +919,12 @@ func (j *tlfJournal) getMDHead(
 	}
 
 	// MDv3 TODO: pass actual key bundles
-	return j.mdJournal.getHead(uid, key, nil)
+	return j.mdJournal.getHead(j.uid, j.key, nil)
 }
 
 func (j *tlfJournal) getMDRange(
 	ctx context.Context, start, stop MetadataRevision) (
 	[]ImmutableBareRootMetadata, error) {
-	uid, key, err :=
-		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
-	if err != nil {
-		return nil, err
-	}
-
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
@@ -947,24 +932,18 @@ func (j *tlfJournal) getMDRange(
 	}
 
 	// MDv3 TODO: pass actual key bundles
-	return j.mdJournal.getRange(uid, key, nil, start, stop)
+	return j.mdJournal.getRange(j.uid, j.key, nil, start, stop)
 }
 
 func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
-	uid, key, err :=
-		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
-	if err != nil {
-		return MdID{}, err
-	}
-
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {
 		return MdID{}, err
 	}
 
-	mdID, err := j.mdJournal.put(ctx, uid, key, j.config.Crypto(),
+	mdID, err := j.mdJournal.put(ctx, j.uid, j.key, j.config.Crypto(),
 		j.config.encryptionKeyGetter(), j.config.BlockSplitter(), rmd)
 	if err != nil {
 		return MdID{}, err
@@ -976,12 +955,6 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 }
 
 func (j *tlfJournal) clearMDs(ctx context.Context, bid BranchID) error {
-	uid, key, err :=
-		getCurrentUIDAndVerifyingKey(ctx, j.config.currentInfoGetter())
-	if err != nil {
-		return err
-	}
-
 	if j.onBranchChange != nil {
 		j.onBranchChange.onTLFBranchChange(j.tlfID, NullBranchID)
 	}
@@ -994,7 +967,7 @@ func (j *tlfJournal) clearMDs(ctx context.Context, bid BranchID) error {
 
 	// No need to signal work in this case.
 	// MDv3 TODO: pass actual key bundles
-	return j.mdJournal.clear(ctx, uid, key, bid, nil)
+	return j.mdJournal.clear(ctx, j.uid, j.key, bid, nil)
 }
 
 func (j *tlfJournal) wait(ctx context.Context) error {

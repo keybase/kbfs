@@ -195,7 +195,8 @@ func (j *JournalServer) Enable(
 			"are any dirty blocks outstanding", tlfID)
 	}
 
-	tlfJournal, err := makeTLFJournal(ctx, j.dir, tlfID,
+	tlfJournal, err := makeTLFJournal(
+		ctx, j.currentUID, j.currentVerifyingKey, j.dir, tlfID,
 		tlfJournalConfigAdapter{j.config}, j.delegateBlockServer,
 		bws, nil, j.onBranchChange, j.onMDFlush)
 	if err != nil {

@@ -215,7 +215,9 @@ func setupTLFJournalTest(
 
 	delegateBlockServer := NewBlockServerMemory(config)
 
-	tlfJournal, err = makeTLFJournal(ctx, tempdir, config.tlfID, config,
+	tlfJournal, err = makeTLFJournal(
+		ctx, config.cig.uid, config.cig.verifyingKey,
+		tempdir, config.tlfID, config,
 		delegateBlockServer, bwStatus, delegate, nil, nil)
 	require.NoError(t, err)
 
