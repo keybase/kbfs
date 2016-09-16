@@ -226,7 +226,7 @@ func (k *KeybaseServiceBase) LoggedOut(ctx context.Context) error {
 	k.setCachedCurrentSession(SessionInfo{})
 	if k.config != nil {
 		if jServer, err := GetJournalServer(k.config); err == nil {
-			jServer.loggedOut(ctx)
+			jServer.shutdownExistingJournals(ctx)
 		}
 		k.config.ResetCaches()
 		k.config.MDServer().RefreshAuthToken(ctx)

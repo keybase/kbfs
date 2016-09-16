@@ -115,6 +115,9 @@ func (j *JournalServer) hasTLFJournal(tlfID TlfID) bool {
 // the given (UID, device) tuple (with the device identified by its
 // verifying key) with an existing journal. Any returned error means
 // that the JournalServer remains in the same state as it was before.
+//
+// Once this is called, this must not be called again until
+// shutdownExistingJournals is called.
 func (j *JournalServer) EnableExistingJournals(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey,
@@ -404,20 +407,12 @@ func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 	return tlfJournal.getJournalStatus()
 }
 
-func (j *JournalServer) logIn(
-	ctx context.Context, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey) {
-	j.log.CDebugf(context.Background(), "Logging in journal with %s", currentUID)
-	// TODO: Preserve background work status.
-	j.EnableExistingJournals(ctx, currentUID, currentVerifyingKey,
-		TLFJournalBackgroundWorkEnabled)
-}
-
-// loggedOut is called when the current user logs out, and shuts down
-// all write journals, sets the current UID and verifying key to zero,
-// and returns once all shutdowns are complete. It is safe to call
-// multiple times in a row.
-func (j *JournalServer) loggedOut(ctx context.Context) {
+// shutdownExistingJournals shuts down all write journals, sets the
+// current UID and verifying key to zero, and returns once all
+// shutdowns are complete. It is safe to call multiple times in a row,
+// and once this is called, EnableExistingJournals may be called
+// again.
+func (j *JournalServer) shutdownExistingJournals(ctx context.Context) {
 	j.log.CDebugf(ctx, "Shutting down existing journals")
 
 	j.lock.Lock()
