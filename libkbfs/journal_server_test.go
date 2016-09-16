@@ -111,3 +111,70 @@ func TestJournalServerRestart(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, rmd.Revision(), head.Revision())
 }
+
+func TestJournalServerLogOut(t *testing.T) {
+	tempdir, config, jServer := setupJournalServerTest(t)
+	defer teardownJournalServerTest(t, tempdir, config)
+
+	// Use a shutdown-only BlockServer so that it errors if the
+	// journal tries to access it.
+	jServer.delegateBlockServer = shutdownOnlyBlockServer{}
+
+	ctx := context.Background()
+
+	tlfID := FakeTlfID(2, false)
+	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
+	require.NoError(t, err)
+
+	blockServer := config.BlockServer()
+	mdOps := config.MDOps()
+	crypto := config.Crypto()
+
+	h, err := ParseTlfHandle(ctx, config.KBPKI(), "test_user", false)
+	require.NoError(t, err)
+	uid := h.ResolvedWriters()[0]
+
+	bh, err := h.ToBareHandle()
+	require.NoError(t, err)
+
+	bCtx := BlockContext{uid, "", zeroBlockRefNonce}
+	data := []byte{1, 2, 3, 4}
+	bID, err := crypto.MakePermanentBlockID(data)
+	require.NoError(t, err)
+
+	// Put a block.
+
+	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
+	err = blockServer.Put(ctx, tlfID, bID, bCtx, data, serverHalf)
+	require.NoError(t, err)
+
+	// Put an MD.
+
+	rmd := NewRootMetadata()
+	err = rmd.Update(tlfID, bh)
+	require.NoError(t, err)
+	rmd.tlfHandle = h
+	rmd.SetRevision(MetadataRevision(1))
+	rekeyDone, _, err := config.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, rekeyDone)
+
+	_, err = mdOps.Put(ctx, rmd)
+	require.NoError(t, err)
+
+	// Simulate a log out.
+
+	serviceLoggedOut(ctx, config)
+
+	// Get the block.
+
+	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx)
+	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+
+	// Get the MD.
+
+	head, err := mdOps.GetForTLF(ctx, tlfID)
+	require.NoError(t, err)
+	require.Equal(t, ImmutableRootMetadata{}, head)
+}
