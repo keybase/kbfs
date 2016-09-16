@@ -112,9 +112,8 @@ func (j *JournalServer) hasTLFJournal(tlfID TlfID) bool {
 }
 
 // EnableExistingJournals turns on the write journal for all TLFs with
-// an existing journal. This must be the first thing done to a
-// JournalServer. Any returned error is fatal, and means that the
-// JournalServer must not be used.
+// an existing journal. Any returned error means that the
+// JournalServer may be used, but will pass through everything.
 func (j *JournalServer) EnableExistingJournals(
 	ctx context.Context, currentUID keybase1.UID,
 	currentVerifyingKey VerifyingKey,
@@ -128,29 +127,38 @@ func (j *JournalServer) EnableExistingJournals(
 		}
 	}()
 
-	err = func() error {
-		j.lock.Lock()
-		defer j.lock.Unlock()
-		if j.currentUID != keybase1.UID("") {
-			return errors.New("Setting current UID twice")
-		}
-		if j.currentVerifyingKey != (VerifyingKey{}) {
-			return errors.New("Setting current verifying key twice")
-		}
-		j.currentUID = currentUID
-		j.currentVerifyingKey = currentVerifyingKey
-		return nil
-	}()
-	if err != nil {
-		return err
-	}
-
 	fileInfos, err := ioutil.ReadDir(j.dir)
 	if os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
 		return err
 	}
+
+	j.lock.Lock()
+	defer j.lock.Unlock()
+
+	if j.currentUID != keybase1.UID("") {
+		return fmt.Errorf("Trying to set current UID from %s to %s",
+			j.currentUID, currentUID)
+	}
+	if j.currentVerifyingKey != (VerifyingKey{}) {
+		return fmt.Errorf(
+			"Trying to set current verifying key from %s to %s",
+			j.currentVerifyingKey, currentVerifyingKey)
+	}
+
+	if currentUID == keybase1.UID("") {
+		return errors.New("Current UID is empty")
+	}
+	if currentVerifyingKey == (VerifyingKey{}) {
+		return errors.New("Current verifying key is empty")
+	}
+
+	// Need to set it here since enableLocked depends on it.
+	//
+	// TODO: Revert this on error or panic.
+	j.currentUID = currentUID
+	j.currentVerifyingKey = currentVerifyingKey
 
 	for _, fi := range fileInfos {
 		name := fi.Name()
@@ -164,7 +172,9 @@ func (j *JournalServer) EnableExistingJournals(
 			continue
 		}
 
-		err = j.Enable(ctx, tlfID, bws)
+		// Force the enable, since any dirty writes in flight
+		// are most likely for another user.
+		err = j.enableLocked(ctx, tlfID, bws, true)
 		if err != nil {
 			// Don't treat per-TLF errors as fatal.
 			j.log.CWarningf(
@@ -177,10 +187,9 @@ func (j *JournalServer) EnableExistingJournals(
 	return nil
 }
 
-// Enable turns on the write journal for the given TLF.
-func (j *JournalServer) Enable(
+func (j *JournalServer) enableLocked(
 	ctx context.Context, tlfID TlfID,
-	bws TLFJournalBackgroundWorkStatus) (err error) {
+	bws TLFJournalBackgroundWorkStatus, force bool) (err error) {
 	j.log.CDebugf(ctx, "Enabling journal for %s (%s)", tlfID, bws)
 	defer func() {
 		if err != nil {
@@ -190,20 +199,28 @@ func (j *JournalServer) Enable(
 		}
 	}()
 
-	j.lock.Lock()
-	defer j.lock.Unlock()
-
 	if tlfJournal, ok := j.tlfJournals[tlfID]; ok {
 		return tlfJournal.enable()
 	}
 
-	if j.dirtyOps > 0 {
-		return fmt.Errorf("Can't enable journal for %s while there "+
-			"are outstanding dirty ops", tlfID)
-	}
-	if j.delegateDirtyBlockCache.IsAnyDirty(tlfID) {
-		return fmt.Errorf("Can't enable journal for %s while there "+
-			"are any dirty blocks outstanding", tlfID)
+	err = func() error {
+		if j.dirtyOps > 0 {
+			return fmt.Errorf("Can't enable journal for %s while there "+
+				"are outstanding dirty ops", tlfID)
+		}
+		if j.delegateDirtyBlockCache.IsAnyDirty(tlfID) {
+			return fmt.Errorf("Can't enable journal for %s while there "+
+				"are any dirty blocks outstanding", tlfID)
+		}
+		return nil
+	}()
+	if err != nil {
+		if !force {
+			return err
+		}
+
+		j.log.CWarningf(ctx,
+			"Got error on journal enable, but proceeding anyway: %v", err)
 	}
 
 	tlfJournal, err := makeTLFJournal(
@@ -216,6 +233,14 @@ func (j *JournalServer) Enable(
 
 	j.tlfJournals[tlfID] = tlfJournal
 	return nil
+}
+
+// Enable turns on the write journal for the given TLF.
+func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID,
+	bws TLFJournalBackgroundWorkStatus) error {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.enableLocked(ctx, tlfID, bws, false)
 }
 
 func (j *JournalServer) dirtyOpStart(tlfID TlfID) {
