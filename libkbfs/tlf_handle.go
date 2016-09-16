@@ -522,7 +522,9 @@ func (h *TlfHandle) GetCanonicalName() CanonicalTlfName {
 	return h.name
 }
 
-// BuildCanonicalPath returns full path for tlf name
+// BuildCanonicalPath returns full path for tlf name.
+// This may need to be converted to a platform specific path, for example,
+// on Windows, this might correspond to k:/private/username.
 func BuildCanonicalPath(public bool, tlfName CanonicalTlfName) string {
 	var folderType string
 	if public {
