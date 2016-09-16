@@ -134,6 +134,13 @@ func (j *JournalServer) EnableExistingJournals(
 		return err
 	}
 
+	func() {
+		j.lock.Lock()
+		defer j.lock.Unlock()
+		j.currentUID = currentUID
+		j.currentVerifyingKey = currentVerifyingKey
+	}()
+
 	for _, fi := range fileInfos {
 		name := fi.Name()
 		if !fi.IsDir() {
@@ -384,6 +391,8 @@ func (j *JournalServer) logOut(ctx context.Context) {
 	}
 
 	j.tlfJournals = make(map[TlfID]*tlfJournal)
+	j.currentUID = keybase1.UID("")
+	j.currentVerifyingKey = VerifyingKey{}
 }
 
 func (j *JournalServer) shutdown() {
