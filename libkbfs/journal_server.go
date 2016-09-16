@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -134,12 +135,22 @@ func (j *JournalServer) EnableExistingJournals(
 		return err
 	}
 
-	func() {
+	err = func() error {
 		j.lock.Lock()
 		defer j.lock.Unlock()
+		if j.currentUID != keybase1.UID("") {
+			return errors.New("Setting current UID twice")
+		}
+		if j.currentVerifyingKey != (VerifyingKey{}) {
+			return errors.New("Setting current verifying key twice")
+		}
 		j.currentUID = currentUID
 		j.currentVerifyingKey = currentVerifyingKey
+		return nil
 	}()
+	if err != nil {
+		return err
+	}
 
 	for _, fi := range fileInfos {
 		name := fi.Name()
