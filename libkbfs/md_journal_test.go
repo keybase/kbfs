@@ -417,18 +417,17 @@ func testMDJournalGCd(t *testing.T, j *mdJournal) {
 		})
 }
 
-func flushAllMDs(t *testing.T, ctx context.Context, uid keybase1.UID,
-	verifyingKey VerifyingKey, signer cryptoSigner, j *mdJournal) {
+func flushAllMDs(
+	t *testing.T, ctx context.Context, signer cryptoSigner, j *mdJournal) {
 	end, err := j.end()
 	require.NoError(t, err)
 	for {
-		mdID, rmds, err := j.getNextEntryToFlush(
-			ctx, uid, verifyingKey, end, signer)
+		mdID, rmds, err := j.getNextEntryToFlush(ctx, end, signer)
 		require.NoError(t, err)
 		if mdID == (MdID{}) {
 			break
 		}
-		j.removeFlushedEntry(ctx, uid, verifyingKey, mdID, rmds)
+		j.removeFlushedEntry(ctx, mdID, rmds)
 	}
 	testMDJournalGCd(t, j)
 }
@@ -475,7 +474,7 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 
-	flushAllMDs(t, ctx, uid, verifyingKey, signer, j)
+	flushAllMDs(t, ctx, signer, j)
 }
 
 type limitedCryptoSigner struct {
@@ -531,7 +530,7 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 
 	// Flush all MDs so we can check garbage collection.
-	flushAllMDs(t, ctx, uid, verifyingKey, signer, j)
+	flushAllMDs(t, ctx, signer, j)
 }
 
 func TestMDJournalClear(t *testing.T) {
@@ -591,7 +590,7 @@ func TestMDJournalClear(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ImmutableBareRootMetadata{}, head)
 
-	flushAllMDs(t, ctx, uid, verifyingKey, signer, j)
+	flushAllMDs(t, ctx, signer, j)
 }
 
 func TestMDJournalRestart(t *testing.T) {
@@ -622,7 +621,7 @@ func TestMDJournalRestart(t *testing.T) {
 	checkIBRMDRange(t, j.uid, j.key, codec, crypto,
 		ibrmds, firstRevision, firstPrevRoot, Merged, NullBranchID)
 
-	flushAllMDs(t, context.Background(), uid, verifyingKey, signer, j)
+	flushAllMDs(t, context.Background(), signer, j)
 }
 
 func TestMDJournalRestartAfterBranchConversion(t *testing.T) {
@@ -661,5 +660,5 @@ func TestMDJournalRestartAfterBranchConversion(t *testing.T) {
 	checkIBRMDRange(t, j.uid, j.key, codec, crypto,
 		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].BID())
 
-	flushAllMDs(t, ctx, uid, verifyingKey, signer, j)
+	flushAllMDs(t, ctx, signer, j)
 }
