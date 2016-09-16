@@ -162,7 +162,7 @@ type ReadAccessError struct {
 // Error implements the error interface for ReadAccessError
 func (e ReadAccessError) Error() string {
 	return fmt.Sprintf("%s does not have read access to directory %s",
-		e.User, buildCanonicalPath(e.Public, e.Tlf))
+		e.User, BuildCanonicalPath(e.Public, e.Tlf))
 }
 
 // WriteAccessError indicates that the user tried to write a file
@@ -170,15 +170,15 @@ func (e ReadAccessError) Error() string {
 type WriteAccessError struct {
 	User     libkb.NormalizedUsername
 	Filename string
-	Tlfname  CanonicalTlfName
+	Tlf      CanonicalTlfName
 	Public   bool
 }
 
 // Error implements the error interface for WriteAccessError
 func (e WriteAccessError) Error() string {
-	if e.Tlfname != "" {
+	if e.Tlf != "" {
 		return fmt.Sprintf("%s does not have write access to directory %s",
-			e.User, buildCanonicalPath(e.Public, e.Tlfname))
+			e.User, BuildCanonicalPath(e.Public, e.Tlf))
 	}
 	return fmt.Sprintf("%s does not have write access to %s", e.User, e.Filename)
 }
@@ -193,16 +193,16 @@ func NewReadAccessError(h *TlfHandle, username libkb.NormalizedUsername) error {
 // NewWriteAccessError constructs a WriteAccessError. If the access was
 // not inside a tlf, it may be nil.
 func NewWriteAccessError(h *TlfHandle, username libkb.NormalizedUsername, filename string) error {
-	tlfname := CanonicalTlfName("")
+	tlf := CanonicalTlfName("")
 	public := false
 	if h != nil {
-		tlfname = h.GetCanonicalName()
+		tlf = h.GetCanonicalName()
 		public = h.IsPublic()
 	}
 	return WriteAccessError{
 		User:     username,
 		Filename: filename,
-		Tlfname:  tlfname,
+		Tlf:      tlf,
 		Public:   public,
 	}
 }
@@ -218,7 +218,7 @@ type NeedSelfRekeyError struct {
 func (e NeedSelfRekeyError) Error() string {
 	return fmt.Sprintf("This device does not yet have read access to "+
 		"directory %s, log into Keybase from one of your other "+
-		"devices to grant access", buildCanonicalPath(false, e.Tlf))
+		"devices to grant access", BuildCanonicalPath(false, e.Tlf))
 }
 
 // NeedOtherRekeyError indicates that the folder in question needs to
@@ -233,7 +233,7 @@ func (e NeedOtherRekeyError) Error() string {
 	return fmt.Sprintf("This device does not yet have read access to "+
 		"directory %s, ask one of the other directory participants to "+
 		"log into Keybase to grant you access automatically",
-		buildCanonicalPath(false, e.Tlf))
+		BuildCanonicalPath(false, e.Tlf))
 }
 
 // NotFileBlockError indicates that a file block was expected but a
