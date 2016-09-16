@@ -927,11 +927,11 @@ func (fbo *folderBranchOps) getMDForReadNeedIdentify(
 // then. (See comments for mdWriterLock above.)
 func (fbo *folderBranchOps) getMDForWriteLocked(
 	ctx context.Context, lState *lockState) (*RootMetadata, error) {
-	return fbo.getMDForWriteLockedForName(ctx, lState, "")
+	return fbo.getMDForWriteLockedForFilename(ctx, lState, "")
 }
 
-func (fbo *folderBranchOps) getMDForWriteLockedForName(
-	ctx context.Context, lState *lockState, name string) (*RootMetadata, error) {
+func (fbo *folderBranchOps) getMDForWriteLockedForFilename(
+	ctx context.Context, lState *lockState, filename string) (*RootMetadata, error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
 	md, err := fbo.getMDLocked(ctx, lState, mdWrite)
@@ -944,10 +944,6 @@ func (fbo *folderBranchOps) getMDForWriteLockedForName(
 		return nil, err
 	}
 	if !md.GetTlfHandle().IsWriter(uid) {
-		filename := md.GetTlfHandle().GetCanonicalPath()
-		if name != "" {
-			filename += "/" + name
-		}
 		return nil, NewWriteAccessError(md.GetTlfHandle(), username, filename)
 	}
 
@@ -2201,6 +2197,15 @@ func (fbo *folderBranchOps) checkNewDirSize(ctx context.Context,
 	return nil
 }
 
+// canonicalPath returns full canonical path for dir node and name.
+func (fbo *folderBranchOps) canonicalPath(ctx context.Context, dir Node, name string) (string, error) {
+	dirPath, err := fbo.pathFromNodeForRead(dir)
+	if err != nil {
+		return "", err
+	}
+	return BuildCanonicalPath(fbo.folderBranch.Tlf.IsPublic(), dirPath.String(), name), nil
+}
+
 // entryType must not by Sym.
 func (fbo *folderBranchOps) createEntryLocked(
 	ctx context.Context, lState *lockState, dir Node, name string,
@@ -2228,8 +2233,13 @@ func (fbo *folderBranchOps) createEntryLocked(
 		}
 	}
 
+	filename, err := fbo.canonicalPath(ctx, dir, name)
+	if err != nil {
+		return nil, DirEntry{}, err
+	}
+
 	// verify we have permission to write
-	md, err := fbo.getMDForWriteLockedForName(ctx, lState, name)
+	md, err := fbo.getMDForWriteLockedForFilename(ctx, lState, filename)
 	if err != nil {
 		return nil, DirEntry{}, err
 	}

@@ -522,22 +522,33 @@ func (h *TlfHandle) GetCanonicalName() CanonicalTlfName {
 	return h.name
 }
 
-// BuildCanonicalPath returns full path for tlf name.
-// This may need to be converted to a platform specific path, for example,
-// on Windows, this might correspond to k:/private/username.
-func BuildCanonicalPath(public bool, tlfName CanonicalTlfName) string {
-	var folderType string
+// buildCanonicalPath returns a canonical path for a tlf.
+func buildCanonicalPath(public bool, tlfName CanonicalTlfName) string {
+	return BuildCanonicalPath(public, string(tlfName))
+}
+
+// BuildCanonicalPath returns a canonical path for a filename, such as
+// "/keybase/private/username". This a canonical path and may need to be
+// converted to a platform specific path, for example, on Windows, this
+// might correspond to k:\private\username.
+func BuildCanonicalPath(public bool, paths ...string) string {
+	pathElements := []string{"/keybase"}
 	if public {
-		folderType = "public"
+		pathElements = append(pathElements, "public")
 	} else {
-		folderType = "private"
+		pathElements = append(pathElements, "private")
 	}
-	return fmt.Sprintf("/keybase/%s/%s", folderType, tlfName)
+	for _, p := range paths {
+		if p != "" {
+			pathElements = append(pathElements, p)
+		}
+	}
+	return strings.Join(pathElements, "/")
 }
 
 // GetCanonicalPath returns the full canonical path of this TLF.
 func (h *TlfHandle) GetCanonicalPath() string {
-	return BuildCanonicalPath(h.IsPublic(), h.GetCanonicalName())
+	return BuildCanonicalPath(h.IsPublic(), string(h.GetCanonicalName()))
 }
 
 // ToFavorite converts a TlfHandle into a Favorite, suitable for

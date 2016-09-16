@@ -169,8 +169,6 @@ func (tlf *TLF) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.
 
 // Create implements the fs.NodeCreater interface for TLF.
 func (tlf *TLF) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (_ fs.Node, _ fs.Handle, err error) {
-	tlf.log().CDebugf(ctx, "TLF Create %s", req.Name)
-	defer func() { tlf.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 	dir, err := tlf.loadDir(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -180,8 +178,6 @@ func (tlf *TLF) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.
 
 // Mkdir implements the fs.NodeMkdirer interface for TLF.
 func (tlf *TLF) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (_ fs.Node, err error) {
-	tlf.log().CDebugf(ctx, "TLF Mkdir %s", req.Name)
-	defer func() { tlf.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 	dir, err := tlf.loadDir(ctx)
 	if err != nil {
 		return nil, err
