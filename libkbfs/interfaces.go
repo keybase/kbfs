@@ -279,9 +279,17 @@ type KBFSOps interface {
 	PushConnectionStatusChange(service string, newStatus error)
 }
 
+type hasSession interface {
+	// CurrentSession returns a SessionInfo struct with all the
+	// information for the current session, or an error otherwise.
+	CurrentSession(ctx context.Context, sessionID int) (SessionInfo, error)
+}
+
 // KeybaseService is an interface for communicating with the keybase
 // service.
 type KeybaseService interface {
+	hasSession
+
 	// Resolve, given an assertion, resolves it to a username/UID
 	// pair. The username <-> UID mapping is trusted and
 	// immutable, so it can be cached. If the assertion is just
@@ -312,10 +320,6 @@ type KeybaseService interface {
 	// keys currently part of the user's sigchain.
 	LoadUnverifiedKeys(ctx context.Context, uid keybase1.UID) (
 		[]keybase1.PublicKey, error)
-
-	// CurrentSession returns a SessionInfo struct with all the
-	// information for the current session, or an error otherwise.
-	CurrentSession(ctx context.Context, sessionID int) (SessionInfo, error)
 
 	// FavoriteAdd adds the given folder to the list of favorites.
 	FavoriteAdd(ctx context.Context, folder keybase1.Folder) error
