@@ -104,7 +104,8 @@ func (j *JournalServer) getDirLocked() string {
 	// device has only one associated UID) or even hashing the
 	// (UID, key, TLF) tuple.
 	return filepath.Join(
-		j.dir, j.currentUID.String(), j.currentVerifyingKey.String())
+		j.dir, "v1", j.currentUID.String(),
+		j.currentVerifyingKey.String())
 }
 
 func (j *JournalServer) getDir() string {
