@@ -97,14 +97,14 @@ func (fl *FolderList) addToFavorite(ctx context.Context, h *libkbfs.TlfHandle) (
 
 // Create implements the fs.NodeCreater interface for FolderList.
 func (fl *FolderList) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (_ fs.Node, _ fs.Handle, err error) {
-	fl.fs.log.CDebugf(ctx, "FolderList Create")
+	fl.fs.log.CDebugf(ctx, "FL Create")
 	defer func() { fl.reportErr(ctx, libkbfs.WriteMode, "", err) }()
 	return nil, nil, fl.fs.writeAccessError(ctx, nil, libkbfs.BuildCanonicalPath(fl.public, libkbfs.CanonicalTlfName(req.Name)))
 }
 
 // Mkdir implements the fs.NodeMkdirer interface for FolderList.
 func (fl *FolderList) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (_ fs.Node, err error) {
-	fl.fs.log.CDebugf(ctx, "FolderList Mkdir")
+	fl.fs.log.CDebugf(ctx, "FL Mkdir")
 	defer func() { fl.reportErr(ctx, libkbfs.WriteMode, "", err) }()
 	return nil, fl.fs.writeAccessError(ctx, nil, libkbfs.BuildCanonicalPath(fl.public, libkbfs.CanonicalTlfName(req.Name)))
 }
