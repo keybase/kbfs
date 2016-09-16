@@ -164,11 +164,7 @@ func makeTLFJournal(
 
 	log := config.MakeLogger("TLFJ")
 
-	// TODO: This may end up making paths too long for some
-	// systems. We may end up having to drop the UID (since a
-	// device has only one associated UID) or even hashing the
-	// tuple.
-	tlfDir := filepath.Join(dir, uid.String(), key.String(), tlfID.String())
+	tlfDir := filepath.Join(dir, tlfID.String())
 
 	blockJournal, err := makeBlockJournal(
 		ctx, config.Codec(), config.Crypto(), tlfDir, log)

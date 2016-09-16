@@ -12,7 +12,8 @@ import (
 // serviceLoggedIn should be called when a new user logs in. It
 // shouldn't be called again until after serviceLoggedOut is called.
 func serviceLoggedIn(ctx context.Context, log logger.Logger, name string,
-	hasSession hasSession, config Config) {
+	hasSession hasSession, config Config,
+	bws TLFJournalBackgroundWorkStatus) {
 	const sessionID = 0
 	session, err := hasSession.CurrentSession(ctx, sessionID)
 	if err != nil {
@@ -23,8 +24,7 @@ func serviceLoggedIn(ctx context.Context, log logger.Logger, name string,
 	}
 	if jServer, err := GetJournalServer(config); err == nil {
 		jServer.EnableExistingJournals(
-			ctx, session.UID, session.VerifyingKey,
-			TLFJournalBackgroundWorkEnabled)
+			ctx, session.UID, session.VerifyingKey, bws)
 	}
 	config.MDServer().RefreshAuthToken(ctx)
 	config.BlockServer().RefreshAuthToken(ctx)

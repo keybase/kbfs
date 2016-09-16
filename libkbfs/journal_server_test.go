@@ -112,7 +112,7 @@ func TestJournalServerRestart(t *testing.T) {
 	require.Equal(t, rmd.Revision(), head.Revision())
 }
 
-func TestJournalServerLogOut(t *testing.T) {
+func TestJournalServerLogOutLogIn(t *testing.T) {
 	tempdir, config, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, config)
 
@@ -167,14 +167,31 @@ func TestJournalServerLogOut(t *testing.T) {
 
 	serviceLoggedOut(ctx, config)
 
-	// Get the block.
+	// Get the block, which should fail.
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
-	// Get the MD.
+	// Get the head, which should be empty.
 
 	head, err := mdOps.GetForTLF(ctx, tlfID)
 	require.NoError(t, err)
 	require.Equal(t, ImmutableRootMetadata{}, head)
+
+	serviceLoggedIn(
+		ctx, jServer.log, "test_user", config.KeybaseService(), config,
+		TLFJournalBackgroundWorkPaused)
+
+	// Get the block.
+
+	buf, key, err := blockServer.Get(ctx, tlfID, bID, bCtx)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, key)
+
+	// Get the MD.
+
+	head, err = mdOps.GetForTLF(ctx, tlfID)
+	require.NoError(t, err)
+	require.Equal(t, rmd.Revision(), head.Revision())
 }

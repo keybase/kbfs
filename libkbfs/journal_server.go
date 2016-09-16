@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/keybase/client/go/logger"
@@ -97,6 +98,21 @@ func makeJournalServer(
 	return &jServer
 }
 
+func (j *JournalServer) getDirLocked() string {
+	// TODO: This may end up making paths too long for some
+	// systems. We may end up having to drop the UID (since a
+	// device has only one associated UID) or even hashing the
+	// (UID, key, TLF) tuple.
+	return filepath.Join(
+		j.dir, j.currentUID.String(), j.currentVerifyingKey.String())
+}
+
+func (j *JournalServer) getDir() string {
+	j.lock.RLock()
+	defer j.lock.RUnlock()
+	return j.getDirLocked()
+}
+
 func (j *JournalServer) getTLFJournal(tlfID TlfID) (*tlfJournal, bool) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
@@ -131,13 +147,6 @@ func (j *JournalServer) EnableExistingJournals(
 		}
 	}()
 
-	fileInfos, err := ioutil.ReadDir(j.dir)
-	if os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
@@ -158,11 +167,19 @@ func (j *JournalServer) EnableExistingJournals(
 		return errors.New("Current verifying key is empty")
 	}
 
-	// Need to set it here since enableLocked depends on it.
+	// Need to set it here since getDirLocked and enableLocked
+	// depend on it.
 	//
 	// TODO: Revert this on error or panic.
 	j.currentUID = currentUID
 	j.currentVerifyingKey = currentVerifyingKey
+
+	fileInfos, err := ioutil.ReadDir(j.getDirLocked())
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
 
 	for _, fi := range fileInfos {
 		name := fi.Name()
@@ -228,8 +245,8 @@ func (j *JournalServer) enableLocked(
 	}
 
 	tlfJournal, err := makeTLFJournal(
-		ctx, j.currentUID, j.currentVerifyingKey, j.dir, tlfID,
-		tlfJournalConfigAdapter{j.config}, j.delegateBlockServer,
+		ctx, j.currentUID, j.currentVerifyingKey, j.getDirLocked(),
+		tlfID, tlfJournalConfigAdapter{j.config}, j.delegateBlockServer,
 		bws, nil, j.onBranchChange, j.onMDFlush)
 	if err != nil {
 		return err
@@ -389,7 +406,7 @@ func (j *JournalServer) Status() JournalServerStatus {
 		return len(j.tlfJournals), unflushedBytes
 	}()
 	return JournalServerStatus{
-		RootDir:        j.dir,
+		RootDir:        j.getDir(),
 		JournalCount:   journalCount,
 		UnflushedBytes: unflushedBytes,
 	}
