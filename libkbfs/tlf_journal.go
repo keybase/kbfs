@@ -105,10 +105,11 @@ type tlfJournalBWDelegate interface {
 	OnShutdown(ctx context.Context)
 }
 
-// A tlfJournal contains all the journals for a TLF and controls the
-// synchronization between the objects that are adding to those
-// journals (via journalBlockServer or journalMDOps) and a background
-// goroutine that flushes journal entries to the servers.
+// A tlfJournal contains all the journals for a (TLF, user, device)
+// tuple and controls the synchronization between the objects that are
+// adding to those journals (via journalBlockServer or journalMDOps)
+// and a background goroutine that flushes journal entries to the
+// servers.
 type tlfJournal struct {
 	uid                 keybase1.UID
 	key                 VerifyingKey
@@ -149,22 +150,25 @@ type tlfJournal struct {
 }
 
 func makeTLFJournal(
-	ctx context.Context, currentUID keybase1.UID,
-	currentVerifyingKey VerifyingKey,
+	ctx context.Context, uid keybase1.UID, key VerifyingKey,
 	dir string, tlfID TlfID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, bws TLFJournalBackgroundWorkStatus,
 	bwDelegate tlfJournalBWDelegate, onBranchChange branchChangeListener,
 	onMDFlush mdFlushListener) (*tlfJournal, error) {
-	if currentUID == keybase1.UID("") {
-		return nil, errors.New("Empty UID")
+	if uid == keybase1.UID("") {
+		return nil, errors.New("Empty user")
 	}
-	if currentVerifyingKey == (VerifyingKey{}) {
-		return nil, errors.New("Empty VerifyingKey")
+	if key == (VerifyingKey{}) {
+		return nil, errors.New("Empty verifying key")
 	}
 
 	log := config.MakeLogger("TLFJ")
 
-	tlfDir := filepath.Join(dir, tlfID.String())
+	// TODO: This may end up making paths too long for some
+	// systems. We may end up having to drop the UID (since a
+	// device has only one associated UID) or even hashing the
+	// tuple.
+	tlfDir := filepath.Join(dir, uid.String(), key.String(), tlfID.String())
 
 	blockJournal, err := makeBlockJournal(
 		ctx, config.Codec(), config.Crypto(), tlfDir, log)
@@ -172,8 +176,8 @@ func makeTLFJournal(
 		return nil, err
 	}
 
-	mdJournal, err := makeMDJournal(currentUID, currentVerifyingKey,
-		config.Codec(), config.Crypto(), tlfDir, log)
+	mdJournal, err := makeMDJournal(
+		uid, key, config.Codec(), config.Crypto(), tlfDir, log)
 	if err != nil {
 		return nil, err
 	}

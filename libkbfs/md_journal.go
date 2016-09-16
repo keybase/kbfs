@@ -49,9 +49,9 @@ func MakeImmutableBareRootMetadata(
 	return ImmutableBareRootMetadata{rmd, mdID, localTimestamp}
 }
 
-// mdJournal stores a single ordered list of metadata IDs for a single
-// (TLF, user, device) tuple, along with the associated metadata
-// objects, in flat files on disk.
+// mdJournal stores a single ordered list of metadata IDs for a (TLF,
+// user, device) tuple, along with the associated metadata objects, in
+// flat files on disk.
 //
 // The directory layout looks like:
 //
@@ -106,6 +106,13 @@ type mdJournal struct {
 
 func makeMDJournal(uid keybase1.UID, key VerifyingKey, codec Codec,
 	crypto cryptoPure, dir string, log logger.Logger) (*mdJournal, error) {
+	if uid == keybase1.UID("") {
+		return nil, errors.New("Empty user")
+	}
+	if key == (VerifyingKey{}) {
+		return nil, errors.New("Empty verifying key")
+	}
+
 	journalDir := filepath.Join(dir, "md_journal")
 
 	deferLog := log.CloneWithAddedDepth(1)
