@@ -36,6 +36,9 @@ func setupJournalMDOpsTest(t *testing.T) (
 	oldMDOps = config.MDOps()
 	config.EnableJournaling(tempdir)
 	jServer, err = GetJournalServer(config)
+	// Turn off listeners to avoid background MD pushes for CR.
+	jServer.onBranchChange = nil
+	jServer.onMDFlush = nil
 	require.NoError(t, err)
 	return tempdir, config, oldMDOps, jServer
 }
