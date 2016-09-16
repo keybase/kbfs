@@ -20,11 +20,15 @@ func serviceLoggedIn(ctx context.Context, log logger.Logger, name string,
 		log.CDebugf(ctx, "Getting current session failed when %s is logged in, so pretending user has logged out: %v",
 			name, err)
 		serviceLoggedOut(ctx, config)
-		return
-	}
-	if jServer, err := GetJournalServer(config); err == nil {
-		jServer.EnableExistingJournals(
-			ctx, session.UID, session.VerifyingKey, bws)
+	} else {
+		if jServer, err := GetJournalServer(config); err == nil {
+			err := jServer.EnableExistingJournals(
+				ctx, session.UID, session.VerifyingKey, bws)
+			if err != nil {
+				log.CWarningf(ctx,
+					"Failed to enable existing journals: %v", err)
+			}
+		}
 	}
 	config.MDServer().RefreshAuthToken(ctx)
 	config.BlockServer().RefreshAuthToken(ctx)
