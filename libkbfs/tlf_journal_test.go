@@ -191,9 +191,11 @@ func setupTLFJournalTest(
 
 	// Time out individual tests after 10 seconds.
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	// Clean up the context if anything in the setup fails/panics.
+
+	// Clean up the context if the rest of the setup fails.
+	setupSucceeded := false
 	defer func() {
-		if r := recover(); r != nil {
+		if !setupSucceeded {
 			cancel()
 		}
 	}()
@@ -210,7 +212,6 @@ func setupTLFJournalTest(
 
 	// Clean up the tempdir if anything in the rest of the setup
 	// fails.
-	setupSucceeded := false
 	defer func() {
 		if !setupSucceeded {
 			err := os.RemoveAll(tempdir)
