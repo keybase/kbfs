@@ -4,15 +4,13 @@
 
 package libkbfs
 
-import (
-	"github.com/keybase/client/go/logger"
-	"golang.org/x/net/context"
-)
+import "golang.org/x/net/context"
 
 // serviceLoggedIn should be called when a new user logs in. It
 // shouldn't be called again until after serviceLoggedOut is called.
-func serviceLoggedIn(ctx context.Context, config Config, log logger.Logger,
-	name string, bws TLFJournalBackgroundWorkStatus) {
+func serviceLoggedIn(ctx context.Context, config Config, name string,
+	bws TLFJournalBackgroundWorkStatus) {
+	log := config.MakeLogger("")
 	const sessionID = 0
 	session, err := config.KeybaseService().CurrentSession(ctx, sessionID)
 	if err != nil {
