@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -222,7 +223,8 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 		select {
 		case <-ctx.Done():
 			// Since we're in a goroutine, we can't use
-			// FailNow.
+			// require.FailNow().
+			assert.Fail(t, "Timeout reached")
 			panic("Timeout reached")
 		case <-testCtx.Done():
 		}
