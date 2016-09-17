@@ -29,6 +29,14 @@ func setupJournalServerTest(t *testing.T) (
 	}()
 
 	config = MakeTestConfigOrBust(t, "test_user1", "test_user2")
+
+	// Clean up the config if the rest of the setup fails.
+	defer func() {
+		if !setupSucceeded {
+			CheckConfigAndShutdown(t, config)
+		}
+	}()
+
 	config.EnableJournaling(tempdir)
 	jServer, err = GetJournalServer(config)
 	require.NoError(t, err)

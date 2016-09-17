@@ -32,6 +32,14 @@ func setupJournalMDOpsTest(t *testing.T) (
 	}()
 
 	config = MakeTestConfigOrBust(t, "test_user")
+
+	// Clean up the config if the rest of the setup fails.
+	defer func() {
+		if !setupSucceeded {
+			CheckConfigAndShutdown(t, config)
+		}
+	}()
+
 	oldMDOps = config.MDOps()
 	config.EnableJournaling(tempdir)
 	jServer, err = GetJournalServer(config)
