@@ -221,6 +221,8 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	go func() {
 		select {
 		case <-ctx.Done():
+			// Since we're in a goroutine, we can't use
+			// FailNow.
 			panic("Timeout reached")
 		case <-testCtx.Done():
 		}
@@ -234,11 +236,11 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	go func() {
 		jServer.dirtyOpEnd(tlfID)
 	}()
+	// Should wait for the dirtyOpEnd call to happen and then
+	// finish.
 	serviceLoggedOut(ctx, config)
 
-	jServer.dirtyOpsLock.RLock()
-	jServer.dirtyOpsLock.RUnlock()
-	require.Equal(t, uint(0), jServer.dirtyOps)
+	require.False(t, jServer.hasDirtyOps())
 }
 
 func TestJournalServerMultiUser(t *testing.T) {
