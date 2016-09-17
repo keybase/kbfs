@@ -99,13 +99,12 @@ func makeJournalServer(
 }
 
 func (j *JournalServer) getDirLocked() string {
-	// TODO: This may end up making paths too long for some
-	// systems. We may end up having to drop the UID (since a
-	// device has only one associated UID) or even hashing the
-	// (UID, key, TLF) tuple.
-	return filepath.Join(
-		j.dir, "v1", j.currentUID.String(),
-		j.currentVerifyingKey.String())
+	// Device IDs and verifying keys are globally unique, so no
+	// need to have the uid in the path.
+	//
+	// TODO: Use the shorter device ID in the path instead of the
+	// verifying key.
+	return filepath.Join(j.dir, "v1", j.currentVerifyingKey.String())
 }
 
 func (j *JournalServer) getDir() string {
