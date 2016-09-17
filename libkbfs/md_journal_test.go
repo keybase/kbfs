@@ -15,6 +15,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,13 +51,13 @@ func setupMDJournalTest(t *testing.T) (
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "md_journal")
 	require.NoError(t, err)
-	// Clean up the tempdir if anything in the setup fails/panics.
+
+	// Clean up the tempdir if the rest of the setup fails.
+	setupSucceeded := false
 	defer func() {
-		if r := recover(); r != nil {
+		if !setupSucceeded {
 			err := os.RemoveAll(tempdir)
-			if err != nil {
-				t.Errorf(err.Error())
-			}
+			assert.NoError(t, err)
 		}
 	}()
 
@@ -71,7 +72,7 @@ func setupMDJournalTest(t *testing.T) (
 
 func teardownMDJournalTest(t *testing.T, tempdir string) {
 	err := os.RemoveAll(tempdir)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func makeMDForTest(t *testing.T, tlfID TlfID, revision MetadataRevision,
