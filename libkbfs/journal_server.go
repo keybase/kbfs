@@ -170,10 +170,15 @@ func (j *JournalServer) EnableExistingJournals(
 
 	// Need to set it here since getDirLocked and enableLocked
 	// depend on it.
-	//
-	// TODO: Revert this on error or panic.
 	j.currentUID = currentUID
 	j.currentVerifyingKey = currentVerifyingKey
+	defer func() {
+		// Revert to a clean state if we panic or error.
+		r := recover()
+		if r != nil || err != nil {
+			j.shutdownExistingJournalsLocked(ctx)
+		}
+	}()
 
 	fileInfos, err := ioutil.ReadDir(j.getDirLocked())
 	if os.IsNotExist(err) {
@@ -425,18 +430,16 @@ func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 	return tlfJournal.getJournalStatus()
 }
 
-// shutdownExistingJournals shuts down all write journals, sets the
-// current UID and verifying key to zero, and returns once all
+// shutdownExistingJournalsLocked shuts down all write journals, sets
+// the current UID and verifying key to zero, and returns once all
 // shutdowns are complete. It is safe to call multiple times in a row,
 // and once this is called, EnableExistingJournals may be called
 // again.
-func (j *JournalServer) shutdownExistingJournals(ctx context.Context) {
+func (j *JournalServer) shutdownExistingJournalsLocked(ctx context.Context) {
 	j.log.CDebugf(ctx, "Shutting down existing journals")
 
 	// TODO: Wait until dirtyOps reaches 0.
 
-	j.lock.Lock()
-	defer j.lock.Unlock()
 	for _, tlfJournal := range j.tlfJournals {
 		tlfJournal.shutdown()
 	}
@@ -460,6 +463,17 @@ func (j *JournalServer) shutdownExistingJournals(ctx context.Context) {
 	j.tlfJournals = make(map[TlfID]*tlfJournal)
 	j.currentUID = keybase1.UID("")
 	j.currentVerifyingKey = VerifyingKey{}
+}
+
+// shutdownExistingJournals shuts down all write journals, sets the
+// current UID and verifying key to zero, and returns once all
+// shutdowns are complete. It is safe to call multiple times in a row,
+// and once this is called, EnableExistingJournals may be called
+// again.
+func (j *JournalServer) shutdownExistingJournals(ctx context.Context) {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	j.shutdownExistingJournalsLocked(ctx)
 }
 
 func (j *JournalServer) shutdown() {
