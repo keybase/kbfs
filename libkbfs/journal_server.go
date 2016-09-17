@@ -195,6 +195,7 @@ func (j *JournalServer) EnableExistingJournals(
 
 	fileInfos, err := ioutil.ReadDir(j.getDirLocked())
 	if os.IsNotExist(err) {
+		enableSucceeded = true
 		return nil
 	} else if err != nil {
 		return err
