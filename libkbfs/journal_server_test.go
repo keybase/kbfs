@@ -205,6 +205,23 @@ func TestJournalServerLogOutLogIn(t *testing.T) {
 	require.Equal(t, rmd.Revision(), head.Revision())
 }
 
+func TestJournalServerLogOutDirtyOp(t *testing.T) {
+	tempdir, config, jServer := setupJournalServerTest(t)
+	defer teardownJournalServerTest(t, tempdir, config)
+
+	ctx := context.Background()
+
+	tlfID := FakeTlfID(2, false)
+	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
+	require.NoError(t, err)
+
+	jServer.dirtyOpStart(tlfID)
+	serviceLoggedOut(ctx, config)
+
+	// TODO: Use locking.
+	require.Equal(t, 0, jServer.dirtyOps)
+}
+
 func TestJournalServerMultiUser(t *testing.T) {
 	tempdir, config, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, config)
