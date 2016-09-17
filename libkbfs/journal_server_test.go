@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -211,24 +210,8 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	tempdir, config, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, config)
 
-	testCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Time out this test after 10 seconds.
-	ctx, _ := context.WithTimeout(testCtx, 10*time.Second)
-
-	// Spawn separate goroutine to check if timeout is hit, as
-	// shutdown code ignores context cancellation.
-	go func() {
-		select {
-		case <-ctx.Done():
-			// Since we're in a goroutine, we can't use
-			// require.FailNow().
-			assert.Fail(t, "Timeout reached")
-			panic("Timeout reached")
-		case <-testCtx.Done():
-		}
-	}()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
 	tlfID := FakeTlfID(2, false)
 	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
@@ -238,9 +221,21 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	go func() {
 		jServer.dirtyOpEnd(tlfID)
 	}()
-	// Should wait for the dirtyOpEnd call to happen and then
-	// finish.
-	serviceLoggedOut(ctx, config)
+
+	// Need to do this, since serviceLoggedOut deliberately
+	// ignores its passed-in context being cancelled.
+	loggedOutCh := make(chan struct{})
+	go func() {
+		// Should wait for the dirtyOpEnd call to happen and then
+		// finish.
+		serviceLoggedOut(ctx, config)
+		close(loggedOutCh)
+	}()
+	select {
+	case <-loggedOutCh:
+	case <-ctx.Done():
+		require.FailNow(t, "Timeout reached")
+	}
 
 	require.False(t, jServer.hasDirtyOps())
 }
