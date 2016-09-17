@@ -216,7 +216,7 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	// Time out this test after 10 seconds.
 	ctx, _ := context.WithTimeout(testCtx, 10*time.Second)
 
-	// Spawn a goroutine to check if the timeout is hit, as
+	// Spawn separate goroutine to check if timeout is hit, as
 	// shutdown code ignores context cancellation.
 	go func() {
 		select {
@@ -236,8 +236,9 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	}()
 	serviceLoggedOut(ctx, config)
 
-	// TODO: Use locking.
-	require.Equal(t, 0, jServer.dirtyOps)
+	jServer.dirtyOpsLock.RLock()
+	jServer.dirtyOpsLock.RUnlock()
+	require.Equal(t, uint(0), jServer.dirtyOps)
 }
 
 func TestJournalServerMultiUser(t *testing.T) {
