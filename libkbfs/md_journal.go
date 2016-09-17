@@ -162,6 +162,8 @@ func (j mdJournal) mdsPath() string {
 	return filepath.Join(j.dir, "mds")
 }
 
+// TODO: Consider truncating the ID string to avoid running into path
+// limits while keeping the chance of collision negligible.
 func (j mdJournal) mdPath(id MdID) string {
 	idStr := id.String()
 	return filepath.Join(j.mdsPath(), idStr[:4], idStr[4:])
