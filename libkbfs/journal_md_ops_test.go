@@ -19,8 +19,6 @@ import (
 func setupJournalMDOpsTest(t *testing.T) (
 	tempdir string, config *ConfigLocal,
 	oldMDOps MDOps, jServer *JournalServer) {
-	config = MakeTestConfigOrBust(t, "test_user")
-
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_md_ops")
 	require.NoError(t, err)
 
@@ -34,6 +32,7 @@ func setupJournalMDOpsTest(t *testing.T) (
 		}
 	}()
 
+	config = MakeTestConfigOrBust(t, "test_user")
 	oldMDOps = config.MDOps()
 	config.EnableJournaling(tempdir)
 	jServer, err = GetJournalServer(config)
@@ -49,7 +48,7 @@ func setupJournalMDOpsTest(t *testing.T) (
 func teardownJournalMDOpsTest(t *testing.T, tempdir string, config Config) {
 	CheckConfigAndShutdown(t, config)
 	err := os.RemoveAll(tempdir)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func makeMDForJournalMDOpsTest(
