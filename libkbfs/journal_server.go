@@ -446,14 +446,18 @@ func (j *JournalServer) shutdownExistingJournalsLocked(ctx context.Context) {
 	j.log.CDebugf(ctx, "Shutting down existing journals")
 
 	if j.onDirtyOpsDone != nil {
+		// Do a select so we can tell when ctx is cancelled...
 		select {
 		case <-j.onDirtyOpsDone:
 		case <-ctx.Done():
 			j.log.CWarningf(ctx,
-				"Got context error when shutting down existing journals: %v",
+				"Ignoring context error when shutting down existing journals: %v",
 				ctx.Err())
-			return
 		}
+
+		// But ignore context cancellation, as shutting down
+		// is more important.
+		<-j.onDirtyOpsDone
 	}
 
 	for _, tlfJournal := range j.tlfJournals {

@@ -210,10 +210,16 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	tempdir, config, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, config)
 
-	// Time out this test after 10 seconds (although this may not
-	// work if we hang while waiting for an individual tlfJournal).
+	// Time out this test after 10 seconds.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// Panic if timeout is hit, as shutdown code ignores context
+	// cancellation.
+	go func() {
+		<-ctx.Done()
+		panic("Timeout reached")
+	}()
 
 	tlfID := FakeTlfID(2, false)
 	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
