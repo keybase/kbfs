@@ -210,15 +210,20 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	tempdir, config, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, config)
 
-	// Time out this test after 10 seconds.
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	testCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Panic if timeout is hit, as shutdown code ignores context
-	// cancellation.
+	// Time out this test after 10 seconds.
+	ctx, _ := context.WithTimeout(testCtx, 10*time.Second)
+
+	// Spawn a goroutine to check if the timeout is hit, as
+	// shutdown code ignores context cancellation.
 	go func() {
-		<-ctx.Done()
-		panic("Timeout reached")
+		select {
+		case <-ctx.Done():
+			panic("Timeout reached")
+		case <-testCtx.Done():
+		}
 	}()
 
 	tlfID := FakeTlfID(2, false)
@@ -226,6 +231,9 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	require.NoError(t, err)
 
 	jServer.dirtyOpStart(tlfID)
+	go func() {
+		jServer.dirtyOpEnd(tlfID)
+	}()
 	serviceLoggedOut(ctx, config)
 
 	// TODO: Use locking.
