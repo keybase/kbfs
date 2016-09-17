@@ -203,7 +203,7 @@ func (k *KeybaseServiceBase) LoggedIn(ctx context.Context, name string) error {
 	// Since we don't have the whole session, just clear the cache.
 	k.setCachedCurrentSession(SessionInfo{})
 	if k.config != nil {
-		serviceLoggedIn(ctx, k.log, name, k, k.config,
+		serviceLoggedIn(ctx, k.config, k.log, name,
 			TLFJournalBackgroundWorkEnabled)
 	}
 	return nil

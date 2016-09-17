@@ -188,8 +188,7 @@ func TestJournalServerLogOutLogIn(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ImmutableRootMetadata{}, head)
 
-	serviceLoggedIn(
-		ctx, jServer.log, "test_user1", config.KeybaseService(), config,
+	serviceLoggedIn(ctx, config, jServer.log, "test_user1",
 		TLFJournalBackgroundWorkPaused)
 
 	// Get the block.
@@ -267,9 +266,8 @@ func TestJournalServerMultiUser(t *testing.T) {
 	service.currentUID = uid2
 	SwitchDeviceForLocalUserOrBust(t, config, 0)
 
-	serviceLoggedIn(
-		ctx, jServer.log, "test_user2", config.KeybaseService(),
-		config, TLFJournalBackgroundWorkPaused)
+	serviceLoggedIn(ctx, config, jServer.log, "test_user2",
+		TLFJournalBackgroundWorkPaused)
 
 	err = jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
@@ -322,8 +320,8 @@ func TestJournalServerMultiUser(t *testing.T) {
 	SwitchDeviceForLocalUserOrBust(t, config, 0)
 
 	serviceLoggedIn(
-		ctx, jServer.log, "test_user1", config.KeybaseService(),
-		config, TLFJournalBackgroundWorkPaused)
+		ctx, config, jServer.log, "test_user1",
+		TLFJournalBackgroundWorkPaused)
 
 	// Only user 1's block and MD should be visible.
 
@@ -347,8 +345,8 @@ func TestJournalServerMultiUser(t *testing.T) {
 	SwitchDeviceForLocalUserOrBust(t, config, 0)
 
 	serviceLoggedIn(
-		ctx, jServer.log, "test_user2", config.KeybaseService(),
-		config, TLFJournalBackgroundWorkPaused)
+		ctx, config, jServer.log, "test_user2",
+		TLFJournalBackgroundWorkPaused)
 
 	// Only user 2's block and MD should be visible.
 
