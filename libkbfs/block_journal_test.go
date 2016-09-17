@@ -34,8 +34,7 @@ func setupBlockJournalTest(t *testing.T) (
 	tempdir, err := ioutil.TempDir(os.TempDir(), "block_journal")
 	require.NoError(t, err)
 
-	// Clean up the tempdir if anything in the rest of the setup
-	// fails.
+	// Clean up the tempdir if the rest of the setup fails.
 	setupSucceeded := false
 	defer func() {
 		if !setupSucceeded {

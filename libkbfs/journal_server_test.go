@@ -9,30 +9,31 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
 func setupJournalServerTest(t *testing.T) (
 	tempdir string, config *ConfigLocal, jServer *JournalServer) {
-	config = MakeTestConfigOrBust(t, "test_user1", "test_user2")
-
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_server")
 	require.NoError(t, err)
-	// Clean up the tempdir if anything in the setup fails/panics.
+
+	// Clean up the tempdir if the rest of the setup fails.
+	setupSucceeded := false
 	defer func() {
-		if r := recover(); r != nil {
-			CheckConfigAndShutdown(t, config)
+		if !setupSucceeded {
 			err := os.RemoveAll(tempdir)
-			if err != nil {
-				t.Errorf(err.Error())
-			}
+			assert.NoError(t, err)
 		}
 	}()
 
+	config = MakeTestConfigOrBust(t, "test_user1", "test_user2")
 	config.EnableJournaling(tempdir)
 	jServer, err = GetJournalServer(config)
 	require.NoError(t, err)
+
+	setupSucceeded = true
 	return tempdir, config, jServer
 }
 
@@ -40,7 +41,7 @@ func teardownJournalServerTest(
 	t *testing.T, tempdir string, config Config) {
 	CheckConfigAndShutdown(t, config)
 	err := os.RemoveAll(tempdir)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestJournalServerRestart(t *testing.T) {

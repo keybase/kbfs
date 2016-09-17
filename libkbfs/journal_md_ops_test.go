@@ -22,8 +22,7 @@ func setupJournalMDOpsTest(t *testing.T) (
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_md_ops")
 	require.NoError(t, err)
 
-	// Clean up the tempdir if anything in the rest of the setup
-	// fails.
+	// Clean up the tempdir if the rest of the setup fails.
 	setupSucceeded := false
 	defer func() {
 		if !setupSucceeded {
