@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -210,8 +209,7 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	tempdir, config, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, config)
 
-	// Time out this test after 10 seconds.
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx := context.Background()
 
 	tlfID := FakeTlfID(2, false)
 	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
@@ -222,20 +220,9 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 		jServer.dirtyOpEnd(tlfID)
 	}()
 
-	// Need to do this, since serviceLoggedOut deliberately
-	// ignores its passed-in context being cancelled.
-	loggedOutCh := make(chan struct{})
-	go func() {
-		// Should wait for the dirtyOpEnd call to happen and then
-		// finish.
-		serviceLoggedOut(ctx, config)
-		close(loggedOutCh)
-	}()
-	select {
-	case <-loggedOutCh:
-	case <-ctx.Done():
-		require.FailNow(t, "Timeout reached")
-	}
+	// Should wait for the dirtyOpEnd call to happen and then
+	// finish.
+	serviceLoggedOut(ctx, config)
 
 	require.False(t, jServer.hasDirtyOps())
 }
