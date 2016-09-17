@@ -294,6 +294,15 @@ func TestJournalServerMultiUser(t *testing.T) {
 	err = jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 
+	// None of user 1's changes should be visible.
+
+	_, _, err = blockServer.Get(ctx, tlfID, bID1, bCtx1)
+	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+
+	head, err := mdOps.GetForTLF(ctx, tlfID)
+	require.NoError(t, err)
+	require.Equal(t, ImmutableRootMetadata{}, head)
+
 	// Put a block under user 2.
 
 	bCtx2 := BlockContext{uid2, "", zeroBlockRefNonce}
@@ -332,7 +341,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 	_, _, err = blockServer.Get(ctx, tlfID, bID2, bCtx2)
 	require.IsType(t, BServerErrorBlockNonExistent{}, err)
 
-	head, err := mdOps.GetForTLF(ctx, tlfID)
+	head, err = mdOps.GetForTLF(ctx, tlfID)
 	require.NoError(t, err)
 	require.Equal(t, ImmutableRootMetadata{}, head)
 
