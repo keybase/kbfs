@@ -179,10 +179,12 @@ func (j *JournalServer) EnableExistingJournals(
 	// depend on it.
 	j.currentUID = currentUID
 	j.currentVerifyingKey = currentVerifyingKey
+
+	enableSucceeded := false
 	defer func() {
-		// Revert to a clean state if we panic or error.
-		r := recover()
-		if r != nil || err != nil {
+		// Revert to a clean state if the enable doesn't
+		// succeed, either due to a panic or error.
+		if !enableSucceeded {
 			j.shutdownExistingJournalsLocked(ctx)
 		}
 	}()
@@ -218,6 +220,7 @@ func (j *JournalServer) EnableExistingJournals(
 		}
 	}
 
+	enableSucceeded = true
 	return nil
 }
 
