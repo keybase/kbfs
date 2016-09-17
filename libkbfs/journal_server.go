@@ -205,8 +205,8 @@ func (j *JournalServer) EnableExistingJournals(
 			continue
 		}
 
-		// Force the enable, since any dirty writes in flight
-		// are most likely for another user.
+		// Allow enable even if dirty, since any dirty writes
+		// in flight are most likely for another user.
 		err = j.enableLocked(ctx, tlfID, bws, true)
 		if err != nil {
 			// Don't treat per-TLF errors as fatal.
@@ -221,8 +221,8 @@ func (j *JournalServer) EnableExistingJournals(
 }
 
 func (j *JournalServer) enableLocked(
-	ctx context.Context, tlfID TlfID,
-	bws TLFJournalBackgroundWorkStatus, force bool) (err error) {
+	ctx context.Context, tlfID TlfID, bws TLFJournalBackgroundWorkStatus,
+	allowEnableIfDirty bool) (err error) {
 	j.log.CDebugf(ctx, "Enabling journal for %s (%s)", tlfID, bws)
 	defer func() {
 		if err != nil {
@@ -248,7 +248,7 @@ func (j *JournalServer) enableLocked(
 		return nil
 	}()
 	if err != nil {
-		if !force {
+		if !allowEnableIfDirty {
 			return err
 		}
 
