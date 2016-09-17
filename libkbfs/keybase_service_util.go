@@ -12,10 +12,9 @@ import (
 // serviceLoggedIn should be called when a new user logs in. It
 // shouldn't be called again until after serviceLoggedOut is called.
 func serviceLoggedIn(ctx context.Context, log logger.Logger, name string,
-	hasSession hasSession, config Config,
-	bws TLFJournalBackgroundWorkStatus) {
+	sg sessionGetter, config Config, bws TLFJournalBackgroundWorkStatus) {
 	const sessionID = 0
-	session, err := hasSession.CurrentSession(ctx, sessionID)
+	session, err := sg.CurrentSession(ctx, sessionID)
 	if err != nil {
 		log.CDebugf(ctx, "Getting current session failed when %s is logged in, so pretending user has logged out: %v",
 			name, err)

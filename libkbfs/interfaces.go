@@ -279,7 +279,7 @@ type KBFSOps interface {
 	PushConnectionStatusChange(service string, newStatus error)
 }
 
-type hasSession interface {
+type sessionGetter interface {
 	// CurrentSession returns a SessionInfo struct with all the
 	// information for the current session, or an error otherwise.
 	CurrentSession(ctx context.Context, sessionID int) (SessionInfo, error)
@@ -288,7 +288,7 @@ type hasSession interface {
 // KeybaseService is an interface for communicating with the keybase
 // service.
 type KeybaseService interface {
-	hasSession
+	sessionGetter
 
 	// Resolve, given an assertion, resolves it to a username/UID
 	// pair. The username <-> UID mapping is trusted and
