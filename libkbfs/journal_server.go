@@ -489,22 +489,6 @@ func (j *JournalServer) shutdownExistingJournalsLocked(ctx context.Context) {
 		tlfJournal.shutdown()
 	}
 
-	// Shutting down atomically is more important than respecting
-	// context cancellation.
-	waitCtx := context.Background()
-	for tlfID, tlfJournal := range j.tlfJournals {
-		err := tlfJournal.wait(waitCtx)
-		if err != nil {
-			// This shouldn't really happen, since it only
-			// happens when wait's passed-in context is
-			// cancelled.
-			j.log.CDebugf(ctx,
-				"Got unexpected error when shutting down journal for %s: %v",
-				tlfID, err)
-
-		}
-	}
-
 	j.tlfJournals = make(map[TlfID]*tlfJournal)
 	j.currentUID = keybase1.UID("")
 	j.currentVerifyingKey = VerifyingKey{}
