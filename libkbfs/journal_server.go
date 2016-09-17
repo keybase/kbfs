@@ -106,6 +106,10 @@ func makeJournalServer(
 }
 
 func (j *JournalServer) getDirLocked() string {
+	if j.currentVerifyingKey == (VerifyingKey{}) {
+		panic("currentVerifyingKey is zero")
+	}
+
 	// Device IDs and verifying keys are globally unique, so no
 	// need to have the uid in the path. Furthermore, everything
 	// after the first two bytes (four characters) are randomly
@@ -235,6 +239,13 @@ func (j *JournalServer) enableLocked(
 				tlfID, err)
 		}
 	}()
+
+	if j.currentUID == keybase1.UID("") {
+		return errors.New("Current UID is empty")
+	}
+	if j.currentVerifyingKey == (VerifyingKey{}) {
+		return errors.New("Current verifying key is empty")
+	}
 
 	if tlfJournal, ok := j.tlfJournals[tlfID]; ok {
 		return tlfJournal.enable()
