@@ -191,6 +191,12 @@ func setupTLFJournalTest(
 
 	// Time out individual tests after 10 seconds.
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	// Clean up the context if anything in the setup fails/panics.
+	defer func() {
+		if r := recover(); r != nil {
+			cancel()
+		}
+	}()
 
 	delegate = testBWDelegate{
 		t:          t,

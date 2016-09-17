@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -209,7 +210,10 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	tempdir, config, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, config)
 
-	ctx := context.Background()
+	// Time out this test after 10 seconds (although this may not
+	// work if we hang while waiting for an individual tlfJournal).
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	tlfID := FakeTlfID(2, false)
 	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)

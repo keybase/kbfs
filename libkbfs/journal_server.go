@@ -446,7 +446,14 @@ func (j *JournalServer) shutdownExistingJournalsLocked(ctx context.Context) {
 	j.log.CDebugf(ctx, "Shutting down existing journals")
 
 	if j.onDirtyOpsDone != nil {
-		<-j.onDirtyOpsDone
+		select {
+		case <-j.onDirtyOpsDone:
+		case <-ctx.Done():
+			j.log.CWarningf(ctx,
+				"Got context error when shutting down existing journals: %v",
+				ctx.Err())
+			return
+		}
 	}
 
 	for _, tlfJournal := range j.tlfJournals {
