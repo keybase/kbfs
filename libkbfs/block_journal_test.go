@@ -26,6 +26,11 @@ func getBlockJournalLength(t *testing.T, j *blockJournal) int {
 
 func setupBlockJournalTest(t *testing.T) (
 	ctx context.Context, tempdir string, j *blockJournal) {
+	ctx = context.Background()
+	codec := NewCodecMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	log := logger.NewTestLogger(t)
+
 	tempdir, err := ioutil.TempDir(os.TempDir(), "block_journal")
 	require.NoError(t, err)
 
@@ -39,10 +44,6 @@ func setupBlockJournalTest(t *testing.T) (
 		}
 	}()
 
-	ctx = context.Background()
-	codec := NewCodecMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	log := logger.NewTestLogger(t)
 	j, err = makeBlockJournal(ctx, codec, crypto, tempdir, log)
 	require.NoError(t, err)
 	require.Equal(t, 0, getBlockJournalLength(t, j))
@@ -54,10 +55,10 @@ func setupBlockJournalTest(t *testing.T) (
 func teardownBlockJournalTest(t *testing.T, tempdir string, j *blockJournal) {
 	ctx := context.Background()
 	err := j.checkInSync(ctx)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	err = os.RemoveAll(tempdir)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func putBlockData(

@@ -10,27 +10,27 @@ import (
 	"testing"
 
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
 func setupJournalBlockServerTest(t *testing.T) (
 	tempdir string, config *ConfigLocal, jServer *JournalServer) {
-	config = MakeTestConfigOrBust(t, "test_user")
-
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_block_server")
 	require.NoError(t, err)
-	// Clean up the tempdir if anything in the setup fails/panics.
+
+	// Clean up the tempdir if anything in the rest of the setup
+	// fails.
+	setupSucceeded := false
 	defer func() {
-		if r := recover(); r != nil {
-			CheckConfigAndShutdown(t, config)
+		if !setupSucceeded {
 			err := os.RemoveAll(tempdir)
-			if err != nil {
-				t.Errorf(err.Error())
-			}
+			assert.NoError(t, err)
 		}
 	}()
 
+	config = MakeTestConfigOrBust(t, "test_user")
 	config.EnableJournaling(tempdir)
 	jServer, err = GetJournalServer(config)
 	require.NoError(t, err)
@@ -38,6 +38,8 @@ func setupJournalBlockServerTest(t *testing.T) (
 	// Turn this on for testing.
 	blockServer.enableAddBlockReference = true
 	config.SetBlockServer(blockServer)
+
+	setupSucceeded = true
 	return tempdir, config, jServer
 }
 
@@ -45,7 +47,7 @@ func teardownJournalBlockServerTest(
 	t *testing.T, tempdir string, config Config) {
 	CheckConfigAndShutdown(t, config)
 	err := os.RemoveAll(tempdir)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 type shutdownOnlyBlockServer struct{ BlockServer }
