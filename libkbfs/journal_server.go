@@ -107,11 +107,12 @@ func makeJournalServer(
 
 func (j *JournalServer) getDirLocked() string {
 	// Device IDs and verifying keys are globally unique, so no
-	// need to have the uid in the path.
-	//
-	// TODO: Use the shorter device ID in the path instead of the
-	// verifying key.
-	return filepath.Join(j.dir, "v1", j.currentVerifyingKey.String())
+	// need to have the uid in the path. Furthermore, everything
+	// after the first two bytes (four characters) are randomly
+	// generated, so taking the first 36 characters gives ~1/2^64
+	// collision probability.
+	shortID := j.currentVerifyingKey.String()[0:36]
+	return filepath.Join(j.dir, "v1", shortID)
 }
 
 func (j *JournalServer) getDir() string {
