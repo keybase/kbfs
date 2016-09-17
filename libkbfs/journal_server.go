@@ -242,7 +242,7 @@ func (j *JournalServer) enableLocked(
 		}
 
 		j.log.CWarningf(ctx,
-			"Got error on journal enable, but proceeding anyway: %v", err)
+			"Got ignorable error on journal enable, and proceeding anyway: %v", err)
 	}
 
 	tlfJournal, err := makeTLFJournal(
@@ -432,6 +432,8 @@ func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 // again.
 func (j *JournalServer) shutdownExistingJournals(ctx context.Context) {
 	j.log.CDebugf(ctx, "Shutting down existing journals")
+
+	// TODO: Wait until dirtyOps reaches 0.
 
 	j.lock.Lock()
 	defer j.lock.Unlock()
