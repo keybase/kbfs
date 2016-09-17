@@ -14,6 +14,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,13 +28,14 @@ func setupBlockJournalTest(t *testing.T) (
 	ctx context.Context, tempdir string, j *blockJournal) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "block_journal")
 	require.NoError(t, err)
-	// Clean up the tempdir if anything in the setup fails/panics.
+
+	// Clean up the tempdir if anything in the rest of the setup
+	// fails.
+	setupSucceeded := false
 	defer func() {
-		if r := recover(); r != nil {
+		if !setupSucceeded {
 			err := os.RemoveAll(tempdir)
-			if err != nil {
-				t.Errorf(err.Error())
-			}
+			assert.NoError(t, err)
 		}
 	}()
 
@@ -45,6 +47,7 @@ func setupBlockJournalTest(t *testing.T) (
 	require.NoError(t, err)
 	require.Equal(t, 0, getBlockJournalLength(t, j))
 
+	setupSucceeded = true
 	return ctx, tempdir, j
 }
 

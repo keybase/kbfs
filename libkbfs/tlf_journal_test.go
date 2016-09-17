@@ -207,8 +207,10 @@ func setupTLFJournalTest(
 
 	tempdir, err = ioutil.TempDir(os.TempDir(), "tlf_journal")
 	require.NoError(t, err)
+
+	// Clean up the tempdir if anything in the rest of the setup
+	// fails.
 	setupSucceeded := false
-	// Clean up the tempdir if anything in the setup fails/panics.
 	defer func() {
 		if !setupSucceeded {
 			err := os.RemoveAll(tempdir)
@@ -237,6 +239,7 @@ func setupTLFJournalTest(
 	default:
 		require.FailNow(t, "Unknown bwStatus %s", bwStatus)
 	}
+
 	setupSucceeded = true
 	return tempdir, config, ctx, cancel, tlfJournal, delegate
 }
