@@ -207,13 +207,12 @@ func setupTLFJournalTest(
 
 	tempdir, err = ioutil.TempDir(os.TempDir(), "tlf_journal")
 	require.NoError(t, err)
+	setupSucceeded := false
 	// Clean up the tempdir if anything in the setup fails/panics.
 	defer func() {
-		if r := recover(); r != nil {
+		if !setupSucceeded {
 			err := os.RemoveAll(tempdir)
-			if err != nil {
-				t.Errorf(err.Error())
-			}
+			assert.NoError(t, err)
 		}
 	}()
 
@@ -238,6 +237,7 @@ func setupTLFJournalTest(
 	default:
 		require.FailNow(t, "Unknown bwStatus %s", bwStatus)
 	}
+	setupSucceeded = true
 	return tempdir, config, ctx, cancel, tlfJournal, delegate
 }
 
@@ -251,7 +251,7 @@ func teardownTLFJournalTest(
 	select {
 	case <-delegate.shutdownCh:
 	case <-ctx.Done():
-		require.FailNow(config.t, ctx.Err().Error())
+		assert.Fail(config.t, ctx.Err().Error())
 	}
 
 	cancel()
@@ -266,7 +266,7 @@ func teardownTLFJournalTest(
 	tlfJournal.delegateBlockServer.Shutdown()
 
 	err := os.RemoveAll(tempdir)
-	require.NoError(config.t, err)
+	assert.NoError(config.t, err)
 }
 
 func putOneMD(ctx context.Context, config *testTLFJournalConfig,
