@@ -130,6 +130,9 @@ type tlfJournal struct {
 	needResumeCh   chan struct{}
 	needShutdownCh chan struct{}
 
+	// This channel is closed when background work shuts down.
+	backgroundShutdownCh chan struct{}
+
 	// Serializes all flushes.
 	flushLock sync.Mutex
 
@@ -179,20 +182,21 @@ func makeTLFJournal(
 	}
 
 	j := &tlfJournal{
-		tlfID:               tlfID,
-		config:              config,
-		delegateBlockServer: delegateBlockServer,
-		log:                 log,
-		deferLog:            log.CloneWithAddedDepth(1),
-		onBranchChange:      onBranchChange,
-		onMDFlush:           onMDFlush,
-		hasWorkCh:           make(chan struct{}, 1),
-		needPauseCh:         make(chan struct{}, 1),
-		needResumeCh:        make(chan struct{}, 1),
-		needShutdownCh:      make(chan struct{}, 1),
-		blockJournal:        blockJournal,
-		mdJournal:           mdJournal,
-		bwDelegate:          bwDelegate,
+		tlfID:                tlfID,
+		config:               config,
+		delegateBlockServer:  delegateBlockServer,
+		log:                  log,
+		deferLog:             log.CloneWithAddedDepth(1),
+		onBranchChange:       onBranchChange,
+		onMDFlush:            onMDFlush,
+		hasWorkCh:            make(chan struct{}, 1),
+		needPauseCh:          make(chan struct{}, 1),
+		needResumeCh:         make(chan struct{}, 1),
+		needShutdownCh:       make(chan struct{}, 1),
+		backgroundShutdownCh: make(chan struct{}),
+		blockJournal:         blockJournal,
+		mdJournal:            mdJournal,
+		bwDelegate:           bwDelegate,
 	}
 
 	go j.doBackgroundWorkLoop(bws)
@@ -238,6 +242,7 @@ func (j *tlfJournal) doBackgroundWorkLoop(bws TLFJournalBackgroundWorkStatus) {
 	}
 
 	defer func() {
+		close(j.backgroundShutdownCh)
 		if j.bwDelegate != nil {
 			j.bwDelegate.OnShutdown(ctx)
 		}
@@ -727,6 +732,8 @@ func (j *tlfJournal) shutdown() {
 	default:
 	}
 
+	<-j.backgroundShutdownCh
+
 	// This may happen before the background goroutine finishes,
 	// but that's ok.
 	j.journalLock.Lock()
@@ -736,14 +743,17 @@ func (j *tlfJournal) shutdown() {
 		return
 	}
 
-	ctx := context.Background()
-	err := j.blockJournal.checkInSync(ctx)
-	if err != nil {
-		panic(err)
-	}
+	blockJournal := j.blockJournal
+
 	// Make further accesses error out.
 	j.blockJournal = nil
 	j.mdJournal = nil
+
+	ctx := context.Background()
+	err := blockJournal.checkInSync(ctx)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // disable prevents new operations from hitting the journal.  Will
