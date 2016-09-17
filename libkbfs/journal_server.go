@@ -75,6 +75,7 @@ type JournalServer struct {
 	currentVerifyingKey VerifyingKey
 	tlfJournals         map[TlfID]*tlfJournal
 	dirtyOps            uint
+	onDirtyOpsDone      chan struct{}
 }
 
 func makeJournalServer(
@@ -272,6 +273,9 @@ func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID,
 func (j *JournalServer) dirtyOpStart(tlfID TlfID) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
+	if j.dirtyOps == 0 {
+		j.onDirtyOpsDone = make(chan struct{})
+	}
 	j.dirtyOps++
 }
 
@@ -282,6 +286,10 @@ func (j *JournalServer) dirtyOpEnd(tlfID TlfID) {
 		panic("Trying to end a dirty op when count is 0")
 	}
 	j.dirtyOps--
+	if j.dirtyOps == 0 {
+		close(j.onDirtyOpsDone)
+		j.onDirtyOpsDone = nil
+	}
 }
 
 // PauseBackgroundWork pauses the background work goroutine, if it's
@@ -437,7 +445,9 @@ func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 func (j *JournalServer) shutdownExistingJournalsLocked(ctx context.Context) {
 	j.log.CDebugf(ctx, "Shutting down existing journals")
 
-	// TODO: Wait until dirtyOps reaches 0.
+	if j.onDirtyOpsDone != nil {
+		<-j.onDirtyOpsDone
+	}
 
 	for _, tlfJournal := range j.tlfJournals {
 		tlfJournal.shutdown()
