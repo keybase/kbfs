@@ -108,7 +108,7 @@ func (fl *FolderList) Create(ctx context.Context, req *fuse.CreateRequest, resp 
 	fl.fs.log.CDebugf(ctx, "FL Create")
 	tlfName := libkbfs.CanonicalTlfName(req.Name)
 	defer func() { fl.reportErr(ctx, libkbfs.WriteMode, tlfName, err) }()
-	return nil, nil, fl.fs.writeUnsupportedError(ctx, libkbfs.BuildCanonicalPath(fl.PathType(), string(tlfName)))
+	return nil, nil, libkbfs.NewWriteUnsupportedError(libkbfs.BuildCanonicalPath(fl.PathType(), string(tlfName)))
 }
 
 // Mkdir implements the fs.NodeMkdirer interface for FolderList.
@@ -116,7 +116,7 @@ func (fl *FolderList) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (_ fs.N
 	fl.fs.log.CDebugf(ctx, "FL Mkdir")
 	tlfName := libkbfs.CanonicalTlfName(req.Name)
 	defer func() { fl.reportErr(ctx, libkbfs.WriteMode, tlfName, err) }()
-	return nil, fl.fs.writeUnsupportedError(ctx, libkbfs.BuildCanonicalPath(fl.PathType(), string(tlfName)))
+	return nil, libkbfs.NewWriteUnsupportedError(libkbfs.BuildCanonicalPath(fl.PathType(), string(tlfName)))
 }
 
 // Lookup implements the fs.NodeRequestLookuper interface.

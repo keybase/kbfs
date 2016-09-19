@@ -107,7 +107,6 @@ func (r *ReporterKBPKI) ReportErr(ctx context.Context,
 		filename = e.Filename
 	case WriteUnsupportedError:
 		code = keybase1.FSErrorType_ACCESS_DENIED
-		params[errorParamUsername] = e.User.String()
 		params[errorParamMode] = errorModeWrite
 		filename = e.Filename
 	case NoSuchUserError:

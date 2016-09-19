@@ -168,7 +168,7 @@ func (tlf *TLF) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.
 }
 
 // Create implements the fs.NodeCreater interface for TLF.
-func (tlf *TLF) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (_ fs.Node, _ fs.Handle, err error) {
+func (tlf *TLF) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
 	dir, err := tlf.loadDir(ctx)
 	if err != nil {
 		return nil, nil, err

@@ -522,18 +522,9 @@ func (h *TlfHandle) GetCanonicalName() CanonicalTlfName {
 	return h.name
 }
 
-// buildCanonicalPath returns a canonical path for a tlf.
-func buildCanonicalPath(public bool, tlfName CanonicalTlfName) string {
-	pathType := PrivatePathType
-	if public {
-		pathType = PublicPathType
-	}
-	return BuildCanonicalPath(pathType, string(tlfName))
-}
-
 // GetCanonicalPath returns the full canonical path of this TLF.
 func (h *TlfHandle) GetCanonicalPath() string {
-	return buildCanonicalPath(h.IsPublic(), h.GetCanonicalName())
+	return buildCanonicalPathForTlfName(h.IsPublic(), h.GetCanonicalName())
 }
 
 // ToFavorite converts a TlfHandle into a Favorite, suitable for
