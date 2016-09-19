@@ -80,6 +80,13 @@ func MakeImmutableBareRootMetadata(
 //
 //   /mds/01ff/f...(30 characters total)...ff
 //
+// This covers even the temporary files created in convertToBranch,
+// which create paths like
+//
+//   /md_journal123456789/0...(16 characters total)...001
+//
+// which have only 37 characters.
+//
 // mdJournal is not goroutine-safe, so any code that uses it must
 // guarantee that only one goroutine at a time calls its functions.
 type mdJournal struct {
