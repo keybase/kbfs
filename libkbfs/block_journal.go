@@ -39,15 +39,19 @@ import (
 // journal.)
 //
 // The block data is stored separately in dir/blocks. Each block has
-// its own subdirectory with its ID as a name.  The block
-// subdirectories are splayed over (# of possible hash types) * 256
-// subdirectories -- one byte for the hash type (currently only one)
-// plus the first byte of the hash data -- using the first four
-// characters of the name to keep the number of directories in dir
-// itself to a manageable number, similar to git. Each block directory
-// has data, which is the raw block data that should hash to the block
-// ID, and key_server_half, which contains the raw data for the
-// associated key server half.
+// its own subdirectory with its ID truncated to 17 bytes (34
+// characters) as a name.  The block subdirectories are splayed over
+// (# of possible hash types) * 256 subdirectories -- one byte for the
+// hash type (currently only one) plus the first byte of the hash data
+// -- using the first four characters of the name to keep the number
+// of directories in dir itself to a manageable number, similar to
+// git. Each block directory has data, which is the raw block data
+// that should hash to the block ID, and key_server_half, which
+// contains the raw data for the associated key server half.
+//
+// Given maximum number of characters added to the path by a block
+// journal is 59:
+// /blocks/01ff/f...(30 characters total)...ff/key_server_half.
 //
 // blockJournal is not goroutine-safe, so any code that uses it must
 // guarantee that only one goroutine at a time calls its functions.
@@ -167,11 +171,13 @@ func (j *blockJournal) blocksPath() string {
 	return filepath.Join(j.dir, "blocks")
 }
 
-// TODO: Consider truncating the ID string to avoid running into path
-// limits while keeping the chance of collision negligible.
 func (j *blockJournal) blockPath(id BlockID) string {
+	// Truncate to 34 characters, which corresponds to 16 random
+	// bytes (since the first byte is a hash type), which gives a
+	// ~1/2^64 chance of sollision. The full ID can be recovered
+	// just by hashing the data again with the same hash type.
 	idStr := id.String()
-	return filepath.Join(j.blocksPath(), idStr[:4], idStr[4:])
+	return filepath.Join(j.blocksPath(), idStr[:4], idStr[4:34])
 }
 
 func (j *blockJournal) blockDataPath(id BlockID) string {
