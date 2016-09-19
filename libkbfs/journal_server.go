@@ -22,9 +22,12 @@ import (
 // JournalServer for display in diagnostics. It is suitable for
 // encoding directly as JSON.
 type JournalServerStatus struct {
-	RootDir        string
-	JournalCount   int
-	UnflushedBytes int64 // (signed because os.FileInfo.Size() is signed)
+	RootDir             string
+	Version             int
+	CurrentUID          string
+	CurrentVerifyingKey string
+	JournalCount        int
+	UnflushedBytes      int64 // (signed because os.FileInfo.Size() is signed)
 }
 
 // branchChangeListener describes a caller that will get updates via
@@ -75,13 +78,8 @@ type JournalServer struct {
 	currentUID          keybase1.UID
 	currentVerifyingKey VerifyingKey
 	tlfJournals         map[TlfID]*tlfJournal
-
-	// Protects dirtyOps and onDirtyOpsDone. When both
-	// journalsLock and dirtyOpsLock are taken, journalsLock
-	// should be taken first.
-	dirtyOpsLock   sync.RWMutex
-	dirtyOps       uint
-	onDirtyOpsDone chan struct{}
+	dirtyOps            uint
+	dirtyOpsDone        *sync.Cond
 }
 
 func makeJournalServer(
@@ -102,6 +100,7 @@ func makeJournalServer(
 		onMDFlush:               onMDFlush,
 		tlfJournals:             make(map[TlfID]*tlfJournal),
 	}
+	jServer.dirtyOpsDone = sync.NewCond(&jServer.journalsLock)
 	return &jServer
 }
 
@@ -255,7 +254,7 @@ func (j *JournalServer) enableLocked(
 	}
 
 	err = func() error {
-		if j.hasDirtyOps() {
+		if j.dirtyOps > 0 {
 			return fmt.Errorf("Can't enable journal for %s while there "+
 				"are outstanding dirty ops", tlfID)
 		}
@@ -295,29 +294,20 @@ func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID,
 }
 
 func (j *JournalServer) dirtyOpStart(tlfID TlfID) {
-	// Serialize this with other journal ops, so that
-	// shutdownExistingJournalsLocked() can wait for the count to
-	// hit 0.
 	j.journalsLock.Lock()
 	defer j.journalsLock.Unlock()
-	j.dirtyOpsLock.Lock()
-	defer j.dirtyOpsLock.Unlock()
-	if j.dirtyOps == 0 {
-		j.onDirtyOpsDone = make(chan struct{})
-	}
 	j.dirtyOps++
 }
 
 func (j *JournalServer) dirtyOpEnd(tlfID TlfID) {
-	j.dirtyOpsLock.Lock()
-	defer j.dirtyOpsLock.Unlock()
+	j.journalsLock.Lock()
+	defer j.journalsLock.Unlock()
 	if j.dirtyOps == 0 {
 		panic("Trying to end a dirty op when count is 0")
 	}
 	j.dirtyOps--
 	if j.dirtyOps == 0 {
-		close(j.onDirtyOpsDone)
-		j.onDirtyOpsDone = nil
+		j.dirtyOpsDone.Broadcast()
 	}
 }
 
@@ -374,12 +364,6 @@ func (j *JournalServer) Wait(ctx context.Context, tlfID TlfID) (err error) {
 	return nil
 }
 
-func (j *JournalServer) hasDirtyOps() bool {
-	j.dirtyOpsLock.RLock()
-	defer j.dirtyOpsLock.RUnlock()
-	return j.dirtyOps > 0
-}
-
 // Disable turns off the write journal for the given TLF.
 func (j *JournalServer) Disable(ctx context.Context, tlfID TlfID) (
 	wasEnabled bool, err error) {
@@ -400,7 +384,7 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID TlfID) (
 		return false, nil
 	}
 
-	if j.hasDirtyOps() {
+	if j.dirtyOps > 0 {
 		return false, fmt.Errorf("Can't disable journal for %s while there "+
 			"are outstanding dirty ops", tlfID)
 	}
@@ -457,7 +441,7 @@ func (j *JournalServer) Status() JournalServerStatus {
 		}()
 	return JournalServerStatus{
 		RootDir:             j.dir,
-		Version:             "v1",
+		Version:             1,
 		CurrentUID:          currentUID.String(),
 		CurrentVerifyingKey: currentVerifyingKey.String(),
 		JournalCount:        journalCount,
@@ -477,35 +461,19 @@ func (j *JournalServer) JournalStatus(tlfID TlfID) (TLFJournalStatus, error) {
 	return tlfJournal.getJournalStatus()
 }
 
-func (j *JournalServer) getDirtyOpsDoneCh() chan struct{} {
-	j.dirtyOpsLock.RLock()
-	defer j.dirtyOpsLock.RUnlock()
-	return j.onDirtyOpsDone
-}
-
 // shutdownExistingJournalsLocked shuts down all write journals, sets
 // the current UID and verifying key to zero, and returns once all
 // shutdowns are complete. It is safe to call multiple times in a row,
 // and once this is called, EnableExistingJournals may be called
 // again.
 func (j *JournalServer) shutdownExistingJournalsLocked(ctx context.Context) {
-	j.log.CDebugf(ctx, "Shutting down existing journals")
-
-	onDirtyOpsDone := j.getDirtyOpsDoneCh()
-	if onDirtyOpsDone != nil {
-		// Do a select so we can tell when ctx is cancelled...
-		select {
-		case <-onDirtyOpsDone:
-		case <-ctx.Done():
-			j.log.CWarningf(ctx,
-				"Ignoring context error when shutting down existing journals: %v",
-				ctx.Err())
-		}
-
-		// But ignore context cancellation, as shutting down
-		// is more important.
-		<-onDirtyOpsDone
+	for j.dirtyOps > 0 {
+		j.log.CDebugf(ctx,
+			"Waiting for %d dirty ops before shutting down existing journals...", j.dirtyOps)
+		j.dirtyOpsDone.Wait()
 	}
+
+	j.log.CDebugf(ctx, "Shutting down existing journals")
 
 	for _, tlfJournal := range j.tlfJournals {
 		tlfJournal.shutdown()

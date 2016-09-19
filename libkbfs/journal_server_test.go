@@ -235,7 +235,12 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	// TODO: Ideally, this test would be deterministic.
 	serviceLoggedOut(ctx, config)
 
-	require.False(t, jServer.hasDirtyOps())
+	dirtyOps := func() uint {
+		jServer.journalsLock.RLock()
+		defer jServer.journalsLock.RUnlock()
+		return jServer.dirtyOps
+	}
+	require.NotEqual(t, 0, dirtyOps)
 }
 
 func TestJournalServerMultiUser(t *testing.T) {
