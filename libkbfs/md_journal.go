@@ -68,12 +68,17 @@ func MakeImmutableBareRootMetadata(
 // just MetadataRevisions, and the journal entries are just MdIDs.
 //
 // The Metadata objects are stored separately in dir/mds. Each block
-// has its own subdirectory with its ID as a name. The MD
-// subdirectories are splayed over (# of possible hash types) * 256
-// subdirectories -- one byte for the hash type (currently only one)
-// plus the first byte of the hash data -- using the first four
-// characters of the name to keep the number of directories in dir
-// itself to a manageable number, similar to git.
+// has its own subdirectory with its ID truncated to 17 bytes (34
+// characters) as a name. The MD subdirectories are splayed over (# of
+// possible hash types) * 256 subdirectories -- one byte for the hash
+// type (currently only one) plus the first byte of the hash data --
+// using the first four characters of the name to keep the number of
+// directories in dir itself to a manageable number, similar to git.
+//
+// The maximum number of characters added to the root dir by an md
+// journal is 40:
+//
+//   /mds/01ff/f...(30 characters total)...ff
 //
 // mdJournal is not goroutine-safe, so any code that uses it must
 // guarantee that only one goroutine at a time calls its functions.
@@ -162,11 +167,13 @@ func (j mdJournal) mdsPath() string {
 	return filepath.Join(j.dir, "mds")
 }
 
-// TODO: Consider truncating the ID string to avoid running into path
-// limits while keeping the chance of collision negligible.
 func (j mdJournal) mdPath(id MdID) string {
+	// Truncate to 34 characters, which corresponds to 16 random
+	// bytes (since the first byte is a hash type), which gives a
+	// ~1/2^64 chance of sollision. The full ID can be recovered
+	// just by hashing the data again with the same hash type.
 	idStr := id.String()
-	return filepath.Join(j.mdsPath(), idStr[:4], idStr[4:])
+	return filepath.Join(j.mdsPath(), idStr[:4], idStr[4:34])
 }
 
 // getMD verifies the MD data and the writer signature (but not the

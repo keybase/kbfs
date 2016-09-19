@@ -40,8 +40,8 @@ import (
 //
 // The block data is stored separately in dir/blocks. Each block has
 // its own subdirectory with its ID truncated to 17 bytes (34
-// characters) as a name.  The block subdirectories are splayed over
-// (# of possible hash types) * 256 subdirectories -- one byte for the
+// characters) as a name. The block subdirectories are splayed over (#
+// of possible hash types) * 256 subdirectories -- one byte for the
 // hash type (currently only one) plus the first byte of the hash data
 // -- using the first four characters of the name to keep the number
 // of directories in dir itself to a manageable number, similar to
@@ -49,9 +49,10 @@ import (
 // that should hash to the block ID, and key_server_half, which
 // contains the raw data for the associated key server half.
 //
-// Given maximum number of characters added to the path by a block
+// The maximum number of characters added to the root dir by a block
 // journal is 59:
-// /blocks/01ff/f...(30 characters total)...ff/key_server_half.
+//
+//   /blocks/01ff/f...(30 characters total)...ff/key_server_half
 //
 // blockJournal is not goroutine-safe, so any code that uses it must
 // guarantee that only one goroutine at a time calls its functions.
