@@ -73,8 +73,8 @@ type JournalServer struct {
 	onBranchChange          branchChangeListener
 	onMDFlush               mdFlushListener
 
-	// Protects currentUID, currentVerifyingKey, and tlfJournals.
-	journalsLock        sync.RWMutex
+	// Protects all fields below.
+	lock                sync.RWMutex
 	currentUID          keybase1.UID
 	currentVerifyingKey VerifyingKey
 	tlfJournals         map[TlfID]*tlfJournal
@@ -100,7 +100,7 @@ func makeJournalServer(
 		onMDFlush:               onMDFlush,
 		tlfJournals:             make(map[TlfID]*tlfJournal),
 	}
-	jServer.dirtyOpsDone = sync.NewCond(&jServer.journalsLock)
+	jServer.dirtyOpsDone = sync.NewCond(&jServer.lock)
 	return &jServer
 }
 
@@ -121,21 +121,21 @@ func (j *JournalServer) getDirLocked() string {
 }
 
 func (j *JournalServer) getDir() string {
-	j.journalsLock.RLock()
-	defer j.journalsLock.RUnlock()
+	j.lock.RLock()
+	defer j.lock.RUnlock()
 	return j.getDirLocked()
 }
 
 func (j *JournalServer) getTLFJournal(tlfID TlfID) (*tlfJournal, bool) {
-	j.journalsLock.RLock()
-	defer j.journalsLock.RUnlock()
+	j.lock.RLock()
+	defer j.lock.RUnlock()
 	tlfJournal, ok := j.tlfJournals[tlfID]
 	return tlfJournal, ok
 }
 
 func (j *JournalServer) hasTLFJournal(tlfID TlfID) bool {
-	j.journalsLock.RLock()
-	defer j.journalsLock.RUnlock()
+	j.lock.RLock()
+	defer j.lock.RUnlock()
 	_, ok := j.tlfJournals[tlfID]
 	return ok
 }
@@ -160,8 +160,8 @@ func (j *JournalServer) EnableExistingJournals(
 		}
 	}()
 
-	j.journalsLock.Lock()
-	defer j.journalsLock.Unlock()
+	j.lock.Lock()
+	defer j.lock.Unlock()
 
 	if j.currentUID != keybase1.UID("") {
 		return fmt.Errorf("Trying to set current UID from %s to %s",
@@ -288,20 +288,20 @@ func (j *JournalServer) enableLocked(
 // Enable turns on the write journal for the given TLF.
 func (j *JournalServer) Enable(ctx context.Context, tlfID TlfID,
 	bws TLFJournalBackgroundWorkStatus) error {
-	j.journalsLock.Lock()
-	defer j.journalsLock.Unlock()
+	j.lock.Lock()
+	defer j.lock.Unlock()
 	return j.enableLocked(ctx, tlfID, bws, false)
 }
 
 func (j *JournalServer) dirtyOpStart(tlfID TlfID) {
-	j.journalsLock.Lock()
-	defer j.journalsLock.Unlock()
+	j.lock.Lock()
+	defer j.lock.Unlock()
 	j.dirtyOps++
 }
 
 func (j *JournalServer) dirtyOpEnd(tlfID TlfID) {
-	j.journalsLock.Lock()
-	defer j.journalsLock.Unlock()
+	j.lock.Lock()
+	defer j.lock.Unlock()
 	if j.dirtyOps == 0 {
 		panic("Trying to end a dirty op when count is 0")
 	}
@@ -376,8 +376,8 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID TlfID) (
 		}
 	}()
 
-	j.journalsLock.Lock()
-	defer j.journalsLock.Unlock()
+	j.lock.Lock()
+	defer j.lock.Unlock()
 	tlfJournal, ok := j.tlfJournals[tlfID]
 	if !ok {
 		j.log.CDebugf(ctx, "Journal already existed for %s", tlfID)
@@ -430,8 +430,8 @@ func (j *JournalServer) mdOps() journalMDOps {
 func (j *JournalServer) Status() JournalServerStatus {
 	journalCount, unflushedBytes, currentUID, currentVerifyingKey :=
 		func() (int, int64, keybase1.UID, VerifyingKey) {
-			j.journalsLock.RLock()
-			defer j.journalsLock.RUnlock()
+			j.lock.RLock()
+			defer j.lock.RUnlock()
 			var unflushedBytes int64
 			for _, tlfJournal := range j.tlfJournals {
 				unflushedBytes += tlfJournal.getUnflushedBytes()
@@ -490,15 +490,15 @@ func (j *JournalServer) shutdownExistingJournalsLocked(ctx context.Context) {
 // and once this is called, EnableExistingJournals may be called
 // again.
 func (j *JournalServer) shutdownExistingJournals(ctx context.Context) {
-	j.journalsLock.Lock()
-	defer j.journalsLock.Unlock()
+	j.lock.Lock()
+	defer j.lock.Unlock()
 	j.shutdownExistingJournalsLocked(ctx)
 }
 
 func (j *JournalServer) shutdown() {
 	j.log.CDebugf(context.Background(), "Shutting down journal")
-	j.journalsLock.Lock()
-	defer j.journalsLock.Unlock()
+	j.lock.Lock()
+	defer j.lock.Unlock()
 	for _, tlfJournal := range j.tlfJournals {
 		tlfJournal.shutdown()
 	}

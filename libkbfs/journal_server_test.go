@@ -236,8 +236,8 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	serviceLoggedOut(ctx, config)
 
 	dirtyOps := func() uint {
-		jServer.journalsLock.RLock()
-		defer jServer.journalsLock.RUnlock()
+		jServer.lock.RLock()
+		defer jServer.lock.RUnlock()
 		return jServer.dirtyOps
 	}
 	require.NotEqual(t, 0, dirtyOps)
