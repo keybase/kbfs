@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"sync"
 
 	"github.com/keybase/client/go/logger"
@@ -167,16 +166,14 @@ func makeTLFJournal(
 
 	log := config.MakeLogger("TLFJ")
 
-	tlfDir := filepath.Join(dir, tlfID.String())
-
 	blockJournal, err := makeBlockJournal(
-		ctx, config.Codec(), config.Crypto(), tlfDir, log)
+		ctx, config.Codec(), config.Crypto(), dir, log)
 	if err != nil {
 		return nil, err
 	}
 
 	mdJournal, err := makeMDJournal(
-		uid, key, config.Codec(), config.Crypto(), tlfDir, log)
+		uid, key, config.Codec(), config.Crypto(), dir, log)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +201,7 @@ func makeTLFJournal(
 	// Signal work to pick up any existing journal entries.
 	j.signalWork()
 
-	j.log.CDebugf(ctx, "Enabled journal for %s with path %s", tlfID, tlfDir)
+	j.log.CDebugf(ctx, "Enabled journal for %s with path %s", tlfID, dir)
 	return j, nil
 }
 

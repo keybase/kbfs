@@ -120,12 +120,6 @@ func (j *JournalServer) getDirLocked() string {
 	return filepath.Join(j.dir, "v1", shortID)
 }
 
-func (j *JournalServer) getDir() string {
-	j.lock.RLock()
-	defer j.lock.RUnlock()
-	return j.getDirLocked()
-}
-
 func (j *JournalServer) getTLFJournal(tlfID TlfID) (*tlfJournal, bool) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
@@ -273,8 +267,9 @@ func (j *JournalServer) enableLocked(
 			"Got ignorable error on journal enable, and proceeding anyway: %v", err)
 	}
 
+	tlfDir := filepath.Join(j.getDirLocked(), tlfID.String())
 	tlfJournal, err := makeTLFJournal(
-		ctx, j.currentUID, j.currentVerifyingKey, j.getDirLocked(),
+		ctx, j.currentUID, j.currentVerifyingKey, tlfDir,
 		tlfID, tlfJournalConfigAdapter{j.config}, j.delegateBlockServer,
 		bws, nil, j.onBranchChange, j.onMDFlush)
 	if err != nil {
