@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/keybase/client/go/logger"
@@ -128,7 +129,25 @@ func (j *JournalServer) tlfJournalPathLocked(tlfID TlfID) string {
 	// TODO: Write out a file with the full string.
 	shortDeviceIDStr := j.currentVerifyingKey.String()[0:36]
 	tlfIDStr := tlfID.String()
-	return filepath.Join(j.rootPath(), shortDeviceIDStr, tlfIDStr)
+	dir := fmt.Sprintf("%s-%s", shortDeviceIDStr, tlfIDStr)
+	return filepath.Join(j.rootPath(), dir)
+}
+
+func (j *JournalServer) getTLFDirInfo(dir string) (TlfID, error) {
+	components := strings.SplitN(dir, "-", 2)
+	if len(components) != 2 {
+		return TlfID{}, fmt.Errorf("%s doesn't have two components", dir)
+	}
+	deviceComponent := components[0]
+	tlfIDComponent := components[1]
+	if len(deviceComponent) != 36 {
+		return TlfID{}, fmt.Errorf("Invalid device component %s", deviceComponent)
+	}
+	tlfID, err := ParseTlfID(tlfIDComponent)
+	if err != nil {
+		return TlfID{}, err
+	}
+	return tlfID, nil
 }
 
 func (j *JournalServer) getTLFJournal(tlfID TlfID) (*tlfJournal, bool) {
@@ -213,7 +232,7 @@ func (j *JournalServer) EnableExistingJournals(
 			j.log.CDebugf(ctx, "Skipping file %q", name)
 			continue
 		}
-		tlfID, err := ParseTlfID(fi.Name())
+		tlfID, err := j.getTLFDirInfo(fi.Name())
 		if err != nil {
 			j.log.CDebugf(ctx, "Skipping non-TLF dir %q", name)
 			continue
