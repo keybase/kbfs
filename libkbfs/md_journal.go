@@ -75,7 +75,7 @@ func MakeImmutableBareRootMetadata(
 // using the first four characters of the name to keep the number of
 // directories in dir itself to a manageable number, similar to git.
 //
-// The maximum number of characters added to the root dir by an md
+// The maximum number of characters added to the root dir by an MD
 // journal is 40:
 //
 //   /mds/01ff/f...(30 characters total)...ff

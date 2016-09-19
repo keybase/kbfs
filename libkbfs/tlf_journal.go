@@ -109,6 +109,10 @@ type tlfJournalBWDelegate interface {
 // adding to those journals (via journalBlockServer or journalMDOps)
 // and a background goroutine that flushes journal entries to the
 // servers.
+//
+// The maximum number of characters added to the root dir by a TLF
+// journal is 59, which just the max of the block journal and MD
+// journal numbers.
 type tlfJournal struct {
 	uid                 keybase1.UID
 	key                 VerifyingKey
