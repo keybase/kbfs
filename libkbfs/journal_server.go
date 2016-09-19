@@ -115,6 +115,8 @@ func (j *JournalServer) getDirLocked() string {
 	// after the first two bytes (four characters) are randomly
 	// generated, so taking the first 36 characters gives ~1/2^64
 	// collision probability.
+	//
+	// TODO: Write out a file with the full string.
 	shortID := j.currentVerifyingKey.String()[0:36]
 	return filepath.Join(j.dir, "v1", shortID)
 }
@@ -442,19 +444,24 @@ func (j *JournalServer) mdOps() journalMDOps {
 // Status returns a JournalServerStatus object suitable for
 // diagnostics.
 func (j *JournalServer) Status() JournalServerStatus {
-	journalCount, unflushedBytes := func() (int, int64) {
-		j.journalsLock.RLock()
-		defer j.journalsLock.RUnlock()
-		var unflushedBytes int64
-		for _, tlfJournal := range j.tlfJournals {
-			unflushedBytes += tlfJournal.getUnflushedBytes()
-		}
-		return len(j.tlfJournals), unflushedBytes
-	}()
+	journalCount, unflushedBytes, currentUID, currentVerifyingKey :=
+		func() (int, int64, keybase1.UID, VerifyingKey) {
+			j.journalsLock.RLock()
+			defer j.journalsLock.RUnlock()
+			var unflushedBytes int64
+			for _, tlfJournal := range j.tlfJournals {
+				unflushedBytes += tlfJournal.getUnflushedBytes()
+			}
+			return len(j.tlfJournals), unflushedBytes,
+				j.currentUID, j.currentVerifyingKey
+		}()
 	return JournalServerStatus{
-		RootDir:        j.getDir(),
-		JournalCount:   journalCount,
-		UnflushedBytes: unflushedBytes,
+		RootDir:             j.dir,
+		Version:             "v1",
+		CurrentUID:          currentUID.String(),
+		CurrentVerifyingKey: currentVerifyingKey.String(),x
+		JournalCount:        journalCount,
+		UnflushedBytes:      unflushedBytes,
 	}
 }
 
