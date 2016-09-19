@@ -232,7 +232,9 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 	// Should wait for the dirtyOpEnd call to happen and then
 	// finish.
 	//
-	// TODO: Ideally, this test would be deterministic.
+	// TODO: Ideally, this test would be deterministic, i.e. we
+	// detect when serviceLoggedOut blocks on waiting for
+	// dirtyOpEnd, and only then do we call dirtyOpEnd.
 	serviceLoggedOut(ctx, config)
 
 	dirtyOps := func() uint {
