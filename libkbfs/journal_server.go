@@ -104,7 +104,7 @@ func makeJournalServer(
 	return &jServer
 }
 
-func (j *JournalServer) getDirLocked() string {
+func (j *JournalServer) currentRootPathLocked() string {
 	if j.currentVerifyingKey == (VerifyingKey{}) {
 		panic("currentVerifyingKey is zero")
 	}
@@ -118,6 +118,11 @@ func (j *JournalServer) getDirLocked() string {
 	// TODO: Write out a file with the full string.
 	shortID := j.currentVerifyingKey.String()[0:36]
 	return filepath.Join(j.dir, "v1", shortID)
+}
+
+func (j *JournalServer) tlfPathLocked(tlfID TlfID) string {
+	idStr := tlfID.String()
+	return filepath.Join(j.currentRootPathLocked(), idStr)
 }
 
 func (j *JournalServer) getTLFJournal(tlfID TlfID) (*tlfJournal, bool) {
@@ -188,7 +193,7 @@ func (j *JournalServer) EnableExistingJournals(
 		}
 	}()
 
-	fileInfos, err := ioutil.ReadDir(j.getDirLocked())
+	fileInfos, err := ioutil.ReadDir(j.currentRootPathLocked())
 	if os.IsNotExist(err) {
 		enableSucceeded = true
 		return nil
@@ -267,7 +272,7 @@ func (j *JournalServer) enableLocked(
 			"Got ignorable error on journal enable, and proceeding anyway: %v", err)
 	}
 
-	tlfDir := filepath.Join(j.getDirLocked(), tlfID.String())
+	tlfDir := j.tlfPathLocked(tlfID)
 	tlfJournal, err := makeTLFJournal(
 		ctx, j.currentUID, j.currentVerifyingKey, tlfDir,
 		tlfID, tlfJournalConfigAdapter{j.config}, j.delegateBlockServer,
