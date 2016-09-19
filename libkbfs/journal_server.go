@@ -110,7 +110,11 @@ func makeJournalServer(
 	return &jServer
 }
 
-func (j *JournalServer) currentRootPathLocked() string {
+func (j *JournalServer) rootPath() string {
+	return filepath.Join(j.dir, "v1")
+}
+
+func (j *JournalServer) tlfJournalPathLocked(tlfID TlfID) string {
 	if j.currentVerifyingKey == (VerifyingKey{}) {
 		panic("currentVerifyingKey is zero")
 	}
@@ -122,13 +126,9 @@ func (j *JournalServer) currentRootPathLocked() string {
 	// collision probability.
 	//
 	// TODO: Write out a file with the full string.
-	shortID := j.currentVerifyingKey.String()[0:36]
-	return filepath.Join(j.dir, "v1", shortID)
-}
-
-func (j *JournalServer) tlfPathLocked(tlfID TlfID) string {
-	idStr := tlfID.String()
-	return filepath.Join(j.currentRootPathLocked(), idStr)
+	shortDeviceIDStr := j.currentVerifyingKey.String()[0:36]
+	tlfIDStr := tlfID.String()
+	return filepath.Join(j.rootPath(), shortDeviceIDStr, tlfIDStr)
 }
 
 func (j *JournalServer) getTLFJournal(tlfID TlfID) (*tlfJournal, bool) {
@@ -199,7 +199,7 @@ func (j *JournalServer) EnableExistingJournals(
 		}
 	}()
 
-	fileInfos, err := ioutil.ReadDir(j.currentRootPathLocked())
+	fileInfos, err := ioutil.ReadDir(j.rootPath())
 	if os.IsNotExist(err) {
 		enableSucceeded = true
 		return nil
@@ -278,7 +278,7 @@ func (j *JournalServer) enableLocked(
 			"Got ignorable error on journal enable, and proceeding anyway: %v", err)
 	}
 
-	tlfDir := j.tlfPathLocked(tlfID)
+	tlfDir := j.tlfJournalPathLocked(tlfID)
 	tlfJournal, err := makeTLFJournal(
 		ctx, j.currentUID, j.currentVerifyingKey, tlfDir,
 		tlfID, tlfJournalConfigAdapter{j.config}, j.delegateBlockServer,
@@ -446,7 +446,7 @@ func (j *JournalServer) Status() JournalServerStatus {
 				j.currentUID, j.currentVerifyingKey
 		}()
 	return JournalServerStatus{
-		RootDir:             j.dir,
+		RootDir:             j.rootPath(),
 		Version:             1,
 		CurrentUID:          currentUID.String(),
 		CurrentVerifyingKey: currentVerifyingKey.String(),
