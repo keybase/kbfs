@@ -42,6 +42,7 @@ func (ca tlfJournalConfigAdapter) encryptionKeyGetter() encryptionKeyGetter {
 // display in diagnostics. It is suitable for encoding directly as
 // JSON.
 type TLFJournalStatus struct {
+	Dir            string
 	RevisionStart  MetadataRevision
 	RevisionEnd    MetadataRevision
 	BranchID       string
@@ -117,6 +118,7 @@ type tlfJournal struct {
 	uid                 keybase1.UID
 	key                 VerifyingKey
 	tlfID               TlfID
+	dir                 string
 	config              tlfJournalConfig
 	delegateBlockServer BlockServer
 	log                 logger.Logger
@@ -184,6 +186,7 @@ func makeTLFJournal(
 
 	j := &tlfJournal{
 		tlfID:                tlfID,
+		dir:                  dir,
 		config:               config,
 		delegateBlockServer:  delegateBlockServer,
 		log:                  log,
@@ -715,6 +718,7 @@ func (j *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
 		return TLFJournalStatus{}, err
 	}
 	return TLFJournalStatus{
+		Dir:            j.dir,
 		BranchID:       j.mdJournal.getBranchID().String(),
 		RevisionStart:  earliestRevision,
 		RevisionEnd:    latestRevision,
