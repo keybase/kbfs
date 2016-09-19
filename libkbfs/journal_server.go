@@ -58,6 +58,12 @@ type mdFlushListener interface {
 // RootMetadata passed in, and by the time it hits MDServer it's
 // already too late. However, this assumes that all MD ops go through
 // MDOps.
+//
+// The maximum number of characters added to the root dir by a journal
+// server journal is 133: 59 for the TLF journal, and 74 for
+// everything else.
+//
+//   /v1/de...(36 characters total)...ff/ee...(32 characters total)...ff/(tlf journal)
 type JournalServer struct {
 	config Config
 
