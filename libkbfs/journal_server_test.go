@@ -231,6 +231,8 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 
 	// Should wait for the dirtyOpEnd call to happen and then
 	// finish.
+	//
+	// TODO: Ideally, this test would be deterministic.
 	serviceLoggedOut(ctx, config)
 
 	require.False(t, jServer.hasDirtyOps())

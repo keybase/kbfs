@@ -459,7 +459,7 @@ func (j *JournalServer) Status() JournalServerStatus {
 		RootDir:             j.dir,
 		Version:             "v1",
 		CurrentUID:          currentUID.String(),
-		CurrentVerifyingKey: currentVerifyingKey.String(),x
+		CurrentVerifyingKey: currentVerifyingKey.String(),
 		JournalCount:        journalCount,
 		UnflushedBytes:      unflushedBytes,
 	}
