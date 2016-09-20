@@ -186,7 +186,8 @@ func (j *JournalServer) EnableExistingJournals(
 		return errors.New("Current verifying key is empty")
 	}
 
-	// Need to set it here since enableLocked depends on it.
+	// Need to set it here since tlfJournalPathLocked and
+	// enableLocked depend on it.
 	j.currentUID = currentUID
 	j.currentVerifyingKey = currentVerifyingKey
 
@@ -233,6 +234,14 @@ func (j *JournalServer) EnableExistingJournals(
 			j.log.CDebugf(
 				ctx, "Skipping dir %q due to mismatched key %s",
 				name, uid)
+			continue
+		}
+
+		expectedDir := j.tlfJournalPathLocked(tlfID)
+		if dir != expectedDir {
+			j.log.CDebugf(
+				ctx, "Skipping misnamed dir %q; expected %q",
+				dir, expectedDir)
 			continue
 		}
 
