@@ -303,7 +303,7 @@ func (j *mdJournal) removeMD(id MdID) error {
 	// Remove the parent (splayed) directory (which should exist)
 	// if it's empty.
 	err = os.Remove(filepath.Dir(path))
-	if isNotEmptyPathError(err, j.log) {
+	if isExist(err) {
 		err = nil
 	}
 	return err

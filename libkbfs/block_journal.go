@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"syscall"
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -617,19 +616,6 @@ func (j *blockJournal) removeReferences(
 	return liveCounts, nil
 }
 
-func isNotEmptyPathError(err error, log logger.Logger) bool {
-	pathErr, ok := err.(*os.PathError)
-	if !ok {
-		return false
-	}
-	log.Debug("Path error = %v %T", pathErr.Err, pathErr.Err)
-	syscallErr, ok := pathErr.Err.(syscall.Errno)
-	if ok {
-		log.Debug("syscall error = %v %d", syscallErr, syscallErr)
-	}
-	return pathErr.Err == syscall.ENOTEMPTY
-}
-
 // removeBlockData removes any existing block data for the given
 // ID. If there is no data, nil is returned; this can happen when we
 // have only non-put references to a block in the journal.
@@ -648,7 +634,7 @@ func (j *blockJournal) removeBlockData(id BlockID) error {
 	// Remove the parent (splayed) directory if it exists and is
 	// empty.
 	err = os.Remove(filepath.Dir(path))
-	if os.IsNotExist(err) || isNotEmptyPathError(err, j.log) {
+	if os.IsNotExist(err) || isExist(err) {
 		err = nil
 	}
 	return err
