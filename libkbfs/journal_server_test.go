@@ -185,7 +185,6 @@ func TestJournalServerLogOutLogIn(t *testing.T) {
 	// Simulate a log out.
 
 	serviceLoggedOut(ctx, config)
-
 	// Get the block, which should fail.
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx)

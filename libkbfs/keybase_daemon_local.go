@@ -127,16 +127,22 @@ func (c memoryFavoriteClient) Shutdown() {}
 type KeybaseDaemonLocal struct {
 	codec Codec
 
-	// lock protects localUsers and asserts against races.
-	lock       sync.Mutex
-	localUsers localUserMap
-	asserts    map[string]keybase1.UID
-
+	// lock protects everything below.
+	lock          sync.Mutex
+	localUsers    localUserMap
 	currentUID    keybase1.UID
+	asserts       map[string]keybase1.UID
 	favoriteStore favoriteStore
 }
 
 var _ KeybaseService = &KeybaseDaemonLocal{}
+
+func (k *KeybaseDaemonLocal) setCurrentUID(uid keybase1.UID) {
+	k.lock.Lock()
+	defer k.lock.Unlock()
+	// TODO: Send out notifications.
+	k.currentUID = uid
+}
 
 func (k *KeybaseDaemonLocal) assertionToUIDLocked(ctx context.Context,
 	assertion string) (uid keybase1.UID, err error) {
@@ -391,18 +397,24 @@ func (k *KeybaseDaemonLocal) switchDeviceForTesting(uid keybase1.UID,
 // FavoriteAdd implements KeybaseDaemon for KeybaseDaemonLocal.
 func (k *KeybaseDaemonLocal) FavoriteAdd(
 	ctx context.Context, folder keybase1.Folder) error {
+	k.lock.Lock()
+	defer k.lock.Unlock()
 	return k.favoriteStore.FavoriteAdd(k.currentUID, folder)
 }
 
 // FavoriteDelete implements KeybaseDaemon for KeybaseDaemonLocal.
 func (k *KeybaseDaemonLocal) FavoriteDelete(
 	ctx context.Context, folder keybase1.Folder) error {
+	k.lock.Lock()
+	defer k.lock.Unlock()
 	return k.favoriteStore.FavoriteDelete(k.currentUID, folder)
 }
 
 // FavoriteList implements KeybaseDaemon for KeybaseDaemonLocal.
 func (k *KeybaseDaemonLocal) FavoriteList(
 	ctx context.Context, sessionID int) ([]keybase1.Folder, error) {
+	k.lock.Lock()
+	defer k.lock.Unlock()
 	return k.favoriteStore.FavoriteList(k.currentUID)
 }
 
