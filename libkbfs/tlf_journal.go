@@ -5,8 +5,12 @@
 package libkbfs
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/keybase/client/go/logger"
@@ -157,6 +161,48 @@ type tlfJournal struct {
 	bwDelegate tlfJournalBWDelegate
 }
 
+func getTLFJournalInfoFilePath(dir string) string {
+	return filepath.Join(dir, "info.json")
+}
+
+type TLFJournalInfo struct {
+	UID          keybase1.UID
+	VerifyingKey VerifyingKey
+	TlfID        TlfID
+}
+
+func readTLFJournalInfoFile(dir string) (
+	keybase1.UID, VerifyingKey, TlfID, error) {
+	infoJson, err := ioutil.ReadFile(getTLFJournalInfoFilePath(dir))
+	if err != nil {
+		return keybase1.UID(""), VerifyingKey{}, TlfID{}, err
+	}
+
+	var info TLFJournalInfo
+	err = json.Unmarshal(infoJson, &info)
+	if err != nil {
+		return keybase1.UID(""), VerifyingKey{}, TlfID{}, err
+	}
+
+	return info.UID, info.VerifyingKey, info.TlfID, nil
+}
+
+func writeTLFJournalInfoFile(
+	dir string, uid keybase1.UID, key VerifyingKey, tlfID TlfID) error {
+	info := TLFJournalInfo{uid, key, tlfID}
+	infoJson, err := json.Marshal(info)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(dir, 0700)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(getTLFJournalInfoFilePath(dir), infoJson, 0600)
+}
+
 func makeTLFJournal(
 	ctx context.Context, uid keybase1.UID, key VerifyingKey,
 	dir string, tlfID TlfID, config tlfJournalConfig,
@@ -171,6 +217,38 @@ func makeTLFJournal(
 	}
 	if tlfID == (TlfID{}) {
 		return nil, errors.New("Empty TlfID")
+	}
+
+	readUID, readKey, readTlfID, err := readTLFJournalInfoFile(dir)
+	switch {
+	case os.IsNotExist(err):
+		// Info file doesn't exist, so write it.
+		err := writeTLFJournalInfoFile(dir, uid, key, tlfID)
+		if err != nil {
+			return nil, err
+		}
+
+	case err != nil:
+		return nil, err
+
+	default:
+		// Info file exists, so it should match passed-in
+		// parameters.
+		if uid != readUID {
+			return nil, fmt.Errorf(
+				"Expected UID %s, got %s", uid, readUID)
+		}
+
+		if key != readKey {
+			return nil, fmt.Errorf(
+				"Expected verifying key %s, got %s",
+				key, readKey)
+		}
+
+		if tlfID != readTlfID {
+			return nil, fmt.Errorf(
+				"Expected TLF ID %s, got %s", tlfID, readTlfID)
+		}
 	}
 
 	log := config.MakeLogger("TLFJ")
