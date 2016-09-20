@@ -60,10 +60,10 @@ type mdFlushListener interface {
 // MDOps.
 //
 // The maximum number of characters added to the root dir by a journal
-// server journal is 101: 59 for the TLF journal, and 42 for
+// server journal is 100: 59 for the TLF journal, and 41 for
 // everything else.
 //
-//   /v1/de...-...(37 characters total)...ff/(tlf journal)
+//   /v1/de...-...(37 characters total)...ff(/tlf journal)
 type JournalServer struct {
 	config Config
 
