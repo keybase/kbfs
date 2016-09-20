@@ -222,6 +222,8 @@ func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.L
 	r.log().CDebugf(ctx, "FS Lookup %s", req.Name)
 	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
 
+	return nil, fuse.ENOENT
+
 	specialNode := handleNonTLFSpecialFile(
 		req.Name, r.private.fs, &resp.EntryValid)
 	if specialNode != nil {
@@ -281,6 +283,8 @@ var _ fs.HandleReadDirAller = (*Root)(nil)
 func (r *Root) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 	r.log().CDebugf(ctx, "FS ReadDirAll")
 	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
+	return nil, nil
+
 	res = []fuse.Dirent{
 		{
 			Type: fuse.DT_Dir,
