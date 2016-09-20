@@ -400,6 +400,7 @@ func (j *mdJournal) convertToBranch(
 		// if we crash here.
 		for _, id := range mdsToRemove {
 			path := j.mdPath(id)
+			// TODO: Remove the parent directory, if it's empty.
 			removeErr := os.Remove(path)
 			if removeErr != nil {
 				j.log.CWarningf(ctx, "Error when removing old MD %s: %v",

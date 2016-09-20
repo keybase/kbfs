@@ -621,6 +621,7 @@ func (j *blockJournal) removeBlockData(id BlockID) error {
 		return fmt.Errorf(
 			"Trying to remove data for referenced block %s", id)
 	}
+	// TODO: Remove the parent directory, if it's empty.
 	return os.RemoveAll(j.blockPath(id))
 }
 
