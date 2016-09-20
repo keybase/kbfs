@@ -623,6 +623,10 @@ func isNotEmptyPathError(err error, log logger.Logger) bool {
 		return false
 	}
 	log.Debug("Path error = %v %T", pathErr.Err, pathErr.Err)
+	syscallErr, ok := pathErr.Err.(syscall.Errno)
+	if ok {
+		log.Debug("syscall error = %v %d", syscallErr, syscallErr)
+	}
 	return pathErr.Err == syscall.ENOTEMPTY
 }
 
