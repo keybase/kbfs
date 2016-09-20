@@ -302,7 +302,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 	serviceLoggedOut(ctx, config)
 
 	service := config.KeybaseService().(*KeybaseDaemonLocal)
-	service.currentUID = uid2
+	service.setCurrentUID(uid2)
 	SwitchDeviceForLocalUserOrBust(t, config, 0)
 
 	serviceLoggedIn(
@@ -364,7 +364,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 
 	// Log in user 1.
 
-	service.currentUID = uid1
+	service.setCurrentUID(uid1)
 	SwitchDeviceForLocalUserOrBust(t, config, 0)
 
 	serviceLoggedIn(
@@ -388,7 +388,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 
 	serviceLoggedOut(ctx, config)
 
-	service.currentUID = uid2
+	service.setCurrentUID(uid2)
 	SwitchDeviceForLocalUserOrBust(t, config, 0)
 
 	serviceLoggedIn(
