@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/keybase/client/go/logger"
@@ -133,23 +132,6 @@ func (j *JournalServer) tlfJournalPathLocked(tlfID TlfID) string {
 	return filepath.Join(j.rootPath(), dir)
 }
 
-func (j *JournalServer) getTLFDirInfo(dir string) (TlfID, error) {
-	components := strings.SplitN(dir, "-", 2)
-	if len(components) != 2 {
-		return TlfID{}, fmt.Errorf("%s doesn't have two components", dir)
-	}
-	deviceComponent := components[0]
-	tlfIDComponent := components[1]
-	if len(deviceComponent) != 36 {
-		return TlfID{}, fmt.Errorf("Invalid device component %s", deviceComponent)
-	}
-	tlfID, err := ParseTlfID(tlfIDComponent)
-	if err != nil {
-		return TlfID{}, err
-	}
-	return tlfID, nil
-}
-
 func (j *JournalServer) getTLFJournal(tlfID TlfID) (*tlfJournal, bool) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
@@ -204,8 +186,7 @@ func (j *JournalServer) EnableExistingJournals(
 		return errors.New("Current verifying key is empty")
 	}
 
-	// Need to set it here since getDirLocked and enableLocked
-	// depend on it.
+	// Need to set it here since enableLocked depends on it.
 	j.currentUID = currentUID
 	j.currentVerifyingKey = currentVerifyingKey
 
@@ -232,9 +213,26 @@ func (j *JournalServer) EnableExistingJournals(
 			j.log.CDebugf(ctx, "Skipping file %q", name)
 			continue
 		}
-		tlfID, err := j.getTLFDirInfo(fi.Name())
+
+		dir := filepath.Join(j.rootPath(), name)
+		uid, key, tlfID, err := readTLFJournalInfoFile(dir)
 		if err != nil {
-			j.log.CDebugf(ctx, "Skipping non-TLF dir %q", name)
+			j.log.CDebugf(
+				ctx, "Skipping non-TLF dir %q: %v", name, err)
+			continue
+		}
+
+		if uid != currentUID {
+			j.log.CDebugf(
+				ctx, "Skipping dir %q due to mismatched UID %s",
+				name, uid)
+			continue
+		}
+
+		if key != currentVerifyingKey {
+			j.log.CDebugf(
+				ctx, "Skipping dir %q due to mismatched key %s",
+				name, uid)
 			continue
 		}
 
