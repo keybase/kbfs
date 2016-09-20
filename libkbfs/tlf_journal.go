@@ -165,7 +165,7 @@ func getTLFJournalInfoFilePath(dir string) string {
 	return filepath.Join(dir, "info.json")
 }
 
-type TLFJournalInfo struct {
+type tlfJournalInfo struct {
 	UID          keybase1.UID
 	VerifyingKey VerifyingKey
 	TlfID        TlfID
@@ -173,13 +173,13 @@ type TLFJournalInfo struct {
 
 func readTLFJournalInfoFile(dir string) (
 	keybase1.UID, VerifyingKey, TlfID, error) {
-	infoJson, err := ioutil.ReadFile(getTLFJournalInfoFilePath(dir))
+	infoJSON, err := ioutil.ReadFile(getTLFJournalInfoFilePath(dir))
 	if err != nil {
 		return keybase1.UID(""), VerifyingKey{}, TlfID{}, err
 	}
 
-	var info TLFJournalInfo
-	err = json.Unmarshal(infoJson, &info)
+	var info tlfJournalInfo
+	err = json.Unmarshal(infoJSON, &info)
 	if err != nil {
 		return keybase1.UID(""), VerifyingKey{}, TlfID{}, err
 	}
@@ -189,8 +189,8 @@ func readTLFJournalInfoFile(dir string) (
 
 func writeTLFJournalInfoFile(
 	dir string, uid keybase1.UID, key VerifyingKey, tlfID TlfID) error {
-	info := TLFJournalInfo{uid, key, tlfID}
-	infoJson, err := json.Marshal(info)
+	info := tlfJournalInfo{uid, key, tlfID}
+	infoJSON, err := json.Marshal(info)
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func writeTLFJournalInfoFile(
 		return err
 	}
 
-	return ioutil.WriteFile(getTLFJournalInfoFilePath(dir), infoJson, 0600)
+	return ioutil.WriteFile(getTLFJournalInfoFilePath(dir), infoJSON, 0600)
 }
 
 func makeTLFJournal(

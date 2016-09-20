@@ -69,10 +69,14 @@ func (id *TlfID) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the encoding.json.Marshaler interface for
+// TlfID.
 func (id TlfID) MarshalJSON() ([]byte, error) {
 	return json.Marshal(id.String())
 }
 
+// UnmarshalJSON implements the encoding.json.Unmarshaler interface
+// for TlfID.
 func (id *TlfID) UnmarshalJSON(buf []byte) error {
 	var str string
 	err := json.Unmarshal(buf, &str)
