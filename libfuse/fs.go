@@ -189,9 +189,9 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 	// TODO: Fill in real values for these.
 	var bsize uint32 = 32 * 1024
 	*resp = fuse.StatfsResponse{
-		Blocks:  ^uint64(0) / uint64(bsize),
-		Bfree:   ^uint64(0) / uint64(bsize),
-		Bavail:  ^uint64(0) / uint64(bsize),
+		Blocks:  100 * 1024,
+		Bfree:   100 * 1024,
+		Bavail:  100 * 1024,
 		Files:   0,
 		Ffree:   0,
 		Bsize:   bsize,
