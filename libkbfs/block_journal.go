@@ -617,11 +617,12 @@ func (j *blockJournal) removeReferences(
 	return liveCounts, nil
 }
 
-func isNotEmptyPathError(err error) bool {
+func isNotEmptyPathError(err error, log logger.Logger) bool {
 	pathErr, ok := err.(*os.PathError)
 	if !ok {
 		return false
 	}
+	log.Debug("Path error = %v %T", pathErr.Err, pathErr.Err)
 	return pathErr.Err == syscall.ENOTEMPTY
 }
 
@@ -643,7 +644,7 @@ func (j *blockJournal) removeBlockData(id BlockID) error {
 	// Remove the parent (splayed) directory if it exists and is
 	// empty.
 	err = os.Remove(filepath.Dir(path))
-	if os.IsNotExist(err) || isNotEmptyPathError(err) {
+	if os.IsNotExist(err) || isNotEmptyPathError(err, j.log) {
 		err = nil
 	}
 	return err
