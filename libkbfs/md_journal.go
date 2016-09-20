@@ -303,11 +303,7 @@ func (j *mdJournal) removeMD(id MdID) error {
 	// Remove the parent (splayed) directory (which should exist)
 	// if it's empty.
 	err = os.Remove(filepath.Dir(path))
-	// syscall.ENOTEMPTY is returned if the parent directory is
-	// not empty, which (as of go 1.7) IsExists returns true for.
-	//
-	// TODO: Verify that this behavior is the same on Windows.
-	if os.IsExist(err) {
+	if isNotEmptyPathError(err) {
 		err = nil
 	}
 	return err
