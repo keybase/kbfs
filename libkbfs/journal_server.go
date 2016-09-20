@@ -25,8 +25,8 @@ import (
 type JournalServerStatus struct {
 	RootDir             string
 	Version             int
-	CurrentUID          string
-	CurrentVerifyingKey string
+	CurrentUID          keybase1.UID
+	CurrentVerifyingKey VerifyingKey
 	JournalCount        int
 	UnflushedBytes      int64 // (signed because os.FileInfo.Size() is signed)
 }
@@ -467,8 +467,8 @@ func (j *JournalServer) Status() JournalServerStatus {
 	return JournalServerStatus{
 		RootDir:             j.rootPath(),
 		Version:             1,
-		CurrentUID:          currentUID.String(),
-		CurrentVerifyingKey: currentVerifyingKey.String(),
+		CurrentUID:          currentUID,
+		CurrentVerifyingKey: currentVerifyingKey,
 		JournalCount:        journalCount,
 		UnflushedBytes:      unflushedBytes,
 	}
