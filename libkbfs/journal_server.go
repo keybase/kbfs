@@ -60,10 +60,10 @@ type mdFlushListener interface {
 // MDOps.
 //
 // The maximum number of characters added to the root dir by a journal
-// server journal is 133: 59 for the TLF journal, and 74 for
+// server journal is 101: 59 for the TLF journal, and 42 for
 // everything else.
 //
-//   /v1/de...(36 characters total)...ff/ee...(32 characters total)...ff/(tlf journal)
+//   /v1/de...-...(37 characters total)...ff/(tlf journal)
 type JournalServer struct {
 	config Config
 
@@ -122,13 +122,13 @@ func (j *JournalServer) tlfJournalPathLocked(tlfID TlfID) string {
 	// Device IDs and verifying keys are globally unique, so no
 	// need to have the uid in the path. Furthermore, everything
 	// after the first two bytes (four characters) are randomly
-	// generated, so taking the first 36 characters gives ~1/2^64
-	// collision probability.
-	//
-	// TODO: Write out a file with the full string.
-	shortDeviceIDStr := j.currentVerifyingKey.String()[0:36]
-	tlfIDStr := tlfID.String()
-	dir := fmt.Sprintf("%s-%s", shortDeviceIDStr, tlfIDStr)
+	// generated, so taking the first 20 characters of the
+	// verifying key plus the first 16 characters of the TlfID
+	// gives us 16 bytes of randomness, which works out to a
+	// ~1/2^64 chance of collision.
+	shortDeviceIDStr := j.currentVerifyingKey.String()[:20]
+	shortTlfIDStr := tlfID.String()[:16]
+	dir := fmt.Sprintf("%s-%s", shortDeviceIDStr, shortTlfIDStr)
 	return filepath.Join(j.rootPath(), dir)
 }
 
