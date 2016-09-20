@@ -175,7 +175,7 @@ func (j *blockJournal) blocksPath() string {
 func (j *blockJournal) blockPath(id BlockID) string {
 	// Truncate to 34 characters, which corresponds to 16 random
 	// bytes (since the first byte is a hash type), which gives a
-	// ~1/2^64 chance of sollision. The full ID can be recovered
+	// ~1/2^64 chance of collision. The full ID can be recovered
 	// just by hashing the data again with the same hash type.
 	idStr := id.String()
 	return filepath.Join(j.blocksPath(), idStr[:4], idStr[4:34])
