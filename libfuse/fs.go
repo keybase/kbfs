@@ -7,7 +7,6 @@ package libfuse
 import (
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"bazil.org/fuse"
@@ -20,7 +19,6 @@ import (
 
 // FS implements the newfuse FS interface for KBFS.
 type FS struct {
-	config libkbfs.Config
 	fuse   *fs.Server
 	conn   *fuse.Conn
 	log    logger.Logger
@@ -37,8 +35,9 @@ type FS struct {
 }
 
 // NewFS creates an FS
-func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool) *FS {
-	log := config.MakeLogger("kbfsfuse")
+func NewFS(conn *fuse.Conn, debug bool) *FS {
+	log := logger.NewWithCallDepth("kbfsfuse", 1)
+	log.Configure("", true, "")
 	// We need extra depth for errors, so that we can report the line
 	// number for the caller of reportErr, not reportErr itself.
 	errLog := log.CloneWithAddedDepth(1)
@@ -49,7 +48,6 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool) *FS {
 		errLog.Configure("", true, "")
 	}
 	fs := &FS{
-		config:        config,
 		conn:          conn,
 		log:           log,
 		errLog:        errLog,
@@ -142,7 +140,7 @@ func (f *FS) Serve(ctx context.Context) error {
 	f.fuse = srv
 
 	f.notifications.LaunchProcessor(ctx)
-	f.remoteStatus.Init(ctx, f.log, f.config)
+	//f.remoteStatus.Init(ctx, f.log, f.config)
 	// Blocks forever, unless an interrupt signal is received
 	// (handled by libkbfs.Init).
 	return srv.Serve(f)
@@ -159,7 +157,7 @@ func (f *FS) reportErr(ctx context.Context,
 		return
 	}
 
-	f.config.Reporter().ReportErr(ctx, "", false, mode, err)
+	//f.config.Reporter().ReportErr(ctx, "", false, mode, err)
 	// We just log the error as debug, rather than error, because it
 	// might just indicate an expected error such as an ENOENT.
 	//
@@ -171,15 +169,15 @@ func (f *FS) reportErr(ctx context.Context,
 // Root implements the fs.FS interface for FS.
 func (f *FS) Root() (fs.Node, error) {
 	n := &Root{
-		private: &FolderList{
-			fs:      f,
-			folders: make(map[string]*TLF),
-		},
-		public: &FolderList{
-			fs:      f,
-			public:  true,
-			folders: make(map[string]*TLF),
-		},
+	/*		private: &FolderList{
+				fs:      f,
+				folders: make(map[string]*TLF),
+			},
+			public: &FolderList{
+				fs:      f,
+				public:  true,
+				folders: make(map[string]*TLF),
+			},*/
 	}
 	return n, nil
 }
@@ -203,8 +201,9 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 
 // Root represents the root of the KBFS file system.
 type Root struct {
-	private *FolderList
-	public  *FolderList
+	_log logger.Logger
+	//	private *FolderList
+	//	public  *FolderList
 }
 
 var _ fs.Node = (*Root)(nil)
@@ -220,38 +219,9 @@ var _ fs.NodeRequestLookuper = (*Root)(nil)
 // Lookup implements the fs.NodeRequestLookuper interface for Root.
 func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (_ fs.Node, err error) {
 	r.log().CDebugf(ctx, "FS Lookup %s", req.Name)
-	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
+	//	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
 
 	return nil, fuse.ENOENT
-
-	specialNode := handleNonTLFSpecialFile(
-		req.Name, r.private.fs, &resp.EntryValid)
-	if specialNode != nil {
-		return specialNode, nil
-	}
-
-	platformNode, err := r.platformLookup(ctx, req, resp)
-	if platformNode != nil || err != nil {
-		return platformNode, err
-	}
-
-	switch req.Name {
-	case PrivateName:
-		return r.private, nil
-	case PublicName:
-		return r.public, nil
-	}
-
-	// Don't want to pop up errors on special OS files.
-	if strings.HasPrefix(req.Name, ".") {
-		return nil, fuse.ENOENT
-	}
-
-	return nil, libkbfs.NoSuchFolderListError{
-		Name:     req.Name,
-		PrivName: PrivateName,
-		PubName:  PublicName,
-	}
 }
 
 // PathType returns PathType for this folder
@@ -264,14 +234,14 @@ var _ fs.NodeCreater = (*Root)(nil)
 // Create implements the fs.NodeCreater interface for Root.
 func (r *Root) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (_ fs.Node, _ fs.Handle, err error) {
 	r.log().CDebugf(ctx, "FS Create")
-	defer func() { r.private.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
+	//	defer func() { r.private.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
 	return nil, nil, libkbfs.NewWriteUnsupportedError(libkbfs.BuildCanonicalPath(r.PathType(), req.Name))
 }
 
 // Mkdir implements the fs.NodeMkdirer interface for Root.
 func (r *Root) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (_ fs.Node, err error) {
 	r.log().CDebugf(ctx, "FS Mkdir")
-	defer func() { r.private.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
+	//	defer func() { r.private.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
 	return nil, libkbfs.NewWriteUnsupportedError(libkbfs.BuildCanonicalPath(r.PathType(), req.Name))
 }
 
@@ -282,26 +252,10 @@ var _ fs.HandleReadDirAller = (*Root)(nil)
 // ReadDirAll implements the ReadDirAll interface for Root.
 func (r *Root) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 	r.log().CDebugf(ctx, "FS ReadDirAll")
-	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
+	//	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
 	return nil, nil
-
-	res = []fuse.Dirent{
-		{
-			Type: fuse.DT_Dir,
-			Name: PrivateName,
-		},
-		{
-			Type: fuse.DT_Dir,
-			Name: PublicName,
-		},
-	}
-
-	if name := r.private.fs.remoteStatus.ExtraFileName(); name != "" {
-		res = append(res, fuse.Dirent{Type: fuse.DT_File, Name: name})
-	}
-	return res, nil
 }
 
 func (r *Root) log() logger.Logger {
-	return r.private.fs.log
+	return r._log
 }

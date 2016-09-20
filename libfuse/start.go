@@ -44,7 +44,7 @@ func Start(mounter Mounter, options StartOptions, kbCtx libkbfs.Context) *libfs.
 	}
 	defer c.Close()
 
-	onInterruptFn := func() {
+	/*onInterruptFn := func() {
 		select {
 		case <-c.Ready:
 			// Was mounted, so try to unmount if it was successful.
@@ -60,19 +60,19 @@ func Start(mounter Mounter, options StartOptions, kbCtx libkbfs.Context) *libfs.
 			// could still happen, but that's a rare enough edge case.
 		}
 		libkbfs.Shutdown()
-	}
+	}*/
 
 	log.Debug("Initializing")
 
-	config, err := libkbfs.Init(kbCtx, options.KbfsParams, nil, onInterruptFn, log)
-	if err != nil {
-		return libfs.InitError(err.Error())
-	}
+	/*	config, err := libkbfs.Init(kbCtx, options.KbfsParams, nil, onInterruptFn, log)
+		if err != nil {
+			return libfs.InitError(err.Error())
+		}
 
-	defer libkbfs.Shutdown()
+		defer libkbfs.Shutdown()*/
 
 	log.Debug("Creating filesystem")
-	fs := NewFS(config, c, options.KbfsParams.Debug)
+	fs := NewFS(c, options.KbfsParams.Debug)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = context.WithValue(ctx, CtxAppIDKey, fs)
