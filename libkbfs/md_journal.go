@@ -292,7 +292,7 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 	return id, nil
 }
 
-// removeMD removes the metadata with the given ID.
+// removeMD removes the metadata (which must exist) with the given ID.
 func (j *mdJournal) removeMD(id MdID) error {
 	path := j.mdPath(id)
 	err := os.Remove(path)
@@ -300,7 +300,8 @@ func (j *mdJournal) removeMD(id MdID) error {
 		return err
 	}
 
-	// Remove the parent (splayed) directory if it's empty.
+	// Remove the parent (splayed) directory (which should exist)
+	// if it's empty.
 	err = os.Remove(filepath.Dir(path))
 	// syscall.ENOTEMPTY is returned if the parent directory is
 	// not empty, which (as of go 1.7) IsExists returns true for.

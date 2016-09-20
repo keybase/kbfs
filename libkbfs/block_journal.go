@@ -626,7 +626,7 @@ func (j *blockJournal) removeBlockData(id BlockID) error {
 	}
 	path := j.blockPath(id)
 
-	err = os.RemoveAll(path)
+	err := os.RemoveAll(path)
 	if err != nil {
 		return err
 	}
