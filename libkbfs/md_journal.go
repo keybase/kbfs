@@ -292,6 +292,26 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 	return id, nil
 }
 
+// removeMD removes the metadata with the given ID.
+func (j *mdJournal) removeMD(id MdID) error {
+	path := j.mdPath(id)
+	err := os.Remove(path)
+	if err != nil {
+		return err
+	}
+
+	// Remove the parent (splayed) directory if it's empty.
+	err = os.Remove(filepath.Dir(path))
+	// syscall.ENOTEMPTY is returned if the parent directory is
+	// not empty, which (as of go 1.7) IsExists returns true for.
+	//
+	// TODO: Verify that this behavior is the same on Windows.
+	if os.IsExist(err) {
+		err = nil
+	}
+	return err
+}
+
 func (j mdJournal) getEarliest(verifyBranchID bool) (
 	ImmutableBareRootMetadata, error) {
 	earliestID, err := j.j.getEarliest()
@@ -399,14 +419,11 @@ func (j *mdJournal) convertToBranch(
 		// eventually need a sweeper to clean up entries left behind
 		// if we crash here.
 		for _, id := range mdsToRemove {
-			path := j.mdPath(id)
-			removeErr := os.Remove(path)
+			removeErr := j.removeMD(id)
 			if removeErr != nil {
 				j.log.CWarningf(ctx, "Error when removing old MD %s: %v",
 					id, removeErr)
 			}
-			// Remove the parent directory if it's empty.
-			_ = os.Remove(filepath.Dir(path))
 		}
 	}()
 
@@ -571,8 +588,7 @@ func (j *mdJournal) removeFlushedEntry(
 
 	// Garbage-collect the old entry.  TODO: we'll eventually need a
 	// sweeper to clean up entries left behind if we crash here.
-	path := j.mdPath(mdID)
-	return os.Remove(path)
+	return j.removeMD(mdID)
 }
 
 func getMdID(ctx context.Context, mdserver MDServer, crypto cryptoPure,
@@ -912,8 +928,7 @@ func (j *mdJournal) clear(
 	// need a sweeper to clean up entries left behind if we crash
 	// here.
 	for _, id := range allMdIDs {
-		path := j.mdPath(id)
-		err := os.Remove(path)
+		err := j.removeMD(id)
 		if err != nil {
 			return err
 		}
