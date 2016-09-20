@@ -169,6 +169,9 @@ func makeTLFJournal(
 	if key == (VerifyingKey{}) {
 		return nil, errors.New("Empty verifying key")
 	}
+	if tlfID == (TlfID{}) {
+		return nil, errors.New("Empty TlfID")
+	}
 
 	log := config.MakeLogger("TLFJ")
 
