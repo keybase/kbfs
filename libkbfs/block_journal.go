@@ -616,13 +616,32 @@ func (j *blockJournal) removeReferences(
 	return liveCounts, nil
 }
 
+// removeBlockData removes any existing block data for the given
+// ID. If there is no data, nil is returned; this can happen when we
+// have only non-put references to a block in the journal.
 func (j *blockJournal) removeBlockData(id BlockID) error {
 	if j.hasRef(id) {
 		return fmt.Errorf(
 			"Trying to remove data for referenced block %s", id)
 	}
-	// TODO: Remove the parent directory, if it's empty.
-	return os.RemoveAll(j.blockPath(id))
+	path := j.blockPath(id)
+
+	err = os.RemoveAll(path)
+	if err != nil {
+		return err
+	}
+
+	// Remove the parent (splayed) directory if it exists and is
+	// empty.
+	err = os.Remove(filepath.Dir(path))
+	// syscall.ENOTEMPTY is returned if the parent directory is
+	// not empty, which (as of go 1.7) IsExists returns true for.
+	//
+	// TODO: Verify that this behavior is the same on Windows.
+	if os.IsNotExist(err) || os.IsExist(err) {
+		err = nil
+	}
+	return err
 }
 
 func (j *blockJournal) archiveReferences(
