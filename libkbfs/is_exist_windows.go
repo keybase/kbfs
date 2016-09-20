@@ -11,5 +11,18 @@ import (
 const _ERROR_DIR_NOT_EMPTY = syscall.Errno(145)
 
 func isExist(err error) bool {
-	return os.IsExist(err) || err == _ERROR_DIR_NOT_EMPTY
+	if os.IsExist(err) {
+		return true
+	}
+	switch pe := err.(type) {
+	case nil:
+		return false
+	case *os.PathError:
+		err = pe.Err
+	case *os.LinkError:
+		err = pe.Err
+	case *os.SyscallError:
+		err = pe.Err
+	}
+	return err == _ERROR_DIR_NOT_EMPTY
 }
