@@ -60,7 +60,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	for i := MetadataRevision(1); i <= 10; i++ {
 		rmds := makeRMDSForTest(t, id, h, i, uid, prevRoot)
 		signRMDSForTest(t, codec, signer, rmds)
-		recordBranchID, err := s.put(uid, verifyingKey, rmds)
+		// MDv3 TODO: pass extra metadata
+		recordBranchID, err := s.put(uid, verifyingKey, rmds, nil)
 		require.NoError(t, err)
 		require.False(t, recordBranchID)
 		prevRoot, err = crypto.MakeMdID(rmds.MD)
@@ -76,7 +77,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 
 	rmds := makeRMDSForTest(t, id, h, 10, uid, prevRoot)
 	signRMDSForTest(t, codec, signer, rmds)
-	_, err = s.put(uid, verifyingKey, rmds)
+	// MDv3 TODO: pass extra metadata
+	_, err = s.put(uid, verifyingKey, rmds, nil)
 	require.IsType(t, MDServerErrorConflictRevision{}, err)
 
 	require.Equal(t, 10, getMDStorageLength(t, s, NullBranchID))
@@ -91,7 +93,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		rmds.MD.SetUnmerged()
 		rmds.MD.SetBranchID(bid)
 		signRMDSForTest(t, codec, signer, rmds)
-		recordBranchID, err := s.put(uid, verifyingKey, rmds)
+		// MDv3 TODO: pass extra metadata
+		recordBranchID, err := s.put(uid, verifyingKey, rmds, nil)
 		require.NoError(t, err)
 		require.Equal(t, i == MetadataRevision(6), recordBranchID)
 		prevRoot, err = crypto.MakeMdID(rmds.MD)

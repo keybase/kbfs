@@ -808,6 +808,12 @@ type cryptoPure interface {
 	// DecryptMerkleLeaf decrypts a Merkle leaf node with the TLFPrivateKey.
 	DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf, privKey TLFPrivateKey,
 		nonce *[24]byte, ePubKey TLFEphemeralPublicKey) (*MerkleLeaf, error)
+
+	// MakeTLFWriterKeyBundleID hashes a TLFWriterKeyBundleV3 to create an ID.
+	MakeTLFWriterKeyBundleID(wkb *TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error)
+
+	// MakeTLFReaderKeyBundleID hashes a TLFReaderKeyBundleV3 to create an ID.
+	MakeTLFReaderKeyBundleID(rkb *TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error)
 }
 
 type cryptoSigner interface {
@@ -1065,6 +1071,12 @@ type MDServer interface {
 	// corresponding event.  If the returned bool is false, then we
 	// don't have a current estimate for the offset.
 	OffsetFromServerTime() (time.Duration, bool)
+
+	// GetKeyBundles returns the key bundles for the given key bundle IDs.
+	GetKeyBundles(ctx context.Context,
+		wkbID TLFWriterKeyBundleID,
+		rkbID TLFReaderKeyBundleID) (
+		*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error)
 }
 
 type mdServerLocal interface {
@@ -1599,6 +1611,10 @@ type BareRootMetadata interface {
 	AreKeyGenerationsEqual(Codec, BareRootMetadata) (bool, error)
 	// GetUnresolvedParticipants returns any unresolved readers and writers present in this revision of metadata.
 	GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion)
+	// GetTLFWriterKeyBundleID returns the ID of the writer key bundle.
+	GetTLFWriterKeyBundleID() TLFWriterKeyBundleID
+	// GetTLFReaderKeyBundleID returns the ID of the reader key bundle.
+	GetTLFReaderKeyBundleID() TLFReaderKeyBundleID
 }
 
 // MutableBareRootMetadata is a mutable interface to the bare serializeable MD that is signed by the reader or writer.
@@ -1679,6 +1695,9 @@ type MutableBareRootMetadata interface {
 	// key generation.
 	GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (
 		readers, writers UserDeviceKeyInfoMap, err error)
+	// OnRekeyDone is called after all rekeying work has been performed on the underlying
+	// metadata.
+	OnRekeyDone(Config, ExtraMetadata) error
 }
 
 // KeyBundleCache is an interface to a key bundle cache for use with v3 metadata.
