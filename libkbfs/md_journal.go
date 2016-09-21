@@ -178,7 +178,7 @@ func (j mdJournal) mdPath(id MdID) string {
 	// Truncate to 34 characters, which corresponds to 16 random
 	// bytes (since the first byte is a hash type) or 128 random
 	// bits, which means that the expected number of MDs generated
-	// before getting an MD ID collision is 2^64 (see
+	// before getting a path collision is 2^64 (see
 	// https://en.wikipedia.org/wiki/Birthday_problem#Cast_as_a_collision_problem
 	// ). The full ID can be recovered just by hashing the data
 	// again with the same hash type.
