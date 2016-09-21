@@ -14,6 +14,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/go-codec/codec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,6 +43,7 @@ func makeFakeBlockJournalEntryFuture(t *testing.T) blockJournalEntryFuture {
 					makeFakeBlockContext(t),
 				},
 			},
+			codec.UnknownFieldSetHandler{},
 		},
 		makeExtraOrBust("blockJournalEntry", t),
 	}

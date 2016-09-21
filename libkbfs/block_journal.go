@@ -13,6 +13,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/go-codec/codec"
 	"golang.org/x/net/context"
 )
 
@@ -113,7 +114,7 @@ type blockJournalEntry struct {
 	// and addRefOp.
 	Contexts map[BlockID][]BlockContext
 
-	// TODO: Support unknown fields.
+	codec.UnknownFieldSetHandler
 }
 
 // Get the single context stored in this entry. Only applicable to
