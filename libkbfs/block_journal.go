@@ -317,11 +317,6 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 	return refs, unflushedBytes, nil
 }
 
-func (j *blockJournal) writeJournalEntry(
-	ordinal journalOrdinal, entry blockJournalEntry) error {
-	return j.j.writeJournalEntry(ordinal, entry)
-}
-
 func (j *blockJournal) appendJournalEntry(
 	op blockOpType, contexts map[BlockID][]BlockContext) (
 	journalOrdinal, error) {
