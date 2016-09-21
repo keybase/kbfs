@@ -47,7 +47,10 @@ import (
 // of directories in dir itself to a manageable number, similar to
 // git. Each block directory has data, which is the raw block data
 // that should hash to the block ID, and key_server_half, which
-// contains the raw data for the associated key server half.
+// contains the raw data for the associated key server half. Future
+// versions of the journal might add more files to this directory; if
+// any code is written to move blocks around, it should be careful to
+// preserve any unknown files in a block directory.
 //
 // The maximum number of characters added to the root dir by a block
 // journal is 59:
