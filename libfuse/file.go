@@ -26,6 +26,12 @@ type eiCacheHolder struct {
 	cache *eiCache
 }
 
+func (c *eiCacheHolder) destroy() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cache = nil
+}
+
 func (c *eiCacheHolder) getAndDestroy(reqID string) (ei *libkbfs.EntryInfo) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -101,6 +107,7 @@ func (f *File) attr(ctx context.Context, a *fuse.Attr) (err error) {
 var _ fs.NodeFsyncer = (*File)(nil)
 
 func (f *File) sync(ctx context.Context) error {
+	f.eiCache.destroy()
 	err := f.folder.fs.config.KBFSOps().Sync(ctx, f.node)
 	if err != nil {
 		return err
@@ -151,6 +158,7 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest,
 	f.folder.fs.log.CDebugf(ctx, "File Write sz=%d ", len(req.Data))
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
+	f.eiCache.destroy()
 	if err := f.folder.fs.config.KBFSOps().Write(
 		ctx, f.node, req.Data, req.Offset); err != nil {
 		return err
@@ -185,6 +193,8 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 	resp *fuse.SetattrResponse) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File SetAttr")
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
+
+	f.eiCache.destroy()
 
 	valid := req.Valid
 	if valid.Size() {
@@ -260,5 +270,6 @@ var _ fs.NodeForgetter = (*File)(nil)
 
 // Forget kernel reference to this node.
 func (f *File) Forget() {
+	f.eiCache.destroy()
 	f.folder.forgetNode(f.node)
 }
