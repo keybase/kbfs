@@ -87,28 +87,33 @@ func (c diskFavoriteClient) Shutdown() {
 }
 
 type memoryFavoriteClient struct {
-	favorites map[string]keybase1.Folder
+	favorites map[keybase1.UID]map[string]keybase1.Folder
 }
 
 var _ favoriteStore = memoryFavoriteClient{}
 
 func (c memoryFavoriteClient) FavoriteAdd(
 	uid keybase1.UID, folder keybase1.Folder) error {
-	c.favorites[folder.ToString()] = folder
+	if c.favorites[uid] == nil {
+		c.favorites[uid] = make(map[string]keybase1.Folder)
+	}
+	c.favorites[uid][folder.ToString()] = folder
 	return nil
 }
 
 func (c memoryFavoriteClient) FavoriteDelete(
 	uid keybase1.UID, folder keybase1.Folder) error {
-	delete(c.favorites, folder.ToString())
+	if c.favorites[uid] != nil {
+		delete(c.favorites[uid], folder.ToString())
+	}
 	return nil
 }
 
 func (c memoryFavoriteClient) FavoriteList(
 	uid keybase1.UID) ([]keybase1.Folder, error) {
-	folders := make([]keybase1.Folder, len(c.favorites))
+	folders := make([]keybase1.Folder, len(c.favorites[uid]))
 	i := 0
-	for _, v := range c.favorites {
+	for _, v := range c.favorites[uid] {
 		folders[i] = v
 		i++
 	}
@@ -450,7 +455,7 @@ func NewKeybaseDaemonDisk(currentUID keybase1.UID, users []LocalUser,
 func NewKeybaseDaemonMemory(currentUID keybase1.UID,
 	users []LocalUser, codec Codec) *KeybaseDaemonLocal {
 	favoriteStore := memoryFavoriteClient{
-		favorites: make(map[string]keybase1.Folder),
+		favorites: make(map[keybase1.UID]map[string]keybase1.Folder),
 	}
 	return newKeybaseDaemonLocal(codec, currentUID, users, favoriteStore)
 }
