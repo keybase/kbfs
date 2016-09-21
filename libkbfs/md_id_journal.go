@@ -97,7 +97,6 @@ func (j mdIDJournal) readMdID(r MetadataRevision) (MdID, error) {
 		return MdID{}, err
 	}
 
-	// TODO: Validate MdID?
 	return e.(MdID), nil
 }
 
