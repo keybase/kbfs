@@ -11,18 +11,40 @@ import (
 	"golang.org/x/net/context"
 )
 
+type eiCache struct {
+	ei  libkbfs.EntryInfo
+	rid string
+}
+
 // File represents KBFS files.
 type File struct {
 	folder *Folder
 	node   libkbfs.Node
+
+	// for the Attr call after Create
+	eiCache *eiCache
 }
 
 var _ fs.Node = (*File)(nil)
+
+func fillAttrWithMode(ei *libkbfs.EntryInfo, a *fuse.Attr) {
+	fillAttr(ei, a)
+	a.Mode = 0644
+	if ei.Type == libkbfs.Exec {
+		a.Mode |= 0111
+	}
+}
 
 // Attr implements the fs.Node interface for File.
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File Attr")
 	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
+
+	if f.eiCache != nil && ctx.Value(CtxIDKey) == f.eiCache.rid {
+		fillAttrWithMode(&f.eiCache.ei, a)
+		f.eiCache = nil
+		return nil
+	}
 
 	// This fits in situation 1 as described in libkbfs/delayed_cancellation.go
 	err = libkbfs.EnableDelayedCancellationWithGracePeriod(
@@ -43,11 +65,7 @@ func (f *File) attr(ctx context.Context, a *fuse.Attr) (err error) {
 		return err
 	}
 
-	fillAttr(&de, a)
-	a.Mode = 0644
-	if de.Type == libkbfs.Exec {
-		a.Mode |= 0111
-	}
+	fillAttrWithMode(&de, a)
 	return nil
 }
 

@@ -471,7 +471,7 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 
 	isExec := (req.Mode.Perm() & 0100) != 0
 	excl := getEXCLFromCreateRequest(req)
-	newNode, _, err := d.folder.fs.config.KBFSOps().CreateFile(
+	newNode, ei, err := d.folder.fs.config.KBFSOps().CreateFile(
 		ctx, d.node, req.Name, isExec, excl)
 	if err != nil {
 		return nil, nil, err
@@ -481,6 +481,20 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 		folder: d.folder,
 		node:   newNode,
 	}
+
+	// Create is normally followed an Attr call. Fuse uses the same context for
+	// them. If the context is cancelled after the Create call enters the
+	// critical portion, and grace period has passed before Attr happens, the
+	// Attr can result in EINTR which application does not expect. This caches
+	// the EntryInfo for the created node and allows the subsequent Attr call to
+	// use the cached EntryInfo instead of relying on a new Stat call.
+	if rid, ok := ctx.Value(CtxIDKey).(string); ok {
+		child.eiCache = &eiCache{
+			ei:  ei,
+			rid: rid,
+		}
+	}
+
 	d.folder.nodesMu.Lock()
 	d.folder.nodes[newNode.GetID()] = child
 	d.folder.nodesMu.Unlock()
@@ -591,6 +605,13 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) (err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Remove %s", req.Name)
 	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
+
+	// This fits in situation 1 as described in libkbfs/delayed_cancellation.go
+	err = libkbfs.EnableDelayedCancellationWithGracePeriod(
+		ctx, d.folder.fs.config.DelayedCancellationGracePeriod())
+	if err != nil {
+		return err
+	}
 
 	// node will be removed from Folder.nodes, if it is there in the
 	// first place, by its Forget
