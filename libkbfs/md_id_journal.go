@@ -59,8 +59,7 @@ func revisionToOrdinal(r MetadataRevision) (journalOrdinal, error) {
 // TODO: Consider caching the values returned by the read functions
 // below in memory.
 
-func (j mdIDJournal) readEarliestRevision() (
-	MetadataRevision, error) {
+func (j mdIDJournal) readEarliestRevision() (MetadataRevision, error) {
 	o, err := j.j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
 		return MetadataRevisionUninitialized, nil
@@ -78,8 +77,7 @@ func (j mdIDJournal) writeEarliestRevision(r MetadataRevision) error {
 	return j.j.writeEarliestOrdinal(o)
 }
 
-func (j mdIDJournal) readLatestRevision() (
-	MetadataRevision, error) {
+func (j mdIDJournal) readLatestRevision() (MetadataRevision, error) {
 	o, err := j.j.readLatestOrdinal()
 	if os.IsNotExist(err) {
 		return MetadataRevisionUninitialized, nil
@@ -129,28 +127,30 @@ func (j mdIDJournal) end() (MetadataRevision, error) {
 	return last + 1, nil
 }
 
-func (j mdIDJournal) getEarliestEntry() (mdIDJournalEntry, bool, error) {
+func (j mdIDJournal) getEarliestEntry() (
+	entry mdIDJournalEntry, exists bool, err error) {
 	earliestRevision, err := j.readEarliestRevision()
 	if err != nil {
 		return mdIDJournalEntry{}, false, err
 	} else if earliestRevision == MetadataRevisionUninitialized {
 		return mdIDJournalEntry{}, false, nil
 	}
-	entry, err := j.readJournalEntry(earliestRevision)
+	entry, err = j.readJournalEntry(earliestRevision)
 	if err != nil {
 		return mdIDJournalEntry{}, false, err
 	}
 	return entry, true, err
 }
 
-func (j mdIDJournal) getLatestEntry() (mdIDJournalEntry, bool, error) {
+func (j mdIDJournal) getLatestEntry() (
+	entry mdIDJournalEntry, exists bool, err error) {
 	latestRevision, err := j.readLatestRevision()
 	if err != nil {
 		return mdIDJournalEntry{}, false, err
 	} else if latestRevision == MetadataRevisionUninitialized {
 		return mdIDJournalEntry{}, false, nil
 	}
-	entry, err := j.readJournalEntry(latestRevision)
+	entry, err = j.readJournalEntry(latestRevision)
 	if err != nil {
 		return mdIDJournalEntry{}, false, err
 	}
@@ -196,12 +196,12 @@ func (j mdIDJournal) getEntryRange(start, stop MetadataRevision) (
 	return start, entries, nil
 }
 
-func (j mdIDJournal) replaceHead(mdID MdID) error {
+func (j mdIDJournal) replaceHead(entry mdIDJournalEntry) error {
 	o, err := j.j.readLatestOrdinal()
 	if err != nil {
 		return err
 	}
-	return j.j.writeJournalEntry(o, mdIDJournalEntry{ID: mdID})
+	return j.j.writeJournalEntry(o, entry)
 }
 
 func (j mdIDJournal) append(r MetadataRevision, mdID MdID) error {

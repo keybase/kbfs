@@ -852,7 +852,7 @@ func (j *mdJournal) put(
 		j.log.CDebugf(
 			ctx, "Replacing head MD for TLF=%s with rev=%s bid=%s",
 			rmd.TlfID(), rmd.Revision(), rmd.BID())
-		err = j.j.replaceHead(id)
+		err = j.j.replaceHead(mdIDJournalEntry{ID: id})
 		if err != nil {
 			return MdID{}, err
 		}
