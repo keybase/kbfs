@@ -24,8 +24,14 @@ type mdIDJournal struct {
 	j diskJournal
 }
 
+// An mdIDJournalEntry is, for now, just an MdID. In the future, it
+// may contain more fields.
+type mdIDJournalEntry struct {
+	ID MdID
+}
+
 func makeMdIDJournal(codec Codec, dir string) mdIDJournal {
-	j := makeDiskJournal(codec, dir, reflect.TypeOf(MdID{}))
+	j := makeDiskJournal(codec, dir, reflect.TypeOf(mdIDJournalEntry{}))
 	return mdIDJournal{j}
 }
 
@@ -97,7 +103,7 @@ func (j mdIDJournal) readMdID(r MetadataRevision) (MdID, error) {
 		return MdID{}, err
 	}
 
-	return e.(MdID), nil
+	return e.(mdIDJournalEntry).ID, nil
 }
 
 // All functions below are public functions.
@@ -182,7 +188,7 @@ func (j mdIDJournal) replaceHead(mdID MdID) error {
 	if err != nil {
 		return err
 	}
-	return j.j.writeJournalEntry(o, mdID)
+	return j.j.writeJournalEntry(o, mdIDJournalEntry{mdID})
 }
 
 func (j mdIDJournal) append(r MetadataRevision, mdID MdID) error {
@@ -190,7 +196,7 @@ func (j mdIDJournal) append(r MetadataRevision, mdID MdID) error {
 	if err != nil {
 		return err
 	}
-	_, err = j.j.appendJournalEntry(&o, mdID)
+	_, err = j.j.appendJournalEntry(&o, mdIDJournalEntry{mdID})
 	return err
 }
 
