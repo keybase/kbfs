@@ -18,6 +18,40 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type blockJournalEntryFuture struct {
+	blockJournalEntry
+	extra
+}
+
+func (ef blockJournalEntryFuture) toCurrent() blockJournalEntry {
+	return ef.blockJournalEntry
+}
+
+func (ef blockJournalEntryFuture) toCurrentStruct() currentStruct {
+	return ef.toCurrent()
+}
+
+func makeFakeBlockJournalEntryFuture(t *testing.T) blockJournalEntryFuture {
+	ef := blockJournalEntryFuture{
+		blockJournalEntry{
+			blockPutOp,
+			map[BlockID][]BlockContext{
+				fakeBlockID(1): []BlockContext{
+					makeFakeBlockContext(t),
+					makeFakeBlockContext(t),
+					makeFakeBlockContext(t),
+				},
+			},
+		},
+		makeExtraOrBust("blockJournalEntry", t),
+	}
+	return ef
+}
+
+func TestBlockJournalEntryUnknownFields(t *testing.T) {
+	testStructUnknownFields(t, makeFakeBlockJournalEntryFuture(t))
+}
+
 func getBlockJournalLength(t *testing.T, j *blockJournal) int {
 	len, err := j.length()
 	require.NoError(t, err)
