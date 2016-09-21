@@ -317,13 +317,9 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 	return refs, unflushedBytes, nil
 }
 
-func (j *blockJournal) appendJournalEntry(
-	op blockOpType, contexts map[BlockID][]BlockContext) (
+func (j *blockJournal) appendJournalEntry(entry blockJournalEntry) (
 	journalOrdinal, error) {
-	return j.j.appendJournalEntry(nil, blockJournalEntry{
-		Op:       op,
-		Contexts: contexts,
-	})
+	return j.j.appendJournalEntry(nil, entry)
 }
 
 func (j *blockJournal) length() (uint64, error) {
@@ -534,8 +530,10 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	ordinal, err := j.appendJournalEntry(blockPutOp,
-		map[BlockID][]BlockContext{id: {context}})
+	ordinal, err := j.appendJournalEntry(blockJournalEntry{
+		Op:       blockPutOp,
+		Contexts: map[BlockID][]BlockContext{id: {context}},
+	})
 	if err != nil {
 		return err
 	}
@@ -559,8 +557,10 @@ func (j *blockJournal) addReference(
 		}
 	}()
 
-	ordinal, err := j.appendJournalEntry(addRefOp,
-		map[BlockID][]BlockContext{id: {context}})
+	ordinal, err := j.appendJournalEntry(blockJournalEntry{
+		Op:       addRefOp,
+		Contexts: map[BlockID][]BlockContext{id: {context}},
+	})
 	if err != nil {
 		return err
 	}
@@ -610,7 +610,10 @@ func (j *blockJournal) removeReferences(
 		liveCounts[id] = count
 	}
 
-	_, err = j.appendJournalEntry(removeRefsOp, contexts)
+	_, err = j.appendJournalEntry(blockJournalEntry{
+		Op:       removeRefsOp,
+		Contexts: contexts,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -652,7 +655,10 @@ func (j *blockJournal) archiveReferences(
 		}
 	}()
 
-	ordinal, err := j.appendJournalEntry(archiveRefsOp, contexts)
+	ordinal, err := j.appendJournalEntry(blockJournalEntry{
+		Op:       archiveRefsOp,
+		Contexts: contexts,
+	})
 	if err != nil {
 		return err
 	}
