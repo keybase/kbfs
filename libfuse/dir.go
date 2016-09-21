@@ -488,11 +488,8 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 	// Attr can result in EINTR which application does not expect. This caches
 	// the EntryInfo for the created node and allows the subsequent Attr call to
 	// use the cached EntryInfo instead of relying on a new Stat call.
-	if rid, ok := ctx.Value(CtxIDKey).(string); ok {
-		child.eiCache = &eiCache{
-			ei:  ei,
-			rid: rid,
-		}
+	if reqID, ok := ctx.Value(CtxIDKey).(string); ok {
+		child.eiCache.set(reqID, ei)
 	}
 
 	d.folder.nodesMu.Lock()

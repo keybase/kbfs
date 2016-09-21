@@ -5,6 +5,8 @@
 package libfuse
 
 import (
+	"sync"
+
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"github.com/keybase/kbfs/libkbfs"
@@ -12,8 +14,35 @@ import (
 )
 
 type eiCache struct {
-	ei  libkbfs.EntryInfo
-	rid string
+	ei    libkbfs.EntryInfo
+	reqID string
+}
+
+// eiCacheHolder caches the EntryInfo for a particular reqID. It's used for the
+// Attr call after Create. This should only be used for operations with same
+// reqID.
+type eiCacheHolder struct {
+	mu    sync.Mutex
+	cache *eiCache
+}
+
+func (c *eiCacheHolder) getAndDestroy(reqID string) (ei *libkbfs.EntryInfo) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.cache != nil && c.cache.reqID == reqID {
+		ei = &c.cache.ei
+		c.cache = nil
+	}
+	return ei
+}
+
+func (c *eiCacheHolder) set(reqID string, ei libkbfs.EntryInfo) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cache = &eiCache{
+		ei:    ei,
+		reqID: reqID,
+	}
 }
 
 // File represents KBFS files.
@@ -21,8 +50,7 @@ type File struct {
 	folder *Folder
 	node   libkbfs.Node
 
-	// for the Attr call after Create
-	eiCache *eiCache
+	eiCache eiCacheHolder
 }
 
 var _ fs.Node = (*File)(nil)
@@ -40,10 +68,11 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File Attr")
 	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
-	if f.eiCache != nil && ctx.Value(CtxIDKey) == f.eiCache.rid {
-		fillAttrWithMode(&f.eiCache.ei, a)
-		f.eiCache = nil
-		return nil
+	if reqID, ok := ctx.Value(CtxIDKey).(string); ok {
+		if ei := f.eiCache.getAndDestroy(reqID); ei != nil {
+			fillAttrWithMode(ei, a)
+			return nil
+		}
 	}
 
 	// This fits in situation 1 as described in libkbfs/delayed_cancellation.go

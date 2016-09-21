@@ -186,10 +186,13 @@ func NewContextWithCancellationDelayer(
 // delayed cancellation for ctx. This is useful to indicate that the
 // operation(s) associated with the context has entered a critical state, and
 // it should not be canceled until after timeout or CleanupCancellationDelayer
-// is called. Note that if EnableDelayedCancellationWithGracePeriod is called
-// for the second time, and the grace period has started due to a cancellation,
-// the grace period would not be extended (i.e. timeout has no effect in this
-// case).
+// is called.
+//
+// Note that if EnableDelayedCancellationWithGracePeriod is called for the
+// second time, and the grace period has started due to a cancellation, the
+// grace period would not be extended (i.e. timeout has no effect in this
+// case). Although in this case, no error is returned, since the delayed
+// cancellation is already enabled.
 func EnableDelayedCancellationWithGracePeriod(ctx context.Context, timeout time.Duration) error {
 	if c, ok := ctx.Value(CtxCancellationDelayerKey).(*cancellationDelayer); ok {
 		if atomic.LoadInt64(&c.canceled) > 0 {
