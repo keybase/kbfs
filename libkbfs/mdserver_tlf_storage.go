@@ -230,14 +230,14 @@ func (s *mdServerTlfStorage) getRangeReadLocked(
 		return nil, nil
 	}
 
-	realStart, mdIDs, err := j.getRange(start, stop)
+	realStart, entries, err := j.getRange(start, stop)
 	if err != nil {
 		return nil, err
 	}
 	var rmdses []*RootMetadataSigned
-	for i, mdID := range mdIDs {
+	for i, entry := range entries {
 		expectedRevision := realStart + MetadataRevision(i)
-		rmds, err := s.getMDReadLocked(mdID)
+		rmds, err := s.getMDReadLocked(entry.ID)
 		if err != nil {
 			return nil, MDServerError{err}
 		}

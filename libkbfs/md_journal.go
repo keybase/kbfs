@@ -389,7 +389,7 @@ func (j *mdJournal) convertToBranch(
 	j.log.CDebugf(
 		ctx, "rewriting MDs %s to %s", earliestRevision, latestRevision)
 
-	_, allMdIDs, err := j.j.getRange(earliestRevision, latestRevision)
+	_, allEntries, err := j.j.getRange(earliestRevision, latestRevision)
 	if err != nil {
 		return NullBranchID, err
 	}
@@ -407,7 +407,7 @@ func (j *mdJournal) convertToBranch(
 	}
 	j.log.CDebugf(ctx, "Using temp dir %s for rewriting", journalTempDir)
 
-	mdsToRemove := make([]MdID, 0, len(allMdIDs))
+	mdsToRemove := make([]MdID, 0, len(allEntries))
 	defer func() {
 		j.log.CDebugf(ctx, "Removing temp dir %s and %d old MDs",
 			journalTempDir, len(mdsToRemove))
@@ -433,8 +433,8 @@ func (j *mdJournal) convertToBranch(
 
 	var prevID MdID
 
-	for i, id := range allMdIDs {
-		ibrmd, _, err := j.getMD(id, true)
+	for i, entry := range allEntries {
+		ibrmd, _, err := j.getMD(entry.ID, true)
 		if err != nil {
 			return NullBranchID, err
 		}
@@ -489,7 +489,7 @@ func (j *mdJournal) convertToBranch(
 		prevID = newID
 
 		j.log.CDebugf(ctx, "Changing ID for rev=%s from %s to %s",
-			brmd.RevisionNumber(), id, newID)
+			brmd.RevisionNumber(), entry.ID, newID)
 	}
 
 	// TODO: Do the below atomically on the filesystem
@@ -516,7 +516,11 @@ func (j *mdJournal) convertToBranch(
 
 	// Make the defer block above remove oldJournalTempDir.
 	journalTempDir = oldJournalTempDir
-	mdsToRemove = allMdIDs
+
+	mdsToRemove = nil
+	for _, entry := range allEntries {
+		mdsToRemove = append(mdsToRemove, entry.ID)
+	}
 
 	j.j = tempJournal
 	j.branchID = bid
@@ -646,14 +650,14 @@ func (j mdJournal) getRange(
 		return nil, err
 	}
 
-	realStart, mdIDs, err := j.j.getRange(start, stop)
+	realStart, entries, err := j.j.getRange(start, stop)
 	if err != nil {
 		return nil, err
 	}
 	var rmds []ImmutableBareRootMetadata
-	for i, mdID := range mdIDs {
+	for i, entry := range entries {
 		expectedRevision := realStart + MetadataRevision(i)
-		rmd, ts, err := j.getMD(mdID, true)
+		rmd, ts, err := j.getMD(entry.ID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -661,7 +665,7 @@ func (j mdJournal) getRange(
 			panic(fmt.Errorf("expected revision %v, got %v",
 				expectedRevision, rmd.RevisionNumber()))
 		}
-		irmd := MakeImmutableBareRootMetadata(rmd, mdID, ts)
+		irmd := MakeImmutableBareRootMetadata(rmd, entry.ID, ts)
 		rmds = append(rmds, irmd)
 	}
 
@@ -912,7 +916,7 @@ func (j *mdJournal) clear(
 		return err
 	}
 
-	_, allMdIDs, err := j.j.getRange(earliestRevision, latestRevision)
+	_, allEntries, err := j.j.getRange(earliestRevision, latestRevision)
 	if err != nil {
 		return err
 	}
@@ -929,8 +933,8 @@ func (j *mdJournal) clear(
 	// Garbage-collect the old branch entries.  TODO: we'll eventually
 	// need a sweeper to clean up entries left behind if we crash
 	// here.
-	for _, id := range allMdIDs {
-		err := j.removeMD(id)
+	for _, entry := range allEntries {
+		err := j.removeMD(entry.ID)
 		if err != nil {
 			return err
 		}

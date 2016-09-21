@@ -157,8 +157,8 @@ func (j mdIDJournal) getLatestEntry() (mdIDJournalEntry, bool, error) {
 	return entry, true, err
 }
 
-func (j mdIDJournal) getRange(
-	start, stop MetadataRevision) (MetadataRevision, []MdID, error) {
+func (j mdIDJournal) getRange(start, stop MetadataRevision) (
+	MetadataRevision, []mdIDJournalEntry, error) {
 	earliestRevision, err := j.readEarliestRevision()
 	if err != nil {
 		return MetadataRevisionUninitialized, nil, err
@@ -185,15 +185,15 @@ func (j mdIDJournal) getRange(
 		return MetadataRevisionUninitialized, nil, nil
 	}
 
-	var mdIDs []MdID
+	var entries []mdIDJournalEntry
 	for i := start; i <= stop; i++ {
 		entry, err := j.readJournalEntry(i)
 		if err != nil {
 			return MetadataRevisionUninitialized, nil, err
 		}
-		mdIDs = append(mdIDs, entry.ID)
+		entries = append(entries, entry)
 	}
-	return start, mdIDs, nil
+	return start, entries, nil
 }
 
 func (j mdIDJournal) replaceHead(mdID MdID) error {
