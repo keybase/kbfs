@@ -482,7 +482,8 @@ func (j *mdJournal) convertToBranch(
 		}
 		mdsToRemove = append(mdsToRemove, newID)
 
-		err = tempJournal.append(brmd.RevisionNumber(), newID)
+		err = tempJournal.append(
+			brmd.RevisionNumber(), mdIDJournalEntry{ID: newID})
 		if err != nil {
 			return NullBranchID, err
 		}
@@ -857,7 +858,8 @@ func (j *mdJournal) put(
 			return MdID{}, err
 		}
 	} else {
-		err = j.j.append(brmd.RevisionNumber(), id)
+		err = j.j.append(
+			brmd.RevisionNumber(), mdIDJournalEntry{ID: id})
 		if err != nil {
 			return MdID{}, err
 		}

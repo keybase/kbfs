@@ -399,7 +399,7 @@ func (s *mdServerTlfStorage) put(
 		return false, err
 	}
 
-	err = j.append(rmds.MD.RevisionNumber(), id)
+	err = j.append(rmds.MD.RevisionNumber(), mdIDJournalEntry{ID: id})
 	if err != nil {
 		return false, MDServerError{err}
 	}

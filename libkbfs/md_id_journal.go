@@ -204,12 +204,12 @@ func (j mdIDJournal) replaceHead(entry mdIDJournalEntry) error {
 	return j.j.writeJournalEntry(o, entry)
 }
 
-func (j mdIDJournal) append(r MetadataRevision, mdID MdID) error {
+func (j mdIDJournal) append(r MetadataRevision, entry mdIDJournalEntry) error {
 	o, err := revisionToOrdinal(r)
 	if err != nil {
 		return err
 	}
-	_, err = j.j.appendJournalEntry(&o, mdIDJournalEntry{ID: mdID})
+	_, err = j.j.appendJournalEntry(&o, entry)
 	return err
 }
 
