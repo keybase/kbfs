@@ -4,7 +4,11 @@
 
 package libkbfs
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/keybase/go-codec/codec"
+)
 
 type mdIDJournalEntryFuture struct {
 	mdIDJournalEntry
@@ -23,6 +27,7 @@ func makeFakeMDIDJournalEntryFuture(t *testing.T) mdIDJournalEntryFuture {
 	ef := mdIDJournalEntryFuture{
 		mdIDJournalEntry{
 			fakeMdID(1),
+			codec.UnknownFieldSetHandler{},
 		},
 		makeExtraOrBust("mdIDJournalEntry", t),
 	}

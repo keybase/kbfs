@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+
+	"github.com/keybase/go-codec/codec"
 )
 
 // An mdIDJournal wraps a diskJournal to provide a persistent list of
@@ -28,6 +30,8 @@ type mdIDJournal struct {
 // may contain more fields.
 type mdIDJournalEntry struct {
 	ID MdID
+
+	codec.UnknownFieldSetHandler
 }
 
 func makeMdIDJournal(codec Codec, dir string) mdIDJournal {
@@ -188,7 +192,7 @@ func (j mdIDJournal) replaceHead(mdID MdID) error {
 	if err != nil {
 		return err
 	}
-	return j.j.writeJournalEntry(o, mdIDJournalEntry{mdID})
+	return j.j.writeJournalEntry(o, mdIDJournalEntry{ID: mdID})
 }
 
 func (j mdIDJournal) append(r MetadataRevision, mdID MdID) error {
@@ -196,7 +200,7 @@ func (j mdIDJournal) append(r MetadataRevision, mdID MdID) error {
 	if err != nil {
 		return err
 	}
-	_, err = j.j.appendJournalEntry(&o, mdIDJournalEntry{mdID})
+	_, err = j.j.appendJournalEntry(&o, mdIDJournalEntry{ID: mdID})
 	return err
 }
 
