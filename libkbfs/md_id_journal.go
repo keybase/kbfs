@@ -97,17 +97,18 @@ func (j mdIDJournal) writeLatestRevision(r MetadataRevision) error {
 	return j.j.writeLatestOrdinal(o)
 }
 
-func (j mdIDJournal) readMdID(r MetadataRevision) (MdID, error) {
+func (j mdIDJournal) readJournalEntry(r MetadataRevision) (
+	mdIDJournalEntry, error) {
 	o, err := revisionToOrdinal(r)
 	if err != nil {
-		return MdID{}, err
+		return mdIDJournalEntry{}, err
 	}
 	e, err := j.j.readJournalEntry(o)
 	if err != nil {
-		return MdID{}, err
+		return mdIDJournalEntry{}, err
 	}
 
-	return e.(mdIDJournalEntry).ID, nil
+	return e.(mdIDJournalEntry), nil
 }
 
 // All functions below are public functions.
@@ -128,24 +129,32 @@ func (j mdIDJournal) end() (MetadataRevision, error) {
 	return last + 1, nil
 }
 
-func (j mdIDJournal) getEarliest() (MdID, error) {
+func (j mdIDJournal) getEarliestEntry() (mdIDJournalEntry, bool, error) {
 	earliestRevision, err := j.readEarliestRevision()
 	if err != nil {
-		return MdID{}, err
+		return mdIDJournalEntry{}, false, err
 	} else if earliestRevision == MetadataRevisionUninitialized {
-		return MdID{}, nil
+		return mdIDJournalEntry{}, false, nil
 	}
-	return j.readMdID(earliestRevision)
+	entry, err := j.readJournalEntry(earliestRevision)
+	if err != nil {
+		return mdIDJournalEntry{}, false, err
+	}
+	return entry, true, err
 }
 
-func (j mdIDJournal) getLatest() (MdID, error) {
+func (j mdIDJournal) getLatestEntry() (mdIDJournalEntry, bool, error) {
 	latestRevision, err := j.readLatestRevision()
 	if err != nil {
-		return MdID{}, err
+		return mdIDJournalEntry{}, false, err
 	} else if latestRevision == MetadataRevisionUninitialized {
-		return MdID{}, nil
+		return mdIDJournalEntry{}, false, nil
 	}
-	return j.readMdID(latestRevision)
+	entry, err := j.readJournalEntry(latestRevision)
+	if err != nil {
+		return mdIDJournalEntry{}, false, err
+	}
+	return entry, true, err
 }
 
 func (j mdIDJournal) getRange(
@@ -178,11 +187,11 @@ func (j mdIDJournal) getRange(
 
 	var mdIDs []MdID
 	for i := start; i <= stop; i++ {
-		mdID, err := j.readMdID(i)
+		entry, err := j.readJournalEntry(i)
 		if err != nil {
 			return MetadataRevisionUninitialized, nil, err
 		}
-		mdIDs = append(mdIDs, mdID)
+		mdIDs = append(mdIDs, entry.ID)
 	}
 	return start, mdIDs, nil
 }

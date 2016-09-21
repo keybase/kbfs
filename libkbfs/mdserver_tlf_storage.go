@@ -186,14 +186,14 @@ func (s *mdServerTlfStorage) getHeadForTLFReadLocked(bid BranchID) (
 	if !ok {
 		return nil, nil
 	}
-	headID, err := j.getLatest()
+	entry, exists, err := j.getLatestEntry()
 	if err != nil {
 		return nil, err
 	}
-	if headID == (MdID{}) {
+	if !exists {
 		return nil, nil
 	}
-	return s.getMDReadLocked(headID)
+	return s.getMDReadLocked(entry.ID)
 }
 
 func (s *mdServerTlfStorage) checkGetParamsReadLocked(

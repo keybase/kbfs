@@ -314,13 +314,14 @@ func (j *mdJournal) removeMD(id MdID) error {
 
 func (j mdJournal) getEarliest(verifyBranchID bool) (
 	ImmutableBareRootMetadata, error) {
-	earliestID, err := j.j.getEarliest()
+	entry, exists, err := j.j.getEarliestEntry()
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
-	if earliestID == (MdID{}) {
+	if !exists {
 		return ImmutableBareRootMetadata{}, nil
 	}
+	earliestID := entry.ID
 	earliest, ts, err := j.getMD(earliestID, verifyBranchID)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
@@ -330,13 +331,14 @@ func (j mdJournal) getEarliest(verifyBranchID bool) (
 
 func (j mdJournal) getLatest(verifyBranchID bool) (
 	ImmutableBareRootMetadata, error) {
-	latestID, err := j.j.getLatest()
+	entry, exists, err := j.j.getLatestEntry()
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
-	if latestID == (MdID{}) {
+	if !exists {
 		return ImmutableBareRootMetadata{}, nil
 	}
+	latestID := entry.ID
 	latest, ts, err := j.getMD(latestID, verifyBranchID)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
