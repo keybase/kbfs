@@ -37,15 +37,15 @@ type favoriteStore interface {
 }
 
 type diskFavoriteClient struct {
-	currentUID keybase1.UID
 	favoriteDb *leveldb.DB
 	codec      Codec
 }
 
 var _ favoriteStore = diskFavoriteClient{}
 
-func (c diskFavoriteClient) favkey(folder keybase1.Folder) []byte {
-	return []byte(fmt.Sprintf("%s:%s", c.currentUID, folder.Name))
+func (c diskFavoriteClient) favkey(
+	uid keybase1.UID, folder keybase1.Folder) []byte {
+	return []byte(fmt.Sprintf("%s:%s", uid, folder.ToString()))
 }
 
 func (c diskFavoriteClient) FavoriteAdd(
@@ -55,17 +55,17 @@ func (c diskFavoriteClient) FavoriteAdd(
 		return err
 	}
 
-	return c.favoriteDb.Put(c.favkey(folder), enc, nil)
+	return c.favoriteDb.Put(c.favkey(uid, folder), enc, nil)
 }
 
 func (c diskFavoriteClient) FavoriteDelete(
 	uid keybase1.UID, folder keybase1.Folder) error {
-	return c.favoriteDb.Delete(c.favkey(folder), nil)
+	return c.favoriteDb.Delete(c.favkey(uid, folder), nil)
 }
 
 func (c diskFavoriteClient) FavoriteList(uid keybase1.UID) (
 	[]keybase1.Folder, error) {
-	iter := c.favoriteDb.NewIterator(util.BytesPrefix([]byte(c.currentUID+":")), nil)
+	iter := c.favoriteDb.NewIterator(util.BytesPrefix([]byte(uid+":")), nil)
 	defer iter.Release()
 	var folders []keybase1.Folder
 	for iter.Next() {
@@ -440,7 +440,7 @@ func NewKeybaseDaemonDisk(currentUID keybase1.UID, users []LocalUser,
 	if err != nil {
 		return nil, err
 	}
-	favoriteStore := diskFavoriteClient{currentUID, favoriteDb, codec}
+	favoriteStore := diskFavoriteClient{favoriteDb, codec}
 	return newKeybaseDaemonLocal(codec, currentUID, users, favoriteStore), nil
 }
 
