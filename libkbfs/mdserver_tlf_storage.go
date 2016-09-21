@@ -230,7 +230,7 @@ func (s *mdServerTlfStorage) getRangeReadLocked(
 		return nil, nil
 	}
 
-	realStart, entries, err := j.getRange(start, stop)
+	realStart, entries, err := j.getEntryRange(start, stop)
 	if err != nil {
 		return nil, err
 	}

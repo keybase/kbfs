@@ -157,7 +157,7 @@ func (j mdIDJournal) getLatestEntry() (mdIDJournalEntry, bool, error) {
 	return entry, true, err
 }
 
-func (j mdIDJournal) getRange(start, stop MetadataRevision) (
+func (j mdIDJournal) getEntryRange(start, stop MetadataRevision) (
 	MetadataRevision, []mdIDJournalEntry, error) {
 	earliestRevision, err := j.readEarliestRevision()
 	if err != nil {

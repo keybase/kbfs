@@ -389,7 +389,8 @@ func (j *mdJournal) convertToBranch(
 	j.log.CDebugf(
 		ctx, "rewriting MDs %s to %s", earliestRevision, latestRevision)
 
-	_, allEntries, err := j.j.getRange(earliestRevision, latestRevision)
+	_, allEntries, err := j.j.getEntryRange(
+		earliestRevision, latestRevision)
 	if err != nil {
 		return NullBranchID, err
 	}
@@ -650,7 +651,7 @@ func (j mdJournal) getRange(
 		return nil, err
 	}
 
-	realStart, entries, err := j.j.getRange(start, stop)
+	realStart, entries, err := j.j.getEntryRange(start, stop)
 	if err != nil {
 		return nil, err
 	}
@@ -916,7 +917,8 @@ func (j *mdJournal) clear(
 		return err
 	}
 
-	_, allEntries, err := j.j.getRange(earliestRevision, latestRevision)
+	_, allEntries, err := j.j.getEntryRange(
+		earliestRevision, latestRevision)
 	if err != nil {
 		return err
 	}
