@@ -119,13 +119,14 @@ func (j *JournalServer) tlfJournalPathLocked(tlfID TlfID) string {
 		panic("currentVerifyingKey is zero")
 	}
 
-	// Device IDs and verifying keys are globally unique, so no
-	// need to have the uid in the path. Furthermore, everything
-	// after the first two bytes (four characters) are randomly
-	// generated, so taking the first 20 characters of the
-	// verifying key plus the first 16 characters of the TlfID
-	// gives us 16 bytes of randomness, which works out to a
-	// ~1/2^64 chance of collision.
+	// We need to generate a unique path for each (UID, device,
+	// TLF) tuple. Verifying keys (which are unique to a device)
+	// are globally unique, so no need to have the uid in the
+	// path. Furthermore, everything after the first two bytes
+	// (four characters) are randomly generated, so taking the
+	// first 20 characters of the verifying key plus the first 16
+	// characters of the TlfID gives us 16 bytes of randomness,
+	// which works out to a ~1/2^64 chance of collision.
 	shortDeviceIDStr := j.currentVerifyingKey.String()[:20]
 	shortTlfIDStr := tlfID.String()[:16]
 	dir := fmt.Sprintf("%s-%s", shortDeviceIDStr, shortTlfIDStr)
