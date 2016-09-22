@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/keybase/client/go/libkb"
@@ -133,6 +134,14 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 	var cryptPublicKey CryptPublicKey
 	crypto := km.config.Crypto()
 
+	origKeyGen := keyGen
+	isPerDeviceEncrypted := kmd.IsTLFCryptKeyPerDeviceEncrypted(keyGen)
+	if !isPerDeviceEncrypted {
+		// If the crypt key at this generation isn't per-device encrypted
+		// we need to get the latest crypt key to decrypt it symmetrically.
+		keyGen = kmd.LatestKeyGeneration()
+	}
+
 	if flags&getTLFCryptKeyAnyDevice != 0 {
 		publicKeys, err := kbpki.GetCryptPublicKeys(ctx, uid)
 		if err != nil {
@@ -216,8 +225,16 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 		return TLFCryptKey{}, err
 	}
 
+	if !isPerDeviceEncrypted {
+		// Get the actual key we want using the current crypt key.
+		tlfCryptKey, err = kmd.GetTLFCryptKey(km.config.Crypto(), origKeyGen, tlfCryptKey)
+		if err != nil {
+			return TLFCryptKey{}, err
+		}
+	}
+
 	if flags&getTLFCryptKeyDoCache != 0 {
-		if err = kcache.PutTLFCryptKey(tlfID, keyGen, tlfCryptKey); err != nil {
+		if err = kcache.PutTLFCryptKey(tlfID, origKeyGen, tlfCryptKey); err != nil {
 			return TLFCryptKey{}, err
 		}
 	}
@@ -504,10 +521,12 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	if !incKeyGen {
 		// See if there is at least one new device in relation to the
 		// current key bundle
-		// MDv3 TODO: pass key bundles
-		rDkim, wDkim, err := md.bareMd.GetUserDeviceKeyInfoMaps(currKeyGen, nil)
+		rDkim, wDkim, ok, err := md.getUserDeviceKeyInfoMaps(currKeyGen)
 		if err != nil {
 			return false, nil, err
+		}
+		if !ok {
+			return false, nil, errors.New("Missing current user device key info maps")
 		}
 
 		newWriterUsers = km.usersWithNewDevices(ctx, md.TlfID(), wDkim, wKeys)
@@ -595,10 +614,13 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 			// If there are readers that need to be promoted to writers, do
 			// that here.
-			// MDv3 TODO: pass key bundles
-			rDkim, wDkim, err := md.bareMd.GetUserDeviceKeyInfoMaps(keyGen, nil)
+			rDkim, wDkim, ok, err := md.getUserDeviceKeyInfoMaps(keyGen)
 			if err != nil {
 				return false, nil, err
+			}
+			if !ok {
+				// No DKIM for this generation. This is possible for MDv3.
+				continue
 			}
 			for u := range promotedReaders {
 				wDkim[u] = rDkim[u]
@@ -642,9 +664,17 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			return addNewReaderDeviceForSelf, nil, RekeyIncompleteError{}
 		}
 		// Otherwise, there's nothing left to do!
+		if err := md.finalizeRekey(km.config.Crypto(),
+			TLFCryptKey{}, tlfCryptKey); err != nil {
+			return false, nil, err
+		}
 		return true, nil, nil
 	} else if !incKeyGen {
 		// we're done!
+		if err := md.finalizeRekey(km.config.Crypto(),
+			TLFCryptKey{}, tlfCryptKey); err != nil {
+			return false, nil, err
+		}
 		return true, nil, nil
 	}
 
@@ -653,8 +683,22 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	km.config.Reporter().Notify(ctx, rekeyNotification(ctx, km.config, resolvedHandle,
 		false))
 
-	md.NewKeyGeneration(pubKey)
+	// Save the previous TLF crypt key. It's symmetrically encrypted and appened to a list
+	// for MDv3 metadata.
 	currKeyGen = md.LatestKeyGeneration()
+	var prevTlfCryptKey TLFCryptKey
+	if currKeyGen > KeyGen(FirstValidKeyGen) {
+		flags := getTLFCryptKeyAnyDevice
+		if promptPaper {
+			flags |= getTLFCryptKeyPromptPaper
+		}
+		prevTlfCryptKey, err = km.getTLFCryptKey(ctx, md.ReadOnly(), currKeyGen, flags)
+		if err != nil {
+			return false, nil, err
+		}
+	}
+
+	md.NewKeyGeneration(pubKey)
 	err = km.updateKeyBundle(ctx, md, currKeyGen, wKeys, rKeys, ePubKey,
 		ePrivKey, tlfCryptKey)
 	if err != nil {
@@ -664,11 +708,14 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 	// Delete server-side key halves for any revoked devices.
 	for keygen := KeyGen(FirstValidKeyGen); keygen <= currKeyGen; keygen++ {
-		rDkim, wDkim, err := md.bareMd.GetUserDeviceKeyInfoMaps(keygen, md.extra)
+		rDkim, wDkim, ok, err := md.getUserDeviceKeyInfoMaps(keygen)
 		if err != nil {
 			return false, nil, err
 		}
-
+		if !ok {
+			// No DKIM for this generation. This is possible for MDv3.
+			continue
+		}
 		err = km.deleteKeysForRemovedDevices(ctx, md, wDkim, wKeys)
 		if err != nil {
 			return false, nil, err
@@ -679,7 +726,8 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 	}
 
-	if err := md.finalizeRekey(km.config); err != nil {
+	if err := md.finalizeRekey(km.config.Crypto(),
+		prevTlfCryptKey, tlfCryptKey); err != nil {
 		return false, nil, err
 	}
 

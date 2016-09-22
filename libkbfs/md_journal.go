@@ -202,7 +202,7 @@ func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 	}
 
 	// MDv3 TODO: the file needs to encode the version
-	var rmd BareRootMetadataV2
+	var rmd BareRootMetadataV3
 	err = j.codec.Decode(data, &rmd)
 	if err != nil {
 		return nil, time.Time{}, err

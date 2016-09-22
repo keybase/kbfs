@@ -486,6 +486,15 @@ type KeyMetadata interface {
 		keyGen KeyGen, user keybase1.UID, key CryptPublicKey) (
 		TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 		TLFCryptKeyServerHalfID, bool, error)
+
+	// IsTLFCryptKeyPerDeviceEncrypted returns whether or not the key is encrypted
+	// per-device or if it's symmetrically encrypted with the current generation's
+	// TLFCryptKey.
+	IsTLFCryptKeyPerDeviceEncrypted(keyGen KeyGen) bool
+
+	// GetTLFCryptKey attempts to symmetrically decrypt the key at the given
+	// generation using the current generation's TLFCryptKey.
+	GetTLFCryptKey(c cryptoPure, keyGen KeyGen, key TLFCryptKey) (TLFCryptKey, error)
 }
 
 type encryptionKeyGetter interface {
@@ -814,6 +823,14 @@ type cryptoPure interface {
 
 	// MakeTLFReaderKeyBundleID hashes a TLFReaderKeyBundleV3 to create an ID.
 	MakeTLFReaderKeyBundleID(rkb *TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error)
+
+	// EncryptTLFCryptKeys encrypts an array of historic TLFCryptKeys.
+	EncryptTLFCryptKeys(oldKeys []TLFCryptKey, key TLFCryptKey) (
+		EncryptedTLFCryptKeys, error)
+
+	// DecryptTLFCryptKeys decrypts an array of historic TLFCryptKeys.
+	DecryptTLFCryptKeys(encKeys EncryptedTLFCryptKeys, numKeys int, key TLFCryptKey) (
+		[]TLFCryptKey, error)
 }
 
 type cryptoSigner interface {
@@ -1617,6 +1634,14 @@ type BareRootMetadata interface {
 	// GetTLFReaderKeyBundleID returns the ID of the externally-stored reader key bundle, or the zero value if
 	// this object stores it internally.
 	GetTLFReaderKeyBundleID() TLFReaderKeyBundleID
+	// IsTLFCryptKeyPerDeviceEncrypted returns whether or not the key is encrypted
+	// per-device or if it's symmetrically encrypted with the current generation's
+	// TLFCryptKey.
+	IsTLFCryptKeyPerDeviceEncrypted(keyGen KeyGen) bool
+	// GetTLFCryptKey attempts to symmetrically decrypt the key at the given
+	// generation using the current generation's TLFCryptKey.
+	GetTLFCryptKey(c cryptoPure, keyGen KeyGen, key TLFCryptKey, extra ExtraMetadata) (
+		TLFCryptKey, error)
 }
 
 // MutableBareRootMetadata is a mutable interface to the bare serializeable MD that is signed by the reader or writer.
@@ -1663,9 +1688,9 @@ type MutableBareRootMetadata interface {
 	SetWriterMetadataCopiedBit()
 	// SetRevision sets the revision number of the underlying metadata.
 	SetRevision(revision MetadataRevision)
-	// AddNewKeys adds new writer and reader TLF key bundles to this revision of metadata.
-	// MDv3 TODO: Get rid of this.
-	AddNewKeys(wkb TLFWriterKeyBundleV2, rkb TLFReaderKeyBundleV2)
+	// AddNewKeysForTesting adds new writer and reader TLF key bundles to this revision of metadata.
+	// Note: This is only used for testing at the moment.
+	AddNewKeysForTesting(crypto cryptoPure, wDkim, rDkim UserDeviceKeyInfoMap) (ExtraMetadata, error)
 	// NewKeyGeneration adds a new key generation to this revision of metadata.
 	NewKeyGeneration(pubKey TLFPublicKey) (extra ExtraMetadata)
 	// SetUnresolvedReaders sets the list of unresolved readers assoiated with this folder.
@@ -1684,11 +1709,10 @@ type MutableBareRootMetadata interface {
 	// BareRootMetadata. This is necessary since newly-created
 	// BareRootMetadata objects don't have enough data to build a
 	// TlfHandle from until the first rekey.
-	FakeInitialRekey(c Codec, h BareTlfHandle) (ExtraMetadata, error)
+	FakeInitialRekey(c cryptoPure, h BareTlfHandle) (ExtraMetadata, error)
 	// Update initializes the given freshly-created BareRootMetadata object with
 	// the given TlfID and BareTlfHandle. Note that if the given ID/handle are private,
 	// rekeying must be done separately.
-	// Update implements the BareRootMetadata interface for BareRootMetadataV2.
 	Update(tlf TlfID, h BareTlfHandle) error
 	// Returns the TLF key bundles for this metadata at the given key generation.
 	// MDv3 TODO: Get rid of this.
@@ -1696,10 +1720,10 @@ type MutableBareRootMetadata interface {
 	// GetUserDeviceKeyInfoMaps returns the given user device key info maps for the given
 	// key generation.
 	GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (
-		readers, writers UserDeviceKeyInfoMap, err error)
+		readers, writers UserDeviceKeyInfoMap, ok bool, err error)
 	// FinalizeRekey is called after all rekeying work has been performed on the underlying
 	// metadata.
-	FinalizeRekey(Config, ExtraMetadata) error
+	FinalizeRekey(c cryptoPure, prevKey, key TLFCryptKey, extra ExtraMetadata) error
 }
 
 // KeyBundleCache is an interface to a key bundle cache for use with v3 metadata.

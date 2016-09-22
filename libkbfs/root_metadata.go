@@ -122,9 +122,9 @@ var _ KeyMetadata = (*RootMetadata)(nil)
 
 // NewRootMetadata returns a new RootMetadata object at the latest known version.
 func NewRootMetadata() *RootMetadata {
-	return &RootMetadata{bareMd: &BareRootMetadataV2{}}
+	//return &RootMetadata{bareMd: &BareRootMetadataV2{}}
 	// MDv3 TODO: uncomment the below when we're ready for MDv3
-	//return &RootMetadata{bareMd: &BareRootMetadataV3{}}
+	return &RootMetadata{bareMd: &BareRootMetadataV3{}}
 }
 
 // Data returns the private metadata of this RootMetadata.
@@ -183,6 +183,8 @@ func (md *RootMetadata) deepCopyInPlace(codec Codec, copyHandle, successorCopy b
 		return MutableBareRootMetadataNoImplError{}
 	}
 	newMd.bareMd = mutableBrmdCopy
+	// Shallow copy the extra metadata.
+	newMd.extra = md.extra
 
 	if copyHandle {
 		newMd.tlfHandle = md.tlfHandle.deepCopy()
@@ -229,14 +231,18 @@ func (md *RootMetadata) MakeSuccessor(
 	return newMd, nil
 }
 
-// AddNewKeys makes a new key generation for this RootMetadata using the
-// given TLF key bundles.
-func (md *RootMetadata) AddNewKeys(
-	wkb TLFWriterKeyBundleV2, rkb TLFReaderKeyBundleV2) error {
+// AddNewKeysForTesting makes a new key generation for this RootMetadata using the
+// given TLF key bundles. Note: Only used by tests.
+func (md *RootMetadata) AddNewKeysForTesting(crypto cryptoPure,
+	wDkim, rDkim UserDeviceKeyInfoMap) (err error) {
 	if md.TlfID().IsPublic() {
 		return InvalidPublicTLFOperation{md.TlfID(), "AddNewKeys"}
 	}
-	md.bareMd.AddNewKeys(wkb, rkb)
+	var extra ExtraMetadata
+	if extra, err = md.bareMd.AddNewKeysForTesting(crypto, wDkim, rDkim); err != nil {
+		return err
+	}
+	md.extra = extra
 	return nil
 }
 
@@ -599,9 +605,9 @@ func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool {
 }
 
 // FakeInitialRekey wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) FakeInitialRekey(codec Codec, h BareTlfHandle) error {
+func (md *RootMetadata) FakeInitialRekey(crypto cryptoPure, h BareTlfHandle) error {
 	var err error
-	md.extra, err = md.bareMd.FakeInitialRekey(codec, h)
+	md.extra, err = md.bareMd.FakeInitialRekey(crypto, h)
 	return err
 }
 
@@ -650,8 +656,24 @@ func (md *RootMetadata) fillInDevices(crypto Crypto,
 	return serverKeyMap{}, errors.New("Unknown bare metadata version")
 }
 
-func (md *RootMetadata) finalizeRekey(config Config) error {
-	return md.bareMd.FinalizeRekey(config, md.extra)
+func (md *RootMetadata) finalizeRekey(crypto cryptoPure, prevKey, currKey TLFCryptKey) error {
+	return md.bareMd.FinalizeRekey(crypto, prevKey, currKey, md.extra)
+}
+
+func (md *RootMetadata) getUserDeviceKeyInfoMaps(keyGen KeyGen) (
+	rDkim, wDkim UserDeviceKeyInfoMap, ok bool, err error) {
+	return md.bareMd.GetUserDeviceKeyInfoMaps(keyGen, md.extra)
+}
+
+// IsTLFCryptKeyPerDeviceEncrypted implements the KeyMetadata interface for RootMetadata.
+func (md *RootMetadata) IsTLFCryptKeyPerDeviceEncrypted(keyGen KeyGen) bool {
+	return md.bareMd.IsTLFCryptKeyPerDeviceEncrypted(keyGen)
+}
+
+// GetTLFCryptKey implements the KeyMetadata interface for RootMetadata.
+func (md *RootMetadata) GetTLFCryptKey(crypto cryptoPure, keyGen KeyGen, key TLFCryptKey) (
+	TLFCryptKey, error) {
+	return md.bareMd.GetTLFCryptKey(crypto, keyGen, key, md.extra)
 }
 
 // A ReadOnlyRootMetadata is a thin wrapper around a
@@ -735,9 +757,9 @@ type RootMetadataSigned struct {
 
 // NewRootMetadataSigned returns a new RootMetadataSigned object at the latest known version.
 func NewRootMetadataSigned() *RootMetadataSigned {
-	return &RootMetadataSigned{MD: &BareRootMetadataV2{}}
+	//return &RootMetadataSigned{MD: &BareRootMetadataV2{}}
 	// MDv3 TODO: uncomment the below when we're ready for MDv3
-	//return &RootMetadataSigned{MD: &BareRootMetadataV3{}}
+	return &RootMetadataSigned{MD: &BareRootMetadataV3{}}
 }
 
 // MerkleHash computes a hash of this RootMetadataSigned object for inclusion
