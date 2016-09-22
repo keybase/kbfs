@@ -186,6 +186,10 @@ func (j mdJournal) mdPath(id MdID) string {
 	return filepath.Join(j.mdsPath(), idStr[:4], idStr[4:34])
 }
 
+func (j mdJournal) mdDataPath(id MdID) string {
+	return filepath.Join(j.mdPath(id), "data")
+}
+
 // getMD verifies the MD data and the writer signature (but not the
 // key) for the given ID and returns it. It also returns the
 // last-modified timestamp of the file. verifyBranchID should be false
@@ -193,15 +197,14 @@ func (j mdJournal) mdPath(id MdID) string {
 // set j.branchID in the first place.
 func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 	BareRootMetadata, time.Time, error) {
-	// Read file.
+	// Read data.
 
-	path := j.mdPath(id)
-	data, err := ioutil.ReadFile(path)
+	data, err := ioutil.ReadFile(j.mdDataPath(id))
 	if err != nil {
 		return nil, time.Time{}, err
 	}
 
-	// TODO: the file needs to encode the version
+	// TODO: Read version info.
 	var rmd BareRootMetadataV2
 	err = j.codec.Decode(data, &rmd)
 	if err != nil {
@@ -238,7 +241,7 @@ func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 			j.branchID, rmd.BID())
 	}
 
-	fi, err := os.Stat(path)
+	fi, err := os.Stat(j.mdPath(id))
 	if err != nil {
 		return nil, time.Time{}, err
 	}
@@ -275,19 +278,19 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 		return MdID{}, nil
 	}
 
-	path := j.mdPath(id)
-
-	err = os.MkdirAll(filepath.Dir(path), 0700)
-	if err != nil {
-		return MdID{}, err
-	}
-
 	buf, err := j.codec.Encode(rmd)
 	if err != nil {
 		return MdID{}, err
 	}
 
-	err = ioutil.WriteFile(path, buf, 0600)
+	err = os.MkdirAll(j.mdPath(id), 0700)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	// TODO: Write version info.
+
+	err = ioutil.WriteFile(j.mdDataPath(id), buf, 0600)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -298,7 +301,7 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 // removeMD removes the metadata (which must exist) with the given ID.
 func (j *mdJournal) removeMD(id MdID) error {
 	path := j.mdPath(id)
-	err := os.Remove(path)
+	err := os.RemoveAll(path)
 	if err != nil {
 		return err
 	}
