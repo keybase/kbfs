@@ -482,6 +482,9 @@ func (j *mdJournal) convertToBranch(
 		}
 		mdsToRemove = append(mdsToRemove, newID)
 
+		// No need to try and preserve unknown fields from the
+		// old journal; some of those fields may depend on the
+		// changed parts of the MD.
 		err = tempJournal.append(
 			brmd.RevisionNumber(), mdIDJournalEntry{ID: newID})
 		if err != nil {
@@ -853,6 +856,9 @@ func (j *mdJournal) put(
 		j.log.CDebugf(
 			ctx, "Replacing head MD for TLF=%s with rev=%s bid=%s",
 			rmd.TlfID(), rmd.Revision(), rmd.BID())
+		// No need to try and preserve unknown fields from the
+		// old head; some of those fields may depend on the
+		// changed parts of the head.
 		err = j.j.replaceHead(mdIDJournalEntry{ID: id})
 		if err != nil {
 			return MdID{}, err
