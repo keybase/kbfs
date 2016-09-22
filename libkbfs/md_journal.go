@@ -67,13 +67,18 @@ func MakeImmutableBareRootMetadata(
 // There's a single journal subdirectory; the journal ordinals are
 // just MetadataRevisions, and the journal entries are just MdIDs.
 //
-// The Metadata objects are stored separately in dir/mds. Each block
-// has its own subdirectory with its ID truncated to 17 bytes (34
+// The Metadata objects are stored separately in dir/mds. Each MD has
+// its own subdirectory with its ID truncated to 17 bytes (34
 // characters) as a name. The MD subdirectories are splayed over (# of
 // possible hash types) * 256 subdirectories -- one byte for the hash
 // type (currently only one) plus the first byte of the hash data --
 // using the first four characters of the name to keep the number of
 // directories in dir itself to a manageable number, similar to git.
+// Each block directory has data, which is the raw MD data that should
+// hash to the MD ID. Future versions of the journal might add more
+// files to this directory; if any code is written to move MDs around,
+// it should be careful to preserve any unknown files in an MD
+// directory.
 //
 // The maximum number of characters added to the root dir by an MD
 // journal is 45:
