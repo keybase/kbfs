@@ -15,11 +15,6 @@ import (
 // An mdIDJournal wraps a diskJournal to provide a persistent list of
 // MdIDs with sequential MetadataRevisions for a single branch.
 //
-// TODO: Consider future-proofing this in case we want to journal
-// other stuff besides metadata puts. But doing so would be difficult,
-// since then we would require the ordinals to be something other than
-// MetadataRevisions.
-//
 // TODO: Write unit tests for this. For now, we're relying on
 // md_journal.go's unit tests.
 type mdIDJournal struct {
