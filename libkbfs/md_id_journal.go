@@ -13,7 +13,8 @@ import (
 )
 
 // An mdIDJournal wraps a diskJournal to provide a persistent list of
-// MdIDs with sequential MetadataRevisions for a single branch.
+// MdIDs (with possible other fields in the future) with sequential
+// MetadataRevisions for a single branch.
 //
 // TODO: Write unit tests for this. For now, we're relying on
 // md_journal.go's unit tests.
