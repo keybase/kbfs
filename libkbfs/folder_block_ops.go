@@ -62,7 +62,7 @@ func (si *syncInfo) DeepCopy(codec kbfscodec.Codec) (*syncInfo, error) {
 		newSi.bps = si.bps.DeepCopy()
 	}
 	if si.op != nil {
-		err := kbfscodec.CodecUpdate(codec, &newSi.op, si.op)
+		err := kbfscodec.Update(codec, &newSi.op, si.op)
 		if err != nil {
 			return nil, err
 		}

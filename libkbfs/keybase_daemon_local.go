@@ -211,7 +211,7 @@ func (k *KeybaseDaemonLocal) Identify(ctx context.Context, assertion, reason str
 	}
 
 	var infoCopy UserInfo
-	if err := kbfscodec.CodecUpdate(k.codec, &infoCopy, u.UserInfo); err != nil {
+	if err := kbfscodec.Update(k.codec, &infoCopy, u.UserInfo); err != nil {
 		return UserInfo{}, err
 	}
 	return infoCopy, nil
@@ -227,7 +227,7 @@ func (k *KeybaseDaemonLocal) LoadUserPlusKeys(ctx context.Context, uid keybase1.
 	}
 
 	var infoCopy UserInfo
-	if err := kbfscodec.CodecUpdate(k.codec, &infoCopy, u.UserInfo); err != nil {
+	if err := kbfscodec.Update(k.codec, &infoCopy, u.UserInfo); err != nil {
 		return UserInfo{}, err
 	}
 	return infoCopy, nil

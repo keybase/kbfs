@@ -158,7 +158,7 @@ func (h TlfHandle) WithUpdatedConflictInfo(
 	}
 	// Make sure conflict info is the same; the conflict info for
 	// a TLF, once set, is immutable and should never change.
-	equal, err := kbfscodec.CodecEqual(codec, newHandle.conflictInfo, info)
+	equal, err := kbfscodec.Equal(codec, newHandle.conflictInfo, info)
 	if err != nil {
 		return newHandle, err
 	}
@@ -234,7 +234,7 @@ func (h TlfHandle) EqualsIgnoreName(codec kbfscodec.Codec, other TlfHandle) (boo
 		return false, nil
 	}
 
-	eq, err := kbfscodec.CodecEqual(codec, h.conflictInfo, other.conflictInfo)
+	eq, err := kbfscodec.Equal(codec, h.conflictInfo, other.conflictInfo)
 	if err != nil {
 		return false, err
 	}
@@ -242,7 +242,7 @@ func (h TlfHandle) EqualsIgnoreName(codec kbfscodec.Codec, other TlfHandle) (boo
 		return false, nil
 	}
 
-	eq, err = kbfscodec.CodecEqual(codec, h.finalizedInfo, other.finalizedInfo)
+	eq, err = kbfscodec.Equal(codec, h.finalizedInfo, other.finalizedInfo)
 	if err != nil {
 		return false, err
 	}

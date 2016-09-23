@@ -112,7 +112,7 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 
 		for i := len(prevMDs) - 1; i >= 0; i-- {
 			if !prevMDs[i].IsWriterMetadataCopiedSet() {
-				ok, err := kbfscodec.CodecEqual(md.config.Codec(),
+				ok, err := kbfscodec.Equal(md.config.Codec(),
 					rmds.MD.GetWriterMetadataSigInfo(),
 					prevMDs[i].GetWriterMetadataSigInfo())
 				if err != nil {

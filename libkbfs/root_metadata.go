@@ -160,10 +160,10 @@ func (md *RootMetadata) deepCopy(codec kbfscodec.Codec, copyHandle bool) (*RootM
 
 func (md *RootMetadata) deepCopyInPlace(codec kbfscodec.Codec, copyHandle, successorCopy bool,
 	newMd *RootMetadata) error {
-	if err := kbfscodec.CodecUpdate(codec, newMd, md); err != nil {
+	if err := kbfscodec.Update(codec, newMd, md); err != nil {
 		return err
 	}
-	if err := kbfscodec.CodecUpdate(codec, &newMd.data, md.data); err != nil {
+	if err := kbfscodec.Update(codec, &newMd.data, md.data); err != nil {
 		return err
 	}
 	var err error

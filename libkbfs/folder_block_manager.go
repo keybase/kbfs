@@ -462,7 +462,7 @@ func (fbm *folderBlockManager) processBlocksToDelete(ctx context.Context, toDele
 				"revision, and proceeding with the cleanup",
 				toDelete.md.Revision())
 		} else {
-			dirsEqual, err := kbfscodec.CodecEqual(fbm.config.Codec(),
+			dirsEqual, err := kbfscodec.Equal(fbm.config.Codec(),
 				rmd.data.Dir, toDelete.md.data.Dir)
 			if err != nil {
 				fbm.log.CErrorf(ctx, "Error when comparing dirs: %v", err)

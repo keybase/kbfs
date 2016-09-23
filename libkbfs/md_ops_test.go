@@ -604,7 +604,7 @@ func validatePutPublicRMDS(
 	require.NoError(t, err)
 
 	var expectedRmd BareRootMetadataV2
-	err = kbfscodec.CodecUpdate(config.Codec(), &expectedRmd, inputRmd)
+	err = kbfscodec.Update(config.Codec(), &expectedRmd, inputRmd)
 	require.NoError(t, err)
 
 	// Overwrite written fields.

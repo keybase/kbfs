@@ -584,7 +584,7 @@ func (j *mdJournal) removeFlushedEntry(
 		return fmt.Errorf("Expected mdID %s, got %s", mdID, rmd.mdID)
 	}
 
-	eq, err := kbfscodec.CodecEqual(j.codec, rmd.BareRootMetadata, rmds.MD)
+	eq, err := kbfscodec.Equal(j.codec, rmd.BareRootMetadata, rmds.MD)
 	if err != nil {
 		return err
 	}

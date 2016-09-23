@@ -45,9 +45,9 @@ type Codec interface {
 		typer func(interface{}) reflect.Value)
 }
 
-// CodecEqual returns whether or not the given objects serialize to
-// the same byte string. x or y (or both) can be nil.
-func CodecEqual(c Codec, x, y interface{}) (bool, error) {
+// Equal returns whether or not the given objects serialize to the
+// same byte string. x or y (or both) can be nil.
+func Equal(c Codec, x, y interface{}) (bool, error) {
 	xBuf, err := c.Encode(x)
 	if err != nil {
 		return false, err
@@ -59,9 +59,8 @@ func CodecEqual(c Codec, x, y interface{}) (bool, error) {
 	return bytes.Equal(xBuf, yBuf), nil
 }
 
-// CodecUpdate encodes src into a byte string, and then decode it into
-// dst.
-func CodecUpdate(c Codec, dst interface{}, src interface{}) error {
+// Update encodes src into a byte string, and then decode it into dst.
+func Update(c Codec, dst interface{}, src interface{}) error {
 	buf, err := c.Encode(src)
 	if err != nil {
 		return err

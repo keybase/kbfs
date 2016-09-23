@@ -2976,7 +2976,7 @@ func checkSyncOp(t *testing.T, codec kbfscodec.Codec, so *syncOp, filePtr BlockP
 			len(so.Writes), len(writes))
 	}
 	for i, w := range writes {
-		writeEqual, err := kbfscodec.CodecEqual(codec, so.Writes[i], w)
+		writeEqual, err := kbfscodec.Equal(codec, so.Writes[i], w)
 		if err != nil {
 			t.Fatal(err)
 		}

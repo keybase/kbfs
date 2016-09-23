@@ -129,7 +129,7 @@ func testCRCheckOps(t *testing.T, cc *crChains, original BlockPointer,
 				t.Errorf("Bad create op after rename: %v", ro)
 			}
 		} else {
-			ok, err := kbfscodec.CodecEqual(codec, op, eOp)
+			ok, err := kbfscodec.Equal(codec, op, eOp)
 			if err != nil {
 				t.Fatalf("Couldn't compare ops: %v", err)
 			}

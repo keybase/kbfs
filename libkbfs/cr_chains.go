@@ -652,7 +652,7 @@ func newCRChains(ctx context.Context, cfg Config, rmds []ImmutableRootMetadata,
 
 		// Copy the ops since CR will change them.
 		ops := make(opsList, len(rmd.data.Changes.Ops))
-		err = kbfscodec.CodecUpdate(cfg.Codec(), &ops, rmd.data.Changes.Ops)
+		err = kbfscodec.Update(cfg.Codec(), &ops, rmd.data.Changes.Ops)
 		if err != nil {
 			return nil, err
 		}

@@ -85,7 +85,7 @@ func NewDirBlock() Block {
 // DeepCopy makes a complete copy of a DirBlock
 func (db DirBlock) DeepCopy(codec kbfscodec.Codec) (*DirBlock, error) {
 	var dirBlockCopy DirBlock
-	err := kbfscodec.CodecUpdate(codec, &dirBlockCopy, db)
+	err := kbfscodec.Update(codec, &dirBlockCopy, db)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func (fb *FileBlock) DataVersion() DataVer {
 // DeepCopy makes a complete copy of a FileBlock
 func (fb FileBlock) DeepCopy(codec kbfscodec.Codec) (*FileBlock, error) {
 	var fileBlockCopy FileBlock
-	err := kbfscodec.CodecUpdate(codec, &fileBlockCopy, fb)
+	err := kbfscodec.Update(codec, &fileBlockCopy, fb)
 	if err != nil {
 		return nil, err
 	}

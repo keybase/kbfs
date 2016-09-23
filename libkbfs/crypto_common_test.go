@@ -512,7 +512,7 @@ func TestDecryptPrivateMetadataSecretboxSeal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pmEquals, err := kbfscodec.CodecEqual(
+	pmEquals, err := kbfscodec.Equal(
 		c.codec, decryptedPrivateMetadata, privateMetadata)
 	if err != nil {
 		t.Fatal(err)
@@ -547,7 +547,7 @@ func TestDecryptEncryptedPrivateMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pmEquals, err := kbfscodec.CodecEqual(
+	pmEquals, err := kbfscodec.Equal(
 		c.codec, decryptedPrivateMetadata, privateMetadata)
 	if err != nil {
 		t.Fatal(err)

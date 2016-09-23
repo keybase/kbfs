@@ -132,7 +132,7 @@ func (md *BareRootMetadataV3) haveOnlyUserRKeysChanged(codec kbfscodec.Codec, pr
 	for u, keys := range rkb.RKeys {
 		if u != user {
 			prevKeys := prevRkb.RKeys[u]
-			keysEqual, err := kbfscodec.CodecEqual(codec, keys, prevKeys)
+			keysEqual, err := kbfscodec.Equal(codec, keys, prevKeys)
 			if err != nil {
 				return false, err
 			}
@@ -165,7 +165,7 @@ func (md *BareRootMetadataV3) IsValidRekeyRequest(
 	if !ok {
 		return false, errors.New("Invalid extra metadata")
 	}
-	writerEqual, err := kbfscodec.CodecEqual(
+	writerEqual, err := kbfscodec.Equal(
 		codec, md.WriterMetadata, prevMd.WriterMetadata)
 	if err != nil {
 		return false, err
@@ -174,7 +174,7 @@ func (md *BareRootMetadataV3) IsValidRekeyRequest(
 		// Copy mismatch.
 		return false, nil
 	}
-	writerSigInfoEqual, err := kbfscodec.CodecEqual(codec,
+	writerSigInfoEqual, err := kbfscodec.Equal(codec,
 		md.WriterMetadataSigInfo, prevMd.WriterMetadataSigInfo)
 	if err != nil {
 		return false, err
@@ -279,7 +279,7 @@ func (md *BareRootMetadataV3) Update(id TlfID, h BareTlfHandle) error {
 // DeepCopy implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) DeepCopy(codec kbfscodec.Codec) (BareRootMetadata, error) {
 	var newMd BareRootMetadataV3
-	if err := kbfscodec.CodecUpdate(codec, &newMd, md); err != nil {
+	if err := kbfscodec.Update(codec, &newMd, md); err != nil {
 		return nil, err
 	}
 	return &newMd, nil
