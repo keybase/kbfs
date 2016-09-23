@@ -150,8 +150,8 @@ func NewMsgpack() *CodecMsgpack {
 	return newCodecMsgpackHelper(true)
 }
 
-// NewMsgpack constructs a new CodecMsgpack that doesn't handle
-// unknown fields.
+// NewMsgpackNoUnknownFields constructs a new CodecMsgpack that
+// doesn't handle unknown fields.
 func NewMsgpackNoUnknownFields() *CodecMsgpack {
 	return newCodecMsgpackHelper(false)
 }
