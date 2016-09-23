@@ -14,7 +14,7 @@ import (
 
 // Make sure Hash encodes and decodes properly with minimal overhead.
 func TestHashEncodeDecode(t *testing.T) {
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	h, err := DefaultHash([]byte{1})
 	require.NoError(t, err)
 
@@ -36,7 +36,7 @@ func TestHashEncodeDecode(t *testing.T) {
 
 // Make sure the zero Hash value encodes and decodes properly.
 func TestHashEncodeDecodeZero(t *testing.T) {
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	encodedH, err := codec.Encode(Hash{})
 	require.NoError(t, err)
 
@@ -129,7 +129,7 @@ func TestHashVerify(t *testing.T) {
 
 // Make sure HMAC encodes and decodes properly with minimal overhead.
 func TestHMACEncodeDecode(t *testing.T) {
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	hmac, err := DefaultHMAC([]byte{1}, []byte{2})
 	require.NoError(t, err)
 
@@ -151,7 +151,7 @@ func TestHMACEncodeDecode(t *testing.T) {
 
 // Make sure the zero Hash value encodes and decodes properly.
 func TestHMACEncodeDecodeZero(t *testing.T) {
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	encodedHMAC, err := codec.Encode(HMAC{})
 	require.NoError(t, err)
 

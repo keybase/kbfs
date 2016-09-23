@@ -18,7 +18,7 @@ type testBlockServerLocalConfig struct {
 }
 
 func newTestBlockServerLocalConfig(t *testing.T) testBlockServerLocalConfig {
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	return testBlockServerLocalConfig{
 		t:      t,
 		codec:  codec,

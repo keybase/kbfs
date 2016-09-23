@@ -127,14 +127,9 @@ type CodecMsgpack struct {
 	ExtCodec *CodecMsgpack
 }
 
-// NewCodecMsgpack constructs a new CodecMsgpack.
-func NewCodecMsgpack() *CodecMsgpack {
-	return NewCodecMsgpackHelper(true)
-}
-
 // newCodecMsgpackHelper constructs a new CodecMsgpack that may or may
 // not handle unknown fields.
-func NewCodecMsgpackHelper(handleUnknownFields bool) *CodecMsgpack {
+func newCodecMsgpackHelper(handleUnknownFields bool) *CodecMsgpack {
 	handle := codec.MsgpackHandle{}
 	handle.Canonical = true
 	handle.WriteExt = true
@@ -148,6 +143,17 @@ func NewCodecMsgpackHelper(handleUnknownFields bool) *CodecMsgpack {
 	handleNoExt.WriteExt = false
 	ExtCodec := &CodecMsgpack{&handleNoExt, nil}
 	return &CodecMsgpack{&handle, ExtCodec}
+}
+
+// NewMsgpack constructs a new CodecMsgpack.
+func NewMsgpack() *CodecMsgpack {
+	return newCodecMsgpackHelper(true)
+}
+
+// NewMsgpack constructs a new CodecMsgpack that doesn't handle
+// unknown fields.
+func NewMsgpackNoUnknownFields() *CodecMsgpack {
+	return newCodecMsgpackHelper(false)
 }
 
 // Decode implements the Codec interface for CodecMsgpack

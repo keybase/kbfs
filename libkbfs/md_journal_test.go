@@ -39,7 +39,7 @@ func setupMDJournalTest(t *testing.T) (
 	codec kbfscodec.Codec, crypto CryptoCommon, id TlfID, signer cryptoSigner,
 	ekg singleEncryptionKeyGetter, bsplit BlockSplitter, tempdir string,
 	j *mdJournal) {
-	codec = kbfscodec.NewCodecMsgpack()
+	codec = kbfscodec.NewMsgpack()
 	crypto = MakeCryptoCommon(codec)
 
 	uid := keybase1.MakeTestUID(1)
@@ -84,7 +84,7 @@ func makeMDForTest(t *testing.T, tlfID TlfID, revision MetadataRevision,
 	err = md.Update(tlfID, h)
 	require.NoError(t, err)
 	md.SetRevision(revision)
-	md.FakeInitialRekey(kbfscodec.NewCodecMsgpack(), h)
+	md.FakeInitialRekey(kbfscodec.NewMsgpack(), h)
 	md.SetPrevRoot(prevRoot)
 	md.SetDiskUsage(500)
 	return md

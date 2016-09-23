@@ -22,7 +22,7 @@ type kidContainerType interface {
 // Make sure the kid container type encodes and decodes properly with
 // minimal overhead.
 func testKidContainerTypeEncodeDecode(t *testing.T, kt kidContainerType) {
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	kidBytes := []byte{1}
 	k := kt.makeFromKID(keybase1.KIDFromSlice(kidBytes))
 
@@ -44,7 +44,7 @@ func testKidContainerTypeEncodeDecode(t *testing.T, kt kidContainerType) {
 // Make sure the zero value for the kid container type encodes and
 // decodes properly.
 func testKidContainerTypeEncodeDecodeZero(t *testing.T, kt kidContainerType) {
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	zeroValue := kt.makeZero()
 	encodedK, err := codec.Encode(zeroValue)
 	require.NoError(t, err)
@@ -90,7 +90,7 @@ type byte32ContainerType interface {
 }
 
 func testByte32ContainerEncodeDecode(t *testing.T, bt byte32ContainerType) {
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	k := bt.makeFromData([32]byte{1, 2, 3, 4})
 
 	encodedK, err := codec.Encode(k)

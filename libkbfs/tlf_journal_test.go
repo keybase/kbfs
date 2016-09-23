@@ -168,7 +168,7 @@ func setupTLFJournalTest(
 	delegate testBWDelegate) {
 	// Set up config and dependencies.
 	bsplitter := &BlockSplitterSimple{64 * 1024, 8 * 1024}
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	signingKey := MakeFakeSigningKeyOrBust("client sign")
 	cryptPrivateKey := MakeFakeCryptPrivateKeyOrBust("client crypt private")
 	crypto := NewCryptoLocal(codec, signingKey, cryptPrivateKey)

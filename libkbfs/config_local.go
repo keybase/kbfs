@@ -199,7 +199,7 @@ func NewConfigLocal() *ConfigLocal {
 	config.SetReporter(NewReporterSimple(config.Clock(), 10))
 	config.SetConflictRenamer(WriterDeviceDateConflictRenamer{config})
 	config.ResetCaches()
-	config.SetCodec(kbfscodec.NewCodecMsgpack())
+	config.SetCodec(kbfscodec.NewMsgpack())
 	config.SetBlockOps(&BlockOpsStandard{config})
 	config.SetKeyOps(&KeyOpsStandard{config})
 	config.SetRekeyQueue(NewRekeyQueueStandard(config))

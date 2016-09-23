@@ -29,7 +29,7 @@ func (c shimCrypto) MakeMdID(md BareRootMetadata) (MdID, error) {
 func injectShimCrypto(config Config) {
 	crypto := shimCrypto{
 		config.Crypto(),
-		MakeCryptoCommon(kbfscodec.NewCodecMsgpack()),
+		MakeCryptoCommon(kbfscodec.NewMsgpack()),
 	}
 	config.SetCrypto(crypto)
 }
@@ -66,7 +66,7 @@ func addFakeRMDData(rmd *RootMetadata, h *TlfHandle) {
 	})
 
 	if !h.IsPublic() {
-		rmd.FakeInitialRekey(kbfscodec.NewCodecMsgpack(), h.ToBareHandleOrBust())
+		rmd.FakeInitialRekey(kbfscodec.NewMsgpack(), h.ToBareHandleOrBust())
 	}
 }
 
@@ -105,7 +105,7 @@ func addFakeRMDSData(rmds *RootMetadataSigned, h *TlfHandle) {
 	rmds.untrustedServerTimestamp = time.Now()
 
 	if !h.IsPublic() {
-		rmds.MD.FakeInitialRekey(kbfscodec.NewCodecMsgpack(), h.ToBareHandleOrBust())
+		rmds.MD.FakeInitialRekey(kbfscodec.NewMsgpack(), h.ToBareHandleOrBust())
 	}
 }
 
@@ -644,7 +644,7 @@ func TestMDOpsPutPrivateSuccess(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
 
-	config.SetCodec(kbfscodec.NewCodecMsgpack())
+	config.SetCodec(kbfscodec.NewMsgpack())
 
 	rmd, _ := newRMD(t, config, false)
 	putMDForPrivate(config, rmd)

@@ -25,7 +25,7 @@ func keyManagerInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config.SetKeyManager(keyman)
 	interposeDaemonKBPKI(config, "alice", "bob", "charlie", "dave")
 	ctx = context.Background()
-	config.SetCodec(kbfscodec.NewCodecMsgpack())
+	config.SetCodec(kbfscodec.NewMsgpack())
 	return
 }
 

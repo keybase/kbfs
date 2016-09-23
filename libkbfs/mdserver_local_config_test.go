@@ -52,7 +52,7 @@ type testMDServerLocalConfig struct {
 
 func newTestMDServerLocalConfig(
 	t *testing.T, cig currentInfoGetter) testMDServerLocalConfig {
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	return testMDServerLocalConfig{
 		t:      t,
 		clock:  newTestClockNow(),

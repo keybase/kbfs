@@ -13,7 +13,7 @@ import (
 )
 
 func TestTlfHandleExtension(t *testing.T) {
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	for _, et := range []TlfHandleExtensionType{
 		TlfHandleExtensionConflict,
 		TlfHandleExtensionFinalized,

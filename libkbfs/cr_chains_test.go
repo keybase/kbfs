@@ -101,7 +101,7 @@ func testCRCheckOps(t *testing.T, cc *crChains, original BlockPointer,
 		t.Fatalf("Wrong number of operations: %d vs %d: %v", g, e, chain.ops)
 	}
 
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	for i, op := range chain.ops {
 		eOp := expectedOps[i]
 		// First check for rename create ops.

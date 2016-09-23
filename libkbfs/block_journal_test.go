@@ -64,7 +64,7 @@ func getBlockJournalLength(t *testing.T, j *blockJournal) int {
 func setupBlockJournalTest(t *testing.T) (
 	ctx context.Context, tempdir string, j *blockJournal) {
 	ctx = context.Background()
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
 	log := logger.NewTestLogger(t)
 

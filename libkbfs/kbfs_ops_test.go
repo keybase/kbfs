@@ -48,7 +48,7 @@ func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 	ctr := NewSafeTestReporter(t)
 	mockCtrl = gomock.NewController(ctr)
 	config = NewConfigMock(mockCtrl, ctr)
-	config.SetCodec(kbfscodec.NewCodecMsgpack())
+	config.SetCodec(kbfscodec.NewMsgpack())
 	blockops := &CheckBlockOps{config.mockBops, ctr}
 	config.SetBlockOps(blockops)
 	kbfsops := NewKBFSOpsStandard(config)

@@ -473,7 +473,7 @@ type testOps struct {
 
 // Tests that ops can be serialized and deserialized as extensions.
 func TestOpSerialization(t *testing.T) {
-	c := kbfscodec.NewCodecMsgpack()
+	c := kbfscodec.NewMsgpack()
 	RegisterOps(c)
 
 	ops := testOps{}

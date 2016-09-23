@@ -23,7 +23,7 @@ func getMDStorageLength(t *testing.T, s *mdServerTlfStorage, bid BranchID) int {
 // TestMDServerTlfStorageBasic copies TestMDServerBasics, but for a
 // single mdServerTlfStorage.
 func TestMDServerTlfStorageBasic(t *testing.T) {
-	codec := kbfscodec.NewCodecMsgpack()
+	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
 	signingKey := MakeFakeSigningKeyOrBust("test key")
 	verifyingKey := MakeFakeVerifyingKeyOrBust("test key")

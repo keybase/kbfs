@@ -90,13 +90,13 @@ type futureStruct interface {
 // Test that hypothetical future versions of a struct can be
 // deserialized by current clients and preserve unknown fields.
 func testStructUnknownFields(t *testing.T, sFuture futureStruct) {
-	cFuture := kbfscodec.NewCodecMsgpack()
+	cFuture := kbfscodec.NewMsgpack()
 	registerOpsFuture(cFuture)
 
-	cCurrent := kbfscodec.NewCodecMsgpack()
+	cCurrent := kbfscodec.NewMsgpack()
 	RegisterOps(cCurrent)
 
-	cCurrentKnownOnly := kbfscodec.NewCodecMsgpackHelper(false)
+	cCurrentKnownOnly := kbfscodec.NewMsgpackNoUnknownFields()
 	RegisterOps(cCurrentKnownOnly)
 
 	s := sFuture.toCurrentStruct()
