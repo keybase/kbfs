@@ -412,8 +412,8 @@ func testMDJournalGCd(t *testing.T, j *mdJournal) {
 	})
 	filepath.Walk(j.mdsPath(),
 		func(path string, info os.FileInfo, _ error) error {
-			// We shouldn't find any files.
-			require.True(t, info.IsDir(), "%s is not a dir", path)
+			// We should only find the MD directory here.
+			require.Equal(t, path, j.mdsPath())
 			return nil
 		})
 }
@@ -590,6 +590,21 @@ func TestMDJournalClear(t *testing.T) {
 	head, err = j.getHead(nil)
 	require.NoError(t, err)
 	require.Equal(t, ImmutableBareRootMetadata{}, head)
+
+	// Put more MDs, flush them, and clear the branch ID of an empty
+	// journal.
+	putMDRange(t, id, signer, ekg, bsplit,
+		firstRevision, firstPrevRoot, mdCount, j)
+	_, err = j.convertToBranch(ctx, signer, id, NewMDCacheStandard(10))
+	require.NoError(t, err)
+	require.NotEqual(t, NullBranchID, j.branchID)
+
+	bid = j.branchID
+	flushAllMDs(t, ctx, signer, j)
+	require.Equal(t, bid, j.branchID)
+	err = j.clear(ctx, bid, nil)
+	require.NoError(t, err)
+	require.Equal(t, NullBranchID, j.branchID)
 
 	flushAllMDs(t, ctx, signer, j)
 }

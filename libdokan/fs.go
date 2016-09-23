@@ -7,11 +7,13 @@ package libdokan
 import (
 	"errors"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/dokan"
+	"github.com/keybase/kbfs/dokan/winacl"
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
@@ -26,10 +28,6 @@ type FS struct {
 
 	root *Root
 
-	// currentUserSID stores the Windows identity of the user running
-	// this process.
-	currentUserSID *dokan.SID
-
 	// remoteStatus is the current status of remote connections.
 	remoteStatus libfs.RemoteStatus
 }
@@ -37,17 +35,20 @@ type FS struct {
 // DefaultMountFlags are the default mount flags for libdokan.
 const DefaultMountFlags = dokan.CurrentSession
 
+// currentUserSID stores the Windows identity of the user running
+// this process. This is the same process-wide.
+var currentUserSID, currentUserSIDErr = winacl.CurrentProcessUserSid()
+var currentGroupSID, _ = winacl.CurrentProcessPrimaryGroupSid()
+
 // NewFS creates an FS
 func NewFS(ctx context.Context, config libkbfs.Config, log logger.Logger) (*FS, error) {
-	sid, err := dokan.CurrentProcessUserSid()
-	if err != nil {
-		return nil, err
+	if currentUserSIDErr != nil {
+		return nil, currentUserSIDErr
 	}
 	f := &FS{
-		config:         config,
-		log:            log,
-		notifications:  libfs.NewFSNotifications(log),
-		currentUserSID: sid,
+		config:        config,
+		log:           log,
+		notifications: libfs.NewFSNotifications(log),
 	}
 
 	f.root = &Root{
@@ -233,7 +234,7 @@ func newSyntheticOpenContext() *openContext {
 // CreateFile called from dokan, may be a file or directory.
 func (f *FS) CreateFile(ctx context.Context, fi *dokan.FileInfo, cd *dokan.CreateData) (dokan.File, bool, error) {
 	// Only allow the current user access
-	if !fi.IsRequestorUserSidEqualTo(f.currentUserSID) {
+	if !fi.IsRequestorUserSidEqualTo(currentUserSID) {
 		return nil, false, dokan.ErrAccessDenied
 	}
 	f.logEnter(ctx, "FS CreateFile")
@@ -291,7 +292,8 @@ func (f *FS) open(ctx context.Context, oc *openContext, ps []string) (dokan.File
 
 	case ".kbfs_unmount" == ps[0]:
 		os.Exit(0)
-
+	case ".kbfs_number_of_handles" == ps[0]:
+		return f.stringReadFile(strconv.Itoa(int(oc.fi.NumberOfFileHandles())))
 	// TODO
 	// Unfortunately sometimes we end up in this case while using
 	// reparse points.
@@ -512,6 +514,15 @@ func (f *FS) logEnter(ctx context.Context, s string) {
 
 func (f *FS) logEnterf(ctx context.Context, fmt string, args ...interface{}) {
 	f.log.CDebugf(ctx, "=> "+fmt, args...)
+}
+
+func (f *FS) stringReadFile(contents string) (dokan.File, bool, error) {
+	return &SpecialReadFile{
+		read: func(context.Context) ([]byte, time.Time, error) {
+			return []byte(contents), time.Time{}, nil
+		},
+		fs: f,
+	}, false, nil
 }
 
 // Root represents the root of the KBFS file system.

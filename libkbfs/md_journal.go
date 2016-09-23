@@ -60,20 +60,37 @@ func MakeImmutableBareRootMetadata(
 // dir/md_journal/0...001
 // dir/md_journal/0...002
 // dir/md_journal/0...fff
-// dir/mds/0100/0...01
+// dir/mds/0100/0...01/data
 // ...
-// dir/mds/01ff/f...ff
+// dir/mds/01ff/f...ff/data
 //
 // There's a single journal subdirectory; the journal ordinals are
 // just MetadataRevisions, and the journal entries are just MdIDs.
 //
-// The Metadata objects are stored separately in dir/mds. Each block
-// has its own subdirectory with its ID as a name. The MD
-// subdirectories are splayed over (# of possible hash types) * 256
-// subdirectories -- one byte for the hash type (currently only one)
-// plus the first byte of the hash data -- using the first four
-// characters of the name to keep the number of directories in dir
-// itself to a manageable number, similar to git.
+// The Metadata objects are stored separately in dir/mds. Each MD has
+// its own subdirectory with its ID truncated to 17 bytes (34
+// characters) as a name. The MD subdirectories are splayed over (# of
+// possible hash types) * 256 subdirectories -- one byte for the hash
+// type (currently only one) plus the first byte of the hash data --
+// using the first four characters of the name to keep the number of
+// directories in dir itself to a manageable number, similar to git.
+// Each block directory has data, which is the raw MD data that should
+// hash to the MD ID. Future versions of the journal might add more
+// files to this directory; if any code is written to move MDs around,
+// it should be careful to preserve any unknown files in an MD
+// directory.
+//
+// The maximum number of characters added to the root dir by an MD
+// journal is 45:
+//
+//   /mds/01ff/f...(30 characters total)...ff/data
+//
+// This covers even the temporary files created in convertToBranch,
+// which create paths like
+//
+//   /md_journal123456789/0...(16 characters total)...001
+//
+// which have only 37 characters.
 //
 // mdJournal is not goroutine-safe, so any code that uses it must
 // guarantee that only one goroutine at a time calls its functions.
@@ -162,11 +179,20 @@ func (j mdJournal) mdsPath() string {
 	return filepath.Join(j.dir, "mds")
 }
 
-// TODO: Consider truncating the ID string to avoid running into path
-// limits while keeping the chance of collision negligible.
 func (j mdJournal) mdPath(id MdID) string {
+	// Truncate to 34 characters, which corresponds to 16 random
+	// bytes (since the first byte is a hash type) or 128 random
+	// bits, which means that the expected number of MDs generated
+	// before getting a path collision is 2^64 (see
+	// https://en.wikipedia.org/wiki/Birthday_problem#Cast_as_a_collision_problem
+	// ). The full ID can be recovered just by hashing the data
+	// again with the same hash type.
 	idStr := id.String()
-	return filepath.Join(j.mdsPath(), idStr[:4], idStr[4:])
+	return filepath.Join(j.mdsPath(), idStr[:4], idStr[4:34])
+}
+
+func (j mdJournal) mdDataPath(id MdID) string {
+	return filepath.Join(j.mdPath(id), "data")
 }
 
 // getMD verifies the MD data and the writer signature (but not the
@@ -176,15 +202,14 @@ func (j mdJournal) mdPath(id MdID) string {
 // set j.branchID in the first place.
 func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 	BareRootMetadata, time.Time, error) {
-	// Read file.
+	// Read data.
 
-	path := j.mdPath(id)
-	data, err := ioutil.ReadFile(path)
+	data, err := ioutil.ReadFile(j.mdDataPath(id))
 	if err != nil {
 		return nil, time.Time{}, err
 	}
 
-	// TODO: the file needs to encode the version
+	// TODO: Read version info.
 	var rmd BareRootMetadataV2
 	err = j.codec.Decode(data, &rmd)
 	if err != nil {
@@ -221,7 +246,7 @@ func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 			j.branchID, rmd.BID())
 	}
 
-	fi, err := os.Stat(path)
+	fi, err := os.Stat(j.mdPath(id))
 	if err != nil {
 		return nil, time.Time{}, err
 	}
@@ -258,19 +283,19 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 		return MdID{}, nil
 	}
 
-	path := j.mdPath(id)
-
-	err = os.MkdirAll(filepath.Dir(path), 0700)
-	if err != nil {
-		return MdID{}, err
-	}
-
 	buf, err := j.codec.Encode(rmd)
 	if err != nil {
 		return MdID{}, err
 	}
 
-	err = ioutil.WriteFile(path, buf, 0600)
+	err = os.MkdirAll(j.mdPath(id), 0700)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	// TODO: Write version info.
+
+	err = ioutil.WriteFile(j.mdDataPath(id), buf, 0600)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -278,15 +303,33 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 	return id, nil
 }
 
+// removeMD removes the metadata (which must exist) with the given ID.
+func (j *mdJournal) removeMD(id MdID) error {
+	path := j.mdPath(id)
+	err := os.RemoveAll(path)
+	if err != nil {
+		return err
+	}
+
+	// Remove the parent (splayed) directory (which should exist)
+	// if it's empty.
+	err = os.Remove(filepath.Dir(path))
+	if isExist(err) {
+		err = nil
+	}
+	return err
+}
+
 func (j mdJournal) getEarliest(verifyBranchID bool) (
 	ImmutableBareRootMetadata, error) {
-	earliestID, err := j.j.getEarliest()
+	entry, exists, err := j.j.getEarliestEntry()
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
-	if earliestID == (MdID{}) {
+	if !exists {
 		return ImmutableBareRootMetadata{}, nil
 	}
+	earliestID := entry.ID
 	earliest, ts, err := j.getMD(earliestID, verifyBranchID)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
@@ -296,13 +339,14 @@ func (j mdJournal) getEarliest(verifyBranchID bool) (
 
 func (j mdJournal) getLatest(verifyBranchID bool) (
 	ImmutableBareRootMetadata, error) {
-	latestID, err := j.j.getLatest()
+	entry, exists, err := j.j.getLatestEntry()
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
-	if latestID == (MdID{}) {
+	if !exists {
 		return ImmutableBareRootMetadata{}, nil
 	}
+	latestID := entry.ID
 	latest, ts, err := j.getMD(latestID, verifyBranchID)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
@@ -353,7 +397,8 @@ func (j *mdJournal) convertToBranch(
 	j.log.CDebugf(
 		ctx, "rewriting MDs %s to %s", earliestRevision, latestRevision)
 
-	_, allMdIDs, err := j.j.getRange(earliestRevision, latestRevision)
+	_, allEntries, err := j.j.getEntryRange(
+		earliestRevision, latestRevision)
 	if err != nil {
 		return NullBranchID, err
 	}
@@ -371,7 +416,7 @@ func (j *mdJournal) convertToBranch(
 	}
 	j.log.CDebugf(ctx, "Using temp dir %s for rewriting", journalTempDir)
 
-	mdsToRemove := make([]MdID, 0, len(allMdIDs))
+	mdsToRemove := make([]MdID, 0, len(allEntries))
 	defer func() {
 		j.log.CDebugf(ctx, "Removing temp dir %s and %d old MDs",
 			journalTempDir, len(mdsToRemove))
@@ -385,8 +430,7 @@ func (j *mdJournal) convertToBranch(
 		// eventually need a sweeper to clean up entries left behind
 		// if we crash here.
 		for _, id := range mdsToRemove {
-			path := j.mdPath(id)
-			removeErr := os.Remove(path)
+			removeErr := j.removeMD(id)
 			if removeErr != nil {
 				j.log.CWarningf(ctx, "Error when removing old MD %s: %v",
 					id, removeErr)
@@ -398,8 +442,8 @@ func (j *mdJournal) convertToBranch(
 
 	var prevID MdID
 
-	for i, id := range allMdIDs {
-		ibrmd, _, err := j.getMD(id, true)
+	for i, entry := range allEntries {
+		ibrmd, _, err := j.getMD(entry.ID, true)
 		if err != nil {
 			return NullBranchID, err
 		}
@@ -446,7 +490,10 @@ func (j *mdJournal) convertToBranch(
 		}
 		mdsToRemove = append(mdsToRemove, newID)
 
-		err = tempJournal.append(brmd.RevisionNumber(), newID)
+		// TODO: Try and preserve unknown fields from the old
+		// journal.
+		err = tempJournal.append(
+			brmd.RevisionNumber(), mdIDJournalEntry{ID: newID})
 		if err != nil {
 			return NullBranchID, err
 		}
@@ -454,7 +501,7 @@ func (j *mdJournal) convertToBranch(
 		prevID = newID
 
 		j.log.CDebugf(ctx, "Changing ID for rev=%s from %s to %s",
-			brmd.RevisionNumber(), id, newID)
+			brmd.RevisionNumber(), entry.ID, newID)
 	}
 
 	// TODO: Do the below atomically on the filesystem
@@ -481,7 +528,11 @@ func (j *mdJournal) convertToBranch(
 
 	// Make the defer block above remove oldJournalTempDir.
 	journalTempDir = oldJournalTempDir
-	mdsToRemove = allMdIDs
+
+	mdsToRemove = nil
+	for _, entry := range allEntries {
+		mdsToRemove = append(mdsToRemove, entry.ID)
+	}
 
 	j.j = tempJournal
 	j.branchID = bid
@@ -555,8 +606,7 @@ func (j *mdJournal) removeFlushedEntry(
 
 	// Garbage-collect the old entry.  TODO: we'll eventually need a
 	// sweeper to clean up entries left behind if we crash here.
-	path := j.mdPath(mdID)
-	return os.Remove(path)
+	return j.removeMD(mdID)
 }
 
 func getMdID(ctx context.Context, mdserver MDServer, crypto cryptoPure,
@@ -612,14 +662,14 @@ func (j mdJournal) getRange(
 		return nil, err
 	}
 
-	realStart, mdIDs, err := j.j.getRange(start, stop)
+	realStart, entries, err := j.j.getEntryRange(start, stop)
 	if err != nil {
 		return nil, err
 	}
 	var rmds []ImmutableBareRootMetadata
-	for i, mdID := range mdIDs {
+	for i, entry := range entries {
 		expectedRevision := realStart + MetadataRevision(i)
-		rmd, ts, err := j.getMD(mdID, true)
+		rmd, ts, err := j.getMD(entry.ID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -627,7 +677,7 @@ func (j mdJournal) getRange(
 			panic(fmt.Errorf("expected revision %v, got %v",
 				expectedRevision, rmd.RevisionNumber()))
 		}
-		irmd := MakeImmutableBareRootMetadata(rmd, mdID, ts)
+		irmd := MakeImmutableBareRootMetadata(rmd, entry.ID, ts)
 		rmds = append(rmds, irmd)
 	}
 
@@ -813,12 +863,15 @@ func (j *mdJournal) put(
 		j.log.CDebugf(
 			ctx, "Replacing head MD for TLF=%s with rev=%s bid=%s",
 			rmd.TlfID(), rmd.Revision(), rmd.BID())
-		err = j.j.replaceHead(id)
+		// TODO: Try and preserve unknown fields from the old
+		// journal.
+		err = j.j.replaceHead(mdIDJournalEntry{ID: id})
 		if err != nil {
 			return MdID{}, err
 		}
 	} else {
-		err = j.j.append(brmd.RevisionNumber(), id)
+		err = j.j.append(
+			brmd.RevisionNumber(), mdIDJournalEntry{ID: id})
 		if err != nil {
 			return MdID{}, err
 		}
@@ -845,14 +898,27 @@ func (j *mdJournal) clear(
 		return errors.New("Cannot clear master branch")
 	}
 
+	if j.branchID != bid {
+		// Nothing to do.
+		j.log.CDebugf(ctx, "Ignoring clear for branch %s while on branch %s",
+			bid, j.branchID)
+		return nil
+	}
+
 	head, err := j.getHead(extra)
 	if err != nil {
 		return err
 	}
 
-	if head == (ImmutableBareRootMetadata{}) || head.BID() != bid {
-		// Nothing to do.
+	if head == (ImmutableBareRootMetadata{}) {
+		// The journal has been flushed but not cleared yet.
+		j.branchID = NullBranchID
 		return nil
+	}
+
+	if head.BID() != j.branchID {
+		return fmt.Errorf("Head branch ID %s doesn't match journal "+
+			"branch ID %s while clearing", head.BID(), j.branchID)
 	}
 
 	earliestRevision, err := j.j.readEarliestRevision()
@@ -865,7 +931,8 @@ func (j *mdJournal) clear(
 		return err
 	}
 
-	_, allMdIDs, err := j.j.getRange(earliestRevision, latestRevision)
+	_, allEntries, err := j.j.getEntryRange(
+		earliestRevision, latestRevision)
 	if err != nil {
 		return err
 	}
@@ -882,9 +949,8 @@ func (j *mdJournal) clear(
 	// Garbage-collect the old branch entries.  TODO: we'll eventually
 	// need a sweeper to clean up entries left behind if we crash
 	// here.
-	for _, id := range allMdIDs {
-		path := j.mdPath(id)
-		err := os.Remove(path)
+	for _, entry := range allEntries {
+		err := j.removeMD(entry.ID)
 		if err != nil {
 			return err
 		}
