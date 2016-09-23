@@ -19,7 +19,7 @@ func TestCodecEncodeMap(t *testing.T) {
 		m2[9-i] = 1
 	}
 
-	codec := NewCodecMsgpack()
+	codec := NewMsgpack()
 
 	b1, err := codec.Encode(m1)
 	if err != nil {
