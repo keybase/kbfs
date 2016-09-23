@@ -1532,7 +1532,8 @@ type BareRootMetadata interface {
 	// user and key should be validated, either by comparing to
 	// the current device key (using IsLastModifiedBy), or by
 	// checking with KBPKI.
-	IsValidAndSigned(codec kbfscodec.Codec, crypto cryptoPure, extra ExtraMetadata) error
+	IsValidAndSigned(codec kbfscodec.Codec,
+		crypto cryptoPure, extra ExtraMetadata) error
 	// IsLastModifiedBy verifies that the BareRootMetadata is
 	// written by the given user and device (identified by the KID
 	// of the device verifying key), and returns an error if not.
@@ -1640,7 +1641,8 @@ type MutableBareRootMetadata interface {
 	// BareRootMetadata. This is necessary since newly-created
 	// BareRootMetadata objects don't have enough data to build a
 	// TlfHandle from until the first rekey.
-	FakeInitialRekey(c kbfscodec.Codec, h BareTlfHandle) (ExtraMetadata, error)
+	FakeInitialRekey(
+		c kbfscodec.Codec, h BareTlfHandle) (ExtraMetadata, error)
 	// Update initializes the given freshly-created BareRootMetadata object with
 	// the given TlfID and BareTlfHandle. Note that if the given ID/handle are private,
 	// rekeying must be done separately.

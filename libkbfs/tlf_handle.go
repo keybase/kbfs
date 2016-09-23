@@ -213,7 +213,8 @@ func init() {
 }
 
 // EqualsIgnoreName returns whether h and other contain the same info ignoring the name.
-func (h TlfHandle) EqualsIgnoreName(codec kbfscodec.Codec, other TlfHandle) (bool, error) {
+func (h TlfHandle) EqualsIgnoreName(
+	codec kbfscodec.Codec, other TlfHandle) (bool, error) {
 	if h.public != other.public {
 		return false, nil
 	}
@@ -250,7 +251,8 @@ func (h TlfHandle) EqualsIgnoreName(codec kbfscodec.Codec, other TlfHandle) (boo
 }
 
 // Equals returns whether h and other contain the same info.
-func (h TlfHandle) Equals(codec kbfscodec.Codec, other TlfHandle) (bool, error) {
+func (h TlfHandle) Equals(
+	codec kbfscodec.Codec, other TlfHandle) (bool, error) {
 	eq, err := h.EqualsIgnoreName(codec, other)
 	if err != nil {
 		return false, err
@@ -627,9 +629,9 @@ func (pr partialResolver) Resolve(ctx context.Context, assertion string) (
 // resolved except for unresolved assertions in other; this should
 // equal other if and only if true is returned.
 func (h TlfHandle) ResolvesTo(
-	ctx context.Context, codec kbfscodec.Codec, resolver resolver, other TlfHandle) (
-	resolvesTo bool, partialResolvedH *TlfHandle, err error) {
-
+	ctx context.Context, codec kbfscodec.Codec, resolver resolver,
+	other TlfHandle) (resolvesTo bool, partialResolvedH *TlfHandle,
+	err error) {
 	// Check the conflict extension.
 	var conflictAdded, finalizedAdded bool
 	if !h.IsConflict() && other.IsConflict() {
@@ -681,7 +683,8 @@ func (h TlfHandle) ResolvesTo(
 
 // MutuallyResolvesTo checks that the target handle, and the provided
 // `other` handle, resolve to each other.
-func (h TlfHandle) MutuallyResolvesTo(ctx context.Context, codec kbfscodec.Codec,
+func (h TlfHandle) MutuallyResolvesTo(
+	ctx context.Context, codec kbfscodec.Codec,
 	resolver resolver, other TlfHandle, rev MetadataRevision, tlfID TlfID,
 	log logger.Logger) error {
 	handleResolvesToOther, partialResolvedHandle, err :=

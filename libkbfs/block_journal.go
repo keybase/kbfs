@@ -146,8 +146,8 @@ func (e blockJournalEntry) getSingleContext() (
 // makeBlockJournal returns a new blockJournal for the given
 // directory. Any existing journal entries are read.
 func makeBlockJournal(
-	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, dir string,
-	log logger.Logger) (*blockJournal, error) {
+	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure,
+	dir string, log logger.Logger) (*blockJournal, error) {
 	journalPath := filepath.Join(dir, "block_journal")
 	deferLog := log.CloneWithAddedDepth(1)
 	j := makeDiskJournal(

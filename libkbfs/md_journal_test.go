@@ -36,9 +36,9 @@ func getMDJournalLength(t *testing.T, j *mdJournal) int {
 }
 
 func setupMDJournalTest(t *testing.T) (
-	codec kbfscodec.Codec, crypto CryptoCommon, id TlfID, signer cryptoSigner,
-	ekg singleEncryptionKeyGetter, bsplit BlockSplitter, tempdir string,
-	j *mdJournal) {
+	codec kbfscodec.Codec, crypto CryptoCommon, id TlfID,
+	signer cryptoSigner, ekg singleEncryptionKeyGetter,
+	bsplit BlockSplitter, tempdir string, j *mdJournal) {
 	codec = kbfscodec.NewMsgpack()
 	crypto = MakeCryptoCommon(codec)
 

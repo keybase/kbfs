@@ -68,7 +68,8 @@ func (verifyingKeyType) makeFromKID(kid keybase1.KID) interface{} {
 	return MakeVerifyingKey(kid)
 }
 
-func (verifyingKeyType) decode(codec *kbfscodec.CodecMsgpack, data []byte) (interface{}, error) {
+func (verifyingKeyType) decode(
+	codec *kbfscodec.CodecMsgpack, data []byte) (interface{}, error) {
 	k := VerifyingKey{}
 	err := codec.Decode(data, &k)
 	return k, err
@@ -167,7 +168,8 @@ func (cryptPublicKeyType) makeFromKID(kid keybase1.KID) interface{} {
 	return MakeCryptPublicKey(kid)
 }
 
-func (cryptPublicKeyType) decode(codec *kbfscodec.CodecMsgpack, data []byte) (interface{}, error) {
+func (cryptPublicKeyType) decode(
+	codec *kbfscodec.CodecMsgpack, data []byte) (interface{}, error) {
 	k := CryptPublicKey{}
 	err := codec.Decode(data, &k)
 	return k, err

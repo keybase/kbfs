@@ -59,8 +59,8 @@ type mdServerTlfStorage struct {
 	branchJournals map[BranchID]mdIDJournal
 }
 
-func makeMDServerTlfStorage(
-	codec kbfscodec.Codec, crypto cryptoPure, dir string) *mdServerTlfStorage {
+func makeMDServerTlfStorage(codec kbfscodec.Codec,
+	crypto cryptoPure, dir string) *mdServerTlfStorage {
 	journal := &mdServerTlfStorage{
 		codec:          codec,
 		crypto:         crypto,

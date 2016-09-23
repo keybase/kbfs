@@ -66,7 +66,8 @@ func addFakeRMDData(rmd *RootMetadata, h *TlfHandle) {
 	})
 
 	if !h.IsPublic() {
-		rmd.FakeInitialRekey(kbfscodec.NewMsgpack(), h.ToBareHandleOrBust())
+		rmd.FakeInitialRekey(
+			kbfscodec.NewMsgpack(), h.ToBareHandleOrBust())
 	}
 }
 
@@ -105,7 +106,8 @@ func addFakeRMDSData(rmds *RootMetadataSigned, h *TlfHandle) {
 	rmds.untrustedServerTimestamp = time.Now()
 
 	if !h.IsPublic() {
-		rmds.MD.FakeInitialRekey(kbfscodec.NewMsgpack(), h.ToBareHandleOrBust())
+		rmds.MD.FakeInitialRekey(
+			kbfscodec.NewMsgpack(), h.ToBareHandleOrBust())
 	}
 }
 

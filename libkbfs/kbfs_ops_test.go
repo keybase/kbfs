@@ -2962,8 +2962,8 @@ func TestKBFSOpsServerReadFailNoSuchBlock(t *testing.T) {
 	}
 }
 
-func checkSyncOp(t *testing.T, codec kbfscodec.Codec, so *syncOp, filePtr BlockPointer,
-	writes []WriteRange) {
+func checkSyncOp(t *testing.T, codec kbfscodec.Codec,
+	so *syncOp, filePtr BlockPointer, writes []WriteRange) {
 	if so == nil {
 		t.Error("No sync info for written file!")
 	}
@@ -2986,8 +2986,8 @@ func checkSyncOp(t *testing.T, codec kbfscodec.Codec, so *syncOp, filePtr BlockP
 	}
 }
 
-func checkSyncOpInCache(t *testing.T, codec kbfscodec.Codec, ops *folderBranchOps,
-	filePtr BlockPointer, writes []WriteRange) {
+func checkSyncOpInCache(t *testing.T, codec kbfscodec.Codec,
+	ops *folderBranchOps, filePtr BlockPointer, writes []WriteRange) {
 	// check the in-progress syncOp
 	si, ok := ops.blocks.unrefCache[filePtr.ref()]
 	if !ok {
