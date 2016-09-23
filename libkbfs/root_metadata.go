@@ -650,8 +650,8 @@ func (md *RootMetadata) fillInDevices(crypto Crypto,
 	return serverKeyMap{}, errors.New("Unknown bare metadata version")
 }
 
-func (md *RootMetadata) onRekeyDone(config Config) error {
-	return md.bareMd.OnRekeyDone(config, md.extra)
+func (md *RootMetadata) finalizeRekey(config Config) error {
+	return md.bareMd.FinalizeRekey(config, md.extra)
 }
 
 // A ReadOnlyRootMetadata is a thin wrapper around a

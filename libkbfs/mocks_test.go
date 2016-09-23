@@ -4,15 +4,14 @@
 package libkbfs
 
 import (
-	reflect "reflect"
-	time "time"
-
 	gomock "github.com/golang/mock/gomock"
 	libkb "github.com/keybase/client/go/libkb"
 	logger "github.com/keybase/client/go/logger"
 	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 	go_metrics "github.com/rcrowley/go-metrics"
 	context "golang.org/x/net/context"
+	reflect "reflect"
+	time "time"
 )
 
 // Mock of AuthTokenRefreshHandler interface
@@ -235,13 +234,6 @@ func (_mr *_MockKBFSOpsRecorder) DeleteFavorite(arg0, arg1 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeleteFavorite", arg0, arg1)
 }
 
-func (_m *MockKBFSOps) GetTLFID(ctx context.Context, tlfHandle *TlfHandle) (TlfID, error) {
-	ret := _m.ctrl.Call(_m, "GetTLFID", ctx, tlfHandle)
-	ret0, _ := ret[0].(TlfID)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
 func (_m *MockKBFSOps) GetTLFCryptKeys(ctx context.Context, tlfHandle *TlfHandle) ([]TLFCryptKey, TlfID, error) {
 	ret := _m.ctrl.Call(_m, "GetTLFCryptKeys", ctx, tlfHandle)
 	ret0, _ := ret[0].([]TLFCryptKey)
@@ -252,6 +244,17 @@ func (_m *MockKBFSOps) GetTLFCryptKeys(ctx context.Context, tlfHandle *TlfHandle
 
 func (_mr *_MockKBFSOpsRecorder) GetTLFCryptKeys(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeys", arg0, arg1)
+}
+
+func (_m *MockKBFSOps) GetTLFID(ctx context.Context, tlfHandle *TlfHandle) (TlfID, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFID", ctx, tlfHandle)
+	ret0, _ := ret[0].(TlfID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockKBFSOpsRecorder) GetTLFID(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFID", arg0, arg1)
 }
 
 func (_m *MockKBFSOps) GetOrCreateRootNode(ctx context.Context, h *TlfHandle, branch BranchName) (Node, EntryInfo, error) {
@@ -5476,14 +5479,14 @@ func (_mr *_MockMutableBareRootMetadataRecorder) GetUserDeviceKeyInfoMaps(arg0, 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserDeviceKeyInfoMaps", arg0, arg1)
 }
 
-func (_m *MockMutableBareRootMetadata) OnRekeyDone(_param0 Config, _param1 ExtraMetadata) error {
-	ret := _m.ctrl.Call(_m, "OnRekeyDone", _param0, _param1)
+func (_m *MockMutableBareRootMetadata) FinalizeRekey(_param0 Config, _param1 ExtraMetadata) error {
+	ret := _m.ctrl.Call(_m, "FinalizeRekey", _param0, _param1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) OnRekeyDone(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "OnRekeyDone", arg0, arg1)
+func (_mr *_MockMutableBareRootMetadataRecorder) FinalizeRekey(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "FinalizeRekey", arg0, arg1)
 }
 
 // Mock of KeyBundleCache interface

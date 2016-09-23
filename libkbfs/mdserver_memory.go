@@ -725,11 +725,17 @@ func (md *MDServerMemory) getExtraMetadata(
 	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	ExtraMetadata, error) {
 	wkb, rkb := md.getKeyBundles(wkbID, rkbID)
+	if wkb == nil || rkb == nil {
+		return nil, nil
+	}
 	return &ExtraMetadataV3{wkb: wkb, rkb: rkb}, nil
 }
 
 func (md *MDServerMemory) setExtraMetadataLocked(rmds *RootMetadataSigned,
 	extra ExtraMetadata) error {
+	if extra == nil {
+		return nil
+	}
 	extraV3, ok := extra.(*ExtraMetadataV3)
 	if !ok {
 		return errors.New("Invalid extra metadata")

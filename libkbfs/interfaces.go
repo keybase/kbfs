@@ -1611,9 +1611,11 @@ type BareRootMetadata interface {
 	AreKeyGenerationsEqual(Codec, BareRootMetadata) (bool, error)
 	// GetUnresolvedParticipants returns any unresolved readers and writers present in this revision of metadata.
 	GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion)
-	// GetTLFWriterKeyBundleID returns the ID of the writer key bundle.
+	// GetTLFWriterKeyBundleID returns the ID of the externally-stored writer key bundle, or the zero value if
+	// this object stores it internally.
 	GetTLFWriterKeyBundleID() TLFWriterKeyBundleID
-	// GetTLFReaderKeyBundleID returns the ID of the reader key bundle.
+	// GetTLFReaderKeyBundleID returns the ID of the externally-stored reader key bundle, or the zero value if
+	// this object stores it internally.
 	GetTLFReaderKeyBundleID() TLFReaderKeyBundleID
 }
 
@@ -1695,9 +1697,9 @@ type MutableBareRootMetadata interface {
 	// key generation.
 	GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (
 		readers, writers UserDeviceKeyInfoMap, err error)
-	// OnRekeyDone is called after all rekeying work has been performed on the underlying
+	// FinalizeRekey is called after all rekeying work has been performed on the underlying
 	// metadata.
-	OnRekeyDone(Config, ExtraMetadata) error
+	FinalizeRekey(Config, ExtraMetadata) error
 }
 
 // KeyBundleCache is an interface to a key bundle cache for use with v3 metadata.

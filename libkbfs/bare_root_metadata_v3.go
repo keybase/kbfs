@@ -1005,8 +1005,8 @@ func (md *BareRootMetadataV3) GetTLFReaderKeyBundleID() TLFReaderKeyBundleID {
 	return md.RKeyBundleID
 }
 
-// OnRekeyDone implements the MutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) OnRekeyDone(config Config, extra ExtraMetadata) error {
+// FinalizeRekey implements the MutableBareRootMetadata interface for BareRootMetadataV3.
+func (md *BareRootMetadataV3) FinalizeRekey(config Config, extra ExtraMetadata) error {
 	extraV3, ok := extra.(*ExtraMetadataV3)
 	if !ok {
 		return errors.New("Invalid extra metadata")

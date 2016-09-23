@@ -423,5 +423,8 @@ func (s *mdServerTlfStorage) shutdown() {
 func (s *mdServerTlfStorage) getExtraMD(wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	ExtraMetadata, error) {
 	// MDv3 TODO: implement this
+	if (wkbID != TLFWriterKeyBundleID{}) || (rkbID != TLFReaderKeyBundleID{}) {
+		panic("Bundle IDs are unexpectedly set")
+	}
 	return nil, nil
 }

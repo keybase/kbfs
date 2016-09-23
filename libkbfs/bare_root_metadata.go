@@ -997,8 +997,8 @@ func (md *BareRootMetadataV2) GetTLFReaderKeyBundleID() TLFReaderKeyBundleID {
 	return TLFReaderKeyBundleID{}
 }
 
-// OnRekeyDone implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) OnRekeyDone(_ Config, _ ExtraMetadata) error {
+// FinalizeRekey implements the MutableBareRootMetadata interface for BareRootMetadataV2.
+func (md *BareRootMetadataV2) FinalizeRekey(_ Config, _ ExtraMetadata) error {
 	// No-op.
 	return nil
 }
