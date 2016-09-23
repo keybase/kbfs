@@ -32,7 +32,7 @@ func (c *eiCacheHolder) destroy() {
 	c.cache = nil
 }
 
-func (c *eiCacheHolder) getAndDestroy(reqID string) (ei *libkbfs.EntryInfo) {
+func (c *eiCacheHolder) getAndDestroyIfMatches(reqID string) (ei *libkbfs.EntryInfo) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.cache != nil && c.cache.reqID == reqID {
@@ -75,7 +75,7 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
 	if reqID, ok := ctx.Value(CtxIDKey).(string); ok {
-		if ei := f.eiCache.getAndDestroy(reqID); ei != nil {
+		if ei := f.eiCache.getAndDestroyIfMatches(reqID); ei != nil {
 			fillAttrWithMode(ei, a)
 			return nil
 		}

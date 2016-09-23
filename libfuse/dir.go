@@ -168,6 +168,9 @@ func (f *Folder) resolve(ctx context.Context) (*libkbfs.TlfHandle, error) {
 //     - Len < 0: "forget data in range Off..infinity"
 //     - Len > 0: "forget data in range Off..Off+Len"
 func (f *Folder) invalidateNodeDataRange(node fs.Node, write libkbfs.WriteRange) error {
+	if file, ok := node.(*File); ok {
+		file.eiCache.destroy()
+	}
 	off := int64(write.Off)
 	size := int64(write.Len)
 	if write.Off > math.MaxInt64 || write.Len > math.MaxInt64 {
@@ -270,6 +273,9 @@ func (f *Folder) batchChangesInvalidate(ctx context.Context,
 			}
 
 		default:
+			if file, ok := n.(*File); ok {
+				file.eiCache.destroy()
+			}
 			// just the attributes
 			if err := f.fs.fuse.InvalidateNodeAttr(n); err != nil && err != fuse.ErrNotCached {
 				// TODO we have no mechanism to do anything about this
