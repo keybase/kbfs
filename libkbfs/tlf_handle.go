@@ -15,6 +15,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscodec"
 	"golang.org/x/net/context"
 )
 
@@ -157,7 +158,7 @@ func (h TlfHandle) WithUpdatedConflictInfo(
 	}
 	// Make sure conflict info is the same; the conflict info for
 	// a TLF, once set, is immutable and should never change.
-	equal, err := CodecEqual(codec, newHandle.conflictInfo, info)
+	equal, err := kbfscodec.CodecEqual(codec, newHandle.conflictInfo, info)
 	if err != nil {
 		return newHandle, err
 	}
@@ -233,7 +234,7 @@ func (h TlfHandle) EqualsIgnoreName(codec Codec, other TlfHandle) (bool, error) 
 		return false, nil
 	}
 
-	eq, err := CodecEqual(codec, h.conflictInfo, other.conflictInfo)
+	eq, err := kbfscodec.CodecEqual(codec, h.conflictInfo, other.conflictInfo)
 	if err != nil {
 		return false, err
 	}
@@ -241,7 +242,7 @@ func (h TlfHandle) EqualsIgnoreName(codec Codec, other TlfHandle) (bool, error) 
 		return false, nil
 	}
 
-	eq, err = CodecEqual(codec, h.finalizedInfo, other.finalizedInfo)
+	eq, err = kbfscodec.CodecEqual(codec, h.finalizedInfo, other.finalizedInfo)
 	if err != nil {
 		return false, err
 	}

@@ -9,14 +9,14 @@ import (
 	"reflect"
 )
 
-// extCode is used to register codec extensions
-type extCode uint64
+// ExtCode is used to register codec extensions
+type ExtCode uint64
 
-// these track the start of a range of unique extCodes for various
+// these track the start of a range of unique ExtCodes for various
 // types of extensions.
 const (
-	extCodeOpsRangeStart  = 1
-	extCodeListRangeStart = 101
+	ExtCodeOpsRangeStart  = 1
+	ExtCodeListRangeStart = 101
 )
 
 // Codec encodes and decodes arbitrary data
@@ -28,12 +28,12 @@ type Codec interface {
 	// RegisterType should be called for all types that are stored
 	// under ambiguous types (like interface{} or nil interface) in a
 	// struct that will be encoded/decoded by the codec.  Each must
-	// have a unique extCode.  Types that include other extension
+	// have a unique ExtCode.  Types that include other extension
 	// types are not supported.
-	RegisterType(rt reflect.Type, code extCode)
+	RegisterType(rt reflect.Type, code ExtCode)
 	// RegisterIfaceSliceType should be called for all encoded slices
 	// that contain ambiguous interface types.  Each must have a
-	// unique extCode.  Slice element types that include other
+	// unique ExtCode.  Slice element types that include other
 	// extension types are not supported.
 	//
 	// If non-nil, typer is used to do a type assertion during
@@ -41,7 +41,7 @@ type Codec interface {
 	// by the rest of the code.  This is needed, for example, when the
 	// codec cannot decode interface types to their desired pointer
 	// form.
-	RegisterIfaceSliceType(rt reflect.Type, code extCode,
+	RegisterIfaceSliceType(rt reflect.Type, code ExtCode,
 		typer func(interface{}) reflect.Value)
 }
 

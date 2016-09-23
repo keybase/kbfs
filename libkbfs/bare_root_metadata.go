@@ -10,6 +10,7 @@ import (
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/kbfscodec"
 )
 
 // WriterMetadataV2 stores the metadata for a TLF that is
@@ -125,7 +126,7 @@ func (md *BareRootMetadataV2) haveOnlyUserRKeysChanged(
 		for u, keys := range gen.RKeys {
 			if u != user {
 				prevKeys := prevMDGen.RKeys[u]
-				keysEqual, err := CodecEqual(codec, keys, prevKeys)
+				keysEqual, err := kbfscodec.CodecEqual(codec, keys, prevKeys)
 				if err != nil {
 					return false, err
 				}
@@ -151,7 +152,7 @@ func (md *BareRootMetadataV2) IsValidRekeyRequest(
 		// Not the same type so not a copy.
 		return false, nil
 	}
-	writerEqual, err := CodecEqual(
+	writerEqual, err := kbfscodec.CodecEqual(
 		codec, md.WriterMetadataV2, prevMd.WriterMetadataV2)
 	if err != nil {
 		return false, err
@@ -160,7 +161,7 @@ func (md *BareRootMetadataV2) IsValidRekeyRequest(
 		// Copy mismatch.
 		return false, nil
 	}
-	writerSigInfoEqual, err := CodecEqual(codec,
+	writerSigInfoEqual, err := kbfscodec.CodecEqual(codec,
 		md.WriterMetadataSigInfo, prevMd.WriterMetadataSigInfo)
 	if err != nil {
 		return false, err
@@ -265,7 +266,7 @@ func (md *BareRootMetadataV2) Update(id TlfID, h BareTlfHandle) error {
 // DeepCopy implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) DeepCopy(codec Codec) (BareRootMetadata, error) {
 	var newMd BareRootMetadataV2
-	if err := CodecUpdate(codec, &newMd, md); err != nil {
+	if err := kbfscodec.CodecUpdate(codec, &newMd, md); err != nil {
 		return nil, err
 	}
 	return &newMd, nil
@@ -904,14 +905,14 @@ func (md *BareRootMetadataV2) AreKeyGenerationsEqual(codec Codec, other BareRoot
 		// No idea what this is.
 		return false, errors.New("Unknown metadata version")
 	}
-	ok, err := CodecEqual(codec, md.WKeys, md2.WKeys)
+	ok, err := kbfscodec.CodecEqual(codec, md.WKeys, md2.WKeys)
 	if err != nil {
 		return false, err
 	}
 	if !ok {
 		return false, nil
 	}
-	ok, err = CodecEqual(codec, md.RKeys, md2.RKeys)
+	ok, err = kbfscodec.CodecEqual(codec, md.RKeys, md2.RKeys)
 	if err != nil {
 		return false, err
 	}

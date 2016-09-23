@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/stretchr/testify/require"
 
 	"golang.org/x/net/context"
@@ -22,7 +23,7 @@ func makeRMDSForTest(t *testing.T, id TlfID, h BareTlfHandle,
 	rmds.MD.SetRevision(revision)
 	rmds.MD.SetLastModifyingWriter(uid)
 	rmds.MD.SetLastModifyingUser(uid)
-	rmds.MD.FakeInitialRekey(NewCodecMsgpack(), h)
+	rmds.MD.FakeInitialRekey(kbfscodec.NewCodecMsgpack(), h)
 	rmds.MD.SetPrevRoot(prevRoot)
 	return rmds
 }

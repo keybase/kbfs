@@ -124,17 +124,17 @@ func (es extSlice) ReadExt(v interface{}, buf []byte) {
 // marshaling and unmarshaling.
 type CodecMsgpack struct {
 	h        codec.Handle
-	extCodec *CodecMsgpack
+	ExtCodec *CodecMsgpack
 }
 
 // NewCodecMsgpack constructs a new CodecMsgpack.
 func NewCodecMsgpack() *CodecMsgpack {
-	return newCodecMsgpackHelper(true)
+	return NewCodecMsgpackHelper(true)
 }
 
 // newCodecMsgpackHelper constructs a new CodecMsgpack that may or may
 // not handle unknown fields.
-func newCodecMsgpackHelper(handleUnknownFields bool) *CodecMsgpack {
+func NewCodecMsgpackHelper(handleUnknownFields bool) *CodecMsgpack {
 	handle := codec.MsgpackHandle{}
 	handle.Canonical = true
 	handle.WriteExt = true
@@ -146,8 +146,8 @@ func newCodecMsgpackHelper(handleUnknownFields bool) *CodecMsgpack {
 	// types.
 	handleNoExt := handle
 	handleNoExt.WriteExt = false
-	extCodec := &CodecMsgpack{&handleNoExt, nil}
-	return &CodecMsgpack{&handle, extCodec}
+	ExtCodec := &CodecMsgpack{&handleNoExt, nil}
+	return &CodecMsgpack{&handle, ExtCodec}
 }
 
 // Decode implements the Codec interface for CodecMsgpack
@@ -163,12 +163,12 @@ func (c *CodecMsgpack) Encode(obj interface{}) (buf []byte, err error) {
 }
 
 // RegisterType implements the Codec interface for CodecMsgpack
-func (c *CodecMsgpack) RegisterType(rt reflect.Type, code extCode) {
-	c.h.(*codec.MsgpackHandle).SetExt(rt, uint64(code), ext{c.extCodec})
+func (c *CodecMsgpack) RegisterType(rt reflect.Type, code ExtCode) {
+	c.h.(*codec.MsgpackHandle).SetExt(rt, uint64(code), ext{c.ExtCodec})
 }
 
 // RegisterIfaceSliceType implements the Codec interface for CodecMsgpack
-func (c *CodecMsgpack) RegisterIfaceSliceType(rt reflect.Type, code extCode,
+func (c *CodecMsgpack) RegisterIfaceSliceType(rt reflect.Type, code ExtCode,
 	typer func(interface{}) reflect.Value) {
 	c.h.(*codec.MsgpackHandle).SetExt(rt, uint64(code), extSlice{c, typer})
 }

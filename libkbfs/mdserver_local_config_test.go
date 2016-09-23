@@ -10,6 +10,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscodec"
 	"golang.org/x/net/context"
 )
 
@@ -51,7 +52,7 @@ type testMDServerLocalConfig struct {
 
 func newTestMDServerLocalConfig(
 	t *testing.T, cig currentInfoGetter) testMDServerLocalConfig {
-	codec := NewCodecMsgpack()
+	codec := kbfscodec.NewCodecMsgpack()
 	return testMDServerLocalConfig{
 		t:      t,
 		clock:  newTestClockNow(),

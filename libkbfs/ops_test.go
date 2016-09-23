@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -472,7 +473,7 @@ type testOps struct {
 
 // Tests that ops can be serialized and deserialized as extensions.
 func TestOpSerialization(t *testing.T) {
-	c := NewCodecMsgpack()
+	c := kbfscodec.NewCodecMsgpack()
 	RegisterOps(c)
 
 	ops := testOps{}

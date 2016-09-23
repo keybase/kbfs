@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -47,7 +48,7 @@ func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 	ctr := NewSafeTestReporter(t)
 	mockCtrl = gomock.NewController(ctr)
 	config = NewConfigMock(mockCtrl, ctr)
-	config.SetCodec(NewCodecMsgpack())
+	config.SetCodec(kbfscodec.NewCodecMsgpack())
 	blockops := &CheckBlockOps{config.mockBops, ctr}
 	config.SetBlockOps(blockops)
 	kbfsops := NewKBFSOpsStandard(config)
@@ -2975,7 +2976,7 @@ func checkSyncOp(t *testing.T, codec Codec, so *syncOp, filePtr BlockPointer,
 			len(so.Writes), len(writes))
 	}
 	for i, w := range writes {
-		writeEqual, err := CodecEqual(codec, so.Writes[i], w)
+		writeEqual, err := kbfscodec.CodecEqual(codec, so.Writes[i], w)
 		if err != nil {
 			t.Fatal(err)
 		}

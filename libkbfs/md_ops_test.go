@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -28,7 +29,7 @@ func (c shimCrypto) MakeMdID(md BareRootMetadata) (MdID, error) {
 func injectShimCrypto(config Config) {
 	crypto := shimCrypto{
 		config.Crypto(),
-		MakeCryptoCommon(NewCodecMsgpack()),
+		MakeCryptoCommon(kbfscodec.NewCodecMsgpack()),
 	}
 	config.SetCrypto(crypto)
 }
@@ -65,7 +66,7 @@ func addFakeRMDData(rmd *RootMetadata, h *TlfHandle) {
 	})
 
 	if !h.IsPublic() {
-		rmd.FakeInitialRekey(NewCodecMsgpack(), h.ToBareHandleOrBust())
+		rmd.FakeInitialRekey(kbfscodec.NewCodecMsgpack(), h.ToBareHandleOrBust())
 	}
 }
 
@@ -104,7 +105,7 @@ func addFakeRMDSData(rmds *RootMetadataSigned, h *TlfHandle) {
 	rmds.untrustedServerTimestamp = time.Now()
 
 	if !h.IsPublic() {
-		rmds.MD.FakeInitialRekey(NewCodecMsgpack(), h.ToBareHandleOrBust())
+		rmds.MD.FakeInitialRekey(kbfscodec.NewCodecMsgpack(), h.ToBareHandleOrBust())
 	}
 }
 
@@ -603,7 +604,7 @@ func validatePutPublicRMDS(
 	require.NoError(t, err)
 
 	var expectedRmd BareRootMetadataV2
-	err = CodecUpdate(config.Codec(), &expectedRmd, inputRmd)
+	err = kbfscodec.CodecUpdate(config.Codec(), &expectedRmd, inputRmd)
 	require.NoError(t, err)
 
 	// Overwrite written fields.
@@ -643,7 +644,7 @@ func TestMDOpsPutPrivateSuccess(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
 
-	config.SetCodec(NewCodecMsgpack())
+	config.SetCodec(kbfscodec.NewCodecMsgpack())
 
 	rmd, _ := newRMD(t, config, false)
 	putMDForPrivate(config, rmd)

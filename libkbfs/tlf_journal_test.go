@@ -14,6 +14,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -167,7 +168,7 @@ func setupTLFJournalTest(
 	delegate testBWDelegate) {
 	// Set up config and dependencies.
 	bsplitter := &BlockSplitterSimple{64 * 1024, 8 * 1024}
-	codec := NewCodecMsgpack()
+	codec := kbfscodec.NewCodecMsgpack()
 	signingKey := MakeFakeSigningKeyOrBust("client sign")
 	cryptPrivateKey := MakeFakeCryptPrivateKeyOrBust("client crypt private")
 	crypto := NewCryptoLocal(codec, signingKey, cryptPrivateKey)

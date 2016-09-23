@@ -15,6 +15,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +39,7 @@ func setupMDJournalTest(t *testing.T) (
 	codec Codec, crypto CryptoCommon, id TlfID, signer cryptoSigner,
 	ekg singleEncryptionKeyGetter, bsplit BlockSplitter, tempdir string,
 	j *mdJournal) {
-	codec = NewCodecMsgpack()
+	codec = kbfscodec.NewCodecMsgpack()
 	crypto = MakeCryptoCommon(codec)
 
 	uid := keybase1.MakeTestUID(1)
@@ -83,7 +84,7 @@ func makeMDForTest(t *testing.T, tlfID TlfID, revision MetadataRevision,
 	err = md.Update(tlfID, h)
 	require.NoError(t, err)
 	md.SetRevision(revision)
-	md.FakeInitialRekey(NewCodecMsgpack(), h)
+	md.FakeInitialRekey(kbfscodec.NewCodecMsgpack(), h)
 	md.SetPrevRoot(prevRoot)
 	md.SetDiskUsage(500)
 	return md

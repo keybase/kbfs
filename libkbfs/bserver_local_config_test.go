@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/kbfs/kbfscodec"
 )
 
 type testBlockServerLocalConfig struct {
@@ -17,7 +18,7 @@ type testBlockServerLocalConfig struct {
 }
 
 func newTestBlockServerLocalConfig(t *testing.T) testBlockServerLocalConfig {
-	codec := NewCodecMsgpack()
+	codec := kbfscodec.NewCodecMsgpack()
 	return testBlockServerLocalConfig{
 		t:      t,
 		codec:  codec,

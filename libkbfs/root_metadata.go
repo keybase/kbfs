@@ -13,6 +13,7 @@ import (
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/kbfscodec"
 )
 
 // MetadataFlags bitfield.
@@ -159,10 +160,10 @@ func (md *RootMetadata) deepCopy(codec Codec, copyHandle bool) (*RootMetadata, e
 
 func (md *RootMetadata) deepCopyInPlace(codec Codec, copyHandle, successorCopy bool,
 	newMd *RootMetadata) error {
-	if err := CodecUpdate(codec, newMd, md); err != nil {
+	if err := kbfscodec.CodecUpdate(codec, newMd, md); err != nil {
 		return err
 	}
-	if err := CodecUpdate(codec, &newMd.data, md.data); err != nil {
+	if err := kbfscodec.CodecUpdate(codec, &newMd.data, md.data); err != nil {
 		return err
 	}
 	var err error

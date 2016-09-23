@@ -11,6 +11,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscodec"
 	metrics "github.com/rcrowley/go-metrics"
 	"golang.org/x/net/context"
 )
@@ -845,27 +846,10 @@ type Crypto interface {
 
 // Codec encodes and decodes arbitrary data
 type Codec interface {
-	// Decode unmarshals the given buffer into the given object, if possible.
 	Decode(buf []byte, obj interface{}) error
-	// Encode marshals the given object into a returned buffer.
 	Encode(obj interface{}) ([]byte, error)
-	// RegisterType should be called for all types that are stored
-	// under ambiguous types (like interface{} or nil interface) in a
-	// struct that will be encoded/decoded by the codec.  Each must
-	// have a unique extCode.  Types that include other extension
-	// types are not supported.
-	RegisterType(rt reflect.Type, code extCode)
-	// RegisterIfaceSliceType should be called for all encoded slices
-	// that contain ambiguous interface types.  Each must have a
-	// unique extCode.  Slice element types that include other
-	// extension types are not supported.
-	//
-	// If non-nil, typer is used to do a type assertion during
-	// decoding, to convert the encoded value into the value expected
-	// by the rest of the code.  This is needed, for example, when the
-	// codec cannot decode interface types to their desired pointer
-	// form.
-	RegisterIfaceSliceType(rt reflect.Type, code extCode,
+	RegisterType(rt reflect.Type, code kbfscodec.ExtCode)
+	RegisterIfaceSliceType(rt reflect.Type, code kbfscodec.ExtCode,
 		typer func(interface{}) reflect.Value)
 }
 

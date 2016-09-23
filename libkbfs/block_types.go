@@ -4,7 +4,10 @@
 
 package libkbfs
 
-import "github.com/keybase/go-codec/codec"
+import (
+	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/kbfscodec"
+)
 
 // IndirectDirPtr pairs an indirect dir block with the start of that
 // block's range of directory entries (inclusive)
@@ -82,7 +85,7 @@ func NewDirBlock() Block {
 // DeepCopy makes a complete copy of a DirBlock
 func (db DirBlock) DeepCopy(codec Codec) (*DirBlock, error) {
 	var dirBlockCopy DirBlock
-	err := CodecUpdate(codec, &dirBlockCopy, db)
+	err := kbfscodec.CodecUpdate(codec, &dirBlockCopy, db)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +128,7 @@ func (fb *FileBlock) DataVersion() DataVer {
 // DeepCopy makes a complete copy of a FileBlock
 func (fb FileBlock) DeepCopy(codec Codec) (*FileBlock, error) {
 	var fileBlockCopy FileBlock
-	err := CodecUpdate(codec, &fileBlockCopy, fb)
+	err := kbfscodec.CodecUpdate(codec, &fileBlockCopy, fb)
 	if err != nil {
 		return nil, err
 	}

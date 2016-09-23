@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/kbfs/kbfscodec"
 
 	"golang.org/x/net/context"
 
@@ -583,7 +584,7 @@ func (j *mdJournal) removeFlushedEntry(
 		return fmt.Errorf("Expected mdID %s, got %s", mdID, rmd.mdID)
 	}
 
-	eq, err := CodecEqual(j.codec, rmd.BareRootMetadata, rmds.MD)
+	eq, err := kbfscodec.CodecEqual(j.codec, rmd.BareRootMetadata, rmds.MD)
 	if err != nil {
 		return err
 	}

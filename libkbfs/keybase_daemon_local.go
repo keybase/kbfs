@@ -14,6 +14,7 @@ import (
 	"github.com/keybase/client/go/externals"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
@@ -210,7 +211,7 @@ func (k *KeybaseDaemonLocal) Identify(ctx context.Context, assertion, reason str
 	}
 
 	var infoCopy UserInfo
-	if err := CodecUpdate(k.codec, &infoCopy, u.UserInfo); err != nil {
+	if err := kbfscodec.CodecUpdate(k.codec, &infoCopy, u.UserInfo); err != nil {
 		return UserInfo{}, err
 	}
 	return infoCopy, nil
@@ -226,7 +227,7 @@ func (k *KeybaseDaemonLocal) LoadUserPlusKeys(ctx context.Context, uid keybase1.
 	}
 
 	var infoCopy UserInfo
-	if err := CodecUpdate(k.codec, &infoCopy, u.UserInfo); err != nil {
+	if err := kbfscodec.CodecUpdate(k.codec, &infoCopy, u.UserInfo); err != nil {
 		return UserInfo{}, err
 	}
 	return infoCopy, nil

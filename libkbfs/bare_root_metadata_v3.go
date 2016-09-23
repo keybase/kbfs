@@ -10,6 +10,7 @@ import (
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/kbfscodec"
 )
 
 // WriterMetadataV3 stores the metadata for a TLF that is
@@ -131,7 +132,7 @@ func (md *BareRootMetadataV3) haveOnlyUserRKeysChanged(codec Codec, prevMD *Bare
 	for u, keys := range rkb.RKeys {
 		if u != user {
 			prevKeys := prevRkb.RKeys[u]
-			keysEqual, err := CodecEqual(codec, keys, prevKeys)
+			keysEqual, err := kbfscodec.CodecEqual(codec, keys, prevKeys)
 			if err != nil {
 				return false, err
 			}
@@ -164,7 +165,7 @@ func (md *BareRootMetadataV3) IsValidRekeyRequest(
 	if !ok {
 		return false, errors.New("Invalid extra metadata")
 	}
-	writerEqual, err := CodecEqual(
+	writerEqual, err := kbfscodec.CodecEqual(
 		codec, md.WriterMetadata, prevMd.WriterMetadata)
 	if err != nil {
 		return false, err
@@ -173,7 +174,7 @@ func (md *BareRootMetadataV3) IsValidRekeyRequest(
 		// Copy mismatch.
 		return false, nil
 	}
-	writerSigInfoEqual, err := CodecEqual(codec,
+	writerSigInfoEqual, err := kbfscodec.CodecEqual(codec,
 		md.WriterMetadataSigInfo, prevMd.WriterMetadataSigInfo)
 	if err != nil {
 		return false, err
@@ -278,7 +279,7 @@ func (md *BareRootMetadataV3) Update(id TlfID, h BareTlfHandle) error {
 // DeepCopy implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) DeepCopy(codec Codec) (BareRootMetadata, error) {
 	var newMd BareRootMetadataV3
-	if err := CodecUpdate(codec, &newMd, md); err != nil {
+	if err := kbfscodec.CodecUpdate(codec, &newMd, md); err != nil {
 		return nil, err
 	}
 	return &newMd, nil
