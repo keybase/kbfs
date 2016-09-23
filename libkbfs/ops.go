@@ -1137,7 +1137,7 @@ func opPointerizer(iface interface{}) reflect.Value {
 }
 
 // RegisterOps registers all op types with the given codec.
-func RegisterOps(codec Codec) {
+func RegisterOps(codec kbfscodec.Codec) {
 	codec.RegisterType(reflect.TypeOf(createOp{}), createOpCode)
 	codec.RegisterType(reflect.TypeOf(rmOp{}), rmOpCode)
 	codec.RegisterType(reflect.TypeOf(renameOp{}), renameOpCode)

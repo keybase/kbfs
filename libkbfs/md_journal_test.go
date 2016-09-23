@@ -36,7 +36,7 @@ func getMDJournalLength(t *testing.T, j *mdJournal) int {
 }
 
 func setupMDJournalTest(t *testing.T) (
-	codec Codec, crypto CryptoCommon, id TlfID, signer cryptoSigner,
+	codec kbfscodec.Codec, crypto CryptoCommon, id TlfID, signer cryptoSigner,
 	ekg singleEncryptionKeyGetter, bsplit BlockSplitter, tempdir string,
 	j *mdJournal) {
 	codec = kbfscodec.NewCodecMsgpack()
@@ -107,7 +107,7 @@ func putMDRange(t *testing.T, tlfID TlfID, signer cryptoSigner,
 }
 
 func checkBRMD(t *testing.T, uid keybase1.UID, key VerifyingKey,
-	codec Codec, crypto cryptoPure, brmd BareRootMetadata,
+	codec kbfscodec.Codec, crypto cryptoPure, brmd BareRootMetadata,
 	expectedRevision MetadataRevision, expectedPrevRoot MdID,
 	expectedMergeStatus MergeStatus, expectedBranchID BranchID) {
 	require.Equal(t, expectedRevision, brmd.RevisionNumber())
@@ -125,7 +125,7 @@ func checkBRMD(t *testing.T, uid keybase1.UID, key VerifyingKey,
 }
 
 func checkIBRMDRange(t *testing.T, uid keybase1.UID,
-	key VerifyingKey, codec Codec, crypto cryptoPure,
+	key VerifyingKey, codec kbfscodec.Codec, crypto cryptoPure,
 	ibrmds []ImmutableBareRootMetadata, firstRevision MetadataRevision,
 	firstPrevRoot MdID, mStatus MergeStatus, bid BranchID) {
 	checkBRMD(t, uid, key, codec, crypto, ibrmds[0],

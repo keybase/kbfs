@@ -45,7 +45,7 @@ func (cig singleCurrentInfoGetter) GetCurrentVerifyingKey(
 type testMDServerLocalConfig struct {
 	t      *testing.T
 	clock  Clock
-	codec  Codec
+	codec  kbfscodec.Codec
 	crypto cryptoPure
 	cig    currentInfoGetter
 }
@@ -66,7 +66,7 @@ func (c testMDServerLocalConfig) Clock() Clock {
 	return c.clock
 }
 
-func (c testMDServerLocalConfig) Codec() Codec {
+func (c testMDServerLocalConfig) Codec() kbfscodec.Codec {
 	return c.codec
 }
 

@@ -124,7 +124,7 @@ func (md *BareRootMetadataV3) LatestKeyGeneration() KeyGen {
 	return md.WriterMetadata.LatestKeyGen
 }
 
-func (md *BareRootMetadataV3) haveOnlyUserRKeysChanged(codec Codec, prevMD *BareRootMetadataV3,
+func (md *BareRootMetadataV3) haveOnlyUserRKeysChanged(codec kbfscodec.Codec, prevMD *BareRootMetadataV3,
 	user keybase1.UID, prevRkb, rkb TLFReaderKeyBundleV3) (bool, error) {
 	if len(rkb.RKeys) != len(prevRkb.RKeys) {
 		return false, nil
@@ -146,7 +146,7 @@ func (md *BareRootMetadataV3) haveOnlyUserRKeysChanged(codec Codec, prevMD *Bare
 
 // IsValidRekeyRequest implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) IsValidRekeyRequest(
-	codec Codec, prevBareMd BareRootMetadata, user keybase1.UID, prevExtra, extra ExtraMetadata) (
+	codec kbfscodec.Codec, prevBareMd BareRootMetadata, user keybase1.UID, prevExtra, extra ExtraMetadata) (
 	bool, error) {
 	if !md.IsWriterMetadataCopiedSet() {
 		// Not a copy.
@@ -277,7 +277,7 @@ func (md *BareRootMetadataV3) Update(id TlfID, h BareTlfHandle) error {
 }
 
 // DeepCopy implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) DeepCopy(codec Codec) (BareRootMetadata, error) {
+func (md *BareRootMetadataV3) DeepCopy(codec kbfscodec.Codec) (BareRootMetadata, error) {
 	var newMd BareRootMetadataV3
 	if err := kbfscodec.CodecUpdate(codec, &newMd, md); err != nil {
 		return nil, err
@@ -286,7 +286,7 @@ func (md *BareRootMetadataV3) DeepCopy(codec Codec) (BareRootMetadata, error) {
 }
 
 // MakeSuccessorCopy implements the ImmutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) MakeSuccessorCopy(codec Codec) (BareRootMetadata, error) {
+func (md *BareRootMetadataV3) MakeSuccessorCopy(codec kbfscodec.Codec) (BareRootMetadata, error) {
 	// TODO: If there is ever a BareRootMetadataV4 this will need to perform the conversion.
 	return md.DeepCopy(codec)
 }
@@ -528,7 +528,7 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 
 // IsValidAndSigned implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) IsValidAndSigned(
-	codec Codec, crypto cryptoPure, extra ExtraMetadata) error {
+	codec kbfscodec.Codec, crypto cryptoPure, extra ExtraMetadata) error {
 	// Optimization -- if the WriterMetadata signature is nil, it
 	// will fail verification.
 	if md.WriterMetadataSigInfo.IsNil() {
@@ -752,7 +752,7 @@ func (md *BareRootMetadataV3) SetSerializedPrivateMetadata(spmd []byte) {
 }
 
 // GetSerializedWriterMetadata implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetSerializedWriterMetadata(codec Codec) ([]byte, error) {
+func (md *BareRootMetadataV3) GetSerializedWriterMetadata(codec kbfscodec.Codec) ([]byte, error) {
 	return codec.Encode(md.WriterMetadata)
 }
 
@@ -861,7 +861,7 @@ func (md *BareRootMetadataV3) Version() MetadataVer {
 }
 
 // FakeInitialRekey implements the MutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) FakeInitialRekey(codec Codec, h BareTlfHandle) (
+func (md *BareRootMetadataV3) FakeInitialRekey(codec kbfscodec.Codec, h BareTlfHandle) (
 	ExtraMetadata, error) {
 	if md.TlfID().IsPublic() {
 		panic("Called FakeInitialRekey on public TLF")
@@ -924,7 +924,7 @@ func (md *BareRootMetadataV3) GetTLFPublicKey(keyGen KeyGen, extra ExtraMetadata
 
 // AreKeyGenerationsEqual implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) AreKeyGenerationsEqual(
-	codec Codec, other BareRootMetadata) (bool, error) {
+	codec kbfscodec.Codec, other BareRootMetadata) (bool, error) {
 	md3, ok := other.(*BareRootMetadataV3)
 	if !ok {
 		// MDv3 TODO: handle comparisons across versions

@@ -67,7 +67,7 @@ type testTLFJournalConfig struct {
 	t        *testing.T
 	tlfID    TlfID
 	splitter BlockSplitter
-	codec    Codec
+	codec    kbfscodec.Codec
 	crypto   CryptoLocal
 	bcache   BlockCache
 	mdcache  MDCache
@@ -81,7 +81,7 @@ func (c testTLFJournalConfig) BlockSplitter() BlockSplitter {
 	return c.splitter
 }
 
-func (c testTLFJournalConfig) Codec() Codec {
+func (c testTLFJournalConfig) Codec() kbfscodec.Codec {
 	return c.codec
 }
 

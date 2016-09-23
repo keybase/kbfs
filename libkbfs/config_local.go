@@ -51,7 +51,7 @@ type ConfigLocal struct {
 	kcache      KeyCache
 	bcache      BlockCache
 	dirtyBcache DirtyBlockCache
-	codec       Codec
+	codec       kbfscodec.Codec
 	mdops       MDOps
 	kops        KeyOps
 	crypto      Crypto
@@ -337,14 +337,14 @@ func (c *ConfigLocal) SetCrypto(cr Crypto) {
 }
 
 // Codec implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) Codec() Codec {
+func (c *ConfigLocal) Codec() kbfscodec.Codec {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.codec
 }
 
 // SetCodec implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetCodec(co Codec) {
+func (c *ConfigLocal) SetCodec(co kbfscodec.Codec) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.codec = co

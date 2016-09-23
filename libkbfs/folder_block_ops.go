@@ -50,7 +50,7 @@ type syncInfo struct {
 	toCleanIfUnused []mdToCleanIfUnused
 }
 
-func (si *syncInfo) DeepCopy(codec Codec) (*syncInfo, error) {
+func (si *syncInfo) DeepCopy(codec kbfscodec.Codec) (*syncInfo, error) {
 	newSi := &syncInfo{
 		oldInfo:    si.oldInfo,
 		refBytes:   si.refBytes,

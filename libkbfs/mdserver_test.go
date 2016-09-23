@@ -28,7 +28,7 @@ func makeRMDSForTest(t *testing.T, id TlfID, h BareTlfHandle,
 	return rmds
 }
 
-func signRMDSForTest(t *testing.T, codec Codec, signer cryptoSigner,
+func signRMDSForTest(t *testing.T, codec kbfscodec.Codec, signer cryptoSigner,
 	rmds *RootMetadataSigned) {
 	ctx := context.Background()
 

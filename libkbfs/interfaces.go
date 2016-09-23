@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"reflect"
 	"time"
 
 	"github.com/keybase/client/go/libkb"
@@ -844,15 +843,6 @@ type Crypto interface {
 	Shutdown()
 }
 
-// Codec encodes and decodes arbitrary data
-type Codec interface {
-	Decode(buf []byte, obj interface{}) error
-	Encode(obj interface{}) ([]byte, error)
-	RegisterType(rt reflect.Type, code kbfscodec.ExtCode)
-	RegisterIfaceSliceType(rt reflect.Type, code kbfscodec.ExtCode,
-		typer func(interface{}) reflect.Value)
-}
-
 // MDOps gets and puts root metadata to an MDServer.  On a get, it
 // verifies the metadata is signed by the metadata's signing key.
 type MDOps interface {
@@ -1277,8 +1267,8 @@ type Config interface {
 	SetDirtyBlockCache(DirtyBlockCache)
 	Crypto() Crypto
 	SetCrypto(Crypto)
-	Codec() Codec
-	SetCodec(Codec)
+	Codec() kbfscodec.Codec
+	SetCodec(kbfscodec.Codec)
 	MDOps() MDOps
 	SetMDOps(MDOps)
 	KeyOps() KeyOps
@@ -1480,7 +1470,7 @@ type BareRootMetadata interface {
 	LatestKeyGeneration() KeyGen
 	// IsValidRekeyRequest returns true if the current block is a simple rekey wrt
 	// the passed block.
-	IsValidRekeyRequest(codec Codec, prevMd BareRootMetadata,
+	IsValidRekeyRequest(codec kbfscodec.Codec, prevMd BareRootMetadata,
 		user keybase1.UID, prevExtra, extra ExtraMetadata) (bool, error)
 	// MergedStatus returns the status of this update -- has it been
 	// merged into the main folder or not?
@@ -1498,11 +1488,11 @@ type BareRootMetadata interface {
 	// IsReader returns whether or not the user+device is an authorized reader.
 	IsReader(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool
 	// DeepCopy returns a deep copy of the underlying data structure.
-	DeepCopy(codec Codec) (BareRootMetadata, error)
+	DeepCopy(codec kbfscodec.Codec) (BareRootMetadata, error)
 	// MakeSuccessorCopy returns a newly constructed successor copy to this metadata revision.
 	// It differs from DeepCopy in that it can perform an up conversion to a new metadata
 	// version.
-	MakeSuccessorCopy(codec Codec) (BareRootMetadata, error)
+	MakeSuccessorCopy(codec kbfscodec.Codec) (BareRootMetadata, error)
 	// CheckValidSuccessor makes sure the given BareRootMetadata is a valid
 	// successor to the current one, and returns an error otherwise.
 	CheckValidSuccessor(currID MdID, nextMd BareRootMetadata) error
@@ -1542,7 +1532,7 @@ type BareRootMetadata interface {
 	// user and key should be validated, either by comparing to
 	// the current device key (using IsLastModifiedBy), or by
 	// checking with KBPKI.
-	IsValidAndSigned(codec Codec, crypto cryptoPure, extra ExtraMetadata) error
+	IsValidAndSigned(codec kbfscodec.Codec, crypto cryptoPure, extra ExtraMetadata) error
 	// IsLastModifiedBy verifies that the BareRootMetadata is
 	// written by the given user and device (identified by the KID
 	// of the device verifying key), and returns an error if not.
@@ -1570,7 +1560,7 @@ type BareRootMetadata interface {
 	// GetSerializedPrivateMetadata returns the serialized private metadata as a byte slice.
 	GetSerializedPrivateMetadata() []byte
 	// GetSerializedWriterMetadata serializes the underlying writer metadata and returns the result.
-	GetSerializedWriterMetadata(codec Codec) ([]byte, error)
+	GetSerializedWriterMetadata(codec kbfscodec.Codec) ([]byte, error)
 	// GetWriterMetadataSigInfo returns the signature info associated with the the writer metadata.
 	GetWriterMetadataSigInfo() SignatureInfo
 	// Version returns the metadata version.
@@ -1580,7 +1570,7 @@ type BareRootMetadata interface {
 	GetTLFPublicKey(KeyGen, ExtraMetadata) (TLFPublicKey, bool)
 	// AreKeyGenerationsEqual returns true if all key generations in the passed metadata are equal to those
 	// in this revision.
-	AreKeyGenerationsEqual(Codec, BareRootMetadata) (bool, error)
+	AreKeyGenerationsEqual(kbfscodec.Codec, BareRootMetadata) (bool, error)
 	// GetUnresolvedParticipants returns any unresolved readers and writers present in this revision of metadata.
 	GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion)
 }
@@ -1650,7 +1640,7 @@ type MutableBareRootMetadata interface {
 	// BareRootMetadata. This is necessary since newly-created
 	// BareRootMetadata objects don't have enough data to build a
 	// TlfHandle from until the first rekey.
-	FakeInitialRekey(c Codec, h BareTlfHandle) (ExtraMetadata, error)
+	FakeInitialRekey(c kbfscodec.Codec, h BareTlfHandle) (ExtraMetadata, error)
 	// Update initializes the given freshly-created BareRootMetadata object with
 	// the given TlfID and BareTlfHandle. Note that if the given ID/handle are private,
 	// rekeying must be done separately.

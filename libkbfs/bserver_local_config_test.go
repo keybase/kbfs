@@ -13,7 +13,7 @@ import (
 
 type testBlockServerLocalConfig struct {
 	t      *testing.T
-	codec  Codec
+	codec  kbfscodec.Codec
 	crypto cryptoPure
 }
 
@@ -26,7 +26,7 @@ func newTestBlockServerLocalConfig(t *testing.T) testBlockServerLocalConfig {
 	}
 }
 
-func (c testBlockServerLocalConfig) Codec() Codec {
+func (c testBlockServerLocalConfig) Codec() kbfscodec.Codec {
 	return c.codec
 }
 
