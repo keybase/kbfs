@@ -498,10 +498,10 @@ func (j *mdJournal) convertToBranch(
 		}
 		mdsToRemove = append(mdsToRemove, newID)
 
-		// TODO: Try and preserve unknown fields from the old
-		// journal.
-		err = tempJournal.append(
-			brmd.RevisionNumber(), mdIDJournalEntry{ID: newID})
+		// Preserve unknown fields from the old journal.
+		newEntry := entry
+		newEntry.ID = newID
+		err = tempJournal.append(brmd.RevisionNumber(), newEntry)
 		if err != nil {
 			return NullBranchID, err
 		}
