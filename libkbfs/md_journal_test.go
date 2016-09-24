@@ -525,6 +525,11 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 	flushAllMDs(t, ctx, signer, j)
 }
 
+type mdIDJournalEntryExtra struct {
+	mdIDJournalEntry
+	Extra int
+}
+
 func TestMDJournalBranchConversionPreservesUnknownFields(t *testing.T) {
 	codec, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t)
 	defer teardownMDJournalTest(t, tempdir)
@@ -542,8 +547,12 @@ func TestMDJournalBranchConversionPreservesUnknownFields(t *testing.T) {
 		require.NoError(t, err)
 
 		// Add extra fields to the journal entry.
-		entryFuture := makeFakeMDIDJournalEntryFuture(t)
-		entryFuture.ID = mdID
+		entryFuture := mdIDJournalEntryExtra{
+			mdIDJournalEntry: mdIDJournalEntry{
+				ID: mdID,
+			},
+			Extra: i,
+		}
 		var entry mdIDJournalEntry
 		err = CodecUpdate(codec, &entry, entryFuture)
 		require.NoError(t, err)
