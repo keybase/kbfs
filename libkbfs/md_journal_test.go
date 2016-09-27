@@ -554,7 +554,7 @@ func TestMDJournalBranchConversionPreservesUnknownFields(t *testing.T) {
 			Extra: i,
 		}
 		var entry mdIDJournalEntry
-		err = CodecUpdate(codec, &entry, entryFuture)
+		err = kbfscodec.Update(codec, &entry, entryFuture)
 		require.NoError(t, err)
 		o, err := revisionToOrdinal(revision)
 		require.NoError(t, err)
