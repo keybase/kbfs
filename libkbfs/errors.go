@@ -739,16 +739,6 @@ func (e KeyHalfMismatchError) Error() string {
 		e.Expected, e.Actual)
 }
 
-// InvalidHashError is returned whenever an invalid hash is
-// detected.
-type InvalidHashError struct {
-	H Hash
-}
-
-func (e InvalidHashError) Error() string {
-	return fmt.Sprintf("Invalid hash %s", e.H)
-}
-
 // InvalidTlfID indicates whether the TLF ID string is not parseable
 // or invalid.
 type InvalidTlfID struct {
@@ -767,27 +757,6 @@ type InvalidBranchID struct {
 
 func (e InvalidBranchID) Error() string {
 	return fmt.Sprintf("Invalid branch ID %q", e.id)
-}
-
-// UnknownHashTypeError is returned whenever a hash with an unknown
-// hash type is attempted to be used for verification.
-type UnknownHashTypeError struct {
-	T HashType
-}
-
-func (e UnknownHashTypeError) Error() string {
-	return fmt.Sprintf("Unknown hash type %s", e.T)
-}
-
-// HashMismatchError is returned whenever a hash mismatch is detected.
-type HashMismatchError struct {
-	ExpectedH Hash
-	ActualH   Hash
-}
-
-func (e HashMismatchError) Error() string {
-	return fmt.Sprintf("Hash mismatch: expected %s, got %s",
-		e.ExpectedH, e.ActualH)
 }
 
 // MDServerDisconnected indicates the MDServer has been disconnected for clients waiting
