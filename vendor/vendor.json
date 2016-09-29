@@ -531,6 +531,18 @@
 			"revisionTime": "2016-08-26T20:58:34Z"
 		},
 		{
+			"checksumSHA1": "2wlRHjPcwEYMy/NYfUntFTEgFkw=",
+			"path": "golang.org/x/net/webdav",
+			"revision": "ed0556cc888129faa06ff0ef3c65e0ce59c8b75c",
+			"revisionTime": "2016-09-29T06:24:16Z"
+		},
+		{
+			"checksumSHA1": "Q3wUNc6SE1sHW7mKM80grgd+aU4=",
+			"path": "golang.org/x/net/webdav/internal/xml",
+			"revision": "ed0556cc888129faa06ff0ef3c65e0ce59c8b75c",
+			"revisionTime": "2016-09-29T06:24:16Z"
+		},
+		{
 			"path": "golang.org/x/sys/unix",
 			"revision": "833a04a10549a95dc34458c195cbad61bbb6cb4d",
 			"revisionTime": "2015-12-10T17:34:15-08:00"
