@@ -13,6 +13,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfshash"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/secretbox"
 )
@@ -82,7 +83,7 @@ func (c CryptoCommon) MakeMdID(md BareRootMetadata) (MdID, error) {
 		return MdID{}, err
 	}
 
-	h, err := DefaultHash(buf)
+	h, err := kbfshash.DefaultHash(buf)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -95,7 +96,7 @@ func (c CryptoCommon) MakeMerkleHash(md *RootMetadataSigned) (MerkleHash, error)
 	if err != nil {
 		return MerkleHash{}, err
 	}
-	h, err := DefaultHash(buf)
+	h, err := kbfshash.DefaultHash(buf)
 	if err != nil {
 		return MerkleHash{}, err
 	}
@@ -109,7 +110,7 @@ func (c CryptoCommon) MakeTLFWriterKeyBundleID(wkb *TLFWriterKeyBundleV3) (
 	if err != nil {
 		return TLFWriterKeyBundleID{}, err
 	}
-	h, err := DefaultHash(buf)
+	h, err := kbfshash.DefaultHash(buf)
 	if err != nil {
 		return TLFWriterKeyBundleID{}, err
 	}
@@ -123,7 +124,7 @@ func (c CryptoCommon) MakeTLFReaderKeyBundleID(rkb *TLFReaderKeyBundleV3) (
 	if err != nil {
 		return TLFReaderKeyBundleID{}, err
 	}
-	h, err := DefaultHash(buf)
+	h, err := kbfshash.DefaultHash(buf)
 	if err != nil {
 		return TLFReaderKeyBundleID{}, err
 	}
@@ -132,12 +133,12 @@ func (c CryptoCommon) MakeTLFReaderKeyBundleID(rkb *TLFReaderKeyBundleV3) (
 
 // MakeTemporaryBlockID implements the Crypto interface for CryptoCommon.
 func (c CryptoCommon) MakeTemporaryBlockID() (BlockID, error) {
-	var dh RawDefaultHash
+	var dh kbfshash.RawDefaultHash
 	err := cryptoRandRead(dh[:])
 	if err != nil {
 		return BlockID{}, err
 	}
-	h, err := HashFromRaw(DefaultHashType, dh[:])
+	h, err := kbfshash.HashFromRaw(kbfshash.DefaultHashType, dh[:])
 	if err != nil {
 		return BlockID{}, err
 	}
@@ -146,7 +147,7 @@ func (c CryptoCommon) MakeTemporaryBlockID() (BlockID, error) {
 
 // MakePermanentBlockID implements the Crypto interface for CryptoCommon.
 func (c CryptoCommon) MakePermanentBlockID(encodedEncryptedData []byte) (BlockID, error) {
-	h, err := DefaultHash(encodedEncryptedData)
+	h, err := kbfshash.DefaultHash(encodedEncryptedData)
 	if err != nil {
 		return BlockID{}, nil
 	}
@@ -496,7 +497,7 @@ func (c CryptoCommon) GetTLFCryptKeyServerHalfID(
 	serverHalf TLFCryptKeyServerHalf) (TLFCryptKeyServerHalfID, error) {
 	key := serverHalf.data[:]
 	data := append(user.ToBytes(), deviceKID.ToBytes()...)
-	hmac, err := DefaultHMAC(key, data)
+	hmac, err := kbfshash.DefaultHMAC(key, data)
 	if err != nil {
 		return TLFCryptKeyServerHalfID{}, err
 	}

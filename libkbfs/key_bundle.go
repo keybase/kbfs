@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/kbfshash"
 )
 
 // All section references below are to https://keybase.io/blog/kbfs-crypto
@@ -14,7 +15,7 @@ import (
 
 // TLFCryptKeyServerHalfID is the identifier type for a server-side key half.
 type TLFCryptKeyServerHalfID struct {
-	ID HMAC // Exported for serialization.
+	ID kbfshash.HMAC // Exported for serialization.
 }
 
 // String implements the Stringer interface for TLFCryptKeyServerHalfID.

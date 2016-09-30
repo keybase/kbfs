@@ -14,6 +14,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfshash"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -417,7 +418,7 @@ func (brmf *bareRootMetadataFuture) toCurrentStruct() currentStruct {
 func makeFakeBareRootMetadataFuture(t *testing.T) *bareRootMetadataFuture {
 	wmf := makeFakeWriterMetadataFuture(t)
 	rkb := makeFakeTLFReaderKeyBundleFuture(t)
-	h, err := DefaultHash([]byte("fake buf"))
+	h, err := kbfshash.DefaultHash([]byte("fake buf"))
 	require.NoError(t, err)
 	sa, _ := externals.NormalizeSocialAssertion("bar@github")
 	rmf := bareRootMetadataFuture{

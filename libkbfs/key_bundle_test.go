@@ -9,6 +9,7 @@ import (
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/kbfshash"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -27,7 +28,8 @@ func (cki tlfCryptKeyInfoFuture) toCurrentStruct() currentStruct {
 }
 
 func makeFakeTLFCryptKeyInfoFuture(t *testing.T) tlfCryptKeyInfoFuture {
-	hmac, err := DefaultHMAC([]byte("fake key"), []byte("fake buf"))
+	hmac, err := kbfshash.DefaultHMAC(
+		[]byte("fake key"), []byte("fake buf"))
 	require.NoError(t, err)
 	cki := TLFCryptKeyInfo{
 		EncryptedTLFCryptKeyClientHalf{

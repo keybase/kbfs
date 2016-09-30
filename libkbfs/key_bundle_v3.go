@@ -9,6 +9,7 @@ import (
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/kbfshash"
 )
 
 // TLFReaderKeyBundleV3 is an alias to a TLFReaderKeyBundleV2 for clarity.
@@ -48,7 +49,7 @@ func (wkb TLFWriterKeyBundleV3) IsWriter(user keybase1.UID, deviceKID keybase1.K
 
 // TLFReaderKeyBundleID is the hash of a serialized TLFReaderKeyBundle.
 type TLFReaderKeyBundleID struct {
-	h Hash
+	h kbfshash.Hash
 }
 
 var _ encoding.BinaryMarshaler = TLFReaderKeyBundleID{}
@@ -57,7 +58,7 @@ var _ encoding.BinaryUnmarshaler = (*TLFReaderKeyBundleID)(nil)
 // TLFReaderKeyBundleIDFromBytes creates a new TLFReaderKeyBundleID from the given bytes.
 // If the returned error is nil, the returned TLFReaderKeyBundleID is valid.
 func TLFReaderKeyBundleIDFromBytes(data []byte) (TLFReaderKeyBundleID, error) {
-	h, err := HashFromBytes(data)
+	h, err := kbfshash.HashFromBytes(data)
 	if err != nil {
 		return TLFReaderKeyBundleID{}, err
 	}
@@ -90,7 +91,7 @@ func (h *TLFReaderKeyBundleID) UnmarshalBinary(data []byte) error {
 
 // TLFWriterKeyBundleID is the hash of a serialized TLFWriterKeyBundle.
 type TLFWriterKeyBundleID struct {
-	h Hash
+	h kbfshash.Hash
 }
 
 var _ encoding.BinaryMarshaler = TLFWriterKeyBundleID{}
@@ -99,7 +100,7 @@ var _ encoding.BinaryUnmarshaler = (*TLFWriterKeyBundleID)(nil)
 // TLFWriterKeyBundleIDFromBytes creates a new TLFWriterKeyBundleID from the given bytes.
 // If the returned error is nil, the returned TLFWriterKeyBundleID is valid.
 func TLFWriterKeyBundleIDFromBytes(data []byte) (TLFWriterKeyBundleID, error) {
-	h, err := HashFromBytes(data)
+	h, err := kbfshash.HashFromBytes(data)
 	if err != nil {
 		return TLFWriterKeyBundleID{}, err
 	}

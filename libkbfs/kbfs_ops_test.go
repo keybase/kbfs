@@ -17,6 +17,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfshash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -5417,7 +5418,7 @@ func TestKBFSOpsFailToReadUnverifiableBlock(t *testing.T) {
 	// Lookup the file, which should fail on block ID verification
 	kbfsOps2 := config2.KBFSOps()
 	_, _, err = kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if _, ok := err.(HashMismatchError); !ok {
+	if _, ok := err.(kbfshash.HashMismatchError); !ok {
 		t.Fatalf("Could unexpectedly lookup the file: %v", err)
 	}
 }
