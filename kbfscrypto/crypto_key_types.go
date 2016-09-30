@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 )
 
@@ -72,65 +71,6 @@ func (k kidContainer) KID() keybase1.KID {
 
 func (k kidContainer) String() string {
 	return k.kid.String()
-}
-
-// SigningKey is a key pair for signing.
-type SigningKey struct {
-	kp libkb.NaclSigningKeyPair
-}
-
-// NewSigningKey returns a SigningKey using the given key pair.
-func NewSigningKey(kp libkb.NaclSigningKeyPair) SigningKey {
-	return SigningKey{kp}
-}
-
-func (k SigningKey) Sign(data []byte) SignatureInfo {
-	return SignatureInfo{
-		Version:      SigED25519,
-		Signature:    k.kp.Private.Sign(data)[:],
-		VerifyingKey: k.GetVerifyingKey(),
-	}
-}
-
-func (k SigningKey) SignToString(data []byte) (sig string, err error) {
-	sig, _, err = k.kp.SignToString(data)
-	return sig, err
-}
-
-// GetVerifyingKey returns the public key half of this signing key.
-func (k SigningKey) GetVerifyingKey() VerifyingKey {
-	return MakeVerifyingKey(k.kp.Public.GetKID())
-}
-
-// A VerifyingKey is a public key that can be used to verify a
-// signature created by the corresponding private signing key. In
-// particular, VerifyingKeys are used to authenticate home and public
-// TLFs. (See 4.2, 4.3.)
-//
-// These are also sometimes known as sibkeys.
-//
-// Copies of VerifyingKey objects are deep copies.
-type VerifyingKey struct {
-	// Even though we currently use NaclSignatures, we use a KID
-	// here (which encodes the key type) as we may end up storing
-	// other kinds of signatures.
-	kidContainer
-}
-
-var _ encoding.BinaryMarshaler = VerifyingKey{}
-var _ encoding.BinaryUnmarshaler = (*VerifyingKey)(nil)
-
-var _ json.Marshaler = VerifyingKey{}
-var _ json.Unmarshaler = (*VerifyingKey)(nil)
-
-// MakeVerifyingKey returns a VerifyingKey containing the given KID.
-func MakeVerifyingKey(kid keybase1.KID) VerifyingKey {
-	return VerifyingKey{kidContainer{kid}}
-}
-
-// IsNil returns true if the VerifyingKey is nil.
-func (k VerifyingKey) IsNil() bool {
-	return k.kid.IsNil()
 }
 
 type byte32Container struct {

@@ -5,10 +5,13 @@
 package kbfscrypto
 
 import (
+	"encoding"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/client/go/protocol/keybase1"
 
 	"golang.org/x/net/context"
 )
@@ -52,6 +55,67 @@ func (s SignatureInfo) String() string {
 	return fmt.Sprintf("SignatureInfo{Version: %d, Signature: %s, "+
 		"VerifyingKey: %s}", s.Version, hex.EncodeToString(s.Signature[:]),
 		&s.VerifyingKey)
+}
+
+// SigningKey is a key pair for signing.
+type SigningKey struct {
+	kp libkb.NaclSigningKeyPair
+}
+
+// NewSigningKey returns a SigningKey using the given key pair.
+func NewSigningKey(kp libkb.NaclSigningKeyPair) SigningKey {
+	return SigningKey{kp}
+}
+
+// Sign signs the given data and returns a SignatureInfo.
+func (k SigningKey) Sign(data []byte) SignatureInfo {
+	return SignatureInfo{
+		Version:      SigED25519,
+		Signature:    k.kp.Private.Sign(data)[:],
+		VerifyingKey: k.GetVerifyingKey(),
+	}
+}
+
+// Sign signs the given data and returns a string.
+func (k SigningKey) SignToString(data []byte) (sig string, err error) {
+	sig, _, err = k.kp.SignToString(data)
+	return sig, err
+}
+
+// GetVerifyingKey returns the public key half of this signing key.
+func (k SigningKey) GetVerifyingKey() VerifyingKey {
+	return MakeVerifyingKey(k.kp.Public.GetKID())
+}
+
+// A VerifyingKey is a public key that can be used to verify a
+// signature created by the corresponding private signing key. In
+// particular, VerifyingKeys are used to authenticate home and public
+// TLFs. (See 4.2, 4.3.)
+//
+// These are also sometimes known as sibkeys.
+//
+// Copies of VerifyingKey objects are deep copies.
+type VerifyingKey struct {
+	// Even though we currently use NaclSignatures, we use a KID
+	// here (which encodes the key type) as we may end up storing
+	// other kinds of signatures.
+	kidContainer
+}
+
+var _ encoding.BinaryMarshaler = VerifyingKey{}
+var _ encoding.BinaryUnmarshaler = (*VerifyingKey)(nil)
+
+var _ json.Marshaler = VerifyingKey{}
+var _ json.Unmarshaler = (*VerifyingKey)(nil)
+
+// MakeVerifyingKey returns a VerifyingKey containing the given KID.
+func MakeVerifyingKey(kid keybase1.KID) VerifyingKey {
+	return VerifyingKey{kidContainer{kid}}
+}
+
+// IsNil returns true if the VerifyingKey is nil.
+func (k VerifyingKey) IsNil() bool {
+	return k.kid.IsNil()
 }
 
 func Verify(msg []byte, sigInfo SignatureInfo) error {
