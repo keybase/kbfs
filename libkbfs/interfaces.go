@@ -856,15 +856,11 @@ type cryptoPure interface {
 		[]kbfscrypto.TLFCryptKey, error)
 }
 
-// Duplicate kbfscrypto.Signer to work around gomock.
+// Duplicate kbfscrypto.Signer here to work around gomock's
+// limitations.
 type cryptoSigner interface {
-	// Sign signs the msg with some internal private key.
-	Sign(ctx context.Context, msg []byte) (
-		sigInfo kbfscrypto.SignatureInfo, err error)
-	// Sign signs the msg with the some internal private key and output
-	// the full serialized NaclSigInfo.
-	SignToString(ctx context.Context, msg []byte) (
-		signature string, err error)
+	Sign(context.Context, []byte) (kbfscrypto.SignatureInfo, error)
+	SignToString(context.Context, []byte) (string, error)
 }
 
 // Crypto signs, verifies, encrypts, and decrypts stuff.
