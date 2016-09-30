@@ -274,7 +274,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	msg := []byte("message")
 	sigInfo := kbfscrypto.SignatureInfo{
 		Version:      kbfscrypto.SigED25519,
-		Signature:    signingKey.kp.Private.Sign(msg)[:],
+		Signature:    signingKey.Sign(msg),
 		VerifyingKey: signingKey.GetVerifyingKey(),
 	}
 

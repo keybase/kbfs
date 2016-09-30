@@ -150,7 +150,7 @@ func (lu *LocalUser) GetPublicKeys() []keybase1.PublicKey {
 // will always be returned for a given user.
 
 // MakeLocalUserSigningKeyOrBust returns a unique signing key for this user.
-func MakeLocalUserSigningKeyOrBust(name libkb.NormalizedUsername) SigningKey {
+func MakeLocalUserSigningKeyOrBust(name libkb.NormalizedUsername) kbfscrypto.SigningKey {
 	return MakeFakeSigningKeyOrBust(string(name) + " signing key")
 }
 
@@ -681,7 +681,7 @@ func (c *ConfigLocal) SetLoggerMaker(
 // NewConfigLocalWithCryptoForSigning initializes a local crypto
 // config w/a crypto interface, using the given signing key, that can
 // be used for non-PKI crypto.
-func NewConfigLocalWithCryptoForSigning(signingKey SigningKey) *ConfigLocal {
+func NewConfigLocalWithCryptoForSigning(signingKey kbfscrypto.SigningKey) *ConfigLocal {
 	config := NewConfigLocal()
 	config.SetLoggerMaker(func(m string) logger.Logger {
 		return logger.NewNull()

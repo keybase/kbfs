@@ -23,7 +23,7 @@ type FakeCryptoClient struct {
 	goChan    <-chan struct{}
 }
 
-func NewFakeCryptoClient(config Config, signingKey SigningKey,
+func NewFakeCryptoClient(config Config, signingKey kbfscrypto.SigningKey,
 	cryptPrivateKey CryptPrivateKey,
 	readyChan chan<- struct{},
 	goChan <-chan struct{}) *FakeCryptoClient {

@@ -12,40 +12,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// SigningKeySecretSize is the size of a SigningKeySecret.
-const SigningKeySecretSize = libkb.NaclSigningKeySecretSize
-
-// SigningKeySecret is a secret that can be used to construct a SigningKey.
-type SigningKeySecret struct {
-	secret [SigningKeySecretSize]byte
-}
-
-// SigningKey is a key pair for signing.
-type SigningKey struct {
-	kp libkb.NaclSigningKeyPair
-}
-
-// makeSigningKey makes a new Nacl signing key from the given secret.
-func makeSigningKey(secret SigningKeySecret) (SigningKey, error) {
-	kp, err := libkb.MakeNaclSigningKeyPairFromSecret(secret.secret)
-	if err != nil {
-		return SigningKey{}, err
-	}
-
-	return SigningKey{kp}, nil
-}
-
-// NewSigningKey returns a SigningKey using the given key pair.
-func NewSigningKey(kp libkb.NaclSigningKeyPair) SigningKey {
-	return SigningKey{kp}
-}
-
-// GetVerifyingKey returns the public key half of this signing key.
-func (k SigningKey) GetVerifyingKey() kbfscrypto.VerifyingKey {
-	return kbfscrypto.MakeVerifyingKey(k.kp.Public.GetKID())
-
-}
-
 // CryptPrivateKeySecretSize is the size of a CryptPrivateKeySecret.
 const CryptPrivateKeySecretSize = libkb.NaclDHKeySecretSize
 
@@ -78,14 +44,14 @@ func (k CryptPrivateKey) getPublicKey() kbfscrypto.CryptPublicKey {
 }
 
 type cryptoSignerLocal struct {
-	signingKey SigningKey
+	signingKey kbfscrypto.SigningKey
 }
 
 func (c cryptoSignerLocal) Sign(ctx context.Context, msg []byte) (
 	sigInfo kbfscrypto.SignatureInfo, err error) {
 	sigInfo = kbfscrypto.SignatureInfo{
 		Version:      kbfscrypto.SigED25519,
-		Signature:    c.signingKey.kp.Private.Sign(msg)[:],
+		Signature:    c.signingKey.Sign(msg),
 		VerifyingKey: c.signingKey.GetVerifyingKey(),
 	}
 	return
@@ -93,7 +59,7 @@ func (c cryptoSignerLocal) Sign(ctx context.Context, msg []byte) (
 
 func (c cryptoSignerLocal) SignToString(ctx context.Context, msg []byte) (
 	signature string, err error) {
-	signature, _, err = c.signingKey.kp.SignToString(msg)
+	return c.signingKey.SignToString(msg)
 	return
 }
 
@@ -110,7 +76,7 @@ var _ Crypto = CryptoLocal{}
 // NewCryptoLocal constructs a new CryptoLocal instance with the given
 // signing key.
 func NewCryptoLocal(codec kbfscodec.Codec,
-	signingKey SigningKey, cryptPrivateKey CryptPrivateKey) CryptoLocal {
+	signingKey kbfscrypto.SigningKey, cryptPrivateKey CryptPrivateKey) CryptoLocal {
 	return CryptoLocal{
 		MakeCryptoCommon(codec),
 		cryptoSignerLocal{signingKey},

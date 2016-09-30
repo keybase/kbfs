@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
+	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 )
 
@@ -73,6 +74,31 @@ func (k kidContainer) KID() keybase1.KID {
 
 func (k kidContainer) String() string {
 	return k.kid.String()
+}
+
+// SigningKey is a key pair for signing.
+type SigningKey struct {
+	kp libkb.NaclSigningKeyPair
+}
+
+// NewSigningKey returns a SigningKey using the given key pair.
+func NewSigningKey(kp libkb.NaclSigningKeyPair) SigningKey {
+	return SigningKey{kp}
+}
+
+func (k SigningKey) Sign(data []byte) []byte {
+	return k.kp.Private.Sign(data)[:]
+}
+
+func (k SigningKey) SignToString(data []byte) (sig string, err error) {
+	sig, _, err = k.kp.SignToString(data)
+	return sig, err
+}
+
+// GetVerifyingKey returns the public key half of this signing key.
+func (k SigningKey) GetVerifyingKey() VerifyingKey {
+	return MakeVerifyingKey(k.kp.Public.GetKID())
+
 }
 
 // A VerifyingKey is a public key that can be used to verify a
