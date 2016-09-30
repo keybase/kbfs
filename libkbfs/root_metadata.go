@@ -784,7 +784,7 @@ func NewRootMetadataSigned() *RootMetadataSigned {
 
 // MerkleHash computes a hash of this RootMetadataSigned object for inclusion
 // into the KBFS Merkle tree.
-func (rmds *RootMetadataSigned) MerkleHash(crypto Crypto) (MerkleHash, error) {
+func (rmds *RootMetadataSigned) MerkleHash(crypto cryptoPure) (MerkleHash, error) {
 	return crypto.MakeMerkleHash(rmds)
 }
 
