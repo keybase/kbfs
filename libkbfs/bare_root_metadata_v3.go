@@ -499,7 +499,8 @@ func (md *BareRootMetadataV3) HasKeyForUser(
 
 // GetTLFCryptKeyParams implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
-	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey, extra ExtraMetadata) (
+	keyGen KeyGen, user keybase1.UID,
+	key kbfscrypto.CryptPublicKey, extra ExtraMetadata) (
 	kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
 	if keyGen != md.LatestKeyGeneration() {
@@ -512,7 +513,8 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 	if !ok {
 		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
-			TLFCryptKeyServerHalfID{}, false, errors.New("Missing key bundles")
+			TLFCryptKeyServerHalfID{}, false,
+			errors.New("Missing key bundles")
 	}
 	dkim := wkb.Keys[user]
 	if dkim == nil {
@@ -792,7 +794,8 @@ func (md *BareRootMetadataV3) GetWriterMetadataSigInfo() kbfscrypto.SignatureInf
 }
 
 // SetWriterMetadataSigInfo implements the MutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) SetWriterMetadataSigInfo(sigInfo kbfscrypto.SignatureInfo) {
+func (md *BareRootMetadataV3) SetWriterMetadataSigInfo(
+	sigInfo kbfscrypto.SignatureInfo) {
 	md.WriterMetadataSigInfo = sigInfo
 }
 
@@ -946,8 +949,8 @@ func (md *BareRootMetadataV3) FakeInitialRekey(crypto cryptoPure, h BareTlfHandl
 }
 
 // GetTLFPublicKey implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetTLFPublicKey(keyGen KeyGen, extra ExtraMetadata) (
-	kbfscrypto.TLFPublicKey, bool) {
+func (md *BareRootMetadataV3) GetTLFPublicKey(
+	keyGen KeyGen, extra ExtraMetadata) (kbfscrypto.TLFPublicKey, bool) {
 	if keyGen > md.LatestKeyGeneration() {
 		return kbfscrypto.TLFPublicKey{}, false
 	}

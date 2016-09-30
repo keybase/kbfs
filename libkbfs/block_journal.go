@@ -393,7 +393,8 @@ func (j *blockJournal) getData(id BlockID) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	data, err := ioutil.ReadFile(j.blockDataPath(id))
 	if os.IsNotExist(err) {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, blockNonExistentError{id}
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+			blockNonExistentError{id}
 	} else if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
@@ -401,7 +402,8 @@ func (j *blockJournal) getData(id BlockID) (
 	keyServerHalfPath := j.keyServerHalfPath(id)
 	buf, err := ioutil.ReadFile(keyServerHalfPath)
 	if os.IsNotExist(err) {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, blockNonExistentError{id}
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+			blockNonExistentError{id}
 	} else if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}

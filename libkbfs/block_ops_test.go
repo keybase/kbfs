@@ -42,13 +42,15 @@ func expectGetTLFCryptKeyForEncryption(config *ConfigMock, kmd KeyMetadata) {
 
 func expectGetTLFCryptKeyForMDDecryption(config *ConfigMock, kmd KeyMetadata) {
 	config.mockKeyman.EXPECT().GetTLFCryptKeyForMDDecryption(gomock.Any(),
-		kmdMatcher{kmd}, kmdMatcher{kmd}).Return(kbfscrypto.TLFCryptKey{}, nil)
+		kmdMatcher{kmd}, kmdMatcher{kmd}).Return(
+		kbfscrypto.TLFCryptKey{}, nil)
 }
 
 func expectGetTLFCryptKeyForMDDecryptionAtMostOnce(config *ConfigMock,
 	kmd KeyMetadata) {
 	config.mockKeyman.EXPECT().GetTLFCryptKeyForMDDecryption(gomock.Any(),
-		kmdMatcher{kmd}, kmdMatcher{kmd}).MaxTimes(1).Return(kbfscrypto.TLFCryptKey{}, nil)
+		kmdMatcher{kmd}, kmdMatcher{kmd}).MaxTimes(1).Return(
+		kbfscrypto.TLFCryptKey{}, nil)
 }
 
 // TODO: Add test coverage for decryption of blocks with an old key
@@ -96,11 +98,14 @@ func expectBlockEncrypt(config *ConfigMock, kmd KeyMetadata, decData Block, plai
 	config.mockCrypto.EXPECT().MakeRandomBlockCryptKeyServerHalf().
 		Return(kbfscrypto.BlockCryptKeyServerHalf{}, nil)
 	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(
-		kbfscrypto.BlockCryptKeyServerHalf{}, kbfscrypto.TLFCryptKey{}).Return(kbfscrypto.BlockCryptKey{}, nil)
+		kbfscrypto.BlockCryptKeyServerHalf{},
+		kbfscrypto.TLFCryptKey{}).Return(
+		kbfscrypto.BlockCryptKey{}, nil)
 	encryptedBlock := EncryptedBlock{
 		EncryptedData: encData,
 	}
-	config.mockCrypto.EXPECT().EncryptBlock(decData, kbfscrypto.BlockCryptKey{}).
+	config.mockCrypto.EXPECT().EncryptBlock(decData,
+		kbfscrypto.BlockCryptKey{}).
 		Return(plainSize, encryptedBlock, err)
 	if err == nil {
 		config.mockCodec.EXPECT().Encode(encryptedBlock).Return(encData, nil)
@@ -113,8 +118,10 @@ func expectBlockDecrypt(config *ConfigMock, kmd KeyMetadata, blockPtr BlockPoint
 	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(gomock.Any(), gomock.Any()).
 		Return(kbfscrypto.BlockCryptKey{}, nil)
 	config.mockCodec.EXPECT().Decode(encData, gomock.Any()).Return(nil)
-	config.mockCrypto.EXPECT().DecryptBlock(gomock.Any(), kbfscrypto.BlockCryptKey{}, gomock.Any()).
-		Do(func(encryptedBlock EncryptedBlock, key kbfscrypto.BlockCryptKey, b Block) {
+	config.mockCrypto.EXPECT().DecryptBlock(
+		gomock.Any(), kbfscrypto.BlockCryptKey{}, gomock.Any()).
+		Do(func(encryptedBlock EncryptedBlock,
+			key kbfscrypto.BlockCryptKey, b Block) {
 			if b != nil {
 				tb := b.(*TestBlock)
 				*tb = block
@@ -153,7 +160,8 @@ func (kmd emptyKeyMetadata) GetTLFCryptKeyParams(
 	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
 	kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
-	return kbfscrypto.TLFEphemeralPublicKey{}, EncryptedTLFCryptKeyClientHalf{},
+	return kbfscrypto.TLFEphemeralPublicKey{},
+		EncryptedTLFCryptKeyClientHalf{},
 		TLFCryptKeyServerHalfID{}, false, nil
 }
 

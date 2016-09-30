@@ -792,13 +792,13 @@ func (rmds *RootMetadataSigned) Version() MetadataVer {
 
 // MakeFinalCopy returns a complete copy of this RootMetadataSigned
 // with the revision incremented and the final bit set.
-func (rmds *RootMetadataSigned) MakeFinalCopy(config Config) (
+func (rmds *RootMetadataSigned) MakeFinalCopy(codec kbfscodec.Codec) (
 	*RootMetadataSigned, error) {
 	if rmds.MD.IsFinal() {
 		return nil, MetadataIsFinalError{}
 	}
 	newRmds := RootMetadataSigned{}
-	newBareMd, err := rmds.MD.DeepCopy(config.Codec())
+	newBareMd, err := rmds.MD.DeepCopy(codec)
 	if err != nil {
 		return nil, err
 	}

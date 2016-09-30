@@ -166,14 +166,16 @@ func NewBlockServerRemote(config Config, blkSrvAddr string, ctx Context) *BlockS
 		"libkbfs_bserver_remote", VersionString(), getClientHandler)
 	getClientHandler.authToken = bs.getAuthToken
 
-	putConn := rpc.NewTLSConnection(blkSrvAddr, kbfscrypto.GetRootCerts(blkSrvAddr),
+	putConn := rpc.NewTLSConnection(blkSrvAddr,
+		kbfscrypto.GetRootCerts(blkSrvAddr),
 		bServerErrorUnwrapper{}, putClientHandler,
 		false, /* connect only on-demand */
 		ctx.NewRPCLogFactory(), libkb.WrapError, config.MakeLogger(""),
 		LogTagsFromContext)
 	bs.putClient = keybase1.BlockClient{Cli: putConn.GetClient()}
 	putClientHandler.client = bs.putClient
-	getConn := rpc.NewTLSConnection(blkSrvAddr, kbfscrypto.GetRootCerts(blkSrvAddr),
+	getConn := rpc.NewTLSConnection(blkSrvAddr,
+		kbfscrypto.GetRootCerts(blkSrvAddr),
 		bServerErrorUnwrapper{}, getClientHandler,
 		false, /* connect only on-demand */
 		ctx.NewRPCLogFactory(), libkb.WrapError, config.MakeLogger(""),
@@ -210,7 +212,9 @@ func (b *BlockServerRemote) RemoteAddress() string {
 
 // resetAuth is called to reset the authorization on a BlockServer
 // connection.
-func (b *BlockServerRemote) resetAuth(ctx context.Context, c keybase1.BlockInterface, authToken *kbfscrypto.AuthToken) error {
+func (b *BlockServerRemote) resetAuth(
+	ctx context.Context, c keybase1.BlockInterface,
+	authToken *kbfscrypto.AuthToken) error {
 	_, _, err := b.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		b.log.Debug("BServerRemote: User logged out, skipping resetAuth")
@@ -273,7 +277,8 @@ func makeBlockReference(id BlockID, context BlockContext) keybase1.BlockReferenc
 
 // Get implements the BlockServer interface for BlockServerRemote.
 func (b *BlockServerRemote) Get(ctx context.Context, tlfID TlfID, id BlockID,
-	context BlockContext) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
+	context BlockContext) (
+	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	var err error
 	size := -1
 	defer func() {

@@ -492,7 +492,8 @@ func (md *BareRootMetadataV2) HasKeyForUser(
 
 // GetTLFCryptKeyParams implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
-	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey, _ ExtraMetadata) (
+	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey,
+	_ ExtraMetadata) (
 	kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
 	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
@@ -774,7 +775,8 @@ func (md *BareRootMetadataV2) GetWriterMetadataSigInfo() kbfscrypto.SignatureInf
 }
 
 // SetWriterMetadataSigInfo implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) SetWriterMetadataSigInfo(sigInfo kbfscrypto.SignatureInfo) {
+func (md *BareRootMetadataV2) SetWriterMetadataSigInfo(
+	sigInfo kbfscrypto.SignatureInfo) {
 	md.WriterMetadataSigInfo = sigInfo
 }
 
@@ -950,7 +952,8 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(keyGen KeyGen, _ ExtraMet
 }
 
 // NewKeyGeneration implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) NewKeyGeneration(pubKey kbfscrypto.TLFPublicKey) ExtraMetadata {
+func (md *BareRootMetadataV2) NewKeyGeneration(
+	pubKey kbfscrypto.TLFPublicKey) ExtraMetadata {
 	newWriterKeys := TLFWriterKeyBundleV2{
 		WKeys:        make(UserDeviceKeyInfoMap),
 		TLFPublicKey: pubKey,
@@ -970,8 +973,10 @@ func (md *BareRootMetadataV2) NewKeyGeneration(pubKey kbfscrypto.TLFPublicKey) E
 func (md *BareRootMetadataV2) fillInDevices(crypto Crypto,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2,
 	wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKey kbfscrypto.TLFCryptKey) (
+	rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	tlfCryptKey kbfscrypto.TLFCryptKey) (
 	serverKeyMap, error) {
 	var newIndex int
 	if len(wKeys) == 0 {

@@ -60,12 +60,14 @@ func (b *BlockServerMemory) Get(ctx context.Context, tlfID TlfID, id BlockID,
 	defer b.lock.RUnlock()
 
 	if b.m == nil {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, errBlockServerMemoryShutdown
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+			errBlockServerMemoryShutdown
 	}
 
 	entry, ok := b.m[id]
 	if !ok {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, BServerErrorBlockNonExistent{}
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+			BServerErrorBlockNonExistent{}
 	}
 
 	if entry.tlfID != tlfID {
