@@ -223,8 +223,18 @@ func (b *BlockServerRemote) resetAuth(ctx context.Context, c keybase1.BlockInter
 		return err
 	}
 
+	// get UID, deviceKID and normalized username
+	username, uid, err := b.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return err
+	}
+	key, err := b.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return err
+	}
+
 	// get a new signature
-	signature, err := authToken.Sign(ctx, challenge)
+	signature, err := authToken.Sign(ctx, username, uid, key, challenge)
 	if err != nil {
 		return err
 	}

@@ -173,8 +173,18 @@ func (md *MDServerRemote) resetAuth(ctx context.Context, c keybase1.MetadataClie
 	}
 	md.log.Debug("MDServerRemote: received challenge")
 
+	// get UID, deviceKID and normalized username
+	username, uid, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return 0, err
+	}
+	key, err := md.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	// get a new signature
-	signature, err := md.authToken.Sign(ctx, challenge)
+	signature, err := md.authToken.Sign(ctx, username, uid, key, challenge)
 	if err != nil {
 		md.log.Warning("MDServerRemote: error signing authentication token: %v", err)
 		return 0, err

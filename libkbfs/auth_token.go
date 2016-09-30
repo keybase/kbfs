@@ -76,23 +76,18 @@ func (a *AuthToken) signWithUserAndKeyInfo(ctx context.Context,
 
 // Sign is called to create a new signed authentication token,
 // including a challenge and username/uid/kid identifiers.
-func (a *AuthToken) Sign(ctx context.Context, challengeInfo keybase1.ChallengeInfo) (string, error) {
+func (a *AuthToken) Sign(ctx context.Context,
+	currentUsername libkb.NormalizedUsername, currentUID keybase1.UID,
+	currentVerifyingKey kbfscrypto.VerifyingKey,
+	challengeInfo keybase1.ChallengeInfo) (string, error) {
 	// make sure we're being asked to sign a legit challenge
 	if !auth.IsValidChallenge(challengeInfo.Challenge) {
 		return "", errors.New("Invalid challenge")
 	}
 
-	// get UID, deviceKID and normalized username
-	username, uid, err := a.config.KBPKI().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return "", err
-	}
-	key, err := a.config.KBPKI().GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	return a.signWithUserAndKeyInfo(ctx, challengeInfo, uid, username, key)
+	return a.signWithUserAndKeyInfo(
+		ctx, challengeInfo, currentUID,
+		currentUsername, currentVerifyingKey)
 }
 
 // SignUserless signs the token without a username, UID, or challenge.
