@@ -59,3 +59,16 @@ type Signer interface {
 	// the full serialized NaclSigInfo.
 	SignToString(ctx context.Context, msg []byte) (signature string, err error)
 }
+
+// SigningKeySigner is a key pair for signing.
+type SigningKeySigner struct {
+	Key SigningKey
+}
+
+func (s SigningKeySigner) Sign(ctx context.Context, data []byte) (SignatureInfo, error) {
+	return s.Key.Sign(data), nil
+}
+
+func (s SigningKeySigner) SignToString(ctx context.Context, data []byte) (sig string, err error) {
+	return s.Key.SignToString(data)
+}

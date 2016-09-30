@@ -272,11 +272,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	signingKey := MakeFakeSigningKeyOrBust("client sign")
 
 	msg := []byte("message")
-	sigInfo := kbfscrypto.SignatureInfo{
-		Version:      kbfscrypto.SigED25519,
-		Signature:    signingKey.Sign(msg),
-		VerifyingKey: signingKey.GetVerifyingKey(),
-	}
+	sigInfo := signingKey.Sign(msg)
 
 	c := MakeCryptoCommon(kbfscodec.NewMsgpack())
 

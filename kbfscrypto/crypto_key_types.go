@@ -86,8 +86,12 @@ func NewSigningKey(kp libkb.NaclSigningKeyPair) SigningKey {
 	return SigningKey{kp}
 }
 
-func (k SigningKey) Sign(data []byte) []byte {
-	return k.kp.Private.Sign(data)[:]
+func (k SigningKey) Sign(data []byte) SignatureInfo {
+	return SignatureInfo{
+		Version:      SigED25519,
+		Signature:    k.kp.Private.Sign(data)[:],
+		VerifyingKey: k.GetVerifyingKey(),
+	}
 }
 
 func (k SigningKey) SignToString(data []byte) (sig string, err error) {
@@ -98,7 +102,6 @@ func (k SigningKey) SignToString(data []byte) (sig string, err error) {
 // GetVerifyingKey returns the public key half of this signing key.
 func (k SigningKey) GetVerifyingKey() VerifyingKey {
 	return MakeVerifyingKey(k.kp.Public.GetKID())
-
 }
 
 // A VerifyingKey is a public key that can be used to verify a

@@ -43,31 +43,11 @@ func (k CryptPrivateKey) getPublicKey() kbfscrypto.CryptPublicKey {
 	return kbfscrypto.MakeCryptPublicKey(k.kp.Public.GetKID())
 }
 
-type cryptoSignerLocal struct {
-	signingKey kbfscrypto.SigningKey
-}
-
-func (c cryptoSignerLocal) Sign(ctx context.Context, msg []byte) (
-	sigInfo kbfscrypto.SignatureInfo, err error) {
-	sigInfo = kbfscrypto.SignatureInfo{
-		Version:      kbfscrypto.SigED25519,
-		Signature:    c.signingKey.Sign(msg),
-		VerifyingKey: c.signingKey.GetVerifyingKey(),
-	}
-	return
-}
-
-func (c cryptoSignerLocal) SignToString(ctx context.Context, msg []byte) (
-	signature string, err error) {
-	return c.signingKey.SignToString(msg)
-	return
-}
-
 // CryptoLocal implements the Crypto interface by using a local
 // signing key and a local crypt private key.
 type CryptoLocal struct {
 	CryptoCommon
-	cryptoSignerLocal
+	kbfscrypto.SigningKeySigner
 	cryptPrivateKey CryptPrivateKey
 }
 
@@ -79,7 +59,7 @@ func NewCryptoLocal(codec kbfscodec.Codec,
 	signingKey kbfscrypto.SigningKey, cryptPrivateKey CryptPrivateKey) CryptoLocal {
 	return CryptoLocal{
 		MakeCryptoCommon(codec),
-		cryptoSignerLocal{signingKey},
+		kbfscrypto.SigningKeySigner{signingKey},
 		cryptPrivateKey,
 	}
 }
