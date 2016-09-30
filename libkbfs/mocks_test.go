@@ -15,35 +15,6 @@ import (
 	time "time"
 )
 
-// Mock of AuthTokenRefreshHandler interface
-type MockAuthTokenRefreshHandler struct {
-	ctrl     *gomock.Controller
-	recorder *_MockAuthTokenRefreshHandlerRecorder
-}
-
-// Recorder for MockAuthTokenRefreshHandler (not exported)
-type _MockAuthTokenRefreshHandlerRecorder struct {
-	mock *MockAuthTokenRefreshHandler
-}
-
-func NewMockAuthTokenRefreshHandler(ctrl *gomock.Controller) *MockAuthTokenRefreshHandler {
-	mock := &MockAuthTokenRefreshHandler{ctrl: ctrl}
-	mock.recorder = &_MockAuthTokenRefreshHandlerRecorder{mock}
-	return mock
-}
-
-func (_m *MockAuthTokenRefreshHandler) EXPECT() *_MockAuthTokenRefreshHandlerRecorder {
-	return _m.recorder
-}
-
-func (_m *MockAuthTokenRefreshHandler) RefreshAuthToken(_param0 context.Context) {
-	_m.ctrl.Call(_m, "RefreshAuthToken", _param0)
-}
-
-func (_mr *_MockAuthTokenRefreshHandlerRecorder) RefreshAuthToken(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "RefreshAuthToken", arg0)
-}
-
 // Mock of Block interface
 type MockBlock struct {
 	ctrl     *gomock.Controller
@@ -2646,6 +2617,35 @@ func (_m *MockBlockOps) Archive(ctx context.Context, tlfID TlfID, ptrs []BlockPo
 
 func (_mr *_MockBlockOpsRecorder) Archive(arg0, arg1, arg2 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Archive", arg0, arg1, arg2)
+}
+
+// Mock of AuthTokenRefreshHandler interface
+type MockAuthTokenRefreshHandler struct {
+	ctrl     *gomock.Controller
+	recorder *_MockAuthTokenRefreshHandlerRecorder
+}
+
+// Recorder for MockAuthTokenRefreshHandler (not exported)
+type _MockAuthTokenRefreshHandlerRecorder struct {
+	mock *MockAuthTokenRefreshHandler
+}
+
+func NewMockAuthTokenRefreshHandler(ctrl *gomock.Controller) *MockAuthTokenRefreshHandler {
+	mock := &MockAuthTokenRefreshHandler{ctrl: ctrl}
+	mock.recorder = &_MockAuthTokenRefreshHandlerRecorder{mock}
+	return mock
+}
+
+func (_m *MockAuthTokenRefreshHandler) EXPECT() *_MockAuthTokenRefreshHandlerRecorder {
+	return _m.recorder
+}
+
+func (_m *MockAuthTokenRefreshHandler) RefreshAuthToken(_param0 context.Context) {
+	_m.ctrl.Call(_m, "RefreshAuthToken", _param0)
+}
+
+func (_mr *_MockAuthTokenRefreshHandlerRecorder) RefreshAuthToken(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "RefreshAuthToken", arg0)
 }
 
 // Mock of MDServer interface

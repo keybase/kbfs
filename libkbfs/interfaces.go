@@ -971,6 +971,12 @@ type BlockOps interface {
 	Archive(ctx context.Context, tlfID TlfID, ptrs []BlockPointer) error
 }
 
+// AuthTokenRefreshHandler defines a callback to be called when an auth token refresh
+// is needed.
+type AuthTokenRefreshHandler interface {
+	RefreshAuthToken(context.Context)
+}
+
 // MDServer gets and puts metadata for each top-level directory.  The
 // instantiation should be able to fetch session/user details via KBPKI.  On a
 // put, the server is responsible for 1) ensuring the user has appropriate
@@ -982,7 +988,7 @@ type BlockOps interface {
 //
 // TODO: Add interface for searching by time
 type MDServer interface {
-	kbfscrypto.AuthTokenRefreshHandler
+	AuthTokenRefreshHandler
 
 	// GetForHandle returns the current (signed/encrypted) metadata
 	// object corresponding to the given top-level folder's handle, if
@@ -1087,7 +1093,7 @@ type mdServerLocal interface {
 // put/delete, the server is reponsible for: 1) checking that the ID
 // matches the hash of the buffer; and 2) enforcing writer quotas.
 type BlockServer interface {
-	kbfscrypto.AuthTokenRefreshHandler
+	AuthTokenRefreshHandler
 
 	// Get gets the (encrypted) block data associated with the given
 	// block ID and context, uses the provided block key to decrypt
