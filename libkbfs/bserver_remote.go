@@ -510,7 +510,7 @@ func (b *BlockServerRemote) GetUserQuotaInfo(ctx context.Context) (info *UserQuo
 	if err != nil {
 		return nil, err
 	}
-	return UserQuotaInfoDecode(res, b.config)
+	return UserQuotaInfoDecode(res, b.config.Codec())
 }
 
 // Shutdown implements the BlockServer interface for BlockServerRemote.

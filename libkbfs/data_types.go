@@ -13,6 +13,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 )
 
@@ -691,14 +692,15 @@ func (u *UserQuotaInfo) Accum(another *UserQuotaInfo, accumF func(int64, int64) 
 }
 
 // ToBytes marshals this UserQuotaInfo
-func (u *UserQuotaInfo) ToBytes(config Config) ([]byte, error) {
-	return config.Codec().Encode(u)
+func (u *UserQuotaInfo) ToBytes(codec kbfscodec.Codec) ([]byte, error) {
+	return codec.Encode(u)
 }
 
 // UserQuotaInfoDecode decodes b into a UserQuotaInfo
-func UserQuotaInfoDecode(b []byte, config Config) (*UserQuotaInfo, error) {
+func UserQuotaInfoDecode(b []byte, codec kbfscodec.Codec) (
+	*UserQuotaInfo, error) {
 	var info UserQuotaInfo
-	err := config.Codec().Decode(b, &info)
+	err := codec.Decode(b, &info)
 	if err != nil {
 		return nil, err
 	}
