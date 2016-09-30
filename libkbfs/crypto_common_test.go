@@ -14,6 +14,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 )
 
 // Test (very superficially) that MakeTemporaryBlockID() returns non-zero
@@ -59,43 +60,43 @@ func TestCryptoCommonRandomTLFKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if a1 == (TLFPublicKey{}) {
+	if a1 == (kbfscrypto.TLFPublicKey{}) {
 		t.Errorf("zero TLFPublicKey (a1)")
 	}
 
-	if a2 == (TLFPrivateKey{}) {
+	if a2 == (kbfscrypto.TLFPrivateKey{}) {
 		t.Errorf("zero TLFPrivateKey (a2)")
 	}
 
-	if a3 == (TLFEphemeralPublicKey{}) {
+	if a3 == (kbfscrypto.TLFEphemeralPublicKey{}) {
 		t.Errorf("zero TLFEphemeralPublicKey (a3)")
 	}
 
-	if a4 == (TLFEphemeralPrivateKey{}) {
+	if a4 == (kbfscrypto.TLFEphemeralPrivateKey{}) {
 		t.Errorf("zero TLFEphemeralPrivateKey (a4)")
 	}
 
-	if a5 == (TLFCryptKey{}) {
+	if a5 == (kbfscrypto.TLFCryptKey{}) {
 		t.Errorf("zero TLFCryptKey (a5)")
 	}
 
-	if b1 == (TLFPublicKey{}) {
+	if b1 == (kbfscrypto.TLFPublicKey{}) {
 		t.Errorf("zero TLFPublicKey (1)")
 	}
 
-	if b2 == (TLFPrivateKey{}) {
+	if b2 == (kbfscrypto.TLFPrivateKey{}) {
 		t.Errorf("zero TLFPrivateKey (b2)")
 	}
 
-	if b3 == (TLFEphemeralPublicKey{}) {
+	if b3 == (kbfscrypto.TLFEphemeralPublicKey{}) {
 		t.Errorf("zero TLFEphemeralPublicKey (b3)")
 	}
 
-	if b4 == (TLFEphemeralPrivateKey{}) {
+	if b4 == (kbfscrypto.TLFEphemeralPrivateKey{}) {
 		t.Errorf("zero TLFEphemeralPrivateKey (b4)")
 	}
 
-	if b5 == (TLFCryptKey{}) {
+	if b5 == (kbfscrypto.TLFCryptKey{}) {
 		t.Errorf("zero TLFCryptKey (b5)")
 	}
 
@@ -130,7 +131,7 @@ func TestCryptoCommonRandomTLFCryptKeyServerHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if k1 == (TLFCryptKeyServerHalf{}) {
+	if k1 == (kbfscrypto.TLFCryptKeyServerHalf{}) {
 		t.Errorf("zero TLFCryptKeyServerHalf k1")
 	}
 
@@ -139,7 +140,7 @@ func TestCryptoCommonRandomTLFCryptKeyServerHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if k2 == (TLFCryptKeyServerHalf{}) {
+	if k2 == (kbfscrypto.TLFCryptKeyServerHalf{}) {
 		t.Errorf("zero TLFCryptKeyServerHalf k2")
 	}
 
@@ -158,7 +159,7 @@ func TestCryptoCommonRandomBlockCryptKeyServerHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if k1 == (BlockCryptKeyServerHalf{}) {
+	if k1 == (kbfscrypto.BlockCryptKeyServerHalf{}) {
 		t.Errorf("zero BlockCryptKeyServerHalf k1")
 	}
 
@@ -167,7 +168,7 @@ func TestCryptoCommonRandomBlockCryptKeyServerHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if k2 == (BlockCryptKeyServerHalf{}) {
+	if k2 == (kbfscrypto.BlockCryptKeyServerHalf{}) {
 		t.Errorf("zero BlockCryptKeyServerHalf k2")
 	}
 
@@ -197,11 +198,11 @@ func TestCryptoCommonMaskUnmaskTLFCryptKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if clientHalf.data == serverHalf.data {
+	if clientHalf.Data() == serverHalf.Data() {
 		t.Error("client half == server half")
 	}
 
-	if clientHalf.data == cryptKey.data {
+	if clientHalf.Data() == cryptKey.Data() {
 		t.Error("client half == key")
 	}
 
@@ -235,11 +236,11 @@ func TestCryptoCommonUnmaskTLFCryptKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if key.data == serverHalf.data {
+	if key.Data() == serverHalf.Data() {
 		t.Error("key == server half")
 	}
 
-	if key.data == cryptKey.data {
+	if key.Data() == cryptKey.Data() {
 		t.Error("key == crypt key")
 	}
 }
@@ -248,7 +249,7 @@ func TestCryptoCommonEncryptDecryptBlock(t *testing.T) {
 	c := MakeCryptoCommon(kbfscodec.NewMsgpack())
 
 	block := TestBlock{42}
-	key := BlockCryptKey{}
+	key := kbfscrypto.BlockCryptKey{}
 
 	_, encryptedBlock, err := c.EncryptBlock(block, key)
 	if err != nil {
@@ -294,7 +295,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	// Corrupt key.
 
 	sigInfoCorruptKey := sigInfo.deepCopy()
-	sigInfoCorruptKey.VerifyingKey.kid = ""
+	sigInfoCorruptKey.VerifyingKey = kbfscrypto.MakeVerifyingKey("")
 	expectedErr = libkb.KeyCannotVerifyError{}
 	err = c.Verify(msg, sigInfoCorruptKey)
 	if err != expectedErr {
@@ -381,7 +382,7 @@ func TestCryptoCommonEncryptTLFCryptKeyClientHalf(t *testing.T) {
 		t.Errorf("Expected version %v, got %v", EncryptionSecretbox, encryptedClientHalf.Version)
 	}
 
-	expectedEncryptedLength := len(clientHalf.data) + box.Overhead
+	expectedEncryptedLength := len(clientHalf.Data()) + box.Overhead
 	if len(encryptedClientHalf.EncryptedData) != expectedEncryptedLength {
 		t.Errorf("Expected encrypted length %d, got %d", expectedEncryptedLength, len(encryptedClientHalf.EncryptedData))
 	}
@@ -396,17 +397,19 @@ func TestCryptoCommonEncryptTLFCryptKeyClientHalf(t *testing.T) {
 		t.Error("Empty nonce")
 	}
 
-	decryptedData, ok := box.Open(nil, encryptedClientHalf.EncryptedData, &nonce, (*[32]byte)(&ephPublicKey.data), (*[32]byte)(privateKey.kp.Private))
+	ephPublicKeyData := ephPublicKey.Data()
+	decryptedData, ok := box.Open(nil, encryptedClientHalf.EncryptedData, &nonce, &ephPublicKeyData, (*[32]byte)(privateKey.kp.Private))
 	if !ok {
 		t.Fatal("Decryption failed")
 	}
 
-	if len(decryptedData) != len(clientHalf.data) {
-		t.Fatalf("Expected decrypted data length %d, got %d", len(clientHalf.data), len(decryptedData))
+	if len(decryptedData) != len(clientHalf.Data()) {
+		t.Fatalf("Expected decrypted data length %d, got %d", len(clientHalf.Data()), len(decryptedData))
 	}
 
-	var clientHalf2 TLFCryptKeyClientHalf
-	copy(clientHalf2.data[:], decryptedData)
+	var clientHalf2Data [32]byte
+	copy(clientHalf2Data[:], decryptedData)
+	clientHalf2 := kbfscrypto.MakeTLFCryptKeyClientHalf(clientHalf2Data)
 	if clientHalf != clientHalf2 {
 		t.Fatal("client half != decrypted client half")
 	}
@@ -458,7 +461,7 @@ func TestEncryptPrivateMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	encodedPrivateMetadata := checkSecretboxOpen(t, encryptedData(encryptedPrivateMetadata), cryptKey.data)
+	encodedPrivateMetadata := checkSecretboxOpen(t, encryptedData(encryptedPrivateMetadata), cryptKey.Data())
 
 	if string(encodedPrivateMetadata) != string(expectedEncodedPrivateMetadata) {
 		t.Fatalf("Expected encoded data %v, got %v", expectedEncodedPrivateMetadata, encodedPrivateMetadata)
@@ -505,7 +508,7 @@ func TestDecryptPrivateMetadataSecretboxSeal(t *testing.T) {
 		TLFPrivateKey: tlfPrivateKey,
 	}
 
-	encryptedPrivateMetadata := EncryptedPrivateMetadata(secretboxSeal(t, &c, privateMetadata, cryptKey.data))
+	encryptedPrivateMetadata := EncryptedPrivateMetadata(secretboxSeal(t, &c, privateMetadata, cryptKey.Data()))
 
 	decryptedPrivateMetadata, err := c.DecryptPrivateMetadata(encryptedPrivateMetadata, cryptKey)
 	if err != nil {
@@ -623,20 +626,22 @@ func TestDecryptPrivateMetadataFailures(t *testing.T) {
 
 	checkDecryptionFailures(t, encryptedData(encryptedPrivateMetadata), cryptKey,
 		func(encryptedData encryptedData, key interface{}) error {
-			_, err = c.DecryptPrivateMetadata(EncryptedPrivateMetadata(encryptedData), key.(TLFCryptKey))
+			_, err = c.DecryptPrivateMetadata(EncryptedPrivateMetadata(encryptedData), key.(kbfscrypto.TLFCryptKey))
 			return err
 		},
 		func(key interface{}) interface{} {
-			cryptKey := key.(TLFCryptKey)
-			cryptKeyCorrupt := cryptKey
-			cryptKeyCorrupt.data[0] = ^cryptKeyCorrupt.data[0]
+			cryptKey := key.(kbfscrypto.TLFCryptKey)
+			cryptKeyCorruptData := cryptKey.Data()
+			cryptKeyCorruptData[0] = ^cryptKeyCorruptData[0]
+			cryptKeyCorrupt := kbfscrypto.MakeTLFCryptKey(cryptKeyCorruptData)
 			return cryptKeyCorrupt
 		})
 }
 
-func makeFakeBlockCryptKey(t *testing.T) BlockCryptKey {
-	var blockCryptKey BlockCryptKey
-	err := cryptoRandRead(blockCryptKey.data[:])
+func makeFakeBlockCryptKey(t *testing.T) kbfscrypto.BlockCryptKey {
+	var blockCryptKeyData [32]byte
+	err := cryptoRandRead(blockCryptKeyData[:])
+	blockCryptKey := kbfscrypto.MakeBlockCryptKey(blockCryptKeyData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -665,7 +670,7 @@ func TestEncryptBlock(t *testing.T) {
 		t.Errorf("Expected plain size %d, got %d", len(expectedEncodedBlock), plainSize)
 	}
 
-	paddedBlock := checkSecretboxOpen(t, encryptedData(encryptedBlock), cryptKey.data)
+	paddedBlock := checkSecretboxOpen(t, encryptedData(encryptedBlock), cryptKey.Data())
 	encodedBlock, err := c.depadBlock(paddedBlock)
 	if err != nil {
 		t.Fatal(err)
@@ -695,7 +700,7 @@ func TestDecryptBlockSecretboxSeal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	encryptedBlock := EncryptedBlock(secretboxSealEncoded(t, &c, paddedBlock, cryptKey.data))
+	encryptedBlock := EncryptedBlock(secretboxSealEncoded(t, &c, paddedBlock, cryptKey.Data()))
 
 	var decryptedBlock TestBlock
 	err = c.DecryptBlock(encryptedBlock, cryptKey, &decryptedBlock)
@@ -749,12 +754,13 @@ func TestDecryptBlockFailures(t *testing.T) {
 	checkDecryptionFailures(t, encryptedData(encryptedBlock), cryptKey,
 		func(encryptedData encryptedData, key interface{}) error {
 			var dummy TestBlock
-			return c.DecryptBlock(EncryptedBlock(encryptedData), key.(BlockCryptKey), &dummy)
+			return c.DecryptBlock(EncryptedBlock(encryptedData), key.(kbfscrypto.BlockCryptKey), &dummy)
 		},
 		func(key interface{}) interface{} {
-			cryptKey := key.(BlockCryptKey)
-			cryptKeyCorrupt := cryptKey
-			cryptKeyCorrupt.data[0] = ^cryptKeyCorrupt.data[0]
+			cryptKey := key.(kbfscrypto.BlockCryptKey)
+			cryptKeyCorruptData := cryptKey.Data()
+			cryptKeyCorruptData[0] = ^cryptKeyCorruptData[0]
+			cryptKeyCorrupt := kbfscrypto.MakeBlockCryptKey(cryptKeyCorruptData)
 			return cryptKeyCorrupt
 		})
 }
@@ -848,7 +854,7 @@ func TestSecretboxEncryptedLen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cryptKeys := make([]BlockCryptKey, iterations)
+	cryptKeys := make([]kbfscrypto.BlockCryptKey, iterations)
 	for j := 0; j < iterations; j++ {
 		cryptKeys[j] = makeFakeBlockCryptKey(t)
 	}
@@ -857,7 +863,7 @@ func TestSecretboxEncryptedLen(t *testing.T) {
 		var enclen int
 		for j := 0; j < iterations; j++ {
 			data := randomData[j : j+i]
-			enc := secretboxSealEncoded(t, &c, data, cryptKeys[j].data)
+			enc := secretboxSealEncoded(t, &c, data, cryptKeys[j].Data())
 			if j == 0 {
 				enclen = len(enc.EncryptedData)
 			} else if len(enc.EncryptedData) != enclen {

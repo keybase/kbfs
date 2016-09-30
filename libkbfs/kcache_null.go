@@ -4,7 +4,11 @@
 
 package libkbfs
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/keybase/kbfs/kbfscrypto"
+)
 
 // KeyCacheNull is a placeholder, noop implementation of the KeyCache interface.
 type KeyCacheNull struct{}
@@ -12,11 +16,11 @@ type KeyCacheNull struct{}
 var _ KeyCache = (*KeyCacheNull)(nil)
 
 // GetTLFCryptKey implements the KeyCache interface for KeyCacheNull.
-func (k *KeyCacheNull) GetTLFCryptKey(TlfID, KeyGen) (TLFCryptKey, error) {
-	return TLFCryptKey{}, errors.New("NULL")
+func (k *KeyCacheNull) GetTLFCryptKey(TlfID, KeyGen) (kbfscrypto.TLFCryptKey, error) {
+	return kbfscrypto.TLFCryptKey{}, errors.New("NULL")
 }
 
 // PutTLFCryptKey implements the KeyCache interface for KeyCacheNull.
-func (k *KeyCacheNull) PutTLFCryptKey(TlfID, KeyGen, TLFCryptKey) error {
+func (k *KeyCacheNull) PutTLFCryptKey(TlfID, KeyGen, kbfscrypto.TLFCryptKey) error {
 	return nil
 }

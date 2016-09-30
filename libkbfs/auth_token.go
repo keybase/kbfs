@@ -14,6 +14,7 @@ import (
 	"github.com/keybase/client/go/auth"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/net/context"
 )
 
@@ -50,9 +51,10 @@ func NewAuthToken(config Config, tokenType string, expireIn int,
 // Sign is called to create a new signed authentication token.
 func (a *AuthToken) signWithUserAndKeyInfo(ctx context.Context,
 	challengeInfo keybase1.ChallengeInfo, uid keybase1.UID,
-	username libkb.NormalizedUsername, key VerifyingKey) (string, error) {
+	username libkb.NormalizedUsername,
+	key kbfscrypto.VerifyingKey) (string, error) {
 	// create the token
-	token := auth.NewToken(uid, username, key.kid, a.tokenType,
+	token := auth.NewToken(uid, username, key.KID(), a.tokenType,
 		challengeInfo.Challenge, challengeInfo.Now, a.expireIn,
 		a.clientName, a.clientVersion)
 
@@ -97,7 +99,8 @@ func (a *AuthToken) Sign(ctx context.Context, challengeInfo keybase1.ChallengeIn
 // This is useful for server-to-server communication where identity is
 // established using only the KID.  Assume the client and server
 // clocks are roughly synchronized.
-func (a *AuthToken) SignUserless(ctx context.Context, key VerifyingKey) (
+func (a *AuthToken) SignUserless(
+	ctx context.Context, key kbfscrypto.VerifyingKey) (
 	string, error) {
 	// Pass in a reserved, meaningless UID.
 	return a.signWithUserAndKeyInfo(ctx,

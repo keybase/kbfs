@@ -13,6 +13,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscrypto"
 )
 
 const (
@@ -38,13 +39,13 @@ var disallowedPrefixes = [...]string{".kbfs"}
 type UserInfo struct {
 	Name            libkb.NormalizedUsername
 	UID             keybase1.UID
-	VerifyingKeys   []VerifyingKey
-	CryptPublicKeys []CryptPublicKey
+	VerifyingKeys   []kbfscrypto.VerifyingKey
+	CryptPublicKeys []kbfscrypto.CryptPublicKey
 	KIDNames        map[keybase1.KID]string
 
 	// Revoked keys, and the time at which they were revoked.
-	RevokedVerifyingKeys   map[VerifyingKey]keybase1.KeybaseTime
-	RevokedCryptPublicKeys map[CryptPublicKey]keybase1.KeybaseTime
+	RevokedVerifyingKeys   map[kbfscrypto.VerifyingKey]keybase1.KeybaseTime
+	RevokedCryptPublicKeys map[kbfscrypto.CryptPublicKey]keybase1.KeybaseTime
 }
 
 // SessionInfo contains all the info about the keybase session that
@@ -53,8 +54,8 @@ type SessionInfo struct {
 	Name           libkb.NormalizedUsername
 	UID            keybase1.UID
 	Token          string
-	CryptPublicKey CryptPublicKey
-	VerifyingKey   VerifyingKey
+	CryptPublicKey kbfscrypto.CryptPublicKey
+	VerifyingKey   kbfscrypto.VerifyingKey
 }
 
 // SigVer denotes a signature version.
@@ -74,9 +75,9 @@ func (v SigVer) IsNil() bool {
 // for a message.
 type SignatureInfo struct {
 	// Exported only for serialization purposes.
-	Version      SigVer       `codec:"v"`
-	Signature    []byte       `codec:"s"`
-	VerifyingKey VerifyingKey `codec:"k"`
+	Version      SigVer                  `codec:"v"`
+	Signature    []byte                  `codec:"s"`
+	VerifyingKey kbfscrypto.VerifyingKey `codec:"k"`
 }
 
 // IsNil returns true if this SignatureInfo is nil.
@@ -99,7 +100,7 @@ func (s SignatureInfo) String() string {
 }
 
 // TLFEphemeralPublicKeys stores a list of TLFEphemeralPublicKey
-type TLFEphemeralPublicKeys []TLFEphemeralPublicKey
+type TLFEphemeralPublicKeys []kbfscrypto.TLFEphemeralPublicKey
 
 // EncryptionVer denotes a version for the encryption method.
 type EncryptionVer int
@@ -143,11 +144,11 @@ type EncryptedMerkleLeaf struct {
 // request a client half decryption.
 type EncryptedTLFCryptKeyClientAndEphemeral struct {
 	// PublicKey contains the wrapped Key ID of the public key
-	PubKey CryptPublicKey
+	PubKey kbfscrypto.CryptPublicKey
 	// ClientHalf contains the encrypted client half of the TLF key
 	ClientHalf EncryptedTLFCryptKeyClientHalf
 	// EPubKey contains the ephemeral public key used to encrypt ClientHalf
-	EPubKey TLFEphemeralPublicKey
+	EPubKey kbfscrypto.TLFEphemeralPublicKey
 }
 
 // KeyGen is the type of a key generation for a top-level folder.
@@ -367,7 +368,7 @@ var bpSize = uint64(reflect.TypeOf(BlockPointer{}).Size())
 type ReadyBlockData struct {
 	// These fields should not be used outside of BlockOps.Put().
 	buf        []byte
-	serverHalf BlockCryptKeyServerHalf
+	serverHalf kbfscrypto.BlockCryptKeyServerHalf
 }
 
 // GetEncodedSize returns the size of the encoded (and encrypted)
@@ -832,8 +833,8 @@ func SessionInfoFromProtocol(session keybase1.Session) (SessionInfo, error) {
 	if err != nil {
 		return SessionInfo{}, err
 	}
-	cryptPublicKey := MakeCryptPublicKey(deviceSubkey.GetKID())
-	verifyingKey := MakeVerifyingKey(deviceSibkey.GetKID())
+	cryptPublicKey := kbfscrypto.MakeCryptPublicKey(deviceSubkey.GetKID())
+	verifyingKey := kbfscrypto.MakeVerifyingKey(deviceSibkey.GetKID())
 	return SessionInfo{
 		Name:           libkb.NewNormalizedUsername(session.Username),
 		UID:            keybase1.UID(session.Uid),

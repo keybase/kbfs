@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/net/context"
 )
@@ -40,8 +41,8 @@ func NewSigningKey(kp libkb.NaclSigningKeyPair) SigningKey {
 }
 
 // GetVerifyingKey returns the public key half of this signing key.
-func (k SigningKey) GetVerifyingKey() VerifyingKey {
-	return MakeVerifyingKey(k.kp.Public.GetKID())
+func (k SigningKey) GetVerifyingKey() kbfscrypto.VerifyingKey {
+	return kbfscrypto.MakeVerifyingKey(k.kp.Public.GetKID())
 
 }
 
@@ -72,8 +73,8 @@ func makeCryptPrivateKey(secret CryptPrivateKeySecret) (CryptPrivateKey, error) 
 
 // GetPublicKey returns the public key corresponding to this private
 // key.
-func (k CryptPrivateKey) getPublicKey() CryptPublicKey {
-	return MakeCryptPublicKey(k.kp.Public.GetKID())
+func (k CryptPrivateKey) getPublicKey() kbfscrypto.CryptPublicKey {
+	return kbfscrypto.MakeCryptPublicKey(k.kp.Public.GetKID())
 }
 
 type cryptoSignerLocal struct {
@@ -118,7 +119,7 @@ func NewCryptoLocal(codec kbfscodec.Codec,
 }
 
 func (c CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf EncryptedTLFCryptKeyClientHalf,
-	clientHalf TLFCryptKeyClientHalf) (
+	clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
 	nonce [24]byte, err error) {
 	if encryptedClientHalf.Version != EncryptionSecretbox {
 		err = UnknownEncryptionVer{encryptedClientHalf.Version}
@@ -127,7 +128,7 @@ func (c CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf EncryptedT
 
 	// This check isn't strictly needed, but parallels the
 	// implementation in CryptoClient.
-	if len(encryptedClientHalf.EncryptedData) != len(clientHalf.data)+box.Overhead {
+	if len(encryptedClientHalf.EncryptedData) != len(clientHalf.Data())+box.Overhead {
 		err = libkb.DecryptionError{}
 		return
 	}
@@ -143,34 +144,36 @@ func (c CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf EncryptedT
 // DecryptTLFCryptKeyClientHalf implements the Crypto interface for
 // CryptoLocal.
 func (c CryptoLocal) DecryptTLFCryptKeyClientHalf(ctx context.Context,
-	publicKey TLFEphemeralPublicKey,
+	publicKey kbfscrypto.TLFEphemeralPublicKey,
 	encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (
-	clientHalf TLFCryptKeyClientHalf, err error) {
+	clientHalf kbfscrypto.TLFCryptKeyClientHalf, err error) {
 	nonce, err := c.prepareTLFCryptKeyClientHalf(encryptedClientHalf, clientHalf)
 	if err != nil {
 		return
 	}
 
-	decryptedData, ok := box.Open(nil, encryptedClientHalf.EncryptedData, &nonce, (*[32]byte)(&publicKey.data), (*[32]byte)(c.cryptPrivateKey.kp.Private))
+	publicKeyData := publicKey.Data()
+	decryptedData, ok := box.Open(nil, encryptedClientHalf.EncryptedData, &nonce, &publicKeyData, (*[32]byte)(c.cryptPrivateKey.kp.Private))
 	if !ok {
 		err = libkb.DecryptionError{}
 		return
 	}
 
-	if len(decryptedData) != len(clientHalf.data) {
+	if len(decryptedData) != len(clientHalf.Data()) {
 		err = libkb.DecryptionError{}
 		return
 	}
 
-	copy(clientHalf.data[:], decryptedData)
-	return
+	var clientHalfData [32]byte
+	copy(clientHalfData[:], decryptedData)
+	return kbfscrypto.MakeTLFCryptKeyClientHalf(clientHalfData), nil
 }
 
 // DecryptTLFCryptKeyClientHalfAny implements the Crypto interface for
 // CryptoLocal.
 func (c CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 	keys []EncryptedTLFCryptKeyClientAndEphemeral, _ bool) (
-	clientHalf TLFCryptKeyClientHalf, index int, err error) {
+	clientHalf kbfscrypto.TLFCryptKeyClientHalf, index int, err error) {
 	if len(keys) == 0 {
 		return clientHalf, index, NoKeysError{}
 	}
@@ -179,10 +182,12 @@ func (c CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 		if err != nil {
 			continue
 		}
-		decryptedData, ok := box.Open(nil, k.ClientHalf.EncryptedData, &nonce, (*[32]byte)(&k.EPubKey.data), (*[32]byte)(c.cryptPrivateKey.kp.Private))
+		ePubKeyData := k.EPubKey.Data()
+		decryptedData, ok := box.Open(nil, k.ClientHalf.EncryptedData, &nonce, &ePubKeyData, (*[32]byte)(c.cryptPrivateKey.kp.Private))
 		if ok {
-			copy(clientHalf.data[:], decryptedData)
-			return clientHalf, i, nil
+			var clientHalfData [32]byte
+			copy(clientHalfData[:], decryptedData)
+			return kbfscrypto.MakeTLFCryptKeyClientHalf(clientHalfData), i, nil
 		}
 	}
 	err = libkb.DecryptionError{}

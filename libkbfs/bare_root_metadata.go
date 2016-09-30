@@ -11,6 +11,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 )
 
 // WriterMetadataV2 stores the metadata for a TLF that is
@@ -491,12 +492,12 @@ func (md *BareRootMetadataV2) HasKeyForUser(
 
 // GetTLFCryptKeyParams implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
-	keyGen KeyGen, user keybase1.UID, key CryptPublicKey, _ ExtraMetadata) (
-	TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
+	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey, _ ExtraMetadata) (
+	kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
 	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
 	if err != nil {
-		return TLFEphemeralPublicKey{},
+		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
 			TLFCryptKeyServerHalfID{}, false, err
 	}
@@ -505,14 +506,14 @@ func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 	if dkim == nil {
 		dkim = rkb.RKeys[user]
 		if dkim == nil {
-			return TLFEphemeralPublicKey{},
+			return kbfscrypto.TLFEphemeralPublicKey{},
 				EncryptedTLFCryptKeyClientHalf{},
 				TLFCryptKeyServerHalfID{}, false, nil
 		}
 	}
-	info, ok := dkim[key.kid]
+	info, ok := dkim[key.KID()]
 	if !ok {
-		return TLFEphemeralPublicKey{},
+		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
 			TLFCryptKeyServerHalfID{}, false, nil
 	}
@@ -531,7 +532,7 @@ func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 	}
 	keyCount := len(publicKeys)
 	if index >= keyCount {
-		return TLFEphemeralPublicKey{},
+		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
 			TLFCryptKeyServerHalfID{}, false,
 			fmt.Errorf("Invalid %s key index %d >= %d",
@@ -623,7 +624,7 @@ func (md *BareRootMetadataV2) IsValidAndSigned(
 // IsLastModifiedBy implements the BareRootMetadata interface for
 // BareRootMetadataV2.
 func (md *BareRootMetadataV2) IsLastModifiedBy(
-	uid keybase1.UID, key VerifyingKey) error {
+	uid keybase1.UID, key kbfscrypto.VerifyingKey) error {
 	// Verify the user and device are the writer.
 	writer := md.LastModifyingWriter()
 	if !md.IsWriterMetadataCopiedSet() {
@@ -815,7 +816,7 @@ func (md *BareRootMetadataV2) AddNewKeysForTesting(_ cryptoPure,
 	}
 	rkb := TLFReaderKeyBundleV2{
 		RKeys: rDkim,
-		TLFReaderEphemeralPublicKeys: make([]TLFEphemeralPublicKey, 1),
+		TLFReaderEphemeralPublicKeys: make([]kbfscrypto.TLFEphemeralPublicKey, 1),
 	}
 	md.WKeys = append(md.WKeys, wkb)
 	md.RKeys = append(md.RKeys, rkb)
@@ -883,7 +884,7 @@ func (md *BareRootMetadataV2) FakeInitialRekey(_ cryptoPure, h BareTlfHandle) (
 	for _, w := range h.Writers {
 		k := MakeFakeCryptPublicKeyOrBust(string(w))
 		wkb.WKeys[w] = DeviceKeyInfoMap{
-			k.kid: TLFCryptKeyInfo{},
+			k.KID(): TLFCryptKeyInfo{},
 		}
 	}
 	md.WKeys = TLFWriterKeyGenerations{wkb}
@@ -894,7 +895,7 @@ func (md *BareRootMetadataV2) FakeInitialRekey(_ cryptoPure, h BareTlfHandle) (
 	for _, r := range h.Readers {
 		k := MakeFakeCryptPublicKeyOrBust(string(r))
 		rkb.RKeys[r] = DeviceKeyInfoMap{
-			k.kid: TLFCryptKeyInfo{},
+			k.KID(): TLFCryptKeyInfo{},
 		}
 	}
 	md.RKeys = TLFReaderKeyGenerations{rkb}
@@ -903,9 +904,9 @@ func (md *BareRootMetadataV2) FakeInitialRekey(_ cryptoPure, h BareTlfHandle) (
 
 // GetTLFPublicKey implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) GetTLFPublicKey(keyGen KeyGen, _ ExtraMetadata) (
-	TLFPublicKey, bool) {
+	kbfscrypto.TLFPublicKey, bool) {
 	if keyGen > md.LatestKeyGeneration() {
-		return TLFPublicKey{}, false
+		return kbfscrypto.TLFPublicKey{}, false
 	}
 	return md.WKeys[keyGen].TLFPublicKey, true
 }
@@ -949,7 +950,7 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(keyGen KeyGen, _ ExtraMet
 }
 
 // NewKeyGeneration implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) NewKeyGeneration(pubKey TLFPublicKey) ExtraMetadata {
+func (md *BareRootMetadataV2) NewKeyGeneration(pubKey kbfscrypto.TLFPublicKey) ExtraMetadata {
 	newWriterKeys := TLFWriterKeyBundleV2{
 		WKeys:        make(UserDeviceKeyInfoMap),
 		TLFPublicKey: pubKey,
@@ -968,9 +969,9 @@ func (md *BareRootMetadataV2) NewKeyGeneration(pubKey TLFPublicKey) ExtraMetadat
 // exist.
 func (md *BareRootMetadataV2) fillInDevices(crypto Crypto,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2,
-	wKeys map[keybase1.UID][]CryptPublicKey,
-	rKeys map[keybase1.UID][]CryptPublicKey, ePubKey TLFEphemeralPublicKey,
-	ePrivKey TLFEphemeralPrivateKey, tlfCryptKey TLFCryptKey) (
+	wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKey kbfscrypto.TLFCryptKey) (
 	serverKeyMap, error) {
 	var newIndex int
 	if len(wKeys) == 0 {
@@ -1014,7 +1015,8 @@ func (md *BareRootMetadataV2) GetTLFReaderKeyBundleID() TLFReaderKeyBundleID {
 }
 
 // FinalizeRekey implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) FinalizeRekey(_ cryptoPure, _, _ TLFCryptKey, _ ExtraMetadata) error {
+func (md *BareRootMetadataV2) FinalizeRekey(
+	_ cryptoPure, _, _ kbfscrypto.TLFCryptKey, _ ExtraMetadata) error {
 	// No-op.
 	return nil
 }
@@ -1026,9 +1028,11 @@ func (md *BareRootMetadataV2) StoresHistoricTLFCryptKeys() bool {
 }
 
 // GetHistoricTLFCryptKey implements the BareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) GetHistoricTLFCryptKey(_ cryptoPure, _ KeyGen, _ TLFCryptKey, _ ExtraMetadata) (
-	TLFCryptKey, error) {
-	return TLFCryptKey{}, errors.New("TLF crypt key not symmetrically encrypted")
+func (md *BareRootMetadataV2) GetHistoricTLFCryptKey(
+	_ cryptoPure, _ KeyGen, _ kbfscrypto.TLFCryptKey, _ ExtraMetadata) (
+	kbfscrypto.TLFCryptKey, error) {
+	return kbfscrypto.TLFCryptKey{}, errors.New(
+		"TLF crypt key not symmetrically encrypted")
 }
 
 // BareRootMetadataSignedV2 is the MD that is signed by the reader or

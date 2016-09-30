@@ -14,6 +14,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -56,7 +57,7 @@ func makeFakePrivateMetadataFuture(t *testing.T) privateMetadataFuture {
 	pmf := privateMetadataFuture{
 		PrivateMetadata{
 			DirEntry{},
-			MakeTLFPrivateKey([32]byte{0xb}),
+			kbfscrypto.MakeTLFPrivateKey([32]byte{0xb}),
 			BlockChanges{
 				makeFakeBlockInfo(t),
 				opsList{

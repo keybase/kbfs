@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/kbfs/kbfscrypto"
 
 	"golang.org/x/net/context"
 )
@@ -247,7 +248,7 @@ func (fs *KBFSOpsStandard) getOpsByHandle(ctx context.Context,
 // GetTLFCryptKeys implements the KBFSOps interface for
 // KBFSOpsStandard
 func (fs *KBFSOpsStandard) GetTLFCryptKeys(ctx context.Context,
-	tlfHandle *TlfHandle) (keys []TLFCryptKey, id TlfID, err error) {
+	tlfHandle *TlfHandle) (keys []kbfscrypto.TLFCryptKey, id TlfID, err error) {
 	var rmd ImmutableRootMetadata
 	_, rmd, id, err = fs.getOrInitializeNewMDMaster(
 		ctx, fs.config.MDOps(), tlfHandle, true)

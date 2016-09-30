@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"encoding/hex"
 	"errors"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	rpc "github.com/keybase/go-framed-msgpack-rpc"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/net/context"
 )
 
@@ -263,7 +263,7 @@ func makeBlockReference(id BlockID, context BlockContext) keybase1.BlockReferenc
 
 // Get implements the BlockServer interface for BlockServerRemote.
 func (b *BlockServerRemote) Get(ctx context.Context, tlfID TlfID, id BlockID,
-	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
+	context BlockContext) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	var err error
 	size := -1
 	defer func() {
@@ -285,23 +285,21 @@ func (b *BlockServerRemote) Get(ctx context.Context, tlfID TlfID, id BlockID,
 
 	res, err := b.getClient.GetBlock(ctx, arg)
 	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
 
 	size = len(res.Buf)
-	bk := BlockCryptKeyServerHalf{}
-	var kbuf []byte
-	if kbuf, err = hex.DecodeString(res.BlockKey); err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+	bk, err := kbfscrypto.ParseBlockCryptKeyServerHalf(res.BlockKey)
+	if err != nil {
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
-	copy(bk.data[:], kbuf)
 	return res.Buf, bk, nil
 }
 
 // Put implements the BlockServer interface for BlockServerRemote.
 func (b *BlockServerRemote) Put(ctx context.Context, tlfID TlfID, id BlockID,
 	context BlockContext, buf []byte,
-	serverHalf BlockCryptKeyServerHalf) error {
+	serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
 	var err error
 	size := len(buf)
 	defer func() {

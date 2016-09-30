@@ -13,6 +13,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/keybase/kbfs/kbfshash"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -43,8 +45,8 @@ func mdOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config.SetMDOps(mdops)
 	config.mockMdserv.EXPECT().OffsetFromServerTime().
 		Return(time.Duration(0), true).AnyTimes()
-	h1, _ := DefaultHash([]byte{1})
-	h2, _ := DefaultHash([]byte{2})
+	h1, _ := kbfshash.DefaultHash([]byte{1})
+	h2, _ := kbfshash.DefaultHash([]byte{2})
 	config.mockCrypto.EXPECT().MakeTLFWriterKeyBundleID(gomock.Any()).
 		Return(TLFWriterKeyBundleID{h1}, nil).AnyTimes()
 	config.mockCrypto.EXPECT().MakeTLFReaderKeyBundleID(gomock.Any()).
@@ -168,7 +170,7 @@ func verifyMDForPrivateHelper(
 	expectGetTLFCryptKeyForMDDecryptionAtMostOnce(config, &fakeRMD)
 	var pmd PrivateMetadata
 	config.mockCrypto.EXPECT().DecryptPrivateMetadata(
-		gomock.Any(), TLFCryptKey{}).
+		gomock.Any(), kbfscrypto.TLFCryptKey{}).
 		MinTimes(minTimes).MaxTimes(maxTimes).Return(&pmd, nil)
 
 	if rmds.MD.IsFinal() {
@@ -196,7 +198,7 @@ func verifyMDForPrivate(
 func putMDForPrivate(config *ConfigMock, rmd *RootMetadata) {
 	expectGetTLFCryptKeyForEncryption(config, rmd)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
-		&rmd.data, TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
+		&rmd.data, kbfscrypto.TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
 	config.mockCrypto.EXPECT().Sign(gomock.Any(), gomock.Any()).Times(2).Return(SignatureInfo{}, nil)
 	config.mockBsplit.EXPECT().ShouldEmbedBlockChanges(gomock.Any()).
 		Return(true)
@@ -692,7 +694,7 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 
 	expectGetTLFCryptKeyForEncryption(config, rmd)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
-		&rmd.data, TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
+		&rmd.data, kbfscrypto.TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
 	config.mockBsplit.EXPECT().ShouldEmbedBlockChanges(gomock.Any()).
 		Return(true)
 

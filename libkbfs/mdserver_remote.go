@@ -13,6 +13,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	rpc "github.com/keybase/go-framed-msgpack-rpc"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/net/context"
 )
 
@@ -664,7 +665,7 @@ func (md *MDServerRemote) getFoldersForRekey(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	return client.GetFoldersForRekey(ctx, cryptKey.kid)
+	return client.GetFoldersForRekey(ctx, cryptKey.KID())
 }
 
 // Shutdown implements the MDServer interface for MDServerRemote.
@@ -697,7 +698,7 @@ func (md *MDServerRemote) IsConnected() bool {
 
 // GetTLFCryptKeyServerHalf is an implementation of the KeyServer interface.
 func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
-	serverHalfID TLFCryptKeyServerHalfID, cryptKey CryptPublicKey) (serverHalf TLFCryptKeyServerHalf, err error) {
+	serverHalfID TLFCryptKeyServerHalfID, cryptKey kbfscrypto.CryptPublicKey) (serverHalf kbfscrypto.TLFCryptKeyServerHalf, err error) {
 	// encode the ID
 	idBytes, err := md.config.Codec().Encode(serverHalfID)
 	if err != nil {
@@ -707,7 +708,7 @@ func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
 	// get the key
 	arg := keybase1.GetKeyArg{
 		KeyHalfID: idBytes,
-		DeviceKID: cryptKey.kid.String(),
+		DeviceKID: cryptKey.KID().String(),
 		LogTags:   nil,
 	}
 	keyBytes, err := md.client.GetKey(ctx, arg)
@@ -726,7 +727,7 @@ func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
 
 // PutTLFCryptKeyServerHalves is an implementation of the KeyServer interface.
 func (md *MDServerRemote) PutTLFCryptKeyServerHalves(ctx context.Context,
-	serverKeyHalves map[keybase1.UID]map[keybase1.KID]TLFCryptKeyServerHalf) error {
+	serverKeyHalves map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf) error {
 	// flatten out the map into an array
 	var keyHalves []keybase1.KeyHalf
 	for user, deviceMap := range serverKeyHalves {

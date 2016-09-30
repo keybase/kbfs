@@ -115,6 +115,10 @@ type byte32Container struct {
 var _ encoding.BinaryMarshaler = byte32Container{}
 var _ encoding.BinaryUnmarshaler = (*byte32Container)(nil)
 
+func (c byte32Container) Data() [32]byte {
+	return c.data
+}
+
 func (c byte32Container) MarshalBinary() (data []byte, err error) {
 	return c.data[:], nil
 }
@@ -237,6 +241,10 @@ func MakeTLFEphemeralPublicKey(data [32]byte) TLFEphemeralPublicKey {
 	return TLFEphemeralPublicKey{byte32Container{data}}
 }
 
+func (k TLFEphemeralPublicKey) ToBoxPublicKey() keybase1.BoxPublicKey {
+	return keybase1.BoxPublicKey(k.data)
+}
+
 // TLFCryptKeyServerHalf (s_u^{f,0,i}) is the masked, server-side half
 // of a TLFCryptKey, which can be recovered only with both
 // halves. (See 4.1.1.)
@@ -353,4 +361,30 @@ var _ encoding.BinaryUnmarshaler = (*BlockCryptKey)(nil)
 // Copies of BlockCryptKey objects are deep copies.
 func MakeBlockCryptKey(data [32]byte) BlockCryptKey {
 	return BlockCryptKey{byte32Container{data}}
+}
+
+func xorKeys(x, y [32]byte) [32]byte {
+	var res [32]byte
+	for i := 0; i < 32; i++ {
+		res[i] = x[i] ^ y[i]
+	}
+	return res
+}
+
+// MaskTLFCryptKey implements the Crypto interface for CryptoCommon.
+func MaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, key TLFCryptKey) (clientHalf TLFCryptKeyClientHalf, err error) {
+	clientHalf.data = xorKeys(serverHalf.data, key.data)
+	return
+}
+
+// UnmaskTLFCryptKey implements the Crypto interface for CryptoCommon.
+func UnmaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, clientHalf TLFCryptKeyClientHalf) (key TLFCryptKey, err error) {
+	key.data = xorKeys(serverHalf.data, clientHalf.data)
+	return
+}
+
+// UnmaskBlockCryptKey implements the Crypto interface for CryptoCommon.
+func UnmaskBlockCryptKey(serverHalf BlockCryptKeyServerHalf, tlfCryptKey TLFCryptKey) (key BlockCryptKey, error error) {
+	key.data = xorKeys(serverHalf.data, tlfCryptKey.data)
+	return
 }

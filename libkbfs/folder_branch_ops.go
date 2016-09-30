@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/backoff"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfssync"
 	"golang.org/x/net/context"
 )
@@ -1058,7 +1059,7 @@ func (fbo *folderBranchOps) initMDLocked(
 	}
 
 	var expectedKeyGen KeyGen
-	var tlfCryptKey *TLFCryptKey
+	var tlfCryptKey *kbfscrypto.TLFCryptKey
 	if md.TlfID().IsPublic() {
 		expectedKeyGen = PublicKeyGen
 	} else {
@@ -1143,7 +1144,7 @@ func (fbo *folderBranchOps) initMDLocked(
 }
 
 func (fbo *folderBranchOps) GetTLFCryptKeys(ctx context.Context,
-	h *TlfHandle) (keys []TLFCryptKey, id TlfID, err error) {
+	h *TlfHandle) (keys []kbfscrypto.TLFCryptKey, id TlfID, err error) {
 	return nil, TlfID{}, errors.New("GetTLFCryptKeys is not supported by folderBranchOps")
 }
 

@@ -17,6 +17,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -5383,10 +5384,10 @@ type corruptBlockServer struct {
 }
 
 func (cbs corruptBlockServer) Get(ctx context.Context, tlfID TlfID, id BlockID,
-	context BlockContext) ([]byte, BlockCryptKeyServerHalf, error) {
+	context BlockContext) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	data, keyServerHalf, err := cbs.BlockServer.Get(ctx, tlfID, id, context)
 	if err != nil {
-		return nil, BlockCryptKeyServerHalf{}, err
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
 	return append(data, 0), keyServerHalf, nil
 }

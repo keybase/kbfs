@@ -10,6 +10,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/net/context"
 )
 
@@ -72,7 +73,7 @@ func (c *CryptoClient) Sign(ctx context.Context, msg []byte) (
 	sigInfo = SignatureInfo{
 		Version:      SigED25519,
 		Signature:    ed25519SigInfo.Sig[:],
-		VerifyingKey: MakeVerifyingKey(libkb.NaclSigningKeyPublic(ed25519SigInfo.PublicKey).GetKID()),
+		VerifyingKey: kbfscrypto.MakeVerifyingKey(libkb.NaclSigningKeyPublic(ed25519SigInfo.PublicKey).GetKID()),
 	}
 	return
 }
@@ -118,9 +119,9 @@ func (c *CryptoClient) prepareTLFCryptKeyClientHalf(encryptedClientHalf Encrypte
 // DecryptTLFCryptKeyClientHalf implements the Crypto interface for
 // CryptoClient.
 func (c *CryptoClient) DecryptTLFCryptKeyClientHalf(ctx context.Context,
-	publicKey TLFEphemeralPublicKey,
+	publicKey kbfscrypto.TLFEphemeralPublicKey,
 	encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (
-	clientHalf TLFCryptKeyClientHalf, err error) {
+	clientHalf kbfscrypto.TLFCryptKeyClientHalf, err error) {
 	c.log.CDebugf(ctx, "Decrypting TLF client key half")
 	defer func() {
 		c.deferLog.CDebugf(ctx, "Decrypted TLF client key half: %v", err)
@@ -135,14 +136,14 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 	decryptedClientHalf, err := c.client.UnboxBytes32(ctx, keybase1.UnboxBytes32Arg{
 		EncryptedBytes32: encryptedData,
 		Nonce:            nonce,
-		PeersPublicKey:   keybase1.BoxPublicKey(publicKey.data),
+		PeersPublicKey:   publicKey.ToBoxPublicKey(),
 		Reason:           "to use kbfs",
 	})
 	if err != nil {
 		return
 	}
 
-	clientHalf = MakeTLFCryptKeyClientHalf(decryptedClientHalf)
+	clientHalf = kbfscrypto.MakeTLFCryptKeyClientHalf(decryptedClientHalf)
 	return
 }
 
@@ -150,7 +151,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 // CryptoClient.
 func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 	keys []EncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
-	clientHalf TLFCryptKeyClientHalf, index int, err error) {
+	clientHalf kbfscrypto.TLFCryptKeyClientHalf, index int, err error) {
 	c.log.CDebugf(ctx, "Decrypting TLF client key half with any key")
 	defer func() {
 		c.deferLog.CDebugf(ctx, "Decrypted TLF client key half with any key: %v",
@@ -168,10 +169,10 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 			errors = append(errors, err)
 		} else {
 			bundles = append(bundles, keybase1.CiphertextBundle{
-				Kid:        k.PubKey.kidContainer.kid,
+				Kid:        k.PubKey.KID(),
 				Ciphertext: encryptedData,
 				Nonce:      nonce,
-				PublicKey:  keybase1.BoxPublicKey(k.EPubKey.data),
+				PublicKey:  k.EPubKey.ToBoxPublicKey(),
 			})
 			indexLookup = append(indexLookup, i)
 		}
@@ -190,7 +191,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 	if err != nil {
 		return
 	}
-	return MakeTLFCryptKeyClientHalf(res.Plaintext), indexLookup[res.Index], nil
+	return kbfscrypto.MakeTLFCryptKeyClientHalf(res.Plaintext), indexLookup[res.Index], nil
 }
 
 // Shutdown implements the Crypto interface for CryptoClient.
