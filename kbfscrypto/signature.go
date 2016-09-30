@@ -52,23 +52,26 @@ func (s SignatureInfo) String() string {
 		&s.VerifyingKey)
 }
 
+// A Signer is something that can sign using an internal private key.
 type Signer interface {
-	// Sign signs the msg with some internal private key.
+	// Sign signs msg with some internal private key.
 	Sign(ctx context.Context, msg []byte) (sigInfo SignatureInfo, err error)
-	// Sign signs the msg with the some internal private key and output
+	// Sign signs msg with some internal private key and outputs
 	// the full serialized NaclSigInfo.
 	SignToString(ctx context.Context, msg []byte) (signature string, err error)
 }
 
-// SigningKeySigner is a key pair for signing.
+// SigningKeySigner is a Signer wrapper around a SigningKey.
 type SigningKeySigner struct {
 	Key SigningKey
 }
 
-func (s SigningKeySigner) Sign(ctx context.Context, data []byte) (SignatureInfo, error) {
+func (s SigningKeySigner) Sign(
+	ctx context.Context, data []byte) (SignatureInfo, error) {
 	return s.Key.Sign(data), nil
 }
 
-func (s SigningKeySigner) SignToString(ctx context.Context, data []byte) (sig string, err error) {
+func (s SigningKeySigner) SignToString(
+	ctx context.Context, data []byte) (sig string, err error) {
 	return s.Key.SignToString(data)
 }
