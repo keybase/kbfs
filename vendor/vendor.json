@@ -313,18 +313,6 @@
 			"revisionTime": "2016-08-24T19:33:35Z"
 		},
 		{
-			"checksumSHA1": "V5FQ4JcT9qLhD67DCPUqKR3z4UM=",
-			"path": "github.com/keybase/gregor/protocol/chat1",
-			"revision": "c67924e4c643ba712a8c2a90917001ffd3cf94b8",
-			"revisionTime": "2016-08-22T07:57:49-07:00"
-		},
-		{
-			"checksumSHA1": "mtq0oJV4kXuJ+xv01C7rWmJaB+M=",
-			"path": "github.com/keybase/gregor/protocol/gregor1",
-			"revision": "319a591525551c3e0690bd1e5b4b1d79aca9fd64",
-			"revisionTime": "2016-06-22T18:16:55Z"
-		},
-		{
 			"path": "github.com/keybase/npipe",
 			"revision": "0938d701e50e580f5925c773055eb6d6b32a0cbc",
 			"revisionTime": "2014-10-08T16:43:58+02:00"
