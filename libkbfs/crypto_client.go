@@ -136,7 +136,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 	decryptedClientHalf, err := c.client.UnboxBytes32(ctx, keybase1.UnboxBytes32Arg{
 		EncryptedBytes32: encryptedData,
 		Nonce:            nonce,
-		PeersPublicKey:   publicKey.ToBoxPublicKey(),
+		PeersPublicKey:   keybase1.BoxPublicKey(publicKey.Data()),
 		Reason:           "to use kbfs",
 	})
 	if err != nil {
@@ -172,7 +172,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 				Kid:        k.PubKey.KID(),
 				Ciphertext: encryptedData,
 				Nonce:      nonce,
-				PublicKey:  k.EPubKey.ToBoxPublicKey(),
+				PublicKey:  keybase1.BoxPublicKey(k.EPubKey.Data()),
 			})
 			indexLookup = append(indexLookup, i)
 		}

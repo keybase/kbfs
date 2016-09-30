@@ -206,10 +206,6 @@ func MakeTLFEphemeralPublicKey(data [32]byte) TLFEphemeralPublicKey {
 	return TLFEphemeralPublicKey{byte32Container{data}}
 }
 
-func (k TLFEphemeralPublicKey) ToBoxPublicKey() keybase1.BoxPublicKey {
-	return keybase1.BoxPublicKey(k.data)
-}
-
 // TLFEphemeralPublicKeys stores a list of TLFEphemeralPublicKey
 type TLFEphemeralPublicKeys []TLFEphemeralPublicKey
 
