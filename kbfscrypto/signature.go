@@ -76,7 +76,7 @@ func (k SigningKey) Sign(data []byte) SignatureInfo {
 	}
 }
 
-// Sign signs the given data and returns a string.
+// SignToString signs the given data and returns a string.
 func (k SigningKey) SignToString(data []byte) (sig string, err error) {
 	sig, _, err = k.kp.SignToString(data)
 	return sig, err
@@ -118,6 +118,8 @@ func (k VerifyingKey) IsNil() bool {
 	return k.kid.IsNil()
 }
 
+// Verify verifies the given message against the given SignatureInfo,
+// and returns nil if it verifies successfully, or an error otherwise.
 func Verify(msg []byte, sigInfo SignatureInfo) error {
 	if sigInfo.Version != SigED25519 {
 		return UnknownSigVer{sigInfo.Version}
@@ -156,11 +158,13 @@ type SigningKeySigner struct {
 	Key SigningKey
 }
 
+// Sign implements Signer for SigningKeySigner.
 func (s SigningKeySigner) Sign(
 	ctx context.Context, data []byte) (SignatureInfo, error) {
 	return s.Key.Sign(data), nil
 }
 
+// SignToString implements Signer for SigningKeySigner.
 func (s SigningKeySigner) SignToString(
 	ctx context.Context, data []byte) (sig string, err error) {
 	return s.Key.SignToString(data)
