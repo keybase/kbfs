@@ -47,7 +47,7 @@ func setupMDJournalTest(t *testing.T) (
 	id = FakeTlfID(1, false)
 
 	signingKey := MakeFakeSigningKeyOrBust("fake seed")
-	signer = kbfscrypto.SigningKeySigner{signingKey}
+	signer = kbfscrypto.SigningKeySigner{Key: signingKey}
 	verifyingKey := signingKey.GetVerifyingKey()
 	ekg = singleEncryptionKeyGetter{kbfscrypto.MakeTLFCryptKey([32]byte{0x1})}
 

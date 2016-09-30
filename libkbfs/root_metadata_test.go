@@ -426,14 +426,16 @@ func makeFakeBareRootMetadataFuture(t *testing.T) *bareRootMetadataFuture {
 		wmf,
 		bareRootMetadataWrapper{
 			BareRootMetadataV2{
-				// This needs to be list format so it fails to compile if new
-				// fields are added, effectively checking at compile time
-				// whether new fields have been added
+				// This needs to be list format so it
+				// fails to compile if new fields are
+				// added, effectively checking at
+				// compile time whether new fields
+				// have been added
 				WriterMetadataV2{},
 				kbfscrypto.SignatureInfo{
-					100,
-					[]byte{0xc},
-					MakeFakeVerifyingKeyOrBust("fake kid"),
+					Version:      100,
+					Signature:    []byte{0xc},
+					VerifyingKey: MakeFakeVerifyingKeyOrBust("fake kid"),
 				},
 				"uid1",
 				0xb,

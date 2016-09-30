@@ -60,7 +60,7 @@ func NewCryptoLocal(codec kbfscodec.Codec,
 	cryptPrivateKey CryptPrivateKey) CryptoLocal {
 	return CryptoLocal{
 		MakeCryptoCommon(codec),
-		kbfscrypto.SigningKeySigner{signingKey},
+		kbfscrypto.SigningKeySigner{Key: signingKey},
 		cryptPrivateKey,
 	}
 }
