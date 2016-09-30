@@ -245,6 +245,9 @@ func (k TLFEphemeralPublicKey) ToBoxPublicKey() keybase1.BoxPublicKey {
 	return keybase1.BoxPublicKey(k.data)
 }
 
+// TLFEphemeralPublicKeys stores a list of TLFEphemeralPublicKey
+type TLFEphemeralPublicKeys []TLFEphemeralPublicKey
+
 // TLFCryptKeyServerHalf (s_u^{f,0,i}) is the masked, server-side half
 // of a TLFCryptKey, which can be recovered only with both
 // halves. (See 4.1.1.)

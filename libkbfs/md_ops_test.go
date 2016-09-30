@@ -67,8 +67,8 @@ func addFakeRMDData(crypto cryptoPure, rmd *RootMetadata, h *TlfHandle) {
 	rmd.SetLastModifyingWriter(h.FirstResolvedWriter())
 	rmd.SetLastModifyingUser(h.FirstResolvedWriter())
 	fakeVerifyingKey := MakeFakeVerifyingKeyOrBust("fake key")
-	rmd.SetWriterMetadataSigInfo(SignatureInfo{
-		Version:      SigED25519,
+	rmd.SetWriterMetadataSigInfo(kbfscrypto.SignatureInfo{
+		Version:      kbfscrypto.SigED25519,
 		Signature:    []byte{41},
 		VerifyingKey: fakeVerifyingKey,
 	})
@@ -100,13 +100,13 @@ func addFakeRMDSData(crypto cryptoPure, rmds *RootMetadataSigned, h *TlfHandle) 
 	rmds.MD.SetLastModifyingWriter(h.FirstResolvedWriter())
 	rmds.MD.SetLastModifyingUser(h.FirstResolvedWriter())
 	fakeVerifyingKey := MakeFakeVerifyingKeyOrBust("fake key")
-	rmds.MD.SetWriterMetadataSigInfo(SignatureInfo{
-		Version:      SigED25519,
+	rmds.MD.SetWriterMetadataSigInfo(kbfscrypto.SignatureInfo{
+		Version:      kbfscrypto.SigED25519,
 		Signature:    []byte{41},
 		VerifyingKey: fakeVerifyingKey,
 	})
-	rmds.SigInfo = SignatureInfo{
-		Version:      SigED25519,
+	rmds.SigInfo = kbfscrypto.SignatureInfo{
+		Version:      kbfscrypto.SigED25519,
 		Signature:    []byte{42},
 		VerifyingKey: fakeVerifyingKey,
 	}
@@ -199,7 +199,7 @@ func putMDForPrivate(config *ConfigMock, rmd *RootMetadata) {
 	expectGetTLFCryptKeyForEncryption(config, rmd)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
 		&rmd.data, kbfscrypto.TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
-	config.mockCrypto.EXPECT().Sign(gomock.Any(), gomock.Any()).Times(2).Return(SignatureInfo{}, nil)
+	config.mockCrypto.EXPECT().Sign(gomock.Any(), gomock.Any()).Times(2).Return(kbfscrypto.SignatureInfo{}, nil)
 	config.mockBsplit.EXPECT().ShouldEmbedBlockChanges(gomock.Any()).
 		Return(true)
 	config.mockMdserv.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
@@ -456,7 +456,7 @@ func TestMDOpsGetBlankSigFailure(t *testing.T) {
 	defer mdOpsShutdown(mockCtrl, config)
 
 	rmds, _, extra := newRMDS(t, config, false)
-	rmds.SigInfo = SignatureInfo{}
+	rmds.SigInfo = kbfscrypto.SignatureInfo{}
 
 	// only the get happens, no verify needed with a blank sig
 	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.TlfID(), NullBranchID, Merged).Return(rmds, nil)

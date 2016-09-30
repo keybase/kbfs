@@ -119,7 +119,7 @@ type TLFWriterKeyBundleV2 struct {
 	// existing data), we track multiple ephemeral public keys; the
 	// one used by a particular device is specified by EPubKeyIndex in
 	// its TLFCryptoKeyInfo struct.
-	TLFEphemeralPublicKeys TLFEphemeralPublicKeys `codec:"ePubKey"`
+	TLFEphemeralPublicKeys kbfscrypto.TLFEphemeralPublicKeys `codec:"ePubKey"`
 
 	codec.UnknownFieldSetHandler
 }
@@ -162,7 +162,7 @@ type TLFReaderKeyBundleV2 struct {
 	// its TLFCryptoKeyInfo struct.
 	// This list is needed so a reader rekey doesn't modify the writer
 	// metadata.
-	TLFReaderEphemeralPublicKeys TLFEphemeralPublicKeys `codec:"readerEPubKey,omitempty"`
+	TLFReaderEphemeralPublicKeys kbfscrypto.TLFEphemeralPublicKeys `codec:"readerEPubKey,omitempty"`
 
 	codec.UnknownFieldSetHandler
 }

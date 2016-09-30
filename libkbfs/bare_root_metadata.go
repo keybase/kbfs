@@ -71,7 +71,7 @@ type BareRootMetadataV2 struct {
 
 	// The signature for the writer metadata, to prove
 	// that it's only been changed by writers.
-	WriterMetadataSigInfo SignatureInfo
+	WriterMetadataSigInfo kbfscrypto.SignatureInfo
 
 	// The last KB user who modified this BareRootMetadata
 	LastModifyingUser keybase1.UID
@@ -519,7 +519,7 @@ func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 	}
 
 	var index int
-	var publicKeys TLFEphemeralPublicKeys
+	var publicKeys kbfscrypto.TLFEphemeralPublicKeys
 	var keyType string
 	if info.EPubKeyIndex >= 0 {
 		index = info.EPubKeyIndex
@@ -769,12 +769,12 @@ func (md *BareRootMetadataV2) GetSerializedWriterMetadata(
 }
 
 // GetWriterMetadataSigInfo implements the BareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) GetWriterMetadataSigInfo() SignatureInfo {
+func (md *BareRootMetadataV2) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
 	return md.WriterMetadataSigInfo
 }
 
 // SetWriterMetadataSigInfo implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) SetWriterMetadataSigInfo(sigInfo SignatureInfo) {
+func (md *BareRootMetadataV2) SetWriterMetadataSigInfo(sigInfo kbfscrypto.SignatureInfo) {
 	md.WriterMetadataSigInfo = sigInfo
 }
 
@@ -1040,7 +1040,7 @@ func (md *BareRootMetadataV2) GetHistoricTLFCryptKey(
 // it contains exactly the serializable metadata and signature info.
 type BareRootMetadataSignedV2 struct {
 	// signature over the root metadata by the private signing key
-	SigInfo SignatureInfo `codec:",omitempty"`
+	SigInfo kbfscrypto.SignatureInfo `codec:",omitempty"`
 	// all the metadata
 	MD BareRootMetadataV2
 }

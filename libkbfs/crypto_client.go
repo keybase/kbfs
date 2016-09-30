@@ -53,7 +53,7 @@ func (c *CryptoClient) logAboutTooLongUnlessCancelled(ctx context.Context,
 
 // Sign implements the Crypto interface for CryptoClient.
 func (c *CryptoClient) Sign(ctx context.Context, msg []byte) (
-	sigInfo SignatureInfo, err error) {
+	sigInfo kbfscrypto.SignatureInfo, err error) {
 	c.log.CDebugf(ctx, "Signing %d-byte message", len(msg))
 	defer func() {
 		c.deferLog.CDebugf(ctx, "Signed %d-byte message with %s: err=%v", len(msg),
@@ -70,8 +70,8 @@ func (c *CryptoClient) Sign(ctx context.Context, msg []byte) (
 		return
 	}
 
-	sigInfo = SignatureInfo{
-		Version:      SigED25519,
+	sigInfo = kbfscrypto.SignatureInfo{
+		Version:      kbfscrypto.SigED25519,
 		Signature:    ed25519SigInfo.Sig[:],
 		VerifyingKey: kbfscrypto.MakeVerifyingKey(libkb.NaclSigningKeyPublic(ed25519SigInfo.PublicKey).GetKID()),
 	}

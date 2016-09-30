@@ -430,7 +430,7 @@ func makeFakeBareRootMetadataFuture(t *testing.T) *bareRootMetadataFuture {
 				// fields are added, effectively checking at compile time
 				// whether new fields have been added
 				WriterMetadataV2{},
-				SignatureInfo{
+				kbfscrypto.SignatureInfo{
 					100,
 					[]byte{0xc},
 					MakeFakeVerifyingKeyOrBust("fake kid"),

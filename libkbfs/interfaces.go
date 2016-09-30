@@ -780,7 +780,7 @@ type cryptoPure interface {
 
 	// Verify verifies that sig matches msg being signed with the
 	// private key that corresponds to verifyingKey.
-	Verify(msg []byte, sigInfo SignatureInfo) error
+	Verify(msg []byte, sigInfo kbfscrypto.SignatureInfo) error
 
 	// EncryptTLFCryptKeyClientHalf encrypts a TLFCryptKeyClientHalf
 	// using both a TLF's ephemeral private key and a device pubkey.
@@ -839,10 +839,11 @@ type cryptoPure interface {
 		[]kbfscrypto.TLFCryptKey, error)
 }
 
+// Duplicate kbfscrypto.Signer to work around gomock.
 type cryptoSigner interface {
-	// Sign signs the msg with the current device's private key.
-	Sign(ctx context.Context, msg []byte) (sigInfo SignatureInfo, err error)
-	// Sign signs the msg with the current device's private key and output
+	// Sign signs the msg with some internal private key.
+	Sign(ctx context.Context, msg []byte) (sigInfo kbfscrypto.SignatureInfo, err error)
+	// Sign signs the msg with the some internal private key and output
 	// the full serialized NaclSigInfo.
 	SignToString(ctx context.Context, msg []byte) (signature string, err error)
 }
@@ -1603,7 +1604,7 @@ type BareRootMetadata interface {
 	// GetSerializedWriterMetadata serializes the underlying writer metadata and returns the result.
 	GetSerializedWriterMetadata(codec kbfscodec.Codec) ([]byte, error)
 	// GetWriterMetadataSigInfo returns the signature info associated with the the writer metadata.
-	GetWriterMetadataSigInfo() SignatureInfo
+	GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo
 	// Version returns the metadata version.
 	Version() MetadataVer
 	// GetTLFPublicKey returns the TLF public key for the give key generation.
@@ -1661,7 +1662,7 @@ type MutableBareRootMetadata interface {
 	// SetSerializedPrivateMetadata sets the serialized private metadata.
 	SetSerializedPrivateMetadata(spmd []byte)
 	// SetWriterMetadataSigInfo sets the signature info associated with the the writer metadata.
-	SetWriterMetadataSigInfo(sigInfo SignatureInfo)
+	SetWriterMetadataSigInfo(sigInfo kbfscrypto.SignatureInfo)
 	// SetLastModifyingWriter sets the UID of the last user to modify the writer metadata.
 	SetLastModifyingWriter(user keybase1.UID)
 	// SetLastModifyingUser sets the UID of the last user to modify any of the metadata.

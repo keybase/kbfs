@@ -533,12 +533,12 @@ func (md *RootMetadata) GetSerializedWriterMetadata(
 }
 
 // GetWriterMetadataSigInfo wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) GetWriterMetadataSigInfo() SignatureInfo {
+func (md *RootMetadata) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
 	return md.bareMd.GetWriterMetadataSigInfo()
 }
 
 // SetWriterMetadataSigInfo wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) SetWriterMetadataSigInfo(sigInfo SignatureInfo) {
+func (md *RootMetadata) SetWriterMetadataSigInfo(sigInfo kbfscrypto.SignatureInfo) {
 	md.bareMd.SetWriterMetadataSigInfo(sigInfo)
 }
 
@@ -763,7 +763,7 @@ func (irmd ImmutableRootMetadata) MdID() MdID {
 // RootMetadataSigned is the top-level MD object stored in MD server
 type RootMetadataSigned struct {
 	// signature over the root metadata by the private signing key
-	SigInfo SignatureInfo `codec:",omitempty"`
+	SigInfo kbfscrypto.SignatureInfo `codec:",omitempty"`
 	// all the metadata
 	MD MutableBareRootMetadata
 	// When does the server say this MD update was received?  (This is
@@ -809,7 +809,7 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(config Config) (
 	// Set the bare metadata.
 	newRmds.MD = newMutableBareMd
 	// Copy the signature.
-	newRmds.SigInfo = rmds.SigInfo.deepCopy()
+	newRmds.SigInfo = rmds.SigInfo.DeepCopy()
 	// Set the final flag.
 	newRmds.MD.SetFinalBit()
 	// Increment revision but keep the PrevRoot --

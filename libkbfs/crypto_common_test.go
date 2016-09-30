@@ -272,8 +272,8 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	signingKey := MakeFakeSigningKeyOrBust("client sign")
 
 	msg := []byte("message")
-	sigInfo := SignatureInfo{
-		Version:      SigED25519,
+	sigInfo := kbfscrypto.SignatureInfo{
+		Version:      kbfscrypto.SigED25519,
 		Signature:    signingKey.kp.Private.Sign(msg)[:],
 		VerifyingKey: signingKey.GetVerifyingKey(),
 	}
@@ -284,7 +284,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 
 	// Wrong version.
 
-	sigInfoWrongVersion := sigInfo.deepCopy()
+	sigInfoWrongVersion := sigInfo.DeepCopy()
 	sigInfoWrongVersion.Version++
 	expectedErr = UnknownSigVer{sigInfoWrongVersion.Version}
 	err = c.Verify(msg, sigInfoWrongVersion)
@@ -294,7 +294,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 
 	// Corrupt key.
 
-	sigInfoCorruptKey := sigInfo.deepCopy()
+	sigInfoCorruptKey := sigInfo.DeepCopy()
 	sigInfoCorruptKey.VerifyingKey = kbfscrypto.MakeVerifyingKey("")
 	expectedErr = libkb.KeyCannotVerifyError{}
 	err = c.Verify(msg, sigInfoCorruptKey)
@@ -304,7 +304,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 
 	// Wrong sizes.
 
-	shortSigInfo := sigInfo.deepCopy()
+	shortSigInfo := sigInfo.DeepCopy()
 	shortSigInfo.Signature = shortSigInfo.Signature[:len(shortSigInfo.Signature)-1]
 	expectedErr = libkb.VerificationError{}
 	err = c.Verify(msg, shortSigInfo)
@@ -312,7 +312,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 		t.Errorf("Expected %v, got %v", expectedErr, err)
 	}
 
-	longSigInfo := sigInfo.deepCopy()
+	longSigInfo := sigInfo.DeepCopy()
 	longSigInfo.Signature = append(longSigInfo.Signature, byte(0))
 	expectedErr = libkb.VerificationError{}
 	err = c.Verify(msg, longSigInfo)
@@ -322,7 +322,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 
 	// Corrupt signature.
 
-	corruptSigInfo := sigInfo.deepCopy()
+	corruptSigInfo := sigInfo.DeepCopy()
 	corruptSigInfo.Signature[0] = ^sigInfo.Signature[0]
 	expectedErr = libkb.VerificationError{}
 	err = c.Verify(msg, corruptSigInfo)
@@ -332,7 +332,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 
 	// Wrong key.
 
-	sigInfoWrongKey := sigInfo.deepCopy()
+	sigInfoWrongKey := sigInfo.DeepCopy()
 	sigInfoWrongKey.VerifyingKey = MakeFakeVerifyingKeyOrBust("wrong key")
 	expectedErr = libkb.VerificationError{}
 	err = c.Verify(msg, sigInfoWrongKey)

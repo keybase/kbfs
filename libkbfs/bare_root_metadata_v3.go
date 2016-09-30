@@ -61,7 +61,7 @@ type BareRootMetadataV3 struct {
 	// MDv3 TODO: It would be better for journaling if we could move this
 	// to RootMetadataSigned since it references metadata by ID. We could
 	// then delay computing it until sending metadata to the server.
-	WriterMetadataSigInfo SignatureInfo `codec:"wmdsi"`
+	WriterMetadataSigInfo kbfscrypto.SignatureInfo `codec:"wmdsi"`
 
 	// The last KB user who modified this BareRootMetadata
 	LastModifyingUser keybase1.UID
@@ -531,7 +531,7 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 	}
 
 	var index int
-	var publicKeys TLFEphemeralPublicKeys
+	var publicKeys kbfscrypto.TLFEphemeralPublicKeys
 	var keyType string
 	if info.EPubKeyIndex >= 0 {
 		index = info.EPubKeyIndex
@@ -787,12 +787,12 @@ func (md *BareRootMetadataV3) GetSerializedWriterMetadata(
 }
 
 // GetWriterMetadataSigInfo implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetWriterMetadataSigInfo() SignatureInfo {
+func (md *BareRootMetadataV3) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
 	return md.WriterMetadataSigInfo
 }
 
 // SetWriterMetadataSigInfo implements the MutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) SetWriterMetadataSigInfo(sigInfo SignatureInfo) {
+func (md *BareRootMetadataV3) SetWriterMetadataSigInfo(sigInfo kbfscrypto.SignatureInfo) {
 	md.WriterMetadataSigInfo = sigInfo
 }
 
@@ -1121,7 +1121,7 @@ func (md *BareRootMetadataV3) GetHistoricTLFCryptKey(crypto cryptoPure,
 // it contains exactly the serializable metadata and signature info.
 type BareRootMetadataSignedV3 struct {
 	// signature over the root metadata by the private signing key
-	SigInfo SignatureInfo `codec:",omitempty"`
+	SigInfo kbfscrypto.SignatureInfo `codec:",omitempty"`
 	// all the metadata
 	MD BareRootMetadataV3
 }

@@ -126,7 +126,7 @@ func TestKeyBundleFillInDevices(t *testing.T) {
 	// Make a wkb with empty writer key maps
 	wkb := TLFWriterKeyBundleV2{
 		WKeys: make(UserDeviceKeyInfoMap),
-		TLFEphemeralPublicKeys: make(TLFEphemeralPublicKeys, 1),
+		TLFEphemeralPublicKeys: make(kbfscrypto.TLFEphemeralPublicKeys, 1),
 	}
 
 	// Generate keys
@@ -236,7 +236,7 @@ func makeFakeTLFWriterKeyBundleFuture(t *testing.T) tlfWriterKeyBundleFuture {
 	wkb := TLFWriterKeyBundleV2{
 		nil,
 		kbfscrypto.MakeTLFPublicKey([32]byte{0xa}),
-		TLFEphemeralPublicKeys{
+		kbfscrypto.TLFEphemeralPublicKeys{
 			kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0xb}),
 		},
 		codec.UnknownFieldSetHandler{},
@@ -272,7 +272,7 @@ func (rkbf tlfReaderKeyBundleFuture) toCurrentStruct() currentStruct {
 func makeFakeTLFReaderKeyBundleFuture(t *testing.T) tlfReaderKeyBundleFuture {
 	rkb := TLFReaderKeyBundleV2{
 		nil,
-		TLFEphemeralPublicKeys{
+		kbfscrypto.TLFEphemeralPublicKeys{
 			kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0xc}),
 		},
 		codec.UnknownFieldSetHandler{},

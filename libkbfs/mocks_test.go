@@ -1833,7 +1833,7 @@ func (_mr *_MockcryptoPureRecorder) UnmaskBlockCryptKey(arg0, arg1 interface{}) 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "UnmaskBlockCryptKey", arg0, arg1)
 }
 
-func (_m *MockcryptoPure) Verify(msg []byte, sigInfo SignatureInfo) error {
+func (_m *MockcryptoPure) Verify(msg []byte, sigInfo kbfscrypto.SignatureInfo) error {
 	ret := _m.ctrl.Call(_m, "Verify", msg, sigInfo)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2006,9 +2006,9 @@ func (_m *MockcryptoSigner) EXPECT() *_MockcryptoSignerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockcryptoSigner) Sign(ctx context.Context, msg []byte) (SignatureInfo, error) {
+func (_m *MockcryptoSigner) Sign(ctx context.Context, msg []byte) (kbfscrypto.SignatureInfo, error) {
 	ret := _m.ctrl.Call(_m, "Sign", ctx, msg)
-	ret0, _ := ret[0].(SignatureInfo)
+	ret0, _ := ret[0].(kbfscrypto.SignatureInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2206,7 +2206,7 @@ func (_mr *_MockCryptoRecorder) UnmaskBlockCryptKey(arg0, arg1 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "UnmaskBlockCryptKey", arg0, arg1)
 }
 
-func (_m *MockCrypto) Verify(msg []byte, sigInfo SignatureInfo) error {
+func (_m *MockCrypto) Verify(msg []byte, sigInfo kbfscrypto.SignatureInfo) error {
 	ret := _m.ctrl.Call(_m, "Verify", msg, sigInfo)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2358,9 +2358,9 @@ func (_mr *_MockCryptoRecorder) DecryptTLFCryptKeys(arg0, arg1 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptTLFCryptKeys", arg0, arg1)
 }
 
-func (_m *MockCrypto) Sign(ctx context.Context, msg []byte) (SignatureInfo, error) {
+func (_m *MockCrypto) Sign(ctx context.Context, msg []byte) (kbfscrypto.SignatureInfo, error) {
 	ret := _m.ctrl.Call(_m, "Sign", ctx, msg)
-	ret0, _ := ret[0].(SignatureInfo)
+	ret0, _ := ret[0].(kbfscrypto.SignatureInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4729,9 +4729,9 @@ func (_mr *_MockBareRootMetadataRecorder) GetSerializedWriterMetadata(arg0 inter
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetSerializedWriterMetadata", arg0)
 }
 
-func (_m *MockBareRootMetadata) GetWriterMetadataSigInfo() SignatureInfo {
+func (_m *MockBareRootMetadata) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
 	ret := _m.ctrl.Call(_m, "GetWriterMetadataSigInfo")
-	ret0, _ := ret[0].(SignatureInfo)
+	ret0, _ := ret[0].(kbfscrypto.SignatureInfo)
 	return ret0
 }
 
@@ -5174,9 +5174,9 @@ func (_mr *_MockMutableBareRootMetadataRecorder) GetSerializedWriterMetadata(arg
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetSerializedWriterMetadata", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) GetWriterMetadataSigInfo() SignatureInfo {
+func (_m *MockMutableBareRootMetadata) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
 	ret := _m.ctrl.Call(_m, "GetWriterMetadataSigInfo")
-	ret0, _ := ret[0].(SignatureInfo)
+	ret0, _ := ret[0].(kbfscrypto.SignatureInfo)
 	return ret0
 }
 
@@ -5372,7 +5372,7 @@ func (_mr *_MockMutableBareRootMetadataRecorder) SetSerializedPrivateMetadata(ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetSerializedPrivateMetadata", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) SetWriterMetadataSigInfo(sigInfo SignatureInfo) {
+func (_m *MockMutableBareRootMetadata) SetWriterMetadataSigInfo(sigInfo kbfscrypto.SignatureInfo) {
 	_m.ctrl.Call(_m, "SetWriterMetadataSigInfo", sigInfo)
 }
 

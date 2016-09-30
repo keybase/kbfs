@@ -9,6 +9,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscrypto"
 )
 
 // ErrorFile is the name of the virtual file in KBFS that should
@@ -546,7 +547,7 @@ func (e MDWriteNeededInRequest) Error() string {
 // UnknownSigVer indicates that we can't process a signature because
 // it has an unknown version.
 type UnknownSigVer struct {
-	sigVer SigVer
+	sigVer kbfscrypto.SigVer
 }
 
 // Error implements the error interface for UnknownSigVer

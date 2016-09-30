@@ -30,7 +30,7 @@ type TLFWriterKeyBundleV3 struct {
 	// existing data), we track multiple ephemeral public keys; the
 	// one used by a particular device is specified by EPubKeyIndex in
 	// its TLFCryptoKeyInfo struct.
-	TLFEphemeralPublicKeys TLFEphemeralPublicKeys `codec:"ePubKey"`
+	TLFEphemeralPublicKeys kbfscrypto.TLFEphemeralPublicKeys `codec:"ePubKey"`
 
 	// M_f as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
 	TLFPublicKeys []kbfscrypto.TLFPublicKey `codec:"pubKey"`

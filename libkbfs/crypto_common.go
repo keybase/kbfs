@@ -250,8 +250,8 @@ func (c CryptoCommon) UnmaskBlockCryptKey(serverHalf kbfscrypto.BlockCryptKeySer
 }
 
 // Verify implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) Verify(msg []byte, sigInfo SignatureInfo) (err error) {
-	if sigInfo.Version != SigED25519 {
+func (c CryptoCommon) Verify(msg []byte, sigInfo kbfscrypto.SignatureInfo) (err error) {
+	if sigInfo.Version != kbfscrypto.SigED25519 {
 		err = UnknownSigVer{sigInfo.Version}
 		return
 	}

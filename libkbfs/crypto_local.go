@@ -82,9 +82,9 @@ type cryptoSignerLocal struct {
 }
 
 func (c cryptoSignerLocal) Sign(ctx context.Context, msg []byte) (
-	sigInfo SignatureInfo, err error) {
-	sigInfo = SignatureInfo{
-		Version:      SigED25519,
+	sigInfo kbfscrypto.SignatureInfo, err error) {
+	sigInfo = kbfscrypto.SignatureInfo{
+		Version:      kbfscrypto.SigED25519,
 		Signature:    c.signingKey.kp.Private.Sign(msg)[:],
 		VerifyingKey: c.signingKey.GetVerifyingKey(),
 	}

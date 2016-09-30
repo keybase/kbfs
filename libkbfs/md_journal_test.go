@@ -479,9 +479,9 @@ type limitedCryptoSigner struct {
 }
 
 func (s *limitedCryptoSigner) Sign(ctx context.Context, msg []byte) (
-	SignatureInfo, error) {
+	kbfscrypto.SignatureInfo, error) {
 	if s.remaining <= 0 {
-		return SignatureInfo{}, errors.New("No more Sign calls left")
+		return kbfscrypto.SignatureInfo{}, errors.New("No more Sign calls left")
 	}
 	s.remaining--
 	return s.cryptoSigner.Sign(ctx, msg)
