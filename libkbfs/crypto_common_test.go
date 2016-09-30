@@ -282,7 +282,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 
 	sigInfoWrongVersion := sigInfo.DeepCopy()
 	sigInfoWrongVersion.Version++
-	expectedErr = kbfscrypto.UnknownSigVer{sigInfoWrongVersion.Version}
+	expectedErr = kbfscrypto.UnknownSigVer{Ver: sigInfoWrongVersion.Version}
 	err = c.Verify(msg, sigInfoWrongVersion)
 	if err != expectedErr {
 		t.Errorf("Expected %v, got %v", expectedErr, err)

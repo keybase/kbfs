@@ -28,7 +28,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	crypto := MakeCryptoCommon(codec)
 	signingKey := MakeFakeSigningKeyOrBust("test key")
 	verifyingKey := MakeFakeVerifyingKeyOrBust("test key")
-	signer := kbfscrypto.SigningKeySigner{signingKey}
+	signer := kbfscrypto.SigningKeySigner{Key: signingKey}
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_storage")
 	require.NoError(t, err)
