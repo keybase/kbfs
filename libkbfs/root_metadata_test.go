@@ -564,7 +564,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't resolve again: %v", err)
 	}
-	rmd3, err := rmd.MakeSuccessor(config, fakeMdID(1), true)
+	rmd3, err := rmd.MakeSuccessor(config.Codec(), fakeMdID(1), true)
 	if err != nil {
 		t.Fatalf("Couldn't make MD successor: %v", err)
 	}
