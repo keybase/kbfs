@@ -962,25 +962,6 @@ func (e RekeyIncompleteError) Error() string {
 	return fmt.Sprintf("Rekey did not complete due to insufficient user permissions")
 }
 
-// InvalidKIDError is returned whenever an invalid KID is detected.
-type InvalidKIDError struct {
-	kid keybase1.KID
-}
-
-func (e InvalidKIDError) Error() string {
-	return fmt.Sprintf("Invalid KID %s", e.kid)
-}
-
-// InvalidByte32DataError is returned whenever invalid data for a
-// 32-byte type is detected.
-type InvalidByte32DataError struct {
-	data []byte
-}
-
-func (e InvalidByte32DataError) Error() string {
-	return fmt.Sprintf("Invalid byte32 data %v", e.data)
-}
-
 // TimeoutError is just a replacement for context.DeadlineExceeded
 // with a more friendly error string.
 type TimeoutError struct {
