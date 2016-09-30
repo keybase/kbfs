@@ -16,12 +16,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// AuthTokenRefreshHandler defines a callback to be called when an auth token refresh
-// is needed.
-type AuthTokenRefreshHandler interface {
-	RefreshAuthToken(context.Context)
-}
-
 // Block just needs to be (de)serialized using msgpack
 type Block interface {
 	// GetEncodedSize returns the encoded size of this block, but only
@@ -988,7 +982,7 @@ type BlockOps interface {
 //
 // TODO: Add interface for searching by time
 type MDServer interface {
-	AuthTokenRefreshHandler
+	kbfscrypto.AuthTokenRefreshHandler
 
 	// GetForHandle returns the current (signed/encrypted) metadata
 	// object corresponding to the given top-level folder's handle, if
@@ -1093,7 +1087,7 @@ type mdServerLocal interface {
 // put/delete, the server is reponsible for: 1) checking that the ID
 // matches the hash of the buffer; and 2) enforcing writer quotas.
 type BlockServer interface {
-	AuthTokenRefreshHandler
+	kbfscrypto.AuthTokenRefreshHandler
 
 	// Get gets the (encrypted) block data associated with the given
 	// block ID and context, uses the provided block key to decrypt

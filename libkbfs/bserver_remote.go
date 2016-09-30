@@ -35,8 +35,8 @@ type BlockServerRemote struct {
 	deferLog   logger.Logger
 	blkSrvAddr string
 
-	putAuthToken *AuthToken
-	getAuthToken *AuthToken
+	putAuthToken *kbfscrypto.AuthToken
+	getAuthToken *kbfscrypto.AuthToken
 }
 
 // Test that BlockServerRemote fully implements the BlockServer interface.
@@ -47,7 +47,7 @@ var _ BlockServer = (*BlockServerRemote)(nil)
 type blockServerRemoteClientHandler struct {
 	bs        *BlockServerRemote
 	name      string
-	authToken *AuthToken
+	authToken *kbfscrypto.AuthToken
 	client    keybase1.BlockInterface
 }
 
@@ -59,7 +59,7 @@ func (b *blockServerRemoteClientHandler) RefreshAuthToken(
 	}
 }
 
-var _ AuthTokenRefreshHandler = (*blockServerRemoteClientHandler)(nil)
+var _ kbfscrypto.AuthTokenRefreshHandler = (*blockServerRemoteClientHandler)(nil)
 
 // HandlerName implements the ConnectionHandler interface.
 func (b *blockServerRemoteClientHandler) HandlerName() string {
@@ -153,17 +153,17 @@ func NewBlockServerRemote(config Config, blkSrvAddr string, ctx Context) *BlockS
 		bs:   bs,
 		name: "BlockServerRemotePut",
 	}
-	bs.putAuthToken = NewAuthToken(config.Crypto(),
+	bs.putAuthToken = kbfscrypto.NewAuthToken(config.Crypto(),
 		BServerTokenServer, BServerTokenExpireIn,
-		"libkbfs_bserver_remote", putClientHandler)
+		"libkbfs_bserver_remote", VersionString(), putClientHandler)
 	putClientHandler.authToken = bs.putAuthToken
 	getClientHandler := &blockServerRemoteClientHandler{
 		bs:   bs,
 		name: "BlockServerRemoteGet",
 	}
-	bs.getAuthToken = NewAuthToken(config.Crypto(),
+	bs.getAuthToken = kbfscrypto.NewAuthToken(config.Crypto(),
 		BServerTokenServer, BServerTokenExpireIn,
-		"libkbfs_bserver_remote", getClientHandler)
+		"libkbfs_bserver_remote", VersionString(), getClientHandler)
 	getClientHandler.authToken = bs.getAuthToken
 
 	putConn := rpc.NewTLSConnection(blkSrvAddr, GetRootCerts(blkSrvAddr),
@@ -210,7 +210,7 @@ func (b *BlockServerRemote) RemoteAddress() string {
 
 // resetAuth is called to reset the authorization on a BlockServer
 // connection.
-func (b *BlockServerRemote) resetAuth(ctx context.Context, c keybase1.BlockInterface, authToken *AuthToken) error {
+func (b *BlockServerRemote) resetAuth(ctx context.Context, c keybase1.BlockInterface, authToken *kbfscrypto.AuthToken) error {
 	_, _, err := b.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		b.log.Debug("BServerRemote: User logged out, skipping resetAuth")

@@ -38,7 +38,7 @@ type MDServerRemote struct {
 	client       keybase1.MetadataClient
 	log          logger.Logger
 	mdSrvAddr    string
-	authToken    *AuthToken
+	authToken    *kbfscrypto.AuthToken
 	squelchRekey bool
 
 	authenticatedMtx sync.Mutex
@@ -65,7 +65,7 @@ var _ MDServer = (*MDServerRemote)(nil)
 var _ KeyServer = (*MDServerRemote)(nil)
 
 // Test that MDServerRemote fully implements the AuthTokenRefreshHandler interface.
-var _ AuthTokenRefreshHandler = (*MDServerRemote)(nil)
+var _ kbfscrypto.AuthTokenRefreshHandler = (*MDServerRemote)(nil)
 
 // Test that MDServerRemote fully implements the ConnectionHandler interface.
 var _ rpc.ConnectionHandler = (*MDServerRemote)(nil)
@@ -79,9 +79,9 @@ func NewMDServerRemote(config Config, srvAddr string, ctx Context) *MDServerRemo
 		mdSrvAddr:  srvAddr,
 		rekeyTimer: time.NewTimer(MdServerBackgroundRekeyPeriod),
 	}
-	mdServer.authToken = NewAuthToken(config.Crypto(),
+	mdServer.authToken = kbfscrypto.NewAuthToken(config.Crypto(),
 		MdServerTokenServer, MdServerTokenExpireIn,
-		"libkbfs_mdserver_remote", mdServer)
+		"libkbfs_mdserver_remote", VersionString(), mdServer)
 	conn := rpc.NewTLSConnection(srvAddr, GetRootCerts(srvAddr),
 		MDServerErrorUnwrapper{}, mdServer, true,
 		ctx.NewRPCLogFactory(), libkb.WrapError,

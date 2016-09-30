@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD
 // license that can be found in the LICENSE file.
 
-package libkbfs
+package kbfscrypto
 
 import (
 	"errors"
@@ -14,16 +14,21 @@ import (
 	"github.com/keybase/client/go/auth"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
-	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/net/context"
 )
 
 // AuthTokenMinRefreshSeconds is the minimum number of seconds between refreshes.
 const AuthTokenMinRefreshSeconds = 60
 
+// AuthTokenRefreshHandler defines a callback to be called when an auth token refresh
+// is needed.
+type AuthTokenRefreshHandler interface {
+	RefreshAuthToken(context.Context)
+}
+
 // AuthToken encapsulates a timed authentication token.
 type AuthToken struct {
-	signer         cryptoSigner
+	signer         Signer
 	tokenType      string
 	expireIn       int
 	clientName     string
@@ -34,15 +39,15 @@ type AuthToken struct {
 }
 
 // NewAuthToken creates a new authentication token.
-func NewAuthToken(signer cryptoSigner, tokenType string, expireIn int,
-	submoduleName string, rh AuthTokenRefreshHandler) *AuthToken {
+func NewAuthToken(signer Signer, tokenType string, expireIn int,
+	submoduleName, version string, rh AuthTokenRefreshHandler) *AuthToken {
 	clientName := fmt.Sprintf("go %s %s %s", submoduleName, runtime.GOOS, runtime.GOARCH)
 	authToken := &AuthToken{
 		signer:         signer,
 		tokenType:      tokenType,
 		expireIn:       expireIn,
 		clientName:     clientName,
-		clientVersion:  VersionString(),
+		clientVersion:  version,
 		refreshHandler: rh,
 	}
 	return authToken
@@ -52,7 +57,7 @@ func NewAuthToken(signer cryptoSigner, tokenType string, expireIn int,
 func (a *AuthToken) signWithUserAndKeyInfo(ctx context.Context,
 	challengeInfo keybase1.ChallengeInfo, uid keybase1.UID,
 	username libkb.NormalizedUsername,
-	key kbfscrypto.VerifyingKey) (string, error) {
+	key VerifyingKey) (string, error) {
 	// create the token
 	token := auth.NewToken(uid, username, key.KID(), a.tokenType,
 		challengeInfo.Challenge, challengeInfo.Now, a.expireIn,
@@ -78,7 +83,7 @@ func (a *AuthToken) signWithUserAndKeyInfo(ctx context.Context,
 // including a challenge and username/uid/kid identifiers.
 func (a *AuthToken) Sign(ctx context.Context,
 	currentUsername libkb.NormalizedUsername, currentUID keybase1.UID,
-	currentVerifyingKey kbfscrypto.VerifyingKey,
+	currentVerifyingKey VerifyingKey,
 	challengeInfo keybase1.ChallengeInfo) (string, error) {
 	// make sure we're being asked to sign a legit challenge
 	if !auth.IsValidChallenge(challengeInfo.Challenge) {
@@ -95,7 +100,7 @@ func (a *AuthToken) Sign(ctx context.Context,
 // established using only the KID.  Assume the client and server
 // clocks are roughly synchronized.
 func (a *AuthToken) SignUserless(
-	ctx context.Context, key kbfscrypto.VerifyingKey) (
+	ctx context.Context, key VerifyingKey) (
 	string, error) {
 	// Pass in a reserved, meaningless UID.
 	return a.signWithUserAndKeyInfo(ctx,
