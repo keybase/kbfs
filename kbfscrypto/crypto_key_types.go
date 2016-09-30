@@ -23,6 +23,9 @@ type kidContainer struct {
 var _ encoding.BinaryMarshaler = kidContainer{}
 var _ encoding.BinaryUnmarshaler = (*kidContainer)(nil)
 
+var _ json.Marshaler = kidContainer{}
+var _ json.Unmarshaler = (*kidContainer)(nil)
+
 func (k kidContainer) MarshalBinary() (data []byte, err error) {
 	if k.kid.IsNil() {
 		return nil, nil
@@ -55,9 +58,6 @@ func (k *kidContainer) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-var _ json.Marshaler = kidContainer{}
-var _ json.Unmarshaler = (*kidContainer)(nil)
-
 func (k kidContainer) MarshalJSON() ([]byte, error) {
 	return k.kid.MarshalJSON()
 }
@@ -66,8 +66,6 @@ func (k *kidContainer) UnmarshalJSON(s []byte) error {
 	return k.kid.UnmarshalJSON(s)
 }
 
-// Needed by mdserver/server_test.go. TODO: Figure out how to avoid
-// this.
 func (k kidContainer) KID() keybase1.KID {
 	return k.kid
 }
@@ -113,8 +111,6 @@ func (k SigningKey) GetVerifyingKey() VerifyingKey {
 //
 // Copies of VerifyingKey objects are deep copies.
 type VerifyingKey struct {
-	// Should only be used by implementations of Crypto and KBPKI.
-	//
 	// Even though we currently use NaclSignatures, we use a KID
 	// here (which encodes the key type) as we may end up storing
 	// other kinds of signatures.
@@ -239,16 +235,16 @@ type CryptPublicKey struct {
 	kidContainer
 }
 
-// MakeCryptPublicKey returns a CryptPublicKey containing the given KID.
-func MakeCryptPublicKey(kid keybase1.KID) CryptPublicKey {
-	return CryptPublicKey{kidContainer{kid}}
-}
-
 var _ encoding.BinaryMarshaler = CryptPublicKey{}
 var _ encoding.BinaryUnmarshaler = (*CryptPublicKey)(nil)
 
 var _ json.Marshaler = CryptPublicKey{}
 var _ json.Unmarshaler = (*CryptPublicKey)(nil)
+
+// MakeCryptPublicKey returns a CryptPublicKey containing the given KID.
+func MakeCryptPublicKey(kid keybase1.KID) CryptPublicKey {
+	return CryptPublicKey{kidContainer{kid}}
+}
 
 // TLFEphemeralPublicKey (M_e) is used along with a crypt private key
 // to decrypt TLFCryptKeyClientHalf objects (t_u^{f,0,i}) for
@@ -403,20 +399,21 @@ func xorKeys(x, y [32]byte) [32]byte {
 	return res
 }
 
-// MaskTLFCryptKey implements the Crypto interface for CryptoCommon.
-func MaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, key TLFCryptKey) (clientHalf TLFCryptKeyClientHalf, err error) {
-	clientHalf.data = xorKeys(serverHalf.data, key.data)
-	return
+// MaskTLFCryptKey returns the client side of a top-level folder crypt
+// key.
+func MaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf,
+	key TLFCryptKey) TLFCryptKeyClientHalf {
+	return MakeTLFCryptKeyClientHalf(xorKeys(serverHalf.data, key.data))
 }
 
-// UnmaskTLFCryptKey implements the Crypto interface for CryptoCommon.
-func UnmaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf, clientHalf TLFCryptKeyClientHalf) (key TLFCryptKey, err error) {
-	key.data = xorKeys(serverHalf.data, clientHalf.data)
-	return
+// UnmaskTLFCryptKey returns the top-level folder crypt key.
+func UnmaskTLFCryptKey(serverHalf TLFCryptKeyServerHalf,
+	clientHalf TLFCryptKeyClientHalf) TLFCryptKey {
+	return MakeTLFCryptKey(xorKeys(serverHalf.data, clientHalf.data))
 }
 
-// UnmaskBlockCryptKey implements the Crypto interface for CryptoCommon.
-func UnmaskBlockCryptKey(serverHalf BlockCryptKeyServerHalf, tlfCryptKey TLFCryptKey) (key BlockCryptKey, error error) {
-	key.data = xorKeys(serverHalf.data, tlfCryptKey.data)
-	return
+// UnmaskBlockCryptKey returns the block crypt key.
+func UnmaskBlockCryptKey(serverHalf BlockCryptKeyServerHalf,
+	tlfCryptKey TLFCryptKey) BlockCryptKey {
+	return MakeBlockCryptKey(xorKeys(serverHalf.data, tlfCryptKey.data))
 }
