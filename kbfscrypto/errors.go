@@ -32,10 +32,10 @@ func (e InvalidByte32DataError) Error() string {
 // UnknownSigVer indicates that we can't process a signature because
 // it has an unknown version.
 type UnknownSigVer struct {
-	sigVer SigVer
+	Ver SigVer
 }
 
 // Error implements the error interface for UnknownSigVer
 func (e UnknownSigVer) Error() string {
-	return fmt.Sprintf("Unknown signature version %d", int(e.sigVer))
+	return fmt.Sprintf("Unknown signature version %d", int(e.Ver))
 }
