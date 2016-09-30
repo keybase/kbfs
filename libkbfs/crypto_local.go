@@ -42,6 +42,7 @@ func NewSigningKey(kp libkb.NaclSigningKeyPair) SigningKey {
 // GetVerifyingKey returns the public key half of this signing key.
 func (k SigningKey) GetVerifyingKey() VerifyingKey {
 	return MakeVerifyingKey(k.kp.Public.GetKID())
+
 }
 
 // CryptPrivateKeySecretSize is the size of a CryptPrivateKeySecret.
