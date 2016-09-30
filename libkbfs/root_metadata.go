@@ -538,7 +538,8 @@ func (md *RootMetadata) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
 }
 
 // SetWriterMetadataSigInfo wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) SetWriterMetadataSigInfo(sigInfo kbfscrypto.SignatureInfo) {
+func (md *RootMetadata) SetWriterMetadataSigInfo(
+	sigInfo kbfscrypto.SignatureInfo) {
 	md.bareMd.SetWriterMetadataSigInfo(sigInfo)
 }
 
@@ -641,8 +642,10 @@ func (md *RootMetadata) NewKeyGeneration(pubKey kbfscrypto.TLFPublicKey) {
 
 func (md *RootMetadata) fillInDevices(crypto Crypto,
 	keyGen KeyGen, wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {
+	rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {
 
 	if bareV3, ok := md.bareMd.(*BareRootMetadataV3); ok {
 		// v3 bundles aren't embedded.

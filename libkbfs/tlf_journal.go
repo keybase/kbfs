@@ -190,8 +190,8 @@ func readTLFJournalInfoFile(dir string) (
 	return info.UID, info.VerifyingKey, info.TlfID, nil
 }
 
-func writeTLFJournalInfoFile(
-	dir string, uid keybase1.UID, key kbfscrypto.VerifyingKey, tlfID TlfID) error {
+func writeTLFJournalInfoFile(dir string, uid keybase1.UID,
+	key kbfscrypto.VerifyingKey, tlfID TlfID) error {
 	info := tlfJournalInfo{uid, key, tlfID}
 	infoJSON, err := json.Marshal(info)
 	if err != nil {

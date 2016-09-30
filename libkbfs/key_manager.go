@@ -57,7 +57,8 @@ func (km *KeyManagerStandard) GetTLFCryptKeyForBlockDecryption(
 // GetTLFCryptKeyOfAllGenerations implements the KeyManager interface for
 // KeyManagerStandard.
 func (km *KeyManagerStandard) GetTLFCryptKeyOfAllGenerations(
-	ctx context.Context, kmd KeyMetadata) (keys []kbfscrypto.TLFCryptKey, err error) {
+	ctx context.Context, kmd KeyMetadata) (
+	keys []kbfscrypto.TLFCryptKey, err error) {
 	for g := KeyGen(FirstValidKeyGen); g <= kmd.LatestKeyGeneration(); g++ {
 		var key kbfscrypto.TLFCryptKey
 		key, err = km.getTLFCryptKeyUsingCurrentDevice(ctx, kmd, g, true)
@@ -457,7 +458,9 @@ func (km *KeyManagerStandard) identifyUIDSets(ctx context.Context,
 	return identifyUserList(ctx, kbpki, kbpki, uids, tlfID.IsPublic())
 }
 
-func (km *KeyManagerStandard) generateKeyMapForUsers(ctx context.Context, users []keybase1.UID) (map[keybase1.UID][]kbfscrypto.CryptPublicKey, error) {
+func (km *KeyManagerStandard) generateKeyMapForUsers(
+	ctx context.Context, users []keybase1.UID) (
+	map[keybase1.UID][]kbfscrypto.CryptPublicKey, error) {
 	keyMap := make(map[keybase1.UID][]kbfscrypto.CryptPublicKey)
 
 	// TODO: parallelize

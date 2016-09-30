@@ -395,10 +395,12 @@ type currentInfoGetter interface {
 		libkb.NormalizedUsername, keybase1.UID, error)
 	// GetCurrentCryptPublicKey gets the crypt public key for the
 	// currently-active device.
-	GetCurrentCryptPublicKey(ctx context.Context) (kbfscrypto.CryptPublicKey, error)
+	GetCurrentCryptPublicKey(ctx context.Context) (
+		kbfscrypto.CryptPublicKey, error)
 	// GetCurrentVerifyingKey gets the public key used for signing for the
 	// currently-active device.
-	GetCurrentVerifyingKey(ctx context.Context) (kbfscrypto.VerifyingKey, error)
+	GetCurrentVerifyingKey(ctx context.Context) (
+		kbfscrypto.VerifyingKey, error)
 }
 
 // KBPKI interacts with the Keybase daemon to fetch user info.
@@ -411,7 +413,8 @@ type KBPKI interface {
 	// HasVerifyingKey returns nil if the given user has the given
 	// VerifyingKey, and an error otherwise.
 	HasVerifyingKey(ctx context.Context, uid keybase1.UID,
-		verifyingKey kbfscrypto.VerifyingKey, atServerTime time.Time) error
+		verifyingKey kbfscrypto.VerifyingKey,
+		atServerTime time.Time) error
 
 	// HasUnverifiedVerifyingKey returns nil if the given user has the given
 	// unverified VerifyingKey, and an error otherwise.  Note that any match
@@ -478,8 +481,10 @@ type KeyMetadata interface {
 	// false if not found. This returns an error if the TLF is
 	// public.
 	GetTLFCryptKeyParams(
-		keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
-		kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
+		keyGen KeyGen, user keybase1.UID,
+		key kbfscrypto.CryptPublicKey) (
+		kbfscrypto.TLFEphemeralPublicKey,
+		EncryptedTLFCryptKeyClientHalf,
 		TLFCryptKeyServerHalfID, bool, error)
 
 	// StoresHistoricTLFCryptKeys returns whether or not history keys are
@@ -753,24 +758,31 @@ type cryptoPure interface {
 	MakeBlockRefNonce() (BlockRefNonce, error)
 
 	// MakeRandomTLFKeys generates top-level folder keys using a CSPRNG.
-	MakeRandomTLFKeys() (kbfscrypto.TLFPublicKey, kbfscrypto.TLFPrivateKey, kbfscrypto.TLFEphemeralPublicKey,
-		kbfscrypto.TLFEphemeralPrivateKey, kbfscrypto.TLFCryptKey, error)
+	MakeRandomTLFKeys() (kbfscrypto.TLFPublicKey,
+		kbfscrypto.TLFPrivateKey, kbfscrypto.TLFEphemeralPublicKey,
+		kbfscrypto.TLFEphemeralPrivateKey, kbfscrypto.TLFCryptKey,
+		error)
 	// MakeRandomTLFCryptKeyServerHalf generates the server-side of a
 	// top-level folder crypt key.
-	MakeRandomTLFCryptKeyServerHalf() (kbfscrypto.TLFCryptKeyServerHalf, error)
+	MakeRandomTLFCryptKeyServerHalf() (
+		kbfscrypto.TLFCryptKeyServerHalf, error)
 	// MakeRandomBlockCryptKeyServerHalf generates the server-side of
 	// a block crypt key.
-	MakeRandomBlockCryptKeyServerHalf() (kbfscrypto.BlockCryptKeyServerHalf, error)
+	MakeRandomBlockCryptKeyServerHalf() (
+		kbfscrypto.BlockCryptKeyServerHalf, error)
 
 	// MaskTLFCryptKey returns the client-side of a top-level folder crypt key.
-	MaskTLFCryptKey(serverHalf kbfscrypto.TLFCryptKeyServerHalf, key kbfscrypto.TLFCryptKey) (
+	MaskTLFCryptKey(serverHalf kbfscrypto.TLFCryptKeyServerHalf,
+		key kbfscrypto.TLFCryptKey) (
 		kbfscrypto.TLFCryptKeyClientHalf, error)
 	// UnmaskTLFCryptKey returns the top-level folder crypt key.
 	UnmaskTLFCryptKey(serverHalf kbfscrypto.TLFCryptKeyServerHalf,
-		clientHalf kbfscrypto.TLFCryptKeyClientHalf) (kbfscrypto.TLFCryptKey, error)
+		clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
+		kbfscrypto.TLFCryptKey, error)
 	// UnmaskBlockCryptKey returns the block crypt key.
 	UnmaskBlockCryptKey(serverHalf kbfscrypto.BlockCryptKeyServerHalf,
-		tlfCryptKey kbfscrypto.TLFCryptKey) (kbfscrypto.BlockCryptKey, error)
+		tlfCryptKey kbfscrypto.TLFCryptKey) (
+		kbfscrypto.BlockCryptKey, error)
 
 	// Verify verifies that sig matches msg being signed with the
 	// private key that corresponds to verifyingKey.
@@ -778,14 +790,20 @@ type cryptoPure interface {
 
 	// EncryptTLFCryptKeyClientHalf encrypts a TLFCryptKeyClientHalf
 	// using both a TLF's ephemeral private key and a device pubkey.
-	EncryptTLFCryptKeyClientHalf(privateKey kbfscrypto.TLFEphemeralPrivateKey,
-		publicKey kbfscrypto.CryptPublicKey, clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
+	EncryptTLFCryptKeyClientHalf(
+		privateKey kbfscrypto.TLFEphemeralPrivateKey,
+		publicKey kbfscrypto.CryptPublicKey,
+		clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
 		EncryptedTLFCryptKeyClientHalf, error)
 
 	// EncryptPrivateMetadata encrypts a PrivateMetadata object.
-	EncryptPrivateMetadata(pmd *PrivateMetadata, key kbfscrypto.TLFCryptKey) (EncryptedPrivateMetadata, error)
+	EncryptPrivateMetadata(
+		pmd *PrivateMetadata, key kbfscrypto.TLFCryptKey) (
+		EncryptedPrivateMetadata, error)
 	// DecryptPrivateMetadata decrypts a PrivateMetadata object.
-	DecryptPrivateMetadata(encryptedPMD EncryptedPrivateMetadata, key kbfscrypto.TLFCryptKey) (*PrivateMetadata, error)
+	DecryptPrivateMetadata(
+		encryptedPMD EncryptedPrivateMetadata,
+		key kbfscrypto.TLFCryptKey) (*PrivateMetadata, error)
 
 	// EncryptBlocks encrypts a block. plainSize is the size of the encoded
 	// block; EncryptBlock() must guarantee that plainSize <=
@@ -796,25 +814,30 @@ type cryptoPure interface {
 	// DecryptBlock decrypts a block. Similar to EncryptBlock(),
 	// DecryptBlock() must guarantee that (size of the decrypted
 	// block) <= len(encryptedBlock).
-	DecryptBlock(encryptedBlock EncryptedBlock, key kbfscrypto.BlockCryptKey, block Block) error
+	DecryptBlock(encryptedBlock EncryptedBlock,
+		key kbfscrypto.BlockCryptKey, block Block) error
 
 	// GetTLFCryptKeyServerHalfID creates a unique ID for this particular
 	// kbfscrypto.TLFCryptKeyServerHalf.
 	GetTLFCryptKeyServerHalfID(
 		user keybase1.UID, deviceKID keybase1.KID,
-		serverHalf kbfscrypto.TLFCryptKeyServerHalf) (TLFCryptKeyServerHalfID, error)
+		serverHalf kbfscrypto.TLFCryptKeyServerHalf) (
+		TLFCryptKeyServerHalfID, error)
 
 	// VerifyTLFCryptKeyServerHalfID verifies the ID is the proper HMAC result.
-	VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID,
-		deviceKID keybase1.KID, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error
+	VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID,
+		user keybase1.UID, deviceKID keybase1.KID,
+		serverHalf kbfscrypto.TLFCryptKeyServerHalf) error
 
 	// EncryptMerkleLeaf encrypts a Merkle leaf node with the TLFPublicKey.
-	EncryptMerkleLeaf(leaf MerkleLeaf, pubKey kbfscrypto.TLFPublicKey, nonce *[24]byte,
-		ePrivKey kbfscrypto.TLFEphemeralPrivateKey) (EncryptedMerkleLeaf, error)
+	EncryptMerkleLeaf(leaf MerkleLeaf, pubKey kbfscrypto.TLFPublicKey,
+		nonce *[24]byte, ePrivKey kbfscrypto.TLFEphemeralPrivateKey) (
+		EncryptedMerkleLeaf, error)
 
 	// DecryptMerkleLeaf decrypts a Merkle leaf node with the TLFPrivateKey.
-	DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf, privKey kbfscrypto.TLFPrivateKey,
-		nonce *[24]byte, ePubKey kbfscrypto.TLFEphemeralPublicKey) (*MerkleLeaf, error)
+	DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf,
+		privKey kbfscrypto.TLFPrivateKey, nonce *[24]byte,
+		ePubKey kbfscrypto.TLFEphemeralPublicKey) (*MerkleLeaf, error)
 
 	// MakeTLFWriterKeyBundleID hashes a TLFWriterKeyBundleV3 to create an ID.
 	MakeTLFWriterKeyBundleID(wkb *TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error)
@@ -836,10 +859,12 @@ type cryptoPure interface {
 // Duplicate kbfscrypto.Signer to work around gomock.
 type cryptoSigner interface {
 	// Sign signs the msg with some internal private key.
-	Sign(ctx context.Context, msg []byte) (sigInfo kbfscrypto.SignatureInfo, err error)
+	Sign(ctx context.Context, msg []byte) (
+		sigInfo kbfscrypto.SignatureInfo, err error)
 	// Sign signs the msg with the some internal private key and output
 	// the full serialized NaclSigInfo.
-	SignToString(ctx context.Context, msg []byte) (signature string, err error)
+	SignToString(ctx context.Context, msg []byte) (
+		signature string, err error)
 }
 
 // Crypto signs, verifies, encrypts, and decrypts stuff.
@@ -847,20 +872,22 @@ type Crypto interface {
 	cryptoPure
 	cryptoSigner
 
-	// DecryptTLFCryptKeyClientHalf decrypts a kbfscrypto.TLFCryptKeyClientHalf
-	// using the current device's private key and the TLF's ephemeral
-	// public key.
+	// DecryptTLFCryptKeyClientHalf decrypts a
+	// kbfscrypto.TLFCryptKeyClientHalf using the current device's
+	// private key and the TLF's ephemeral public key.
 	DecryptTLFCryptKeyClientHalf(ctx context.Context,
 		publicKey kbfscrypto.TLFEphemeralPublicKey,
 		encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (
 		kbfscrypto.TLFCryptKeyClientHalf, error)
 
 	// DecryptTLFCryptKeyClientHalfAny decrypts one of the
-	// kbfscrypto.TLFCryptKeyClientHalf using the available private keys and the
-	// ephemeral public key.  If promptPaper is true, the service will
-	// prompt the user for any unlocked paper keys.
+	// kbfscrypto.TLFCryptKeyClientHalf using the available
+	// private keys and the ephemeral public key.  If promptPaper
+	// is true, the service will prompt the user for any unlocked
+	// paper keys.
 	DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
-		keys []EncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
+		keys []EncryptedTLFCryptKeyClientAndEphemeral,
+		promptPaper bool) (
 		kbfscrypto.TLFCryptKeyClientHalf, int, error)
 
 	// Shutdown frees any resources associated with this instance.
@@ -1209,14 +1236,15 @@ type KeyServer interface {
 	// device given the key half ID.
 	GetTLFCryptKeyServerHalf(ctx context.Context,
 		serverHalfID TLFCryptKeyServerHalfID,
-		cryptPublicKey kbfscrypto.CryptPublicKey) (kbfscrypto.TLFCryptKeyServerHalf, error)
+		cryptPublicKey kbfscrypto.CryptPublicKey) (
+		kbfscrypto.TLFCryptKeyServerHalf, error)
 
 	// PutTLFCryptKeyServerHalves stores a server-side key halves for a
 	// set of users and devices.
 	PutTLFCryptKeyServerHalves(ctx context.Context,
 		serverKeyHalves map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf) error
 
-	// Deletekbfscrypto.TLFCryptKeyServerHalf deletes a server-side key half for a
+	// DeleteTLFCryptKeyServerHalf deletes a server-side key half for a
 	// device given the key half ID.
 	DeleteTLFCryptKeyServerHalf(ctx context.Context,
 		uid keybase1.UID, kid keybase1.KID,
@@ -1545,10 +1573,11 @@ type BareRootMetadata interface {
 	MakeBareTlfHandle(extra ExtraMetadata) (BareTlfHandle, error)
 	// TlfHandleExtensions returns a list of handle extensions associated with the TLf.
 	TlfHandleExtensions() (extensions []TlfHandleExtension)
-	// GetDeviceKIDs returns the KIDs (of kbfscrypto.CryptPublicKeys) for all known
-	// devices for the given user at the given key generation, if any.
-	// Returns an error if the TLF is public, or if the given key
-	// generation is invalid.
+	// GetDeviceKIDs returns the KIDs (of
+	// kbfscrypto.CryptPublicKeys) for all known devices for the
+	// given user at the given key generation, if any.  Returns an
+	// error if the TLF is public, or if the given key generation
+	// is invalid.
 	GetDeviceKIDs(keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) (
 		[]keybase1.KID, error)
 	// HasKeyForUser returns whether or not the given user has keys for at
@@ -1562,9 +1591,10 @@ type BareRootMetadata interface {
 	// the TLF crypt key for the given key generation, user, and device
 	// (identified by its crypt public key), or false if not found. This
 	// returns an error if the TLF is public.
-	GetTLFCryptKeyParams(keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey,
-		extra ExtraMetadata) (
-		kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
+	GetTLFCryptKeyParams(keyGen KeyGen, user keybase1.UID,
+		key kbfscrypto.CryptPublicKey, extra ExtraMetadata) (
+		kbfscrypto.TLFEphemeralPublicKey,
+		EncryptedTLFCryptKeyClientHalf,
 		TLFCryptKeyServerHalfID, bool, error)
 	// IsValidAndSigned verifies the BareRootMetadata, checks the
 	// writer signature, and returns an error if a problem was

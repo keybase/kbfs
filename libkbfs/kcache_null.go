@@ -16,11 +16,13 @@ type KeyCacheNull struct{}
 var _ KeyCache = (*KeyCacheNull)(nil)
 
 // GetTLFCryptKey implements the KeyCache interface for KeyCacheNull.
-func (k *KeyCacheNull) GetTLFCryptKey(TlfID, KeyGen) (kbfscrypto.TLFCryptKey, error) {
+func (k *KeyCacheNull) GetTLFCryptKey(TlfID, KeyGen) (
+	kbfscrypto.TLFCryptKey, error) {
 	return kbfscrypto.TLFCryptKey{}, errors.New("NULL")
 }
 
 // PutTLFCryptKey implements the KeyCache interface for KeyCacheNull.
-func (k *KeyCacheNull) PutTLFCryptKey(TlfID, KeyGen, kbfscrypto.TLFCryptKey) error {
+func (k *KeyCacheNull) PutTLFCryptKey(
+	TlfID, KeyGen, kbfscrypto.TLFCryptKey) error {
 	return nil
 }

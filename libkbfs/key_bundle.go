@@ -50,7 +50,8 @@ func (kim DeviceKeyInfoMap) fillInDeviceInfo(crypto Crypto,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys []kbfscrypto.CryptPublicKey) (
-	serverMap map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf, err error) {
+	serverMap map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf,
+	err error) {
 	serverMap = make(map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf)
 	// for each device:
 	//    * create a new random server half
@@ -197,7 +198,8 @@ type serverKeyMap map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServer
 func fillInDevicesAndServerMap(crypto Crypto, newIndex int,
 	cryptKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	keyInfoMap UserDeviceKeyInfoMap,
-	ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys serverKeyMap) error {
 	for u, keys := range cryptKeys {
 		if _, ok := keyInfoMap[u]; !ok {

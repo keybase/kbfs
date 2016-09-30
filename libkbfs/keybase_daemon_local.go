@@ -343,7 +343,8 @@ func (k *KeybaseDaemonLocal) revokeDeviceForTesting(clock Clock,
 	}
 
 	if user.RevokedVerifyingKeys == nil {
-		user.RevokedVerifyingKeys = make(map[kbfscrypto.VerifyingKey]keybase1.KeybaseTime)
+		user.RevokedVerifyingKeys =
+			make(map[kbfscrypto.VerifyingKey]keybase1.KeybaseTime)
 	}
 	if user.RevokedCryptPublicKeys == nil {
 		user.RevokedCryptPublicKeys =

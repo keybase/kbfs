@@ -204,11 +204,11 @@ func (c CryptoCommon) MakeRandomTLFKeys() (
 
 	var data [32]byte
 	err = cryptoRandRead(data[:])
-	tlfCryptKey = kbfscrypto.MakeTLFCryptKey(data)
 	if err != nil {
 		return
 	}
 
+	tlfCryptKey = kbfscrypto.MakeTLFCryptKey(data)
 	return
 }
 
@@ -218,10 +218,10 @@ func (c CryptoCommon) MakeRandomTLFCryptKeyServerHalf() (
 	serverHalf kbfscrypto.TLFCryptKeyServerHalf, err error) {
 	var data [32]byte
 	err = cryptoRandRead(data[:])
-	serverHalf = kbfscrypto.MakeTLFCryptKeyServerHalf(data)
 	if err != nil {
 		return kbfscrypto.TLFCryptKeyServerHalf{}, err
 	}
+	serverHalf = kbfscrypto.MakeTLFCryptKeyServerHalf(data)
 	return serverHalf, nil
 }
 
@@ -231,10 +231,10 @@ func (c CryptoCommon) MakeRandomBlockCryptKeyServerHalf() (
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	var data [32]byte
 	err = cryptoRandRead(data[:])
-	serverHalf = kbfscrypto.MakeBlockCryptKeyServerHalf(data)
 	if err != nil {
 		return kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
+	serverHalf = kbfscrypto.MakeBlockCryptKeyServerHalf(data)
 	return serverHalf, nil
 }
 

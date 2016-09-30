@@ -130,7 +130,8 @@ func (k *KBPKIClient) hasVerifyingKey(ctx context.Context, uid keybase1.UID,
 	return false, nil
 }
 
-func (k *KBPKIClient) hasUnverifiedVerifyingKey(ctx context.Context, uid keybase1.UID,
+func (k *KBPKIClient) hasUnverifiedVerifyingKey(
+	ctx context.Context, uid keybase1.UID,
 	verifyingKey kbfscrypto.VerifyingKey) (bool, error) {
 	keys, err := k.loadUnverifiedKeys(ctx, uid)
 	if err != nil {
@@ -176,7 +177,8 @@ func (k *KBPKIClient) HasVerifyingKey(ctx context.Context, uid keybase1.UID,
 }
 
 // HasUnverifiedVerifyingKey implements the KBPKI interface for KBPKIClient.
-func (k *KBPKIClient) HasUnverifiedVerifyingKey(ctx context.Context, uid keybase1.UID,
+func (k *KBPKIClient) HasUnverifiedVerifyingKey(
+	ctx context.Context, uid keybase1.UID,
 	verifyingKey kbfscrypto.VerifyingKey) error {
 	ok, err := k.hasUnverifiedVerifyingKey(ctx, uid, verifyingKey)
 	if err != nil {

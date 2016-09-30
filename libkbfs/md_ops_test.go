@@ -198,8 +198,11 @@ func verifyMDForPrivate(
 func putMDForPrivate(config *ConfigMock, rmd *RootMetadata) {
 	expectGetTLFCryptKeyForEncryption(config, rmd)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
-		&rmd.data, kbfscrypto.TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
-	config.mockCrypto.EXPECT().Sign(gomock.Any(), gomock.Any()).Times(2).Return(kbfscrypto.SignatureInfo{}, nil)
+		&rmd.data, kbfscrypto.TLFCryptKey{}).Return(
+		EncryptedPrivateMetadata{}, nil)
+	config.mockCrypto.EXPECT().Sign(
+		gomock.Any(), gomock.Any()).Times(2).Return(
+		kbfscrypto.SignatureInfo{}, nil)
 	config.mockBsplit.EXPECT().ShouldEmbedBlockChanges(gomock.Any()).
 		Return(true)
 	config.mockMdserv.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
@@ -694,7 +697,8 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 
 	expectGetTLFCryptKeyForEncryption(config, rmd)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
-		&rmd.data, kbfscrypto.TLFCryptKey{}).Return(EncryptedPrivateMetadata{}, nil)
+		&rmd.data, kbfscrypto.TLFCryptKey{}).Return(
+		EncryptedPrivateMetadata{}, nil)
 	config.mockBsplit.EXPECT().ShouldEmbedBlockChanges(gomock.Any()).
 		Return(true)
 

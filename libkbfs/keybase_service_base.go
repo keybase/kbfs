@@ -118,7 +118,8 @@ func filterKeys(keys []keybase1.PublicKey) (
 
 func filterRevokedKeys(keys []keybase1.RevokedKey) (
 	map[kbfscrypto.VerifyingKey]keybase1.KeybaseTime,
-	map[kbfscrypto.CryptPublicKey]keybase1.KeybaseTime, map[keybase1.KID]string, error) {
+	map[kbfscrypto.CryptPublicKey]keybase1.KeybaseTime,
+	map[keybase1.KID]string, error) {
 	verifyingKeys := make(map[kbfscrypto.VerifyingKey]keybase1.KeybaseTime)
 	cryptPublicKeys := make(map[kbfscrypto.CryptPublicKey]keybase1.KeybaseTime)
 	var kidNames = map[keybase1.KID]string{}

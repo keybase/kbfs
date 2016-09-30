@@ -65,7 +65,8 @@ func NewCryptoLocal(codec kbfscodec.Codec,
 	}
 }
 
-func (c CryptoLocal) prepareTLFCryptKeyClientHalf(encryptedClientHalf EncryptedTLFCryptKeyClientHalf,
+func (c CryptoLocal) prepareTLFCryptKeyClientHalf(
+	encryptedClientHalf EncryptedTLFCryptKeyClientHalf,
 	clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
 	nonce [24]byte, err error) {
 	if encryptedClientHalf.Version != EncryptionSecretbox {

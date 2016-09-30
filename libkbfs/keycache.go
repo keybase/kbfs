@@ -46,7 +46,8 @@ func (k *KeyCacheStandard) GetTLFCryptKey(tlf TlfID, keyGen KeyGen) (
 }
 
 // PutTLFCryptKey implements the KeyCache interface for KeyCacheStandard.
-func (k *KeyCacheStandard) PutTLFCryptKey(tlf TlfID, keyGen KeyGen, key kbfscrypto.TLFCryptKey) error {
+func (k *KeyCacheStandard) PutTLFCryptKey(
+	tlf TlfID, keyGen KeyGen, key kbfscrypto.TLFCryptKey) error {
 	cacheKey := keyCacheKey{tlf, keyGen}
 	k.lru.Add(cacheKey, key)
 	return nil

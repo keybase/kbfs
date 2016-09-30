@@ -708,7 +708,9 @@ func (md *MDServerRemote) IsConnected() bool {
 
 // GetTLFCryptKeyServerHalf is an implementation of the KeyServer interface.
 func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
-	serverHalfID TLFCryptKeyServerHalfID, cryptKey kbfscrypto.CryptPublicKey) (serverHalf kbfscrypto.TLFCryptKeyServerHalf, err error) {
+	serverHalfID TLFCryptKeyServerHalfID,
+	cryptKey kbfscrypto.CryptPublicKey) (
+	serverHalf kbfscrypto.TLFCryptKeyServerHalf, err error) {
 	// encode the ID
 	idBytes, err := md.config.Codec().Encode(serverHalfID)
 	if err != nil {

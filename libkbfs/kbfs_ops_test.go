@@ -5383,8 +5383,9 @@ type corruptBlockServer struct {
 	BlockServer
 }
 
-func (cbs corruptBlockServer) Get(ctx context.Context, tlfID TlfID, id BlockID,
-	context BlockContext) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
+func (cbs corruptBlockServer) Get(
+	ctx context.Context, tlfID TlfID, id BlockID, context BlockContext) (
+	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	data, keyServerHalf, err := cbs.BlockServer.Get(ctx, tlfID, id, context)
 	if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err

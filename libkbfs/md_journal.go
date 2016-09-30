@@ -123,7 +123,8 @@ type mdJournal struct {
 	lastMdID MdID
 }
 
-func makeMDJournal(uid keybase1.UID, key kbfscrypto.VerifyingKey, codec kbfscodec.Codec,
+func makeMDJournal(
+	uid keybase1.UID, key kbfscrypto.VerifyingKey, codec kbfscodec.Codec,
 	crypto cryptoPure, dir string, log logger.Logger) (*mdJournal, error) {
 	if uid == keybase1.UID("") {
 		return nil, errors.New("Empty user")
