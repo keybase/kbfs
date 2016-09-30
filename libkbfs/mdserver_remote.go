@@ -79,7 +79,7 @@ func NewMDServerRemote(config Config, srvAddr string, ctx Context) *MDServerRemo
 		mdSrvAddr:  srvAddr,
 		rekeyTimer: time.NewTimer(MdServerBackgroundRekeyPeriod),
 	}
-	mdServer.authToken = NewAuthToken(config,
+	mdServer.authToken = NewAuthToken(config.Crypto(),
 		MdServerTokenServer, MdServerTokenExpireIn,
 		"libkbfs_mdserver_remote", mdServer)
 	conn := rpc.NewTLSConnection(srvAddr, GetRootCerts(srvAddr),

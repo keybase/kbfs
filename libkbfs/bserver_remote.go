@@ -153,7 +153,7 @@ func NewBlockServerRemote(config Config, blkSrvAddr string, ctx Context) *BlockS
 		bs:   bs,
 		name: "BlockServerRemotePut",
 	}
-	bs.putAuthToken = NewAuthToken(config,
+	bs.putAuthToken = NewAuthToken(config.Crypto(),
 		BServerTokenServer, BServerTokenExpireIn,
 		"libkbfs_bserver_remote", putClientHandler)
 	putClientHandler.authToken = bs.putAuthToken
@@ -161,7 +161,7 @@ func NewBlockServerRemote(config Config, blkSrvAddr string, ctx Context) *BlockS
 		bs:   bs,
 		name: "BlockServerRemoteGet",
 	}
-	bs.getAuthToken = NewAuthToken(config,
+	bs.getAuthToken = NewAuthToken(config.Crypto(),
 		BServerTokenServer, BServerTokenExpireIn,
 		"libkbfs_bserver_remote", getClientHandler)
 	getClientHandler.authToken = bs.getAuthToken

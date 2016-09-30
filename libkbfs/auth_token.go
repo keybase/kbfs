@@ -23,7 +23,7 @@ const AuthTokenMinRefreshSeconds = 60
 
 // AuthToken encapsulates a timed authentication token.
 type AuthToken struct {
-	config         Config
+	signer         cryptoSigner
 	tokenType      string
 	expireIn       int
 	clientName     string
@@ -34,11 +34,11 @@ type AuthToken struct {
 }
 
 // NewAuthToken creates a new authentication token.
-func NewAuthToken(config Config, tokenType string, expireIn int,
+func NewAuthToken(signer cryptoSigner, tokenType string, expireIn int,
 	submoduleName string, rh AuthTokenRefreshHandler) *AuthToken {
 	clientName := fmt.Sprintf("go %s %s %s", submoduleName, runtime.GOOS, runtime.GOARCH)
 	authToken := &AuthToken{
-		config:         config,
+		signer:         signer,
 		tokenType:      tokenType,
 		expireIn:       expireIn,
 		clientName:     clientName,
@@ -59,7 +59,7 @@ func (a *AuthToken) signWithUserAndKeyInfo(ctx context.Context,
 		a.clientName, a.clientVersion)
 
 	// sign the token
-	signature, err := a.config.Crypto().SignToString(ctx, token.Bytes())
+	signature, err := a.signer.SignToString(ctx, token.Bytes())
 	if err != nil {
 		return "", err
 	}
