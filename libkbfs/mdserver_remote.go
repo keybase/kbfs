@@ -82,7 +82,7 @@ func NewMDServerRemote(config Config, srvAddr string, ctx Context) *MDServerRemo
 	mdServer.authToken = kbfscrypto.NewAuthToken(config.Crypto(),
 		MdServerTokenServer, MdServerTokenExpireIn,
 		"libkbfs_mdserver_remote", VersionString(), mdServer)
-	conn := rpc.NewTLSConnection(srvAddr, GetRootCerts(srvAddr),
+	conn := rpc.NewTLSConnection(srvAddr, kbfscrypto.GetRootCerts(srvAddr),
 		MDServerErrorUnwrapper{}, mdServer, true,
 		ctx.NewRPCLogFactory(), libkb.WrapError,
 		config.MakeLogger(""), LogTagsFromContext)
