@@ -56,7 +56,8 @@ var _ Crypto = CryptoLocal{}
 // NewCryptoLocal constructs a new CryptoLocal instance with the given
 // signing key.
 func NewCryptoLocal(codec kbfscodec.Codec,
-	signingKey kbfscrypto.SigningKey, cryptPrivateKey CryptPrivateKey) CryptoLocal {
+	signingKey kbfscrypto.SigningKey,
+	cryptPrivateKey CryptPrivateKey) CryptoLocal {
 	return CryptoLocal{
 		MakeCryptoCommon(codec),
 		kbfscrypto.SigningKeySigner{signingKey},
@@ -133,7 +134,8 @@ func (c CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 		if ok {
 			var clientHalfData [32]byte
 			copy(clientHalfData[:], decryptedData)
-			return kbfscrypto.MakeTLFCryptKeyClientHalf(clientHalfData), i, nil
+			return kbfscrypto.MakeTLFCryptKeyClientHalf(
+				clientHalfData), i, nil
 		}
 	}
 	err = libkb.DecryptionError{}

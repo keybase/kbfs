@@ -81,7 +81,8 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 			return err
 		}
 		arg := args.([]interface{})[0].(keybase1.UnboxBytes32Arg)
-		publicKey := kbfscrypto.MakeTLFEphemeralPublicKey(arg.PeersPublicKey)
+		publicKey := kbfscrypto.MakeTLFEphemeralPublicKey(
+			arg.PeersPublicKey)
 		encryptedClientHalf := EncryptedTLFCryptKeyClientHalf{
 			Version:       EncryptionSecretbox,
 			EncryptedData: arg.EncryptedBytes32[:],
@@ -103,7 +104,8 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 		arg := args.([]interface{})[0].(keybase1.UnboxBytes32AnyArg)
 		keys := make([]EncryptedTLFCryptKeyClientAndEphemeral, 0, len(arg.Bundles))
 		for _, k := range arg.Bundles {
-			ePublicKey := kbfscrypto.MakeTLFEphemeralPublicKey(k.PublicKey)
+			ePublicKey := kbfscrypto.MakeTLFEphemeralPublicKey(
+				k.PublicKey)
 			encryptedClientHalf := EncryptedTLFCryptKeyClientHalf{
 				Version:       EncryptionSecretbox,
 				EncryptedData: make([]byte, len(k.Ciphertext)),
@@ -403,7 +405,8 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfAnyFailures(t *testing.T) {
 	// Corrupt key.
 	ephPublicKeyCorruptData := ephPublicKey.Data()
 	ephPublicKeyCorruptData[0] = ^ephPublicKeyCorruptData[0]
-	ephPublicKeyCorrupt := kbfscrypto.MakeTLFEphemeralPublicKey(ephPublicKeyCorruptData)
+	ephPublicKeyCorrupt := kbfscrypto.MakeTLFEphemeralPublicKey(
+		ephPublicKeyCorruptData)
 
 	// Corrupt data.
 	encryptedClientHalfCorruptData := encryptedClientHalf
@@ -516,7 +519,8 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 
 	ephPublicKeyCorruptData := ephPublicKey.Data()
 	ephPublicKeyCorruptData[0] = ^ephPublicKeyCorruptData[0]
-	ephPublicKeyCorrupt := kbfscrypto.MakeTLFEphemeralPublicKey(ephPublicKeyCorruptData)
+	ephPublicKeyCorrupt := kbfscrypto.MakeTLFEphemeralPublicKey(
+		ephPublicKeyCorruptData)
 	expectedErr = libkb.DecryptionError{}
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKeyCorrupt,
 		encryptedClientHalf)

@@ -191,7 +191,8 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 	if err != nil {
 		return
 	}
-	return kbfscrypto.MakeTLFCryptKeyClientHalf(res.Plaintext), indexLookup[res.Index], nil
+	return kbfscrypto.MakeTLFCryptKeyClientHalf(res.Plaintext),
+		indexLookup[res.Index], nil
 }
 
 // Shutdown implements the Crypto interface for CryptoClient.

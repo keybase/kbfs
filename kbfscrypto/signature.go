@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/keybase/client/go/libkb"
+
 	"golang.org/x/net/context"
 )
 
@@ -50,6 +52,30 @@ func (s SignatureInfo) String() string {
 	return fmt.Sprintf("SignatureInfo{Version: %d, Signature: %s, "+
 		"VerifyingKey: %s}", s.Version, hex.EncodeToString(s.Signature[:]),
 		&s.VerifyingKey)
+}
+
+func Verify(msg []byte, sigInfo SignatureInfo) error {
+	if sigInfo.Version != SigED25519 {
+		return UnknownSigVer{sigInfo.Version}
+	}
+
+	publicKey := libkb.KIDToNaclSigningKeyPublic(
+		sigInfo.VerifyingKey.KID().ToBytes())
+	if publicKey == nil {
+		return libkb.KeyCannotVerifyError{}
+	}
+
+	var naclSignature libkb.NaclSignature
+	if len(sigInfo.Signature) != len(naclSignature) {
+		return libkb.VerificationError{}
+	}
+	copy(naclSignature[:], sigInfo.Signature)
+
+	if !publicKey.Verify(msg, &naclSignature) {
+		return libkb.VerificationError{}
+	}
+
+	return nil
 }
 
 // A Signer is something that can sign using an internal private key.

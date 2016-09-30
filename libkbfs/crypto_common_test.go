@@ -622,14 +622,17 @@ func TestDecryptPrivateMetadataFailures(t *testing.T) {
 
 	checkDecryptionFailures(t, encryptedData(encryptedPrivateMetadata), cryptKey,
 		func(encryptedData encryptedData, key interface{}) error {
-			_, err = c.DecryptPrivateMetadata(EncryptedPrivateMetadata(encryptedData), key.(kbfscrypto.TLFCryptKey))
+			_, err = c.DecryptPrivateMetadata(
+				EncryptedPrivateMetadata(encryptedData),
+				key.(kbfscrypto.TLFCryptKey))
 			return err
 		},
 		func(key interface{}) interface{} {
 			cryptKey := key.(kbfscrypto.TLFCryptKey)
 			cryptKeyCorruptData := cryptKey.Data()
 			cryptKeyCorruptData[0] = ^cryptKeyCorruptData[0]
-			cryptKeyCorrupt := kbfscrypto.MakeTLFCryptKey(cryptKeyCorruptData)
+			cryptKeyCorrupt := kbfscrypto.MakeTLFCryptKey(
+				cryptKeyCorruptData)
 			return cryptKeyCorrupt
 		})
 }
@@ -750,13 +753,16 @@ func TestDecryptBlockFailures(t *testing.T) {
 	checkDecryptionFailures(t, encryptedData(encryptedBlock), cryptKey,
 		func(encryptedData encryptedData, key interface{}) error {
 			var dummy TestBlock
-			return c.DecryptBlock(EncryptedBlock(encryptedData), key.(kbfscrypto.BlockCryptKey), &dummy)
+			return c.DecryptBlock(
+				EncryptedBlock(encryptedData),
+				key.(kbfscrypto.BlockCryptKey), &dummy)
 		},
 		func(key interface{}) interface{} {
 			cryptKey := key.(kbfscrypto.BlockCryptKey)
 			cryptKeyCorruptData := cryptKey.Data()
 			cryptKeyCorruptData[0] = ^cryptKeyCorruptData[0]
-			cryptKeyCorrupt := kbfscrypto.MakeBlockCryptKey(cryptKeyCorruptData)
+			cryptKeyCorrupt := kbfscrypto.MakeBlockCryptKey(
+				cryptKeyCorruptData)
 			return cryptKeyCorrupt
 		})
 }

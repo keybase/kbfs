@@ -687,7 +687,8 @@ func (c *ConfigLocal) SetLoggerMaker(
 // newConfigLocalWithCryptoForSigning initializes a local crypto
 // config w/a crypto interface, using the given signing key, that can
 // be used for non-PKI crypto.
-func newConfigLocalWithCryptoForSigning(signingKey kbfscrypto.SigningKey) *ConfigLocal {
+func newConfigLocalWithCryptoForSigning(
+	signingKey kbfscrypto.SigningKey) *ConfigLocal {
 	config := NewConfigLocal()
 	config.SetLoggerMaker(func(m string) logger.Logger {
 		return logger.NewNull()
