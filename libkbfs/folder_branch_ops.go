@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/backoff"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfssync"
 	"golang.org/x/net/context"
 )
 
@@ -288,8 +289,8 @@ type folderBranchOps struct {
 
 	editHistory *TlfEditHistory
 
-	branchChanges RepeatedWaitGroup
-	mdFlushes     RepeatedWaitGroup
+	branchChanges kbfssync.RepeatedWaitGroup
+	mdFlushes     kbfssync.RepeatedWaitGroup
 }
 
 var _ KBFSOps = (*folderBranchOps)(nil)

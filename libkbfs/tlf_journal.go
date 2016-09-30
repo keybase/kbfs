@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfssync"
 	"golang.org/x/net/context"
 )
 
@@ -147,7 +148,7 @@ type tlfJournal struct {
 	flushLock sync.Mutex
 
 	// Tracks background work.
-	wg RepeatedWaitGroup
+	wg kbfssync.RepeatedWaitGroup
 
 	// Protects all operations on blockJournal and mdJournal.
 	//

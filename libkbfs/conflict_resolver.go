@@ -14,6 +14,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfssync"
 	"golang.org/x/net/context"
 )
 
@@ -59,7 +60,7 @@ type ConflictResolver struct {
 	inputChan     chan conflictInput
 
 	// resolveGroup tracks the outstanding resolves.
-	resolveGroup RepeatedWaitGroup
+	resolveGroup kbfssync.RepeatedWaitGroup
 
 	inputLock    sync.Mutex
 	currInput    conflictInput
