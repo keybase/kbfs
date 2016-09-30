@@ -82,8 +82,8 @@ func Verify(msg []byte, sigInfo SignatureInfo) error {
 type Signer interface {
 	// Sign signs msg with some internal private key.
 	Sign(ctx context.Context, msg []byte) (sigInfo SignatureInfo, err error)
-	// Sign signs msg with some internal private key and outputs
-	// the full serialized NaclSigInfo.
+	// SignToString signs msg with some internal private key and
+	// outputs the full serialized NaclSigInfo.
 	SignToString(ctx context.Context, msg []byte) (signature string, err error)
 }
 
