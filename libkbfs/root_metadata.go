@@ -211,14 +211,15 @@ func (md *RootMetadata) deepCopyInPlace(
 // with cleared block change lists and cleared serialized metadata),
 // with the revision incremented and a correct backpointer.
 func (md *RootMetadata) MakeSuccessor(
-	config Config, mdID MdID, isWriter bool) (*RootMetadata, error) {
+	codec kbfscodec.Codec, mdID MdID, isWriter bool) (
+	*RootMetadata, error) {
 	if mdID == (MdID{}) {
 		return nil, errors.New("Empty MdID in MakeSuccessor")
 	}
 	if md.IsFinal() {
 		return nil, MetadataIsFinalError{}
 	}
-	newMd, err := md.makeSuccessor(config.Codec())
+	newMd, err := md.makeSuccessor(codec)
 	if err != nil {
 		return nil, err
 	}
@@ -783,8 +784,8 @@ func NewRootMetadataSigned() *RootMetadataSigned {
 
 // MerkleHash computes a hash of this RootMetadataSigned object for inclusion
 // into the KBFS Merkle tree.
-func (rmds *RootMetadataSigned) MerkleHash(config Config) (MerkleHash, error) {
-	return config.Crypto().MakeMerkleHash(rmds)
+func (rmds *RootMetadataSigned) MerkleHash(crypto Crypto) (MerkleHash, error) {
+	return crypto.MakeMerkleHash(rmds)
 }
 
 // Version returns the metadata version of this MD block, depending on

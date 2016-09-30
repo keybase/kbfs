@@ -2193,7 +2193,7 @@ func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	newMD, err := currMD.MakeSuccessor(cr.config, currMDID, true)
+	newMD, err := currMD.MakeSuccessor(cr.config.Codec(), currMDID, true)
 	if err != nil {
 		return nil, err
 	}
