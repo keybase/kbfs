@@ -1977,8 +1977,8 @@ func (_m *MockcryptoSigner) EXPECT() *_MockcryptoSignerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockcryptoSigner) Sign(ctx context.Context, msg []byte) (kbfscrypto.SignatureInfo, error) {
-	ret := _m.ctrl.Call(_m, "Sign", ctx, msg)
+func (_m *MockcryptoSigner) Sign(_param0 context.Context, _param1 []byte) (kbfscrypto.SignatureInfo, error) {
+	ret := _m.ctrl.Call(_m, "Sign", _param0, _param1)
 	ret0, _ := ret[0].(kbfscrypto.SignatureInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -1988,8 +1988,8 @@ func (_mr *_MockcryptoSignerRecorder) Sign(arg0, arg1 interface{}) *gomock.Call 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Sign", arg0, arg1)
 }
 
-func (_m *MockcryptoSigner) SignToString(ctx context.Context, msg []byte) (string, error) {
-	ret := _m.ctrl.Call(_m, "SignToString", ctx, msg)
+func (_m *MockcryptoSigner) SignToString(_param0 context.Context, _param1 []byte) (string, error) {
+	ret := _m.ctrl.Call(_m, "SignToString", _param0, _param1)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -2329,8 +2329,8 @@ func (_mr *_MockCryptoRecorder) DecryptTLFCryptKeys(arg0, arg1 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptTLFCryptKeys", arg0, arg1)
 }
 
-func (_m *MockCrypto) Sign(ctx context.Context, msg []byte) (kbfscrypto.SignatureInfo, error) {
-	ret := _m.ctrl.Call(_m, "Sign", ctx, msg)
+func (_m *MockCrypto) Sign(_param0 context.Context, _param1 []byte) (kbfscrypto.SignatureInfo, error) {
+	ret := _m.ctrl.Call(_m, "Sign", _param0, _param1)
 	ret0, _ := ret[0].(kbfscrypto.SignatureInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -2340,8 +2340,8 @@ func (_mr *_MockCryptoRecorder) Sign(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Sign", arg0, arg1)
 }
 
-func (_m *MockCrypto) SignToString(ctx context.Context, msg []byte) (string, error) {
-	ret := _m.ctrl.Call(_m, "SignToString", ctx, msg)
+func (_m *MockCrypto) SignToString(_param0 context.Context, _param1 []byte) (string, error) {
+	ret := _m.ctrl.Call(_m, "SignToString", _param0, _param1)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
