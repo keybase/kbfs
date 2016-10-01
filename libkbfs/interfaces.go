@@ -996,7 +996,7 @@ type BlockOps interface {
 
 // Duplicate kbfscrypto.AuthTokenRefreshHandler here to work around
 // gomock's limitations.
-type AuthTokenRefreshHandler interface {
+type authTokenRefreshHandler interface {
 	RefreshAuthToken(context.Context)
 }
 
@@ -1011,7 +1011,7 @@ type AuthTokenRefreshHandler interface {
 //
 // TODO: Add interface for searching by time
 type MDServer interface {
-	AuthTokenRefreshHandler
+	authTokenRefreshHandler
 
 	// GetForHandle returns the current (signed/encrypted) metadata
 	// object corresponding to the given top-level folder's handle, if
@@ -1116,7 +1116,7 @@ type mdServerLocal interface {
 // put/delete, the server is reponsible for: 1) checking that the ID
 // matches the hash of the buffer; and 2) enforcing writer quotas.
 type BlockServer interface {
-	AuthTokenRefreshHandler
+	authTokenRefreshHandler
 
 	// Get gets the (encrypted) block data associated with the given
 	// block ID and context, uses the provided block key to decrypt
