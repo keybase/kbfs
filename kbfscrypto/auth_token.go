@@ -56,8 +56,7 @@ func NewAuthToken(signer Signer, tokenType string, expireIn int,
 // Sign is called to create a new signed authentication token.
 func (a *AuthToken) signWithUserAndKeyInfo(ctx context.Context,
 	challengeInfo keybase1.ChallengeInfo, uid keybase1.UID,
-	username libkb.NormalizedUsername,
-	key VerifyingKey) (string, error) {
+	username libkb.NormalizedUsername, key VerifyingKey) (string, error) {
 	// create the token
 	token := auth.NewToken(uid, username, key.KID(), a.tokenType,
 		challengeInfo.Challenge, challengeInfo.Now, a.expireIn,
