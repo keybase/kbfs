@@ -994,8 +994,8 @@ type BlockOps interface {
 	Archive(ctx context.Context, tlfID TlfID, ptrs []BlockPointer) error
 }
 
-// AuthTokenRefreshHandler defines a callback to be called when an auth token refresh
-// is needed.
+// Duplicate kbfscrypto.AuthTokenRefreshHandler here to work around
+// gomock's limitations.
 type AuthTokenRefreshHandler interface {
 	RefreshAuthToken(context.Context)
 }
