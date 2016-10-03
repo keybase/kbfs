@@ -307,12 +307,6 @@
 			"revisionTime": "2016-03-16T16:25:20-04:00"
 		},
 		{
-			"checksumSHA1": "hHp8I8SAgS/Xm3UyYzIrfSNbjtQ=",
-			"path": "github.com/keybase/gregor",
-			"revision": "409b09827daf496149d98108464ec159e0f70289",
-			"revisionTime": "2016-08-24T19:33:35Z"
-		},
-		{
 			"path": "github.com/keybase/npipe",
 			"revision": "0938d701e50e580f5925c773055eb6d6b32a0cbc",
 			"revisionTime": "2014-10-08T16:43:58+02:00"
