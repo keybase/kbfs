@@ -4799,18 +4799,18 @@ func (fbo *folderBranchOps) handleMDFlush(ctx context.Context, bid BranchID,
 		return
 	}
 
+	if err := isArchivableMDOrError(rmd.ReadOnly()); err != nil {
+		fbo.log.CDebugf(
+			ctx, "Skipping archiving references for flushed MD revision %d: %s", rev, err)
+		return
+	}
+
 	// We must take the lock so that other users, like exclusive file
 	// creation, can wait for the journal to flush while holding the
 	// lock, and be guaranteed it will stay flushed.
 	lState := makeFBOLockState()
 	fbo.mdWriterLock.Lock(lState)
 	defer fbo.mdWriterLock.Unlock(lState)
-
-	if err := isArchivableMDOrError(rmd.ReadOnly()); err != nil {
-		fbo.log.CDebugf(
-			ctx, "Skipping archiving references for flushed MD revision %d: %s", rev, err)
-		return
-	}
 
 	fbo.fbm.archiveUnrefBlocks(rmd.ReadOnly())
 }
