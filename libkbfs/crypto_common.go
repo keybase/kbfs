@@ -15,6 +15,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
+	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/secretbox"
 )
@@ -47,16 +48,21 @@ func MakeCryptoCommon(codec kbfscodec.Codec) CryptoCommon {
 }
 
 // MakeRandomTlfID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeRandomTlfID(isPublic bool) (TlfID, error) {
-	var id TlfID
-	err := cryptoRandRead(id.id[:])
+func (c CryptoCommon) MakeRandomTlfID(isPublic bool) (tlf.TlfID, error) {
+	var idBytes [tlf.TlfIDByteLen]byte
+	err := cryptoRandRead(idBytes[:])
 	if err != nil {
-		return TlfID{}, err
+		return tlf.TlfID{}, err
 	}
 	if isPublic {
-		id.id[TlfIDByteLen-1] = PubTlfIDSuffix
+		idBytes[tlf.TlfIDByteLen-1] = tlf.PubTlfIDSuffix
 	} else {
-		id.id[TlfIDByteLen-1] = TlfIDSuffix
+		idBytes[tlf.TlfIDByteLen-1] = tlf.TlfIDSuffix
+	}
+	var id tlf.TlfID
+	err = id.UnmarshalBinary(idBytes[:])
+	if err != nil {
+		return tlf.TlfID{}, err
 	}
 	return id, nil
 }
