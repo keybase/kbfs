@@ -7,12 +7,13 @@ package libkbfs
 import (
 	"testing"
 
+	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/require"
 )
 
-func getKeyBundlesForTesting(t *testing.T, c Config, tlf byte, handleStr string) (
-	TlfID, TLFWriterKeyBundleID, *TLFWriterKeyBundleV3, TLFReaderKeyBundleID, *TLFReaderKeyBundleV3) {
-	tlfID := FakeTlfID(tlf, false)
+func getKeyBundlesForTesting(t *testing.T, c Config, tlfIDByte byte, handleStr string) (
+	tlf.TlfID, TLFWriterKeyBundleID, *TLFWriterKeyBundleV3, TLFReaderKeyBundleID, *TLFReaderKeyBundleV3) {
+	tlfID := tlf.FakeTlfID(tlfIDByte, false)
 	h := parseTlfHandleOrBust(t, c, handleStr, false)
 	rmd, err := makeInitialRootMetadata(SegregatedKeyBundlesVer, tlfID, h)
 	require.NoError(t, err)
