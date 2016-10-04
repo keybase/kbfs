@@ -283,13 +283,36 @@ func (fbm *folderBlockManager) enqueueBlocksToDeleteNoWait(toDelete blocksToDele
 	}
 }
 
-func hasGCOp(md ReadOnlyRootMetadata) bool {
+func isArchivableOp(op op) bool {
+	switch op.(type) {
+	case *createOp:
+		return true
+	case *rmOp:
+		return true
+	case *renameOp:
+		return true
+	case *syncOp:
+		return true
+	case *setAttrOp:
+		return true
+	case *resolutionOp:
+		return true
+	default:
+		// rekey ops don't have anything to archive, and gc
+		// ops only have deleted blocks.
+		return false
+	}
+}
+
+func isArchivableMDOrError(md ReadOnlyRootMetadata) error {
 	for _, op := range md.data.Changes.Ops {
-		if _, ok := op.(*gcOp); ok {
-			return true
+		if !isArchivableOp(op) {
+			return fmt.Errorf(
+				"md rev=%d has unarchivable op %s",
+				md.Revision(), op)
 		}
 	}
-	return false
+	return nil
 }
 
 func (fbm *folderBlockManager) archiveUnrefBlocks(md ReadOnlyRootMetadata) {
@@ -299,8 +322,8 @@ func (fbm *folderBlockManager) archiveUnrefBlocks(md ReadOnlyRootMetadata) {
 		return
 	}
 
-	if hasGCOp(md) {
-		panic(fmt.Sprintf("md rev=%d has gc op", md.Revision()))
+	if err := isArchivableMDOrError(md); err != nil {
+		panic(err)
 	}
 
 	fbm.archiveGroup.Add(1)
@@ -318,8 +341,8 @@ func (fbm *folderBlockManager) archiveUnrefBlocksNoWait(md ReadOnlyRootMetadata)
 		return
 	}
 
-	if hasGCOp(md) {
-		panic(fmt.Sprintf("md rev=%d has gc op", md.Revision()))
+	if err := isArchivableMDOrError(md); err != nil {
+		panic(err)
 	}
 
 	fbm.archiveGroup.Add(1)
