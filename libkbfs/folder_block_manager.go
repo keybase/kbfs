@@ -283,11 +283,24 @@ func (fbm *folderBlockManager) enqueueBlocksToDeleteNoWait(toDelete blocksToDele
 	}
 }
 
+func hasGCOp(md ReadOnlyRootMetadata) bool {
+	for _, op := range md.data.Changes.Ops {
+		if _, ok := op.(*gcOp); ok {
+			return true
+		}
+	}
+	return false
+}
+
 func (fbm *folderBlockManager) archiveUnrefBlocks(md ReadOnlyRootMetadata) {
 	// Don't archive for unmerged revisions, because conflict
 	// resolution might undo some of the unreferences.
 	if md.MergedStatus() != Merged {
 		return
+	}
+
+	if hasGCOp(md) {
+		panic(fmt.Sprintf("md rev=%d has gc op", md.Revision()))
 	}
 
 	fbm.archiveGroup.Add(1)
@@ -303,6 +316,10 @@ func (fbm *folderBlockManager) archiveUnrefBlocksNoWait(md ReadOnlyRootMetadata)
 	// resolution might undo some of the unreferences.
 	if md.MergedStatus() != Merged {
 		return
+	}
+
+	if hasGCOp(md) {
+		panic(fmt.Sprintf("md rev=%d has gc op", md.Revision()))
 	}
 
 	fbm.archiveGroup.Add(1)
