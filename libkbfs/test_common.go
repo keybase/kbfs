@@ -262,22 +262,6 @@ func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *C
 	return c
 }
 
-// FakeTlfID creates a fake public or private TLF ID from the given
-// byte.
-func FakeTlfID(b byte, public bool) TlfID {
-	bytes := [TlfIDByteLen]byte{b}
-	if public {
-		bytes[TlfIDByteLen-1] = PubTlfIDSuffix
-	} else {
-		bytes[TlfIDByteLen-1] = TlfIDSuffix
-	}
-	return TlfID{bytes}
-}
-
-func fakeTlfIDByte(id TlfID) byte {
-	return id.id[0]
-}
-
 // FakeBranchID creates a fake branch ID from the given
 // byte.
 func FakeBranchID(b byte) BranchID {

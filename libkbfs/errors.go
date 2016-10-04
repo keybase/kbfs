@@ -728,16 +728,6 @@ func (e KeyHalfMismatchError) Error() string {
 		e.Expected, e.Actual)
 }
 
-// InvalidTlfID indicates whether the TLF ID string is not parseable
-// or invalid.
-type InvalidTlfID struct {
-	id string
-}
-
-func (e InvalidTlfID) Error() string {
-	return fmt.Sprintf("Invalid TLF ID %q", e.id)
-}
-
 // InvalidBranchID indicates whether the branch ID string is not
 // parseable or invalid.
 type InvalidBranchID struct {
