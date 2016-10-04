@@ -305,6 +305,10 @@ func isArchivableOp(op op) bool {
 }
 
 func isArchivableMDOrError(md ReadOnlyRootMetadata) error {
+	if md.MergedStatus() != Merged {
+		return fmt.Errorf("md rev=%d is not merged", md.Revision())
+	}
+
 	for _, op := range md.data.Changes.Ops {
 		if !isArchivableOp(op) {
 			return fmt.Errorf(
