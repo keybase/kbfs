@@ -83,6 +83,13 @@ func (k *KBPKIClient) Identify(ctx context.Context, assertion, reason string) (
 	return k.config.KeybaseService().Identify(ctx, assertion, reason)
 }
 
+// IdentifyForChat implements the KBPKI interface for KBPKIClient.
+func (k *KBPKIClient) IdentifyForChat(
+	ctx context.Context, assertion, reason string) (
+	UserInfo, *keybase1.IdentifyTrackBreaks, error) {
+	return k.config.KeybaseService().IdentifyForChat(ctx, assertion, reason)
+}
+
 // GetNormalizedUsername implements the KBPKI interface for
 // KBPKIClient.
 func (k *KBPKIClient) GetNormalizedUsername(ctx context.Context, uid keybase1.UID) (

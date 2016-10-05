@@ -562,6 +562,18 @@ func (_mr *_MockKeybaseServiceRecorder) Identify(arg0, arg1, arg2 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Identify", arg0, arg1, arg2)
 }
 
+func (_m *MockKeybaseService) IdentifyForChat(ctx context.Context, assertion string, reason string) (UserInfo, *keybase1.IdentifyTrackBreaks, error) {
+	ret := _m.ctrl.Call(_m, "IdentifyForChat", ctx, assertion, reason)
+	ret0, _ := ret[0].(UserInfo)
+	ret1, _ := ret[1].(*keybase1.IdentifyTrackBreaks)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+func (_mr *_MockKeybaseServiceRecorder) IdentifyForChat(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IdentifyForChat", arg0, arg1, arg2)
+}
+
 func (_m *MockKeybaseService) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID) (UserInfo, error) {
 	ret := _m.ctrl.Call(_m, "LoadUserPlusKeys", ctx, uid)
 	ret0, _ := ret[0].(UserInfo)
@@ -778,6 +790,18 @@ func (_mr *_MockidentifierRecorder) Identify(arg0, arg1, arg2 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Identify", arg0, arg1, arg2)
 }
 
+func (_m *Mockidentifier) IdentifyForChat(ctx context.Context, assertion string, reason string) (UserInfo, *keybase1.IdentifyTrackBreaks, error) {
+	ret := _m.ctrl.Call(_m, "IdentifyForChat", ctx, assertion, reason)
+	ret0, _ := ret[0].(UserInfo)
+	ret1, _ := ret[1].(*keybase1.IdentifyTrackBreaks)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+func (_mr *_MockidentifierRecorder) IdentifyForChat(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IdentifyForChat", arg0, arg1, arg2)
+}
+
 // Mock of normalizedUsernameGetter interface
 type MocknormalizedUsernameGetter struct {
 	ctrl     *gomock.Controller
@@ -963,6 +987,18 @@ func (_m *MockKBPKI) Identify(ctx context.Context, assertion string, reason stri
 
 func (_mr *_MockKBPKIRecorder) Identify(arg0, arg1, arg2 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Identify", arg0, arg1, arg2)
+}
+
+func (_m *MockKBPKI) IdentifyForChat(ctx context.Context, assertion string, reason string) (UserInfo, *keybase1.IdentifyTrackBreaks, error) {
+	ret := _m.ctrl.Call(_m, "IdentifyForChat", ctx, assertion, reason)
+	ret0, _ := ret[0].(UserInfo)
+	ret1, _ := ret[1].(*keybase1.IdentifyTrackBreaks)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+func (_mr *_MockKBPKIRecorder) IdentifyForChat(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IdentifyForChat", arg0, arg1, arg2)
 }
 
 func (_m *MockKBPKI) GetNormalizedUsername(ctx context.Context, uid keybase1.UID) (libkb.NormalizedUsername, error) {

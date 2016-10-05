@@ -298,6 +298,9 @@ type KeybaseService interface {
 	// popups spawned.
 	Identify(ctx context.Context, assertion, reason string) (UserInfo, error)
 
+	IdentifyForChat(ctx context.Context, assertion, reason string) (
+		UserInfo, *keybase1.IdentifyTrackBreaks, error)
+
 	// LoadUserPlusKeys returns a UserInfo struct for a
 	// user with the specified UID.
 	// If you have the UID for a user and don't require Identify to
@@ -378,6 +381,8 @@ type identifier interface {
 	// necessary.  The reason string is displayed on any tracker
 	// popups spawned.
 	Identify(ctx context.Context, assertion, reason string) (UserInfo, error)
+	IdentifyForChat(ctx context.Context, assertion, reason string) (
+		UserInfo, *keybase1.IdentifyTrackBreaks, error)
 }
 
 type normalizedUsernameGetter interface {

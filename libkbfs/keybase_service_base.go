@@ -280,9 +280,9 @@ func (k *KeybaseServiceBase) Resolve(ctx context.Context, assertion string) (
 	return libkb.NewNormalizedUsername(user.Username), user.Uid, nil
 }
 
-// Identify implements the KeybaseService interface for KeybaseServiceBase.
-func (k *KeybaseServiceBase) Identify(ctx context.Context, assertion, reason string) (
-	UserInfo, error) {
+func (k *KeybaseServiceBase) identify(
+	ctx context.Context, assertion string, reason string, chatGUIMode bool) (
+	UserInfo, *keybase1.IdentifyTrackBreaks, error) {
 	// setting UseDelegateUI to true here will cause daemon to use
 	// registered identify ui providers instead of terminal if any
 	// are available.  If not, then it will use the terminal UI.
@@ -290,6 +290,7 @@ func (k *KeybaseServiceBase) Identify(ctx context.Context, assertion, reason str
 		UserAssertion: assertion,
 		UseDelegateUI: true,
 		Reason:        keybase1.IdentifyReason{Reason: reason},
+		ChatGUIMode:   chatGUIMode,
 	}
 	res, err := k.identifyClient.Identify2(ctx, arg)
 	// Identify2 still returns keybase1.UserPlusKeys data (sans keys),
@@ -301,10 +302,28 @@ func (k *KeybaseServiceBase) Identify(ctx context.Context, assertion, reason str
 		k.log.CDebugf(ctx, "Ignoring error (%s) for user %s with no sigchain",
 			err, res.Upk.Username)
 	} else if err != nil {
-		return UserInfo{}, ConvertIdentifyError(assertion, err)
+		return UserInfo{}, nil, ConvertIdentifyError(assertion, err)
 	}
 
-	return k.processUserPlusKeys(res.Upk)
+	userInfo, err := k.processUserPlusKeys(res.Upk)
+	if err != nil {
+		return UserInfo{}, nil, err
+	}
+
+	return userInfo, res.TrackBreaks, nil
+}
+
+// Identify implements the KeybaseService interface for KeybaseServiceBase.
+func (k *KeybaseServiceBase) Identify(
+	ctx context.Context, assertion, reason string) (UserInfo, error) {
+	userInfo, _, err := k.identify(ctx, assertion, reason, false)
+	return userInfo, err
+}
+
+func (k *KeybaseServiceBase) IdentifyForChat(
+	ctx context.Context, assertion, reason string) (
+	UserInfo, *keybase1.IdentifyTrackBreaks, error) {
+	return k.identify(ctx, assertion, reason, true)
 }
 
 // LoadUserPlusKeys implements the KeybaseService interface for KeybaseServiceBase.
@@ -495,16 +514,17 @@ const (
 const CtxKeybaseServiceOpID = "KSID"
 
 func (k *KeybaseServiceBase) getHandleFromFolderName(ctx context.Context,
-	tlfName string, public bool) (*TlfHandle, error) {
+	tlfName string, public bool, identifyBehavior keybase1.TLFIdentifyBehavior) (
+	*TlfHandle, []keybase1.TLFBreak, error) {
 	for {
-		tlfHandle, err := ParseTlfHandle(ctx, k.config.KBPKI(), tlfName, public)
+		tlfHandle, breaks, err := ParseTlfHandleWithIdentifyBehavior(ctx, k.config.KBPKI(), tlfName, public, identifyBehavior)
 		switch e := err.(type) {
 		case TlfNameNotCanonical:
 			tlfName = e.NameToTry
 		case nil:
-			return tlfHandle, nil
+			return tlfHandle, breaks, nil
 		default:
-			return nil, err
+			return nil, nil, err
 		}
 	}
 }
@@ -517,8 +537,8 @@ func (k *KeybaseServiceBase) FSEditListRequest(ctx context.Context,
 		k.log)
 	k.log.CDebugf(ctx, "Edit list request for %s (public: %t)",
 		req.Folder.Name, !req.Folder.Private)
-	tlfHandle, err := k.getHandleFromFolderName(ctx, req.Folder.Name,
-		!req.Folder.Private)
+	tlfHandle, _, err := k.getHandleFromFolderName(ctx, req.Folder.Name,
+		!req.Folder.Private, keybase1.TLFIdentifyBehavior_DEFAULT_KBFS)
 	if err != nil {
 		return err
 	}
@@ -592,21 +612,23 @@ func (k *KeybaseServiceBase) FSSyncStatusRequest(ctx context.Context,
 // GetTLFCryptKeys implements the TlfKeysInterface interface for
 // KeybaseServiceBase.
 func (k *KeybaseServiceBase) GetTLFCryptKeys(ctx context.Context,
-	tlfName string) (res keybase1.TLFCryptKeys, err error) {
-	ctx = ctxWithRandomIDReplayable(ctx, CtxKeybaseServiceIDKey, CtxKeybaseServiceOpID,
-		k.log)
-	tlfHandle, err := k.getHandleFromFolderName(ctx, tlfName, false)
+	arg keybase1.TLFQuery) (
+	res keybase1.GetTLFCryptKeysRes, err error) {
+	ctx = ctxWithRandomIDReplayable(
+		ctx, CtxKeybaseServiceIDKey, CtxKeybaseServiceOpID, k.log)
+	tlfHandle, breaks, err := k.getHandleFromFolderName(
+		ctx, arg.TlfName, false, arg.IdentifyBehavior)
 	if err != nil {
 		return res, err
 	}
 
-	res.CanonicalName = keybase1.CanonicalTlfName(tlfHandle.GetCanonicalName())
+	res.NameIDBreaks.CanonicalName = keybase1.CanonicalTlfName(tlfHandle.GetCanonicalName())
 
 	keys, id, err := k.config.KBFSOps().GetTLFCryptKeys(ctx, tlfHandle)
 	if err != nil {
 		return res, err
 	}
-	res.TlfID = keybase1.TLFID(id.String())
+	res.NameIDBreaks.TlfID = keybase1.TLFID(id.String())
 
 	for i, key := range keys {
 		res.CryptKeys = append(res.CryptKeys, keybase1.CryptKey{
@@ -615,16 +637,20 @@ func (k *KeybaseServiceBase) GetTLFCryptKeys(ctx context.Context,
 		})
 	}
 
+	res.NameIDBreaks.Breaks = breaks
+
 	return res, nil
 }
 
 // GetPublicCanonicalTLFNameAndID implements the TlfKeysInterface interface for
 // KeybaseServiceBase.
 func (k *KeybaseServiceBase) GetPublicCanonicalTLFNameAndID(ctx context.Context,
-	tlfName string) (res keybase1.CanonicalTLFNameAndID, err error) {
-	ctx = ctxWithRandomIDReplayable(ctx, CtxKeybaseServiceIDKey, CtxKeybaseServiceOpID,
-		k.log)
-	tlfHandle, err := k.getHandleFromFolderName(ctx, tlfName, true /* public */)
+	arg keybase1.TLFQuery) (
+	res keybase1.CanonicalTLFNameAndIDWithBreaks, err error) {
+	ctx = ctxWithRandomIDReplayable(
+		ctx, CtxKeybaseServiceIDKey, CtxKeybaseServiceOpID, k.log)
+	tlfHandle, breaks, err := k.getHandleFromFolderName(
+		ctx, arg.TlfName, true /* public */, arg.IdentifyBehavior)
 	if err != nil {
 		return res, err
 	}
@@ -636,6 +662,8 @@ func (k *KeybaseServiceBase) GetPublicCanonicalTLFNameAndID(ctx context.Context,
 		return res, err
 	}
 	res.TlfID = keybase1.TLFID(id.String())
+
+	res.Breaks = breaks
 
 	return res, nil
 }
