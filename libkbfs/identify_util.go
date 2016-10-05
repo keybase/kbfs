@@ -13,14 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func identifyUID(ctx context.Context, nug normalizedUsernameGetter,
-	identifier identifier, uid keybase1.UID, isPublic bool) error {
-	_, _, err := identifyUIDWithIdentifyBehavior(ctx,
-		nug, identifier, uid, isPublic, keybase1.TLFIdentifyBehavior_DEFAULT_KBFS)
-	return err
-}
-
-func identifyUIDWithIdentifyBehavior(ctx context.Context,
+func identifyUIDWithBehavior(ctx context.Context,
 	nug normalizedUsernameGetter, identifier identifier, uid keybase1.UID,
 	isPublic bool, identifyBehavior keybase1.TLFIdentifyBehavior) (
 	libkb.NormalizedUsername, *keybase1.IdentifyTrackBreaks, error) {
@@ -45,27 +38,20 @@ func identifyUIDWithIdentifyBehavior(ctx context.Context,
 		fallthrough
 	case keybase1.TLFIdentifyBehavior_DEFAULT_KBFS:
 		userInfo, err = identifier.Identify(ctx, username.String(), reason)
-		if err != nil {
-			// Convert libkb.NoSigChainError into one we can report.  (See
-			// KBFS-1252).
-			if _, ok := err.(libkb.NoSigChainError); ok {
-				return "", nil, NoSigChainError{username}
-			}
-			return "", nil, err
-		}
 	case keybase1.TLFIdentifyBehavior_CHAT_GUI:
 		userInfo, breaks, err = identifier.IdentifyForChat(
 			ctx, username.String(), reason)
-		if err != nil {
-			// Convert libkb.NoSigChainError into one we can report.  (See
-			// KBFS-1252).
-			if _, ok := err.(libkb.NoSigChainError); ok {
-				return "", nil, NoSigChainError{username}
-			}
-			return "", nil, err
-		}
 	default:
 		return "", nil, errors.New("unknown identifyBehavior")
+	}
+
+	if err != nil {
+		// Convert libkb.NoSigChainError into one we can report.  (See
+		// KBFS-1252).
+		if _, ok := err.(libkb.NoSigChainError); ok {
+			return "", nil, NoSigChainError{username}
+		}
+		return "", nil, err
 	}
 
 	if userInfo.Name != username {
@@ -80,15 +66,14 @@ func identifyUIDWithIdentifyBehavior(ctx context.Context,
 	return username, breaks, nil
 }
 
-// identifyUserList identifies the users in the given list.
-func identifyUserList(ctx context.Context, nug normalizedUsernameGetter,
-	identifier identifier, uids []keybase1.UID, public bool) error {
-	_, err := identifyUserListWithIdentifyBehavior(ctx,
-		nug, identifier, uids, public, keybase1.TLFIdentifyBehavior_DEFAULT_KBFS)
+func identifyUID(ctx context.Context, nug normalizedUsernameGetter,
+	identifier identifier, uid keybase1.UID, isPublic bool) error {
+	_, _, err := identifyUIDWithBehavior(ctx,
+		nug, identifier, uid, isPublic, keybase1.TLFIdentifyBehavior_DEFAULT_KBFS)
 	return err
 }
 
-func identifyUserListWithIdentifyBehavior(ctx context.Context,
+func identifyUserListWithBehavior(ctx context.Context,
 	nug normalizedUsernameGetter, identifier identifier, uids []keybase1.UID,
 	public bool, identifyBehavior keybase1.TLFIdentifyBehavior) (
 	[]keybase1.TLFBreak, error) {
@@ -106,7 +91,7 @@ func identifyUserListWithIdentifyBehavior(ctx context.Context,
 	// TODO: limit the number of concurrent identifies?
 	for _, uid := range uids {
 		go func(uid keybase1.UID) {
-			username, breaks, err := identifyUIDWithIdentifyBehavior(
+			username, breaks, err := identifyUIDWithBehavior(
 				ctx, nug, identifier, uid, public, identifyBehavior)
 			errChan <- jobRes{
 				err:      err,
@@ -137,19 +122,27 @@ func identifyUserListWithIdentifyBehavior(ctx context.Context,
 	return breaks, nil
 }
 
-// identifyHandle identifies the canonical names in the given handle.
-func identifyHandle(ctx context.Context, nug normalizedUsernameGetter,
-	identifier identifier, h *TlfHandle) error {
-	_, err := identifyHandleWithIdentifyBehavior(ctx, nug, identifier, h,
-		keybase1.TLFIdentifyBehavior_DEFAULT_KBFS)
+// identifyUserList identifies the users in the given list.
+func identifyUserList(ctx context.Context, nug normalizedUsernameGetter,
+	identifier identifier, uids []keybase1.UID, public bool) error {
+	_, err := identifyUserListWithBehavior(ctx,
+		nug, identifier, uids, public, keybase1.TLFIdentifyBehavior_DEFAULT_KBFS)
 	return err
 }
 
-func identifyHandleWithIdentifyBehavior(
+func identifyHandleWithBehavior(
 	ctx context.Context, nug normalizedUsernameGetter, identifier identifier,
 	h *TlfHandle, identifyBehavior keybase1.TLFIdentifyBehavior) (
 	[]keybase1.TLFBreak, error) {
 	uids := append(h.ResolvedWriters(), h.ResolvedReaders()...)
-	return identifyUserListWithIdentifyBehavior(
+	return identifyUserListWithBehavior(
 		ctx, nug, identifier, uids, h.IsPublic(), identifyBehavior)
+}
+
+// identifyHandle identifies the canonical names in the given handle.
+func identifyHandle(ctx context.Context, nug normalizedUsernameGetter,
+	identifier identifier, h *TlfHandle) error {
+	_, err := identifyHandleWithBehavior(ctx, nug, identifier, h,
+		keybase1.TLFIdentifyBehavior_DEFAULT_KBFS)
+	return err
 }

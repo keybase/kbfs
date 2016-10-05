@@ -958,14 +958,14 @@ func ParseTlfHandleWithIdentifyBehavior(ctx context.Context, kbpki KBPKI,
 
 		return nil, nil, TlfNameNotCanonical{name, string(h.GetCanonicalName())}
 	case keybase1.TLFIdentifyBehavior_CHAT_GUI:
-		breaks, err := identifyHandleWithIdentifyBehavior(ctx, kbpki, kbpki, h,
+		breaks, err := identifyHandleWithBehavior(ctx, kbpki, kbpki, h,
 			keybase1.TLFIdentifyBehavior_CHAT_GUI)
 		if err != nil {
-			return nil, breaks, err
+			return nil, nil, err
 		}
 
 		if string(h.GetCanonicalName()) != name {
-			return nil, breaks, TlfNameNotCanonical{name, string(h.GetCanonicalName())}
+			return nil, nil, TlfNameNotCanonical{name, string(h.GetCanonicalName())}
 		}
 
 		return h, breaks, nil
