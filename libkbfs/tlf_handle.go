@@ -875,7 +875,7 @@ func (ra resolvableAssertion) resolve(ctx context.Context) (
 
 func ParseTlfHandleWithIdentifyBehavior(ctx context.Context, kbpki KBPKI,
 	name string, public bool, identifyBehavior keybase1.TLFIdentifyBehavior) (
-	*TlfHandle, map[libkb.NormalizedUsername]*keybase1.IdentifyTrackBreaks, error) {
+	*TlfHandle, []keybase1.TLFBreak, error) {
 	// Before parsing the tlf handle (which results in identify
 	// calls that cause tracker popups), first see if there's any
 	// quick normalization of usernames we can do.  For example,
@@ -940,6 +940,8 @@ func ParseTlfHandleWithIdentifyBehavior(ctx context.Context, kbpki KBPKI,
 	}
 
 	switch identifyBehavior {
+	case keybase1.TLFIdentifyBehavior_CHAT_CLI:
+		fallthrough
 	case keybase1.TLFIdentifyBehavior_DEFAULT_KBFS:
 		if string(h.GetCanonicalName()) == name {
 			// Name is already canonical (i.e., all usernames and
@@ -955,9 +957,9 @@ func ParseTlfHandleWithIdentifyBehavior(ctx context.Context, kbpki KBPKI,
 		}
 
 		return nil, nil, TlfNameNotCanonical{name, string(h.GetCanonicalName())}
-	case keybase1.TLFIdentifyBehavior_CHAT:
+	case keybase1.TLFIdentifyBehavior_CHAT_GUI:
 		breaks, err := identifyHandleWithIdentifyBehavior(ctx, kbpki, kbpki, h,
-			keybase1.TLFIdentifyBehavior_CHAT)
+			keybase1.TLFIdentifyBehavior_CHAT_GUI)
 		if err != nil {
 			return nil, breaks, err
 		}

@@ -515,7 +515,7 @@ const CtxKeybaseServiceOpID = "KSID"
 
 func (k *KeybaseServiceBase) getHandleFromFolderName(ctx context.Context,
 	tlfName string, public bool, identifyBehavior keybase1.TLFIdentifyBehavior) (
-	*TlfHandle, map[libkb.NormalizedUsername]*keybase1.IdentifyTrackBreaks, error) {
+	*TlfHandle, []keybase1.TLFBreak, error) {
 	for {
 		tlfHandle, breaks, err := ParseTlfHandleWithIdentifyBehavior(ctx, k.config.KBPKI(), tlfName, public, identifyBehavior)
 		switch e := err.(type) {
@@ -612,7 +612,7 @@ func (k *KeybaseServiceBase) FSSyncStatusRequest(ctx context.Context,
 // GetTLFCryptKeys implements the TlfKeysInterface interface for
 // KeybaseServiceBase.
 func (k *KeybaseServiceBase) GetTLFCryptKeys(ctx context.Context,
-	arg keybase1.GetTLFCryptKeysArg) (
+	arg keybase1.TLFQuery) (
 	res keybase1.GetTLFCryptKeysRes, err error) {
 	ctx = ctxWithRandomIDReplayable(
 		ctx, CtxKeybaseServiceIDKey, CtxKeybaseServiceOpID, k.log)
@@ -622,13 +622,13 @@ func (k *KeybaseServiceBase) GetTLFCryptKeys(ctx context.Context,
 		return res, err
 	}
 
-	res.CanonicalName = keybase1.CanonicalTlfName(tlfHandle.GetCanonicalName())
+	res.NameIDBreaks.CanonicalName = keybase1.CanonicalTlfName(tlfHandle.GetCanonicalName())
 
 	keys, id, err := k.config.KBFSOps().GetTLFCryptKeys(ctx, tlfHandle)
 	if err != nil {
 		return res, err
 	}
-	res.TlfID = keybase1.TLFID(id.String())
+	res.NameIDBreaks.TlfID = keybase1.TLFID(id.String())
 
 	for i, key := range keys {
 		res.CryptKeys = append(res.CryptKeys, keybase1.CryptKey{
@@ -637,14 +637,7 @@ func (k *KeybaseServiceBase) GetTLFCryptKeys(ctx context.Context,
 		})
 	}
 
-	for username, breaks := range breaks {
-		if breaks != nil {
-			res.Breaks = append(res.Breaks, keybase1.TLFBreak{
-				Username: string(username),
-				Breaks:   *breaks,
-			})
-		}
-	}
+	res.NameIDBreaks.Breaks = breaks
 
 	return res, nil
 }
@@ -652,7 +645,7 @@ func (k *KeybaseServiceBase) GetTLFCryptKeys(ctx context.Context,
 // GetPublicCanonicalTLFNameAndID implements the TlfKeysInterface interface for
 // KeybaseServiceBase.
 func (k *KeybaseServiceBase) GetPublicCanonicalTLFNameAndID(ctx context.Context,
-	arg keybase1.GetPublicCanonicalTLFNameAndIDArg) (
+	arg keybase1.TLFQuery) (
 	res keybase1.CanonicalTLFNameAndIDWithBreaks, err error) {
 	ctx = ctxWithRandomIDReplayable(
 		ctx, CtxKeybaseServiceIDKey, CtxKeybaseServiceOpID, k.log)
@@ -670,14 +663,7 @@ func (k *KeybaseServiceBase) GetPublicCanonicalTLFNameAndID(ctx context.Context,
 	}
 	res.TlfID = keybase1.TLFID(id.String())
 
-	for username, breaks := range breaks {
-		if breaks != nil {
-			res.Breaks = append(res.Breaks, keybase1.TLFBreak{
-				Username: string(username),
-				Breaks:   *breaks,
-			})
-		}
-	}
+	res.Breaks = breaks
 
 	return res, nil
 }

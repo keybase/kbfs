@@ -41,6 +41,8 @@ func identifyUIDWithIdentifyBehavior(ctx context.Context,
 		breaks   *keybase1.IdentifyTrackBreaks
 	)
 	switch identifyBehavior {
+	case keybase1.TLFIdentifyBehavior_CHAT_CLI:
+		fallthrough
 	case keybase1.TLFIdentifyBehavior_DEFAULT_KBFS:
 		userInfo, err = identifier.Identify(ctx, username.String(), reason)
 		if err != nil {
@@ -51,7 +53,7 @@ func identifyUIDWithIdentifyBehavior(ctx context.Context,
 			}
 			return "", nil, err
 		}
-	case keybase1.TLFIdentifyBehavior_CHAT:
+	case keybase1.TLFIdentifyBehavior_CHAT_GUI:
 		userInfo, breaks, err = identifier.IdentifyForChat(
 			ctx, username.String(), reason)
 		if err != nil {
@@ -89,7 +91,7 @@ func identifyUserList(ctx context.Context, nug normalizedUsernameGetter,
 func identifyUserListWithIdentifyBehavior(ctx context.Context,
 	nug normalizedUsernameGetter, identifier identifier, uids []keybase1.UID,
 	public bool, identifyBehavior keybase1.TLFIdentifyBehavior) (
-	map[libkb.NormalizedUsername]*keybase1.IdentifyTrackBreaks, error) {
+	[]keybase1.TLFBreak, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -97,6 +99,7 @@ func identifyUserListWithIdentifyBehavior(ctx context.Context,
 		err      error
 		breaks   *keybase1.IdentifyTrackBreaks
 		username libkb.NormalizedUsername
+		uid      keybase1.UID
 	}
 
 	errChan := make(chan jobRes, len(uids))
@@ -109,20 +112,29 @@ func identifyUserListWithIdentifyBehavior(ctx context.Context,
 				err:      err,
 				breaks:   breaks,
 				username: username,
+				uid:      uid,
 			}
 		}(uid)
 	}
 
-	breaksMap := make(map[libkb.NormalizedUsername]*keybase1.IdentifyTrackBreaks)
+	var breaks []keybase1.TLFBreak
 	for i := 0; i < len(uids); i++ {
 		res := <-errChan
 		if res.err != nil {
 			return nil, res.err
 		}
-		breaksMap[res.username] = res.breaks
+		if res.breaks != nil {
+			breaks = append(breaks, keybase1.TLFBreak{
+				Breaks: *res.breaks,
+				User: keybase1.User{
+					Username: string(res.username),
+					Uid:      res.uid,
+				},
+			})
+		}
 	}
 
-	return breaksMap, nil
+	return breaks, nil
 }
 
 // identifyHandle identifies the canonical names in the given handle.
@@ -136,7 +148,7 @@ func identifyHandle(ctx context.Context, nug normalizedUsernameGetter,
 func identifyHandleWithIdentifyBehavior(
 	ctx context.Context, nug normalizedUsernameGetter, identifier identifier,
 	h *TlfHandle, identifyBehavior keybase1.TLFIdentifyBehavior) (
-	map[libkb.NormalizedUsername]*keybase1.IdentifyTrackBreaks, error) {
+	[]keybase1.TLFBreak, error) {
 	uids := append(h.ResolvedWriters(), h.ResolvedReaders()...)
 	return identifyUserListWithIdentifyBehavior(
 		ctx, nug, identifier, uids, h.IsPublic(), identifyBehavior)
