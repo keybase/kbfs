@@ -873,21 +873,9 @@ func (ra resolvableAssertion) resolve(ctx context.Context) (
 	}
 }
 
-// ParseTlfHandle parses a TlfHandle from an encoded string. See
-// TlfHandle.GetCanonicalName() for the opposite direction.
-//
-// Some errors that may be returned and can be specially handled:
-//
-// TlfNameNotCanonical: Returned when the given name is not canonical
-// -- another name to try (which itself may not be canonical) is in
-// the error. Usually, you want to treat this as a symlink to the name
-// to try.
-//
-// NoSuchNameError: Returned when public is set and the given folder
-// has no public folder.
-func ParseTlfHandle(
-	ctx context.Context, kbpki KBPKI, name string, public bool) (
-	*TlfHandle, error) {
+func ParseTlfHandleWithIdentifyBehavior(ctx context.Context, kbpki KBPKI,
+	name string, public bool, identifyBehavior keybase1.TLFIdentifyBehavior) (
+	*TlfHandle, map[libkb.NormalizedUsername]*keybase1.IdentifyTrackBreaks, error) {
 	// Before parsing the tlf handle (which results in identify
 	// calls that cause tracker popups), first see if there's any
 	// quick normalization of usernames we can do.  For example,
@@ -899,23 +887,23 @@ func ParseTlfHandle(
 	writerNames, readerNames, extensionSuffix, err :=
 		splitAndNormalizeTLFName(name, public)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	hasPublic := len(readerNames) == 0
 
 	if public && !hasPublic {
 		// No public folder exists for this folder.
-		return nil, NoSuchNameError{Name: name}
+		return nil, nil, NoSuchNameError{Name: name}
 	}
 
 	normalizedName, err := normalizeNamesInTLF(
 		writerNames, readerNames, extensionSuffix)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if normalizedName != name {
-		return nil, TlfNameNotCanonical{name, normalizedName}
+		return nil, nil, TlfNameNotCanonical{name, normalizedName}
 	}
 
 	writers := make([]resolvableUser, len(writerNames))
@@ -931,40 +919,78 @@ func ParseTlfHandle(
 	if len(extensionSuffix) != 0 {
 		extensions, err = ParseTlfHandleExtensionSuffix(extensionSuffix)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	h, err := makeTlfHandleHelper(ctx, public, writers, readers, extensions)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !public {
 		currentUsername, currentUID, err := kbpki.GetCurrentUserInfo(ctx)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if !h.IsReader(currentUID) {
-			return nil, ReadAccessError{currentUsername, h.GetCanonicalName(), public}
+			return nil, nil, ReadAccessError{currentUsername, h.GetCanonicalName(), public}
 		}
 	}
 
-	if string(h.GetCanonicalName()) == name {
-		// Name is already canonical (i.e., all usernames and
-		// no assertions) so we can delay the identify until
-		// the node is actually used.
-		return h, nil
-	}
+	switch identifyBehavior {
+	case keybase1.TLFIdentifyBehavior_DEFAULT_KBFS:
+		if string(h.GetCanonicalName()) == name {
+			// Name is already canonical (i.e., all usernames and
+			// no assertions) so we can delay the identify until
+			// the node is actually used.
+			return h, nil, nil
+		}
 
-	// Otherwise, identify before returning the canonical name.
-	err = identifyHandle(ctx, kbpki, kbpki, h)
-	if err != nil {
-		return nil, err
-	}
+		// Otherwise, identify before returning the canonical name.
+		err = identifyHandle(ctx, kbpki, kbpki, h)
+		if err != nil {
+			return nil, nil, err
+		}
 
-	return nil, TlfNameNotCanonical{name, string(h.GetCanonicalName())}
+		return nil, nil, TlfNameNotCanonical{name, string(h.GetCanonicalName())}
+	case keybase1.TLFIdentifyBehavior_CHAT:
+		breaks, err := identifyHandleWithIdentifyBehavior(ctx, kbpki, kbpki, h,
+			keybase1.TLFIdentifyBehavior_CHAT)
+		if err != nil {
+			return nil, breaks, err
+		}
+
+		if string(h.GetCanonicalName()) != name {
+			return nil, breaks, TlfNameNotCanonical{name, string(h.GetCanonicalName())}
+		}
+
+		return h, breaks, nil
+
+	default:
+		return nil, nil, errors.New("unknown identifyBehavior")
+	}
+}
+
+// ParseTlfHandle parses a TlfHandle from an encoded string. See
+// TlfHandle.GetCanonicalName() for the opposite direction.
+//
+// Some errors that may be returned and can be specially handled:
+//
+// TlfNameNotCanonical: Returned when the given name is not canonical
+// -- another name to try (which itself may not be canonical) is in
+// the error. Usually, you want to treat this as a symlink to the name
+// to try.
+//
+// NoSuchNameError: Returned when public is set and the given folder
+// has no public folder.
+func ParseTlfHandle(
+	ctx context.Context, kbpki KBPKI, name string, public bool) (
+	*TlfHandle, error) {
+	handle, _, err := ParseTlfHandleWithIdentifyBehavior(
+		ctx, kbpki, name, public, keybase1.TLFIdentifyBehavior_DEFAULT_KBFS)
+	return handle, err
 }
 
 // CheckTlfHandleOffline does light checks whether a TLF handle looks ok,

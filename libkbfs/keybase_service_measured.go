@@ -64,12 +64,22 @@ func (k KeybaseServiceMeasured) Resolve(ctx context.Context, assertion string) (
 }
 
 // Identify implements the KeybaseService interface for KeybaseServiceMeasured.
-func (k KeybaseServiceMeasured) Identify(ctx context.Context, assertion, reason string) (
-	userInfo UserInfo, err error) {
+func (k KeybaseServiceMeasured) Identify(
+	ctx context.Context, assertion, reason string) (userInfo UserInfo, err error) {
 	k.identifyTimer.Time(func() {
 		userInfo, err = k.delegate.Identify(ctx, assertion, reason)
 	})
 	return userInfo, err
+}
+
+// IdentifyForChat implements KeybaseDaemon for KeybaseDaemonLocal.
+func (k KeybaseServiceMeasured) IdentifyForChat(
+	ctx context.Context, assertion, reason string) (
+	userInfo UserInfo, breaks *keybase1.IdentifyTrackBreaks, err error) {
+	k.identifyTimer.Time(func() {
+		userInfo, breaks, err = k.delegate.IdentifyForChat(ctx, assertion, reason)
+	})
+	return userInfo, breaks, err
 }
 
 // LoadUserPlusKeys implements the KeybaseService interface for KeybaseServiceMeasured.

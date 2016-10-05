@@ -562,6 +562,18 @@ func (_mr *_MockKeybaseServiceRecorder) Identify(arg0, arg1, arg2 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Identify", arg0, arg1, arg2)
 }
 
+func (_m *MockKeybaseService) IdentifyForChat(ctx context.Context, assertion string, reason string) (UserInfo, *keybase1.IdentifyTrackBreaks, error) {
+	ret := _m.ctrl.Call(_m, "IdentifyForChat", ctx, assertion, reason)
+	ret0, _ := ret[0].(UserInfo)
+	ret1, _ := ret[1].(*keybase1.IdentifyTrackBreaks)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+func (_mr *_MockKeybaseServiceRecorder) IdentifyForChat(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IdentifyForChat", arg0, arg1, arg2)
+}
+
 func (_m *MockKeybaseService) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID) (UserInfo, error) {
 	ret := _m.ctrl.Call(_m, "LoadUserPlusKeys", ctx, uid)
 	ret0, _ := ret[0].(UserInfo)
@@ -778,6 +790,18 @@ func (_mr *_MockidentifierRecorder) Identify(arg0, arg1, arg2 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Identify", arg0, arg1, arg2)
 }
 
+func (_m *Mockidentifier) IdentifyForChat(ctx context.Context, assertion string, reason string) (UserInfo, *keybase1.IdentifyTrackBreaks, error) {
+	ret := _m.ctrl.Call(_m, "IdentifyForChat", ctx, assertion, reason)
+	ret0, _ := ret[0].(UserInfo)
+	ret1, _ := ret[1].(*keybase1.IdentifyTrackBreaks)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+func (_mr *_MockidentifierRecorder) IdentifyForChat(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IdentifyForChat", arg0, arg1, arg2)
+}
+
 // Mock of normalizedUsernameGetter interface
 type MocknormalizedUsernameGetter struct {
 	ctrl     *gomock.Controller
@@ -963,6 +987,18 @@ func (_m *MockKBPKI) Identify(ctx context.Context, assertion string, reason stri
 
 func (_mr *_MockKBPKIRecorder) Identify(arg0, arg1, arg2 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Identify", arg0, arg1, arg2)
+}
+
+func (_m *MockKBPKI) IdentifyForChat(ctx context.Context, assertion string, reason string) (UserInfo, *keybase1.IdentifyTrackBreaks, error) {
+	ret := _m.ctrl.Call(_m, "IdentifyForChat", ctx, assertion, reason)
+	ret0, _ := ret[0].(UserInfo)
+	ret1, _ := ret[1].(*keybase1.IdentifyTrackBreaks)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+func (_mr *_MockKBPKIRecorder) IdentifyForChat(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IdentifyForChat", arg0, arg1, arg2)
 }
 
 func (_m *MockKBPKI) GetNormalizedUsername(ctx context.Context, uid keybase1.UID) (libkb.NormalizedUsername, error) {
@@ -2619,32 +2655,32 @@ func (_mr *_MockBlockOpsRecorder) Archive(arg0, arg1, arg2 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Archive", arg0, arg1, arg2)
 }
 
-// Mock of AuthTokenRefreshHandler interface
-type MockAuthTokenRefreshHandler struct {
+// Mock of authTokenRefreshHandler interface
+type MockauthTokenRefreshHandler struct {
 	ctrl     *gomock.Controller
-	recorder *_MockAuthTokenRefreshHandlerRecorder
+	recorder *_MockauthTokenRefreshHandlerRecorder
 }
 
-// Recorder for MockAuthTokenRefreshHandler (not exported)
-type _MockAuthTokenRefreshHandlerRecorder struct {
-	mock *MockAuthTokenRefreshHandler
+// Recorder for MockauthTokenRefreshHandler (not exported)
+type _MockauthTokenRefreshHandlerRecorder struct {
+	mock *MockauthTokenRefreshHandler
 }
 
-func NewMockAuthTokenRefreshHandler(ctrl *gomock.Controller) *MockAuthTokenRefreshHandler {
-	mock := &MockAuthTokenRefreshHandler{ctrl: ctrl}
-	mock.recorder = &_MockAuthTokenRefreshHandlerRecorder{mock}
+func NewMockauthTokenRefreshHandler(ctrl *gomock.Controller) *MockauthTokenRefreshHandler {
+	mock := &MockauthTokenRefreshHandler{ctrl: ctrl}
+	mock.recorder = &_MockauthTokenRefreshHandlerRecorder{mock}
 	return mock
 }
 
-func (_m *MockAuthTokenRefreshHandler) EXPECT() *_MockAuthTokenRefreshHandlerRecorder {
+func (_m *MockauthTokenRefreshHandler) EXPECT() *_MockauthTokenRefreshHandlerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockAuthTokenRefreshHandler) RefreshAuthToken(_param0 context.Context) {
+func (_m *MockauthTokenRefreshHandler) RefreshAuthToken(_param0 context.Context) {
 	_m.ctrl.Call(_m, "RefreshAuthToken", _param0)
 }
 
-func (_mr *_MockAuthTokenRefreshHandlerRecorder) RefreshAuthToken(arg0 interface{}) *gomock.Call {
+func (_mr *_MockauthTokenRefreshHandlerRecorder) RefreshAuthToken(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RefreshAuthToken", arg0)
 }
 

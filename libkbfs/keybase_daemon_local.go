@@ -218,6 +218,13 @@ func (k *KeybaseDaemonLocal) Identify(ctx context.Context, assertion, reason str
 	return infoCopy, nil
 }
 
+// IdentifyForChat implements KeybaseDaemon for KeybaseDaemonLocal.
+func (k *KeybaseDaemonLocal) IdentifyForChat(
+	ctx context.Context, assertion, reason string) (
+	UserInfo, *keybase1.IdentifyTrackBreaks, error) {
+	return UserInfo{}, nil, errors.New("unimplemented")
+}
+
 // LoadUserPlusKeys implements KeybaseDaemon for KeybaseDaemonLocal.
 func (k *KeybaseDaemonLocal) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID) (UserInfo, error) {
 	k.lock.Lock()

@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -52,6 +53,11 @@ func (ti *testIdentifier) Identify(
 	}()
 
 	return userInfo, nil
+}
+
+func (ti *testIdentifier) IdentifyForChat(ctx context.Context,
+	assertion, reason string) (UserInfo, *keybase1.IdentifyTrackBreaks, error) {
+	return UserInfo{}, nil, errors.New("unimplemented")
 }
 
 func TestIdentify(t *testing.T) {
