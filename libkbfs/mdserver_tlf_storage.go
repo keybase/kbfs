@@ -331,6 +331,16 @@ func (s *mdServerTlfStorage) put(
 		return false, errMDServerTlfStorageShutdown
 	}
 
+	if extra == nil {
+		var err error
+		extra, err = s.getExtraMetadata(
+			rmds.MD.GetTLFWriterKeyBundleID(),
+			rmds.MD.GetTLFReaderKeyBundleID())
+		if err != nil {
+			return false, MDServerError{err}
+		}
+	}
+
 	err = rmds.IsValidAndSigned(s.codec, s.crypto, extra)
 	if err != nil {
 		return false, MDServerErrorBadRequest{Reason: err.Error()}
@@ -350,7 +360,7 @@ func (s *mdServerTlfStorage) put(
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		prevExtra, err := s.getExtraMD(
+		prevExtra, err := s.getExtraMetadata(
 			mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
 			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
 		if err != nil {
@@ -430,7 +440,8 @@ func (s *mdServerTlfStorage) shutdown() {
 	s.branchJournals = nil
 }
 
-func (s *mdServerTlfStorage) getExtraMD(wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+func (s *mdServerTlfStorage) getExtraMetadata(
+	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	ExtraMetadata, error) {
 	// MDv3 TODO: implement this
 	if (wkbID != TLFWriterKeyBundleID{}) || (rkbID != TLFReaderKeyBundleID{}) {
