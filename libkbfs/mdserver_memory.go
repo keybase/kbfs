@@ -747,16 +747,24 @@ func (md *MDServerMemory) setExtraMetadataLocked(rmds *RootMetadataSigned,
 	if extra == nil {
 		return nil
 	}
+
+	tlfID := rmds.MD.TlfID()
+	wkbID := rmds.MD.GetTLFWriterKeyBundleID()
+	if wkbID == (TLFWriterKeyBundleID{}) {
+		panic("writer key bundle ID is empty")
+	}
+
+	rkbID := rmds.MD.GetTLFReaderKeyBundleID()
+	if rkbID == (TLFReaderKeyBundleID{}) {
+		panic("reader key bundle ID is empty")
+	}
+
 	extraV3, ok := extra.(*ExtraMetadataV3)
 	if !ok {
 		return errors.New("Invalid extra metadata")
 	}
-	md.writerKeyBundleDb[mdExtraWriterKey{
-		rmds.MD.TlfID(), rmds.MD.GetTLFWriterKeyBundleID(),
-	}] = extraV3.wkb
-	md.readerKeyBundleDb[mdExtraReaderKey{
-		rmds.MD.TlfID(), rmds.MD.GetTLFReaderKeyBundleID(),
-	}] = extraV3.rkb
+	md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}] = extraV3.wkb
+	md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}] = extraV3.rkb
 	return nil
 }
 
