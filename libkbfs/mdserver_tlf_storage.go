@@ -156,7 +156,7 @@ func serializeToFile(codec kbfscodec.Codec, clock Clock,
 	now := clock.Now()
 	err = os.Chtimes(path, now, now)
 	if err != nil {
-		return MdID{}, err
+		return err
 	}
 
 	return nil
@@ -306,11 +306,26 @@ func (s *mdServerTlfStorage) getExtraMetadataLocked(
 func (s *mdServerTlfStorage) getKeyBundlesLocked(
 	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	// MDv3 TODO: implement this
-	if (wkbID != TLFWriterKeyBundleID{}) || (rkbID != TLFReaderKeyBundleID{}) {
-		panic("Bundle IDs are unexpectedly set")
+	if wkbID == (TLFWriterKeyBundleID{}) ||
+		rkbID == (TLFReaderKeyBundleID{}) {
+		return nil, nil, nil
 	}
-	return nil, nil, nil
+
+	var wkb TLFWriterKeyBundleV3
+	err := deserializeFromFile(
+		s.codec, s.writerKeyBundleV3Path(wkbID), &wkb)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var rkb TLFReaderKeyBundleV3
+	err = deserializeFromFile(
+		s.codec, s.readerKeyBundleV3Path(rkbID), &rkb)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &wkb, &rkb, nil
 }
 
 func (s *mdServerTlfStorage) setExtraMetadataLocked(

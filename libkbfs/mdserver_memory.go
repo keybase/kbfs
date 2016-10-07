@@ -771,6 +771,11 @@ func (md *MDServerMemory) setExtraMetadataLocked(rmds *RootMetadataSigned,
 func (md *MDServerMemory) getKeyBundles(
 	tlfID TlfID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3) {
+	if wkbID == (TLFWriterKeyBundleID{}) ||
+		rkbID == (TLFReaderKeyBundleID{}) {
+		return nil, nil
+	}
+
 	md.lock.Lock()
 	defer md.lock.Unlock()
 	wkb := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
