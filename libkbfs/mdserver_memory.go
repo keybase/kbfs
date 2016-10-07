@@ -30,6 +30,16 @@ type mdBranchKey struct {
 	deviceKID keybase1.KID
 }
 
+type mdExtraWriterKey struct {
+	tlfID          TlfID
+	writerBundleID TLFWriterKeyBundleID
+}
+
+type mdExtraReaderKey struct {
+	tlfID          TlfID
+	readerBundleID TLFReaderKeyBundleID
+}
+
 type mdBlockMem struct {
 	// An encoded RootMetdataSigned.
 	encodedMd []byte
@@ -54,9 +64,9 @@ type mdServerMemShared struct {
 	// (TLF ID, branch ID) -> list of MDs
 	mdDb map[mdBlockKey]mdBlockMemList
 	// Writer key bundle ID -> writer key bundles
-	writerKeyBundleDb map[TLFWriterKeyBundleID]*TLFWriterKeyBundleV3
+	writerKeyBundleDb map[mdExtraWriterKey]*TLFWriterKeyBundleV3
 	// Reader key bundle ID -> reader key bundles
-	readerKeyBundleDb map[TLFReaderKeyBundleID]*TLFReaderKeyBundleV3
+	readerKeyBundleDb map[mdExtraReaderKey]*TLFReaderKeyBundleV3
 	// (TLF ID, device KID) -> branch ID
 	branchDb            map[mdBranchKey]BranchID
 	truncateLockManager *mdServerLocalTruncateLockManager
@@ -81,8 +91,8 @@ func NewMDServerMemory(config mdServerLocalConfig) (*MDServerMemory, error) {
 	latestHandleDb := make(map[TlfID]BareTlfHandle)
 	mdDb := make(map[mdBlockKey]mdBlockMemList)
 	branchDb := make(map[mdBranchKey]BranchID)
-	writerKeyBundleDb := make(map[TLFWriterKeyBundleID]*TLFWriterKeyBundleV3)
-	readerKeyBundleDb := make(map[TLFReaderKeyBundleID]*TLFReaderKeyBundleV3)
+	writerKeyBundleDb := make(map[mdExtraWriterKey]*TLFWriterKeyBundleV3)
+	readerKeyBundleDb := make(map[mdExtraReaderKey]*TLFReaderKeyBundleV3)
 	log := config.MakeLogger("MDSM")
 	truncateLockManager := newMDServerLocalTruncatedLockManager()
 	shared := mdServerMemShared{
@@ -181,7 +191,7 @@ func (md *MDServerMemory) checkGetParams(
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
 		extra, err := md.getExtraMetadata(
-			mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
+			id, mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
 			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
 		if err != nil {
 			return NullBranchID, MDServerError{err}
@@ -351,7 +361,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 	if extra == nil {
 		var err error
 		extra, err = md.getExtraMetadata(
-			rmds.MD.GetTLFWriterKeyBundleID(),
+			rmds.MD.TlfID(), rmds.MD.GetTLFWriterKeyBundleID(),
 			rmds.MD.GetTLFReaderKeyBundleID())
 		if err != nil {
 			return MDServerError{err}
@@ -381,6 +391,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
 		prevExtra, err := md.getExtraMetadata(
+			mergedMasterHead.MD.TlfID(),
 			mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
 			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
 		if err != nil {
@@ -722,9 +733,9 @@ func (md *MDServerMemory) OffsetFromServerTime() (time.Duration, bool) {
 }
 
 func (md *MDServerMemory) getExtraMetadata(
-	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	tlfID TlfID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	ExtraMetadata, error) {
-	wkb, rkb := md.getKeyBundles(wkbID, rkbID)
+	wkb, rkb := md.getKeyBundles(tlfID, wkbID, rkbID)
 	if wkb == nil || rkb == nil {
 		return nil, nil
 	}
@@ -733,6 +744,7 @@ func (md *MDServerMemory) getExtraMetadata(
 
 func (md *MDServerMemory) setExtraMetadataLocked(rmds *RootMetadataSigned,
 	extra ExtraMetadata) error {
+	return nil
 	if extra == nil {
 		return nil
 	}
@@ -740,27 +752,29 @@ func (md *MDServerMemory) setExtraMetadataLocked(rmds *RootMetadataSigned,
 	if !ok {
 		return errors.New("Invalid extra metadata")
 	}
-	md.writerKeyBundleDb[rmds.MD.GetTLFWriterKeyBundleID()] =
-		extraV3.wkb
-	md.readerKeyBundleDb[rmds.MD.GetTLFReaderKeyBundleID()] =
-		extraV3.rkb
+	md.writerKeyBundleDb[mdExtraWriterKey{
+		rmds.MD.TlfID(), rmds.MD.GetTLFWriterKeyBundleID(),
+	}] = extraV3.wkb
+	md.readerKeyBundleDb[mdExtraReaderKey{
+		rmds.MD.TlfID(), rmds.MD.GetTLFReaderKeyBundleID(),
+	}] = extraV3.rkb
 	return nil
 }
 
 func (md *MDServerMemory) getKeyBundles(
-	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	tlfID TlfID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3) {
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	wkb := md.writerKeyBundleDb[wkbID]
-	rkb := md.readerKeyBundleDb[rkbID]
+	wkb := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
+	rkb := md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
 	return wkb, rkb
 }
 
 // GetKeyBundles implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetKeyBundles(_ context.Context,
-	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	tlfID TlfID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	wkb, rkb := md.getKeyBundles(wkbID, rkbID)
+	wkb, rkb := md.getKeyBundles(tlfID, wkbID, rkbID)
 	return wkb, rkb, nil
 }
