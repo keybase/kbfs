@@ -261,6 +261,43 @@ func (s *mdServerTlfStorage) getRangeReadLocked(
 	return rmdses, nil
 }
 
+func (s *mdServerTlfStorage) getExtraMetadataLocked(
+	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	ExtraMetadata, error) {
+	wkb, rkb, err := s.getKeyBundlesLocked(wkbID, rkbID)
+	if err != nil {
+		return nil, err
+	}
+	if wkb == nil || rkb == nil {
+		return nil, nil
+	}
+	return &ExtraMetadataV3{wkb: wkb, rkb: rkb}, nil
+}
+
+func (s *mdServerTlfStorage) getKeyBundlesLocked(
+	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
+	// MDv3 TODO: implement this
+	if (wkbID != TLFWriterKeyBundleID{}) || (rkbID != TLFReaderKeyBundleID{}) {
+		panic("Bundle IDs are unexpectedly set")
+	}
+	return nil, nil, nil
+}
+
+func (s *mdServerTlfStorage) setExtraMetadataLocked(
+	rmds *RootMetadataSigned, extra ExtraMetadata) error {
+	if extra == nil {
+		return nil
+	}
+
+	_, ok := extra.(*ExtraMetadataV3)
+	if !ok {
+		return errors.New("Invalid extra metadata")
+	}
+	panic("Not implemented")
+	return nil
+}
+
 func (s *mdServerTlfStorage) isShutdownReadLocked() bool {
 	return s.branchJournals == nil
 }
@@ -439,32 +476,16 @@ func (s *mdServerTlfStorage) put(
 	return recordBranchID, nil
 }
 
+func (s *mdServerTlfStorage) getKeyBundles(
+	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.getKeyBundlesLocked(wkbID, rkbID)
+}
+
 func (s *mdServerTlfStorage) shutdown() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.branchJournals = nil
-}
-
-func (s *mdServerTlfStorage) getExtraMetadataLocked(
-	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
-	ExtraMetadata, error) {
-	// MDv3 TODO: implement this
-	if (wkbID != TLFWriterKeyBundleID{}) || (rkbID != TLFReaderKeyBundleID{}) {
-		panic("Bundle IDs are unexpectedly set")
-	}
-	return nil, nil
-}
-
-func (s *mdServerTlfStorage) setExtraMetadataLocked(
-	rmds *RootMetadataSigned, extra ExtraMetadata) error {
-	if extra == nil {
-		return nil
-	}
-
-	_, ok := extra.(*ExtraMetadataV3)
-	if !ok {
-		return errors.New("Invalid extra metadata")
-	}
-	panic("Not implemented")
-	return nil
 }

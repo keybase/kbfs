@@ -627,9 +627,17 @@ func (md *MDServerDisk) OffsetFromServerTime() (time.Duration, bool) {
 func (md *MDServerDisk) GetKeyBundles(_ context.Context,
 	tlfID TlfID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	// MDv3 TODO: implement this
-	if (wkbID != TLFWriterKeyBundleID{}) || (rkbID != TLFReaderKeyBundleID{}) {
-		panic("Bundle IDs are unexpectedly set")
+	md.lock.RLock()
+	defer md.lock.RUnlock()
+
+	if md.handleDb == nil {
+		return nil, nil, errMDServerDiskShutdown
 	}
-	return nil, nil, nil
+
+	tlfStorage, err := md.getStorage(tlfID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tlfStorage.getKeyBundles(wkbID, rkbID)
 }
