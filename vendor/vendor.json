@@ -196,10 +196,10 @@
 			"revisionTime": "2016-10-03T19:50:03Z"
 		},
 		{
-			"checksumSHA1": "GnpjAHOD/Q/6xCrhSb/lZWzE5XE=",
+			"checksumSHA1": "dIj0YcSA8RAfI1y3ca8YNwzETP0=",
 			"path": "github.com/keybase/client/go/protocol/keybase1",
-			"revision": "d735cc8a00ca5b38281a350c699a51f76ceb142b",
-			"revisionTime": "2016-10-03T19:50:03Z"
+			"revision": "2f15e5b398089c9f85852ced44e6e7df5b1e970f",
+			"revisionTime": "2016-10-07T22:55:16Z"
 		},
 		{
 			"checksumSHA1": "jnN+Jbtoeb/NFpIi1vdDwokZxgY=",
@@ -511,6 +511,12 @@
 			"path": "golang.org/x/net/html/atom",
 			"revision": "a7c5ee4a843ee6e4ccf898ae9e5ad1dd301a358e",
 			"revisionTime": "2016-08-26T20:58:34Z"
+		},
+		{
+			"checksumSHA1": "S0DP7Pn7sZUmXc55IzZnNvERu6s=",
+			"path": "golang.org/x/sync/errgroup",
+			"revision": "1ae7c7b29e06598039be46c5083819ba6fd7a97e",
+			"revisionTime": "2016-10-04T22:49:57Z"
 		},
 		{
 			"path": "golang.org/x/sys/unix",
