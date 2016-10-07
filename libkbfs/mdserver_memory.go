@@ -744,7 +744,6 @@ func (md *MDServerMemory) getExtraMetadata(
 
 func (md *MDServerMemory) setExtraMetadataLocked(rmds *RootMetadataSigned,
 	extra ExtraMetadata) error {
-	return nil
 	if extra == nil {
 		return nil
 	}
