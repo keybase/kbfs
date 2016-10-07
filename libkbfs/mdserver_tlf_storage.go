@@ -333,7 +333,7 @@ func (s *mdServerTlfStorage) put(
 
 	if extra == nil {
 		var err error
-		extra, err = s.getExtraMetadata(
+		extra, err = s.getExtraMetadataLocked(
 			rmds.MD.GetTLFWriterKeyBundleID(),
 			rmds.MD.GetTLFReaderKeyBundleID())
 		if err != nil {
@@ -360,7 +360,7 @@ func (s *mdServerTlfStorage) put(
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		prevExtra, err := s.getExtraMetadata(
+		prevExtra, err := s.getExtraMetadataLocked(
 			mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
 			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
 		if err != nil {
@@ -421,6 +421,11 @@ func (s *mdServerTlfStorage) put(
 		return false, MDServerError{err}
 	}
 
+	err = s.setExtraMetadataLocked(rmds, extra)
+	if err != nil {
+		return false, MDServerError{err}
+	}
+
 	j, err := s.getOrCreateBranchJournalLocked(bid)
 	if err != nil {
 		return false, err
@@ -440,7 +445,7 @@ func (s *mdServerTlfStorage) shutdown() {
 	s.branchJournals = nil
 }
 
-func (s *mdServerTlfStorage) getExtraMetadata(
+func (s *mdServerTlfStorage) getExtraMetadataLocked(
 	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	ExtraMetadata, error) {
 	// MDv3 TODO: implement this
@@ -448,4 +453,18 @@ func (s *mdServerTlfStorage) getExtraMetadata(
 		panic("Bundle IDs are unexpectedly set")
 	}
 	return nil, nil
+}
+
+func (s *mdServerTlfStorage) setExtraMetadataLocked(
+	rmds *RootMetadataSigned, extra ExtraMetadata) error {
+	if extra == nil {
+		return nil
+	}
+
+	_, ok := extra.(*ExtraMetadataV3)
+	if !ok {
+		return errors.New("Invalid extra metadata")
+	}
+	panic("Not implemented")
+	return nil
 }
