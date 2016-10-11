@@ -315,6 +315,8 @@ func (k *KeybaseServiceBase) Identify(ctx context.Context, assertion, reason str
 		return UserInfo{}, err
 	}
 
+	// This is required for every identify call. The userBreak function will take
+	// care of checking if res.TrackBreaks is nil or not.
 	ei.userBreak(userInfo.Name, userInfo.UID, res.TrackBreaks)
 
 	return userInfo, nil

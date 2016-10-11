@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -36,22 +37,33 @@ func (ei *extendedIdentify) userBreak(username libkb.NormalizedUsername, uid key
 	}
 }
 
-func (ei *extendedIdentify) makeTlfBreaksIfNeeded(numUserInTlf int) {
+func (ei *extendedIdentify) makeTlfBreaksIfNeeded(
+	ctx context.Context, numUserInTlf int) error {
 	if ei.userBreaks == nil {
-		return
+		return nil
 	}
 
 	b := &keybase1.TLFBreak{}
 	for i := 0; i < numUserInTlf; i++ {
-		ub := <-ei.userBreaks
-		if ub.Breaks != nil {
-			b.Breaks = append(b.Breaks, ub)
+		select {
+		case ub, ok := <-ei.userBreaks:
+			if !ok {
+				return errors.New("makeTlfBreaksIfNeeded called on extendedIdentify" +
+					" with closed userBreaks channel.")
+			}
+			if ub.Breaks != nil {
+				b.Breaks = append(b.Breaks, ub)
+			}
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 
 	ei.tlfBreaksLock.Lock()
 	defer ei.tlfBreaksLock.Unlock()
 	ei.tlfBreaks = b
+
+	return nil
 }
 
 // getTlfBreakOrBust returns a keybase1.TLFBreak. This should only be called
@@ -60,6 +72,7 @@ func (ei *extendedIdentify) makeTlfBreaksIfNeeded(numUserInTlf int) {
 func (ei *extendedIdentify) getTlfBreakOrBust() keybase1.TLFBreak {
 	ei.tlfBreaksLock.Lock()
 	defer ei.tlfBreaksLock.Unlock()
+	close(ei.userBreaks)
 	return *ei.tlfBreaks
 }
 
@@ -170,8 +183,7 @@ func identifyUserListForTLF(ctx context.Context, nug normalizedUsernameGetter, i
 
 	eg.Go(func() error {
 		ei := getExtendedIdentify(ctx)
-		ei.makeTlfBreaksIfNeeded(len(uids))
-		return nil
+		return ei.makeTlfBreaksIfNeeded(ctx, len(uids))
 	})
 
 	eg.Go(func() error {
