@@ -62,6 +62,8 @@ type TLFJournalStatus struct {
 	BranchID       string
 	BlockOpCount   uint64
 	UnflushedBytes int64 // (signed because os.FileInfo.Size() is signed)
+	UnflushedPaths []string
+	LastFlushErr   string `json:",omitempty"`
 }
 
 // TLFJournalBackgroundWorkStatus indicates whether a journal should
@@ -167,6 +169,7 @@ type tlfJournal struct {
 	blockJournal *blockJournal
 	mdJournal    *mdJournal
 	disabled     bool
+	lastFlushErr error
 
 	bwDelegate tlfJournalBWDelegate
 }
@@ -276,6 +279,8 @@ func makeTLFJournal(
 	}
 
 	j := &tlfJournal{
+		uid:                  uid,
+		key:                  key,
 		tlfID:                tlfID,
 		dir:                  dir,
 		config:               config,
@@ -540,6 +545,9 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 				flushedBlockEntries, flushedMDEntries,
 				j.tlfID, err)
 		}
+		j.journalLock.Lock()
+		j.lastFlushErr = err
+		j.journalLock.Unlock()
 	}()
 
 	// TODO: Avoid starving flushing MD ops if there are many
@@ -825,6 +833,10 @@ func (j *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
 	if err != nil {
 		return TLFJournalStatus{}, err
 	}
+	lastFlushErr := ""
+	if j.lastFlushErr != nil {
+		lastFlushErr = j.lastFlushErr.Error()
+	}
 	return TLFJournalStatus{
 		Dir:            j.dir,
 		BranchID:       j.mdJournal.getBranchID().String(),
@@ -832,6 +844,7 @@ func (j *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
 		RevisionEnd:    latestRevision,
 		BlockOpCount:   blockEntryCount,
 		UnflushedBytes: j.blockJournal.unflushedBytes,
+		LastFlushErr:   lastFlushErr,
 	}, nil
 }
 

@@ -2097,6 +2097,10 @@ func (fbo *folderBranchOps) waitForJournalLocked(ctx context.Context,
 		return fmt.Errorf("Couldn't flush all MD revisions; current "+
 			"revision end for the journal is %d", jStatus.RevisionEnd)
 	}
+	if jStatus.LastFlushErr != "" {
+		return fmt.Errorf("Couldn't flush the journal: %s",
+			jStatus.LastFlushErr)
+	}
 
 	return nil
 }
@@ -3382,7 +3386,7 @@ func (fbo *folderBranchOps) FolderStatus(
 			WrongOpsError{fbo.folderBranch, folderBranch}
 	}
 
-	return fbo.status.getStatus(ctx)
+	return fbo.status.getStatus(ctx, &fbo.blocks)
 }
 
 func (fbo *folderBranchOps) Status(

@@ -290,6 +290,9 @@ func (k *KeybaseServiceBase) Identify(ctx context.Context, assertion, reason str
 		UserAssertion: assertion,
 		UseDelegateUI: true,
 		Reason:        keybase1.IdentifyReason{Reason: reason},
+		// No need to go back and forth with the UI until the service
+		// knows for sure there's a need for a dialogue.
+		CanSuppressUI: true,
 	}
 
 	ei := getExtendedIdentify(ctx)
