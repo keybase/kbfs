@@ -16,7 +16,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-// roundTlfWriterEditsTimestamps is a helper function to truncate
+// truncateTlfWriterEditsTimestamps is a helper function to truncate
 // timestamps to second resolution. This is needed because some
 // methods of storing timestamps (e.g., relying on the filesystem) are
 // lossy.
