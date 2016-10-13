@@ -20,7 +20,7 @@ import (
 // timestamps to second resolution. This is needed because some
 // methods of storing timestamps (e.g., relying on the filesystem) are
 // lossy.
-func roundTlfWriterEditsTimestamps(edits TlfWriterEdits) TlfWriterEdits {
+func truncateTLFWriterEditsTimestamps(edits TlfWriterEdits) TlfWriterEdits {
 	roundedEdits := make(TlfWriterEdits)
 	for k, editList := range edits {
 		roundedEditList := make(TlfEditList, len(editList))
@@ -82,16 +82,19 @@ func TestBasicTlfEditHistory(t *testing.T) {
 		Type:      FileCreated,
 		LocalTime: now,
 	}}
-	expectedEdits = roundTlfWriterEditsTimestamps(expectedEdits)
 
 	edits1, err := kbfsOps1.GetEditHistory(ctx, rootNode1.GetFolderBranch())
 	require.NoError(t, err)
 	edits2, err := kbfsOps2.GetEditHistory(ctx, rootNode2.GetFolderBranch())
 	require.NoError(t, err)
 
-	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits1),
+	require.Equal(t,
+		truncateTLFWriterEditsTimestamps(expectedEdits),
+		truncateTLFWriterEditsTimestamps(edits1),
 		"User1 has unexpected edit history")
-	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits2),
+	require.Equal(t,
+		truncateTLFWriterEditsTimestamps(expectedEdits),
+		truncateTLFWriterEditsTimestamps(edits2),
 		"User2 has unexpected edit history")
 }
 
@@ -191,7 +194,6 @@ func TestLongTlfEditHistory(t *testing.T) {
 		testDoTlfEdit(t, ctx, name, kbfsOps2, rootNode2, i, uid2, now,
 			createRemainders, expectedEdits)
 	}
-	expectedEdits = roundTlfWriterEditsTimestamps(expectedEdits)
 
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
 	require.NoError(t, err)
@@ -203,9 +205,13 @@ func TestLongTlfEditHistory(t *testing.T) {
 	edits2, err := kbfsOps2.GetEditHistory(ctx, rootNode2.GetFolderBranch())
 	require.NoError(t, err)
 
-	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits1),
+	require.Equal(t,
+		truncateTLFWriterEditsTimestamps(expectedEdits),
+		truncateTLFWriterEditsTimestamps(edits1),
 		"User1 has unexpected edit history")
-	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits2),
+	require.Equal(t,
+		truncateTLFWriterEditsTimestamps(expectedEdits),
+		truncateTLFWriterEditsTimestamps(edits2),
 		"User2 has unexpected edit history")
 
 	now = now.Add(1 * time.Minute)
@@ -247,7 +253,6 @@ func TestLongTlfEditHistory(t *testing.T) {
 		Type:      FileCreated,
 		LocalTime: oldNow,
 	}}, expectedEdits[uid2]...)
-	expectedEdits = roundTlfWriterEditsTimestamps(expectedEdits)
 
 	err = kbfsOps1.RemoveEntry(ctx, rootNode1, rmFile1)
 	require.NoError(t, err)
@@ -275,8 +280,12 @@ func TestLongTlfEditHistory(t *testing.T) {
 	edits2, err = kbfsOps2.GetEditHistory(ctx, rootNode2.GetFolderBranch())
 	require.NoError(t, err)
 
-	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits1),
+	require.Equal(t,
+		truncateTLFWriterEditsTimestamps(expectedEdits),
+		truncateTLFWriterEditsTimestamps(edits1),
 		"User1 has unexpected edit history")
-	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits2),
+	require.Equal(t,
+		truncateTLFWriterEditsTimestamps(expectedEdits),
+		truncateTLFWriterEditsTimestamps(edits2),
 		"User2 has unexpected edit history")
 }
