@@ -250,16 +250,10 @@ def runNixTest(prefix) {
             sh 'go test -i'
             sh 'go test -race -c'
             sh './libkbfs.test -test.timeout 3m'
-        }
-    }
-    tests[prefix+'libkbfs (tempdir)'] = {
-        withEnv([
-            'KEYBASE_TEST_BSERVER_ADDR=tempdir',
-            'KEYBASE_TEST_MDSERVER_ADDR=tempdir',
-        ]) {
-            dir('libkbfs') {
-                sh 'go test -i'
-                sh 'go test -c'
+            withEnv([
+                'KEYBASE_TEST_BSERVER_ADDR=tempdir',
+                'KEYBASE_TEST_MDSERVER_ADDR=tempdir',
+            ]) {
                 sh './libkbfs.test -test.timeout 3m'
             }
         }
