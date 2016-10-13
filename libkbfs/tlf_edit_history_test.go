@@ -25,7 +25,7 @@ func roundTlfWriterEditsTimestamps(edits TlfWriterEdits) TlfWriterEdits {
 	for k, editList := range edits {
 		roundedEditList := make(TlfEditList, len(editList))
 		for i, edit := range editList {
-			edit.LocalTime = edit.LocalTime.Round(time.Second)
+			edit.LocalTime = edit.LocalTime.Round(5 * time.Second)
 			roundedEditList[i] = edit
 		}
 		roundedEdits[k] = roundedEditList
@@ -191,6 +191,7 @@ func TestLongTlfEditHistory(t *testing.T) {
 		testDoTlfEdit(t, ctx, name, kbfsOps2, rootNode2, i, uid2, now,
 			createRemainders, expectedEdits)
 	}
+	expectedEdits = roundTlfWriterEditsTimestamps(expectedEdits)
 
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
 	require.NoError(t, err)
@@ -202,8 +203,10 @@ func TestLongTlfEditHistory(t *testing.T) {
 	edits2, err := kbfsOps2.GetEditHistory(ctx, rootNode2.GetFolderBranch())
 	require.NoError(t, err)
 
-	require.Equal(t, expectedEdits, edits1, "User1 has unexpected edit history")
-	require.Equal(t, expectedEdits, edits2, "User2 has unexpected edit history")
+	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits1),
+		"User1 has unexpected edit history")
+	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits2),
+		"User2 has unexpected edit history")
 
 	now = now.Add(1 * time.Minute)
 	clock.Set(now)
@@ -244,6 +247,7 @@ func TestLongTlfEditHistory(t *testing.T) {
 		Type:      FileCreated,
 		LocalTime: oldNow,
 	}}, expectedEdits[uid2]...)
+	expectedEdits = roundTlfWriterEditsTimestamps(expectedEdits)
 
 	err = kbfsOps1.RemoveEntry(ctx, rootNode1, rmFile1)
 	require.NoError(t, err)
@@ -271,6 +275,8 @@ func TestLongTlfEditHistory(t *testing.T) {
 	edits2, err = kbfsOps2.GetEditHistory(ctx, rootNode2.GetFolderBranch())
 	require.NoError(t, err)
 
-	require.Equal(t, expectedEdits, edits1, "User1 has unexpected edit history")
-	require.Equal(t, expectedEdits, edits2, "User2 has unexpected edit history")
+	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits1),
+		"User1 has unexpected edit history")
+	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits2),
+		"User2 has unexpected edit history")
 }
