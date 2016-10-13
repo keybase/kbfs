@@ -252,6 +252,16 @@ def runNixTest(prefix) {
             sh './libkbfs.test -test.timeout 3m'
         }
     }
+    tests[prefix+'libkbfs (tempdir)'] = {
+        withEnv([
+            'KEYBASE_TEST_BSERVER_ADDR=tempdir',
+            'KEYBASE_TEST_MDSERVER_ADDR=tempdir',
+        ]) {
+            dir('libkbfs') {
+                sh './libkbfs.test -test.timeout 3m'
+            }
+        }
+    }
     tests[prefix+'libfuse'] = {
         withEnv([
             'KEYBASE_TEST_BSERVER_ADDR=tempdir',
