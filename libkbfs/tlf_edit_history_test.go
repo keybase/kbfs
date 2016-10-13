@@ -16,8 +16,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-// roundTlfWriterEditsTimestamps is a helper function to round
-// timestamps to the nearest second. This is needed because some
+// roundTlfWriterEditsTimestamps is a helper function to truncate
+// timestamps to second resolution. This is needed because some
 // methods of storing timestamps (e.g., relying on the filesystem) are
 // lossy.
 func roundTlfWriterEditsTimestamps(edits TlfWriterEdits) TlfWriterEdits {
@@ -25,7 +25,7 @@ func roundTlfWriterEditsTimestamps(edits TlfWriterEdits) TlfWriterEdits {
 	for k, editList := range edits {
 		roundedEditList := make(TlfEditList, len(editList))
 		for i, edit := range editList {
-			edit.LocalTime = edit.LocalTime.Round(5 * time.Second)
+			edit.LocalTime = edit.LocalTime.Truncate(time.Second)
 			roundedEditList[i] = edit
 		}
 		roundedEdits[k] = roundedEditList
