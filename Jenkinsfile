@@ -258,6 +258,8 @@ def runNixTest(prefix) {
             'KEYBASE_TEST_MDSERVER_ADDR=tempdir',
         ]) {
             dir('libkbfs') {
+                sh 'go test -i'
+                sh 'go test -c'
                 sh './libkbfs.test -test.timeout 3m'
             }
         }
