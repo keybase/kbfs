@@ -16,6 +16,23 @@ import (
 	"golang.org/x/net/context"
 )
 
+// roundTlfWriterEditsTimestamps is a helper function to round
+// timestamps to the nearest second. This is needed because some
+// methods of storing timestamps (e.g., relying on the filesystem) are
+// lossy.
+func roundTlfWriterEditsTimestamps(edits TlfWriterEdits) TlfWriterEdits {
+	roundedEdits := make(TlfWriterEdits)
+	for k, editList := range edits {
+		roundedEditList := make(TlfEditList, len(editList))
+		for i, edit := range editList {
+			edit.LocalTime = edit.LocalTime.Round(time.Second)
+			roundedEditList[i] = edit
+		}
+		roundedEdits[k] = roundedEditList
+	}
+	return roundedEdits
+}
+
 func TestBasicTlfEditHistory(t *testing.T) {
 	var userName1, userName2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, userName1, userName2)
@@ -65,14 +82,17 @@ func TestBasicTlfEditHistory(t *testing.T) {
 		Type:      FileCreated,
 		LocalTime: now,
 	}}
+	expectedEdits = roundTlfWriterEditsTimestamps(expectedEdits)
 
 	edits1, err := kbfsOps1.GetEditHistory(ctx, rootNode1.GetFolderBranch())
 	require.NoError(t, err)
 	edits2, err := kbfsOps2.GetEditHistory(ctx, rootNode2.GetFolderBranch())
 	require.NoError(t, err)
 
-	require.Equal(t, expectedEdits, edits1, "User1 has unexpected edit history")
-	require.Equal(t, expectedEdits, edits2, "User2 has unexpected edit history")
+	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits1),
+		"User1 has unexpected edit history")
+	require.Equal(t, expectedEdits, roundTlfWriterEditsTimestamps(edits2),
+		"User2 has unexpected edit history")
 }
 
 func testDoTlfEdit(t *testing.T, ctx context.Context, tlfName string,
