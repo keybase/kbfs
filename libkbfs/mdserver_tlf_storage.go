@@ -114,14 +114,11 @@ func (s *mdServerTlfStorage) mdPath(id MdID) string {
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
 }
 
-func (s *mdServerTlfStorage) mdInfoPath(id MdID) string {
-	return s.mdPath(id) + ".info"
-}
-
-// mdInfo is the structure stored in mdInfoPath(id).
-type mdInfo struct {
-	Version   MetadataVer `codec:"v"`
-	Timestamp time.Time   `codec:"t"`
+// serializedRMDS is the structure stored in mdPath(id).
+type serializedRMDS struct {
+	EncodedRMDS []byte
+	Timestamp   time.Time
+	Version     MetadataVer
 }
 
 // getMDReadLocked verifies the MD data (but not the signature) for
@@ -130,28 +127,24 @@ type mdInfo struct {
 // TODO: Verify signature?
 func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 	*RootMetadataSigned, error) {
-	// Read info.
+	// Read file.
 
-	var info mdInfo
-	err := deserializeFromFile(s.codec, s.mdInfoPath(id), &info)
+	var srmds serializedRMDS
+	err := deserializeFromFile(s.codec, s.mdPath(id), &srmds)
 	if err != nil {
 		return nil, err
 	}
 
 	// Read file.
 
-	encodedMd, err := ioutil.ReadFile(s.mdPath(id))
-	if err != nil {
-		return nil, err
-	}
-
 	rmds, err := DecodeRootMetadataSigned(
-		s.codec, s.tlfID, info.Version, s.metadataVersion, encodedMd)
+		s.codec, s.tlfID, srmds.Version, s.metadataVersion,
+		srmds.EncodedRMDS)
 	if err != nil {
 		return nil, err
 	}
 
-	rmds.untrustedServerTimestamp = info.Timestamp
+	rmds.untrustedServerTimestamp = srmds.Timestamp
 
 	// Check integrity.
 
@@ -204,7 +197,8 @@ func deserializeFromFile(
 	return nil
 }
 
-func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) (MdID, error) {
+func (s *mdServerTlfStorage) putMDLocked(
+	rmds *RootMetadataSigned) (MdID, error) {
 	id, err := s.crypto.MakeMdID(rmds.MD)
 	if err != nil {
 		return MdID{}, err
@@ -220,17 +214,18 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) (MdID, error)
 		return id, nil
 	}
 
-	err = serializeToFile(s.codec, rmds, s.mdPath(id))
+	encodedRMDS, err := s.codec.Encode(rmds)
 	if err != nil {
 		return MdID{}, err
 	}
 
-	info := mdInfo{
-		Timestamp: s.clock.Now(),
-		Version:   rmds.MD.Version(),
+	srmds := serializedRMDS{
+		EncodedRMDS: encodedRMDS,
+		Timestamp:   s.clock.Now(),
+		Version:     rmds.MD.Version(),
 	}
 
-	err = serializeToFile(s.codec, info, s.mdInfoPath(id))
+	err = serializeToFile(s.codec, srmds, s.mdPath(id))
 	if err != nil {
 		return MdID{}, err
 	}
