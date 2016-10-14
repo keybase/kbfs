@@ -11,10 +11,12 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/keybase/kbfs/kbfshash"
 )
 
 // mdServerTlfStorage stores an ordered list of metadata IDs for each
@@ -60,10 +62,12 @@ import (
 // separately in dir/wkbv3 (dir/rkbv3). The number of bundles is
 // small, so no need to splay them.
 type mdServerTlfStorage struct {
-	codec  kbfscodec.Codec
-	crypto cryptoPure
-	clock  Clock
-	dir    string
+	codec           kbfscodec.Codec
+	crypto          cryptoPure
+	clock           Clock
+	tlfID           TlfID
+	metadataVersion MetadataVer
+	dir             string
 
 	// Protects any IO operations in dir or any of its children,
 	// as well as branchJournals and its contents.
@@ -72,13 +76,16 @@ type mdServerTlfStorage struct {
 }
 
 func makeMDServerTlfStorage(codec kbfscodec.Codec,
-	crypto cryptoPure, clock Clock, dir string) *mdServerTlfStorage {
+	crypto cryptoPure, clock Clock, tlfID TlfID,
+	metadataVersion MetadataVer, dir string) *mdServerTlfStorage {
 	journal := &mdServerTlfStorage{
-		codec:          codec,
-		crypto:         crypto,
-		clock:          clock,
-		dir:            dir,
-		branchJournals: make(map[BranchID]mdIDJournal),
+		codec:           codec,
+		crypto:          crypto,
+		clock:           clock,
+		tlfID:           tlfID,
+		metadataVersion: metadataVersion,
+		dir:             dir,
+		branchJournals:  make(map[BranchID]mdIDJournal),
 	}
 	return journal
 }
@@ -108,46 +115,62 @@ func (s *mdServerTlfStorage) mdPath(id MdID) string {
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
 }
 
+func (s *mdServerTlfStorage) mdInfoPath(id MdID) string {
+	return s.mdPath(id) + ".info"
+}
+
+// mdInfo is the structure stored in mdInfoPath(id).
+type mdInfo struct {
+	Version   MetadataVer `codec:"v"`
+	Timestamp time.Time   `codec:"t"`
+}
+
 // getMDReadLocked verifies the MD data (but not the signature) for
 // the given ID and returns it.
 //
 // TODO: Verify signature?
 func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 	*RootMetadataSigned, error) {
-	path := s.mdPath(id)
+	// Read info.
+
+	var info mdInfo
+	err := deserializeFromFile(s.codec, s.mdInfoPath(id), &info)
+	if err != nil {
+		return nil, err
+	}
 
 	// Read file.
 
-	rmds := RootMetadataSigned{MD: &BareRootMetadataV2{}}
-	err := deserializeFromFile(s.codec, path, &rmds)
+	var encodedMd []byte
+	err = deserializeFromFile(s.codec, s.mdPath(id), &encodedMd)
 	if err != nil {
 		return nil, err
 	}
 
 	// Check integrity.
-
-	mdID, err := s.crypto.MakeMdID(rmds.MD)
+	h, err := kbfshash.DefaultHash(encodedMd)
 	if err != nil {
 		return nil, err
 	}
 
-	if id != mdID {
+	if id != (MdID{h}) {
 		return nil, fmt.Errorf(
-			"Metadata ID mismatch: expected %s, got %s", id, mdID)
+			"Metadata ID mismatch: expected %s, got %s",
+			id, MdID{h})
 	}
 
-	fileInfo, err := os.Stat(path)
+	rmds, err := DecodeRootMetadataSigned(
+		s.codec, s.tlfID, info.Version, s.metadataVersion, encodedMd)
 	if err != nil {
 		return nil, err
 	}
 
-	rmds.untrustedServerTimestamp = fileInfo.ModTime()
-
-	return &rmds, nil
+	rmds.untrustedServerTimestamp = info.Timestamp
+	return rmds, nil
 }
 
-func serializeToFile(codec kbfscodec.Codec, clock Clock,
-	obj interface{}, path string) error {
+func serializeToFile(
+	codec kbfscodec.Codec, obj interface{}, path string) error {
 	err := os.MkdirAll(filepath.Dir(path), 0700)
 	if err != nil {
 		return err
@@ -159,12 +182,6 @@ func serializeToFile(codec kbfscodec.Codec, clock Clock,
 	}
 
 	err = ioutil.WriteFile(path, buf, 0600)
-	if err != nil {
-		return err
-	}
-
-	now := clock.Now()
-	err = os.Chtimes(path, now, now)
 	if err != nil {
 		return err
 	}
@@ -203,7 +220,17 @@ func (s *mdServerTlfStorage) putMDLocked(rmds *RootMetadataSigned) (MdID, error)
 		return id, nil
 	}
 
-	err = serializeToFile(s.codec, s.clock, rmds, s.mdPath(id))
+	err = serializeToFile(s.codec, rmds, s.mdPath(id))
+	if err != nil {
+		return MdID{}, err
+	}
+
+	info := mdInfo{
+		Timestamp: s.clock.Now(),
+		Version:   rmds.MD.Version(),
+	}
+
+	err = serializeToFile(s.codec, info, s.mdInfoPath(id))
 	if err != nil {
 		return MdID{}, err
 	}
@@ -365,13 +392,13 @@ func (s *mdServerTlfStorage) setExtraMetadataLocked(
 	}
 
 	err := serializeToFile(
-		s.codec, s.clock, extraV3.wkb, s.writerKeyBundleV3Path(wkbID))
+		s.codec, extraV3.wkb, s.writerKeyBundleV3Path(wkbID))
 	if err != nil {
 		return err
 	}
 
 	err = serializeToFile(
-		s.codec, s.clock, extraV3.rkb, s.readerKeyBundleV3Path(rkbID))
+		s.codec, extraV3.rkb, s.readerKeyBundleV3Path(rkbID))
 	if err != nil {
 		return err
 	}
