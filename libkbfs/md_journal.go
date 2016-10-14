@@ -929,6 +929,11 @@ func (j *mdJournal) put(
 	}()
 
 	if extra == nil {
+		// TODO: This could fail if the key bundle isn't part
+		// of the journal. Always mandate that the extra field
+		// be plumbed through with a RootMetadata, and keep
+		// around a flag as to whether it should be sent up to
+		// the remote MDServer.
 		var err error
 		extra, err = j.getExtraMetadata(
 			rmd.bareMd.GetTLFWriterKeyBundleID(),
