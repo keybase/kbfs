@@ -246,8 +246,13 @@ func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 		return nil, time.Time{}, err
 	}
 
-	// MDv3 TODO: pass key bundles when needed
-	err = rmd.IsValidAndSigned(j.codec, j.crypto, nil)
+	extra, err := j.getExtraMetadata(
+		rmd.GetTLFWriterKeyBundleID(), rmd.GetTLFReaderKeyBundleID())
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
+	err = rmd.IsValidAndSigned(j.codec, j.crypto, extra)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
