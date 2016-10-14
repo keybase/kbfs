@@ -360,7 +360,39 @@ func (s *mdServerTlfStorage) getKeyBundlesReadLocked(
 		return nil, nil, err
 	}
 
+	err = checkKeyBundlesV3(s.crypto, wkbID, rkbID, &wkb, &rkb)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return &wkb, &rkb, nil
+}
+
+func checkKeyBundlesV3(
+	crypto cryptoPure,
+	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID,
+	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3) error {
+	computedWKBID, err := crypto.MakeTLFWriterKeyBundleID(wkb)
+	if err != nil {
+		return err
+	}
+
+	if wkbID != computedWKBID {
+		return fmt.Errorf("Expected WKB ID %s, got %s",
+			wkbID, computedWKBID)
+	}
+
+	computedRKBID, err := crypto.MakeTLFReaderKeyBundleID(rkb)
+	if err != nil {
+		return err
+	}
+
+	if rkbID != computedRKBID {
+		return fmt.Errorf("Expected RKB ID %s, got %s",
+			rkbID, computedRKBID)
+	}
+
+	return nil
 }
 
 func (s *mdServerTlfStorage) setExtraMetadataLocked(
@@ -384,7 +416,13 @@ func (s *mdServerTlfStorage) setExtraMetadataLocked(
 		return errors.New("Invalid extra metadata")
 	}
 
-	err := serializeToFile(
+	err := checkKeyBundlesV3(
+		s.crypto, wkbID, rkbID, extraV3.wkb, extraV3.rkb)
+	if err != nil {
+		return err
+	}
+
+	err = serializeToFile(
 		s.codec, extraV3.wkb, s.writerKeyBundleV3Path(wkbID))
 	if err != nil {
 		return err
