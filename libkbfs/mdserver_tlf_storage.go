@@ -16,7 +16,6 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
-	"github.com/keybase/kbfs/kbfshash"
 )
 
 // mdServerTlfStorage stores an ordered list of metadata IDs for each
@@ -141,22 +140,9 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 
 	// Read file.
 
-	var encodedMd []byte
-	err = deserializeFromFile(s.codec, s.mdPath(id), &encodedMd)
+	encodedMd, err := ioutil.ReadFile(s.mdPath(id))
 	if err != nil {
 		return nil, err
-	}
-
-	// Check integrity.
-	h, err := kbfshash.DefaultHash(encodedMd)
-	if err != nil {
-		return nil, err
-	}
-
-	if id != (MdID{h}) {
-		return nil, fmt.Errorf(
-			"Metadata ID mismatch: expected %s, got %s",
-			id, MdID{h})
 	}
 
 	rmds, err := DecodeRootMetadataSigned(
@@ -166,6 +152,20 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 	}
 
 	rmds.untrustedServerTimestamp = info.Timestamp
+
+	// Check integrity.
+
+	mdID, err := s.crypto.MakeMdID(rmds.MD)
+	if err != nil {
+		return nil, err
+	}
+
+	if id != mdID {
+		return nil, fmt.Errorf(
+			"Metadata ID mismatch: expected %s, got %s",
+			id, mdID)
+	}
+
 	return rmds, nil
 }
 
