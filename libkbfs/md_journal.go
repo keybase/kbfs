@@ -96,6 +96,8 @@ func MakeImmutableBareRootMetadata(
 // separately in dir/wkbv3 (dir/rkbv3). The number of bundles is
 // small, so no need to splay them.
 //
+// TODO: Garbage-collect unreferenced key bundles.
+//
 // The maximum number of characters added to the root dir by an MD
 // journal is 50:
 //
