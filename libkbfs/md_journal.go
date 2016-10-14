@@ -759,6 +759,11 @@ func (j mdJournal) getExtraMetadata(
 		return nil, err
 	}
 
+	err = checkKeyBundlesV3(j.crypto, wkbID, rkbID, &wkb, &rkb)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ExtraMetadataV3{wkb: &wkb, rkb: &rkb}, nil
 }
 
@@ -783,7 +788,13 @@ func (j mdJournal) setExtraMetadata(
 		return errors.New("Invalid extra metadata")
 	}
 
-	err := serializeToFile(
+	err := checkKeyBundlesV3(
+		j.crypto, wkbID, rkbID, extraV3.wkb, extraV3.rkb)
+	if err != nil {
+		return err
+	}
+
+	err = serializeToFile(
 		j.codec, extraV3.wkb, j.writerKeyBundleV3Path(wkbID))
 	if err != nil {
 		return err
