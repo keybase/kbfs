@@ -85,6 +85,10 @@ func (c testTLFJournalConfig) BlockSplitter() BlockSplitter {
 	return c.splitter
 }
 
+func (c testTLFJournalConfig) Clock() Clock {
+	return wallClock{}
+}
+
 func (c testTLFJournalConfig) Codec() kbfscodec.Codec {
 	return c.codec
 }
@@ -103,6 +107,10 @@ func (c testTLFJournalConfig) BlockOps() BlockOps {
 
 func (c testTLFJournalConfig) MDCache() MDCache {
 	return c.mdcache
+}
+
+func (c testTLFJournalConfig) MetadataVersion() MetadataVer {
+	return SegregatedKeyBundlesVer
 }
 
 func (c testTLFJournalConfig) Reporter() Reporter {

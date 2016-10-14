@@ -103,9 +103,12 @@ type mdJournal struct {
 	uid keybase1.UID
 	key kbfscrypto.VerifyingKey
 
-	codec  kbfscodec.Codec
-	crypto cryptoPure
-	dir    string
+	codec           kbfscodec.Codec
+	crypto          cryptoPure
+	clock           Clock
+	tlfID           TlfID
+	metadataVersion MetadataVer
+	dir             string
 
 	log      logger.Logger
 	deferLog logger.Logger
@@ -125,7 +128,9 @@ type mdJournal struct {
 
 func makeMDJournal(
 	uid keybase1.UID, key kbfscrypto.VerifyingKey, codec kbfscodec.Codec,
-	crypto cryptoPure, dir string, log logger.Logger) (*mdJournal, error) {
+	crypto cryptoPure, clock Clock, tlfID TlfID,
+	metadataVersion MetadataVer, dir string,
+	log logger.Logger) (*mdJournal, error) {
 	if uid == keybase1.UID("") {
 		return nil, errors.New("Empty user")
 	}
@@ -137,14 +142,17 @@ func makeMDJournal(
 
 	deferLog := log.CloneWithAddedDepth(1)
 	journal := mdJournal{
-		uid:      uid,
-		key:      key,
-		codec:    codec,
-		crypto:   crypto,
-		dir:      dir,
-		log:      log,
-		deferLog: deferLog,
-		j:        makeMdIDJournal(codec, journalDir),
+		uid:             uid,
+		key:             key,
+		codec:           codec,
+		crypto:          crypto,
+		clock:           clock,
+		tlfID:           tlfID,
+		metadataVersion: metadataVersion,
+		dir:             dir,
+		log:             log,
+		deferLog:        deferLog,
+		j:               makeMdIDJournal(codec, journalDir),
 	}
 
 	earliest, err := journal.getEarliest(false)

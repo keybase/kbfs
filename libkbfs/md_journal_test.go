@@ -44,19 +44,21 @@ func getMDJournalLength(t *testing.T, j *mdJournal) int {
 }
 
 func setupMDJournalTest(t *testing.T) (
-	codec kbfscodec.Codec, crypto CryptoCommon, id TlfID,
+	codec kbfscodec.Codec, crypto CryptoCommon, tlfID TlfID,
 	signer cryptoSigner, ekg singleEncryptionKeyGetter,
 	bsplit BlockSplitter, tempdir string, j *mdJournal) {
 	codec = kbfscodec.NewMsgpack()
 	crypto = MakeCryptoCommon(codec)
 
 	uid := keybase1.MakeTestUID(1)
-	id = FakeTlfID(1, false)
+	tlfID = FakeTlfID(1, false)
 
 	signingKey := MakeFakeSigningKeyOrBust("fake seed")
 	signer = kbfscrypto.SigningKeySigner{Key: signingKey}
 	verifyingKey := signingKey.GetVerifyingKey()
-	ekg = singleEncryptionKeyGetter{kbfscrypto.MakeTLFCryptKey([32]byte{0x1})}
+	ekg = singleEncryptionKeyGetter{
+		kbfscrypto.MakeTLFCryptKey([32]byte{0x1}),
+	}
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "md_journal")
 	require.NoError(t, err)
@@ -71,12 +73,13 @@ func setupMDJournalTest(t *testing.T) (
 	}()
 
 	log := logger.NewTestLogger(t)
-	j, err = makeMDJournal(uid, verifyingKey, codec, crypto, tempdir, log)
+	j, err = makeMDJournal(uid, verifyingKey, codec, crypto, wallClock{},
+		tlfID, SegregatedKeyBundlesVer, tempdir, log)
 	require.NoError(t, err)
 
 	bsplit = &BlockSplitterSimple{64 * 1024, 8 * 1024}
 
-	return codec, crypto, id, signer, ekg, bsplit, tempdir, j
+	return codec, crypto, tlfID, signer, ekg, bsplit, tempdir, j
 }
 
 func teardownMDJournalTest(t *testing.T, tempdir string) {
@@ -704,7 +707,8 @@ func TestMDJournalRestart(t *testing.T) {
 		firstRevision, firstPrevRoot, mdCount, j)
 
 	// Restart journal.
-	j, err := makeMDJournal(j.uid, j.key, codec, crypto, j.dir, j.log)
+	j, err := makeMDJournal(j.uid, j.key, codec, crypto, j.clock,
+		j.tlfID, j.metadataVersion, j.dir, j.log)
 	require.NoError(t, err)
 
 	require.Equal(t, mdCount, getMDJournalLength(t, j))
@@ -743,7 +747,8 @@ func TestMDJournalRestartAfterBranchConversion(t *testing.T) {
 
 	// Restart journal.
 
-	j, err = makeMDJournal(j.uid, j.key, codec, crypto, j.dir, j.log)
+	j, err = makeMDJournal(j.uid, j.key, codec, crypto, j.clock,
+		j.tlfID, j.metadataVersion, j.dir, j.log)
 	require.NoError(t, err)
 
 	require.Equal(t, mdCount, getMDJournalLength(t, j))

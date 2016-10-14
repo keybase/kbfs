@@ -27,11 +27,13 @@ import (
 // tlfJournal (for ease of testing).
 type tlfJournalConfig interface {
 	BlockSplitter() BlockSplitter
+	Clock() Clock
 	Codec() kbfscodec.Codec
 	Crypto() Crypto
 	BlockCache() BlockCache
 	BlockOps() BlockOps
 	MDCache() MDCache
+	MetadataVersion() MetadataVer
 	Reporter() Reporter
 	encryptionKeyGetter() encryptionKeyGetter
 	mdDecryptionKeyGetter() mdDecryptionKeyGetter
@@ -290,7 +292,8 @@ func makeTLFJournal(
 	}
 
 	mdJournal, err := makeMDJournal(
-		uid, key, config.Codec(), config.Crypto(), dir, log)
+		uid, key, config.Codec(), config.Crypto(), config.Clock(),
+		tlfID, config.MetadataVersion(), dir, log)
 	if err != nil {
 		return nil, err
 	}
