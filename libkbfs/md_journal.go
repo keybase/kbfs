@@ -353,8 +353,6 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 		return MdID{}, err
 	}
 
-	// TODO: Write version info.
-
 	err = ioutil.WriteFile(j.mdDataPath(id), buf, 0600)
 	if err != nil {
 		return MdID{}, err
