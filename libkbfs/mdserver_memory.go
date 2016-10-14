@@ -735,7 +735,10 @@ func (md *MDServerMemory) OffsetFromServerTime() (time.Duration, bool) {
 func (md *MDServerMemory) getExtraMetadata(
 	tlfID TlfID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	ExtraMetadata, error) {
-	wkb, rkb := md.getKeyBundles(tlfID, wkbID, rkbID)
+	wkb, rkb, err := md.getKeyBundles(tlfID, wkbID, rkbID)
+	if err != nil {
+		return nil, err
+	}
 	if wkb == nil || rkb == nil {
 		return nil, nil
 	}
@@ -763,6 +766,13 @@ func (md *MDServerMemory) setExtraMetadataLocked(rmds *RootMetadataSigned,
 	if !ok {
 		return errors.New("Invalid extra metadata")
 	}
+
+	err := checkKeyBundlesV3(md.config.cryptoPure(),
+		wkbID, rkbID, extraV3.wkb, extraV3.rkb)
+	if err != nil {
+		return err
+	}
+
 	md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}] = extraV3.wkb
 	md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}] = extraV3.rkb
 	return nil
@@ -770,23 +780,28 @@ func (md *MDServerMemory) setExtraMetadataLocked(rmds *RootMetadataSigned,
 
 func (md *MDServerMemory) getKeyBundles(
 	tlfID TlfID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
-	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3) {
+	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	if wkbID == (TLFWriterKeyBundleID{}) ||
 		rkbID == (TLFReaderKeyBundleID{}) {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	md.lock.Lock()
 	defer md.lock.Unlock()
 	wkb := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
 	rkb := md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
-	return wkb, rkb
+
+	err := checkKeyBundlesV3(md.config.cryptoPure(), wkbID, rkbID, wkb, rkb)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return wkb, rkb, nil
 }
 
 // GetKeyBundles implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetKeyBundles(_ context.Context,
 	tlfID TlfID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	wkb, rkb := md.getKeyBundles(tlfID, wkbID, rkbID)
-	return wkb, rkb, nil
+	return md.getKeyBundles(tlfID, wkbID, rkbID)
 }
