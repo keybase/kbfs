@@ -274,13 +274,7 @@ func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 // putMD stores the given metadata under its ID, if it's not already
 // stored.
 func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
-	// MDv3 TODO: pass key bundles when needed
-	err := rmd.IsValidAndSigned(j.codec, j.crypto, nil)
-	if err != nil {
-		return MdID{}, err
-	}
-
-	err = rmd.IsLastModifiedBy(j.uid, j.key)
+	err := rmd.IsLastModifiedBy(j.uid, j.key)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -842,7 +836,8 @@ func (e MDJournalConflictError) Error() string {
 // rmd becomes the initial entry.
 func (j *mdJournal) put(
 	ctx context.Context, signer cryptoSigner,
-	ekg encryptionKeyGetter, bsplit BlockSplitter, rmd *RootMetadata) (
+	ekg encryptionKeyGetter, bsplit BlockSplitter, rmd *RootMetadata,
+	extra ExtraMetadata) (
 	mdID MdID, err error) {
 	j.log.CDebugf(ctx, "Putting MD for TLF=%s with rev=%s bid=%s",
 		rmd.TlfID(), rmd.Revision(), rmd.BID())
@@ -853,6 +848,16 @@ func (j *mdJournal) put(
 				rmd.TlfID(), rmd.Revision(), rmd.BID(), err)
 		}
 	}()
+
+	if extra == nil {
+		var err error
+		extra, err = j.getExtraMetadata(
+			rmd.bareMd.GetTLFWriterKeyBundleID(),
+			rmd.bareMd.GetTLFReaderKeyBundleID())
+		if err != nil {
+			return MdID{}, err
+		}
+	}
 
 	head, err := j.getLatest(true)
 	if err != nil {
@@ -933,7 +938,7 @@ func (j *mdJournal) put(
 		ok, err := isWriterOrValidRekey(
 			j.codec, j.uid,
 			head.BareRootMetadata, rmd.bareMd,
-			prevExtra, rmd.extra)
+			prevExtra, extra)
 		if err != nil {
 			return MdID{}, err
 		}
@@ -965,12 +970,17 @@ func (j *mdJournal) put(
 		return MdID{}, err
 	}
 
+	err = brmd.IsValidAndSigned(j.codec, j.crypto, extra)
+	if err != nil {
+		return MdID{}, err
+	}
+
 	id, err := j.putMD(brmd)
 	if err != nil {
 		return MdID{}, err
 	}
 
-	err = j.setExtraMetadata(brmd, rmd.extra)
+	err = j.setExtraMetadata(brmd, extra)
 	if err != nil {
 		return MdID{}, err
 	}

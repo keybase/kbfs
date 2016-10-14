@@ -1283,7 +1283,8 @@ func (j *tlfJournal) getMDRange(
 }
 
 func (j *tlfJournal) doPutMD(ctx context.Context, rmd *RootMetadata,
-	irmd ImmutableRootMetadata, perRevMap unflushedPathsPerRevMap) (
+	extra ExtraMetadata, irmd ImmutableRootMetadata,
+	perRevMap unflushedPathsPerRevMap) (
 	mdID MdID, retryPut bool, err error) {
 	// Now take the lock and put the MD, merging in the unflushed
 	// paths while under the lock.
@@ -1299,8 +1300,9 @@ func (j *tlfJournal) doPutMD(ctx context.Context, rmd *RootMetadata,
 	// TODO: remove the revision from the cache on any errors below?
 	// Tricky when the append is only queued.
 
-	mdID, err = j.mdJournal.put(ctx, j.config.Crypto(),
-		j.config.encryptionKeyGetter(), j.config.BlockSplitter(), rmd)
+	mdID, err := j.mdJournal.put(ctx, j.config.Crypto(),
+		j.config.encryptionKeyGetter(), j.config.BlockSplitter(),
+		rmd, extra)
 	if err != nil {
 		return MdID{}, false, err
 	}
@@ -1330,7 +1332,7 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 		return MdID{}, err
 	}
 
-	mdID, retry, err := j.doPutMD(ctx, rmd, irmd, perRevMap)
+	mdID, retry, err := j.doPutMD(ctx, irmd, perRevMap)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1344,7 +1346,7 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 			return MdID{}, err
 		}
 
-		mdID, retry, err = j.doPutMD(ctx, rmd, irmd, perRevMap)
+		mdID, retry, err = j.doPutMD(ctx, irmd, perRevMap)
 		if err != nil {
 			return MdID{}, err
 		}
