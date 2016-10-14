@@ -98,8 +98,8 @@ func (s *mdServerTlfStorage) mdPath(id MdID) string {
 	return filepath.Join(s.mdsPath(), idStr[:4], idStr[4:])
 }
 
-// getDataLocked verifies the MD data (but not the signature) for the
-// given ID and returns it.
+// getMDReadLocked verifies the MD data (but not the signature) for
+// the given ID and returns it.
 //
 // TODO: Verify signature?
 func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
