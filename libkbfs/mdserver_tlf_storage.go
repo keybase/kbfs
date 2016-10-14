@@ -36,6 +36,12 @@ import (
 // dir/mds/0100/0...01
 // ...
 // dir/mds/01ff/f...ff
+// dir/wkbv3/0100...01
+// ...
+// dir/wkbv3/0100...ff
+// dir/rkbv3/0100...01
+// ...
+// dir/rkbv3/0100...ff
 //
 // Each branch has its own subdirectory with a journal; the journal
 // ordinals are just MetadataRevisions, and the journal entries are
@@ -49,6 +55,10 @@ import (
 // plus the first byte of the hash data -- using the first four
 // characters of the name to keep the number of directories in dir
 // itself to a manageable number, similar to git.
+//
+// Writer (reader) key bundles for V3 metadata objects are stored
+// separately in dir/wkbv3 (dir/rkbv3). The number of bundles is
+// small, so no need to splay them.
 type mdServerTlfStorage struct {
 	codec  kbfscodec.Codec
 	crypto cryptoPure
