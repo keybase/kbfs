@@ -369,7 +369,7 @@ func (j mdJournal) checkGetParams() (
 	}
 
 	if head != (ImmutableBareRootMetadata{}) {
-		extra, err := j.getExtraMD(
+		extra, err := j.getExtraMetadata(
 			head.GetTLFWriterKeyBundleID(),
 			head.GetTLFReaderKeyBundleID())
 		if err != nil {
@@ -662,6 +662,16 @@ func getMdID(ctx context.Context, mdserver MDServer, crypto cryptoPure,
 	return crypto.MakeMdID(rmdses[0].MD)
 }
 
+func (j mdJournal) getExtraMetadata(
+	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	ExtraMetadata, error) {
+	// MDv3 TODO: implement this
+	if (wkbID != TLFWriterKeyBundleID{}) || (rkbID != TLFReaderKeyBundleID{}) {
+		panic("Bundle IDs are unexpectedly set")
+	}
+	return nil, nil
+}
+
 // All functions below are public functions.
 
 func (j mdJournal) readEarliestRevision() (MetadataRevision, error) {
@@ -853,7 +863,7 @@ func (j *mdJournal) put(
 
 	// Check permissions and consistency with head, if it exists.
 	if head != (ImmutableBareRootMetadata{}) {
-		prevExtra, err := j.getExtraMD(
+		prevExtra, err := j.getExtraMetadata(
 			head.GetTLFWriterKeyBundleID(),
 			head.GetTLFReaderKeyBundleID())
 		ok, err := isWriterOrValidRekey(
@@ -997,13 +1007,4 @@ func (j *mdJournal) clear(
 		}
 	}
 	return nil
-}
-
-func (j mdJournal) getExtraMD(wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
-	ExtraMetadata, error) {
-	// MDv3 TODO: implement this
-	if (wkbID != TLFWriterKeyBundleID{}) || (rkbID != TLFReaderKeyBundleID{}) {
-		panic("Bundle IDs are unexpectedly set")
-	}
-	return nil, nil
 }
