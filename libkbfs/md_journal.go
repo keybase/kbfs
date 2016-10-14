@@ -182,6 +182,14 @@ func (j mdJournal) mdsPath() string {
 	return filepath.Join(j.dir, "mds")
 }
 
+func (j mdJournal) writerKeyBundleV3Path(id TLFWriterKeyBundleID) string {
+	return filepath.Join(j.dir, "wkbv3", id.String())
+}
+
+func (j mdJournal) readerKeyBundleV3Path(id TLFReaderKeyBundleID) string {
+	return filepath.Join(j.dir, "rkbv3", id.String())
+}
+
 func (j mdJournal) mdPath(id MdID) string {
 	// Truncate to 34 characters, which corresponds to 16 random
 	// bytes (since the first byte is a hash type) or 128 random
@@ -665,11 +673,62 @@ func getMdID(ctx context.Context, mdserver MDServer, crypto cryptoPure,
 func (j mdJournal) getExtraMetadata(
 	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	ExtraMetadata, error) {
-	// MDv3 TODO: implement this
-	if (wkbID != TLFWriterKeyBundleID{}) || (rkbID != TLFReaderKeyBundleID{}) {
-		panic("Bundle IDs are unexpectedly set")
+	if wkbID == (TLFWriterKeyBundleID{}) ||
+		rkbID == (TLFReaderKeyBundleID{}) {
+		return nil, nil
 	}
-	return nil, nil
+
+	var wkb TLFWriterKeyBundleV3
+	err := deserializeFromFile(
+		j.codec, j.writerKeyBundleV3Path(wkbID), &wkb)
+	if err != nil {
+		return nil, err
+	}
+
+	var rkb TLFReaderKeyBundleV3
+	err = deserializeFromFile(
+		j.codec, j.readerKeyBundleV3Path(rkbID), &rkb)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ExtraMetadataV3{wkb: &wkb, rkb: &rkb}, nil
+}
+
+func (j mdJournal) setExtraMetadata(
+	rmd BareRootMetadata, extra ExtraMetadata) error {
+	if extra == nil {
+		return nil
+	}
+
+	wkbID := rmd.GetTLFWriterKeyBundleID()
+	if wkbID == (TLFWriterKeyBundleID{}) {
+		panic("writer key bundle ID is empty")
+	}
+
+	rkbID := rmd.GetTLFReaderKeyBundleID()
+	if rkbID == (TLFReaderKeyBundleID{}) {
+		panic("reader key bundle ID is empty")
+	}
+
+	extraV3, ok := extra.(*ExtraMetadataV3)
+	if !ok {
+		return errors.New("Invalid extra metadata")
+	}
+
+	err := serializeToFile(
+		j.codec, extraV3.wkb, j.writerKeyBundleV3Path(wkbID))
+	if err != nil {
+		return err
+	}
+
+	err = serializeToFile(
+		j.codec, extraV3.rkb, j.readerKeyBundleV3Path(rkbID))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // All functions below are public functions.
@@ -902,6 +961,11 @@ func (j *mdJournal) put(
 	}
 
 	id, err := j.putMD(brmd)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	err = j.setExtraMetadata(brmd, rmd.extra)
 	if err != nil {
 		return MdID{}, err
 	}
