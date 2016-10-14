@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -214,6 +215,47 @@ func (j mdJournal) mdDataPath(id MdID) string {
 	return filepath.Join(j.mdPath(id), "data")
 }
 
+func (j mdJournal) mdInfoPath(id MdID) string {
+	return filepath.Join(j.mdPath(id), "info.json")
+}
+
+// mdInfo is the structure stored in mdInfoPath(id).
+type mdInfo struct {
+	Timestamp time.Time
+	Version   MetadataVer
+}
+
+func (j mdJournal) getMDInfo(id MdID) (time.Time, MetadataVer, error) {
+	infoJSON, err := ioutil.ReadFile(j.mdInfoPath(id))
+	if err != nil {
+		return time.Time{}, MetadataVer(-1), err
+	}
+
+	var info mdInfo
+	err = json.Unmarshal(infoJSON, &info)
+	if err != nil {
+		return time.Time{}, MetadataVer(-1), err
+	}
+
+	return info.Timestamp, info.Version, nil
+}
+
+func (j mdJournal) putMDInfo(
+	id MdID, timestamp time.Time, version MetadataVer) error {
+	info := mdInfo{timestamp, version}
+	infoJSON, err := json.Marshal(info)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(j.mdPath(id), 0700)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(j.mdInfoPath(id), infoJSON, 0600)
+}
+
 // getMD verifies the MD data and the writer signature (but not the
 // key) for the given ID and returns it. It also returns the
 // last-modified timestamp of the file. verifyBranchID should be false
@@ -221,6 +263,13 @@ func (j mdJournal) mdDataPath(id MdID) string {
 // set j.branchID in the first place.
 func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 	BareRootMetadata, time.Time, error) {
+	// Read info.
+
+	timestamp, version, err := j.getMDInfo(id)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
 	// Read data.
 
 	data, err := ioutil.ReadFile(j.mdDataPath(id))
@@ -228,18 +277,15 @@ func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 		return nil, time.Time{}, err
 	}
 
-	// TODO: Read version info.
-	// MDv3 TODO: the file needs to encode the version
-	var rmd BareRootMetadataV2
-	err = j.codec.Decode(data, &rmd)
+	rmd, err := DecodeRootMetadata(
+		j.codec, j.tlfID, version, j.metadataVersion, data)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
 
 	// Check integrity.
 
-	// TODO: MakeMdID serializes rmd -- use data instead.
-	mdID, err := j.crypto.MakeMdID(&rmd)
+	mdID, err := j.crypto.MakeMdID(rmd)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
@@ -271,12 +317,7 @@ func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 			j.branchID, rmd.BID())
 	}
 
-	fi, err := os.Stat(j.mdPath(id))
-	if err != nil {
-		return nil, time.Time{}, err
-	}
-
-	return &rmd, fi.ModTime(), nil
+	return rmd, timestamp, nil
 }
 
 // putMD stores the given metadata under its ID, if it's not already
@@ -319,8 +360,10 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 		return MdID{}, err
 	}
 
-	// TODO: Consider consulting a Clock object and using it to
-	// set the ModTime.
+	err = j.putMDInfo(id, j.clock.Now(), rmd.Version())
+	if err != nil {
+		return MdID{}, err
+	}
 
 	return id, nil
 }

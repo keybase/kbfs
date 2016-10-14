@@ -197,6 +197,8 @@ func getTLFJournalInfoFilePath(dir string) string {
 	return filepath.Join(dir, "info.json")
 }
 
+// tlfJournalInfo is the structure stored in
+// getTLFJournalInfoFilePath(dir).
 type tlfJournalInfo struct {
 	UID          keybase1.UID
 	VerifyingKey kbfscrypto.VerifyingKey

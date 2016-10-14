@@ -135,8 +135,6 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 		return nil, err
 	}
 
-	// Read file.
-
 	rmds, err := DecodeRootMetadataSigned(
 		s.codec, s.tlfID, srmds.Version, s.metadataVersion,
 		srmds.EncodedRMDS)
