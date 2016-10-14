@@ -236,13 +236,19 @@ func (s *mdServerTlfStorage) getHeadForTLFReadLocked(bid BranchID) (
 }
 
 func (s *mdServerTlfStorage) checkGetParamsReadLocked(
-	currentUID keybase1.UID, bid BranchID, extra ExtraMetadata) error {
+	currentUID keybase1.UID, bid BranchID) error {
 	mergedMasterHead, err := s.getHeadForTLFReadLocked(NullBranchID)
 	if err != nil {
 		return MDServerError{err}
 	}
 
 	if mergedMasterHead != nil {
+		extra, err := s.getExtraMetadataReadLocked(
+			mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
+			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
+		if err != nil {
+			return MDServerError{err}
+		}
 		ok, err := isReader(currentUID, mergedMasterHead.MD, extra)
 		if err != nil {
 			return MDServerError{err}
@@ -258,8 +264,7 @@ func (s *mdServerTlfStorage) checkGetParamsReadLocked(
 func (s *mdServerTlfStorage) getRangeReadLocked(
 	currentUID keybase1.UID, bid BranchID, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
-	// MDv3 TODO: pass actual key bundles
-	err := s.checkGetParamsReadLocked(currentUID, bid, nil)
+	err := s.checkGetParamsReadLocked(currentUID, bid)
 	if err != nil {
 		return nil, err
 	}
@@ -290,10 +295,10 @@ func (s *mdServerTlfStorage) getRangeReadLocked(
 	return rmdses, nil
 }
 
-func (s *mdServerTlfStorage) getExtraMetadataLocked(
+func (s *mdServerTlfStorage) getExtraMetadataReadLocked(
 	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	ExtraMetadata, error) {
-	wkb, rkb, err := s.getKeyBundlesLocked(wkbID, rkbID)
+	wkb, rkb, err := s.getKeyBundlesReadLocked(wkbID, rkbID)
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +308,7 @@ func (s *mdServerTlfStorage) getExtraMetadataLocked(
 	return &ExtraMetadataV3{wkb: wkb, rkb: rkb}, nil
 }
 
-func (s *mdServerTlfStorage) getKeyBundlesLocked(
+func (s *mdServerTlfStorage) getKeyBundlesReadLocked(
 	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	if wkbID == (TLFWriterKeyBundleID{}) ||
@@ -397,8 +402,7 @@ func (s *mdServerTlfStorage) getForTLF(
 		return nil, errMDServerTlfStorageShutdown
 	}
 
-	// MDv3 TODO: pass actual key bundles
-	err := s.checkGetParamsReadLocked(currentUID, bid, nil)
+	err := s.checkGetParamsReadLocked(currentUID, bid)
 	if err != nil {
 		return nil, err
 	}
@@ -436,7 +440,7 @@ func (s *mdServerTlfStorage) put(
 
 	if extra == nil {
 		var err error
-		extra, err = s.getExtraMetadataLocked(
+		extra, err = s.getExtraMetadataReadLocked(
 			rmds.MD.GetTLFWriterKeyBundleID(),
 			rmds.MD.GetTLFReaderKeyBundleID())
 		if err != nil {
@@ -463,7 +467,7 @@ func (s *mdServerTlfStorage) put(
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		prevExtra, err := s.getExtraMetadataLocked(
+		prevExtra, err := s.getExtraMetadataReadLocked(
 			mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
 			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
 		if err != nil {
@@ -547,7 +551,7 @@ func (s *mdServerTlfStorage) getKeyBundles(
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	return s.getKeyBundlesLocked(wkbID, rkbID)
+	return s.getKeyBundlesReadLocked(wkbID, rkbID)
 }
 
 func (s *mdServerTlfStorage) shutdown() {
