@@ -64,8 +64,10 @@ func MakeImmutableBareRootMetadata(
 // dir/md_journal/0...002
 // dir/md_journal/0...fff
 // dir/mds/0100/0...01/data
+// dir/mds/0100/0...01/info.json
 // ...
 // dir/mds/01ff/f...ff/data
+// dir/mds/01ff/f...ff/info.json
 //
 // There's a single journal subdirectory; the journal ordinals are
 // just MetadataRevisions, and the journal entries are just MdIDs.
@@ -78,15 +80,16 @@ func MakeImmutableBareRootMetadata(
 // using the first four characters of the name to keep the number of
 // directories in dir itself to a manageable number, similar to git.
 // Each block directory has data, which is the raw MD data that should
-// hash to the MD ID. Future versions of the journal might add more
-// files to this directory; if any code is written to move MDs around,
-// it should be careful to preserve any unknown files in an MD
-// directory.
+// hash to the MD ID, and info.json, which contains the version and
+// timestamp info for that MD. Future versions of the journal might
+// add more files to this directory; if any code is written to move
+// MDs around, it should be careful to preserve any unknown files in
+// an MD directory.
 //
 // The maximum number of characters added to the root dir by an MD
-// journal is 45:
+// journal is 50:
 //
-//   /mds/01ff/f...(30 characters total)...ff/data
+//   /mds/01ff/f...(30 characters total)...ff/info.json
 //
 // This covers even the temporary files created in convertToBranch,
 // which create paths like
