@@ -607,9 +607,8 @@ var errJournalStatusRetry = errors.New("Retry journal status")
 // JournalStatusWithPaths returns a TLFServerStatus object for the
 // given TLF suitable for diagnostics, including paths for all the
 // unflushed entries.
-func (j *JournalServer) JournalStatusWithPaths(
-	ctx context.Context, tlfID tlf.TlfID,
-	cpp chainsPathPopulator) (TLFJournalStatus, error) {
+func (j *JournalServer) JournalStatusWithPaths(ctx context.Context,
+	tlfID tlf.TlfID, cpp chainsPathPopulator) (TLFJournalStatus, error) {
 	tlfJournal, ok := j.getTLFJournal(tlfID)
 	if !ok {
 		return TLFJournalStatus{},
