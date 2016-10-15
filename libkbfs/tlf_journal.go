@@ -150,6 +150,7 @@ type tlfJournal struct {
 	dir                 string
 	config              tlfJournalConfig
 	delegateBlockServer BlockServer
+	chainsPopulator     chainsPathPopulator
 	log                 logger.Logger
 	deferLog            logger.Logger
 	onBranchChange      branchChangeListener
@@ -190,9 +191,8 @@ type tlfJournal struct {
 	// journal. If `unflushedPaths` is non-nil, then `chainsPopulator`
 	// must also be non-nil.  These three fields are protected by
 	// `journalLock`.
-	unflushedPaths  map[MetadataRevision]map[string]bool
-	unflushedReady  chan struct{}
-	chainsPopulator chainsPathPopulator
+	unflushedPaths map[MetadataRevision]map[string]bool
+	unflushedReady chan struct{}
 
 	bwDelegate tlfJournalBWDelegate
 }
@@ -242,9 +242,10 @@ func writeTLFJournalInfoFile(dir string, uid keybase1.UID,
 func makeTLFJournal(
 	ctx context.Context, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 	dir string, tlfID TlfID, config tlfJournalConfig,
-	delegateBlockServer BlockServer, bws TLFJournalBackgroundWorkStatus,
-	bwDelegate tlfJournalBWDelegate, onBranchChange branchChangeListener,
-	onMDFlush mdFlushListener) (*tlfJournal, error) {
+	delegateBlockServer BlockServer, chainsPopulator chainsPathPopulator,
+	bws TLFJournalBackgroundWorkStatus, bwDelegate tlfJournalBWDelegate,
+	onBranchChange branchChangeListener, onMDFlush mdFlushListener) (
+	*tlfJournal, error) {
 	if uid == keybase1.UID("") {
 		return nil, errors.New("Empty user")
 	}
@@ -308,6 +309,7 @@ func makeTLFJournal(
 		dir:                  dir,
 		config:               config,
 		delegateBlockServer:  delegateBlockServer,
+		chainsPopulator:      chainsPopulator,
 		log:                  log,
 		deferLog:             log.CloneWithAddedDepth(1),
 		onBranchChange:       onBranchChange,
@@ -979,7 +981,7 @@ func (j *tlfJournal) getJournalStatusWithRange() (
 // caller should NOT be holding journalLock, as it's possible that
 // blocks will need to be fetched from the journal.
 func (j *tlfJournal) addUnflushedPaths(ctx context.Context,
-	irmds []ImmutableRootMetadata, cpp chainsPathPopulator,
+	irmds []ImmutableRootMetadata,
 	unflushedPaths map[MetadataRevision]map[string]bool) error {
 	// Make chains over the entire range to get the unflushed files.
 	chains := newCRChainsEmpty()
@@ -999,7 +1001,7 @@ func (j *tlfJournal) addUnflushedPaths(ctx context.Context,
 	}
 	chains.mostRecentMD = irmds[len(irmds)-1]
 
-	err := cpp.populateChainPaths(ctx, j.log, chains, true)
+	err := j.chainsPopulator.populateChainPaths(ctx, j.log, chains, true)
 	if err != nil {
 		return err
 	}
@@ -1017,8 +1019,8 @@ func (j *tlfJournal) addUnflushedPaths(ctx context.Context,
 	return nil
 }
 
-func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
-	cpp chainsPathPopulator) (TLFJournalStatus, error) {
+func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context) (
+	TLFJournalStatus, error) {
 	err := j.maybeWaitForUnflushedReady(ctx)
 	if err != nil {
 		return TLFJournalStatus{}, err
@@ -1045,7 +1047,6 @@ func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
 				close(j.unflushedReady)
 				j.unflushedReady = nil
 				j.unflushedPaths = unflushedPaths
-				j.chainsPopulator = cpp
 			}()
 		}
 
@@ -1071,7 +1072,7 @@ func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
 				irmds = append(irmds, irmd)
 			}
 
-			err = j.addUnflushedPaths(ctx, irmds, cpp, unflushedPaths)
+			err = j.addUnflushedPaths(ctx, irmds, unflushedPaths)
 			if err != nil {
 				return TLFJournalStatus{}, err
 			}
@@ -1378,14 +1379,14 @@ func (j *tlfJournal) doPutMD(ctx context.Context, rmd *RootMetadata,
 // revision.  The caller must NOT already hold `journalLock`.
 func (j *tlfJournal) prepUnflushedPaths(ctx context.Context,
 	rmd *RootMetadata) (map[string]bool, error) {
-	cpp := func() chainsPathPopulator {
+	exitEarly := func() bool {
 		j.journalLock.RLock()
 		defer j.journalLock.RUnlock()
-		return j.chainsPopulator
+		return j.unflushedPaths == nil
 	}()
 
 	// The unflushed paths haven't been initialized yet.
-	if cpp == nil {
+	if exitEarly {
 		return nil, nil
 	}
 
@@ -1396,7 +1397,7 @@ func (j *tlfJournal) prepUnflushedPaths(ctx context.Context,
 		MakeImmutableRootMetadata(rmd, fakeMdID(1), time.Now()),
 	}
 
-	err := j.addUnflushedPaths(ctx, irmds, cpp, newUnflushedPaths)
+	err := j.addUnflushedPaths(ctx, irmds, newUnflushedPaths)
 	if err != nil {
 		return nil, err
 	}

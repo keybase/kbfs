@@ -160,8 +160,8 @@ func (fbsk *folderBranchStatusKeeper) convertNodesToPathsLocked(
 // in the journals will be included in the status. The returned
 // channel is closed whenever the status changes, except for journal
 // status changes.
-func (fbsk *folderBranchStatusKeeper) getStatus(ctx context.Context,
-	blocks *folderBlockOps) (FolderBranchStatus, <-chan StatusUpdate, error) {
+func (fbsk *folderBranchStatusKeeper) getStatus(ctx context.Context) (
+	FolderBranchStatus, <-chan StatusUpdate, error) {
 	fbsk.dataMutex.Lock()
 	defer fbsk.dataMutex.Unlock()
 	fbsk.updateMutex.Lock()
@@ -188,14 +188,8 @@ func (fbsk *folderBranchStatusKeeper) getStatus(ctx context.Context,
 		// listeners.
 		jServer, err := GetJournalServer(fbsk.config)
 		if err == nil {
-			var jStatus TLFJournalStatus
-			if blocks != nil {
-				jStatus, err =
-					jServer.JournalStatusWithPaths(ctx, fbsk.md.TlfID(), blocks)
-			} else {
-				jStatus, err =
-					jServer.JournalStatus(fbsk.md.TlfID())
-			}
+			jStatus, err :=
+				jServer.JournalStatusWithPaths(ctx, fbsk.md.TlfID(), blocks)
 			if err != nil {
 				log := fbsk.config.MakeLogger("")
 				log.CWarningf(ctx, "Error getting journal status for %s: %v", fbsk.md.TlfID(), err)
