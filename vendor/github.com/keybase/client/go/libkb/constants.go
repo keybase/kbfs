@@ -55,6 +55,7 @@ const (
 	SessionFile       = "session.json"
 	UpdaterConfigFile = "updater.json"
 	DBFile            = "keybase.leveldb"
+	ChatDBFile        = "keybase.chat.leveldb"
 	SocketFile        = "keybased.sock"
 	PIDFile           = "keybased.pid"
 
@@ -207,6 +208,7 @@ const (
 	SCChatAlreadySuperseded  = int(keybase1.StatusCode_SCChatAlreadySuperseded)
 	SCChatAlreadyDeleted     = int(keybase1.StatusCode_SCChatAlreadyDeleted)
 	SCChatTLFFinalized       = int(keybase1.StatusCode_SCChatTLFFinalized)
+	SCBadEmail               = int(keybase1.StatusCode_SCBadEmail)
 )
 
 const (
@@ -228,6 +230,7 @@ const (
 	TrackType                      = "track"
 	UntrackType                    = "untrack"
 	UpdatePassphraseType           = "update_passphrase_hash"
+	UpdateSettingsType             = "update_settings"
 	WebServiceBindingType          = "web_service_binding"
 
 	EldestType    DelegationType = "eldest"
@@ -462,4 +465,8 @@ const (
 const (
 	NotificationDismissPGPPrefix = "pgp_secret_store"
 	NotificationDismissPGPValue  = "dismissed"
+)
+
+const (
+	EncryptionReasonChatLocalStorage EncryptionReason = "Keybase-Chat-Local-Storage-1"
 )

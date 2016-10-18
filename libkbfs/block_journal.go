@@ -1006,7 +1006,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 	entries blockEntriesToFlush, tlfID TlfID, reporter Reporter) error {
 	// Remove them all!
 	for i, entry := range entries.all {
-		flushedBytes, err := j.removeFlushedEntry(
+		_, err := j.removeFlushedEntry(
 			ctx, entries.first+journalOrdinal(i), entry)
 		if err != nil {
 			return err
@@ -1015,9 +1015,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 		reporter.NotifySyncStatus(ctx, &keybase1.FSPathSyncStatus{
 			PublicTopLevelFolder: tlfID.IsPublic(),
 			// Path: TODO,
-			// SyncingBytes: TODO,
-			// SyncingOps: TODO,
-			SyncedBytes: flushedBytes,
+			// State: TODO,
 		})
 	}
 	return nil

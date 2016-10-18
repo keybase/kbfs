@@ -103,3 +103,42 @@ func (hash Hash) String() string {
 func (hash Hash) Eq(other Hash) bool {
 	return bytes.Equal(hash, other)
 }
+
+func (m MessageUnboxed) GetMessageID() MessageID {
+	if state, err := m.State(); err == nil {
+		if state == MessageUnboxedState_VALID {
+			return m.Valid().ServerHeader.MessageID
+		}
+		if state == MessageUnboxedState_ERROR {
+			return m.Error().MessageID
+		}
+	}
+	return 0
+}
+
+func (m MessageUnboxed) GetMessageType() MessageType {
+	if state, err := m.State(); err == nil {
+		if state == MessageUnboxedState_VALID {
+			return m.Valid().ServerHeader.MessageType
+		}
+		if state == MessageUnboxedState_ERROR {
+			return m.Error().MessageType
+		}
+	}
+	return MessageType_NONE
+}
+
+func (m MessageUnboxed) IsValid() bool {
+	if state, err := m.State(); err == nil {
+		return state == MessageUnboxedState_VALID
+	}
+	return false
+}
+
+func (m MessageBoxed) GetMessageID() MessageID {
+	return m.ServerHeader.MessageID
+}
+
+func (m MessageBoxed) GetMessageType() MessageType {
+	return m.ClientHeader.MessageType
+}

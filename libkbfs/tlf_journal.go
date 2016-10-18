@@ -1211,10 +1211,7 @@ func (j *tlfJournal) putBlockData(
 	j.config.Reporter().NotifySyncStatus(ctx, &keybase1.FSPathSyncStatus{
 		PublicTopLevelFolder: j.tlfID.IsPublic(),
 		// Path: TODO,
-		// TODO: should this be the complete total for the file/directory,
-		// rather than the diff?
-		SyncingBytes: int64(len(buf)),
-		// SyncingOps: TODO,
+		// State: TODO,
 	})
 
 	j.signalWork()
