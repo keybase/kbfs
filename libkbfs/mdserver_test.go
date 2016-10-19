@@ -19,12 +19,12 @@ func makeRMDSForTest(t *testing.T, crypto cryptoPure, id TlfID,
 	prevRoot MdID) *RootMetadataSigned {
 	rmds, err := NewRootMetadataSignedForTest(id, h)
 	require.NoError(t, err)
-	rmds.MD.SetSerializedPrivateMetadata([]byte{0x1})
-	rmds.MD.SetRevision(revision)
-	rmds.MD.SetLastModifyingWriter(uid)
-	rmds.MD.SetLastModifyingUser(uid)
-	rmds.MD.FakeInitialRekey(crypto, h)
-	rmds.MD.SetPrevRoot(prevRoot)
+	rmds.MD.(MutableBareRootMetadata).SetSerializedPrivateMetadata([]byte{0x1})
+	rmds.MD.(MutableBareRootMetadata).SetRevision(revision)
+	rmds.MD.(MutableBareRootMetadata).SetLastModifyingWriter(uid)
+	rmds.MD.(MutableBareRootMetadata).SetLastModifyingUser(uid)
+	rmds.MD.(MutableBareRootMetadata).FakeInitialRekey(crypto, h)
+	rmds.MD.(MutableBareRootMetadata).SetPrevRoot(prevRoot)
 	return rmds
 }
 
@@ -38,7 +38,7 @@ func signRMDSForTest(t *testing.T, codec kbfscodec.Codec, signer cryptoSigner,
 
 	sigInfo, err := signer.Sign(ctx, buf)
 	require.NoError(t, err)
-	rmds.MD.SetWriterMetadataSigInfo(sigInfo)
+	rmds.MD.(MutableBareRootMetadata).SetWriterMetadataSigInfo(sigInfo)
 
 	// Encode and sign root metadata.
 	buf, err = codec.Encode(rmds.MD)
@@ -98,8 +98,8 @@ func TestMDServerBasics(t *testing.T) {
 	require.NoError(t, err)
 	for i := MetadataRevision(6); i < 41; i++ {
 		rmds := makeRMDSForTest(t, config.Crypto(), id, h, i, uid, prevRoot)
-		rmds.MD.SetUnmerged()
-		rmds.MD.SetBranchID(bid)
+		rmds.MD.(MutableBareRootMetadata).SetUnmerged()
+		rmds.MD.(MutableBareRootMetadata).SetBranchID(bid)
 		signRMDSForTest(t, config.Codec(), config.Crypto(), rmds)
 		// MDv3 TODO: pass actual key bundles
 		err = mdServer.Put(ctx, rmds, nil)

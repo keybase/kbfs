@@ -186,7 +186,13 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 		}
 	}
 
-	rmd := MakeRootMetadata(rmds.MD, extra, handle)
+	// TODO: Avoid the need for this.
+	newMD, err := rmds.MD.DeepCopy(md.config.Codec())
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+
+	rmd := MakeRootMetadata(newMD, extra, handle)
 	// Try to decrypt using the keys available in this md.  If that
 	// doesn't work, a future MD may contain more keys and will be
 	// tried later.
@@ -532,7 +538,12 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
-	rmd.bareMd = rmds.MD
+	newMD, err := rmds.MD.DeepCopy(md.config.Codec())
+	if err != nil {
+		return MdID{}, err
+	}
+
+	rmd.bareMd = newMD
 	return mdID, nil
 }
 
