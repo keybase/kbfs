@@ -23,6 +23,7 @@ func NewRootMetadataSignedForTest(id TlfID, h BareTlfHandle) (*RootMetadataSigne
 	if err != nil {
 		return nil, err
 	}
-	rmds := MakeRootMetadataSigned(kbfscrypto.SignatureInfo{}, md, time.Time{})
-	return rmds, nil
+	return MakeRootMetadataSigned(
+		kbfscrypto.SignatureInfo{}, kbfscrypto.SignatureInfo{},
+		md, time.Time{})
 }

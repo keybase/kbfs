@@ -1162,7 +1162,9 @@ func (md *BareRootMetadataV3) GetHistoricTLFCryptKey(crypto cryptoPure,
 // it contains exactly the serializable metadata and signature info.
 type BareRootMetadataSignedV3 struct {
 	// signature over the root metadata by the private signing key
-	SigInfo kbfscrypto.SignatureInfo `codec:",omitempty"`
+	SigInfo kbfscrypto.SignatureInfo
+	// signature over the writer metadata by the private signing key
+	WriterSigInfo kbfscrypto.SignatureInfo
 	// all the metadata
 	MD BareRootMetadataV3
 }
