@@ -821,6 +821,7 @@ func MakeImmutableRootMetadata(
 		rmd.ReadOnly(), mdID, writerSig, localTimestamp}
 }
 
+// IsNil returns if irmd is the same as ImmutableRootMetadata{}.
 func (irmd ImmutableRootMetadata) IsNil() bool {
 	return (irmd.ReadOnlyRootMetadata == ReadOnlyRootMetadata{}) &&
 		(irmd.mdID == MdID{}) &&
