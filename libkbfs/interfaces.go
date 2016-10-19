@@ -1617,8 +1617,6 @@ type BareRootMetadata interface {
 	IsLastModifiedBy(uid keybase1.UID, key kbfscrypto.VerifyingKey) error
 	// LastModifyingWriter return the UID of the last user to modify the writer metadata.
 	LastModifyingWriter() keybase1.UID
-	// LastModifyingWriterKID returns the KID of the last device to modify the writer metadata.
-	LastModifyingWriterKID() keybase1.KID
 	// LastModifyingUser return the UID of the last user to modify the any of the metadata.
 	GetLastModifyingUser() keybase1.UID
 	// RefBytes returns the number of newly referenced bytes introduced by this revision of metadata.

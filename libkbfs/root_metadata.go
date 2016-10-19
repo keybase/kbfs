@@ -449,11 +449,6 @@ func (md *RootMetadata) TlfID() TlfID {
 	return md.bareMd.TlfID()
 }
 
-// LastModifyingWriterKID wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) LastModifyingWriterKID() keybase1.KID {
-	return md.bareMd.LastModifyingWriterKID()
-}
-
 // LastModifyingWriter wraps the respective method of the underlying BareRootMetadata for convenience.
 func (md *RootMetadata) LastModifyingWriter() keybase1.UID {
 	return md.bareMd.LastModifyingWriter()
@@ -855,6 +850,12 @@ func (irmd ImmutableRootMetadata) LocalTimestamp() time.Time {
 // metadata.
 func (irmd ImmutableRootMetadata) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
 	return irmd.writerSig
+}
+
+// LastModifyingWriterKID returns the KID of the last device to modify
+// the writer metadata.
+func (irmd ImmutableRootMetadata) LastModifyingWriterKID() keybase1.KID {
+	return irmd.writerSig.VerifyingKey.KID()
 }
 
 // RootMetadataSigned is the top-level MD object stored in MD server
