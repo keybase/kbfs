@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/net/context"
 )
 
@@ -105,7 +104,9 @@ func TestFBStatusAllFields(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	u := h.FirstResolvedWriter()
+	key := MakeFakeVerifyingKeyOrBust("fake key")
 	md := newRootMetadataOrBust(t, id, h)
+	md.bareMd.(*BareRootMetadataV2).WriterMetadataSigInfo.VerifyingKey = key
 	md.SetUnmerged()
 	md.SetLastModifyingWriter(u)
 
@@ -117,7 +118,7 @@ func TestFBStatusAllFields(t *testing.T) {
 	p2 := path{path: []pathNode{{Name: "a2"}, {Name: "b2"}}}
 	nodeCache.EXPECT().PathFromNode(mockNodeMatcher{n2}).AnyTimes().Return(p2)
 
-	fbsk.setRootMetadata(MakeImmutableRootMetadata(md, kbfscrypto.VerifyingKey{}, fakeMdID(1),
+	fbsk.setRootMetadata(MakeImmutableRootMetadata(md, key, fakeMdID(1),
 		time.Now()))
 	fbsk.addDirtyNode(n1)
 	fbsk.addDirtyNode(n2)

@@ -11,7 +11,6 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/kbfscodec"
-	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -147,16 +146,21 @@ func testCRChainsFillInWriter(t *testing.T, rmds []*RootMetadata) (
 	Config, []chainMetadata) {
 	config := MakeTestConfigOrBust(t, "u1")
 	kbpki := config.KBPKI()
-	_, uid, err := kbpki.GetCurrentUserInfo(context.Background())
+	ctx := context.Background()
+	_, uid, err := kbpki.GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatalf("Couldn't get UID: %v", err)
+	}
+	key, err := kbpki.GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		t.Fatalf("Couldn't get verifying key: %v", err)
 	}
 	cmds := make([]chainMetadata, len(rmds))
 	for i, rmd := range rmds {
 		rmd.SetLastModifyingWriter(uid)
 		rmd.SetTlfID(FakeTlfID(1, false))
 		cmds[i] = rootMetadataWithKeyAndTimestamp{
-			rmd, kbfscrypto.VerifyingKey{}, time.Unix(0, 0),
+			rmd, key, time.Unix(0, 0),
 		}
 	}
 	return config, cmds

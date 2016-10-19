@@ -792,6 +792,9 @@ func MakeImmutableRootMetadata(
 	if localTimestamp == (time.Time{}) {
 		panic("zero localTimestamp passed to MakeImmutableRootMetadata")
 	}
+	if writerVerifyingKey == (kbfscrypto.VerifyingKey{}) {
+		panic("zero writerVerifyingKey passed to MakeImmutableRootMetadata")
+	}
 	if bareMDV2, ok := rmd.bareMd.(*BareRootMetadataV2); ok {
 		writerSig := bareMDV2.WriterMetadataSigInfo
 		if writerSig.VerifyingKey != writerVerifyingKey {
