@@ -1043,10 +1043,16 @@ func (rmds *RootMetadataSigned) IsLastModifiedBy(
 			rmds.SigInfo.VerifyingKey, key)
 	}
 
-	if rmds.WriterSigInfo.VerifyingKey != key {
-		return fmt.Errorf(
-			"Last writer verifying key %v != %v",
-			rmds.WriterSigInfo.VerifyingKey, key)
+	writer := rmds.MD.LastModifyingWriter()
+	if !rmds.MD.IsWriterMetadataCopiedSet() {
+		if writer != uid {
+			return fmt.Errorf("Last writer %s != %s", writer, uid)
+		}
+		if rmds.WriterSigInfo.VerifyingKey != key {
+			panic(fmt.Errorf(
+				"Last writer verifying key %v != %v",
+				rmds.WriterSigInfo.VerifyingKey, key))
+		}
 	}
 
 	return nil
