@@ -12,6 +12,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/net/context"
 )
 
@@ -692,7 +693,7 @@ type chainMetadata interface {
 	KeyMetadata
 	IsWriterMetadataCopiedSet() bool
 	LastModifyingWriter() keybase1.UID
-	LastModifyingWriterKID() keybase1.KID
+	LastWriterVerifyingKey() kbfscrypto.VerifyingKey
 	Revision() MetadataRevision
 	Data() *PrivateMetadata
 	LocalTimestamp() time.Time
@@ -714,9 +715,8 @@ func newCRChains(ctx context.Context, cfg Config, cmds []chainMetadata,
 			continue
 		}
 
-		winfo, err := newWriterInfo(
-			ctx, cfg, cmd.LastModifyingWriter(),
-			cmd.LastModifyingWriterKID(), cmd.Revision())
+		winfo, err := newWriterInfo(ctx, cfg, cmd.LastModifyingWriter(),
+			cmd.LastWriterVerifyingKey().KID(), cmd.Revision())
 		if err != nil {
 			return nil, err
 		}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -154,7 +155,9 @@ func testCRChainsFillInWriter(t *testing.T, rmds []*RootMetadata) (
 	for i, rmd := range rmds {
 		rmd.SetLastModifyingWriter(uid)
 		rmd.SetTlfID(FakeTlfID(1, false))
-		cmds[i] = rootMetadataWithTimestamp{rmd, time.Unix(0, 0)}
+		cmds[i] = rootMetadataWithKeyAndTimestamp{
+			rmd, kbfscrypto.VerifyingKey{}, time.Unix(0, 0),
+		}
 	}
 	return config, cmds
 }
@@ -516,7 +519,7 @@ func TestCRChainsRemove(t *testing.T) {
 	cmds, writtenFileUnref := testCRChainsMultiOps(t)
 
 	for i := range cmds {
-		cmds[i].(rootMetadataWithTimestamp).RootMetadata.SetRevision(
+		cmds[i].(rootMetadataWithKeyAndTimestamp).RootMetadata.SetRevision(
 			MetadataRevision(i))
 	}
 
