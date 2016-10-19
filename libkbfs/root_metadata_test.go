@@ -547,8 +547,10 @@ func TestRootMetadataVersion(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob@twitter", false)
 	rmd := newRootMetadataOrBust(t, id, h)
-	rmds := MakeRootMetadataSigned(
-		kbfscrypto.SignatureInfo{}, rmd.bareMd, time.Time{})
+	rmds, err := MakeRootMetadataSigned(
+		kbfscrypto.SignatureInfo{}, kbfscrypto.SignatureInfo{},
+		rmd.bareMd, time.Time{})
+	require.NoError(t, err)
 	if g, e := rmds.Version(), config.MetadataVersion(); g != e {
 		t.Errorf("MD with unresolved users got wrong version %d, expected %d",
 			g, e)
@@ -558,8 +560,10 @@ func TestRootMetadataVersion(t *testing.T) {
 	id2 := FakeTlfID(2, false)
 	h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
 	rmd2 := newRootMetadataOrBust(t, id2, h2)
-	rmds2 := MakeRootMetadataSigned(
-		kbfscrypto.SignatureInfo{}, rmd2.bareMd, time.Time{})
+	rmds2, err := MakeRootMetadataSigned(
+		kbfscrypto.SignatureInfo{}, kbfscrypto.SignatureInfo{},
+		rmd2.bareMd, time.Time{})
+	require.NoError(t, err)
 	if g, e := rmds2.Version(), MetadataVer(PreExtraMetadataVer); g != e {
 		t.Errorf("MD without unresolved users got wrong version %d, "+
 			"expected %d", g, e)
@@ -585,8 +589,10 @@ func TestRootMetadataVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't update TLF handle: %v", err)
 	}
-	rmds3 := MakeRootMetadataSigned(
-		kbfscrypto.SignatureInfo{}, rmd3.bareMd, time.Time{})
+	rmds3, err := MakeRootMetadataSigned(
+		kbfscrypto.SignatureInfo{}, kbfscrypto.SignatureInfo{},
+		rmd3.bareMd, time.Time{})
+	require.NoError(t, err)
 	if g, e := rmds3.Version(), MetadataVer(PreExtraMetadataVer); g != e {
 		t.Errorf("MD without unresolved users got wrong version %d, "+
 			"expected %d", g, e)
@@ -667,33 +673,32 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmds, err := NewRootMetadataSignedForTest(id, h)
+	md := &BareRootMetadataV2{}
+	// MDv3 TODO: uncomment the below when we're ready for MDv3
+	// md := &BareRootMetadataV#{}
+	err = md.Update(id, h)
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmds.MD.(MutableBareRootMetadata).FakeInitialRekey(config.Crypto(), h)
-	rmds.MD.(MutableBareRootMetadata).SetLastModifyingWriter(h.Writers[0])
-	rmds.MD.(MutableBareRootMetadata).SetLastModifyingUser(h.Writers[0])
-	rmds.MD.(MutableBareRootMetadata).SetSerializedPrivateMetadata([]byte{42})
+	md.FakeInitialRekey(config.Crypto(), h)
+	md.SetLastModifyingWriter(h.Writers[0])
+	md.SetLastModifyingUser(h.Writers[0])
+	md.SetSerializedPrivateMetadata([]byte{42})
+	buf, err := md.GetSerializedWriterMetadata(config.Codec())
+	if err != nil {
+		t.Fatal(err)
+	}
+	writerSigInfo, err := config.Crypto().Sign(context.Background(), buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	md.SetWriterMetadataSigInfo(writerSigInfo)
 
-	buf, err := rmds.MD.GetSerializedWriterMetadata(config.Codec())
+	rmds, err := signMD(context.Background(), config.Codec(),
+		config.Crypto(), md, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	sigInfo, err := config.Crypto().Sign(context.Background(), buf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rmds.MD.(MutableBareRootMetadata).SetWriterMetadataSigInfo(sigInfo)
-	buf, err = config.Codec().Encode(rmds.MD)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sigInfo, err = config.Crypto().Sign(context.Background(), buf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rmds.SigInfo = sigInfo
 
 	// verify it
 	// MDv3 TODO: pass key bundles
