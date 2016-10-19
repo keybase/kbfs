@@ -76,22 +76,24 @@ func mdOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	mockCtrl.Finish()
 }
 
-func addFakeRMDData(t *testing.T,
-	codec kbfscodec.Codec, crypto cryptoPure, rmd *RootMetadata,
-	h *TlfHandle) {
-	rmd.SetRevision(MetadataRevision(1))
+func addFakeBRMDData(t *testing.T,
+	codec kbfscodec.Codec, crypto cryptoPure, brmd *BareRootMetadataV2,
+	h *TlfHandle) ExtraMetadata {
+	brmd.SetRevision(MetadataRevision(1))
 	pmd := PrivateMetadata{}
 	// TODO: Will have to change this for private folders if we
 	// un-mock out those tests.
 	buf, err := codec.Encode(pmd)
 	require.NoError(t, err)
-	rmd.SetSerializedPrivateMetadata(buf)
-	rmd.SetLastModifyingWriter(h.FirstResolvedWriter())
-	rmd.SetLastModifyingUser(h.FirstResolvedWriter())
+	brmd.SetSerializedPrivateMetadata(buf)
+	brmd.SetLastModifyingWriter(h.FirstResolvedWriter())
+	brmd.SetLastModifyingUser(h.FirstResolvedWriter())
+	var extra ExtraMetadata
 	if !h.IsPublic() {
-		err = rmd.FakeInitialRekey(crypto, h.ToBareHandleOrBust())
+		extra, err = brmd.FakeInitialRekey(crypto, h.ToBareHandleOrBust())
 		require.NoError(t, err)
 	}
+	return extra
 }
 
 func newRMD(t *testing.T, config Config, public bool) (
@@ -99,15 +101,18 @@ func newRMD(t *testing.T, config Config, public bool) (
 	id := FakeTlfID(1, public)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", public)
-	rmd := NewRootMetadata()
-	err := rmd.Update(id, h.ToBareHandleOrBust())
+	var brmd BareRootMetadataV2
+	err := brmd.Update(id, h.ToBareHandleOrBust())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	addFakeRMDData(t, config.Codec(), config.Crypto(), rmd, h)
+	extra := addFakeBRMDData(t, config.Codec(), config.Crypto(), &brmd, h)
 
-	return rmd, h
+	return &RootMetadata{
+		bareMd: &brmd,
+		extra:  extra,
+	}, h
 }
 
 func addFakeRMDSData(t *testing.T, codec kbfscodec.Codec, crypto cryptoPure,
@@ -151,8 +156,7 @@ func newRMDS(t *testing.T, config Config, h *TlfHandle) (
 	// var md BareRootMetadataV3
 	err := brmd.Update(id, h.ToBareHandleOrBust())
 	require.NoError(t, err)
-	md := &RootMetadata{bareMd: &brmd}
-	addFakeRMDData(t, config.Codec(), config.Crypto(), md, h)
+	extra := addFakeBRMDData(t, config.Codec(), config.Crypto(), &brmd, h)
 	ctx := context.Background()
 
 	// Encode and sign writer metadata.
@@ -161,7 +165,7 @@ func newRMDS(t *testing.T, config Config, h *TlfHandle) (
 
 	rmds, err := signMD(ctx, config.Codec(), config.Crypto(), &brmd, (wallClock{}).Now())
 	require.NoError(t, err)
-	return rmds, md.extra
+	return rmds, extra
 }
 
 func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
