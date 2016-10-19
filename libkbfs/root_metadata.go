@@ -862,7 +862,7 @@ func (irmd ImmutableRootMetadata) GetWriterMetadataSigInfo() kbfscrypto.Signatur
 // TODO: Use the BareRootMetadataSigned types on the server side.
 type RootMetadataSigned struct {
 	// signature over the root metadata by the private signing key
-	SigInfo       kbfscrypto.SignatureInfo `codec:",omitempty"`
+	SigInfo       kbfscrypto.SignatureInfo
 	WriterSigInfo kbfscrypto.SignatureInfo
 	// all the metadata
 	MD BareRootMetadata
