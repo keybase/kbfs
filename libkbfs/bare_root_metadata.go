@@ -634,9 +634,9 @@ func (md *BareRootMetadataV2) IsLastModifiedBy(
 			return fmt.Errorf("Last writer %s != %s", writer, uid)
 		}
 		if md.WriterMetadataSigInfo.VerifyingKey != key {
-			return fmt.Errorf(
+			panic(fmt.Errorf(
 				"Last writer verifying key %v != %v",
-				md.WriterMetadataSigInfo.VerifyingKey, key)
+				md.WriterMetadataSigInfo.VerifyingKey, key))
 		}
 	}
 
