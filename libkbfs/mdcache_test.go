@@ -11,6 +11,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/stretchr/testify/require"
 )
 
 func mdCacheInit(t *testing.T, cap int) (
@@ -54,11 +55,9 @@ func testMdcachePut(t *testing.T, tlf TlfID, rev MetadataRevision,
 	}
 
 	// make sure we can get it successfully
-	if irmd2, err := config.MDCache().Get(tlf, rev, bid); err != nil {
-		t.Errorf("Got error on get for md %v: %v", tlf, err)
-	} else if irmd2 != irmd {
-		t.Errorf("Got back unexpected metadata: %v", irmd2)
-	}
+	irmd2, err := config.MDCache().Get(tlf, rev, bid)
+	require.NoError(t, err)
+	require.Equal(t, irmd, irmd2)
 }
 
 func TestMdcachePut(t *testing.T) {

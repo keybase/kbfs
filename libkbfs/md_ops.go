@@ -422,7 +422,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 			return nil, fmt.Errorf("Unexpected revision %d; expected "+
 				"something between %d and %d inclusive", irmd.Revision(),
 				startRev, startRev+numExpected-1)
-		} else if irmds[i] != (ImmutableRootMetadata{}) {
+		} else if !irmds[i].IsNil() {
 			return nil, fmt.Errorf("Got revision %d twice", irmd.Revision())
 		}
 		irmds[i] = irmd
@@ -432,7 +432,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 	// the given MD objects form a valid sequence.
 	var prevIRMD ImmutableRootMetadata
 	for _, irmd := range irmds {
-		if prevIRMD != (ImmutableRootMetadata{}) {
+		if !prevIRMD.IsNil() {
 			// Ideally, we'd call
 			// ReadOnlyRootMetadata.CheckValidSuccessor()
 			// instead. However, we only convert r.MD to

@@ -290,7 +290,7 @@ func (fs *KBFSOpsStandard) getOrInitializeNewMDMaster(
 	if err != nil {
 		return false, ImmutableRootMetadata{}, id, err
 	}
-	if md != (ImmutableRootMetadata{}) {
+	if !md.IsNil() {
 		return false, md, id, nil
 	}
 
@@ -337,7 +337,7 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 		return nil, EntryInfo{}, err
 	}
 
-	if md == (ImmutableRootMetadata{}) {
+	if md.IsNil() {
 		var id TlfID
 		var initialized bool
 		initialized, md, id, err = fs.getOrInitializeNewMDMaster(ctx, mdops, h, create)
@@ -361,7 +361,7 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 
 			return node, ei, nil
 		}
-		if !create && md == (ImmutableRootMetadata{}) {
+		if !create && md.IsNil() {
 			kbpki := fs.config.KBPKI()
 			err := identifyHandle(ctx, kbpki, kbpki, h)
 			if err != nil {

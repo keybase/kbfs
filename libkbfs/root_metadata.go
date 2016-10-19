@@ -788,7 +788,8 @@ func (md *RootMetadata) NewExtra() ExtraMetadata {
 // can be assumed to never alias a (modifiable) *RootMetadata.
 type ImmutableRootMetadata struct {
 	ReadOnlyRootMetadata
-	mdID MdID
+	mdID      MdID
+	writerSig kbfscrypto.SignatureInfo
 	// localTimestamp represents the time at which the MD update was
 	// applied at the server, adjusted for the local clock.  So for
 	// example, it can be used to show how long ago a particular
@@ -812,7 +813,15 @@ func MakeImmutableRootMetadata(
 	if localTimestamp == (time.Time{}) {
 		panic("zero localTimestamp passed to MakeImmutableRootMetadata")
 	}
-	return ImmutableRootMetadata{rmd.ReadOnly(), mdID, localTimestamp}
+	// TODO: Fill in signature info.
+	return ImmutableRootMetadata{rmd.ReadOnly(), mdID, kbfscrypto.SignatureInfo{}, localTimestamp}
+}
+
+func (irmd ImmutableRootMetadata) IsNil() bool {
+	return (irmd.ReadOnlyRootMetadata == ReadOnlyRootMetadata{}) &&
+		(irmd.mdID == MdID{}) &&
+		(irmd.writerSig.IsNil()) &&
+		(irmd.localTimestamp == time.Time{})
 }
 
 // MdID returns the pre-computed MdID of the contained RootMetadata

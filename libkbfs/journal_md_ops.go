@@ -202,7 +202,7 @@ func (j journalMDOps) GetForHandle(
 		return TlfID{}, ImmutableRootMetadata{}, err
 	}
 
-	if rmd != (ImmutableRootMetadata{}) && (rmd.TlfID() != tlfID) {
+	if !rmd.IsNil() && (rmd.TlfID() != tlfID) {
 		return TlfID{}, ImmutableRootMetadata{},
 			fmt.Errorf("Expected RMD to have TLF ID %s, but got %s",
 				tlfID, rmd.TlfID())
@@ -214,7 +214,7 @@ func (j journalMDOps) GetForHandle(
 	if err != nil {
 		return TlfID{}, ImmutableRootMetadata{}, err
 	}
-	if irmd != (ImmutableRootMetadata{}) {
+	if !irmd.IsNil() {
 		return TlfID{}, irmd, nil
 	}
 
@@ -233,7 +233,7 @@ func (j journalMDOps) getForTLF(
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
-	if irmd != (ImmutableRootMetadata{}) {
+	if !irmd.IsNil() {
 		return irmd, nil
 	}
 
