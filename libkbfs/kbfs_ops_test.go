@@ -1034,7 +1034,9 @@ func TestKBFSOpsStatSuccess(t *testing.T) {
 
 type shimMDOps struct {
 	isUnmerged bool
+	codec      kbfscodec.Codec
 	crypto     cryptoPure
+	kbpki      KBPKI
 	MDOps
 }
 
@@ -1043,6 +1045,12 @@ func (s shimMDOps) Put(ctx context.Context, rmd *RootMetadata) (MdID, error) {
 		return MdID{}, MDServerErrorConflictRevision{}
 	}
 	rmd.SetSerializedPrivateMetadata([]byte{0x1})
+	username, _, err := s.kbpki.GetCurrentUserInfo(ctx)
+	if err != nil {
+		return MdID{}, err
+	}
+	signingKey := MakeLocalUserSigningKeyOrBust(username)
+	rmd.bareMd.MaybeSignWriterMetadata(ctx, s.codec, kbfscrypto.SigningKeySigner{signingKey})
 	return s.crypto.MakeMdID(rmd.bareMd)
 }
 
@@ -1051,6 +1059,12 @@ func (s shimMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (MdID, er
 		panic("Unexpected PutUnmerged call")
 	}
 	rmd.SetSerializedPrivateMetadata([]byte{0x2})
+	username, _, err := s.kbpki.GetCurrentUserInfo(ctx)
+	if err != nil {
+		return MdID{}, err
+	}
+	signingKey := MakeLocalUserSigningKeyOrBust(username)
+	rmd.bareMd.MaybeSignWriterMetadata(ctx, s.codec, kbfscrypto.SigningKeySigner{signingKey})
 	return s.crypto.MakeMdID(rmd.bareMd)
 }
 
@@ -1110,7 +1124,13 @@ func expectSyncBlockHelper(
 				t.Fatal("old shim with different isUnmerged")
 			}
 		} else {
-			mdOps := shimMDOps{isUnmerged, config.Crypto(), oldMDOps}
+			mdOps := shimMDOps{
+				isUnmerged,
+				config.Codec(),
+				config.Crypto(),
+				config.KBPKI(),
+				oldMDOps,
+			}
 			config.SetMDOps(mdOps)
 		}
 		config.mockMdcache.EXPECT().Put(gomock.Any()).
