@@ -93,7 +93,7 @@ func (fbsk *folderBranchStatusKeeper) signalChangeLocked() {
 func (fbsk *folderBranchStatusKeeper) setRootMetadata(md ImmutableRootMetadata) {
 	fbsk.dataMutex.Lock()
 	defer fbsk.dataMutex.Unlock()
-	if fbsk.md == md {
+	if fbsk.md.MdID() == md.MdID() {
 		return
 	}
 	fbsk.md = md
@@ -169,7 +169,7 @@ func (fbsk *folderBranchStatusKeeper) getStatus(ctx context.Context,
 
 	var fbs FolderBranchStatus
 
-	if fbsk.md != (ImmutableRootMetadata{}) {
+	if !fbsk.md.IsNil() {
 		fbs.Staged = fbsk.md.IsUnmergedSet()
 		fbs.BranchID = fbsk.md.BID().String()
 		name, err := fbsk.config.KBPKI().GetNormalizedUsername(ctx, fbsk.md.LastModifyingWriter())

@@ -451,7 +451,7 @@ func (fbo *folderBranchOps) addToFavorites(ctx context.Context,
 	favorites *Favorites, created bool) (err error) {
 	lState := makeFBOLockState()
 	head := fbo.getHead(lState)
-	if head == (ImmutableRootMetadata{}) {
+	if head.IsNil() {
 		return OpsCantHandleFavorite{"Can't add a favorite without a handle"}
 	}
 
@@ -478,7 +478,7 @@ func (fbo *folderBranchOps) deleteFromFavorites(ctx context.Context,
 
 	lState := makeFBOLockState()
 	head := fbo.getHead(lState)
-	if head == (ImmutableRootMetadata{}) {
+	if head.IsNil() {
 		// This can happen when identifies fail and the head is never set.
 		return OpsCantHandleFavorite{"Can't delete a favorite without a handle"}
 	}
@@ -562,7 +562,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
 
-	isFirstHead := fbo.head == ImmutableRootMetadata{}
+	isFirstHead := fbo.head.IsNil()
 	wasReadable := false
 	if !isFirstHead {
 		wasReadable = fbo.head.IsReadable()
@@ -675,7 +675,7 @@ func (fbo *folderBranchOps) setInitialHeadUntrustedLocked(ctx context.Context,
 	lState *lockState, md ImmutableRootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
-	if fbo.head != (ImmutableRootMetadata{}) {
+	if !fbo.head.IsNil() {
 		return errors.New("Unexpected non-nil head in setInitialHeadUntrustedLocked")
 	}
 	return fbo.setHeadLocked(ctx, lState, md)
@@ -686,7 +686,7 @@ func (fbo *folderBranchOps) setNewInitialHeadLocked(ctx context.Context,
 	lState *lockState, md ImmutableRootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
-	if fbo.head != (ImmutableRootMetadata{}) {
+	if !fbo.head.IsNil() {
 		return errors.New("Unexpected non-nil head in setNewInitialHeadLocked")
 	}
 	if md.Revision() != MetadataRevisionInitial {
@@ -702,7 +702,7 @@ func (fbo *folderBranchOps) setInitialHeadTrustedLocked(ctx context.Context,
 	lState *lockState, md ImmutableRootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
-	if fbo.head != (ImmutableRootMetadata{}) {
+	if !fbo.head.IsNil() {
 		return errors.New("Unexpected non-nil head in setInitialHeadUntrustedLocked")
 	}
 	return fbo.setHeadLocked(ctx, lState, md)
@@ -714,7 +714,7 @@ func (fbo *folderBranchOps) setHeadSuccessorLocked(ctx context.Context,
 	lState *lockState, md ImmutableRootMetadata, rebased bool) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
-	if fbo.head == (ImmutableRootMetadata{}) {
+	if fbo.head.IsNil() {
 		// This can happen in tests via SyncFromServerForTesting().
 		return fbo.setInitialHeadTrustedLocked(ctx, lState, md)
 	}
@@ -780,7 +780,7 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 	lState *lockState, md ImmutableRootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
-	if fbo.head == (ImmutableRootMetadata{}) {
+	if fbo.head.IsNil() {
 		return errors.New("Unexpected nil head in setHeadPredecessorLocked")
 	}
 	if fbo.head.Revision() <= MetadataRevisionInitial {
@@ -875,7 +875,7 @@ func (fbo *folderBranchOps) getMDLocked(
 	}()
 
 	md = fbo.getHead(lState)
-	if md != (ImmutableRootMetadata{}) {
+	if !md.IsNil() {
 		return md, nil
 	}
 
@@ -909,11 +909,11 @@ func (fbo *folderBranchOps) getMDLocked(
 		return ImmutableRootMetadata{}, err
 	}
 
-	if mergedMD == (ImmutableRootMetadata{}) {
+	if mergedMD.IsNil() {
 		return ImmutableRootMetadata{}, fmt.Errorf("Got nil RMD for %s", fbo.id())
 	}
 
-	if md == (ImmutableRootMetadata{}) {
+	if md.IsNil() {
 		// There are no unmerged MDs for this device, so just use the current head.
 		md = mergedMD
 	} else {
@@ -1197,7 +1197,7 @@ func (fbo *folderBranchOps) initMDLocked(
 
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	if fbo.head != (ImmutableRootMetadata{}) {
+	if !fbo.head.IsNil() {
 		return fmt.Errorf(
 			"%v: Unexpected MD ID during new MD initialization: %v",
 			md.TlfID(), fbo.head.mdID)
@@ -1269,7 +1269,7 @@ func (fbo *folderBranchOps) SetInitialHeadFromServer(
 	// head) if head is already set.
 	lState := makeFBOLockState()
 	head := fbo.getHead(lState)
-	if head != (ImmutableRootMetadata{}) && head.mdID == md.mdID {
+	if !head.IsNil() && head.mdID == md.mdID {
 		fbo.log.CDebugf(ctx, "Head MD already set to revision %d (%s), no "+
 			"need to set initial head again", md.Revision(), md.MergedStatus())
 		return nil
@@ -1318,7 +1318,7 @@ func (fbo *folderBranchOps) SetInitialHeadFromServer(
 		// Only update the head the first time; later it will be
 		// updated either directly via writes or through the
 		// background update processor.
-		if fbo.head == (ImmutableRootMetadata{}) {
+		if fbo.head.IsNil() {
 			err = fbo.setInitialHeadTrustedLocked(ctx, lState, md)
 			if err != nil {
 				return err
@@ -3816,7 +3816,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 func (fbo *folderBranchOps) getCurrMDRevisionLocked(lState *lockState) MetadataRevision {
 	fbo.headLock.AssertAnyLocked(lState)
 
-	if fbo.head != (ImmutableRootMetadata{}) {
+	if !fbo.head.IsNil() {
 		return fbo.head.Revision()
 	}
 	return MetadataRevisionUninitialized
@@ -3858,7 +3858,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			fbo.setLatestMergedRevisionLocked(ctx, lState, rmds[len(rmds)-1].Revision(), false)
 
 			unmergedRev := MetadataRevisionUninitialized
-			if fbo.head != (ImmutableRootMetadata{}) {
+			if !fbo.head.IsNil() {
 				unmergedRev = fbo.head.Revision()
 			}
 			fbo.cr.Resolve(unmergedRev, rmds[len(rmds)-1].Revision())
@@ -4026,7 +4026,7 @@ func (fbo *folderBranchOps) getAndApplyNewestUnmergedHead(ctx context.Context,
 		return err
 	}
 
-	if md == (ImmutableRootMetadata{}) {
+	if md.IsNil() {
 		// There is no unmerged revision, oops!
 		return errors.New("Couldn't find an unmerged head")
 	}
@@ -4239,7 +4239,7 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 	}
 
 	head := fbo.getHead(lState)
-	if head != (ImmutableRootMetadata{}) {
+	if !head.IsNil() {
 		// If we already have a cached revision, make sure we're
 		// up-to-date with the latest revision before inspecting the
 		// metadata, since Rekey doesn't let us go into CR mode, and
@@ -4997,7 +4997,7 @@ func (fbo *folderBranchOps) handleTLFBranchChange(ctx context.Context,
 		return
 	}
 
-	if md == (ImmutableRootMetadata{}) || md.MergedStatus() != Unmerged ||
+	if md.IsNil() || md.MergedStatus() != Unmerged ||
 		md.BID() != newBID {
 		// This can happen if CR got kicked off in some other way and
 		// completed before we took the lock to process this

@@ -151,7 +151,7 @@ func getMDRange(ctx context.Context, config Config, id TlfID, bid BranchID,
 	rmds = rmds[minSlot : maxSlot+1]
 	// check to make sure there are no holes
 	for i, rmd := range rmds {
-		if rmd == (ImmutableRootMetadata{}) {
+		if rmd.IsNil() {
 			return nil, fmt.Errorf("No %s MD found for revision %d",
 				mStatus, int(start)+minSlot+i)
 		}
