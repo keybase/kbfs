@@ -577,11 +577,6 @@ func (md *RootMetadata) GetSerializedWriterMetadata(
 	return md.bareMd.GetSerializedWriterMetadata(codec)
 }
 
-// GetWriterMetadataSigInfo wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
-	return md.bareMd.GetWriterMetadataSigInfo()
-}
-
 // SetWriterMetadataSigInfo wraps the respective method of the underlying BareRootMetadata for convenience.
 func (md *RootMetadata) SetWriterMetadataSigInfo(
 	sigInfo kbfscrypto.SignatureInfo) {
@@ -853,6 +848,12 @@ func (irmd ImmutableRootMetadata) MdID() MdID {
 // RootMetadata object.
 func (irmd ImmutableRootMetadata) LocalTimestamp() time.Time {
 	return irmd.localTimestamp
+}
+
+// GetWriterMetadataSigInfo returns the signature of the writer
+// metadata.
+func (irmd ImmutableRootMetadata) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
+	return irmd.writerSig
 }
 
 // RootMetadataSigned is the top-level MD object stored in MD server
