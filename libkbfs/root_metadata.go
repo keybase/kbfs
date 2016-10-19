@@ -767,8 +767,8 @@ func (md *RootMetadata) NewExtra() ExtraMetadata {
 // can be assumed to never alias a (modifiable) *RootMetadata.
 type ImmutableRootMetadata struct {
 	ReadOnlyRootMetadata
-	mdID      MdID
-	writerSig kbfscrypto.SignatureInfo
+	mdID                   MdID
+	lastWriterVerifyingKey kbfscrypto.VerifyingKey
 	// localTimestamp represents the time at which the MD update was
 	// applied at the server, adjusted for the local clock.  So for
 	// example, it can be used to show how long ago a particular
@@ -792,39 +792,15 @@ func MakeImmutableRootMetadata(
 	if localTimestamp == (time.Time{}) {
 		panic("zero localTimestamp passed to MakeImmutableRootMetadata")
 	}
-	var writerSig kbfscrypto.SignatureInfo
 	if bareMDV2, ok := rmd.bareMd.(*BareRootMetadataV2); ok {
-		writerSig = bareMDV2.WriterMetadataSigInfo
+		writerSig := bareMDV2.WriterMetadataSigInfo
 		if writerSig.VerifyingKey != writerVerifyingKey {
 			panic(fmt.Sprintf("key mismatch: sig has %s, expected %s",
 				writerSig.VerifyingKey, writerVerifyingKey))
 		}
-	} else {
-		/*
-			// TODO: Fix.
-			codec := kbfscodec.NewMsgpack()
-			buf, err := rmd.bareMd.GetSerializedWriterMetadata(codec)
-			if err != nil {
-				panic(err)
-			}
-
-			writerSig, err = signer.Sign(ctx, buf)
-			if err != nil {
-				panic(err)
-			}
-		*/
-		panic("Not implemented")
 	}
 	return ImmutableRootMetadata{
-		rmd.ReadOnly(), mdID, writerSig, localTimestamp}
-}
-
-// IsNil returns if irmd is the same as ImmutableRootMetadata{}.
-func (irmd ImmutableRootMetadata) IsNil() bool {
-	return (irmd.ReadOnlyRootMetadata == ReadOnlyRootMetadata{}) &&
-		(irmd.mdID == MdID{}) &&
-		(irmd.writerSig.IsNil()) &&
-		(irmd.localTimestamp == time.Time{})
+		rmd.ReadOnly(), mdID, writerVerifyingKey, localTimestamp}
 }
 
 // MdID returns the pre-computed MdID of the contained RootMetadata
@@ -840,13 +816,13 @@ func (irmd ImmutableRootMetadata) LocalTimestamp() time.Time {
 }
 
 func (irmd ImmutableRootMetadata) LastWriterVerifyingKey() kbfscrypto.VerifyingKey {
-	return irmd.writerSig.VerifyingKey
+	return irmd.lastWriterVerifyingKey
 }
 
 // LastModifyingWriterKID returns the KID of the last device to modify
 // the writer metadata.
 func (irmd ImmutableRootMetadata) LastModifyingWriterKID() keybase1.KID {
-	return irmd.writerSig.VerifyingKey.KID()
+	return irmd.lastWriterVerifyingKey.KID()
 }
 
 // RootMetadataSigned is the top-level MD object stored in MD server
