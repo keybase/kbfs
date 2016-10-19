@@ -656,7 +656,9 @@ func TestRootMetadataFinalIsFinal(t *testing.T) {
 }
 
 // Test verification of finalized metadata blocks.
-func TestRootMetadataFinalVerify(t *testing.T) {
+//
+// TODO: have MDV3 version.
+func TestRootMetadataFinalVerifyV3(t *testing.T) {
 	config := MakeTestConfigOrBust(t, "alice")
 	defer config.Shutdown()
 
@@ -667,9 +669,7 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	md := &BareRootMetadataV2{}
-	// MDv3 TODO: uncomment the below when we're ready for MDv3
-	// md := &BareRootMetadataV#{}
+	var md BareRootMetadataV2
 	err = md.Update(id, h)
 	if err != nil {
 		t.Fatal(err)
@@ -678,24 +678,19 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	md.SetLastModifyingWriter(h.Writers[0])
 	md.SetLastModifyingUser(h.Writers[0])
 	md.SetSerializedPrivateMetadata([]byte{42})
-	buf, err := md.GetSerializedWriterMetadata(config.Codec())
+	err = md.MaybeSignWriterMetadata(
+		context.Background(), config.Codec(), config.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
-	writerSigInfo, err := config.Crypto().Sign(context.Background(), buf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	md.SetWriterMetadataSigInfo(writerSigInfo)
 
 	rmds, err := signMD(context.Background(), config.Codec(),
-		config.Crypto(), md, time.Time{})
+		config.Crypto(), &md, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// verify it
-	// MDv3 TODO: pass key bundles
 	err = rmds.IsValidAndSigned(config.Codec(), config.Crypto(), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -715,7 +710,6 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	rmds2.MD.(MutableBareRootMetadata).SetFinalizedInfo(fi)
 
 	// verify the finalized copy
-	// MDv3 TODO: pass key bundles
 	err = rmds2.IsValidAndSigned(config.Codec(), config.Crypto(), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -724,7 +718,6 @@ func TestRootMetadataFinalVerify(t *testing.T) {
 	// touch something the server shouldn't be allowed to edit for finalized metadata
 	// and verify verification failure.
 	rmds2.MD.(MutableBareRootMetadata).SetRekeyBit()
-	// MDv3 TODO: pass key bundles
 	err = rmds2.IsValidAndSigned(config.Codec(), config.Crypto(), nil)
 	if err == nil {
 		t.Fatalf("expected error")
