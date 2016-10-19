@@ -859,8 +859,7 @@ func (irmd ImmutableRootMetadata) GetWriterMetadataSigInfo() kbfscrypto.Signatur
 
 // RootMetadataSigned is the top-level MD object stored in MD server
 //
-// TODO: Use a separate type for the in-memory client representation
-// vs. the server on-disk representation.
+// TODO: Use the BareRootMetadataSigned types on the server side.
 type RootMetadataSigned struct {
 	// signature over the root metadata by the private signing key
 	SigInfo kbfscrypto.SignatureInfo `codec:",omitempty"`
@@ -939,12 +938,9 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(codec kbfscodec.Codec) (
 	// is to make verification easier for the client as otherwise it'd need to request
 	// the head revision - 1.
 	newBareMd.SetRevision(rmds.MD.RevisionNumber() + 1)
-	newRmds := RootMetadataSigned{}
-	// Set the bare metadata.
-	newRmds.MD = newBareMd
-	// Copy the signature.
-	newRmds.SigInfo = rmds.SigInfo.DeepCopy()
-	return &newRmds, nil
+	newRmds := MakeRootMetadataSigned(
+		rmds.SigInfo.DeepCopy(), newBareMd, time.Time{})
+	return newRmds, nil
 }
 
 // IsValidAndSigned verifies the RootMetadataSigned, checks the root
