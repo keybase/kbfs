@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
@@ -516,14 +517,8 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
-	mbrmd, ok := brmd.(MutableBareRootMetadata)
-	if !ok {
-		return MdID{}, MutableBareRootMetadataNoImplError{}
-	}
-
-	rmds := RootMetadataSigned{MD: mbrmd}
-
-	err = signMD(ctx, md.config.Codec(), md.config.Crypto(), &rmds)
+	rmds, err := signMD(
+		ctx, md.config.Codec(), md.config.Crypto(), brmd, time.Time{})
 	if err != nil {
 		return MdID{}, err
 	}
