@@ -104,6 +104,9 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 		// extra work by downloading the same MDs twice (for those
 		// that aren't yet in the cache).  That should be so rare that
 		// it's not worth optimizing.
+		//
+		// TODO: What if we're on a branch and we go far
+		// enough back to get back on the master branch?
 		prevMDs, err := getMDRange(ctx, md.config, rmds.MD.TlfID(), rmds.MD.BID(),
 			startRev, prevHead, rmds.MD.MergedStatus())
 		if err != nil {
