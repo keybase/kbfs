@@ -355,19 +355,13 @@ func encryptMDPrivateData(
 			brmd.SetSerializedPrivateMetadata(encodedEncryptedPrivateMetadata)
 		}
 
-		// Sign the writer metadata. This has to be done here,
-		// instead of in signMD, since the MetadataID depends
-		// on it.
-		buf, err := brmd.GetSerializedWriterMetadata(codec)
+		// Sign the writer metadata if needed. This has to be
+		// done here, instead of in signMD, since the
+		// MetadataID may depend on it.
+		err := brmd.MaybeSignWriterMetadata(ctx, codec, signer)
 		if err != nil {
 			return nil, err
 		}
-
-		sigInfo, err := signer.Sign(ctx, buf)
-		if err != nil {
-			return nil, err
-		}
-		brmd.SetWriterMetadataSigInfo(sigInfo)
 	}
 
 	// Record the last user to modify this metadata
