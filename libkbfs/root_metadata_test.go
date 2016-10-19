@@ -468,31 +468,31 @@ func TestBareRootMetadataUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeBareRootMetadataFuture(t))
 }
 
-func TestIsValidRekeyRequestBasic(t *testing.T) {
+// TODO: Have MDV3 version.
+func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 	config := MakeTestConfigOrBust(t, "alice")
 	defer config.Shutdown()
 
 	// Sign the writer metadata
-	id := FakeTlfID(1, false)
+	tlfID := FakeTlfID(1, false)
 
 	h := parseTlfHandleOrBust(t, config, "alice", false)
-	rmd := newRootMetadataOrBust(t, id, h)
+	var brmd BareRootMetadataV2
+	err := brmd.Update(tlfID, h.ToBareHandleOrBust())
+	require.NoError(t, err)
 
-	buf, err := rmd.GetSerializedWriterMetadata(config.Codec())
+	err = brmd.MaybeSignWriterMetadata(
+		context.Background(), config.Codec(), config.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
-	sigInfo, err := config.Crypto().Sign(context.Background(), buf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rmd.SetWriterMetadataSigInfo(sigInfo)
 
 	// Copy bit unset.
-	newRmd := newRootMetadataOrBust(t, id, h)
-	// MDv3 TODO: pass reader key bundles
-	ok, err := newRmd.bareMd.IsValidRekeyRequest(
-		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter(), nil, nil)
+	var newBrmd BareRootMetadataV2
+	err = newBrmd.Update(tlfID, h.ToBareHandleOrBust())
+	require.NoError(t, err)
+	ok, err := newBrmd.IsValidRekeyRequest(
+		config.Codec(), &brmd, newBrmd.LastModifyingWriter(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -501,24 +501,19 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	}
 
 	// Set the copy bit; note the writer metadata is the same.
-	newRmd.SetWriterMetadataCopiedBit()
+	newBrmd.SetWriterMetadataCopiedBit()
 
 	// Writer metadata siginfo mismatch.
 	config2 := MakeTestConfigOrBust(t, "bob")
 	defer config2.Shutdown()
 
-	buf, err = newRmd.GetSerializedWriterMetadata(config2.Codec())
+	err = newBrmd.MaybeSignWriterMetadata(
+		context.Background(), config2.Codec(), config2.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
-	sigInfo2, err := config2.Crypto().Sign(context.Background(), buf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	newRmd.SetWriterMetadataSigInfo(sigInfo2)
-	// MDv3 TODO: pass reader key bundles
-	ok, err = newRmd.bareMd.IsValidRekeyRequest(
-		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter(), nil, nil)
+	ok, err = newBrmd.IsValidRekeyRequest(
+		config.Codec(), &brmd, newBrmd.LastModifyingWriter(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -527,10 +522,9 @@ func TestIsValidRekeyRequestBasic(t *testing.T) {
 	}
 
 	// Replace with copied signature.
-	newRmd.SetWriterMetadataSigInfo(sigInfo)
-	// MDv3 TODO: pass reader key bundles
-	ok, err = newRmd.bareMd.IsValidRekeyRequest(
-		config.Codec(), rmd.bareMd, newRmd.LastModifyingWriter(), nil, nil)
+	newBrmd.WriterMetadataSigInfo = brmd.WriterMetadataSigInfo
+	ok, err = newBrmd.IsValidRekeyRequest(
+		config.Codec(), &brmd, newBrmd.LastModifyingWriter(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
