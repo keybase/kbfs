@@ -12,7 +12,6 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
-	"github.com/keybase/kbfs/kbfscodec"
 	"golang.org/x/net/context"
 )
 
@@ -116,18 +115,24 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 
 		for i := len(prevMDs) - 1; i >= 0; i-- {
 			if !prevMDs[i].IsWriterMetadataCopiedSet() {
-				ok, err := kbfscodec.Equal(md.config.Codec(),
-					rmds.GetWriterMetadataSigInfo(),
-					prevMDs[i].GetWriterMetadataSigInfo())
+				// We want to compare the writer
+				// signature of rmds with that of
+				// prevMDs[i]. However, we've already
+				// dropped prevMDs[i] writer
+				// signature. We can just verify
+				// prevMDs[i]'s writer metadata with
+				// rmds's signature, though.
+				buf, err := prevMDs[i].GetSerializedWriterMetadata(md.config.Codec())
 				if err != nil {
 					return err
 				}
-				if !ok {
-					return fmt.Errorf("Previous uncopied writer MD sig info "+
-						"for revision %d of folder %s doesn't match copied "+
-						"revision %d", prevMDs[i].Revision(), rmds.MD.TlfID(),
-						rmds.MD.RevisionNumber())
+
+				err = md.config.Crypto().Verify(
+					buf, rmds.GetWriterMetadataSigInfo())
+				if err != nil {
+					return fmt.Errorf("Could not verify uncopied writer metadata from revision %d of folder %s with signature from revision %d: %v", prevMDs[i].Revision(), rmds.MD.TlfID(), rmds.MD.RevisionNumber(), err)
 				}
+
 				// The fact the fact that we were able to process this
 				// MD correctly means that we already verified its key
 				// at the correct timestamp, so we're good.
