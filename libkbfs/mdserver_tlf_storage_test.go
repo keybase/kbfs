@@ -93,8 +93,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	bid := FakeBranchID(1)
 	for i := MetadataRevision(6); i < 41; i++ {
 		rmds := makeRMDSForTest(t, crypto, tlfID, h, i, uid, prevRoot)
-		rmds.MD.SetUnmerged()
-		rmds.MD.SetBranchID(bid)
+		rmds.MD.(MutableBareRootMetadata).SetUnmerged()
+		rmds.MD.(MutableBareRootMetadata).SetBranchID(bid)
 		signRMDSForTest(t, codec, signer, rmds)
 		// MDv3 TODO: pass extra metadata
 		recordBranchID, err := s.put(uid, verifyingKey, rmds, nil)

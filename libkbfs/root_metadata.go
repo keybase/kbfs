@@ -861,7 +861,7 @@ type RootMetadataSigned struct {
 	// signature over the root metadata by the private signing key
 	SigInfo kbfscrypto.SignatureInfo `codec:",omitempty"`
 	// all the metadata
-	MD MutableBareRootMetadata
+	MD BareRootMetadata
 	// When does the server say this MD update was received?  (This is
 	// not necessarily trustworthy, just for informational purposes.)
 	untrustedServerTimestamp time.Time
@@ -904,16 +904,8 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(codec kbfscodec.Codec) (
 	if err != nil {
 		return nil, err
 	}
-	newMutableBareMd, ok := newBareMd.(MutableBareRootMetadata)
-	if !ok {
-		return nil, MutableBareRootMetadataNoImplError{}
-	}
-	// Set the bare metadata.
-	newRmds.MD = newMutableBareMd
-	// Copy the signature.
-	newRmds.SigInfo = rmds.SigInfo.DeepCopy()
 	// Set the final flag.
-	newRmds.MD.SetFinalBit()
+	newBareMd.SetFinalBit()
 	// Increment revision but keep the PrevRoot --
 	// We want the client to be able to verify the signature by masking out the final
 	// bit, decrementing the revision, and nulling out the finalized extension info.
@@ -921,7 +913,11 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(codec kbfscodec.Codec) (
 	// creating the final metadata block. Note that PrevRoot isn't being updated. This
 	// is to make verification easier for the client as otherwise it'd need to request
 	// the head revision - 1.
-	newRmds.MD.SetRevision(rmds.MD.RevisionNumber() + 1)
+	newBareMd.SetRevision(rmds.MD.RevisionNumber() + 1)
+	// Set the bare metadata.
+	newRmds.MD = newBareMd
+	// Copy the signature.
+	newRmds.SigInfo = rmds.SigInfo.DeepCopy()
 	return &newRmds, nil
 }
 
