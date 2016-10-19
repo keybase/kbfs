@@ -139,7 +139,7 @@ func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
 	packedData := []byte{4, 3, 2, 1}
 	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(packedData, nil).AnyTimes()
 
-	config.mockCrypto.EXPECT().Verify(packedData, rmds.MD.GetWriterMetadataSigInfo()).Return(nil)
+	config.mockCrypto.EXPECT().Verify(packedData, rmds.GetWriterMetadataSigInfo()).Return(nil)
 	config.mockCrypto.EXPECT().Verify(packedData, rmds.SigInfo).Return(verifyErr)
 	if verifyErr != nil {
 		return
@@ -185,7 +185,7 @@ func verifyMDForPrivateHelper(
 	config.mockCrypto.EXPECT().Verify(packedData, rmds.SigInfo).
 		MinTimes(minTimes).MaxTimes(maxTimes).Return(nil)
 	config.mockCrypto.EXPECT().
-		Verify(packedData, rmds.MD.GetWriterMetadataSigInfo()).
+		Verify(packedData, rmds.GetWriterMetadataSigInfo()).
 		MinTimes(minTimes).MaxTimes(maxTimes).Return(nil)
 }
 
@@ -624,7 +624,7 @@ func validatePutPublicRMDS(
 	// Verify signature of WriterMetadata.
 	buf, err := rmds.MD.GetSerializedWriterMetadata(config.Codec())
 	require.NoError(t, err)
-	err = config.Crypto().Verify(buf, rmds.MD.GetWriterMetadataSigInfo())
+	err = config.Crypto().Verify(buf, rmds.GetWriterMetadataSigInfo())
 	require.NoError(t, err)
 
 	// Verify encoded PrivateMetadata.
@@ -646,7 +646,7 @@ func validatePutPublicRMDS(
 	// Overwrite written fields.
 	expectedRmd.SetLastModifyingWriter(rmds.MD.LastModifyingWriter())
 	expectedRmd.SetLastModifyingUser(rmds.MD.GetLastModifyingUser())
-	expectedRmd.SetWriterMetadataSigInfo(rmds.MD.GetWriterMetadataSigInfo())
+	expectedRmd.SetWriterMetadataSigInfo(rmds.GetWriterMetadataSigInfo())
 	expectedRmd.SetSerializedPrivateMetadata(rmds.MD.GetSerializedPrivateMetadata())
 
 	require.Equal(t, &expectedRmd, rmds.MD)
