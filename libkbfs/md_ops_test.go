@@ -43,6 +43,7 @@ func mdOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config = NewConfigMock(mockCtrl, ctr)
 	mdops := NewMDOpsStandard(config)
 	config.SetMDOps(mdops)
+	config.SetCodec(kbfscodec.NewMsgpack())
 	config.mockMdserv.EXPECT().OffsetFromServerTime().
 		Return(time.Duration(0), true).AnyTimes()
 	h1, _ := kbfshash.DefaultHash([]byte{1})
@@ -94,10 +95,15 @@ func newRMD(t *testing.T, config Config, public bool) (
 	return rmd, h
 }
 
-func addFakeRMDSData(crypto cryptoPure, rmds *RootMetadataSigned, h *TlfHandle) ExtraMetadata {
+func addFakeRMDSData(t *testing.T, codec kbfscodec.Codec, crypto cryptoPure,
+	rmds *RootMetadataSigned, h *TlfHandle) ExtraMetadata {
 	mmd := rmds.MD.(MutableBareRootMetadata)
 	mmd.SetRevision(MetadataRevision(1))
-	mmd.SetSerializedPrivateMetadata([]byte{1})
+	pmd := PrivateMetadata{}
+	// TODO: Will have to change this for private folders.
+	buf, err := codec.Encode(pmd)
+	require.NoError(t, err)
+	mmd.SetSerializedPrivateMetadata(buf)
 	mmd.SetLastModifyingWriter(h.FirstResolvedWriter())
 	mmd.SetLastModifyingUser(h.FirstResolvedWriter())
 	fakeVerifyingKey := MakeFakeVerifyingKeyOrBust("fake key")
@@ -130,18 +136,15 @@ func newRMDS(t *testing.T, config Config, public bool) (
 	if err != nil {
 		t.Fatal(err)
 	}
-	extra := addFakeRMDSData(config.Crypto(), rmds, h)
+	extra := addFakeRMDSData(t, config.Codec(), config.Crypto(), rmds, h)
 
 	return rmds, h, extra
 }
 
 func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
 	verifyErr, hasVerifyingKeyErr error) {
-	packedData := []byte{4, 3, 2, 1}
-	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(packedData, nil).AnyTimes()
-
-	config.mockCrypto.EXPECT().Verify(packedData, rmds.GetWriterMetadataSigInfo()).Return(nil)
-	config.mockCrypto.EXPECT().Verify(packedData, rmds.SigInfo).Return(verifyErr)
+	config.mockCrypto.EXPECT().Verify(gomock.Any(), rmds.GetWriterMetadataSigInfo()).Return(nil)
+	config.mockCrypto.EXPECT().Verify(gomock.Any(), rmds.SigInfo).Return(verifyErr)
 	if verifyErr != nil {
 		return
 	}
@@ -151,17 +154,10 @@ func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
 	if hasVerifyingKeyErr != nil {
 		return
 	}
-
-	config.mockCodec.EXPECT().Decode(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 }
 
 func verifyMDForPrivateHelper(
 	config *ConfigMock, rmds *RootMetadataSigned, minTimes, maxTimes int) {
-	packedData := []byte{4, 3, 2, 1}
-	config.mockCodec.EXPECT().Encode(gomock.Any()).
-		Return(packedData, nil).AnyTimes()
-
-	config.mockCodec.EXPECT().Decode(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mdCopy, err := rmds.MD.DeepCopy(config.Codec())
 	if err != nil {
 		panic(err)
@@ -178,17 +174,15 @@ func verifyMDForPrivateHelper(
 	if rmds.MD.IsFinal() {
 		config.mockKbpki.EXPECT().HasUnverifiedVerifyingKey(gomock.Any(), gomock.Any(),
 			gomock.Any()).AnyTimes().Return(nil)
-		config.mockCodec.EXPECT().
-			Decode(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
 	} else {
 		config.mockKbpki.EXPECT().HasVerifyingKey(gomock.Any(), gomock.Any(),
 			gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
 	}
 
-	config.mockCrypto.EXPECT().Verify(packedData, rmds.SigInfo).
+	config.mockCrypto.EXPECT().Verify(gomock.Any(), rmds.SigInfo).
 		MinTimes(minTimes).MaxTimes(maxTimes).Return(nil)
 	config.mockCrypto.EXPECT().
-		Verify(packedData, rmds.GetWriterMetadataSigInfo()).
+		Verify(gomock.Any(), rmds.GetWriterMetadataSigInfo()).
 		MinTimes(minTimes).MaxTimes(maxTimes).Return(nil)
 }
 
@@ -302,17 +296,17 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 	rmds1 := NewRootMetadataSigned()
 	err = rmds1.MD.(MutableBareRootMetadata).Update(id, mdHandle1.ToBareHandleOrBust())
 	require.NoError(t, err)
-	addFakeRMDSData(config.Crypto(), rmds1, mdHandle1)
+	addFakeRMDSData(t, config.Codec(), config.Crypto(), rmds1, mdHandle1)
 
 	rmds2 := NewRootMetadataSigned()
 	err = rmds2.MD.(MutableBareRootMetadata).Update(id, mdHandle2.ToBareHandleOrBust())
 	require.NoError(t, err)
-	addFakeRMDSData(config.Crypto(), rmds2, mdHandle2)
+	addFakeRMDSData(t, config.Codec(), config.Crypto(), rmds2, mdHandle2)
 
 	rmds3 := NewRootMetadataSigned()
 	err = rmds3.MD.(MutableBareRootMetadata).Update(id, mdHandle3.ToBareHandleOrBust())
 	require.NoError(t, err)
-	addFakeRMDSData(config.Crypto(), rmds3, mdHandle3)
+	addFakeRMDSData(t, config.Codec(), config.Crypto(), rmds3, mdHandle3)
 
 	// Do this before setting tlfHandles to nil.
 	verifyMDForPublic(config, rmds2, nil, nil)
@@ -706,7 +700,6 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 		Return(true)
 
 	err := errors.New("Fake fail")
-	config.mockCodec.EXPECT().Encode(gomock.Any()).Return(nil, err)
 
 	if _, err2 := config.MDOps().Put(ctx, rmd); err2 != err {
 		t.Errorf("Got bad error on put: %v", err2)
