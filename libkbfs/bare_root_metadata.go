@@ -286,11 +286,8 @@ func (md *BareRootMetadataV2) MakeSuccessorCopy(
 		return nil, err
 	}
 	if !preserveWriterSig {
-		vk := mdCopy.(*BareRootMetadataV2).WriterMetadataSigInfo.VerifyingKey
 		mdCopy.(*BareRootMetadataV2).WriterMetadataSigInfo =
-			kbfscrypto.SignatureInfo{
-				VerifyingKey: vk,
-			}
+			kbfscrypto.SignatureInfo{}
 	}
 	return mdCopy, nil
 }

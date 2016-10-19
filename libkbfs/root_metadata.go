@@ -797,6 +797,9 @@ func MakeImmutableRootMetadata(
 	}
 	if bareMDV2, ok := rmd.bareMd.(*BareRootMetadataV2); ok {
 		writerSig := bareMDV2.WriterMetadataSigInfo
+		if writerSig.IsNil() {
+			panic("MDV2 with nil writer signature")
+		}
 		if writerSig.VerifyingKey != writerVerifyingKey {
 			panic(fmt.Sprintf("key mismatch: sig has %s, expected %s",
 				writerSig.VerifyingKey, writerVerifyingKey))
