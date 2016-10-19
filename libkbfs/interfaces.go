@@ -1563,11 +1563,11 @@ type BareRootMetadata interface {
 	// IsReader returns whether or not the user+device is an authorized reader.
 	IsReader(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool
 	// DeepCopy returns a deep copy of the underlying data structure.
-	DeepCopy(codec kbfscodec.Codec) (BareRootMetadata, error)
+	DeepCopy(codec kbfscodec.Codec) (MutableBareRootMetadata, error)
 	// MakeSuccessorCopy returns a newly constructed successor copy to this metadata revision.
 	// It differs from DeepCopy in that it can perform an up conversion to a new metadata
 	// version.
-	MakeSuccessorCopy(codec kbfscodec.Codec) (BareRootMetadata, error)
+	MakeSuccessorCopy(codec kbfscodec.Codec) (MutableBareRootMetadata, error)
 	// CheckValidSuccessor makes sure the given BareRootMetadata is a valid
 	// successor to the current one, and returns an error otherwise.
 	CheckValidSuccessor(currID MdID, nextMd BareRootMetadata) error

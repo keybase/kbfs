@@ -338,7 +338,7 @@ func (md *BareRootMetadataV3) Update(id TlfID, h BareTlfHandle) error {
 
 // DeepCopy implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) DeepCopy(
-	codec kbfscodec.Codec) (BareRootMetadata, error) {
+	codec kbfscodec.Codec) (MutableBareRootMetadata, error) {
 	var newMd BareRootMetadataV3
 	if err := kbfscodec.Update(codec, &newMd, md); err != nil {
 		return nil, err
@@ -348,7 +348,7 @@ func (md *BareRootMetadataV3) DeepCopy(
 
 // MakeSuccessorCopy implements the ImmutableBareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) MakeSuccessorCopy(
-	codec kbfscodec.Codec) (BareRootMetadata, error) {
+	codec kbfscodec.Codec) (MutableBareRootMetadata, error) {
 	// TODO: If there is ever a BareRootMetadataV4 this will need to perform the conversion.
 	return md.DeepCopy(codec)
 }
