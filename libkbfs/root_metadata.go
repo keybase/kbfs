@@ -1048,7 +1048,8 @@ func DecodeRootMetadata(
 // DecodeRootMetadataSigned deserializes a metadata block into the
 // specified versioned structure.
 func DecodeRootMetadataSigned(
-	codec kbfscodec.Codec, tlf TlfID, ver, max MetadataVer, buf []byte) (
+	codec kbfscodec.Codec, tlf TlfID, ver, max MetadataVer, buf []byte,
+	untrustedServerTimestamp time.Time) (
 	*RootMetadataSigned, error) {
 	if ver < FirstValidMetadataVer {
 		return nil, InvalidMetadataVersionError{tlf, ver}
@@ -1064,17 +1065,14 @@ func DecodeRootMetadataSigned(
 		if err := codec.Decode(buf, &brmds); err != nil {
 			return nil, err
 		}
-		return &RootMetadataSigned{
-			MD:      &brmds.MD,
-			SigInfo: brmds.SigInfo,
-		}, nil
+		return MakeRootMetadataSigned(
+			brmds.SigInfo, &brmds.MD,
+			untrustedServerTimestamp), nil
 	}
 	var brmds BareRootMetadataSignedV3
 	if err := codec.Decode(buf, &brmds); err != nil {
 		return nil, err
 	}
-	return &RootMetadataSigned{
-		MD:      &brmds.MD,
-		SigInfo: brmds.SigInfo,
-	}, nil
+	return MakeRootMetadataSigned(
+		brmds.SigInfo, &brmds.MD, untrustedServerTimestamp), nil
 }
