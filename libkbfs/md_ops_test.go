@@ -684,6 +684,15 @@ func TestMDOpsPutPrivateSuccess(t *testing.T) {
 	}
 }
 
+type failEncodeCodec struct {
+	kbfscodec.Codec
+	err error
+}
+
+func (c failEncodeCodec) Encode(obj interface{}) ([]byte, error) {
+	return nil, c.err
+}
+
 func TestMDOpsPutFailEncode(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
@@ -700,6 +709,7 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 		Return(true)
 
 	err := errors.New("Fake fail")
+	config.SetCodec(failEncodeCodec{config.Codec(), err})
 
 	if _, err2 := config.MDOps().Put(ctx, rmd); err2 != err {
 		t.Errorf("Got bad error on put: %v", err2)
