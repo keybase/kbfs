@@ -376,25 +376,6 @@ func encryptMDPrivateData(
 	return brmd, nil
 }
 
-func signMD(
-	ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner,
-	rmds *RootMetadataSigned) error {
-	// encode the root metadata and sign it
-	buf, err := codec.Encode(rmds.MD)
-	if err != nil {
-		return err
-	}
-
-	// Sign normally using the local device private key
-	sigInfo, err := signer.Sign(ctx, buf)
-	if err != nil {
-		return err
-	}
-	rmds.SigInfo = sigInfo
-
-	return nil
-}
-
 func getFileBlockForMD(ctx context.Context, bcache BlockCache, bops BlockOps,
 	ptr BlockPointer, tlfID TlfID, rmdWithKeys KeyMetadata) (
 	*FileBlock, error) {

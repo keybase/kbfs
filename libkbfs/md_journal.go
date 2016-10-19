@@ -751,19 +751,12 @@ func (j mdJournal) getNextEntryToFlush(
 		return MdID{}, nil, nil, nil
 	}
 
-	rmds := RootMetadataSigned{
-		MD: rmd,
-		// No need to un-adjust the server timestamp; we can leave it
-		// as a local timestamp since flushed entries don't end up
-		// getting processed (and re-adjusted) again.
-		untrustedServerTimestamp: timestamp,
-	}
-	err = signMD(ctx, j.codec, signer, &rmds)
+	rmds, err := signMD(ctx, j.codec, signer, rmd, timestamp)
 	if err != nil {
 		return MdID{}, nil, nil, err
 	}
 
-	return mdID, &rmds, extra, nil
+	return mdID, rmds, extra, nil
 }
 
 func (j *mdJournal) removeFlushedEntry(

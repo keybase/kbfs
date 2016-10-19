@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -870,6 +871,35 @@ type RootMetadataSigned struct {
 	untrustedServerTimestamp time.Time
 }
 
+func MakeRootMetadataSigned(sigInfo kbfscrypto.SignatureInfo,
+	md BareRootMetadata,
+	untrustedServerTimestamp time.Time) *RootMetadataSigned {
+	return &RootMetadataSigned{
+		MD:                       md,
+		SigInfo:                  sigInfo,
+		untrustedServerTimestamp: untrustedServerTimestamp,
+	}
+}
+
+func signMD(
+	ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner,
+	brmd BareRootMetadata, untrustedServerTimestamp time.Time) (
+	*RootMetadataSigned, error) {
+	// encode the root metadata and sign it
+	buf, err := codec.Encode(brmd)
+	if err != nil {
+		return nil, err
+	}
+
+	// Sign normally using the local device private key
+	sigInfo, err := signer.Sign(ctx, buf)
+	if err != nil {
+		return nil, err
+	}
+	return MakeRootMetadataSigned(
+		sigInfo, brmd, untrustedServerTimestamp), nil
+}
+
 // GetWriterMetadataSigInfo returns the signature of the writer
 // metadata.
 func (rmds *RootMetadataSigned) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
@@ -895,7 +925,6 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(codec kbfscodec.Codec) (
 	if rmds.MD.IsFinal() {
 		return nil, MetadataIsFinalError{}
 	}
-	newRmds := RootMetadataSigned{}
 	newBareMd, err := rmds.MD.DeepCopy(codec)
 	if err != nil {
 		return nil, err
@@ -910,6 +939,7 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(codec kbfscodec.Codec) (
 	// is to make verification easier for the client as otherwise it'd need to request
 	// the head revision - 1.
 	newBareMd.SetRevision(rmds.MD.RevisionNumber() + 1)
+	newRmds := RootMetadataSigned{}
 	// Set the bare metadata.
 	newRmds.MD = newBareMd
 	// Copy the signature.
