@@ -573,12 +573,6 @@ func (md *RootMetadata) GetSerializedWriterMetadata(
 	return md.bareMd.GetSerializedWriterMetadata(codec)
 }
 
-// SetWriterMetadataSigInfo wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) SetWriterMetadataSigInfo(
-	sigInfo kbfscrypto.SignatureInfo) {
-	md.bareMd.SetWriterMetadataSigInfo(sigInfo)
-}
-
 // IsFinal wraps the respective method of the underlying BareRootMetadata for convenience.
 func (md *RootMetadata) IsFinal() bool {
 	return md.bareMd.IsFinal()
@@ -860,7 +854,12 @@ func (irmd ImmutableRootMetadata) LastModifyingWriterKID() keybase1.KID {
 
 // RootMetadataSigned is the top-level MD object stored in MD server
 //
-// TODO: Use the BareRootMetadataSigned types on the server side.
+// TODO: Have separate types for:
+//
+// - The in-memory client representation (needs untrustedServerTimestamp);
+// - the type sent over RPC;
+// - the type stored in the journal;
+// - and the type stored in the MD server.
 type RootMetadataSigned struct {
 	// signature over the root metadata by the private signing key
 	SigInfo       kbfscrypto.SignatureInfo
@@ -921,7 +920,7 @@ func signMD(
 // GetWriterMetadataSigInfo returns the signature of the writer
 // metadata.
 func (rmds *RootMetadataSigned) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
-	return rmds.MD.GetWriterMetadataSigInfo()
+	return rmds.WriterSigInfo
 }
 
 // MerkleHash computes a hash of this RootMetadataSigned object for inclusion
@@ -975,6 +974,11 @@ func (rmds *RootMetadataSigned) IsValidAndSigned(
 	if rmds.SigInfo.IsNil() {
 		return errors.New("Missing RootMetadata signature")
 	}
+	// Optimization -- if the WriterMetadata signature is nil, it
+	// will fail verification.
+	if rmds.WriterSigInfo.IsNil() {
+		return errors.New("Missing WriterMetadata signature")
+	}
 
 	err := rmds.MD.IsValidAndSigned(codec, crypto, extra)
 	if err != nil {
@@ -1011,6 +1015,16 @@ func (rmds *RootMetadataSigned) IsValidAndSigned(
 		return fmt.Errorf("Could not verify root metadata: %v", err)
 	}
 
+	buf, err = md.GetSerializedWriterMetadata(codec)
+	if err != nil {
+		return err
+	}
+
+	err = crypto.Verify(buf, rmds.WriterSigInfo)
+	if err != nil {
+		return fmt.Errorf("Could not verify writer metadata: %v", err)
+	}
+
 	return nil
 }
 
@@ -1027,6 +1041,12 @@ func (rmds *RootMetadataSigned) IsLastModifiedBy(
 	if rmds.SigInfo.VerifyingKey != key {
 		return fmt.Errorf("Last modifier verifying key %v != %v",
 			rmds.SigInfo.VerifyingKey, key)
+	}
+
+	if rmds.WriterSigInfo.VerifyingKey != key {
+		return fmt.Errorf(
+			"Last writer verifying key %v != %v",
+			rmds.WriterSigInfo.VerifyingKey, key)
 	}
 
 	return nil
@@ -1075,20 +1095,15 @@ func DecodeRootMetadataSigned(
 		// Shouldn't be possible at the moment.
 		panic("Invalid metadata version")
 	}
+	var rmds RootMetadataSigned
 	if ver < SegregatedKeyBundlesVer {
-		var brmds BareRootMetadataSignedV2
-		if err := codec.Decode(buf, &brmds); err != nil {
-			return nil, err
-		}
-		return MakeRootMetadataSigned(
-			brmds.SigInfo, brmds.MD.WriterMetadataSigInfo,
-			&brmds.MD, untrustedServerTimestamp)
+		rmds.MD = &BareRootMetadataV2{}
+	} else {
+		rmds.MD = &BareRootMetadataV3{}
 	}
-	var brmds BareRootMetadataSignedV3
-	if err := codec.Decode(buf, &brmds); err != nil {
+	if err := codec.Decode(buf, &rmds); err != nil {
 		return nil, err
 	}
-	return MakeRootMetadataSigned(
-		brmds.SigInfo, brmds.WriterSigInfo,
-		&brmds.MD, untrustedServerTimestamp)
+	rmds.untrustedServerTimestamp = untrustedServerTimestamp
+	return &rmds, nil
 }

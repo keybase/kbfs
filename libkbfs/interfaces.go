@@ -1637,8 +1637,6 @@ type BareRootMetadata interface {
 	GetSerializedPrivateMetadata() []byte
 	// GetSerializedWriterMetadata serializes the underlying writer metadata and returns the result.
 	GetSerializedWriterMetadata(codec kbfscodec.Codec) ([]byte, error)
-	// GetWriterMetadataSigInfo returns the signature info associated with the the writer metadata.
-	GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo
 	// Version returns the metadata version.
 	Version() MetadataVer
 	// GetTLFPublicKey returns the TLF public key for the give key generation.
@@ -1699,8 +1697,6 @@ type MutableBareRootMetadata interface {
 	// versions that store this signature inside the metadata.
 	MaybeSignWriterMetadata(ctx context.Context,
 		codec kbfscodec.Codec, signer cryptoSigner) error
-	// SetWriterMetadataSigInfo sets the signature info associated with the the writer metadata.
-	SetWriterMetadataSigInfo(sigInfo kbfscrypto.SignatureInfo)
 	// SetLastModifyingWriter sets the UID of the last user to modify the writer metadata.
 	SetLastModifyingWriter(user keybase1.UID)
 	// SetLastModifyingUser sets the UID of the last user to modify any of the metadata.
