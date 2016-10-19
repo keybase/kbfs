@@ -7,12 +7,16 @@ package libkbfs
 // This file contains test functions related to RootMetadata that need
 // to be exported for use by other modules' tests.
 
-// NewRootMetadataSignedForTest returns a new RootMetadataSigned for testing.
+// NewRootMetadataSignedForTest returns a new RootMetadataSigned
+// object at the latest known version for testing.
 func NewRootMetadataSignedForTest(id TlfID, h BareTlfHandle) (*RootMetadataSigned, error) {
-	rmds := NewRootMetadataSigned()
-	err := rmds.MD.(MutableBareRootMetadata).Update(id, h)
+	md := &BareRootMetadataV2{}
+	// MDv3 TODO: uncomment the below when we're ready for MDv3
+	// md := &BareRootMetadataV#{}
+	err := md.Update(id, h)
 	if err != nil {
 		return nil, err
 	}
+	rmds := &RootMetadataSigned{MD: md}
 	return rmds, nil
 }
