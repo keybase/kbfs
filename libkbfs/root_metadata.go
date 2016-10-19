@@ -819,12 +819,6 @@ func (irmd ImmutableRootMetadata) LastWriterVerifyingKey() kbfscrypto.VerifyingK
 	return irmd.lastWriterVerifyingKey
 }
 
-// LastModifyingWriterKID returns the KID of the last device to modify
-// the writer metadata.
-func (irmd ImmutableRootMetadata) LastModifyingWriterKID() keybase1.KID {
-	return irmd.lastWriterVerifyingKey.KID()
-}
-
 // RootMetadataSigned is the top-level MD object stored in MD server
 //
 // TODO: Have separate types for:

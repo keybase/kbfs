@@ -628,7 +628,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 				if err != nil {
 					return err
 				}
-				if key.KID() != md.LastModifyingWriterKID() {
+				if key != md.LastWriterVerifyingKey() {
 					fbo.setLatestMergedRevisionLocked(
 						ctx, lState, md.Revision(), false)
 				}

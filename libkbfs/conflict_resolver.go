@@ -2497,8 +2497,8 @@ type rootMetadataWithKeyAndTimestamp struct {
 	localTimestamp time.Time
 }
 
-func (rmd rootMetadataWithKeyAndTimestamp) LastModifyingWriterKID() keybase1.KID {
-	return rmd.key.KID()
+func (rmd rootMetadataWithKeyAndTimestamp) LastWriterVerifyingKey() kbfscrypto.VerifyingKey {
+	return rmd.key
 }
 
 func (rmd rootMetadataWithKeyAndTimestamp) LocalTimestamp() time.Time {
@@ -3488,7 +3488,7 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 
 	mostRecentMergedWriterInfo, err := newWriterInfo(ctx, cr.config,
 		mostRecentMergedMD.LastModifyingWriter(),
-		mostRecentMergedMD.LastModifyingWriterKID(),
+		mostRecentMergedMD.LastWriterVerifyingKey().KID(),
 		mostRecentMergedMD.Revision())
 	if err != nil {
 		return
