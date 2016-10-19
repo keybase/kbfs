@@ -60,7 +60,7 @@ outer:
 		return libkbfs.TlfID{}, err
 	}
 
-	if irmd == (libkbfs.ImmutableRootMetadata{}) {
+	if irmd.IsNil() {
 		return libkbfs.TlfID{}, fmt.Errorf(
 			"Could not get TLF ID for %q", tlfStr)
 	}
@@ -80,7 +80,7 @@ func getBranchID(ctx context.Context, config libkbfs.Config,
 		if err != nil {
 			return libkbfs.NullBranchID, err
 		}
-		if irmd == (libkbfs.ImmutableRootMetadata{}) {
+		if irmd.IsNil() {
 			return libkbfs.NullBranchID, nil
 		}
 		return irmd.BID(), nil

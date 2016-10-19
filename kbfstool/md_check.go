@@ -245,7 +245,7 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (
 			return 1
 		}
 
-		if irmd == (libkbfs.ImmutableRootMetadata{}) {
+		if irmd.IsNil() {
 			fmt.Printf("No result found for %q\n\n", input)
 			continue
 		}
