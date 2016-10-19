@@ -1064,7 +1064,7 @@ func (s shimMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (MdID, er
 		return MdID{}, err
 	}
 	signingKey := MakeLocalUserSigningKeyOrBust(username)
-	rmd.bareMd.MaybeSignWriterMetadata(ctx, s.codec, kbfscrypto.SigningKeySigner{signingKey})
+	rmd.bareMd.MaybeSignWriterMetadata(ctx, s.codec, kbfscrypto.SigningKeySigner{Key: signingKey})
 	return s.crypto.MakeMdID(rmd.bareMd)
 }
 
