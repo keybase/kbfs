@@ -172,26 +172,17 @@ func (md *RootMetadata) clearLastRevision() {
 	md.clearWriterMetadataCopiedBit()
 }
 
-func (md *RootMetadata) makeSuccessor(
-	codec kbfscodec.Codec) (*RootMetadata, error) {
-	var newMd RootMetadata
-	if err := md.deepCopyInPlace(codec, true, true, &newMd); err != nil {
-		return nil, err
-	}
-	return &newMd, nil
-}
-
 func (md *RootMetadata) deepCopy(
 	codec kbfscodec.Codec, copyHandle bool) (*RootMetadata, error) {
 	var newMd RootMetadata
-	if err := md.deepCopyInPlace(codec, copyHandle, false, &newMd); err != nil {
+	if err := md.deepCopyInPlace(codec, copyHandle, false, false, &newMd); err != nil {
 		return nil, err
 	}
 	return &newMd, nil
 }
 
 func (md *RootMetadata) deepCopyInPlace(
-	codec kbfscodec.Codec, copyHandle, successorCopy bool,
+	codec kbfscodec.Codec, copyHandle, successorCopy, preserveWriterSig bool,
 	newMd *RootMetadata) error {
 	if err := kbfscodec.Update(codec, newMd, md); err != nil {
 		return err
@@ -202,7 +193,7 @@ func (md *RootMetadata) deepCopyInPlace(
 	var err error
 	var brmdCopy BareRootMetadata
 	if successorCopy {
-		brmdCopy, err = md.bareMd.MakeSuccessorCopy(codec)
+		brmdCopy, err = md.bareMd.MakeSuccessorCopy(codec, preserveWriterSig)
 	} else {
 		brmdCopy, err = md.bareMd.DeepCopy(codec)
 	}
@@ -245,12 +236,15 @@ func (md *RootMetadata) MakeSuccessor(
 	if md.IsFinal() {
 		return nil, MetadataIsFinalError{}
 	}
-	newMd, err := md.makeSuccessor(codec)
-	if err != nil {
+
+	isReadable := md.IsReadable() && isWriter
+
+	var newMd RootMetadata
+	if err := md.deepCopyInPlace(codec, true, true, !isReadable, &newMd); err != nil {
 		return nil, err
 	}
 
-	if md.IsReadable() && isWriter {
+	if isReadable {
 		newMd.clearLastRevision()
 		// clear the serialized data.
 		newMd.SetSerializedPrivateMetadata(nil)
@@ -267,7 +261,7 @@ func (md *RootMetadata) MakeSuccessor(
 		return nil, errors.New("MD with invalid revision")
 	}
 	newMd.SetRevision(md.Revision() + 1)
-	return newMd, nil
+	return &newMd, nil
 }
 
 // AddNewKeysForTesting makes a new key generation for this RootMetadata using the
@@ -790,8 +784,8 @@ type ImmutableRootMetadata struct {
 // MakeImmutableRootMetadata makes a new ImmutableRootMetadata from
 // the given RMD and its corresponding MdID.
 func MakeImmutableRootMetadata(
-	rmd *RootMetadata, mdID MdID,
-	localTimestamp time.Time) ImmutableRootMetadata {
+	rmd *RootMetadata, writerVerifyingKey kbfscrypto.VerifyingKey,
+	mdID MdID, localTimestamp time.Time) ImmutableRootMetadata {
 	if mdID == (MdID{}) {
 		panic("zero mdID passed to MakeImmutableRootMetadata")
 	}
@@ -801,6 +795,10 @@ func MakeImmutableRootMetadata(
 	var writerSig kbfscrypto.SignatureInfo
 	if bareMDV2, ok := rmd.bareMd.(*BareRootMetadataV2); ok {
 		writerSig = bareMDV2.WriterMetadataSigInfo
+		if writerSig.VerifyingKey != writerVerifyingKey {
+			panic(fmt.Sprintf("key mismatch: sig has %s, expected %s",
+				writerSig.VerifyingKey, writerVerifyingKey))
+		}
 	} else {
 		/*
 			// TODO: Fix.
@@ -839,6 +837,10 @@ func (irmd ImmutableRootMetadata) MdID() MdID {
 // RootMetadata object.
 func (irmd ImmutableRootMetadata) LocalTimestamp() time.Time {
 	return irmd.localTimestamp
+}
+
+func (irmd ImmutableRootMetadata) LastWriterVerifyingKey() kbfscrypto.VerifyingKey {
+	return irmd.writerSig.VerifyingKey
 }
 
 // LastModifyingWriterKID returns the KID of the last device to modify

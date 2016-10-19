@@ -1567,7 +1567,7 @@ type BareRootMetadata interface {
 	// MakeSuccessorCopy returns a newly constructed successor copy to this metadata revision.
 	// It differs from DeepCopy in that it can perform an up conversion to a new metadata
 	// version.
-	MakeSuccessorCopy(codec kbfscodec.Codec) (MutableBareRootMetadata, error)
+	MakeSuccessorCopy(codec kbfscodec.Codec, preserveWriterSig bool) (MutableBareRootMetadata, error)
 	// CheckValidSuccessor makes sure the given BareRootMetadata is a valid
 	// successor to the current one, and returns an error otherwise.
 	CheckValidSuccessor(currID MdID, nextMd BareRootMetadata) error
