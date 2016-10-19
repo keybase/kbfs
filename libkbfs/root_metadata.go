@@ -857,6 +857,9 @@ func (irmd ImmutableRootMetadata) GetWriterMetadataSigInfo() kbfscrypto.Signatur
 }
 
 // RootMetadataSigned is the top-level MD object stored in MD server
+//
+// TODO: Use a separate type for the in-memory client representation
+// vs. the server on-disk representation.
 type RootMetadataSigned struct {
 	// signature over the root metadata by the private signing key
 	SigInfo kbfscrypto.SignatureInfo `codec:",omitempty"`
