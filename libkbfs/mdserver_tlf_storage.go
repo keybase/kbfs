@@ -74,8 +74,8 @@ type mdServerTlfStorage struct {
 }
 
 func makeMDServerTlfStorage(tlfID TlfID, codec kbfscodec.Codec,
-	crypto cryptoPure, clock Clock, tlfID TlfID,
-	mdVer MetadataVer, dir string) *mdServerTlfStorage {
+	crypto cryptoPure, clock Clock, mdVer MetadataVer,
+	dir string) *mdServerTlfStorage {
 	journal := &mdServerTlfStorage{
 		tlfID:          tlfID,
 		codec:          codec,
@@ -135,13 +135,11 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 	}
 
 	rmds, err := DecodeRootMetadataSigned(
-		s.codec, s.tlfID, srmds.Version, s.mdVer,
-		srmds.EncodedRMDS)
+		s.codec, s.tlfID, srmds.Version, s.mdVer, srmds.EncodedRMDS,
+		srmds.Timestamp)
 	if err != nil {
 		return nil, err
 	}
-
-	rmds.untrustedServerTimestamp = srmds.Timestamp
 
 	// Check integrity.
 

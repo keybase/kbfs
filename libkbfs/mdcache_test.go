@@ -11,6 +11,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,7 +50,8 @@ func testMdcachePut(t *testing.T, tlf TlfID, rev MetadataRevision,
 	}
 
 	// put the md
-	irmd := MakeImmutableRootMetadata(rmd, fakeMdID(1), time.Now())
+	irmd := MakeImmutableRootMetadata(
+		rmd, kbfscrypto.VerifyingKey{}, fakeMdID(1), time.Now())
 	if err := config.MDCache().Put(irmd); err != nil {
 		t.Errorf("Got error on put on md %v: %v", tlf, err)
 	}
@@ -123,7 +125,7 @@ func TestMdcacheReplace(t *testing.T) {
 
 	newRmd.SetBranchID(bid)
 	err = config.MDCache().Replace(MakeImmutableRootMetadata(newRmd,
-		fakeMdID(2), time.Now()), NullBranchID)
+		kbfscrypto.VerifyingKey{}, fakeMdID(2), time.Now()), NullBranchID)
 	if err != nil {
 		t.Fatalf("Replace error: %v", err)
 	}

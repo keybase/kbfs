@@ -222,7 +222,9 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 		localTimestamp = localTimestamp.Add(offset)
 	}
 
-	return MakeImmutableRootMetadata(rmd, mdID, localTimestamp), nil
+	return MakeImmutableRootMetadata(rmd,
+		rmds.GetWriterMetadataSigInfo().VerifyingKey, mdID,
+		localTimestamp), nil
 }
 
 // GetForHandle implements the MDOps interface for MDOpsStandard.

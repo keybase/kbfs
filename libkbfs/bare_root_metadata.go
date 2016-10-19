@@ -279,9 +279,20 @@ func (md *BareRootMetadataV2) DeepCopy(
 
 // MakeSuccessorCopy implements the ImmutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) MakeSuccessorCopy(
-	codec kbfscodec.Codec) (MutableBareRootMetadata, error) {
+	codec kbfscodec.Codec, preserveWriterSig bool) (MutableBareRootMetadata, error) {
 	// MDv3 TODO: Make a v3 successor.
-	return md.DeepCopy(codec)
+	mdCopy, err := md.DeepCopy(codec)
+	if err != nil {
+		return nil, err
+	}
+	if !preserveWriterSig {
+		vk := mdCopy.(*BareRootMetadataV2).WriterMetadataSigInfo.VerifyingKey
+		mdCopy.(*BareRootMetadataV2).WriterMetadataSigInfo =
+			kbfscrypto.SignatureInfo{
+				VerifyingKey: vk,
+			}
+	}
+	return mdCopy, nil
 }
 
 // CheckValidSuccessor implements the BareRootMetadata interface for BareRootMetadataV2.
