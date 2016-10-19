@@ -535,11 +535,26 @@ func TestMDOpsGetFailIdCheck(t *testing.T) {
 func makeRMDSRange(t *testing.T, config Config,
 	start MetadataRevision, count int, prevID MdID) (
 	rmdses []*RootMetadataSigned, extras []ExtraMetadata) {
+	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
 	for i := 0; i < count; i++ {
-		rmds, extra := newRMDS(t, config, h)
-		rmds.MD.(MutableBareRootMetadata).SetPrevRoot(prevID)
-		rmds.MD.(MutableBareRootMetadata).SetRevision(start + MetadataRevision(i))
+		var brmd BareRootMetadataV2
+		// MDv3 TODO: uncomment the below when we're ready for MDv3
+		// var md BareRootMetadataV3
+		err := brmd.Update(id, h.ToBareHandleOrBust())
+		require.NoError(t, err)
+		extra := addFakeBRMDData(t, config.Codec(), config.Crypto(), &brmd, h)
+		brmd.SetPrevRoot(prevID)
+		brmd.SetRevision(start + MetadataRevision(i))
+
+		ctx := context.Background()
+
+		// Encode and sign writer metadata.
+		err = brmd.MaybeSignWriterMetadata(ctx, config.Codec(), config.Crypto())
+		require.NoError(t, err)
+
+		rmds, err := signMD(ctx, config.Codec(), config.Crypto(), &brmd, (wallClock{}).Now())
+		require.NoError(t, err)
 		currID, err := config.Crypto().MakeMdID(rmds.MD)
 		require.NoError(t, err)
 		prevID = currID
