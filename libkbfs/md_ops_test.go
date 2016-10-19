@@ -100,7 +100,8 @@ func addFakeRMDSData(t *testing.T, codec kbfscodec.Codec, crypto cryptoPure,
 	mmd := rmds.MD.(MutableBareRootMetadata)
 	mmd.SetRevision(MetadataRevision(1))
 	pmd := PrivateMetadata{}
-	// TODO: Will have to change this for private folders.
+	// TODO: Will have to change this for private folders if we
+	// un-mock out those tests.
 	buf, err := codec.Encode(pmd)
 	require.NoError(t, err)
 	mmd.SetSerializedPrivateMetadata(buf)
