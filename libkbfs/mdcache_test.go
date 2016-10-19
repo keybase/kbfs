@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -33,12 +34,20 @@ func mdCacheShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 
 func testMdcachePut(t *testing.T, tlf TlfID, rev MetadataRevision,
 	mStatus MergeStatus, bid BranchID, h *TlfHandle, config *ConfigMock) {
+	key, err := config.KBPKI().GetCurrentVerifyingKey(context.Background())
+	if err != nil {
+		t.Fatalf("Couldn't get verifying key: %v", err)
+	}
+
 	rmd := MakeRootMetadata(
 		&BareRootMetadataV2{
 			WriterMetadataV2: WriterMetadataV2{
 				ID:    tlf,
 				WKeys: make(TLFWriterKeyGenerations, 0, 1),
 				BID:   bid,
+			},
+			WriterMetadataSigInfo: kbfscrypto.SignatureInfo{
+				VerifyingKey: key,
 			},
 			Revision: rev,
 			RKeys:    make(TLFReaderKeyGenerations, 1, 1),
@@ -50,8 +59,7 @@ func testMdcachePut(t *testing.T, tlf TlfID, rev MetadataRevision,
 	}
 
 	// put the md
-	irmd := MakeImmutableRootMetadata(
-		rmd, kbfscrypto.VerifyingKey{}, fakeMdID(1), time.Now())
+	irmd := MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
 	if err := config.MDCache().Put(irmd); err != nil {
 		t.Errorf("Got error on put on md %v: %v", tlf, err)
 	}
@@ -125,7 +133,7 @@ func TestMdcacheReplace(t *testing.T) {
 
 	newRmd.SetBranchID(bid)
 	err = config.MDCache().Replace(MakeImmutableRootMetadata(newRmd,
-		kbfscrypto.VerifyingKey{}, fakeMdID(2), time.Now()), NullBranchID)
+		irmd.LastWriterVerifyingKey(), fakeMdID(2), time.Now()), NullBranchID)
 	if err != nil {
 		t.Fatalf("Replace error: %v", err)
 	}
