@@ -55,11 +55,11 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 		if handle.IsFinal() {
 			err = md.config.KBPKI().HasUnverifiedVerifyingKey(ctx,
 				rmds.MD.LastModifyingWriter(),
-				rmds.MD.GetWriterMetadataSigInfo().VerifyingKey)
+				rmds.GetWriterMetadataSigInfo().VerifyingKey)
 		} else {
 			err = md.config.KBPKI().HasVerifyingKey(ctx,
 				rmds.MD.LastModifyingWriter(),
-				rmds.MD.GetWriterMetadataSigInfo().VerifyingKey,
+				rmds.GetWriterMetadataSigInfo().VerifyingKey,
 				rmds.untrustedServerTimestamp)
 		}
 		if err != nil {
@@ -113,7 +113,7 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 		for i := len(prevMDs) - 1; i >= 0; i-- {
 			if !prevMDs[i].IsWriterMetadataCopiedSet() {
 				ok, err := kbfscodec.Equal(md.config.Codec(),
-					rmds.MD.GetWriterMetadataSigInfo(),
+					rmds.GetWriterMetadataSigInfo(),
 					prevMDs[i].GetWriterMetadataSigInfo())
 				if err != nil {
 					return err

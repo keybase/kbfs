@@ -845,6 +845,12 @@ func NewRootMetadataSigned() *RootMetadataSigned {
 	//return &RootMetadataSigned{MD: &BareRootMetadataV3{}}
 }
 
+// GetWriterMetadataSigInfo returns the signature of the writer
+// metadata.
+func (rmds *RootMetadataSigned) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
+	return rmds.MD.GetWriterMetadataSigInfo()
+}
+
 // MerkleHash computes a hash of this RootMetadataSigned object for inclusion
 // into the KBFS Merkle tree.
 func (rmds *RootMetadataSigned) MerkleHash(crypto cryptoPure) (MerkleHash, error) {
