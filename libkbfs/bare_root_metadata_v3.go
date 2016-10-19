@@ -12,6 +12,7 @@ import (
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"golang.org/x/net/context"
 )
 
 // WriterMetadataV3 stores the metadata for a TLF that is
@@ -827,6 +828,13 @@ func (md *BareRootMetadataV3) GetSerializedWriterMetadata(
 // GetWriterMetadataSigInfo implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
 	return md.WriterMetadataSigInfo
+}
+
+// MaybeSignWriterMetadata implements the MutableBareRootMetadata interface for BareRootMetadataV2.
+func (md *BareRootMetadataV3) MaybeSignWriterMetadata(
+	ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner) error {
+	// Nothing to do.
+	return nil
 }
 
 // SetWriterMetadataSigInfo implements the MutableBareRootMetadata interface for BareRootMetadataV3.

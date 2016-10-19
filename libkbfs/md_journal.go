@@ -632,16 +632,10 @@ func (j *mdJournal) convertToBranch(
 		brmd.SetBranchID(bid)
 
 		// Re-sign the writer metadata.
-		buf, err := brmd.GetSerializedWriterMetadata(j.codec)
+		err = brmd.MaybeSignWriterMetadata(ctx, j.codec, signer)
 		if err != nil {
 			return NullBranchID, err
 		}
-
-		sigInfo, err := signer.Sign(ctx, buf)
-		if err != nil {
-			return NullBranchID, err
-		}
-		brmd.SetWriterMetadataSigInfo(sigInfo)
 
 		j.log.CDebugf(ctx, "Old prev root of rev=%s is %s",
 			brmd.RevisionNumber(), brmd.GetPrevRoot())
