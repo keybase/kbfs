@@ -841,12 +841,6 @@ func (irmd ImmutableRootMetadata) LocalTimestamp() time.Time {
 	return irmd.localTimestamp
 }
 
-// GetWriterMetadataSigInfo returns the signature of the writer
-// metadata.
-func (irmd ImmutableRootMetadata) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
-	return irmd.writerSig
-}
-
 // LastModifyingWriterKID returns the KID of the last device to modify
 // the writer metadata.
 func (irmd ImmutableRootMetadata) LastModifyingWriterKID() keybase1.KID {
