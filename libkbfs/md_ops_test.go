@@ -132,13 +132,9 @@ func newRMDS(t *testing.T, config Config, public bool) (
 	id := FakeTlfID(1, public)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", public)
-	rmds := NewRootMetadataSigned()
-	err := rmds.MD.(MutableBareRootMetadata).Update(id, h.ToBareHandleOrBust())
-	if err != nil {
-		t.Fatal(err)
-	}
+	rmds, err := NewRootMetadataSignedForTest(id, h.ToBareHandleOrBust())
+	require.NoError(t, err)
 	extra := addFakeRMDSData(t, config.Codec(), config.Crypto(), rmds, h)
-
 	return rmds, h, extra
 }
 
@@ -294,18 +290,15 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 		"alice,bob@twitter,charlie@twitter", true)
 	require.NoError(t, err)
 
-	rmds1 := NewRootMetadataSigned()
-	err = rmds1.MD.(MutableBareRootMetadata).Update(id, mdHandle1.ToBareHandleOrBust())
+	rmds1, err := NewRootMetadataSignedForTest(id, mdHandle1.ToBareHandleOrBust())
 	require.NoError(t, err)
 	addFakeRMDSData(t, config.Codec(), config.Crypto(), rmds1, mdHandle1)
 
-	rmds2 := NewRootMetadataSigned()
-	err = rmds2.MD.(MutableBareRootMetadata).Update(id, mdHandle2.ToBareHandleOrBust())
+	rmds2, err := NewRootMetadataSignedForTest(id, mdHandle2.ToBareHandleOrBust())
 	require.NoError(t, err)
 	addFakeRMDSData(t, config.Codec(), config.Crypto(), rmds2, mdHandle2)
 
-	rmds3 := NewRootMetadataSigned()
-	err = rmds3.MD.(MutableBareRootMetadata).Update(id, mdHandle3.ToBareHandleOrBust())
+	rmds3, err := NewRootMetadataSignedForTest(id, mdHandle3.ToBareHandleOrBust())
 	require.NoError(t, err)
 	addFakeRMDSData(t, config.Codec(), config.Crypto(), rmds3, mdHandle3)
 
