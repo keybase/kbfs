@@ -765,11 +765,6 @@ func (md *BareRootMetadataV2) GetSerializedWriterMetadata(
 	return codec.Encode(md.WriterMetadataV2)
 }
 
-// GetWriterMetadataSigInfo implements the BareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
-	return md.WriterMetadataSigInfo
-}
-
 // MaybeSignWriterMetadata implements the MutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) MaybeSignWriterMetadata(
 	ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner) error {
@@ -784,12 +779,6 @@ func (md *BareRootMetadataV2) MaybeSignWriterMetadata(
 	}
 	md.WriterMetadataSigInfo = sigInfo
 	return nil
-}
-
-// SetWriterMetadataSigInfo implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) SetWriterMetadataSigInfo(
-	sigInfo kbfscrypto.SignatureInfo) {
-	md.WriterMetadataSigInfo = sigInfo
 }
 
 // SetLastModifyingWriter implements the MutableBareRootMetadata interface for BareRootMetadataV2.
@@ -1050,15 +1039,4 @@ func (md *BareRootMetadataV2) GetHistoricTLFCryptKey(
 	kbfscrypto.TLFCryptKey, error) {
 	return kbfscrypto.TLFCryptKey{}, errors.New(
 		"TLF crypt key not symmetrically encrypted")
-}
-
-// BareRootMetadataSignedV2 is the MD that is signed by the reader or
-// writer including the signature info. Unlike RootMetadataSigned,
-// it contains exactly the serializable metadata and signature info.
-type BareRootMetadataSignedV2 struct {
-	// signature over the root metadata by the private signing
-	// key. The writer signature is in MD.
-	SigInfo kbfscrypto.SignatureInfo
-	// all the metadata
-	MD BareRootMetadataV2
 }

@@ -57,12 +57,6 @@ type WriterMetadataV3 struct {
 type BareRootMetadataV3 struct {
 	// The metadata that is only editable by the writer.
 	WriterMetadata WriterMetadataV3 `codec:"wmd"`
-	// The signature for the writer metadata, to prove
-	// that it's only been changed by writers.
-	// MDv3 TODO: It would be better for journaling if we could move this
-	// to RootMetadataSigned since it references metadata by ID. We could
-	// then delay computing it until sending metadata to the server.
-	WriterMetadataSigInfo kbfscrypto.SignatureInfo `codec:"wmdsi"`
 
 	// The last KB user who modified this BareRootMetadata
 	LastModifyingUser keybase1.UID
@@ -233,15 +227,6 @@ func (md *BareRootMetadataV3) IsValidRekeyRequest(
 	}
 	if !writerEqual {
 		// Copy mismatch.
-		return false, nil
-	}
-	writerSigInfoEqual, err := kbfscodec.Equal(codec,
-		md.WriterMetadataSigInfo, prevMd.WriterMetadataSigInfo)
-	if err != nil {
-		return false, err
-	}
-	if !writerSigInfoEqual {
-		// Signature/public key mismatch.
 		return false, nil
 	}
 	onlyUserRKeysChanged, err := md.haveOnlyUserRKeysChanged(
@@ -600,11 +585,6 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 // IsValidAndSigned implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) IsValidAndSigned(
 	codec kbfscodec.Codec, crypto cryptoPure, extra ExtraMetadata) error {
-	// Optimization -- if the WriterMetadata signature is nil, it
-	// will fail verification.
-	if md.WriterMetadataSigInfo.IsNil() {
-		return errors.New("Missing WriterMetadata signature")
-	}
 	if !md.TlfID().IsPublic() {
 		_, _, ok := getKeyBundlesV3(extra)
 		if !ok {
@@ -668,18 +648,6 @@ func (md *BareRootMetadataV3) IsValidAndSigned(
 		return fmt.Errorf("Invalid modifying user %s", user)
 	}
 
-	// Verify signature. We have to re-marshal the WriterMetadata,
-	// since it's embedded.
-	buf, err := codec.Encode(md.WriterMetadata)
-	if err != nil {
-		return err
-	}
-
-	err = crypto.Verify(buf, md.WriterMetadataSigInfo)
-	if err != nil {
-		return fmt.Errorf("Could not verify writer metadata: %v", err)
-	}
-
 	return nil
 }
 
@@ -692,11 +660,6 @@ func (md *BareRootMetadataV3) IsLastModifiedBy(
 	if !md.IsWriterMetadataCopiedSet() {
 		if writer != uid {
 			return fmt.Errorf("Last writer %s != %s", writer, uid)
-		}
-		if md.WriterMetadataSigInfo.VerifyingKey != key {
-			return fmt.Errorf(
-				"Last writer verifying key %v != %v",
-				md.WriterMetadataSigInfo.VerifyingKey, key)
 		}
 	}
 
@@ -825,22 +788,11 @@ func (md *BareRootMetadataV3) GetSerializedWriterMetadata(
 	return codec.Encode(md.WriterMetadata)
 }
 
-// GetWriterMetadataSigInfo implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
-	return md.WriterMetadataSigInfo
-}
-
 // MaybeSignWriterMetadata implements the MutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV3) MaybeSignWriterMetadata(
 	ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner) error {
 	// Nothing to do.
 	return nil
-}
-
-// SetWriterMetadataSigInfo implements the MutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) SetWriterMetadataSigInfo(
-	sigInfo kbfscrypto.SignatureInfo) {
-	md.WriterMetadataSigInfo = sigInfo
 }
 
 // SetLastModifyingWriter implements the MutableBareRootMetadata interface for BareRootMetadataV3.
@@ -1158,16 +1110,4 @@ func (md *BareRootMetadataV3) GetHistoricTLFCryptKey(crypto cryptoPure,
 			"Index %d out of range (max: %d)", index, len(oldKeys))
 	}
 	return oldKeys[index], nil
-}
-
-// BareRootMetadataSignedV3 is the MD that is signed by the reader or
-// writer including the signature info. Unlike RootMetadataSigned,
-// it contains exactly the serializable metadata and signature info.
-type BareRootMetadataSignedV3 struct {
-	// signature over the root metadata by the private signing key
-	SigInfo kbfscrypto.SignatureInfo
-	// signature over the writer metadata by the private signing key
-	WriterSigInfo kbfscrypto.SignatureInfo
-	// all the metadata
-	MD BareRootMetadataV3
 }
