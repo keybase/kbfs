@@ -813,8 +813,27 @@ func MakeImmutableRootMetadata(
 	if localTimestamp == (time.Time{}) {
 		panic("zero localTimestamp passed to MakeImmutableRootMetadata")
 	}
-	// TODO: Fill in signature info.
-	return ImmutableRootMetadata{rmd.ReadOnly(), mdID, kbfscrypto.SignatureInfo{}, localTimestamp}
+	var writerSig kbfscrypto.SignatureInfo
+	if bareMDV2, ok := rmd.bareMd.(*BareRootMetadataV2); ok {
+		writerSig = bareMDV2.WriterMetadataSigInfo
+	} else {
+		/*
+			// TODO: Fix.
+			codec := kbfscodec.NewMsgpack()
+			buf, err := rmd.bareMd.GetSerializedWriterMetadata(codec)
+			if err != nil {
+				panic(err)
+			}
+
+			writerSig, err = signer.Sign(ctx, buf)
+			if err != nil {
+				panic(err)
+			}
+		*/
+		panic("Not implemented")
+	}
+	return ImmutableRootMetadata{
+		rmd.ReadOnly(), mdID, writerSig, localTimestamp}
 }
 
 func (irmd ImmutableRootMetadata) IsNil() bool {
