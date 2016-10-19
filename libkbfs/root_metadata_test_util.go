@@ -18,7 +18,7 @@ import (
 func NewRootMetadataSignedForTest(id TlfID, h BareTlfHandle) (*RootMetadataSigned, error) {
 	md := &BareRootMetadataV2{}
 	// MDv3 TODO: uncomment the below when we're ready for MDv3
-	// md := &BareRootMetadataV#{}
+	// md := &BareRootMetadataV3{}
 	err := md.Update(id, h)
 	if err != nil {
 		return nil, err
