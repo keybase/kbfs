@@ -870,14 +870,6 @@ type RootMetadataSigned struct {
 	untrustedServerTimestamp time.Time
 }
 
-// NewRootMetadataSignedForTest returns a new RootMetadataSigned
-// object at the latest known version for testing.
-func NewEmptyRootMetadataSignedForTest() *RootMetadataSigned {
-	return &RootMetadataSigned{MD: &BareRootMetadataV2{}}
-	// MDv3 TODO: uncomment the below when we're ready for MDv3
-	//return &RootMetadataSigned{MD: &BareRootMetadataV3{}}
-}
-
 // GetWriterMetadataSigInfo returns the signature of the writer
 // metadata.
 func (rmds *RootMetadataSigned) GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo {
