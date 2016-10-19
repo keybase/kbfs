@@ -4,6 +4,12 @@
 
 package libkbfs
 
+import (
+	"time"
+
+	"github.com/keybase/kbfs/kbfscrypto"
+)
+
 // This file contains test functions related to RootMetadata that need
 // to be exported for use by other modules' tests.
 
@@ -17,6 +23,6 @@ func NewRootMetadataSignedForTest(id TlfID, h BareTlfHandle) (*RootMetadataSigne
 	if err != nil {
 		return nil, err
 	}
-	rmds := &RootMetadataSigned{MD: md}
+	rmds := MakeRootMetadataSigned(kbfscrypto.SignatureInfo{}, md, time.Time{})
 	return rmds, nil
 }
