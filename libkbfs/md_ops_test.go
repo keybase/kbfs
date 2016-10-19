@@ -397,6 +397,15 @@ func TestMDOpsGetForHandlePublicFailFindKey(t *testing.T) {
 	}
 }
 
+type failVerifyCrypto struct {
+	Crypto
+	err error
+}
+
+func (c failVerifyCrypto) Verify(msg []byte, sigInfo kbfscrypto.SignatureInfo) error {
+	return c.err
+}
+
 func TestMDOpsGetForHandlePublicFailVerify(t *testing.T) {
 	mockCtrl, config, ctx := mdOpsInit(t)
 	defer mdOpsShutdown(mockCtrl, config)
@@ -407,6 +416,8 @@ func TestMDOpsGetForHandlePublicFailVerify(t *testing.T) {
 	// Do this before setting tlfHandle to nil.
 	expectedErr := libkb.VerificationError{}
 	verifyMDForPublic(config, rmds, expectedErr, nil)
+
+	config.SetCrypto(failVerifyCrypto{config.Crypto(), expectedErr})
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(NullTlfID, rmds, nil)
 
