@@ -713,11 +713,6 @@ func (md *BareRootMetadataV3) LastModifyingWriter() keybase1.UID {
 	return md.WriterMetadata.LastModifyingWriter
 }
 
-// LastModifyingWriterKID implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) LastModifyingWriterKID() keybase1.KID {
-	return md.WriterMetadataSigInfo.VerifyingKey.KID()
-}
-
 // GetLastModifyingUser implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetLastModifyingUser() keybase1.UID {
 	return md.LastModifyingUser
