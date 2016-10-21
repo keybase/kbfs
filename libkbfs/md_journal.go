@@ -119,12 +119,12 @@ type mdJournal struct {
 	uid keybase1.UID
 	key kbfscrypto.VerifyingKey
 
-	codec           kbfscodec.Codec
-	crypto          cryptoPure
-	clock           Clock
-	tlfID           TlfID
-	metadataVersion MetadataVer
-	dir             string
+	codec  kbfscodec.Codec
+	crypto cryptoPure
+	clock  Clock
+	tlfID  TlfID
+	mdVer  MetadataVer
+	dir    string
 
 	log      logger.Logger
 	deferLog logger.Logger
@@ -145,7 +145,7 @@ type mdJournal struct {
 func makeMDJournal(
 	uid keybase1.UID, key kbfscrypto.VerifyingKey, codec kbfscodec.Codec,
 	crypto cryptoPure, clock Clock, tlfID TlfID,
-	metadataVersion MetadataVer, dir string,
+	mdVer MetadataVer, dir string,
 	log logger.Logger) (*mdJournal, error) {
 	if uid == keybase1.UID("") {
 		return nil, errors.New("Empty user")
@@ -158,17 +158,17 @@ func makeMDJournal(
 
 	deferLog := log.CloneWithAddedDepth(1)
 	journal := mdJournal{
-		uid:             uid,
-		key:             key,
-		codec:           codec,
-		crypto:          crypto,
-		clock:           clock,
-		tlfID:           tlfID,
-		metadataVersion: metadataVersion,
-		dir:             dir,
-		log:             log,
-		deferLog:        deferLog,
-		j:               makeMdIDJournal(codec, journalDir),
+		uid:      uid,
+		key:      key,
+		codec:    codec,
+		crypto:   crypto,
+		clock:    clock,
+		tlfID:    tlfID,
+		mdVer:    mdVer,
+		dir:      dir,
+		log:      log,
+		deferLog: deferLog,
+		j:        makeMdIDJournal(codec, journalDir),
 	}
 
 	earliest, err := journal.getEarliest(false)
@@ -297,7 +297,7 @@ func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 	}
 
 	rmd, err := DecodeRootMetadata(
-		j.codec, j.tlfID, version, j.metadataVersion, data)
+		j.codec, j.tlfID, version, j.mdVer, data)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
