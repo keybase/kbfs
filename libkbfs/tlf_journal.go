@@ -941,8 +941,7 @@ func (j *tlfJournal) getJournalStatusWithRange() (
 }
 
 func (j *tlfJournal) batchConvertImmutables(ctx context.Context,
-	ibrmds []ImmutableBareRootMetadata) ([]ImmutableRootMetadata, error) {
-	irmds := make([]ImmutableRootMetadata, 0, len(ibrmds))
+	ibrmds []ImmutableBareRootMetadata) ([]unflushedPathMDInfo, error) {
 	if len(ibrmds) == 0 {
 		return nil, nil
 	}
@@ -958,15 +957,22 @@ func (j *tlfJournal) batchConvertImmutables(ctx context.Context,
 		return nil, err
 	}
 
+	mdInfos := make([]unflushedPathMDInfo, 0, len(ibrmds))
+
 	for _, ibrmd := range ibrmds {
 		irmd, err := j.convertImmutableBareRMDToIRMD(ctx, ibrmd, handle)
 		if err != nil {
 			return nil, err
 		}
 
-		irmds = append(irmds, irmd)
+		mdInfos = append(mdInfos, unflushedPathMDInfo{
+			revision:       irmd.Revision(),
+			kmd:            irmd,
+			pmd:            *irmd.Data(),
+			localTimestamp: irmd.localTimestamp,
+		})
 	}
-	return irmds, nil
+	return mdInfos, nil
 }
 
 func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
@@ -1299,7 +1305,8 @@ func (j *tlfJournal) getMDRange(
 }
 
 func (j *tlfJournal) doPutMD(ctx context.Context, rmd *RootMetadata,
-	irmd ImmutableRootMetadata, perRevMap unflushedPathsPerRevMap) (
+	mdInfo unflushedPathMDInfo,
+	perRevMap unflushedPathsPerRevMap) (
 	mdID MdID, retryPut bool, err error) {
 	// Now take the lock and put the MD, merging in the unflushed
 	// paths while under the lock.
@@ -1309,7 +1316,7 @@ func (j *tlfJournal) doPutMD(ctx context.Context, rmd *RootMetadata,
 		return MdID{}, false, err
 	}
 
-	if !j.unflushedPaths.appendToCache(irmd, perRevMap) {
+	if !j.unflushedPaths.appendToCache(mdInfo, perRevMap) {
 		return MdID{}, true, nil
 	}
 	// TODO: remove the revision from the cache on any errors below?
@@ -1341,14 +1348,20 @@ func (j *tlfJournal) putMD(
 	// path cache is uninitialized.  TODO: avoid doing this if we can
 	// somehow be sure the cache won't be initialized by the time we
 	// finish this put.
-	irmd := MakeImmutableRootMetadata(rmd, fakeMdID(1), time.Now())
+	mdInfo := unflushedPathMDInfo{
+		revision: rmd.Revision(),
+		kmd:      rmd,
+		pmd:      *rmd.Data(),
+		// TODO: Plumb through clock?
+		localTimestamp: time.Now(),
+	}
 	perRevMap, err := j.unflushedPaths.prepUnflushedPaths(
-		ctx, j.uid, j.key.KID(), j.config.Codec(), j.log, irmd)
+		ctx, j.uid, j.key.KID(), j.config.Codec(), j.log, mdInfo)
 	if err != nil {
 		return MdID{}, err
 	}
 
-	mdID, retry, err := j.doPutMD(ctx, rmd, irmd, perRevMap)
+	mdID, retry, err := j.doPutMD(ctx, rmd, mdInfo, perRevMap)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1357,12 +1370,13 @@ func (j *tlfJournal) putMD(
 		// The cache was initialized after the last time we tried to
 		// prepare the unflushed paths.
 		perRevMap, err = j.unflushedPaths.prepUnflushedPaths(
-			ctx, j.uid, j.key.KID(), j.config.Codec(), j.log, irmd)
+			ctx, j.uid, j.key.KID(), j.config.Codec(), j.log,
+			mdInfo)
 		if err != nil {
 			return MdID{}, err
 		}
 
-		mdID, retry, err = j.doPutMD(ctx, rmd, irmd, perRevMap)
+		mdID, retry, err = j.doPutMD(ctx, rmd, mdInfo, perRevMap)
 		if err != nil {
 			return MdID{}, err
 		}
