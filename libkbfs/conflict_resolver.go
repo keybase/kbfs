@@ -301,7 +301,7 @@ func (cr *ConflictResolver) updateCurrInput(ctx context.Context,
 
 func (cr *ConflictResolver) makeChains(ctx context.Context,
 	unmerged, merged []ImmutableRootMetadata) (
-	unmergedChains *crChains, mergedChains *crChains, err error) {
+	unmergedChains, mergedChains *crChains, err error) {
 	unmergedChains, err =
 		newCRChains(ctx, cr.config, unmerged, &cr.fbo.blocks, true)
 	if err != nil {
@@ -343,7 +343,7 @@ func (sp crSortedPaths) Swap(i, j int) {
 	sp[j], sp[i] = sp[i], sp[j]
 }
 
-func fileWithConflictingWrite(unmergedChains *crChains, mergedChains *crChains,
+func fileWithConflictingWrite(unmergedChains, mergedChains *crChains,
 	unmergedOriginal BlockPointer, mergedOriginal BlockPointer) bool {
 	mergedChain := mergedChains.byOriginal[mergedOriginal]
 	unmergedChain := unmergedChains.byOriginal[unmergedOriginal]
@@ -499,7 +499,7 @@ func (cr *ConflictResolver) checkPathForMerge(ctx context.Context,
 // new unmerged paths that need to be combined with the unmergedPaths
 // slice.
 func (cr *ConflictResolver) findCreatedDirsToMerge(ctx context.Context,
-	unmergedPaths []path, unmergedChains *crChains, mergedChains *crChains) (
+	unmergedPaths []path, unmergedChains, mergedChains *crChains) (
 	[]path, error) {
 	var newUnmergedPaths []path
 	for _, unmergedPath := range unmergedPaths {
@@ -1039,7 +1039,7 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 // It also adds entries as necessary to mergedPaths, and returns a
 // slice of new unmergedPaths to be added.
 func (cr *ConflictResolver) addRecreateOpsToUnmergedChains(ctx context.Context,
-	recreateOps []*createOp, unmergedChains *crChains, mergedChains *crChains,
+	recreateOps []*createOp, unmergedChains, mergedChains *crChains,
 	mergedPaths map[BlockPointer]path) ([]path, error) {
 	if len(recreateOps) == 0 {
 		return nil, nil
@@ -1237,7 +1237,7 @@ outer:
 // particular node had been renamed in both branches; if so, it will
 // copy files, and use symlinks for directories.
 func (cr *ConflictResolver) fixRenameConflicts(ctx context.Context,
-	unmergedChains *crChains, mergedChains *crChains,
+	unmergedChains, mergedChains *crChains,
 	mergedPaths map[BlockPointer]path) ([]path, error) {
 	// For every renamed block pointer in the unmerged chains:
 	//   * Check if any BlockPointer in its merged path contains a relative of
@@ -1533,7 +1533,7 @@ func (cr *ConflictResolver) fixRenameConflicts(ctx context.Context,
 // that was modified in the merged branch, and adds a create op to the
 // merged chain so that the node will be re-created locally.
 func (cr *ConflictResolver) addMergedRecreates(ctx context.Context,
-	unmergedChains *crChains, mergedChains *crChains) error {
+	unmergedChains, mergedChains *crChains) error {
 	for _, unmergedChain := range unmergedChains.byMostRecent {
 		// First check for nodes that have been deleted in the unmerged
 		// branch, but modified in the merged branch, and drop those
@@ -1767,7 +1767,7 @@ func collapseActions(unmergedChains *crChains, unmergedPaths []path,
 }
 
 func (cr *ConflictResolver) computeActions(ctx context.Context,
-	unmergedChains *crChains, mergedChains *crChains, unmergedPaths []path,
+	unmergedChains, mergedChains *crChains, unmergedPaths []path,
 	mergedPaths map[BlockPointer]path, recreateOps []*createOp) (
 	map[BlockPointer]crActionList, []path, error) {
 	// Process all the recreateOps, adding them to the appropriate
@@ -1917,7 +1917,7 @@ func (cr *ConflictResolver) makeFileBlockDeepCopy(ctx context.Context,
 }
 
 func (cr *ConflictResolver) doActions(ctx context.Context,
-	lState *lockState, unmergedChains *crChains, mergedChains *crChains,
+	lState *lockState, unmergedChains, mergedChains *crChains,
 	unmergedPaths []path, mergedPaths map[BlockPointer]path,
 	actionMap map[BlockPointer]crActionList, lbc localBcache,
 	newFileBlocks fileBlockMap) error {
@@ -2195,8 +2195,8 @@ func (cr *ConflictResolver) makeRevertedOps(ctx context.Context,
 // will move all of those updates into their proper locations within
 // the other operations.
 func (cr *ConflictResolver) createResolvedMD(ctx context.Context,
-	lState *lockState, unmergedPaths []path, unmergedChains *crChains,
-	mergedChains *crChains) (*RootMetadata, error) {
+	lState *lockState, unmergedPaths []path,
+	unmergedChains, mergedChains *crChains) (*RootMetadata, error) {
 	currMD := mergedChains.mostRecentMD
 	currMDID, err := cr.config.Crypto().MakeMdID(currMD.bareMd)
 	if err != nil {
@@ -2492,7 +2492,7 @@ func (cr *ConflictResolver) resolveOnePath(ctx context.Context,
 // pointer, taking into account any rename operations that occurred in
 // the merged branch.
 func (cr *ConflictResolver) makePostResolutionPaths(ctx context.Context,
-	md *RootMetadata, unmergedChains *crChains, mergedChains *crChains,
+	md *RootMetadata, unmergedChains, mergedChains *crChains,
 	mergedPaths map[BlockPointer]path) (map[BlockPointer]path, error) {
 	// No need to run any identifies on these chains, since we have
 	// already finished all actions.  It is an ugly hack that we fake
@@ -2661,7 +2661,7 @@ func (cr *ConflictResolver) syncTree(ctx context.Context, lState *lockState,
 // should be called before the block changes are unembedded in md.
 func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 	lState *lockState, md *RootMetadata, bps *blockPutState,
-	unmergedChains *crChains, mergedChains *crChains) error {
+	unmergedChains, mergedChains *crChains) error {
 	md.SetRefBytes(0)
 	md.SetUnrefBytes(0)
 	md.SetDiskUsage(mergedChains.mostRecentMD.DiskUsage())
@@ -2806,7 +2806,7 @@ func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 // that need to be put to the server (and cached) to complete this
 // resolution.
 func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
-	md *RootMetadata, unmergedChains *crChains, mergedChains *crChains,
+	md *RootMetadata, unmergedChains, mergedChains *crChains,
 	resolvedPaths map[BlockPointer]path, lbc localBcache,
 	newFileBlocks fileBlockMap) (
 	updates map[BlockPointer]BlockPointer, bps *blockPutState, err error) {
@@ -3237,7 +3237,7 @@ func (cr *ConflictResolver) finalizeResolution(ctx context.Context,
 // computes all remote and local notifications, and finalizes the
 // resolution process.
 func (cr *ConflictResolver) completeResolution(ctx context.Context,
-	lState *lockState, unmergedChains *crChains, mergedChains *crChains,
+	lState *lockState, unmergedChains, mergedChains *crChains,
 	unmergedPaths []path, mergedPaths map[BlockPointer]path, lbc localBcache,
 	newFileBlocks fileBlockMap, unmergedMDs []ImmutableRootMetadata,
 	writerLocked bool) (err error) {
