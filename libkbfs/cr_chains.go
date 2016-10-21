@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
-	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"golang.org/x/net/context"
 )
@@ -289,22 +288,14 @@ func (ri renameInfo) String() string {
 // crChainsMDInfo contains the subset of information from
 // BareRootMetadata that is needed for crChains.
 type crChainsMDInfo struct {
-	kmd                    KeyMetadata
-	rootPtr                BlockPointer
-	revision               MetadataRevision
-	lastModifyingWriter    keybase1.UID
-	lastModifyingWriterKID keybase1.KID
-	mdID                   MdID
+	kmd     KeyMetadata
+	rootPtr BlockPointer
 }
 
 func crChainsMDInfoFromIRMD(md ImmutableRootMetadata) crChainsMDInfo {
 	return crChainsMDInfo{
-		kmd:                    md,
-		rootPtr:                md.Data().Dir.BlockPointer,
-		revision:               md.Revision(),
-		lastModifyingWriter:    md.LastModifyingWriter(),
-		lastModifyingWriterKID: md.LastModifyingWriterKID(),
-		mdID: md.MdID(),
+		kmd:     md,
+		rootPtr: md.Data().Dir.BlockPointer,
 	}
 
 }
