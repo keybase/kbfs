@@ -158,7 +158,7 @@ func addUnflushedPaths(ctx context.Context,
 		return nil
 	}
 
-	chains.mostRecentMD = irmds[len(irmds)-1]
+	chains.mostRecentMDInfo = crChainsMDInfoFromIRMD(irmds[len(irmds)-1])
 
 	err := cpp.populateChainPaths(ctx, log, chains, true)
 	if err != nil {

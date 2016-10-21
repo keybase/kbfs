@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"golang.org/x/net/context"
 )
@@ -285,6 +286,29 @@ func (ri renameInfo) String() string {
 		ri.originalNewParent, ri.newName)
 }
 
+// crChainsMDInfo contains the subset of information from
+// BareRootMetadata that is needed for crChains.
+type crChainsMDInfo struct {
+	kmd                    KeyMetadata
+	rootPtr                BlockPointer
+	revision               MetadataRevision
+	lastModifyingWriter    keybase1.UID
+	lastModifyingWriterKID keybase1.KID
+	mdID                   MdID
+}
+
+func crChainsMDInfoFromIRMD(md ImmutableRootMetadata) crChainsMDInfo {
+	return crChainsMDInfo{
+		kmd:                    md,
+		rootPtr:                md.Data().Dir.BlockPointer,
+		revision:               md.Revision(),
+		lastModifyingWriter:    md.LastModifyingWriter(),
+		lastModifyingWriterKID: md.LastModifyingWriterKID(),
+		mdID: md.MdID(),
+	}
+
+}
+
 // crChains contains a crChain for every KBFS node affected by the
 // operations over a given set of MD updates.  The chains are indexed
 // by both the starting (original) and ending (most recent) pointers.
@@ -310,9 +334,9 @@ type crChains struct {
 	// Pointers that should be explicitly cleaned up in the resolution.
 	toUnrefPointers map[BlockPointer]bool
 
-	// Also keep a reference to the most recent MD that's part of this
-	// chain.
-	mostRecentMD ImmutableRootMetadata
+	// Also keep the info for the most recent MD that's part of
+	// this chain.
+	mostRecentMDInfo crChainsMDInfo
 
 	// We need to be able to track ANY BlockPointer, at any point in
 	// the chain, back to its original.
@@ -725,6 +749,11 @@ func newCRChains(ctx context.Context, cfg Config, rmds []ImmutableRootMetadata,
 		}
 	}
 
+	var mostRecentMD ImmutableRootMetadata
+	if len(rmds) > 0 {
+		mostRecentMD = rmds[len(rmds)-1]
+	}
+
 	for _, chain := range ccs.byOriginal {
 		chain.collapse()
 		// NOTE: even if we've removed all its ops, still keep the
@@ -735,16 +764,16 @@ func newCRChains(ctx context.Context, cfg Config, rmds []ImmutableRootMetadata,
 		// need to do this for chains that represent a resolution in
 		// progress, since in that case all actions are already
 		// completed.
-		if len(rmds) > 0 && identifyTypes {
-			err := chain.identifyType(ctx, fbo, rmds[len(rmds)-1], ccs)
+		if (mostRecentMD != ImmutableRootMetadata{}) && identifyTypes {
+			err := chain.identifyType(ctx, fbo, mostRecentMD, ccs)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	if len(rmds) > 0 {
-		ccs.mostRecentMD = rmds[len(rmds)-1]
+	if mostRecentMD != (ImmutableRootMetadata{}) {
+		ccs.mostRecentMDInfo = crChainsMDInfoFromIRMD(mostRecentMD)
 	}
 
 	return ccs, nil
@@ -896,9 +925,8 @@ func (ccs *crChains) getPaths(ctx context.Context, blocks *folderBlockOps,
 		}
 	}
 
-	md := ccs.mostRecentMD
 	pathMap, err := blocks.SearchForPaths(ctx, nodeCache, ptrs,
-		newPtrs, md, md.data.Dir.BlockPointer)
+		newPtrs, ccs.mostRecentMDInfo.kmd, ccs.mostRecentMDInfo.rootPtr)
 	if err != nil {
 		return nil, err
 	}
