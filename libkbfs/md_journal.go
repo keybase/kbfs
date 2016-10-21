@@ -672,15 +672,18 @@ func (j *mdJournal) convertToBranch(
 		// just evict something incorrectly.  TODO: Don't replace the
 		// MD until we know for sure that the branch conversion
 		// succeeds.
-		oldIrmd, err := mdcache.Get(tlfID, brmd.RevisionNumber(), NullBranchID)
+		oldIrmd, err := mdcache.Get(
+			tlfID, brmd.RevisionNumber(), NullBranchID)
 		if err == nil {
 			newRmd, err := oldIrmd.deepCopy(codec, false)
 			if err != nil {
 				return NullBranchID, err
 			}
 			newRmd.bareMd = brmd
+			// The extra is the same.
 			err = mdcache.Replace(
-				MakeImmutableRootMetadata(newRmd, newID, ts), NullBranchID)
+				MakeImmutableRootMetadata(newRmd, newID, ts),
+				NullBranchID)
 			if err != nil {
 				return NullBranchID, err
 			}
@@ -953,7 +956,7 @@ func (j *mdJournal) put(
 		}
 	}
 
-	head, _, err := j.getLatestWithExtra(true)
+	head, prevExtra, err := j.getLatestWithExtra(true)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1026,12 +1029,8 @@ func (j *mdJournal) put(
 
 	// Check permissions and consistency with head, if it exists.
 	if head != (ImmutableBareRootMetadata{}) {
-		prevExtra, err := j.getExtraMetadata(
-			head.GetTLFWriterKeyBundleID(),
-			head.GetTLFReaderKeyBundleID())
 		ok, err := isWriterOrValidRekey(
-			j.codec, j.uid,
-			head.BareRootMetadata, rmd.bareMd,
+			j.codec, j.uid, head.BareRootMetadata, rmd.bareMd,
 			prevExtra, extra)
 		if err != nil {
 			return MdID{}, err
@@ -1043,7 +1042,8 @@ func (j *mdJournal) put(
 
 		// Consistency checks
 		if rmd.Revision() != head.RevisionNumber() {
-			err = head.CheckValidSuccessorForServer(head.mdID, rmd.bareMd)
+			err = head.CheckValidSuccessorForServer(
+				head.mdID, rmd.bareMd)
 			if err != nil {
 				return MdID{}, err
 			}
