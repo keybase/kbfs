@@ -129,6 +129,13 @@ func addUnflushedPaths(ctx context.Context,
 	chains := newCRChainsEmpty()
 	processedOne := false
 	for _, irmd := range irmds {
+		winfo := writerInfo{
+			uid:      uid,
+			kid:      kid,
+			revision: irmd.Revision(),
+			// There won't be any conflicts, so no need for the
+			// username/devicename.
+		}
 		if _, ok := unflushedPaths[irmd.Revision()]; ok {
 			if processedOne {
 				return fmt.Errorf("Couldn't skip revision %d after "+
@@ -142,13 +149,6 @@ func addUnflushedPaths(ctx context.Context,
 		unflushedPaths[irmd.Revision()] = make(map[string]bool)
 
 		processedOne = true
-		winfo := writerInfo{
-			uid:      uid,
-			kid:      kid,
-			revision: irmd.Revision(),
-			// There won't be any conflicts, so no need for the
-			// username/devicename.
-		}
 		err := chains.addOps(codec, irmd.data, winfo, irmd.localTimestamp)
 		if err != nil {
 			return err

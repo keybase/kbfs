@@ -902,7 +902,9 @@ func (j *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
 // non-nil unflushedPathsMap is returned, which can be used directly
 // to fill in UnflushedPaths, or a list of ImmutableBareRootMetadatas
 // is returned (along with a bool indicating whether that list is
-// complete), which can be used to build an unflushedPathsMap.
+// complete), which can be used to build an unflushedPathsMap. If
+// complete is true, then the list may be empty; otherwise, it is
+// guaranteed to not be empty.
 func (j *tlfJournal) getJournalStatusWithRange() (
 	jStatus TLFJournalStatus, unflushedPaths unflushedPathsMap,
 	ibrmds []ImmutableBareRootMetadata, complete bool, err error) {
@@ -1001,6 +1003,11 @@ func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
 				return TLFJournalStatus{}, err
 			}
 			break
+		}
+
+		if len(ibrmds) == 0 {
+			// Nothing else to do.
+			return jStatus, nil
 		}
 
 		// We need to init it ourselves, or wait for someone else
