@@ -1305,7 +1305,7 @@ func (j *tlfJournal) doPutMD(ctx context.Context, rmd *RootMetadata,
 	// TODO: remove the revision from the cache on any errors below?
 	// Tricky when the append is only queued.
 
-	mdID, err := j.mdJournal.put(ctx, j.config.Crypto(),
+	mdID, err = j.mdJournal.put(ctx, j.config.Crypto(),
 		j.config.encryptionKeyGetter(), j.config.BlockSplitter(),
 		rmd, extra)
 	if err != nil {
@@ -1322,7 +1322,8 @@ func (j *tlfJournal) doPutMD(ctx context.Context, rmd *RootMetadata,
 	return mdID, false, nil
 }
 
-func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
+func (j *tlfJournal) putMD(
+	ctx context.Context, rmd *RootMetadata, extra ExtraMetadata) (
 	MdID, error) {
 	// Prepare the paths without holding the lock, as it might need to
 	// take the lock.  Note that the md ID and timestamp don't matter
@@ -1337,7 +1338,7 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 		return MdID{}, err
 	}
 
-	mdID, retry, err := j.doPutMD(ctx, irmd, perRevMap)
+	mdID, retry, err := j.doPutMD(ctx, rmd, extra, irmd, perRevMap)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1351,7 +1352,7 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 			return MdID{}, err
 		}
 
-		mdID, retry, err = j.doPutMD(ctx, irmd, perRevMap)
+		mdID, retry, err = j.doPutMD(ctx, rmd, extra, irmd, perRevMap)
 		if err != nil {
 			return MdID{}, err
 		}
