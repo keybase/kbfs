@@ -1327,8 +1327,7 @@ func (j *tlfJournal) doPutMD(ctx context.Context, rmd *RootMetadata,
 	return mdID, false, nil
 }
 
-func (j *tlfJournal) putMD(
-	ctx context.Context, rmd *RootMetadata) (
+func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
 	// Prepare the paths without holding the lock, as it might need to
 	// take the lock.  Note that the timestamp doesn't matter for
