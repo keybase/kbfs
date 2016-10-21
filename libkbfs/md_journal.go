@@ -171,12 +171,12 @@ func makeMDJournal(
 		j:        makeMdIDJournal(codec, journalDir),
 	}
 
-	_, earliest, _, _, err := journal.getEarliest(false)
+	_, earliest, _, _, err := journal.getEarliestWithExtra(false)
 	if err != nil {
 		return nil, err
 	}
 
-	latest, _, err := journal.getLatest(false)
+	latest, _, err := journal.getLatestWithExtra(false)
 	if err != nil {
 		return nil, err
 	}
@@ -355,12 +355,16 @@ func (j mdJournal) putExtraMetadata(
 	return nil
 }
 
-// getMD verifies the MD data and the writer signature (but not the
-// key) for the given ID and returns it. It also returns the
-// last-modified timestamp of the file. verifyBranchID should be false
-// only when called from makeMDJournal, i.e. when figuring out what to
-// set j.branchID in the first place.
-func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
+// getMDAndExtra verifies the MD data, the writer signature (but not
+// the key), and the extra metadata for the given ID and returns
+// them. It also returns the last-modified timestamp of the
+// file. verifyBranchID should be false only when called from
+// makeMDJournal, i.e. when figuring out what to set j.branchID in the
+// first place.
+//
+// It returns a MutableBareRootMetadata so that it can be put in a
+// RootMetadataSigned object.
+func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID bool) (
 	MutableBareRootMetadata, ExtraMetadata, time.Time, error) {
 	// Read info.
 
@@ -420,7 +424,8 @@ func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
 }
 
 // putMD stores the given metadata under its ID, if it's not already
-// stored.
+// stored. The extra metadata is put separately, since sometimes,
+// (e.g., when converting to a branch) we don't need to put it.
 func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 	err := rmd.IsLastModifiedBy(j.uid, j.key)
 	if err != nil {
@@ -432,7 +437,7 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 		return MdID{}, err
 	}
 
-	_, _, _, err = j.getMD(id, true)
+	_, _, _, err = j.getMDAndExtra(id, true)
 	if os.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
@@ -482,7 +487,9 @@ func (j *mdJournal) removeMD(id MdID) error {
 	return err
 }
 
-func (j mdJournal) getEarliest(verifyBranchID bool) (
+// getEarliestWithExtra returns a MutableBareRootMetadata so that it
+// can be put in a RootMetadataSigned object.
+func (j mdJournal) getEarliestWithExtra(verifyBranchID bool) (
 	MdID, MutableBareRootMetadata, ExtraMetadata, time.Time, error) {
 	entry, exists, err := j.j.getEarliestEntry()
 	if err != nil {
@@ -493,14 +500,14 @@ func (j mdJournal) getEarliest(verifyBranchID bool) (
 	}
 	earliestID := entry.ID
 	earliest, extra, timestamp, err :=
-		j.getMD(earliestID, verifyBranchID)
+		j.getMDAndExtra(earliestID, verifyBranchID)
 	if err != nil {
 		return MdID{}, nil, nil, time.Time{}, err
 	}
 	return earliestID, earliest, extra, timestamp, nil
 }
 
-func (j mdJournal) getLatest(verifyBranchID bool) (
+func (j mdJournal) getLatestWithExtra(verifyBranchID bool) (
 	ImmutableBareRootMetadata, ExtraMetadata, error) {
 	entry, exists, err := j.j.getLatestEntry()
 	if err != nil {
@@ -510,7 +517,8 @@ func (j mdJournal) getLatest(verifyBranchID bool) (
 		return ImmutableBareRootMetadata{}, nil, nil
 	}
 	latestID := entry.ID
-	latest, extra, timestamp, err := j.getMD(latestID, verifyBranchID)
+	latest, extra, timestamp, err := j.getMDAndExtra(
+		latestID, verifyBranchID)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, nil, err
 	}
@@ -520,7 +528,7 @@ func (j mdJournal) getLatest(verifyBranchID bool) (
 
 func (j mdJournal) checkGetParams() (
 	ImmutableBareRootMetadata, ExtraMetadata, error) {
-	head, extra, err := j.getLatest(true)
+	head, extra, err := j.getLatestWithExtra(true)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, nil, err
 	}
@@ -609,7 +617,7 @@ func (j *mdJournal) convertToBranch(
 	var prevID MdID
 
 	for i, entry := range allEntries {
-		brmd, _, ts, err := j.getMD(entry.ID, true)
+		brmd, _, ts, err := j.getMDAndExtra(entry.ID, true)
 		if err != nil {
 			return NullBranchID, err
 		}
@@ -725,7 +733,7 @@ func (j *mdJournal) convertToBranch(
 func (j mdJournal) getNextEntryToFlush(
 	ctx context.Context, end MetadataRevision, signer cryptoSigner) (
 	MdID, *RootMetadataSigned, ExtraMetadata, error) {
-	mdID, rmd, extra, timestamp, err := j.getEarliest(true)
+	mdID, rmd, extra, timestamp, err := j.getEarliestWithExtra(true)
 	if err != nil {
 		return MdID{}, nil, nil, err
 	}
@@ -750,7 +758,7 @@ func (j mdJournal) getNextEntryToFlush(
 
 func (j *mdJournal) removeFlushedEntry(
 	ctx context.Context, mdID MdID, rmds *RootMetadataSigned) error {
-	rmdID, rmd, _, _, err := j.getEarliest(true)
+	rmdID, rmd, _, _, err := j.getEarliestWithExtra(true)
 	if err != nil {
 		return err
 	}
@@ -852,7 +860,7 @@ func (j mdJournal) getRange(start, stop MetadataRevision) (
 	var rmds []ibrmdWithExtra
 	for i, entry := range entries {
 		expectedRevision := realStart + MetadataRevision(i)
-		rmd, extra, ts, err := j.getMD(entry.ID, true)
+		rmd, extra, ts, err := j.getMDAndExtra(entry.ID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -945,7 +953,7 @@ func (j *mdJournal) put(
 		}
 	}
 
-	head, _, err := j.getLatest(true)
+	head, _, err := j.getLatestWithExtra(true)
 	if err != nil {
 		return MdID{}, err
 	}
