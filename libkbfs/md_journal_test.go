@@ -708,7 +708,7 @@ func TestMDJournalRestart(t *testing.T) {
 
 	// Restart journal.
 	j, err := makeMDJournal(j.uid, j.key, codec, crypto, j.clock,
-		j.tlfID, j.metadataVersion, j.dir, j.log)
+		j.tlfID, j.mdVer, j.dir, j.log)
 	require.NoError(t, err)
 
 	require.Equal(t, mdCount, getMDJournalLength(t, j))
@@ -748,7 +748,7 @@ func TestMDJournalRestartAfterBranchConversion(t *testing.T) {
 	// Restart journal.
 
 	j, err = makeMDJournal(j.uid, j.key, codec, crypto, j.clock,
-		j.tlfID, j.metadataVersion, j.dir, j.log)
+		j.tlfID, j.mdVer, j.dir, j.log)
 	require.NoError(t, err)
 
 	require.Equal(t, mdCount, getMDJournalLength(t, j))

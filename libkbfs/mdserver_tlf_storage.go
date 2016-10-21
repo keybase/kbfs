@@ -61,12 +61,12 @@ import (
 // separately in dir/wkbv3 (dir/rkbv3). The number of bundles is
 // small, so no need to splay them.
 type mdServerTlfStorage struct {
-	codec           kbfscodec.Codec
-	crypto          cryptoPure
-	clock           Clock
-	tlfID           TlfID
-	metadataVersion MetadataVer
-	dir             string
+	codec  kbfscodec.Codec
+	crypto cryptoPure
+	clock  Clock
+	tlfID  TlfID
+	mdVer  MetadataVer
+	dir    string
 
 	// Protects any IO operations in dir or any of its children,
 	// as well as branchJournals and its contents.
@@ -76,15 +76,15 @@ type mdServerTlfStorage struct {
 
 func makeMDServerTlfStorage(codec kbfscodec.Codec,
 	crypto cryptoPure, clock Clock, tlfID TlfID,
-	metadataVersion MetadataVer, dir string) *mdServerTlfStorage {
+	mdVer MetadataVer, dir string) *mdServerTlfStorage {
 	journal := &mdServerTlfStorage{
-		codec:           codec,
-		crypto:          crypto,
-		clock:           clock,
-		tlfID:           tlfID,
-		metadataVersion: metadataVersion,
-		dir:             dir,
-		branchJournals:  make(map[BranchID]mdIDJournal),
+		codec:          codec,
+		crypto:         crypto,
+		clock:          clock,
+		tlfID:          tlfID,
+		mdVer:          mdVer,
+		dir:            dir,
+		branchJournals: make(map[BranchID]mdIDJournal),
 	}
 	return journal
 }
@@ -136,7 +136,7 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 	}
 
 	rmds, err := DecodeRootMetadataSigned(
-		s.codec, s.tlfID, srmds.Version, s.metadataVersion,
+		s.codec, s.tlfID, srmds.Version, s.mdVer,
 		srmds.EncodedRMDS)
 	if err != nil {
 		return nil, err
