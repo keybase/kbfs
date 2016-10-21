@@ -1541,7 +1541,8 @@ func (cr *ConflictResolver) fixRenameConflicts(ctx context.Context,
 // that was modified in the merged branch, and adds a create op to the
 // merged chain so that the node will be re-created locally.
 func (cr *ConflictResolver) addMergedRecreates(ctx context.Context,
-	unmergedChains, mergedChains *crChains) error {
+	unmergedChains, mergedChains *crChains,
+	mostRecentMergedWriterInfo writerInfo) error {
 	for _, unmergedChain := range unmergedChains.byMostRecent {
 		// First check for nodes that have been deleted in the unmerged
 		// branch, but modified in the merged branch, and drop those
@@ -1616,14 +1617,7 @@ func (cr *ConflictResolver) addMergedRecreates(ctx context.Context,
 						return err
 					}
 					co.AddRefBlock(c.mostRecent)
-					winfo, err := newWriterInfo(ctx, cr.config,
-						mergedChains.mostRecentMDInfo.lastModifyingWriter,
-						mergedChains.mostRecentMDInfo.lastModifyingWriterKID,
-						mergedChains.mostRecentMDInfo.revision)
-					if err != nil {
-						return err
-					}
-					co.setWriterInfo(winfo)
+					co.setWriterInfo(mostRecentMergedWriterInfo)
 					chain.ops = append([]op{co}, chain.ops...)
 					cr.log.CDebugf(ctx, "Re-created rm'd merge-modified node "+
 						"%v with operation %s in parent %v", unrefOriginal, co,
@@ -1776,7 +1770,8 @@ func collapseActions(unmergedChains *crChains, unmergedPaths []path,
 
 func (cr *ConflictResolver) computeActions(ctx context.Context,
 	unmergedChains, mergedChains *crChains, unmergedPaths []path,
-	mergedPaths map[BlockPointer]path, recreateOps []*createOp) (
+	mergedPaths map[BlockPointer]path, recreateOps []*createOp,
+	mostRecentMergedWriterInfo writerInfo) (
 	map[BlockPointer]crActionList, []path, error) {
 	// Process all the recreateOps, adding them to the appropriate
 	// unmerged chains.
@@ -1798,7 +1793,8 @@ func (cr *ConflictResolver) computeActions(ctx context.Context,
 	// Recreate any modified merged nodes that were rm'd in the
 	// unmerged branch.
 	if err := cr.addMergedRecreates(
-		ctx, unmergedChains, mergedChains); err != nil {
+		ctx, unmergedChains, mergedChains,
+		mostRecentMergedWriterInfo); err != nil {
 		return nil, nil, err
 	}
 
@@ -3442,9 +3438,9 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 		cr.log.CDebugf(ctx, "No updates to resolve, so finishing")
 		lbc := make(localBcache)
 		newFileBlocks := make(fileBlockMap)
-		err = cr.completeResolution(ctx, lState, unmergedChains, mergedChains,
-			unmergedPaths, mergedPaths, mostRecentMergedMD,
-			lbc, newFileBlocks, doLock)
+		err = cr.completeResolution(ctx, lState, unmergedChains,
+			mergedChains, unmergedPaths, mergedPaths,
+			mostRecentMergedMD, lbc, newFileBlocks, doLock)
 		return
 	}
 
@@ -3466,6 +3462,14 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 	}
 	cr.log.CDebugf(ctx, "Recreate ops: %s", recOps)
 
+	mostRecentMergedWriterInfo, err := newWriterInfo(ctx, cr.config,
+		mostRecentMergedMD.LastModifyingWriter(),
+		mostRecentMergedMD.LastModifyingWriterKID(),
+		mostRecentMergedMD.Revision())
+	if err != nil {
+		return
+	}
+
 	// Step 2: Figure out which actions need to be taken in the merged
 	// branch to best reflect the unmerged changes.  The result of
 	// this step is a map containing, for each node in the merged path
@@ -3474,8 +3478,9 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 	// actions contains the logic needed to manipulate the data into
 	// the final merged state, including the resolution of any
 	// conflicts that occurred between the two branches.
-	actionMap, newUnmergedPaths, err := cr.computeActions(ctx, unmergedChains,
-		mergedChains, unmergedPaths, mergedPaths, recOps)
+	actionMap, newUnmergedPaths, err := cr.computeActions(
+		ctx, unmergedChains, mergedChains, unmergedPaths, mergedPaths,
+		recOps, mostRecentMergedWriterInfo)
 	if err != nil {
 		return
 	}

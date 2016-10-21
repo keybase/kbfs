@@ -339,8 +339,9 @@ func testCRCheckPathsAndActions(t *testing.T, cr *ConflictResolver,
 	}
 
 	// Now for step 2 -- check the actions
-	actionMap, _, err := cr.computeActions(ctx, unmergedChains, mergedChains,
-		unmergedPaths, mergedPaths, recreateOps)
+	actionMap, _, err := cr.computeActions(
+		ctx, unmergedChains, mergedChains,
+		unmergedPaths, mergedPaths, recreateOps, writerInfo{})
 	if err != nil {
 		t.Fatalf("Couldn't compute actions: %v", err)
 	}
@@ -1191,7 +1192,7 @@ func TestCRDoActionsSimple(t *testing.T) {
 	}
 
 	actionMap, _, err := cr2.computeActions(ctx, unmergedChains, mergedChains,
-		unmergedPaths, mergedPaths, recreateOps)
+		unmergedPaths, mergedPaths, recreateOps, writerInfo{})
 	if err != nil {
 		t.Fatalf("Couldn't compute actions: %v", err)
 	}
@@ -1307,7 +1308,7 @@ func TestCRDoActionsWriteConflict(t *testing.T) {
 	}
 
 	actionMap, _, err := cr2.computeActions(ctx, unmergedChains, mergedChains,
-		unmergedPaths, mergedPaths, recreateOps)
+		unmergedPaths, mergedPaths, recreateOps, writerInfo{})
 	if err != nil {
 		t.Fatalf("Couldn't compute actions: %v", err)
 	}
