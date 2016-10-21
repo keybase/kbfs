@@ -389,7 +389,7 @@ func signMD(
 }
 
 func getFileBlockForMD(ctx context.Context, bcache BlockCache, bops BlockOps,
-	ptr BlockPointer, rmdToDecrypt *RootMetadata, rmdWithKeys KeyMetadata) (
+	ptr BlockPointer, tlfID TlfID, rmdWithKeys KeyMetadata) (
 	*FileBlock, error) {
 	// We don't have a convenient way to fetch the block from here via
 	// folderBlockOps, so just go directly via the
@@ -402,7 +402,7 @@ func getFileBlockForMD(ctx context.Context, bcache BlockCache, bops BlockOps,
 			return nil, err
 		}
 		if err := bcache.Put(
-			ptr, rmdToDecrypt.TlfID(), block, TransientEntry); err != nil {
+			ptr, tlfID, block, TransientEntry); err != nil {
 			return nil, err
 		}
 	}
@@ -415,16 +415,16 @@ func getFileBlockForMD(ctx context.Context, bcache BlockCache, bops BlockOps,
 }
 
 func reembedBlockChanges(ctx context.Context, codec kbfscodec.Codec,
-	bcache BlockCache, bops BlockOps, rmdToDecrypt *RootMetadata,
+	bcache BlockCache, bops BlockOps, tlfID TlfID, pmd *PrivateMetadata,
 	rmdWithKeys KeyMetadata) error {
-	info := rmdToDecrypt.data.Changes.Info
+	info := pmd.Changes.Info
 	if info.BlockPointer == zeroPtr {
 		return nil
 	}
 
 	// Fetch the top-level block.
 	fblock, err := getFileBlockForMD(
-		ctx, bcache, bops, info.BlockPointer, rmdToDecrypt, rmdWithKeys)
+		ctx, bcache, bops, info.BlockPointer, tlfID, rmdWithKeys)
 	if err != nil {
 		return err
 	}
@@ -454,7 +454,7 @@ func reembedBlockChanges(ctx context.Context, codec kbfscodec.Codec,
 				}
 
 				fblock, err := getFileBlockForMD(groupCtx, bcache, bops,
-					iptr.BlockPointer, rmdToDecrypt, rmdWithKeys)
+					iptr.BlockPointer, tlfID, rmdWithKeys)
 				if err != nil {
 					return err
 				}
@@ -489,16 +489,16 @@ func reembedBlockChanges(ctx context.Context, codec kbfscodec.Codec,
 		}
 	}
 
-	err = codec.Decode(buf, &rmdToDecrypt.data.Changes)
+	err = codec.Decode(buf, &pmd.Changes)
 	if err != nil {
 		return err
 	}
 	// The changes block pointers are implicit ref blocks.
-	rmdToDecrypt.data.Changes.Ops[0].AddRefBlock(info.BlockPointer)
+	pmd.Changes.Ops[0].AddRefBlock(info.BlockPointer)
 	for _, iptr := range fblock.IPtrs {
-		rmdToDecrypt.data.Changes.Ops[0].AddRefBlock(iptr.BlockPointer)
+		pmd.Changes.Ops[0].AddRefBlock(iptr.BlockPointer)
 	}
-	rmdToDecrypt.data.cachedChanges.Info = info
+	pmd.cachedChanges.Info = info
 	return nil
 }
 
@@ -548,5 +548,6 @@ func decryptMDPrivateData(ctx context.Context, codec kbfscodec.Codec,
 
 	// Re-embed the block changes if it's needed.
 	return reembedBlockChanges(
-		ctx, codec, bcache, bops, rmdToDecrypt, rmdWithKeys)
+		ctx, codec, bcache, bops, rmdWithKeys.TlfID(),
+		rmdToDecrypt.Data(), rmdWithKeys)
 }
