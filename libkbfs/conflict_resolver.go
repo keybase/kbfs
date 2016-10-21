@@ -574,7 +574,7 @@ func (cr *ConflictResolver) addChildBlocksIfIndirectFile(ctx context.Context,
 // for the conflicts to be resolved.
 func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 	lState *lockState, unmergedPath path, unmergedChains *crChains,
-	mergedChains *crChains, currWriterInfo writerInfo) (
+	mergedChains *crChains, currUnmergedWriterInfo writerInfo) (
 	path, BlockPointer, []*createOp, error) {
 	unmergedOriginal, err :=
 		unmergedChains.originalFromMostRecent(unmergedPath.tailPointer())
@@ -669,7 +669,7 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 		co.AddUpdate(parentOriginal, parentOriginal)
 		co.setFinalPath(parentPath)
 		co.AddRefBlock(currOriginal)
-		co.setWriterInfo(currWriterInfo)
+		co.setWriterInfo(currUnmergedWriterInfo)
 
 		if co.Type != Dir {
 			err = cr.addChildBlocksIfIndirectFile(ctx, lState,
@@ -810,7 +810,7 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 // resolve.
 func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 	lState *lockState, unmergedPaths []path, unmergedChains *crChains,
-	mergedChains *crChains, currWriterInfo writerInfo) (
+	mergedChains *crChains, currUnmergedWriterInfo writerInfo) (
 	map[BlockPointer]path, []*createOp, []path, error) {
 	// maps each most recent unmerged pointer to the corresponding
 	// most recent merged path.
@@ -866,7 +866,7 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 	for _, p := range unmergedPaths {
 		mergedPath, mostRecent, ops, err := cr.resolveMergedPathTail(
 			ctx, lState, p, unmergedChains, mergedChains,
-			currWriterInfo)
+			currUnmergedWriterInfo)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -1030,8 +1030,9 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 		return nil, nil, nil, nil, nil, ImmutableRootMetadata{}, err
 	}
 
-	currWriterInfo, err := newWriterInfo(ctx, cr.config, uid, key.KID(),
-		unmergedChains.mostRecentMDInfo.revision)
+	currUnmergedWriterInfo, err := newWriterInfo(
+		ctx, cr.config, uid, key.KID(),
+		unmerged[len(unmerged)-1].Revision())
 	if err != nil {
 		return nil, nil, nil, nil, nil, ImmutableRootMetadata{}, err
 	}
@@ -1041,7 +1042,7 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 	// apply these unmerged operations in the merged branch.
 	mergedPaths, recreateOps, newUnmergedPaths, err = cr.resolveMergedPaths(
 		ctx, lState, unmergedPaths, unmergedChains, mergedChains,
-		currWriterInfo)
+		currUnmergedWriterInfo)
 	if err != nil {
 		// Return mergedChains in this error case, to allow the error
 		// handling code to unstage if necessary.
