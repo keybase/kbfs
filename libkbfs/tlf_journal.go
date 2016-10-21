@@ -1249,25 +1249,22 @@ func (j *tlfJournal) archiveBlockReferences(
 func (j *tlfJournal) convertImmutableBareRMDToIRMD(ctx context.Context,
 	ibrmd ImmutableBareRootMetadata, handle *TlfHandle) (
 	ImmutableRootMetadata, error) {
+	// TODO: Avoid having to do this type assertion.
 	brmd, ok := ibrmd.BareRootMetadata.(MutableBareRootMetadata)
 	if !ok {
 		return ImmutableRootMetadata{}, MutableBareRootMetadataNoImplError{}
 	}
 
-	rmd := RootMetadata{
-		bareMd:    brmd,
-		tlfHandle: handle,
-		extra:     ibrmd.extra,
-	}
+	rmd := MakeRootMetadata(brmd, ibrmd.extra, handle)
 
 	err := decryptMDPrivateData(
 		ctx, j.config.Codec(), j.config.Crypto(),
 		j.config.BlockCache(), j.config.BlockOps(),
-		j.config.mdDecryptionKeyGetter(), j.uid, &rmd, rmd.ReadOnly())
+		j.config.mdDecryptionKeyGetter(), j.uid, rmd, rmd.ReadOnly())
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
-	irmd := MakeImmutableRootMetadata(&rmd, ibrmd.mdID, ibrmd.localTimestamp)
+	irmd := MakeImmutableRootMetadata(rmd, ibrmd.mdID, ibrmd.localTimestamp)
 	return irmd, nil
 }
 
