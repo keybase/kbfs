@@ -960,17 +960,13 @@ func (j *tlfJournal) batchConvertImmutables(ctx context.Context,
 	mdInfos := make([]unflushedPathMDInfo, 0, len(ibrmds))
 
 	for _, ibrmd := range ibrmds {
-		irmd, err := j.convertImmutableBareRMDToIRMD(ctx, ibrmd, handle)
+		mdInfo, err := j.convertImmutableBareRMDToMDInfo(
+			ctx, ibrmd, handle)
 		if err != nil {
 			return nil, err
 		}
 
-		mdInfos = append(mdInfos, unflushedPathMDInfo{
-			revision:       irmd.Revision(),
-			kmd:            irmd,
-			pmd:            *irmd.Data(),
-			localTimestamp: irmd.localTimestamp,
-		})
+		mdInfos = append(mdInfos, mdInfo)
 	}
 	return mdInfos, nil
 }
@@ -1279,6 +1275,21 @@ func (j *tlfJournal) convertImmutableBareRMDToIRMD(ctx context.Context,
 	}
 	irmd := MakeImmutableRootMetadata(rmd, ibrmd.mdID, ibrmd.localTimestamp)
 	return irmd, nil
+}
+
+func (j *tlfJournal) convertImmutableBareRMDToMDInfo(ctx context.Context,
+	ibrmd ImmutableBareRootMetadata, handle *TlfHandle) (
+	unflushedPathMDInfo, error) {
+	irmd, err := j.convertImmutableBareRMDToIRMD(ctx, ibrmd, handle)
+	if err != nil {
+		return unflushedPathMDInfo{}, err
+	}
+	return unflushedPathMDInfo{
+		revision:       irmd.Revision(),
+		kmd:            irmd,
+		pmd:            *irmd.Data(),
+		localTimestamp: irmd.localTimestamp,
+	}, nil
 }
 
 func (j *tlfJournal) getMDHead(
