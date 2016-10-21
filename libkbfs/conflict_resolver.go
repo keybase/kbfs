@@ -574,7 +574,8 @@ func (cr *ConflictResolver) addChildBlocksIfIndirectFile(ctx context.Context,
 // for the conflicts to be resolved.
 func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 	lState *lockState, unmergedPath path, unmergedChains *crChains,
-	mergedChains *crChains) (path, BlockPointer, []*createOp, error) {
+	mergedChains *crChains, winfo writerInfo) (
+	path, BlockPointer, []*createOp, error) {
 	unmergedOriginal, err :=
 		unmergedChains.originalFromMostRecent(unmergedPath.tailPointer())
 	if err != nil {
@@ -589,24 +590,6 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 	mergedPath := path{
 		FolderBranch: unmergedPath.FolderBranch,
 		path:         nil, // fill in backwards, and reverse at the end
-	}
-
-	// Mark the recreate ops as being authored by the current user.
-	kbpki := cr.config.KBPKI()
-	_, uid, err := kbpki.GetCurrentUserInfo(ctx)
-	if err != nil {
-		return path{}, BlockPointer{}, nil, err
-	}
-
-	key, err := kbpki.GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		return path{}, BlockPointer{}, nil, err
-	}
-
-	winfo, err := newWriterInfo(ctx, cr.config, uid, key.KID(),
-		unmergedChains.mostRecentMDInfo.revision)
-	if err != nil {
-		return path{}, BlockPointer{}, nil, err
 	}
 
 	// First find the earliest merged parent.
@@ -872,6 +855,24 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 		return mergedPaths, nil, nil, nil
 	}
 
+	// Mark the recreate ops as being authored by the current user.
+	kbpki := cr.config.KBPKI()
+	_, uid, err := kbpki.GetCurrentUserInfo(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	key, err := kbpki.GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	winfo, err := newWriterInfo(ctx, cr.config, uid, key.KID(),
+		unmergedChains.mostRecentMDInfo.revision)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	// For each unmerged path, find the corresponding most recent
 	// pointer in the merged path.  Track which entries need to be
 	// re-created.
@@ -881,7 +882,7 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 	// recent pointers that need some of their path filled in.
 	for _, p := range unmergedPaths {
 		mergedPath, mostRecent, ops, err := cr.resolveMergedPathTail(
-			ctx, lState, p, unmergedChains, mergedChains)
+			ctx, lState, p, unmergedChains, mergedChains, winfo)
 		if err != nil {
 			return nil, nil, nil, err
 		}
