@@ -907,9 +907,10 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 	}
 
 	mergedNodeCache := newNodeCacheStandard(cr.fbo.folderBranch)
+	md := mergedChains.mostRecentMD
 	nodeMap, _, err := cr.fbo.blocks.SearchForNodes(
 		ctx, mergedNodeCache, ptrs, newPtrs,
-		mergedChains.mostRecentMD.ReadOnly())
+		md, md.data.Dir.BlockPointer)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -1435,9 +1436,10 @@ func (cr *ConflictResolver) fixRenameConflicts(ctx context.Context,
 	}
 
 	mergedNodeCache := newNodeCacheStandard(cr.fbo.folderBranch)
+	md := mergedChains.mostRecentMD
 	nodeMap, _, err := cr.fbo.blocks.SearchForNodes(
 		ctx, mergedNodeCache, ptrs, newPtrs,
-		mergedChains.mostRecentMD.ReadOnly())
+		md, md.data.Dir.BlockPointer)
 	if err != nil {
 		return nil, err
 	}
@@ -2417,9 +2419,10 @@ func (cr *ConflictResolver) resolveOnePath(ctx context.Context,
 				newPtrs[ptr] = true
 			}
 
+			md := unmergedChains.mostRecentMD
 			nodeMap, cache, err := cr.fbo.blocks.SearchForNodes(
 				ctx, cr.fbo.nodeCache, ptrs, newPtrs,
-				unmergedChains.mostRecentMD.ReadOnly())
+				md, md.data.Dir.BlockPointer)
 			if err != nil {
 				return path{}, err
 			}
@@ -3177,7 +3180,8 @@ func (cr *ConflictResolver) getOpsForLocalNotification(ctx context.Context,
 	// that we can correctly order the chains from the root outward.
 	mergedNodeCache := newNodeCacheStandard(cr.fbo.folderBranch)
 	nodeMap, _, err := cr.fbo.blocks.SearchForNodes(
-		ctx, mergedNodeCache, ptrs, newPtrs, md.ReadOnly())
+		ctx, mergedNodeCache, ptrs, newPtrs,
+		md, md.data.Dir.BlockPointer)
 	if err != nil {
 		return nil, err
 	}

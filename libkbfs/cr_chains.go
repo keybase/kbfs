@@ -897,8 +897,9 @@ func (ccs *crChains) getPaths(ctx context.Context, blocks *folderBlockOps,
 		}
 	}
 
+	md := ccs.mostRecentMD
 	pathMap, err := blocks.SearchForPaths(ctx, nodeCache, ptrs,
-		newPtrs, ccs.mostRecentMD.ReadOnly())
+		newPtrs, md, md.data.Dir.BlockPointer)
 	if err != nil {
 		return nil, err
 	}
