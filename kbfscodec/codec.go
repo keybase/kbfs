@@ -98,7 +98,7 @@ func SerializeToFile(c Codec, obj interface{}, path string) error {
 
 // DeserializeFromFile deserializes the given file into the given
 // object.
-func DeserializeFromFile(codec Codec, path string, objPtr interface{}) error {
+func DeserializeFromFile(c Codec, path string, objPtr interface{}) error {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
