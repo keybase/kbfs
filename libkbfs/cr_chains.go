@@ -700,7 +700,9 @@ func (ccs *crChains) addOps(codec kbfscodec.Codec,
 	return nil
 }
 
-func newCRChains(ctx context.Context, cfg Config, rmds []ImmutableRootMetadata,
+// newCRChains builds a new crChains object from the given list of
+// immutable RMDs, which must be non-empty.
+func newCRChains(ctx context.Context, cfg Config, irmds []ImmutableRootMetadata,
 	fbo *folderBlockOps, identifyTypes bool) (
 	ccs *crChains, err error) {
 	ccs = newCRChainsEmpty()
@@ -708,26 +710,27 @@ func newCRChains(ctx context.Context, cfg Config, rmds []ImmutableRootMetadata,
 	// For each MD update, turn each update in each op into map
 	// entries and create chains for the BlockPointers that are
 	// affected directly by the operation.
-	for _, rmd := range rmds {
+	for _, irmd := range irmds {
 		// No new operations in these.
-		if rmd.IsWriterMetadataCopiedSet() {
+		if irmd.IsWriterMetadataCopiedSet() {
 			continue
 		}
 
-		winfo, err := newWriterInfo(ctx, cfg, rmd.LastModifyingWriter(),
-			rmd.LastModifyingWriterKID(), rmd.Revision())
+		winfo, err := newWriterInfo(
+			ctx, cfg, irmd.LastModifyingWriter(),
+			irmd.LastModifyingWriterKID(), irmd.Revision())
 		if err != nil {
 			return nil, err
 		}
 
-		err = ccs.addOps(cfg.Codec(), rmd.data, winfo, rmd.localTimestamp)
+		err = ccs.addOps(cfg.Codec(), irmd.data, winfo, irmd.localTimestamp)
 
-		if ptr := rmd.data.cachedChanges.Info.BlockPointer; ptr != zeroPtr {
+		if ptr := irmd.data.cachedChanges.Info.BlockPointer; ptr != zeroPtr {
 			ccs.blockChangePointers[ptr] = true
 
 			// Any child block change pointers?
 			fblock, err := fbo.GetFileBlockForReading(ctx, makeFBOLockState(),
-				rmd.ReadOnly(), ptr, MasterBranch, path{})
+				irmd, ptr, MasterBranch, path{})
 			if err != nil {
 				return nil, err
 			}
@@ -743,16 +746,13 @@ func newCRChains(ctx context.Context, cfg Config, rmds []ImmutableRootMetadata,
 		if !ccs.originalRoot.IsInitialized() {
 			// Find the original pointer for the root directory
 			if rootChain, ok :=
-				ccs.byMostRecent[rmd.data.Dir.BlockPointer]; ok {
+				ccs.byMostRecent[irmd.data.Dir.BlockPointer]; ok {
 				ccs.originalRoot = rootChain.original
 			}
 		}
 	}
 
-	var mostRecentMD ImmutableRootMetadata
-	if len(rmds) > 0 {
-		mostRecentMD = rmds[len(rmds)-1]
-	}
+	mostRecentMD := irmds[len(irmds)-1]
 
 	for _, chain := range ccs.byOriginal {
 		chain.collapse()
@@ -764,7 +764,7 @@ func newCRChains(ctx context.Context, cfg Config, rmds []ImmutableRootMetadata,
 		// need to do this for chains that represent a resolution in
 		// progress, since in that case all actions are already
 		// completed.
-		if (mostRecentMD != ImmutableRootMetadata{}) && identifyTypes {
+		if identifyTypes {
 			err := chain.identifyType(ctx, fbo, mostRecentMD, ccs)
 			if err != nil {
 				return nil, err
@@ -772,9 +772,7 @@ func newCRChains(ctx context.Context, cfg Config, rmds []ImmutableRootMetadata,
 		}
 	}
 
-	if mostRecentMD != (ImmutableRootMetadata{}) {
-		ccs.mostRecentMDInfo = crChainsMDInfoFromIRMD(mostRecentMD)
-	}
+	ccs.mostRecentMDInfo = crChainsMDInfoFromIRMD(mostRecentMD)
 
 	return ccs, nil
 }
