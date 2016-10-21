@@ -69,7 +69,7 @@ func Update(c Codec, dstPtr interface{}, src interface{}) error {
 	if err != nil {
 		return err
 	}
-	err = c.Decode(buf, dst)
+	err = c.Decode(buf, dstPtr)
 	if err != nil {
 		return err
 	}
