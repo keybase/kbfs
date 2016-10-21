@@ -6,6 +6,9 @@ package kbfscodec
 
 import (
 	"bytes"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 )
 
@@ -69,5 +72,42 @@ func Update(c Codec, dst interface{}, src interface{}) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+// SerializeToFile serializes the given object and writes it to the
+// given file, making its parent directory first if necessary.
+func SerializeToFile(c Codec, obj interface{}, path string) error {
+	err := os.MkdirAll(filepath.Dir(path), 0700)
+	if err != nil {
+		return err
+	}
+
+	buf, err := c.Encode(obj)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(path, buf, 0600)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// DeserializeFromFile deserializes the given file into the given
+// object.
+func DeserializeFromFile(codec Codec, path string, objPtr interface{}) error {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	err = c.Decode(data, objPtr)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -130,7 +129,7 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 	// Read file.
 
 	var srmds serializedRMDS
-	err := deserializeFromFile(s.codec, s.mdPath(id), &srmds)
+	err := kbfscodec.DeserializeFromFile(s.codec, s.mdPath(id), &srmds)
 	if err != nil {
 		return nil, err
 	}
@@ -158,41 +157,6 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 	}
 
 	return rmds, nil
-}
-
-func serializeToFile(
-	codec kbfscodec.Codec, obj interface{}, path string) error {
-	err := os.MkdirAll(filepath.Dir(path), 0700)
-	if err != nil {
-		return err
-	}
-
-	buf, err := codec.Encode(obj)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(path, buf, 0600)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func deserializeFromFile(
-	codec kbfscodec.Codec, path string, objPtr interface{}) error {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	err = codec.Decode(data, objPtr)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (s *mdServerTlfStorage) putMDLocked(
@@ -223,7 +187,7 @@ func (s *mdServerTlfStorage) putMDLocked(
 		Version:     rmds.MD.Version(),
 	}
 
-	err = serializeToFile(s.codec, srmds, s.mdPath(id))
+	err = kbfscodec.SerializeToFile(s.codec, srmds, s.mdPath(id))
 	if err != nil {
 		return MdID{}, err
 	}
@@ -347,14 +311,14 @@ func (s *mdServerTlfStorage) getKeyBundlesReadLocked(
 	}
 
 	var wkb TLFWriterKeyBundleV3
-	err := deserializeFromFile(
+	err := kbfscodec.DeserializeFromFile(
 		s.codec, s.writerKeyBundleV3Path(wkbID), &wkb)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var rkb TLFReaderKeyBundleV3
-	err = deserializeFromFile(
+	err = kbfscodec.DeserializeFromFile(
 		s.codec, s.readerKeyBundleV3Path(rkbID), &rkb)
 	if err != nil {
 		return nil, nil, err
@@ -422,13 +386,13 @@ func (s *mdServerTlfStorage) putExtraMetadataLocked(
 		return err
 	}
 
-	err = serializeToFile(
+	err = kbfscodec.SerializeToFile(
 		s.codec, extraV3.wkb, s.writerKeyBundleV3Path(wkbID))
 	if err != nil {
 		return err
 	}
 
-	err = serializeToFile(
+	err = kbfscodec.SerializeToFile(
 		s.codec, extraV3.rkb, s.readerKeyBundleV3Path(rkbID))
 	if err != nil {
 		return err
