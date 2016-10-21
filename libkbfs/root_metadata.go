@@ -126,6 +126,13 @@ var _ KeyMetadata = (*RootMetadata)(nil)
 // MakeRootMetadata makes a RootMetadata object from the given parameters.
 func MakeRootMetadata(bareMd MutableBareRootMetadata,
 	extra ExtraMetadata, handle *TlfHandle) *RootMetadata {
+	if bareMd == nil {
+		panic("nil MutableBareRootMetadata")
+	}
+	// extra can be nil.
+	if handle == nil {
+		panic("nil handle")
+	}
 	return &RootMetadata{
 		bareMd:    bareMd,
 		extra:     extra,
