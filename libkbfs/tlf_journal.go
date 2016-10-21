@@ -947,7 +947,8 @@ func (j *tlfJournal) batchConvertImmutables(ctx context.Context,
 		return nil, nil
 	}
 
-	ibrmdBareHandle, err := ibrmds[0].ibrmd.MakeBareTlfHandle(nil)
+	ibrmdBareHandle, err := ibrmds[0].ibrmd.MakeBareTlfHandle(
+		ibrmds[0].extra)
 	if err != nil {
 		return nil, err
 	}
