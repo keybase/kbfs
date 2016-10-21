@@ -62,8 +62,9 @@ func Equal(c Codec, x, y interface{}) (bool, error) {
 	return bytes.Equal(xBuf, yBuf), nil
 }
 
-// Update encodes src into a byte string, and then decode it into dst.
-func Update(c Codec, dst interface{}, src interface{}) error {
+// Update encodes src into a byte string, and then decode it into the
+// object pointed to by dstPtr.
+func Update(c Codec, dstPtr interface{}, src interface{}) error {
 	buf, err := c.Encode(src)
 	if err != nil {
 		return err
@@ -96,8 +97,8 @@ func SerializeToFile(c Codec, obj interface{}, path string) error {
 	return nil
 }
 
-// DeserializeFromFile deserializes the given file into the given
-// object.
+// DeserializeFromFile deserializes the given file into the object
+// pointed to by objPtr.
 func DeserializeFromFile(c Codec, path string, objPtr interface{}) error {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
