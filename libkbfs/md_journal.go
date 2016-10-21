@@ -262,15 +262,12 @@ func (j mdJournal) getMDInfo(id MdID) (time.Time, MetadataVer, error) {
 	return info.Timestamp, info.Version, nil
 }
 
+// putMDInfo assumes that the parent directory of j.mdInfoPath(id)
+// (which is j.mdPath(id)) has already been created.
 func (j mdJournal) putMDInfo(
 	id MdID, timestamp time.Time, version MetadataVer) error {
 	info := mdInfo{timestamp, version}
 	infoJSON, err := json.Marshal(info)
-	if err != nil {
-		return err
-	}
-
-	err = os.MkdirAll(j.mdPath(id), 0700)
 	if err != nil {
 		return err
 	}
