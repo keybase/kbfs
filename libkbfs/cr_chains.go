@@ -297,7 +297,6 @@ func crChainsMDInfoFromIRMD(md ImmutableRootMetadata) crChainsMDInfo {
 		kmd:     md,
 		rootPtr: md.Data().Dir.BlockPointer,
 	}
-
 }
 
 // crChains contains a crChain for every KBFS node affected by the
