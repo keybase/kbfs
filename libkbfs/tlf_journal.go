@@ -710,11 +710,11 @@ func (j *tlfJournal) flushBlockEntries(
 }
 
 func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
-	end MetadataRevision) (MdID, *RootMetadataSigned, error) {
+	end MetadataRevision) (MdID, *RootMetadataSigned, ExtraMetadata, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
-		return MdID{}, nil, err
+		return MdID{}, nil, nil, err
 	}
 
 	return j.mdJournal.getNextEntryToFlush(ctx, end, j.config.Crypto())
@@ -722,17 +722,17 @@ func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
 
 func (j *tlfJournal) convertMDsToBranchAndGetNextEntry(
 	ctx context.Context, nextEntryEnd MetadataRevision) (
-	MdID, *RootMetadataSigned, error) {
+	MdID, *RootMetadataSigned, ExtraMetadata, error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {
-		return MdID{}, nil, err
+		return MdID{}, nil, nil, err
 	}
 
 	bid, err := j.mdJournal.convertToBranch(
 		ctx, j.config.Crypto(), j.config.Codec(), j.tlfID, j.config.MDCache())
 	if err != nil {
-		return MdID{}, nil, err
+		return MdID{}, nil, nil, err
 	}
 
 	if j.onBranchChange != nil {
@@ -740,8 +740,7 @@ func (j *tlfJournal) convertMDsToBranchAndGetNextEntry(
 	}
 
 	return j.mdJournal.getNextEntryToFlush(
-		ctx, nextEntryEnd,
-		j.config.Crypto())
+		ctx, nextEntryEnd, j.config.Crypto())
 }
 
 func (j *tlfJournal) removeFlushedMDEntry(ctx context.Context,
@@ -772,7 +771,7 @@ func (j *tlfJournal) flushOneMDOp(
 
 	mdServer := j.config.MDServer()
 
-	mdID, rmds, err := j.getNextMDEntryToFlush(ctx, end)
+	mdID, rmds, extra, err := j.getNextMDEntryToFlush(ctx, end)
 	if err != nil {
 		return false, err
 	}
@@ -791,8 +790,7 @@ func (j *tlfJournal) flushOneMDOp(
 
 	j.log.CDebugf(ctx, "Flushing MD for TLF=%s with id=%s, rev=%s, bid=%s",
 		rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID())
-	// MDv3 TODO: pass actual key bundles
-	pushErr := mdServer.Put(ctx, rmds, nil)
+	pushErr := mdServer.Put(ctx, rmds, extra)
 	if isRevisionConflict(pushErr) {
 		headMdID, err := getMdID(ctx, mdServer, j.mdJournal.crypto,
 			rmds.MD.TlfID(), rmds.MD.BID(), rmds.MD.MergedStatus(),
@@ -810,8 +808,8 @@ func (j *tlfJournal) flushOneMDOp(
 		} else if rmds.MD.MergedStatus() == Merged {
 			j.log.CDebugf(ctx, "Conflict detected %v", pushErr)
 			// Convert MDs to a branch and retry the put.
-			mdID, rmds, err = j.convertMDsToBranchAndGetNextEntry(
-				ctx, end)
+			mdID, rmds, extra, err =
+				j.convertMDsToBranchAndGetNextEntry(ctx, end)
 			if err != nil {
 				return false, err
 			}
@@ -821,7 +819,7 @@ func (j *tlfJournal) flushOneMDOp(
 			j.log.CDebugf(ctx, "Flushing newly-unmerged MD for TLF=%s with id=%s, rev=%s, bid=%s",
 				rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID())
 			// MDv3 TODO: pass actual key bundles
-			pushErr = mdServer.Put(ctx, rmds, nil)
+			pushErr = mdServer.Put(ctx, rmds, extra)
 		}
 	}
 	if pushErr != nil {

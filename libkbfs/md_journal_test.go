@@ -201,17 +201,18 @@ func TestMDJournalGetNextEntry(t *testing.T) {
 	_, err := j.put(ctx, signer, ekg, bsplit, md, nil)
 	require.NoError(t, err)
 
-	mdID, rmds, err := j.getNextEntryToFlush(ctx, md.Revision(), signer)
+	mdID, rmds, _, err := j.getNextEntryToFlush(ctx, md.Revision(), signer)
 	require.NoError(t, err)
 	require.Equal(t, MdID{}, mdID)
 	require.Nil(t, rmds)
 
-	mdID, rmds, err = j.getNextEntryToFlush(ctx, md.Revision()+1, signer)
+	mdID, rmds, _, err = j.getNextEntryToFlush(ctx, md.Revision()+1, signer)
 	require.NoError(t, err)
 	require.NotEqual(t, MdID{}, mdID)
 	require.Equal(t, md.bareMd, rmds.MD)
 
-	mdID, rmds, err = j.getNextEntryToFlush(ctx, md.Revision()+100, signer)
+	mdID, rmds, _, err = j.getNextEntryToFlush(
+		ctx, md.Revision()+100, signer)
 	require.NoError(t, err)
 	require.NotEqual(t, MdID{}, mdID)
 	require.Equal(t, md.bareMd, rmds.MD)
@@ -329,7 +330,8 @@ func TestMDJournalPutCase2Empty(t *testing.T) {
 	require.NoError(t, err)
 
 	// Flush.
-	mdID, rmds, err := j.getNextEntryToFlush(ctx, md.Revision()+1, signer)
+	mdID, rmds, _, err := j.getNextEntryToFlush(
+		ctx, md.Revision()+1, signer)
 	require.NoError(t, err)
 	j.removeFlushedEntry(ctx, mdID, rmds)
 
@@ -398,7 +400,8 @@ func TestMDJournalPutCase3EmptyAppend(t *testing.T) {
 	require.NoError(t, err)
 
 	// Flush.
-	mdID, rmds, err := j.getNextEntryToFlush(ctx, md.Revision()+1, signer)
+	mdID, rmds, _, err := j.getNextEntryToFlush(
+		ctx, md.Revision()+1, signer)
 	require.NoError(t, err)
 	j.removeFlushedEntry(ctx, mdID, rmds)
 
@@ -440,7 +443,7 @@ func flushAllMDs(
 	end, err := j.end()
 	require.NoError(t, err)
 	for {
-		mdID, rmds, err := j.getNextEntryToFlush(ctx, end, signer)
+		mdID, rmds, _, err := j.getNextEntryToFlush(ctx, end, signer)
 		require.NoError(t, err)
 		if mdID == (MdID{}) {
 			break

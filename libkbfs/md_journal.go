@@ -171,7 +171,7 @@ func makeMDJournal(
 		j:        makeMdIDJournal(codec, journalDir),
 	}
 
-	earliest, _, err := journal.getEarliest(false)
+	_, earliest, _, _, err := journal.getEarliest(false)
 	if err != nil {
 		return nil, err
 	}
@@ -181,14 +181,13 @@ func makeMDJournal(
 		return nil, err
 	}
 
-	if (earliest == ImmutableBareRootMetadata{}) !=
-		(latest == ImmutableBareRootMetadata{}) {
+	if (earliest == nil) != (latest == ImmutableBareRootMetadata{}) {
 		return nil, fmt.Errorf("has earliest=%t != has latest=%t",
-			earliest != ImmutableBareRootMetadata{},
+			earliest != nil,
 			latest != ImmutableBareRootMetadata{})
 	}
 
-	if earliest != (ImmutableBareRootMetadata{}) {
+	if earliest != nil {
 		if earliest.BID() != latest.BID() {
 			return nil, fmt.Errorf(
 				"earliest.BID=%s != latest.BID=%s",
@@ -403,21 +402,21 @@ func (j *mdJournal) removeMD(id MdID) error {
 }
 
 func (j mdJournal) getEarliest(verifyBranchID bool) (
-	ImmutableBareRootMetadata, ExtraMetadata, error) {
+	MdID, MutableBareRootMetadata, ExtraMetadata, time.Time, error) {
 	entry, exists, err := j.j.getEarliestEntry()
 	if err != nil {
-		return ImmutableBareRootMetadata{}, nil, err
+		return MdID{}, nil, nil, time.Time{}, err
 	}
 	if !exists {
-		return ImmutableBareRootMetadata{}, nil, nil
+		return MdID{}, nil, nil, time.Time{}, nil
 	}
 	earliestID := entry.ID
-	earliest, extra, ts, err := j.getMD(earliestID, verifyBranchID)
+	earliest, extra, timestamp, err :=
+		j.getMD(earliestID, verifyBranchID)
 	if err != nil {
-		return ImmutableBareRootMetadata{}, nil, err
+		return MdID{}, nil, nil, time.Time{}, err
 	}
-	return MakeImmutableBareRootMetadata(earliest, earliestID, ts),
-		extra, nil
+	return earliestID, earliest, extra, timestamp, nil
 }
 
 func (j mdJournal) getLatest(verifyBranchID bool) (
@@ -430,11 +429,11 @@ func (j mdJournal) getLatest(verifyBranchID bool) (
 		return ImmutableBareRootMetadata{}, nil, nil
 	}
 	latestID := entry.ID
-	latest, extra, ts, err := j.getMD(latestID, verifyBranchID)
+	latest, extra, timestamp, err := j.getMD(latestID, verifyBranchID)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, nil, err
 	}
-	return MakeImmutableBareRootMetadata(latest, latestID, ts),
+	return MakeImmutableBareRootMetadata(latest, latestID, timestamp),
 		extra, nil
 }
 
@@ -644,50 +643,45 @@ func (j *mdJournal) convertToBranch(
 // the returned *RootMetadataSigned will be nil.
 func (j mdJournal) getNextEntryToFlush(
 	ctx context.Context, end MetadataRevision, signer cryptoSigner) (
-	MdID, *RootMetadataSigned, error) {
-	rmd, _, err := j.getEarliest(true)
+	MdID, *RootMetadataSigned, ExtraMetadata, error) {
+	mdID, rmd, extra, timestamp, err := j.getEarliest(true)
 	if err != nil {
-		return MdID{}, nil, err
+		return MdID{}, nil, nil, err
 	}
-	if rmd == (ImmutableBareRootMetadata{}) || rmd.RevisionNumber() >= end {
-		return MdID{}, nil, nil
-	}
-
-	mbrmd, ok := rmd.BareRootMetadata.(MutableBareRootMetadata)
-	if !ok {
-		return MdID{}, nil, MutableBareRootMetadataNoImplError{}
+	if rmd == nil || rmd.RevisionNumber() >= end {
+		return MdID{}, nil, nil, nil
 	}
 
 	rmds := RootMetadataSigned{
-		MD: mbrmd,
+		MD: rmd,
 		// No need to un-adjust the server timestamp; we can leave it
 		// as a local timestamp since flushed entries don't end up
 		// getting processed (and re-adjusted) again.
-		untrustedServerTimestamp: rmd.localTimestamp,
+		untrustedServerTimestamp: timestamp,
 	}
 	err = signMD(ctx, j.codec, signer, &rmds)
 	if err != nil {
-		return MdID{}, nil, err
+		return MdID{}, nil, nil, err
 	}
 
-	return rmd.mdID, &rmds, nil
+	return mdID, &rmds, extra, nil
 }
 
 func (j *mdJournal) removeFlushedEntry(
 	ctx context.Context, mdID MdID, rmds *RootMetadataSigned) error {
-	rmd, _, err := j.getEarliest(true)
+	rmdID, rmd, _, _, err := j.getEarliest(true)
 	if err != nil {
 		return err
 	}
-	if rmd == (ImmutableBareRootMetadata{}) {
+	if rmd == nil {
 		return errors.New("mdJournal unexpectedly empty")
 	}
 
-	if mdID != rmd.mdID {
-		return fmt.Errorf("Expected mdID %s, got %s", mdID, rmd.mdID)
+	if mdID != rmdID {
+		return fmt.Errorf("Expected mdID %s, got %s", mdID, rmdID)
 	}
 
-	eq, err := kbfscodec.Equal(j.codec, rmd.BareRootMetadata, rmds.MD)
+	eq, err := kbfscodec.Equal(j.codec, rmd, rmds.MD)
 	if err != nil {
 		return err
 	}
