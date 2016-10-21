@@ -713,9 +713,11 @@ func newCRChains(ctx context.Context, cfg Config, irmds []ImmutableRootMetadata,
 			return nil, err
 		}
 
-		err = ccs.addOps(cfg.Codec(), irmd.data, winfo, irmd.localTimestamp)
+		data := *irmd.Data()
 
-		if ptr := irmd.data.cachedChanges.Info.BlockPointer; ptr != zeroPtr {
+		err = ccs.addOps(cfg.Codec(), data, winfo, irmd.localTimestamp)
+
+		if ptr := data.cachedChanges.Info.BlockPointer; ptr != zeroPtr {
 			ccs.blockChangePointers[ptr] = true
 
 			// Any child block change pointers?
@@ -736,7 +738,7 @@ func newCRChains(ctx context.Context, cfg Config, irmds []ImmutableRootMetadata,
 		if !ccs.originalRoot.IsInitialized() {
 			// Find the original pointer for the root directory
 			if rootChain, ok :=
-				ccs.byMostRecent[irmd.data.Dir.BlockPointer]; ok {
+				ccs.byMostRecent[data.Dir.BlockPointer]; ok {
 				ccs.originalRoot = rootChain.original
 			}
 		}
