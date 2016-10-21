@@ -140,17 +140,17 @@ func checkBRMD(t *testing.T, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 
 func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 	key kbfscrypto.VerifyingKey, codec kbfscodec.Codec, crypto cryptoPure,
-	ibrmds []ibrmdWithExtra, firstRevision MetadataRevision,
+	ibrmds []ImmutableBareRootMetadata, firstRevision MetadataRevision,
 	firstPrevRoot MdID, mStatus MergeStatus, bid BranchID) {
-	checkBRMD(t, uid, key, codec, crypto, ibrmds[0].ibrmd,
+	checkBRMD(t, uid, key, codec, crypto, ibrmds[0],
 		firstRevision, firstPrevRoot, mStatus, bid)
 
 	for i := 1; i < len(ibrmds); i++ {
-		prevID := ibrmds[i-1].ibrmd.mdID
-		checkBRMD(t, uid, key, codec, crypto, ibrmds[i].ibrmd,
+		prevID := ibrmds[i-1].mdID
+		checkBRMD(t, uid, key, codec, crypto, ibrmds[i],
 			firstRevision+MetadataRevision(i), prevID, mStatus, bid)
-		err := ibrmds[i-1].ibrmd.CheckValidSuccessor(
-			prevID, ibrmds[i].ibrmd)
+		err := ibrmds[i-1].CheckValidSuccessor(
+			prevID, ibrmds[i])
 		require.NoError(t, err)
 	}
 }
@@ -162,8 +162,7 @@ func TestMDJournalBasic(t *testing.T) {
 
 	// Should start off as empty.
 
-	// MDv3 TODO: pass actual key bundles
-	head, _, err := j.getHead()
+	head, err := j.getHead()
 	require.NoError(t, err)
 	require.Equal(t, ImmutableBareRootMetadata{}, head)
 	require.Equal(t, 0, getMDJournalLength(t, j))
@@ -187,9 +186,9 @@ func TestMDJournalBasic(t *testing.T) {
 	checkIBRMDRange(t, j.uid, j.key, codec, crypto,
 		ibrmds, firstRevision, firstPrevRoot, Merged, NullBranchID)
 
-	head, _, err = j.getHead()
+	head, err = j.getHead()
 	require.NoError(t, err)
-	require.Equal(t, ibrmds[len(ibrmds)-1].ibrmd, head)
+	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 }
 
 func TestMDJournalGetNextEntry(t *testing.T) {
@@ -227,7 +226,7 @@ func TestMDJournalPutCase1Empty(t *testing.T) {
 	_, err := j.put(ctx, signer, ekg, bsplit, md, nil)
 	require.NoError(t, err)
 
-	head, _, err := j.getHead()
+	head, err := j.getHead()
 	require.NoError(t, err)
 	require.Equal(t, md.bareMd, head.BareRootMetadata)
 }
@@ -273,7 +272,7 @@ func TestMDJournalPutCase1ReplaceHead(t *testing.T) {
 	_, err := j.put(ctx, signer, ekg, bsplit, md, nil)
 	require.NoError(t, err)
 
-	head, _, err := j.getHead()
+	head, err := j.getHead()
 	require.NoError(t, err)
 	require.Equal(t, md.Revision(), head.RevisionNumber())
 	require.Equal(t, md.DiskUsage(), head.DiskUsage())
@@ -354,7 +353,7 @@ func TestMDJournalPutCase3NonEmptyAppend(t *testing.T) {
 		id, NewMDCacheStandard(10))
 	require.NoError(t, err)
 
-	head, _, err := j.getHead()
+	head, err := j.getHead()
 	require.NoError(t, err)
 
 	md2 := makeMDForTest(t, id, MetadataRevision(11), j.uid, head.mdID)
@@ -377,7 +376,7 @@ func TestMDJournalPutCase3NonEmptyReplace(t *testing.T) {
 		id, NewMDCacheStandard(10))
 	require.NoError(t, err)
 
-	head, _, err := j.getHead()
+	head, err := j.getHead()
 	require.NoError(t, err)
 
 	md.SetUnmerged()
@@ -493,13 +492,13 @@ func TestMDJournalBranchConversion(t *testing.T) {
 	require.Equal(t, mdCount, len(ibrmds))
 
 	checkIBRMDRange(t, j.uid, j.key, codec, crypto,
-		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].ibrmd.BID())
+		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].BID())
 
 	require.Equal(t, 10, getMDJournalLength(t, j))
 
-	head, _, err := j.getHead()
+	head, err := j.getHead()
 	require.NoError(t, err)
-	require.Equal(t, ibrmds[len(ibrmds)-1].ibrmd, head)
+	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 
 	flushAllMDs(t, ctx, signer, j)
 
@@ -558,9 +557,9 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 
 	require.Equal(t, 10, getMDJournalLength(t, j))
 
-	head, _, err := j.getHead()
+	head, err := j.getHead()
 	require.NoError(t, err)
-	require.Equal(t, ibrmds[len(ibrmds)-1].ibrmd, head)
+	require.Equal(t, ibrmds[len(ibrmds)-1], head)
 
 	// Flush all MDs so we can check garbage collection.
 	flushAllMDs(t, ctx, signer, j)
@@ -655,7 +654,7 @@ func TestMDJournalClear(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, bid, j.branchID)
 
-	head, _, err := j.getHead()
+	head, err := j.getHead()
 	require.NoError(t, err)
 	require.NotEqual(t, ImmutableBareRootMetadata{}, head)
 
@@ -665,7 +664,7 @@ func TestMDJournalClear(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, NullBranchID, j.branchID)
 
-	head, _, err = j.getHead()
+	head, err = j.getHead()
 	require.NoError(t, err)
 	require.Equal(t, ImmutableBareRootMetadata{}, head)
 
@@ -674,7 +673,7 @@ func TestMDJournalClear(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, NullBranchID, j.branchID)
 
-	head, _, err = j.getHead()
+	head, err = j.getHead()
 	require.NoError(t, err)
 	require.Equal(t, ImmutableBareRootMetadata{}, head)
 
@@ -763,7 +762,7 @@ func TestMDJournalRestartAfterBranchConversion(t *testing.T) {
 	require.Equal(t, mdCount, len(ibrmds))
 
 	checkIBRMDRange(t, j.uid, j.key, codec, crypto,
-		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].ibrmd.BID())
+		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].BID())
 
 	flushAllMDs(t, ctx, signer, j)
 }

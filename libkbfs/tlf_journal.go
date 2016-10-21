@@ -905,7 +905,7 @@ func (j *tlfJournal) getJournalStatus() (TLFJournalStatus, error) {
 // complete), which can be used to build an unflushedPathsMap.
 func (j *tlfJournal) getJournalStatusWithRange() (
 	jStatus TLFJournalStatus, unflushedPaths unflushedPathsMap,
-	ibrmds []ibrmdWithExtra, complete bool, err error) {
+	ibrmds []ImmutableBareRootMetadata, complete bool, err error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	jStatus, err = j.getJournalStatusLocked()
@@ -939,14 +939,13 @@ func (j *tlfJournal) getJournalStatusWithRange() (
 }
 
 func (j *tlfJournal) batchConvertImmutables(ctx context.Context,
-	ibrmds []ibrmdWithExtra) ([]ImmutableRootMetadata, error) {
+	ibrmds []ImmutableBareRootMetadata) ([]ImmutableRootMetadata, error) {
 	irmds := make([]ImmutableRootMetadata, 0, len(ibrmds))
 	if len(ibrmds) == 0 {
 		return nil, nil
 	}
 
-	ibrmdBareHandle, err := ibrmds[0].ibrmd.MakeBareTlfHandle(
-		ibrmds[0].extra)
+	ibrmdBareHandle, err := ibrmds[0].MakeBareTlfHandle(ibrmds[0].extra)
 	if err != nil {
 		return nil, err
 	}
@@ -958,8 +957,7 @@ func (j *tlfJournal) batchConvertImmutables(ctx context.Context,
 	}
 
 	for _, ibrmd := range ibrmds {
-		irmd, err := j.convertImmutableBareRMDToIRMD(
-			ctx, ibrmd.ibrmd, ibrmd.extra, handle)
+		irmd, err := j.convertImmutableBareRMDToIRMD(ctx, ibrmd, handle)
 		if err != nil {
 			return nil, err
 		}
@@ -975,7 +973,7 @@ func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
 	var unflushedPaths unflushedPathsMap
 	var complete bool
 	for {
-		var ibrmds []ibrmdWithExtra
+		var ibrmds []ImmutableBareRootMetadata
 		jStatus, unflushedPaths, ibrmds, complete, err =
 			j.getJournalStatusWithRange()
 		if err != nil {
@@ -1249,8 +1247,8 @@ func (j *tlfJournal) archiveBlockReferences(
 // MD.  The caller must NOT hold `j.journalLock`, because blocks
 // from the journal may need to be read as part of the decryption.
 func (j *tlfJournal) convertImmutableBareRMDToIRMD(ctx context.Context,
-	ibrmd ImmutableBareRootMetadata, extra ExtraMetadata,
-	handle *TlfHandle) (ImmutableRootMetadata, error) {
+	ibrmd ImmutableBareRootMetadata, handle *TlfHandle) (
+	ImmutableRootMetadata, error) {
 	brmd, ok := ibrmd.BareRootMetadata.(MutableBareRootMetadata)
 	if !ok {
 		return ImmutableRootMetadata{}, MutableBareRootMetadataNoImplError{}
@@ -1259,7 +1257,7 @@ func (j *tlfJournal) convertImmutableBareRMDToIRMD(ctx context.Context,
 	rmd := RootMetadata{
 		bareMd:    brmd,
 		tlfHandle: handle,
-		extra:     extra,
+		extra:     ibrmd.extra,
 	}
 
 	err := decryptMDPrivateData(
@@ -1274,11 +1272,11 @@ func (j *tlfJournal) convertImmutableBareRMDToIRMD(ctx context.Context,
 }
 
 func (j *tlfJournal) getMDHead(
-	ctx context.Context) (ImmutableBareRootMetadata, ExtraMetadata, error) {
+	ctx context.Context) (ImmutableBareRootMetadata, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
-		return ImmutableBareRootMetadata{}, nil, err
+		return ImmutableBareRootMetadata{}, err
 	}
 
 	return j.mdJournal.getHead()
@@ -1286,7 +1284,7 @@ func (j *tlfJournal) getMDHead(
 
 func (j *tlfJournal) getMDRange(
 	ctx context.Context, start, stop MetadataRevision) (
-	[]ibrmdWithExtra, error) {
+	[]ImmutableBareRootMetadata, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {

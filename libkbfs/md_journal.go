@@ -23,10 +23,11 @@ import (
 )
 
 // ImmutableBareRootMetadata is a thin wrapper around a
-// BareRootMetadata that takes ownership of it and does not ever
-// modify it again. Thus, its MdID can be calculated and
-// stored along with a local timestamp. ImmutableBareRootMetadata
-// objects can be assumed to never alias a (modifiable) BareRootMetadata.
+// BareRootMetadata and an ExtraMetadata that takes ownership of it
+// and does not ever modify it again. Thus, its MdID can be calculated
+// and stored along with a local timestamp. ImmutableBareRootMetadata
+// objects can be assumed to never alias a (modifiable)
+// BareRootMetadata.
 //
 // Note that crypto.MakeMdID() on an ImmutableBareRootMetadata will
 // compute the wrong result, since anonymous fields of interface type
@@ -37,6 +38,7 @@ import (
 // places.
 type ImmutableBareRootMetadata struct {
 	BareRootMetadata
+	extra          ExtraMetadata
 	mdID           MdID
 	localTimestamp time.Time
 }
@@ -44,12 +46,12 @@ type ImmutableBareRootMetadata struct {
 // MakeImmutableBareRootMetadata makes a new ImmutableBareRootMetadata
 // from the given BareRootMetadata and its corresponding MdID.
 func MakeImmutableBareRootMetadata(
-	rmd BareRootMetadata, mdID MdID,
+	rmd BareRootMetadata, extra ExtraMetadata, mdID MdID,
 	localTimestamp time.Time) ImmutableBareRootMetadata {
 	if mdID == (MdID{}) {
 		panic("zero mdID passed to MakeImmutableBareRootMetadata")
 	}
-	return ImmutableBareRootMetadata{rmd, mdID, localTimestamp}
+	return ImmutableBareRootMetadata{rmd, extra, mdID, localTimestamp}
 }
 
 // mdJournal stores a single ordered list of metadata IDs for a (TLF,
@@ -176,7 +178,7 @@ func makeMDJournal(
 		return nil, err
 	}
 
-	latest, _, err := journal.getLatestWithExtra(false)
+	latest, err := journal.getLatest(false)
 	if err != nil {
 		return nil, err
 	}
@@ -507,47 +509,45 @@ func (j mdJournal) getEarliestWithExtra(verifyBranchID bool) (
 	return earliestID, earliest, extra, timestamp, nil
 }
 
-func (j mdJournal) getLatestWithExtra(verifyBranchID bool) (
-	ImmutableBareRootMetadata, ExtraMetadata, error) {
+func (j mdJournal) getLatest(verifyBranchID bool) (
+	ImmutableBareRootMetadata, error) {
 	entry, exists, err := j.j.getLatestEntry()
 	if err != nil {
-		return ImmutableBareRootMetadata{}, nil, err
+		return ImmutableBareRootMetadata{}, err
 	}
 	if !exists {
-		return ImmutableBareRootMetadata{}, nil, nil
+		return ImmutableBareRootMetadata{}, nil
 	}
 	latestID := entry.ID
 	latest, extra, timestamp, err := j.getMDAndExtra(
 		latestID, verifyBranchID)
 	if err != nil {
-		return ImmutableBareRootMetadata{}, nil, err
+		return ImmutableBareRootMetadata{}, err
 	}
-	return MakeImmutableBareRootMetadata(latest, latestID, timestamp),
-		extra, nil
+	return MakeImmutableBareRootMetadata(
+		latest, extra, latestID, timestamp), nil
 }
 
-func (j mdJournal) checkGetParams() (
-	ImmutableBareRootMetadata, ExtraMetadata, error) {
-	head, extra, err := j.getLatestWithExtra(true)
+func (j mdJournal) checkGetParams() (ImmutableBareRootMetadata, error) {
+	head, err := j.getLatest(true)
 	if err != nil {
-		return ImmutableBareRootMetadata{}, nil, err
+		return ImmutableBareRootMetadata{}, err
 	}
 
 	if head == (ImmutableBareRootMetadata{}) {
-		return ImmutableBareRootMetadata{}, nil, nil
+		return ImmutableBareRootMetadata{}, nil
 	}
 
-	ok, err := isReader(j.uid, head.BareRootMetadata, extra)
+	ok, err := isReader(j.uid, head.BareRootMetadata, head.extra)
 	if err != nil {
-		return ImmutableBareRootMetadata{}, nil, err
+		return ImmutableBareRootMetadata{}, err
 	}
 	if !ok {
 		// TODO: Use a non-server error.
-		return ImmutableBareRootMetadata{}, nil,
-			MDServerErrorUnauthorized{}
+		return ImmutableBareRootMetadata{}, MDServerErrorUnauthorized{}
 	}
 
-	return head, extra, nil
+	return head, nil
 }
 
 func (j *mdJournal) convertToBranch(
@@ -839,19 +839,13 @@ func (j mdJournal) getBranchID() BranchID {
 	return j.branchID
 }
 
-func (j mdJournal) getHead() (
-	ImmutableBareRootMetadata, ExtraMetadata, error) {
+func (j mdJournal) getHead() (ImmutableBareRootMetadata, error) {
 	return j.checkGetParams()
 }
 
-type ibrmdWithExtra struct {
-	ibrmd ImmutableBareRootMetadata
-	extra ExtraMetadata
-}
-
 func (j mdJournal) getRange(start, stop MetadataRevision) (
-	[]ibrmdWithExtra, error) {
-	_, _, err := j.checkGetParams()
+	[]ImmutableBareRootMetadata, error) {
+	_, err := j.checkGetParams()
 	if err != nil {
 		return nil, err
 	}
@@ -860,22 +854,23 @@ func (j mdJournal) getRange(start, stop MetadataRevision) (
 	if err != nil {
 		return nil, err
 	}
-	var rmds []ibrmdWithExtra
+	var ibrmds []ImmutableBareRootMetadata
 	for i, entry := range entries {
 		expectedRevision := realStart + MetadataRevision(i)
-		rmd, extra, ts, err := j.getMDAndExtra(entry.ID, true)
+		brmd, extra, ts, err := j.getMDAndExtra(entry.ID, true)
 		if err != nil {
 			return nil, err
 		}
-		if expectedRevision != rmd.RevisionNumber() {
+		if expectedRevision != brmd.RevisionNumber() {
 			panic(fmt.Errorf("expected revision %v, got %v",
-				expectedRevision, rmd.RevisionNumber()))
+				expectedRevision, brmd.RevisionNumber()))
 		}
-		irmd := MakeImmutableBareRootMetadata(rmd, entry.ID, ts)
-		rmds = append(rmds, ibrmdWithExtra{irmd, extra})
+		ibrmd := MakeImmutableBareRootMetadata(
+			brmd, extra, entry.ID, ts)
+		ibrmds = append(ibrmds, ibrmd)
 	}
 
-	return rmds, nil
+	return ibrmds, nil
 }
 
 // MDJournalConflictError is an error that is returned when a put
@@ -956,7 +951,7 @@ func (j *mdJournal) put(
 		}
 	}
 
-	head, prevExtra, err := j.getLatestWithExtra(true)
+	head, err := j.getLatest(true)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1031,7 +1026,7 @@ func (j *mdJournal) put(
 	if head != (ImmutableBareRootMetadata{}) {
 		ok, err := isWriterOrValidRekey(
 			j.codec, j.uid, head.BareRootMetadata, rmd.bareMd,
-			prevExtra, extra)
+			head.extra, extra)
 		if err != nil {
 			return MdID{}, err
 		}
@@ -1129,7 +1124,7 @@ func (j *mdJournal) clear(
 		return nil
 	}
 
-	head, _, err := j.getHead()
+	head, err := j.getHead()
 	if err != nil {
 		return err
 	}
