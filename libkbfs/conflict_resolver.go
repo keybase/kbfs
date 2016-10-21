@@ -574,7 +574,7 @@ func (cr *ConflictResolver) addChildBlocksIfIndirectFile(ctx context.Context,
 // for the conflicts to be resolved.
 func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 	lState *lockState, unmergedPath path, unmergedChains *crChains,
-	mergedChains *crChains, winfo writerInfo) (
+	mergedChains *crChains, currWriterInfo writerInfo) (
 	path, BlockPointer, []*createOp, error) {
 	unmergedOriginal, err :=
 		unmergedChains.originalFromMostRecent(unmergedPath.tailPointer())
@@ -669,7 +669,7 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 		co.AddUpdate(parentOriginal, parentOriginal)
 		co.setFinalPath(parentPath)
 		co.AddRefBlock(currOriginal)
-		co.setWriterInfo(winfo)
+		co.setWriterInfo(currWriterInfo)
 
 		if co.Type != Dir {
 			err = cr.addChildBlocksIfIndirectFile(ctx, lState,
@@ -810,7 +810,8 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 // resolve.
 func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 	lState *lockState, unmergedPaths []path, unmergedChains *crChains,
-	mergedChains *crChains) (map[BlockPointer]path, []*createOp, []path, error) {
+	mergedChains *crChains, currWriterInfo writerInfo) (
+	map[BlockPointer]path, []*createOp, []path, error) {
 	// maps each most recent unmerged pointer to the corresponding
 	// most recent merged path.
 	mergedPaths := make(map[BlockPointer]path)
@@ -855,24 +856,6 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 		return mergedPaths, nil, nil, nil
 	}
 
-	// Mark the recreate ops as being authored by the current user.
-	kbpki := cr.config.KBPKI()
-	_, uid, err := kbpki.GetCurrentUserInfo(ctx)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	key, err := kbpki.GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	winfo, err := newWriterInfo(ctx, cr.config, uid, key.KID(),
-		unmergedChains.mostRecentMDInfo.revision)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
 	// For each unmerged path, find the corresponding most recent
 	// pointer in the merged path.  Track which entries need to be
 	// re-created.
@@ -882,7 +865,8 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 	// recent pointers that need some of their path filled in.
 	for _, p := range unmergedPaths {
 		mergedPath, mostRecent, ops, err := cr.resolveMergedPathTail(
-			ctx, lState, p, unmergedChains, mergedChains, winfo)
+			ctx, lState, p, unmergedChains, mergedChains,
+			currWriterInfo)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -1035,11 +1019,30 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 		sort.Sort(crSortedPaths(unmergedPaths))
 	}
 
+	// Mark the recreate ops as being authored by the current user.
+	kbpki := cr.config.KBPKI()
+	_, uid, err := kbpki.GetCurrentUserInfo(ctx)
+	if err != nil {
+		return nil, nil, nil, nil, nil, ImmutableRootMetadata{}, err
+	}
+
+	key, err := kbpki.GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return nil, nil, nil, nil, nil, ImmutableRootMetadata{}, err
+	}
+
+	currWriterInfo, err := newWriterInfo(ctx, cr.config, uid, key.KID(),
+		unmergedChains.mostRecentMDInfo.revision)
+	if err != nil {
+		return nil, nil, nil, nil, nil, ImmutableRootMetadata{}, err
+	}
+
 	// Find the corresponding path in the merged branch for each of
 	// these unmerged paths, and the set of any createOps needed to
 	// apply these unmerged operations in the merged branch.
 	mergedPaths, recreateOps, newUnmergedPaths, err = cr.resolveMergedPaths(
-		ctx, lState, unmergedPaths, unmergedChains, mergedChains)
+		ctx, lState, unmergedPaths, unmergedChains, mergedChains,
+		currWriterInfo)
 	if err != nil {
 		// Return mergedChains in this error case, to allow the error
 		// handling code to unstage if necessary.
