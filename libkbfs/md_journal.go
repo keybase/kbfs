@@ -274,6 +274,87 @@ func (j mdJournal) putMDInfo(
 	return ioutil.WriteFile(j.mdInfoPath(id), infoJSON, 0600)
 }
 
+// getExtraMetadata gets the extra metadata corresponding to the given
+// IDs, if any, after checking them.
+func (j mdJournal) getExtraMetadata(
+	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	ExtraMetadata, error) {
+	if (wkbID == TLFWriterKeyBundleID{}) !=
+		(rkbID == TLFReaderKeyBundleID{}) {
+		return nil, fmt.Errorf(
+			"wkbID is empty (%t) != rkbID is empty (%t)",
+			wkbID == TLFWriterKeyBundleID{},
+			rkbID == TLFReaderKeyBundleID{})
+	}
+
+	if wkbID == (TLFWriterKeyBundleID{}) {
+		return nil, nil
+	}
+
+	var wkb TLFWriterKeyBundleV3
+	err := kbfscodec.DeserializeFromFile(
+		j.codec, j.writerKeyBundleV3Path(wkbID), &wkb)
+	if err != nil {
+		return nil, err
+	}
+
+	var rkb TLFReaderKeyBundleV3
+	err = kbfscodec.DeserializeFromFile(
+		j.codec, j.readerKeyBundleV3Path(rkbID), &rkb)
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkKeyBundlesV3(j.crypto, wkbID, rkbID, &wkb, &rkb)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ExtraMetadataV3{wkb: &wkb, rkb: &rkb}, nil
+}
+
+func (j mdJournal) putExtraMetadata(
+	rmd BareRootMetadata, extra ExtraMetadata) error {
+	if extra == nil {
+		return nil
+	}
+
+	wkbID := rmd.GetTLFWriterKeyBundleID()
+	if wkbID == (TLFWriterKeyBundleID{}) {
+		panic("writer key bundle ID is empty")
+	}
+
+	rkbID := rmd.GetTLFReaderKeyBundleID()
+	if rkbID == (TLFReaderKeyBundleID{}) {
+		panic("reader key bundle ID is empty")
+	}
+
+	extraV3, ok := extra.(*ExtraMetadataV3)
+	if !ok {
+		return errors.New("Invalid extra metadata")
+	}
+
+	err := checkKeyBundlesV3(
+		j.crypto, wkbID, rkbID, extraV3.wkb, extraV3.rkb)
+	if err != nil {
+		return err
+	}
+
+	err = kbfscodec.SerializeToFile(
+		j.codec, extraV3.wkb, j.writerKeyBundleV3Path(wkbID))
+	if err != nil {
+		return err
+	}
+
+	err = kbfscodec.SerializeToFile(
+		j.codec, extraV3.rkb, j.readerKeyBundleV3Path(rkbID))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // getMD verifies the MD data and the writer signature (but not the
 // key) for the given ID and returns it. It also returns the
 // last-modified timestamp of the file. verifyBranchID should be false
@@ -723,78 +804,6 @@ func getMdID(ctx context.Context, mdserver MDServer, crypto cryptoPure,
 	}
 
 	return crypto.MakeMdID(rmdses[0].MD)
-}
-
-func (j mdJournal) getExtraMetadata(
-	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
-	ExtraMetadata, error) {
-	if wkbID == (TLFWriterKeyBundleID{}) ||
-		rkbID == (TLFReaderKeyBundleID{}) {
-		return nil, nil
-	}
-
-	var wkb TLFWriterKeyBundleV3
-	err := kbfscodec.DeserializeFromFile(
-		j.codec, j.writerKeyBundleV3Path(wkbID), &wkb)
-	if err != nil {
-		return nil, err
-	}
-
-	var rkb TLFReaderKeyBundleV3
-	err = kbfscodec.DeserializeFromFile(
-		j.codec, j.readerKeyBundleV3Path(rkbID), &rkb)
-	if err != nil {
-		return nil, err
-	}
-
-	err = checkKeyBundlesV3(j.crypto, wkbID, rkbID, &wkb, &rkb)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ExtraMetadataV3{wkb: &wkb, rkb: &rkb}, nil
-}
-
-func (j mdJournal) putExtraMetadata(
-	rmd BareRootMetadata, extra ExtraMetadata) error {
-	if extra == nil {
-		return nil
-	}
-
-	wkbID := rmd.GetTLFWriterKeyBundleID()
-	if wkbID == (TLFWriterKeyBundleID{}) {
-		panic("writer key bundle ID is empty")
-	}
-
-	rkbID := rmd.GetTLFReaderKeyBundleID()
-	if rkbID == (TLFReaderKeyBundleID{}) {
-		panic("reader key bundle ID is empty")
-	}
-
-	extraV3, ok := extra.(*ExtraMetadataV3)
-	if !ok {
-		return errors.New("Invalid extra metadata")
-	}
-
-	err := checkKeyBundlesV3(
-		j.crypto, wkbID, rkbID, extraV3.wkb, extraV3.rkb)
-	if err != nil {
-		return err
-	}
-
-	err = kbfscodec.SerializeToFile(
-		j.codec, extraV3.wkb, j.writerKeyBundleV3Path(wkbID))
-	if err != nil {
-		return err
-	}
-
-	err = kbfscodec.SerializeToFile(
-		j.codec, extraV3.rkb, j.readerKeyBundleV3Path(rkbID))
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // All functions below are public functions.
