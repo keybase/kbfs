@@ -930,8 +930,7 @@ func (e MDJournalConflictError) Error() string {
 // rmd becomes the initial entry.
 func (j *mdJournal) put(
 	ctx context.Context, signer cryptoSigner,
-	ekg encryptionKeyGetter, bsplit BlockSplitter, rmd *RootMetadata,
-	extra ExtraMetadata) (
+	ekg encryptionKeyGetter, bsplit BlockSplitter, rmd *RootMetadata) (
 	mdID MdID, err error) {
 	j.log.CDebugf(ctx, "Putting MD for TLF=%s with rev=%s bid=%s",
 		rmd.TlfID(), rmd.Revision(), rmd.BID())
@@ -943,6 +942,7 @@ func (j *mdJournal) put(
 		}
 	}()
 
+	extra := rmd.extra
 	if extra == nil {
 		// TODO: This could fail if the key bundle isn't part
 		// of the journal. Always mandate that the extra field
