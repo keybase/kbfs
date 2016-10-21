@@ -47,7 +47,7 @@ func (j journalMDOps) getHeadFromJournal(
 		return ImmutableRootMetadata{}, nil
 	}
 
-	head, err := tlfJournal.getMDHead(ctx)
+	head, extra, err := tlfJournal.getMDHead(ctx)
 	if err == errTLFJournalDisabled {
 		return ImmutableRootMetadata{}, nil
 	} else if err != nil {
@@ -97,7 +97,8 @@ func (j journalMDOps) getHeadFromJournal(
 		}
 	}
 
-	irmd, err := tlfJournal.convertImmutableBareRMDToIRMD(ctx, head, handle)
+	irmd, err := tlfJournal.convertImmutableBareRMDToIRMD(
+		ctx, head, extra, handle)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -127,19 +128,18 @@ func (j journalMDOps) getRangeFromJournal(
 
 	head := ibrmds[len(ibrmds)-1]
 
-	if head.MergedStatus() != mStatus {
+	if head.ibrmd.MergedStatus() != mStatus {
 		return nil, nil
 	}
 
-	if mStatus == Unmerged && bid != NullBranchID && bid != head.BID() {
+	if mStatus == Unmerged && bid != NullBranchID && bid != head.ibrmd.BID() {
 		// The given branch ID doesn't match the one in the
 		// journal, which can only be an error.
 		return nil, fmt.Errorf("Expected branch ID %s, got %s",
-			bid, head.BID())
+			bid, head.ibrmd.BID())
 	}
 
-	// MDv3 TODO: pass key bundles when needed
-	bareHandle, err := head.MakeBareTlfHandle(nil)
+	bareHandle, err := head.ibrmd.MakeBareTlfHandle(head.extra)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,8 @@ func (j journalMDOps) getRangeFromJournal(
 
 	for _, ibrmd := range ibrmds {
 		irmd, err :=
-			tlfJournal.convertImmutableBareRMDToIRMD(ctx, ibrmd, handle)
+			tlfJournal.convertImmutableBareRMDToIRMD(
+				ctx, ibrmd.ibrmd, ibrmd.extra, handle)
 		if err != nil {
 			return nil, err
 		}

@@ -171,12 +171,12 @@ func makeMDJournal(
 		j:        makeMdIDJournal(codec, journalDir),
 	}
 
-	earliest, err := journal.getEarliest(false)
+	earliest, _, err := journal.getEarliest(false)
 	if err != nil {
 		return nil, err
 	}
 
-	latest, err := journal.getLatest(false)
+	latest, _, err := journal.getLatest(false)
 	if err != nil {
 		return nil, err
 	}
@@ -281,62 +281,62 @@ func (j mdJournal) putMDInfo(
 // only when called from makeMDJournal, i.e. when figuring out what to
 // set j.branchID in the first place.
 func (j mdJournal) getMD(id MdID, verifyBranchID bool) (
-	BareRootMetadata, time.Time, error) {
+	MutableBareRootMetadata, ExtraMetadata, time.Time, error) {
 	// Read info.
 
 	timestamp, version, err := j.getMDInfo(id)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, nil, time.Time{}, err
 	}
 
 	// Read data.
 
 	data, err := ioutil.ReadFile(j.mdDataPath(id))
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, nil, time.Time{}, err
 	}
 
 	rmd, err := DecodeRootMetadata(
 		j.codec, j.tlfID, version, j.mdVer, data)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, nil, time.Time{}, err
 	}
 
 	// Check integrity.
 
 	mdID, err := j.crypto.MakeMdID(rmd)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, nil, time.Time{}, err
 	}
 
 	if mdID != id {
-		return nil, time.Time{}, fmt.Errorf(
+		return nil, nil, time.Time{}, fmt.Errorf(
 			"Metadata ID mismatch: expected %s, got %s", id, mdID)
 	}
 
 	err = rmd.IsLastModifiedBy(j.uid, j.key)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, nil, time.Time{}, err
 	}
 
 	extra, err := j.getExtraMetadata(
 		rmd.GetTLFWriterKeyBundleID(), rmd.GetTLFReaderKeyBundleID())
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, nil, time.Time{}, err
 	}
 
 	err = rmd.IsValidAndSigned(j.codec, j.crypto, extra)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, nil, time.Time{}, err
 	}
 
 	if verifyBranchID && rmd.BID() != j.branchID {
-		return nil, time.Time{}, fmt.Errorf(
+		return nil, nil, time.Time{}, fmt.Errorf(
 			"Branch ID mismatch: expected %s, got %s",
 			j.branchID, rmd.BID())
 	}
 
-	return rmd, timestamp, nil
+	return rmd, extra, timestamp, nil
 }
 
 // putMD stores the given metadata under its ID, if it's not already
@@ -352,7 +352,7 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 		return MdID{}, err
 	}
 
-	_, _, err = j.getMD(id, true)
+	_, _, _, err = j.getMD(id, true)
 	if os.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
@@ -403,65 +403,63 @@ func (j *mdJournal) removeMD(id MdID) error {
 }
 
 func (j mdJournal) getEarliest(verifyBranchID bool) (
-	ImmutableBareRootMetadata, error) {
+	ImmutableBareRootMetadata, ExtraMetadata, error) {
 	entry, exists, err := j.j.getEarliestEntry()
 	if err != nil {
-		return ImmutableBareRootMetadata{}, err
+		return ImmutableBareRootMetadata{}, nil, err
 	}
 	if !exists {
-		return ImmutableBareRootMetadata{}, nil
+		return ImmutableBareRootMetadata{}, nil, nil
 	}
 	earliestID := entry.ID
-	earliest, ts, err := j.getMD(earliestID, verifyBranchID)
+	earliest, extra, ts, err := j.getMD(earliestID, verifyBranchID)
 	if err != nil {
-		return ImmutableBareRootMetadata{}, err
+		return ImmutableBareRootMetadata{}, nil, err
 	}
-	return MakeImmutableBareRootMetadata(earliest, earliestID, ts), nil
+	return MakeImmutableBareRootMetadata(earliest, earliestID, ts),
+		extra, nil
 }
 
 func (j mdJournal) getLatest(verifyBranchID bool) (
-	ImmutableBareRootMetadata, error) {
+	ImmutableBareRootMetadata, ExtraMetadata, error) {
 	entry, exists, err := j.j.getLatestEntry()
 	if err != nil {
-		return ImmutableBareRootMetadata{}, err
+		return ImmutableBareRootMetadata{}, nil, err
 	}
 	if !exists {
-		return ImmutableBareRootMetadata{}, nil
+		return ImmutableBareRootMetadata{}, nil, nil
 	}
 	latestID := entry.ID
-	latest, ts, err := j.getMD(latestID, verifyBranchID)
+	latest, extra, ts, err := j.getMD(latestID, verifyBranchID)
 	if err != nil {
-		return ImmutableBareRootMetadata{}, err
+		return ImmutableBareRootMetadata{}, nil, err
 	}
-	return MakeImmutableBareRootMetadata(latest, latestID, ts), nil
+	return MakeImmutableBareRootMetadata(latest, latestID, ts),
+		extra, nil
 }
 
 func (j mdJournal) checkGetParams() (
-	ImmutableBareRootMetadata, error) {
-	head, err := j.getLatest(true)
+	ImmutableBareRootMetadata, ExtraMetadata, error) {
+	head, extra, err := j.getLatest(true)
 	if err != nil {
-		return ImmutableBareRootMetadata{}, err
+		return ImmutableBareRootMetadata{}, nil, err
 	}
 
-	if head != (ImmutableBareRootMetadata{}) {
-		extra, err := j.getExtraMetadata(
-			head.GetTLFWriterKeyBundleID(),
-			head.GetTLFReaderKeyBundleID())
-		if err != nil {
-			return ImmutableBareRootMetadata{}, err
-		}
-		ok, err := isReader(j.uid, head.BareRootMetadata, extra)
-		if err != nil {
-			return ImmutableBareRootMetadata{}, err
-		}
-		if !ok {
-			// TODO: Use a non-server error.
-			return ImmutableBareRootMetadata{},
-				MDServerErrorUnauthorized{}
-		}
+	if head == (ImmutableBareRootMetadata{}) {
+		return ImmutableBareRootMetadata{}, nil, nil
 	}
 
-	return head, nil
+	ok, err := isReader(j.uid, head.BareRootMetadata, extra)
+	if err != nil {
+		return ImmutableBareRootMetadata{}, nil, err
+	}
+	if !ok {
+		// TODO: Use a non-server error.
+		return ImmutableBareRootMetadata{}, nil,
+			MDServerErrorUnauthorized{}
+	}
+
+	return head, extra, nil
 }
 
 func (j *mdJournal) convertToBranch(
@@ -531,13 +529,9 @@ func (j *mdJournal) convertToBranch(
 	var prevID MdID
 
 	for i, entry := range allEntries {
-		ibrmd, ts, err := j.getMD(entry.ID, true)
+		brmd, _, ts, err := j.getMD(entry.ID, true)
 		if err != nil {
 			return NullBranchID, err
-		}
-		brmd, ok := ibrmd.(MutableBareRootMetadata)
-		if !ok {
-			return NullBranchID, MutableBareRootMetadataNoImplError{}
 		}
 		brmd.SetUnmerged()
 		brmd.SetBranchID(bid)
@@ -590,7 +584,7 @@ func (j *mdJournal) convertToBranch(
 		// just evict something incorrectly.  TODO: Don't replace the
 		// MD until we know for sure that the branch conversion
 		// succeeds.
-		oldIrmd, err := mdcache.Get(tlfID, ibrmd.RevisionNumber(), NullBranchID)
+		oldIrmd, err := mdcache.Get(tlfID, brmd.RevisionNumber(), NullBranchID)
 		if err == nil {
 			newRmd, err := oldIrmd.deepCopy(codec, false)
 			if err != nil {
@@ -651,7 +645,7 @@ func (j *mdJournal) convertToBranch(
 func (j mdJournal) getNextEntryToFlush(
 	ctx context.Context, end MetadataRevision, signer cryptoSigner) (
 	MdID, *RootMetadataSigned, error) {
-	rmd, err := j.getEarliest(true)
+	rmd, _, err := j.getEarliest(true)
 	if err != nil {
 		return MdID{}, nil, err
 	}
@@ -681,7 +675,7 @@ func (j mdJournal) getNextEntryToFlush(
 
 func (j *mdJournal) removeFlushedEntry(
 	ctx context.Context, mdID MdID, rmds *RootMetadataSigned) error {
-	rmd, err := j.getEarliest(true)
+	rmd, _, err := j.getEarliest(true)
 	if err != nil {
 		return err
 	}
@@ -832,13 +826,18 @@ func (j mdJournal) getBranchID() BranchID {
 }
 
 func (j mdJournal) getHead() (
-	ImmutableBareRootMetadata, error) {
+	ImmutableBareRootMetadata, ExtraMetadata, error) {
 	return j.checkGetParams()
 }
 
+type ibrmdWithExtra struct {
+	ibrmd ImmutableBareRootMetadata
+	extra ExtraMetadata
+}
+
 func (j mdJournal) getRange(start, stop MetadataRevision) (
-	[]ImmutableBareRootMetadata, error) {
-	_, err := j.checkGetParams()
+	[]ibrmdWithExtra, error) {
+	_, _, err := j.checkGetParams()
 	if err != nil {
 		return nil, err
 	}
@@ -847,10 +846,10 @@ func (j mdJournal) getRange(start, stop MetadataRevision) (
 	if err != nil {
 		return nil, err
 	}
-	var rmds []ImmutableBareRootMetadata
+	var rmds []ibrmdWithExtra
 	for i, entry := range entries {
 		expectedRevision := realStart + MetadataRevision(i)
-		rmd, ts, err := j.getMD(entry.ID, true)
+		rmd, extra, ts, err := j.getMD(entry.ID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -859,7 +858,7 @@ func (j mdJournal) getRange(start, stop MetadataRevision) (
 				expectedRevision, rmd.RevisionNumber()))
 		}
 		irmd := MakeImmutableBareRootMetadata(rmd, entry.ID, ts)
-		rmds = append(rmds, irmd)
+		rmds = append(rmds, ibrmdWithExtra{irmd, extra})
 	}
 
 	return rmds, nil
@@ -943,7 +942,7 @@ func (j *mdJournal) put(
 		}
 	}
 
-	head, err := j.getLatest(true)
+	head, _, err := j.getLatest(true)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1119,7 +1118,7 @@ func (j *mdJournal) clear(
 		return nil
 	}
 
-	head, err := j.getHead()
+	head, _, err := j.getHead()
 	if err != nil {
 		return err
 	}

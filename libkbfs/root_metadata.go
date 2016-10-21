@@ -920,7 +920,7 @@ func (rmds *RootMetadataSigned) IsLastModifiedBy(
 // versioned structure.
 func DecodeRootMetadata(
 	codec kbfscodec.Codec, tlf TlfID, ver, max MetadataVer, buf []byte) (
-	BareRootMetadata, error) {
+	MutableBareRootMetadata, error) {
 	if ver < FirstValidMetadataVer {
 		return nil, InvalidMetadataVersionError{tlf, ver}
 	} else if ver > max {
