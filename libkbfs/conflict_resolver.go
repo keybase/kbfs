@@ -591,6 +591,24 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 		path:         nil, // fill in backwards, and reverse at the end
 	}
 
+	// Mark the recreate ops as being authored by the current user.
+	kbpki := cr.config.KBPKI()
+	_, uid, err := kbpki.GetCurrentUserInfo(ctx)
+	if err != nil {
+		return path{}, BlockPointer{}, nil, err
+	}
+
+	key, err := kbpki.GetCurrentVerifyingKey(ctx)
+	if err != nil {
+		return path{}, BlockPointer{}, nil, err
+	}
+
+	winfo, err := newWriterInfo(ctx, cr.config, uid, key.KID(),
+		unmergedChains.mostRecentMDInfo.revision)
+	if err != nil {
+		return path{}, BlockPointer{}, nil, err
+	}
+
 	// First find the earliest merged parent.
 	for mergedChains.isDeleted(currOriginal) {
 		cr.log.CDebugf(ctx, "%v was deleted in the merged branch (%s)",
@@ -668,6 +686,7 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 		co.AddUpdate(parentOriginal, parentOriginal)
 		co.setFinalPath(parentPath)
 		co.AddRefBlock(currOriginal)
+		co.setWriterInfo(winfo)
 
 		if co.Type != Dir {
 			err = cr.addChildBlocksIfIndirectFile(ctx, lState,
@@ -1054,23 +1073,8 @@ func (cr *ConflictResolver) addRecreateOpsToUnmergedChains(ctx context.Context,
 		}
 	}
 
-	// we know all of these recreate ops were authored by the current user
-	kbpki := cr.config.KBPKI()
-	_, uid, err := kbpki.GetCurrentUserInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-	winfo, err := newWriterInfo(ctx, cr.config, uid,
-		unmergedChains.mostRecentMDInfo.lastModifyingWriterKID,
-		unmergedChains.mostRecentMDInfo.revision)
-	if err != nil {
-		return nil, err
-	}
-
 	var newUnmergedPaths []path
 	for _, rop := range recreateOps {
-		rop.setWriterInfo(winfo)
-
 		// If rop.Dir.Unref is a merged most recent pointer, look up the
 		// original.  Otherwise rop.Dir.Unref is the original.  Use the
 		// original to look up the appropriate unmerged chain and stick
