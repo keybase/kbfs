@@ -395,7 +395,7 @@ func checkKeyBundlesV3(
 	return nil
 }
 
-func (s *mdServerTlfStorage) setExtraMetadataLocked(
+func (s *mdServerTlfStorage) putExtraMetadataLocked(
 	rmds *RootMetadataSigned, extra ExtraMetadata) error {
 	if extra == nil {
 		return nil
@@ -596,7 +596,7 @@ func (s *mdServerTlfStorage) put(
 		return false, MDServerError{err}
 	}
 
-	err = s.setExtraMetadataLocked(rmds, extra)
+	err = s.putExtraMetadataLocked(rmds, extra)
 	if err != nil {
 		return false, MDServerError{err}
 	}

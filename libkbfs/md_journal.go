@@ -767,7 +767,7 @@ func (j mdJournal) getExtraMetadata(
 	return &ExtraMetadataV3{wkb: &wkb, rkb: &rkb}, nil
 }
 
-func (j mdJournal) setExtraMetadata(
+func (j mdJournal) putExtraMetadata(
 	rmd BareRootMetadata, extra ExtraMetadata) error {
 	if extra == nil {
 		return nil
@@ -1064,7 +1064,7 @@ func (j *mdJournal) put(
 		return MdID{}, err
 	}
 
-	err = j.setExtraMetadata(brmd, extra)
+	err = j.putExtraMetadata(brmd, extra)
 	if err != nil {
 		return MdID{}, err
 	}

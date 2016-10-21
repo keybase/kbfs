@@ -497,7 +497,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		}
 	}
 
-	if err := md.setExtraMetadataLocked(rmds, extra); err != nil {
+	if err := md.putExtraMetadataLocked(rmds, extra); err != nil {
 		return MDServerError{err}
 	}
 
@@ -745,7 +745,7 @@ func (md *MDServerMemory) getExtraMetadata(
 	return &ExtraMetadataV3{wkb: wkb, rkb: rkb}, nil
 }
 
-func (md *MDServerMemory) setExtraMetadataLocked(rmds *RootMetadataSigned,
+func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,
 	extra ExtraMetadata) error {
 	if extra == nil {
 		return nil
