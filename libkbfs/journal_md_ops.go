@@ -70,7 +70,6 @@ func (j journalMDOps) getHeadFromJournal(
 				bid, head.BID())
 	}
 
-	// MDv3 TODO: pass key bundles when needed
 	headBareHandle, err := head.MakeBareTlfHandle(head.extra)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
