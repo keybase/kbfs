@@ -54,6 +54,13 @@ func MakeImmutableBareRootMetadata(
 	return ImmutableBareRootMetadata{rmd, extra, mdID, localTimestamp}
 }
 
+// MakeBareTlfHandleWithExtra makes a BareTlfHandle for this
+// ImmutableBareRootMetadata. Should be used only by servers and MDOps.
+func (ibrmd ImmutableBareRootMetadata) MakeBareTlfHandleWithExtra() (
+	BareTlfHandle, error) {
+	return ibrmd.BareRootMetadata.MakeBareTlfHandle(ibrmd.extra)
+}
+
 // mdJournal stores a single ordered list of metadata IDs for a (TLF,
 // user, device) tuple, along with the associated metadata objects, in
 // flat files on disk.

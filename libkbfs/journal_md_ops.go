@@ -70,7 +70,7 @@ func (j journalMDOps) getHeadFromJournal(
 				bid, head.BID())
 	}
 
-	headBareHandle, err := head.MakeBareTlfHandle(head.extra)
+	headBareHandle, err := head.MakeBareTlfHandleWithExtra()
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -137,7 +137,7 @@ func (j journalMDOps) getRangeFromJournal(
 			bid, head.BID())
 	}
 
-	bareHandle, err := head.MakeBareTlfHandle(head.extra)
+	bareHandle, err := head.MakeBareTlfHandleWithExtra()
 	if err != nil {
 		return nil, err
 	}
