@@ -239,6 +239,9 @@ func (j mdJournal) mdInfoPath(id MdID) string {
 }
 
 // mdInfo is the structure stored in mdInfoPath(id).
+//
+// TODO: Handle unknown fields? We'd have to build a handler for this,
+// since the Go JSON library doesn't support it natively.
 type mdInfo struct {
 	Timestamp time.Time
 	Version   MetadataVer
