@@ -149,9 +149,8 @@ func (j journalMDOps) getRangeFromJournal(
 	irmds := make([]ImmutableRootMetadata, 0, len(ibrmds))
 
 	for _, ibrmd := range ibrmds {
-		irmd, err :=
-			tlfJournal.convertImmutableBareRMDToIRMD(
-				ctx, ibrmd, handle)
+		irmd, err := tlfJournal.convertImmutableBareRMDToIRMD(
+			ctx, ibrmd, handle)
 		if err != nil {
 			return nil, err
 		}
