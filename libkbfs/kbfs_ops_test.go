@@ -49,6 +49,9 @@ const (
 	tCtxID tCtxIDType = iota
 )
 
+// Time out individual tests after 10 seconds.
+var individualTestTimeout time.Duration = 10 * time.Second
+
 func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 	config *ConfigMock, ctx context.Context, cancel context.CancelFunc) {
 	ctr := NewSafeTestReporter(t)
@@ -116,8 +119,8 @@ func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 	interposeDaemonKBPKI(config, "alice", "bob", "charlie")
 
 	// Time out individual tests after 10 seconds.
-	timeoutCtx, cancel :=
-		context.WithTimeout(context.Background(), 10*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(
+		context.Background(), individualTestTimeout)
 
 	// make the context identifiable, to verify that it is passed
 	// correctly to the observer
