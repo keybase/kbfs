@@ -1517,7 +1517,11 @@ func (clta *cryptoLocalTrapAny) DecryptTLFCryptKeyClientHalfAny(
 	ctx context.Context,
 	keys []EncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
 	kbfscrypto.TLFCryptKeyClientHalf, int, error) {
-	clta.promptCh <- promptPaper
+	select {
+	case clta.promptCh <- promptPaper:
+	case <-ctx.Done():
+		return kbfscrypto.TLFCryptKeyClientHalf{}, 0, ctx.Err()
+	}
 	// Decrypt the key half with the given config object
 	return clta.cryptoToUse.DecryptTLFCryptKeyClientHalfAny(
 		ctx, keys, promptPaper)
