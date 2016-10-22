@@ -1588,11 +1588,21 @@ func TestKeyManagerRekeyAddDeviceWithPrompt(t *testing.T) {
 	config2Dev2.SetCrypto(clta)
 
 	ops.rekeyWithPromptTimer.Reset(1 * time.Millisecond)
-	promptPaper := <-c
+	var promptPaper bool
+	select {
+	case promptPaper = <-c:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 	if !promptPaper {
 		t.Fatalf("Didn't prompt paper")
 	}
-	<-c // called a second time for decrypting the private data
+	// called a second time for decrypting the private data
+	select {
+	case <-c:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 
 	// Take the mdWriterLock to ensure that the rekeyWithPrompt finishes.
 	lState := makeFBOLockState()
@@ -1710,11 +1720,21 @@ func TestKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T) {
 	config2Dev2.SetCrypto(clta)
 
 	ops.rekeyWithPromptTimer.Reset(1 * time.Millisecond)
-	promptPaper := <-c
+	var promptPaper bool
+	select {
+	case promptPaper = <-c:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 	if !promptPaper {
 		t.Fatalf("Didn't prompt paper")
 	}
-	<-c // called a second time for decrypting the private data
+	// called a second time for decrypting the private data
+	select {
+	case <-c:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 
 	// Take the mdWriterLock to ensure that the rekeyWithPrompt finishes.
 	lState := makeFBOLockState()
@@ -1785,7 +1805,12 @@ func TestKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T) {
 	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), c, config2Dev2.Crypto()}
 	config2Dev2.SetCrypto(clta)
 	ops.rekeyWithPromptTimer.Reset(1 * time.Millisecond)
-	promptPaper := <-c
+	var promptPaper bool
+	select {
+	case promptPaper = <-c:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 	if !promptPaper {
 		t.Fatalf("Didn't prompt paper")
 	}
@@ -1798,11 +1823,23 @@ func TestKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T) {
 	errCh := make(chan error)
 	go func() {
 		_, err := GetRootNodeForTest(config2Dev2, name, false)
-		errCh <- err
+		select {
+		case errCh <- err:
+		case <-ctx.Done():
+			errCh <- ctx.Err()
+		}
 	}()
 	// One failed decryption attempt
-	<-c
-	err = <-errCh
+	select {
+	case <-c:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	select {
+	case err = <-errCh:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 	if _, ok := err.(NeedSelfRekeyError); !ok {
 		t.Fatalf("Got unexpected error when reading with new key: %v", err)
 	}
@@ -1811,11 +1848,20 @@ func TestKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T) {
 	clta.cryptoToUse = config2.Crypto()
 	ops.mdWriterLock.Unlock(lState)
 
-	promptPaper = <-c
+	select {
+	case promptPaper = <-c:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 	if !promptPaper {
 		t.Fatalf("Didn't prompt paper")
 	}
-	<-c // called a second time for decrypting the private data
+	// called a second time for decrypting the private data
+	select {
+	case <-c:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 	// Make sure the rekey attempt is finished
 	ops.mdWriterLock.Lock(lState)
 	ops.mdWriterLock.Unlock(lState)
