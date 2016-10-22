@@ -36,13 +36,12 @@ func truncateTLFWriterEditsTimestamps(edits TlfWriterEdits) TlfWriterEdits {
 func TestBasicTlfEditHistory(t *testing.T) {
 	var userName1, userName2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, userName1, userName2)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 
 	clock, now := newTestClockAndTimeNow()
 	config1.SetClock(clock)
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), userName2)
+	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(t, config2)
 
 	name := userName1.String() + "," + userName2.String()
@@ -146,13 +145,12 @@ func testDoTlfEdit(t *testing.T, ctx context.Context, tlfName string,
 func TestLongTlfEditHistory(t *testing.T) {
 	var userName1, userName2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, userName1, userName2)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 
 	clock, now := newTestClockAndTimeNow()
 	config1.SetClock(clock)
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), userName2)
+	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(t, config2)
 
 	name := userName1.String() + "," + userName2.String()

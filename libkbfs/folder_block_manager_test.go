@@ -454,12 +454,11 @@ func TestQuotaReclamationDeletedBlocks(t *testing.T) {
 func TestQuotaReclamationFailAfterRekeyRequest(t *testing.T) {
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, u1, u2)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 	clock := newTestClockNow()
 	config1.SetClock(clock)
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -470,7 +469,7 @@ func TestQuotaReclamationFailAfterRekeyRequest(t *testing.T) {
 	name := u1.String() + "," + u2.String()
 	rootNode1 := GetRootNodeOrBust(t, config1, name, false)
 
-	config2Dev2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2Dev2)
 
 	// Now give u2 a new device.  The configs don't share a Keybase

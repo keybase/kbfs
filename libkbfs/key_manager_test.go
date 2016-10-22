@@ -666,12 +666,11 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, u1, u2)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 	clock := newTestClockNow()
 	config1.SetClock(clock)
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -701,7 +700,7 @@ func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
 
-	config2Dev2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2Dev2)
 
 	// Now give u2 a new device.  The configs don't share a Keybase
@@ -752,7 +751,7 @@ func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 	}
 
 	// add a third device for user 2
-	config2Dev3 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2Dev3 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2Dev3)
 	defer config2Dev3.SetKeyCache(NewKeyCacheStandard(5000))
 	AddDeviceForLocalUserOrBust(t, config1, uid2)
@@ -881,8 +880,7 @@ func TestKeyManagerRekeyAddAndRevokeDevice(t *testing.T) {
 func TestKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T) {
 	var u1, u2, u3 libkb.NormalizedUsername = "u1", "u2", "u3"
 	config1, _, ctx := kbfsOpsConcurInit(t, u1, u2, u3)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 
 	// Revoke user 3's device for now, to test the "other" rekey error.
 	_, uid3, err := config1.KBPKI().Resolve(ctx, u3.String())
@@ -891,7 +889,7 @@ func TestKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T) {
 	}
 	RevokeDeviceForLocalUserOrBust(t, config1, uid3, 0)
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -911,10 +909,10 @@ func TestKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T) {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
 
-	config2Dev2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2Dev2)
 
-	config3 := ConfigAsUser(config1.(*ConfigLocal), u3)
+	config3 := ConfigAsUser(config1, u3)
 	defer CheckConfigAndShutdown(t, config3)
 
 	// Now give u2 and u3 new devices.  The configs don't share a
@@ -974,10 +972,9 @@ func TestKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T) {
 func TestKeyManagerSelfRekeyAcrossDevices(t *testing.T) {
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, u1, u2)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -1056,11 +1053,10 @@ func TestKeyManagerSelfRekeyAcrossDevices(t *testing.T) {
 func TestKeyManagerReaderRekey(t *testing.T) {
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, u1, u2)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 	_, uid1, err := config1.KBPKI().GetCurrentUserInfo(context.Background())
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -1138,12 +1134,11 @@ func TestKeyManagerReaderRekey(t *testing.T) {
 func TestKeyManagerReaderRekeyAndRevoke(t *testing.T) {
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, u1, u2)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 	clock := newTestClockNow()
 	config1.SetClock(clock)
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -1231,13 +1226,11 @@ func TestKeyManagerRekeyBit(t *testing.T) {
 	doShutdown1 := true
 	defer func() {
 		if doShutdown1 {
-			CheckConfigAndShutdown(t, config1)
+			kbfsConcurTestShutdown(t, config1, ctx)
 		}
-		CleanupCancellationDelayer(ctx)
 	}()
-	config1.MDServer().DisableRekeyUpdatesForTesting()
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -1245,7 +1238,7 @@ func TestKeyManagerRekeyBit(t *testing.T) {
 	}
 	config2.MDServer().DisableRekeyUpdatesForTesting()
 
-	config3 := ConfigAsUser(config1.(*ConfigLocal), u3)
+	config3 := ConfigAsUser(config1, u3)
 	defer CheckConfigAndShutdown(t, config3)
 	_, uid3, err := config3.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -1266,7 +1259,7 @@ func TestKeyManagerRekeyBit(t *testing.T) {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
 
-	config2Dev2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2Dev2 := ConfigAsUser(config1, u2)
 	// we don't check the config because this device can't read all of the md blocks.
 	defer config2Dev2.Shutdown()
 	config2Dev2.MDServer().DisableRekeyUpdatesForTesting()
@@ -1327,7 +1320,7 @@ func TestKeyManagerRekeyBit(t *testing.T) {
 		t.Fatalf("Device 2 couldn't read a: %v", err)
 	}
 
-	config3Dev2 := ConfigAsUser(config1.(*ConfigLocal), u3)
+	config3Dev2 := ConfigAsUser(config1, u3)
 	// we don't check the config because this device can't read all of the md blocks.
 	defer config3Dev2.Shutdown()
 	config3Dev2.MDServer().DisableRekeyUpdatesForTesting()
@@ -1390,7 +1383,7 @@ func TestKeyManagerRekeyBit(t *testing.T) {
 
 	// Explicitly run the checks with config1 before the deferred shutdowns begin.
 	// This way the shared mdserver hasn't been shutdown.
-	CheckConfigAndShutdown(t, config1)
+	kbfsConcurTestShutdown(t, config1, ctx)
 	doShutdown1 = false
 }
 
@@ -1399,12 +1392,11 @@ func TestKeyManagerRekeyBit(t *testing.T) {
 func TestKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T) {
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, u1, u2)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 	clock := newTestClockNow()
 	config1.SetClock(clock)
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -1424,7 +1416,7 @@ func TestKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T) {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
 
-	config2Dev2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2Dev2)
 
 	// give user 2 a new device
@@ -1530,10 +1522,9 @@ func (clta *cryptoLocalTrapAny) DecryptTLFCryptKeyClientHalfAny(
 func TestKeyManagerRekeyAddDeviceWithPrompt(t *testing.T) {
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, u1, u2)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -1553,7 +1544,7 @@ func TestKeyManagerRekeyAddDeviceWithPrompt(t *testing.T) {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
 
-	config2Dev2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2Dev2)
 
 	// Now give u2 a new device.  The configs don't share a Keybase
@@ -1637,12 +1628,11 @@ func TestKeyManagerRekeyAddDeviceWithPrompt(t *testing.T) {
 func TestKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T) {
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, uid1, ctx := kbfsOpsConcurInit(t, u1, u2)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 	clock := newTestClockNow()
 	config1.SetClock(clock)
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -1662,7 +1652,7 @@ func TestKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T) {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
 
-	config2Dev2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2Dev2)
 
 	// Now give u2 a new device.  The configs don't share a Keybase
@@ -1750,10 +1740,9 @@ func TestKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T) {
 func TestKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T) {
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx := kbfsOpsConcurInit(t, u1, u2)
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config1)
+	defer kbfsConcurTestShutdown(t, config1, ctx)
 
-	config2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
@@ -1764,7 +1753,7 @@ func TestKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T) {
 	name := u1.String() + "," + u2.String()
 
 	rootNode1 := GetRootNodeOrBust(t, config1, name, false)
-	config2Dev2 := ConfigAsUser(config1.(*ConfigLocal), u2)
+	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2Dev2)
 
 	// Now give u2 a new device.  The configs don't share a Keybase

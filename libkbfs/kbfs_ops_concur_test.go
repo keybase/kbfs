@@ -46,8 +46,19 @@ func (cl *CounterLock) GetCount() int {
 }
 
 func kbfsOpsConcurInit(t *testing.T, users ...libkb.NormalizedUsername) (
-	Config, keybase1.UID, context.Context) {
+	*ConfigLocal, keybase1.UID, context.Context) {
 	return kbfsOpsInitNoMocks(t, users...)
+}
+
+func kbfsConcurTestShutdown(
+	t *testing.T, config *ConfigLocal, ctx context.Context) {
+	kbfsTestShutdownNoMocks(t, config, ctx)
+}
+
+// TODO: Get rid of all users of this.
+func kbfsConcurTestShutdownNoCheck(
+	t *testing.T, config *ConfigLocal, ctx context.Context) {
+	kbfsTestShutdownNoMocksNoCheck(t, config, ctx)
 }
 
 // Test that only one of two concurrent GetRootMD requests can end up
@@ -55,14 +66,13 @@ func kbfsOpsConcurInit(t *testing.T, users ...libkb.NormalizedUsername) (
 // then get it from the MD cache.
 func TestKBFSOpsConcurDoubleMDGet(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	onGetStalledCh, getUnstallCh, ctxStallGetForTLF :=
 		StallMDOp(ctx, config, StallableMDGetForTLF, 1)
 
 	// Initialize the MD using a different config
-	c2 := ConfigAsUser(config.(*ConfigLocal), "test_user")
+	c2 := ConfigAsUser(config, "test_user")
 	defer CheckConfigAndShutdown(t, c2)
 	rootNode := GetRootNodeOrBust(t, c2, "test_user", false)
 
@@ -101,8 +111,7 @@ func TestKBFSOpsConcurDoubleMDGet(t *testing.T) {
 // Test that a read can happen concurrently with a sync
 func TestKBFSOpsConcurReadDuringSync(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	onPutStalledCh, putUnstallCh, putCtx :=
 		StallMDOp(ctx, config, StallableMDAfterPut, 1)
@@ -152,8 +161,7 @@ func TestKBFSOpsConcurReadDuringSync(t *testing.T) {
 func testKBFSOpsConcurWritesDuringSync(t *testing.T,
 	initialWriteBytes int, nOneByteWrites int) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	onPutStalledCh, putUnstallCh, putCtx :=
 		StallMDOp(ctx, config, StallableMDAfterPut, 1)
@@ -288,8 +296,7 @@ func TestKBFSOpsConcurMultipleIndirectWritesDuringSync(t *testing.T) {
 // to the same block, work correctly.
 func TestKBFSOpsConcurDeferredDoubleWritesDuringSync(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	onPutStalledCh, putUnstallCh, putCtx :=
 		StallMDOp(ctx, config, StallableMDAfterPut, 1)
@@ -409,8 +416,8 @@ func TestKBFSOpsConcurDeferredDoubleWritesDuringSync(t *testing.T) {
 // read. This is a regression test for KBFS-536.
 func TestKBFSOpsConcurBlockReadWrite(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer config.Shutdown()
+	// TODO: Use kbfsConcurTestShutdown.
+	defer kbfsConcurTestShutdownNoCheck(t, config, ctx)
 
 	// Turn off transient block caching.
 	config.SetBlockCache(NewBlockCacheStandard(0, 1<<30))
@@ -530,8 +537,8 @@ func (km *mdRecordingKeyManager) Rekey(
 // regression test for KBFS-558.
 func TestKBFSOpsConcurBlockSyncWrite(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer config.Shutdown()
+	// TODO: Use kbfsConcurTestShutdown.
+	defer kbfsConcurTestShutdownNoCheck(t, config, ctx)
 
 	km := &mdRecordingKeyManager{delegate: config.KeyManager()}
 
@@ -618,8 +625,7 @@ func TestKBFSOpsConcurBlockSyncWrite(t *testing.T) {
 // regression test for KBFS-558.
 func TestKBFSOpsConcurBlockSyncTruncate(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	km := &mdRecordingKeyManager{delegate: config.KeyManager()}
 
@@ -708,8 +714,7 @@ func TestKBFSOpsConcurBlockSyncTruncate(t *testing.T) {
 // KBFS-537.
 func TestKBFSOpsConcurBlockSyncReadIndirect(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer config.Shutdown()
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	// Turn off block caching.
 	config.SetBlockCache(NewBlockCacheStandard(0, 1<<30))
@@ -772,8 +777,7 @@ func TestKBFSOpsConcurBlockSyncReadIndirect(t *testing.T) {
 // Test that a write can survive a folder BlockPointer update
 func TestKBFSOpsConcurWriteDuringFolderUpdate(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer config.Shutdown()
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	// create and write to a file
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
@@ -813,8 +817,7 @@ func TestKBFSOpsConcurWriteDuringFolderUpdate(t *testing.T) {
 // are multiple blocks in the file.
 func TestKBFSOpsConcurWriteDuringSyncMultiBlocks(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	onPutStalledCh, putUnstallCh, putCtx :=
 		StallMDOp(ctx, config, StallableMDAfterPut, 1)
@@ -918,8 +921,7 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 		t.Skip("Skipping because we are not putting blocks in parallel.")
 	}
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	// give it a remote block server with a fake client
 	fc := NewFakeBServerClient(config, nil, nil, nil)
@@ -1040,8 +1042,7 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 // cancel the remaining puts.
 func TestKBFSOpsConcurWriteParallelBlocksError(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	// give it a mock'd block server
 	ctr := NewSafeTestReporter(t)
@@ -1138,8 +1139,7 @@ func TestKBFSOpsConcurWriteParallelBlocksError(t *testing.T) {
 // correctly.  Regression test for KBFS-700.
 func TestKBFSOpsMultiBlockWriteDuringRetriedSync(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	// Use the smallest possible block size.
 	bsplitter, err := NewBlockSplitterSimple(20, 8*1024, config.Codec())
@@ -1250,8 +1250,7 @@ func TestKBFSOpsMultiBlockWriteDuringRetriedSync(t *testing.T) {
 // Regression test for KBFS-1508.
 func TestKBFSOpsMultiBlockWriteWithRetryAndError(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	// Use the smallest possible block size.
 	bsplitter, err := NewBlockSplitterSimple(20, 8*1024, config.Codec())
@@ -1389,8 +1388,7 @@ func TestKBFSOpsMultiBlockWriteWithRetryAndError(t *testing.T) {
 // than the grace period in MD writes is introduced, Create should succeed.
 func TestKBFSOpsCanceledCreateNoError(t *testing.T) {
 	config, _, ctxThrowaway := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctxThrowaway)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctxThrowaway)
 
 	ctx := context.Background()
 
@@ -1438,8 +1436,7 @@ func TestKBFSOpsCanceledCreateNoError(t *testing.T) {
 // Ctrl-C is able to interrupt the process eventually after the grace period.
 func TestKBFSOpsCanceledCreateDelayTimeoutErrors(t *testing.T) {
 	config, _, ctxThrowaway := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctxThrowaway)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctxThrowaway)
 
 	// This essentially fast-forwards the grace period timer, making cancellation
 	// happen much faster. This way we can avoid time.Sleep.
@@ -1503,8 +1500,7 @@ func TestKBFSOpsCanceledCreateDelayTimeoutErrors(t *testing.T) {
 // Test that a Sync that is canceled during a successful MD put works.
 func TestKBFSOpsConcurCanceledSyncSucceeds(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	onPutStalledCh, putUnstallCh, putCtx :=
 		StallMDOp(ctx, config, StallableMDAfterPut, 1)
@@ -1597,8 +1593,7 @@ func TestKBFSOpsConcurCanceledSyncSucceeds(t *testing.T) {
 // reasonable state where CR can succeed.  Regression for KBFS-1569.
 func TestKBFSOpsConcurCanceledSyncFailsAfterCanceledSyncSucceeds(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	onPutStalledCh, putUnstallCh, putCtx :=
 		StallMDOp(ctx, config, StallableMDAfterPut, 1)
@@ -1692,8 +1687,7 @@ func TestKBFSOpsConcurCanceledSyncFailsAfterCanceledSyncSucceeds(t *testing.T) {
 // cancel.  Regression test for KBFS-727.
 func TestKBFSOpsTruncateWithDupBlockCanceled(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	// create and write to a file
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
@@ -1788,8 +1782,7 @@ func TestKBFSOpsErrorOnBlockedWriteDuringSync(t *testing.T) {
 	t.Skip("Broken pending KBFS-1261")
 
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	// create and write to a file
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
@@ -1877,8 +1870,7 @@ func TestKBFSOpsErrorOnBlockedWriteDuringSync(t *testing.T) {
 
 func TestKBFSOpsCancelGetFavorites(t *testing.T) {
 	config, _, ctx := kbfsOpsConcurInit(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsConcurTestShutdown(t, config, ctx)
 
 	serverConn, conn := rpc.MakeConnectionForTest(t)
 	daemon := newKeybaseDaemonRPCWithClient(
