@@ -118,7 +118,6 @@ func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 
 	interposeDaemonKBPKI(config, "alice", "bob", "charlie")
 
-	// Time out individual tests after 10 seconds.
 	timeoutCtx, cancel := context.WithTimeout(
 		context.Background(), individualTestTimeout)
 
@@ -130,6 +129,7 @@ func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 		timeoutCtx, func(ctx context.Context) context.Context {
 			return context.WithValue(ctx, tCtxID, id)
 		})); err != nil {
+		cancel()
 		panic(err)
 	}
 	return
@@ -154,7 +154,7 @@ func kbfsTestShutdown(mockCtrl *gomock.Controller, config *ConfigMock,
 // kbfsOpsInitNoMocks returns a config that doesn't use any mocks. The
 // shutdown call is kbfsTestShutdownNoMocks.
 func kbfsOpsInitNoMocks(t *testing.T, users ...libkb.NormalizedUsername) (
-	*ConfigLocal, keybase1.UID, context.Context) {
+	*ConfigLocal, keybase1.UID, context.Context, context.CancelFunc) {
 	config := MakeTestConfigOrBust(t, users...)
 
 	_, currentUID, err := config.KBPKI().GetCurrentUserInfo(context.Background())
@@ -162,20 +162,32 @@ func kbfsOpsInitNoMocks(t *testing.T, users ...libkb.NormalizedUsername) (
 		t.Fatal(err)
 	}
 
-	ctx := BackgroundContextWithCancellationDelayer()
-	return config, currentUID, ctx
+	timeoutCtx, cancel := context.WithTimeout(
+		context.Background(), individualTestTimeout)
+
+	ctx, err := NewContextWithCancellationDelayer(NewContextReplayable(
+		timeoutCtx, func(c context.Context) context.Context {
+			return c
+		}))
+	if err != nil {
+		cancel()
+		panic(err)
+	}
+	return config, currentUID, ctx, cancel
 }
 
-func kbfsTestShutdownNoMocks(
-	t *testing.T, config *ConfigLocal, ctx context.Context) {
+func kbfsTestShutdownNoMocks(t *testing.T, config *ConfigLocal,
+	ctx context.Context, cancel context.CancelFunc) {
 	CheckConfigAndShutdown(t, config)
+	cancel()
 	CleanupCancellationDelayer(ctx)
 }
 
 // TODO: Get rid of all users of this.
-func kbfsTestShutdownNoMocksNoCheck(
-	t *testing.T, config *ConfigLocal, ctx context.Context) {
+func kbfsTestShutdownNoMocksNoCheck(t *testing.T, config *ConfigLocal,
+	ctx context.Context, cancel context.CancelFunc) {
 	config.Shutdown()
+	cancel()
 	CleanupCancellationDelayer(ctx)
 }
 
@@ -215,8 +227,8 @@ func checkBlockCache(t *testing.T, config *ConfigMock, id TlfID,
 }
 
 func TestKBFSOpsGetFavoritesSuccess(t *testing.T) {
-	config, _, ctx := kbfsOpsInitNoMocks(t, "alice", "bob")
-	defer kbfsTestShutdownNoMocks(t, config, ctx)
+	config, _, ctx, cancel := kbfsOpsInitNoMocks(t, "alice", "bob")
+	defer kbfsTestShutdownNoMocks(t, config, ctx, cancel)
 
 	handle1 := parseTlfHandleOrBust(t, config, "alice", false)
 	handle2 := parseTlfHandleOrBust(t, config, "alice,bob", false)
@@ -5233,9 +5245,9 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 }
 
 func TestKBFSOpsWriteRenameStat(t *testing.T) {
-	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
+	config, _, ctx, cancel := kbfsOpsInitNoMocks(t, "test_user")
 	// TODO: Use kbfsTestShutdownNoMocks.
-	defer kbfsTestShutdownNoMocksNoCheck(t, config, ctx)
+	defer kbfsTestShutdownNoMocksNoCheck(t, config, ctx, cancel)
 
 	// create a file.
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
@@ -5279,9 +5291,9 @@ func TestKBFSOpsWriteRenameStat(t *testing.T) {
 }
 
 func TestKBFSOpsWriteRenameGetDirChildren(t *testing.T) {
-	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
+	config, _, ctx, cancel := kbfsOpsInitNoMocks(t, "test_user")
 	// TODO: Use kbfsTestShutdownNoMocks.
-	defer kbfsTestShutdownNoMocksNoCheck(t, config, ctx)
+	defer kbfsTestShutdownNoMocksNoCheck(t, config, ctx, cancel)
 
 	// create a file.
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
@@ -5326,8 +5338,8 @@ func TestKBFSOpsWriteRenameGetDirChildren(t *testing.T) {
 }
 
 func TestKBFSOpsCreateFileWithArchivedBlock(t *testing.T) {
-	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
-	defer kbfsTestShutdownNoMocks(t, config, ctx)
+	config, _, ctx, cancel := kbfsOpsInitNoMocks(t, "test_user")
+	defer kbfsTestShutdownNoMocks(t, config, ctx, cancel)
 
 	// create a file.
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
@@ -5360,8 +5372,8 @@ func TestKBFSOpsCreateFileWithArchivedBlock(t *testing.T) {
 }
 
 func TestKBFSOpsMultiBlockSyncWithArchivedBlock(t *testing.T) {
-	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
-	defer kbfsTestShutdownNoMocks(t, config, ctx)
+	config, _, ctx, cancel := kbfsOpsInitNoMocks(t, "test_user")
+	defer kbfsTestShutdownNoMocks(t, config, ctx, cancel)
 
 	// make blocks small
 	blockSize := int64(5)
@@ -5434,8 +5446,8 @@ func (cbs corruptBlockServer) Get(
 }
 
 func TestKBFSOpsFailToReadUnverifiableBlock(t *testing.T) {
-	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
-	defer kbfsTestShutdownNoMocks(t, config, ctx)
+	config, _, ctx, cancel := kbfsOpsInitNoMocks(t, "test_user")
+	defer kbfsTestShutdownNoMocks(t, config, ctx, cancel)
 	config.SetBlockServer(&corruptBlockServer{
 		BlockServer: config.BlockServer(),
 	})
@@ -5467,8 +5479,8 @@ func TestKBFSOpsFailToReadUnverifiableBlock(t *testing.T) {
 // Test that the size of a single empty block doesn't change.  If this
 // test ever fails, consult max or strib before merging.
 func TestKBFSOpsEmptyTlfSize(t *testing.T) {
-	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
-	defer kbfsTestShutdownNoMocks(t, config, ctx)
+	config, _, ctx, cancel := kbfsOpsInitNoMocks(t, "test_user")
+	defer kbfsTestShutdownNoMocks(t, config, ctx, cancel)
 
 	// Create a TLF.
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
@@ -5495,9 +5507,9 @@ func (c cryptoFixedTlf) MakeRandomTlfID(isPublic bool) (TlfID, error) {
 // TestKBFSOpsMaliciousMDServerRange tries to trick KBFSOps into
 // accepting bad MDs.
 func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
-	config1, _, ctx := kbfsOpsInitNoMocks(t, "alice", "mallory")
+	config1, _, ctx, cancel := kbfsOpsInitNoMocks(t, "alice", "mallory")
 	// TODO: Use kbfsTestShutdownNoMocks.
-	defer kbfsTestShutdownNoMocksNoCheck(t, config1, ctx)
+	defer kbfsTestShutdownNoMocksNoCheck(t, config1, ctx, cancel)
 
 	// Create alice's TLF.
 	rootNode1 := GetRootNodeOrBust(t, config1, "alice", false)

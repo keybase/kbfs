@@ -14,8 +14,8 @@ import (
 
 func TestRekeyQueueBasic(t *testing.T) {
 	var u1, u2, u3, u4 libkb.NormalizedUsername = "u1", "u2", "u3", "u4"
-	config1, _, ctx := kbfsOpsConcurInit(t, u1, u2, u3, u4)
-	defer kbfsConcurTestShutdown(t, config1, ctx)
+	config1, _, ctx, cancel := kbfsOpsConcurInit(t, u1, u2, u3, u4)
+	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
 	config2 := ConfigAsUser(config1, u2)
 	defer config2.Shutdown()

@@ -372,8 +372,8 @@ func truncateNotificationTimestamps(
 
 func TestKeybaseDaemonRPCEditList(t *testing.T) {
 	var userName1, userName2 libkb.NormalizedUsername = "u1", "u2"
-	config1, _, ctx := kbfsOpsConcurInit(t, userName1, userName2)
-	defer kbfsConcurTestShutdown(t, config1, ctx)
+	config1, _, ctx, cancel := kbfsOpsConcurInit(t, userName1, userName2)
+	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
 	clock, now := newTestClockAndTimeNow()
 	config1.SetClock(clock)
