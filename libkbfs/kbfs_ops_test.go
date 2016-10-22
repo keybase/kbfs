@@ -144,7 +144,7 @@ func kbfsTestShutdown(mockCtrl *gomock.Controller, config *ConfigMock,
 }
 
 // kbfsOpsInitNoMocks returns a config that doesn't use any mocks. The
-// shutdown call is just config.Shutdown().
+// shutdown call is kbfsTestShutdownNoMocks.
 func kbfsOpsInitNoMocks(t *testing.T, users ...libkb.NormalizedUsername) (
 	*ConfigLocal, keybase1.UID, context.Context) {
 	config := MakeTestConfigOrBust(t, users...)
@@ -156,6 +156,19 @@ func kbfsOpsInitNoMocks(t *testing.T, users ...libkb.NormalizedUsername) (
 
 	ctx := BackgroundContextWithCancellationDelayer()
 	return config, currentUID, ctx
+}
+
+func kbfsTestShutdownNoMocks(
+	t *testing.T, config *ConfigLocal, ctx context.Context) {
+	CheckConfigAndShutdown(t, config)
+	CleanupCancellationDelayer(ctx)
+}
+
+// TODO: Get rid of all users of this.
+func kbfsTestShutdownNoMocksNoCheck(
+	t *testing.T, config *ConfigLocal, ctx context.Context) {
+	config.Shutdown()
+	CleanupCancellationDelayer(ctx)
 }
 
 func checkBlockCache(t *testing.T, config *ConfigMock, id TlfID,
@@ -195,8 +208,7 @@ func checkBlockCache(t *testing.T, config *ConfigMock, id TlfID,
 
 func TestKBFSOpsGetFavoritesSuccess(t *testing.T) {
 	config, _, ctx := kbfsOpsInitNoMocks(t, "alice", "bob")
-	defer CleanupCancellationDelayer(ctx)
-	defer config.Shutdown()
+	defer kbfsTestShutdownNoMocks(t, config, ctx)
 
 	handle1 := parseTlfHandleOrBust(t, config, "alice", false)
 	handle2 := parseTlfHandleOrBust(t, config, "alice,bob", false)
@@ -5214,8 +5226,8 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 
 func TestKBFSOpsWriteRenameStat(t *testing.T) {
 	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer config.Shutdown()
+	// TODO: Use kbfsTestShutdownNoMocks.
+	defer kbfsTestShutdownNoMocksNoCheck(t, config, ctx)
 
 	// create a file.
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
@@ -5260,8 +5272,8 @@ func TestKBFSOpsWriteRenameStat(t *testing.T) {
 
 func TestKBFSOpsWriteRenameGetDirChildren(t *testing.T) {
 	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer config.Shutdown()
+	// TODO: Use kbfsTestShutdownNoMocks.
+	defer kbfsTestShutdownNoMocksNoCheck(t, config, ctx)
 
 	// create a file.
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
@@ -5307,8 +5319,7 @@ func TestKBFSOpsWriteRenameGetDirChildren(t *testing.T) {
 
 func TestKBFSOpsCreateFileWithArchivedBlock(t *testing.T) {
 	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsTestShutdownNoMocks(t, config, ctx)
 
 	// create a file.
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
@@ -5342,8 +5353,7 @@ func TestKBFSOpsCreateFileWithArchivedBlock(t *testing.T) {
 
 func TestKBFSOpsMultiBlockSyncWithArchivedBlock(t *testing.T) {
 	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsTestShutdownNoMocks(t, config, ctx)
 
 	// make blocks small
 	blockSize := int64(5)
@@ -5417,8 +5427,7 @@ func (cbs corruptBlockServer) Get(
 
 func TestKBFSOpsFailToReadUnverifiableBlock(t *testing.T) {
 	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsTestShutdownNoMocks(t, config, ctx)
 	config.SetBlockServer(&corruptBlockServer{
 		BlockServer: config.BlockServer(),
 	})
@@ -5451,8 +5460,7 @@ func TestKBFSOpsFailToReadUnverifiableBlock(t *testing.T) {
 // test ever fails, consult max or strib before merging.
 func TestKBFSOpsEmptyTlfSize(t *testing.T) {
 	config, _, ctx := kbfsOpsInitNoMocks(t, "test_user")
-	defer CleanupCancellationDelayer(ctx)
-	defer CheckConfigAndShutdown(t, config)
+	defer kbfsTestShutdownNoMocks(t, config, ctx)
 
 	// Create a TLF.
 	rootNode := GetRootNodeOrBust(t, config, "test_user", false)
@@ -5480,8 +5488,8 @@ func (c cryptoFixedTlf) MakeRandomTlfID(isPublic bool) (TlfID, error) {
 // accepting bad MDs.
 func TestKBFSOpsMaliciousMDServerRange(t *testing.T) {
 	config1, _, ctx := kbfsOpsInitNoMocks(t, "alice", "mallory")
-	defer CleanupCancellationDelayer(ctx)
-	defer config1.Shutdown()
+	// TODO: Use kbfsTestShutdownNoMocks.
+	defer kbfsTestShutdownNoMocksNoCheck(t, config1, ctx)
 
 	// Create alice's TLF.
 	rootNode1 := GetRootNodeOrBust(t, config1, "alice", false)
