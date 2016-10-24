@@ -286,18 +286,11 @@ func (ri renameInfo) String() string {
 		ri.originalNewParent, ri.newName)
 }
 
-// crChainsMDInfo contains the subset of information from
-// BareRootMetadata that is needed for crChains.
-type crChainsMDInfo struct {
+// mostRecentChainMetadataInfo contains the subset of information for
+// the most recent chainMetadata that is needed for crChains.
+type mostRecentChainMetadataInfo struct {
 	kmd     KeyMetadata
 	rootPtr BlockPointer
-}
-
-func crChainsMDInfoFromCMD(md chainMetadata) crChainsMDInfo {
-	return crChainsMDInfo{
-		kmd:     md,
-		rootPtr: md.Data().Dir.BlockPointer,
-	}
 }
 
 // crChains contains a crChain for every KBFS node affected by the
@@ -327,7 +320,7 @@ type crChains struct {
 
 	// Also keep the info for the most recent MD that's part of
 	// this chain.
-	mostRecentMDInfo crChainsMDInfo
+	mostRecentCMDInfo mostRecentChainMetadataInfo
 
 	// We need to be able to track ANY BlockPointer, at any point in
 	// the chain, back to its original.
@@ -775,7 +768,10 @@ func newCRChains(ctx context.Context, cfg Config, irmds []chainMetadata,
 		}
 	}
 
-	ccs.mostRecentMDInfo = crChainsMDInfoFromCMD(mostRecentMD)
+	ccs.mostRecentCMDInfo = mostRecentChainMetadataInfo{
+		kmd:     mostRecentMD,
+		rootPtr: mostRecentMD.Data().Dir.BlockPointer,
+	}
 
 	return ccs, nil
 }
@@ -938,7 +934,8 @@ func (ccs *crChains) getPaths(ctx context.Context, blocks *folderBlockOps,
 	}
 
 	pathMap, err := blocks.SearchForPaths(ctx, nodeCache, ptrs,
-		newPtrs, ccs.mostRecentMDInfo.kmd, ccs.mostRecentMDInfo.rootPtr)
+		newPtrs, ccs.mostRecentCMDInfo.kmd,
+		ccs.mostRecentCMDInfo.rootPtr)
 	if err != nil {
 		return nil, err
 	}
