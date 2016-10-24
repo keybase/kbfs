@@ -154,7 +154,7 @@ func addUnflushedPaths(ctx context.Context,
 				"since it's already in the cache", mdInfo.revision)
 			continue
 		}
-		unflushedPaths[irmd.Revision()] = make(map[string]bool)
+		unflushedPaths[mdInfo.revision] = make(map[string]bool)
 
 		processedOne = true
 		err := chains.addOps(codec, mdInfo.pmd, winfo, mdInfo.localTimestamp)
