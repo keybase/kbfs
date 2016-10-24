@@ -178,8 +178,7 @@ func TestCRChainsSingleOp(t *testing.T) {
 	rmds := []*RootMetadata{rmd}
 	config, cmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChains(
-		context.Background(), config, cmds, nil, true)
+	cc, err := newCRChains(context.Background(), config, cmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -214,8 +213,7 @@ func TestCRChainsRenameOp(t *testing.T) {
 	rmds := []*RootMetadata{rmd}
 	config, cmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChains(
-		context.Background(), config, cmds, nil, true)
+	cc, err := newCRChains(context.Background(), config, cmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -324,8 +322,7 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 	rmds := []*RootMetadata{bigRmd}
 	config, cmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChains(
-		context.Background(), config, cmds, nil, true)
+	cc, err := newCRChains(context.Background(), config, cmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains for big RMD: %v", err)
 	}
@@ -490,8 +487,7 @@ func TestCRChainsCollapse(t *testing.T) {
 	rmds := []*RootMetadata{rmd}
 	config, cmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChains(
-		context.Background(), config, cmds, nil, true)
+	cc, err := newCRChains(context.Background(), config, cmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -526,8 +522,7 @@ func TestCRChainsRemove(t *testing.T) {
 
 	config := MakeTestConfigOrBust(t, "u1")
 	defer config.Shutdown()
-	ccs, err := newCRChains(
-		context.Background(), config, cmds, nil, true)
+	ccs, err := newCRChains(context.Background(), config, cmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
