@@ -1331,8 +1331,8 @@ func (j *tlfJournal) putMD(
 	ctx context.Context, rmd *RootMetadata) (
 	MdID, error) {
 	// Prepare the paths without holding the lock, as it might need to
-	// take the lock.  Note that the md ID and timestamp don't matter
-	// for the unflushed path cache.  This is a no-op if the unflushed
+	// take the lock.  Note that the timestamp doesn't matter for
+	// the unflushed path cache.  This is a no-op if the unflushed
 	// path cache is uninitialized.  TODO: avoid doing this if we can
 	// somehow be sure the cache won't be initialized by the time we
 	// finish this put.
