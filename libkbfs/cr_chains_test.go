@@ -143,21 +143,20 @@ func testCRCheckOps(t *testing.T, cc *crChains, original BlockPointer,
 }
 
 func testCRChainsFillInWriter(t *testing.T, rmds []*RootMetadata) (
-	Config, []ImmutableRootMetadata) {
+	Config, []chainMetadata) {
 	config := MakeTestConfigOrBust(t, "u1")
 	kbpki := config.KBPKI()
 	_, uid, err := kbpki.GetCurrentUserInfo(context.Background())
 	if err != nil {
 		t.Fatalf("Couldn't get UID: %v", err)
 	}
-	immutableRmds := make([]ImmutableRootMetadata, len(rmds))
+	cmds := make([]chainMetadata, len(rmds))
 	for i, rmd := range rmds {
 		rmd.SetLastModifyingWriter(uid)
 		rmd.SetTlfID(FakeTlfID(1, false))
-		immutableRmds[i] = MakeImmutableRootMetadata(rmd,
-			fakeMdID(1), time.Unix(0, 0))
+		cmds[i] = rootMetadataWithTimestamp{rmd, time.Unix(0, 0)}
 	}
-	return config, immutableRmds
+	return config, cmds
 }
 
 func TestCRChainsSingleOp(t *testing.T) {
@@ -177,10 +176,10 @@ func TestCRChainsSingleOp(t *testing.T) {
 	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 
 	rmds := []*RootMetadata{rmd}
-	config, irmds := testCRChainsFillInWriter(t, rmds)
+	config, cmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChainsForIRMDs(
-		context.Background(), config, irmds, nil, true)
+	cc, err := newCRChains(
+		context.Background(), config, cmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -213,10 +212,10 @@ func TestCRChainsRenameOp(t *testing.T) {
 	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 
 	rmds := []*RootMetadata{rmd}
-	config, irmds := testCRChainsFillInWriter(t, rmds)
+	config, cmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChainsForIRMDs(
-		context.Background(), config, irmds, nil, true)
+	cc, err := newCRChains(
+		context.Background(), config, cmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -232,8 +231,7 @@ func TestCRChainsRenameOp(t *testing.T) {
 	testCRCheckOps(t, cc, dir1Unref, []op{rmo})
 }
 
-func testCRChainsMultiOps(t *testing.T) (
-	[]ImmutableRootMetadata, BlockPointer) {
+func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 	// To start, we have: root/dir1/dir2/file1 and root/dir3/file2
 	// Sequence of operations:
 	// * setex root/dir3/file2
@@ -324,10 +322,10 @@ func testCRChainsMultiOps(t *testing.T) (
 
 	bigRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 	rmds := []*RootMetadata{bigRmd}
-	config, irmds := testCRChainsFillInWriter(t, rmds)
+	config, cmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChainsForIRMDs(
-		context.Background(), config, irmds, nil, true)
+	cc, err := newCRChains(
+		context.Background(), config, cmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains for big RMD: %v", err)
 	}
@@ -359,7 +357,7 @@ func testCRChainsMultiOps(t *testing.T) (
 	// now make sure the chain of MDs gets the same answers
 	config, multiIrmds := testCRChainsFillInWriter(t, multiRmds)
 	defer config.Shutdown()
-	mcc, err := newCRChainsForIRMDs(
+	mcc, err := newCRChains(
 		context.Background(), config, multiIrmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains for multi RMDs: %v", err)
@@ -490,10 +488,10 @@ func TestCRChainsCollapse(t *testing.T) {
 
 	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 	rmds := []*RootMetadata{rmd}
-	config, irmds := testCRChainsFillInWriter(t, rmds)
+	config, cmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChainsForIRMDs(
-		context.Background(), config, irmds, nil, true)
+	cc, err := newCRChains(
+		context.Background(), config, cmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -519,23 +517,24 @@ func TestCRChainsCollapse(t *testing.T) {
 }
 
 func TestCRChainsRemove(t *testing.T) {
-	irmds, writtenFileUnref := testCRChainsMultiOps(t)
+	cmds, writtenFileUnref := testCRChainsMultiOps(t)
 
-	for i, irmd := range irmds {
-		irmd.SetRevision(MetadataRevision(i))
+	for i := range cmds {
+		cmds[i].(rootMetadataWithTimestamp).RootMetadata.SetRevision(
+			MetadataRevision(i))
 	}
 
 	config := MakeTestConfigOrBust(t, "u1")
 	defer config.Shutdown()
-	ccs, err := newCRChainsForIRMDs(
-		context.Background(), config, irmds, nil, true)
+	ccs, err := newCRChains(
+		context.Background(), config, cmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
 
 	// This should remove the write operation.
 	removedChains := ccs.remove(context.Background(),
-		logger.NewTestLogger(t), irmds[3].Revision())
+		logger.NewTestLogger(t), cmds[3].Revision())
 	require.Len(t, removedChains, 1)
 	require.Equal(t, removedChains[0].original, writtenFileUnref)
 	require.Len(t, removedChains[0].ops, 0)
