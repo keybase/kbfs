@@ -960,12 +960,29 @@ func (j *tlfJournal) batchConvertImmutables(ctx context.Context,
 	mdInfos := make([]unflushedPathMDInfo, 0, len(ibrmds))
 
 	for _, ibrmd := range ibrmds {
-		mdInfo, err := j.convertImmutableBareRMDToMDInfo(
-			ctx, ibrmd, handle)
+		// TODO: Avoid having to do this type assertion and
+		// convert to RootMetadata.
+		brmd, ok := ibrmd.BareRootMetadata.(MutableBareRootMetadata)
+		if !ok {
+			return nil, MutableBareRootMetadataNoImplError{}
+		}
+		rmd := MakeRootMetadata(brmd, ibrmd.extra, handle)
+
+		pmd, err := decryptMDPrivateData(
+			ctx, j.config.Codec(), j.config.Crypto(),
+			j.config.BlockCache(), j.config.BlockOps(),
+			j.config.mdDecryptionKeyGetter(), j.uid,
+			rmd.GetSerializedPrivateMetadata(), rmd, rmd)
 		if err != nil {
 			return nil, err
 		}
 
+		mdInfo := unflushedPathMDInfo{
+			revision:       ibrmd.RevisionNumber(),
+			kmd:            rmd,
+			pmd:            pmd,
+			localTimestamp: ibrmd.localTimestamp,
+		}
 		mdInfos = append(mdInfos, mdInfo)
 	}
 	return mdInfos, nil
@@ -1250,62 +1267,6 @@ func (j *tlfJournal) archiveBlockReferences(
 	j.signalWork()
 
 	return nil
-}
-
-// convertImmutableBareRMDToIRMD decrypts the MD in the given bare root
-// MD.  The caller must NOT hold `j.journalLock`, because blocks
-// from the journal may need to be read as part of the decryption.
-func (j *tlfJournal) convertImmutableBareRMDToIRMD(ctx context.Context,
-	ibrmd ImmutableBareRootMetadata, handle *TlfHandle) (
-	ImmutableRootMetadata, error) {
-	// TODO: Avoid having to do this type assertion.
-	brmd, ok := ibrmd.BareRootMetadata.(MutableBareRootMetadata)
-	if !ok {
-		return ImmutableRootMetadata{}, MutableBareRootMetadataNoImplError{}
-	}
-
-	rmd := MakeRootMetadata(brmd, ibrmd.extra, handle)
-
-	pmd, err := decryptMDPrivateData(
-		ctx, j.config.Codec(), j.config.Crypto(),
-		j.config.BlockCache(), j.config.BlockOps(),
-		j.config.mdDecryptionKeyGetter(), j.uid,
-		rmd.GetSerializedPrivateMetadata(), rmd, rmd)
-	if err != nil {
-		return ImmutableRootMetadata{}, err
-	}
-
-	rmd.data = pmd
-	irmd := MakeImmutableRootMetadata(rmd, ibrmd.mdID, ibrmd.localTimestamp)
-	return irmd, nil
-}
-
-func (j *tlfJournal) convertImmutableBareRMDToMDInfo(ctx context.Context,
-	ibrmd ImmutableBareRootMetadata, handle *TlfHandle) (
-	unflushedPathMDInfo, error) {
-	// TODO: Avoid having to do this type assertion.
-	brmd, ok := ibrmd.BareRootMetadata.(MutableBareRootMetadata)
-	if !ok {
-		return unflushedPathMDInfo{}, MutableBareRootMetadataNoImplError{}
-	}
-
-	rmd := MakeRootMetadata(brmd, ibrmd.extra, handle)
-
-	pmd, err := decryptMDPrivateData(
-		ctx, j.config.Codec(), j.config.Crypto(),
-		j.config.BlockCache(), j.config.BlockOps(),
-		j.config.mdDecryptionKeyGetter(), j.uid,
-		rmd.GetSerializedPrivateMetadata(), rmd, rmd)
-	if err != nil {
-		return unflushedPathMDInfo{}, err
-	}
-
-	return unflushedPathMDInfo{
-		revision:       ibrmd.RevisionNumber(),
-		kmd:            rmd,
-		pmd:            pmd,
-		localTimestamp: ibrmd.localTimestamp,
-	}, nil
 }
 
 func (j *tlfJournal) getMDHead(

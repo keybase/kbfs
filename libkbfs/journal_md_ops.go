@@ -7,6 +7,8 @@ package libkbfs
 import (
 	"fmt"
 
+	"github.com/keybase/client/go/protocol/keybase1"
+
 	"golang.org/x/net/context"
 )
 
@@ -96,11 +98,39 @@ func (j journalMDOps) getHeadFromJournal(
 		}
 	}
 
-	irmd, err := tlfJournal.convertImmutableBareRMDToIRMD(ctx, head, handle)
+	irmd, err := j.convertImmutableBareRMDToIRMD(
+		ctx, head, handle, tlfJournal.uid)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
 
+	return irmd, nil
+}
+
+// convertImmutableBareRMDToIRMD decrypts the MD in the given bare root
+// MD.  The caller must NOT hold `j.journalLock`, because blocks
+// from the journal may need to be read as part of the decryption.
+func (j journalMDOps) convertImmutableBareRMDToIRMD(ctx context.Context,
+	ibrmd ImmutableBareRootMetadata, handle *TlfHandle, uid keybase1.UID) (
+	ImmutableRootMetadata, error) {
+	// TODO: Avoid having to do this type assertion.
+	brmd, ok := ibrmd.BareRootMetadata.(MutableBareRootMetadata)
+	if !ok {
+		return ImmutableRootMetadata{}, MutableBareRootMetadataNoImplError{}
+	}
+
+	rmd := MakeRootMetadata(brmd, ibrmd.extra, handle)
+
+	config := j.jServer.config
+	pmd, err := decryptMDPrivateData(ctx, config.Codec(), config.Crypto(),
+		config.BlockCache(), config.BlockOps(), config.KeyManager(),
+		uid, rmd.GetSerializedPrivateMetadata(), rmd, rmd)
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+
+	rmd.data = pmd
+	irmd := MakeImmutableRootMetadata(rmd, ibrmd.mdID, ibrmd.localTimestamp)
 	return irmd, nil
 }
 
@@ -149,8 +179,8 @@ func (j journalMDOps) getRangeFromJournal(
 	irmds := make([]ImmutableRootMetadata, 0, len(ibrmds))
 
 	for _, ibrmd := range ibrmds {
-		irmd, err := tlfJournal.convertImmutableBareRMDToIRMD(
-			ctx, ibrmd, handle)
+		irmd, err := j.convertImmutableBareRMDToIRMD(
+			ctx, ibrmd, handle, tlfJournal.uid)
 		if err != nil {
 			return nil, err
 		}
