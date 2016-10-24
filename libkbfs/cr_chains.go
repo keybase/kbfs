@@ -318,8 +318,8 @@ type crChains struct {
 	// Pointers that should be explicitly cleaned up in the resolution.
 	toUnrefPointers map[BlockPointer]bool
 
-	// Also keep the info for the most recent MD that's part of
-	// this chain.
+	// Also keep the info for the most recent CMD used to build
+	// these chains.
 	mostRecentCMDInfo mostRecentChainMetadataInfo
 
 	// We need to be able to track ANY BlockPointer, at any point in
@@ -684,14 +684,18 @@ func (ccs *crChains) addOps(codec kbfscodec.Codec,
 	return nil
 }
 
+// chainMetadata is the interface for metadata objects that can be
+// used in building crChains. It is implemented by
+// ImmutableRootMetadata, but is mostly implemented by RootMetadata
+// (just need LocalTimestamp).
 type chainMetadata interface {
 	KeyMetadata
-	LocalTimestamp() time.Time
 	IsWriterMetadataCopiedSet() bool
 	LastModifyingWriter() keybase1.UID
 	LastModifyingWriterKID() keybase1.KID
 	Revision() MetadataRevision
 	Data() *PrivateMetadata
+	LocalTimestamp() time.Time
 }
 
 // newCRChains builds a new crChains object from the given list of

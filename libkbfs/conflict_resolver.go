@@ -2489,6 +2489,15 @@ func (cr *ConflictResolver) resolveOnePath(ctx context.Context,
 	return resolvedPath, nil
 }
 
+type rootMetadataWithTimestamp struct {
+	*RootMetadata
+	localTimestamp time.Time
+}
+
+func (rmd rootMetadataWithTimestamp) LocalTimestamp() time.Time {
+	return rmd.localTimestamp
+}
+
 // makePostResolutionPaths returns the full paths to each unmerged
 // pointer, taking into account any rename operations that occurred in
 // the merged branch.
@@ -2502,8 +2511,8 @@ func (cr *ConflictResolver) makePostResolutionPaths(ctx context.Context,
 	// doesn't use it; it only inspects the MD itself and the
 	// timestamp.
 	resolvedChains, err := newCRChains(ctx, cr.config,
-		[]chainMetadata{MakeImmutableRootMetadata(md, fakeMdID(1),
-			cr.config.Clock().Now())},
+		[]chainMetadata{rootMetadataWithTimestamp{md,
+			cr.config.Clock().Now()}},
 		&cr.fbo.blocks, false)
 	if err != nil {
 		return nil, err
