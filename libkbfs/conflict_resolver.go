@@ -571,7 +571,8 @@ func (cr *ConflictResolver) addChildBlocksIfIndirectFile(ctx context.Context,
 // have been completely removed from the merged path.  In this case,
 // they need to be recreated.  So this function also returns a slice
 // of create ops that will need to be replayed in the merged branch
-// for the conflicts to be resolved.
+// for the conflicts to be resolved; all of these ops have their
+// writer info set to the given one.
 func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 	lState *lockState, unmergedPath path, unmergedChains *crChains,
 	mergedChains *crChains, currUnmergedWriterInfo writerInfo) (
