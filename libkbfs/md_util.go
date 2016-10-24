@@ -325,7 +325,7 @@ func encryptMDPrivateData(
 	}
 
 	brmd := rmd.bareMd
-	privateData := &rmd.data
+	privateData := rmd.data
 
 	if brmd.TlfID().IsPublic() || !brmd.IsWriterMetadataCopiedSet() {
 		// Record the last writer to modify this writer metadata
@@ -545,12 +545,11 @@ func decryptMDPrivateData(ctx context.Context, codec kbfscodec.Codec,
 				return PrivateMetadata{}, err
 			}
 		} else {
-			pmdPtr, err := crypto.DecryptPrivateMetadata(
+			pmd, err = crypto.DecryptPrivateMetadata(
 				encryptedPrivateMetadata, k)
 			if err != nil {
 				return PrivateMetadata{}, err
 			}
-			pmd = *pmdPtr
 		}
 	}
 
