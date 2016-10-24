@@ -1266,13 +1266,16 @@ func (j *tlfJournal) convertImmutableBareRMDToIRMD(ctx context.Context,
 
 	rmd := MakeRootMetadata(brmd, ibrmd.extra, handle)
 
-	err := decryptMDPrivateData(
+	pmd, err := decryptMDPrivateData(
 		ctx, j.config.Codec(), j.config.Crypto(),
 		j.config.BlockCache(), j.config.BlockOps(),
-		j.config.mdDecryptionKeyGetter(), j.uid, rmd, rmd.ReadOnly())
+		j.config.mdDecryptionKeyGetter(), j.uid,
+		rmd.GetSerializedPrivateMetadata(), rmd, rmd)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
+
+	rmd.data = pmd
 	irmd := MakeImmutableRootMetadata(rmd, ibrmd.mdID, ibrmd.localTimestamp)
 	return irmd, nil
 }
@@ -1288,19 +1291,19 @@ func (j *tlfJournal) convertImmutableBareRMDToMDInfo(ctx context.Context,
 
 	rmd := MakeRootMetadata(brmd, ibrmd.extra, handle)
 
-	err := decryptMDPrivateData(
+	pmd, err := decryptMDPrivateData(
 		ctx, j.config.Codec(), j.config.Crypto(),
 		j.config.BlockCache(), j.config.BlockOps(),
-		j.config.mdDecryptionKeyGetter(), j.uid, rmd, rmd.ReadOnly())
+		j.config.mdDecryptionKeyGetter(), j.uid,
+		rmd.GetSerializedPrivateMetadata(), rmd, rmd)
 	if err != nil {
 		return unflushedPathMDInfo{}, err
 	}
-	irmd := MakeImmutableRootMetadata(rmd, ibrmd.mdID, ibrmd.localTimestamp)
 
 	return unflushedPathMDInfo{
 		revision:       ibrmd.RevisionNumber(),
-		kmd:            irmd,
-		pmd:            *irmd.Data(),
+		kmd:            rmd,
+		pmd:            pmd,
 		localTimestamp: ibrmd.localTimestamp,
 	}, nil
 }

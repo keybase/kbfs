@@ -220,10 +220,6 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 			// The right secret key for the given rmd's
 			// key generation may only be present in the
 			// most recent rmd.
-			rmdCopy, err := rmd.deepCopy(config.Codec(), true)
-			if err != nil {
-				return nil, err
-			}
 			latestRmd := mergedRmds[len(mergedRmds)-1]
 
 			if uid == keybase1.UID("") {
@@ -233,11 +229,22 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 				}
 			}
 
-			if err := decryptMDPrivateData(ctx, config.Codec(), config.Crypto(),
-				config.BlockCache(), config.BlockOps(), config.KeyManager(),
-				uid, rmdCopy, latestRmd.ReadOnly()); err != nil {
+			pmd, err := decryptMDPrivateData(
+				ctx, config.Codec(), config.Crypto(),
+				config.BlockCache(), config.BlockOps(),
+				config.KeyManager(), uid,
+				rmd.GetSerializedPrivateMetadata(),
+				rmd, latestRmd)
+			if err != nil {
 				return nil, err
 			}
+
+			rmdCopy, err := rmd.deepCopy(config.Codec(), true)
+			if err != nil {
+				return nil, err
+			}
+			rmdCopy.data = pmd
+
 			// Overwrite the cached copy with the new copy
 			irmdCopy := MakeImmutableRootMetadata(rmdCopy, rmd.mdID,
 				rmd.localTimestamp)
@@ -505,26 +512,27 @@ func reembedBlockChanges(ctx context.Context, codec kbfscodec.Codec,
 func decryptMDPrivateData(ctx context.Context, codec kbfscodec.Codec,
 	crypto Crypto, bcache BlockCache, bops BlockOps,
 	keyGetter mdDecryptionKeyGetter, uid keybase1.UID,
-	rmdToDecrypt *RootMetadata, rmdWithKeys KeyMetadata) error {
+	serializedPrivateMetadata []byte,
+	rmdToDecrypt, rmdWithKeys KeyMetadata) (PrivateMetadata, error) {
 	handle := rmdToDecrypt.GetTlfHandle()
 
+	var pmd PrivateMetadata
 	if handle.IsPublic() {
-		if err := codec.Decode(rmdToDecrypt.GetSerializedPrivateMetadata(),
-			&rmdToDecrypt.data); err != nil {
-			return err
+		if err := codec.Decode(serializedPrivateMetadata,
+			&pmd); err != nil {
+			return PrivateMetadata{}, err
 		}
 	} else {
 		// decrypt the root data for non-public directories
 		var encryptedPrivateMetadata EncryptedPrivateMetadata
-		if err := codec.Decode(rmdToDecrypt.GetSerializedPrivateMetadata(),
+		if err := codec.Decode(serializedPrivateMetadata,
 			&encryptedPrivateMetadata); err != nil {
-			return err
+			return PrivateMetadata{}, err
 		}
 
 		k, err := keyGetter.GetTLFCryptKeyForMDDecryption(ctx,
-			rmdToDecrypt.ReadOnly(), rmdWithKeys)
+			rmdToDecrypt, rmdWithKeys)
 
-		privateMetadata := &PrivateMetadata{}
 		if err != nil {
 			isReader := handle.IsReader(uid)
 			_, isSelfRekeyError := err.(NeedSelfRekeyError)
@@ -534,20 +542,25 @@ func decryptMDPrivateData(ctx context.Context, codec kbfscodec.Codec,
 				// valid folder participant but doesn't have the
 				// shared crypt key.
 			} else {
-				return err
+				return PrivateMetadata{}, err
 			}
 		} else {
-			privateMetadata, err =
-				crypto.DecryptPrivateMetadata(encryptedPrivateMetadata, k)
+			pmdPtr, err := crypto.DecryptPrivateMetadata(
+				encryptedPrivateMetadata, k)
 			if err != nil {
-				return err
+				return PrivateMetadata{}, err
 			}
+			pmd = *pmdPtr
 		}
-		rmdToDecrypt.data = *privateMetadata
 	}
 
 	// Re-embed the block changes if it's needed.
-	return reembedBlockChanges(
+	err := reembedBlockChanges(
 		ctx, codec, bcache, bops, rmdWithKeys.TlfID(),
-		rmdToDecrypt.Data(), rmdWithKeys)
+		&pmd, rmdWithKeys)
+	if err != nil {
+		return PrivateMetadata{}, err
+	}
+
+	return pmd, nil
 }
