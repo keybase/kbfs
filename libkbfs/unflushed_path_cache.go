@@ -169,7 +169,7 @@ func addUnflushedPaths(ctx context.Context,
 	}
 
 	mostRecentMDInfo := mdInfos[len(mdInfos)-1]
-	chains.mostRecentCMDInfo = mostRecentChainMetadataInfo{
+	chains.mostRecentChainMDInfo = mostRecentChainMetadataInfo{
 		kmd:     mostRecentMDInfo.kmd,
 		rootPtr: mostRecentMDInfo.pmd.Dir.BlockPointer,
 	}

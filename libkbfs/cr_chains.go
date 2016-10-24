@@ -318,9 +318,9 @@ type crChains struct {
 	// Pointers that should be explicitly cleaned up in the resolution.
 	toUnrefPointers map[BlockPointer]bool
 
-	// Also keep the info for the most recent CMD used to build
-	// these chains.
-	mostRecentCMDInfo mostRecentChainMetadataInfo
+	// Also keep the info for the most recent chain MD used to
+	// build these chains.
+	mostRecentChainMDInfo mostRecentChainMetadataInfo
 
 	// We need to be able to track ANY BlockPointer, at any point in
 	// the chain, back to its original.
@@ -772,7 +772,7 @@ func newCRChains(ctx context.Context, cfg Config, cmds []chainMetadata,
 		}
 	}
 
-	ccs.mostRecentCMDInfo = mostRecentChainMetadataInfo{
+	ccs.mostRecentChainMDInfo = mostRecentChainMetadataInfo{
 		kmd:     mostRecentMD,
 		rootPtr: mostRecentMD.Data().Dir.BlockPointer,
 	}
@@ -940,8 +940,8 @@ func (ccs *crChains) getPaths(ctx context.Context, blocks *folderBlockOps,
 	}
 
 	pathMap, err := blocks.SearchForPaths(ctx, nodeCache, ptrs,
-		newPtrs, ccs.mostRecentCMDInfo.kmd,
-		ccs.mostRecentCMDInfo.rootPtr)
+		newPtrs, ccs.mostRecentChainMDInfo.kmd,
+		ccs.mostRecentChainMDInfo.rootPtr)
 	if err != nil {
 		return nil, err
 	}
