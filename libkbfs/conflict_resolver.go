@@ -1022,19 +1022,19 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 	kbpki := cr.config.KBPKI()
 	_, uid, err := kbpki.GetCurrentUserInfo(ctx)
 	if err != nil {
-		return nil, nil, nil, nil, nil, ImmutableRootMetadata{}, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 
 	key, err := kbpki.GetCurrentVerifyingKey(ctx)
 	if err != nil {
-		return nil, nil, nil, nil, nil, ImmutableRootMetadata{}, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 
 	currUnmergedWriterInfo, err := newWriterInfo(
 		ctx, cr.config, uid, key.KID(),
 		unmerged[len(unmerged)-1].Revision())
 	if err != nil {
-		return nil, nil, nil, nil, nil, ImmutableRootMetadata{}, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 
 	// Find the corresponding path in the merged branch for each of
