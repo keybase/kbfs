@@ -35,6 +35,32 @@ type journalMDOps struct {
 
 var _ MDOps = journalMDOps{}
 
+// convertImmutableBareRMDToIRMD decrypts the bare MD into a
+// full-fledged RMD.
+func (j journalMDOps) convertImmutableBareRMDToIRMD(ctx context.Context,
+	ibrmd ImmutableBareRootMetadata, handle *TlfHandle, uid keybase1.UID) (
+	ImmutableRootMetadata, error) {
+	// TODO: Avoid having to do this type assertion.
+	brmd, ok := ibrmd.BareRootMetadata.(MutableBareRootMetadata)
+	if !ok {
+		return ImmutableRootMetadata{}, MutableBareRootMetadataNoImplError{}
+	}
+
+	rmd := MakeRootMetadata(brmd, ibrmd.extra, handle)
+
+	config := j.jServer.config
+	pmd, err := decryptMDPrivateData(ctx, config.Codec(), config.Crypto(),
+		config.BlockCache(), config.BlockOps(), config.KeyManager(),
+		uid, rmd.GetSerializedPrivateMetadata(), rmd, rmd)
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+
+	rmd.data = pmd
+	irmd := MakeImmutableRootMetadata(rmd, ibrmd.mdID, ibrmd.localTimestamp)
+	return irmd, nil
+}
+
 // getHeadFromJournal returns the head RootMetadata for the TLF with
 // the given ID stored in the journal, assuming it exists and matches
 // the given branch ID and merge status. As a special case, if bid is
@@ -104,32 +130,6 @@ func (j journalMDOps) getHeadFromJournal(
 		return ImmutableRootMetadata{}, err
 	}
 
-	return irmd, nil
-}
-
-// convertImmutableBareRMDToIRMD decrypts the bare MD into a
-// full-fledged RMD.
-func (j journalMDOps) convertImmutableBareRMDToIRMD(ctx context.Context,
-	ibrmd ImmutableBareRootMetadata, handle *TlfHandle, uid keybase1.UID) (
-	ImmutableRootMetadata, error) {
-	// TODO: Avoid having to do this type assertion.
-	brmd, ok := ibrmd.BareRootMetadata.(MutableBareRootMetadata)
-	if !ok {
-		return ImmutableRootMetadata{}, MutableBareRootMetadataNoImplError{}
-	}
-
-	rmd := MakeRootMetadata(brmd, ibrmd.extra, handle)
-
-	config := j.jServer.config
-	pmd, err := decryptMDPrivateData(ctx, config.Codec(), config.Crypto(),
-		config.BlockCache(), config.BlockOps(), config.KeyManager(),
-		uid, rmd.GetSerializedPrivateMetadata(), rmd, rmd)
-	if err != nil {
-		return ImmutableRootMetadata{}, err
-	}
-
-	rmd.data = pmd
-	irmd := MakeImmutableRootMetadata(rmd, ibrmd.mdID, ibrmd.localTimestamp)
 	return irmd, nil
 }
 
