@@ -257,6 +257,8 @@ func (cr *ConflictResolver) getMDs(ctx context.Context, lState *lockState,
 	return unmerged, merged, nil
 }
 
+// updateCurrInput assumes that both unmerged and merged are
+// non-empty.
 func (cr *ConflictResolver) updateCurrInput(ctx context.Context,
 	unmerged, merged []ImmutableRootMetadata) (err error) {
 	cr.inputLock.Lock()
@@ -276,22 +278,19 @@ func (cr *ConflictResolver) updateCurrInput(ctx context.Context,
 		}
 	}()
 
-	if len(unmerged) > 0 {
-		rev := unmerged[len(unmerged)-1].bareMd.RevisionNumber()
-		if rev < cr.currInput.unmerged {
-			return fmt.Errorf("Unmerged revision %d is lower than the "+
-				"expected unmerged revision %d", rev, cr.currInput.unmerged)
-		}
-		cr.currInput.unmerged = rev
+	rev := unmerged[len(unmerged)-1].bareMd.RevisionNumber()
+	if rev < cr.currInput.unmerged {
+		return fmt.Errorf("Unmerged revision %d is lower than the "+
+			"expected unmerged revision %d", rev, cr.currInput.unmerged)
 	}
-	if len(merged) > 0 {
-		rev := merged[len(merged)-1].bareMd.RevisionNumber()
-		if rev < cr.currInput.merged {
-			return fmt.Errorf("Merged revision %d is lower than the "+
-				"expected merged revision %d", rev, cr.currInput.merged)
-		}
-		cr.currInput.merged = rev
+	cr.currInput.unmerged = rev
+
+	rev = merged[len(merged)-1].bareMd.RevisionNumber()
+	if rev < cr.currInput.merged {
+		return fmt.Errorf("Merged revision %d is lower than the "+
+			"expected merged revision %d", rev, cr.currInput.merged)
 	}
+	cr.currInput.merged = rev
 
 	if len(unmerged)+len(merged) > cr.maxRevsThreshold {
 		cr.lockNextTime = true
