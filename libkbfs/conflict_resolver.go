@@ -302,14 +302,14 @@ func (cr *ConflictResolver) updateCurrInput(ctx context.Context,
 func (cr *ConflictResolver) makeChains(ctx context.Context,
 	unmerged, merged []ImmutableRootMetadata) (
 	unmergedChains, mergedChains *crChains, err error) {
-	unmergedChains, err =
-		newCRChains(ctx, cr.config, unmerged, &cr.fbo.blocks, true)
+	unmergedChains, err = newCRChainsForIRMDs(
+		ctx, cr.config, unmerged, &cr.fbo.blocks, true)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	mergedChains, err =
-		newCRChains(ctx, cr.config, merged, &cr.fbo.blocks, true)
+	mergedChains, err = newCRChainsForIRMDs(
+		ctx, cr.config, merged, &cr.fbo.blocks, true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -2502,7 +2502,7 @@ func (cr *ConflictResolver) makePostResolutionPaths(ctx context.Context,
 	// doesn't use it; it only inspects the MD itself and the
 	// timestamp.
 	resolvedChains, err := newCRChains(ctx, cr.config,
-		[]ImmutableRootMetadata{MakeImmutableRootMetadata(md, fakeMdID(1),
+		[]chainMetadata{MakeImmutableRootMetadata(md, fakeMdID(1),
 			cr.config.Clock().Now())},
 		&cr.fbo.blocks, false)
 	if err != nil {

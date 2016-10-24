@@ -179,7 +179,8 @@ func TestCRChainsSingleOp(t *testing.T) {
 	rmds := []*RootMetadata{rmd}
 	config, irmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChains(context.Background(), config, irmds, nil, true)
+	cc, err := newCRChainsForIRMDs(
+		context.Background(), config, irmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -214,7 +215,8 @@ func TestCRChainsRenameOp(t *testing.T) {
 	rmds := []*RootMetadata{rmd}
 	config, irmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChains(context.Background(), config, irmds, nil, true)
+	cc, err := newCRChainsForIRMDs(
+		context.Background(), config, irmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -324,7 +326,8 @@ func testCRChainsMultiOps(t *testing.T) (
 	rmds := []*RootMetadata{bigRmd}
 	config, irmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChains(context.Background(), config, irmds, nil, true)
+	cc, err := newCRChainsForIRMDs(
+		context.Background(), config, irmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains for big RMD: %v", err)
 	}
@@ -356,7 +359,8 @@ func testCRChainsMultiOps(t *testing.T) (
 	// now make sure the chain of MDs gets the same answers
 	config, multiIrmds := testCRChainsFillInWriter(t, multiRmds)
 	defer config.Shutdown()
-	mcc, err := newCRChains(context.Background(), config, multiIrmds, nil, true)
+	mcc, err := newCRChainsForIRMDs(
+		context.Background(), config, multiIrmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains for multi RMDs: %v", err)
 	}
@@ -488,7 +492,8 @@ func TestCRChainsCollapse(t *testing.T) {
 	rmds := []*RootMetadata{rmd}
 	config, irmds := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
-	cc, err := newCRChains(context.Background(), config, irmds, nil, true)
+	cc, err := newCRChainsForIRMDs(
+		context.Background(), config, irmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -522,7 +527,8 @@ func TestCRChainsRemove(t *testing.T) {
 
 	config := MakeTestConfigOrBust(t, "u1")
 	defer config.Shutdown()
-	ccs, err := newCRChains(context.Background(), config, irmds, nil, true)
+	ccs, err := newCRChainsForIRMDs(
+		context.Background(), config, irmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}

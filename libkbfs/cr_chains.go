@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"golang.org/x/net/context"
 )
@@ -292,7 +293,7 @@ type crChainsMDInfo struct {
 	rootPtr BlockPointer
 }
 
-func crChainsMDInfoFromIRMD(md ImmutableRootMetadata) crChainsMDInfo {
+func crChainsMDInfoFromCMD(md chainMetadata) crChainsMDInfo {
 	return crChainsMDInfo{
 		kmd:     md,
 		rootPtr: md.Data().Dir.BlockPointer,
@@ -690,9 +691,19 @@ func (ccs *crChains) addOps(codec kbfscodec.Codec,
 	return nil
 }
 
+type chainMetadata interface {
+	KeyMetadata
+	LocalTimestamp() time.Time
+	IsWriterMetadataCopiedSet() bool
+	LastModifyingWriter() keybase1.UID
+	LastModifyingWriterKID() keybase1.KID
+	Revision() MetadataRevision
+	Data() *PrivateMetadata
+}
+
 // newCRChains builds a new crChains object from the given list of
 // immutable RMDs, which must be non-empty.
-func newCRChains(ctx context.Context, cfg Config, irmds []ImmutableRootMetadata,
+func newCRChains(ctx context.Context, cfg Config, irmds []chainMetadata,
 	fbo *folderBlockOps, identifyTypes bool) (
 	ccs *crChains, err error) {
 	ccs = newCRChainsEmpty()
@@ -715,7 +726,7 @@ func newCRChains(ctx context.Context, cfg Config, irmds []ImmutableRootMetadata,
 
 		data := *irmd.Data()
 
-		err = ccs.addOps(cfg.Codec(), data, winfo, irmd.localTimestamp)
+		err = ccs.addOps(cfg.Codec(), data, winfo, irmd.LocalTimestamp())
 
 		if ptr := data.cachedChanges.Info.BlockPointer; ptr != zeroPtr {
 			ccs.blockChangePointers[ptr] = true
@@ -764,9 +775,20 @@ func newCRChains(ctx context.Context, cfg Config, irmds []ImmutableRootMetadata,
 		}
 	}
 
-	ccs.mostRecentMDInfo = crChainsMDInfoFromIRMD(mostRecentMD)
+	ccs.mostRecentMDInfo = crChainsMDInfoFromCMD(mostRecentMD)
 
 	return ccs, nil
+}
+
+func newCRChainsForIRMDs(
+	ctx context.Context, cfg Config, irmds []ImmutableRootMetadata,
+	fbo *folderBlockOps, identifyTypes bool) (
+	ccs *crChains, err error) {
+	cmds := make([]chainMetadata, len(irmds))
+	for i, irmd := range irmds {
+		cmds[i] = irmd
+	}
+	return newCRChains(ctx, cfg, cmds, fbo, identifyTypes)
 }
 
 type crChainSummary struct {
