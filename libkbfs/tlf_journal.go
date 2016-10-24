@@ -1028,11 +1028,6 @@ func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
 			break
 		}
 
-		if len(ibrmds) == 0 {
-			// Nothing else to do.
-			return jStatus, nil
-		}
-
 		// We need to init it ourselves, or wait for someone else
 		// to do it.
 		doInit, err := j.unflushedPaths.startInitializeOrWait(ctx)
