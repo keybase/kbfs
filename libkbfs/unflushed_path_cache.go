@@ -119,6 +119,8 @@ func (upc *unflushedPathCache) abortInitialization() {
 	upc.ready = nil
 }
 
+// unflushedPathMDInfo is the subset of metadata info needed by
+// unflushedPathCache.
 type unflushedPathMDInfo struct {
 	revision       MetadataRevision
 	kmd            KeyMetadata
