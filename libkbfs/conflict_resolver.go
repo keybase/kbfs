@@ -3443,6 +3443,11 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 		mostRecentMergedMD = mergedMDs[len(mergedMDs)-1]
 	}
 	if len(mergedPaths) == 0 {
+		// TODO: All the other variables returned by
+		// buildChainsAndPaths may also be nil, in which case
+		// completeResolution will deref a nil pointer. Fix
+		// this!
+		//
 		// nothing to do
 		cr.log.CDebugf(ctx, "No updates to resolve, so finishing")
 		lbc := make(localBcache)
