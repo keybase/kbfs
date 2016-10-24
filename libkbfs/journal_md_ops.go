@@ -107,9 +107,8 @@ func (j journalMDOps) getHeadFromJournal(
 	return irmd, nil
 }
 
-// convertImmutableBareRMDToIRMD decrypts the MD in the given bare root
-// MD.  The caller must NOT hold `j.journalLock`, because blocks
-// from the journal may need to be read as part of the decryption.
+// convertImmutableBareRMDToIRMD decrypts the bare MD into a
+// full-fledged RMD.
 func (j journalMDOps) convertImmutableBareRMDToIRMD(ctx context.Context,
 	ibrmd ImmutableBareRootMetadata, handle *TlfHandle, uid keybase1.UID) (
 	ImmutableRootMetadata, error) {
