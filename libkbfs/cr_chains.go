@@ -699,8 +699,8 @@ type chainMetadata interface {
 }
 
 // newCRChains builds a new crChains object from the given list of
-// immutable RMDs, which must be non-empty.
-func newCRChains(ctx context.Context, cfg Config, irmds []chainMetadata,
+// chainMetadatas, which must be non-empty.
+func newCRChains(ctx context.Context, cfg Config, cmds []chainMetadata,
 	fbo *folderBlockOps, identifyTypes bool) (
 	ccs *crChains, err error) {
 	ccs = newCRChainsEmpty()
@@ -708,29 +708,29 @@ func newCRChains(ctx context.Context, cfg Config, irmds []chainMetadata,
 	// For each MD update, turn each update in each op into map
 	// entries and create chains for the BlockPointers that are
 	// affected directly by the operation.
-	for _, irmd := range irmds {
+	for _, cmd := range cmds {
 		// No new operations in these.
-		if irmd.IsWriterMetadataCopiedSet() {
+		if cmd.IsWriterMetadataCopiedSet() {
 			continue
 		}
 
 		winfo, err := newWriterInfo(
-			ctx, cfg, irmd.LastModifyingWriter(),
-			irmd.LastModifyingWriterKID(), irmd.Revision())
+			ctx, cfg, cmd.LastModifyingWriter(),
+			cmd.LastModifyingWriterKID(), cmd.Revision())
 		if err != nil {
 			return nil, err
 		}
 
-		data := *irmd.Data()
+		data := *cmd.Data()
 
-		err = ccs.addOps(cfg.Codec(), data, winfo, irmd.LocalTimestamp())
+		err = ccs.addOps(cfg.Codec(), data, winfo, cmd.LocalTimestamp())
 
 		if ptr := data.cachedChanges.Info.BlockPointer; ptr != zeroPtr {
 			ccs.blockChangePointers[ptr] = true
 
 			// Any child block change pointers?
 			fblock, err := fbo.GetFileBlockForReading(ctx, makeFBOLockState(),
-				irmd, ptr, MasterBranch, path{})
+				cmd, ptr, MasterBranch, path{})
 			if err != nil {
 				return nil, err
 			}
@@ -752,7 +752,7 @@ func newCRChains(ctx context.Context, cfg Config, irmds []chainMetadata,
 		}
 	}
 
-	mostRecentMD := irmds[len(irmds)-1]
+	mostRecentMD := cmds[len(cmds)-1]
 
 	for _, chain := range ccs.byOriginal {
 		chain.collapse()
@@ -780,6 +780,8 @@ func newCRChains(ctx context.Context, cfg Config, irmds []chainMetadata,
 	return ccs, nil
 }
 
+// newCRChainsForIRMDs simply builds a list of chainMetadatas from the
+// given list of ImmutableRootMetadatas and calls newCRChains with it.
 func newCRChainsForIRMDs(
 	ctx context.Context, cfg Config, irmds []ImmutableRootMetadata,
 	fbo *folderBlockOps, identifyTypes bool) (
