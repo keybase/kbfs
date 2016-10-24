@@ -3438,11 +3438,11 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 	if err != nil {
 		return
 	}
-	var mostRecentMergedMD ImmutableRootMetadata
-	if len(mergedMDs) > 0 {
-		mostRecentMergedMD = mergedMDs[len(mergedMDs)-1]
-	}
 	if len(mergedPaths) == 0 {
+		var mostRecentMergedMD ImmutableRootMetadata
+		if len(mergedMDs) > 0 {
+			mostRecentMergedMD = mergedMDs[len(mergedMDs)-1]
+		}
 		// TODO: All the other variables returned by
 		// buildChainsAndPaths may also be nil, in which case
 		// completeResolution will deref a nil pointer. Fix
@@ -3475,6 +3475,8 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 		}
 	}
 	cr.log.CDebugf(ctx, "Recreate ops: %s", recOps)
+
+	mostRecentMergedMD := mergedMDs[len(mergedMDs)-1]
 
 	mostRecentMergedWriterInfo, err := newWriterInfo(ctx, cr.config,
 		mostRecentMergedMD.LastModifyingWriter(),
