@@ -667,7 +667,7 @@ func (ccs *crChains) addOps(codec kbfscodec.Codec,
 	privateMD PrivateMetadata, winfo writerInfo,
 	localTimestamp time.Time) error {
 	// Copy the ops since CR will change them.
-	var ops opsList
+	ops := make(opsList, len(privateMD.Changes.Ops))
 	err := kbfscodec.Update(codec, &ops, privateMD.Changes.Ops)
 	if err != nil {
 		return err
