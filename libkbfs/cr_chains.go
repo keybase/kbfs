@@ -248,12 +248,12 @@ func (cc *crChain) identifyType(ctx context.Context, fbo *folderBlockOps,
 }
 
 func (cc *crChain) remove(ctx context.Context, log logger.Logger,
-	rmd ImmutableRootMetadata) bool {
+	revision MetadataRevision) bool {
 	anyRemoved := false
 	var newOps []op
 	for i, currOp := range cc.ops {
 		info := currOp.getWriterInfo()
-		if info.revision == rmd.Revision() {
+		if info.revision == revision {
 			log.CDebugf(ctx, "Removing op %s from chain with mostRecent=%v",
 				currOp, cc.mostRecent)
 			if !anyRemoved {
@@ -965,15 +965,15 @@ func (ccs *crChains) getPaths(ctx context.Context, blocks *folderBlockOps,
 	return paths, nil
 }
 
-// remove deletes all operations associated with `rmd` from the chains.
-// It leaves original block pointers in place though, even when
-// removing operations from the head of the chain.  It returns the set
-// of chains with at least one operation removed.
+// remove deletes all operations associated with the given revision
+// from the chains.  It leaves original block pointers in place
+// though, even when removing operations from the head of the chain.
+// It returns the set of chains with at least one operation removed.
 func (ccs *crChains) remove(ctx context.Context, log logger.Logger,
-	rmd ImmutableRootMetadata) []*crChain {
+	revision MetadataRevision) []*crChain {
 	var chainsWithRemovals []*crChain
 	for _, chain := range ccs.byOriginal {
-		if chain.remove(ctx, log, rmd) {
+		if chain.remove(ctx, log, revision) {
 			chainsWithRemovals = append(chainsWithRemovals, chain)
 		}
 	}

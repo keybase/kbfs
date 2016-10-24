@@ -535,7 +535,7 @@ func TestCRChainsRemove(t *testing.T) {
 
 	// This should remove the write operation.
 	removedChains := ccs.remove(context.Background(),
-		logger.NewTestLogger(t), irmds[3])
+		logger.NewTestLogger(t), irmds[3].Revision())
 	require.Len(t, removedChains, 1)
 	require.Equal(t, removedChains[0].original, writtenFileUnref)
 	require.Len(t, removedChains[0].ops, 0)
