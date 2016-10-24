@@ -686,8 +686,8 @@ func (ccs *crChains) addOps(codec kbfscodec.Codec,
 
 // chainMetadata is the interface for metadata objects that can be
 // used in building crChains. It is implemented by
-// ImmutableRootMetadata, but is mostly implemented by RootMetadata
-// (just need LocalTimestamp).
+// ImmutableRootMetadata, but is also mostly implemented by
+// RootMetadata (just need LocalTimestamp).
 type chainMetadata interface {
 	KeyMetadata
 	IsWriterMetadataCopiedSet() bool
