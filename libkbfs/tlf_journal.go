@@ -1280,15 +1280,28 @@ func (j *tlfJournal) convertImmutableBareRMDToIRMD(ctx context.Context,
 func (j *tlfJournal) convertImmutableBareRMDToMDInfo(ctx context.Context,
 	ibrmd ImmutableBareRootMetadata, handle *TlfHandle) (
 	unflushedPathMDInfo, error) {
-	irmd, err := j.convertImmutableBareRMDToIRMD(ctx, ibrmd, handle)
+	// TODO: Avoid having to do this type assertion.
+	brmd, ok := ibrmd.BareRootMetadata.(MutableBareRootMetadata)
+	if !ok {
+		return unflushedPathMDInfo{}, MutableBareRootMetadataNoImplError{}
+	}
+
+	rmd := MakeRootMetadata(brmd, ibrmd.extra, handle)
+
+	err := decryptMDPrivateData(
+		ctx, j.config.Codec(), j.config.Crypto(),
+		j.config.BlockCache(), j.config.BlockOps(),
+		j.config.mdDecryptionKeyGetter(), j.uid, rmd, rmd.ReadOnly())
 	if err != nil {
 		return unflushedPathMDInfo{}, err
 	}
+	irmd := MakeImmutableRootMetadata(rmd, ibrmd.mdID, ibrmd.localTimestamp)
+
 	return unflushedPathMDInfo{
-		revision:       irmd.Revision(),
+		revision:       ibrmd.RevisionNumber(),
 		kmd:            irmd,
 		pmd:            *irmd.Data(),
-		localTimestamp: irmd.localTimestamp,
+		localTimestamp: ibrmd.localTimestamp,
 	}, nil
 }
 
