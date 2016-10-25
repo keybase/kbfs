@@ -102,16 +102,18 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 }
 
 // mdCheckChain checks that the given MD object is a valid successor
-// of the previous revision, all the way back to the first one. Along
-// the way, it also checks that the root blocks that haven't been
-// garbage-collected are present. It returns a list of MD objects with
-// valid roots, in reverse revision order.
+// of the previous revision, and so on all the way back to the given
+// revision. Along the way, it also checks that the root blocks that
+// haven't been garbage-collected are present. It returns a list of MD
+// objects with valid roots, in reverse revision order.
 func mdCheckChain(ctx context.Context, config libkbfs.Config,
-	irmd libkbfs.ImmutableRootMetadata, verbose bool) (
+	irmd libkbfs.ImmutableRootMetadata,
+	minRevision libkbfs.MetadataRevision, verbose bool) (
 	irmdsWithRoots []libkbfs.ImmutableRootMetadata, err error) {
-	fmt.Printf("Checking chain (rev=%d)...\n", irmd.Revision())
+	fmt.Printf("Checking chain from rev %d to %d...\n",
+		minRevision, irmd.Revision())
 	gcUnrefs := make(map[libkbfs.BlockRef]bool)
-	for irmd.Revision() > libkbfs.MetadataRevisionInitial {
+	for irmd.Revision() > minRevision {
 		rootPtr := irmd.Data().Dir.BlockPointer
 		if gcUnrefs[rootPtr.Ref()] {
 			if verbose {
@@ -170,7 +172,14 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	input string, irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
-	irmdsWithRoots, _ := mdCheckChain(ctx, config, irmd, verbose)
+	var minRevision libkbfs.MetadataRevision
+	if irmd.Revision() >= libkbfs.MetadataRevisionInitial+100 {
+		minRevision = irmd.Revision() - 100
+	} else {
+		minRevision = libkbfs.MetadataRevisionInitial
+	}
+	irmdsWithRoots, _ := mdCheckChain(
+		ctx, config, irmd, minRevision, verbose)
 
 	for _, irmd := range irmdsWithRoots {
 		data := irmd.Data()
