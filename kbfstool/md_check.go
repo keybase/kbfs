@@ -144,6 +144,7 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 		if verbose {
 			fmt.Printf("Fetching rev %d...\n", irmd.Revision()-1)
 		}
+		// TODO: Getting in chunks would be faster.
 		irmdPrev, err := mdGet(ctx, config, irmd.TlfID(),
 			irmd.BID(), irmd.Revision()-1)
 		if err != nil {
