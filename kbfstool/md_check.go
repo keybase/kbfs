@@ -103,7 +103,29 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 
 func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 	input string, irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
+	checkDirMin := libkbfs.MetadataRevisionInitial
 	for irmd.Revision() > libkbfs.MetadataRevisionInitial {
+		if irmd.Revision() >= checkDirMin {
+			fmt.Printf("Checking %d root...\n", irmd.Revision())
+			var dirBlock libkbfs.DirBlock
+			err := config.BlockOps().Get(
+				ctx, irmd, irmd.Data().Dir.BlockPointer, &dirBlock)
+			if err != nil {
+				fmt.Printf("Got error while checking %d root: %v\n",
+					irmd.Revision(), err)
+			}
+		}
+
+		for _, op := range irmd.Data().Changes.Ops {
+			if gcOp, ok := op.(*libkbfs.GCOp); ok {
+				fmt.Printf("GC op up to %d found\n",
+					gcOp.LatestRev)
+				if gcOp.LatestRev+1 > checkDirMin {
+					checkDirMin = gcOp.LatestRev + 1
+				}
+			}
+		}
+
 		if verbose {
 			fmt.Printf(
 				"Fetching revision %d...\n", irmd.Revision()-1)
@@ -123,15 +145,6 @@ func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 		if err != nil {
 			fmt.Printf("Got error while checking %d -> %d: %v\n",
 				irmd.Revision()-1, irmd.Revision(), err)
-		}
-
-		fmt.Printf("Checking %d root...\n", irmd.Revision())
-		var dirBlock libkbfs.DirBlock
-		err = config.BlockOps().Get(
-			ctx, irmd, irmd.Data().Dir.BlockPointer, &dirBlock)
-		if err != nil {
-			fmt.Printf("Got error while checking %d root: %v\n",
-				irmd.Revision(), err)
 		}
 
 		irmd = irmdPrev
