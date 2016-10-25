@@ -128,6 +128,8 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 				fmt.Printf("Got error while checking root "+
 					"for rev %d: %v\n",
 					irmd.Revision(), err)
+			} else {
+				irmdsWithRoots = append(irmdsWithRoots, irmd)
 			}
 		}
 
