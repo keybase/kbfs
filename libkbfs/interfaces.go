@@ -1693,9 +1693,9 @@ type MutableBareRootMetadata interface {
 	SetPrevRoot(mdID MdID)
 	// SetSerializedPrivateMetadata sets the serialized private metadata.
 	SetSerializedPrivateMetadata(spmd []byte)
-	// MaybeSignWriterMetadata signs the writer metadata, for
+	// SignWriterMetadataInternally signs the writer metadata, for
 	// versions that store this signature inside the metadata.
-	MaybeSignWriterMetadata(ctx context.Context,
+	SignWriterMetadataInternally(ctx context.Context,
 		codec kbfscodec.Codec, signer cryptoSigner) error
 	// SetLastModifyingWriter sets the UID of the last user to modify the writer metadata.
 	SetLastModifyingWriter(user keybase1.UID)

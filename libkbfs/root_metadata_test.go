@@ -481,7 +481,7 @@ func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 	err := brmd.Update(tlfID, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 
-	err = brmd.MaybeSignWriterMetadata(
+	err = brmd.SignWriterMetadataInternally(
 		context.Background(), config.Codec(), config.Crypto())
 	if err != nil {
 		t.Fatal(err)
@@ -507,7 +507,7 @@ func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 	config2 := MakeTestConfigOrBust(t, "bob")
 	defer config2.Shutdown()
 
-	err = newBrmd.MaybeSignWriterMetadata(
+	err = newBrmd.SignWriterMetadataInternally(
 		context.Background(), config2.Codec(), config2.Crypto())
 	if err != nil {
 		t.Fatal(err)
@@ -678,7 +678,7 @@ func TestRootMetadataFinalVerifyV3(t *testing.T) {
 	md.SetLastModifyingWriter(h.Writers[0])
 	md.SetLastModifyingUser(h.Writers[0])
 	md.SetSerializedPrivateMetadata([]byte{42})
-	err = md.MaybeSignWriterMetadata(
+	err = md.SignWriterMetadataInternally(
 		context.Background(), config.Codec(), config.Crypto())
 	if err != nil {
 		t.Fatal(err)

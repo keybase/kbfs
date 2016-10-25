@@ -631,8 +631,9 @@ func (j *mdJournal) convertToBranch(
 		brmd.SetUnmerged()
 		brmd.SetBranchID(bid)
 
-		// Re-sign the writer metadata.
-		err = brmd.MaybeSignWriterMetadata(ctx, j.codec, signer)
+		// Re-sign the writer metadata internally, since we
+		// changed it.
+		err = brmd.SignWriterMetadataInternally(ctx, j.codec, signer)
 		if err != nil {
 			return NullBranchID, err
 		}

@@ -356,10 +356,10 @@ func encryptMDPrivateData(
 			brmd.SetSerializedPrivateMetadata(encodedEncryptedPrivateMetadata)
 		}
 
-		// Sign the writer metadata if needed. This has to be
+		// Sign the writer metadata internally. This has to be
 		// done here, instead of in signMD, since the
 		// MetadataID may depend on it.
-		err := brmd.MaybeSignWriterMetadata(ctx, codec, signer)
+		err := brmd.SignWriterMetadataInternally(ctx, codec, signer)
 		if err != nil {
 			return nil, err
 		}
