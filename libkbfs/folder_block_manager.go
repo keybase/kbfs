@@ -966,7 +966,7 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 		fbm.lastQRLock.Lock()
 		defer fbm.lastQRLock.Unlock()
 		// Remember the QR we just performed.
-		if err == nil && (head != ImmutableRootMetadata{}) {
+		if err == nil && head != (ImmutableRootMetadata{}) {
 			fbm.lastQRHeadRev = head.Revision()
 			fbm.lastQROldEnoughRev = mostRecentOldEnoughRev
 			fbm.wasLastQRComplete = complete
