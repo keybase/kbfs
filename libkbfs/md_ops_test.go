@@ -115,38 +115,6 @@ func newRMD(t *testing.T, config Config, public bool) (
 	}, h
 }
 
-func addFakeRMDSData(t *testing.T, codec kbfscodec.Codec, crypto cryptoPure,
-	rmds *RootMetadataSigned, h *TlfHandle) ExtraMetadata {
-	mmd := rmds.MD.(MutableBareRootMetadata)
-	mmd.SetRevision(MetadataRevision(1))
-	pmd := PrivateMetadata{}
-	// TODO: Will have to change this for private folders if we
-	// un-mock out those tests.
-	buf, err := codec.Encode(pmd)
-	require.NoError(t, err)
-	mmd.SetSerializedPrivateMetadata(buf)
-	mmd.SetLastModifyingWriter(h.FirstResolvedWriter())
-	mmd.SetLastModifyingUser(h.FirstResolvedWriter())
-	fakeVerifyingKey := MakeFakeVerifyingKeyOrBust("fake key")
-	mmd.(*BareRootMetadataV2).WriterMetadataSigInfo = kbfscrypto.SignatureInfo{
-		Version:      kbfscrypto.SigED25519,
-		Signature:    []byte{41},
-		VerifyingKey: fakeVerifyingKey,
-	}
-	rmds.SigInfo = kbfscrypto.SignatureInfo{
-		Version:      kbfscrypto.SigED25519,
-		Signature:    []byte{42},
-		VerifyingKey: fakeVerifyingKey,
-	}
-	rmds.untrustedServerTimestamp = time.Now()
-
-	var extra ExtraMetadata
-	if !h.IsPublic() {
-		extra, _ = mmd.FakeInitialRekey(crypto, h.ToBareHandleOrBust())
-	}
-	return extra
-}
-
 func newRMDS(t *testing.T, config Config, h *TlfHandle) (
 	*RootMetadataSigned, ExtraMetadata) {
 	id := FakeTlfID(1, h.IsPublic())
