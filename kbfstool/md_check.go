@@ -101,38 +101,17 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 	return nil
 }
 
-func mdCheckGCOp(currRev libkbfs.MetadataRevision, gcOp *libkbfs.GCOp) {
-	if gcOp.LatestRev >= currRev {
-		fmt.Printf("GC op %v unexpectedly has latest revision "+
-			"not less than current revision %d\n", gcOp,
-			currRev)
-	}
-
-	if len(gcOp.Refs()) > 0 {
-		fmt.Printf("GC op %v unexpectedly references %d blocks\n",
-			len(gcOp.Refs()))
-	}
-
-	if len(gcOp.AllUpdates()) > 0 {
-		fmt.Printf("GC op %v unexpectedly has %d updates\n",
-			len(gcOp.AllUpdates()))
-	}
-}
-
 func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 	irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
-	gcUnrefBlocks := make(map[libkbfs.BlockID]libkbfs.MetadataRevision)
+	gcUnrefs := make(map[libkbfs.BlockRef]bool)
 	for irmd.Revision() > libkbfs.MetadataRevisionInitial {
 		rootPtr := irmd.Data().Dir.BlockPointer
-		if gcLatestRev, ok := gcUnrefBlocks[rootPtr.ID]; ok {
-			if irmd.Revision() > gcLatestRev {
-				fmt.Printf("this shouldn't happen\n")
-			}
-		} else {
-			fmt.Printf("Checking %d root...\n", irmd.Revision())
+		if !gcUnrefs[rootPtr.Ref()] {
+			fmt.Printf("Checking %d root=%s...\n",
+				irmd.Revision(), rootPtr.Ref())
 			var dirBlock libkbfs.DirBlock
 			err := config.BlockOps().Get(
-				ctx, irmd, irmd.Data().Dir.BlockPointer, &dirBlock)
+				ctx, irmd, rootPtr, &dirBlock)
 			if err != nil {
 				fmt.Printf("Got error while checking %d root: %v\n",
 					irmd.Revision(), err)
@@ -141,11 +120,10 @@ func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 
 		for _, op := range irmd.Data().Changes.Ops {
 			if gcOp, ok := op.(*libkbfs.GCOp); ok {
-				mdCheckGCOp(irmd.Revision(), gcOp)
 				fmt.Printf("GC op up to %d found\n",
 					gcOp.LatestRev)
 				for _, unref := range gcOp.Unrefs() {
-					gcUnrefBlocks[unref.ID] = gcOp.LatestRev
+					gcUnrefs[unref.Ref()] = true
 				}
 			}
 		}
