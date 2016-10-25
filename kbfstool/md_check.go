@@ -101,27 +101,34 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 	return nil
 }
 
-func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
+// mdCheckChain checks that the given MD object is a valid successor
+// of the previous revision, all the way back to the first one. Along
+// the way, it also checks that the root blocks that haven't been
+// garbage-collected are present.
+func mdCheckChain(ctx context.Context, config libkbfs.Config,
 	irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
+	fmt.Printf("Checking chain (rev=%d)...\n", irmd.Revision())
 	gcUnrefs := make(map[libkbfs.BlockRef]bool)
 	for irmd.Revision() > libkbfs.MetadataRevisionInitial {
 		rootPtr := irmd.Data().Dir.BlockPointer
-		if !gcUnrefs[rootPtr.Ref()] {
-			fmt.Printf("Checking %d root=%s...\n",
+		if gcUnrefs[rootPtr.Ref()] {
+			fmt.Printf("Skipping checking root for rev %d (GCed)\n",
+				irmd.Revision())
+		} else {
+			fmt.Printf("Checking root for rev %d (%s)...\n",
 				irmd.Revision(), rootPtr.Ref())
 			var dirBlock libkbfs.DirBlock
 			err := config.BlockOps().Get(
 				ctx, irmd, rootPtr, &dirBlock)
 			if err != nil {
-				fmt.Printf("Got error while checking %d root: %v\n",
+				fmt.Printf("Got error while checking root "+
+					"for rev %d: %v\n",
 					irmd.Revision(), err)
 			}
 		}
 
 		for _, op := range irmd.Data().Changes.Ops {
 			if gcOp, ok := op.(*libkbfs.GCOp); ok {
-				fmt.Printf("GC op up to %d found\n",
-					gcOp.LatestRev)
 				for _, unref := range gcOp.Unrefs() {
 					gcUnrefs[unref.Ref()] = true
 				}
@@ -130,7 +137,7 @@ func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 
 		if verbose {
 			fmt.Printf(
-				"Fetching revision %d...\n", irmd.Revision()-1)
+				"Fetching rev %d...\n", irmd.Revision()-1)
 		}
 		irmdPrev, err := mdGet(ctx, config, irmd.TlfID(),
 			irmd.BID(), irmd.Revision()-1)
@@ -139,13 +146,13 @@ func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 		}
 
 		if verbose {
-			fmt.Printf("Checking %d -> %d...\n",
+			fmt.Printf("Checking %d -> %d link...\n",
 				irmd.Revision()-1, irmd.Revision())
 		}
 		err = irmdPrev.CheckValidSuccessor(
 			irmdPrev.MdID(), irmd.ReadOnly())
 		if err != nil {
-			fmt.Printf("Got error while checking %d -> %d: %v\n",
+			fmt.Printf("Got error while checking %d -> %d link: %v\n",
 				irmd.Revision()-1, irmd.Revision(), err)
 		}
 
@@ -156,7 +163,7 @@ func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	input string, irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
-	_ = mdCheckMDChain(ctx, config, irmd, verbose)
+	_ = mdCheckChain(ctx, config, irmd, verbose)
 
 	data := irmd.Data()
 
