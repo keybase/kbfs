@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -121,16 +120,17 @@ func newRootMetadataV3OrBust(
 }
 
 func makeImmutableRootMetadataForTest(
-	rmd *RootMetadata, key kbfscrypto.VerifyingKey) ImmutableRootMetadata {
+	t *testing.T, rmd *RootMetadata, key kbfscrypto.VerifyingKey,
+	mdID MdID) ImmutableRootMetadata {
 	brmdv2 := rmd.bareMd.(*BareRootMetadataV2)
-	if !brmdv2.WriterMetadataSigInfo.IsNil() {
-		panic(fmt.Errorf("Already have non-nil signature %s",
-			brmdv2.WriterMetadataSigInfo))
-	}
+	vk := brmdv2.WriterMetadataSigInfo.VerifyingKey
+	require.True(t, vk == (kbfscrypto.VerifyingKey{}) || vk == key,
+		"Writer signature %s with unexpected non-nil verifying key != %s",
+		brmdv2.WriterMetadataSigInfo, key)
 	brmdv2.WriterMetadataSigInfo = kbfscrypto.SignatureInfo{
 		VerifyingKey: key,
 	}
-	return MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
+	return MakeImmutableRootMetadata(rmd, key, mdID, time.Now())
 }
 
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for

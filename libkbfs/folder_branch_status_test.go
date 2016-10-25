@@ -116,7 +116,8 @@ func TestFBStatusAllFields(t *testing.T) {
 	nodeCache.EXPECT().PathFromNode(mockNodeMatcher{n2}).AnyTimes().Return(p2)
 
 	key := MakeFakeVerifyingKeyOrBust("fake key")
-	fbsk.setRootMetadata(makeImmutableRootMetadataForTest(md, key))
+	fbsk.setRootMetadata(
+		makeImmutableRootMetadataForTest(t, md, key, fakeMdID(1)))
 	fbsk.addDirtyNode(n1)
 	fbsk.addDirtyNode(n2)
 
