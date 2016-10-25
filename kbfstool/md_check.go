@@ -102,8 +102,8 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 }
 
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
-	input string, rmd libkbfs.ImmutableRootMetadata, verbose bool) error {
-	data := rmd.Data()
+	input string, irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
+	data := irmd.Data()
 
 	if data.ChangesBlockInfo() == (libkbfs.BlockInfo{}) {
 		if verbose {
@@ -113,10 +113,10 @@ func mdCheckOne(ctx context.Context, config libkbfs.Config,
 		bi := data.ChangesBlockInfo()
 		_ = checkFileBlock(
 			ctx, config, fmt.Sprintf("%s MD changes block", input),
-			rmd, bi, verbose)
+			irmd, bi, verbose)
 	}
 
-	_ = checkDirBlock(ctx, config, input, rmd, data.Dir.BlockInfo, verbose)
+	_ = checkDirBlock(ctx, config, input, irmd, data.Dir.BlockInfo, verbose)
 	return nil
 }
 
