@@ -191,7 +191,8 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 		}
 	}
 
-	// TODO: Avoid the need for this.
+	// TODO: Avoid the need for this copy (which is because MakeRootMetadata
+	// takes a MutableBareRootMetadata).
 	newMD, err := rmds.MD.DeepCopy(md.config.Codec())
 	if err != nil {
 		return ImmutableRootMetadata{}, err
@@ -435,7 +436,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 			return nil, fmt.Errorf("Unexpected revision %d; expected "+
 				"something between %d and %d inclusive", irmd.Revision(),
 				startRev, startRev+numExpected-1)
-		} else if (irmds[i] != ImmutableRootMetadata{}) {
+		} else if irmds[i] != (ImmutableRootMetadata{}) {
 			return nil, fmt.Errorf("Got revision %d twice", irmd.Revision())
 		}
 		irmds[i] = irmd
@@ -539,6 +540,7 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
+	// TODO: Avoid the need for this deep copy, too.
 	newMD, err := rmds.MD.DeepCopy(md.config.Codec())
 	if err != nil {
 		return MdID{}, err
