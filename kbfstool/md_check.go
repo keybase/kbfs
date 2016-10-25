@@ -121,9 +121,14 @@ func mdCheckGCOp(currRev libkbfs.MetadataRevision, gcOp *libkbfs.GCOp) {
 
 func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 	irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
-	checkDirMin := libkbfs.MetadataRevisionInitial
+	gcUnrefBlocks := make(map[libkbfs.BlockID]libkbfs.MetadataRevision)
 	for irmd.Revision() > libkbfs.MetadataRevisionInitial {
-		if irmd.Revision() >= checkDirMin {
+		rootPtr := irmd.Data().Dir.BlockPointer
+		if gcLatestRev, ok := gcUnrefBlocks[rootPtr.ID]; ok {
+			if irmd.Revision() > gcLatestRev {
+				fmt.Printf("this shouldn't happen\n")
+			}
+		} else {
 			fmt.Printf("Checking %d root...\n", irmd.Revision())
 			var dirBlock libkbfs.DirBlock
 			err := config.BlockOps().Get(
@@ -139,8 +144,8 @@ func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 				mdCheckGCOp(irmd.Revision(), gcOp)
 				fmt.Printf("GC op up to %d found\n",
 					gcOp.LatestRev)
-				if gcOp.LatestRev+1 > checkDirMin {
-					checkDirMin = gcOp.LatestRev + 1
+				for _, unref := range gcOp.Unrefs() {
+					gcUnrefBlocks[unref.ID] = gcOp.LatestRev
 				}
 			}
 		}
