@@ -211,34 +211,29 @@ func (md *RootMetadata) MakeSuccessor(
 		return nil, MetadataIsFinalError{}
 	}
 
-	isReadable := md.IsReadable() && isWriter
+	isReadableAndWriter := md.IsReadable() && isWriter
 
-	var newMd RootMetadata
-
-	if err := kbfscodec.Update(codec, &newMd, md); err != nil {
-		return nil, err
-	}
-	if err := kbfscodec.Update(codec, &newMd.data, md.data); err != nil {
-		return nil, err
-	}
-	brmdCopy, err := md.bareMd.MakeSuccessorCopy(codec, !isReadable)
+	brmdCopy, err := md.bareMd.MakeSuccessorCopy(codec, isReadableAndWriter)
 	if err != nil {
 		return nil, err
 	}
 
-	newMd.bareMd = brmdCopy
-
+	var extraCopy ExtraMetadata
 	if md.extra != nil {
-		extraCopy, err := md.extra.DeepCopy(codec)
+		extraCopy, err = md.extra.DeepCopy(codec)
 		if err != nil {
 			return nil, err
 		}
-		newMd.extra = extraCopy
 	}
 
-	newMd.tlfHandle = md.tlfHandle.deepCopy()
+	handleCopy := md.tlfHandle.deepCopy()
 
-	if isReadable {
+	newMd := MakeRootMetadata(brmdCopy, extraCopy, handleCopy)
+	if err := kbfscodec.Update(codec, &newMd.data, md.data); err != nil {
+		return nil, err
+	}
+
+	if isReadableAndWriter {
 		newMd.clearLastRevision()
 		// clear the serialized data.
 		newMd.SetSerializedPrivateMetadata(nil)
@@ -255,7 +250,7 @@ func (md *RootMetadata) MakeSuccessor(
 		return nil, errors.New("MD with invalid revision")
 	}
 	newMd.SetRevision(md.Revision() + 1)
-	return &newMd, nil
+	return newMd, nil
 }
 
 // AddNewKeysForTesting makes a new key generation for this RootMetadata using the

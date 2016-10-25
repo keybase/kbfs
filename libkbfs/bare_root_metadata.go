@@ -267,9 +267,8 @@ func (md *BareRootMetadataV2) Update(id TlfID, h BareTlfHandle) error {
 	return nil
 }
 
-// DeepCopy implements the BareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) DeepCopy(
-	codec kbfscodec.Codec) (MutableBareRootMetadata, error) {
+func (md *BareRootMetadataV2) deepCopy(
+	codec kbfscodec.Codec) (*BareRootMetadataV2, error) {
 	var newMd BareRootMetadataV2
 	if err := kbfscodec.Update(codec, &newMd, md); err != nil {
 		return nil, err
@@ -277,17 +276,23 @@ func (md *BareRootMetadataV2) DeepCopy(
 	return &newMd, nil
 }
 
+// DeepCopy implements the BareRootMetadata interface for BareRootMetadataV2.
+func (md *BareRootMetadataV2) DeepCopy(
+	codec kbfscodec.Codec) (MutableBareRootMetadata, error) {
+	return md.deepCopy(codec)
+}
+
 // MakeSuccessorCopy implements the ImmutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) MakeSuccessorCopy(
-	codec kbfscodec.Codec, preserveWriterSig bool) (MutableBareRootMetadata, error) {
+	codec kbfscodec.Codec, isReadableAndWriter bool) (
+	MutableBareRootMetadata, error) {
 	// MDv3 TODO: Make a v3 successor.
-	mdCopy, err := md.DeepCopy(codec)
+	mdCopy, err := md.deepCopy(codec)
 	if err != nil {
 		return nil, err
 	}
-	if !preserveWriterSig {
-		mdCopy.(*BareRootMetadataV2).WriterMetadataSigInfo =
-			kbfscrypto.SignatureInfo{}
+	if isReadableAndWriter {
+		mdCopy.WriterMetadataSigInfo = kbfscrypto.SignatureInfo{}
 	}
 	return mdCopy, nil
 }
