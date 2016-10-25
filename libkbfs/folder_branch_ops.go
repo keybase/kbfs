@@ -351,8 +351,8 @@ func newFolderBranchOps(config Config, fb FolderBranch,
 				leveledRWMutex: blockLockMu,
 			},
 			dirtyFiles: make(map[BlockPointer]*dirtyFile),
-			unrefCache: make(map[blockRef]*syncInfo),
-			deCache:    make(map[blockRef]DirEntry),
+			unrefCache: make(map[BlockRef]*syncInfo),
+			deCache:    make(map[BlockRef]DirEntry),
 			nodeCache:  nodeCache,
 		},
 		nodeCache:       nodeCache,
@@ -3586,7 +3586,7 @@ func (fbo *folderBranchOps) unlinkFromCache(op op, oldDir BlockPointer,
 	childPath.path[len(childPath.path)-2].BlockPointer = oldDir
 	for _, ptr := range op.Unrefs() {
 		childPath.path[len(childPath.path)-1].BlockPointer = ptr
-		fbo.nodeCache.Unlink(ptr.ref(), childPath)
+		fbo.nodeCache.Unlink(ptr.Ref(), childPath)
 	}
 
 	return nil
@@ -3603,7 +3603,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 	default:
 		return
 	case *createOp:
-		node := fbo.nodeCache.Get(realOp.Dir.Ref.ref())
+		node := fbo.nodeCache.Get(realOp.Dir.Ref.Ref())
 		if node == nil {
 			return
 		}
@@ -3614,7 +3614,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			DirUpdated: []string{realOp.NewName},
 		})
 	case *rmOp:
-		node := fbo.nodeCache.Get(realOp.Dir.Ref.ref())
+		node := fbo.nodeCache.Get(realOp.Dir.Ref.Ref())
 		if node == nil {
 			return
 		}
@@ -3633,7 +3633,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			return
 		}
 	case *renameOp:
-		oldNode := fbo.nodeCache.Get(realOp.OldDir.Ref.ref())
+		oldNode := fbo.nodeCache.Get(realOp.OldDir.Ref.Ref())
 		if oldNode != nil {
 			changes = append(changes, NodeChange{
 				Node:       oldNode,
@@ -3642,7 +3642,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 		}
 		var newNode Node
 		if realOp.NewDir.Ref != zeroPtr {
-			newNode = fbo.nodeCache.Get(realOp.NewDir.Ref.ref())
+			newNode = fbo.nodeCache.Get(realOp.NewDir.Ref.Ref())
 			if newNode != nil {
 				changes = append(changes, NodeChange{
 					Node:       newNode,
@@ -3669,7 +3669,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 
 			if newNode == nil {
 				if childNode :=
-					fbo.nodeCache.Get(realOp.Renamed.ref()); childNode != nil {
+					fbo.nodeCache.Get(realOp.Renamed.Ref()); childNode != nil {
 					// if the childNode exists, we still have to update
 					// its path to go through the new node.  That means
 					// creating nodes for all the intervening paths.
@@ -3700,7 +3700,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 					fbo.log.CErrorf(ctx, "Couldn't unlink from cache: %v", err)
 					return
 				}
-				err = fbo.nodeCache.Move(realOp.Renamed.ref(), newNode, realOp.NewName)
+				err = fbo.nodeCache.Move(realOp.Renamed.Ref(), newNode, realOp.NewName)
 				if err != nil {
 					fbo.log.CErrorf(ctx, "Couldn't move node in cache: %v", err)
 					return
@@ -3708,7 +3708,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			}
 		}
 	case *syncOp:
-		node := fbo.nodeCache.Get(realOp.File.Ref.ref())
+		node := fbo.nodeCache.Get(realOp.File.Ref.Ref())
 		if node == nil {
 			return
 		}
@@ -3720,7 +3720,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			FileUpdated: realOp.Writes,
 		})
 	case *setAttrOp:
-		node := fbo.nodeCache.Get(realOp.Dir.Ref.ref())
+		node := fbo.nodeCache.Get(realOp.Dir.Ref.Ref())
 		if node == nil {
 			return
 		}
@@ -3762,7 +3762,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 		for _, unref := range op.Unrefs() {
 			// TODO: I will add logic here to unlink and invalidate any
 			// corresponding unref'd nodes.
-			node := fbo.nodeCache.Get(unref.ref())
+			node := fbo.nodeCache.Get(unref.Ref())
 			if node == nil {
 				// TODO: even if we don't have the node that was
 				// unreferenced, we might have its parent, and that
@@ -3781,7 +3781,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 				continue
 			}
 			parentPath := p.parentPath()
-			parentNode := fbo.nodeCache.Get(parentPath.tailPointer().ref())
+			parentNode := fbo.nodeCache.Get(parentPath.tailPointer().Ref())
 			if parentNode != nil {
 				changes = append(changes, NodeChange{
 					Node:       parentNode,
@@ -3803,7 +3803,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 					p.path[i].BlockPointer = oldPtr
 				}
 			}
-			fbo.nodeCache.Unlink(p.tailPointer().ref(), p)
+			fbo.nodeCache.Unlink(p.tailPointer().Ref(), p)
 		}
 		if len(changes) == 0 {
 			return
@@ -4765,7 +4765,7 @@ func (fbo *folderBranchOps) backgroundFlusher(betweenFlushes time.Duration) {
 	ticker := time.NewTicker(betweenFlushes)
 	defer ticker.Stop()
 	lState := makeFBOLockState()
-	var prevDirtyRefMap map[blockRef]bool
+	var prevDirtyRefMap map[BlockRef]bool
 	sameDirtyRefCount := 0
 	for {
 		doSelect := true
@@ -4793,7 +4793,7 @@ func (fbo *folderBranchOps) backgroundFlusher(betweenFlushes time.Duration) {
 		}
 
 		// Make sure we are making some progress
-		currDirtyRefMap := make(map[blockRef]bool)
+		currDirtyRefMap := make(map[BlockRef]bool)
 		for _, ref := range dirtyRefs {
 			currDirtyRefMap[ref] = true
 		}

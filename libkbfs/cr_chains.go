@@ -811,7 +811,7 @@ func (ccs *crChains) summary(identifyChains *crChains,
 		}
 
 		// find the path name using the identified most recent pointer
-		n := nodeCache.Get(chain.mostRecent.ref())
+		n := nodeCache.Get(chain.mostRecent.Ref())
 		if n == nil {
 			summary.Path = fmt.Sprintf("Unknown path: %v", chain.mostRecent)
 			continue

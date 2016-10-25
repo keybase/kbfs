@@ -1868,7 +1868,7 @@ func (cr *ConflictResolver) makeFileBlockDeepCopy(ctx context.Context,
 			DataVer: cr.config.DataVersion(),
 			BlockContext: BlockContext{
 				Creator:  uid,
-				RefNonce: zeroBlockRefNonce,
+				RefNonce: ZeroBlockRefNonce,
 			},
 		}
 	} else {
