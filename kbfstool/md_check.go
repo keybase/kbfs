@@ -114,8 +114,10 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 	for irmd.Revision() > libkbfs.MetadataRevisionInitial {
 		rootPtr := irmd.Data().Dir.BlockPointer
 		if gcUnrefs[rootPtr.Ref()] {
-			fmt.Printf("Skipping checking root for rev %d (GCed)\n",
-				irmd.Revision())
+			if verbose {
+				fmt.Printf("Skipping checking root for rev %d (GCed)\n",
+					irmd.Revision())
+			}
 		} else {
 			fmt.Printf("Checking root for rev %d (%s)...\n",
 				irmd.Revision(), rootPtr.Ref())
