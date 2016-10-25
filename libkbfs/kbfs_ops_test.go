@@ -1032,7 +1032,8 @@ func (s shimMDOps) Put(ctx context.Context, rmd *RootMetadata) (MdID, error) {
 		return MdID{}, err
 	}
 	signingKey := MakeLocalUserSigningKeyOrBust(username)
-	rmd.bareMd.SignWriterMetadataInternally(ctx, s.codec, kbfscrypto.SigningKeySigner{Key: signingKey})
+	rmd.bareMd.SignWriterMetadataInternally(
+		ctx, s.codec, kbfscrypto.SigningKeySigner{Key: signingKey})
 	return s.crypto.MakeMdID(rmd.bareMd)
 }
 
@@ -1046,7 +1047,8 @@ func (s shimMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (MdID, er
 		return MdID{}, err
 	}
 	signingKey := MakeLocalUserSigningKeyOrBust(username)
-	rmd.bareMd.SignWriterMetadataInternally(ctx, s.codec, kbfscrypto.SigningKeySigner{Key: signingKey})
+	rmd.bareMd.SignWriterMetadataInternally(
+		ctx, s.codec, kbfscrypto.SigningKeySigner{Key: signingKey})
 	return s.crypto.MakeMdID(rmd.bareMd)
 }
 
@@ -1351,8 +1353,8 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 		expectSyncBlock(t, config, nil, uid, id, "b", p, rmd,
 			entryType != Sym, 0, 0, 0, &newRmd, blocks)
 
-	var err error
 	var newN Node
+	var err error
 	switch entryType {
 	case File:
 		newN, _, err = config.KBFSOps().CreateFile(ctx, n, "b", false, NoExcl)
