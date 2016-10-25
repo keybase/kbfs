@@ -11,6 +11,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/sync/errgroup"
 
 	"golang.org/x/net/context"
@@ -385,8 +386,14 @@ func signMD(
 		return err
 	}
 
+	var sigInfo kbfscrypto.SignatureInfo
+
 	// Sign normally using the local device private key
-	sigInfo, err := signer.Sign(ctx, buf)
+	if rmds.MD.Version() < SegregatedKeyBundlesVer {
+		sigInfo, err = signer.Sign(ctx, buf)
+	} else {
+		sigInfo, err = signer.SignForKBFS(ctx, buf)
+	}
 	if err != nil {
 		return err
 	}
