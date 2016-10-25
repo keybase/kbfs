@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"sort"
 	"testing"
-	"time"
 
 	"github.com/golang/mock/gomock"
 	"golang.org/x/net/context"
@@ -104,9 +103,7 @@ func TestFBStatusAllFields(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	u := h.FirstResolvedWriter()
-	key := MakeFakeVerifyingKeyOrBust("fake key")
 	md := newRootMetadataOrBust(t, id, h)
-	md.bareMd.(*BareRootMetadataV2).WriterMetadataSigInfo.VerifyingKey = key
 	md.SetUnmerged()
 	md.SetLastModifyingWriter(u)
 
@@ -118,8 +115,8 @@ func TestFBStatusAllFields(t *testing.T) {
 	p2 := path{path: []pathNode{{Name: "a2"}, {Name: "b2"}}}
 	nodeCache.EXPECT().PathFromNode(mockNodeMatcher{n2}).AnyTimes().Return(p2)
 
-	fbsk.setRootMetadata(MakeImmutableRootMetadata(md, key, fakeMdID(1),
-		time.Now()))
+	key := MakeFakeVerifyingKeyOrBust("fake key")
+	fbsk.setRootMetadata(makeImmutableRootMetadataForTest(md, key))
 	fbsk.addDirtyNode(n1)
 	fbsk.addDirtyNode(n2)
 
