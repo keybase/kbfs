@@ -175,42 +175,23 @@ func (md *RootMetadata) clearLastRevision() {
 func (md *RootMetadata) deepCopy(
 	codec kbfscodec.Codec, copyHandle bool) (*RootMetadata, error) {
 	var newMd RootMetadata
-	if err := md.deepCopyInPlace(codec, copyHandle, false, false, &newMd); err != nil {
+
+	if err := kbfscodec.Update(codec, &newMd, md); err != nil {
 		return nil, err
 	}
-	return &newMd, nil
-}
-
-func (md *RootMetadata) deepCopyInPlace(
-	codec kbfscodec.Codec, copyHandle, successorCopy, preserveWriterSig bool,
-	newMd *RootMetadata) error {
-	if err := kbfscodec.Update(codec, newMd, md); err != nil {
-		return err
-	}
 	if err := kbfscodec.Update(codec, &newMd.data, md.data); err != nil {
-		return err
+		return nil, err
 	}
-	var err error
-	var brmdCopy BareRootMetadata
-	if successorCopy {
-		brmdCopy, err = md.bareMd.MakeSuccessorCopy(codec, preserveWriterSig)
-	} else {
-		brmdCopy, err = md.bareMd.DeepCopy(codec)
-	}
+	brmdCopy, err := md.bareMd.DeepCopy(codec)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	mutableBrmdCopy, ok := brmdCopy.(MutableBareRootMetadata)
-	if !ok {
-		return MutableBareRootMetadataNoImplError{}
-	}
-	newMd.bareMd = mutableBrmdCopy
+	newMd.bareMd = brmdCopy
 
 	if md.extra != nil {
 		extraCopy, err := md.extra.DeepCopy(codec)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		newMd.extra = extraCopy
 	}
@@ -219,9 +200,7 @@ func (md *RootMetadata) deepCopyInPlace(
 		newMd.tlfHandle = md.tlfHandle.deepCopy()
 	}
 
-	// No need to copy mdID.
-
-	return nil
+	return &newMd, nil
 }
 
 // MakeSuccessor returns a complete copy of this RootMetadata (but
@@ -240,9 +219,29 @@ func (md *RootMetadata) MakeSuccessor(
 	isReadable := md.IsReadable() && isWriter
 
 	var newMd RootMetadata
-	if err := md.deepCopyInPlace(codec, true, true, !isReadable, &newMd); err != nil {
+
+	if err := kbfscodec.Update(codec, &newMd, md); err != nil {
 		return nil, err
 	}
+	if err := kbfscodec.Update(codec, &newMd.data, md.data); err != nil {
+		return nil, err
+	}
+	brmdCopy, err := md.bareMd.MakeSuccessorCopy(codec, !isReadable)
+	if err != nil {
+		return nil, err
+	}
+
+	newMd.bareMd = brmdCopy
+
+	if md.extra != nil {
+		extraCopy, err := md.extra.DeepCopy(codec)
+		if err != nil {
+			return nil, err
+		}
+		newMd.extra = extraCopy
+	}
+
+	newMd.tlfHandle = md.tlfHandle.deepCopy()
 
 	if isReadable {
 		newMd.clearLastRevision()
