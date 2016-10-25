@@ -867,6 +867,7 @@ type cryptoPure interface {
 // limitations.
 type cryptoSigner interface {
 	Sign(context.Context, []byte) (kbfscrypto.SignatureInfo, error)
+	SignForKBFS(context.Context, []byte) (kbfscrypto.SignatureInfo, error)
 	SignToString(context.Context, []byte) (string, error)
 }
 

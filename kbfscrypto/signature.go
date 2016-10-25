@@ -20,8 +20,12 @@ import (
 type SigVer int
 
 const (
+	// SigUnused is the unset signature type.
+	SigUnused = SigVer(iota)
 	// SigED25519 is the signature type for ED25519
-	SigED25519 SigVer = 1
+	SigED25519
+	// SigED25519ForKBFS is the signature type for ED25519 with a KBFS prefix.
+	SigED25519ForKBFS
 )
 
 // IsNil returns true if this SigVer is nil.
@@ -76,6 +80,19 @@ func (k SigningKey) Sign(data []byte) SignatureInfo {
 	}
 }
 
+// SignForKBFS signs the given data with the KBFS prefix and returns a SignatureInfo.
+func (k SigningKey) SignForKBFS(data []byte) (SignatureInfo, error) {
+	sigInfo, err := k.kp.SignV2(data, libkb.SignaturePrefixKBFS)
+	if err != nil {
+		return SignatureInfo{}, err
+	}
+	return SignatureInfo{
+		Version:      SigVer(sigInfo.Version),
+		Signature:    sigInfo.Sig[:],
+		VerifyingKey: k.GetVerifyingKey(),
+	}, nil
+}
+
 // SignToString signs the given data and returns a string.
 func (k SigningKey) SignToString(data []byte) (sig string, err error) {
 	sig, _, err = k.kp.SignToString(data)
@@ -121,7 +138,7 @@ func (k VerifyingKey) IsNil() bool {
 // Verify verifies the given message against the given SignatureInfo,
 // and returns nil if it verifies successfully, or an error otherwise.
 func Verify(msg []byte, sigInfo SignatureInfo) error {
-	if sigInfo.Version != SigED25519 {
+	if sigInfo.Version < SigED25519 || sigInfo.Version > SigED25519ForKBFS {
 		return UnknownSigVer{sigInfo.Version}
 	}
 
@@ -137,6 +154,10 @@ func Verify(msg []byte, sigInfo SignatureInfo) error {
 	}
 	copy(naclSignature[:], sigInfo.Signature)
 
+	if sigInfo.Version == SigED25519ForKBFS {
+		msg = libkb.SignaturePrefixKBFS.Prefix(msg)
+	}
+
 	if !publicKey.Verify(msg, &naclSignature) {
 		return libkb.VerificationError{}
 	}
@@ -148,6 +169,8 @@ func Verify(msg []byte, sigInfo SignatureInfo) error {
 type Signer interface {
 	// Sign signs msg with some internal private key.
 	Sign(ctx context.Context, msg []byte) (sigInfo SignatureInfo, err error)
+	// SignForKBFS signs a msg with a KBFS prefix with some internal private key.
+	SignForKBFS(ctx context.Context, msg []byte) (sigInfo SignatureInfo, err error)
 	// SignToString signs msg with some internal private key and
 	// outputs the full serialized NaclSigInfo.
 	SignToString(ctx context.Context, msg []byte) (signature string, err error)
@@ -162,6 +185,12 @@ type SigningKeySigner struct {
 func (s SigningKeySigner) Sign(
 	ctx context.Context, data []byte) (SignatureInfo, error) {
 	return s.Key.Sign(data), nil
+}
+
+// SignForKBFS implements Signer for SigningKeySigner.
+func (s SigningKeySigner) SignForKBFS(
+	ctx context.Context, data []byte) (SignatureInfo, error) {
+	return s.Key.SignForKBFS(data)
 }
 
 // SignToString implements Signer for SigningKeySigner.
