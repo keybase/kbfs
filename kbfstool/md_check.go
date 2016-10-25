@@ -104,9 +104,11 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 // mdCheckChain checks that the given MD object is a valid successor
 // of the previous revision, all the way back to the first one. Along
 // the way, it also checks that the root blocks that haven't been
-// garbage-collected are present.
+// garbage-collected are present. It returns a list of MD objects with
+// valid roots, in reverse revision order.
 func mdCheckChain(ctx context.Context, config libkbfs.Config,
-	irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
+	irmd libkbfs.ImmutableRootMetadata, verbose bool) (
+	irmdsWithRoots []libkbfs.ImmutableRootMetadata, err error) {
 	fmt.Printf("Checking chain (rev=%d)...\n", irmd.Revision())
 	gcUnrefs := make(map[libkbfs.BlockRef]bool)
 	for irmd.Revision() > libkbfs.MetadataRevisionInitial {
@@ -136,13 +138,13 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 		}
 
 		if verbose {
-			fmt.Printf(
-				"Fetching rev %d...\n", irmd.Revision()-1)
+			fmt.Printf("Fetching rev %d...\n", irmd.Revision()-1)
 		}
 		irmdPrev, err := mdGet(ctx, config, irmd.TlfID(),
 			irmd.BID(), irmd.Revision()-1)
 		if err != nil {
-			return err
+			fmt.Printf("Got error while fetching rev %d: %v\n", irmd.Revision()-1, err)
+			break
 		}
 
 		if verbose {
@@ -158,27 +160,30 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 
 		irmd = irmdPrev
 	}
-	return nil
+	return irmdsWithRoots, nil
 }
 
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	input string, irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
-	_ = mdCheckChain(ctx, config, irmd, verbose)
+	irmdsWithRoots, _ := mdCheckChain(ctx, config, irmd, verbose)
 
-	data := irmd.Data()
+	for _, irmd := range irmdsWithRoots {
+		data := irmd.Data()
 
-	if data.ChangesBlockInfo() == (libkbfs.BlockInfo{}) {
-		if verbose {
-			fmt.Print("No MD changes block to check; skipping\n")
+		if data.ChangesBlockInfo() == (libkbfs.BlockInfo{}) {
+			if verbose {
+				fmt.Print("No MD changes block to check; skipping\n")
+			}
+		} else {
+			bi := data.ChangesBlockInfo()
+			_ = checkFileBlock(
+				ctx, config, fmt.Sprintf("%s MD changes block", input),
+				irmd, bi, verbose)
 		}
-	} else {
-		bi := data.ChangesBlockInfo()
-		_ = checkFileBlock(
-			ctx, config, fmt.Sprintf("%s MD changes block", input),
-			irmd, bi, verbose)
-	}
 
-	//	_ = checkDirBlock(ctx, config, input, irmd, data.Dir.BlockInfo, verbose)
+		_ = checkDirBlock(
+			ctx, config, input, irmd, data.Dir.BlockInfo, verbose)
+	}
 	return nil
 }
 
