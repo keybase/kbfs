@@ -101,8 +101,39 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 	return nil
 }
 
+func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
+	input string, irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
+	for irmd.Revision() > libkbfs.MetadataRevisionInitial {
+		if verbose {
+			fmt.Printf(
+				"Fetching revision %d...\n", irmd.Revision()-1)
+		}
+		irmdPrev, err := mdGet(ctx, config, irmd.TlfID(),
+			irmd.BID(), irmd.Revision()-1)
+		if err != nil {
+			return err
+		}
+
+		if verbose {
+			fmt.Printf("Checking %d -> %d...\n",
+				irmd.Revision()-1, irmd.Revision())
+		}
+		err = irmdPrev.CheckValidSuccessor(
+			irmdPrev.MdID(), irmd.ReadOnly())
+		if err != nil {
+			fmt.Printf("Got error while checking %d -> %d: %v\n",
+				irmd.Revision()-1, irmd.Revision(), err)
+		}
+
+		irmd = irmdPrev
+	}
+	return nil
+}
+
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	input string, irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
+	_ = mdCheckMDChain(ctx, config, input, irmd, verbose)
+
 	data := irmd.Data()
 
 	if data.ChangesBlockInfo() == (libkbfs.BlockInfo{}) {
@@ -116,7 +147,7 @@ func mdCheckOne(ctx context.Context, config libkbfs.Config,
 			irmd, bi, verbose)
 	}
 
-	_ = checkDirBlock(ctx, config, input, irmd, data.Dir.BlockInfo, verbose)
+	//	_ = checkDirBlock(ctx, config, input, irmd, data.Dir.BlockInfo, verbose)
 	return nil
 }
 
