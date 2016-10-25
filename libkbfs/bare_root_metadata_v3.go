@@ -334,7 +334,8 @@ func (md *BareRootMetadataV3) DeepCopy(
 
 // MakeSuccessorCopy implements the ImmutableBareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) MakeSuccessorCopy(
-	codec kbfscodec.Codec, preserveWriterSig bool) (MutableBareRootMetadata, error) {
+	codec kbfscodec.Codec, isReadableAndWriter bool) (
+	MutableBareRootMetadata, error) {
 	// TODO: If there is ever a BareRootMetadataV4 this will need to perform the conversion.
 	return md.DeepCopy(codec)
 }
