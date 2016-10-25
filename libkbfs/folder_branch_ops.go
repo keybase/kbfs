@@ -5036,7 +5036,7 @@ func (fbo *folderBranchOps) handleTLFBranchChange(ctx context.Context,
 		return
 	}
 
-	if (md == ImmutableRootMetadata{}) || md.MergedStatus() != Unmerged ||
+	if md == (ImmutableRootMetadata{}) || md.MergedStatus() != Unmerged ||
 		md.BID() != newBID {
 		// This can happen if CR got kicked off in some other way and
 		// completed before we took the lock to process this
