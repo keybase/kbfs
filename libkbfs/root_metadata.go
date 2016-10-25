@@ -173,29 +173,29 @@ func (md *RootMetadata) clearLastRevision() {
 }
 
 func (md *RootMetadata) deepCopy(codec kbfscodec.Codec) (*RootMetadata, error) {
-	var newMd RootMetadata
-	err := kbfscodec.Update(codec, &newMd, md)
-	if err != nil {
-		return nil, err
-	}
-	err = kbfscodec.Update(codec, &newMd.data, md.data)
-	if err != nil {
-		return nil, err
-	}
-	newMd.bareMd, err = md.bareMd.DeepCopy(codec)
+	brmdCopy, err := md.bareMd.DeepCopy(codec)
 	if err != nil {
 		return nil, err
 	}
 
+	var extraCopy ExtraMetadata
 	if md.extra != nil {
-		newMd.extra, err = md.extra.DeepCopy(codec)
+		extraCopy, err = md.extra.DeepCopy(codec)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	newMd.tlfHandle = md.tlfHandle.deepCopy()
-	return &newMd, nil
+	handleCopy := md.tlfHandle.deepCopy()
+
+	rmd := MakeRootMetadata(brmdCopy, extraCopy, handleCopy)
+
+	err = kbfscodec.Update(codec, &rmd.data, md.data)
+	if err != nil {
+		return nil, err
+	}
+
+	return rmd, nil
 }
 
 // MakeSuccessor returns a complete copy of this RootMetadata (but
