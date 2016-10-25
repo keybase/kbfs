@@ -126,7 +126,7 @@ func TestMdcacheReplace(t *testing.T) {
 
 	// Change the BID
 	bid := FakeBranchID(1)
-	newRmd, err := irmd.deepCopy(kbfscodec.NewMsgpack(), false)
+	newRmd, err := irmd.deepCopy(kbfscodec.NewMsgpack())
 	if err != nil {
 		t.Fatalf("Deep-copy error: %v", err)
 	}

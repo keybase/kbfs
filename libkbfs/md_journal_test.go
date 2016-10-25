@@ -90,18 +90,27 @@ func teardownMDJournalTest(t *testing.T, tempdir string) {
 func makeMDForTest(t *testing.T, tlfID TlfID, revision MetadataRevision,
 	uid keybase1.UID, verifyingKey kbfscrypto.VerifyingKey,
 	prevRoot MdID) *RootMetadata {
-	h, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	nug := testNormalizedUsernameGetter{
+		uid: "fake_username",
+	}
+	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	crypto := MakeCryptoCommon(kbfscodec.NewMsgpack())
 	require.NoError(t, err)
-	md := NewRootMetadata()
-	err = md.Update(tlfID, h)
+	brmd := BareRootMetadataV2{
+		WriterMetadataSigInfo: kbfscrypto.SignatureInfo{
+			VerifyingKey: verifyingKey,
+		},
+	}
+	err = brmd.Update(tlfID, bh)
 	require.NoError(t, err)
-	md.SetRevision(revision)
-	md.FakeInitialRekey(crypto, h)
-	md.SetPrevRoot(prevRoot)
-	md.SetDiskUsage(500)
+	brmd.SetRevision(revision)
+	brmd.FakeInitialRekey(crypto, bh)
+	brmd.SetPrevRoot(prevRoot)
+	brmd.SetDiskUsage(500)
+	h, err := MakeTlfHandle(context.Background(), bh, nug)
+	require.NoError(t, err)
 	// TODO: Fill in an ExtraMetadata.
-	md.bareMd.(*BareRootMetadataV2).WriterMetadataSigInfo.VerifyingKey = verifyingKey
+	md := MakeRootMetadata(&brmd, nil, h)
 	return md
 }
 
@@ -468,7 +477,8 @@ func TestMDJournalBranchConversion(t *testing.T) {
 
 	// Put a single MD in the cache to make sure it gets converted.
 	mdcache := NewMDCacheStandard(10)
-	cachedMd := makeMDForTest(t, id, firstRevision, j.uid, j.key, firstPrevRoot)
+	cachedMd := makeMDForTest(
+		t, id, firstRevision, j.uid, j.key, firstPrevRoot)
 	err := mdcache.Put(MakeImmutableRootMetadata(cachedMd,
 		j.key, fakeMdID(1), time.Now()))
 	require.NoError(t, err)
