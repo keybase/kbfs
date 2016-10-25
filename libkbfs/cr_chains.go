@@ -342,7 +342,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 	// ops.  Note that this only matters for old gcOps: new gcOps
 	// only unref the block ID, and not the whole pointer, so they
 	// wouldn't confuse chain creation.
-	if _, isGCOp := op.(*gcOp); isGCOp {
+	if _, isGCOp := op.(*GCOp); isGCOp {
 		return nil
 	}
 
@@ -517,7 +517,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 		// ignore resolution op
 	case *rekeyOp:
 		// ignore rekey op
-	case *gcOp:
+	case *GCOp:
 		// ignore gc op
 	}
 
@@ -861,8 +861,8 @@ func (ccs *crChains) copyOpAndRevertUnrefsToOriginals(currOp op) op {
 		newSetAttrOp := *realOp
 		unrefs = append(unrefs, &newSetAttrOp.Dir.Unref, &newSetAttrOp.File)
 		newOp = &newSetAttrOp
-	case *gcOp:
-		// No need to copy a gcOp, it won't be modified
+	case *GCOp:
+		// No need to copy a GCOp, it won't be modified
 		newOp = realOp
 	}
 	for _, unref := range unrefs {

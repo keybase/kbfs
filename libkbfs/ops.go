@@ -1002,50 +1002,50 @@ func (ro *rekeyOp) GetDefaultAction(mergedPath path) crAction {
 	return nil
 }
 
-// gcOp is an op that represents garbage-collecting the history of a
+// GCOp is an op that represents garbage-collecting the history of a
 // folder (which may involve unreferencing blocks that previously held
 // operation lists.  It may contain unref blocks before it is added to
 // the metadata ops list.
-type gcOp struct {
+type GCOp struct {
 	OpCommon
 
 	// LatestRev is the most recent MD revision that was
 	// garbage-collected with this operation.
 	//
 	// The codec name overrides the one for RefBlocks in OpCommon,
-	// which gcOp doesn't use.
+	// which GCOp doesn't use.
 	LatestRev MetadataRevision `codec:"r"`
 }
 
-func newGCOp(latestRev MetadataRevision) *gcOp {
-	gco := &gcOp{
+func newGCOp(latestRev MetadataRevision) *GCOp {
+	gco := &GCOp{
 		LatestRev: latestRev,
 	}
 	return gco
 }
 
-func (gco *gcOp) SizeExceptUpdates() uint64 {
+func (gco *GCOp) SizeExceptUpdates() uint64 {
 	return bpSize * uint64(len(gco.UnrefBlocks))
 }
 
-func (gco *gcOp) AllUpdates() []blockUpdate {
+func (gco *GCOp) AllUpdates() []blockUpdate {
 	return gco.Updates
 }
 
-func (gco *gcOp) checkValid() error {
+func (gco *GCOp) checkValid() error {
 	return gco.checkUpdatesValid()
 }
 
-func (gco *gcOp) String() string {
+func (gco *GCOp) String() string {
 	return fmt.Sprintf("gc %d", gco.LatestRev)
 }
 
-func (gco *gcOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (gco *GCOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	return nil, nil
 }
 
-func (gco *gcOp) GetDefaultAction(mergedPath path) crAction {
+func (gco *GCOp) GetDefaultAction(mergedPath path) crAction {
 	return nil
 }
 
@@ -1092,7 +1092,7 @@ func invertOpForLocalNotifications(oldOp op) (newOp op, err error) {
 		if err != nil {
 			return nil, err
 		}
-	case *gcOp:
+	case *GCOp:
 		newOp = op
 	}
 
@@ -1131,7 +1131,7 @@ func opPointerizer(iface interface{}) reflect.Value {
 		return reflect.ValueOf(&op)
 	case rekeyOp:
 		return reflect.ValueOf(&op)
-	case gcOp:
+	case GCOp:
 		return reflect.ValueOf(&op)
 	}
 }
@@ -1145,7 +1145,7 @@ func RegisterOps(codec kbfscodec.Codec) {
 	codec.RegisterType(reflect.TypeOf(setAttrOp{}), setAttrOpCode)
 	codec.RegisterType(reflect.TypeOf(resolutionOp{}), resolutionOpCode)
 	codec.RegisterType(reflect.TypeOf(rekeyOp{}), rekeyOpCode)
-	codec.RegisterType(reflect.TypeOf(gcOp{}), gcOpCode)
+	codec.RegisterType(reflect.TypeOf(GCOp{}), gcOpCode)
 	codec.RegisterIfaceSliceType(reflect.TypeOf(opsList{}), opsListCode,
 		opPointerizer)
 }

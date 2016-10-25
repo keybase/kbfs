@@ -3302,7 +3302,7 @@ func (cr *ConflictResolver) completeResolution(ctx context.Context,
 
 // maybeUnstageAfterFailure abandons this branch if there was a
 // conflict resolution failure due to missing blocks, caused by a
-// concurrent gcOp on the main branch.
+// concurrent GCOp on the main branch.
 func (cr *ConflictResolver) maybeUnstageAfterFailure(ctx context.Context,
 	lState *lockState, mergedMDs []ImmutableRootMetadata, err error) error {
 	// Make sure the error is related to a missing block.
@@ -3312,12 +3312,12 @@ func (cr *ConflictResolver) maybeUnstageAfterFailure(ctx context.Context,
 		return err
 	}
 
-	// Make sure there was a gcOp on the main branch.
+	// Make sure there was a GCOp on the main branch.
 	foundGCOp := false
 outer:
 	for _, rmd := range mergedMDs {
 		for _, op := range rmd.data.Changes.Ops {
-			if _, ok := op.(*gcOp); ok {
+			if _, ok := op.(*GCOp); ok {
 				foundGCOp = true
 				break outer
 			}

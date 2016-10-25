@@ -2275,7 +2275,7 @@ func (fbo *folderBranchOps) finalizeMDRekeyWriteLocked(ctx context.Context,
 		MakeImmutableRootMetadata(md, mdID, fbo.config.Clock().Now()), rebased)
 }
 
-func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
+func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *GCOp) (
 	err error) {
 	lState := makeFBOLockState()
 	// Lock the folder so we can get an internally-consistent MD
@@ -3745,8 +3745,8 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 		changes = append(changes, NodeChange{
 			Node: childNode,
 		})
-	case *gcOp:
-		// Unreferenced blocks in a gcOp mean that we shouldn't cache
+	case *GCOp:
+		// Unreferenced blocks in a GCOp mean that we shouldn't cache
 		// them anymore
 		bcache := fbo.config.BlockCache()
 		for _, ptr := range realOp.Unrefs() {

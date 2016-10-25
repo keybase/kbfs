@@ -19,7 +19,7 @@ import (
 type fbmHelper interface {
 	getMostRecentFullyMergedMD(ctx context.Context) (
 		ImmutableRootMetadata, error)
-	finalizeGCOp(ctx context.Context, gco *gcOp) error
+	finalizeGCOp(ctx context.Context, gco *GCOp) error
 }
 
 const (
@@ -703,7 +703,7 @@ func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
 	ctx context.Context, head ReadOnlyRootMetadata) (
 	mostRecentOldEnoughRev, lastGCRev MetadataRevision, err error) {
 	// Walk backwards until we find one that is old enough.  Also,
-	// look out for the previous gcOp.
+	// look out for the previous GCOp.
 	currHead := head.Revision()
 	mostRecentOldEnoughRev = MetadataRevisionUninitialized
 	lastGCRev = MetadataRevisionUninitialized
@@ -733,12 +733,12 @@ func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
 
 			if lastGCRev == MetadataRevisionUninitialized {
 				for j := len(rmd.data.Changes.Ops) - 1; j >= 0; j-- {
-					gcOp, ok := rmd.data.Changes.Ops[j].(*gcOp)
+					GCOp, ok := rmd.data.Changes.Ops[j].(*GCOp)
 					if !ok {
 						continue
 					}
-					fbm.log.CDebugf(ctx, "Found last gc op: %s", gcOp)
-					lastGCRev = gcOp.LatestRev
+					fbm.log.CDebugf(ctx, "Found last gc op: %s", GCOp)
+					lastGCRev = GCOp.LatestRev
 					break
 				}
 			}
@@ -813,7 +813,7 @@ outer:
 			// Save the latest revision starting at this position:
 			revStartPositions[rmd.Revision()] = len(ptrs)
 			for _, op := range rmd.data.Changes.Ops {
-				if _, ok := op.(*gcOp); ok {
+				if _, ok := op.(*GCOp); ok {
 					continue
 				}
 				for _, ptr := range op.Unrefs() {
