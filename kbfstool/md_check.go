@@ -130,7 +130,7 @@ func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 		err = config.BlockOps().Get(
 			ctx, irmd, irmd.Data().Dir.BlockPointer, &dirBlock)
 		if err != nil {
-			fmt.Printf("Got error while checking %d root: %d\n",
+			fmt.Printf("Got error while checking %d root: %v\n",
 				irmd.Revision(), err)
 		}
 
