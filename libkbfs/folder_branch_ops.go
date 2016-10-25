@@ -4398,7 +4398,8 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 
 	// we still let readers push a new md block that we validate against reader
 	// permissions
-	err = fbo.finalizeMDRekeyWriteLocked(ctx, lState, md, lastWriterVerifyingKey)
+	err = fbo.finalizeMDRekeyWriteLocked(
+		ctx, lState, md, lastWriterVerifyingKey)
 	if err != nil {
 		return err
 	}
