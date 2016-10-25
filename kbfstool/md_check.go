@@ -101,8 +101,26 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 	return nil
 }
 
+func mdCheckGCOp(currRev libkbfs.MetadataRevision, gcOp *libkbfs.GCOp) {
+	if gcOp.LatestRev >= currRev {
+		fmt.Printf("GC op %v unexpectedly has latest revision "+
+			"not less than current revision %d\n", gcOp,
+			currRev)
+	}
+
+	if len(gcOp.Refs()) > 0 {
+		fmt.Printf("GC op %v unexpectedly references %d blocks\n",
+			len(gcOp.Refs()))
+	}
+
+	if len(gcOp.AllUpdates()) > 0 {
+		fmt.Printf("GC op %v unexpectedly has %d updates\n",
+			len(gcOp.AllUpdates()))
+	}
+}
+
 func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
-	input string, irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
+	irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
 	checkDirMin := libkbfs.MetadataRevisionInitial
 	for irmd.Revision() > libkbfs.MetadataRevisionInitial {
 		if irmd.Revision() >= checkDirMin {
@@ -118,6 +136,7 @@ func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 
 		for _, op := range irmd.Data().Changes.Ops {
 			if gcOp, ok := op.(*libkbfs.GCOp); ok {
+				mdCheckGCOp(irmd.Revision(), gcOp)
 				fmt.Printf("GC op up to %d found\n",
 					gcOp.LatestRev)
 				if gcOp.LatestRev+1 > checkDirMin {
@@ -154,7 +173,7 @@ func mdCheckMDChain(ctx context.Context, config libkbfs.Config,
 
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	input string, irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
-	_ = mdCheckMDChain(ctx, config, input, irmd, verbose)
+	_ = mdCheckMDChain(ctx, config, irmd, verbose)
 
 	data := irmd.Data()
 
