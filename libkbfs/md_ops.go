@@ -115,13 +115,12 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 
 		for i := len(prevMDs) - 1; i >= 0; i-- {
 			if !prevMDs[i].IsWriterMetadataCopiedSet() {
-				// We want to compare the writer
-				// signature of rmds with that of
-				// prevMDs[i]. However, we've already
-				// dropped prevMDs[i] writer
-				// signature. We can just verify
-				// prevMDs[i]'s writer metadata with
-				// rmds's signature, though.
+				// We want to compare the writer signature of
+				// rmds with that of prevMDs[i]. However, we've
+				// already dropped prevMDs[i]'s writer
+				// signature. We can just verify prevMDs[i]'s
+				// writer metadata with rmds's signature,
+				// though.
 				buf, err := prevMDs[i].GetSerializedWriterMetadata(md.config.Codec())
 				if err != nil {
 					return err
