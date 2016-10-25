@@ -133,7 +133,7 @@ func TestMdcacheReplace(t *testing.T) {
 
 	newRmd.SetBranchID(bid)
 	err = config.MDCache().Replace(MakeImmutableRootMetadata(newRmd,
-		irmd.LastWriterVerifyingKey(), fakeMdID(2), time.Now()), NullBranchID)
+		irmd.LastModifyingWriterVerifyingKey(), fakeMdID(2), time.Now()), NullBranchID)
 	if err != nil {
 		t.Fatalf("Replace error: %v", err)
 	}

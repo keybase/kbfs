@@ -628,7 +628,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 				if err != nil {
 					return err
 				}
-				if key != md.LastWriterVerifyingKey() {
+				if key != md.LastModifyingWriterVerifyingKey() {
 					fbo.setLatestMergedRevisionLocked(
 						ctx, lState, md.Revision(), false)
 				}
@@ -1069,7 +1069,7 @@ func (fbo *folderBranchOps) getMDForRekeyWriteLocked(
 			NewRekeyPermissionError(handle, username)
 	}
 
-	return newMd, md.LastWriterVerifyingKey(), md.IsRekeySet(), nil
+	return newMd, md.LastModifyingWriterVerifyingKey(), md.IsRekeySet(), nil
 }
 
 func (fbo *folderBranchOps) nowUnixNano() int64 {

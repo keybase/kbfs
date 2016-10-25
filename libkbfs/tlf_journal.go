@@ -1019,7 +1019,7 @@ func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
 			if err != nil {
 				return TLFJournalStatus{}, err
 			}
-			err = addUnflushedPaths(ctx, j.uid, j.key.KID(),
+			err = addUnflushedPaths(ctx, j.uid, j.key,
 				j.config.Codec(), j.log, mdInfos, cpp,
 				unflushedPaths)
 			if err != nil {
@@ -1046,7 +1046,7 @@ func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
 				return TLFJournalStatus{}, err
 			}
 			unflushedPaths, initSuccess, err = j.unflushedPaths.initialize(
-				ctx, j.uid, j.key.KID(), j.config.Codec(),
+				ctx, j.uid, j.key, j.config.Codec(),
 				j.log, cpp, mdInfos)
 			if err != nil {
 				return TLFJournalStatus{}, err
@@ -1343,7 +1343,7 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 		localTimestamp: time.Now(),
 	}
 	perRevMap, err := j.unflushedPaths.prepUnflushedPaths(
-		ctx, j.uid, j.key.KID(), j.config.Codec(), j.log, mdInfo)
+		ctx, j.uid, j.key, j.config.Codec(), j.log, mdInfo)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1357,7 +1357,7 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata) (
 		// The cache was initialized after the last time we tried to
 		// prepare the unflushed paths.
 		perRevMap, err = j.unflushedPaths.prepUnflushedPaths(
-			ctx, j.uid, j.key.KID(), j.config.Codec(), j.log,
+			ctx, j.uid, j.key, j.config.Codec(), j.log,
 			mdInfo)
 		if err != nil {
 			return MdID{}, err
