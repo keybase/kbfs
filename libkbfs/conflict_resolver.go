@@ -1033,8 +1033,7 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 	}
 
 	currUnmergedWriterInfo, err := newWriterInfo(
-		ctx, cr.config, uid, key.KID(),
-		unmerged[len(unmerged)-1].Revision())
+		ctx, cr.config, uid, key, unmerged[len(unmerged)-1].Revision())
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, err
 	}
@@ -2497,7 +2496,7 @@ type rootMetadataWithKeyAndTimestamp struct {
 	localTimestamp time.Time
 }
 
-func (rmd rootMetadataWithKeyAndTimestamp) LastWriterVerifyingKey() kbfscrypto.VerifyingKey {
+func (rmd rootMetadataWithKeyAndTimestamp) LastModifyingWriterVerifyingKey() kbfscrypto.VerifyingKey {
 	return rmd.key
 }
 
@@ -3488,7 +3487,7 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 
 	mostRecentMergedWriterInfo, err := newWriterInfo(ctx, cr.config,
 		mostRecentMergedMD.LastModifyingWriter(),
-		mostRecentMergedMD.LastWriterVerifyingKey().KID(),
+		mostRecentMergedMD.LastModifyingWriterVerifyingKey(),
 		mostRecentMergedMD.Revision())
 	if err != nil {
 		return

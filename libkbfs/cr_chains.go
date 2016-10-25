@@ -693,7 +693,7 @@ type chainMetadata interface {
 	KeyMetadata
 	IsWriterMetadataCopiedSet() bool
 	LastModifyingWriter() keybase1.UID
-	LastWriterVerifyingKey() kbfscrypto.VerifyingKey
+	LastModifyingWriterVerifyingKey() kbfscrypto.VerifyingKey
 	Revision() MetadataRevision
 	Data() *PrivateMetadata
 	LocalTimestamp() time.Time
@@ -716,7 +716,7 @@ func newCRChains(ctx context.Context, cfg Config, cmds []chainMetadata,
 		}
 
 		winfo, err := newWriterInfo(ctx, cfg, cmd.LastModifyingWriter(),
-			cmd.LastWriterVerifyingKey().KID(), cmd.Revision())
+			cmd.LastModifyingWriterVerifyingKey(), cmd.Revision())
 		if err != nil {
 			return nil, err
 		}

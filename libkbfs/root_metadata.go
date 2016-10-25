@@ -810,9 +810,9 @@ func (irmd ImmutableRootMetadata) LocalTimestamp() time.Time {
 	return irmd.localTimestamp
 }
 
-// LastWriterVerifyingKey returns the VerifyingKey used by the last
+// LastModifyingWriterVerifyingKey returns the VerifyingKey used by the last
 // writer of this MD.
-func (irmd ImmutableRootMetadata) LastWriterVerifyingKey() kbfscrypto.VerifyingKey {
+func (irmd ImmutableRootMetadata) LastModifyingWriterVerifyingKey() kbfscrypto.VerifyingKey {
 	return irmd.lastWriterVerifyingKey
 }
 
