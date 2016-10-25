@@ -5139,9 +5139,6 @@ func TestKBFSOpsStatRootSuccess(t *testing.T) {
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 
-	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
-	require.NoError(t, err)
-
 	ops := getOps(config, id)
 	ops.head = makeImmutableRMDForTest(t, config, rmd, fakeMdID(1))
 
@@ -5151,7 +5148,7 @@ func TestKBFSOpsStatRootSuccess(t *testing.T) {
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	n := nodeFromPath(t, ops, p)
 
-	_, err = config.KBFSOps().Stat(ctx, n)
+	_, err := config.KBFSOps().Stat(ctx, n)
 	if err != nil {
 		t.Errorf("Error on Stat: %v", err)
 	}
@@ -5162,9 +5159,6 @@ func TestKBFSOpsFailingRootOps(t *testing.T) {
 	defer kbfsTestShutdown(mockCtrl, config, ctx, cancel)
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
-
-	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
-	require.NoError(t, err)
 
 	ops := getOps(config, id)
 	ops.head = makeImmutableRMDForTest(t, config, rmd, fakeMdID(1))
@@ -5179,7 +5173,7 @@ func TestKBFSOpsFailingRootOps(t *testing.T) {
 	// TODO: Make sure Read, Write, and Truncate fail also with
 	// InvalidPathError{}.
 
-	err = config.KBFSOps().SetEx(ctx, n, true)
+	err := config.KBFSOps().SetEx(ctx, n, true)
 	if _, ok := err.(InvalidParentPathError); !ok {
 		t.Errorf("Unexpected error on SetEx: %v", err)
 	}
