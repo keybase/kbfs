@@ -701,7 +701,7 @@ type chainMetadata interface {
 
 // newCRChains builds a new crChains object from the given list of
 // chainMetadatas, which must be non-empty.
-func newCRChains(ctx context.Context, cfg Config, cmds []chainMetadata,
+func newCRChains(ctx context.Context, cfg Config, chainMDs []chainMetadata,
 	fbo *folderBlockOps, identifyTypes bool) (
 	ccs *crChains, err error) {
 	ccs = newCRChainsEmpty()
@@ -709,28 +709,31 @@ func newCRChains(ctx context.Context, cfg Config, cmds []chainMetadata,
 	// For each MD update, turn each update in each op into map
 	// entries and create chains for the BlockPointers that are
 	// affected directly by the operation.
-	for _, cmd := range cmds {
+	for _, chainMD := range chainMDs {
 		// No new operations in these.
-		if cmd.IsWriterMetadataCopiedSet() {
+		if chainMD.IsWriterMetadataCopiedSet() {
 			continue
 		}
 
-		winfo, err := newWriterInfo(ctx, cfg, cmd.LastModifyingWriter(),
-			cmd.LastModifyingWriterVerifyingKey(), cmd.Revision())
+		winfo, err := newWriterInfo(ctx, cfg,
+			chainMD.LastModifyingWriter(),
+			chainMD.LastModifyingWriterVerifyingKey(),
+			chainMD.Revision())
 		if err != nil {
 			return nil, err
 		}
 
-		data := *cmd.Data()
+		data := *chainMD.Data()
 
-		err = ccs.addOps(cfg.Codec(), data, winfo, cmd.LocalTimestamp())
+		err = ccs.addOps(
+			cfg.Codec(), data, winfo, chainMD.LocalTimestamp())
 
 		if ptr := data.cachedChanges.Info.BlockPointer; ptr != zeroPtr {
 			ccs.blockChangePointers[ptr] = true
 
 			// Any child block change pointers?
 			fblock, err := fbo.GetFileBlockForReading(ctx, makeFBOLockState(),
-				cmd, ptr, MasterBranch, path{})
+				chainMD, ptr, MasterBranch, path{})
 			if err != nil {
 				return nil, err
 			}
@@ -752,7 +755,7 @@ func newCRChains(ctx context.Context, cfg Config, cmds []chainMetadata,
 		}
 	}
 
-	mostRecentMD := cmds[len(cmds)-1]
+	mostRecentMD := chainMDs[len(chainMDs)-1]
 
 	for _, chain := range ccs.byOriginal {
 		chain.collapse()
@@ -786,11 +789,11 @@ func newCRChainsForIRMDs(
 	ctx context.Context, cfg Config, irmds []ImmutableRootMetadata,
 	fbo *folderBlockOps, identifyTypes bool) (
 	ccs *crChains, err error) {
-	cmds := make([]chainMetadata, len(irmds))
+	chainMDs := make([]chainMetadata, len(irmds))
 	for i, irmd := range irmds {
-		cmds[i] = irmd
+		chainMDs[i] = irmd
 	}
-	return newCRChains(ctx, cfg, cmds, fbo, identifyTypes)
+	return newCRChains(ctx, cfg, chainMDs, fbo, identifyTypes)
 }
 
 type crChainSummary struct {
