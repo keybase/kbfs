@@ -172,34 +172,29 @@ func (md *RootMetadata) clearLastRevision() {
 	md.clearWriterMetadataCopiedBit()
 }
 
-func (md *RootMetadata) deepCopy(
-	codec kbfscodec.Codec, copyHandle bool) (*RootMetadata, error) {
+func (md *RootMetadata) deepCopy(codec kbfscodec.Codec) (*RootMetadata, error) {
 	var newMd RootMetadata
-
-	if err := kbfscodec.Update(codec, &newMd, md); err != nil {
-		return nil, err
-	}
-	if err := kbfscodec.Update(codec, &newMd.data, md.data); err != nil {
-		return nil, err
-	}
-	brmdCopy, err := md.bareMd.DeepCopy(codec)
+	err := kbfscodec.Update(codec, &newMd, md)
 	if err != nil {
 		return nil, err
 	}
-	newMd.bareMd = brmdCopy
+	err = kbfscodec.Update(codec, &newMd.data, md.data)
+	if err != nil {
+		return nil, err
+	}
+	newMd.bareMd, err = md.bareMd.DeepCopy(codec)
+	if err != nil {
+		return nil, err
+	}
 
 	if md.extra != nil {
-		extraCopy, err := md.extra.DeepCopy(codec)
+		newMd.extra, err = md.extra.DeepCopy(codec)
 		if err != nil {
 			return nil, err
 		}
-		newMd.extra = extraCopy
 	}
 
-	if copyHandle {
-		newMd.tlfHandle = md.tlfHandle.deepCopy()
-	}
-
+	newMd.tlfHandle = md.tlfHandle.deepCopy()
 	return &newMd, nil
 }
 

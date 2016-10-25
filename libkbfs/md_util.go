@@ -239,7 +239,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 				return nil, err
 			}
 
-			rmdCopy, err := rmd.deepCopy(config.Codec(), true)
+			rmdCopy, err := rmd.deepCopy(config.Codec())
 			if err != nil {
 				return nil, err
 			}
@@ -247,8 +247,8 @@ func getMergedMDUpdates(ctx context.Context, config Config, id TlfID,
 
 			// Overwrite the cached copy with the new copy
 			irmdCopy := MakeImmutableRootMetadata(rmdCopy,
-				rmd.LastWriterVerifyingKey(), rmd.mdID,
-				rmd.localTimestamp)
+				rmd.LastWriterVerifyingKey(), rmd.MdID(),
+				rmd.LocalTimestamp())
 			if err := config.MDCache().Put(irmdCopy); err != nil {
 				return nil, err
 			}
