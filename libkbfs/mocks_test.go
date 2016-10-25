@@ -5402,14 +5402,14 @@ func (_mr *_MockMutableBareRootMetadataRecorder) SetSerializedPrivateMetadata(ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetSerializedPrivateMetadata", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) MaybeSignWriterMetadata(ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner) error {
-	ret := _m.ctrl.Call(_m, "MaybeSignWriterMetadata", ctx, codec, signer)
+func (_m *MockMutableBareRootMetadata) SignWriterMetadataInternally(ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner) error {
+	ret := _m.ctrl.Call(_m, "SignWriterMetadataInternally", ctx, codec, signer)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) MaybeSignWriterMetadata(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaybeSignWriterMetadata", arg0, arg1, arg2)
+func (_mr *_MockMutableBareRootMetadataRecorder) SignWriterMetadataInternally(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SignWriterMetadataInternally", arg0, arg1, arg2)
 }
 
 func (_m *MockMutableBareRootMetadata) SetLastModifyingWriter(user keybase1.UID) {
