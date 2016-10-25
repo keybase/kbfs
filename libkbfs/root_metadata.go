@@ -875,6 +875,7 @@ func signMD(
 	if mdv2, ok := brmd.(*BareRootMetadataV2); ok {
 		writerSigInfo = mdv2.WriterMetadataSigInfo
 	} else {
+		// TODO: Implement this!
 		panic("not implemented")
 	}
 	return MakeRootMetadataSigned(
