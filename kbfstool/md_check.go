@@ -173,6 +173,7 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	input string, irmd libkbfs.ImmutableRootMetadata, verbose bool) error {
 	var minRevision libkbfs.MetadataRevision
+	// TODO: Make the limit configurable.
 	if irmd.Revision() >= libkbfs.MetadataRevisionInitial+100 {
 		minRevision = irmd.Revision() - 100
 	} else {
