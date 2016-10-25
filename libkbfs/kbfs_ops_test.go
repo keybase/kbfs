@@ -285,9 +285,6 @@ func createNewRMD(t *testing.T, config Config, name string, public bool) (
 	id := FakeTlfID(1, public)
 	h := parseTlfHandleOrBust(t, config, name, public)
 	rmd := newRootMetadataOrBust(t, id, h)
-	key, err := config.KBPKI().GetCurrentVerifyingKey(context.Background())
-	require.NoError(t, err)
-	rmd.bareMd.(*BareRootMetadataV2).WriterMetadataSigInfo.VerifyingKey = key
 	return id, h, rmd
 }
 
@@ -318,8 +315,8 @@ func injectNewRMD(t *testing.T, config *ConfigMock) (
 	key, err := config.KBPKI().GetCurrentVerifyingKey(context.Background())
 	require.NoError(t, err)
 
-	ops.head = MakeImmutableRootMetadata(rmd, key,
-		fakeMdID(fakeTlfIDByte(id)), time.Now())
+	ops.head = makeImmutableRootMetadataForTest(t, rmd, key,
+		fakeMdID(fakeTlfIDByte(id)))
 	rmd.SetSerializedPrivateMetadata(make([]byte, 1))
 	config.Notifier().RegisterForChanges(
 		[]FolderBranch{{id, MasterBranch}}, config.observer)
@@ -508,8 +505,7 @@ func testKBFSOpsGetRootNodeCreateNewSuccess(t *testing.T, public bool) {
 		gomock.Any(), id, gomock.Any()).Return(ImmutableRootMetadata{}, nil)
 	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
 	require.NoError(t, err)
-	irmd := MakeImmutableRootMetadata(
-		rmd, key, fakeMdID(1), time.Now())
+	irmd := makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1))
 	config.mockMdops.EXPECT().GetForTLF(gomock.Any(), id).Return(irmd, nil)
 	config.mockMdcache.EXPECT().Put(irmd).Return(nil)
 
@@ -560,11 +556,11 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
 	require.NoError(t, err)
 	config.mockMdops.EXPECT().GetForHandle(gomock.Any(), h, Merged).Return(
-		TlfID{}, MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now()), nil)
+		TlfID{}, makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1)), nil)
 	ops := getOps(config, id)
 	assert.False(t, fboIdentityDone(ops))
 
-	ops.head = MakeImmutableRootMetadata(rmd, key, fakeMdID(2), time.Now())
+	ops.head = makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(2))
 	n, ei, err :=
 		config.KBFSOps().GetOrCreateRootNode(ctx, h, MasterBranch)
 	require.NoError(t, err)
@@ -730,7 +726,6 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailNonReader(t *testing.T) {
 	require.NoError(t, err)
 
 	rmd := newRootMetadataOrBust(t, id, h)
-	rmd.bareMd.(*BareRootMetadataV2).WriterMetadataSigInfo.VerifyingKey = key
 
 	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
@@ -745,7 +740,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailNonReader(t *testing.T) {
 
 	// won't even try getting the block if the user isn't a reader
 
-	ops.head = MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
+	ops.head = makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1))
 	expectedErr := ReadAccessError{"alice", h.GetCanonicalName(), false}
 	if _, err := config.KBFSOps().GetDirChildren(ctx, n); err == nil {
 		t.Errorf("Got no expected error on getdir")
@@ -790,7 +785,7 @@ func TestKBFSOpsGetNestedDirChildrenCacheSuccess(t *testing.T) {
 	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
 	require.NoError(t, err)
 
-	ops.head = MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
+	ops.head = makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 
@@ -835,7 +830,7 @@ func TestKBFSOpsLookupSuccess(t *testing.T) {
 	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
 	require.NoError(t, err)
 
-	ops.head = MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
+	ops.head = makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 
@@ -881,7 +876,7 @@ func TestKBFSOpsLookupSymlinkSuccess(t *testing.T) {
 	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
 	require.NoError(t, err)
 
-	ops.head = MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
+	ops.head = makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -921,7 +916,7 @@ func TestKBFSOpsLookupNoSuchNameFail(t *testing.T) {
 	ops := getOps(config, id)
 	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
 	require.NoError(t, err)
-	ops.head = MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
+	ops.head = makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -958,7 +953,7 @@ func TestKBFSOpsLookupNewDataVersionFail(t *testing.T) {
 	ops := getOps(config, id)
 	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
 	require.NoError(t, err)
-	ops.head = MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
+	ops.head = makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -1001,7 +996,7 @@ func TestKBFSOpsStatSuccess(t *testing.T) {
 	ops := getOps(config, id)
 	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
 	require.NoError(t, err)
-	ops.head = MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
+	ops.head = makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -5159,7 +5154,7 @@ func TestKBFSOpsStatRootSuccess(t *testing.T) {
 	ops := getOps(config, id)
 	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
 	require.NoError(t, err)
-	ops.head = MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
+	ops.head = makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
@@ -5181,7 +5176,7 @@ func TestKBFSOpsFailingRootOps(t *testing.T) {
 	ops := getOps(config, id)
 	key, err := config.KBPKI().GetCurrentVerifyingKey(ctx)
 	require.NoError(t, err)
-	ops.head = MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
+	ops.head = makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
 	rootID := fakeBlockID(42)
