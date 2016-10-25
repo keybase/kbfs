@@ -1277,7 +1277,7 @@ func (fbo *folderBranchOps) SetInitialHeadFromServer(
 	// head) if head is already set.
 	lState := makeFBOLockState()
 	head := fbo.getHead(lState)
-	if (head != ImmutableRootMetadata{}) && head.mdID == md.mdID {
+	if head != (ImmutableRootMetadata{}) && head.mdID == md.mdID {
 		fbo.log.CDebugf(ctx, "Head MD already set to revision %d (%s), no "+
 			"need to set initial head again", md.Revision(), md.MergedStatus())
 		return nil
