@@ -160,6 +160,11 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 			break
 		}
 
+		if irmdPrev == (libkbfs.ImmutableRootMetadata{}) {
+			fmt.Printf("Rev %d missing\n", irmd.Revision()-1)
+			break
+		}
+
 		if verbose {
 			fmt.Printf("Checking %d -> %d link...\n",
 				irmd.Revision()-1, irmd.Revision())
