@@ -176,8 +176,10 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	input string, irmd libkbfs.ImmutableRootMetadata,
 	mdLimit int, verbose bool) error {
-	if mdLimit < 1 {
-		mdLimit = 1
+	// Subtract one for irmd.
+	mdLimit--
+	if mdLimit < 0 {
+		mdLimit = 0
 	}
 	var minRevision libkbfs.MetadataRevision
 	if irmd.Revision() >= libkbfs.MetadataRevisionInitial+
@@ -206,7 +208,8 @@ func mdCheckOne(ctx context.Context, config libkbfs.Config,
 
 func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
 	flags := flag.NewFlagSet("kbfs md check", flag.ContinueOnError)
-	mdLimit := flags.Int("md-limit", 100, "Maximum number of MD objects to fetch.")
+	mdLimit := flags.Int("fetch-limit", 100,
+		"Maximum number of MD objects to fetch (per argument).")
 	verbose := flags.Bool("v", false, "Print verbose output.")
 	flags.Parse(args)
 
