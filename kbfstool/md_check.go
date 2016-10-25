@@ -105,7 +105,9 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 // of the previous revision, and so on all the way back to the given
 // revision. Along the way, it also checks that the root blocks that
 // haven't been garbage-collected are present. It returns a list of MD
-// objects with valid roots, in reverse revision order.
+// objects with valid roots, in reverse revision order. If multiple MD
+// objects have the same root (which are assumed to all be adjacent),
+// the most recent one is returned.
 func mdCheckChain(ctx context.Context, config libkbfs.Config,
 	irmd libkbfs.ImmutableRootMetadata,
 	minRevision libkbfs.MetadataRevision, verbose bool) (
@@ -130,7 +132,8 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 				fmt.Printf("Got error while checking root "+
 					"for rev %d: %v\n",
 					irmd.Revision(), err)
-			} else {
+			} else if len(irmdsWithRoots) == 0 ||
+				irmdsWithRoots[len(irmdsWithRoots)-1].Data().Dir.BlockPointer != rootPtr {
 				irmdsWithRoots = append(irmdsWithRoots, irmd)
 			}
 		}
