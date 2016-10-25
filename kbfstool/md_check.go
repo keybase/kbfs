@@ -181,19 +181,13 @@ func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	irmdsWithRoots, _ := mdCheckChain(
 		ctx, config, irmd, minRevision, verbose)
 
+	fmt.Printf("Retrieved %d MD objects with roots\n", len(irmdsWithRoots))
+
 	for _, irmd := range irmdsWithRoots {
 		data := irmd.Data()
 
-		if data.ChangesBlockInfo() == (libkbfs.BlockInfo{}) {
-			if verbose {
-				fmt.Print("No MD changes block to check; skipping\n")
-			}
-		} else {
-			bi := data.ChangesBlockInfo()
-			_ = checkFileBlock(
-				ctx, config, fmt.Sprintf("%s MD changes block", input),
-				irmd, bi, verbose)
-		}
+		// No need to check the blocks for unembedded changes,
+		// since they're already checked upon retrieval.
 
 		_ = checkDirBlock(
 			ctx, config, input, irmd, data.Dir.BlockInfo, verbose)
