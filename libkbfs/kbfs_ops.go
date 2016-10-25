@@ -361,7 +361,7 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 
 			return node, ei, nil
 		}
-		if !create && (md == ImmutableRootMetadata{}) {
+		if !create && md == (ImmutableRootMetadata{}) {
 			kbpki := fs.config.KBPKI()
 			err := identifyHandle(ctx, kbpki, kbpki, h)
 			if err != nil {
