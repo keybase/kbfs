@@ -697,7 +697,7 @@ func TestRootMetadataFinalVerifyV3(t *testing.T) {
 	}
 
 	// make a final copy
-	rmds2, err := rmds.MakeFinalCopy(config.Codec())
+	rmds2, err := rmds.MakeFinalCopy(config.Codec(), config.Clock())
 	if err != nil {
 		t.Fatal(err)
 	}
