@@ -778,8 +778,8 @@ func (md *BareRootMetadataV2) GetSerializedWriterMetadata(
 	return codec.Encode(md.WriterMetadataV2)
 }
 
-// MaybeSignWriterMetadata implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) MaybeSignWriterMetadata(
+// SignWriterMetadataInternally implements the MutableBareRootMetadata interface for BareRootMetadataV2.
+func (md *BareRootMetadataV2) SignWriterMetadataInternally(
 	ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner) error {
 	buf, err := codec.Encode(md.WriterMetadataV2)
 	if err != nil {

@@ -30,7 +30,7 @@ func NewRootMetadataSignedForTest(
 	ctx := context.Background()
 
 	// Encode and sign writer metadata.
-	err = md.MaybeSignWriterMetadata(ctx, codec, signer)
+	err = md.SignWriterMetadataInternally(ctx, codec, signer)
 	if err != nil {
 		return nil, err
 	}

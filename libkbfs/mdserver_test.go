@@ -36,7 +36,7 @@ func signRMDSForTest(t *testing.T, codec kbfscodec.Codec, signer cryptoSigner,
 	ctx := context.Background()
 
 	// Encode and sign writer metadata.
-	err := brmd.MaybeSignWriterMetadata(ctx, codec, signer)
+	err := brmd.SignWriterMetadataInternally(ctx, codec, signer)
 	require.NoError(t, err)
 
 	rmds, err := signMD(ctx, codec, signer, brmd, time.Time{})

@@ -160,7 +160,7 @@ func newRMDS(t *testing.T, config Config, h *TlfHandle) (
 	ctx := context.Background()
 
 	// Encode and sign writer metadata.
-	err = brmd.MaybeSignWriterMetadata(ctx, config.Codec(), config.Crypto())
+	err = brmd.SignWriterMetadataInternally(ctx, config.Codec(), config.Crypto())
 	require.NoError(t, err)
 
 	rmds, err := signMD(ctx, config.Codec(), config.Crypto(), &brmd, (wallClock{}).Now())
@@ -550,7 +550,7 @@ func makeRMDSRange(t *testing.T, config Config,
 		ctx := context.Background()
 
 		// Encode and sign writer metadata.
-		err = brmd.MaybeSignWriterMetadata(ctx, config.Codec(), config.Crypto())
+		err = brmd.SignWriterMetadataInternally(ctx, config.Codec(), config.Crypto())
 		require.NoError(t, err)
 
 		rmds, err := signMD(ctx, config.Codec(), config.Crypto(), &brmd, (wallClock{}).Now())
