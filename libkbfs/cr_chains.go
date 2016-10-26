@@ -146,7 +146,7 @@ func (cc *crChain) getActionsToMerge(renamer ConflictRenamer, mergedPath path,
 		}
 		// no conflicts!
 		if !conflict {
-			actions = append(actions, unmergedOp.GetDefaultAction(mergedPath))
+			actions = append(actions, unmergedOp.getDefaultAction(mergedPath))
 		}
 	}
 

@@ -40,11 +40,11 @@ type op interface {
 	// merged op.
 	CheckConflict(renamer ConflictRenamer, mergedOp op, isFile bool) (
 		crAction, error)
-	// GetDefaultAction should be called on an unmerged op only after
+	// getDefaultAction should be called on an unmerged op only after
 	// all conflicts with the corresponding change have been checked,
 	// and it returns the action to take against the merged branch
 	// given that there are no conflicts.
-	GetDefaultAction(mergedPath path) crAction
+	getDefaultAction(mergedPath path) crAction
 }
 
 // op codes
@@ -352,7 +352,7 @@ func (co *createOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
 	return nil, nil
 }
 
-func (co *createOp) GetDefaultAction(mergedPath path) crAction {
+func (co *createOp) getDefaultAction(mergedPath path) crAction {
 	if co.forceCopy {
 		return &renameUnmergedAction{
 			fromName: co.NewName,
@@ -442,7 +442,7 @@ func (ro *rmOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
 	return nil, nil
 }
 
-func (ro *rmOp) GetDefaultAction(mergedPath path) crAction {
+func (ro *rmOp) getDefaultAction(mergedPath path) crAction {
 	if ro.dropThis {
 		return &dropUnmergedAction{op: ro}
 	}
@@ -545,7 +545,7 @@ func (ro *renameOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
 	return nil, fmt.Errorf("Unexpected conflict check on a rename op: %s", ro)
 }
 
-func (ro *renameOp) GetDefaultAction(mergedPath path) crAction {
+func (ro *renameOp) getDefaultAction(mergedPath path) crAction {
 	return nil
 }
 
@@ -693,7 +693,7 @@ func (so *syncOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
 	return nil, nil
 }
 
-func (so *syncOp) GetDefaultAction(mergedPath path) crAction {
+func (so *syncOp) getDefaultAction(mergedPath path) crAction {
 	return &copyUnmergedEntryAction{
 		fromName: so.getFinalPath().tailName(),
 		toName:   mergedPath.tailName(),
@@ -923,7 +923,7 @@ func (sao *setAttrOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
 	return nil, nil
 }
 
-func (sao *setAttrOp) GetDefaultAction(mergedPath path) crAction {
+func (sao *setAttrOp) getDefaultAction(mergedPath path) crAction {
 	return &copyUnmergedAttrAction{
 		fromName: sao.getFinalPath().tailName(),
 		toName:   mergedPath.tailName(),
@@ -963,7 +963,7 @@ func (ro *resolutionOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
 	return nil, nil
 }
 
-func (ro *resolutionOp) GetDefaultAction(mergedPath path) crAction {
+func (ro *resolutionOp) getDefaultAction(mergedPath path) crAction {
 	return nil
 }
 
@@ -998,7 +998,7 @@ func (ro *rekeyOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
 	return nil, nil
 }
 
-func (ro *rekeyOp) GetDefaultAction(mergedPath path) crAction {
+func (ro *rekeyOp) getDefaultAction(mergedPath path) crAction {
 	return nil
 }
 
@@ -1048,8 +1048,8 @@ func (gco *GCOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
 	return nil, nil
 }
 
-// GetDefaultAction implements op.
-func (gco *GCOp) GetDefaultAction(mergedPath path) crAction {
+// getDefaultAction implements op.
+func (gco *GCOp) getDefaultAction(mergedPath path) crAction {
 	return nil
 }
 
