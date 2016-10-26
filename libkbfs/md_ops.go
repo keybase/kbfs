@@ -203,14 +203,13 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 		}
 	}
 
-	// TODO: Avoid the need for this copy (which is because MakeRootMetadata
-	// takes a MutableBareRootMetadata).
-	newMD, err := rmds.MD.DeepCopy(md.config.Codec())
-	if err != nil {
-		return ImmutableRootMetadata{}, err
+	// TODO: Avoid having to do this type assertion.
+	mmd, ok := rmds.MD.(MutableBareRootMetadata)
+	if !ok {
+		return ImmutableRootMetadata{}, MutableBareRootMetadataNoImplError{}
 	}
 
-	rmd := MakeRootMetadata(newMD, extra, handle)
+	rmd := MakeRootMetadata(mmd, extra, handle)
 	// Try to decrypt using the keys available in this md.  If that
 	// doesn't work, a future MD may contain more keys and will be
 	// tried later.
