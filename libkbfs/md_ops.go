@@ -204,12 +204,12 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	}
 
 	// TODO: Avoid having to do this type assertion.
-	mmd, ok := rmds.MD.(MutableBareRootMetadata)
+	brmd, ok := rmds.MD.(MutableBareRootMetadata)
 	if !ok {
 		return ImmutableRootMetadata{}, MutableBareRootMetadataNoImplError{}
 	}
 
-	rmd := MakeRootMetadata(mmd, extra, handle)
+	rmd := MakeRootMetadata(brmd, extra, handle)
 	// Try to decrypt using the keys available in this md.  If that
 	// doesn't work, a future MD may contain more keys and will be
 	// tried later.
