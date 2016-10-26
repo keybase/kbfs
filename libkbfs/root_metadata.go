@@ -825,8 +825,11 @@ func (irmd ImmutableRootMetadata) LastModifyingWriterVerifyingKey() kbfscrypto.V
 // - the type stored in the journal;
 // - and the type stored in the MD server.
 type RootMetadataSigned struct {
-	// signature over the root metadata by the private signing key
-	SigInfo       kbfscrypto.SignatureInfo
+	// SigInfo is the signature over the root metadata by the
+	// last modifying user's private signing key.
+	SigInfo kbfscrypto.SignatureInfo
+	// WriterSigInfo is the signature over the writer metadata by
+	// the last modifying writer's private signing key.
 	WriterSigInfo kbfscrypto.SignatureInfo
 	// all the metadata
 	MD BareRootMetadata
