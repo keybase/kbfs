@@ -793,6 +793,9 @@ func (md *BareRootMetadataV3) GetSerializedWriterMetadata(
 func (md *BareRootMetadataV3) SignWriterMetadataInternally(
 	ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner) error {
 	// Nothing to do.
+	//
+	// TODO: Set a flag, and a way to check it so that we can
+	// verify that this is called before sending to the server.
 	return nil
 }
 
