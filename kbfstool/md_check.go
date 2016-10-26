@@ -115,7 +115,7 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 	fmt.Printf("Checking chain from rev %d to %d...\n",
 		minRevision, irmd.Revision())
 	gcUnrefs := make(map[libkbfs.BlockRef]bool)
-	for irmd.Revision() > minRevision {
+	for {
 		rootPtr := irmd.Data().Dir.BlockPointer
 		if !rootPtr.Ref().IsValid() {
 			// This happens in the wild, but only for
@@ -152,9 +152,14 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 			}
 		}
 
+		if irmd.Revision() <= minRevision {
+			break
+		}
+
 		if verbose {
 			fmt.Printf("Fetching rev %d...\n", irmd.Revision()-1)
 		}
+
 		// TODO: Getting in chunks would be faster.
 		irmdPrev, err := mdGet(ctx, config, irmd.TlfID(),
 			irmd.BID(), irmd.Revision()-1)
