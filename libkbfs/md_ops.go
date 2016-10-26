@@ -530,7 +530,7 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
-	err = md.config.MDServer().Put(ctx, &rmds, rmd.NewExtra())
+	err = md.config.MDServer().Put(ctx, rmds, rmd.NewExtra())
 	if err != nil {
 		return MdID{}, err
 	}
