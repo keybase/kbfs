@@ -115,13 +115,13 @@ func newRMD(t *testing.T, config Config, public bool) (
 	}, h
 }
 
+// TODO: Add test coverage for MDv3.
+
 func newRMDS(t *testing.T, config Config, h *TlfHandle) (
 	*RootMetadataSigned, ExtraMetadata) {
 	id := FakeTlfID(1, h.IsPublic())
 
 	var brmd BareRootMetadataV2
-	// MDv3 TODO: uncomment the below when we're ready for MDv3
-	// var md BareRootMetadataV3
 	err := brmd.Update(id, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 	extra := addFakeBRMDData(t, config.Codec(), config.Crypto(), &brmd, h)
@@ -513,8 +513,6 @@ func makeRMDSRange(t *testing.T, config Config,
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
 	for i := 0; i < count; i++ {
 		var brmd BareRootMetadataV2
-		// MDv3 TODO: uncomment the below when we're ready for MDv3
-		// var md BareRootMetadataV3
 		err := brmd.Update(id, h.ToBareHandleOrBust())
 		require.NoError(t, err)
 		extra := addFakeBRMDData(t, config.Codec(), config.Crypto(), &brmd, h)
