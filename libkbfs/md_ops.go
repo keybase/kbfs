@@ -66,7 +66,15 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 			return md.convertVerifyingKeyError(ctx, rmds, handle, err)
 		}
 		return nil
+	}
 
+	// The writer metadata can be copied only for rekeys or
+	// finalizations, neither of which should happen while
+	// unmerged.
+	if rmds.MD.MergedStatus() != Merged {
+		return fmt.Errorf("Revision %d for %s has a copied writer "+
+			"metadata, but is unexpectedly not merged",
+			rmds.MD.RevisionNumber(), rmds.MD.TlfID())
 	}
 
 	if getRangeLock != nil {
@@ -104,9 +112,6 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 		// extra work by downloading the same MDs twice (for those
 		// that aren't yet in the cache).  That should be so rare that
 		// it's not worth optimizing.
-		//
-		// TODO: What if we're on a branch and we go far
-		// enough back to get back on the master branch?
 		prevMDs, err := getMDRange(ctx, md.config, rmds.MD.TlfID(), rmds.MD.BID(),
 			startRev, prevHead, rmds.MD.MergedStatus())
 		if err != nil {
