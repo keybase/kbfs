@@ -160,7 +160,7 @@ const (
 // (duplicated) block.
 type BlockRefNonce [8]byte
 
-// zeroBlockRefNonce is a special BlockRefNonce used for the initial
+// ZeroBlockRefNonce is a special BlockRefNonce used for the initial
 // reference to a block.
 var ZeroBlockRefNonce = BlockRefNonce([8]byte{0, 0, 0, 0, 0, 0, 0, 0})
 
@@ -175,6 +175,7 @@ type BlockRef struct {
 	RefNonce BlockRefNonce
 }
 
+// IsValid returns true exactly when ID.IsValid() does.
 func (r BlockRef) IsValid() bool {
 	return r.ID.IsValid()
 }
@@ -293,6 +294,7 @@ func (p BlockPointer) IsInitialized() bool {
 	return p.ID != BlockID{}
 }
 
+// Ref returns the BlockRef equivalent of this pointer.
 func (p BlockPointer) Ref() BlockRef {
 	return BlockRef{
 		ID:       p.ID,

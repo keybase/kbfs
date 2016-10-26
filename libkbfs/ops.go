@@ -1024,10 +1024,12 @@ func newGCOp(latestRev MetadataRevision) *GCOp {
 	return gco
 }
 
+// SizeExceptUpdates implements op.
 func (gco *GCOp) SizeExceptUpdates() uint64 {
 	return bpSize * uint64(len(gco.UnrefBlocks))
 }
 
+// AllUpdates implements op.
 func (gco *GCOp) AllUpdates() []blockUpdate {
 	return gco.Updates
 }
@@ -1040,11 +1042,13 @@ func (gco *GCOp) String() string {
 	return fmt.Sprintf("gc %d", gco.LatestRev)
 }
 
+// CheckConflict implements op.
 func (gco *GCOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	return nil, nil
 }
 
+// GetDefaultAction implements op.
 func (gco *GCOp) GetDefaultAction(mergedPath path) crAction {
 	return nil
 }
