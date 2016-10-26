@@ -161,6 +161,9 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 	}
 }
 
+// processMetadata converts the given rmds to an
+// ImmutableRootMetadata. After this function is called, rmds
+// shouldn't be used.
 func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	handle *TlfHandle, rmds *RootMetadataSigned, extra ExtraMetadata,
 	getRangeLock *sync.Mutex) (ImmutableRootMetadata, error) {
@@ -233,9 +236,9 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 		localTimestamp = localTimestamp.Add(offset)
 	}
 
-	return MakeImmutableRootMetadata(rmd,
-		rmds.GetWriterMetadataSigInfo().VerifyingKey, mdID,
-		localTimestamp), nil
+	key := rmds.GetWriterMetadataSigInfo().VerifyingKey
+	*rmds = RootMetadataSigned{}
+	return MakeImmutableRootMetadata(rmd, key, mdID, localTimestamp), nil
 }
 
 // GetForHandle implements the MDOps interface for MDOpsStandard.
@@ -423,10 +426,17 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 	for i := 0; i < numWorkers; i++ {
 		go worker()
 	}
+
+	// Do this first, since processMetadataWithID consumes its
+	// rmds argument.
+	startRev := rmdses[0].MD.RevisionNumber()
+	rmdsCount := len(rmdses)
+
 	for _, rmds := range rmdses {
 		rmdsChan <- rmds
 	}
 	close(rmdsChan)
+	rmdses = nil
 	go func() {
 		wg.Wait()
 		close(errChan)
@@ -438,8 +448,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id TlfID,
 	}
 
 	// Sort into slice based on revision.
-	irmds := make([]ImmutableRootMetadata, len(rmdses))
-	startRev := rmdses[0].MD.RevisionNumber()
+	irmds := make([]ImmutableRootMetadata, rmdsCount)
 	numExpected := MetadataRevision(len(irmds))
 	for irmd := range irmdChan {
 		i := irmd.Revision() - startRev

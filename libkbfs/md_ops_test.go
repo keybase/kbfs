@@ -205,9 +205,11 @@ func TestMDOpsGetForHandlePublicSuccess(t *testing.T) {
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(NullTlfID, rmds, nil)
 
+	// Do this first, since rmds is consumed.
+	expectedMD := rmds.MD
 	_, rmd2, err := config.MDOps().GetForHandle(ctx, h, Merged)
 	require.NoError(t, err)
-	require.Equal(t, rmds.MD, rmd2.bareMd)
+	require.Equal(t, expectedMD, rmd2.bareMd)
 }
 
 func expectGetKeyBundles(ctx context.Context, config *ConfigMock, extra ExtraMetadata) {
@@ -230,9 +232,11 @@ func TestMDOpsGetForHandlePrivateSuccess(t *testing.T) {
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(NullTlfID, rmds, nil)
 	expectGetKeyBundles(ctx, config, extra)
 
+	// Do this first, since rmds is consumed.
+	expectedMD := rmds.MD
 	_, rmd2, err := config.MDOps().GetForHandle(ctx, h, Merged)
 	require.NoError(t, err)
-	require.Equal(t, rmds.MD, rmd2.bareMd)
+	require.Equal(t, expectedMD, rmd2.bareMd)
 }
 
 func TestMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T) {
@@ -444,9 +448,11 @@ func TestMDOpsGetSuccess(t *testing.T) {
 	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.TlfID(), NullBranchID, Merged).Return(rmds, nil)
 	expectGetKeyBundles(ctx, config, extra)
 
+	// Do this first, since rmds is consumed.
+	expectedMD := rmds.MD
 	rmd2, err := config.MDOps().GetForTLF(ctx, rmds.MD.TlfID())
 	require.NoError(t, err)
-	require.Equal(t, rmds.MD, rmd2.bareMd)
+	require.Equal(t, expectedMD, rmd2.bareMd)
 }
 
 func TestMDOpsGetBlankSigFailure(t *testing.T) {
@@ -554,11 +560,16 @@ func testMDOpsGetRangeSuccess(t *testing.T, fromStart bool) {
 		expectGetKeyBundles(ctx, config, e)
 	}
 
+	// Do this first since rmdses is consumed.
+	expectedMDs := make([]BareRootMetadata, len(rmdses))
+	for i, rmds := range rmdses {
+		expectedMDs[i] = rmds.MD
+	}
 	rmds, err := config.MDOps().GetRange(ctx, rmdses[0].MD.TlfID(), start, stop)
 	require.NoError(t, err)
 	require.Equal(t, len(rmdses), len(rmds))
 	for i := 0; i < len(rmdses); i++ {
-		require.Equal(t, rmdses[i].MD, rmds[i].bareMd)
+		require.Equal(t, expectedMDs[i], rmds[i].bareMd)
 	}
 }
 
