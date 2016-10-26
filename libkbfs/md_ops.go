@@ -528,15 +528,16 @@ func (md *MDOpsStandard) put(
 			errors.New("MD has embedded block changes, but shouldn't")
 	}
 
-	brmd, err := encryptMDPrivateData(
+	err = encryptMDPrivateData(
 		ctx, md.config.Codec(), md.config.Crypto(),
-		md.config.Crypto(), md.config.KeyManager(), me, rmd.ReadOnly())
+		md.config.Crypto(), md.config.KeyManager(), me, rmd)
 	if err != nil {
 		return MdID{}, err
 	}
 
 	rmds, err := signMD(
-		ctx, md.config.Codec(), md.config.Crypto(), brmd, time.Time{})
+		ctx, md.config.Codec(), md.config.Crypto(),
+		rmd.bareMd, time.Time{})
 	if err != nil {
 		return MdID{}, err
 	}
@@ -551,13 +552,6 @@ func (md *MDOpsStandard) put(
 		return MdID{}, err
 	}
 
-	// TODO: Avoid the need for this deep copy, too.
-	newMD, err := rmds.MD.DeepCopy(md.config.Codec())
-	if err != nil {
-		return MdID{}, err
-	}
-
-	rmd.bareMd = newMD
 	return mdID, nil
 }
 

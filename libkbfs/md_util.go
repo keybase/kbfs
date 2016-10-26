@@ -312,17 +312,15 @@ func getUnmergedMDUpdates(ctx context.Context, config Config, id TlfID,
 
 // encryptMDPrivateData encrypts the private data of the given
 // RootMetadata and makes other modifications to prepare it for
-// signing (see signMD below). The returned BareRootMetadata is a
-// shallow copy of the given RootMetadata, so it shouldn't be modified
-// directly. After this function is called, the MetadataID of the
-// returned BareRootMetadata can be computed.
+// signing (see signMD below). After this function is called, the
+// MetadataID of the RootMetadata's BareRootMetadata can be computed.
 func encryptMDPrivateData(
 	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure,
 	signer cryptoSigner, ekg encryptionKeyGetter, me keybase1.UID,
-	rmd ReadOnlyRootMetadata) (BareRootMetadata, error) {
+	rmd *RootMetadata) error {
 	err := rmd.data.checkValid()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	brmd := rmd.bareMd
@@ -336,22 +334,22 @@ func encryptMDPrivateData(
 			// Encode the private metadata
 			encodedPrivateMetadata, err := codec.Encode(privateData)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			brmd.SetSerializedPrivateMetadata(encodedPrivateMetadata)
 		} else if !brmd.IsWriterMetadataCopiedSet() {
 			// Encrypt and encode the private metadata
 			k, err := ekg.GetTLFCryptKeyForEncryption(ctx, rmd)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			encryptedPrivateMetadata, err := crypto.EncryptPrivateMetadata(privateData, k)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			encodedEncryptedPrivateMetadata, err := codec.Encode(encryptedPrivateMetadata)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			brmd.SetSerializedPrivateMetadata(encodedEncryptedPrivateMetadata)
 		}
@@ -361,14 +359,14 @@ func encryptMDPrivateData(
 		// MetadataID may depend on it.
 		err := brmd.SignWriterMetadataInternally(ctx, codec, signer)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	// Record the last user to modify this metadata
 	brmd.SetLastModifyingUser(me)
 
-	return brmd, nil
+	return nil
 }
 
 func getFileBlockForMD(ctx context.Context, bcache BlockCache, bops BlockOps,
