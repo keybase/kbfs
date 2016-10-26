@@ -134,7 +134,7 @@ func (cc *crChain) getActionsToMerge(renamer ConflictRenamer, mergedPath path,
 		if mergedChain != nil {
 			for _, mergedOp := range mergedChain.ops {
 				action, err :=
-					unmergedOp.CheckConflict(renamer, mergedOp, cc.isFile())
+					unmergedOp.checkConflict(renamer, mergedOp, cc.isFile())
 				if err != nil {
 					return nil, err
 				}
@@ -348,7 +348,7 @@ func (ccs *crChains) makeChainForOp(op op) error {
 
 	// First set the pointers for all updates, and track what's been
 	// created and destroyed.
-	for _, update := range op.AllUpdates() {
+	for _, update := range op.allUpdates() {
 		chain, ok := ccs.byMostRecent[update.Unref]
 		if !ok {
 			// No matching chain means it's time to start a new chain

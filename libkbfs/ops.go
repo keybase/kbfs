@@ -22,7 +22,7 @@ type op interface {
 	AddUnrefBlock(ptr BlockPointer)
 	AddUpdate(oldPtr BlockPointer, newPtr BlockPointer)
 	SizeExceptUpdates() uint64
-	AllUpdates() []blockUpdate
+	allUpdates() []blockUpdate
 	Refs() []BlockPointer
 	Unrefs() []BlockPointer
 	String() string
@@ -33,12 +33,12 @@ type op interface {
 	setLocalTimestamp(t time.Time)
 	getLocalTimestamp() time.Time
 	checkValid() error
-	// CheckConflict compares the function's target op with the given
+	// checkConflict compares the function's target op with the given
 	// op, and returns a resolution if one is needed (or nil
 	// otherwise).  The resulting action (if any) assumes that this
 	// method's target op is the unmerged op, and the given op is the
 	// merged op.
-	CheckConflict(renamer ConflictRenamer, mergedOp op, isFile bool) (
+	checkConflict(renamer ConflictRenamer, mergedOp op, isFile bool) (
 		crAction, error)
 	// getDefaultAction should be called on an unmerged op only after
 	// all conflicts with the corresponding change have been checked,
@@ -276,7 +276,7 @@ func (co *createOp) SizeExceptUpdates() uint64 {
 	return uint64(len(co.NewName))
 }
 
-func (co *createOp) AllUpdates() []blockUpdate {
+func (co *createOp) allUpdates() []blockUpdate {
 	updates := make([]blockUpdate, len(co.Updates))
 	copy(updates, co.Updates)
 	return append(updates, co.Dir)
@@ -303,7 +303,7 @@ func (co *createOp) String() string {
 	return res
 }
 
-func (co *createOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (co *createOp) checkConflict(renamer ConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *createOp:
@@ -404,7 +404,7 @@ func (ro *rmOp) SizeExceptUpdates() uint64 {
 	return uint64(len(ro.OldName))
 }
 
-func (ro *rmOp) AllUpdates() []blockUpdate {
+func (ro *rmOp) allUpdates() []blockUpdate {
 	updates := make([]blockUpdate, len(ro.Updates))
 	copy(updates, ro.Updates)
 	return append(updates, ro.Dir)
@@ -422,7 +422,7 @@ func (ro *rmOp) String() string {
 	return fmt.Sprintf("rm %s", ro.OldName)
 }
 
-func (ro *rmOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (ro *rmOp) checkConflict(renamer ConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *createOp:
@@ -510,7 +510,7 @@ func (ro *renameOp) SizeExceptUpdates() uint64 {
 	return uint64(len(ro.NewName) + len(ro.NewName))
 }
 
-func (ro *renameOp) AllUpdates() []blockUpdate {
+func (ro *renameOp) allUpdates() []blockUpdate {
 	updates := make([]blockUpdate, len(ro.Updates))
 	copy(updates, ro.Updates)
 	if ro.NewDir != (blockUpdate{}) {
@@ -540,7 +540,7 @@ func (ro *renameOp) String() string {
 	return fmt.Sprintf("rename %s -> %s", ro.OldName, ro.NewName)
 }
 
-func (ro *renameOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (ro *renameOp) checkConflict(renamer ConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	return nil, fmt.Errorf("Unexpected conflict check on a rename op: %s", ro)
 }
@@ -643,7 +643,7 @@ func (so *syncOp) SizeExceptUpdates() uint64 {
 	return uint64(len(so.Writes) * 16)
 }
 
-func (so *syncOp) AllUpdates() []blockUpdate {
+func (so *syncOp) allUpdates() []blockUpdate {
 	updates := make([]blockUpdate, len(so.Updates))
 	copy(updates, so.Updates)
 	return append(updates, so.File)
@@ -665,7 +665,7 @@ func (so *syncOp) String() string {
 	return fmt.Sprintf("sync [%s]", strings.Join(writes, ", "))
 }
 
-func (so *syncOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (so *syncOp) checkConflict(renamer ConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	switch mergedOp.(type) {
 	case *syncOp:
@@ -872,7 +872,7 @@ func (sao *setAttrOp) SizeExceptUpdates() uint64 {
 	return uint64(len(sao.Name))
 }
 
-func (sao *setAttrOp) AllUpdates() []blockUpdate {
+func (sao *setAttrOp) allUpdates() []blockUpdate {
 	updates := make([]blockUpdate, len(sao.Updates))
 	copy(updates, sao.Updates)
 	return append(updates, sao.Dir)
@@ -890,7 +890,7 @@ func (sao *setAttrOp) String() string {
 	return fmt.Sprintf("setAttr %s (%s)", sao.Name, sao.Attr)
 }
 
-func (sao *setAttrOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (sao *setAttrOp) checkConflict(renamer ConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	switch realMergedOp := mergedOp.(type) {
 	case *setAttrOp:
@@ -946,7 +946,7 @@ func (ro *resolutionOp) SizeExceptUpdates() uint64 {
 	return 0
 }
 
-func (ro *resolutionOp) AllUpdates() []blockUpdate {
+func (ro *resolutionOp) allUpdates() []blockUpdate {
 	return ro.Updates
 }
 
@@ -958,7 +958,7 @@ func (ro *resolutionOp) String() string {
 	return "resolution"
 }
 
-func (ro *resolutionOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (ro *resolutionOp) checkConflict(renamer ConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	return nil, nil
 }
@@ -981,7 +981,7 @@ func (ro *rekeyOp) SizeExceptUpdates() uint64 {
 	return 0
 }
 
-func (ro *rekeyOp) AllUpdates() []blockUpdate {
+func (ro *rekeyOp) allUpdates() []blockUpdate {
 	return ro.Updates
 }
 
@@ -993,7 +993,7 @@ func (ro *rekeyOp) String() string {
 	return "rekey"
 }
 
-func (ro *rekeyOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+func (ro *rekeyOp) checkConflict(renamer ConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	return nil, nil
 }
@@ -1029,8 +1029,7 @@ func (gco *GCOp) SizeExceptUpdates() uint64 {
 	return bpSize * uint64(len(gco.UnrefBlocks))
 }
 
-// AllUpdates implements op.
-func (gco *GCOp) AllUpdates() []blockUpdate {
+func (gco *GCOp) allUpdates() []blockUpdate {
 	return gco.Updates
 }
 
@@ -1042,8 +1041,8 @@ func (gco *GCOp) String() string {
 	return fmt.Sprintf("gc %d", gco.LatestRev)
 }
 
-// CheckConflict implements op.
-func (gco *GCOp) CheckConflict(renamer ConflictRenamer, mergedOp op,
+// checkConflict implements op.
+func (gco *GCOp) checkConflict(renamer ConflictRenamer, mergedOp op,
 	isFile bool) (crAction, error) {
 	return nil, nil
 }
@@ -1103,7 +1102,7 @@ func invertOpForLocalNotifications(oldOp op) (newOp op, err error) {
 	// Now reverse all the block updates.  Don't bother with bare Refs
 	// and Unrefs since they don't matter for local notification
 	// purposes.
-	for _, update := range oldOp.AllUpdates() {
+	for _, update := range oldOp.allUpdates() {
 		newOp.AddUpdate(update.Ref, update.Unref)
 	}
 	return newOp, nil

@@ -475,7 +475,7 @@ func (bc *BlockChanges) SizeEstimate() uint64 {
 	if bc.sizeEstimate == 0 {
 		for _, op := range bc.Ops {
 			numPtrs := len(op.Refs()) + len(op.Unrefs()) +
-				2*len(op.AllUpdates())
+				2*len(op.allUpdates())
 			bc.sizeEstimate += uint64(numPtrs)*bpSize + op.SizeExceptUpdates()
 		}
 	}

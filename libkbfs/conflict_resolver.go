@@ -2694,7 +2694,7 @@ func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 			unrefs[ptr] = true
 			delete(refs, ptr)
 		}
-		for _, update := range op.AllUpdates() {
+		for _, update := range op.allUpdates() {
 			if update.Unref != update.Ref {
 				unrefs[update.Unref] = true
 				delete(refs, update.Unref)
@@ -3080,7 +3080,7 @@ func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
 	for _, op := range newOps {
 		cr.log.CDebugf(ctx, "remote op %s: refs: %v", op, op.Refs())
 		cr.log.CDebugf(ctx, "remote op %s: unrefs: %v", op, op.Unrefs())
-		for _, update := range op.AllUpdates() {
+		for _, update := range op.allUpdates() {
 			cr.log.CDebugf(ctx, "remote op %s: update: %v -> %v", op,
 				update.Unref, update.Ref)
 		}

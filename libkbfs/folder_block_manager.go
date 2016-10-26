@@ -608,7 +608,7 @@ func (fbm *folderBlockManager) archiveBlocksInBackground() {
 						ptrs = append(ptrs, ptr)
 					}
 				}
-				for _, update := range op.AllUpdates() {
+				for _, update := range op.allUpdates() {
 					// It's legal for there to be an "update" between
 					// two identical pointers (usually because of
 					// conflict resolution), so ignore that for
@@ -824,7 +824,7 @@ outer:
 						ptrs = append(ptrs, ptr)
 					}
 				}
-				for _, update := range op.AllUpdates() {
+				for _, update := range op.allUpdates() {
 					// It's legal for there to be an "update" between
 					// two identical pointers (usually because of
 					// conflict resolution), so ignore that for quota

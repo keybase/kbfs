@@ -2420,7 +2420,7 @@ func (fbo *folderBlockOps) cleanUpUnusedBlocks(ctx context.Context,
 			}
 			refs[ptr] = true
 		}
-		for _, update := range op.AllUpdates() {
+		for _, update := range op.allUpdates() {
 			if update.Ref == zeroPtr {
 				panic("Unexpected zero update ref ptr in a sync MD revision")
 			}
@@ -2945,7 +2945,7 @@ func (fbo *folderBlockOps) getDeferredWriteCountForTest(lState *lockState) int {
 func (fbo *folderBlockOps) UpdatePointers(lState *lockState, op op) {
 	fbo.blockLock.Lock(lState)
 	defer fbo.blockLock.Unlock(lState)
-	for _, update := range op.AllUpdates() {
+	for _, update := range op.allUpdates() {
 		oldRef := update.Unref.Ref()
 		fbo.nodeCache.UpdatePointer(oldRef, update.Ref)
 	}

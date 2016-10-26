@@ -3547,7 +3547,7 @@ func (fbo *folderBranchOps) searchForNode(ctx context.Context,
 	// searching.
 	newPtrs := make(map[BlockPointer]bool)
 	for _, op := range md.data.Changes.Ops {
-		for _, update := range op.AllUpdates() {
+		for _, update := range op.allUpdates() {
 			newPtrs[update.Ref] = true
 		}
 		for _, ref := range op.Refs() {
@@ -3794,7 +3794,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			// Revert the path back to the original BlockPointers,
 			// before the updates were applied.
 			if len(reverseUpdates) == 0 {
-				for _, update := range op.AllUpdates() {
+				for _, update := range op.allUpdates() {
 					reverseUpdates[update.Ref] = update.Unref
 				}
 			}
@@ -4131,7 +4131,7 @@ func (fbo *folderBranchOps) undoUnmergedMDUpdatesLocked(
 					unmergedPtrs = append(unmergedPtrs, ptr)
 				}
 			}
-			for _, update := range op.AllUpdates() {
+			for _, update := range op.allUpdates() {
 				if update.Ref != zeroPtr {
 					unmergedPtrs = append(unmergedPtrs, update.Ref)
 				}
@@ -5145,7 +5145,7 @@ func (fbo *folderBranchOps) GetUpdateHistory(ctx context.Context,
 			for _, ptr := range op.Unrefs() {
 				opSummary.Unrefs = append(opSummary.Unrefs, ptr.String())
 			}
-			for _, update := range op.AllUpdates() {
+			for _, update := range op.allUpdates() {
 				opSummary.Updates[update.Unref.String()] = update.Ref.String()
 			}
 			updateSummary.Ops = append(updateSummary.Ops, opSummary)
