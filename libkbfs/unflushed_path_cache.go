@@ -142,7 +142,6 @@ func addUnflushedPaths(ctx context.Context,
 	for _, mdInfo := range mdInfos {
 		winfo := writerInfo{
 			uid:      uid,
-			key:      key,
 			revision: mdInfo.revision,
 			// There won't be any conflicts, so no need for the
 			// username/devicename.
