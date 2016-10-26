@@ -134,7 +134,14 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 				err = md.config.Crypto().Verify(
 					buf, rmds.GetWriterMetadataSigInfo())
 				if err != nil {
-					return fmt.Errorf("Could not verify uncopied writer metadata from revision %d of folder %s with signature from revision %d: %v", prevMDs[i].Revision(), rmds.MD.TlfID(), rmds.MD.RevisionNumber(), err)
+					return fmt.Errorf("Could not verify "+
+						"uncopied writer metadata "+
+						"from revision %d of folder "+
+						"%s with signature from "+
+						"revision %d: %v",
+						prevMDs[i].Revision(),
+						rmds.MD.TlfID(),
+						rmds.MD.RevisionNumber(), err)
 				}
 
 				// The fact the fact that we were able to process this
