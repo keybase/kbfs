@@ -1049,24 +1049,23 @@ func (j *mdJournal) put(
 			errors.New("MD has embedded block changes, but shouldn't")
 	}
 
-	brmd, err := encryptMDPrivateData(
-		ctx, j.codec, j.crypto, signer, ekg,
-		j.uid, rmd.ReadOnly())
+	err = encryptMDPrivateData(
+		ctx, j.codec, j.crypto, signer, ekg, j.uid, rmd)
 	if err != nil {
 		return MdID{}, err
 	}
 
-	err = brmd.IsValidAndSigned(j.codec, j.crypto, extra)
+	err = rmd.bareMd.IsValidAndSigned(j.codec, j.crypto, extra)
 	if err != nil {
 		return MdID{}, err
 	}
 
-	id, err := j.putMD(brmd)
+	id, err := j.putMD(rmd.bareMd)
 	if err != nil {
 		return MdID{}, err
 	}
 
-	err = j.putExtraMetadata(brmd, extra)
+	err = j.putExtraMetadata(rmd.bareMd, extra)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1086,8 +1085,7 @@ func (j *mdJournal) put(
 			return MdID{}, err
 		}
 	} else {
-		err = j.j.append(
-			brmd.RevisionNumber(), mdIDJournalEntry{ID: id})
+		err = j.j.append(rmd.Revision(), mdIDJournalEntry{ID: id})
 		if err != nil {
 			return MdID{}, err
 		}
