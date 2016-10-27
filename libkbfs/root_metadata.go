@@ -838,25 +838,34 @@ type RootMetadataSigned struct {
 	untrustedServerTimestamp time.Time
 }
 
+func checkWriterSig(rmds *RootMetadataSigned) error {
+	if mdv2, ok := rmds.MD.(*BareRootMetadataV2); ok {
+		if !mdv2.WriterMetadataSigInfo.Equals(rmds.WriterSigInfo) {
+			return fmt.Errorf(
+				"Expected writer sig info %v, got %v",
+				mdv2.WriterMetadataSigInfo, rmds.WriterSigInfo)
+		}
+	}
+	return nil
+}
+
 // MakeRootMetadataSigned makes a RootMetadataSigned object from the
 // given info. If md stores the writer signature info internally, it
 // must match the given one.
 func MakeRootMetadataSigned(sigInfo, writerSigInfo kbfscrypto.SignatureInfo,
 	md BareRootMetadata,
 	untrustedServerTimestamp time.Time) (*RootMetadataSigned, error) {
-	if mdv2, ok := md.(*BareRootMetadataV2); ok {
-		if !mdv2.WriterMetadataSigInfo.Equals(writerSigInfo) {
-			return nil, fmt.Errorf(
-				"Expected writer sig info %v, got %v",
-				mdv2.WriterMetadataSigInfo, writerSigInfo)
-		}
-	}
-	return &RootMetadataSigned{
+	rmds := &RootMetadataSigned{
 		MD:                       md,
 		SigInfo:                  sigInfo,
 		WriterSigInfo:            writerSigInfo,
 		untrustedServerTimestamp: untrustedServerTimestamp,
-	}, nil
+	}
+	err := checkWriterSig(rmds)
+	if err != nil {
+		return nil, err
+	}
+	return rmds, nil
 }
 
 func signMD(
@@ -1027,6 +1036,24 @@ func (rmds *RootMetadataSigned) IsLastModifiedBy(
 	return nil
 }
 
+// EncodeRootMetadataSigned serializes a metadata block. This should
+// be used instead of directly calling codec.Encode(), as it handles
+// some version-specific quirks.
+func EncodeRootMetadataSigned(
+	codec kbfscodec.Codec, rmds *RootMetadataSigned) ([]byte, error) {
+	err := checkWriterSig(rmds)
+	if err != nil {
+		return nil, err
+	}
+	rmdsCopy := *rmds
+	if rmdsCopy.Version() < SegregatedKeyBundlesVer {
+		// For v2, the writer signature is in rmds.MD, so
+		// remove the one in rmds.
+		rmdsCopy.WriterSigInfo = kbfscrypto.SignatureInfo{}
+	}
+	return codec.Encode(rmdsCopy)
+}
+
 // DecodeRootMetadata deserializes a metadata block into the specified
 // versioned structure.
 func DecodeRootMetadata(
@@ -1078,6 +1105,19 @@ func DecodeRootMetadataSigned(
 	}
 	if err := codec.Decode(buf, &rmds); err != nil {
 		return nil, err
+	}
+	if ver < SegregatedKeyBundlesVer {
+		// For v2, the writer signature is in rmds.MD, so copy
+		// it out.
+		if !rmds.WriterSigInfo.IsNil() {
+			return nil, fmt.Errorf(
+				"Decoded RootMetadataSigned with version "+
+					"%d unexpectedly has non-nil "+
+					"writer signature %s",
+				ver, rmds.WriterSigInfo)
+		}
+		mdv2 := rmds.MD.(*BareRootMetadataV2)
+		rmds.WriterSigInfo = mdv2.WriterMetadataSigInfo
 	}
 	rmds.untrustedServerTimestamp = untrustedServerTimestamp
 	return &rmds, nil

@@ -469,7 +469,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		}
 	}
 
-	encodedMd, err := md.config.Codec().Encode(rmds)
+	encodedMd, err := EncodeRootMetadataSigned(md.config.Codec(), rmds)
 	if err != nil {
 		return MDServerError{err}
 	}

@@ -174,7 +174,7 @@ func (s *mdServerTlfStorage) putMDLocked(
 		return id, nil
 	}
 
-	encodedRMDS, err := s.codec.Encode(rmds)
+	encodedRMDS, err := EncodeRootMetadataSigned(s.codec, rmds)
 	if err != nil {
 		return MdID{}, err
 	}

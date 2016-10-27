@@ -477,7 +477,7 @@ func (md *MDServerRemote) GetRange(ctx context.Context, id TlfID,
 func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 	extra ExtraMetadata) error {
 	// encode MD block
-	rmdsBytes, err := md.config.Codec().Encode(rmds)
+	rmdsBytes, err := EncodeRootMetadataSigned(md.config.Codec(), rmds)
 	if err != nil {
 		return err
 	}
