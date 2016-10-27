@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getKeyBundlesForTesting(t *testing.T, c Config, tlfIDByte byte, handleStr string) (
+func getKeyBundlesForTesting(t *testing.T, c Config, tlfByte byte, handleStr string) (
 	tlf.TlfID, TLFWriterKeyBundleID, *TLFWriterKeyBundleV3, TLFReaderKeyBundleID, *TLFReaderKeyBundleV3) {
-	tlfID := tlf.FakeTlfID(tlfIDByte, false)
+	tlfID := tlf.FakeTlfID(tlfByte, false)
 	h := parseTlfHandleOrBust(t, c, handleStr, false)
 	rmd, err := makeInitialRootMetadata(SegregatedKeyBundlesVer, tlfID, h)
 	require.NoError(t, err)
