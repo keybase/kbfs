@@ -958,7 +958,7 @@ func ParseTlfHandle(
 		}
 
 		if !h.IsReader(currentUID) {
-			return nil, ReadAccessError{currentUsername, h.GetCanonicalName(), public}
+			return nil, NewReadAccessError(h, currentUsername, h.GetCanonicalPath())
 		}
 	}
 

@@ -729,7 +729,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailNonReader(t *testing.T) {
 
 	// won't even try getting the block if the user isn't a reader
 	ops.head = MakeImmutableRootMetadata(rmd, fakeMdID(1), time.Now())
-	expectedErr := ReadAccessError{"alice", h.GetCanonicalName(), false}
+	expectedErr := NewReadAccessError(h, "alice", "/keybase/private/bob#alice")
 	if _, err := config.KBFSOps().GetDirChildren(ctx, n); err == nil {
 		t.Errorf("Got no expected error on getdir")
 	} else if err != expectedErr {

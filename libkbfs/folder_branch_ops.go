@@ -953,7 +953,7 @@ func (fbo *folderBranchOps) getMDForReadHelper(
 			return ImmutableRootMetadata{}, err
 		}
 		if !md.GetTlfHandle().IsReader(uid) {
-			return ImmutableRootMetadata{}, NewReadAccessError(md.GetTlfHandle(), username)
+			return ImmutableRootMetadata{}, NewReadAccessError(md.GetTlfHandle(), username, md.GetTlfHandle().GetCanonicalPath())
 		}
 	}
 	return md, nil

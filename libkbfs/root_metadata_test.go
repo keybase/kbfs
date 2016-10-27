@@ -602,7 +602,7 @@ func TestMakeRekeyReadError(t *testing.T) {
 	require.NoError(t, err)
 
 	err = makeRekeyReadErrorHelper(rmd.ReadOnly(), h, FirstValidKeyGen, uid, u)
-	require.Equal(t, NewReadAccessError(h, u), err)
+	require.Equal(t, NewReadAccessError(h, u, "/keybase/private/alice"), err)
 
 	err = makeRekeyReadErrorHelper(rmd.ReadOnly(), h, FirstValidKeyGen, h.FirstResolvedWriter(), "alice")
 	require.Equal(t, NeedSelfRekeyError{"alice"}, err)
@@ -628,7 +628,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	require.NoError(t, err)
 
 	err = makeRekeyReadErrorHelper(rmd.ReadOnly(), h, FirstValidKeyGen, uid, u)
-	require.Equal(t, NewReadAccessError(h, u), err)
+	require.Equal(t, NewReadAccessError(h, u, "/keybase/private/alice,bob@twitter"), err)
 
 	config.KeybaseService().(*KeybaseDaemonLocal).addNewAssertionForTestOrBust(
 		"bob", "bob@twitter")
