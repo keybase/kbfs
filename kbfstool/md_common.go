@@ -28,8 +28,7 @@ func getTlfID(
 		return tlf.ID{}, err
 	}
 	if p.PathType != fsrpc.TLFPathType {
-		return tlf.ID{}, fmt.Errorf(
-			"%q is not a TLF path", tlfStr)
+		return tlf.ID{}, fmt.Errorf("%q is not a TLF path", tlfStr)
 	}
 	if len(p.TLFComponents) > 0 {
 		return tlf.ID{}, fmt.Errorf(
