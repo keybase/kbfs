@@ -916,8 +916,12 @@ func (rmds *RootMetadataSigned) Version() MetadataVer {
 // with the revision incremented and the final bit set.
 func (rmds *RootMetadataSigned) MakeFinalCopy(
 	codec kbfscodec.Codec, now time.Time,
-	finalizedInfo *TlfHandleExtension) (
-	*RootMetadataSigned, error) {
+	finalizedInfo *TlfHandleExtension) (*RootMetadataSigned, error) {
+	if finalizedInfo.Type != TlfHandleExtensionFinalized {
+		return nil, fmt.Errorf(
+			"Extension %s does not have finalized type",
+			finalizedInfo)
+	}
 	if rmds.MD.IsFinal() {
 		return nil, MetadataIsFinalError{}
 	}
