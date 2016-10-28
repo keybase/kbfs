@@ -40,7 +40,7 @@ const (
 // RandomBlockID returns a randomly-generated BlockID for testing.
 func RandomBlockID() BlockID {
 	var dh kbfshash.RawDefaultHash
-	err := cryptoRandRead(dh[:])
+	err := kbfscrypto.RandRead(dh[:])
 	if err != nil {
 		panic(err)
 	}

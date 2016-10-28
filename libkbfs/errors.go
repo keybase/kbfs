@@ -595,16 +595,6 @@ func (e KeyCacheHitError) Error() string {
 	return fmt.Sprintf("Invalid key with tlf=%s, keyGen=%d", e.tlf, e.keyGen)
 }
 
-// UnexpectedShortCryptoRandRead indicates that fewer bytes were read
-// from crypto.rand.Read() than expected.
-type UnexpectedShortCryptoRandRead struct {
-}
-
-// Error implements the error interface for UnexpectedShortRandRead.
-func (e UnexpectedShortCryptoRandRead) Error() string {
-	return "Unexpected short read from crypto.rand.Read()"
-}
-
 // UnknownEncryptionVer indicates that we can't decrypt an
 // encryptedData object because it has an unknown version.
 type UnknownEncryptionVer struct {
