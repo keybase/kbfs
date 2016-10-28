@@ -23,9 +23,9 @@ func TestIDEncodeDecode(t *testing.T) {
 	// https://github.com/msgpack/msgpack/blob/master/spec.md#formats-bin
 	// for why there are two bytes of overhead.
 	const overhead = 2
-	if len(encodedID) != IDByteLen+overhead {
+	if len(encodedID) != idByteLen+overhead {
 		t.Errorf("expected encoded length %d, got %d",
-			IDByteLen+overhead, len(encodedID))
+			idByteLen+overhead, len(encodedID))
 	}
 
 	var id2 ID
