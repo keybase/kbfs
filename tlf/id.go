@@ -11,79 +11,79 @@ import (
 )
 
 const (
-	// TlfIDByteLen is the number of bytes in a top-level folder ID
-	TlfIDByteLen = 16
-	// TlfIDStringLen is the number of characters in the string
+	// IDByteLen is the number of bytes in a top-level folder ID
+	IDByteLen = 16
+	// IDStringLen is the number of characters in the string
 	// representation of a top-level folder ID
-	TlfIDStringLen = 2 * TlfIDByteLen
-	// TlfIDSuffix is the last byte of a private top-level folder ID
-	TlfIDSuffix = 0x16
-	// PubTlfIDSuffix is the last byte of a public top-level folder ID
-	PubTlfIDSuffix = 0x17
+	IDStringLen = 2 * IDByteLen
+	// IDSuffix is the last byte of a private top-level folder ID
+	IDSuffix = 0x16
+	// PubIDSuffix is the last byte of a public top-level folder ID
+	PubIDSuffix = 0x17
 )
 
-// TlfID is a top-level folder ID
-type TlfID struct {
-	id [TlfIDByteLen]byte
+// ID is a top-level folder ID
+type ID struct {
+	id [IDByteLen]byte
 }
 
-var _ encoding.BinaryMarshaler = TlfID{}
-var _ encoding.BinaryUnmarshaler = (*TlfID)(nil)
+var _ encoding.BinaryMarshaler = ID{}
+var _ encoding.BinaryUnmarshaler = (*ID)(nil)
 
-var _ json.Marshaler = TlfID{}
-var _ json.Unmarshaler = (*TlfID)(nil)
+var _ json.Marshaler = ID{}
+var _ json.Unmarshaler = (*ID)(nil)
 
-// NullTlfID is an empty TlfID
-var NullTlfID = TlfID{}
+// NullID is an empty ID
+var NullID = ID{}
 
 // Bytes returns the bytes of the TLF ID.
-func (id TlfID) Bytes() []byte {
+func (id ID) Bytes() []byte {
 	return id.id[:]
 }
 
-// String implements the fmt.Stringer interface for TlfID.
-func (id TlfID) String() string {
+// String implements the fmt.Stringer interface for ID.
+func (id ID) String() string {
 	return hex.EncodeToString(id.id[:])
 }
 
-// MarshalBinary implements the encoding.BinaryMarshaler interface for TlfID.
-func (id TlfID) MarshalBinary() (data []byte, err error) {
-	suffix := id.id[TlfIDByteLen-1]
-	if suffix != TlfIDSuffix && suffix != PubTlfIDSuffix {
-		return nil, InvalidTlfID{id.String()}
+// MarshalBinary implements the encoding.BinaryMarshaler interface for ID.
+func (id ID) MarshalBinary() (data []byte, err error) {
+	suffix := id.id[IDByteLen-1]
+	if suffix != IDSuffix && suffix != PubIDSuffix {
+		return nil, InvalidID{id.String()}
 	}
 	return id.id[:], nil
 }
 
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface
-// for TlfID.
-func (id *TlfID) UnmarshalBinary(data []byte) error {
-	if len(data) != TlfIDByteLen {
-		return InvalidTlfID{hex.EncodeToString(data)}
+// for ID.
+func (id *ID) UnmarshalBinary(data []byte) error {
+	if len(data) != IDByteLen {
+		return InvalidID{hex.EncodeToString(data)}
 	}
-	suffix := data[TlfIDByteLen-1]
-	if suffix != TlfIDSuffix && suffix != PubTlfIDSuffix {
-		return InvalidTlfID{hex.EncodeToString(data)}
+	suffix := data[IDByteLen-1]
+	if suffix != IDSuffix && suffix != PubIDSuffix {
+		return InvalidID{hex.EncodeToString(data)}
 	}
 	copy(id.id[:], data)
 	return nil
 }
 
 // MarshalJSON implements the encoding.json.Marshaler interface for
-// TlfID.
-func (id TlfID) MarshalJSON() ([]byte, error) {
+// ID.
+func (id ID) MarshalJSON() ([]byte, error) {
 	return json.Marshal(id.String())
 }
 
 // UnmarshalJSON implements the encoding.json.Unmarshaler interface
-// for TlfID.
-func (id *TlfID) UnmarshalJSON(buf []byte) error {
+// for ID.
+func (id *ID) UnmarshalJSON(buf []byte) error {
 	var str string
 	err := json.Unmarshal(buf, &str)
 	if err != nil {
 		return err
 	}
-	newID, err := ParseTlfID(str)
+	newID, err := ParseID(str)
 	if err != nil {
 		return err
 	}
@@ -91,25 +91,25 @@ func (id *TlfID) UnmarshalJSON(buf []byte) error {
 	return nil
 }
 
-// IsPublic returns true if this TlfID is for a public top-level folder
-func (id TlfID) IsPublic() bool {
-	return id.id[TlfIDByteLen-1] == PubTlfIDSuffix
+// IsPublic returns true if this ID is for a public top-level folder
+func (id ID) IsPublic() bool {
+	return id.id[IDByteLen-1] == PubIDSuffix
 }
 
-// ParseTlfID parses a hex encoded TlfID. Returns NullTlfID and an
-// InvalidTlfID on failure.
-func ParseTlfID(s string) (TlfID, error) {
-	if len(s) != TlfIDStringLen {
-		return NullTlfID, InvalidTlfID{s}
+// ParseID parses a hex encoded ID. Returns NullID and an
+// InvalidID on failure.
+func ParseID(s string) (ID, error) {
+	if len(s) != IDStringLen {
+		return NullID, InvalidID{s}
 	}
 	bytes, err := hex.DecodeString(s)
 	if err != nil {
-		return NullTlfID, InvalidTlfID{s}
+		return NullID, InvalidID{s}
 	}
-	var id TlfID
+	var id ID
 	err = id.UnmarshalBinary(bytes)
 	if err != nil {
-		return NullTlfID, InvalidTlfID{s}
+		return NullID, InvalidID{s}
 	}
 	return id, nil
 }

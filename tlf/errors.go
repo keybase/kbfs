@@ -6,12 +6,12 @@ package tlf
 
 import "fmt"
 
-// InvalidTlfID indicates whether the TLF ID string is not parseable
+// InvalidID indicates whether the TLF ID string is not parseable
 // or invalid.
-type InvalidTlfID struct {
+type InvalidID struct {
 	id string
 }
 
-func (e InvalidTlfID) Error() string {
+func (e InvalidID) Error() string {
 	return fmt.Sprintf("Invalid TLF ID %q", e.id)
 }

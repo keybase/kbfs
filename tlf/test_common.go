@@ -4,20 +4,20 @@
 
 package tlf
 
-// FakeTlfID creates a fake public or private TLF ID from the given
+// FakeID creates a fake public or private TLF ID from the given
 // byte.
-func FakeTlfID(b byte, public bool) TlfID {
-	bytes := [TlfIDByteLen]byte{b}
+func FakeID(b byte, public bool) ID {
+	bytes := [IDByteLen]byte{b}
 	if public {
-		bytes[TlfIDByteLen-1] = PubTlfIDSuffix
+		bytes[IDByteLen-1] = PubIDSuffix
 	} else {
-		bytes[TlfIDByteLen-1] = TlfIDSuffix
+		bytes[IDByteLen-1] = IDSuffix
 	}
-	return TlfID{bytes}
+	return ID{bytes}
 }
 
-// FakeTlfIDByte returns the byte used to create a fake tlf.TlfID with
-// FakeTlfID.
-func FakeTlfIDByte(id TlfID) byte {
+// FakeIDByte returns the byte used to create a fake tlf.ID with
+// FakeID.
+func FakeIDByte(id ID) byte {
 	return id.id[0]
 }
