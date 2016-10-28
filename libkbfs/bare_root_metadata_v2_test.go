@@ -16,7 +16,7 @@ import (
 )
 
 func TestRootMetadataVersionV2(t *testing.T) {
-	tlfID := tlf.FakeTlfID(1, false)
+	tlfID := tlf.FakeID(1, false)
 
 	// Metadata objects with unresolved assertions should have
 	// InitialExtraMetadataVer.
@@ -50,7 +50,7 @@ func TestRootMetadataVersionV2(t *testing.T) {
 }
 
 func TestIsValidRekeyRequestBasicV2(t *testing.T) {
-	tlfID := tlf.FakeTlfID(1, false)
+	tlfID := tlf.FakeID(1, false)
 
 	uid := keybase1.MakeTestUID(1)
 	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)

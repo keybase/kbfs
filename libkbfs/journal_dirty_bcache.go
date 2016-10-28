@@ -20,7 +20,7 @@ type journalDirtyBlockCache struct {
 
 var _ DirtyBlockCache = journalDirtyBlockCache{}
 
-func (j journalDirtyBlockCache) Get(tlfID tlf.TlfID, ptr BlockPointer,
+func (j journalDirtyBlockCache) Get(tlfID tlf.ID, ptr BlockPointer,
 	branch BranchName) (Block, error) {
 	if j.jServer.hasTLFJournal(tlfID) {
 		return j.journalCache.Get(tlfID, ptr, branch)
@@ -29,7 +29,7 @@ func (j journalDirtyBlockCache) Get(tlfID tlf.TlfID, ptr BlockPointer,
 	return j.syncCache.Get(tlfID, ptr, branch)
 }
 
-func (j journalDirtyBlockCache) Put(tlfID tlf.TlfID, ptr BlockPointer,
+func (j journalDirtyBlockCache) Put(tlfID tlf.ID, ptr BlockPointer,
 	branch BranchName, block Block) error {
 	if j.jServer.hasTLFJournal(tlfID) {
 		return j.journalCache.Put(tlfID, ptr, branch, block)
@@ -38,7 +38,7 @@ func (j journalDirtyBlockCache) Put(tlfID tlf.TlfID, ptr BlockPointer,
 	return j.syncCache.Put(tlfID, ptr, branch, block)
 }
 
-func (j journalDirtyBlockCache) Delete(tlfID tlf.TlfID, ptr BlockPointer,
+func (j journalDirtyBlockCache) Delete(tlfID tlf.ID, ptr BlockPointer,
 	branch BranchName) error {
 	if j.jServer.hasTLFJournal(tlfID) {
 		return j.journalCache.Delete(tlfID, ptr, branch)
@@ -47,7 +47,7 @@ func (j journalDirtyBlockCache) Delete(tlfID tlf.TlfID, ptr BlockPointer,
 	return j.syncCache.Delete(tlfID, ptr, branch)
 }
 
-func (j journalDirtyBlockCache) IsDirty(tlfID tlf.TlfID, ptr BlockPointer,
+func (j journalDirtyBlockCache) IsDirty(tlfID tlf.ID, ptr BlockPointer,
 	branch BranchName) bool {
 	if j.jServer.hasTLFJournal(tlfID) {
 		return j.journalCache.IsDirty(tlfID, ptr, branch)
@@ -56,12 +56,12 @@ func (j journalDirtyBlockCache) IsDirty(tlfID tlf.TlfID, ptr BlockPointer,
 	return j.syncCache.IsDirty(tlfID, ptr, branch)
 }
 
-func (j journalDirtyBlockCache) IsAnyDirty(tlfID tlf.TlfID) bool {
+func (j journalDirtyBlockCache) IsAnyDirty(tlfID tlf.ID) bool {
 	return j.journalCache.IsAnyDirty(tlfID) || j.syncCache.IsAnyDirty(tlfID)
 }
 
 func (j journalDirtyBlockCache) RequestPermissionToDirty(ctx context.Context,
-	tlfID tlf.TlfID, estimatedDirtyBytes int64) (DirtyPermChan, error) {
+	tlfID tlf.ID, estimatedDirtyBytes int64) (DirtyPermChan, error) {
 	if j.jServer.hasTLFJournal(tlfID) {
 		return j.journalCache.RequestPermissionToDirty(ctx, tlfID,
 			estimatedDirtyBytes)
@@ -70,7 +70,7 @@ func (j journalDirtyBlockCache) RequestPermissionToDirty(ctx context.Context,
 	return j.syncCache.RequestPermissionToDirty(ctx, tlfID, estimatedDirtyBytes)
 }
 
-func (j journalDirtyBlockCache) UpdateUnsyncedBytes(tlfID tlf.TlfID,
+func (j journalDirtyBlockCache) UpdateUnsyncedBytes(tlfID tlf.ID,
 	newUnsyncedBytes int64, wasSyncing bool) {
 	if j.jServer.hasTLFJournal(tlfID) {
 		j.journalCache.UpdateUnsyncedBytes(tlfID, newUnsyncedBytes, wasSyncing)
@@ -79,7 +79,7 @@ func (j journalDirtyBlockCache) UpdateUnsyncedBytes(tlfID tlf.TlfID,
 	}
 }
 
-func (j journalDirtyBlockCache) UpdateSyncingBytes(tlfID tlf.TlfID, size int64) {
+func (j journalDirtyBlockCache) UpdateSyncingBytes(tlfID tlf.ID, size int64) {
 	if j.jServer.hasTLFJournal(tlfID) {
 		j.journalCache.UpdateSyncingBytes(tlfID, size)
 	} else {
@@ -87,7 +87,7 @@ func (j journalDirtyBlockCache) UpdateSyncingBytes(tlfID tlf.TlfID, size int64) 
 	}
 }
 
-func (j journalDirtyBlockCache) BlockSyncFinished(tlfID tlf.TlfID, size int64) {
+func (j journalDirtyBlockCache) BlockSyncFinished(tlfID tlf.ID, size int64) {
 	if j.jServer.hasTLFJournal(tlfID) {
 		j.journalCache.BlockSyncFinished(tlfID, size)
 	} else {
@@ -95,7 +95,7 @@ func (j journalDirtyBlockCache) BlockSyncFinished(tlfID tlf.TlfID, size int64) {
 	}
 }
 
-func (j journalDirtyBlockCache) SyncFinished(tlfID tlf.TlfID, size int64) {
+func (j journalDirtyBlockCache) SyncFinished(tlfID tlf.ID, size int64) {
 	if j.jServer.hasTLFJournal(tlfID) {
 		j.journalCache.SyncFinished(tlfID, size)
 	} else {
@@ -103,7 +103,7 @@ func (j journalDirtyBlockCache) SyncFinished(tlfID tlf.TlfID, size int64) {
 	}
 }
 
-func (j journalDirtyBlockCache) ShouldForceSync(tlfID tlf.TlfID) bool {
+func (j journalDirtyBlockCache) ShouldForceSync(tlfID tlf.ID) bool {
 	if j.jServer.hasTLFJournal(tlfID) {
 		return j.journalCache.ShouldForceSync(tlfID)
 	}

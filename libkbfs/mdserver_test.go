@@ -17,7 +17,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func makeBRMDForTest(t *testing.T, crypto cryptoPure, id tlf.TlfID,
+func makeBRMDForTest(t *testing.T, crypto cryptoPure, id tlf.ID,
 	h BareTlfHandle, revision MetadataRevision, uid keybase1.UID,
 	prevRoot MdID) *BareRootMetadataV2 {
 	var md BareRootMetadataV2

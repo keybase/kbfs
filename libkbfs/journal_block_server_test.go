@@ -72,7 +72,7 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 
 	ctx := context.Background()
 
-	tlfID := tlf.FakeTlfID(2, false)
+	tlfID := tlf.FakeID(2, false)
 	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 

@@ -32,7 +32,7 @@ type mdServerDiskShared struct {
 	handleDb *leveldb.DB
 	// (TLF ID, device KID) -> branch ID
 	branchDb   *leveldb.DB
-	tlfStorage map[tlf.TlfID]*mdServerTlfStorage
+	tlfStorage map[tlf.ID]*mdServerTlfStorage
 	// Always use memory for the lock storage, so it gets wiped
 	// after a restart.
 	truncateLockManager *mdServerLocalTruncateLockManager
@@ -72,7 +72,7 @@ func newMDServerDisk(config mdServerLocalConfig, dirPath string,
 		dirPath:             dirPath,
 		handleDb:            handleDb,
 		branchDb:            branchDb,
-		tlfStorage:          make(map[tlf.TlfID]*mdServerTlfStorage),
+		tlfStorage:          make(map[tlf.ID]*mdServerTlfStorage),
 		truncateLockManager: &truncateLockManager,
 		updateManager:       newMDServerLocalUpdateManager(),
 		shutdownFunc:        shutdownFunc,
@@ -105,7 +105,7 @@ func NewMDServerTempDir(config mdServerLocalConfig) (*MDServerDisk, error) {
 
 var errMDServerDiskShutdown = errors.New("MDServerDisk is shutdown")
 
-func (md *MDServerDisk) getStorage(tlfID tlf.TlfID) (*mdServerTlfStorage, error) {
+func (md *MDServerDisk) getStorage(tlfID tlf.ID) (*mdServerTlfStorage, error) {
 	storage, err := func() (*mdServerTlfStorage, error) {
 		md.lock.RLock()
 		defer md.lock.RUnlock()
@@ -144,27 +144,27 @@ func (md *MDServerDisk) getStorage(tlfID tlf.TlfID) (*mdServerTlfStorage, error)
 }
 
 func (md *MDServerDisk) getHandleID(ctx context.Context, handle BareTlfHandle,
-	mStatus MergeStatus) (tlfID tlf.TlfID, created bool, err error) {
+	mStatus MergeStatus) (tlfID tlf.ID, created bool, err error) {
 	handleBytes, err := md.config.Codec().Encode(handle)
 	if err != nil {
-		return tlf.NullTlfID, false, MDServerError{err}
+		return tlf.NullID, false, MDServerError{err}
 	}
 
 	md.lock.Lock()
 	defer md.lock.Unlock()
 	if md.handleDb == nil {
-		return tlf.NullTlfID, false, errMDServerDiskShutdown
+		return tlf.NullID, false, errMDServerDiskShutdown
 	}
 
 	buf, err := md.handleDb.Get(handleBytes, nil)
 	if err != nil && err != leveldb.ErrNotFound {
-		return tlf.NullTlfID, false, MDServerError{err}
+		return tlf.NullID, false, MDServerError{err}
 	}
 	if err == nil {
-		var id tlf.TlfID
+		var id tlf.ID
 		err := id.UnmarshalBinary(buf)
 		if err != nil {
-			return tlf.NullTlfID, false, MDServerError{err}
+			return tlf.NullID, false, MDServerError{err}
 		}
 		return id, false, nil
 	}
@@ -172,31 +172,31 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle BareTlfHandle,
 	// Non-readers shouldn't be able to create the dir.
 	_, uid, err := md.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
-		return tlf.NullTlfID, false, MDServerError{err}
+		return tlf.NullID, false, MDServerError{err}
 	}
 	if !handle.IsReader(uid) {
-		return tlf.NullTlfID, false, MDServerErrorUnauthorized{}
+		return tlf.NullID, false, MDServerErrorUnauthorized{}
 	}
 
 	// Allocate a new random ID.
 	id, err := md.config.cryptoPure().MakeRandomTlfID(handle.IsPublic())
 	if err != nil {
-		return tlf.NullTlfID, false, MDServerError{err}
+		return tlf.NullID, false, MDServerError{err}
 	}
 
 	err = md.handleDb.Put(handleBytes, id.Bytes(), nil)
 	if err != nil {
-		return tlf.NullTlfID, false, MDServerError{err}
+		return tlf.NullID, false, MDServerError{err}
 	}
 	return id, true, nil
 }
 
 // GetForHandle implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) GetForHandle(ctx context.Context, handle BareTlfHandle,
-	mStatus MergeStatus) (tlf.TlfID, *RootMetadataSigned, error) {
+	mStatus MergeStatus) (tlf.ID, *RootMetadataSigned, error) {
 	id, created, err := md.getHandleID(ctx, handle, mStatus)
 	if err != nil {
-		return tlf.NullTlfID, nil, err
+		return tlf.NullID, nil, err
 	}
 
 	if created {
@@ -205,12 +205,12 @@ func (md *MDServerDisk) GetForHandle(ctx context.Context, handle BareTlfHandle,
 
 	rmds, err := md.GetForTLF(ctx, id, NullBranchID, mStatus)
 	if err != nil {
-		return tlf.NullTlfID, nil, err
+		return tlf.NullID, nil, err
 	}
 	return id, rmds, nil
 }
 
-func (md *MDServerDisk) getBranchKey(ctx context.Context, id tlf.TlfID) ([]byte, error) {
+func (md *MDServerDisk) getBranchKey(ctx context.Context, id tlf.ID) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	// add folder id
 	_, err := buf.Write(id.Bytes())
@@ -229,7 +229,7 @@ func (md *MDServerDisk) getBranchKey(ctx context.Context, id tlf.TlfID) ([]byte,
 	return buf.Bytes(), nil
 }
 
-func (md *MDServerDisk) getBranchID(ctx context.Context, id tlf.TlfID) (BranchID, error) {
+func (md *MDServerDisk) getBranchID(ctx context.Context, id tlf.ID) (BranchID, error) {
 	branchKey, err := md.getBranchKey(ctx, id)
 	if err != nil {
 		return NullBranchID, MDServerError{err}
@@ -258,7 +258,7 @@ func (md *MDServerDisk) getBranchID(ctx context.Context, id tlf.TlfID) (BranchID
 }
 
 func (md *MDServerDisk) putBranchID(
-	ctx context.Context, id tlf.TlfID, bid BranchID) error {
+	ctx context.Context, id tlf.ID, bid BranchID) error {
 	md.lock.Lock()
 	defer md.lock.Unlock()
 
@@ -282,7 +282,7 @@ func (md *MDServerDisk) putBranchID(
 	return nil
 }
 
-func (md *MDServerDisk) deleteBranchID(ctx context.Context, id tlf.TlfID) error {
+func (md *MDServerDisk) deleteBranchID(ctx context.Context, id tlf.ID) error {
 	md.lock.Lock()
 	defer md.lock.Unlock()
 
@@ -302,7 +302,7 @@ func (md *MDServerDisk) deleteBranchID(ctx context.Context, id tlf.TlfID) error 
 }
 
 // GetForTLF implements the MDServer interface for MDServerDisk.
-func (md *MDServerDisk) GetForTLF(ctx context.Context, id tlf.TlfID,
+func (md *MDServerDisk) GetForTLF(ctx context.Context, id tlf.ID,
 	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
 	// Lookup the branch ID if not supplied
 	if mStatus == Unmerged && bid == NullBranchID {
@@ -330,7 +330,7 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id tlf.TlfID,
 }
 
 // GetRange implements the MDServer interface for MDServerDisk.
-func (md *MDServerDisk) GetRange(ctx context.Context, id tlf.TlfID,
+func (md *MDServerDisk) GetRange(ctx context.Context, id tlf.ID,
 	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	md.log.CDebugf(ctx, "GetRange %d %d (%s)", start, stop, mStatus)
@@ -401,7 +401,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned,
 }
 
 // PruneBranch implements the MDServer interface for MDServerDisk.
-func (md *MDServerDisk) PruneBranch(ctx context.Context, id tlf.TlfID, bid BranchID) error {
+func (md *MDServerDisk) PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) error {
 	if bid == NullBranchID {
 		return MDServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
@@ -421,7 +421,7 @@ func (md *MDServerDisk) PruneBranch(ctx context.Context, id tlf.TlfID, bid Branc
 }
 
 func (md *MDServerDisk) getCurrentMergedHeadRevision(
-	ctx context.Context, id tlf.TlfID) (rev MetadataRevision, err error) {
+	ctx context.Context, id tlf.ID) (rev MetadataRevision, err error) {
 	head, err := md.GetForTLF(ctx, id, NullBranchID, Merged)
 	if err != nil {
 		return 0, err
@@ -433,7 +433,7 @@ func (md *MDServerDisk) getCurrentMergedHeadRevision(
 }
 
 // RegisterForUpdate implements the MDServer interface for MDServerDisk.
-func (md *MDServerDisk) RegisterForUpdate(ctx context.Context, id tlf.TlfID,
+func (md *MDServerDisk) RegisterForUpdate(ctx context.Context, id tlf.ID,
 	currHead MetadataRevision) (<-chan error, error) {
 	// are we already past this revision?  If so, fire observer
 	// immediately
@@ -447,7 +447,7 @@ func (md *MDServerDisk) RegisterForUpdate(ctx context.Context, id tlf.TlfID,
 }
 
 // TruncateLock implements the MDServer interface for MDServerDisk.
-func (md *MDServerDisk) TruncateLock(ctx context.Context, id tlf.TlfID) (
+func (md *MDServerDisk) TruncateLock(ctx context.Context, id tlf.ID) (
 	bool, error) {
 	key, err := md.config.currentInfoGetter().GetCurrentCryptPublicKey(ctx)
 	if err != nil {
@@ -464,7 +464,7 @@ func (md *MDServerDisk) TruncateLock(ctx context.Context, id tlf.TlfID) (
 }
 
 // TruncateUnlock implements the MDServer interface for MDServerDisk.
-func (md *MDServerDisk) TruncateUnlock(ctx context.Context, id tlf.TlfID) (
+func (md *MDServerDisk) TruncateUnlock(ctx context.Context, id tlf.ID) (
 	bool, error) {
 	key, err := md.config.currentInfoGetter().GetCurrentCryptPublicKey(ctx)
 	if err != nil {
@@ -586,7 +586,7 @@ func (md *MDServerDisk) addNewAssertionForTest(uid keybase1.UID,
 }
 
 // GetLatestHandleForTLF implements the MDServer interface for MDServerDisk.
-func (md *MDServerDisk) GetLatestHandleForTLF(_ context.Context, id tlf.TlfID) (
+func (md *MDServerDisk) GetLatestHandleForTLF(_ context.Context, id tlf.ID) (
 	BareTlfHandle, error) {
 	md.lock.RLock()
 	defer md.lock.RUnlock()
@@ -599,7 +599,7 @@ func (md *MDServerDisk) GetLatestHandleForTLF(_ context.Context, id tlf.TlfID) (
 	iter := md.handleDb.NewIterator(nil, nil)
 	defer iter.Release()
 	for iter.Next() {
-		var dbID tlf.TlfID
+		var dbID tlf.ID
 		idBytes := iter.Value()
 		err := dbID.UnmarshalBinary(idBytes)
 		if err != nil {
@@ -626,8 +626,7 @@ func (md *MDServerDisk) OffsetFromServerTime() (time.Duration, bool) {
 
 // GetKeyBundles implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) GetKeyBundles(_ context.Context,
-	tlfID tlf.TlfID, wkbID TLFWriterKeyBundleID,
-	rkbID TLFReaderKeyBundleID) (
+	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	md.lock.RLock()
 	defer md.lock.RUnlock()

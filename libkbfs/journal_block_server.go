@@ -19,7 +19,7 @@ type journalBlockServer struct {
 var _ BlockServer = journalBlockServer{}
 
 func (j journalBlockServer) Get(
-	ctx context.Context, tlfID tlf.TlfID, id BlockID, context BlockContext) (
+	ctx context.Context, tlfID tlf.ID, id BlockID, context BlockContext) (
 	data []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
 		defer func() {
@@ -44,7 +44,7 @@ func (j journalBlockServer) Get(
 }
 
 func (j journalBlockServer) Put(
-	ctx context.Context, tlfID tlf.TlfID, id BlockID, context BlockContext,
+	ctx context.Context, tlfID tlf.ID, id BlockID, context BlockContext,
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
 	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
 		defer func() {
@@ -60,7 +60,7 @@ func (j journalBlockServer) Put(
 }
 
 func (j journalBlockServer) AddBlockReference(
-	ctx context.Context, tlfID tlf.TlfID, id BlockID,
+	ctx context.Context, tlfID tlf.ID, id BlockID,
 	context BlockContext) (err error) {
 	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
 		if !j.enableAddBlockReference {
@@ -85,7 +85,7 @@ func (j journalBlockServer) AddBlockReference(
 }
 
 func (j journalBlockServer) RemoveBlockReferences(
-	ctx context.Context, tlfID tlf.TlfID,
+	ctx context.Context, tlfID tlf.ID,
 	contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
 	// Deletes always go straight to the server, since they slow down
@@ -97,7 +97,7 @@ func (j journalBlockServer) RemoveBlockReferences(
 }
 
 func (j journalBlockServer) ArchiveBlockReferences(
-	ctx context.Context, tlfID tlf.TlfID,
+	ctx context.Context, tlfID tlf.ID,
 	contexts map[BlockID][]BlockContext) (err error) {
 	// Archives always go straight to the server, since they slow down
 	// the journal and already only happen in the background anyway.

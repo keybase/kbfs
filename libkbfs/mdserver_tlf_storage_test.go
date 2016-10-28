@@ -38,7 +38,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	tlfID := tlf.FakeTlfID(1, false)
+	tlfID := tlf.FakeID(1, false)
 	s := makeMDServerTlfStorage(tlfID, codec, crypto, wallClock{},
 		defaultClientMetadataVer, tempdir)
 	defer s.shutdown()

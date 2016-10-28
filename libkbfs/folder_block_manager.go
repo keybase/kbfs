@@ -73,7 +73,7 @@ type folderBlockManager struct {
 	config       Config
 	log          logger.Logger
 	shutdownChan chan struct{}
-	id           tlf.TlfID
+	id           tlf.ID
 
 	// A queue of MD updates for this folder that need to have their
 	// unref's blocks archived
@@ -389,7 +389,7 @@ func (fbm *folderBlockManager) forceQuotaReclamation() {
 // block server for the given block pointers.  For deletes, it returns
 // a list of block IDs that no longer have any references.
 func (fbm *folderBlockManager) doChunkedDowngrades(ctx context.Context,
-	tlfID tlf.TlfID, ptrs []BlockPointer, archive bool) (
+	tlfID tlf.ID, ptrs []BlockPointer, archive bool) (
 	[]BlockID, error) {
 	fbm.log.CDebugf(ctx, "Downgrading %d pointers (archive=%t)",
 		len(ptrs), archive)
@@ -473,7 +473,7 @@ func (fbm *folderBlockManager) doChunkedDowngrades(ctx context.Context,
 // for the given block pointers.  It returns a list of block IDs that
 // no longer have any references.
 func (fbm *folderBlockManager) deleteBlockRefs(ctx context.Context,
-	tlfID tlf.TlfID, ptrs []BlockPointer) ([]BlockID, error) {
+	tlfID tlf.ID, ptrs []BlockPointer) ([]BlockID, error) {
 	return fbm.doChunkedDowngrades(ctx, tlfID, ptrs, false)
 }
 
@@ -590,7 +590,7 @@ func (fbm *folderBlockManager) runUnlessShutdown(
 }
 
 func (fbm *folderBlockManager) archiveBlockRefs(ctx context.Context,
-	tlfID tlf.TlfID, ptrs []BlockPointer) error {
+	tlfID tlf.ID, ptrs []BlockPointer) error {
 	_, err := fbm.doChunkedDowngrades(ctx, tlfID, ptrs, true)
 	return err
 }

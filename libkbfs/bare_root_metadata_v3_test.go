@@ -15,7 +15,7 @@ import (
 )
 
 func TestRootMetadataVersionV3(t *testing.T) {
-	tlfID := tlf.FakeTlfID(1, false)
+	tlfID := tlf.FakeID(1, false)
 
 	// All V3 objects should have SegregatedKeyBundlesVer.
 
@@ -30,7 +30,7 @@ func TestRootMetadataVersionV3(t *testing.T) {
 }
 
 func TestIsValidRekeyRequestBasicV3(t *testing.T) {
-	tlfID := tlf.FakeTlfID(1, false)
+	tlfID := tlf.FakeID(1, false)
 
 	uid := keybase1.MakeTestUID(1)
 	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)

@@ -46,7 +46,7 @@ type MDServerRemote struct {
 	isAuthenticated  bool
 
 	observerMu sync.Mutex // protects observers
-	observers  map[tlf.TlfID]chan<- error
+	observers  map[tlf.ID]chan<- error
 
 	tickerCancel context.CancelFunc
 	tickerMu     sync.Mutex // protects the ticker cancel function
@@ -75,7 +75,7 @@ var _ rpc.ConnectionHandler = (*MDServerRemote)(nil)
 func NewMDServerRemote(config Config, srvAddr string, ctx Context) *MDServerRemote {
 	mdServer := &MDServerRemote{
 		config:     config,
-		observers:  make(map[tlf.TlfID]chan<- error),
+		observers:  make(map[tlf.ID]chan<- error),
 		log:        config.MakeLogger(""),
 		mdSrvAddr:  srvAddr,
 		rekeyTimer: time.NewTimer(MdServerBackgroundRekeyPeriod),
@@ -377,19 +377,19 @@ func (md *MDServerRemote) cancelObservers() {
 }
 
 // Signal an observer. The observer lock must be held.
-func (md *MDServerRemote) signalObserverLocked(observerChan chan<- error, id tlf.TlfID, err error) {
+func (md *MDServerRemote) signalObserverLocked(observerChan chan<- error, id tlf.ID, err error) {
 	observerChan <- err
 	close(observerChan)
 	delete(md.observers, id)
 }
 
 // Helper used to retrieve metadata blocks from the MD server.
-func (md *MDServerRemote) get(ctx context.Context, id tlf.TlfID,
+func (md *MDServerRemote) get(ctx context.Context, id tlf.ID,
 	handle *BareTlfHandle, bid BranchID, mStatus MergeStatus,
-	start, stop MetadataRevision) (tlf.TlfID, []*RootMetadataSigned, error) {
+	start, stop MetadataRevision) (tlf.ID, []*RootMetadataSigned, error) {
 	// figure out which args to send
-	if id == tlf.NullTlfID && handle == nil {
-		panic("nil tlf.TlfID and handle passed into MDServerRemote.get")
+	if id == tlf.NullID && handle == nil {
+		panic("nil tlf.ID and handle passed into MDServerRemote.get")
 	}
 	arg := keybase1.GetMetadataArg{
 		StartRevision: start.Number(),
@@ -400,7 +400,7 @@ func (md *MDServerRemote) get(ctx context.Context, id tlf.TlfID,
 	}
 
 	var err error
-	if id == tlf.NullTlfID {
+	if id == tlf.NullID {
 		arg.FolderHandle, err = md.config.Codec().Encode(handle)
 		if err != nil {
 			return id, nil, err
@@ -416,7 +416,7 @@ func (md *MDServerRemote) get(ctx context.Context, id tlf.TlfID,
 	}
 
 	// response
-	id, err = tlf.ParseTlfID(response.FolderID)
+	id, err = tlf.ParseID(response.FolderID)
 	if err != nil {
 		return id, nil, err
 	}
@@ -439,8 +439,8 @@ func (md *MDServerRemote) get(ctx context.Context, id tlf.TlfID,
 // GetForHandle implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetForHandle(ctx context.Context,
 	handle BareTlfHandle, mStatus MergeStatus) (
-	tlf.TlfID, *RootMetadataSigned, error) {
-	id, rmdses, err := md.get(ctx, tlf.NullTlfID, &handle, NullBranchID,
+	tlf.ID, *RootMetadataSigned, error) {
+	id, rmdses, err := md.get(ctx, tlf.NullID, &handle, NullBranchID,
 		mStatus,
 		MetadataRevisionUninitialized, MetadataRevisionUninitialized)
 	if err != nil {
@@ -453,7 +453,7 @@ func (md *MDServerRemote) GetForHandle(ctx context.Context,
 }
 
 // GetForTLF implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.TlfID,
+func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
 	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
 	_, rmdses, err := md.get(ctx, id, nil, bid, mStatus,
 		MetadataRevisionUninitialized, MetadataRevisionUninitialized)
@@ -467,7 +467,7 @@ func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.TlfID,
 }
 
 // GetRange implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.TlfID,
+func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.ID,
 	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	_, rmds, err := md.get(ctx, id, nil, bid, mStatus, start, stop)
@@ -519,7 +519,7 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 }
 
 // PruneBranch implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) PruneBranch(ctx context.Context, id tlf.TlfID, bid BranchID) error {
+func (md *MDServerRemote) PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) error {
 	arg := keybase1.PruneBranchArg{
 		FolderID: id.String(),
 		BranchID: bid.String(),
@@ -530,7 +530,7 @@ func (md *MDServerRemote) PruneBranch(ctx context.Context, id tlf.TlfID, bid Bra
 
 // MetadataUpdate implements the MetadataUpdateProtocol interface.
 func (md *MDServerRemote) MetadataUpdate(_ context.Context, arg keybase1.MetadataUpdateArg) error {
-	id, err := tlf.ParseTlfID(arg.FolderID)
+	id, err := tlf.ParseID(arg.FolderID)
 	if err != nil {
 		return err
 	}
@@ -550,7 +550,7 @@ func (md *MDServerRemote) MetadataUpdate(_ context.Context, arg keybase1.Metadat
 
 // FolderNeedsRekey implements the MetadataUpdateProtocol interface.
 func (md *MDServerRemote) FolderNeedsRekey(_ context.Context, arg keybase1.FolderNeedsRekeyArg) error {
-	id, err := tlf.ParseTlfID(arg.FolderID)
+	id, err := tlf.ParseID(arg.FolderID)
 	if err != nil {
 		return err
 	}
@@ -573,7 +573,7 @@ func (md *MDServerRemote) FolderNeedsRekey(_ context.Context, arg keybase1.Folde
 }
 
 // RegisterForUpdate implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) RegisterForUpdate(ctx context.Context, id tlf.TlfID,
+func (md *MDServerRemote) RegisterForUpdate(ctx context.Context, id tlf.ID,
 	currHead MetadataRevision) (<-chan error, error) {
 	arg := keybase1.RegisterForUpdatesArg{
 		FolderID:     id.String(),
@@ -635,19 +635,19 @@ func (md *MDServerRemote) RegisterForUpdate(ctx context.Context, id tlf.TlfID,
 }
 
 // TruncateLock implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) TruncateLock(ctx context.Context, id tlf.TlfID) (
+func (md *MDServerRemote) TruncateLock(ctx context.Context, id tlf.ID) (
 	bool, error) {
 	return md.client.TruncateLock(ctx, id.String())
 }
 
 // TruncateUnlock implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) TruncateUnlock(ctx context.Context, id tlf.TlfID) (
+func (md *MDServerRemote) TruncateUnlock(ctx context.Context, id tlf.ID) (
 	bool, error) {
 	return md.client.TruncateUnlock(ctx, id.String())
 }
 
 // GetLatestHandleForTLF implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) GetLatestHandleForTLF(ctx context.Context, id tlf.TlfID) (
+func (md *MDServerRemote) GetLatestHandleForTLF(ctx context.Context, id tlf.ID) (
 	BareTlfHandle, error) {
 	buf, err := md.client.GetLatestFolderHandle(ctx, id.String())
 	if err != nil {
@@ -863,7 +863,7 @@ func (md *MDServerRemote) backgroundRekeyChecker(ctx context.Context) {
 
 // GetKeyBundles implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetKeyBundles(ctx context.Context,
-	tlf tlf.TlfID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	tlf tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 
 	arg := keybase1.GetKeyBundlesArg{

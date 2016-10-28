@@ -14,7 +14,7 @@ import (
 )
 
 type rekeyQueueEntry struct {
-	id tlf.TlfID
+	id tlf.ID
 	ch chan error
 }
 
@@ -40,7 +40,7 @@ func NewRekeyQueueStandard(config Config) *RekeyQueueStandard {
 }
 
 // Enqueue implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) Enqueue(id tlf.TlfID) <-chan error {
+func (rkq *RekeyQueueStandard) Enqueue(id tlf.ID) <-chan error {
 	c := make(chan error, 1)
 	err := func() error {
 		rkq.queueMu.Lock()
@@ -71,12 +71,12 @@ func (rkq *RekeyQueueStandard) Enqueue(id tlf.TlfID) <-chan error {
 }
 
 // IsRekeyPending implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) IsRekeyPending(id tlf.TlfID) bool {
+func (rkq *RekeyQueueStandard) IsRekeyPending(id tlf.ID) bool {
 	return rkq.GetRekeyChannel(id) != nil
 }
 
 // GetRekeyChannel implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) GetRekeyChannel(id tlf.TlfID) <-chan error {
+func (rkq *RekeyQueueStandard) GetRekeyChannel(id tlf.ID) <-chan error {
 	rkq.queueMu.RLock()
 	defer rkq.queueMu.RUnlock()
 	for _, e := range rkq.queue {
@@ -137,7 +137,7 @@ func (rkq *RekeyQueueStandard) processRekeys(ctx context.Context, hasWorkCh chan
 		case <-hasWorkCh:
 			for {
 				id := rkq.peek()
-				if id == tlf.NullTlfID {
+				if id == tlf.NullID {
 					break
 				}
 				func() {
@@ -163,13 +163,13 @@ func (rkq *RekeyQueueStandard) processRekeys(ctx context.Context, hasWorkCh chan
 	}
 }
 
-func (rkq *RekeyQueueStandard) peek() tlf.TlfID {
+func (rkq *RekeyQueueStandard) peek() tlf.ID {
 	rkq.queueMu.Lock()
 	defer rkq.queueMu.Unlock()
 	if len(rkq.queue) != 0 {
 		return rkq.queue[0].id
 	}
-	return tlf.NullTlfID
+	return tlf.NullID
 }
 
 func (rkq *RekeyQueueStandard) dequeue() chan<- error {

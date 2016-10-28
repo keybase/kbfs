@@ -131,13 +131,13 @@ func expectBlockDecrypt(config *ConfigMock, kmd KeyMetadata, blockPtr BlockPoint
 }
 
 type emptyKeyMetadata struct {
-	tlfID  tlf.TlfID
+	tlfID  tlf.ID
 	keyGen KeyGen
 }
 
 var _ KeyMetadata = emptyKeyMetadata{}
 
-func (kmd emptyKeyMetadata) TlfID() tlf.TlfID {
+func (kmd emptyKeyMetadata) TlfID() tlf.ID {
 	return kmd.tlfID
 }
 
@@ -177,7 +177,7 @@ func (kmd emptyKeyMetadata) GetHistoricTLFCryptKey(
 }
 
 func makeKMD() KeyMetadata {
-	return emptyKeyMetadata{tlf.FakeTlfID(0, false), 1}
+	return emptyKeyMetadata{tlf.FakeID(0, false), 1}
 }
 
 func TestBlockOpsGetSuccess(t *testing.T) {
@@ -365,7 +365,7 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 	contexts[b2.ID] = []BlockContext{b2.BlockContext}
 	blockPtrs := []BlockPointer{b1, b2}
 	var liveCounts map[BlockID]int
-	tlfID := tlf.FakeTlfID(1, false)
+	tlfID := tlf.FakeID(1, false)
 	config.mockBserv.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
 		Return(liveCounts, nil)
 
@@ -389,7 +389,7 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 	blockPtrs := []BlockPointer{b1, b2}
 	err := errors.New("Fake fail")
 	var liveCounts map[BlockID]int
-	tlfID := tlf.FakeTlfID(1, false)
+	tlfID := tlf.FakeID(1, false)
 	config.mockBserv.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
 		Return(liveCounts, err)
 

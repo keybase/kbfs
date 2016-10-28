@@ -251,8 +251,8 @@ func (e MDServerErrorConditionFailed) ToStatus() (s keybase1.Status) {
 // ID mapping mismatch.
 type MDServerErrorConflictFolderMapping struct {
 	Desc     string
-	Expected tlf.TlfID
-	Actual   tlf.TlfID
+	Expected tlf.ID
+	Actual   tlf.ID
 }
 
 // Error implements the Error interface for MDServerErrorConflictFolderMapping.

@@ -103,7 +103,7 @@ func TestFBStatusAllFields(t *testing.T) {
 	ctx := context.Background()
 
 	// make a new root metadata
-	id := tlf.FakeTlfID(1, false)
+	id := tlf.FakeID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	u := h.FirstResolvedWriter()
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)

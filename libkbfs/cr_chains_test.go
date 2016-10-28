@@ -146,7 +146,7 @@ func testCRCheckOps(t *testing.T, cc *crChains, original BlockPointer,
 }
 
 func newChainMDForTest(t *testing.T) rootMetadataWithKeyAndTimestamp {
-	tlfID := tlf.FakeTlfID(1, false)
+	tlfID := tlf.FakeID(1, false)
 
 	uid := keybase1.MakeTestUID(1)
 	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)

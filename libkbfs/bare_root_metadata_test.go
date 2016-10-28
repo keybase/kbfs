@@ -18,7 +18,7 @@ import (
 
 // Test verification of finalized metadata blocks.
 func testRootMetadataFinalVerify(t *testing.T, ver MetadataVer) {
-	tlfID := tlf.FakeTlfID(1, false)
+	tlfID := tlf.FakeID(1, false)
 
 	uid := keybase1.MakeTestUID(1)
 	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)

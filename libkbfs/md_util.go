@@ -74,7 +74,7 @@ func isReadableOrError(
 		ctx, config, md, md.LatestKeyGeneration(), uid, username)
 }
 
-func getMDRange(ctx context.Context, config Config, id tlf.TlfID, bid BranchID,
+func getMDRange(ctx context.Context, config Config, id tlf.ID, bid BranchID,
 	start MetadataRevision, end MetadataRevision, mStatus MergeStatus) (
 	rmds []ImmutableRootMetadata, err error) {
 	// The range is invalid.  Don't treat as an error though; it just
@@ -163,7 +163,7 @@ func getMDRange(ctx context.Context, config Config, id tlf.TlfID, bid BranchID,
 }
 
 // getSingleMD returns an MD that is required to exist.
-func getSingleMD(ctx context.Context, config Config, id tlf.TlfID, bid BranchID,
+func getSingleMD(ctx context.Context, config Config, id tlf.ID, bid BranchID,
 	rev MetadataRevision, mStatus MergeStatus) (
 	ImmutableRootMetadata, error) {
 	rmds, err := getMDRange(ctx, config, id, bid, rev, rev, mStatus)
@@ -185,7 +185,7 @@ func getSingleMD(ctx context.Context, config Config, id tlf.TlfID, bid BranchID,
 //
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
-func getMergedMDUpdates(ctx context.Context, config Config, id tlf.TlfID,
+func getMergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 	startRev MetadataRevision) (mergedRmds []ImmutableRootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
@@ -267,7 +267,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id tlf.TlfID,
 //
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
-func getUnmergedMDUpdates(ctx context.Context, config Config, id tlf.TlfID,
+func getUnmergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 	bid BranchID, startRev MetadataRevision) (
 	currHead MetadataRevision, unmergedRmds []ImmutableRootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
@@ -372,7 +372,7 @@ func encryptMDPrivateData(
 }
 
 func getFileBlockForMD(ctx context.Context, bcache BlockCache, bops BlockOps,
-	ptr BlockPointer, tlfID tlf.TlfID, rmdWithKeys KeyMetadata) (
+	ptr BlockPointer, tlfID tlf.ID, rmdWithKeys KeyMetadata) (
 	*FileBlock, error) {
 	// We don't have a convenient way to fetch the block from here via
 	// folderBlockOps, so just go directly via the
@@ -398,7 +398,7 @@ func getFileBlockForMD(ctx context.Context, bcache BlockCache, bops BlockOps,
 }
 
 func reembedBlockChanges(ctx context.Context, codec kbfscodec.Codec,
-	bcache BlockCache, bops BlockOps, tlfID tlf.TlfID, pmd *PrivateMetadata,
+	bcache BlockCache, bops BlockOps, tlfID tlf.ID, pmd *PrivateMetadata,
 	rmdWithKeys KeyMetadata) error {
 	info := pmd.Changes.Info
 	if info.BlockPointer == zeroPtr {

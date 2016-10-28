@@ -219,7 +219,7 @@ type folderBlockOps struct {
 // Although, temporarily, folderBranchOps is allowed to reach in and
 // manipulate folderBlockOps fields and methods directly.
 
-func (fbo *folderBlockOps) id() tlf.TlfID {
+func (fbo *folderBlockOps) id() tlf.ID {
 	return fbo.folderBranch.Tlf
 }
 

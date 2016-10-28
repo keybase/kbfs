@@ -16,7 +16,7 @@ type MDCacheStandard struct {
 }
 
 type mdCacheKey struct {
-	tlf tlf.TlfID
+	tlf tlf.ID
 	rev MetadataRevision
 	bid BranchID
 }
@@ -34,7 +34,7 @@ func NewMDCacheStandard(capacity int) *MDCacheStandard {
 }
 
 // Get implements the MDCache interface for MDCacheStandard.
-func (md *MDCacheStandard) Get(tlf tlf.TlfID, rev MetadataRevision, bid BranchID) (
+func (md *MDCacheStandard) Get(tlf tlf.ID, rev MetadataRevision, bid BranchID) (
 	ImmutableRootMetadata, error) {
 	key := mdCacheKey{tlf, rev, bid}
 	if tmp, ok := md.lru.Get(key); ok {
@@ -54,7 +54,7 @@ func (md *MDCacheStandard) Put(rmd ImmutableRootMetadata) error {
 }
 
 // Delete implements the MDCache interface for MDCacheStandard.
-func (md *MDCacheStandard) Delete(tlf tlf.TlfID, rev MetadataRevision,
+func (md *MDCacheStandard) Delete(tlf tlf.ID, rev MetadataRevision,
 	bid BranchID) {
 	key := mdCacheKey{tlf, rev, bid}
 	md.lru.Remove(key)

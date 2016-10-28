@@ -14,7 +14,7 @@ import "github.com/keybase/kbfs/tlf"
 // BareTlfHandle. Note that if the given ID/handle are private,
 // rekeying must be done separately.
 func MakeInitialBareRootMetadata(
-	ver MetadataVer, tlfID tlf.TlfID, h BareTlfHandle) (
+	ver MetadataVer, tlfID tlf.ID, h BareTlfHandle) (
 	MutableBareRootMetadata, error) {
 	if ver < FirstValidMetadataVer {
 		return nil, InvalidMetadataVersionError{tlfID, ver}

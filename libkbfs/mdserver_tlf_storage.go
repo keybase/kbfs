@@ -61,7 +61,7 @@ import (
 // separately in dir/wkbv3 (dir/rkbv3). The number of bundles is
 // small, so no need to splay them.
 type mdServerTlfStorage struct {
-	tlfID  tlf.TlfID
+	tlfID  tlf.ID
 	codec  kbfscodec.Codec
 	crypto cryptoPure
 	clock  Clock
@@ -74,7 +74,7 @@ type mdServerTlfStorage struct {
 	branchJournals map[BranchID]mdIDJournal
 }
 
-func makeMDServerTlfStorage(tlfID tlf.TlfID, codec kbfscodec.Codec,
+func makeMDServerTlfStorage(tlfID tlf.ID, codec kbfscodec.Codec,
 	crypto cryptoPure, clock Clock, mdVer MetadataVer,
 	dir string) *mdServerTlfStorage {
 	journal := &mdServerTlfStorage{

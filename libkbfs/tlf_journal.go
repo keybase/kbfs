@@ -152,7 +152,7 @@ type tlfJournalBWDelegate interface {
 type tlfJournal struct {
 	uid                 keybase1.UID
 	key                 kbfscrypto.VerifyingKey
-	tlfID               tlf.TlfID
+	tlfID               tlf.ID
 	dir                 string
 	config              tlfJournalConfig
 	delegateBlockServer BlockServer
@@ -203,27 +203,27 @@ func getTLFJournalInfoFilePath(dir string) string {
 type tlfJournalInfo struct {
 	UID          keybase1.UID
 	VerifyingKey kbfscrypto.VerifyingKey
-	TlfID        tlf.TlfID
+	TlfID        tlf.ID
 }
 
 func readTLFJournalInfoFile(dir string) (
-	keybase1.UID, kbfscrypto.VerifyingKey, tlf.TlfID, error) {
+	keybase1.UID, kbfscrypto.VerifyingKey, tlf.ID, error) {
 	infoJSON, err := ioutil.ReadFile(getTLFJournalInfoFilePath(dir))
 	if err != nil {
-		return keybase1.UID(""), kbfscrypto.VerifyingKey{}, tlf.TlfID{}, err
+		return keybase1.UID(""), kbfscrypto.VerifyingKey{}, tlf.ID{}, err
 	}
 
 	var info tlfJournalInfo
 	err = json.Unmarshal(infoJSON, &info)
 	if err != nil {
-		return keybase1.UID(""), kbfscrypto.VerifyingKey{}, tlf.TlfID{}, err
+		return keybase1.UID(""), kbfscrypto.VerifyingKey{}, tlf.ID{}, err
 	}
 
 	return info.UID, info.VerifyingKey, info.TlfID, nil
 }
 
 func writeTLFJournalInfoFile(dir string, uid keybase1.UID,
-	key kbfscrypto.VerifyingKey, tlfID tlf.TlfID) error {
+	key kbfscrypto.VerifyingKey, tlfID tlf.ID) error {
 	info := tlfJournalInfo{uid, key, tlfID}
 	infoJSON, err := json.Marshal(info)
 	if err != nil {
@@ -240,7 +240,7 @@ func writeTLFJournalInfoFile(dir string, uid keybase1.UID,
 
 func makeTLFJournal(
 	ctx context.Context, uid keybase1.UID, key kbfscrypto.VerifyingKey,
-	dir string, tlfID tlf.TlfID, config tlfJournalConfig,
+	dir string, tlfID tlf.ID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, bws TLFJournalBackgroundWorkStatus,
 	bwDelegate tlfJournalBWDelegate, onBranchChange branchChangeListener,
 	onMDFlush mdFlushListener) (*tlfJournal, error) {
@@ -250,8 +250,8 @@ func makeTLFJournal(
 	if key == (kbfscrypto.VerifyingKey{}) {
 		return nil, errors.New("Empty verifying key")
 	}
-	if tlfID == (tlf.TlfID{}) {
-		return nil, errors.New("Empty tlf.TlfID")
+	if tlfID == (tlf.ID{}) {
+		return nil, errors.New("Empty tlf.ID")
 	}
 
 	readUID, readKey, readTlfID, err := readTLFJournalInfoFile(dir)

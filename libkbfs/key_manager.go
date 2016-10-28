@@ -335,7 +335,7 @@ func (km *KeyManagerStandard) updateKeyBundle(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
-	tlfID tlf.TlfID, keyInfoMap UserDeviceKeyInfoMap,
+	tlfID tlf.ID, keyInfoMap UserDeviceKeyInfoMap,
 	expectedKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
 	for u, keys := range expectedKeys {
@@ -362,7 +362,7 @@ func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
-	tlfID tlf.TlfID, keyInfoMap UserDeviceKeyInfoMap,
+	tlfID tlf.ID, keyInfoMap UserDeviceKeyInfoMap,
 	expectedKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
 	for u, kids := range keyInfoMap {
@@ -446,7 +446,7 @@ func (km *KeyManagerStandard) deleteKeysForRemovedDevices(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) identifyUIDSets(ctx context.Context,
-	tlfID tlf.TlfID, writersToIdentify map[keybase1.UID]bool,
+	tlfID tlf.ID, writersToIdentify map[keybase1.UID]bool,
 	readersToIdentify map[keybase1.UID]bool) error {
 	uids := make([]keybase1.UID, 0, len(writersToIdentify)+len(readersToIdentify))
 	for u := range writersToIdentify {

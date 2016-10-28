@@ -130,7 +130,7 @@ func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
 		},
 	}
 	h := makeFakeTlfHandle(t, 14, true, uw, nil)
-	tlfID := tlf.FakeTlfID(0, true)
+	tlfID := tlf.FakeID(0, true)
 	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
@@ -169,7 +169,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 		},
 	}
 	h := makeFakeTlfHandle(t, 14, false, uw, ur)
-	tlfID := tlf.FakeTlfID(0, false)
+	tlfID := tlf.FakeID(0, false)
 	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
@@ -188,7 +188,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
-	tlfID := tlf.FakeTlfID(0, false)
+	tlfID := tlf.FakeID(0, false)
 	h := makeFakeTlfHandle(t, 14, false, nil, nil)
 	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
@@ -204,7 +204,7 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 
 // Test that key generations work as expected for public TLFs.
 func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
-	tlfID := tlf.FakeTlfID(0, true)
+	tlfID := tlf.FakeID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
 	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
@@ -243,7 +243,7 @@ func TestWriterMetadataUnchangedEncoding(t *testing.T) {
 		SerializedPrivateMetadata: []byte{0xa, 0xb},
 		LastModifyingWriter:       "uid1",
 		Writers:                   []keybase1.UID{"uid1", "uid2"},
-		ID:                        tlf.FakeTlfID(1, false),
+		ID:                        tlf.FakeID(1, false),
 		BID:                       NullBranchID,
 		WFlags:                    0xa,
 		DiskUsage:                 100,
@@ -271,7 +271,7 @@ func TestWriterMetadataEncodedFields(t *testing.T) {
 	// Usually exactly one of Writers/WKeys is filled in, but we
 	// fill in both here for testing.
 	wm := WriterMetadataV2{
-		ID:      tlf.FakeTlfID(0xa, false),
+		ID:      tlf.FakeID(0xa, false),
 		Writers: []keybase1.UID{"uid1", "uid2"},
 		WKeys:   TLFWriterKeyGenerations{{}},
 		Extra: WriterMetadataExtra{
@@ -358,7 +358,7 @@ func makeFakeWriterMetadataFuture(t *testing.T) writerMetadataFuture {
 		"uid1",
 		[]keybase1.UID{"uid1", "uid2"},
 		nil,
-		tlf.FakeTlfID(1, false),
+		tlf.FakeID(1, false),
 		NullBranchID,
 		0xa,
 		100,
@@ -476,7 +476,7 @@ func TestMakeRekeyReadError(t *testing.T) {
 	config := MakeTestConfigOrBust(t, "alice", "bob")
 	defer config.Shutdown()
 
-	tlfID := tlf.FakeTlfID(1, false)
+	tlfID := tlf.FakeID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
@@ -501,7 +501,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	config := MakeTestConfigOrBust(t, "alice", "bob")
 	defer config.Shutdown()
 
-	tlfID := tlf.FakeTlfID(1, false)
+	tlfID := tlf.FakeID(1, false)
 	ctx := context.Background()
 	h, err := ParseTlfHandle(ctx, config.KBPKI(), "alice,bob@twitter",
 		false)
@@ -529,7 +529,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 
 // Test that MakeSuccessor fails when the final bit is set.
 func TestRootMetadataFinalIsFinal(t *testing.T) {
-	tlfID := tlf.FakeTlfID(0, true)
+	tlfID := tlf.FakeID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
 	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)

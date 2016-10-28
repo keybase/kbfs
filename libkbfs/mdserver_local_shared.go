@@ -53,17 +53,17 @@ func isWriterOrValidRekey(codec kbfscodec.Codec, currentUID keybase1.UID,
 // set of TLFs. Note that it is not goroutine-safe.
 type mdServerLocalTruncateLockManager struct {
 	// TLF ID -> device KID.
-	locksDb map[tlf.TlfID]keybase1.KID
+	locksDb map[tlf.ID]keybase1.KID
 }
 
 func newMDServerLocalTruncatedLockManager() mdServerLocalTruncateLockManager {
 	return mdServerLocalTruncateLockManager{
-		locksDb: make(map[tlf.TlfID]keybase1.KID),
+		locksDb: make(map[tlf.ID]keybase1.KID),
 	}
 }
 
 func (m mdServerLocalTruncateLockManager) truncateLock(
-	deviceKID keybase1.KID, id tlf.TlfID) (bool, error) {
+	deviceKID keybase1.KID, id tlf.ID) (bool, error) {
 	lockKID, ok := m.locksDb[id]
 	if !ok {
 		m.locksDb[id] = deviceKID
@@ -80,7 +80,7 @@ func (m mdServerLocalTruncateLockManager) truncateLock(
 }
 
 func (m mdServerLocalTruncateLockManager) truncateUnlock(
-	deviceKID keybase1.KID, id tlf.TlfID) (bool, error) {
+	deviceKID keybase1.KID, id tlf.ID) (bool, error) {
 	lockKID, ok := m.locksDb[id]
 	if !ok {
 		// Already unlocked.
@@ -102,18 +102,18 @@ func (m mdServerLocalTruncateLockManager) truncateUnlock(
 type mdServerLocalUpdateManager struct {
 	// Protects observers and sessionHeads.
 	lock         sync.Mutex
-	observers    map[tlf.TlfID]map[mdServerLocal]chan<- error
-	sessionHeads map[tlf.TlfID]mdServerLocal
+	observers    map[tlf.ID]map[mdServerLocal]chan<- error
+	sessionHeads map[tlf.ID]mdServerLocal
 }
 
 func newMDServerLocalUpdateManager() *mdServerLocalUpdateManager {
 	return &mdServerLocalUpdateManager{
-		observers:    make(map[tlf.TlfID]map[mdServerLocal]chan<- error),
-		sessionHeads: make(map[tlf.TlfID]mdServerLocal),
+		observers:    make(map[tlf.ID]map[mdServerLocal]chan<- error),
+		sessionHeads: make(map[tlf.ID]mdServerLocal),
 	}
 }
 
-func (m *mdServerLocalUpdateManager) setHead(id tlf.TlfID, server mdServerLocal) {
+func (m *mdServerLocalUpdateManager) setHead(id tlf.ID, server mdServerLocal) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -133,7 +133,7 @@ func (m *mdServerLocalUpdateManager) setHead(id tlf.TlfID, server mdServerLocal)
 }
 
 func (m *mdServerLocalUpdateManager) registerForUpdate(
-	id tlf.TlfID, currHead, currMergedHeadRev MetadataRevision,
+	id tlf.ID, currHead, currMergedHeadRev MetadataRevision,
 	server mdServerLocal) <-chan error {
 	m.lock.Lock()
 	defer m.lock.Unlock()

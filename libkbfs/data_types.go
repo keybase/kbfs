@@ -390,7 +390,7 @@ const (
 // FolderBranch represents a unique pair of top-level folder and a
 // branch of that folder.
 type FolderBranch struct {
-	Tlf    tlf.TlfID
+	Tlf    tlf.ID
 	Branch BranchName // master branch, by default
 }
 

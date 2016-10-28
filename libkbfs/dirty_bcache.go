@@ -183,7 +183,7 @@ func NewDirtyBlockCacheStandard(clock Clock,
 
 // Get implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) Get(_ tlf.TlfID, ptr BlockPointer,
+func (d *DirtyBlockCacheStandard) Get(_ tlf.ID, ptr BlockPointer,
 	branch BranchName) (Block, error) {
 	block := func() Block {
 		dirtyID := dirtyBlockID{
@@ -204,7 +204,7 @@ func (d *DirtyBlockCacheStandard) Get(_ tlf.TlfID, ptr BlockPointer,
 
 // Put implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) Put(_ tlf.TlfID, ptr BlockPointer,
+func (d *DirtyBlockCacheStandard) Put(_ tlf.ID, ptr BlockPointer,
 	branch BranchName, block Block) error {
 	dirtyID := dirtyBlockID{
 		id:       ptr.ID,
@@ -220,7 +220,7 @@ func (d *DirtyBlockCacheStandard) Put(_ tlf.TlfID, ptr BlockPointer,
 
 // Delete implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) Delete(_ tlf.TlfID, ptr BlockPointer,
+func (d *DirtyBlockCacheStandard) Delete(_ tlf.ID, ptr BlockPointer,
 	branch BranchName) error {
 	dirtyID := dirtyBlockID{
 		id:       ptr.ID,
@@ -236,7 +236,7 @@ func (d *DirtyBlockCacheStandard) Delete(_ tlf.TlfID, ptr BlockPointer,
 
 // IsDirty implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) IsDirty(_ tlf.TlfID, ptr BlockPointer,
+func (d *DirtyBlockCacheStandard) IsDirty(_ tlf.ID, ptr BlockPointer,
 	branch BranchName) (isDirty bool) {
 	dirtyID := dirtyBlockID{
 		id:       ptr.ID,
@@ -252,7 +252,7 @@ func (d *DirtyBlockCacheStandard) IsDirty(_ tlf.TlfID, ptr BlockPointer,
 
 // IsAnyDirty implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) IsAnyDirty(_ tlf.TlfID) bool {
+func (d *DirtyBlockCacheStandard) IsAnyDirty(_ tlf.ID) bool {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 	return len(d.cache) > 0 || d.syncBufBytes > 0 || d.waitBufBytes > 0
@@ -489,7 +489,7 @@ func (d *DirtyBlockCacheStandard) processPermission() {
 // RequestPermissionToDirty implements the DirtyBlockCache interface
 // for DirtyBlockCacheStandard.
 func (d *DirtyBlockCacheStandard) RequestPermissionToDirty(
-	ctx context.Context, _ tlf.TlfID, estimatedDirtyBytes int64) (
+	ctx context.Context, _ tlf.ID, estimatedDirtyBytes int64) (
 	DirtyPermChan, error) {
 	d.shutdownLock.RLock()
 	defer d.shutdownLock.RUnlock()
@@ -528,7 +528,7 @@ func (d *DirtyBlockCacheStandard) signalDecreasedBytes() {
 
 // UpdateUnsyncedBytes implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) UpdateUnsyncedBytes(_ tlf.TlfID,
+func (d *DirtyBlockCacheStandard) UpdateUnsyncedBytes(_ tlf.ID,
 	newUnsyncedBytes int64, wasSyncing bool) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
@@ -544,7 +544,7 @@ func (d *DirtyBlockCacheStandard) UpdateUnsyncedBytes(_ tlf.TlfID,
 
 // UpdateSyncingBytes implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) UpdateSyncingBytes(_ tlf.TlfID, size int64) {
+func (d *DirtyBlockCacheStandard) UpdateSyncingBytes(_ tlf.ID, size int64) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	d.syncBufBytes += size
@@ -554,7 +554,7 @@ func (d *DirtyBlockCacheStandard) UpdateSyncingBytes(_ tlf.TlfID, size int64) {
 
 // BlockSyncFinished implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) BlockSyncFinished(_ tlf.TlfID, size int64) {
+func (d *DirtyBlockCacheStandard) BlockSyncFinished(_ tlf.ID, size int64) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	if size > 0 {
@@ -582,7 +582,7 @@ func (d *DirtyBlockCacheStandard) resetBufferCap() {
 
 // SyncFinished implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) SyncFinished(_ tlf.TlfID, size int64) {
+func (d *DirtyBlockCacheStandard) SyncFinished(_ tlf.ID, size int64) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	if size <= 0 {
@@ -626,7 +626,7 @@ func (d *DirtyBlockCacheStandard) SyncFinished(_ tlf.TlfID, size int64) {
 
 // ShouldForceSync implements the DirtyBlockCache interface for
 // DirtyBlockCacheStandard.
-func (d *DirtyBlockCacheStandard) ShouldForceSync(_ tlf.TlfID) bool {
+func (d *DirtyBlockCacheStandard) ShouldForceSync(_ tlf.ID) bool {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 	// TODO: Fill up to likely block boundaries?

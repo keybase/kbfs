@@ -16,8 +16,8 @@ var mdGetRegexp = regexp.MustCompile("^(.+?)(?::(.*?))?(?:\\^(.*?))?$")
 
 func getTlfID(
 	ctx context.Context, config libkbfs.Config, tlfStr string) (
-	tlf.TlfID, error) {
-	tlfID, err := tlf.ParseTlfID(tlfStr)
+	tlf.ID, error) {
+	tlfID, err := tlf.ParseID(tlfStr)
 	if err == nil {
 		return tlfID, nil
 	}
@@ -25,14 +25,14 @@ func getTlfID(
 	var handle *libkbfs.TlfHandle
 	p, err := fsrpc.NewPath(tlfStr)
 	if err != nil {
-		return tlf.TlfID{}, err
+		return tlf.ID{}, err
 	}
 	if p.PathType != fsrpc.TLFPathType {
-		return tlf.TlfID{}, fmt.Errorf(
+		return tlf.ID{}, fmt.Errorf(
 			"%q is not a TLF path", tlfStr)
 	}
 	if len(p.TLFComponents) > 0 {
-		return tlf.TlfID{}, fmt.Errorf(
+		return tlf.ID{}, fmt.Errorf(
 			"%q is not the root path of a TLF", tlfStr)
 	}
 	name := p.TLFName
@@ -52,17 +52,17 @@ outer:
 
 		default:
 			// Some other error.
-			return tlf.TlfID{}, err
+			return tlf.ID{}, err
 		}
 	}
 
 	_, irmd, err := config.MDOps().GetForHandle(ctx, handle, libkbfs.Merged)
 	if err != nil {
-		return tlf.TlfID{}, err
+		return tlf.ID{}, err
 	}
 
 	if irmd == (libkbfs.ImmutableRootMetadata{}) {
-		return tlf.TlfID{}, fmt.Errorf(
+		return tlf.ID{}, fmt.Errorf(
 			"Could not get TLF ID for %q", tlfStr)
 	}
 
@@ -70,7 +70,7 @@ outer:
 }
 
 func getBranchID(ctx context.Context, config libkbfs.Config,
-	tlfID tlf.TlfID, branchStr string) (libkbfs.BranchID, error) {
+	tlfID tlf.ID, branchStr string) (libkbfs.BranchID, error) {
 	if branchStr == "master" {
 		return libkbfs.NullBranchID, nil
 	}
@@ -91,7 +91,7 @@ func getBranchID(ctx context.Context, config libkbfs.Config,
 }
 
 func getRevision(ctx context.Context, config libkbfs.Config,
-	tlfID tlf.TlfID, branchID libkbfs.BranchID,
+	tlfID tlf.ID, branchID libkbfs.BranchID,
 	revisionStr string) (libkbfs.MetadataRevision, error) {
 	if len(revisionStr) == 0 || revisionStr == "latest" {
 		if branchID == libkbfs.NullBranchID {
@@ -123,7 +123,7 @@ func getRevision(ctx context.Context, config libkbfs.Config,
 	return libkbfs.MetadataRevision(u), nil
 }
 
-func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.TlfID,
+func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 	branchID libkbfs.BranchID, rev libkbfs.MetadataRevision) (
 	libkbfs.ImmutableRootMetadata, error) {
 	var irmds []libkbfs.ImmutableRootMetadata
