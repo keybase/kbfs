@@ -7,11 +7,11 @@ package tlf
 // FakeID creates a fake public or private TLF ID from the given
 // byte.
 func FakeID(b byte, public bool) ID {
-	bytes := [IDByteLen]byte{b}
+	bytes := [idByteLen]byte{b}
 	if public {
-		bytes[IDByteLen-1] = PubIDSuffix
+		bytes[idByteLen-1] = pubIDSuffix
 	} else {
-		bytes[IDByteLen-1] = IDSuffix
+		bytes[idByteLen-1] = idSuffix
 	}
 	return ID{bytes}
 }

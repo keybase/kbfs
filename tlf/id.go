@@ -13,20 +13,20 @@ import (
 )
 
 const (
-	// IDByteLen is the number of bytes in a top-level folder ID
-	IDByteLen = 16
-	// IDStringLen is the number of characters in the string
+	// idByteLen is the number of bytes in a top-level folder ID
+	idByteLen = 16
+	// idStringLen is the number of characters in the string
 	// representation of a top-level folder ID
-	IDStringLen = 2 * IDByteLen
-	// IDSuffix is the last byte of a private top-level folder ID
-	IDSuffix = 0x16
-	// PubIDSuffix is the last byte of a public top-level folder ID
-	PubIDSuffix = 0x17
+	idStringLen = 2 * idByteLen
+	// idSuffix is the last byte of a private top-level folder ID
+	idSuffix = 0x16
+	// pubIDSuffix is the last byte of a public top-level folder ID
+	pubIDSuffix = 0x17
 )
 
 // ID is a top-level folder ID
 type ID struct {
-	id [IDByteLen]byte
+	id [idByteLen]byte
 }
 
 var _ encoding.BinaryMarshaler = ID{}
@@ -50,8 +50,8 @@ func (id ID) String() string {
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface for ID.
 func (id ID) MarshalBinary() (data []byte, err error) {
-	suffix := id.id[IDByteLen-1]
-	if suffix != IDSuffix && suffix != PubIDSuffix {
+	suffix := id.id[idByteLen-1]
+	if suffix != idSuffix && suffix != pubIDSuffix {
 		return nil, InvalidID{id.String()}
 	}
 	return id.id[:], nil
@@ -60,11 +60,11 @@ func (id ID) MarshalBinary() (data []byte, err error) {
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface
 // for ID.
 func (id *ID) UnmarshalBinary(data []byte) error {
-	if len(data) != IDByteLen {
+	if len(data) != idByteLen {
 		return InvalidID{hex.EncodeToString(data)}
 	}
-	suffix := data[IDByteLen-1]
-	if suffix != IDSuffix && suffix != PubIDSuffix {
+	suffix := data[idByteLen-1]
+	if suffix != idSuffix && suffix != pubIDSuffix {
 		return InvalidID{hex.EncodeToString(data)}
 	}
 	copy(id.id[:], data)
@@ -95,13 +95,13 @@ func (id *ID) UnmarshalJSON(buf []byte) error {
 
 // IsPublic returns true if this ID is for a public top-level folder
 func (id ID) IsPublic() bool {
-	return id.id[IDByteLen-1] == PubIDSuffix
+	return id.id[idByteLen-1] == pubIDSuffix
 }
 
 // ParseID parses a hex encoded ID. Returns NullID and an
 // InvalidID on failure.
 func ParseID(s string) (ID, error) {
-	if len(s) != IDStringLen {
+	if len(s) != idStringLen {
 		return NullID, InvalidID{s}
 	}
 	bytes, err := hex.DecodeString(s)
@@ -119,15 +119,15 @@ func ParseID(s string) (ID, error) {
 // MakeRandomID makes a random ID using a cryptographically secure
 // RNG. Returns NullID on failure.
 func MakeRandomID(isPublic bool) (ID, error) {
-	var idBytes [IDByteLen]byte
+	var idBytes [idByteLen]byte
 	err := kbfscrypto.RandRead(idBytes[:])
 	if err != nil {
 		return NullID, err
 	}
 	if isPublic {
-		idBytes[IDByteLen-1] = PubIDSuffix
+		idBytes[idByteLen-1] = pubIDSuffix
 	} else {
-		idBytes[IDByteLen-1] = IDSuffix
+		idBytes[idByteLen-1] = idSuffix
 	}
 	var id ID
 	err = id.UnmarshalBinary(idBytes[:])
