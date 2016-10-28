@@ -5,9 +5,11 @@
 package libkbfs
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscrypto"
 
 	"golang.org/x/net/context"
 )
@@ -38,7 +40,8 @@ var _ MDOps = journalMDOps{}
 // convertImmutableBareRMDToIRMD decrypts the bare MD into a
 // full-fledged RMD.
 func (j journalMDOps) convertImmutableBareRMDToIRMD(ctx context.Context,
-	ibrmd ImmutableBareRootMetadata, handle *TlfHandle, uid keybase1.UID) (
+	ibrmd ImmutableBareRootMetadata, handle *TlfHandle,
+	uid keybase1.UID, key kbfscrypto.VerifyingKey) (
 	ImmutableRootMetadata, error) {
 	// TODO: Avoid having to do this type assertion.
 	brmd, ok := ibrmd.BareRootMetadata.(MutableBareRootMetadata)
@@ -57,7 +60,8 @@ func (j journalMDOps) convertImmutableBareRMDToIRMD(ctx context.Context,
 	}
 
 	rmd.data = pmd
-	irmd := MakeImmutableRootMetadata(rmd, ibrmd.mdID, ibrmd.localTimestamp)
+	irmd := MakeImmutableRootMetadata(
+		rmd, key, ibrmd.mdID, ibrmd.localTimestamp)
 	return irmd, nil
 }
 
@@ -125,7 +129,7 @@ func (j journalMDOps) getHeadFromJournal(
 	}
 
 	irmd, err := j.convertImmutableBareRMDToIRMD(
-		ctx, head, handle, tlfJournal.uid)
+		ctx, head, handle, tlfJournal.uid, tlfJournal.key)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -179,7 +183,7 @@ func (j journalMDOps) getRangeFromJournal(
 
 	for _, ibrmd := range ibrmds {
 		irmd, err := j.convertImmutableBareRMDToIRMD(
-			ctx, ibrmd, handle, tlfJournal.uid)
+			ctx, ibrmd, handle, tlfJournal.uid, tlfJournal.key)
 		if err != nil {
 			return nil, err
 		}
@@ -360,4 +364,18 @@ func (j journalMDOps) PruneBranch(
 	}
 
 	return j.MDOps.PruneBranch(ctx, id, bid)
+}
+
+func (j journalMDOps) ResolveBranch(
+	ctx context.Context, id TlfID, bid BranchID,
+	blocksToDelete []BlockID, rmd *RootMetadata) (MdID, error) {
+	if tlfJournal, ok := j.jServer.getTLFJournal(id); ok {
+		mdID, err := tlfJournal.resolveBranch(
+			ctx, bid, blocksToDelete, rmd, rmd.extra)
+		if err != errTLFJournalDisabled {
+			return mdID, err
+		}
+	}
+
+	return MdID{}, errors.New("ResolveBranch not supported outside of journal")
 }

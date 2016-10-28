@@ -941,6 +941,13 @@ type MDOps interface {
 	// branch.
 	PruneBranch(ctx context.Context, id TlfID, bid BranchID) error
 
+	// ResolveBranch prunes all unmerged history for the given TLF
+	// branch, and also deletes any blocks in `blocksToDelete` that
+	// are still in the local journal.  It also appends the given MD
+	// to the journal.
+	ResolveBranch(ctx context.Context, id TlfID, bid BranchID,
+		blocksToDelete []BlockID, rmd *RootMetadata) (MdID, error)
+
 	// GetLatestHandleForTLF returns the server's idea of the latest handle for the TLF,
 	// which may not yet be reflected in the MD if the TLF hasn't been rekeyed since it
 	// entered into a conflicting state.
@@ -1563,11 +1570,12 @@ type BareRootMetadata interface {
 	// IsReader returns whether or not the user+device is an authorized reader.
 	IsReader(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool
 	// DeepCopy returns a deep copy of the underlying data structure.
-	DeepCopy(codec kbfscodec.Codec) (BareRootMetadata, error)
+	DeepCopy(codec kbfscodec.Codec) (MutableBareRootMetadata, error)
 	// MakeSuccessorCopy returns a newly constructed successor copy to this metadata revision.
 	// It differs from DeepCopy in that it can perform an up conversion to a new metadata
 	// version.
-	MakeSuccessorCopy(codec kbfscodec.Codec) (BareRootMetadata, error)
+	MakeSuccessorCopy(codec kbfscodec.Codec, isReadableAndWriter bool) (
+		MutableBareRootMetadata, error)
 	// CheckValidSuccessor makes sure the given BareRootMetadata is a valid
 	// successor to the current one, and returns an error otherwise.
 	CheckValidSuccessor(currID MdID, nextMd BareRootMetadata) error
@@ -1617,8 +1625,6 @@ type BareRootMetadata interface {
 	IsLastModifiedBy(uid keybase1.UID, key kbfscrypto.VerifyingKey) error
 	// LastModifyingWriter return the UID of the last user to modify the writer metadata.
 	LastModifyingWriter() keybase1.UID
-	// LastModifyingWriterKID returns the KID of the last device to modify the writer metadata.
-	LastModifyingWriterKID() keybase1.KID
 	// LastModifyingUser return the UID of the last user to modify the any of the metadata.
 	GetLastModifyingUser() keybase1.UID
 	// RefBytes returns the number of newly referenced bytes introduced by this revision of metadata.
@@ -1639,8 +1645,6 @@ type BareRootMetadata interface {
 	GetSerializedPrivateMetadata() []byte
 	// GetSerializedWriterMetadata serializes the underlying writer metadata and returns the result.
 	GetSerializedWriterMetadata(codec kbfscodec.Codec) ([]byte, error)
-	// GetWriterMetadataSigInfo returns the signature info associated with the the writer metadata.
-	GetWriterMetadataSigInfo() kbfscrypto.SignatureInfo
 	// Version returns the metadata version.
 	Version() MetadataVer
 	// GetTLFPublicKey returns the TLF public key for the give key generation.
@@ -1697,8 +1701,10 @@ type MutableBareRootMetadata interface {
 	SetPrevRoot(mdID MdID)
 	// SetSerializedPrivateMetadata sets the serialized private metadata.
 	SetSerializedPrivateMetadata(spmd []byte)
-	// SetWriterMetadataSigInfo sets the signature info associated with the the writer metadata.
-	SetWriterMetadataSigInfo(sigInfo kbfscrypto.SignatureInfo)
+	// SignWriterMetadataInternally signs the writer metadata, for
+	// versions that store this signature inside the metadata.
+	SignWriterMetadataInternally(ctx context.Context,
+		codec kbfscodec.Codec, signer cryptoSigner) error
 	// SetLastModifyingWriter sets the UID of the last user to modify the writer metadata.
 	SetLastModifyingWriter(user keybase1.UID)
 	// SetLastModifyingUser sets the UID of the last user to modify any of the metadata.
