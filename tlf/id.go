@@ -8,6 +8,8 @@ import (
 	"encoding"
 	"encoding/hex"
 	"encoding/json"
+
+	"github.com/keybase/kbfs/kbfscrypto"
 )
 
 const (
@@ -110,6 +112,27 @@ func ParseID(s string) (ID, error) {
 	err = id.UnmarshalBinary(bytes)
 	if err != nil {
 		return NullID, InvalidID{s}
+	}
+	return id, nil
+}
+
+// MakeRandomID makes a random ID using a cryptographically secure
+// RNG. Returns NullID on failure.
+func MakeRandomID(isPublic bool) (ID, error) {
+	var idBytes [IDByteLen]byte
+	err := kbfscrypto.RandRead(idBytes[:])
+	if err != nil {
+		return NullID, err
+	}
+	if isPublic {
+		idBytes[IDByteLen-1] = PubIDSuffix
+	} else {
+		idBytes[IDByteLen-1] = IDSuffix
+	}
+	var id ID
+	err = id.UnmarshalBinary(idBytes[:])
+	if err != nil {
+		return NullID, err
 	}
 	return id, nil
 }

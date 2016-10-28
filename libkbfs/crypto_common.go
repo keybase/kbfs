@@ -35,22 +35,7 @@ func MakeCryptoCommon(codec kbfscodec.Codec) CryptoCommon {
 
 // MakeRandomTlfID implements the Crypto interface for CryptoCommon.
 func (c CryptoCommon) MakeRandomTlfID(isPublic bool) (tlf.ID, error) {
-	var idBytes [tlf.IDByteLen]byte
-	err := kbfscrypto.RandRead(idBytes[:])
-	if err != nil {
-		return tlf.ID{}, err
-	}
-	if isPublic {
-		idBytes[tlf.IDByteLen-1] = tlf.PubIDSuffix
-	} else {
-		idBytes[tlf.IDByteLen-1] = tlf.IDSuffix
-	}
-	var id tlf.ID
-	err = id.UnmarshalBinary(idBytes[:])
-	if err != nil {
-		return tlf.ID{}, err
-	}
-	return id, nil
+	return tlf.MakeRandomID(isPublic)
 }
 
 // MakeRandomBranchID implements the Crypto interface for CryptoCommon.
