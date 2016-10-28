@@ -915,7 +915,8 @@ func (rmds *RootMetadataSigned) Version() MetadataVer {
 // MakeFinalCopy returns a complete copy of this RootMetadataSigned
 // with the revision incremented and the final bit set.
 func (rmds *RootMetadataSigned) MakeFinalCopy(
-	codec kbfscodec.Codec, clock Clock) (
+	codec kbfscodec.Codec, now time.Time,
+	finalizedInfo *TlfHandleExtension) (
 	*RootMetadataSigned, error) {
 	if rmds.MD.IsFinal() {
 		return nil, MetadataIsFinalError{}
@@ -934,9 +935,10 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(
 	// is to make verification easier for the client as otherwise it'd need to request
 	// the head revision - 1.
 	newBareMd.SetRevision(rmds.MD.RevisionNumber() + 1)
+	newBareMd.SetFinalizedInfo(finalizedInfo)
 	return MakeRootMetadataSigned(
 		rmds.SigInfo.DeepCopy(), rmds.WriterSigInfo.DeepCopy(),
-		newBareMd, clock.Now())
+		newBareMd, now)
 }
 
 // IsValidAndSigned verifies the RootMetadataSigned, checks the root

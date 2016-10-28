@@ -710,8 +710,15 @@ func TestRootMetadataFinalVerifyV3(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	ext, err := NewTlfHandleExtension(
+		TlfHandleExtensionFinalized, 1, "fake user")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// make a final copy
-	rmds2, err := rmds.MakeFinalCopy(config.Codec(), config.Clock())
+	rmds2, err := rmds.MakeFinalCopy(
+		config.Codec(), config.Clock().Now(), ext)
 	if err != nil {
 		t.Fatal(err)
 	}
