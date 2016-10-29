@@ -143,22 +143,15 @@ func testCRCheckOps(t *testing.T, cc *crChains, original BlockPointer,
 	}
 }
 
-func testCRChainsFillInWriter(t *testing.T, rmds []*RootMetadata) (
-	Config, []chainMetadata) {
-	config := MakeTestConfigOrBust(t, "u1")
-	kbpki := config.KBPKI()
-	ctx := context.Background()
-	key, err := kbpki.GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		t.Fatalf("Couldn't get verifying key: %v", err)
-	}
+func testCRChainsFillInWriter(t *testing.T, rmds []*RootMetadata) []chainMetadata {
+	key := MakeFakeVerifyingKeyOrBust("fake key")
 	chainMDs := make([]chainMetadata, len(rmds))
 	for i, rmd := range rmds {
 		chainMDs[i] = rootMetadataWithKeyAndTimestamp{
 			rmd, key, time.Unix(0, 0),
 		}
 	}
-	return config, chainMDs
+	return chainMDs
 }
 
 func newRMDForCRChainsTest(t *testing.T) *RootMetadata {
@@ -199,7 +192,8 @@ func TestCRChainsSingleOp(t *testing.T) {
 	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 
 	rmds := []*RootMetadata{rmd}
-	config, chainMDs := testCRChainsFillInWriter(t, rmds)
+	config := MakeTestConfigOrBust(t, "u1")
+	chainMDs := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
 	cc, err := newCRChains(
 		context.Background(), config.Codec(), config.KeybaseService(),
@@ -236,7 +230,8 @@ func TestCRChainsRenameOp(t *testing.T) {
 	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 
 	rmds := []*RootMetadata{rmd}
-	config, chainMDs := testCRChainsFillInWriter(t, rmds)
+	config := MakeTestConfigOrBust(t, "u1")
+	chainMDs := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
 	cc, err := newCRChains(
 		context.Background(), config.Codec(), config.KeybaseService(),
@@ -347,7 +342,8 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 
 	bigRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 	rmds := []*RootMetadata{bigRmd}
-	config, chainMDs := testCRChainsFillInWriter(t, rmds)
+	config := MakeTestConfigOrBust(t, "u1")
+	chainMDs := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
 	cc, err := newCRChains(
 		context.Background(), config.Codec(), config.KeybaseService(),
@@ -381,8 +377,7 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 	testCRCheckOps(t, cc, file4Unref, []op{op4})
 
 	// now make sure the chain of MDs gets the same answers
-	config, multiIrmds := testCRChainsFillInWriter(t, multiRmds)
-	defer config.Shutdown()
+	multiIrmds := testCRChainsFillInWriter(t, multiRmds)
 	mcc, err := newCRChains(
 		context.Background(), config.Codec(), config.KeybaseService(),
 		multiIrmds, nil, true)
@@ -515,7 +510,8 @@ func TestCRChainsCollapse(t *testing.T) {
 
 	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 	rmds := []*RootMetadata{rmd}
-	config, chainMDs := testCRChainsFillInWriter(t, rmds)
+	config := MakeTestConfigOrBust(t, "u1")
+	chainMDs := testCRChainsFillInWriter(t, rmds)
 	defer config.Shutdown()
 	cc, err := newCRChains(
 		context.Background(), config.Codec(), config.KeybaseService(),
