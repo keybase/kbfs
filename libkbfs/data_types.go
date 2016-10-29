@@ -132,17 +132,17 @@ const (
 	FirstValidMetadataVer MetadataVer = 0
 	// PreExtraMetadataVer is the latest metadata version that did not include
 	// support for extra MD fields.
-	PreExtraMetadataVer = 1
+	PreExtraMetadataVer MetadataVer = 1
 	// InitialExtraMetadataVer is the first metadata version that did
 	// include support for extra MD fields.
-	InitialExtraMetadataVer = 2
+	InitialExtraMetadataVer MetadataVer = 2
 	// SegregatedKeyBundlesVer is the first metadata version to allow separate
 	// storage of key bundles.
-	SegregatedKeyBundlesVer = 3
+	SegregatedKeyBundlesVer MetadataVer = 3
 
 	// MDv3 TODO: Change the below to SegregatedKeyBundlesVer when
 	// the client is ready for MDv3.
-	defaultClientMetadataVer = InitialExtraMetadataVer
+	defaultClientMetadataVer MetadataVer = InitialExtraMetadataVer
 )
 
 // DataVer is the type of a version for marshalled KBFS data
@@ -153,10 +153,10 @@ const (
 	// FirstValidDataVer is the first value that is considered a
 	// valid data version. Note that the nil value is not
 	// considered valid.
-	FirstValidDataVer = 1
+	FirstValidDataVer DataVer = 1
 	// FilesWithHolesDataVer is the data version for files
 	// with holes.
-	FilesWithHolesDataVer = 2
+	FilesWithHolesDataVer DataVer = 2
 )
 
 // BlockRefNonce is a 64-bit unique sequence of bytes for identifying
