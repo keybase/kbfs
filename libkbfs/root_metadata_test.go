@@ -174,7 +174,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
-	rmd.FakeInitialRekey(crypto, h.ToBareHandleOrBust())
+	rmd.FakeInitialRekey(crypto)
 
 	dirHandle := rmd.GetTlfHandle()
 	require.Equal(t, h, dirHandle)
@@ -197,7 +197,7 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 	if rmd.LatestKeyGeneration() != 0 {
 		t.Errorf("Expected key generation to be invalid (0)")
 	}
-	rmd.FakeInitialRekey(crypto, h.ToBareHandleOrBust())
+	rmd.FakeInitialRekey(crypto)
 	if rmd.LatestKeyGeneration() != FirstValidKeyGen {
 		t.Errorf("Expected key generation to be valid(%d)", FirstValidKeyGen)
 	}
@@ -575,7 +575,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	// ... including if the assertions get resolved.
 	AddNewAssertionForTestOrBust(t, config, "bob", "bob@twitter")
 	rmd.SetSerializedPrivateMetadata([]byte{1}) // MakeSuccessor requires this
-	rmd.FakeInitialRekey(config.Crypto(), h.ToBareHandleOrBust())
+	rmd.FakeInitialRekey(config.Crypto())
 	if rmd.GetSerializedPrivateMetadata() == nil {
 		t.Fatalf("Nil private MD")
 	}
@@ -587,7 +587,9 @@ func TestRootMetadataVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't make MD successor: %v", err)
 	}
-	rmd3.FakeInitialRekey(config.Crypto(), h3.ToBareHandleOrBust())
+	rmd3.bareMd.FakeInitialRekey(
+		config.Crypto(), h3.ToBareHandleOrBust(),
+		kbfscrypto.TLFPublicKey{})
 	err = rmd3.updateFromTlfHandle(h3)
 	if err != nil {
 		t.Fatalf("Couldn't update TLF handle: %v", err)
@@ -611,7 +613,7 @@ func TestMakeRekeyReadError(t *testing.T) {
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
-	rmd.FakeInitialRekey(config.Crypto(), h.ToBareHandleOrBust())
+	rmd.FakeInitialRekey(config.Crypto())
 
 	u, uid, err := config.KBPKI().Resolve(context.Background(), "bob")
 	require.NoError(t, err)
@@ -639,7 +641,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
-	rmd.FakeInitialRekey(config.Crypto(), h.ToBareHandleOrBust())
+	rmd.FakeInitialRekey(config.Crypto())
 
 	u, uid, err := config.KBPKI().Resolve(ctx, "bob")
 	require.NoError(t, err)

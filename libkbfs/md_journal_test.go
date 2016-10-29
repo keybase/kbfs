@@ -100,7 +100,7 @@ func makeMDForTest(t *testing.T, tlfID TlfID, revision MetadataRevision,
 	md, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 	md.SetRevision(revision)
-	md.FakeInitialRekey(crypto, bh)
+	md.FakeInitialRekey(crypto)
 	md.SetPrevRoot(prevRoot)
 	md.SetDiskUsage(500)
 	md.bareMd.SignWriterMetadataInternally(context.Background(),
