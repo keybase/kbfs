@@ -554,9 +554,11 @@ func TestRootMetadataVersion(t *testing.T) {
 	defer config.Shutdown()
 
 	// Sign the writer metadata
-	id := FakeTlfID(1, false)
+	tlfID := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob@twitter", false)
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	require.NoError(t, err)
+
 	rmds, err := MakeRootMetadataSigned(
 		kbfscrypto.SignatureInfo{}, kbfscrypto.SignatureInfo{},
 		rmd.bareMd, time.Time{})
@@ -567,9 +569,11 @@ func TestRootMetadataVersion(t *testing.T) {
 	}
 
 	// All other folders should use the pre-extra MD version.
-	id2 := FakeTlfID(2, false)
+	tlfID2 := FakeTlfID(2, false)
 	h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
-	rmd2 := newRootMetadataOrBust(t, id2, h2)
+	rmd2, err := MakeInitialRootMetadata(
+		InitialExtraMetadataVer, tlfID2, h2)
+	require.NoError(t, err)
 	rmds2, err := MakeRootMetadataSigned(
 		kbfscrypto.SignatureInfo{}, kbfscrypto.SignatureInfo{},
 		rmd2.bareMd, time.Time{})
@@ -613,9 +617,11 @@ func TestMakeRekeyReadError(t *testing.T) {
 	config := MakeTestConfigOrBust(t, "alice", "bob")
 	defer config.Shutdown()
 
-	id := FakeTlfID(1, false)
+	tlfID := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	require.NoError(t, err)
+
 	rmd.FakeInitialRekey(config.Crypto(), h.ToBareHandleOrBust())
 
 	u, uid, err := config.KBPKI().Resolve(context.Background(), "bob")
@@ -636,12 +642,14 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	config := MakeTestConfigOrBust(t, "alice", "bob")
 	defer config.Shutdown()
 
-	id := FakeTlfID(1, false)
+	tlfID := FakeTlfID(1, false)
 	ctx := context.Background()
 	h, err := ParseTlfHandle(ctx, config.KBPKI(), "alice,bob@twitter",
 		false)
 	require.NoError(t, err)
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	require.NoError(t, err)
+
 	rmd.FakeInitialRekey(config.Crypto(), h.ToBareHandleOrBust())
 
 	u, uid, err := config.KBPKI().Resolve(ctx, "bob")
