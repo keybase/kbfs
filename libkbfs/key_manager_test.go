@@ -258,7 +258,7 @@ func makeDirRKeyInfoMap(uid keybase1.UID,
 	}
 }
 
-// TODO: Can change the tests below to use a fake KeyMetadata object.
+// TODO: Test with MDv3.
 
 func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
 	mockCtrl, config, ctx := keyManagerInit(t)
@@ -267,7 +267,8 @@ func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	uid := h.FirstResolvedWriter()
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
 	expectMakeKeyBundleIDs(config)
@@ -290,7 +291,8 @@ func TestKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	uid := h.FirstResolvedWriter()
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
 	expectMakeKeyBundleIDs(config)
@@ -311,7 +313,8 @@ func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	uid := h.FirstResolvedWriter()
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
 	expectMakeKeyBundleIDs(config)
@@ -335,7 +338,9 @@ func TestKeyManagerRekeySuccessPrivate(t *testing.T) {
 
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
+
 	oldKeyGen := rmd.LatestKeyGeneration()
 
 	expectRekey(config, h.ToBareHandleOrBust(), 1, false)
@@ -355,7 +360,8 @@ func TestKeyManagerRekeyResolveAgainSuccessPublic(t *testing.T) {
 	h, err := ParseTlfHandle(
 		ctx, config.KBPKI(), "alice,bob@twitter", true)
 	require.NoError(t, err)
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
 
 	daemon := config.KeybaseService().(*KeybaseDaemonLocal)
 	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
@@ -394,7 +400,8 @@ func TestKeyManagerRekeyResolveAgainSuccessPublicSelf(t *testing.T) {
 	h, err := ParseTlfHandle(
 		ctx, config.KBPKI(), "alice@twitter,bob,charlie@twitter", true)
 	require.NoError(t, err)
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
 
 	daemon := config.KeybaseService().(*KeybaseDaemonLocal)
 	daemon.addNewAssertionForTestOrBust("alice", "alice@twitter")
@@ -431,7 +438,9 @@ func TestKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
+
 	oldKeyGen := rmd.LatestKeyGeneration()
 
 	expectRekey(config, h.ToBareHandleOrBust(), 3, true)
@@ -501,7 +510,9 @@ func TestKeyManagerPromoteReaderSuccessPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
+
 	oldKeyGen := rmd.LatestKeyGeneration()
 
 	expectRekey(config, h.ToBareHandleOrBust(), 2, true)
@@ -535,7 +546,9 @@ func TestKeyManagerReaderRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
+
 	oldKeyGen := rmd.LatestKeyGeneration()
 
 	expectRekey(config, h.ToBareHandleOrBust(), 1, true)
@@ -606,7 +619,9 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
+
 	oldKeyGen := rmd.LatestKeyGeneration()
 
 	expectRekey(config, h.ToBareHandleOrBust(), 2, true)
