@@ -129,7 +129,7 @@ const (
 	// FirstValidMetadataVer is the first value that is considered a
 	// valid data version. For historical reasons 0 is considered
 	// valid.
-	FirstValidMetadataVer = 0
+	FirstValidMetadataVer MetadataVer = 0
 	// PreExtraMetadataVer is the latest metadata version that did not include
 	// support for extra MD fields.
 	PreExtraMetadataVer = 1
@@ -139,6 +139,10 @@ const (
 	// SegregatedKeyBundlesVer is the first metadata version to allow separate
 	// storage of key bundles.
 	SegregatedKeyBundlesVer = 3
+
+	// MDv3 TODO: Change the below to SegregatedKeyBundlesVer when
+	// ready for MDv3.
+	DefaultMetadataVer = InitialExtraMetadataVer
 )
 
 // DataVer is the type of a version for marshalled KBFS data
