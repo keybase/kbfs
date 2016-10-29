@@ -14,6 +14,9 @@ import (
 func TestRootMetadataVersionV2(t *testing.T) {
 	tlfID := FakeTlfID(1, false)
 
+	// Metadata objects with unresolved assertions should have
+	// InitialExtraMetadataVer.
+
 	uid := keybase1.MakeTestUID(1)
 	bh, err := MakeBareTlfHandle(
 		[]keybase1.UID{uid}, nil, []keybase1.SocialAssertion{
@@ -21,57 +24,23 @@ func TestRootMetadataVersionV2(t *testing.T) {
 		nil, nil)
 	require.NoError(t, err)
 
-	rmd, err := MakeInitialBareRootMetadata(
-		InitialExtraMetadataVer, tlfID, bh)
+	rmd, err := MakeInitialBareRootMetadataV2(tlfID, bh)
 	require.NoError(t, err)
 
 	require.Equal(t, InitialExtraMetadataVer, rmd.Version())
 
-	/*
-		// All other folders should use the pre-extra MD version.
-		tlfID2 := FakeTlfID(2, false)
-		h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
-		rmd2, err := makeInitialRootMetadata(
-			config.MetadataVersion(), tlfID2, h2)
-		require.NoError(t, err)
-		rmds2, err := MakeRootMetadataSigned(
-			kbfscrypto.SignatureInfo{}, kbfscrypto.SignatureInfo{},
-			rmd2.bareMd, time.Time{})
-		require.NoError(t, err)
-		if g, e := rmds2.Version(), MetadataVer(PreExtraMetadataVer); g != e {
-			t.Errorf("MD without unresolved users got wrong version %d, "+
-				"expected %d", g, e)
-		}
+	// All other folders should use PreExtraMetadataVer.
+	bh2, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	require.NoError(t, err)
 
-		// ... including if the assertions get resolved.
-		AddNewAssertionForTestOrBust(t, config, "bob", "bob@twitter")
-		rmd.SetSerializedPrivateMetadata([]byte{1}) // MakeSuccessor requires this
-		rmd.FakeInitialRekey(config.Crypto())
-		if rmd.GetSerializedPrivateMetadata() == nil {
-			t.Fatalf("Nil private MD")
-		}
-		h3, err := h.ResolveAgain(context.Background(), config.KBPKI())
-		if err != nil {
-			t.Fatalf("Couldn't resolve again: %v", err)
-		}
-		rmd3, err := rmd.MakeSuccessor(config.Codec(), fakeMdID(1), true)
-		if err != nil {
-			t.Fatalf("Couldn't make MD successor: %v", err)
-		}
-		rmd3.bareMd.FakeInitialRekey(
-			config.Crypto(), h3.ToBareHandleOrBust(),
-			kbfscrypto.TLFPublicKey{})
-		err = rmd3.updateFromTlfHandle(h3)
-		if err != nil {
-			t.Fatalf("Couldn't update TLF handle: %v", err)
-		}
-		rmds3, err := MakeRootMetadataSigned(
-			kbfscrypto.SignatureInfo{}, kbfscrypto.SignatureInfo{},
-			rmd3.bareMd, time.Time{})
-		require.NoError(t, err)
-		if g, e := rmds3.Version(), MetadataVer(PreExtraMetadataVer); g != e {
-			t.Errorf("MD without unresolved users got wrong version %d, "+
-				"expected %d", g, e)
-		}
-	*/
+	rmd2, err := MakeInitialBareRootMetadata(
+		InitialExtraMetadataVer, tlfID, bh2)
+	require.NoError(t, err)
+
+	require.Equal(t, PreExtraMetadataVer, rmd2.Version())
+
+	// ... including if unresolved assertions get resolved.
+
+	rmd.SetUnresolvedWriters(nil)
+	require.Equal(t, PreExtraMetadataVer, rmd.Version())
 }
