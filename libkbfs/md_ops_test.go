@@ -723,7 +723,7 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	expectGetTLFCryptKeyForEncryption(config, rmd)

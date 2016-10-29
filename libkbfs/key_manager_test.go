@@ -267,7 +267,7 @@ func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	uid := h.FirstResolvedWriter()
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
@@ -291,7 +291,7 @@ func TestKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	uid := h.FirstResolvedWriter()
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
@@ -313,7 +313,7 @@ func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	uid := h.FirstResolvedWriter()
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	subkey := MakeFakeCryptPublicKeyOrBust("crypt public key")
@@ -338,7 +338,7 @@ func TestKeyManagerRekeySuccessPrivate(t *testing.T) {
 
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	oldKeyGen := rmd.LatestKeyGeneration()
@@ -360,7 +360,7 @@ func TestKeyManagerRekeyResolveAgainSuccessPublic(t *testing.T) {
 	h, err := ParseTlfHandle(
 		ctx, config.KBPKI(), "alice,bob@twitter", true)
 	require.NoError(t, err)
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	daemon := config.KeybaseService().(*KeybaseDaemonLocal)
@@ -400,7 +400,7 @@ func TestKeyManagerRekeyResolveAgainSuccessPublicSelf(t *testing.T) {
 	h, err := ParseTlfHandle(
 		ctx, config.KBPKI(), "alice@twitter,bob,charlie@twitter", true)
 	require.NoError(t, err)
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	daemon := config.KeybaseService().(*KeybaseDaemonLocal)
@@ -438,7 +438,7 @@ func TestKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	oldKeyGen := rmd.LatestKeyGeneration()
@@ -510,7 +510,7 @@ func TestKeyManagerPromoteReaderSuccessPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	oldKeyGen := rmd.LatestKeyGeneration()
@@ -546,7 +546,7 @@ func TestKeyManagerReaderRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	oldKeyGen := rmd.LatestKeyGeneration()
@@ -619,7 +619,7 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	oldKeyGen := rmd.LatestKeyGeneration()

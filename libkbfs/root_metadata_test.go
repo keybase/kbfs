@@ -545,7 +545,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	// Sign the writer metadata
 	tlfID := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob@twitter", false)
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
 	rmds, err := MakeRootMetadataSigned(
@@ -561,7 +561,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	tlfID2 := FakeTlfID(2, false)
 	h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
 	rmd2, err := MakeInitialRootMetadata(
-		InitialExtraMetadataVer, tlfID2, h2)
+		config.MetadataVersion(), tlfID2, h2)
 	require.NoError(t, err)
 	rmds2, err := MakeRootMetadataSigned(
 		kbfscrypto.SignatureInfo{}, kbfscrypto.SignatureInfo{},
@@ -608,7 +608,7 @@ func TestMakeRekeyReadError(t *testing.T) {
 
 	tlfID := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
 	rmd.FakeInitialRekey(config.Crypto(), h.ToBareHandleOrBust())
@@ -636,7 +636,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	h, err := ParseTlfHandle(ctx, config.KBPKI(), "alice,bob@twitter",
 		false)
 	require.NoError(t, err)
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
 	rmd.FakeInitialRekey(config.Crypto(), h.ToBareHandleOrBust())

@@ -104,7 +104,7 @@ func TestFBStatusAllFields(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	u := h.FirstResolvedWriter()
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 	rmd.SetUnmerged()
 	rmd.SetLastModifyingWriter(u)
