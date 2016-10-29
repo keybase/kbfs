@@ -56,6 +56,9 @@ func TestIsValidRekeyRequestBasicV3(t *testing.T) {
 	// Set the copy bit; note the writer metadata is the same.
 	newBrmd.SetWriterMetadataCopiedBit()
 
+	// There's no internal signature to compare, so this should
+	// then work.
+
 	ok, err = newBrmd.IsValidRekeyRequest(
 		codec, brmd, newBrmd.LastModifyingWriter(), extra, newExtra)
 	require.NoError(t, err)
