@@ -873,10 +873,19 @@ func (md *BareRootMetadataV3) SetRevision(revision MetadataRevision) {
 func (md *BareRootMetadataV3) AddNewKeysForTesting(crypto cryptoPure,
 	wDkim, rDkim UserDeviceKeyInfoMap,
 	pubKey kbfscrypto.TLFPublicKey) (extra ExtraMetadata, err error) {
+	if md.WriterMetadata.LatestKeyGen >= FirstValidKeyGen {
+		// TODO: Relax this if needed (but would have to
+		// retrieve the previous pubkeys below).
+		panic("Cannot add more than one key generation")
+	}
 	for _, dkim := range wDkim {
 		for _, info := range dkim {
 			if info.EPubKeyIndex < 0 {
 				panic("negative EPubKeyIndex for writer (v3)")
+			}
+			// TODO: Allow more if needed.
+			if info.EPubKeyIndex > 0 {
+				panic("EPubKeyIndex for writer > 1 (v3)")
 			}
 		}
 	}
@@ -885,6 +894,10 @@ func (md *BareRootMetadataV3) AddNewKeysForTesting(crypto cryptoPure,
 			if info.EPubKeyIndex < 0 {
 				panic("negative EPubKeyIndex for reader (v3)")
 			}
+			// TODO: Allow more if needed.
+			if info.EPubKeyIndex > 0 {
+				panic("EPubKeyIndex for reader > 1 (v3)")
+			}
 		}
 	}
 
@@ -892,12 +905,14 @@ func (md *BareRootMetadataV3) AddNewKeysForTesting(crypto cryptoPure,
 		Keys: wDkim,
 		// TODO: Retrieve the previous pubkeys and prepend
 		// them.
-		TLFPublicKeys:          []kbfscrypto.TLFPublicKey{pubKey},
+		TLFPublicKeys: []kbfscrypto.TLFPublicKey{pubKey},
+		// TODO: Size this to the max EPubKeyIndex for writers.
 		TLFEphemeralPublicKeys: make([]kbfscrypto.TLFEphemeralPublicKey, 1),
 	}
 	rkb := &TLFReaderKeyBundleV3{
 		TLFReaderKeyBundleV2: TLFReaderKeyBundleV2{
 			RKeys: rDkim,
+			// TODO: Size this to the max EPubKeyIndex for readers.
 			TLFReaderEphemeralPublicKeys: make([]kbfscrypto.TLFEphemeralPublicKey, 1),
 		},
 	}

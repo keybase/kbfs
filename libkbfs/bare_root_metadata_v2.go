@@ -884,6 +884,10 @@ func (md *BareRootMetadataV2) AddNewKeysForTesting(_ cryptoPure,
 			if info.EPubKeyIndex < 0 {
 				panic("negative EPubKeyIndex for writer (v2)")
 			}
+			// TODO: Allow more if needed.
+			if info.EPubKeyIndex > 0 {
+				panic("EPubKeyIndex for writer > 1 (v2)")
+			}
 		}
 	}
 	for _, dkim := range rDkim {
@@ -891,15 +895,22 @@ func (md *BareRootMetadataV2) AddNewKeysForTesting(_ cryptoPure,
 			if info.EPubKeyIndex >= 0 {
 				panic("non-negative EPubKeyIndex for reader (v2)")
 			}
+			// TODO: Allow more if needed.
+			if info.EPubKeyIndex < -1 {
+				panic("EPubKeyIndex for reader < -1 (v2)")
+			}
 		}
 	}
 	wkb := TLFWriterKeyBundleV2{
-		WKeys:                  wDkim,
-		TLFPublicKey:           pubKey,
+		WKeys:        wDkim,
+		TLFPublicKey: pubKey,
+		// TODO: Size this to the max EPubKeyIndex for writers.
 		TLFEphemeralPublicKeys: make([]kbfscrypto.TLFEphemeralPublicKey, 1),
 	}
 	rkb := TLFReaderKeyBundleV2{
 		RKeys: rDkim,
+		// TODO: Size this to the max EPubKeyIndex (after
+		// undoing the negative hack) for readers.
 		TLFReaderEphemeralPublicKeys: make([]kbfscrypto.TLFEphemeralPublicKey, 1),
 	}
 	md.WKeys = append(md.WKeys, wkb)
