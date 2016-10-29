@@ -1718,8 +1718,9 @@ type MutableBareRootMetadata interface {
 	SetWriterMetadataCopiedBit()
 	// SetRevision sets the revision number of the underlying metadata.
 	SetRevision(revision MetadataRevision)
-	// AddNewKeysForTesting adds new writer and reader TLF key bundles to this revision of metadata.
-	// Note: This is only used for testing at the moment.
+	// AddNewKeysForTesting adds new writer and reader TLF key
+	// bundles to this revision of metadata.  pubKey is non-empty
+	// only for server-side tests.
 	AddNewKeysForTesting(crypto cryptoPure,
 		wDkim, rDkim UserDeviceKeyInfoMap,
 		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)

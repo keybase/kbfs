@@ -650,7 +650,7 @@ func (md *RootMetadata) FakeInitialRekey(crypto cryptoPure) error {
 	if err != nil {
 		return err
 	}
-	md.extra, err = md.bareMd.FakeInitialRekey(
+	md.extra, err = FakeInitialRekey(md.bareMd,
 		crypto, bh, kbfscrypto.TLFPublicKey{})
 	return err
 }
