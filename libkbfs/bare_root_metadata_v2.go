@@ -879,6 +879,9 @@ func (md *BareRootMetadataV2) SetRevision(revision MetadataRevision) {
 func (md *BareRootMetadataV2) AddNewKeysForTesting(_ cryptoPure,
 	wDkim, rDkim UserDeviceKeyInfoMap,
 	pubKey kbfscrypto.TLFPublicKey) (extra ExtraMetadata, err error) {
+	if md.TlfID().IsPublic() {
+		panic("Called FakeInitialRekey on public TLF")
+	}
 	for _, dkim := range wDkim {
 		for _, info := range dkim {
 			if info.EPubKeyIndex < 0 {
