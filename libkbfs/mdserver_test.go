@@ -27,7 +27,7 @@ func makeBRMDForTest(t *testing.T, crypto cryptoPure, id TlfID,
 	md.SetRevision(revision)
 	md.SetLastModifyingWriter(uid)
 	md.SetLastModifyingUser(uid)
-	md.FakeInitialRekey(crypto, h, kbfscrypto.TLFPublicKey{})
+	FakeInitialRekey(&md, crypto, h, kbfscrypto.TLFPublicKey{})
 	md.SetPrevRoot(prevRoot)
 	return &md
 }

@@ -991,29 +991,6 @@ func (md *BareRootMetadataV3) Version() MetadataVer {
 	return SegregatedKeyBundlesVer
 }
 
-// FakeInitialRekey implements the MutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) FakeInitialRekey(
-	crypto cryptoPure, h BareTlfHandle, pubKey kbfscrypto.TLFPublicKey) (
-	ExtraMetadata, error) {
-	wDkim := make(UserDeviceKeyInfoMap)
-	for _, w := range h.Writers {
-		k := MakeFakeCryptPublicKeyOrBust(string(w))
-		wDkim[w] = DeviceKeyInfoMap{
-			k.KID(): TLFCryptKeyInfo{},
-		}
-	}
-
-	rDkim := make(UserDeviceKeyInfoMap)
-	for _, r := range h.Readers {
-		k := MakeFakeCryptPublicKeyOrBust(string(r))
-		rDkim[r] = DeviceKeyInfoMap{
-			k.KID(): TLFCryptKeyInfo{},
-		}
-	}
-
-	return md.AddNewKeysForTesting(crypto, wDkim, rDkim, pubKey)
-}
-
 // GetTLFPublicKey implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetTLFPublicKey(
 	keyGen KeyGen, extra ExtraMetadata) (kbfscrypto.TLFPublicKey, bool) {

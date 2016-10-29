@@ -5472,15 +5472,15 @@ func (_mr *_MockMutableBareRootMetadataRecorder) SetRevision(arg0 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetRevision", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) AddNewKeysForTesting(crypto cryptoPure, wDkim UserDeviceKeyInfoMap, rDkim UserDeviceKeyInfoMap) (ExtraMetadata, error) {
-	ret := _m.ctrl.Call(_m, "AddNewKeysForTesting", crypto, wDkim, rDkim)
+func (_m *MockMutableBareRootMetadata) AddNewKeysForTesting(crypto cryptoPure, wDkim UserDeviceKeyInfoMap, rDkim UserDeviceKeyInfoMap, pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
+	ret := _m.ctrl.Call(_m, "AddNewKeysForTesting", crypto, wDkim, rDkim, pubKey)
 	ret0, _ := ret[0].(ExtraMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) AddNewKeysForTesting(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddNewKeysForTesting", arg0, arg1, arg2)
+func (_mr *_MockMutableBareRootMetadataRecorder) AddNewKeysForTesting(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddNewKeysForTesting", arg0, arg1, arg2, arg3)
 }
 
 func (_m *MockMutableBareRootMetadata) NewKeyGeneration(pubKey kbfscrypto.TLFPublicKey) ExtraMetadata {
@@ -5539,17 +5539,6 @@ func (_m *MockMutableBareRootMetadata) SetTlfID(tlf TlfID) {
 
 func (_mr *_MockMutableBareRootMetadataRecorder) SetTlfID(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetTlfID", arg0)
-}
-
-func (_m *MockMutableBareRootMetadata) FakeInitialRekey(c cryptoPure, h BareTlfHandle, pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
-	ret := _m.ctrl.Call(_m, "FakeInitialRekey", c, h, pubKey)
-	ret0, _ := ret[0].(ExtraMetadata)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockMutableBareRootMetadataRecorder) FakeInitialRekey(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "FakeInitialRekey", arg0, arg1, arg2)
 }
 
 func (_m *MockMutableBareRootMetadata) GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error) {

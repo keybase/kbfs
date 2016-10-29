@@ -1738,13 +1738,6 @@ type MutableBareRootMetadata interface {
 	SetWriters(writers []keybase1.UID)
 	// SetTlfID sets the ID of the underlying folder in the metadata structure.
 	SetTlfID(tlf TlfID)
-	// FakeInitialRekey fakes the initial rekey for the given
-	// BareRootMetadata. This is necessary since newly-created
-	// BareRootMetadata objects don't have enough data to build a
-	// TlfHandle from until the first rekey. pubKey is non-empty
-	// only for server-side tests.
-	FakeInitialRekey(c cryptoPure, h BareTlfHandle,
-		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
 	// Returns the TLF key bundles for this metadata at the given key generation.
 	// MDv3 TODO: Get rid of this.
 	GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error)
