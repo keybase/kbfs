@@ -682,8 +682,7 @@ func TestMDOpsPutPublicSuccess(t *testing.T) {
 	id := FakeTlfID(1, true)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
 
-	rmd := NewRootMetadata()
-	err := rmd.Update(id, h.ToBareHandleOrBust())
+	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 	rmd.data = makeFakePrivateMetadataFuture(t).toCurrent()
 	rmd.tlfHandle = h

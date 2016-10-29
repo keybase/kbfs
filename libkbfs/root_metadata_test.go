@@ -103,7 +103,9 @@ func makeFakeTlfHandle(
 
 func newRootMetadataOrBust(
 	t *testing.T, tlfID TlfID, h *TlfHandle) *RootMetadata {
-	rmd := NewRootMetadata()
+	rmd := &RootMetadata{bareMd: &BareRootMetadataV2{}}
+	// MDv3 TODO: uncomment the below when we're ready for MDv3
+	//return &RootMetadata{bareMd: &BareRootMetadataV3{}}
 	err := rmd.Update(tlfID, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 	rmd.tlfHandle = h

@@ -166,16 +166,6 @@ func MakeInitialRootMetadata(
 	return MakeRootMetadata(bareMD, nil, h), nil
 }
 
-// NewRootMetadata returns a new RootMetadata object at the latest
-// known version.
-//
-// TODO: This is used only for testing. Get rid of it.
-func NewRootMetadata() *RootMetadata {
-	return &RootMetadata{bareMd: &BareRootMetadataV2{}}
-	// MDv3 TODO: uncomment the below when we're ready for MDv3
-	//return &RootMetadata{bareMd: &BareRootMetadataV3{}}
-}
-
 // Data returns the private metadata of this RootMetadata.
 func (md *RootMetadata) Data() *PrivateMetadata {
 	return &md.data
