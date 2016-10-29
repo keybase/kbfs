@@ -61,10 +61,14 @@ func testRootMetadataFinalVerify(t *testing.T, ver MetadataVer) {
 	err = rmds2.IsValidAndSigned(codec, crypto, extra)
 	require.NoError(t, err)
 
-	// touch something the server shouldn't be allowed to edit for finalized metadata
-	// and verify verification failure.
-	rmds2.MD.(MutableBareRootMetadata).SetRekeyBit()
-	err = rmds2.IsValidAndSigned(codec, crypto, extra)
+	// touch something the server shouldn't be allowed to edit for
+	// finalized metadata and verify verification failure.
+	md3, err := rmds2.MD.DeepCopy(codec)
+	require.NoError(t, err)
+	md3.SetRekeyBit()
+	rmds3 := rmds2
+	rmds2.MD = md3
+	err = rmds3.IsValidAndSigned(codec, crypto, extra)
 	require.NotNil(t, err)
 }
 
