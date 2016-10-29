@@ -272,7 +272,8 @@ func (md *RootMetadata) AddNewKeysForTesting(crypto cryptoPure,
 		return InvalidPublicTLFOperation{md.TlfID(), "AddNewKeys"}
 	}
 	var extra ExtraMetadata
-	if extra, err = md.bareMd.AddNewKeysForTesting(crypto, wDkim, rDkim); err != nil {
+	if extra, err = md.bareMd.AddNewKeysForTesting(
+		crypto, wDkim, rDkim, kbfscrypto.TLFPublicKey{}); err != nil {
 		return err
 	}
 	md.extra = extra

@@ -1720,7 +1720,9 @@ type MutableBareRootMetadata interface {
 	SetRevision(revision MetadataRevision)
 	// AddNewKeysForTesting adds new writer and reader TLF key bundles to this revision of metadata.
 	// Note: This is only used for testing at the moment.
-	AddNewKeysForTesting(crypto cryptoPure, wDkim, rDkim UserDeviceKeyInfoMap) (ExtraMetadata, error)
+	AddNewKeysForTesting(crypto cryptoPure,
+		wDkim, rDkim UserDeviceKeyInfoMap,
+		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
 	// NewKeyGeneration adds a new key generation to this revision of metadata.
 	NewKeyGeneration(pubKey kbfscrypto.TLFPublicKey) (extra ExtraMetadata)
 	// SetUnresolvedReaders sets the list of unresolved readers assoiated with this folder.

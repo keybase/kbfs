@@ -871,9 +871,13 @@ func (md *BareRootMetadataV3) SetRevision(revision MetadataRevision) {
 
 // AddNewKeysForTesting implements the MutableBareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) AddNewKeysForTesting(crypto cryptoPure,
-	wDkim, rDkim UserDeviceKeyInfoMap) (extra ExtraMetadata, err error) {
+	wDkim, rDkim UserDeviceKeyInfoMap,
+	pubKey kbfscrypto.TLFPublicKey) (extra ExtraMetadata, err error) {
 	wkb := &TLFWriterKeyBundleV3{
 		Keys: wDkim,
+		// TODO: Retrieve the previous pubkeys and prepend
+		// them.
+		TLFPublicKeys: []kbfscrypto.TLFPublicKey{pubKey},
 	}
 	rkb := &TLFReaderKeyBundleV3{
 		TLFReaderKeyBundleV2: TLFReaderKeyBundleV2{
@@ -960,26 +964,31 @@ func (md *BareRootMetadataV3) FakeInitialRekey(
 	if md.TlfID().IsPublic() {
 		panic("Called FakeInitialRekey on public TLF")
 	}
-	wkb := &TLFWriterKeyBundleV3{
-		Keys:          make(UserDeviceKeyInfoMap),
-		TLFPublicKeys: []kbfscrypto.TLFPublicKey{pubKey},
-	}
+
+	wDkim := make(UserDeviceKeyInfoMap)
 	for _, w := range h.Writers {
 		k := MakeFakeCryptPublicKeyOrBust(string(w))
-		wkb.Keys[w] = DeviceKeyInfoMap{
+		wDkim[w] = DeviceKeyInfoMap{
 			k.KID(): TLFCryptKeyInfo{},
 		}
+	}
+
+	rDkim := make(UserDeviceKeyInfoMap)
+	for _, r := range h.Readers {
+		k := MakeFakeCryptPublicKeyOrBust(string(r))
+		rDkim[r] = DeviceKeyInfoMap{
+			k.KID(): TLFCryptKeyInfo{},
+		}
+	}
+
+	wkb := &TLFWriterKeyBundleV3{
+		Keys:          wDkim,
+		TLFPublicKeys: []kbfscrypto.TLFPublicKey{pubKey},
 	}
 	rkb := &TLFReaderKeyBundleV3{
 		TLFReaderKeyBundleV2: TLFReaderKeyBundleV2{
-			RKeys: make(UserDeviceKeyInfoMap),
+			RKeys: rDkim,
 		},
-	}
-	for _, r := range h.Readers {
-		k := MakeFakeCryptPublicKeyOrBust(string(r))
-		rkb.RKeys[r] = DeviceKeyInfoMap{
-			k.KID(): TLFCryptKeyInfo{},
-		}
 	}
 	md.WriterMetadata.LatestKeyGen++
 	extra := &ExtraMetadataV3{rkb: rkb, wkb: wkb}

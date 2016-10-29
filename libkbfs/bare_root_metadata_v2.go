@@ -876,9 +876,11 @@ func (md *BareRootMetadataV2) SetRevision(revision MetadataRevision) {
 
 // AddNewKeysForTesting implements the MutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) AddNewKeysForTesting(_ cryptoPure,
-	wDkim, rDkim UserDeviceKeyInfoMap) (extra ExtraMetadata, err error) {
+	wDkim, rDkim UserDeviceKeyInfoMap,
+	pubKey kbfscrypto.TLFPublicKey) (extra ExtraMetadata, err error) {
 	wkb := TLFWriterKeyBundleV2{
-		WKeys: wDkim,
+		WKeys:        wDkim,
+		TLFPublicKey: pubKey,
 	}
 	rkb := TLFReaderKeyBundleV2{
 		RKeys: rDkim,
