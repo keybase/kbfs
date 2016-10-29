@@ -32,7 +32,8 @@ func makeBRMDForTest(t *testing.T, crypto cryptoPure, id TlfID,
 	return &md
 }
 
-func signRMDSForTest(t *testing.T, codec kbfscodec.Codec, signer cryptoSigner,
+func signRMDSForTest(
+	t *testing.T, codec kbfscodec.Codec, signer kbfscrypto.Signer,
 	brmd *BareRootMetadataV2) *RootMetadataSigned {
 	ctx := context.Background()
 

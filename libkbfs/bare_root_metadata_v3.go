@@ -804,7 +804,8 @@ func (md *BareRootMetadataV3) GetSerializedWriterMetadata(
 
 // SignWriterMetadataInternally implements the MutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV3) SignWriterMetadataInternally(
-	ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner) error {
+	ctx context.Context, codec kbfscodec.Codec,
+	signer kbfscrypto.Signer) error {
 	// Nothing to do.
 	//
 	// TODO: Set a flag, and a way to check it so that we can

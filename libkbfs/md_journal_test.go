@@ -45,7 +45,7 @@ func getMDJournalLength(t *testing.T, j *mdJournal) int {
 
 func setupMDJournalTest(t *testing.T) (
 	codec kbfscodec.Codec, crypto CryptoCommon, tlfID TlfID,
-	signer cryptoSigner, ekg singleEncryptionKeyGetter,
+	signer kbfscrypto.Signer, ekg singleEncryptionKeyGetter,
 	bsplit BlockSplitter, tempdir string, j *mdJournal) {
 	codec = kbfscodec.NewMsgpack()
 	crypto = MakeCryptoCommon(codec)
@@ -88,7 +88,7 @@ func teardownMDJournalTest(t *testing.T, tempdir string) {
 }
 
 func makeMDForTest(t *testing.T, tlfID TlfID, revision MetadataRevision,
-	uid keybase1.UID, signer cryptoSigner, prevRoot MdID) *RootMetadata {
+	uid keybase1.UID, signer kbfscrypto.Signer, prevRoot MdID) *RootMetadata {
 	nug := testNormalizedUsernameGetter{
 		uid: "fake_username",
 	}
@@ -109,7 +109,7 @@ func makeMDForTest(t *testing.T, tlfID TlfID, revision MetadataRevision,
 	return md
 }
 
-func putMDRange(t *testing.T, tlfID TlfID, signer cryptoSigner,
+func putMDRange(t *testing.T, tlfID TlfID, signer kbfscrypto.Signer,
 	ekg singleEncryptionKeyGetter, bsplit BlockSplitter,
 	firstRevision MetadataRevision, firstPrevRoot MdID, mdCount int,
 	j *mdJournal) MdID {
@@ -443,7 +443,7 @@ func testMDJournalGCd(t *testing.T, j *mdJournal) {
 }
 
 func flushAllMDs(
-	t *testing.T, ctx context.Context, signer cryptoSigner, j *mdJournal) {
+	t *testing.T, ctx context.Context, signer kbfscrypto.Signer, j *mdJournal) {
 	end, err := j.end()
 	require.NoError(t, err)
 	for {
@@ -548,7 +548,7 @@ func TestMDJournalResolveAndClear(t *testing.T) {
 }
 
 type limitedCryptoSigner struct {
-	cryptoSigner
+	kbfscrypto.Signer
 	remaining int
 }
 
@@ -558,7 +558,7 @@ func (s *limitedCryptoSigner) Sign(ctx context.Context, msg []byte) (
 		return kbfscrypto.SignatureInfo{}, errors.New("No more Sign calls left")
 	}
 	s.remaining--
-	return s.cryptoSigner.Sign(ctx, msg)
+	return s.Signer.Sign(ctx, msg)
 }
 
 func TestMDJournalBranchConversionAtomic(t *testing.T) {

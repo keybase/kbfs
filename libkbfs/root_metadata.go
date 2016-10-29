@@ -882,7 +882,7 @@ func MakeRootMetadataSigned(sigInfo, writerSigInfo kbfscrypto.SignatureInfo,
 }
 
 func signMD(
-	ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner,
+	ctx context.Context, codec kbfscodec.Codec, signer kbfscrypto.Signer,
 	brmd BareRootMetadata, untrustedServerTimestamp time.Time) (
 	*RootMetadataSigned, error) {
 	// encode the root metadata and sign it

@@ -863,17 +863,14 @@ type cryptoPure interface {
 		[]kbfscrypto.TLFCryptKey, error)
 }
 
-// Duplicate kbfscrypto.Signer here to work around gomock's
-// limitations.
-type cryptoSigner interface {
-	Sign(context.Context, []byte) (kbfscrypto.SignatureInfo, error)
-	SignToString(context.Context, []byte) (string, error)
-}
-
 // Crypto signs, verifies, encrypts, and decrypts stuff.
 type Crypto interface {
 	cryptoPure
-	cryptoSigner
+
+	// Duplicate kbfscrypto.Signer here to work around gomock's
+	// limitations.
+	Sign(context.Context, []byte) (kbfscrypto.SignatureInfo, error)
+	SignToString(context.Context, []byte) (string, error)
 
 	// DecryptTLFCryptKeyClientHalf decrypts a
 	// kbfscrypto.TLFCryptKeyClientHalf using the current device's
@@ -1705,7 +1702,7 @@ type MutableBareRootMetadata interface {
 	// SignWriterMetadataInternally signs the writer metadata, for
 	// versions that store this signature inside the metadata.
 	SignWriterMetadataInternally(ctx context.Context,
-		codec kbfscodec.Codec, signer cryptoSigner) error
+		codec kbfscodec.Codec, signer kbfscrypto.Signer) error
 	// SetLastModifyingWriter sets the UID of the last user to modify the writer metadata.
 	SetLastModifyingWriter(user keybase1.UID)
 	// SetLastModifyingUser sets the UID of the last user to modify any of the metadata.

@@ -1998,49 +1998,6 @@ func (_mr *_MockcryptoPureRecorder) DecryptTLFCryptKeys(arg0, arg1 interface{}) 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptTLFCryptKeys", arg0, arg1)
 }
 
-// Mock of cryptoSigner interface
-type MockcryptoSigner struct {
-	ctrl     *gomock.Controller
-	recorder *_MockcryptoSignerRecorder
-}
-
-// Recorder for MockcryptoSigner (not exported)
-type _MockcryptoSignerRecorder struct {
-	mock *MockcryptoSigner
-}
-
-func NewMockcryptoSigner(ctrl *gomock.Controller) *MockcryptoSigner {
-	mock := &MockcryptoSigner{ctrl: ctrl}
-	mock.recorder = &_MockcryptoSignerRecorder{mock}
-	return mock
-}
-
-func (_m *MockcryptoSigner) EXPECT() *_MockcryptoSignerRecorder {
-	return _m.recorder
-}
-
-func (_m *MockcryptoSigner) Sign(_param0 context.Context, _param1 []byte) (kbfscrypto.SignatureInfo, error) {
-	ret := _m.ctrl.Call(_m, "Sign", _param0, _param1)
-	ret0, _ := ret[0].(kbfscrypto.SignatureInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockcryptoSignerRecorder) Sign(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Sign", arg0, arg1)
-}
-
-func (_m *MockcryptoSigner) SignToString(_param0 context.Context, _param1 []byte) (string, error) {
-	ret := _m.ctrl.Call(_m, "SignToString", _param0, _param1)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockcryptoSignerRecorder) SignToString(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "SignToString", arg0, arg1)
-}
-
 // Mock of Crypto interface
 type MockCrypto struct {
 	ctrl     *gomock.Controller
@@ -5414,7 +5371,7 @@ func (_mr *_MockMutableBareRootMetadataRecorder) SetSerializedPrivateMetadata(ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetSerializedPrivateMetadata", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) SignWriterMetadataInternally(ctx context.Context, codec kbfscodec.Codec, signer cryptoSigner) error {
+func (_m *MockMutableBareRootMetadata) SignWriterMetadataInternally(ctx context.Context, codec kbfscodec.Codec, signer kbfscrypto.Signer) error {
 	ret := _m.ctrl.Call(_m, "SignWriterMetadataInternally", ctx, codec, signer)
 	ret0, _ := ret[0].(error)
 	return ret0
