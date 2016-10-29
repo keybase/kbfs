@@ -89,7 +89,8 @@ func (cc *crChain) getCollapsedWriteRange() []WriteRange {
 	return wr
 }
 
-func (cc *crChain) getActionsToMerge(renamer ConflictRenamer, mergedPath path,
+func (cc *crChain) getActionsToMerge(
+	ctx context.Context, renamer ConflictRenamer, mergedPath path,
 	mergedChain *crChain) (crActionList, error) {
 	var actions crActionList
 
@@ -135,7 +136,8 @@ func (cc *crChain) getActionsToMerge(renamer ConflictRenamer, mergedPath path,
 		if mergedChain != nil {
 			for _, mergedOp := range mergedChain.ops {
 				action, err :=
-					unmergedOp.checkConflict(renamer, mergedOp, cc.isFile())
+					unmergedOp.checkConflict(
+						ctx, renamer, mergedOp, cc.isFile())
 				if err != nil {
 					return nil, err
 				}

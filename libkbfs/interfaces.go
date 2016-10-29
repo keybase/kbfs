@@ -1316,7 +1316,8 @@ type Clock interface {
 // ConflictRenamer deals with names for conflicting directory entries.
 type ConflictRenamer interface {
 	// ConflictRename returns the appropriately modified filename.
-	ConflictRename(op op, original string) string
+	ConflictRename(ctx context.Context, op op, original string) (
+		string, error)
 }
 
 // Config collects all the singleton instance instantiations needed to

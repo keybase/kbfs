@@ -1637,8 +1637,9 @@ func (cr *ConflictResolver) addMergedRecreates(ctx context.Context,
 // getActionsToMerge returns the set of actions needed to merge each
 // unmerged chain of operations, in a map keyed by the tail pointer of
 // the corresponding merged path.
-func (cr *ConflictResolver) getActionsToMerge(unmergedChains *crChains,
-	mergedChains *crChains, mergedPaths map[BlockPointer]path) (
+func (cr *ConflictResolver) getActionsToMerge(
+	ctx context.Context, unmergedChains, mergedChains *crChains,
+	mergedPaths map[BlockPointer]path) (
 	map[BlockPointer]crActionList, error) {
 	actionMap := make(map[BlockPointer]crActionList)
 	for unmergedMostRecent, unmergedChain := range unmergedChains.byMostRecent {
@@ -1659,7 +1660,8 @@ func (cr *ConflictResolver) getActionsToMerge(unmergedChains *crChains,
 		}
 
 		actions, err := unmergedChain.getActionsToMerge(
-			cr.config.ConflictRenamer(), mergedPath, mergedChain)
+			ctx, cr.config.ConflictRenamer(), mergedPath,
+			mergedChain)
 		if err != nil {
 			return nil, err
 		}
@@ -1802,8 +1804,8 @@ func (cr *ConflictResolver) computeActions(ctx context.Context,
 		return nil, nil, err
 	}
 
-	actionMap, err :=
-		cr.getActionsToMerge(unmergedChains, mergedChains, mergedPaths)
+	actionMap, err := cr.getActionsToMerge(
+		ctx, unmergedChains, mergedChains, mergedPaths)
 	if err != nil {
 		return nil, nil, err
 	}

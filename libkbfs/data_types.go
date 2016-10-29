@@ -736,12 +736,12 @@ type TLFUpdateHistory struct {
 	Updates []UpdateSummary
 }
 
-// writerInfo is the keybase username and device that generated the operation.
+// writerInfo is the keybase UID and device (represented by its
+// verifying key) that generated the operation at the given revision.
 type writerInfo struct {
-	name       libkb.NormalizedUsername
-	uid        keybase1.UID
-	deviceName string
-	revision   MetadataRevision
+	uid      keybase1.UID
+	key      kbfscrypto.VerifyingKey
+	revision MetadataRevision
 }
 
 // ErrorModeType indicates what type of operation was being attempted

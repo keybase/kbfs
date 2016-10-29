@@ -906,7 +906,7 @@ func TestCRMergedChainsRenameCycleSimple(t *testing.T) {
 	err = ro.Dir.setRef(unmergedPathRoot.tailPointer())
 	require.NoError(t, err)
 	ro.dropThis = true
-	ro.setWriterInfo(writerInfo{name: "u2"})
+	ro.setWriterInfo(writerInfo{})
 	ro.setFinalPath(unmergedPathRoot)
 	ro.setLocalTimestamp(now)
 	expectedActions := map[BlockPointer]crActionList{
