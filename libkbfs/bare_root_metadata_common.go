@@ -57,8 +57,14 @@ func SignBareRootMetadata(
 	if mdv2, ok := brmd.(*BareRootMetadataV2); ok {
 		writerSigInfo = mdv2.WriterMetadataSigInfo
 	} else {
-		// TODO: Implement this!
-		panic("not implemented")
+		buf, err = brmd.GetSerializedWriterMetadata(codec)
+		if err != nil {
+			return nil, err
+		}
+		writerSigInfo, err = signer.Sign(ctx, buf)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return MakeRootMetadataSigned(
 		sigInfo, writerSigInfo, brmd, untrustedServerTimestamp)

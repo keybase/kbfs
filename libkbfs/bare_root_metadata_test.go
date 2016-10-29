@@ -72,7 +72,10 @@ func testRootMetadataFinalVerify(t *testing.T, ver MetadataVer) {
 	require.NotNil(t, err)
 }
 
-// TODO: Have a V3 version.
 func TestRootMetadataFinalVerifyV2(t *testing.T) {
 	testRootMetadataFinalVerify(t, InitialExtraMetadataVer)
+}
+
+func TestRootMetadataFinalVerifyV3(t *testing.T) {
+	testRootMetadataFinalVerify(t, SegregatedKeyBundlesVer)
 }
