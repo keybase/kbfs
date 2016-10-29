@@ -60,7 +60,7 @@ func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 	ctx := context.Background()
 	codec := kbfscodec.NewMsgpack()
 	signer := kbfscrypto.SigningKeySigner{
-		Key: MakeFakeSigningKeyOrBust("key1"),
+		Key: kbfscrypto.MakeFakeSigningKeyOrBust("key1"),
 	}
 
 	err = brmd.SignWriterMetadataInternally(ctx, codec, signer)
@@ -78,7 +78,7 @@ func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 	newBrmd.SetWriterMetadataCopiedBit()
 
 	signer2 := kbfscrypto.SigningKeySigner{
-		Key: MakeFakeSigningKeyOrBust("key2"),
+		Key: kbfscrypto.MakeFakeSigningKeyOrBust("key2"),
 	}
 
 	err = newBrmd.SignWriterMetadataInternally(ctx, codec, signer2)

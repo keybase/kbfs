@@ -194,8 +194,8 @@ func setupTLFJournalTest(
 	// Set up config and dependencies.
 	bsplitter := &BlockSplitterSimple{64 * 1024, 8 * 1024}
 	codec := kbfscodec.NewMsgpack()
-	signingKey := MakeFakeSigningKeyOrBust("client sign")
-	cryptPrivateKey := MakeFakeCryptPrivateKeyOrBust("client crypt private")
+	signingKey := kbfscrypto.MakeFakeSigningKeyOrBust("client sign")
+	cryptPrivateKey := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("client crypt private")
 	crypto := NewCryptoLocal(codec, signingKey, cryptPrivateKey)
 	uid := keybase1.MakeTestUID(1)
 	verifyingKey := signingKey.GetVerifyingKey()

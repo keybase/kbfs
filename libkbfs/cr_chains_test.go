@@ -12,6 +12,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -161,7 +162,7 @@ func newChainMDForTest(t *testing.T) rootMetadataWithKeyAndTimestamp {
 	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 	rmd.SetLastModifyingWriter(uid)
-	key := MakeFakeVerifyingKeyOrBust("fake key")
+	key := kbfscrypto.MakeFakeVerifyingKeyOrBust("fake key")
 	return rootMetadataWithKeyAndTimestamp{
 		rmd, key, time.Unix(0, 0),
 	}

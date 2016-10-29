@@ -29,7 +29,7 @@ func testRootMetadataFinalVerify(t *testing.T, ver MetadataVer) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(kbfscodec.NewMsgpack())
 	signer := kbfscrypto.SigningKeySigner{
-		Key: MakeFakeSigningKeyOrBust("key"),
+		Key: kbfscrypto.MakeFakeSigningKeyOrBust("key"),
 	}
 
 	extra, err := FakeInitialRekey(

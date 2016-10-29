@@ -26,8 +26,8 @@ func getMDStorageLength(t *testing.T, s *mdServerTlfStorage, bid BranchID) int {
 func TestMDServerTlfStorageBasic(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
-	signingKey := MakeFakeSigningKeyOrBust("test key")
-	verifyingKey := MakeFakeVerifyingKeyOrBust("test key")
+	signingKey := kbfscrypto.MakeFakeSigningKeyOrBust("test key")
+	verifyingKey := kbfscrypto.MakeFakeVerifyingKeyOrBust("test key")
 	signer := kbfscrypto.SigningKeySigner{Key: signingKey}
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_storage")

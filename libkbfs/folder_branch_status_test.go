@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -117,7 +118,7 @@ func TestFBStatusAllFields(t *testing.T) {
 	p2 := path{path: []pathNode{{Name: "a2"}, {Name: "b2"}}}
 	nodeCache.EXPECT().PathFromNode(mockNodeMatcher{n2}).AnyTimes().Return(p2)
 
-	key := MakeFakeVerifyingKeyOrBust("fake key")
+	key := kbfscrypto.MakeFakeVerifyingKeyOrBust("fake key")
 	fbsk.setRootMetadata(
 		makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1)))
 	fbsk.addDirtyNode(n1)

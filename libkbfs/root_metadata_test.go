@@ -450,7 +450,7 @@ func makeFakeBareRootMetadataFuture(t *testing.T) *bareRootMetadataFuture {
 				kbfscrypto.SignatureInfo{
 					Version:      100,
 					Signature:    []byte{0xc},
-					VerifyingKey: MakeFakeVerifyingKeyOrBust("fake kid"),
+					VerifyingKey: kbfscrypto.MakeFakeVerifyingKeyOrBust("fake kid"),
 				},
 				"uid1",
 				0xb,

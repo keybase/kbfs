@@ -269,7 +269,7 @@ func TestCryptoCommonEncryptDecryptBlock(t *testing.T) {
 
 // Test that crypto.Verify() rejects various types of bad signatures.
 func TestCryptoCommonVerifyFailures(t *testing.T) {
-	signingKey := MakeFakeSigningKeyOrBust("client sign")
+	signingKey := kbfscrypto.MakeFakeSigningKeyOrBust("client sign")
 
 	msg := []byte("message")
 	sigInfo := signingKey.Sign(msg)
@@ -329,7 +329,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	// Wrong key.
 
 	sigInfoWrongKey := sigInfo.DeepCopy()
-	sigInfoWrongKey.VerifyingKey = MakeFakeVerifyingKeyOrBust("wrong key")
+	sigInfoWrongKey.VerifyingKey = kbfscrypto.MakeFakeVerifyingKeyOrBust("wrong key")
 	expectedErr = libkb.VerificationError{}
 	err = c.Verify(msg, sigInfoWrongKey)
 	if err != expectedErr {
@@ -356,8 +356,8 @@ func TestCryptoCommonEncryptTLFCryptKeyClientHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	privateKey := MakeFakeCryptPrivateKeyOrBust("fake key")
-	publicKey := privateKey.getPublicKey()
+	privateKey := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("fake key")
+	publicKey := privateKey.GetPublicKey()
 
 	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
 	if err != nil {

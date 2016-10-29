@@ -42,7 +42,7 @@ func testMdcachePut(t *testing.T, tlf TlfID, rev MetadataRevision,
 		rmd.SetBranchID(bid)
 	}
 
-	signingKey := MakeFakeSigningKeyOrBust("fake signing key")
+	signingKey := kbfscrypto.MakeFakeSigningKeyOrBust("fake signing key")
 	rmd.bareMd.SignWriterMetadataInternally(context.Background(),
 		kbfscodec.NewMsgpack(),
 		kbfscrypto.SigningKeySigner{Key: signingKey})

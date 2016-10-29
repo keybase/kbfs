@@ -21,7 +21,7 @@ func FakeInitialRekey(md MutableBareRootMetadata,
 	}
 	wDkim := make(UserDeviceKeyInfoMap)
 	for _, w := range h.Writers {
-		k := MakeFakeCryptPublicKeyOrBust(string(w))
+		k := kbfscrypto.MakeFakeCryptPublicKeyOrBust(string(w))
 		wDkim[w] = DeviceKeyInfoMap{
 			k.KID(): TLFCryptKeyInfo{},
 		}
@@ -29,7 +29,7 @@ func FakeInitialRekey(md MutableBareRootMetadata,
 
 	rDkim := make(UserDeviceKeyInfoMap)
 	for _, r := range h.Readers {
-		k := MakeFakeCryptPublicKeyOrBust(string(r))
+		k := kbfscrypto.MakeFakeCryptPublicKeyOrBust(string(r))
 		rDkim[r] = DeviceKeyInfoMap{
 			k.KID(): TLFCryptKeyInfo{
 				EPubKeyIndex: readerEPubKeyIndex,
