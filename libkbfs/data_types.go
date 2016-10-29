@@ -118,7 +118,7 @@ const (
 	// FirstValidKeyGen is the first value that is considered a
 	// valid key generation. Note that the nil value is not
 	// considered valid.
-	FirstValidKeyGen = 1
+	FirstValidKeyGen KeyGen = 1
 )
 
 // MetadataVer is the type of a version for marshalled KBFS metadata

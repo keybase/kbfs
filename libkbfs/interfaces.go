@@ -1204,7 +1204,7 @@ type blockRefLocalStatus int
 
 const (
 	liveBlockRef     blockRefLocalStatus = 1
-	archivedBlockRef                     = 2
+	archivedBlockRef blockRefLocalStatus = 2
 )
 
 // blockServerLocal is the interface for BlockServer implementations

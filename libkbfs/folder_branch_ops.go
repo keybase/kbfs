@@ -92,8 +92,8 @@ type fboMutexLevel mutexLevel
 
 const (
 	fboMDWriter fboMutexLevel = 1
-	fboHead                   = 2
-	fboBlock                  = 3
+	fboHead     fboMutexLevel = 2
+	fboBlock    fboMutexLevel = 3
 )
 
 func (o fboMutexLevel) String() string {
