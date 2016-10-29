@@ -303,15 +303,13 @@ func (cr *ConflictResolver) makeChains(ctx context.Context,
 	unmerged, merged []ImmutableRootMetadata) (
 	unmergedChains, mergedChains *crChains, err error) {
 	unmergedChains, err = newCRChainsForIRMDs(
-		ctx, cr.config.Codec(), cr.config.KeybaseService(),
-		unmerged, &cr.fbo.blocks, true)
+		ctx, cr.config.Codec(), unmerged, &cr.fbo.blocks, true)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	mergedChains, err = newCRChainsForIRMDs(
-		ctx, cr.config.Codec(), cr.config.KeybaseService(),
-		merged, &cr.fbo.blocks, true)
+		ctx, cr.config.Codec(), merged, &cr.fbo.blocks, true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -2519,7 +2517,7 @@ func (cr *ConflictResolver) makePostResolutionPaths(ctx context.Context,
 	// No need to run any identifies on these chains, since we
 	// have already finished all actions.
 	resolvedChains, err := newCRChains(
-		ctx, cr.config.Codec(), cr.config.KeybaseService(),
+		ctx, cr.config.Codec(),
 		[]chainMetadata{rootMetadataWithKeyAndTimestamp{md,
 			key, cr.config.Clock().Now()}},
 		&cr.fbo.blocks, false)
