@@ -945,28 +945,33 @@ func (md *BareRootMetadataV2) FakeInitialRekey(
 	if md.ID.IsPublic() {
 		panic("Called FakeInitialRekey on public TLF")
 	}
-	wkb := TLFWriterKeyBundleV2{
-		WKeys:        make(UserDeviceKeyInfoMap),
-		TLFPublicKey: pubKey,
-	}
+
+	wDkim := make(UserDeviceKeyInfoMap)
 	for _, w := range h.Writers {
 		k := MakeFakeCryptPublicKeyOrBust(string(w))
-		wkb.WKeys[w] = DeviceKeyInfoMap{
+		wDkim[w] = DeviceKeyInfoMap{
 			k.KID(): TLFCryptKeyInfo{},
 		}
 	}
-	md.WKeys = TLFWriterKeyGenerations{wkb}
 
-	rkb := TLFReaderKeyBundleV2{
-		RKeys: make(UserDeviceKeyInfoMap),
-	}
+	rDkim := make(UserDeviceKeyInfoMap)
 	for _, r := range h.Readers {
 		k := MakeFakeCryptPublicKeyOrBust(string(r))
-		rkb.RKeys[r] = DeviceKeyInfoMap{
+		rDkim[r] = DeviceKeyInfoMap{
 			k.KID(): TLFCryptKeyInfo{
 				EPubKeyIndex: -1,
 			},
 		}
+	}
+
+	wkb := TLFWriterKeyBundleV2{
+		WKeys:        wDkim,
+		TLFPublicKey: pubKey,
+	}
+	md.WKeys = TLFWriterKeyGenerations{wkb}
+
+	rkb := TLFReaderKeyBundleV2{
+		RKeys: rDkim,
 	}
 	md.RKeys = TLFReaderKeyGenerations{rkb}
 	return nil, nil
