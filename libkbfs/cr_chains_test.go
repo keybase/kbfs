@@ -148,18 +148,12 @@ func testCRChainsFillInWriter(t *testing.T, rmds []*RootMetadata) (
 	config := MakeTestConfigOrBust(t, "u1")
 	kbpki := config.KBPKI()
 	ctx := context.Background()
-	_, uid, err := kbpki.GetCurrentUserInfo(ctx)
-	if err != nil {
-		t.Fatalf("Couldn't get UID: %v", err)
-	}
 	key, err := kbpki.GetCurrentVerifyingKey(ctx)
 	if err != nil {
 		t.Fatalf("Couldn't get verifying key: %v", err)
 	}
 	chainMDs := make([]chainMetadata, len(rmds))
 	for i, rmd := range rmds {
-		rmd.SetLastModifyingWriter(uid)
-		rmd.SetTlfID(FakeTlfID(1, false))
 		chainMDs[i] = rootMetadataWithKeyAndTimestamp{
 			rmd, key, time.Unix(0, 0),
 		}
@@ -184,6 +178,7 @@ func newRMDForCRChainsTest(t *testing.T) *RootMetadata {
 
 	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
 	require.NoError(t, err)
+	rmd.SetLastModifyingWriter(uid)
 	return rmd
 }
 
