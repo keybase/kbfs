@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Have MDV3 version.
 func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 	tlfID := FakeTlfID(1, false)
 
@@ -22,8 +21,7 @@ func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	brmd, err := MakeInitialBareRootMetadata(defaultClientMetadataVer,
-		tlfID, bh)
+	brmd, err := MakeInitialBareRootMetadataV2(tlfID, bh)
 
 	ctx := context.Background()
 	codec := kbfscodec.NewMsgpack()
@@ -63,6 +61,40 @@ func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 	require.NoError(t, err)
 	ok, err = newBrmd.IsValidRekeyRequest(
 		codec, brmd, newBrmd.LastModifyingWriter(), nil, nil)
+	require.NoError(t, err)
+	require.True(t, ok)
+}
+
+func TestIsValidRekeyRequestBasicV3(t *testing.T) {
+	tlfID := FakeTlfID(1, false)
+
+	uid := keybase1.MakeTestUID(1)
+	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(kbfscodec.NewMsgpack())
+
+	brmd, err := MakeInitialBareRootMetadataV3(tlfID, bh)
+	extra, err := FakeInitialRekey(
+		brmd, crypto, bh, kbfscrypto.TLFPublicKey{})
+
+	newBrmd, err := MakeInitialBareRootMetadataV3(tlfID, bh)
+	require.NoError(t, err)
+	newExtra, err := FakeInitialRekey(
+		newBrmd, crypto, bh, kbfscrypto.TLFPublicKey{})
+
+	ok, err := newBrmd.IsValidRekeyRequest(
+		codec, brmd, newBrmd.LastModifyingWriter(), extra, newExtra)
+	require.NoError(t, err)
+	// Should fail because the copy bit is unset.
+	require.False(t, ok)
+
+	// Set the copy bit; note the writer metadata is the same.
+	newBrmd.SetWriterMetadataCopiedBit()
+
+	ok, err = newBrmd.IsValidRekeyRequest(
+		codec, brmd, newBrmd.LastModifyingWriter(), extra, newExtra)
 	require.NoError(t, err)
 	require.True(t, ok)
 }
