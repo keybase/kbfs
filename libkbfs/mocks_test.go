@@ -5541,15 +5541,15 @@ func (_mr *_MockMutableBareRootMetadataRecorder) SetTlfID(arg0 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetTlfID", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) FakeInitialRekey(c cryptoPure, h BareTlfHandle) (ExtraMetadata, error) {
-	ret := _m.ctrl.Call(_m, "FakeInitialRekey", c, h)
+func (_m *MockMutableBareRootMetadata) FakeInitialRekey(c cryptoPure, h BareTlfHandle, pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
+	ret := _m.ctrl.Call(_m, "FakeInitialRekey", c, h, pubKey)
 	ret0, _ := ret[0].(ExtraMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) FakeInitialRekey(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "FakeInitialRekey", arg0, arg1)
+func (_mr *_MockMutableBareRootMetadataRecorder) FakeInitialRekey(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "FakeInitialRekey", arg0, arg1, arg2)
 }
 
 func (_m *MockMutableBareRootMetadata) GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error) {
