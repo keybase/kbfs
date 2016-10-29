@@ -39,7 +39,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 
 	tlfID := FakeTlfID(1, false)
 	s := makeMDServerTlfStorage(tlfID, codec, crypto, wallClock{},
-		SegregatedKeyBundlesVer, tempdir)
+		DefaultMetadataVer, tempdir)
 	defer s.shutdown()
 
 	require.Equal(t, 0, getMDStorageLength(t, s, NullBranchID))

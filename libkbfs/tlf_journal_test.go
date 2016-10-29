@@ -111,7 +111,7 @@ func (c testTLFJournalConfig) MDCache() MDCache {
 }
 
 func (c testTLFJournalConfig) MetadataVersion() MetadataVer {
-	return SegregatedKeyBundlesVer
+	return DefaultMetadataVer
 }
 
 func (c testTLFJournalConfig) Reporter() Reporter {
