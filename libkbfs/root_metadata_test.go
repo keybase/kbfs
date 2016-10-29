@@ -132,7 +132,7 @@ func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
 	}
 	h := makeFakeTlfHandle(t, 14, true, uw, nil)
 	tlfID := FakeTlfID(0, true)
-	rmd, err := MakeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
 	dirHandle := rmd.GetTlfHandle()
@@ -171,7 +171,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	}
 	h := makeFakeTlfHandle(t, 14, false, uw, ur)
 	tlfID := FakeTlfID(0, false)
-	rmd, err := MakeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
 	rmd.FakeInitialRekey(crypto, h.ToBareHandleOrBust())
@@ -191,7 +191,7 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 	crypto := MakeCryptoCommon(codec)
 	tlfID := FakeTlfID(0, false)
 	h := makeFakeTlfHandle(t, 14, false, nil, nil)
-	rmd, err := MakeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
 	if rmd.LatestKeyGeneration() != 0 {
@@ -207,7 +207,7 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
 	tlfID := FakeTlfID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
-	rmd, err := MakeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
 	if rmd.LatestKeyGeneration() != PublicKeyGen {
@@ -545,7 +545,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	// Sign the writer metadata
 	tlfID := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob@twitter", false)
-	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
 	rmds, err := MakeRootMetadataSigned(
@@ -560,7 +560,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	// All other folders should use the pre-extra MD version.
 	tlfID2 := FakeTlfID(2, false)
 	h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
-	rmd2, err := MakeInitialRootMetadata(
+	rmd2, err := makeInitialRootMetadata(
 		config.MetadataVersion(), tlfID2, h2)
 	require.NoError(t, err)
 	rmds2, err := MakeRootMetadataSigned(
@@ -608,7 +608,7 @@ func TestMakeRekeyReadError(t *testing.T) {
 
 	tlfID := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
-	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
 	rmd.FakeInitialRekey(config.Crypto(), h.ToBareHandleOrBust())
@@ -636,7 +636,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	h, err := ParseTlfHandle(ctx, config.KBPKI(), "alice,bob@twitter",
 		false)
 	require.NoError(t, err)
-	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
 	rmd.FakeInitialRekey(config.Crypto(), h.ToBareHandleOrBust())
@@ -661,7 +661,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 func TestRootMetadataFinalIsFinal(t *testing.T) {
 	tlfID := FakeTlfID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
-	rmd, err := MakeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
 	rmd.SetFinalBit()

@@ -87,7 +87,7 @@ func TestJournalServerRestart(t *testing.T) {
 
 	// Put an MD.
 
-	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 	rekeyDone, _, err := config.KeyManager().Rekey(ctx, rmd, false)
 	require.NoError(t, err)
@@ -161,7 +161,7 @@ func TestJournalServerLogOutLogIn(t *testing.T) {
 
 	// Put an MD.
 
-	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 	rekeyDone, _, err := config.KeyManager().Rekey(ctx, rmd, false)
 	require.NoError(t, err)
@@ -270,7 +270,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 
 	// Put an MD under user 1.
 
-	rmd1, err := MakeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
+	rmd1, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 	rmd1.SetLastModifyingWriter(uid1)
 	rekeyDone, _, err := config.KeyManager().Rekey(ctx, rmd1, false)
@@ -316,7 +316,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 
 	// Put an MD under user 2.
 
-	rmd2, err := MakeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
+	rmd2, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 	rmd2.SetLastModifyingWriter(uid2)
 	rekeyDone, _, err = config.KeyManager().Rekey(ctx, rmd2, false)

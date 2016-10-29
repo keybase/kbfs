@@ -61,7 +61,7 @@ func teardownJournalMDOpsTest(t *testing.T, tempdir string, config Config) {
 func makeMDForJournalMDOpsTest(
 	t *testing.T, config Config, tlfID TlfID, h *TlfHandle,
 	revision MetadataRevision) *RootMetadata {
-	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 	rmd.SetRevision(revision)
 	ctx := context.Background()

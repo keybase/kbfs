@@ -682,7 +682,7 @@ func TestMDOpsPutPublicSuccess(t *testing.T) {
 	id := FakeTlfID(1, true)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
 
-	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 	rmd.data = makeFakePrivateMetadataFuture(t).toCurrent()
 	rmd.tlfHandle = h
@@ -723,7 +723,7 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
-	rmd, err := MakeInitialRootMetadata(config.MetadataVersion(), id, h)
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	expectGetTLFCryptKeyForEncryption(config, rmd)

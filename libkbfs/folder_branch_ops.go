@@ -1357,7 +1357,7 @@ func (fbo *folderBranchOps) SetInitialHeadToNew(
 		fbo.deferLog.CDebugf(ctx, "Done: %v", err)
 	}()
 
-	rmd, err := MakeInitialRootMetadata(
+	rmd, err := makeInitialRootMetadata(
 		fbo.config.MetadataVersion(), id, handle)
 	if err != nil {
 		return err
