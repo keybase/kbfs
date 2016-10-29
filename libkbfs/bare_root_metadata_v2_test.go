@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
@@ -97,4 +98,57 @@ func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 		codec, brmd, newBrmd.LastModifyingWriter(), nil, nil)
 	require.NoError(t, err)
 	require.True(t, ok)
+}
+
+// Test verification of finalized metadata blocks.
+func TestRootMetadataFinalVerifyV2(t *testing.T) {
+	tlfID := FakeTlfID(1, false)
+
+	uid := keybase1.MakeTestUID(1)
+	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	brmd, err := MakeInitialBareRootMetadataV2(tlfID, bh)
+
+	ctx := context.Background()
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(kbfscodec.NewMsgpack())
+	signer := kbfscrypto.SigningKeySigner{
+		Key: MakeFakeSigningKeyOrBust("key"),
+	}
+
+	extra, err := FakeInitialRekey(
+		brmd, crypto, bh, kbfscrypto.TLFPublicKey{})
+	require.NoError(t, err)
+
+	brmd.SetLastModifyingWriter(uid)
+	brmd.SetLastModifyingUser(uid)
+	brmd.SetSerializedPrivateMetadata([]byte{42})
+	err = brmd.SignWriterMetadataInternally(ctx, codec, signer)
+	require.NoError(t, err)
+
+	rmds, err := signMD(ctx, codec, signer, brmd, time.Time{})
+	require.NoError(t, err)
+
+	// verify it
+	err = rmds.IsValidAndSigned(codec, crypto, extra)
+	require.NoError(t, err)
+
+	ext, err := NewTlfHandleExtension(
+		TlfHandleExtensionFinalized, 1, "fake user")
+	require.NoError(t, err)
+
+	// make a final copy
+	rmds2, err := rmds.MakeFinalCopy(codec, time.Now(), ext)
+	require.NoError(t, err)
+
+	// verify the finalized copy
+	err = rmds2.IsValidAndSigned(codec, crypto, extra)
+	require.NoError(t, err)
+
+	// touch something the server shouldn't be allowed to edit for finalized metadata
+	// and verify verification failure.
+	rmds2.MD.(MutableBareRootMetadata).SetRekeyBit()
+	err = rmds2.IsValidAndSigned(codec, crypto, extra)
+	require.NotNil(t, err)
 }
