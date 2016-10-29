@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -861,10 +862,10 @@ func checkWriterSig(rmds *RootMetadataSigned) error {
 	return nil
 }
 
-// MakeRootMetadataSigned makes a RootMetadataSigned object from the
+// makeRootMetadataSigned makes a RootMetadataSigned object from the
 // given info. If md stores the writer signature info internally, it
 // must match the given one.
-func MakeRootMetadataSigned(sigInfo, writerSigInfo kbfscrypto.SignatureInfo,
+func makeRootMetadataSigned(sigInfo, writerSigInfo kbfscrypto.SignatureInfo,
 	md BareRootMetadata,
 	untrustedServerTimestamp time.Time) (*RootMetadataSigned, error) {
 	rmds := &RootMetadataSigned{
@@ -878,6 +879,40 @@ func MakeRootMetadataSigned(sigInfo, writerSigInfo kbfscrypto.SignatureInfo,
 		return nil, err
 	}
 	return rmds, nil
+}
+
+// SignBareRootMetadata signs the given BareRootMetadata and returns a
+// *RootMetadataSigned object.
+func SignBareRootMetadata(
+	ctx context.Context, codec kbfscodec.Codec, signer kbfscrypto.Signer,
+	brmd BareRootMetadata, untrustedServerTimestamp time.Time) (
+	*RootMetadataSigned, error) {
+	// encode the root metadata and sign it
+	buf, err := codec.Encode(brmd)
+	if err != nil {
+		return nil, err
+	}
+
+	// Sign normally using the local device private key
+	sigInfo, err := signer.Sign(ctx, buf)
+	if err != nil {
+		return nil, err
+	}
+	var writerSigInfo kbfscrypto.SignatureInfo
+	if mdv2, ok := brmd.(*BareRootMetadataV2); ok {
+		writerSigInfo = mdv2.WriterMetadataSigInfo
+	} else {
+		buf, err = brmd.GetSerializedWriterMetadata(codec)
+		if err != nil {
+			return nil, err
+		}
+		writerSigInfo, err = signer.Sign(ctx, buf)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return makeRootMetadataSigned(
+		sigInfo, writerSigInfo, brmd, untrustedServerTimestamp)
 }
 
 // GetWriterMetadataSigInfo returns the signature of the writer
@@ -926,7 +961,7 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(
 	// the head revision - 1.
 	newBareMd.SetRevision(rmds.MD.RevisionNumber() + 1)
 	newBareMd.SetFinalizedInfo(finalizedInfo)
-	return MakeRootMetadataSigned(
+	return makeRootMetadataSigned(
 		rmds.SigInfo.DeepCopy(), rmds.WriterSigInfo.DeepCopy(),
 		newBareMd, now)
 }
