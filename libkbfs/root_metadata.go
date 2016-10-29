@@ -643,7 +643,8 @@ func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool {
 	return md.bareMd.HasKeyForUser(keyGen, user, md.extra)
 }
 
-// FakeInitialRekey wraps the respective method of the underlying BareRootMetadata for convenience.
+// FakeInitialRekey wraps the FakeInitialRekey test function for
+// convenience.
 func (md *RootMetadata) FakeInitialRekey(crypto cryptoPure) error {
 	var err error
 	bh, err := md.tlfHandle.ToBareHandle()
