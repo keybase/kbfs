@@ -109,7 +109,8 @@ func newRMDS(t *testing.T, config Config, h *TlfHandle) (
 	require.NoError(t, err)
 
 	rmds, err := SignBareRootMetadata(
-		ctx, config.Codec(), config.Crypto(), rmd.bareMd, time.Now())
+		ctx, config.Codec(), config.Crypto(), config.Crypto(),
+		rmd.bareMd, time.Now())
 	require.NoError(t, err)
 	return rmds, rmd.extra
 }
@@ -500,7 +501,8 @@ func makeRMDSRange(t *testing.T, config Config,
 		require.NoError(t, err)
 
 		rmds, err := SignBareRootMetadata(
-			ctx, config.Codec(), config.Crypto(), rmd.bareMd, time.Now())
+			ctx, config.Codec(), config.Crypto(), config.Crypto(),
+			rmd.bareMd, time.Now())
 		require.NoError(t, err)
 		currID, err := config.Crypto().MakeMdID(rmds.MD)
 		require.NoError(t, err)

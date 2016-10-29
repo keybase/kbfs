@@ -545,7 +545,7 @@ func (md *MDOpsStandard) put(
 	}
 
 	rmds, err := SignBareRootMetadata(
-		ctx, md.config.Codec(), md.config.Crypto(),
+		ctx, md.config.Codec(), md.config.Crypto(), md.config.Crypto(),
 		rmd.bareMd, time.Time{})
 	if err != nil {
 		return MdID{}, err

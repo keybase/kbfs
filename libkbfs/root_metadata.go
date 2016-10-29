@@ -882,9 +882,11 @@ func makeRootMetadataSigned(sigInfo, writerSigInfo kbfscrypto.SignatureInfo,
 }
 
 // SignBareRootMetadata signs the given BareRootMetadata and returns a
-// *RootMetadataSigned object.
+// *RootMetadataSigned object. rootMetadataSigner and
+// writerMetadataSigner should be the same, except in tests.
 func SignBareRootMetadata(
-	ctx context.Context, codec kbfscodec.Codec, signer kbfscrypto.Signer,
+	ctx context.Context, codec kbfscodec.Codec,
+	rootMetadataSigner, writerMetadataSigner kbfscrypto.Signer,
 	brmd BareRootMetadata, untrustedServerTimestamp time.Time) (
 	*RootMetadataSigned, error) {
 	// encode the root metadata and sign it
@@ -894,19 +896,22 @@ func SignBareRootMetadata(
 	}
 
 	// Sign normally using the local device private key
-	sigInfo, err := signer.Sign(ctx, buf)
+	sigInfo, err := rootMetadataSigner.Sign(ctx, buf)
 	if err != nil {
 		return nil, err
 	}
 	var writerSigInfo kbfscrypto.SignatureInfo
 	if mdv2, ok := brmd.(*BareRootMetadataV2); ok {
+		// Assume that writerMetadataSigner has already signed
+		// mdv2 internally. If not, makeRootMetadataSigned
+		// will catch it.
 		writerSigInfo = mdv2.WriterMetadataSigInfo
 	} else {
 		buf, err = brmd.GetSerializedWriterMetadata(codec)
 		if err != nil {
 			return nil, err
 		}
-		writerSigInfo, err = signer.Sign(ctx, buf)
+		writerSigInfo, err = writerMetadataSigner.Sign(ctx, buf)
 		if err != nil {
 			return nil, err
 		}

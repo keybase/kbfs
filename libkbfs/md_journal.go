@@ -758,7 +758,8 @@ func (j mdJournal) getNextEntryToFlush(
 		return MdID{}, nil, nil, nil
 	}
 
-	rmds, err := SignBareRootMetadata(ctx, j.codec, signer, rmd, timestamp)
+	rmds, err := SignBareRootMetadata(
+		ctx, j.codec, signer, signer, rmd, timestamp)
 	if err != nil {
 		return MdID{}, nil, nil, err
 	}
