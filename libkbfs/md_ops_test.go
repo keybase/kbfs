@@ -76,26 +76,22 @@ func mdOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	mockCtrl.Finish()
 }
 
-func addFakeBRMDData(t *testing.T,
-	codec kbfscodec.Codec, crypto cryptoPure, brmd *BareRootMetadataV2,
-	h *TlfHandle) ExtraMetadata {
-	brmd.SetRevision(MetadataRevision(1))
+func addFakeRMDData(t *testing.T,
+	codec kbfscodec.Codec, crypto cryptoPure, rmd *RootMetadata,
+	h *TlfHandle) {
+	rmd.SetRevision(MetadataRevision(1))
 	pmd := PrivateMetadata{}
 	// TODO: Will have to change this for private folders if we
 	// un-mock out those tests.
 	buf, err := codec.Encode(pmd)
 	require.NoError(t, err)
-	brmd.SetSerializedPrivateMetadata(buf)
-	brmd.SetLastModifyingWriter(h.FirstResolvedWriter())
-	brmd.SetLastModifyingUser(h.FirstResolvedWriter())
-	var extra ExtraMetadata
+	rmd.SetSerializedPrivateMetadata(buf)
+	rmd.SetLastModifyingWriter(h.FirstResolvedWriter())
+	rmd.SetLastModifyingUser(h.FirstResolvedWriter())
 	if !h.IsPublic() {
-		extra, err = FakeInitialRekey(brmd,
-			crypto, h.ToBareHandleOrBust(),
-			kbfscrypto.TLFPublicKey{})
+		err = rmd.FakeInitialRekey(crypto)
 		require.NoError(t, err)
 	}
-	return extra
 }
 
 func newRMD(t *testing.T, config Config, public bool) (
@@ -103,39 +99,34 @@ func newRMD(t *testing.T, config Config, public bool) (
 	id := FakeTlfID(1, public)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", public)
-	var brmd BareRootMetadataV2
-	err := brmd.Update(id, h.ToBareHandleOrBust())
+	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, id, h)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	extra := addFakeBRMDData(t, config.Codec(), config.Crypto(), &brmd, h)
-
-	return &RootMetadata{
-		bareMd: &brmd,
-		extra:  extra,
-	}, h
+	addFakeRMDData(t, config.Codec(), config.Crypto(), rmd, h)
+	return rmd, h
 }
-
-// TODO: Add test coverage for MDv3.
 
 func newRMDS(t *testing.T, config Config, h *TlfHandle) (
 	*RootMetadataSigned, ExtraMetadata) {
 	id := FakeTlfID(1, h.IsPublic())
 
-	var brmd BareRootMetadataV2
-	err := brmd.Update(id, h.ToBareHandleOrBust())
-	require.NoError(t, err)
-	extra := addFakeBRMDData(t, config.Codec(), config.Crypto(), &brmd, h)
+	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, id, h)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addFakeRMDData(t, config.Codec(), config.Crypto(), rmd, h)
 	ctx := context.Background()
 
 	// Encode and sign writer metadata.
-	err = brmd.SignWriterMetadataInternally(ctx, config.Codec(), config.Crypto())
+	err = rmd.bareMd.SignWriterMetadataInternally(ctx, config.Codec(), config.Crypto())
 	require.NoError(t, err)
 
-	rmds, err := signMD(ctx, config.Codec(), config.Crypto(), &brmd, (wallClock{}).Now())
+	rmds, err := signMD(ctx, config.Codec(), config.Crypto(), rmd.bareMd, (wallClock{}).Now())
 	require.NoError(t, err)
-	return rmds, extra
+	return rmds, rmd.extra
 }
 
 func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
@@ -514,26 +505,28 @@ func makeRMDSRange(t *testing.T, config Config,
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
 	for i := 0; i < count; i++ {
-		var brmd BareRootMetadataV2
-		err := brmd.Update(id, h.ToBareHandleOrBust())
-		require.NoError(t, err)
-		extra := addFakeBRMDData(t, config.Codec(), config.Crypto(), &brmd, h)
-		brmd.SetPrevRoot(prevID)
-		brmd.SetRevision(start + MetadataRevision(i))
+		rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, id, h)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addFakeRMDData(t, config.Codec(), config.Crypto(), rmd, h)
+		rmd.SetPrevRoot(prevID)
+		rmd.SetRevision(start + MetadataRevision(i))
 
 		ctx := context.Background()
 
 		// Encode and sign writer metadata.
-		err = brmd.SignWriterMetadataInternally(ctx, config.Codec(), config.Crypto())
+		err = rmd.bareMd.SignWriterMetadataInternally(ctx, config.Codec(), config.Crypto())
 		require.NoError(t, err)
 
-		rmds, err := signMD(ctx, config.Codec(), config.Crypto(), &brmd, (wallClock{}).Now())
+		rmds, err := signMD(ctx, config.Codec(), config.Crypto(), rmd.bareMd, (wallClock{}).Now())
 		require.NoError(t, err)
 		currID, err := config.Crypto().MakeMdID(rmds.MD)
 		require.NoError(t, err)
 		prevID = currID
 		rmdses = append(rmdses, rmds)
-		extras = append(extras, extra)
+		extras = append(extras, rmd.extra)
 	}
 	return rmdses, extras
 }

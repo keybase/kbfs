@@ -282,41 +282,6 @@ func (md *BareRootMetadataV2) IsReader(
 	return md.RKeys.IsReader(user, deviceKID)
 }
 
-// Update implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) Update(id TlfID, h BareTlfHandle) error {
-	if id.IsPublic() != h.IsPublic() {
-		return errors.New("TlfID and TlfHandle disagree on public status")
-	}
-
-	var writers []keybase1.UID
-	var wKeys TLFWriterKeyGenerations
-	var rKeys TLFReaderKeyGenerations
-	if id.IsPublic() {
-		writers = make([]keybase1.UID, len(h.Writers))
-		copy(writers, h.Writers)
-	} else {
-		wKeys = make(TLFWriterKeyGenerations, 0, 1)
-		rKeys = make(TLFReaderKeyGenerations, 0, 1)
-	}
-	md.WriterMetadataV2 = WriterMetadataV2{
-		Writers: writers,
-		WKeys:   wKeys,
-		ID:      id,
-	}
-	if len(h.UnresolvedWriters) > 0 {
-		md.Extra.UnresolvedWriters = make([]keybase1.SocialAssertion, len(h.UnresolvedWriters))
-		copy(md.Extra.UnresolvedWriters, h.UnresolvedWriters)
-	}
-
-	md.Revision = MetadataRevisionInitial
-	md.RKeys = rKeys
-	if len(h.UnresolvedReaders) > 0 {
-		md.UnresolvedReaders = make([]keybase1.SocialAssertion, len(h.UnresolvedReaders))
-		copy(md.UnresolvedReaders, h.UnresolvedReaders)
-	}
-	return nil
-}
-
 func (md *BareRootMetadataV2) deepCopy(
 	codec kbfscodec.Codec) (*BareRootMetadataV2, error) {
 	var newMd BareRootMetadataV2

@@ -335,33 +335,6 @@ func (md *BareRootMetadataV3) IsReader(
 	return rkb.IsReader(user, deviceKID)
 }
 
-// Update implements the MutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) Update(id TlfID, h BareTlfHandle) error {
-	if id.IsPublic() != h.IsPublic() {
-		return errors.New("TlfID and TlfHandle disagree on public status")
-	}
-
-	var writers []keybase1.UID
-	if id.IsPublic() {
-		writers = make([]keybase1.UID, len(h.Writers))
-		copy(writers, h.Writers)
-	}
-	md.WriterMetadata = WriterMetadataV3{
-		Writers: writers,
-		ID:      id,
-	}
-	if len(h.UnresolvedWriters) > 0 {
-		md.WriterMetadata.UnresolvedWriters = make([]keybase1.SocialAssertion, len(h.UnresolvedWriters))
-		copy(md.WriterMetadata.UnresolvedWriters, h.UnresolvedWriters)
-	}
-	if len(h.UnresolvedReaders) > 0 {
-		md.UnresolvedReaders = make([]keybase1.SocialAssertion, len(h.UnresolvedReaders))
-		copy(md.UnresolvedReaders, h.UnresolvedReaders)
-	}
-	md.Revision = MetadataRevisionInitial
-	return nil
-}
-
 // DeepCopy implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) DeepCopy(
 	codec kbfscodec.Codec) (MutableBareRootMetadata, error) {

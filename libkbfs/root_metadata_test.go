@@ -482,8 +482,8 @@ func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 	tlfID := FakeTlfID(1, false)
 
 	h := parseTlfHandleOrBust(t, config, "alice", false)
-	var brmd BareRootMetadataV2
-	err := brmd.Update(tlfID, h.ToBareHandleOrBust())
+	brmd, err := MakeInitialBareRootMetadataV2(
+		tlfID, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 
 	err = brmd.SignWriterMetadataInternally(
@@ -493,11 +493,11 @@ func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 	}
 
 	// Copy bit unset.
-	var newBrmd BareRootMetadataV2
-	err = newBrmd.Update(tlfID, h.ToBareHandleOrBust())
+	newBrmd, err := MakeInitialBareRootMetadataV2(
+		tlfID, h.ToBareHandleOrBust())
 	require.NoError(t, err)
 	ok, err := newBrmd.IsValidRekeyRequest(
-		config.Codec(), &brmd, newBrmd.LastModifyingWriter(), nil, nil)
+		config.Codec(), brmd, newBrmd.LastModifyingWriter(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -518,7 +518,7 @@ func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 		t.Fatal(err)
 	}
 	ok, err = newBrmd.IsValidRekeyRequest(
-		config.Codec(), &brmd, newBrmd.LastModifyingWriter(), nil, nil)
+		config.Codec(), brmd, newBrmd.LastModifyingWriter(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -529,7 +529,7 @@ func TestIsValidRekeyRequestBasicV2(t *testing.T) {
 	// Replace with copied signature.
 	newBrmd.WriterMetadataSigInfo = brmd.WriterMetadataSigInfo
 	ok, err = newBrmd.IsValidRekeyRequest(
-		config.Codec(), &brmd, newBrmd.LastModifyingWriter(), nil, nil)
+		config.Codec(), brmd, newBrmd.LastModifyingWriter(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +609,7 @@ func TestRootMetadataFinalIsFinal(t *testing.T) {
 // Test verification of finalized metadata blocks.
 //
 // TODO: have MDV3 version.
-func TestRootMetadataFinalVerifyV3(t *testing.T) {
+func TestRootMetadataFinalVerifyV2(t *testing.T) {
 	config := MakeTestConfigOrBust(t, "alice")
 	defer config.Shutdown()
 
@@ -620,12 +620,9 @@ func TestRootMetadataFinalVerifyV3(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var md BareRootMetadataV2
-	err = md.Update(id, h)
-	if err != nil {
-		t.Fatal(err)
-	}
-	FakeInitialRekey(&md, config.Crypto(), h, kbfscrypto.TLFPublicKey{})
+	md, err := MakeInitialBareRootMetadataV2(id, h)
+	require.NoError(t, err)
+	FakeInitialRekey(md, config.Crypto(), h, kbfscrypto.TLFPublicKey{})
 	md.SetLastModifyingWriter(h.Writers[0])
 	md.SetLastModifyingUser(h.Writers[0])
 	md.SetSerializedPrivateMetadata([]byte{42})
@@ -636,7 +633,7 @@ func TestRootMetadataFinalVerifyV3(t *testing.T) {
 	}
 
 	rmds, err := signMD(context.Background(), config.Codec(),
-		config.Crypto(), &md, time.Time{})
+		config.Crypto(), md, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
