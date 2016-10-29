@@ -689,7 +689,7 @@ func TestRootMetadataFinalVerifyV3(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	md.FakeInitialRekey(config.Crypto(), h)
+	md.FakeInitialRekey(config.Crypto(), h, kbfscrypto.TLFPublicKey{})
 	md.SetLastModifyingWriter(h.Writers[0])
 	md.SetLastModifyingUser(h.Writers[0])
 	md.SetSerializedPrivateMetadata([]byte{42})

@@ -939,13 +939,15 @@ func (md *BareRootMetadataV2) Version() MetadataVer {
 }
 
 // FakeInitialRekey implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) FakeInitialRekey(_ cryptoPure, h BareTlfHandle) (
+func (md *BareRootMetadataV2) FakeInitialRekey(
+	_ cryptoPure, h BareTlfHandle, pubKey kbfscrypto.TLFPublicKey) (
 	ExtraMetadata, error) {
 	if md.ID.IsPublic() {
 		panic("Called FakeInitialRekey on public TLF")
 	}
 	wkb := TLFWriterKeyBundleV2{
-		WKeys: make(UserDeviceKeyInfoMap),
+		WKeys:        make(UserDeviceKeyInfoMap),
+		TLFPublicKey: pubKey,
 	}
 	for _, w := range h.Writers {
 		k := MakeFakeCryptPublicKeyOrBust(string(w))

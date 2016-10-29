@@ -90,7 +90,9 @@ func addFakeBRMDData(t *testing.T,
 	brmd.SetLastModifyingUser(h.FirstResolvedWriter())
 	var extra ExtraMetadata
 	if !h.IsPublic() {
-		extra, err = brmd.FakeInitialRekey(crypto, h.ToBareHandleOrBust())
+		extra, err = brmd.FakeInitialRekey(
+			crypto, h.ToBareHandleOrBust(),
+			kbfscrypto.TLFPublicKey{})
 		require.NoError(t, err)
 	}
 	return extra
