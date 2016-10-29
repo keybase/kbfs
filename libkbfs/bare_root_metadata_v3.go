@@ -1012,22 +1012,7 @@ func (md *BareRootMetadataV3) FakeInitialRekey(
 		}
 	}
 
-	wkb := &TLFWriterKeyBundleV3{
-		Keys:          wDkim,
-		TLFPublicKeys: []kbfscrypto.TLFPublicKey{pubKey},
-	}
-	rkb := &TLFReaderKeyBundleV3{
-		TLFReaderKeyBundleV2: TLFReaderKeyBundleV2{
-			RKeys: rDkim,
-		},
-	}
-	md.WriterMetadata.LatestKeyGen++
-	extra := &ExtraMetadataV3{rkb: rkb, wkb: wkb}
-	if err := md.FinalizeRekey(crypto, kbfscrypto.TLFCryptKey{},
-		kbfscrypto.TLFCryptKey{}, extra); err != nil {
-		return nil, err
-	}
-	return extra, nil
+	return md.AddNewKeysForTesting(crypto, wDkim, rDkim, pubKey)
 }
 
 // GetTLFPublicKey implements the BareRootMetadata interface for BareRootMetadataV3.
