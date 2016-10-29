@@ -111,7 +111,7 @@ func (c testTLFJournalConfig) MDCache() MDCache {
 }
 
 func (c testTLFJournalConfig) MetadataVersion() MetadataVer {
-	return DefaultMetadataVer
+	return defaultClientMetadataVer
 }
 
 func (c testTLFJournalConfig) Reporter() Reporter {

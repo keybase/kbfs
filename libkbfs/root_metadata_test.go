@@ -132,7 +132,7 @@ func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
 	}
 	h := makeFakeTlfHandle(t, 14, true, uw, nil)
 	tlfID := FakeTlfID(0, true)
-	rmd, err := makeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
 	dirHandle := rmd.GetTlfHandle()
@@ -171,7 +171,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	}
 	h := makeFakeTlfHandle(t, 14, false, uw, ur)
 	tlfID := FakeTlfID(0, false)
-	rmd, err := makeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
 	rmd.FakeInitialRekey(crypto, h.ToBareHandleOrBust())
@@ -191,7 +191,7 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 	crypto := MakeCryptoCommon(codec)
 	tlfID := FakeTlfID(0, false)
 	h := makeFakeTlfHandle(t, 14, false, nil, nil)
-	rmd, err := makeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
 	if rmd.LatestKeyGeneration() != 0 {
@@ -207,7 +207,7 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
 	tlfID := FakeTlfID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
-	rmd, err := makeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
 	if rmd.LatestKeyGeneration() != PublicKeyGen {
@@ -661,7 +661,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 func TestRootMetadataFinalIsFinal(t *testing.T) {
 	tlfID := FakeTlfID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
-	rmd, err := makeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
 	rmd.SetFinalBit()

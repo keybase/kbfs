@@ -141,8 +141,8 @@ const (
 	SegregatedKeyBundlesVer = 3
 
 	// MDv3 TODO: Change the below to SegregatedKeyBundlesVer when
-	// ready for MDv3.
-	DefaultMetadataVer = InitialExtraMetadataVer
+	// the client is ready for MDv3.
+	defaultClientMetadataVer = InitialExtraMetadataVer
 )
 
 // DataVer is the type of a version for marshalled KBFS data

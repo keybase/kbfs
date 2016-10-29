@@ -80,7 +80,7 @@ func (c testMDServerLocalConfig) currentInfoGetter() currentInfoGetter {
 }
 
 func (c testMDServerLocalConfig) MetadataVersion() MetadataVer {
-	return DefaultMetadataVer
+	return defaultClientMetadataVer
 }
 
 func (c testMDServerLocalConfig) MakeLogger(module string) logger.Logger {
