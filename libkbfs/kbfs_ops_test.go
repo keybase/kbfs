@@ -278,13 +278,16 @@ func getOps(config Config, id TlfID) *folderBranchOps {
 		getOpsNoAdd(FolderBranch{id, MasterBranch})
 }
 
+// TODO: Test MDv3.
+
 // createNewRMD creates a new RMD for the given name. Returns its ID
 // and handle also.
 func createNewRMD(t *testing.T, config Config, name string, public bool) (
 	TlfID, *TlfHandle, *RootMetadata) {
 	id := FakeTlfID(1, public)
 	h := parseTlfHandleOrBust(t, config, name, public)
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
 	return id, h, rmd
 }
 
@@ -721,7 +724,8 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailNonReader(t *testing.T) {
 	// Hack around access check in ParseTlfHandle.
 	h.resolvedReaders = nil
 
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
 
 	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
@@ -2748,11 +2752,13 @@ func TestRenameFailAcrossTopLevelFolders(t *testing.T) {
 
 	id1 := FakeTlfID(1, false)
 	h1 := parseTlfHandleOrBust(t, config, "alice,bob", false)
-	rmd1 := newRootMetadataOrBust(t, id1, h1)
+	rmd1, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id1, h1)
+	require.NoError(t, err)
 
 	id2 := FakeTlfID(2, false)
 	h2 := parseTlfHandleOrBust(t, config, "alice,bob,charlie", false)
-	rmd2 := newRootMetadataOrBust(t, id1, h2)
+	rmd2, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id2, h2)
+	require.NoError(t, err)
 
 	uid1 := h2.ResolvedWriters()[0]
 	uid2 := h2.ResolvedWriters()[2]
@@ -2788,7 +2794,8 @@ func TestRenameFailAcrossBranches(t *testing.T) {
 
 	id1 := FakeTlfID(1, false)
 	h1 := parseTlfHandleOrBust(t, config, "alice,bob", false)
-	rmd1 := newRootMetadataOrBust(t, id1, h1)
+	rmd1, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id1, h1)
+	require.NoError(t, err)
 
 	uid1 := h1.FirstResolvedWriter()
 	rootID1 := fakeBlockID(41)
