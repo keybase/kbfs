@@ -11,6 +11,7 @@ import (
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,22 +27,22 @@ func mdCacheShutdown(t *testing.T, config *ConfigLocal) {
 }
 
 func testMdcachePut(t *testing.T, tlf TlfID, rev MetadataRevision,
-	mStatus MergeStatus, bid BranchID, h *TlfHandle, config *ConfigLocal) {
-	key, err := config.KBPKI().GetCurrentVerifyingKey(context.Background())
-	if err != nil {
-		t.Fatalf("Couldn't get verifying key: %v", err)
-	}
-
+	bid BranchID, h *TlfHandle, config *ConfigLocal) {
 	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlf, h)
 	require.NoError(t, err)
-	if mStatus == Unmerged {
+	rmd.SetRevision(rev)
+	if bid != NullBranchID {
 		rmd.SetUnmerged()
+		rmd.SetBranchID(bid)
 	}
+
+	signingKey := MakeFakeSigningKeyOrBust("fake signing key")
 	rmd.bareMd.SignWriterMetadataInternally(context.Background(),
-		config.Codec(), config.Crypto())
+		config.Codec(), kbfscrypto.SigningKeySigner{Key: signingKey})
 
 	// put the md
-	irmd := MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
+	irmd := MakeImmutableRootMetadata(
+		rmd, signingKey.GetVerifyingKey(), fakeMdID(1), time.Now())
 	if err := config.MDCache().Put(irmd); err != nil {
 		t.Errorf("Got error on put on md %v: %v", tlf, err)
 	}
@@ -60,7 +61,7 @@ func TestMdcachePut(t *testing.T) {
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	h.resolvedWriters[keybase1.MakeTestUID(0)] = "test_user0"
 
-	testMdcachePut(t, id, 1, Merged, NullBranchID, h, config)
+	testMdcachePut(t, id, 1, NullBranchID, h, config)
 }
 
 func TestMdcachePutPastCapacity(t *testing.T) {
@@ -76,10 +77,10 @@ func TestMdcachePutPastCapacity(t *testing.T) {
 	id2 := FakeTlfID(3, false)
 	h2 := parseTlfHandleOrBust(t, config, "alice,charlie", false)
 
-	testMdcachePut(t, id0, 0, Merged, NullBranchID, h0, config)
+	testMdcachePut(t, id0, 0, NullBranchID, h0, config)
 	bid := FakeBranchID(1)
-	testMdcachePut(t, id1, 0, Unmerged, bid, h1, config)
-	testMdcachePut(t, id2, 1, Merged, NullBranchID, h2, config)
+	testMdcachePut(t, id1, 0, bid, h1, config)
+	testMdcachePut(t, id2, 1, NullBranchID, h2, config)
 
 	// id 0 should no longer be in the cache
 	// make sure we can get it successfully
@@ -99,7 +100,7 @@ func TestMdcacheReplace(t *testing.T) {
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	h.resolvedWriters[keybase1.MakeTestUID(0)] = "test_user0"
 
-	testMdcachePut(t, id, 1, Merged, NullBranchID, h, config)
+	testMdcachePut(t, id, 1, NullBranchID, h, config)
 
 	irmd, err := config.MDCache().Get(id, 1, NullBranchID)
 	if err != nil {
