@@ -723,7 +723,8 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
-	rmd := newRootMetadataOrBust(t, id, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
 
 	expectGetTLFCryptKeyForEncryption(config, rmd)
 	config.mockCrypto.EXPECT().EncryptPrivateMetadata(
@@ -732,7 +733,7 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 	config.mockBsplit.EXPECT().ShouldEmbedBlockChanges(gomock.Any()).
 		Return(true)
 
-	err := errors.New("Fake fail")
+	err = errors.New("Fake fail")
 	config.SetCodec(failEncodeCodec{config.Codec(), err})
 
 	if _, err2 := config.MDOps().Put(ctx, rmd); err2 != err {

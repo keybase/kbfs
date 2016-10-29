@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
@@ -103,9 +104,10 @@ func TestFBStatusAllFields(t *testing.T) {
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
 	u := h.FirstResolvedWriter()
-	md := newRootMetadataOrBust(t, id, h)
-	md.SetUnmerged()
-	md.SetLastModifyingWriter(u)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, id, h)
+	require.NoError(t, err)
+	rmd.SetUnmerged()
+	rmd.SetLastModifyingWriter(u)
 
 	// make two nodes with expected PathFromNode calls
 	n1 := newMockNode(mockCtrl)
@@ -117,7 +119,7 @@ func TestFBStatusAllFields(t *testing.T) {
 
 	key := MakeFakeVerifyingKeyOrBust("fake key")
 	fbsk.setRootMetadata(
-		makeImmutableRootMetadataForTest(t, md, key, fakeMdID(1)))
+		makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1)))
 	fbsk.addDirtyNode(n1)
 	fbsk.addDirtyNode(n2)
 

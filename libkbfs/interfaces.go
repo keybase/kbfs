@@ -1739,10 +1739,6 @@ type MutableBareRootMetadata interface {
 	// BareRootMetadata objects don't have enough data to build a
 	// TlfHandle from until the first rekey.
 	FakeInitialRekey(c cryptoPure, h BareTlfHandle) (ExtraMetadata, error)
-	// Update initializes the given freshly-created BareRootMetadata object with
-	// the given TlfID and BareTlfHandle. Note that if the given ID/handle are private,
-	// rekeying must be done separately.
-	Update(tlf TlfID, h BareTlfHandle) error
 	// Returns the TLF key bundles for this metadata at the given key generation.
 	// MDv3 TODO: Get rid of this.
 	GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error)

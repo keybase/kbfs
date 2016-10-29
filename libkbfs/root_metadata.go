@@ -648,11 +648,6 @@ func (md *RootMetadata) FakeInitialRekey(crypto cryptoPure, h BareTlfHandle) err
 	return err
 }
 
-// Update wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) Update(id TlfID, h BareTlfHandle) error {
-	return md.bareMd.Update(id, h)
-}
-
 // GetBareRootMetadata returns an interface to the underlying serializeable metadata.
 func (md *RootMetadata) GetBareRootMetadata() BareRootMetadata {
 	return md.bareMd
