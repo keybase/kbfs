@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -166,8 +167,28 @@ func testCRChainsFillInWriter(t *testing.T, rmds []*RootMetadata) (
 	return config, chainMDs
 }
 
+func newRMDForCRChainsTest(t *testing.T) *RootMetadata {
+	tlfID := FakeTlfID(1, false)
+
+	uid := keybase1.MakeTestUID(1)
+	bh, err := MakeBareTlfHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	nug := testNormalizedUsernameGetter{
+		uid: "fake_user",
+	}
+
+	ctx := context.Background()
+	h, err := MakeTlfHandle(ctx, bh, nug)
+	require.NoError(t, err)
+
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	require.NoError(t, err)
+	return rmd
+}
+
 func TestCRChainsSingleOp(t *testing.T) {
-	rmd := NewRootMetadata()
+	rmd := newRMDForCRChainsTest(t)
 
 	currPtr, ptrs, revPtrs := testCRInitPtrs(3)
 	rootPtrUnref := ptrs[0]
@@ -198,7 +219,7 @@ func TestCRChainsSingleOp(t *testing.T) {
 }
 
 func TestCRChainsRenameOp(t *testing.T) {
-	rmd := NewRootMetadata()
+	rmd := newRMDForCRChainsTest(t)
 
 	currPtr, ptrs, revPtrs := testCRInitPtrs(3)
 	rootPtrUnref := ptrs[0]
@@ -263,7 +284,7 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 	expected := make(map[BlockPointer]BlockPointer)
 	expectedRenames := make(map[BlockPointer]renameInfo)
 
-	bigRmd := NewRootMetadata()
+	bigRmd := newRMDForCRChainsTest(t)
 	var multiRmds []*RootMetadata
 
 	// setex root/dir3/file2
@@ -273,7 +294,7 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 		[]BlockPointer{rootPtrUnref, dir3Unref}, op1)
 	expected[file2Ptr] = file2Ptr // no update to the file ptr
 	bigRmd.AddOp(op1)
-	newRmd := NewRootMetadata()
+	newRmd := newRMDForCRChainsTest(t)
 	newRmd.AddOp(op1)
 	newRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 	multiRmds = append(multiRmds, newRmd)
@@ -284,7 +305,7 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 	currPtr = testCRFillOpPtrs(currPtr, expected, revPtrs,
 		[]BlockPointer{expected[rootPtrUnref], dir1Unref}, op2)
 	bigRmd.AddOp(op2)
-	newRmd = NewRootMetadata()
+	newRmd = newRMDForCRChainsTest(t)
 	newRmd.AddOp(op2)
 	newRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 	multiRmds = append(multiRmds, newRmd)
@@ -298,7 +319,7 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref],
 			expected[dir3Unref]}, op3)
 	bigRmd.AddOp(op3)
-	newRmd = NewRootMetadata()
+	newRmd = newRMDForCRChainsTest(t)
 	newRmd.AddOp(op3)
 	newRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 	multiRmds = append(multiRmds, newRmd)
@@ -310,7 +331,7 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref], file4Unref},
 		op4)
 	bigRmd.AddOp(op4)
-	newRmd = NewRootMetadata()
+	newRmd = newRMDForCRChainsTest(t)
 	newRmd.AddOp(op4)
 	newRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 	multiRmds = append(multiRmds, newRmd)
@@ -322,7 +343,7 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 		[]BlockPointer{expected[rootPtrUnref], expected[dir1Unref], dir2Unref},
 		op5)
 	bigRmd.AddOp(op5)
-	newRmd = NewRootMetadata()
+	newRmd = newRMDForCRChainsTest(t)
 	newRmd.AddOp(op5)
 	newRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 	multiRmds = append(multiRmds, newRmd)
@@ -420,7 +441,7 @@ func TestCRChainsCollapse(t *testing.T) {
 	expected := make(map[BlockPointer]BlockPointer)
 	expectedRenames := make(map[BlockPointer]renameInfo)
 
-	rmd := NewRootMetadata()
+	rmd := newRMDForCRChainsTest(t)
 
 	// createfile root/dir1/file2
 	op1, err := newCreateOp(f2, dir1Unref, File)
