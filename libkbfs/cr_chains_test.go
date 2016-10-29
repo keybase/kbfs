@@ -335,7 +335,7 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 	cc, err := newCRChains(
 		context.Background(), makeChainCodec(), chainMDs, nil, true)
 	if err != nil {
-		t.Fatalf("Error making chains for big CHAINMD: %v", err)
+		t.Fatalf("Error making chains for big chainMD: %v", err)
 	}
 	checkExpectedChains(t, expected, expectedRenames, rootPtrUnref, cc, true)
 
@@ -366,18 +366,18 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 	mcc, err := newCRChains(
 		context.Background(), makeChainCodec(), multiChainMDs, nil, true)
 	if err != nil {
-		t.Fatalf("Error making chains for multi CHAINMDs: %v", err)
+		t.Fatalf("Error making chains for multi chainMDs: %v", err)
 	}
 	if !reflect.DeepEqual(cc.byOriginal, mcc.byOriginal) {
-		t.Fatalf("Heads for multi CHAINMDs does not match original for big CHAINMD: %v",
+		t.Fatalf("Heads for multi chainMDs does not match original for big chainMD: %v",
 			mcc.byOriginal)
 	}
 	if !reflect.DeepEqual(cc.byMostRecent, mcc.byMostRecent) {
-		t.Fatalf("Tails for multi CHAINMDs does not match most recents for "+
-			"big CHAINMD: %v", mcc.byMostRecent)
+		t.Fatalf("Tails for multi chainMDs does not match most recents for "+
+			"big chainMD: %v", mcc.byMostRecent)
 	}
 	if mcc.originalRoot != rootPtrUnref {
-		t.Fatalf("Root pointer incorrect for multi CHAINMDs, %v vs %v",
+		t.Fatalf("Root pointer incorrect for multi chainMDs, %v vs %v",
 			mcc.originalRoot, rootPtrUnref)
 	}
 	return multiChainMDs, file4Unref
