@@ -105,9 +105,9 @@ type BareRootMetadataV2 struct {
 // object with revision MetadataRevisionInitial, and the given TlfID
 // and BareTlfHandle. Note that if the given ID/handle are private,
 // rekeying must be done separately.
-func MakeInitialBareRootMetadataV2(id TlfID, h BareTlfHandle) (
+func MakeInitialBareRootMetadataV2(tlfID TlfID, h BareTlfHandle) (
 	*BareRootMetadataV2, error) {
-	if id.IsPublic() != h.IsPublic() {
+	if tlfID.IsPublic() != h.IsPublic() {
 		return nil, errors.New(
 			"TlfID and TlfHandle disagree on public status")
 	}
@@ -115,7 +115,7 @@ func MakeInitialBareRootMetadataV2(id TlfID, h BareTlfHandle) (
 	var writers []keybase1.UID
 	var wKeys TLFWriterKeyGenerations
 	var rKeys TLFReaderKeyGenerations
-	if id.IsPublic() {
+	if tlfID.IsPublic() {
 		writers = make([]keybase1.UID, len(h.Writers))
 		copy(writers, h.Writers)
 	} else {
@@ -140,7 +140,7 @@ func MakeInitialBareRootMetadataV2(id TlfID, h BareTlfHandle) (
 		WriterMetadataV2: WriterMetadataV2{
 			Writers: writers,
 			WKeys:   wKeys,
-			ID:      id,
+			ID:      tlfID,
 			Extra: WriterMetadataExtra{
 				UnresolvedWriters: unresolvedWriters,
 			},
