@@ -101,6 +101,8 @@ func makeFakeTlfHandle(
 	}
 }
 
+// TODO: Test MDv3.
+
 func newRootMetadataOrBust(
 	t *testing.T, tlfID TlfID, h *TlfHandle) *RootMetadata {
 	rmd := &RootMetadata{bareMd: &BareRootMetadataV2{}}
@@ -141,7 +143,8 @@ func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
 	}
 	h := makeFakeTlfHandle(t, 14, true, uw, nil)
 	tlfID := FakeTlfID(0, true)
-	rmd := newRootMetadataOrBust(t, tlfID, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	require.NoError(t, err)
 
 	dirHandle := rmd.GetTlfHandle()
 	require.Equal(t, h, dirHandle)
@@ -179,7 +182,9 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	}
 	h := makeFakeTlfHandle(t, 14, false, uw, ur)
 	tlfID := FakeTlfID(0, false)
-	rmd := newRootMetadataOrBust(t, tlfID, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	require.NoError(t, err)
+
 	rmd.FakeInitialRekey(crypto, h.ToBareHandleOrBust())
 
 	dirHandle := rmd.GetTlfHandle()
@@ -197,7 +202,9 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 	crypto := MakeCryptoCommon(codec)
 	tlfID := FakeTlfID(0, false)
 	h := makeFakeTlfHandle(t, 14, false, nil, nil)
-	rmd := newRootMetadataOrBust(t, tlfID, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	require.NoError(t, err)
+
 	if rmd.LatestKeyGeneration() != 0 {
 		t.Errorf("Expected key generation to be invalid (0)")
 	}
@@ -211,7 +218,9 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
 	tlfID := FakeTlfID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
-	rmd := newRootMetadataOrBust(t, tlfID, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	require.NoError(t, err)
+
 	if rmd.LatestKeyGeneration() != PublicKeyGen {
 		t.Errorf("Expected key generation to be public (%d)", PublicKeyGen)
 	}
@@ -655,9 +664,11 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 func TestRootMetadataFinalIsFinal(t *testing.T) {
 	tlfID := FakeTlfID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
-	rmd := newRootMetadataOrBust(t, tlfID, h)
+	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	require.NoError(t, err)
+
 	rmd.SetFinalBit()
-	_, err := rmd.MakeSuccessor(nil, fakeMdID(1), true)
+	_, err = rmd.MakeSuccessor(nil, fakeMdID(1), true)
 	_, isFinalError := err.(MetadataIsFinalError)
 	require.Equal(t, isFinalError, true)
 }
