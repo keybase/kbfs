@@ -41,17 +41,6 @@ func MakeFakeVerifyingKeyOrBust(seed string) VerifyingKey {
 	return sk.GetVerifyingKey()
 }
 
-// CryptPrivateKey is a private key for encryption/decryption.
-type CryptPrivateKey struct {
-	kp libkb.NaclDHKeyPair
-}
-
-// GetPublicKey returns the public key corresponding to this private
-// key.
-func (k CryptPrivateKey) GetPublicKey() CryptPublicKey {
-	return MakeCryptPublicKey(k.kp.Public.GetKID())
-}
-
 // MakeFakeCryptPrivateKeyOrBust makes a new crypt private key from
 // fake randomness made from the given seed.
 func MakeFakeCryptPrivateKeyOrBust(seed string) CryptPrivateKey {
@@ -62,7 +51,7 @@ func MakeFakeCryptPrivateKeyOrBust(seed string) CryptPrivateKey {
 	if err != nil {
 		panic(err)
 	}
-	return CryptPrivateKey{kp}
+	return NewCryptPrivateKey(kp)
 }
 
 // MakeFakeCryptPublicKeyOrBust makes the public key corresponding to

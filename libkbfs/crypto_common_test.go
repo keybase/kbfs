@@ -394,7 +394,10 @@ func TestCryptoCommonEncryptTLFCryptKeyClientHalf(t *testing.T) {
 	}
 
 	ephPublicKeyData := ephPublicKey.Data()
-	decryptedData, ok := box.Open(nil, encryptedClientHalf.EncryptedData, &nonce, &ephPublicKeyData, (*[32]byte)(privateKey.kp.Private))
+	privateKeyData := privateKey.Data()
+	decryptedData, ok := box.Open(
+		nil, encryptedClientHalf.EncryptedData, &nonce,
+		&ephPublicKeyData, &privateKeyData)
 	if !ok {
 		t.Fatal("Decryption failed")
 	}

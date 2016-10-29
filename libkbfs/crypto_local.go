@@ -70,7 +70,9 @@ func (c CryptoLocal) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 	}
 
 	publicKeyData := publicKey.Data()
-	decryptedData, ok := box.Open(nil, encryptedClientHalf.EncryptedData, &nonce, &publicKeyData, (*[32]byte)(c.cryptPrivateKey.kp.Private))
+	privateKeyData := c.cryptPrivateKey.Data()
+	decryptedData, ok := box.Open(nil, encryptedClientHalf.EncryptedData,
+		&nonce, &publicKeyData, &privateKeyData)
 	if !ok {
 		err = libkb.DecryptionError{}
 		return
@@ -100,7 +102,10 @@ func (c CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 			continue
 		}
 		ePubKeyData := k.EPubKey.Data()
-		decryptedData, ok := box.Open(nil, k.ClientHalf.EncryptedData, &nonce, &ePubKeyData, (*[32]byte)(c.cryptPrivateKey.kp.Private))
+		privateKeyData := c.cryptPrivateKey.Data()
+		decryptedData, ok := box.Open(
+			nil, k.ClientHalf.EncryptedData, &nonce,
+			&ePubKeyData, &privateKeyData)
 		if ok {
 			var clientHalfData [32]byte
 			copy(clientHalfData[:], decryptedData)
