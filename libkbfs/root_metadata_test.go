@@ -174,7 +174,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
-	rmd.FakeInitialRekey(crypto)
+	rmd.fakeInitialRekey(crypto)
 
 	dirHandle := rmd.GetTlfHandle()
 	require.Equal(t, h, dirHandle)
@@ -197,7 +197,7 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 	if rmd.LatestKeyGeneration() != 0 {
 		t.Errorf("Expected key generation to be invalid (0)")
 	}
-	rmd.FakeInitialRekey(crypto)
+	rmd.fakeInitialRekey(crypto)
 	if rmd.LatestKeyGeneration() != FirstValidKeyGen {
 		t.Errorf("Expected key generation to be valid(%d)", FirstValidKeyGen)
 	}
@@ -547,7 +547,7 @@ func TestMakeRekeyReadError(t *testing.T) {
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
-	rmd.FakeInitialRekey(config.Crypto())
+	rmd.fakeInitialRekey(config.Crypto())
 
 	u, uid, err := config.KBPKI().Resolve(context.Background(), "bob")
 	require.NoError(t, err)
@@ -575,7 +575,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
-	rmd.FakeInitialRekey(config.Crypto())
+	rmd.fakeInitialRekey(config.Crypto())
 
 	u, uid, err := config.KBPKI().Resolve(ctx, "bob")
 	require.NoError(t, err)
