@@ -67,13 +67,11 @@ func splitExtension(path string) (string, string) {
 	return path, ""
 }
 
-func newWriterInfo(
-	ctx context.Context, service KeybaseService, uid keybase1.UID,
-	key kbfscrypto.VerifyingKey,
-	revision MetadataRevision) (writerInfo, error) {
+func newWriterInfo(uid keybase1.UID, key kbfscrypto.VerifyingKey,
+	revision MetadataRevision) writerInfo {
 	return writerInfo{
 		uid:      uid,
 		key:      key,
 		revision: revision,
-	}, nil
+	}
 }

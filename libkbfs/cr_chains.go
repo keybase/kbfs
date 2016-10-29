@@ -719,7 +719,7 @@ func newCRChains(
 			continue
 		}
 
-		winfo, err := newWriterInfo(ctx, service,
+		winfo := newWriterInfo(
 			chainMD.LastModifyingWriter(),
 			chainMD.LastModifyingWriterVerifyingKey(),
 			chainMD.Revision())

@@ -1034,12 +1034,8 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 		return nil, nil, nil, nil, nil, nil, err
 	}
 
-	currUnmergedWriterInfo, err := newWriterInfo(
-		ctx, cr.config.KeybaseService(),
+	currUnmergedWriterInfo := newWriterInfo(
 		uid, key, unmerged[len(unmerged)-1].Revision())
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, err
-	}
 
 	// Find the corresponding path in the merged branch for each of
 	// these unmerged paths, and the set of any createOps needed to
@@ -3491,14 +3487,10 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 
 	mostRecentMergedMD := mergedMDs[len(mergedMDs)-1]
 
-	mostRecentMergedWriterInfo, err := newWriterInfo(
-		ctx, cr.config.KeybaseService(),
+	mostRecentMergedWriterInfo := newWriterInfo(
 		mostRecentMergedMD.LastModifyingWriter(),
 		mostRecentMergedMD.LastModifyingWriterVerifyingKey(),
 		mostRecentMergedMD.Revision())
-	if err != nil {
-		return
-	}
 
 	// Step 2: Figure out which actions need to be taken in the merged
 	// branch to best reflect the unmerged changes.  The result of
