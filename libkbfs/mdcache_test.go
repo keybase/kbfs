@@ -85,13 +85,8 @@ func TestMdcachePutPastCapacity(t *testing.T) {
 	testMdcachePut(t, id2, 1, NullBranchID, h2, mdcache)
 
 	// id 0 should no longer be in the cache
-	// make sure we can get it successfully
-	expectedErr := NoSuchMDError{id0, 0, NullBranchID}
-	if _, err := mdcache.Get(id0, 0, NullBranchID); err == nil {
-		t.Errorf("No expected error on get")
-	} else if err != expectedErr {
-		t.Errorf("Got unexpected error on get: %v", err)
-	}
+	_, err := mdcache.Get(id0, 0, NullBranchID)
+	require.Equal(t, NoSuchMDError{id0, 0, NullBranchID}, err)
 }
 
 func TestMdcacheReplace(t *testing.T) {
@@ -102,30 +97,20 @@ func TestMdcacheReplace(t *testing.T) {
 	testMdcachePut(t, id, 1, NullBranchID, h, mdcache)
 
 	irmd, err := mdcache.Get(id, 1, NullBranchID)
-	if err != nil {
-		t.Fatalf("Get error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Change the BID
 	bid := FakeBranchID(1)
 	newRmd, err := irmd.deepCopy(kbfscodec.NewMsgpack())
-	if err != nil {
-		t.Fatalf("Deep-copy error: %v", err)
-	}
+	require.NoError(t, err)
 
 	newRmd.SetBranchID(bid)
 	err = mdcache.Replace(MakeImmutableRootMetadata(newRmd,
 		irmd.LastModifyingWriterVerifyingKey(), fakeMdID(2), time.Now()), NullBranchID)
-	if err != nil {
-		t.Fatalf("Replace error: %v", err)
-	}
+	require.NoError(t, err)
 
 	_, err = mdcache.Get(id, 1, NullBranchID)
-	if _, ok := err.(NoSuchMDError); !ok {
-		t.Fatalf("Unexpected err after replace: %v", err)
-	}
+	require.IsType(t, NoSuchMDError{}, err)
 	_, err = mdcache.Get(id, 1, bid)
-	if err != nil {
-		t.Fatalf("Get error after replace: %v", err)
-	}
+	require.NoError(t, err)
 }
