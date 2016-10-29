@@ -158,7 +158,7 @@ func newChainMDForTest(t *testing.T) rootMetadataWithKeyAndTimestamp {
 	h, err := MakeTlfHandle(ctx, bh, nug)
 	require.NoError(t, err)
 
-	rmd, err := MakeInitialRootMetadata(InitialExtraMetadataVer, tlfID, h)
+	rmd, err := MakeInitialRootMetadata(DefaultMetadataVer, tlfID, h)
 	require.NoError(t, err)
 	rmd.SetLastModifyingWriter(uid)
 	key := MakeFakeVerifyingKeyOrBust("fake key")
