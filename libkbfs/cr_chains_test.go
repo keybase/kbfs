@@ -175,6 +175,12 @@ func newRMDForCRChainsTest(t *testing.T) *RootMetadata {
 	return rmd
 }
 
+func makeChainCodec() kbfscodec.Codec {
+	codec := kbfscodec.NewMsgpack()
+	RegisterOps(codec)
+	return codec
+}
+
 func TestCRChainsSingleOp(t *testing.T) {
 	rmd := newRMDForCRChainsTest(t)
 
@@ -192,11 +198,9 @@ func TestCRChainsSingleOp(t *testing.T) {
 	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 
 	rmds := []*RootMetadata{rmd}
-	config := MakeTestConfigOrBust(t, "u1")
 	chainMDs := testCRChainsFillInWriter(t, rmds)
-	defer config.Shutdown()
 	cc, err := newCRChains(
-		context.Background(), config.Codec(), chainMDs, nil, true)
+		context.Background(), makeChainCodec(), chainMDs, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -229,11 +233,9 @@ func TestCRChainsRenameOp(t *testing.T) {
 	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 
 	rmds := []*RootMetadata{rmd}
-	config := MakeTestConfigOrBust(t, "u1")
 	chainMDs := testCRChainsFillInWriter(t, rmds)
-	defer config.Shutdown()
 	cc, err := newCRChains(
-		context.Background(), config.Codec(), chainMDs, nil, true)
+		context.Background(), makeChainCodec(), chainMDs, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -340,11 +342,9 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 
 	bigRmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 	rmds := []*RootMetadata{bigRmd}
-	config := MakeTestConfigOrBust(t, "u1")
 	chainMDs := testCRChainsFillInWriter(t, rmds)
-	defer config.Shutdown()
 	cc, err := newCRChains(
-		context.Background(), config.Codec(), chainMDs, nil, true)
+		context.Background(), makeChainCodec(), chainMDs, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains for big RMD: %v", err)
 	}
@@ -376,7 +376,7 @@ func testCRChainsMultiOps(t *testing.T) ([]chainMetadata, BlockPointer) {
 	// now make sure the chain of MDs gets the same answers
 	multiIrmds := testCRChainsFillInWriter(t, multiRmds)
 	mcc, err := newCRChains(
-		context.Background(), config.Codec(), multiIrmds, nil, true)
+		context.Background(), makeChainCodec(), multiIrmds, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains for multi RMDs: %v", err)
 	}
@@ -506,11 +506,9 @@ func TestCRChainsCollapse(t *testing.T) {
 
 	rmd.data.Dir.BlockPointer = expected[rootPtrUnref]
 	rmds := []*RootMetadata{rmd}
-	config := MakeTestConfigOrBust(t, "u1")
 	chainMDs := testCRChainsFillInWriter(t, rmds)
-	defer config.Shutdown()
 	cc, err := newCRChains(
-		context.Background(), config.Codec(), chainMDs, nil, true)
+		context.Background(), makeChainCodec(), chainMDs, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
@@ -543,10 +541,8 @@ func TestCRChainsRemove(t *testing.T) {
 			MetadataRevision(i))
 	}
 
-	config := MakeTestConfigOrBust(t, "u1")
-	defer config.Shutdown()
 	ccs, err := newCRChains(
-		context.Background(), config.Codec(), chainMDs, nil, true)
+		context.Background(), makeChainCodec(), chainMDs, nil, true)
 	if err != nil {
 		t.Fatalf("Error making chains: %v", err)
 	}
