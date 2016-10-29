@@ -3576,14 +3576,15 @@ func (_m *MockConflictRenamer) EXPECT() *_MockConflictRenamerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockConflictRenamer) ConflictRename(op op, original string) string {
-	ret := _m.ctrl.Call(_m, "ConflictRename", op, original)
+func (_m *MockConflictRenamer) ConflictRename(ctx context.Context, op op, original string) (string, error) {
+	ret := _m.ctrl.Call(_m, "ConflictRename", ctx, op, original)
 	ret0, _ := ret[0].(string)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-func (_mr *_MockConflictRenamerRecorder) ConflictRename(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ConflictRename", arg0, arg1)
+func (_mr *_MockConflictRenamerRecorder) ConflictRename(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ConflictRename", arg0, arg1, arg2)
 }
 
 // Mock of Config interface
@@ -5549,16 +5550,6 @@ func (_m *MockMutableBareRootMetadata) FakeInitialRekey(c cryptoPure, h BareTlfH
 
 func (_mr *_MockMutableBareRootMetadataRecorder) FakeInitialRekey(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "FakeInitialRekey", arg0, arg1)
-}
-
-func (_m *MockMutableBareRootMetadata) Update(tlf TlfID, h BareTlfHandle) error {
-	ret := _m.ctrl.Call(_m, "Update", tlf, h)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockMutableBareRootMetadataRecorder) Update(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Update", arg0, arg1)
 }
 
 func (_m *MockMutableBareRootMetadata) GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error) {
