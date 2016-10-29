@@ -963,7 +963,9 @@ func (md *BareRootMetadataV2) FakeInitialRekey(
 	for _, r := range h.Readers {
 		k := MakeFakeCryptPublicKeyOrBust(string(r))
 		rkb.RKeys[r] = DeviceKeyInfoMap{
-			k.KID(): TLFCryptKeyInfo{},
+			k.KID(): TLFCryptKeyInfo{
+				EPubKeyIndex: -1,
+			},
 		}
 	}
 	md.RKeys = TLFReaderKeyGenerations{rkb}
