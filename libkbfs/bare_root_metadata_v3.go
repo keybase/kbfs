@@ -874,7 +874,7 @@ func (md *BareRootMetadataV3) AddNewKeysForTesting(crypto cryptoPure,
 	wDkim, rDkim UserDeviceKeyInfoMap,
 	pubKey kbfscrypto.TLFPublicKey) (extra ExtraMetadata, err error) {
 	if md.TlfID().IsPublic() {
-		panic("Called FakeInitialRekey on public TLF")
+		panic("Called AddNewKeysForTesting on public TLF")
 	}
 	if md.WriterMetadata.LatestKeyGen >= FirstValidKeyGen {
 		// TODO: Relax this if needed (but would have to
@@ -995,10 +995,6 @@ func (md *BareRootMetadataV3) Version() MetadataVer {
 func (md *BareRootMetadataV3) FakeInitialRekey(
 	crypto cryptoPure, h BareTlfHandle, pubKey kbfscrypto.TLFPublicKey) (
 	ExtraMetadata, error) {
-	if md.TlfID().IsPublic() {
-		panic("Called FakeInitialRekey on public TLF")
-	}
-
 	wDkim := make(UserDeviceKeyInfoMap)
 	for _, w := range h.Writers {
 		k := MakeFakeCryptPublicKeyOrBust(string(w))
