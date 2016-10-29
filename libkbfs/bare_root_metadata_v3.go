@@ -873,11 +873,27 @@ func (md *BareRootMetadataV3) SetRevision(revision MetadataRevision) {
 func (md *BareRootMetadataV3) AddNewKeysForTesting(crypto cryptoPure,
 	wDkim, rDkim UserDeviceKeyInfoMap,
 	pubKey kbfscrypto.TLFPublicKey) (extra ExtraMetadata, err error) {
+	for _, dkim := range wDkim {
+		for _, info := range dkim {
+			if info.EPubKeyIndex < 0 {
+				panic("negative EPubKeyIndex for writer (v3)")
+			}
+		}
+	}
+	for _, dkim := range rDkim {
+		for _, info := range dkim {
+			if info.EPubKeyIndex < 0 {
+				panic("negative EPubKeyIndex for reader (v3)")
+			}
+		}
+	}
+
 	wkb := &TLFWriterKeyBundleV3{
 		Keys: wDkim,
 		// TODO: Retrieve the previous pubkeys and prepend
 		// them.
-		TLFPublicKeys: []kbfscrypto.TLFPublicKey{pubKey},
+		TLFPublicKeys:          []kbfscrypto.TLFPublicKey{pubKey},
+		TLFEphemeralPublicKeys: make([]kbfscrypto.TLFEphemeralPublicKey, 1),
 	}
 	rkb := &TLFReaderKeyBundleV3{
 		TLFReaderKeyBundleV2: TLFReaderKeyBundleV2{

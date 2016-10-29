@@ -874,13 +874,29 @@ func (md *BareRootMetadataV2) SetRevision(revision MetadataRevision) {
 	md.Revision = revision
 }
 
-// AddNewKeysForTesting implements the MutableBareRootMetadata interface for BareRootMetadataV2.
+// AddNewKeysForTesting implements the MutableBareRootMetadata
+// interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) AddNewKeysForTesting(_ cryptoPure,
 	wDkim, rDkim UserDeviceKeyInfoMap,
 	pubKey kbfscrypto.TLFPublicKey) (extra ExtraMetadata, err error) {
+	for _, dkim := range wDkim {
+		for _, info := range dkim {
+			if info.EPubKeyIndex < 0 {
+				panic("negative EPubKeyIndex for writer (v2)")
+			}
+		}
+	}
+	for _, dkim := range rDkim {
+		for _, info := range dkim {
+			if info.EPubKeyIndex >= 0 {
+				panic("non-negative EPubKeyIndex for reader (v2)")
+			}
+		}
+	}
 	wkb := TLFWriterKeyBundleV2{
-		WKeys:        wDkim,
-		TLFPublicKey: pubKey,
+		WKeys:                  wDkim,
+		TLFPublicKey:           pubKey,
+		TLFEphemeralPublicKeys: make([]kbfscrypto.TLFEphemeralPublicKey, 1),
 	}
 	rkb := TLFReaderKeyBundleV2{
 		RKeys: rDkim,
