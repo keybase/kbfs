@@ -212,7 +212,7 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 		return ImmutableRootMetadata{}, MutableBareRootMetadataNoImplError{}
 	}
 
-	rmd := MakeRootMetadata(brmd, extra, handle)
+	rmd := makeRootMetadata(brmd, extra, handle)
 	// Try to decrypt using the keys available in this md.  If that
 	// doesn't work, a future MD may contain more keys and will be
 	// tried later.

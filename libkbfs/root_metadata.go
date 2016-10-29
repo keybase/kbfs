@@ -129,8 +129,9 @@ type RootMetadata struct {
 
 var _ KeyMetadata = (*RootMetadata)(nil)
 
-// MakeRootMetadata makes a RootMetadata object from the given parameters.
-func MakeRootMetadata(bareMd MutableBareRootMetadata,
+// makeRootMetadata makes a RootMetadata object from the given
+// parameters.
+func makeRootMetadata(bareMd MutableBareRootMetadata,
 	extra ExtraMetadata, handle *TlfHandle) *RootMetadata {
 	if bareMd == nil {
 		panic("nil MutableBareRootMetadata")
@@ -163,7 +164,7 @@ func makeInitialRootMetadata(
 	}
 	// Need to keep the TLF handle around long enough to rekey the
 	// metadata for the first time.
-	return MakeRootMetadata(bareMD, nil, h), nil
+	return makeRootMetadata(bareMD, nil, h), nil
 }
 
 // Data returns the private metadata of this RootMetadata.
@@ -198,7 +199,7 @@ func (md *RootMetadata) deepCopy(codec kbfscodec.Codec) (*RootMetadata, error) {
 
 	handleCopy := md.tlfHandle.deepCopy()
 
-	rmd := MakeRootMetadata(brmdCopy, extraCopy, handleCopy)
+	rmd := makeRootMetadata(brmdCopy, extraCopy, handleCopy)
 
 	err = kbfscodec.Update(codec, &rmd.data, md.data)
 	if err != nil {
@@ -238,7 +239,7 @@ func (md *RootMetadata) MakeSuccessor(
 
 	handleCopy := md.tlfHandle.deepCopy()
 
-	newMd := MakeRootMetadata(brmdCopy, extraCopy, handleCopy)
+	newMd := makeRootMetadata(brmdCopy, extraCopy, handleCopy)
 	if err := kbfscodec.Update(codec, &newMd.data, md.data); err != nil {
 		return nil, err
 	}

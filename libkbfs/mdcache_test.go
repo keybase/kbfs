@@ -9,52 +9,36 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
-	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/stretchr/testify/require"
 )
 
-func mdCacheInit(t *testing.T, cap int) (
-	mockCtrl *gomock.Controller, config *ConfigMock) {
-	ctr := NewSafeTestReporter(t)
-	mockCtrl = gomock.NewController(ctr)
-	config = NewConfigMock(mockCtrl, ctr)
+func mdCacheInit(t *testing.T, cap int) *ConfigLocal {
+	config := MakeTestConfigOrBust(t, "alice", "bob", "charlie")
 	mdcache := NewMDCacheStandard(cap)
 	config.SetMDCache(mdcache)
-	interposeDaemonKBPKI(config, "alice", "bob", "charlie")
-	return
+	return config
 }
 
-func mdCacheShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
-	config.ctr.CheckForFailures()
-	mockCtrl.Finish()
+func mdCacheShutdown(t *testing.T, config *ConfigLocal) {
+	CheckConfigAndShutdown(t, config)
 }
 
 func testMdcachePut(t *testing.T, tlf TlfID, rev MetadataRevision,
-	mStatus MergeStatus, bid BranchID, h *TlfHandle, config *ConfigMock) {
+	mStatus MergeStatus, bid BranchID, h *TlfHandle, config *ConfigLocal) {
 	key, err := config.KBPKI().GetCurrentVerifyingKey(context.Background())
 	if err != nil {
 		t.Fatalf("Couldn't get verifying key: %v", err)
 	}
 
-	rmd := MakeRootMetadata(
-		&BareRootMetadataV2{
-			WriterMetadataV2: WriterMetadataV2{
-				ID:    tlf,
-				WKeys: make(TLFWriterKeyGenerations, 0, 1),
-				BID:   bid,
-			},
-			WriterMetadataSigInfo: kbfscrypto.SignatureInfo{
-				VerifyingKey: key,
-			},
-			Revision: rev,
-			RKeys:    make(TLFReaderKeyGenerations, 1, 1),
-		}, nil, h)
+	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlf, h)
+	require.NoError(t, err)
 	if mStatus == Unmerged {
 		rmd.SetUnmerged()
 	}
+	rmd.bareMd.SignWriterMetadataInternally(context.Background(),
+		config.Codec(), config.Crypto())
 
 	// put the md
 	irmd := MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now())
@@ -69,8 +53,8 @@ func testMdcachePut(t *testing.T, tlf TlfID, rev MetadataRevision,
 }
 
 func TestMdcachePut(t *testing.T) {
-	mockCtrl, config := mdCacheInit(t, 100)
-	defer mdCacheShutdown(mockCtrl, config)
+	config := mdCacheInit(t, 100)
+	defer mdCacheShutdown(t, config)
 
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)
@@ -80,8 +64,8 @@ func TestMdcachePut(t *testing.T) {
 }
 
 func TestMdcachePutPastCapacity(t *testing.T) {
-	mockCtrl, config := mdCacheInit(t, 2)
-	defer mdCacheShutdown(mockCtrl, config)
+	config := mdCacheInit(t, 2)
+	defer mdCacheShutdown(t, config)
 
 	id0 := FakeTlfID(1, false)
 	h0 := parseTlfHandleOrBust(t, config, "alice", false)
@@ -108,8 +92,8 @@ func TestMdcachePutPastCapacity(t *testing.T) {
 }
 
 func TestMdcacheReplace(t *testing.T) {
-	mockCtrl, config := mdCacheInit(t, 100)
-	defer mdCacheShutdown(mockCtrl, config)
+	config := mdCacheInit(t, 100)
+	defer mdCacheShutdown(t, config)
 
 	id := FakeTlfID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice", false)

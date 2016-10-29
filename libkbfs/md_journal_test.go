@@ -110,7 +110,7 @@ func makeMDForTest(t *testing.T, tlfID TlfID, revision MetadataRevision,
 	h, err := MakeTlfHandle(context.Background(), bh, nug)
 	require.NoError(t, err)
 	// TODO: Fill in an ExtraMetadata.
-	md := MakeRootMetadata(&brmd, nil, h)
+	md := makeRootMetadata(&brmd, nil, h)
 	return md
 }
 
