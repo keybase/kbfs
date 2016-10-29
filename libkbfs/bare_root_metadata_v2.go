@@ -101,6 +101,56 @@ type BareRootMetadataV2 struct {
 	codec.UnknownFieldSetHandler
 }
 
+// MakeInitialBareRootMetadataV2 creates a new BareRootMetadataV2
+// object with revision MetadataRevisionInitial, and the given TlfID
+// and BareTlfHandle. Note that if the given ID/handle are private,
+// rekeying must be done separately.
+func MakeInitialBareRootMetadataV2(id TlfID, h BareTlfHandle) (
+	*BareRootMetadataV2, error) {
+	if id.IsPublic() != h.IsPublic() {
+		return nil, errors.New(
+			"TlfID and TlfHandle disagree on public status")
+	}
+
+	var writers []keybase1.UID
+	var wKeys TLFWriterKeyGenerations
+	var rKeys TLFReaderKeyGenerations
+	if id.IsPublic() {
+		writers = make([]keybase1.UID, len(h.Writers))
+		copy(writers, h.Writers)
+	} else {
+		wKeys = make(TLFWriterKeyGenerations, 0, 1)
+		rKeys = make(TLFReaderKeyGenerations, 0, 1)
+	}
+
+	var unresolvedWriters, unresolvedReaders []keybase1.SocialAssertion
+	if len(h.UnresolvedWriters) > 0 {
+		unresolvedWriters = make(
+			[]keybase1.SocialAssertion, len(h.UnresolvedWriters))
+		copy(unresolvedWriters, h.UnresolvedWriters)
+	}
+
+	if len(h.UnresolvedReaders) > 0 {
+		unresolvedReaders = make(
+			[]keybase1.SocialAssertion, len(h.UnresolvedReaders))
+		copy(unresolvedReaders, h.UnresolvedReaders)
+	}
+
+	return &BareRootMetadataV2{
+		WriterMetadataV2: WriterMetadataV2{
+			Writers: writers,
+			WKeys:   wKeys,
+			ID:      id,
+			Extra: WriterMetadataExtra{
+				UnresolvedWriters: unresolvedWriters,
+			},
+		},
+		Revision:          MetadataRevisionInitial,
+		RKeys:             rKeys,
+		UnresolvedReaders: unresolvedReaders,
+	}, nil
+}
+
 // TlfID implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) TlfID() TlfID {
 	return md.ID
