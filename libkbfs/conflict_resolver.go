@@ -303,13 +303,15 @@ func (cr *ConflictResolver) makeChains(ctx context.Context,
 	unmerged, merged []ImmutableRootMetadata) (
 	unmergedChains, mergedChains *crChains, err error) {
 	unmergedChains, err = newCRChainsForIRMDs(
-		ctx, cr.config, unmerged, &cr.fbo.blocks, true)
+		ctx, cr.config.Codec(), cr.config.KeybaseService(),
+		unmerged, &cr.fbo.blocks, true)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	mergedChains, err = newCRChainsForIRMDs(
-		ctx, cr.config, merged, &cr.fbo.blocks, true)
+		ctx, cr.config.Codec(), cr.config.KeybaseService(),
+		merged, &cr.fbo.blocks, true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1033,7 +1035,8 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 	}
 
 	currUnmergedWriterInfo, err := newWriterInfo(
-		ctx, cr.config, uid, key, unmerged[len(unmerged)-1].Revision())
+		ctx, cr.config.KeybaseService(),
+		uid, key, unmerged[len(unmerged)-1].Revision())
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, err
 	}
@@ -2517,7 +2520,8 @@ func (cr *ConflictResolver) makePostResolutionPaths(ctx context.Context,
 
 	// No need to run any identifies on these chains, since we
 	// have already finished all actions.
-	resolvedChains, err := newCRChains(ctx, cr.config,
+	resolvedChains, err := newCRChains(
+		ctx, cr.config.Codec(), cr.config.KeybaseService(),
 		[]chainMetadata{rootMetadataWithKeyAndTimestamp{md,
 			key, cr.config.Clock().Now()}},
 		&cr.fbo.blocks, false)
@@ -3485,7 +3489,8 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 
 	mostRecentMergedMD := mergedMDs[len(mergedMDs)-1]
 
-	mostRecentMergedWriterInfo, err := newWriterInfo(ctx, cr.config,
+	mostRecentMergedWriterInfo, err := newWriterInfo(
+		ctx, cr.config.KeybaseService(),
 		mostRecentMergedMD.LastModifyingWriter(),
 		mostRecentMergedMD.LastModifyingWriterVerifyingKey(),
 		mostRecentMergedMD.Revision())

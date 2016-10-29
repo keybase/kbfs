@@ -60,10 +60,11 @@ func splitExtension(path string) (string, string) {
 	return path, ""
 }
 
-func newWriterInfo(ctx context.Context, cfg Config, uid keybase1.UID,
+func newWriterInfo(
+	ctx context.Context, service KeybaseService, uid keybase1.UID,
 	key kbfscrypto.VerifyingKey,
 	revision MetadataRevision) (writerInfo, error) {
-	ui, err := cfg.KeybaseService().LoadUserPlusKeys(ctx, uid)
+	ui, err := service.LoadUserPlusKeys(ctx, uid)
 	if err != nil {
 		return writerInfo{}, err
 	}

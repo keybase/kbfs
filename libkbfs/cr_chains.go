@@ -702,8 +702,9 @@ type chainMetadata interface {
 
 // newCRChains builds a new crChains object from the given list of
 // chainMetadatas, which must be non-empty.
-func newCRChains(ctx context.Context, cfg Config, chainMDs []chainMetadata,
-	fbo *folderBlockOps, identifyTypes bool) (
+func newCRChains(
+	ctx context.Context, codec kbfscodec.Codec, service KeybaseService,
+	chainMDs []chainMetadata, fbo *folderBlockOps, identifyTypes bool) (
 	ccs *crChains, err error) {
 	ccs = newCRChainsEmpty()
 
@@ -716,7 +717,7 @@ func newCRChains(ctx context.Context, cfg Config, chainMDs []chainMetadata,
 			continue
 		}
 
-		winfo, err := newWriterInfo(ctx, cfg,
+		winfo, err := newWriterInfo(ctx, service,
 			chainMD.LastModifyingWriter(),
 			chainMD.LastModifyingWriterVerifyingKey(),
 			chainMD.Revision())
@@ -726,8 +727,7 @@ func newCRChains(ctx context.Context, cfg Config, chainMDs []chainMetadata,
 
 		data := *chainMD.Data()
 
-		err = ccs.addOps(
-			cfg.Codec(), data, winfo, chainMD.LocalTimestamp())
+		err = ccs.addOps(codec, data, winfo, chainMD.LocalTimestamp())
 
 		if ptr := data.cachedChanges.Info.BlockPointer; ptr != zeroPtr {
 			ccs.blockChangePointers[ptr] = true
@@ -787,14 +787,14 @@ func newCRChains(ctx context.Context, cfg Config, chainMDs []chainMetadata,
 // newCRChainsForIRMDs simply builds a list of chainMetadatas from the
 // given list of ImmutableRootMetadatas and calls newCRChains with it.
 func newCRChainsForIRMDs(
-	ctx context.Context, cfg Config, irmds []ImmutableRootMetadata,
-	fbo *folderBlockOps, identifyTypes bool) (
-	ccs *crChains, err error) {
+	ctx context.Context, codec kbfscodec.Codec, service KeybaseService,
+	irmds []ImmutableRootMetadata, fbo *folderBlockOps,
+	identifyTypes bool) (ccs *crChains, err error) {
 	chainMDs := make([]chainMetadata, len(irmds))
 	for i, irmd := range irmds {
 		chainMDs[i] = irmd
 	}
-	return newCRChains(ctx, cfg, chainMDs, fbo, identifyTypes)
+	return newCRChains(ctx, codec, service, chainMDs, fbo, identifyTypes)
 }
 
 type crChainSummary struct {
