@@ -108,7 +108,8 @@ func newRMDS(t *testing.T, config Config, h *TlfHandle) (
 	err = rmd.bareMd.SignWriterMetadataInternally(ctx, config.Codec(), config.Crypto())
 	require.NoError(t, err)
 
-	rmds, err := signMD(ctx, config.Codec(), config.Crypto(), rmd.bareMd, time.Now())
+	rmds, err := SignBareRootMetadata(
+		ctx, config.Codec(), config.Crypto(), rmd.bareMd, time.Now())
 	require.NoError(t, err)
 	return rmds, rmd.extra
 }
@@ -498,7 +499,8 @@ func makeRMDSRange(t *testing.T, config Config,
 		err = rmd.bareMd.SignWriterMetadataInternally(ctx, config.Codec(), config.Crypto())
 		require.NoError(t, err)
 
-		rmds, err := signMD(ctx, config.Codec(), config.Crypto(), rmd.bareMd, time.Now())
+		rmds, err := SignBareRootMetadata(
+			ctx, config.Codec(), config.Crypto(), rmd.bareMd, time.Now())
 		require.NoError(t, err)
 		currID, err := config.Crypto().MakeMdID(rmds.MD)
 		require.NoError(t, err)

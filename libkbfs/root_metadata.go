@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -879,32 +878,6 @@ func MakeRootMetadataSigned(sigInfo, writerSigInfo kbfscrypto.SignatureInfo,
 		return nil, err
 	}
 	return rmds, nil
-}
-
-func signMD(
-	ctx context.Context, codec kbfscodec.Codec, signer kbfscrypto.Signer,
-	brmd BareRootMetadata, untrustedServerTimestamp time.Time) (
-	*RootMetadataSigned, error) {
-	// encode the root metadata and sign it
-	buf, err := codec.Encode(brmd)
-	if err != nil {
-		return nil, err
-	}
-
-	// Sign normally using the local device private key
-	sigInfo, err := signer.Sign(ctx, buf)
-	if err != nil {
-		return nil, err
-	}
-	var writerSigInfo kbfscrypto.SignatureInfo
-	if mdv2, ok := brmd.(*BareRootMetadataV2); ok {
-		writerSigInfo = mdv2.WriterMetadataSigInfo
-	} else {
-		// TODO: Implement this!
-		panic("not implemented")
-	}
-	return MakeRootMetadataSigned(
-		sigInfo, writerSigInfo, brmd, untrustedServerTimestamp)
 }
 
 // GetWriterMetadataSigInfo returns the signature of the writer

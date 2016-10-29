@@ -41,7 +41,8 @@ func signRMDSForTest(
 	err := brmd.SignWriterMetadataInternally(ctx, codec, signer)
 	require.NoError(t, err)
 
-	rmds, err := signMD(ctx, codec, signer, brmd, time.Time{})
+	rmds, err := SignBareRootMetadata(
+		ctx, codec, signer, brmd, time.Time{})
 	require.NoError(t, err)
 
 	return rmds
