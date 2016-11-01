@@ -278,8 +278,6 @@ func getOps(config Config, id TlfID) *folderBranchOps {
 		getOpsNoAdd(FolderBranch{id, MasterBranch})
 }
 
-// TODO: Test MDv3.
-
 // createNewRMD creates a new RMD for the given name. Returns its ID
 // and handle also.
 func createNewRMD(t *testing.T, config Config, name string, public bool) (
