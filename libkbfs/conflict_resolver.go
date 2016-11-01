@@ -344,7 +344,7 @@ func (sp crSortedPaths) Swap(i, j int) {
 }
 
 func fileWithConflictingWrite(unmergedChains, mergedChains *crChains,
-	unmergedOriginal BlockPointer, mergedOriginal BlockPointer) bool {
+	unmergedOriginal, mergedOriginal BlockPointer) bool {
 	mergedChain := mergedChains.byOriginal[mergedOriginal]
 	unmergedChain := unmergedChains.byOriginal[unmergedOriginal]
 	if mergedChain != nil && unmergedChain != nil {
@@ -374,8 +374,8 @@ func fileWithConflictingWrite(unmergedChains, mergedChains *crChains,
 // unmerged paths that need to be checked for conflicts later in
 // conflict resolution, for all subdirectories of the given path.
 func (cr *ConflictResolver) checkPathForMerge(ctx context.Context,
-	unmergedChain *crChain, unmergedPath path, unmergedChains,
-	mergedChains *crChains) ([]path, error) {
+	unmergedChain *crChain, unmergedPath path,
+	unmergedChains, mergedChains *crChains) ([]path, error) {
 	mergedChain, ok := mergedChains.byOriginal[unmergedChain.original]
 	if !ok {
 		// No corresponding merged chain means we don't have to merge
@@ -574,8 +574,9 @@ func (cr *ConflictResolver) addChildBlocksIfIndirectFile(ctx context.Context,
 // for the conflicts to be resolved; all of these ops have their
 // writer info set to the given one.
 func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
-	lState *lockState, unmergedPath path, unmergedChains,
-	mergedChains *crChains, currUnmergedWriterInfo writerInfo) (
+	lState *lockState, unmergedPath path,
+	unmergedChains, mergedChains *crChains,
+	currUnmergedWriterInfo writerInfo) (
 	path, BlockPointer, []*createOp, error) {
 	unmergedOriginal, err :=
 		unmergedChains.originalFromMostRecent(unmergedPath.tailPointer())
@@ -810,8 +811,9 @@ func (cr *ConflictResolver) resolveMergedPathTail(ctx context.Context,
 // deleted unmerged chains that still have relevant operations to
 // resolve.
 func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
-	lState *lockState, unmergedPaths []path, unmergedChains,
-	mergedChains *crChains, currUnmergedWriterInfo writerInfo) (
+	lState *lockState, unmergedPaths []path,
+	unmergedChains, mergedChains *crChains,
+	currUnmergedWriterInfo writerInfo) (
 	map[BlockPointer]path, []*createOp, []path, error) {
 	// maps each most recent unmerged pointer to the corresponding
 	// most recent merged path.
@@ -1132,8 +1134,8 @@ func (cr *ConflictResolver) addRecreateOpsToUnmergedChains(ctx context.Context,
 // (for directories) or a file copy.  It also removes the
 // corresponding remove operation from the old parent chain.
 func (cr *ConflictResolver) convertCreateIntoSymlinkOrCopy(ctx context.Context,
-	ptr BlockPointer, info renameInfo, chain *crChain, unmergedChains,
-	mergedChains *crChains, symPath string) error {
+	ptr BlockPointer, info renameInfo, chain *crChain,
+	unmergedChains, mergedChains *crChains, symPath string) error {
 	found := false
 outer:
 	for _, op := range chain.ops {
@@ -2399,8 +2401,7 @@ func crFixOpPointers(oldOps []op, updates map[BlockPointer]BlockPointer,
 func (cr *ConflictResolver) resolveOnePath(ctx context.Context,
 	unmergedMostRecent BlockPointer,
 	unmergedChains, mergedChains, resolvedChains *crChains,
-	mergedPaths map[BlockPointer]path,
-	resolvedPaths map[BlockPointer]path) (path, error) {
+	mergedPaths, resolvedPaths map[BlockPointer]path) (path, error) {
 	if p, ok := resolvedPaths[unmergedMostRecent]; ok {
 		return p, nil
 	}
@@ -3117,8 +3118,9 @@ func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
 // node will need to send local notifications for, in order to
 // transition from the staged state to the merged state.
 func (cr *ConflictResolver) getOpsForLocalNotification(ctx context.Context,
-	lState *lockState, md *RootMetadata, unmergedChains,
-	mergedChains *crChains, updates map[BlockPointer]BlockPointer) (
+	lState *lockState, md *RootMetadata,
+	unmergedChains, mergedChains *crChains,
+	updates map[BlockPointer]BlockPointer) (
 	[]op, error) {
 	dummyOp := newResolutionOp()
 	newPtrs := make(map[BlockPointer]bool)
@@ -3230,8 +3232,9 @@ func (cr *ConflictResolver) getOpsForLocalNotification(ctx context.Context,
 // resolution visible to any nodes on the merged branch, and taking
 // the local node out of staged mode.
 func (cr *ConflictResolver) finalizeResolution(ctx context.Context,
-	lState *lockState, md *RootMetadata, unmergedChains,
-	mergedChains *crChains, updates map[BlockPointer]BlockPointer,
+	lState *lockState, md *RootMetadata,
+	unmergedChains, mergedChains *crChains,
+	updates map[BlockPointer]BlockPointer,
 	bps *blockPutState, writerLocked bool) error {
 	// Fix up all the block pointers in the merged ops to work well
 	// for local notifications.  Make a dummy op at the beginning to
