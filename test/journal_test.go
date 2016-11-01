@@ -295,3 +295,34 @@ func TestJournalQRSimple(t *testing.T) {
 		),
 	)
 }
+
+func TestJournalSetMtime(t *testing.T) {
+	targetMtime := time.Now().Add(1 * time.Minute)
+	test(t, journal(),
+		users("alice", "bob"),
+		as(alice,
+			mkdir("y/z"),
+			enableJournal(),
+			checkUnflushedPaths(nil),
+		),
+		parallel(
+			as(alice,
+				mkdir("y/z/3/.33871c254d677143860255fe75507d71.kNAB40"),
+				setmtime("y/z/3/.33871c254d677143860255fe75507d71.kNAB40", targetMtime),
+			),
+			as(alice,
+				mkdir("y/z/4/c"),
+				setmtime("y/z/4/c", targetMtime),
+			),
+		),
+		as(alice,
+			mtime("y/z/4/c", targetMtime),
+			mtime("y/z/3/.33871c254d677143860255fe75507d71.kNAB40", targetMtime),
+			flushJournal(),
+		),
+		as(bob,
+			mtime("y/z/4/c", targetMtime),
+			mtime("y/z/3/.33871c254d677143860255fe75507d71.kNAB40", targetMtime),
+		),
+	)
+}
