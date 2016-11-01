@@ -588,7 +588,7 @@ func TestRootMetadataVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't resolve again: %v", err)
 	}
-	rmd3, err := rmd.MakeSuccessor(config.Codec(), fakeMdID(1), true)
+	rmd3, err := rmd.MakeSuccessor(context.Background(), config, fakeMdID(1), true)
 	if err != nil {
 		t.Fatalf("Couldn't make MD successor: %v", err)
 	}
@@ -664,7 +664,7 @@ func TestRootMetadataFinalIsFinal(t *testing.T) {
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
 	rmd := newRootMetadataOrBust(t, tlfID, h)
 	rmd.SetFinalBit()
-	_, err := rmd.MakeSuccessor(nil, fakeMdID(1), true)
+	_, err := rmd.MakeSuccessor(context.Background(), nil, fakeMdID(1), true)
 	_, isFinalError := err.(MetadataIsFinalError)
 	require.Equal(t, isFinalError, true)
 }
