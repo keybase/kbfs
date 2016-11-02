@@ -22,6 +22,9 @@ servers).
 The code is organized as follows:
 
 * [dokan](dokan/): Helper code for running Dokan filesystems on Windows.
+* [env](env/): Code to implement libkbfs.Context in terms of libkb.
+* [fsrpc](fsrpc/): RPC interfaces that connected clients can call in KBFS,
+  to do certain operations, such as listing files.
 * [kbfscodec](kbfscodec/): Interfaces and types used for serialization in KBFS.
 * [kbfscrypto](kbfscrypto/): KBFS-specific cryptographic types and functions.
 * [kbfsdokan](kbfsdokan/): The main executable for running KBFS on
