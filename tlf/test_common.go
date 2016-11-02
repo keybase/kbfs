@@ -16,7 +16,7 @@ func FakeID(b byte, public bool) ID {
 	return ID{bytes}
 }
 
-// FakeIDByte returns the byte used to create a fake tlf.ID with
+// FakeIDByte returns the byte used to create a fake TLF ID with
 // FakeID.
 func FakeIDByte(id ID) byte {
 	return id.id[0]
