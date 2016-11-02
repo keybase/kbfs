@@ -453,7 +453,7 @@ type KBPKI interface {
 // KeyMetadata is an interface for something that holds key
 // information. This is usually implemented by RootMetadata.
 type KeyMetadata interface {
-	// tlf.ID returns the ID of the TLF for which this object holds
+	// TlfID returns the ID of the TLF for which this object holds
 	// key info.
 	TlfID() tlf.ID
 
