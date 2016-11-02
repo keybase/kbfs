@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD
 // license that can be found in the LICENSE file.
 
-// TODO: Rename this to bare_root_metadata.go.
-
 package libkbfs
 
 import "github.com/keybase/kbfs/tlf"
