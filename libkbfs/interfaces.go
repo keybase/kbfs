@@ -1544,7 +1544,7 @@ type RekeyQueue interface {
 // BareRootMetadata is a read-only interface to the bare serializeable MD that
 // is signed by the reader or writer.
 type BareRootMetadata interface {
-	// tlf.ID returns the ID of the TLF this BareRootMetadata is for.
+	// TlfID returns the ID of the TLF this BareRootMetadata is for.
 	TlfID() tlf.ID
 	// LatestKeyGeneration returns the most recent key generation in this
 	// BareRootMetadata, or PublicKeyGen if this TLF is public.
