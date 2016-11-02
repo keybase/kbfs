@@ -22,10 +22,14 @@ servers).
 The code is organized as follows:
 
 * [dokan](dokan/): Helper code for running Dokan filesystems on Windows.
+* [kbfscodec](kbfscodec/): Interfaces and types used for serialization in KBFS.
+* [kbfscrypto](kbfscrypto/): KBFS-specific cryptographic types and functions.
 * [kbfsdokan](kbfsdokan/): The main executable for running KBFS on
   Windows.
 * [kbfsfuse](kbfsfuse/): The main executable for running KBFS on Linux
   and OS X.
+* [kbfshash](kbfshash/): An implementation of the KBFS hash spec.
+* [kbfssync](kbfssync/): KBFS-specific synchronization primitives.
 * [kbfstool](kbfstool/): A thin command line utility for interacting with KBFS
   without using a filesystem mountpoint.
 * [libdokan](libdokan/): Library code gluing together KBFS and the
@@ -38,6 +42,7 @@ The code is organized as follows:
 * [metricsutil](metricsutil/): Helper code for collecting metrics.
 * [test](test/): A test harness with a domain-specific test language
   and tests in that language.
+* [tlf](tlf/): Code and structures for top-level folders (TLFs).
 * [vendor](vendor/): Vendored versions of the open-source libraries
   used by KBFS.
 
