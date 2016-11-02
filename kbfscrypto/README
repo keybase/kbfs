@@ -1,3 +1,5 @@
+## kbfscrypto
+
 Crypto-related types and functions for KBFS. The package is named
 `kbfscrypto` rather than `crypto` for two reasons:
 
