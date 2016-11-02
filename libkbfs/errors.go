@@ -571,7 +571,7 @@ func (e UnverifiableTlfUpdateError) Error() string {
 		"admins.", e.Tlf, e.User)
 }
 
-// KeyCacheMissError indicates that a key matching the given tlf.ID
+// KeyCacheMissError indicates that a key matching the given TLF ID
 // and key generation wasn't found in cache.
 type KeyCacheMissError struct {
 	tlf    tlf.ID
@@ -583,7 +583,7 @@ func (e KeyCacheMissError) Error() string {
 	return fmt.Sprintf("Could not find key with tlf=%s, keyGen=%d", e.tlf, e.keyGen)
 }
 
-// KeyCacheHitError indicates that a key matching the given tlf.ID
+// KeyCacheHitError indicates that a key matching the given TLF ID
 // and key generation was found in cache but the object type was unknown.
 type KeyCacheHitError struct {
 	tlf    tlf.ID
