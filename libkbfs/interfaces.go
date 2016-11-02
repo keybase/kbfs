@@ -109,7 +109,7 @@ type KBFSOps interface {
 	GetTLFCryptKeys(ctx context.Context, tlfHandle *TlfHandle) (
 		keys []kbfscrypto.TLFCryptKey, id tlf.ID, err error)
 
-	// GetTLFID gets the tlf.ID for tlfHandle.
+	// GetTLFID gets the TLF ID for tlfHandle.
 	GetTLFID(ctx context.Context, tlfHandle *TlfHandle) (tlf.ID, error)
 
 	// GetOrCreateRootNode returns the root node and root entry
