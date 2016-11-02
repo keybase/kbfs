@@ -2,4 +2,4 @@
 
 Top-level folder (TLF)-related types and functions for KBFS.
 
-TODO: Move libkbfs.TlfHandle here.
+TODO: Move libkbfs.BareTlfHandle here.
