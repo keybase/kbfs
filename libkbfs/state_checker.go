@@ -73,6 +73,7 @@ func (sc *StateChecker) findAllBlocksInPath(ctx context.Context,
 			continue
 		}
 
+		sc.log.CDebugf(ctx, "%s: %v", name, de.BlockPointer)
 		blockSizes[de.BlockPointer] = de.EncodedSize
 		p := dir.ChildPath(name, de.BlockPointer)
 
