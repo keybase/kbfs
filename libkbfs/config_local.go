@@ -864,8 +864,9 @@ func (c *ConfigLocal) journalizeBcaches() error {
 	return nil
 }
 
-// EnableJournaling creates a JournalServer, but journaling must still
-// be enabled manually for individual folders.
+// EnableJournaling creates a JournalServer, but journaling may still
+// be enabled manually for individual folders, depending on whether
+// auto-enable is on.
 func (c *ConfigLocal) EnableJournaling(
 	journalRoot string, bws TLFJournalBackgroundWorkStatus) {
 	jServer, err := GetJournalServer(c)
