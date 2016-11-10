@@ -866,7 +866,8 @@ func (c *ConfigLocal) journalizeBcaches() error {
 
 // EnableJournaling creates a JournalServer, but journaling must still
 // be enabled manually for individual folders.
-func (c *ConfigLocal) EnableJournaling(journalRoot string) {
+func (c *ConfigLocal) EnableJournaling(
+	journalRoot string, bws TLFJournalBackgroundWorkStatus) {
 	jServer, err := GetJournalServer(c)
 	if err == nil {
 		// Journaling shouldn't be enabled twice for the same
@@ -889,7 +890,7 @@ func (c *ConfigLocal) EnableJournaling(journalRoot string) {
 		log.Warning("Failed to get current UID and key; not enabling existing journals: %v", err)
 		return
 	}
-	err = jServer.EnableExistingJournals(ctx, uid, key, TLFJournalBackgroundWorkEnabled)
+	err = jServer.EnableExistingJournals(ctx, uid, key, bws)
 	if err != nil {
 		log.Warning("Failed to enable existing journals: %v", err)
 	}

@@ -384,7 +384,8 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 	// used.
 
 	if len(params.WriteJournalRoot) > 0 {
-		config.EnableJournaling(params.WriteJournalRoot)
+		config.EnableJournaling(params.WriteJournalRoot,
+			TLFJournalBackgroundWorkEnabled)
 	}
 
 	return config, nil
