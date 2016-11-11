@@ -50,13 +50,18 @@ func (refs blockRefMap) hasNonArchivedRef() bool {
 	return false
 }
 
-func (refs blockRefMap) checkExists(context BlockContext) error {
+func (refs blockRefMap) checkExists(context BlockContext) (bool, error) {
 	refEntry, ok := refs[context.GetRefNonce()]
 	if !ok {
-		return blockNonExistentError{}
+		return false, nil
 	}
 
-	return refEntry.checkContext(context)
+	err := refEntry.checkContext(context)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (refs blockRefMap) getStatuses() map[BlockRefNonce]blockRefStatus {

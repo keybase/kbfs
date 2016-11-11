@@ -77,9 +77,13 @@ func (b *BlockServerMemory) Get(ctx context.Context, tlfID tlf.ID, id BlockID,
 				entry.tlfID, tlfID)
 	}
 
-	err = entry.refs.checkExists(context)
+	exists, err := entry.refs.checkExists(context)
 	if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
+	}
+	if !exists {
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+			blockNonExistentError{id}
 	}
 
 	return entry.blockData, entry.keyServerHalf, nil
@@ -279,12 +283,13 @@ func (b *BlockServerMemory) archiveBlockReference(
 			entry.tlfID, tlfID)
 	}
 
-	err := entry.refs.checkExists(context)
-	if _, ok := err.(blockNonExistentError); ok {
+	exists, err := entry.refs.checkExists(context)
+	if err != nil {
+		return err
+	}
+	if !exists {
 		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
 			"doesn't exist and cannot be archived.", id, context.GetRefNonce())}
-	} else if err != nil {
-		return err
 	}
 
 	return entry.refs.put(context, archivedBlockRef, nil)

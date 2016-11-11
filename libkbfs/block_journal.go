@@ -501,16 +501,7 @@ func (j *blockJournal) hasContext(id BlockID, context BlockContext) (
 		return false, nil
 	}
 
-	e, ok := refs[context.GetRefNonce()]
-	if !ok {
-		return false, nil
-	}
-
-	if e.context != context {
-		return false, blockContextMismatchError{e.context, context}
-	}
-
-	return true, nil
+	return refs.checkExists(context)
 }
 
 func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
