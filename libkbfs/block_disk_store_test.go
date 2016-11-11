@@ -91,11 +91,7 @@ func setupBlockDiskStoreTest(t *testing.T) (
 }
 
 func teardownBlockDiskStoreTest(t *testing.T, tempdir string, j *blockDiskStore) {
-	ctx := context.Background()
-	err := j.checkInSync(ctx)
-	assert.NoError(t, err)
-
-	err = os.RemoveAll(tempdir)
+	err := os.RemoveAll(tempdir)
 	assert.NoError(t, err)
 }
 
@@ -164,9 +160,7 @@ func TestBlockDiskStoreBasic(t *testing.T) {
 	getAndCheckBlockDiskData(ctx, t, j, bID, bCtx2, data, serverHalf)
 
 	// Shutdown and restart.
-	err := j.checkInSync(ctx)
-	require.NoError(t, err)
-	j, err = makeBlockDiskStore(ctx, j.codec, j.crypto, tempdir, j.log)
+	j, err := makeBlockDiskStore(ctx, j.codec, j.crypto, tempdir, j.log)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, getBlockDiskStoreLength(t, j))

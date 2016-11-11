@@ -200,12 +200,20 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 		return errBlockServerDiskShutdown
 	}
 
-	if !tlfStorage.store.hasRef(id) {
+	hasRef, err := tlfStorage.store.hasRef(id)
+	if err != nil {
+		return err
+	}
+	if !hasRef {
 		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s "+
 			"doesn't exist and cannot be referenced.", id)}
 	}
 
-	if !tlfStorage.store.hasNonArchivedRef(id) {
+	hasNonArchivedRef, err := tlfStorage.store.hasNonArchivedRef(id)
+	if err != nil {
+		return err
+	}
+	if !hasNonArchivedRef {
 		return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
 			"been archived and cannot be referenced.", id)}
 	}
@@ -240,7 +248,11 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 	}
 
 	for id := range contexts {
-		if !tlfStorage.store.hasRef(id) {
+		hasRef, err := tlfStorage.store.hasRef(id)
+		if err != nil {
+			return nil, err
+		}
+		if !hasRef {
 			err := tlfStorage.store.removeBlockData(id)
 			if err != nil {
 				return nil, err
@@ -346,11 +358,6 @@ func (b *BlockServerDisk) Shutdown() {
 				return
 			}
 
-			ctx := context.Background()
-			err := s.store.checkInSync(ctx)
-			if err != nil {
-				panic(err)
-			}
 			// Make further accesses error out.
 			s.store = nil
 		}()

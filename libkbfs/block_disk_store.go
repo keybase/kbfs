@@ -69,8 +69,7 @@ type blockDiskStore struct {
 	log      logger.Logger
 	deferLog logger.Logger
 
-	j    diskJournal
-	refs map[BlockID]blockRefMap
+	j diskJournal
 }
 
 // A blockDiskStoreEntry is just the name of the operation and the
@@ -133,12 +132,6 @@ func makeBlockDiskStore(
 		j:        j,
 	}
 
-	refs, err := journal.readJournal(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	journal.refs = refs
 	return journal, nil
 }
 
@@ -166,6 +159,10 @@ func (j *blockDiskStore) blockDataPath(id BlockID) string {
 
 func (j *blockDiskStore) keyServerHalfPath(id BlockID) string {
 	return filepath.Join(j.blockPath(id), "key_server_half")
+}
+
+func (j *blockDiskStore) refsPath(id BlockID) string {
+	return filepath.Join(j.blockPath(id), "refs")
 }
 
 // The functions below are for reading and writing journal entries.
@@ -308,26 +305,66 @@ func (j *blockDiskStore) end() (journalOrdinal, error) {
 	return last + 1, nil
 }
 
+func (j *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
+	data, err := ioutil.ReadFile(j.refsPath(id))
+	if os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	var refs blockRefMap
+	err = j.codec.Decode(data, &refs)
+	if err != nil {
+		return nil, err
+	}
+
+	return refs, nil
+}
+
 func (j *blockDiskStore) putContext(
 	id BlockID, context BlockContext,
 	status blockRefStatus, ordinal journalOrdinal) error {
-	// Check existing context, if any.
-	_, err := j.hasContext(id, context)
+	refs, err := j.getRefs(id)
 	if err != nil {
 		return err
 	}
 
-	if j.refs[id] == nil {
-		j.refs[id] = make(blockRefMap)
+	if refs == nil {
+		refs = make(blockRefMap)
+	} else {
+		// Check existing context, if any.
+		_, err := refs.checkExists(context)
+		if err != nil {
+			return err
+		}
 	}
 
-	return j.refs[id].put(context, status, ordinal)
+	err = refs.put(context, status, ordinal)
+	if err != nil {
+		return err
+	}
+
+	buf, err := j.codec.Encode(refs)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(j.blockPath(id), 0700)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(j.refsPath(id), buf, 0600)
 }
 
 func (j *blockDiskStore) removeContexts(
 	id BlockID, contexts []BlockContext, ordinal *journalOrdinal) (
 	liveCount int, err error) {
-	refs := j.refs[id]
+	refs, err := j.getRefs(id)
+	if err != nil {
+		return 0, err
+	}
 	if len(refs) == 0 {
 		return 0, nil
 	}
@@ -343,8 +380,24 @@ func (j *blockDiskStore) removeContexts(
 			return 0, err
 		}
 		if len(refs) == 0 {
-			delete(j.refs, id)
 			break
+		}
+	}
+
+	if len(refs) == 0 {
+		err = os.Remove(j.refsPath(id))
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		buf, err := j.codec.Encode(refs)
+		if err != nil {
+			return 0, err
+		}
+
+		err = ioutil.WriteFile(j.refsPath(id), buf, 0600)
+		if err != nil {
+			return 0, err
 		}
 	}
 
@@ -393,18 +446,31 @@ func (j *blockDiskStore) getData(id BlockID) (
 
 // All functions below are public functions.
 
-func (j *blockDiskStore) hasRef(id BlockID) bool {
-	return len(j.refs[id]) > 0
+func (j *blockDiskStore) hasRef(id BlockID) (bool, error) {
+	refs, err := j.getRefs(id)
+	if err != nil {
+		return false, err
+	}
+
+	return len(refs) > 0, nil
 }
 
-func (j *blockDiskStore) hasNonArchivedRef(id BlockID) bool {
-	refs := j.refs[id]
-	return (refs != nil) && refs.hasNonArchivedRef()
+func (j *blockDiskStore) hasNonArchivedRef(id BlockID) (bool, error) {
+	refs, err := j.getRefs(id)
+	if err != nil {
+		return false, err
+	}
+
+	return (refs != nil) && refs.hasNonArchivedRef(), nil
 }
 
 func (j *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 	bool, error) {
-	refs := j.refs[id]
+	refs, err := j.getRefs(id)
+	if err != nil {
+		return false, err
+	}
+
 	if len(refs) == 0 {
 		return false, nil
 	}
@@ -428,9 +494,44 @@ func (j *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
 
 func (j *blockDiskStore) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
+	fileInfos, err := ioutil.ReadDir(j.blocksPath())
+	if os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
 	res := make(map[BlockID]map[BlockRefNonce]blockRefStatus)
-	for id, refs := range j.refs {
-		res[id] = refs.getStatuses()
+	for _, fi := range fileInfos {
+		name := fi.Name()
+		if !fi.IsDir() {
+			return nil, fmt.Errorf("Unexpected non-dir %q", name)
+		}
+
+		subFileInfos, err := ioutil.ReadDir(filepath.Join(j.blocksPath(), name))
+		if err != nil {
+			return nil, err
+		}
+
+		for _, sfi := range subFileInfos {
+			subName := sfi.Name()
+			if !sfi.IsDir() {
+				return nil, fmt.Errorf("Unexpected non-dir %q",
+					subName)
+			}
+
+			id, err := BlockIDFromString(name + subName)
+			if err != nil {
+				return nil, err
+			}
+
+			refs, err := j.getRefs(id)
+			if err != nil {
+				return nil, err
+			}
+
+			res[id] = refs.getStatuses()
+		}
 	}
 	return res, nil
 }
@@ -575,13 +676,17 @@ func (j *blockDiskStore) removeReferences(
 // ID. If there is no data, nil is returned; this can happen when we
 // have only non-put references to a block in the journal.
 func (j *blockDiskStore) removeBlockData(id BlockID) error {
-	if j.hasRef(id) {
+	hasRef, err := j.hasRef(id)
+	if err != nil {
+		return err
+	}
+	if hasRef {
 		return fmt.Errorf(
 			"Trying to remove data for referenced block %s", id)
 	}
 	path := j.blockPath(id)
 
-	err := os.RemoveAll(path)
+	err = os.RemoveAll(path)
 	if err != nil {
 		return err
 	}
@@ -623,16 +728,5 @@ func (j *blockDiskStore) archiveReferences(
 		}
 	}
 
-	return nil
-}
-
-func (j *blockDiskStore) checkInSync(ctx context.Context) error {
-	refs, err := j.readJournal(ctx)
-	if err != nil {
-		return err
-	}
-	if !reflect.DeepEqual(refs, j.refs) {
-		return fmt.Errorf("refs = %v != j.refs = %v", refs, j.refs)
-	}
 	return nil
 }
