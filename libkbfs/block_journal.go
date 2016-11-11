@@ -406,7 +406,7 @@ func (j *blockJournal) hasBlockContext(id BlockID, context BlockContext) (
 	return true, nil
 }
 
-func (j *blockJournal) putRefEntry(
+func (j *blockJournal) putBlockContext(
 	id BlockID, context BlockContext,
 	status blockRefLocalStatus, ordinal journalOrdinal) error {
 	// Check existing context, if any.
@@ -422,7 +422,7 @@ func (j *blockJournal) putRefEntry(
 	return j.refs[id].put(context, status, ordinal)
 }
 
-func (j *blockJournal) removeRefEntries(
+func (j *blockJournal) removeBlockContexts(
 	id BlockID, contexts []BlockContext, ordinal *journalOrdinal) (
 	liveCount int, err error) {
 	refs := j.refs[id]
@@ -617,7 +617,7 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	return j.putRefEntry(id, context, liveBlockRef, ordinal)
+	return j.putBlockContext(id, context, liveBlockRef, ordinal)
 }
 
 func (j *blockJournal) addReference(
@@ -641,7 +641,7 @@ func (j *blockJournal) addReference(
 		return err
 	}
 
-	return j.putRefEntry(id, context, liveBlockRef, ordinal)
+	return j.putBlockContext(id, context, liveBlockRef, ordinal)
 }
 
 // removeReferences fixes up the in-memory reference map to delete the
@@ -663,7 +663,7 @@ func (j *blockJournal) removeReferences(
 	liveCounts = make(map[BlockID]int)
 
 	for id, idContexts := range contexts {
-		liveCount, err := j.removeRefEntries(id, idContexts, nil)
+		liveCount, err := j.removeBlockContexts(id, idContexts, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -725,7 +725,8 @@ func (j *blockJournal) archiveReferences(
 
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
-			err = j.putRefEntry(id, context, archivedBlockRef, ordinal)
+			err = j.putBlockContext(
+				id, context, archivedBlockRef, ordinal)
 			if err != nil {
 				return err
 			}
@@ -1014,7 +1015,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	// tag).
 	for id, idContexts := range entry.Contexts {
 		liveCount, err :=
-			j.removeRefEntries(id, idContexts, &earliestOrdinal)
+			j.removeBlockContexts(id, idContexts, &earliestOrdinal)
 		if err != nil {
 			return 0, err
 		}
