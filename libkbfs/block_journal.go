@@ -387,7 +387,7 @@ func (j *blockJournal) end() (journalOrdinal, error) {
 	return last + 1, nil
 }
 
-func (j *blockJournal) putBlockContext(
+func (j *blockJournal) putContext(
 	id BlockID, context BlockContext,
 	status blockRefLocalStatus, ordinal journalOrdinal) error {
 	// Check existing context, if any.
@@ -403,7 +403,7 @@ func (j *blockJournal) putBlockContext(
 	return j.refs[id].put(context, status, ordinal)
 }
 
-func (j *blockJournal) removeBlockContexts(
+func (j *blockJournal) removeContexts(
 	id BlockID, contexts []BlockContext, ordinal *journalOrdinal) (
 	liveCount int, err error) {
 	refs := j.refs[id]
@@ -612,7 +612,7 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	return j.putBlockContext(id, context, liveBlockRef, ordinal)
+	return j.putContext(id, context, liveBlockRef, ordinal)
 }
 
 func (j *blockJournal) addReference(
@@ -636,7 +636,7 @@ func (j *blockJournal) addReference(
 		return err
 	}
 
-	return j.putBlockContext(id, context, liveBlockRef, ordinal)
+	return j.putContext(id, context, liveBlockRef, ordinal)
 }
 
 // removeReferences fixes up the in-memory reference map to delete the
@@ -658,7 +658,7 @@ func (j *blockJournal) removeReferences(
 	liveCounts = make(map[BlockID]int)
 
 	for id, idContexts := range contexts {
-		liveCount, err := j.removeBlockContexts(id, idContexts, nil)
+		liveCount, err := j.removeContexts(id, idContexts, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -720,7 +720,7 @@ func (j *blockJournal) archiveReferences(
 
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
-			err = j.putBlockContext(
+			err = j.putContext(
 				id, context, archivedBlockRef, ordinal)
 			if err != nil {
 				return err
@@ -1010,7 +1010,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	// tag).
 	for id, idContexts := range entry.Contexts {
 		liveCount, err :=
-			j.removeBlockContexts(id, idContexts, &earliestOrdinal)
+			j.removeContexts(id, idContexts, &earliestOrdinal)
 		if err != nil {
 			return 0, err
 		}
