@@ -361,7 +361,7 @@ func TestBlockJournalFlush(t *testing.T) {
 			bID: {bCtx, bCtx2, bCtx3},
 		})
 	require.NoError(t, err)
-	require.Equal(t, map[BlockID]int{}, liveCounts)
+	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
 
 	flush()
 

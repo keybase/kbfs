@@ -431,15 +431,20 @@ func (j *blockJournal) putRefEntry(
 }
 
 func (j *blockJournal) removeRefEntries(
-	id BlockID, contexts []BlockContext, ordinal journalOrdinal) (
+	id BlockID, contexts []BlockContext, ordinal *journalOrdinal) (
 	liveCount int, err error) {
 	refs := j.refs[id]
 	if len(refs) == 0 {
 		return 0, nil
 	}
 
+	var tag interface{}
+	if ordinal != nil {
+		tag = *ordinal
+	}
+
 	for _, context := range contexts {
-		err := refs.remove(context, ordinal)
+		err := refs.remove(context, tag)
 		if err != nil {
 			return 0, err
 		}
@@ -674,24 +679,11 @@ func (j *blockJournal) removeReferences(
 	liveCounts = make(map[BlockID]int)
 
 	for id, idContexts := range contexts {
-		refs := j.refs[id]
-		if refs == nil {
-			// This block is already gone; no error.
-			continue
+		liveCount, err := j.removeRefEntries(id, idContexts, nil)
+		if err != nil {
+			return nil, err
 		}
-
-		for _, context := range idContexts {
-			err := refs.remove(context, nil)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		count := len(refs)
-		if count == 0 {
-			delete(j.refs, id)
-		}
-		liveCounts[id] = count
+		liveCounts[id] = liveCount
 	}
 
 	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
@@ -1058,7 +1050,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	// tag).
 	for id, idContexts := range entry.Contexts {
 		liveCount, err :=
-			j.removeRefEntries(id, idContexts, earliestOrdinal)
+			j.removeRefEntries(id, idContexts, &earliestOrdinal)
 		if err != nil {
 			return 0, err
 		}
