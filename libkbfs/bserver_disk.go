@@ -273,7 +273,11 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
-			if !tlfStorage.journal.hasContext(id, context) {
+			hasContext, err := tlfStorage.journal.hasContext(id, context)
+			if err != nil {
+				return err
+			}
+			if !hasContext {
 				return BServerErrorBlockNonExistent{
 					fmt.Sprintf(
 						"Block ID %s (context %s) doesn't "+

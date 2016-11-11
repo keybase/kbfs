@@ -387,30 +387,11 @@ func (j *blockJournal) end() (journalOrdinal, error) {
 	return last + 1, nil
 }
 
-func (j *blockJournal) hasBlockContext(id BlockID, context BlockContext) (
-	bool, error) {
-	refs := j.refs[id]
-	if refs == nil {
-		return false, nil
-	}
-
-	e, ok := refs[context.GetRefNonce()]
-	if !ok {
-		return false, nil
-	}
-
-	if e.context != context {
-		return false, blockContextMismatchError{e.context, context}
-	}
-
-	return true, nil
-}
-
 func (j *blockJournal) putBlockContext(
 	id BlockID, context BlockContext,
 	status blockRefLocalStatus, ordinal journalOrdinal) error {
 	// Check existing context, if any.
-	_, err := j.hasBlockContext(id, context)
+	_, err := j.hasContext(id, context)
 	if err != nil {
 		return err
 	}
@@ -505,7 +486,7 @@ func (j *blockJournal) getData(id BlockID) (
 // All functions below are public functions.
 
 func (j *blockJournal) hasRef(id BlockID) bool {
-	return j.refs[id] != nil
+	return len(j.refs[id]) > 0
 }
 
 func (j *blockJournal) hasNonArchivedRef(id BlockID) bool {
@@ -513,14 +494,28 @@ func (j *blockJournal) hasNonArchivedRef(id BlockID) bool {
 	return (refs != nil) && refs.hasNonArchivedRef()
 }
 
-func (j *blockJournal) hasContext(id BlockID, context BlockContext) bool {
+func (j *blockJournal) hasContext(id BlockID, context BlockContext) (
+	bool, error) {
 	refs := j.refs[id]
-	return (refs != nil) && (refs.checkExists(context) == nil)
+	if len(refs) == 0 {
+		return false, nil
+	}
+
+	e, ok := refs[context.GetRefNonce()]
+	if !ok {
+		return false, nil
+	}
+
+	if e.context != context {
+		return false, blockContextMismatchError{e.context, context}
+	}
+
+	return true, nil
 }
 
 func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
-	hasContext, err := j.hasBlockContext(id, context)
+	hasContext, err := j.hasContext(id, context)
 	if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
@@ -1200,7 +1195,7 @@ func (j *blockJournal) onMDFlush() error {
 
 		j.log.CDebugf(nil, "Removing data for entry %d", i)
 		for id := range entry.Contexts {
-			if len(j.refs[id]) == 0 {
+			if !j.hasRef(id) {
 				// Garbage-collect the old entry.  TODO: we'll
 				// eventually need a sweeper to clean up entries left
 				// behind if we crash here.
