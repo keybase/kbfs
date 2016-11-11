@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/go-codec/codec"
@@ -520,9 +521,20 @@ func (j *blockDiskStore) getAll() (
 					subName)
 			}
 
-			id, err := BlockIDFromString(name + subName)
+			dataPath := filepath.Join(j.blocksPath(), name, subName, "data")
+			data, err := ioutil.ReadFile(dataPath)
+			if err != nil {
+				return nil, fmt.Errorf("Unexpectedly couldn't read from %q", dataPath)
+			}
+
+			id, err := j.crypto.MakePermanentBlockID(data)
 			if err != nil {
 				return nil, err
+			}
+
+			if !strings.HasPrefix(id.String(), name+subName) {
+				return nil, fmt.Errorf(
+					"%q unexpectedly not a prefix of %q", name+subName, id.String())
 			}
 
 			refs, err := j.getRefs(id)
