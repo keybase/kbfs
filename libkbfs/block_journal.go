@@ -403,9 +403,9 @@ func (j *blockJournal) getRefEntry(
 }
 
 func (j *blockJournal) putRefEntry(
-	id BlockID, refEntry blockRefEntry, ordinal journalOrdinal) error {
-	existingRefEntry, err := j.getRefEntry(
-		id, refEntry.context.GetRefNonce())
+	id BlockID, context BlockContext,
+	status blockRefLocalStatus, ordinal journalOrdinal) error {
+	existingRefEntry, err := j.getRefEntry(id, context.GetRefNonce())
 	var exists bool
 	switch err.(type) {
 	case blockNonExistentError:
@@ -417,9 +417,10 @@ func (j *blockJournal) putRefEntry(
 	}
 
 	if exists {
-		err = existingRefEntry.checkContext(refEntry.context)
-		if err != nil {
-			return err
+		if existingRefEntry.context != context {
+			return blockContextMismatchError{
+				existingRefEntry.context, context,
+			}
 		}
 	}
 
@@ -427,7 +428,7 @@ func (j *blockJournal) putRefEntry(
 		j.refs[id] = make(blockRefMap)
 	}
 
-	return j.refs[id].put(refEntry.context, refEntry.status, ordinal)
+	return j.refs[id].put(context, status, ordinal)
 }
 
 func (j *blockJournal) removeRefEntries(
@@ -627,10 +628,7 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	return j.putRefEntry(id, blockRefEntry{
-		status:  liveBlockRef,
-		context: context,
-	}, ordinal)
+	return j.putRefEntry(id, context, liveBlockRef, ordinal)
 }
 
 func (j *blockJournal) addReference(
@@ -654,10 +652,7 @@ func (j *blockJournal) addReference(
 		return err
 	}
 
-	return j.putRefEntry(id, blockRefEntry{
-		status:  liveBlockRef,
-		context: context,
-	}, ordinal)
+	return j.putRefEntry(id, context, liveBlockRef, ordinal)
 }
 
 // removeReferences fixes up the in-memory reference map to delete the
@@ -761,7 +756,7 @@ func (j *blockJournal) archiveReferences(
 				return err
 			}
 
-			err = j.putRefEntry(id, refEntry, ordinal)
+			err = j.putRefEntry(id, refEntry.context, refEntry.status, ordinal)
 			if err != nil {
 				return err
 			}
