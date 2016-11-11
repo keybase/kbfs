@@ -430,6 +430,28 @@ func (j *blockJournal) putRefEntry(
 	return j.refs[id].put(refEntry.context, refEntry.status, ordinal)
 }
 
+func (j *blockJournal) removeRefEntries(
+	id BlockID, contexts []BlockContext, ordinal journalOrdinal) (
+	liveCount int, err error) {
+	refs := j.refs[id]
+	if len(refs) == 0 {
+		return 0, nil
+	}
+
+	for _, context := range contexts {
+		err := refs.remove(context, ordinal)
+		if err != nil {
+			return 0, err
+		}
+		if len(refs) == 0 {
+			delete(j.refs, id)
+			break
+		}
+	}
+
+	return len(refs), nil
+}
+
 func (j *blockJournal) exists(id BlockID) error {
 	_, err := os.Stat(j.blockDataPath(id))
 	return err
@@ -1035,29 +1057,22 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	// a subsequent block op (i.e., that has earliestOrdinal as a
 	// tag).
 	for id, idContexts := range entry.Contexts {
-		refs := j.refs[id]
-		if len(refs) == 0 {
-			continue
+		liveCount, err :=
+			j.removeRefEntries(id, idContexts, earliestOrdinal)
+		if err != nil {
+			return 0, err
 		}
-		for _, context := range idContexts {
-			err := refs.remove(context, earliestOrdinal)
-			if err != nil {
-				return 0, err
-			}
-			if len(refs) == 0 {
-				delete(j.refs, id)
 
-				// Garbage-collect the old entry if we are not saving
-				// blocks until the next MD flush.  TODO: we'll
-				// eventually need a sweeper to clean up entries left
-				// behind if we crash here.
-				if j.saveUntilMDFlush == nil {
-					err = j.removeBlockData(id)
-					if err != nil {
-						return 0, err
-					}
+		if liveCount == 0 {
+			// Garbage-collect the old entry if we are not saving
+			// blocks until the next MD flush.  TODO: we'll
+			// eventually need a sweeper to clean up entries left
+			// behind if we crash here.
+			if j.saveUntilMDFlush == nil {
+				err = j.removeBlockData(id)
+				if err != nil {
+					return 0, err
 				}
-				break
 			}
 		}
 	}
