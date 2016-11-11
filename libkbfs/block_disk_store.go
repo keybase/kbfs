@@ -79,7 +79,7 @@ func makeBlockDiskStore(
 
 // The functions below are for building various paths.
 
-func (j *blockDiskStore) blockPath(id BlockID) string {
+func (s *blockDiskStore) blockPath(id BlockID) string {
 	// Truncate to 34 characters, which corresponds to 16 random
 	// bytes (since the first byte is a hash type) or 128 random
 	// bits, which means that the expected number of blocks
@@ -88,25 +88,25 @@ func (j *blockDiskStore) blockPath(id BlockID) string {
 	// ). The full ID can be recovered just by hashing the data
 	// again with the same hash type.
 	idStr := id.String()
-	return filepath.Join(j.dir, idStr[:4], idStr[4:34])
+	return filepath.Join(s.dir, idStr[:4], idStr[4:34])
 }
 
-func (j *blockDiskStore) blockDataPath(id BlockID) string {
-	return filepath.Join(j.blockPath(id), "data")
+func (s *blockDiskStore) blockDataPath(id BlockID) string {
+	return filepath.Join(s.blockPath(id), "data")
 }
 
-func (j *blockDiskStore) keyServerHalfPath(id BlockID) string {
-	return filepath.Join(j.blockPath(id), "key_server_half")
+func (s *blockDiskStore) keyServerHalfPath(id BlockID) string {
+	return filepath.Join(s.blockPath(id), "key_server_half")
 }
 
-func (j *blockDiskStore) refsPath(id BlockID) string {
-	return filepath.Join(j.blockPath(id), "refs")
+func (s *blockDiskStore) refsPath(id BlockID) string {
+	return filepath.Join(s.blockPath(id), "refs")
 }
 
 // The functions below are for getting and putting refs/contexts.
 
-func (j *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
-	data, err := ioutil.ReadFile(j.refsPath(id))
+func (s *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
+	data, err := ioutil.ReadFile(s.refsPath(id))
 	if os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
@@ -114,7 +114,7 @@ func (j *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
 	}
 
 	var refs blockRefMap
-	err = j.codec.Decode(data, &refs)
+	err = s.codec.Decode(data, &refs)
 	if err != nil {
 		return nil, err
 	}
@@ -122,9 +122,9 @@ func (j *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
 	return refs, nil
 }
 
-func (j *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
+func (s *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
 	if len(refs) == 0 {
-		err := os.Remove(j.refsPath(id))
+		err := os.Remove(s.refsPath(id))
 		if err != nil {
 			return err
 		}
@@ -132,17 +132,17 @@ func (j *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
 		return nil
 	}
 
-	err := os.MkdirAll(j.blockPath(id), 0700)
+	err := os.MkdirAll(s.blockPath(id), 0700)
 	if err != nil {
 		return err
 	}
 
-	buf, err := j.codec.Encode(refs)
+	buf, err := s.codec.Encode(refs)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(j.refsPath(id), buf, 0600)
+	err = ioutil.WriteFile(s.refsPath(id), buf, 0600)
 	if err != nil {
 		return err
 	}
@@ -150,10 +150,10 @@ func (j *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
 	return nil
 }
 
-func (j *blockDiskStore) addContexts(
+func (s *blockDiskStore) addContexts(
 	id BlockID, contexts []BlockContext,
 	status blockRefStatus, tag interface{}) error {
-	refs, err := j.getRefs(id)
+	refs, err := s.getRefs(id)
 	if err != nil {
 		return err
 	}
@@ -177,13 +177,13 @@ func (j *blockDiskStore) addContexts(
 		}
 	}
 
-	return j.putRefs(id, refs)
+	return s.putRefs(id, refs)
 }
 
-func (j *blockDiskStore) removeContexts(
+func (s *blockDiskStore) removeContexts(
 	id BlockID, contexts []BlockContext, tag interface{}) (
 	liveCount int, err error) {
-	refs, err := j.getRefs(id)
+	refs, err := s.getRefs(id)
 	if err != nil {
 		return 0, err
 	}
@@ -201,7 +201,7 @@ func (j *blockDiskStore) removeContexts(
 		}
 	}
 
-	err = j.putRefs(id, refs)
+	err = s.putRefs(id, refs)
 	if err != nil {
 		return 0, err
 	}
@@ -209,9 +209,9 @@ func (j *blockDiskStore) removeContexts(
 	return len(refs), nil
 }
 
-func (j *blockDiskStore) getData(id BlockID) (
+func (s *blockDiskStore) getData(id BlockID) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
-	data, err := ioutil.ReadFile(j.blockDataPath(id))
+	data, err := ioutil.ReadFile(s.blockDataPath(id))
 	if os.IsNotExist(err) {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
 			blockNonExistentError{id}
@@ -219,7 +219,7 @@ func (j *blockDiskStore) getData(id BlockID) (
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
 
-	keyServerHalfPath := j.keyServerHalfPath(id)
+	keyServerHalfPath := s.keyServerHalfPath(id)
 	buf, err := ioutil.ReadFile(keyServerHalfPath)
 	if os.IsNotExist(err) {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
@@ -230,7 +230,7 @@ func (j *blockDiskStore) getData(id BlockID) (
 
 	// Check integrity.
 
-	dataID, err := j.crypto.MakePermanentBlockID(data)
+	dataID, err := s.crypto.MakePermanentBlockID(data)
 	if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
@@ -251,8 +251,8 @@ func (j *blockDiskStore) getData(id BlockID) (
 
 // All functions below are public functions.
 
-func (j *blockDiskStore) hasRef(id BlockID) (bool, error) {
-	refs, err := j.getRefs(id)
+func (s *blockDiskStore) hasRef(id BlockID) (bool, error) {
+	refs, err := s.getRefs(id)
 	if err != nil {
 		return false, err
 	}
@@ -260,8 +260,8 @@ func (j *blockDiskStore) hasRef(id BlockID) (bool, error) {
 	return len(refs) > 0, nil
 }
 
-func (j *blockDiskStore) hasNonArchivedRef(id BlockID) (bool, error) {
-	refs, err := j.getRefs(id)
+func (s *blockDiskStore) hasNonArchivedRef(id BlockID) (bool, error) {
+	refs, err := s.getRefs(id)
 	if err != nil {
 		return false, err
 	}
@@ -269,9 +269,9 @@ func (j *blockDiskStore) hasNonArchivedRef(id BlockID) (bool, error) {
 	return (refs != nil) && refs.hasNonArchivedRef(), nil
 }
 
-func (j *blockDiskStore) hasContext(id BlockID, context BlockContext) (
+func (s *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 	bool, error) {
-	refs, err := j.getRefs(id)
+	refs, err := s.getRefs(id)
 	if err != nil {
 		return false, err
 	}
@@ -283,9 +283,9 @@ func (j *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 	return refs.checkExists(context)
 }
 
-func (j *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
+func (s *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
-	hasContext, err := j.hasContext(id, context)
+	hasContext, err := s.hasContext(id, context)
 	if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
@@ -294,12 +294,12 @@ func (j *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
 			blockNonExistentError{id}
 	}
 
-	return j.getData(id)
+	return s.getData(id)
 }
 
-func (j *blockDiskStore) getAll() (
+func (s *blockDiskStore) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
-	fileInfos, err := ioutil.ReadDir(j.dir)
+	fileInfos, err := ioutil.ReadDir(s.dir)
 	if os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
@@ -313,7 +313,7 @@ func (j *blockDiskStore) getAll() (
 			return nil, fmt.Errorf("Unexpected non-dir %q", name)
 		}
 
-		subFileInfos, err := ioutil.ReadDir(filepath.Join(j.dir, name))
+		subFileInfos, err := ioutil.ReadDir(filepath.Join(s.dir, name))
 		if err != nil {
 			return nil, err
 		}
@@ -325,13 +325,13 @@ func (j *blockDiskStore) getAll() (
 					subName)
 			}
 
-			dataPath := filepath.Join(j.dir, name, subName, "data")
+			dataPath := filepath.Join(s.dir, name, subName, "data")
 			data, err := ioutil.ReadFile(dataPath)
 			if err != nil {
 				return nil, fmt.Errorf("Unexpectedly couldn't read from %q", dataPath)
 			}
 
-			id, err := j.crypto.MakePermanentBlockID(data)
+			id, err := s.crypto.MakePermanentBlockID(data)
 			if err != nil {
 				return nil, err
 			}
@@ -341,7 +341,7 @@ func (j *blockDiskStore) getAll() (
 					"%q unexpectedly not a prefix of %q", name+subName, id.String())
 			}
 
-			refs, err := j.getRefs(id)
+			refs, err := s.getRefs(id)
 			if err != nil {
 				return nil, err
 			}
@@ -352,27 +352,27 @@ func (j *blockDiskStore) getAll() (
 	return res, nil
 }
 
-func (j *blockDiskStore) putData(
+func (s *blockDiskStore) putData(
 	ctx context.Context, id BlockID, context BlockContext, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf,
 	tag interface{}) (err error) {
-	j.log.CDebugf(ctx, "Putting %d bytes of data for block %s with context %v",
+	s.log.CDebugf(ctx, "Putting %d bytes of data for block %s with context %v",
 		len(buf), id, context)
 	defer func() {
 		if err != nil {
-			j.deferLog.CDebugf(ctx,
+			s.deferLog.CDebugf(ctx,
 				"Put for block %s with context %v failed with %v",
 				id, context, err)
 		}
 	}()
 
-	err = validateBlockServerPut(j.crypto, id, context, buf)
+	err = validateBlockServerPut(s.crypto, id, context, buf)
 	if err != nil {
 		return err
 	}
 
 	// Check the data and retrieve the server half, if they exist.
-	_, existingServerHalf, err := j.getDataWithContext(id, context)
+	_, existingServerHalf, err := s.getDataWithContext(id, context)
 	var exists bool
 	switch err.(type) {
 	case blockNonExistentError:
@@ -398,12 +398,12 @@ func (j *blockDiskStore) putData(
 		}
 	}
 
-	err = os.MkdirAll(j.blockPath(id), 0700)
+	err = os.MkdirAll(s.blockPath(id), 0700)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(j.blockDataPath(id), buf, 0600)
+	err = ioutil.WriteFile(s.blockDataPath(id), buf, 0600)
 	if err != nil {
 		return err
 	}
@@ -415,40 +415,40 @@ func (j *blockDiskStore) putData(
 		return err
 	}
 	err = ioutil.WriteFile(
-		j.keyServerHalfPath(id), data, 0600)
+		s.keyServerHalfPath(id), data, 0600)
 	if err != nil {
 		return err
 	}
 
-	return j.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
+	return s.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
 }
 
-func (j *blockDiskStore) addReference(
+func (s *blockDiskStore) addReference(
 	ctx context.Context, id BlockID, context BlockContext, tag interface{}) (
 	err error) {
-	j.log.CDebugf(ctx, "Adding reference for block %s with context %v",
+	s.log.CDebugf(ctx, "Adding reference for block %s with context %v",
 		id, context)
 	defer func() {
 		if err != nil {
-			j.deferLog.CDebugf(ctx,
+			s.deferLog.CDebugf(ctx,
 				"Adding reference for block %s with context %v failed with %v",
 				id, context, err)
 		}
 	}()
 
-	return j.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
+	return s.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
 }
 
 // removeReferences fixes up the in-memory reference map to delete the
 // given references.
-func (j *blockDiskStore) removeReferences(
+func (s *blockDiskStore) removeReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext,
 	tag interface{}) (
 	liveCounts map[BlockID]int, err error) {
-	j.log.CDebugf(ctx, "Removing references for %v", contexts)
+	s.log.CDebugf(ctx, "Removing references for %v", contexts)
 	defer func() {
 		if err != nil {
-			j.deferLog.CDebugf(ctx,
+			s.deferLog.CDebugf(ctx,
 				"Removing references for %v", contexts, err)
 		}
 	}()
@@ -456,7 +456,7 @@ func (j *blockDiskStore) removeReferences(
 	liveCounts = make(map[BlockID]int)
 
 	for id, idContexts := range contexts {
-		liveCount, err := j.removeContexts(id, idContexts, tag)
+		liveCount, err := s.removeContexts(id, idContexts, tag)
 		if err != nil {
 			return nil, err
 		}
@@ -469,8 +469,8 @@ func (j *blockDiskStore) removeReferences(
 // removeBlockData removes any existing block data for the given
 // ID. If there is no data, nil is returned; this can happen when we
 // have only non-put references to a block in the journal.
-func (j *blockDiskStore) removeBlockData(id BlockID) error {
-	hasRef, err := j.hasRef(id)
+func (s *blockDiskStore) removeBlockData(id BlockID) error {
+	hasRef, err := s.hasRef(id)
 	if err != nil {
 		return err
 	}
@@ -478,7 +478,7 @@ func (j *blockDiskStore) removeBlockData(id BlockID) error {
 		return fmt.Errorf(
 			"Trying to remove data for referenced block %s", id)
 	}
-	path := j.blockPath(id)
+	path := s.blockPath(id)
 
 	err = os.RemoveAll(path)
 	if err != nil {
@@ -494,19 +494,19 @@ func (j *blockDiskStore) removeBlockData(id BlockID) error {
 	return err
 }
 
-func (j *blockDiskStore) archiveReferences(
+func (s *blockDiskStore) archiveReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext,
 	tag interface{}) (err error) {
-	j.log.CDebugf(ctx, "Archiving references for %v", contexts)
+	s.log.CDebugf(ctx, "Archiving references for %v", contexts)
 	defer func() {
 		if err != nil {
-			j.deferLog.CDebugf(ctx,
+			s.deferLog.CDebugf(ctx,
 				"Archiving references for %v,", contexts, err)
 		}
 	}()
 
 	for id, idContexts := range contexts {
-		err = j.addContexts(id, idContexts, archivedBlockRef, tag)
+		err = s.addContexts(id, idContexts, archivedBlockRef, tag)
 		if err != nil {
 			return err
 		}
