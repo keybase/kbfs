@@ -23,17 +23,17 @@ func (e blockContextMismatchError) Error() string {
 }
 
 type blockRefEntry struct {
-	status  blockRefStatus
-	context BlockContext
+	Status  blockRefStatus
+	Context BlockContext
 	// mostRecentTag, if non-nil, is used by callers to figure out
 	// if an entry has been modified by something else. See
 	// blockRefMap.remove.
-	mostRecentTag interface{}
+	MostRecentTag interface{}
 }
 
 func (e blockRefEntry) checkContext(context BlockContext) error {
-	if e.context != context {
-		return blockContextMismatchError{e.context, context}
+	if e.Context != context {
+		return blockContextMismatchError{e.Context, context}
 	}
 	return nil
 }
@@ -43,7 +43,7 @@ type blockRefMap map[BlockRefNonce]blockRefEntry
 
 func (refs blockRefMap) hasNonArchivedRef() bool {
 	for _, refEntry := range refs {
-		if refEntry.status == liveBlockRef {
+		if refEntry.Status == liveBlockRef {
 			return true
 		}
 	}
@@ -67,7 +67,7 @@ func (refs blockRefMap) checkExists(context BlockContext) (bool, error) {
 func (refs blockRefMap) getStatuses() map[BlockRefNonce]blockRefStatus {
 	statuses := make(map[BlockRefNonce]blockRefStatus)
 	for ref, refEntry := range refs {
-		statuses[ref] = refEntry.status
+		statuses[ref] = refEntry.Status
 	}
 	return statuses
 }
@@ -83,9 +83,9 @@ func (refs blockRefMap) put(context BlockContext, status blockRefStatus,
 	}
 
 	refs[refNonce] = blockRefEntry{
-		status:        status,
-		context:       context,
-		mostRecentTag: tag,
+		Status:        status,
+		Context:       context,
+		MostRecentTag: tag,
 	}
 	return nil
 }
@@ -102,7 +102,7 @@ func (refs blockRefMap) remove(context BlockContext, tag interface{}) error {
 		if err != nil {
 			return err
 		}
-		if tag == nil || refEntry.mostRecentTag == tag {
+		if tag == nil || refEntry.MostRecentTag == tag {
 			delete(refs, refNonce)
 		}
 	}
