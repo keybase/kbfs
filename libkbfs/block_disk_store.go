@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/keybase/client/go/logger"
-	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/net/context"
@@ -68,48 +67,6 @@ type blockDiskStore struct {
 
 	log      logger.Logger
 	deferLog logger.Logger
-}
-
-// A blockDiskStoreEntry is just the name of the operation and the
-// associated block ID and contexts. Fields are exported only for
-// serialization.
-type blockDiskStoreEntry struct {
-	// Must be one of the four ops above.
-	Op blockOpType
-	// Must have exactly one entry with one context for blockPutOp and
-	// addRefOp.  Used for all ops except for mdRevMarkerOp.
-	Contexts map[BlockID][]BlockContext `codec:",omitempty"`
-	// Only used for mdRevMarkerOps.
-	Revision MetadataRevision `codec:",omitempty"`
-	// Ignore this entry while flushing if this is true.
-	Ignore bool `codec:",omitempty"`
-
-	codec.UnknownFieldSetHandler
-}
-
-// Get the single context stored in this entry. Only applicable to
-// blockPutOp and addRefOp.
-func (e blockDiskStoreEntry) getSingleContext() (
-	BlockID, BlockContext, error) {
-	switch e.Op {
-	case blockPutOp, addRefOp:
-		if len(e.Contexts) != 1 {
-			return BlockID{}, BlockContext{}, fmt.Errorf(
-				"Op %s doesn't have exactly one context: %v",
-				e.Op, e.Contexts)
-		}
-		for id, idContexts := range e.Contexts {
-			if len(idContexts) != 1 {
-				return BlockID{}, BlockContext{}, fmt.Errorf(
-					"Op %s doesn't have exactly one context for id=%s: %v",
-					e.Op, id, idContexts)
-			}
-			return id, idContexts[0], nil
-		}
-	}
-
-	return BlockID{}, BlockContext{}, fmt.Errorf(
-		"getSingleContext() erroneously called on op %s", e.Op)
 }
 
 // makeBlockDiskStore returns a new blockDiskStore for the given

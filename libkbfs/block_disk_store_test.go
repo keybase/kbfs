@@ -13,49 +13,11 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
-	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type blockDiskStoreEntryFuture struct {
-	blockDiskStoreEntry
-	extra
-}
-
-func (ef blockDiskStoreEntryFuture) toCurrent() blockDiskStoreEntry {
-	return ef.blockDiskStoreEntry
-}
-
-func (ef blockDiskStoreEntryFuture) toCurrentStruct() currentStruct {
-	return ef.toCurrent()
-}
-
-func makeFakeBlockDiskStoreEntryFuture(t *testing.T) blockDiskStoreEntryFuture {
-	ef := blockDiskStoreEntryFuture{
-		blockDiskStoreEntry{
-			blockPutOp,
-			map[BlockID][]BlockContext{
-				fakeBlockID(1): {
-					makeFakeBlockContext(t),
-					makeFakeBlockContext(t),
-					makeFakeBlockContext(t),
-				},
-			},
-			MetadataRevisionInitial,
-			false,
-			codec.UnknownFieldSetHandler{},
-		},
-		makeExtraOrBust("blockDiskStoreEntry", t),
-	}
-	return ef
-}
-
-func TestBlockDiskStoreEntryUnknownFields(t *testing.T) {
-	testStructUnknownFields(t, makeFakeBlockDiskStoreEntryFuture(t))
-}
 
 func setupBlockDiskStoreTest(t *testing.T) (
 	ctx context.Context, tempdir string, j *blockDiskStore) {
@@ -78,7 +40,6 @@ func setupBlockDiskStoreTest(t *testing.T) (
 
 	j, err = makeBlockDiskStore(ctx, codec, crypto, tempdir, log)
 	require.NoError(t, err)
-	require.Equal(t, 0, getBlockDiskStoreLength(t, j))
 
 	setupSucceeded = true
 	return ctx, tempdir, j
@@ -92,8 +53,6 @@ func teardownBlockDiskStoreTest(t *testing.T, tempdir string, j *blockDiskStore)
 func putBlockDiskData(
 	ctx context.Context, t *testing.T, j *blockDiskStore, data []byte) (
 	BlockID, BlockContext, kbfscrypto.BlockCryptKeyServerHalf) {
-	oldLength := getBlockDiskStoreLength(t, j)
-
 	bID, err := j.crypto.MakePermanentBlockID(data)
 	require.NoError(t, err)
 
@@ -102,10 +61,8 @@ func putBlockDiskData(
 	serverHalf, err := j.crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
-	err = j.putData(ctx, bID, bCtx, data, serverHalf)
+	err = j.putData(ctx, bID, bCtx, data, serverHalf, nil)
 	require.NoError(t, err)
-
-	require.Equal(t, oldLength+1, getBlockDiskStoreLength(t, j))
 
 	return bID, bCtx, serverHalf
 }
@@ -113,17 +70,14 @@ func putBlockDiskData(
 func addBlockDiskRef(
 	ctx context.Context, t *testing.T, j *blockDiskStore,
 	bID BlockID) BlockContext {
-	oldLength := getBlockDiskStoreLength(t, j)
-
 	nonce, err := j.crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = j.addReference(ctx, bID, bCtx2)
+	err = j.addReference(ctx, bID, bCtx2, nil)
 	require.NoError(t, err)
-	require.Equal(t, oldLength+1, getBlockDiskStoreLength(t, j))
 	return bCtx2
 }
 
@@ -156,8 +110,6 @@ func TestBlockDiskStoreBasic(t *testing.T) {
 	// Shutdown and restart.
 	j, err := makeBlockDiskStore(ctx, j.codec, j.crypto, tempdir, j.log)
 	require.NoError(t, err)
-
-	require.Equal(t, 2, getBlockDiskStoreLength(t, j))
 
 	// Make sure we get the same block for both refs.
 
@@ -197,7 +149,6 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}})
 	require.NoError(t, err)
 	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
-	require.Equal(t, 3, getBlockDiskStoreLength(t, j))
 
 	// Make sure the block data is inaccessible.
 	_, _, err = j.getDataWithContext(bID, bCtx)
@@ -223,9 +174,8 @@ func TestBlockDiskStoreArchiveReferences(t *testing.T) {
 
 	// Archive references.
 	err := j.archiveReferences(
-		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}})
+		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, nil)
 	require.NoError(t, err)
-	require.Equal(t, 3, getBlockDiskStoreLength(t, j))
 
 	// Get block should still succeed.
 	getAndCheckBlockDiskData(ctx, t, j, bID, bCtx, data, serverHalf)
@@ -245,6 +195,6 @@ func TestBlockDiskStoreArchiveNonExistentReference(t *testing.T) {
 
 	// Archive references.
 	err = j.archiveReferences(
-		ctx, map[BlockID][]BlockContext{bID: {bCtx}})
+		ctx, map[BlockID][]BlockContext{bID: {bCtx}}, nil)
 	require.NoError(t, err)
 }
