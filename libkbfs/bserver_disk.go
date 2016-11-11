@@ -26,7 +26,7 @@ type blockServerDiskTlfStorage struct {
 }
 
 // BlockServerDisk implements the BlockServer interface by just
-// storing blocks in a local leveldb instance.
+// storing blocks in a local journal.
 type BlockServerDisk struct {
 	codec        kbfscodec.Codec
 	crypto       cryptoPure
