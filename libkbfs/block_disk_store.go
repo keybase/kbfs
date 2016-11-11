@@ -72,8 +72,6 @@ type blockDiskStore struct {
 	j    diskJournal
 	refs map[BlockID]blockRefMap
 
-	saveUntilMDFlush *diskJournal
-
 	// Tracks the total size of on-disk blocks that will be flushed to
 	// the server (i.e., does not count reference adds).  It is only
 	// accurate for users of this journal that properly flush entries;
@@ -125,10 +123,6 @@ func (e blockDiskStoreEntry) getSingleContext() (
 		"getSingleContext() erroneously called on op %s", e.Op)
 }
 
-func savedBlockDiskStoreDir(dir string) string {
-	return filepath.Join(dir, "saved_block_journal")
-}
-
 // makeBlockDiskStore returns a new blockDiskStore for the given
 // directory. Any existing journal entries are read.
 func makeBlockDiskStore(
@@ -150,21 +144,6 @@ func makeBlockDiskStore(
 	refs, unflushedBytes, err := journal.readJournal(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	// If a saved block journal exists, we need to remove its entries
-	// on the next successful MD flush.
-	savedJournalDir := savedBlockDiskStoreDir(dir)
-	fi, err := os.Stat(savedJournalDir)
-	if err == nil {
-		if !fi.IsDir() {
-			return nil,
-				fmt.Errorf("%s exists, but is not a dir", savedJournalDir)
-		}
-		log.CDebugf(ctx, "A saved block journal exists at %s", savedJournalDir)
-		sj := makeDiskJournal(
-			codec, savedJournalDir, reflect.TypeOf(blockDiskStoreEntry{}))
-		journal.saveUntilMDFlush = &sj
 	}
 
 	journal.refs = refs
