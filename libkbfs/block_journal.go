@@ -387,25 +387,25 @@ func (j *blockJournal) end() (journalOrdinal, error) {
 	return last + 1, nil
 }
 
-func (j *blockJournal) getRefEntry(
-	id BlockID, refNonce BlockRefNonce) (blockRefEntry, error) {
+func (j *blockJournal) getRefEntry(id BlockID, refNonce BlockRefNonce) (
+	BlockContext, error) {
 	refs := j.refs[id]
 	if refs == nil {
-		return blockRefEntry{}, blockNonExistentError{id}
+		return BlockContext{}, blockNonExistentError{id}
 	}
 
 	e, ok := refs[refNonce]
 	if !ok {
-		return blockRefEntry{}, blockNonExistentError{id}
+		return BlockContext{}, blockNonExistentError{id}
 	}
 
-	return e, nil
+	return e.context, nil
 }
 
 func (j *blockJournal) putRefEntry(
 	id BlockID, context BlockContext,
 	status blockRefLocalStatus, ordinal journalOrdinal) error {
-	existingRefEntry, err := j.getRefEntry(id, context.GetRefNonce())
+	existingContext, err := j.getRefEntry(id, context.GetRefNonce())
 	var exists bool
 	switch err.(type) {
 	case blockNonExistentError:
@@ -417,9 +417,9 @@ func (j *blockJournal) putRefEntry(
 	}
 
 	if exists {
-		if existingRefEntry.context != context {
+		if existingContext != context {
 			return blockContextMismatchError{
-				existingRefEntry.context, context,
+				existingContext, context,
 			}
 		}
 	}
@@ -530,14 +530,16 @@ func (j *blockJournal) hasContext(id BlockID, context BlockContext) bool {
 func (j *blockJournal) getDataWithContext(
 	id BlockID, context BlockContext) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
-	refEntry, err := j.getRefEntry(id, context.GetRefNonce())
+	existingContext, err := j.getRefEntry(id, context.GetRefNonce())
 	if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
 
-	err = refEntry.checkContext(context)
-	if err != nil {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
+	if existingContext != context {
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+			blockContextMismatchError{
+				existingContext, context,
+			}
 	}
 
 	return j.getData(id)
@@ -737,26 +739,24 @@ func (j *blockJournal) archiveReferences(
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
 			refNonce := context.GetRefNonce()
-			refEntry, err := j.getRefEntry(id, refNonce)
+			existingContext, err :=
+				j.getRefEntry(id, refNonce)
 			switch err.(type) {
 			case blockNonExistentError:
-				refEntry = blockRefEntry{
-					status:  archivedBlockRef,
-					context: context,
-				}
+				// Nothing to do.
 
 			case nil:
-				err = refEntry.checkContext(context)
-				if err != nil {
-					return err
+				if existingContext != context {
+					return blockContextMismatchError{
+						existingContext, context,
+					}
 				}
-				refEntry.status = archivedBlockRef
 
 			default:
 				return err
 			}
 
-			err = j.putRefEntry(id, refEntry.context, refEntry.status, ordinal)
+			err = j.putRefEntry(id, context, archivedBlockRef, ordinal)
 			if err != nil {
 				return err
 			}
