@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/keybase/client/go/logger"
@@ -69,8 +68,6 @@ type blockDiskStore struct {
 
 	log      logger.Logger
 	deferLog logger.Logger
-
-	j diskJournal
 }
 
 // A blockDiskStoreEntry is just the name of the operation and the
@@ -120,17 +117,13 @@ func (e blockDiskStoreEntry) getSingleContext() (
 func makeBlockDiskStore(
 	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure,
 	dir string, log logger.Logger) (*blockDiskStore, error) {
-	journalPath := filepath.Join(dir, "block_journal")
 	deferLog := log.CloneWithAddedDepth(1)
-	j := makeDiskJournal(
-		codec, journalPath, reflect.TypeOf(blockDiskStoreEntry{}))
 	journal := &blockDiskStore{
 		codec:    codec,
 		crypto:   crypto,
 		dir:      dir,
 		log:      log,
 		deferLog: deferLog,
-		j:        j,
 	}
 
 	return journal, nil
@@ -168,144 +161,6 @@ func (j *blockDiskStore) refsPath(id BlockID) string {
 
 // The functions below are for reading and writing journal entries.
 
-func (j *blockDiskStore) readJournalEntry(ordinal journalOrdinal) (
-	blockDiskStoreEntry, error) {
-	entry, err := j.j.readJournalEntry(ordinal)
-	if err != nil {
-		return blockDiskStoreEntry{}, err
-	}
-
-	return entry.(blockDiskStoreEntry), nil
-}
-
-// readJournal reads the journal and returns a map of all the block
-// references in the journal and the total number of bytes that need
-// flushing.
-func (j *blockDiskStore) readJournal(ctx context.Context) (
-	map[BlockID]blockRefMap, error) {
-	refs := make(map[BlockID]blockRefMap)
-
-	first, err := j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
-		return refs, nil
-	} else if err != nil {
-		return nil, err
-	}
-	last, err := j.j.readLatestOrdinal()
-	if err != nil {
-		return nil, err
-	}
-
-	j.log.CDebugf(ctx, "Reading journal entries %d to %d", first, last)
-
-	for i := first; i <= last; i++ {
-		e, err := j.readJournalEntry(i)
-		if err != nil {
-			return nil, err
-		}
-
-		// Handle single ops separately.
-		switch e.Op {
-		case blockPutOp, addRefOp:
-			id, context, err := e.getSingleContext()
-			if err != nil {
-				return nil, err
-			}
-
-			blockRefs := refs[id]
-			if blockRefs == nil {
-				blockRefs = make(blockRefMap)
-				refs[id] = blockRefs
-			}
-
-			err = blockRefs.put(context, liveBlockRef, i)
-			if err != nil {
-				return nil, err
-			}
-
-			// Only puts count as bytes, on the assumption that the
-			// refs won't have to upload any new bytes.  (This might
-			// be wrong if all references to a block were deleted
-			// since the addref entry was appended.)
-			if e.Op == blockPutOp && !e.Ignore {
-				// Ignore ENOENT errors, since users like
-				// BlockServerDisk can remove block data without
-				// deleting the corresponding addRef.
-				if err != nil && !os.IsNotExist(err) {
-					return nil, err
-				}
-			}
-
-			continue
-		}
-
-		for id, idContexts := range e.Contexts {
-			blockRefs := refs[id]
-
-			switch e.Op {
-			case removeRefsOp:
-				if blockRefs == nil {
-					// All refs are already gone,
-					// which is not an error.
-					continue
-				}
-
-				for _, context := range idContexts {
-					err := blockRefs.remove(context, nil)
-					if err != nil {
-						return nil, err
-					}
-				}
-
-				if len(blockRefs) == 0 {
-					delete(refs, id)
-				}
-
-			case archiveRefsOp:
-				if blockRefs == nil {
-					blockRefs = make(blockRefMap)
-					refs[id] = blockRefs
-				}
-
-				for _, context := range idContexts {
-					err := blockRefs.put(
-						context, archivedBlockRef, i)
-					if err != nil {
-						return nil, err
-					}
-				}
-
-			case mdRevMarkerOp:
-				// Ignore MD revision markers.
-				continue
-
-			default:
-				return nil, fmt.Errorf("Unknown op %s", e.Op)
-			}
-		}
-	}
-	return refs, nil
-}
-
-func (j *blockDiskStore) appendJournalEntry(entry blockDiskStoreEntry) (
-	journalOrdinal, error) {
-	return j.j.appendJournalEntry(nil, entry)
-}
-
-func (j *blockDiskStore) length() (uint64, error) {
-	return j.j.length()
-}
-
-func (j *blockDiskStore) end() (journalOrdinal, error) {
-	last, err := j.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
-		return 0, nil
-	} else if err != nil {
-		return 0, err
-	}
-	return last + 1, nil
-}
-
 func (j *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
 	data, err := ioutil.ReadFile(j.refsPath(id))
 	if os.IsNotExist(err) {
@@ -325,7 +180,7 @@ func (j *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
 
 func (j *blockDiskStore) putContext(
 	id BlockID, context BlockContext,
-	status blockRefStatus, ordinal journalOrdinal) error {
+	status blockRefStatus, tag interface{}) error {
 	refs, err := j.getRefs(id)
 	if err != nil {
 		return err
@@ -341,7 +196,7 @@ func (j *blockDiskStore) putContext(
 		}
 	}
 
-	err = refs.put(context, status, ordinal)
+	err = refs.put(context, status, tag)
 	if err != nil {
 		return err
 	}
@@ -550,7 +405,8 @@ func (j *blockDiskStore) getAll() (
 
 func (j *blockDiskStore) putData(
 	ctx context.Context, id BlockID, context BlockContext, buf []byte,
-	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
+	serverHalf kbfscrypto.BlockCryptKeyServerHalf,
+	tag interface{}) (err error) {
 	j.log.CDebugf(ctx, "Putting %d bytes of data for block %s with context %v",
 		len(buf), id, context)
 	defer func() {
@@ -615,19 +471,11 @@ func (j *blockDiskStore) putData(
 		return err
 	}
 
-	ordinal, err := j.appendJournalEntry(blockDiskStoreEntry{
-		Op:       blockPutOp,
-		Contexts: map[BlockID][]BlockContext{id: {context}},
-	})
-	if err != nil {
-		return err
-	}
-
-	return j.putContext(id, context, liveBlockRef, ordinal)
+	return j.putContext(id, context, liveBlockRef, tag)
 }
 
 func (j *blockDiskStore) addReference(
-	ctx context.Context, id BlockID, context BlockContext) (
+	ctx context.Context, id BlockID, context BlockContext, tag interface{}) (
 	err error) {
 	j.log.CDebugf(ctx, "Adding reference for block %s with context %v",
 		id, context)
@@ -639,15 +487,7 @@ func (j *blockDiskStore) addReference(
 		}
 	}()
 
-	ordinal, err := j.appendJournalEntry(blockDiskStoreEntry{
-		Op:       addRefOp,
-		Contexts: map[BlockID][]BlockContext{id: {context}},
-	})
-	if err != nil {
-		return err
-	}
-
-	return j.putContext(id, context, liveBlockRef, ordinal)
+	return j.putContext(id, context, liveBlockRef, tag)
 }
 
 // removeReferences fixes up the in-memory reference map to delete the
@@ -671,14 +511,6 @@ func (j *blockDiskStore) removeReferences(
 			return nil, err
 		}
 		liveCounts[id] = liveCount
-	}
-
-	_, err = j.appendJournalEntry(blockDiskStoreEntry{
-		Op:       removeRefsOp,
-		Contexts: contexts,
-	})
-	if err != nil {
-		return nil, err
 	}
 
 	return liveCounts, nil
@@ -713,7 +545,8 @@ func (j *blockDiskStore) removeBlockData(id BlockID) error {
 }
 
 func (j *blockDiskStore) archiveReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext) (err error) {
+	ctx context.Context, contexts map[BlockID][]BlockContext,
+	tag interface{}) (err error) {
 	j.log.CDebugf(ctx, "Archiving references for %v", contexts)
 	defer func() {
 		if err != nil {
@@ -722,18 +555,10 @@ func (j *blockDiskStore) archiveReferences(
 		}
 	}()
 
-	ordinal, err := j.appendJournalEntry(blockDiskStoreEntry{
-		Op:       archiveRefsOp,
-		Contexts: contexts,
-	})
-	if err != nil {
-		return err
-	}
-
 	for id, idContexts := range contexts {
 		for _, context := range idContexts {
 			err = j.putContext(
-				id, context, archivedBlockRef, ordinal)
+				id, context, archivedBlockRef, tag)
 			if err != nil {
 				return err
 			}

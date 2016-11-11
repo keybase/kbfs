@@ -57,12 +57,6 @@ func TestBlockDiskStoreEntryUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeBlockDiskStoreEntryFuture(t))
 }
 
-func getBlockDiskStoreLength(t *testing.T, j *blockDiskStore) int {
-	len, err := j.length()
-	require.NoError(t, err)
-	return int(len)
-}
-
 func setupBlockDiskStoreTest(t *testing.T) (
 	ctx context.Context, tempdir string, j *blockDiskStore) {
 	ctx = context.Background()
