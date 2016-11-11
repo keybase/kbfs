@@ -71,14 +71,6 @@ type blockDiskStore struct {
 
 	j    diskJournal
 	refs map[BlockID]blockRefMap
-
-	// Tracks the total size of on-disk blocks that will be flushed to
-	// the server (i.e., does not count reference adds).  It is only
-	// accurate for users of this journal that properly flush entries;
-	// in particular, calls to `removeReferences` with
-	// removeUnreferencedBlocks set to true can cause this count to
-	// deviate from the actual disk usage of the journal.
-	unflushedBytes int64
 }
 
 // A blockDiskStoreEntry is just the name of the operation and the
@@ -141,13 +133,12 @@ func makeBlockDiskStore(
 		j:        j,
 	}
 
-	refs, unflushedBytes, err := journal.readJournal(ctx)
+	refs, err := journal.readJournal(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	journal.refs = refs
-	journal.unflushedBytes = unflushedBytes
 	return journal, nil
 }
 
@@ -193,27 +184,26 @@ func (j *blockDiskStore) readJournalEntry(ordinal journalOrdinal) (
 // references in the journal and the total number of bytes that need
 // flushing.
 func (j *blockDiskStore) readJournal(ctx context.Context) (
-	map[BlockID]blockRefMap, int64, error) {
+	map[BlockID]blockRefMap, error) {
 	refs := make(map[BlockID]blockRefMap)
 
 	first, err := j.j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
-		return refs, 0, nil
+		return refs, nil
 	} else if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	last, err := j.j.readLatestOrdinal()
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	j.log.CDebugf(ctx, "Reading journal entries %d to %d", first, last)
 
-	var unflushedBytes int64
 	for i := first; i <= last; i++ {
 		e, err := j.readJournalEntry(i)
 		if err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 
 		// Handle single ops separately.
@@ -221,7 +211,7 @@ func (j *blockDiskStore) readJournal(ctx context.Context) (
 		case blockPutOp, addRefOp:
 			id, context, err := e.getSingleContext()
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 
 			blockRefs := refs[id]
@@ -232,7 +222,7 @@ func (j *blockDiskStore) readJournal(ctx context.Context) (
 
 			err = blockRefs.put(context, liveBlockRef, i)
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 
 			// Only puts count as bytes, on the assumption that the
@@ -240,14 +230,12 @@ func (j *blockDiskStore) readJournal(ctx context.Context) (
 			// be wrong if all references to a block were deleted
 			// since the addref entry was appended.)
 			if e.Op == blockPutOp && !e.Ignore {
-				b, err := j.getDataSize(id)
 				// Ignore ENOENT errors, since users like
 				// BlockServerDisk can remove block data without
 				// deleting the corresponding addRef.
 				if err != nil && !os.IsNotExist(err) {
-					return nil, 0, err
+					return nil, err
 				}
-				unflushedBytes += b
 			}
 
 			continue
@@ -267,7 +255,7 @@ func (j *blockDiskStore) readJournal(ctx context.Context) (
 				for _, context := range idContexts {
 					err := blockRefs.remove(context, nil)
 					if err != nil {
-						return nil, 0, err
+						return nil, err
 					}
 				}
 
@@ -285,7 +273,7 @@ func (j *blockDiskStore) readJournal(ctx context.Context) (
 					err := blockRefs.put(
 						context, archivedBlockRef, i)
 					if err != nil {
-						return nil, 0, err
+						return nil, err
 					}
 				}
 
@@ -294,12 +282,11 @@ func (j *blockDiskStore) readJournal(ctx context.Context) (
 				continue
 
 			default:
-				return nil, 0, fmt.Errorf("Unknown op %s", e.Op)
+				return nil, fmt.Errorf("Unknown op %s", e.Op)
 			}
 		}
 	}
-	j.log.CDebugf(ctx, "Found %d block bytes in the journal", unflushedBytes)
-	return refs, unflushedBytes, nil
+	return refs, nil
 }
 
 func (j *blockDiskStore) appendJournalEntry(entry blockDiskStoreEntry) (
@@ -362,19 +349,6 @@ func (j *blockDiskStore) removeContexts(
 	}
 
 	return len(refs), nil
-}
-
-func (j *blockDiskStore) exists(id BlockID) error {
-	_, err := os.Stat(j.blockDataPath(id))
-	return err
-}
-
-func (j *blockDiskStore) getDataSize(id BlockID) (int64, error) {
-	fi, err := os.Stat(j.blockDataPath(id))
-	if err != nil {
-		return 0, err
-	}
-	return fi.Size(), nil
 }
 
 func (j *blockDiskStore) getData(id BlockID) (
@@ -515,7 +489,6 @@ func (j *blockDiskStore) putData(
 	if err != nil {
 		return err
 	}
-	j.unflushedBytes += int64(len(buf))
 
 	// TODO: Add integrity-checking for key server half?
 
@@ -565,10 +538,7 @@ func (j *blockDiskStore) addReference(
 }
 
 // removeReferences fixes up the in-memory reference map to delete the
-// given references.  If removeUnreferencedBlocks is true, it will
-// also delete the corresponding blocks from the disk.  However, in
-// that case, j.unflushedBytes will no longer be accurate and
-// shouldn't be relied upon.
+// given references.
 func (j *blockDiskStore) removeReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
@@ -657,7 +627,7 @@ func (j *blockDiskStore) archiveReferences(
 }
 
 func (j *blockDiskStore) checkInSync(ctx context.Context) error {
-	refs, _, err := j.readJournal(ctx)
+	refs, err := j.readJournal(ctx)
 	if err != nil {
 		return err
 	}

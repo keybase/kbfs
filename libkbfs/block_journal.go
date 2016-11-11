@@ -631,10 +631,7 @@ func (j *blockJournal) addReference(
 }
 
 // removeReferences fixes up the in-memory reference map to delete the
-// given references.  If removeUnreferencedBlocks is true, it will
-// also delete the corresponding blocks from the disk.  However, in
-// that case, j.unflushedBytes will no longer be accurate and
-// shouldn't be relied upon.
+// given references.
 func (j *blockJournal) removeReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) (
 	liveCounts map[BlockID]int, err error) {
