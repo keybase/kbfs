@@ -144,7 +144,7 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 
 	// Remove references.
 	liveCounts, err := j.removeReferences(
-		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}})
+		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, nil)
 	require.NoError(t, err)
 	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
 

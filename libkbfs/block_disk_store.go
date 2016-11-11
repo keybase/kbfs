@@ -103,7 +103,7 @@ func (j *blockDiskStore) refsPath(id BlockID) string {
 	return filepath.Join(j.blockPath(id), "refs")
 }
 
-// The functions below are for reading and writing refs.
+// The functions below are for getting and putting refs/contexts.
 
 func (j *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
 	data, err := ioutil.ReadFile(j.refsPath(id))
@@ -122,25 +122,17 @@ func (j *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
 	return refs, nil
 }
 
-func (j *blockDiskStore) putContext(
-	id BlockID, context BlockContext,
-	status blockRefStatus, tag interface{}) error {
-	refs, err := j.getRefs(id)
-	if err != nil {
-		return err
-	}
-
-	if refs == nil {
-		refs = make(blockRefMap)
-	} else {
-		// Check existing context, if any.
-		_, err := refs.checkExists(context)
+func (j *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
+	if len(refs) == 0 {
+		err := os.Remove(j.refsPath(id))
 		if err != nil {
 			return err
 		}
+
+		return nil
 	}
 
-	err = refs.put(context, status, tag)
+	err := os.MkdirAll(j.blockPath(id), 0700)
 	if err != nil {
 		return err
 	}
@@ -150,16 +142,46 @@ func (j *blockDiskStore) putContext(
 		return err
 	}
 
-	err = os.MkdirAll(j.blockPath(id), 0700)
+	err = ioutil.WriteFile(j.refsPath(id), buf, 0600)
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(j.refsPath(id), buf, 0600)
+	return nil
+}
+
+func (j *blockDiskStore) addContexts(
+	id BlockID, contexts []BlockContext,
+	status blockRefStatus, tag interface{}) error {
+	refs, err := j.getRefs(id)
+	if err != nil {
+		return err
+	}
+
+	if refs == nil {
+		refs = make(blockRefMap)
+	} else {
+		// Check existing contexts, if any.
+		for _, context := range contexts {
+			_, err := refs.checkExists(context)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, context := range contexts {
+		err = refs.put(context, status, tag)
+		if err != nil {
+			return err
+		}
+	}
+
+	return j.putRefs(id, refs)
 }
 
 func (j *blockDiskStore) removeContexts(
-	id BlockID, contexts []BlockContext, ordinal *journalOrdinal) (
+	id BlockID, contexts []BlockContext, tag interface{}) (
 	liveCount int, err error) {
 	refs, err := j.getRefs(id)
 	if err != nil {
@@ -167,11 +189,6 @@ func (j *blockDiskStore) removeContexts(
 	}
 	if len(refs) == 0 {
 		return 0, nil
-	}
-
-	var tag interface{}
-	if ordinal != nil {
-		tag = *ordinal
 	}
 
 	for _, context := range contexts {
@@ -184,21 +201,9 @@ func (j *blockDiskStore) removeContexts(
 		}
 	}
 
-	if len(refs) == 0 {
-		err = os.Remove(j.refsPath(id))
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		buf, err := j.codec.Encode(refs)
-		if err != nil {
-			return 0, err
-		}
-
-		err = ioutil.WriteFile(j.refsPath(id), buf, 0600)
-		if err != nil {
-			return 0, err
-		}
+	err = j.putRefs(id, refs)
+	if err != nil {
+		return 0, err
 	}
 
 	return len(refs), nil
@@ -415,7 +420,7 @@ func (j *blockDiskStore) putData(
 		return err
 	}
 
-	return j.putContext(id, context, liveBlockRef, tag)
+	return j.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
 }
 
 func (j *blockDiskStore) addReference(
@@ -431,13 +436,14 @@ func (j *blockDiskStore) addReference(
 		}
 	}()
 
-	return j.putContext(id, context, liveBlockRef, tag)
+	return j.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
 }
 
 // removeReferences fixes up the in-memory reference map to delete the
 // given references.
 func (j *blockDiskStore) removeReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext) (
+	ctx context.Context, contexts map[BlockID][]BlockContext,
+	tag interface{}) (
 	liveCounts map[BlockID]int, err error) {
 	j.log.CDebugf(ctx, "Removing references for %v", contexts)
 	defer func() {
@@ -450,7 +456,7 @@ func (j *blockDiskStore) removeReferences(
 	liveCounts = make(map[BlockID]int)
 
 	for id, idContexts := range contexts {
-		liveCount, err := j.removeContexts(id, idContexts, nil)
+		liveCount, err := j.removeContexts(id, idContexts, tag)
 		if err != nil {
 			return nil, err
 		}
@@ -500,12 +506,9 @@ func (j *blockDiskStore) archiveReferences(
 	}()
 
 	for id, idContexts := range contexts {
-		for _, context := range idContexts {
-			err = j.putContext(
-				id, context, archivedBlockRef, tag)
-			if err != nil {
-				return err
-			}
+		err = j.addContexts(id, idContexts, archivedBlockRef, tag)
+		if err != nil {
+			return err
 		}
 	}
 
