@@ -38,8 +38,7 @@ func setupBlockDiskStoreTest(t *testing.T) (
 		}
 	}()
 
-	j, err = makeBlockDiskStore(ctx, codec, crypto, tempdir, log)
-	require.NoError(t, err)
+	j = makeBlockDiskStore(ctx, codec, crypto, tempdir, log)
 
 	setupSucceeded = true
 	return ctx, tempdir, j
@@ -108,8 +107,7 @@ func TestBlockDiskStoreBasic(t *testing.T) {
 	getAndCheckBlockDiskData(ctx, t, j, bID, bCtx2, data, serverHalf)
 
 	// Shutdown and restart.
-	j, err := makeBlockDiskStore(ctx, j.codec, j.crypto, tempdir, j.log)
-	require.NoError(t, err)
+	j = makeBlockDiskStore(ctx, j.codec, j.crypto, tempdir, j.log)
 
 	// Make sure we get the same block for both refs.
 

@@ -17,46 +17,37 @@ import (
 	"golang.org/x/net/context"
 )
 
-// blockDiskStore stores a single ordered list of block operations for a
-// single TLF, along with the associated block data, in flat files in
-// a directory on disk.
+// blockDiskStore stores blocks along with their associated data in
+// flat files in a directory on disk.
 //
 // The directory layout looks like:
 //
-// dir/block_journal/EARLIEST
-// dir/block_journal/LATEST
-// dir/block_journal/0...000
-// dir/block_journal/0...001
-// dir/block_journal/0...fff
-// dir/blocks/0100/0...01/data
-// dir/blocks/0100/0...01/key_server_half
+// dir/0100/0...01/data
+// dir/0100/0...01/key_server_half
+// dir/0100/0...01/refs
 // ...
-// dir/blocks/01ff/f...ff/data
-// dir/blocks/01ff/f...ff/key_server_half
+// dir/01ff/f...ff/data
+// dir/01ff/f...ff/key_server_half
+// dir/01ff/f...ff/refs
 //
-// Each entry in the journal in dir/block_journal contains the
-// mutating operation and arguments for a single operation, except for
-// block data. (See diskJournal comments for more details about the
-// journal.)
-//
-// The block data is stored separately in dir/blocks. Each block has
-// its own subdirectory with its ID truncated to 17 bytes (34
-// characters) as a name. The block subdirectories are splayed over (#
-// of possible hash types) * 256 subdirectories -- one byte for the
-// hash type (currently only one) plus the first byte of the hash data
-// -- using the first four characters of the name to keep the number
-// of directories in dir itself to a manageable number, similar to
-// git. Each block directory has data, which is the raw block data
-// that should hash to the block ID, and key_server_half, which
-// contains the raw data for the associated key server half. Future
-// versions of the journal might add more files to this directory; if
-// any code is written to move blocks around, it should be careful to
-// preserve any unknown files in a block directory.
+// Each block has its own subdirectory with its ID truncated to 17
+// bytes (34 characters) as a name. The block subdirectories are
+// splayed over (# of possible hash types) * 256 subdirectories -- one
+// byte for the hash type (currently only one) plus the first byte of
+// the hash data -- using the first four characters of the name to
+// keep the number of directories in dir itself to a manageable
+// number, similar to git. Each block directory has data, which is the
+// raw block data that should hash to the block ID, key_server_half,
+// which contains the raw data for the associated key server half, and
+// refs, which contains the list of references to the block. Future
+// versions of the disk store might add more files to this directory;
+// if any code is written to move blocks around, it should be careful
+// to preserve any unknown files in a block directory.
 //
 // The maximum number of characters added to the root dir by a block
-// journal is 59:
+// disk store is 52:
 //
-//   /blocks/01ff/f...(30 characters total)...ff/key_server_half
+//   /01ff/f...(30 characters total)...ff/key_server_half
 //
 // blockDiskStore is not goroutine-safe, so any code that uses it must
 // guarantee that only one goroutine at a time calls its functions.
@@ -70,10 +61,10 @@ type blockDiskStore struct {
 }
 
 // makeBlockDiskStore returns a new blockDiskStore for the given
-// directory. Any existing journal entries are read.
+// directory.
 func makeBlockDiskStore(
 	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure,
-	dir string, log logger.Logger) (*blockDiskStore, error) {
+	dir string, log logger.Logger) *blockDiskStore {
 	deferLog := log.CloneWithAddedDepth(1)
 	journal := &blockDiskStore{
 		codec:    codec,
@@ -83,14 +74,10 @@ func makeBlockDiskStore(
 		deferLog: deferLog,
 	}
 
-	return journal, nil
+	return journal
 }
 
-// The functions below are for building various non-journal paths.
-
-func (j *blockDiskStore) blocksPath() string {
-	return filepath.Join(j.dir, "blocks")
-}
+// The functions below are for building various paths.
 
 func (j *blockDiskStore) blockPath(id BlockID) string {
 	// Truncate to 34 characters, which corresponds to 16 random
@@ -101,7 +88,7 @@ func (j *blockDiskStore) blockPath(id BlockID) string {
 	// ). The full ID can be recovered just by hashing the data
 	// again with the same hash type.
 	idStr := id.String()
-	return filepath.Join(j.blocksPath(), idStr[:4], idStr[4:34])
+	return filepath.Join(j.dir, idStr[:4], idStr[4:34])
 }
 
 func (j *blockDiskStore) blockDataPath(id BlockID) string {
@@ -116,7 +103,7 @@ func (j *blockDiskStore) refsPath(id BlockID) string {
 	return filepath.Join(j.blockPath(id), "refs")
 }
 
-// The functions below are for reading and writing journal entries.
+// The functions below are for reading and writing refs.
 
 func (j *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
 	data, err := ioutil.ReadFile(j.refsPath(id))
@@ -307,7 +294,7 @@ func (j *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
 
 func (j *blockDiskStore) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
-	fileInfos, err := ioutil.ReadDir(j.blocksPath())
+	fileInfos, err := ioutil.ReadDir(j.dir)
 	if os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
@@ -321,7 +308,7 @@ func (j *blockDiskStore) getAll() (
 			return nil, fmt.Errorf("Unexpected non-dir %q", name)
 		}
 
-		subFileInfos, err := ioutil.ReadDir(filepath.Join(j.blocksPath(), name))
+		subFileInfos, err := ioutil.ReadDir(filepath.Join(j.dir, name))
 		if err != nil {
 			return nil, err
 		}
@@ -333,7 +320,7 @@ func (j *blockDiskStore) getAll() (
 					subName)
 			}
 
-			dataPath := filepath.Join(j.blocksPath(), name, subName, "data")
+			dataPath := filepath.Join(j.dir, name, subName, "data")
 			data, err := ioutil.ReadFile(dataPath)
 			if err != nil {
 				return nil, fmt.Errorf("Unexpectedly couldn't read from %q", dataPath)

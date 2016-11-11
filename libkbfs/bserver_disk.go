@@ -114,10 +114,7 @@ func (b *BlockServerDisk) getStorage(ctx context.Context, tlfID tlf.ID) (
 	}
 
 	path := filepath.Join(b.dirPath, tlfID.String())
-	store, err := makeBlockDiskStore(ctx, b.codec, b.crypto, path, b.log)
-	if err != nil {
-		return nil, err
-	}
+	store := makeBlockDiskStore(ctx, b.codec, b.crypto, path, b.log)
 
 	storage = &blockServerDiskTlfStorage{
 		store: store,
