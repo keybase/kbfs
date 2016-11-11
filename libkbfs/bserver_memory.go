@@ -315,8 +315,8 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 // getAll returns all the known block references, and should only be
 // used during testing.
 func (b *BlockServerMemory) getAll(ctx context.Context, tlfID tlf.ID) (
-	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
+	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
+	res := make(map[BlockID]map[BlockRefNonce]blockRefStatus)
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 

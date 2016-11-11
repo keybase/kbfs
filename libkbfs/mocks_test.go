@@ -3352,9 +3352,9 @@ func (_mr *_MockblockServerLocalRecorder) GetUserQuotaInfo(arg0 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserQuotaInfo", arg0)
 }
 
-func (_m *MockblockServerLocal) getAll(ctx context.Context, tlfID tlf.ID) (map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
+func (_m *MockblockServerLocal) getAll(ctx context.Context, tlfID tlf.ID) (map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
 	ret := _m.ctrl.Call(_m, "getAll", ctx, tlfID)
-	ret0, _ := ret[0].(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
+	ret0, _ := ret[0].(map[BlockID]map[BlockRefNonce]blockRefStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

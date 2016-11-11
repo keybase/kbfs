@@ -6,6 +6,13 @@ package libkbfs
 
 import "fmt"
 
+type blockRefStatus int
+
+const (
+	liveBlockRef     blockRefStatus = 1
+	archivedBlockRef blockRefStatus = 2
+)
+
 type blockContextMismatchError struct {
 	expected, actual BlockContext
 }
@@ -16,7 +23,7 @@ func (e blockContextMismatchError) Error() string {
 }
 
 type blockRefEntry struct {
-	status  blockRefLocalStatus
+	status  blockRefStatus
 	context BlockContext
 	// mostRecentTag, if non-nil, is used by callers to figure out
 	// if an entry has been modified by something else. See
@@ -52,15 +59,15 @@ func (refs blockRefMap) checkExists(context BlockContext) error {
 	return refEntry.checkContext(context)
 }
 
-func (refs blockRefMap) getStatuses() map[BlockRefNonce]blockRefLocalStatus {
-	statuses := make(map[BlockRefNonce]blockRefLocalStatus)
+func (refs blockRefMap) getStatuses() map[BlockRefNonce]blockRefStatus {
+	statuses := make(map[BlockRefNonce]blockRefStatus)
 	for ref, refEntry := range refs {
 		statuses[ref] = refEntry.status
 	}
 	return statuses
 }
 
-func (refs blockRefMap) put(context BlockContext, status blockRefLocalStatus,
+func (refs blockRefMap) put(context BlockContext, status blockRefStatus,
 	tag interface{}) error {
 	refNonce := context.GetRefNonce()
 	if refEntry, ok := refs[refNonce]; ok {

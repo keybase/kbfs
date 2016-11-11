@@ -389,7 +389,7 @@ func (j *blockJournal) end() (journalOrdinal, error) {
 
 func (j *blockJournal) putContext(
 	id BlockID, context BlockContext,
-	status blockRefLocalStatus, ordinal journalOrdinal) error {
+	status blockRefStatus, ordinal journalOrdinal) error {
 	// Check existing context, if any.
 	_, err := j.hasContext(id, context)
 	if err != nil {
@@ -528,8 +528,8 @@ func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 }
 
 func (j *blockJournal) getAll() (
-	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
-	res := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
+	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
+	res := make(map[BlockID]map[BlockRefNonce]blockRefStatus)
 	for id, refs := range j.refs {
 		res[id] = refs.getStatuses()
 	}

@@ -346,16 +346,16 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf tlf.ID) error 
 		return err
 	}
 
-	blockRefsByID := make(map[BlockID]map[BlockRefNonce]blockRefLocalStatus)
+	blockRefsByID := make(map[BlockID]map[BlockRefNonce]blockRefStatus)
 	for ptr := range expectedLiveBlocks {
 		if _, ok := blockRefsByID[ptr.ID]; !ok {
-			blockRefsByID[ptr.ID] = make(map[BlockRefNonce]blockRefLocalStatus)
+			blockRefsByID[ptr.ID] = make(map[BlockRefNonce]blockRefStatus)
 		}
 		blockRefsByID[ptr.ID][ptr.RefNonce] = liveBlockRef
 	}
 	for ptr := range archivedBlocks {
 		if _, ok := blockRefsByID[ptr.ID]; !ok {
-			blockRefsByID[ptr.ID] = make(map[BlockRefNonce]blockRefLocalStatus)
+			blockRefsByID[ptr.ID] = make(map[BlockRefNonce]blockRefStatus)
 		}
 		blockRefsByID[ptr.ID][ptr.RefNonce] = archivedBlockRef
 	}

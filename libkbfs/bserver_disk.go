@@ -294,7 +294,7 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 // getAll returns all the known block references, and should only be
 // used during testing.
 func (b *BlockServerDisk) getAll(ctx context.Context, tlfID tlf.ID) (
-	map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error) {
+	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
 	tlfStorage, err := b.getStorage(ctx, tlfID)
 	if err != nil {
 		return nil, err
