@@ -62,19 +62,16 @@ type blockDiskStore struct {
 
 // makeBlockDiskStore returns a new blockDiskStore for the given
 // directory.
-func makeBlockDiskStore(
-	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure,
+func makeBlockDiskStore(codec kbfscodec.Codec, crypto cryptoPure,
 	dir string, log logger.Logger) *blockDiskStore {
 	deferLog := log.CloneWithAddedDepth(1)
-	journal := &blockDiskStore{
+	return &blockDiskStore{
 		codec:    codec,
 		crypto:   crypto,
 		dir:      dir,
 		log:      log,
 		deferLog: deferLog,
 	}
-
-	return journal
 }
 
 // The functions below are for building various paths.
@@ -297,8 +294,7 @@ func (s *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
 	return s.getData(id)
 }
 
-func (s *blockDiskStore) getAll() (
-	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
+func (s *blockDiskStore) getAllRefs() (map[BlockID]blockRefMap, error) {
 	fileInfos, err := ioutil.ReadDir(s.dir)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -306,7 +302,7 @@ func (s *blockDiskStore) getAll() (
 		return nil, err
 	}
 
-	res := make(map[BlockID]map[BlockRefNonce]blockRefStatus)
+	res := make(map[BlockID]blockRefMap)
 	for _, fi := range fileInfos {
 		name := fi.Name()
 		if !fi.IsDir() {
@@ -346,8 +342,24 @@ func (s *blockDiskStore) getAll() (
 				return nil, err
 			}
 
-			res[id] = refs.getStatuses()
+			if len(refs) > 0 {
+				res[id] = refs
+			}
 		}
+	}
+	return res, nil
+}
+
+func (s *blockDiskStore) getAll() (
+	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
+	allRefs, err := s.getAllRefs()
+	if err != nil {
+		return nil, err
+	}
+
+	res := make(map[BlockID]map[BlockRefNonce]blockRefStatus)
+	for id, refs := range allRefs {
+		res[id] = refs.getStatuses()
 	}
 	return res, nil
 }

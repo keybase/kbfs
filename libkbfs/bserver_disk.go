@@ -83,7 +83,7 @@ func NewBlockServerTempDir(
 
 var errBlockServerDiskShutdown = errors.New("BlockServerDisk is shutdown")
 
-func (b *BlockServerDisk) getStorage(ctx context.Context, tlfID tlf.ID) (
+func (b *BlockServerDisk) getStorage(tlfID tlf.ID) (
 	*blockServerDiskTlfStorage, error) {
 	storage, err := func() (*blockServerDiskTlfStorage, error) {
 		b.tlfStorageLock.RLock()
@@ -114,7 +114,7 @@ func (b *BlockServerDisk) getStorage(ctx context.Context, tlfID tlf.ID) (
 	}
 
 	path := filepath.Join(b.dirPath, tlfID.String())
-	store := makeBlockDiskStore(ctx, b.codec, b.crypto, path, b.log)
+	store := makeBlockDiskStore(b.codec, b.crypto, path, b.log)
 
 	storage = &blockServerDiskTlfStorage{
 		store: store,
@@ -133,7 +133,7 @@ func (b *BlockServerDisk) Get(ctx context.Context, tlfID tlf.ID, id BlockID,
 	}()
 	b.log.CDebugf(ctx, "BlockServerDisk.Get id=%s tlfID=%s context=%s",
 		id, tlfID, context)
-	tlfStorage, err := b.getStorage(ctx, tlfID)
+	tlfStorage, err := b.getStorage(tlfID)
 	if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
@@ -167,7 +167,7 @@ func (b *BlockServerDisk) Put(ctx context.Context, tlfID tlf.ID, id BlockID,
 		return errors.New("can't Put() a block with a non-zero refnonce")
 	}
 
-	tlfStorage, err := b.getStorage(ctx, tlfID)
+	tlfStorage, err := b.getStorage(tlfID)
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,7 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 	id BlockID, context BlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerDisk.AddBlockReference id=%s "+
 		"tlfID=%s context=%s", id, tlfID, context)
-	tlfStorage, err := b.getStorage(ctx, tlfID)
+	tlfStorage, err := b.getStorage(tlfID)
 	if err != nil {
 		return err
 	}
@@ -228,7 +228,7 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 	}()
 	b.log.CDebugf(ctx, "BlockServerDisk.RemoveBlockReference "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
-	tlfStorage, err := b.getStorage(ctx, tlfID)
+	tlfStorage, err := b.getStorage(tlfID)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +269,7 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 	}()
 	b.log.CDebugf(ctx, "BlockServerDisk.ArchiveBlockReferences "+
 		"tlfID=%s contexts=%v", tlfID, contexts)
-	tlfStorage, err := b.getStorage(ctx, tlfID)
+	tlfStorage, err := b.getStorage(tlfID)
 	if err != nil {
 		return err
 	}
@@ -304,7 +304,7 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 // used during testing.
 func (b *BlockServerDisk) getAll(ctx context.Context, tlfID tlf.ID) (
 	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
-	tlfStorage, err := b.getStorage(ctx, tlfID)
+	tlfStorage, err := b.getStorage(tlfID)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +321,7 @@ func (b *BlockServerDisk) getAll(ctx context.Context, tlfID tlf.ID) (
 // IsUnflushed implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) IsUnflushed(ctx context.Context, tlfID tlf.ID,
 	_ BlockID) (bool, error) {
-	tlfStorage, err := b.getStorage(ctx, tlfID)
+	tlfStorage, err := b.getStorage(tlfID)
 	if err != nil {
 		return false, err
 	}

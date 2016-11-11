@@ -218,7 +218,7 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 	require.Equal(t, blockNonExistentError{bID}, err)
 
 	// But the actual data should remain (for flushing).
-	buf, half, err := j.getData(bID)
+	buf, half, err := j.s.getData(bID)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, half)
@@ -267,7 +267,7 @@ func testBlockJournalGCd(t *testing.T, j *blockJournal) {
 	filepath.Walk(j.dir,
 		func(path string, info os.FileInfo, _ error) error {
 			// We should only find the blocks directory here.
-			if path != j.dir && path != j.blocksPath() && path != j.j.dir {
+			if path != j.dir && path != j.s.dir && path != j.j.dir {
 				t.Errorf("Found unexpected block path: %s", path)
 			}
 			return nil

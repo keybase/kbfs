@@ -38,7 +38,7 @@ func setupBlockDiskStoreTest(t *testing.T) (
 		}
 	}()
 
-	s = makeBlockDiskStore(ctx, codec, crypto, tempdir, log)
+	s = makeBlockDiskStore(codec, crypto, tempdir, log)
 
 	setupSucceeded = true
 	return ctx, tempdir, s
@@ -107,7 +107,7 @@ func TestBlockDiskStoreBasic(t *testing.T) {
 	getAndCheckBlockDiskData(ctx, t, s, bID, bCtx2, data, serverHalf)
 
 	// Shutdown and restart.
-	s = makeBlockDiskStore(ctx, s.codec, s.crypto, tempdir, s.log)
+	s = makeBlockDiskStore(s.codec, s.crypto, tempdir, s.log)
 
 	// Make sure we get the same block for both refs.
 
