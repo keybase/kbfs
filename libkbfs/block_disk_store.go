@@ -88,8 +88,12 @@ func (s *blockDiskStore) blockPath(id BlockID) string {
 	return filepath.Join(s.dir, idStr[:4], idStr[4:34])
 }
 
-func (s *blockDiskStore) blockDataPath(id BlockID) string {
+func (s *blockDiskStore) dataPath(id BlockID) string {
 	return filepath.Join(s.blockPath(id), "data")
+}
+
+func (s *blockDiskStore) idPath(id BlockID) string {
+	return filepath.Join(s.blockPath(id), "id")
 }
 
 func (s *blockDiskStore) keyServerHalfPath(id BlockID) string {
@@ -208,7 +212,7 @@ func (s *blockDiskStore) removeContexts(
 
 func (s *blockDiskStore) getData(id BlockID) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
-	data, err := ioutil.ReadFile(s.blockDataPath(id))
+	data, err := ioutil.ReadFile(s.dataPath(id))
 	if os.IsNotExist(err) {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
 			blockNonExistentError{id}
@@ -415,19 +419,27 @@ func (s *blockDiskStore) putData(
 		return err
 	}
 
-	err = ioutil.WriteFile(s.blockDataPath(id), buf, 0600)
+	data, err := id.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(s.idPath(id), data, 0600)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(s.dataPath(id), buf, 0600)
 	if err != nil {
 		return err
 	}
 
 	// TODO: Add integrity-checking for key server half?
 
-	data, err := serverHalf.MarshalBinary()
+	data, err = serverHalf.MarshalBinary()
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(
-		s.keyServerHalfPath(id), data, 0600)
+	err = ioutil.WriteFile(s.keyServerHalfPath(id), data, 0600)
 	if err != nil {
 		return err
 	}
@@ -447,6 +459,20 @@ func (s *blockDiskStore) addReference(
 				id, context, err)
 		}
 	}()
+
+	err = os.MkdirAll(s.blockPath(id), 0700)
+	if err != nil {
+		return err
+	}
+
+	data, err := id.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(s.idPath(id), data, 0600)
+	if err != nil {
+		return err
+	}
 
 	return s.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
 }

@@ -352,7 +352,7 @@ func (j *blockJournal) end() (journalOrdinal, error) {
 }
 
 func (j *blockJournal) exists(id BlockID) error {
-	_, err := os.Stat(j.s.blockDataPath(id))
+	_, err := os.Stat(j.s.dataPath(id))
 	return err
 }
 
