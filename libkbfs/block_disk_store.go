@@ -138,6 +138,15 @@ func (s *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
 		return err
 	}
 
+	data, err := id.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(s.idPath(id), data, 0600)
+	if err != nil {
+		return err
+	}
+
 	buf, err := s.codec.Encode(refs)
 	if err != nil {
 		return err
@@ -325,13 +334,14 @@ func (s *blockDiskStore) getAllRefs() (map[BlockID]blockRefMap, error) {
 					subName)
 			}
 
-			dataPath := filepath.Join(s.dir, name, subName, "data")
-			data, err := ioutil.ReadFile(dataPath)
+			idPath := filepath.Join(s.dir, name, subName, "id")
+			buf, err := ioutil.ReadFile(idPath)
 			if err != nil {
-				return nil, fmt.Errorf("Unexpectedly couldn't read from %q", dataPath)
+				return nil, err
 			}
 
-			id, err := s.crypto.MakePermanentBlockID(data)
+			var id BlockID
+			err = id.UnmarshalBinary(buf)
 			if err != nil {
 				return nil, err
 			}
@@ -419,15 +429,6 @@ func (s *blockDiskStore) putData(
 		return err
 	}
 
-	data, err := id.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(s.idPath(id), data, 0600)
-	if err != nil {
-		return err
-	}
-
 	err = ioutil.WriteFile(s.dataPath(id), buf, 0600)
 	if err != nil {
 		return err
@@ -435,7 +436,7 @@ func (s *blockDiskStore) putData(
 
 	// TODO: Add integrity-checking for key server half?
 
-	data, err = serverHalf.MarshalBinary()
+	data, err := serverHalf.MarshalBinary()
 	if err != nil {
 		return err
 	}
