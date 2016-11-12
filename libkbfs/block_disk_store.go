@@ -309,13 +309,13 @@ func (s *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
 
 func (s *blockDiskStore) getAllRefs() (map[BlockID]blockRefMap, error) {
 	fileInfos, err := ioutil.ReadDir(s.dir)
+	res := make(map[BlockID]blockRefMap)
 	if os.IsNotExist(err) {
-		return nil, nil
+		return res, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	res := make(map[BlockID]blockRefMap)
 	for _, fi := range fileInfos {
 		name := fi.Name()
 		if !fi.IsDir() {

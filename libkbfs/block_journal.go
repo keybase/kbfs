@@ -1003,7 +1003,7 @@ func (j *blockJournal) checkInSync(ctx context.Context) error {
 	}
 
 	if !reflect.DeepEqual(journalRefs, storeRefs) {
-		return fmt.Errorf("journal refs = %+v != store refs = %+v",
+		return fmt.Errorf("journal refs = %+v != store refs = %+v %v %v",
 			journalRefs, storeRefs)
 	}
 	return nil
