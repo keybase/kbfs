@@ -71,20 +71,10 @@ type blockJournal struct {
 	log      logger.Logger
 	deferLog logger.Logger
 
-	j    diskJournal
-	refs map[BlockID]blockRefMap
-
+	j                diskJournal
 	saveUntilMDFlush *diskJournal
 
 	s *blockDiskStore
-
-	// Tracks the total size of on-disk blocks that will be flushed to
-	// the server (i.e., does not count reference adds).  It is only
-	// accurate for users of this journal that properly flush entries;
-	// in particular, calls to `removeReferences` with
-	// removeUnreferencedBlocks set to true can cause this count to
-	// deviate from the actual disk usage of the journal.
-	unflushedBytes int64
 }
 
 type blockOpType int
@@ -182,11 +172,6 @@ func makeBlockJournal(
 		s:        s,
 	}
 
-	refs, unflushedBytes, err := journal.readJournal(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	// If a saved block journal exists, we need to remove its entries
 	// on the next successful MD flush.
 	savedJournalDir := savedBlockJournalDir(dir)
@@ -202,8 +187,6 @@ func makeBlockJournal(
 		journal.saveUntilMDFlush = &sj
 	}
 
-	journal.refs = refs
-	journal.unflushedBytes = unflushedBytes
 	return journal, nil
 }
 
@@ -223,27 +206,26 @@ func (j *blockJournal) readJournalEntry(ordinal journalOrdinal) (
 // references in the journal and the total number of bytes that need
 // flushing.
 func (j *blockJournal) readJournal(ctx context.Context) (
-	map[BlockID]blockRefMap, int64, error) {
+	map[BlockID]blockRefMap, error) {
 	refs := make(map[BlockID]blockRefMap)
 
 	first, err := j.j.readEarliestOrdinal()
 	if os.IsNotExist(err) {
-		return refs, 0, nil
+		return refs, nil
 	} else if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	last, err := j.j.readLatestOrdinal()
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	j.log.CDebugf(ctx, "Reading journal entries %d to %d", first, last)
 
-	var unflushedBytes int64
 	for i := first; i <= last; i++ {
 		e, err := j.readJournalEntry(i)
 		if err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 
 		// Handle single ops separately.
@@ -251,7 +233,7 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 		case blockPutOp, addRefOp:
 			id, context, err := e.getSingleContext()
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 
 			blockRefs := refs[id]
@@ -262,7 +244,7 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 
 			err = blockRefs.put(context, liveBlockRef, i.String())
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 
 			continue
@@ -282,7 +264,7 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 				for _, context := range idContexts {
 					err := blockRefs.remove(context, "")
 					if err != nil {
-						return nil, 0, err
+						return nil, err
 					}
 				}
 
@@ -300,7 +282,7 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 					err := blockRefs.put(
 						context, archivedBlockRef, i.String())
 					if err != nil {
-						return nil, 0, err
+						return nil, err
 					}
 				}
 
@@ -309,12 +291,11 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 				continue
 
 			default:
-				return nil, 0, fmt.Errorf("Unknown op %s", e.Op)
+				return nil, fmt.Errorf("Unknown op %s", e.Op)
 			}
 		}
 	}
-	j.log.CDebugf(ctx, "Found %d block bytes in the journal", unflushedBytes)
-	return refs, unflushedBytes, nil
+	return refs, nil
 }
 
 func (j *blockJournal) appendJournalEntry(ctx context.Context,
@@ -379,6 +360,11 @@ func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 func (j *blockJournal) getAll() (
 	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
 	return j.s.getAll()
+}
+
+func (j *blockJournal) getUnflushedBytes() int64 {
+	// TODO: Figure out what to do here.
+	return 0
 }
 
 func (j *blockJournal) putData(
@@ -992,7 +978,7 @@ func (j *blockJournal) onMDFlush() error {
 }
 
 func (j *blockJournal) checkInSync(ctx context.Context) error {
-	journalRefs, _, err := j.readJournal(ctx)
+	journalRefs, err := j.readJournal(ctx)
 	if err != nil {
 		return err
 	}

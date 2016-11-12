@@ -376,7 +376,6 @@ func TestBlockJournalFlush(t *testing.T) {
 	length, err := j.length()
 	require.NoError(t, err)
 	require.Zero(t, length)
-	require.Zero(t, j.unflushedBytes)
 
 	// Make sure the ordinals and blocks are flushed.
 	testBlockJournalGCd(t, j)
