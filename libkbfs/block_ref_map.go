@@ -28,7 +28,7 @@ type blockRefEntry struct {
 	// mostRecentTag, if non-nil, is used by callers to figure out
 	// if an entry has been modified by something else. See
 	// blockRefMap.remove.
-	MostRecentTag interface{}
+	MostRecentTag string
 }
 
 func (e blockRefEntry) checkContext(context BlockContext) error {
@@ -73,7 +73,7 @@ func (refs blockRefMap) getStatuses() map[BlockRefNonce]blockRefStatus {
 }
 
 func (refs blockRefMap) put(context BlockContext, status blockRefStatus,
-	tag interface{}) error {
+	tag string) error {
 	refNonce := context.GetRefNonce()
 	if refEntry, ok := refs[refNonce]; ok {
 		err := refEntry.checkContext(context)
@@ -93,7 +93,7 @@ func (refs blockRefMap) put(context BlockContext, status blockRefStatus,
 // remove removes the entry with the given context, if any. If tag is
 // non-nil, then the entry will be removed only if its most recent tag
 // (passed in to put) matches the given one.
-func (refs blockRefMap) remove(context BlockContext, tag interface{}) error {
+func (refs blockRefMap) remove(context BlockContext, tag string) error {
 	refNonce := context.GetRefNonce()
 	// If this check fails, this ref is already gone, which is not
 	// an error.
@@ -102,7 +102,7 @@ func (refs blockRefMap) remove(context BlockContext, tag interface{}) error {
 		if err != nil {
 			return err
 		}
-		if tag == nil || refEntry.MostRecentTag == tag {
+		if tag == "" || refEntry.MostRecentTag == tag {
 			delete(refs, refNonce)
 		}
 	}

@@ -170,7 +170,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, tlfID tlf.ID, id BlockID,
 		}
 	}
 
-	return refs.put(context, liveBlockRef, nil)
+	return refs.put(context, liveBlockRef, "")
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerMemory.
@@ -206,7 +206,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 			"been archived and cannot be referenced.", id)}
 	}
 
-	return entry.refs.put(context, liveBlockRef, nil)
+	return entry.refs.put(context, liveBlockRef, "")
 }
 
 func (b *BlockServerMemory) removeBlockReference(
@@ -230,7 +230,7 @@ func (b *BlockServerMemory) removeBlockReference(
 	}
 
 	for _, context := range contexts {
-		err := entry.refs.remove(context, nil)
+		err := entry.refs.remove(context, "")
 		if err != nil {
 			return 0, err
 		}
@@ -292,7 +292,7 @@ func (b *BlockServerMemory) archiveBlockReference(
 			"doesn't exist and cannot be archived.", id, context.GetRefNonce())}
 	}
 
-	return entry.refs.put(context, archivedBlockRef, nil)
+	return entry.refs.put(context, archivedBlockRef, "")
 }
 
 // ArchiveBlockReferences implements the BlockServer interface for

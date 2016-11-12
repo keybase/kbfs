@@ -178,7 +178,7 @@ func (b *BlockServerDisk) Put(ctx context.Context, tlfID tlf.ID, id BlockID,
 		return errBlockServerDiskShutdown
 	}
 
-	return tlfStorage.store.putData(ctx, id, context, buf, serverHalf, nil)
+	return tlfStorage.store.putData(ctx, id, context, buf, serverHalf, "")
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerDisk.
@@ -215,7 +215,7 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 			"been archived and cannot be referenced.", id)}
 	}
 
-	return tlfStorage.store.addReference(ctx, id, context, nil)
+	return tlfStorage.store.addReference(ctx, id, context, "")
 }
 
 // RemoveBlockReferences implements the BlockServer interface for
@@ -239,7 +239,7 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 		return nil, errBlockServerDiskShutdown
 	}
 
-	liveCounts, err = tlfStorage.store.removeReferences(ctx, contexts, nil)
+	liveCounts, err = tlfStorage.store.removeReferences(ctx, contexts, "")
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +297,7 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 		}
 	}
 
-	return tlfStorage.store.archiveReferences(ctx, contexts, nil)
+	return tlfStorage.store.archiveReferences(ctx, contexts, "")
 }
 
 // getAll returns all the known block references, and should only be

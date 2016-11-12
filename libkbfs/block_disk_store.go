@@ -162,7 +162,7 @@ func (s *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
 
 func (s *blockDiskStore) addContexts(
 	id BlockID, contexts []BlockContext,
-	status blockRefStatus, tag interface{}) error {
+	status blockRefStatus, tag string) error {
 	refs, err := s.getRefs(id)
 	if err != nil {
 		return err
@@ -191,7 +191,7 @@ func (s *blockDiskStore) addContexts(
 }
 
 func (s *blockDiskStore) removeContexts(
-	id BlockID, contexts []BlockContext, tag interface{}) (
+	id BlockID, contexts []BlockContext, tag string) (
 	liveCount int, err error) {
 	refs, err := s.getRefs(id)
 	if err != nil {
@@ -381,7 +381,7 @@ func (s *blockDiskStore) getAll() (
 func (s *blockDiskStore) putData(
 	ctx context.Context, id BlockID, context BlockContext, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf,
-	tag interface{}) (err error) {
+	tag string) (err error) {
 	s.log.CDebugf(ctx, "Putting %d bytes of data for block %s with context %v",
 		len(buf), id, context)
 	defer func() {
@@ -449,7 +449,7 @@ func (s *blockDiskStore) putData(
 }
 
 func (s *blockDiskStore) addReference(
-	ctx context.Context, id BlockID, context BlockContext, tag interface{}) (
+	ctx context.Context, id BlockID, context BlockContext, tag string) (
 	err error) {
 	s.log.CDebugf(ctx, "Adding reference for block %s with context %v",
 		id, context)
@@ -482,7 +482,7 @@ func (s *blockDiskStore) addReference(
 // given references.
 func (s *blockDiskStore) removeReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext,
-	tag interface{}) (
+	tag string) (
 	liveCounts map[BlockID]int, err error) {
 	s.log.CDebugf(ctx, "Removing references for %v", contexts)
 	defer func() {
@@ -535,7 +535,7 @@ func (s *blockDiskStore) removeBlockData(id BlockID) error {
 
 func (s *blockDiskStore) archiveReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext,
-	tag interface{}) (err error) {
+	tag string) (err error) {
 	s.log.CDebugf(ctx, "Archiving references for %v", contexts)
 	defer func() {
 		if err != nil {

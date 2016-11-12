@@ -60,7 +60,7 @@ func putBlockDiskData(
 	serverHalf, err := s.crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
-	err = s.putData(ctx, bID, bCtx, data, serverHalf, nil)
+	err = s.putData(ctx, bID, bCtx, data, serverHalf, "")
 	require.NoError(t, err)
 
 	return bID, bCtx, serverHalf
@@ -75,7 +75,7 @@ func addBlockDiskRef(
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 	bCtx2 := BlockContext{uid1, uid2, nonce}
-	err = s.addReference(ctx, bID, bCtx2, nil)
+	err = s.addReference(ctx, bID, bCtx2, "")
 	require.NoError(t, err)
 	return bCtx2
 }
@@ -144,7 +144,7 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 
 	// Remove references.
 	liveCounts, err := s.removeReferences(
-		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, nil)
+		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, "")
 	require.NoError(t, err)
 	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
 
@@ -172,7 +172,7 @@ func TestBlockDiskStoreArchiveReferences(t *testing.T) {
 
 	// Archive references.
 	err := s.archiveReferences(
-		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, nil)
+		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, "")
 	require.NoError(t, err)
 
 	// Get block should still succeed.
@@ -193,6 +193,6 @@ func TestBlockDiskStoreArchiveNonExistentReference(t *testing.T) {
 
 	// Archive references.
 	err = s.archiveReferences(
-		ctx, map[BlockID][]BlockContext{bID: {bCtx}}, nil)
+		ctx, map[BlockID][]BlockContext{bID: {bCtx}}, "")
 	require.NoError(t, err)
 }

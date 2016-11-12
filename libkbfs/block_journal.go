@@ -260,7 +260,7 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 				refs[id] = blockRefs
 			}
 
-			err = blockRefs.put(context, liveBlockRef, int64(i))
+			err = blockRefs.put(context, liveBlockRef, i.String())
 			if err != nil {
 				return nil, 0, err
 			}
@@ -280,7 +280,7 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 				}
 
 				for _, context := range idContexts {
-					err := blockRefs.remove(context, nil)
+					err := blockRefs.remove(context, "")
 					if err != nil {
 						return nil, 0, err
 					}
@@ -298,7 +298,7 @@ func (j *blockJournal) readJournal(ctx context.Context) (
 
 				for _, context := range idContexts {
 					err := blockRefs.put(
-						context, archivedBlockRef, int64(i))
+						context, archivedBlockRef, i.String())
 					if err != nil {
 						return nil, 0, err
 					}
@@ -404,7 +404,7 @@ func (j *blockJournal) putData(
 		next = lo + 1
 	}
 
-	err = j.s.putData(ctx, id, context, buf, serverHalf, next)
+	err = j.s.putData(ctx, id, context, buf, serverHalf, next.String())
 	if err != nil {
 		return err
 	}
@@ -443,7 +443,7 @@ func (j *blockJournal) addReference(
 		next = lo + 1
 	}
 
-	err = j.s.addReference(ctx, id, context, next)
+	err = j.s.addReference(ctx, id, context, next.String())
 	if err != nil {
 		return err
 	}
@@ -473,7 +473,7 @@ func (j *blockJournal) removeReferences(
 	}()
 
 	// TODO: Explain why removing refs here is ok.
-	liveCounts, err = j.s.removeReferences(ctx, contexts, nil)
+	liveCounts, err = j.s.removeReferences(ctx, contexts, "")
 	if err != nil {
 		return nil, err
 	}
@@ -516,7 +516,7 @@ func (j *blockJournal) archiveReferences(
 		next = lo + 1
 	}
 
-	err = j.s.archiveReferences(ctx, contexts, next)
+	err = j.s.archiveReferences(ctx, contexts, next.String())
 	if err != nil {
 		return err
 	}
@@ -792,7 +792,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	// tag).
 	for id, idContexts := range entry.Contexts {
 		liveCount, err :=
-			j.s.removeContexts(id, idContexts, earliestOrdinal)
+			j.s.removeContexts(id, idContexts, earliestOrdinal.String())
 		if err != nil {
 			return 0, err
 		}
