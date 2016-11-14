@@ -339,8 +339,8 @@ func (j *blockJournal) exists(id BlockID) error {
 
 // All functions below are public functions.
 
-func (j *blockJournal) hasRef(id BlockID) (bool, error) {
-	return j.s.hasRef(id)
+func (j *blockJournal) hasAnyRef(id BlockID) (bool, error) {
+	return j.s.hasAnyRef(id)
 }
 
 func (j *blockJournal) hasNonArchivedRef(id BlockID) (bool, error) {
@@ -947,7 +947,7 @@ func (j *blockJournal) onMDFlush() error {
 
 		j.log.CDebugf(nil, "Removing data for entry %d", i)
 		for id := range entry.Contexts {
-			hasRef, err := j.hasRef(id)
+			hasRef, err := j.hasAnyRef(id)
 			if err != nil {
 				return err
 			}

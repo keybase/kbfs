@@ -197,7 +197,7 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 		return errBlockServerDiskShutdown
 	}
 
-	hasRef, err := tlfStorage.store.hasRef(id)
+	hasRef, err := tlfStorage.store.hasAnyRef(id)
 	if err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 	}
 
 	for id := range contexts {
-		hasRef, err := tlfStorage.store.hasRef(id)
+		hasRef, err := tlfStorage.store.hasAnyRef(id)
 		if err != nil {
 			return nil, err
 		}

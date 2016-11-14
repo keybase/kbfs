@@ -239,6 +239,8 @@ func (s *blockDiskStore) removeRefs(
 	return len(refs), nil
 }
 
+// getData returns the data and server half for the given ID, if
+// present.
 func (s *blockDiskStore) getData(id BlockID) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	data, err := ioutil.ReadFile(s.dataPath(id))
@@ -281,7 +283,7 @@ func (s *blockDiskStore) getData(id BlockID) (
 
 // All functions below are public functions.
 
-func (s *blockDiskStore) hasRef(id BlockID) (bool, error) {
+func (s *blockDiskStore) hasAnyRef(id BlockID) (bool, error) {
 	refs, err := s.getRefs(id)
 	if err != nil {
 		return false, err
@@ -492,7 +494,7 @@ func (s *blockDiskStore) removeReferences(
 // ID. If there is no data, nil is returned; this can happen when we
 // have only non-put references to a block in the journal.
 func (s *blockDiskStore) removeBlockData(id BlockID) error {
-	hasRef, err := s.hasRef(id)
+	hasRef, err := s.hasAnyRef(id)
 	if err != nil {
 		return err
 	}
