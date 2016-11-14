@@ -339,11 +339,6 @@ func (j *blockJournal) exists(id BlockID) error {
 
 // All functions below are public functions.
 
-func (j *blockJournal) hasContext(id BlockID, context BlockContext) (
-	bool, error) {
-	return j.s.hasContext(id, context)
-}
-
 func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	return j.s.getDataWithContext(id, context)
