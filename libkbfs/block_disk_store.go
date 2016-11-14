@@ -19,22 +19,22 @@ import (
 //
 // The directory layout looks like:
 //
-// /0100/0...01/data
-// /0100/0...01/id
-// /0100/0...01/key_server_half
-// /0100/0...01/refs
+// dir/0100/0...01/data
+// dir/0100/0...01/id
+// dir/0100/0...01/key_server_half
+// dir/0100/0...01/refs
 // ...
-// /01cc/5...55/id
-// /01cc/5...55/refs
+// dir/01cc/5...55/id
+// dir/01cc/5...55/refs
 // ...
-// /01dd/6...66/data
-// /01dd/6...66/id
-// /01dd/6...66/key_server_half
+// dir/01dd/6...66/data
+// dir/01dd/6...66/id
+// dir/01dd/6...66/key_server_half
 // ...
-// /01ff/f...ff/data
-// /01ff/f...ff/id
-// /01ff/f...ff/key_server_half
-// /01ff/f...ff/refs
+// dir/01ff/f...ff/data
+// dir/01ff/f...ff/id
+// dir/01ff/f...ff/key_server_half
+// dir/01ff/f...ff/refs
 //
 // Each block has its own subdirectory with its ID truncated to 17
 // bytes (34 characters) as a name. The block subdirectories are

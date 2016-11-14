@@ -31,35 +31,23 @@ import (
 // dir/block_journal/0...000
 // dir/block_journal/0...001
 // dir/block_journal/0...fff
-// dir/blocks/0100/0...01/data
-// dir/blocks/0100/0...01/key_server_half
-// ...
-// dir/blocks/01ff/f...ff/data
-// dir/blocks/01ff/f...ff/key_server_half
+// dir/blocks/...
+// dir/saved_block_journal/EARLIEST
+// dir/saved_block_journal/LATEST
+// dir/saved_block_journal/...
 //
 // Each entry in the journal in dir/block_journal contains the
 // mutating operation and arguments for a single operation, except for
 // block data. (See diskJournal comments for more details about the
 // journal.)
 //
-// The block data is stored separately in dir/blocks. Each block has
-// its own subdirectory with its ID truncated to 17 bytes (34
-// characters) as a name. The block subdirectories are splayed over (#
-// of possible hash types) * 256 subdirectories -- one byte for the
-// hash type (currently only one) plus the first byte of the hash data
-// -- using the first four characters of the name to keep the number
-// of directories in dir itself to a manageable number, similar to
-// git. Each block directory has data, which is the raw block data
-// that should hash to the block ID, and key_server_half, which
-// contains the raw data for the associated key server half. Future
-// versions of the journal might add more files to this directory; if
-// any code is written to move blocks around, it should be careful to
-// preserve any unknown files in a block directory.
+// The block data is stored separately in dir/blocks. See
+// blockDiskStore comments for more details.
 //
 // The maximum number of characters added to the root dir by a block
 // journal is 59:
 //
-//   /blocks/01ff/f...(30 characters total)...ff/key_server_half
+//   /blocks/(max 52 characters)
 //
 // blockJournal is not goroutine-safe, so any code that uses it must
 // guarantee that only one goroutine at a time calls its functions.
