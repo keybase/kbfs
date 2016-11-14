@@ -13,7 +13,6 @@ import (
 
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
-	"golang.org/x/net/context"
 )
 
 // blockDiskStore stores block data in flat files on disk.
@@ -374,7 +373,7 @@ func (s *blockDiskStore) getAllRefs() (map[BlockID]blockRefMap, error) {
 }
 
 func (s *blockDiskStore) putData(
-	ctx context.Context, id BlockID, context BlockContext, buf []byte,
+	id BlockID, context BlockContext, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf,
 	tag string) (err error) {
 	err = validateBlockPut(s.crypto, id, context, buf)
@@ -443,14 +442,12 @@ func (s *blockDiskStore) putData(
 }
 
 func (s *blockDiskStore) addReference(
-	ctx context.Context, id BlockID, context BlockContext, tag string) (
-	err error) {
+	id BlockID, context BlockContext, tag string) (err error) {
 	return s.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
 }
 
 func (s *blockDiskStore) archiveReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext,
-	tag string) (err error) {
+	contexts map[BlockID][]BlockContext, tag string) (err error) {
 	for id, idContexts := range contexts {
 		err = s.addContexts(id, idContexts, archivedBlockRef, tag)
 		if err != nil {
@@ -462,8 +459,7 @@ func (s *blockDiskStore) archiveReferences(
 }
 
 func (s *blockDiskStore) removeReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext,
-	tag string) (
+	contexts map[BlockID][]BlockContext, tag string) (
 	liveCounts map[BlockID]int, err error) {
 	liveCounts = make(map[BlockID]int)
 

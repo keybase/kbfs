@@ -385,7 +385,7 @@ func (j *blockJournal) putData(
 		next = lo + 1
 	}
 
-	err = j.s.putData(ctx, id, context, buf, serverHalf, next.String())
+	err = j.s.putData(id, context, buf, serverHalf, next.String())
 	if err != nil {
 		return err
 	}
@@ -424,7 +424,7 @@ func (j *blockJournal) addReference(
 		next = lo + 1
 	}
 
-	err = j.s.addReference(ctx, id, context, next.String())
+	err = j.s.addReference(id, context, next.String())
 	if err != nil {
 		return err
 	}
@@ -454,7 +454,7 @@ func (j *blockJournal) removeReferences(
 	}()
 
 	// TODO: Explain why removing refs here is ok.
-	liveCounts, err = j.s.removeReferences(ctx, contexts, "")
+	liveCounts, err = j.s.removeReferences(contexts, "")
 	if err != nil {
 		return nil, err
 	}
@@ -497,7 +497,7 @@ func (j *blockJournal) archiveReferences(
 		next = lo + 1
 	}
 
-	err = j.s.archiveReferences(ctx, contexts, next.String())
+	err = j.s.archiveReferences(contexts, next.String())
 	if err != nil {
 		return err
 	}
