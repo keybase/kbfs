@@ -470,13 +470,6 @@ func (j *blockJournal) removeReferences(
 	return liveCounts, nil
 }
 
-// removeBlockData removes any existing block data for the given
-// ID. If there is no data, nil is returned; this can happen when we
-// have only non-put references to a block in the journal.
-func (j *blockJournal) removeBlockData(id BlockID) error {
-	return j.s.removeBlockData(id)
-}
-
 func (j *blockJournal) archiveReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext) (err error) {
 	j.log.CDebugf(ctx, "Archiving references for %v", contexts)
@@ -771,20 +764,19 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	// Remove any of the entry's refs that hasn't been modified by
 	// a subsequent block op (i.e., that has earliestOrdinal as a
 	// tag).
-	for id, idContexts := range entry.Contexts {
-		liveCount, err :=
-			j.s.removeRefs(id, idContexts, earliestOrdinal.String())
-		if err != nil {
-			return 0, err
-		}
-
+	liveCounts, err := j.s.removeReferences(
+		entry.Contexts, earliestOrdinal.String())
+	if err != nil {
+		return 0, err
+	}
+	for id, liveCount := range liveCounts {
 		if liveCount == 0 {
 			// Garbage-collect the old entry if we are not saving
 			// blocks until the next MD flush.  TODO: we'll
 			// eventually need a sweeper to clean up entries left
 			// behind if we crash here.
 			if j.saveUntilMDFlush == nil {
-				err = j.removeBlockData(id)
+				err = j.s.removeBlockData(id)
 				if err != nil {
 					return 0, err
 				}
