@@ -341,7 +341,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf tlf.ID) error 
 		return errors.New("StateChecker only works against " +
 			"BlockServerLocal")
 	}
-	bserverKnownBlocks, err := bserverLocal.getAllRefs(ctx, tlf)
+	bserverKnownBlocks, err := bserverLocal.getAllRefsForTest(ctx, tlf)
 	if err != nil {
 		return err
 	}

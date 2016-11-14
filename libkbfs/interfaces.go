@@ -1221,9 +1221,9 @@ type BlockServer interface {
 // that store data locally.
 type blockServerLocal interface {
 	BlockServer
-	// getAllRefs returns all the known block references for the
-	// given TLF, and should only be used during testing.
-	getAllRefs(ctx context.Context, tlfID tlf.ID) (
+	// getAllRefsForTest returns all the known block references
+	// for the given TLF, and should only be used during testing.
+	getAllRefsForTest(ctx context.Context, tlfID tlf.ID) (
 		map[BlockID]blockRefMap, error)
 }
 

@@ -956,7 +956,7 @@ func (j *blockJournal) checkInSyncForTest() error {
 		return err
 	}
 
-	storeRefs, err := j.s.getAllRefs()
+	storeRefs, err := j.s.getAllRefsForTest()
 	if err != nil {
 		return err
 	}

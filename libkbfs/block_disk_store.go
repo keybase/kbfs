@@ -297,7 +297,7 @@ func (s *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
 	return s.getData(id)
 }
 
-func (s *blockDiskStore) getAllRefs() (map[BlockID]blockRefMap, error) {
+func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	res := make(map[BlockID]blockRefMap)
 
 	fileInfos, err := ioutil.ReadDir(s.dir)

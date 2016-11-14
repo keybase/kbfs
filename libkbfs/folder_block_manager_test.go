@@ -52,7 +52,7 @@ func testQuotaReclamation(t *testing.T, ctx context.Context, config Config,
 	if !ok {
 		t.Fatalf("Bad block server")
 	}
-	preQR1Blocks, err := bserverLocal.getAllRefs(
+	preQR1Blocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)
@@ -65,7 +65,7 @@ func testQuotaReclamation(t *testing.T, ctx context.Context, config Config,
 		t.Fatalf("Couldn't wait for QR: %v", err)
 	}
 
-	postQR1Blocks, err := bserverLocal.getAllRefs(
+	postQR1Blocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)
@@ -84,7 +84,7 @@ func testQuotaReclamation(t *testing.T, ctx context.Context, config Config,
 		t.Fatalf("Couldn't create dir: %v", err)
 	}
 
-	preQR2Blocks, err := bserverLocal.getAllRefs(
+	preQR2Blocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)
@@ -96,7 +96,7 @@ func testQuotaReclamation(t *testing.T, ctx context.Context, config Config,
 		t.Fatalf("Couldn't wait for QR: %v", err)
 	}
 
-	postQR2Blocks, err := bserverLocal.getAllRefs(
+	postQR2Blocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)
@@ -185,7 +185,7 @@ func TestQuotaReclamationIncrementalReclamation(t *testing.T) {
 	if !ok {
 		t.Fatalf("Bad block server")
 	}
-	blocks, err := bserverLocal.getAllRefs(
+	blocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)
@@ -204,7 +204,7 @@ func TestQuotaReclamationIncrementalReclamation(t *testing.T) {
 			t.Fatalf("Couldn't wait for QR: %v", err)
 		}
 
-		blocks, err := bserverLocal.getAllRefs(
+		blocks, err := bserverLocal.getAllRefsForTest(
 			ctx, rootNode.GetFolderBranch().Tlf)
 		if err != nil {
 			t.Fatalf("Couldn't get blocks: %v", err)
@@ -316,7 +316,7 @@ func TestQuotaReclamationDeletedBlocks(t *testing.T) {
 	if !ok {
 		t.Fatalf("Bad block server")
 	}
-	preQRBlocks, err := bserverLocal.getAllRefs(
+	preQRBlocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode1.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)
@@ -330,7 +330,7 @@ func TestQuotaReclamationDeletedBlocks(t *testing.T) {
 		t.Fatalf("Couldn't wait for QR: %v", err)
 	}
 
-	postQRBlocks, err := bserverLocal.getAllRefs(
+	postQRBlocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode1.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)
@@ -418,7 +418,7 @@ func TestQuotaReclamationDeletedBlocks(t *testing.T) {
 		t.Fatalf("Couldn't wait for QR: %v", err)
 	}
 
-	endBlocks, err := bserverLocal.getAllRefs(
+	endBlocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode2.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)
@@ -570,7 +570,7 @@ func TestQuotaReclamationMinHeadAge(t *testing.T) {
 	if !ok {
 		t.Fatalf("Bad block server")
 	}
-	preQR1Blocks, err := bserverLocal.getAllRefs(
+	preQR1Blocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)
@@ -583,7 +583,7 @@ func TestQuotaReclamationMinHeadAge(t *testing.T) {
 		t.Fatalf("Couldn't wait for QR: %v", err)
 	}
 
-	postQR1Blocks, err := bserverLocal.getAllRefs(
+	postQR1Blocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)
@@ -597,7 +597,7 @@ func TestQuotaReclamationMinHeadAge(t *testing.T) {
 	// Increase the time again and make sure it does run.
 	clock.Add(2 * config.QuotaReclamationMinHeadAge())
 
-	preQR2Blocks, err := bserverLocal.getAllRefs(
+	preQR2Blocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)
@@ -609,7 +609,7 @@ func TestQuotaReclamationMinHeadAge(t *testing.T) {
 		t.Fatalf("Couldn't wait for QR: %v", err)
 	}
 
-	postQR2Blocks, err := bserverLocal.getAllRefs(
+	postQR2Blocks, err := bserverLocal.getAllRefsForTest(
 		ctx, rootNode.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't get blocks: %v", err)

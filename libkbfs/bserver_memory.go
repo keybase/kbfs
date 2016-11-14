@@ -317,9 +317,10 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 	return nil
 }
 
-// getAllRefs implements the blockServerLocal interface for
+// getAllRefsForTest implements the blockServerLocal interface for
 // BlockServerMemory.
-func (b *BlockServerMemory) getAllRefs(ctx context.Context, tlfID tlf.ID) (
+func (b *BlockServerMemory) getAllRefsForTest(
+	ctx context.Context, tlfID tlf.ID) (
 	map[BlockID]blockRefMap, error) {
 	res := make(map[BlockID]blockRefMap)
 	b.lock.RLock()
