@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/net/context"
@@ -71,18 +70,16 @@ type blockDiskStore struct {
 	codec  kbfscodec.Codec
 	crypto cryptoPure
 	dir    string
-	log    logger.Logger
 }
 
 // makeBlockDiskStore returns a new blockDiskStore for the given
 // directory.
 func makeBlockDiskStore(codec kbfscodec.Codec, crypto cryptoPure,
-	dir string, log logger.Logger) *blockDiskStore {
+	dir string) *blockDiskStore {
 	return &blockDiskStore{
 		codec:  codec,
 		crypto: crypto,
 		dir:    dir,
-		log:    log,
 	}
 }
 
@@ -417,6 +414,15 @@ func (s *blockDiskStore) putData(
 		return err
 	}
 
+	data, err := id.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(s.idPath(id), data, 0600)
+	if err != nil {
+		return err
+	}
+
 	err = ioutil.WriteFile(s.dataPath(id), buf, 0600)
 	if err != nil {
 		return err
@@ -424,7 +430,7 @@ func (s *blockDiskStore) putData(
 
 	// TODO: Add integrity-checking for key server half?
 
-	data, err := serverHalf.MarshalBinary()
+	data, err = serverHalf.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -439,30 +445,26 @@ func (s *blockDiskStore) putData(
 func (s *blockDiskStore) addReference(
 	ctx context.Context, id BlockID, context BlockContext, tag string) (
 	err error) {
-	err = os.MkdirAll(s.blockPath(id), 0700)
-	if err != nil {
-		return err
-	}
-
-	data, err := id.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(s.idPath(id), data, 0600)
-	if err != nil {
-		return err
-	}
-
 	return s.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
 }
 
-// removeReferences fixes up the in-memory reference map to delete the
-// given references.
+func (s *blockDiskStore) archiveReferences(
+	ctx context.Context, contexts map[BlockID][]BlockContext,
+	tag string) (err error) {
+	for id, idContexts := range contexts {
+		err = s.addContexts(id, idContexts, archivedBlockRef, tag)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s *blockDiskStore) removeReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext,
 	tag string) (
 	liveCounts map[BlockID]int, err error) {
-	s.log.CDebugf(ctx, "Removing references for %v", contexts)
 	liveCounts = make(map[BlockID]int)
 
 	for id, idContexts := range contexts {
@@ -502,17 +504,4 @@ func (s *blockDiskStore) removeBlockData(id BlockID) error {
 		err = nil
 	}
 	return err
-}
-
-func (s *blockDiskStore) archiveReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext,
-	tag string) (err error) {
-	for id, idContexts := range contexts {
-		err = s.addContexts(id, idContexts, archivedBlockRef, tag)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

@@ -161,7 +161,7 @@ func makeBlockJournal(
 		codec, journalPath, reflect.TypeOf(blockJournalEntry{}))
 
 	storeDir := filepath.Join(dir, "blocks")
-	s := makeBlockDiskStore(codec, crypto, storeDir, log)
+	s := makeBlockDiskStore(codec, crypto, storeDir)
 	journal := &blockJournal{
 		codec:    codec,
 		crypto:   crypto,

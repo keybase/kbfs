@@ -11,7 +11,6 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
@@ -24,7 +23,6 @@ func setupBlockDiskStoreTest(t *testing.T) (
 	ctx = context.Background()
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
-	log := logger.NewTestLogger(t)
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "block_journal")
 	require.NoError(t, err)
@@ -38,7 +36,7 @@ func setupBlockDiskStoreTest(t *testing.T) (
 		}
 	}()
 
-	s = makeBlockDiskStore(codec, crypto, tempdir, log)
+	s = makeBlockDiskStore(codec, crypto, tempdir)
 
 	setupSucceeded = true
 	return ctx, tempdir, s
@@ -107,7 +105,7 @@ func TestBlockDiskStoreBasic(t *testing.T) {
 	getAndCheckBlockDiskData(ctx, t, s, bID, bCtx2, data, serverHalf)
 
 	// Shutdown and restart.
-	s = makeBlockDiskStore(s.codec, s.crypto, tempdir, s.log)
+	s = makeBlockDiskStore(s.codec, s.crypto, tempdir)
 
 	// Make sure we get the same block for both refs.
 
