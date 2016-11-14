@@ -71,22 +71,18 @@ type blockDiskStore struct {
 	codec  kbfscodec.Codec
 	crypto cryptoPure
 	dir    string
-
-	log      logger.Logger
-	deferLog logger.Logger
+	log    logger.Logger
 }
 
 // makeBlockDiskStore returns a new blockDiskStore for the given
 // directory.
 func makeBlockDiskStore(codec kbfscodec.Codec, crypto cryptoPure,
 	dir string, log logger.Logger) *blockDiskStore {
-	deferLog := log.CloneWithAddedDepth(1)
 	return &blockDiskStore{
-		codec:    codec,
-		crypto:   crypto,
-		dir:      dir,
-		log:      log,
-		deferLog: deferLog,
+		codec:  codec,
+		crypto: crypto,
+		dir:    dir,
+		log:    log,
 	}
 }
 
@@ -384,16 +380,6 @@ func (s *blockDiskStore) putData(
 	ctx context.Context, id BlockID, context BlockContext, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf,
 	tag string) (err error) {
-	s.log.CDebugf(ctx, "Putting %d bytes of data for block %s with context %v",
-		len(buf), id, context)
-	defer func() {
-		if err != nil {
-			s.deferLog.CDebugf(ctx,
-				"Put for block %s with context %v failed with %v",
-				id, context, err)
-		}
-	}()
-
 	err = validateBlockPut(s.crypto, id, context, buf)
 	if err != nil {
 		return err
@@ -453,16 +439,6 @@ func (s *blockDiskStore) putData(
 func (s *blockDiskStore) addReference(
 	ctx context.Context, id BlockID, context BlockContext, tag string) (
 	err error) {
-	s.log.CDebugf(ctx, "Adding reference for block %s with context %v",
-		id, context)
-	defer func() {
-		if err != nil {
-			s.deferLog.CDebugf(ctx,
-				"Adding reference for block %s with context %v failed with %v",
-				id, context, err)
-		}
-	}()
-
 	err = os.MkdirAll(s.blockPath(id), 0700)
 	if err != nil {
 		return err
@@ -487,13 +463,6 @@ func (s *blockDiskStore) removeReferences(
 	tag string) (
 	liveCounts map[BlockID]int, err error) {
 	s.log.CDebugf(ctx, "Removing references for %v", contexts)
-	defer func() {
-		if err != nil {
-			s.deferLog.CDebugf(ctx,
-				"Removing references for %v", contexts, err)
-		}
-	}()
-
 	liveCounts = make(map[BlockID]int)
 
 	for id, idContexts := range contexts {
@@ -538,14 +507,6 @@ func (s *blockDiskStore) removeBlockData(id BlockID) error {
 func (s *blockDiskStore) archiveReferences(
 	ctx context.Context, contexts map[BlockID][]BlockContext,
 	tag string) (err error) {
-	s.log.CDebugf(ctx, "Archiving references for %v", contexts)
-	defer func() {
-		if err != nil {
-			s.deferLog.CDebugf(ctx,
-				"Archiving references for %v,", contexts, err)
-		}
-	}()
-
 	for id, idContexts := range contexts {
 		err = s.addContexts(id, idContexts, archivedBlockRef, tag)
 		if err != nil {
