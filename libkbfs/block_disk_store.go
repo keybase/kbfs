@@ -98,8 +98,7 @@ func (s *blockDiskStore) blockPath(id BlockID) string {
 	// bits, which means that the expected number of blocks
 	// generated before getting a path collision is 2^64 (see
 	// https://en.wikipedia.org/wiki/Birthday_problem#Cast_as_a_collision_problem
-	// ). The full ID can be recovered just by hashing the data
-	// again with the same hash type.
+	// ).
 	idStr := id.String()
 	return filepath.Join(s.dir, idStr[:4], idStr[4:34])
 }
