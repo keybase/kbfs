@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -209,6 +210,16 @@ func TestBlockDiskStoreRemove(t *testing.T) {
 	// Should now be removable.
 	err = s.remove(bID)
 	require.NoError(t, err)
+
 	_, _, err = s.getData(bID)
 	require.Equal(t, blockNonExistentError{bID}, err)
+
+	filepath.Walk(s.dir,
+		func(path string, info os.FileInfo, _ error) error {
+			// We should only find the blocks directory here.
+			if path != s.dir {
+				t.Errorf("Found unexpected block path: %s", path)
+			}
+			return nil
+		})
 }

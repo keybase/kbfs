@@ -194,35 +194,6 @@ func TestBlockJournalAddReference(t *testing.T) {
 	require.Equal(t, blockNonExistentError{bID}, err)
 }
 
-func TestBlockJournalRemoveReferences(t *testing.T) {
-	ctx, tempdir, j := setupBlockJournalTest(t)
-	defer teardownBlockJournalTest(t, tempdir, j)
-
-	// Put the block.
-	data := []byte{1, 2, 3, 4}
-	bID, bCtx, serverHalf := putBlockData(ctx, t, j, data)
-
-	// Add a reference.
-	bCtx2 := addBlockRef(ctx, t, j, bID)
-
-	// Remove references.
-	liveCounts, err := j.removeReferences(
-		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}})
-	require.NoError(t, err)
-	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
-	require.Equal(t, 3, getBlockJournalLength(t, j))
-
-	// Make sure the block data is inaccessible.
-	_, _, err = j.getDataWithContext(bID, bCtx)
-	require.Equal(t, blockNonExistentError{bID}, err)
-
-	// But the actual data should remain (for flushing).
-	buf, half, err := j.s.getData(bID)
-	require.NoError(t, err)
-	require.Equal(t, data, buf)
-	require.Equal(t, serverHalf, half)
-}
-
 func TestBlockJournalArchiveReferences(t *testing.T) {
 	ctx, tempdir, j := setupBlockJournalTest(t)
 	defer teardownBlockJournalTest(t, tempdir, j)
@@ -260,6 +231,35 @@ func TestBlockJournalArchiveNonExistentReference(t *testing.T) {
 	err = j.archiveReferences(
 		ctx, map[BlockID][]BlockContext{bID: {bCtx}})
 	require.NoError(t, err)
+}
+
+func TestBlockJournalRemoveReferences(t *testing.T) {
+	ctx, tempdir, j := setupBlockJournalTest(t)
+	defer teardownBlockJournalTest(t, tempdir, j)
+
+	// Put the block.
+	data := []byte{1, 2, 3, 4}
+	bID, bCtx, serverHalf := putBlockData(ctx, t, j, data)
+
+	// Add a reference.
+	bCtx2 := addBlockRef(ctx, t, j, bID)
+
+	// Remove references.
+	liveCounts, err := j.removeReferences(
+		ctx, map[BlockID][]BlockContext{bID: {bCtx, bCtx2}})
+	require.NoError(t, err)
+	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
+	require.Equal(t, 3, getBlockJournalLength(t, j))
+
+	// Make sure the block data is inaccessible.
+	_, _, err = j.getDataWithContext(bID, bCtx)
+	require.Equal(t, blockNonExistentError{bID}, err)
+
+	// But the actual data should remain (for flushing).
+	buf, half, err := j.s.getData(bID)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, half)
 }
 
 func testBlockJournalGCd(t *testing.T, j *blockJournal) {
