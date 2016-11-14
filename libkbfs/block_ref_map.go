@@ -22,6 +22,8 @@ func (e blockContextMismatchError) Error() string {
 		"Context mismatch: expected %s, got %s", e.expected, e.actual)
 }
 
+// TODO: Support unknown fields.
+
 type blockRefEntry struct {
 	Status  blockRefStatus
 	Context BlockContext
@@ -39,6 +41,8 @@ func (e blockRefEntry) checkContext(context BlockContext) error {
 }
 
 // blockRefMap is a map with additional checking methods.
+//
+// TODO: Make this into a struct type that supports unknown fields.
 type blockRefMap map[BlockRefNonce]blockRefEntry
 
 func (refs blockRefMap) hasNonArchivedRef() bool {
