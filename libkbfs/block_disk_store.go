@@ -111,6 +111,24 @@ func (s *blockDiskStore) refsPath(id BlockID) string {
 	return filepath.Join(s.blockPath(id), "refs")
 }
 
+func (s *blockDiskStore) makeDir(id BlockID) error {
+	err := os.MkdirAll(s.blockPath(id), 0700)
+	if err != nil {
+		return err
+	}
+
+	data, err := id.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(s.idPath(id), data, 0600)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // The functions below are for getting and putting refs/contexts.
 
 func (s *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
@@ -138,20 +156,6 @@ func (s *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
 		}
 
 		return nil
-	}
-
-	err := os.MkdirAll(s.blockPath(id), 0700)
-	if err != nil {
-		return err
-	}
-
-	data, err := id.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(s.idPath(id), data, 0600)
-	if err != nil {
-		return err
 	}
 
 	buf, err := s.codec.Encode(refs)
@@ -408,16 +412,7 @@ func (s *blockDiskStore) putData(
 		}
 	}
 
-	err = os.MkdirAll(s.blockPath(id), 0700)
-	if err != nil {
-		return err
-	}
-
-	data, err := id.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(s.idPath(id), data, 0600)
+	err = s.makeDir(id)
 	if err != nil {
 		return err
 	}
@@ -429,7 +424,7 @@ func (s *blockDiskStore) putData(
 
 	// TODO: Add integrity-checking for key server half?
 
-	data, err = serverHalf.MarshalBinary()
+	data, err := serverHalf.MarshalBinary()
 	if err != nil {
 		return err
 	}
@@ -443,12 +438,22 @@ func (s *blockDiskStore) putData(
 
 func (s *blockDiskStore) addReference(
 	id BlockID, context BlockContext, tag string) (err error) {
+	err = s.makeDir(id)
+	if err != nil {
+		return err
+	}
+
 	return s.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
 }
 
 func (s *blockDiskStore) archiveReferences(
 	contexts map[BlockID][]BlockContext, tag string) (err error) {
 	for id, idContexts := range contexts {
+		err = s.makeDir(id)
+		if err != nil {
+			return err
+		}
+
 		err = s.addContexts(id, idContexts, archivedBlockRef, tag)
 		if err != nil {
 			return err
