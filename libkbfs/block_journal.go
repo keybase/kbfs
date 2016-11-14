@@ -59,9 +59,16 @@ type blockJournal struct {
 	log      logger.Logger
 	deferLog logger.Logger
 
-	j                diskJournal
+	// j is the main journal.
+	j diskJournal
+
+	// saveUntilMDFlush, when non-nil, prevents garbage collection
+	// of blocks. When removed, all the referenced blocks are
+	// garbage-collected.
 	saveUntilMDFlush *diskJournal
 
+	// s stores all the block data. s should always reflect the
+	// state you get by replaying all the entries in j.
 	s *blockDiskStore
 }
 
