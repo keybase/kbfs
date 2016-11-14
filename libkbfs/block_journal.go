@@ -202,104 +202,8 @@ func (j *blockJournal) readJournalEntry(ordinal journalOrdinal) (
 	return entry.(blockJournalEntry), nil
 }
 
-// readJournal reads the journal and returns a map of all the block
-// references in the journal and the total number of bytes that need
-// flushing.
-func (j *blockJournal) readJournal(ctx context.Context) (
-	map[BlockID]blockRefMap, error) {
-	refs := make(map[BlockID]blockRefMap)
-
-	first, err := j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
-		return refs, nil
-	} else if err != nil {
-		return nil, err
-	}
-	last, err := j.j.readLatestOrdinal()
-	if err != nil {
-		return nil, err
-	}
-
-	j.log.CDebugf(ctx, "Reading journal entries %d to %d", first, last)
-
-	for i := first; i <= last; i++ {
-		e, err := j.readJournalEntry(i)
-		if err != nil {
-			return nil, err
-		}
-
-		// Handle single ops separately.
-		switch e.Op {
-		case blockPutOp, addRefOp:
-			id, context, err := e.getSingleContext()
-			if err != nil {
-				return nil, err
-			}
-
-			blockRefs := refs[id]
-			if blockRefs == nil {
-				blockRefs = make(blockRefMap)
-				refs[id] = blockRefs
-			}
-
-			err = blockRefs.put(context, liveBlockRef, i.String())
-			if err != nil {
-				return nil, err
-			}
-
-			continue
-		}
-
-		for id, idContexts := range e.Contexts {
-			blockRefs := refs[id]
-
-			switch e.Op {
-			case removeRefsOp:
-				if blockRefs == nil {
-					// All refs are already gone,
-					// which is not an error.
-					continue
-				}
-
-				for _, context := range idContexts {
-					err := blockRefs.remove(context, "")
-					if err != nil {
-						return nil, err
-					}
-				}
-
-				if len(blockRefs) == 0 {
-					delete(refs, id)
-				}
-
-			case archiveRefsOp:
-				if blockRefs == nil {
-					blockRefs = make(blockRefMap)
-					refs[id] = blockRefs
-				}
-
-				for _, context := range idContexts {
-					err := blockRefs.put(
-						context, archivedBlockRef, i.String())
-					if err != nil {
-						return nil, err
-					}
-				}
-
-			case mdRevMarkerOp:
-				// Ignore MD revision markers.
-				continue
-
-			default:
-				return nil, fmt.Errorf("Unknown op %s", e.Op)
-			}
-		}
-	}
-	return refs, nil
-}
-
-func (j *blockJournal) appendJournalEntry(ctx context.Context,
-	entry blockJournalEntry) (
+func (j *blockJournal) appendJournalEntry(
+	ctx context.Context, entry blockJournalEntry) (
 	journalOrdinal, error) {
 	ordinal, err := j.j.appendJournalEntry(nil, entry)
 	if err != nil {
@@ -956,8 +860,98 @@ func (j *blockJournal) onMDFlush() error {
 	return nil
 }
 
-func (j *blockJournal) checkInSync(ctx context.Context) error {
-	journalRefs, err := j.readJournal(ctx)
+func (j *blockJournal) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
+	refs := make(map[BlockID]blockRefMap)
+
+	first, err := j.j.readEarliestOrdinal()
+	if os.IsNotExist(err) {
+		return refs, nil
+	} else if err != nil {
+		return nil, err
+	}
+	last, err := j.j.readLatestOrdinal()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := first; i <= last; i++ {
+		e, err := j.readJournalEntry(i)
+		if err != nil {
+			return nil, err
+		}
+
+		// Handle single ops separately.
+		switch e.Op {
+		case blockPutOp, addRefOp:
+			id, context, err := e.getSingleContext()
+			if err != nil {
+				return nil, err
+			}
+
+			blockRefs := refs[id]
+			if blockRefs == nil {
+				blockRefs = make(blockRefMap)
+				refs[id] = blockRefs
+			}
+
+			err = blockRefs.put(context, liveBlockRef, i.String())
+			if err != nil {
+				return nil, err
+			}
+
+			continue
+		}
+
+		for id, idContexts := range e.Contexts {
+			blockRefs := refs[id]
+
+			switch e.Op {
+			case removeRefsOp:
+				if blockRefs == nil {
+					// All refs are already gone,
+					// which is not an error.
+					continue
+				}
+
+				for _, context := range idContexts {
+					err := blockRefs.remove(context, "")
+					if err != nil {
+						return nil, err
+					}
+				}
+
+				if len(blockRefs) == 0 {
+					delete(refs, id)
+				}
+
+			case archiveRefsOp:
+				if blockRefs == nil {
+					blockRefs = make(blockRefMap)
+					refs[id] = blockRefs
+				}
+
+				for _, context := range idContexts {
+					err := blockRefs.put(
+						context, archivedBlockRef, i.String())
+					if err != nil {
+						return nil, err
+					}
+				}
+
+			case mdRevMarkerOp:
+				// Ignore MD revision markers.
+				continue
+
+			default:
+				return nil, fmt.Errorf("Unknown op %s", e.Op)
+			}
+		}
+	}
+	return refs, nil
+}
+
+func (j *blockJournal) checkInSyncForTest() error {
+	journalRefs, err := j.getAllRefsForTest()
 	if err != nil {
 		return err
 	}

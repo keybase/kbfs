@@ -1135,17 +1135,9 @@ func (j *tlfJournal) shutdown() {
 		return
 	}
 
-	blockJournal := j.blockJournal
-
 	// Make further accesses error out.
 	j.blockJournal = nil
 	j.mdJournal = nil
-
-	ctx := context.Background()
-	err := blockJournal.checkInSync(ctx)
-	if err != nil {
-		panic(err)
-	}
 }
 
 // disable prevents new operations from hitting the journal.  Will

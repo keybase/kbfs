@@ -93,8 +93,7 @@ func setupBlockJournalTest(t *testing.T) (
 }
 
 func teardownBlockJournalTest(t *testing.T, tempdir string, j *blockJournal) {
-	ctx := context.Background()
-	err := j.checkInSync(ctx)
+	err := j.checkInSyncForTest()
 	assert.NoError(t, err)
 
 	err = os.RemoveAll(tempdir)
@@ -166,7 +165,7 @@ func TestBlockJournalBasic(t *testing.T) {
 	getAndCheckBlockData(ctx, t, j, bID, bCtx2, data, serverHalf)
 
 	// Shutdown and restart.
-	err := j.checkInSync(ctx)
+	err := j.checkInSyncForTest()
 	require.NoError(t, err)
 	j, err = makeBlockJournal(ctx, j.codec, j.crypto, tempdir, j.log)
 	require.NoError(t, err)
@@ -418,7 +417,7 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 		require.NoError(t, err)
 		err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
 		require.NoError(t, err)
-		err = j.checkInSync(ctx)
+		err = j.checkInSyncForTest()
 		require.NoError(t, err)
 	}
 
@@ -547,7 +546,7 @@ func TestBlockJournalFlushMDRevMarker(t *testing.T) {
 	require.NoError(t, err)
 	err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
 	require.NoError(t, err)
-	err = j.checkInSync(ctx)
+	err = j.checkInSyncForTest()
 	require.NoError(t, err)
 }
 
@@ -603,7 +602,7 @@ func TestBlockJournalIgnoreBlocks(t *testing.T) {
 	require.NoError(t, err)
 	err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
 	require.NoError(t, err)
-	err = j.checkInSync(ctx)
+	err = j.checkInSyncForTest()
 	require.NoError(t, err)
 }
 
