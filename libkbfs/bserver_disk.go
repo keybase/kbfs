@@ -239,12 +239,15 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 		return nil, errBlockServerDiskShutdown
 	}
 
-	liveCounts, err = tlfStorage.store.removeReferences(contexts, "")
-	if err != nil {
-		return nil, err
-	}
+	liveCounts = make(map[BlockID]int)
+	for id, idContexts := range contexts {
+		liveCount, err := tlfStorage.store.removeReferences(
+			id, idContexts, "")
+		if err != nil {
+			return nil, err
+		}
+		liveCounts[id] = liveCount
 
-	for id, liveCount := range liveCounts {
 		if liveCount == 0 {
 			err := tlfStorage.store.remove(id)
 			if err != nil {

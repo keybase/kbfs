@@ -475,19 +475,9 @@ func (s *blockDiskStore) archiveReferences(
 }
 
 func (s *blockDiskStore) removeReferences(
-	contexts map[BlockID][]BlockContext, tag string) (
-	liveCounts map[BlockID]int, err error) {
-	liveCounts = make(map[BlockID]int)
-
-	for id, idContexts := range contexts {
-		liveCount, err := s.removeRefs(id, idContexts, tag)
-		if err != nil {
-			return nil, err
-		}
-		liveCounts[id] = liveCount
-	}
-
-	return liveCounts, nil
+	id BlockID, contexts []BlockContext, tag string) (
+	liveCount int, err error) {
+	return s.removeRefs(id, contexts, tag)
 }
 
 // removeBlockData removes any existing block data for the given ID,

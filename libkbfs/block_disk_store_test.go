@@ -173,10 +173,10 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 	bCtx2 := addBlockDiskRef(t, s, bID)
 
 	// Remove references.
-	liveCounts, err := s.removeReferences(
-		map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, "")
+	liveCount, err := s.removeReferences(
+		bID, []BlockContext{bCtx, bCtx2}, "")
 	require.NoError(t, err)
-	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
+	require.Equal(t, 0, liveCount)
 
 	// Make sure the block data is inaccessible.
 	_, _, err = s.getDataWithContext(bID, bCtx)

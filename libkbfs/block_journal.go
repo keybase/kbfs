@@ -454,9 +454,14 @@ func (j *blockJournal) removeReferences(
 	}()
 
 	// TODO: Explain why removing refs here is ok.
-	liveCounts, err = j.s.removeReferences(contexts, "")
-	if err != nil {
-		return nil, err
+	liveCounts = make(map[BlockID]int)
+	for id, idContexts := range contexts {
+		liveCount, err := j.s.removeReferences(id, idContexts, "")
+		if err != nil {
+			return nil, err
+		}
+
+		liveCounts[id] = liveCount
 	}
 
 	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
@@ -764,12 +769,12 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	// Remove any of the entry's refs that hasn't been modified by
 	// a subsequent block op (i.e., that has earliestOrdinal as a
 	// tag).
-	liveCounts, err := j.s.removeReferences(
-		entry.Contexts, earliestOrdinal.String())
-	if err != nil {
-		return 0, err
-	}
-	for id, liveCount := range liveCounts {
+	for id, idContexts := range entry.Contexts {
+		liveCount, err := j.s.removeReferences(
+			id, idContexts, earliestOrdinal.String())
+		if err != nil {
+			return 0, err
+		}
 		if liveCount == 0 {
 			// Garbage-collect the old entry if we are not saving
 			// blocks until the next MD flush.  TODO: we'll
