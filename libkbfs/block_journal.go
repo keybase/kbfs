@@ -65,6 +65,9 @@ type blockJournal struct {
 	// saveUntilMDFlush, when non-nil, prevents garbage collection
 	// of blocks. When removed, all the referenced blocks are
 	// garbage-collected.
+	//
+	// TODO: We only really need to save a list of IDs, and not a
+	// full journal.
 	saveUntilMDFlush *diskJournal
 
 	// s stores all the block data. s should always reflect the
