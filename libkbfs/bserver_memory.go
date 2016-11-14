@@ -89,7 +89,7 @@ func (b *BlockServerMemory) Get(ctx context.Context, tlfID tlf.ID, id BlockID,
 	return entry.blockData, entry.keyServerHalf, nil
 }
 
-func validateBlockServerPut(
+func validateBlockPut(
 	crypto cryptoPure, id BlockID, context BlockContext, buf []byte) error {
 	if context.GetCreator() != context.GetWriter() {
 		return fmt.Errorf("Can't Put() a block with creator=%s != writer=%s",
@@ -123,7 +123,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, tlfID tlf.ID, id BlockID,
 	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s tlfID=%s context=%s "+
 		"size=%d", id, tlfID, context, len(buf))
 
-	err = validateBlockServerPut(b.crypto, id, context, buf)
+	err = validateBlockPut(b.crypto, id, context, buf)
 	if err != nil {
 		return err
 	}

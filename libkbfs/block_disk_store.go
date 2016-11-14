@@ -394,7 +394,7 @@ func (s *blockDiskStore) putData(
 		}
 	}()
 
-	err = validateBlockServerPut(s.crypto, id, context, buf)
+	err = validateBlockPut(s.crypto, id, context, buf)
 	if err != nil {
 		return err
 	}
