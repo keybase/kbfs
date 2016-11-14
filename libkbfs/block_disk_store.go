@@ -46,8 +46,7 @@ import (
 //
 // Each block directory has the following files:
 //
-//   - id: The full block ID in binary format. (TODO: make
-//         human-readable.) Always present.
+//   - id: The full block ID in binary format. Always present.
 //   - data: The raw block data that should hash to the block ID.
 //           May be missing.
 //   - key_server_half: The raw data for the associated key server half.
@@ -99,8 +98,10 @@ func (s *blockDiskStore) dataPath(id BlockID) string {
 	return filepath.Join(s.blockPath(id), "data")
 }
 
+const idFilename = "id"
+
 func (s *blockDiskStore) idPath(id BlockID) string {
-	return filepath.Join(s.blockPath(id), "id")
+	return filepath.Join(s.blockPath(id), idFilename)
 }
 
 func (s *blockDiskStore) keyServerHalfPath(id BlockID) string {
@@ -121,11 +122,7 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 
 	// TODO: Only write if the file doesn't exist.
 
-	data, err := id.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(s.idPath(id), data, 0600)
+	err = ioutil.WriteFile(s.idPath(id), []byte(id.String()), 0600)
 	if err != nil {
 		return err
 	}
@@ -325,14 +322,14 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 					subName)
 			}
 
-			idPath := filepath.Join(s.dir, name, subName, "id")
-			buf, err := ioutil.ReadFile(idPath)
+			idPath := filepath.Join(
+				s.dir, name, subName, idFilename)
+			idBytes, err := ioutil.ReadFile(idPath)
 			if err != nil {
 				return nil, err
 			}
 
-			var id BlockID
-			err = id.UnmarshalBinary(buf)
+			id, err := BlockIDFromString(string(idBytes))
 			if err != nil {
 				return nil, err
 			}
