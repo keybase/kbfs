@@ -633,6 +633,17 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 			ordinal, earliestOrdinal)
 	}
 
+	if entry.Op == blockPutOp && !entry.Ignore {
+		id, _, err := entry.getSingleContext()
+		if err != nil {
+			return 0, err
+		}
+		flushedBytes, err = j.s.getDataSize(id)
+		if err != nil {
+			return 0, err
+		}
+	}
+
 	_, err = j.j.removeEarliest()
 	if err != nil {
 		return 0, err

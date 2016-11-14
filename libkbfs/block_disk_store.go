@@ -280,6 +280,14 @@ func (s *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 	return refs.checkExists(context)
 }
 
+func (s *blockDiskStore) getDataSize(id BlockID) (int64, error) {
+	fi, err := os.Stat(s.dataPath(id))
+	if err != nil {
+		return 0, err
+	}
+	return fi.Size(), nil
+}
+
 func (s *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	hasContext, err := s.hasContext(id, context)
