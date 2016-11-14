@@ -280,6 +280,11 @@ func (s *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 	return refs.checkExists(context)
 }
 
+func (s *blockDiskStore) hasData(id BlockID) error {
+	_, err := os.Stat(s.dataPath(id))
+	return err
+}
+
 func (s *blockDiskStore) getDataSize(id BlockID) (int64, error) {
 	fi, err := os.Stat(s.dataPath(id))
 	if err != nil {

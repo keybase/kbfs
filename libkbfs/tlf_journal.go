@@ -1300,7 +1300,7 @@ func (j *tlfJournal) isBlockUnflushed(id BlockID) (bool, error) {
 		return false, err
 	}
 
-	err := j.blockJournal.exists(id)
+	err := j.blockJournal.hasData(id)
 	if err != nil {
 		// Might exist on the server
 		return false, nil

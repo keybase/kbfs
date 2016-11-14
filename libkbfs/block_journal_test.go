@@ -658,7 +658,7 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 
 	// The blocks can still be fetched from the journal.
 	for _, bid := range savedBlocks {
-		err = j.exists(bid)
+		err = j.hasData(bid)
 		require.NoError(t, err)
 	}
 
@@ -682,7 +682,7 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 	// Make sure all the blocks still exist, including both the old
 	// and the new ones.
 	for _, bid := range savedBlocks {
-		err = j.exists(bid)
+		err = j.hasData(bid)
 		require.NoError(t, err)
 	}
 
@@ -698,13 +698,13 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 	err = j.onMDFlush()
 	require.NoError(t, err)
 
-	err = j.exists(bID1)
+	err = j.hasData(bID1)
 	require.True(t, os.IsNotExist(err))
-	err = j.exists(bID2)
+	err = j.hasData(bID2)
 	require.True(t, os.IsNotExist(err))
-	err = j.exists(bID3)
+	err = j.hasData(bID3)
 	require.True(t, os.IsNotExist(err))
-	err = j.exists(bID4)
+	err = j.hasData(bID4)
 	require.True(t, os.IsNotExist(err))
 
 	testBlockJournalGCd(t, j)

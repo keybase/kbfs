@@ -234,9 +234,8 @@ func (j *blockJournal) end() (journalOrdinal, error) {
 	return last + 1, nil
 }
 
-func (j *blockJournal) exists(id BlockID) error {
-	_, err := os.Stat(j.s.dataPath(id))
-	return err
+func (j *blockJournal) hasData(id BlockID) error {
+	return j.s.hasData(id)
 }
 
 // All functions below are public functions.
