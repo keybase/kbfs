@@ -91,8 +91,8 @@ func (refs blockRefMap) put(context BlockContext, status blockRefStatus,
 }
 
 // remove removes the entry with the given context, if any. If tag is
-// non-nil, then the entry will be removed only if its most recent tag
-// (passed in to put) matches the given one.
+// non-empty, then the entry will be removed only if its most recent
+// tag (passed in to put) matches the given one.
 func (refs blockRefMap) remove(context BlockContext, tag string) error {
 	refNonce := context.GetRefNonce()
 	// If this check fails, this ref is already gone, which is not

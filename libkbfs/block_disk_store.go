@@ -111,11 +111,15 @@ func (s *blockDiskStore) refsPath(id BlockID) string {
 	return filepath.Join(s.blockPath(id), "refs")
 }
 
+// makeDir makes the directory for the given block ID and writes the
+// ID file, if necessary.
 func (s *blockDiskStore) makeDir(id BlockID) error {
 	err := os.MkdirAll(s.blockPath(id), 0700)
 	if err != nil {
 		return err
 	}
+
+	// TODO: Only write if the file doesn't exist.
 
 	data, err := id.MarshalBinary()
 	if err != nil {
@@ -129,8 +133,7 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 	return nil
 }
 
-// The functions below are for getting and putting refs/contexts.
-
+// getRefs returns the references for the given ID.
 func (s *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
 	data, err := ioutil.ReadFile(s.refsPath(id))
 	if os.IsNotExist(err) {
@@ -148,6 +151,8 @@ func (s *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
 	return refs, nil
 }
 
+// putRefs stores the given references for the given ID. If the given
+// map is empty, it removes the reference file.
 func (s *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
 	if len(refs) == 0 {
 		err := os.Remove(s.refsPath(id))
@@ -171,8 +176,9 @@ func (s *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
 	return nil
 }
 
-func (s *blockDiskStore) addContexts(
-	id BlockID, contexts []BlockContext,
+// addRefs adds references for the given contexts to the given ID, all
+// with the same status and tag.
+func (s *blockDiskStore) addRefs(id BlockID, contexts []BlockContext,
 	status blockRefStatus, tag string) error {
 	refs, err := s.getRefs(id)
 	if err != nil {
@@ -201,7 +207,10 @@ func (s *blockDiskStore) addContexts(
 	return s.putRefs(id, refs)
 }
 
-func (s *blockDiskStore) removeContexts(
+// removeRefs removes references for the given contexts from the given
+// ID. If tag is non-empty, then a reference will be removed only if
+// its most recent tag (passed in to addRefs) matches the given one.
+func (s *blockDiskStore) removeRefs(
 	id BlockID, contexts []BlockContext, tag string) (
 	liveCount int, err error) {
 	refs, err := s.getRefs(id)
@@ -433,7 +442,7 @@ func (s *blockDiskStore) putData(
 		return err
 	}
 
-	return s.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
+	return s.addRefs(id, []BlockContext{context}, liveBlockRef, tag)
 }
 
 func (s *blockDiskStore) addReference(
@@ -443,7 +452,7 @@ func (s *blockDiskStore) addReference(
 		return err
 	}
 
-	return s.addContexts(id, []BlockContext{context}, liveBlockRef, tag)
+	return s.addRefs(id, []BlockContext{context}, liveBlockRef, tag)
 }
 
 func (s *blockDiskStore) archiveReferences(
@@ -454,7 +463,7 @@ func (s *blockDiskStore) archiveReferences(
 			return err
 		}
 
-		err = s.addContexts(id, idContexts, archivedBlockRef, tag)
+		err = s.addRefs(id, idContexts, archivedBlockRef, tag)
 		if err != nil {
 			return err
 		}
@@ -469,7 +478,7 @@ func (s *blockDiskStore) removeReferences(
 	liveCounts = make(map[BlockID]int)
 
 	for id, idContexts := range contexts {
-		liveCount, err := s.removeContexts(id, idContexts, tag)
+		liveCount, err := s.removeRefs(id, idContexts, tag)
 		if err != nil {
 			return nil, err
 		}

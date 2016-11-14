@@ -773,7 +773,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	// tag).
 	for id, idContexts := range entry.Contexts {
 		liveCount, err :=
-			j.s.removeContexts(id, idContexts, earliestOrdinal.String())
+			j.s.removeRefs(id, idContexts, earliestOrdinal.String())
 		if err != nil {
 			return 0, err
 		}
