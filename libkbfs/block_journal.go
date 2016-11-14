@@ -254,14 +254,9 @@ func (j *blockJournal) putData(
 		}
 	}()
 
-	var next journalOrdinal
-	lo, err := j.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
-		next = 0
-	} else if err != nil {
+	next, err := j.end()
+	if err != nil {
 		return err
-	} else {
-		next = lo + 1
 	}
 
 	err = j.s.put(id, context, buf, serverHalf, next.String())
@@ -293,14 +288,9 @@ func (j *blockJournal) addReference(
 		}
 	}()
 
-	var next journalOrdinal
-	lo, err := j.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
-		next = 0
-	} else if err != nil {
+	next, err := j.end()
+	if err != nil {
 		return err
-	} else {
-		next = lo + 1
 	}
 
 	err = j.s.addReference(id, context, next.String())
@@ -308,7 +298,7 @@ func (j *blockJournal) addReference(
 		return err
 	}
 
-	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
+	_, err = j.appendJournalEntry(blockJournalEntry{
 		Op:       addRefOp,
 		Contexts: map[BlockID][]BlockContext{id: {context}},
 	})
@@ -317,41 +307,6 @@ func (j *blockJournal) addReference(
 	}
 
 	return nil
-}
-
-// removeReferences fixes up the in-memory reference map to delete the
-// given references.
-func (j *blockJournal) removeReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext) (
-	liveCounts map[BlockID]int, err error) {
-	j.log.CDebugf(ctx, "Removing references for %v", contexts)
-	defer func() {
-		if err != nil {
-			j.deferLog.CDebugf(ctx,
-				"Removing references for %v", contexts, err)
-		}
-	}()
-
-	// TODO: Explain why removing refs here is ok.
-	liveCounts = make(map[BlockID]int)
-	for id, idContexts := range contexts {
-		liveCount, err := j.s.removeReferences(id, idContexts, "")
-		if err != nil {
-			return nil, err
-		}
-
-		liveCounts[id] = liveCount
-	}
-
-	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
-		Op:       removeRefsOp,
-		Contexts: contexts,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return liveCounts, nil
 }
 
 func (j *blockJournal) archiveReferences(
@@ -388,6 +343,41 @@ func (j *blockJournal) archiveReferences(
 	}
 
 	return nil
+}
+
+// removeReferences removes references for the given contexts from
+// their respective IDs.
+func (j *blockJournal) removeReferences(
+	ctx context.Context, contexts map[BlockID][]BlockContext) (
+	liveCounts map[BlockID]int, err error) {
+	j.log.CDebugf(ctx, "Removing references for %v", contexts)
+	defer func() {
+		if err != nil {
+			j.deferLog.CDebugf(ctx,
+				"Removing references for %v", contexts, err)
+		}
+	}()
+
+	// TODO: Explain why removing refs here is ok.
+	liveCounts = make(map[BlockID]int)
+	for id, idContexts := range contexts {
+		liveCount, err := j.s.removeReferences(id, idContexts, "")
+		if err != nil {
+			return nil, err
+		}
+
+		liveCounts[id] = liveCount
+	}
+
+	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
+		Op:       removeRefsOp,
+		Contexts: contexts,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return liveCounts, nil
 }
 
 func (j *blockJournal) markMDRevision(ctx context.Context,

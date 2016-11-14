@@ -440,10 +440,10 @@ func (s *blockDiskStore) archiveReferences(
 	return nil
 }
 
-// removeReferences removes references for the given contexts from the
-// given ID. If tag is non-empty, then a reference will be removed
-// only if its most recent tag (passed in to addRefs) matches the
-// given one.
+// removeReferences removes references for the given contexts from
+// their respective IDs. If tag is non-empty, then a reference will be
+// removed only if its most recent tag (passed in to addRefs) matches
+// the given one.
 func (s *blockDiskStore) removeReferences(
 	id BlockID, contexts []BlockContext, tag string) (
 	liveCount int, err error) {
