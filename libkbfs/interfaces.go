@@ -1221,10 +1221,10 @@ type BlockServer interface {
 // that store data locally.
 type blockServerLocal interface {
 	BlockServer
-	// getAll returns all the known block references, and should only be
-	// used during testing.
-	getAll(ctx context.Context, tlfID tlf.ID) (
-		map[BlockID]map[BlockRefNonce]blockRefStatus, error)
+	// getAllRefs returns all the known block references for the
+	// given TLF, and should only be used during testing.
+	getAllRefs(ctx context.Context, tlfID tlf.ID) (
+		map[BlockID]blockRefMap, error)
 }
 
 // BlockSplitter decides when a file or directory block needs to be split

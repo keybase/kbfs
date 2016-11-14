@@ -317,11 +317,11 @@ func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
 	return nil
 }
 
-// getAll returns all the known block references, and should only be
-// used during testing.
-func (b *BlockServerMemory) getAll(ctx context.Context, tlfID tlf.ID) (
-	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
-	res := make(map[BlockID]map[BlockRefNonce]blockRefStatus)
+// getAllRefs implements the blockServerLocal interface for
+// BlockServerMemory.
+func (b *BlockServerMemory) getAllRefs(ctx context.Context, tlfID tlf.ID) (
+	map[BlockID]blockRefMap, error) {
+	res := make(map[BlockID]blockRefMap)
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
@@ -333,7 +333,7 @@ func (b *BlockServerMemory) getAll(ctx context.Context, tlfID tlf.ID) (
 		if entry.tlfID != tlfID {
 			continue
 		}
-		res[id] = entry.refs.getStatuses()
+		res[id] = entry.refs.deepCopy()
 	}
 	return res, nil
 }

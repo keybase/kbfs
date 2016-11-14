@@ -357,11 +357,6 @@ func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 	return j.s.getDataWithContext(id, context)
 }
 
-func (j *blockJournal) getAll() (
-	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
-	return j.s.getAll()
-}
-
 func (j *blockJournal) getUnflushedBytes() int64 {
 	// TODO: Figure out what to do here.
 	return 0

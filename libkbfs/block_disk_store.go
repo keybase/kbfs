@@ -323,8 +323,9 @@ func (s *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
 }
 
 func (s *blockDiskStore) getAllRefs() (map[BlockID]blockRefMap, error) {
-	fileInfos, err := ioutil.ReadDir(s.dir)
 	res := make(map[BlockID]blockRefMap)
+
+	fileInfos, err := ioutil.ReadDir(s.dir)
 	if os.IsNotExist(err) {
 		return res, nil
 	} else if err != nil {
@@ -375,20 +376,6 @@ func (s *blockDiskStore) getAllRefs() (map[BlockID]blockRefMap, error) {
 				res[id] = refs
 			}
 		}
-	}
-	return res, nil
-}
-
-func (s *blockDiskStore) getAll() (
-	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
-	allRefs, err := s.getAllRefs()
-	if err != nil {
-		return nil, err
-	}
-
-	res := make(map[BlockID]map[BlockRefNonce]blockRefStatus)
-	for id, refs := range allRefs {
-		res[id] = refs.getStatuses()
 	}
 	return res, nil
 }

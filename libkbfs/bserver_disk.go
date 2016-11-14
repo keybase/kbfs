@@ -300,10 +300,10 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 	return tlfStorage.store.archiveReferences(ctx, contexts, "")
 }
 
-// getAll returns all the known block references, and should only be
-// used during testing.
-func (b *BlockServerDisk) getAll(ctx context.Context, tlfID tlf.ID) (
-	map[BlockID]map[BlockRefNonce]blockRefStatus, error) {
+// getAllRefs implements the blockServerLocal interface for
+// BlockServerDisk.
+func (b *BlockServerDisk) getAllRefs(ctx context.Context, tlfID tlf.ID) (
+	map[BlockID]blockRefMap, error) {
 	tlfStorage, err := b.getStorage(tlfID)
 	if err != nil {
 		return nil, err
@@ -315,7 +315,7 @@ func (b *BlockServerDisk) getAll(ctx context.Context, tlfID tlf.ID) (
 		return nil, errBlockServerDiskShutdown
 	}
 
-	return tlfStorage.store.getAll()
+	return tlfStorage.store.getAllRefs()
 }
 
 // IsUnflushed implements the BlockServer interface for BlockServerDisk.

@@ -108,3 +108,14 @@ func (refs blockRefMap) remove(context BlockContext, tag string) error {
 	}
 	return nil
 }
+
+func (refs blockRefMap) deepCopy() blockRefMap {
+	if len(refs) == 0 {
+		return nil
+	}
+	refsCopy := make(blockRefMap)
+	for k, v := range refs {
+		refsCopy[k] = v
+	}
+	return refsCopy
+}
