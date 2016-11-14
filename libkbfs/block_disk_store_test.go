@@ -20,7 +20,7 @@ func setupBlockDiskStoreTest(t *testing.T) (tempdir string, s *blockDiskStore) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
-	tempdir, err := ioutil.TempDir(os.TempDir(), "block_journal")
+	tempdir, err := ioutil.TempDir(os.TempDir(), "block_disk_store")
 	require.NoError(t, err)
 
 	// Clean up the tempdir if the rest of the setup fails.
@@ -124,34 +124,6 @@ func TestBlockDiskStoreAddReference(t *testing.T) {
 	require.Equal(t, blockNonExistentError{bID}, err)
 }
 
-func TestBlockDiskStoreRemoveReferences(t *testing.T) {
-	tempdir, s := setupBlockDiskStoreTest(t)
-	defer teardownBlockDiskStoreTest(t, tempdir, s)
-
-	// Put the block.
-	data := []byte{1, 2, 3, 4}
-	bID, bCtx, serverHalf := putBlockDiskData(t, s, data)
-
-	// Add a reference.
-	bCtx2 := addBlockDiskRef(t, s, bID)
-
-	// Remove references.
-	liveCounts, err := s.removeReferences(
-		map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, "")
-	require.NoError(t, err)
-	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
-
-	// Make sure the block data is inaccessible.
-	_, _, err = s.getDataWithContext(bID, bCtx)
-	require.Equal(t, blockNonExistentError{bID}, err)
-
-	// But the actual data should remain (for flushing).
-	buf, half, err := s.getData(bID)
-	require.NoError(t, err)
-	require.Equal(t, data, buf)
-	require.Equal(t, serverHalf, half)
-}
-
 func TestBlockDiskStoreArchiveReferences(t *testing.T) {
 	tempdir, s := setupBlockDiskStoreTest(t)
 	defer teardownBlockDiskStoreTest(t, tempdir, s)
@@ -187,4 +159,32 @@ func TestBlockDiskStoreArchiveNonExistentReference(t *testing.T) {
 	// Archive references.
 	err = s.archiveReferences(map[BlockID][]BlockContext{bID: {bCtx}}, "")
 	require.NoError(t, err)
+}
+
+func TestBlockDiskStoreRemoveReferences(t *testing.T) {
+	tempdir, s := setupBlockDiskStoreTest(t)
+	defer teardownBlockDiskStoreTest(t, tempdir, s)
+
+	// Put the block.
+	data := []byte{1, 2, 3, 4}
+	bID, bCtx, serverHalf := putBlockDiskData(t, s, data)
+
+	// Add a reference.
+	bCtx2 := addBlockDiskRef(t, s, bID)
+
+	// Remove references.
+	liveCounts, err := s.removeReferences(
+		map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, "")
+	require.NoError(t, err)
+	require.Equal(t, map[BlockID]int{bID: 0}, liveCounts)
+
+	// Make sure the block data is inaccessible.
+	_, _, err = s.getDataWithContext(bID, bCtx)
+	require.Equal(t, blockNonExistentError{bID}, err)
+
+	// But the actual data should remain.
+	buf, half, err := s.getData(bID)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
+	require.Equal(t, serverHalf, half)
 }
