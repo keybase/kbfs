@@ -376,9 +376,11 @@ func (j *blockJournal) removeReferences(
 		return nil, err
 	}
 
-	// TODO: Explain why removing refs here is ok.
 	liveCounts = make(map[BlockID]int)
 	for id, idContexts := range contexts {
+		// Remove the references unconditionally here (i.e.,
+		// with an empty tag), since j.s should reflect the
+		// most recent state.
 		liveCount, err := j.s.removeReferences(id, idContexts, "")
 		if err != nil {
 			return nil, err
@@ -658,23 +660,26 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 
 	// Remove any of the entry's refs that hasn't been modified by
 	// a subsequent block op (i.e., that has earliestOrdinal as a
-	// tag).
+	// tag). Doesn't have an effect for removeRefsOp, since those
+	// are already removed, and mdRevMarkerOp, but doing this is
+	// harmless.
 	for id, idContexts := range entry.Contexts {
 		liveCount, err := j.s.removeReferences(
 			id, idContexts, earliestOrdinal.String())
 		if err != nil {
 			return 0, err
 		}
-		if liveCount == 0 {
-			// Garbage-collect the old entry if we are not saving
-			// blocks until the next MD flush.  TODO: we'll
-			// eventually need a sweeper to clean up entries left
-			// behind if we crash here.
-			if j.saveUntilMDFlush == nil {
-				err = j.s.remove(id)
-				if err != nil {
-					return 0, err
-				}
+		// If j.saveUntilMDFlush is non-nil, then postpone
+		// garbage collection until it becomes nil.
+		if j.saveUntilMDFlush == nil && liveCount == 0 {
+			// Garbage-collect the old entry if we are not
+			// saving blocks until the next MD flush.
+			// TODO: we'll eventually need a sweeper to
+			// clean up entries left behind if we crash
+			// here.
+			err = j.s.remove(id)
+			if err != nil {
+				return 0, err
 			}
 		}
 	}
