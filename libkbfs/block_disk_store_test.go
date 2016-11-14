@@ -188,3 +188,27 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, half)
 }
+
+func TestBlockDiskStoreRemove(t *testing.T) {
+	tempdir, s := setupBlockDiskStoreTest(t)
+	defer teardownBlockDiskStoreTest(t, tempdir, s)
+
+	// Put the block.
+	data := []byte{1, 2, 3, 4}
+	bID, bCtx, _ := putBlockDisk(t, s, data)
+
+	// Should not be removable.
+	err := s.remove(bID)
+	require.Error(t, err, "Trying to remove data")
+
+	// Remove reference.
+	liveCount, err := s.removeReferences(bID, []BlockContext{bCtx}, "")
+	require.NoError(t, err)
+	require.Equal(t, 0, liveCount)
+
+	// Should now be removable.
+	err = s.remove(bID)
+	require.NoError(t, err)
+	_, _, err = s.getData(bID)
+	require.Equal(t, blockNonExistentError{bID}, err)
+}
