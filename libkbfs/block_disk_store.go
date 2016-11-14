@@ -490,10 +490,9 @@ func (s *blockDiskStore) removeReferences(
 	return liveCounts, nil
 }
 
-// removeBlockData removes any existing block data for the given
-// ID. If there is no data, nil is returned; this can happen when we
-// have only non-put references to a block in the journal.
-func (s *blockDiskStore) removeBlockData(id BlockID) error {
+// removeBlockData removes any existing block data for the given ID,
+// which must not have any references left.
+func (s *blockDiskStore) remove(id BlockID) error {
 	hasRef, err := s.hasAnyRef(id)
 	if err != nil {
 		return err

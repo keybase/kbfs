@@ -776,7 +776,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 			// eventually need a sweeper to clean up entries left
 			// behind if we crash here.
 			if j.saveUntilMDFlush == nil {
-				err = j.s.removeBlockData(id)
+				err = j.s.remove(id)
 				if err != nil {
 					return 0, err
 				}
@@ -947,7 +947,7 @@ func (j *blockJournal) onMDFlush() error {
 				// Garbage-collect the old entry.  TODO: we'll
 				// eventually need a sweeper to clean up entries left
 				// behind if we crash here.
-				err = j.s.removeBlockData(id)
+				err = j.s.remove(id)
 				if err != nil {
 					return err
 				}

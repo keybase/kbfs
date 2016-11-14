@@ -246,7 +246,7 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 
 	for id, liveCount := range liveCounts {
 		if liveCount == 0 {
-			err := tlfStorage.store.removeBlockData(id)
+			err := tlfStorage.store.remove(id)
 			if err != nil {
 				return nil, err
 			}
