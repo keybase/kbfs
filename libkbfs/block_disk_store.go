@@ -17,18 +17,26 @@ import (
 	"golang.org/x/net/context"
 )
 
-// blockDiskStore stores blocks along with their associated data in
-// flat files in a directory on disk.
+// blockDiskStore stores block data in flat files on disk.
 //
 // The directory layout looks like:
 //
-// dir/0100/0...01/data
-// dir/0100/0...01/key_server_half
-// dir/0100/0...01/refs
+// /0100/0...01/data
+// /0100/0...01/id
+// /0100/0...01/key_server_half
+// /0100/0...01/refs
 // ...
-// dir/01ff/f...ff/data
-// dir/01ff/f...ff/key_server_half
-// dir/01ff/f...ff/refs
+// /01cc/5...55/id
+// /01cc/5...55/refs
+// ...
+// /01dd/6...66/data
+// /01dd/6...66/id
+// /01dd/6...66/key_server_half
+// ...
+// /01ff/f...ff/data
+// /01ff/f...ff/id
+// /01ff/f...ff/key_server_half
+// /01ff/f...ff/refs
 //
 // Each block has its own subdirectory with its ID truncated to 17
 // bytes (34 characters) as a name. The block subdirectories are
@@ -36,13 +44,21 @@ import (
 // byte for the hash type (currently only one) plus the first byte of
 // the hash data -- using the first four characters of the name to
 // keep the number of directories in dir itself to a manageable
-// number, similar to git. Each block directory has data, which is the
-// raw block data that should hash to the block ID, key_server_half,
-// which contains the raw data for the associated key server half, and
-// refs, which contains the list of references to the block. Future
-// versions of the disk store might add more files to this directory;
-// if any code is written to move blocks around, it should be careful
-// to preserve any unknown files in a block directory.
+// number, similar to git.
+//
+// Each block directory has the following files:
+//
+//   - id: The full block ID in binary format. (TODO: make
+//         human-readable.) Always present.
+//   - data: The raw block data that should hash to the block ID.
+//           May be missing.
+//   - key_server_half: The raw data for the associated key server half.
+//                      May be missing, but should be present when data is.
+//   - refs: The list of references to the block. May be missing.
+//
+// Future versions of the disk store might add more files to this
+// directory; if any code is written to move blocks around, it should
+// be careful to preserve any unknown files in a block directory.
 //
 // The maximum number of characters added to the root dir by a block
 // disk store is 52:
