@@ -237,7 +237,7 @@ func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 }
 
 func (j *blockJournal) getUnflushedBytes() int64 {
-	// TODO: Figure out what to do here.
+	// TODO: Calculate this, and possibly cache it.
 	return 0
 }
 
