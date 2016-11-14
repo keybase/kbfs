@@ -358,6 +358,17 @@ func (j *blockJournal) removeReferences(
 		}
 	}()
 
+	// Add the journal entry first, so that if we crash before
+	// removing the refs, we have at worst un-GCed blocks.
+
+	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
+		Op:       removeRefsOp,
+		Contexts: contexts,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO: Explain why removing refs here is ok.
 	liveCounts = make(map[BlockID]int)
 	for id, idContexts := range contexts {
@@ -367,14 +378,6 @@ func (j *blockJournal) removeReferences(
 		}
 
 		liveCounts[id] = liveCount
-	}
-
-	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
-		Op:       removeRefsOp,
-		Contexts: contexts,
-	})
-	if err != nil {
-		return nil, err
 	}
 
 	return liveCounts, nil
