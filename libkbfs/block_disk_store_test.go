@@ -43,7 +43,7 @@ func teardownBlockDiskStoreTest(t *testing.T, tempdir string, s *blockDiskStore)
 	assert.NoError(t, err)
 }
 
-func putBlockDiskData(
+func putBlockDisk(
 	t *testing.T, s *blockDiskStore, data []byte) (
 	BlockID, BlockContext, kbfscrypto.BlockCryptKeyServerHalf) {
 	bID, err := s.crypto.MakePermanentBlockID(data)
@@ -54,7 +54,7 @@ func putBlockDiskData(
 	serverHalf, err := s.crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
-	err = s.putData(bID, bCtx, data, serverHalf, "")
+	err = s.put(bID, bCtx, data, serverHalf, "")
 	require.NoError(t, err)
 
 	return bID, bCtx, serverHalf
@@ -88,7 +88,7 @@ func TestBlockDiskStoreBasic(t *testing.T) {
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
-	bID, bCtx, serverHalf := putBlockDiskData(t, s, data)
+	bID, bCtx, serverHalf := putBlockDisk(t, s, data)
 
 	// Make sure we get the same block back.
 	getAndCheckBlockDiskData(t, s, bID, bCtx, data, serverHalf)
@@ -130,7 +130,7 @@ func TestBlockDiskStoreArchiveReferences(t *testing.T) {
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
-	bID, bCtx, serverHalf := putBlockDiskData(t, s, data)
+	bID, bCtx, serverHalf := putBlockDisk(t, s, data)
 
 	// Add a reference.
 	bCtx2 := addBlockDiskRef(t, s, bID)
@@ -167,7 +167,7 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
-	bID, bCtx, serverHalf := putBlockDiskData(t, s, data)
+	bID, bCtx, serverHalf := putBlockDisk(t, s, data)
 
 	// Add a reference.
 	bCtx2 := addBlockDiskRef(t, s, bID)

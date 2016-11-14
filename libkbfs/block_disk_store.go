@@ -207,38 +207,6 @@ func (s *blockDiskStore) addRefs(id BlockID, contexts []BlockContext,
 	return s.putRefs(id, refs)
 }
 
-// removeRefs removes references for the given contexts from the given
-// ID. If tag is non-empty, then a reference will be removed only if
-// its most recent tag (passed in to addRefs) matches the given one.
-func (s *blockDiskStore) removeRefs(
-	id BlockID, contexts []BlockContext, tag string) (
-	liveCount int, err error) {
-	refs, err := s.getRefs(id)
-	if err != nil {
-		return 0, err
-	}
-	if len(refs) == 0 {
-		return 0, nil
-	}
-
-	for _, context := range contexts {
-		err := refs.remove(context, tag)
-		if err != nil {
-			return 0, err
-		}
-		if len(refs) == 0 {
-			break
-		}
-	}
-
-	err = s.putRefs(id, refs)
-	if err != nil {
-		return 0, err
-	}
-
-	return len(refs), nil
-}
-
 // getData returns the data and server half for the given ID, if
 // present.
 func (s *blockDiskStore) getData(id BlockID) (
@@ -387,8 +355,9 @@ func (s *blockDiskStore) getAllRefs() (map[BlockID]blockRefMap, error) {
 	return res, nil
 }
 
-func (s *blockDiskStore) putData(
-	id BlockID, context BlockContext, buf []byte,
+// put puts the given data for the block, which may already exist, and
+// adds a reference for the given context.
+func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf,
 	tag string) (err error) {
 	err = validateBlockPut(s.crypto, id, context, buf)
@@ -474,20 +443,47 @@ func (s *blockDiskStore) archiveReferences(
 	return nil
 }
 
+// removeReferences removes references for the given contexts from the
+// given ID. If tag is non-empty, then a reference will be removed
+// only if its most recent tag (passed in to addRefs) matches the
+// given one.
 func (s *blockDiskStore) removeReferences(
 	id BlockID, contexts []BlockContext, tag string) (
 	liveCount int, err error) {
-	return s.removeRefs(id, contexts, tag)
+	refs, err := s.getRefs(id)
+	if err != nil {
+		return 0, err
+	}
+	if len(refs) == 0 {
+		return 0, nil
+	}
+
+	for _, context := range contexts {
+		err := refs.remove(context, tag)
+		if err != nil {
+			return 0, err
+		}
+		if len(refs) == 0 {
+			break
+		}
+	}
+
+	err = s.putRefs(id, refs)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(refs), nil
 }
 
-// removeBlockData removes any existing block data for the given ID,
-// which must not have any references left.
+// remove removes any existing data for the given ID, which must not
+// have any references left.
 func (s *blockDiskStore) remove(id BlockID) error {
-	hasRef, err := s.hasAnyRef(id)
+	hasAnyRef, err := s.hasAnyRef(id)
 	if err != nil {
 		return err
 	}
-	if hasRef {
+	if hasAnyRef {
 		return fmt.Errorf(
 			"Trying to remove data for referenced block %s", id)
 	}
