@@ -131,6 +131,8 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 	return nil
 }
 
+// TODO: Add caching for refs.
+
 // getRefs returns the references for the given ID.
 func (s *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
 	data, err := ioutil.ReadFile(s.refsPath(id))
