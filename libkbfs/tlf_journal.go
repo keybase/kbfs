@@ -919,7 +919,7 @@ func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
 		RevisionStart:  earliestRevision,
 		RevisionEnd:    latestRevision,
 		BlockOpCount:   blockEntryCount,
-		UnflushedBytes: j.blockJournal.getUnflushedBytes(),
+		UnflushedBytes: j.getUnflushedBytes(),
 		LastFlushErr:   lastFlushErr,
 	}, nil
 }
