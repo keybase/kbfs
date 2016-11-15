@@ -263,7 +263,7 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 }
 
 func testBlockJournalGCd(t *testing.T, j *blockJournal) {
-	filepath.Walk(j.dir,
+	err := filepath.Walk(j.dir,
 		func(path string, info os.FileInfo, _ error) error {
 			// We should only find the blocks directory here.
 			if path != j.dir && path != j.s.dir && path != j.j.dir {
@@ -271,6 +271,7 @@ func testBlockJournalGCd(t *testing.T, j *blockJournal) {
 			}
 			return nil
 		})
+	require.NoError(t, err)
 }
 
 func TestBlockJournalFlush(t *testing.T) {

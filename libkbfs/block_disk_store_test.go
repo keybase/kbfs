@@ -214,7 +214,7 @@ func TestBlockDiskStoreRemove(t *testing.T) {
 	_, _, err = s.getData(bID)
 	require.Equal(t, blockNonExistentError{bID}, err)
 
-	filepath.Walk(s.dir,
+	err = filepath.Walk(s.dir,
 		func(path string, info os.FileInfo, _ error) error {
 			// We should only find the blocks directory here.
 			if path != s.dir {
@@ -222,4 +222,5 @@ func TestBlockDiskStoreRemove(t *testing.T) {
 			}
 			return nil
 		})
+	require.NoError(t, err)
 }
