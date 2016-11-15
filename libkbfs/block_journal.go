@@ -657,9 +657,9 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 
 	// Remove any of the entry's refs that hasn't been modified by
 	// a subsequent block op (i.e., that has earliestOrdinal as a
-	// tag). Doesn't have an effect for removeRefsOp, since those
-	// are already removed, and mdRevMarkerOp, but doing this is
-	// harmless.
+	// tag). Has no effect for removeRefsOp (since those are
+	// already removed) or mdRevMarkerOp (which has no
+	// references).
 	for id, idContexts := range entry.Contexts {
 		liveCount, err := j.s.removeReferences(
 			id, idContexts, earliestOrdinal.String())
