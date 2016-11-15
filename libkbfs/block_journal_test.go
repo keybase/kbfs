@@ -748,7 +748,8 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	bCtx1b := addBlockRef(ctx, t, j, bID1)
 	requireSize(expectedSize)
 
-	bID3, err := j.crypto.MakePermanentBlockID([]byte{1, 2, 3})
+	data3 := []byte{1, 2, 3}
+	bID3, err := j.crypto.MakePermanentBlockID(data3)
 	require.NoError(t, err)
 	_ = addBlockRef(ctx, t, j, bID3)
 	require.NoError(t, err)
@@ -792,7 +793,18 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	flushOne()
 	requireSize(0)
 
-	// Flush the second add ref.
+	// Flush the second add ref, but push the block to the server
+	// first.
+
+	uid1 := keybase1.MakeTestUID(1)
+	bCtx3 := BlockContext{uid1, "", ZeroBlockRefNonce}
+	serverHalf3, err := j.crypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
+
+	err = blockServer.Put(
+		context.Background(), tlfID, bID3, bCtx3, data3, serverHalf3)
+	require.NoError(t, err)
+
 	flushOne()
 	requireSize(0)
 
