@@ -746,16 +746,16 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	require.NoError(t, err)
 	requireSize(expectedSize)
 
-	liveCount, err := j.removeReferences(
+	liveCounts, err := j.removeReferences(
 		ctx, map[BlockID][]BlockContext{bID1: {bCtx1, bCtx1b}})
 	require.NoError(t, err)
-	require.Equal(t, 0, liveCount)
+	require.Equal(t, map[BlockID]int{bID1: 0}, liveCounts)
 	requireSize(expectedSize)
 
-	liveCount, err = j.removeReferences(
+	liveCounts, err = j.removeReferences(
 		ctx, map[BlockID][]BlockContext{bID2: {bCtx2}})
 	require.NoError(t, err)
-	require.Equal(t, 0, liveCount)
+	require.Equal(t, map[BlockID]int{bID2: 0}, liveCounts)
 	requireSize(expectedSize)
 
 	// TODO: Test flushing.
