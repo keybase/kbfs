@@ -95,8 +95,10 @@ func (s *blockDiskStore) blockPath(id BlockID) string {
 	return filepath.Join(s.dir, idStr[:4], idStr[4:34])
 }
 
+const dataFilename = "data"
+
 func (s *blockDiskStore) dataPath(id BlockID) string {
-	return filepath.Join(s.blockPath(id), "data")
+	return filepath.Join(s.blockPath(id), dataFilename)
 }
 
 const idFilename = "id"
@@ -250,6 +252,26 @@ func (s *blockDiskStore) getData(id BlockID) (
 }
 
 // All functions below are public functions.
+
+// getTotalDataSize returns the sum of the size of the data for each
+// stored block.
+func (s *blockDiskStore) getTotalDataSize() (int64, error) {
+	var totalSize int64
+	err := filepath.Walk(s.dir,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if filepath.Base(path) == dataFilename {
+				totalSize += info.Size()
+			}
+			return nil
+		})
+	if err != nil {
+		return 0, err
+	}
+	return totalSize, nil
+}
 
 func (s *blockDiskStore) hasAnyRef(id BlockID) (bool, error) {
 	refs, err := s.getRefs(id)
