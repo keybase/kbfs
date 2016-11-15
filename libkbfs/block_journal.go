@@ -328,14 +328,9 @@ func (j *blockJournal) archiveReferences(
 		}
 	}()
 
-	var next journalOrdinal
-	lo, err := j.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
-		next = 0
-	} else if err != nil {
+	next, err := j.end()
+	if err != nil {
 		return err
-	} else {
-		next = lo + 1
 	}
 
 	err = j.s.archiveReferences(contexts, next.String())
