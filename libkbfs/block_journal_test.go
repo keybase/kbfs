@@ -774,23 +774,26 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 			ctx, t, j, blockServer, bcache, reporter, tlfID)
 	}
 
-	// Flush the puts.
+	// Flush the first put.
 	flushOne()
+	expectedSize = len(data2)
 	requireSize(expectedSize)
 
+	// Flush the second put.
 	flushOne()
-	requireSize(expectedSize)
+	requireSize(0)
 
-	// Flush the add and archive.
+	// Flush the add ref.
 	flushOne()
-	requireSize(expectedSize)
+	requireSize(0)
 
+	// Flush the add archive.
 	flushOne()
-	requireSize(expectedSize)
+	requireSize(0)
 
 	// Flush the first remove.
 	flushOne()
-	requireSize(len(data2))
+	requireSize(0)
 
 	// Flush the second remove.
 	flushOne()

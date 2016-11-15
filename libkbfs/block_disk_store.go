@@ -317,7 +317,9 @@ func (s *blockDiskStore) hasData(id BlockID) error {
 
 func (s *blockDiskStore) getDataSize(id BlockID) (int64, error) {
 	fi, err := os.Stat(s.dataPath(id))
-	if err != nil {
+	if os.IsNotExist(err) {
+		return 0, nil
+	} else if err != nil {
 		return 0, err
 	}
 	return fi.Size(), nil

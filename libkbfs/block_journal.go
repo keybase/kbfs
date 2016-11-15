@@ -243,10 +243,27 @@ func (j *blockJournal) hasData(id BlockID) error {
 	return j.s.hasData(id)
 }
 
-func (j *blockJournal) remove(id BlockID) error {
+func (j *blockJournal) remove(id BlockID) (int64, error) {
+	flushedBytes, err := j.s.getDataSize(id)
+	if err != nil {
+		return 0, err
+	}
+
 	// TODO: we'll eventually need a sweeper to clean up entries
 	// left behind if we crash here.
-	return j.s.remove(id)
+	err = j.s.remove(id)
+	if err != nil {
+		return 0, err
+	}
+
+	if j.cachedUnflushedBytes >= 0 {
+		// If we somehow get out of sync and dip below zero,
+		// then we'll just self-correct at the next call to
+		// getUnflushedBytes().
+		j.cachedUnflushedBytes -= flushedBytes
+	}
+
+	return flushedBytes, nil
 }
 
 // All functions below are public functions.
@@ -650,7 +667,7 @@ func flushBlockEntries(ctx context.Context, log logger.Logger,
 
 func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	ordinal journalOrdinal, entry blockJournalEntry) (
-	flushedBytes int64, err error) {
+	totalFlushedBytes int64, err error) {
 	earliestOrdinal, err := j.j.readEarliestOrdinal()
 	if err != nil {
 		return 0, err
@@ -659,17 +676,6 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	if ordinal != earliestOrdinal {
 		return 0, fmt.Errorf("Expected ordinal %d, got %d",
 			ordinal, earliestOrdinal)
-	}
-
-	if entry.Op == blockPutOp && !entry.Ignore {
-		id, _, err := entry.getSingleContext()
-		if err != nil {
-			return 0, err
-		}
-		flushedBytes, err = j.s.getDataSize(id)
-		if err != nil {
-			return 0, err
-		}
 	}
 
 	_, err = j.j.removeEarliest()
@@ -693,14 +699,16 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		if j.saveUntilMDFlush == nil && liveCount == 0 {
 			// Garbage-collect the old entry if we are not
 			// saving blocks until the next MD flush.
-			err = j.remove(id)
+			flushedBytes, err := j.remove(id)
 			if err != nil {
 				return 0, err
 			}
+
+			totalFlushedBytes += flushedBytes
 		}
 	}
 
-	return flushedBytes, nil
+	return totalFlushedBytes, nil
 }
 
 func (j *blockJournal) removeFlushedEntries(ctx context.Context,
@@ -861,7 +869,7 @@ func (j *blockJournal) onMDFlush() error {
 			}
 			if !hasRef {
 				// Garbage-collect the old entry.
-				err = j.remove(id)
+				_, err = j.remove(id)
 				if err != nil {
 					return err
 				}
