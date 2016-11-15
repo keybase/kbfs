@@ -381,6 +381,25 @@ func TestBlockJournalFlush(t *testing.T) {
 	testBlockJournalGCd(t, j)
 }
 
+func flushBlockJournalOne(ctx context.Context, t *testing.T,
+	j *blockJournal, blockServer BlockServer,
+	bcache BlockCache, reporter Reporter, tlfID tlf.ID) {
+	first, err := j.j.readEarliestOrdinal()
+	require.NoError(t, err)
+	entries, _, err := j.getNextEntriesToFlush(ctx, first+1,
+		maxJournalBlockFlushBatchSize)
+	require.NoError(t, err)
+	require.Equal(t, 1, entries.length())
+	err = flushBlockEntries(ctx, j.log, blockServer,
+		bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
+		entries)
+	require.NoError(t, err)
+	err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+	require.NoError(t, err)
+	err = j.checkInSyncForTest()
+	require.NoError(t, err)
+}
+
 func TestBlockJournalFlushInterleaved(t *testing.T) {
 	ctx, tempdir, j := setupBlockJournalTest(t)
 	defer teardownBlockJournalTest(t, tempdir, j)
@@ -406,20 +425,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 	reporter := NewReporterSimple(nil, 0)
 
 	flushOne := func() {
-		first, err := j.j.readEarliestOrdinal()
-		require.NoError(t, err)
-		entries, _, err := j.getNextEntriesToFlush(ctx, first+1,
-			maxJournalBlockFlushBatchSize)
-		require.NoError(t, err)
-		require.Equal(t, 1, entries.length())
-		err = flushBlockEntries(ctx, j.log, blockServer,
-			bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
-			entries)
-		require.NoError(t, err)
-		err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
-		require.NoError(t, err)
-		err = j.checkInSyncForTest()
-		require.NoError(t, err)
+		flushBlockJournalOne(
+			ctx, t, j, blockServer, bcache, reporter, tlfID)
 	}
 
 	flushOne()
@@ -758,5 +765,34 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	require.Equal(t, map[BlockID]int{bID2: 0}, liveCounts)
 	requireSize(expectedSize)
 
-	// TODO: Test flushing.
+	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t))
+	tlfID := tlf.FakeID(1, false)
+	bcache := NewBlockCacheStandard(0, 0)
+	reporter := NewReporterSimple(nil, 0)
+	flushOne := func() {
+		flushBlockJournalOne(
+			ctx, t, j, blockServer, bcache, reporter, tlfID)
+	}
+
+	// Flush the puts.
+	flushOne()
+	requireSize(expectedSize)
+
+	flushOne()
+	requireSize(expectedSize)
+
+	// Flush the add and archive.
+	flushOne()
+	requireSize(expectedSize)
+
+	flushOne()
+	requireSize(expectedSize)
+
+	// Flush the first remove.
+	flushOne()
+	requireSize(len(data2))
+
+	// Flush the second remove.
+	flushOne()
+	requireSize(0)
 }
