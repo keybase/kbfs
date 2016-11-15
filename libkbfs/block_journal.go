@@ -243,6 +243,12 @@ func (j *blockJournal) hasData(id BlockID) error {
 	return j.s.hasData(id)
 }
 
+func (j *blockJournal) remove(id BlockID) error {
+	// TODO: we'll eventually need a sweeper to clean up entries
+	// left behind if we crash here.
+	return j.s.remove(id)
+}
+
 // All functions below are public functions.
 
 func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
@@ -687,10 +693,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		if j.saveUntilMDFlush == nil && liveCount == 0 {
 			// Garbage-collect the old entry if we are not
 			// saving blocks until the next MD flush.
-			// TODO: we'll eventually need a sweeper to
-			// clean up entries left behind if we crash
-			// here.
-			err = j.s.remove(id)
+			err = j.remove(id)
 			if err != nil {
 				return 0, err
 			}
@@ -857,10 +860,8 @@ func (j *blockJournal) onMDFlush() error {
 				return err
 			}
 			if !hasRef {
-				// Garbage-collect the old entry.  TODO: we'll
-				// eventually need a sweeper to clean up entries left
-				// behind if we crash here.
-				err = j.s.remove(id)
+				// Garbage-collect the old entry.
+				err = j.remove(id)
 				if err != nil {
 					return err
 				}
