@@ -24,22 +24,11 @@ func setupBlockDiskStoreTest(t *testing.T) (tempdir string, s *blockDiskStore) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "block_disk_store")
 	require.NoError(t, err)
 
-	// Clean up the tempdir if the rest of the setup fails.
-	setupSucceeded := false
-	defer func() {
-		if !setupSucceeded {
-			err := os.RemoveAll(tempdir)
-			assert.NoError(t, err)
-		}
-	}()
-
 	s = makeBlockDiskStore(codec, crypto, tempdir)
-
-	setupSucceeded = true
 	return tempdir, s
 }
 
-func teardownBlockDiskStoreTest(t *testing.T, tempdir string, s *blockDiskStore) {
+func teardownBlockDiskStoreTest(t *testing.T, tempdir string) {
 	err := os.RemoveAll(tempdir)
 	assert.NoError(t, err)
 }
@@ -86,7 +75,7 @@ func getAndCheckBlockDiskData(t *testing.T, s *blockDiskStore,
 
 func TestBlockDiskStoreBasic(t *testing.T) {
 	tempdir, s := setupBlockDiskStoreTest(t)
-	defer teardownBlockDiskStoreTest(t, tempdir, s)
+	defer teardownBlockDiskStoreTest(t, tempdir)
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
@@ -112,7 +101,7 @@ func TestBlockDiskStoreBasic(t *testing.T) {
 
 func TestBlockDiskStorePutTwice(t *testing.T) {
 	tempdir, s := setupBlockDiskStoreTest(t)
-	defer teardownBlockDiskStoreTest(t, tempdir, s)
+	defer teardownBlockDiskStoreTest(t, tempdir)
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
@@ -126,7 +115,7 @@ func TestBlockDiskStorePutTwice(t *testing.T) {
 
 func TestBlockDiskStoreAddReference(t *testing.T) {
 	tempdir, s := setupBlockDiskStoreTest(t)
-	defer teardownBlockDiskStoreTest(t, tempdir, s)
+	defer teardownBlockDiskStoreTest(t, tempdir)
 
 	data := []byte{1, 2, 3, 4}
 	bID, err := s.crypto.MakePermanentBlockID(data)
@@ -142,7 +131,7 @@ func TestBlockDiskStoreAddReference(t *testing.T) {
 
 func TestBlockDiskStoreArchiveReferences(t *testing.T) {
 	tempdir, s := setupBlockDiskStoreTest(t)
-	defer teardownBlockDiskStoreTest(t, tempdir, s)
+	defer teardownBlockDiskStoreTest(t, tempdir)
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
@@ -162,7 +151,7 @@ func TestBlockDiskStoreArchiveReferences(t *testing.T) {
 
 func TestBlockDiskStoreArchiveNonExistentReference(t *testing.T) {
 	tempdir, s := setupBlockDiskStoreTest(t)
-	defer teardownBlockDiskStoreTest(t, tempdir, s)
+	defer teardownBlockDiskStoreTest(t, tempdir)
 
 	uid1 := keybase1.MakeTestUID(1)
 
@@ -179,7 +168,7 @@ func TestBlockDiskStoreArchiveNonExistentReference(t *testing.T) {
 
 func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 	tempdir, s := setupBlockDiskStoreTest(t)
-	defer teardownBlockDiskStoreTest(t, tempdir, s)
+	defer teardownBlockDiskStoreTest(t, tempdir)
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
@@ -207,7 +196,7 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 
 func TestBlockDiskStoreRemove(t *testing.T) {
 	tempdir, s := setupBlockDiskStoreTest(t)
-	defer teardownBlockDiskStoreTest(t, tempdir, s)
+	defer teardownBlockDiskStoreTest(t, tempdir)
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
@@ -242,7 +231,11 @@ func TestBlockDiskStoreRemove(t *testing.T) {
 
 func TestBlockDiskStoreTotalDataSize(t *testing.T) {
 	tempdir, s := setupBlockDiskStoreTest(t)
-	defer teardownBlockDiskStoreTest(t, tempdir, s)
+	defer teardownBlockDiskStoreTest(t, tempdir)
+
+	// Add an extra dir to test behavior when the store directory
+	// doesn't exist.
+	s = makeBlockDiskStore(s.codec, s.crypto, filepath.Join(tempdir, "dir"))
 
 	requireSize := func(expectedSize int) {
 		totalSize, err := s.getTotalDataSize()

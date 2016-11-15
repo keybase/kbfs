@@ -259,6 +259,11 @@ func (s *blockDiskStore) getTotalDataSize() (int64, error) {
 	var totalSize int64
 	err := filepath.Walk(s.dir,
 		func(path string, info os.FileInfo, err error) error {
+			// The root directory doesn't exist, so just
+			// exit early and return 0.
+			if path == s.dir && os.IsNotExist(err) {
+				return nil
+			}
 			if err != nil {
 				return err
 			}
