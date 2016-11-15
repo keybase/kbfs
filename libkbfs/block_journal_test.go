@@ -748,7 +748,12 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	bCtx1b := addBlockRef(ctx, t, j, bID1)
 	requireSize(expectedSize)
 
-	err := j.archiveReferences(
+	bID3, err := j.crypto.MakePermanentBlockID([]byte{1, 2, 3})
+	require.NoError(t, err)
+	_ = addBlockRef(ctx, t, j, bID3)
+	require.NoError(t, err)
+
+	err = j.archiveReferences(
 		ctx, map[BlockID][]BlockContext{bID2: {bCtx2}})
 	require.NoError(t, err)
 	requireSize(expectedSize)
@@ -783,7 +788,11 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	flushOne()
 	requireSize(0)
 
-	// Flush the add ref.
+	// Flush the first add ref.
+	flushOne()
+	requireSize(0)
+
+	// Flush the second add ref.
 	flushOne()
 	requireSize(0)
 
