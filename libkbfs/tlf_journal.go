@@ -913,7 +913,7 @@ func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
 	if j.lastFlushErr != nil {
 		lastFlushErr = j.lastFlushErr.Error()
 	}
-	unflushedBytes, err := j.getUnflushedBytes()
+	unflushedBytes, err := j.blockJournal.getUnflushedBytes()
 	if err != nil {
 		return TLFJournalStatus{}, err
 	}
