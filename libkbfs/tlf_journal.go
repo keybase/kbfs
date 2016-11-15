@@ -913,13 +913,17 @@ func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
 	if j.lastFlushErr != nil {
 		lastFlushErr = j.lastFlushErr.Error()
 	}
+	unflushedBytes, err := j.getUnflushedBytes()
+	if err != nil {
+		return TLFJournalStatus{}, err
+	}
 	return TLFJournalStatus{
 		Dir:            j.dir,
 		BranchID:       j.mdJournal.getBranchID().String(),
 		RevisionStart:  earliestRevision,
 		RevisionEnd:    latestRevision,
 		BlockOpCount:   blockEntryCount,
-		UnflushedBytes: j.getUnflushedBytes(),
+		UnflushedBytes: unflushedBytes,
 		LastFlushErr:   lastFlushErr,
 	}, nil
 }
@@ -1108,11 +1112,11 @@ func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
 	return jStatus, nil
 }
 
-func (j *tlfJournal) getUnflushedBytes() int64 {
+func (j *tlfJournal) getUnflushedBytes() (int64, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
-		return 0
+		return 0, err
 	}
 
 	return j.blockJournal.getUnflushedBytes()

@@ -245,9 +245,9 @@ func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 	return j.s.getDataWithContext(id, context)
 }
 
-func (j *blockJournal) getUnflushedBytes() int64 {
+func (j *blockJournal) getUnflushedBytes() (int64, error) {
 	// TODO: Calculate this, and possibly cache it.
-	return 0
+	return 0, nil
 }
 
 func (j *blockJournal) putData(
