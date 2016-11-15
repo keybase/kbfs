@@ -73,6 +73,10 @@ type blockJournal struct {
 	// s stores all the block data. s should always reflect the
 	// state you get by replaying all the entries in j.
 	s *blockDiskStore
+
+	// Tracks s.getTotalDataSize(). If negative, that means the
+	// value hasn't been cached yet.
+	cachedUnflushedBytes int64
 }
 
 type blockOpType int
@@ -161,13 +165,14 @@ func makeBlockJournal(
 	storeDir := filepath.Join(dir, "blocks")
 	s := makeBlockDiskStore(codec, crypto, storeDir)
 	journal := &blockJournal{
-		codec:    codec,
-		crypto:   crypto,
-		dir:      dir,
-		log:      log,
-		deferLog: deferLog,
-		j:        j,
-		s:        s,
+		codec:                codec,
+		crypto:               crypto,
+		dir:                  dir,
+		log:                  log,
+		deferLog:             deferLog,
+		j:                    j,
+		s:                    s,
+		cachedUnflushedBytes: -1,
 	}
 
 	// If a saved block journal exists, we need to remove its entries
@@ -246,8 +251,15 @@ func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 }
 
 func (j *blockJournal) getUnflushedBytes() (int64, error) {
-	// TODO: Calculate this, and possibly cache it.
-	return 0, nil
+	if j.cachedUnflushedBytes < 0 {
+		unflushedBytes, err := j.s.getTotalDataSize()
+		if err != nil {
+			return 0, err
+		}
+		j.cachedUnflushedBytes = unflushedBytes
+	}
+
+	return j.cachedUnflushedBytes, nil
 }
 
 func (j *blockJournal) putData(
