@@ -224,3 +224,59 @@ func TestBlockDiskStoreRemove(t *testing.T) {
 		})
 	require.NoError(t, err)
 }
+
+func TestBlockDiskStoreTotalDataSize(t *testing.T) {
+	tempdir, s := setupBlockDiskStoreTest(t)
+	defer teardownBlockDiskStoreTest(t, tempdir, s)
+
+	requireSize := func(expectedSize int) {
+		totalSize, err := s.getTotalDataSize()
+		require.NoError(t, err)
+		require.Equal(t, int64(expectedSize), totalSize)
+	}
+
+	requireSize(0)
+
+	data1 := []byte{1, 2, 3, 4}
+	bID1, bCtx1, _ := putBlockDisk(t, s, data1)
+
+	requireSize(len(data1))
+
+	data2 := []byte{1, 2, 3, 4, 5}
+	bID2, bCtx2, _ := putBlockDisk(t, s, data2)
+
+	expectedSize := len(data1) + len(data2)
+	requireSize(expectedSize)
+
+	// Adding, archive, or removing references shouldn't change
+	// anything.
+
+	bCtx1b := addBlockDiskRef(t, s, bID1)
+	requireSize(expectedSize)
+
+	err := s.archiveReferences(map[BlockID][]BlockContext{bID2: {bCtx2}}, "")
+	require.NoError(t, err)
+	requireSize(expectedSize)
+
+	liveCount, err := s.removeReferences(
+		bID1, []BlockContext{bCtx1, bCtx1b}, "")
+	require.NoError(t, err)
+	require.Equal(t, 0, liveCount)
+	requireSize(expectedSize)
+
+	liveCount, err = s.removeReferences(
+		bID2, []BlockContext{bCtx2, bCtx2}, "")
+	require.NoError(t, err)
+	require.Equal(t, 0, liveCount)
+	requireSize(expectedSize)
+
+	// Removing blocks should cause the total size to change.
+
+	err = s.remove(bID1)
+	require.NoError(t, err)
+	requireSize(len(data2))
+
+	err = s.remove(bID2)
+	require.NoError(t, err)
+	requireSize(0)
+}
