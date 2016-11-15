@@ -710,3 +710,53 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 
 	testBlockJournalGCd(t, j)
 }
+
+func TestBlockJournalUnflushedBytes(t *testing.T) {
+	ctx, tempdir, j := setupBlockJournalTest(t)
+	defer teardownBlockJournalTest(t, tempdir, j)
+
+	requireSize := func(expectedSize int) {
+		totalSize, err := j.getUnflushedBytes()
+		require.NoError(t, err)
+		require.Equal(t, int64(expectedSize), totalSize)
+	}
+
+	// Prime the cache.
+	requireSize(0)
+
+	data1 := []byte{1, 2, 3, 4}
+	bID1, bCtx1, _ := putBlockData(ctx, t, j, data1)
+
+	requireSize(len(data1))
+
+	data2 := []byte{1, 2, 3, 4, 5}
+	bID2, bCtx2, _ := putBlockData(ctx, t, j, data2)
+
+	expectedSize := len(data1) + len(data2)
+	requireSize(expectedSize)
+
+	// Adding, archive, or removing references shouldn't change
+	// anything.
+
+	bCtx1b := addBlockRef(ctx, t, j, bID1)
+	requireSize(expectedSize)
+
+	err := j.archiveReferences(
+		ctx, map[BlockID][]BlockContext{bID2: {bCtx2}})
+	require.NoError(t, err)
+	requireSize(expectedSize)
+
+	liveCount, err := j.removeReferences(
+		ctx, map[BlockID][]BlockContext{bID1: {bCtx1, bCtx1b}})
+	require.NoError(t, err)
+	require.Equal(t, 0, liveCount)
+	requireSize(expectedSize)
+
+	liveCount, err = j.removeReferences(
+		ctx, map[BlockID][]BlockContext{bID2: {bCtx2}})
+	require.NoError(t, err)
+	require.Equal(t, 0, liveCount)
+	requireSize(expectedSize)
+
+	// TODO: Test flushing.
+}
