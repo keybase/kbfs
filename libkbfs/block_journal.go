@@ -280,7 +280,7 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	err = j.s.put(id, context, buf, serverHalf, next.String())
+	didPut, err := j.s.put(id, context, buf, serverHalf, next.String())
 	if err != nil {
 		return err
 	}
@@ -291,6 +291,10 @@ func (j *blockJournal) putData(
 	})
 	if err != nil {
 		return err
+	}
+
+	if j.cachedUnflushedBytes >= 0 && didPut {
+		j.cachedUnflushedBytes += int64(len(buf))
 	}
 
 	return nil

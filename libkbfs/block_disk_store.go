@@ -394,10 +394,10 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 // adds a reference for the given context.
 func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf,
-	tag string) (err error) {
+	tag string) (didPut bool, err error) {
 	err = validateBlockPut(s.crypto, id, context, buf)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Check the data and retrieve the server half, if they exist.
@@ -409,7 +409,7 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 	case nil:
 		exists = true
 	default:
-		return err
+		return false, err
 	}
 
 	if exists {
@@ -421,7 +421,7 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		// to id, so no need to check that they're both equal.
 
 		if existingServerHalf != serverHalf {
-			return fmt.Errorf(
+			return false, fmt.Errorf(
 				"key server half mismatch: expected %s, got %s",
 				existingServerHalf, serverHalf)
 		}
@@ -429,31 +429,36 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 
 	err = s.makeDir(id)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	err = ioutil.WriteFile(s.dataPath(id), buf, 0600)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// TODO: Add integrity-checking for key server half?
 
 	data, err := serverHalf.MarshalBinary()
 	if err != nil {
-		return err
+		return false, err
 	}
 	err = ioutil.WriteFile(s.keyServerHalfPath(id), data, 0600)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	return s.addRefs(id, []BlockContext{context}, liveBlockRef, tag)
+	err = s.addRefs(id, []BlockContext{context}, liveBlockRef, tag)
+	if err != nil {
+		return false, err
+	}
+
+	return !exists, nil
 }
 
 func (s *blockDiskStore) addReference(
-	id BlockID, context BlockContext, tag string) (err error) {
-	err = s.makeDir(id)
+	id BlockID, context BlockContext, tag string) error {
+	err := s.makeDir(id)
 	if err != nil {
 		return err
 	}
@@ -462,9 +467,9 @@ func (s *blockDiskStore) addReference(
 }
 
 func (s *blockDiskStore) archiveReferences(
-	contexts map[BlockID][]BlockContext, tag string) (err error) {
+	contexts map[BlockID][]BlockContext, tag string) error {
 	for id, idContexts := range contexts {
-		err = s.makeDir(id)
+		err := s.makeDir(id)
 		if err != nil {
 			return err
 		}

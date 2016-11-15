@@ -46,7 +46,7 @@ func teardownBlockDiskStoreTest(t *testing.T, tempdir string, s *blockDiskStore)
 
 func putBlockDisk(
 	t *testing.T, s *blockDiskStore, data []byte) (
-	BlockID, BlockContext, kbfscrypto.BlockCryptKeyServerHalf) {
+	bool, BlockID, BlockContext, kbfscrypto.BlockCryptKeyServerHalf) {
 	bID, err := s.crypto.MakePermanentBlockID(data)
 	require.NoError(t, err)
 
@@ -55,10 +55,10 @@ func putBlockDisk(
 	serverHalf, err := s.crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
-	err = s.put(bID, bCtx, data, serverHalf, "")
+	didPut, err := s.put(bID, bCtx, data, serverHalf, "")
 	require.NoError(t, err)
 
-	return bID, bCtx, serverHalf
+	return didPut, bID, bCtx, serverHalf
 }
 
 func addBlockDiskRef(
@@ -89,7 +89,7 @@ func TestBlockDiskStoreBasic(t *testing.T) {
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
-	bID, bCtx, serverHalf := putBlockDisk(t, s, data)
+	_, bID, bCtx, serverHalf := putBlockDisk(t, s, data)
 
 	// Make sure we get the same block back.
 	getAndCheckBlockDiskData(t, s, bID, bCtx, data, serverHalf)
@@ -131,7 +131,7 @@ func TestBlockDiskStoreArchiveReferences(t *testing.T) {
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
-	bID, bCtx, serverHalf := putBlockDisk(t, s, data)
+	_, bID, bCtx, serverHalf := putBlockDisk(t, s, data)
 
 	// Add a reference.
 	bCtx2 := addBlockDiskRef(t, s, bID)
@@ -168,7 +168,7 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
-	bID, bCtx, serverHalf := putBlockDisk(t, s, data)
+	_, bID, bCtx, serverHalf := putBlockDisk(t, s, data)
 
 	// Add a reference.
 	bCtx2 := addBlockDiskRef(t, s, bID)
@@ -196,7 +196,7 @@ func TestBlockDiskStoreRemove(t *testing.T) {
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
-	bID, bCtx, _ := putBlockDisk(t, s, data)
+	_, bID, bCtx, _ := putBlockDisk(t, s, data)
 
 	// Should not be removable.
 	err := s.remove(bID)
@@ -238,12 +238,12 @@ func TestBlockDiskStoreTotalDataSize(t *testing.T) {
 	requireSize(0)
 
 	data1 := []byte{1, 2, 3, 4}
-	bID1, bCtx1, _ := putBlockDisk(t, s, data1)
+	_, bID1, bCtx1, _ := putBlockDisk(t, s, data1)
 
 	requireSize(len(data1))
 
 	data2 := []byte{1, 2, 3, 4, 5}
-	bID2, bCtx2, _ := putBlockDisk(t, s, data2)
+	_, bID2, bCtx2, _ := putBlockDisk(t, s, data2)
 
 	expectedSize := len(data1) + len(data2)
 	requireSize(expectedSize)

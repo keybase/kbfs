@@ -178,7 +178,12 @@ func (b *BlockServerDisk) Put(ctx context.Context, tlfID tlf.ID, id BlockID,
 		return errBlockServerDiskShutdown
 	}
 
-	return tlfStorage.store.put(id, context, buf, serverHalf, "")
+	_, err = tlfStorage.store.put(id, context, buf, serverHalf, "")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // AddBlockReference implements the BlockServer interface for BlockServerDisk.
