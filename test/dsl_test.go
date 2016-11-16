@@ -853,7 +853,7 @@ func lsdir(name string, contents m) fileOp {
 			return fmt.Errorf("unexpected %s of type %s found in %s", node, ty, name)
 		}
 		return nil
-	}, Defaults, fmt.Sprintf("lsdir(%s, %d bytes)", name, contents)}
+	}, Defaults, fmt.Sprintf("lsdir(%s, %d bytes)", name, len(contents))}
 }
 
 // createType specifies whether getNode should create any nodes that
