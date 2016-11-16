@@ -101,8 +101,10 @@ func (s *blockDiskStore) dataPath(id BlockID) string {
 	return filepath.Join(s.blockPath(id), dataFilename)
 }
 
+const flagsFilename = "flags"
+
 func (s *blockDiskStore) flagsPath(id BlockID) string {
-	return filepath.Join(s.blockPath(id), "flags")
+	return filepath.Join(s.blockPath(id), flagsFilename)
 }
 
 const idFilename = "id"
@@ -142,8 +144,8 @@ type blockFlags struct {
 	NeedsFlush bool
 }
 
-func (s *blockDiskStore) getFlags(id BlockID) (blockFlags, error) {
-	data, err := ioutil.ReadFile(s.flagsPath(id))
+func (s *blockDiskStore) getFlagsHelper(path string) (blockFlags, error) {
+	data, err := ioutil.ReadFile(path)
 	if os.IsNotExist(err) {
 		return blockFlags{}, nil
 	} else if err != nil {
@@ -157,6 +159,10 @@ func (s *blockDiskStore) getFlags(id BlockID) (blockFlags, error) {
 	}
 
 	return flags, nil
+}
+
+func (s *blockDiskStore) getFlags(id BlockID) (blockFlags, error) {
+	return s.getFlagsHelper(s.flagsPath(id))
 }
 
 func (s *blockDiskStore) setFlags(id BlockID, flags blockFlags) error {
@@ -346,21 +352,27 @@ func (s *blockDiskStore) walkBlockDirs(
 // stored block.
 func (s *blockDiskStore) getTotalDataSize() (int64, error) {
 	var totalSize int64
-	err := filepath.Walk(s.dir,
-		func(path string, info os.FileInfo, err error) error {
-			// The root directory doesn't exist, so just
-			// exit early and return 0.
-			if path == s.dir && os.IsNotExist(err) {
+	err := s.walkBlockDirs(func(name, subName string) error {
+		dir := filepath.Join(s.dir, name, subName)
+		flags, err := s.getFlagsHelper(
+			filepath.Join(dir, flagsFilename))
+		if err != nil {
+			return err
+		}
+
+		if flags.NeedsFlush {
+			info, err := os.Stat(filepath.Join(dir, dataFilename))
+			if os.IsNotExist(err) {
 				return nil
-			}
-			if err != nil {
+			} else if err != nil {
 				return err
 			}
-			if filepath.Base(path) == dataFilename {
-				totalSize += info.Size()
-			}
-			return nil
-		})
+
+			totalSize += info.Size()
+		}
+
+		return nil
+	})
 	if err != nil {
 		return 0, err
 	}
