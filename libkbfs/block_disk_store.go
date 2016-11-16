@@ -576,39 +576,42 @@ func (s *blockDiskStore) archiveReferences(
 	return nil
 }
 
+func (s *blockDiskStore) flushPut(id BlockID) error {
+	err := s.setFlags(id, blockFlags{NeedsFlush: false})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // removeReferences removes references for the given contexts from
 // their respective IDs. If tag is non-empty, then a reference will be
 // removed only if its most recent tag (passed in to addRefs) matches
 // the given one.
 func (s *blockDiskStore) removeReferences(
-	id BlockID, contexts []BlockContext, forFlush bool, tag string) (
+	id BlockID, contexts []BlockContext, tag string) (
 	liveCount int, err error) {
 	refs, err := s.getRefs(id)
 	if err != nil {
 		return 0, err
 	}
-	if len(refs) != 0 {
-		for _, context := range contexts {
-			err := refs.remove(context, tag)
-			if err != nil {
-				return 0, err
-			}
-			if len(refs) == 0 {
-				break
-			}
-		}
+	if len(refs) == 0 {
+		return 0, nil
+	}
 
-		err = s.putRefs(id, refs)
+	for _, context := range contexts {
+		err := refs.remove(context, tag)
 		if err != nil {
 			return 0, err
+		}
+		if len(refs) == 0 {
+			break
 		}
 	}
 
-	if forFlush {
-		err = s.setFlags(id, blockFlags{NeedsFlush: false})
-		if err != nil {
-			return 0, err
-		}
+	err = s.putRefs(id, refs)
+	if err != nil {
+		return 0, err
 	}
 
 	return len(refs), nil

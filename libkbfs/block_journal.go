@@ -400,8 +400,7 @@ func (j *blockJournal) removeReferences(
 		// Remove the references unconditionally here (i.e.,
 		// with an empty tag), since j.s should reflect the
 		// most recent state.
-		liveCount, err := j.s.removeReferences(
-			id, idContexts, false /* forFlush */, "")
+		liveCount, err := j.s.removeReferences(id, idContexts, "")
 		if err != nil {
 			return nil, err
 		}
@@ -662,15 +661,17 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 			ordinal, earliestOrdinal)
 	}
 
-	isFlush := (entry.Op == blockPutOp && !entry.Ignore)
+	isPutFlush := (entry.Op == blockPutOp && !entry.Ignore)
 
-	// Fix up the block byte count if we've finished a Put.
-	if isFlush {
-		id, _, err := entry.getSingleContext()
+	// Store the block byte count if we've finished a Put.
+	var putID BlockID
+	if isPutFlush {
+		var err error
+		putID, _, err = entry.getSingleContext()
 		if err != nil {
 			return 0, err
 		}
-		flushedBytes, err = j.s.getDataSize(id)
+		flushedBytes, err = j.s.getDataSize(putID)
 		if err != nil {
 			return 0, err
 		}
@@ -688,7 +689,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	// references).
 	for id, idContexts := range entry.Contexts {
 		liveCount, err := j.s.removeReferences(
-			id, idContexts, isFlush, earliestOrdinal.String())
+			id, idContexts, earliestOrdinal.String())
 		if err != nil {
 			return 0, err
 		}
@@ -704,8 +705,15 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		}
 	}
 
-	if isFlush && j.cachedUnflushedBytes >= 0 {
-		j.cachedUnflushedBytes -= flushedBytes
+	if isPutFlush {
+		err := j.s.flushPut(putID)
+		if err != nil {
+			return 0, err
+		}
+
+		if j.cachedUnflushedBytes >= 0 {
+			j.cachedUnflushedBytes -= flushedBytes
+		}
 	}
 
 	return flushedBytes, nil

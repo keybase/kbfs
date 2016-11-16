@@ -183,7 +183,7 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 
 	// Remove references.
 	liveCount, err := s.removeReferences(
-		bID, []BlockContext{bCtx, bCtx2}, false /* forFlush */, "")
+		bID, []BlockContext{bCtx, bCtx2}, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 
@@ -201,17 +201,6 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 	flags, err := s.getFlags(bID)
 	require.NoError(t, err)
 	require.True(t, flags.NeedsFlush)
-
-	// Simulate a flush.
-	liveCount, err = s.removeReferences(
-		bID, []BlockContext{bCtx, bCtx2},
-		true /* forFlush */, "some tag")
-	require.NoError(t, err)
-	require.Equal(t, 0, liveCount)
-
-	flags, err = s.getFlags(bID)
-	require.NoError(t, err)
-	require.False(t, flags.NeedsFlush)
 }
 
 func TestBlockDiskStoreRemove(t *testing.T) {
@@ -227,8 +216,7 @@ func TestBlockDiskStoreRemove(t *testing.T) {
 	require.Error(t, err, "Trying to remove data")
 
 	// Remove reference.
-	liveCount, err := s.removeReferences(
-		bID, []BlockContext{bCtx}, false /* forFlush */, "")
+	liveCount, err := s.removeReferences(bID, []BlockContext{bCtx}, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 
@@ -277,8 +265,8 @@ func TestBlockDiskStoreUnflushedBytes(t *testing.T) {
 	expectedSize := len(data1) + len(data2)
 	requireSize(expectedSize)
 
-	// Adding, archive, or removing references without flushing
-	// shouldn't change anything.
+	// Adding, archive, or removing references shouldn't change
+	// anything.
 
 	bCtx1b := addBlockDiskRef(t, s, bID1)
 	requireSize(expectedSize)
@@ -288,23 +276,20 @@ func TestBlockDiskStoreUnflushedBytes(t *testing.T) {
 	requireSize(expectedSize)
 
 	liveCount, err := s.removeReferences(
-		bID1, []BlockContext{bCtx1}, false /* forFlush */, "")
-	require.NoError(t, err)
-	require.Equal(t, 1, liveCount)
-	requireSize(expectedSize)
-
-	liveCount, err = s.removeReferences(
-		bID2, []BlockContext{bCtx2}, false /* forFlush */, "")
+		bID1, []BlockContext{bCtx1, bCtx1b}, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 	requireSize(expectedSize)
 
-	// Flushing should affect the size.
-
-	liveCount, err = s.removeReferences(
-		bID1, []BlockContext{bCtx1b}, true /* forFlush */, "")
+	liveCount, err = s.removeReferences(bID2, []BlockContext{bCtx2}, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
+	requireSize(expectedSize)
+
+	// Flushing a put should affect the size.
+
+	err = s.flushPut(bID1)
+	require.NoError(t, err)
 	requireSize(len(data2))
 
 	// Removing blocks should also affect the size.
