@@ -132,9 +132,10 @@ func (k *LibKBFS) newContext(u User) (context.Context, context.CancelFunc) {
 	id, errRandomRequestID := libkbfs.MakeRandomRequestID()
 	ctx, err = libkbfs.NewContextWithCancellationDelayer(libkbfs.NewContextReplayable(
 		ctx, func(ctx context.Context) context.Context {
-			logTags := make(logger.CtxLogTags)
-			logTags[CtxIDKey] = CtxOpID
-			logTags[CtxUserKey] = CtxOpUser
+			logTags := logger.CtxLogTags{
+				CtxIDKey:   CtxOpID,
+				CtxUserKey: CtxOpUser,
+			}
 			ctx = logger.NewContextWithLogTags(ctx, logTags)
 
 			// Add a unique ID to this context, identifying a particular

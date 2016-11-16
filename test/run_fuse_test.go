@@ -13,6 +13,7 @@ import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"bazil.org/fuse/fs/fstestutil"
+	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/libfuse"
 	"github.com/keybase/kbfs/libkbfs"
@@ -30,8 +31,8 @@ func createEngine() Engine {
 	return e
 }
 
-func createUserFuse(t testing.TB, ith int, config *libkbfs.ConfigLocal,
-	opTimeout time.Duration) *fsUser {
+func createUserFuse(t testing.TB, ith int, username libkb.NormalizedUsername,
+	config *libkbfs.ConfigLocal, opTimeout time.Duration) *fsUser {
 	ctx := context.Background()
 	ctx, cancelFn := context.WithCancel(ctx)
 	createUserSuccess := false
@@ -44,6 +45,11 @@ func createUserFuse(t testing.TB, ith int, config *libkbfs.ConfigLocal,
 	filesys := libfuse.NewFS(config, nil, false)
 
 	ctx = filesys.WithContext(ctx)
+	logTags := logger.CtxLogTags{
+		CtxUserKey: CtxOpUser,
+	}
+	ctx = logger.NewContextWithLogTags(ctx, logTags)
+	ctx = context.WithValue(ctx, CtxUserKey, username)
 
 	log := logger.NewTestLogger(t)
 	debugLog := log.CloneWithAddedDepth(1)
@@ -73,9 +79,10 @@ func createUserFuse(t testing.TB, ith int, config *libkbfs.ConfigLocal,
 	filesys.LaunchNotificationProcessor(ctx)
 	createUserSuccess = true
 	return &fsUser{
-		mntDir: mnt.Dir,
-		config: config,
-		cancel: cancelFn,
-		close:  mnt.Close,
+		mntDir:   mnt.Dir,
+		username: username,
+		config:   config,
+		cancel:   cancelFn,
+		close:    mnt.Close,
 	}
 }

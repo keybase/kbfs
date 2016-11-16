@@ -27,8 +27,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-type createUserFn func(t testing.TB, ith int, config *libkbfs.ConfigLocal,
-	opTimeout time.Duration) *fsUser
+type createUserFn func(t testing.TB, ith int, name libkb.NormalizedUsername,
+	config *libkbfs.ConfigLocal, opTimeout time.Duration) *fsUser
 
 type fsEngine struct {
 	name       string
@@ -542,9 +542,7 @@ func (e *fsEngine) InitTest(t testing.TB, blockSize int64,
 	}
 
 	for i, name := range users {
-		u := e.createUser(t, i, cfgs[i], opTimeout)
-		u.username = name
-		res[name] = u
+		res[name] = e.createUser(t, i, name, cfgs[i], opTimeout)
 	}
 
 	if journal {
