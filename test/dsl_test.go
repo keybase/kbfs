@@ -255,17 +255,26 @@ type ctx struct {
 	staller    *libkbfs.NaïveStaller
 }
 
+func runFileOpHelper(c *ctx, fop fileOp) (string, error) {
+	desc := fmt.Sprintf("(%s) %s", c.username, fop.description)
+	c.t.Log(desc)
+	err := fop.operation(c)
+	if err != nil {
+		c.t.Logf("%s failed with %s", desc, err)
+	}
+	return desc, err
+}
+
 func runFileOp(c *ctx, fop fileOp) (string, error) {
 	if c.rootNode == nil && fop.flags&IsInit == 0 {
 		initOp := initRoot()
-		err := initOp.operation(c)
+		desc, err := runFileOpHelper(c, initOp)
 		if err != nil {
-			c.t.Logf("initRoot failed running as %s", c.username)
-			return "initRoot", err
+			desc = fmt.Sprintf("%s for %s", desc, fop.description)
+			return desc, err
 		}
 	}
-	c.t.Log("fop", fop)
-	return "File operation", fop.operation(c)
+	return runFileOpHelper(c, fop)
 }
 
 func expectError(op fileOp, reasonPrefix string) fileOp {
@@ -335,7 +344,6 @@ func as(user username, fops ...fileOp) optionOp {
 // not called directly.
 func initRoot() fileOp {
 	return fileOp{func(c *ctx) error {
-		c.t.Logf("initRoot for %s", c.username)
 		if !c.noSyncInit {
 			// Do this before GetRootDir so that we pick
 			// up any TLF name changes.
