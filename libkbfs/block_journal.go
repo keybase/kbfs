@@ -346,7 +346,7 @@ func (j *blockJournal) addReference(
 		return err
 	}
 
-	_, err = j.appendJournalEntry(blockJournalEntry{
+	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
 		Op:       addRefOp,
 		Contexts: map[BlockID][]BlockContext{id: {context}},
 	})
