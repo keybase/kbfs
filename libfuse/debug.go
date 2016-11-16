@@ -11,8 +11,8 @@ import (
 	"github.com/keybase/client/go/logger"
 )
 
-// Returns a function that logs its argument to the given log,
-// suitable to assign to fuse.Debug.
+// MakeFuseDebugFn returns a function that logs its argument to the
+// given log, suitable to assign to fuse.Debug.
 func MakeFuseDebugFn(
 	log logger.Logger, superVerbose bool) func(msg interface{}) {
 	return func(msg interface{}) {
