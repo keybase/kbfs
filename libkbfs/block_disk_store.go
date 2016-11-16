@@ -89,8 +89,10 @@ func makeBlockDiskStore(codec kbfscodec.Codec, crypto cryptoPure,
 
 // The functions below are for building various paths.
 
+const aggregateInfoFilename = "aggregate_info"
+
 func (s *blockDiskStore) aggregateInfoPath() string {
-	return filepath.Join(s.dir, "aggregate_info")
+	return filepath.Join(s.dir, aggregateInfoFilename)
 }
 
 func (s *blockDiskStore) blockPath(id BlockID) string {
@@ -104,16 +106,8 @@ func (s *blockDiskStore) blockPath(id BlockID) string {
 	return filepath.Join(s.dir, idStr[:4], idStr[4:34])
 }
 
-const dataFilename = "data"
-
 func (s *blockDiskStore) dataPath(id BlockID) string {
-	return filepath.Join(s.blockPath(id), dataFilename)
-}
-
-const flushInfoFilename = "flushInfo"
-
-func (s *blockDiskStore) flushInfoPath(id BlockID) string {
-	return filepath.Join(s.blockPath(id), flushInfoFilename)
+	return filepath.Join(s.blockPath(id), "data")
 }
 
 const idFilename = "id"
@@ -403,6 +397,9 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	for _, fi := range fileInfos {
 		name := fi.Name()
 		if !fi.IsDir() {
+			if name == aggregateInfoFilename {
+				continue
+			}
 			return nil, fmt.Errorf("Unexpected non-dir %q", name)
 		}
 
