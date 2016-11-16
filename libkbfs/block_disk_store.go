@@ -101,6 +101,10 @@ func (s *blockDiskStore) dataPath(id BlockID) string {
 	return filepath.Join(s.blockPath(id), dataFilename)
 }
 
+func (s *blockDiskStore) flagsPath(id BlockID) string {
+	return filepath.Join(s.blockPath(id), "flags")
+}
+
 const idFilename = "id"
 
 func (s *blockDiskStore) idPath(id BlockID) string {
@@ -133,7 +137,52 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 	return nil
 }
 
-// TODO: Add caching for refs.
+// TODO: Support unknown fields.
+type blockFlags struct {
+	NeedsFlushing bool
+}
+
+func (s *blockDiskStore) getFlags(id BlockID) (blockFlags, error) {
+	data, err := ioutil.ReadFile(s.flagsPath(id))
+	if os.IsNotExist(err) {
+		return blockFlags{}, nil
+	} else if err != nil {
+		return blockFlags{}, err
+	}
+
+	var flags blockFlags
+	err = s.codec.Decode(data, &flags)
+	if err != nil {
+		return blockFlags{}, err
+	}
+
+	return flags, nil
+}
+
+func (s *blockDiskStore) setFlags(id BlockID, flags blockFlags) error {
+	if flags == (blockFlags{}) {
+		err := os.Remove(s.flagsPath(id))
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	buf, err := s.codec.Encode(flags)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(s.flagsPath(id), buf, 0600)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// TODO: Add caching for refs
 
 // getRefs returns the references for the given ID.
 func (s *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
