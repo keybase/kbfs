@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 )
@@ -20,7 +19,6 @@ import (
 //
 // The directory layout looks like:
 //
-// dir/aggregate_info
 // dir/0100/0...01/data
 // dir/0100/0...01/id
 // dir/0100/0...01/ksh
@@ -37,9 +35,6 @@ import (
 // dir/01ff/f...ff/id
 // dir/01ff/f...ff/ksh
 // dir/01ff/f...ff/refs
-//
-// The aggregate_info file keeps track of aggregate info, like the
-// total number of data bytes unflushed data bytes.
 //
 // Each block has its own subdirectory with its ID truncated to 17
 // bytes (34 characters) as a name. The block subdirectories are
@@ -89,12 +84,6 @@ func makeBlockDiskStore(codec kbfscodec.Codec, crypto cryptoPure,
 
 // The functions below are for building various paths.
 
-const aggregateInfoFilename = "aggregate_info"
-
-func (s *blockDiskStore) aggregateInfoPath() string {
-	return filepath.Join(s.dir, aggregateInfoFilename)
-}
-
 func (s *blockDiskStore) blockPath(id BlockID) string {
 	// Truncate to 34 characters, which corresponds to 16 random
 	// bytes (since the first byte is a hash type) or 128 random
@@ -140,56 +129,6 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 	}
 
 	return nil
-}
-
-// Ideally, this would be a JSON file, but we'd need a JSON
-// encoder/decoder that supports unknown fields.
-type aggregateInfo struct {
-	UnflushedBytes int64
-
-	codec.UnknownFieldSetHandler
-}
-
-func (s *blockDiskStore) getAggregateInfo() (aggregateInfo, error) {
-	data, err := ioutil.ReadFile(s.aggregateInfoPath())
-	if os.IsNotExist(err) {
-		return aggregateInfo{}, nil
-	} else if err != nil {
-		return aggregateInfo{}, err
-	}
-
-	var info aggregateInfo
-	err = s.codec.Decode(data, &info)
-	if err != nil {
-		return aggregateInfo{}, err
-	}
-
-	return info, nil
-}
-
-func (s *blockDiskStore) setAggregateInfo(info aggregateInfo) error {
-	buf, err := s.codec.Encode(info)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(s.aggregateInfoPath(), buf, 0600)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *blockDiskStore) adjustByteCounts(deltaUnflushedBytes int64) error {
-	info, err := s.getAggregateInfo()
-	if err != nil {
-		return err
-	}
-
-	info.UnflushedBytes += deltaUnflushedBytes
-
-	return s.setAggregateInfo(info)
 }
 
 // TODO: Add caching for refs
@@ -312,17 +251,6 @@ func (s *blockDiskStore) getData(id BlockID) (
 
 // All functions below are public functions.
 
-// getUnflushedBytes returns the sum of data bytes that has been put,
-// but not removed or flushed.
-func (s *blockDiskStore) getUnflushedBytes() (int64, error) {
-	info, err := s.getAggregateInfo()
-	if err != nil {
-		return 0, err
-	}
-
-	return info.UnflushedBytes, nil
-}
-
 func (s *blockDiskStore) hasAnyRef(id BlockID) (bool, error) {
 	refs, err := s.getRefs(id)
 	if err != nil {
@@ -397,9 +325,6 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	for _, fi := range fileInfos {
 		name := fi.Name()
 		if !fi.IsDir() {
-			if name == aggregateInfoFilename {
-				continue
-			}
 			return nil, fmt.Errorf("Unexpected non-dir %q", name)
 		}
 
@@ -509,13 +434,6 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		return err
 	}
 
-	// Decremented in onPutFlush().
-	deltaUnflushedBytes := int64(len(buf))
-	err = s.adjustByteCounts(deltaUnflushedBytes)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -544,16 +462,6 @@ func (s *blockDiskStore) archiveReferences(
 	}
 
 	return nil
-}
-
-func (s *blockDiskStore) onPutFlush(id BlockID) error {
-	size, err := s.getDataSize(id)
-	if err != nil {
-		return err
-	}
-
-	deltaUnflushedBytes := -size
-	return s.adjustByteCounts(deltaUnflushedBytes)
 }
 
 // removeReferences removes references for the given contexts from

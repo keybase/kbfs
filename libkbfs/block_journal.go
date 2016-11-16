@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -188,6 +189,62 @@ func makeBlockJournal(
 	return journal, nil
 }
 
+// The functions below are for reading and writing aggregate info.
+
+// Ideally, this would be a JSON file, but we'd need a JSON
+// encoder/decoder that supports unknown fields.
+type aggregateInfo struct {
+	UnflushedBytes int64
+
+	codec.UnknownFieldSetHandler
+}
+
+func (j *blockJournal) aggregateInfoPath() string {
+	return filepath.Join(j.dir, "aggregate_info")
+}
+
+func (j *blockJournal) getAggregateInfo() (aggregateInfo, error) {
+	data, err := ioutil.ReadFile(j.aggregateInfoPath())
+	if os.IsNotExist(err) {
+		return aggregateInfo{}, nil
+	} else if err != nil {
+		return aggregateInfo{}, err
+	}
+
+	var info aggregateInfo
+	err = j.codec.Decode(data, &info)
+	if err != nil {
+		return aggregateInfo{}, err
+	}
+
+	return info, nil
+}
+
+func (j *blockJournal) setAggregateInfo(info aggregateInfo) error {
+	buf, err := j.codec.Encode(info)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(j.aggregateInfoPath(), buf, 0600)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (j *blockJournal) adjustUnflushedBytes(delta int64) error {
+	info, err := j.getAggregateInfo()
+	if err != nil {
+		return err
+	}
+
+	info.UnflushedBytes += delta
+
+	return j.setAggregateInfo(info)
+}
+
 // The functions below are for reading and writing journal entries.
 
 func (j *blockJournal) readJournalEntry(ordinal journalOrdinal) (
@@ -252,7 +309,12 @@ func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 }
 
 func (j *blockJournal) getUnflushedBytes() (int64, error) {
-	return j.s.getUnflushedBytes()
+	info, err := j.getAggregateInfo()
+	if err != nil {
+		return 0, err
+	}
+
+	return info.UnflushedBytes, nil
 }
 
 func (j *blockJournal) putData(
@@ -274,6 +336,12 @@ func (j *blockJournal) putData(
 	}
 
 	err = j.s.put(id, context, buf, serverHalf, next.String())
+	if err != nil {
+		return err
+	}
+
+	// Decremented when the journal entry is ignored or flushed.
+	err = j.adjustUnflushedBytes(int64(len(buf)))
 	if err != nil {
 		return err
 	}
@@ -660,7 +728,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 			return 0, err
 		}
 
-		err = j.s.onPutFlush(id)
+		err = j.adjustUnflushedBytes(-flushedBytes)
 		if err != nil {
 			return 0, err
 		}
@@ -755,11 +823,16 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkers(ctx context.Context,
 			}
 
 			if e.Op == blockPutOp {
-				// Treat ignored blocks as flushed,
+				// Treat ignored put ops as flushed
 				// for the purposes of accounting.
-				err := j.s.onPutFlush(id)
+				ignoredBytes, err := j.s.getDataSize(id)
 				if err != nil {
-					return nil
+					return err
+				}
+
+				err = j.adjustUnflushedBytes(-ignoredBytes)
+				if err != nil {
+					return err
 				}
 			}
 

@@ -265,8 +265,9 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 func testBlockJournalGCd(t *testing.T, j *blockJournal) {
 	err := filepath.Walk(j.dir,
 		func(path string, info os.FileInfo, _ error) error {
-			// We should only find the blocks directory here.
-			if path != j.dir && path != j.s.dir && path != j.j.dir && path != j.s.aggregateInfoPath() {
+			// We should only find the blocks directories and
+			// aggregate info file here.
+			if path != j.dir && path != j.s.dir && path != j.j.dir && path != j.aggregateInfoPath() {
 				t.Errorf("Found unexpected block path: %s", path)
 			}
 			return nil

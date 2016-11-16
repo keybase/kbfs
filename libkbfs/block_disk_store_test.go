@@ -205,73 +205,11 @@ func TestBlockDiskStoreRemove(t *testing.T) {
 
 	err = filepath.Walk(s.dir,
 		func(path string, info os.FileInfo, _ error) error {
-			// We should only find the blocks directory
-			// and the aggregate info file here.
-			if path != s.dir && path != s.aggregateInfoPath() {
+			// We should only find the blocks directory here.
+			if path != s.dir {
 				t.Errorf("Found unexpected block path: %s", path)
 			}
 			return nil
 		})
 	require.NoError(t, err)
-}
-
-func TestBlockDiskStoreUnflushedBytes(t *testing.T) {
-	tempdir, s := setupBlockDiskStoreTest(t)
-	defer teardownBlockDiskStoreTest(t, tempdir)
-
-	// Add an extra dir to test behavior when the store directory
-	// doesn't exist.
-	s = makeBlockDiskStore(s.codec, s.crypto, filepath.Join(tempdir, "dir"))
-
-	requireSize := func(expectedSize int) {
-		totalSize, err := s.getUnflushedBytes()
-		require.NoError(t, err)
-		require.Equal(t, int64(expectedSize), totalSize)
-	}
-
-	requireSize(0)
-
-	data1 := []byte{1, 2, 3, 4}
-	bID1, bCtx1, _ := putBlockDisk(t, s, data1)
-
-	requireSize(len(data1))
-
-	data2 := []byte{1, 2, 3, 4, 5}
-	bID2, bCtx2, _ := putBlockDisk(t, s, data2)
-
-	expectedSize := len(data1) + len(data2)
-	requireSize(expectedSize)
-
-	// Adding, archive, or removing references shouldn't change
-	// anything.
-
-	bCtx1b := addBlockDiskRef(t, s, bID1)
-	requireSize(expectedSize)
-
-	err := s.archiveReferences(map[BlockID][]BlockContext{bID2: {bCtx2}}, "")
-	require.NoError(t, err)
-	requireSize(expectedSize)
-
-	liveCount, err := s.removeReferences(
-		bID1, []BlockContext{bCtx1, bCtx1b}, "")
-	require.NoError(t, err)
-	require.Equal(t, 0, liveCount)
-	requireSize(expectedSize)
-
-	liveCount, err = s.removeReferences(bID2, []BlockContext{bCtx2}, "")
-	require.NoError(t, err)
-	require.Equal(t, 0, liveCount)
-	requireSize(expectedSize)
-
-	// Flushing a put should affect the size.
-
-	err = s.onPutFlush(bID1)
-	require.NoError(t, err)
-	requireSize(len(data2))
-
-	// Removing blocks shouldn't affect the size.
-
-	err = s.remove(bID2)
-	require.NoError(t, err)
-	requireSize(len(data2))
 }
