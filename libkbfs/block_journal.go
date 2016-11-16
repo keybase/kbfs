@@ -257,9 +257,9 @@ func (j *blockJournal) remove(id BlockID) (int64, error) {
 	}
 
 	if j.cachedUnflushedBytes >= 0 {
-		// If we somehow get out of sync and dip below zero,
-		// then we'll just self-correct at the next call to
-		// getUnflushedBytes().
+		// If we somehow get out of sync such that we dip
+		// below zero, then we'll just self-correct at the
+		// next call to getUnflushedBytes().
 		j.cachedUnflushedBytes -= flushedBytes
 	}
 
