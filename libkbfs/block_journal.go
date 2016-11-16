@@ -683,7 +683,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	}
 
 	if isPutFlush {
-		err := j.s.flushPut(putID)
+		err := j.s.onPutFlush(putID)
 		if err != nil {
 			return 0, err
 		}

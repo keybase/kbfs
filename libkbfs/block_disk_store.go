@@ -312,8 +312,8 @@ func (s *blockDiskStore) getData(id BlockID) (
 
 // All functions below are public functions.
 
-// getUnflushedBytes returns the sum of the size of the data for each
-// stored block that needs to be flushed.
+// getUnflushedBytes returns the sum of data bytes that has been put,
+// but not removed or flushed.
 func (s *blockDiskStore) getUnflushedBytes() (int64, error) {
 	info, err := s.getAggregateInfo()
 	if err != nil {
@@ -510,7 +510,7 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		return false, err
 	}
 
-	// Decremented in either flushPut() or remove().
+	// Decremented in either onPutFlush() or remove().
 	deltaUnflushedBytes := int64(len(buf))
 	err = s.adjustByteCounts(deltaUnflushedBytes)
 	if err != nil {
@@ -547,7 +547,7 @@ func (s *blockDiskStore) archiveReferences(
 	return nil
 }
 
-func (s *blockDiskStore) flushPut(id BlockID) error {
+func (s *blockDiskStore) onPutFlush(id BlockID) error {
 	size, err := s.getDataSize(id)
 	if err != nil {
 		return err

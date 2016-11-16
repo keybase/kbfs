@@ -280,7 +280,7 @@ func TestBlockDiskStoreUnflushedBytes(t *testing.T) {
 
 	// Flushing a put should affect the size.
 
-	err = s.flushPut(bID1)
+	err = s.onPutFlush(bID1)
 	require.NoError(t, err)
 	requireSize(len(data2))
 
