@@ -32,11 +32,23 @@ func createEngine() Engine {
 
 func createUserFuse(t testing.TB, ith int, config *libkbfs.ConfigLocal,
 	opTimeout time.Duration) *fsUser {
+	ctx := context.Background()
+	ctx, cancelFn := context.WithCancel(ctx)
+	createUserSuccess := false
+	defer func() {
+		if !createUserSuccess {
+			cancelFn()
+		}
+	}()
+
+	filesys := libfuse.NewFS(config, nil, false)
+
+	ctx = filesys.WithContext(ctx)
+
 	log := logger.NewTestLogger(t)
 	debugLog := log.CloneWithAddedDepth(1)
 	fuse.Debug = libfuse.MakeFuseDebugFn(debugLog, false /* superVerbose */)
 
-	filesys := libfuse.NewFS(config, nil, false)
 	fn := func(mnt *fstestutil.Mount) fs.FS {
 		filesys.SetFuseConn(mnt.Server, mnt.Conn)
 		return filesys
@@ -58,10 +70,8 @@ func createUserFuse(t testing.TB, ith int, config *libkbfs.ConfigLocal,
 	t.Logf("FUSE HasInvalidate=%v", mnt.Conn.Protocol().HasInvalidate())
 	// the fsUser.cancel will cancel notification processing; the FUSE
 	// serve loop is terminated by unmounting the filesystem
-	ctx := context.Background()
-	ctx, cancelFn := context.WithCancel(ctx)
-	ctx = filesys.WithContext(ctx)
 	filesys.LaunchNotificationProcessor(ctx)
+	createUserSuccess = true
 	return &fsUser{
 		mntDir: mnt.Dir,
 		config: config,
