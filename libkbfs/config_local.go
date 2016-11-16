@@ -208,7 +208,9 @@ func MakeLocalUsers(users []libkb.NormalizedUsername) []LocalUser {
 	return localUsers
 }
 
-// NewConfigLocal constructs a new ConfigLocal with default components.
+// NewConfigLocal constructs a new ConfigLocal with some default
+// components.  The caller will have to fill in the rest though,
+// namely BlockOps and BlockSplitter.
 func NewConfigLocal() *ConfigLocal {
 	config := &ConfigLocal{}
 	config.SetClock(wallClock{})
@@ -216,7 +218,6 @@ func NewConfigLocal() *ConfigLocal {
 	config.SetConflictRenamer(WriterDeviceDateConflictRenamer{config})
 	config.ResetCaches()
 	config.SetCodec(kbfscodec.NewMsgpack())
-	config.SetBlockOps(NewBlockOpsStandard(config, defaultBlockRetrievalWorkerQueueSize))
 	config.SetKeyOps(&KeyOpsStandard{config})
 	config.SetRekeyQueue(NewRekeyQueueStandard(config))
 

@@ -79,6 +79,8 @@ func NewConfigForTest() *ConfigLocal {
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	config.SetBlockOps(bops)
 
+	config.SetBlockSplitter(&BlockSplitterSimple{64 * 1024, 8 * 1024})
+
 	return config
 }
 
@@ -93,7 +95,6 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 	config.SetKBFSOps(kbfsOps)
 	config.SetNotifier(kbfsOps)
 
-	config.SetBlockSplitter(&BlockSplitterSimple{64 * 1024, 8 * 1024})
 	config.SetKeyManager(NewKeyManagerStandard(config))
 	config.SetMDOps(NewMDOpsStandard(config))
 
@@ -214,7 +215,6 @@ func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *C
 	c.SetKBFSOps(kbfsOps)
 	c.SetNotifier(kbfsOps)
 
-	c.SetBlockSplitter(config.BlockSplitter())
 	c.SetKeyManager(NewKeyManagerStandard(c))
 	c.SetMDOps(NewMDOpsStandard(c))
 	c.SetClock(config.Clock())
