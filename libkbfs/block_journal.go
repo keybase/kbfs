@@ -73,10 +73,6 @@ type blockJournal struct {
 	// s stores all the block data. s should always reflect the
 	// state you get by replaying all the entries in j.
 	s *blockDiskStore
-
-	// Tracks s.getTotalDataSize(). If negative, that means the
-	// value hasn't been cached yet.
-	cachedUnflushedBytes int64
 }
 
 type blockOpType int
@@ -165,14 +161,13 @@ func makeBlockJournal(
 	storeDir := filepath.Join(dir, "blocks")
 	s := makeBlockDiskStore(codec, crypto, storeDir)
 	journal := &blockJournal{
-		codec:                codec,
-		crypto:               crypto,
-		dir:                  dir,
-		log:                  log,
-		deferLog:             deferLog,
-		j:                    j,
-		s:                    s,
-		cachedUnflushedBytes: -1,
+		codec:    codec,
+		crypto:   crypto,
+		dir:      dir,
+		log:      log,
+		deferLog: deferLog,
+		j:        j,
+		s:        s,
 	}
 
 	// If a saved block journal exists, we need to remove its entries
@@ -257,15 +252,7 @@ func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 }
 
 func (j *blockJournal) getUnflushedBytes() (int64, error) {
-	if j.cachedUnflushedBytes < 0 {
-		unflushedBytes, err := j.s.getUnflushedBytes()
-		if err != nil {
-			return 0, err
-		}
-		j.cachedUnflushedBytes = unflushedBytes
-	}
-
-	return j.cachedUnflushedBytes, nil
+	return j.s.getUnflushedBytes()
 }
 
 func (j *blockJournal) putData(
@@ -286,7 +273,7 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	didPut, err := j.s.put(id, context, buf, serverHalf, next.String())
+	err = j.s.put(id, context, buf, serverHalf, next.String())
 	if err != nil {
 		return err
 	}
@@ -297,10 +284,6 @@ func (j *blockJournal) putData(
 	})
 	if err != nil {
 		return err
-	}
-
-	if j.cachedUnflushedBytes >= 0 && didPut {
-		j.cachedUnflushedBytes += int64(len(buf))
 	}
 
 	return nil
@@ -686,10 +669,6 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		err := j.s.onPutFlush(putID)
 		if err != nil {
 			return 0, err
-		}
-
-		if j.cachedUnflushedBytes >= 0 {
-			j.cachedUnflushedBytes -= flushedBytes
 		}
 	}
 

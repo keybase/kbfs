@@ -44,9 +44,8 @@ func putBlockDisk(
 	serverHalf, err := s.crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
-	didPut, err := s.put(bID, bCtx, data, serverHalf, "")
+	err = s.put(bID, bCtx, data, serverHalf, "")
 	require.NoError(t, err)
-	require.True(t, didPut)
 
 	return bID, bCtx, serverHalf
 }
@@ -97,20 +96,6 @@ func TestBlockDiskStoreBasic(t *testing.T) {
 
 	getAndCheckBlockDiskData(t, s, bID, bCtx, data, serverHalf)
 	getAndCheckBlockDiskData(t, s, bID, bCtx2, data, serverHalf)
-}
-
-func TestBlockDiskStorePutTwice(t *testing.T) {
-	tempdir, s := setupBlockDiskStoreTest(t)
-	defer teardownBlockDiskStoreTest(t, tempdir)
-
-	// Put the block.
-	data := []byte{1, 2, 3, 4}
-	bID, bCtx, serverHalf := putBlockDisk(t, s, data)
-
-	// Put the block again.
-	didPut, err := s.put(bID, bCtx, data, serverHalf, "")
-	require.NoError(t, err)
-	require.False(t, didPut)
 }
 
 func TestBlockDiskStoreAddReference(t *testing.T) {
@@ -284,9 +269,9 @@ func TestBlockDiskStoreUnflushedBytes(t *testing.T) {
 	require.NoError(t, err)
 	requireSize(len(data2))
 
-	// Removing blocks should also affect the size.
+	// Removing blocks shouldn't affect the size.
 
 	err = s.remove(bID2)
 	require.NoError(t, err)
-	requireSize(0)
+	requireSize(len(data2))
 }

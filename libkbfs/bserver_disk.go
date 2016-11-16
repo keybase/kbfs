@@ -178,7 +178,7 @@ func (b *BlockServerDisk) Put(ctx context.Context, tlfID tlf.ID, id BlockID,
 		return errBlockServerDiskShutdown
 	}
 
-	_, err = tlfStorage.store.put(id, context, buf, serverHalf, "")
+	err = tlfStorage.store.put(id, context, buf, serverHalf, "")
 	if err != nil {
 		return err
 	}

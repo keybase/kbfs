@@ -450,11 +450,10 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 // put puts the given data for the block, which may already exist, and
 // adds a reference for the given context.
 func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
-	serverHalf kbfscrypto.BlockCryptKeyServerHalf,
-	tag string) (didPut bool, err error) {
-	err = validateBlockPut(s.crypto, id, context, buf)
+	serverHalf kbfscrypto.BlockCryptKeyServerHalf, tag string) error {
+	err := validateBlockPut(s.crypto, id, context, buf)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	// Check the data and retrieve the server half, if they exist.
@@ -466,7 +465,7 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 	case nil:
 		exists = true
 	default:
-		return false, err
+		return err
 	}
 
 	if exists {
@@ -478,46 +477,46 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		// to id, so no need to check that they're both equal.
 
 		if existingServerHalf != serverHalf {
-			return false, fmt.Errorf(
+			return fmt.Errorf(
 				"key server half mismatch: expected %s, got %s",
 				existingServerHalf, serverHalf)
 		}
 	} else {
 		err = s.makeDir(id)
 		if err != nil {
-			return false, err
+			return err
 		}
 
 		err = ioutil.WriteFile(s.dataPath(id), buf, 0600)
 		if err != nil {
-			return false, err
+			return err
 		}
 
 		// TODO: Add integrity-checking for key server half?
 
 		data, err := serverHalf.MarshalBinary()
 		if err != nil {
-			return false, err
+			return err
 		}
 		err = ioutil.WriteFile(s.keyServerHalfPath(id), data, 0600)
 		if err != nil {
-			return false, err
+			return err
 		}
 	}
 
 	err = s.addRefs(id, []BlockContext{context}, liveBlockRef, tag)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	// Decremented in either onPutFlush() or remove().
+	// Decremented in onPutFlush().
 	deltaUnflushedBytes := int64(len(buf))
 	err = s.adjustByteCounts(deltaUnflushedBytes)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return !exists, nil
+	return nil
 }
 
 func (s *blockDiskStore) addReference(
@@ -603,11 +602,6 @@ func (s *blockDiskStore) remove(id BlockID) error {
 	}
 	path := s.blockPath(id)
 
-	size, err := s.getDataSize(id)
-	if err != nil {
-		return err
-	}
-
 	err = os.RemoveAll(path)
 	if err != nil {
 		return err
@@ -619,10 +613,5 @@ func (s *blockDiskStore) remove(id BlockID) error {
 	if os.IsNotExist(err) || isExist(err) {
 		err = nil
 	}
-	if err != nil {
-		return err
-	}
-
-	deltaUnflushedBytes := -size
-	return s.adjustByteCounts(deltaUnflushedBytes)
+	return err
 }
