@@ -19,6 +19,9 @@ func MakeFuseDebugFn(
 		str := fmt.Sprintf("%s", msg)
 		// If superVerbose is not set, filter out Statfs and
 		// Access messages, since they're spammy on OS X.
+		//
+		// Ideally, bazil would let us filter this better, and
+		// also pass in the ctx.
 		if !superVerbose &&
 			(strings.HasPrefix(str, "<- ") ||
 				strings.HasPrefix(str, "-> ")) &&
