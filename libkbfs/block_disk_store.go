@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 )
@@ -19,6 +20,7 @@ import (
 //
 // The directory layout looks like:
 //
+// dir/aggregate_info
 // dir/0100/0...01/data
 // dir/0100/0...01/id
 // dir/0100/0...01/ksh
@@ -35,6 +37,9 @@ import (
 // dir/01ff/f...ff/id
 // dir/01ff/f...ff/ksh
 // dir/01ff/f...ff/refs
+//
+// The aggregate_info file keeps track of aggregate info, like the
+// total number of data bytes unflushed data bytes.
 //
 // Each block has its own subdirectory with its ID truncated to 17
 // bytes (34 characters) as a name. The block subdirectories are
@@ -143,9 +148,12 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 	return nil
 }
 
-// TODO: Support unknown fields.
+// Ideally, this would be a JSON file, but we'd need a JSON
+// encoder/decoder that supports unknown fields.
 type aggregateInfo struct {
 	UnflushedBytes int64
+
+	codec.UnknownFieldSetHandler
 }
 
 func (s *blockDiskStore) getAggregateInfo() (aggregateInfo, error) {
@@ -179,13 +187,13 @@ func (s *blockDiskStore) setAggregateInfo(info aggregateInfo) error {
 	return nil
 }
 
-func (s *blockDiskStore) adjustUnflushedBytes(n int64) error {
+func (s *blockDiskStore) adjustByteCounts(deltaUnflushedBytes int64) error {
 	info, err := s.getAggregateInfo()
 	if err != nil {
 		return err
 	}
 
-	info.UnflushedBytes += n
+	info.UnflushedBytes += deltaUnflushedBytes
 
 	return s.setAggregateInfo(info)
 }
@@ -308,44 +316,6 @@ func (s *blockDiskStore) getData(id BlockID) (
 	return data, serverHalf, nil
 }
 
-func (s *blockDiskStore) walkBlockDirs(
-	walkFn func(name, subName string) error) error {
-	fileInfos, err := ioutil.ReadDir(s.dir)
-	if os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-
-	for _, fi := range fileInfos {
-		name := fi.Name()
-		if !fi.IsDir() {
-			// Ignore non-dirs.
-			continue
-		}
-
-		subFileInfos, err := ioutil.ReadDir(filepath.Join(s.dir, name))
-		if err != nil {
-			return err
-		}
-
-		for _, sfi := range subFileInfos {
-			subName := sfi.Name()
-			if !sfi.IsDir() {
-				// Ignore non-dirs.
-				return err
-			}
-
-			err := walkFn(name, subName)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 // All functions below are public functions.
 
 // getUnflushedBytes returns the sum of the size of the data for each
@@ -423,36 +393,58 @@ func (s *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
 func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	res := make(map[BlockID]blockRefMap)
 
-	err := s.walkBlockDirs(func(name, subName string) error {
-		idPath := filepath.Join(s.dir, name, subName, idFilename)
-		idBytes, err := ioutil.ReadFile(idPath)
-		if err != nil {
-			return err
-		}
-
-		id, err := BlockIDFromString(string(idBytes))
-		if err != nil {
-			return err
-		}
-
-		if !strings.HasPrefix(id.String(), name+subName) {
-			return fmt.Errorf(
-				"%q unexpectedly not a prefix of %q", name+subName, id.String())
-		}
-
-		refs, err := s.getRefs(id)
-		if err != nil {
-			return err
-		}
-
-		if len(refs) > 0 {
-			res[id] = refs
-		}
-
-		return nil
-	})
-	if err != nil {
+	fileInfos, err := ioutil.ReadDir(s.dir)
+	if os.IsNotExist(err) {
+		return res, nil
+	} else if err != nil {
 		return nil, err
+	}
+
+	for _, fi := range fileInfos {
+		name := fi.Name()
+		if !fi.IsDir() {
+			return nil, fmt.Errorf("Unexpected non-dir %q", name)
+		}
+
+		subFileInfos, err := ioutil.ReadDir(filepath.Join(s.dir, name))
+		if err != nil {
+			return nil, err
+		}
+
+		for _, sfi := range subFileInfos {
+			subName := sfi.Name()
+			if !sfi.IsDir() {
+				return nil, fmt.Errorf("Unexpected non-dir %q",
+					subName)
+			}
+
+			idPath := filepath.Join(
+				s.dir, name, subName, idFilename)
+			idBytes, err := ioutil.ReadFile(idPath)
+			if err != nil {
+				return nil, err
+			}
+
+			id, err := BlockIDFromString(string(idBytes))
+			if err != nil {
+				return nil, err
+			}
+
+			if !strings.HasPrefix(id.String(), name+subName) {
+				return nil, fmt.Errorf(
+					"%q unexpectedly not a prefix of %q",
+					name+subName, id.String())
+			}
+
+			refs, err := s.getRefs(id)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(refs) > 0 {
+				res[id] = refs
+			}
+		}
 	}
 
 	return res, nil
@@ -521,7 +513,9 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		return false, err
 	}
 
-	err = s.adjustUnflushedBytes(int64(len(buf)))
+	// Decremented in either flushPut() or remove().
+	deltaUnflushedBytes := int64(len(buf))
+	err = s.adjustByteCounts(deltaUnflushedBytes)
 	if err != nil {
 		return false, err
 	}
@@ -562,7 +556,8 @@ func (s *blockDiskStore) flushPut(id BlockID) error {
 		return err
 	}
 
-	return s.adjustUnflushedBytes(-size)
+	deltaUnflushedBytes := -size
+	return s.adjustByteCounts(deltaUnflushedBytes)
 }
 
 // removeReferences removes references for the given contexts from
@@ -631,5 +626,6 @@ func (s *blockDiskStore) remove(id BlockID) error {
 		return err
 	}
 
-	return s.adjustUnflushedBytes(-size)
+	deltaUnflushedBytes := -size
+	return s.adjustByteCounts(deltaUnflushedBytes)
 }
