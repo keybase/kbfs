@@ -682,6 +682,17 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		return 0, err
 	}
 
+	if isPutFlush {
+		err := j.s.flushPut(putID)
+		if err != nil {
+			return 0, err
+		}
+
+		if j.cachedUnflushedBytes >= 0 {
+			j.cachedUnflushedBytes -= flushedBytes
+		}
+	}
+
 	// Remove any of the entry's refs that hasn't been modified by
 	// a subsequent block op (i.e., that has earliestOrdinal as a
 	// tag). Has no effect for removeRefsOp (since those are
@@ -702,17 +713,6 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 			if err != nil {
 				return 0, err
 			}
-		}
-	}
-
-	if isPutFlush {
-		err := j.s.flushPut(putID)
-		if err != nil {
-			return 0, err
-		}
-
-		if j.cachedUnflushedBytes >= 0 {
-			j.cachedUnflushedBytes -= flushedBytes
 		}
 	}
 

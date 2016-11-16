@@ -101,10 +101,10 @@ func (s *blockDiskStore) dataPath(id BlockID) string {
 	return filepath.Join(s.blockPath(id), dataFilename)
 }
 
-const flagsFilename = "flags"
+const flushInfoFilename = "flushInfo"
 
-func (s *blockDiskStore) flagsPath(id BlockID) string {
-	return filepath.Join(s.blockPath(id), flagsFilename)
+func (s *blockDiskStore) flushInfoPath(id BlockID) string {
+	return filepath.Join(s.blockPath(id), flushInfoFilename)
 }
 
 const idFilename = "id"
@@ -140,34 +140,34 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 }
 
 // TODO: Support unknown fields.
-type blockFlags struct {
-	NeedsFlush bool
+type flushInfo struct {
+	UnflushedPutCount int
 }
 
-func (s *blockDiskStore) getFlagsHelper(path string) (blockFlags, error) {
+func (s *blockDiskStore) getFlushInfoHelper(path string) (flushInfo, error) {
 	data, err := ioutil.ReadFile(path)
 	if os.IsNotExist(err) {
-		return blockFlags{}, nil
+		return flushInfo{}, nil
 	} else if err != nil {
-		return blockFlags{}, err
+		return flushInfo{}, err
 	}
 
-	var flags blockFlags
-	err = s.codec.Decode(data, &flags)
+	var info flushInfo
+	err = s.codec.Decode(data, &info)
 	if err != nil {
-		return blockFlags{}, err
+		return flushInfo{}, err
 	}
 
-	return flags, nil
+	return info, nil
 }
 
-func (s *blockDiskStore) getFlags(id BlockID) (blockFlags, error) {
-	return s.getFlagsHelper(s.flagsPath(id))
+func (s *blockDiskStore) getFlushInfo(id BlockID) (flushInfo, error) {
+	return s.getFlushInfoHelper(s.flushInfoPath(id))
 }
 
-func (s *blockDiskStore) setFlags(id BlockID, flags blockFlags) error {
-	if flags == (blockFlags{}) {
-		err := os.Remove(s.flagsPath(id))
+func (s *blockDiskStore) setFlushInfo(id BlockID, info flushInfo) error {
+	if info == (flushInfo{}) {
+		err := os.Remove(s.flushInfoPath(id))
 		if os.IsNotExist(err) {
 			return nil
 		} else if err != nil {
@@ -177,17 +177,52 @@ func (s *blockDiskStore) setFlags(id BlockID, flags blockFlags) error {
 		return nil
 	}
 
-	buf, err := s.codec.Encode(flags)
+	buf, err := s.codec.Encode(info)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(s.flagsPath(id), buf, 0600)
+	err = ioutil.WriteFile(s.flushInfoPath(id), buf, 0600)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (s *blockDiskStore) incPutCount(id BlockID) error {
+	info, err := s.getFlushInfo(id)
+	if err != nil {
+		return err
+	}
+
+	info.UnflushedPutCount++
+	return s.setFlushInfo(id, info)
+}
+
+func (s *blockDiskStore) decPutCount(id BlockID) error {
+	info, err := s.getFlushInfo(id)
+	if err != nil {
+		return err
+	}
+
+	if info.UnflushedPutCount == 0 {
+		return fmt.Errorf(
+			"Trying to decrement put count for %s below 0", id)
+	}
+
+	info.UnflushedPutCount--
+	return s.setFlushInfo(id, info)
+}
+
+func (s *blockDiskStore) clearPutCount(id BlockID) error {
+	info, err := s.getFlushInfo(id)
+	if err != nil {
+		return err
+	}
+
+	info.UnflushedPutCount = 0
+	return s.setFlushInfo(id, info)
 }
 
 // TODO: Add caching for refs
@@ -354,13 +389,13 @@ func (s *blockDiskStore) getUnflushedBytes() (int64, error) {
 	var totalSize int64
 	err := s.walkBlockDirs(func(name, subName string) error {
 		dir := filepath.Join(s.dir, name, subName)
-		flags, err := s.getFlagsHelper(
-			filepath.Join(dir, flagsFilename))
+		flushInfo, err := s.getFlushInfoHelper(
+			filepath.Join(dir, flushInfoFilename))
 		if err != nil {
 			return err
 		}
 
-		if flags.NeedsFlush {
+		if flushInfo.UnflushedPutCount > 0 {
 			info, err := os.Stat(filepath.Join(dir, dataFilename))
 			if os.IsNotExist(err) {
 				return nil
@@ -368,7 +403,7 @@ func (s *blockDiskStore) getUnflushedBytes() (int64, error) {
 				return err
 			}
 
-			totalSize += info.Size()
+			totalSize += info.Size() * int64(flushInfo.UnflushedPutCount)
 		}
 
 		return nil
@@ -536,7 +571,7 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		}
 	}
 
-	err = s.setFlags(id, blockFlags{NeedsFlush: true})
+	err = s.incPutCount(id)
 	if err != nil {
 		return false, err
 	}
@@ -577,11 +612,7 @@ func (s *blockDiskStore) archiveReferences(
 }
 
 func (s *blockDiskStore) flushPut(id BlockID) error {
-	err := s.setFlags(id, blockFlags{NeedsFlush: false})
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.decPutCount(id)
 }
 
 // removeReferences removes references for the given contexts from
