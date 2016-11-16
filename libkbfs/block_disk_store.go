@@ -84,6 +84,10 @@ func makeBlockDiskStore(codec kbfscodec.Codec, crypto cryptoPure,
 
 // The functions below are for building various paths.
 
+func (s *blockDiskStore) aggregateInfoPath() string {
+	return filepath.Join(s.dir, "aggregate_info")
+}
+
 func (s *blockDiskStore) blockPath(id BlockID) string {
 	// Truncate to 34 characters, which corresponds to 16 random
 	// bytes (since the first byte is a hash type) or 128 random
@@ -137,6 +141,53 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 	}
 
 	return nil
+}
+
+// TODO: Support unknown fields.
+type aggregateInfo struct {
+	UnflushedBytes int64
+}
+
+func (s *blockDiskStore) getAggregateInfo() (aggregateInfo, error) {
+	data, err := ioutil.ReadFile(s.aggregateInfoPath())
+	if os.IsNotExist(err) {
+		return aggregateInfo{}, nil
+	} else if err != nil {
+		return aggregateInfo{}, err
+	}
+
+	var info aggregateInfo
+	err = s.codec.Decode(data, &info)
+	if err != nil {
+		return aggregateInfo{}, err
+	}
+
+	return info, nil
+}
+
+func (s *blockDiskStore) setAggregateInfo(info aggregateInfo) error {
+	buf, err := s.codec.Encode(info)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(s.aggregateInfoPath(), buf, 0600)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *blockDiskStore) adjustUnflushedBytes(n int64) error {
+	info, err := s.getAggregateInfo()
+	if err != nil {
+		return err
+	}
+
+	info.UnflushedBytes += n
+
+	return s.setAggregateInfo(info)
 }
 
 // TODO: Support unknown fields.
@@ -581,6 +632,11 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		return false, err
 	}
 
+	err = s.adjustUnflushedBytes(int64(len(buf)))
+	if err != nil {
+		return false, err
+	}
+
 	return !exists, nil
 }
 
@@ -612,7 +668,17 @@ func (s *blockDiskStore) archiveReferences(
 }
 
 func (s *blockDiskStore) flushPut(id BlockID) error {
-	return s.decPutCount(id)
+	size, err := s.getDataSize(id)
+	if err != nil {
+		return err
+	}
+
+	err = s.decPutCount(id)
+	if err != nil {
+		return err
+	}
+
+	return s.adjustUnflushedBytes(-size)
 }
 
 // removeReferences removes references for the given contexts from
