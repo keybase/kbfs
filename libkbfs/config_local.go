@@ -209,8 +209,8 @@ func MakeLocalUsers(users []libkb.NormalizedUsername) []LocalUser {
 }
 
 // NewConfigLocal constructs a new ConfigLocal with some default
-// components.  The caller will have to fill in the rest though,
-// namely BlockOps and BlockSplitter.
+// components that don't depend on a logger. The caller will have to
+// fill in the rest.
 func NewConfigLocal() *ConfigLocal {
 	config := &ConfigLocal{}
 	config.SetClock(wallClock{})
