@@ -190,92 +190,6 @@ func (s *blockDiskStore) adjustUnflushedBytes(n int64) error {
 	return s.setAggregateInfo(info)
 }
 
-// TODO: Support unknown fields.
-type flushInfo struct {
-	UnflushedPutCount int
-}
-
-func (s *blockDiskStore) getFlushInfoHelper(path string) (flushInfo, error) {
-	data, err := ioutil.ReadFile(path)
-	if os.IsNotExist(err) {
-		return flushInfo{}, nil
-	} else if err != nil {
-		return flushInfo{}, err
-	}
-
-	var info flushInfo
-	err = s.codec.Decode(data, &info)
-	if err != nil {
-		return flushInfo{}, err
-	}
-
-	return info, nil
-}
-
-func (s *blockDiskStore) getFlushInfo(id BlockID) (flushInfo, error) {
-	return s.getFlushInfoHelper(s.flushInfoPath(id))
-}
-
-func (s *blockDiskStore) setFlushInfo(id BlockID, info flushInfo) error {
-	if info == (flushInfo{}) {
-		err := os.Remove(s.flushInfoPath(id))
-		if os.IsNotExist(err) {
-			return nil
-		} else if err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	buf, err := s.codec.Encode(info)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(s.flushInfoPath(id), buf, 0600)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *blockDiskStore) incPutCount(id BlockID) error {
-	info, err := s.getFlushInfo(id)
-	if err != nil {
-		return err
-	}
-
-	info.UnflushedPutCount++
-	return s.setFlushInfo(id, info)
-}
-
-func (s *blockDiskStore) decPutCount(id BlockID) error {
-	info, err := s.getFlushInfo(id)
-	if err != nil {
-		return err
-	}
-
-	if info.UnflushedPutCount == 0 {
-		return fmt.Errorf(
-			"Trying to decrement put count for %s below 0", id)
-	}
-
-	info.UnflushedPutCount--
-	return s.setFlushInfo(id, info)
-}
-
-func (s *blockDiskStore) clearPutCount(id BlockID) error {
-	info, err := s.getFlushInfo(id)
-	if err != nil {
-		return err
-	}
-
-	info.UnflushedPutCount = 0
-	return s.setFlushInfo(id, info)
-}
-
 // TODO: Add caching for refs
 
 // getRefs returns the references for the given ID.
@@ -602,11 +516,6 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		}
 	}
 
-	err = s.incPutCount(id)
-	if err != nil {
-		return false, err
-	}
-
 	err = s.addRefs(id, []BlockContext{context}, liveBlockRef, tag)
 	if err != nil {
 		return false, err
@@ -649,11 +558,6 @@ func (s *blockDiskStore) archiveReferences(
 
 func (s *blockDiskStore) flushPut(id BlockID) error {
 	size, err := s.getDataSize(id)
-	if err != nil {
-		return err
-	}
-
-	err = s.decPutCount(id)
 	if err != nil {
 		return err
 	}

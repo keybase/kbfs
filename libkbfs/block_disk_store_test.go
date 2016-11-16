@@ -48,10 +48,6 @@ func putBlockDisk(
 	require.NoError(t, err)
 	require.True(t, didPut)
 
-	info, err := s.getFlushInfo(bID)
-	require.NoError(t, err)
-	require.Equal(t, 1, info.UnflushedPutCount)
-
 	return bID, bCtx, serverHalf
 }
 
@@ -196,11 +192,6 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, half)
-
-	// Should still need flushing.
-	info, err := s.getFlushInfo(bID)
-	require.NoError(t, err)
-	require.Equal(t, 1, info.UnflushedPutCount)
 }
 
 func TestBlockDiskStoreRemove(t *testing.T) {
