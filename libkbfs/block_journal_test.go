@@ -820,3 +820,32 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	flushOne()
 	requireSize(0)
 }
+
+func TestBlockJournalUnflushedBytesIgnore(t *testing.T) {
+	ctx, tempdir, j := setupBlockJournalTest(t)
+	defer teardownBlockJournalTest(t, tempdir, j)
+
+	requireSize := func(expectedSize int) {
+		totalSize, err := j.getUnflushedBytes()
+		require.NoError(t, err)
+		require.Equal(t, int64(expectedSize), totalSize)
+	}
+
+	// Prime the cache.
+	requireSize(0)
+
+	data1 := []byte{1, 2, 3, 4}
+	bID1, _, _ := putBlockData(ctx, t, j, data1)
+
+	requireSize(len(data1))
+
+	data2 := []byte{1, 2, 3, 4, 5}
+	_, _, _ = putBlockData(ctx, t, j, data2)
+
+	requireSize(len(data1) + len(data2))
+
+	err := j.ignoreBlocksAndMDRevMarkers(ctx, []BlockID{bID1})
+	require.NoError(t, err)
+
+	requireSize(len(data2))
+}

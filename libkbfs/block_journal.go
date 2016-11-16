@@ -754,6 +754,15 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkers(ctx context.Context,
 				return err
 			}
 
+			if e.Op == blockPutOp {
+				// Treat ignored blocks as flushed,
+				// for the purposes of accounting.
+				err := j.s.onPutFlush(id)
+				if err != nil {
+					return nil
+				}
+			}
+
 		case mdRevMarkerOp:
 			e.Ignore = true
 			err = j.j.writeJournalEntry(i, e)
