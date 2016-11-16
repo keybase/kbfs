@@ -302,6 +302,44 @@ func (s *blockDiskStore) getData(id BlockID) (
 	return data, serverHalf, nil
 }
 
+func (s *blockDiskStore) walkBlockDirs(
+	walkFn func(name, subName string) error) error {
+	fileInfos, err := ioutil.ReadDir(s.dir)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	for _, fi := range fileInfos {
+		name := fi.Name()
+		if !fi.IsDir() {
+			// Ignore non-dirs.
+			continue
+		}
+
+		subFileInfos, err := ioutil.ReadDir(filepath.Join(s.dir, name))
+		if err != nil {
+			return err
+		}
+
+		for _, sfi := range subFileInfos {
+			subName := sfi.Name()
+			if !sfi.IsDir() {
+				// Ignore non-dirs.
+				return err
+			}
+
+			err := walkFn(name, subName)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // All functions below are public functions.
 
 // getTotalDataSize returns the sum of the size of the data for each
@@ -393,58 +431,38 @@ func (s *blockDiskStore) getDataWithContext(id BlockID, context BlockContext) (
 func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	res := make(map[BlockID]blockRefMap)
 
-	fileInfos, err := ioutil.ReadDir(s.dir)
-	if os.IsNotExist(err) {
-		return res, nil
-	} else if err != nil {
+	err := s.walkBlockDirs(func(name, subName string) error {
+		idPath := filepath.Join(s.dir, name, subName, idFilename)
+		idBytes, err := ioutil.ReadFile(idPath)
+		if err != nil {
+			return err
+		}
+
+		id, err := BlockIDFromString(string(idBytes))
+		if err != nil {
+			return err
+		}
+
+		if !strings.HasPrefix(id.String(), name+subName) {
+			return fmt.Errorf(
+				"%q unexpectedly not a prefix of %q", name+subName, id.String())
+		}
+
+		refs, err := s.getRefs(id)
+		if err != nil {
+			return err
+		}
+
+		if len(refs) > 0 {
+			res[id] = refs
+		}
+
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	for _, fi := range fileInfos {
-		name := fi.Name()
-		if !fi.IsDir() {
-			return nil, fmt.Errorf("Unexpected non-dir %q", name)
-		}
-
-		subFileInfos, err := ioutil.ReadDir(filepath.Join(s.dir, name))
-		if err != nil {
-			return nil, err
-		}
-
-		for _, sfi := range subFileInfos {
-			subName := sfi.Name()
-			if !sfi.IsDir() {
-				return nil, fmt.Errorf("Unexpected non-dir %q",
-					subName)
-			}
-
-			idPath := filepath.Join(
-				s.dir, name, subName, idFilename)
-			idBytes, err := ioutil.ReadFile(idPath)
-			if err != nil {
-				return nil, err
-			}
-
-			id, err := BlockIDFromString(string(idBytes))
-			if err != nil {
-				return nil, err
-			}
-
-			if !strings.HasPrefix(id.String(), name+subName) {
-				return nil, fmt.Errorf(
-					"%q unexpectedly not a prefix of %q", name+subName, id.String())
-			}
-
-			refs, err := s.getRefs(id)
-			if err != nil {
-				return nil, err
-			}
-
-			if len(refs) > 0 {
-				res[id] = refs
-			}
-		}
-	}
 	return res, nil
 }
 
