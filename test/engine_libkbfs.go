@@ -97,7 +97,9 @@ func (k *LibKBFS) InitTest(t testing.TB, blockSize int64, blockChangeSize int64,
 
 const (
 	// CtxOpID is the display name for the unique operation test ID tag.
-	CtxOpID   = "TID"
+	CtxOpID = "TID"
+
+	// CtxOpUser is the display name for the user tag.
 	CtxOpUser = "User"
 )
 
@@ -107,6 +109,8 @@ type CtxTagKey int
 const (
 	// CtxIDKey is the type of the tag for unique operation IDs.
 	CtxIDKey CtxTagKey = iota
+
+	// CtxUserKey is the type of the user tag.
 	CtxUserKey
 )
 
