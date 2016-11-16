@@ -644,29 +644,23 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 			ordinal, earliestOrdinal)
 	}
 
-	isPutFlush := (entry.Op == blockPutOp && !entry.Ignore)
-
-	// Store the block byte count if we've finished a Put.
-	var putID BlockID
-	if isPutFlush {
-		var err error
-		putID, _, err = entry.getSingleContext()
-		if err != nil {
-			return 0, err
-		}
-		flushedBytes, err = j.s.getDataSize(putID)
-		if err != nil {
-			return 0, err
-		}
-	}
-
 	_, err = j.j.removeEarliest()
 	if err != nil {
 		return 0, err
 	}
 
-	if isPutFlush {
-		err := j.s.onPutFlush(putID)
+	// Store the block byte count if we've finished a Put.
+	if entry.Op == blockPutOp && !entry.Ignore {
+		id, _, err := entry.getSingleContext()
+		if err != nil {
+			return 0, err
+		}
+		flushedBytes, err = j.s.getDataSize(id)
+		if err != nil {
+			return 0, err
+		}
+
+		err = j.s.onPutFlush(id)
 		if err != nil {
 			return 0, err
 		}
