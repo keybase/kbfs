@@ -46,7 +46,10 @@ type fsUser struct {
 	username libkb.NormalizedUsername
 	config   *libkbfs.ConfigLocal
 	cancel   func()
-	close    func()
+
+	// It's important that this be called, even on error paths, as
+	// it may do unmounts and release locks.
+	close func()
 }
 
 // Perform Init for the engine
