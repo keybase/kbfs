@@ -27,6 +27,7 @@ import (
 //
 // The directory layout looks like:
 //
+// dir/aggregate_info
 // dir/block_journal/EARLIEST
 // dir/block_journal/LATEST
 // dir/block_journal/0...000
@@ -36,6 +37,9 @@ import (
 // dir/saved_block_journal/EARLIEST
 // dir/saved_block_journal/LATEST
 // dir/saved_block_journal/...
+//
+// aggregate_info holds aggregate info about the block journal;
+// currently it just holds the count of unflushed bytes.
 //
 // Each entry in the journal in dir/block_journal contains the
 // mutating operation and arguments for a single operation, except for
@@ -340,7 +344,8 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	// Decremented when the journal entry is ignored or flushed.
+	// Decremented when the put journal entry is ignored or
+	// flushed.
 	err = j.adjustUnflushedBytes(int64(len(buf)))
 	if err != nil {
 		return err
