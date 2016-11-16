@@ -437,32 +437,12 @@ func (s *blockDiskStore) walkBlockDirs(
 // getUnflushedBytes returns the sum of the size of the data for each
 // stored block that needs to be flushed.
 func (s *blockDiskStore) getUnflushedBytes() (int64, error) {
-	var totalSize int64
-	err := s.walkBlockDirs(func(name, subName string) error {
-		dir := filepath.Join(s.dir, name, subName)
-		flushInfo, err := s.getFlushInfoHelper(
-			filepath.Join(dir, flushInfoFilename))
-		if err != nil {
-			return err
-		}
-
-		if flushInfo.UnflushedPutCount > 0 {
-			info, err := os.Stat(filepath.Join(dir, dataFilename))
-			if os.IsNotExist(err) {
-				return nil
-			} else if err != nil {
-				return err
-			}
-
-			totalSize += info.Size() * int64(flushInfo.UnflushedPutCount)
-		}
-
-		return nil
-	})
+	info, err := s.getAggregateInfo()
 	if err != nil {
 		return 0, err
 	}
-	return totalSize, nil
+
+	return info.UnflushedBytes, nil
 }
 
 func (s *blockDiskStore) hasAnyRef(id BlockID) (bool, error) {
@@ -727,6 +707,11 @@ func (s *blockDiskStore) remove(id BlockID) error {
 	}
 	path := s.blockPath(id)
 
+	size, err := s.getDataSize(id)
+	if err != nil {
+		return err
+	}
+
 	err = os.RemoveAll(path)
 	if err != nil {
 		return err
@@ -738,5 +723,9 @@ func (s *blockDiskStore) remove(id BlockID) error {
 	if os.IsNotExist(err) || isExist(err) {
 		err = nil
 	}
-	return err
+	if err != nil {
+		return err
+	}
+
+	return s.adjustUnflushedBytes(-size)
 }
