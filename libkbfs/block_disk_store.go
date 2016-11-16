@@ -139,7 +139,7 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 
 // TODO: Support unknown fields.
 type blockFlags struct {
-	NeedsFlushing bool
+	NeedsFlush bool
 }
 
 func (s *blockDiskStore) getFlags(id BlockID) (blockFlags, error) {
@@ -502,6 +502,11 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		if err != nil {
 			return false, err
 		}
+	}
+
+	err = s.setFlags(id, blockFlags{NeedsFlush: true})
+	if err != nil {
+		return false, err
 	}
 
 	err = s.addRefs(id, []BlockContext{context}, liveBlockRef, tag)

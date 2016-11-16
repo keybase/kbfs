@@ -48,6 +48,10 @@ func putBlockDisk(
 	require.NoError(t, err)
 	require.True(t, didPut)
 
+	flags, err := s.getFlags(bID)
+	require.NoError(t, err)
+	require.True(t, flags.NeedsFlush)
+
 	return bID, bCtx, serverHalf
 }
 
