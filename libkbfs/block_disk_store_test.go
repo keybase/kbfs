@@ -183,7 +183,7 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 
 	// Remove references.
 	liveCount, err := s.removeReferences(
-		bID, []BlockContext{bCtx, bCtx2}, "")
+		bID, []BlockContext{bCtx, bCtx2}, false /* forFlush */, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 
@@ -211,7 +211,8 @@ func TestBlockDiskStoreRemove(t *testing.T) {
 	require.Error(t, err, "Trying to remove data")
 
 	// Remove reference.
-	liveCount, err := s.removeReferences(bID, []BlockContext{bCtx}, "")
+	liveCount, err := s.removeReferences(
+		bID, []BlockContext{bCtx}, false /* forFlush */, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 
@@ -271,13 +272,13 @@ func TestBlockDiskStoreTotalDataSize(t *testing.T) {
 	requireSize(expectedSize)
 
 	liveCount, err := s.removeReferences(
-		bID1, []BlockContext{bCtx1, bCtx1b}, "")
+		bID1, []BlockContext{bCtx1, bCtx1b}, false /* forFlush */, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 	requireSize(expectedSize)
 
 	liveCount, err = s.removeReferences(
-		bID2, []BlockContext{bCtx2, bCtx2}, "")
+		bID2, []BlockContext{bCtx2, bCtx2}, false /* forFlush */, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 	requireSize(expectedSize)

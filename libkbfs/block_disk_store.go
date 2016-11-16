@@ -162,7 +162,9 @@ func (s *blockDiskStore) getFlags(id BlockID) (blockFlags, error) {
 func (s *blockDiskStore) setFlags(id BlockID, flags blockFlags) error {
 	if flags == (blockFlags{}) {
 		err := os.Remove(s.flagsPath(id))
-		if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		} else if err != nil {
 			return err
 		}
 
@@ -549,29 +551,34 @@ func (s *blockDiskStore) archiveReferences(
 // removed only if its most recent tag (passed in to addRefs) matches
 // the given one.
 func (s *blockDiskStore) removeReferences(
-	id BlockID, contexts []BlockContext, tag string) (
+	id BlockID, contexts []BlockContext, forFlush bool, tag string) (
 	liveCount int, err error) {
 	refs, err := s.getRefs(id)
 	if err != nil {
 		return 0, err
 	}
-	if len(refs) == 0 {
-		return 0, nil
-	}
+	if len(refs) != 0 {
+		for _, context := range contexts {
+			err := refs.remove(context, tag)
+			if err != nil {
+				return 0, err
+			}
+			if len(refs) == 0 {
+				break
+			}
+		}
 
-	for _, context := range contexts {
-		err := refs.remove(context, tag)
+		err = s.putRefs(id, refs)
 		if err != nil {
 			return 0, err
 		}
-		if len(refs) == 0 {
-			break
-		}
 	}
 
-	err = s.putRefs(id, refs)
-	if err != nil {
-		return 0, err
+	if forFlush {
+		err = s.setFlags(id, blockFlags{NeedsFlush: false})
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	return len(refs), nil

@@ -417,7 +417,8 @@ func (j *blockJournal) removeReferences(
 		// Remove the references unconditionally here (i.e.,
 		// with an empty tag), since j.s should reflect the
 		// most recent state.
-		liveCount, err := j.s.removeReferences(id, idContexts, "")
+		liveCount, err := j.s.removeReferences(
+			id, idContexts, false /* forFlush */, "")
 		if err != nil {
 			return nil, err
 		}
@@ -690,7 +691,8 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	// references).
 	for id, idContexts := range entry.Contexts {
 		liveCount, err := j.s.removeReferences(
-			id, idContexts, earliestOrdinal.String())
+			id, idContexts, true, /* forFlush */
+			earliestOrdinal.String())
 		if err != nil {
 			return 0, err
 		}
