@@ -69,7 +69,7 @@ type mdFlushListener interface {
 // MDOps.
 //
 // The maximum number of characters added to the root dir by a journal
-// server journal is 116: 59 for the TLF journal, and 57 for
+// server journal is 108: 51 for the TLF journal, and 57 for
 // everything else.
 //
 //   /v1/de...-...(53 characters total)...ff(/tlf journal)

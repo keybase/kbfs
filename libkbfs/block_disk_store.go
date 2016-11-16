@@ -21,7 +21,7 @@ import (
 //
 // dir/0100/0...01/data
 // dir/0100/0...01/id
-// dir/0100/0...01/key_server_half
+// dir/0100/0...01/ksh
 // dir/0100/0...01/refs
 // ...
 // dir/01cc/5...55/id
@@ -29,11 +29,11 @@ import (
 // ...
 // dir/01dd/6...66/data
 // dir/01dd/6...66/id
-// dir/01dd/6...66/key_server_half
+// dir/01dd/6...66/ksh
 // ...
 // dir/01ff/f...ff/data
 // dir/01ff/f...ff/id
-// dir/01ff/f...ff/key_server_half
+// dir/01ff/f...ff/ksh
 // dir/01ff/f...ff/refs
 //
 // Each block has its own subdirectory with its ID truncated to 17
@@ -46,11 +46,11 @@ import (
 //
 // Each block directory has the following files:
 //
-//   - id: The full block ID in binary format. Always present.
+//   - id:   The full block ID in binary format. Always present.
 //   - data: The raw block data that should hash to the block ID.
 //           May be missing.
-//   - key_server_half: The raw data for the associated key server half.
-//                      May be missing, but should be present when data is.
+//   - ksh:  The raw data for the associated key server half.
+//           May be missing, but should be present when data is.
 //   - refs: The list of references to the block, encoded as a serialized
 //           blockRefMap. May be missing.
 //
@@ -59,9 +59,9 @@ import (
 // be careful to preserve any unknown files in a block directory.
 //
 // The maximum number of characters added to the root dir by a block
-// disk store is 52:
+// disk store is 44:
 //
-//   /01ff/f...(30 characters total)...ff/key_server_half
+//   /01ff/f...(30 characters total)...ff/data
 //
 // blockDiskStore is not goroutine-safe, so any code that uses it must
 // guarantee that only one goroutine at a time calls its functions.
@@ -114,7 +114,7 @@ func (s *blockDiskStore) idPath(id BlockID) string {
 }
 
 func (s *blockDiskStore) keyServerHalfPath(id BlockID) string {
-	return filepath.Join(s.blockPath(id), "key_server_half")
+	return filepath.Join(s.blockPath(id), "ksh")
 }
 
 func (s *blockDiskStore) refsPath(id BlockID) string {
