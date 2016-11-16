@@ -348,9 +348,9 @@ func (s *blockDiskStore) walkBlockDirs(
 
 // All functions below are public functions.
 
-// getTotalDataSize returns the sum of the size of the data for each
-// stored block.
-func (s *blockDiskStore) getTotalDataSize() (int64, error) {
+// getUnflushedBytes returns the sum of the size of the data for each
+// stored block that needs to be flushed.
+func (s *blockDiskStore) getUnflushedBytes() (int64, error) {
 	var totalSize int64
 	err := s.walkBlockDirs(func(name, subName string) error {
 		dir := filepath.Join(s.dir, name, subName)

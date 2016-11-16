@@ -250,7 +250,7 @@ func TestBlockDiskStoreRemove(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestBlockDiskStoreTotalDataSize(t *testing.T) {
+func TestBlockDiskStoreUnflushedBytes(t *testing.T) {
 	tempdir, s := setupBlockDiskStoreTest(t)
 	defer teardownBlockDiskStoreTest(t, tempdir)
 
@@ -259,7 +259,7 @@ func TestBlockDiskStoreTotalDataSize(t *testing.T) {
 	s = makeBlockDiskStore(s.codec, s.crypto, filepath.Join(tempdir, "dir"))
 
 	requireSize := func(expectedSize int) {
-		totalSize, err := s.getTotalDataSize()
+		totalSize, err := s.getUnflushedBytes()
 		require.NoError(t, err)
 		require.Equal(t, int64(expectedSize), totalSize)
 	}
@@ -277,8 +277,8 @@ func TestBlockDiskStoreTotalDataSize(t *testing.T) {
 	expectedSize := len(data1) + len(data2)
 	requireSize(expectedSize)
 
-	// Adding, archive, or removing references shouldn't change
-	// anything.
+	// Adding, archive, or removing references without flushing
+	// shouldn't change anything.
 
 	bCtx1b := addBlockDiskRef(t, s, bID1)
 	requireSize(expectedSize)
@@ -288,22 +288,26 @@ func TestBlockDiskStoreTotalDataSize(t *testing.T) {
 	requireSize(expectedSize)
 
 	liveCount, err := s.removeReferences(
-		bID1, []BlockContext{bCtx1, bCtx1b}, false /* forFlush */, "")
+		bID1, []BlockContext{bCtx1}, false /* forFlush */, "")
 	require.NoError(t, err)
-	require.Equal(t, 0, liveCount)
+	require.Equal(t, 1, liveCount)
 	requireSize(expectedSize)
 
 	liveCount, err = s.removeReferences(
-		bID2, []BlockContext{bCtx2, bCtx2}, false /* forFlush */, "")
+		bID2, []BlockContext{bCtx2}, false /* forFlush */, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 	requireSize(expectedSize)
 
-	// Removing blocks should cause the total size to change.
+	// Flushing should affect the size.
 
-	err = s.remove(bID1)
+	liveCount, err = s.removeReferences(
+		bID1, []BlockContext{bCtx1b}, true /* forFlush */, "")
 	require.NoError(t, err)
+	require.Equal(t, 0, liveCount)
 	requireSize(len(data2))
+
+	// Removing blocks should also affect the size.
 
 	err = s.remove(bID2)
 	require.NoError(t, err)

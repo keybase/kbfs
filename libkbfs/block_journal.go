@@ -275,7 +275,7 @@ func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 
 func (j *blockJournal) getUnflushedBytes() (int64, error) {
 	if j.cachedUnflushedBytes < 0 {
-		unflushedBytes, err := j.s.getTotalDataSize()
+		unflushedBytes, err := j.s.getUnflushedBytes()
 		if err != nil {
 			return 0, err
 		}
