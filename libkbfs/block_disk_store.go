@@ -432,27 +432,27 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 				"key server half mismatch: expected %s, got %s",
 				existingServerHalf, serverHalf)
 		}
-	}
+	} else {
+		err = s.makeDir(id)
+		if err != nil {
+			return false, err
+		}
 
-	err = s.makeDir(id)
-	if err != nil {
-		return false, err
-	}
+		err = ioutil.WriteFile(s.dataPath(id), buf, 0600)
+		if err != nil {
+			return false, err
+		}
 
-	err = ioutil.WriteFile(s.dataPath(id), buf, 0600)
-	if err != nil {
-		return false, err
-	}
+		// TODO: Add integrity-checking for key server half?
 
-	// TODO: Add integrity-checking for key server half?
-
-	data, err := serverHalf.MarshalBinary()
-	if err != nil {
-		return false, err
-	}
-	err = ioutil.WriteFile(s.keyServerHalfPath(id), data, 0600)
-	if err != nil {
-		return false, err
+		data, err := serverHalf.MarshalBinary()
+		if err != nil {
+			return false, err
+		}
+		err = ioutil.WriteFile(s.keyServerHalfPath(id), data, 0600)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	err = s.addRefs(id, []BlockContext{context}, liveBlockRef, tag)
