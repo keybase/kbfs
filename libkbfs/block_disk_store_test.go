@@ -196,6 +196,22 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, half)
+
+	// Should still need flushing.
+	flags, err := s.getFlags(bID)
+	require.NoError(t, err)
+	require.True(t, flags.NeedsFlush)
+
+	// Simulate a flush.
+	liveCount, err = s.removeReferences(
+		bID, []BlockContext{bCtx, bCtx2},
+		true /* forFlush */, "some tag")
+	require.NoError(t, err)
+	require.Equal(t, 0, liveCount)
+
+	flags, err = s.getFlags(bID)
+	require.NoError(t, err)
+	require.False(t, flags.NeedsFlush)
 }
 
 func TestBlockDiskStoreRemove(t *testing.T) {
