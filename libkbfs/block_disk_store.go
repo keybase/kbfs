@@ -142,21 +142,23 @@ type blockRefInfo struct {
 
 // TODO: Add caching for refs
 
-// getRefs returns the references for the given ID.
-func (s *blockDiskStore) getRefs(id BlockID) (blockRefInfo, error) {
-	var refs blockRefInfo
-	err := kbfscodec.DeserializeFromFile(s.codec, s.refsPath(id), &refs)
-	if os.IsNotExist(err) {
-		return blockRefInfo{}, nil
-	} else if err != nil {
+// getRefInfo returns the references for the given ID.
+func (s *blockDiskStore) getRefInfo(id BlockID) (blockRefInfo, error) {
+	var refInfo blockRefInfo
+	err := kbfscodec.DeserializeFromFile(s.codec, s.refsPath(id), &refInfo)
+	if !os.IsNotExist(err) && err != nil {
 		return blockRefInfo{}, err
 	}
 
-	return refs, nil
+	if refInfo.Refs == nil {
+		refInfo.Refs = make(blockRefMap)
+	}
+
+	return refInfo, nil
 }
 
-// putRefs stores the given references for the given ID.
-func (s *blockDiskStore) putRefs(id BlockID, refs blockRefInfo) error {
+// putRefInfo stores the given references for the given ID.
+func (s *blockDiskStore) putRefInfo(id BlockID, refs blockRefInfo) error {
 	return kbfscodec.SerializeToFile(s.codec, refs, s.refsPath(id))
 }
 
@@ -164,14 +166,12 @@ func (s *blockDiskStore) putRefs(id BlockID, refs blockRefInfo) error {
 // with the same status and tag.
 func (s *blockDiskStore) addRefs(id BlockID, contexts []BlockContext,
 	status blockRefStatus, tag string) error {
-	refInfo, err := s.getRefs(id)
+	refInfo, err := s.getRefInfo(id)
 	if err != nil {
 		return err
 	}
 
-	if refInfo.Refs == nil {
-		refInfo.Refs = make(blockRefMap)
-	} else {
+	if len(refInfo.Refs) > 0 {
 		// Check existing contexts, if any.
 		for _, context := range contexts {
 			_, err := refInfo.Refs.checkExists(context)
@@ -188,7 +188,7 @@ func (s *blockDiskStore) addRefs(id BlockID, contexts []BlockContext,
 		}
 	}
 
-	return s.putRefs(id, refInfo)
+	return s.putRefInfo(id, refInfo)
 }
 
 // getData returns the data and server half for the given ID, if
@@ -236,7 +236,7 @@ func (s *blockDiskStore) getData(id BlockID) (
 // All functions below are public functions.
 
 func (s *blockDiskStore) hasAnyRef(id BlockID) (bool, error) {
-	refInfo, err := s.getRefs(id)
+	refInfo, err := s.getRefInfo(id)
 	if err != nil {
 		return false, err
 	}
@@ -245,23 +245,19 @@ func (s *blockDiskStore) hasAnyRef(id BlockID) (bool, error) {
 }
 
 func (s *blockDiskStore) hasNonArchivedRef(id BlockID) (bool, error) {
-	refInfo, err := s.getRefs(id)
+	refInfo, err := s.getRefInfo(id)
 	if err != nil {
 		return false, err
 	}
 
-	return (refInfo.Refs != nil) && refInfo.Refs.hasNonArchivedRef(), nil
+	return refInfo.Refs.hasNonArchivedRef(), nil
 }
 
 func (s *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 	bool, error) {
-	refInfo, err := s.getRefs(id)
+	refInfo, err := s.getRefInfo(id)
 	if err != nil {
 		return false, err
-	}
-
-	if len(refInfo.Refs) == 0 {
-		return false, nil
 	}
 
 	return refInfo.Refs.checkExists(context)
@@ -342,7 +338,7 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 					name+subName, id.String())
 			}
 
-			refInfo, err := s.getRefs(id)
+			refInfo, err := s.getRefInfo(id)
 			if err != nil {
 				return nil, err
 			}
@@ -455,7 +451,7 @@ func (s *blockDiskStore) archiveReferences(
 func (s *blockDiskStore) removeReferences(
 	id BlockID, contexts []BlockContext, tag string) (
 	liveCount int, err error) {
-	refInfo, err := s.getRefs(id)
+	refInfo, err := s.getRefInfo(id)
 	if err != nil {
 		return 0, err
 	}
@@ -473,7 +469,7 @@ func (s *blockDiskStore) removeReferences(
 		}
 	}
 
-	err = s.putRefs(id, refInfo)
+	err = s.putRefInfo(id, refInfo)
 	if err != nil {
 		return 0, err
 	}
