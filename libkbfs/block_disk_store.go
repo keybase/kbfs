@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 )
@@ -131,33 +132,31 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 	return nil
 }
 
+// blockRefInfo is a wrapper around blockRefMap, in case we want to
+// add more fields in the future.
+type blockRefInfo struct {
+	Refs blockRefMap
+
+	codec.UnknownFieldSetHandler
+}
+
 // TODO: Add caching for refs
 
 // getRefs returns the references for the given ID.
-func (s *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
-	var refs blockRefMap
+func (s *blockDiskStore) getRefs(id BlockID) (blockRefInfo, error) {
+	var refs blockRefInfo
 	err := kbfscodec.DeserializeFromFile(s.codec, s.refsPath(id), &refs)
 	if os.IsNotExist(err) {
-		return nil, nil
+		return blockRefInfo{}, nil
 	} else if err != nil {
-		return nil, err
+		return blockRefInfo{}, err
 	}
 
 	return refs, nil
 }
 
-// putRefs stores the given references for the given ID. If the given
-// map is empty, it removes the reference file.
-func (s *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
-	if len(refs) == 0 {
-		err := os.Remove(s.refsPath(id))
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
-
+// putRefs stores the given references for the given ID.
+func (s *blockDiskStore) putRefs(id BlockID, refs blockRefInfo) error {
 	return kbfscodec.SerializeToFile(s.codec, refs, s.refsPath(id))
 }
 
@@ -165,17 +164,17 @@ func (s *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
 // with the same status and tag.
 func (s *blockDiskStore) addRefs(id BlockID, contexts []BlockContext,
 	status blockRefStatus, tag string) error {
-	refs, err := s.getRefs(id)
+	refInfo, err := s.getRefs(id)
 	if err != nil {
 		return err
 	}
 
-	if refs == nil {
-		refs = make(blockRefMap)
+	if refInfo.Refs == nil {
+		refInfo.Refs = make(blockRefMap)
 	} else {
 		// Check existing contexts, if any.
 		for _, context := range contexts {
-			_, err := refs.checkExists(context)
+			_, err := refInfo.Refs.checkExists(context)
 			if err != nil {
 				return err
 			}
@@ -183,13 +182,13 @@ func (s *blockDiskStore) addRefs(id BlockID, contexts []BlockContext,
 	}
 
 	for _, context := range contexts {
-		err = refs.put(context, status, tag)
+		err = refInfo.Refs.put(context, status, tag)
 		if err != nil {
 			return err
 		}
 	}
 
-	return s.putRefs(id, refs)
+	return s.putRefs(id, refInfo)
 }
 
 // getData returns the data and server half for the given ID, if
@@ -237,35 +236,35 @@ func (s *blockDiskStore) getData(id BlockID) (
 // All functions below are public functions.
 
 func (s *blockDiskStore) hasAnyRef(id BlockID) (bool, error) {
-	refs, err := s.getRefs(id)
+	refInfo, err := s.getRefs(id)
 	if err != nil {
 		return false, err
 	}
 
-	return len(refs) > 0, nil
+	return len(refInfo.Refs) > 0, nil
 }
 
 func (s *blockDiskStore) hasNonArchivedRef(id BlockID) (bool, error) {
-	refs, err := s.getRefs(id)
+	refInfo, err := s.getRefs(id)
 	if err != nil {
 		return false, err
 	}
 
-	return (refs != nil) && refs.hasNonArchivedRef(), nil
+	return (refInfo.Refs != nil) && refInfo.Refs.hasNonArchivedRef(), nil
 }
 
 func (s *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 	bool, error) {
-	refs, err := s.getRefs(id)
+	refInfo, err := s.getRefs(id)
 	if err != nil {
 		return false, err
 	}
 
-	if len(refs) == 0 {
+	if len(refInfo.Refs) == 0 {
 		return false, nil
 	}
 
-	return refs.checkExists(context)
+	return refInfo.Refs.checkExists(context)
 }
 
 func (s *blockDiskStore) hasData(id BlockID) error {
@@ -343,13 +342,13 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 					name+subName, id.String())
 			}
 
-			refs, err := s.getRefs(id)
+			refInfo, err := s.getRefs(id)
 			if err != nil {
 				return nil, err
 			}
 
-			if len(refs) > 0 {
-				res[id] = refs
+			if len(refInfo.Refs) > 0 {
+				res[id] = refInfo.Refs
 			}
 		}
 	}
@@ -456,30 +455,30 @@ func (s *blockDiskStore) archiveReferences(
 func (s *blockDiskStore) removeReferences(
 	id BlockID, contexts []BlockContext, tag string) (
 	liveCount int, err error) {
-	refs, err := s.getRefs(id)
+	refInfo, err := s.getRefs(id)
 	if err != nil {
 		return 0, err
 	}
-	if len(refs) == 0 {
+	if len(refInfo.Refs) == 0 {
 		return 0, nil
 	}
 
 	for _, context := range contexts {
-		err := refs.remove(context, tag)
+		err := refInfo.Refs.remove(context, tag)
 		if err != nil {
 			return 0, err
 		}
-		if len(refs) == 0 {
+		if len(refInfo.Refs) == 0 {
 			break
 		}
 	}
 
-	err = s.putRefs(id, refs)
+	err = s.putRefs(id, refInfo)
 	if err != nil {
 		return 0, err
 	}
 
-	return len(refs), nil
+	return len(refInfo.Refs), nil
 }
 
 // remove removes any existing data for the given ID, which must not
