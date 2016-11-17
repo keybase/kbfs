@@ -6,10 +6,12 @@ package libfuse
 
 import (
 	"fmt"
-	"strings"
+	"regexp"
 
 	"github.com/keybase/client/go/logger"
 )
+
+var statfsOrAccessRegexp = regexp.MustCompile(`^(<-|->).* (Statfs|Access)`)
 
 // MakeFuseDebugFn returns a function that logs its argument to the
 // given log, suitable to assign to fuse.Debug.
@@ -22,11 +24,7 @@ func MakeFuseDebugFn(
 		//
 		// Ideally, bazil would let us filter this better, and
 		// also pass in the ctx.
-		if !superVerbose &&
-			(strings.HasPrefix(str, "<- ") ||
-				strings.HasPrefix(str, "-> ")) &&
-			(strings.Contains(str, " Statfs") ||
-				strings.Contains(str, " Access")) {
+		if !superVerbose && statfsOrAccessRegexp.MatchString(str) {
 			return
 		}
 		log.Debug("%s", str)
