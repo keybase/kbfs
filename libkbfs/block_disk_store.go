@@ -135,16 +135,11 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 
 // getRefs returns the references for the given ID.
 func (s *blockDiskStore) getRefs(id BlockID) (blockRefMap, error) {
-	data, err := ioutil.ReadFile(s.refsPath(id))
+	var refs blockRefMap
+	err := kbfscodec.DeserializeFromFile(s.codec, s.refsPath(id), &refs)
 	if os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
-		return nil, err
-	}
-
-	var refs blockRefMap
-	err = s.codec.Decode(data, &refs)
-	if err != nil {
 		return nil, err
 	}
 
@@ -163,17 +158,7 @@ func (s *blockDiskStore) putRefs(id BlockID, refs blockRefMap) error {
 		return nil
 	}
 
-	buf, err := s.codec.Encode(refs)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(s.refsPath(id), buf, 0600)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return kbfscodec.SerializeToFile(s.codec, refs, s.refsPath(id))
 }
 
 // addRefs adds references for the given contexts to the given ID, all
