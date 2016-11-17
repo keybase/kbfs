@@ -267,7 +267,7 @@ func testBlockJournalGCd(t *testing.T, j *blockJournal) {
 		func(path string, info os.FileInfo, _ error) error {
 			// We should only find the blocks directories and
 			// aggregate info file here.
-			if path != j.dir && path != j.s.dir && path != j.j.dir && path != j.aggregateInfoPath() {
+			if path != j.dir && path != j.s.dir && path != j.j.dir && path != aggregateInfoPath(j.dir) {
 				t.Errorf("Found unexpected block path: %s", path)
 			}
 			return nil
@@ -724,9 +724,7 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	defer teardownBlockJournalTest(t, tempdir, j)
 
 	requireSize := func(expectedSize int) {
-		totalSize, err := j.getUnflushedBytes()
-		require.NoError(t, err)
-		require.Equal(t, int64(expectedSize), totalSize)
+		require.Equal(t, int64(expectedSize), j.getUnflushedBytes())
 	}
 
 	// Prime the cache.
@@ -827,9 +825,7 @@ func TestBlockJournalUnflushedBytesIgnore(t *testing.T) {
 	defer teardownBlockJournalTest(t, tempdir, j)
 
 	requireSize := func(expectedSize int) {
-		totalSize, err := j.getUnflushedBytes()
-		require.NoError(t, err)
-		require.Equal(t, int64(expectedSize), totalSize)
+		require.Equal(t, int64(expectedSize), j.getUnflushedBytes())
 	}
 
 	// Prime the cache.

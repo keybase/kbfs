@@ -913,10 +913,7 @@ func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
 	if j.lastFlushErr != nil {
 		lastFlushErr = j.lastFlushErr.Error()
 	}
-	unflushedBytes, err := j.blockJournal.getUnflushedBytes()
-	if err != nil {
-		return TLFJournalStatus{}, err
-	}
+	unflushedBytes := j.blockJournal.getUnflushedBytes()
 	return TLFJournalStatus{
 		Dir:            j.dir,
 		BranchID:       j.mdJournal.getBranchID().String(),
@@ -1119,7 +1116,7 @@ func (j *tlfJournal) getUnflushedBytes() (int64, error) {
 		return 0, err
 	}
 
-	return j.blockJournal.getUnflushedBytes()
+	return j.blockJournal.getUnflushedBytes(), nil
 }
 
 func (j *tlfJournal) shutdown() {

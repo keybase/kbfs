@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -78,6 +77,8 @@ type blockJournal struct {
 	// s stores all the block data. s should always reflect the
 	// state you get by replaying all the entries in j.
 	s *blockDiskStore
+
+	aggregateInfo aggregateInfo
 }
 
 type blockOpType int
@@ -190,6 +191,13 @@ func makeBlockJournal(
 		journal.saveUntilMDFlush = &sj
 	}
 
+	// Get initial aggregate info.
+	err = kbfscodec.DeserializeFromFile(
+		codec, aggregateInfoPath(dir), &journal.aggregateInfo)
+	if !os.IsNotExist(err) && err != nil {
+		return nil, err
+	}
+
 	return journal, nil
 }
 
@@ -203,50 +211,14 @@ type aggregateInfo struct {
 	codec.UnknownFieldSetHandler
 }
 
-func (j *blockJournal) aggregateInfoPath() string {
-	return filepath.Join(j.dir, "aggregate_info")
-}
-
-func (j *blockJournal) getAggregateInfo() (aggregateInfo, error) {
-	data, err := ioutil.ReadFile(j.aggregateInfoPath())
-	if os.IsNotExist(err) {
-		return aggregateInfo{}, nil
-	} else if err != nil {
-		return aggregateInfo{}, err
-	}
-
-	var info aggregateInfo
-	err = j.codec.Decode(data, &info)
-	if err != nil {
-		return aggregateInfo{}, err
-	}
-
-	return info, nil
-}
-
-func (j *blockJournal) setAggregateInfo(info aggregateInfo) error {
-	buf, err := j.codec.Encode(info)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(j.aggregateInfoPath(), buf, 0600)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func aggregateInfoPath(dir string) string {
+	return filepath.Join(dir, "aggregate_info")
 }
 
 func (j *blockJournal) adjustUnflushedBytes(delta int64) error {
-	info, err := j.getAggregateInfo()
-	if err != nil {
-		return err
-	}
-
-	info.UnflushedBytes += delta
-
-	return j.setAggregateInfo(info)
+	j.aggregateInfo.UnflushedBytes += delta
+	return kbfscodec.SerializeToFile(
+		j.codec, j.aggregateInfo, aggregateInfoPath(j.dir))
 }
 
 // The functions below are for reading and writing journal entries.
@@ -312,13 +284,8 @@ func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
 	return j.s.getDataWithContext(id, context)
 }
 
-func (j *blockJournal) getUnflushedBytes() (int64, error) {
-	info, err := j.getAggregateInfo()
-	if err != nil {
-		return 0, err
-	}
-
-	return info.UnflushedBytes, nil
+func (j *blockJournal) getUnflushedBytes() int64 {
+	return j.aggregateInfo.UnflushedBytes
 }
 
 func (j *blockJournal) putData(
