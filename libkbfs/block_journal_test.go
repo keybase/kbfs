@@ -725,6 +725,13 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 
 	requireSize := func(expectedSize int) {
 		require.Equal(t, int64(expectedSize), j.getUnflushedBytes())
+		var info aggregateInfo
+		err := kbfscodec.DeserializeFromFile(
+			j.codec, aggregateInfoPath(j.dir), &info)
+		if !os.IsNotExist(err) {
+			require.NoError(t, err)
+		}
+		require.Equal(t, int64(expectedSize), info.UnflushedBytes)
 	}
 
 	// Prime the cache.
