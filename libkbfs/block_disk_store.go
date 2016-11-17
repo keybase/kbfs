@@ -53,7 +53,7 @@ import (
 //   - ksh:  The raw data for the associated key server half.
 //           May be missing, but should be present when data is.
 //   - refs: The list of references to the block, encoded as a serialized
-//           blockRefMap. May be missing.
+//           blockRefInfo. May be missing.
 //
 // Future versions of the disk store might add more files to this
 // directory; if any code is written to move blocks around, it should
