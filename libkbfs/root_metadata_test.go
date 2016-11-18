@@ -121,7 +121,7 @@ func makeImmutableRootMetadataForTest(
 
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for
 // public TLFs.
-func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
+func testRootMetadataGetTlfHandlePublic(t *testing.T, ver MetadataVer) {
 	uw := []keybase1.SocialAssertion{
 		{
 			User:    "user2",
@@ -134,7 +134,7 @@ func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
 	}
 	h := makeFakeTlfHandle(t, 14, true, uw, nil)
 	tlfID := tlf.FakeID(0, true)
-	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(ver, tlfID, h)
 	require.NoError(t, err)
 
 	dirHandle := rmd.GetTlfHandle()
@@ -146,9 +146,13 @@ func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
 	require.Equal(t, h.ToBareHandleOrBust(), bh)
 }
 
+func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
+	RunTestOverMetadataVers(t, testRootMetadataGetTlfHandlePublic)
+}
+
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for
 // non-public TLFs.
-func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
+func testRootMetadataGetTlfHandlePrivate(t *testing.T, ver MetadataVer) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
 	uw := []keybase1.SocialAssertion{
@@ -173,7 +177,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	}
 	h := makeFakeTlfHandle(t, 14, false, uw, ur)
 	tlfID := tlf.FakeID(0, false)
-	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(ver, tlfID, h)
 	require.NoError(t, err)
 
 	rmd.fakeInitialRekey(codec, crypto)
@@ -187,13 +191,17 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	require.Equal(t, h.ToBareHandleOrBust(), bh)
 }
 
+func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
+	RunTestOverMetadataVers(t, testRootMetadataGetTlfHandlePrivate)
+}
+
 // Test that key generations work as expected for private TLFs.
-func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
+func testRootMetadataLatestKeyGenerationPrivate(t *testing.T, ver MetadataVer) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
 	tlfID := tlf.FakeID(0, false)
 	h := makeFakeTlfHandle(t, 14, false, nil, nil)
-	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(ver, tlfID, h)
 	require.NoError(t, err)
 
 	if rmd.LatestKeyGeneration() != 0 {
@@ -205,11 +213,15 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 	}
 }
 
+func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
+	RunTestOverMetadataVers(t, testRootMetadataLatestKeyGenerationPrivate)
+}
+
 // Test that key generations work as expected for public TLFs.
-func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
+func testRootMetadataLatestKeyGenerationPublic(t *testing.T, ver MetadataVer) {
 	tlfID := tlf.FakeID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
-	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(ver, tlfID, h)
 	require.NoError(t, err)
 
 	if rmd.LatestKeyGeneration() != PublicKeyGen {
@@ -217,10 +229,14 @@ func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
 	}
 }
 
+func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
+	RunTestOverMetadataVers(t, testRootMetadataLatestKeyGenerationPublic)
+}
+
 // Test that old encoded WriterMetadata objects (i.e., without any
 // extra fields) can be deserialized and serialized to the same form,
 // which is important for RootMetadata.IsValidAndSigned().
-func TestWriterMetadataUnchangedEncoding(t *testing.T) {
+func testWriterMetadataUnchangedEncoding(t *testing.T, ver MetadataVer) {
 	encodedWm := []byte{
 		0x89, 0xa3, 0x42, 0x49, 0x44, 0xc4, 0x10, 0x0,
 		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
@@ -267,8 +283,12 @@ func TestWriterMetadataUnchangedEncoding(t *testing.T) {
 	require.Equal(t, encodedWm, buf)
 }
 
+func TestWriterMetadataUnchangedEncoding(t *testing.T) {
+	RunTestOverMetadataVers(t, testWriterMetadataUnchangedEncoding)
+}
+
 // Test that WriterMetadata has only a fixed (frozen) set of fields.
-func TestWriterMetadataEncodedFields(t *testing.T) {
+func testWriterMetadataEncodedFields(t *testing.T, ver MetadataVer) {
 	sa1, _ := externals.NormalizeSocialAssertion("uid1@twitter")
 	sa2, _ := externals.NormalizeSocialAssertion("uid2@twitter")
 	// Usually exactly one of Writers/WKeys is filled in, but we
@@ -311,6 +331,10 @@ func TestWriterMetadataEncodedFields(t *testing.T) {
 	}
 	sort.Strings(fields)
 	require.Equal(t, expectedFields, fields)
+}
+
+func TestWriterMetadataEncodedFields(t *testing.T) {
+	RunTestOverMetadataVers(t, testWriterMetadataEncodedFields)
 }
 
 type writerMetadataExtraFuture struct {
@@ -385,10 +409,6 @@ func makeFakeWriterMetadataFuture(t *testing.T) writerMetadataFuture {
 			kbfscodec.MakeExtraOrBust("WriterMetadata", t),
 		},
 	}
-}
-
-func TestWriterMetadataUnknownFields(t *testing.T) {
-	testStructUnknownFields(t, makeFakeWriterMetadataFuture(t))
 }
 
 type tlfReaderKeyGenerationsV2Future []*tlfReaderKeyBundleV2Future
@@ -475,7 +495,7 @@ func TestBareRootMetadataUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeBareRootMetadataFuture(t))
 }
 
-func TestMakeRekeyReadError(t *testing.T) {
+func testMakeRekeyReadError(t *testing.T, ver MetadataVer) {
 	config := MakeTestConfigOrBust(t, "alice", "bob")
 	defer config.Shutdown()
 
@@ -500,7 +520,11 @@ func TestMakeRekeyReadError(t *testing.T) {
 	require.Equal(t, NeedOtherRekeyError{"alice"}, err)
 }
 
-func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
+func TestMakeRekeyReadError(t *testing.T) {
+	RunTestOverMetadataVers(t, testMakeRekeyReadError)
+}
+
+func testMakeRekeyReadErrorResolvedHandle(t *testing.T, ver MetadataVer) {
 	config := MakeTestConfigOrBust(t, "alice", "bob")
 	defer config.Shutdown()
 
@@ -530,17 +554,25 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	require.Equal(t, NeedOtherRekeyError{"alice,bob"}, err)
 }
 
+func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
+	RunTestOverMetadataVers(t, testMakeRekeyReadErrorResolvedHandle)
+}
+
 // Test that MakeSuccessor fails when the final bit is set.
-func TestRootMetadataFinalIsFinal(t *testing.T) {
+func testRootMetadataFinalIsFinal(t *testing.T, ver MetadataVer) {
 	tlfID := tlf.FakeID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
-	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
+	rmd, err := makeInitialRootMetadata(ver, tlfID, h)
 	require.NoError(t, err)
 
 	rmd.SetFinalBit()
 	_, err = rmd.MakeSuccessor(context.Background(), nil, fakeMdID(1), true)
 	_, isFinalError := err.(MetadataIsFinalError)
 	require.Equal(t, isFinalError, true)
+}
+
+func TestRootMetadataFinalIsFinal(t *testing.T) {
+	RunTestOverMetadataVers(t, testRootMetadataFinalIsFinal)
 }
 
 func getAllUsersKeysForTest(
