@@ -53,6 +53,8 @@ var testMetadataVers = []MetadataVer{
 	InitialExtraMetadataVer, SegregatedKeyBundlesVer,
 }
 
+// RunTestOverMetadataVers runs the given test function over all
+// metadata versions to test.
 func RunTestOverMetadataVers(
 	t *testing.T, f func(t *testing.T, ver MetadataVer)) {
 	for _, ver := range testMetadataVers {
