@@ -71,10 +71,12 @@ func (fs *KBFSOpsStandard) markForReIdentifyIfNeededLoop() {
 		var returnCh chan<- struct{}
 		var ok bool
 		select {
-		// Normal case: feed the current time from config and mark fbos needing validation.
+		// Normal case: feed the current time from config and mark fbos needing
+		// validation.
 		case <-ticker.C:
 			now = fs.config.Clock().Now()
-		// Mark everything for reidentification via now being the empty value or quit.
+		// Mark everything for reidentification via now being the empty value or
+		// quit.
 		case returnCh, ok = <-fs.reIdentifyControlChan:
 			if !ok {
 				ticker.Stop()
@@ -88,7 +90,8 @@ func (fs *KBFSOpsStandard) markForReIdentifyIfNeededLoop() {
 	}
 }
 
-func (fs *KBFSOpsStandard) markForReIdentifyIfNeeded(now time.Time, maxValid time.Duration) {
+func (fs *KBFSOpsStandard) markForReIdentifyIfNeeded(
+	now time.Time, maxValid time.Duration) {
 	fs.opsLock.Lock()
 	defer fs.opsLock.Unlock()
 
@@ -121,7 +124,8 @@ func (fs *KBFSOpsStandard) Shutdown() error {
 }
 
 // PushConnectionStatusChange pushes human readable connection status changes.
-func (fs *KBFSOpsStandard) PushConnectionStatusChange(service string, newStatus error) {
+func (fs *KBFSOpsStandard) PushConnectionStatusChange(
+	service string, newStatus error) {
 	fs.currentStatus.PushConnectionStatusChange(service, newStatus)
 }
 
@@ -257,8 +261,8 @@ func (fs *KBFSOpsStandard) getOpsByHandle(ctx context.Context,
 }
 
 func (fs *KBFSOpsStandard) getOrInitializeNewMDMaster(
-	ctx context.Context, mdops MDOps, h *TlfHandle, create bool) (initialized bool,
-	md ImmutableRootMetadata, id tlf.ID, err error) {
+	ctx context.Context, mdops MDOps, h *TlfHandle, create bool) (
+	initialized bool, md ImmutableRootMetadata, id tlf.ID, err error) {
 	defer func() {
 		if getExtendedIdentify(ctx).behavior.AlwaysRunIdentify() &&
 			!initialized && err == nil {
@@ -378,7 +382,8 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 	if md == (ImmutableRootMetadata{}) {
 		var id tlf.ID
 		var initialized bool
-		initialized, md, id, err = fs.getOrInitializeNewMDMaster(ctx, mdops, h, create)
+		initialized, md, id, err = fs.getOrInitializeNewMDMaster(
+			ctx, mdops, h, create)
 		if err != nil {
 			return nil, EntryInfo{}, err
 		}
@@ -407,7 +412,8 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 			}
 			fb := FolderBranch{Tlf: id, Branch: MasterBranch}
 			fops := fs.getOpsByHandle(ctx, h, fb)
-			if err := fops.addToFavoritesByHandle(ctx, fs.favs, h, false); err != nil {
+			if err := fops.addToFavoritesByHandle(
+				ctx, fs.favs, h, false); err != nil {
 				// Failure to favorite shouldn't cause a failure.  Just log
 				// and move on.
 				fs.log.CDebugf(ctx, "Couldn't add favorite: %v", err)
