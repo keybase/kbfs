@@ -157,7 +157,7 @@ func (c testTLFJournalConfig) makeBlock(data []byte) (
 
 func (c testTLFJournalConfig) makeMD(
 	revision MetadataRevision, prevRoot MdID) *RootMetadata {
-	return makeMDForTest(c.t, c.tlfID, revision, c.uid, c.crypto, prevRoot)
+	return makeMDForTest(c.t, c.ver, c.tlfID, revision, c.uid, c.crypto, prevRoot)
 }
 
 func (c testTLFJournalConfig) checkMD(rmds *RootMetadataSigned,
