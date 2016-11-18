@@ -3352,15 +3352,15 @@ func (_mr *_MockblockServerLocalRecorder) GetUserQuotaInfo(arg0 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserQuotaInfo", arg0)
 }
 
-func (_m *MockblockServerLocal) getAllRefs(ctx context.Context, tlfID tlf.ID) (map[BlockID]blockRefMap, error) {
-	ret := _m.ctrl.Call(_m, "getAllRefs", ctx, tlfID)
+func (_m *MockblockServerLocal) getAllRefsForTest(ctx context.Context, tlfID tlf.ID) (map[BlockID]blockRefMap, error) {
+	ret := _m.ctrl.Call(_m, "getAllRefsForTest", ctx, tlfID)
 	ret0, _ := ret[0].(map[BlockID]blockRefMap)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockblockServerLocalRecorder) getAllRefs(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "getAllRefs", arg0, arg1)
+func (_mr *_MockblockServerLocalRecorder) getAllRefsForTest(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "getAllRefsForTest", arg0, arg1)
 }
 
 // Mock of BlockSplitter interface
@@ -3402,6 +3402,16 @@ func (_m *MockBlockSplitter) CheckSplit(block *FileBlock) int64 {
 
 func (_mr *_MockBlockSplitterRecorder) CheckSplit(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckSplit", arg0)
+}
+
+func (_m *MockBlockSplitter) MaxPtrsPerBlock() int {
+	ret := _m.ctrl.Call(_m, "MaxPtrsPerBlock")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+func (_mr *_MockBlockSplitterRecorder) MaxPtrsPerBlock() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaxPtrsPerBlock")
 }
 
 func (_m *MockBlockSplitter) ShouldEmbedBlockChanges(bc *BlockChanges) bool {
