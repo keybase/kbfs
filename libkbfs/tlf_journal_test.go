@@ -161,30 +161,32 @@ func (c testTLFJournalConfig) makeMD(
 }
 
 func (c testTLFJournalConfig) checkMD(rmds *RootMetadataSigned,
-	expectedRevision MetadataRevision, expectedPrevRoot MdID,
-	expectedMergeStatus MergeStatus, expectedBranchID BranchID) {
+	extra ExtraMetadata, expectedRevision MetadataRevision,
+	expectedPrevRoot MdID, expectedMergeStatus MergeStatus,
+	expectedBranchID BranchID) {
 	verifyingKey := c.crypto.SigningKeySigner.Key.GetVerifyingKey()
 	checkBRMD(c.t, c.uid, verifyingKey, c.Codec(), c.Crypto(),
-		rmds.MD, expectedRevision, expectedPrevRoot,
+		rmds.MD, extra, expectedRevision, expectedPrevRoot,
 		expectedMergeStatus, expectedBranchID)
-	// MDv3 TODO: pass key bundles
 	err := rmds.IsValidAndSigned(c.Codec(), c.Crypto(), nil)
 	require.NoError(c.t, err)
 	err = rmds.IsLastModifiedBy(c.uid, verifyingKey)
 	require.NoError(c.t, err)
 }
 
-func (c testTLFJournalConfig) checkRange(rmdses []*RootMetadataSigned,
+func (c testTLFJournalConfig) checkRange(rmdses []rmdsWithExtra,
 	firstRevision MetadataRevision, firstPrevRoot MdID,
 	mStatus MergeStatus, bid BranchID) {
-	c.checkMD(rmdses[0], firstRevision, firstPrevRoot, mStatus, bid)
+	c.checkMD(rmdses[0].rmds, rmdses[0].extra, firstRevision,
+		firstPrevRoot, mStatus, bid)
 
 	for i := 1; i < len(rmdses); i++ {
-		prevID, err := c.Crypto().MakeMdID(rmdses[i-1].MD)
+		prevID, err := c.Crypto().MakeMdID(rmdses[i-1].rmds.MD)
 		require.NoError(c.t, err)
-		c.checkMD(rmdses[i], firstRevision+MetadataRevision(i),
-			prevID, mStatus, bid)
-		err = rmdses[i-1].MD.CheckValidSuccessor(prevID, rmdses[i].MD)
+		c.checkMD(rmdses[i].rmds, rmdses[i].extra,
+			firstRevision+MetadataRevision(i), prevID, mStatus, bid)
+		err = rmdses[i-1].rmds.MD.CheckValidSuccessor(
+			prevID, rmdses[i].rmds.MD)
 		require.NoError(c.t, err)
 	}
 }
@@ -577,9 +579,14 @@ func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
 	RunTestOverMetadataVers(t, testTLFJournalBlockOpWhileBusy)
 }
 
+type rmdsWithExtra struct {
+	rmds  *RootMetadataSigned
+	extra ExtraMetadata
+}
+
 type shimMDServer struct {
 	MDServer
-	rmdses       []*RootMetadataSigned
+	rmdses       []rmdsWithExtra
 	nextGetRange []*RootMetadataSigned
 	nextErr      error
 }
@@ -592,14 +599,14 @@ func (s *shimMDServer) GetRange(
 	return rmdses, nil
 }
 
-func (s *shimMDServer) Put(
-	ctx context.Context, rmds *RootMetadataSigned, _ ExtraMetadata) error {
+func (s *shimMDServer) Put(ctx context.Context, rmds *RootMetadataSigned,
+	extra ExtraMetadata) error {
 	if s.nextErr != nil {
 		err := s.nextErr
 		s.nextErr = nil
 		return err
 	}
-	s.rmdses = append(s.rmdses, rmds)
+	s.rmdses = append(s.rmdses, rmdsWithExtra{rmds, extra})
 
 	// Pretend all cancels happen after the actual put.
 	select {

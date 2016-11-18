@@ -132,13 +132,13 @@ func putMDRange(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 
 func checkBRMD(t *testing.T, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 	codec kbfscodec.Codec, crypto cryptoPure, brmd BareRootMetadata,
-	expectedRevision MetadataRevision, expectedPrevRoot MdID,
-	expectedMergeStatus MergeStatus, expectedBranchID BranchID) {
+	extra ExtraMetadata, expectedRevision MetadataRevision,
+	expectedPrevRoot MdID, expectedMergeStatus MergeStatus,
+	expectedBranchID BranchID) {
 	require.Equal(t, expectedRevision, brmd.RevisionNumber())
 	require.Equal(t, expectedPrevRoot, brmd.GetPrevRoot())
 	require.Equal(t, expectedMergeStatus, brmd.MergedStatus())
-	// MDv3 TODO: pass key bundles
-	err := brmd.IsValidAndSigned(codec, crypto, nil)
+	err := brmd.IsValidAndSigned(codec, crypto, extra)
 	require.NoError(t, err)
 	err = brmd.IsLastModifiedBy(uid, key)
 	require.NoError(t, err)
@@ -152,15 +152,15 @@ func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 	key kbfscrypto.VerifyingKey, codec kbfscodec.Codec, crypto cryptoPure,
 	ibrmds []ImmutableBareRootMetadata, firstRevision MetadataRevision,
 	firstPrevRoot MdID, mStatus MergeStatus, bid BranchID) {
-	checkBRMD(t, uid, key, codec, crypto, ibrmds[0],
+	checkBRMD(t, uid, key, codec, crypto, ibrmds[0], ibrmds[0].extra,
 		firstRevision, firstPrevRoot, mStatus, bid)
 
 	for i := 1; i < len(ibrmds); i++ {
 		prevID := ibrmds[i-1].mdID
 		checkBRMD(t, uid, key, codec, crypto, ibrmds[i],
-			firstRevision+MetadataRevision(i), prevID, mStatus, bid)
-		err := ibrmds[i-1].CheckValidSuccessor(
-			prevID, ibrmds[i])
+			ibrmds[i].extra, firstRevision+MetadataRevision(i),
+			prevID, mStatus, bid)
+		err := ibrmds[i-1].CheckValidSuccessor(prevID, ibrmds[i])
 		require.NoError(t, err)
 	}
 }
