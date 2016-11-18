@@ -256,51 +256,6 @@ func (fs *KBFSOpsStandard) getOpsByHandle(ctx context.Context,
 	return ops
 }
 
-func (fs *KBFSOpsStandard) getMDByHandle(ctx context.Context,
-	tlfHandle *TlfHandle) (rmd ImmutableRootMetadata, err error) {
-	fbo := func() *folderBranchOps {
-		fs.opsLock.Lock()
-		defer fs.opsLock.Unlock()
-		return fs.opsByFav[tlfHandle.ToFavorite()]
-	}()
-	if fbo != nil {
-		lState := makeFBOLockState()
-		rmd = fbo.getHead(lState)
-	}
-	if rmd == (ImmutableRootMetadata{}) {
-		_, rmd, _, err = fs.getOrInitializeNewMDMaster(
-			ctx, fs.config.MDOps(), tlfHandle, true)
-		if err != nil {
-			return ImmutableRootMetadata{}, err
-		}
-	}
-
-	return rmd, nil
-}
-
-// GetTLFCryptKeys implements the KBFSOps interface for
-// KBFSOpsStandard
-func (fs *KBFSOpsStandard) GetTLFCryptKeys(
-	ctx context.Context, tlfHandle *TlfHandle) (
-	keys []kbfscrypto.TLFCryptKey, id tlf.ID, err error) {
-	rmd, err := fs.getMDByHandle(ctx, tlfHandle)
-	if err != nil {
-		return nil, tlf.ID{}, err
-	}
-	keys, err = fs.config.KeyManager().GetTLFCryptKeyOfAllGenerations(ctx, rmd)
-	return keys, rmd.TlfID(), err
-}
-
-// GetTLFID implements the KBFSOps interface for KBFSOpsStandard.
-func (fs *KBFSOpsStandard) GetTLFID(ctx context.Context,
-	tlfHandle *TlfHandle) (tlf.ID, error) {
-	rmd, err := fs.getMDByHandle(ctx, tlfHandle)
-	if err != nil {
-		return tlf.ID{}, err
-	}
-	return rmd.TlfID(), err
-}
-
 func (fs *KBFSOpsStandard) getOrInitializeNewMDMaster(
 	ctx context.Context, mdops MDOps, h *TlfHandle, create bool) (initialized bool,
 	md ImmutableRootMetadata, id tlf.ID, err error) {
@@ -347,6 +302,61 @@ func (fs *KBFSOpsStandard) getOrInitializeNewMDMaster(
 
 	return true, md, id, err
 
+}
+
+func (fs *KBFSOpsStandard) getMDByHandle(ctx context.Context,
+	tlfHandle *TlfHandle) (rmd ImmutableRootMetadata, err error) {
+	fbo := func() *folderBranchOps {
+		fs.opsLock.Lock()
+		defer fs.opsLock.Unlock()
+		return fs.opsByFav[tlfHandle.ToFavorite()]
+	}()
+	if fbo != nil {
+		lState := makeFBOLockState()
+		rmd = fbo.getHead(lState)
+	}
+	if rmd == (ImmutableRootMetadata{}) {
+		_, rmd, _, err = fs.getOrInitializeNewMDMaster(
+			ctx, fs.config.MDOps(), tlfHandle, true)
+		if err != nil {
+			return ImmutableRootMetadata{}, err
+		}
+
+		// Make sure fbo exists and head is set so that next time we use this we
+		// don't need to hit server even when there isn't any FS activity.
+		if fbo == nil {
+			fb := FolderBranch{Tlf: rmd.TlfID(), Branch: MasterBranch}
+			fbo = fs.getOpsByHandle(ctx, tlfHandle, fb)
+		}
+		if err = fbo.SetInitialHeadFromServer(ctx, rmd); err != nil {
+			return ImmutableRootMetadata{}, err
+		}
+	}
+
+	return rmd, nil
+}
+
+// GetTLFCryptKeys implements the KBFSOps interface for
+// KBFSOpsStandard
+func (fs *KBFSOpsStandard) GetTLFCryptKeys(
+	ctx context.Context, tlfHandle *TlfHandle) (
+	keys []kbfscrypto.TLFCryptKey, id tlf.ID, err error) {
+	rmd, err := fs.getMDByHandle(ctx, tlfHandle)
+	if err != nil {
+		return nil, tlf.ID{}, err
+	}
+	keys, err = fs.config.KeyManager().GetTLFCryptKeyOfAllGenerations(ctx, rmd)
+	return keys, rmd.TlfID(), err
+}
+
+// GetTLFID implements the KBFSOps interface for KBFSOpsStandard.
+func (fs *KBFSOpsStandard) GetTLFID(ctx context.Context,
+	tlfHandle *TlfHandle) (tlf.ID, error) {
+	rmd, err := fs.getMDByHandle(ctx, tlfHandle)
+	if err != nil {
+		return tlf.ID{}, err
+	}
+	return rmd.TlfID(), err
 }
 
 // getMaybeCreateRootNode is called for GetOrCreateRootNode and GetRootNode.
