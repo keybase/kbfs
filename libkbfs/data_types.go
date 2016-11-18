@@ -142,10 +142,6 @@ const (
 	defaultClientMetadataVer MetadataVer = InitialExtraMetadataVer
 )
 
-var testMetadataVers = []MetadataVer{
-	InitialExtraMetadataVer, SegregatedKeyBundlesVer,
-}
-
 func (v MetadataVer) String() string {
 	switch v {
 	case FirstValidMetadataVer:
