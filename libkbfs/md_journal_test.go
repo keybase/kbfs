@@ -74,7 +74,7 @@ func setupMDJournalTestWithMetadataVer(t testing.TB, mdVer MetadataVer) (
 
 	log := logger.NewTestLogger(t)
 	ctx := context.Background()
-	ver := defaultClientMetadataVer
+	ver := SegregatedKeyBundlesVer
 	j, err = makeMDJournal(
 		ctx, uid, verifyingKey, codec, crypto, wallClock{},
 		tlfID, ver, tempdir, log)
