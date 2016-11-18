@@ -313,27 +313,27 @@ func putOneMD(ctx context.Context, config *testTLFJournalConfig,
 // The tests below primarily test the background work thread's
 // behavior.
 
-func TestTLFJournalBasic(t *testing.T) {
-	RunTestOverMetadataVers(t, func(t *testing.T, ver MetadataVer) {
-		tempdir, config, ctx, cancel, tlfJournal, delegate :=
-			setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkEnabled)
-		defer teardownTLFJournalTest(
-			tempdir, config, ctx, cancel, tlfJournal, delegate)
+func testTLFJournalBasic(t *testing.T, ver MetadataVer) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkEnabled)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-		putOneMD(ctx, config, tlfJournal)
+	putOneMD(ctx, config, tlfJournal)
 
-		// Wait for it to be processed.
+	// Wait for it to be processed.
 
-		delegate.requireNextState(ctx, bwBusy)
-		delegate.requireNextState(ctx, bwIdle)
-	})
+	delegate.requireNextState(ctx, bwBusy)
+	delegate.requireNextState(ctx, bwIdle)
 }
 
-var defaultVer = defaultClientMetadataVer
+func TestTLFJournalBasic(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalBasic)
+}
 
-func TestTLFJournalPauseResume(t *testing.T) {
+func testTLFJournalPauseResume(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkEnabled)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkEnabled)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -350,9 +350,13 @@ func TestTLFJournalPauseResume(t *testing.T) {
 	delegate.requireNextState(ctx, bwIdle)
 }
 
-func TestTLFJournalPauseShutdown(t *testing.T) {
+func TestTLFJournalPauseResume(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalPauseResume)
+}
+
+func testTLFJournalPauseShutdown(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkEnabled)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkEnabled)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -362,6 +366,10 @@ func TestTLFJournalPauseShutdown(t *testing.T) {
 	putOneMD(ctx, config, tlfJournal)
 
 	// Should still be able to shut down while paused.
+}
+
+func TestTLFJournalPauseShutdown(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalPauseShutdown)
 }
 
 type hangingBlockServer struct {
@@ -395,9 +403,9 @@ func putBlock(ctx context.Context,
 	require.NoError(t, err)
 }
 
-func TestTLFJournalBlockOpBasic(t *testing.T) {
+func testTLFJournalBlockOpBasic(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkPaused)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -408,9 +416,9 @@ func TestTLFJournalBlockOpBasic(t *testing.T) {
 	require.Equal(t, rev, MetadataRevisionUninitialized)
 }
 
-func TestTLFJournalBlockOpBusyPause(t *testing.T) {
+func testTLFJournalBlockOpBusyPause(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkEnabled)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkEnabled)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -429,9 +437,9 @@ func TestTLFJournalBlockOpBusyPause(t *testing.T) {
 	delegate.requireNextState(ctx, bwPaused)
 }
 
-func TestTLFJournalBlockOpBusyShutdown(t *testing.T) {
+func testTLFJournalBlockOpBusyShutdown(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkEnabled)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkEnabled)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -447,9 +455,13 @@ func TestTLFJournalBlockOpBusyShutdown(t *testing.T) {
 	// Should still be able to shut down while busy.
 }
 
-func TestTLFJournalSecondBlockOpWhileBusy(t *testing.T) {
+func TestTLFJournalBlockOpBusyShutdown(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalBlockOpBusyShutdown)
+}
+
+func testTLFJournalSecondBlockOpWhileBusy(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkEnabled)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkEnabled)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -464,6 +476,10 @@ func TestTLFJournalSecondBlockOpWhileBusy(t *testing.T) {
 
 	// Should still be able to put a second block while busy.
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4, 5})
+}
+
+func TestTLFJournalSecondBlockOpWhileBusy(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalSecondBlockOpWhileBusy)
 }
 
 type hangingMDServer struct {
@@ -488,9 +504,9 @@ func (md hangingMDServer) waitForPut(ctx context.Context, t *testing.T) {
 	}
 }
 
-func TestTLFJournalMDServerBusyPause(t *testing.T) {
+func testTLFJournalMDServerBusyPause(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkEnabled)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkEnabled)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -510,9 +526,13 @@ func TestTLFJournalMDServerBusyPause(t *testing.T) {
 	delegate.requireNextState(ctx, bwPaused)
 }
 
-func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
+func TestTLFJournalMDServerBusyPause(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalMDServerBusyPause)
+}
+
+func testTLFJournalMDServerBusyShutdown(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkEnabled)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkEnabled)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -529,9 +549,13 @@ func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
 	// Should still be able to shutdown while busy.
 }
 
-func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
+func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalMDServerBusyShutdown)
+}
+
+func testTLFJournalBlockOpWhileBusy(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkEnabled)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkEnabled)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -547,6 +571,10 @@ func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
 
 	// Should still be able to put a block while busy.
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+}
+
+func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalBlockOpWhileBusy)
 }
 
 type shimMDServer struct {
@@ -595,9 +623,9 @@ func requireJournalEntryCounts(t *testing.T, j *tlfJournal,
 
 // The tests below test tlfJournal's MD flushing behavior.
 
-func TestTLFJournalFlushMDBasic(t *testing.T) {
+func testTLFJournalFlushMDBasic(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkPaused)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -640,9 +668,13 @@ func TestTLFJournalFlushMDBasic(t *testing.T) {
 		rmdses, firstRevision, firstPrevRoot, Merged, NullBranchID)
 }
 
-func TestTLFJournalFlushMDConflict(t *testing.T) {
+func TestTLFJournalFlushMDBasic(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalFlushMDBasic)
+}
+
+func testTLFJournalFlushMDConflict(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkPaused)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -694,6 +726,10 @@ func TestTLFJournalFlushMDConflict(t *testing.T) {
 
 	// The journal won't flush anything while on a branch.
 	requireJournalEntryCounts(t, tlfJournal, uint64(mdCount), uint64(mdCount))
+}
+
+func TestTLFJournalFlushMDConflict(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalFlushMDConflict)
 }
 
 // orderedBlockServer and orderedMDServer appends onto their shared
@@ -748,9 +784,9 @@ func (s *orderedMDServer) Shutdown() {
 // orderings of blocks and MD ops when flushing, i.e. if a block op
 // was added to the block journal before an MD op was added to the MD
 // journal, then that block op will be flushed before that MD op.
-func TestTLFJournalFlushOrdering(t *testing.T) {
+func testTLFJournalFlushOrdering(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkPaused)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -829,12 +865,16 @@ func TestTLFJournalFlushOrdering(t *testing.T) {
 		expectedPuts2, puts)
 }
 
+func TestTLFJournalFlushOrdering(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalFlushOrdering)
+}
+
 // TestTLFJournalFlushInterleaving tests that we interleave block and
 // MD ops while respecting the relative orderings of blocks and MD ops
 // when flushing.
-func TestTLFJournalFlushInterleaving(t *testing.T) {
+func testTLFJournalFlushInterleaving(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkPaused)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -919,6 +959,10 @@ func TestTLFJournalFlushInterleaving(t *testing.T) {
 	require.NotZero(t, md2Slot)
 }
 
+func TestTLFJournalFlushInterleaving(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalFlushInterleaving)
+}
+
 type testImmediateBackOff struct {
 	numBackOffs int
 	resetCh     chan<- struct{}
@@ -933,9 +977,9 @@ func (t *testImmediateBackOff) Reset() {
 	close(t.resetCh)
 }
 
-func TestTLFJournalFlushRetry(t *testing.T) {
+func testTLFJournalFlushRetry(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkPaused)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -984,9 +1028,13 @@ func TestTLFJournalFlushRetry(t *testing.T) {
 	testMDJournalGCd(t, tlfJournal.mdJournal)
 }
 
-func TestTLFJournalResolveBranch(t *testing.T) {
+func TestTLFJournalFlushRetry(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalFlushRetry)
+}
+
+func testTLFJournalResolveBranch(t *testing.T) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
-		setupTLFJournalTest(t, defaultVer, TLFJournalBackgroundWorkPaused)
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
@@ -1049,4 +1097,8 @@ func TestTLFJournalResolveBranch(t *testing.T) {
 	// resolveBranch resumes background work.
 	delegate.requireNextState(ctx, bwIdle)
 	delegate.requireNextState(ctx, bwBusy)
+}
+
+func TestTLFJournalResolveBranch(t *testing.T) {
+	RunTestOverMetadataVers(t, testTLFJournalResolveBranch)
 }
