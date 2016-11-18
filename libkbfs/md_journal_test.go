@@ -208,7 +208,7 @@ func BenchmarkMDJournalBasicMDv3(b *testing.B) {
 
 var defaultVer = defaultClientMetadataVer
 
-func TestMDJournalBasic(t *testing.T) {
+func testMDJournalBasic(t *testing.T, ver MetadataVer) {
 	codec, crypto, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t, defaultVer)
 	defer teardownMDJournalTest(t, tempdir)
@@ -247,6 +247,14 @@ func TestMDJournalBasic(t *testing.T) {
 	for i := 0; i < mdCount; i++ {
 		require.Equal(t, mds[i].bareMd, ibrmds[i].BareRootMetadata)
 		require.Equal(t, mds[i].extra, ibrmds[i].extra)
+	}
+}
+
+func TestMDJournalBasic(t *testing.T) {
+	for _, ver := range testMetadataVers {
+		t.Run(ver.String(), func(t *testing.T) {
+			testMDJournalBasic(t, ver)
+		})
 	}
 }
 
