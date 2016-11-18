@@ -207,7 +207,7 @@ func BenchmarkMDJournalBasicMDv3(b *testing.B) {
 	}
 }
 
-var defaultVer = defaultClientMetadataVer
+// TODO: Test with all possible (ver, maxVer) combos
 
 func testMDJournalBasic(t *testing.T, ver MetadataVer) {
 	codec, crypto, id, signer, ekg, bsplit, tempdir, j :=
