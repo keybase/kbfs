@@ -603,12 +603,19 @@ func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 	// Branch conversion shouldn't leave old folders behind.
 	fileInfos, err := ioutil.ReadDir(j.dir)
 	require.NoError(t, err)
+	var names []string
 	for _, fileInfo := range fileInfos {
-		t.Logf("name = %s", fileInfo.Name())
+		names = append(names, fileInfo.Name())
 	}
-	require.Equal(t, 2, len(fileInfos))
-	require.Equal(t, "md_journal", fileInfos[0].Name())
-	require.Equal(t, "mds", fileInfos[1].Name())
+	var expectedNames []string
+	if ver < SegregatedKeyBundlesVer {
+		expectedNames = []string{"md_journal", "mds"}
+	} else {
+		expectedNames = []string{
+			"md_journal", "mds", "rkbv3", "wkbv3",
+		}
+	}
+	require.Equal(t, expectedNames, names)
 
 	ibrmds, err := j.getRange(
 		bid, 1, firstRevision+MetadataRevision(2*mdCount))
