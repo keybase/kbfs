@@ -50,11 +50,12 @@ func injectShimCrypto(config Config) {
 	config.SetCrypto(crypto)
 }
 
-func mdOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
+func mdOpsInit(t *testing.T, ver MetadataVer) (mockCtrl *gomock.Controller,
 	config *ConfigMock, ctx context.Context) {
 	ctr := NewSafeTestReporter(t)
 	mockCtrl = gomock.NewController(ctr)
 	config = NewConfigMock(mockCtrl, ctr)
+	config.SetMetadataVersion(ver)
 	mdops := NewMDOpsStandard(config)
 	config.SetMDOps(mdops)
 	config.SetCodec(kbfscodec.NewMsgpack())
@@ -174,7 +175,11 @@ func putMDForPrivate(config *ConfigMock, rmd *RootMetadata) {
 }
 
 func TestMDOpsGetForHandlePublicSuccess(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetForHandlePublicSuccess)
+}
+
+func testMDOpsGetForHandlePublicSuccess(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
@@ -200,7 +205,11 @@ func expectGetKeyBundles(ctx context.Context, config *ConfigMock, extra ExtraMet
 }
 
 func TestMDOpsGetForHandlePrivateSuccess(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetForHandlePrivateSuccess)
+}
+
+func testMDOpsGetForHandlePrivateSuccess(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
@@ -219,7 +228,11 @@ func TestMDOpsGetForHandlePrivateSuccess(t *testing.T) {
 }
 
 func TestMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetForUnresolvedHandlePublicSuccess)
+}
+
+func testMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
@@ -250,7 +263,11 @@ func TestMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T) {
 }
 
 func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetForUnresolvedMdHandlePublicSuccess)
+}
+
+func testMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	mdHandle1, err := ParseTlfHandle(ctx, config.KBPKI(),
@@ -306,7 +323,11 @@ func TestMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T) {
 }
 
 func TestMDOpsGetForUnresolvedHandlePublicFailure(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetForUnresolvedHandlePublicFailure)
+}
+
+func testMDOpsGetForUnresolvedHandlePublicFailure(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
@@ -329,7 +350,11 @@ func TestMDOpsGetForUnresolvedHandlePublicFailure(t *testing.T) {
 }
 
 func TestMDOpsGetForHandlePublicFailFindKey(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetForHandlePublicFailFindKey)
+}
+
+func testMDOpsGetForHandlePublicFailFindKey(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
@@ -356,7 +381,11 @@ func (c failVerifyCrypto) Verify(msg []byte, sigInfo kbfscrypto.SignatureInfo) e
 }
 
 func TestMDOpsGetForHandlePublicFailVerify(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetForHandlePublicFailVerify)
+}
+
+func testMDOpsGetForHandlePublicFailVerify(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
@@ -375,7 +404,11 @@ func TestMDOpsGetForHandlePublicFailVerify(t *testing.T) {
 }
 
 func TestMDOpsGetForHandleFailGet(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetForHandleFailGet)
+}
+
+func testMDOpsGetForHandleFailGet(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
@@ -391,7 +424,11 @@ func TestMDOpsGetForHandleFailGet(t *testing.T) {
 }
 
 func TestMDOpsGetForHandleFailHandleCheck(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetForHandleFailHandleCheck)
+}
+
+func testMDOpsGetForHandleFailHandleCheck(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
@@ -409,7 +446,11 @@ func TestMDOpsGetForHandleFailHandleCheck(t *testing.T) {
 }
 
 func TestMDOpsGetSuccess(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetSuccess)
+}
+
+func testMDOpsGetSuccess(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
@@ -429,7 +470,11 @@ func TestMDOpsGetSuccess(t *testing.T) {
 }
 
 func TestMDOpsGetBlankSigFailure(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetBlankSigFailure)
+}
+
+func testMDOpsGetBlankSigFailure(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
@@ -446,7 +491,11 @@ func TestMDOpsGetBlankSigFailure(t *testing.T) {
 }
 
 func TestMDOpsGetFailGet(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetFailGet)
+}
+
+func testMDOpsGetFailGet(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	id := tlf.FakeID(1, true)
@@ -461,7 +510,11 @@ func TestMDOpsGetFailGet(t *testing.T) {
 }
 
 func TestMDOpsGetFailIdCheck(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetFailIdCheck)
+}
+
+func testMDOpsGetFailIdCheck(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
@@ -513,8 +566,8 @@ func makeRMDSRange(t *testing.T, config Config,
 	return rmdses, extras
 }
 
-func testMDOpsGetRangeSuccess(t *testing.T, fromStart bool) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+func testMDOpsGetRangeSuccess(t *testing.T, ver MetadataVer, fromStart bool) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	rmdses, extras := makeRMDSRange(t, config, 100, 5, fakeMdID(1))
@@ -549,15 +602,23 @@ func testMDOpsGetRangeSuccess(t *testing.T, fromStart bool) {
 }
 
 func TestMDOpsGetRangeSuccess(t *testing.T) {
-	testMDOpsGetRangeSuccess(t, false)
+	runTestOverMetadataVers(t, func(t *testing.T, ver MetadataVer) {
+		testMDOpsGetRangeSuccess(t, ver, false)
+	})
 }
 
 func TestMDOpsGetRangeFromStartSuccess(t *testing.T) {
-	testMDOpsGetRangeSuccess(t, true)
+	runTestOverMetadataVers(t, func(t *testing.T, ver MetadataVer) {
+		testMDOpsGetRangeSuccess(t, ver, true)
+	})
 }
 
 func TestMDOpsGetRangeFailBadPrevRoot(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetRangeFailBadPrevRoot)
+}
+
+func testMDOpsGetRangeFailBadPrevRoot(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	rmdses, extras := makeRMDSRange(t, config, 100, 5, fakeMdID(1))
@@ -649,6 +710,10 @@ func validatePutPublicRMDS(
 }
 
 func TestMDOpsPutPublicSuccess(t *testing.T) {
+	runTestOverMetadataVers(t, testMDOpsPutPublicSuccess)
+}
+
+func testMDOpsPutPublicSuccess(t *testing.T, ver MetadataVer) {
 	config := MakeTestConfigOrBust(t, "alice", "bob")
 	defer CheckConfigAndShutdown(t, config)
 
@@ -672,7 +737,11 @@ func TestMDOpsPutPublicSuccess(t *testing.T) {
 }
 
 func TestMDOpsPutPrivateSuccess(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsPutPrivateSuccess)
+}
+
+func testMDOpsPutPrivateSuccess(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	config.SetCodec(kbfscodec.NewMsgpack())
@@ -700,7 +769,11 @@ func (c failEncodeCodec) Encode(obj interface{}) ([]byte, error) {
 }
 
 func TestMDOpsPutFailEncode(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsPutFailEncode)
+}
+
+func testMDOpsPutFailEncode(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	id := tlf.FakeID(1, false)
@@ -724,7 +797,11 @@ func TestMDOpsPutFailEncode(t *testing.T) {
 }
 
 func TestMDOpsGetRangeFailFinal(t *testing.T) {
-	mockCtrl, config, ctx := mdOpsInit(t)
+	runTestOverMetadataVers(t, testMDOpsGetRangeFailFinal)
+}
+
+func testMDOpsGetRangeFailFinal(t *testing.T, ver MetadataVer) {
+	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
 	rmdses, extras := makeRMDSRange(t, config, 100, 5, fakeMdID(1))
