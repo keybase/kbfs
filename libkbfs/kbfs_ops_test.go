@@ -294,7 +294,7 @@ func makeImmutableRMDForTest(t *testing.T, config Config, rmd *RootMetadata,
 	mdID MdID) ImmutableRootMetadata {
 	key, err := config.KBPKI().GetCurrentVerifyingKey(context.Background())
 	require.NoError(t, err)
-	return makeImmutableRootMetadataForTest(t, rmd, key, mdID)
+	return MakeImmutableRootMetadata(rmd, key, mdID, time.Now())
 }
 
 // injectNewRMD creates a new RMD and makes sure the existing ops for

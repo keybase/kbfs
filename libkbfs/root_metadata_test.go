@@ -102,20 +102,6 @@ func makeFakeTlfHandle(
 	}
 }
 
-func makeImmutableRootMetadataForTest(
-	t *testing.T, rmd *RootMetadata, key kbfscrypto.VerifyingKey,
-	mdID MdID) ImmutableRootMetadata {
-	brmdv2 := rmd.bareMd.(*BareRootMetadataV2)
-	vk := brmdv2.WriterMetadataSigInfo.VerifyingKey
-	require.True(t, vk == (kbfscrypto.VerifyingKey{}) || vk == key,
-		"Writer signature %s with unexpected non-nil verifying key != %s",
-		brmdv2.WriterMetadataSigInfo, key)
-	brmdv2.WriterMetadataSigInfo = kbfscrypto.SignatureInfo{
-		VerifyingKey: key,
-	}
-	return MakeImmutableRootMetadata(rmd, key, mdID, time.Now())
-}
-
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for
 // public TLFs.
 func TestRootMetadataGetTlfHandlePublic(t *testing.T) {

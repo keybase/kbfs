@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/kbfs/kbfscrypto"
@@ -121,7 +122,7 @@ func TestFBStatusAllFields(t *testing.T) {
 
 	key := kbfscrypto.MakeFakeVerifyingKeyOrBust("fake key")
 	fbsk.setRootMetadata(
-		makeImmutableRootMetadataForTest(t, rmd, key, fakeMdID(1)))
+		MakeImmutableRootMetadata(rmd, key, fakeMdID(1), time.Now()))
 	fbsk.addDirtyNode(n1)
 	fbsk.addDirtyNode(n2)
 
