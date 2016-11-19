@@ -208,6 +208,11 @@ func MakeLocalUsers(users []libkb.NormalizedUsername) []LocalUser {
 	return localUsers
 }
 
+func getDefaultBlockCacheCapacity() uint64 {
+	// TODO: use a platform-independent way to detect total RAM
+	return MaxBlockSizeBytesDefault * 1024
+}
+
 // NewConfigLocal constructs a new ConfigLocal with default components.
 func NewConfigLocal() *ConfigLocal {
 	config := &ConfigLocal{}
@@ -642,7 +647,7 @@ func (c *ConfigLocal) resetCachesWithoutShutdown() DirtyBlockCache {
 	c.kcache = NewKeyCacheStandard(defaultMDCacheCapacity)
 	c.kbcache = NewKeyBundleCacheStandard(defaultMDCacheCapacity * 2)
 	// Limit the block cache to 10K entries or 1024 blocks (currently 512MiB)
-	c.bcache = NewBlockCacheStandard(10000, MaxBlockSizeBytesDefault*1024)
+	c.bcache = NewBlockCacheStandard(10000, getDefaultBlockCacheCapacity())
 	oldDirtyBcache := c.dirtyBcache
 
 	// TODO: we should probably fail or re-schedule this reset if
