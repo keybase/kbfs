@@ -601,10 +601,15 @@ func (fbo *folderBlockOps) GetDir(
 	return fbo.getDirLocked(ctx, lState, kmd, dir, rtype)
 }
 
+type parentBlockAndChildIndex struct {
+	pblock     *FileBlock
+	childIndex int
+}
+
 func (fbo *folderBlockOps) getFileBlockAtOffsetLocked(ctx context.Context,
 	lState *lockState, kmd KeyMetadata, file path, topBlock *FileBlock,
 	off int64, rtype blockReqType) (
-	ptr BlockPointer, parentBlock *FileBlock, indexInParent int,
+	ptr BlockPointer, parentBlocks []parentBlockAndChildIndex,
 	block *FileBlock, nextBlockStartOff, startOff int64, err error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 
@@ -629,8 +634,8 @@ func (fbo *folderBlockOps) getFileBlockAtOffsetLocked(ctx context.Context,
 			}
 		}
 		nextPtr := block.IPtrs[nextIndex]
-		parentBlock = block
-		indexInParent = nextIndex
+		parentBlocks = append(parentBlocks,
+			parentBlockAndChildIndex{block, nextIndex})
 		startOff = nextPtr.Off
 		// there is more to read if we ever took a path through a
 		// ptr that wasn't the final ptr in its respective list
@@ -638,12 +643,14 @@ func (fbo *folderBlockOps) getFileBlockAtOffsetLocked(ctx context.Context,
 			nextBlockStartOff = block.IPtrs[nextIndex+1].Off
 		}
 		ptr = nextPtr.BlockPointer
-		if block, err = fbo.getFileBlockLocked(ctx, lState, kmd, ptr, file, rtype); err != nil {
-			return
+		block, err = fbo.getFileBlockLocked(
+			ctx, lState, kmd, ptr, file, rtype)
+		if err != nil {
+			return BlockPointer{}, nil, nil, 0, 0, err
 		}
 	}
 
-	return
+	return ptr, parentBlocks, block, nextBlockStartOff, startOff, nil
 }
 
 // updateWithDirtyEntriesLocked checks if the given DirBlock has any
@@ -828,49 +835,101 @@ func (fbo *folderBlockOps) cacheBlockIfNotYetDirtyLocked(
 	return nil
 }
 
+// newRightBlockLocked creates space for a new rightmost block,
+// creating parent blocks and a new level of indirection in the tree
+// as needed.  If there's no new level of indirection, it modifies the
+// blocks in `parentBlocks` to include the new right-most pointers.
+// If there is a new level of indirection, it returns the new top
+// block.
 func (fbo *folderBlockOps) newRightBlockLocked(
-	ctx context.Context, lState *lockState, ptr BlockPointer,
-	file path, pblock *FileBlock,
-	off int64, kmd KeyMetadata) error {
+	ctx context.Context, lState *lockState, file path,
+	parentBlocks []parentBlockAndChildIndex, off int64, kmd KeyMetadata) (
+	*FileBlock, error) {
 	fbo.blockLock.AssertLocked(lState)
 
-	newRID, err := fbo.config.Crypto().MakeTemporaryBlockID()
-	if err != nil {
-		return err
-	}
 	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
-		return err
-	}
-	rblock := &FileBlock{}
-
-	newPtr := BlockPointer{
-		ID:      newRID,
-		KeyGen:  kmd.LatestKeyGeneration(),
-		DataVer: DefaultNewBlockDataVersion(fbo.config, false),
-		BlockContext: BlockContext{
-			Creator:  uid,
-			RefNonce: ZeroBlockRefNonce,
-		},
+		return nil, err
 	}
 
-	pblock.IPtrs = append(pblock.IPtrs, IndirectFilePtr{
-		BlockInfo: BlockInfo{
-			BlockPointer: newPtr,
-			EncodedSize:  0,
-		},
-		Off: off,
-	})
+	// Find the lowest block that can accommodate a new right block.
+	bsplit := fbo.config.BlockSplitter()
+	crypto := fbo.config.Crypto()
+	lowestAncestorWithRoom := -1
+	for i := len(parentBlocks) - 1; i >= 0; i-- {
+		pb := parentBlocks[i]
+		if len(pb.pblock.IPtrs) < bsplit.MaxPtrsPerFile() {
+			lowestAncestorWithRoom = i
+			break
+		}
+	}
 
-	if err = fbo.cacheBlockIfNotYetDirtyLocked(
-		lState, newPtr, file, rblock); err != nil {
-		return err
+	var newTopBlock *FileBlock
+	if lowestAncestorWithRoom < 0 {
+		// Create a new level of indirection at the top.
+		newTopBlock, err = fbo.createIndirectBlockLocked(lState, kmd, file,
+			uid, DefaultNewBlockDataVersion(fbo.config, false))
+		if err != nil {
+			return err
+		}
+
+		parentBlocks = append([]parentBlockAndChildIndex{{newTopBlock, 0}},
+			parentBlocks...)
+		lowestAncestorWithRoom = 0
 	}
-	if err = fbo.cacheBlockIfNotYetDirtyLocked(
-		lState, ptr, file, pblock); err != nil {
-		return err
+
+	// Make a new right block for every parent, starting with the
+	// lowest ancestor with room.
+	pblock := parentBlocks[lowestAncestorWithRoom]
+	for i := lowestAncestorWithRoom; i < len(parentBlocks); i++ {
+		newRID, err := crypto.MakeTemporaryBlockID()
+		if err != nil {
+			return zeroPtr, err
+		}
+
+		newPtr := BlockPointer{
+			ID:      newRID,
+			KeyGen:  kmd.LatestKeyGeneration(),
+			DataVer: DefaultNewBlockDataVersion(fbo.config, false),
+			BlockContext: BlockContext{
+				Creator:  uid,
+				RefNonce: ZeroBlockRefNonce,
+			},
+		}
+
+		pblock.IPtrs = append(pblock.IPtrs, IndirectFilePtr{
+			BlockInfo: BlockInfo{
+				BlockPointer: newPtr,
+				EncodedSize:  0,
+			},
+			Off: off,
+		})
+
+		rblock := &FileBlock{}
+		if i != len(parentBlocks)-1 {
+			rblock.IsInd = true
+			pblock = rblock
+		}
+
+		if err = fbo.cacheBlockIfNotYetDirtyLocked(
+			lState, newPtr, file, rblock); err != nil {
+			return nil, err
+		}
 	}
-	return nil
+
+	// All parents up to and including the lowest ancestor with room
+	// will have to change, so mark them as dirty
+	ptr := file.tailPointer()
+	for i := 0; i <= lowestAncestorWithRoom; i++ {
+		pb := parentBlocks[i]
+		if err = fbo.cacheBlockIfNotYetDirtyLocked(
+			lState, ptr, file, pb.pblock); err != nil {
+			return nil, err
+		}
+		ptr = pb.pblock.IPtrs[pb.childIndex].BlockPointer
+	}
+
+	return newTopBlock, nil
 }
 
 func (fbo *folderBlockOps) getOrCreateSyncInfoLocked(
@@ -1089,8 +1148,9 @@ func (fbo *folderBlockOps) Read(
 	for nRead < n {
 		nextByte := nRead + off
 		toRead := n - nRead
-		_, _, _, block, nextBlockOff, startOff, err := fbo.getFileBlockAtOffsetLocked(
-			ctx, lState, kmd, file, fblock, nextByte, blockRead)
+		_, _, block, nextBlockOff, startOff, err :=
+			fbo.getFileBlockAtOffsetLocked(
+				ctx, lState, kmd, file, fblock, nextByte, blockRead)
 		if err != nil {
 			// If we hit a timeout while reading then return the bytes already read
 			// and no error. If the upstream tries to do something blocking they
@@ -1264,6 +1324,23 @@ func (fbo *folderBlockOps) createIndirectBlockLocked(lState *lockState,
 	return fblock, nil
 }
 
+func (fbo *folderBlockOps) shiftBlocksToFillHoleLocked(
+	ctx context.Context, lState *lockState, kmd KeyMetadata, file path,
+	newTopBlock *FileBlock, parentBlocks []parentBlockAndChildIndex,
+	newHoleStartOff int64) (newDirtyPtrs []BlockPointer, err error) {
+	fbo.blockLock.AssertLocked(lState)
+	// Walk down the right side of the tree to find the new rightmost
+	// indirect pointer, the offset of which should match
+	// `newHoleStartOff`.  Keep swapping it with its sibling on the
+	// left until its offset would be lower than that child's offset.
+	// If there are no children to the left, continue on with the
+	// children in the leftmost cousin block.  If we swap a child
+	// between cousin blocks, we must update the offset in the right
+	// cousin's parent block.  If *that* updated pointer is the
+	// leftmost pointer in its parent block, update that one as well,
+	// up to the root.
+}
+
 // Returns the set of blocks dirtied during this write that might need
 // to be cleaned up if the write is deferred.
 func (fbo *folderBlockOps) writeDataLocked(
@@ -1328,10 +1405,9 @@ func (fbo *folderBlockOps) writeDataLocked(
 		return WriteRange{}, nil, 0, err
 	}
 	for nCopied < n {
-		ptr, parentBlock, indexInParent, block, nextBlockOff, startOff, err :=
+		ptr, parentBlocks, block, nextBlockOff, startOff, err :=
 			fbo.getFileBlockAtOffsetLocked(
-				ctx, lState, kmd, file, fblock,
-				off+nCopied, blockWrite)
+				ctx, lState, kmd, file, fblock, off+nCopied, blockWrite)
 		if err != nil {
 			return WriteRange{}, nil, newlyDirtiedChildBytes, err
 		}
@@ -1351,38 +1427,35 @@ func (fbo *folderBlockOps) writeDataLocked(
 		nCopied += bsplit.CopyUntilSplit(block, nextBlockOff < 0, data[nCopied:max],
 			off+nCopied-startOff)
 
-		// TODO: support multiple levels of indirection.  Right now the
-		// code only does one but it should be straightforward to
-		// generalize, just annoying
-
-		// if we need another block but there are no more, then make one
-		switchToIndirect := false
-		if nCopied < n && nextBlockOff < 0 {
-			// If the block doesn't already have a parent block, make one.
-			if ptr == file.tailPointer() {
-				fblock, err = fbo.createIndirectBlockLocked(lState, kmd, file,
-					uid, DefaultNewBlockDataVersion(fbo.config, false))
+		// If we need another block but there are no more, then make one.
+		if nCopied < n {
+			var newTopBlock *FileBlock
+			needExtendFile := nextBlockOff < 0
+			needFillHole := off+nCopied < nextBlockOff
+			if needExtendFile || needFillHole {
+				// Make a new right block and update the parent's indirect
+				// block list, adding a level of indirection if needed.
+				newTopBlock, err = fbo.newRightBlockLocked(
+					ctx, lState, file, parentBlocks,
+					startOff+int64(len(block.Contents)), kmd)
 				if err != nil {
 					return WriteRange{}, nil, newlyDirtiedChildBytes, err
 				}
-				ptr = fblock.IPtrs[0].BlockPointer
-				// The whole block needs to be re-uploaded as an
-				// indirect block, so track those dirty bytes and
-				// cache the block as dirty.
-				switchToIndirect = true
+				if newTopBlock != nil {
+					// A new level of indirection.
+					fblock = newTopBlock
+				}
 			}
+			// If we're filling a hole, swap the new right block into
+			// the hole and shift everything else over.
+			if needFillHole {
 
-			// Make a new right block and update the parent's
-			// indirect block list
-			err = fbo.newRightBlockLocked(ctx, lState, file.tailPointer(),
-				file, fblock, startOff+int64(len(block.Contents)), kmd)
-			if err != nil {
-				return WriteRange{}, nil, newlyDirtiedChildBytes, err
 			}
 		} else if nCopied < n && off+nCopied < nextBlockOff {
 			// We need a new block to be inserted here
-			err = fbo.newRightBlockLocked(ctx, lState, file.tailPointer(),
-				file, fblock, startOff+int64(len(block.Contents)), kmd)
+			newTopBlock, err = fbo.newRightBlockLocked(
+				ctx, lState, file, parentBlocks,
+				startOff+int64(len(block.Contents)), kmd)
 			if err != nil {
 				return WriteRange{}, nil, newlyDirtiedChildBytes, err
 			}
@@ -1425,11 +1498,12 @@ func (fbo *folderBlockOps) writeDataLocked(
 			newlyDirtiedChildBytes -= int64(oldLen)
 		}
 
-		if parentBlock != nil {
-			// remember how many bytes it was
+		for i, pb := range parentBlocks {
+			// Remember how many bytes it was.
 			si.unrefs = append(si.unrefs,
-				parentBlock.IPtrs[indexInParent].BlockInfo)
-			parentBlock.IPtrs[indexInParent].EncodedSize = 0
+				pb.pblock.IPtrs[pb.childIndex].BlockInfo)
+			pb.pblock.IPtrs[pb.childIndex].EncodedSize = 0
+			// XXX: add to dirtyPtrs?
 		}
 
 		// keep the old block ID while it's dirty
