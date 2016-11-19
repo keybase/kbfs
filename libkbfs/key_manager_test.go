@@ -798,6 +798,8 @@ func testKeyManagerRekeyAddAndRevokeDevice(t *testing.T, ver MetadataVer) {
 	clock := newTestClockNow()
 	config1.SetClock(clock)
 
+	config1.SetMetadataVersion(ver)
+
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
@@ -1014,6 +1016,8 @@ func testKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T, ver MetadataVer) 
 	config1, _, ctx, cancel := kbfsOpsConcurInit(t, u1, u2, u3)
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
+	config1.SetMetadataVersion(ver)
+
 	// Revoke user 3's device for now, to test the "other" rekey error.
 	_, uid3, err := config1.KBPKI().Resolve(ctx, u3.String())
 	if err != nil {
@@ -1110,6 +1114,8 @@ func testKeyManagerSelfRekeyAcrossDevices(t *testing.T, ver MetadataVer) {
 	config1, _, ctx, cancel := kbfsOpsConcurInit(t, u1, u2)
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
+	config1.SetMetadataVersion(ver)
+
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
@@ -1196,6 +1202,8 @@ func testKeyManagerReaderRekey(t *testing.T, ver MetadataVer) {
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 	_, uid1, err := config1.KBPKI().GetCurrentUserInfo(context.Background())
 
+	config1.SetMetadataVersion(ver)
+
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
@@ -1281,6 +1289,8 @@ func testKeyManagerReaderRekeyAndRevoke(t *testing.T, ver MetadataVer) {
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 	clock := newTestClockNow()
 	config1.SetClock(clock)
+
+	config1.SetMetadataVersion(ver)
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
@@ -1377,6 +1387,8 @@ func testKeyManagerRekeyBit(t *testing.T, ver MetadataVer) {
 			kbfsConcurTestShutdown(t, config1, ctx, cancel)
 		}
 	}()
+
+	config1.SetMetadataVersion(ver)
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
@@ -1548,6 +1560,8 @@ func testKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T, ver Metadat
 	clock := newTestClockNow()
 	config1.SetClock(clock)
 
+	config1.SetMetadataVersion(ver)
+
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
@@ -1692,6 +1706,8 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 	config1, _, ctx, cancel := kbfsOpsConcurInit(t, u1, u2)
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
+	config1.SetMetadataVersion(ver)
+
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
@@ -1813,6 +1829,8 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 	clock := newTestClockNow()
 	config1.SetClock(clock)
+
+	config1.SetMetadataVersion(ver)
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)
@@ -1937,6 +1955,8 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx, cancel := kbfsOpsConcurInit(t, u1, u2)
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
+
+	config1.SetMetadataVersion(ver)
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(t, config2)

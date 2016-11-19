@@ -206,6 +206,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 // Config, regardless of the journal status in `config`.
 func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *ConfigLocal {
 	c := newConfigForTest(config.loggerFn)
+	c.SetMetadataVersion(config.MetadataVersion())
 
 	kbfsOps := NewKBFSOpsStandard(c)
 	c.SetKBFSOps(kbfsOps)
