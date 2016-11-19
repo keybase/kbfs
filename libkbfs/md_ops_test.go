@@ -98,7 +98,7 @@ func newRMDS(t *testing.T, config Config, h *TlfHandle) (
 	*RootMetadataSigned, ExtraMetadata) {
 	id := tlf.FakeID(1, h.IsPublic())
 
-	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, id, h)
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
 	addFakeRMDData(t, config.Codec(), config.Crypto(), rmd, h)
@@ -485,7 +485,7 @@ func makeRMDSRange(t *testing.T, config Config,
 	id := tlf.FakeID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
 	for i := 0; i < count; i++ {
-		rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, id, h)
+		rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -679,7 +679,7 @@ func TestMDOpsPutPrivateSuccess(t *testing.T) {
 
 	id := tlf.FakeID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
-	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, id, h)
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 	addFakeRMDData(t, config.Codec(), config.Crypto(), rmd, h)
 
