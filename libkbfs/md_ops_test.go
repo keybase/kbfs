@@ -733,7 +733,7 @@ func (s *fakeMDServerPut) getLastRmds() *RootMetadataSigned {
 func (s *fakeMDServerPut) Shutdown() {}
 
 func validatePutPublicRMDS(
-	ctx context.Context, t *testing.T, config Config,
+	ctx context.Context, t *testing.T, ver MetadataVer, config Config,
 	inputRmd BareRootMetadata, rmds *RootMetadataSigned) {
 	// TODO: Handle private RMDS, too.
 
@@ -760,18 +760,19 @@ func validatePutPublicRMDS(
 	err = config.Crypto().Verify(buf, rmds.SigInfo)
 	require.NoError(t, err)
 
-	// MDv3 TODO: This should become a BareRootMetadataV3.
-	var expectedRmd BareRootMetadataV2
-	err = kbfscodec.Update(config.Codec(), &expectedRmd, inputRmd)
+	expectedRmd, err := inputRmd.DeepCopy(config.Codec())
 	require.NoError(t, err)
 
 	// Overwrite written fields.
 	expectedRmd.SetLastModifyingWriter(rmds.MD.LastModifyingWriter())
 	expectedRmd.SetLastModifyingUser(rmds.MD.GetLastModifyingUser())
-	expectedRmd.WriterMetadataSigInfo = rmds.MD.(*BareRootMetadataV2).WriterMetadataSigInfo
+	if ver < SegregatedKeyBundlesVer {
+		expectedRmd.(*BareRootMetadataV2).WriterMetadataSigInfo =
+			rmds.MD.(*BareRootMetadataV2).WriterMetadataSigInfo
+	}
 	expectedRmd.SetSerializedPrivateMetadata(rmds.MD.GetSerializedPrivateMetadata())
 
-	require.Equal(t, &expectedRmd, rmds.MD)
+	require.Equal(t, expectedRmd, rmds.MD)
 }
 
 func TestMDOpsPutPublicSuccess(t *testing.T) {
@@ -780,6 +781,7 @@ func TestMDOpsPutPublicSuccess(t *testing.T) {
 
 func testMDOpsPutPublicSuccess(t *testing.T, ver MetadataVer) {
 	config := MakeTestConfigOrBust(t, "alice", "bob")
+	config.SetMetadataVersion(ver)
 	defer CheckConfigAndShutdown(t, config)
 
 	config.MDServer().Shutdown()
@@ -794,11 +796,8 @@ func testMDOpsPutPublicSuccess(t *testing.T, ver MetadataVer) {
 	rmd.data = makeFakePrivateMetadataFuture(t).toCurrent()
 	rmd.tlfHandle = h
 
-	ctx := context.Background()
-	_, err = config.MDOps().Put(ctx, rmd)
-
 	rmds := mdServer.getLastRmds()
-	validatePutPublicRMDS(ctx, t, config, rmd.bareMd, rmds)
+	validatePutPublicRMDS(ctx, t, ver, config, rmd.bareMd, rmds)
 }
 
 func TestMDOpsPutPrivateSuccess(t *testing.T) {
