@@ -572,6 +572,53 @@ func makeRMDSRange(t *testing.T, config Config,
 	return rmdses, extras
 }
 
+type keyBundleMDServer struct {
+	MDServer
+	nextGetRange []*RootMetadataSigned
+
+	lock sync.Mutex
+	wkbs map[TLFWriterKeyBundleID]*TLFWriterKeyBundleV3
+	rkbs map[TLFReaderKeyBundleID]*TLFReaderKeyBundleV3
+}
+
+func makeKeyBundleMDServer(mdServer MDServer) *keyBundleMDServer {
+	return &keyBundleMDServer{
+		MDServer: mdServer,
+		wkbs:     make(map[TLFWriterKeyBundleID]*TLFWriterKeyBundleV3),
+		rkbs:     make(map[TLFReaderKeyBundleID]*TLFReaderKeyBundleV3),
+	}
+}
+
+func (mds *keyBundleMDServer) putWKB(
+	id TLFWriterKeyBundleID, wkb *TLFWriterKeyBundleV3) {
+	mds.lock.Lock()
+	defer mds.lock.Unlock()
+	mds.wkbs[id] = wkb
+}
+
+func (mds *keyBundleMDServer) putRKB(
+	id TLFReaderKeyBundleID, rkb *TLFReaderKeyBundleV3) {
+	mds.lock.Lock()
+	defer mds.lock.Unlock()
+	mds.rkbs[id] = rkb
+}
+
+func (mds *keyBundleMDServer) GetRange(
+	ctx context.Context, id tlf.ID, bid BranchID, mStatus MergeStatus,
+	start, stop MetadataRevision) ([]*RootMetadataSigned, error) {
+	rmdses := mds.nextGetRange
+	mds.nextGetRange = nil
+	return rmdses, nil
+}
+
+func (mds *keyBundleMDServer) GetKeyBundles(ctx context.Context, tlfID tlf.ID,
+	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
+	mds.lock.Lock()
+	defer mds.lock.Unlock()
+	return mds.wkbs[wkbID], mds.rkbs[rkbID], nil
+}
+
 func testMDOpsGetRangeSuccess(t *testing.T, ver MetadataVer, fromStart bool) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
@@ -588,10 +635,15 @@ func testMDOpsGetRangeSuccess(t *testing.T, ver MetadataVer, fromStart bool) {
 		verifyMDForPrivate(config, rmds)
 	}
 
-	config.mockMdserv.EXPECT().GetRange(ctx, rmdses[0].MD.TlfID(), NullBranchID, Merged, start,
-		stop).Return(rmdses, nil)
-	for _, e := range extras {
-		expectGetKeyBundles(ctx, config, e)
+	mdServer := makeKeyBundleMDServer(config.MDServer())
+	config.SetMDServer(mdServer)
+
+	mdServer.nextGetRange = rmdses
+	for i, e := range extras {
+		if extraV3, ok := e.(*ExtraMetadataV3); ok {
+			mdServer.putWKB(rmdses[i].MD.GetTLFWriterKeyBundleID(), extraV3.wkb)
+			mdServer.putRKB(rmdses[i].MD.GetTLFReaderKeyBundleID(), extraV3.rkb)
+		}
 	}
 
 	// Do this first since rmdses is consumed.
