@@ -603,6 +603,14 @@ func (mds *keyBundleMDServer) putRKB(
 	mds.rkbs[id] = rkb
 }
 
+func (mds *keyBundleMDServer) processRMDSes(
+	rmds *RootMetadataSigned, extra ExtraMetadata) {
+	if extraV3, ok := extra.(*ExtraMetadataV3); ok {
+		mds.putWKB(rmds.MD.GetTLFWriterKeyBundleID(), extraV3.wkb)
+		mds.putRKB(rmds.MD.GetTLFReaderKeyBundleID(), extraV3.rkb)
+	}
+}
+
 func (mds *keyBundleMDServer) GetRange(
 	ctx context.Context, id tlf.ID, bid BranchID, mStatus MergeStatus,
 	start, stop MetadataRevision) ([]*RootMetadataSigned, error) {
@@ -640,10 +648,7 @@ func testMDOpsGetRangeSuccess(t *testing.T, ver MetadataVer, fromStart bool) {
 
 	mdServer.nextGetRange = rmdses
 	for i, e := range extras {
-		if extraV3, ok := e.(*ExtraMetadataV3); ok {
-			mdServer.putWKB(rmdses[i].MD.GetTLFWriterKeyBundleID(), extraV3.wkb)
-			mdServer.putRKB(rmdses[i].MD.GetTLFReaderKeyBundleID(), extraV3.rkb)
-		}
+		mdServer.processRMDSes(rmdses[i], e)
 	}
 
 	// Do this first since rmdses is consumed.
@@ -692,10 +697,12 @@ func testMDOpsGetRangeFailBadPrevRoot(t *testing.T, ver MetadataVer) {
 		verifyMDForPrivateHelper(config, rmds, 0, 1)
 	}
 
-	config.mockMdserv.EXPECT().GetRange(ctx, rmdses[0].MD.TlfID(), NullBranchID, Merged, start,
-		stop).Return(rmdses, nil)
-	for _, e := range extras {
-		expectGetKeyBundles(ctx, config, e)
+	mdServer := makeKeyBundleMDServer(config.MDServer())
+	config.SetMDServer(mdServer)
+
+	mdServer.nextGetRange = rmdses
+	for i, e := range extras {
+		mdServer.processRMDSes(rmdses[i], e)
 	}
 
 	_, err := config.MDOps().GetRange(ctx, rmdses[0].MD.TlfID(), start, stop)
@@ -875,11 +882,12 @@ func testMDOpsGetRangeFailFinal(t *testing.T, ver MetadataVer) {
 		verifyMDForPrivateHelper(config, rmds, 0, 1)
 	}
 
-	config.mockMdserv.EXPECT().GetRange(
-		ctx, rmdses[0].MD.TlfID(), NullBranchID, Merged, start, stop).Return(
-		rmdses, nil)
-	for _, e := range extras {
-		expectGetKeyBundles(ctx, config, e)
+	mdServer := makeKeyBundleMDServer(config.MDServer())
+	config.SetMDServer(mdServer)
+
+	mdServer.nextGetRange = rmdses
+	for i, e := range extras {
+		mdServer.processRMDSes(rmdses[i], e)
 	}
 	_, err := config.MDOps().GetRange(ctx, rmdses[0].MD.TlfID(), start, stop)
 	require.IsType(t, MDMismatchError{}, err)
