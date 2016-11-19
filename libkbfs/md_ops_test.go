@@ -35,6 +35,11 @@ func (c shimCrypto) Sign(
 	return c.key.Sign(data), nil
 }
 
+func (c shimCrypto) SignForKBFS(
+	ctx context.Context, data []byte) (kbfscrypto.SignatureInfo, error) {
+	return c.key.SignForKBFS(data)
+}
+
 func (c shimCrypto) Verify(
 	msg []byte, sigInfo kbfscrypto.SignatureInfo) (err error) {
 	return kbfscrypto.Verify(msg, sigInfo)
