@@ -796,6 +796,9 @@ func testMDOpsPutPublicSuccess(t *testing.T, ver MetadataVer) {
 	rmd.data = makeFakePrivateMetadataFuture(t).toCurrent()
 	rmd.tlfHandle = h
 
+	ctx := context.Background()
+	_, err = config.MDOps().Put(ctx, rmd)
+
 	rmds := mdServer.getLastRmds()
 	validatePutPublicRMDS(ctx, t, ver, config, rmd.bareMd, rmds)
 }
