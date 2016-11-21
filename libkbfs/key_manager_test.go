@@ -324,7 +324,11 @@ func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	tlfCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	tlfCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
 	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), kbfscrypto.TLFCryptKey{}, tlfCryptKey1)
-	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), tlfCryptKey1, tlfCryptKey2)
+	var prevKey kbfscrypto.TLFCryptKey
+	if rmd.StoresHistoricTLFCryptKeys() {
+		prevKey = tlfCryptKey1
+	}
+	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), prevKey, tlfCryptKey2)
 
 	keyGen := rmd.LatestKeyGeneration() - 1
 	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
