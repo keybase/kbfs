@@ -876,8 +876,7 @@ type cryptoPure interface {
 
 	// EncryptTLFCryptKeys encrypts an array of historic TLFCryptKeys.
 	EncryptTLFCryptKeys(oldKeys []kbfscrypto.TLFCryptKey,
-		key kbfscrypto.TLFCryptKey) (
-		EncryptedTLFCryptKeys, error)
+		key kbfscrypto.TLFCryptKey) (EncryptedTLFCryptKeys, error)
 
 	// DecryptTLFCryptKeys decrypts an array of historic TLFCryptKeys.
 	DecryptTLFCryptKeys(
