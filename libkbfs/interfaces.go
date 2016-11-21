@@ -552,8 +552,8 @@ type KeyManager interface {
 	// readers and writers.  If there are any new devices, it
 	// updates all existing key generations to include the new
 	// devices.  If there are devices that have been removed, it
-	// creates a new epoch of keys for the TLF.  If no devices
-	// have changed, or if there was an error, it returns false.
+	// creates a new epoch of keys for the TLF.  If there was an
+	// error, or the RootMetadata wasn't changed, it returns false.
 	// Otherwise, it returns true. If a new key generation is
 	// added the second return value points to this new key. This
 	// is to allow for caching of the TLF crypt key only after a
