@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	metrics "github.com/rcrowley/go-metrics"
+	"github.com/shirou/gopsutil/mem"
 	"golang.org/x/net/context"
 )
 
@@ -208,8 +209,12 @@ func MakeLocalUsers(users []libkb.NormalizedUsername) []LocalUser {
 	return localUsers
 }
 
-func getDefaultBlockCacheCapacity() uint64 {
-	// TODO: use a platform-independent way to detect total RAM
+func getDefaultCleanBlockCacheCapacity() uint64 {
+	vmstat, err := mem.VirtualMemory()
+	if err == nil {
+		// By default,  we try to cap at 1/8 of available memory
+		return vmstat.Total / 8
+	}
 	return MaxBlockSizeBytesDefault * 1024
 }
 
@@ -647,7 +652,7 @@ func (c *ConfigLocal) resetCachesWithoutShutdown() DirtyBlockCache {
 	c.kcache = NewKeyCacheStandard(defaultMDCacheCapacity)
 	c.kbcache = NewKeyBundleCacheStandard(defaultMDCacheCapacity * 2)
 	// Limit the block cache to 10K entries or 1024 blocks (currently 512MiB)
-	c.bcache = NewBlockCacheStandard(10000, getDefaultBlockCacheCapacity())
+	c.bcache = NewBlockCacheStandard(10000, getDefaultCleanBlockCacheCapacity())
 	oldDirtyBcache := c.dirtyBcache
 
 	// TODO: we should probably fail or re-schedule this reset if
