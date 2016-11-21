@@ -641,11 +641,12 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 	// Now resolve which gets rid of the unresolved writers, but
 	// doesn't otherwise change the handle since bob is already in it.
 	oldKeyGen = rmd.LatestKeyGeneration()
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(
 		kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
 		kbfscrypto.TLFEphemeralPublicKey{},
 		kbfscrypto.TLFEphemeralPrivateKey{},
-		kbfscrypto.TLFCryptKey{}, nil)
+		tlfCryptKey, nil)
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), gomock.Any()).
