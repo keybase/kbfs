@@ -923,6 +923,11 @@ type MDOps interface {
 	// merge status, if the logged-in user has read permission on
 	// the folder.  It creates the folder if one doesn't exist
 	// yet, and the logged-in user has permission to do so.
+	//
+	// If there is no returned error, then the returned ID must
+	// always be non-null. An empty ImmutableRootMetadata may be
+	// returned, but if it is non-empty, then its ID must match
+	// the returned ID.
 	GetForHandle(
 		ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (
 		tlf.ID, ImmutableRootMetadata, error)
@@ -1053,6 +1058,11 @@ type MDServer interface {
 	// the logged-in user has read permission on the folder.  It
 	// creates the folder if one doesn't exist yet, and the logged-in
 	// user has permission to do so.
+	//
+	// If there is no returned error, then the returned ID must
+	// always be non-null. A nil *RootMetadataSigned may be
+	// returned, but if it is non-nil, then its ID must match the
+	// returned ID.
 	GetForHandle(ctx context.Context, handle tlf.Handle,
 		mStatus MergeStatus) (tlf.ID, *RootMetadataSigned, error)
 
@@ -1225,21 +1235,14 @@ type BlockServer interface {
 	GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error)
 }
 
-type blockRefLocalStatus int
-
-const (
-	liveBlockRef     blockRefLocalStatus = 1
-	archivedBlockRef blockRefLocalStatus = 2
-)
-
 // blockServerLocal is the interface for BlockServer implementations
 // that store data locally.
 type blockServerLocal interface {
 	BlockServer
-	// getAll returns all the known block references, and should only be
-	// used during testing.
-	getAll(ctx context.Context, tlfID tlf.ID) (
-		map[BlockID]map[BlockRefNonce]blockRefLocalStatus, error)
+	// getAllRefsForTest returns all the known block references
+	// for the given TLF, and should only be used during testing.
+	getAllRefsForTest(ctx context.Context, tlfID tlf.ID) (
+		map[BlockID]blockRefMap, error)
 }
 
 // BlockSplitter decides when a file or directory block needs to be split

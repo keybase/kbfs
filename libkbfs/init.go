@@ -312,6 +312,8 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config.BlockCache().SetCleanBytesCapacity(params.CleanBlockCacheCapacity)
 
+	config.SetBlockOps(NewBlockOpsStandard(config, defaultBlockRetrievalWorkerQueueSize))
+
 	bsplitter, err := NewBlockSplitterSimple(MaxBlockSizeBytesDefault, 8*1024,
 		config.Codec())
 	if err != nil {

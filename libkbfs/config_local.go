@@ -218,7 +218,9 @@ func getDefaultCleanBlockCacheCapacity() uint64 {
 	return MaxBlockSizeBytesDefault * 1024
 }
 
-// NewConfigLocal constructs a new ConfigLocal with default components.
+// NewConfigLocal constructs a new ConfigLocal with some default
+// components that don't depend on a logger. The caller will have to
+// fill in the rest.
 func NewConfigLocal() *ConfigLocal {
 	config := &ConfigLocal{}
 	config.SetClock(wallClock{})
@@ -226,7 +228,6 @@ func NewConfigLocal() *ConfigLocal {
 	config.SetConflictRenamer(WriterDeviceDateConflictRenamer{config})
 	config.ResetCaches()
 	config.SetCodec(kbfscodec.NewMsgpack())
-	config.SetBlockOps(NewBlockOpsStandard(config))
 	config.SetKeyOps(&KeyOpsStandard{config})
 	config.SetRekeyQueue(NewRekeyQueueStandard(config))
 
@@ -721,28 +722,6 @@ func (c *ConfigLocal) SetLoggerMaker(
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.loggerFn = loggerFn
-}
-
-// newConfigLocalWithCryptoForSigning initializes a local crypto
-// config w/a crypto interface, using the given signing key, that can
-// be used for non-PKI crypto.
-func newConfigLocalWithCryptoForSigning(
-	signingKey kbfscrypto.SigningKey) *ConfigLocal {
-	config := NewConfigLocal()
-	config.SetLoggerMaker(func(m string) logger.Logger {
-		return logger.NewNull()
-	})
-	cryptPrivateKey := MakeLocalUserCryptPrivateKeyOrBust("nobody")
-	crypto := NewCryptoLocal(config.Codec(), signingKey, cryptPrivateKey)
-	config.SetCrypto(crypto)
-	return config
-}
-
-// NewConfigLocalWithCrypto initializes a local crypto config w/a
-// crypto interface that can be used for non-PKI crypto.
-func NewConfigLocalWithCrypto() *ConfigLocal {
-	signingKey := MakeLocalUserSigningKeyOrBust("nobody")
-	return newConfigLocalWithCryptoForSigning(signingKey)
 }
 
 // MetricsRegistry implements the Config interface for ConfigLocal.
