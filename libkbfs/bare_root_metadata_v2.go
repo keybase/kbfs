@@ -1163,19 +1163,15 @@ func (md *BareRootMetadataV2) GetTLFReaderKeyBundleID() TLFReaderKeyBundleID {
 // FinalizeRekey implements the MutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) FinalizeRekey(
 	_ cryptoPure, prevKey, currKey kbfscrypto.TLFCryptKey, _ ExtraMetadata) error {
-	// Just sanity-check the passed-in keys.
+	// Just do some sanity checks.
 	if md.LatestKeyGeneration() < FirstValidKeyGen {
 		return fmt.Errorf("Invalid key generation %d", md.LatestKeyGeneration())
 	}
-	if prevKey == (kbfscrypto.TLFCryptKey{}) {
-		if md.LatestKeyGeneration() > FirstValidKeyGen {
-			return fmt.Errorf("Previous key nil for non-first key generation %d",
-				md.LatestKeyGeneration())
-		}
-	} else {
-		if md.LatestKeyGeneration() == FirstValidKeyGen {
-			return errors.New("Previous key non-nil for first key generation")
-		}
+	if prevKey != (kbfscrypto.TLFCryptKey{}) {
+		return errors.New("prevKey unexpectedly non-empty")
+	}
+	if currKey == (kbfscrypto.TLFCryptKey{}) {
+		return errors.New("currKey unexpectedly empty")
 	}
 	return nil
 }

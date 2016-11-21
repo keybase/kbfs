@@ -733,34 +733,8 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 	}()
 
-	if !isWriter {
-		if len(newReaderUsers) > 0 || addNewWriterDevice || incKeyGen {
-			// If we're a reader but we haven't completed all the work, return
-			// RekeyIncompleteError.
-			return addNewReaderDeviceForSelf, nil, RekeyIncompleteError{}
-		}
-		// Otherwise, there's nothing left to do!
-		if err := md.finalizeRekey(km.config.Crypto(),
-			kbfscrypto.TLFCryptKey{}, tlfCryptKey); err != nil {
-			return false, nil, err
-		}
-		return true, nil, nil
-	} else if !incKeyGen {
-		// we're done!
-		if err := md.finalizeRekey(km.config.Crypto(),
-			kbfscrypto.TLFCryptKey{}, tlfCryptKey); err != nil {
-			return false, nil, err
-		}
-		return true, nil, nil
-	}
-
-	// Send rekey start notification once we're sure that this device
-	// can perform the rekey.
-	km.config.Reporter().Notify(ctx, rekeyNotification(ctx, km.config, resolvedHandle,
-		false))
-
-	// Save the previous TLF crypt key. It's symmetrically encrypted and appended to a list
-	// for MDv3 metadata.
+	// Get the previous TLF crypt key. It's symmetrically
+	// encrypted and appended to a list for MDv3 metadata.
 	var prevTlfCryptKey kbfscrypto.TLFCryptKey
 	if currKeyGen >= FirstValidKeyGen && md.StoresHistoricTLFCryptKeys() {
 		flags := getTLFCryptKeyAnyDevice
@@ -772,6 +746,32 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			return false, nil, err
 		}
 	}
+
+	if !isWriter {
+		if len(newReaderUsers) > 0 || addNewWriterDevice || incKeyGen {
+			// If we're a reader but we haven't completed all the work, return
+			// RekeyIncompleteError.
+			return addNewReaderDeviceForSelf, nil, RekeyIncompleteError{}
+		}
+		// Otherwise, there's nothing left to do!
+		if err := md.finalizeRekey(km.config.Crypto(),
+			prevTlfCryptKey, tlfCryptKey); err != nil {
+			return false, nil, err
+		}
+		return true, nil, nil
+	} else if !incKeyGen {
+		// we're done!
+		if err := md.finalizeRekey(km.config.Crypto(),
+			prevTlfCryptKey, tlfCryptKey); err != nil {
+			return false, nil, err
+		}
+		return true, nil, nil
+	}
+
+	// Send rekey start notification once we're sure that this device
+	// can perform the rekey.
+	km.config.Reporter().Notify(ctx, rekeyNotification(ctx, km.config, resolvedHandle,
+		false))
 
 	md.NewKeyGeneration(pubKey)
 	currKeyGen = md.LatestKeyGeneration()
