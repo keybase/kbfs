@@ -1087,7 +1087,7 @@ func (md *BareRootMetadataV3) FinalizeRekey(
 	}
 	if prevKey == (kbfscrypto.TLFCryptKey{}) {
 		if md.LatestKeyGeneration() > FirstValidKeyGen {
-			return errors.New("Previous key nil for non-first key generation")
+			return fmt.Errorf("Previous key nil for non-first key generation %d", md.LatestKeyGeneration())
 		}
 	} else {
 		numKeys := int(md.LatestKeyGeneration() - FirstValidKeyGen)
