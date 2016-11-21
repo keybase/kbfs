@@ -23,6 +23,8 @@ func keyManagerInit(t *testing.T) (mockCtrl *gomock.Controller,
 	ctr := NewSafeTestReporter(t)
 	mockCtrl = gomock.NewController(ctr)
 	config = NewConfigMock(mockCtrl, ctr)
+	keyCache := NewKeyCacheStandard(100)
+	config.SetKeyCache(keyCache)
 	keyman := NewKeyManagerStandard(config)
 	config.SetKeyManager(keyman)
 	interposeDaemonKBPKI(config, "alice", "bob", "charlie", "dave")
@@ -37,24 +39,16 @@ func keyManagerShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 }
 
 var serverHalf = kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
-var tlfCryptKey = kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-var clientHalf = kbfscrypto.MakeTLFCryptKeyClientHalf([32]byte{0x3})
-
-func expectCachedGetTLFCryptKey(config *ConfigMock, tlfID tlf.ID, keyGen KeyGen) {
-	config.mockKcache.EXPECT().GetTLFCryptKey(tlfID, keyGen).Return(
-		tlfCryptKey, nil)
-}
 
 func expectUncachedGetTLFCryptKey(config *ConfigMock, tlfID tlf.ID, keyGen, currKeyGen KeyGen,
 	uid keybase1.UID, subkey kbfscrypto.CryptPublicKey,
-	encrypt, storesHistoric bool) {
-	config.mockKcache.EXPECT().GetTLFCryptKey(tlfID, keyGen).
-		Return(kbfscrypto.TLFCryptKey{}, KeyCacheMissError{})
-
+	storesHistoric bool, tlfCryptKey kbfscrypto.TLFCryptKey) {
 	if storesHistoric && keyGen < currKeyGen {
 		config.mockKbpki.EXPECT().GetCurrentCryptPublicKey(gomock.Any()).
 			Return(subkey, nil)
 	}
+
+	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, tlfCryptKey)
 
 	// get the xor'd key out of the metadata
 	config.mockKbpki.EXPECT().GetCurrentCryptPublicKey(gomock.Any()).
@@ -70,26 +64,16 @@ func expectUncachedGetTLFCryptKey(config *ConfigMock, tlfID tlf.ID, keyGen, curr
 		serverHalf, clientHalf).Return(tlfCryptKey, nil)
 
 	if storesHistoric && keyGen < currKeyGen {
-		// expect a cache lookup of the current generation
-		config.mockKcache.EXPECT().GetTLFCryptKey(tlfID, currKeyGen).
-			Return(kbfscrypto.TLFCryptKey{}, KeyCacheMissError{})
 		// expect a decryption of the historic tlf keys
 		keys := make([]kbfscrypto.TLFCryptKey, int(currKeyGen-1))
 		config.mockCrypto.EXPECT().DecryptTLFCryptKeys(gomock.Any(), gomock.Any()).Return(keys, nil)
-	}
-
-	// now put the key into the cache
-	if !encrypt {
-		config.mockKcache.EXPECT().PutTLFCryptKey(
-			tlfID, keyGen, tlfCryptKey).Return(nil)
 	}
 }
 
 func expectUncachedGetTLFCryptKeyAnyDevice(
 	config *ConfigMock, tlfID tlf.ID, keyGen KeyGen, uid keybase1.UID,
-	subkey kbfscrypto.CryptPublicKey, encrypt bool) {
-	config.mockKcache.EXPECT().GetTLFCryptKey(tlfID, keyGen).
-		Return(kbfscrypto.TLFCryptKey{}, KeyCacheMissError{})
+	subkey kbfscrypto.CryptPublicKey, tlfCryptKey kbfscrypto.TLFCryptKey) {
+	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, tlfCryptKey)
 
 	// get the xor'd key out of the metadata
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), uid).
@@ -102,15 +86,10 @@ func expectUncachedGetTLFCryptKeyAnyDevice(
 		gomock.Any(), gomock.Any()).Return(serverHalf, nil)
 	config.mockCrypto.EXPECT().UnmaskTLFCryptKey(
 		serverHalf, clientHalf).Return(tlfCryptKey, nil)
-
-	// now put the key into the cache
-	if !encrypt {
-		config.mockKcache.EXPECT().PutTLFCryptKey(
-			tlfID, keyGen, tlfCryptKey).Return(nil)
-	}
 }
 
-func expectRekey(config *ConfigMock, bh tlf.Handle, numDevices int, handleChange bool) {
+func expectRekey(config *ConfigMock, bh tlf.Handle, numDevices int,
+	handleChange bool, tlfCryptKey kbfscrypto.TLFCryptKey) {
 	if handleChange {
 		// if the handle changes the key manager checks for a conflict
 		config.mockMdops.EXPECT().GetLatestHandleForTLF(gomock.Any(), gomock.Any()).
@@ -129,6 +108,8 @@ func expectRekey(config *ConfigMock, bh tlf.Handle, numDevices int, handleChange
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), gomock.Any()).
 		Return([]kbfscrypto.CryptPublicKey{subkey}, nil).Times(numDevices)
+
+	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, tlfCryptKey)
 
 	// make keys for the one device
 	config.mockCrypto.EXPECT().MaskTLFCryptKey(
@@ -202,7 +183,8 @@ func TestKeyManagerCachedSecretKeyForEncryptionSuccess(t *testing.T) {
 	id := tlf.FakeID(1, false)
 	kmd := emptyKeyMetadata{id, 1}
 
-	expectCachedGetTLFCryptKey(config, id, 1)
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	config.KeyCache().PutTLFCryptKey(id, 1, tlfCryptKey)
 
 	if _, err := config.KeyManager().
 		GetTLFCryptKeyForEncryption(ctx, kmd); err != nil {
@@ -217,7 +199,8 @@ func TestKeyManagerCachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 	id := tlf.FakeID(1, false)
 	kmd := emptyKeyMetadata{id, 1}
 
-	expectCachedGetTLFCryptKey(config, id, 1)
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	config.KeyCache().PutTLFCryptKey(id, 1, tlfCryptKey)
 
 	if _, err := config.KeyManager().
 		GetTLFCryptKeyForMDDecryption(ctx, kmd, kmd); err != nil {
@@ -232,7 +215,8 @@ func TestKeyManagerCachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	id := tlf.FakeID(1, false)
 	kmd := emptyKeyMetadata{id, 2}
 
-	expectCachedGetTLFCryptKey(config, id, 1)
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	config.KeyCache().PutTLFCryptKey(id, 1, tlfCryptKey)
 
 	if _, err := config.KeyManager().GetTLFCryptKeyForBlockDecryption(
 		ctx, kmd, BlockPointer{KeyGen: 1}); err != nil {
@@ -278,7 +262,7 @@ func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
 
 	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
 	expectUncachedGetTLFCryptKey(config, rmd.TlfID(),
-		rmd.LatestKeyGeneration(), rmd.LatestKeyGeneration(), uid, subkey, true, storesHistoric)
+		rmd.LatestKeyGeneration(), rmd.LatestKeyGeneration(), uid, subkey, storesHistoric, tlfCryptKey)
 
 	if _, err := config.KeyManager().
 		GetTLFCryptKeyForEncryption(ctx, rmd.ReadOnly()); err != nil {
@@ -301,7 +285,7 @@ func TestKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), kbfscrypto.TLFCryptKey{}, tlfCryptKey)
 
-	expectUncachedGetTLFCryptKeyAnyDevice(config, rmd.TlfID(), rmd.LatestKeyGeneration(), uid, subkey, false)
+	expectUncachedGetTLFCryptKeyAnyDevice(config, rmd.TlfID(), rmd.LatestKeyGeneration(), uid, subkey, tlfCryptKey)
 
 	if _, err := config.KeyManager().
 		GetTLFCryptKeyForMDDecryption(ctx, rmd.ReadOnly(), rmd.ReadOnly()); err != nil {
@@ -335,7 +319,7 @@ func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 
 	keyGen := rmd.LatestKeyGeneration() - 1
 	expectUncachedGetTLFCryptKey(config, rmd.TlfID(),
-		keyGen, rmd.LatestKeyGeneration(), uid, subkey, false, storesHistoric)
+		keyGen, rmd.LatestKeyGeneration(), uid, subkey, storesHistoric, tlfCryptKey1)
 
 	if _, err := config.KeyManager().GetTLFCryptKeyForBlockDecryption(
 		ctx, rmd.ReadOnly(), BlockPointer{KeyGen: keyGen}); err != nil {
@@ -354,7 +338,8 @@ func TestKeyManagerRekeySuccessPrivate(t *testing.T) {
 
 	oldKeyGen := rmd.LatestKeyGeneration()
 
-	expectRekey(config, h.ToBareHandleOrBust(), 1, false)
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	expectRekey(config, h.ToBareHandleOrBust(), 1, false, tlfCryptKey)
 
 	if done, _, err := config.KeyManager().Rekey(ctx, rmd, false); !done || err != nil {
 		t.Errorf("Got error on rekey: %t, %v", done, err)
@@ -454,7 +439,8 @@ func TestKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T) {
 
 	oldKeyGen := rmd.LatestKeyGeneration()
 
-	expectRekey(config, h.ToBareHandleOrBust(), 3, true)
+	tlfCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	expectRekey(config, h.ToBareHandleOrBust(), 3, true, tlfCryptKey1)
 
 	// Pretend that {bob,charlie}@twitter now resolve to {bob,charlie}.
 	daemon := config.KeybaseService().(*KeybaseDaemonLocal)
@@ -485,8 +471,11 @@ func TestKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	// generation number.
 	daemon.addNewAssertionForTestOrBust("dave", "dave@twitter")
 	oldKeyGen = rmd.LatestKeyGeneration()
-	expectCachedGetTLFCryptKey(config, rmd.TlfID(), oldKeyGen)
-	expectRekey(config, oldHandle.ToBareHandleOrBust(), 1, true)
+
+	tlfCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
+	config.KeyCache().PutTLFCryptKey(id, 1, tlfCryptKey2)
+
+	expectRekey(config, oldHandle.ToBareHandleOrBust(), 1, true, tlfCryptKey2)
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), gomock.Any()).
 		Return([]kbfscrypto.CryptPublicKey{subkey}, nil).Times(3)
@@ -526,7 +515,8 @@ func TestKeyManagerPromoteReaderSuccessPrivate(t *testing.T) {
 
 	oldKeyGen := rmd.LatestKeyGeneration()
 
-	expectRekey(config, h.ToBareHandleOrBust(), 2, true)
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	expectRekey(config, h.ToBareHandleOrBust(), 2, true, tlfCryptKey)
 
 	// Pretend that bob@twitter now resolves to bob.
 	daemon := config.KeybaseService().(*KeybaseDaemonLocal)
@@ -562,7 +552,8 @@ func TestKeyManagerReaderRekeyResolveAgainSuccessPrivate(t *testing.T) {
 
 	oldKeyGen := rmd.LatestKeyGeneration()
 
-	expectRekey(config, h.ToBareHandleOrBust(), 1, true)
+	tlfCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	expectRekey(config, h.ToBareHandleOrBust(), 1, true, tlfCryptKey1)
 
 	// Make the first key generation
 	if done, _, err := config.KeyManager().Rekey(ctx, rmd, false); !done || err != nil {
@@ -592,8 +583,11 @@ func TestKeyManagerReaderRekeyResolveAgainSuccessPrivate(t *testing.T) {
 	oldKeyGen = rmd.LatestKeyGeneration()
 	// Pretend bob has the key in the cache (in reality it would be
 	// decrypted via bob's paper key)
-	expectCachedGetTLFCryptKey(config, rmd.TlfID(), oldKeyGen)
-	expectRekey(config, h.ToBareHandleOrBust(), 1, false)
+
+	tlfCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
+	config.KeyCache().PutTLFCryptKey(rmd.TlfID(), oldKeyGen, tlfCryptKey2)
+
+	expectRekey(config, h.ToBareHandleOrBust(), 1, false, tlfCryptKey2)
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), gomock.Any()).
 		Return([]kbfscrypto.CryptPublicKey{subkey}, nil)
@@ -635,7 +629,8 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 
 	oldKeyGen := rmd.LatestKeyGeneration()
 
-	expectRekey(config, h.ToBareHandleOrBust(), 2, true)
+	tlfCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	expectRekey(config, h.ToBareHandleOrBust(), 2, true, tlfCryptKey1)
 
 	// Make the first key generation
 	if done, _, err := config.KeyManager().Rekey(ctx, rmd, false); !done || err != nil {
@@ -658,12 +653,12 @@ func TestKeyManagerRekeyResolveAgainNoChangeSuccessPrivate(t *testing.T) {
 	// Now resolve which gets rid of the unresolved writers, but
 	// doesn't otherwise change the handle since bob is already in it.
 	oldKeyGen = rmd.LatestKeyGeneration()
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	tlfCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
 	config.mockCrypto.EXPECT().MakeRandomTLFKeys().Return(
 		kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
 		kbfscrypto.TLFEphemeralPublicKey{},
 		kbfscrypto.TLFEphemeralPrivateKey{},
-		tlfCryptKey, nil)
+		tlfCryptKey2, nil)
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	config.mockKbpki.EXPECT().GetCryptPublicKeys(gomock.Any(), gomock.Any()).
