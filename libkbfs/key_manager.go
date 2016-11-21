@@ -757,16 +757,18 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 	}()
 
-	// From this point on, if we return true for mdChanged, we
-	// must call km.finalizeRekey(md) first.
+	// From this point on, if we return true for mdChanged with a
+	// nil error or RekeyIncompleteError{}, we must call
+	// km.finalizeRekey(md) first.
 
 	defer func() {
-		if mdChanged && err == nil {
-			err = km.finalizeRekey(
+		if mdChanged && (err == nil || err == RekeyIncompleteError{}) {
+			finalizeErr := km.finalizeRekey(
 				ctx, md, tlfCryptKey, promptPaper)
-			if err != nil {
+			if finalizeErr != nil {
 				mdChanged = false
 				cryptKey = nil
+				err = finalizeErr
 			}
 		}
 	}()
