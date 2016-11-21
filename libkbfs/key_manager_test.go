@@ -183,13 +183,13 @@ func TestKeyManagerCachedSecretKeyForEncryptionSuccess(t *testing.T) {
 	id := tlf.FakeID(1, false)
 	kmd := emptyKeyMetadata{id, 1}
 
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	config.KeyCache().PutTLFCryptKey(id, 1, tlfCryptKey)
+	cachedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	config.KeyCache().PutTLFCryptKey(id, 1, cachedTLFCryptKey)
 
-	if _, err := config.KeyManager().
-		GetTLFCryptKeyForEncryption(ctx, kmd); err != nil {
-		t.Errorf("Got error on GetTLFCryptKeyForEncryption: %v", err)
-	}
+	tlfCryptKey, err := config.KeyManager().
+		GetTLFCryptKeyForEncryption(ctx, kmd)
+	require.NoError(t, err)
+	require.Equal(t, cachedTLFCryptKey, tlfCryptKey)
 }
 
 func TestKeyManagerCachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
@@ -199,13 +199,13 @@ func TestKeyManagerCachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 	id := tlf.FakeID(1, false)
 	kmd := emptyKeyMetadata{id, 1}
 
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	config.KeyCache().PutTLFCryptKey(id, 1, tlfCryptKey)
+	cachedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	config.KeyCache().PutTLFCryptKey(id, 1, cachedTLFCryptKey)
 
-	if _, err := config.KeyManager().
-		GetTLFCryptKeyForMDDecryption(ctx, kmd, kmd); err != nil {
-		t.Errorf("Got error on GetTLFCryptKeyForMDDecryption: %v", err)
-	}
+	tlfCryptKey, err := config.KeyManager().
+		GetTLFCryptKeyForMDDecryption(ctx, kmd, kmd)
+	require.NoError(t, err)
+	require.Equal(t, cachedTLFCryptKey, tlfCryptKey)
 }
 
 func TestKeyManagerCachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
@@ -215,13 +215,13 @@ func TestKeyManagerCachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	id := tlf.FakeID(1, false)
 	kmd := emptyKeyMetadata{id, 2}
 
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	config.KeyCache().PutTLFCryptKey(id, 1, tlfCryptKey)
+	cachedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	config.KeyCache().PutTLFCryptKey(id, 1, cachedTLFCryptKey)
 
-	if _, err := config.KeyManager().GetTLFCryptKeyForBlockDecryption(
-		ctx, kmd, BlockPointer{KeyGen: 1}); err != nil {
-		t.Errorf("Got error on GetTLFCryptKeyForBlockDecryption: %v", err)
-	}
+	tlfCryptKey, err := config.KeyManager().GetTLFCryptKeyForBlockDecryption(
+		ctx, kmd, BlockPointer{KeyGen: 1})
+	require.NoError(t, err)
+	require.Equal(t, cachedTLFCryptKey, tlfCryptKey)
 }
 
 // makeDirRKeyInfoMap creates a new user device key info map with a reader key.
@@ -257,17 +257,18 @@ func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	expectMakeKeyBundleIDs(config)
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), kbfscrypto.TLFCryptKey{}, tlfCryptKey)
+	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), kbfscrypto.TLFCryptKey{}, storedTLFCryptKey)
 
 	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
 	expectUncachedGetTLFCryptKey(config, rmd.TlfID(),
-		rmd.LatestKeyGeneration(), rmd.LatestKeyGeneration(), uid, subkey, storesHistoric, tlfCryptKey)
+		rmd.LatestKeyGeneration(), rmd.LatestKeyGeneration(), uid,
+		subkey, storesHistoric, storedTLFCryptKey)
 
-	if _, err := config.KeyManager().
-		GetTLFCryptKeyForEncryption(ctx, rmd.ReadOnly()); err != nil {
-		t.Errorf("Got error on GetTLFCryptKeyForEncryption: %v", err)
-	}
+	tlfCryptKey, err := config.KeyManager().
+		GetTLFCryptKeyForEncryption(ctx, rmd)
+	require.NoError(t, err)
+	require.Equal(t, storedTLFCryptKey, tlfCryptKey)
 }
 
 func TestKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
@@ -282,15 +283,18 @@ func TestKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	expectMakeKeyBundleIDs(config)
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), kbfscrypto.TLFCryptKey{}, tlfCryptKey)
+	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), kbfscrypto.TLFCryptKey{},
+		storedTLFCryptKey)
 
-	expectUncachedGetTLFCryptKeyAnyDevice(config, rmd.TlfID(), rmd.LatestKeyGeneration(), uid, subkey, tlfCryptKey)
+	expectUncachedGetTLFCryptKeyAnyDevice(
+		config, rmd.TlfID(), rmd.LatestKeyGeneration(), uid, subkey,
+		storedTLFCryptKey)
 
-	if _, err := config.KeyManager().
-		GetTLFCryptKeyForMDDecryption(ctx, rmd.ReadOnly(), rmd.ReadOnly()); err != nil {
-		t.Errorf("Got error on GetTLFCryptKeyForMDDecryption: %v", err)
-	}
+	tlfCryptKey, err := config.KeyManager().
+		GetTLFCryptKeyForMDDecryption(ctx, rmd, rmd)
+	require.NoError(t, err)
+	require.Equal(t, storedTLFCryptKey, tlfCryptKey)
 }
 
 func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
@@ -305,26 +309,27 @@ func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	expectMakeKeyBundleIDs(config)
-	tlfCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	tlfCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
-	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), kbfscrypto.TLFCryptKey{}, tlfCryptKey1)
+	storedTLFCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	storedTLFCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
+	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), kbfscrypto.TLFCryptKey{}, storedTLFCryptKey1)
 
 	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
 	var prevKey kbfscrypto.TLFCryptKey
 	if storesHistoric {
-		prevKey = tlfCryptKey1
+		prevKey = storedTLFCryptKey1
 	}
 
-	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), prevKey, tlfCryptKey2)
+	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), prevKey, storedTLFCryptKey2)
 
 	keyGen := rmd.LatestKeyGeneration() - 1
 	expectUncachedGetTLFCryptKey(config, rmd.TlfID(),
-		keyGen, rmd.LatestKeyGeneration(), uid, subkey, storesHistoric, tlfCryptKey1)
+		keyGen, rmd.LatestKeyGeneration(), uid, subkey,
+		storesHistoric, storedTLFCryptKey1)
 
-	if _, err := config.KeyManager().GetTLFCryptKeyForBlockDecryption(
-		ctx, rmd.ReadOnly(), BlockPointer{KeyGen: keyGen}); err != nil {
-		t.Errorf("Got error on GetTLFCryptKeyForBlockDecryption: %v", err)
-	}
+	tlfCryptKey, err := config.KeyManager().GetTLFCryptKeyForBlockDecryption(
+		ctx, rmd, BlockPointer{KeyGen: 1})
+	require.NoError(t, err)
+	require.Equal(t, storedTLFCryptKey1, tlfCryptKey)
 }
 
 func TestKeyManagerRekeySuccessPrivate(t *testing.T) {
