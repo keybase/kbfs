@@ -142,10 +142,14 @@ func (b *BlockCacheStandard) CheckForKnownPtr(tlf tlf.ID, block *FileBlock) (
 	return ptr, nil
 }
 
+// SetCleanBytesCapacity implements the BlockCache interface for
+// BlockCacheStandard.
 func (b *BlockCacheStandard) SetCleanBytesCapacity(capacity uint64) {
 	atomic.StoreUint64(&b.cleanBytesCapacity, capacity)
 }
 
+// GetCleanBytesCapacity implements the BlockCache interface for
+// BlockCacheStandard.
 func (b *BlockCacheStandard) GetCleanBytesCapacity() (capacity uint64) {
 	return atomic.LoadUint64(&b.cleanBytesCapacity)
 }
