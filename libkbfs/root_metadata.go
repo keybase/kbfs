@@ -269,16 +269,19 @@ func (md *RootMetadata) MakeSuccessor(
 	return newMd, nil
 }
 
-// AddNewKeysForTesting makes a new key generation for this RootMetadata using the
-// given TLF key bundles. Note: Only used by tests.
+// AddNewKeysForTesting adds new writer and reader TLF key bundles to
+// this revision of metadata. prevKey and key are passed into
+// FinalizeRekey, and must satisfy the requirements of that function.
 func (md *RootMetadata) AddNewKeysForTesting(crypto cryptoPure,
-	wDkim, rDkim UserDeviceKeyInfoMap) (err error) {
+	wDkim, rDkim UserDeviceKeyInfoMap,
+	prevKey, key kbfscrypto.TLFCryptKey) error {
 	if md.TlfID().IsPublic() {
 		return InvalidPublicTLFOperation{md.TlfID(), "AddNewKeys"}
 	}
-	var extra ExtraMetadata
-	if extra, err = md.bareMd.AddNewKeysForTesting(
-		crypto, wDkim, rDkim, kbfscrypto.TLFPublicKey{}); err != nil {
+	extra, err := md.bareMd.AddNewKeysForTesting(
+		crypto, wDkim, rDkim, prevKey, key,
+		kbfscrypto.TLFPublicKey{})
+	if err != nil {
 		return err
 	}
 	md.extra = extra

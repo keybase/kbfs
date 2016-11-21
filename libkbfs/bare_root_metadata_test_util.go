@@ -40,5 +40,7 @@ func FakeInitialRekey(md MutableBareRootMetadata,
 		}
 	}
 
-	return md.AddNewKeysForTesting(crypto, wDkim, rDkim, pubKey)
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	return md.AddNewKeysForTesting(crypto, wDkim, rDkim,
+		kbfscrypto.TLFCryptKey{}, tlfCryptKey, pubKey)
 }
