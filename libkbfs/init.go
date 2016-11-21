@@ -310,7 +310,12 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config := NewConfigLocal()
 
-	config.BlockCache().SetCleanBytesCapacity(params.CleanBlockCacheCapacity)
+	if params.CleanBlockCacheCapacity > 0 {
+		log.Debug("overriding default clean block cache capacity from %d to %d",
+			config.BlockCache().GetCleanBytesCapacity(),
+			params.CleanBlockCacheCapacity)
+		config.BlockCache().SetCleanBytesCapacity(params.CleanBlockCacheCapacity)
+	}
 
 	config.SetBlockOps(NewBlockOpsStandard(config, defaultBlockRetrievalWorkerQueueSize))
 
