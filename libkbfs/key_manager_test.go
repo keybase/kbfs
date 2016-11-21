@@ -1468,11 +1468,15 @@ func TestKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T) {
 		StallMDOp(ctx, config1, StallableMDPut, 1)
 
 	// Have user 1 also try to rekey but fail due to conflict
-	errChan := make(chan error)
+	errChan := make(chan error, 1)
 	go func() {
 		errChan <- kbfsOps1.Rekey(putCtx, rootNode1.GetFolderBranch().Tlf)
 	}()
-	<-onPutStalledCh
+	select {
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	case <-onPutStalledCh:
+	}
 
 	// rekey again but with user 2 device 2
 	err = kbfsOps2Dev2.Rekey(ctx, root2Dev2.GetFolderBranch().Tlf)
@@ -1481,8 +1485,16 @@ func TestKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T) {
 	}
 
 	// Make sure user 1's rekey failed.
-	putUnstallCh <- struct{}{}
-	err = <-errChan
+	select {
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	case putUnstallCh <- struct{}{}:
+	}
+	select {
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	case err = <-errChan:
+	}
 	if _, isConflict := err.(RekeyConflictError); !isConflict {
 		t.Fatalf("Expected failure due to conflict")
 	}
