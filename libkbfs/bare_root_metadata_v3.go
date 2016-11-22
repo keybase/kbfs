@@ -1082,11 +1082,11 @@ func (md *BareRootMetadataV3) FinalizeRekey(
 	if !ok {
 		return errors.New("Invalid extra metadata")
 	}
-	if md.LatestKeyGeneration() < KeyGen(FirstValidKeyGen) {
+	if md.LatestKeyGeneration() < FirstValidKeyGen {
 		return fmt.Errorf("Invalid key generation %d", md.LatestKeyGeneration())
 	}
 	if (prevKey != kbfscrypto.TLFCryptKey{}) {
-		numKeys := int(md.LatestKeyGeneration() - KeyGen(FirstValidKeyGen))
+		numKeys := int(md.LatestKeyGeneration() - FirstValidKeyGen)
 		if numKeys == 0 {
 			return errors.New("Previous key non-nil for first key generation")
 		}
@@ -1129,7 +1129,7 @@ func (md *BareRootMetadataV3) GetHistoricTLFCryptKey(crypto cryptoPure,
 		return kbfscrypto.TLFCryptKey{}, errors.New(
 			"Invalid extra metadata")
 	}
-	if keyGen < KeyGen(FirstValidKeyGen) || keyGen >= md.LatestKeyGeneration() {
+	if keyGen < FirstValidKeyGen || keyGen >= md.LatestKeyGeneration() {
 		return kbfscrypto.TLFCryptKey{}, fmt.Errorf(
 			"Invalid key generation %d", keyGen)
 	}
@@ -1138,7 +1138,7 @@ func (md *BareRootMetadataV3) GetHistoricTLFCryptKey(crypto cryptoPure,
 	if err != nil {
 		return kbfscrypto.TLFCryptKey{}, err
 	}
-	index := int(keyGen - KeyGen(FirstValidKeyGen))
+	index := int(keyGen - FirstValidKeyGen)
 	if index >= len(oldKeys) || index < 0 {
 		return kbfscrypto.TLFCryptKey{}, fmt.Errorf(
 			"Index %d out of range (max: %d)", index, len(oldKeys))
