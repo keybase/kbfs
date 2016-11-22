@@ -926,9 +926,59 @@ func (md *BareRootMetadataV3) AddKeyGeneration(
 	crypto cryptoPure, prevExtra ExtraMetadata,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
+	if md.TlfID().IsPublic() {
+		return nil, errors.New("AddKeyGeneration called on public TLF")
+	}
+	if nextCryptKey == (kbfscrypto.TLFCryptKey{}) {
+		return nil, errors.New("Zero next crypt key")
+	}
+	latestKeyGen := md.LatestKeyGeneration()
+	var encryptedHistoricKeys EncryptedTLFCryptKeys
+	if currCryptKey == (kbfscrypto.TLFCryptKey{}) {
+		if latestKeyGen >= FirstValidKeyGen {
+			return nil, fmt.Errorf(
+				"Zero current crypt key with latest key generation %d",
+				latestKeyGen)
+		}
+	} else {
+		if latestKeyGen < FirstValidKeyGen {
+			return nil, errors.New(
+				"Non-zero current crypt key with no existing key generations")
+		}
+		var historicKeys []kbfscrypto.TLFCryptKey
+		if latestKeyGen > FirstValidKeyGen {
+			prevExtraV3, ok := prevExtra.(*ExtraMetadataV3)
+			if !ok {
+				return nil, errors.New("Invalid prev extra metadata")
+			}
+			var err error
+			historicKeys, err = crypto.DecryptTLFCryptKeys(
+				prevExtraV3.wkb.EncryptedHistoricTLFCryptKeys,
+				currCryptKey)
+			if err != nil {
+				return nil, err
+			}
+			expectedHistoricKeyCount :=
+				int(md.LatestKeyGeneration() - FirstValidKeyGen)
+			if len(historicKeys) != expectedHistoricKeyCount {
+				return nil, fmt.Errorf(
+					"Expected %d historic keys, got %d",
+					expectedHistoricKeyCount,
+					len(historicKeys))
+			}
+		}
+		historicKeys = append(historicKeys, currCryptKey)
+		var err error
+		encryptedHistoricKeys, err = crypto.EncryptTLFCryptKeys(
+			historicKeys, nextCryptKey)
+		if err != nil {
+			return nil, err
+		}
+	}
 	newWriterKeys := &TLFWriterKeyBundleV3{
-		Keys:         make(UserDeviceKeyInfoMap),
-		TLFPublicKey: pubKey,
+		Keys:                          make(UserDeviceKeyInfoMap),
+		TLFPublicKey:                  pubKey,
+		EncryptedHistoricTLFCryptKeys: encryptedHistoricKeys,
 	}
 	newReaderKeys := &TLFReaderKeyBundleV3{
 		TLFReaderKeyBundleV2: TLFReaderKeyBundleV2{
@@ -1087,31 +1137,6 @@ func (md *BareRootMetadataV3) FinalizeRekey(
 	}
 	if md.LatestKeyGeneration() < FirstValidKeyGen {
 		return fmt.Errorf("Invalid key generation %d", md.LatestKeyGeneration())
-	}
-	if prevKey == (kbfscrypto.TLFCryptKey{}) {
-		if md.LatestKeyGeneration() > FirstValidKeyGen {
-			return fmt.Errorf("Previous key nil for non-first key generation %d", md.LatestKeyGeneration())
-		}
-	} else {
-		numKeys := int(md.LatestKeyGeneration() - FirstValidKeyGen)
-		if numKeys == 0 {
-			return errors.New("Previous key non-nil for first key generation")
-		}
-		var oldKeys []kbfscrypto.TLFCryptKey
-		var err error
-		if numKeys > 1 {
-			oldKeys, err = crypto.DecryptTLFCryptKeys(
-				extraV3.wkb.EncryptedHistoricTLFCryptKeys, prevKey)
-			if err != nil {
-				return err
-			}
-		}
-		oldKeys = append(oldKeys, prevKey)
-		encOldKeys, err := crypto.EncryptTLFCryptKeys(oldKeys, currKey)
-		if err != nil {
-			return err
-		}
-		extraV3.wkb.EncryptedHistoricTLFCryptKeys = encOldKeys
 	}
 	var err error
 	md.WriterMetadata.WKeyBundleID, err = crypto.MakeTLFWriterKeyBundleID(extraV3.wkb)

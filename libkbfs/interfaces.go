@@ -1764,6 +1764,9 @@ type MutableBareRootMetadata interface {
 	// nextCryptKey must be non-zero, and currCryptKey must be
 	// zero if there are no existing key generations, and non-zero
 	// for otherwise.
+	//
+	// AddKeyGeneration must only be called on metadata for
+	// private TLFs.
 	AddKeyGeneration(crypto cryptoPure, prevExtra ExtraMetadata,
 		currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
