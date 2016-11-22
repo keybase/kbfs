@@ -676,10 +676,10 @@ func (md *RootMetadata) GetBareRootMetadata() BareRootMetadata {
 
 // AddKeyGeneration adds a new key generation to this revision of metadata.
 func (md *RootMetadata) AddKeyGeneration(
-	prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
+	crypto cryptoPure, prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey) error {
 	newExtra, err := md.bareMd.AddKeyGeneration(
-		md.extra, prevCryptKey, currCryptKey, pubKey)
+		crypto, md.extra, prevCryptKey, currCryptKey, pubKey)
 	if err != nil {
 		return err
 	}

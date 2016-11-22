@@ -1764,7 +1764,7 @@ type MutableBareRootMetadata interface {
 	// currCryptKey must be non-zero, and prevCryptKey must be
 	// zero for the first key generation, and non-zero for
 	// subsequent ones.
-	AddKeyGeneration(prevExtra ExtraMetadata,
+	AddKeyGeneration(crypto cryptoPure, prevExtra ExtraMetadata,
 		prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
 		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
 	// SetUnresolvedReaders sets the list of unresolved readers assoiated with this folder.

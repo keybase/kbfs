@@ -808,7 +808,8 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 		currTLFCryptKey = tlfCryptKey
 	}
-	err = md.AddKeyGeneration(prevTLFCryptKey, currTLFCryptKey, pubKey)
+	err = md.AddKeyGeneration(
+		km.config.Crypto(), prevTLFCryptKey, currTLFCryptKey, pubKey)
 	if err != nil {
 		return false, nil, err
 	}

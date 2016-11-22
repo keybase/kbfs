@@ -1099,7 +1099,8 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(keyGen KeyGen, _ ExtraMet
 
 // AddKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV2.
-func (md *BareRootMetadataV2) AddKeyGeneration(prevExtra ExtraMetadata,
+func (md *BareRootMetadataV2) AddKeyGeneration(
+	_ cryptoPure, prevExtra ExtraMetadata,
 	prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
 	if prevCryptKey != (kbfscrypto.TLFCryptKey{}) {

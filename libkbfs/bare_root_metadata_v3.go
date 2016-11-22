@@ -922,7 +922,8 @@ func (md *BareRootMetadataV3) AddNewKeysForTesting(crypto cryptoPure,
 
 // AddKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV3.
-func (md *BareRootMetadataV3) AddKeyGeneration(prevExtra ExtraMetadata,
+func (md *BareRootMetadataV3) AddKeyGeneration(
+	crypto cryptoPure, prevExtra ExtraMetadata,
 	prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
 	newWriterKeys := &TLFWriterKeyBundleV3{
