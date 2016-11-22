@@ -1678,8 +1678,9 @@ type BareRootMetadata interface {
 	GetSerializedWriterMetadata(codec kbfscodec.Codec) ([]byte, error)
 	// Version returns the metadata version.
 	Version() MetadataVer
-	// GetTLFPublicKey returns the TLF public key for the give key generation.
-	GetTLFPublicKey(KeyGen, ExtraMetadata) (kbfscrypto.TLFPublicKey, bool)
+	// GetCurrentTLFPublicKey returns the TLF public key for the
+	// current key generation.
+	GetCurrentTLFPublicKey(ExtraMetadata) (kbfscrypto.TLFPublicKey, error)
 	// AreKeyGenerationsEqual returns true if all key generations in the passed metadata are equal to those
 	// in this revision.
 	AreKeyGenerationsEqual(kbfscodec.Codec, BareRootMetadata) (bool, error)
