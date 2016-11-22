@@ -1101,13 +1101,13 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(keyGen KeyGen, _ ExtraMet
 // for BareRootMetadataV2.
 func (md *BareRootMetadataV2) AddKeyGeneration(
 	_ cryptoPure, prevExtra ExtraMetadata,
-	prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
+	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
-	if prevCryptKey != (kbfscrypto.TLFCryptKey{}) {
-		return nil, errors.New("prevCryptKey unexpectedly non-zero")
-	}
 	if currCryptKey != (kbfscrypto.TLFCryptKey{}) {
 		return nil, errors.New("currCryptKey unexpectedly non-zero")
+	}
+	if nextCryptKey != (kbfscrypto.TLFCryptKey{}) {
+		return nil, errors.New("nextCryptKey unexpectedly non-zero")
 	}
 
 	newWriterKeys := TLFWriterKeyBundleV2{

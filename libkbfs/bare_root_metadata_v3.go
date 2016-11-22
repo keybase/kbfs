@@ -924,7 +924,7 @@ func (md *BareRootMetadataV3) AddNewKeysForTesting(crypto cryptoPure,
 // for BareRootMetadataV3.
 func (md *BareRootMetadataV3) AddKeyGeneration(
 	crypto cryptoPure, prevExtra ExtraMetadata,
-	prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
+	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
 	newWriterKeys := &TLFWriterKeyBundleV3{
 		Keys:         make(UserDeviceKeyInfoMap),

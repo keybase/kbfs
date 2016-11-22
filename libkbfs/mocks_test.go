@@ -5538,19 +5538,19 @@ func (_mr *_MockMutableBareRootMetadataRecorder) SetRevision(arg0 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetRevision", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) AddNewKeysForTesting(wDkim UserDeviceKeyInfoMap, rDkim UserDeviceKeyInfoMap, prevKey kbfscrypto.TLFCryptKey, key kbfscrypto.TLFCryptKey, pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
-	ret := _m.ctrl.Call(_m, "AddNewKeysForTesting", wDkim, rDkim, prevKey, key, pubKey)
+func (_m *MockMutableBareRootMetadata) AddNewKeysForTesting(crypto cryptoPure, wDkim UserDeviceKeyInfoMap, rDkim UserDeviceKeyInfoMap, prevKey kbfscrypto.TLFCryptKey, key kbfscrypto.TLFCryptKey, pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
+	ret := _m.ctrl.Call(_m, "AddNewKeysForTesting", crypto, wDkim, rDkim, prevKey, key, pubKey)
 	ret0, _ := ret[0].(ExtraMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) AddNewKeysForTesting(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddNewKeysForTesting", arg0, arg1, arg2, arg3, arg4)
+func (_mr *_MockMutableBareRootMetadataRecorder) AddNewKeysForTesting(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddNewKeysForTesting", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockMutableBareRootMetadata) AddKeyGeneration(crypto cryptoPure, prevExtra ExtraMetadata, prevCryptKey kbfscrypto.TLFCryptKey, currCryptKey kbfscrypto.TLFCryptKey, pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
-	ret := _m.ctrl.Call(_m, "AddKeyGeneration", crypto, prevExtra, prevCryptKey, currCryptKey, pubKey)
+func (_m *MockMutableBareRootMetadata) AddKeyGeneration(crypto cryptoPure, prevExtra ExtraMetadata, currCryptKey kbfscrypto.TLFCryptKey, nextCryptKey kbfscrypto.TLFCryptKey, pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
+	ret := _m.ctrl.Call(_m, "AddKeyGeneration", crypto, prevExtra, currCryptKey, nextCryptKey, pubKey)
 	ret0, _ := ret[0].(ExtraMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
