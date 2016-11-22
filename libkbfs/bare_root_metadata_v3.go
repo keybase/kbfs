@@ -927,7 +927,8 @@ func (md *BareRootMetadataV3) AddKeyGeneration(
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
 	if md.TlfID().IsPublic() {
-		return nil, errors.New("AddKeyGeneration called on public TLF")
+		return nil, InvalidPublicTLFOperation{
+			md.TlfID(), "AddKeyGeneration"}
 	}
 	if nextCryptKey == (kbfscrypto.TLFCryptKey{}) {
 		return nil, errors.New("Zero next crypt key")

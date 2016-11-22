@@ -276,7 +276,7 @@ func (md *RootMetadata) AddNewKeysForTesting(crypto cryptoPure,
 	wDkim, rDkim UserDeviceKeyInfoMap,
 	prevKey, key kbfscrypto.TLFCryptKey) error {
 	if md.TlfID().IsPublic() {
-		return InvalidPublicTLFOperation{md.TlfID(), "AddNewKeys"}
+		return InvalidPublicTLFOperation{md.TlfID(), "AddNewKeysForTesting"}
 	}
 	extra, err := md.bareMd.AddNewKeysForTesting(
 		crypto, wDkim, rDkim, prevKey, key,
