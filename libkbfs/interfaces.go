@@ -1679,7 +1679,6 @@ type BareRootMetadata interface {
 	// Version returns the metadata version.
 	Version() MetadataVer
 	// GetTLFPublicKey returns the TLF public key for the give key generation.
-	// Note the *TLFWriterKeyBundleV3 is expected to be nil for pre-v3 metadata.
 	GetTLFPublicKey(KeyGen, ExtraMetadata) (kbfscrypto.TLFPublicKey, bool)
 	// AreKeyGenerationsEqual returns true if all key generations in the passed metadata are equal to those
 	// in this revision.
