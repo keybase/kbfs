@@ -1789,14 +1789,9 @@ type MutableBareRootMetadata interface {
 	// key generation.
 	GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (
 		readers, writers UserDeviceKeyInfoMap, err error)
-	// FinalizeRekey is called after all rekeying work has been
-	// performed on the underlying metadata. If
-	// StoresHistoricTLFCryptKeys is false, then prevKey must be
-	// non-zero. Otherwise, prevKey must be zero only when this is
-	// the rekey for the first key generation. In all cases, key
-	// must be non-zero.
-	FinalizeRekey(c cryptoPure,
-		prevKey, key kbfscrypto.TLFCryptKey, extra ExtraMetadata) error
+	// FinalizeRekey must be called called after all rekeying work
+	// has been performed on the underlying metadata.
+	FinalizeRekey(c cryptoPure, extra ExtraMetadata) error
 }
 
 // KeyBundleCache is an interface to a key bundle cache for use with v3 metadata.

@@ -913,7 +913,7 @@ func (md *BareRootMetadataV3) AddNewKeysForTesting(crypto cryptoPure,
 		wkb: wkb,
 		rkb: rkb,
 	}
-	err = md.FinalizeRekey(crypto, prevKey, key, extra)
+	err = md.FinalizeRekey(crypto, extra)
 	if err != nil {
 		return nil, err
 	}
@@ -1129,14 +1129,10 @@ func (md *BareRootMetadataV3) GetTLFReaderKeyBundleID() TLFReaderKeyBundleID {
 
 // FinalizeRekey implements the MutableBareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) FinalizeRekey(
-	crypto cryptoPure, prevKey, currKey kbfscrypto.TLFCryptKey,
-	extra ExtraMetadata) error {
+	crypto cryptoPure, extra ExtraMetadata) error {
 	extraV3, ok := extra.(*ExtraMetadataV3)
 	if !ok {
 		return errors.New("Invalid extra metadata")
-	}
-	if md.LatestKeyGeneration() < FirstValidKeyGen {
-		return fmt.Errorf("Invalid key generation %d", md.LatestKeyGeneration())
 	}
 	var err error
 	md.WriterMetadata.WKeyBundleID, err = crypto.MakeTLFWriterKeyBundleID(extraV3.wkb)

@@ -478,30 +478,6 @@ func (km *KeyManagerStandard) generateKeyMapForUsers(
 	return keyMap, nil
 }
 
-func (km *KeyManagerStandard) finalizeRekey(
-	ctx context.Context, md *RootMetadata,
-	currTLFCryptKey kbfscrypto.TLFCryptKey, promptPaper bool) error {
-	currKeyGen := md.LatestKeyGeneration()
-	// Get the previous TLF crypt key if needed. It's
-	// symmetrically encrypted and appended to a list for MDv3
-	// metadata.
-	var prevTLFCryptKey kbfscrypto.TLFCryptKey
-	if currKeyGen > FirstValidKeyGen && md.StoresHistoricTLFCryptKeys() {
-		flags := getTLFCryptKeyAnyDevice
-		if promptPaper {
-			flags |= getTLFCryptKeyPromptPaper
-		}
-		var err error
-		prevTLFCryptKey, err = km.getTLFCryptKey(ctx, md.ReadOnly(),
-			currKeyGen-1, flags)
-		if err != nil {
-			return err
-		}
-	}
-	return md.finalizeRekey(
-		km.config.Crypto(), prevTLFCryptKey, currTLFCryptKey)
-}
-
 // Rekey implements the KeyManager interface for KeyManagerStandard.
 // TODO make this less terrible.
 func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promptPaper bool) (
@@ -759,12 +735,11 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 	// From this point on, if we return true for mdChanged with a
 	// nil error or RekeyIncompleteError{}, we must call
-	// km.finalizeRekey(md) first.
+	// md.finalizeRekey() first.
 
 	defer func() {
 		if mdChanged && (err == nil || err == RekeyIncompleteError{}) {
-			finalizeErr := km.finalizeRekey(
-				ctx, md, tlfCryptKey, promptPaper)
+			finalizeErr := md.finalizeRekey(km.config.Crypto())
 			if finalizeErr != nil {
 				mdChanged = false
 				cryptKey = nil

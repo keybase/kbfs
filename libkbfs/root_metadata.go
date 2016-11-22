@@ -719,12 +719,14 @@ func (md *RootMetadata) fillInDevices(crypto Crypto,
 	return serverKeyMap{}, errors.New("Unknown bare metadata version")
 }
 
-func (md *RootMetadata) finalizeRekey(
-	crypto cryptoPure, prevKey, currKey kbfscrypto.TLFCryptKey) error {
+func (md *RootMetadata) finalizeRekey(crypto cryptoPure) error {
+	err := md.bareMd.FinalizeRekey(crypto, md.extra)
+	if err != nil {
+		return err
+	}
 	wkbID := md.bareMd.GetTLFWriterKeyBundleID()
 	rkbID := md.bareMd.GetTLFReaderKeyBundleID()
-	err := md.bareMd.FinalizeRekey(crypto, prevKey, currKey, md.extra)
-	if err == nil && md.extra != nil {
+	if md.extra != nil {
 		includeWkb := wkbID != md.bareMd.GetTLFWriterKeyBundleID()
 		includeRkb := rkbID != md.bareMd.GetTLFReaderKeyBundleID()
 		md.extraNew = md.extra.Copy(includeWkb, includeRkb)

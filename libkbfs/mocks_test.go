@@ -5632,14 +5632,14 @@ func (_mr *_MockMutableBareRootMetadataRecorder) GetUserDeviceKeyInfoMaps(arg0, 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserDeviceKeyInfoMaps", arg0, arg1)
 }
 
-func (_m *MockMutableBareRootMetadata) FinalizeRekey(c cryptoPure, prevKey kbfscrypto.TLFCryptKey, key kbfscrypto.TLFCryptKey, extra ExtraMetadata) error {
-	ret := _m.ctrl.Call(_m, "FinalizeRekey", c, prevKey, key, extra)
+func (_m *MockMutableBareRootMetadata) FinalizeRekey(c cryptoPure, extra ExtraMetadata) error {
+	ret := _m.ctrl.Call(_m, "FinalizeRekey", c, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) FinalizeRekey(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "FinalizeRekey", arg0, arg1, arg2, arg3)
+func (_mr *_MockMutableBareRootMetadataRecorder) FinalizeRekey(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "FinalizeRekey", arg0, arg1)
 }
 
 // Mock of KeyBundleCache interface
