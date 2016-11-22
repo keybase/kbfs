@@ -835,5 +835,44 @@ func (md *MDServerMemory) getKeyBundles(
 func (md *MDServerMemory) GetKeyBundles(_ context.Context,
 	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	return md.getKeyBundles(tlfID, wkbID, rkbID)
+	md.lock.Lock()
+	defer md.lock.Unlock()
+
+	var wkb *TLFWriterKeyBundleV3
+	if wkbID != (TLFWriterKeyBundleID{}) {
+		wkb = md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
+		if wkb != nil {
+			computedWKBID, err :=
+				md.config.cryptoPure().MakeTLFWriterKeyBundleID(wkb)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if wkbID != computedWKBID {
+				return nil, nil, fmt.Errorf(
+					"Expected WKB ID %s, got %s",
+					wkbID, computedWKBID)
+			}
+		}
+	}
+
+	var rkb *TLFReaderKeyBundleV3
+	if rkbID != (TLFReaderKeyBundleID{}) {
+		rkb = md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
+		if rkb != nil {
+			computedRKBID, err :=
+				md.config.cryptoPure().MakeTLFReaderKeyBundleID(rkb)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if rkbID != computedRKBID {
+				return nil, nil, fmt.Errorf(
+					"Expected RKB ID %s, got %s",
+					rkbID, computedRKBID)
+			}
+		}
+	}
+
+	return wkb, rkb, nil
 }
