@@ -688,8 +688,8 @@ func (md *RootMetadata) AddKeyGeneration(
 }
 
 func (md *RootMetadata) fillInDevices(crypto Crypto,
-	keyGen KeyGen, wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	keyGen KeyGen,
+	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {

@@ -1085,8 +1085,7 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra Extr
 // exist.
 func (md *BareRootMetadataV3) fillInDevices(crypto Crypto,
 	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3,
-	wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (

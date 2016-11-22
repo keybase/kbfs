@@ -1132,8 +1132,7 @@ func (md *BareRootMetadataV2) AddKeyGeneration(
 // exist.
 func (md *BareRootMetadataV2) fillInDevices(crypto Crypto,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2,
-	wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (

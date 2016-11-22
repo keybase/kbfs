@@ -313,8 +313,7 @@ func (km *KeyManagerStandard) unmaskTLFCryptKey(ctx context.Context, serverHalfI
 
 func (km *KeyManagerStandard) updateKeyBundle(ctx context.Context,
 	md *RootMetadata, keyGen KeyGen,
-	wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) error {
