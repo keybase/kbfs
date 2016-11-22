@@ -1605,6 +1605,8 @@ type BareRootMetadata interface {
 	// MakeSuccessorCopy returns a newly constructed successor copy to this metadata revision.
 	// It differs from DeepCopy in that it can perform an up conversion to a new metadata
 	// version.
+	//
+	// TODO: Replace Config argument.
 	MakeSuccessorCopy(ctx context.Context, config Config, kmd KeyMetadata,
 		extra ExtraMetadata, isReadableAndWriter bool) (
 		mdCopy MutableBareRootMetadata, extraCopy ExtraMetadata, extraCopyIsNew bool, err error)
