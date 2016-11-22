@@ -269,16 +269,16 @@ func (md *RootMetadata) MakeSuccessor(
 	return newMd, nil
 }
 
-// AddNewKeysForTesting adds new writer and reader TLF key bundles to
+// addNewKeysForTesting adds new writer and reader TLF key bundles to
 // this revision of metadata. prevKey and key are passed into
 // FinalizeRekey, and must satisfy the requirements of that function.
-func (md *RootMetadata) AddNewKeysForTesting(crypto cryptoPure,
+func (md *RootMetadata) addNewKeysForTesting(crypto cryptoPure,
 	wDkim, rDkim UserDeviceKeyInfoMap,
 	prevKey, key kbfscrypto.TLFCryptKey) error {
 	if md.TlfID().IsPublic() {
-		return InvalidPublicTLFOperation{md.TlfID(), "AddNewKeysForTesting"}
+		return InvalidPublicTLFOperation{md.TlfID(), "addNewKeysForTesting"}
 	}
-	extra, err := md.bareMd.AddNewKeysForTesting(
+	extra, err := md.bareMd.addNewKeysForTesting(
 		crypto, wDkim, rDkim, prevKey, key,
 		kbfscrypto.TLFPublicKey{})
 	if err != nil {

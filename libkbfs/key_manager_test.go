@@ -264,7 +264,7 @@ func makeDirRKeyInfoMap(uid keybase1.UID,
 func addNewKeysOrBust(t *testing.T, crypto cryptoPure,
 	rmd *RootMetadata, wDkim, rDkim UserDeviceKeyInfoMap,
 	prevKey, key kbfscrypto.TLFCryptKey) {
-	err := rmd.AddNewKeysForTesting(crypto, wDkim, rDkim, prevKey, key)
+	err := rmd.addNewKeysForTesting(crypto, wDkim, rDkim, prevKey, key)
 	require.NoError(t, err)
 }
 
