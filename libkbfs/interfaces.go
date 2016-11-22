@@ -1758,8 +1758,15 @@ type MutableBareRootMetadata interface {
 		wDkim, rDkim UserDeviceKeyInfoMap,
 		prevKey, key kbfscrypto.TLFCryptKey,
 		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
-	// NewKeyGeneration adds a new key generation to this revision of metadata.
-	NewKeyGeneration(pubKey kbfscrypto.TLFPublicKey) (extra ExtraMetadata)
+	// AddKeyGeneration adds a new key generation to this revision
+	// of metadata. If StoresHistoricTLFCryptKeys is false, then
+	// prevCryptKey and currCryptKey must be zero. Otherwise,
+	// currCryptKey must be non-zero, and prevCryptKey must be
+	// zero for the first key generation, and non-zero for
+	// subsequent ones.
+	AddKeyGeneration(prevExtra ExtraMetadata,
+		prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
+		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
 	// SetUnresolvedReaders sets the list of unresolved readers assoiated with this folder.
 	SetUnresolvedReaders(readers []keybase1.SocialAssertion)
 	// SetUnresolvedWriters sets the list of unresolved writers assoiated with this folder.

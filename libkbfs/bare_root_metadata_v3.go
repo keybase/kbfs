@@ -920,9 +920,11 @@ func (md *BareRootMetadataV3) AddNewKeysForTesting(crypto cryptoPure,
 	return extra, nil
 }
 
-// NewKeyGeneration implements the MutableBareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) NewKeyGeneration(pubKey kbfscrypto.TLFPublicKey) (
-	extra ExtraMetadata) {
+// AddKeyGeneration implements the MutableBareRootMetadata interface
+// for BareRootMetadataV3.
+func (md *BareRootMetadataV3) AddKeyGeneration(prevExtra ExtraMetadata,
+	prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
+	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
 	newWriterKeys := &TLFWriterKeyBundleV3{
 		Keys:         make(UserDeviceKeyInfoMap),
 		TLFPublicKey: pubKey,
@@ -936,7 +938,7 @@ func (md *BareRootMetadataV3) NewKeyGeneration(pubKey kbfscrypto.TLFPublicKey) (
 	return &ExtraMetadataV3{
 		rkb: newReaderKeys,
 		wkb: newWriterKeys,
-	}
+	}, nil
 }
 
 // SetUnresolvedReaders implements the MutableBareRootMetadata interface for BareRootMetadataV3.

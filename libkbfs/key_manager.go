@@ -791,7 +791,27 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	km.config.Reporter().Notify(ctx, rekeyNotification(ctx, km.config, resolvedHandle,
 		false))
 
-	md.NewKeyGeneration(pubKey)
+	// Get the previous TLF crypt key if needed. It's
+	// symmetrically encrypted and appended to a list for MDv3
+	// metadata.
+	var prevTLFCryptKey, currTLFCryptKey kbfscrypto.TLFCryptKey
+	if currKeyGen >= FirstValidKeyGen && md.StoresHistoricTLFCryptKeys() {
+		flags := getTLFCryptKeyAnyDevice
+		if promptPaper {
+			flags |= getTLFCryptKeyPromptPaper
+		}
+		var err error
+		prevTLFCryptKey, err = km.getTLFCryptKey(ctx, md.ReadOnly(),
+			currKeyGen, flags)
+		if err != nil {
+			return false, nil, err
+		}
+		currTLFCryptKey = tlfCryptKey
+	}
+	err = md.AddKeyGeneration(prevTLFCryptKey, currTLFCryptKey, pubKey)
+	if err != nil {
+		return false, nil, err
+	}
 	currKeyGen = md.LatestKeyGeneration()
 	err = km.updateKeyBundle(ctx, md, currKeyGen, wKeys, rKeys, ePubKey,
 		ePrivKey, tlfCryptKey)

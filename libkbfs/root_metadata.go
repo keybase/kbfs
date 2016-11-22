@@ -674,9 +674,17 @@ func (md *RootMetadata) GetBareRootMetadata() BareRootMetadata {
 	return md.bareMd
 }
 
-// NewKeyGeneration adds a new key generation to this revision of metadata.
-func (md *RootMetadata) NewKeyGeneration(pubKey kbfscrypto.TLFPublicKey) {
-	md.extra = md.bareMd.NewKeyGeneration(pubKey)
+// AddKeyGeneration adds a new key generation to this revision of metadata.
+func (md *RootMetadata) AddKeyGeneration(
+	prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
+	pubKey kbfscrypto.TLFPublicKey) error {
+	newExtra, err := md.bareMd.AddKeyGeneration(
+		md.extra, prevCryptKey, currCryptKey, pubKey)
+	if err != nil {
+		return err
+	}
+	md.extra = newExtra
+	return nil
 }
 
 func (md *RootMetadata) fillInDevices(crypto Crypto,

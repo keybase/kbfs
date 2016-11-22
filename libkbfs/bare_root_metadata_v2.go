@@ -1097,9 +1097,18 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(keyGen KeyGen, _ ExtraMet
 	return rkb.RKeys, wkb.WKeys, nil
 }
 
-// NewKeyGeneration implements the MutableBareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) NewKeyGeneration(
-	pubKey kbfscrypto.TLFPublicKey) ExtraMetadata {
+// AddKeyGeneration implements the MutableBareRootMetadata interface
+// for BareRootMetadataV2.
+func (md *BareRootMetadataV2) AddKeyGeneration(prevExtra ExtraMetadata,
+	prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
+	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
+	if prevCryptKey != (kbfscrypto.TLFCryptKey{}) {
+		return nil, errors.New("prevCryptKey unexpectedly non-zero")
+	}
+	if currCryptKey != (kbfscrypto.TLFCryptKey{}) {
+		return nil, errors.New("currCryptKey unexpectedly non-zero")
+	}
+
 	newWriterKeys := TLFWriterKeyBundleV2{
 		WKeys:        make(UserDeviceKeyInfoMap),
 		TLFPublicKey: pubKey,
@@ -1109,7 +1118,7 @@ func (md *BareRootMetadataV2) NewKeyGeneration(
 	}
 	md.WKeys = append(md.WKeys, newWriterKeys)
 	md.RKeys = append(md.RKeys, newReaderKeys)
-	return nil
+	return nil, nil
 }
 
 // fillInDevices ensures that every device for every writer and reader
