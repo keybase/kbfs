@@ -44,6 +44,19 @@ func (c shimKMCrypto) MakeTLFReaderKeyBundleID(
 	return c.pure.MakeTLFReaderKeyBundleID(wkb)
 }
 
+func (c shimKMCrypto) MaskTLFCryptKey(
+	serverHalf kbfscrypto.TLFCryptKeyServerHalf,
+	key kbfscrypto.TLFCryptKey) (kbfscrypto.TLFCryptKeyClientHalf, error) {
+	return c.pure.MaskTLFCryptKey(serverHalf, key)
+}
+
+func (c shimKMCrypto) UnmaskTLFCryptKey(
+	serverHalf kbfscrypto.TLFCryptKeyServerHalf,
+	clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
+	kbfscrypto.TLFCryptKey, error) {
+	return c.pure.UnmaskTLFCryptKey(serverHalf, clientHalf)
+}
+
 func keyManagerInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config *ConfigMock, ctx context.Context) {
 	ctr := NewSafeTestReporter(t)
@@ -95,8 +108,6 @@ func expectUncachedGetTLFCryptKey(t *testing.T, config *ConfigMock, tlfID tlf.ID
 		// current secret key
 		config.mockKops.EXPECT().GetTLFCryptKeyServerHalf(gomock.Any(),
 			gomock.Any(), gomock.Any()).Return(serverHalf, nil)
-		config.mockCrypto.EXPECT().UnmaskTLFCryptKey(
-			serverHalf, clientHalf).Return(currTLFCryptKey, nil)
 	} else {
 		clientHalf := kbfscrypto.MaskTLFCryptKey(
 			serverHalf, tlfCryptKey)
@@ -111,8 +122,6 @@ func expectUncachedGetTLFCryptKey(t *testing.T, config *ConfigMock, tlfID tlf.ID
 		// get the server-side half and retrieve the real secret key
 		config.mockKops.EXPECT().GetTLFCryptKeyServerHalf(gomock.Any(),
 			gomock.Any(), gomock.Any()).Return(serverHalf, nil)
-		config.mockCrypto.EXPECT().UnmaskTLFCryptKey(
-			serverHalf, clientHalf).Return(tlfCryptKey, nil)
 	}
 }
 
@@ -130,8 +139,6 @@ func expectUncachedGetTLFCryptKeyAnyDevice(
 	// get the server-side half and retrieve the real secret key
 	config.mockKops.EXPECT().GetTLFCryptKeyServerHalf(gomock.Any(),
 		gomock.Any(), gomock.Any()).Return(serverHalf, nil)
-	config.mockCrypto.EXPECT().UnmaskTLFCryptKey(
-		serverHalf, clientHalf).Return(tlfCryptKey, nil)
 }
 
 func expectRekey(config *ConfigMock, bh tlf.Handle, numDevices int,
@@ -158,9 +165,6 @@ func expectRekey(config *ConfigMock, bh tlf.Handle, numDevices int,
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, tlfCryptKey)
 
 	// make keys for the one device
-	config.mockCrypto.EXPECT().MaskTLFCryptKey(
-		serverHalf, tlfCryptKey).Return(
-		clientHalf, nil).Times(numDevices)
 	config.mockCrypto.EXPECT().EncryptTLFCryptKeyClientHalf(
 		kbfscrypto.TLFEphemeralPrivateKey{}, subkey, clientHalf).Return(
 		EncryptedTLFCryptKeyClientHalf{}, nil).Times(numDevices)
