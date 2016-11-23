@@ -18,6 +18,22 @@ import (
 	"golang.org/x/net/context"
 )
 
+type shimKMCrypto struct {
+	Crypto
+	pure cryptoPure
+}
+
+func (c shimKMCrypto) EncryptTLFCryptKeys(oldKeys []kbfscrypto.TLFCryptKey,
+	key kbfscrypto.TLFCryptKey) (EncryptedTLFCryptKeys, error) {
+	return c.pure.EncryptTLFCryptKeys(oldKeys, key)
+}
+
+func (c shimKMCrypto) DecryptTLFCryptKeys(
+	encKeys EncryptedTLFCryptKeys, key kbfscrypto.TLFCryptKey) (
+	[]kbfscrypto.TLFCryptKey, error) {
+	return c.pure.DecryptTLFCryptKeys(encKeys, key)
+}
+
 func keyManagerInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config *ConfigMock, ctx context.Context) {
 	ctr := NewSafeTestReporter(t)
@@ -29,7 +45,10 @@ func keyManagerInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config.SetKeyManager(keyman)
 	interposeDaemonKBPKI(config, "alice", "bob", "charlie", "dave")
 	ctx = context.Background()
-	config.SetCodec(kbfscodec.NewMsgpack())
+	codec := kbfscodec.NewMsgpack()
+	config.SetCodec(codec)
+	cryptoPure := MakeCryptoCommon(codec)
+	config.SetCrypto(shimKMCrypto{config.Crypto(), cryptoPure})
 	return
 }
 
@@ -68,14 +87,6 @@ func expectUncachedGetTLFCryptKey(t *testing.T, config *ConfigMock, tlfID tlf.ID
 			gomock.Any(), gomock.Any()).Return(serverHalf, nil)
 		config.mockCrypto.EXPECT().UnmaskTLFCryptKey(
 			serverHalf, clientHalf).Return(currTLFCryptKey, nil)
-
-		if keyGen < currKeyGen {
-			// expect a decryption of the historic tlf keys
-			keys := make([]kbfscrypto.TLFCryptKey, int(currKeyGen-1))
-			keys[keyGen-1] = tlfCryptKey
-			config.mockCrypto.EXPECT().DecryptTLFCryptKeys(
-				gomock.Any(), gomock.Any()).Return(keys, nil)
-		}
 	} else {
 		clientHalf := kbfscrypto.MaskTLFCryptKey(
 			serverHalf, tlfCryptKey)
