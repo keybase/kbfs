@@ -5538,15 +5538,14 @@ func (_mr *_MockMutableBareRootMetadataRecorder) SetRevision(arg0 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetRevision", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) addNewKeysForTesting(crypto cryptoPure, wDkim UserDeviceKeyInfoMap, rDkim UserDeviceKeyInfoMap, prevKey kbfscrypto.TLFCryptKey, key kbfscrypto.TLFCryptKey, pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
-	ret := _m.ctrl.Call(_m, "addNewKeysForTesting", crypto, wDkim, rDkim, prevKey, key, pubKey)
+func (_m *MockMutableBareRootMetadata) addKeyGenerationForTest(crypto cryptoPure, prevExtra ExtraMetadata, currCryptKey kbfscrypto.TLFCryptKey, nextCryptKey kbfscrypto.TLFCryptKey, pubKey kbfscrypto.TLFPublicKey, wDkim UserDeviceKeyInfoMap, rDkim UserDeviceKeyInfoMap) ExtraMetadata {
+	ret := _m.ctrl.Call(_m, "addKeyGenerationForTest", crypto, prevExtra, currCryptKey, nextCryptKey, pubKey, wDkim, rDkim)
 	ret0, _ := ret[0].(ExtraMetadata)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	return ret0
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) addNewKeysForTesting(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "addNewKeysForTesting", arg0, arg1, arg2, arg3, arg4, arg5)
+func (_mr *_MockMutableBareRootMetadataRecorder) addKeyGenerationForTest(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "addKeyGenerationForTest", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 }
 
 func (_m *MockMutableBareRootMetadata) AddKeyGeneration(crypto cryptoPure, prevExtra ExtraMetadata, currCryptKey kbfscrypto.TLFCryptKey, nextCryptKey kbfscrypto.TLFCryptKey, pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {

@@ -269,23 +269,13 @@ func (md *RootMetadata) MakeSuccessor(
 	return newMd, nil
 }
 
-// addNewKeysForTesting adds new writer and reader TLF key bundles to
-// this revision of metadata. prevKey and key are passed into
-// FinalizeRekey, and must satisfy the requirements of that function.
-func (md *RootMetadata) addNewKeysForTesting(crypto cryptoPure,
-	wDkim, rDkim UserDeviceKeyInfoMap,
-	prevKey, key kbfscrypto.TLFCryptKey) error {
-	if md.TlfID().IsPublic() {
-		return InvalidPublicTLFOperation{md.TlfID(), "addNewKeysForTesting"}
-	}
-	extra, err := md.bareMd.addNewKeysForTesting(
-		crypto, wDkim, rDkim, prevKey, key,
-		kbfscrypto.TLFPublicKey{})
-	if err != nil {
-		return err
-	}
+func (md *RootMetadata) addKeyGenerationForTest(
+	crypto cryptoPure, currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
+	wDkim, rDkim UserDeviceKeyInfoMap) {
+	extra := md.bareMd.addKeyGenerationForTest(
+		crypto, md.extra, currCryptKey, nextCryptKey,
+		kbfscrypto.TLFPublicKey{}, wDkim, rDkim)
 	md.extra = extra
-	return nil
 }
 
 // GetTlfHandle returns the TlfHandle for this RootMetadata.
@@ -658,15 +648,13 @@ func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool {
 
 // fakeInitialRekey wraps the FakeInitialRekey test function for
 // convenience.
-func (md *RootMetadata) fakeInitialRekey(crypto cryptoPure) error {
-	var err error
+func (md *RootMetadata) fakeInitialRekey(crypto cryptoPure) {
 	bh, err := md.tlfHandle.ToBareHandle()
 	if err != nil {
-		return err
+		panic(err)
 	}
-	md.extra, err = FakeInitialRekey(md.bareMd,
+	md.extra = FakeInitialRekey(md.bareMd,
 		crypto, bh, kbfscrypto.TLFPublicKey{})
-	return err
 }
 
 // GetBareRootMetadata returns an interface to the underlying serializeable metadata.

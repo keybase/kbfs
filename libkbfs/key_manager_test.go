@@ -261,13 +261,6 @@ func makeDirRKeyInfoMap(uid keybase1.UID,
 	}
 }
 
-func addNewKeysOrBust(t *testing.T, crypto cryptoPure,
-	rmd *RootMetadata, wDkim, rDkim UserDeviceKeyInfoMap,
-	prevKey, key kbfscrypto.TLFCryptKey) {
-	err := rmd.addNewKeysForTesting(crypto, wDkim, rDkim, prevKey, key)
-	require.NoError(t, err)
-}
-
 // TODO: Test with MDv3.
 
 func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
@@ -283,7 +276,9 @@ func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	expectMakeKeyBundleIDs(config)
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), kbfscrypto.TLFCryptKey{}, storedTLFCryptKey)
+	rmd.addKeyGenerationForTest(config.Crypto(),
+		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
+		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey))
 
 	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
 	expectUncachedGetTLFCryptKey(t, config, rmd.TlfID(),
@@ -309,8 +304,9 @@ func TestKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	expectMakeKeyBundleIDs(config)
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), kbfscrypto.TLFCryptKey{},
-		storedTLFCryptKey)
+	rmd.addKeyGenerationForTest(config.Crypto(),
+		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
+		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey))
 
 	expectUncachedGetTLFCryptKeyAnyDevice(
 		config, rmd.TlfID(), rmd.LatestKeyGeneration(), uid, subkey,
@@ -336,17 +332,16 @@ func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	expectMakeKeyBundleIDs(config)
 	storedTLFCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	storedTLFCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
-	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), kbfscrypto.TLFCryptKey{}, storedTLFCryptKey1)
+	rmd.addKeyGenerationForTest(config.Crypto(),
+		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey1,
+		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey))
 
-	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
-	var prevKey kbfscrypto.TLFCryptKey
-	if storesHistoric {
-		prevKey = storedTLFCryptKey1
-	}
-
-	addNewKeysOrBust(t, config.Crypto(), rmd, NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey), prevKey, storedTLFCryptKey2)
+	rmd.addKeyGenerationForTest(config.Crypto(),
+		storedTLFCryptKey1, storedTLFCryptKey2,
+		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey))
 
 	keyGen := rmd.LatestKeyGeneration() - 1
+	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
 	expectUncachedGetTLFCryptKey(t, config, rmd.TlfID(),
 		keyGen, rmd.LatestKeyGeneration(), uid, subkey,
 		storesHistoric, storedTLFCryptKey1, storedTLFCryptKey2)

@@ -1751,15 +1751,15 @@ type MutableBareRootMetadata interface {
 	SetWriterMetadataCopiedBit()
 	// SetRevision sets the revision number of the underlying metadata.
 	SetRevision(revision MetadataRevision)
-	// addNewKeysForTesting adds new writer and reader TLF key
-	// bundles to this revision of metadata. prevKey and key are
-	// passed into FinalizeRekey, and must satisfy the
-	// requirements of that function. pubKey is non-empty only for
-	// server-side tests.
-	addNewKeysForTesting(crypto cryptoPure,
-		wDkim, rDkim UserDeviceKeyInfoMap,
-		prevKey, key kbfscrypto.TLFCryptKey,
-		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
+	// addKeyGenerationForTest is like AddKeyGeneration, except
+	// currCryptKey and nextCryptKey don't have to be zero if
+	// StoresHistoricTLFCryptKeys is false, and takes in
+	// pre-filled UserDeviceKeyInfoMaps, and also calls
+	// FinalizeRekey.
+	addKeyGenerationForTest(crypto cryptoPure, prevExtra ExtraMetadata,
+		currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
+		pubKey kbfscrypto.TLFPublicKey,
+		wDkim, rDkim UserDeviceKeyInfoMap) ExtraMetadata
 	// AddKeyGeneration adds a new key generation to this revision
 	// of metadata. If StoresHistoricTLFCryptKeys is false, then
 	// currCryptKey and nextCryptKey must be zero. Otherwise,

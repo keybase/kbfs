@@ -15,8 +15,8 @@ import (
 // TlfHandle from until the first rekey. pubKey is non-empty only for
 // server-side tests.
 func FakeInitialRekey(md MutableBareRootMetadata,
-	crypto cryptoPure, h tlf.Handle, pubKey kbfscrypto.TLFPublicKey) (
-	ExtraMetadata, error) {
+	crypto cryptoPure, h tlf.Handle,
+	pubKey kbfscrypto.TLFPublicKey) ExtraMetadata {
 	var readerEPubKeyIndex int
 	// Apply the "negative hack" for V2 and earlier.
 	if md.Version() <= InitialExtraMetadataVer {
@@ -41,6 +41,6 @@ func FakeInitialRekey(md MutableBareRootMetadata,
 	}
 
 	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	return md.addNewKeysForTesting(crypto, wDkim, rDkim,
-		kbfscrypto.TLFCryptKey{}, tlfCryptKey, pubKey)
+	return md.addKeyGenerationForTest(crypto, nil,
+		kbfscrypto.TLFCryptKey{}, tlfCryptKey, pubKey, wDkim, rDkim)
 }

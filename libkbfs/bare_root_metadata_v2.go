@@ -947,15 +947,34 @@ func (md *BareRootMetadataV2) SetRevision(revision MetadataRevision) {
 	md.Revision = revision
 }
 
-// addNewKeysForTesting implements the MutableBareRootMetadata
-// interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) addNewKeysForTesting(crypto cryptoPure,
-	wDkim, rDkim UserDeviceKeyInfoMap,
-	prevKey, key kbfscrypto.TLFCryptKey,
-	pubKey kbfscrypto.TLFPublicKey) (extra ExtraMetadata, err error) {
+func (md *BareRootMetadataV2) addKeyGenerationHelper(
+	pubKey kbfscrypto.TLFPublicKey, wDkim, rDkim UserDeviceKeyInfoMap,
+	wPublicKeys, rPublicKeys []kbfscrypto.TLFEphemeralPublicKey) error {
 	if md.TlfID().IsPublic() {
-		panic("Called addNewKeysForTesting on public TLF")
+		return InvalidPublicTLFOperation{
+			md.TlfID(), "addKeyGenerationHelper"}
 	}
+
+	newWriterKeys := TLFWriterKeyBundleV2{
+		WKeys:                  wDkim,
+		TLFPublicKey:           pubKey,
+		TLFEphemeralPublicKeys: wPublicKeys,
+	}
+	newReaderKeys := TLFReaderKeyBundleV2{
+		RKeys: rDkim,
+		TLFReaderEphemeralPublicKeys: rPublicKeys,
+	}
+	md.WKeys = append(md.WKeys, newWriterKeys)
+	md.RKeys = append(md.RKeys, newReaderKeys)
+	return nil
+}
+
+// addKeyGenerationForTest implements the MutableBareRootMetadata
+// interface for BareRootMetadataV2.
+func (md *BareRootMetadataV2) addKeyGenerationForTest(
+	crypto cryptoPure, _ ExtraMetadata,
+	_, _ kbfscrypto.TLFCryptKey, pubKey kbfscrypto.TLFPublicKey,
+	wDkim, rDkim UserDeviceKeyInfoMap) ExtraMetadata {
 	for _, dkim := range wDkim {
 		for _, info := range dkim {
 			if info.EPubKeyIndex < 0 {
@@ -978,25 +997,21 @@ func (md *BareRootMetadataV2) addNewKeysForTesting(crypto cryptoPure,
 			}
 		}
 	}
-	wkb := TLFWriterKeyBundleV2{
-		WKeys:        wDkim,
-		TLFPublicKey: pubKey,
-		// TODO: Size this to the max EPubKeyIndex for writers.
-		TLFEphemeralPublicKeys: make([]kbfscrypto.TLFEphemeralPublicKey, 1),
-	}
-	rkb := TLFReaderKeyBundleV2{
-		RKeys: rDkim,
-		// TODO: Size this to the max EPubKeyIndex (after
-		// undoing the negative hack) for readers.
-		TLFReaderEphemeralPublicKeys: make([]kbfscrypto.TLFEphemeralPublicKey, 1),
-	}
-	md.WKeys = append(md.WKeys, wkb)
-	md.RKeys = append(md.RKeys, rkb)
-	err = md.FinalizeRekey(crypto, extra)
+	// TODO: Size this to the max EPubKeyIndex for writers.
+	wPublicKeys := make([]kbfscrypto.TLFEphemeralPublicKey, 1)
+	// TODO: Size this to the max EPubKeyIndex (after undoing the
+	// negative hack) for readers.
+	rPublicKeys := make([]kbfscrypto.TLFEphemeralPublicKey, 1)
+	err := md.addKeyGenerationHelper(
+		pubKey, wDkim, rDkim, wPublicKeys, rPublicKeys)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	return nil, nil
+	err = md.FinalizeRekey(crypto, nil)
+	if err != nil {
+		panic(err)
+	}
+	return nil
 }
 
 // SetUnresolvedReaders implements the MutableBareRootMetadata interface for BareRootMetadataV2.
@@ -1100,29 +1115,21 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(keyGen KeyGen, _ ExtraMet
 // AddKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV2.
 func (md *BareRootMetadataV2) AddKeyGeneration(
-	_ cryptoPure, prevExtra ExtraMetadata,
+	_ cryptoPure, _ ExtraMetadata,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
-	if md.TlfID().IsPublic() {
-		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "AddKeyGeneration"}
-	}
 	if currCryptKey != (kbfscrypto.TLFCryptKey{}) {
 		return nil, errors.New("currCryptKey unexpectedly non-zero")
 	}
 	if nextCryptKey != (kbfscrypto.TLFCryptKey{}) {
 		return nil, errors.New("nextCryptKey unexpectedly non-zero")
 	}
-
-	newWriterKeys := TLFWriterKeyBundleV2{
-		WKeys:        make(UserDeviceKeyInfoMap),
-		TLFPublicKey: pubKey,
+	wDkim := make(UserDeviceKeyInfoMap)
+	rDkim := make(UserDeviceKeyInfoMap)
+	err := md.addKeyGenerationHelper(pubKey, wDkim, rDkim, nil, nil)
+	if err != nil {
+		return nil, err
 	}
-	newReaderKeys := TLFReaderKeyBundleV2{
-		RKeys: make(UserDeviceKeyInfoMap),
-	}
-	md.WKeys = append(md.WKeys, newWriterKeys)
-	md.RKeys = append(md.RKeys, newReaderKeys)
 	return nil, nil
 }
 
