@@ -34,6 +34,16 @@ func (c shimKMCrypto) DecryptTLFCryptKeys(
 	return c.pure.DecryptTLFCryptKeys(encKeys, key)
 }
 
+func (c shimKMCrypto) MakeTLFWriterKeyBundleID(
+	wkb *TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error) {
+	return c.pure.MakeTLFWriterKeyBundleID(wkb)
+}
+
+func (c shimKMCrypto) MakeTLFReaderKeyBundleID(
+	wkb *TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error) {
+	return c.pure.MakeTLFReaderKeyBundleID(wkb)
+}
+
 func keyManagerInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config *ConfigMock, ctx context.Context) {
 	ctr := NewSafeTestReporter(t)
@@ -161,14 +171,6 @@ func expectRekey(config *ConfigMock, bh tlf.Handle, numDevices int,
 	config.mockRep.EXPECT().Notify(gomock.Any(), gomock.Any()).AnyTimes()
 	config.mockKbs.EXPECT().FlushUserFromLocalCache(gomock.Any(),
 		gomock.Any()).AnyTimes()
-
-	// ignore key bundle ID creation
-	expectMakeKeyBundleIDs(config)
-}
-
-func expectMakeKeyBundleIDs(config *ConfigMock) {
-	config.mockCrypto.EXPECT().MakeTLFWriterKeyBundleID(gomock.Any()).Return(TLFWriterKeyBundleID{}, nil).AnyTimes()
-	config.mockCrypto.EXPECT().MakeTLFReaderKeyBundleID(gomock.Any()).Return(TLFReaderKeyBundleID{}, nil).AnyTimes()
 }
 
 func TestKeyManagerPublicTLFCryptKey(t *testing.T) {
@@ -285,7 +287,6 @@ func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
-	expectMakeKeyBundleIDs(config)
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	rmd.addKeyGenerationForTest(config.Crypto(),
 		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
@@ -313,7 +314,6 @@ func TestKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
-	expectMakeKeyBundleIDs(config)
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	rmd.addKeyGenerationForTest(config.Crypto(),
 		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
@@ -340,7 +340,6 @@ func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
-	expectMakeKeyBundleIDs(config)
 	storedTLFCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	storedTLFCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
 	rmd.addKeyGenerationForTest(config.Crypto(),
