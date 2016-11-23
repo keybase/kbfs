@@ -868,7 +868,7 @@ func (md *BareRootMetadataV3) AddNewKeysForTesting(crypto cryptoPure,
 	}
 	if md.WriterMetadata.LatestKeyGen >= FirstValidKeyGen {
 		// TODO: Relax this if needed (but would have to
-		// retrieve the previous pubkeys below).
+		// retrieve the previous historical crypt keys below).
 		panic("Cannot add more than one key generation")
 	}
 	for _, dkim := range wDkim {
