@@ -769,16 +769,18 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	// symmetrically encrypted and appended to a list for MDv3
 	// metadata.
 	var prevTLFCryptKey, currTLFCryptKey kbfscrypto.TLFCryptKey
-	if currKeyGen >= FirstValidKeyGen && md.StoresHistoricTLFCryptKeys() {
-		flags := getTLFCryptKeyAnyDevice
-		if promptPaper {
-			flags |= getTLFCryptKeyPromptPaper
-		}
-		var err error
-		prevTLFCryptKey, err = km.getTLFCryptKey(ctx, md.ReadOnly(),
-			currKeyGen, flags)
-		if err != nil {
-			return false, nil, err
+	if md.StoresHistoricTLFCryptKeys() {
+		if currKeyGen >= FirstValidKeyGen {
+			flags := getTLFCryptKeyAnyDevice
+			if promptPaper {
+				flags |= getTLFCryptKeyPromptPaper
+			}
+			var err error
+			prevTLFCryptKey, err = km.getTLFCryptKey(
+				ctx, md.ReadOnly(), currKeyGen, flags)
+			if err != nil {
+				return false, nil, err
+			}
 		}
 		currTLFCryptKey = tlfCryptKey
 	}
