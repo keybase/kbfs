@@ -51,7 +51,7 @@ type opt struct {
 
 func test(t testing.TB, actions ...optionOp) {
 	o := &opt{}
-	o.engine = createEngine()
+	o.engine = createEngine(t)
 	o.engine.Init()
 	o.t = t
 	defer o.close()

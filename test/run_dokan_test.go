@@ -23,7 +23,7 @@ type dokanEngine struct {
 	fsEngine
 }
 
-func createEngine() Engine {
+func createEngine(t testing.TB) Engine {
 	e := &dokanEngine{}
 	e.createUser = createUserDokan
 	e.name = "dokan"

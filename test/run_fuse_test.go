@@ -24,7 +24,7 @@ type fuseEngine struct {
 	fsEngine
 }
 
-func createEngine() Engine {
+func createEngine(t testing.TB) Engine {
 	e := &fuseEngine{}
 	e.createUser = createUserFuse
 	e.name = "fuse"
