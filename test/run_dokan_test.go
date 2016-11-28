@@ -49,12 +49,13 @@ func createUserDokan(t testing.TB, ith int, config *libkbfs.ConfigLocal,
 		}
 	}()
 
+	ctx := context.Background()
+
 	username, _, err := config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
 	ctx, cancelFn := context.WithCancel(ctx)
 	logTags := logger.CtxLogTags{
 		CtxUserKey: CtxOpUser,

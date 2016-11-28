@@ -59,12 +59,13 @@ func createUserFuse(t testing.TB, ith int, config *libkbfs.ConfigLocal,
 	}
 	t.Logf("FUSE HasInvalidate=%v", mnt.Conn.Protocol().HasInvalidate())
 
+	ctx := context.Background()
+
 	username, _, err := config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
 	ctx, cancelFn := context.WithCancel(ctx)
 
 	ctx = filesys.WithContext(ctx)
