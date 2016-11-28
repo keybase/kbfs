@@ -27,8 +27,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-type createUserFn func(t testing.TB, ith int,
-	config *libkbfs.ConfigLocal, opTimeout time.Duration) *fsUser
+type createUserFn func(t testing.TB, ith int, config *libkbfs.ConfigLocal,
+	opTimeout time.Duration) *fsUser
 
 type fsEngine struct {
 	name       string
