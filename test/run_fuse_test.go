@@ -13,7 +13,6 @@ import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"bazil.org/fuse/fs/fstestutil"
-	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/libfuse"
 	"github.com/keybase/kbfs/libkbfs"
@@ -37,8 +36,8 @@ func createEngine(t testing.TB) Engine {
 	}
 }
 
-func createUserFuse(t testing.TB, ith int, username libkb.NormalizedUsername,
-	config *libkbfs.ConfigLocal, opTimeout time.Duration) *fsUser {
+func createUserFuse(t testing.TB, ith int, config *libkbfs.ConfigLocal,
+	opTimeout time.Duration) *fsUser {
 	filesys := libfuse.NewFS(config, nil, false)
 	fn := func(mnt *fstestutil.Mount) fs.FS {
 		filesys.SetFuseConn(mnt.Server, mnt.Conn)
@@ -59,6 +58,11 @@ func createUserFuse(t testing.TB, ith int, username libkb.NormalizedUsername,
 		t.Fatal(err)
 	}
 	t.Logf("FUSE HasInvalidate=%v", mnt.Conn.Protocol().HasInvalidate())
+
+	username, _, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ctx := context.Background()
 	ctx, cancelFn := context.WithCancel(ctx)

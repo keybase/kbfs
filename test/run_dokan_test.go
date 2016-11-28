@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/dokan"
 	"github.com/keybase/kbfs/libdokan"
@@ -33,8 +32,8 @@ func createEngine(t testing.TB) Engine {
 	}
 }
 
-func createUserDokan(t testing.TB, ith int, username libkb.NormalizedUsername,
-	config *libkbfs.ConfigLocal, opTimeout time.Duration) *fsUser {
+func createUserDokan(t testing.TB, ith int, config *libkbfs.ConfigLocal,
+	opTimeout time.Duration) *fsUser {
 	driveLetter := 'T' + byte(ith)
 	if driveLetter > 'Z' {
 		t.Error("Too many users - out of drive letters")
@@ -49,6 +48,11 @@ func createUserDokan(t testing.TB, ith int, username libkb.NormalizedUsername,
 			lock.Unlock()
 		}
 	}()
+
+	username, _, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ctx := context.Background()
 	ctx, cancelFn := context.WithCancel(ctx)

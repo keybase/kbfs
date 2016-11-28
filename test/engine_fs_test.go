@@ -542,7 +542,7 @@ func (e *fsEngine) InitTest(t testing.TB, blockSize int64,
 	}
 
 	for i, name := range users {
-		res[name] = e.createUser(t, i, name, cfgs[i], opTimeout)
+		res[name] = e.createUser(t, i, cfgs[i], opTimeout)
 	}
 
 	if journal {
