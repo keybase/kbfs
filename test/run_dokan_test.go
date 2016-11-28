@@ -24,10 +24,13 @@ type dokanEngine struct {
 }
 
 func createEngine(t testing.TB) Engine {
-	e := &dokanEngine{}
-	e.createUser = createUserDokan
-	e.name = "dokan"
-	return e
+	return &dokanEngine{
+		fsEngine: fsEngine{
+			name:       "dokan",
+			t:          t,
+			createUser: createUserDokan,
+		},
+	}
 }
 
 func createUserDokan(t testing.TB, ith int, username libkb.NormalizedUsername,

@@ -25,10 +25,13 @@ type fuseEngine struct {
 }
 
 func createEngine(t testing.TB) Engine {
-	e := &fuseEngine{}
-	e.createUser = createUserFuse
-	e.name = "fuse"
-	return e
+	return &fuseEngine{
+		fsEngine: fsEngine{
+			name:       "fuse",
+			t:          t,
+			createUser: createUserFuse,
+		},
+	}
 }
 
 func createUserFuse(t testing.TB, ith int, username libkb.NormalizedUsername,
