@@ -209,7 +209,7 @@ func MakeLocalUsers(users []libkb.NormalizedUsername) []LocalUser {
 	return localUsers
 }
 
-// getDefaultCleanBlocKCacheCapacity returns the default clean block cache
+// getDefaultCleanBlockCacheCapacity returns the default clean block cache
 // capacity. If we can get total RAM of the system, we cap at the smaller of
 // <1/4 of available memory> and <MaxBlockSizeBytesDefault * 1024>; otherwise,
 // fallback to latter.
@@ -228,6 +228,9 @@ func getDefaultCleanBlockCacheCapacity() uint64 {
 // NewConfigLocal constructs a new ConfigLocal with some default
 // components that don't depend on a logger. The caller will have to
 // fill in the rest.
+//
+// TODO: Now that NewConfigLocal takes loggerFn, add more default
+// components.
 func NewConfigLocal(loggerFn func(module string) logger.Logger) *ConfigLocal {
 	config := &ConfigLocal{
 		loggerFn: loggerFn,
