@@ -737,7 +737,8 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	// md.finalizeRekey() first.
 
 	defer func() {
-		if mdChanged && (err == nil || err == RekeyIncompleteError{}) {
+		_, isErrRekeyIncomplete := err.(RekeyIncompleteError)
+		if mdChanged && (err == nil || isErrRekeyIncomplete) {
 			finalizeErr := md.finalizeRekey(km.config.Crypto())
 			if finalizeErr != nil {
 				mdChanged = false
