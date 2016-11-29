@@ -671,12 +671,12 @@ func (c *ConfigLocal) resetCachesWithoutShutdown() DirtyBlockCache {
 	var capacity uint64
 	if c.bcache == nil {
 		capacity = getDefaultCleanBlockCacheCapacity()
-		log.CDebugf(nil,
-			"setting default clean block cache capacity to %d", capacity)
+		log.Debug("setting default clean block cache capacity to %d",
+			capacity)
 	} else {
 		capacity = c.bcache.GetCleanBytesCapacity()
-		log.CDebugf(nil,
-			"setting clean block cache capacity based on existing value %d", capacity)
+		log.Debug("setting clean block cache capacity based on existing value %d",
+			capacity)
 	}
 	c.bcache = NewBlockCacheStandard(10000, capacity)
 
