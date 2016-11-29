@@ -26,7 +26,8 @@ const (
 type Codec interface {
 	// Decode unmarshals the given buffer into the given object, if possible.
 	Decode(buf []byte, obj interface{}) error
-	// Encode marshals the given object into a returned buffer.
+	// Encode marshals the given object (which must not be typed
+	// or untyped nil) into a returned buffer.
 	Encode(obj interface{}) ([]byte, error)
 	// RegisterType should be called for all types that are stored
 	// under ambiguous types (like interface{} or nil interface) in a
