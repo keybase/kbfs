@@ -297,13 +297,6 @@ func (d *DirtyBlockCacheStandard) calcBackpressure(start time.Time,
 	return totalBackpressure - timeSpentSoFar
 }
 
-func (d *DirtyBlockCacheStandard) logLocked(fmt string, arg ...interface{}) {
-	// TODO: pass contexts all the way here just for logging? It's
-	// extremely inconvenient to do that for the permission check
-	// messages which happen in the background.
-	d.log.CDebugf(nil, fmt, arg...)
-}
-
 func (d *DirtyBlockCacheStandard) acceptNewWrite(newBytes int64) bool {
 	d.lock.Lock()
 	defer d.lock.Unlock()
@@ -344,7 +337,7 @@ func (d *DirtyBlockCacheStandard) maybeDecreaseBuffer(start time.Time,
 		if d.syncBufferCap < d.minSyncBufCap {
 			d.syncBufferCap = d.minSyncBufCap
 		}
-		d.logLocked("Writes blocked for %s (%f%% of timeout), "+
+		d.log.Debug("Writes blocked for %s (%f%% of timeout), "+
 			"syncBufferCap=%d", timeoutUsed, fracTimeoutUsed*100,
 			d.syncBufferCap)
 		if d.syncBufBytes > d.ignoreSyncBytes {
@@ -466,7 +459,7 @@ func (d *DirtyBlockCacheStandard) processPermission() {
 						d.syncStarted = d.clock.Now()
 						fracDeadlineSoFar = 0
 					}
-					d.logLocked("Applying backpressure %s", backpressure)
+					d.log.Debug("Applying backpressure %s", backpressure)
 				}()
 			}
 		}
@@ -558,7 +551,7 @@ func (d *DirtyBlockCacheStandard) BlockSyncFinished(_ tlf.ID, size int64) {
 func (d *DirtyBlockCacheStandard) resetBufferCap() {
 	d.lock.Lock()
 	defer d.lock.Unlock()
-	d.logLocked("Resetting syncBufferCap from %d to %d", d.syncBufferCap,
+	d.log.Debug("Resetting syncBufferCap from %d to %d", d.syncBufferCap,
 		d.minSyncBufCap)
 	d.syncBufferCap = d.minSyncBufCap
 	d.resetter = nil
@@ -606,7 +599,7 @@ func (d *DirtyBlockCacheStandard) SyncFinished(_ tlf.ID, size int64) {
 		}
 	}
 	d.signalDecreasedBytes()
-	d.logLocked("Finished syncing %d bytes, syncBufferCap=%d, "+
+	d.log.Debug("Finished syncing %d bytes, syncBufferCap=%d, "+
 		"waitBuf=%d, ignored=%d", size, d.syncBufferCap, d.waitBufBytes,
 		ignore)
 }
