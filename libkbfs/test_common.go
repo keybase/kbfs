@@ -101,7 +101,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 		config.Codec())
 	config.SetKeybaseService(daemon)
 
-	kbpki := NewKBPKIClient(config)
+	kbpki := NewKBPKIClient(config, config.MakeLogger(""))
 	config.SetKBPKI(kbpki)
 
 	signingKey := MakeLocalUserSigningKeyOrBust(loggedInUser.Name)
@@ -230,7 +230,7 @@ func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *C
 	}
 	newDaemon := NewKeybaseDaemonMemory(loggedInUID, localUsers, c.Codec())
 	c.SetKeybaseService(newDaemon)
-	c.SetKBPKI(NewKBPKIClient(c))
+	c.SetKBPKI(NewKBPKIClient(c, c.MakeLogger("")))
 
 	signingKey := MakeLocalUserSigningKeyOrBust(loggedInUser)
 	cryptPrivateKey := MakeLocalUserCryptPrivateKeyOrBust(loggedInUser)

@@ -376,7 +376,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config.SetKeybaseService(service)
 
-	k := NewKBPKIClient(config)
+	k := NewKBPKIClient(config, log)
 	config.SetKBPKI(k)
 
 	config.SetReporter(NewReporterKBPKI(config, 10, 1000))
