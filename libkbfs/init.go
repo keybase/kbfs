@@ -308,7 +308,21 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 		os.Exit(1)
 	}()
 
-	config := NewConfigLocal()
+	config := NewConfigLocal(func(module string) logger.Logger {
+		mname := "kbfs"
+		if module != "" {
+			mname += fmt.Sprintf("(%s)", module)
+		}
+		// Add log depth so that context-based messages get the right
+		// file printed out.
+		lg := logger.NewWithCallDepth(mname, 1)
+		if params.Debug {
+			// Turn on debugging.  TODO: allow a proper log file and
+			// style to be specified.
+			lg.Configure("", true, "")
+		}
+		return lg
+	})
 
 	if params.CleanBlockCacheCapacity > 0 {
 		log.Debug("overriding default clean block cache capacity from %d to %d",
@@ -335,23 +349,6 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 		keyBundleCache = NewKeyBundleCacheMeasured(keyBundleCache, registry)
 		config.SetKeyBundleCache(keyBundleCache)
 	}
-
-	// Set logging
-	config.SetLoggerMaker(func(module string) logger.Logger {
-		mname := "kbfs"
-		if module != "" {
-			mname += fmt.Sprintf("(%s)", module)
-		}
-		// Add log depth so that context-based messages get the right
-		// file printed out.
-		lg := logger.NewWithCallDepth(mname, 1)
-		if params.Debug {
-			// Turn on debugging.  TODO: allow a proper log file and
-			// style to be specified.
-			lg.Configure("", true, "")
-		}
-		return lg
-	})
 
 	config.SetMetadataVersion(MetadataVer(params.MetadataVersion))
 	config.SetTLFValidDuration(params.TLFValidDuration)

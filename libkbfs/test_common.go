@@ -74,8 +74,8 @@ func setTestLogger(config Config, t logger.TestLogBackend) {
 // MakeTestConfigOrBust or ConfigAsUser.
 //
 // TODO: Move more common code here.
-func newConfigForTest() *ConfigLocal {
-	config := NewConfigLocal()
+func newConfigForTest(loggerFn func(module string) logger.Logger) *ConfigLocal {
+	config := NewConfigLocal(loggerFn)
 
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	config.SetBlockOps(bops)
@@ -89,8 +89,7 @@ func newConfigForTest() *ConfigLocal {
 // unit-testing with the given list of users.
 func MakeTestConfigOrBust(t logger.TestLogBackend,
 	users ...libkb.NormalizedUsername) *ConfigLocal {
-	config := newConfigForTest()
-	setTestLogger(config, t)
+	config := newConfigForTest(testLoggerMaker(t))
 
 	kbfsOps := NewKBFSOpsStandard(config)
 	config.SetKBFSOps(kbfsOps)
@@ -209,8 +208,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 // ConfigAsUser clones a test configuration, setting another user as
 // the logged in user
 func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *ConfigLocal {
-	c := newConfigForTest()
-	c.SetLoggerMaker(config.loggerFn)
+	c := newConfigForTest(config.loggerFn)
 
 	kbfsOps := NewKBFSOpsStandard(c)
 	c.SetKBFSOps(kbfsOps)

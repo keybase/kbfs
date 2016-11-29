@@ -228,8 +228,10 @@ func getDefaultCleanBlockCacheCapacity() uint64 {
 // NewConfigLocal constructs a new ConfigLocal with some default
 // components that don't depend on a logger. The caller will have to
 // fill in the rest.
-func NewConfigLocal() *ConfigLocal {
-	config := &ConfigLocal{}
+func NewConfigLocal(loggerFn func(module string) logger.Logger) *ConfigLocal {
+	config := &ConfigLocal{
+		loggerFn: loggerFn,
+	}
 	config.SetClock(wallClock{})
 	config.SetReporter(NewReporterSimple(config.Clock(), 10))
 	config.SetConflictRenamer(WriterDeviceDateConflictRenamer{config})
