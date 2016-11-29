@@ -16,6 +16,7 @@ import (
 // CryptoClientRPC is an RPC based implementation for Crypto.
 type CryptoClientRPC struct {
 	CryptoClient
+	config Config
 }
 
 var _ rpc.ConnectionHandler = (*CryptoClientRPC)(nil)
@@ -29,8 +30,8 @@ func NewCryptoClientRPC(config Config, kbCtx Context) *CryptoClientRPC {
 			CryptoCommon: MakeCryptoCommon(config.Codec()),
 			log:          log,
 			deferLog:     deferLog,
-			config:       config,
 		},
+		config: config,
 	}
 	conn := NewSharedKeybaseConnection(kbCtx, config, c)
 	c.CryptoClient.client = keybase1.CryptoClient{Cli: conn.GetClient()}
