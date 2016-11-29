@@ -16,11 +16,12 @@ import (
 )
 
 type extendedIdentify struct {
-	behavior   keybase1.TLFIdentifyBehavior
-	userBreaks chan keybase1.TLFUserBreak
+	behavior keybase1.TLFIdentifyBehavior
 
-	tlfBreaksLock sync.Mutex
-	tlfBreaks     *keybase1.TLFBreak
+	// lock guards userBreaks and tlfBreaks
+	lock       sync.Mutex
+	userBreaks chan keybase1.TLFUserBreak
+	tlfBreaks  *keybase1.TLFBreak
 }
 
 func (ei *extendedIdentify) userBreak(username libkb.NormalizedUsername, uid keybase1.UID, breaks *keybase1.IdentifyTrackBreaks) {
@@ -43,8 +44,8 @@ func (ei *extendedIdentify) makeTlfBreaksIfNeeded(
 		return nil
 	}
 
-	ei.tlfBreaksLock.Lock()
-	defer ei.tlfBreaksLock.Unlock()
+	ei.lock.Lock()
+	defer ei.lock.Unlock()
 
 	b := &keybase1.TLFBreak{}
 	for i := 0; i < numUserInTlf; i++ {
@@ -72,15 +73,16 @@ func (ei *extendedIdentify) makeTlfBreaksIfNeeded(
 // populated in GUI mode.
 //
 // If called otherwise, we don't panic here anymore, since we can't panic on
-// nil ei.tlrBreaks. The reason is if a previous successful identify has
+// nil ei.tlfBreaks. The reason is if a previous successful identify has
 // already happened recently, it could cause this identify to be skipped, which
 // means ei.tlfBreaks is never populated. In this case, it's safe to return an
 // empty keybase1.TLFBreak.
 func (ei *extendedIdentify) getTlfBreakAndClose() keybase1.TLFBreak {
-	ei.tlfBreaksLock.Lock()
-	defer ei.tlfBreaksLock.Unlock()
-	if ei.userBreaks != nil {
+	ei.lock.Lock()
+	defer ei.lock.Unlock()
+	if ei.userBreaks != nil && ei.tlfBreaks != nil {
 		close(ei.userBreaks)
+		ei.userBreaks = nil
 		return *ei.tlfBreaks
 	}
 	return keybase1.TLFBreak{}
@@ -117,10 +119,11 @@ func makeExtendedIdentify(ctx context.Context,
 		}), nil
 	}
 
+	ch := make(chan keybase1.TLFUserBreak)
 	return NewContextReplayable(ctx, func(ctx context.Context) context.Context {
 		return context.WithValue(ctx, ctxExtendedIdentifyKey, &extendedIdentify{
 			behavior:   behavior,
-			userBreaks: make(chan keybase1.TLFUserBreak),
+			userBreaks: ch,
 		})
 	}), nil
 }
