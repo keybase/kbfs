@@ -759,14 +759,29 @@ func (md *MDServerMemory) OffsetFromServerTime() (time.Duration, bool) {
 func (md *MDServerMemory) getExtraMetadata(
 	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	ExtraMetadata, error) {
-	wkb, rkb, err := md.getKeyBundles(tlfID, wkbID, rkbID)
+	if (wkbID == TLFWriterKeyBundleID{}) !=
+		(rkbID == TLFReaderKeyBundleID{}) {
+		return nil, errors.Errorf(
+			"wkbID is empty (%t) != rkbID is empty (%t)",
+			wkbID == TLFWriterKeyBundleID{},
+			rkbID == TLFReaderKeyBundleID{})
+	}
+
+	if wkbID == (TLFWriterKeyBundleID{}) {
+		return nil, nil
+	}
+
+	md.lock.Lock()
+	defer md.lock.Unlock()
+	wkb := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
+	rkb := md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
+
+	err := checkKeyBundleIDs(md.config.cryptoPure(), wkbID, rkbID, wkb, rkb)
 	if err != nil {
 		return nil, err
 	}
-	if wkb == nil || rkb == nil {
-		return nil, nil
-	}
-	return NewExtraMetadataV3(*wkb, *rkb, false, false), nil
+
+	return NewExtraMetadataV3(wkb, rkb, false, false), nil
 }
 
 func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,
@@ -802,35 +817,6 @@ func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,
 	return nil
 }
 
-func (md *MDServerMemory) getKeyBundles(
-	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
-	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	if (wkbID == TLFWriterKeyBundleID{}) !=
-		(rkbID == TLFReaderKeyBundleID{}) {
-		return nil, nil, errors.Errorf(
-			"wkbID is empty (%t) != rkbID is empty (%t)",
-			wkbID == TLFWriterKeyBundleID{},
-			rkbID == TLFReaderKeyBundleID{})
-	}
-
-	if wkbID == (TLFWriterKeyBundleID{}) {
-		return nil, nil, nil
-	}
-
-	md.lock.Lock()
-	defer md.lock.Unlock()
-	wkb := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
-	rkb := md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
-
-	err := checkKeyBundleIDs(
-		md.config.cryptoPure(), wkbID, rkbID, wkb, rkb)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &wkb, &rkb, nil
-}
-
 // GetKeyBundles implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetKeyBundles(_ context.Context,
 	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
@@ -840,38 +826,48 @@ func (md *MDServerMemory) GetKeyBundles(_ context.Context,
 
 	var wkb *TLFWriterKeyBundleV3
 	if wkbID != (TLFWriterKeyBundleID{}) {
-		wkb = md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
-		if wkb != nil {
-			computedWKBID, err :=
-				md.config.cryptoPure().MakeTLFWriterKeyBundleID(wkb)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			if wkbID != computedWKBID {
-				return nil, nil, fmt.Errorf(
-					"Expected WKB ID %s, got %s",
-					wkbID, computedWKBID)
-			}
+		foundWKB, ok := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
+		if !ok {
+			return nil, nil, errors.Errorf(
+				"Could not find WKB for ID %s", wkbID)
 		}
+
+		computedWKBID, err :=
+			md.config.cryptoPure().MakeTLFWriterKeyBundleID(foundWKB)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if wkbID != computedWKBID {
+			return nil, nil, errors.Errorf(
+				"Expected WKB ID %s, got %s",
+				wkbID, computedWKBID)
+		}
+
+		wkb = &foundWKB
 	}
 
 	var rkb *TLFReaderKeyBundleV3
 	if rkbID != (TLFReaderKeyBundleID{}) {
-		rkb = md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
-		if rkb != nil {
-			computedRKBID, err :=
-				md.config.cryptoPure().MakeTLFReaderKeyBundleID(rkb)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			if rkbID != computedRKBID {
-				return nil, nil, fmt.Errorf(
-					"Expected RKB ID %s, got %s",
-					rkbID, computedRKBID)
-			}
+		foundRKB, ok := md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
+		if !ok {
+			return nil, nil, errors.Errorf(
+				"Could not find RKB for ID %s", rkbID)
 		}
+
+		computedRKBID, err :=
+			md.config.cryptoPure().MakeTLFReaderKeyBundleID(foundRKB)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if rkbID != computedRKBID {
+			return nil, nil, errors.Errorf(
+				"Expected RKB ID %s, got %s",
+				rkbID, computedRKBID)
+		}
+
+		rkb = &foundRKB
 	}
 
 	return wkb, rkb, nil
