@@ -242,7 +242,8 @@ func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverA
 
 	log.Debug("Using remote bserver %s", bserverAddr)
 	bserverLog := config.MakeLogger("BSR")
-	return NewBlockServerRemote(config, bserverLog, bserverAddr, ctx), nil
+	return NewBlockServerRemote(config.Codec(), config.Crypto(),
+		config.KBPKI(), bserverLog, bserverAddr, ctx), nil
 }
 
 // InitLog sets up logging switching to a log file if necessary.

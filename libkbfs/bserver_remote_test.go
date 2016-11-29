@@ -186,11 +186,9 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"user1", "user2"})
 	currentUID := localUsers[0].UID
 	log := logger.NewTestLogger(t)
-	crypto := &CryptoLocal{CryptoCommon: MakeCryptoCommon(codec)}
+	crypto := MakeCryptoCommon(codec)
 	fc := NewFakeBServerClient(crypto, log, nil, nil, nil)
-	config := &ConfigLocal{codec: codec, crypto: crypto,
-		loggerFn: testLoggerMaker(t)}
-	b := newBlockServerRemoteWithClient(config, log, fc)
+	b := newBlockServerRemoteWithClient(codec, nil, log, fc)
 
 	tlfID := tlf.FakeID(2, false)
 	bCtx := BlockContext{currentUID, "", ZeroBlockRefNonce}
@@ -257,22 +255,18 @@ func TestBServerRemotePutCanceled(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"testuser"})
 	currentUID := localUsers[0].UID
-	crypto := &CryptoLocal{CryptoCommon: MakeCryptoCommon(codec)}
-	config := &ConfigLocal{codec: codec, crypto: crypto,
-		loggerFn: testLoggerMaker(t)}
-
+	crypto := MakeCryptoCommon(codec)
 	serverConn, conn := rpc.MakeConnectionForTest(t)
 	log := logger.NewTestLogger(t)
-	b := newBlockServerRemoteWithClient(
-		config, log, keybase1.BlockClient{Cli: conn.GetClient()})
+	b := newBlockServerRemoteWithClient(codec, nil, log,
+		keybase1.BlockClient{Cli: conn.GetClient()})
 
 	f := func(ctx context.Context) error {
 		bID := fakeBlockID(1)
 		tlfID := tlf.FakeID(2, false)
 		bCtx := BlockContext{currentUID, "", ZeroBlockRefNonce}
 		data := []byte{1, 2, 3, 4}
-		serverHalf, err :=
-			config.Crypto().MakeRandomBlockCryptKeyServerHalf()
+		serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
 		if err != nil {
 			t.Errorf("Couldn't make block server key half: %v", err)
 		}
