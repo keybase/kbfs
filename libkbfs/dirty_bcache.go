@@ -109,11 +109,9 @@ const (
 // future it might make sense to decrease the buffer capacity, rather
 // than resetting it to the minimum?
 type DirtyBlockCacheStandard struct {
-	clock   Clock
-	makeLog func(string) logger.Logger
-	log     logger.Logger
-	reqWg   sync.WaitGroup
-	name    string
+	clock Clock
+	log   logger.Logger
+	reqWg sync.WaitGroup
 
 	// requestsChan is a queue for channels that should be closed when
 	// permission is granted to dirty new data.
@@ -155,18 +153,15 @@ type DirtyBlockCacheStandard struct {
 }
 
 // NewDirtyBlockCacheStandard constructs a new BlockCacheStandard
-// instance.  makeLog is a function that will be called later to make
-// a log (we don't take an actual log, to allow the DirtyBlockCache to
-// be created before logging is initialized).  The min and max buffer
-// capacities define the possible range of how many bytes we'll try to
-// sync in any one sync, and the start size defines the initial buffer
-// size.
+// instance.  The min and max buffer capacities define the possible
+// range of how many bytes we'll try to sync in any one sync, and the
+// start size defines the initial buffer size.
 func NewDirtyBlockCacheStandard(clock Clock,
-	makeLog func(string) logger.Logger, minSyncBufCap int64,
+	log logger.Logger, minSyncBufCap int64,
 	maxSyncBufCap int64, startSyncBufCap int64) *DirtyBlockCacheStandard {
 	d := &DirtyBlockCacheStandard{
 		clock:              clock,
-		makeLog:            makeLog,
+		log:                log,
 		requestsChan:       make(chan dirtyReq, 1000),
 		bytesDecreasedChan: make(chan struct{}, 1),
 		shutdownChan:       make(chan struct{}),
@@ -303,18 +298,10 @@ func (d *DirtyBlockCacheStandard) calcBackpressure(start time.Time,
 }
 
 func (d *DirtyBlockCacheStandard) logLocked(fmt string, arg ...interface{}) {
-	if d.log == nil {
-		log := d.makeLog(d.name)
-		if log != nil {
-			d.log = log.CloneWithAddedDepth(1)
-		}
-	}
-	if d.log != nil {
-		// TODO: pass contexts all the way here just for logging? It's
-		// extremely inconvenient to do that for the permission check
-		// messages which happen in the background.
-		d.log.CDebugf(nil, fmt, arg...)
-	}
+	// TODO: pass contexts all the way here just for logging? It's
+	// extremely inconvenient to do that for the permission check
+	// messages which happen in the background.
+	d.log.CDebugf(nil, fmt, arg...)
 }
 
 func (d *DirtyBlockCacheStandard) acceptNewWrite(newBytes int64) bool {

@@ -14,6 +14,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
@@ -70,7 +71,7 @@ func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 	// end of the test.
 	config.SetBlockCache(NewBlockCacheStandard(100, 1<<30))
 	config.SetDirtyBlockCache(NewDirtyBlockCacheStandard(wallClock{},
-		testLoggerMaker(t), 5<<20, 10<<20, 5<<20))
+		logger.NewTestLogger(t), 5<<20, 10<<20, 5<<20))
 	config.mockBcache = nil
 	config.mockDirtyBcache = nil
 

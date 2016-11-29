@@ -656,7 +656,8 @@ func (c *ConfigLocal) MaxDirBytes() uint64 {
 }
 
 func (c *ConfigLocal) resetCachesWithoutShutdown() DirtyBlockCache {
-	logger := c.MakeLogger("")
+	log := c.MakeLogger("")
+	dbcLog := c.MakeLogger("DBC")
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -667,16 +668,12 @@ func (c *ConfigLocal) resetCachesWithoutShutdown() DirtyBlockCache {
 	var capacity uint64
 	if c.bcache == nil {
 		capacity = getDefaultCleanBlockCacheCapacity()
-		if logger != nil {
-			logger.CDebugf(nil,
-				"setting default clean block cache capacity to %d", capacity)
-		}
+		log.CDebugf(nil,
+			"setting default clean block cache capacity to %d", capacity)
 	} else {
 		capacity = c.bcache.GetCleanBytesCapacity()
-		if logger != nil {
-			logger.CDebugf(nil,
-				"setting clean block cache capacity based on existing value %d", capacity)
-		}
+		log.CDebugf(nil,
+			"setting clean block cache capacity based on existing value %d", capacity)
 	}
 	c.bcache = NewBlockCacheStandard(10000, capacity)
 
@@ -702,7 +699,7 @@ func (c *ConfigLocal) resetCachesWithoutShutdown() DirtyBlockCache {
 	// slow connections.
 	startSyncBufferSize := minSyncBufferSize
 
-	c.dirtyBcache = NewDirtyBlockCacheStandard(c.clock, c.MakeLogger,
+	c.dirtyBcache = NewDirtyBlockCacheStandard(c.clock, dbcLog,
 		minSyncBufferSize, maxSyncBufferSize, startSyncBufferSize)
 	return oldDirtyBcache
 }
@@ -853,7 +850,6 @@ func (c *ConfigLocal) journalizeBcaches() error {
 	if !ok {
 		return fmt.Errorf("Dirty bcache unexpectedly type %T", syncCache)
 	}
-	syncCache.name = "sync"
 	jServer.delegateDirtyBlockCache = syncCache
 
 	// Make a dirty block cache specifically for the journal
@@ -862,9 +858,9 @@ func (c *ConfigLocal) journalizeBcaches() error {
 	// always set the min and max to the same thing.
 	maxSyncBufferSize :=
 		int64(MaxBlockSizeBytesDefault * maxParallelBlockPuts * 2)
-	journalCache := NewDirtyBlockCacheStandard(c.clock, c.MakeLogger,
+	log := c.MakeLogger("DBCJ")
+	journalCache := NewDirtyBlockCacheStandard(c.clock, log,
 		maxSyncBufferSize, maxSyncBufferSize, maxSyncBufferSize)
-	journalCache.name = "journal"
 	c.SetDirtyBlockCache(jServer.dirtyBlockCache(journalCache))
 
 	jServer.delegateBlockCache = c.BlockCache()
