@@ -49,9 +49,17 @@ type Codec interface {
 		typer func(interface{}) reflect.Value)
 }
 
-// Equal returns whether or not the given objects serialize to the
-// same byte string. x or y (or both) can be nil.
+// Equal returns whether or not the given objects, if both non-nil,
+// serialize to the same byte string. If either x or y is nil, then
+// Equal returns true if the other one is nil, too.
 func Equal(c Codec, x, y interface{}) (bool, error) {
+	if x == nil {
+		return y == nil, nil
+	}
+	if y == nil {
+		return x == nil, nil
+	}
+
 	xBuf, err := c.Encode(x)
 	if err != nil {
 		return false, err
