@@ -207,7 +207,8 @@ func setupTLFJournalTest(
 		uid:          uid,
 		verifyingKey: verifyingKey,
 	}
-	mdserver, err := NewMDServerMemory(newTestMDServerLocalConfig(t, cig))
+	log := logger.NewTestLogger(t)
+	mdserver, err := NewMDServerMemory(newTestMDServerLocalConfig(log, cig))
 	require.NoError(t, err)
 
 	config = &testTLFJournalConfig{
@@ -246,7 +247,6 @@ func setupTLFJournalTest(
 		}
 	}()
 
-	log := logger.NewTestLogger(t)
 	delegateBlockServer := NewBlockServerMemory(config.Crypto(), log)
 
 	tlfJournal, err = makeTLFJournal(ctx, uid, verifyingKey,
