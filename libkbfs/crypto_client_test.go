@@ -139,12 +139,6 @@ func (fc FakeCryptoClient) Notify(_ context.Context, s string, args interface{})
 	return fmt.Errorf("Unknown notify: %s %v", s, args)
 }
 
-func testCryptoClientConfig(t *testing.T) Config {
-	config := &ConfigLocal{codec: kbfscodec.NewMsgpack(),
-		loggerFn: testLoggerMaker(t)}
-	return config
-}
-
 // Test that signing a message and then verifying it works.
 func TestCryptoClientSignAndVerify(t *testing.T) {
 	signingKey := kbfscrypto.MakeFakeSigningKeyOrBust("client sign")
