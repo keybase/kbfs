@@ -114,9 +114,10 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 	var blockServer BlockServer
 	switch {
 	case bserverAddr == TempdirServerAddr:
+		log := config.MakeLogger("BSTD")
 		var err error
 		blockServer, err = NewBlockServerTempDir(
-			blockServerLocalConfigAdapter{config})
+			blockServerLocalConfigAdapter{config}, log)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -127,8 +128,9 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 			config, bserverLog, bserverAddr, env.NewContext())
 
 	default:
+		log := config.MakeLogger("BSM")
 		blockServer = NewBlockServerMemory(
-			blockServerLocalConfigAdapter{config})
+			blockServerLocalConfigAdapter{config}, log)
 	}
 	config.SetBlockServer(blockServer)
 

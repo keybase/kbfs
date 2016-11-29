@@ -223,16 +223,18 @@ func makeKeyServer(config Config, serverInMemory bool, serverRootDir, keyserverA
 func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverAddr string, ctx Context, log logger.Logger) (
 	BlockServer, error) {
 	if serverInMemory {
+		log := config.MakeLogger("BSM")
 		// local in-memory block server
 		return NewBlockServerMemory(
-			blockServerLocalConfigAdapter{config}), nil
+			blockServerLocalConfigAdapter{config}, log), nil
 	}
 
 	if len(serverRootDir) > 0 {
 		// local persistent block server
 		blockPath := filepath.Join(serverRootDir, "kbfs_block")
-		return NewBlockServerDir(
-			blockServerLocalConfigAdapter{config}, blockPath), nil
+		log := config.MakeLogger("BSD")
+		return NewBlockServerDir(blockServerLocalConfigAdapter{config},
+			log, blockPath), nil
 	}
 
 	if len(bserverAddr) == 0 {
@@ -241,7 +243,7 @@ func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverA
 
 	log.Debug("Using remote bserver %s", bserverAddr)
 	bserverLog := config.MakeLogger("BSR")
-	return NewBlockServerRemote(config, log, bserverAddr, ctx), nil
+	return NewBlockServerRemote(config, bserverLog, bserverAddr, ctx), nil
 }
 
 // InitLog sets up logging switching to a log file if necessary.

@@ -28,13 +28,13 @@ type FakeBServerClient struct {
 }
 
 func NewFakeBServerClient(
-	config Config,
+	config Config, log logger.Logger,
 	readyChan chan<- struct{},
 	goChan <-chan struct{},
 	finishChan chan<- struct{}) *FakeBServerClient {
 	return &FakeBServerClient{
 		bserverMem: NewBlockServerMemory(
-			blockServerLocalConfigAdapter{config}),
+			blockServerLocalConfigAdapter{config}, log),
 		readyChan:  readyChan,
 		goChan:     goChan,
 		finishChan: finishChan,
@@ -189,8 +189,8 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	crypto := &CryptoLocal{CryptoCommon: MakeCryptoCommon(codec)}
 	config := &ConfigLocal{codec: codec, crypto: crypto,
 		loggerFn: testLoggerMaker(t)}
-	fc := NewFakeBServerClient(config, nil, nil, nil)
 	log := logger.NewTestLogger(t)
+	fc := NewFakeBServerClient(config, log, nil, nil, nil)
 	b := newBlockServerRemoteWithClient(config, log, fc)
 
 	tlfID := tlf.FakeID(2, false)

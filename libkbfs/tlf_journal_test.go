@@ -246,7 +246,8 @@ func setupTLFJournalTest(
 		}
 	}()
 
-	delegateBlockServer := NewBlockServerMemory(config)
+	log := logger.NewTestLogger(t)
+	delegateBlockServer := NewBlockServerMemory(config, log)
 
 	tlfJournal, err = makeTLFJournal(ctx, uid, verifyingKey,
 		tempdir, config.tlfID, config, delegateBlockServer,

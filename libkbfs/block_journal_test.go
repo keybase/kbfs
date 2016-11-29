@@ -297,7 +297,8 @@ func TestBlockJournalFlush(t *testing.T) {
 		})
 	require.NoError(t, err)
 
-	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t))
+	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t),
+		logger.NewTestLogger(t))
 
 	tlfID := tlf.FakeID(1, false)
 
@@ -418,7 +419,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 	// Flush the block put. (Interleave flushes to test
 	// checkInSync in intermediate states.)
 
-	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t))
+	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t),
+		logger.NewTestLogger(t))
 
 	tlfID := tlf.FakeID(1, false)
 
@@ -535,7 +537,8 @@ func TestBlockJournalFlushMDRevMarker(t *testing.T) {
 	err := j.markMDRevision(ctx, rev)
 	require.NoError(t, err)
 
-	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t))
+	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t),
+		logger.NewTestLogger(t))
 	tlfID := tlf.FakeID(1, false)
 	bcache := NewBlockCacheStandard(0, 0)
 	reporter := NewReporterSimple(nil, 0)
@@ -587,7 +590,8 @@ func TestBlockJournalIgnoreBlocks(t *testing.T) {
 	err = j.ignoreBlocksAndMDRevMarkers(ctx, []BlockID{bID2, bID3})
 	require.NoError(t, err)
 
-	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t))
+	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t),
+		logger.NewTestLogger(t))
 	tlfID := tlf.FakeID(1, false)
 	bcache := NewBlockCacheStandard(0, 0)
 	reporter := NewReporterSimple(nil, 0)
@@ -644,7 +648,8 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 	require.NoError(t, err)
 	savedBlocks := []BlockID{bID1, bID2, bID3, bID4}
 
-	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t))
+	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t),
+		logger.NewTestLogger(t))
 	tlfID := tlf.FakeID(1, false)
 	bcache := NewBlockCacheStandard(0, 0)
 	reporter := NewReporterSimple(nil, 0)
@@ -777,7 +782,8 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	require.Equal(t, map[BlockID]int{bID2: 0}, liveCounts)
 	requireSize(expectedSize)
 
-	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t))
+	blockServer := NewBlockServerMemory(newTestBlockServerLocalConfig(t),
+		logger.NewTestLogger(t))
 	tlfID := tlf.FakeID(1, false)
 	bcache := NewBlockCacheStandard(0, 0)
 	reporter := NewReporterSimple(nil, 0)
