@@ -374,17 +374,8 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		return MDServerError{err}
 	}
 
-	if extra == nil {
-		var err error
-		extra, err = md.getExtraMetadata(
-			rmds.MD.TlfID(), rmds.MD.GetTLFWriterKeyBundleID(),
-			rmds.MD.GetTLFReaderKeyBundleID())
-		if err != nil {
-			return MDServerError{err}
-		}
-	}
-
-	err = rmds.IsValidAndSigned(md.config.Codec(), md.config.cryptoPure(), extra)
+	err = rmds.IsValidAndSigned(
+		md.config.Codec(), md.config.cryptoPure(), extra)
 	if err != nil {
 		return MDServerErrorBadRequest{Reason: err.Error()}
 	}
@@ -773,6 +764,7 @@ func (md *MDServerMemory) getExtraMetadata(
 
 	md.lock.Lock()
 	defer md.lock.Unlock()
+
 	wkb := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
 	rkb := md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
 
@@ -790,30 +782,30 @@ func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,
 		return nil
 	}
 
-	tlfID := rmds.MD.TlfID()
-	wkbID := rmds.MD.GetTLFWriterKeyBundleID()
-	if wkbID == (TLFWriterKeyBundleID{}) {
-		panic("writer key bundle ID is empty")
-	}
-
-	rkbID := rmds.MD.GetTLFReaderKeyBundleID()
-	if rkbID == (TLFReaderKeyBundleID{}) {
-		panic("reader key bundle ID is empty")
-	}
-
 	extraV3, ok := extra.(*ExtraMetadataV3)
 	if !ok {
-		return errors.New("Invalid extra metadata")
+		return errors.New("Invalid new extra metadata")
 	}
 
-	err := checkKeyBundleIDs(md.config.cryptoPure(),
-		wkbID, rkbID, extraV3.wkb, extraV3.rkb)
-	if err != nil {
-		return err
+	tlfID := rmds.MD.TlfID()
+
+	if extraV3.wkbNew {
+		wkbID := rmds.MD.GetTLFWriterKeyBundleID()
+		if wkbID == (TLFWriterKeyBundleID{}) {
+			panic("writer key bundle ID is empty")
+		}
+		md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}] =
+			extraV3.wkb
 	}
 
-	md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}] = extraV3.wkb
-	md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}] = extraV3.rkb
+	if extraV3.rkbNew {
+		rkbID := rmds.MD.GetTLFReaderKeyBundleID()
+		if rkbID == (TLFReaderKeyBundleID{}) {
+			panic("reader key bundle ID is empty")
+		}
+		md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}] =
+			extraV3.rkb
+	}
 	return nil
 }
 
