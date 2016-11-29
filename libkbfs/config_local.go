@@ -659,15 +659,13 @@ func (c *ConfigLocal) MaxDirBytes() uint64 {
 }
 
 func (c *ConfigLocal) resetCachesWithoutShutdown() DirtyBlockCache {
-	log := c.MakeLogger("")
-	dbcLog := c.MakeLogger("DBC")
-
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.mdcache = NewMDCacheStandard(defaultMDCacheCapacity)
 	c.kcache = NewKeyCacheStandard(defaultMDCacheCapacity)
 	c.kbcache = NewKeyBundleCacheStandard(defaultMDCacheCapacity * 2)
 
+	log := c.MakeLogger("")
 	var capacity uint64
 	if c.bcache == nil {
 		capacity = getDefaultCleanBlockCacheCapacity()
@@ -702,6 +700,7 @@ func (c *ConfigLocal) resetCachesWithoutShutdown() DirtyBlockCache {
 	// slow connections.
 	startSyncBufferSize := minSyncBufferSize
 
+	dbcLog := c.MakeLogger("DBC")
 	c.dirtyBcache = NewDirtyBlockCacheStandard(c.clock, dbcLog,
 		minSyncBufferSize, maxSyncBufferSize, startSyncBufferSize)
 	return oldDirtyBcache
