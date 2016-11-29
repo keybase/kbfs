@@ -737,14 +737,6 @@ func (c *ConfigLocal) MakeLogger(module string) logger.Logger {
 	return c.loggerFn(module)
 }
 
-// SetLoggerMaker implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetLoggerMaker(
-	loggerFn func(module string) logger.Logger) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.loggerFn = loggerFn
-}
-
 // MetricsRegistry implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) MetricsRegistry() metrics.Registry {
 	return c.registry

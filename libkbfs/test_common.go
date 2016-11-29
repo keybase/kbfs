@@ -66,10 +66,6 @@ func testLoggerMaker(t logger.TestLogBackend) func(m string) logger.Logger {
 	}
 }
 
-func setTestLogger(config Config, t logger.TestLogBackend) {
-	config.SetLoggerMaker(testLoggerMaker(t))
-}
-
 // newConfigForTest returns a ConfigLocal object suitable for use by
 // MakeTestConfigOrBust or ConfigAsUser.
 //

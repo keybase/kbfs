@@ -23,8 +23,8 @@ func makeTestKBPKIClient(t *testing.T) (
 	users = MakeLocalUsers(names)
 	codec := kbfscodec.NewMsgpack()
 	daemon := NewKeybaseDaemonMemory(currentUID, users, codec)
-	config := &ConfigLocal{codec: codec, service: daemon}
-	setTestLogger(config, t)
+	config := &ConfigLocal{codec: codec, service: daemon,
+		loggerFn: testLoggerMaker(t)}
 	return NewKBPKIClient(config), currentUID, users
 }
 
@@ -45,8 +45,8 @@ func makeTestKBPKIClientWithRevokedKey(t *testing.T, revokeTime time.Time) (
 	}
 	codec := kbfscodec.NewMsgpack()
 	daemon := NewKeybaseDaemonMemory(currentUID, users, codec)
-	config := &ConfigLocal{codec: codec, service: daemon}
-	setTestLogger(config, t)
+	config := &ConfigLocal{codec: codec, service: daemon,
+		loggerFn: testLoggerMaker(t)}
 	return NewKBPKIClient(config), currentUID, users
 }
 
@@ -201,8 +201,8 @@ func makeTestKBPKIClientWithUnverifiedKey(t *testing.T) (
 	}
 	codec := kbfscodec.NewMsgpack()
 	daemon := NewKeybaseDaemonMemory(currentUID, users, codec)
-	config := &ConfigLocal{codec: codec, service: daemon}
-	setTestLogger(config, t)
+	config := &ConfigLocal{codec: codec, service: daemon,
+		loggerFn: testLoggerMaker(t)}
 	return NewKBPKIClient(config), currentUID, users
 }
 

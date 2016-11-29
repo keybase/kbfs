@@ -186,8 +186,8 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"user1", "user2"})
 	currentUID := localUsers[0].UID
 	crypto := &CryptoLocal{CryptoCommon: MakeCryptoCommon(codec)}
-	config := &ConfigLocal{codec: codec, crypto: crypto}
-	setTestLogger(config, t)
+	config := &ConfigLocal{codec: codec, crypto: crypto,
+		loggerFn: testLoggerMaker(t)}
 	fc := NewFakeBServerClient(config, nil, nil, nil)
 	b := newBlockServerRemoteWithClient(config, fc)
 
@@ -257,8 +257,8 @@ func TestBServerRemotePutCanceled(t *testing.T) {
 	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"testuser"})
 	currentUID := localUsers[0].UID
 	crypto := &CryptoLocal{CryptoCommon: MakeCryptoCommon(codec)}
-	config := &ConfigLocal{codec: codec, crypto: crypto}
-	setTestLogger(config, t)
+	config := &ConfigLocal{codec: codec, crypto: crypto,
+		loggerFn: testLoggerMaker(t)}
 
 	serverConn, conn := rpc.MakeConnectionForTest(t)
 	b := newBlockServerRemoteWithClient(

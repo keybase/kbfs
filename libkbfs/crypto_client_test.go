@@ -139,8 +139,8 @@ func (fc FakeCryptoClient) Notify(_ context.Context, s string, args interface{})
 }
 
 func testCryptoClientConfig(t *testing.T) Config {
-	config := &ConfigLocal{codec: kbfscodec.NewMsgpack()}
-	setTestLogger(config, t)
+	config := &ConfigLocal{codec: kbfscodec.NewMsgpack(),
+		loggerFn: testLoggerMaker(t)}
 	return config
 }
 
