@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
+	"github.com/keybase/kbfs/kbfscodec"
 	"golang.org/x/net/context"
 )
 
@@ -40,12 +42,11 @@ func NewCryptoClientRPC(config Config, kbCtx Context) *CryptoClientRPC {
 }
 
 // newCryptoClientWithClient should only be used for testing.
-func newCryptoClientWithClient(config Config, client rpc.GenericClient) *CryptoClientRPC {
-	log := config.MakeLogger("")
+func newCryptoClientWithClient(codec kbfscodec.Codec, log logger.Logger, client rpc.GenericClient) *CryptoClientRPC {
 	deferLog := log.CloneWithAddedDepth(1)
 	return &CryptoClientRPC{
 		CryptoClient: CryptoClient{
-			CryptoCommon: MakeCryptoCommon(config.Codec()),
+			CryptoCommon: MakeCryptoCommon(codec),
 			log:          log,
 			deferLog:     deferLog,
 			client:       keybase1.CryptoClient{Cli: client},
