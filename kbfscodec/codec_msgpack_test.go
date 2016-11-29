@@ -49,3 +49,9 @@ func TestCodecEncodeTypedNil(t *testing.T) {
 	_, err := codec.Encode((*int)(nil))
 	require.EqualError(t, err, "Cannot encode nil of type *int")
 }
+
+func TestCodecEncodeStruct(t *testing.T) {
+	codec := NewMsgpack()
+	_, err := codec.Encode(struct{}{})
+	require.NoError(t, err)
+}

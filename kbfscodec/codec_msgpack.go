@@ -168,8 +168,13 @@ func (c *CodecMsgpack) Encode(obj interface{}) (buf []byte, err error) {
 	if obj == nil {
 		return nil, errors.New("Cannot encode untyped nil")
 	}
-	if reflect.ValueOf(obj).IsNil() {
-		return nil, fmt.Errorf("Cannot encode nil of type %T", obj)
+	v := reflect.ValueOf(obj)
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		if v.IsNil() {
+			return nil, fmt.Errorf("Cannot encode nil of type %T", obj)
+		}
+	default:
 	}
 	err = codec.NewEncoderBytes(&buf, c.h).Encode(obj)
 	return
