@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
 	"github.com/keybase/kbfs/kbfscodec"
@@ -189,7 +190,8 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	config := &ConfigLocal{codec: codec, crypto: crypto,
 		loggerFn: testLoggerMaker(t)}
 	fc := NewFakeBServerClient(config, nil, nil, nil)
-	b := newBlockServerRemoteWithClient(config, fc)
+	log := logger.NewTestLogger(t)
+	b := newBlockServerRemoteWithClient(config, log, fc)
 
 	tlfID := tlf.FakeID(2, false)
 	bCtx := BlockContext{currentUID, "", ZeroBlockRefNonce}
@@ -261,8 +263,9 @@ func TestBServerRemotePutCanceled(t *testing.T) {
 		loggerFn: testLoggerMaker(t)}
 
 	serverConn, conn := rpc.MakeConnectionForTest(t)
+	log := logger.NewTestLogger(t)
 	b := newBlockServerRemoteWithClient(
-		config, keybase1.BlockClient{Cli: conn.GetClient()})
+		config, log, keybase1.BlockClient{Cli: conn.GetClient()})
 
 	f := func(ctx context.Context) error {
 		bID := fakeBlockID(1)

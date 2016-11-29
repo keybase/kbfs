@@ -122,7 +122,9 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 		}
 
 	case len(bserverAddr) != 0:
-		blockServer = NewBlockServerRemote(config, bserverAddr, env.NewContext())
+		bserverLog := config.MakeLogger("BSR")
+		blockServer = NewBlockServerRemote(
+			config, bserverLog, bserverAddr, env.NewContext())
 
 	default:
 		blockServer = NewBlockServerMemory(
@@ -235,7 +237,8 @@ func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *C
 	c.noBGFlush = config.noBGFlush
 
 	if s, ok := config.BlockServer().(*BlockServerRemote); ok {
-		blockServer := NewBlockServerRemote(c, s.RemoteAddress(), env.NewContext())
+		bserverLog := config.MakeLogger("BSR")
+		blockServer := NewBlockServerRemote(c, bserverLog, s.RemoteAddress(), env.NewContext())
 		c.SetBlockServer(blockServer)
 	} else {
 		c.SetBlockServer(config.BlockServer())

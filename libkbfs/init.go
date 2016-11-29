@@ -240,7 +240,8 @@ func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverA
 	}
 
 	log.Debug("Using remote bserver %s", bserverAddr)
-	return NewBlockServerRemote(config, bserverAddr, ctx), nil
+	bserverLog := config.MakeLogger("BSR")
+	return NewBlockServerRemote(config, log, bserverAddr, ctx), nil
 }
 
 // InitLog sets up logging switching to a log file if necessary.
