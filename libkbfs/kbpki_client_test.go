@@ -32,7 +32,8 @@ func makeTestKBPKIClient(t *testing.T) (
 	users = MakeLocalUsers(names)
 	codec := kbfscodec.NewMsgpack()
 	daemon := NewKeybaseDaemonMemory(currentUID, users, codec)
-	return NewKBPKIClient(keybaseServiceSelfOwner{daemon}, logger.NewTestLogger(t)), currentUID, users
+	return NewKBPKIClient(keybaseServiceSelfOwner{daemon},
+		logger.NewTestLogger(t)), currentUID, users
 }
 
 func makeTestKBPKIClientWithRevokedKey(t *testing.T, revokeTime time.Time) (
@@ -52,7 +53,8 @@ func makeTestKBPKIClientWithRevokedKey(t *testing.T, revokeTime time.Time) (
 	}
 	codec := kbfscodec.NewMsgpack()
 	daemon := NewKeybaseDaemonMemory(currentUID, users, codec)
-	return NewKBPKIClient(keybaseServiceSelfOwner{daemon}, logger.NewTestLogger(t)), currentUID, users
+	return NewKBPKIClient(keybaseServiceSelfOwner{daemon},
+		logger.NewTestLogger(t)), currentUID, users
 }
 
 func TestKBPKIClientIdentify(t *testing.T) {
@@ -206,7 +208,8 @@ func makeTestKBPKIClientWithUnverifiedKey(t *testing.T) (
 	}
 	codec := kbfscodec.NewMsgpack()
 	daemon := NewKeybaseDaemonMemory(currentUID, users, codec)
-	return NewKBPKIClient(keybaseServiceSelfOwner{daemon}, logger.NewTestLogger(t)), currentUID, users
+	return NewKBPKIClient(keybaseServiceSelfOwner{daemon},
+		logger.NewTestLogger(t)), currentUID, users
 }
 
 func TestKBPKIClientHasUnverifiedVerifyingKey(t *testing.T) {
