@@ -60,12 +60,6 @@ func fakeMdID(b byte) MdID {
 	return MdID{h}
 }
 
-func testLoggerMaker(t logger.TestLogBackend) func(m string) logger.Logger {
-	return func(m string) logger.Logger {
-		return logger.NewTestLogger(t)
-	}
-}
-
 // newConfigForTest returns a ConfigLocal object suitable for use by
 // MakeTestConfigOrBust or ConfigAsUser.
 //
@@ -85,7 +79,9 @@ func newConfigForTest(loggerFn func(module string) logger.Logger) *ConfigLocal {
 // unit-testing with the given list of users.
 func MakeTestConfigOrBust(t logger.TestLogBackend,
 	users ...libkb.NormalizedUsername) *ConfigLocal {
-	config := newConfigForTest(testLoggerMaker(t))
+	config := newConfigForTest(func(m string) logger.Logger {
+		return logger.NewTestLogger(t)
+	})
 
 	kbfsOps := NewKBFSOpsStandard(config)
 	config.SetKBFSOps(kbfsOps)
