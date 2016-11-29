@@ -12,7 +12,27 @@ import (
 
 func TestCodecEqualNil(t *testing.T) {
 	codec := NewMsgpack()
-	eq, err := Equal(codec, nil, nil)
-	require.NoError(t, err)
-	require.True(t, eq)
+
+	nils := []interface{}{nil, (*int)(nil), (*float64)(nil)}
+	nonNils := []interface{}{1, "two"}
+
+	for _, o1 := range nils {
+		for _, o2 := range nils {
+			eq, err := Equal(codec, o1, o2)
+			require.NoError(t, err)
+			require.True(t, eq)
+		}
+	}
+
+	for _, o1 := range nils {
+		for _, o2 := range nonNils {
+			eq, err := Equal(codec, o1, o2)
+			require.NoError(t, err)
+			require.False(t, eq)
+
+			eq, err = Equal(codec, o2, o1)
+			require.NoError(t, err)
+			require.False(t, eq)
+		}
+	}
 }

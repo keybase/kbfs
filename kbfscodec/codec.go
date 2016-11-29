@@ -49,15 +49,33 @@ type Codec interface {
 		typer func(interface{}) reflect.Value)
 }
 
-// Equal returns whether or not the given objects, if both non-nil,
-// serialize to the same byte string. If either x or y is nil, then
-// Equal returns true if the other one is nil, too.
-func Equal(c Codec, x, y interface{}) (bool, error) {
-	if x == nil {
-		return y == nil, nil
+func isTypedNil(obj interface{}) bool {
+	v := reflect.ValueOf(obj)
+	// This switch is needed because IsNil() panics for other
+	// kinds.
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map,
+		reflect.Ptr, reflect.Slice:
+		return v.IsNil()
+	default:
 	}
-	if y == nil {
-		return x == nil, nil
+	return false
+}
+
+func isNil(obj interface{}) bool {
+	return obj == nil || isTypedNil(obj)
+}
+
+// Equal returns whether or not the given objects, if both non-nil,
+// serialize to the same byte string. If either x or y is (typed or
+// untyped) nil, then Equal returns true if the other one is (typed or
+// untyped) nil, too.
+func Equal(c Codec, x, y interface{}) (bool, error) {
+	if isNil(x) {
+		return isNil(y), nil
+	}
+	if isNil(y) {
+		return isNil(x), nil
 	}
 
 	xBuf, err := c.Encode(x)
