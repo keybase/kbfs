@@ -15,6 +15,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+// keybaseServiceOwner is a wrapper around a KeybaseService. It is
+// usually implemented by Config.
 type keybaseServiceOwner interface {
 	KeybaseService() KeybaseService
 }
