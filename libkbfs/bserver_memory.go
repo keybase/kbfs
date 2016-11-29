@@ -37,12 +37,10 @@ var _ blockServerLocal = (*BlockServerMemory)(nil)
 
 // NewBlockServerMemory constructs a new BlockServerMemory that stores
 // its data in memory.
-func NewBlockServerMemory(config blockServerLocalConfig, log logger.Logger) *BlockServerMemory {
+func NewBlockServerMemory(
+	crypto cryptoPure, log logger.Logger) *BlockServerMemory {
 	return &BlockServerMemory{
-		config.cryptoPure(),
-		log,
-		sync.RWMutex{},
-		make(map[BlockID]blockMemEntry),
+		crypto, log, sync.RWMutex{}, make(map[BlockID]blockMemEntry),
 	}
 }
 

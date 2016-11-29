@@ -225,15 +225,14 @@ func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverA
 	if serverInMemory {
 		log := config.MakeLogger("BSM")
 		// local in-memory block server
-		return NewBlockServerMemory(
-			blockServerLocalConfigAdapter{config}, log), nil
+		return NewBlockServerMemory(config.Crypto(), log), nil
 	}
 
 	if len(serverRootDir) > 0 {
 		// local persistent block server
 		blockPath := filepath.Join(serverRootDir, "kbfs_block")
 		log := config.MakeLogger("BSD")
-		return NewBlockServerDir(blockServerLocalConfigAdapter{config},
+		return NewBlockServerDir(config.Codec(), config.Crypto(),
 			log, blockPath), nil
 	}
 

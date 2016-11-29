@@ -117,7 +117,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 		log := config.MakeLogger("BSTD")
 		var err error
 		blockServer, err = NewBlockServerTempDir(
-			blockServerLocalConfigAdapter{config}, log)
+			config.Codec(), config.Crypto(), log)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -129,8 +129,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 
 	default:
 		log := config.MakeLogger("BSM")
-		blockServer = NewBlockServerMemory(
-			blockServerLocalConfigAdapter{config}, log)
+		blockServer = NewBlockServerMemory(config.Crypto(), log)
 	}
 	config.SetBlockServer(blockServer)
 

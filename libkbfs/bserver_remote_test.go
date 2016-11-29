@@ -28,13 +28,12 @@ type FakeBServerClient struct {
 }
 
 func NewFakeBServerClient(
-	config Config, log logger.Logger,
+	crypto cryptoPure, log logger.Logger,
 	readyChan chan<- struct{},
 	goChan <-chan struct{},
 	finishChan chan<- struct{}) *FakeBServerClient {
 	return &FakeBServerClient{
-		bserverMem: NewBlockServerMemory(
-			blockServerLocalConfigAdapter{config}, log),
+		bserverMem: NewBlockServerMemory(crypto, log),
 		readyChan:  readyChan,
 		goChan:     goChan,
 		finishChan: finishChan,
@@ -186,11 +185,11 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"user1", "user2"})
 	currentUID := localUsers[0].UID
+	log := logger.NewTestLogger(t)
 	crypto := &CryptoLocal{CryptoCommon: MakeCryptoCommon(codec)}
+	fc := NewFakeBServerClient(crypto, log, nil, nil, nil)
 	config := &ConfigLocal{codec: codec, crypto: crypto,
 		loggerFn: testLoggerMaker(t)}
-	log := logger.NewTestLogger(t)
-	fc := NewFakeBServerClient(config, log, nil, nil, nil)
 	b := newBlockServerRemoteWithClient(config, log, fc)
 
 	tlfID := tlf.FakeID(2, false)
@@ -201,7 +200,7 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	serverHalf, err := config.Crypto().MakeRandomBlockCryptKeyServerHalf()
+	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
 	if err != nil {
 		t.Errorf("Couldn't make block server key half: %v", err)
 	}
