@@ -816,6 +816,8 @@ func (md *MDServerMemory) GetKeyBundles(_ context.Context,
 	md.lock.Lock()
 	defer md.lock.Unlock()
 
+	// TODO: Check for shutdown.
+
 	var wkb *TLFWriterKeyBundleV3
 	if wkbID != (TLFWriterKeyBundleID{}) {
 		foundWKB, ok := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
