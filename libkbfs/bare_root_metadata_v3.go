@@ -121,14 +121,15 @@ type ExtraMetadataV3 struct {
 
 // NewExtraMetadataV3 creates a new ExtraMetadataV3 given a pair of key bundles
 func NewExtraMetadataV3(
-	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3) *ExtraMetadataV3 {
+	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3,
+	wkbNew, rkbNew bool) *ExtraMetadataV3 {
 	if wkb == nil {
 		panic("nil wkb")
 	}
 	if rkb == nil {
 		panic("nil rkb")
 	}
-	return &ExtraMetadataV3{wkb: wkb, rkb: rkb}
+	return &ExtraMetadataV3{wkb, rkb, wkbNew, rkbNew}
 }
 
 // MetadataVersion implements the ExtraMetadata interface for ExtraMetadataV3.
@@ -1013,7 +1014,7 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(codec kbfscodec.Codec,
 		TLFEphemeralPublicKeys: rPublicKeys,
 	}
 	md.WriterMetadata.LatestKeyGen++
-	return NewExtraMetadataV3(newWriterKeys, newReaderKeys), nil
+	return NewExtraMetadataV3(newWriterKeys, newReaderKeys, true, true), nil
 }
 
 func (md *BareRootMetadataV3) addKeyGenerationForTest(codec kbfscodec.Codec,
@@ -1246,12 +1247,24 @@ func (md *BareRootMetadataV3) FinalizeRekey(
 	if !ok {
 		return errors.New("Invalid extra metadata")
 	}
-	var err error
-	md.WriterMetadata.WKeyBundleID, err = crypto.MakeTLFWriterKeyBundleID(extraV3.wkb)
+	oldWKBID := md.WriterMetadata.WKeyBundleID
+	oldRKBID := md.RKeyBundleID
+
+	newWKBID, err := crypto.MakeTLFWriterKeyBundleID(extraV3.wkb)
 	if err != nil {
 		return err
 	}
-	md.RKeyBundleID, err = crypto.MakeTLFReaderKeyBundleID(extraV3.rkb)
+	newRKBID, err := crypto.MakeTLFReaderKeyBundleID(extraV3.rkb)
+	if err != nil {
+		return err
+	}
+
+	md.WriterMetadata.WKeyBundleID = newWKBID
+	md.RKeyBundleID = newRKBID
+
+	extraV3.wkbNew = newWKBID != oldWKBID
+	extraV3.rkbNew = newRKBID != oldRKBID
+
 	return err
 }
 

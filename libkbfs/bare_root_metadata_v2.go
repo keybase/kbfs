@@ -404,7 +404,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 			return nil, nil, err
 		}
 
-		extraCopy = NewExtraMetadataV3(wkbV3, rkb)
+		extraCopy = NewExtraMetadataV3(wkbV3, rkb, true, true)
 	}
 
 	mdCopy.LastModifyingUser = md.LastModifyingUser
