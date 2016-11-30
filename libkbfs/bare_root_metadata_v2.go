@@ -57,7 +57,6 @@ func (wmd *WriterMetadataV2) ToWriterMetadataV3(
 	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, keyManager KeyManager,
 	kmd KeyMetadata, wmdCopy *WriterMetadataV3) (
 	*TLFWriterKeyBundleV2, *TLFWriterKeyBundleV3, error) {
-
 	wmdCopy.Writers = make([]keybase1.UID, len(wmd.Writers))
 	copy(wmdCopy.Writers, wmd.Writers)
 
@@ -355,11 +354,16 @@ func (md *BareRootMetadataV2) MakeSuccessorCopy(
 	}
 
 	// Upconvert to the new version.
-	mdCopy, extraCopy, err := md.makeSuccessorCopyV3(ctx, config, kmd)
+	mdCopy, extraCopyV3, err := md.makeSuccessorCopyV3(ctx, config, kmd)
 	if err != nil {
 		return nil, nil, false, err
 	}
-	return mdCopy, extraCopy, true, nil
+	// Do this so that a typed nil gets converted to an untyped nil.
+	var extraV3 ExtraMetadata
+	if extraCopyV3 != nil {
+		extraV3 = extraCopyV3
+	}
+	return mdCopy, extraV3, true, nil
 }
 
 func (md *BareRootMetadataV2) makeSuccessorCopyV2(config Config, isReadableAndWriter bool) (
@@ -378,17 +382,20 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 	*BareRootMetadataV3, ExtraMetadata, error) {
 	mdCopy := &BareRootMetadataV3{}
 
-	// Fill out the writer metadata and new writer key bundle.
+	// Fill out the writer metadata and maybe a new writer key
+	// bundle.
 	wkbV2, wkbV3, err := md.WriterMetadataV2.ToWriterMetadataV3(
 		ctx, config.Codec(), config.Crypto(), config.KeyManager(), kmd, &mdCopy.WriterMetadata)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var rkb *TLFReaderKeyBundleV3
+	// Have this as ExtraMetadata so we return an untyped nil
+	// instead of a typed nil.
+	var extraCopy ExtraMetadata
 	if md.LatestKeyGeneration() != PublicKeyGen {
 		// Fill out the reader key bundle.
-		rkb, err = md.RKeys.ToTLFReaderKeyBundleV3(config.Codec(), wkbV2)
+		rkb, err := md.RKeys.ToTLFReaderKeyBundleV3(config.Codec(), wkbV2)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -396,6 +403,8 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 		if err != nil {
 			return nil, nil, err
 		}
+
+		extraCopy = NewExtraMetadataV3(wkbV3, rkb)
 	}
 
 	mdCopy.LastModifyingUser = md.LastModifyingUser
@@ -416,12 +425,6 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 		return nil, nil, errors.New("Non-nil finalized info")
 	}
 
-	// Have this as ExtraMetadata so we return an untyped nil
-	// instead of a typed nil.
-	var extraCopy ExtraMetadata
-	if !md.ID.IsPublic() {
-		extraCopy = &ExtraMetadataV3{wkb: wkbV3, rkb: rkb}
-	}
 	return mdCopy, extraCopy, nil
 }
 

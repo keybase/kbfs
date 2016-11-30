@@ -107,17 +107,28 @@ func makeMissingKeyBundlesError() missingKeyBundlesError {
 // ExtraMetadataV3 contains references to key bundles stored outside of metadata
 // blocks.  This only ever exists in memory and is never serialized itself.
 type ExtraMetadataV3 struct {
+	// wkb must not be nil.
 	wkb *TLFWriterKeyBundleV3
+	// rkb must not be nil.
 	rkb *TLFReaderKeyBundleV3
+	// Set if wkb is new and should be sent to the server on an MD
+	// put.
+	wkbNew bool
+	// Set if rkb is new and should be sent to the server on an MD
+	// put.
+	rkbNew bool
 }
 
 // NewExtraMetadataV3 creates a new ExtraMetadataV3 given a pair of key bundles
-func NewExtraMetadataV3(wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3) (
-	*ExtraMetadataV3, error) {
-	if wkb == nil || rkb == nil {
-		return nil, errors.New("Nil key bundle passed")
+func NewExtraMetadataV3(
+	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3) *ExtraMetadataV3 {
+	if wkb == nil {
+		panic("nil wkb")
 	}
-	return &ExtraMetadataV3{wkb: wkb, rkb: rkb}, nil
+	if rkb == nil {
+		panic("nil rkb")
+	}
+	return &ExtraMetadataV3{wkb: wkb, rkb: rkb}
 }
 
 // MetadataVersion implements the ExtraMetadata interface for ExtraMetadataV3.
@@ -1002,10 +1013,7 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(codec kbfscodec.Codec,
 		TLFEphemeralPublicKeys: rPublicKeys,
 	}
 	md.WriterMetadata.LatestKeyGen++
-	return &ExtraMetadataV3{
-		rkb: newReaderKeys,
-		wkb: newWriterKeys,
-	}, nil
+	return NewExtraMetadataV3(newWriterKeys, newReaderKeys), nil
 }
 
 func (md *BareRootMetadataV3) addKeyGenerationForTest(codec kbfscodec.Codec,

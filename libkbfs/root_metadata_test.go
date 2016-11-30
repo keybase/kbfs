@@ -722,9 +722,9 @@ func TestRootMetadataUpconversionPublic(t *testing.T) {
 	// create an MDv3 successor
 	rmd2, err := rmd.MakeSuccessor(context.Background(), config, fakeMdID(1), true)
 	require.NoError(t, err)
-	require.Equal(t, rmd2.LatestKeyGeneration(), PublicKeyGen)
-	require.Equal(t, rmd2.Revision(), MetadataRevision(2))
-	require.Equal(t, rmd2.Version(), SegregatedKeyBundlesVer)
+	require.Equal(t, PublicKeyGen, rmd2.LatestKeyGeneration())
+	require.Equal(t, MetadataRevision(2), rmd2.Revision())
+	require.Equal(t, SegregatedKeyBundlesVer, rmd2.Version())
 	// Do this instead of require.Nil because we want to assert
 	// that it's untyped nil.
 	require.True(t, rmd2.extra == nil)

@@ -323,7 +323,7 @@ func (j mdJournal) getExtraMetadata(
 		return nil, err
 	}
 
-	return &ExtraMetadataV3{wkb: &wkb, rkb: &rkb}, nil
+	return NewExtraMetadataV3(&wkb, &rkb), nil
 }
 
 func (j mdJournal) putExtraMetadata(
