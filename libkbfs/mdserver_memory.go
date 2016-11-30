@@ -202,7 +202,7 @@ func (md *MDServerMemory) checkGetParams(
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		extra, err := md.getExtraMetadata(mergedMasterHead.MD)
+		extra, err := getExtraMetadata(ctx, md, mergedMasterHead.MD)
 		if err != nil {
 			return NullBranchID, MDServerError{err}
 		}
@@ -395,7 +395,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		prevExtra, err := md.getExtraMetadata(mergedMasterHead.MD)
+		prevExtra, err := getExtraMetadata(ctx, md, mergedMasterHead.MD)
 		if err != nil {
 			return MDServerError{err}
 		}
@@ -740,37 +740,6 @@ func (md *MDServerMemory) GetLatestHandleForTLF(_ context.Context, id tlf.ID) (
 // MDServerMemory.
 func (md *MDServerMemory) OffsetFromServerTime() (time.Duration, bool) {
 	return 0, true
-}
-
-func (md *MDServerMemory) getExtraMetadata(brmd BareRootMetadata) (
-	ExtraMetadata, error) {
-	tlfID := brmd.TlfID()
-	wkbID := brmd.GetTLFWriterKeyBundleID()
-	rkbID := brmd.GetTLFReaderKeyBundleID()
-	if (wkbID == TLFWriterKeyBundleID{}) !=
-		(rkbID == TLFReaderKeyBundleID{}) {
-		return nil, errors.Errorf(
-			"wkbID is empty (%t) != rkbID is empty (%t)",
-			wkbID == TLFWriterKeyBundleID{},
-			rkbID == TLFReaderKeyBundleID{})
-	}
-
-	if wkbID == (TLFWriterKeyBundleID{}) {
-		return nil, nil
-	}
-
-	md.lock.Lock()
-	defer md.lock.Unlock()
-
-	wkb := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
-	rkb := md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
-
-	err := checkKeyBundleIDs(md.config.cryptoPure(), wkbID, rkbID, wkb, rkb)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewExtraMetadataV3(wkb, rkb, false, false), nil
 }
 
 func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,

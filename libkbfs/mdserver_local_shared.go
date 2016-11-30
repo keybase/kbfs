@@ -5,12 +5,13 @@
 package libkbfs
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // TODO: Have the functions below wrap their errors.
@@ -158,9 +159,40 @@ func (m *mdServerLocalUpdateManager) registerForUpdate(
 		// fatal bug.  Note that in the real MDServer implementation,
 		// we should allow this, in order to make the RPC properly
 		// idempotent.
-		panic(fmt.Errorf("Attempted double-registration for MDServerLocal %v",
+		panic(errors.Errorf("Attempted double-registration for MDServerLocal %v",
 			server))
 	}
 	m.observers[id][server] = c
 	return c
+}
+
+type keyBundleGetter interface {
+	getKeyBundles(ctx context.Context, tlfID tlf.ID,
+		wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+		*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error)
+}
+
+func getExtraMetadata(ctx context.Context, kbg keyBundleGetter,
+	brmd BareRootMetadata) (ExtraMetadata, error) {
+	tlfID := brmd.TlfID()
+	wkbID := brmd.GetTLFWriterKeyBundleID()
+	rkbID := brmd.GetTLFReaderKeyBundleID()
+	if (wkbID == TLFWriterKeyBundleID{}) !=
+		(rkbID == TLFReaderKeyBundleID{}) {
+		return nil, errors.Errorf(
+			"wkbID is empty (%t) != rkbID is empty (%t)",
+			wkbID == TLFWriterKeyBundleID{},
+			rkbID == TLFReaderKeyBundleID{})
+	}
+
+	if wkbID == (TLFWriterKeyBundleID{}) {
+		return nil, nil
+	}
+
+	wkb, rkb, err := kbg.getKeyBundles(ctx, tlfID, wkbID, rkbID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ExtraMetadataV3{wkb: *wkb, rkb: *rkb}, nil
 }
