@@ -493,25 +493,27 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 	}
 
 	// add any new key bundles
-	wkb, rkb := getAnyKeyBundlesV3(extra)
-	if wkb != nil {
-		wkbBytes, err := md.config.Codec().Encode(wkb)
-		if err != nil {
-			return err
+	extraV3, ok := extra.(*ExtraMetadataV3)
+	if ok {
+		if extraV3.wkbNew {
+			wkbBytes, err := md.config.Codec().Encode(extraV3.wkb)
+			if err != nil {
+				return err
+			}
+			arg.WriterKeyBundle = keybase1.KeyBundle{
+				Version: int(rmds.Version()),
+				Bundle:  wkbBytes,
+			}
 		}
-		arg.WriterKeyBundle = keybase1.KeyBundle{
-			Version: int(rmds.Version()),
-			Bundle:  wkbBytes,
-		}
-	}
-	if rkb != nil {
-		rkbBytes, err := md.config.Codec().Encode(rkb)
-		if err != nil {
-			return err
-		}
-		arg.ReaderKeyBundle = keybase1.KeyBundle{
-			Version: int(rmds.Version()),
-			Bundle:  rkbBytes,
+		if extraV3.rkbNew {
+			rkbBytes, err := md.config.Codec().Encode(extraV3.rkb)
+			if err != nil {
+				return err
+			}
+			arg.ReaderKeyBundle = keybase1.KeyBundle{
+				Version: int(rmds.Version()),
+				Bundle:  rkbBytes,
+			}
 		}
 	}
 

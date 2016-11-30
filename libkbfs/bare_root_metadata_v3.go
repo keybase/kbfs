@@ -163,18 +163,6 @@ func (extra ExtraMetadataV3) GetReaderKeyBundle() *TLFReaderKeyBundleV3 {
 	return extra.rkb
 }
 
-// Copy implements the ExtraMetadata interface for ExtraMetadataV3.
-func (extra ExtraMetadataV3) Copy(includeWkb, includeRkb bool) ExtraMetadata {
-	extraCopy := &ExtraMetadataV3{}
-	if includeWkb {
-		extraCopy.wkb = extra.wkb
-	}
-	if includeRkb {
-		extraCopy.rkb = extra.rkb
-	}
-	return extraCopy
-}
-
 // Helper function to extract key bundles for the ExtraMetadata interface.
 func getKeyBundlesV3(extra ExtraMetadata) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, bool) {
@@ -186,16 +174,6 @@ func getKeyBundlesV3(extra ExtraMetadata) (
 		return nil, nil, false
 	}
 	return extraV3.wkb, extraV3.rkb, true
-}
-
-// Helper function to extract key bundles for the ExtraMetadata interface.
-func getAnyKeyBundlesV3(extra ExtraMetadata) (
-	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3) {
-	extraV3, ok := extra.(*ExtraMetadataV3)
-	if !ok {
-		return nil, nil
-	}
-	return extraV3.wkb, extraV3.rkb
 }
 
 // MakeInitialBareRootMetadataV3 creates a new BareRootMetadataV3
@@ -384,21 +362,21 @@ func (md *BareRootMetadataV3) DeepCopy(
 func (md *BareRootMetadataV3) MakeSuccessorCopy(
 	ctx context.Context, config Config, kmd KeyMetadata,
 	extra ExtraMetadata, isReadableAndWriter bool) (
-	MutableBareRootMetadata, ExtraMetadata, bool, error) {
+	MutableBareRootMetadata, ExtraMetadata, error) {
 	var extraCopy ExtraMetadata
 	if extra != nil {
 		var err error
 		extraCopy, err = extra.DeepCopy(config.Codec())
 		if err != nil {
-			return nil, nil, false, err
+			return nil, nil, err
 		}
 	}
 	mdCopy, err := md.DeepCopy(config.Codec())
 	if err != nil {
-		return nil, nil, false, err
+		return nil, nil, err
 	}
 	// TODO: If there is ever a BareRootMetadataV4 this will need to perform the conversion.
-	return mdCopy, extraCopy, false, nil
+	return mdCopy, extraCopy, nil
 }
 
 // CheckValidSuccessor implements the BareRootMetadata interface for BareRootMetadataV3.

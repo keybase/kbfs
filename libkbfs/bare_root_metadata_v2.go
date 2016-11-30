@@ -342,28 +342,28 @@ func (md *BareRootMetadataV2) DeepCopy(
 func (md *BareRootMetadataV2) MakeSuccessorCopy(
 	ctx context.Context, config Config, kmd KeyMetadata,
 	extra ExtraMetadata, isReadableAndWriter bool) (
-	MutableBareRootMetadata, ExtraMetadata, bool, error) {
+	MutableBareRootMetadata, ExtraMetadata, error) {
 
 	if config.MetadataVersion() < SegregatedKeyBundlesVer {
 		// Continue with the current version.
 		mdCopy, err := md.makeSuccessorCopyV2(config, isReadableAndWriter)
 		if err != nil {
-			return nil, nil, false, err
+			return nil, nil, err
 		}
-		return mdCopy, nil, false, nil
+		return mdCopy, nil, nil
 	}
 
 	// Upconvert to the new version.
 	mdCopy, extraCopyV3, err := md.makeSuccessorCopyV3(ctx, config, kmd)
 	if err != nil {
-		return nil, nil, false, err
+		return nil, nil, err
 	}
 	// Do this so that a typed nil gets converted to an untyped nil.
 	var extraV3 ExtraMetadata
 	if extraCopyV3 != nil {
 		extraV3 = extraCopyV3
 	}
-	return mdCopy, extraV3, true, nil
+	return mdCopy, extraV3, nil
 }
 
 func (md *BareRootMetadataV2) makeSuccessorCopyV2(config Config, isReadableAndWriter bool) (

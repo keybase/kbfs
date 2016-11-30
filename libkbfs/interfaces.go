@@ -1608,7 +1608,7 @@ type BareRootMetadata interface {
 	// TODO: Replace Config argument.
 	MakeSuccessorCopy(ctx context.Context, config Config, kmd KeyMetadata,
 		extra ExtraMetadata, isReadableAndWriter bool) (
-		mdCopy MutableBareRootMetadata, extraCopy ExtraMetadata, extraCopyIsNew bool, err error)
+		mdCopy MutableBareRootMetadata, extraCopy ExtraMetadata, err error)
 	// CheckValidSuccessor makes sure the given BareRootMetadata is a valid
 	// successor to the current one, and returns an error otherwise.
 	CheckValidSuccessor(currID MdID, nextMd BareRootMetadata) error
