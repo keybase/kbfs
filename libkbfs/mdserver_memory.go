@@ -202,7 +202,7 @@ func (md *MDServerMemory) checkGetParams(
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		extra, err := getExtraMetadata(ctx, md, mergedMasterHead.MD)
+		extra, err := getExtraMetadata(md, mergedMasterHead.MD)
 		if err != nil {
 			return NullBranchID, MDServerError{err}
 		}
@@ -395,7 +395,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		prevExtra, err := getExtraMetadata(ctx, md, mergedMasterHead.MD)
+		prevExtra, err := getExtraMetadata(md, mergedMasterHead.MD)
 		if err != nil {
 			return MDServerError{err}
 		}
@@ -775,11 +775,11 @@ func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,
 	return nil
 }
 
-func (md *MDServerMemory) getKeyBundles(_ context.Context, tlfID tlf.ID,
+func (md *MDServerMemory) getKeyBundles(tlfID tlf.ID,
 	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	md.lock.Lock()
-	defer md.lock.Unlock()
+	md.lock.RLock()
+	defer md.lock.RUnlock()
 	if md.writerKeyBundleDb == nil {
 		return nil, nil, errMDServerMemoryShutdown
 	}
@@ -819,7 +819,7 @@ func (md *MDServerMemory) getKeyBundles(_ context.Context, tlfID tlf.ID,
 func (md *MDServerMemory) GetKeyBundles(ctx context.Context,
 	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	wkb, rkb, err := md.getKeyBundles(ctx, tlfID, wkbID, rkbID)
+	wkb, rkb, err := md.getKeyBundles(tlfID, wkbID, rkbID)
 	if err != nil {
 		return nil, nil, MDServerError{err}
 	}

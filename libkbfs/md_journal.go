@@ -318,10 +318,10 @@ func (j mdJournal) getExtraMetadata(
 		return nil, err
 	}
 
-	err = checkKeyBundleIDs(j.crypto, wkbID, rkbID, wkb, rkb)
+	/*err = checkKeyBundlesIDs(j.crypto, wkbID, rkbID, &wkb, &rkb)
 	if err != nil {
 		return nil, err
-	}
+	}*/
 
 	// TODO: Store and retrieve the wkbNew/rkbNew parameters.
 	return NewExtraMetadataV3(wkb, rkb, true, true), nil
@@ -352,15 +352,15 @@ func (j mdJournal) putExtraMetadata(
 	// it as part of the mdInfo, so we don't needlessly send it
 	// while flushing.
 
-	err := checkKeyBundleIDs(
+	/*err := checkKeyBundleIDs(
 		j.crypto, wkbID, rkbID, extraV3.wkb, extraV3.rkb)
 	if err != nil {
 		return err
-	}
+	}*/
 
 	// TODO: Avoid serializing if the file already exists.
 
-	err = kbfscodec.SerializeToFile(
+	err := kbfscodec.SerializeToFile(
 		j.codec, extraV3.wkb, j.writerKeyBundleV3Path(wkbID))
 	if err != nil {
 		return err

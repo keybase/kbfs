@@ -11,7 +11,6 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // TODO: Have the functions below wrap their errors.
@@ -167,13 +166,12 @@ func (m *mdServerLocalUpdateManager) registerForUpdate(
 }
 
 type keyBundleGetter interface {
-	getKeyBundles(ctx context.Context, tlfID tlf.ID,
+	getKeyBundles(tlfID tlf.ID,
 		wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 		*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error)
 }
 
-func getExtraMetadata(ctx context.Context, kbg keyBundleGetter,
-	brmd BareRootMetadata) (ExtraMetadata, error) {
+func getExtraMetadata(kbg keyBundleGetter, brmd BareRootMetadata) (ExtraMetadata, error) {
 	tlfID := brmd.TlfID()
 	wkbID := brmd.GetTLFWriterKeyBundleID()
 	rkbID := brmd.GetTLFReaderKeyBundleID()
@@ -189,10 +187,10 @@ func getExtraMetadata(ctx context.Context, kbg keyBundleGetter,
 		return nil, nil
 	}
 
-	wkb, rkb, err := kbg.getKeyBundles(ctx, tlfID, wkbID, rkbID)
+	wkb, rkb, err := kbg.getKeyBundles(tlfID, wkbID, rkbID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ExtraMetadataV3{wkb: *wkb, rkb: *rkb}, nil
+	return NewExtraMetadataV3(*wkb, *rkb, false, false), nil
 }
