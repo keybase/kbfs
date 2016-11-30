@@ -666,13 +666,57 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 	return publicKeys[index], info.ClientHalf, info.ServerHalfID, true, nil
 }
 
+func checkWKBID(crypto cryptoPure,
+	wkbID TLFWriterKeyBundleID, wkb *TLFWriterKeyBundleV3) error {
+	computedWKBID, err := crypto.MakeTLFWriterKeyBundleID(wkb)
+	if err != nil {
+		return err
+	}
+
+	if wkbID != computedWKBID {
+		return fmt.Errorf("Expected WKB ID %s, got %s",
+			wkbID, computedWKBID)
+	}
+
+	return nil
+}
+
+func checkRKBID(crypto cryptoPure,
+	rkbID TLFReaderKeyBundleID, rkb *TLFReaderKeyBundleV3) error {
+	computedRKBID, err := crypto.MakeTLFReaderKeyBundleID(rkb)
+	if err != nil {
+		return err
+	}
+
+	if rkbID != computedRKBID {
+		return fmt.Errorf("Expected RKB ID %s, got %s",
+			rkbID, computedRKBID)
+	}
+
+	return nil
+}
+
 // IsValidAndSigned implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) IsValidAndSigned(
 	codec kbfscodec.Codec, crypto cryptoPure, extra ExtraMetadata) error {
-	if !md.TlfID().IsPublic() {
-		_, _, ok := getKeyBundlesV3(extra)
+	if md.TlfID().IsPublic() {
+		if extra != nil {
+			return errors.New("Unexpected non-nil ExtraMetadata")
+		}
+	} else {
+		wkb, rkb, ok := getKeyBundlesV3(extra)
 		if !ok {
 			return makeMissingKeyBundlesError()
+		}
+
+		err := checkWKBID(crypto, md.GetTLFWriterKeyBundleID(), wkb)
+		if err != nil {
+			return err
+		}
+
+		err = checkRKBID(crypto, md.GetTLFReaderKeyBundleID(), rkb)
+		if err != nil {
+			return err
 		}
 	}
 
