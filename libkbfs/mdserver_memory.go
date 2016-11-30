@@ -202,9 +202,7 @@ func (md *MDServerMemory) checkGetParams(
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		extra, err := md.getExtraMetadata(
-			id, mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
-			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
+		extra, err := md.getExtraMetadata(mergedMasterHead.MD)
 		if err != nil {
 			return NullBranchID, MDServerError{err}
 		}
@@ -397,10 +395,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		prevExtra, err := md.getExtraMetadata(
-			mergedMasterHead.MD.TlfID(),
-			mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
-			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
+		prevExtra, err := md.getExtraMetadata(mergedMasterHead.MD)
 		if err != nil {
 			return MDServerError{err}
 		}
@@ -747,9 +742,11 @@ func (md *MDServerMemory) OffsetFromServerTime() (time.Duration, bool) {
 	return 0, true
 }
 
-func (md *MDServerMemory) getExtraMetadata(
-	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+func (md *MDServerMemory) getExtraMetadata(brmd BareRootMetadata) (
 	ExtraMetadata, error) {
+	tlfID := brmd.TlfID()
+	wkbID := brmd.GetTLFWriterKeyBundleID()
+	rkbID := brmd.GetTLFReaderKeyBundleID()
 	if (wkbID == TLFWriterKeyBundleID{}) !=
 		(rkbID == TLFReaderKeyBundleID{}) {
 		return nil, errors.Errorf(
@@ -809,9 +806,8 @@ func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,
 	return nil
 }
 
-// GetKeyBundles implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) GetKeyBundles(_ context.Context,
-	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+func (md *MDServerMemory) getKeyBundles(_ context.Context, tlfID tlf.ID,
+	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	md.lock.Lock()
 	defer md.lock.Unlock()
@@ -865,5 +861,16 @@ func (md *MDServerMemory) GetKeyBundles(_ context.Context,
 		rkb = &foundRKB
 	}
 
+	return wkb, rkb, nil
+}
+
+// GetKeyBundles implements the MDServer interface for MDServerMemory.
+func (md *MDServerMemory) GetKeyBundles(ctx context.Context,
+	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
+	wkb, rkb, err := md.getKeyBundles(ctx, tlfID, wkbID, rkbID)
+	if err != nil {
+		return nil, nil, MDServerError{err}
+	}
 	return wkb, rkb, nil
 }
