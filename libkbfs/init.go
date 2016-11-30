@@ -223,17 +223,17 @@ func makeKeyServer(config Config, serverInMemory bool, serverRootDir, keyserverA
 func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverAddr string, ctx Context, log logger.Logger) (
 	BlockServer, error) {
 	if serverInMemory {
-		log := config.MakeLogger("BSM")
+		bserverLog := config.MakeLogger("BSM")
 		// local in-memory block server
-		return NewBlockServerMemory(config.Crypto(), log), nil
+		return NewBlockServerMemory(config.Crypto(), bserverLog), nil
 	}
 
 	if len(serverRootDir) > 0 {
 		// local persistent block server
 		blockPath := filepath.Join(serverRootDir, "kbfs_block")
-		log := config.MakeLogger("BSD")
+		bserverLog := config.MakeLogger("BSD")
 		return NewBlockServerDir(config.Codec(), config.Crypto(),
-			log, blockPath), nil
+			bserverLog, blockPath), nil
 	}
 
 	if len(bserverAddr) == 0 {
@@ -385,8 +385,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	// crypto must be initialized before the MD and block servers
 	// are initialized, since those depend on crypto.
-	crypto, err := keybaseServiceCn.NewCrypto(
-		config, params, ctx, kbfsLog)
+	crypto, err := keybaseServiceCn.NewCrypto(config, params, ctx, kbfsLog)
 	if err != nil {
 		return nil, fmt.Errorf("problem creating crypto: %s", err)
 	}
