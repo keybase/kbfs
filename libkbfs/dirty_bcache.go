@@ -337,7 +337,7 @@ func (d *DirtyBlockCacheStandard) maybeDecreaseBuffer(start time.Time,
 		if d.syncBufferCap < d.minSyncBufCap {
 			d.syncBufferCap = d.minSyncBufCap
 		}
-		d.log.Debug("Writes blocked for %s (%f%% of timeout), "+
+		d.log.CDebugf(context.TODO(), "Writes blocked for %s (%f%% of timeout), "+
 			"syncBufferCap=%d", timeoutUsed, fracTimeoutUsed*100,
 			d.syncBufferCap)
 		if d.syncBufBytes > d.ignoreSyncBytes {
@@ -459,7 +459,7 @@ func (d *DirtyBlockCacheStandard) processPermission() {
 						d.syncStarted = d.clock.Now()
 						fracDeadlineSoFar = 0
 					}
-					d.log.Debug("Applying backpressure %s", backpressure)
+					d.log.CDebugf(context.TODO(), "Applying backpressure %s", backpressure)
 				}()
 			}
 		}
@@ -551,7 +551,7 @@ func (d *DirtyBlockCacheStandard) BlockSyncFinished(_ tlf.ID, size int64) {
 func (d *DirtyBlockCacheStandard) resetBufferCap() {
 	d.lock.Lock()
 	defer d.lock.Unlock()
-	d.log.Debug("Resetting syncBufferCap from %d to %d", d.syncBufferCap,
+	d.log.CDebugf(context.TODO(), "Resetting syncBufferCap from %d to %d", d.syncBufferCap,
 		d.minSyncBufCap)
 	d.syncBufferCap = d.minSyncBufCap
 	d.resetter = nil
@@ -599,7 +599,7 @@ func (d *DirtyBlockCacheStandard) SyncFinished(_ tlf.ID, size int64) {
 		}
 	}
 	d.signalDecreasedBytes()
-	d.log.Debug("Finished syncing %d bytes, syncBufferCap=%d, "+
+	d.log.CDebugf(context.TODO(), "Finished syncing %d bytes, syncBufferCap=%d, "+
 		"waitBuf=%d, ignored=%d", size, d.syncBufferCap, d.waitBufBytes,
 		ignore)
 }
