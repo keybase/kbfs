@@ -823,19 +823,10 @@ func (md *MDServerMemory) getKeyBundles(_ context.Context, tlfID tlf.ID,
 				"Could not find WKB for ID %s", wkbID)
 		}
 
-		computedWKBID, err :=
-			md.config.cryptoPure().MakeTLFWriterKeyBundleID(foundWKB)
+		err := checkWKBID(md.config.cryptoPure(), wkbID, foundWKB)
 		if err != nil {
 			return nil, nil, err
 		}
-
-		if wkbID != computedWKBID {
-			return nil, nil, errors.Errorf(
-				"Expected WKB ID %s, got %s",
-				wkbID, computedWKBID)
-		}
-
-		wkb = &foundWKB
 	}
 
 	var rkb *TLFReaderKeyBundleV3
@@ -846,19 +837,10 @@ func (md *MDServerMemory) getKeyBundles(_ context.Context, tlfID tlf.ID,
 				"Could not find RKB for ID %s", rkbID)
 		}
 
-		computedRKBID, err :=
-			md.config.cryptoPure().MakeTLFReaderKeyBundleID(foundRKB)
+		err := checkRKBID(md.config.cryptoPure(), rkbID, foundRKB)
 		if err != nil {
 			return nil, nil, err
 		}
-
-		if rkbID != computedRKBID {
-			return nil, nil, errors.Errorf(
-				"Expected RKB ID %s, got %s",
-				rkbID, computedRKBID)
-		}
-
-		rkb = &foundRKB
 	}
 
 	return wkb, rkb, nil
