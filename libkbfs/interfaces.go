@@ -1078,11 +1078,13 @@ type MDServer interface {
 	GetRange(ctx context.Context, id tlf.ID, bid BranchID, mStatus MergeStatus,
 		start, stop MetadataRevision) ([]*RootMetadataSigned, error)
 
-	// Put stores the (signed/encrypted) metadata object for the given
-	// top-level folder. Note: If the unmerged bit is set in the metadata
-	// block's flags bitmask it will be appended to the unmerged per-device
-	// history.
-	Put(ctx context.Context, rmds *RootMetadataSigned, extra ExtraMetadata) error
+	// Put stores the (signed/encrypted) metadata object for the
+	// given top-level folder. Note: If the unmerged bit is set in
+	// the metadata block's flags bitmask it will be appended to
+	// the unmerged per-device history. extraNew is allowed to
+	// drop data that exists as part of a previous extra bundle.
+	Put(ctx context.Context, rmds *RootMetadataSigned,
+		extraNew ExtraMetadata) error
 
 	// PruneBranch prunes all unmerged history for the given TLF branch.
 	PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) error
@@ -1140,7 +1142,11 @@ type MDServer interface {
 	// don't have a current estimate for the offset.
 	OffsetFromServerTime() (time.Duration, bool)
 
-	// GetKeyBundles returns the key bundles for the given key bundle IDs.
+	// GetKeyBundles looks up the key bundles for the given key
+	// bundle IDs. tlfID must be non-zero but either or both wkbID
+	// and rkbID can be zero, in which case nil will be returned
+	// for the respective bundle. If a bundle cannot be found, an
+	// error is returned and nils are returned for both bundles.
 	GetKeyBundles(ctx context.Context, tlfID tlf.ID,
 		wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 		*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error)
