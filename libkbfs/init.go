@@ -362,10 +362,12 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 	config.SetKeyManager(NewKeyManagerStandard(config))
 	config.SetMDOps(NewMDOpsStandard(config))
 
+	kbfsLog := config.MakeLogger("")
+
 	if keybaseServiceCn == nil {
 		keybaseServiceCn = keybaseDaemon{}
 	}
-	service, err := keybaseServiceCn.NewKeybaseService(config, params, ctx, config.MakeLogger(""))
+	service, err := keybaseServiceCn.NewKeybaseService(config, params, ctx, kbfsLog)
 	if err != nil {
 		return nil, fmt.Errorf("problem creating service: %s", err)
 	}
@@ -376,14 +378,15 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config.SetKeybaseService(service)
 
-	k := NewKBPKIClient(config, log)
+	k := NewKBPKIClient(config, kbfsLog)
 	config.SetKBPKI(k)
 
 	config.SetReporter(NewReporterKBPKI(config, 10, 1000))
 
 	// crypto must be initialized before the MD and block servers
 	// are initialized, since those depend on crypto.
-	crypto, err := keybaseServiceCn.NewCrypto(config, params, ctx, log)
+	crypto, err := keybaseServiceCn.NewCrypto(
+		config, params, ctx, kbfsLog)
 	if err != nil {
 		return nil, fmt.Errorf("problem creating crypto: %s", err)
 	}
