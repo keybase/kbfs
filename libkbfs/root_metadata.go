@@ -738,26 +738,13 @@ func (md *RootMetadata) revokeRemovedDevices(
 	return md.bareMd.RevokeRemovedDevices(wKeys, rKeys, md.extra)
 }
 
-func (md *RootMetadata) fillInDevices(crypto Crypto,
-	keyGen KeyGen,
+func (md *RootMetadata) updateKeyGeneration(crypto Crypto, keyGen KeyGen,
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {
-
-	if bareV3, ok := md.bareMd.(*BareRootMetadataV3); ok {
-		return bareV3.fillInDevices(crypto,
-			md.extra, keyGen, wKeys, rKeys,
-			ePubKey, ePrivKey, tlfCryptKey)
-	}
-
-	if bareV2, ok := md.bareMd.(*BareRootMetadataV2); ok {
-		return bareV2.fillInDevices(crypto,
-			md.extra, keyGen, wKeys, rKeys,
-			ePubKey, ePrivKey, tlfCryptKey)
-	}
-
-	return nil, errors.New("Unknown bare metadata version")
+	return md.bareMd.UpdateKeyGeneration(crypto, keyGen, md.extra,
+		wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
 }
 
 func (md *RootMetadata) finalizeRekey(crypto cryptoPure) error {

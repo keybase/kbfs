@@ -1755,6 +1755,19 @@ type MutableBareRootMetadata interface {
 	SetWriterMetadataCopiedBit()
 	// SetRevision sets the revision number of the underlying metadata.
 	SetRevision(revision MetadataRevision)
+	// SetUnresolvedReaders sets the list of unresolved readers assoiated with this folder.
+	SetUnresolvedReaders(readers []keybase1.SocialAssertion)
+	// SetUnresolvedWriters sets the list of unresolved writers assoiated with this folder.
+	SetUnresolvedWriters(writers []keybase1.SocialAssertion)
+	// SetConflictInfo sets any conflict info associated with this metadata revision.
+	SetConflictInfo(ci *tlf.HandleExtension)
+	// SetFinalizedInfo sets any finalized info associated with this metadata revision.
+	SetFinalizedInfo(fi *tlf.HandleExtension)
+	// SetWriters sets the list of writers associated with this folder.
+	SetWriters(writers []keybase1.UID)
+	// SetTlfID sets the ID of the underlying folder in the metadata structure.
+	SetTlfID(tlf tlf.ID)
+
 	// addKeyGenerationForTest is like AddKeyGeneration, except
 	// currCryptKey and nextCryptKey don't have to be zero if
 	// StoresHistoricTLFCryptKeys is false, and takes in
@@ -1765,6 +1778,7 @@ type MutableBareRootMetadata interface {
 		currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 		pubKey kbfscrypto.TLFPublicKey,
 		wDkim, rDkim UserDeviceKeyInfoMap) ExtraMetadata
+
 	// AddKeyGeneration adds a new key generation to this revision
 	// of metadata. If StoresHistoricTLFCryptKeys is false, then
 	// currCryptKey and nextCryptKey must be zero. Otherwise,
@@ -1778,20 +1792,16 @@ type MutableBareRootMetadata interface {
 		prevExtra ExtraMetadata,
 		currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
-	// SetUnresolvedReaders sets the list of unresolved readers assoiated with this folder.
-	SetUnresolvedReaders(readers []keybase1.SocialAssertion)
-	// SetUnresolvedWriters sets the list of unresolved writers assoiated with this folder.
-	SetUnresolvedWriters(writers []keybase1.SocialAssertion)
-	// SetConflictInfo sets any conflict info associated with this metadata revision.
-	SetConflictInfo(ci *tlf.HandleExtension)
-	// SetFinalizedInfo sets any finalized info associated with this metadata revision.
-	SetFinalizedInfo(fi *tlf.HandleExtension)
-	// SetWriters sets the list of writers associated with this folder.
-	SetWriters(writers []keybase1.UID)
-	// SetTlfID sets the ID of the underlying folder in the metadata structure.
-	SetTlfID(tlf tlf.ID)
+
+	UpdateKeyGeneration(crypto Crypto, keyGen KeyGen, extra ExtraMetadata,
+		wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+		ePubKey kbfscrypto.TLFEphemeralPublicKey,
+		ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+		tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error)
+
 	// PromoteReader converts the given user from a reader to a writer.
 	PromoteReader(uid keybase1.UID, extra ExtraMetadata) error
+
 	// RevokeRemovedDevices removes key info for any device not in
 	// the given maps, and returns a corresponding map of server
 	// halves to delete from the server.

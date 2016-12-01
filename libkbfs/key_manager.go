@@ -311,14 +311,14 @@ func (km *KeyManagerStandard) unmaskTLFCryptKey(ctx context.Context, serverHalfI
 	return tlfCryptKey, nil
 }
 
-func (km *KeyManagerStandard) updateKeyBundle(ctx context.Context,
+func (km *KeyManagerStandard) updateKeyGeneration(ctx context.Context,
 	md *RootMetadata, keyGen KeyGen,
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) error {
 
-	newServerKeys, err := md.fillInDevices(km.config.Crypto(),
+	newServerKeys, err := md.updateKeyGeneration(km.config.Crypto(),
 		keyGen, wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return err
@@ -647,7 +647,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 				return false, nil, err
 			}
 
-			err = km.updateKeyBundle(ctx, md, keyGen, wKeys, rKeys,
+			err = km.updateKeyGeneration(ctx, md, keyGen, wKeys, rKeys,
 				ePubKey, ePrivKey, currTlfCryptKey)
 			if _, noDkim := err.(TLFCryptKeyNotPerDeviceEncrypted); noDkim {
 				// No DKIM for this generation. This is possible for MDv3.
@@ -779,7 +779,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		return false, nil, err
 	}
 	currKeyGen = md.LatestKeyGeneration()
-	err = km.updateKeyBundle(ctx, md, currKeyGen, wKeys, rKeys, ePubKey,
+	err = km.updateKeyGeneration(ctx, md, currKeyGen, wKeys, rKeys, ePubKey,
 		ePrivKey, tlfCryptKey)
 	if err != nil {
 		return false, nil, err

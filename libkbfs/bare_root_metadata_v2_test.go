@@ -340,8 +340,8 @@ func TestBareRootMetadataV2FillInDevices(t *testing.T) {
 		kbfscrypto.TLFPublicKey{})
 	require.NoError(t, err)
 
-	serverMap, err := rmd.fillInDevices(
-		crypto1, extra, FirstValidKeyGen,
+	serverMap, err := rmd.UpdateKeyGeneration(
+		crypto1, FirstValidKeyGen, extra,
 		wKeys, nil, ePubKey, ePrivKey, tlfCryptKey)
 	require.NoError(t, err)
 
@@ -357,8 +357,8 @@ func TestBareRootMetadataV2FillInDevices(t *testing.T) {
 
 	_, _, ePubKey2, ePrivKey2, tlfCryptKey2, err := crypto1.MakeRandomTLFKeys()
 	require.NoError(t, err)
-	serverMap2, err := rmd.fillInDevices(
-		crypto1, extra, FirstValidKeyGen,
+	serverMap2, err := rmd.UpdateKeyGeneration(
+		crypto1, FirstValidKeyGen, extra,
 		wKeys, nil, ePubKey2, ePrivKey2, tlfCryptKey2)
 	require.NoError(t, err)
 
@@ -425,8 +425,8 @@ func TestBareRootMetadataV2FillInDevicesReaderRekey(t *testing.T) {
 		kbfscrypto.TLFPublicKey{})
 	require.NoError(t, err)
 
-	serverMap, err := rmd.fillInDevices(
-		crypto1, extra, FirstValidKeyGen,
+	serverMap, err := rmd.UpdateKeyGeneration(
+		crypto1, FirstValidKeyGen, extra,
 		nil, rKeys, ePubKey, ePrivKey, tlfCryptKey)
 	require.NoError(t, err)
 

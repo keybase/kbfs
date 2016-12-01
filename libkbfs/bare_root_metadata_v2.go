@@ -1226,8 +1226,8 @@ func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
 // in the provided lists has complete TLF crypt key info, and uses the
 // new ephemeral key pair to generate the info if it doesn't yet
 // exist.
-func (md *BareRootMetadataV2) fillInDevices(crypto Crypto,
-	_ ExtraMetadata, keyGen KeyGen,
+func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto Crypto,
+	keyGen KeyGen, _ ExtraMetadata,
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
