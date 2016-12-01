@@ -275,39 +275,72 @@ func TestBareRootMetadataV3FillInDevices(t *testing.T) {
 	testKeyBundleCheckKeysV3(t, crypto3, uid3, privKey3.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
 }
 
+func testKeyBundleCheckReaderKeysV3(t *testing.T, crypto Crypto, uid keybase1.UID,
+	key kbfscrypto.CryptPublicKey, expectedIndex int,
+	rkb TLFReaderKeyBundleV3, ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap serverKeyMap) {
+	ctx := context.Background()
+	info, ok := rkb.RKeys[uid][key.KID()]
+	require.True(t, ok)
+	require.Equal(t, expectedIndex, info.EPubKeyIndex)
+	userEPubKey := rkb.TLFReaderEphemeralPublicKeys[info.EPubKeyIndex]
+	require.Equal(t, ePubKey, userEPubKey)
+	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
+		ctx, userEPubKey, info.ClientHalf)
+	require.NoError(t, err)
+	serverHalf, ok := serverMap[uid][key.KID()]
+	require.True(t, ok)
+	userTLFCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
+	require.NoError(t, err)
+	require.Equal(t, tlfCryptKey, userTLFCryptKey)
+}
+
 func TestBareRootMetadataV3FillInDevicesNoExtraKeys(t *testing.T) {
 	wkb := TLFWriterKeyBundleV3{
 		Keys: UserDeviceKeyInfoMap{},
 	}
+	rkb := TLFReaderKeyBundleV3{
+		TLFReaderKeyBundleV2: TLFReaderKeyBundleV2{
+			RKeys: UserDeviceKeyInfoMap{},
+		},
+	}
 
 	uid1 := keybase1.MakeTestUID(1)
+	uid2 := keybase1.MakeTestUID(2)
 
 	privKey1 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1")
+	privKey2 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key2")
 
 	wKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
 		uid1: []kbfscrypto.CryptPublicKey{privKey1.GetPublicKey()},
 	}
 
+	rKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
+		uid2: []kbfscrypto.CryptPublicKey{privKey2.GetPublicKey()},
+	}
+
 	signingKey1 := kbfscrypto.MakeFakeSigningKeyOrBust("key1")
+	signingKey2 := kbfscrypto.MakeFakeSigningKeyOrBust("key2")
 
 	codec := kbfscodec.NewMsgpack()
 	crypto1 := NewCryptoLocal(codec, signingKey1, privKey1)
+	crypto2 := NewCryptoLocal(codec, signingKey2, privKey2)
 
 	// Fill in the bundle
 	_, _, ePubKey, ePrivKey, tlfCryptKey, err := crypto1.MakeRandomTLFKeys()
 	require.NoError(t, err)
 	var md *BareRootMetadataV3
 	serverMap, err := md.fillInDevices(
-		crypto1, &wkb, &TLFReaderKeyBundleV3{},
-		wKeys, nil, ePubKey, ePrivKey, tlfCryptKey)
+		crypto1, &wkb, &rkb, wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
 	require.NoError(t, err)
 
 	testKeyBundleCheckKeysV3(t, crypto1, uid1, privKey1.GetPublicKey(), 0, wkb, ePubKey, tlfCryptKey, serverMap)
+	testKeyBundleCheckReaderKeysV3(t, crypto2, uid2, privKey2.GetPublicKey(), 0, rkb, ePubKey, tlfCryptKey, serverMap)
 
 	serverMap, err = md.fillInDevices(
-		crypto1, &wkb, &TLFReaderKeyBundleV3{},
-		wKeys, nil, ePubKey, ePrivKey, tlfCryptKey)
+		crypto1, &wkb, &rkb, wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(wkb.TLFEphemeralPublicKeys))
+	require.Equal(t, 1, len(rkb.TLFReaderEphemeralPublicKeys))
 }
