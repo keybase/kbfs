@@ -257,36 +257,20 @@ func TestBareRootMetadataV3FillInDevices(t *testing.T) {
 	testKeyBundleCheckKeysV3(t, crypto2, uid2, privKey2.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
 	testKeyBundleCheckKeysV3(t, crypto3, uid3, privKey3.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
 
-	/*
-		// Add a device key for user 1
-		devIndex := AddDeviceForLocalUserOrBust(t, config1, u1)
-		config1B := ConfigAsUser(config1, "u1")
-		defer CheckConfigAndShutdown(t, config1B)
-		SwitchDeviceForLocalUserOrBust(t, config1B, devIndex)
-		newCryptPublicKey, err := config1B.KBPKI().GetCurrentCryptPublicKey(ctx)
-		if err != nil {
-			t.Fatalf("COuldn't get new publc device key for user %s: %v", u1, err)
-		}
-		wKeys[u1] = append(wKeys[u1], newCryptPublicKey)
+	privKey1b := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1b")
+	wKeys[uid1] = append(wKeys[uid1], privKey1b.GetPublicKey())
 
-		// Fill in the bundle again, make sure only the new device key
-		// gets a ePubKeyIndex bump
-		_, _, ePubKey2, ePrivKey2, _, err := config1.Crypto().MakeRandomTLFKeys()
-		if err != nil {
-			t.Fatalf("Couldn't make keys: %v", err)
-		}
-		serverMap2, err := md.fillInDevices(
-			config1.Crypto(), &wkb, &TLFReaderKeyBundleV3{},
-			wKeys, nil, ePubKey2, ePrivKey2, tlfCryptKey)
-		if err != nil {
-			t.Fatalf("Fill in devices failed: %v", err)
-		}
+	_, _, ePubKey2, ePrivKey2, tlfCryptKey2, err := crypto1.MakeRandomTLFKeys()
+	require.NoError(t, err)
+	serverMap2, err := md.fillInDevices(
+		crypto1, &wkb, &TLFReaderKeyBundleV3{},
+		wKeys, nil, ePubKey2, ePrivKey2, tlfCryptKey2)
+	require.NoError(t, err)
 
-		testKeyBundleCheckKeys(t, config1B, u1, wkb, ePubKey2, tlfCryptKey,
-			serverMap2)
-		if len(serverMap2) > 1 {
-			t.Fatalf("Generated more than one key after device add: %d",
-				len(serverMap2))
-		}
-	*/
+	crypto1b := NewCryptoLocal(codec, signingKey1, privKey1b)
+
+	testKeyBundleCheckKeysV3(t, crypto1, uid1, privKey1.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
+	testKeyBundleCheckKeysV3(t, crypto1b, uid1, privKey1b.GetPublicKey(), 2, wkb, ePubKey2, tlfCryptKey2, serverMap2)
+	testKeyBundleCheckKeysV3(t, crypto2, uid2, privKey2.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
+	testKeyBundleCheckKeysV3(t, crypto3, uid3, privKey3.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
 }
