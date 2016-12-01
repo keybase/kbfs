@@ -27,7 +27,7 @@ func (id TLFCryptKeyServerHalfID) String() string {
 }
 
 // TLFCryptKeyInfo is a per-device key half entry in the
-// TLFWriterKeyBundleV2/TLFReaderKeyBundleV2.
+// TLF{Writer,Reader}KeyBundleV{2,3}.
 type TLFCryptKeyInfo struct {
 	ClientHalf   EncryptedTLFCryptKeyClientHalf
 	ServerHalfID TLFCryptKeyServerHalfID

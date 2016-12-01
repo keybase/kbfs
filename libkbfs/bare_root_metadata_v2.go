@@ -1249,13 +1249,13 @@ func (md *BareRootMetadataV2) fillInDevices(crypto Crypto,
 
 	// now fill in the secret keys as needed
 	newServerKeys := serverKeyMap{}
-	err := fillInDevicesAndServerMapV2(crypto, newIndex, wKeys, wkb.WKeys,
-		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+	_, err := fillInDevicesAndServerMapV2(crypto, newIndex, wKeys,
+		wkb.WKeys, ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}
-	err = fillInDevicesAndServerMapV2(crypto, newIndex, rKeys, rkb.RKeys,
-		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+	_, err = fillInDevicesAndServerMapV2(crypto, newIndex, rKeys,
+		rkb.RKeys, ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}
