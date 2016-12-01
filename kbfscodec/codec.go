@@ -75,7 +75,7 @@ func Equal(c Codec, x, y interface{}) (bool, error) {
 		return isNil(y), nil
 	}
 	if isNil(y) {
-		return isNil(x), nil
+		return false, nil
 	}
 
 	xBuf, err := c.Encode(x)
