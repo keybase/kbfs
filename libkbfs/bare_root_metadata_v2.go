@@ -1227,12 +1227,16 @@ func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
 // new ephemeral key pair to generate the info if it doesn't yet
 // exist.
 func (md *BareRootMetadataV2) fillInDevices(crypto Crypto,
-	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2,
+	_ ExtraMetadata, keyGen KeyGen,
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey) (
-	serverKeyMap, error) {
+	tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {
+	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
+	if err != nil {
+		return serverKeyMap{}, err
+	}
+
 	var newIndex int
 	if len(wKeys) == 0 {
 		// This is VERY ugly, but we need it in order to avoid having to
@@ -1249,7 +1253,7 @@ func (md *BareRootMetadataV2) fillInDevices(crypto Crypto,
 
 	// now fill in the secret keys as needed
 	newServerKeys := serverKeyMap{}
-	_, err := fillInDevicesAndServerMapV2(crypto, newIndex, wKeys,
+	_, err = fillInDevicesAndServerMapV2(crypto, newIndex, wKeys,
 		wkb.WKeys, ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err

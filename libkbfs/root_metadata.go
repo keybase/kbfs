@@ -746,28 +746,14 @@ func (md *RootMetadata) fillInDevices(crypto Crypto,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {
 
 	if bareV3, ok := md.bareMd.(*BareRootMetadataV3); ok {
-		if keyGen != md.LatestKeyGeneration() {
-			return nil, TLFCryptKeyNotPerDeviceEncrypted{md.TlfID(), keyGen}
-		}
-
-		// v3 bundles aren't embedded.
-		wkb, rkb, ok := getKeyBundlesV3(md.extra)
-		if !ok {
-			return nil, makeMissingKeyBundlesError()
-		}
 		return bareV3.fillInDevices(crypto,
-			wkb, rkb, wKeys, rKeys,
+			md.extra, keyGen, wKeys, rKeys,
 			ePubKey, ePrivKey, tlfCryptKey)
 	}
 
 	if bareV2, ok := md.bareMd.(*BareRootMetadataV2); ok {
-		// v1 & v2 bundles are embedded.
-		wkb, rkb, err := md.bareMd.GetTLFKeyBundles(keyGen)
-		if err != nil {
-			return nil, err
-		}
 		return bareV2.fillInDevices(crypto,
-			wkb, rkb, wKeys, rKeys,
+			md.extra, keyGen, wKeys, rKeys,
 			ePubKey, ePrivKey, tlfCryptKey)
 	}
 

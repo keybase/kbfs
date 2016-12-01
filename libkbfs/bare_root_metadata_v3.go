@@ -1182,12 +1182,21 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(
 // new ephemeral key pair to generate the info if it doesn't yet
 // exist.
 func (md *BareRootMetadataV3) fillInDevices(crypto Crypto,
-	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3,
+	extra ExtraMetadata, keyGen KeyGen,
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey) (
-	serverKeyMap, error) {
+	tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {
+	if keyGen != md.LatestKeyGeneration() {
+		return nil, TLFCryptKeyNotPerDeviceEncrypted{md.TlfID(), keyGen}
+	}
+
+	// v3 bundles aren't embedded.
+	wkb, rkb, ok := getKeyBundlesV3(extra)
+	if !ok {
+		return serverKeyMap{}, makeMissingKeyBundlesError()
+	}
+
 	var newReaderIndex, newWriterIndex int
 	if len(rKeys) > 0 {
 		newReaderIndex = len(rkb.TLFEphemeralPublicKeys)
