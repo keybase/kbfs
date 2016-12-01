@@ -359,3 +359,58 @@ func TestBareRootMetadataV2FillInDevices(t *testing.T) {
 	testKeyBundleCheckKeys(t, crypto2, uid2, privKey2.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
 	testKeyBundleCheckKeys(t, crypto3, uid3, privKey3.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
 }
+
+func testReaderKeyBundleCheckKeys(t *testing.T, crypto Crypto, uid keybase1.UID,
+	key kbfscrypto.CryptPublicKey, expectedIndex int,
+	rkb TLFReaderKeyBundleV2, ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap serverKeyMap) {
+	ctx := context.Background()
+	info, ok := rkb.RKeys[uid][key.KID()]
+	require.True(t, ok)
+	require.Equal(t, expectedIndex, info.EPubKeyIndex)
+	userEPubKey := rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex]
+	require.Equal(t, ePubKey, userEPubKey)
+	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
+		ctx, userEPubKey, info.ClientHalf)
+	require.NoError(t, err)
+	serverHalf, ok := serverMap[uid][key.KID()]
+	require.True(t, ok)
+	userTLFCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
+	require.NoError(t, err)
+	require.Equal(t, tlfCryptKey, userTLFCryptKey)
+}
+
+func TestBareRootMetadataV2FillInDevicesReaderRekey(t *testing.T) {
+	ePubKey1 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x1})
+	// Make a wkb with empty writer key maps
+	rkb := TLFReaderKeyBundleV2{
+		RKeys: UserDeviceKeyInfoMap{},
+		TLFReaderEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
+			ePubKey1,
+		},
+	}
+
+	uid1 := keybase1.MakeTestUID(1)
+
+	privKey1 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1")
+
+	rKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
+		uid1: []kbfscrypto.CryptPublicKey{privKey1.GetPublicKey()},
+	}
+
+	signingKey1 := kbfscrypto.MakeFakeSigningKeyOrBust("key1")
+
+	codec := kbfscodec.NewMsgpack()
+	crypto1 := NewCryptoLocal(codec, signingKey1, privKey1)
+
+	// Fill in the bundle
+	_, _, ePubKey, ePrivKey, tlfCryptKey, err := crypto1.MakeRandomTLFKeys()
+	require.NoError(t, err)
+	var md *BareRootMetadataV2
+	serverMap, err := md.fillInDevices(
+		crypto1, &TLFWriterKeyBundleV2{}, &rkb,
+		nil, rKeys, ePubKey, ePrivKey, tlfCryptKey)
+	require.NoError(t, err)
+
+	testReaderKeyBundleCheckKeys(t, crypto1, uid1, privKey1.GetPublicKey(), -2, rkb, ePubKey, tlfCryptKey, serverMap)
+}
