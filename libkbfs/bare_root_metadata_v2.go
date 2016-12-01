@@ -634,14 +634,14 @@ func (md *BareRootMetadataV2) RevokeRemovedDevices(
 	return wRemovalInfo.mergeUsers(rRemovalInfo)
 }
 
-// GetTLFKeyBundles implements the BareRootMetadata interface for
-// BareRootMetadataV2.  Note that it is legal a writer or a reader to
-// have no keys in their bundle, if they only have a Keybase username
-// with no device keys yet.
-func (md *BareRootMetadataV2) GetTLFKeyBundles(keyGen KeyGen) (
+// getTLFKeyBundles returns the bundles for a given key generation.
+// Note that it is legal a writer or a reader to have no keys in their
+// bundle, if they only have a Keybase username with no device keys
+// yet.
+func (md *BareRootMetadataV2) getTLFKeyBundles(keyGen KeyGen) (
 	*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error) {
 	if md.ID.IsPublic() {
-		return nil, nil, InvalidPublicTLFOperation{md.ID, "GetTLFKeyBundles"}
+		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundles"}
 	}
 
 	if keyGen < FirstValidKeyGen {
@@ -661,7 +661,7 @@ func (md *BareRootMetadataV2) GetTLFKeyBundles(keyGen KeyGen) (
 func (md *BareRootMetadataV2) GetDeviceKIDs(
 	keyGen KeyGen, user keybase1.UID, _ ExtraMetadata) (
 	[]keybase1.KID, error) {
-	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
+	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return nil, err
 	}
@@ -685,7 +685,7 @@ func (md *BareRootMetadataV2) GetDeviceKIDs(
 // HasKeyForUser implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) HasKeyForUser(
 	keyGen KeyGen, user keybase1.UID, _ ExtraMetadata) bool {
-	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
+	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return false
 	}
@@ -699,7 +699,7 @@ func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 	_ ExtraMetadata) (
 	kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
-	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
+	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
@@ -1183,7 +1183,7 @@ func (md *BareRootMetadataV2) GetUnresolvedParticipants() (readers, writers []ke
 func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(
 	codec kbfscodec.Codec, keyGen KeyGen, _ ExtraMetadata) (
 	readers, writers UserDeviceKeyInfoMap, err error) {
-	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
+	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1232,7 +1232,7 @@ func (md *BareRootMetadataV2) fillInDevices(crypto Crypto,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {
-	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
+	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return serverKeyMap{}, err
 	}

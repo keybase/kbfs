@@ -345,7 +345,7 @@ func TestBareRootMetadataV2FillInDevices(t *testing.T) {
 		wKeys, nil, ePubKey, ePrivKey, tlfCryptKey)
 	require.NoError(t, err)
 
-	wkb, _, err := rmd.GetTLFKeyBundles(FirstValidKeyGen)
+	wkb, _, err := rmd.getTLFKeyBundles(FirstValidKeyGen)
 	require.NoError(t, err)
 
 	testKeyBundleCheckKeysV2(t, crypto1, uid1, privKey1.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverMap)
@@ -430,7 +430,7 @@ func TestBareRootMetadataV2FillInDevicesReaderRekey(t *testing.T) {
 		nil, rKeys, ePubKey, ePrivKey, tlfCryptKey)
 	require.NoError(t, err)
 
-	_, rkb, err := rmd.GetTLFKeyBundles(FirstValidKeyGen)
+	_, rkb, err := rmd.getTLFKeyBundles(FirstValidKeyGen)
 	require.NoError(t, err)
 
 	testReaderKeyBundleCheckKeys(t, crypto1, uid1, privKey1.GetPublicKey(), -1, *rkb, ePubKey, tlfCryptKey, serverMap)

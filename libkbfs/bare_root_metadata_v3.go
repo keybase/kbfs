@@ -585,16 +585,6 @@ func (md *BareRootMetadataV3) RevokeRemovedDevices(
 	return wRemovalInfo.mergeUsers(rRemovalInfo)
 }
 
-// GetTLFKeyBundles implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetTLFKeyBundles(_ KeyGen) (
-	*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error) {
-	if md.TlfID().IsPublic() {
-		return nil, nil, InvalidPublicTLFOperation{md.TlfID(), "GetTLFKeyBundles"}
-	}
-	// v3 metadata contains no key bundles.
-	return nil, nil, errors.New("Not implemented")
-}
-
 // GetDeviceKIDs implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetDeviceKIDs(
 	keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) ([]keybase1.KID, error) {

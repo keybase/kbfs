@@ -1790,9 +1790,6 @@ type MutableBareRootMetadata interface {
 	SetWriters(writers []keybase1.UID)
 	// SetTlfID sets the ID of the underlying folder in the metadata structure.
 	SetTlfID(tlf tlf.ID)
-	// Returns the TLF key bundles for this metadata at the given key generation.
-	// MDv3 TODO: Get rid of this.
-	GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error)
 	// PromoteReader converts the given user from a reader to a writer.
 	PromoteReader(uid keybase1.UID, extra ExtraMetadata) error
 	// RevokeRemovedDevices removes key info for any device not in
@@ -1805,6 +1802,7 @@ type MutableBareRootMetadata interface {
 	RevokeRemovedDevices(
 		wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 		extra ExtraMetadata) (ServerHalfRemovalInfo, error)
+
 	// FinalizeRekey must be called called after all rekeying work
 	// has been performed on the underlying metadata.
 	FinalizeRekey(c cryptoPure, extra ExtraMetadata) error

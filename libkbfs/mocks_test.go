@@ -5623,18 +5623,6 @@ func (_mr *_MockMutableBareRootMetadataRecorder) SetTlfID(arg0 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetTlfID", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error) {
-	ret := _m.ctrl.Call(_m, "GetTLFKeyBundles", keyGen)
-	ret0, _ := ret[0].(*TLFWriterKeyBundleV2)
-	ret1, _ := ret[1].(*TLFReaderKeyBundleV2)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-func (_mr *_MockMutableBareRootMetadataRecorder) GetTLFKeyBundles(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFKeyBundles", arg0)
-}
-
 func (_m *MockMutableBareRootMetadata) PromoteReader(uid keybase1.UID, extra ExtraMetadata) error {
 	ret := _m.ctrl.Call(_m, "PromoteReader", uid, extra)
 	ret0, _ := ret[0].(error)
