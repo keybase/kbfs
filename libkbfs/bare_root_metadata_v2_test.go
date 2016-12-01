@@ -354,10 +354,10 @@ func TestBareRootMetadataV2FillInDevices(t *testing.T) {
 
 	crypto1b := NewCryptoLocal(codec, signingKey1, privKey1b)
 
-	testKeyBundleCheckKeys(t, crypto1, uid1, privKey1.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
-	testKeyBundleCheckKeys(t, crypto1b, uid1, privKey1b.GetPublicKey(), 2, wkb, ePubKey2, tlfCryptKey2, serverMap2)
-	testKeyBundleCheckKeys(t, crypto2, uid2, privKey2.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
-	testKeyBundleCheckKeys(t, crypto3, uid3, privKey3.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
+	testKeyBundleCheckKeysV2(t, crypto1, uid1, privKey1.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
+	testKeyBundleCheckKeysV2(t, crypto1b, uid1, privKey1b.GetPublicKey(), 2, wkb, ePubKey2, tlfCryptKey2, serverMap2)
+	testKeyBundleCheckKeysV2(t, crypto2, uid2, privKey2.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
+	testKeyBundleCheckKeysV2(t, crypto3, uid3, privKey3.GetPublicKey(), 1, wkb, ePubKey, tlfCryptKey, serverMap)
 }
 
 func testReaderKeyBundleCheckKeys(t *testing.T, crypto Crypto, uid keybase1.UID,
@@ -384,7 +384,7 @@ func TestBareRootMetadataV2FillInDevicesReaderRekey(t *testing.T) {
 	ePubKey1 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x1})
 	// Make a wkb with empty writer key maps
 	rkb := TLFReaderKeyBundleV2{
-		RKeys: UserDeviceKeyInfoMap{},
+		RKeys: UserDeviceKeyInfoMapV2{},
 		TLFReaderEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
 			ePubKey1,
 		},
