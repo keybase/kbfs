@@ -280,10 +280,10 @@ func testKeyBundleCheckReaderKeysV3(t *testing.T, crypto Crypto, uid keybase1.UI
 	rkb TLFReaderKeyBundleV3, ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap serverKeyMap) {
 	ctx := context.Background()
-	info, ok := rkb.RKeys[uid][key.KID()]
+	info, ok := rkb.Keys[uid][key]
 	require.True(t, ok)
 	require.Equal(t, expectedIndex, info.EPubKeyIndex)
-	userEPubKey := rkb.TLFReaderEphemeralPublicKeys[info.EPubKeyIndex]
+	userEPubKey := rkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
 	require.Equal(t, ePubKey, userEPubKey)
 	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
 		ctx, userEPubKey, info.ClientHalf)
@@ -297,12 +297,10 @@ func testKeyBundleCheckReaderKeysV3(t *testing.T, crypto Crypto, uid keybase1.UI
 
 func TestBareRootMetadataV3FillInDevicesNoExtraKeys(t *testing.T) {
 	wkb := TLFWriterKeyBundleV3{
-		Keys: UserDeviceKeyInfoMap{},
+		Keys: UserDeviceKeyInfoMapV3{},
 	}
 	rkb := TLFReaderKeyBundleV3{
-		TLFReaderKeyBundleV2: TLFReaderKeyBundleV2{
-			RKeys: UserDeviceKeyInfoMap{},
-		},
+		Keys: UserDeviceKeyInfoMapV3{},
 	}
 
 	uid1 := keybase1.MakeTestUID(1)
@@ -342,5 +340,5 @@ func TestBareRootMetadataV3FillInDevicesNoExtraKeys(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(wkb.TLFEphemeralPublicKeys))
-	require.Equal(t, 1, len(rkb.TLFReaderEphemeralPublicKeys))
+	require.Equal(t, 1, len(rkb.TLFEphemeralPublicKeys))
 }

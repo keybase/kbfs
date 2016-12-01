@@ -1190,28 +1190,34 @@ func (md *BareRootMetadataV3) fillInDevices(crypto Crypto,
 	serverKeyMap, error) {
 	var newReaderIndex, newWriterIndex int
 	if len(rKeys) > 0 {
-		rkb.TLFEphemeralPublicKeys =
-			append(rkb.TLFEphemeralPublicKeys, ePubKey)
-		newReaderIndex = len(rkb.TLFEphemeralPublicKeys) - 1
+		newReaderIndex = len(rkb.TLFEphemeralPublicKeys)
 	}
 	if len(wKeys) > 0 {
-		wkb.TLFEphemeralPublicKeys =
-			append(wkb.TLFEphemeralPublicKeys, ePubKey)
-		newWriterIndex = len(wkb.TLFEphemeralPublicKeys) - 1
+		newWriterIndex = len(wkb.TLFEphemeralPublicKeys)
 	}
 
 	// now fill in the secret keys as needed
 	newServerKeys := serverKeyMap{}
-	_, err := fillInDevicesAndServerMapV3(crypto, newWriterIndex, wKeys,
-		wkb.Keys, ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+	filledWKeys, err := fillInDevicesAndServerMapV3(crypto, newWriterIndex, wKeys, wkb.Keys,
+		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}
-	_, err = fillInDevicesAndServerMapV3(crypto, newReaderIndex, rKeys,
-		rkb.Keys, ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+	if filledWKeys {
+		wkb.TLFEphemeralPublicKeys =
+			append(wkb.TLFEphemeralPublicKeys, ePubKey)
+	}
+
+	filledRKeys, err := fillInDevicesAndServerMapV3(crypto, newReaderIndex, rKeys, rkb.Keys,
+		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}
+	if filledRKeys {
+		rkb.TLFEphemeralPublicKeys =
+			append(rkb.TLFEphemeralPublicKeys, ePubKey)
+	}
+
 	return newServerKeys, nil
 }
 
