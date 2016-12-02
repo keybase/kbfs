@@ -327,7 +327,7 @@ type expecteRekeyInfoV2 struct {
 	ePubKey                        kbfscrypto.TLFEphemeralPublicKey
 }
 
-// checkGetTLFCryptKey checks that wkb and rkb contain the info
+// checkGetTLFCryptKeyV2 checks that wkb and rkb contain the info
 // necessary to get the TLF crypt key for each user in expected, which
 // must all match expectedTLFCryptKey.
 func checkGetTLFCryptKeyV2(t *testing.T, expected expecteRekeyInfoV2,
