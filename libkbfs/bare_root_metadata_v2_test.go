@@ -292,27 +292,33 @@ func checkWKBV2(t *testing.T, wkb *TLFWriterKeyBundleV2, serverMap ServerKeyMap,
 	require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
 }
 
-func testReaderKeyBundleCheckKeysV2(t *testing.T, crypto Crypto, uid keybase1.UID,
-	key kbfscrypto.CryptPublicKey, expectedIndex int,
-	rkb TLFReaderKeyBundleV2, ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap ServerKeyMap) {
-	ctx := context.Background()
+func checkRKBV2(t *testing.T, rkb *TLFReaderKeyBundleV2, serverMap ServerKeyMap,
+	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
+	expectedEPubKeyIndex int,
+	expectedEPubKey kbfscrypto.TLFEphemeralPublicKey,
+	crypto Crypto, expectedTLFCryptKey kbfscrypto.TLFCryptKey) {
 	info, ok := rkb.RKeys[uid][key.KID()]
 	require.True(t, ok)
-	require.Equal(t, expectedIndex, info.EPubKeyIndex)
-	userEPubKey := rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex]
-	require.Equal(t, ePubKey, userEPubKey)
-	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
-		ctx, userEPubKey, info.ClientHalf)
-	require.NoError(t, err)
+
 	serverHalf, ok := serverMap[uid][key.KID()]
 	require.True(t, ok)
-	userTLFCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
+
+	require.Equal(t, expectedEPubKeyIndex, info.EPubKeyIndex)
+
+	ePubKey := rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex]
+	require.Equal(t, expectedEPubKey, ePubKey)
+
+	ctx := context.Background()
+	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
+		ctx, ePubKey, info.ClientHalf)
 	require.NoError(t, err)
-	require.Equal(t, tlfCryptKey, userTLFCryptKey)
+
+	tlfCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
+	require.NoError(t, err)
+	require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
 }
 
-func TestBareRootMetadataV2FillInDevices(t *testing.T) {
+func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 	uid3 := keybase1.MakeTestUID(3)
@@ -429,5 +435,5 @@ func TestBareRootMetadataV2FillInDevicesReaderRekey(t *testing.T) {
 	_, rkb, err := rmd.getTLFKeyBundles(FirstValidKeyGen)
 	require.NoError(t, err)
 
-	testReaderKeyBundleCheckKeysV2(t, crypto1, uid1, privKey1.GetPublicKey(), -1, *rkb, ePubKey, tlfCryptKey, serverMap)
+	checkRKBV2(t, rkb, serverMap, uid1, privKey1.GetPublicKey(), -1, ePubKey, crypto1, tlfCryptKey)
 }
