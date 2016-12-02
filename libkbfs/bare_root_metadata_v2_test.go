@@ -317,6 +317,9 @@ func (udpk userDevicePrivateKeys) toUserDeviceSet() userDeviceSet {
 
 // expectedRekeyInfo contains all the information needed to check a
 // rekey run (that doesn't add a generation).
+//
+// If both writerPrivKeys and readerPrivKeys are empty, then the other
+// fields are ignored.
 type expectedRekeyInfo struct {
 	writerPrivKeys, readerPrivKeys userDevicePrivateKeys
 	serverMap                      ServerKeyMap
@@ -430,19 +433,22 @@ func userDeviceKeyInfoMapV2ToDeviceSet(udkimV2 UserDeviceKeyInfoMapV2) userDevic
 	return u
 }
 
-func checkKeyBundlesV2(t *testing.T, expecteds []expectedRekeyInfo,
+// checkKeyBundlesV2 checks that wkb and rkb contain exactly the info
+// expected from expectedRekeyInfos and expectedPubKey.
+func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expectedRekeyInfo,
 	expectedPubKey kbfscrypto.TLFPublicKey,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
 	expectedWriterSet := make(userDeviceSet)
 	expectedReaderSet := make(userDeviceSet)
 	var expectedWriterEPublicKeys,
 		expectedReaderEPublicKeys kbfscrypto.TLFEphemeralPublicKeys
-	for _, expected := range expecteds {
+	for _, expected := range expectedRekeyInfos {
 		expectedWriterSet = expectedWriterSet.union(
 			expected.writerPrivKeys.toUserDeviceSet())
 		expectedReaderSet = expectedReaderSet.union(
 			expected.readerPrivKeys.toUserDeviceSet())
-		if len(expected.writerPrivKeys)+len(expected.readerPrivKeys) > 0 {
+		if len(expected.writerPrivKeys)+
+			len(expected.readerPrivKeys) > 0 {
 			if expected.ePubKeyIndex >= 0 {
 				require.Equal(t, expected.ePubKeyIndex,
 					len(expectedWriterEPublicKeys))
@@ -471,7 +477,7 @@ func checkKeyBundlesV2(t *testing.T, expecteds []expectedRekeyInfo,
 
 	require.Equal(t, expectedPubKey, wkb.TLFPublicKey)
 
-	for _, expected := range expecteds {
+	for _, expected := range expectedRekeyInfos {
 		checkKeyBundlesV2Helper(t, expected, wkb, rkb)
 	}
 }
