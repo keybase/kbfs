@@ -632,7 +632,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	// Do again to check idempotency.
 
 	serverMap3b, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
-		extra, wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKey3)
+		extra, nil, rKeysReader, ePubKey3, ePrivKey3, tlfCryptKey3)
 	require.NoError(t, err)
 
 	expectedRekeyInfo3b := expectedRekeyInfo{
