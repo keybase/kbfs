@@ -324,6 +324,18 @@ func checkRKBV2(t *testing.T, wkb *TLFWriterKeyBundleV2,
 	require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
 }
 
+func checkServerMap(t *testing.T,
+	expected map[keybase1.UID][]keybase1.KID, serverMap ServerKeyMap) {
+	require.Equal(t, len(expected), len(serverMap))
+	for uid, kids := range expected {
+		require.Equal(t, len(kids), len(serverMap[uid]))
+		for _, kid := range kids {
+			_, ok := serverMap[uid][kid]
+			require.True(t, ok, "uid=%s, kid=%s", uid, kid)
+		}
+	}
+}
+
 func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
@@ -392,6 +404,13 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, 1, len(rkb.RKeys[uid3]))
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
 		rkb.TLFReaderEphemeralPublicKeys)
+
+	expectedServerMap1 := map[keybase1.UID][]keybase1.KID{
+		uid1: {privKey1.GetPublicKey().KID()},
+		uid2: {privKey2.GetPublicKey().KID()},
+		uid3: {privKey3.GetPublicKey().KID()},
+	}
+	checkServerMap(t, expectedServerMap1, serverMap1)
 
 	require.Equal(t, 3, len(serverMap1))
 	require.Equal(t, 1, len(serverMap1[uid1]))
