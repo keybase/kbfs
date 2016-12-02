@@ -328,26 +328,28 @@ type expectedRekeyInfo struct {
 	tlfCryptKey                    kbfscrypto.TLFCryptKey
 }
 
-// checkKeyBundlesV2Single checks that wkb and rkb contain the info from
-// expected.
-func checkKeyBundlesV2Single(t *testing.T, expected expectedRekeyInfo,
+// checkGetTLFCryptKey checks that wkb and rkb contain the info
+// necessary to get the TLF crypt key for each user in expected.
+func checkGetTLFCryptKeyV2(t *testing.T, expected expectedRekeyInfo,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
 	for uid, privKeys := range expected.writerPrivKeys {
 		for _, privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
 			serverHalf, ok := expected.serverMap[uid][pubKey]
-			require.True(t, ok, "writer uid=%s, key=%s", uid, pubKey)
+			require.True(t, ok, "writer uid=%s, key=%s",
+				uid, pubKey)
 
 			dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
 
 			codec := kbfscodec.NewMsgpack()
-			crypto := NewCryptoLocal(codec, dummySigningKey, privKey)
+			crypto := NewCryptoLocal(
+				codec, dummySigningKey, privKey)
 
 			info, ok := wkb.WKeys[uid][pubKey.KID()]
 			require.True(t, ok)
 
-			require.Equal(
-				t, expected.ePubKeyIndex, info.EPubKeyIndex)
+			require.Equal(t,
+				expected.ePubKeyIndex, info.EPubKeyIndex)
 
 			ePubKey := wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
 			require.Equal(t, expected.ePubKey, ePubKey)
@@ -368,17 +370,20 @@ func checkKeyBundlesV2Single(t *testing.T, expected expectedRekeyInfo,
 		for _, privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
 			serverHalf, ok := expected.serverMap[uid][pubKey]
-			require.True(t, ok, "reader uid=%s, key=%s", uid, pubKey)
+			require.True(t, ok, "reader uid=%s, key=%s",
+				uid, pubKey)
 
 			dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
 
 			codec := kbfscodec.NewMsgpack()
-			crypto := NewCryptoLocal(codec, dummySigningKey, privKey)
+			crypto := NewCryptoLocal(
+				codec, dummySigningKey, privKey)
 
 			info, ok := rkb.RKeys[uid][pubKey.KID()]
 			require.True(t, ok)
 
-			require.Equal(t, expected.ePubKeyIndex, info.EPubKeyIndex)
+			require.Equal(t,
+				expected.ePubKeyIndex, info.EPubKeyIndex)
 
 			var ePubKey kbfscrypto.TLFEphemeralPublicKey
 			if info.EPubKeyIndex >= 0 {
@@ -393,7 +398,8 @@ func checkKeyBundlesV2Single(t *testing.T, expected expectedRekeyInfo,
 				ctx, ePubKey, info.ClientHalf)
 			require.NoError(t, err)
 
-			tlfCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
+			tlfCryptKey, err := crypto.UnmaskTLFCryptKey(
+				serverHalf, clientHalf)
 			require.NoError(t, err)
 			require.Equal(t, expected.tlfCryptKey, tlfCryptKey)
 		}
@@ -472,7 +478,7 @@ func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expectedRekeyInfo,
 				expected.readerPrivKeys.toUserDeviceSet())
 		userSet := serverKeyMapToUserDeviceSet(expected.serverMap)
 		require.Equal(t, expectedUserSet, userSet)
-		checkKeyBundlesV2Single(t, expected, wkb, rkb)
+		checkGetTLFCryptKeyV2(t, expected, wkb, rkb)
 	}
 }
 
