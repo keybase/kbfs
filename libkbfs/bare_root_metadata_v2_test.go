@@ -301,18 +301,18 @@ func (uds userDeviceSet) union(other userDeviceSet) userDeviceSet {
 // device private keys.
 type userDevicePrivateKeys map[keybase1.UID]map[kbfscrypto.CryptPrivateKey]bool
 
-func (udpk userDevicePrivateKeys) toUserDeviceSet() userDeviceSet {
-	uds := make(userDeviceSet)
+func (udpk userDevicePrivateKeys) toPublicKeys() UserDevicePublicKeys {
+	pubKeys := make(UserDevicePublicKeys)
 	for uid, privKeys := range udpk {
 		for privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
-			if uds[uid] == nil {
-				uds[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+			if pubKeys[uid] == nil {
+				pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
 			}
-			uds[uid][pubKey] = true
+			pubKeys[uid][pubKey] = true
 		}
 	}
-	return uds
+	return pubKeys
 }
 
 // expecteRekeyInfoV2 contains all the information needed to check a
@@ -407,26 +407,55 @@ func checkGetTLFCryptKeyV2(t *testing.T, expected expecteRekeyInfoV2,
 	}
 }
 
-func userDeviceKeyInfoMapV2ToDeviceSet(udkimV2 UserDeviceKeyInfoMapV2) userDeviceSet {
-	uds := make(userDeviceSet)
-	for uid, dkimV2 := range udkimV2 {
-		uds[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
-		for kid := range dkimV2 {
-			uds[uid][kbfscrypto.MakeCryptPublicKey(kid)] = true
+// unionPublicKeys returns the union of the user's keys in pubKeys1
+// and pubKeys2. For a particular user, it's assumed that that user's
+// keys in pubKeys1 and pubKeys2 are disjoint.
+func unionPublicKeys(
+	pubKeys1, pubKeys2 UserDevicePublicKeys) UserDevicePublicKeys {
+	pubKeys := make(UserDevicePublicKeys)
+	for uid, keys := range pubKeys1 {
+		pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		for key := range keys {
+			pubKeys[uid][key] = true
 		}
 	}
-	return uds
+	for uid, keys := range pubKeys2 {
+		if pubKeys[uid] == nil {
+			pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		}
+		for key := range keys {
+			if pubKeys[uid][key] {
+				panic(fmt.Sprintf(
+					"uid=%s key=%s exists in both",
+					uid, key))
+			}
+			pubKeys[uid][key] = true
+		}
+	}
+	return pubKeys
 }
 
-func serverKeyMapToUserDeviceSet(serverMap ServerKeyMap) userDeviceSet {
-	uds := make(userDeviceSet)
-	for uid, keys := range serverMap {
-		uds[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
-		for key := range keys {
-			uds[uid][key] = true
+func userDeviceKeyInfoMapV2ToPublicKeys(
+	udkimV2 UserDeviceKeyInfoMapV2) UserDevicePublicKeys {
+	pubKeys := make(UserDevicePublicKeys)
+	for uid, dkimV2 := range udkimV2 {
+		pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		for kid := range dkimV2 {
+			pubKeys[uid][kbfscrypto.MakeCryptPublicKey(kid)] = true
 		}
 	}
-	return uds
+	return pubKeys
+}
+
+func serverKeyMapToPublicKeys(serverMap ServerKeyMap) UserDevicePublicKeys {
+	pubKeys := make(UserDevicePublicKeys)
+	for uid, keys := range serverMap {
+		pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		for key := range keys {
+			pubKeys[uid][key] = true
+		}
+	}
+	return pubKeys
 }
 
 // checkKeyBundlesV2 checks that wkb and rkb contain exactly the info
@@ -435,15 +464,15 @@ func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expecteRekeyInfoV2,
 	expectedTLFCryptKey kbfscrypto.TLFCryptKey,
 	expectedPubKey kbfscrypto.TLFPublicKey,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
-	expectedWriterSet := make(userDeviceSet)
-	expectedReaderSet := make(userDeviceSet)
+	expectedWriterPubKeys := make(UserDevicePublicKeys)
+	expectedReaderPubKeys := make(UserDevicePublicKeys)
 	var expectedWriterEPublicKeys,
 		expectedReaderEPublicKeys kbfscrypto.TLFEphemeralPublicKeys
 	for _, expected := range expectedRekeyInfos {
-		expectedWriterSet = expectedWriterSet.union(
-			expected.writerPrivKeys.toUserDeviceSet())
-		expectedReaderSet = expectedReaderSet.union(
-			expected.readerPrivKeys.toUserDeviceSet())
+		expectedWriterPubKeys = unionPublicKeys(expectedWriterPubKeys,
+			expected.writerPrivKeys.toPublicKeys())
+		expectedReaderPubKeys = unionPublicKeys(expectedReaderPubKeys,
+			expected.readerPrivKeys.toPublicKeys())
 		if len(expected.writerPrivKeys)+
 			len(expected.readerPrivKeys) > 0 {
 			if expected.ePubKeyIndex >= 0 {
@@ -463,11 +492,11 @@ func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expecteRekeyInfoV2,
 		}
 	}
 
-	writerSet := userDeviceKeyInfoMapV2ToDeviceSet(wkb.WKeys)
-	readerSet := userDeviceKeyInfoMapV2ToDeviceSet(rkb.RKeys)
+	writerPubKeys := userDeviceKeyInfoMapV2ToPublicKeys(wkb.WKeys)
+	readerPubKeys := userDeviceKeyInfoMapV2ToPublicKeys(rkb.RKeys)
 
-	require.Equal(t, expectedWriterSet, writerSet)
-	require.Equal(t, expectedReaderSet, readerSet)
+	require.Equal(t, expectedWriterPubKeys, writerPubKeys)
+	require.Equal(t, expectedReaderPubKeys, readerPubKeys)
 
 	require.Equal(t, expectedWriterEPublicKeys, wkb.TLFEphemeralPublicKeys)
 	require.Equal(t, expectedReaderEPublicKeys, rkb.TLFReaderEphemeralPublicKeys)
@@ -475,11 +504,11 @@ func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expecteRekeyInfoV2,
 	require.Equal(t, expectedPubKey, wkb.TLFPublicKey)
 
 	for _, expected := range expectedRekeyInfos {
-		expectedUserSet :=
-			expected.writerPrivKeys.toUserDeviceSet().union(
-				expected.readerPrivKeys.toUserDeviceSet())
-		userSet := serverKeyMapToUserDeviceSet(expected.serverMap)
-		require.Equal(t, expectedUserSet, userSet)
+		expectedUserPubKeys := unionPublicKeys(
+			expected.writerPrivKeys.toPublicKeys(),
+			expected.readerPrivKeys.toPublicKeys())
+		userPubKeys := serverKeyMapToPublicKeys(expected.serverMap)
+		require.Equal(t, expectedUserPubKeys, userPubKeys)
 		checkGetTLFCryptKeyV2(t,
 			expected, expectedTLFCryptKey, wkb, rkb)
 	}

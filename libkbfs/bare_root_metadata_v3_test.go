@@ -457,7 +457,7 @@ func checkGetTLFCryptKeyV3(t *testing.T, expected expectedRekeyInfoV3,
 	}
 }
 
-func userDeviceKeyInfoMapV3ToDeviceSet(udkimV3 UserDeviceKeyInfoMapV3) userDeviceSet {
+func userDeviceKeyInfoMapV3ToPublicKeys(udkimV3 UserDeviceKeyInfoMapV3) userDeviceSet {
 	uds := make(userDeviceSet)
 	for uid, dkimV3 := range udkimV3 {
 		uds[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
@@ -474,15 +474,15 @@ func checkKeyBundlesV3(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV3,
 	expectedTLFCryptKey kbfscrypto.TLFCryptKey,
 	expectedPubKey kbfscrypto.TLFPublicKey,
 	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3) {
-	expectedWriterSet := make(userDeviceSet)
-	expectedReaderSet := make(userDeviceSet)
+	expectedWriterPubKeys := make(UserDevicePublicKeys)
+	expectedReaderPubKeys := make(UserDevicePublicKeys)
 	var expectedWriterEPublicKeys,
 		expectedReaderEPublicKeys kbfscrypto.TLFEphemeralPublicKeys
 	for _, expected := range expectedRekeyInfos {
-		expectedWriterSet = expectedWriterSet.union(
-			expected.writerPrivKeys.toUserDeviceSet())
-		expectedReaderSet = expectedReaderSet.union(
-			expected.readerPrivKeys.toUserDeviceSet())
+		expectedWriterPubKeys = unionPublicKeys(expectedWriterPubKeys,
+			expected.writerPrivKeys.toPublicKeys())
+		expectedReaderPubKeys = unionPublicKeys(expectedReaderPubKeys,
+			expected.readerPrivKeys.toPublicKeys())
 
 		if len(expected.writerPrivKeys) > 0 {
 			require.Equal(t, expected.writerEPubKeyIndex,
@@ -501,11 +501,11 @@ func checkKeyBundlesV3(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV3,
 		}
 	}
 
-	writerSet := userDeviceKeyInfoMapV3ToDeviceSet(wkb.Keys)
-	readerSet := userDeviceKeyInfoMapV3ToDeviceSet(rkb.Keys)
+	writerPubKeys := userDeviceKeyInfoMapV3ToPublicKeys(wkb.Keys)
+	readerPubKeys := userDeviceKeyInfoMapV3ToPublicKeys(rkb.Keys)
 
-	require.Equal(t, expectedWriterSet, writerSet)
-	require.Equal(t, expectedReaderSet, readerSet)
+	require.Equal(t, expectedWriterPubKeys, writerPubKeys)
+	require.Equal(t, expectedReaderPubKeys, readerPubKeys)
 
 	require.Equal(t, expectedWriterEPublicKeys, wkb.TLFEphemeralPublicKeys)
 	require.Equal(t, expectedReaderEPublicKeys, rkb.TLFEphemeralPublicKeys)
@@ -513,11 +513,11 @@ func checkKeyBundlesV3(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV3,
 	require.Equal(t, expectedPubKey, wkb.TLFPublicKey)
 
 	for _, expected := range expectedRekeyInfos {
-		expectedUserSet :=
-			expected.writerPrivKeys.toUserDeviceSet().union(
-				expected.readerPrivKeys.toUserDeviceSet())
-		userSet := serverKeyMapToUserDeviceSet(expected.serverMap)
-		require.Equal(t, expectedUserSet, userSet)
+		expectedUserPubKeys := unionPublicKeys(
+			expected.writerPrivKeys.toPublicKeys(),
+			expected.readerPrivKeys.toPublicKeys())
+		userPubKeys := serverKeyMapToPublicKeys(expected.serverMap)
+		require.Equal(t, expectedUserPubKeys, userPubKeys)
 		checkGetTLFCryptKeyV3(t,
 			expected, expectedTLFCryptKey, wkb, rkb)
 	}
