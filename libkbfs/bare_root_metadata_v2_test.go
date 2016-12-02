@@ -584,6 +584,20 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	checkKeyBundlesV2(t, expectedRekeyInfos, pubKey, wkb, rkb)
 
+	// Do again to check idempotency.
+
+	serverMap2b, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
+		extra, wKeys, rKeys, ePubKey2, ePrivKey2, tlfCryptKey2)
+	require.NoError(t, err)
+
+	expectedRekeyInfo2b := expectedRekeyInfo{
+		serverMap: serverMap2b,
+	}
+
+	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo2b)
+
+	checkKeyBundlesV2(t, expectedRekeyInfos, pubKey, wkb, rkb)
+
 	// Reader rekey.
 
 	privKey3c := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3c")
@@ -613,5 +627,19 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		tlfCryptKey:  tlfCryptKey3,
 	}
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo3)
+	checkKeyBundlesV2(t, expectedRekeyInfos, pubKey, wkb, rkb)
+
+	// Do again to check idempotency.
+
+	serverMap3b, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
+		extra, wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKey3)
+	require.NoError(t, err)
+
+	expectedRekeyInfo3b := expectedRekeyInfo{
+		serverMap: serverMap3b,
+	}
+
+	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo3b)
+
 	checkKeyBundlesV2(t, expectedRekeyInfos, pubKey, wkb, rkb)
 }
