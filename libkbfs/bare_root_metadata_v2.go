@@ -975,12 +975,12 @@ func (md *BareRootMetadataV2) addKeyGenerationHelper(
 	}
 
 	newWriterKeys := TLFWriterKeyBundleV2{
-		WKeys:                  wDkim,
+		WKeys:                  userDeviceKeyInfoMapToV2(wDkim),
 		TLFPublicKey:           pubKey,
 		TLFEphemeralPublicKeys: wPublicKeys,
 	}
 	newReaderKeys := TLFReaderKeyBundleV2{
-		RKeys: rDkim,
+		RKeys: userDeviceKeyInfoMapToV2(rDkim),
 		TLFReaderEphemeralPublicKeys: rPublicKeys,
 	}
 	md.WKeys = append(md.WKeys, newWriterKeys)
@@ -1128,7 +1128,7 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(keyGen KeyGen, _ ExtraMet
 	if err != nil {
 		return nil, nil, err
 	}
-	return rkb.RKeys.deepCopy(), wkb.WKeys.deepCopy(), nil
+	return rkb.RKeys.toUDKIM(), wkb.WKeys.toUDKIM(), nil
 }
 
 // AddKeyGeneration implements the MutableBareRootMetadata interface
@@ -1179,12 +1179,12 @@ func (md *BareRootMetadataV2) fillInDevices(crypto Crypto,
 
 	// now fill in the secret keys as needed
 	newServerKeys := serverKeyMap{}
-	err := fillInDevicesAndServerMap(crypto, newIndex, wKeys, wkb.WKeys,
+	err := fillInDevicesAndServerMapV2(crypto, newIndex, wKeys, wkb.WKeys,
 		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}
-	err = fillInDevicesAndServerMap(crypto, newIndex, rKeys, rkb.RKeys,
+	err = fillInDevicesAndServerMapV2(crypto, newIndex, rKeys, rkb.RKeys,
 		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err

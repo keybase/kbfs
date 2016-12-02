@@ -87,7 +87,7 @@ func TestKeyBundleFillInDevicesV2(t *testing.T) {
 
 	// Make a wkb with empty writer key maps
 	wkb := TLFWriterKeyBundleV2{
-		WKeys: make(UserDeviceKeyInfoMap),
+		WKeys: make(UserDeviceKeyInfoMapV2),
 		TLFEphemeralPublicKeys: make(kbfscrypto.TLFEphemeralPublicKeys, 1),
 	}
 
@@ -149,10 +149,21 @@ func TestKeyBundleFillInDevicesV2(t *testing.T) {
 	}
 }
 
+type userDeviceKeyInfoMapV2Future map[keybase1.UID]deviceKeyInfoMapFuture
+
+func (udkimf userDeviceKeyInfoMapV2Future) toCurrent() UserDeviceKeyInfoMapV2 {
+	udkim := make(UserDeviceKeyInfoMapV2)
+	for u, dkimf := range udkimf {
+		dkim := dkimf.toCurrent()
+		udkim[u] = dkim
+	}
+	return udkim
+}
+
 type tlfWriterKeyBundleFuture struct {
 	TLFWriterKeyBundleV2
 	// Override TLFWriterKeyBundleV2.WKeys.
-	WKeys userDeviceKeyInfoMapFuture
+	WKeys userDeviceKeyInfoMapV2Future
 	kbfscodec.Extra
 }
 
@@ -166,8 +177,8 @@ func (wkbf tlfWriterKeyBundleFuture) ToCurrentStruct() kbfscodec.CurrentStruct {
 	return wkbf.toCurrent()
 }
 
-func makeFakeDeviceKeyInfoMapFuture(t *testing.T) userDeviceKeyInfoMapFuture {
-	return userDeviceKeyInfoMapFuture{
+func makeFakeDeviceKeyInfoMapV2Future(t *testing.T) userDeviceKeyInfoMapV2Future {
+	return userDeviceKeyInfoMapV2Future{
 		"fake uid": deviceKeyInfoMapFuture{
 			"fake kid": makeFakeTLFCryptKeyInfoFuture(t),
 		},
@@ -185,7 +196,7 @@ func makeFakeTLFWriterKeyBundleFuture(t *testing.T) tlfWriterKeyBundleFuture {
 	}
 	return tlfWriterKeyBundleFuture{
 		wkb,
-		makeFakeDeviceKeyInfoMapFuture(t),
+		makeFakeDeviceKeyInfoMapV2Future(t),
 		kbfscodec.MakeExtraOrBust("TLFWriterKeyBundleV2", t),
 	}
 }
@@ -197,7 +208,7 @@ func TestTLFWriterKeyBundleV2UnknownFields(t *testing.T) {
 type tlfReaderKeyBundleFuture struct {
 	TLFReaderKeyBundleV2
 	// Override TLFReaderKeyBundleV2.WKeys.
-	RKeys userDeviceKeyInfoMapFuture
+	RKeys userDeviceKeyInfoMapV2Future
 	kbfscodec.Extra
 }
 
@@ -221,7 +232,7 @@ func makeFakeTLFReaderKeyBundleFuture(t *testing.T) tlfReaderKeyBundleFuture {
 	}
 	return tlfReaderKeyBundleFuture{
 		rkb,
-		makeFakeDeviceKeyInfoMapFuture(t),
+		makeFakeDeviceKeyInfoMapV2Future(t),
 		kbfscodec.MakeExtraOrBust("TLFReaderKeyBundleV2", t),
 	}
 }

@@ -14,6 +14,21 @@ import (
 	"golang.org/x/net/context"
 )
 
+// UserDeviceKeyInfoMapV2 maps a user's keybase UID to their DeviceKeyInfoMap
+type UserDeviceKeyInfoMapV2 map[keybase1.UID]DeviceKeyInfoMap
+
+func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM() UserDeviceKeyInfoMap {
+	return UserDeviceKeyInfoMap(udkimV2)
+}
+
+func (udkimV2 UserDeviceKeyInfoMapV2) toV3() UserDeviceKeyInfoMap {
+	return UserDeviceKeyInfoMap(udkimV2)
+}
+
+func userDeviceKeyInfoMapToV2(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV2 {
+	return UserDeviceKeyInfoMapV2(udkim)
+}
+
 // All section references below are to https://keybase.io/blog/kbfs-crypto
 // (version 1.3).
 
@@ -21,7 +36,7 @@ import (
 // folder.
 type TLFWriterKeyBundleV2 struct {
 	// Maps from each writer to their crypt key bundle.
-	WKeys UserDeviceKeyInfoMap
+	WKeys UserDeviceKeyInfoMapV2
 
 	// M_f as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
 	TLFPublicKey kbfscrypto.TLFPublicKey `codec:"pubKey"`
@@ -76,7 +91,7 @@ func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
 
 	// Copy the latest UserDeviceKeyInfoMap.
 	wkb := tkg[keyGen-FirstValidKeyGen]
-	wkbCopy.Keys = wkb.WKeys.deepCopy()
+	wkbCopy.Keys = wkb.WKeys.toV3()
 
 	// Copy all of the TLFEphemeralPublicKeys at this generation.
 	wkbCopy.TLFEphemeralPublicKeys =
@@ -113,7 +128,7 @@ func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
 // TLFReaderKeyBundleV2 stores all the user keys with reader
 // permissions on a TLF
 type TLFReaderKeyBundleV2 struct {
-	RKeys UserDeviceKeyInfoMap
+	RKeys UserDeviceKeyInfoMapV2
 
 	// M_e as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
 	// Because devices can be added into the key generation after it
@@ -215,4 +230,27 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 		rkbCopy.RKeys[uid] = dkimCopy
 	}
 	return rkbCopy, nil
+}
+
+func fillInDevicesAndServerMapV2(crypto Crypto, newIndex int,
+	cryptKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	keyInfoMap UserDeviceKeyInfoMapV2,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys serverKeyMap) error {
+	for u, keys := range cryptKeys {
+		if _, ok := keyInfoMap[u]; !ok {
+			keyInfoMap[u] = DeviceKeyInfoMap{}
+		}
+
+		serverMap, err := keyInfoMap[u].fillInDeviceInfo(
+			crypto, u, tlfCryptKey, ePrivKey, newIndex, keys)
+		if err != nil {
+			return err
+		}
+		if len(serverMap) > 0 {
+			newServerKeys[u] = serverMap
+		}
+	}
+	return nil
 }
