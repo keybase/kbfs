@@ -567,6 +567,25 @@ func (md *BareRootMetadataV2) TlfHandleExtensions() (
 	return extensions
 }
 
+func (md *BareRootMetadataV2) PromoteReader(
+	uid keybase1.UID, extra ExtraMetadata) error {
+	if md.TlfID().IsPublic() {
+		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReader"}
+	}
+
+	for i, rKeys := range md.RKeys {
+		dkim, ok := rKeys.RKeys[uid]
+		if !ok {
+			return fmt.Errorf("Could not find %s in key gen %d",
+				uid, FirstValidKeyGen+KeyGen(i))
+		}
+		md.WKeys[i].WKeys[uid] = dkim
+		delete(rKeys.RKeys, uid)
+	}
+
+	return nil
+}
+
 // GetTLFKeyBundles implements the BareRootMetadata interface for
 // BareRootMetadataV2.  Note that it is legal a writer or a reader to
 // have no keys in their bundle, if they only have a Keybase username

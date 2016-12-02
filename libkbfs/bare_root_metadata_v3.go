@@ -511,6 +511,26 @@ func (md *BareRootMetadataV3) TlfHandleExtensions() (
 	return extensions
 }
 
+func (md *BareRootMetadataV3) PromoteReader(
+	uid keybase1.UID, extra ExtraMetadata) error {
+	if md.TlfID().IsPublic() {
+		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReader"}
+	}
+
+	wkb, rkb, ok := getKeyBundlesV3(extra)
+	if !ok {
+		return errors.New("Key bundles missing")
+	}
+	dkim, ok := rkb.RKeys[uid]
+	if !ok {
+		return fmt.Errorf("Could not find %s in rkb", uid)
+	}
+	// TODO: This is incorrect! Fix this.
+	wkb.Keys[uid] = dkim
+	delete(rkb.RKeys, uid)
+	return nil
+}
+
 // GetTLFKeyBundles implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetTLFKeyBundles(_ KeyGen) (
 	*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error) {

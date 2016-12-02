@@ -1786,6 +1786,7 @@ type MutableBareRootMetadata interface {
 	// Returns the TLF key bundles for this metadata at the given key generation.
 	// MDv3 TODO: Get rid of this.
 	GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error)
+	PromoteReader(uid keybase1.UID, extra ExtraMetadata) error
 	// GetUserDeviceKeyInfoMaps returns the given user device key info maps for the given
 	// key generation.
 	GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (
