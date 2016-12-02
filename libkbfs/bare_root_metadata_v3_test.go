@@ -98,11 +98,11 @@ func TestRevokeRemovedDevicesV3(t *testing.T) {
 
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
-	id1a, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1.KID(), half1a)
+	id1a, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1, half1a)
 	require.NoError(t, err)
-	id2a, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2.KID(), half2a)
+	id2a, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2, half2a)
 	require.NoError(t, err)
-	id3a, err := crypto.GetTLFCryptKeyServerHalfID(uid3, key3.KID(), half3a)
+	id3a, err := crypto.GetTLFCryptKeyServerHalfID(uid3, key3, half3a)
 	require.NoError(t, err)
 
 	tlfID := tlf.FakeID(1, false)
@@ -204,7 +204,7 @@ func testKeyBundleCheckKeysV3(t *testing.T, crypto Crypto, uid keybase1.UID,
 	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
 		ctx, userEPubKey, info.ClientHalf)
 	require.NoError(t, err)
-	serverHalf, ok := serverMap[uid][key.KID()]
+	serverHalf, ok := serverMap[uid][key]
 	require.True(t, ok)
 	userTLFCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
 	require.NoError(t, err)
@@ -299,7 +299,7 @@ func testKeyBundleCheckReaderKeysV3(t *testing.T, crypto Crypto, uid keybase1.UI
 	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
 		ctx, userEPubKey, info.ClientHalf)
 	require.NoError(t, err)
-	serverHalf, ok := serverMap[uid][key.KID()]
+	serverHalf, ok := serverMap[uid][key]
 	require.True(t, ok)
 	userTLFCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
 	require.NoError(t, err)

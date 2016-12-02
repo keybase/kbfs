@@ -50,7 +50,7 @@ type DeviceKeyInfoMap map[kbfscrypto.CryptPublicKey]TLFCryptKeyInfo
 type UserDeviceKeyInfoMap map[keybase1.UID]DeviceKeyInfoMap
 
 // ServerKeyMap is a map from users to server halves.
-type ServerKeyMap map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf
+type ServerKeyMap map[keybase1.UID]map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf
 
 // splitTLFCryptKey splits the given TLFCryptKey into two parts -- the
 // client-side part (which is encrypted with the given keys), and the
@@ -84,7 +84,7 @@ func splitTLFCryptKey(crypto cryptoPure, uid keybase1.UID,
 
 	var serverHalfID TLFCryptKeyServerHalfID
 	serverHalfID, err =
-		crypto.GetTLFCryptKeyServerHalfID(uid, pubKey.KID(), serverHalf)
+		crypto.GetTLFCryptKeyServerHalfID(uid, pubKey, serverHalf)
 	if err != nil {
 		return TLFCryptKeyInfo{}, kbfscrypto.TLFCryptKeyServerHalf{}, err
 	}

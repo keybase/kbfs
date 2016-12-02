@@ -849,7 +849,7 @@ type cryptoPure interface {
 	// GetTLFCryptKeyServerHalfID creates a unique ID for this particular
 	// kbfscrypto.TLFCryptKeyServerHalf.
 	GetTLFCryptKeyServerHalfID(
-		user keybase1.UID, deviceKID keybase1.KID,
+		user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey,
 		serverHalf kbfscrypto.TLFCryptKeyServerHalf) (
 		TLFCryptKeyServerHalfID, error)
 
@@ -991,7 +991,7 @@ type KeyOps interface {
 	// PutTLFCryptKeyServerHalves stores a server-side key halves for a
 	// set of users and devices.
 	PutTLFCryptKeyServerHalves(ctx context.Context,
-		serverKeyHalves map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf) error
+		serverKeyHalves ServerKeyMap) error
 
 	// DeleteTLFCryptKeyServerHalf deletes a server-side key half for a
 	// device given the key half ID.
@@ -1280,7 +1280,7 @@ type KeyServer interface {
 	// PutTLFCryptKeyServerHalves stores a server-side key halves for a
 	// set of users and devices.
 	PutTLFCryptKeyServerHalves(ctx context.Context,
-		serverKeyHalves map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf) error
+		serverKeyHalves ServerKeyMap) error
 
 	// DeleteTLFCryptKeyServerHalf deletes a server-side key half for a
 	// device given the key half ID.

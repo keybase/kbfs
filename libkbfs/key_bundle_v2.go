@@ -24,9 +24,9 @@ func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfo(crypto cryptoPure,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys []kbfscrypto.CryptPublicKey) (
-	serverMap map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf,
+	serverMap map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf,
 	err error) {
-	serverMap = make(map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf)
+	serverMap = make(map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf)
 	// TODO: parallelize
 	for _, k := range publicKeys {
 		// Skip existing entries, and only fill in new ones.
@@ -41,7 +41,7 @@ func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfo(crypto cryptoPure,
 		}
 
 		dkimV2[k.KID()] = clientInfo
-		serverMap[k.KID()] = serverHalf
+		serverMap[k] = serverHalf
 	}
 
 	return serverMap, nil

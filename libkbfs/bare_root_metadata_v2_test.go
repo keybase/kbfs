@@ -119,17 +119,17 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
-	id1a, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1.KID(), half1a)
+	id1a, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1, half1a)
 	require.NoError(t, err)
-	id1b, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1.KID(), half1b)
+	id1b, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1, half1b)
 	require.NoError(t, err)
-	id2a, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2.KID(), half2a)
+	id2a, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2, half2a)
 	require.NoError(t, err)
-	id2b, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2.KID(), half2b)
+	id2b, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2, half2b)
 	require.NoError(t, err)
-	id3a, err := crypto.GetTLFCryptKeyServerHalfID(uid3, key3.KID(), half3a)
+	id3a, err := crypto.GetTLFCryptKeyServerHalfID(uid3, key3, half3a)
 	require.NoError(t, err)
-	id3b, err := crypto.GetTLFCryptKeyServerHalfID(uid3, key3.KID(), half3b)
+	id3b, err := crypto.GetTLFCryptKeyServerHalfID(uid3, key3, half3b)
 	require.NoError(t, err)
 
 	tlfID := tlf.FakeID(1, false)
@@ -323,18 +323,18 @@ func checkServerMap(t *testing.T,
 	for uid, privKeys := range expectedWriters {
 		require.Equal(t, len(privKeys), len(serverMap[uid]))
 		for _, privKey := range privKeys {
-			kid := privKey.GetPublicKey().KID()
-			_, ok := serverMap[uid][kid]
-			require.True(t, ok, "writer uid=%s, kid=%s", uid, kid)
+			pubKey := privKey.GetPublicKey()
+			_, ok := serverMap[uid][pubKey]
+			require.True(t, ok, "writer uid=%s, key=%s", uid, pubKey)
 		}
 	}
 
 	for uid, privKeys := range expectedReaders {
 		require.Equal(t, len(privKeys), len(serverMap[uid]))
 		for _, privKey := range privKeys {
-			kid := privKey.GetPublicKey().KID()
-			_, ok := serverMap[uid][kid]
-			require.True(t, ok, "reader uid=%s, kid=%s", uid, kid)
+			pubKey := privKey.GetPublicKey()
+			_, ok := serverMap[uid][pubKey]
+			require.True(t, ok, "reader uid=%s, key=%s", uid, pubKey)
 		}
 	}
 }
@@ -344,16 +344,16 @@ func checkKeyBundlesV2Helper(t *testing.T, expected expectedRekeyInfo,
 	checkServerMap(t, expected.writers, expected.readers, expected.serverMap)
 	for uid, privKeys := range expected.writers {
 		for _, privKey := range privKeys {
-			kid := privKey.GetPublicKey().KID()
-			serverHalf, ok := expected.serverMap[uid][kid]
-			require.True(t, ok, "writer uid=%s, kid=%s", uid, kid)
+			pubKey := privKey.GetPublicKey()
+			serverHalf, ok := expected.serverMap[uid][pubKey]
+			require.True(t, ok, "writer uid=%s, key=%s", uid, pubKey)
 
 			dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
 
 			codec := kbfscodec.NewMsgpack()
 			crypto := NewCryptoLocal(codec, dummySigningKey, privKey)
 
-			info, ok := wkb.WKeys[uid][kid]
+			info, ok := wkb.WKeys[uid][pubKey.KID()]
 			require.True(t, ok)
 
 			require.Equal(
@@ -376,16 +376,16 @@ func checkKeyBundlesV2Helper(t *testing.T, expected expectedRekeyInfo,
 
 	for uid, privKeys := range expected.readers {
 		for _, privKey := range privKeys {
-			kid := privKey.GetPublicKey().KID()
-			serverHalf, ok := expected.serverMap[uid][kid]
-			require.True(t, ok, "reader uid=%s, kid=%s", uid, kid)
+			pubKey := privKey.GetPublicKey()
+			serverHalf, ok := expected.serverMap[uid][pubKey]
+			require.True(t, ok, "reader uid=%s, key=%s", uid, pubKey)
 
 			dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
 
 			codec := kbfscodec.NewMsgpack()
 			crypto := NewCryptoLocal(codec, dummySigningKey, privKey)
 
-			info, ok := rkb.RKeys[uid][kid]
+			info, ok := rkb.RKeys[uid][pubKey.KID()]
 			require.True(t, ok)
 
 			require.Equal(t, expected.ePubKeyIndex, info.EPubKeyIndex)

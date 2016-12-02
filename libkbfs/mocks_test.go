@@ -1967,8 +1967,8 @@ func (_mr *_MockcryptoPureRecorder) DecryptBlock(arg0, arg1, arg2 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptBlock", arg0, arg1, arg2)
 }
 
-func (_m *MockcryptoPure) GetTLFCryptKeyServerHalfID(user keybase1.UID, deviceKID keybase1.KID, serverHalf kbfscrypto.TLFCryptKeyServerHalf) (TLFCryptKeyServerHalfID, error) {
-	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyServerHalfID", user, deviceKID, serverHalf)
+func (_m *MockcryptoPure) GetTLFCryptKeyServerHalfID(user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey, serverHalf kbfscrypto.TLFCryptKeyServerHalf) (TLFCryptKeyServerHalfID, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyServerHalfID", user, devicePubKey, serverHalf)
 	ret0, _ := ret[0].(TLFCryptKeyServerHalfID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -2297,8 +2297,8 @@ func (_mr *_MockCryptoRecorder) DecryptBlock(arg0, arg1, arg2 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptBlock", arg0, arg1, arg2)
 }
 
-func (_m *MockCrypto) GetTLFCryptKeyServerHalfID(user keybase1.UID, deviceKID keybase1.KID, serverHalf kbfscrypto.TLFCryptKeyServerHalf) (TLFCryptKeyServerHalfID, error) {
-	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyServerHalfID", user, deviceKID, serverHalf)
+func (_m *MockCrypto) GetTLFCryptKeyServerHalfID(user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey, serverHalf kbfscrypto.TLFCryptKeyServerHalf) (TLFCryptKeyServerHalfID, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyServerHalfID", user, devicePubKey, serverHalf)
 	ret0, _ := ret[0].(TLFCryptKeyServerHalfID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -2611,7 +2611,7 @@ func (_mr *_MockKeyOpsRecorder) GetTLFCryptKeyServerHalf(arg0, arg1, arg2 interf
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalf", arg0, arg1, arg2)
 }
 
-func (_m *MockKeyOps) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf) error {
+func (_m *MockKeyOps) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves ServerKeyMap) error {
 	ret := _m.ctrl.Call(_m, "PutTLFCryptKeyServerHalves", ctx, serverKeyHalves)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3464,7 +3464,7 @@ func (_mr *_MockKeyServerRecorder) GetTLFCryptKeyServerHalf(arg0, arg1, arg2 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalf", arg0, arg1, arg2)
 }
 
-func (_m *MockKeyServer) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf) error {
+func (_m *MockKeyServer) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves ServerKeyMap) error {
 	ret := _m.ctrl.Call(_m, "PutTLFCryptKeyServerHalves", ctx, serverKeyHalves)
 	ret0, _ := ret[0].(error)
 	return ret0
