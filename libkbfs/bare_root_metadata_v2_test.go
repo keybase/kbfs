@@ -266,6 +266,14 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 	require.Equal(t, expectedRKeys, brmd.RKeys)
 }
 
+type expectedRekeyInfo struct {
+	writers, readers map[keybase1.UID][]kbfscrypto.CryptPrivateKey
+	serverMap        ServerKeyMap
+	ePubKeyIndex     int
+	ePubKey          kbfscrypto.TLFEphemeralPublicKey
+	tlfCryptKey      kbfscrypto.TLFCryptKey
+}
+
 func checkServerMap(t *testing.T,
 	expectedWriters, expectedReaders map[keybase1.UID][]kbfscrypto.CryptPrivateKey,
 	serverMap ServerKeyMap) {
@@ -289,16 +297,13 @@ func checkServerMap(t *testing.T,
 	}
 }
 
-func checkKeyBundlesV2(t *testing.T,
-	expectedWriters, expectedReaders map[keybase1.UID][]kbfscrypto.CryptPrivateKey,
-	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2,
-	serverMap ServerKeyMap, expectedEPubKeyIndex int,
-	expectedEPubKey kbfscrypto.TLFEphemeralPublicKey,
-	expectedTLFCryptKey kbfscrypto.TLFCryptKey) {
-	for uid, privKeys := range expectedWriters {
+func checkKeyBundlesV2(t *testing.T, expected expectedRekeyInfo,
+	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
+	checkServerMap(t, expected.writers, expected.readers, expected.serverMap)
+	for uid, privKeys := range expected.writers {
 		for _, privKey := range privKeys {
 			kid := privKey.GetPublicKey().KID()
-			serverHalf, ok := serverMap[uid][kid]
+			serverHalf, ok := expected.serverMap[uid][kid]
 			require.True(t, ok, "writer uid=%s, kid=%s", uid, kid)
 
 			dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
@@ -310,10 +315,10 @@ func checkKeyBundlesV2(t *testing.T,
 			require.True(t, ok)
 
 			require.Equal(
-				t, expectedEPubKeyIndex, info.EPubKeyIndex)
+				t, expected.ePubKeyIndex, info.EPubKeyIndex)
 
 			ePubKey := wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
-			require.Equal(t, expectedEPubKey, ePubKey)
+			require.Equal(t, expected.ePubKey, ePubKey)
 
 			ctx := context.Background()
 			clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
@@ -323,14 +328,14 @@ func checkKeyBundlesV2(t *testing.T,
 			tlfCryptKey, err := crypto.UnmaskTLFCryptKey(
 				serverHalf, clientHalf)
 			require.NoError(t, err)
-			require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
+			require.Equal(t, expected.tlfCryptKey, tlfCryptKey)
 		}
 	}
 
-	for uid, privKeys := range expectedReaders {
+	for uid, privKeys := range expected.readers {
 		for _, privKey := range privKeys {
 			kid := privKey.GetPublicKey().KID()
-			serverHalf, ok := serverMap[uid][kid]
+			serverHalf, ok := expected.serverMap[uid][kid]
 			require.True(t, ok, "reader uid=%s, kid=%s", uid, kid)
 
 			dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
@@ -341,7 +346,7 @@ func checkKeyBundlesV2(t *testing.T,
 			info, ok := rkb.RKeys[uid][kid]
 			require.True(t, ok)
 
-			require.Equal(t, expectedEPubKeyIndex, info.EPubKeyIndex)
+			require.Equal(t, expected.ePubKeyIndex, info.EPubKeyIndex)
 
 			var ePubKey kbfscrypto.TLFEphemeralPublicKey
 			if info.EPubKeyIndex >= 0 {
@@ -349,7 +354,7 @@ func checkKeyBundlesV2(t *testing.T,
 			} else {
 				ePubKey = rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex]
 			}
-			require.Equal(t, expectedEPubKey, ePubKey)
+			require.Equal(t, expected.ePubKey, ePubKey)
 
 			ctx := context.Background()
 			clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
@@ -358,7 +363,7 @@ func checkKeyBundlesV2(t *testing.T,
 
 			tlfCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
 			require.NoError(t, err)
-			require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
+			require.Equal(t, expected.tlfCryptKey, tlfCryptKey)
 		}
 	}
 }
@@ -432,16 +437,21 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
 		rkb.TLFReaderEphemeralPublicKeys)
 
-	expectedWriters1 := map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
-		uid1: {privKey1},
-		uid2: {privKey2},
+	expectedRekeyInfo1 := expectedRekeyInfo{
+		writers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
+			uid1: {privKey1},
+			uid2: {privKey2},
+		},
+		readers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
+			uid3: {privKey3},
+		},
+		serverMap:    serverMap1,
+		ePubKeyIndex: 0,
+		ePubKey:      ePubKey1,
+		tlfCryptKey:  tlfCryptKey1,
 	}
-	expectedReaders1 := map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
-		uid3: {privKey3},
-	}
-	checkServerMap(t, expectedWriters1, expectedReaders1, serverMap1)
 
-	checkKeyBundlesV2(t, expectedWriters1, expectedReaders1, wkb, rkb, serverMap1, 0, ePubKey1, tlfCryptKey1)
+	checkKeyBundlesV2(t, expectedRekeyInfo1, wkb, rkb)
 
 	// Do again to check idempotency.
 
@@ -461,7 +471,11 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
 		rkb.TLFReaderEphemeralPublicKeys)
 
-	checkServerMap(t, nil, nil, serverMap1b)
+	expectedRekeyInfo1b := expectedRekeyInfo{
+		serverMap: serverMap1b,
+	}
+
+	checkKeyBundlesV2(t, expectedRekeyInfo1b, wkb, rkb)
 
 	// Rekey.
 
@@ -491,16 +505,21 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
 		rkb.TLFReaderEphemeralPublicKeys)
 
-	expectedWriters2 := map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
-		uid1: {privKey1b},
+	expectedRekeyInfo2 := expectedRekeyInfo{
+		writers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
+			uid1: {privKey1b},
+		},
+		readers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
+			uid3: {privKey3b},
+		},
+		serverMap:    serverMap2,
+		ePubKeyIndex: 1,
+		ePubKey:      ePubKey2,
+		tlfCryptKey:  tlfCryptKey2,
 	}
-	expectedReaders2 := map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
-		uid3: {privKey3b},
-	}
-	checkServerMap(t, expectedWriters2, expectedReaders2, serverMap2)
 
-	checkKeyBundlesV2(t, expectedWriters1, expectedReaders1, wkb, rkb, serverMap1, 0, ePubKey1, tlfCryptKey1)
-	checkKeyBundlesV2(t, expectedWriters2, expectedReaders2, wkb, rkb, serverMap2, 1, ePubKey2, tlfCryptKey2)
+	checkKeyBundlesV2(t, expectedRekeyInfo1, wkb, rkb)
+	checkKeyBundlesV2(t, expectedRekeyInfo2, wkb, rkb)
 
 	// Reader rekey.
 
@@ -532,12 +551,17 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys{ePubKey3},
 		rkb.TLFReaderEphemeralPublicKeys)
 
-	expectedReaders3 := map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
-		uid3: {privKey3c, privKey3d},
+	expectedRekeyInfo3 := expectedRekeyInfo{
+		writers: nil,
+		readers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
+			uid3: {privKey3c, privKey3d},
+		},
+		serverMap:    serverMap3,
+		ePubKeyIndex: -1,
+		ePubKey:      ePubKey3,
+		tlfCryptKey:  tlfCryptKey3,
 	}
-	checkServerMap(t, nil, expectedReaders3, serverMap3)
-
-	checkKeyBundlesV2(t, expectedWriters1, expectedReaders1, wkb, rkb, serverMap1, 0, ePubKey1, tlfCryptKey1)
-	checkKeyBundlesV2(t, expectedWriters2, expectedReaders2, wkb, rkb, serverMap2, 1, ePubKey2, tlfCryptKey2)
-	checkKeyBundlesV2(t, nil, expectedReaders3, wkb, rkb, serverMap3, -1, ePubKey3, tlfCryptKey3)
+	checkKeyBundlesV2(t, expectedRekeyInfo1, wkb, rkb)
+	checkKeyBundlesV2(t, expectedRekeyInfo2, wkb, rkb)
+	checkKeyBundlesV2(t, expectedRekeyInfo3, wkb, rkb)
 }
