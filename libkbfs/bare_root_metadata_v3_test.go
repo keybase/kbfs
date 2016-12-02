@@ -401,7 +401,7 @@ func checkGetTLFCryptKeyV3(t *testing.T, expected expectedRekeyInfoV3,
 			crypto := NewCryptoLocal(
 				codec, dummySigningKey, privKey)
 
-			info, ok := wkb.Keys[uid][pubKey.KID()]
+			info, ok := wkb.Keys[uid][pubKey]
 			require.True(t, ok)
 
 			require.Equal(t,
@@ -435,13 +435,13 @@ func checkGetTLFCryptKeyV3(t *testing.T, expected expectedRekeyInfoV3,
 			crypto := NewCryptoLocal(
 				codec, dummySigningKey, privKey)
 
-			info, ok := rkb.RKeys[uid][pubKey.KID()]
+			info, ok := rkb.Keys[uid][pubKey]
 			require.True(t, ok)
 
 			require.Equal(t,
 				expected.readerEPubKeyIndex, info.EPubKeyIndex)
 
-			ePubKey := rkb.TLFReaderEphemeralPublicKeys[info.EPubKeyIndex]
+			ePubKey := rkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
 			require.Equal(t, expected.ePubKey, ePubKey)
 
 			ctx := context.Background()
@@ -455,6 +455,17 @@ func checkGetTLFCryptKeyV3(t *testing.T, expected expectedRekeyInfoV3,
 			require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
 		}
 	}
+}
+
+func userDeviceKeyInfoMapV3ToDeviceSet(udkimV3 UserDeviceKeyInfoMapV3) userDeviceSet {
+	uds := make(userDeviceSet)
+	for uid, dkimV3 := range udkimV3 {
+		uds[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		for key := range dkimV3 {
+			uds[uid][key] = true
+		}
+	}
+	return uds
 }
 
 // checkKeyBundlesV3 checks that wkb and rkb contain exactly the info
@@ -490,14 +501,14 @@ func checkKeyBundlesV3(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV3,
 		}
 	}
 
-	writerSet := userDeviceKeyInfoMapToDeviceSet(wkb.Keys)
-	readerSet := userDeviceKeyInfoMapToDeviceSet(rkb.RKeys)
+	writerSet := userDeviceKeyInfoMapV3ToDeviceSet(wkb.Keys)
+	readerSet := userDeviceKeyInfoMapV3ToDeviceSet(rkb.Keys)
 
 	require.Equal(t, expectedWriterSet, writerSet)
 	require.Equal(t, expectedReaderSet, readerSet)
 
 	require.Equal(t, expectedWriterEPublicKeys, wkb.TLFEphemeralPublicKeys)
-	require.Equal(t, expectedReaderEPublicKeys, rkb.TLFReaderEphemeralPublicKeys)
+	require.Equal(t, expectedReaderEPublicKeys, rkb.TLFEphemeralPublicKeys)
 
 	require.Equal(t, expectedPubKey, wkb.TLFPublicKey)
 
@@ -550,7 +561,7 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 
 	// Add and update first key generation.
 
-	extra, err := rmd.AddKeyGeneration(crypto, nil,
+	extra, err := rmd.AddKeyGeneration(codec, crypto, nil,
 		kbfscrypto.TLFCryptKey{}, tlfCryptKey, pubKey)
 	require.NoError(t, err)
 
