@@ -4238,14 +4238,6 @@ func (_mr *_MockConfigRecorder) MakeLogger(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeLogger", arg0)
 }
 
-func (_m *MockConfig) SetLoggerMaker(_param0 func(string) logger.Logger) {
-	_m.ctrl.Call(_m, "SetLoggerMaker", _param0)
-}
-
-func (_mr *_MockConfigRecorder) SetLoggerMaker(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetLoggerMaker", arg0)
-}
-
 func (_m *MockConfig) MetricsRegistry() go_metrics.Registry {
 	ret := _m.ctrl.Call(_m, "MetricsRegistry")
 	ret0, _ := ret[0].(go_metrics.Registry)
@@ -5617,6 +5609,16 @@ func (_m *MockMutableBareRootMetadata) GetTLFKeyBundles(keyGen KeyGen) (*TLFWrit
 
 func (_mr *_MockMutableBareRootMetadataRecorder) GetTLFKeyBundles(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFKeyBundles", arg0)
+}
+
+func (_m *MockMutableBareRootMetadata) PromoteReader(uid keybase1.UID, extra ExtraMetadata) error {
+	ret := _m.ctrl.Call(_m, "PromoteReader", uid, extra)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockMutableBareRootMetadataRecorder) PromoteReader(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "PromoteReader", arg0, arg1)
 }
 
 func (_m *MockMutableBareRootMetadata) GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (UserDeviceKeyInfoMap, UserDeviceKeyInfoMap, error) {

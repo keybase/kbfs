@@ -685,6 +685,10 @@ func (md *RootMetadata) AddKeyGeneration(
 	return nil
 }
 
+func (md *RootMetadata) promoteReader(uid keybase1.UID) error {
+	return md.bareMd.PromoteReader(uid, md.extra)
+}
+
 func (md *RootMetadata) fillInDevices(crypto Crypto,
 	keyGen KeyGen,
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
@@ -693,10 +697,14 @@ func (md *RootMetadata) fillInDevices(crypto Crypto,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {
 
 	if bareV3, ok := md.bareMd.(*BareRootMetadataV3); ok {
+		if keyGen != md.LatestKeyGeneration() {
+			return nil, TLFCryptKeyNotPerDeviceEncrypted{md.TlfID(), keyGen}
+		}
+
 		// v3 bundles aren't embedded.
 		wkb, rkb, ok := getKeyBundlesV3(md.extra)
 		if !ok {
-			return serverKeyMap{}, errors.New("Missing key bundles")
+			return nil, errors.New("Missing key bundles")
 		}
 		return bareV3.fillInDevices(crypto,
 			wkb, rkb, wKeys, rKeys,
@@ -707,14 +715,14 @@ func (md *RootMetadata) fillInDevices(crypto Crypto,
 		// v1 & v2 bundles are embedded.
 		wkb, rkb, err := md.bareMd.GetTLFKeyBundles(keyGen)
 		if err != nil {
-			return serverKeyMap{}, err
+			return nil, err
 		}
 		return bareV2.fillInDevices(crypto,
 			wkb, rkb, wKeys, rKeys,
 			ePubKey, ePrivKey, tlfCryptKey)
 	}
 
-	return serverKeyMap{}, errors.New("Unknown bare metadata version")
+	return nil, errors.New("Unknown bare metadata version")
 }
 
 func (md *RootMetadata) finalizeRekey(crypto cryptoPure) error {

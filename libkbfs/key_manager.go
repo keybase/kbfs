@@ -670,6 +670,15 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		return false, nil, err
 	}
 
+	for uid := range promotedReaders {
+		// If there are readers that need to be promoted to
+		// writers, do that here.
+		err := md.promoteReader(uid)
+		if err != nil {
+			return false, nil, err
+		}
+	}
+
 	// If there's at least one new device, add that device to every key bundle.
 	if addNewReaderDevice || addNewWriterDevice {
 		for keyGen := FirstValidKeyGen; keyGen <= currKeyGen; keyGen++ {
@@ -682,23 +691,12 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 				return false, nil, err
 			}
 
-			// If there are readers that need to be promoted to writers, do
-			// that here.
-			rDkim, wDkim, err := md.getUserDeviceKeyInfoMaps(keyGen)
+			err = km.updateKeyBundle(ctx, md, keyGen, wKeys, rKeys,
+				ePubKey, ePrivKey, currTlfCryptKey)
 			if _, noDkim := err.(TLFCryptKeyNotPerDeviceEncrypted); noDkim {
 				// No DKIM for this generation. This is possible for MDv3.
 				continue
 			}
-			if err != nil {
-				return false, nil, err
-			}
-			for u := range promotedReaders {
-				wDkim[u] = rDkim[u]
-				delete(rDkim, u)
-			}
-
-			err = km.updateKeyBundle(ctx, md, keyGen, wKeys, rKeys,
-				ePubKey, ePrivKey, currTlfCryptKey)
 			if err != nil {
 				return false, nil, err
 			}
