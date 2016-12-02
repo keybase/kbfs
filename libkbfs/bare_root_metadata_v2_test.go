@@ -435,7 +435,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
 		rkb.TLFReaderEphemeralPublicKeys)
 
-	require.Equal(t, 0, len(serverMap1b))
+	checkServerMap(t, nil, serverMap1b)
 
 	dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
 
@@ -479,9 +479,11 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
 		rkb.TLFReaderEphemeralPublicKeys)
 
-	require.Equal(t, 2, len(serverMap2))
-	require.Equal(t, 1, len(serverMap2[uid1]))
-	require.Equal(t, 1, len(serverMap2[uid3]))
+	expectedServerMap2 := map[keybase1.UID][]keybase1.KID{
+		uid1: {privKey1b.GetPublicKey().KID()},
+		uid3: {privKey3b.GetPublicKey().KID()},
+	}
+	checkServerMap(t, expectedServerMap2, serverMap2)
 
 	checkWKBV2(t, wkb, serverMap1, uid1, privKey1.GetPublicKey(),
 		0, ePubKey1, crypto1, tlfCryptKey1)
@@ -528,8 +530,13 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys{ePubKey3},
 		rkb.TLFReaderEphemeralPublicKeys)
 
-	require.Equal(t, 1, len(serverMap3))
-	require.Equal(t, 2, len(serverMap3[uid3]))
+	expectedServerMap3 := map[keybase1.UID][]keybase1.KID{
+		uid3: {
+			privKey3c.GetPublicKey().KID(),
+			privKey3d.GetPublicKey().KID(),
+		},
+	}
+	checkServerMap(t, expectedServerMap3, serverMap3)
 
 	checkWKBV2(t, wkb, serverMap1, uid1, privKey1.GetPublicKey(),
 		0, ePubKey1, crypto1, tlfCryptKey1)
