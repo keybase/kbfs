@@ -24,8 +24,7 @@ func TestBareRootMetadataVersionV2(t *testing.T) {
 
 	uid := keybase1.MakeTestUID(1)
 	bh, err := tlf.MakeHandle(
-		[]keybase1.UID{uid}, nil, []keybase1.SocialAssertion{
-			{}},
+		[]keybase1.UID{uid}, nil, []keybase1.SocialAssertion{{}},
 		nil, nil)
 	require.NoError(t, err)
 
@@ -267,50 +266,50 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 	require.Equal(t, expectedRKeys, brmd.RKeys)
 }
 
-type userDeviceSet map[keybase1.UID]map[keybase1.KID]bool
+type userDeviceSet map[keybase1.UID]map[kbfscrypto.CryptPublicKey]bool
 
 func (uds userDeviceSet) union(other userDeviceSet) userDeviceSet {
 	u := make(userDeviceSet)
-	for uid, kids := range uds {
-		u[uid] = make(map[keybase1.KID]bool)
-		for kid := range kids {
-			u[uid][kid] = true
+	for uid, keys := range uds {
+		u[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		for key := range keys {
+			u[uid][key] = true
 		}
 	}
-	for uid, kids := range other {
+	for uid, keys := range other {
 		if u[uid] == nil {
-			u[uid] = make(map[keybase1.KID]bool)
+			u[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
 		}
-		for kid := range kids {
-			if u[uid][kid] {
+		for key := range keys {
+			if u[uid][key] {
 				panic(fmt.Sprintf(
-					"uid=%s kid=%s exists in both",
-					uid, kid))
+					"uid=%s key=%s exists in both",
+					uid, key))
 			}
-			u[uid][kid] = true
+			u[uid][key] = true
 		}
 	}
 	return u
 }
 
-type userDeviceKeys map[keybase1.UID][]kbfscrypto.CryptPrivateKey
+type userDevicePrivateKeys map[keybase1.UID][]kbfscrypto.CryptPrivateKey
 
-func (udk userDeviceKeys) toUserDeviceSet() userDeviceSet {
+func (udpk userDevicePrivateKeys) toUserDeviceSet() userDeviceSet {
 	uds := make(userDeviceSet)
-	for uid, keys := range udk {
-		for _, key := range keys {
-			kid := key.GetPublicKey().KID()
+	for uid, privKeys := range udpk {
+		for _, privKey := range privKeys {
+			pubKey := privKey.GetPublicKey()
 			if uds[uid] == nil {
-				uds[uid] = make(map[keybase1.KID]bool)
+				uds[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
 			}
-			uds[uid][kid] = true
+			uds[uid][pubKey] = true
 		}
 	}
 	return uds
 }
 
 type expectedRekeyInfo struct {
-	writers, readers userDeviceKeys
+	writers, readers userDevicePrivateKeys
 	serverMap        ServerKeyMap
 	ePubKeyIndex     int
 	ePubKey          kbfscrypto.TLFEphemeralPublicKey
@@ -414,9 +413,9 @@ func checkKeyBundlesV2Helper(t *testing.T, expected expectedRekeyInfo,
 func userDeviceKeyInfoMapV2ToDeviceSet(udkimV2 UserDeviceKeyInfoMapV2) userDeviceSet {
 	u := make(userDeviceSet)
 	for uid, dkimV2 := range udkimV2 {
-		u[uid] = make(map[keybase1.KID]bool)
+		u[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
 		for kid := range dkimV2 {
-			u[uid][kid] = true
+			u[uid][kbfscrypto.MakeCryptPublicKey(kid)] = true
 		}
 	}
 	return u
