@@ -1188,6 +1188,8 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 		return ServerKeyMap{}, makeMissingKeyBundlesError()
 	}
 
+	// No need to explicitly handle the reader rekey case.
+
 	var newReaderIndex, newWriterIndex int
 	if len(rKeys) > 0 {
 		newReaderIndex = len(rkb.TLFEphemeralPublicKeys)
@@ -1196,9 +1198,9 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 		newWriterIndex = len(wkb.TLFEphemeralPublicKeys)
 	}
 
-	// now fill in the secret keys as needed
 	newServerKeys := ServerKeyMap{}
-	filledWKeys, err := fillInDevicesAndServerMapV3(crypto, newWriterIndex, wKeys, wkb.Keys,
+	filledWKeys, err := fillInDevicesAndServerMapV3(
+		crypto, newWriterIndex, wKeys, wkb.Keys,
 		ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
@@ -1208,7 +1210,8 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 			append(wkb.TLFEphemeralPublicKeys, ePubKey)
 	}
 
-	filledRKeys, err := fillInDevicesAndServerMapV3(crypto, newReaderIndex, rKeys, rkb.Keys,
+	filledRKeys, err := fillInDevicesAndServerMapV3(
+		crypto, newReaderIndex, rKeys, rkb.RKeys,
 		ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
