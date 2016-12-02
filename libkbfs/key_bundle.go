@@ -37,7 +37,7 @@ type TLFCryptKeyInfo struct {
 // DeviceKeyInfoMap is a map from a user devices (identified by the
 // corresponding device CryptPublicKey) to the TLF's symmetric secret
 // key information.
-type DeviceKeyInfoMap map[keybase1.KID]TLFCryptKeyInfo
+type DeviceKeyInfoMap map[kbfscrypto.CryptPublicKey]TLFCryptKeyInfo
 
 // UserDeviceKeyInfoMap maps a user's keybase UID to their DeviceKeyInfoMap
 type UserDeviceKeyInfoMap map[keybase1.UID]DeviceKeyInfoMap

@@ -349,7 +349,7 @@ func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
 		}
 		for _, k := range keys {
 			km.log.CDebugf(ctx, "Checking key %v", k.KID())
-			if _, ok := kids[k.KID()]; !ok {
+			if _, ok := kids[k]; !ok {
 				km.log.CInfof(ctx, "Rekey %s: adding new device %s for user %s",
 					tlfID, k.KID(), u)
 				users[u] = true
@@ -364,7 +364,7 @@ func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
 	tlfID tlf.ID, keyInfoMap UserDeviceKeyInfoMap,
 	expectedKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
-	for u, kids := range keyInfoMap {
+	for u, keyInfos := range keyInfoMap {
 		keys, ok := expectedKeys[u]
 		if !ok {
 			// Currently there probably shouldn't be any users removed
@@ -378,11 +378,11 @@ func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
 		for _, key := range keys {
 			keyLookup[key.KID()] = true
 		}
-		for kid := range kids {
+		for key := range keyInfos {
 			// Make sure every kid has an expected key
-			if !keyLookup[kid] {
+			if !keyLookup[key.KID()] {
 				km.log.CInfof(ctx,
-					"Rekey %s: removing device %s for user %s", tlfID, kid, u)
+					"Rekey %s: removing device %s for user %s", tlfID, key, u)
 				users[u] = true
 				break
 			}
@@ -396,7 +396,7 @@ func (km *KeyManagerStandard) deleteKeysForRemovedDevices(ctx context.Context,
 	expectedKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey) error {
 	kops := km.config.KeyOps()
 	var usersToDelete []keybase1.UID
-	for u, kids := range info {
+	for u, keyInfos := range info {
 		keys, ok := expectedKeys[u]
 		if !ok {
 			// The user was completely removed from the handle, which
@@ -405,8 +405,8 @@ func (km *KeyManagerStandard) deleteKeysForRemovedDevices(ctx context.Context,
 			km.log.CInfof(ctx, "Rekey %s: removing all server key halves "+
 				"for user %s", md.TlfID(), u)
 			usersToDelete = append(usersToDelete, u)
-			for kid, keyInfo := range kids {
-				err := kops.DeleteTLFCryptKeyServerHalf(ctx, u, kid,
+			for key, keyInfo := range keyInfos {
+				err := kops.DeleteTLFCryptKeyServerHalf(ctx, u, key.KID(),
 					keyInfo.ServerHalfID)
 				if err != nil {
 					return err
@@ -414,18 +414,18 @@ func (km *KeyManagerStandard) deleteKeysForRemovedDevices(ctx context.Context,
 			}
 			continue
 		}
-		keyLookup := make(map[keybase1.KID]bool)
+		keyLookup := make(map[kbfscrypto.CryptPublicKey]bool)
 		for _, key := range keys {
-			keyLookup[key.KID()] = true
+			keyLookup[key] = true
 		}
-		var toRemove []keybase1.KID
-		for kid, keyInfo := range kids {
+		var toRemove []kbfscrypto.CryptPublicKey
+		for key, keyInfo := range keyInfos {
 			// Remove any keys that no longer belong.
-			if !keyLookup[kid] {
-				toRemove = append(toRemove, kid)
+			if !keyLookup[key] {
+				toRemove = append(toRemove, key)
 				km.log.CInfof(ctx, "Rekey %s: removing server key halves "+
-					" for device %s of user %s", md.TlfID(), kid, u)
-				err := kops.DeleteTLFCryptKeyServerHalf(ctx, u, kid,
+					" for device %s of user %s", md.TlfID(), key, u)
+				err := kops.DeleteTLFCryptKeyServerHalf(ctx, u, key.KID(),
 					keyInfo.ServerHalfID)
 				if err != nil {
 					return err

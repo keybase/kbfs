@@ -557,8 +557,8 @@ func (md *BareRootMetadataV3) GetDeviceKIDs(
 	}
 
 	kids := make([]keybase1.KID, 0, len(dkim))
-	for kid := range dkim {
-		kids = append(kids, kid)
+	for key := range dkim {
+		kids = append(kids, key.KID())
 	}
 
 	return kids, nil
@@ -604,7 +604,7 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 		}
 		isWriter = false
 	}
-	info, ok := dkim[key.KID()]
+	info, ok := dkim[key]
 	if !ok {
 		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},

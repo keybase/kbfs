@@ -271,7 +271,7 @@ func makeDirRKeyInfoMap(uid keybase1.UID,
 	cryptPublicKey kbfscrypto.CryptPublicKey) UserDeviceKeyInfoMap {
 	return UserDeviceKeyInfoMap{
 		uid: {
-			cryptPublicKey.KID(): TLFCryptKeyInfo{
+			cryptPublicKey: TLFCryptKeyInfo{
 				EPubKeyIndex: -1, // MDv3 TODO: This goes to 0 when we cutover to MDv3.
 			},
 		},

@@ -14,9 +14,9 @@ import (
 )
 
 // DeviceKeyInfoMapV3 is a map from a user devices (identified by the
-// KID of the corresponding device CryptPublicKey) to the
-// TLF's symmetric secret key information.
-type DeviceKeyInfoMapV3 map[keybase1.KID]TLFCryptKeyInfo
+// corresponding device CryptPublicKey) to the TLF's symmetric secret
+// key information.
+type DeviceKeyInfoMapV3 map[kbfscrypto.CryptPublicKey]TLFCryptKeyInfo
 
 func (kim DeviceKeyInfoMapV3) fillInDeviceInfo(crypto Crypto,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
@@ -33,7 +33,7 @@ func (kim DeviceKeyInfoMapV3) fillInDeviceInfo(crypto Crypto,
 	// TODO: parallelize
 	for _, k := range publicKeys {
 		// Skip existing entries, only fill in new ones
-		if _, ok := kim[k.KID()]; ok {
+		if _, ok := kim[k]; ok {
 			continue
 		}
 
@@ -63,7 +63,7 @@ func (kim DeviceKeyInfoMapV3) fillInDeviceInfo(crypto Crypto,
 			return nil, err
 		}
 
-		kim[k.KID()] = TLFCryptKeyInfo{
+		kim[k] = TLFCryptKeyInfo{
 			ClientHalf:   encryptedClientHalf,
 			ServerHalfID: serverHalfID,
 			EPubKeyIndex: ePubIndex,
@@ -130,7 +130,7 @@ type TLFReaderKeyBundleV3 struct {
 
 // IsReader returns true if the given user device is in the reader set.
 func (trb TLFReaderKeyBundleV3) IsReader(user keybase1.UID, deviceKID keybase1.KID) bool {
-	_, ok := trb.RKeys[user][deviceKID]
+	_, ok := trb.RKeys[user][kbfscrypto.MakeCryptPublicKey(deviceKID)]
 	return ok
 }
 
@@ -161,7 +161,7 @@ type TLFWriterKeyBundleV3 struct {
 
 // IsWriter returns true if the given user device is in the device set.
 func (wkb TLFWriterKeyBundleV3) IsWriter(user keybase1.UID, deviceKID keybase1.KID) bool {
-	_, ok := wkb.Keys[user][deviceKID]
+	_, ok := wkb.Keys[user][kbfscrypto.MakeCryptPublicKey(deviceKID)]
 	return ok
 }
 

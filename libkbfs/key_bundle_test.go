@@ -10,6 +10,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
 	"github.com/stretchr/testify/require"
 )
@@ -51,7 +52,7 @@ func TestTLFCryptKeyInfoUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeTLFCryptKeyInfoFuture(t))
 }
 
-type deviceKeyInfoMapFuture map[keybase1.KID]tlfCryptKeyInfoFuture
+type deviceKeyInfoMapFuture map[kbfscrypto.CryptPublicKey]tlfCryptKeyInfoFuture
 
 func (dkimf deviceKeyInfoMapFuture) toCurrent() DeviceKeyInfoMap {
 	dkim := make(DeviceKeyInfoMap, len(dkimf))

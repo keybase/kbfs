@@ -86,11 +86,23 @@ func (kim DeviceKeyInfoMapV2) deepCopy() DeviceKeyInfoMapV2 {
 }
 
 func (kim DeviceKeyInfoMapV2) toDKIM() DeviceKeyInfoMap {
-	return DeviceKeyInfoMap(kim)
+	kimCopy := make(DeviceKeyInfoMap)
+	for kid, info := range kim {
+		// TODO: This actually still shares some data (in byte
+		// slices). Fix that.
+		kimCopy[kbfscrypto.MakeCryptPublicKey(kid)] = info
+	}
+	return kimCopy
 }
 
 func deviceKeyInfoMapToV2(dkim DeviceKeyInfoMap) DeviceKeyInfoMapV2 {
-	return DeviceKeyInfoMapV2(dkim)
+	kimCopy := make(DeviceKeyInfoMapV2)
+	for key, info := range dkim {
+		// TODO: This actually still shares some data (in byte
+		// slices). Fix that.
+		kimCopy[key.KID()] = info
+	}
+	return kimCopy
 }
 
 // UserDeviceKeyInfoMapV2 maps a user's keybase UID to their DeviceKeyInfoMapV2
@@ -308,7 +320,7 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 					info.EPubKeyIndex = newIndex
 				}
 			}
-			dkimCopy[kid] = info
+			dkimCopy[kbfscrypto.MakeCryptPublicKey(kid)] = info
 		}
 		rkbCopy.RKeys[uid] = dkimCopy
 	}
