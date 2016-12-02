@@ -297,14 +297,14 @@ func (uds userDeviceSet) union(other userDeviceSet) userDeviceSet {
 	return u
 }
 
-// userDevicePrivateKeys is a map from users to that user's list of
+// userDevicePrivateKeys is a map from users to that user's set of
 // device private keys.
-type userDevicePrivateKeys map[keybase1.UID][]kbfscrypto.CryptPrivateKey
+type userDevicePrivateKeys map[keybase1.UID]map[kbfscrypto.CryptPrivateKey]bool
 
 func (udpk userDevicePrivateKeys) toUserDeviceSet() userDeviceSet {
 	uds := make(userDeviceSet)
 	for uid, privKeys := range udpk {
-		for _, privKey := range privKeys {
+		for privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
 			if uds[uid] == nil {
 				uds[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
@@ -334,7 +334,7 @@ func checkGetTLFCryptKeyV2(t *testing.T, expected expecteRekeyInfoV2,
 	expectedTLFCryptKey kbfscrypto.TLFCryptKey,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
 	for uid, privKeys := range expected.writerPrivKeys {
-		for _, privKey := range privKeys {
+		for privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
 			serverHalf, ok := expected.serverMap[uid][pubKey]
 			require.True(t, ok, "writer uid=%s, key=%s",
@@ -368,7 +368,7 @@ func checkGetTLFCryptKeyV2(t *testing.T, expected expecteRekeyInfoV2,
 	}
 
 	for uid, privKeys := range expected.readerPrivKeys {
-		for _, privKey := range privKeys {
+		for privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
 			serverHalf, ok := expected.serverMap[uid][pubKey]
 			require.True(t, ok, "reader uid=%s, key=%s",
@@ -539,11 +539,11 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfo1 := expecteRekeyInfoV2{
 		writerPrivKeys: userDevicePrivateKeys{
-			uid1: {privKey1},
-			uid2: {privKey2},
+			uid1: {privKey1: true},
+			uid2: {privKey2: true},
 		},
 		readerPrivKeys: userDevicePrivateKeys{
-			uid3: {privKey3},
+			uid3: {privKey3: true},
 		},
 		serverMap:    serverMap1,
 		ePubKeyIndex: 0,
@@ -584,10 +584,10 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfo2 := expecteRekeyInfoV2{
 		writerPrivKeys: userDevicePrivateKeys{
-			uid1: {privKey1b},
+			uid1: {privKey1b: true},
 		},
 		readerPrivKeys: userDevicePrivateKeys{
-			uid3: {privKey3b},
+			uid3: {privKey3b: true},
 		},
 		serverMap:    serverMap2,
 		ePubKeyIndex: 1,
@@ -626,7 +626,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfo3 := expecteRekeyInfoV2{
 		writerPrivKeys: userDevicePrivateKeys{
-			uid1: {privKey1c},
+			uid1: {privKey1c: true},
 		},
 		readerPrivKeys: nil,
 		serverMap:      serverMap3,
@@ -672,7 +672,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	expectedRekeyInfo4 := expecteRekeyInfoV2{
 		writerPrivKeys: nil,
 		readerPrivKeys: userDevicePrivateKeys{
-			uid3: {privKey3c, privKey3d},
+			uid3: {privKey3c: true, privKey3d: true},
 		},
 		serverMap:    serverMap4,
 		ePubKeyIndex: -1,

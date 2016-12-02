@@ -389,7 +389,7 @@ func checkGetTLFCryptKeyV3(t *testing.T, expected expectedRekeyInfoV3,
 	expectedTLFCryptKey kbfscrypto.TLFCryptKey,
 	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3) {
 	for uid, privKeys := range expected.writerPrivKeys {
-		for _, privKey := range privKeys {
+		for privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
 			serverHalf, ok := expected.serverMap[uid][pubKey]
 			require.True(t, ok, "writer uid=%s, key=%s",
@@ -423,7 +423,7 @@ func checkGetTLFCryptKeyV3(t *testing.T, expected expectedRekeyInfoV3,
 	}
 
 	for uid, privKeys := range expected.readerPrivKeys {
-		for _, privKey := range privKeys {
+		for privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
 			serverHalf, ok := expected.serverMap[uid][pubKey]
 			require.True(t, ok, "reader uid=%s, key=%s",
@@ -577,11 +577,11 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfo1 := expectedRekeyInfoV3{
 		writerPrivKeys: userDevicePrivateKeys{
-			uid1: {privKey1},
-			uid2: {privKey2},
+			uid1: {privKey1: true},
+			uid2: {privKey2: true},
 		},
 		readerPrivKeys: userDevicePrivateKeys{
-			uid3: {privKey3},
+			uid3: {privKey3: true},
 		},
 		serverMap:          serverMap1,
 		writerEPubKeyIndex: 0,
@@ -623,10 +623,10 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfo2 := expectedRekeyInfoV3{
 		writerPrivKeys: userDevicePrivateKeys{
-			uid1: {privKey1b},
+			uid1: {privKey1b: true},
 		},
 		readerPrivKeys: userDevicePrivateKeys{
-			uid3: {privKey3b},
+			uid3: {privKey3b: true},
 		},
 		serverMap:          serverMap2,
 		writerEPubKeyIndex: 1,
@@ -666,7 +666,7 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfo3 := expectedRekeyInfoV3{
 		writerPrivKeys: userDevicePrivateKeys{
-			uid1: {privKey1c},
+			uid1: {privKey1c: true},
 		},
 		readerPrivKeys:     nil,
 		serverMap:          serverMap3,
@@ -713,7 +713,7 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 	expectedRekeyInfo4 := expectedRekeyInfoV3{
 		writerPrivKeys: nil,
 		readerPrivKeys: userDevicePrivateKeys{
-			uid3: {privKey3c, privKey3d},
+			uid3: {privKey3c: true, privKey3d: true},
 		},
 		serverMap:          serverMap4,
 		writerEPubKeyIndex: -1,
