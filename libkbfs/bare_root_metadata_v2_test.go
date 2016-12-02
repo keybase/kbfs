@@ -278,30 +278,58 @@ func checkServerMap(t *testing.T,
 	}
 }
 
-func checkWKBV2(t *testing.T, wkb *TLFWriterKeyBundleV2, serverMap ServerKeyMap,
-	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
-	expectedEPubKeyIndex int,
+func checkKeyBundlesV2(t *testing.T, wkb *TLFWriterKeyBundleV2,
+	rkb *TLFReaderKeyBundleV2, serverMap ServerKeyMap,
+	cryptos map[keybase1.KID]Crypto, expectedEPubKeyIndex int,
 	expectedEPubKey kbfscrypto.TLFEphemeralPublicKey,
-	crypto Crypto, expectedTLFCryptKey kbfscrypto.TLFCryptKey) {
-	info, ok := wkb.WKeys[uid][key.KID()]
-	require.True(t, ok)
+	expectedTLFCryptKey kbfscrypto.TLFCryptKey) {
+	for uid, serverHalves := range serverMap {
+		for kid, serverHalf := range serverHalves {
+			crypto, ok := cryptos[kid]
+			require.True(t, ok)
 
-	serverHalf, ok := serverMap[uid][key.KID()]
-	require.True(t, ok)
+			if info, ok := wkb.WKeys[uid][kid]; ok {
+				require.True(t, ok, "uid=%s, kid=%s", uid, kid)
 
-	require.Equal(t, expectedEPubKeyIndex, info.EPubKeyIndex)
+				require.Equal(
+					t, expectedEPubKeyIndex, info.EPubKeyIndex)
 
-	ePubKey := wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
-	require.Equal(t, expectedEPubKey, ePubKey)
+				ePubKey := wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
+				require.Equal(t, expectedEPubKey, ePubKey)
 
-	ctx := context.Background()
-	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
-		ctx, ePubKey, info.ClientHalf)
-	require.NoError(t, err)
+				ctx := context.Background()
+				clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
+					ctx, ePubKey, info.ClientHalf)
+				require.NoError(t, err)
 
-	tlfCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
-	require.NoError(t, err)
-	require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
+				tlfCryptKey, err := crypto.UnmaskTLFCryptKey(
+					serverHalf, clientHalf)
+				require.NoError(t, err)
+				require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
+			} else if info, ok := rkb.RKeys[uid][kid]; ok {
+				require.Equal(t, expectedEPubKeyIndex, info.EPubKeyIndex)
+
+				var ePubKey kbfscrypto.TLFEphemeralPublicKey
+				if info.EPubKeyIndex >= 0 {
+					ePubKey = wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
+				} else {
+					ePubKey = rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex]
+				}
+				require.Equal(t, expectedEPubKey, ePubKey)
+
+				ctx := context.Background()
+				clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
+					ctx, ePubKey, info.ClientHalf)
+				require.NoError(t, err)
+
+				tlfCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
+				require.NoError(t, err)
+				require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
+			} else {
+				t.Fatalf("Could not find uid=%s, kid=%s", uid, kid)
+			}
+		}
+	}
 }
 
 func checkRKBV2(t *testing.T, wkb *TLFWriterKeyBundleV2,
@@ -443,10 +471,13 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	crypto2 := NewCryptoLocal(codec, dummySigningKey, privKey2)
 	crypto3 := NewCryptoLocal(codec, dummySigningKey, privKey3)
 
-	checkWKBV2(t, wkb, serverMap1, uid1, privKey1.GetPublicKey(),
-		0, ePubKey1, crypto1, tlfCryptKey1)
-	checkWKBV2(t, wkb, serverMap1, uid2, privKey2.GetPublicKey(),
-		0, ePubKey1, crypto2, tlfCryptKey1)
+	cryptos1 := map[keybase1.KID]Crypto{
+		privKey1.GetPublicKey().KID(): crypto1,
+		privKey2.GetPublicKey().KID(): crypto2,
+		privKey3.GetPublicKey().KID(): crypto3,
+	}
+
+	checkKeyBundlesV2(t, wkb, rkb, serverMap1, cryptos1, 0, ePubKey1, tlfCryptKey1)
 
 	checkRKBV2(t, wkb, rkb, serverMap1, uid3, privKey3.GetPublicKey(),
 		0, ePubKey1, crypto3, tlfCryptKey1)
@@ -485,18 +516,17 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	}
 	checkServerMap(t, expectedServerMap2, serverMap2)
 
-	checkWKBV2(t, wkb, serverMap1, uid1, privKey1.GetPublicKey(),
-		0, ePubKey1, crypto1, tlfCryptKey1)
-	checkWKBV2(t, wkb, serverMap1, uid2, privKey2.GetPublicKey(),
-		0, ePubKey1, crypto2, tlfCryptKey1)
-	checkRKBV2(t, wkb, rkb, serverMap1, uid3, privKey3.GetPublicKey(),
-		0, ePubKey1, crypto3, tlfCryptKey1)
+	checkKeyBundlesV2(t, wkb, rkb, serverMap1, cryptos1, 0, ePubKey1, tlfCryptKey1)
 
 	crypto1b := NewCryptoLocal(codec, dummySigningKey, privKey1b)
 	crypto3b := NewCryptoLocal(codec, dummySigningKey, privKey3b)
 
-	checkWKBV2(t, wkb, serverMap2, uid1, privKey1b.GetPublicKey(),
-		1, ePubKey2, crypto1b, tlfCryptKey2)
+	cryptos2 := map[keybase1.KID]Crypto{
+		privKey1b.GetPublicKey().KID(): crypto1b,
+		privKey3b.GetPublicKey().KID(): crypto3b,
+	}
+
+	checkKeyBundlesV2(t, wkb, rkb, serverMap2, cryptos2, 1, ePubKey2, tlfCryptKey2)
 	checkRKBV2(t, wkb, rkb, serverMap2, uid3, privKey3b.GetPublicKey(),
 		1, ePubKey2, crypto3b, tlfCryptKey2)
 
@@ -538,15 +568,12 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	}
 	checkServerMap(t, expectedServerMap3, serverMap3)
 
-	checkWKBV2(t, wkb, serverMap1, uid1, privKey1.GetPublicKey(),
-		0, ePubKey1, crypto1, tlfCryptKey1)
-	checkWKBV2(t, wkb, serverMap1, uid2, privKey2.GetPublicKey(),
-		0, ePubKey1, crypto2, tlfCryptKey1)
+	checkKeyBundlesV2(t, wkb, rkb, serverMap1, cryptos1, 0, ePubKey1, tlfCryptKey1)
+	checkKeyBundlesV2(t, wkb, rkb, serverMap2, cryptos2, 1, ePubKey2, tlfCryptKey2)
+
 	checkRKBV2(t, wkb, rkb, serverMap1, uid3, privKey3.GetPublicKey(),
 		0, ePubKey1, crypto3, tlfCryptKey1)
 
-	checkWKBV2(t, wkb, serverMap2, uid1, privKey1b.GetPublicKey(),
-		1, ePubKey2, crypto1b, tlfCryptKey2)
 	checkRKBV2(t, wkb, rkb, serverMap2, uid3, privKey3b.GetPublicKey(),
 		1, ePubKey2, crypto3b, tlfCryptKey2)
 
