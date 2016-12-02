@@ -332,38 +332,6 @@ func checkKeyBundlesV2(t *testing.T, wkb *TLFWriterKeyBundleV2,
 	}
 }
 
-func checkRKBV2(t *testing.T, wkb *TLFWriterKeyBundleV2,
-	rkb *TLFReaderKeyBundleV2, serverMap ServerKeyMap,
-	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
-	expectedEPubKeyIndex int,
-	expectedEPubKey kbfscrypto.TLFEphemeralPublicKey,
-	crypto Crypto, expectedTLFCryptKey kbfscrypto.TLFCryptKey) {
-	info, ok := rkb.RKeys[uid][key.KID()]
-	require.True(t, ok)
-
-	serverHalf, ok := serverMap[uid][key.KID()]
-	require.True(t, ok)
-
-	require.Equal(t, expectedEPubKeyIndex, info.EPubKeyIndex)
-
-	var ePubKey kbfscrypto.TLFEphemeralPublicKey
-	if info.EPubKeyIndex >= 0 {
-		ePubKey = wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
-	} else {
-		ePubKey = rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex]
-	}
-	require.Equal(t, expectedEPubKey, ePubKey)
-
-	ctx := context.Background()
-	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
-		ctx, ePubKey, info.ClientHalf)
-	require.NoError(t, err)
-
-	tlfCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
-	require.NoError(t, err)
-	require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
-}
-
 func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
@@ -440,11 +408,6 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	}
 	checkServerMap(t, expectedServerMap1, serverMap1)
 
-	require.Equal(t, 3, len(serverMap1))
-	require.Equal(t, 1, len(serverMap1[uid1]))
-	require.Equal(t, 1, len(serverMap1[uid2]))
-	require.Equal(t, 1, len(serverMap1[uid3]))
-
 	// Do again to check idempotency.
 
 	serverMap1b, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
@@ -478,9 +441,6 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	}
 
 	checkKeyBundlesV2(t, wkb, rkb, serverMap1, cryptos1, 0, ePubKey1, tlfCryptKey1)
-
-	checkRKBV2(t, wkb, rkb, serverMap1, uid3, privKey3.GetPublicKey(),
-		0, ePubKey1, crypto3, tlfCryptKey1)
 
 	// Rekey.
 
@@ -527,9 +487,6 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	}
 
 	checkKeyBundlesV2(t, wkb, rkb, serverMap2, cryptos2, 1, ePubKey2, tlfCryptKey2)
-	checkRKBV2(t, wkb, rkb, serverMap2, uid3, privKey3b.GetPublicKey(),
-		1, ePubKey2, crypto3b, tlfCryptKey2)
-
 	// Reader rekey.
 
 	privKey3c := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3c")
@@ -571,17 +528,13 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	checkKeyBundlesV2(t, wkb, rkb, serverMap1, cryptos1, 0, ePubKey1, tlfCryptKey1)
 	checkKeyBundlesV2(t, wkb, rkb, serverMap2, cryptos2, 1, ePubKey2, tlfCryptKey2)
 
-	checkRKBV2(t, wkb, rkb, serverMap1, uid3, privKey3.GetPublicKey(),
-		0, ePubKey1, crypto3, tlfCryptKey1)
-
-	checkRKBV2(t, wkb, rkb, serverMap2, uid3, privKey3b.GetPublicKey(),
-		1, ePubKey2, crypto3b, tlfCryptKey2)
-
 	crypto3c := NewCryptoLocal(codec, dummySigningKey, privKey3c)
 	crypto3d := NewCryptoLocal(codec, dummySigningKey, privKey3d)
 
-	checkRKBV2(t, wkb, rkb, serverMap3, uid3, privKey3c.GetPublicKey(),
-		-1, ePubKey3, crypto3c, tlfCryptKey3)
-	checkRKBV2(t, wkb, rkb, serverMap3, uid3, privKey3d.GetPublicKey(),
-		-1, ePubKey3, crypto3d, tlfCryptKey3)
+	cryptos3 := map[keybase1.KID]Crypto{
+		privKey3c.GetPublicKey().KID(): crypto3c,
+		privKey3d.GetPublicKey().KID(): crypto3d,
+	}
+
+	checkKeyBundlesV2(t, wkb, rkb, serverMap3, cryptos3, -1, ePubKey3, tlfCryptKey3)
 }
