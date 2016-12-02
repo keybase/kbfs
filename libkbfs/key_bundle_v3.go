@@ -345,7 +345,6 @@ func (h TLFReaderKeyBundleID) IsNil() bool {
 func fillInDevicesAndServerMapV3(crypto cryptoPure, newIndex int,
 	cryptKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	keyInfoMap UserDeviceKeyInfoMapV3,
-	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys ServerKeyMap) (
 	modified bool, err error) {

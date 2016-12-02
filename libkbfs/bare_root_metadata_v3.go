@@ -1203,7 +1203,7 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 	// now fill in the secret keys as needed
 	newServerKeys := ServerKeyMap{}
 	filledWKeys, err := fillInDevicesAndServerMapV3(crypto, newWriterIndex, wKeys, wkb.Keys,
-		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+		ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -1213,7 +1213,7 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 	}
 
 	filledRKeys, err := fillInDevicesAndServerMapV3(crypto, newReaderIndex, rKeys, rkb.Keys,
-		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+		ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}

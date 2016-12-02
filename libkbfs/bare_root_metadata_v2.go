@@ -1259,12 +1259,12 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 	// now fill in the secret keys as needed
 	newServerKeys := ServerKeyMap{}
 	_, err = fillInDevicesAndServerMapV2(crypto, newIndex, wKeys,
-		wkb.WKeys, ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+		wkb.WKeys, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}
 	_, err = fillInDevicesAndServerMapV2(crypto, newIndex, rKeys,
-		rkb.RKeys, ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
+		rkb.RKeys, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}
