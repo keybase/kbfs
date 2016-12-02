@@ -5623,7 +5623,7 @@ func (_mr *_MockMutableBareRootMetadataRecorder) AddKeyGeneration(arg0, arg1, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddKeyGeneration", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockMutableBareRootMetadata) UpdateKeyGeneration(crypto Crypto, keyGen KeyGen, extra ExtraMetadata, wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {
+func (_m *MockMutableBareRootMetadata) UpdateKeyGeneration(crypto cryptoPure, keyGen KeyGen, extra ExtraMetadata, wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {
 	ret := _m.ctrl.Call(_m, "UpdateKeyGeneration", crypto, keyGen, extra, wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
 	ret0, _ := ret[0].(serverKeyMap)
 	ret1, _ := ret[1].(error)

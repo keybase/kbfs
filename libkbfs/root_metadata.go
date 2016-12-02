@@ -738,7 +738,7 @@ func (md *RootMetadata) revokeRemovedDevices(
 	return md.bareMd.RevokeRemovedDevices(wKeys, rKeys, md.extra)
 }
 
-func (md *RootMetadata) updateKeyGeneration(crypto Crypto, keyGen KeyGen,
+func (md *RootMetadata) updateKeyGeneration(crypto cryptoPure, keyGen KeyGen,
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,

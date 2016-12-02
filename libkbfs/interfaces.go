@@ -1793,7 +1793,7 @@ type MutableBareRootMetadata interface {
 		currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
 
-	UpdateKeyGeneration(crypto Crypto, keyGen KeyGen, extra ExtraMetadata,
+	UpdateKeyGeneration(crypto cryptoPure, keyGen KeyGen, extra ExtraMetadata,
 		wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,
 		ePrivKey kbfscrypto.TLFEphemeralPrivateKey,

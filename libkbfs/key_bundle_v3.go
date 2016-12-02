@@ -23,7 +23,7 @@ import (
 // key information.
 type DeviceKeyInfoMapV3 map[kbfscrypto.CryptPublicKey]TLFCryptKeyInfo
 
-func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfo(crypto Crypto,
+func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfo(crypto cryptoPure,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys []kbfscrypto.CryptPublicKey) (
@@ -342,7 +342,7 @@ func (h TLFReaderKeyBundleID) IsNil() bool {
 	return h == TLFReaderKeyBundleID{}
 }
 
-func fillInDevicesAndServerMapV3(crypto Crypto, newIndex int,
+func fillInDevicesAndServerMapV3(crypto cryptoPure, newIndex int,
 	cryptKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	keyInfoMap UserDeviceKeyInfoMapV3,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,

@@ -20,7 +20,7 @@ import (
 // TLF's symmetric secret key information.
 type DeviceKeyInfoMapV2 map[keybase1.KID]TLFCryptKeyInfo
 
-func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfo(crypto Crypto,
+func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfo(crypto cryptoPure,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys []kbfscrypto.CryptPublicKey) (
@@ -369,7 +369,7 @@ func (rkg TLFReaderKeyGenerationsV2) ToTLFReaderKeyBundleV3(
 	return rkbV3, nil
 }
 
-func fillInDevicesAndServerMapV2(crypto Crypto, newIndex int,
+func fillInDevicesAndServerMapV2(crypto cryptoPure, newIndex int,
 	cryptKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	keyInfoMap UserDeviceKeyInfoMapV2,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,

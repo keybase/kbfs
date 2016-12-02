@@ -54,7 +54,7 @@ type serverKeyMap map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServer
 // splitTLFCryptKey splits the given TLFCryptKey into two parts -- the
 // client-side part (which is encrypted with the given keys), and the
 // server-side part, which will be uploaded to the server.
-func splitTLFCryptKey(crypto Crypto, uid keybase1.UID,
+func splitTLFCryptKey(crypto cryptoPure, uid keybase1.UID,
 	tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	pubKey kbfscrypto.CryptPublicKey) (
