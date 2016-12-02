@@ -104,10 +104,6 @@ func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM() UserDeviceKeyInfoMap {
 	return udkim
 }
 
-func (udkimV2 UserDeviceKeyInfoMapV2) toV3() UserDeviceKeyInfoMapV3 {
-	return UserDeviceKeyInfoMapV3(udkimV2.toUDKIM())
-}
-
 func userDeviceKeyInfoMapToV2(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV2 {
 	udkimV2 := make(UserDeviceKeyInfoMapV2)
 	for u, dkim := range udkim {
@@ -178,7 +174,7 @@ func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
 
 	// Copy the latest UserDeviceKeyInfoMap.
 	wkb := tkg[keyGen-FirstValidKeyGen]
-	wkbCopy.Keys = wkb.WKeys.toV3()
+	wkbCopy.Keys = userDeviceKeyInfoMapToV3(wkb.WKeys.toUDKIM())
 
 	// Copy all of the TLFEphemeralPublicKeys at this generation.
 	wkbCopy.TLFEphemeralPublicKeys =
@@ -286,7 +282,7 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 	// in the TLFReaderEphemeralPublicKeys list. In V2 they only do if
 	// the index is negative. Otherwise it's in the writer's list.
 	for uid, dkim := range rkb.RKeys {
-		dkimCopy := make(DeviceKeyInfoMap)
+		dkimCopy := make(DeviceKeyInfoMapV3)
 		for kid, info := range dkim {
 			if info.EPubKeyIndex < 0 {
 				// Convert to the real index in the reader list.
