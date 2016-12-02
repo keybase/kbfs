@@ -1702,6 +1702,10 @@ type BareRootMetadata interface {
 	GetHistoricTLFCryptKey(c cryptoPure, keyGen KeyGen,
 		currentKey kbfscrypto.TLFCryptKey, extra ExtraMetadata) (
 		kbfscrypto.TLFCryptKey, error)
+	// GetUserDeviceKeyInfoMaps returns the given user device key info maps for the given
+	// key generation.
+	GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (
+		readers, writers UserDeviceKeyInfoMap, err error)
 }
 
 // MutableBareRootMetadata is a mutable interface to the bare serializeable MD that is signed by the reader or writer.
@@ -1787,10 +1791,6 @@ type MutableBareRootMetadata interface {
 	// MDv3 TODO: Get rid of this.
 	GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error)
 	PromoteReader(uid keybase1.UID, extra ExtraMetadata) error
-	// GetUserDeviceKeyInfoMaps returns the given user device key info maps for the given
-	// key generation.
-	GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (
-		readers, writers UserDeviceKeyInfoMap, err error)
 	// FinalizeRekey must be called called after all rekeying work
 	// has been performed on the underlying metadata.
 	FinalizeRekey(c cryptoPure, extra ExtraMetadata) error

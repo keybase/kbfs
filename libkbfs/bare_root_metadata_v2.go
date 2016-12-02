@@ -1121,14 +1121,14 @@ func (md *BareRootMetadataV2) GetUnresolvedParticipants() (readers, writers []ke
 	return md.UnresolvedReaders, md.WriterMetadataV2.Extra.UnresolvedWriters
 }
 
-// GetUserDeviceKeyInfoMaps implements the MutableBareRootMetadata interface for BareRootMetadataV2.
+// GetUserDeviceKeyInfoMaps implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(keyGen KeyGen, _ ExtraMetadata) (
 	readers, writers UserDeviceKeyInfoMap, err error) {
 	wkb, rkb, err := md.GetTLFKeyBundles(keyGen)
 	if err != nil {
 		return nil, nil, err
 	}
-	return rkb.RKeys, wkb.WKeys, nil
+	return rkb.RKeys.deepCopy(), wkb.WKeys.deepCopy(), nil
 }
 
 // AddKeyGeneration implements the MutableBareRootMetadata interface

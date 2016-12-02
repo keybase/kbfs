@@ -1086,7 +1086,7 @@ func (md *BareRootMetadataV3) GetUnresolvedParticipants() (readers, writers []ke
 	return md.UnresolvedReaders, md.WriterMetadata.UnresolvedWriters
 }
 
-// GetUserDeviceKeyInfoMaps implements the MutableBareRootMetadata interface for BareRootMetadataV3.
+// GetUserDeviceKeyInfoMaps implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (
 	readers, writers UserDeviceKeyInfoMap, err error) {
 	if md.TlfID().IsPublic() {

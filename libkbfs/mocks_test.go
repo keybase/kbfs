@@ -4941,6 +4941,18 @@ func (_mr *_MockBareRootMetadataRecorder) GetHistoricTLFCryptKey(arg0, arg1, arg
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetHistoricTLFCryptKey", arg0, arg1, arg2, arg3)
 }
 
+func (_m *MockBareRootMetadata) GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (UserDeviceKeyInfoMap, UserDeviceKeyInfoMap, error) {
+	ret := _m.ctrl.Call(_m, "GetUserDeviceKeyInfoMaps", keyGen, extra)
+	ret0, _ := ret[0].(UserDeviceKeyInfoMap)
+	ret1, _ := ret[1].(UserDeviceKeyInfoMap)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+func (_mr *_MockBareRootMetadataRecorder) GetUserDeviceKeyInfoMaps(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserDeviceKeyInfoMaps", arg0, arg1)
+}
+
 // Mock of MutableBareRootMetadata interface
 type MockMutableBareRootMetadata struct {
 	ctrl     *gomock.Controller
@@ -5368,6 +5380,18 @@ func (_mr *_MockMutableBareRootMetadataRecorder) GetHistoricTLFCryptKey(arg0, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetHistoricTLFCryptKey", arg0, arg1, arg2, arg3)
 }
 
+func (_m *MockMutableBareRootMetadata) GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (UserDeviceKeyInfoMap, UserDeviceKeyInfoMap, error) {
+	ret := _m.ctrl.Call(_m, "GetUserDeviceKeyInfoMaps", keyGen, extra)
+	ret0, _ := ret[0].(UserDeviceKeyInfoMap)
+	ret1, _ := ret[1].(UserDeviceKeyInfoMap)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+func (_mr *_MockMutableBareRootMetadataRecorder) GetUserDeviceKeyInfoMaps(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserDeviceKeyInfoMaps", arg0, arg1)
+}
+
 func (_m *MockMutableBareRootMetadata) SetRefBytes(refBytes uint64) {
 	_m.ctrl.Call(_m, "SetRefBytes", refBytes)
 }
@@ -5619,18 +5643,6 @@ func (_m *MockMutableBareRootMetadata) PromoteReader(uid keybase1.UID, extra Ext
 
 func (_mr *_MockMutableBareRootMetadataRecorder) PromoteReader(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PromoteReader", arg0, arg1)
-}
-
-func (_m *MockMutableBareRootMetadata) GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (UserDeviceKeyInfoMap, UserDeviceKeyInfoMap, error) {
-	ret := _m.ctrl.Call(_m, "GetUserDeviceKeyInfoMaps", keyGen, extra)
-	ret0, _ := ret[0].(UserDeviceKeyInfoMap)
-	ret1, _ := ret[1].(UserDeviceKeyInfoMap)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-func (_mr *_MockMutableBareRootMetadataRecorder) GetUserDeviceKeyInfoMaps(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserDeviceKeyInfoMaps", arg0, arg1)
 }
 
 func (_m *MockMutableBareRootMetadata) FinalizeRekey(c cryptoPure, extra ExtraMetadata) error {
