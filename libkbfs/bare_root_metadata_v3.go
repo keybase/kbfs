@@ -943,10 +943,8 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(
 		TLFEphemeralPublicKeys:        wPublicKeys,
 	}
 	newReaderKeys := &TLFReaderKeyBundleV3{
-		TLFReaderKeyBundleV2: TLFReaderKeyBundleV2{
-			RKeys: rDkim,
-			TLFReaderEphemeralPublicKeys: rPublicKeys,
-		},
+		RKeys: rDkim,
+		TLFReaderEphemeralPublicKeys: rPublicKeys,
 	}
 	md.WriterMetadata.LatestKeyGen++
 	return &ExtraMetadataV3{

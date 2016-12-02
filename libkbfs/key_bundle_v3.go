@@ -15,7 +15,25 @@ import (
 
 // TLFReaderKeyBundleV3 is an alias to a TLFReaderKeyBundleV2 for clarity.
 type TLFReaderKeyBundleV3 struct {
-	TLFReaderKeyBundleV2
+	RKeys UserDeviceKeyInfoMap
+
+	// M_e as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
+	// Because devices can be added into the key generation after it
+	// is initially created (so those devices can get access to
+	// existing data), we track multiple ephemeral public keys; the
+	// one used by a particular device is specified by EPubKeyIndex in
+	// its TLFCryptoKeyInfo struct.
+	// This list is needed so a reader rekey doesn't modify the writer
+	// metadata.
+	TLFReaderEphemeralPublicKeys kbfscrypto.TLFEphemeralPublicKeys `codec:"readerEPubKey,omitempty"`
+
+	codec.UnknownFieldSetHandler
+}
+
+// IsReader returns true if the given user device is in the reader set.
+func (trb TLFReaderKeyBundleV3) IsReader(user keybase1.UID, deviceKID keybase1.KID) bool {
+	_, ok := trb.RKeys[user][deviceKID]
+	return ok
 }
 
 // TLFWriterKeyBundleV3 is a bundle of writer keys and historic symmetric encryption

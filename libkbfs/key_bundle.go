@@ -266,9 +266,7 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 	}
 
 	rkbCopy := &TLFReaderKeyBundleV3{
-		TLFReaderKeyBundleV2: TLFReaderKeyBundleV2{
-			RKeys: make(UserDeviceKeyInfoMap),
-		},
+		RKeys: make(UserDeviceKeyInfoMap),
 	}
 
 	// Copy the latest UserDeviceKeyInfoMap.
