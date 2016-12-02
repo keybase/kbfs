@@ -1222,10 +1222,8 @@ func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
 	return nil, nil
 }
 
-// fillInDevices ensures that every device for every writer and reader
-// in the provided lists has complete TLF crypt key info, and uses the
-// new ephemeral key pair to generate the info if it doesn't yet
-// exist.
+// UpdateKeyGeneration implements the MutableBareRootMetadata interface
+// for BareRootMetadataV2.
 func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 	keyGen KeyGen, _ ExtraMetadata,
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,

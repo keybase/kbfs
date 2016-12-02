@@ -1167,10 +1167,8 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(
 	return rUDKIM, wUDKIM, nil
 }
 
-// fillInDevices ensures that every device for every writer and reader
-// in the provided lists has complete TLF crypt key info, and uses the
-// new ephemeral key pair to generate the info if it doesn't yet
-// exist.
+// UpdateKeyGeneration implements the MutableBareRootMetadata interface
+// for BareRootMetadataV3.
 func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 	keyGen KeyGen, extra ExtraMetadata,
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
