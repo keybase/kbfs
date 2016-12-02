@@ -266,8 +266,13 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 	require.Equal(t, expectedRKeys, brmd.RKeys)
 }
 
+// userDeviceSet is a map from users to that user's set of devices,
+// represented by each device's crypt public key.
 type userDeviceSet map[keybase1.UID]map[kbfscrypto.CryptPublicKey]bool
 
+// union returns the union of the user's keys in uds and other. For a
+// particular user, it's assumed that that user's keys in uds and
+// other are disjoint.
 func (uds userDeviceSet) union(other userDeviceSet) userDeviceSet {
 	u := make(userDeviceSet)
 	for uid, keys := range uds {
@@ -292,6 +297,8 @@ func (uds userDeviceSet) union(other userDeviceSet) userDeviceSet {
 	return u
 }
 
+// userDevicePrivateKeys is a map from users to that user's list of
+// device private keys.
 type userDevicePrivateKeys map[keybase1.UID][]kbfscrypto.CryptPrivateKey
 
 func (udpk userDevicePrivateKeys) toUserDeviceSet() userDeviceSet {
@@ -308,16 +315,18 @@ func (udpk userDevicePrivateKeys) toUserDeviceSet() userDeviceSet {
 	return uds
 }
 
+// expectedRekeyInfo contains all the information needed to check a
+// rekey run (that doesn't add a generation).
 type expectedRekeyInfo struct {
-	writers, readers userDevicePrivateKeys
-	serverMap        ServerKeyMap
-	ePubKeyIndex     int
-	ePubKey          kbfscrypto.TLFEphemeralPublicKey
-	tlfCryptKey      kbfscrypto.TLFCryptKey
+	writerPrivKeys, readerPrivKeys userDevicePrivateKeys
+	serverMap                      ServerKeyMap
+	ePubKeyIndex                   int
+	ePubKey                        kbfscrypto.TLFEphemeralPublicKey
+	tlfCryptKey                    kbfscrypto.TLFCryptKey
 }
 
 func checkServerMap(t *testing.T,
-	expectedWriters, expectedReaders map[keybase1.UID][]kbfscrypto.CryptPrivateKey,
+	expectedWriters, expectedReaders userDevicePrivateKeys,
 	serverMap ServerKeyMap) {
 	require.Equal(t, len(expectedWriters)+len(expectedReaders), len(serverMap))
 	for uid, privKeys := range expectedWriters {
@@ -341,8 +350,8 @@ func checkServerMap(t *testing.T,
 
 func checkKeyBundlesV2Helper(t *testing.T, expected expectedRekeyInfo,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
-	checkServerMap(t, expected.writers, expected.readers, expected.serverMap)
-	for uid, privKeys := range expected.writers {
+	checkServerMap(t, expected.writerPrivKeys, expected.readerPrivKeys, expected.serverMap)
+	for uid, privKeys := range expected.writerPrivKeys {
 		for _, privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
 			serverHalf, ok := expected.serverMap[uid][pubKey]
@@ -374,7 +383,7 @@ func checkKeyBundlesV2Helper(t *testing.T, expected expectedRekeyInfo,
 		}
 	}
 
-	for uid, privKeys := range expected.readers {
+	for uid, privKeys := range expected.readerPrivKeys {
 		for _, privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
 			serverHalf, ok := expected.serverMap[uid][pubKey]
@@ -430,10 +439,10 @@ func checkKeyBundlesV2(t *testing.T, expecteds []expectedRekeyInfo,
 		expectedReaderEPublicKeys kbfscrypto.TLFEphemeralPublicKeys
 	for _, expected := range expecteds {
 		expectedWriterSet = expectedWriterSet.union(
-			expected.writers.toUserDeviceSet())
+			expected.writerPrivKeys.toUserDeviceSet())
 		expectedReaderSet = expectedReaderSet.union(
-			expected.readers.toUserDeviceSet())
-		if len(expected.writers)+len(expected.readers) > 0 {
+			expected.readerPrivKeys.toUserDeviceSet())
+		if len(expected.writerPrivKeys)+len(expected.readerPrivKeys) > 0 {
 			if expected.ePubKeyIndex >= 0 {
 				require.Equal(t, expected.ePubKeyIndex,
 					len(expectedWriterEPublicKeys))
@@ -520,11 +529,11 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedRekeyInfo1 := expectedRekeyInfo{
-		writers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
+		writerPrivKeys: userDevicePrivateKeys{
 			uid1: {privKey1},
 			uid2: {privKey2},
 		},
-		readers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
+		readerPrivKeys: userDevicePrivateKeys{
 			uid3: {privKey3},
 		},
 		serverMap:    serverMap1,
@@ -567,10 +576,10 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedRekeyInfo2 := expectedRekeyInfo{
-		writers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
+		writerPrivKeys: userDevicePrivateKeys{
 			uid1: {privKey1b},
 		},
-		readers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
+		readerPrivKeys: userDevicePrivateKeys{
 			uid3: {privKey3b},
 		},
 		serverMap:    serverMap2,
@@ -616,8 +625,8 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedRekeyInfo3 := expectedRekeyInfo{
-		writers: nil,
-		readers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
+		writerPrivKeys: nil,
+		readerPrivKeys: userDevicePrivateKeys{
 			uid3: {privKey3c, privKey3d},
 		},
 		serverMap:    serverMap3,
