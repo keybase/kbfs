@@ -411,11 +411,11 @@ func checkKeyBundlesV2Helper(t *testing.T, expected expectedRekeyInfo,
 	}
 }
 
-func userDeviceKeyInfoMapToDeviceSet(udkim UserDeviceKeyInfoMap) userDeviceSet {
+func userDeviceKeyInfoMapV2ToDeviceSet(udkimV2 UserDeviceKeyInfoMapV2) userDeviceSet {
 	u := make(userDeviceSet)
-	for uid, dkim := range udkim {
+	for uid, dkimV2 := range udkimV2 {
 		u[uid] = make(map[keybase1.KID]bool)
-		for kid := range dkim {
+		for kid := range dkimV2 {
 			u[uid][kid] = true
 		}
 	}
@@ -452,8 +452,8 @@ func checkKeyBundlesV2(t *testing.T, expecteds []expectedRekeyInfo,
 		}
 	}
 
-	writerSet := userDeviceKeyInfoMapToDeviceSet(wkb.WKeys)
-	readerSet := userDeviceKeyInfoMapToDeviceSet(rkb.RKeys)
+	writerSet := userDeviceKeyInfoMapV2ToDeviceSet(wkb.WKeys)
+	readerSet := userDeviceKeyInfoMapV2ToDeviceSet(rkb.RKeys)
 
 	require.Equal(t, expectedWriterSet, writerSet)
 	require.Equal(t, expectedReaderSet, readerSet)
@@ -516,29 +516,9 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	var expectedRekeyInfos []expectedRekeyInfo
 	checkKeyBundlesV2(t, expectedRekeyInfos, pubKey, wkb, rkb)
 
-	require.Equal(t, TLFWriterKeyBundleV2{
-		WKeys:        UserDeviceKeyInfoMapV2{},
-		TLFPublicKey: pubKey,
-	}, *wkb)
-	require.Equal(t, TLFReaderKeyBundleV2{
-		RKeys: UserDeviceKeyInfoMapV2{},
-	}, *rkb)
-
 	serverMap1, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
 		extra, wKeys, rKeys, ePubKey1, ePrivKey1, tlfCryptKey1)
 	require.NoError(t, err)
-
-	require.Equal(t, 2, len(wkb.WKeys))
-	require.Equal(t, 1, len(wkb.WKeys[uid1]))
-	require.Equal(t, 1, len(wkb.WKeys[uid2]))
-	require.Equal(t, pubKey, wkb.TLFPublicKey)
-	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys{ePubKey1},
-		wkb.TLFEphemeralPublicKeys)
-
-	require.Equal(t, 1, len(rkb.RKeys))
-	require.Equal(t, 1, len(rkb.RKeys[uid3]))
-	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
-		rkb.TLFReaderEphemeralPublicKeys)
 
 	expectedRekeyInfo1 := expectedRekeyInfo{
 		writers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
@@ -563,18 +543,6 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		extra, wKeys, rKeys, ePubKey1, ePrivKey1, tlfCryptKey1)
 	require.NoError(t, err)
 
-	require.Equal(t, 2, len(wkb.WKeys))
-	require.Equal(t, 1, len(wkb.WKeys[uid1]))
-	require.Equal(t, 1, len(wkb.WKeys[uid2]))
-	require.Equal(t, pubKey, wkb.TLFPublicKey)
-	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys{ePubKey1},
-		wkb.TLFEphemeralPublicKeys)
-
-	require.Equal(t, 1, len(rkb.RKeys))
-	require.Equal(t, 1, len(rkb.RKeys[uid3]))
-	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
-		rkb.TLFReaderEphemeralPublicKeys)
-
 	expectedRekeyInfo1b := expectedRekeyInfo{
 		serverMap: serverMap1b,
 	}
@@ -598,18 +566,6 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	serverMap2, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
 		extra, wKeys, rKeys, ePubKey2, ePrivKey2, tlfCryptKey2)
 	require.NoError(t, err)
-
-	require.Equal(t, 2, len(wkb.WKeys))
-	require.Equal(t, 2, len(wkb.WKeys[uid1]))
-	require.Equal(t, 1, len(wkb.WKeys[uid2]))
-	require.Equal(t, pubKey, wkb.TLFPublicKey)
-	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys{ePubKey1, ePubKey2},
-		wkb.TLFEphemeralPublicKeys)
-
-	require.Equal(t, 1, len(rkb.RKeys))
-	require.Equal(t, 2, len(rkb.RKeys[uid3]))
-	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
-		rkb.TLFReaderEphemeralPublicKeys)
 
 	expectedRekeyInfo2 := expectedRekeyInfo{
 		writers: map[keybase1.UID][]kbfscrypto.CryptPrivateKey{
@@ -645,18 +601,6 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	serverMap3, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
 		extra, nil, rKeysReader, ePubKey3, ePrivKey3, tlfCryptKey3)
 	require.NoError(t, err)
-
-	require.Equal(t, 2, len(wkb.WKeys))
-	require.Equal(t, 2, len(wkb.WKeys[uid1]))
-	require.Equal(t, 1, len(wkb.WKeys[uid2]))
-	require.Equal(t, pubKey, wkb.TLFPublicKey)
-	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys{ePubKey1, ePubKey2},
-		wkb.TLFEphemeralPublicKeys)
-
-	require.Equal(t, 1, len(rkb.RKeys))
-	require.Equal(t, 4, len(rkb.RKeys[uid3]))
-	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys{ePubKey3},
-		rkb.TLFReaderEphemeralPublicKeys)
 
 	expectedRekeyInfo3 := expectedRekeyInfo{
 		writers: nil,
