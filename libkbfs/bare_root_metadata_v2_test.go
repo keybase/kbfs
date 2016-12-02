@@ -297,7 +297,7 @@ func checkServerMap(t *testing.T,
 	}
 }
 
-func checkKeyBundlesV2(t *testing.T, expected expectedRekeyInfo,
+func checkKeyBundlesV2Helper(t *testing.T, expected expectedRekeyInfo,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
 	checkServerMap(t, expected.writers, expected.readers, expected.serverMap)
 	for uid, privKeys := range expected.writers {
@@ -365,6 +365,13 @@ func checkKeyBundlesV2(t *testing.T, expected expectedRekeyInfo,
 			require.NoError(t, err)
 			require.Equal(t, expected.tlfCryptKey, tlfCryptKey)
 		}
+	}
+}
+
+func checkKeyBundlesV2(t *testing.T, expecteds []expectedRekeyInfo,
+	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
+	for _, expected := range expecteds {
+		checkKeyBundlesV2Helper(t, expected, wkb, rkb)
 	}
 }
 
@@ -450,8 +457,9 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		ePubKey:      ePubKey1,
 		tlfCryptKey:  tlfCryptKey1,
 	}
+	expectedRekeyInfos := []expectedRekeyInfo{expectedRekeyInfo1}
 
-	checkKeyBundlesV2(t, expectedRekeyInfo1, wkb, rkb)
+	checkKeyBundlesV2(t, expectedRekeyInfos, wkb, rkb)
 
 	// Do again to check idempotency.
 
@@ -475,7 +483,9 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		serverMap: serverMap1b,
 	}
 
-	checkKeyBundlesV2(t, expectedRekeyInfo1b, wkb, rkb)
+	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo1b)
+
+	checkKeyBundlesV2(t, expectedRekeyInfos, wkb, rkb)
 
 	// Rekey.
 
@@ -518,8 +528,9 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		tlfCryptKey:  tlfCryptKey2,
 	}
 
-	checkKeyBundlesV2(t, expectedRekeyInfo1, wkb, rkb)
-	checkKeyBundlesV2(t, expectedRekeyInfo2, wkb, rkb)
+	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo2)
+
+	checkKeyBundlesV2(t, expectedRekeyInfos, wkb, rkb)
 
 	// Reader rekey.
 
@@ -561,7 +572,6 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		ePubKey:      ePubKey3,
 		tlfCryptKey:  tlfCryptKey3,
 	}
-	checkKeyBundlesV2(t, expectedRekeyInfo1, wkb, rkb)
-	checkKeyBundlesV2(t, expectedRekeyInfo2, wkb, rkb)
-	checkKeyBundlesV2(t, expectedRekeyInfo3, wkb, rkb)
+	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo3)
+	checkKeyBundlesV2(t, expectedRekeyInfos, wkb, rkb)
 }
