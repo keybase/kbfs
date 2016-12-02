@@ -289,8 +289,6 @@ func checkKeyBundlesV2(t *testing.T, wkb *TLFWriterKeyBundleV2,
 			require.True(t, ok)
 
 			if info, ok := wkb.WKeys[uid][kid]; ok {
-				require.True(t, ok, "uid=%s, kid=%s", uid, kid)
-
 				require.Equal(
 					t, expectedEPubKeyIndex, info.EPubKeyIndex)
 
@@ -408,6 +406,20 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	}
 	checkServerMap(t, expectedServerMap1, serverMap1)
 
+	dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
+
+	crypto1 := NewCryptoLocal(codec, dummySigningKey, privKey1)
+	crypto2 := NewCryptoLocal(codec, dummySigningKey, privKey2)
+	crypto3 := NewCryptoLocal(codec, dummySigningKey, privKey3)
+
+	cryptos1 := map[keybase1.KID]Crypto{
+		privKey1.GetPublicKey().KID(): crypto1,
+		privKey2.GetPublicKey().KID(): crypto2,
+		privKey3.GetPublicKey().KID(): crypto3,
+	}
+
+	checkKeyBundlesV2(t, wkb, rkb, serverMap1, cryptos1, 0, ePubKey1, tlfCryptKey1)
+
 	// Do again to check idempotency.
 
 	serverMap1b, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
@@ -427,20 +439,6 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		rkb.TLFReaderEphemeralPublicKeys)
 
 	checkServerMap(t, nil, serverMap1b)
-
-	dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
-
-	crypto1 := NewCryptoLocal(codec, dummySigningKey, privKey1)
-	crypto2 := NewCryptoLocal(codec, dummySigningKey, privKey2)
-	crypto3 := NewCryptoLocal(codec, dummySigningKey, privKey3)
-
-	cryptos1 := map[keybase1.KID]Crypto{
-		privKey1.GetPublicKey().KID(): crypto1,
-		privKey2.GetPublicKey().KID(): crypto2,
-		privKey3.GetPublicKey().KID(): crypto3,
-	}
-
-	checkKeyBundlesV2(t, wkb, rkb, serverMap1, cryptos1, 0, ePubKey1, tlfCryptKey1)
 
 	// Rekey.
 
