@@ -83,9 +83,9 @@ func TestRemoveDevicesNotInV2(t *testing.T) {
 		},
 	}
 
-	removalInfo := udkimV2.removeDevicesNotIn(map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid2: {key2a, key2c},
-		uid3: {key3a},
+	removalInfo := udkimV2.removeDevicesNotIn(UserDevicePublicKeys{
+		uid2: {key2a: true, key2c: true},
+		uid3: {key3a: true},
 	})
 
 	require.Equal(t, UserDeviceKeyInfoMapV2{

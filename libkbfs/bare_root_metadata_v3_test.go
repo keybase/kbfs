@@ -148,11 +148,11 @@ func TestRevokeRemovedDevicesV3(t *testing.T) {
 		},
 	}
 
-	wKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid1: {key1},
+	wKeys := UserDevicePublicKeys{
+		uid1: {key1: true},
 	}
-	rKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid3: {key3},
+	rKeys := UserDevicePublicKeys{
+		uid3: {key3: true},
 	}
 
 	removalInfo, err := brmd.RevokeRemovedDevices(wKeys, rKeys, extra)
@@ -220,10 +220,10 @@ func TestBareRootMetadataV3FillInDevices(t *testing.T) {
 	privKey2 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key2")
 	privKey3 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3")
 
-	wKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid1: {privKey1.GetPublicKey()},
-		uid2: {privKey2.GetPublicKey()},
-		uid3: {privKey3.GetPublicKey()},
+	wKeys := UserDevicePublicKeys{
+		uid1: {privKey1.GetPublicKey(): true},
+		uid2: {privKey2.GetPublicKey(): true},
+		uid3: {privKey3.GetPublicKey(): true},
 	}
 
 	signingKey1 := kbfscrypto.MakeFakeSigningKeyOrBust("key1")
@@ -269,7 +269,7 @@ func TestBareRootMetadataV3FillInDevices(t *testing.T) {
 	testKeyBundleCheckKeysV3(t, crypto3, uid3, privKey3.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverMap)
 
 	privKey1b := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1b")
-	wKeys[uid1] = append(wKeys[uid1], privKey1b.GetPublicKey())
+	wKeys[uid1][privKey1b.GetPublicKey()] = true
 
 	_, _, ePubKey2, ePrivKey2, tlfCryptKey2, err := crypto1.MakeRandomTLFKeys()
 	require.NoError(t, err)
@@ -313,12 +313,12 @@ func TestBareRootMetadataV3FillInDevicesNoExtraKeys(t *testing.T) {
 	privKey1 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1")
 	privKey2 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key2")
 
-	wKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid1: {privKey1.GetPublicKey()},
+	wKeys := UserDevicePublicKeys{
+		uid1: {privKey1.GetPublicKey(): true},
 	}
 
-	rKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid2: {privKey2.GetPublicKey()},
+	rKeys := UserDevicePublicKeys{
+		uid2: {privKey2.GetPublicKey(): true},
 	}
 
 	signingKey1 := kbfscrypto.MakeFakeSigningKeyOrBust("key1")
@@ -457,15 +457,15 @@ func checkGetTLFCryptKeyV3(t *testing.T, expected expectedRekeyInfoV3,
 	}
 }
 
-func userDeviceKeyInfoMapV3ToPublicKeys(udkimV3 UserDeviceKeyInfoMapV3) userDeviceSet {
-	uds := make(userDeviceSet)
+func userDeviceKeyInfoMapV3ToPublicKeys(udkimV3 UserDeviceKeyInfoMapV3) UserDevicePublicKeys {
+	pubKeys := make(UserDevicePublicKeys)
 	for uid, dkimV3 := range udkimV3 {
-		uds[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
 		for key := range dkimV3 {
-			uds[uid][key] = true
+			pubKeys[uid][key] = true
 		}
 	}
-	return uds
+	return pubKeys
 }
 
 // checkKeyBundlesV3 checks that wkb and rkb contain exactly the info
@@ -532,13 +532,13 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 	privKey2 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key2")
 	privKey3 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3")
 
-	wKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid1: {privKey1.GetPublicKey()},
-		uid2: {privKey2.GetPublicKey()},
+	wKeys := UserDevicePublicKeys{
+		uid1: {privKey1.GetPublicKey(): true},
+		uid2: {privKey2.GetPublicKey(): true},
 	}
 
-	rKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid3: {privKey3.GetPublicKey()},
+	rKeys := UserDevicePublicKeys{
+		uid3: {privKey3.GetPublicKey(): true},
 	}
 
 	tlfID := tlf.FakeID(1, false)
@@ -609,10 +609,10 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 	// Rekey.
 
 	privKey1b := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1b")
-	wKeys[uid1] = append(wKeys[uid1], privKey1b.GetPublicKey())
+	wKeys[uid1][privKey1b.GetPublicKey()] = true
 
 	privKey3b := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3b")
-	rKeys[uid3] = append(rKeys[uid3], privKey3b.GetPublicKey())
+	rKeys[uid3][privKey3b.GetPublicKey()] = true
 
 	_, _, ePubKey2, ePrivKey2, _, err := crypto.MakeRandomTLFKeys()
 	require.NoError(t, err)
@@ -655,7 +655,7 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 	// Rekey writers only.
 
 	privKey1c := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1c")
-	wKeys[uid1] = append(wKeys[uid1], privKey1c.GetPublicKey())
+	wKeys[uid1][privKey1c.GetPublicKey()] = true
 
 	_, _, ePubKey3, ePrivKey3, _, err := crypto.MakeRandomTLFKeys()
 	require.NoError(t, err)
@@ -697,13 +697,13 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 
 	privKey3c := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3c")
 	privKey3d := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3d")
-	rKeys[uid3] = append(rKeys[uid3],
-		privKey3c.GetPublicKey(), privKey3d.GetPublicKey())
+	rKeys[uid3][privKey3c.GetPublicKey()] = true
+	rKeys[uid3][privKey3d.GetPublicKey()] = true
 
 	_, _, ePubKey4, ePrivKey4, _, err := crypto.MakeRandomTLFKeys()
 	require.NoError(t, err)
 
-	rKeysReader := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
+	rKeysReader := UserDevicePublicKeys{
 		uid3: rKeys[uid3],
 	}
 	serverMap4, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,

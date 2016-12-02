@@ -5623,7 +5623,7 @@ func (_mr *_MockMutableBareRootMetadataRecorder) AddKeyGeneration(arg0, arg1, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddKeyGeneration", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockMutableBareRootMetadata) UpdateKeyGeneration(crypto cryptoPure, keyGen KeyGen, extra ExtraMetadata, wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error) {
+func (_m *MockMutableBareRootMetadata) UpdateKeyGeneration(crypto cryptoPure, keyGen KeyGen, extra ExtraMetadata, wKeys UserDevicePublicKeys, rKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error) {
 	ret := _m.ctrl.Call(_m, "UpdateKeyGeneration", crypto, keyGen, extra, wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
 	ret0, _ := ret[0].(ServerKeyMap)
 	ret1, _ := ret[1].(error)
@@ -5644,7 +5644,7 @@ func (_mr *_MockMutableBareRootMetadataRecorder) PromoteReader(arg0, arg1 interf
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PromoteReader", arg0, arg1)
 }
 
-func (_m *MockMutableBareRootMetadata) RevokeRemovedDevices(wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, extra ExtraMetadata) (ServerHalfRemovalInfo, error) {
+func (_m *MockMutableBareRootMetadata) RevokeRemovedDevices(wKeys UserDevicePublicKeys, rKeys UserDevicePublicKeys, extra ExtraMetadata) (ServerHalfRemovalInfo, error) {
 	ret := _m.ctrl.Call(_m, "RevokeRemovedDevices", wKeys, rKeys, extra)
 	ret0, _ := ret[0].(ServerHalfRemovalInfo)
 	ret1, _ := ret[1].(error)

@@ -733,13 +733,13 @@ func (md *RootMetadata) promoteReader(uid keybase1.UID) error {
 }
 
 func (md *RootMetadata) revokeRemovedDevices(
-	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey) (
+	wKeys, rKeys UserDevicePublicKeys) (
 	ServerHalfRemovalInfo, error) {
 	return md.bareMd.RevokeRemovedDevices(wKeys, rKeys, md.extra)
 }
 
 func (md *RootMetadata) updateKeyGeneration(crypto cryptoPure, keyGen KeyGen,
-	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	wKeys, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error) {

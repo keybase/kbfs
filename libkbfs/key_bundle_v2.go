@@ -23,12 +23,12 @@ type DeviceKeyInfoMapV2 map[keybase1.KID]TLFCryptKeyInfo
 func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfo(crypto cryptoPure,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
-	publicKeys []kbfscrypto.CryptPublicKey) (
+	publicKeys map[kbfscrypto.CryptPublicKey]bool) (
 	serverMap map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf,
 	err error) {
 	serverMap = make(map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf)
 	// TODO: parallelize
-	for _, k := range publicKeys {
+	for k := range publicKeys {
 		// Skip existing entries, and only fill in new ones.
 		if _, ok := dkimV2[k.KID()]; ok {
 			continue
@@ -108,11 +108,11 @@ func udkimToV2(codec kbfscodec.Codec, udkim UserDeviceKeyInfoMap) (
 // removeDevicesNotIn removes any info for any device that is not
 // contained in the given map of users and devices.
 func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
-	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) ServerHalfRemovalInfo {
+	keys UserDevicePublicKeys) ServerHalfRemovalInfo {
 	removalInfo := make(ServerHalfRemovalInfo)
 	for uid, dkim := range udkimV2 {
 		userKIDs := make(map[keybase1.KID]bool)
-		for _, key := range keys[uid] {
+		for key := range keys[uid] {
 			userKIDs[key.KID()] = true
 		}
 
@@ -370,12 +370,11 @@ func (rkg TLFReaderKeyGenerationsV2) ToTLFReaderKeyBundleV3(
 }
 
 func fillInDevicesAndServerMapV2(crypto cryptoPure, newIndex int,
-	cryptKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	keyInfoMap UserDeviceKeyInfoMapV2,
+	pubKeys UserDevicePublicKeys, keyInfoMap UserDeviceKeyInfoMapV2,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys ServerKeyMap) (
 	modified bool, err error) {
-	for u, keys := range cryptKeys {
+	for u, keys := range pubKeys {
 		if _, ok := keyInfoMap[u]; !ok {
 			keyInfoMap[u] = DeviceKeyInfoMapV2{}
 		}

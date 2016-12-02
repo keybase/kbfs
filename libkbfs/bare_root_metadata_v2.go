@@ -598,8 +598,8 @@ func (md *BareRootMetadataV2) PromoteReader(
 // RevokeRemovedDevices implements the BareRootMetadata interface for
 // BareRootMetadataV2.
 func (md *BareRootMetadataV2) RevokeRemovedDevices(
-	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	_ ExtraMetadata) (ServerHalfRemovalInfo, error) {
+	wKeys, rKeys UserDevicePublicKeys, _ ExtraMetadata) (
+	ServerHalfRemovalInfo, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
 			md.TlfID(), "RevokeRemovedDevices"}
@@ -1225,8 +1225,7 @@ func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
 // UpdateKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV2.
 func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
-	keyGen KeyGen, _ ExtraMetadata,
-	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	keyGen KeyGen, _ ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error) {

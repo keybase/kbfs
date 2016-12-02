@@ -1811,8 +1811,7 @@ type MutableBareRootMetadata interface {
 	//
 	// TODO: Move the key generation handling into this function.
 	UpdateKeyGeneration(crypto cryptoPure, keyGen KeyGen,
-		extra ExtraMetadata,
-		wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+		extra ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,
 		ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 		tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error)
@@ -1827,8 +1826,7 @@ type MutableBareRootMetadata interface {
 	// Note: the returned server halves may not be for all key
 	// generations, e.g. for MDv3 it's only for the latest key
 	// generation.
-	RevokeRemovedDevices(
-		wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	RevokeRemovedDevices(wKeys, rKeys UserDevicePublicKeys,
 		extra ExtraMetadata) (ServerHalfRemovalInfo, error)
 
 	// FinalizeRekey must be called called after all rekeying work
