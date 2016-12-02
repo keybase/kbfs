@@ -1244,9 +1244,9 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 
 	var newIndex int
 	if len(wKeys) == 0 {
-		// This is VERY ugly, but we need it in order to avoid having to
-		// version the metadata. The index will be strictly negative for reader
-		// ephemeral public keys
+		// This is VERY ugly, but we need it in order to avoid
+		// having to version the metadata. The index will be
+		// strictly negative for reader ephemeral public keys
 		rkb.TLFReaderEphemeralPublicKeys =
 			append(rkb.TLFReaderEphemeralPublicKeys, ePubKey)
 		newIndex = -len(rkb.TLFReaderEphemeralPublicKeys)
