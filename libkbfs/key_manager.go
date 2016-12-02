@@ -799,6 +799,13 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	md.data.TLFPrivateKey = privKey
 
 	// Delete server-side key halves for any revoked devices.
+	//
+	// This doesn't actually do anything for MDv3. If we've
+	// removed devices, then we have a new key generation, and
+	// that's the only one we'll access, and that one won't have
+	// the removed devices already.
+	//
+	// TODO: Figure out how to delete keys for MDv3.
 	for keygen := FirstValidKeyGen; keygen <= currKeyGen; keygen++ {
 		rDkim, wDkim, err := md.getUserDeviceKeyInfoMaps(keygen)
 		if _, noDkim := err.(TLFCryptKeyNotPerDeviceEncrypted); noDkim {
