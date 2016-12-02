@@ -328,7 +328,9 @@ type expectedRekeyInfo struct {
 	tlfCryptKey                    kbfscrypto.TLFCryptKey
 }
 
-func checkKeyBundlesV2Helper(t *testing.T, expected expectedRekeyInfo,
+// checkKeyBundlesV2Single checks that wkb and rkb contain the info from
+// expected.
+func checkKeyBundlesV2Single(t *testing.T, expected expectedRekeyInfo,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
 	for uid, privKeys := range expected.writerPrivKeys {
 		for _, privKey := range privKeys {
@@ -470,7 +472,7 @@ func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expectedRekeyInfo,
 				expected.readerPrivKeys.toUserDeviceSet())
 		userSet := serverKeyMapToUserDeviceSet(expected.serverMap)
 		require.Equal(t, expectedUserSet, userSet)
-		checkKeyBundlesV2Helper(t, expected, wkb, rkb)
+		checkKeyBundlesV2Single(t, expected, wkb, rkb)
 	}
 }
 
