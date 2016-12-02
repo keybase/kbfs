@@ -221,9 +221,9 @@ func TestBareRootMetadataV3FillInDevices(t *testing.T) {
 	privKey3 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3")
 
 	wKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid1: []kbfscrypto.CryptPublicKey{privKey1.GetPublicKey()},
-		uid2: []kbfscrypto.CryptPublicKey{privKey2.GetPublicKey()},
-		uid3: []kbfscrypto.CryptPublicKey{privKey3.GetPublicKey()},
+		uid1: {privKey1.GetPublicKey()},
+		uid2: {privKey2.GetPublicKey()},
+		uid3: {privKey3.GetPublicKey()},
 	}
 
 	signingKey1 := kbfscrypto.MakeFakeSigningKeyOrBust("key1")
@@ -244,7 +244,7 @@ func TestBareRootMetadataV3FillInDevices(t *testing.T) {
 	uid := keybase1.MakeTestUID(1)
 	bh, err := tlf.MakeHandle(
 		[]keybase1.UID{uid}, nil, []keybase1.SocialAssertion{
-			keybase1.SocialAssertion{}},
+			{}},
 		nil, nil)
 	require.NoError(t, err)
 
@@ -314,11 +314,11 @@ func TestBareRootMetadataV3FillInDevicesNoExtraKeys(t *testing.T) {
 	privKey2 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key2")
 
 	wKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid1: []kbfscrypto.CryptPublicKey{privKey1.GetPublicKey()},
+		uid1: {privKey1.GetPublicKey()},
 	}
 
 	rKeys := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid2: []kbfscrypto.CryptPublicKey{privKey2.GetPublicKey()},
+		uid2: {privKey2.GetPublicKey()},
 	}
 
 	signingKey1 := kbfscrypto.MakeFakeSigningKeyOrBust("key1")
@@ -337,7 +337,7 @@ func TestBareRootMetadataV3FillInDevicesNoExtraKeys(t *testing.T) {
 	uid := keybase1.MakeTestUID(1)
 	bh, err := tlf.MakeHandle(
 		[]keybase1.UID{uid}, nil, []keybase1.SocialAssertion{
-			keybase1.SocialAssertion{}},
+			{}},
 		nil, nil)
 	require.NoError(t, err)
 
