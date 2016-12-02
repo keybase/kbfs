@@ -266,25 +266,41 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 	require.Equal(t, expectedRKeys, brmd.RKeys)
 }
 
-func testKeyBundleGetKeysOrBust(t *testing.T, config Config, uid keybase1.UID,
-	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) {
-	publicKeys, err := config.KBPKI().GetCryptPublicKeys(
-		context.Background(), uid)
-	if err != nil {
-		t.Fatalf("Couldn't get keys for %s: %v", uid, err)
-	}
-	keys[uid] = publicKeys
-}
-
-func testKeyBundleCheckKeysV2(t *testing.T, crypto Crypto, uid keybase1.UID,
-	key kbfscrypto.CryptPublicKey, expectedIndex int,
-	wkb TLFWriterKeyBundleV2, ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap ServerKeyMap) {
-	ctx := context.Background()
+func checkWKBV2(t *testing.T, wkb *TLFWriterKeyBundleV2, serverMap ServerKeyMap,
+	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
+	expectedEPubKeyIndex int,
+	expectedEPubKey kbfscrypto.TLFEphemeralPublicKey,
+	crypto Crypto, expectedTLFCryptKey kbfscrypto.TLFCryptKey) {
 	info, ok := wkb.WKeys[uid][key.KID()]
 	require.True(t, ok)
+
+	serverHalf, ok := serverMap[uid][key.KID()]
+	require.True(t, ok)
+
+	require.Equal(t, expectedEPubKeyIndex, info.EPubKeyIndex)
+
+	ePubKey := wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
+	require.Equal(t, expectedEPubKey, ePubKey)
+
+	ctx := context.Background()
+	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
+		ctx, ePubKey, info.ClientHalf)
+	require.NoError(t, err)
+
+	tlfCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
+	require.NoError(t, err)
+	require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
+}
+
+func testReaderKeyBundleCheckKeysV2(t *testing.T, crypto Crypto, uid keybase1.UID,
+	key kbfscrypto.CryptPublicKey, expectedIndex int,
+	rkb TLFReaderKeyBundleV2, ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap ServerKeyMap) {
+	ctx := context.Background()
+	info, ok := rkb.RKeys[uid][key.KID()]
+	require.True(t, ok)
 	require.Equal(t, expectedIndex, info.EPubKeyIndex)
-	userEPubKey := wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
+	userEPubKey := rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex]
 	require.Equal(t, ePubKey, userEPubKey)
 	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
 		ctx, userEPubKey, info.ClientHalf)
@@ -348,9 +364,9 @@ func TestBareRootMetadataV2FillInDevices(t *testing.T) {
 	wkb, _, err := rmd.getTLFKeyBundles(FirstValidKeyGen)
 	require.NoError(t, err)
 
-	testKeyBundleCheckKeysV2(t, crypto1, uid1, privKey1.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverMap)
-	testKeyBundleCheckKeysV2(t, crypto2, uid2, privKey2.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverMap)
-	testKeyBundleCheckKeysV2(t, crypto3, uid3, privKey3.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverMap)
+	checkWKBV2(t, wkb, serverMap, uid1, privKey1.GetPublicKey(), 0, ePubKey, crypto1, tlfCryptKey)
+	checkWKBV2(t, wkb, serverMap, uid2, privKey2.GetPublicKey(), 0, ePubKey, crypto2, tlfCryptKey)
+	checkWKBV2(t, wkb, serverMap, uid3, privKey3.GetPublicKey(), 0, ePubKey, crypto3, tlfCryptKey)
 
 	privKey1b := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1b")
 	wKeys[uid1] = append(wKeys[uid1], privKey1b.GetPublicKey())
@@ -364,30 +380,10 @@ func TestBareRootMetadataV2FillInDevices(t *testing.T) {
 
 	crypto1b := NewCryptoLocal(codec, signingKey1, privKey1b)
 
-	testKeyBundleCheckKeysV2(t, crypto1, uid1, privKey1.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverMap)
-	testKeyBundleCheckKeysV2(t, crypto1b, uid1, privKey1b.GetPublicKey(), 1, *wkb, ePubKey2, tlfCryptKey2, serverMap2)
-	testKeyBundleCheckKeysV2(t, crypto2, uid2, privKey2.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverMap)
-	testKeyBundleCheckKeysV2(t, crypto3, uid3, privKey3.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverMap)
-}
-
-func testReaderKeyBundleCheckKeys(t *testing.T, crypto Crypto, uid keybase1.UID,
-	key kbfscrypto.CryptPublicKey, expectedIndex int,
-	rkb TLFReaderKeyBundleV2, ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap ServerKeyMap) {
-	ctx := context.Background()
-	info, ok := rkb.RKeys[uid][key.KID()]
-	require.True(t, ok)
-	require.Equal(t, expectedIndex, info.EPubKeyIndex)
-	userEPubKey := rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex]
-	require.Equal(t, ePubKey, userEPubKey)
-	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
-		ctx, userEPubKey, info.ClientHalf)
-	require.NoError(t, err)
-	serverHalf, ok := serverMap[uid][key.KID()]
-	require.True(t, ok)
-	userTLFCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
-	require.NoError(t, err)
-	require.Equal(t, tlfCryptKey, userTLFCryptKey)
+	checkWKBV2(t, wkb, serverMap, uid1, privKey1.GetPublicKey(), 0, ePubKey, crypto1, tlfCryptKey)
+	checkWKBV2(t, wkb, serverMap, uid2, privKey2.GetPublicKey(), 0, ePubKey, crypto2, tlfCryptKey)
+	checkWKBV2(t, wkb, serverMap, uid3, privKey3.GetPublicKey(), 0, ePubKey, crypto3, tlfCryptKey)
+	checkWKBV2(t, wkb, serverMap2, uid1, privKey1b.GetPublicKey(), 1, ePubKey2, crypto1b, tlfCryptKey2)
 }
 
 func TestBareRootMetadataV2FillInDevicesReaderRekey(t *testing.T) {
@@ -433,5 +429,5 @@ func TestBareRootMetadataV2FillInDevicesReaderRekey(t *testing.T) {
 	_, rkb, err := rmd.getTLFKeyBundles(FirstValidKeyGen)
 	require.NoError(t, err)
 
-	testReaderKeyBundleCheckKeys(t, crypto1, uid1, privKey1.GetPublicKey(), -1, *rkb, ePubKey, tlfCryptKey, serverMap)
+	testReaderKeyBundleCheckKeysV2(t, crypto1, uid1, privKey1.GetPublicKey(), -1, *rkb, ePubKey, tlfCryptKey, serverMap)
 }
