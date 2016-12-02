@@ -1234,7 +1234,7 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "addKeyGenerationHelper"}
+			md.TlfID(), "UpdateKeyGeneration"}
 	}
 
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
@@ -1242,32 +1242,56 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 		return ServerKeyMap{}, err
 	}
 
-	var newIndex int
 	if len(wKeys) == 0 {
+		// Reader rekey case.
+
 		// This is VERY ugly, but we need it in order to avoid
 		// having to version the metadata. The index will be
-		// strictly negative for reader ephemeral public keys
-		rkb.TLFReaderEphemeralPublicKeys =
-			append(rkb.TLFReaderEphemeralPublicKeys, ePubKey)
-		newIndex = -len(rkb.TLFReaderEphemeralPublicKeys)
-	} else {
-		wkb.TLFEphemeralPublicKeys =
-			append(wkb.TLFEphemeralPublicKeys, ePubKey)
-		newIndex = len(wkb.TLFEphemeralPublicKeys) - 1
+		// strictly negative for reader ephemeral public keys.
+		newIndex := -len(rkb.TLFReaderEphemeralPublicKeys) - 1
+
+		newServerKeys := ServerKeyMap{}
+
+		filledRKeys, err := fillInDevicesAndServerMapV2(
+			crypto, newIndex, rKeys, rkb.RKeys,
+			ePrivKey, tlfCryptKey, newServerKeys)
+		if err != nil {
+			return nil, err
+		}
+
+		if filledRKeys {
+			rkb.TLFReaderEphemeralPublicKeys = append(
+				rkb.TLFReaderEphemeralPublicKeys, ePubKey)
+		}
+
+		return newServerKeys, nil
 	}
 
-	// now fill in the secret keys as needed
+	// Usual rekey case.
+
+	newIndex := len(wkb.TLFEphemeralPublicKeys)
+
 	newServerKeys := ServerKeyMap{}
-	_, err = fillInDevicesAndServerMapV2(crypto, newIndex, wKeys,
-		wkb.WKeys, ePrivKey, tlfCryptKey, newServerKeys)
+
+	filledWKeys, err := fillInDevicesAndServerMapV2(
+		crypto, newIndex, wKeys, wkb.WKeys,
+		ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}
-	_, err = fillInDevicesAndServerMapV2(crypto, newIndex, rKeys,
-		rkb.RKeys, ePrivKey, tlfCryptKey, newServerKeys)
+
+	filledRKeys, err := fillInDevicesAndServerMapV2(
+		crypto, newIndex, rKeys, rkb.RKeys,
+		ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}
+
+	if filledWKeys || filledRKeys {
+		wkb.TLFEphemeralPublicKeys =
+			append(wkb.TLFEphemeralPublicKeys, ePubKey)
+	}
+
 	return newServerKeys, nil
 }
 

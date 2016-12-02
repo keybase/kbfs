@@ -1179,7 +1179,7 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "addKeyGenerationHelper"}
+			md.TlfID(), "UpdateKeyGeneration"}
 	}
 
 	if keyGen != md.LatestKeyGeneration() {
