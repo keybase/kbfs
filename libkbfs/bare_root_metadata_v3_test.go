@@ -652,40 +652,37 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 
 	checkKeyBundlesV3(t, expectedRekeyInfos, tlfCryptKey, pubKey, wkb, rkb)
 
-	// Reader rekey.
+	// Rekey writers only.
 
-	privKey3c := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3c")
-	privKey3d := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3d")
-	rKeys[uid3] = append(rKeys[uid3],
-		privKey3c.GetPublicKey(), privKey3d.GetPublicKey())
+	privKey1c := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1c")
+	wKeys[uid1] = append(wKeys[uid1], privKey1c.GetPublicKey())
 
 	_, _, ePubKey3, ePrivKey3, _, err := crypto.MakeRandomTLFKeys()
 	require.NoError(t, err)
 
-	rKeysReader := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid3: rKeys[uid3],
-	}
 	serverMap3, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
-		extra, nil, rKeysReader, ePubKey3, ePrivKey3, tlfCryptKey)
+		extra, wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKey)
 	require.NoError(t, err)
 
 	expectedRekeyInfo3 := expectedRekeyInfoV3{
-		writerPrivKeys: nil,
-		readerPrivKeys: userDevicePrivateKeys{
-			uid3: {privKey3c, privKey3d},
+		writerPrivKeys: userDevicePrivateKeys{
+			uid1: {privKey1c},
 		},
+		readerPrivKeys:     nil,
 		serverMap:          serverMap3,
-		writerEPubKeyIndex: -1,
-		readerEPubKeyIndex: 2,
+		writerEPubKeyIndex: 2,
+		readerEPubKeyIndex: -1,
 		ePubKey:            ePubKey3,
 	}
+
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo3)
+
 	checkKeyBundlesV3(t, expectedRekeyInfos, tlfCryptKey, pubKey, wkb, rkb)
 
 	// Do again to check idempotency.
 
 	serverMap3b, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
-		extra, nil, rKeysReader, ePubKey3, ePrivKey3, tlfCryptKey)
+		extra, wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKey)
 	require.NoError(t, err)
 
 	expectedRekeyInfo3b := expectedRekeyInfoV3{
@@ -693,6 +690,50 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 	}
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo3b)
+
+	checkKeyBundlesV3(t, expectedRekeyInfos, tlfCryptKey, pubKey, wkb, rkb)
+
+	// Reader rekey.
+
+	privKey3c := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3c")
+	privKey3d := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3d")
+	rKeys[uid3] = append(rKeys[uid3],
+		privKey3c.GetPublicKey(), privKey3d.GetPublicKey())
+
+	_, _, ePubKey4, ePrivKey4, _, err := crypto.MakeRandomTLFKeys()
+	require.NoError(t, err)
+
+	rKeysReader := map[keybase1.UID][]kbfscrypto.CryptPublicKey{
+		uid3: rKeys[uid3],
+	}
+	serverMap4, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
+		extra, nil, rKeysReader, ePubKey4, ePrivKey4, tlfCryptKey)
+	require.NoError(t, err)
+
+	expectedRekeyInfo4 := expectedRekeyInfoV3{
+		writerPrivKeys: nil,
+		readerPrivKeys: userDevicePrivateKeys{
+			uid3: {privKey3c, privKey3d},
+		},
+		serverMap:          serverMap4,
+		writerEPubKeyIndex: -1,
+		readerEPubKeyIndex: 2,
+		ePubKey:            ePubKey4,
+	}
+	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo4)
+	checkKeyBundlesV3(t, expectedRekeyInfos, tlfCryptKey, pubKey, wkb, rkb)
+
+	// Do again to check idempotency.
+
+	serverMap4b, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
+		extra, nil, rKeysReader, ePubKey4, ePrivKey4, tlfCryptKey)
+	require.NoError(t, err)
+
+	expectedRekeyInfo4b := expectedRekeyInfoV3{
+		serverMap: serverMap4b,
+	}
+
+	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo4b)
 
 	checkKeyBundlesV3(t, expectedRekeyInfos, tlfCryptKey, pubKey, wkb, rkb)
 }
