@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -266,8 +267,50 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 	require.Equal(t, expectedRKeys, brmd.RKeys)
 }
 
+type userDeviceSet map[keybase1.UID]map[keybase1.KID]bool
+
+func (uds userDeviceSet) union(other userDeviceSet) userDeviceSet {
+	u := make(userDeviceSet)
+	for uid, kids := range uds {
+		u[uid] = make(map[keybase1.KID]bool)
+		for kid := range kids {
+			u[uid][kid] = true
+		}
+	}
+	for uid, kids := range other {
+		if u[uid] == nil {
+			u[uid] = make(map[keybase1.KID]bool)
+		}
+		for kid := range kids {
+			if u[uid][kid] {
+				panic(fmt.Sprintf(
+					"uid=%s kid=%s exists in both",
+					uid, kid))
+			}
+			u[uid][kid] = true
+		}
+	}
+	return u
+}
+
+type userDeviceKeys map[keybase1.UID][]kbfscrypto.CryptPrivateKey
+
+func (udk userDeviceKeys) toUserDeviceSet() userDeviceSet {
+	uds := make(userDeviceSet)
+	for uid, keys := range udk {
+		for _, key := range keys {
+			kid := key.GetPublicKey().KID()
+			if uds[uid] == nil {
+				uds[uid] = make(map[keybase1.KID]bool)
+			}
+			uds[uid][kid] = true
+		}
+	}
+	return uds
+}
+
 type expectedRekeyInfo struct {
-	writers, readers map[keybase1.UID][]kbfscrypto.CryptPrivateKey
+	writers, readers userDeviceKeys
 	serverMap        ServerKeyMap
 	ePubKeyIndex     int
 	ePubKey          kbfscrypto.TLFEphemeralPublicKey
@@ -368,51 +411,39 @@ func checkKeyBundlesV2Helper(t *testing.T, expected expectedRekeyInfo,
 	}
 }
 
+func userDeviceKeyInfoMapToDeviceSet(udkim UserDeviceKeyInfoMap) userDeviceSet {
+	u := make(userDeviceSet)
+	for uid, dkim := range udkim {
+		u[uid] = make(map[keybase1.KID]bool)
+		for kid := range dkim {
+			u[uid][kid] = true
+		}
+	}
+	return u
+}
+
 func checkKeyBundlesV2(t *testing.T, expecteds []expectedRekeyInfo,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
-	expectedWKeys := make(map[keybase1.UID][]keybase1.KID)
-	expectedRKeys := make(map[keybase1.UID][]keybase1.KID)
+	var expectedWriterSet, expectedReaderSet userDeviceSet
 	for _, expected := range expecteds {
-		for uid, privKeys := range expected.writers {
-			for _, privKey := range privKeys {
-				kid := privKey.GetPublicKey().KID()
-				expectedWKeys[uid] = append(expectedWKeys[uid], kid)
-			}
-		}
-
-		for uid, privKeys := range expected.readers {
-			for _, privKey := range privKeys {
-				kid := privKey.GetPublicKey().KID()
-				expectedRKeys[uid] = append(expectedRKeys[uid], kid)
-			}
-		}
+		expectedWriterSet = expectedWriterSet.union(
+			expected.writers.toUserDeviceSet())
+		expectedReaderSet = expectedReaderSet.union(
+			expected.readers.toUserDeviceSet())
 	}
 
-	require.Equal(t, len(expectedWKeys), len(wkb.WKeys))
-	for uid, expectedKIDs := range expectedWKeys {
-		require.Equal(t, len(expectedKIDs), len(wkb.WKeys[uid]))
-		for _, kid := range expectedKIDs {
-			_, ok := wkb.WKeys[uid][kid]
-			require.True(t, ok, "writer uid=%s, kid=%s", uid, kid)
-		}
-	}
+	writerSet := userDeviceKeyInfoMapToDeviceSet(wkb.WKeys)
+	readerSet := userDeviceKeyInfoMapToDeviceSet(rkb.RKeys)
+
+	require.Equal(t, expectedWriterSet, writerSet)
+	require.Equal(t, expectedReaderSet, readerSet)
+
 	/*	require.Equal(t, pubKey, wkb.TLFPublicKey)
 		require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys{ePubKey1},
 			wkb.TLFEphemeralPublicKeys)
 
-		require.Equal(t, 1, len(rkb.RKeys))
-		require.Equal(t, 1, len(rkb.RKeys[uid3]))
 		require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
 			rkb.TLFReaderEphemeralPublicKeys)*/
-
-	require.Equal(t, len(expectedRKeys), len(rkb.RKeys))
-	for uid, expectedKIDs := range expectedRKeys {
-		require.Equal(t, len(expectedKIDs), len(rkb.RKeys[uid]))
-		for _, kid := range expectedKIDs {
-			_, ok := rkb.RKeys[uid][kid]
-			require.True(t, ok, "reader uid=%s, kid=%s", uid, kid)
-		}
-	}
 
 	for _, expected := range expecteds {
 		checkKeyBundlesV2Helper(t, expected, wkb, rkb)
