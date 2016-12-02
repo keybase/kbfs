@@ -423,13 +423,33 @@ func userDeviceKeyInfoMapToDeviceSet(udkim UserDeviceKeyInfoMap) userDeviceSet {
 }
 
 func checkKeyBundlesV2(t *testing.T, expecteds []expectedRekeyInfo,
+	expectedPubKey kbfscrypto.TLFPublicKey,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
-	var expectedWriterSet, expectedReaderSet userDeviceSet
+	expectedWriterSet := make(userDeviceSet)
+	expectedReaderSet := make(userDeviceSet)
+	var expectedWriterEPublicKeys,
+		expectedReaderEPublicKeys kbfscrypto.TLFEphemeralPublicKeys
 	for _, expected := range expecteds {
 		expectedWriterSet = expectedWriterSet.union(
 			expected.writers.toUserDeviceSet())
 		expectedReaderSet = expectedReaderSet.union(
 			expected.readers.toUserDeviceSet())
+		if len(expected.writers)+len(expected.readers) > 0 {
+			if expected.ePubKeyIndex >= 0 {
+				require.Equal(t, expected.ePubKeyIndex,
+					len(expectedWriterEPublicKeys))
+				expectedWriterEPublicKeys = append(
+					expectedWriterEPublicKeys,
+					expected.ePubKey)
+			} else {
+				i := -1 - expected.ePubKeyIndex
+				require.Equal(t, i,
+					len(expectedReaderEPublicKeys))
+				expectedReaderEPublicKeys = append(
+					expectedReaderEPublicKeys,
+					expected.ePubKey)
+			}
+		}
 	}
 
 	writerSet := userDeviceKeyInfoMapToDeviceSet(wkb.WKeys)
@@ -438,12 +458,10 @@ func checkKeyBundlesV2(t *testing.T, expecteds []expectedRekeyInfo,
 	require.Equal(t, expectedWriterSet, writerSet)
 	require.Equal(t, expectedReaderSet, readerSet)
 
-	/*	require.Equal(t, pubKey, wkb.TLFPublicKey)
-		require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys{ePubKey1},
-			wkb.TLFEphemeralPublicKeys)
+	require.Equal(t, expectedWriterEPublicKeys, wkb.TLFEphemeralPublicKeys)
+	require.Equal(t, expectedReaderEPublicKeys, rkb.TLFReaderEphemeralPublicKeys)
 
-		require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
-			rkb.TLFReaderEphemeralPublicKeys)*/
+	require.Equal(t, expectedPubKey, wkb.TLFPublicKey)
 
 	for _, expected := range expecteds {
 		checkKeyBundlesV2Helper(t, expected, wkb, rkb)
@@ -495,6 +513,9 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	wkb, rkb, err := rmd.getTLFKeyBundles(FirstValidKeyGen)
 	require.NoError(t, err)
 
+	var expectedRekeyInfos []expectedRekeyInfo
+	checkKeyBundlesV2(t, expectedRekeyInfos, pubKey, wkb, rkb)
+
 	require.Equal(t, TLFWriterKeyBundleV2{
 		WKeys:        UserDeviceKeyInfoMapV2{},
 		TLFPublicKey: pubKey,
@@ -532,9 +553,9 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		ePubKey:      ePubKey1,
 		tlfCryptKey:  tlfCryptKey1,
 	}
-	expectedRekeyInfos := []expectedRekeyInfo{expectedRekeyInfo1}
+	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo1)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, wkb, rkb)
+	checkKeyBundlesV2(t, expectedRekeyInfos, pubKey, wkb, rkb)
 
 	// Do again to check idempotency.
 
@@ -560,7 +581,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo1b)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, wkb, rkb)
+	checkKeyBundlesV2(t, expectedRekeyInfos, pubKey, wkb, rkb)
 
 	// Rekey.
 
@@ -605,7 +626,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo2)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, wkb, rkb)
+	checkKeyBundlesV2(t, expectedRekeyInfos, pubKey, wkb, rkb)
 
 	// Reader rekey.
 
@@ -648,5 +669,5 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		tlfCryptKey:  tlfCryptKey3,
 	}
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo3)
-	checkKeyBundlesV2(t, expectedRekeyInfos, wkb, rkb)
+	checkKeyBundlesV2(t, expectedRekeyInfos, pubKey, wkb, rkb)
 }
