@@ -379,27 +379,44 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	crypto2 := NewCryptoLocal(codec, dummySigningKey, privKey2)
 	crypto3 := NewCryptoLocal(codec, dummySigningKey, privKey3)
 
-	checkWKBV2(t, wkb, serverMap, uid1, privKey1.GetPublicKey(), 0, ePubKey, crypto1, tlfCryptKey)
-	checkWKBV2(t, wkb, serverMap, uid2, privKey2.GetPublicKey(), 0, ePubKey, crypto2, tlfCryptKey)
+	checkWKBV2(t, wkb, serverMap, uid1, privKey1.GetPublicKey(),
+		0, ePubKey, crypto1, tlfCryptKey)
+	checkWKBV2(t, wkb, serverMap, uid2, privKey2.GetPublicKey(),
+		0, ePubKey, crypto2, tlfCryptKey)
 
-	checkRKBV2(t, wkb, rkb, serverMap, uid3, privKey3.GetPublicKey(), 0, ePubKey, crypto3, tlfCryptKey)
+	checkRKBV2(t, wkb, rkb, serverMap, uid3, privKey3.GetPublicKey(),
+		0, ePubKey, crypto3, tlfCryptKey)
+
+	// Rekey.
 
 	privKey1b := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1b")
 	wKeys[uid1] = append(wKeys[uid1], privKey1b.GetPublicKey())
 
-	_, _, ePubKey2, ePrivKey2, tlfCryptKey2, err := crypto1.MakeRandomTLFKeys()
+	privKey3b := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3b")
+	rKeys[uid3] = append(rKeys[uid3], privKey3b.GetPublicKey())
+
+	_, _, ePubKey2, ePrivKey2, tlfCryptKey2, err :=
+		crypto.MakeRandomTLFKeys()
 	require.NoError(t, err)
-	serverMap2, err := rmd.UpdateKeyGeneration(
-		crypto1, FirstValidKeyGen, extra,
-		wKeys, nil, ePubKey2, ePrivKey2, tlfCryptKey2)
+
+	serverMap2, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
+		extra, wKeys, rKeys, ePubKey2, ePrivKey2, tlfCryptKey2)
 	require.NoError(t, err)
+
+	checkWKBV2(t, wkb, serverMap, uid1, privKey1.GetPublicKey(),
+		0, ePubKey, crypto1, tlfCryptKey)
+	checkWKBV2(t, wkb, serverMap, uid2, privKey2.GetPublicKey(),
+		0, ePubKey, crypto2, tlfCryptKey)
+	checkRKBV2(t, wkb, rkb, serverMap, uid3, privKey3.GetPublicKey(),
+		0, ePubKey, crypto3, tlfCryptKey)
 
 	crypto1b := NewCryptoLocal(codec, dummySigningKey, privKey1b)
+	crypto3b := NewCryptoLocal(codec, dummySigningKey, privKey3b)
 
-	checkWKBV2(t, wkb, serverMap, uid1, privKey1.GetPublicKey(), 0, ePubKey, crypto1, tlfCryptKey)
-	checkWKBV2(t, wkb, serverMap, uid2, privKey2.GetPublicKey(), 0, ePubKey, crypto2, tlfCryptKey)
-	checkRKBV2(t, wkb, rkb, serverMap, uid3, privKey3.GetPublicKey(), 0, ePubKey, crypto3, tlfCryptKey)
-	checkWKBV2(t, wkb, serverMap2, uid1, privKey1b.GetPublicKey(), 1, ePubKey2, crypto1b, tlfCryptKey2)
+	checkWKBV2(t, wkb, serverMap2, uid1, privKey1b.GetPublicKey(),
+		1, ePubKey2, crypto1b, tlfCryptKey2)
+	checkRKBV2(t, wkb, rkb, serverMap2, uid3, privKey3b.GetPublicKey(),
+		1, ePubKey2, crypto3b, tlfCryptKey2)
 }
 
 func TestBareRootMetadataV2FillInDevicesReaderRekey(t *testing.T) {
