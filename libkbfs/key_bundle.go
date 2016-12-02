@@ -117,26 +117,3 @@ func (dkim UserDeviceKeyInfoMap) deepCopy() UserDeviceKeyInfoMap {
 }
 
 type serverKeyMap map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf
-
-func fillInDevicesAndServerMap(crypto Crypto, newIndex int,
-	cryptKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	keyInfoMap UserDeviceKeyInfoMap,
-	ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys serverKeyMap) error {
-	for u, keys := range cryptKeys {
-		if _, ok := keyInfoMap[u]; !ok {
-			keyInfoMap[u] = DeviceKeyInfoMap{}
-		}
-
-		serverMap, err := keyInfoMap[u].fillInDeviceInfo(
-			crypto, u, tlfCryptKey, ePrivKey, newIndex, keys)
-		if err != nil {
-			return err
-		}
-		if len(serverMap) > 0 {
-			newServerKeys[u] = serverMap
-		}
-	}
-	return nil
-}

@@ -937,13 +937,13 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(
 		}
 	}
 	newWriterKeys := &TLFWriterKeyBundleV3{
-		Keys:                          wDkim,
+		Keys:                          userDeviceKeyInfoMapToV3(wDkim),
 		TLFPublicKey:                  pubKey,
 		EncryptedHistoricTLFCryptKeys: encryptedHistoricKeys,
 		TLFEphemeralPublicKeys:        wPublicKeys,
 	}
 	newReaderKeys := &TLFReaderKeyBundleV3{
-		RKeys: rDkim,
+		RKeys: userDeviceKeyInfoMapToV3(rDkim),
 		TLFReaderEphemeralPublicKeys: rPublicKeys,
 	}
 	md.WriterMetadata.LatestKeyGen++
@@ -1097,7 +1097,7 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra Extr
 	if !ok {
 		return nil, nil, errors.New("Key bundles missing")
 	}
-	return rkb.RKeys, wkb.Keys, nil
+	return rkb.RKeys.toUDKIM(), wkb.Keys.toUDKIM(), nil
 }
 
 // fillInDevices ensures that every device for every writer and reader
@@ -1125,12 +1125,12 @@ func (md *BareRootMetadataV3) fillInDevices(crypto Crypto,
 
 	// now fill in the secret keys as needed
 	newServerKeys := serverKeyMap{}
-	err := fillInDevicesAndServerMap(crypto, newWriterIndex, wKeys, wkb.Keys,
+	err := fillInDevicesAndServerMapV3(crypto, newWriterIndex, wKeys, wkb.Keys,
 		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
 	}
-	err = fillInDevicesAndServerMap(crypto, newReaderIndex, rKeys, rkb.RKeys,
+	err = fillInDevicesAndServerMapV3(crypto, newReaderIndex, rKeys, rkb.RKeys,
 		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err

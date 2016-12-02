@@ -21,8 +21,8 @@ func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM() UserDeviceKeyInfoMap {
 	return UserDeviceKeyInfoMap(udkimV2)
 }
 
-func (udkimV2 UserDeviceKeyInfoMapV2) toV3() UserDeviceKeyInfoMap {
-	return UserDeviceKeyInfoMap(udkimV2)
+func (udkimV2 UserDeviceKeyInfoMapV2) toV3() UserDeviceKeyInfoMapV3 {
+	return UserDeviceKeyInfoMapV3(udkimV2)
 }
 
 func userDeviceKeyInfoMapToV2(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV2 {
@@ -178,7 +178,7 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 	}
 
 	rkbCopy := &TLFReaderKeyBundleV3{
-		RKeys: make(UserDeviceKeyInfoMap),
+		RKeys: make(UserDeviceKeyInfoMapV3),
 	}
 
 	// Copy the latest UserDeviceKeyInfoMap.

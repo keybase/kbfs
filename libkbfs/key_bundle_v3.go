@@ -13,9 +13,20 @@ import (
 	"github.com/keybase/kbfs/kbfshash"
 )
 
+// UserDeviceKeyInfoMapV3 maps a user's keybase UID to their DeviceKeyInfoMap
+type UserDeviceKeyInfoMapV3 map[keybase1.UID]DeviceKeyInfoMap
+
+func (udkimV3 UserDeviceKeyInfoMapV3) toUDKIM() UserDeviceKeyInfoMap {
+	return UserDeviceKeyInfoMap(udkimV3)
+}
+
+func userDeviceKeyInfoMapToV3(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV3 {
+	return UserDeviceKeyInfoMapV3(udkim)
+}
+
 // TLFReaderKeyBundleV3 is an alias to a TLFReaderKeyBundleV2 for clarity.
 type TLFReaderKeyBundleV3 struct {
-	RKeys UserDeviceKeyInfoMap
+	RKeys UserDeviceKeyInfoMapV3
 
 	// M_e as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
 	// Because devices can be added into the key generation after it
@@ -40,7 +51,7 @@ func (trb TLFReaderKeyBundleV3) IsReader(user keybase1.UID, deviceKID keybase1.K
 // keys for a top-level folder.
 type TLFWriterKeyBundleV3 struct {
 	// Maps from each user to their crypt key bundle for the current generation.
-	Keys UserDeviceKeyInfoMap
+	Keys UserDeviceKeyInfoMapV3
 
 	// M_e as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
 	// Because devices can be added into the key generation after it
@@ -185,4 +196,27 @@ func (h *TLFWriterKeyBundleID) UnmarshalBinary(data []byte) error {
 // IsNil returns true if the ID is unset.
 func (h TLFWriterKeyBundleID) IsNil() bool {
 	return h == TLFWriterKeyBundleID{}
+}
+
+func fillInDevicesAndServerMapV3(crypto Crypto, newIndex int,
+	cryptKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	keyInfoMap UserDeviceKeyInfoMapV3,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys serverKeyMap) error {
+	for u, keys := range cryptKeys {
+		if _, ok := keyInfoMap[u]; !ok {
+			keyInfoMap[u] = DeviceKeyInfoMap{}
+		}
+
+		serverMap, err := keyInfoMap[u].fillInDeviceInfo(
+			crypto, u, tlfCryptKey, ePrivKey, newIndex, keys)
+		if err != nil {
+			return err
+		}
+		if len(serverMap) > 0 {
+			newServerKeys[u] = serverMap
+		}
+	}
+	return nil
 }
