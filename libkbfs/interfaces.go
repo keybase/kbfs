@@ -1793,11 +1793,29 @@ type MutableBareRootMetadata interface {
 		currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
 
-	UpdateKeyGeneration(crypto cryptoPure, keyGen KeyGen, extra ExtraMetadata,
+	// UpdateKeyGeneration ensures that every device in the given
+	// key generation for every writer and reader in the provided
+	// lists has complete TLF crypt key info, and uses the new
+	// ephemeral key pair to generate the info if it doesn't yet
+	// exist.
+	//
+	// wKeys and rKeys usually contains the full maps of writers
+	// to per-device crypt public keys, but for reader rekey,
+	// wKeys will be empty and rKeys will contain only a single
+	// entry.
+	//
+	// UpdateKeyGeneration must only be called on metadata for
+	// private TLFs.
+	//
+	// TODO: Also handle reader promotion.
+	//
+	// TODO: Move the key generation handling into this function.
+	UpdateKeyGeneration(crypto cryptoPure, keyGen KeyGen,
+		extra ExtraMetadata,
 		wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,
 		ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-		tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error)
+		tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error)
 
 	// PromoteReader converts the given user from a reader to a writer.
 	PromoteReader(uid keybase1.UID, extra ExtraMetadata) error

@@ -374,7 +374,7 @@ func fillInDevicesAndServerMapV2(crypto cryptoPure, newIndex int,
 	keyInfoMap UserDeviceKeyInfoMapV2,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys serverKeyMap) (
+	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys ServerKeyMap) (
 	modified bool, err error) {
 	for u, keys := range cryptKeys {
 		if _, ok := keyInfoMap[u]; !ok {

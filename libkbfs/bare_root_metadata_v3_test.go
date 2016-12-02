@@ -194,7 +194,7 @@ func TestRevokeRemovedDevicesV3(t *testing.T) {
 func testKeyBundleCheckKeysV3(t *testing.T, crypto Crypto, uid keybase1.UID,
 	key kbfscrypto.CryptPublicKey, expectedIndex int,
 	wkb TLFWriterKeyBundleV3, ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap serverKeyMap) {
+	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap ServerKeyMap) {
 	ctx := context.Background()
 	info, ok := wkb.Keys[uid][key]
 	require.True(t, ok)
@@ -289,7 +289,7 @@ func TestBareRootMetadataV3FillInDevices(t *testing.T) {
 func testKeyBundleCheckReaderKeysV3(t *testing.T, crypto Crypto, uid keybase1.UID,
 	key kbfscrypto.CryptPublicKey, expectedIndex int,
 	rkb TLFReaderKeyBundleV3, ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap serverKeyMap) {
+	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap ServerKeyMap) {
 	ctx := context.Background()
 	info, ok := rkb.Keys[uid][key]
 	require.True(t, ok)

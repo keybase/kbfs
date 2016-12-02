@@ -49,7 +49,7 @@ type DeviceKeyInfoMap map[kbfscrypto.CryptPublicKey]TLFCryptKeyInfo
 // DeviceKeyInfoMap.
 type UserDeviceKeyInfoMap map[keybase1.UID]DeviceKeyInfoMap
 
-type serverKeyMap map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf
+type ServerKeyMap map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf
 
 // splitTLFCryptKey splits the given TLFCryptKey into two parts -- the
 // client-side part (which is encrypted with the given keys), and the

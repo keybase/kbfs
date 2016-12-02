@@ -1176,7 +1176,12 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey) (serverKeyMap, error) {
+	tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error) {
+	if md.TlfID().IsPublic() {
+		return nil, InvalidPublicTLFOperation{
+			md.TlfID(), "addKeyGenerationHelper"}
+	}
+
 	if keyGen != md.LatestKeyGeneration() {
 		return nil, TLFCryptKeyNotPerDeviceEncrypted{md.TlfID(), keyGen}
 	}
@@ -1184,7 +1189,7 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 	// v3 bundles aren't embedded.
 	wkb, rkb, ok := getKeyBundlesV3(extra)
 	if !ok {
-		return serverKeyMap{}, makeMissingKeyBundlesError()
+		return ServerKeyMap{}, makeMissingKeyBundlesError()
 	}
 
 	var newReaderIndex, newWriterIndex int
@@ -1196,7 +1201,7 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 	}
 
 	// now fill in the secret keys as needed
-	newServerKeys := serverKeyMap{}
+	newServerKeys := ServerKeyMap{}
 	filledWKeys, err := fillInDevicesAndServerMapV3(crypto, newWriterIndex, wKeys, wkb.Keys,
 		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {

@@ -279,7 +279,7 @@ func testKeyBundleGetKeysOrBust(t *testing.T, config Config, uid keybase1.UID,
 func testKeyBundleCheckKeysV2(t *testing.T, crypto Crypto, uid keybase1.UID,
 	key kbfscrypto.CryptPublicKey, expectedIndex int,
 	wkb TLFWriterKeyBundleV2, ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap serverKeyMap) {
+	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap ServerKeyMap) {
 	ctx := context.Background()
 	info, ok := wkb.WKeys[uid][key.KID()]
 	require.True(t, ok)
@@ -373,7 +373,7 @@ func TestBareRootMetadataV2FillInDevices(t *testing.T) {
 func testReaderKeyBundleCheckKeys(t *testing.T, crypto Crypto, uid keybase1.UID,
 	key kbfscrypto.CryptPublicKey, expectedIndex int,
 	rkb TLFReaderKeyBundleV2, ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap serverKeyMap) {
+	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap ServerKeyMap) {
 	ctx := context.Background()
 	info, ok := rkb.RKeys[uid][key.KID()]
 	require.True(t, ok)
