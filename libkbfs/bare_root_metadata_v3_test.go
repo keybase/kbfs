@@ -372,13 +372,89 @@ func TestBareRootMetadataV3FillInDevicesNoExtraKeys(t *testing.T) {
 // expectedRekeyInfoV3 contains all the information needed to check a
 // rekey run (that doesn't add a generation).
 //
-// If both writerPrivKeys and readerPrivKeys are empty, then the other
-// fields are ignored.
+// If writerPrivKeys is empty, then writerEPubKeyIndex is ignored, and
+// similarly for readerPrivKeys. If both are empty, then ePubKey is
+// also ignored.
 type expectedRekeyInfoV3 struct {
 	writerPrivKeys, readerPrivKeys         userDevicePrivateKeys
 	serverMap                              ServerKeyMap
 	writerEPubKeyIndex, readerEPubKeyIndex int
 	ePubKey                                kbfscrypto.TLFEphemeralPublicKey
+}
+
+// checkGetTLFCryptKeyV3 checks that wkb and rkb contain the info
+// necessary to get the TLF crypt key for each user in expected, which
+// must all match expectedTLFCryptKey.
+func checkGetTLFCryptKeyV3(t *testing.T, expected expectedRekeyInfoV3,
+	expectedTLFCryptKey kbfscrypto.TLFCryptKey,
+	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3) {
+	for uid, privKeys := range expected.writerPrivKeys {
+		for _, privKey := range privKeys {
+			pubKey := privKey.GetPublicKey()
+			serverHalf, ok := expected.serverMap[uid][pubKey]
+			require.True(t, ok, "writer uid=%s, key=%s",
+				uid, pubKey)
+
+			dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
+
+			codec := kbfscodec.NewMsgpack()
+			crypto := NewCryptoLocal(
+				codec, dummySigningKey, privKey)
+
+			info, ok := wkb.Keys[uid][pubKey.KID()]
+			require.True(t, ok)
+
+			require.Equal(t,
+				expected.writerEPubKeyIndex, info.EPubKeyIndex)
+
+			ePubKey := wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
+			require.Equal(t, expected.ePubKey, ePubKey)
+
+			ctx := context.Background()
+			clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
+				ctx, ePubKey, info.ClientHalf)
+			require.NoError(t, err)
+
+			tlfCryptKey, err := crypto.UnmaskTLFCryptKey(
+				serverHalf, clientHalf)
+			require.NoError(t, err)
+			require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
+		}
+	}
+
+	for uid, privKeys := range expected.readerPrivKeys {
+		for _, privKey := range privKeys {
+			pubKey := privKey.GetPublicKey()
+			serverHalf, ok := expected.serverMap[uid][pubKey]
+			require.True(t, ok, "reader uid=%s, key=%s",
+				uid, pubKey)
+
+			dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
+
+			codec := kbfscodec.NewMsgpack()
+			crypto := NewCryptoLocal(
+				codec, dummySigningKey, privKey)
+
+			info, ok := rkb.RKeys[uid][pubKey.KID()]
+			require.True(t, ok)
+
+			require.Equal(t,
+				expected.readerEPubKeyIndex, info.EPubKeyIndex)
+
+			ePubKey := rkb.TLFReaderEphemeralPublicKeys[info.EPubKeyIndex]
+			require.Equal(t, expected.ePubKey, ePubKey)
+
+			ctx := context.Background()
+			clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
+				ctx, ePubKey, info.ClientHalf)
+			require.NoError(t, err)
+
+			tlfCryptKey, err := crypto.UnmaskTLFCryptKey(
+				serverHalf, clientHalf)
+			require.NoError(t, err)
+			require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
+		}
+	}
 }
 
 // checkKeyBundlesV3 checks that wkb and rkb contain exactly the info
@@ -396,19 +472,21 @@ func checkKeyBundlesV3(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV3,
 			expected.writerPrivKeys.toUserDeviceSet())
 		expectedReaderSet = expectedReaderSet.union(
 			expected.readerPrivKeys.toUserDeviceSet())
-		if len(expected.writerPrivKeys)+
-			len(expected.readerPrivKeys) > 0 {
-			if expected.writerEPubKeyIndex >= 0 {
-				expectedWriterEPublicKeys = append(
-					expectedWriterEPublicKeys,
-					expected.ePubKey)
-			}
 
-			if expected.readerEPubKeyIndex >= 0 {
-				expectedReaderEPublicKeys = append(
-					expectedReaderEPublicKeys,
-					expected.ePubKey)
-			}
+		if len(expected.writerPrivKeys) > 0 {
+			require.Equal(t, expected.writerEPubKeyIndex,
+				len(expectedWriterEPublicKeys))
+			expectedWriterEPublicKeys = append(
+				expectedWriterEPublicKeys,
+				expected.ePubKey)
+		}
+
+		if len(expected.readerPrivKeys) > 0 {
+			require.Equal(t, expected.readerEPubKeyIndex,
+				len(expectedReaderEPublicKeys))
+			expectedReaderEPublicKeys = append(
+				expectedReaderEPublicKeys,
+				expected.ePubKey)
 		}
 	}
 
@@ -429,8 +507,8 @@ func checkKeyBundlesV3(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV3,
 				expected.readerPrivKeys.toUserDeviceSet())
 		userSet := serverKeyMapToUserDeviceSet(expected.serverMap)
 		require.Equal(t, expectedUserSet, userSet)
-		/*		checkGetTLFCryptKeyV2(t,
-				expected, expectedTLFCryptKey, wkb, rkb)*/
+		checkGetTLFCryptKeyV3(t,
+			expected, expectedTLFCryptKey, wkb, rkb)
 	}
 }
 

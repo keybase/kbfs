@@ -318,8 +318,8 @@ func (udpk userDevicePrivateKeys) toUserDeviceSet() userDeviceSet {
 // expecteRekeyInfoV2 contains all the information needed to check a
 // rekey run (that doesn't add a generation).
 //
-// If both writerPrivKeys and readerPrivKeys are empty, then the other
-// fields are ignored.
+// If both writerPrivKeys and readerPrivKeys are empty, then
+// ePubKeyIndex and ePubKey are ignored.
 type expecteRekeyInfoV2 struct {
 	writerPrivKeys, readerPrivKeys userDevicePrivateKeys
 	serverMap                      ServerKeyMap
