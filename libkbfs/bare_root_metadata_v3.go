@@ -531,6 +531,16 @@ func (md *BareRootMetadataV3) PromoteReader(
 	return nil
 }
 
+func (md *BareRootMetadataV3) RevokeDevices(
+	keys []kbfscrypto.CryptPublicKey, _ ExtraMetadata) error {
+	panic("unimplemented")
+}
+
+func (md *BareRootMetadataV3) RevokeUsers(
+	uids []keybase1.UID, _ ExtraMetadata) error {
+	panic("unimplemented")
+}
+
 // GetTLFKeyBundles implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetTLFKeyBundles(_ KeyGen) (
 	*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error) {

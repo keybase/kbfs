@@ -568,7 +568,7 @@ func (md *BareRootMetadataV2) TlfHandleExtensions() (
 }
 
 func (md *BareRootMetadataV2) PromoteReader(
-	uid keybase1.UID, extra ExtraMetadata) error {
+	uid keybase1.UID, _ ExtraMetadata) error {
 	if md.TlfID().IsPublic() {
 		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReader"}
 	}
@@ -584,6 +584,16 @@ func (md *BareRootMetadataV2) PromoteReader(
 	}
 
 	return nil
+}
+
+func (md *BareRootMetadataV2) RevokeDevices(
+	keys []kbfscrypto.CryptPublicKey, _ ExtraMetadata) error {
+	panic("unimplemented")
+}
+
+func (md *BareRootMetadataV2) RevokeUsers(
+	uids []keybase1.UID, _ ExtraMetadata) error {
+	panic("unimplemented")
 }
 
 // GetTLFKeyBundles implements the BareRootMetadata interface for

@@ -1791,6 +1791,8 @@ type MutableBareRootMetadata interface {
 	// MDv3 TODO: Get rid of this.
 	GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error)
 	PromoteReader(uid keybase1.UID, extra ExtraMetadata) error
+	RevokeDevices(keys []kbfscrypto.CryptPublicKey, extra ExtraMetadata) error
+	RevokeUsers(uids []keybase1.UID, extra ExtraMetadata) error
 	// FinalizeRekey must be called called after all rekeying work
 	// has been performed on the underlying metadata.
 	FinalizeRekey(c cryptoPure, extra ExtraMetadata) error

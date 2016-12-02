@@ -432,13 +432,15 @@ func (km *KeyManagerStandard) deleteKeysForRemovedDevices(ctx context.Context,
 				}
 			}
 		}
-		for _, kid := range toRemove {
-			delete(info[u], kid)
+		err := md.revokeDevices(toRemove)
+		if err != nil {
+			return err
 		}
 	}
 
-	for _, u := range usersToDelete {
-		delete(info, u)
+	err := md.revokeUsers(usersToDelete)
+	if err != nil {
+		return err
 	}
 
 	return nil
