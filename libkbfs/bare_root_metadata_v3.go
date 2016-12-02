@@ -1184,7 +1184,6 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 		return nil, TLFCryptKeyNotPerDeviceEncrypted{md.TlfID(), keyGen}
 	}
 
-	// v3 bundles aren't embedded.
 	wkb, rkb, ok := getKeyBundlesV3(extra)
 	if !ok {
 		return ServerKeyMap{}, makeMissingKeyBundlesError()
