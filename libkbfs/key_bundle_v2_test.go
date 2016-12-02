@@ -149,7 +149,18 @@ func TestKeyBundleFillInDevicesV2(t *testing.T) {
 	}
 }
 
-type userDeviceKeyInfoMapV2Future map[keybase1.UID]deviceKeyInfoMapFuture
+type deviceKeyInfoMapV2Future map[keybase1.KID]tlfCryptKeyInfoFuture
+
+func (dkimf deviceKeyInfoMapV2Future) toCurrent() DeviceKeyInfoMapV2 {
+	dkim := make(DeviceKeyInfoMapV2, len(dkimf))
+	for k, kif := range dkimf {
+		ki := kif.toCurrent()
+		dkim[k] = TLFCryptKeyInfo(ki)
+	}
+	return dkim
+}
+
+type userDeviceKeyInfoMapV2Future map[keybase1.UID]deviceKeyInfoMapV2Future
 
 func (udkimf userDeviceKeyInfoMapV2Future) toCurrent() UserDeviceKeyInfoMapV2 {
 	udkim := make(UserDeviceKeyInfoMapV2)
@@ -179,7 +190,7 @@ func (wkbf tlfWriterKeyBundleFuture) ToCurrentStruct() kbfscodec.CurrentStruct {
 
 func makeFakeDeviceKeyInfoMapV2Future(t *testing.T) userDeviceKeyInfoMapV2Future {
 	return userDeviceKeyInfoMapV2Future{
-		"fake uid": deviceKeyInfoMapFuture{
+		"fake uid": deviceKeyInfoMapV2Future{
 			"fake kid": makeFakeTLFCryptKeyInfoFuture(t),
 		},
 	}

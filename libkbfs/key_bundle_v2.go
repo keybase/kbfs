@@ -14,19 +14,106 @@ import (
 	"golang.org/x/net/context"
 )
 
-// UserDeviceKeyInfoMapV2 maps a user's keybase UID to their DeviceKeyInfoMap
-type UserDeviceKeyInfoMapV2 map[keybase1.UID]DeviceKeyInfoMap
+// DeviceKeyInfoMapV2 is a map from a user devices (identified by the
+// KID of the corresponding device CryptPublicKey) to the
+// TLF's symmetric secret key information.
+type DeviceKeyInfoMapV2 map[keybase1.KID]TLFCryptKeyInfo
+
+func (kim DeviceKeyInfoMapV2) fillInDeviceInfo(crypto Crypto,
+	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
+	publicKeys []kbfscrypto.CryptPublicKey) (
+	serverMap map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf,
+	err error) {
+	serverMap = make(map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf)
+	// for each device:
+	//    * create a new random server half
+	//    * mask it with the key to get the client half
+	//    * encrypt the client half
+	//
+	// TODO: parallelize
+	for _, k := range publicKeys {
+		// Skip existing entries, only fill in new ones
+		if _, ok := kim[k.KID()]; ok {
+			continue
+		}
+
+		var serverHalf kbfscrypto.TLFCryptKeyServerHalf
+		serverHalf, err = crypto.MakeRandomTLFCryptKeyServerHalf()
+		if err != nil {
+			return nil, err
+		}
+
+		var clientHalf kbfscrypto.TLFCryptKeyClientHalf
+		clientHalf, err = crypto.MaskTLFCryptKey(serverHalf, tlfCryptKey)
+		if err != nil {
+			return nil, err
+		}
+
+		var encryptedClientHalf EncryptedTLFCryptKeyClientHalf
+		encryptedClientHalf, err =
+			crypto.EncryptTLFCryptKeyClientHalf(ePrivKey, k, clientHalf)
+		if err != nil {
+			return nil, err
+		}
+
+		var serverHalfID TLFCryptKeyServerHalfID
+		serverHalfID, err =
+			crypto.GetTLFCryptKeyServerHalfID(uid, k.KID(), serverHalf)
+		if err != nil {
+			return nil, err
+		}
+
+		kim[k.KID()] = TLFCryptKeyInfo{
+			ClientHalf:   encryptedClientHalf,
+			ServerHalfID: serverHalfID,
+			EPubKeyIndex: ePubIndex,
+		}
+		serverMap[k.KID()] = serverHalf
+	}
+
+	return serverMap, nil
+}
+
+func (kim DeviceKeyInfoMapV2) deepCopy() DeviceKeyInfoMapV2 {
+	kimCopy := make(DeviceKeyInfoMapV2)
+	for kid, info := range kim {
+		// TODO: This actually still shares some data (in byte
+		// slices). Fix that.
+		kimCopy[kid] = info
+	}
+	return kimCopy
+}
+
+func (kim DeviceKeyInfoMapV2) toDKIM() DeviceKeyInfoMap {
+	return DeviceKeyInfoMap(kim)
+}
+
+func deviceKeyInfoMapToV2(dkim DeviceKeyInfoMap) DeviceKeyInfoMapV2 {
+	return DeviceKeyInfoMapV2(dkim)
+}
+
+// UserDeviceKeyInfoMapV2 maps a user's keybase UID to their DeviceKeyInfoMapV2
+type UserDeviceKeyInfoMapV2 map[keybase1.UID]DeviceKeyInfoMapV2
 
 func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM() UserDeviceKeyInfoMap {
-	return UserDeviceKeyInfoMap(udkimV2)
+	udkim := make(UserDeviceKeyInfoMap)
+	for u, dkimV2 := range udkimV2 {
+		udkim[u] = dkimV2.toDKIM()
+	}
+	return udkim
 }
 
 func (udkimV2 UserDeviceKeyInfoMapV2) toV3() UserDeviceKeyInfoMapV3 {
-	return UserDeviceKeyInfoMapV3(udkimV2)
+	return UserDeviceKeyInfoMapV3(udkimV2.toUDKIM())
 }
 
 func userDeviceKeyInfoMapToV2(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV2 {
-	return UserDeviceKeyInfoMapV2(udkim)
+	udkimV2 := make(UserDeviceKeyInfoMapV2)
+	for u, dkim := range udkim {
+		udkimV2[u] = deviceKeyInfoMapToV2(dkim)
+	}
+	return udkimV2
 }
 
 // All section references below are to https://keybase.io/blog/kbfs-crypto
@@ -240,7 +327,7 @@ func fillInDevicesAndServerMapV2(crypto Crypto, newIndex int,
 	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys serverKeyMap) error {
 	for u, keys := range cryptKeys {
 		if _, ok := keyInfoMap[u]; !ok {
-			keyInfoMap[u] = DeviceKeyInfoMap{}
+			keyInfoMap[u] = DeviceKeyInfoMapV2{}
 		}
 
 		serverMap, err := keyInfoMap[u].fillInDeviceInfo(
