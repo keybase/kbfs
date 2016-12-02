@@ -266,6 +266,18 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 	require.Equal(t, expectedRKeys, brmd.RKeys)
 }
 
+func checkServerMap(t *testing.T,
+	expected map[keybase1.UID][]keybase1.KID, serverMap ServerKeyMap) {
+	require.Equal(t, len(expected), len(serverMap))
+	for uid, kids := range expected {
+		require.Equal(t, len(kids), len(serverMap[uid]))
+		for _, kid := range kids {
+			_, ok := serverMap[uid][kid]
+			require.True(t, ok, "uid=%s, kid=%s", uid, kid)
+		}
+	}
+}
+
 func checkWKBV2(t *testing.T, wkb *TLFWriterKeyBundleV2, serverMap ServerKeyMap,
 	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
 	expectedEPubKeyIndex int,
@@ -322,18 +334,6 @@ func checkRKBV2(t *testing.T, wkb *TLFWriterKeyBundleV2,
 	tlfCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
 	require.NoError(t, err)
 	require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
-}
-
-func checkServerMap(t *testing.T,
-	expected map[keybase1.UID][]keybase1.KID, serverMap ServerKeyMap) {
-	require.Equal(t, len(expected), len(serverMap))
-	for uid, kids := range expected {
-		require.Equal(t, len(kids), len(serverMap[uid]))
-		for _, kid := range kids {
-			_, ok := serverMap[uid][kid]
-			require.True(t, ok, "uid=%s, kid=%s", uid, kid)
-		}
-	}
 }
 
 func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
