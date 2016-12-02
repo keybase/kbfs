@@ -393,6 +393,11 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
 		rkb.TLFReaderEphemeralPublicKeys)
 
+	require.Equal(t, 3, len(serverMap))
+	require.Equal(t, 1, len(serverMap[uid1]))
+	require.Equal(t, 1, len(serverMap[uid2]))
+	require.Equal(t, 1, len(serverMap[uid3]))
+
 	dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
 
 	crypto1 := NewCryptoLocal(codec, dummySigningKey, privKey1)
@@ -434,6 +439,10 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, 2, len(rkb.RKeys[uid3]))
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
 		rkb.TLFReaderEphemeralPublicKeys)
+
+	require.Equal(t, 2, len(serverMap2))
+	require.Equal(t, 1, len(serverMap2[uid1]))
+	require.Equal(t, 1, len(serverMap2[uid3]))
 
 	checkWKBV2(t, wkb, serverMap, uid1, privKey1.GetPublicKey(),
 		0, ePubKey1, crypto1, tlfCryptKey1)
@@ -479,6 +488,9 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, 4, len(rkb.RKeys[uid3]))
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys{ePubKey3},
 		rkb.TLFReaderEphemeralPublicKeys)
+
+	require.Equal(t, 1, len(serverMap3))
+	require.Equal(t, 2, len(serverMap3[uid3]))
 
 	checkWKBV2(t, wkb, serverMap, uid1, privKey1.GetPublicKey(),
 		0, ePubKey1, crypto1, tlfCryptKey1)
