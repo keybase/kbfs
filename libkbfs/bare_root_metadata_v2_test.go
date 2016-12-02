@@ -377,7 +377,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		RKeys: UserDeviceKeyInfoMapV2{},
 	}, *rkb)
 
-	serverMap, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
+	serverMap1, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
 		extra, wKeys, rKeys, ePubKey1, ePrivKey1, tlfCryptKey1)
 	require.NoError(t, err)
 
@@ -393,10 +393,30 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
 		rkb.TLFReaderEphemeralPublicKeys)
 
-	require.Equal(t, 3, len(serverMap))
-	require.Equal(t, 1, len(serverMap[uid1]))
-	require.Equal(t, 1, len(serverMap[uid2]))
-	require.Equal(t, 1, len(serverMap[uid3]))
+	require.Equal(t, 3, len(serverMap1))
+	require.Equal(t, 1, len(serverMap1[uid1]))
+	require.Equal(t, 1, len(serverMap1[uid2]))
+	require.Equal(t, 1, len(serverMap1[uid3]))
+
+	// Do again to check idempotency.
+
+	serverMap1b, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
+		extra, wKeys, rKeys, ePubKey1, ePrivKey1, tlfCryptKey1)
+	require.NoError(t, err)
+
+	require.Equal(t, 2, len(wkb.WKeys))
+	require.Equal(t, 1, len(wkb.WKeys[uid1]))
+	require.Equal(t, 1, len(wkb.WKeys[uid2]))
+	require.Equal(t, pubKey, wkb.TLFPublicKey)
+	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys{ePubKey1},
+		wkb.TLFEphemeralPublicKeys)
+
+	require.Equal(t, 1, len(rkb.RKeys))
+	require.Equal(t, 1, len(rkb.RKeys[uid3]))
+	require.Equal(t, kbfscrypto.TLFEphemeralPublicKeys(nil),
+		rkb.TLFReaderEphemeralPublicKeys)
+
+	require.Equal(t, 0, len(serverMap1b))
 
 	dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
 
@@ -404,12 +424,12 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	crypto2 := NewCryptoLocal(codec, dummySigningKey, privKey2)
 	crypto3 := NewCryptoLocal(codec, dummySigningKey, privKey3)
 
-	checkWKBV2(t, wkb, serverMap, uid1, privKey1.GetPublicKey(),
+	checkWKBV2(t, wkb, serverMap1, uid1, privKey1.GetPublicKey(),
 		0, ePubKey1, crypto1, tlfCryptKey1)
-	checkWKBV2(t, wkb, serverMap, uid2, privKey2.GetPublicKey(),
+	checkWKBV2(t, wkb, serverMap1, uid2, privKey2.GetPublicKey(),
 		0, ePubKey1, crypto2, tlfCryptKey1)
 
-	checkRKBV2(t, wkb, rkb, serverMap, uid3, privKey3.GetPublicKey(),
+	checkRKBV2(t, wkb, rkb, serverMap1, uid3, privKey3.GetPublicKey(),
 		0, ePubKey1, crypto3, tlfCryptKey1)
 
 	// Rekey.
@@ -444,11 +464,11 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, 1, len(serverMap2[uid1]))
 	require.Equal(t, 1, len(serverMap2[uid3]))
 
-	checkWKBV2(t, wkb, serverMap, uid1, privKey1.GetPublicKey(),
+	checkWKBV2(t, wkb, serverMap1, uid1, privKey1.GetPublicKey(),
 		0, ePubKey1, crypto1, tlfCryptKey1)
-	checkWKBV2(t, wkb, serverMap, uid2, privKey2.GetPublicKey(),
+	checkWKBV2(t, wkb, serverMap1, uid2, privKey2.GetPublicKey(),
 		0, ePubKey1, crypto2, tlfCryptKey1)
-	checkRKBV2(t, wkb, rkb, serverMap, uid3, privKey3.GetPublicKey(),
+	checkRKBV2(t, wkb, rkb, serverMap1, uid3, privKey3.GetPublicKey(),
 		0, ePubKey1, crypto3, tlfCryptKey1)
 
 	crypto1b := NewCryptoLocal(codec, dummySigningKey, privKey1b)
@@ -492,11 +512,11 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	require.Equal(t, 1, len(serverMap3))
 	require.Equal(t, 2, len(serverMap3[uid3]))
 
-	checkWKBV2(t, wkb, serverMap, uid1, privKey1.GetPublicKey(),
+	checkWKBV2(t, wkb, serverMap1, uid1, privKey1.GetPublicKey(),
 		0, ePubKey1, crypto1, tlfCryptKey1)
-	checkWKBV2(t, wkb, serverMap, uid2, privKey2.GetPublicKey(),
+	checkWKBV2(t, wkb, serverMap1, uid2, privKey2.GetPublicKey(),
 		0, ePubKey1, crypto2, tlfCryptKey1)
-	checkRKBV2(t, wkb, rkb, serverMap, uid3, privKey3.GetPublicKey(),
+	checkRKBV2(t, wkb, rkb, serverMap1, uid3, privKey3.GetPublicKey(),
 		0, ePubKey1, crypto3, tlfCryptKey1)
 
 	checkWKBV2(t, wkb, serverMap2, uid1, privKey1b.GetPublicKey(),
