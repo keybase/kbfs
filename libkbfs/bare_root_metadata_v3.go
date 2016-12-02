@@ -532,13 +532,46 @@ func (md *BareRootMetadataV3) PromoteReader(
 }
 
 func (md *BareRootMetadataV3) RevokeDevices(
-	keys []kbfscrypto.CryptPublicKey, _ ExtraMetadata) error {
-	panic("unimplemented")
+	keys []kbfscrypto.CryptPublicKey, extra ExtraMetadata) error {
+	if md.TlfID().IsPublic() {
+		return InvalidPublicTLFOperation{md.TlfID(), "RevokeDevices"}
+	}
+
+	wkb, rkb, ok := getKeyBundlesV3(extra)
+	if !ok {
+		return errors.New("Key bundles missing")
+	}
+
+	for _, key := range keys {
+		for _, dkim := range wkb.Keys {
+			delete(dkim, key)
+		}
+
+		for _, dkim := range rkb.RKeys {
+			delete(dkim, key)
+		}
+	}
+
+	return nil
 }
 
 func (md *BareRootMetadataV3) RevokeUsers(
-	uids []keybase1.UID, _ ExtraMetadata) error {
-	panic("unimplemented")
+	uids []keybase1.UID, extra ExtraMetadata) error {
+	if md.TlfID().IsPublic() {
+		return InvalidPublicTLFOperation{md.TlfID(), "RevokeUsers"}
+	}
+
+	wkb, rkb, ok := getKeyBundlesV3(extra)
+	if !ok {
+		return errors.New("Key bundles missing")
+	}
+
+	for _, uid := range uids {
+		delete(wkb.Keys, uid)
+		delete(rkb.RKeys, uid)
+	}
+
+	return nil
 }
 
 // GetTLFKeyBundles implements the BareRootMetadata interface for BareRootMetadataV3.

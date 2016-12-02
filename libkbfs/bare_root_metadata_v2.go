@@ -588,12 +588,48 @@ func (md *BareRootMetadataV2) PromoteReader(
 
 func (md *BareRootMetadataV2) RevokeDevices(
 	keys []kbfscrypto.CryptPublicKey, _ ExtraMetadata) error {
-	panic("unimplemented")
+	if md.TlfID().IsPublic() {
+		return InvalidPublicTLFOperation{md.TlfID(), "RevokeDevices"}
+	}
+
+	for _, wKeys := range md.WKeys {
+		for _, key := range keys {
+			for _, dkim := range wKeys.WKeys {
+				delete(dkim, key.KID())
+			}
+		}
+	}
+
+	for _, rKeys := range md.RKeys {
+		for _, key := range keys {
+			for _, dkim := range rKeys.RKeys {
+				delete(dkim, key.KID())
+			}
+		}
+	}
+
+	return nil
 }
 
 func (md *BareRootMetadataV2) RevokeUsers(
 	uids []keybase1.UID, _ ExtraMetadata) error {
-	panic("unimplemented")
+	if md.TlfID().IsPublic() {
+		return InvalidPublicTLFOperation{md.TlfID(), "RevokeUsers"}
+	}
+
+	for _, wKeys := range md.WKeys {
+		for _, uid := range uids {
+			delete(wKeys.WKeys, uid)
+		}
+	}
+
+	for _, rKeys := range md.RKeys {
+		for _, uid := range uids {
+			delete(rKeys.RKeys, uid)
+		}
+	}
+
+	return nil
 }
 
 // GetTLFKeyBundles implements the BareRootMetadata interface for
