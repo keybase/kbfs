@@ -328,32 +328,8 @@ type expectedRekeyInfo struct {
 	tlfCryptKey                    kbfscrypto.TLFCryptKey
 }
 
-func checkServerMap(t *testing.T,
-	expectedWriters, expectedReaders userDevicePrivateKeys,
-	serverMap ServerKeyMap) {
-	require.Equal(t, len(expectedWriters)+len(expectedReaders), len(serverMap))
-	for uid, privKeys := range expectedWriters {
-		require.Equal(t, len(privKeys), len(serverMap[uid]))
-		for _, privKey := range privKeys {
-			pubKey := privKey.GetPublicKey()
-			_, ok := serverMap[uid][pubKey]
-			require.True(t, ok, "writer uid=%s, key=%s", uid, pubKey)
-		}
-	}
-
-	for uid, privKeys := range expectedReaders {
-		require.Equal(t, len(privKeys), len(serverMap[uid]))
-		for _, privKey := range privKeys {
-			pubKey := privKey.GetPublicKey()
-			_, ok := serverMap[uid][pubKey]
-			require.True(t, ok, "reader uid=%s, key=%s", uid, pubKey)
-		}
-	}
-}
-
 func checkKeyBundlesV2Helper(t *testing.T, expected expectedRekeyInfo,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
-	checkServerMap(t, expected.writerPrivKeys, expected.readerPrivKeys, expected.serverMap)
 	for uid, privKeys := range expected.writerPrivKeys {
 		for _, privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
@@ -423,14 +399,25 @@ func checkKeyBundlesV2Helper(t *testing.T, expected expectedRekeyInfo,
 }
 
 func userDeviceKeyInfoMapV2ToDeviceSet(udkimV2 UserDeviceKeyInfoMapV2) userDeviceSet {
-	u := make(userDeviceSet)
+	uds := make(userDeviceSet)
 	for uid, dkimV2 := range udkimV2 {
-		u[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		uds[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
 		for kid := range dkimV2 {
-			u[uid][kbfscrypto.MakeCryptPublicKey(kid)] = true
+			uds[uid][kbfscrypto.MakeCryptPublicKey(kid)] = true
 		}
 	}
-	return u
+	return uds
+}
+
+func serverKeyMapToUserDeviceSet(serverMap ServerKeyMap) userDeviceSet {
+	uds := make(userDeviceSet)
+	for uid, keys := range serverMap {
+		uds[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		for key := range keys {
+			uds[uid][key] = true
+		}
+	}
+	return uds
 }
 
 // checkKeyBundlesV2 checks that wkb and rkb contain exactly the info
@@ -478,6 +465,11 @@ func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expectedRekeyInfo,
 	require.Equal(t, expectedPubKey, wkb.TLFPublicKey)
 
 	for _, expected := range expectedRekeyInfos {
+		expectedUserSet :=
+			expected.writerPrivKeys.toUserDeviceSet().union(
+				expected.readerPrivKeys.toUserDeviceSet())
+		userSet := serverKeyMapToUserDeviceSet(expected.serverMap)
+		require.Equal(t, expectedUserSet, userSet)
 		checkKeyBundlesV2Helper(t, expected, wkb, rkb)
 	}
 }
