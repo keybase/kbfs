@@ -391,61 +391,6 @@ func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
 	return users
 }
 
-func (km *KeyManagerStandard) deleteKeysForRemovedDevices(ctx context.Context,
-	md *RootMetadata, info UserDeviceKeyInfoMap,
-	expectedKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey) error {
-	kops := km.config.KeyOps()
-	var usersToDelete []keybase1.UID
-	for u, keyInfos := range info {
-		keys, ok := expectedKeys[u]
-		if !ok {
-			// The user was completely removed from the handle, which
-			// shouldn't happen but might as well make it work just in
-			// case.
-			km.log.CInfof(ctx, "Rekey %s: removing all server key halves "+
-				"for user %s", md.TlfID(), u)
-			usersToDelete = append(usersToDelete, u)
-			for key, keyInfo := range keyInfos {
-				err := kops.DeleteTLFCryptKeyServerHalf(ctx, u, key.KID(),
-					keyInfo.ServerHalfID)
-				if err != nil {
-					return err
-				}
-			}
-			continue
-		}
-		keyLookup := make(map[kbfscrypto.CryptPublicKey]bool)
-		for _, key := range keys {
-			keyLookup[key] = true
-		}
-		var toRemove []kbfscrypto.CryptPublicKey
-		for key, keyInfo := range keyInfos {
-			// Remove any keys that no longer belong.
-			if !keyLookup[key] {
-				toRemove = append(toRemove, key)
-				km.log.CInfof(ctx, "Rekey %s: removing server key halves "+
-					" for device %s of user %s", md.TlfID(), key, u)
-				err := kops.DeleteTLFCryptKeyServerHalf(ctx, u, key.KID(),
-					keyInfo.ServerHalfID)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		err := md.revokeDevices(toRemove)
-		if err != nil {
-			return err
-		}
-	}
-
-	err := md.revokeUsers(usersToDelete)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (km *KeyManagerStandard) identifyUIDSets(ctx context.Context,
 	tlfID tlf.ID, writersToIdentify map[keybase1.UID]bool,
 	readersToIdentify map[keybase1.UID]bool) error {

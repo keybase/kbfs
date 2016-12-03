@@ -689,14 +689,6 @@ func (md *RootMetadata) promoteReader(uid keybase1.UID) error {
 	return md.bareMd.PromoteReader(uid, md.extra)
 }
 
-func (md *RootMetadata) revokeDevices(keys []kbfscrypto.CryptPublicKey) error {
-	return md.bareMd.RevokeDevices(keys, md.extra)
-}
-
-func (md *RootMetadata) revokeUsers(uids []keybase1.UID) error {
-	return md.bareMd.RevokeUsers(uids, md.extra)
-}
-
 func (md *RootMetadata) revokeRemovedDevices(
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey) (
 	map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID, error) {

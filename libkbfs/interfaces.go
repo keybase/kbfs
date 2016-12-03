@@ -1792,10 +1792,6 @@ type MutableBareRootMetadata interface {
 	GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error)
 	// PromoteReader converts the given user from a reader to a writer.
 	PromoteReader(uid keybase1.UID, extra ExtraMetadata) error
-	// RevokeDevices removes the given devices from this MD.
-	RevokeDevices(keys []kbfscrypto.CryptPublicKey, extra ExtraMetadata) error
-	// RevokeUsers removes the given users from this MD.
-	RevokeUsers(uids []keybase1.UID, extra ExtraMetadata) error
 	// RevokeRemovedDevices removes key info for any device not in
 	// the given maps, and returns a corresponding map of server
 	// halves to delete from the server.

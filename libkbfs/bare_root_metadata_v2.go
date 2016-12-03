@@ -588,56 +588,6 @@ func (md *BareRootMetadataV2) PromoteReader(
 	return nil
 }
 
-// RevokeDevices implements the BareRootMetadata interface for
-// BareRootMetadataV2.
-func (md *BareRootMetadataV2) RevokeDevices(
-	keys []kbfscrypto.CryptPublicKey, _ ExtraMetadata) error {
-	if md.TlfID().IsPublic() {
-		return InvalidPublicTLFOperation{md.TlfID(), "RevokeDevices"}
-	}
-
-	for _, wKeys := range md.WKeys {
-		for _, key := range keys {
-			for _, dkim := range wKeys.WKeys {
-				delete(dkim, key.KID())
-			}
-		}
-	}
-
-	for _, rKeys := range md.RKeys {
-		for _, key := range keys {
-			for _, dkim := range rKeys.RKeys {
-				delete(dkim, key.KID())
-			}
-		}
-	}
-
-	return nil
-}
-
-// RevokeUsers implements the BareRootMetadata interface for
-// BareRootMetadataV2.
-func (md *BareRootMetadataV2) RevokeUsers(
-	uids []keybase1.UID, _ ExtraMetadata) error {
-	if md.TlfID().IsPublic() {
-		return InvalidPublicTLFOperation{md.TlfID(), "RevokeUsers"}
-	}
-
-	for _, wKeys := range md.WKeys {
-		for _, uid := range uids {
-			delete(wKeys.WKeys, uid)
-		}
-	}
-
-	for _, rKeys := range md.RKeys {
-		for _, uid := range uids {
-			delete(rKeys.RKeys, uid)
-		}
-	}
-
-	return nil
-}
-
 // RevokeRemovedDevices implements the BareRootMetadata interface for
 // BareRootMetadataV2.
 func (md *BareRootMetadataV2) RevokeRemovedDevices(
