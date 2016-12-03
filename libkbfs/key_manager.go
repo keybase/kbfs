@@ -609,7 +609,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		wRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), wDkim, wKeys)
 		rRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), rDkim, rKeys)
 		// TODO: This is incorrectly true if we're only
-		// promoting readers.
+		// promoting readers. This is KBFS-1744.
 		incKeyGen = len(wRemoved) > 0 || len(rRemoved) > 0
 
 		promotedReaders = make(map[keybase1.UID]bool, len(rRemoved))
