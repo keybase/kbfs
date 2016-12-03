@@ -638,6 +638,20 @@ func (md *BareRootMetadataV2) RevokeUsers(
 	return nil
 }
 
+// RevokeRemovedDevices implements the BareRootMetadata interface for
+// BareRootMetadataV2.
+func (md *BareRootMetadataV2) RevokeRemovedDevices(
+	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+	_ ExtraMetadata) (
+	map[keybase1.UID]map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID, error) {
+	if md.TlfID().IsPublic() {
+		return nil, InvalidPublicTLFOperation{
+			md.TlfID(), "RevokeRemovedDevices"}
+	}
+
+	return nil, nil
+}
+
 // GetTLFKeyBundles implements the BareRootMetadata interface for
 // BareRootMetadataV2.  Note that it is legal a writer or a reader to
 // have no keys in their bundle, if they only have a Keybase username
