@@ -53,7 +53,7 @@ func TestTLFCryptKeyInfoUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeTLFCryptKeyInfoFuture(t))
 }
 
-func TestUserServerHalfRemovalInfo(t *testing.T) {
+func TestUserServerHalfRemovalInfoAddGeneration(t *testing.T) {
 	key1 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key1")
 	key2 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key2")
 	key3 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key3")
@@ -157,6 +157,127 @@ func TestUserServerHalfRemovalInfo(t *testing.T) {
 		deviceServerHalfIDs: deviceServerHalfRemovalInfo{
 			key1: {id1a, id1b, id1c},
 			key2: {id2a, id2b, id2c},
+		},
+	}, info)
+}
+
+func TestServerHalfRemovalInfoAddGeneration(t *testing.T) {
+	key1 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key1")
+	key2 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key2")
+
+	half1a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x1})
+	half1b := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
+	half1c := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x3})
+	half2a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x4})
+	half2b := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x5})
+	half2c := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x6})
+
+	uid1 := keybase1.MakeTestUID(0x1)
+	uid2 := keybase1.MakeTestUID(0x2)
+	uid3 := keybase1.MakeTestUID(0x3)
+
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	id1a, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1.KID(), half1a)
+	require.NoError(t, err)
+	id1b, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1.KID(), half1b)
+	require.NoError(t, err)
+	id1c, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1.KID(), half1c)
+	require.NoError(t, err)
+	id2a, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key2.KID(), half2a)
+	require.NoError(t, err)
+	id2b, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key2.KID(), half2b)
+	require.NoError(t, err)
+	id2c, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key2.KID(), half2c)
+	require.NoError(t, err)
+
+	// Required because addGeneration may modify its object even
+	// if it returns an error.
+	makeInfo := func() ServerHalfRemovalInfo {
+		return ServerHalfRemovalInfo{
+			uid1: userServerHalfRemovalInfo{
+				userRemoved: true,
+				deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+					key1: {id1a, id1b},
+					key2: {id2a, id2b},
+				},
+			},
+			uid2: userServerHalfRemovalInfo{
+				userRemoved: false,
+				deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+					key1: {id1a, id1c},
+					key2: {id2a, id2c},
+				},
+			},
+		}
+	}
+
+	genInfo := ServerHalfRemovalInfo{
+		uid1: userServerHalfRemovalInfo{
+			userRemoved: true,
+			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+				key1: {id1c},
+				key2: {id2c},
+			},
+		},
+	}
+
+	err = makeInfo().addGeneration(genInfo)
+	require.Error(t, err)
+	require.True(t, strings.HasPrefix(err.Error(), "user count=2"),
+		"err=%v", err)
+
+	genInfo[uid3] = userServerHalfRemovalInfo{
+		userRemoved: false,
+		deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+			key1: {id1b},
+			key2: {id2b},
+		},
+	}
+
+	err = makeInfo().addGeneration(genInfo)
+	require.Error(t, err)
+	require.True(t, strings.HasPrefix(err.Error(), "no generation info"),
+		"err=%v", err)
+
+	genInfo[uid2] = userServerHalfRemovalInfo{
+		userRemoved: true,
+		deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+			key1: {id1b},
+			key2: {id2b},
+		},
+	}
+	delete(genInfo, uid3)
+
+	err = makeInfo().addGeneration(genInfo)
+	require.Error(t, err)
+	require.True(t, strings.HasPrefix(err.Error(), "userRemoved=false"),
+		"err=%v", err)
+
+	genInfo[uid2] = userServerHalfRemovalInfo{
+		userRemoved: false,
+		deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+			key1: {id1b},
+			key2: {id2b},
+		},
+	}
+	info := makeInfo()
+	err = info.addGeneration(genInfo)
+	require.NoError(t, err)
+	require.Equal(t, ServerHalfRemovalInfo{
+		uid1: userServerHalfRemovalInfo{
+			userRemoved: true,
+			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+				key1: {id1a, id1b, id1c},
+				key2: {id2a, id2b, id2c},
+			},
+		},
+		uid2: userServerHalfRemovalInfo{
+			userRemoved: false,
+			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+				key1: {id1a, id1c, id1b},
+				key2: {id2a, id2c, id2b},
+			},
 		},
 	}, info)
 }
