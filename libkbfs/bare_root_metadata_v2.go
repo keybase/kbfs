@@ -601,13 +601,13 @@ func (md *BareRootMetadataV2) RevokeRemovedDevices(
 	wRemovalInfo := make(ServerHalfRemovalInfo)
 	for _, wkb := range md.WKeys {
 		removalInfo := wkb.WKeys.removeDevicesNotIn(wKeys)
-		wRemovalInfo = wRemovalInfo.mergeGenerations(removalInfo)
+		wRemovalInfo.addGeneration(removalInfo)
 	}
 
 	rRemovalInfo := make(ServerHalfRemovalInfo)
 	for _, rkb := range md.RKeys {
 		removalInfo := rkb.RKeys.removeDevicesNotIn(rKeys)
-		rRemovalInfo = wRemovalInfo.mergeGenerations(removalInfo)
+		rRemovalInfo.addGeneration(removalInfo)
 	}
 
 	return wRemovalInfo.mergeUsers(rRemovalInfo)
