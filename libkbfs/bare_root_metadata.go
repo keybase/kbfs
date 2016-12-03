@@ -4,7 +4,11 @@
 
 package libkbfs
 
-import "github.com/keybase/kbfs/tlf"
+import (
+	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/keybase/kbfs/tlf"
+)
 
 // MakeInitialBareRootMetadata creates a new MutableBareRootMetadata
 // instance of the given MetadataVer with revision
@@ -26,4 +30,17 @@ func MakeInitialBareRootMetadata(
 	}
 
 	return MakeInitialBareRootMetadataV3(tlfID, h)
+}
+
+func addServerHalfIDs(allServerHalfIDs map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID,
+	serverHalfIDs map[keybase1.UID]map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID) {
+	for uid, userServerHalfIDs := range serverHalfIDs {
+		if allServerHalfIDs[uid] == nil {
+			allServerHalfIDs[uid] = make(map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID)
+		}
+		for key, serverHalf := range userServerHalfIDs {
+			allServerHalfIDs[uid][key] =
+				append(allServerHalfIDs[uid][key], serverHalf)
+		}
+	}
 }
