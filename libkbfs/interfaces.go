@@ -1790,8 +1790,11 @@ type MutableBareRootMetadata interface {
 	// Returns the TLF key bundles for this metadata at the given key generation.
 	// MDv3 TODO: Get rid of this.
 	GetTLFKeyBundles(keyGen KeyGen) (*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error)
+	// PromoteReader converts the given user from a reader to a writer.
 	PromoteReader(uid keybase1.UID, extra ExtraMetadata) error
+	// RevokeDevices removes the given devices from this MD.
 	RevokeDevices(keys []kbfscrypto.CryptPublicKey, extra ExtraMetadata) error
+	// RevokeUsers removes the given users from this MD.
 	RevokeUsers(uids []keybase1.UID, extra ExtraMetadata) error
 	// FinalizeRekey must be called called after all rekeying work
 	// has been performed on the underlying metadata.
