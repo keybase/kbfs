@@ -527,7 +527,15 @@ func (md *BareRootMetadataV3) PromoteReader(
 	if !ok {
 		return fmt.Errorf("Could not find %s in rkb", uid)
 	}
-	// TODO: This is incorrect! Fix this.
+	// TODO: This is incorrect, since dkim contains offsets info
+	// rkb.TLFEphemeralPublicKeys, which don't directly translate
+	// to offsets into wkb.TLFEphemeralPublicKeys.
+	//
+	// Also, doing this may leave some entries in
+	// rkb.TLFEphemeralPublicKeys unreferenced, so they should be
+	// removed.
+	//
+	// See KBFS-1719.
 	wkb.Keys[uid] = dkim
 	delete(rkb.Keys, uid)
 	return nil
@@ -666,7 +674,7 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 		publicKeys = wkb.TLFEphemeralPublicKeys
 		keyType = "writer"
 	} else {
-		publicKeys = rkb.TLFReaderEphemeralPublicKeys
+		publicKeys = rkb.TLFEphemeralPublicKeys
 		keyType = "reader"
 	}
 	keyCount := len(publicKeys)
@@ -993,7 +1001,7 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(
 	}
 	newReaderKeys := &TLFReaderKeyBundleV3{
 		Keys: userDeviceKeyInfoMapToV3(rDkim),
-		TLFReaderEphemeralPublicKeys: rPublicKeys,
+		TLFEphemeralPublicKeys: rPublicKeys,
 	}
 	md.WriterMetadata.LatestKeyGen++
 	return &ExtraMetadataV3{
@@ -1162,9 +1170,9 @@ func (md *BareRootMetadataV3) fillInDevices(crypto Crypto,
 	serverKeyMap, error) {
 	var newReaderIndex, newWriterIndex int
 	if len(rKeys) > 0 {
-		rkb.TLFReaderEphemeralPublicKeys =
-			append(rkb.TLFReaderEphemeralPublicKeys, ePubKey)
-		newReaderIndex = len(rkb.TLFReaderEphemeralPublicKeys) - 1
+		rkb.TLFEphemeralPublicKeys =
+			append(rkb.TLFEphemeralPublicKeys, ePubKey)
+		newReaderIndex = len(rkb.TLFEphemeralPublicKeys) - 1
 	}
 	if len(wKeys) > 0 {
 		wkb.TLFEphemeralPublicKeys =

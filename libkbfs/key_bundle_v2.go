@@ -257,8 +257,8 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 
 	// Copy all of the TLFReaderEphemeralPublicKeys.
 	for _, ePubKey := range rkb.TLFReaderEphemeralPublicKeys {
-		rkbCopy.TLFReaderEphemeralPublicKeys =
-			append(rkbCopy.TLFReaderEphemeralPublicKeys, ePubKey)
+		rkbCopy.TLFEphemeralPublicKeys =
+			append(rkbCopy.TLFEphemeralPublicKeys, ePubKey)
 	}
 
 	// Track a mapping of old writer ephemeral pubkey index to new
@@ -287,9 +287,9 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 				// at the end of the reader list.
 				if newIndex, ok := pubKeyIndicesMap[oldIndex]; !ok {
 					ePubKey := wkb.TLFEphemeralPublicKeys[oldIndex]
-					rkbCopy.TLFReaderEphemeralPublicKeys =
-						append(rkbCopy.TLFReaderEphemeralPublicKeys, ePubKey)
-					newIndex = len(rkbCopy.TLFReaderEphemeralPublicKeys) - 1
+					rkbCopy.TLFEphemeralPublicKeys =
+						append(rkbCopy.TLFEphemeralPublicKeys, ePubKey)
+					newIndex = len(rkbCopy.TLFEphemeralPublicKeys) - 1
 					pubKeyIndicesMap[oldIndex] = newIndex
 					info.EPubKeyIndex = newIndex
 				} else {
