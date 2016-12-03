@@ -222,12 +222,12 @@ func (md *BareRootMetadataV3) LatestKeyGeneration() KeyGen {
 func (md *BareRootMetadataV3) haveOnlyUserRKeysChanged(
 	codec kbfscodec.Codec, prevMD *BareRootMetadataV3,
 	user keybase1.UID, prevRkb, rkb TLFReaderKeyBundleV3) (bool, error) {
-	if len(rkb.RKeys) != len(prevRkb.RKeys) {
+	if len(rkb.Keys) != len(prevRkb.Keys) {
 		return false, nil
 	}
-	for u, keys := range rkb.RKeys {
+	for u, keys := range rkb.Keys {
 		if u != user {
-			prevKeys := prevRkb.RKeys[u]
+			prevKeys := prevRkb.Keys[u]
 			keysEqual, err := kbfscodec.Equal(codec, keys, prevKeys)
 			if err != nil {
 				return false, err
@@ -477,11 +477,11 @@ func (md *BareRootMetadataV3) MakeBareTlfHandle(extra ExtraMetadata) (
 			return tlf.Handle{}, errors.New("Missing key bundles")
 		}
 		writers = make([]keybase1.UID, 0, len(wkb.Keys))
-		readers = make([]keybase1.UID, 0, len(rkb.RKeys))
+		readers = make([]keybase1.UID, 0, len(rkb.Keys))
 		for w := range wkb.Keys {
 			writers = append(writers, w)
 		}
-		for r := range rkb.RKeys {
+		for r := range rkb.Keys {
 			// TODO: Return an error instead if r is
 			// PublicUID. Maybe return an error if r is in
 			// WKeys also. Or do all this in
@@ -521,13 +521,13 @@ func (md *BareRootMetadataV3) PromoteReader(
 	if !ok {
 		return errors.New("Key bundles missing")
 	}
-	dkim, ok := rkb.RKeys[uid]
+	dkim, ok := rkb.Keys[uid]
 	if !ok {
 		return fmt.Errorf("Could not find %s in rkb", uid)
 	}
 	// TODO: This is incorrect! Fix this.
 	wkb.Keys[uid] = dkim
-	delete(rkb.RKeys, uid)
+	delete(rkb.Keys, uid)
 	return nil
 }
 
@@ -547,7 +547,7 @@ func (md *BareRootMetadataV3) RevokeDevices(
 			delete(dkim, key)
 		}
 
-		for _, dkim := range rkb.RKeys {
+		for _, dkim := range rkb.Keys {
 			delete(dkim, key)
 		}
 	}
@@ -568,7 +568,7 @@ func (md *BareRootMetadataV3) RevokeUsers(
 
 	for _, uid := range uids {
 		delete(wkb.Keys, uid)
-		delete(rkb.RKeys, uid)
+		delete(rkb.Keys, uid)
 	}
 
 	return nil
@@ -593,7 +593,7 @@ func (md *BareRootMetadataV3) GetDeviceKIDs(
 	}
 	dkim := wkb.Keys[user]
 	if len(dkim) == 0 {
-		dkim = rkb.RKeys[user]
+		dkim = rkb.Keys[user]
 		if len(dkim) == 0 {
 			return nil, nil
 		}
@@ -614,7 +614,7 @@ func (md *BareRootMetadataV3) HasKeyForUser(
 	if !ok {
 		return false
 	}
-	return (len(wkb.Keys[user]) > 0) || (len(rkb.RKeys[user]) > 0)
+	return (len(wkb.Keys[user]) > 0) || (len(rkb.Keys[user]) > 0)
 }
 
 // GetTLFCryptKeyParams implements the BareRootMetadata interface for BareRootMetadataV3.
@@ -639,7 +639,7 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 	isWriter := true
 	dkim := wkb.Keys[user]
 	if dkim == nil {
-		dkim = rkb.RKeys[user]
+		dkim = rkb.Keys[user]
 		if dkim == nil {
 			return kbfscrypto.TLFEphemeralPublicKey{},
 				EncryptedTLFCryptKeyClientHalf{},
@@ -986,7 +986,7 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(
 		TLFEphemeralPublicKeys:        wPublicKeys,
 	}
 	newReaderKeys := &TLFReaderKeyBundleV3{
-		RKeys: userDeviceKeyInfoMapToV3(rDkim),
+		Keys: userDeviceKeyInfoMapToV3(rDkim),
 		TLFReaderEphemeralPublicKeys: rPublicKeys,
 	}
 	md.WriterMetadata.LatestKeyGen++
@@ -1140,7 +1140,7 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra Extr
 	if !ok {
 		return nil, nil, errors.New("Key bundles missing")
 	}
-	return rkb.RKeys.toUDKIM(), wkb.Keys.toUDKIM(), nil
+	return rkb.Keys.toUDKIM(), wkb.Keys.toUDKIM(), nil
 }
 
 // fillInDevices ensures that every device for every writer and reader
@@ -1173,7 +1173,7 @@ func (md *BareRootMetadataV3) fillInDevices(crypto Crypto,
 	if err != nil {
 		return nil, err
 	}
-	err = fillInDevicesAndServerMapV3(crypto, newReaderIndex, rKeys, rkb.RKeys,
+	err = fillInDevicesAndServerMapV3(crypto, newReaderIndex, rKeys, rkb.Keys,
 		ePubKey, ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err

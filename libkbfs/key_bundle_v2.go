@@ -273,7 +273,7 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 	}
 
 	rkbCopy := &TLFReaderKeyBundleV3{
-		RKeys: make(UserDeviceKeyInfoMapV3),
+		Keys: make(UserDeviceKeyInfoMapV3),
 	}
 
 	// Copy the latest UserDeviceKeyInfoMap.
@@ -322,7 +322,7 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 			}
 			dkimCopy[kbfscrypto.MakeCryptPublicKey(kid)] = info
 		}
-		rkbCopy.RKeys[uid] = dkimCopy
+		rkbCopy.Keys[uid] = dkimCopy
 	}
 	return rkbCopy, nil
 }

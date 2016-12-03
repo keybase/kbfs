@@ -113,7 +113,7 @@ func userDeviceKeyInfoMapToV3(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV3
 
 // TLFReaderKeyBundleV3 is an alias to a TLFReaderKeyBundleV2 for clarity.
 type TLFReaderKeyBundleV3 struct {
-	RKeys UserDeviceKeyInfoMapV3
+	Keys UserDeviceKeyInfoMapV3 `codec:"rKeys,omitempty"`
 
 	// M_e as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
 	// Because devices can be added into the key generation after it
@@ -123,14 +123,14 @@ type TLFReaderKeyBundleV3 struct {
 	// its TLFCryptoKeyInfo struct.
 	// This list is needed so a reader rekey doesn't modify the writer
 	// metadata.
-	TLFReaderEphemeralPublicKeys kbfscrypto.TLFEphemeralPublicKeys `codec:"readerEPubKey,omitempty"`
+	TLFReaderEphemeralPublicKeys kbfscrypto.TLFEphemeralPublicKeys `codec:"rEPubKey,omitempty"`
 
 	codec.UnknownFieldSetHandler
 }
 
 // IsReader returns true if the given user device is in the reader set.
 func (trb TLFReaderKeyBundleV3) IsReader(user keybase1.UID, deviceKID keybase1.KID) bool {
-	_, ok := trb.RKeys[user][kbfscrypto.MakeCryptPublicKey(deviceKID)]
+	_, ok := trb.Keys[user][kbfscrypto.MakeCryptPublicKey(deviceKID)]
 	return ok
 }
 
@@ -138,7 +138,7 @@ func (trb TLFReaderKeyBundleV3) IsReader(user keybase1.UID, deviceKID keybase1.K
 // keys for a top-level folder.
 type TLFWriterKeyBundleV3 struct {
 	// Maps from each user to their crypt key bundle for the current generation.
-	Keys UserDeviceKeyInfoMapV3
+	Keys UserDeviceKeyInfoMapV3 `codec:"wKeys"`
 
 	// M_e as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
 	// Because devices can be added into the key generation after it
