@@ -103,6 +103,9 @@ type userServerHalfRemovalInfo struct {
 	deviceServerHalfIDs map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID
 }
 
+// addGeneration merges the keys in genInfo (which must be one per
+// device) into ri. genInfo must have the same userRemoved value and
+// keys as ri.
 func (ri userServerHalfRemovalInfo) addGeneration(
 	uid keybase1.UID, genInfo userServerHalfRemovalInfo) error {
 	if ri.userRemoved != genInfo.userRemoved {
@@ -152,6 +155,8 @@ func (ri userServerHalfRemovalInfo) addGeneration(
 // of server half IDs to remove from the server.
 type ServerHalfRemovalInfo map[keybase1.UID]userServerHalfRemovalInfo
 
+// addGeneration merges the keys in genInfo (which must be one per
+// device) into info. genInfo must have the same users as info.
 func (info ServerHalfRemovalInfo) addGeneration(
 	genInfo ServerHalfRemovalInfo) error {
 	if len(info) != len(genInfo) {
@@ -172,6 +177,9 @@ func (info ServerHalfRemovalInfo) addGeneration(
 	return nil
 }
 
+// mergeUsers returns a ServerHalfRemovalInfo that contains all the
+// users in info and other, which must be disjoint. This isn't a deep
+// copy.
 func (info ServerHalfRemovalInfo) mergeUsers(
 	other ServerHalfRemovalInfo) (ServerHalfRemovalInfo, error) {
 	merged := make(ServerHalfRemovalInfo)
