@@ -61,6 +61,7 @@ func (kim DeviceKeyInfoMapV3) deepCopy() DeviceKeyInfoMapV3 {
 }
 
 func (kim DeviceKeyInfoMapV3) toDKIM() DeviceKeyInfoMap {
+	// TODO: Do a deep copy.
 	return DeviceKeyInfoMap(kim)
 }
 
