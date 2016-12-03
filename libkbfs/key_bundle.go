@@ -93,6 +93,8 @@ func splitTLFCryptKey(crypto Crypto, uid keybase1.UID,
 	return clientInfo, serverHalf, nil
 }
 
+type deviceServerHalfRemovalInfo map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID
+
 // userServerHalfRemovalInfo contains a map from devices (identified
 // by its crypt public key) to a list of IDs for key server halves to
 // remove (one per key generation). For logging purposes, it also
@@ -100,7 +102,7 @@ func splitTLFCryptKey(crypto Crypto, uid keybase1.UID,
 // removed.
 type userServerHalfRemovalInfo struct {
 	userRemoved         bool
-	deviceServerHalfIDs map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID
+	deviceServerHalfIDs deviceServerHalfRemovalInfo
 }
 
 // addGeneration merges the keys in genInfo (which must be one per

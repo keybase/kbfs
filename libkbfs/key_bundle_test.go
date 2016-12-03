@@ -81,7 +81,7 @@ func TestUserServerHalfRemovalInfoSuccess(t *testing.T) {
 
 	info := userServerHalfRemovalInfo{
 		userRemoved: true,
-		deviceServerHalfIDs: map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID{
+		deviceServerHalfIDs: deviceServerHalfRemovalInfo{
 			key1: {id1a, id1b},
 			key2: {id2a, id2b},
 		},
@@ -89,7 +89,7 @@ func TestUserServerHalfRemovalInfoSuccess(t *testing.T) {
 
 	genInfo := userServerHalfRemovalInfo{
 		userRemoved: true,
-		deviceServerHalfIDs: map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID{
+		deviceServerHalfIDs: deviceServerHalfRemovalInfo{
 			key1: {id1c},
 			key2: {id2c},
 		},
@@ -98,7 +98,7 @@ func TestUserServerHalfRemovalInfoSuccess(t *testing.T) {
 	info.addGeneration(uid, genInfo)
 	require.Equal(t, userServerHalfRemovalInfo{
 		userRemoved: true,
-		deviceServerHalfIDs: map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID{
+		deviceServerHalfIDs: deviceServerHalfRemovalInfo{
 			key1: {id1a, id1b, id1c},
 			key2: {id2a, id2b, id2c},
 		},
