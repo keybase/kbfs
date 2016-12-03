@@ -286,8 +286,10 @@ func fillInDevicesAndServerMapV3(crypto Crypto, newIndex int,
 }
 
 func (udkim UserDeviceKeyInfoMapV3) removeDevicesNotIn(
-	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) map[keybase1.UID]map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID {
-	serverHalfIDs := make(map[keybase1.UID]map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID)
+	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) (
+	removedUsers []keybase1.UID,
+	removedServerHalfIDs map[keybase1.UID]map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID) {
+	removedServerHalfIDs = make(map[keybase1.UID]map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID)
 	for uid, dkim := range udkim {
 		userKeys := make(map[kbfscrypto.CryptPublicKey]bool)
 		for _, key := range keys[uid] {
@@ -297,10 +299,10 @@ func (udkim UserDeviceKeyInfoMapV3) removeDevicesNotIn(
 		for key, info := range dkim {
 			if !userKeys[key] {
 				delete(dkim, key)
-				if serverHalfIDs[uid] == nil {
-					serverHalfIDs[uid] = make(map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID)
+				if removedServerHalfIDs[uid] == nil {
+					removedServerHalfIDs[uid] = make(map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID)
 				}
-				serverHalfIDs[uid][key] = info.ServerHalfID
+				removedServerHalfIDs[uid][key] = info.ServerHalfID
 			}
 		}
 		if len(dkim) == 0 {
@@ -308,8 +310,9 @@ func (udkim UserDeviceKeyInfoMapV3) removeDevicesNotIn(
 			// shouldn't happen but might as well make it
 			// work just in case.
 			delete(udkim, uid)
+			removedUsers = append(removedUsers, uid)
 		}
 	}
 
-	return serverHalfIDs
+	return removedUsers, removedServerHalfIDs
 }

@@ -602,12 +602,12 @@ func (md *BareRootMetadataV2) RevokeRemovedDevices(
 	allServerHalfIDs := make(map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID)
 
 	for _, wkb := range md.WKeys {
-		serverHalfIDs := wkb.WKeys.removeDevicesNotIn(wKeys)
+		_, serverHalfIDs := wkb.WKeys.removeDevicesNotIn(wKeys)
 		addServerHalfIDs(allServerHalfIDs, serverHalfIDs)
 	}
 
 	for _, rkb := range md.RKeys {
-		serverHalfIDs := rkb.RKeys.removeDevicesNotIn(rKeys)
+		_, serverHalfIDs := rkb.RKeys.removeDevicesNotIn(rKeys)
 		addServerHalfIDs(allServerHalfIDs, serverHalfIDs)
 	}
 
