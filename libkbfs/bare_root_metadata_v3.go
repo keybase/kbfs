@@ -1115,7 +1115,8 @@ func (md *BareRootMetadataV3) GetUnresolvedParticipants() (readers, writers []ke
 }
 
 // GetUserDeviceKeyInfoMaps implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (
+func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(
+	codec kbfscodec.Codec, keyGen KeyGen, extra ExtraMetadata) (
 	readers, writers UserDeviceKeyInfoMap, err error) {
 	if md.TlfID().IsPublic() {
 		return nil, nil, InvalidPublicTLFOperation{md.TlfID(), "GetTLFKeyBundles"}

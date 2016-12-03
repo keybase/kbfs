@@ -1702,9 +1702,10 @@ type BareRootMetadata interface {
 	GetHistoricTLFCryptKey(c cryptoPure, keyGen KeyGen,
 		currentKey kbfscrypto.TLFCryptKey, extra ExtraMetadata) (
 		kbfscrypto.TLFCryptKey, error)
-	// GetUserDeviceKeyInfoMaps returns the given user device key info maps for the given
-	// key generation.
-	GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra ExtraMetadata) (
+	// GetUserDeviceKeyInfoMaps returns copies of the given user
+	// device key info maps for the given key generation.
+	GetUserDeviceKeyInfoMaps(
+		codec kbfscodec.Codec, keyGen KeyGen, extra ExtraMetadata) (
 		readers, writers UserDeviceKeyInfoMap, err error)
 }
 

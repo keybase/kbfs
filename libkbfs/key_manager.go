@@ -541,7 +541,8 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	if !incKeyGen {
 		// See if there is at least one new device in relation to the
 		// current key bundle
-		rDkim, wDkim, err := md.getUserDeviceKeyInfoMaps(currKeyGen)
+		rDkim, wDkim, err := md.getUserDeviceKeyInfoMaps(
+			km.config.Codec(), currKeyGen)
 		if err != nil {
 			return false, nil, err
 		}

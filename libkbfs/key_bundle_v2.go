@@ -318,7 +318,7 @@ func fillInDevicesAndServerMapV2(crypto Crypto, newIndex int,
 func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
 	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) ServerHalfRemovalInfo {
 	removalInfo := make(ServerHalfRemovalInfo)
-	for uid, dkim := range udkim {
+	for uid, dkim := range udkimV2 {
 		userKIDs := make(map[keybase1.KID]bool)
 		for _, key := range keys[uid] {
 			userKIDs[key.KID()] = true
@@ -341,7 +341,7 @@ func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
 			// The user was completely removed, which
 			// shouldn't happen but might as well make it
 			// work just in case.
-			delete(udkim, uid)
+			delete(udkimV2, uid)
 			userRemoved = true
 		}
 

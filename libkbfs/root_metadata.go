@@ -746,9 +746,10 @@ func (md *RootMetadata) finalizeRekey(crypto cryptoPure) error {
 	return err
 }
 
-func (md *RootMetadata) getUserDeviceKeyInfoMaps(keyGen KeyGen) (
+func (md *RootMetadata) getUserDeviceKeyInfoMaps(
+	codec kbfscodec.Codec, keyGen KeyGen) (
 	rDkim, wDkim UserDeviceKeyInfoMap, err error) {
-	return md.bareMd.GetUserDeviceKeyInfoMaps(keyGen, md.extra)
+	return md.bareMd.GetUserDeviceKeyInfoMaps(codec, keyGen, md.extra)
 }
 
 // StoresHistoricTLFCryptKeys implements the KeyMetadata interface for RootMetadata.
