@@ -387,7 +387,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 	var rkb *TLFReaderKeyBundleV3
 	if md.LatestKeyGeneration() != PublicKeyGen {
 		// Fill out the reader key bundle.
-		rkb, err = md.RKeys.ToTLFReaderKeyBundleV3(wkb)
+		rkb, err = md.RKeys.ToTLFReaderKeyBundleV3(config.Codec(), wkb)
 		if err != nil {
 			return nil, nil, err
 		}

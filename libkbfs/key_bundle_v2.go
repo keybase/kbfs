@@ -248,7 +248,8 @@ func (tkg TLFReaderKeyGenerations) IsReader(user keybase1.UID, deviceKID keybase
 }
 
 // ToTLFReaderKeyBundleV3 converts a TLFReaderKeyGenerations to a TLFReaderkeyBundleV3.
-func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundleV3) (
+func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(
+	codec kbfscodec.Codec, wkb *TLFWriterKeyBundleV3) (
 	*TLFReaderKeyBundleV3, error) {
 
 	keyGen := tkg.LatestKeyGeneration()
@@ -277,10 +278,16 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 	for uid, dkim := range rkb.RKeys {
 		dkimV3 := make(DeviceKeyInfoMapV3)
 		for kid, info := range dkim {
+			var infoCopy TLFCryptKeyInfo
+			err := kbfscodec.Update(codec, &infoCopy, info)
+			if err != nil {
+				return nil, err
+			}
+
 			if info.EPubKeyIndex < 0 {
 				// Convert to the real index in the reader list.
 				newIndex := -1 - info.EPubKeyIndex
-				info.EPubKeyIndex = newIndex
+				infoCopy.EPubKeyIndex = newIndex
 			} else {
 				oldIndex := info.EPubKeyIndex
 				if oldIndex >= len(wkb.TLFEphemeralPublicKeys) {
@@ -296,12 +303,12 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 						append(rkbV3.TLFEphemeralPublicKeys, ePubKey)
 					newIndex = len(rkbV3.TLFEphemeralPublicKeys) - 1
 					pubKeyIndicesMap[oldIndex] = newIndex
-					info.EPubKeyIndex = newIndex
+					infoCopy.EPubKeyIndex = newIndex
 				} else {
-					info.EPubKeyIndex = newIndex
+					infoCopy.EPubKeyIndex = newIndex
 				}
 			}
-			dkimV3[kbfscrypto.MakeCryptPublicKey(kid)] = info
+			dkimV3[kbfscrypto.MakeCryptPublicKey(kid)] = infoCopy
 		}
 		rkbV3.Keys[uid] = dkimV3
 	}
