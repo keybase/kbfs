@@ -37,37 +37,13 @@ func (kim DeviceKeyInfoMapV3) fillInDeviceInfo(crypto Crypto,
 			continue
 		}
 
-		var serverHalf kbfscrypto.TLFCryptKeyServerHalf
-		serverHalf, err = crypto.MakeRandomTLFCryptKeyServerHalf()
+		clientInfo, serverHalf, err := splitTLFCryptKey(
+			crypto, uid, tlfCryptKey, ePrivKey, ePubIndex, k)
 		if err != nil {
 			return nil, err
 		}
 
-		var clientHalf kbfscrypto.TLFCryptKeyClientHalf
-		clientHalf, err = crypto.MaskTLFCryptKey(serverHalf, tlfCryptKey)
-		if err != nil {
-			return nil, err
-		}
-
-		var encryptedClientHalf EncryptedTLFCryptKeyClientHalf
-		encryptedClientHalf, err =
-			crypto.EncryptTLFCryptKeyClientHalf(ePrivKey, k, clientHalf)
-		if err != nil {
-			return nil, err
-		}
-
-		var serverHalfID TLFCryptKeyServerHalfID
-		serverHalfID, err =
-			crypto.GetTLFCryptKeyServerHalfID(uid, k.KID(), serverHalf)
-		if err != nil {
-			return nil, err
-		}
-
-		kim[k] = TLFCryptKeyInfo{
-			ClientHalf:   encryptedClientHalf,
-			ServerHalfID: serverHalfID,
-			EPubKeyIndex: ePubIndex,
-		}
+		kim[k] = clientInfo
 		serverMap[k.KID()] = serverHalf
 	}
 

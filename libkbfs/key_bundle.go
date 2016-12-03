@@ -43,3 +43,42 @@ type DeviceKeyInfoMap map[kbfscrypto.CryptPublicKey]TLFCryptKeyInfo
 type UserDeviceKeyInfoMap map[keybase1.UID]DeviceKeyInfoMap
 
 type serverKeyMap map[keybase1.UID]map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf
+
+func splitTLFCryptKey(crypto Crypto, uid keybase1.UID,
+	tlfCryptKey kbfscrypto.TLFCryptKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
+	pubKey kbfscrypto.CryptPublicKey) (
+	TLFCryptKeyInfo, kbfscrypto.TLFCryptKeyServerHalf, error) {
+	var serverHalf kbfscrypto.TLFCryptKeyServerHalf
+	serverHalf, err := crypto.MakeRandomTLFCryptKeyServerHalf()
+	if err != nil {
+		return TLFCryptKeyInfo{}, kbfscrypto.TLFCryptKeyServerHalf{}, err
+	}
+
+	var clientHalf kbfscrypto.TLFCryptKeyClientHalf
+	clientHalf, err = crypto.MaskTLFCryptKey(serverHalf, tlfCryptKey)
+	if err != nil {
+		return TLFCryptKeyInfo{}, kbfscrypto.TLFCryptKeyServerHalf{}, err
+	}
+
+	var encryptedClientHalf EncryptedTLFCryptKeyClientHalf
+	encryptedClientHalf, err =
+		crypto.EncryptTLFCryptKeyClientHalf(ePrivKey, pubKey, clientHalf)
+	if err != nil {
+		return TLFCryptKeyInfo{}, kbfscrypto.TLFCryptKeyServerHalf{}, err
+	}
+
+	var serverHalfID TLFCryptKeyServerHalfID
+	serverHalfID, err =
+		crypto.GetTLFCryptKeyServerHalfID(uid, pubKey.KID(), serverHalf)
+	if err != nil {
+		return TLFCryptKeyInfo{}, kbfscrypto.TLFCryptKeyServerHalf{}, err
+	}
+
+	clientInfo := TLFCryptKeyInfo{
+		ClientHalf:   encryptedClientHalf,
+		ServerHalfID: serverHalfID,
+		EPubKeyIndex: ePubIndex,
+	}
+	return clientInfo, serverHalf, nil
+}
