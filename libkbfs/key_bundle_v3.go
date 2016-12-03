@@ -279,7 +279,7 @@ func (udkimV3 UserDeviceKeyInfoMapV3) removeDevicesNotIn(
 			userKeys[key] = true
 		}
 
-		deviceServerHalfIDs := make(map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID)
+		deviceServerHalfIDs := make(deviceServerHalfRemovalInfo)
 
 		for key, info := range dkim {
 			if !userKeys[key] {
