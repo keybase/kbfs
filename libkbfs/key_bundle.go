@@ -91,15 +91,22 @@ func splitTLFCryptKey(crypto Crypto, uid keybase1.UID,
 	return clientInfo, serverHalf, nil
 }
 
+// userServerHalfRemovalInfo contains a map from devices (identified
+// by its crypt public key) to a list of IDs for key server halves to
+// remove (one per key generation). For logging purposes, it also
+// contains a bool indicating whether all of the user's devices were
+// removed.
 type userServerHalfRemovalInfo struct {
 	userRemoved         bool
 	deviceServerHalfIDs map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID
 }
 
-// ServerHalfRemovalInfo is a map from users and devices to a list of
-// server half IDs to remove from the server.
+// ServerHalfRemovalInfo is a map from users to and devices to a list
+// of server half IDs to remove from the server.
 type ServerHalfRemovalInfo map[keybase1.UID]userServerHalfRemovalInfo
 
+// merge returns a new ServerHalfRemovalInfo that combines all the
+// information in info and other in the obvious way.
 func (info ServerHalfRemovalInfo) merge(
 	other ServerHalfRemovalInfo) ServerHalfRemovalInfo {
 	u := make(ServerHalfRemovalInfo)
