@@ -788,8 +788,9 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	kops := km.config.KeyOps()
 	for uid, userServerKeyHalves := range allServerKeyHalves {
 		for key, serverKeyHalves := range userServerKeyHalves {
-			km.log.CInfof(ctx, "Rekey %s: removing server key halves "+
-				" for device %s of user %s", md.TlfID(), key, uid)
+			km.log.CInfof(ctx, "Rekey %s: removing %d server key halves "+
+				" for device %s of user %s", md.TlfID(),
+				len(serverKeyHalves), key, uid)
 			for _, serverHalfID := range serverKeyHalves {
 				err := kops.DeleteTLFCryptKeyServerHalf(
 					ctx, uid, key.KID(), serverHalfID)
