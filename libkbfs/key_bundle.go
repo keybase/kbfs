@@ -102,10 +102,10 @@ func (info serverHalfRemovalInfo) merge(
 		userRemovalInfo.userRemoved =
 			userRemovalInfo.userRemoved ||
 				otherUserRemovalInfo.userRemoved
-		for key, deviceServerHalfIDs := range otherUserRemovalInfo.deviceServerHalfIDs {
+		for key, serverHalfIDs := range otherUserRemovalInfo.deviceServerHalfIDs {
 			userRemovalInfo.deviceServerHalfIDs[key] = append(
 				userRemovalInfo.deviceServerHalfIDs[key],
-				deviceServerHalfIDs...)
+				serverHalfIDs...)
 		}
 	}
 	return u

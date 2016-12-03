@@ -286,33 +286,39 @@ func fillInDevicesAndServerMapV3(crypto Crypto, newIndex int,
 }
 
 func (udkim UserDeviceKeyInfoMapV3) removeDevicesNotIn(
-	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) (
-	removedUsers []keybase1.UID,
-	removedServerHalfIDs map[keybase1.UID]map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID) {
-	removedServerHalfIDs = make(map[keybase1.UID]map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID)
+	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) serverHalfRemovalInfo {
+	removalInfo := make(serverHalfRemovalInfo)
 	for uid, dkim := range udkim {
 		userKeys := make(map[kbfscrypto.CryptPublicKey]bool)
 		for _, key := range keys[uid] {
 			userKeys[key] = true
 		}
 
+		deviceServerHalfIDs := make(map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID)
+
 		for key, info := range dkim {
 			if !userKeys[key] {
 				delete(dkim, key)
-				if removedServerHalfIDs[uid] == nil {
-					removedServerHalfIDs[uid] = make(map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID)
-				}
-				removedServerHalfIDs[uid][key] = info.ServerHalfID
+				deviceServerHalfIDs[key] = append(
+					deviceServerHalfIDs[key],
+					info.ServerHalfID)
 			}
 		}
+
+		userRemoved := false
 		if len(dkim) == 0 {
 			// The user was completely removed, which
 			// shouldn't happen but might as well make it
 			// work just in case.
 			delete(udkim, uid)
-			removedUsers = append(removedUsers, uid)
+			userRemoved = true
+		}
+
+		removalInfo[uid] = userServerHalfRemovalInfo{
+			userRemoved:         userRemoved,
+			deviceServerHalfIDs: deviceServerHalfIDs,
 		}
 	}
 
-	return removedUsers, removedServerHalfIDs
+	return removalInfo
 }

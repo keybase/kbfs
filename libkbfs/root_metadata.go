@@ -691,7 +691,7 @@ func (md *RootMetadata) promoteReader(uid keybase1.UID) error {
 
 func (md *RootMetadata) revokeRemovedDevices(
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey) (
-	map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID, error) {
+	serverHalfRemovalInfo, error) {
 	return md.bareMd.RevokeRemovedDevices(wKeys, rKeys, md.extra)
 }
 

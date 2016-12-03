@@ -592,26 +592,25 @@ func (md *BareRootMetadataV2) PromoteReader(
 // BareRootMetadataV2.
 func (md *BareRootMetadataV2) RevokeRemovedDevices(
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	_ ExtraMetadata) (
-	map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID, error) {
+	_ ExtraMetadata) (serverHalfRemovalInfo, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
 			md.TlfID(), "RevokeRemovedDevices"}
 	}
 
-	allServerHalfIDs := make(map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID)
+	allRemovalInfo := make(serverHalfRemovalInfo)
 
 	for _, wkb := range md.WKeys {
-		_, serverHalfIDs := wkb.WKeys.removeDevicesNotIn(wKeys)
-		addServerHalfIDs(allServerHalfIDs, serverHalfIDs)
+		removalInfo := wkb.WKeys.removeDevicesNotIn(wKeys)
+		allRemovalInfo = allRemovalInfo.merge(removalInfo)
 	}
 
 	for _, rkb := range md.RKeys {
-		_, serverHalfIDs := rkb.RKeys.removeDevicesNotIn(rKeys)
-		addServerHalfIDs(allServerHalfIDs, serverHalfIDs)
+		removalInfo := rkb.RKeys.removeDevicesNotIn(rKeys)
+		allRemovalInfo = allRemovalInfo.merge(removalInfo)
 	}
 
-	return allServerHalfIDs, nil
+	return allRemovalInfo, nil
 }
 
 // GetTLFKeyBundles implements the BareRootMetadata interface for

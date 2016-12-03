@@ -726,17 +726,21 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	// track of the latest key generation.
 	//
 	// TODO: Add test coverage for this.
-	allServerKeyHalves, err := md.revokeRemovedDevices(wKeys, rKeys)
+	allRemovalInfo, err := md.revokeRemovedDevices(wKeys, rKeys)
 	if err != nil {
 		return false, nil, err
 	}
 	kops := km.config.KeyOps()
-	for uid, userServerKeyHalves := range allServerKeyHalves {
-		for key, serverKeyHalves := range userServerKeyHalves {
+	for uid, userRemovalInfo := range allRemovalInfo {
+		if userRemovalInfo.userRemoved {
+			km.log.CInfof(ctx, "Rekey %s: removed user %s entirely",
+				md.TlfID(), uid)
+		}
+		for key, serverHalfIDs := range userRemovalInfo.deviceServerHalfIDs {
 			km.log.CInfof(ctx, "Rekey %s: removing %d server key halves "+
 				" for device %s of user %s", md.TlfID(),
-				len(serverKeyHalves), key, uid)
-			for _, serverHalfID := range serverKeyHalves {
+				len(serverHalfIDs), key, uid)
+			for _, serverHalfID := range serverHalfIDs {
 				err := kops.DeleteTLFCryptKeyServerHalf(
 					ctx, uid, key.KID(), serverHalfID)
 				if err != nil {
