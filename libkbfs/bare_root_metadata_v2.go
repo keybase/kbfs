@@ -598,19 +598,19 @@ func (md *BareRootMetadataV2) RevokeRemovedDevices(
 			md.TlfID(), "RevokeRemovedDevices"}
 	}
 
-	allRemovalInfo := make(ServerHalfRemovalInfo)
-
+	wRemovalInfo := make(ServerHalfRemovalInfo)
 	for _, wkb := range md.WKeys {
 		removalInfo := wkb.WKeys.removeDevicesNotIn(wKeys)
-		allRemovalInfo = allRemovalInfo.merge(removalInfo)
+		wRemovalInfo = wRemovalInfo.mergeGenerations(removalInfo)
 	}
 
+	rRemovalInfo := make(ServerHalfRemovalInfo)
 	for _, rkb := range md.RKeys {
 		removalInfo := rkb.RKeys.removeDevicesNotIn(rKeys)
-		allRemovalInfo = allRemovalInfo.merge(removalInfo)
+		rRemovalInfo = wRemovalInfo.mergeGenerations(removalInfo)
 	}
 
-	return allRemovalInfo, nil
+	return wRemovalInfo.mergeUsers(rRemovalInfo)
 }
 
 // GetTLFKeyBundles implements the BareRootMetadata interface for

@@ -5,6 +5,8 @@
 package libkbfs
 
 import (
+	"fmt"
+
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscrypto"
@@ -126,4 +128,26 @@ func (info ServerHalfRemovalInfo) merge(
 		}
 	}
 	return u
+}
+
+func (info ServerHalfRemovalInfo) mergeUsers(
+	other ServerHalfRemovalInfo) (ServerHalfRemovalInfo, error) {
+	merged := make(ServerHalfRemovalInfo)
+	for uid, removalInfo := range info {
+		merged[uid] = removalInfo
+	}
+	for uid, removalInfo := range other {
+		if _, ok := merged[uid]; ok {
+			return nil, fmt.Errorf(
+				"user %s is in both ServerHalfRemovalInfos",
+				uid)
+		}
+		merged[uid] = removalInfo
+	}
+	return merged, nil
+}
+
+func (info ServerHalfRemovalInfo) mergeGenerations(
+	other ServerHalfRemovalInfo) ServerHalfRemovalInfo {
+	return info.merge(other)
 }

@@ -556,13 +556,9 @@ func (md *BareRootMetadataV3) RevokeRemovedDevices(
 		return nil, errors.New("Key bundles missing")
 	}
 
-	allRemovalInfo := make(ServerHalfRemovalInfo)
-
 	wRemovalInfo := wkb.Keys.removeDevicesNotIn(wKeys)
 	rRemovalInfo := rkb.Keys.removeDevicesNotIn(rKeys)
-	allRemovalInfo = wRemovalInfo.merge(rRemovalInfo)
-
-	return allRemovalInfo, nil
+	return wRemovalInfo.mergeUsers(rRemovalInfo)
 }
 
 // GetTLFKeyBundles implements the BareRootMetadata interface for BareRootMetadataV3.
