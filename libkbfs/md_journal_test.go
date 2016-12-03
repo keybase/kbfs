@@ -175,9 +175,13 @@ func BenchmarkMDJournalBasicMDv2(b *testing.B) {
 		setupMDJournalTest(b)
 	defer teardownMDJournalTest(b, tempdir)
 
-	mdCount := 10
+	mdCount := 500
 	revision := MetadataRevision(10)
 	prevRoot := fakeMdID(1)
+
+	b.ResetTimer()
+	defer b.StopTimer()
+
 	for i := 0; i < b.N; i++ {
 		prevRoot = putMDRange(b, id, signer, ekg, bsplit,
 			revision, prevRoot, mdCount, j)
@@ -190,9 +194,13 @@ func BenchmarkMDJournalBasicMDv3(b *testing.B) {
 		setupMDJournalTestWithMetadataVer(b, SegregatedKeyBundlesVer)
 	defer teardownMDJournalTest(b, tempdir)
 
-	mdCount := 10
+	mdCount := 500
 	revision := MetadataRevision(10)
 	prevRoot := fakeMdID(1)
+
+	b.ResetTimer()
+	defer b.StopTimer()
+
 	for i := 0; i < b.N; i++ {
 		prevRoot = putMDRange(b, id, signer, ekg, bsplit,
 			revision, prevRoot, mdCount, j)
