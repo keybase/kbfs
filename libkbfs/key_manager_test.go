@@ -292,7 +292,7 @@ func TestKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T) {
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	rmd.addKeyGenerationForTest(config.Crypto(),
+	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
 		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
 		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey))
 
@@ -319,7 +319,7 @@ func TestKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T) {
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	rmd.addKeyGenerationForTest(config.Crypto(),
+	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
 		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
 		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey))
 
@@ -346,11 +346,11 @@ func TestKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T) {
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	storedTLFCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	storedTLFCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
-	rmd.addKeyGenerationForTest(config.Crypto(),
+	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
 		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey1,
 		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey))
 
-	rmd.addKeyGenerationForTest(config.Crypto(),
+	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
 		storedTLFCryptKey1, storedTLFCryptKey2,
 		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(uid, subkey))
 

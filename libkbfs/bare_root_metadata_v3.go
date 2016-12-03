@@ -909,7 +909,7 @@ func (md *BareRootMetadataV3) SetRevision(revision MetadataRevision) {
 	md.Revision = revision
 }
 
-func (md *BareRootMetadataV3) addKeyGenerationHelper(
+func (md *BareRootMetadataV3) addKeyGenerationHelper(codec kbfscodec.Codec,
 	crypto cryptoPure, prevExtra ExtraMetadata,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey,
@@ -983,7 +983,7 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(
 	}, nil
 }
 
-func (md *BareRootMetadataV3) addKeyGenerationForTest(
+func (md *BareRootMetadataV3) addKeyGenerationForTest(codec kbfscodec.Codec,
 	crypto cryptoPure, prevExtra ExtraMetadata,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey,
@@ -1016,7 +1016,7 @@ func (md *BareRootMetadataV3) addKeyGenerationForTest(
 	// TODO: Size this to the max EPubKeyIndex for readers.
 	rPublicKeys := make([]kbfscrypto.TLFEphemeralPublicKey, 1)
 	extra, err := md.addKeyGenerationHelper(
-		crypto, prevExtra, currCryptKey, nextCryptKey,
+		codec, crypto, prevExtra, currCryptKey, nextCryptKey,
 		pubKey, wDkim, rDkim, wPublicKeys, rPublicKeys)
 	if err != nil {
 		panic(err)
@@ -1030,13 +1030,13 @@ func (md *BareRootMetadataV3) addKeyGenerationForTest(
 
 // AddKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV3.
-func (md *BareRootMetadataV3) AddKeyGeneration(
+func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 	crypto cryptoPure, prevExtra ExtraMetadata,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
 	wDkim := make(UserDeviceKeyInfoMap)
 	rDkim := make(UserDeviceKeyInfoMap)
-	extra, err := md.addKeyGenerationHelper(crypto, prevExtra,
+	extra, err := md.addKeyGenerationHelper(codec, crypto, prevExtra,
 		currCryptKey, nextCryptKey, pubKey, wDkim, rDkim, nil, nil)
 	if err != nil {
 		return nil, err

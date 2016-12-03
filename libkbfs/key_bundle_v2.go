@@ -87,7 +87,7 @@ func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM(
 	return udkim, nil
 }
 
-func userDeviceKeyInfoMapToV2(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV2 {
+func udkimToV2(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV2 {
 	udkimV2 := make(UserDeviceKeyInfoMapV2)
 	for u, dkim := range udkim {
 		udkimV2[u] = dkimToV2(dkim)

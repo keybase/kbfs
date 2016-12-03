@@ -770,7 +770,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 		currTLFCryptKey = tlfCryptKey
 	}
-	err = md.AddKeyGeneration(
+	err = md.AddKeyGeneration(km.config.Codec(),
 		km.config.Crypto(), prevTLFCryptKey, currTLFCryptKey, pubKey)
 	if err != nil {
 		return false, nil, err

@@ -175,7 +175,7 @@ func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
 	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlfID, h)
 	require.NoError(t, err)
 
-	rmd.fakeInitialRekey(crypto)
+	rmd.fakeInitialRekey(codec, crypto)
 
 	dirHandle := rmd.GetTlfHandle()
 	require.Equal(t, h, dirHandle)
@@ -198,7 +198,7 @@ func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
 	if rmd.LatestKeyGeneration() != 0 {
 		t.Errorf("Expected key generation to be invalid (0)")
 	}
-	rmd.fakeInitialRekey(crypto)
+	rmd.fakeInitialRekey(codec, crypto)
 	if rmd.LatestKeyGeneration() != FirstValidKeyGen {
 		t.Errorf("Expected key generation to be valid(%d)", FirstValidKeyGen)
 	}
@@ -483,7 +483,7 @@ func TestMakeRekeyReadError(t *testing.T) {
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
-	rmd.fakeInitialRekey(config.Crypto())
+	rmd.fakeInitialRekey(config.Codec(), config.Crypto())
 
 	u, uid, err := config.KBPKI().Resolve(context.Background(), "bob")
 	require.NoError(t, err)
@@ -511,7 +511,7 @@ func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), tlfID, h)
 	require.NoError(t, err)
 
-	rmd.fakeInitialRekey(config.Crypto())
+	rmd.fakeInitialRekey(config.Codec(), config.Crypto())
 
 	u, uid, err := config.KBPKI().Resolve(ctx, "bob")
 	require.NoError(t, err)
@@ -753,7 +753,7 @@ func TestRootMetadataV3NoPanicOnWriterMismatch(t *testing.T) {
 	h := makeFakeTlfHandle(t, 14, false, nil, nil)
 	rmd, err := makeInitialRootMetadata(SegregatedKeyBundlesVer, tlfID, h)
 	require.NoError(t, err)
-	rmd.fakeInitialRekey(config.Crypto())
+	rmd.fakeInitialRekey(config.Codec(), config.Crypto())
 	rmd.SetLastModifyingWriter(uid)
 	rmd.SetLastModifyingUser(uid)
 

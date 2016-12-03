@@ -1760,7 +1760,8 @@ type MutableBareRootMetadata interface {
 	// StoresHistoricTLFCryptKeys is false, and takes in
 	// pre-filled UserDeviceKeyInfoMaps, and also calls
 	// FinalizeRekey.
-	addKeyGenerationForTest(crypto cryptoPure, prevExtra ExtraMetadata,
+	addKeyGenerationForTest(codec kbfscodec.Codec, crypto cryptoPure,
+		prevExtra ExtraMetadata,
 		currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 		pubKey kbfscrypto.TLFPublicKey,
 		wDkim, rDkim UserDeviceKeyInfoMap) ExtraMetadata
@@ -1773,7 +1774,8 @@ type MutableBareRootMetadata interface {
 	//
 	// AddKeyGeneration must only be called on metadata for
 	// private TLFs.
-	AddKeyGeneration(crypto cryptoPure, prevExtra ExtraMetadata,
+	AddKeyGeneration(codec kbfscodec.Codec, crypto cryptoPure,
+		prevExtra ExtraMetadata,
 		currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
 	// SetUnresolvedReaders sets the list of unresolved readers assoiated with this folder.

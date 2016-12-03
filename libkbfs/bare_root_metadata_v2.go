@@ -993,7 +993,7 @@ func (md *BareRootMetadataV2) SetRevision(revision MetadataRevision) {
 	md.Revision = revision
 }
 
-func (md *BareRootMetadataV2) addKeyGenerationHelper(
+func (md *BareRootMetadataV2) addKeyGenerationHelper(codec kbfscodec.Codec,
 	pubKey kbfscrypto.TLFPublicKey, wDkim, rDkim UserDeviceKeyInfoMap,
 	wPublicKeys, rPublicKeys []kbfscrypto.TLFEphemeralPublicKey) error {
 	if md.TlfID().IsPublic() {
@@ -1002,12 +1002,12 @@ func (md *BareRootMetadataV2) addKeyGenerationHelper(
 	}
 
 	newWriterKeys := TLFWriterKeyBundleV2{
-		WKeys:                  userDeviceKeyInfoMapToV2(wDkim),
+		WKeys:                  udkimToV2(wDkim),
 		TLFPublicKey:           pubKey,
 		TLFEphemeralPublicKeys: wPublicKeys,
 	}
 	newReaderKeys := TLFReaderKeyBundleV2{
-		RKeys: userDeviceKeyInfoMapToV2(rDkim),
+		RKeys: udkimToV2(rDkim),
 		TLFReaderEphemeralPublicKeys: rPublicKeys,
 	}
 	md.WKeys = append(md.WKeys, newWriterKeys)
@@ -1017,7 +1017,7 @@ func (md *BareRootMetadataV2) addKeyGenerationHelper(
 
 // addKeyGenerationForTest implements the MutableBareRootMetadata
 // interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) addKeyGenerationForTest(
+func (md *BareRootMetadataV2) addKeyGenerationForTest(codec kbfscodec.Codec,
 	crypto cryptoPure, _ ExtraMetadata,
 	_, _ kbfscrypto.TLFCryptKey, pubKey kbfscrypto.TLFPublicKey,
 	wDkim, rDkim UserDeviceKeyInfoMap) ExtraMetadata {
@@ -1049,7 +1049,7 @@ func (md *BareRootMetadataV2) addKeyGenerationForTest(
 	// negative hack) for readers.
 	rPublicKeys := make([]kbfscrypto.TLFEphemeralPublicKey, 1)
 	err := md.addKeyGenerationHelper(
-		pubKey, wDkim, rDkim, wPublicKeys, rPublicKeys)
+		codec, pubKey, wDkim, rDkim, wPublicKeys, rPublicKeys)
 	if err != nil {
 		panic(err)
 	}
@@ -1172,7 +1172,7 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(
 
 // AddKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV2.
-func (md *BareRootMetadataV2) AddKeyGeneration(
+func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
 	_ cryptoPure, _ ExtraMetadata,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
@@ -1184,7 +1184,7 @@ func (md *BareRootMetadataV2) AddKeyGeneration(
 	}
 	wDkim := make(UserDeviceKeyInfoMap)
 	rDkim := make(UserDeviceKeyInfoMap)
-	err := md.addKeyGenerationHelper(pubKey, wDkim, rDkim, nil, nil)
+	err := md.addKeyGenerationHelper(codec, pubKey, wDkim, rDkim, nil, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -273,11 +273,11 @@ func (md *RootMetadata) MakeSuccessor(
 	return newMd, nil
 }
 
-func (md *RootMetadata) addKeyGenerationForTest(
+func (md *RootMetadata) addKeyGenerationForTest(codec kbfscodec.Codec,
 	crypto cryptoPure, currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
 	wDkim, rDkim UserDeviceKeyInfoMap) {
 	extra := md.bareMd.addKeyGenerationForTest(
-		crypto, md.extra, currCryptKey, nextCryptKey,
+		codec, crypto, md.extra, currCryptKey, nextCryptKey,
 		kbfscrypto.TLFPublicKey{}, wDkim, rDkim)
 	md.extra = extra
 }
@@ -658,13 +658,14 @@ func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool {
 
 // fakeInitialRekey wraps the FakeInitialRekey test function for
 // convenience.
-func (md *RootMetadata) fakeInitialRekey(crypto cryptoPure) {
+func (md *RootMetadata) fakeInitialRekey(
+	codec kbfscodec.Codec, crypto cryptoPure) {
 	bh, err := md.tlfHandle.ToBareHandle()
 	if err != nil {
 		panic(err)
 	}
 	md.extra = FakeInitialRekey(md.bareMd,
-		crypto, bh, kbfscrypto.TLFPublicKey{})
+		codec, crypto, bh, kbfscrypto.TLFPublicKey{})
 }
 
 // GetBareRootMetadata returns an interface to the underlying serializeable metadata.
@@ -673,11 +674,11 @@ func (md *RootMetadata) GetBareRootMetadata() BareRootMetadata {
 }
 
 // AddKeyGeneration adds a new key generation to this revision of metadata.
-func (md *RootMetadata) AddKeyGeneration(
+func (md *RootMetadata) AddKeyGeneration(codec kbfscodec.Codec,
 	crypto cryptoPure, prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
 	pubKey kbfscrypto.TLFPublicKey) error {
 	newExtra, err := md.bareMd.AddKeyGeneration(
-		crypto, md.extra, prevCryptKey, currCryptKey, pubKey)
+		codec, crypto, md.extra, prevCryptKey, currCryptKey, pubKey)
 	if err != nil {
 		return err
 	}
