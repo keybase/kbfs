@@ -7,8 +7,10 @@ package libkbfs
 import (
 	"testing"
 
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
 	"github.com/stretchr/testify/require"
 )
@@ -48,4 +50,57 @@ func makeFakeTLFCryptKeyInfoFuture(t *testing.T) tlfCryptKeyInfoFuture {
 
 func TestTLFCryptKeyInfoUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeTLFCryptKeyInfoFuture(t))
+}
+
+func TestUserServerHalfRemovalInfoSuccess(t *testing.T) {
+	key1 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key1")
+	key2 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key2")
+
+	half1a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x1})
+	half1b := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
+	half1c := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x3})
+	half2a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x4})
+	half2b := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x5})
+	half2c := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x6})
+
+	uid := keybase1.MakeTestUID(0x1)
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	id1a, err := crypto.GetTLFCryptKeyServerHalfID(uid, key1.KID(), half1a)
+	require.NoError(t, err)
+	id1b, err := crypto.GetTLFCryptKeyServerHalfID(uid, key1.KID(), half1b)
+	require.NoError(t, err)
+	id1c, err := crypto.GetTLFCryptKeyServerHalfID(uid, key1.KID(), half1c)
+	require.NoError(t, err)
+	id2a, err := crypto.GetTLFCryptKeyServerHalfID(uid, key2.KID(), half2a)
+	require.NoError(t, err)
+	id2b, err := crypto.GetTLFCryptKeyServerHalfID(uid, key2.KID(), half2b)
+	require.NoError(t, err)
+	id2c, err := crypto.GetTLFCryptKeyServerHalfID(uid, key2.KID(), half2c)
+	require.NoError(t, err)
+
+	info := userServerHalfRemovalInfo{
+		userRemoved: true,
+		deviceServerHalfIDs: map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID{
+			key1: {id1a, id1b},
+			key2: {id2a, id2b},
+		},
+	}
+
+	genInfo := userServerHalfRemovalInfo{
+		userRemoved: true,
+		deviceServerHalfIDs: map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID{
+			key1: {id1c},
+			key2: {id2c},
+		},
+	}
+
+	info.addGeneration(uid, genInfo)
+	require.Equal(t, userServerHalfRemovalInfo{
+		userRemoved: true,
+		deviceServerHalfIDs: map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID{
+			key1: {id1a, id1b, id1c},
+			key2: {id2a, id2b, id2c},
+		},
+	}, info)
 }
