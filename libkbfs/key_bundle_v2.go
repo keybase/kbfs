@@ -162,7 +162,7 @@ func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
 		return nil, errors.New("No key generations to convert")
 	}
 
-	wkbCopy := &TLFWriterKeyBundleV3{}
+	wkbV3 := &TLFWriterKeyBundleV3{}
 
 	// Copy the latest UserDeviceKeyInfoMap.
 	wkb := tkg[keyGen-FirstValidKeyGen]
@@ -170,15 +170,15 @@ func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
 	if err != nil {
 		return nil, err
 	}
-	wkbCopy.Keys = userDeviceKeyInfoMapToV3(udkim)
+	wkbV3.Keys = userDeviceKeyInfoMapToV3(udkim)
 
 	// Copy all of the TLFEphemeralPublicKeys at this generation.
-	wkbCopy.TLFEphemeralPublicKeys =
+	wkbV3.TLFEphemeralPublicKeys =
 		make(kbfscrypto.TLFEphemeralPublicKeys, len(wkb.TLFEphemeralPublicKeys))
-	copy(wkbCopy.TLFEphemeralPublicKeys[:], wkb.TLFEphemeralPublicKeys)
+	copy(wkbV3.TLFEphemeralPublicKeys[:], wkb.TLFEphemeralPublicKeys)
 
 	// Copy the current TLFPublicKey.
-	wkbCopy.TLFPublicKey = wkb.TLFPublicKey
+	wkbV3.TLFPublicKey = wkb.TLFPublicKey
 
 	if keyGen > FirstValidKeyGen {
 		// Fetch all of the TLFCryptKeys.
@@ -195,13 +195,13 @@ func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
 		// Get rid of the most current generation as that's in the UserDeviceKeyInfoMap already.
 		keys = keys[:len(keys)-1]
 		// Encrypt the historic keys with the current key.
-		wkbCopy.EncryptedHistoricTLFCryptKeys, err = crypto.EncryptTLFCryptKeys(keys, currKey)
+		wkbV3.EncryptedHistoricTLFCryptKeys, err = crypto.EncryptTLFCryptKeys(keys, currKey)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return wkbCopy, nil
+	return wkbV3, nil
 }
 
 // TLFReaderKeyBundleV2 stores all the user keys with reader
@@ -256,21 +256,18 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 		return nil, errors.New("No key generations to convert")
 	}
 
-	rkbCopy := &TLFReaderKeyBundleV3{
+	rkbV3 := &TLFReaderKeyBundleV3{
 		Keys: make(UserDeviceKeyInfoMapV3),
 	}
 
 	// Copy the latest UserDeviceKeyInfoMap.
-	rkb := tkg[keyGen-1]
+	rkb := tkg[keyGen-FirstValidKeyGen]
 
 	// Copy all of the TLFReaderEphemeralPublicKeys.
-	for _, ePubKey := range rkb.TLFReaderEphemeralPublicKeys {
-		rkbCopy.TLFEphemeralPublicKeys =
-			append(rkbCopy.TLFEphemeralPublicKeys, ePubKey)
-	}
+	copy(rkbV3.TLFEphemeralPublicKeys[:], rkb.TLFReaderEphemeralPublicKeys)
 
 	// Track a mapping of old writer ephemeral pubkey index to new
-	// reader epehemeral pubkey index.
+	// reader ephemeral pubkey index.
 	pubKeyIndicesMap := make(map[int]int)
 
 	// We need to copy these in a slightly annoying way to work around
@@ -278,7 +275,7 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 	// in the TLFReaderEphemeralPublicKeys list. In V2 they only do if
 	// the index is negative. Otherwise it's in the writer's list.
 	for uid, dkim := range rkb.RKeys {
-		dkimCopy := make(DeviceKeyInfoMapV3)
+		dkimV3 := make(DeviceKeyInfoMapV3)
 		for kid, info := range dkim {
 			if info.EPubKeyIndex < 0 {
 				// Convert to the real index in the reader list.
@@ -295,20 +292,20 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(wkb *TLFWriterKeyBundl
 				// at the end of the reader list.
 				if newIndex, ok := pubKeyIndicesMap[oldIndex]; !ok {
 					ePubKey := wkb.TLFEphemeralPublicKeys[oldIndex]
-					rkbCopy.TLFEphemeralPublicKeys =
-						append(rkbCopy.TLFEphemeralPublicKeys, ePubKey)
-					newIndex = len(rkbCopy.TLFEphemeralPublicKeys) - 1
+					rkbV3.TLFEphemeralPublicKeys =
+						append(rkbV3.TLFEphemeralPublicKeys, ePubKey)
+					newIndex = len(rkbV3.TLFEphemeralPublicKeys) - 1
 					pubKeyIndicesMap[oldIndex] = newIndex
 					info.EPubKeyIndex = newIndex
 				} else {
 					info.EPubKeyIndex = newIndex
 				}
 			}
-			dkimCopy[kbfscrypto.MakeCryptPublicKey(kid)] = info
+			dkimV3[kbfscrypto.MakeCryptPublicKey(kid)] = info
 		}
-		rkbCopy.Keys[uid] = dkimCopy
+		rkbV3.Keys[uid] = dkimV3
 	}
-	return rkbCopy, nil
+	return rkbV3, nil
 }
 
 func fillInDevicesAndServerMapV2(crypto Crypto, newIndex int,
