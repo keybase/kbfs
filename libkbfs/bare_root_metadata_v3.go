@@ -545,7 +545,7 @@ func (md *BareRootMetadataV3) PromoteReader(
 // BareRootMetadataV3.
 func (md *BareRootMetadataV3) RevokeRemovedDevices(
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	extra ExtraMetadata) (serverHalfRemovalInfo, error) {
+	extra ExtraMetadata) (ServerHalfRemovalInfo, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
 			md.TlfID(), "RevokeRemovedDevices"}
@@ -556,7 +556,7 @@ func (md *BareRootMetadataV3) RevokeRemovedDevices(
 		return nil, errors.New("Key bundles missing")
 	}
 
-	allRemovalInfo := make(serverHalfRemovalInfo)
+	allRemovalInfo := make(ServerHalfRemovalInfo)
 
 	wRemovalInfo := wkb.Keys.removeDevicesNotIn(wKeys)
 	rRemovalInfo := rkb.Keys.removeDevicesNotIn(rKeys)

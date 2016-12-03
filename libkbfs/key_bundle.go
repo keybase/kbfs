@@ -88,11 +88,13 @@ type userServerHalfRemovalInfo struct {
 	deviceServerHalfIDs map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID
 }
 
-type serverHalfRemovalInfo map[keybase1.UID]userServerHalfRemovalInfo
+// ServerHalfRemovalInfo is a map from users and devices to a list of
+// server half IDs to remove from the server.
+type ServerHalfRemovalInfo map[keybase1.UID]userServerHalfRemovalInfo
 
-func (info serverHalfRemovalInfo) merge(
-	other serverHalfRemovalInfo) serverHalfRemovalInfo {
-	u := make(serverHalfRemovalInfo)
+func (info ServerHalfRemovalInfo) merge(
+	other ServerHalfRemovalInfo) ServerHalfRemovalInfo {
+	u := make(ServerHalfRemovalInfo)
 	for uid, otherUserRemovalInfo := range other {
 		userRemovalInfo := info[uid]
 		if userRemovalInfo.deviceServerHalfIDs == nil {

@@ -1801,7 +1801,7 @@ type MutableBareRootMetadata interface {
 	// generation.
 	RevokeRemovedDevices(
 		wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-		extra ExtraMetadata) (serverHalfRemovalInfo, error)
+		extra ExtraMetadata) (ServerHalfRemovalInfo, error)
 	// FinalizeRekey must be called called after all rekeying work
 	// has been performed on the underlying metadata.
 	FinalizeRekey(c cryptoPure, extra ExtraMetadata) error

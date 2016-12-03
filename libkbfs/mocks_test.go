@@ -5645,29 +5645,9 @@ func (_mr *_MockMutableBareRootMetadataRecorder) PromoteReader(arg0, arg1 interf
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PromoteReader", arg0, arg1)
 }
 
-func (_m *MockMutableBareRootMetadata) RevokeDevices(keys []kbfscrypto.CryptPublicKey, extra ExtraMetadata) error {
-	ret := _m.ctrl.Call(_m, "RevokeDevices", keys, extra)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockMutableBareRootMetadataRecorder) RevokeDevices(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "RevokeDevices", arg0, arg1)
-}
-
-func (_m *MockMutableBareRootMetadata) RevokeUsers(uids []keybase1.UID, extra ExtraMetadata) error {
-	ret := _m.ctrl.Call(_m, "RevokeUsers", uids, extra)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockMutableBareRootMetadataRecorder) RevokeUsers(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "RevokeUsers", arg0, arg1)
-}
-
-func (_m *MockMutableBareRootMetadata) RevokeRemovedDevices(wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, extra ExtraMetadata) (map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID, error) {
+func (_m *MockMutableBareRootMetadata) RevokeRemovedDevices(wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, extra ExtraMetadata) (ServerHalfRemovalInfo, error) {
 	ret := _m.ctrl.Call(_m, "RevokeRemovedDevices", wKeys, rKeys, extra)
-	ret0, _ := ret[0].(map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID)
+	ret0, _ := ret[0].(ServerHalfRemovalInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -592,13 +592,13 @@ func (md *BareRootMetadataV2) PromoteReader(
 // BareRootMetadataV2.
 func (md *BareRootMetadataV2) RevokeRemovedDevices(
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
-	_ ExtraMetadata) (serverHalfRemovalInfo, error) {
+	_ ExtraMetadata) (ServerHalfRemovalInfo, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
 			md.TlfID(), "RevokeRemovedDevices"}
 	}
 
-	allRemovalInfo := make(serverHalfRemovalInfo)
+	allRemovalInfo := make(ServerHalfRemovalInfo)
 
 	for _, wkb := range md.WKeys {
 		removalInfo := wkb.WKeys.removeDevicesNotIn(wKeys)
