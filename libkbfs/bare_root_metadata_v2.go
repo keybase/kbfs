@@ -54,7 +54,7 @@ type WriterMetadataV2 struct {
 
 // ToWriterMetadataV3 converts the WriterMetadataV2 to a WriterMetadataV3 in place.
 func (wmd *WriterMetadataV2) ToWriterMetadataV3(
-	ctx context.Context, crypto cryptoPure, keyManager KeyManager,
+	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, keyManager KeyManager,
 	kmd KeyMetadata, wmdCopy *WriterMetadataV3) (
 	*TLFWriterKeyBundleV3, error) {
 
@@ -77,7 +77,7 @@ func (wmd *WriterMetadataV2) ToWriterMetadataV3(
 	} else {
 		wmdCopy.LatestKeyGen = wmd.WKeys.LatestKeyGeneration()
 		var err error
-		wkb, err = wmd.WKeys.ToTLFWriterKeyBundleV3(ctx, crypto, keyManager, kmd)
+		wkb, err = wmd.WKeys.ToTLFWriterKeyBundleV3(ctx, codec, crypto, keyManager, kmd)
 		if err != nil {
 			return nil, err
 		}
@@ -379,7 +379,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 
 	// Fill out the writer metadata and new writer key bundle.
 	wkb, err := md.WriterMetadataV2.ToWriterMetadataV3(
-		ctx, config.Crypto(), config.KeyManager(), kmd, &mdCopy.WriterMetadata)
+		ctx, config.Codec(), config.Crypto(), config.KeyManager(), kmd, &mdCopy.WriterMetadata)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1157,12 +1157,12 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(
 		return nil, nil, err
 	}
 
-	rUDKIM, err := rkb.RKeys.toUDKIM()
+	rUDKIM, err := rkb.RKeys.toUDKIM(codec)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	wUDKIM, err := wkb.WKeys.toUDKIM()
+	wUDKIM, err := wkb.WKeys.toUDKIM(codec)
 	if err != nil {
 		return nil, nil, err
 	}

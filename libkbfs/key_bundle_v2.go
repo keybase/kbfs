@@ -10,6 +10,7 @@ import (
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/net/context"
 )
@@ -19,7 +20,7 @@ import (
 // TLF's symmetric secret key information.
 type DeviceKeyInfoMapV2 map[keybase1.KID]TLFCryptKeyInfo
 
-func (kim DeviceKeyInfoMapV2) fillInDeviceInfo(crypto Crypto,
+func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfo(crypto Crypto,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys []kbfscrypto.CryptPublicKey) (
@@ -29,7 +30,7 @@ func (kim DeviceKeyInfoMapV2) fillInDeviceInfo(crypto Crypto,
 	// TODO: parallelize
 	for _, k := range publicKeys {
 		// Skip existing entries, and only fill in new ones.
-		if _, ok := kim[k.KID()]; ok {
+		if _, ok := dkimV2[k.KID()]; ok {
 			continue
 		}
 
@@ -39,40 +40,49 @@ func (kim DeviceKeyInfoMapV2) fillInDeviceInfo(crypto Crypto,
 			return nil, err
 		}
 
-		kim[k.KID()] = clientInfo
+		dkimV2[k.KID()] = clientInfo
 		serverMap[k.KID()] = serverHalf
 	}
 
 	return serverMap, nil
 }
 
-func (kim DeviceKeyInfoMapV2) toDKIM() DeviceKeyInfoMap {
-	kimCopy := make(DeviceKeyInfoMap)
-	for kid, info := range kim {
-		// TODO: This actually still shares some data (in byte
-		// slices). Fix that.
-		kimCopy[kbfscrypto.MakeCryptPublicKey(kid)] = info
+func (dkimV2 DeviceKeyInfoMapV2) toDKIM(codec kbfscodec.Codec) (
+	DeviceKeyInfoMap, error) {
+	dkim := make(DeviceKeyInfoMap)
+	for kid, info := range dkimV2 {
+		var infoCopy TLFCryptKeyInfo
+		err := kbfscodec.Update(codec, &infoCopy, info)
+		if err != nil {
+			return nil, err
+		}
+		dkim[kbfscrypto.MakeCryptPublicKey(kid)] = infoCopy
 	}
-	return kimCopy
+	return dkim, nil
 }
 
-func deviceKeyInfoMapToV2(dkim DeviceKeyInfoMap) DeviceKeyInfoMapV2 {
-	kimCopy := make(DeviceKeyInfoMapV2)
+func dkimToV2(dkim DeviceKeyInfoMap) DeviceKeyInfoMapV2 {
+	dkimV2 := make(DeviceKeyInfoMapV2)
 	for key, info := range dkim {
 		// TODO: This actually still shares some data (in byte
 		// slices). Fix that.
-		kimCopy[key.KID()] = info
+		dkimV2[key.KID()] = info
 	}
-	return kimCopy
+	return dkimV2
 }
 
 // UserDeviceKeyInfoMapV2 maps a user's keybase UID to their DeviceKeyInfoMapV2
 type UserDeviceKeyInfoMapV2 map[keybase1.UID]DeviceKeyInfoMapV2
 
-func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM() (UserDeviceKeyInfoMap, error) {
+func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM(
+	codec kbfscodec.Codec) (UserDeviceKeyInfoMap, error) {
 	udkim := make(UserDeviceKeyInfoMap)
 	for u, dkimV2 := range udkimV2 {
-		udkim[u] = dkimV2.toDKIM()
+		dkim, err := dkimV2.toDKIM(codec)
+		if err != nil {
+			return nil, err
+		}
+		udkim[u] = dkim
 	}
 	return udkim, nil
 }
@@ -80,7 +90,7 @@ func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM() (UserDeviceKeyInfoMap, error) {
 func userDeviceKeyInfoMapToV2(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV2 {
 	udkimV2 := make(UserDeviceKeyInfoMapV2)
 	for u, dkim := range udkim {
-		udkimV2[u] = deviceKeyInfoMapToV2(dkim)
+		udkimV2[u] = dkimToV2(dkim)
 	}
 	return udkimV2
 }
@@ -135,7 +145,7 @@ func (tkg TLFWriterKeyGenerations) IsWriter(user keybase1.UID, deviceKID keybase
 
 // ToTLFWriterKeyBundleV3 converts a TLFWriterKeyGenerations to a TLFWriterKeyBundleV3.
 func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
-	ctx context.Context, crypto cryptoPure, keyManager KeyManager, kmd KeyMetadata) (
+	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, keyManager KeyManager, kmd KeyMetadata) (
 	*TLFWriterKeyBundleV3, error) {
 
 	keyGen := tkg.LatestKeyGeneration()
@@ -147,7 +157,7 @@ func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
 
 	// Copy the latest UserDeviceKeyInfoMap.
 	wkb := tkg[keyGen-FirstValidKeyGen]
-	udkim, err := wkb.WKeys.toUDKIM()
+	udkim, err := wkb.WKeys.toUDKIM(codec)
 	if err != nil {
 		return nil, err
 	}
