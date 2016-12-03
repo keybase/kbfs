@@ -7,10 +7,8 @@ package libkbfs
 import (
 	"testing"
 
-	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
-	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
 	"github.com/stretchr/testify/require"
 )
@@ -50,26 +48,4 @@ func makeFakeTLFCryptKeyInfoFuture(t *testing.T) tlfCryptKeyInfoFuture {
 
 func TestTLFCryptKeyInfoUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeTLFCryptKeyInfoFuture(t))
-}
-
-type deviceKeyInfoMapFuture map[kbfscrypto.CryptPublicKey]tlfCryptKeyInfoFuture
-
-func (dkimf deviceKeyInfoMapFuture) toCurrent() DeviceKeyInfoMap {
-	dkim := make(DeviceKeyInfoMap, len(dkimf))
-	for k, kif := range dkimf {
-		ki := kif.toCurrent()
-		dkim[k] = TLFCryptKeyInfo(ki)
-	}
-	return dkim
-}
-
-type userDeviceKeyInfoMapFuture map[keybase1.UID]deviceKeyInfoMapFuture
-
-func (udkimf userDeviceKeyInfoMapFuture) toCurrent() UserDeviceKeyInfoMap {
-	udkim := make(UserDeviceKeyInfoMap)
-	for u, dkimf := range udkimf {
-		dkim := dkimf.toCurrent()
-		udkim[u] = dkim
-	}
-	return udkim
 }
