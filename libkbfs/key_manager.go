@@ -765,8 +765,35 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 	// Send rekey start notification once we're sure that this device
 	// can perform the rekey.
+	//
+	// TODO: Shouldn't this happen earlier?
 	km.config.Reporter().Notify(ctx, rekeyNotification(ctx, km.config, resolvedHandle,
 		false))
+
+	// Delete server-side key halves for any revoked devices. Do
+	// this before adding a new key generation.
+	//
+	// TODO: Add test coverage for this.
+	//
+	// TODO: Figure out how to delete keys for all generations for MDv3.
+	for keygen := FirstValidKeyGen; keygen <= currKeyGen; keygen++ {
+		rDkim, wDkim, err := md.getUserDeviceKeyInfoMaps(keygen)
+		if _, noDkim := err.(TLFCryptKeyNotPerDeviceEncrypted); noDkim {
+			// No DKIM for this generation. This is possible for MDv3.
+			continue
+		}
+		if err != nil {
+			return false, nil, err
+		}
+		err = km.deleteKeysForRemovedDevices(ctx, md, wDkim, wKeys)
+		if err != nil {
+			return false, nil, err
+		}
+		err = km.deleteKeysForRemovedDevices(ctx, md, rDkim, rKeys)
+		if err != nil {
+			return false, nil, err
+		}
+	}
 
 	// Get the previous TLF crypt key if needed. It's
 	// symmetrically encrypted and appended to a list for MDv3
@@ -799,37 +826,6 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		return false, nil, err
 	}
 	md.data.TLFPrivateKey = privKey
-
-	// Delete server-side key halves for any revoked devices.
-	//
-	// This doesn't actually do anything for MDv3. If we've
-	// removed devices, then we have a new key generation, and
-	// that's the only one we'll access, and that one won't have
-	// the removed devices already.
-	//
-	// TODO: Add test coverage for this.
-	//
-	// TODO: Do the revocation for prevExtra, at least.
-	//
-	// TODO: Figure out how to delete keys for all generations for MDv3.
-	for keygen := FirstValidKeyGen; keygen <= currKeyGen; keygen++ {
-		rDkim, wDkim, err := md.getUserDeviceKeyInfoMaps(keygen)
-		if _, noDkim := err.(TLFCryptKeyNotPerDeviceEncrypted); noDkim {
-			// No DKIM for this generation. This is possible for MDv3.
-			continue
-		}
-		if err != nil {
-			return false, nil, err
-		}
-		err = km.deleteKeysForRemovedDevices(ctx, md, wDkim, wKeys)
-		if err != nil {
-			return false, nil, err
-		}
-		err = km.deleteKeysForRemovedDevices(ctx, md, rDkim, rKeys)
-		if err != nil {
-			return false, nil, err
-		}
-	}
 
 	return true, &tlfCryptKey, nil
 }
