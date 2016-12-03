@@ -5665,6 +5665,17 @@ func (_mr *_MockMutableBareRootMetadataRecorder) RevokeUsers(arg0, arg1 interfac
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RevokeUsers", arg0, arg1)
 }
 
+func (_m *MockMutableBareRootMetadata) RevokeRemovedDevices(wKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey, extra ExtraMetadata) (map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID, error) {
+	ret := _m.ctrl.Call(_m, "RevokeRemovedDevices", wKeys, rKeys, extra)
+	ret0, _ := ret[0].(map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockMutableBareRootMetadataRecorder) RevokeRemovedDevices(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "RevokeRemovedDevices", arg0, arg1, arg2)
+}
+
 func (_m *MockMutableBareRootMetadata) FinalizeRekey(c cryptoPure, extra ExtraMetadata) error {
 	ret := _m.ctrl.Call(_m, "FinalizeRekey", c, extra)
 	ret0, _ := ret[0].(error)

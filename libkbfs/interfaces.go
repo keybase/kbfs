@@ -1796,6 +1796,17 @@ type MutableBareRootMetadata interface {
 	RevokeDevices(keys []kbfscrypto.CryptPublicKey, extra ExtraMetadata) error
 	// RevokeUsers removes the given users from this MD.
 	RevokeUsers(uids []keybase1.UID, extra ExtraMetadata) error
+	// RevokeRemovedDevices removes key info for any device not in
+	// the given maps, and returns a corresponding map of server
+	// halves to delete from the server.
+	//
+	// Note: the returned server halves may not be for all key
+	// generations, e.g. for MDv3 it's only for the latest key
+	// generation.
+	RevokeRemovedDevices(
+		wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
+		extra ExtraMetadata) (
+		map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID, error)
 	// FinalizeRekey must be called called after all rekeying work
 	// has been performed on the underlying metadata.
 	FinalizeRekey(c cryptoPure, extra ExtraMetadata) error

@@ -683,6 +683,12 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 	}
 
+	// Note: For MDv3, if incKeyGen is true, then all the
+	// manipulations below aren't needed, since they'll just be
+	// replaced by the new key generation. However, do them
+	// anyway, as they may have some side effects, e.g. removing
+	// server key halves.
+
 	// If there's at least one new device, add that device to every key bundle.
 	if addNewReaderDevice || addNewWriterDevice {
 		for keyGen := FirstValidKeyGen; keyGen <= currKeyGen; keyGen++ {
