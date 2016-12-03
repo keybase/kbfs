@@ -46,16 +46,6 @@ func (kim DeviceKeyInfoMapV2) fillInDeviceInfo(crypto Crypto,
 	return serverMap, nil
 }
 
-func (kim DeviceKeyInfoMapV2) deepCopy() DeviceKeyInfoMapV2 {
-	kimCopy := make(DeviceKeyInfoMapV2)
-	for kid, info := range kim {
-		// TODO: This actually still shares some data (in byte
-		// slices). Fix that.
-		kimCopy[kid] = info
-	}
-	return kimCopy
-}
-
 func (kim DeviceKeyInfoMapV2) toDKIM() DeviceKeyInfoMap {
 	kimCopy := make(DeviceKeyInfoMap)
 	for kid, info := range kim {
