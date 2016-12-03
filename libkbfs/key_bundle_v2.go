@@ -69,12 +69,12 @@ func deviceKeyInfoMapToV2(dkim DeviceKeyInfoMap) DeviceKeyInfoMapV2 {
 // UserDeviceKeyInfoMapV2 maps a user's keybase UID to their DeviceKeyInfoMapV2
 type UserDeviceKeyInfoMapV2 map[keybase1.UID]DeviceKeyInfoMapV2
 
-func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM() UserDeviceKeyInfoMap {
+func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM() (UserDeviceKeyInfoMap, error) {
 	udkim := make(UserDeviceKeyInfoMap)
 	for u, dkimV2 := range udkimV2 {
 		udkim[u] = dkimV2.toDKIM()
 	}
-	return udkim
+	return udkim, nil
 }
 
 func userDeviceKeyInfoMapToV2(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV2 {
@@ -147,7 +147,11 @@ func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
 
 	// Copy the latest UserDeviceKeyInfoMap.
 	wkb := tkg[keyGen-FirstValidKeyGen]
-	wkbCopy.Keys = userDeviceKeyInfoMapToV3(wkb.WKeys.toUDKIM())
+	udkim, err := wkb.WKeys.toUDKIM()
+	if err != nil {
+		return nil, err
+	}
+	wkbCopy.Keys = userDeviceKeyInfoMapToV3(udkim)
 
 	// Copy all of the TLFEphemeralPublicKeys at this generation.
 	wkbCopy.TLFEphemeralPublicKeys =

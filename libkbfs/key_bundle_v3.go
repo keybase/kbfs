@@ -57,12 +57,12 @@ func deviceKeyInfoMapToV3(dkim DeviceKeyInfoMap) DeviceKeyInfoMapV3 {
 // UserDeviceKeyInfoMapV3 maps a user's keybase UID to their DeviceKeyInfoMap
 type UserDeviceKeyInfoMapV3 map[keybase1.UID]DeviceKeyInfoMapV3
 
-func (udkimV3 UserDeviceKeyInfoMapV3) toUDKIM() UserDeviceKeyInfoMap {
+func (udkimV3 UserDeviceKeyInfoMapV3) toUDKIM() (UserDeviceKeyInfoMap, error) {
 	udkim := make(UserDeviceKeyInfoMap)
 	for u, dkimV3 := range udkimV3 {
 		udkim[u] = dkimV3.toDKIM()
 	}
-	return udkim
+	return udkim, nil
 }
 
 func userDeviceKeyInfoMapToV3(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV3 {

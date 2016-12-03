@@ -1155,7 +1155,18 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(keyGen KeyGen, _ ExtraMet
 	if err != nil {
 		return nil, nil, err
 	}
-	return rkb.RKeys.toUDKIM(), wkb.WKeys.toUDKIM(), nil
+
+	rUDKIM, err := rkb.RKeys.toUDKIM()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	wUDKIM, err := wkb.WKeys.toUDKIM()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return rUDKIM, wUDKIM, nil
 }
 
 // AddKeyGeneration implements the MutableBareRootMetadata interface

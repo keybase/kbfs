@@ -1127,7 +1127,18 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(keyGen KeyGen, extra Extr
 	if !ok {
 		return nil, nil, errors.New("Key bundles missing")
 	}
-	return rkb.Keys.toUDKIM(), wkb.Keys.toUDKIM(), nil
+
+	rUDKIM, err := rkb.Keys.toUDKIM()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	wUDKIM, err := wkb.Keys.toUDKIM()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return rUDKIM, wUDKIM, nil
 }
 
 // fillInDevices ensures that every device for every writer and reader
