@@ -2013,36 +2013,38 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	// Make sure the rekey attempt is finished by taking the lock.
 	// Keep the lock for a while, to control when the second rekey starts.
 	lState := makeFBOLockState()
-	ops.mdWriterLock.Lock(lState)
+	func() {
+		ops.mdWriterLock.Lock(lState)
+		defer ops.mdWriterLock.Unlock(lState)
 
-	// Now cause a paper prompt unlock via a folder access
-	errCh := make(chan error)
-	go func() {
-		_, err := GetRootNodeForTest(ctx, config2Dev2, name, false)
+		// Now cause a paper prompt unlock via a folder access
+		errCh := make(chan error)
+		go func() {
+			_, err := GetRootNodeForTest(ctx, config2Dev2, name, false)
+			select {
+			case errCh <- err:
+			case <-ctx.Done():
+				errCh <- ctx.Err()
+			}
+		}()
+		// One failed decryption attempt
 		select {
-		case errCh <- err:
+		case <-c:
 		case <-ctx.Done():
-			errCh <- ctx.Err()
+			t.Fatal(ctx.Err())
 		}
-	}()
-	// One failed decryption attempt
-	select {
-	case <-c:
-	case <-ctx.Done():
-		t.Fatal(ctx.Err())
-	}
-	select {
-	case err = <-errCh:
-	case <-ctx.Done():
-		t.Fatal(ctx.Err())
-	}
-	if _, ok := err.(NeedSelfRekeyError); !ok {
-		t.Fatalf("Got unexpected error when reading with new key: %v", err)
-	}
+		select {
+		case err = <-errCh:
+		case <-ctx.Done():
+			t.Fatal(ctx.Err())
+		}
+		if _, ok := err.(NeedSelfRekeyError); !ok {
+			t.Fatalf("Got unexpected error when reading with new key: %v", err)
+		}
 
-	// Let the background rekeyer decrypt.
-	clta.cryptoToUse = config2.Crypto()
-	ops.mdWriterLock.Unlock(lState)
+		// Let the background rekeyer decrypt.
+		clta.cryptoToUse = config2.Crypto()
+	}()
 
 	select {
 	case promptPaper = <-c:
