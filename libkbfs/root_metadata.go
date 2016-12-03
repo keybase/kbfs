@@ -697,6 +697,12 @@ func (md *RootMetadata) revokeUsers(uids []keybase1.UID) error {
 	return md.bareMd.RevokeUsers(uids, md.extra)
 }
 
+func (md *RootMetadata) revokeRemovedDevices(
+	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey) (
+	map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID, error) {
+	return md.bareMd.RevokeRemovedDevices(wKeys, rKeys, md.extra)
+}
+
 func (md *RootMetadata) fillInDevices(crypto Crypto,
 	keyGen KeyGen,
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,

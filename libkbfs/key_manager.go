@@ -777,27 +777,26 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		false))
 
 	// Delete server-side key halves for any revoked devices. Do
-	// this before adding a new key generation.
+	// this before adding a new key generation, as MDv3 only keeps
+	// track of the latest key generation.
 	//
 	// TODO: Add test coverage for this.
-	//
-	// TODO: Figure out how to delete keys for all generations for MDv3.
-	for keygen := FirstValidKeyGen; keygen <= currKeyGen; keygen++ {
-		rDkim, wDkim, err := md.getUserDeviceKeyInfoMaps(keygen)
-		if _, noDkim := err.(TLFCryptKeyNotPerDeviceEncrypted); noDkim {
-			// No DKIM for this generation. This is possible for MDv3.
-			continue
-		}
-		if err != nil {
-			return false, nil, err
-		}
-		err = km.deleteKeysForRemovedDevices(ctx, md, wDkim, wKeys)
-		if err != nil {
-			return false, nil, err
-		}
-		err = km.deleteKeysForRemovedDevices(ctx, md, rDkim, rKeys)
-		if err != nil {
-			return false, nil, err
+	allServerKeyHalves, err := md.revokeRemovedDevices(wKeys, rKeys)
+	if err != nil {
+		return false, nil, err
+	}
+	kops := km.config.KeyOps()
+	for uid, userServerKeyHalves := range allServerKeyHalves {
+		for key, serverKeyHalves := range userServerKeyHalves {
+			km.log.CInfof(ctx, "Rekey %s: removing server key halves "+
+				" for device %s of user %s", md.TlfID(), key, uid)
+			for _, serverHalfID := range serverKeyHalves {
+				err := kops.DeleteTLFCryptKeyServerHalf(
+					ctx, uid, key.KID(), serverHalfID)
+				if err != nil {
+					return false, nil, err
+				}
+			}
 		}
 	}
 
