@@ -638,18 +638,43 @@ func (md *BareRootMetadataV2) RevokeUsers(
 	return nil
 }
 
+func addServerHalfIDs(allServerHalfIDs map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID,
+	serverHalfIDs map[keybase1.UID]map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID) {
+	for uid, userServerHalfIDs := range serverHalfIDs {
+		if allServerHalfIDs[uid] == nil {
+			allServerHalfIDs[uid] = make(map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID)
+		}
+		for key, serverHalf := range userServerHalfIDs {
+			allServerHalfIDs[uid][key] =
+				append(allServerHalfIDs[uid][key], serverHalf)
+		}
+	}
+}
+
 // RevokeRemovedDevices implements the BareRootMetadata interface for
 // BareRootMetadataV2.
 func (md *BareRootMetadataV2) RevokeRemovedDevices(
 	wKeys, rKeys map[keybase1.UID][]kbfscrypto.CryptPublicKey,
 	_ ExtraMetadata) (
-	map[keybase1.UID]map[kbfscrypto.CryptPublicKey]TLFCryptKeyServerHalfID, error) {
+	map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
 			md.TlfID(), "RevokeRemovedDevices"}
 	}
 
-	return nil, nil
+	allServerHalfIDs := make(map[keybase1.UID]map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID)
+
+	for _, wKeyBundle := range md.WKeys {
+		serverHalfIDs := wKeyBundle.WKeys.removeDevicesNotIn(wKeys)
+		addServerHalfIDs(allServerHalfIDs, serverHalfIDs)
+	}
+
+	for _, rKeyBundle := range md.RKeys {
+		serverHalfIDs := rKeyBundle.RKeys.removeDevicesNotIn(rKeys)
+		addServerHalfIDs(allServerHalfIDs, serverHalfIDs)
+	}
+
+	return allServerHalfIDs, nil
 }
 
 // GetTLFKeyBundles implements the BareRootMetadata interface for
