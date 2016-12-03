@@ -89,7 +89,7 @@ func setupMDJournalTest(t testing.TB) (
 	codec kbfscodec.Codec, crypto CryptoCommon, tlfID tlf.ID,
 	signer kbfscrypto.Signer, ekg singleEncryptionKeyGetter,
 	bsplit BlockSplitter, tempdir string, j *mdJournal) {
-	return setupMDJournalTestWithMetadataVer(t, SegregatedKeyBundlesVer)
+	return setupMDJournalTestWithMetadataVer(t, defaultClientMetadataVer)
 }
 
 func teardownMDJournalTest(t testing.TB, tempdir string) {
@@ -172,7 +172,7 @@ func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 
 func BenchmarkMDJournalBasicMDv2(b *testing.B) {
 	_, _, id, signer, ekg, bsplit, tempdir, j :=
-		setupMDJournalTest(b)
+		setupMDJournalTestWithMetadataVer(b, InitialExtraMetadataVer)
 	defer teardownMDJournalTest(b, tempdir)
 
 	mdCount := 500
