@@ -61,14 +61,18 @@ func (dkimV2 DeviceKeyInfoMapV2) toDKIM(codec kbfscodec.Codec) (
 	return dkim, nil
 }
 
-func dkimToV2(dkim DeviceKeyInfoMap) DeviceKeyInfoMapV2 {
+func dkimToV2(codec kbfscodec.Codec, dkim DeviceKeyInfoMap) (
+	DeviceKeyInfoMapV2, error) {
 	dkimV2 := make(DeviceKeyInfoMapV2)
 	for key, info := range dkim {
-		// TODO: This actually still shares some data (in byte
-		// slices). Fix that.
-		dkimV2[key.KID()] = info
+		var infoCopy TLFCryptKeyInfo
+		err := kbfscodec.Update(codec, &infoCopy, info)
+		if err != nil {
+			return nil, err
+		}
+		dkimV2[key.KID()] = infoCopy
 	}
-	return dkimV2
+	return dkimV2, nil
 }
 
 // UserDeviceKeyInfoMapV2 maps a user's keybase UID to their DeviceKeyInfoMapV2
@@ -87,12 +91,17 @@ func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM(
 	return udkim, nil
 }
 
-func udkimToV2(udkim UserDeviceKeyInfoMap) UserDeviceKeyInfoMapV2 {
+func udkimToV2(codec kbfscodec.Codec, udkim UserDeviceKeyInfoMap) (
+	UserDeviceKeyInfoMapV2, error) {
 	udkimV2 := make(UserDeviceKeyInfoMapV2)
 	for u, dkim := range udkim {
-		udkimV2[u] = dkimToV2(dkim)
+		dkimV2, err := dkimToV2(codec, dkim)
+		if err != nil {
+			return nil, err
+		}
+		udkimV2[u] = dkimV2
 	}
-	return udkimV2
+	return udkimV2, nil
 }
 
 // All section references below are to https://keybase.io/blog/kbfs-crypto
