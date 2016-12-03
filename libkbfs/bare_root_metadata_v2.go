@@ -567,6 +567,8 @@ func (md *BareRootMetadataV2) TlfHandleExtensions() (
 	return extensions
 }
 
+// PromoteReader implements the BareRootMetadata interface for
+// BareRootMetadataV2.
 func (md *BareRootMetadataV2) PromoteReader(
 	uid keybase1.UID, _ ExtraMetadata) error {
 	if md.TlfID().IsPublic() {
@@ -586,6 +588,8 @@ func (md *BareRootMetadataV2) PromoteReader(
 	return nil
 }
 
+// RevokeDevices implements the BareRootMetadata interface for
+// BareRootMetadataV2.
 func (md *BareRootMetadataV2) RevokeDevices(
 	keys []kbfscrypto.CryptPublicKey, _ ExtraMetadata) error {
 	if md.TlfID().IsPublic() {
@@ -611,6 +615,8 @@ func (md *BareRootMetadataV2) RevokeDevices(
 	return nil
 }
 
+// RevokeUsers implements the BareRootMetadata interface for
+// BareRootMetadataV2.
 func (md *BareRootMetadataV2) RevokeUsers(
 	uids []keybase1.UID, _ ExtraMetadata) error {
 	if md.TlfID().IsPublic() {

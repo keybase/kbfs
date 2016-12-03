@@ -805,7 +805,9 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	// that's the only one we'll access, and that one won't have
 	// the removed devices already.
 	//
-	// TODO: Figure out how to delete keys for MDv3.
+	// TODO: Do the revocation for prevExtra, at least.
+	//
+	// TODO: Figure out how to delete keys for all generations for MDv3.
 	for keygen := FirstValidKeyGen; keygen <= currKeyGen; keygen++ {
 		rDkim, wDkim, err := md.getUserDeviceKeyInfoMaps(keygen)
 		if _, noDkim := err.(TLFCryptKeyNotPerDeviceEncrypted); noDkim {
