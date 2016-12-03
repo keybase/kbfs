@@ -103,6 +103,52 @@ type userServerHalfRemovalInfo struct {
 	deviceServerHalfIDs map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID
 }
 
+func (ri userServerHalfRemovalInfo) addGeneration(
+	uid keybase1.UID, genInfo userServerHalfRemovalInfo) (
+	userServerHalfRemovalInfo, error) {
+	if ri.userRemoved != genInfo.userRemoved {
+		return userServerHalfRemovalInfo{}, fmt.Errorf(
+			"userRemoved=%t != generation userRemoved=%t for user %s",
+			ri.userRemoved, genInfo.userRemoved, uid)
+	}
+
+	if len(ri.deviceServerHalfIDs) != len(genInfo.deviceServerHalfIDs) {
+		return userServerHalfRemovalInfo{}, fmt.Errorf(
+			"device count=%d != generation device count=%d for user %s",
+			len(ri.deviceServerHalfIDs),
+			len(genInfo.deviceServerHalfIDs), uid)
+	}
+
+	merged := make(map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID)
+	numIDs := -1
+	for key, serverHalfIDs := range ri.deviceServerHalfIDs {
+		if numIDs == -1 {
+			numIDs = len(serverHalfIDs)
+		} else {
+			if len(serverHalfIDs) != numIDs {
+				return userServerHalfRemovalInfo{}, fmt.Errorf(
+					"expected %d keys, got %d for user %s and device %s",
+					numIDs, len(serverHalfIDs), uid, key)
+			}
+		}
+		merged[key] = serverHalfIDs
+	}
+
+	for key, serverHalfIDs := range genInfo.deviceServerHalfIDs {
+		if len(serverHalfIDs) != 1 {
+			return userServerHalfRemovalInfo{}, fmt.Errorf(
+				"expected exactly one key, got %d for user %s and device %s",
+				len(serverHalfIDs), uid, key)
+		}
+		merged[key] = append(merged[key], serverHalfIDs[0])
+	}
+
+	return userServerHalfRemovalInfo{
+		userRemoved:         ri.userRemoved,
+		deviceServerHalfIDs: merged,
+	}, nil
+}
+
 // ServerHalfRemovalInfo is a map from users to and devices to a list
 // of server half IDs to remove from the server.
 type ServerHalfRemovalInfo map[keybase1.UID]userServerHalfRemovalInfo
