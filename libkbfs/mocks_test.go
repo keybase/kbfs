@@ -5645,6 +5645,26 @@ func (_mr *_MockMutableBareRootMetadataRecorder) PromoteReader(arg0, arg1 interf
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PromoteReader", arg0, arg1)
 }
 
+func (_m *MockMutableBareRootMetadata) RevokeDevices(keys []kbfscrypto.CryptPublicKey, extra ExtraMetadata) error {
+	ret := _m.ctrl.Call(_m, "RevokeDevices", keys, extra)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockMutableBareRootMetadataRecorder) RevokeDevices(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "RevokeDevices", arg0, arg1)
+}
+
+func (_m *MockMutableBareRootMetadata) RevokeUsers(uids []keybase1.UID, extra ExtraMetadata) error {
+	ret := _m.ctrl.Call(_m, "RevokeUsers", uids, extra)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockMutableBareRootMetadataRecorder) RevokeUsers(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "RevokeUsers", arg0, arg1)
+}
+
 func (_m *MockMutableBareRootMetadata) FinalizeRekey(c cryptoPure, extra ExtraMetadata) error {
 	ret := _m.ctrl.Call(_m, "FinalizeRekey", c, extra)
 	ret0, _ := ret[0].(error)
