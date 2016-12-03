@@ -25,14 +25,9 @@ func (kim DeviceKeyInfoMapV3) fillInDeviceInfo(crypto Crypto,
 	serverMap map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf,
 	err error) {
 	serverMap = make(map[keybase1.KID]kbfscrypto.TLFCryptKeyServerHalf)
-	// for each device:
-	//    * create a new random server half
-	//    * mask it with the key to get the client half
-	//    * encrypt the client half
-	//
 	// TODO: parallelize
 	for _, k := range publicKeys {
-		// Skip existing entries, only fill in new ones
+		// Skip existing entries, and only fill in new ones
 		if _, ok := kim[k]; ok {
 			continue
 		}

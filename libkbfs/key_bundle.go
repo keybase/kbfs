@@ -59,6 +59,9 @@ func splitTLFCryptKey(crypto Crypto, uid keybase1.UID,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	pubKey kbfscrypto.CryptPublicKey) (
 	TLFCryptKeyInfo, kbfscrypto.TLFCryptKeyServerHalf, error) {
+	//    * create a new random server half
+	//    * mask it with the key to get the client half
+	//    * encrypt the client half
 	var serverHalf kbfscrypto.TLFCryptKeyServerHalf
 	serverHalf, err := crypto.MakeRandomTLFCryptKeyServerHalf()
 	if err != nil {

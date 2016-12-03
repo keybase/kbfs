@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -280,4 +281,68 @@ func TestServerHalfRemovalInfoAddGeneration(t *testing.T) {
 			},
 		},
 	}, info)
+}
+
+func TestServerHalfRemovalInfoMergeUsers(t *testing.T) {
+	key1 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key1")
+	key2 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key2")
+
+	half1a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x1})
+	half1b := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
+	half2a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x3})
+	half2b := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x4})
+
+	uid1 := keybase1.MakeTestUID(0x1)
+	uid2 := keybase1.MakeTestUID(0x2)
+	uid3 := keybase1.MakeTestUID(0x3)
+	uid4 := keybase1.MakeTestUID(0x4)
+
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	id1a, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1.KID(), half1a)
+	require.NoError(t, err)
+	id1b, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1.KID(), half1b)
+	require.NoError(t, err)
+	id2a, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key2.KID(), half2a)
+	require.NoError(t, err)
+	id2b, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key2.KID(), half2b)
+	require.NoError(t, err)
+
+	userRemovalInfo := userServerHalfRemovalInfo{
+		userRemoved: true,
+		deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+			key1: {id1a, id1b},
+			key2: {id2a, id2b},
+		},
+	}
+
+	info1 := ServerHalfRemovalInfo{
+		uid1: userRemovalInfo,
+		uid2: userRemovalInfo,
+	}
+
+	info2 := ServerHalfRemovalInfo{
+		uid1: userRemovalInfo,
+		uid3: userRemovalInfo,
+	}
+
+	_, err = info1.mergeUsers(info2)
+	require.Error(t, err)
+	require.True(t, strings.HasPrefix(err.Error(),
+		fmt.Sprintf("user %s is in both", uid1)),
+		"err=%v", err)
+
+	info2 = ServerHalfRemovalInfo{
+		uid3: userRemovalInfo,
+		uid4: userRemovalInfo,
+	}
+
+	info3, err := info1.mergeUsers(info2)
+	require.NoError(t, err)
+	require.Equal(t, ServerHalfRemovalInfo{
+		uid1: userRemovalInfo,
+		uid2: userRemovalInfo,
+		uid3: userRemovalInfo,
+		uid4: userRemovalInfo,
+	}, info3)
 }
