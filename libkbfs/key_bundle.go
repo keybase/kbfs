@@ -82,3 +82,31 @@ func splitTLFCryptKey(crypto Crypto, uid keybase1.UID,
 	}
 	return clientInfo, serverHalf, nil
 }
+
+type userServerHalfRemovalInfo struct {
+	userRemoved         bool
+	deviceServerHalfIDs map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID
+}
+
+type serverHalfRemovalInfo map[keybase1.UID]userServerHalfRemovalInfo
+
+func (info serverHalfRemovalInfo) merge(
+	other serverHalfRemovalInfo) serverHalfRemovalInfo {
+	u := make(serverHalfRemovalInfo)
+	for uid, otherUserRemovalInfo := range other {
+		userRemovalInfo := info[uid]
+		if userRemovalInfo.deviceServerHalfIDs == nil {
+			userRemovalInfo.deviceServerHalfIDs = make(
+				map[kbfscrypto.CryptPublicKey][]TLFCryptKeyServerHalfID)
+		}
+		userRemovalInfo.userRemoved =
+			userRemovalInfo.userRemoved ||
+				otherUserRemovalInfo.userRemoved
+		for key, deviceServerHalfIDs := range otherUserRemovalInfo.deviceServerHalfIDs {
+			userRemovalInfo.deviceServerHalfIDs[key] = append(
+				userRemovalInfo.deviceServerHalfIDs[key],
+				deviceServerHalfIDs...)
+		}
+	}
+	return u
+}
