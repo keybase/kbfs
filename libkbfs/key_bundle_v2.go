@@ -315,7 +315,7 @@ func fillInDevicesAndServerMapV2(crypto Crypto, newIndex int,
 	return nil
 }
 
-func (udkim UserDeviceKeyInfoMapV2) removeDevicesNotIn(
+func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
 	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) ServerHalfRemovalInfo {
 	removalInfo := make(ServerHalfRemovalInfo)
 	for uid, dkim := range udkim {
