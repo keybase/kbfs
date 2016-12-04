@@ -75,6 +75,9 @@ func TestToTLFReaderKeyBundleV3(t *testing.T) {
 		},
 	}
 
+	// We need two expectedRKBV3s since the result depends on map
+	// iteration order.
+
 	expectedRKBV3a := TLFReaderKeyBundleV3{
 		Keys: UserDeviceKeyInfoMapV3{
 			uid1: DeviceKeyInfoMapV3{

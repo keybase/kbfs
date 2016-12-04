@@ -304,6 +304,10 @@ func (rkg TLFReaderKeyGenerationsV2) ToTLFReaderKeyBundleV3(
 					ePubKey := wkb.TLFEphemeralPublicKeys[oldIndex]
 					rkbV3.TLFEphemeralPublicKeys =
 						append(rkbV3.TLFEphemeralPublicKeys, ePubKey)
+					// TODO: This index depends on
+					// map iteration order, which
+					// varies. Impose a consistent
+					// order on these indices.
 					newIndex = len(rkbV3.TLFEphemeralPublicKeys) - 1
 					pubKeyIndicesMap[oldIndex] = newIndex
 					infoCopy.EPubKeyIndex = newIndex
