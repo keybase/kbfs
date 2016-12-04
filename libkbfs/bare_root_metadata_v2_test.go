@@ -207,6 +207,14 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 
 	removalInfo, err := brmd.RevokeRemovedDevices(wKeys, rKeys, nil)
 	require.NoError(t, err)
+	require.Equal(t, ServerHalfRemovalInfo{
+		uid2: userServerHalfRemovalInfo{
+			userRemoved: false,
+			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+				key2: []TLFCryptKeyServerHalfID{id2a, id2b},
+			},
+		},
+	}, removalInfo)
 
 	expectedWKeys := TLFWriterKeyGenerationsV2{
 		TLFWriterKeyBundleV2{
@@ -255,13 +263,4 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 		},
 	}
 	require.Equal(t, expectedRKeys, brmd.RKeys)
-
-	require.Equal(t, ServerHalfRemovalInfo{
-		uid2: userServerHalfRemovalInfo{
-			userRemoved: false,
-			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
-				key2: []TLFCryptKeyServerHalfID{id2a, id2b},
-			},
-		},
-	}, removalInfo)
 }
