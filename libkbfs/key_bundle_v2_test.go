@@ -5,14 +5,136 @@
 package libkbfs
 
 import (
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
+
+func TestToTLFReaderKeyBundleV3(t *testing.T) {
+	uid1 := keybase1.MakeTestUID(0x1)
+	uid2 := keybase1.MakeTestUID(0x1)
+
+	key1a := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key1")
+	key1b := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key2")
+	key2a := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key3")
+	key2b := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key4")
+	key2c := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key5")
+
+	rEPubKey1 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x1})
+	rEPubKey2 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x2})
+
+	rkbV2 := TLFReaderKeyBundleV2{
+		RKeys: UserDeviceKeyInfoMapV2{
+			uid1: DeviceKeyInfoMapV2{
+				key1a.KID(): TLFCryptKeyInfo{
+					EPubKeyIndex: -1,
+				},
+				key1b.KID(): TLFCryptKeyInfo{
+					EPubKeyIndex: +2,
+				},
+			},
+			uid2: DeviceKeyInfoMapV2{
+				key2a.KID(): TLFCryptKeyInfo{
+					EPubKeyIndex: -2,
+				},
+				key2b.KID(): TLFCryptKeyInfo{
+					EPubKeyIndex: 0,
+				},
+				key2c.KID(): TLFCryptKeyInfo{
+					EPubKeyIndex: 0,
+				},
+			},
+		},
+		TLFReaderEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
+			rEPubKey1, rEPubKey2,
+		},
+	}
+
+	rkg := TLFReaderKeyGenerationsV2{TLFReaderKeyBundleV2{}, rkbV2}
+
+	codec := kbfscodec.NewMsgpack()
+	_, err := rkg.ToTLFReaderKeyBundleV3(codec, &TLFWriterKeyBundleV3{})
+	require.Error(t, err)
+	require.True(t, strings.HasPrefix(err.Error(), "Invalid index 0"),
+		"err: %v", err)
+
+	wEPubKey1 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x3})
+	wEPubKey2 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x4})
+	wEPubKey3 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x5})
+
+	wkbV3 := TLFWriterKeyBundleV3{
+		TLFEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
+			wEPubKey1, wEPubKey2, wEPubKey3,
+		},
+	}
+
+	expectedRKBV3a := TLFReaderKeyBundleV3{
+		Keys: UserDeviceKeyInfoMapV3{
+			uid1: DeviceKeyInfoMapV3{
+				key1a: TLFCryptKeyInfo{
+					EPubKeyIndex: 0,
+				},
+				key1b: TLFCryptKeyInfo{
+					EPubKeyIndex: 2,
+				},
+			},
+			uid2: DeviceKeyInfoMapV3{
+				key2a: TLFCryptKeyInfo{
+					EPubKeyIndex: 1,
+				},
+				key2b: TLFCryptKeyInfo{
+					EPubKeyIndex: 3,
+				},
+				key2c: TLFCryptKeyInfo{
+					EPubKeyIndex: 3,
+				},
+			},
+		},
+		TLFEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
+			rEPubKey1, rEPubKey2, wEPubKey1, wEPubKey3,
+		},
+	}
+
+	expectedRKBV3b := TLFReaderKeyBundleV3{
+		Keys: UserDeviceKeyInfoMapV3{
+			uid1: DeviceKeyInfoMapV3{
+				key1a: TLFCryptKeyInfo{
+					EPubKeyIndex: 0,
+				},
+				key1b: TLFCryptKeyInfo{
+					EPubKeyIndex: 3,
+				},
+			},
+			uid2: DeviceKeyInfoMapV3{
+				key2a: TLFCryptKeyInfo{
+					EPubKeyIndex: 1,
+				},
+				key2b: TLFCryptKeyInfo{
+					EPubKeyIndex: 2,
+				},
+				key2c: TLFCryptKeyInfo{
+					EPubKeyIndex: 2,
+				},
+			},
+		},
+		TLFEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
+			rEPubKey1, rEPubKey2, wEPubKey3, wEPubKey1,
+		},
+	}
+
+	rkbV3, err := rkg.ToTLFReaderKeyBundleV3(codec, &wkbV3)
+	require.NoError(t, err)
+	if !reflect.DeepEqual(expectedRKBV3a, *rkbV3) {
+		require.Equal(t, expectedRKBV3b, *rkbV3)
+	}
+}
 
 func testKeyBundleGetKeysOrBust(t *testing.T, config Config, uid keybase1.UID,
 	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) {
