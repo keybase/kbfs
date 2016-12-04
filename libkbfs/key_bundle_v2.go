@@ -105,6 +105,8 @@ func udkimToV2(codec kbfscodec.Codec, udkim UserDeviceKeyInfoMap) (
 	return udkimV2, nil
 }
 
+// removeDevicesNotIn removes any info for any device that is not
+// contained in the given map of users and devices.
 func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
 	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) ServerHalfRemovalInfo {
 	removalInfo := make(ServerHalfRemovalInfo)

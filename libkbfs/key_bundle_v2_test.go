@@ -17,6 +17,71 @@ import (
 	"golang.org/x/net/context"
 )
 
+func TestRemoveDevicesNotInV2(t *testing.T) {
+	uid1 := keybase1.MakeTestUID(0x1)
+	uid2 := keybase1.MakeTestUID(0x2)
+
+	key1a := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key1")
+	key1b := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key2")
+	key2a := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key3")
+	key2b := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key4")
+	key2c := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key5")
+
+	udkimV2 := UserDeviceKeyInfoMapV2{
+		uid1: DeviceKeyInfoMapV2{
+			key1a.KID(): TLFCryptKeyInfo{
+				EPubKeyIndex: -1,
+			},
+			key1b.KID(): TLFCryptKeyInfo{
+				EPubKeyIndex: +2,
+			},
+		},
+		uid2: DeviceKeyInfoMapV2{
+			key2a.KID(): TLFCryptKeyInfo{
+				EPubKeyIndex: -2,
+			},
+			key2b.KID(): TLFCryptKeyInfo{
+				EPubKeyIndex: 0,
+			},
+			key2c.KID(): TLFCryptKeyInfo{
+				EPubKeyIndex: 0,
+			},
+		},
+	}
+
+	removalInfo := udkimV2.removeDevicesNotIn(map[keybase1.UID][]kbfscrypto.CryptPublicKey{
+		uid1: {},
+		uid2: {key2a, key2c},
+	})
+
+	require.Equal(t, UserDeviceKeyInfoMapV2{
+		uid2: DeviceKeyInfoMapV2{
+			key2a.KID(): TLFCryptKeyInfo{
+				EPubKeyIndex: -2,
+			},
+			key2c.KID(): TLFCryptKeyInfo{
+				EPubKeyIndex: 0,
+			},
+		},
+	}, udkimV2)
+
+	require.Equal(t, ServerHalfRemovalInfo{
+		uid1: userServerHalfRemovalInfo{
+			userRemoved: true,
+			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+				key1a: []TLFCryptKeyServerHalfID{{}},
+				key1b: []TLFCryptKeyServerHalfID{{}},
+			},
+		},
+		uid2: userServerHalfRemovalInfo{
+			userRemoved: false,
+			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+				key2b: []TLFCryptKeyServerHalfID{{}},
+			},
+		},
+	}, removalInfo)
+}
+
 func TestToTLFReaderKeyBundleV3(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(0x1)
 	uid2 := keybase1.MakeTestUID(0x2)
