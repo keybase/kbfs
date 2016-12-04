@@ -20,18 +20,21 @@ import (
 func TestRemoveDevicesNotInV2(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(0x1)
 	uid2 := keybase1.MakeTestUID(0x2)
+	uid3 := keybase1.MakeTestUID(0x3)
 
 	key1a := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key1")
 	key1b := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key2")
 	key2a := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key3")
 	key2b := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key4")
 	key2c := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key5")
+	key3a := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key6")
 
 	half1a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x1})
 	half1b := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
 	half2a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x3})
 	half2b := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x4})
 	half2c := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x5})
+	half3a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x6})
 
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
@@ -44,6 +47,8 @@ func TestRemoveDevicesNotInV2(t *testing.T) {
 	id2b, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2b.KID(), half2b)
 	require.NoError(t, err)
 	id2c, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2c.KID(), half2c)
+	require.NoError(t, err)
+	id3a, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key3a.KID(), half3a)
 	require.NoError(t, err)
 
 	udkimV2 := UserDeviceKeyInfoMapV2{
@@ -71,11 +76,17 @@ func TestRemoveDevicesNotInV2(t *testing.T) {
 				EPubKeyIndex: 0,
 			},
 		},
+		uid3: DeviceKeyInfoMapV2{
+			key3a.KID(): TLFCryptKeyInfo{
+				ServerHalfID: id3a,
+				EPubKeyIndex: -2,
+			},
+		},
 	}
 
 	removalInfo := udkimV2.removeDevicesNotIn(map[keybase1.UID][]kbfscrypto.CryptPublicKey{
-		uid1: {},
 		uid2: {key2a, key2c},
+		uid3: {key3a},
 	})
 
 	require.Equal(t, UserDeviceKeyInfoMapV2{
@@ -87,6 +98,12 @@ func TestRemoveDevicesNotInV2(t *testing.T) {
 			key2c.KID(): TLFCryptKeyInfo{
 				ServerHalfID: id2c,
 				EPubKeyIndex: 0,
+			},
+		},
+		uid3: DeviceKeyInfoMapV2{
+			key3a.KID(): TLFCryptKeyInfo{
+				ServerHalfID: id3a,
+				EPubKeyIndex: -2,
 			},
 		},
 	}, udkimV2)

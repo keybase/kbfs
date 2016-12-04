@@ -143,6 +143,10 @@ func (udkimV3 UserDeviceKeyInfoMapV3) removeDevicesNotIn(
 			}
 		}
 
+		if len(deviceServerHalfIDs) == 0 {
+			continue
+		}
+
 		userRemoved := false
 		if len(dkim) == 0 {
 			// The user was completely removed, which
