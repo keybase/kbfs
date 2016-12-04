@@ -598,21 +598,29 @@ func (md *BareRootMetadataV2) RevokeRemovedDevices(
 			md.TlfID(), "RevokeRemovedDevices"}
 	}
 
-	wRemovalInfo := make(ServerHalfRemovalInfo)
+	var wRemovalInfo ServerHalfRemovalInfo
 	for _, wkb := range md.WKeys {
 		removalInfo := wkb.WKeys.removeDevicesNotIn(wKeys)
-		err := wRemovalInfo.addGeneration(removalInfo)
-		if err != nil {
-			return nil, err
+		if wRemovalInfo == nil {
+			wRemovalInfo = removalInfo
+		} else {
+			err := wRemovalInfo.addGeneration(removalInfo)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
-	rRemovalInfo := make(ServerHalfRemovalInfo)
+	var rRemovalInfo ServerHalfRemovalInfo
 	for _, rkb := range md.RKeys {
 		removalInfo := rkb.RKeys.removeDevicesNotIn(rKeys)
-		err := rRemovalInfo.addGeneration(removalInfo)
-		if err != nil {
-			return nil, err
+		if rRemovalInfo == nil {
+			rRemovalInfo = removalInfo
+		} else {
+			err := rRemovalInfo.addGeneration(removalInfo)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

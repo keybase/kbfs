@@ -209,7 +209,7 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ServerHalfRemovalInfo{
 		uid2: userServerHalfRemovalInfo{
-			userRemoved: false,
+			userRemoved: true,
 			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
 				key2: []TLFCryptKeyServerHalfID{id2a, id2b},
 			},
