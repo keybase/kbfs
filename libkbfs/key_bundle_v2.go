@@ -134,18 +134,18 @@ func (wkb TLFWriterKeyBundleV2) IsWriter(user keybase1.UID, deviceKID keybase1.K
 	return ok
 }
 
-// TLFWriterKeyGenerations stores a slice of TLFWriterKeyBundleV2,
+// TLFWriterKeyGenerationsV2 stores a slice of TLFWriterKeyBundleV2,
 // where the last element is the current generation.
-type TLFWriterKeyGenerations []TLFWriterKeyBundleV2
+type TLFWriterKeyGenerationsV2 []TLFWriterKeyBundleV2
 
 // LatestKeyGeneration returns the current key generation for this TLF.
-func (wkg TLFWriterKeyGenerations) LatestKeyGeneration() KeyGen {
+func (wkg TLFWriterKeyGenerationsV2) LatestKeyGeneration() KeyGen {
 	return KeyGen(len(wkg))
 }
 
 // IsWriter returns whether or not the user+device is an authorized writer
 // for the latest generation.
-func (wkg TLFWriterKeyGenerations) IsWriter(user keybase1.UID, deviceKID keybase1.KID) bool {
+func (wkg TLFWriterKeyGenerationsV2) IsWriter(user keybase1.UID, deviceKID keybase1.KID) bool {
 	keyGen := wkg.LatestKeyGeneration()
 	if keyGen < 1 {
 		return false
@@ -153,8 +153,8 @@ func (wkg TLFWriterKeyGenerations) IsWriter(user keybase1.UID, deviceKID keybase
 	return wkg[keyGen-1].IsWriter(user, deviceKID)
 }
 
-// ToTLFWriterKeyBundleV3 converts a TLFWriterKeyGenerations to a TLFWriterKeyBundleV3.
-func (wkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
+// ToTLFWriterKeyBundleV3 converts a TLFWriterKeyGenerationsV2 to a TLFWriterKeyBundleV3.
+func (wkg TLFWriterKeyGenerationsV2) ToTLFWriterKeyBundleV3(
 	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, keyManager KeyManager, kmd KeyMetadata) (
 	*TLFWriterKeyBundleV3, error) {
 
@@ -229,18 +229,18 @@ func (trb TLFReaderKeyBundleV2) IsReader(user keybase1.UID, deviceKID keybase1.K
 	return ok
 }
 
-// TLFReaderKeyGenerations stores a slice of TLFReaderKeyBundleV2,
+// TLFReaderKeyGenerationsV2 stores a slice of TLFReaderKeyBundleV2,
 // where the last element is the current generation.
-type TLFReaderKeyGenerations []TLFReaderKeyBundleV2
+type TLFReaderKeyGenerationsV2 []TLFReaderKeyBundleV2
 
 // LatestKeyGeneration returns the current key generation for this TLF.
-func (rkg TLFReaderKeyGenerations) LatestKeyGeneration() KeyGen {
+func (rkg TLFReaderKeyGenerationsV2) LatestKeyGeneration() KeyGen {
 	return KeyGen(len(rkg))
 }
 
 // IsReader returns whether or not the user+device is an authorized reader
 // for the latest generation.
-func (rkg TLFReaderKeyGenerations) IsReader(user keybase1.UID, deviceKID keybase1.KID) bool {
+func (rkg TLFReaderKeyGenerationsV2) IsReader(user keybase1.UID, deviceKID keybase1.KID) bool {
 	keyGen := rkg.LatestKeyGeneration()
 	if keyGen < 1 {
 		return false
@@ -248,8 +248,8 @@ func (rkg TLFReaderKeyGenerations) IsReader(user keybase1.UID, deviceKID keybase
 	return rkg[keyGen-1].IsReader(user, deviceKID)
 }
 
-// ToTLFReaderKeyBundleV3 converts a TLFReaderKeyGenerations to a TLFReaderkeyBundleV3.
-func (rkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(
+// ToTLFReaderKeyBundleV3 converts a TLFReaderKeyGenerationsV2 to a TLFReaderkeyBundleV3.
+func (rkg TLFReaderKeyGenerationsV2) ToTLFReaderKeyBundleV3(
 	codec kbfscodec.Codec, wkb *TLFWriterKeyBundleV3) (
 	*TLFReaderKeyBundleV3, error) {
 

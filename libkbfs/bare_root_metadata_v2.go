@@ -34,7 +34,7 @@ type WriterMetadataV2 struct {
 	// For private TLFs. Writer key generations for this metadata. The
 	// most recent one is last in the array. Must be same length as
 	// BareRootMetadata.RKeys.
-	WKeys TLFWriterKeyGenerations `codec:",omitempty"`
+	WKeys TLFWriterKeyGenerationsV2 `codec:",omitempty"`
 	// The directory ID, signed over to make verification easier
 	ID tlf.ID
 	// The branch ID, currently only set if this is in unmerged per-device history.
@@ -127,7 +127,7 @@ type BareRootMetadataV2 struct {
 	// most recent one is last in the array. Must be same length as
 	// WriterMetadata.WKeys. If there are no readers, each generation
 	// is empty.
-	RKeys TLFReaderKeyGenerations `codec:",omitempty"`
+	RKeys TLFReaderKeyGenerationsV2 `codec:",omitempty"`
 	// For private TLFs. Any unresolved social assertions for readers.
 	UnresolvedReaders []keybase1.SocialAssertion `codec:"ur,omitempty"`
 
@@ -154,14 +154,14 @@ func MakeInitialBareRootMetadataV2(tlfID tlf.ID, h tlf.Handle) (
 	}
 
 	var writers []keybase1.UID
-	var wKeys TLFWriterKeyGenerations
-	var rKeys TLFReaderKeyGenerations
+	var wKeys TLFWriterKeyGenerationsV2
+	var rKeys TLFReaderKeyGenerationsV2
 	if tlfID.IsPublic() {
 		writers = make([]keybase1.UID, len(h.Writers))
 		copy(writers, h.Writers)
 	} else {
-		wKeys = make(TLFWriterKeyGenerations, 0, 1)
-		rKeys = make(TLFReaderKeyGenerations, 0, 1)
+		wKeys = make(TLFWriterKeyGenerationsV2, 0, 1)
+		rKeys = make(TLFReaderKeyGenerationsV2, 0, 1)
 	}
 
 	var unresolvedWriters, unresolvedReaders []keybase1.SocialAssertion

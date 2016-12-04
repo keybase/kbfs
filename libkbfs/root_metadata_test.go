@@ -275,7 +275,7 @@ func TestWriterMetadataEncodedFields(t *testing.T) {
 	wm := WriterMetadataV2{
 		ID:      tlf.FakeID(0xa, false),
 		Writers: []keybase1.UID{"uid1", "uid2"},
-		WKeys:   TLFWriterKeyGenerations{{}},
+		WKeys:   TLFWriterKeyGenerationsV2{{}},
 		Extra: WriterMetadataExtra{
 			UnresolvedWriters: []keybase1.SocialAssertion{sa1, sa2},
 		},
@@ -323,8 +323,8 @@ func (wmef writerMetadataExtraFuture) toCurrent() WriterMetadataExtra {
 
 type tlfWriterKeyGenerationsV2Future []*tlfWriterKeyBundleV2Future
 
-func (wkgf tlfWriterKeyGenerationsV2Future) toCurrent() TLFWriterKeyGenerations {
-	wkg := make(TLFWriterKeyGenerations, len(wkgf))
+func (wkgf tlfWriterKeyGenerationsV2Future) toCurrent() TLFWriterKeyGenerationsV2 {
+	wkg := make(TLFWriterKeyGenerationsV2, len(wkgf))
 	for i, wkbf := range wkgf {
 		wkb := wkbf.toCurrent()
 		wkg[i] = wkb
@@ -390,10 +390,10 @@ func TestWriterMetadataUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeWriterMetadataFuture(t))
 }
 
-type tlfReaderKeyGenerationsFuture []*tlfReaderKeyBundleV2Future
+type tlfReaderKeyGenerationsV2Future []*tlfReaderKeyBundleV2Future
 
-func (rkgf tlfReaderKeyGenerationsFuture) toCurrent() TLFReaderKeyGenerations {
-	rkg := make(TLFReaderKeyGenerations, len(rkgf))
+func (rkgf tlfReaderKeyGenerationsV2Future) toCurrent() TLFReaderKeyGenerationsV2 {
+	rkg := make(TLFReaderKeyGenerationsV2, len(rkgf))
 	for i, rkbf := range rkgf {
 		rkb := rkbf.toCurrent()
 		rkg[i] = rkb
@@ -417,7 +417,7 @@ type bareRootMetadataFuture struct {
 
 	bareRootMetadataWrapper
 	// Override BareRootMetadata.RKeys.
-	RKeys tlfReaderKeyGenerationsFuture `codec:",omitempty"`
+	RKeys tlfReaderKeyGenerationsV2Future `codec:",omitempty"`
 	kbfscodec.Extra
 }
 
