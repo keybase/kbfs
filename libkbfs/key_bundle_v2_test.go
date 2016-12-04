@@ -27,23 +27,47 @@ func TestRemoveDevicesNotInV2(t *testing.T) {
 	key2b := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key4")
 	key2c := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key5")
 
+	half1a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x1})
+	half1b := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
+	half2a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x3})
+	half2b := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x4})
+	half2c := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x5})
+
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	id1a, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1a.KID(), half1a)
+	require.NoError(t, err)
+	id1b, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1b.KID(), half1b)
+	require.NoError(t, err)
+	id2a, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2a.KID(), half2a)
+	require.NoError(t, err)
+	id2b, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2b.KID(), half2b)
+	require.NoError(t, err)
+	id2c, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2c.KID(), half2c)
+	require.NoError(t, err)
+
 	udkimV2 := UserDeviceKeyInfoMapV2{
 		uid1: DeviceKeyInfoMapV2{
 			key1a.KID(): TLFCryptKeyInfo{
+				ServerHalfID: id1a,
 				EPubKeyIndex: -1,
 			},
 			key1b.KID(): TLFCryptKeyInfo{
+				ServerHalfID: id1b,
 				EPubKeyIndex: +2,
 			},
 		},
 		uid2: DeviceKeyInfoMapV2{
 			key2a.KID(): TLFCryptKeyInfo{
+				ServerHalfID: id2a,
 				EPubKeyIndex: -2,
 			},
 			key2b.KID(): TLFCryptKeyInfo{
+				ServerHalfID: id2b,
 				EPubKeyIndex: 0,
 			},
 			key2c.KID(): TLFCryptKeyInfo{
+				ServerHalfID: id2c,
 				EPubKeyIndex: 0,
 			},
 		},
@@ -57,9 +81,11 @@ func TestRemoveDevicesNotInV2(t *testing.T) {
 	require.Equal(t, UserDeviceKeyInfoMapV2{
 		uid2: DeviceKeyInfoMapV2{
 			key2a.KID(): TLFCryptKeyInfo{
+				ServerHalfID: id2a,
 				EPubKeyIndex: -2,
 			},
 			key2c.KID(): TLFCryptKeyInfo{
+				ServerHalfID: id2c,
 				EPubKeyIndex: 0,
 			},
 		},
@@ -69,14 +95,14 @@ func TestRemoveDevicesNotInV2(t *testing.T) {
 		uid1: userServerHalfRemovalInfo{
 			userRemoved: true,
 			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
-				key1a: []TLFCryptKeyServerHalfID{{}},
-				key1b: []TLFCryptKeyServerHalfID{{}},
+				key1a: []TLFCryptKeyServerHalfID{id1a},
+				key1b: []TLFCryptKeyServerHalfID{id1b},
 			},
 		},
 		uid2: userServerHalfRemovalInfo{
 			userRemoved: false,
 			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
-				key2b: []TLFCryptKeyServerHalfID{{}},
+				key2b: []TLFCryptKeyServerHalfID{id2b},
 			},
 		},
 	}, removalInfo)
