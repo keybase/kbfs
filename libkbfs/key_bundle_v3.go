@@ -23,7 +23,7 @@ import (
 // key information.
 type DeviceKeyInfoMapV3 map[kbfscrypto.CryptPublicKey]TLFCryptKeyInfo
 
-func (kim DeviceKeyInfoMapV3) fillInDeviceInfo(crypto Crypto,
+func (dkimv3 DeviceKeyInfoMapV3) fillInDeviceInfo(crypto Crypto,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys []kbfscrypto.CryptPublicKey) (
@@ -33,7 +33,7 @@ func (kim DeviceKeyInfoMapV3) fillInDeviceInfo(crypto Crypto,
 	// TODO: parallelize
 	for _, k := range publicKeys {
 		// Skip existing entries, and only fill in new ones
-		if _, ok := kim[k]; ok {
+		if _, ok := dkimv3[k]; ok {
 			continue
 		}
 
@@ -43,7 +43,7 @@ func (kim DeviceKeyInfoMapV3) fillInDeviceInfo(crypto Crypto,
 			return nil, err
 		}
 
-		kim[k] = clientInfo
+		dkimv3[k] = clientInfo
 		serverMap[k.KID()] = serverHalf
 	}
 
@@ -214,7 +214,7 @@ func (h TLFWriterKeyBundleID) IsNil() bool {
 	return h == TLFWriterKeyBundleID{}
 }
 
-// TLFReaderKeyBundleV2 stores all the reader keys with reader
+// TLFReaderKeyBundleV3 stores all the reader keys with reader
 // permissions on a TLF.
 type TLFReaderKeyBundleV3 struct {
 	Keys UserDeviceKeyInfoMapV3 `codec:"rKeys,omitempty"`
