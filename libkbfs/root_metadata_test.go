@@ -321,9 +321,9 @@ func (wmef writerMetadataExtraFuture) toCurrent() WriterMetadataExtra {
 	return wmef.WriterMetadataExtra
 }
 
-type tlfWriterKeyGenerationsFuture []*tlfWriterKeyBundleFuture
+type tlfWriterKeyGenerationsV2Future []*tlfWriterKeyBundleV2Future
 
-func (wkgf tlfWriterKeyGenerationsFuture) toCurrent() TLFWriterKeyGenerations {
+func (wkgf tlfWriterKeyGenerationsV2Future) toCurrent() TLFWriterKeyGenerations {
 	wkg := make(TLFWriterKeyGenerations, len(wkgf))
 	for i, wkbf := range wkgf {
 		wkb := wkbf.toCurrent()
@@ -335,7 +335,7 @@ func (wkgf tlfWriterKeyGenerationsFuture) toCurrent() TLFWriterKeyGenerations {
 type writerMetadataFuture struct {
 	WriterMetadataV2
 	// Override WriterMetadata.WKeys.
-	WKeys tlfWriterKeyGenerationsFuture
+	WKeys tlfWriterKeyGenerationsV2Future
 	// Override WriterMetadata.Extra.
 	Extra writerMetadataExtraFuture `codec:"x,omitempty,omitemptycheckstruct"`
 }
@@ -368,11 +368,11 @@ func makeFakeWriterMetadataFuture(t *testing.T) writerMetadataFuture {
 		101,
 		WriterMetadataExtra{},
 	}
-	wkb := makeFakeTLFWriterKeyBundleFuture(t)
+	wkb := makeFakeTLFWriterKeyBundleV2Future(t)
 	sa, _ := externals.NormalizeSocialAssertion("foo@twitter")
 	return writerMetadataFuture{
 		wmd,
-		tlfWriterKeyGenerationsFuture{&wkb},
+		tlfWriterKeyGenerationsV2Future{&wkb},
 		writerMetadataExtraFuture{
 			WriterMetadataExtra{
 				// This needs to be list format so it fails to compile if new
@@ -390,7 +390,7 @@ func TestWriterMetadataUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeWriterMetadataFuture(t))
 }
 
-type tlfReaderKeyGenerationsFuture []*tlfReaderKeyBundleFuture
+type tlfReaderKeyGenerationsFuture []*tlfReaderKeyBundleV2Future
 
 func (rkgf tlfReaderKeyGenerationsFuture) toCurrent() TLFReaderKeyGenerations {
 	rkg := make(TLFReaderKeyGenerations, len(rkgf))
@@ -434,7 +434,7 @@ func (brmf *bareRootMetadataFuture) ToCurrentStruct() kbfscodec.CurrentStruct {
 
 func makeFakeBareRootMetadataFuture(t *testing.T) *bareRootMetadataFuture {
 	wmf := makeFakeWriterMetadataFuture(t)
-	rkb := makeFakeTLFReaderKeyBundleFuture(t)
+	rkb := makeFakeTLFReaderKeyBundleV2Future(t)
 	h, err := kbfshash.DefaultHash([]byte("fake buf"))
 	require.NoError(t, err)
 	sa, _ := externals.NormalizeSocialAssertion("bar@github")
@@ -464,7 +464,7 @@ func makeFakeBareRootMetadataFuture(t *testing.T) *bareRootMetadataFuture {
 				codec.UnknownFieldSetHandler{},
 			},
 		},
-		[]*tlfReaderKeyBundleFuture{&rkb},
+		[]*tlfReaderKeyBundleV2Future{&rkb},
 		kbfscodec.MakeExtraOrBust("BareRootMetadata", t),
 	}
 	return &rmf

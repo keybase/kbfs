@@ -14,18 +14,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-func testKeyBundleGetKeysOrBust(t *testing.T, config Config, uid keybase1.UID,
-	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) {
-	publicKeys, err := config.KBPKI().GetCryptPublicKeys(
-		context.Background(), uid)
-	if err != nil {
-		t.Fatalf("Couldn't get keys for %s: %v", uid, err)
-	}
-	keys[uid] = publicKeys
-}
-
-func testKeyBundleCheckKeysV2(t *testing.T, config Config, uid keybase1.UID,
-	wkb TLFWriterKeyBundleV2, ePubKey kbfscrypto.TLFEphemeralPublicKey,
+func testKeyBundleCheckKeysV3(t *testing.T, config Config, uid keybase1.UID,
+	wkb TLFWriterKeyBundleV3, ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey, serverMap serverKeyMap) {
 	ctx := context.Background()
 	// Check that every user can recover the crypt key
@@ -33,7 +23,7 @@ func testKeyBundleCheckKeysV2(t *testing.T, config Config, uid keybase1.UID,
 	if err != nil {
 		t.Fatalf("Couldn't get current public key for user %s: %v", uid, err)
 	}
-	info, ok := wkb.WKeys[uid][cryptPublicKey.KID()]
+	info, ok := wkb.Keys[uid][cryptPublicKey]
 	if !ok {
 		t.Fatalf("Couldn't get current key info for user %s: %v", uid, err)
 	}
@@ -63,7 +53,7 @@ func testKeyBundleCheckKeysV2(t *testing.T, config Config, uid keybase1.UID,
 	}
 }
 
-func TestKeyBundleFillInDevicesV2(t *testing.T) {
+func TestKeyBundleFillInDevicesV3(t *testing.T) {
 	config1 := MakeTestConfigOrBust(t, "u1", "u2", "u3")
 	defer CheckConfigAndShutdown(t, config1)
 	config2 := ConfigAsUser(config1, "u2")
@@ -86,8 +76,8 @@ func TestKeyBundleFillInDevicesV2(t *testing.T) {
 	}
 
 	// Make a wkb with empty writer key maps
-	wkb := TLFWriterKeyBundleV2{
-		WKeys: make(UserDeviceKeyInfoMapV2),
+	wkb := TLFWriterKeyBundleV3{
+		Keys: make(UserDeviceKeyInfoMapV3),
 		TLFEphemeralPublicKeys: make(kbfscrypto.TLFEphemeralPublicKeys, 1),
 	}
 
@@ -105,17 +95,17 @@ func TestKeyBundleFillInDevicesV2(t *testing.T) {
 		t.Fatalf("Couldn't make keys: %v", err)
 	}
 	// TODO: Fix this hack.
-	var md *BareRootMetadataV2
+	var md *BareRootMetadataV3
 	serverMap, err := md.fillInDevices(
-		config1.Crypto(), &wkb, &TLFReaderKeyBundleV2{},
+		config1.Crypto(), &wkb, &TLFReaderKeyBundleV3{},
 		wKeys, nil, ePubKey, ePrivKey, tlfCryptKey)
 	if err != nil {
 		t.Fatalf("Fill in devices failed: %v", err)
 	}
 
-	testKeyBundleCheckKeysV2(t, config1, u1, wkb, ePubKey, tlfCryptKey, serverMap)
-	testKeyBundleCheckKeysV2(t, config2, u2, wkb, ePubKey, tlfCryptKey, serverMap)
-	testKeyBundleCheckKeysV2(t, config3, u3, wkb, ePubKey, tlfCryptKey, serverMap)
+	testKeyBundleCheckKeysV3(t, config1, u1, wkb, ePubKey, tlfCryptKey, serverMap)
+	testKeyBundleCheckKeysV3(t, config2, u2, wkb, ePubKey, tlfCryptKey, serverMap)
+	testKeyBundleCheckKeysV3(t, config3, u3, wkb, ePubKey, tlfCryptKey, serverMap)
 
 	// Add a device key for user 1
 	devIndex := AddDeviceForLocalUserOrBust(t, config1, u1)
@@ -135,13 +125,13 @@ func TestKeyBundleFillInDevicesV2(t *testing.T) {
 		t.Fatalf("Couldn't make keys: %v", err)
 	}
 	serverMap2, err := md.fillInDevices(
-		config1.Crypto(), &wkb, &TLFReaderKeyBundleV2{},
+		config1.Crypto(), &wkb, &TLFReaderKeyBundleV3{},
 		wKeys, nil, ePubKey2, ePrivKey2, tlfCryptKey)
 	if err != nil {
 		t.Fatalf("Fill in devices failed: %v", err)
 	}
 
-	testKeyBundleCheckKeysV2(t, config1B, u1, wkb, ePubKey2, tlfCryptKey,
+	testKeyBundleCheckKeysV3(t, config1B, u1, wkb, ePubKey2, tlfCryptKey,
 		serverMap2)
 	if len(serverMap2) > 1 {
 		t.Fatalf("Generated more than one key after device add: %d",
@@ -149,10 +139,10 @@ func TestKeyBundleFillInDevicesV2(t *testing.T) {
 	}
 }
 
-type deviceKeyInfoMapV2Future map[keybase1.KID]tlfCryptKeyInfoFuture
+type deviceKeyInfoMapV3Future map[kbfscrypto.CryptPublicKey]tlfCryptKeyInfoFuture
 
-func (dkimf deviceKeyInfoMapV2Future) toCurrent() DeviceKeyInfoMapV2 {
-	dkim := make(DeviceKeyInfoMapV2, len(dkimf))
+func (dkimf deviceKeyInfoMapV3Future) toCurrent() DeviceKeyInfoMapV3 {
+	dkim := make(DeviceKeyInfoMapV3, len(dkimf))
 	for k, kif := range dkimf {
 		ki := kif.toCurrent()
 		dkim[k] = TLFCryptKeyInfo(ki)
@@ -160,10 +150,10 @@ func (dkimf deviceKeyInfoMapV2Future) toCurrent() DeviceKeyInfoMapV2 {
 	return dkim
 }
 
-type userDeviceKeyInfoMapV2Future map[keybase1.UID]deviceKeyInfoMapV2Future
+type userDeviceKeyInfoMapV3Future map[keybase1.UID]deviceKeyInfoMapV3Future
 
-func (udkimf userDeviceKeyInfoMapV2Future) toCurrent() UserDeviceKeyInfoMapV2 {
-	udkim := make(UserDeviceKeyInfoMapV2)
+func (udkimf userDeviceKeyInfoMapV3Future) toCurrent() UserDeviceKeyInfoMapV3 {
+	udkim := make(UserDeviceKeyInfoMapV3)
 	for u, dkimf := range udkimf {
 		dkim := dkimf.toCurrent()
 		udkim[u] = dkim
@@ -171,85 +161,85 @@ func (udkimf userDeviceKeyInfoMapV2Future) toCurrent() UserDeviceKeyInfoMapV2 {
 	return udkim
 }
 
-type tlfWriterKeyBundleV2Future struct {
-	TLFWriterKeyBundleV2
-	// Override TLFWriterKeyBundleV2.WKeys.
-	WKeys userDeviceKeyInfoMapV2Future
+type tlfWriterKeyBundleV3Future struct {
+	TLFWriterKeyBundleV3
+	// Override TLFWriterKeyBundleV3.Keys.
+	Keys userDeviceKeyInfoMapV3Future `codec:"wKeys"`
 	kbfscodec.Extra
 }
 
-func (wkbf tlfWriterKeyBundleV2Future) toCurrent() TLFWriterKeyBundleV2 {
-	wkb := wkbf.TLFWriterKeyBundleV2
-	wkb.WKeys = wkbf.WKeys.toCurrent()
+func (wkbf tlfWriterKeyBundleV3Future) toCurrent() TLFWriterKeyBundleV3 {
+	wkb := wkbf.TLFWriterKeyBundleV3
+	wkb.Keys = wkbf.Keys.toCurrent()
 	return wkb
 }
 
-func (wkbf tlfWriterKeyBundleV2Future) ToCurrentStruct() kbfscodec.CurrentStruct {
+func (wkbf tlfWriterKeyBundleV3Future) ToCurrentStruct() kbfscodec.CurrentStruct {
 	return wkbf.toCurrent()
 }
 
-func makeFakeDeviceKeyInfoMapV2Future(t *testing.T) userDeviceKeyInfoMapV2Future {
-	return userDeviceKeyInfoMapV2Future{
-		"fake uid": deviceKeyInfoMapV2Future{
-			"fake kid": makeFakeTLFCryptKeyInfoFuture(t),
+func makeFakeDeviceKeyInfoMapV3Future(t *testing.T) userDeviceKeyInfoMapV3Future {
+	return userDeviceKeyInfoMapV3Future{
+		"fake uid": deviceKeyInfoMapV3Future{
+			kbfscrypto.MakeFakeCryptPublicKeyOrBust("fake key"): makeFakeTLFCryptKeyInfoFuture(t),
 		},
 	}
 }
 
-func makeFakeTLFWriterKeyBundleV2Future(
-	t *testing.T) tlfWriterKeyBundleV2Future {
-	wkb := TLFWriterKeyBundleV2{
+func makeFakeTLFWriterKeyBundleV3Future(t *testing.T) tlfWriterKeyBundleV3Future {
+	wkb := TLFWriterKeyBundleV3{
 		nil,
 		kbfscrypto.MakeTLFPublicKey([32]byte{0xa}),
 		kbfscrypto.TLFEphemeralPublicKeys{
 			kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0xb}),
 		},
+		EncryptedTLFCryptKeys{},
 		codec.UnknownFieldSetHandler{},
 	}
-	return tlfWriterKeyBundleV2Future{
+	return tlfWriterKeyBundleV3Future{
 		wkb,
-		makeFakeDeviceKeyInfoMapV2Future(t),
-		kbfscodec.MakeExtraOrBust("TLFWriterKeyBundleV2", t),
+		makeFakeDeviceKeyInfoMapV3Future(t),
+		kbfscodec.MakeExtraOrBust("TLFWriterKeyBundleV3", t),
 	}
 }
 
-func TestTLFWriterKeyBundleV2UnknownFields(t *testing.T) {
-	testStructUnknownFields(t, makeFakeTLFWriterKeyBundleV2Future(t))
+func TestTLFWriterKeyBundleV3UnknownFields(t *testing.T) {
+	testStructUnknownFields(t, makeFakeTLFWriterKeyBundleV3Future(t))
 }
 
-type tlfReaderKeyBundleV2Future struct {
-	TLFReaderKeyBundleV2
-	// Override TLFReaderKeyBundleV2.RKeys.
-	RKeys userDeviceKeyInfoMapV2Future
+type tlfReaderKeyBundleV3Future struct {
+	TLFReaderKeyBundleV3
+	// Override TLFReaderKeyBundleV3.Keys.
+	Keys userDeviceKeyInfoMapV3Future `codec:"rKeys"`
 	kbfscodec.Extra
 }
 
-func (rkbf tlfReaderKeyBundleV2Future) toCurrent() TLFReaderKeyBundleV2 {
-	rkb := rkbf.TLFReaderKeyBundleV2
-	rkb.RKeys = rkbf.RKeys.toCurrent()
+func (rkbf tlfReaderKeyBundleV3Future) toCurrent() TLFReaderKeyBundleV3 {
+	rkb := rkbf.TLFReaderKeyBundleV3
+	rkb.Keys = rkbf.Keys.toCurrent()
 	return rkb
 }
 
-func (rkbf tlfReaderKeyBundleV2Future) ToCurrentStruct() kbfscodec.CurrentStruct {
+func (rkbf tlfReaderKeyBundleV3Future) ToCurrentStruct() kbfscodec.CurrentStruct {
 	return rkbf.toCurrent()
 }
 
-func makeFakeTLFReaderKeyBundleV2Future(
-	t *testing.T) tlfReaderKeyBundleV2Future {
-	rkb := TLFReaderKeyBundleV2{
+func makeFakeTLFReaderKeyBundleV3Future(
+	t *testing.T) tlfReaderKeyBundleV3Future {
+	rkb := TLFReaderKeyBundleV3{
 		nil,
 		kbfscrypto.TLFEphemeralPublicKeys{
 			kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0xc}),
 		},
 		codec.UnknownFieldSetHandler{},
 	}
-	return tlfReaderKeyBundleV2Future{
+	return tlfReaderKeyBundleV3Future{
 		rkb,
-		makeFakeDeviceKeyInfoMapV2Future(t),
-		kbfscodec.MakeExtraOrBust("TLFReaderKeyBundleV2", t),
+		makeFakeDeviceKeyInfoMapV3Future(t),
+		kbfscodec.MakeExtraOrBust("TLFReaderKeyBundleV3", t),
 	}
 }
 
-func TestTLFReaderKeyBundleV2UnknownFields(t *testing.T) {
-	testStructUnknownFields(t, makeFakeTLFReaderKeyBundleV2Future(t))
+func TestTLFReaderKeyBundleV3UnknownFields(t *testing.T) {
+	testStructUnknownFields(t, makeFakeTLFReaderKeyBundleV3Future(t))
 }
