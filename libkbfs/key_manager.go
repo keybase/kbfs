@@ -722,30 +722,33 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	km.config.Reporter().Notify(ctx, rekeyNotification(ctx, km.config, resolvedHandle,
 		false))
 
-	// Delete server-side key halves for any revoked devices. Do
-	// this before adding a new key generation, as MDv3 only keeps
-	// track of the latest key generation.
+	// Delete server-side key halves for any revoked devices, if
+	// there are any previous key generations. Do this before
+	// adding a new key generation, as MDv3 only keeps track of
+	// the latest key generation.
 	//
 	// TODO: Add test coverage for this.
-	allRemovalInfo, err := md.revokeRemovedDevices(wKeys, rKeys)
-	if err != nil {
-		return false, nil, err
-	}
-	kops := km.config.KeyOps()
-	for uid, userRemovalInfo := range allRemovalInfo {
-		if userRemovalInfo.userRemoved {
-			km.log.CInfof(ctx, "Rekey %s: removed user %s entirely",
-				md.TlfID(), uid)
+	if currKeyGen >= FirstValidKeyGen {
+		allRemovalInfo, err := md.revokeRemovedDevices(wKeys, rKeys)
+		if err != nil {
+			return false, nil, err
 		}
-		for key, serverHalfIDs := range userRemovalInfo.deviceServerHalfIDs {
-			km.log.CInfof(ctx, "Rekey %s: removing %d server key halves "+
-				" for device %s of user %s", md.TlfID(),
-				len(serverHalfIDs), key, uid)
-			for _, serverHalfID := range serverHalfIDs {
-				err := kops.DeleteTLFCryptKeyServerHalf(
-					ctx, uid, key.KID(), serverHalfID)
-				if err != nil {
-					return false, nil, err
+		kops := km.config.KeyOps()
+		for uid, userRemovalInfo := range allRemovalInfo {
+			if userRemovalInfo.userRemoved {
+				km.log.CInfof(ctx, "Rekey %s: removed user %s entirely",
+					md.TlfID(), uid)
+			}
+			for key, serverHalfIDs := range userRemovalInfo.deviceServerHalfIDs {
+				km.log.CInfof(ctx, "Rekey %s: removing %d server key halves "+
+					" for device %s of user %s", md.TlfID(),
+					len(serverHalfIDs), key, uid)
+				for _, serverHalfID := range serverHalfIDs {
+					err := kops.DeleteTLFCryptKeyServerHalf(
+						ctx, uid, key.KID(), serverHalfID)
+					if err != nil {
+						return false, nil, err
+					}
 				}
 			}
 		}
