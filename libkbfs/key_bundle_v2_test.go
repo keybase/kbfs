@@ -19,7 +19,7 @@ import (
 
 func TestToTLFReaderKeyBundleV3(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(0x1)
-	uid2 := keybase1.MakeTestUID(0x1)
+	uid2 := keybase1.MakeTestUID(0x2)
 
 	key1a := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key1")
 	key1b := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key2")
@@ -62,7 +62,7 @@ func TestToTLFReaderKeyBundleV3(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	_, err := rkg.ToTLFReaderKeyBundleV3(codec, &TLFWriterKeyBundleV3{})
 	require.Error(t, err)
-	require.True(t, strings.HasPrefix(err.Error(), "Invalid index 0"),
+	require.True(t, strings.HasPrefix(err.Error(), "Invalid index "),
 		"err: %v", err)
 
 	wEPubKey1 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x3})
@@ -98,7 +98,7 @@ func TestToTLFReaderKeyBundleV3(t *testing.T) {
 			},
 		},
 		TLFEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
-			rEPubKey1, rEPubKey2, wEPubKey1, wEPubKey3,
+			rEPubKey1, rEPubKey2, wEPubKey3, wEPubKey1,
 		},
 	}
 
@@ -125,7 +125,7 @@ func TestToTLFReaderKeyBundleV3(t *testing.T) {
 			},
 		},
 		TLFEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
-			rEPubKey1, rEPubKey2, wEPubKey3, wEPubKey1,
+			rEPubKey1, rEPubKey2, wEPubKey1, wEPubKey3,
 		},
 	}
 
