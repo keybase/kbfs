@@ -536,6 +536,10 @@ func (md *BareRootMetadataV3) PromoteReader(
 	// removed.
 	//
 	// See KBFS-1719.
+	//
+	// Currently, this bug is hidden by another bug where reader
+	// promotion incorrectly triggers a new key generation: see
+	// KBFS-1744.
 	wkb.Keys[uid] = dkim
 	delete(rkb.Keys, uid)
 	return nil
