@@ -105,6 +105,45 @@ func udkimToV2(codec kbfscodec.Codec, udkim UserDeviceKeyInfoMap) (
 	return udkimV2, nil
 }
 
+func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
+	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) ServerHalfRemovalInfo {
+	removalInfo := make(ServerHalfRemovalInfo)
+	for uid, dkim := range udkimV2 {
+		userKIDs := make(map[keybase1.KID]bool)
+		for _, key := range keys[uid] {
+			userKIDs[key.KID()] = true
+		}
+
+		deviceServerHalfIDs := make(deviceServerHalfRemovalInfo)
+
+		for kid, info := range dkim {
+			if !userKIDs[kid] {
+				delete(dkim, kid)
+				key := kbfscrypto.MakeCryptPublicKey(kid)
+				deviceServerHalfIDs[key] = append(
+					deviceServerHalfIDs[key],
+					info.ServerHalfID)
+			}
+		}
+
+		userRemoved := false
+		if len(dkim) == 0 {
+			// The user was completely removed, which
+			// shouldn't happen but might as well make it
+			// work just in case.
+			delete(udkimV2, uid)
+			userRemoved = true
+		}
+
+		removalInfo[uid] = userServerHalfRemovalInfo{
+			userRemoved:         userRemoved,
+			deviceServerHalfIDs: deviceServerHalfIDs,
+		}
+	}
+
+	return removalInfo
+}
+
 // All section references below are to https://keybase.io/blog/kbfs-crypto
 // (version 1.3).
 
@@ -345,43 +384,4 @@ func fillInDevicesAndServerMapV2(crypto Crypto, newIndex int,
 		}
 	}
 	return nil
-}
-
-func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
-	keys map[keybase1.UID][]kbfscrypto.CryptPublicKey) ServerHalfRemovalInfo {
-	removalInfo := make(ServerHalfRemovalInfo)
-	for uid, dkim := range udkimV2 {
-		userKIDs := make(map[keybase1.KID]bool)
-		for _, key := range keys[uid] {
-			userKIDs[key.KID()] = true
-		}
-
-		deviceServerHalfIDs := make(deviceServerHalfRemovalInfo)
-
-		for kid, info := range dkim {
-			if !userKIDs[kid] {
-				delete(dkim, kid)
-				key := kbfscrypto.MakeCryptPublicKey(kid)
-				deviceServerHalfIDs[key] = append(
-					deviceServerHalfIDs[key],
-					info.ServerHalfID)
-			}
-		}
-
-		userRemoved := false
-		if len(dkim) == 0 {
-			// The user was completely removed, which
-			// shouldn't happen but might as well make it
-			// work just in case.
-			delete(udkimV2, uid)
-			userRemoved = true
-		}
-
-		removalInfo[uid] = userServerHalfRemovalInfo{
-			userRemoved:         userRemoved,
-			deviceServerHalfIDs: deviceServerHalfIDs,
-		}
-	}
-
-	return removalInfo
 }
