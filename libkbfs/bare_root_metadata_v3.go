@@ -966,14 +966,25 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(codec kbfscodec.Codec,
 			return nil, err
 		}
 	}
+
+	wUDKIMV3, err := udkimToV3(codec, wUDKIM)
+	if err != nil {
+		return nil, err
+	}
+
+	rUDKIMV3, err := udkimToV3(codec, rUDKIM)
+	if err != nil {
+		return nil, err
+	}
+
 	newWriterKeys := &TLFWriterKeyBundleV3{
-		Keys:                          userDeviceKeyInfoMapToV3(wUDKIM),
+		Keys:                          wUDKIMV3,
 		TLFPublicKey:                  pubKey,
 		EncryptedHistoricTLFCryptKeys: encryptedHistoricKeys,
 		TLFEphemeralPublicKeys:        wPublicKeys,
 	}
 	newReaderKeys := &TLFReaderKeyBundleV3{
-		Keys: userDeviceKeyInfoMapToV3(rUDKIM),
+		Keys: rUDKIMV3,
 		TLFEphemeralPublicKeys: rPublicKeys,
 	}
 	md.WriterMetadata.LatestKeyGen++
@@ -1129,12 +1140,12 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(
 		return nil, nil, errors.New("Key bundles missing")
 	}
 
-	rUDKIM, err := rkb.Keys.toUDKIM()
+	rUDKIM, err := rkb.Keys.toUDKIM(codec)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	wUDKIM, err := wkb.Keys.toUDKIM()
+	wUDKIM, err := wkb.Keys.toUDKIM(codec)
 	if err != nil {
 		return nil, nil, err
 	}

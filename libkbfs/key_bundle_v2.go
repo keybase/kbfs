@@ -75,7 +75,8 @@ func dkimToV2(codec kbfscodec.Codec, dkim DeviceKeyInfoMap) (
 	return dkimV2, nil
 }
 
-// UserDeviceKeyInfoMapV2 maps a user's keybase UID to their DeviceKeyInfoMapV2
+// UserDeviceKeyInfoMapV2 maps a user's keybase UID to their
+// DeviceKeyInfoMapV2.
 type UserDeviceKeyInfoMapV2 map[keybase1.UID]DeviceKeyInfoMapV2
 
 func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM(
@@ -128,8 +129,8 @@ type TLFWriterKeyBundleV2 struct {
 }
 
 // IsWriter returns true if the given user device is in the writer set.
-func (tkb TLFWriterKeyBundleV2) IsWriter(user keybase1.UID, deviceKID keybase1.KID) bool {
-	_, ok := tkb.WKeys[user][deviceKID]
+func (wkb TLFWriterKeyBundleV2) IsWriter(user keybase1.UID, deviceKID keybase1.KID) bool {
+	_, ok := wkb.WKeys[user][deviceKID]
 	return ok
 }
 
@@ -138,26 +139,26 @@ func (tkb TLFWriterKeyBundleV2) IsWriter(user keybase1.UID, deviceKID keybase1.K
 type TLFWriterKeyGenerations []TLFWriterKeyBundleV2
 
 // LatestKeyGeneration returns the current key generation for this TLF.
-func (tkg TLFWriterKeyGenerations) LatestKeyGeneration() KeyGen {
-	return KeyGen(len(tkg))
+func (wkg TLFWriterKeyGenerations) LatestKeyGeneration() KeyGen {
+	return KeyGen(len(wkg))
 }
 
 // IsWriter returns whether or not the user+device is an authorized writer
 // for the latest generation.
-func (tkg TLFWriterKeyGenerations) IsWriter(user keybase1.UID, deviceKID keybase1.KID) bool {
-	keyGen := tkg.LatestKeyGeneration()
+func (wkg TLFWriterKeyGenerations) IsWriter(user keybase1.UID, deviceKID keybase1.KID) bool {
+	keyGen := wkg.LatestKeyGeneration()
 	if keyGen < 1 {
 		return false
 	}
-	return tkg[keyGen-1].IsWriter(user, deviceKID)
+	return wkg[keyGen-1].IsWriter(user, deviceKID)
 }
 
 // ToTLFWriterKeyBundleV3 converts a TLFWriterKeyGenerations to a TLFWriterKeyBundleV3.
-func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
+func (wkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
 	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, keyManager KeyManager, kmd KeyMetadata) (
 	*TLFWriterKeyBundleV3, error) {
 
-	keyGen := tkg.LatestKeyGeneration()
+	keyGen := wkg.LatestKeyGeneration()
 	if keyGen < FirstValidKeyGen {
 		return nil, errors.New("No key generations to convert")
 	}
@@ -165,16 +166,16 @@ func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
 	wkbV3 := &TLFWriterKeyBundleV3{}
 
 	// Copy the latest UserDeviceKeyInfoMap.
-	wkb := tkg[keyGen-FirstValidKeyGen]
-	udkim, err := wkb.WKeys.toUDKIM(codec)
+	wkb := wkg[keyGen-FirstValidKeyGen]
+	udkimV3, err := udkimV2ToV3(codec, wkb.WKeys)
 	if err != nil {
 		return nil, err
 	}
-	wkbV3.Keys = userDeviceKeyInfoMapToV3(udkim)
+	wkbV3.Keys = udkimV3
 
 	// Copy all of the TLFEphemeralPublicKeys at this generation.
-	wkbV3.TLFEphemeralPublicKeys =
-		make(kbfscrypto.TLFEphemeralPublicKeys, len(wkb.TLFEphemeralPublicKeys))
+	wkbV3.TLFEphemeralPublicKeys = make(kbfscrypto.TLFEphemeralPublicKeys,
+		len(wkb.TLFEphemeralPublicKeys))
 	copy(wkbV3.TLFEphemeralPublicKeys[:], wkb.TLFEphemeralPublicKeys)
 
 	// Copy the current TLFPublicKey.
@@ -204,8 +205,8 @@ func (tkg TLFWriterKeyGenerations) ToTLFWriterKeyBundleV3(
 	return wkbV3, nil
 }
 
-// TLFReaderKeyBundleV2 stores all the user keys with reader
-// permissions on a TLF
+// TLFReaderKeyBundleV2 stores all the reader keys with reader
+// permissions on a TLF.
 type TLFReaderKeyBundleV2 struct {
 	RKeys UserDeviceKeyInfoMapV2
 
@@ -233,26 +234,26 @@ func (trb TLFReaderKeyBundleV2) IsReader(user keybase1.UID, deviceKID keybase1.K
 type TLFReaderKeyGenerations []TLFReaderKeyBundleV2
 
 // LatestKeyGeneration returns the current key generation for this TLF.
-func (tkg TLFReaderKeyGenerations) LatestKeyGeneration() KeyGen {
-	return KeyGen(len(tkg))
+func (rkg TLFReaderKeyGenerations) LatestKeyGeneration() KeyGen {
+	return KeyGen(len(rkg))
 }
 
 // IsReader returns whether or not the user+device is an authorized reader
 // for the latest generation.
-func (tkg TLFReaderKeyGenerations) IsReader(user keybase1.UID, deviceKID keybase1.KID) bool {
-	keyGen := tkg.LatestKeyGeneration()
+func (rkg TLFReaderKeyGenerations) IsReader(user keybase1.UID, deviceKID keybase1.KID) bool {
+	keyGen := rkg.LatestKeyGeneration()
 	if keyGen < 1 {
 		return false
 	}
-	return tkg[keyGen-1].IsReader(user, deviceKID)
+	return rkg[keyGen-1].IsReader(user, deviceKID)
 }
 
 // ToTLFReaderKeyBundleV3 converts a TLFReaderKeyGenerations to a TLFReaderkeyBundleV3.
-func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(
+func (rkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(
 	codec kbfscodec.Codec, wkb *TLFWriterKeyBundleV3) (
 	*TLFReaderKeyBundleV3, error) {
 
-	keyGen := tkg.LatestKeyGeneration()
+	keyGen := rkg.LatestKeyGeneration()
 	if keyGen < 1 {
 		return nil, errors.New("No key generations to convert")
 	}
@@ -262,9 +263,11 @@ func (tkg TLFReaderKeyGenerations) ToTLFReaderKeyBundleV3(
 	}
 
 	// Copy the latest UserDeviceKeyInfoMap.
-	rkb := tkg[keyGen-FirstValidKeyGen]
+	rkb := rkg[keyGen-FirstValidKeyGen]
 
 	// Copy all of the TLFReaderEphemeralPublicKeys.
+	rkbV3.TLFEphemeralPublicKeys = make(kbfscrypto.TLFEphemeralPublicKeys,
+		len(rkb.TLFReaderEphemeralPublicKeys))
 	copy(rkbV3.TLFEphemeralPublicKeys[:], rkb.TLFReaderEphemeralPublicKeys)
 
 	// Track a mapping of old writer ephemeral pubkey index to new
