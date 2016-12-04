@@ -1211,7 +1211,7 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 	}
 
 	filledRKeys, err := fillInDevicesAndServerMapV3(
-		crypto, newReaderIndex, rKeys, rkb.RKeys,
+		crypto, newReaderIndex, rKeys, rkb.Keys,
 		ePrivKey, tlfCryptKey, newServerKeys)
 	if err != nil {
 		return nil, err
