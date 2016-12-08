@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"context"
 	"testing"
 
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -15,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRootMetadataVersionV3(t *testing.T) {
+func TestBareRootMetadataVersionV3(t *testing.T) {
 	tlfID := tlf.FakeID(1, false)
 
 	// All V3 objects should have SegregatedKeyBundlesVer.
@@ -68,7 +67,7 @@ func TestIsValidRekeyRequestBasicV3(t *testing.T) {
 	require.True(t, ok)
 }
 
-func TestRootMetadataPublicVersionV3(t *testing.T) {
+func TestBareRootMetadataPublicVersionV3(t *testing.T) {
 	tlfID := tlf.FakeID(1, true)
 
 	uid := keybase1.MakeTestUID(1)
@@ -191,185 +190,6 @@ func TestRevokeRemovedDevicesV3(t *testing.T) {
 	require.Equal(t, expectedRKB, *rkb)
 }
 
-func testKeyBundleCheckKeysV3(t *testing.T, crypto Crypto, uid keybase1.UID,
-	key kbfscrypto.CryptPublicKey, expectedIndex int,
-	wkb TLFWriterKeyBundleV3, ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey,
-	serverHalves UserDeviceKeyServerHalves) {
-	ctx := context.Background()
-	info, ok := wkb.Keys[uid][key]
-	require.True(t, ok)
-	require.Equal(t, expectedIndex, info.EPubKeyIndex)
-	userEPubKey := wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
-	require.Equal(t, ePubKey, userEPubKey)
-	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
-		ctx, userEPubKey, info.ClientHalf)
-	require.NoError(t, err)
-	serverHalf, ok := serverHalves[uid][key]
-	require.True(t, ok)
-	userTLFCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
-	require.NoError(t, err)
-	require.Equal(t, tlfCryptKey, userTLFCryptKey)
-}
-
-func TestBareRootMetadataV3FillInDevices(t *testing.T) {
-	uid1 := keybase1.MakeTestUID(1)
-	uid2 := keybase1.MakeTestUID(2)
-	uid3 := keybase1.MakeTestUID(3)
-
-	privKey1 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1")
-	privKey2 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key2")
-	privKey3 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key3")
-
-	wKeys := UserDevicePublicKeys{
-		uid1: {privKey1.GetPublicKey(): true},
-		uid2: {privKey2.GetPublicKey(): true},
-		uid3: {privKey3.GetPublicKey(): true},
-	}
-
-	signingKey1 := kbfscrypto.MakeFakeSigningKeyOrBust("key1")
-	signingKey2 := kbfscrypto.MakeFakeSigningKeyOrBust("key2")
-	signingKey3 := kbfscrypto.MakeFakeSigningKeyOrBust("key3")
-
-	codec := kbfscodec.NewMsgpack()
-	crypto1 := NewCryptoLocal(codec, signingKey1, privKey1)
-	crypto2 := NewCryptoLocal(codec, signingKey2, privKey2)
-	crypto3 := NewCryptoLocal(codec, signingKey3, privKey3)
-
-	// Fill in the bundle
-	_, _, ePubKey, ePrivKey, tlfCryptKey, err := crypto1.MakeRandomTLFKeys()
-	require.NoError(t, err)
-
-	tlfID := tlf.FakeID(1, false)
-
-	uid := keybase1.MakeTestUID(1)
-	bh, err := tlf.MakeHandle(
-		[]keybase1.UID{uid}, nil, []keybase1.SocialAssertion{
-			{}},
-		nil, nil)
-	require.NoError(t, err)
-
-	rmd, err := MakeInitialBareRootMetadataV3(tlfID, bh)
-	require.NoError(t, err)
-
-	extra, err := rmd.AddKeyGeneration(codec, crypto1, nil,
-		kbfscrypto.TLFCryptKey{}, tlfCryptKey,
-		kbfscrypto.TLFPublicKey{})
-	require.NoError(t, err)
-
-	wkb, _, ok := getKeyBundlesV3(extra)
-	require.True(t, ok)
-
-	serverHalves, err := rmd.UpdateKeyGeneration(
-		crypto1, FirstValidKeyGen, extra,
-		wKeys, nil, ePubKey, ePrivKey, tlfCryptKey)
-	require.NoError(t, err)
-
-	testKeyBundleCheckKeysV3(t, crypto1, uid1, privKey1.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverHalves)
-	testKeyBundleCheckKeysV3(t, crypto2, uid2, privKey2.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverHalves)
-	testKeyBundleCheckKeysV3(t, crypto3, uid3, privKey3.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverHalves)
-
-	privKey1b := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1b")
-	wKeys[uid1][privKey1b.GetPublicKey()] = true
-
-	_, _, ePubKey2, ePrivKey2, tlfCryptKey2, err := crypto1.MakeRandomTLFKeys()
-	require.NoError(t, err)
-	serverHalves2, err := rmd.UpdateKeyGeneration(
-		crypto1, FirstValidKeyGen, extra,
-		wKeys, nil, ePubKey2, ePrivKey2, tlfCryptKey2)
-	require.NoError(t, err)
-
-	crypto1b := NewCryptoLocal(codec, signingKey1, privKey1b)
-
-	testKeyBundleCheckKeysV3(t, crypto1, uid1, privKey1.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverHalves)
-	testKeyBundleCheckKeysV3(t, crypto1b, uid1, privKey1b.GetPublicKey(), 1, *wkb, ePubKey2, tlfCryptKey2, serverHalves2)
-	testKeyBundleCheckKeysV3(t, crypto2, uid2, privKey2.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverHalves)
-	testKeyBundleCheckKeysV3(t, crypto3, uid3, privKey3.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverHalves)
-}
-
-func testKeyBundleCheckReaderKeysV3(t *testing.T, crypto Crypto, uid keybase1.UID,
-	key kbfscrypto.CryptPublicKey, expectedIndex int,
-	rkb TLFReaderKeyBundleV3, ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, serverHalves UserDeviceKeyServerHalves) {
-	ctx := context.Background()
-	info, ok := rkb.Keys[uid][key]
-	require.True(t, ok)
-	require.Equal(t, expectedIndex, info.EPubKeyIndex)
-	userEPubKey := rkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
-	require.Equal(t, ePubKey, userEPubKey)
-	clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
-		ctx, userEPubKey, info.ClientHalf)
-	require.NoError(t, err)
-	serverHalf, ok := serverHalves[uid][key]
-	require.True(t, ok)
-	userTLFCryptKey, err := crypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
-	require.NoError(t, err)
-	require.Equal(t, tlfCryptKey, userTLFCryptKey)
-}
-
-func TestBareRootMetadataV3FillInDevicesNoExtraKeys(t *testing.T) {
-	uid1 := keybase1.MakeTestUID(1)
-	uid2 := keybase1.MakeTestUID(2)
-
-	privKey1 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key1")
-	privKey2 := kbfscrypto.MakeFakeCryptPrivateKeyOrBust("key2")
-
-	wKeys := UserDevicePublicKeys{
-		uid1: {privKey1.GetPublicKey(): true},
-	}
-
-	rKeys := UserDevicePublicKeys{
-		uid2: {privKey2.GetPublicKey(): true},
-	}
-
-	signingKey1 := kbfscrypto.MakeFakeSigningKeyOrBust("key1")
-	signingKey2 := kbfscrypto.MakeFakeSigningKeyOrBust("key2")
-
-	codec := kbfscodec.NewMsgpack()
-	crypto1 := NewCryptoLocal(codec, signingKey1, privKey1)
-	crypto2 := NewCryptoLocal(codec, signingKey2, privKey2)
-
-	// Fill in the bundle
-	_, _, ePubKey, ePrivKey, tlfCryptKey, err := crypto1.MakeRandomTLFKeys()
-	require.NoError(t, err)
-
-	tlfID := tlf.FakeID(1, false)
-
-	uid := keybase1.MakeTestUID(1)
-	bh, err := tlf.MakeHandle(
-		[]keybase1.UID{uid}, nil, []keybase1.SocialAssertion{
-			{}},
-		nil, nil)
-	require.NoError(t, err)
-
-	rmd, err := MakeInitialBareRootMetadataV3(tlfID, bh)
-	require.NoError(t, err)
-
-	extra, err := rmd.AddKeyGeneration(codec, crypto1, nil,
-		kbfscrypto.TLFCryptKey{}, tlfCryptKey,
-		kbfscrypto.TLFPublicKey{})
-	require.NoError(t, err)
-
-	wkb, rkb, ok := getKeyBundlesV3(extra)
-	require.True(t, ok)
-
-	serverHalves, err := rmd.UpdateKeyGeneration(
-		crypto1, FirstValidKeyGen, extra,
-		wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
-	require.NoError(t, err)
-
-	testKeyBundleCheckKeysV3(t, crypto1, uid1, privKey1.GetPublicKey(), 0, *wkb, ePubKey, tlfCryptKey, serverHalves)
-	testKeyBundleCheckReaderKeysV3(t, crypto2, uid2, privKey2.GetPublicKey(), 0, *rkb, ePubKey, tlfCryptKey, serverHalves)
-
-	serverHalves, err = rmd.UpdateKeyGeneration(
-		crypto1, FirstValidKeyGen, extra,
-		wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
-	require.NoError(t, err)
-
-	require.Equal(t, 1, len(wkb.TLFEphemeralPublicKeys))
-	require.Equal(t, 1, len(rkb.TLFEphemeralPublicKeys))
-}
-
 // expectedRekeyInfoV3 contains all the information needed to check a
 // rekey run (that doesn't add a generation).
 //
@@ -396,30 +216,14 @@ func checkGetTLFCryptKeyV3(t *testing.T, expected expectedRekeyInfoV3,
 			require.True(t, ok, "writer uid=%s, key=%s",
 				uid, pubKey)
 
-			dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
-
-			codec := kbfscodec.NewMsgpack()
-			crypto := NewCryptoLocal(
-				codec, dummySigningKey, privKey)
-
 			info, ok := wkb.Keys[uid][pubKey]
 			require.True(t, ok)
 
-			require.Equal(t,
-				expected.writerEPubKeyIndex, info.EPubKeyIndex)
-
 			ePubKey := wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
-			require.Equal(t, expected.ePubKey, ePubKey)
 
-			ctx := context.Background()
-			clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
-				ctx, ePubKey, info.ClientHalf)
-			require.NoError(t, err)
-
-			tlfCryptKey, err := crypto.UnmaskTLFCryptKey(
-				serverHalf, clientHalf)
-			require.NoError(t, err)
-			require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
+			checkCryptKeyInfo(t, privKey, serverHalf,
+				expected.writerEPubKeyIndex, expected.ePubKey,
+				expectedTLFCryptKey, info, ePubKey)
 		}
 	}
 
@@ -430,30 +234,14 @@ func checkGetTLFCryptKeyV3(t *testing.T, expected expectedRekeyInfoV3,
 			require.True(t, ok, "reader uid=%s, key=%s",
 				uid, pubKey)
 
-			dummySigningKey := kbfscrypto.MakeFakeSigningKeyOrBust("dummy")
-
-			codec := kbfscodec.NewMsgpack()
-			crypto := NewCryptoLocal(
-				codec, dummySigningKey, privKey)
-
 			info, ok := rkb.Keys[uid][pubKey]
 			require.True(t, ok)
 
-			require.Equal(t,
-				expected.readerEPubKeyIndex, info.EPubKeyIndex)
-
 			ePubKey := rkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
-			require.Equal(t, expected.ePubKey, ePubKey)
 
-			ctx := context.Background()
-			clientHalf, err := crypto.DecryptTLFCryptKeyClientHalf(
-				ctx, ePubKey, info.ClientHalf)
-			require.NoError(t, err)
-
-			tlfCryptKey, err := crypto.UnmaskTLFCryptKey(
-				serverHalf, clientHalf)
-			require.NoError(t, err)
-			require.Equal(t, expectedTLFCryptKey, tlfCryptKey)
+			checkCryptKeyInfo(t, privKey, serverHalf,
+				expected.readerEPubKeyIndex, expected.ePubKey,
+				expectedTLFCryptKey, info, ePubKey)
 		}
 	}
 }
