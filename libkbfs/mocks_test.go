@@ -4637,13 +4637,12 @@ func (_mr *_MockBareRootMetadataRecorder) DeepCopy(arg0 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeepCopy", arg0)
 }
 
-func (_m *MockBareRootMetadata) MakeSuccessorCopy(ctx context.Context, config Config, kmd KeyMetadata, extra ExtraMetadata, isReadableAndWriter bool) (MutableBareRootMetadata, ExtraMetadata, bool, error) {
+func (_m *MockBareRootMetadata) MakeSuccessorCopy(ctx context.Context, config Config, kmd KeyMetadata, extra ExtraMetadata, isReadableAndWriter bool) (MutableBareRootMetadata, ExtraMetadata, error) {
 	ret := _m.ctrl.Call(_m, "MakeSuccessorCopy", ctx, config, kmd, extra, isReadableAndWriter)
 	ret0, _ := ret[0].(MutableBareRootMetadata)
 	ret1, _ := ret[1].(ExtraMetadata)
-	ret2, _ := ret[2].(bool)
-	ret3, _ := ret[3].(error)
-	return ret0, ret1, ret2, ret3
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 func (_mr *_MockBareRootMetadataRecorder) MakeSuccessorCopy(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
@@ -5076,13 +5075,12 @@ func (_mr *_MockMutableBareRootMetadataRecorder) DeepCopy(arg0 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeepCopy", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) MakeSuccessorCopy(ctx context.Context, config Config, kmd KeyMetadata, extra ExtraMetadata, isReadableAndWriter bool) (MutableBareRootMetadata, ExtraMetadata, bool, error) {
+func (_m *MockMutableBareRootMetadata) MakeSuccessorCopy(ctx context.Context, config Config, kmd KeyMetadata, extra ExtraMetadata, isReadableAndWriter bool) (MutableBareRootMetadata, ExtraMetadata, error) {
 	ret := _m.ctrl.Call(_m, "MakeSuccessorCopy", ctx, config, kmd, extra, isReadableAndWriter)
 	ret0, _ := ret[0].(MutableBareRootMetadata)
 	ret1, _ := ret[1].(ExtraMetadata)
-	ret2, _ := ret[2].(bool)
-	ret3, _ := ret[3].(error)
-	return ret0, ret1, ret2, ret3
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 func (_mr *_MockMutableBareRootMetadataRecorder) MakeSuccessorCopy(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
