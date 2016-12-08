@@ -167,8 +167,8 @@ func (ri userServerHalfRemovalInfo) addGeneration(
 	return nil
 }
 
-// ServerHalfRemovalInfo is a map from users to and devices to a list
-// of server half IDs to remove from the server.
+// ServerHalfRemovalInfo is a map from users and devices to a list of
+// server half IDs to remove from the server.
 type ServerHalfRemovalInfo map[keybase1.UID]userServerHalfRemovalInfo
 
 // addGeneration merges the keys in genInfo (which must be one per
