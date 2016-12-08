@@ -317,15 +317,18 @@ func (km *KeyManagerStandard) updateKeyGeneration(ctx context.Context,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) error {
 
-	newServerKeys, err := md.updateKeyGeneration(km.config.Crypto(),
+	serverHalves, err := md.updateKeyGeneration(km.config.Crypto(),
 		keyGen, wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return err
 	}
 
 	// Push new keys to the key server.
+	//
+	// TODO: Should accumulate this and push them all at once
+	// right before the MD push.
 	if err = km.config.KeyOps().
-		PutTLFCryptKeyServerHalves(ctx, newServerKeys); err != nil {
+		PutTLFCryptKeyServerHalves(ctx, serverHalves); err != nil {
 		return err
 	}
 
