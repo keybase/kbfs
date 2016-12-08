@@ -20,7 +20,7 @@ import (
 // TLF's symmetric secret key information.
 type DeviceKeyInfoMapV2 map[keybase1.KID]TLFCryptKeyInfo
 
-func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfo(crypto cryptoPure,
+func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfos(crypto cryptoPure,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys map[kbfscrypto.CryptPublicKey]bool) (
@@ -147,6 +147,29 @@ func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
 	}
 
 	return removalInfo
+}
+
+func (udkimV2 UserDeviceKeyInfoMapV2) fillInUserInfos(
+	crypto cryptoPure, newIndex int, pubKeys UserDevicePublicKeys,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	tlfCryptKey kbfscrypto.TLFCryptKey) (
+	serverHalves UserDeviceKeyServerHalves, err error) {
+	serverHalves = make(UserDeviceKeyServerHalves)
+	for u, keys := range pubKeys {
+		if _, ok := udkimV2[u]; !ok {
+			udkimV2[u] = DeviceKeyInfoMapV2{}
+		}
+
+		deviceServerHalves, err := udkimV2[u].fillInDeviceInfos(
+			crypto, u, tlfCryptKey, ePrivKey, newIndex, keys)
+		if err != nil {
+			return nil, err
+		}
+		if len(deviceServerHalves) > 0 {
+			serverHalves[u] = deviceServerHalves
+		}
+	}
+	return serverHalves, nil
 }
 
 // All section references below are to https://keybase.io/blog/kbfs-crypto
@@ -366,27 +389,4 @@ func (rkg TLFReaderKeyGenerationsV2) ToTLFReaderKeyBundleV3(
 		rkbV3.Keys[uid] = dkimV3
 	}
 	return rkbV3, nil
-}
-
-func fillInDevicesAndServerMapV2(crypto cryptoPure, newIndex int,
-	pubKeys UserDevicePublicKeys, keyInfoMap UserDeviceKeyInfoMapV2,
-	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey,
-	serverHalves UserDeviceKeyServerHalves) (modified bool, err error) {
-	for u, keys := range pubKeys {
-		if _, ok := keyInfoMap[u]; !ok {
-			keyInfoMap[u] = DeviceKeyInfoMapV2{}
-		}
-
-		deviceServerHalves, err := keyInfoMap[u].fillInDeviceInfo(
-			crypto, u, tlfCryptKey, ePrivKey, newIndex, keys)
-		if err != nil {
-			return false, err
-		}
-		if len(deviceServerHalves) > 0 {
-			modified = true
-			serverHalves[u] = deviceServerHalves
-		}
-	}
-	return modified, nil
 }

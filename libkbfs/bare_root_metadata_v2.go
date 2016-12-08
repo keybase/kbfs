@@ -1247,49 +1247,47 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 		// strictly negative for reader ephemeral public keys.
 		newIndex := -len(rkb.TLFReaderEphemeralPublicKeys) - 1
 
-		newServerKeys := UserDeviceKeyServerHalves{}
-
-		filledRKeys, err := fillInDevicesAndServerMapV2(
-			crypto, newIndex, rKeys, rkb.RKeys,
-			ePrivKey, tlfCryptKey, newServerKeys)
+		rServerHalves, err := rkb.RKeys.fillInUserInfos(
+			crypto, newIndex, rKeys, ePrivKey, tlfCryptKey)
 		if err != nil {
 			return nil, err
 		}
 
-		if filledRKeys {
+		if len(rServerHalves) > 0 {
 			rkb.TLFReaderEphemeralPublicKeys = append(
 				rkb.TLFReaderEphemeralPublicKeys, ePubKey)
 		}
 
-		return newServerKeys, nil
+		return rServerHalves, nil
 	}
 
 	// Usual rekey case.
 
 	newIndex := len(wkb.TLFEphemeralPublicKeys)
 
-	newServerKeys := UserDeviceKeyServerHalves{}
-
-	filledWKeys, err := fillInDevicesAndServerMapV2(
-		crypto, newIndex, wKeys, wkb.WKeys,
-		ePrivKey, tlfCryptKey, newServerKeys)
+	wServerHalves, err := wkb.WKeys.fillInUserInfos(
+		crypto, newIndex, wKeys, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
 	}
 
-	filledRKeys, err := fillInDevicesAndServerMapV2(
-		crypto, newIndex, rKeys, rkb.RKeys,
-		ePrivKey, tlfCryptKey, newServerKeys)
+	rServerHalves, err := rkb.RKeys.fillInUserInfos(
+		crypto, newIndex, rKeys, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
 	}
 
-	if filledWKeys || filledRKeys {
+	serverHalves, err := wServerHalves.mergeUsers(rServerHalves)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(serverHalves) > 0 {
 		wkb.TLFEphemeralPublicKeys =
 			append(wkb.TLFEphemeralPublicKeys, ePubKey)
 	}
 
-	return newServerKeys, nil
+	return serverHalves, nil
 }
 
 // GetTLFWriterKeyBundleID implements the BareRootMetadata interface for BareRootMetadataV2.
