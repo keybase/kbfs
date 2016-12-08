@@ -150,7 +150,7 @@ func (extra ExtraMetadataV3) DeepCopy(codec kbfscodec.Codec) (
 	if err := kbfscodec.Update(codec, &wkb, *extra.wkb); err != nil {
 		return nil, err
 	}
-	return NewExtraMetadataV3(&wkb, &rkb, extra.wkbNew, extra.rkbNew), nil
+	return NewExtraMetadataV3(&wkb, &rkb, false, false), nil
 }
 
 // GetWriterKeyBundle returns the contained writer key bundle.
