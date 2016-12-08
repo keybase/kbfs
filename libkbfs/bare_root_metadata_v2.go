@@ -1236,7 +1236,7 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
-		return UserDeviceKeyServerHalves{}, err
+		return nil, err
 	}
 
 	if len(wKeys) == 0 {
