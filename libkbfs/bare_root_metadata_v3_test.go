@@ -29,6 +29,26 @@ func TestBareRootMetadataVersionV3(t *testing.T) {
 	require.Equal(t, SegregatedKeyBundlesVer, rmd.Version())
 }
 
+func TestRootMetadataV3InitialRekey(t *testing.T) {
+	tlfID := tlf.FakeID(1, false)
+
+	uid := keybase1.MakeTestUID(1)
+	bh, err := tlf.MakeHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	rmd, err := MakeInitialBareRootMetadataV3(tlfID, bh)
+	require.NoError(t, err)
+
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	extra := FakeInitialRekey(
+		rmd, codec, crypto, bh, kbfscrypto.TLFPublicKey{})
+	extraV3, ok := extra.(*ExtraMetadataV3)
+	require.True(t, ok)
+	require.True(t, extraV3.wkbNew)
+	require.True(t, extraV3.rkbNew)
+}
+
 func TestIsValidRekeyRequestBasicV3(t *testing.T) {
 	tlfID := tlf.FakeID(1, false)
 
