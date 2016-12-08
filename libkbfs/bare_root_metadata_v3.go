@@ -1287,7 +1287,7 @@ func (md *BareRootMetadataV3) FinalizeRekey(
 	extraV3.wkbNew = newWKBID != oldWKBID
 	extraV3.rkbNew = newRKBID != oldRKBID
 
-	return err
+	return nil
 }
 
 // StoresHistoricTLFCryptKeys implements the BareRootMetadata interface for BareRootMetadataV3.
