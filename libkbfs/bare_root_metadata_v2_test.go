@@ -322,7 +322,7 @@ func (udpk userDevicePrivateKeys) toPublicKeys() UserDevicePublicKeys {
 // ePubKeyIndex and ePubKey are ignored.
 type expecteRekeyInfoV2 struct {
 	writerPrivKeys, readerPrivKeys userDevicePrivateKeys
-	serverMap                      ServerKeyMap
+	serverMap                      UserDeviceKeyServerHalves
 	ePubKeyIndex                   int
 	ePubKey                        kbfscrypto.TLFEphemeralPublicKey
 }
@@ -447,7 +447,7 @@ func userDeviceKeyInfoMapV2ToPublicKeys(
 	return pubKeys
 }
 
-func serverKeyMapToPublicKeys(serverMap ServerKeyMap) UserDevicePublicKeys {
+func serverKeyMapToPublicKeys(serverMap UserDeviceKeyServerHalves) UserDevicePublicKeys {
 	pubKeys := make(UserDevicePublicKeys)
 	for uid, keys := range serverMap {
 		pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)

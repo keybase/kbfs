@@ -2611,7 +2611,7 @@ func (_mr *_MockKeyOpsRecorder) GetTLFCryptKeyServerHalf(arg0, arg1, arg2 interf
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalf", arg0, arg1, arg2)
 }
 
-func (_m *MockKeyOps) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves ServerKeyMap) error {
+func (_m *MockKeyOps) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves UserDeviceKeyServerHalves) error {
 	ret := _m.ctrl.Call(_m, "PutTLFCryptKeyServerHalves", ctx, serverKeyHalves)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3464,7 +3464,7 @@ func (_mr *_MockKeyServerRecorder) GetTLFCryptKeyServerHalf(arg0, arg1, arg2 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalf", arg0, arg1, arg2)
 }
 
-func (_m *MockKeyServer) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves ServerKeyMap) error {
+func (_m *MockKeyServer) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves UserDeviceKeyServerHalves) error {
 	ret := _m.ctrl.Call(_m, "PutTLFCryptKeyServerHalves", ctx, serverKeyHalves)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -5623,9 +5623,9 @@ func (_mr *_MockMutableBareRootMetadataRecorder) AddKeyGeneration(arg0, arg1, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddKeyGeneration", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockMutableBareRootMetadata) UpdateKeyGeneration(crypto cryptoPure, keyGen KeyGen, extra ExtraMetadata, wKeys UserDevicePublicKeys, rKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error) {
+func (_m *MockMutableBareRootMetadata) UpdateKeyGeneration(crypto cryptoPure, keyGen KeyGen, extra ExtraMetadata, wKeys UserDevicePublicKeys, rKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
 	ret := _m.ctrl.Call(_m, "UpdateKeyGeneration", crypto, keyGen, extra, wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
-	ret0, _ := ret[0].(ServerKeyMap)
+	ret0, _ := ret[0].(UserDeviceKeyServerHalves)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

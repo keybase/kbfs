@@ -1173,7 +1173,7 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 	keyGen KeyGen, extra ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error) {
+	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
 			md.TlfID(), "UpdateKeyGeneration"}
@@ -1185,7 +1185,7 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 
 	wkb, rkb, ok := getKeyBundlesV3(extra)
 	if !ok {
-		return ServerKeyMap{}, makeMissingKeyBundlesError()
+		return UserDeviceKeyServerHalves{}, makeMissingKeyBundlesError()
 	}
 
 	// No need to explicitly handle the reader rekey case.
@@ -1198,7 +1198,7 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 		newWriterIndex = len(wkb.TLFEphemeralPublicKeys)
 	}
 
-	newServerKeys := ServerKeyMap{}
+	newServerKeys := UserDeviceKeyServerHalves{}
 	filledWKeys, err := fillInDevicesAndServerMapV3(
 		crypto, newWriterIndex, wKeys, wkb.Keys,
 		ePrivKey, tlfCryptKey, newServerKeys)

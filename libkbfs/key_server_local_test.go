@@ -41,7 +41,7 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 	serverHalf4 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{4})
 
 	// write 1
-	keyHalves := make(ServerKeyMap)
+	keyHalves := make(UserDeviceKeyServerHalves)
 	deviceHalves := make(map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf)
 	deviceHalves[publicKey1] = serverHalf1
 	keyHalves[uid1] = deviceHalves
@@ -52,7 +52,7 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 	}
 
 	// write 2
-	keyHalves = make(ServerKeyMap)
+	keyHalves = make(UserDeviceKeyServerHalves)
 	deviceHalves = make(map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf)
 	deviceHalves[publicKey1] = serverHalf2
 	keyHalves[uid1] = deviceHalves
@@ -63,7 +63,7 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 	}
 
 	// write 3 and 4 together
-	keyHalves = make(ServerKeyMap)
+	keyHalves = make(UserDeviceKeyServerHalves)
 	deviceHalves1 := make(map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf)
 	deviceHalves2 := make(map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf)
 	deviceHalves1[publicKey1] = serverHalf3

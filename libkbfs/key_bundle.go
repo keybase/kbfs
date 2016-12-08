@@ -53,9 +53,14 @@ type UserDeviceKeyInfoMap map[keybase1.UID]DeviceKeyInfoMap
 // represented by each device's crypt public key.
 type UserDevicePublicKeys map[keybase1.UID]map[kbfscrypto.CryptPublicKey]bool
 
-// ServerKeyMap is a map from users and devices (represented by crypt
-// public keys) to server halves.
-type ServerKeyMap map[keybase1.UID]map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf
+// DeviceKeyServerHalves is a map from a user devices (identified by the
+// corresponding device CryptPublicKey) to corresponding key server
+// halves.
+type DeviceKeyServerHalves map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf
+
+// UserDeviceKeyServerHalves maps a user's keybase UID to their
+// DeviceServerHalves map.
+type UserDeviceKeyServerHalves map[keybase1.UID]DeviceKeyServerHalves
 
 // splitTLFCryptKey splits the given TLFCryptKey into two parts -- the
 // client-side part (which is encrypted with the given keys), and the

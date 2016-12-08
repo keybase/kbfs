@@ -372,7 +372,7 @@ func (rkg TLFReaderKeyGenerationsV2) ToTLFReaderKeyBundleV3(
 func fillInDevicesAndServerMapV2(crypto cryptoPure, newIndex int,
 	pubKeys UserDevicePublicKeys, keyInfoMap UserDeviceKeyInfoMapV2,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys ServerKeyMap) (
+	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys UserDeviceKeyServerHalves) (
 	modified bool, err error) {
 	for u, keys := range pubKeys {
 		if _, ok := keyInfoMap[u]; !ok {

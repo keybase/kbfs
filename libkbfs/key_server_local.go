@@ -119,7 +119,7 @@ func (ks *KeyServerLocal) GetTLFCryptKeyServerHalf(ctx context.Context,
 
 // PutTLFCryptKeyServerHalves implements the KeyOps interface for KeyServerLocal.
 func (ks *KeyServerLocal) PutTLFCryptKeyServerHalves(ctx context.Context,
-	serverKeyHalves ServerKeyMap) error {
+	serverKeyHalves UserDeviceKeyServerHalves) error {
 	ks.shutdownLock.RLock()
 	defer ks.shutdownLock.RUnlock()
 	if *ks.shutdown {

@@ -340,7 +340,7 @@ func (h TLFReaderKeyBundleID) IsNil() bool {
 func fillInDevicesAndServerMapV3(crypto cryptoPure, newIndex int,
 	pubKeys UserDevicePublicKeys, keyInfoMap UserDeviceKeyInfoMapV3,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys ServerKeyMap) (
+	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys UserDeviceKeyServerHalves) (
 	modified bool, err error) {
 	for u, keys := range pubKeys {
 		if _, ok := keyInfoMap[u]; !ok {

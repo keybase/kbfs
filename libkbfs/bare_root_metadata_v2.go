@@ -1228,7 +1228,7 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 	keyGen KeyGen, _ ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error) {
+	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
 			md.TlfID(), "UpdateKeyGeneration"}
@@ -1236,7 +1236,7 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
-		return ServerKeyMap{}, err
+		return UserDeviceKeyServerHalves{}, err
 	}
 
 	if len(wKeys) == 0 {
@@ -1247,7 +1247,7 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 		// strictly negative for reader ephemeral public keys.
 		newIndex := -len(rkb.TLFReaderEphemeralPublicKeys) - 1
 
-		newServerKeys := ServerKeyMap{}
+		newServerKeys := UserDeviceKeyServerHalves{}
 
 		filledRKeys, err := fillInDevicesAndServerMapV2(
 			crypto, newIndex, rKeys, rkb.RKeys,
@@ -1268,7 +1268,7 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 
 	newIndex := len(wkb.TLFEphemeralPublicKeys)
 
-	newServerKeys := ServerKeyMap{}
+	newServerKeys := UserDeviceKeyServerHalves{}
 
 	filledWKeys, err := fillInDevicesAndServerMapV2(
 		crypto, newIndex, wKeys, wkb.WKeys,

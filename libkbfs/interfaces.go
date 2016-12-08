@@ -991,7 +991,7 @@ type KeyOps interface {
 	// PutTLFCryptKeyServerHalves stores a server-side key halves for a
 	// set of users and devices.
 	PutTLFCryptKeyServerHalves(ctx context.Context,
-		serverKeyHalves ServerKeyMap) error
+		serverKeyHalves UserDeviceKeyServerHalves) error
 
 	// DeleteTLFCryptKeyServerHalf deletes a server-side key half for a
 	// device given the key half ID.
@@ -1280,7 +1280,7 @@ type KeyServer interface {
 	// PutTLFCryptKeyServerHalves stores a server-side key halves for a
 	// set of users and devices.
 	PutTLFCryptKeyServerHalves(ctx context.Context,
-		serverKeyHalves ServerKeyMap) error
+		serverKeyHalves UserDeviceKeyServerHalves) error
 
 	// DeleteTLFCryptKeyServerHalf deletes a server-side key half for a
 	// device given the key half ID.
@@ -1814,7 +1814,8 @@ type MutableBareRootMetadata interface {
 		extra ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,
 		ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-		tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error)
+		tlfCryptKey kbfscrypto.TLFCryptKey) (
+		UserDeviceKeyServerHalves, error)
 
 	// PromoteReader converts the given user from a reader to a writer.
 	PromoteReader(uid keybase1.UID, extra ExtraMetadata) error

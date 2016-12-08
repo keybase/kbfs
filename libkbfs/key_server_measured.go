@@ -50,7 +50,7 @@ func (b KeyServerMeasured) GetTLFCryptKeyServerHalf(ctx context.Context,
 // PutTLFCryptKeyServerHalves implements the KeyServer interface for
 // KeyServerMeasured.
 func (b KeyServerMeasured) PutTLFCryptKeyServerHalves(ctx context.Context,
-	serverKeyHalves ServerKeyMap) (err error) {
+	serverKeyHalves UserDeviceKeyServerHalves) (err error) {
 	b.putTimer.Time(func() {
 		err = b.delegate.PutTLFCryptKeyServerHalves(ctx, serverKeyHalves)
 	})

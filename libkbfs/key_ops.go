@@ -45,7 +45,7 @@ func (k *KeyOpsStandard) GetTLFCryptKeyServerHalf(ctx context.Context,
 
 // PutTLFCryptKeyServerHalves is an implementation of the KeyOps interface.
 func (k *KeyOpsStandard) PutTLFCryptKeyServerHalves(ctx context.Context,
-	serverKeyHalves ServerKeyMap) error {
+	serverKeyHalves UserDeviceKeyServerHalves) error {
 	// upload the keys
 	return k.config.KeyServer().PutTLFCryptKeyServerHalves(ctx, serverKeyHalves)
 }

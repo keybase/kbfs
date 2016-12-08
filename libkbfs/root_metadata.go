@@ -742,7 +742,7 @@ func (md *RootMetadata) updateKeyGeneration(crypto cryptoPure, keyGen KeyGen,
 	wKeys, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey) (ServerKeyMap, error) {
+	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
 	return md.bareMd.UpdateKeyGeneration(crypto, keyGen, md.extra,
 		wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
 }
