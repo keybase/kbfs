@@ -27,9 +27,8 @@ func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfo(crypto cryptoPure,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys map[kbfscrypto.CryptPublicKey]bool) (
-	serverMap map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf,
-	err error) {
-	serverMap = make(map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyServerHalf)
+	serverHalves DeviceKeyServerHalves, err error) {
+	serverHalves = make(DeviceKeyServerHalves)
 	// TODO: parallelize
 	for k := range publicKeys {
 		// Skip existing entries, and only fill in new ones
@@ -44,10 +43,10 @@ func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfo(crypto cryptoPure,
 		}
 
 		dkimV3[k] = clientInfo
-		serverMap[k] = serverHalf
+		serverHalves[k] = serverHalf
 	}
 
-	return serverMap, nil
+	return serverHalves, nil
 }
 
 func (dkimV3 DeviceKeyInfoMapV3) toDKIM(codec kbfscodec.Codec) (
@@ -340,21 +339,21 @@ func (h TLFReaderKeyBundleID) IsNil() bool {
 func fillInDevicesAndServerMapV3(crypto cryptoPure, newIndex int,
 	pubKeys UserDevicePublicKeys, keyInfoMap UserDeviceKeyInfoMapV3,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey, newServerKeys UserDeviceKeyServerHalves) (
-	modified bool, err error) {
+	tlfCryptKey kbfscrypto.TLFCryptKey,
+	serverHalves UserDeviceKeyServerHalves) (modified bool, err error) {
 	for u, keys := range pubKeys {
 		if _, ok := keyInfoMap[u]; !ok {
 			keyInfoMap[u] = DeviceKeyInfoMapV3{}
 		}
 
-		serverMap, err := keyInfoMap[u].fillInDeviceInfo(
+		deviceServerHalves, err := keyInfoMap[u].fillInDeviceInfo(
 			crypto, u, tlfCryptKey, ePrivKey, newIndex, keys)
 		if err != nil {
 			return false, err
 		}
-		if len(serverMap) > 0 {
+		if len(deviceServerHalves) > 0 {
 			modified = true
-			newServerKeys[u] = serverMap
+			serverHalves[u] = deviceServerHalves
 		}
 	}
 	return modified, nil
