@@ -649,8 +649,8 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 				return false, nil, err
 			}
 
-			err = km.updateKeyGeneration(ctx, md, keyGen, wKeys, rKeys,
-				ePubKey, ePrivKey, currTlfCryptKey)
+			err = km.updateKeyGeneration(ctx, md, keyGen, wKeys,
+				rKeys, ePubKey, ePrivKey, currTlfCryptKey)
 			if _, noDkim := err.(TLFCryptKeyNotPerDeviceEncrypted); noDkim {
 				// No DKIM for this generation. This is possible for MDv3.
 				continue
