@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"context"
 	"testing"
 
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -29,7 +30,16 @@ func TestBareRootMetadataVersionV3(t *testing.T) {
 	require.Equal(t, SegregatedKeyBundlesVer, rmd.Version())
 }
 
-func TestRootMetadataV3InitialRekey(t *testing.T) {
+type codecOnlyConfig struct {
+	Config
+	codec kbfscodec.Codec
+}
+
+func (c codecOnlyConfig) Codec() kbfscodec.Codec {
+	return c.codec
+}
+
+func TestRootMetadataV3ExtraNew(t *testing.T) {
 	tlfID := tlf.FakeID(1, false)
 
 	uid := keybase1.MakeTestUID(1)
@@ -47,6 +57,17 @@ func TestRootMetadataV3InitialRekey(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, extraV3.wkbNew)
 	require.True(t, extraV3.rkbNew)
+
+	_, extraCopy, err := rmd.MakeSuccessorCopy(
+		context.Background(), codecOnlyConfig{nil, codec},
+		nil, extra, true)
+	require.NoError(t, err)
+
+	extraV3Copy, ok := extraCopy.(*ExtraMetadataV3)
+	require.True(t, ok)
+	require.False(t, extraV3Copy.wkbNew)
+	require.False(t, extraV3Copy.rkbNew)
+
 }
 
 func TestIsValidRekeyRequestBasicV3(t *testing.T) {
