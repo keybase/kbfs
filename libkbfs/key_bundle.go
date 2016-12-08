@@ -62,6 +62,26 @@ type DeviceKeyServerHalves map[kbfscrypto.CryptPublicKey]kbfscrypto.TLFCryptKeyS
 // DeviceServerHalves map.
 type UserDeviceKeyServerHalves map[keybase1.UID]DeviceKeyServerHalves
 
+// mergeUsers returns a UserDeviceKeyServerHalves that contains all
+// the users in serverHalves and other, which must be disjoint. This
+// isn't a deep copy.
+func (serverHalves UserDeviceKeyServerHalves) mergeUsers(
+	other UserDeviceKeyServerHalves) (UserDeviceKeyServerHalves, error) {
+	merged := make(UserDeviceKeyServerHalves)
+	for uid, deviceServerHalves := range serverHalves {
+		merged[uid] = deviceServerHalves
+	}
+	for uid, deviceServerHalves := range other {
+		if _, ok := merged[uid]; ok {
+			return nil, fmt.Errorf(
+				"user %s is in both UserDeviceKeyServerHalves",
+				uid)
+		}
+		merged[uid] = deviceServerHalves
+	}
+	return merged, nil
+}
+
 // splitTLFCryptKey splits the given TLFCryptKey into two parts -- the
 // client-side part (which is encrypted with the given keys), and the
 // server-side part, which will be uploaded to the server.
