@@ -318,12 +318,12 @@ func (j mdJournal) getExtraMetadata(
 		return nil, err
 	}
 
-	err = checkKeyBundleIDs(j.crypto, wkbID, rkbID, &wkb, &rkb)
+	err = checkKeyBundleIDs(j.crypto, wkbID, rkbID, wkb, rkb)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewExtraMetadataV3(&wkb, &rkb, false, false), nil
+	return NewExtraMetadataV3(wkb, rkb, false, false), nil
 }
 
 func (j mdJournal) putExtraMetadata(

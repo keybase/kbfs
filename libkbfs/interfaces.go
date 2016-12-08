@@ -869,10 +869,10 @@ type cryptoPure interface {
 		ePubKey kbfscrypto.TLFEphemeralPublicKey) (*MerkleLeaf, error)
 
 	// MakeTLFWriterKeyBundleID hashes a TLFWriterKeyBundleV3 to create an ID.
-	MakeTLFWriterKeyBundleID(wkb *TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error)
+	MakeTLFWriterKeyBundleID(wkb TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error)
 
 	// MakeTLFReaderKeyBundleID hashes a TLFReaderKeyBundleV3 to create an ID.
-	MakeTLFReaderKeyBundleID(rkb *TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error)
+	MakeTLFReaderKeyBundleID(rkb TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error)
 
 	// EncryptTLFCryptKeys encrypts an array of historic TLFCryptKeys.
 	EncryptTLFCryptKeys(oldKeys []kbfscrypto.TLFCryptKey,

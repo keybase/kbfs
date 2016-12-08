@@ -107,10 +107,8 @@ func makeMissingKeyBundlesError() missingKeyBundlesError {
 // ExtraMetadataV3 contains references to key bundles stored outside of metadata
 // blocks.  This only ever exists in memory and is never serialized itself.
 type ExtraMetadataV3 struct {
-	// wkb must not be nil.
-	wkb *TLFWriterKeyBundleV3
-	// rkb must not be nil.
-	rkb *TLFReaderKeyBundleV3
+	wkb TLFWriterKeyBundleV3
+	rkb TLFReaderKeyBundleV3
 	// Set if wkb is new and should be sent to the server on an MD
 	// put.
 	wkbNew bool
@@ -121,14 +119,8 @@ type ExtraMetadataV3 struct {
 
 // NewExtraMetadataV3 creates a new ExtraMetadataV3 given a pair of key bundles
 func NewExtraMetadataV3(
-	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3,
+	wkb TLFWriterKeyBundleV3, rkb TLFReaderKeyBundleV3,
 	wkbNew, rkbNew bool) *ExtraMetadataV3 {
-	if wkb == nil {
-		panic("nil wkb")
-	}
-	if rkb == nil {
-		panic("nil rkb")
-	}
 	return &ExtraMetadataV3{wkb, rkb, wkbNew, rkbNew}
 }
 
@@ -141,25 +133,22 @@ func (extra ExtraMetadataV3) MetadataVersion() MetadataVer {
 func (extra ExtraMetadataV3) DeepCopy(codec kbfscodec.Codec) (
 	ExtraMetadata, error) {
 	wkb, rkb := TLFWriterKeyBundleV3{}, TLFReaderKeyBundleV3{}
-	if extra.rkb == nil || extra.wkb == nil {
-		return nil, makeMissingKeyBundlesError()
-	}
-	if err := kbfscodec.Update(codec, &rkb, *extra.rkb); err != nil {
+	if err := kbfscodec.Update(codec, &rkb, extra.rkb); err != nil {
 		return nil, err
 	}
-	if err := kbfscodec.Update(codec, &wkb, *extra.wkb); err != nil {
+	if err := kbfscodec.Update(codec, &wkb, extra.wkb); err != nil {
 		return nil, err
 	}
-	return NewExtraMetadataV3(&wkb, &rkb, false, false), nil
+	return NewExtraMetadataV3(wkb, rkb, false, false), nil
 }
 
 // GetWriterKeyBundle returns the contained writer key bundle.
-func (extra ExtraMetadataV3) GetWriterKeyBundle() *TLFWriterKeyBundleV3 {
+func (extra ExtraMetadataV3) GetWriterKeyBundle() TLFWriterKeyBundleV3 {
 	return extra.wkb
 }
 
 // GetReaderKeyBundle returns the contained reader key bundle.
-func (extra ExtraMetadataV3) GetReaderKeyBundle() *TLFReaderKeyBundleV3 {
+func (extra ExtraMetadataV3) GetReaderKeyBundle() TLFReaderKeyBundleV3 {
 	return extra.rkb
 }
 
@@ -170,10 +159,7 @@ func getKeyBundlesV3(extra ExtraMetadata) (
 	if !ok {
 		return nil, nil, false
 	}
-	if extraV3.wkb == nil || extraV3.rkb == nil {
-		return nil, nil, false
-	}
-	return extraV3.wkb, extraV3.rkb, true
+	return &extraV3.wkb, &extraV3.rkb, true
 }
 
 // MakeInitialBareRootMetadataV3 creates a new BareRootMetadataV3
@@ -283,7 +269,7 @@ func (md *BareRootMetadataV3) IsValidRekeyRequest(
 		return false, nil
 	}
 	onlyUserRKeysChanged, err := md.haveOnlyUserRKeysChanged(
-		codec, prevMd, user, *prevExtraV3.rkb, *extraV3.rkb)
+		codec, prevMd, user, prevExtraV3.rkb, extraV3.rkb)
 	if err != nil {
 		return false, err
 	}
@@ -667,7 +653,7 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 }
 
 func checkWKBID(crypto cryptoPure,
-	wkbID TLFWriterKeyBundleID, wkb *TLFWriterKeyBundleV3) error {
+	wkbID TLFWriterKeyBundleID, wkb TLFWriterKeyBundleV3) error {
 	computedWKBID, err := crypto.MakeTLFWriterKeyBundleID(wkb)
 	if err != nil {
 		return err
@@ -682,7 +668,7 @@ func checkWKBID(crypto cryptoPure,
 }
 
 func checkRKBID(crypto cryptoPure,
-	rkbID TLFReaderKeyBundleID, rkb *TLFReaderKeyBundleV3) error {
+	rkbID TLFReaderKeyBundleID, rkb TLFReaderKeyBundleV3) error {
 	computedRKBID, err := crypto.MakeTLFReaderKeyBundleID(rkb)
 	if err != nil {
 		return err
@@ -709,12 +695,12 @@ func (md *BareRootMetadataV3) IsValidAndSigned(
 			return makeMissingKeyBundlesError()
 		}
 
-		err := checkWKBID(crypto, md.GetTLFWriterKeyBundleID(), wkb)
+		err := checkWKBID(crypto, md.GetTLFWriterKeyBundleID(), *wkb)
 		if err != nil {
 			return err
 		}
 
-		err = checkRKBID(crypto, md.GetTLFReaderKeyBundleID(), rkb)
+		err = checkRKBID(crypto, md.GetTLFReaderKeyBundleID(), *rkb)
 		if err != nil {
 			return err
 		}
@@ -1025,13 +1011,13 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(codec kbfscodec.Codec,
 		return nil, err
 	}
 
-	newWriterKeys := &TLFWriterKeyBundleV3{
+	newWriterKeys := TLFWriterKeyBundleV3{
 		Keys:                          wUDKIMV3,
 		TLFPublicKey:                  pubKey,
 		EncryptedHistoricTLFCryptKeys: encryptedHistoricKeys,
 		TLFEphemeralPublicKeys:        wPublicKeys,
 	}
-	newReaderKeys := &TLFReaderKeyBundleV3{
+	newReaderKeys := TLFReaderKeyBundleV3{
 		Keys: rUDKIMV3,
 		TLFEphemeralPublicKeys: rPublicKeys,
 	}

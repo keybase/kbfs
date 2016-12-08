@@ -2010,7 +2010,7 @@ func (_mr *_MockcryptoPureRecorder) DecryptMerkleLeaf(arg0, arg1, arg2, arg3 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptMerkleLeaf", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockcryptoPure) MakeTLFWriterKeyBundleID(wkb *TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error) {
+func (_m *MockcryptoPure) MakeTLFWriterKeyBundleID(wkb TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error) {
 	ret := _m.ctrl.Call(_m, "MakeTLFWriterKeyBundleID", wkb)
 	ret0, _ := ret[0].(TLFWriterKeyBundleID)
 	ret1, _ := ret[1].(error)
@@ -2021,7 +2021,7 @@ func (_mr *_MockcryptoPureRecorder) MakeTLFWriterKeyBundleID(arg0 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeTLFWriterKeyBundleID", arg0)
 }
 
-func (_m *MockcryptoPure) MakeTLFReaderKeyBundleID(rkb *TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error) {
+func (_m *MockcryptoPure) MakeTLFReaderKeyBundleID(rkb TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error) {
 	ret := _m.ctrl.Call(_m, "MakeTLFReaderKeyBundleID", rkb)
 	ret0, _ := ret[0].(TLFReaderKeyBundleID)
 	ret1, _ := ret[1].(error)
@@ -2340,7 +2340,7 @@ func (_mr *_MockCryptoRecorder) DecryptMerkleLeaf(arg0, arg1, arg2, arg3 interfa
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DecryptMerkleLeaf", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockCrypto) MakeTLFWriterKeyBundleID(wkb *TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error) {
+func (_m *MockCrypto) MakeTLFWriterKeyBundleID(wkb TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error) {
 	ret := _m.ctrl.Call(_m, "MakeTLFWriterKeyBundleID", wkb)
 	ret0, _ := ret[0].(TLFWriterKeyBundleID)
 	ret1, _ := ret[1].(error)
@@ -2351,7 +2351,7 @@ func (_mr *_MockCryptoRecorder) MakeTLFWriterKeyBundleID(arg0 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeTLFWriterKeyBundleID", arg0)
 }
 
-func (_m *MockCrypto) MakeTLFReaderKeyBundleID(rkb *TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error) {
+func (_m *MockCrypto) MakeTLFReaderKeyBundleID(rkb TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error) {
 	ret := _m.ctrl.Call(_m, "MakeTLFReaderKeyBundleID", rkb)
 	ret0, _ := ret[0].(TLFReaderKeyBundleID)
 	ret1, _ := ret[1].(error)
