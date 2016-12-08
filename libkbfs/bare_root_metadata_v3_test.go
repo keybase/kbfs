@@ -480,9 +480,11 @@ func checkKeyBundlesV3(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV3,
 	var expectedWriterEPublicKeys,
 		expectedReaderEPublicKeys kbfscrypto.TLFEphemeralPublicKeys
 	for _, expected := range expectedRekeyInfos {
-		expectedWriterPubKeys = unionPublicKeys(expectedWriterPubKeys,
+		expectedWriterPubKeys = accumulatePublicKeys(
+			expectedWriterPubKeys,
 			expected.writerPrivKeys.toPublicKeys())
-		expectedReaderPubKeys = unionPublicKeys(expectedReaderPubKeys,
+		expectedReaderPubKeys = accumulatePublicKeys(
+			expectedReaderPubKeys,
 			expected.readerPrivKeys.toPublicKeys())
 
 		if len(expected.writerPrivKeys) > 0 {
@@ -514,7 +516,7 @@ func checkKeyBundlesV3(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV3,
 	require.Equal(t, expectedPubKey, wkb.TLFPublicKey)
 
 	for _, expected := range expectedRekeyInfos {
-		expectedUserPubKeys := unionPublicKeys(
+		expectedUserPubKeys := unionPublicKeyUsers(
 			expected.writerPrivKeys.toPublicKeys(),
 			expected.readerPrivKeys.toPublicKeys())
 		userPubKeys := userDeviceServerHalvesToPublicKeys(

@@ -397,10 +397,10 @@ func checkGetTLFCryptKeyV2(t *testing.T, expected expecteRekeyInfoV2,
 	}
 }
 
-// unionPublicKeys returns the union of the user's keys in pubKeys1
-// and pubKeys2. A user's keys in pubKeys1 and pubKeys2 must be
-// disjoint.
-func unionPublicKeys(
+// accumulatePublicKeys returns the union of each user's keys in
+// pubKeys1 and pubKeys2. A user's keys in pubKeys1 and pubKeys2 must
+// be disjoint.
+func accumulatePublicKeys(
 	pubKeys1, pubKeys2 UserDevicePublicKeys) UserDevicePublicKeys {
 	pubKeys := make(UserDevicePublicKeys)
 	for uid, keys := range pubKeys1 {
@@ -421,6 +421,23 @@ func unionPublicKeys(
 			}
 			pubKeys[uid][key] = true
 		}
+	}
+	return pubKeys
+}
+
+// unionPublicKeyUsers returns the union of the usersin pubKeys1 and
+// pubKeys2, which must be disjoint. Not a deep copy.
+func unionPublicKeyUsers(
+	pubKeys1, pubKeys2 UserDevicePublicKeys) UserDevicePublicKeys {
+	pubKeys := make(UserDevicePublicKeys)
+	for uid, keys := range pubKeys1 {
+		pubKeys[uid] = keys
+	}
+	for uid, keys := range pubKeys2 {
+		if pubKeys[uid] != nil {
+			panic(fmt.Sprintf("uid=%s exists in both", uid))
+		}
+		pubKeys[uid] = keys
 	}
 	return pubKeys
 }
@@ -459,9 +476,11 @@ func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expecteRekeyInfoV2,
 	var expectedWriterEPublicKeys,
 		expectedReaderEPublicKeys kbfscrypto.TLFEphemeralPublicKeys
 	for _, expected := range expectedRekeyInfos {
-		expectedWriterPubKeys = unionPublicKeys(expectedWriterPubKeys,
+		expectedWriterPubKeys = accumulatePublicKeys(
+			expectedWriterPubKeys,
 			expected.writerPrivKeys.toPublicKeys())
-		expectedReaderPubKeys = unionPublicKeys(expectedReaderPubKeys,
+		expectedReaderPubKeys = accumulatePublicKeys(
+			expectedReaderPubKeys,
 			expected.readerPrivKeys.toPublicKeys())
 		if len(expected.writerPrivKeys)+
 			len(expected.readerPrivKeys) > 0 {
@@ -494,7 +513,7 @@ func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expecteRekeyInfoV2,
 	require.Equal(t, expectedPubKey, wkb.TLFPublicKey)
 
 	for _, expected := range expectedRekeyInfos {
-		expectedUserPubKeys := unionPublicKeys(
+		expectedUserPubKeys := unionPublicKeyUsers(
 			expected.writerPrivKeys.toPublicKeys(),
 			expected.readerPrivKeys.toPublicKeys())
 		userPubKeys := userDeviceServerHalvesToPublicKeys(
