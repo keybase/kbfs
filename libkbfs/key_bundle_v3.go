@@ -23,7 +23,7 @@ import (
 // key information.
 type DeviceKeyInfoMapV3 map[kbfscrypto.CryptPublicKey]TLFCryptKeyInfo
 
-func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfo(crypto cryptoPure,
+func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfos(crypto cryptoPure,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys map[kbfscrypto.CryptPublicKey]bool) (
@@ -75,10 +75,6 @@ func dkimToV3(codec kbfscodec.Codec, dkim DeviceKeyInfoMap) (
 		dkimV3[key] = infoCopy
 	}
 	return dkimV3, nil
-}
-
-func deviceKeyInfoMapToV3(dkim DeviceKeyInfoMap) DeviceKeyInfoMapV3 {
-	return DeviceKeyInfoMapV3(dkim)
 }
 
 // UserDeviceKeyInfoMapV3 maps a user's keybase UID to their
@@ -157,6 +153,29 @@ func (udkimV3 UserDeviceKeyInfoMapV3) removeDevicesNotIn(
 	}
 
 	return removalInfo
+}
+
+func (udkimV3 UserDeviceKeyInfoMapV3) fillInUserInfos(
+	crypto cryptoPure, newIndex int, pubKeys UserDevicePublicKeys,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	tlfCryptKey kbfscrypto.TLFCryptKey) (
+	serverHalves UserDeviceKeyServerHalves, err error) {
+	serverHalves = make(UserDeviceKeyServerHalves)
+	for u, keys := range pubKeys {
+		if _, ok := udkimV3[u]; !ok {
+			udkimV3[u] = DeviceKeyInfoMapV3{}
+		}
+
+		deviceServerHalves, err := udkimV3[u].fillInDeviceInfos(
+			crypto, u, tlfCryptKey, ePrivKey, newIndex, keys)
+		if err != nil {
+			return nil, err
+		}
+		if len(deviceServerHalves) > 0 {
+			serverHalves[u] = deviceServerHalves
+		}
+	}
+	return serverHalves, nil
 }
 
 // All section references below are to https://keybase.io/blog/kbfs-crypto
@@ -334,27 +353,4 @@ func (h *TLFReaderKeyBundleID) UnmarshalBinary(data []byte) error {
 // IsNil returns true if the ID is unset.
 func (h TLFReaderKeyBundleID) IsNil() bool {
 	return h == TLFReaderKeyBundleID{}
-}
-
-func fillInDevicesAndServerMapV3(crypto cryptoPure, newIndex int,
-	pubKeys UserDevicePublicKeys, keyInfoMap UserDeviceKeyInfoMapV3,
-	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey,
-	serverHalves UserDeviceKeyServerHalves) (modified bool, err error) {
-	for u, keys := range pubKeys {
-		if _, ok := keyInfoMap[u]; !ok {
-			keyInfoMap[u] = DeviceKeyInfoMapV3{}
-		}
-
-		deviceServerHalves, err := keyInfoMap[u].fillInDeviceInfo(
-			crypto, u, tlfCryptKey, ePrivKey, newIndex, keys)
-		if err != nil {
-			return false, err
-		}
-		if len(deviceServerHalves) > 0 {
-			modified = true
-			serverHalves[u] = deviceServerHalves
-		}
-	}
-	return modified, nil
 }

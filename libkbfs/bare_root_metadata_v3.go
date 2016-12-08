@@ -1198,30 +1198,27 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 		newWriterIndex = len(wkb.TLFEphemeralPublicKeys)
 	}
 
-	newServerKeys := UserDeviceKeyServerHalves{}
-	filledWKeys, err := fillInDevicesAndServerMapV3(
-		crypto, newWriterIndex, wKeys, wkb.Keys,
-		ePrivKey, tlfCryptKey, newServerKeys)
+	wServerHalves, err := wkb.Keys.fillInUserInfos(
+		crypto, newWriterIndex, wKeys, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
 	}
-	if filledWKeys {
+	if len(wServerHalves) > 0 {
 		wkb.TLFEphemeralPublicKeys =
 			append(wkb.TLFEphemeralPublicKeys, ePubKey)
 	}
 
-	filledRKeys, err := fillInDevicesAndServerMapV3(
-		crypto, newReaderIndex, rKeys, rkb.Keys,
-		ePrivKey, tlfCryptKey, newServerKeys)
+	rServerHalves, err := rkb.Keys.fillInUserInfos(
+		crypto, newReaderIndex, rKeys, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
 	}
-	if filledRKeys {
+	if len(rServerHalves) > 0 {
 		rkb.TLFEphemeralPublicKeys =
 			append(rkb.TLFEphemeralPublicKeys, ePubKey)
 	}
 
-	return newServerKeys, nil
+	return wServerHalves.mergeUsers(rServerHalves)
 }
 
 // GetTLFWriterKeyBundleID implements the BareRootMetadata interface for BareRootMetadataV3.
