@@ -991,7 +991,7 @@ type KeyOps interface {
 	// PutTLFCryptKeyServerHalves stores a server-side key halves for a
 	// set of users and devices.
 	PutTLFCryptKeyServerHalves(ctx context.Context,
-		serverKeyHalves UserDeviceKeyServerHalves) error
+		keyServerHalves UserDeviceKeyServerHalves) error
 
 	// DeleteTLFCryptKeyServerHalf deletes a server-side key half for a
 	// device given the key half ID.
@@ -1280,7 +1280,7 @@ type KeyServer interface {
 	// PutTLFCryptKeyServerHalves stores a server-side key halves for a
 	// set of users and devices.
 	PutTLFCryptKeyServerHalves(ctx context.Context,
-		serverKeyHalves UserDeviceKeyServerHalves) error
+		keyServerHalves UserDeviceKeyServerHalves) error
 
 	// DeleteTLFCryptKeyServerHalf deletes a server-side key half for a
 	// device given the key half ID.

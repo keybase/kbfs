@@ -2611,8 +2611,8 @@ func (_mr *_MockKeyOpsRecorder) GetTLFCryptKeyServerHalf(arg0, arg1, arg2 interf
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalf", arg0, arg1, arg2)
 }
 
-func (_m *MockKeyOps) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves UserDeviceKeyServerHalves) error {
-	ret := _m.ctrl.Call(_m, "PutTLFCryptKeyServerHalves", ctx, serverKeyHalves)
+func (_m *MockKeyOps) PutTLFCryptKeyServerHalves(ctx context.Context, keyServerHalves UserDeviceKeyServerHalves) error {
+	ret := _m.ctrl.Call(_m, "PutTLFCryptKeyServerHalves", ctx, keyServerHalves)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -3464,8 +3464,8 @@ func (_mr *_MockKeyServerRecorder) GetTLFCryptKeyServerHalf(arg0, arg1, arg2 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalf", arg0, arg1, arg2)
 }
 
-func (_m *MockKeyServer) PutTLFCryptKeyServerHalves(ctx context.Context, serverKeyHalves UserDeviceKeyServerHalves) error {
-	ret := _m.ctrl.Call(_m, "PutTLFCryptKeyServerHalves", ctx, serverKeyHalves)
+func (_m *MockKeyServer) PutTLFCryptKeyServerHalves(ctx context.Context, keyServerHalves UserDeviceKeyServerHalves) error {
+	ret := _m.ctrl.Call(_m, "PutTLFCryptKeyServerHalves", ctx, keyServerHalves)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
