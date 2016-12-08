@@ -21,7 +21,7 @@ fi
 
 keybase service &
 SERVICE=$!
-KEYBASE_DEBUG=1 kbfsfuse -debug -mdserver $MDSERVER_ADDR -bserver $BSERVER_ADDR -log-to-file /keybase &
+KEYBASE_DEBUG=1 kbfsfuse -debug -mdserver $MDSERVER_ADDR -bserver $BSERVER_ADDR -log-to-file -md-version 3 /keybase &
 KBFS=$!
 
 wait "$SERVICE"
