@@ -374,7 +374,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV2(config Config, isReadableAndWr
 }
 
 func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Config, kmd KeyMetadata) (
-	*BareRootMetadataV3, *ExtraMetadataV3, error) {
+	*BareRootMetadataV3, ExtraMetadata, error) {
 	mdCopy := &BareRootMetadataV3{}
 
 	// Fill out the writer metadata and new writer key bundle.
