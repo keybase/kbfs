@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/go-errors/errors"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -83,15 +84,23 @@ type BareRootMetadataV3 struct {
 	codec.UnknownFieldSetHandler
 }
 
-type missingKeyBundlesError struct{}
-
-func makeMissingKeyBundlesError() error {
-	// Track the stack trace for now.
-	return errors.Wrap(missingKeyBundlesError{}, 1)
+type missingKeyBundlesError struct {
+	stack []uintptr
 }
 
 func (e missingKeyBundlesError) Error() string {
-	return "Missing key bundles"
+	s := "Missing key bundles: \n"
+	for i, pc := range e.stack {
+		f := errors.NewStackFrame(pc)
+		s += f.String()
+	}
+	return s
+}
+
+func makeMissingKeyBundlesError() missingKeyBundlesError {
+	stack := make([]uintptr, 20)
+	n := runtime.Callers(2, stack)
+	return missingKeyBundlesError{stack[:n]}
 }
 
 // ExtraMetadataV3 contains references to key bundles stored outside of metadata
@@ -182,6 +191,8 @@ func getAnyKeyBundlesV3(extra ExtraMetadata) (
 // must be done separately.
 func MakeInitialBareRootMetadataV3(tlfID tlf.ID, h tlf.Handle) (
 	*BareRootMetadataV3, error) {
+	return nil, makeMissingKeyBundlesError()
+
 	if tlfID.IsPublic() != h.IsPublic() {
 		return nil, errors.New(
 			"TlfID and TlfHandle disagree on public status")
@@ -363,7 +374,6 @@ func (md *BareRootMetadataV3) MakeSuccessorCopy(
 	ctx context.Context, config Config, kmd KeyMetadata,
 	extra ExtraMetadata, isReadableAndWriter bool) (
 	MutableBareRootMetadata, ExtraMetadata, bool, error) {
-
 	var extraCopy ExtraMetadata
 	if extra != nil {
 		var err error
