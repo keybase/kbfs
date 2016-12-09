@@ -54,7 +54,7 @@ func GetPlatformSpecificMountOptionsForTest() []fuse.MountOption {
 	return []fuse.MountOption{
 		fuse.OSXFUSELocations(kbfusePath, fuse.OSXFUSELocationV3),
 		fuse.ExclCreate(),
-		fuse.LocalVolume(),
+		// fuse.LocalVolume(),
 	}
 }
 
