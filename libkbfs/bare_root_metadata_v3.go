@@ -5,9 +5,9 @@
 package libkbfs
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/go-errors/errors"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
@@ -83,6 +83,17 @@ type BareRootMetadataV3 struct {
 	codec.UnknownFieldSetHandler
 }
 
+type missingKeyBundlesError struct{}
+
+func makeMissingKeyBundlesError() error {
+	// Track the stack trace for now.
+	return errors.Wrap(missingKeyBundlesError{}, 1)
+}
+
+func (e missingKeyBundlesError) Error() string {
+	return "Missing key bundles"
+}
+
 // ExtraMetadataV3 contains references to key bundles stored outside of metadata
 // blocks.  This only ever exists in memory and is never serialized itself.
 type ExtraMetadataV3 struct {
@@ -109,7 +120,7 @@ func (extra ExtraMetadataV3) DeepCopy(codec kbfscodec.Codec) (
 	ExtraMetadata, error) {
 	wkb, rkb := TLFWriterKeyBundleV3{}, TLFReaderKeyBundleV3{}
 	if extra.rkb == nil || extra.wkb == nil {
-		return nil, errors.New("Missing key bundles")
+		return nil, makeMissingKeyBundlesError()
 	}
 	if err := kbfscodec.Update(codec, &rkb, *extra.rkb); err != nil {
 		return nil, err
@@ -474,7 +485,7 @@ func (md *BareRootMetadataV3) MakeBareTlfHandle(extra ExtraMetadata) (
 	} else {
 		wkb, rkb, ok := getKeyBundlesV3(extra)
 		if !ok {
-			return tlf.Handle{}, errors.New("Missing key bundles")
+			return tlf.Handle{}, makeMissingKeyBundlesError()
 		}
 		writers = make([]keybase1.UID, 0, len(wkb.Keys))
 		readers = make([]keybase1.UID, 0, len(rkb.Keys))
@@ -580,7 +591,7 @@ func (md *BareRootMetadataV3) GetDeviceKIDs(
 	keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) ([]keybase1.KID, error) {
 	wkb, rkb, ok := getKeyBundlesV3(extra)
 	if !ok {
-		return nil, errors.New("Missing key bundles")
+		return nil, makeMissingKeyBundlesError()
 	}
 	dkim := wkb.Keys[user]
 	if len(dkim) == 0 {
@@ -625,7 +636,7 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
 			TLFCryptKeyServerHalfID{}, false,
-			errors.New("Missing key bundles")
+			makeMissingKeyBundlesError()
 	}
 	isWriter := true
 	dkim := wkb.Keys[user]
@@ -672,7 +683,7 @@ func (md *BareRootMetadataV3) IsValidAndSigned(
 	if !md.TlfID().IsPublic() {
 		_, _, ok := getKeyBundlesV3(extra)
 		if !ok {
-			return errors.New("Missing key bundles")
+			return makeMissingKeyBundlesError()
 		}
 	}
 
