@@ -5,10 +5,11 @@
 package libkbfs
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 
-	"github.com/go-errors/errors"
+	goerrors "github.com/go-errors/errors"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
@@ -91,7 +92,7 @@ type missingKeyBundlesError struct {
 func (e missingKeyBundlesError) Error() string {
 	s := "Missing key bundles: \n"
 	for _, pc := range e.stack {
-		f := errors.NewStackFrame(pc)
+		f := goerrors.NewStackFrame(pc)
 		s += f.String()
 	}
 	return s

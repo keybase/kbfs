@@ -7,7 +7,7 @@ package libfs
 import (
 	"time"
 
-	"github.com/go-errors/errors"
+	goerrors "github.com/go-errors/errors"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
@@ -24,7 +24,7 @@ func convertStack(stack []uintptr) []errors.StackFrame {
 	for i, pc := range stack {
 		// TODO: Handle panics correctly, as described in the
 		// docs for runtime.Callers().
-		frames[i] = errors.NewStackFrame(pc)
+		frames[i] = goerrors.NewStackFrame(pc)
 	}
 	return frames
 }
