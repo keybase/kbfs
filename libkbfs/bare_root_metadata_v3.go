@@ -90,7 +90,7 @@ type missingKeyBundlesError struct {
 
 func (e missingKeyBundlesError) Error() string {
 	s := "Missing key bundles: \n"
-	for i, pc := range e.stack {
+	for _, pc := range e.stack {
 		f := errors.NewStackFrame(pc)
 		s += f.String()
 	}
@@ -191,8 +191,6 @@ func getAnyKeyBundlesV3(extra ExtraMetadata) (
 // must be done separately.
 func MakeInitialBareRootMetadataV3(tlfID tlf.ID, h tlf.Handle) (
 	*BareRootMetadataV3, error) {
-	return nil, makeMissingKeyBundlesError()
-
 	if tlfID.IsPublic() != h.IsPublic() {
 		return nil, errors.New(
 			"TlfID and TlfHandle disagree on public status")
