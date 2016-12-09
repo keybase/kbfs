@@ -41,6 +41,21 @@ var mountRootSpecialPaths = map[string]bool{
 	DSStoreFileName: true,
 }
 
+var platformRootDirs = []fuse.Dirent{
+	{
+		Type: fuse.DT_Dir,
+		Name: TrashDirName,
+	},
+	{
+		Type: fuse.DT_Dir,
+		Name: FSEventsDirName,
+	},
+	{
+		Type: fuse.DT_File,
+		Name: DSStoreFileName,
+	},
+}
+
 func (r *Root) platformLookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	switch req.Name {
 	case VolIconFileName:

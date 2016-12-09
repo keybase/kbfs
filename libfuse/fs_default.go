@@ -12,6 +12,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+var platformRootDirs []fuse.Dirent
+
 func (r *Root) platformLookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	return nil, nil
 }
