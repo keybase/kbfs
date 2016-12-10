@@ -294,7 +294,7 @@ var _ fs.HandleReadDirAller = (*Root)(nil)
 func (r *Root) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 	r.log().CDebugf(ctx, "FS ReadDirAll")
 	defer func() { r.private.fs.reportErr(ctx, libkbfs.ReadMode, err) }()
-	res = append([]fuse.Dirent{
+	res = []fuse.Dirent{
 		{
 			Type: fuse.DT_Dir,
 			Name: PrivateName,
@@ -303,7 +303,10 @@ func (r *Root) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 			Type: fuse.DT_Dir,
 			Name: PublicName,
 		},
-	}, platformRootDirs...)
+	}
+	if r.private.fs.platformParams.UseLocal {
+		res = append(res, platformRootDirs...)
+	}
 
 	if name := r.private.fs.remoteStatus.ExtraFileName(); name != "" {
 		res = append(res, fuse.Dirent{Type: fuse.DT_File, Name: name})

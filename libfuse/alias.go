@@ -15,7 +15,7 @@ import (
 // Alias represents an alias. A use case for it is a top-level folder accessed
 // through its non-canonical name.
 type Alias struct {
-	// the real path this alias points to. In case of TLF alias, this is the
+	// The real path this alias points to. In case of TLF alias, this is the
 	// canonical name for the folder.
 	realPath string
 }

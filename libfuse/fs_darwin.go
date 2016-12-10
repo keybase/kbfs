@@ -107,7 +107,14 @@ func bundleResourcePath(path string) (string, error) {
 	return filepath.Join(execPath, "..", "..", "..", "Resources", path), nil
 }
 
-// Trash is a mock .Trashes directory
+// Trash is a mock .Trashes directory. It implements a /keybase/.Trashes that
+// has a $UID inside, which symlinks to a directory within the user's own
+// private TLF. Since rename doesn't work across different TLFs, this would be
+// a Trash that only works for stuff in user's own private TLF.
+//
+// TODO: implement per-TLF "trash" location, and have this type figure
+// out how to concatenate files from different TLF's trash together, and
+// disseminates renames into different TLF's trash.
 type Trash struct {
 	fs         *FS
 	kbusername libkb.NormalizedUsername

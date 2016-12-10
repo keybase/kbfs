@@ -29,7 +29,9 @@ func AddPlatformFlags(flags *flag.FlagSet) *PlatformParams {
 	flags.BoolVar(&params.UseSystemFuse, "use-system-fuse", false,
 		"Use the system OSXFUSE instead of keybase's OSXFUSE")
 	flags.BoolVar(&params.UseLocal, "local-experimental", false,
-		"Use 'local' mount option"+
-			" and enable other hacky stuff for testing macOS apps.")
+		"Use 'local' mount option and enable other hacky stuff for testing macOS "+
+			"apps. The \"hacky stuff\" includes a Trash implementation that only "+
+			"works for the user's own private TLF, so if you enable this please "+
+			"only work under your own private TLF.")
 	return &params
 }
