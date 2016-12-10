@@ -15,6 +15,10 @@ type PlatformParams struct {
 	UseLocal      bool
 }
 
+func (p PlatformParams) shouldAppendPlatformRootDirs() bool {
+	return p.UseLocal
+}
+
 // GetPlatformUsageString returns a string to be included in a usage
 // string corresponding to the flags added by AddPlatformFlags.
 func GetPlatformUsageString() string {

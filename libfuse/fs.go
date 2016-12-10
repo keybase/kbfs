@@ -304,7 +304,7 @@ func (r *Root) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 			Name: PublicName,
 		},
 	}
-	if r.private.fs.platformParams.UseLocal {
+	if r.private.fs.platformParams.shouldAppendPlatformRootDirs() {
 		res = append(res, platformRootDirs...)
 	}
 
