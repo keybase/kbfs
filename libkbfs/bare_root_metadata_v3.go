@@ -303,6 +303,27 @@ func (md *BareRootMetadataV3) IsFinal() bool {
 	return md.Flags&MetadataFlagFinal != 0
 }
 
+func (md *BareRootMetadataV3) getTLFKeyBundles(extra ExtraMetadata) (
+	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
+	if md.TlfID().IsPublic() {
+		return nil, nil, InvalidPublicTLFOperation{
+			md.TlfID(), "getTLFKeyBundles (V3)",
+		}
+	}
+
+	if extra == nil {
+		return nil, nil, makeMissingKeyBundlesError()
+	}
+
+	extraV3, ok := extra.(*ExtraMetadataV3)
+	if !ok {
+		return nil, nil, fmt.Errorf(
+			"Expected *ExtraMetadataV3, got %T", extra)
+	}
+
+	return &extraV3.wkb, &extraV3.rkb, nil
+}
+
 // IsWriter implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) IsWriter(
 	user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool {
