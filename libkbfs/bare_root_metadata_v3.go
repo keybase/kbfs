@@ -515,9 +515,9 @@ func (md *BareRootMetadataV3) MakeBareTlfHandle(extra ExtraMetadata) (
 		writers = md.WriterMetadata.Writers
 		readers = []keybase1.UID{keybase1.PublicUID}
 	} else {
-		wkb, rkb, ok := getKeyBundlesV3(extra)
-		if !ok {
-			return tlf.Handle{}, makeMissingKeyBundlesError()
+		wkb, rkb, err := md.getTLFKeyBundles(extra)
+		if err != nil {
+			return tlf.Handle{}, err
 		}
 		writers = make([]keybase1.UID, 0, len(wkb.Keys))
 		readers = make([]keybase1.UID, 0, len(rkb.Keys))
@@ -562,9 +562,9 @@ func (md *BareRootMetadataV3) PromoteReader(
 		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReader", md.Version()}
 	}
 
-	wkb, rkb, ok := getKeyBundlesV3(extra)
-	if !ok {
-		return errors.New("Key bundles missing")
+	wkb, rkb, err := md.getTLFKeyBundles(extra)
+	if err != nil {
+		return err
 	}
 	dkim, ok := rkb.Keys[uid]
 	if !ok {
@@ -598,9 +598,9 @@ func (md *BareRootMetadataV3) RevokeRemovedDevices(
 			md.TlfID(), "RevokeRemovedDevices", md.Version()}
 	}
 
-	wkb, rkb, ok := getKeyBundlesV3(extra)
-	if !ok {
-		return nil, errors.New("Key bundles missing")
+	wkb, rkb, err := md.getTLFKeyBundles(extra)
+	if err != nil {
+		return nil, err
 	}
 
 	wRemovalInfo := wkb.Keys.removeDevicesNotIn(wKeys)
@@ -616,9 +616,9 @@ func (md *BareRootMetadataV3) GetDeviceKIDs(
 			md.TlfID(), "GetDeviceKIDs", md.Version()}
 	}
 
-	wkb, rkb, ok := getKeyBundlesV3(extra)
-	if !ok {
-		return nil, makeMissingKeyBundlesError()
+	wkb, rkb, err := md.getTLFKeyBundles(extra)
+	if err != nil {
+		return nil, err
 	}
 	dkim := wkb.Keys[user]
 	if len(dkim) == 0 {
@@ -639,9 +639,9 @@ func (md *BareRootMetadataV3) GetDeviceKIDs(
 // HasKeyForUser implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) HasKeyForUser(
 	keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) bool {
-	wkb, rkb, ok := getKeyBundlesV3(extra)
-	if !ok {
-		return false
+	wkb, rkb, err := md.getTLFKeyBundles(extra)
+	if err != nil {
+		panic(err)
 	}
 	return (len(wkb.Keys[user]) > 0) || (len(rkb.Keys[user]) > 0)
 }
@@ -658,12 +658,11 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 			TLFCryptKeyServerHalfID{}, false,
 			TLFCryptKeyNotPerDeviceEncrypted{md.TlfID(), keyGen}
 	}
-	wkb, rkb, ok := getKeyBundlesV3(extra)
-	if !ok {
+	wkb, rkb, err := md.getTLFKeyBundles(extra)
+	if err != nil {
 		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
-			TLFCryptKeyServerHalfID{}, false,
-			makeMissingKeyBundlesError()
+			TLFCryptKeyServerHalfID{}, false, err
 	}
 	isWriter := true
 	dkim := wkb.Keys[user]
@@ -743,12 +742,12 @@ func (md *BareRootMetadataV3) IsValidAndSigned(
 			return err
 		}
 	} else {
-		wkb, rkb, ok := getKeyBundlesV3(extra)
-		if !ok {
-			return makeMissingKeyBundlesError()
+		wkb, rkb, err := md.getTLFKeyBundles(extra)
+		if err != nil {
+			return err
 		}
 
-		err := checkWKBID(crypto, md.GetTLFWriterKeyBundleID(), *wkb)
+		err = checkWKBID(crypto, md.GetTLFWriterKeyBundleID(), *wkb)
 		if err != nil {
 			return err
 		}
@@ -1219,9 +1218,9 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(
 	if keyGen != md.LatestKeyGeneration() {
 		return nil, nil, TLFCryptKeyNotPerDeviceEncrypted{md.TlfID(), keyGen}
 	}
-	wkb, rkb, ok := getKeyBundlesV3(extra)
-	if !ok {
-		return nil, nil, errors.New("Key bundles missing")
+	wkb, rkb, err := md.getTLFKeyBundles(extra)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	rUDKIM, err := rkb.Keys.toUDKIM(codec)
@@ -1253,9 +1252,9 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 		return nil, TLFCryptKeyNotPerDeviceEncrypted{md.TlfID(), keyGen}
 	}
 
-	wkb, rkb, ok := getKeyBundlesV3(extra)
-	if !ok {
-		return UserDeviceKeyServerHalves{}, makeMissingKeyBundlesError()
+	wkb, rkb, err := md.getTLFKeyBundles(extra)
+	if err != nil {
+		return UserDeviceKeyServerHalves{}, err
 	}
 
 	// No need to explicitly handle the reader rekey case.
