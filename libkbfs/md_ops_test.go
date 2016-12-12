@@ -206,7 +206,7 @@ func expectGetKeyBundles(ctx context.Context, config *ConfigMock, extra ExtraMet
 	if extraV3, ok := extra.(*ExtraMetadataV3); ok {
 		config.mockMdserv.EXPECT().GetKeyBundles(
 			ctx, gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(extraV3.wkb, extraV3.rkb, nil)
+			Return(&extraV3.wkb, &extraV3.rkb, nil)
 	}
 }
 
@@ -606,8 +606,8 @@ func (mds *keyBundleMDServer) putRKB(
 func (mds *keyBundleMDServer) processRMDSes(
 	rmds *RootMetadataSigned, extra ExtraMetadata) {
 	if extraV3, ok := extra.(*ExtraMetadataV3); ok {
-		mds.putWKB(rmds.MD.GetTLFWriterKeyBundleID(), extraV3.wkb)
-		mds.putRKB(rmds.MD.GetTLFReaderKeyBundleID(), extraV3.rkb)
+		mds.putWKB(rmds.MD.GetTLFWriterKeyBundleID(), &extraV3.wkb)
+		mds.putRKB(rmds.MD.GetTLFReaderKeyBundleID(), &extraV3.rkb)
 	}
 }
 
