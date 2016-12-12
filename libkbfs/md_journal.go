@@ -347,11 +347,17 @@ func (j mdJournal) putExtraMetadata(
 		return errors.New("Invalid extra metadata")
 	}
 
+	// TODO: We lose extraV3.wkbNew and extraV3.rkbNew here. Store
+	// it as part of the mdInfo, so we don't needlessly send it
+	// while flushing.
+
 	err := checkKeyBundleIDs(
 		j.crypto, wkbID, rkbID, extraV3.wkb, extraV3.rkb)
 	if err != nil {
 		return err
 	}
+
+	// TODO: Avoid serializing if the file already exists.
 
 	err = kbfscodec.SerializeToFile(
 		j.codec, extraV3.wkb, j.writerKeyBundleV3Path(wkbID))
