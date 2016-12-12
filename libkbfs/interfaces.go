@@ -1081,10 +1081,9 @@ type MDServer interface {
 	// Put stores the (signed/encrypted) metadata object for the
 	// given top-level folder. Note: If the unmerged bit is set in
 	// the metadata block's flags bitmask it will be appended to
-	// the unmerged per-device history. extraNew is allowed to
-	// drop data that exists as part of a previous extra bundle.
+	// the unmerged per-device history.
 	Put(ctx context.Context, rmds *RootMetadataSigned,
-		extraNew ExtraMetadata) error
+		extra ExtraMetadata) error
 
 	// PruneBranch prunes all unmerged history for the given TLF branch.
 	PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) error
