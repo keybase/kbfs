@@ -303,6 +303,18 @@ func (md *BareRootMetadataV3) IsFinal() bool {
 	return md.Flags&MetadataFlagFinal != 0
 }
 
+func (md *BareRootMetadataV3) checkPublicExtra(extra ExtraMetadata) error {
+	if !md.TlfID().IsPublic() {
+		return errors.New("checkPublicExtra called on non-public TLF")
+	}
+
+	if extra != nil {
+		return fmt.Errorf("Expected nil, got %T", extra)
+	}
+
+	return nil
+}
+
 func (md *BareRootMetadataV3) getTLFKeyBundles(extra ExtraMetadata) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	if md.TlfID().IsPublic() {
@@ -328,6 +340,11 @@ func (md *BareRootMetadataV3) getTLFKeyBundles(extra ExtraMetadata) (
 func (md *BareRootMetadataV3) IsWriter(
 	user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool {
 	if md.TlfID().IsPublic() {
+		err := md.checkPublicExtra(extra)
+		if err != nil {
+			panic(err)
+		}
+
 		for _, w := range md.WriterMetadata.Writers {
 			if w == user {
 				return true
@@ -335,9 +352,9 @@ func (md *BareRootMetadataV3) IsWriter(
 		}
 		return false
 	}
-	wkb, _, ok := getKeyBundlesV3(extra)
-	if !ok {
-		return false
+	wkb, _, err := md.getTLFKeyBundles(extra)
+	if err != nil {
+		panic(err)
 	}
 	return wkb.IsWriter(user, deviceKID)
 }
@@ -346,11 +363,15 @@ func (md *BareRootMetadataV3) IsWriter(
 func (md *BareRootMetadataV3) IsReader(
 	user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool {
 	if md.TlfID().IsPublic() {
+		err := md.checkPublicExtra(extra)
+		if err != nil {
+			panic(err)
+		}
 		return true
 	}
-	_, rkb, ok := getKeyBundlesV3(extra)
-	if !ok {
-		return false
+	_, rkb, err := md.getTLFKeyBundles(extra)
+	if err != nil {
+		panic(err)
 	}
 	return rkb.IsReader(user, deviceKID)
 }
@@ -486,6 +507,11 @@ func (md *BareRootMetadataV3) MakeBareTlfHandle(extra ExtraMetadata) (
 	tlf.Handle, error) {
 	var writers, readers []keybase1.UID
 	if md.TlfID().IsPublic() {
+		err := md.checkPublicExtra(extra)
+		if err != nil {
+			return tlf.Handle{}, err
+		}
+
 		writers = md.WriterMetadata.Writers
 		readers = []keybase1.UID{keybase1.PublicUID}
 	} else {
@@ -585,6 +611,11 @@ func (md *BareRootMetadataV3) RevokeRemovedDevices(
 // GetDeviceKIDs implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetDeviceKIDs(
 	keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) ([]keybase1.KID, error) {
+	if md.TlfID().IsPublic() {
+		return nil, InvalidPublicTLFOperation{
+			md.TlfID(), "GetDeviceKIDs"}
+	}
+
 	wkb, rkb, ok := getKeyBundlesV3(extra)
 	if !ok {
 		return nil, makeMissingKeyBundlesError()
@@ -707,8 +738,9 @@ func checkRKBID(crypto cryptoPure,
 func (md *BareRootMetadataV3) IsValidAndSigned(
 	codec kbfscodec.Codec, crypto cryptoPure, extra ExtraMetadata) error {
 	if md.TlfID().IsPublic() {
-		if extra != nil {
-			return errors.New("Unexpected non-nil ExtraMetadata")
+		err := md.checkPublicExtra(extra)
+		if err != nil {
+			return err
 		}
 	} else {
 		wkb, rkb, ok := getKeyBundlesV3(extra)
