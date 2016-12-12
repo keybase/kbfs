@@ -6,7 +6,6 @@ package libkbfs
 
 import (
 	"github.com/keybase/kbfs/kbfscodec"
-
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 )
