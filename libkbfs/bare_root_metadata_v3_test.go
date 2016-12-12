@@ -67,7 +67,6 @@ func TestRootMetadataV3ExtraNew(t *testing.T) {
 	require.True(t, ok)
 	require.False(t, extraV3Copy.wkbNew)
 	require.False(t, extraV3Copy.rkbNew)
-
 }
 
 func TestIsValidRekeyRequestBasicV3(t *testing.T) {
