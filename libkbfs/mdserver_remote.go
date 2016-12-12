@@ -492,9 +492,20 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 		LogTags: nil,
 	}
 
-	// add any new key bundles
-	extraV3, ok := extra.(*ExtraMetadataV3)
-	if ok {
+	if rmds.Version() < SegregatedKeyBundlesVer {
+		if extra != nil {
+			return fmt.Errorf("Unexpected non-nil extra: %+v", extra)
+		}
+	} else if extra != nil {
+		// For now, if we have a non-nil extra, it must be
+		// *ExtraMetadataV3, but in the future it might be
+		// some other type (e.g., *ExtraMetadataV4).
+		extraV3, ok := extra.(*ExtraMetadataV3)
+		if !ok {
+			return fmt.Errorf("Extra of unexpected type %T", extra)
+		}
+
+		// Add any new key bundles.
 		if extraV3.wkbNew {
 			wkbBytes, err := md.config.Codec().Encode(extraV3.wkb)
 			if err != nil {
