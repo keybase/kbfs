@@ -1182,10 +1182,9 @@ func (md *BareRootMetadataV3) Version() MetadataVer {
 // for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetCurrentTLFPublicKey(
 	extra ExtraMetadata) (kbfscrypto.TLFPublicKey, error) {
-	wkb, _, ok := getKeyBundlesV3(extra)
-	if !ok {
-		return kbfscrypto.TLFPublicKey{}, errors.New(
-			"Invalid key bundles in GetCurrentTLFPublicKey")
+	wkb, _, err := md.getTLFKeyBundles(extra)
+	if err != nil {
+		return kbfscrypto.TLFPublicKey{}, err
 	}
 	return wkb.TLFPublicKey, nil
 }
