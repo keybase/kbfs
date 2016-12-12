@@ -168,7 +168,7 @@ func (c testTLFJournalConfig) checkMD(rmds *RootMetadataSigned,
 	checkBRMD(c.t, c.uid, verifyingKey, c.Codec(), c.Crypto(),
 		rmds.MD, extra, expectedRevision, expectedPrevRoot,
 		expectedMergeStatus, expectedBranchID)
-	err := rmds.IsValidAndSigned(c.Codec(), c.Crypto(), nil)
+	err := rmds.IsValidAndSigned(c.Codec(), c.Crypto(), extra)
 	require.NoError(c.t, err)
 	err = rmds.IsLastModifiedBy(c.uid, verifyingKey)
 	require.NoError(c.t, err)
