@@ -319,7 +319,7 @@ func (md *BareRootMetadataV3) getTLFKeyBundles(extra ExtraMetadata) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	if md.TlfID().IsPublic() {
 		return nil, nil, InvalidPublicTLFOperation{
-			md.TlfID(), "getTLFKeyBundles (V3)",
+			md.TlfID(), "getTLFKeyBundles", md.Version(),
 		}
 	}
 
@@ -559,7 +559,7 @@ func (md *BareRootMetadataV3) TlfHandleExtensions() (
 func (md *BareRootMetadataV3) PromoteReader(
 	uid keybase1.UID, extra ExtraMetadata) error {
 	if md.TlfID().IsPublic() {
-		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReader"}
+		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReader", md.Version()}
 	}
 
 	wkb, rkb, ok := getKeyBundlesV3(extra)
@@ -595,7 +595,7 @@ func (md *BareRootMetadataV3) RevokeRemovedDevices(
 	ServerHalfRemovalInfo, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "RevokeRemovedDevices"}
+			md.TlfID(), "RevokeRemovedDevices", md.Version()}
 	}
 
 	wkb, rkb, ok := getKeyBundlesV3(extra)
@@ -613,7 +613,7 @@ func (md *BareRootMetadataV3) GetDeviceKIDs(
 	keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) ([]keybase1.KID, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "GetDeviceKIDs"}
+			md.TlfID(), "GetDeviceKIDs", md.Version()}
 	}
 
 	wkb, rkb, ok := getKeyBundlesV3(extra)
@@ -1005,7 +1005,7 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(codec kbfscodec.Codec,
 	ExtraMetadata, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "addKeyGenerationHelper"}
+			md.TlfID(), "addKeyGenerationHelper", md.Version()}
 	}
 	if nextCryptKey == (kbfscrypto.TLFCryptKey{}) {
 		return nil, errors.New("Zero next crypt key")
@@ -1214,7 +1214,7 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(
 	codec kbfscodec.Codec, keyGen KeyGen, extra ExtraMetadata) (
 	readers, writers UserDeviceKeyInfoMap, err error) {
 	if md.TlfID().IsPublic() {
-		return nil, nil, InvalidPublicTLFOperation{md.TlfID(), "GetTLFKeyBundles"}
+		return nil, nil, InvalidPublicTLFOperation{md.TlfID(), "GetTLFKeyBundles", md.Version()}
 	}
 	if keyGen != md.LatestKeyGeneration() {
 		return nil, nil, TLFCryptKeyNotPerDeviceEncrypted{md.TlfID(), keyGen}
@@ -1246,7 +1246,7 @@ func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "UpdateKeyGeneration"}
+			md.TlfID(), "UpdateKeyGeneration", md.Version()}
 	}
 
 	if keyGen != md.LatestKeyGeneration() {

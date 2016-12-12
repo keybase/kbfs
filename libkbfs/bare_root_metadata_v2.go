@@ -566,7 +566,7 @@ func (md *BareRootMetadataV2) TlfHandleExtensions() (
 func (md *BareRootMetadataV2) PromoteReader(
 	uid keybase1.UID, _ ExtraMetadata) error {
 	if md.TlfID().IsPublic() {
-		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReader"}
+		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReader", md.Version()}
 	}
 
 	for i, rkb := range md.RKeys {
@@ -589,7 +589,7 @@ func (md *BareRootMetadataV2) RevokeRemovedDevices(
 	ServerHalfRemovalInfo, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "RevokeRemovedDevices"}
+			md.TlfID(), "RevokeRemovedDevices", md.Version()}
 	}
 
 	var wRemovalInfo ServerHalfRemovalInfo
@@ -628,7 +628,7 @@ func (md *BareRootMetadataV2) RevokeRemovedDevices(
 func (md *BareRootMetadataV2) getTLFKeyBundles(keyGen KeyGen) (
 	*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error) {
 	if md.ID.IsPublic() {
-		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundles (V2)"}
+		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundles (V2)", md.Version()}
 	}
 
 	if keyGen < FirstValidKeyGen {
@@ -993,7 +993,7 @@ func (md *BareRootMetadataV2) addKeyGenerationHelper(codec kbfscodec.Codec,
 	wPublicKeys, rPublicKeys []kbfscrypto.TLFEphemeralPublicKey) error {
 	if md.TlfID().IsPublic() {
 		return InvalidPublicTLFOperation{
-			md.TlfID(), "addKeyGenerationHelper"}
+			md.TlfID(), "addKeyGenerationHelper", md.Version()}
 	}
 
 	wUDKIMV2, err := udkimToV2(codec, wUDKIM)
@@ -1205,7 +1205,7 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
 	if md.TlfID().IsPublic() {
 		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "UpdateKeyGeneration"}
+			md.TlfID(), "UpdateKeyGeneration", md.Version()}
 	}
 
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
