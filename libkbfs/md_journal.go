@@ -369,12 +369,12 @@ func (j mdJournal) putExtraMetadata(
 		return err
 	}
 
-	// TODO: Avoid serializing if the file already exists.
-
 	err = checkRKBID(j.crypto, rkbID, extraV3.rkb)
 	if err != nil {
 		return err
 	}
+
+	// TODO: Avoid serializing if the file already exists.
 
 	err = kbfscodec.SerializeToFile(
 		j.codec, extraV3.wkb, j.writerKeyBundleV3Path(wkbID))
