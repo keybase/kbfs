@@ -5,8 +5,6 @@
 package libkbfs
 
 import (
-	"testing"
-
 	"github.com/keybase/kbfs/kbfscodec"
 
 	"github.com/keybase/kbfs/kbfscrypto"
@@ -47,20 +45,4 @@ func FakeInitialRekey(md MutableBareRootMetadata, codec kbfscodec.Codec,
 	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	return md.addKeyGenerationForTest(codec, crypto, nil,
 		kbfscrypto.TLFCryptKey{}, tlfCryptKey, pubKey, wDkim, rDkim)
-}
-
-var testMetadataVers = []MetadataVer{
-	InitialExtraMetadataVer, SegregatedKeyBundlesVer,
-}
-
-// RunTestOverMetadataVers runs the given test function over all
-// metadata versions to test.
-func RunTestOverMetadataVers(
-	t *testing.T, f func(t *testing.T, ver MetadataVer)) {
-	for _, ver := range testMetadataVers {
-		ver := ver // capture range variable.
-		t.Run(ver.String(), func(t *testing.T) {
-			f(t, ver)
-		})
-	}
 }

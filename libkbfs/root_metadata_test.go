@@ -147,7 +147,7 @@ func testRootMetadataGetTlfHandlePublic(t *testing.T, ver MetadataVer) {
 }
 
 func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
-	RunTestOverMetadataVers(t, testRootMetadataGetTlfHandlePublic)
+	runTestOverMetadataVers(t, testRootMetadataGetTlfHandlePublic)
 }
 
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for
@@ -192,7 +192,7 @@ func testRootMetadataGetTlfHandlePrivate(t *testing.T, ver MetadataVer) {
 }
 
 func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
-	RunTestOverMetadataVers(t, testRootMetadataGetTlfHandlePrivate)
+	runTestOverMetadataVers(t, testRootMetadataGetTlfHandlePrivate)
 }
 
 // Test that key generations work as expected for private TLFs.
@@ -214,7 +214,7 @@ func testRootMetadataLatestKeyGenerationPrivate(t *testing.T, ver MetadataVer) {
 }
 
 func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
-	RunTestOverMetadataVers(t, testRootMetadataLatestKeyGenerationPrivate)
+	runTestOverMetadataVers(t, testRootMetadataLatestKeyGenerationPrivate)
 }
 
 // Test that key generations work as expected for public TLFs.
@@ -230,7 +230,7 @@ func testRootMetadataLatestKeyGenerationPublic(t *testing.T, ver MetadataVer) {
 }
 
 func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
-	RunTestOverMetadataVers(t, testRootMetadataLatestKeyGenerationPublic)
+	runTestOverMetadataVers(t, testRootMetadataLatestKeyGenerationPublic)
 }
 
 // Test that old encoded WriterMetadata objects (i.e., without any
@@ -284,7 +284,7 @@ func testWriterMetadataUnchangedEncoding(t *testing.T, ver MetadataVer) {
 }
 
 func TestWriterMetadataUnchangedEncoding(t *testing.T) {
-	RunTestOverMetadataVers(t, testWriterMetadataUnchangedEncoding)
+	runTestOverMetadataVers(t, testWriterMetadataUnchangedEncoding)
 }
 
 // Test that WriterMetadata has only a fixed (frozen) set of fields.
@@ -334,7 +334,7 @@ func testWriterMetadataEncodedFields(t *testing.T, ver MetadataVer) {
 }
 
 func TestWriterMetadataEncodedFields(t *testing.T) {
-	RunTestOverMetadataVers(t, testWriterMetadataEncodedFields)
+	runTestOverMetadataVers(t, testWriterMetadataEncodedFields)
 }
 
 type writerMetadataExtraFuture struct {
@@ -521,7 +521,7 @@ func testMakeRekeyReadError(t *testing.T, ver MetadataVer) {
 }
 
 func TestMakeRekeyReadError(t *testing.T) {
-	RunTestOverMetadataVers(t, testMakeRekeyReadError)
+	runTestOverMetadataVers(t, testMakeRekeyReadError)
 }
 
 func testMakeRekeyReadErrorResolvedHandle(t *testing.T, ver MetadataVer) {
@@ -555,7 +555,7 @@ func testMakeRekeyReadErrorResolvedHandle(t *testing.T, ver MetadataVer) {
 }
 
 func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
-	RunTestOverMetadataVers(t, testMakeRekeyReadErrorResolvedHandle)
+	runTestOverMetadataVers(t, testMakeRekeyReadErrorResolvedHandle)
 }
 
 // Test that MakeSuccessor fails when the final bit is set.
@@ -572,7 +572,7 @@ func testRootMetadataFinalIsFinal(t *testing.T, ver MetadataVer) {
 }
 
 func TestRootMetadataFinalIsFinal(t *testing.T) {
-	RunTestOverMetadataVers(t, testRootMetadataFinalIsFinal)
+	runTestOverMetadataVers(t, testRootMetadataFinalIsFinal)
 }
 
 func getAllUsersKeysForTest(

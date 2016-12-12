@@ -251,7 +251,7 @@ func testMDJournalBasic(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalBasic(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalBasic)
+	runTestOverMetadataVers(t, testMDJournalBasic)
 }
 
 func testMDJournalGetNextEntry(t *testing.T, ver MetadataVer) {
@@ -281,7 +281,7 @@ func testMDJournalGetNextEntry(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalGetNextEntry(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalGetNextEntry)
+	runTestOverMetadataVers(t, testMDJournalGetNextEntry)
 }
 
 func testMDJournalPutCase1Empty(t *testing.T, ver MetadataVer) {
@@ -300,7 +300,7 @@ func testMDJournalPutCase1Empty(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalPutCase1Empty(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalPutCase1Empty)
+	runTestOverMetadataVers(t, testMDJournalPutCase1Empty)
 }
 
 func testMDJournalPutCase1Conflict(t *testing.T, ver MetadataVer) {
@@ -322,7 +322,7 @@ func testMDJournalPutCase1Conflict(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalPutCase1Conflict(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalPutCase1Conflict)
+	runTestOverMetadataVers(t, testMDJournalPutCase1Conflict)
 }
 
 // The append portion of case 1 is covered by TestMDJournalBasic.
@@ -357,7 +357,7 @@ func testMDJournalPutCase1ReplaceHead(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalPutCase1ReplaceHead(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalPutCase1ReplaceHead)
+	runTestOverMetadataVers(t, testMDJournalPutCase1ReplaceHead)
 }
 
 func testMDJournalPutCase2NonEmptyReplace(t *testing.T, ver MetadataVer) {
@@ -380,7 +380,7 @@ func testMDJournalPutCase2NonEmptyReplace(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalPutCase2NonEmptyReplace(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalPutCase2NonEmptyReplace)
+	runTestOverMetadataVers(t, testMDJournalPutCase2NonEmptyReplace)
 }
 
 func testMDJournalPutCase2NonEmptyAppend(t *testing.T, ver MetadataVer) {
@@ -404,7 +404,7 @@ func testMDJournalPutCase2NonEmptyAppend(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalPutCase2NonEmptyAppend(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalPutCase2NonEmptyAppend)
+	runTestOverMetadataVers(t, testMDJournalPutCase2NonEmptyAppend)
 }
 
 func testMDJournalPutCase2Empty(t *testing.T, ver MetadataVer) {
@@ -434,7 +434,7 @@ func testMDJournalPutCase2Empty(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalPutCase2Empty(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalPutCase2Empty)
+	runTestOverMetadataVers(t, testMDJournalPutCase2Empty)
 }
 
 func testMDJournalPutCase3NonEmptyAppend(t *testing.T, ver MetadataVer) {
@@ -463,7 +463,7 @@ func testMDJournalPutCase3NonEmptyAppend(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalPutCase3NonEmptyAppend(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalPutCase3NonEmptyAppend)
+	runTestOverMetadataVers(t, testMDJournalPutCase3NonEmptyAppend)
 }
 
 func testMDJournalPutCase3NonEmptyReplace(t *testing.T, ver MetadataVer) {
@@ -491,7 +491,7 @@ func testMDJournalPutCase3NonEmptyReplace(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalPutCase3NonEmptyReplace(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalPutCase3NonEmptyReplace)
+	runTestOverMetadataVers(t, testMDJournalPutCase3NonEmptyReplace)
 }
 
 func testMDJournalPutCase3EmptyAppend(t *testing.T, ver MetadataVer) {
@@ -522,7 +522,7 @@ func testMDJournalPutCase3EmptyAppend(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalPutCase3EmptyAppend(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalPutCase3EmptyAppend)
+	runTestOverMetadataVers(t, testMDJournalPutCase3EmptyAppend)
 }
 
 func testMDJournalPutCase4(t *testing.T, ver MetadataVer) {
@@ -538,7 +538,7 @@ func testMDJournalPutCase4(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalPutCase4(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalPutCase4)
+	runTestOverMetadataVers(t, testMDJournalPutCase4)
 }
 
 func testMDJournalGCd(t *testing.T, j *mdJournal) {
@@ -643,7 +643,7 @@ func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalBranchConversion(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalBranchConversion)
+	runTestOverMetadataVers(t, testMDJournalBranchConversion)
 }
 
 func testMDJournalResolveAndClear(t *testing.T, ver MetadataVer, bid BranchID) {
@@ -710,7 +710,7 @@ func testMDJournalResolveAndClearRemoteBranch(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalResolveAndClearRemoteBranch(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalResolveAndClearRemoteBranch)
+	runTestOverMetadataVers(t, testMDJournalResolveAndClearRemoteBranch)
 }
 
 func testMDJournalResolveAndClearLocalSquash(t *testing.T, ver MetadataVer) {
@@ -718,7 +718,7 @@ func testMDJournalResolveAndClearLocalSquash(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalResolveAndClearLocalSquash(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalResolveAndClearLocalSquash)
+	runTestOverMetadataVers(t, testMDJournalResolveAndClearLocalSquash)
 }
 
 type limitedCryptoSigner struct {
@@ -843,7 +843,7 @@ func testMDJournalBranchConversionPreservesUnknownFields(t *testing.T, ver Metad
 }
 
 func TestMDJournalBranchConversionPreservesUnknownFields(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalBranchConversionPreservesUnknownFields)
+	runTestOverMetadataVers(t, testMDJournalBranchConversionPreservesUnknownFields)
 }
 
 func testMDJournalClear(t *testing.T, ver MetadataVer) {
@@ -923,7 +923,7 @@ func testMDJournalClear(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalClear(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalClear)
+	runTestOverMetadataVers(t, testMDJournalClear)
 }
 
 func testMDJournalRestart(t *testing.T, ver MetadataVer) {
@@ -959,7 +959,7 @@ func testMDJournalRestart(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalRestart(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalRestart)
+	runTestOverMetadataVers(t, testMDJournalRestart)
 }
 
 func testMDJournalRestartAfterBranchConversion(t *testing.T, ver MetadataVer) {
@@ -1005,5 +1005,5 @@ func testMDJournalRestartAfterBranchConversion(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournalRestartAfterBranchConversion(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalRestartAfterBranchConversion)
+	runTestOverMetadataVers(t, testMDJournalRestartAfterBranchConversion)
 }

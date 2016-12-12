@@ -16,6 +16,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testMetadataVers = []MetadataVer{
+	InitialExtraMetadataVer, SegregatedKeyBundlesVer,
+}
+
+// runTestOverMetadataVers runs the given test function over all
+// metadata versions to test.
+func runTestOverMetadataVers(
+	t *testing.T, f func(t *testing.T, ver MetadataVer)) {
+	for _, ver := range testMetadataVers {
+		ver := ver // capture range variable.
+		t.Run(ver.String(), func(t *testing.T) {
+			f(t, ver)
+		})
+	}
+}
+
 // Test verification of finalized metadata blocks.
 func testRootMetadataFinalVerify(t *testing.T, ver MetadataVer) {
 	tlfID := tlf.FakeID(1, false)
@@ -74,10 +90,6 @@ func testRootMetadataFinalVerify(t *testing.T, ver MetadataVer) {
 	require.NotNil(t, err)
 }
 
-func TestRootMetadataFinalVerifyV2(t *testing.T) {
-	testRootMetadataFinalVerify(t, InitialExtraMetadataVer)
-}
-
-func TestRootMetadataFinalVerifyV3(t *testing.T) {
-	testRootMetadataFinalVerify(t, SegregatedKeyBundlesVer)
+func TestRootMetadataFinalVerify(t *testing.T) {
+	runTestOverMetadataVers(t, testRootMetadataFinalVerify)
 }

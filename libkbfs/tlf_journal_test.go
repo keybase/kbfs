@@ -330,7 +330,7 @@ func testTLFJournalBasic(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalBasic(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalBasic)
+	runTestOverMetadataVers(t, testTLFJournalBasic)
 }
 
 func testTLFJournalPauseResume(t *testing.T, ver MetadataVer) {
@@ -353,7 +353,7 @@ func testTLFJournalPauseResume(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalPauseResume(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalPauseResume)
+	runTestOverMetadataVers(t, testTLFJournalPauseResume)
 }
 
 func testTLFJournalPauseShutdown(t *testing.T, ver MetadataVer) {
@@ -371,7 +371,7 @@ func testTLFJournalPauseShutdown(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalPauseShutdown(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalPauseShutdown)
+	runTestOverMetadataVers(t, testTLFJournalPauseShutdown)
 }
 
 type hangingBlockServer struct {
@@ -458,7 +458,7 @@ func testTLFJournalBlockOpBusyShutdown(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalBlockOpBusyShutdown(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalBlockOpBusyShutdown)
+	runTestOverMetadataVers(t, testTLFJournalBlockOpBusyShutdown)
 }
 
 func testTLFJournalSecondBlockOpWhileBusy(t *testing.T, ver MetadataVer) {
@@ -481,7 +481,7 @@ func testTLFJournalSecondBlockOpWhileBusy(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalSecondBlockOpWhileBusy(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalSecondBlockOpWhileBusy)
+	runTestOverMetadataVers(t, testTLFJournalSecondBlockOpWhileBusy)
 }
 
 type hangingMDServer struct {
@@ -529,7 +529,7 @@ func testTLFJournalMDServerBusyPause(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalMDServerBusyPause(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalMDServerBusyPause)
+	runTestOverMetadataVers(t, testTLFJournalMDServerBusyPause)
 }
 
 func testTLFJournalMDServerBusyShutdown(t *testing.T, ver MetadataVer) {
@@ -552,7 +552,7 @@ func testTLFJournalMDServerBusyShutdown(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalMDServerBusyShutdown(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalMDServerBusyShutdown)
+	runTestOverMetadataVers(t, testTLFJournalMDServerBusyShutdown)
 }
 
 func testTLFJournalBlockOpWhileBusy(t *testing.T, ver MetadataVer) {
@@ -576,7 +576,7 @@ func testTLFJournalBlockOpWhileBusy(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalBlockOpWhileBusy(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalBlockOpWhileBusy)
+	runTestOverMetadataVers(t, testTLFJournalBlockOpWhileBusy)
 }
 
 type rmdsWithExtra struct {
@@ -676,7 +676,7 @@ func testTLFJournalFlushMDBasic(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalFlushMDBasic(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalFlushMDBasic)
+	runTestOverMetadataVers(t, testTLFJournalFlushMDBasic)
 }
 
 func testTLFJournalFlushMDConflict(t *testing.T, ver MetadataVer) {
@@ -736,7 +736,7 @@ func testTLFJournalFlushMDConflict(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalFlushMDConflict(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalFlushMDConflict)
+	runTestOverMetadataVers(t, testTLFJournalFlushMDConflict)
 }
 
 // orderedBlockServer and orderedMDServer appends onto their shared
@@ -873,7 +873,7 @@ func testTLFJournalFlushOrdering(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalFlushOrdering(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalFlushOrdering)
+	runTestOverMetadataVers(t, testTLFJournalFlushOrdering)
 }
 
 // TestTLFJournalFlushInterleaving tests that we interleave block and
@@ -967,7 +967,7 @@ func testTLFJournalFlushInterleaving(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalFlushInterleaving(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalFlushInterleaving)
+	runTestOverMetadataVers(t, testTLFJournalFlushInterleaving)
 }
 
 type testImmediateBackOff struct {
@@ -1036,7 +1036,7 @@ func testTLFJournalFlushRetry(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalFlushRetry(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalFlushRetry)
+	runTestOverMetadataVers(t, testTLFJournalFlushRetry)
 }
 
 func testTLFJournalResolveBranch(t *testing.T, ver MetadataVer) {
@@ -1107,5 +1107,5 @@ func testTLFJournalResolveBranch(t *testing.T, ver MetadataVer) {
 }
 
 func TestTLFJournalResolveBranch(t *testing.T) {
-	RunTestOverMetadataVers(t, testTLFJournalResolveBranch)
+	runTestOverMetadataVers(t, testTLFJournalResolveBranch)
 }
