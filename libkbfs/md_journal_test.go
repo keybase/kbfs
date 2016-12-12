@@ -168,9 +168,8 @@ func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 // TODO: Create a separate journal for each iteration, instead of
 // using the same one.
 
-func BenchmarkMDJournalBasicMDv2(b *testing.B) {
-	_, _, id, signer, ekg, bsplit, tempdir, j :=
-		setupMDJournalTest(b, InitialExtraMetadataVer)
+func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
+	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(b, ver)
 	defer teardownMDJournalTest(b, tempdir)
 
 	mdCount := 500
@@ -181,29 +180,14 @@ func BenchmarkMDJournalBasicMDv2(b *testing.B) {
 	defer b.StopTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, prevRoot = putMDRange(b, InitialExtraMetadataVer, id,
+		_, prevRoot = putMDRange(b, ver, id,
 			signer, ekg, bsplit, revision, prevRoot, mdCount, j)
 		revision += MetadataRevision(mdCount)
 	}
 }
 
-func BenchmarkMDJournalBasicMDv3(b *testing.B) {
-	_, _, id, signer, ekg, bsplit, tempdir, j :=
-		setupMDJournalTest(b, SegregatedKeyBundlesVer)
-	defer teardownMDJournalTest(b, tempdir)
-
-	mdCount := 500
-	revision := MetadataRevision(10)
-	prevRoot := fakeMdID(1)
-
-	b.ResetTimer()
-	defer b.StopTimer()
-
-	for i := 0; i < b.N; i++ {
-		_, prevRoot = putMDRange(b, SegregatedKeyBundlesVer, id,
-			signer, ekg, bsplit, revision, prevRoot, mdCount, j)
-		revision += MetadataRevision(mdCount)
-	}
+func BenchmarkMDJournalBasic(b *testing.B) {
+	runBenchmarkOverMetadataVers(b, benchmarkMDJournalBasic)
 }
 
 // TODO: Test with all possible (ver, maxVer) combos

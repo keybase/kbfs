@@ -32,6 +32,18 @@ func runTestOverMetadataVers(
 	}
 }
 
+// runBenchmarkOverMetadataVers runs the given benchmark function over all
+// metadata versions to test.
+func runBenchmarkOverMetadataVers(
+	b *testing.B, f func(b *testing.B, ver MetadataVer)) {
+	for _, ver := range testMetadataVers {
+		ver := ver // capture range variable.
+		b.Run(ver.String(), func(b *testing.B) {
+			f(b, ver)
+		})
+	}
+}
+
 // Test verification of finalized metadata blocks.
 func testRootMetadataFinalVerify(t *testing.T, ver MetadataVer) {
 	tlfID := tlf.FakeID(1, false)
