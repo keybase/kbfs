@@ -338,16 +338,7 @@ func (md *BareRootMetadataV2) MakeSuccessorCopy(
 	}
 
 	// Upconvert to the new version.
-	mdCopy, extraCopyV3, err := md.makeSuccessorCopyV3(ctx, config, kmd)
-	if err != nil {
-		return nil, nil, err
-	}
-	// Do this so that a typed nil gets converted to an untyped nil.
-	var extraV3 ExtraMetadata
-	if extraCopyV3 != nil {
-		extraV3 = extraCopyV3
-	}
-	return mdCopy, extraV3, nil
+	return md.makeSuccessorCopyV3(ctx, config, kmd)
 }
 
 func (md *BareRootMetadataV2) makeSuccessorCopyV2(config Config, isReadableAndWriter bool) (
