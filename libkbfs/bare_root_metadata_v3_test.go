@@ -157,8 +157,8 @@ func TestRevokeRemovedDevicesV3(t *testing.T) {
 	extra := FakeInitialRekey(
 		brmd, codec, crypto, bh, kbfscrypto.TLFPublicKey{})
 
-	wkb, rkb, ok := getKeyBundlesV3(extra)
-	require.True(t, ok)
+	wkb, rkb, err := brmd.getTLFKeyBundles(extra)
+	require.NoError(t, err)
 
 	*wkb = TLFWriterKeyBundleV3{
 		Keys: UserDeviceKeyInfoMapV3{
@@ -398,8 +398,8 @@ func TestBareRootMetadataV3UpdateKeyGeneration(t *testing.T) {
 		kbfscrypto.TLFCryptKey{}, tlfCryptKey, pubKey)
 	require.NoError(t, err)
 
-	wkb, rkb, ok := getKeyBundlesV3(extra)
-	require.True(t, ok)
+	wkb, rkb, err := rmd.getTLFKeyBundles(extra)
+	require.NoError(t, err)
 
 	var expectedRekeyInfos []expectedRekeyInfoV3
 	checkKeyBundlesV3(t, expectedRekeyInfos, tlfCryptKey, pubKey, wkb, rkb)

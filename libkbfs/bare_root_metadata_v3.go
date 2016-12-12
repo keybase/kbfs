@@ -152,16 +152,6 @@ func (extra ExtraMetadataV3) GetReaderKeyBundle() TLFReaderKeyBundleV3 {
 	return extra.rkb
 }
 
-// Helper function to extract key bundles for the ExtraMetadata interface.
-func getKeyBundlesV3(extra ExtraMetadata) (
-	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, bool) {
-	extraV3, ok := extra.(*ExtraMetadataV3)
-	if !ok {
-		return nil, nil, false
-	}
-	return &extraV3.wkb, &extraV3.rkb, true
-}
-
 // MakeInitialBareRootMetadataV3 creates a new BareRootMetadataV3
 // object with revision MetadataRevisionInitial, and the given TLF ID
 // and handle. Note that if the given ID/handle are private, rekeying
