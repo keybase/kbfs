@@ -628,7 +628,7 @@ func (md *BareRootMetadataV2) RevokeRemovedDevices(
 func (md *BareRootMetadataV2) getTLFKeyBundles(keyGen KeyGen) (
 	*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error) {
 	if md.ID.IsPublic() {
-		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundles (V2)", md.Version()}
+		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundles", md.Version()}
 	}
 
 	if keyGen < FirstValidKeyGen {
