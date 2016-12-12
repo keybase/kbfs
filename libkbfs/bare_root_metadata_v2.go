@@ -55,8 +55,7 @@ type WriterMetadataV2 struct {
 // ToWriterMetadataV3 converts the WriterMetadataV2 to a WriterMetadataV3 in place.
 func (wmd *WriterMetadataV2) ToWriterMetadataV3(
 	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, keyManager KeyManager,
-	kmd KeyMetadata, wmdCopy *WriterMetadataV3) (
-	TLFWriterKeyBundleV2, TLFWriterKeyBundleV3, error) {
+	kmd KeyMetadata, wmdCopy *WriterMetadataV3) error {
 	wmdCopy.Writers = make([]keybase1.UID, len(wmd.Writers))
 	copy(wmdCopy.Writers, wmd.Writers)
 
@@ -72,21 +71,10 @@ func (wmd *WriterMetadataV2) ToWriterMetadataV3(
 
 	if wmd.ID.IsPublic() {
 		wmdCopy.LatestKeyGen = PublicKeyGen
-		return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{}, nil
+	} else {
+		wmdCopy.LatestKeyGen = wmd.WKeys.LatestKeyGeneration()
 	}
-
-	wmdCopy.LatestKeyGen = wmd.WKeys.LatestKeyGeneration()
-	wkbV2, wkbV3, err := wmd.WKeys.ToTLFWriterKeyBundleV3(ctx, codec, crypto, keyManager, kmd)
-	if err != nil {
-		return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{}, err
-	}
-
-	wmdCopy.WKeyBundleID, err = crypto.MakeTLFWriterKeyBundleID(wkbV3)
-	if err != nil {
-		return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{}, err
-	}
-
-	return wkbV2, wkbV3, nil
+	return nil
 }
 
 // WriterMetadataExtra stores more fields for WriterMetadata. (See
@@ -381,7 +369,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 
 	// Fill out the writer metadata and maybe a new writer key
 	// bundle.
-	wkbV2, wkbV3, err := md.WriterMetadataV2.ToWriterMetadataV3(
+	err := md.WriterMetadataV2.ToWriterMetadataV3(
 		ctx, config.Codec(), config.Crypto(), config.KeyManager(), kmd, &mdCopy.WriterMetadata)
 	if err != nil {
 		return nil, nil, err
@@ -391,19 +379,31 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 	// instead of a typed nil.
 	var extraCopy ExtraMetadata
 	if md.LatestKeyGeneration() != PublicKeyGen {
-		// Fill out the reader key bundle.  wkbV2 is passed
-		// because in V2 metadata ephemeral public keys for
-		// readers were sometimes in the writer key bundles.
-		rkb, err := md.RKeys.ToTLFReaderKeyBundleV3(config.Codec(), wkbV2)
-		if err != nil {
-			return nil, nil, err
-		}
-		mdCopy.RKeyBundleID, err = config.Crypto().MakeTLFReaderKeyBundleID(*rkb)
+		wkbV2, wkbV3, err := md.WKeys.ToTLFWriterKeyBundleV3(
+			ctx, config.Codec(), config.Crypto(),
+			config.KeyManager(), kmd)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		extraCopy = NewExtraMetadataV3(wkbV3, *rkb, true, true)
+		mdCopy.WriterMetadata.WKeyBundleID, err = config.Crypto().MakeTLFWriterKeyBundleID(wkbV3)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Fill out the reader key bundle.  wkbV2 is passed
+		// because in V2 metadata ephemeral public keys for
+		// readers were sometimes in the writer key bundles
+		rkb, err := md.RKeys.ToTLFReaderKeyBundleV3(config.Codec(), wkbV2)
+		if err != nil {
+			return nil, nil, err
+		}
+		mdCopy.RKeyBundleID, err = config.Crypto().MakeTLFReaderKeyBundleID(rkb)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		extraCopy = NewExtraMetadataV3(wkbV3, rkb, true, true)
 	}
 
 	mdCopy.LastModifyingUser = md.LastModifyingUser

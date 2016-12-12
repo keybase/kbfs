@@ -241,8 +241,8 @@ func TestToTLFReaderKeyBundleV3(t *testing.T) {
 
 	rkbV3, err := rkg.ToTLFReaderKeyBundleV3(codec, wkbV2)
 	require.NoError(t, err)
-	if !reflect.DeepEqual(expectedRKBV3a, *rkbV3) {
-		require.Equal(t, expectedRKBV3b, *rkbV3)
+	if !reflect.DeepEqual(expectedRKBV3a, rkbV3) {
+		require.Equal(t, expectedRKBV3b, rkbV3)
 	}
 }
 
