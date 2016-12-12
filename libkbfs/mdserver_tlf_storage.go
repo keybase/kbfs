@@ -297,7 +297,7 @@ func (s *mdServerTlfStorage) getExtraMetadataReadLocked(
 	if wkb == nil || rkb == nil {
 		return nil, nil
 	}
-	return &ExtraMetadataV3{wkb: *wkb, rkb: *rkb}, nil
+	return NewExtraMetadataV3(*wkb, *rkb, false, false), nil
 }
 
 func (s *mdServerTlfStorage) getKeyBundlesReadLocked(
