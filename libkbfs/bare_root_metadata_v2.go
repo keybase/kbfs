@@ -56,7 +56,7 @@ type WriterMetadataV2 struct {
 func (wmd *WriterMetadataV2) ToWriterMetadataV3(
 	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, keyManager KeyManager,
 	kmd KeyMetadata, wmdCopy *WriterMetadataV3) (
-	*TLFWriterKeyBundleV2, *TLFWriterKeyBundleV3, error) {
+	TLFWriterKeyBundleV2, TLFWriterKeyBundleV3, error) {
 	wmdCopy.Writers = make([]keybase1.UID, len(wmd.Writers))
 	copy(wmdCopy.Writers, wmd.Writers)
 
@@ -70,21 +70,20 @@ func (wmd *WriterMetadataV2) ToWriterMetadataV3(
 	wmdCopy.RefBytes = wmd.RefBytes
 	wmdCopy.UnrefBytes = wmd.UnrefBytes
 
-	var wkbV2 *TLFWriterKeyBundleV2
-	var wkbV3 *TLFWriterKeyBundleV3
 	if wmd.ID.IsPublic() {
 		wmdCopy.LatestKeyGen = PublicKeyGen
-	} else {
-		wmdCopy.LatestKeyGen = wmd.WKeys.LatestKeyGeneration()
-		var err error
-		wkbV2, wkbV3, err = wmd.WKeys.ToTLFWriterKeyBundleV3(ctx, codec, crypto, keyManager, kmd)
-		if err != nil {
-			return nil, nil, err
-		}
-		wmdCopy.WKeyBundleID, err = crypto.MakeTLFWriterKeyBundleID(*wkbV3)
-		if err != nil {
-			return nil, nil, err
-		}
+		return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{}, nil
+	}
+
+	wmdCopy.LatestKeyGen = wmd.WKeys.LatestKeyGeneration()
+	wkbV2, wkbV3, err := wmd.WKeys.ToTLFWriterKeyBundleV3(ctx, codec, crypto, keyManager, kmd)
+	if err != nil {
+		return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{}, err
+	}
+
+	wmdCopy.WKeyBundleID, err = crypto.MakeTLFWriterKeyBundleID(wkbV3)
+	if err != nil {
+		return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{}, err
 	}
 
 	return wkbV2, wkbV3, nil
@@ -404,7 +403,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 			return nil, nil, err
 		}
 
-		extraCopy = NewExtraMetadataV3(*wkbV3, *rkb, true, true)
+		extraCopy = NewExtraMetadataV3(wkbV3, *rkb, true, true)
 	}
 
 	mdCopy.LastModifyingUser = md.LastModifyingUser
@@ -724,7 +723,7 @@ func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 			TLFCryptKeyServerHalfID{}, false, nil
 	}
 
-	_, _, ePubKey, err := getEphemeralPublicKeyInfoV2(info, wkb, rkb)
+	_, _, ePubKey, err := getEphemeralPublicKeyInfoV2(info, *wkb, *rkb)
 	if err != nil {
 		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
