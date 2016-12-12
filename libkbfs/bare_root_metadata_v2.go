@@ -53,28 +53,27 @@ type WriterMetadataV2 struct {
 }
 
 // ToWriterMetadataV3 converts the WriterMetadataV2 to a WriterMetadataV3 in place.
-func (wmd *WriterMetadataV2) ToWriterMetadataV3(
-	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, keyManager KeyManager,
-	kmd KeyMetadata, wmdCopy *WriterMetadataV3) error {
-	wmdCopy.Writers = make([]keybase1.UID, len(wmd.Writers))
-	copy(wmdCopy.Writers, wmd.Writers)
+func (wmd *WriterMetadataV2) ToWriterMetadataV3() WriterMetadataV3 {
+	var wmdV3 WriterMetadataV3
+	wmdV3.Writers = make([]keybase1.UID, len(wmd.Writers))
+	copy(wmdV3.Writers, wmd.Writers)
 
-	wmdCopy.UnresolvedWriters = make([]keybase1.SocialAssertion, len(wmd.Extra.UnresolvedWriters))
-	copy(wmdCopy.UnresolvedWriters, wmd.Extra.UnresolvedWriters)
+	wmdV3.UnresolvedWriters = make([]keybase1.SocialAssertion, len(wmd.Extra.UnresolvedWriters))
+	copy(wmdV3.UnresolvedWriters, wmd.Extra.UnresolvedWriters)
 
-	wmdCopy.ID = wmd.ID
-	wmdCopy.BID = wmd.BID
-	wmdCopy.WFlags = wmd.WFlags
-	wmdCopy.DiskUsage = wmd.DiskUsage
-	wmdCopy.RefBytes = wmd.RefBytes
-	wmdCopy.UnrefBytes = wmd.UnrefBytes
+	wmdV3.ID = wmd.ID
+	wmdV3.BID = wmd.BID
+	wmdV3.WFlags = wmd.WFlags
+	wmdV3.DiskUsage = wmd.DiskUsage
+	wmdV3.RefBytes = wmd.RefBytes
+	wmdV3.UnrefBytes = wmd.UnrefBytes
 
 	if wmd.ID.IsPublic() {
-		wmdCopy.LatestKeyGen = PublicKeyGen
+		wmdV3.LatestKeyGen = PublicKeyGen
 	} else {
-		wmdCopy.LatestKeyGen = wmd.WKeys.LatestKeyGeneration()
+		wmdV3.LatestKeyGen = wmd.WKeys.LatestKeyGeneration()
 	}
-	return nil
+	return wmdV3
 }
 
 // WriterMetadataExtra stores more fields for WriterMetadata. (See
@@ -367,18 +366,14 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 	*BareRootMetadataV3, ExtraMetadata, error) {
 	mdCopy := &BareRootMetadataV3{}
 
-	// Fill out the writer metadata and maybe a new writer key
-	// bundle.
-	err := md.WriterMetadataV2.ToWriterMetadataV3(
-		ctx, config.Codec(), config.Crypto(), config.KeyManager(), kmd, &mdCopy.WriterMetadata)
-	if err != nil {
-		return nil, nil, err
-	}
+	// Fill out the writer metadata.
+	mdCopy.WriterMetadata = md.WriterMetadataV2.ToWriterMetadataV3()
 
 	// Have this as ExtraMetadata so we return an untyped nil
 	// instead of a typed nil.
 	var extraCopy ExtraMetadata
 	if md.LatestKeyGeneration() != PublicKeyGen {
+		// Fill out the writer key bundle.
 		wkbV2, wkbV3, err := md.WKeys.ToTLFWriterKeyBundleV3(
 			ctx, config.Codec(), config.Crypto(),
 			config.KeyManager(), kmd)
