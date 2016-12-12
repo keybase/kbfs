@@ -269,7 +269,8 @@ func (wkg TLFWriterKeyGenerationsV2) IsWriter(user keybase1.UID, deviceKID keyba
 //
 // TODO: Add a unit test for this.
 func (wkg TLFWriterKeyGenerationsV2) ToTLFWriterKeyBundleV3(
-	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, keyManager KeyManager, kmd KeyMetadata) (
+	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure,
+	keyManager KeyManager, kmd KeyMetadata) (
 	TLFWriterKeyBundleV2, TLFWriterKeyBundleV3, error) {
 	keyGen := wkg.LatestKeyGeneration()
 	if keyGen < FirstValidKeyGen {
