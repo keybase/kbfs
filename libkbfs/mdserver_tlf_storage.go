@@ -293,7 +293,7 @@ func (s *mdServerTlfStorage) putExtraMetadataLocked(rmds *RootMetadataSigned,
 
 	extraV3, ok := extra.(*ExtraMetadataV3)
 	if !ok {
-		return errors.New("Invalid new extra metadata")
+		return errors.New("Invalid extra metadata")
 	}
 
 	if extraV3.wkbNew {
