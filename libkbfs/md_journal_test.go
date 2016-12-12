@@ -735,7 +735,11 @@ func (s *limitedCryptoSigner) Sign(ctx context.Context, msg []byte) (
 	return s.Signer.Sign(ctx, msg)
 }
 
-func testMDJournalBranchConversionAtomic(t *testing.T, ver MetadataVer) {
+func TestMDJournalBranchConversionAtomic(t *testing.T) {
+	// Do this with InitialExtraMetadataVer only, since any later
+	// version doesn't actually do any signing.
+	ver := InitialExtraMetadataVer
+
 	codec, crypto, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
@@ -774,10 +778,6 @@ func testMDJournalBranchConversionAtomic(t *testing.T, ver MetadataVer) {
 
 	// Flush all MDs so we can check garbage collection.
 	flushAllMDs(t, ctx, signer, j)
-}
-
-func TestMDJournalBranchConversionAtomic(t *testing.T) {
-	RunTestOverMetadataVers(t, testMDJournalBranchConversionAtomic)
 }
 
 type mdIDJournalEntryExtra struct {
