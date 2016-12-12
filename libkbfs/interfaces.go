@@ -1078,12 +1078,11 @@ type MDServer interface {
 	GetRange(ctx context.Context, id tlf.ID, bid BranchID, mStatus MergeStatus,
 		start, stop MetadataRevision) ([]*RootMetadataSigned, error)
 
-	// Put stores the (signed/encrypted) metadata object for the
-	// given top-level folder. Note: If the unmerged bit is set in
-	// the metadata block's flags bitmask it will be appended to
-	// the unmerged per-device history.
-	Put(ctx context.Context, rmds *RootMetadataSigned,
-		extra ExtraMetadata) error
+	// Put stores the (signed/encrypted) metadata object for the given
+	// top-level folder. Note: If the unmerged bit is set in the metadata
+	// block's flags bitmask it will be appended to the unmerged per-device
+	// history.
+	Put(ctx context.Context, rmds *RootMetadataSigned, extra ExtraMetadata) error
 
 	// PruneBranch prunes all unmerged history for the given TLF branch.
 	PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) error
