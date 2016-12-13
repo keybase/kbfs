@@ -167,16 +167,16 @@ func TestToTLFReaderKeyBundleV3(t *testing.T) {
 	rkg := TLFReaderKeyGenerationsV2{TLFReaderKeyBundleV2{}, rkbV2}
 
 	codec := kbfscodec.NewMsgpack()
-	_, err := rkg.ToTLFReaderKeyBundleV3(codec, &TLFWriterKeyBundleV3{})
+	_, err := rkg.ToTLFReaderKeyBundleV3(codec, &TLFWriterKeyBundleV2{})
 	require.Error(t, err)
-	require.True(t, strings.HasPrefix(err.Error(), "Invalid index "),
+	require.True(t, strings.HasPrefix(err.Error(), "Invalid writer key index "),
 		"err: %v", err)
 
 	wEPubKey1 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x3})
 	wEPubKey2 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x4})
 	wEPubKey3 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x5})
 
-	wkbV3 := TLFWriterKeyBundleV3{
+	wkbV2 := TLFWriterKeyBundleV2{
 		TLFEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
 			wEPubKey1, wEPubKey2, wEPubKey3,
 		},
@@ -239,7 +239,7 @@ func TestToTLFReaderKeyBundleV3(t *testing.T) {
 		},
 	}
 
-	rkbV3, err := rkg.ToTLFReaderKeyBundleV3(codec, &wkbV3)
+	rkbV3, err := rkg.ToTLFReaderKeyBundleV3(codec, &wkbV2)
 	require.NoError(t, err)
 	if !reflect.DeepEqual(expectedRKBV3a, *rkbV3) {
 		require.Equal(t, expectedRKBV3b, *rkbV3)

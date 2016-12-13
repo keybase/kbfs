@@ -56,7 +56,7 @@ type WriterMetadataV2 struct {
 func (wmd *WriterMetadataV2) ToWriterMetadataV3(
 	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, keyManager KeyManager,
 	kmd KeyMetadata, wmdCopy *WriterMetadataV3) (
-	*TLFWriterKeyBundleV3, error) {
+	*TLFWriterKeyBundleV2, *TLFWriterKeyBundleV3, error) {
 
 	wmdCopy.Writers = make([]keybase1.UID, len(wmd.Writers))
 	copy(wmdCopy.Writers, wmd.Writers)
@@ -71,25 +71,26 @@ func (wmd *WriterMetadataV2) ToWriterMetadataV3(
 	wmdCopy.RefBytes = wmd.RefBytes
 	wmdCopy.UnrefBytes = wmd.UnrefBytes
 
-	var wkb *TLFWriterKeyBundleV3
+	var wkbV2 *TLFWriterKeyBundleV2
+	var wkbV3 *TLFWriterKeyBundleV3
 	if wmd.ID.IsPublic() {
 		wmdCopy.LatestKeyGen = PublicKeyGen
 	} else {
 		wmdCopy.LatestKeyGen = wmd.WKeys.LatestKeyGeneration()
 		var err error
-		wkb, err = wmd.WKeys.ToTLFWriterKeyBundleV3(ctx, codec, crypto, keyManager, kmd)
+		wkbV2, wkbV3, err = wmd.WKeys.ToTLFWriterKeyBundleV3(ctx, codec, crypto, keyManager, kmd)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		// wkb is passed because in V2 metadata ephemeral public keys for readers
+		// wkbV3 is passed because in V2 metadata ephemeral public keys for readers
 		// were sometimes in the writer key bundles
-		wmdCopy.WKeyBundleID, err = crypto.MakeTLFWriterKeyBundleID(wkb)
+		wmdCopy.WKeyBundleID, err = crypto.MakeTLFWriterKeyBundleID(wkbV3)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	return wkb, nil
+	return wkbV2, wkbV3, nil
 }
 
 // WriterMetadataExtra stores more fields for WriterMetadata. (See
@@ -380,7 +381,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 	mdCopy := &BareRootMetadataV3{}
 
 	// Fill out the writer metadata and new writer key bundle.
-	wkb, err := md.WriterMetadataV2.ToWriterMetadataV3(
+	wkbV2, wkbV3, err := md.WriterMetadataV2.ToWriterMetadataV3(
 		ctx, config.Codec(), config.Crypto(), config.KeyManager(), kmd, &mdCopy.WriterMetadata)
 	if err != nil {
 		return nil, nil, err
@@ -389,7 +390,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 	var rkb *TLFReaderKeyBundleV3
 	if md.LatestKeyGeneration() != PublicKeyGen {
 		// Fill out the reader key bundle.
-		rkb, err = md.RKeys.ToTLFReaderKeyBundleV3(config.Codec(), wkb)
+		rkb, err = md.RKeys.ToTLFReaderKeyBundleV3(config.Codec(), wkbV2)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -421,7 +422,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 	// instead of a typed nil.
 	var extraCopy ExtraMetadata
 	if !md.ID.IsPublic() {
-		extraCopy = &ExtraMetadataV3{wkb: wkb, rkb: rkb}
+		extraCopy = &ExtraMetadataV3{wkb: wkbV3, rkb: rkb}
 	}
 	return mdCopy, extraCopy, nil
 }
@@ -722,7 +723,7 @@ func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 			TLFCryptKeyServerHalfID{}, false, nil
 	}
 
-	ePubKey, err := getEphemeralPublicKeyV2(info, wkb, rkb)
+	_, _, ePubKey, err := getEphemeralPublicKeyInfoV2(info, wkb, rkb)
 	if err != nil {
 		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
