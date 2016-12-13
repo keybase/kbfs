@@ -25,7 +25,7 @@ func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfos(crypto cryptoPure,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys map[kbfscrypto.CryptPublicKey]bool) (
 	serverHalves DeviceKeyServerHalves, err error) {
-	serverHalves = make(DeviceKeyServerHalves)
+	serverHalves = make(DeviceKeyServerHalves, len(publicKeys))
 	// TODO: parallelize
 	for k := range publicKeys {
 		// Skip existing entries, and only fill in new ones.
@@ -154,7 +154,7 @@ func (udkimV2 UserDeviceKeyInfoMapV2) fillInUserInfos(
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (
 	serverHalves UserDeviceKeyServerHalves, err error) {
-	serverHalves = make(UserDeviceKeyServerHalves)
+	serverHalves = make(UserDeviceKeyServerHalves, len(pubKeys))
 	for u, keys := range pubKeys {
 		if _, ok := udkimV2[u]; !ok {
 			udkimV2[u] = DeviceKeyInfoMapV2{}

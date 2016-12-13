@@ -160,7 +160,7 @@ func (udkimV3 UserDeviceKeyInfoMapV3) fillInUserInfos(
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (
 	serverHalves UserDeviceKeyServerHalves, err error) {
-	serverHalves = make(UserDeviceKeyServerHalves)
+	serverHalves = make(UserDeviceKeyServerHalves, len(pubKeys))
 	for u, keys := range pubKeys {
 		if _, ok := udkimV3[u]; !ok {
 			udkimV3[u] = DeviceKeyInfoMapV3{}
