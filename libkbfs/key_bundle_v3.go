@@ -28,7 +28,7 @@ func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfos(crypto cryptoPure,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	publicKeys map[kbfscrypto.CryptPublicKey]bool) (
 	serverHalves DeviceKeyServerHalves, err error) {
-	serverHalves = make(DeviceKeyServerHalves)
+	serverHalves = make(DeviceKeyServerHalves, len(publicKeys))
 	// TODO: parallelize
 	for k := range publicKeys {
 		// Skip existing entries, and only fill in new ones
@@ -51,7 +51,7 @@ func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfos(crypto cryptoPure,
 
 func (dkimV3 DeviceKeyInfoMapV3) toDKIM(codec kbfscodec.Codec) (
 	DeviceKeyInfoMap, error) {
-	dkim := make(DeviceKeyInfoMap)
+	dkim := make(DeviceKeyInfoMap, len(dkimV3))
 	for key, info := range dkimV3 {
 		var infoCopy TLFCryptKeyInfo
 		err := kbfscodec.Update(codec, &infoCopy, info)
@@ -65,7 +65,7 @@ func (dkimV3 DeviceKeyInfoMapV3) toDKIM(codec kbfscodec.Codec) (
 
 func dkimToV3(codec kbfscodec.Codec, dkim DeviceKeyInfoMap) (
 	DeviceKeyInfoMapV3, error) {
-	dkimV3 := make(DeviceKeyInfoMapV3)
+	dkimV3 := make(DeviceKeyInfoMapV3, len(dkim))
 	for key, info := range dkim {
 		var infoCopy TLFCryptKeyInfo
 		err := kbfscodec.Update(codec, &infoCopy, info)
@@ -83,7 +83,7 @@ type UserDeviceKeyInfoMapV3 map[keybase1.UID]DeviceKeyInfoMapV3
 
 func (udkimV3 UserDeviceKeyInfoMapV3) toUDKIM(
 	codec kbfscodec.Codec) (UserDeviceKeyInfoMap, error) {
-	udkim := make(UserDeviceKeyInfoMap)
+	udkim := make(UserDeviceKeyInfoMap, len(udkimV3))
 	for u, dkimV3 := range udkimV3 {
 		dkim, err := dkimV3.toDKIM(codec)
 		if err != nil {
@@ -96,7 +96,7 @@ func (udkimV3 UserDeviceKeyInfoMapV3) toUDKIM(
 
 func udkimToV3(codec kbfscodec.Codec, udkim UserDeviceKeyInfoMap) (
 	UserDeviceKeyInfoMapV3, error) {
-	udkimV3 := make(UserDeviceKeyInfoMapV3)
+	udkimV3 := make(UserDeviceKeyInfoMapV3, len(udkim))
 	for u, dkim := range udkim {
 		dkimV3, err := dkimToV3(codec, dkim)
 		if err != nil {
