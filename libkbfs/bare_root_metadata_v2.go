@@ -52,7 +52,8 @@ type WriterMetadataV2 struct {
 	Extra WriterMetadataExtra `codec:"x,omitempty,omitemptycheckstruct"`
 }
 
-// ToWriterMetadataV3 converts the WriterMetadataV2 to a WriterMetadataV3 in place.
+// ToWriterMetadataV3 converts the WriterMetadataV2 to a
+// WriterMetadataV3.
 func (wmd *WriterMetadataV2) ToWriterMetadataV3() WriterMetadataV3 {
 	var wmdV3 WriterMetadataV3
 	wmdV3.Writers = make([]keybase1.UID, len(wmd.Writers))
