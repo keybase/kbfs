@@ -1755,9 +1755,9 @@ type MutableBareRootMetadata interface {
 	SetWriterMetadataCopiedBit()
 	// SetRevision sets the revision number of the underlying metadata.
 	SetRevision(revision MetadataRevision)
-	// SetUnresolvedReaders sets the list of unresolved readers assoiated with this folder.
+	// SetUnresolvedReaders sets the list of unresolved readers associated with this folder.
 	SetUnresolvedReaders(readers []keybase1.SocialAssertion)
-	// SetUnresolvedWriters sets the list of unresolved writers assoiated with this folder.
+	// SetUnresolvedWriters sets the list of unresolved writers associated with this folder.
 	SetUnresolvedWriters(writers []keybase1.SocialAssertion)
 	// SetConflictInfo sets any conflict info associated with this metadata revision.
 	SetConflictInfo(ci *tlf.HandleExtension)
