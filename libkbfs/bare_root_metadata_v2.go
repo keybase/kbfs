@@ -356,10 +356,10 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV2(config Config, isReadableAndWr
 
 func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Config, kmd KeyMetadata) (
 	*BareRootMetadataV3, ExtraMetadata, error) {
-	mdCopy := &BareRootMetadataV3{}
+	mdV3 := &BareRootMetadataV3{}
 
 	// Fill out the writer metadata.
-	mdCopy.WriterMetadata = md.WriterMetadataV2.ToWriterMetadataV3()
+	mdV3.WriterMetadata = md.WriterMetadataV2.ToWriterMetadataV3()
 
 	// Have this as ExtraMetadata so we return an untyped nil
 	// instead of a typed nil.
@@ -373,7 +373,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 			return nil, nil, err
 		}
 
-		mdCopy.WriterMetadata.WKeyBundleID, err = config.Crypto().MakeTLFWriterKeyBundleID(wkbV3)
+		mdV3.WriterMetadata.WKeyBundleID, err = config.Crypto().MakeTLFWriterKeyBundleID(wkbV3)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -385,7 +385,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 		if err != nil {
 			return nil, nil, err
 		}
-		mdCopy.RKeyBundleID, err = config.Crypto().MakeTLFReaderKeyBundleID(rkb)
+		mdV3.RKeyBundleID, err = config.Crypto().MakeTLFReaderKeyBundleID(rkb)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -393,12 +393,12 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 		extraCopy = NewExtraMetadataV3(wkbV3, rkb, true, true)
 	}
 
-	mdCopy.LastModifyingUser = md.LastModifyingUser
-	mdCopy.Flags = md.Flags
-	mdCopy.Revision = md.Revision // Incremented by the caller.
+	mdV3.LastModifyingUser = md.LastModifyingUser
+	mdV3.Flags = md.Flags
+	mdV3.Revision = md.Revision // Incremented by the caller.
 	// PrevRoot is set by the caller.
-	mdCopy.UnresolvedReaders = make([]keybase1.SocialAssertion, len(md.UnresolvedReaders))
-	copy(mdCopy.UnresolvedReaders, md.UnresolvedReaders)
+	mdV3.UnresolvedReaders = make([]keybase1.SocialAssertion, len(md.UnresolvedReaders))
+	copy(mdV3.UnresolvedReaders, md.UnresolvedReaders)
 
 	if md.ConflictInfo != nil {
 		ci := *md.ConflictInfo
@@ -411,7 +411,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 		return nil, nil, errors.New("Non-nil finalized info")
 	}
 
-	return mdCopy, extraCopy, nil
+	return mdV3, extraCopy, nil
 }
 
 // CheckValidSuccessor implements the BareRootMetadata interface for BareRootMetadataV2.
