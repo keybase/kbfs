@@ -67,7 +67,8 @@ type UserDeviceKeyServerHalves map[keybase1.UID]DeviceKeyServerHalves
 // isn't a deep copy.
 func (serverHalves UserDeviceKeyServerHalves) mergeUsers(
 	other UserDeviceKeyServerHalves) (UserDeviceKeyServerHalves, error) {
-	merged := make(UserDeviceKeyServerHalves)
+	merged := make(UserDeviceKeyServerHalves,
+		len(serverHalves)+len(other))
 	for uid, deviceServerHalves := range serverHalves {
 		merged[uid] = deviceServerHalves
 	}
