@@ -15,6 +15,34 @@ import (
 	"golang.org/x/net/context"
 )
 
+// getEphemeralPublicKeyV2 encapsulates all the ugly logic needed to
+// deal with the "negative hack" from
+// BareRootMetadataV2.UpdateKeyGeneration.
+func getEphemeralPublicKeyV2(info TLFCryptKeyInfo,
+	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) (
+	ePubKey kbfscrypto.TLFEphemeralPublicKey, err error) {
+	var index int
+	var publicKeys kbfscrypto.TLFEphemeralPublicKeys
+	var keyType string
+	if info.EPubKeyIndex >= 0 {
+		index = info.EPubKeyIndex
+		publicKeys = wkb.TLFEphemeralPublicKeys
+		keyType = "writer"
+	} else {
+		index = -1 - info.EPubKeyIndex
+		publicKeys = rkb.TLFReaderEphemeralPublicKeys
+		keyType = "reader"
+	}
+	keyCount := len(publicKeys)
+	if index >= keyCount {
+		return kbfscrypto.TLFEphemeralPublicKey{},
+			fmt.Errorf("Invalid %s key index %d >= %d",
+				keyType, index, keyCount)
+	}
+
+	return publicKeys[index], nil
+}
+
 // DeviceKeyInfoMapV2 is a map from a user devices (identified by the
 // KID of the corresponding device CryptPublicKey) to the
 // TLF's symmetric secret key information.

@@ -722,27 +722,14 @@ func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 			TLFCryptKeyServerHalfID{}, false, nil
 	}
 
-	var index int
-	var publicKeys kbfscrypto.TLFEphemeralPublicKeys
-	var keyType string
-	if info.EPubKeyIndex >= 0 {
-		index = info.EPubKeyIndex
-		publicKeys = wkb.TLFEphemeralPublicKeys
-		keyType = "writer"
-	} else {
-		index = -1 - info.EPubKeyIndex
-		publicKeys = rkb.TLFReaderEphemeralPublicKeys
-		keyType = "reader"
-	}
-	keyCount := len(publicKeys)
-	if index >= keyCount {
+	ePubKey, err := getEphemeralPublicKeyV2(info, wkb, rkb)
+	if err != nil {
 		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
-			TLFCryptKeyServerHalfID{}, false,
-			fmt.Errorf("Invalid %s key index %d >= %d",
-				keyType, index, keyCount)
+			TLFCryptKeyServerHalfID{}, false, err
 	}
-	return publicKeys[index], info.ClientHalf, info.ServerHalfID, true, nil
+
+	return ePubKey, info.ClientHalf, info.ServerHalfID, true, nil
 }
 
 // IsValidAndSigned implements the BareRootMetadata interface for BareRootMetadataV2.
