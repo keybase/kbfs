@@ -381,7 +381,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 
 		// Fill out the reader key bundle.  wkbV2 is passed
 		// because in V2 metadata ephemeral public keys for
-		// readers were sometimes in the writer key bundles
+		// readers were sometimes in the writer key bundles.
 		rkbV3, err := md.RKeys.ToTLFReaderKeyBundleV3(
 			config.Codec(), wkbV2)
 		if err != nil {
