@@ -325,8 +325,9 @@ func (km *KeyManagerStandard) updateKeyGeneration(ctx context.Context,
 
 	// Push new keys to the key server.
 	//
-	// TODO: Should accumulate this and push them all at once
-	// right before the MD push.
+	// TODO: Should accumulate the server halves across multiple
+	// key generations and push them all at once right before the
+	// MD push, although this only really matters for MDv2.
 	if err = km.config.KeyOps().
 		PutTLFCryptKeyServerHalves(ctx, serverHalves); err != nil {
 		return err
