@@ -54,25 +54,25 @@ type WriterMetadataV2 struct {
 
 // ToWriterMetadataV3 converts the WriterMetadataV2 to a
 // WriterMetadataV3.
-func (wmd *WriterMetadataV2) ToWriterMetadataV3() WriterMetadataV3 {
+func (wmdV2 *WriterMetadataV2) ToWriterMetadataV3() WriterMetadataV3 {
 	var wmdV3 WriterMetadataV3
-	wmdV3.Writers = make([]keybase1.UID, len(wmd.Writers))
-	copy(wmdV3.Writers, wmd.Writers)
+	wmdV3.Writers = make([]keybase1.UID, len(wmdV2.Writers))
+	copy(wmdV3.Writers, wmdV2.Writers)
 
-	wmdV3.UnresolvedWriters = make([]keybase1.SocialAssertion, len(wmd.Extra.UnresolvedWriters))
-	copy(wmdV3.UnresolvedWriters, wmd.Extra.UnresolvedWriters)
+	wmdV3.UnresolvedWriters = make([]keybase1.SocialAssertion, len(wmdV2.Extra.UnresolvedWriters))
+	copy(wmdV3.UnresolvedWriters, wmdV2.Extra.UnresolvedWriters)
 
-	wmdV3.ID = wmd.ID
-	wmdV3.BID = wmd.BID
-	wmdV3.WFlags = wmd.WFlags
-	wmdV3.DiskUsage = wmd.DiskUsage
-	wmdV3.RefBytes = wmd.RefBytes
-	wmdV3.UnrefBytes = wmd.UnrefBytes
+	wmdV3.ID = wmdV2.ID
+	wmdV3.BID = wmdV2.BID
+	wmdV3.WFlags = wmdV2.WFlags
+	wmdV3.DiskUsage = wmdV2.DiskUsage
+	wmdV3.RefBytes = wmdV2.RefBytes
+	wmdV3.UnrefBytes = wmdV2.UnrefBytes
 
-	if wmd.ID.IsPublic() {
+	if wmdV2.ID.IsPublic() {
 		wmdV3.LatestKeyGen = PublicKeyGen
 	} else {
-		wmdV3.LatestKeyGen = wmd.WKeys.LatestKeyGeneration()
+		wmdV3.LatestKeyGen = wmdV2.WKeys.LatestKeyGeneration()
 	}
 	return wmdV3
 }
