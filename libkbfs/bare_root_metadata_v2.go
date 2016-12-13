@@ -373,7 +373,8 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 			return nil, nil, err
 		}
 
-		mdV3.WriterMetadata.WKeyBundleID, err = config.Crypto().MakeTLFWriterKeyBundleID(wkbV3)
+		mdV3.WriterMetadata.WKeyBundleID, err =
+			config.Crypto().MakeTLFWriterKeyBundleID(wkbV3)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -381,16 +382,18 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 		// Fill out the reader key bundle.  wkbV2 is passed
 		// because in V2 metadata ephemeral public keys for
 		// readers were sometimes in the writer key bundles
-		rkb, err := md.RKeys.ToTLFReaderKeyBundleV3(config.Codec(), wkbV2)
+		rkbV3, err := md.RKeys.ToTLFReaderKeyBundleV3(
+			config.Codec(), wkbV2)
 		if err != nil {
 			return nil, nil, err
 		}
-		mdV3.RKeyBundleID, err = config.Crypto().MakeTLFReaderKeyBundleID(rkb)
+		mdV3.RKeyBundleID, err =
+			config.Crypto().MakeTLFReaderKeyBundleID(rkbV3)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		extraCopy = NewExtraMetadataV3(wkbV3, rkb, true, true)
+		extraCopy = NewExtraMetadataV3(wkbV3, rkbV3, true, true)
 	}
 
 	mdV3.LastModifyingUser = md.LastModifyingUser
