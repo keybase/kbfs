@@ -219,7 +219,7 @@ func (info ServerHalfRemovalInfo) addGeneration(
 // copy.
 func (info ServerHalfRemovalInfo) mergeUsers(
 	other ServerHalfRemovalInfo) (ServerHalfRemovalInfo, error) {
-	merged := make(ServerHalfRemovalInfo)
+	merged := make(ServerHalfRemovalInfo, len(info)+len(other))
 	for uid, removalInfo := range info {
 		merged[uid] = removalInfo
 	}
