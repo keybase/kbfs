@@ -383,12 +383,8 @@ func checkGetTLFCryptKeyV2(t *testing.T, expected expectedRekeyInfoV2,
 			info, ok := rkb.RKeys[uid][pubKey.KID()]
 			require.True(t, ok)
 
-			var ePubKey kbfscrypto.TLFEphemeralPublicKey
-			if info.EPubKeyIndex >= 0 {
-				ePubKey = wkb.TLFEphemeralPublicKeys[info.EPubKeyIndex]
-			} else {
-				ePubKey = rkb.TLFReaderEphemeralPublicKeys[-1-info.EPubKeyIndex]
-			}
+			ePubKey, err := getEphemeralPublicKeyV2(info, wkb, rkb)
+			require.NoError(t, err)
 
 			checkCryptKeyInfo(t, privKey, serverHalf,
 				expected.ePubKeyIndex, expected.ePubKey,
