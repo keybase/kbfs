@@ -315,12 +315,12 @@ func (udpk userDevicePrivateKeys) toPublicKeys() UserDevicePublicKeys {
 	return pubKeys
 }
 
-// expecteRekeyInfoV2 contains all the information needed to check a
+// expectedRekeyInfoV2 contains all the information needed to check a
 // rekey run (that doesn't add a generation).
 //
 // If both writerPrivKeys and readerPrivKeys are empty, then
 // ePubKeyIndex and ePubKey are ignored.
-type expecteRekeyInfoV2 struct {
+type expectedRekeyInfoV2 struct {
 	writerPrivKeys, readerPrivKeys userDevicePrivateKeys
 	serverHalves                   UserDeviceKeyServerHalves
 	ePubKeyIndex                   int
@@ -352,7 +352,7 @@ func checkCryptKeyInfo(t *testing.T, privKey kbfscrypto.CryptPrivateKey,
 // checkGetTLFCryptKeyV2 checks that wkb and rkb contain the info
 // necessary to get the TLF crypt key for each user in expected, which
 // must all match expectedTLFCryptKey.
-func checkGetTLFCryptKeyV2(t *testing.T, expected expecteRekeyInfoV2,
+func checkGetTLFCryptKeyV2(t *testing.T, expected expectedRekeyInfoV2,
 	expectedTLFCryptKey kbfscrypto.TLFCryptKey,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
 	for uid, privKeys := range expected.writerPrivKeys {
@@ -467,7 +467,7 @@ func userDeviceServerHalvesToPublicKeys(serverHalves UserDeviceKeyServerHalves) 
 
 // checkKeyBundlesV2 checks that wkb and rkb contain exactly the info
 // expected from expectedRekeyInfos and expectedPubKey.
-func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expecteRekeyInfoV2,
+func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV2,
 	expectedTLFCryptKey kbfscrypto.TLFCryptKey,
 	expectedPubKey kbfscrypto.TLFPublicKey,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
@@ -569,14 +569,14 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	wkb, rkb, err := rmd.getTLFKeyBundles(FirstValidKeyGen)
 	require.NoError(t, err)
 
-	var expectedRekeyInfos []expecteRekeyInfoV2
+	var expectedRekeyInfos []expectedRekeyInfoV2
 	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKey, pubKey, wkb, rkb)
 
 	serverHalves1, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
 		extra, wKeys, rKeys, ePubKey1, ePrivKey1, tlfCryptKey)
 	require.NoError(t, err)
 
-	expectedRekeyInfo1 := expecteRekeyInfoV2{
+	expectedRekeyInfo1 := expectedRekeyInfoV2{
 		writerPrivKeys: userDevicePrivateKeys{
 			uid1: {privKey1: true},
 			uid2: {privKey2: true},
@@ -598,7 +598,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		extra, wKeys, rKeys, ePubKey1, ePrivKey1, tlfCryptKey)
 	require.NoError(t, err)
 
-	expectedRekeyInfo1b := expecteRekeyInfoV2{
+	expectedRekeyInfo1b := expectedRekeyInfoV2{
 		serverHalves: serverHalves1b,
 	}
 
@@ -621,7 +621,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		extra, wKeys, rKeys, ePubKey2, ePrivKey2, tlfCryptKey)
 	require.NoError(t, err)
 
-	expectedRekeyInfo2 := expecteRekeyInfoV2{
+	expectedRekeyInfo2 := expectedRekeyInfoV2{
 		writerPrivKeys: userDevicePrivateKeys{
 			uid1: {privKey1b: true},
 		},
@@ -643,7 +643,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		extra, wKeys, rKeys, ePubKey2, ePrivKey2, tlfCryptKey)
 	require.NoError(t, err)
 
-	expectedRekeyInfo2b := expecteRekeyInfoV2{
+	expectedRekeyInfo2b := expectedRekeyInfoV2{
 		serverHalves: serverHalves2b,
 	}
 
@@ -663,7 +663,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		extra, wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKey)
 	require.NoError(t, err)
 
-	expectedRekeyInfo3 := expecteRekeyInfoV2{
+	expectedRekeyInfo3 := expectedRekeyInfoV2{
 		writerPrivKeys: userDevicePrivateKeys{
 			uid1: {privKey1c: true},
 		},
@@ -683,7 +683,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		extra, wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKey)
 	require.NoError(t, err)
 
-	expectedRekeyInfo3b := expecteRekeyInfoV2{
+	expectedRekeyInfo3b := expectedRekeyInfoV2{
 		serverHalves: serverHalves3b,
 	}
 
@@ -708,7 +708,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		extra, nil, rKeysReader, ePubKey4, ePrivKey4, tlfCryptKey)
 	require.NoError(t, err)
 
-	expectedRekeyInfo4 := expecteRekeyInfoV2{
+	expectedRekeyInfo4 := expectedRekeyInfoV2{
 		writerPrivKeys: nil,
 		readerPrivKeys: userDevicePrivateKeys{
 			uid3: {privKey3c: true, privKey3d: true},
@@ -726,7 +726,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		extra, nil, rKeysReader, ePubKey4, ePrivKey4, tlfCryptKey)
 	require.NoError(t, err)
 
-	expectedRekeyInfo4b := expecteRekeyInfoV2{
+	expectedRekeyInfo4b := expectedRekeyInfoV2{
 		serverHalves: serverHalves4b,
 	}
 
