@@ -275,15 +275,20 @@ type mdInfo struct {
 }
 
 func (j mdJournal) getMDInfo(id MdID) (time.Time, MetadataVer, error) {
-	infoJSON, err := ioutil.ReadFile(j.mdInfoPath(id))
-	if err != nil {
+	p := j.mdInfoPath(id)
+	infoJSON, err := ioutil.ReadFile(p)
+	if os.IsNotExist(err) {
 		return time.Time{}, MetadataVer(-1), err
+	} else if err != nil {
+		return time.Time{}, MetadataVer(-1), errors.Wrapf(
+			err, "failed to read %q for %q", p, id)
 	}
 
 	var info mdInfo
 	err = json.Unmarshal(infoJSON, &info)
 	if err != nil {
-		return time.Time{}, MetadataVer(-1), err
+		return time.Time{}, MetadataVer(-1), errors.Wrapf(
+			err, "failed to unmarshal %q for %q", p, id)
 	}
 
 	return info.Timestamp, info.Version, nil
@@ -296,10 +301,17 @@ func (j mdJournal) putMDInfo(
 	info := mdInfo{timestamp, version}
 	infoJSON, err := json.Marshal(info)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to marshal info for %q", id)
 	}
 
-	return ioutil.WriteFile(j.mdInfoPath(id), infoJSON, 0600)
+	p := j.mdInfoPath(id)
+	err = ioutil.WriteFile(p, infoJSON, 0600)
+	if err != nil {
+		return errors.Wrapf(
+			err, "failed to marshal %q for %q", p, id)
+	}
+
+	return nil
 }
 
 // getExtraMetadata gets the extra metadata corresponding to the given

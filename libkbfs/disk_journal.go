@@ -93,8 +93,7 @@ func (j diskJournal) readOrdinal(path string) (journalOrdinal, error) {
 	buf, err := ioutil.ReadFile(path)
 	if os.IsNotExist(err) {
 		return 0, err
-	}
-	if err != nil {
+	} else if err != nil {
 		return 0, errors.Wrapf(err, "failed to read %q", path)
 	}
 	return makeJournalOrdinal(string(buf))
