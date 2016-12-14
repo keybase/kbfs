@@ -6,7 +6,6 @@ package libfuse
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"time"
 
 	"github.com/keybase/kbfs/ioutil"
+	"github.com/pkg/errors"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
