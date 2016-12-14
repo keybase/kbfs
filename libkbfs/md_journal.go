@@ -415,9 +415,13 @@ func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID bool) (
 
 	// Read data.
 
-	data, err := ioutil.ReadFile(j.mdDataPath(id))
-	if err != nil {
+	p := j.mdDataPath(id)
+	data, err := ioutil.ReadFile(p)
+	if os.IsNotExist(err) {
 		return nil, nil, time.Time{}, err
+	} else if err != nil {
+		return nil, nil, time.Time{}, errors.Wrapf(
+			err, "failed to read %q", p)
 	}
 
 	rmd, err := DecodeRootMetadata(
@@ -427,6 +431,8 @@ func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID bool) (
 	}
 
 	// Check integrity.
+
+	// TODO: Make crypto and RMD wrap errors.
 
 	mdID, err := j.crypto.MakeMdID(rmd)
 	if err != nil {
@@ -468,6 +474,8 @@ func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID bool) (
 // stored. The extra metadata is put separately, since sometimes,
 // (e.g., when converting to a branch) we don't need to put it.
 func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
+	// TODO: Make crypto and RMD wrap errors.
+
 	err := rmd.IsLastModifiedBy(j.uid, j.key)
 	if err != nil {
 		return MdID{}, err
@@ -488,17 +496,7 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 		return MdID{}, nil
 	}
 
-	buf, err := j.codec.Encode(rmd)
-	if err != nil {
-		return MdID{}, err
-	}
-
-	err = os.MkdirAll(j.mdPath(id), 0700)
-	if err != nil {
-		return MdID{}, err
-	}
-
-	err = ioutil.WriteFile(j.mdDataPath(id), buf, 0600)
+	err = kbfscodec.SerializeToFile(j.codec, rmd, j.mdDataPath(id))
 	if err != nil {
 		return MdID{}, err
 	}
@@ -516,16 +514,21 @@ func (j *mdJournal) removeMD(id MdID) error {
 	path := j.mdPath(id)
 	err := os.RemoveAll(path)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to remove %q", path)
 	}
 
 	// Remove the parent (splayed) directory (which should exist)
 	// if it's empty.
-	err = os.Remove(filepath.Dir(path))
+	dir := filepath.Dir(path)
+	err = os.Remove(dir)
 	if isExist(err) {
 		err = nil
 	}
-	return err
+	if err != nil {
+		return errors.Wrapf(err, "failed to remove %q", dir)
+	}
+
+	return nil
 }
 
 // getEarliestWithExtra returns a MutableBareRootMetadata so that it
@@ -577,6 +580,8 @@ func (j mdJournal) checkGetParams() (ImmutableBareRootMetadata, error) {
 		return ImmutableBareRootMetadata{}, nil
 	}
 
+	// TODO: Have isReader wrap its errors.
+
 	ok, err := isReader(j.uid, head.BareRootMetadata, head.extra)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
@@ -624,7 +629,7 @@ func (j *mdJournal) convertToBranch(
 
 	journalTempDir, err := ioutil.TempDir(j.dir, "md_journal")
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to make temp dir in %q", j.dir)
 	}
 	j.log.CDebugf(ctx, "Using temp dir %s for rewriting", journalTempDir)
 
@@ -635,7 +640,7 @@ func (j *mdJournal) convertToBranch(
 		removeErr := os.RemoveAll(journalTempDir)
 		if removeErr != nil {
 			j.log.CWarningf(ctx,
-				"Error when removing temp dir %s: %v",
+				"Error when removing temp dir %s: %+v",
 				journalTempDir, removeErr)
 		}
 		// Garbage-collect the unnecessary MD entries.  TODO: we'll
@@ -644,7 +649,7 @@ func (j *mdJournal) convertToBranch(
 		for _, id := range mdsToRemove {
 			removeErr := j.removeMD(id)
 			if removeErr != nil {
-				j.log.CWarningf(ctx, "Error when removing old MD %s: %v",
+				j.log.CWarningf(ctx, "Error when removing old MD %s: %+v",
 					id, removeErr)
 			}
 		}
@@ -679,7 +684,7 @@ func (j *mdJournal) convertToBranch(
 		// changed it.
 		err = brmd.SignWriterMetadataInternally(ctx, j.codec, signer)
 		if err != nil {
-			j.log.CDebugf(ctx, "Early exit %d %v", brmd.RevisionNumber(), err)
+			j.log.CDebugf(ctx, "Early exit %d %+v", brmd.RevisionNumber(), err)
 			return err
 		}
 
@@ -1076,7 +1081,7 @@ func (j *mdJournal) put(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Put MD for TLF=%s with rev=%s bid=%s failed with %v",
+				"Put MD for TLF=%s with rev=%s bid=%s failed with %+v",
 				rmd.TlfID(), rmd.Revision(), rmd.BID(), err)
 		}
 	}()
@@ -1279,7 +1284,7 @@ func (j *mdJournal) clear(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Clearing journal for branch %s failed with %v",
+				"Clearing journal for branch %s failed with %+v",
 				bid, err)
 		}
 	}()
@@ -1361,7 +1366,7 @@ func (j *mdJournal) resolveAndClear(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Resolving journal for branch %s failed with %v",
+				"Resolving journal for branch %s failed with %+v",
 				bid, err)
 		}
 	}()
@@ -1404,7 +1409,7 @@ func (j *mdJournal) resolveAndClear(
 		removeErr := os.RemoveAll(idJournalTempDir)
 		if removeErr != nil {
 			j.log.CWarningf(ctx,
-				"Error when removing temp dir %s: %v",
+				"Error when removing temp dir %s: %+v",
 				idJournalTempDir, removeErr)
 		}
 	}()

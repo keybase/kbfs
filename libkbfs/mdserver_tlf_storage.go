@@ -5,8 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -16,6 +14,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 )
 
 // mdServerTlfStorage stores an ordered list of metadata IDs for each
@@ -150,7 +149,7 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 	}
 
 	if id != mdID {
-		return nil, fmt.Errorf(
+		return nil, errors.Errorf(
 			"Metadata ID mismatch: expected %s, got %s",
 			id, mdID)
 	}
@@ -279,7 +278,7 @@ func (s *mdServerTlfStorage) getRangeReadLocked(
 			return nil, MDServerError{err}
 		}
 		if expectedRevision != rmds.MD.RevisionNumber() {
-			panic(fmt.Errorf("expected revision %v, got %v",
+			panic(errors.Errorf("expected revision %v, got %v",
 				expectedRevision, rmds.MD.RevisionNumber()))
 		}
 		rmdses = append(rmdses, rmds)
@@ -306,7 +305,7 @@ func (s *mdServerTlfStorage) getKeyBundlesReadLocked(
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	if (wkbID == TLFWriterKeyBundleID{}) !=
 		(rkbID == TLFReaderKeyBundleID{}) {
-		return nil, nil, fmt.Errorf(
+		return nil, nil, errors.Errorf(
 			"wkbID is empty (%t) != rkbID is empty (%t)",
 			wkbID == TLFWriterKeyBundleID{},
 			rkbID == TLFReaderKeyBundleID{})
@@ -347,7 +346,7 @@ func checkKeyBundleIDs(crypto cryptoPure,
 	}
 
 	if wkbID != computedWKBID {
-		return fmt.Errorf("Expected WKB ID %s, got %s",
+		return errors.Errorf("Expected WKB ID %s, got %s",
 			wkbID, computedWKBID)
 	}
 
@@ -357,7 +356,7 @@ func checkKeyBundleIDs(crypto cryptoPure,
 	}
 
 	if rkbID != computedRKBID {
-		return fmt.Errorf("Expected RKB ID %s, got %s",
+		return errors.Errorf("Expected RKB ID %s, got %s",
 			rkbID, computedRKBID)
 	}
 
@@ -412,6 +411,7 @@ func (s *mdServerTlfStorage) isShutdownReadLocked() bool {
 
 // All functions below are public functions.
 
+// TODO: Turn this into a type.
 var errMDServerTlfStorageShutdown = errors.New("mdServerTlfStorage is shutdown")
 
 func (s *mdServerTlfStorage) journalLength(bid BranchID) (uint64, error) {
@@ -540,7 +540,7 @@ func (s *mdServerTlfStorage) put(
 		}
 		if len(rmdses) != 1 {
 			return false, MDServerError{
-				Err: fmt.Errorf("Expected 1 MD block got %d", len(rmdses)),
+				Err: errors.Errorf("Expected 1 MD block got %d", len(rmdses)),
 			}
 		}
 		head = rmdses[0]
