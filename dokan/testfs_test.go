@@ -195,7 +195,7 @@ func testReaddir(t *testing.T) {
 func testPlaceHolderRemoveRename(t *testing.T) {
 	ioutil.Remove(`T:\hello.txt`)
 	ioutil.Remove(`T:\`)
-	os.Rename(`T:\hello.txt`, `T:\does-not-exist2`)
+	ioutil.Rename(`T:\hello.txt`, `T:\does-not-exist2`)
 }
 
 func testDiskFreeSpace(t *testing.T) {

@@ -734,7 +734,7 @@ func TestRename(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.Rename(p1, p2); err != nil {
+	if err := ioutil.Rename(p1, p2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -774,7 +774,7 @@ func TestRenameOverwrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.Rename(p1, p2); err != nil {
+	if err := ioutil.Rename(p1, p2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -815,7 +815,7 @@ func TestRenameCrossDir(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.Rename(p1, p2); err != nil {
+	if err := ioutil.Rename(p1, p2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -851,7 +851,7 @@ func TestRenameCrossFolder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := os.Rename(p1, p2)
+	err := ioutil.Rename(p1, p2)
 	if err == nil {
 		t.Fatalf("expected an error from rename: %v", err)
 	}
@@ -913,7 +913,7 @@ func TestWriteThenRename(t *testing.T) {
 	}
 
 	// now rename the file while it's still open
-	if err := os.Rename(p1, p2); err != nil {
+	if err := ioutil.Rename(p1, p2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -972,7 +972,7 @@ func TestWriteThenRenameCrossDir(t *testing.T) {
 	}
 
 	// now rename the file while it's still open
-	if err := os.Rename(p1, p2); err != nil {
+	if err := ioutil.Rename(p1, p2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1313,7 +1313,7 @@ func TestRenameOverFileWhileOpenReadingAcrossMounts(t *testing.T) {
 
 	p2Other := path.Join(mnt2.Dir, PrivateName, "user1,user2", "other")
 	p2 := path.Join(mnt2.Dir, PrivateName, "user1,user2", "myfile")
-	if err := os.Rename(p2Other, p2); err != nil {
+	if err := ioutil.Rename(p2Other, p2); err != nil {
 		t.Fatalf("cannot rename file: %v", err)
 	}
 
@@ -2441,7 +2441,7 @@ func TestInvalidateAcrossMounts(t *testing.T) {
 		t.Fatal(err)
 	}
 	mydirb1 := path.Join(mydir1, "b")
-	if err := os.Rename(mydira1, mydirb1); err != nil {
+	if err := ioutil.Rename(mydira1, mydirb1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2588,7 +2588,7 @@ func TestInvalidateRenameToUncachedDir(t *testing.T) {
 	}
 
 	// now rename the second into a directory that user 2 hasn't seen
-	if err := os.Rename(myfile1, mydirfile1); err != nil {
+	if err := ioutil.Rename(myfile1, mydirfile1); err != nil {
 		t.Fatal(err)
 	}
 

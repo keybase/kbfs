@@ -239,7 +239,7 @@ func (*fsEngine) RemoveEntry(u User, dir Node, name string) (err error) {
 func (*fsEngine) Rename(u User, srcDir Node, srcName string, dstDir Node, dstName string) (err error) {
 	snode := srcDir.(fsNode)
 	dnode := dstDir.(fsNode)
-	return os.Rename(
+	return ioutil.Rename(
 		filepath.Join(snode.path, srcName),
 		filepath.Join(dnode.path, dstName))
 }

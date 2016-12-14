@@ -6,7 +6,6 @@ package libkbfs
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -275,10 +274,9 @@ func (j diskJournal) appendJournalEntry(
 }
 
 func (j *diskJournal) move(newDir string) (oldDir string, err error) {
-	err = os.Rename(j.dir, newDir)
+	err = ioutil.Rename(j.dir, newDir)
 	if err != nil {
-		return "", errors.Wrapf(
-			err, "failed to rename %q to %q", j.dir, newDir)
+		return "", err
 	}
 	oldDir = j.dir
 	j.dir = newDir
