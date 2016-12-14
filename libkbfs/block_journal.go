@@ -246,7 +246,7 @@ func (j *blockJournal) appendJournalEntry(
 		if err != nil {
 			// TODO: Should we remove it from the main journal and
 			// fail the whole append?
-			j.log.CWarningf(ctx, "Appending to the saved list failed: %v", err)
+			j.log.CWarningf(ctx, "Appending to the saved list failed: %+v", err)
 		}
 	}
 
@@ -296,7 +296,7 @@ func (j *blockJournal) putData(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Put for block %s with context %v failed with %v",
+				"Put for block %s with context %v failed with %+v",
 				id, context, err)
 		}
 	}()
@@ -337,7 +337,7 @@ func (j *blockJournal) addReference(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Adding reference for block %s with context %v failed with %v",
+				"Adding reference for block %s with context %v failed with %+v",
 				id, context, err)
 		}
 	}()
@@ -369,7 +369,7 @@ func (j *blockJournal) archiveReferences(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Archiving references for %v,", contexts, err)
+				"Archiving references for %+v,", contexts, err)
 		}
 	}()
 
@@ -403,7 +403,7 @@ func (j *blockJournal) removeReferences(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Removing references for %v", contexts, err)
+				"Removing references for %+v", contexts, err)
 		}
 	}()
 
@@ -439,7 +439,7 @@ func (j *blockJournal) markMDRevision(ctx context.Context,
 	j.log.CDebugf(ctx, "Marking MD revision %d in the block journal", rev)
 	defer func() {
 		if err != nil {
-			j.deferLog.CDebugf(ctx, "Marking MD revision %d error: %v",
+			j.deferLog.CDebugf(ctx, "Marking MD revision %d error: %+v",
 				rev, err)
 		}
 	}()
@@ -639,7 +639,7 @@ func flushBlockEntries(ctx context.Context, log logger.Logger,
 	if err != nil {
 		if isRecoverableBlockError(err) {
 			log.CWarningf(ctx,
-				"Recoverable block error encountered on puts: %v, ptrs=%v",
+				"Recoverable block error encountered on puts: %+v, ptrs=%v",
 				err, blocksToRemove)
 		}
 		return err
@@ -653,7 +653,7 @@ func flushBlockEntries(ctx context.Context, log logger.Logger,
 	if err != nil {
 		if isRecoverableBlockError(err) {
 			log.CWarningf(ctx,
-				"Recoverable block error encountered on addRefs: %v, ptrs=%v",
+				"Recoverable block error encountered on addRefs: %+v, ptrs=%v",
 				err, blocksToRemove)
 		}
 		return err
