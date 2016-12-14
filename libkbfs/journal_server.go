@@ -6,12 +6,13 @@ package libkbfs
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -248,11 +249,11 @@ func (j *JournalServer) EnableExistingJournals(
 	}
 
 	if j.currentUID != keybase1.UID("") {
-		return fmt.Errorf("Trying to set current UID from %s to %s",
+		return errors.Errorf("Trying to set current UID from %s to %s",
 			j.currentUID, currentUID)
 	}
 	if j.currentVerifyingKey != (kbfscrypto.VerifyingKey{}) {
-		return fmt.Errorf(
+		return errors.Errorf(
 			"Trying to set current verifying key from %s to %s",
 			j.currentVerifyingKey, currentVerifyingKey)
 	}
@@ -364,11 +365,11 @@ func (j *JournalServer) enableLocked(
 
 	err = func() error {
 		if j.dirtyOps > 0 {
-			return fmt.Errorf("Can't enable journal for %s while there "+
+			return errors.Errorf("Can't enable journal for %s while there "+
 				"are outstanding dirty ops", tlfID)
 		}
 		if j.delegateDirtyBlockCache.IsAnyDirty(tlfID) {
-			return fmt.Errorf("Can't enable journal for %s while there "+
+			return errors.Errorf("Can't enable journal for %s while there "+
 				"are any dirty blocks outstanding", tlfID)
 		}
 		return nil
@@ -526,11 +527,11 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID tlf.ID) (
 	}
 
 	if j.dirtyOps > 0 {
-		return false, fmt.Errorf("Can't disable journal for %s while there "+
+		return false, errors.Errorf("Can't disable journal for %s while there "+
 			"are outstanding dirty ops", tlfID)
 	}
 	if j.delegateDirtyBlockCache.IsAnyDirty(tlfID) {
-		return false, fmt.Errorf("Can't disable journal for %s while there "+
+		return false, errors.Errorf("Can't disable journal for %s while there "+
 			"are any dirty blocks outstanding", tlfID)
 	}
 
@@ -603,7 +604,7 @@ func (j *JournalServer) JournalStatus(tlfID tlf.ID) (
 	tlfJournal, ok := j.getTLFJournal(tlfID)
 	if !ok {
 		return TLFJournalStatus{},
-			fmt.Errorf("Journal not enabled for %s", tlfID)
+			errors.Errorf("Journal not enabled for %s", tlfID)
 	}
 
 	return tlfJournal.getJournalStatus()
@@ -617,7 +618,7 @@ func (j *JournalServer) JournalStatusWithPaths(ctx context.Context,
 	tlfJournal, ok := j.getTLFJournal(tlfID)
 	if !ok {
 		return TLFJournalStatus{},
-			fmt.Errorf("Journal not enabled for %s", tlfID)
+			errors.Errorf("Journal not enabled for %s", tlfID)
 	}
 
 	return tlfJournal.getJournalStatusWithPaths(ctx, cpp)
