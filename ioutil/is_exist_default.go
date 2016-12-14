@@ -4,13 +4,13 @@
 
 // +build !windows
 
-package libkbfs
+package ioutil
 
 import "os"
 
 // This file is a workaround for
 // https://github.com/golang/go/issues/17164 .
 
-func isExist(err error) bool {
+func IsExist(err error) bool {
 	return os.IsExist(err)
 }

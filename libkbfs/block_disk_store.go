@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/keybase/go-codec/codec"
+	ioutil2 "github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/pkg/errors"
@@ -516,7 +517,7 @@ func (s *blockDiskStore) remove(id BlockID) error {
 	// empty.
 	dir := filepath.Dir(path)
 	err = os.Remove(dir)
-	if os.IsNotExist(err) || isExist(err) {
+	if os.IsNotExist(err) || ioutil2.IsExist(err) {
 		err = nil
 	}
 	if err != nil {

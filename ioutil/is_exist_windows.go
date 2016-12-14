@@ -14,7 +14,7 @@ import (
 
 const _ERROR_DIR_NOT_EMPTY = syscall.Errno(145)
 
-func isExist(err error) bool {
+func IsExist(err error) bool {
 	if os.IsExist(err) {
 		return true
 	}

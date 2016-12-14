@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/keybase/client/go/logger"
+	ioutil2 "github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -521,7 +522,7 @@ func (j *mdJournal) removeMD(id MdID) error {
 	// if it's empty.
 	dir := filepath.Dir(path)
 	err = os.Remove(dir)
-	if isExist(err) {
+	if ioutil2.IsExist(err) {
 		err = nil
 	}
 	if err != nil {
