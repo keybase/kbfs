@@ -101,8 +101,8 @@ func SerializeToFile(c Codec, obj interface{}, path string) error {
 }
 
 // DeserializeFromFile deserializes the given file into the object
-// pointed to by objPtr. It may an error for which os.IsNotExist()
-// returns true.
+// pointed to by objPtr. It may return an error for which
+// os.IsNotExist() returns true.
 func DeserializeFromFile(c Codec, path string, objPtr interface{}) error {
 	data, err := ioutil.ReadFile(path)
 	if os.IsNotExist(err) {
