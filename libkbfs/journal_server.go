@@ -609,8 +609,6 @@ func (j *JournalServer) JournalStatus(tlfID tlf.ID) (
 	return tlfJournal.getJournalStatus()
 }
 
-var errJournalStatusRetry = errors.New("Retry journal status")
-
 // JournalStatusWithPaths returns a TLFServerStatus object for the
 // given TLF suitable for diagnostics, including paths for all the
 // unflushed entries.
