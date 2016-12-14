@@ -5,12 +5,24 @@
 package ioutil
 
 import (
+	"io"
 	"os"
 
 	ioutil_base "io/ioutil"
 
 	"github.com/pkg/errors"
 )
+
+// ReadAll wraps ReadAll from "io/ioutil".
+func ReadAll(r io.Reader) ([]byte, error) {
+	buf, err := ioutil_base.ReadAll(r)
+	if err != nil {
+		return nil, errors.Wrapf(
+			err, "failed to read all from reader %v", r)
+	}
+
+	return buf, nil
+}
 
 // ReadDir wraps ReadDir from "io/ioutil".
 func ReadDir(dirname string) ([]os.FileInfo, error) {
