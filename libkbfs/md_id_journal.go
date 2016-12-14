@@ -5,11 +5,11 @@
 package libkbfs
 
 import (
-	"fmt"
 	"os"
 	"reflect"
 
 	"github.com/keybase/go-codec/codec"
+	"github.com/pkg/errors"
 
 	"github.com/keybase/kbfs/kbfscodec"
 )
@@ -47,7 +47,7 @@ func ordinalToRevision(o journalOrdinal) (MetadataRevision, error) {
 	r := MetadataRevision(o)
 	if r < MetadataRevisionInitial {
 		return MetadataRevisionUninitialized,
-			fmt.Errorf("Cannot convert ordinal %s to a MetadataRevision", o)
+			errors.Errorf("Cannot convert ordinal %s to a MetadataRevision", o)
 	}
 	return r, nil
 }
@@ -55,7 +55,7 @@ func ordinalToRevision(o journalOrdinal) (MetadataRevision, error) {
 func revisionToOrdinal(r MetadataRevision) (journalOrdinal, error) {
 	if r < MetadataRevisionInitial {
 		return journalOrdinal(0),
-			fmt.Errorf("Cannot convert revision %s to an ordinal", r)
+			errors.Errorf("Cannot convert revision %s to an ordinal", r)
 	}
 	return journalOrdinal(r), nil
 }
