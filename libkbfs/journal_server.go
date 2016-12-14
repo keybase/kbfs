@@ -198,7 +198,7 @@ func (j *JournalServer) getTLFJournal(tlfID tlf.ID) (*tlfJournal, bool) {
 		j.log.CDebugf(ctx, "Enabling a new journal for %s", tlfID)
 		err := j.Enable(ctx, tlfID, TLFJournalBackgroundWorkEnabled)
 		if err != nil {
-			j.log.CWarningf(ctx, "Couldn't enable journal for %s", tlfID)
+			j.log.CWarningf(ctx, "Couldn't enable journal for %s: %+v", tlfID, err)
 			return nil, false
 		}
 		tlfJournal, _, ok = getJournalFn()
