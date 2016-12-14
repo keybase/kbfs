@@ -118,9 +118,9 @@ func (s *blockDiskStore) refsPath(id BlockID) string {
 // ID file, if necessary.
 func (s *blockDiskStore) makeDir(id BlockID) error {
 	dir := s.blockPath(id)
-	err := os.MkdirAll(dir, 0700)
+	err := ioutil.MkdirAll(dir, 0700)
 	if err != nil {
-		return errors.Wrapf(err, "failed to mkdir %q", dir)
+		return err
 	}
 
 	// TODO: Only write if the file doesn't exist.

@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -202,7 +201,7 @@ func (s *mdServerTlfStorage) getOrCreateBranchJournalLocked(
 	}
 
 	dir := filepath.Join(s.branchJournalsPath(), bid.String())
-	err := os.MkdirAll(dir, 0700)
+	err := ioutil.MkdirAll(dir, 0700)
 	if err != nil {
 		return mdIDJournal{}, err
 	}

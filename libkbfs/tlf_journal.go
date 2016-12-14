@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -235,7 +234,7 @@ func writeTLFJournalInfoFile(dir string, uid keybase1.UID,
 		return err
 	}
 
-	err = os.MkdirAll(dir, 0700)
+	err = ioutil.MkdirAll(dir, 0700)
 	if err != nil {
 		return err
 	}

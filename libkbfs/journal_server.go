@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 
@@ -150,7 +149,7 @@ func (j *JournalServer) writeConfig() error {
 		return err
 	}
 
-	err = os.MkdirAll(j.rootPath(), 0700)
+	err = ioutil.MkdirAll(j.rootPath(), 0700)
 	if err != nil {
 		return err
 	}

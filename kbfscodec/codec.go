@@ -6,13 +6,10 @@ package kbfscodec
 
 import (
 	"bytes"
-	"os"
 	"path/filepath"
 	"reflect"
 
 	"github.com/keybase/kbfs/ioutil"
-
-	"github.com/pkg/errors"
 )
 
 // ExtCode is used to register codec extensions
@@ -83,9 +80,9 @@ func Update(c Codec, dstPtr interface{}, src interface{}) error {
 // given file, making its parent directory first if necessary.
 func SerializeToFile(c Codec, obj interface{}, path string) error {
 	dir := filepath.Dir(path)
-	err := os.MkdirAll(dir, 0700)
+	err := ioutil.MkdirAll(dir, 0700)
 	if err != nil {
-		return errors.Wrapf(err, "failed to mkdir %q", dir)
+		return err
 	}
 
 	buf, err := c.Encode(obj)
