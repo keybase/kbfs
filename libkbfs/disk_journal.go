@@ -6,13 +6,12 @@ package libkbfs
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 
-	ioutil2 "github.com/keybase/kbfs/ioutil"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/pkg/errors"
 )
@@ -88,25 +87,21 @@ func (j diskJournal) journalEntryPath(o journalOrdinal) string {
 
 // The functions below are for reading and writing the earliest and
 // latest ordinals. The read functions may return an error for which
-// ioutil2.IsNotExist() returns true.
+// ioutil.IsNotExist() returns true.
 
 func (j diskJournal) readOrdinal(path string) (journalOrdinal, error) {
 	buf, err := ioutil.ReadFile(path)
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return 0, err
 	} else if err != nil {
-		return 0, errors.Wrapf(err, "failed to read %q", path)
+		return 0, err
 	}
 	return makeJournalOrdinal(string(buf))
 }
 
 func (j diskJournal) writeOrdinal(
 	path string, o journalOrdinal) error {
-	err := ioutil.WriteFile(path, []byte(o.String()), 0600)
-	if err != nil {
-		return errors.Wrapf(err, "failed to write %q to %q", o, path)
-	}
-	return nil
+	return ioutil.WriteFile(path, []byte(o.String()), 0600)
 }
 
 func (j diskJournal) readEarliestOrdinal() (
@@ -236,7 +231,7 @@ func (j diskJournal) appendJournalEntry(
 	// of reading it from disk every time.
 	var next journalOrdinal
 	lo, err := j.readLatestOrdinal()
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		if o != nil {
 			next = *o
 		} else {
@@ -264,7 +259,7 @@ func (j diskJournal) appendJournalEntry(
 	}
 
 	_, err = j.readEarliestOrdinal()
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		err := j.writeEarliestOrdinal(next)
 		if err != nil {
 			return 0, err
@@ -292,7 +287,7 @@ func (j *diskJournal) move(newDir string) (oldDir string, err error) {
 
 func (j diskJournal) length() (uint64, error) {
 	first, err := j.readEarliestOrdinal()
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return 0, nil
 	} else if err != nil {
 		return 0, err
