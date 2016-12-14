@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+
+	"github.com/pkg/errors"
 )
 
 // ExtCode is used to register codec extensions
@@ -79,9 +81,10 @@ func Update(c Codec, dstPtr interface{}, src interface{}) error {
 // SerializeToFile serializes the given object and writes it to the
 // given file, making its parent directory first if necessary.
 func SerializeToFile(c Codec, obj interface{}, path string) error {
-	err := os.MkdirAll(filepath.Dir(path), 0700)
+	dir := filepath.Dir(path)
+	err := os.MkdirAll(dir, 0700)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to mkdir %q", dir)
 	}
 
 	buf, err := c.Encode(obj)
@@ -91,18 +94,21 @@ func SerializeToFile(c Codec, obj interface{}, path string) error {
 
 	err = ioutil.WriteFile(path, buf, 0600)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to write to %q", path)
 	}
 
 	return nil
 }
 
 // DeserializeFromFile deserializes the given file into the object
-// pointed to by objPtr.
+// pointed to by objPtr. It may an error for which os.IsNotExist()
+// returns true.
 func DeserializeFromFile(c Codec, path string, objPtr interface{}) error {
 	data, err := ioutil.ReadFile(path)
-	if err != nil {
+	if os.IsNotExist(err) {
 		return err
+	} else if err != nil {
+		return errors.Wrapf(err, "failed to read %q", path)
 	}
 
 	err = c.Decode(data, objPtr)

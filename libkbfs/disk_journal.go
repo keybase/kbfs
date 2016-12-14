@@ -201,14 +201,8 @@ func (j diskJournal) removeEarliest() (empty bool, err error) {
 
 func (j diskJournal) readJournalEntry(o journalOrdinal) (interface{}, error) {
 	p := j.journalEntryPath(o)
-	buf, err := ioutil.ReadFile(p)
-	if err != nil {
-		return nil, errors.Wrapf(
-			err, "failed to read path %q for ordinal %q", p, o)
-	}
-
 	entry := reflect.New(j.entryType)
-	err = j.codec.Decode(buf, entry)
+	err := kbfscodec.DeserializeFromFile(j.codec, p, entry)
 	if err != nil {
 		return nil, err
 	}
@@ -224,25 +218,7 @@ func (j diskJournal) writeJournalEntry(
 			j.entryType, entryType))
 	}
 
-	err := os.MkdirAll(j.dir, 0700)
-	if err != nil {
-		return errors.Wrapf(err, "failed to mkdir %q", j.dir)
-	}
-
-	p := j.journalEntryPath(o)
-
-	buf, err := j.codec.Encode(entry)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(p, buf, 0600)
-	if err != nil {
-		return errors.Wrapf(err,
-			"failed to write entry at path %q for ordinal %q", p, o)
-	}
-
-	return nil
+	return kbfscodec.SerializeToFile(j.codec, entry, j.journalEntryPath(o))
 }
 
 // appendJournalEntry appends the given entry to the journal. If o is
