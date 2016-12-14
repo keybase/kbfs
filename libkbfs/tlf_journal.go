@@ -215,7 +215,8 @@ func readTLFJournalInfoFile(dir string) (
 	err := ioutil.DeserializeFromJSONFile(
 		getTLFJournalInfoFilePath(dir), &info)
 	if err != nil {
-		return keybase1.UID(""), kbfscrypto.VerifyingKey{}, tlf.ID{}, err
+		return keybase1.UID(""), kbfscrypto.VerifyingKey{},
+			tlf.ID{}, err
 	}
 
 	return info.UID, info.VerifyingKey, info.TlfID, nil
