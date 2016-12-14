@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/pkg/errors"
 )
 
 // blockDiskStore stores block data in flat files on disk.
@@ -117,16 +117,18 @@ func (s *blockDiskStore) refsPath(id BlockID) string {
 // makeDir makes the directory for the given block ID and writes the
 // ID file, if necessary.
 func (s *blockDiskStore) makeDir(id BlockID) error {
-	err := os.MkdirAll(s.blockPath(id), 0700)
+	dir := s.blockPath(id)
+	err := os.MkdirAll(dir, 0700)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to mkdir %q", dir)
 	}
 
 	// TODO: Only write if the file doesn't exist.
 
+	p := s.idPath(id)
 	err = ioutil.WriteFile(s.idPath(id), []byte(id.String()), 0600)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to write to %q", p)
 	}
 
 	return nil
@@ -200,7 +202,8 @@ func (s *blockDiskStore) getData(id BlockID) (
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
 			blockNonExistentError{id}
 	} else if err != nil {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+			errors.Wrapf(err, "failed to read %q", s.dataPath(id))
 	}
 
 	keyServerHalfPath := s.keyServerHalfPath(id)
@@ -209,7 +212,9 @@ func (s *blockDiskStore) getData(id BlockID) (
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
 			blockNonExistentError{id}
 	} else if err != nil {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+			errors.Wrapf(err, "failed to read %q", s.dataPath(id))
+
 	}
 
 	// Check integrity.
@@ -220,7 +225,7 @@ func (s *blockDiskStore) getData(id BlockID) (
 	}
 
 	if id != dataID {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, fmt.Errorf(
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, errors.Errorf(
 			"Block ID mismatch: expected %s, got %s", id, dataID)
 	}
 
@@ -264,16 +269,23 @@ func (s *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 }
 
 func (s *blockDiskStore) hasData(id BlockID) error {
-	_, err := os.Stat(s.dataPath(id))
+	p := s.dataPath(id)
+	_, err := os.Stat(p)
+	if os.IsNotExist(err) {
+		return err
+	} else if err != nil {
+		return errors.Wrapf(err, "could not stat %q", p)
+	}
 	return err
 }
 
 func (s *blockDiskStore) getDataSize(id BlockID) (int64, error) {
-	fi, err := os.Stat(s.dataPath(id))
+	p := s.dataPath(id)
+	fi, err := os.Stat(p)
 	if os.IsNotExist(err) {
 		return 0, nil
 	} else if err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "could not stat %q", p)
 	}
 	return fi.Size(), nil
 }
@@ -299,24 +311,26 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	if os.IsNotExist(err) {
 		return res, nil
 	} else if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "could not read dir %q", s.dir)
 	}
 
 	for _, fi := range fileInfos {
 		name := fi.Name()
 		if !fi.IsDir() {
-			return nil, fmt.Errorf("Unexpected non-dir %q", name)
+			return nil, errors.Errorf("Unexpected non-dir %q", name)
 		}
 
-		subFileInfos, err := ioutil.ReadDir(filepath.Join(s.dir, name))
+		subdir := filepath.Join(s.dir, name)
+		subFileInfos, err := ioutil.ReadDir(subdir)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(
+				err, "could not read dir %q", subdir)
 		}
 
 		for _, sfi := range subFileInfos {
 			subName := sfi.Name()
 			if !sfi.IsDir() {
-				return nil, fmt.Errorf("Unexpected non-dir %q",
+				return nil, errors.Errorf("Unexpected non-dir %q",
 					subName)
 			}
 
@@ -324,16 +338,17 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 				s.dir, name, subName, idFilename)
 			idBytes, err := ioutil.ReadFile(idPath)
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrapf(err,
+					"could not read %q", idPath)
 			}
 
 			id, err := BlockIDFromString(string(idBytes))
 			if err != nil {
-				return nil, err
+				return nil, errors.WithStack(err)
 			}
 
 			if !strings.HasPrefix(id.String(), name+subName) {
-				return nil, fmt.Errorf(
+				return nil, errors.Errorf(
 					"%q unexpectedly not a prefix of %q",
 					name+subName, id.String())
 			}
@@ -382,7 +397,7 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		// to id, so no need to check that they're both equal.
 
 		if existingServerHalf != serverHalf {
-			return fmt.Errorf(
+			return errors.Errorf(
 				"key server half mismatch: expected %s, got %s",
 				existingServerHalf, serverHalf)
 		}
@@ -394,7 +409,8 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 
 		err = ioutil.WriteFile(s.dataPath(id), buf, 0600)
 		if err != nil {
-			return err
+			return errors.Wrapf(
+				err, "could not write %q", s.dataPath(id))
 		}
 
 		// TODO: Add integrity-checking for key server half?
@@ -405,7 +421,8 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		}
 		err = ioutil.WriteFile(s.keyServerHalfPath(id), data, 0600)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "could not write %q",
+				s.keyServerHalfPath(id))
 		}
 	}
 
@@ -485,21 +502,26 @@ func (s *blockDiskStore) remove(id BlockID) error {
 		return err
 	}
 	if hasAnyRef {
-		return fmt.Errorf(
+		return errors.Errorf(
 			"Trying to remove data for referenced block %s", id)
 	}
 	path := s.blockPath(id)
 
 	err = os.RemoveAll(path)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to remove %q", path)
 	}
 
 	// Remove the parent (splayed) directory if it exists and is
 	// empty.
-	err = os.Remove(filepath.Dir(path))
+	dir := filepath.Dir(path)
+	err = os.Remove(dir)
 	if os.IsNotExist(err) || isExist(err) {
 		err = nil
 	}
-	return err
+	if err != nil {
+		return errors.Wrapf(err, "failed to remove %q", dir)
+	}
+
+	return nil
 }
