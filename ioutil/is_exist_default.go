@@ -12,9 +12,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// This file is a workaround for
+// IsExist wraps os.IsExist to work around
 // https://github.com/golang/go/issues/17164 .
-
 func IsExist(err error) bool {
 	return os.IsExist(errors.Cause(err))
 }
