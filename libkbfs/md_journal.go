@@ -6,12 +6,12 @@ package libkbfs
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/kbfscodec"
@@ -196,7 +196,7 @@ func makeMDJournalWithIDJournal(
 	}
 
 	if (earliest == nil) != (latest == ImmutableBareRootMetadata{}) {
-		return nil, fmt.Errorf("has earliest=%t != has latest=%t",
+		return nil, errors.Errorf("has earliest=%t != has latest=%t",
 			earliest != nil,
 			latest != ImmutableBareRootMetadata{})
 	}
@@ -205,7 +205,7 @@ func makeMDJournalWithIDJournal(
 		if earliest.BID() != latest.BID() &&
 			!(earliest.BID() == NullBranchID &&
 				latest.BID() == PendingLocalSquashBranchID) {
-			return nil, fmt.Errorf(
+			return nil, errors.Errorf(
 				"earliest.BID=%s != latest.BID=%s",
 				earliest.BID(), latest.BID())
 		}
@@ -309,7 +309,7 @@ func (j mdJournal) getExtraMetadata(
 	ExtraMetadata, error) {
 	if (wkbID == TLFWriterKeyBundleID{}) !=
 		(rkbID == TLFReaderKeyBundleID{}) {
-		return nil, fmt.Errorf(
+		return nil, errors.Errorf(
 			"wkbID is empty (%t) != rkbID is empty (%t)",
 			wkbID == TLFWriterKeyBundleID{},
 			rkbID == TLFReaderKeyBundleID{})
@@ -422,7 +422,7 @@ func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID bool) (
 	}
 
 	if mdID != id {
-		return nil, nil, time.Time{}, fmt.Errorf(
+		return nil, nil, time.Time{}, errors.Errorf(
 			"Metadata ID mismatch: expected %s, got %s", id, mdID)
 	}
 
@@ -444,7 +444,7 @@ func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID bool) (
 
 	if verifyBranchID && rmd.BID() != j.branchID &&
 		!(rmd.BID() == NullBranchID && j.branchID == PendingLocalSquashBranchID) {
-		return nil, nil, time.Time{}, fmt.Errorf(
+		return nil, nil, time.Time{}, errors.Errorf(
 			"Branch ID mismatch: expected %s, got %s",
 			j.branchID, rmd.BID())
 	}
@@ -581,11 +581,11 @@ func (j *mdJournal) convertToBranch(
 	ctx context.Context, bid BranchID, signer kbfscrypto.Signer,
 	codec kbfscodec.Codec, tlfID tlf.ID, mdcache MDCache) (err error) {
 	if j.branchID != NullBranchID {
-		return fmt.Errorf(
+		return errors.Errorf(
 			"convertToBranch called with j.branchID=%s", j.branchID)
 	}
 	if bid == NullBranchID {
-		return fmt.Errorf(
+		return errors.Errorf(
 			"convertToBranch called with null branchID")
 	}
 
@@ -811,7 +811,7 @@ func (j *mdJournal) removeFlushedEntry(
 	}
 
 	if mdID != rmdID {
-		return fmt.Errorf("Expected mdID %s, got %s", mdID, rmdID)
+		return errors.Errorf("Expected mdID %s, got %s", mdID, rmdID)
 	}
 
 	eq, err := kbfscodec.Equal(j.codec, rmd, rmds.MD)
@@ -850,7 +850,7 @@ func getMdID(ctx context.Context, mdserver MDServer, crypto cryptoPure,
 	} else if len(rmdses) == 0 {
 		return MdID{}, nil
 	} else if len(rmdses) > 1 {
-		return MdID{}, fmt.Errorf(
+		return MdID{}, errors.Errorf(
 			"Got more than one object when trying to get rev=%d for branch %s of TLF %s",
 			revision, bid, tlfID)
 	}
@@ -995,7 +995,7 @@ func (j mdJournal) getRange(bid BranchID, start, stop MetadataRevision) (
 		}
 
 		if expectedRevision != brmd.RevisionNumber() {
-			panic(fmt.Errorf("expected revision %v, got %v",
+			panic(errors.Errorf("expected revision %v, got %v",
 				expectedRevision, brmd.RevisionNumber()))
 		}
 		ibrmd := MakeImmutableBareRootMetadata(
@@ -1140,7 +1140,7 @@ func (j *mdJournal) put(
 	// The below is code common to all the cases.
 
 	if (mStatus == Merged) != (rmd.BID() == NullBranchID) {
-		return MdID{}, fmt.Errorf(
+		return MdID{}, errors.Errorf(
 			"mStatus=%s doesn't match bid=%s", mStatus, rmd.BID())
 	}
 
@@ -1151,13 +1151,13 @@ func (j *mdJournal) put(
 	}
 
 	if rmd.BID() != j.branchID {
-		return MdID{}, fmt.Errorf(
+		return MdID{}, errors.Errorf(
 			"Branch ID mismatch: expected %s, got %s",
 			j.branchID, rmd.BID())
 	}
 
 	if isLocalSquash && rmd.BID() != NullBranchID {
-		return MdID{}, fmt.Errorf("A local squash must have a null branch ID,"+
+		return MdID{}, errors.Errorf("A local squash must have a null branch ID,"+
 			" but this one has bid=%s", rmd.BID())
 	}
 
@@ -1191,7 +1191,7 @@ func (j *mdJournal) put(
 				return MdID{}, err
 			}
 			if exists && !entry.IsLocalSquash {
-				return MdID{}, fmt.Errorf("Local squash is not preceded "+
+				return MdID{}, errors.Errorf("Local squash is not preceded "+
 					"by a local squash (head=%s)", entry.ID)
 			}
 		}
@@ -1295,7 +1295,7 @@ func (j *mdJournal) clear(
 	}
 
 	if head.BID() != j.branchID {
-		return fmt.Errorf("Head branch ID %s doesn't match journal "+
+		return errors.Errorf("Head branch ID %s doesn't match journal "+
 			"branch ID %s while clearing", head.BID(), j.branchID)
 	}
 
@@ -1356,7 +1356,7 @@ func (j *mdJournal) resolveAndClear(
 
 	// The resolution must not have a branch ID.
 	if rmd.BID() != NullBranchID {
-		return MdID{}, fmt.Errorf("Resolution MD has branch ID: %s", rmd.BID())
+		return MdID{}, errors.Errorf("Resolution MD has branch ID: %s", rmd.BID())
 	}
 
 	// The branch ID must match our current state.
@@ -1364,7 +1364,7 @@ func (j *mdJournal) resolveAndClear(
 		return MdID{}, errors.New("Cannot resolve master branch")
 	}
 	if j.branchID != bid {
-		return MdID{}, fmt.Errorf("Resolve and clear for branch %s "+
+		return MdID{}, errors.Errorf("Resolve and clear for branch %s "+
 			"while on branch %s", bid, j.branchID)
 	}
 
