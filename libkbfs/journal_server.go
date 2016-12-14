@@ -227,7 +227,7 @@ func (j *JournalServer) EnableExistingJournals(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Error when enabling existing journals: %v",
+				"Error when enabling existing journals: %+v",
 				err)
 		}
 	}()
@@ -297,7 +297,7 @@ func (j *JournalServer) EnableExistingJournals(
 		uid, key, tlfID, err := readTLFJournalInfoFile(dir)
 		if err != nil {
 			j.log.CDebugf(
-				ctx, "Skipping non-TLF dir %q: %v", name, err)
+				ctx, "Skipping non-TLF dir %q: %+v", name, err)
 			continue
 		}
 
@@ -329,7 +329,7 @@ func (j *JournalServer) EnableExistingJournals(
 		if err != nil {
 			// Don't treat per-TLF errors as fatal.
 			j.log.CWarningf(
-				ctx, "Error when enabling existing journal for %s: %v",
+				ctx, "Error when enabling existing journal for %s: %+v",
 				tlfID, err)
 			continue
 		}
@@ -346,7 +346,7 @@ func (j *JournalServer) enableLocked(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Error when enabling journal for %s: %v",
+				"Error when enabling journal for %s: %+v",
 				tlfID, err)
 		}
 	}()
@@ -379,7 +379,7 @@ func (j *JournalServer) enableLocked(
 		}
 
 		j.log.CWarningf(ctx,
-			"Got ignorable error on journal enable, and proceeding anyway: %v", err)
+			"Got ignorable error on journal enable, and proceeding anyway: %+v", err)
 	}
 
 	tlfDir := j.tlfJournalPathLocked(tlfID)
@@ -512,7 +512,7 @@ func (j *JournalServer) Disable(ctx context.Context, tlfID tlf.ID) (
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Error when disabling journal for %s: %v",
+				"Error when disabling journal for %s: %+v",
 				tlfID, err)
 		}
 	}()
@@ -579,7 +579,7 @@ func (j *JournalServer) Status(
 		unflushedBytes, err := tlfJournal.getUnflushedBytes()
 		if err != nil {
 			j.log.CWarningf(ctx,
-				"Couldn't calculate unflushed bytes for %s: %v",
+				"Couldn't calculate unflushed bytes for %s: %+v",
 				tlfJournal.tlfID, err)
 		}
 		totalUnflushedBytes += unflushedBytes
