@@ -13,6 +13,7 @@ import (
 	"strconv"
 
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/pkg/errors"
 )
 
 // diskJournal stores an ordered list of entries.
@@ -57,11 +58,11 @@ type journalOrdinal uint64
 
 func makeJournalOrdinal(s string) (journalOrdinal, error) {
 	if len(s) != 16 {
-		return 0, fmt.Errorf("invalid journal ordinal %q", s)
+		return 0, errors.Errorf("invalid journal ordinal %q", s)
 	}
 	u, err := strconv.ParseUint(s, 16, 64)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "failed to parse %q", s)
 	}
 	return journalOrdinal(u), nil
 }
@@ -84,21 +85,28 @@ func (j diskJournal) journalEntryPath(o journalOrdinal) string {
 	return filepath.Join(j.dir, o.String())
 }
 
-// The functions below are for getting and setting the earliest and
-// latest ordinals.
+// The functions below are for reading and writing the earliest and
+// latest ordinals. The read functions may return an error for which
+// os.IsNotExist() returns true.
 
-func (j diskJournal) readOrdinal(path string) (
-	journalOrdinal, error) {
+func (j diskJournal) readOrdinal(path string) (journalOrdinal, error) {
 	buf, err := ioutil.ReadFile(path)
-	if err != nil {
+	if os.IsNotExist(err) {
 		return 0, err
+	}
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to read %q", path)
 	}
 	return makeJournalOrdinal(string(buf))
 }
 
 func (j diskJournal) writeOrdinal(
 	path string, o journalOrdinal) error {
-	return ioutil.WriteFile(path, []byte(o.String()), 0600)
+	err := ioutil.WriteFile(path, []byte(o.String()), 0600)
+	if err != nil {
+		return errors.Wrapf(err, "failed to write %q to %q", o, path)
+	}
+	return nil
 }
 
 func (j diskJournal) readEarliestOrdinal() (
@@ -130,11 +138,13 @@ func (j diskJournal) clearOrdinals() error {
 
 	err = os.Remove(j.earliestPath())
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to remove earliest path %q",
+			j.earliestPath())
 	}
 	err = os.Remove(j.latestPath())
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to remove latest path %q",
+			j.latestPath())
 	}
 
 	// Garbage-collect the old entries.  TODO: we'll eventually need a
@@ -143,7 +153,9 @@ func (j diskJournal) clearOrdinals() error {
 		p := j.journalEntryPath(ordinal)
 		err = os.Remove(p)
 		if err != nil {
-			return err
+			return errors.Wrapf(err,
+				"failed to remove path %q for ordinal %q",
+				p, ordinal)
 		}
 	}
 	return nil
@@ -178,7 +190,9 @@ func (j diskJournal) removeEarliest() (empty bool, err error) {
 	p := j.journalEntryPath(earliestOrdinal)
 	err = os.Remove(p)
 	if err != nil {
-		return false, err
+		return false, errors.Wrapf(err,
+			"failed to remove path %q for earliest ordinal %q",
+			p, earliestOrdinal)
 	}
 
 	return false, nil
@@ -190,13 +204,16 @@ func (j diskJournal) readJournalEntry(o journalOrdinal) (interface{}, error) {
 	p := j.journalEntryPath(o)
 	buf, err := ioutil.ReadFile(p)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(
+			err, "failed to read path %q for ordinal %q", p, o)
 	}
 
 	entry := reflect.New(j.entryType)
 	err = j.codec.Decode(buf, entry)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err,
+			"failed to decode entry at path %q for ordinal %q",
+			p, o)
 	}
 
 	return entry.Elem().Interface(), nil
@@ -206,23 +223,30 @@ func (j diskJournal) writeJournalEntry(
 	o journalOrdinal, entry interface{}) error {
 	entryType := reflect.TypeOf(entry)
 	if entryType != j.entryType {
-		panic(fmt.Errorf("Expected entry type %v, got %v",
+		panic(errors.Errorf("Expected entry type %v, got %v",
 			j.entryType, entryType))
 	}
 
 	err := os.MkdirAll(j.dir, 0700)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to mkdir %q", j.dir)
 	}
 
 	p := j.journalEntryPath(o)
 
 	buf, err := j.codec.Encode(entry)
 	if err != nil {
-		return err
+		return errors.Wrapf(err,
+			"failed to encode entry for ordinal %q", o)
 	}
 
-	return ioutil.WriteFile(p, buf, 0600)
+	err = ioutil.WriteFile(p, buf, 0600)
+	if err != nil {
+		return errors.Wrapf(err,
+			"failed to write entry at path %q for ordinal %q", p, o)
+	}
+
+	return nil
 }
 
 // appendJournalEntry appends the given entry to the journal. If o is
@@ -251,10 +275,11 @@ func (j diskJournal) appendJournalEntry(
 		next = lo + 1
 		if next == 0 {
 			// Rollover is almost certainly a bug.
-			return 0, fmt.Errorf("Ordinal rollover for %+v", entry)
+			return 0, errors.Errorf(
+				"Ordinal rollover for %+v", entry)
 		}
 		if o != nil && next != *o {
-			return 0, fmt.Errorf(
+			return 0, errors.Errorf(
 				"%v unexpectedly does not follow %v for %+v",
 				*o, lo, entry)
 		}
@@ -284,7 +309,8 @@ func (j diskJournal) appendJournalEntry(
 func (j *diskJournal) move(newDir string) (oldDir string, err error) {
 	err = os.Rename(j.dir, newDir)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(
+			err, "failed to rename %q to %q", j.dir, newDir)
 	}
 	oldDir = j.dir
 	j.dir = newDir

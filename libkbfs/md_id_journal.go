@@ -46,16 +46,16 @@ func makeMdIDJournal(codec kbfscodec.Codec, dir string) mdIDJournal {
 func ordinalToRevision(o journalOrdinal) (MetadataRevision, error) {
 	r := MetadataRevision(o)
 	if r < MetadataRevisionInitial {
-		return MetadataRevisionUninitialized,
-			errors.Errorf("Cannot convert ordinal %s to a MetadataRevision", o)
+		return MetadataRevisionUninitialized, errors.Errorf(
+			"Cannot convert ordinal %s to a MetadataRevision", o)
 	}
 	return r, nil
 }
 
 func revisionToOrdinal(r MetadataRevision) (journalOrdinal, error) {
 	if r < MetadataRevisionInitial {
-		return journalOrdinal(0),
-			errors.Errorf("Cannot convert revision %s to an ordinal", r)
+		return journalOrdinal(0), errors.Errorf(
+			"Cannot convert revision %s to an ordinal", r)
 	}
 	return journalOrdinal(r), nil
 }
