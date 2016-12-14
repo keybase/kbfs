@@ -1200,7 +1200,8 @@ func (j *tlfJournal) disable() (wasEnabled bool, err error) {
 	err = j.checkEnabledLocked()
 	switch errors.Cause(err).(type) {
 	case nil:
-		// Fall through.
+		// Continue.
+		break
 	case errTLFJournalDisabled:
 		// Already disabled.
 		return false, nil
@@ -1239,7 +1240,8 @@ func (j *tlfJournal) enable() error {
 		// Already enabled.
 		return nil
 	case errTLFJournalDisabled:
-		// Fall through.
+		// Continue.
+		break
 	case errTLFJournalShutdown:
 		// Already shutdown.
 		return err
