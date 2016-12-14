@@ -149,7 +149,7 @@ type blockRefInfo struct {
 func (s *blockDiskStore) getRefInfo(id BlockID) (blockRefInfo, error) {
 	var refInfo blockRefInfo
 	err := kbfscodec.DeserializeFromFile(s.codec, s.refsPath(id), &refInfo)
-	if !os.IsNotExist(err) && err != nil {
+	if !ioutil2.IsNotExist(err) && err != nil {
 		return blockRefInfo{}, err
 	}
 
@@ -199,7 +199,7 @@ func (s *blockDiskStore) addRefs(id BlockID, contexts []BlockContext,
 func (s *blockDiskStore) getData(id BlockID) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	data, err := ioutil.ReadFile(s.dataPath(id))
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
 			blockNonExistentError{id}
 	} else if err != nil {
@@ -209,7 +209,7 @@ func (s *blockDiskStore) getData(id BlockID) (
 
 	keyServerHalfPath := s.keyServerHalfPath(id)
 	buf, err := ioutil.ReadFile(keyServerHalfPath)
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
 			blockNonExistentError{id}
 	} else if err != nil {
@@ -272,7 +272,7 @@ func (s *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 func (s *blockDiskStore) hasData(id BlockID) error {
 	p := s.dataPath(id)
 	_, err := os.Stat(p)
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		return err
 	} else if err != nil {
 		return errors.Wrapf(err, "could not stat %q", p)
@@ -283,7 +283,7 @@ func (s *blockDiskStore) hasData(id BlockID) error {
 func (s *blockDiskStore) getDataSize(id BlockID) (int64, error) {
 	p := s.dataPath(id)
 	fi, err := os.Stat(p)
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		return 0, nil
 	} else if err != nil {
 		return 0, errors.Wrapf(err, "could not stat %q", p)
@@ -309,7 +309,7 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	res := make(map[BlockID]blockRefMap)
 
 	fileInfos, err := ioutil.ReadDir(s.dir)
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		return res, nil
 	} else if err != nil {
 		return nil, errors.Wrapf(err, "could not read dir %q", s.dir)
@@ -517,7 +517,7 @@ func (s *blockDiskStore) remove(id BlockID) error {
 	// empty.
 	dir := filepath.Dir(path)
 	err = os.Remove(dir)
-	if os.IsNotExist(err) || ioutil2.IsExist(err) {
+	if ioutil2.IsNotExist(err) || ioutil2.IsExist(err) {
 		err = nil
 	}
 	if err != nil {

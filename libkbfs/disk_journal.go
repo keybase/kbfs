@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strconv"
 
+	ioutil2 "github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/pkg/errors"
 )
@@ -87,11 +88,11 @@ func (j diskJournal) journalEntryPath(o journalOrdinal) string {
 
 // The functions below are for reading and writing the earliest and
 // latest ordinals. The read functions may return an error for which
-// os.IsNotExist() returns true.
+// ioutil2.IsNotExist() returns true.
 
 func (j diskJournal) readOrdinal(path string) (journalOrdinal, error) {
 	buf, err := ioutil.ReadFile(path)
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		return 0, err
 	} else if err != nil {
 		return 0, errors.Wrapf(err, "failed to read %q", path)
@@ -235,7 +236,7 @@ func (j diskJournal) appendJournalEntry(
 	// of reading it from disk every time.
 	var next journalOrdinal
 	lo, err := j.readLatestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		if o != nil {
 			next = *o
 		} else {
@@ -263,7 +264,7 @@ func (j diskJournal) appendJournalEntry(
 	}
 
 	_, err = j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		err := j.writeEarliestOrdinal(next)
 		if err != nil {
 			return 0, err
@@ -291,7 +292,7 @@ func (j *diskJournal) move(newDir string) (oldDir string, err error) {
 
 func (j diskJournal) length() (uint64, error) {
 	first, err := j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		return 0, nil
 	} else if err != nil {
 		return 0, err

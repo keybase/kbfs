@@ -202,7 +202,7 @@ func TestStatNonexistentFolder(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	if _, err := os.Lstat(filepath.Join(mnt.Dir, PrivateName, "does-not-exist")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(filepath.Join(mnt.Dir, PrivateName, "does-not-exist")); !ioutil.IsNotExist(err) {
 		t.Fatalf("expected ENOENT: %v", err)
 	}
 }
@@ -602,7 +602,7 @@ func TestRename(t *testing.T) {
 		t.Errorf("bad file contents: %q != %q", g, e)
 	}
 
-	if _, err := ioutil.ReadFile(p1); !os.IsNotExist(err) {
+	if _, err := ioutil.ReadFile(p1); !ioutil.IsNotExist(err) {
 		t.Errorf("old name still exists: %v", err)
 	}
 }
@@ -640,7 +640,7 @@ func TestRenameOverwrite(t *testing.T) {
 		t.Errorf("bad file contents: %q != %q", g, e)
 	}
 
-	if _, err := ioutil.ReadFile(p1); !os.IsNotExist(err) {
+	if _, err := ioutil.ReadFile(p1); !ioutil.IsNotExist(err) {
 		t.Errorf("old name still exists: %v", err)
 	}
 }
@@ -682,7 +682,7 @@ func TestRenameCrossDir(t *testing.T) {
 		t.Errorf("bad file contents: %q != %q", g, e)
 	}
 
-	if _, err := ioutil.ReadFile(p1); !os.IsNotExist(err) {
+	if _, err := ioutil.ReadFile(p1); !ioutil.IsNotExist(err) {
 		t.Errorf("old name still exists: %v", err)
 	}
 }
@@ -732,7 +732,7 @@ func TestRenameCrossFolder(t *testing.T) {
 		t.Errorf("bad file contents: %q != %q", g, e)
 	}
 
-	if _, err := ioutil.ReadFile(p2); !os.IsNotExist(err) {
+	if _, err := ioutil.ReadFile(p2); !ioutil.IsNotExist(err) {
 		t.Errorf("new name exists even on error: %v", err)
 	}
 }
@@ -785,7 +785,7 @@ func TestWriteThenRename(t *testing.T) {
 		t.Errorf("bad file contents: %q != %q", g, e)
 	}
 
-	if _, err := ioutil.ReadFile(p1); !os.IsNotExist(err) {
+	if _, err := ioutil.ReadFile(p1); !ioutil.IsNotExist(err) {
 		t.Errorf("old name still exists: %v", err)
 	}
 
@@ -845,7 +845,7 @@ func TestWriteThenRenameCrossDir(t *testing.T) {
 		t.Errorf("bad file contents: %q != %q", g, e)
 	}
 
-	if _, err := ioutil.ReadFile(p1); !os.IsNotExist(err) {
+	if _, err := ioutil.ReadFile(p1); !ioutil.IsNotExist(err) {
 		t.Errorf("old name still exists: %v", err)
 	}
 
@@ -870,7 +870,7 @@ func TestRemoveFile(t *testing.T) {
 
 	checkDir(t, filepath.Join(mnt.Dir, PrivateName, "jdoe"), map[string]fileInfoCheck{})
 
-	if _, err := ioutil.ReadFile(p); !os.IsNotExist(err) {
+	if _, err := ioutil.ReadFile(p); !ioutil.IsNotExist(err) {
 		t.Errorf("file still exists: %v", err)
 	}
 
@@ -894,7 +894,7 @@ func TestRemoveDir(t *testing.T) {
 
 	checkDir(t, filepath.Join(mnt.Dir, PrivateName, "jdoe"), map[string]fileInfoCheck{})
 
-	if _, err := os.Stat(p); !os.IsNotExist(err) {
+	if _, err := os.Stat(p); !ioutil.IsNotExist(err) {
 		t.Errorf("file still exists: %v", err)
 	}
 
@@ -956,7 +956,7 @@ func TestRemoveFileWhileOpenWriting(t *testing.T) {
 
 	checkDir(t, filepath.Join(mnt.Dir, PrivateName, "jdoe"), map[string]fileInfoCheck{})
 
-	if _, err := ioutil.ReadFile(p); !os.IsNotExist(err) {
+	if _, err := ioutil.ReadFile(p); !ioutil.IsNotExist(err) {
 		t.Errorf("file still exists: %v", err)
 	}
 
@@ -999,7 +999,7 @@ func TestRemoveFileWhileOpenReading(t *testing.T) {
 
 	checkDir(t, filepath.Join(mnt.Dir, PrivateName, "jdoe"), map[string]fileInfoCheck{})
 
-	if _, err := ioutil.ReadFile(p); !os.IsNotExist(err) {
+	if _, err := ioutil.ReadFile(p); !ioutil.IsNotExist(err) {
 		t.Errorf("file still exists: %v", err)
 	}
 
@@ -1053,7 +1053,7 @@ func TestRemoveFileWhileOpenReadingAcrossMounts(t *testing.T) {
 	checkDir(t, filepath.Join(mnt1.Dir, PrivateName, "user1,user2"),
 		map[string]fileInfoCheck{})
 
-	if _, err := ioutil.ReadFile(p1); !os.IsNotExist(err) {
+	if _, err := ioutil.ReadFile(p1); !ioutil.IsNotExist(err) {
 		t.Errorf("file still exists: %v", err)
 	}
 }
@@ -1115,7 +1115,7 @@ func TestRenameOverFileWhileOpenReadingAcrossMounts(t *testing.T) {
 			"myfile": nil,
 		})
 
-	if _, err := ioutil.ReadFile(p1Other); !os.IsNotExist(err) {
+	if _, err := ioutil.ReadFile(p1Other); !ioutil.IsNotExist(err) {
 		t.Errorf("other file still exists: %v", err)
 	}
 
@@ -1876,7 +1876,7 @@ func TestInvalidateEntryOnDelete(t *testing.T) {
 
 	syncFolderToServer(t, "jdoe", fs2)
 
-	if buf, err := ioutil.ReadFile(filepath.Join(mnt2.Dir, PrivateName, "jdoe", "myfile")); !os.IsNotExist(err) {
+	if buf, err := ioutil.ReadFile(filepath.Join(mnt2.Dir, PrivateName, "jdoe", "myfile")); !ioutil.IsNotExist(err) {
 		t.Fatalf("expected ENOENT: %v: %q", err, buf)
 	}
 
@@ -2021,10 +2021,10 @@ func TestInvalidateAcrossMounts(t *testing.T) {
 	syncFolderToServer(t, "user1,user2", fs2)
 
 	// check everything from user 2's perspective
-	if buf, err := ioutil.ReadFile(myfile2); !os.IsNotExist(err) {
+	if buf, err := ioutil.ReadFile(myfile2); !ioutil.IsNotExist(err) {
 		t.Fatalf("expected ENOENT: %v: %q", err, buf)
 	}
-	if buf, err := ioutil.ReadFile(mydira2); !os.IsNotExist(err) {
+	if buf, err := ioutil.ReadFile(mydira2); !ioutil.IsNotExist(err) {
 		t.Fatalf("expected ENOENT: %v: %q", err, buf)
 	}
 

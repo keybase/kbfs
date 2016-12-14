@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -165,7 +166,7 @@ func (s *mdServerTlfStorage) putMDLocked(
 	}
 
 	_, err = s.getMDReadLocked(id)
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
 		return MdID{}, err

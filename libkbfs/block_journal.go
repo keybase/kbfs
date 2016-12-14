@@ -13,6 +13,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -194,7 +195,7 @@ func makeBlockJournal(
 	// Get initial aggregate info.
 	err = kbfscodec.DeserializeFromFile(
 		codec, aggregateInfoPath(dir), &journal.aggregateInfo)
-	if !os.IsNotExist(err) && err != nil {
+	if !ioutil.IsNotExist(err) && err != nil {
 		return nil, err
 	}
 
@@ -259,7 +260,7 @@ func (j *blockJournal) length() (uint64, error) {
 
 func (j *blockJournal) end() (journalOrdinal, error) {
 	last, err := j.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return 0, nil
 	} else if err != nil {
 		return 0, err
@@ -483,7 +484,7 @@ func (j *blockJournal) getNextEntriesToFlush(
 	ctx context.Context, end journalOrdinal, maxToFlush int) (
 	entries blockEntriesToFlush, maxMDRevToFlush MetadataRevision, err error) {
 	first, err := j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized, nil
 	} else if err != nil {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized, err
@@ -756,7 +757,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 func (j *blockJournal) ignoreBlocksAndMDRevMarkers(ctx context.Context,
 	blocksToIgnore []BlockID) error {
 	first, err := j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil
 	} else if err != nil {
 		return err
@@ -829,14 +830,14 @@ func (j *blockJournal) saveBlocksUntilNextMDFlush() error {
 	// next MD flush, we can use the saved journal to delete the block
 	// data for all the entries in the saved journal.
 	first, err := j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil
 	} else if err != nil {
 		return err
 	}
 
 	last, err := j.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil
 	} else if err != nil {
 		return err
@@ -867,14 +868,14 @@ func (j *blockJournal) onMDFlush(ctx context.Context) error {
 
 	// Delete the block data for anything in the saved journal.
 	first, err := j.saveUntilMDFlush.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil
 	} else if err != nil {
 		return err
 	}
 
 	last, err := j.saveUntilMDFlush.readLatestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil
 	} else if err != nil {
 		return err
@@ -925,7 +926,7 @@ func (j *blockJournal) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	refs := make(map[BlockID]blockRefMap)
 
 	first, err := j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return refs, nil
 	} else if err != nil {
 		return nil, err

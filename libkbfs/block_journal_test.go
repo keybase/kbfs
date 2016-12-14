@@ -15,6 +15,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	ioutil2 "github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -709,13 +710,13 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 	require.NoError(t, err)
 
 	err = j.hasData(bID1)
-	require.True(t, os.IsNotExist(err))
+	require.True(t, ioutil2.IsNotExist(err))
 	err = j.hasData(bID2)
-	require.True(t, os.IsNotExist(err))
+	require.True(t, ioutil2.IsNotExist(err))
 	err = j.hasData(bID3)
-	require.True(t, os.IsNotExist(err))
+	require.True(t, ioutil2.IsNotExist(err))
 	err = j.hasData(bID4)
-	require.True(t, os.IsNotExist(err))
+	require.True(t, ioutil2.IsNotExist(err))
 
 	testBlockJournalGCd(t, j)
 }
@@ -729,7 +730,7 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 		var info aggregateInfo
 		err := kbfscodec.DeserializeFromFile(
 			j.codec, aggregateInfoPath(j.dir), &info)
-		if !os.IsNotExist(err) {
+		if !ioutil2.IsNotExist(err) {
 			require.NoError(t, err)
 		}
 		require.Equal(t, int64(expectedSize), info.UnflushedBytes)

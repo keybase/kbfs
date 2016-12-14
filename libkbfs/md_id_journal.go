@@ -5,12 +5,12 @@
 package libkbfs
 
 import (
-	"os"
 	"reflect"
 
 	"github.com/keybase/go-codec/codec"
 	"github.com/pkg/errors"
 
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 )
 
@@ -65,7 +65,7 @@ func revisionToOrdinal(r MetadataRevision) (journalOrdinal, error) {
 
 func (j mdIDJournal) readEarliestRevision() (MetadataRevision, error) {
 	o, err := j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return MetadataRevisionUninitialized, nil
 	} else if err != nil {
 		return MetadataRevisionUninitialized, err
@@ -83,7 +83,7 @@ func (j mdIDJournal) writeEarliestRevision(r MetadataRevision) error {
 
 func (j mdIDJournal) readLatestRevision() (MetadataRevision, error) {
 	o, err := j.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return MetadataRevisionUninitialized, nil
 	} else if err != nil {
 		return MetadataRevisionUninitialized, err

@@ -16,6 +16,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	ioutil2 "github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 
@@ -238,7 +239,7 @@ func (j *JournalServer) EnableExistingJournals(
 
 	err = j.readConfig()
 	switch {
-	case os.IsNotExist(err):
+	case ioutil2.IsNotExist(err):
 		// Config file doesn't exist, so write it.
 		err := j.writeConfig()
 		if err != nil {
@@ -280,7 +281,7 @@ func (j *JournalServer) EnableExistingJournals(
 	}()
 
 	fileInfos, err := ioutil.ReadDir(j.rootPath())
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		enableSucceeded = true
 		return nil
 	} else if err != nil {

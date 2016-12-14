@@ -18,6 +18,7 @@ import (
 	"unsafe"
 
 	"github.com/keybase/kbfs/dokan/winacl"
+	"github.com/keybase/kbfs/ioutil"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/windows"
 )
@@ -41,7 +42,7 @@ func TestEmptyFS(t *testing.T) {
 
 func testShouldNotExist(t *testing.T) {
 	_, err := os.Open(`T:\should-not-exist`)
-	if !os.IsNotExist(err) {
+	if !ioutil.IsNotExist(err) {
 		t.Fatal("Opening non-existent file:", err)
 	}
 }

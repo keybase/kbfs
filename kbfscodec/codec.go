@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"reflect"
 
+	ioutil2 "github.com/keybase/kbfs/ioutil"
+
 	"github.com/pkg/errors"
 )
 
@@ -102,10 +104,10 @@ func SerializeToFile(c Codec, obj interface{}, path string) error {
 
 // DeserializeFromFile deserializes the given file into the object
 // pointed to by objPtr. It may return an error for which
-// os.IsNotExist() returns true.
+// ioutil.IsNotExist() returns true.
 func DeserializeFromFile(c Codec, path string, objPtr interface{}) error {
 	data, err := ioutil.ReadFile(path)
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		return err
 	} else if err != nil {
 		return errors.Wrapf(err, "failed to read %q", path)

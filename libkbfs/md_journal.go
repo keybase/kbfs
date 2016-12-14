@@ -278,7 +278,7 @@ type mdInfo struct {
 func (j mdJournal) getMDInfo(id MdID) (time.Time, MetadataVer, error) {
 	p := j.mdInfoPath(id)
 	infoJSON, err := ioutil.ReadFile(p)
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		return time.Time{}, MetadataVer(-1), err
 	} else if err != nil {
 		return time.Time{}, MetadataVer(-1), errors.Wrapf(
@@ -418,7 +418,7 @@ func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID bool) (
 
 	p := j.mdDataPath(id)
 	data, err := ioutil.ReadFile(p)
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		return nil, nil, time.Time{}, err
 	} else if err != nil {
 		return nil, nil, time.Time{}, errors.Wrapf(
@@ -488,7 +488,7 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 	}
 
 	_, _, _, err = j.getMDAndExtra(id, true)
-	if os.IsNotExist(err) {
+	if ioutil2.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
 		return MdID{}, err
