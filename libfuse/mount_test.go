@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -18,6 +17,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/keybase/kbfs/ioutil"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"

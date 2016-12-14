@@ -6,10 +6,11 @@ package libfuse
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/keybase/kbfs/ioutil"
 
 	"golang.org/x/net/context"
 )

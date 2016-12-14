@@ -5,13 +5,12 @@
 package libkbfs
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/keybase/go-codec/codec"
-	ioutil2 "github.com/keybase/kbfs/ioutil"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/pkg/errors"
@@ -126,13 +125,7 @@ func (s *blockDiskStore) makeDir(id BlockID) error {
 
 	// TODO: Only write if the file doesn't exist.
 
-	p := s.idPath(id)
-	err = ioutil.WriteFile(s.idPath(id), []byte(id.String()), 0600)
-	if err != nil {
-		return errors.Wrapf(err, "failed to write to %q", p)
-	}
-
-	return nil
+	return ioutil.WriteFile(s.idPath(id), []byte(id.String()), 0600)
 }
 
 // blockRefInfo is a wrapper around blockRefMap, in case we want to
@@ -149,7 +142,7 @@ type blockRefInfo struct {
 func (s *blockDiskStore) getRefInfo(id BlockID) (blockRefInfo, error) {
 	var refInfo blockRefInfo
 	err := kbfscodec.DeserializeFromFile(s.codec, s.refsPath(id), &refInfo)
-	if !ioutil2.IsNotExist(err) && err != nil {
+	if !ioutil.IsNotExist(err) && err != nil {
 		return blockRefInfo{}, err
 	}
 
@@ -199,23 +192,20 @@ func (s *blockDiskStore) addRefs(id BlockID, contexts []BlockContext,
 func (s *blockDiskStore) getData(id BlockID) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	data, err := ioutil.ReadFile(s.dataPath(id))
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
 			blockNonExistentError{id}
 	} else if err != nil {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
-			errors.Wrapf(err, "failed to read %q", s.dataPath(id))
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
 
 	keyServerHalfPath := s.keyServerHalfPath(id)
 	buf, err := ioutil.ReadFile(keyServerHalfPath)
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
 			blockNonExistentError{id}
 	} else if err != nil {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
-			errors.Wrapf(err, "failed to read %q", keyServerHalfPath)
-
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}
 
 	// Check integrity.
@@ -272,7 +262,7 @@ func (s *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 func (s *blockDiskStore) hasData(id BlockID) error {
 	p := s.dataPath(id)
 	_, err := os.Stat(p)
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return err
 	} else if err != nil {
 		return errors.Wrapf(err, "could not stat %q", p)
@@ -283,7 +273,7 @@ func (s *blockDiskStore) hasData(id BlockID) error {
 func (s *blockDiskStore) getDataSize(id BlockID) (int64, error) {
 	p := s.dataPath(id)
 	fi, err := os.Stat(p)
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return 0, nil
 	} else if err != nil {
 		return 0, errors.Wrapf(err, "could not stat %q", p)
@@ -309,10 +299,10 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	res := make(map[BlockID]blockRefMap)
 
 	fileInfos, err := ioutil.ReadDir(s.dir)
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return res, nil
 	} else if err != nil {
-		return nil, errors.Wrapf(err, "could not read dir %q", s.dir)
+		return nil, err
 	}
 
 	for _, fi := range fileInfos {
@@ -324,8 +314,7 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 		subdir := filepath.Join(s.dir, name)
 		subFileInfos, err := ioutil.ReadDir(subdir)
 		if err != nil {
-			return nil, errors.Wrapf(
-				err, "could not read dir %q", subdir)
+			return nil, err
 		}
 
 		for _, sfi := range subFileInfos {
@@ -339,8 +328,7 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 				s.dir, name, subName, idFilename)
 			idBytes, err := ioutil.ReadFile(idPath)
 			if err != nil {
-				return nil, errors.Wrapf(err,
-					"could not read %q", idPath)
+				return nil, err
 			}
 
 			id, err := BlockIDFromString(string(idBytes))
@@ -410,8 +398,7 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 
 		err = ioutil.WriteFile(s.dataPath(id), buf, 0600)
 		if err != nil {
-			return errors.Wrapf(
-				err, "could not write %q", s.dataPath(id))
+			return err
 		}
 
 		// TODO: Add integrity-checking for key server half?
@@ -422,8 +409,7 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		}
 		err = ioutil.WriteFile(s.keyServerHalfPath(id), data, 0600)
 		if err != nil {
-			return errors.Wrapf(err, "could not write %q",
-				s.keyServerHalfPath(id))
+			return err
 		}
 	}
 
@@ -517,7 +503,7 @@ func (s *blockDiskStore) remove(id BlockID) error {
 	// empty.
 	dir := filepath.Dir(path)
 	err = os.Remove(dir)
-	if ioutil2.IsNotExist(err) || ioutil2.IsExist(err) {
+	if ioutil.IsNotExist(err) || ioutil.IsExist(err) {
 		err = nil
 	}
 	if err != nil {

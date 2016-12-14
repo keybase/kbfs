@@ -12,6 +12,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ReadDir wraps ReadDir from "io/ioutil".
+func ReadDir(dirname string) ([]os.FileInfo, error) {
+	list, err := ioutil_base.ReadDir(dirname)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read dir %q", dirname)
+	}
+
+	return list, nil
+}
+
 // ReadFile wraps ReadFile from "io/ioutil".
 func ReadFile(filename string) ([]byte, error) {
 	buf, err := ioutil_base.ReadFile(filename)
@@ -19,6 +29,17 @@ func ReadFile(filename string) ([]byte, error) {
 		return nil, errors.Wrapf(err, "failed to read file %q", filename)
 	}
 	return buf, nil
+}
+
+// TempDir wraps TempDir from "io/ioutil".
+func TempDir(dir, prefix string) (name string, err error) {
+	name, err = ioutil_base.TempDir(dir, prefix)
+	if err != nil {
+		return "", errors.Wrapf(err,
+			"failed to make temp dir in %q with prefix %q",
+			name, err)
+	}
+	return name, nil
 }
 
 // WriteFile wraps WriteFile from "io/ioutil".
