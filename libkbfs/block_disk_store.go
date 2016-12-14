@@ -116,8 +116,7 @@ func (s *blockDiskStore) refsPath(id BlockID) string {
 // makeDir makes the directory for the given block ID and writes the
 // ID file, if necessary.
 func (s *blockDiskStore) makeDir(id BlockID) error {
-	dir := s.blockPath(id)
-	err := ioutil.MkdirAll(dir, 0700)
+	err := ioutil.MkdirAll(s.blockPath(id), 0700)
 	if err != nil {
 		return err
 	}
@@ -259,15 +258,15 @@ func (s *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 }
 
 func (s *blockDiskStore) hasData(id BlockID) error {
-	p := s.dataPath(id)
-	_, err := ioutil.Stat(p)
+	_, err := ioutil.Stat(s.dataPath(id))
 	return err
 }
 
 func (s *blockDiskStore) getDataSize(id BlockID) (int64, error) {
-	p := s.dataPath(id)
-	fi, err := ioutil.Stat(p)
-	if err != nil {
+	fi, err := ioutil.Stat(s.dataPath(id))
+	if ioutil.IsNotExist(err) {
+		return 0, nil
+	} else if err != nil {
 		return 0, err
 	}
 	return fi.Size(), nil
@@ -303,8 +302,7 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 			return nil, errors.Errorf("Unexpected non-dir %q", name)
 		}
 
-		subdir := filepath.Join(s.dir, name)
-		subFileInfos, err := ioutil.ReadDir(subdir)
+		subFileInfos, err := ioutil.ReadDir(filepath.Join(s.dir, name))
 		if err != nil {
 			return nil, err
 		}
@@ -493,14 +491,9 @@ func (s *blockDiskStore) remove(id BlockID) error {
 
 	// Remove the parent (splayed) directory if it exists and is
 	// empty.
-	dir := filepath.Dir(path)
-	err = ioutil.Remove(dir)
+	err = ioutil.Remove(filepath.Dir(path))
 	if ioutil.IsNotExist(err) || ioutil.IsExist(err) {
 		err = nil
 	}
-	if err != nil {
-		return errors.Wrapf(err, "failed to remove %q", dir)
-	}
-
-	return nil
+	return err
 }

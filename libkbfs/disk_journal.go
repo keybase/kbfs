@@ -90,9 +90,7 @@ func (j diskJournal) journalEntryPath(o journalOrdinal) string {
 
 func (j diskJournal) readOrdinal(path string) (journalOrdinal, error) {
 	buf, err := ioutil.ReadFile(path)
-	if ioutil.IsNotExist(err) {
-		return 0, err
-	} else if err != nil {
+	if err != nil {
 		return 0, err
 	}
 	return makeJournalOrdinal(string(buf))
@@ -132,13 +130,11 @@ func (j diskJournal) clearOrdinals() error {
 
 	err = ioutil.Remove(j.earliestPath())
 	if err != nil {
-		return errors.Wrapf(err, "failed to remove earliest path %q",
-			j.earliestPath())
+		return err
 	}
 	err = ioutil.Remove(j.latestPath())
 	if err != nil {
-		return errors.Wrapf(err, "failed to remove latest path %q",
-			j.latestPath())
+		return err
 	}
 
 	// Garbage-collect the old entries.  TODO: we'll eventually need a
@@ -147,9 +143,7 @@ func (j diskJournal) clearOrdinals() error {
 		p := j.journalEntryPath(ordinal)
 		err = ioutil.Remove(p)
 		if err != nil {
-			return errors.Wrapf(err,
-				"failed to remove path %q for ordinal %q",
-				p, ordinal)
+			return err
 		}
 	}
 	return nil
@@ -184,9 +178,7 @@ func (j diskJournal) removeEarliest() (empty bool, err error) {
 	p := j.journalEntryPath(earliestOrdinal)
 	err = ioutil.Remove(p)
 	if err != nil {
-		return false, errors.Wrapf(err,
-			"failed to remove path %q for earliest ordinal %q",
-			p, earliestOrdinal)
+		return false, err
 	}
 
 	return false, nil

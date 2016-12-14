@@ -275,11 +275,8 @@ type mdInfo struct {
 }
 
 func (j mdJournal) getMDInfo(id MdID) (time.Time, MetadataVer, error) {
-	p := j.mdInfoPath(id)
-	infoJSON, err := ioutil.ReadFile(p)
-	if ioutil.IsNotExist(err) {
-		return time.Time{}, MetadataVer(-1), err
-	} else if err != nil {
+	infoJSON, err := ioutil.ReadFile(j.mdInfoPath(id))
+	if err != nil {
 		return time.Time{}, MetadataVer(-1), err
 	}
 
@@ -287,7 +284,7 @@ func (j mdJournal) getMDInfo(id MdID) (time.Time, MetadataVer, error) {
 	err = json.Unmarshal(infoJSON, &info)
 	if err != nil {
 		return time.Time{}, MetadataVer(-1), errors.Wrapf(
-			err, "failed to unmarshal %q for %q", p, id)
+			err, "failed to unmarshal %q for %q", j.mdInfoPath(id), id)
 	}
 
 	return info.Timestamp, info.Version, nil
@@ -303,14 +300,7 @@ func (j mdJournal) putMDInfo(
 		return errors.Wrapf(err, "failed to marshal info for %q", id)
 	}
 
-	p := j.mdInfoPath(id)
-	err = ioutil.WriteFile(p, infoJSON, 0600)
-	if err != nil {
-		return errors.Wrapf(
-			err, "failed to marshal %q for %q", p, id)
-	}
-
-	return nil
+	return ioutil.WriteFile(j.mdInfoPath(id), infoJSON, 0600)
 }
 
 // getExtraMetadata gets the extra metadata corresponding to the given
@@ -515,8 +505,7 @@ func (j *mdJournal) removeMD(id MdID) error {
 
 	// Remove the parent (splayed) directory (which should exist)
 	// if it's empty.
-	dir := filepath.Dir(path)
-	err = ioutil.Remove(dir)
+	err = ioutil.Remove(filepath.Dir(path))
 	if ioutil.IsExist(err) {
 		err = nil
 	}
