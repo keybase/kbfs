@@ -275,7 +275,8 @@ type mdInfo struct {
 }
 
 func (j mdJournal) getMDInfo(id MdID) (time.Time, MetadataVer, error) {
-	infoJSON, err := ioutil.ReadFile(j.mdInfoPath(id))
+	p := j.mdInfoPath(id)
+	infoJSON, err := ioutil.ReadFile(p)
 	if err != nil {
 		return time.Time{}, MetadataVer(-1), err
 	}
@@ -284,7 +285,7 @@ func (j mdJournal) getMDInfo(id MdID) (time.Time, MetadataVer, error) {
 	err = json.Unmarshal(infoJSON, &info)
 	if err != nil {
 		return time.Time{}, MetadataVer(-1), errors.Wrapf(
-			err, "failed to unmarshal %q for %q", j.mdInfoPath(id), id)
+			err, "failed to unmarshal %q for %q", p, id)
 	}
 
 	return info.Timestamp, info.Version, nil
