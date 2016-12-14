@@ -97,7 +97,7 @@ func NewMDServerTempDir(config mdServerLocalConfig) (*MDServerDisk, error) {
 		return nil, err
 	}
 	return newMDServerDisk(config, tempdir, func(log logger.Logger) {
-		err := os.RemoveAll(tempdir)
+		err := ioutil.RemoveAll(tempdir)
 		if err != nil {
 			log.Warning("error removing %s: %s", tempdir, err)
 		}

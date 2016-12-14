@@ -35,7 +35,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "mdserver_tlf_storage")
 	require.NoError(t, err)
 	defer func() {
-		err := os.RemoveAll(tempdir)
+		err := ioutil.RemoveAll(tempdir)
 		require.NoError(t, err)
 	}()
 

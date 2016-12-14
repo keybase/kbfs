@@ -89,13 +89,13 @@ func (tdr *TestDynamoDBRunner) getPid() (int, error) {
 func (tdr *TestDynamoDBRunner) downloadIfNecessary() error {
 	// does the jar file exist?
 	jarPath := tdr.jarFilePath()
-	if _, err := os.Stat(jarPath); err == nil {
+	if _, err := ioutil.Stat(jarPath); err == nil {
 		return nil
 	}
 
 	// create the tmp directory if it doesn't exist
-	if _, err := os.Stat(tdr.tmpDir()); os.IsNotExist(err) {
-		if err := os.Mkdir(tdr.tmpDir(), os.ModeDir|os.ModePerm); err != nil {
+	if _, err := ioutil.Stat(tdr.tmpDir()); os.IsNotExist(err) {
+		if err := ioutil.Mkdir(tdr.tmpDir(), os.ModeDir|os.ModePerm); err != nil {
 			return err
 		}
 	}

@@ -193,8 +193,8 @@ func testReaddir(t *testing.T) {
 }
 
 func testPlaceHolderRemoveRename(t *testing.T) {
-	os.Remove(`T:\hello.txt`)
-	os.Remove(`T:\`)
+	ioutil.Remove(`T:\hello.txt`)
+	ioutil.Remove(`T:\`)
 	os.Rename(`T:\hello.txt`, `T:\does-not-exist2`)
 }
 

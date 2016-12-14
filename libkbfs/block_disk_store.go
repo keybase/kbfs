@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -261,22 +260,15 @@ func (s *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 
 func (s *blockDiskStore) hasData(id BlockID) error {
 	p := s.dataPath(id)
-	_, err := os.Stat(p)
-	if ioutil.IsNotExist(err) {
-		return err
-	} else if err != nil {
-		return errors.Wrapf(err, "could not stat %q", p)
-	}
+	_, err := ioutil.Stat(p)
 	return err
 }
 
 func (s *blockDiskStore) getDataSize(id BlockID) (int64, error) {
 	p := s.dataPath(id)
-	fi, err := os.Stat(p)
-	if ioutil.IsNotExist(err) {
-		return 0, nil
-	} else if err != nil {
-		return 0, errors.Wrapf(err, "could not stat %q", p)
+	fi, err := ioutil.Stat(p)
+	if err != nil {
+		return 0, err
 	}
 	return fi.Size(), nil
 }
@@ -494,15 +486,15 @@ func (s *blockDiskStore) remove(id BlockID) error {
 	}
 	path := s.blockPath(id)
 
-	err = os.RemoveAll(path)
+	err = ioutil.RemoveAll(path)
 	if err != nil {
-		return errors.Wrapf(err, "failed to remove %q", path)
+		return err
 	}
 
 	// Remove the parent (splayed) directory if it exists and is
 	// empty.
 	dir := filepath.Dir(path)
-	err = os.Remove(dir)
+	err = ioutil.Remove(dir)
 	if ioutil.IsNotExist(err) || ioutil.IsExist(err) {
 		err = nil
 	}

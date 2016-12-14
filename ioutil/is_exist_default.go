@@ -6,11 +6,15 @@
 
 package ioutil
 
-import "os"
+import (
+	"os"
+
+	"github.com/pkg/errors"
+)
 
 // This file is a workaround for
 // https://github.com/golang/go/issues/17164 .
 
 func IsExist(err error) bool {
-	return os.IsExist(err)
+	return os.IsExist(errors.Cause(err))
 }

@@ -80,7 +80,7 @@ func setupBlockJournalTest(t *testing.T) (
 	setupSucceeded := false
 	defer func() {
 		if !setupSucceeded {
-			err := os.RemoveAll(tempdir)
+			err := ioutil.RemoveAll(tempdir)
 			assert.NoError(t, err)
 		}
 	}()
@@ -97,7 +97,7 @@ func teardownBlockJournalTest(t *testing.T, tempdir string, j *blockJournal) {
 	err := j.checkInSyncForTest()
 	assert.NoError(t, err)
 
-	err = os.RemoveAll(tempdir)
+	err = ioutil.RemoveAll(tempdir)
 	assert.NoError(t, err)
 }
 

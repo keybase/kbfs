@@ -244,7 +244,7 @@ func setupTLFJournalTest(
 	// fails.
 	defer func() {
 		if !setupSucceeded {
-			err := os.RemoveAll(tempdir)
+			err := ioutil.RemoveAll(tempdir)
 			assert.NoError(t, err)
 		}
 	}()
@@ -299,7 +299,7 @@ func teardownTLFJournalTest(
 	config.mdserver.Shutdown()
 	tlfJournal.delegateBlockServer.Shutdown()
 
-	err := os.RemoveAll(tempdir)
+	err := ioutil.RemoveAll(tempdir)
 	assert.NoError(config.t, err)
 }
 

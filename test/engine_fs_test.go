@@ -150,7 +150,7 @@ func (e *fsEngine) GetRootDir(user User, tlfName string, isPublic bool, expected
 func (*fsEngine) CreateDir(u User, parentDir Node, name string) (dir Node, err error) {
 	p := parentDir.(fsNode)
 	path := filepath.Join(p.path, name)
-	err = os.Mkdir(path, 0755)
+	err = ioutil.Mkdir(path, 0755)
 	if err != nil {
 		return nil, err
 	}
@@ -226,13 +226,13 @@ func (*fsEngine) TruncateFile(u User, file Node, size uint64, sync bool) (err er
 // RemoveDir is called by the test harness as the given user to remove a subdirectory.
 func (*fsEngine) RemoveDir(u User, dir Node, name string) (err error) {
 	n := dir.(fsNode)
-	return os.Remove(filepath.Join(n.path, name))
+	return ioutil.Remove(filepath.Join(n.path, name))
 }
 
 // RemoveEntry is called by the test harness as the given user to remove a directory entry.
 func (*fsEngine) RemoveEntry(u User, dir Node, name string) (err error) {
 	n := dir.(fsNode)
-	return os.Remove(filepath.Join(n.path, name))
+	return ioutil.Remove(filepath.Join(n.path, name))
 }
 
 // Rename is called by the test harness as the given user to rename a node.
@@ -417,12 +417,12 @@ func (e *fsEngine) Shutdown(user User) error {
 
 	if e.journalDir != "" {
 		// Remove the user journal.
-		if err := os.RemoveAll(
+		if err := ioutil.RemoveAll(
 			filepath.Join(e.journalDir, userName.String())); err != nil {
 			return err
 		}
 		// Remove the overall journal dir if it's empty.
-		if err := os.Remove(e.journalDir); err != nil {
+		if err := ioutil.Remove(e.journalDir); err != nil {
 			e.t.Logf("Journal dir %s not empty yet", e.journalDir)
 		}
 	}

@@ -6,7 +6,6 @@ package libkbfs
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -509,23 +508,19 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 // removeMD removes the metadata (which must exist) with the given ID.
 func (j *mdJournal) removeMD(id MdID) error {
 	path := j.mdPath(id)
-	err := os.RemoveAll(path)
+	err := ioutil.RemoveAll(path)
 	if err != nil {
-		return errors.Wrapf(err, "failed to remove %q", path)
+		return err
 	}
 
 	// Remove the parent (splayed) directory (which should exist)
 	// if it's empty.
 	dir := filepath.Dir(path)
-	err = os.Remove(dir)
+	err = ioutil.Remove(dir)
 	if ioutil.IsExist(err) {
 		err = nil
 	}
-	if err != nil {
-		return errors.Wrapf(err, "failed to remove %q", dir)
-	}
-
-	return nil
+	return err
 }
 
 // getEarliestWithExtra returns a MutableBareRootMetadata so that it
@@ -634,7 +629,7 @@ func (j *mdJournal) convertToBranch(
 	defer func() {
 		j.log.CDebugf(ctx, "Removing temp dir %s and %d old MDs",
 			journalTempDir, len(mdsToRemove))
-		removeErr := os.RemoveAll(journalTempDir)
+		removeErr := ioutil.RemoveAll(journalTempDir)
 		if removeErr != nil {
 			j.log.CWarningf(ctx,
 				"Error when removing temp dir %s: %+v",
@@ -1403,7 +1398,7 @@ func (j *mdJournal) resolveAndClear(
 	otherIDJournal := makeMdIDJournal(j.codec, idJournalTempDir)
 	defer func() {
 		j.log.CDebugf(ctx, "Removing temp dir %s", idJournalTempDir)
-		removeErr := os.RemoveAll(idJournalTempDir)
+		removeErr := ioutil.RemoveAll(idJournalTempDir)
 		if removeErr != nil {
 			j.log.CWarningf(ctx,
 				"Error when removing temp dir %s: %+v",

@@ -29,7 +29,7 @@ func setupBlockDiskStoreTest(t *testing.T) (tempdir string, s *blockDiskStore) {
 }
 
 func teardownBlockDiskStoreTest(t *testing.T, tempdir string) {
-	err := os.RemoveAll(tempdir)
+	err := ioutil.RemoveAll(tempdir)
 	assert.NoError(t, err)
 }
 

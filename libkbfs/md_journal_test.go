@@ -69,7 +69,7 @@ func setupMDJournalTestWithMetadataVer(t testing.TB, mdVer MetadataVer) (
 	setupSucceeded := false
 	defer func() {
 		if !setupSucceeded {
-			err := os.RemoveAll(tempdir)
+			err := ioutil.RemoveAll(tempdir)
 			assert.NoError(t, err)
 		}
 	}()
@@ -94,7 +94,7 @@ func setupMDJournalTest(t testing.TB) (
 }
 
 func teardownMDJournalTest(t testing.TB, tempdir string) {
-	err := os.RemoveAll(tempdir)
+	err := ioutil.RemoveAll(tempdir)
 	assert.NoError(t, err)
 }
 

@@ -131,12 +131,12 @@ func (j diskJournal) clearOrdinals() error {
 		return err
 	}
 
-	err = os.Remove(j.earliestPath())
+	err = ioutil.Remove(j.earliestPath())
 	if err != nil {
 		return errors.Wrapf(err, "failed to remove earliest path %q",
 			j.earliestPath())
 	}
-	err = os.Remove(j.latestPath())
+	err = ioutil.Remove(j.latestPath())
 	if err != nil {
 		return errors.Wrapf(err, "failed to remove latest path %q",
 			j.latestPath())
@@ -146,7 +146,7 @@ func (j diskJournal) clearOrdinals() error {
 	// sweeper to clean up entries left behind if we crash right here.
 	for ordinal := earliestOrdinal; ordinal <= latestOrdinal; ordinal++ {
 		p := j.journalEntryPath(ordinal)
-		err = os.Remove(p)
+		err = ioutil.Remove(p)
 		if err != nil {
 			return errors.Wrapf(err,
 				"failed to remove path %q for ordinal %q",
@@ -183,7 +183,7 @@ func (j diskJournal) removeEarliest() (empty bool, err error) {
 	// Garbage-collect the old entry.  TODO: we'll eventually need a
 	// sweeper to clean up entries left behind if we crash right here.
 	p := j.journalEntryPath(earliestOrdinal)
-	err = os.Remove(p)
+	err = ioutil.Remove(p)
 	if err != nil {
 		return false, errors.Wrapf(err,
 			"failed to remove path %q for earliest ordinal %q",

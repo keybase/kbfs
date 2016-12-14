@@ -7,6 +7,8 @@ package libkbfs
 import (
 	"os"
 	"syscall"
+
+	"github.com/pkg/errors"
 )
 
 // This file is a workaround for
@@ -15,6 +17,7 @@ import (
 const _ERROR_DIR_NOT_EMPTY = syscall.Errno(145)
 
 func IsExist(err error) bool {
+	err = errors.Cause(err)
 	if os.IsExist(err) {
 		return true
 	}

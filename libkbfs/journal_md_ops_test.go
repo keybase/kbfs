@@ -28,7 +28,7 @@ func setupJournalMDOpsTest(t *testing.T) (
 	setupSucceeded := false
 	defer func() {
 		if !setupSucceeded {
-			err := os.RemoveAll(tempdir)
+			err := ioutil.RemoveAll(tempdir)
 			assert.NoError(t, err)
 		}
 	}()
@@ -56,7 +56,7 @@ func setupJournalMDOpsTest(t *testing.T) (
 
 func teardownJournalMDOpsTest(t *testing.T, tempdir string, config Config) {
 	CheckConfigAndShutdown(t, config)
-	err := os.RemoveAll(tempdir)
+	err := ioutil.RemoveAll(tempdir)
 	assert.NoError(t, err)
 }
 

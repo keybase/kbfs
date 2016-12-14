@@ -6,7 +6,6 @@ package libkbfs
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"reflect"
 
@@ -180,7 +179,7 @@ func makeBlockJournal(
 	// If a saved block journal exists, we need to remove its entries
 	// on the next successful MD flush.
 	savedJournalDir := savedBlockJournalDir(dir)
-	fi, err := os.Stat(savedJournalDir)
+	fi, err := ioutil.Stat(savedJournalDir)
 	if err == nil {
 		if !fi.IsDir() {
 			return nil,
@@ -913,7 +912,7 @@ func (j *blockJournal) onMDFlush(ctx context.Context) error {
 		}
 	}
 
-	err = os.RemoveAll(j.saveUntilMDFlush.dir)
+	err = ioutil.RemoveAll(j.saveUntilMDFlush.dir)
 	if err != nil {
 		return err
 	}

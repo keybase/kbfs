@@ -76,7 +76,7 @@ func NewKeyServerTempDir(config Config) (*KeyServerLocal, error) {
 		return nil, err
 	}
 	return newKeyServerDisk(config, tempdir, func(log logger.Logger) {
-		err := os.RemoveAll(tempdir)
+		err := ioutil.RemoveAll(tempdir)
 		if err != nil {
 			log.Warning("error removing %s: %s", tempdir, err)
 		}

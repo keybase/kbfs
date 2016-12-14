@@ -459,7 +459,7 @@ func TestMkdir(t *testing.T) {
 	defer cancelFn()
 
 	p := filepath.Join(mnt.Dir, PrivateName, "jdoe", "mydir")
-	if err := os.Mkdir(p, 0755); err != nil {
+	if err := ioutil.Mkdir(p, 0755); err != nil {
 		t.Fatal(err)
 	}
 	fi, err := os.Lstat(p)
@@ -484,7 +484,7 @@ func TestMkdirNewFolder(t *testing.T) {
 		if err == nil {
 			t.Fatal("Non-existent new folder existed!")
 		}
-		if err = os.Mkdir(p, 0755); err != nil {
+		if err = ioutil.Mkdir(p, 0755); err != nil {
 			t.Fatal(err)
 		}
 		fi, err = os.Lstat(p)
@@ -508,11 +508,11 @@ func TestMkdirAndCreateDeep(t *testing.T) {
 		defer cancelFn()
 
 		one := filepath.Join(mnt.Dir, PrivateName, "jdoe", "one")
-		if err := os.Mkdir(one, 0755); err != nil {
+		if err := ioutil.Mkdir(one, 0755); err != nil {
 			t.Fatal(err)
 		}
 		two := filepath.Join(one, "two")
-		if err := os.Mkdir(two, 0755); err != nil {
+		if err := ioutil.Mkdir(two, 0755); err != nil {
 			t.Fatal(err)
 		}
 		three := filepath.Join(two, "three")
@@ -652,10 +652,10 @@ func TestRenameCrossDir(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	if err := os.Mkdir(filepath.Join(mnt.Dir, PrivateName, "jdoe", "one"), 0755); err != nil {
+	if err := ioutil.Mkdir(filepath.Join(mnt.Dir, PrivateName, "jdoe", "one"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(filepath.Join(mnt.Dir, PrivateName, "jdoe", "two"), 0755); err != nil {
+	if err := ioutil.Mkdir(filepath.Join(mnt.Dir, PrivateName, "jdoe", "two"), 0755); err != nil {
 		t.Fatal(err)
 	}
 	p1 := filepath.Join(mnt.Dir, PrivateName, "jdoe", "one", "old")
@@ -798,10 +798,10 @@ func TestWriteThenRenameCrossDir(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	if err := os.Mkdir(filepath.Join(mnt.Dir, PrivateName, "jdoe", "one"), 0755); err != nil {
+	if err := ioutil.Mkdir(filepath.Join(mnt.Dir, PrivateName, "jdoe", "one"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(filepath.Join(mnt.Dir, PrivateName, "jdoe", "two"), 0755); err != nil {
+	if err := ioutil.Mkdir(filepath.Join(mnt.Dir, PrivateName, "jdoe", "two"), 0755); err != nil {
 		t.Fatal(err)
 	}
 	p1 := filepath.Join(mnt.Dir, PrivateName, "jdoe", "one", "old")
@@ -864,7 +864,7 @@ func TestRemoveFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.Remove(p); err != nil {
+	if err := ioutil.Remove(p); err != nil {
 		t.Fatal(err)
 	}
 
@@ -884,7 +884,7 @@ func TestRemoveDir(t *testing.T) {
 	defer cancelFn()
 
 	p := filepath.Join(mnt.Dir, PrivateName, "jdoe", "mydir")
-	if err := os.Mkdir(p, 0755); err != nil {
+	if err := ioutil.Mkdir(p, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -894,7 +894,7 @@ func TestRemoveDir(t *testing.T) {
 
 	checkDir(t, filepath.Join(mnt.Dir, PrivateName, "jdoe"), map[string]fileInfoCheck{})
 
-	if _, err := os.Stat(p); !ioutil.IsNotExist(err) {
+	if _, err := ioutil.Stat(p); !ioutil.IsNotExist(err) {
 		t.Errorf("file still exists: %v", err)
 	}
 
@@ -908,7 +908,7 @@ func TestRemoveDirNotEmpty(t *testing.T) {
 	defer cancelFn()
 
 	p := filepath.Join(mnt.Dir, PrivateName, "jdoe", "mydir")
-	if err := os.Mkdir(p, 0755); err != nil {
+	if err := ioutil.Mkdir(p, 0755); err != nil {
 		t.Fatal(err)
 	}
 	pFile := filepath.Join(p, "myfile")
@@ -941,7 +941,7 @@ func TestRemoveFileWhileOpenWriting(t *testing.T) {
 	}
 	defer f.Close()
 
-	if err := os.Remove(p); err != nil {
+	if err := ioutil.Remove(p); err != nil {
 		t.Fatalf("cannot delete file: %v", err)
 	}
 
@@ -981,7 +981,7 @@ func TestRemoveFileWhileOpenReading(t *testing.T) {
 	}
 	defer f.Close()
 
-	if err := os.Remove(p); err != nil {
+	if err := ioutil.Remove(p); err != nil {
 		t.Fatalf("cannot delete file: %v", err)
 	}
 
@@ -1032,7 +1032,7 @@ func TestRemoveFileWhileOpenReadingAcrossMounts(t *testing.T) {
 	defer f.Close()
 
 	p2 := filepath.Join(mnt2.Dir, PrivateName, "user1,user2", "myfile")
-	if err := os.Remove(p2); err != nil {
+	if err := ioutil.Remove(p2); err != nil {
 		t.Fatalf("cannot delete file: %v", err)
 	}
 
@@ -1280,7 +1280,7 @@ func TestSetattrDirMtime(t *testing.T) {
 	defer cancelFn()
 
 	p := filepath.Join(mnt.Dir, PrivateName, "jdoe", "mydir")
-	if err := os.Mkdir(p, 0755); err != nil {
+	if err := ioutil.Mkdir(p, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1311,7 +1311,7 @@ func TestSetattrDirMtimeNow(t *testing.T) {
 	defer cancelFn()
 
 	p := filepath.Join(mnt.Dir, PrivateName, "jdoe", "mydir")
-	if err := os.Mkdir(p, 0755); err != nil {
+	if err := ioutil.Mkdir(p, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1386,7 +1386,7 @@ func TestReaddirPrivateDeleteAndReaddFavorite(t *testing.T) {
 		libkbfs.GetRootNodeOrBust(ctx, t, config, "janedoe,jdoe", true)
 	}
 
-	err := os.Remove(filepath.Join(mnt.Dir, PrivateName, "jdoe,janedoe"))
+	err := ioutil.Remove(filepath.Join(mnt.Dir, PrivateName, "jdoe,janedoe"))
 	if err != nil {
 		t.Fatalf("Removing favorite failed: %v", err)
 	}
@@ -1870,7 +1870,7 @@ func TestInvalidateEntryOnDelete(t *testing.T) {
 		t.Errorf("wrong content: %q != %q", g, e)
 	}
 
-	if err := os.Remove(filepath.Join(mnt1.Dir, PrivateName, "jdoe", "myfile")); err != nil {
+	if err := ioutil.Remove(filepath.Join(mnt1.Dir, PrivateName, "jdoe", "myfile")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1982,7 +1982,7 @@ func TestInvalidateAcrossMounts(t *testing.T) {
 		t.Fatal(err)
 	}
 	mydir1 := filepath.Join(mnt1.Dir, PrivateName, "user1,user2", "mydir")
-	if err := os.Mkdir(mydir1, 0755); err != nil {
+	if err := ioutil.Mkdir(mydir1, 0755); err != nil {
 		t.Fatal(err)
 	}
 	mydira1 := filepath.Join(mydir1, "a")
@@ -2010,7 +2010,7 @@ func TestInvalidateAcrossMounts(t *testing.T) {
 	}
 
 	// now remove the first file, and rename the second
-	if err := os.Remove(myfile1); err != nil {
+	if err := ioutil.Remove(myfile1); err != nil {
 		t.Fatal(err)
 	}
 	mydirb1 := filepath.Join(mydir1, "b")
@@ -2129,7 +2129,7 @@ func TestInvalidateRenameToUncachedDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	mydir1 := filepath.Join(mnt1.Dir, PrivateName, "user1,user2", "mydir")
-	if err := os.Mkdir(mydir1, 0755); err != nil {
+	if err := ioutil.Mkdir(mydir1, 0755); err != nil {
 		t.Fatal(err)
 	}
 	mydirfile1 := filepath.Join(mydir1, "myfile")
@@ -2261,12 +2261,12 @@ func TestUnstageFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	mydir1 := filepath.Join(mnt1.Dir, PrivateName, "user1,user2", "mydir")
-	if err := os.Mkdir(mydir1, 0755); err != nil {
+	if err := ioutil.Mkdir(mydir1, 0755); err != nil {
 		t.Fatal(err)
 	}
 	mysubdir1 := filepath.Join(mnt1.Dir, PrivateName, "user1,user2", "mydir",
 		"mysubdir")
-	if err := os.Mkdir(mysubdir1, 0755); err != nil {
+	if err := ioutil.Mkdir(mysubdir1, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2277,12 +2277,12 @@ func TestUnstageFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	mydir2 := filepath.Join(mnt2.Dir, PrivateName, "user1,user2", "mydir")
-	if err := os.Mkdir(mydir2, 0755); err != nil {
+	if err := ioutil.Mkdir(mydir2, 0755); err != nil {
 		t.Fatal(err)
 	}
 	myothersubdir2 := filepath.Join(mnt2.Dir, PrivateName, "user1,user2", "mydir",
 		"myothersubdir")
-	if err := os.Mkdir(myothersubdir2, 0755); err != nil {
+	if err := ioutil.Mkdir(myothersubdir2, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2359,11 +2359,11 @@ func TestSimpleCRNoConflict(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir1 := filepath.Join(mnt1.Dir, PrivateName, "user1,user2", "dir")
-	if err := os.Mkdir(dir1, 0755); err != nil {
+	if err := ioutil.Mkdir(dir1, 0755); err != nil {
 		t.Fatal(err)
 	}
 	subdir1 := filepath.Join(mnt1.Dir, PrivateName, "user1,user2", "dir", "subdir1")
-	if err := os.Mkdir(subdir1, 0755); err != nil {
+	if err := ioutil.Mkdir(subdir1, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2374,11 +2374,11 @@ func TestSimpleCRNoConflict(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir2 := filepath.Join(mnt2.Dir, PrivateName, "user1,user2", "dir")
-	if err := os.Mkdir(dir2, 0755); err != nil {
+	if err := ioutil.Mkdir(dir2, 0755); err != nil {
 		t.Fatal(err)
 	}
 	subdir2 := filepath.Join(mnt2.Dir, PrivateName, "user1,user2", "dir", "subdir2")
-	if err := os.Mkdir(subdir2, 0755); err != nil {
+	if err := ioutil.Mkdir(subdir2, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2714,7 +2714,7 @@ func TestSimpleCRConflictOnOpenMergedFile(t *testing.T) {
 
 	// user2 creates a directory and writes a file to it
 	dir2 := filepath.Join(mnt2.Dir, PrivateName, "user1,user2", "f")
-	if err := os.Mkdir(dir2, 0755); err != nil {
+	if err := ioutil.Mkdir(dir2, 0755); err != nil {
 		t.Fatal(err)
 	}
 	file2 := filepath.Join(mnt2.Dir, PrivateName, "user1,user2", "f", "foo")
@@ -2862,7 +2862,7 @@ func TestKbfsFileInfo(t *testing.T) {
 	defer cancelFn2()
 
 	mydir1 := filepath.Join(mnt1.Dir, PrivateName, "user1,user2", "mydir")
-	if err := os.Mkdir(mydir1, 0755); err != nil {
+	if err := ioutil.Mkdir(mydir1, 0755); err != nil {
 		t.Fatal(err)
 	}
 	myfile1 := filepath.Join(mnt1.Dir, PrivateName, "user1,user2", "mydir", "myfile")
