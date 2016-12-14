@@ -79,8 +79,7 @@ func Update(c Codec, dstPtr interface{}, src interface{}) error {
 // SerializeToFile serializes the given object and writes it to the
 // given file, making its parent directory first if necessary.
 func SerializeToFile(c Codec, obj interface{}, path string) error {
-	dir := filepath.Dir(path)
-	err := ioutil.MkdirAll(dir, 0700)
+	err := ioutil.MkdirAll(filepath.Dir(path), 0700)
 	if err != nil {
 		return err
 	}
