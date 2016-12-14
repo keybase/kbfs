@@ -213,7 +213,7 @@ func (s *blockDiskStore) getData(id BlockID) (
 			blockNonExistentError{id}
 	} else if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
-			errors.Wrapf(err, "failed to read %q", s.dataPath(id))
+			errors.Wrapf(err, "failed to read %q", keyServerHalfPath)
 
 	}
 
