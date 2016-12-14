@@ -97,9 +97,7 @@ func SerializeToFile(c Codec, obj interface{}, path string) error {
 // ioutil.IsNotExist() returns true.
 func DeserializeFromFile(c Codec, path string, objPtr interface{}) error {
 	data, err := ioutil.ReadFile(path)
-	if ioutil.IsNotExist(err) {
-		return err
-	} else if err != nil {
+	if err != nil {
 		return err
 	}
 
