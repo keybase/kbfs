@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -18,6 +17,8 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/keybase/kbfs/ioutil"
 
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/dynamodb"

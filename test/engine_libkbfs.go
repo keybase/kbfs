@@ -6,11 +6,12 @@ package test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/keybase/kbfs/ioutil"
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"

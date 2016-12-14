@@ -7,10 +7,11 @@ package libkbfs
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/keybase/kbfs/ioutil"
 
 	"github.com/pkg/errors"
 
@@ -281,7 +282,7 @@ func (j *JournalServer) EnableExistingJournals(
 	}()
 
 	fileInfos, err := ioutil.ReadDir(j.rootPath())
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		enableSucceeded = true
 		return nil
 	} else if err != nil {

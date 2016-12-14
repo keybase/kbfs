@@ -6,15 +6,15 @@ package libkbfs
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/keybase/kbfs/ioutil"
+
 	"github.com/pkg/errors"
 
 	"github.com/keybase/client/go/logger"
-	ioutil2 "github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -278,11 +278,10 @@ type mdInfo struct {
 func (j mdJournal) getMDInfo(id MdID) (time.Time, MetadataVer, error) {
 	p := j.mdInfoPath(id)
 	infoJSON, err := ioutil.ReadFile(p)
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return time.Time{}, MetadataVer(-1), err
 	} else if err != nil {
-		return time.Time{}, MetadataVer(-1), errors.Wrapf(
-			err, "failed to read %q for %q", p, id)
+		return time.Time{}, MetadataVer(-1), err
 	}
 
 	var info mdInfo
@@ -418,11 +417,8 @@ func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID bool) (
 
 	p := j.mdDataPath(id)
 	data, err := ioutil.ReadFile(p)
-	if ioutil2.IsNotExist(err) {
+	if err != nil {
 		return nil, nil, time.Time{}, err
-	} else if err != nil {
-		return nil, nil, time.Time{}, errors.Wrapf(
-			err, "failed to read %q", p)
 	}
 
 	rmd, err := DecodeRootMetadata(
@@ -488,7 +484,7 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 	}
 
 	_, _, _, err = j.getMDAndExtra(id, true)
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
 		return MdID{}, err
@@ -522,7 +518,7 @@ func (j *mdJournal) removeMD(id MdID) error {
 	// if it's empty.
 	dir := filepath.Dir(path)
 	err = os.Remove(dir)
-	if ioutil2.IsExist(err) {
+	if ioutil.IsExist(err) {
 		err = nil
 	}
 	if err != nil {
@@ -630,7 +626,7 @@ func (j *mdJournal) convertToBranch(
 
 	journalTempDir, err := ioutil.TempDir(j.dir, "md_journal")
 	if err != nil {
-		return errors.Wrapf(err, "failed to make temp dir in %q", j.dir)
+		return err
 	}
 	j.log.CDebugf(ctx, "Using temp dir %s for rewriting", journalTempDir)
 

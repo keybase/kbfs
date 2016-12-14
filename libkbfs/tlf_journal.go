@@ -7,16 +7,16 @@ package libkbfs
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/keybase/kbfs/ioutil"
+
 	"github.com/keybase/backoff"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
-	ioutil2 "github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfssync"
@@ -261,7 +261,7 @@ func makeTLFJournal(
 
 	readUID, readKey, readTlfID, err := readTLFJournalInfoFile(dir)
 	switch {
-	case ioutil2.IsNotExist(err):
+	case ioutil.IsNotExist(err):
 		// Info file doesn't exist, so write it.
 		err := writeTLFJournalInfoFile(dir, uid, key, tlfID)
 		if err != nil {

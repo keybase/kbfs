@@ -6,11 +6,12 @@ package libkbfs
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/keybase/kbfs/ioutil"
 
 	"golang.org/x/net/context"
 

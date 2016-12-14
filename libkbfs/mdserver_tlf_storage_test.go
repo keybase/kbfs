@@ -5,9 +5,10 @@
 package libkbfs
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/keybase/kbfs/ioutil"
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"

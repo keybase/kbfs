@@ -5,9 +5,10 @@
 package libkbfs
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/keybase/kbfs/ioutil"
 
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/assert"
