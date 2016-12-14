@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -132,13 +132,13 @@ func (e blockJournalEntry) getSingleContext() (
 	switch e.Op {
 	case blockPutOp, addRefOp:
 		if len(e.Contexts) != 1 {
-			return BlockID{}, BlockContext{}, fmt.Errorf(
+			return BlockID{}, BlockContext{}, errors.Errorf(
 				"Op %s doesn't have exactly one context: %v",
 				e.Op, e.Contexts)
 		}
 		for id, idContexts := range e.Contexts {
 			if len(idContexts) != 1 {
-				return BlockID{}, BlockContext{}, fmt.Errorf(
+				return BlockID{}, BlockContext{}, errors.Errorf(
 					"Op %s doesn't have exactly one context for id=%s: %v",
 					e.Op, id, idContexts)
 			}
@@ -146,7 +146,7 @@ func (e blockJournalEntry) getSingleContext() (
 		}
 	}
 
-	return BlockID{}, BlockContext{}, fmt.Errorf(
+	return BlockID{}, BlockContext{}, errors.Errorf(
 		"getSingleContext() erroneously called on op %s", e.Op)
 }
 
@@ -183,7 +183,7 @@ func makeBlockJournal(
 	if err == nil {
 		if !fi.IsDir() {
 			return nil,
-				fmt.Errorf("%s exists, but is not a dir", savedJournalDir)
+				errors.Errorf("%s exists, but is not a dir", savedJournalDir)
 		}
 		log.CDebugf(ctx, "A saved block journal exists at %s", savedJournalDir)
 		sj := makeDiskJournal(
@@ -491,14 +491,14 @@ func (j *blockJournal) getNextEntriesToFlush(
 
 	if first >= end {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized,
-			fmt.Errorf("Trying to flush past the "+
+			errors.Errorf("Trying to flush past the "+
 				"start of the journal (first=%d, end=%d)", first, end)
 	}
 
 	realEnd, err := j.end()
 	if realEnd == 0 {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized,
-			fmt.Errorf("There was an earliest "+
+			errors.Errorf("There was an earliest "+
 				"ordinal %d, but no latest ordinal", first)
 	} else if err != nil {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized, err
@@ -506,7 +506,7 @@ func (j *blockJournal) getNextEntriesToFlush(
 
 	if end > realEnd {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized,
-			fmt.Errorf("Trying to flush past the "+
+			errors.Errorf("Trying to flush past the "+
 				"end of the journal (realEnd=%d, end=%d)", realEnd, end)
 	}
 
@@ -568,7 +568,7 @@ func (j *blockJournal) getNextEntriesToFlush(
 		case mdRevMarkerOp:
 			if entry.Revision < maxMDRevToFlush {
 				return blockEntriesToFlush{}, MetadataRevisionUninitialized,
-					fmt.Errorf("Max MD revision decreased in block journal "+
+					errors.Errorf("Max MD revision decreased in block journal "+
 						"from %d to %d", entry.Revision, maxMDRevToFlush)
 			}
 			maxMDRevToFlush = entry.Revision
@@ -616,7 +616,7 @@ func flushNonBPSBlockJournalEntry(
 		// Nothing to do.
 
 	default:
-		return fmt.Errorf("Unknown op %s", entry.Op)
+		return errors.Errorf("Unknown op %s", entry.Op)
 	}
 
 	return nil
@@ -680,7 +680,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	}
 
 	if ordinal != earliestOrdinal {
-		return 0, fmt.Errorf("Expected ordinal %d, got %d",
+		return 0, errors.Errorf("Expected ordinal %d, got %d",
 			ordinal, earliestOrdinal)
 	}
 
@@ -1004,7 +1004,7 @@ func (j *blockJournal) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 				continue
 
 			default:
-				return nil, fmt.Errorf("Unknown op %s", e.Op)
+				return nil, errors.Errorf("Unknown op %s", e.Op)
 			}
 		}
 	}
@@ -1023,7 +1023,7 @@ func (j *blockJournal) checkInSyncForTest() error {
 	}
 
 	if !reflect.DeepEqual(journalRefs, storeRefs) {
-		return fmt.Errorf("journal refs = %+v != store refs = %+v",
+		return errors.Errorf("journal refs = %+v != store refs = %+v",
 			journalRefs, storeRefs)
 	}
 	return nil
