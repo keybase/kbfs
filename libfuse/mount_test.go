@@ -855,7 +855,7 @@ func TestRenameCrossFolder(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected an error from rename: %v", err)
 	}
-	lerr, ok := err.(*os.LinkError)
+	lerr, ok := errors.Cause(err).(*os.LinkError)
 	if !ok {
 		t.Fatalf("expected a LinkError from rename: %v", err)
 	}
