@@ -139,7 +139,7 @@ func TestStatRoot(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	fi, err := os.Lstat(mnt.Dir)
+	fi, err := ioutil.Lstat(mnt.Dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestStatPrivate(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	fi, err := os.Lstat(filepath.Join(mnt.Dir, PrivateName))
+	fi, err := ioutil.Lstat(filepath.Join(mnt.Dir, PrivateName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestStatPublic(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	fi, err := os.Lstat(filepath.Join(mnt.Dir, PublicName))
+	fi, err := ioutil.Lstat(filepath.Join(mnt.Dir, PublicName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestStatMyFolder(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	fi, err := os.Lstat(filepath.Join(mnt.Dir, PrivateName, "jdoe"))
+	fi, err := ioutil.Lstat(filepath.Join(mnt.Dir, PrivateName, "jdoe"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +203,7 @@ func TestStatNonexistentFolder(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	if _, err := os.Lstat(filepath.Join(mnt.Dir, PrivateName, "does-not-exist")); !ioutil.IsNotExist(err) {
+	if _, err := ioutil.Lstat(filepath.Join(mnt.Dir, PrivateName, "does-not-exist")); !ioutil.IsNotExist(err) {
 		t.Fatalf("expected ENOENT: %v", err)
 	}
 }
@@ -216,7 +216,7 @@ func TestStatAlias(t *testing.T) {
 	defer cancelFn()
 
 	p := filepath.Join(mnt.Dir, PrivateName, "jdoe,jdoe")
-	fi, err := os.Lstat(p)
+	fi, err := ioutil.Lstat(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestStatMyPublic(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	fi, err := os.Lstat(filepath.Join(mnt.Dir, PublicName, "jdoe"))
+	fi, err := ioutil.Lstat(filepath.Join(mnt.Dir, PublicName, "jdoe"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -463,7 +463,7 @@ func TestMkdir(t *testing.T) {
 	if err := ioutil.Mkdir(p, 0755); err != nil {
 		t.Fatal(err)
 	}
-	fi, err := os.Lstat(p)
+	fi, err := ioutil.Lstat(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -481,14 +481,14 @@ func TestMkdirNewFolder(t *testing.T) {
 
 	for _, q := range []string{"New Folder", "New folder"} {
 		p := filepath.Join(mnt.Dir, PrivateName, q)
-		fi, err := os.Lstat(p)
+		fi, err := ioutil.Lstat(p)
 		if err == nil {
 			t.Fatal("Non-existent new folder existed!")
 		}
 		if err = ioutil.Mkdir(p, 0755); err != nil {
 			t.Fatal(err)
 		}
-		fi, err = os.Lstat(p)
+		fi, err = ioutil.Lstat(p)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1147,7 +1147,7 @@ func TestTruncateGrow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fi, err := os.Lstat(p)
+	fi, err := ioutil.Lstat(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1183,7 +1183,7 @@ func TestTruncateShrink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fi, err := os.Lstat(p)
+	fi, err := ioutil.Lstat(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1222,7 +1222,7 @@ func TestSetattrFileMtime(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fi, err := os.Lstat(p)
+	fi, err := ioutil.Lstat(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1260,7 +1260,7 @@ func TestSetattrFileMtimeNow(t *testing.T) {
 	}
 	now := time.Now()
 
-	fi, err := os.Lstat(p)
+	fi, err := ioutil.Lstat(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1293,7 +1293,7 @@ func TestSetattrDirMtime(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fi, err := os.Lstat(p)
+	fi, err := ioutil.Lstat(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1331,7 +1331,7 @@ func TestSetattrDirMtimeNow(t *testing.T) {
 		}
 		now := time.Now()
 
-		fi, err := os.Lstat(p)
+		fi, err := ioutil.Lstat(p)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1471,7 +1471,7 @@ func TestStatOtherFolder(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	switch _, err := os.Lstat(filepath.Join(mnt.Dir, PrivateName, "jdoe")); err := err.(type) {
+	switch _, err := ioutil.Lstat(filepath.Join(mnt.Dir, PrivateName, "jdoe")); err := errors.Cause(err).(type) {
 	case *os.PathError:
 	default:
 		t.Fatalf("expected a PathError, got %T: %v", err, err)
@@ -1490,7 +1490,7 @@ func TestStatOtherFolderFirstUse(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	switch _, err := os.Lstat(filepath.Join(mnt.Dir, PrivateName, "jdoe")); err := err.(type) {
+	switch _, err := ioutil.Lstat(filepath.Join(mnt.Dir, PrivateName, "jdoe")); err := errors.Cause(err).(type) {
 	case *os.PathError:
 	default:
 		t.Fatalf("expected a PathError, got %T: %v", err, err)
@@ -1518,7 +1518,7 @@ func TestStatOtherFolderPublic(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	fi, err := os.Lstat(filepath.Join(mnt.Dir, PublicName, "jdoe"))
+	fi, err := ioutil.Lstat(filepath.Join(mnt.Dir, PublicName, "jdoe"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1607,7 +1607,7 @@ func TestReaddirOtherFolderAsAnyone(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	switch _, err := ioutil.ReadDir(filepath.Join(mnt.Dir, PrivateName, "jdoe")); err := err.(type) {
+	switch _, err := ioutil.ReadDir(filepath.Join(mnt.Dir, PrivateName, "jdoe")); err := errors.Cause(err).(type) {
 	case *os.PathError:
 	default:
 		t.Fatalf("expected a PathError, got %T: %v", err, err)
@@ -1921,7 +1921,7 @@ func TestErrorFile(t *testing.T) {
 	defer cancelFn()
 
 	// cause an error by stating a non-existent user
-	_, err := os.Lstat(filepath.Join(mnt.Dir, PrivateName, "janedoe"))
+	_, err := ioutil.Lstat(filepath.Join(mnt.Dir, PrivateName, "janedoe"))
 	if err == nil {
 		t.Fatal("Stat of non-existent user worked!")
 	}

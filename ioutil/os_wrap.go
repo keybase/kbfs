@@ -10,6 +10,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Lstat wraps Lstat from "os".
+func Lstat(name string) (os.FileInfo, error) {
+	info, err := os.Lstat(name)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to lstat %q", name)
+	}
+
+	return info, nil
+}
+
 // Mkdir wraps MkdirAll from "os".
 func Mkdir(path string, perm os.FileMode) error {
 	err := os.MkdirAll(path, perm)

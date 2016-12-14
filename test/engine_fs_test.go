@@ -442,7 +442,7 @@ func (*fsEngine) CreateLink(u User, parentDir Node, fromName string, toPath stri
 func (e *fsEngine) Lookup(u User, parentDir Node, name string) (file Node, symPath string, err error) {
 	n := parentDir.(fsNode)
 	path := filepath.Join(n.path, name)
-	fi, err := os.Lstat(path)
+	fi, err := ioutil.Lstat(path)
 	if err != nil {
 		return nil, "", err
 	}
@@ -483,7 +483,7 @@ func (*fsEngine) SetMtime(u User, file Node, mtime time.Time) (err error) {
 // GetMtime implements the Engine interface.
 func (*fsEngine) GetMtime(u User, file Node) (mtime time.Time, err error) {
 	n := file.(fsNode)
-	fi, err := os.Lstat(n.path)
+	fi, err := ioutil.Lstat(n.path)
 	if err != nil {
 		return time.Time{}, err
 	}
