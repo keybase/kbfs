@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -130,30 +129,11 @@ func (j *JournalServer) configPath() string {
 }
 
 func (j *JournalServer) readConfig() error {
-	configJSON, err := ioutil.ReadFile(j.configPath())
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(configJSON, &j.serverConfig)
-	if err != nil {
-		return err
-	}
-	return nil
+	return ioutil.DeserializeFromJSONFile(j.configPath(), &j.serverConfig)
 }
 
 func (j *JournalServer) writeConfig() error {
-	configJSON, err := json.Marshal(j.serverConfig)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.MkdirAll(j.rootPath(), 0700)
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(j.configPath(), configJSON, 0600)
+	return ioutil.SerializeToJSONFile(j.serverConfig, j.configPath())
 }
 
 func (j *JournalServer) tlfJournalPathLocked(tlfID tlf.ID) string {

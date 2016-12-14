@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"time"
 
@@ -275,17 +274,10 @@ type mdInfo struct {
 }
 
 func (j mdJournal) getMDInfo(id MdID) (time.Time, MetadataVer, error) {
-	p := j.mdInfoPath(id)
-	infoJSON, err := ioutil.ReadFile(p)
+	var info mdInfo
+	err := ioutil.DeserializeFromJSONFile(j.mdInfoPath(id), &info)
 	if err != nil {
 		return time.Time{}, MetadataVer(-1), err
-	}
-
-	var info mdInfo
-	err = json.Unmarshal(infoJSON, &info)
-	if err != nil {
-		return time.Time{}, MetadataVer(-1), errors.Wrapf(
-			err, "failed to unmarshal %q for %q", p, id)
 	}
 
 	return info.Timestamp, info.Version, nil
@@ -296,12 +288,7 @@ func (j mdJournal) getMDInfo(id MdID) (time.Time, MetadataVer, error) {
 func (j mdJournal) putMDInfo(
 	id MdID, timestamp time.Time, version MetadataVer) error {
 	info := mdInfo{timestamp, version}
-	infoJSON, err := json.Marshal(info)
-	if err != nil {
-		return errors.Wrapf(err, "failed to marshal info for %q", id)
-	}
-
-	return ioutil.WriteFile(j.mdInfoPath(id), infoJSON, 0600)
+	return ioutil.SerializeToJSONFile(info, j.mdInfoPath(id))
 }
 
 // getExtraMetadata gets the extra metadata corresponding to the given

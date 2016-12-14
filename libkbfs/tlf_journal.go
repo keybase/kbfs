@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -212,13 +211,9 @@ type tlfJournalInfo struct {
 
 func readTLFJournalInfoFile(dir string) (
 	keybase1.UID, kbfscrypto.VerifyingKey, tlf.ID, error) {
-	infoJSON, err := ioutil.ReadFile(getTLFJournalInfoFilePath(dir))
-	if err != nil {
-		return keybase1.UID(""), kbfscrypto.VerifyingKey{}, tlf.ID{}, err
-	}
-
 	var info tlfJournalInfo
-	err = json.Unmarshal(infoJSON, &info)
+	err := ioutil.DeserializeFromJSONFile(
+		getTLFJournalInfoFilePath(dir), &info)
 	if err != nil {
 		return keybase1.UID(""), kbfscrypto.VerifyingKey{}, tlf.ID{}, err
 	}
@@ -229,17 +224,7 @@ func readTLFJournalInfoFile(dir string) (
 func writeTLFJournalInfoFile(dir string, uid keybase1.UID,
 	key kbfscrypto.VerifyingKey, tlfID tlf.ID) error {
 	info := tlfJournalInfo{uid, key, tlfID}
-	infoJSON, err := json.Marshal(info)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.MkdirAll(dir, 0700)
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(getTLFJournalInfoFilePath(dir), infoJSON, 0600)
+	return ioutil.SerializeToJSONFile(info, getTLFJournalInfoFilePath(dir))
 }
 
 func makeTLFJournal(
