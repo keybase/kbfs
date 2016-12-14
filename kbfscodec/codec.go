@@ -6,12 +6,11 @@ package kbfscodec
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 
-	ioutil2 "github.com/keybase/kbfs/ioutil"
+	"github.com/keybase/kbfs/ioutil"
 
 	"github.com/pkg/errors"
 )
@@ -94,12 +93,7 @@ func SerializeToFile(c Codec, obj interface{}, path string) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(path, buf, 0600)
-	if err != nil {
-		return errors.Wrapf(err, "failed to write to %q", path)
-	}
-
-	return nil
+	return ioutil.WriteFile(path, buf, 0600)
 }
 
 // DeserializeFromFile deserializes the given file into the object
@@ -107,10 +101,10 @@ func SerializeToFile(c Codec, obj interface{}, path string) error {
 // ioutil.IsNotExist() returns true.
 func DeserializeFromFile(c Codec, path string, objPtr interface{}) error {
 	data, err := ioutil.ReadFile(path)
-	if ioutil2.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return err
 	} else if err != nil {
-		return errors.Wrapf(err, "failed to read %q", path)
+		return err
 	}
 
 	err = c.Decode(data, objPtr)
