@@ -210,9 +210,7 @@ func (j diskJournal) readJournalEntry(o journalOrdinal) (interface{}, error) {
 	entry := reflect.New(j.entryType)
 	err = j.codec.Decode(buf, entry)
 	if err != nil {
-		return nil, errors.Wrapf(err,
-			"failed to decode entry at path %q for ordinal %q",
-			p, o)
+		return nil, err
 	}
 
 	return entry.Elem().Interface(), nil
@@ -235,8 +233,7 @@ func (j diskJournal) writeJournalEntry(
 
 	buf, err := j.codec.Encode(entry)
 	if err != nil {
-		return errors.Wrapf(err,
-			"failed to encode entry for ordinal %q", o)
+		return err
 	}
 
 	err = ioutil.WriteFile(p, buf, 0600)
