@@ -248,6 +248,7 @@ func newSyntheticOpenContext() *openContext {
 func (f *FS) CreateFile(ctx context.Context, fi *dokan.FileInfo, cd *dokan.CreateData) (dokan.File, bool, error) {
 	// Only allow the current user access
 	if !fi.IsRequestorUserSidEqualTo(currentUserSID) {
+		defer func() { f.reportErr(ctx, libkbfs.WriteMode, libkbfs.NewWriteAccessWindowsPermError(fi.Path())) }()
 		return nil, false, dokan.ErrAccessDenied
 	}
 	f.logEnter(ctx, "FS CreateFile")

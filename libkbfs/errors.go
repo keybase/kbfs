@@ -229,6 +229,24 @@ func NewWriteUnsupportedError(filename string) error {
 	}
 }
 
+// WriteAccessWindowsPermError indicates an error when trying to write a file
+// by a process with the wrong permissions
+type WriteAccessWindowsPermError struct {
+	Filename string
+}
+
+// Error implements the error interface for WriteAccessError
+func (e WriteAccessWindowsPermError) Error() string {
+	return fmt.Sprintf("Writing to %s was attempted by a process running without matching permissions", e.Filename)
+}
+
+// NewWriteAccessWindowsPermError returns unsupported error trying to write a file
+func NewWriteAccessWindowsPermError(filename string) error {
+	return WriteAccessWindowsPermError{
+		Filename: filename,
+	}
+}
+
 // NeedSelfRekeyError indicates that the folder in question needs to
 // be rekeyed for the local device, and can be done so by one of the
 // other user's devices.

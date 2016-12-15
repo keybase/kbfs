@@ -155,6 +155,8 @@ func (r *ReporterKBPKI) ReportErr(ctx context.Context,
 		code = keybase1.FSErrorType_TOO_MANY_FOLDERS
 		params[errorParamFolderLimit] = strconv.FormatUint(e.Limit, 10)
 		params[errorParamFoldersCreated] = strconv.FormatUint(e.Created, 10)
+	case WriteAccessWindowsPermError:
+		code = keybase1.FSErrorType_ACCESS_DENIED_WINDOWS_ACCOUNT
 	}
 
 	if code < 0 && err == context.DeadlineExceeded {
