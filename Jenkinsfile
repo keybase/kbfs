@@ -8,8 +8,8 @@ helpers.rootLinuxNode(env, {
     properties([
         [$class: "BuildDiscarderProperty",
             strategy: [$class: "LogRotator",
-                numToKeepStr: "30",
-                daysToKeepStr: "10",
+                numToKeepStr: "100",
+                daysToKeepStr: "60",
                 artifactNumToKeepStr: "1",
             ]
         ],
