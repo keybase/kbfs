@@ -405,21 +405,27 @@ func (s *mdServerTlfStorage) putExtraMetadataLocked(
 	return nil
 }
 
-func (s *mdServerTlfStorage) isShutdownReadLocked() bool {
-	return s.branchJournals == nil
+type errMDServerTlfStorageShutdown struct{}
+
+func (e errMDServerTlfStorageShutdown) Error() string {
+	return "mdServerTlfStorage is shutdown"
+}
+
+func (s *mdServerTlfStorage) checkShutdownReadLocked() error {
+	if s.branchJournals == nil {
+		return errors.WithStack(errMDServerTlfStorageShutdown{})
+	}
+	return nil
 }
 
 // All functions below are public functions.
 
-// TODO: Turn this into a type.
-var errMDServerTlfStorageShutdown = errors.New("mdServerTlfStorage is shutdown")
-
 func (s *mdServerTlfStorage) journalLength(bid BranchID) (uint64, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-
-	if s.isShutdownReadLocked() {
-		return 0, errMDServerTlfStorageShutdown
+	err := s.checkShutdownReadLocked()
+	if err != nil {
+		return 0, err
 	}
 
 	j, ok := s.branchJournals[bid]
@@ -434,12 +440,12 @@ func (s *mdServerTlfStorage) getForTLF(
 	currentUID keybase1.UID, bid BranchID) (*RootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-
-	if s.isShutdownReadLocked() {
-		return nil, errMDServerTlfStorageShutdown
+	err := s.checkShutdownReadLocked()
+	if err != nil {
+		return nil, err
 	}
 
-	err := s.checkGetParamsReadLocked(currentUID, bid)
+	err = s.checkGetParamsReadLocked(currentUID, bid)
 	if err != nil {
 		return nil, err
 	}
@@ -456,9 +462,9 @@ func (s *mdServerTlfStorage) getRange(
 	[]*RootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-
-	if s.isShutdownReadLocked() {
-		return nil, errMDServerTlfStorageShutdown
+	err := s.checkShutdownReadLocked()
+	if err != nil {
+		return nil, err
 	}
 
 	return s.getRangeReadLocked(currentUID, bid, start, stop)
@@ -470,9 +476,9 @@ func (s *mdServerTlfStorage) put(
 	recordBranchID bool, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
-	if s.isShutdownReadLocked() {
-		return false, errMDServerTlfStorageShutdown
+	err = s.checkShutdownReadLocked()
+	if err != nil {
+		return false, err
 	}
 
 	if extra == nil {
