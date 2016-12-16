@@ -11,9 +11,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/keybase/kbfs/ioutil"
-
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"

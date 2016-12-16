@@ -12,12 +12,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/keybase/kbfs/ioutil"
-	"github.com/pkg/errors"
-
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"golang.org/x/net/context"
 )

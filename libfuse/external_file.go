@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/keybase/kbfs/ioutil"
-
 	"golang.org/x/net/context"
 )
 

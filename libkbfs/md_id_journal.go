@@ -8,10 +8,9 @@ import (
 	"reflect"
 
 	"github.com/keybase/go-codec/codec"
-	"github.com/pkg/errors"
-
 	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/pkg/errors"
 )
 
 // An mdIDJournal wraps a diskJournal to provide a persistent list of

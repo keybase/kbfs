@@ -9,15 +9,12 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/keybase/kbfs/ioutil"
-
-	"github.com/pkg/errors"
-
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
-
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 

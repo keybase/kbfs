@@ -17,16 +17,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keybase/kbfs/ioutil"
-	"github.com/pkg/errors"
-
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"bazil.org/fuse/fs/fstestutil"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
 )

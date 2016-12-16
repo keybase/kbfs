@@ -11,17 +11,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keybase/kbfs/ioutil"
-
-	"golang.org/x/net/context"
-
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
 )
 
 type singleEncryptionKeyGetter struct {

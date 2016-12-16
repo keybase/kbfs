@@ -8,18 +8,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/keybase/kbfs/ioutil"
-
-	"github.com/pkg/errors"
-
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
-
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
-
-	"github.com/keybase/client/go/protocol/keybase1"
 )
 
 // ImmutableBareRootMetadata is a thin wrapper around a
