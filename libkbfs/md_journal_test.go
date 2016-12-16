@@ -122,17 +122,19 @@ func makeMDForTest(t testing.TB, tlfID tlf.ID, revision MetadataRevision,
 func putMDRange(t testing.TB, tlfID tlf.ID, signer kbfscrypto.Signer,
 	ekg encryptionKeyGetter, bsplit BlockSplitter,
 	firstRevision MetadataRevision, firstPrevRoot MdID, mdCount int,
-	j *mdJournal) MdID {
+	j *mdJournal) ([]*RootMetadata, MdID) {
 	prevRoot := firstPrevRoot
 	ctx := context.Background()
+	var mds []*RootMetadata
 	for i := 0; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
 		md := makeMDForTest(t, tlfID, revision, j.uid, signer, prevRoot)
 		mdID, err := j.put(ctx, signer, ekg, bsplit, md, false)
 		require.NoError(t, err)
+		mds = append(mds, md)
 		prevRoot = mdID
 	}
-	return prevRoot
+	return mds, prevRoot
 }
 
 func checkBRMD(t *testing.T, uid keybase1.UID, key kbfscrypto.VerifyingKey,
@@ -170,6 +172,9 @@ func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 	}
 }
 
+// TODO: Create a separate journal for each iteration, instead of
+// using the same one.
+
 func BenchmarkMDJournalBasicMDv2(b *testing.B) {
 	_, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTestWithMetadataVer(b, InitialExtraMetadataVer)
@@ -183,7 +188,7 @@ func BenchmarkMDJournalBasicMDv2(b *testing.B) {
 	defer b.StopTimer()
 
 	for i := 0; i < b.N; i++ {
-		prevRoot = putMDRange(b, id, signer, ekg, bsplit,
+		_, prevRoot = putMDRange(b, id, signer, ekg, bsplit,
 			revision, prevRoot, mdCount, j)
 		revision += MetadataRevision(mdCount)
 	}
@@ -202,7 +207,7 @@ func BenchmarkMDJournalBasicMDv3(b *testing.B) {
 	defer b.StopTimer()
 
 	for i := 0; i < b.N; i++ {
-		prevRoot = putMDRange(b, id, signer, ekg, bsplit,
+		_, prevRoot = putMDRange(b, id, signer, ekg, bsplit,
 			revision, prevRoot, mdCount, j)
 		revision += MetadataRevision(mdCount)
 	}
@@ -314,7 +319,7 @@ func TestMDJournalPutCase1ReplaceHead(t *testing.T) {
 	firstRevision := MetadataRevision(10)
 	firstPrevRoot := fakeMdID(1)
 	mdCount := 3
-	prevRoot := putMDRange(t, id, signer, ekg, bsplit,
+	_, prevRoot := putMDRange(t, id, signer, ekg, bsplit,
 		firstRevision, firstPrevRoot, mdCount, j)
 
 	// Should just replace the head.
