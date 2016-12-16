@@ -402,8 +402,6 @@ func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID bool) (
 
 	// Check integrity.
 
-	// TODO: Make crypto and RMD wrap errors.
-
 	mdID, err := j.crypto.MakeMdID(rmd)
 	if err != nil {
 		return nil, nil, time.Time{}, err
