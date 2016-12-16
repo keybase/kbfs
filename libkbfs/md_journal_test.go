@@ -282,6 +282,7 @@ func TestMDJournalPutCase1Empty(t *testing.T) {
 	head, err := j.getHead(NullBranchID)
 	require.NoError(t, err)
 	require.Equal(t, md.bareMd, head.BareRootMetadata)
+	require.Equal(t, md.extra, head.extra)
 }
 
 func TestMDJournalPutCase1Conflict(t *testing.T) {
@@ -330,6 +331,7 @@ func TestMDJournalPutCase1ReplaceHead(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, md.Revision(), head.RevisionNumber())
 	require.Equal(t, md.DiskUsage(), head.DiskUsage())
+	require.Equal(t, md.extra, head.extra)
 }
 
 func TestMDJournalPutCase2NonEmptyReplace(t *testing.T) {
