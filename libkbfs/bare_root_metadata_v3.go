@@ -1311,6 +1311,9 @@ func (md *BareRootMetadataV3) FinalizeRekey(
 	md.WriterMetadata.WKeyBundleID = newWKBID
 	md.RKeyBundleID = newRKBID
 
+	// TODO: This should be or'ing with the existing parameters to
+	// handle the upconvert-then-rekey case. Also add a test for
+	// this.
 	extraV3.wkbNew = newWKBID != oldWKBID
 	extraV3.rkbNew = newRKBID != oldRKBID
 
