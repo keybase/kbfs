@@ -230,9 +230,10 @@ func TestMDJournalBasic(t *testing.T) {
 	firstRevision := MetadataRevision(10)
 	firstPrevRoot := fakeMdID(1)
 	mdCount := 10
-	putMDRange(t, id, signer, ekg, bsplit,
+	mds, _ := putMDRange(t, id, signer, ekg, bsplit,
 		firstRevision, firstPrevRoot, mdCount, j)
 
+	require.Equal(t, mdCount, len(mds))
 	require.Equal(t, mdCount, getMDJournalLength(t, j))
 
 	// Should now be non-empty.
@@ -247,6 +248,11 @@ func TestMDJournalBasic(t *testing.T) {
 	head, err = j.getHead(NullBranchID)
 	require.NoError(t, err)
 	require.Equal(t, ibrmds[len(ibrmds)-1], head)
+
+	for i := 0; i < mdCount; i++ {
+		require.Equal(t, mds[i].bareMd, ibrmds[i].BareRootMetadata)
+		require.Equal(t, mds[i].extra, ibrmds[i].extra)
+	}
 }
 
 func TestMDJournalGetNextEntry(t *testing.T) {
