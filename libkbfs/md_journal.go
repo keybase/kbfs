@@ -339,10 +339,10 @@ func (j mdJournal) putExtraMetadata(
 
 	if extra == nil {
 		if wkbID != (TLFWriterKeyBundleID{}) {
-			panic(fmt.Sprintf("unexpected non-nil wkbID %s", wkbID))
+			panic(errors.Errorf("unexpected non-nil wkbID %s", wkbID))
 		}
 		if rkbID != (TLFReaderKeyBundleID{}) {
-			panic(fmt.Sprintf("unexpected non-nil rkbID %s", rkbID))
+			panic(errors.Errorf("unexpected non-nil rkbID %s", rkbID))
 		}
 		return nil
 	}

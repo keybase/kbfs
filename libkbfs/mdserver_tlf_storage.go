@@ -499,9 +499,9 @@ func (s *mdServerTlfStorage) getKeyBundles(tlfID tlf.ID,
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-
-	if s.isShutdownReadLocked() {
-		return nil, nil, errMDServerTlfStorageShutdown
+	err := s.checkShutdownReadLocked()
+	if err != nil {
+		return nil, nil, err
 	}
 
 	var wkb *TLFWriterKeyBundleV3

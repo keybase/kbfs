@@ -780,8 +780,9 @@ func (md *MDServerMemory) getKeyBundles(tlfID tlf.ID,
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	md.lock.RLock()
 	defer md.lock.RUnlock()
-	if md.writerKeyBundleDb == nil {
-		return nil, nil, errMDServerMemoryShutdown
+	err := md.checkShutdownLocked()
+	if err != nil {
+		return nil, nil, err
 	}
 
 	var wkb *TLFWriterKeyBundleV3
