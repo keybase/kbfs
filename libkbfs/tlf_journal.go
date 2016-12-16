@@ -215,8 +215,7 @@ func readTLFJournalInfoFile(dir string) (
 	err := ioutil.DeserializeFromJSONFile(
 		getTLFJournalInfoFilePath(dir), &info)
 	if err != nil {
-		return keybase1.UID(""), kbfscrypto.VerifyingKey{},
-			tlf.ID{}, err
+		return keybase1.UID(""), kbfscrypto.VerifyingKey{}, tlf.ID{}, err
 	}
 
 	return info.UID, info.VerifyingKey, info.TlfID, nil
@@ -1205,9 +1204,6 @@ func (j *tlfJournal) disable() (wasEnabled bool, err error) {
 	case errTLFJournalDisabled:
 		// Already disabled.
 		return false, nil
-	case errTLFJournalShutdown:
-		// Already shutdown.
-		return false, err
 	default:
 		return false, err
 	}
@@ -1242,9 +1238,6 @@ func (j *tlfJournal) enable() error {
 	case errTLFJournalDisabled:
 		// Continue.
 		break
-	case errTLFJournalShutdown:
-		// Already shutdown.
-		return err
 	default:
 		return err
 	}
