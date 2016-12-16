@@ -545,8 +545,6 @@ func (j mdJournal) checkGetParams() (ImmutableBareRootMetadata, error) {
 		return ImmutableBareRootMetadata{}, nil
 	}
 
-	// TODO: Have isReader wrap its errors.
-
 	ok, err := isReader(j.uid, head.BareRootMetadata, head.extra)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
