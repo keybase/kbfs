@@ -216,6 +216,7 @@ func TestGetTLFCryptKeysWhileUnmergedAfterRestart(t *testing.T) {
 	}
 	jServer.onBranchChange = nil
 	jServer.onMDFlush = nil
+	jServer.EnableAuto(ctx)
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(t, config2)
@@ -235,6 +236,12 @@ func TestGetTLFCryptKeysWhileUnmergedAfterRestart(t *testing.T) {
 		t.Fatalf("Couldn't disable updates: %v", err)
 	}
 	DisableCRForTesting(config1, rootNode1.GetFolderBranch())
+
+	// Wait for "a" to flush to the server.
+	err = jServer.Wait(ctx, rootNode1.GetFolderBranch().Tlf)
+	if err != nil {
+		t.Fatalf("Couldn't wait on journal: %v", err)
+	}
 
 	// then user2 write to the file
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
@@ -269,16 +276,25 @@ func TestGetTLFCryptKeysWhileUnmergedAfterRestart(t *testing.T) {
 		t.Fatalf("Couldn't sync file: %v", err)
 	}
 
+	// Wait for the conflict to be detected.
+	err = jServer.Wait(ctx, rootNode1.GetFolderBranch().Tlf)
+	if err != nil {
+		t.Fatalf("Couldn't wait on journal: %v", err)
+	}
+
 	// now re-login u1
 	config1B := ConfigAsUser(config1, userName1)
 	defer CheckConfigAndShutdown(t, config1B)
-	DisableCRForTesting(config1B, rootNode1.GetFolderBranch())
+	config1B.EnableJournaling(tempdir, TLFJournalBackgroundWorkEnabled)
 	jServer, err = GetJournalServer(config1B)
 	if err != nil {
 		t.Fatalf("error in GetJournalServer: %v\n", err)
 	}
 	jServer.onBranchChange = nil
 	jServer.onMDFlush = nil
+	jServer.EnableAuto(ctx)
+
+	DisableCRForTesting(config1B, rootNode1.GetFolderBranch())
 
 	tlfHandle, err := ParseTlfHandle(ctx, config1B.KBPKI(), name, false)
 	if err != nil {
