@@ -797,6 +797,8 @@ func (md *MDServerMemory) getKeyBundles(tlfID tlf.ID,
 		if err != nil {
 			return nil, nil, err
 		}
+
+		wkb = &foundWKB
 	}
 
 	var rkb *TLFReaderKeyBundleV3
@@ -811,6 +813,8 @@ func (md *MDServerMemory) getKeyBundles(tlfID tlf.ID,
 		if err != nil {
 			return nil, nil, err
 		}
+
+		rkb = &foundRKB
 	}
 
 	return wkb, rkb, nil
