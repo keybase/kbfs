@@ -18,16 +18,17 @@ func TestWKBID(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
-	var wkb1, wkb2 TLFWriterKeyBundleV3
-	wkb2.Keys = make(UserDeviceKeyInfoMapV3)
+	var wkb TLFWriterKeyBundleV3
 
-	id1, err := crypto.MakeTLFWriterKeyBundleID(wkb1)
+	_, err := crypto.MakeTLFWriterKeyBundleID(wkb)
+	require.Error(t, err)
+
+	wkb.Keys = UserDeviceKeyInfoMapV3{
+		keybase1.UID(0): nil,
+	}
+
+	_, err = crypto.MakeTLFWriterKeyBundleID(wkb)
 	require.NoError(t, err)
-
-	id2, err := crypto.MakeTLFWriterKeyBundleID(wkb2)
-	require.NoError(t, err)
-
-	require.Equal(t, id1, id2)
 }
 
 func TestRKBID(t *testing.T) {
