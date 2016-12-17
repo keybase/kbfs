@@ -577,27 +577,27 @@ type keyBundleMDServer struct {
 	nextGetRange []*RootMetadataSigned
 
 	lock sync.Mutex
-	wkbs map[TLFWriterKeyBundleID]*TLFWriterKeyBundleV3
-	rkbs map[TLFReaderKeyBundleID]*TLFReaderKeyBundleV3
+	wkbs map[TLFWriterKeyBundleID]TLFWriterKeyBundleV3
+	rkbs map[TLFReaderKeyBundleID]TLFReaderKeyBundleV3
 }
 
 func makeKeyBundleMDServer(mdServer MDServer) *keyBundleMDServer {
 	return &keyBundleMDServer{
 		MDServer: mdServer,
-		wkbs:     make(map[TLFWriterKeyBundleID]*TLFWriterKeyBundleV3),
-		rkbs:     make(map[TLFReaderKeyBundleID]*TLFReaderKeyBundleV3),
+		wkbs:     make(map[TLFWriterKeyBundleID]TLFWriterKeyBundleV3),
+		rkbs:     make(map[TLFReaderKeyBundleID]TLFReaderKeyBundleV3),
 	}
 }
 
 func (mds *keyBundleMDServer) putWKB(
-	id TLFWriterKeyBundleID, wkb *TLFWriterKeyBundleV3) {
+	id TLFWriterKeyBundleID, wkb TLFWriterKeyBundleV3) {
 	mds.lock.Lock()
 	defer mds.lock.Unlock()
 	mds.wkbs[id] = wkb
 }
 
 func (mds *keyBundleMDServer) putRKB(
-	id TLFReaderKeyBundleID, rkb *TLFReaderKeyBundleV3) {
+	id TLFReaderKeyBundleID, rkb TLFReaderKeyBundleV3) {
 	mds.lock.Lock()
 	defer mds.lock.Unlock()
 	mds.rkbs[id] = rkb
@@ -624,7 +624,9 @@ func (mds *keyBundleMDServer) GetKeyBundles(ctx context.Context, tlfID tlf.ID,
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	mds.lock.Lock()
 	defer mds.lock.Unlock()
-	return mds.wkbs[wkbID], mds.rkbs[rkbID], nil
+	wkb := mds.wkbs[wkbID]
+	rkb := mds.rkbs[rkbID]
+	return &wkb, &rkb, nil
 }
 
 func testMDOpsGetRangeSuccess(t *testing.T, ver MetadataVer, fromStart bool) {
