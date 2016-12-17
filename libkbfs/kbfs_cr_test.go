@@ -292,7 +292,6 @@ func TestGetTLFCryptKeysWhileUnmergedAfterRestart(t *testing.T) {
 	}
 	jServer.onBranchChange = nil
 	jServer.onMDFlush = nil
-	jServer.EnableAuto(ctx)
 
 	DisableCRForTesting(config1B, rootNode1.GetFolderBranch())
 
