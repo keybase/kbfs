@@ -14,6 +14,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestWKBID(t *testing.T) {
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+
+	var wkb1, wkb2 TLFWriterKeyBundleV3
+	wkb2.Keys = make(UserDeviceKeyInfoMapV3)
+
+	id1, err := crypto.MakeTLFWriterKeyBundleID(wkb1)
+	require.NoError(t, err)
+
+	id2, err := crypto.MakeTLFWriterKeyBundleID(wkb2)
+	require.NoError(t, err)
+
+	require.Equal(t, id1, id2)
+}
+
 func TestRemoveDevicesNotInV3(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(0x1)
 	uid2 := keybase1.MakeTestUID(0x2)
