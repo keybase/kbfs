@@ -12,6 +12,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
+	"github.com/pkg/errors"
 )
 
 // A lot of this code is duplicated from key_bundle_v3.go, except with
@@ -214,7 +215,10 @@ func DeserializeTLFWriterKeyBundleV3(codec kbfscodec.Codec, path string) (
 	if err != nil {
 		return TLFWriterKeyBundleV3{}, err
 	}
-	wkb.Keys = make(UserDeviceKeyInfoMapV3)
+	if len(wkb.Keys) == 0 {
+		return TLFWriterKeyBundleV3{}, errors.New(
+			"Writer key bundle with no keys")
+	}
 	return wkb, nil
 }
 
@@ -311,7 +315,9 @@ func DeserializeTLFReaderKeyBundleV3(codec kbfscodec.Codec, path string) (
 	if err != nil {
 		return TLFReaderKeyBundleV3{}, err
 	}
-	rkb.Keys = make(UserDeviceKeyInfoMapV3)
+	if len(rkb.Keys) == 0 {
+		rkb.Keys = make(UserDeviceKeyInfoMapV3)
+	}
 	return rkb, nil
 }
 
