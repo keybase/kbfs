@@ -185,7 +185,7 @@ func (udkimV3 UserDeviceKeyInfoMapV3) fillInUserInfos(
 // symmetric encryption keys for a top-level folder.
 type TLFWriterKeyBundleV3 struct {
 	// Maps from each user to their crypt key bundle for the current generation.
-	Keys UserDeviceKeyInfoMapV3 `codec:"wKeys"`
+	Keys UserDeviceKeyInfoMapV3 `codec:"wKeys,omitempty"`
 
 	// M_f as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
 	TLFPublicKey kbfscrypto.TLFPublicKey `codec:"pubKey"`
