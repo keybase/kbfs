@@ -214,6 +214,7 @@ func DeserializeTLFWriterKeyBundleV3(codec kbfscodec.Codec, path string) (
 	if err != nil {
 		return TLFWriterKeyBundleV3{}, err
 	}
+	wkb.Keys = make(UserDeviceKeyInfoMapV3)
 	return wkb, nil
 }
 
@@ -310,6 +311,7 @@ func DeserializeTLFReaderKeyBundleV3(codec kbfscodec.Codec, path string) (
 	if err != nil {
 		return TLFReaderKeyBundleV3{}, err
 	}
+	rkb.Keys = make(UserDeviceKeyInfoMapV3)
 	return rkb, nil
 }
 
