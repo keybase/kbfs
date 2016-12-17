@@ -5,17 +5,16 @@
 package libkbfs
 
 import (
-	"errors"
-	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 )
 
 // mdServerTlfStorage stores an ordered list of metadata IDs for each
@@ -150,7 +149,7 @@ func (s *mdServerTlfStorage) getMDReadLocked(id MdID) (
 	}
 
 	if id != mdID {
-		return nil, fmt.Errorf(
+		return nil, errors.Errorf(
 			"Metadata ID mismatch: expected %s, got %s",
 			id, mdID)
 	}
@@ -166,7 +165,7 @@ func (s *mdServerTlfStorage) putMDLocked(
 	}
 
 	_, err = s.getMDReadLocked(id)
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
 		return MdID{}, err
@@ -202,7 +201,7 @@ func (s *mdServerTlfStorage) getOrCreateBranchJournalLocked(
 	}
 
 	dir := filepath.Join(s.branchJournalsPath(), bid.String())
-	err := os.MkdirAll(dir, 0700)
+	err := ioutil.MkdirAll(dir, 0700)
 	if err != nil {
 		return mdIDJournal{}, err
 	}
@@ -236,9 +235,7 @@ func (s *mdServerTlfStorage) checkGetParamsReadLocked(
 	}
 
 	if mergedMasterHead != nil {
-		extra, err := s.getExtraMetadataReadLocked(
-			mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
-			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
+		extra, err := getExtraMetadata(s, mergedMasterHead.MD)
 		if err != nil {
 			return MDServerError{err}
 		}
@@ -279,7 +276,7 @@ func (s *mdServerTlfStorage) getRangeReadLocked(
 			return nil, MDServerError{err}
 		}
 		if expectedRevision != rmds.MD.RevisionNumber() {
-			panic(fmt.Errorf("expected revision %v, got %v",
+			panic(errors.Errorf("expected revision %v, got %v",
 				expectedRevision, rmds.MD.RevisionNumber()))
 		}
 		rmdses = append(rmdses, rmds)
@@ -288,96 +285,10 @@ func (s *mdServerTlfStorage) getRangeReadLocked(
 	return rmdses, nil
 }
 
-func (s *mdServerTlfStorage) getExtraMetadataReadLocked(
-	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
-	ExtraMetadata, error) {
-	wkb, rkb, err := s.getKeyBundlesReadLocked(wkbID, rkbID)
-	if err != nil {
-		return nil, err
-	}
-	if wkb == nil || rkb == nil {
-		return nil, nil
-	}
-	return &ExtraMetadataV3{wkb: wkb, rkb: rkb}, nil
-}
-
-func (s *mdServerTlfStorage) getKeyBundlesReadLocked(
-	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
-	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	if (wkbID == TLFWriterKeyBundleID{}) !=
-		(rkbID == TLFReaderKeyBundleID{}) {
-		return nil, nil, fmt.Errorf(
-			"wkbID is empty (%t) != rkbID is empty (%t)",
-			wkbID == TLFWriterKeyBundleID{},
-			rkbID == TLFReaderKeyBundleID{})
-	}
-
-	if wkbID == (TLFWriterKeyBundleID{}) {
-		return nil, nil, nil
-	}
-
-	var wkb TLFWriterKeyBundleV3
-	err := kbfscodec.DeserializeFromFile(
-		s.codec, s.writerKeyBundleV3Path(wkbID), &wkb)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var rkb TLFReaderKeyBundleV3
-	err = kbfscodec.DeserializeFromFile(
-		s.codec, s.readerKeyBundleV3Path(rkbID), &rkb)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = checkKeyBundleIDs(s.crypto, wkbID, rkbID, &wkb, &rkb)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &wkb, &rkb, nil
-}
-
-func checkKeyBundleIDs(crypto cryptoPure,
-	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID,
-	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3) error {
-	computedWKBID, err := crypto.MakeTLFWriterKeyBundleID(wkb)
-	if err != nil {
-		return err
-	}
-
-	if wkbID != computedWKBID {
-		return fmt.Errorf("Expected WKB ID %s, got %s",
-			wkbID, computedWKBID)
-	}
-
-	computedRKBID, err := crypto.MakeTLFReaderKeyBundleID(rkb)
-	if err != nil {
-		return err
-	}
-
-	if rkbID != computedRKBID {
-		return fmt.Errorf("Expected RKB ID %s, got %s",
-			rkbID, computedRKBID)
-	}
-
-	return nil
-}
-
-func (s *mdServerTlfStorage) putExtraMetadataLocked(
-	rmds *RootMetadataSigned, extra ExtraMetadata) error {
+func (s *mdServerTlfStorage) putExtraMetadataLocked(rmds *RootMetadataSigned,
+	extra ExtraMetadata) error {
 	if extra == nil {
 		return nil
-	}
-
-	wkbID := rmds.MD.GetTLFWriterKeyBundleID()
-	if wkbID == (TLFWriterKeyBundleID{}) {
-		panic("writer key bundle ID is empty")
-	}
-
-	rkbID := rmds.MD.GetTLFReaderKeyBundleID()
-	if rkbID == (TLFReaderKeyBundleID{}) {
-		panic("reader key bundle ID is empty")
 	}
 
 	extraV3, ok := extra.(*ExtraMetadataV3)
@@ -385,41 +296,53 @@ func (s *mdServerTlfStorage) putExtraMetadataLocked(
 		return errors.New("Invalid extra metadata")
 	}
 
-	err := checkKeyBundleIDs(
-		s.crypto, wkbID, rkbID, extraV3.wkb, extraV3.rkb)
-	if err != nil {
-		return err
+	if extraV3.wkbNew {
+		wkbID := rmds.MD.GetTLFWriterKeyBundleID()
+		if wkbID == (TLFWriterKeyBundleID{}) {
+			panic("writer key bundle ID is empty")
+		}
+		err := kbfscodec.SerializeToFile(
+			s.codec, extraV3.wkb, s.writerKeyBundleV3Path(wkbID))
+		if err != nil {
+			return err
+		}
 	}
 
-	err = kbfscodec.SerializeToFile(
-		s.codec, extraV3.wkb, s.writerKeyBundleV3Path(wkbID))
-	if err != nil {
-		return err
+	if extraV3.rkbNew {
+		rkbID := rmds.MD.GetTLFReaderKeyBundleID()
+		if rkbID == (TLFReaderKeyBundleID{}) {
+			panic("reader key bundle ID is empty")
+		}
+		err := kbfscodec.SerializeToFile(
+			s.codec, extraV3.rkb, s.readerKeyBundleV3Path(rkbID))
+		if err != nil {
+			return err
+		}
 	}
-
-	err = kbfscodec.SerializeToFile(
-		s.codec, extraV3.rkb, s.readerKeyBundleV3Path(rkbID))
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (s *mdServerTlfStorage) isShutdownReadLocked() bool {
-	return s.branchJournals == nil
+type errMDServerTlfStorageShutdown struct{}
+
+func (e errMDServerTlfStorageShutdown) Error() string {
+	return "mdServerTlfStorage is shutdown"
+}
+
+func (s *mdServerTlfStorage) checkShutdownReadLocked() error {
+	if s.branchJournals == nil {
+		return errors.WithStack(errMDServerTlfStorageShutdown{})
+	}
+	return nil
 }
 
 // All functions below are public functions.
 
-var errMDServerTlfStorageShutdown = errors.New("mdServerTlfStorage is shutdown")
-
 func (s *mdServerTlfStorage) journalLength(bid BranchID) (uint64, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-
-	if s.isShutdownReadLocked() {
-		return 0, errMDServerTlfStorageShutdown
+	err := s.checkShutdownReadLocked()
+	if err != nil {
+		return 0, err
 	}
 
 	j, ok := s.branchJournals[bid]
@@ -434,12 +357,12 @@ func (s *mdServerTlfStorage) getForTLF(
 	currentUID keybase1.UID, bid BranchID) (*RootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-
-	if s.isShutdownReadLocked() {
-		return nil, errMDServerTlfStorageShutdown
+	err := s.checkShutdownReadLocked()
+	if err != nil {
+		return nil, err
 	}
 
-	err := s.checkGetParamsReadLocked(currentUID, bid)
+	err = s.checkGetParamsReadLocked(currentUID, bid)
 	if err != nil {
 		return nil, err
 	}
@@ -456,9 +379,9 @@ func (s *mdServerTlfStorage) getRange(
 	[]*RootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-
-	if s.isShutdownReadLocked() {
-		return nil, errMDServerTlfStorageShutdown
+	err := s.checkShutdownReadLocked()
+	if err != nil {
+		return nil, err
 	}
 
 	return s.getRangeReadLocked(currentUID, bid, start, stop)
@@ -470,19 +393,9 @@ func (s *mdServerTlfStorage) put(
 	recordBranchID bool, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
-	if s.isShutdownReadLocked() {
-		return false, errMDServerTlfStorageShutdown
-	}
-
-	if extra == nil {
-		var err error
-		extra, err = s.getExtraMetadataReadLocked(
-			rmds.MD.GetTLFWriterKeyBundleID(),
-			rmds.MD.GetTLFReaderKeyBundleID())
-		if err != nil {
-			return false, MDServerError{err}
-		}
+	err = s.checkShutdownReadLocked()
+	if err != nil {
+		return false, err
 	}
 
 	err = rmds.IsValidAndSigned(s.codec, s.crypto, extra)
@@ -504,9 +417,7 @@ func (s *mdServerTlfStorage) put(
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		prevExtra, err := s.getExtraMetadataReadLocked(
-			mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
-			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
+		prevExtra, err := getExtraMetadata(s, mergedMasterHead.MD)
 		if err != nil {
 			return false, MDServerError{err}
 		}
@@ -540,7 +451,7 @@ func (s *mdServerTlfStorage) put(
 		}
 		if len(rmdses) != 1 {
 			return false, MDServerError{
-				Err: fmt.Errorf("Expected 1 MD block got %d", len(rmdses)),
+				Err: errors.Errorf("Expected 1 MD block got %d", len(rmdses)),
 			}
 		}
 		head = rmdses[0]
@@ -583,12 +494,49 @@ func (s *mdServerTlfStorage) put(
 	return recordBranchID, nil
 }
 
-func (s *mdServerTlfStorage) getKeyBundles(
+func (s *mdServerTlfStorage) getKeyBundles(tlfID tlf.ID,
 	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	return s.getKeyBundlesReadLocked(wkbID, rkbID)
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	err := s.checkShutdownReadLocked()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var wkb *TLFWriterKeyBundleV3
+	if wkbID != (TLFWriterKeyBundleID{}) {
+		var foundWKB TLFWriterKeyBundleV3
+		err := kbfscodec.DeserializeFromFile(
+			s.codec, s.writerKeyBundleV3Path(wkbID), &foundWKB)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		err = checkWKBID(s.crypto, wkbID, foundWKB)
+		if err != nil {
+			return nil, nil, err
+		}
+		wkb = &foundWKB
+	}
+
+	var rkb *TLFReaderKeyBundleV3
+	if rkbID != (TLFReaderKeyBundleID{}) {
+		var foundRKB TLFReaderKeyBundleV3
+		err := kbfscodec.DeserializeFromFile(
+			s.codec, s.readerKeyBundleV3Path(rkbID), &foundRKB)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		err = checkRKBID(s.crypto, rkbID, foundRKB)
+		if err != nil {
+			return nil, nil, err
+		}
+		rkb = &foundRKB
+	}
+
+	return wkb, rkb, nil
 }
 
 func (s *mdServerTlfStorage) shutdown() {

@@ -5,15 +5,14 @@
 package libkbfs
 
 import (
-	"fmt"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/pkg/errors"
 )
 
 // blockDiskStore stores block data in flat files on disk.
@@ -52,8 +51,11 @@ import (
 //           May be missing.
 //   - ksh:  The raw data for the associated key server half.
 //           May be missing, but should be present when data is.
-//   - refs: The list of references to the block, encoded as a serialized
-//           blockRefInfo. May be missing.
+//   - refs: The list of references to the block, along with other
+//           block-specific info, encoded as a serialized
+//           blockJournalInfo. May be missing.  TODO: rename this to
+//           something more generic if we ever upgrade the journal
+//           version.
 //
 // Future versions of the disk store might add more files to this
 // directory; if any code is written to move blocks around, it should
@@ -110,32 +112,34 @@ func (s *blockDiskStore) keyServerHalfPath(id BlockID) string {
 	return filepath.Join(s.blockPath(id), "ksh")
 }
 
-func (s *blockDiskStore) refsPath(id BlockID) string {
+func (s *blockDiskStore) infoPath(id BlockID) string {
+	// TODO: change the file name to "info" the next we change the
+	// journal layout.
 	return filepath.Join(s.blockPath(id), "refs")
+}
+
+func (s *blockDiskStore) flushedPath(id BlockID) string {
+	return filepath.Join(s.blockPath(id), "f")
 }
 
 // makeDir makes the directory for the given block ID and writes the
 // ID file, if necessary.
 func (s *blockDiskStore) makeDir(id BlockID) error {
-	err := os.MkdirAll(s.blockPath(id), 0700)
+	err := ioutil.MkdirAll(s.blockPath(id), 0700)
 	if err != nil {
 		return err
 	}
 
 	// TODO: Only write if the file doesn't exist.
 
-	err = ioutil.WriteFile(s.idPath(id), []byte(id.String()), 0600)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ioutil.WriteFile(s.idPath(id), []byte(id.String()), 0600)
 }
 
-// blockRefInfo is a wrapper around blockRefMap, in case we want to
-// add more fields in the future.
-type blockRefInfo struct {
-	Refs blockRefMap
+// blockJournalInfo contains info about a particular block in the
+// journal, such as the set of references to it.
+type blockJournalInfo struct {
+	Refs    blockRefMap
+	Flushed bool `codec:"f,omitempty"`
 
 	codec.UnknownFieldSetHandler
 }
@@ -143,38 +147,38 @@ type blockRefInfo struct {
 // TODO: Add caching for refs
 
 // getRefInfo returns the references for the given ID.
-func (s *blockDiskStore) getRefInfo(id BlockID) (blockRefInfo, error) {
-	var refInfo blockRefInfo
-	err := kbfscodec.DeserializeFromFile(s.codec, s.refsPath(id), &refInfo)
-	if !os.IsNotExist(err) && err != nil {
-		return blockRefInfo{}, err
+func (s *blockDiskStore) getInfo(id BlockID) (blockJournalInfo, error) {
+	var info blockJournalInfo
+	err := kbfscodec.DeserializeFromFile(s.codec, s.infoPath(id), &info)
+	if !ioutil.IsNotExist(err) && err != nil {
+		return blockJournalInfo{}, err
 	}
 
-	if refInfo.Refs == nil {
-		refInfo.Refs = make(blockRefMap)
+	if info.Refs == nil {
+		info.Refs = make(blockRefMap)
 	}
 
-	return refInfo, nil
+	return info, nil
 }
 
 // putRefInfo stores the given references for the given ID.
-func (s *blockDiskStore) putRefInfo(id BlockID, refs blockRefInfo) error {
-	return kbfscodec.SerializeToFile(s.codec, refs, s.refsPath(id))
+func (s *blockDiskStore) putInfo(id BlockID, info blockJournalInfo) error {
+	return kbfscodec.SerializeToFile(s.codec, info, s.infoPath(id))
 }
 
 // addRefs adds references for the given contexts to the given ID, all
 // with the same status and tag.
 func (s *blockDiskStore) addRefs(id BlockID, contexts []BlockContext,
 	status blockRefStatus, tag string) error {
-	refInfo, err := s.getRefInfo(id)
+	info, err := s.getInfo(id)
 	if err != nil {
 		return err
 	}
 
-	if len(refInfo.Refs) > 0 {
+	if len(info.Refs) > 0 {
 		// Check existing contexts, if any.
 		for _, context := range contexts {
-			_, err := refInfo.Refs.checkExists(context)
+			_, err := info.Refs.checkExists(context)
 			if err != nil {
 				return err
 			}
@@ -182,13 +186,13 @@ func (s *blockDiskStore) addRefs(id BlockID, contexts []BlockContext,
 	}
 
 	for _, context := range contexts {
-		err = refInfo.Refs.put(context, status, tag)
+		err = info.Refs.put(context, status, tag)
 		if err != nil {
 			return err
 		}
 	}
 
-	return s.putRefInfo(id, refInfo)
+	return s.putInfo(id, info)
 }
 
 // getData returns the data and server half for the given ID, if
@@ -196,7 +200,7 @@ func (s *blockDiskStore) addRefs(id BlockID, contexts []BlockContext,
 func (s *blockDiskStore) getData(id BlockID) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	data, err := ioutil.ReadFile(s.dataPath(id))
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
 			blockNonExistentError{id}
 	} else if err != nil {
@@ -205,7 +209,7 @@ func (s *blockDiskStore) getData(id BlockID) (
 
 	keyServerHalfPath := s.keyServerHalfPath(id)
 	buf, err := ioutil.ReadFile(keyServerHalfPath)
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
 			blockNonExistentError{id}
 	} else if err != nil {
@@ -220,7 +224,7 @@ func (s *blockDiskStore) getData(id BlockID) (
 	}
 
 	if id != dataID {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, fmt.Errorf(
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, errors.Errorf(
 			"Block ID mismatch: expected %s, got %s", id, dataID)
 	}
 
@@ -236,41 +240,75 @@ func (s *blockDiskStore) getData(id BlockID) (
 // All functions below are public functions.
 
 func (s *blockDiskStore) hasAnyRef(id BlockID) (bool, error) {
-	refInfo, err := s.getRefInfo(id)
+	info, err := s.getInfo(id)
 	if err != nil {
 		return false, err
 	}
 
-	return len(refInfo.Refs) > 0, nil
+	return len(info.Refs) > 0, nil
 }
 
 func (s *blockDiskStore) hasNonArchivedRef(id BlockID) (bool, error) {
-	refInfo, err := s.getRefInfo(id)
+	info, err := s.getInfo(id)
 	if err != nil {
 		return false, err
 	}
 
-	return refInfo.Refs.hasNonArchivedRef(), nil
+	return info.Refs.hasNonArchivedRef(), nil
 }
 
 func (s *blockDiskStore) hasContext(id BlockID, context BlockContext) (
 	bool, error) {
-	refInfo, err := s.getRefInfo(id)
+	info, err := s.getInfo(id)
 	if err != nil {
 		return false, err
 	}
 
-	return refInfo.Refs.checkExists(context)
+	return info.Refs.checkExists(context)
 }
 
-func (s *blockDiskStore) hasData(id BlockID) error {
-	_, err := os.Stat(s.dataPath(id))
-	return err
+func (s *blockDiskStore) hasData(id BlockID) (bool, error) {
+	_, err := ioutil.Stat(s.dataPath(id))
+	if ioutil.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *blockDiskStore) isUnflushed(id BlockID) (bool, error) {
+	ok, err := s.hasData(id)
+	if err != nil {
+		return false, err
+	}
+
+	if !ok {
+		return false, nil
+	}
+
+	// The data is there; has it been flushed?
+	info, err := s.getInfo(id)
+	if err != nil {
+		return false, err
+	}
+
+	return !info.Flushed, nil
+}
+
+func (s *blockDiskStore) markFlushed(id BlockID) error {
+	info, err := s.getInfo(id)
+	if err != nil {
+		return err
+	}
+
+	info.Flushed = true
+	return s.putInfo(id, info)
 }
 
 func (s *blockDiskStore) getDataSize(id BlockID) (int64, error) {
-	fi, err := os.Stat(s.dataPath(id))
-	if os.IsNotExist(err) {
+	fi, err := ioutil.Stat(s.dataPath(id))
+	if ioutil.IsNotExist(err) {
 		return 0, nil
 	} else if err != nil {
 		return 0, err
@@ -296,7 +334,7 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	res := make(map[BlockID]blockRefMap)
 
 	fileInfos, err := ioutil.ReadDir(s.dir)
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return res, nil
 	} else if err != nil {
 		return nil, err
@@ -305,7 +343,7 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	for _, fi := range fileInfos {
 		name := fi.Name()
 		if !fi.IsDir() {
-			return nil, fmt.Errorf("Unexpected non-dir %q", name)
+			return nil, errors.Errorf("Unexpected non-dir %q", name)
 		}
 
 		subFileInfos, err := ioutil.ReadDir(filepath.Join(s.dir, name))
@@ -316,7 +354,7 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 		for _, sfi := range subFileInfos {
 			subName := sfi.Name()
 			if !sfi.IsDir() {
-				return nil, fmt.Errorf("Unexpected non-dir %q",
+				return nil, errors.Errorf("Unexpected non-dir %q",
 					subName)
 			}
 
@@ -329,22 +367,22 @@ func (s *blockDiskStore) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 
 			id, err := BlockIDFromString(string(idBytes))
 			if err != nil {
-				return nil, err
+				return nil, errors.WithStack(err)
 			}
 
 			if !strings.HasPrefix(id.String(), name+subName) {
-				return nil, fmt.Errorf(
+				return nil, errors.Errorf(
 					"%q unexpectedly not a prefix of %q",
 					name+subName, id.String())
 			}
 
-			refInfo, err := s.getRefInfo(id)
+			info, err := s.getInfo(id)
 			if err != nil {
 				return nil, err
 			}
 
-			if len(refInfo.Refs) > 0 {
-				res[id] = refInfo.Refs
+			if len(info.Refs) > 0 {
+				res[id] = info.Refs
 			}
 		}
 	}
@@ -382,7 +420,7 @@ func (s *blockDiskStore) put(id BlockID, context BlockContext, buf []byte,
 		// to id, so no need to check that they're both equal.
 
 		if existingServerHalf != serverHalf {
-			return fmt.Errorf(
+			return errors.Errorf(
 				"key server half mismatch: expected %s, got %s",
 				existingServerHalf, serverHalf)
 		}
@@ -451,30 +489,30 @@ func (s *blockDiskStore) archiveReferences(
 func (s *blockDiskStore) removeReferences(
 	id BlockID, contexts []BlockContext, tag string) (
 	liveCount int, err error) {
-	refInfo, err := s.getRefInfo(id)
+	info, err := s.getInfo(id)
 	if err != nil {
 		return 0, err
 	}
-	if len(refInfo.Refs) == 0 {
+	if len(info.Refs) == 0 {
 		return 0, nil
 	}
 
 	for _, context := range contexts {
-		err := refInfo.Refs.remove(context, tag)
+		err := info.Refs.remove(context, tag)
 		if err != nil {
 			return 0, err
 		}
-		if len(refInfo.Refs) == 0 {
+		if len(info.Refs) == 0 {
 			break
 		}
 	}
 
-	err = s.putRefInfo(id, refInfo)
+	err = s.putInfo(id, info)
 	if err != nil {
 		return 0, err
 	}
 
-	return len(refInfo.Refs), nil
+	return len(info.Refs), nil
 }
 
 // remove removes any existing data for the given ID, which must not
@@ -485,20 +523,20 @@ func (s *blockDiskStore) remove(id BlockID) error {
 		return err
 	}
 	if hasAnyRef {
-		return fmt.Errorf(
+		return errors.Errorf(
 			"Trying to remove data for referenced block %s", id)
 	}
 	path := s.blockPath(id)
 
-	err = os.RemoveAll(path)
+	err = ioutil.RemoveAll(path)
 	if err != nil {
 		return err
 	}
 
 	// Remove the parent (splayed) directory if it exists and is
 	// empty.
-	err = os.Remove(filepath.Dir(path))
-	if os.IsNotExist(err) || isExist(err) {
+	err = ioutil.Remove(filepath.Dir(path))
+	if ioutil.IsNotExist(err) || ioutil.IsExist(err) {
 		err = nil
 	}
 	return err

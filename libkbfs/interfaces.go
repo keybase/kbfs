@@ -869,10 +869,10 @@ type cryptoPure interface {
 		ePubKey kbfscrypto.TLFEphemeralPublicKey) (*MerkleLeaf, error)
 
 	// MakeTLFWriterKeyBundleID hashes a TLFWriterKeyBundleV3 to create an ID.
-	MakeTLFWriterKeyBundleID(wkb *TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error)
+	MakeTLFWriterKeyBundleID(wkb TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error)
 
 	// MakeTLFReaderKeyBundleID hashes a TLFReaderKeyBundleV3 to create an ID.
-	MakeTLFReaderKeyBundleID(rkb *TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error)
+	MakeTLFReaderKeyBundleID(rkb TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error)
 
 	// EncryptTLFCryptKeys encrypts an array of historic TLFCryptKeys.
 	EncryptTLFCryptKeys(oldKeys []kbfscrypto.TLFCryptKey,
@@ -1140,7 +1140,11 @@ type MDServer interface {
 	// don't have a current estimate for the offset.
 	OffsetFromServerTime() (time.Duration, bool)
 
-	// GetKeyBundles returns the key bundles for the given key bundle IDs.
+	// GetKeyBundles looks up the key bundles for the given key
+	// bundle IDs. tlfID must be non-zero but either or both wkbID
+	// and rkbID can be zero, in which case nil will be returned
+	// for the respective bundle. If a bundle cannot be found, an
+	// error is returned and nils are returned for both bundles.
 	GetKeyBundles(ctx context.Context, tlfID tlf.ID,
 		wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 		*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error)
@@ -1608,7 +1612,7 @@ type BareRootMetadata interface {
 	// TODO: Replace Config argument.
 	MakeSuccessorCopy(ctx context.Context, config Config, kmd KeyMetadata,
 		extra ExtraMetadata, isReadableAndWriter bool) (
-		mdCopy MutableBareRootMetadata, extraCopy ExtraMetadata, extraCopyIsNew bool, err error)
+		mdCopy MutableBareRootMetadata, extraCopy ExtraMetadata, err error)
 	// CheckValidSuccessor makes sure the given BareRootMetadata is a valid
 	// successor to the current one, and returns an error otherwise.
 	CheckValidSuccessor(currID MdID, nextMd BareRootMetadata) error

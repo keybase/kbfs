@@ -5,11 +5,7 @@
 package libkbfs
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -17,10 +13,12 @@ import (
 	"github.com/keybase/backoff"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -73,6 +71,9 @@ const (
 	// revisions in the journal that will trigger an automatic branch
 	// conversion (and subsequent resolution).
 	ForcedBranchSquashThreshold = 20
+	// Maximum number of blocks to delete from the local saved block
+	// journal at a time while holding the lock.
+	maxSavedBlockRemovalsAtATime = uint64(500)
 )
 
 // TLFJournalStatus represents the status of a TLF's journal for
@@ -212,13 +213,9 @@ type tlfJournalInfo struct {
 
 func readTLFJournalInfoFile(dir string) (
 	keybase1.UID, kbfscrypto.VerifyingKey, tlf.ID, error) {
-	infoJSON, err := ioutil.ReadFile(getTLFJournalInfoFilePath(dir))
-	if err != nil {
-		return keybase1.UID(""), kbfscrypto.VerifyingKey{}, tlf.ID{}, err
-	}
-
 	var info tlfJournalInfo
-	err = json.Unmarshal(infoJSON, &info)
+	err := ioutil.DeserializeFromJSONFile(
+		getTLFJournalInfoFilePath(dir), &info)
 	if err != nil {
 		return keybase1.UID(""), kbfscrypto.VerifyingKey{}, tlf.ID{}, err
 	}
@@ -229,17 +226,7 @@ func readTLFJournalInfoFile(dir string) (
 func writeTLFJournalInfoFile(dir string, uid keybase1.UID,
 	key kbfscrypto.VerifyingKey, tlfID tlf.ID) error {
 	info := tlfJournalInfo{uid, key, tlfID}
-	infoJSON, err := json.Marshal(info)
-	if err != nil {
-		return err
-	}
-
-	err = os.MkdirAll(dir, 0700)
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(getTLFJournalInfoFilePath(dir), infoJSON, 0600)
+	return ioutil.SerializeToJSONFile(info, getTLFJournalInfoFilePath(dir))
 }
 
 func makeTLFJournal(
@@ -260,7 +247,7 @@ func makeTLFJournal(
 
 	readUID, readKey, readTlfID, err := readTLFJournalInfoFile(dir)
 	switch {
-	case os.IsNotExist(err):
+	case ioutil.IsNotExist(err):
 		// Info file doesn't exist, so write it.
 		err := writeTLFJournalInfoFile(dir, uid, key, tlfID)
 		if err != nil {
@@ -274,18 +261,18 @@ func makeTLFJournal(
 		// Info file exists, so it should match passed-in
 		// parameters.
 		if uid != readUID {
-			return nil, fmt.Errorf(
+			return nil, errors.Errorf(
 				"Expected UID %s, got %s", uid, readUID)
 		}
 
 		if key != readKey {
-			return nil, fmt.Errorf(
+			return nil, errors.Errorf(
 				"Expected verifying key %s, got %s",
 				key, readKey)
 		}
 
 		if tlfID != readTlfID {
-			return nil, fmt.Errorf(
+			return nil, errors.Errorf(
 				"Expected TLF ID %s, got %s", tlfID, readTlfID)
 		}
 	}
@@ -574,10 +561,10 @@ func (j *tlfJournal) resumeBackgroundWork() {
 
 func (j *tlfJournal) checkEnabledLocked() error {
 	if j.blockJournal == nil || j.mdJournal == nil {
-		return errTLFJournalShutdown
+		return errors.WithStack(errTLFJournalShutdown{})
 	}
 	if j.disabled {
-		return errTLFJournalDisabled
+		return errors.WithStack(errTLFJournalDisabled{})
 	}
 	return nil
 }
@@ -688,9 +675,23 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 	return nil
 }
 
-var errTLFJournalShutdown = errors.New("tlfJournal is shutdown")
-var errTLFJournalDisabled = errors.New("tlfJournal is disabled")
-var errTLFJournalNotEmpty = errors.New("tlfJournal is not empty")
+type errTLFJournalShutdown struct{}
+
+func (e errTLFJournalShutdown) Error() string {
+	return "tlfJournal is shutdown"
+}
+
+type errTLFJournalDisabled struct{}
+
+func (e errTLFJournalDisabled) Error() string {
+	return "tlfJournal is disabled"
+}
+
+type errTLFJournalNotEmpty struct{}
+
+func (e errTLFJournalNotEmpty) Error() string {
+	return "tlfJournal is not empty"
+}
 
 func (j *tlfJournal) getNextBlockEntriesToFlush(
 	ctx context.Context, end journalOrdinal) (
@@ -710,6 +711,14 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {
+		return err
+	}
+
+	// Keep the flushed blocks around until we know for sure the MD
+	// flush will succeed; otherwise if we become unmerged, conflict
+	// resolution will be very expensive.
+	err := j.blockJournal.saveBlocksUntilNextMDFlush()
+	if err != nil {
 		return err
 	}
 
@@ -814,17 +823,52 @@ func (j *tlfJournal) convertMDsToBranchIfOverThreshold(ctx context.Context) (
 	return true, nil
 }
 
+func (j *tlfJournal) doOnMDFlush(ctx context.Context,
+	rmds *RootMetadataSigned) error {
+	if j.onMDFlush != nil {
+		j.onMDFlush.onMDFlush(rmds.MD.TlfID(), rmds.MD.BID(),
+			rmds.MD.RevisionNumber())
+	}
+
+	// Remove saved blocks in chunks to avoid starving foreground file
+	// system operations that need the lock for too long.  TODO: If
+	// lock acquires are unfair, this can still result in long
+	// foreground starvation -- maybe we need sleeps or some kind of
+	// explicit runtime scheduling control?
+	lastToRemove := journalOrdinal(0)
+	for {
+		err := func() error {
+			j.journalLock.Lock()
+			defer j.journalLock.Unlock()
+			if err := j.checkEnabledLocked(); err != nil {
+				return err
+			}
+
+			var err error
+			lastToRemove, err = j.blockJournal.onMDFlush(
+				ctx, maxSavedBlockRemovalsAtATime, lastToRemove)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}()
+		if err != nil {
+			return err
+		}
+		if lastToRemove == 0 {
+			break
+		}
+	}
+
+	return nil
+}
+
 func (j *tlfJournal) removeFlushedMDEntry(ctx context.Context,
 	mdID MdID, rmds *RootMetadataSigned) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {
-		return err
-	}
-
-	// This isn't with the call to j.onMDFlush since it needs to be
-	// under lock.
-	if err := j.blockJournal.onMDFlush(ctx); err != nil {
 		return err
 	}
 
@@ -897,9 +941,9 @@ func (j *tlfJournal) flushOneMDOp(
 		return false, pushErr
 	}
 
-	if j.onMDFlush != nil {
-		j.onMDFlush.onMDFlush(rmds.MD.TlfID(), rmds.MD.BID(),
-			rmds.MD.RevisionNumber())
+	err = j.doOnMDFlush(ctx, rmds)
+	if err != nil {
+		return false, err
 	}
 
 	err = j.removeFlushedMDEntry(ctx, mdID, rmds)
@@ -1198,12 +1242,14 @@ func (j *tlfJournal) disable() (wasEnabled bool, err error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	err = j.checkEnabledLocked()
-	if err != nil {
-		if err == errTLFJournalDisabled {
-			// Already disabled.
-			return false, nil
-		}
-		// Already shutdown.
+	switch errors.Cause(err).(type) {
+	case nil:
+		// Continue.
+		break
+	case errTLFJournalDisabled:
+		// Already disabled.
+		return false, nil
+	default:
 		return false, err
 	}
 
@@ -1219,7 +1265,7 @@ func (j *tlfJournal) disable() (wasEnabled bool, err error) {
 
 	// You can only disable an empty journal.
 	if blockEntryCount > 0 || mdEntryCount > 0 {
-		return false, errTLFJournalNotEmpty
+		return false, errors.WithStack(errTLFJournalNotEmpty{})
 	}
 
 	j.disabled = true
@@ -1230,10 +1276,14 @@ func (j *tlfJournal) enable() error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	err := j.checkEnabledLocked()
-	if err == nil {
+	switch errors.Cause(err).(type) {
+	case nil:
 		// Already enabled.
 		return nil
-	} else if err != errTLFJournalDisabled {
+	case errTLFJournalDisabled:
+		// Continue.
+		break
+	default:
 		return err
 	}
 
@@ -1352,12 +1402,7 @@ func (j *tlfJournal) isBlockUnflushed(id BlockID) (bool, error) {
 		return false, err
 	}
 
-	err := j.blockJournal.hasData(id)
-	if err != nil {
-		// Might exist on the server
-		return false, nil
-	}
-	return true, nil
+	return j.blockJournal.isUnflushed(id)
 }
 
 func (j *tlfJournal) getBranchID() (BranchID, error) {

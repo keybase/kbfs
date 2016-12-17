@@ -5,18 +5,18 @@
 package libkbfs
 
 import (
-	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"reflect"
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -132,13 +132,13 @@ func (e blockJournalEntry) getSingleContext() (
 	switch e.Op {
 	case blockPutOp, addRefOp:
 		if len(e.Contexts) != 1 {
-			return BlockID{}, BlockContext{}, fmt.Errorf(
+			return BlockID{}, BlockContext{}, errors.Errorf(
 				"Op %s doesn't have exactly one context: %v",
 				e.Op, e.Contexts)
 		}
 		for id, idContexts := range e.Contexts {
 			if len(idContexts) != 1 {
-				return BlockID{}, BlockContext{}, fmt.Errorf(
+				return BlockID{}, BlockContext{}, errors.Errorf(
 					"Op %s doesn't have exactly one context for id=%s: %v",
 					e.Op, id, idContexts)
 			}
@@ -146,7 +146,7 @@ func (e blockJournalEntry) getSingleContext() (
 		}
 	}
 
-	return BlockID{}, BlockContext{}, fmt.Errorf(
+	return BlockID{}, BlockContext{}, errors.Errorf(
 		"getSingleContext() erroneously called on op %s", e.Op)
 }
 
@@ -179,11 +179,11 @@ func makeBlockJournal(
 	// If a saved block journal exists, we need to remove its entries
 	// on the next successful MD flush.
 	savedJournalDir := savedBlockJournalDir(dir)
-	fi, err := os.Stat(savedJournalDir)
+	fi, err := ioutil.Stat(savedJournalDir)
 	if err == nil {
 		if !fi.IsDir() {
 			return nil,
-				fmt.Errorf("%s exists, but is not a dir", savedJournalDir)
+				errors.Errorf("%s exists, but is not a dir", savedJournalDir)
 		}
 		log.CDebugf(ctx, "A saved block journal exists at %s", savedJournalDir)
 		sj := makeDiskJournal(
@@ -194,7 +194,7 @@ func makeBlockJournal(
 	// Get initial aggregate info.
 	err = kbfscodec.DeserializeFromFile(
 		codec, aggregateInfoPath(dir), &journal.aggregateInfo)
-	if !os.IsNotExist(err) && err != nil {
+	if !ioutil.IsNotExist(err) && err != nil {
 		return nil, err
 	}
 
@@ -246,7 +246,7 @@ func (j *blockJournal) appendJournalEntry(
 		if err != nil {
 			// TODO: Should we remove it from the main journal and
 			// fail the whole append?
-			j.log.CWarningf(ctx, "Appending to the saved list failed: %v", err)
+			j.log.CWarningf(ctx, "Appending to the saved list failed: %+v", err)
 		}
 	}
 
@@ -259,7 +259,7 @@ func (j *blockJournal) length() (uint64, error) {
 
 func (j *blockJournal) end() (journalOrdinal, error) {
 	last, err := j.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return 0, nil
 	} else if err != nil {
 		return 0, err
@@ -267,8 +267,12 @@ func (j *blockJournal) end() (journalOrdinal, error) {
 	return last + 1, nil
 }
 
-func (j *blockJournal) hasData(id BlockID) error {
+func (j *blockJournal) hasData(id BlockID) (bool, error) {
 	return j.s.hasData(id)
+}
+
+func (j *blockJournal) isUnflushed(id BlockID) (bool, error) {
+	return j.s.isUnflushed(id)
 }
 
 func (j *blockJournal) remove(id BlockID) error {
@@ -296,7 +300,7 @@ func (j *blockJournal) putData(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Put for block %s with context %v failed with %v",
+				"Put for block %s with context %v failed with %+v",
 				id, context, err)
 		}
 	}()
@@ -337,7 +341,7 @@ func (j *blockJournal) addReference(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Adding reference for block %s with context %v failed with %v",
+				"Adding reference for block %s with context %v failed with %+v",
 				id, context, err)
 		}
 	}()
@@ -369,7 +373,7 @@ func (j *blockJournal) archiveReferences(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Archiving references for %v,", contexts, err)
+				"Archiving references for %+v,", contexts, err)
 		}
 	}()
 
@@ -403,7 +407,7 @@ func (j *blockJournal) removeReferences(
 	defer func() {
 		if err != nil {
 			j.deferLog.CDebugf(ctx,
-				"Removing references for %v", contexts, err)
+				"Removing references for %+v", contexts, err)
 		}
 	}()
 
@@ -439,7 +443,7 @@ func (j *blockJournal) markMDRevision(ctx context.Context,
 	j.log.CDebugf(ctx, "Marking MD revision %d in the block journal", rev)
 	defer func() {
 		if err != nil {
-			j.deferLog.CDebugf(ctx, "Marking MD revision %d error: %v",
+			j.deferLog.CDebugf(ctx, "Marking MD revision %d error: %+v",
 				rev, err)
 		}
 	}()
@@ -483,7 +487,7 @@ func (j *blockJournal) getNextEntriesToFlush(
 	ctx context.Context, end journalOrdinal, maxToFlush int) (
 	entries blockEntriesToFlush, maxMDRevToFlush MetadataRevision, err error) {
 	first, err := j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized, nil
 	} else if err != nil {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized, err
@@ -491,14 +495,14 @@ func (j *blockJournal) getNextEntriesToFlush(
 
 	if first >= end {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized,
-			fmt.Errorf("Trying to flush past the "+
+			errors.Errorf("Trying to flush past the "+
 				"start of the journal (first=%d, end=%d)", first, end)
 	}
 
 	realEnd, err := j.end()
 	if realEnd == 0 {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized,
-			fmt.Errorf("There was an earliest "+
+			errors.Errorf("There was an earliest "+
 				"ordinal %d, but no latest ordinal", first)
 	} else if err != nil {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized, err
@@ -506,7 +510,7 @@ func (j *blockJournal) getNextEntriesToFlush(
 
 	if end > realEnd {
 		return blockEntriesToFlush{}, MetadataRevisionUninitialized,
-			fmt.Errorf("Trying to flush past the "+
+			errors.Errorf("Trying to flush past the "+
 				"end of the journal (realEnd=%d, end=%d)", realEnd, end)
 	}
 
@@ -568,7 +572,7 @@ func (j *blockJournal) getNextEntriesToFlush(
 		case mdRevMarkerOp:
 			if entry.Revision < maxMDRevToFlush {
 				return blockEntriesToFlush{}, MetadataRevisionUninitialized,
-					fmt.Errorf("Max MD revision decreased in block journal "+
+					errors.Errorf("Max MD revision decreased in block journal "+
 						"from %d to %d", entry.Revision, maxMDRevToFlush)
 			}
 			maxMDRevToFlush = entry.Revision
@@ -616,7 +620,7 @@ func flushNonBPSBlockJournalEntry(
 		// Nothing to do.
 
 	default:
-		return fmt.Errorf("Unknown op %s", entry.Op)
+		return errors.Errorf("Unknown op %s", entry.Op)
 	}
 
 	return nil
@@ -639,7 +643,7 @@ func flushBlockEntries(ctx context.Context, log logger.Logger,
 	if err != nil {
 		if isRecoverableBlockError(err) {
 			log.CWarningf(ctx,
-				"Recoverable block error encountered on puts: %v, ptrs=%v",
+				"Recoverable block error encountered on puts: %+v, ptrs=%v",
 				err, blocksToRemove)
 		}
 		return err
@@ -653,7 +657,7 @@ func flushBlockEntries(ctx context.Context, log logger.Logger,
 	if err != nil {
 		if isRecoverableBlockError(err) {
 			log.CWarningf(ctx,
-				"Recoverable block error encountered on addRefs: %v, ptrs=%v",
+				"Recoverable block error encountered on addRefs: %+v, ptrs=%v",
 				err, blocksToRemove)
 		}
 		return err
@@ -680,7 +684,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	}
 
 	if ordinal != earliestOrdinal {
-		return 0, fmt.Errorf("Expected ordinal %d, got %d",
+		return 0, errors.Errorf("Expected ordinal %d, got %d",
 			ordinal, earliestOrdinal)
 	}
 
@@ -695,6 +699,12 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		if err != nil {
 			return 0, err
 		}
+
+		err = j.s.markFlushed(id)
+		if err != nil {
+			return 0, err
+		}
+
 		flushedBytes, err = j.s.getDataSize(id)
 		if err != nil {
 			return 0, err
@@ -756,7 +766,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 func (j *blockJournal) ignoreBlocksAndMDRevMarkers(ctx context.Context,
 	blocksToIgnore []BlockID) error {
 	first, err := j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil
 	} else if err != nil {
 		return err
@@ -829,14 +839,14 @@ func (j *blockJournal) saveBlocksUntilNextMDFlush() error {
 	// next MD flush, we can use the saved journal to delete the block
 	// data for all the entries in the saved journal.
 	first, err := j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil
 	} else if err != nil {
 		return err
 	}
 
 	last, err := j.j.readLatestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return nil
 	} else if err != nil {
 		return err
@@ -860,72 +870,116 @@ func (j *blockJournal) saveBlocksUntilNextMDFlush() error {
 	return nil
 }
 
-func (j *blockJournal) onMDFlush(ctx context.Context) error {
+// onMDFlush removes at most `maxToRemove` blocks from the
+// `saveUntilMDFlush` journal if one exists.  If `lastToRemove` is
+// zero, it flushes the complete `saveUntilMDFlush` if it has fewer
+// than `maxToRemove` entries; if it doesn't flush the entire journal,
+// it returns the ordinal of the current last entry.  If
+// `lastToRemove` is non-zero, it only flushes up to the minimum of
+// `lastToRemove` and the earliest entry + `maxToRemove`; if this
+// flushes the entire saved journal, it returns 0, otherwise it
+// returns `lastToRemove`.  It's intended that the caller should call
+// this function repeatedly until it returns 0, releasing any locks in
+// between calls so it doesn't block other operations for too long.
+func (j *blockJournal) onMDFlush(ctx context.Context,
+	maxToRemove uint64, lastToRemove journalOrdinal) (journalOrdinal, error) {
 	if j.saveUntilMDFlush == nil {
-		return nil
+		return 0, nil
+	}
+
+	if maxToRemove == 0 {
+		return 0, errors.New("maxToRemove must be non-zero")
 	}
 
 	// Delete the block data for anything in the saved journal.
 	first, err := j.saveUntilMDFlush.readEarliestOrdinal()
-	if os.IsNotExist(err) {
-		return nil
+	if ioutil.IsNotExist(err) {
+		return 0, nil
 	} else if err != nil {
-		return err
+		return 0, err
 	}
 
 	last, err := j.saveUntilMDFlush.readLatestOrdinal()
-	if os.IsNotExist(err) {
-		return nil
+	if ioutil.IsNotExist(err) {
+		return 0, nil
 	} else if err != nil {
-		return err
+		return 0, err
 	}
 
-	j.log.CDebugf(ctx, "Removing saved data for entries [%d, %d]", first, last)
-	for i := first; i <= last; i++ {
+	if lastToRemove != 0 {
+		if last < lastToRemove {
+			return 0, errors.Errorf("Last removal requested is %d, but "+
+				"last entry in journal is %d", lastToRemove, last)
+		} else if first > lastToRemove {
+			return 0, errors.Errorf("Last removal requested is %d, but first "+
+				"entry in journal is %d", lastToRemove, first)
+		}
+
+		last = lastToRemove
+	}
+
+	lastMin := last
+	if max := journalOrdinal(maxToRemove); lastMin > first+max-1 {
+		j.log.CDebugf(ctx, "Last removal requested is %d, but capping at %d",
+			last, first+max-1)
+		lastMin = first + max - 1
+	}
+
+	j.log.CDebugf(ctx, "Removing saved data for entries [%d, %d]",
+		first, lastMin)
+	for i := first; i <= lastMin; i++ {
 		e, err := j.saveUntilMDFlush.readJournalEntry(i)
 		if err != nil {
-			return err
+			return 0, err
 		}
 
 		_, err = j.saveUntilMDFlush.removeEarliest()
 		if err != nil {
-			return err
+			return 0, err
 		}
 
 		entry, ok := e.(blockJournalEntry)
 		if !ok {
-			return errors.New("Unexpected block journal entry type in saved")
+			return 0, errors.New("Unexpected block journal entry type in saved")
 		}
 
 		for id := range entry.Contexts {
 			hasRef, err := j.s.hasAnyRef(id)
 			if err != nil {
-				return err
+				return 0, err
 			}
 			if !hasRef {
 				// Garbage-collect the old entry.
 				err = j.remove(id)
 				if err != nil {
-					return err
+					return 0, err
 				}
 			}
 		}
 	}
 
-	err = os.RemoveAll(j.saveUntilMDFlush.dir)
+	if last > lastMin {
+		// The saved journal isn't empty and we were asked to remove
+		// more entries than we were able to; the caller must call us
+		// again.
+		return last, nil
+	}
+
+	j.log.CDebugf(ctx, "Removed last saved entry, removing saved journal")
+	err = ioutil.RemoveAll(j.saveUntilMDFlush.dir)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	j.saveUntilMDFlush = nil
-	return nil
+	return 0, nil
 }
 
 func (j *blockJournal) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 	refs := make(map[BlockID]blockRefMap)
 
 	first, err := j.j.readEarliestOrdinal()
-	if os.IsNotExist(err) {
+	if ioutil.IsNotExist(err) {
 		return refs, nil
 	} else if err != nil {
 		return nil, err
@@ -1004,7 +1058,7 @@ func (j *blockJournal) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
 				continue
 
 			default:
-				return nil, fmt.Errorf("Unknown op %s", e.Op)
+				return nil, errors.Errorf("Unknown op %s", e.Op)
 			}
 		}
 	}
@@ -1023,7 +1077,7 @@ func (j *blockJournal) checkInSyncForTest() error {
 	}
 
 	if !reflect.DeepEqual(journalRefs, storeRefs) {
-		return fmt.Errorf("journal refs = %+v != store refs = %+v",
+		return errors.Errorf("journal refs = %+v != store refs = %+v",
 			journalRefs, storeRefs)
 	}
 	return nil

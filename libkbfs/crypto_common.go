@@ -20,6 +20,8 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 )
 
+// TODO: Wrap errors coming from Crypto.
+
 // CryptoCommon contains many of the function implementations need for
 // the Crypto interface, which can be reused by other implementations.
 type CryptoCommon struct {
@@ -86,7 +88,7 @@ func (c CryptoCommon) MakeMerkleHash(md *RootMetadataSigned) (MerkleHash, error)
 }
 
 // MakeTLFWriterKeyBundleID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeTLFWriterKeyBundleID(wkb *TLFWriterKeyBundleV3) (
+func (c CryptoCommon) MakeTLFWriterKeyBundleID(wkb TLFWriterKeyBundleV3) (
 	TLFWriterKeyBundleID, error) {
 	buf, err := c.codec.Encode(wkb)
 	if err != nil {
@@ -100,7 +102,7 @@ func (c CryptoCommon) MakeTLFWriterKeyBundleID(wkb *TLFWriterKeyBundleV3) (
 }
 
 // MakeTLFReaderKeyBundleID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeTLFReaderKeyBundleID(rkb *TLFReaderKeyBundleV3) (
+func (c CryptoCommon) MakeTLFReaderKeyBundleID(rkb TLFReaderKeyBundleV3) (
 	TLFReaderKeyBundleID, error) {
 	buf, err := c.codec.Encode(rkb)
 	if err != nil {

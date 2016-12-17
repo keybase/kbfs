@@ -6,8 +6,6 @@ package libkbfs
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -15,6 +13,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -65,9 +64,9 @@ type mdServerMemShared struct {
 	// (TLF ID, branch ID) -> list of MDs
 	mdDb map[mdBlockKey]mdBlockMemList
 	// Writer key bundle ID -> writer key bundles
-	writerKeyBundleDb map[mdExtraWriterKey]*TLFWriterKeyBundleV3
+	writerKeyBundleDb map[mdExtraWriterKey]TLFWriterKeyBundleV3
 	// Reader key bundle ID -> reader key bundles
-	readerKeyBundleDb map[mdExtraReaderKey]*TLFReaderKeyBundleV3
+	readerKeyBundleDb map[mdExtraReaderKey]TLFReaderKeyBundleV3
 	// (TLF ID, device KID) -> branch ID
 	branchDb            map[mdBranchKey]BranchID
 	truncateLockManager *mdServerLocalTruncateLockManager
@@ -92,8 +91,8 @@ func NewMDServerMemory(config mdServerLocalConfig) (*MDServerMemory, error) {
 	latestHandleDb := make(map[tlf.ID]tlf.Handle)
 	mdDb := make(map[mdBlockKey]mdBlockMemList)
 	branchDb := make(map[mdBranchKey]BranchID)
-	writerKeyBundleDb := make(map[mdExtraWriterKey]*TLFWriterKeyBundleV3)
-	readerKeyBundleDb := make(map[mdExtraReaderKey]*TLFReaderKeyBundleV3)
+	writerKeyBundleDb := make(map[mdExtraWriterKey]TLFWriterKeyBundleV3)
+	readerKeyBundleDb := make(map[mdExtraReaderKey]TLFReaderKeyBundleV3)
 	log := config.MakeLogger("MDSM")
 	truncateLockManager := newMDServerLocalTruncatedLockManager()
 	shared := mdServerMemShared{
@@ -110,7 +109,18 @@ func NewMDServerMemory(config mdServerLocalConfig) (*MDServerMemory, error) {
 	return mdserv, nil
 }
 
-var errMDServerMemoryShutdown = errors.New("MDServerMemory is shutdown")
+type errMDServerMemoryShutdown struct{}
+
+func (e errMDServerMemoryShutdown) Error() string {
+	return "MDServerMemory is shutdown"
+}
+
+func (md *MDServerMemory) checkShutdownLocked() error {
+	if md.handleDb == nil {
+		return errors.WithStack(errMDServerMemoryShutdown{})
+	}
+	return nil
+}
 
 func (md *MDServerMemory) getHandleID(ctx context.Context, handle tlf.Handle,
 	mStatus MergeStatus) (tlfID tlf.ID, created bool, err error) {
@@ -121,8 +131,9 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle tlf.Handle,
 
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	if md.handleDb == nil {
-		return tlf.NullID, false, errMDServerDiskShutdown
+	err = md.checkShutdownLocked()
+	if err != nil {
+		return tlf.NullID, false, err
 	}
 
 	id, ok := md.handleDb[mdHandleKey(handleBytes)]
@@ -191,9 +202,7 @@ func (md *MDServerMemory) checkGetParams(
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		extra, err := md.getExtraMetadata(
-			id, mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
-			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
+		extra, err := getExtraMetadata(md, mergedMasterHead.MD)
 		if err != nil {
 			return NullBranchID, MDServerError{err}
 		}
@@ -240,8 +249,9 @@ func (md *MDServerMemory) getHeadForTLF(ctx context.Context, id tlf.ID,
 	}
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	if md.mdDb == nil {
-		return nil, errMDServerMemoryShutdown
+	err = md.checkShutdownLocked()
+	if err != nil {
+		return nil, err
 	}
 
 	blockList, ok := md.mdDb[key]
@@ -265,7 +275,7 @@ func (md *MDServerMemory) getMDKey(
 	id tlf.ID, bid BranchID, mStatus MergeStatus) (mdBlockKey, error) {
 	if (mStatus == Merged) != (bid == NullBranchID) {
 		return mdBlockKey{},
-			fmt.Errorf("mstatus=%v is inconsistent with bid=%v",
+			errors.Errorf("mstatus=%v is inconsistent with bid=%v",
 				mStatus, bid)
 	}
 	return mdBlockKey{id, bid}, nil
@@ -309,8 +319,9 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id tlf.ID,
 
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	if md.mdDb == nil {
-		return nil, errMDServerMemoryShutdown
+	err = md.checkShutdownLocked()
+	if err != nil {
+		return nil, err
 	}
 
 	blockList, ok := md.mdDb[key]
@@ -342,7 +353,7 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id tlf.ID,
 		}
 		expectedRevision := blockList.initialRevision + MetadataRevision(i)
 		if expectedRevision != rmds.MD.RevisionNumber() {
-			panic(fmt.Errorf("expected revision %v, got %v",
+			panic(errors.Errorf("expected revision %v, got %v",
 				expectedRevision, rmds.MD.RevisionNumber()))
 		}
 		rmdses = append(rmdses, rmds)
@@ -361,17 +372,8 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		return MDServerError{err}
 	}
 
-	if extra == nil {
-		var err error
-		extra, err = md.getExtraMetadata(
-			rmds.MD.TlfID(), rmds.MD.GetTLFWriterKeyBundleID(),
-			rmds.MD.GetTLFReaderKeyBundleID())
-		if err != nil {
-			return MDServerError{err}
-		}
-	}
-
-	err = rmds.IsValidAndSigned(md.config.Codec(), md.config.cryptoPure(), extra)
+	err = rmds.IsValidAndSigned(
+		md.config.Codec(), md.config.cryptoPure(), extra)
 	if err != nil {
 		return MDServerErrorBadRequest{Reason: err.Error()}
 	}
@@ -393,10 +395,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 	// TODO: Figure out nil case.
 	if mergedMasterHead != nil {
-		prevExtra, err := md.getExtraMetadata(
-			mergedMasterHead.MD.TlfID(),
-			mergedMasterHead.MD.GetTLFWriterKeyBundleID(),
-			mergedMasterHead.MD.GetTLFReaderKeyBundleID())
+		prevExtra, err := getExtraMetadata(md, mergedMasterHead.MD)
 		if err != nil {
 			return MDServerError{err}
 		}
@@ -431,7 +430,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		}
 		if len(rmdses) != 1 {
 			return MDServerError{
-				Err: fmt.Errorf("Expected 1 MD block got %d", len(rmdses)),
+				Err: errors.Errorf("Expected 1 MD block got %d", len(rmdses)),
 			}
 		}
 		head = rmdses[0]
@@ -459,8 +458,9 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		err = func() error {
 			md.lock.Lock()
 			defer md.lock.Unlock()
-			if md.branchDb == nil {
-				return errMDServerMemoryShutdown
+			err = md.checkShutdownLocked()
+			if err != nil {
+				return err
 			}
 			md.branchDb[branchKey] = bid
 			return nil
@@ -485,8 +485,9 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	if md.mdDb == nil {
-		return errMDServerMemoryShutdown
+	err = md.checkShutdownLocked()
+	if err != nil {
+		return err
 	}
 
 	blockList, ok := md.mdDb[revKey]
@@ -537,8 +538,9 @@ func (md *MDServerMemory) PruneBranch(ctx context.Context, id tlf.ID, bid Branch
 	}
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	if md.mdDb == nil {
-		return errMDServerMemoryShutdown
+	err = md.checkShutdownLocked()
+	if err != nil {
+		return err
 	}
 
 	delete(md.branchDb, branchKey)
@@ -552,8 +554,9 @@ func (md *MDServerMemory) getBranchID(ctx context.Context, id tlf.ID) (BranchID,
 	}
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	if md.branchDb == nil {
-		return NullBranchID, errMDServerMemoryShutdown
+	err = md.checkShutdownLocked()
+	if err != nil {
+		return NullBranchID, err
 	}
 
 	bid, ok := md.branchDb[branchKey]
@@ -596,8 +599,9 @@ func (md *MDServerMemory) TruncateLock(ctx context.Context, id tlf.ID) (
 	bool, error) {
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	if md.truncateLockManager == nil {
-		return false, errMDServerMemoryShutdown
+	err := md.checkShutdownLocked()
+	if err != nil {
+		return false, err
 	}
 
 	myKID, err := md.getCurrentDeviceKID(ctx)
@@ -613,8 +617,9 @@ func (md *MDServerMemory) TruncateUnlock(ctx context.Context, id tlf.ID) (
 	bool, error) {
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	if md.truncateLockManager == nil {
-		return false, errMDServerMemoryShutdown
+	err := md.checkShutdownLocked()
+	if err != nil {
+		return false, err
 	}
 
 	myKID, err := md.getCurrentDeviceKID(ctx)
@@ -677,8 +682,9 @@ func (md *MDServerMemory) addNewAssertionForTest(uid keybase1.UID,
 	newAssertion keybase1.SocialAssertion) error {
 	md.lock.Lock()
 	defer md.lock.Unlock()
-	if md.handleDb == nil {
-		return errMDServerMemoryShutdown
+	err := md.checkShutdownLocked()
+	if err != nil {
+		return err
 	}
 
 	// Iterate through all the handles, and add handles for ones
@@ -722,8 +728,9 @@ func (md *MDServerMemory) GetLatestHandleForTLF(_ context.Context, id tlf.ID) (
 	tlf.Handle, error) {
 	md.lock.RLock()
 	defer md.lock.RUnlock()
-	if md.latestHandleDb == nil {
-		return tlf.Handle{}, errMDServerMemoryShutdown
+	err := md.checkShutdownLocked()
+	if err != nil {
+		return tlf.Handle{}, err
 	}
 
 	return md.latestHandleDb[id], nil
@@ -735,34 +742,10 @@ func (md *MDServerMemory) OffsetFromServerTime() (time.Duration, bool) {
 	return 0, true
 }
 
-func (md *MDServerMemory) getExtraMetadata(
-	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
-	ExtraMetadata, error) {
-	wkb, rkb, err := md.getKeyBundles(tlfID, wkbID, rkbID)
-	if err != nil {
-		return nil, err
-	}
-	if wkb == nil || rkb == nil {
-		return nil, nil
-	}
-	return &ExtraMetadataV3{wkb: wkb, rkb: rkb}, nil
-}
-
 func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,
 	extra ExtraMetadata) error {
 	if extra == nil {
 		return nil
-	}
-
-	tlfID := rmds.MD.TlfID()
-	wkbID := rmds.MD.GetTLFWriterKeyBundleID()
-	if wkbID == (TLFWriterKeyBundleID{}) {
-		panic("writer key bundle ID is empty")
-	}
-
-	rkbID := rmds.MD.GetTLFReaderKeyBundleID()
-	if rkbID == (TLFReaderKeyBundleID{}) {
-		panic("reader key bundle ID is empty")
 	}
 
 	extraV3, ok := extra.(*ExtraMetadataV3)
@@ -770,49 +753,80 @@ func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,
 		return errors.New("Invalid extra metadata")
 	}
 
-	err := checkKeyBundleIDs(md.config.cryptoPure(),
-		wkbID, rkbID, extraV3.wkb, extraV3.rkb)
-	if err != nil {
-		return err
+	tlfID := rmds.MD.TlfID()
+
+	if extraV3.wkbNew {
+		wkbID := rmds.MD.GetTLFWriterKeyBundleID()
+		if wkbID == (TLFWriterKeyBundleID{}) {
+			panic("writer key bundle ID is empty")
+		}
+		md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}] =
+			extraV3.wkb
 	}
 
-	md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}] = extraV3.wkb
-	md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}] = extraV3.rkb
+	if extraV3.rkbNew {
+		rkbID := rmds.MD.GetTLFReaderKeyBundleID()
+		if rkbID == (TLFReaderKeyBundleID{}) {
+			panic("reader key bundle ID is empty")
+		}
+		md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}] =
+			extraV3.rkb
+	}
 	return nil
 }
 
-func (md *MDServerMemory) getKeyBundles(
-	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+func (md *MDServerMemory) getKeyBundles(tlfID tlf.ID,
+	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	if (wkbID == TLFWriterKeyBundleID{}) !=
-		(rkbID == TLFReaderKeyBundleID{}) {
-		return nil, nil, fmt.Errorf(
-			"wkbID is empty (%t) != rkbID is empty (%t)",
-			wkbID == TLFWriterKeyBundleID{},
-			rkbID == TLFReaderKeyBundleID{})
-	}
-
-	if wkbID == (TLFWriterKeyBundleID{}) {
-		return nil, nil, nil
-	}
-
-	md.lock.Lock()
-	defer md.lock.Unlock()
-	wkb := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
-	rkb := md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
-
-	err := checkKeyBundleIDs(
-		md.config.cryptoPure(), wkbID, rkbID, wkb, rkb)
+	md.lock.RLock()
+	defer md.lock.RUnlock()
+	err := md.checkShutdownLocked()
 	if err != nil {
 		return nil, nil, err
+	}
+
+	var wkb *TLFWriterKeyBundleV3
+	if wkbID != (TLFWriterKeyBundleID{}) {
+		foundWKB, ok := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
+		if !ok {
+			return nil, nil, errors.Errorf(
+				"Could not find WKB for ID %s", wkbID)
+		}
+
+		err := checkWKBID(md.config.cryptoPure(), wkbID, foundWKB)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		wkb = &foundWKB
+	}
+
+	var rkb *TLFReaderKeyBundleV3
+	if rkbID != (TLFReaderKeyBundleID{}) {
+		foundRKB, ok := md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
+		if !ok {
+			return nil, nil, errors.Errorf(
+				"Could not find RKB for ID %s", rkbID)
+		}
+
+		err := checkRKBID(md.config.cryptoPure(), rkbID, foundRKB)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		rkb = &foundRKB
 	}
 
 	return wkb, rkb, nil
 }
 
 // GetKeyBundles implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) GetKeyBundles(_ context.Context,
+func (md *MDServerMemory) GetKeyBundles(ctx context.Context,
 	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	return md.getKeyBundles(tlfID, wkbID, rkbID)
+	wkb, rkb, err := md.getKeyBundles(tlfID, wkbID, rkbID)
+	if err != nil {
+		return nil, nil, MDServerError{err}
+	}
+	return wkb, rkb, nil
 }

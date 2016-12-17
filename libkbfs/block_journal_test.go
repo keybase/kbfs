@@ -5,21 +5,20 @@
 package libkbfs
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"golang.org/x/net/context"
-
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
 )
 
 type blockJournalEntryFuture struct {
@@ -80,7 +79,7 @@ func setupBlockJournalTest(t *testing.T) (
 	setupSucceeded := false
 	defer func() {
 		if !setupSucceeded {
-			err := os.RemoveAll(tempdir)
+			err := ioutil.RemoveAll(tempdir)
 			assert.NoError(t, err)
 		}
 	}()
@@ -97,7 +96,7 @@ func teardownBlockJournalTest(t *testing.T, tempdir string, j *blockJournal) {
 	err := j.checkInSyncForTest()
 	assert.NoError(t, err)
 
-	err = os.RemoveAll(tempdir)
+	err = ioutil.RemoveAll(tempdir)
 	assert.NoError(t, err)
 }
 
@@ -668,8 +667,9 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 
 	// The blocks can still be fetched from the journal.
 	for _, bid := range savedBlocks {
-		err = j.hasData(bid)
+		ok, err := j.hasData(bid)
 		require.NoError(t, err)
+		require.True(t, ok)
 	}
 
 	// No more blocks to flush though.
@@ -692,8 +692,9 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 	// Make sure all the blocks still exist, including both the old
 	// and the new ones.
 	for _, bid := range savedBlocks {
-		err = j.hasData(bid)
+		ok, err := j.hasData(bid)
 		require.NoError(t, err)
+		require.True(t, ok)
 	}
 
 	{
@@ -704,18 +705,32 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 		require.NotNil(t, jRestarted.saveUntilMDFlush)
 	}
 
-	// Now remove all the data.
-	err = j.onMDFlush(ctx)
+	// Now remove all the data, one at a time.  Remember there are two
+	// revision markers that also need removal.
+	lastToRemove := journalOrdinal(0)
+	for i := 0; i < len(savedBlocks)-1+2; i++ {
+		lastToRemove, err = j.onMDFlush(ctx, 1, lastToRemove)
+		require.NoError(t, err)
+		require.NotZero(t, lastToRemove, "Iter %d", i)
+		require.NotNil(t, j.saveUntilMDFlush)
+	}
+	lastToRemove, err = j.onMDFlush(ctx, 1, lastToRemove)
 	require.NoError(t, err)
+	require.Zero(t, lastToRemove)
+	require.Nil(t, j.saveUntilMDFlush)
 
-	err = j.hasData(bID1)
-	require.True(t, os.IsNotExist(err))
-	err = j.hasData(bID2)
-	require.True(t, os.IsNotExist(err))
-	err = j.hasData(bID3)
-	require.True(t, os.IsNotExist(err))
-	err = j.hasData(bID4)
-	require.True(t, os.IsNotExist(err))
+	ok, err := j.isUnflushed(bID1)
+	require.NoError(t, err)
+	require.False(t, ok)
+	ok, err = j.isUnflushed(bID2)
+	require.NoError(t, err)
+	require.False(t, ok)
+	ok, err = j.isUnflushed(bID3)
+	require.NoError(t, err)
+	require.False(t, ok)
+	ok, err = j.isUnflushed(bID4)
+	require.NoError(t, err)
+	require.False(t, ok)
 
 	testBlockJournalGCd(t, j)
 }
@@ -729,7 +744,7 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 		var info aggregateInfo
 		err := kbfscodec.DeserializeFromFile(
 			j.codec, aggregateInfoPath(j.dir), &info)
-		if !os.IsNotExist(err) {
+		if !ioutil.IsNotExist(err) {
 			require.NoError(t, err)
 		}
 		require.Equal(t, int64(expectedSize), info.UnflushedBytes)

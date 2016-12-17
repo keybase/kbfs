@@ -6,21 +6,20 @@ package libkbfs
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
 )
 
 type singleEncryptionKeyGetter struct {
@@ -68,7 +67,7 @@ func setupMDJournalTestWithMetadataVer(t testing.TB, mdVer MetadataVer) (
 	setupSucceeded := false
 	defer func() {
 		if !setupSucceeded {
-			err := os.RemoveAll(tempdir)
+			err := ioutil.RemoveAll(tempdir)
 			assert.NoError(t, err)
 		}
 	}()
@@ -93,7 +92,7 @@ func setupMDJournalTest(t testing.TB) (
 }
 
 func teardownMDJournalTest(t testing.TB, tempdir string) {
-	err := os.RemoveAll(tempdir)
+	err := ioutil.RemoveAll(tempdir)
 	assert.NoError(t, err)
 }
 
@@ -123,17 +122,19 @@ func makeMDForTest(t testing.TB, tlfID tlf.ID, revision MetadataRevision,
 func putMDRange(t testing.TB, tlfID tlf.ID, signer kbfscrypto.Signer,
 	ekg encryptionKeyGetter, bsplit BlockSplitter,
 	firstRevision MetadataRevision, firstPrevRoot MdID, mdCount int,
-	j *mdJournal) MdID {
+	j *mdJournal) ([]*RootMetadata, MdID) {
 	prevRoot := firstPrevRoot
 	ctx := context.Background()
+	var mds []*RootMetadata
 	for i := 0; i < mdCount; i++ {
 		revision := firstRevision + MetadataRevision(i)
 		md := makeMDForTest(t, tlfID, revision, j.uid, signer, prevRoot)
 		mdID, err := j.put(ctx, signer, ekg, bsplit, md, false)
 		require.NoError(t, err)
+		mds = append(mds, md)
 		prevRoot = mdID
 	}
-	return prevRoot
+	return mds, prevRoot
 }
 
 func checkBRMD(t *testing.T, uid keybase1.UID, key kbfscrypto.VerifyingKey,
@@ -171,6 +172,9 @@ func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 	}
 }
 
+// TODO: Create a separate journal for each iteration, instead of
+// using the same one.
+
 func BenchmarkMDJournalBasicMDv2(b *testing.B) {
 	_, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTestWithMetadataVer(b, InitialExtraMetadataVer)
@@ -184,7 +188,7 @@ func BenchmarkMDJournalBasicMDv2(b *testing.B) {
 	defer b.StopTimer()
 
 	for i := 0; i < b.N; i++ {
-		prevRoot = putMDRange(b, id, signer, ekg, bsplit,
+		_, prevRoot = putMDRange(b, id, signer, ekg, bsplit,
 			revision, prevRoot, mdCount, j)
 		revision += MetadataRevision(mdCount)
 	}
@@ -203,7 +207,7 @@ func BenchmarkMDJournalBasicMDv3(b *testing.B) {
 	defer b.StopTimer()
 
 	for i := 0; i < b.N; i++ {
-		prevRoot = putMDRange(b, id, signer, ekg, bsplit,
+		_, prevRoot = putMDRange(b, id, signer, ekg, bsplit,
 			revision, prevRoot, mdCount, j)
 		revision += MetadataRevision(mdCount)
 	}
@@ -226,9 +230,10 @@ func TestMDJournalBasic(t *testing.T) {
 	firstRevision := MetadataRevision(10)
 	firstPrevRoot := fakeMdID(1)
 	mdCount := 10
-	putMDRange(t, id, signer, ekg, bsplit,
+	mds, _ := putMDRange(t, id, signer, ekg, bsplit,
 		firstRevision, firstPrevRoot, mdCount, j)
 
+	require.Equal(t, mdCount, len(mds))
 	require.Equal(t, mdCount, getMDJournalLength(t, j))
 
 	// Should now be non-empty.
@@ -243,6 +248,11 @@ func TestMDJournalBasic(t *testing.T) {
 	head, err = j.getHead(NullBranchID)
 	require.NoError(t, err)
 	require.Equal(t, ibrmds[len(ibrmds)-1], head)
+
+	for i := 0; i < mdCount; i++ {
+		require.Equal(t, mds[i].bareMd, ibrmds[i].BareRootMetadata)
+		require.Equal(t, mds[i].extra, ibrmds[i].extra)
+	}
 }
 
 func TestMDJournalGetNextEntry(t *testing.T) {
@@ -283,6 +293,7 @@ func TestMDJournalPutCase1Empty(t *testing.T) {
 	head, err := j.getHead(NullBranchID)
 	require.NoError(t, err)
 	require.Equal(t, md.bareMd, head.BareRootMetadata)
+	require.Equal(t, md.extra, head.extra)
 }
 
 func TestMDJournalPutCase1Conflict(t *testing.T) {
@@ -314,7 +325,7 @@ func TestMDJournalPutCase1ReplaceHead(t *testing.T) {
 	firstRevision := MetadataRevision(10)
 	firstPrevRoot := fakeMdID(1)
 	mdCount := 3
-	prevRoot := putMDRange(t, id, signer, ekg, bsplit,
+	_, prevRoot := putMDRange(t, id, signer, ekg, bsplit,
 		firstRevision, firstPrevRoot, mdCount, j)
 
 	// Should just replace the head.
@@ -331,6 +342,7 @@ func TestMDJournalPutCase1ReplaceHead(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, md.Revision(), head.RevisionNumber())
 	require.Equal(t, md.DiskUsage(), head.DiskUsage())
+	require.Equal(t, md.extra, head.extra)
 }
 
 func TestMDJournalPutCase2NonEmptyReplace(t *testing.T) {
