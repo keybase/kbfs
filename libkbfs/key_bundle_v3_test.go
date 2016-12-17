@@ -30,6 +30,22 @@ func TestWKBID(t *testing.T) {
 	require.Equal(t, id1, id2)
 }
 
+func TestRKBID(t *testing.T) {
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+
+	var wkb1, wkb2 TLFReaderKeyBundleV3
+	wkb2.Keys = make(UserDeviceKeyInfoMapV3)
+
+	id1, err := crypto.MakeTLFReaderKeyBundleID(wkb1)
+	require.NoError(t, err)
+
+	id2, err := crypto.MakeTLFReaderKeyBundleID(wkb2)
+	require.NoError(t, err)
+
+	require.Equal(t, id1, id2)
+}
+
 func TestRemoveDevicesNotInV3(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(0x1)
 	uid2 := keybase1.MakeTestUID(0x2)
