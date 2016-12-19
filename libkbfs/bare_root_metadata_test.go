@@ -21,7 +21,17 @@ var testMetadataVers = []MetadataVer{
 }
 
 // runTestOverMetadataVers runs the given test function over all
-// metadata versions to test.
+// metadata versions to test. Example use:
+//
+// func TestFoo(t *testing.T) {
+//	runTestOverMetadataVers(t, testFoo)
+// }
+//
+// func testFoo(t *testing.T, ver MetadataVer) {
+//	...
+// 	brmd, err := MakeInitialBareRootMetadata(ver, ...)
+//	...
+// }
 func runTestOverMetadataVers(
 	t *testing.T, f func(t *testing.T, ver MetadataVer)) {
 	for _, ver := range testMetadataVers {
@@ -32,8 +42,18 @@ func runTestOverMetadataVers(
 	}
 }
 
-// runBenchmarkOverMetadataVers runs the given benchmark function over all
-// metadata versions to test.
+// runBenchmarkOverMetadataVers runs the given benchmark function over
+// all metadata versions to test. Example use:
+//
+// func BenchmarkFoo(b *testing.B) {
+//	runBenchmarkOverMetadataVers(b, testFoo)
+// }
+//
+// func benchmarkFoo(b *testing.B, ver MetadataVer) {
+//	...
+// 	brmd, err := MakeInitialBareRootMetadata(ver, ...)
+//	...
+// }
 func runBenchmarkOverMetadataVers(
 	b *testing.B, f func(b *testing.B, ver MetadataVer)) {
 	for _, ver := range testMetadataVers {
@@ -45,6 +65,10 @@ func runBenchmarkOverMetadataVers(
 }
 
 // Test verification of finalized metadata blocks.
+func TestRootMetadataFinalVerify(t *testing.T) {
+	runTestOverMetadataVers(t, testRootMetadataFinalVerify)
+}
+
 func testRootMetadataFinalVerify(t *testing.T, ver MetadataVer) {
 	tlfID := tlf.FakeID(1, false)
 
@@ -100,8 +124,4 @@ func testRootMetadataFinalVerify(t *testing.T, ver MetadataVer) {
 	rmds2.MD = md3
 	err = rmds3.IsValidAndSigned(codec, crypto, extra)
 	require.NotNil(t, err)
-}
-
-func TestRootMetadataFinalVerify(t *testing.T) {
-	runTestOverMetadataVers(t, testRootMetadataFinalVerify)
 }
