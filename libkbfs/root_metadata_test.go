@@ -376,7 +376,7 @@ func (wmf writerMetadataV2Future) ToCurrentStruct() kbfscodec.CurrentStruct {
 	return wmf.toCurrent()
 }
 
-func makeFakeWriterMetadataV2Future(t *testing.T) writerMetadataFuture {
+func makeFakeWriterMetadataV2Future(t *testing.T) writerMetadataV2Future {
 	wmd := WriterMetadataV2{
 		// This needs to be list format so it fails to compile if new fields
 		// are added, effectively checking at compile time whether new fields
@@ -438,7 +438,7 @@ type bareRootMetadataFuture struct {
 	// around a bug in codec's field lookup code.
 	//
 	// TODO: Report and fix this bug upstream.
-	writerMetadataFuture
+	writerMetadataV2Future
 
 	bareRootMetadataWrapper
 	// Override BareRootMetadata.RKeys.
@@ -448,7 +448,7 @@ type bareRootMetadataFuture struct {
 
 func (brmf *bareRootMetadataFuture) toCurrent() BareRootMetadata {
 	rm := brmf.bareRootMetadataWrapper.BareRootMetadataV2
-	rm.WriterMetadataV2 = WriterMetadataV2(brmf.writerMetadataFuture.toCurrent())
+	rm.WriterMetadataV2 = WriterMetadataV2(brmf.writerMetadataV2Future.toCurrent())
 	rm.RKeys = brmf.RKeys.toCurrent()
 	return &rm
 }
@@ -458,7 +458,7 @@ func (brmf *bareRootMetadataFuture) ToCurrentStruct() kbfscodec.CurrentStruct {
 }
 
 func makeFakeBareRootMetadataFuture(t *testing.T) *bareRootMetadataFuture {
-	wmf := makeFakeWriterMetadataFuture(t)
+	wmf := makeFakeWriterMetadataV2Future(t)
 	rkb := makeFakeTLFReaderKeyBundleV2Future(t)
 	h, err := kbfshash.DefaultHash([]byte("fake buf"))
 	require.NoError(t, err)

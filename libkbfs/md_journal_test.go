@@ -190,7 +190,9 @@ func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
 	}
 }
 
-// TODO: Test with all possible (ver, maxVer) combos
+func TestMDJournalBasic(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalBasic)
+}
 
 func testMDJournalBasic(t *testing.T, ver MetadataVer) {
 	codec, crypto, id, signer, ekg, bsplit, tempdir, j :=
@@ -234,8 +236,8 @@ func testMDJournalBasic(t *testing.T, ver MetadataVer) {
 	}
 }
 
-func TestMDJournalBasic(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalBasic)
+func TestMDJournalGetNextEntry(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalGetNextEntry)
 }
 
 func testMDJournalGetNextEntry(t *testing.T, ver MetadataVer) {
@@ -264,8 +266,8 @@ func testMDJournalGetNextEntry(t *testing.T, ver MetadataVer) {
 	require.Equal(t, md.bareMd, rmds.MD)
 }
 
-func TestMDJournalGetNextEntry(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalGetNextEntry)
+func TestMDJournalPutCase1Empty(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalPutCase1Empty)
 }
 
 func testMDJournalPutCase1Empty(t *testing.T, ver MetadataVer) {
@@ -283,8 +285,8 @@ func testMDJournalPutCase1Empty(t *testing.T, ver MetadataVer) {
 	require.Equal(t, md.extra, head.extra)
 }
 
-func TestMDJournalPutCase1Empty(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalPutCase1Empty)
+func TestMDJournalPutCase1Conflict(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalPutCase1Conflict)
 }
 
 func testMDJournalPutCase1Conflict(t *testing.T, ver MetadataVer) {
@@ -305,11 +307,11 @@ func testMDJournalPutCase1Conflict(t *testing.T, ver MetadataVer) {
 	require.Equal(t, MDJournalConflictError{}, err)
 }
 
-func TestMDJournalPutCase1Conflict(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalPutCase1Conflict)
-}
-
 // The append portion of case 1 is covered by TestMDJournalBasic.
+
+func TestMDJournalPutCase1ReplaceHead(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalPutCase1ReplaceHead)
+}
 
 func testMDJournalPutCase1ReplaceHead(t *testing.T, ver MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
@@ -340,8 +342,8 @@ func testMDJournalPutCase1ReplaceHead(t *testing.T, ver MetadataVer) {
 	require.Equal(t, md.extra, head.extra)
 }
 
-func TestMDJournalPutCase1ReplaceHead(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalPutCase1ReplaceHead)
+func TestMDJournalPutCase2NonEmptyReplace(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalPutCase2NonEmptyReplace)
 }
 
 func testMDJournalPutCase2NonEmptyReplace(t *testing.T, ver MetadataVer) {
@@ -363,8 +365,8 @@ func testMDJournalPutCase2NonEmptyReplace(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func TestMDJournalPutCase2NonEmptyReplace(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalPutCase2NonEmptyReplace)
+func TestMDJournalPutCase2NonEmptyAppend(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalPutCase2NonEmptyAppend)
 }
 
 func testMDJournalPutCase2NonEmptyAppend(t *testing.T, ver MetadataVer) {
@@ -387,8 +389,8 @@ func testMDJournalPutCase2NonEmptyAppend(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func TestMDJournalPutCase2NonEmptyAppend(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalPutCase2NonEmptyAppend)
+func TestMDJournalPutCase2Empty(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalPutCase2Empty)
 }
 
 func testMDJournalPutCase2Empty(t *testing.T, ver MetadataVer) {
@@ -417,8 +419,8 @@ func testMDJournalPutCase2Empty(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func TestMDJournalPutCase2Empty(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalPutCase2Empty)
+func TestMDJournalPutCase3NonEmptyAppend(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalPutCase3NonEmptyAppend)
 }
 
 func testMDJournalPutCase3NonEmptyAppend(t *testing.T, ver MetadataVer) {
@@ -446,8 +448,8 @@ func testMDJournalPutCase3NonEmptyAppend(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func TestMDJournalPutCase3NonEmptyAppend(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalPutCase3NonEmptyAppend)
+func TestMDJournalPutCase3NonEmptyReplace(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalPutCase3NonEmptyReplace)
 }
 
 func testMDJournalPutCase3NonEmptyReplace(t *testing.T, ver MetadataVer) {
@@ -474,8 +476,8 @@ func testMDJournalPutCase3NonEmptyReplace(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func TestMDJournalPutCase3NonEmptyReplace(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalPutCase3NonEmptyReplace)
+func TestMDJournalPutCase3EmptyAppend(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalPutCase3EmptyAppend)
 }
 
 func testMDJournalPutCase3EmptyAppend(t *testing.T, ver MetadataVer) {
@@ -505,8 +507,8 @@ func testMDJournalPutCase3EmptyAppend(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func TestMDJournalPutCase3EmptyAppend(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalPutCase3EmptyAppend)
+func TestMDJournalPutCase4(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalPutCase4)
 }
 
 func testMDJournalPutCase4(t *testing.T, ver MetadataVer) {
@@ -519,10 +521,6 @@ func testMDJournalPutCase4(t *testing.T, ver MetadataVer) {
 	md.SetBranchID(FakeBranchID(1))
 	_, err := j.put(ctx, signer, ekg, bsplit, md, false)
 	require.NoError(t, err)
-}
-
-func TestMDJournalPutCase4(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalPutCase4)
 }
 
 func testMDJournalGCd(t *testing.T, j *mdJournal) {
@@ -554,6 +552,10 @@ func flushAllMDs(
 		j.removeFlushedEntry(ctx, mdID, rmds)
 	}
 	testMDJournalGCd(t, j)
+}
+
+func TestMDJournalBranchConversion(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalBranchConversion)
 }
 
 func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
@@ -626,10 +628,6 @@ func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 	require.Error(t, err)
 }
 
-func TestMDJournalBranchConversion(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalBranchConversion)
-}
-
 func testMDJournalResolveAndClear(t *testing.T, ver MetadataVer, bid BranchID) {
 	_, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t, ver)
@@ -685,6 +683,10 @@ func testMDJournalResolveAndClear(t *testing.T, ver MetadataVer, bid BranchID) {
 	flushAllMDs(t, ctx, signer, j)
 }
 
+func TestMDJournalResolveAndClearRemoteBranch(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalResolveAndClearRemoteBranch)
+}
+
 func testMDJournalResolveAndClearRemoteBranch(t *testing.T, ver MetadataVer) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
@@ -693,16 +695,12 @@ func testMDJournalResolveAndClearRemoteBranch(t *testing.T, ver MetadataVer) {
 	testMDJournalResolveAndClear(t, ver, bid)
 }
 
-func TestMDJournalResolveAndClearRemoteBranch(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalResolveAndClearRemoteBranch)
+func TestMDJournalResolveAndClearLocalSquash(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalResolveAndClearLocalSquash)
 }
 
 func testMDJournalResolveAndClearLocalSquash(t *testing.T, ver MetadataVer) {
 	testMDJournalResolveAndClear(t, ver, PendingLocalSquashBranchID)
-}
-
-func TestMDJournalResolveAndClearLocalSquash(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalResolveAndClearLocalSquash)
 }
 
 type limitedCryptoSigner struct {
@@ -769,6 +767,10 @@ type mdIDJournalEntryExtra struct {
 	Extra int
 }
 
+func TestMDJournalBranchConversionPreservesUnknownFields(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalBranchConversionPreservesUnknownFields)
+}
+
 func testMDJournalBranchConversionPreservesUnknownFields(t *testing.T, ver MetadataVer) {
 	codec, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
@@ -826,8 +828,8 @@ func testMDJournalBranchConversionPreservesUnknownFields(t *testing.T, ver Metad
 	flushAllMDs(t, ctx, signer, j)
 }
 
-func TestMDJournalBranchConversionPreservesUnknownFields(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalBranchConversionPreservesUnknownFields)
+func TestMDJournalClear(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalClear)
 }
 
 func testMDJournalClear(t *testing.T, ver MetadataVer) {
@@ -906,8 +908,8 @@ func testMDJournalClear(t *testing.T, ver MetadataVer) {
 	flushAllMDs(t, ctx, signer, j)
 }
 
-func TestMDJournalClear(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalClear)
+func TestMDJournalRestart(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalRestart)
 }
 
 func testMDJournalRestart(t *testing.T, ver MetadataVer) {
@@ -942,8 +944,8 @@ func testMDJournalRestart(t *testing.T, ver MetadataVer) {
 	flushAllMDs(t, context.Background(), signer, j)
 }
 
-func TestMDJournalRestart(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalRestart)
+func TestMDJournalRestartAfterBranchConversion(t *testing.T) {
+	runTestOverMetadataVers(t, testMDJournalRestartAfterBranchConversion)
 }
 
 func testMDJournalRestartAfterBranchConversion(t *testing.T, ver MetadataVer) {
@@ -986,8 +988,4 @@ func testMDJournalRestartAfterBranchConversion(t *testing.T, ver MetadataVer) {
 		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].BID())
 
 	flushAllMDs(t, ctx, signer, j)
-}
-
-func TestMDJournalRestartAfterBranchConversion(t *testing.T) {
-	runTestOverMetadataVers(t, testMDJournalRestartAfterBranchConversion)
 }

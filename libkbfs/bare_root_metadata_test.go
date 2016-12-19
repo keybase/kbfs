@@ -64,6 +64,9 @@ func runBenchmarkOverMetadataVers(
 	}
 }
 
+// TODO: Add way to test with all possible (ver, maxVer) combos,
+// e.g. for upconversion tests.
+
 // Test verification of finalized metadata blocks.
 func TestRootMetadataFinalVerify(t *testing.T) {
 	runTestOverMetadataVers(t, testRootMetadataFinalVerify)
