@@ -13,7 +13,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 )
 
-// All section references below are to https://keybase.io/blog/kbfs-crypto
+// All section references below are to https://keybase.io/docs/crypto/kbfs
 // (version 1.3).
 
 type kidContainer struct {

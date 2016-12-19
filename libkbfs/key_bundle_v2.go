@@ -217,7 +217,7 @@ func (udkimV2 UserDeviceKeyInfoMapV2) fillInUserInfos(
 	return serverHalves, nil
 }
 
-// All section references below are to https://keybase.io/blog/kbfs-crypto
+// All section references below are to https://keybase.io/docs/crypto/kbfs
 // (version 1.3).
 
 // TLFWriterKeyBundleV2 is a bundle of all the writer keys for a top-level
@@ -226,10 +226,10 @@ type TLFWriterKeyBundleV2 struct {
 	// Maps from each writer to their crypt key bundle.
 	WKeys UserDeviceKeyInfoMapV2
 
-	// M_f as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
+	// M_f as described in 4.1.1 of https://keybase.io/docs/crypto/kbfs.
 	TLFPublicKey kbfscrypto.TLFPublicKey `codec:"pubKey"`
 
-	// M_e as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
+	// M_e as described in 4.1.1 of https://keybase.io/docs/crypto/kbfs.
 	// Because devices can be added into the key generation after it
 	// is initially created (so those devices can get access to
 	// existing data), we track multiple ephemeral public keys; the
@@ -326,7 +326,7 @@ func (wkg TLFWriterKeyGenerationsV2) ToTLFWriterKeyBundleV3(
 type TLFReaderKeyBundleV2 struct {
 	RKeys UserDeviceKeyInfoMapV2
 
-	// M_e as described in 4.1.1 of https://keybase.io/blog/kbfs-crypto.
+	// M_e as described in 4.1.1 of https://keybase.io/docs/crypto/kbfs.
 	// Because devices can be added into the key generation after it
 	// is initially created (so those devices can get access to
 	// existing data), we track multiple ephemeral public keys; the
