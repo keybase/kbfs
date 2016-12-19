@@ -357,7 +357,7 @@ func (wkgf tlfWriterKeyGenerationsV2Future) toCurrent() TLFWriterKeyGenerationsV
 	return wkg
 }
 
-type writerMetadataFuture struct {
+type writerMetadataV2Future struct {
 	WriterMetadataV2
 	// Override WriterMetadata.WKeys.
 	WKeys tlfWriterKeyGenerationsV2Future
@@ -365,18 +365,18 @@ type writerMetadataFuture struct {
 	Extra writerMetadataExtraFuture `codec:"x,omitempty,omitemptycheckstruct"`
 }
 
-func (wmf writerMetadataFuture) toCurrent() WriterMetadataV2 {
+func (wmf writerMetadataV2Future) toCurrent() WriterMetadataV2 {
 	wm := wmf.WriterMetadataV2
 	wm.WKeys = wmf.WKeys.toCurrent()
 	wm.Extra = wmf.Extra.toCurrent()
 	return wm
 }
 
-func (wmf writerMetadataFuture) ToCurrentStruct() kbfscodec.CurrentStruct {
+func (wmf writerMetadataV2Future) ToCurrentStruct() kbfscodec.CurrentStruct {
 	return wmf.toCurrent()
 }
 
-func makeFakeWriterMetadataFuture(t *testing.T) writerMetadataFuture {
+func makeFakeWriterMetadataV2Future(t *testing.T) writerMetadataFuture {
 	wmd := WriterMetadataV2{
 		// This needs to be list format so it fails to compile if new fields
 		// are added, effectively checking at compile time whether new fields
@@ -395,7 +395,7 @@ func makeFakeWriterMetadataFuture(t *testing.T) writerMetadataFuture {
 	}
 	wkb := makeFakeTLFWriterKeyBundleV2Future(t)
 	sa, _ := externals.NormalizeSocialAssertion("foo@twitter")
-	return writerMetadataFuture{
+	return writerMetadataV2Future{
 		wmd,
 		tlfWriterKeyGenerationsV2Future{&wkb},
 		writerMetadataExtraFuture{
@@ -409,6 +409,10 @@ func makeFakeWriterMetadataFuture(t *testing.T) writerMetadataFuture {
 			kbfscodec.MakeExtraOrBust("WriterMetadata", t),
 		},
 	}
+}
+
+func TestWriterMetadataV2UnknownFields(t *testing.T) {
+	testStructUnknownFields(t, makeFakeWriterMetadataV2Future(t))
 }
 
 type tlfReaderKeyGenerationsV2Future []*tlfReaderKeyBundleV2Future
