@@ -286,19 +286,13 @@ func testKeyManagerCachedSecretKeyForBlockDecryptionSuccess(t *testing.T, ver Me
 	require.Equal(t, cachedTLFCryptKey, tlfCryptKey)
 }
 
-// makeDirRKeyInfoMap creates a new user device key info map with a reader key.
-func makeDirRKeyInfoMap(ver MetadataVer, uid keybase1.UID,
+// makeDirWKeyInfoMap creates a new user device key info map with a writer key.
+func makeDirWKeyInfoMap(uid keybase1.UID,
 	cryptPublicKey kbfscrypto.CryptPublicKey) UserDeviceKeyInfoMap {
-	var ePubKeyIndex int
-	if ver < SegregatedKeyBundlesVer {
-		ePubKeyIndex = -1
-	} else {
-		ePubKeyIndex = 0
-	}
 	return UserDeviceKeyInfoMap{
 		uid: {
 			cryptPublicKey: TLFCryptKeyInfo{
-				EPubKeyIndex: ePubKeyIndex,
+				EPubKeyIndex: 0,
 			},
 		},
 	}
@@ -323,7 +317,7 @@ func testKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T, ver Metad
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
 		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
-		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(ver, uid, subkey))
+		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
 
 	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
 	expectUncachedGetTLFCryptKey(t, config, rmd.TlfID(),
@@ -355,7 +349,7 @@ func testKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T, ver Met
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
 		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
-		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(ver, uid, subkey))
+		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
 
 	expectUncachedGetTLFCryptKeyAnyDevice(
 		config, rmd.TlfID(), rmd.LatestKeyGeneration(), uid, subkey,
@@ -387,11 +381,11 @@ func testKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T, ver 
 	storedTLFCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
 	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
 		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey1,
-		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(ver, uid, subkey))
+		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
 
 	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
 		storedTLFCryptKey1, storedTLFCryptKey2,
-		NewEmptyUserDeviceKeyInfoMap(), makeDirRKeyInfoMap(ver, uid, subkey))
+		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
 
 	keyGen := rmd.LatestKeyGeneration() - 1
 	storesHistoric := rmd.StoresHistoricTLFCryptKeys()

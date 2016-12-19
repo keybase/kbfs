@@ -300,11 +300,6 @@ func NewEmptyTLFReaderKeyBundle() TLFReaderKeyBundleV2 {
 	}
 }
 
-// NewEmptyUserDeviceKeyInfoMap creates a new empty UserDeviceKeyInfoMap.
-func NewEmptyUserDeviceKeyInfoMap() UserDeviceKeyInfoMap {
-	return UserDeviceKeyInfoMap{}
-}
-
 func keySaltForUserDevice(name libkb.NormalizedUsername,
 	index int) libkb.NormalizedUsername {
 	if index > 0 {
