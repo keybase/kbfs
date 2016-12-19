@@ -118,6 +118,10 @@ func makeImmutableRootMetadataForTest(
 
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for
 // public TLFs.
+func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
+	runTestOverMetadataVers(t, testRootMetadataGetTlfHandlePublic)
+}
+
 func testRootMetadataGetTlfHandlePublic(t *testing.T, ver MetadataVer) {
 	uw := []keybase1.SocialAssertion{
 		{
@@ -143,12 +147,12 @@ func testRootMetadataGetTlfHandlePublic(t *testing.T, ver MetadataVer) {
 	require.Equal(t, h.ToBareHandleOrBust(), bh)
 }
 
-func TestRootMetadataGetTlfHandlePublic(t *testing.T) {
-	runTestOverMetadataVers(t, testRootMetadataGetTlfHandlePublic)
-}
-
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for
 // non-public TLFs.
+func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
+	runTestOverMetadataVers(t, testRootMetadataGetTlfHandlePrivate)
+}
+
 func testRootMetadataGetTlfHandlePrivate(t *testing.T, ver MetadataVer) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
@@ -188,11 +192,11 @@ func testRootMetadataGetTlfHandlePrivate(t *testing.T, ver MetadataVer) {
 	require.Equal(t, h.ToBareHandleOrBust(), bh)
 }
 
-func TestRootMetadataGetTlfHandlePrivate(t *testing.T) {
-	runTestOverMetadataVers(t, testRootMetadataGetTlfHandlePrivate)
+// Test that key generations work as expected for private TLFs.
+func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
+	runTestOverMetadataVers(t, testRootMetadataLatestKeyGenerationPrivate)
 }
 
-// Test that key generations work as expected for private TLFs.
 func testRootMetadataLatestKeyGenerationPrivate(t *testing.T, ver MetadataVer) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
@@ -210,11 +214,11 @@ func testRootMetadataLatestKeyGenerationPrivate(t *testing.T, ver MetadataVer) {
 	}
 }
 
-func TestRootMetadataLatestKeyGenerationPrivate(t *testing.T) {
-	runTestOverMetadataVers(t, testRootMetadataLatestKeyGenerationPrivate)
+// Test that key generations work as expected for public TLFs.
+func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
+	runTestOverMetadataVers(t, testRootMetadataLatestKeyGenerationPublic)
 }
 
-// Test that key generations work as expected for public TLFs.
 func testRootMetadataLatestKeyGenerationPublic(t *testing.T, ver MetadataVer) {
 	tlfID := tlf.FakeID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
@@ -226,8 +230,8 @@ func testRootMetadataLatestKeyGenerationPublic(t *testing.T, ver MetadataVer) {
 	}
 }
 
-func TestRootMetadataLatestKeyGenerationPublic(t *testing.T) {
-	runTestOverMetadataVers(t, testRootMetadataLatestKeyGenerationPublic)
+func TestMakeRekeyReadError(t *testing.T) {
+	runTestOverMetadataVers(t, testMakeRekeyReadError)
 }
 
 func testMakeRekeyReadError(t *testing.T, ver MetadataVer) {
@@ -255,8 +259,8 @@ func testMakeRekeyReadError(t *testing.T, ver MetadataVer) {
 	require.Equal(t, NeedOtherRekeyError{"alice"}, err)
 }
 
-func TestMakeRekeyReadError(t *testing.T) {
-	runTestOverMetadataVers(t, testMakeRekeyReadError)
+func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
+	runTestOverMetadataVers(t, testMakeRekeyReadErrorResolvedHandle)
 }
 
 func testMakeRekeyReadErrorResolvedHandle(t *testing.T, ver MetadataVer) {
@@ -289,11 +293,11 @@ func testMakeRekeyReadErrorResolvedHandle(t *testing.T, ver MetadataVer) {
 	require.Equal(t, NeedOtherRekeyError{"alice,bob"}, err)
 }
 
-func TestMakeRekeyReadErrorResolvedHandle(t *testing.T) {
-	runTestOverMetadataVers(t, testMakeRekeyReadErrorResolvedHandle)
+// Test that MakeSuccessor fails when the final bit is set.
+func TestRootMetadataFinalIsFinal(t *testing.T) {
+	runTestOverMetadataVers(t, testRootMetadataFinalIsFinal)
 }
 
-// Test that MakeSuccessor fails when the final bit is set.
 func testRootMetadataFinalIsFinal(t *testing.T, ver MetadataVer) {
 	tlfID := tlf.FakeID(0, true)
 	h := makeFakeTlfHandle(t, 14, true, nil, nil)
@@ -304,10 +308,6 @@ func testRootMetadataFinalIsFinal(t *testing.T, ver MetadataVer) {
 	_, err = rmd.MakeSuccessor(context.Background(), nil, fakeMdID(1), true)
 	_, isFinalError := err.(MetadataIsFinalError)
 	require.Equal(t, isFinalError, true)
-}
-
-func TestRootMetadataFinalIsFinal(t *testing.T) {
-	runTestOverMetadataVers(t, testRootMetadataFinalIsFinal)
 }
 
 func getAllUsersKeysForTest(
