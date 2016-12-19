@@ -168,6 +168,10 @@ func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 // TODO: Create a separate journal for each iteration, instead of
 // using the same one.
 
+func BenchmarkMDJournalBasic(b *testing.B) {
+	runBenchmarkOverMetadataVers(b, benchmarkMDJournalBasic)
+}
+
 func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(b, ver)
 	defer teardownMDJournalTest(b, tempdir)
@@ -184,10 +188,6 @@ func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
 			signer, ekg, bsplit, revision, prevRoot, mdCount, j)
 		revision += MetadataRevision(mdCount)
 	}
-}
-
-func BenchmarkMDJournalBasic(b *testing.B) {
-	runBenchmarkOverMetadataVers(b, benchmarkMDJournalBasic)
 }
 
 // TODO: Test with all possible (ver, maxVer) combos
