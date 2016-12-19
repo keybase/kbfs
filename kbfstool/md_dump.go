@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"flag"
 	"fmt"
 
@@ -34,14 +35,24 @@ func mdDumpUDKIMV3(ctx context.Context, config libkbfs.Config,
 		fmt.Printf("  User: %s\n", getUserString(ctx, config, uid))
 		for key, info := range dkimV3 {
 			fmt.Printf("    Device: %s\n", key)
-			fmt.Printf("    key info: %+v\n", info)
+			clientHalf := info.ClientHalf
+			fmt.Printf("      Client half (encryption version=%d):\n",
+				clientHalf.Version)
+			fmt.Printf("        Encrypted data: %s\n",
+				hex.EncodeToString(clientHalf.EncryptedData))
+			fmt.Printf("        Nonce: %s\n",
+				hex.EncodeToString(clientHalf.Nonce))
+			fmt.Printf("      Server half ID: %s\n",
+				info.ServerHalfID)
+			fmt.Printf("      Ephemeral key index: %d\n",
+				info.EPubKeyIndex)
 		}
 	}
 }
 
 func mdDumpEphemeralPublicKeys(ePubKeys kbfscrypto.TLFEphemeralPublicKeys) {
-	for _, ePubKey := range ePubKeys {
-		fmt.Printf("    %s\n", ePubKey)
+	for i, ePubKey := range ePubKeys {
+		fmt.Printf("    %d: %s\n", i, ePubKey)
 	}
 }
 
