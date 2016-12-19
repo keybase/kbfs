@@ -36,6 +36,12 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 	fmt.Printf("MD size: %d bytes\nMD version: %s\n\n",
 		len(buf), rmd.Version())
 
+	h := rmd.GetTlfHandle()
+	bh, err := h.ToBareHandle()
+	if err != nil {
+		return err
+	}
+
 	fmt.Print("Reader/writer metadata\n")
 	fmt.Print("----------------------\n")
 	fmt.Printf("Last modifying user: %s\n",
@@ -43,6 +49,21 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 	// TODO: Print flags.
 	fmt.Printf("Revision: %s\n", rmd.Revision())
 	fmt.Printf("Prev MD ID: %s\n", rmd.PrevRoot())
+	if rmd.TlfID().IsPublic() {
+		fmt.Print("Readers: everybody (public)\n")
+	} else if len(bh.Readers) == 0 {
+		fmt.Print("Readers: empty\n")
+	} else {
+		fmt.Print("Readers:\n")
+		for _, reader := range bh.Readers {
+			fmt.Printf("  %s\n",
+				getUserString(ctx, config, reader))
+		}
+	}
+	fmt.Print("Writers:\n")
+	for _, writer := range bh.Writers {
+		fmt.Printf("  %s\n", getUserString(ctx, config, writer))
+	}
 	// TODO: Print RKeys, unresolved readers, conflict info,
 	// finalized info, and unknown fields.
 	fmt.Print("\n")
