@@ -288,9 +288,6 @@ func (h TLFWriterKeyBundleID) IsNil() bool {
 	return h == TLFWriterKeyBundleID{}
 }
 
-// All section references below are to https://keybase.io/docs/crypto/kbfs
-// (version 1.8).
-
 // TLFReaderKeyBundleV3 stores all the reader keys with reader
 // permissions on a TLF.
 type TLFReaderKeyBundleV3 struct {
