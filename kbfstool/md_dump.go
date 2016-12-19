@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
@@ -25,6 +26,23 @@ func mdDumpOne(ctx context.Context, config libkbfs.Config,
 	fmt.Printf("MD ID: %s\n", rmd.MdID())
 
 	return mdDumpOneReadOnly(ctx, config, rmd.ReadOnly())
+}
+
+func mdDumpUDKIMV3(ctx context.Context, config libkbfs.Config,
+	udkimV3 libkbfs.UserDeviceKeyInfoMapV3) {
+	for uid, dkimV3 := range udkimV3 {
+		fmt.Printf("  User: %s\n", getUserString(ctx, config, uid))
+		for key, info := range dkimV3 {
+			fmt.Printf("    Device: %s\n", key)
+			fmt.Printf("    key info: %+v\n", info)
+		}
+	}
+}
+
+func mdDumpEphemeralPublicKeys(ePubKeys kbfscrypto.TLFEphemeralPublicKeys) {
+	for _, ePubKey := range ePubKeys {
+		fmt.Printf("    %s\n", ePubKey)
+	}
 }
 
 func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
@@ -91,9 +109,19 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 	case *libkbfs.ExtraMetadataV3:
 		fmt.Print("Type: ExtraMetadataV3\n")
 		wkb := extra.GetWriterKeyBundle()
-		fmt.Printf("Writer key bundle: %+v\n", wkb)
+		fmt.Print("Writer key bundle:\n")
+		mdDumpUDKIMV3(ctx, config, wkb.Keys)
+		fmt.Printf("  TLF public key: %s\n", wkb.TLFPublicKey)
+		fmt.Print("  Ephemeral writer keys\n")
+		mdDumpEphemeralPublicKeys(wkb.TLFEphemeralPublicKeys)
+		// TODO: Print encrypted historic key info.
+		// TODO: Print unknown fields.
 		rkb := extra.GetReaderKeyBundle()
-		fmt.Printf("Reader key bundle: %+v\n", rkb)
+		fmt.Print("Reader key bundle\n")
+		mdDumpUDKIMV3(ctx, config, rkb.Keys)
+		fmt.Print("  Ephemeral reader keys\n")
+		mdDumpEphemeralPublicKeys(wkb.TLFEphemeralPublicKeys)
+		// TODO: Print unknown fields.
 	default:
 		fmt.Print("Type: unknown\n")
 		fmt.Printf("%+v\n", extra)
