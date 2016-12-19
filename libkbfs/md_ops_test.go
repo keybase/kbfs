@@ -515,11 +515,11 @@ func testMDOpsGetFailGet(t *testing.T, ver MetadataVer) {
 	}
 }
 
-func TestMDOpsGetFailIdCheck(t *testing.T) {
-	runTestOverMetadataVers(t, testMDOpsGetFailIdCheck)
+func TestMDOpsGetFailIDCheck(t *testing.T) {
+	runTestOverMetadataVers(t, testMDOpsGetFailIDCheck)
 }
 
-func testMDOpsGetFailIdCheck(t *testing.T, ver MetadataVer) {
+func testMDOpsGetFailIDCheck(t *testing.T, ver MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
