@@ -172,7 +172,7 @@ func (md *RootMetadata) Data() *PrivateMetadata {
 	return &md.data
 }
 
-// Data returns the extra metadata of this RootMetadata.
+// Extra returns the extra metadata of this RootMetadata.
 func (md *RootMetadata) Extra() ExtraMetadata {
 	return md.extra
 }
