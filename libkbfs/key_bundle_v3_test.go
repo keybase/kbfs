@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Make sure creating an WKB ID for a WKB with no keys fails.
 func TestWKBID(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
@@ -31,6 +32,8 @@ func TestWKBID(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// Make sure that RKBs can be created with nil vs. empty keys get the
+// same ID.
 func TestRKBID(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
