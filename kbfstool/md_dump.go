@@ -73,11 +73,6 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 
 	fmt.Print("Reader/writer metadata\n")
 	fmt.Print("----------------------\n")
-	fmt.Printf("Last modifying user: %s\n",
-		getUserString(ctx, config, rmd.LastModifyingUser()))
-	// TODO: Print flags.
-	fmt.Printf("Revision: %s\n", rmd.Revision())
-	fmt.Printf("Prev MD ID: %s\n", rmd.PrevRoot())
 	if rmd.TlfID().IsPublic() {
 		fmt.Print("Readers: everybody (public)\n")
 	} else if len(bh.Readers) == 0 {
@@ -89,21 +84,28 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 				getUserString(ctx, config, reader))
 		}
 	}
-	fmt.Print("Writers:\n")
-	for _, writer := range bh.Writers {
-		fmt.Printf("  %s\n", getUserString(ctx, config, writer))
-	}
+	fmt.Printf("Last modifying user: %s\n",
+		getUserString(ctx, config, rmd.LastModifyingUser()))
+	// TODO: Print flags.
+	fmt.Printf("Revision: %s\n", rmd.Revision())
+	fmt.Printf("Prev MD ID: %s\n", rmd.PrevRoot())
+	fmt.Printf("Reader key bundle ID: %s\n", rmd.GetTLFReaderKeyBundleID())
 	// TODO: Print RKeys, unresolved readers, conflict info,
 	// finalized info, and unknown fields.
 	fmt.Print("\n")
 
 	fmt.Print("Writer metadata\n")
 	fmt.Print("---------------\n")
+	fmt.Print("Writers:\n")
+	for _, writer := range bh.Writers {
+		fmt.Printf("  %s\n", getUserString(ctx, config, writer))
+	}
 	fmt.Printf("Last modifying writer: %s\n",
 		getUserString(ctx, config, rmd.LastModifyingWriter()))
 	// TODO: Print Writers/WKeys and unresolved writers.
 	fmt.Printf("TLF ID: %s\n", rmd.TlfID())
 	fmt.Printf("Branch ID: %s\n", rmd.BID())
+	fmt.Printf("Writer key bundle ID: %s\n", rmd.GetTLFWriterKeyBundleID())
 	// TODO: Print writer flags.
 	fmt.Printf("Disk usage: %d\n", rmd.DiskUsage())
 	fmt.Printf("Bytes in new blocks: %d\n", rmd.RefBytes())

@@ -752,6 +752,20 @@ func (md *RootMetadata) getUserDeviceKeyInfoMaps(
 	return md.bareMd.GetUserDeviceKeyInfoMaps(codec, keyGen, md.extra)
 }
 
+// GetTLFWriterKeyBundleID returns the ID of the externally-stored
+// writer key bundle, or the zero value if this object stores it
+// internally.
+func (md *RootMetadata) GetTLFWriterKeyBundleID() TLFWriterKeyBundleID {
+	return md.bareMd.GetTLFWriterKeyBundleID()
+}
+
+// GetTLFReaderKeyBundleID returns the ID of the externally-stored
+// reader key bundle, or the zero value if this object stores it
+// internally.
+func (md *RootMetadata) GetTLFReaderKeyBundleID() TLFReaderKeyBundleID {
+	return md.bareMd.GetTLFReaderKeyBundleID()
+}
+
 // StoresHistoricTLFCryptKeys implements the KeyMetadata interface for RootMetadata.
 func (md *RootMetadata) StoresHistoricTLFCryptKeys() bool {
 	return md.bareMd.StoresHistoricTLFCryptKeys()
