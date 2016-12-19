@@ -2796,8 +2796,8 @@ func (_mr *_MockMDServerRecorder) GetRange(arg0, arg1, arg2, arg3, arg4, arg5 in
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetRange", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockMDServer) Put(ctx context.Context, rmds *RootMetadataSigned, extraNew ExtraMetadata) error {
-	ret := _m.ctrl.Call(_m, "Put", ctx, rmds, extraNew)
+func (_m *MockMDServer) Put(ctx context.Context, rmds *RootMetadataSigned, extra ExtraMetadata) error {
+	ret := _m.ctrl.Call(_m, "Put", ctx, rmds, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -2982,8 +2982,8 @@ func (_mr *_MockmdServerLocalRecorder) GetRange(arg0, arg1, arg2, arg3, arg4, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetRange", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockmdServerLocal) Put(ctx context.Context, rmds *RootMetadataSigned, extraNew ExtraMetadata) error {
-	ret := _m.ctrl.Call(_m, "Put", ctx, rmds, extraNew)
+func (_m *MockmdServerLocal) Put(ctx context.Context, rmds *RootMetadataSigned, extra ExtraMetadata) error {
+	ret := _m.ctrl.Call(_m, "Put", ctx, rmds, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
