@@ -117,7 +117,7 @@ func TestWriterMetadataV2EncodedFields(t *testing.T) {
 		ID:      tlf.FakeID(0xa, false),
 		Writers: []keybase1.UID{"uid1", "uid2"},
 		WKeys:   TLFWriterKeyGenerationsV2{{}},
-		Extra: WriterMetadataExtra{
+		Extra: WriterMetadataExtraV2{
 			UnresolvedWriters: []keybase1.SocialAssertion{sa1, sa2},
 		},
 	}
@@ -153,13 +153,13 @@ func TestWriterMetadataV2EncodedFields(t *testing.T) {
 	require.Equal(t, expectedFields, fields)
 }
 
-type writerMetadataExtraFuture struct {
-	WriterMetadataExtra
+type writerMetadataExtraV2Future struct {
+	WriterMetadataExtraV2
 	kbfscodec.Extra
 }
 
-func (wmef writerMetadataExtraFuture) toCurrent() WriterMetadataExtra {
-	return wmef.WriterMetadataExtra
+func (wmef writerMetadataExtraV2Future) toCurrent() WriterMetadataExtraV2 {
+	return wmef.WriterMetadataExtraV2
 }
 
 type tlfWriterKeyGenerationsV2Future []*tlfWriterKeyBundleV2Future
@@ -178,7 +178,7 @@ type writerMetadataV2Future struct {
 	// Override WriterMetadata.WKeys.
 	WKeys tlfWriterKeyGenerationsV2Future
 	// Override WriterMetadata.Extra.
-	Extra writerMetadataExtraFuture `codec:"x,omitempty,omitemptycheckstruct"`
+	Extra writerMetadataExtraV2Future `codec:"x,omitempty,omitemptycheckstruct"`
 }
 
 func (wmf writerMetadataV2Future) toCurrent() WriterMetadataV2 {
@@ -207,15 +207,15 @@ func makeFakeWriterMetadataV2Future(t *testing.T) writerMetadataV2Future {
 		100,
 		99,
 		101,
-		WriterMetadataExtra{},
+		WriterMetadataExtraV2{},
 	}
 	wkb := makeFakeTLFWriterKeyBundleV2Future(t)
 	sa, _ := externals.NormalizeSocialAssertion("foo@twitter")
 	return writerMetadataV2Future{
 		wmd,
 		tlfWriterKeyGenerationsV2Future{&wkb},
-		writerMetadataExtraFuture{
-			WriterMetadataExtra{
+		writerMetadataExtraV2Future{
+			WriterMetadataExtraV2{
 				// This needs to be list format so it fails to compile if new
 				// fields are added, effectively checking at compile time
 				// whether new fields have been added
