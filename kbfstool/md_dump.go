@@ -125,7 +125,17 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 		fmt.Printf("  TLF public key: %s\n", wkb.TLFPublicKey)
 		fmt.Print("  Ephemeral writer keys\n")
 		mdDumpEphemeralPublicKeys(wkb.TLFEphemeralPublicKeys)
-		// TODO: Print encrypted historic key info.
+		encryptedHistoricKeys := wkb.EncryptedHistoricTLFCryptKeys
+		if encryptedHistoricKeys.Version == 0 {
+			fmt.Print("  Encrypted historic TLF crypt keys: none\n")
+		} else {
+			fmt.Printf("  Encrypted historic TLF crypt keys (encryption version=%d):\n",
+				encryptedHistoricKeys.Version)
+			fmt.Printf("    Encrypted data: %s\n",
+				hex.EncodeToString(encryptedHistoricKeys.EncryptedData))
+			fmt.Printf("    Nonce: %s\n",
+				hex.EncodeToString(encryptedHistoricKeys.Nonce))
+		}
 		// TODO: Print unknown fields.
 		rkb := extra.GetReaderKeyBundle()
 		fmt.Print("Reader key bundle\n")
