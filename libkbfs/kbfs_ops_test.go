@@ -294,6 +294,10 @@ func makeImmutableRMDForTest(t *testing.T, config Config, rmd *RootMetadata,
 	mdID MdID) ImmutableRootMetadata {
 	key, err := config.KBPKI().GetCurrentVerifyingKey(context.Background())
 	require.NoError(t, err)
+	// We have to fake out the signature here because most tests
+	// in this file modify the returned value, invalidating any
+	// real signatures. TODO: Fix all the tests in this file to
+	// not do so, and then just use MakeImmutableRootMetadata.
 	if brmdv2, ok := rmd.bareMd.(*BareRootMetadataV2); ok {
 		vk := brmdv2.WriterMetadataSigInfo.VerifyingKey
 		require.True(t, vk == (kbfscrypto.VerifyingKey{}) || vk == key,
