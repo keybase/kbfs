@@ -33,7 +33,8 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 	if err != nil {
 		return err
 	}
-	fmt.Printf("MD size: %d bytes\n\n", len(buf))
+	fmt.Printf("MD size: %d bytes\nMD version: %s\n\n",
+		len(buf), rmd.Version())
 
 	fmt.Print("Reader/writer metadata\n")
 	fmt.Print("----------------------\n")
