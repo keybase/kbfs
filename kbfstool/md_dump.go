@@ -84,7 +84,17 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 
 	fmt.Print("Extra metadata\n")
 	fmt.Print("--------------\n")
-	fmt.Printf("%v\n", rmd.Extra())
+	extra := rmd.Extra()
+	switch extra.(type) {
+	case nil:
+		fmt.Print("Type: nil\n")
+	case *libkbfs.ExtraMetadataV3:
+		fmt.Print("Type: ExtraMetadataV3\n")
+		fmt.Printf("%+v\n", extra)
+	default:
+		fmt.Print("Type: unknown\n")
+		fmt.Printf("%+v\n", extra)
+	}
 	fmt.Print("\n")
 
 	fmt.Print("Private metadata\n")
