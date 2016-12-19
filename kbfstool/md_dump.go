@@ -82,6 +82,11 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 	// TODO: Print unknown fields.
 	fmt.Print("\n")
 
+	fmt.Print("Extra metadata\n")
+	fmt.Print("--------------\n")
+	fmt.Printf("%v\n", rmd.Extra())
+	fmt.Print("\n")
+
 	fmt.Print("Private metadata\n")
 	fmt.Print("----------------\n")
 	fmt.Printf("Serialized size: %d bytes\n", len(rmd.GetSerializedPrivateMetadata()))

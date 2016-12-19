@@ -172,6 +172,11 @@ func (md *RootMetadata) Data() *PrivateMetadata {
 	return &md.data
 }
 
+// Data returns the extra metadata of this RootMetadata.
+func (md *RootMetadata) Extra() ExtraMetadata {
+	return md.extra
+}
+
 // IsReadable returns true if the private metadata can be read.
 func (md *RootMetadata) IsReadable() bool {
 	return md.TlfID().IsPublic() || md.data.Dir.IsInitialized()
