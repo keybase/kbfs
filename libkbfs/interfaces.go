@@ -786,6 +786,11 @@ type cryptoPure interface {
 	// the same BlockID.
 	MakeBlockRefNonce() (BlockRefNonce, error)
 
+	// MakeRandomTLFEphemeralKeys generates ephemeral keys using a
+	// for a TLF CSPRNG. These keys can then be used to key/rekey
+	// the TLF.
+	MakeRandomTLFEphemeralKeys() (kbfscrypto.TLFEphemeralPublicKey,
+		kbfscrypto.TLFEphemeralPrivateKey, error)
 	// MakeRandomTLFKeys generates top-level folder keys using a CSPRNG.
 	MakeRandomTLFKeys() (kbfscrypto.TLFPublicKey,
 		kbfscrypto.TLFPrivateKey, kbfscrypto.TLFEphemeralPublicKey,

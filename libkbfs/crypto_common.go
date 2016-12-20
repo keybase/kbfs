@@ -154,6 +154,23 @@ func (c CryptoCommon) MakeBlockRefNonce() (nonce BlockRefNonce, err error) {
 	return
 }
 
+// MakeRandomTLFEphemeralKeys implements the Crypto interface for
+// CryptoCommon.
+func (c CryptoCommon) MakeRandomTLFEphemeralKeys() (
+	kbfscrypto.TLFEphemeralPublicKey, kbfscrypto.TLFEphemeralPrivateKey,
+	error) {
+	keyPair, err := libkb.GenerateNaclDHKeyPair()
+	if err != nil {
+		return kbfscrypto.TLFEphemeralPublicKey{},
+			kbfscrypto.TLFEphemeralPrivateKey{}, err
+	}
+
+	ePubKey := kbfscrypto.MakeTLFEphemeralPublicKey(keyPair.Public)
+	ePrivKey := kbfscrypto.MakeTLFEphemeralPrivateKey(*keyPair.Private)
+
+	return ePubKey, ePrivKey, nil
+}
+
 // MakeRandomTLFKeys implements the Crypto interface for CryptoCommon.
 func (c CryptoCommon) MakeRandomTLFKeys() (
 	tlfPublicKey kbfscrypto.TLFPublicKey,
