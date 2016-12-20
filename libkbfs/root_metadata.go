@@ -311,15 +311,6 @@ func (md *RootMetadata) MakeSuccessor(
 	return newMd, nil
 }
 
-func (md *RootMetadata) addKeyGenerationForTest(codec kbfscodec.Codec,
-	crypto cryptoPure, currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
-	wDkim, rDkim UserDeviceKeyInfoMap) {
-	extra := md.bareMd.addKeyGenerationForTest(
-		codec, crypto, md.extra, currCryptKey, nextCryptKey,
-		kbfscrypto.TLFPublicKey{}, wDkim, rDkim)
-	md.extra = extra
-}
-
 // GetTlfHandle returns the TlfHandle for this RootMetadata.
 func (md *RootMetadata) GetTlfHandle() *TlfHandle {
 	if md.tlfHandle == nil {

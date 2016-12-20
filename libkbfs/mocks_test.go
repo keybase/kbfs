@@ -5826,25 +5826,16 @@ func (_mr *_MockMutableBareRootMetadataRecorder) SetTlfID(arg0 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetTlfID", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) addKeyGenerationForTest(codec kbfscodec.Codec, crypto cryptoPure, prevExtra ExtraMetadata, currCryptKey kbfscrypto.TLFCryptKey, nextCryptKey kbfscrypto.TLFCryptKey, pubKey kbfscrypto.TLFPublicKey, wDkim UserDeviceKeyInfoMap, rDkim UserDeviceKeyInfoMap) ExtraMetadata {
-	ret := _m.ctrl.Call(_m, "addKeyGenerationForTest", codec, crypto, prevExtra, currCryptKey, nextCryptKey, pubKey, wDkim, rDkim)
+func (_m *MockMutableBareRootMetadata) AddKeyGeneration(codec kbfscodec.Codec, crypto cryptoPure, currExtra ExtraMetadata, wKeys UserDevicePublicKeys, rKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, pubKey kbfscrypto.TLFPublicKey, currCryptKey kbfscrypto.TLFCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (ExtraMetadata, UserDeviceKeyServerHalves, error) {
+	ret := _m.ctrl.Call(_m, "AddKeyGeneration", codec, crypto, currExtra, wKeys, rKeys, ePubKey, ePrivKey, pubKey, currCryptKey, nextCryptKey)
 	ret0, _ := ret[0].(ExtraMetadata)
-	return ret0
+	ret1, _ := ret[1].(UserDeviceKeyServerHalves)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) addKeyGenerationForTest(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "addKeyGenerationForTest", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-}
-
-func (_m *MockMutableBareRootMetadata) AddKeyGeneration(codec kbfscodec.Codec, crypto cryptoPure, prevExtra ExtraMetadata, currCryptKey kbfscrypto.TLFCryptKey, nextCryptKey kbfscrypto.TLFCryptKey, pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
-	ret := _m.ctrl.Call(_m, "AddKeyGeneration", codec, crypto, prevExtra, currCryptKey, nextCryptKey, pubKey)
-	ret0, _ := ret[0].(ExtraMetadata)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockMutableBareRootMetadataRecorder) AddKeyGeneration(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddKeyGeneration", arg0, arg1, arg2, arg3, arg4, arg5)
+func (_mr *_MockMutableBareRootMetadataRecorder) AddKeyGeneration(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddKeyGeneration", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 }
 
 func (_m *MockMutableBareRootMetadata) UpdateKeyGeneration(crypto cryptoPure, keyGen KeyGen, extra ExtraMetadata, wKeys UserDevicePublicKeys, rKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {

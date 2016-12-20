@@ -1827,17 +1827,6 @@ type MutableBareRootMetadata interface {
 	// SetTlfID sets the ID of the underlying folder in the metadata structure.
 	SetTlfID(tlf tlf.ID)
 
-	// addKeyGenerationForTest is like AddKeyGeneration, except
-	// currCryptKey and nextCryptKey don't have to be zero if
-	// StoresHistoricTLFCryptKeys is false, and takes in
-	// pre-filled UserDeviceKeyInfoMaps, and also calls
-	// FinalizeRekey.
-	addKeyGenerationForTest(codec kbfscodec.Codec, crypto cryptoPure,
-		prevExtra ExtraMetadata,
-		currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
-		pubKey kbfscrypto.TLFPublicKey,
-		wDkim, rDkim UserDeviceKeyInfoMap) ExtraMetadata
-
 	// AddKeyGeneration adds a new key generation to this revision
 	// of metadata. If StoresHistoricTLFCryptKeys is false, then
 	// currCryptKey must be zero. Otherwise, currCryptKey must be

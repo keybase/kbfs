@@ -1100,51 +1100,6 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(codec kbfscodec.Codec,
 	return NewExtraMetadataV3(newWriterKeys, newReaderKeys, true, true), nil
 }
 
-func (md *BareRootMetadataV3) addKeyGenerationForTest(codec kbfscodec.Codec,
-	crypto cryptoPure, prevExtra ExtraMetadata,
-	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
-	pubKey kbfscrypto.TLFPublicKey,
-	wUDKIM, rUDKIM UserDeviceKeyInfoMap) ExtraMetadata {
-	for _, dkim := range wUDKIM {
-		for _, info := range dkim {
-			if info.EPubKeyIndex < 0 {
-				panic("negative EPubKeyIndex for writer (v3)")
-			}
-			// TODO: Allow more if needed.
-			if info.EPubKeyIndex > 0 {
-				panic("EPubKeyIndex for writer > 1 (v3)")
-			}
-		}
-	}
-	for _, dkim := range rUDKIM {
-		for _, info := range dkim {
-			if info.EPubKeyIndex < 0 {
-				panic("negative EPubKeyIndex for reader (v3)")
-			}
-			// TODO: Allow more if needed.
-			if info.EPubKeyIndex > 0 {
-				panic("EPubKeyIndex for reader > 1 (v3)")
-			}
-		}
-	}
-
-	// TODO: Size this to the max EPubKeyIndex for writers.
-	wPublicKeys := make([]kbfscrypto.TLFEphemeralPublicKey, 1)
-	// TODO: Size this to the max EPubKeyIndex for readers.
-	rPublicKeys := make([]kbfscrypto.TLFEphemeralPublicKey, 1)
-	extra, err := md.addKeyGenerationHelper(
-		codec, crypto, prevExtra, currCryptKey, nextCryptKey,
-		pubKey, wUDKIM, rUDKIM, wPublicKeys, rPublicKeys)
-	if err != nil {
-		panic(err)
-	}
-	err = md.FinalizeRekey(crypto, extra)
-	if err != nil {
-		panic(err)
-	}
-	return extra
-}
-
 // AddKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV3.
 func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
