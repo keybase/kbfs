@@ -755,7 +755,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 	}
 
-	pubKey, privKey, _, _, tlfCryptKey, err :=
+	pubKey, privKey, tlfCryptKey, err :=
 		km.config.Crypto().MakeRandomTLFKeys()
 	if err != nil {
 		return false, nil, err

@@ -172,49 +172,27 @@ func (c CryptoCommon) MakeRandomTLFEphemeralKeys() (
 }
 
 // MakeRandomTLFKeys implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeRandomTLFKeys() (
-	tlfPublicKey kbfscrypto.TLFPublicKey,
-	tlfPrivateKey kbfscrypto.TLFPrivateKey,
-	tlfEphemeralPublicKey kbfscrypto.TLFEphemeralPublicKey,
-	tlfEphemeralPrivateKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey,
-	err error) {
-	defer func() {
-		if err != nil {
-			tlfPublicKey = kbfscrypto.TLFPublicKey{}
-			tlfPrivateKey = kbfscrypto.TLFPrivateKey{}
-			tlfEphemeralPublicKey = kbfscrypto.TLFEphemeralPublicKey{}
-			tlfEphemeralPrivateKey = kbfscrypto.TLFEphemeralPrivateKey{}
-			tlfCryptKey = kbfscrypto.TLFCryptKey{}
-		}
-	}()
-
+func (c CryptoCommon) MakeRandomTLFKeys() (kbfscrypto.TLFPublicKey,
+	kbfscrypto.TLFPrivateKey, kbfscrypto.TLFCryptKey, error) {
 	publicKey, privateKey, err := box.GenerateKey(rand.Reader)
 	if err != nil {
-		return
+		return kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
+			kbfscrypto.TLFCryptKey{}, err
 	}
 
-	tlfPublicKey = kbfscrypto.MakeTLFPublicKey(*publicKey)
-	tlfPrivateKey = kbfscrypto.MakeTLFPrivateKey(*privateKey)
-
-	keyPair, err := libkb.GenerateNaclDHKeyPair()
-	if err != nil {
-		return
-	}
-
-	tlfEphemeralPublicKey = kbfscrypto.MakeTLFEphemeralPublicKey(
-		keyPair.Public)
-	tlfEphemeralPrivateKey = kbfscrypto.MakeTLFEphemeralPrivateKey(
-		*keyPair.Private)
+	pubKey := kbfscrypto.MakeTLFPublicKey(*publicKey)
+	privKey := kbfscrypto.MakeTLFPrivateKey(*privateKey)
 
 	var data [32]byte
 	err = kbfscrypto.RandRead(data[:])
 	if err != nil {
-		return
+		return kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
+			kbfscrypto.TLFCryptKey{}, err
 	}
 
-	tlfCryptKey = kbfscrypto.MakeTLFCryptKey(data)
-	return
+	cryptKey := kbfscrypto.MakeTLFCryptKey(data)
+
+	return pubKey, privKey, cryptKey, nil
 }
 
 // MakeRandomTLFCryptKeyServerHalf implements the Crypto interface for
