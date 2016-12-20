@@ -142,8 +142,9 @@ func MakeTLFPublicKey(data [32]byte) TLFPublicKey {
 }
 
 // TLFEphemeralPrivateKey (m_e) is used (with a CryptPublicKey) to
-// encrypt TLFCryptKeyClientHalf objects (t_u^{f,0,i}) for non-public
-// directories. (See § 4.1.1.)
+// encrypt TLFCryptKeyClientHalf objects (t_u^{f,k,i} for a user u, a
+// folder f, a keygen k, and a device i) for non-public
+// directories. (See §§ 4.1.1, 6.1.1, 6.3.)
 //
 // Copies of TLFEphemeralPrivateKey objects are deep copies.
 type TLFEphemeralPrivateKey struct {
@@ -213,8 +214,9 @@ func MakeCryptPublicKey(kid keybase1.KID) CryptPublicKey {
 }
 
 // TLFEphemeralPublicKey (M_e) is used along with a crypt private key
-// to decrypt TLFCryptKeyClientHalf objects (t_u^{f,0,i}) for
-// non-public directories. (See § 4.1.1.)
+// to decrypt TLFCryptKeyClientHalf objects (t_u^{f,k,i} for a user u,
+// a folder f, a keygen k, and a device i) for non-public
+// directories. (See §§ 4.1.1, 6.1.1, 6.3.)
 //
 // Copies of TLFEphemeralPublicKey objects are deep copies.
 type TLFEphemeralPublicKey struct {
