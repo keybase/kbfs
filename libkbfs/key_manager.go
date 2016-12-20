@@ -685,29 +685,29 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	}
 
 	defer func() {
-		// On our way back out, update the md with the resolved handle
-		// if at least part of a rekey was performed.
+		// On our way back out, update the md with the
+		// resolved handle if at least part of a rekey was
+		// performed.  Also, if we return true for mdChanged
+		// with a nil error or RekeyIncompleteError{}, we must
+		// call md.finalizeRekey() first.
+
 		_, isRekeyIncomplete := err.(RekeyIncompleteError)
 		if err == nil || isRekeyIncomplete {
 			updateErr := md.updateFromTlfHandle(resolvedHandle)
 			if updateErr != nil {
-				err = updateErr
-			}
-		}
-	}()
-
-	// From this point on, if we return true for mdChanged with a
-	// nil error or RekeyIncompleteError{}, we must call
-	// md.finalizeRekey() first.
-
-	defer func() {
-		_, isErrRekeyIncomplete := err.(RekeyIncompleteError)
-		if mdChanged && (err == nil || isErrRekeyIncomplete) {
-			finalizeErr := md.finalizeRekey(km.config.Crypto())
-			if finalizeErr != nil {
 				mdChanged = false
 				cryptKey = nil
-				err = finalizeErr
+				err = updateErr
+			}
+
+			if mdChanged {
+				finalizeErr := md.finalizeRekey(
+					km.config.Crypto())
+				if finalizeErr != nil {
+					mdChanged = false
+					cryptKey = nil
+					err = finalizeErr
+				}
 			}
 		}
 	}()
