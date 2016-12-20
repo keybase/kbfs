@@ -308,12 +308,10 @@ func testKeyManagerCachedSecretKeyForBlockDecryptionSuccess(t *testing.T, ver Me
 
 // makeDirWKeyInfoMap creates a new user device key info map with a writer key.
 func makeDirWKeyInfoMap(uid keybase1.UID,
-	cryptPublicKey kbfscrypto.CryptPublicKey) UserDeviceKeyInfoMap {
-	return UserDeviceKeyInfoMap{
+	cryptPublicKey kbfscrypto.CryptPublicKey) UserDevicePublicKeys {
+	return UserDevicePublicKeys{
 		uid: {
-			cryptPublicKey: TLFCryptKeyInfo{
-				EPubKeyIndex: 0,
-			},
+			cryptPublicKey: true,
 		},
 	}
 }
@@ -330,9 +328,15 @@ func testKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T, ver Metad
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
-		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
-		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
+
+	crypto := MakeCryptoCommon(config.Codec())
+	_, err = rmd.AddKeyGeneration(config.Codec(), crypto,
+		makeDirWKeyInfoMap(uid, subkey), UserDevicePublicKeys{},
+		kbfscrypto.TLFEphemeralPublicKey{},
+		kbfscrypto.TLFEphemeralPrivateKey{},
+		kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
+		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey)
+	require.NoError(t, err)
 
 	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
 	expectUncachedGetTLFCryptKey(t, config, rmd.TlfID(),
@@ -357,9 +361,15 @@ func testKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T, ver Met
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
-		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
-		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
+
+	crypto := MakeCryptoCommon(config.Codec())
+	_, err = rmd.AddKeyGeneration(config.Codec(), crypto,
+		makeDirWKeyInfoMap(uid, subkey), UserDevicePublicKeys{},
+		kbfscrypto.TLFEphemeralPublicKey{},
+		kbfscrypto.TLFEphemeralPrivateKey{},
+		kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
+		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey)
+	require.NoError(t, err)
 
 	expectUncachedGetTLFCryptKeyAnyDevice(
 		config, rmd.TlfID(), rmd.LatestKeyGeneration(), uid, subkey,
@@ -384,13 +394,27 @@ func testKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T, ver 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	storedTLFCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	storedTLFCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
-	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
-		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey1,
-		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
 
-	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
-		storedTLFCryptKey1, storedTLFCryptKey2,
-		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
+	crypto := MakeCryptoCommon(config.Codec())
+	_, err = rmd.AddKeyGeneration(config.Codec(), crypto,
+		makeDirWKeyInfoMap(uid, subkey), UserDevicePublicKeys{},
+		kbfscrypto.TLFEphemeralPublicKey{},
+		kbfscrypto.TLFEphemeralPrivateKey{},
+		kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
+		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey1)
+	require.NoError(t, err)
+
+	var currCryptKey kbfscrypto.TLFCryptKey
+	if rmd.StoresHistoricTLFCryptKeys() {
+		currCryptKey = storedTLFCryptKey1
+	}
+	_, err = rmd.AddKeyGeneration(config.Codec(), crypto,
+		makeDirWKeyInfoMap(uid, subkey), UserDevicePublicKeys{},
+		kbfscrypto.TLFEphemeralPublicKey{},
+		kbfscrypto.TLFEphemeralPrivateKey{},
+		kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
+		currCryptKey, storedTLFCryptKey2)
+	require.NoError(t, err)
 
 	keyGen := rmd.LatestKeyGeneration() - 1
 	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
