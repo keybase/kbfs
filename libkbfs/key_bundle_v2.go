@@ -67,7 +67,7 @@ type DeviceKeyInfoMapV2 map[keybase1.KID]TLFCryptKeyInfo
 func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfos(crypto cryptoPure,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
-	publicKeys map[kbfscrypto.CryptPublicKey]bool) (
+	publicKeys DevicePublicKeys) (
 	serverHalves DeviceKeyServerHalves, err error) {
 	serverHalves = make(DeviceKeyServerHalves, len(publicKeys))
 	// TODO: parallelize

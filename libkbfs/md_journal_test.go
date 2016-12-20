@@ -101,11 +101,10 @@ func makeMDForTest(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 	h, err := MakeTlfHandle(context.Background(), bh, nug)
 	require.NoError(t, err)
 	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
 	md, err := makeInitialRootMetadata(ver, tlfID, h)
 	require.NoError(t, err)
 	md.SetRevision(revision)
-	md.fakeInitialRekey(codec, crypto)
+	md.fakeInitialRekey(codec)
 	md.SetPrevRoot(prevRoot)
 	md.SetDiskUsage(500)
 	return md

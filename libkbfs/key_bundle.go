@@ -46,9 +46,12 @@ type DeviceKeyInfoMap map[kbfscrypto.CryptPublicKey]TLFCryptKeyInfo
 // DeviceKeyInfoMap.
 type UserDeviceKeyInfoMap map[keybase1.UID]DeviceKeyInfoMap
 
-// UserDevicePublicKeys is a map from users to that user's set of devices,
-// represented by each device's crypt public key.
-type UserDevicePublicKeys map[keybase1.UID]map[kbfscrypto.CryptPublicKey]bool
+// DevicePublicKeys is a set of a user's devices (identified by the
+// corresponding device CryptPublicKey).
+type DevicePublicKeys map[kbfscrypto.CryptPublicKey]bool
+
+// UserDevicePublicKeys is a map from users to that user's set of devices.
+type UserDevicePublicKeys map[keybase1.UID]DevicePublicKeys
 
 // DeviceKeyServerHalves is a map from a user devices (identified by the
 // corresponding device CryptPublicKey) to corresponding key server

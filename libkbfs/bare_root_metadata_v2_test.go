@@ -532,9 +532,7 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 	require.Equal(t, expectedRKeys, brmd.RKeys)
 }
 
-// userDeviceSet is a map from users to that user's set of devices,
-// represented by each device's crypt public key.
-type userDeviceSet map[keybase1.UID]map[kbfscrypto.CryptPublicKey]bool
+type userDeviceSet UserDevicePublicKeys
 
 // union returns the union of the user's keys in uds and other. For a
 // particular user, it's assumed that that user's keys in uds and
@@ -542,14 +540,14 @@ type userDeviceSet map[keybase1.UID]map[kbfscrypto.CryptPublicKey]bool
 func (uds userDeviceSet) union(other userDeviceSet) userDeviceSet {
 	u := make(userDeviceSet)
 	for uid, keys := range uds {
-		u[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		u[uid] = make(DevicePublicKeys)
 		for key := range keys {
 			u[uid][key] = true
 		}
 	}
 	for uid, keys := range other {
 		if u[uid] == nil {
-			u[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+			u[uid] = make(DevicePublicKeys)
 		}
 		for key := range keys {
 			if u[uid][key] {
@@ -573,7 +571,7 @@ func (udpk userDevicePrivateKeys) toPublicKeys() UserDevicePublicKeys {
 		for privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
 			if pubKeys[uid] == nil {
-				pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+				pubKeys[uid] = make(DevicePublicKeys)
 			}
 			pubKeys[uid][pubKey] = true
 		}
@@ -666,14 +664,14 @@ func accumulatePublicKeys(
 	pubKeys1, pubKeys2 UserDevicePublicKeys) UserDevicePublicKeys {
 	pubKeys := make(UserDevicePublicKeys)
 	for uid, keys := range pubKeys1 {
-		pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		pubKeys[uid] = make(DevicePublicKeys)
 		for key := range keys {
 			pubKeys[uid][key] = true
 		}
 	}
 	for uid, keys := range pubKeys2 {
 		if pubKeys[uid] == nil {
-			pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+			pubKeys[uid] = make(DevicePublicKeys)
 		}
 		for key := range keys {
 			if pubKeys[uid][key] {
@@ -708,7 +706,7 @@ func userDeviceKeyInfoMapV2ToPublicKeys(
 	udkimV2 UserDeviceKeyInfoMapV2) UserDevicePublicKeys {
 	pubKeys := make(UserDevicePublicKeys)
 	for uid, dkimV2 := range udkimV2 {
-		pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		pubKeys[uid] = make(DevicePublicKeys)
 		for kid := range dkimV2 {
 			pubKeys[uid][kbfscrypto.MakeCryptPublicKey(kid)] = true
 		}
@@ -719,7 +717,7 @@ func userDeviceKeyInfoMapV2ToPublicKeys(
 func userDeviceServerHalvesToPublicKeys(serverHalves UserDeviceKeyServerHalves) UserDevicePublicKeys {
 	pubKeys := make(UserDevicePublicKeys)
 	for uid, keys := range serverHalves {
-		pubKeys[uid] = make(map[kbfscrypto.CryptPublicKey]bool)
+		pubKeys[uid] = make(DevicePublicKeys)
 		for key := range keys {
 			pubKeys[uid][key] = true
 		}

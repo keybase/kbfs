@@ -425,7 +425,7 @@ func (km *KeyManagerStandard) generateKeyMapForUsers(
 		if err != nil {
 			return nil, err
 		}
-		keyMap[w] = make(map[kbfscrypto.CryptPublicKey]bool)
+		keyMap[w] = make(DevicePublicKeys)
 		for _, key := range publicKeys {
 			keyMap[w][key] = true
 		}
