@@ -825,20 +825,14 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	pubKey, _, tlfCryptKey, err := crypto.MakeRandomTLFKeys()
 	require.NoError(t, err)
 
-	// Add and update first key generation.
+	// Add first key generation.
 
-	extra, err := rmd.AddKeyGeneration(codec, crypto, nil,
-		kbfscrypto.TLFCryptKey{}, kbfscrypto.TLFCryptKey{}, pubKey)
+	extra, serverHalves1, err := rmd.AddKeyGeneration(codec, crypto, nil,
+		wKeys, rKeys, ePubKey1, ePrivKey1, pubKey,
+		kbfscrypto.TLFCryptKey{}, tlfCryptKey)
 	require.NoError(t, err)
 
 	wkb, rkb, err := rmd.getTLFKeyBundles(FirstValidKeyGen)
-	require.NoError(t, err)
-
-	var expectedRekeyInfos []expectedRekeyInfoV2
-	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKey, pubKey, wkb, rkb)
-
-	serverHalves1, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
-		extra, wKeys, rKeys, ePubKey1, ePrivKey1, tlfCryptKey)
 	require.NoError(t, err)
 
 	expectedRekeyInfo1 := expectedRekeyInfoV2{
@@ -853,11 +847,11 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		ePubKeyIndex: 0,
 		ePubKey:      ePubKey1,
 	}
-	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo1)
+	expectedRekeyInfos := []expectedRekeyInfoV2{expectedRekeyInfo1}
 
 	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKey, pubKey, wkb, rkb)
 
-	// Do again to check idempotency.
+	// Do update to check idempotency.
 
 	serverHalves1b, err := rmd.UpdateKeyGeneration(crypto, FirstValidKeyGen,
 		extra, wKeys, rKeys, ePubKey1, ePrivKey1, tlfCryptKey)

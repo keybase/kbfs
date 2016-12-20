@@ -770,37 +770,33 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		return false, nil, err
 	}
 
-	// Get the previous TLF crypt key if needed. It's
+	// Get the current TLF crypt key if needed. It's
 	// symmetrically encrypted and appended to a list for MDv3
 	// metadata.
-	var prevTLFCryptKey, currTLFCryptKey kbfscrypto.TLFCryptKey
-	if md.StoresHistoricTLFCryptKeys() {
-		if currKeyGen >= FirstValidKeyGen {
-			flags := getTLFCryptKeyAnyDevice
-			if promptPaper {
-				flags |= getTLFCryptKeyPromptPaper
-			}
-			var err error
-			prevTLFCryptKey, err = km.getTLFCryptKey(
-				ctx, md.ReadOnly(), currKeyGen, flags)
-			if err != nil {
-				return false, nil, err
-			}
+	var currTLFCryptKey kbfscrypto.TLFCryptKey
+	if md.StoresHistoricTLFCryptKeys() && currKeyGen >= FirstValidKeyGen {
+		flags := getTLFCryptKeyAnyDevice
+		if promptPaper {
+			flags |= getTLFCryptKeyPromptPaper
 		}
-		currTLFCryptKey = tlfCryptKey
+		var err error
+		currTLFCryptKey, err = km.getTLFCryptKey(
+			ctx, md.ReadOnly(), currKeyGen, flags)
+		if err != nil {
+			return false, nil, err
+		}
 	}
-	err = md.AddKeyGeneration(km.config.Codec(),
-		km.config.Crypto(), prevTLFCryptKey, currTLFCryptKey, pubKey)
+	serverHalves, err := md.AddKeyGeneration(km.config.Codec(),
+		km.config.Crypto(), wKeys, rKeys, ePubKey, ePrivKey,
+		pubKey, privKey, currTLFCryptKey, tlfCryptKey)
 	if err != nil {
 		return false, nil, err
 	}
-	currKeyGen = md.LatestKeyGeneration()
-	err = km.updateKeyGeneration(ctx, md, currKeyGen, wKeys, rKeys, ePubKey,
-		ePrivKey, tlfCryptKey)
+
+	err = km.config.KeyOps().PutTLFCryptKeyServerHalves(ctx, serverHalves)
 	if err != nil {
 		return false, nil, err
 	}
-	md.data.TLFPrivateKey = privKey
 
 	return true, &tlfCryptKey, nil
 }

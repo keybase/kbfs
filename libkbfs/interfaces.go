@@ -1840,17 +1840,20 @@ type MutableBareRootMetadata interface {
 
 	// AddKeyGeneration adds a new key generation to this revision
 	// of metadata. If StoresHistoricTLFCryptKeys is false, then
-	// currCryptKey and nextCryptKey must be zero. Otherwise,
-	// nextCryptKey must be non-zero, and currCryptKey must be
+	// currCryptKey must be zero. Otherwise, currCryptKey must be
 	// zero if there are no existing key generations, and non-zero
 	// for otherwise.
 	//
 	// AddKeyGeneration must only be called on metadata for
 	// private TLFs.
 	AddKeyGeneration(codec kbfscodec.Codec, crypto cryptoPure,
-		prevExtra ExtraMetadata,
-		currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
-		pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error)
+		currExtra ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
+		ePubKey kbfscrypto.TLFEphemeralPublicKey,
+		ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+		pubKey kbfscrypto.TLFPublicKey,
+		currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
+		nextExtra ExtraMetadata,
+		serverHalves UserDeviceKeyServerHalves, err error)
 
 	// UpdateKeyGeneration ensures that every device in the given
 	// key generation for every writer and reader in the provided

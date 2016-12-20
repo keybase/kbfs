@@ -760,15 +760,22 @@ func (md *RootMetadata) GetBareRootMetadata() BareRootMetadata {
 
 // AddKeyGeneration adds a new key generation to this revision of metadata.
 func (md *RootMetadata) AddKeyGeneration(codec kbfscodec.Codec,
-	crypto cryptoPure, prevCryptKey, currCryptKey kbfscrypto.TLFCryptKey,
-	pubKey kbfscrypto.TLFPublicKey) error {
-	newExtra, err := md.bareMd.AddKeyGeneration(
-		codec, crypto, md.extra, prevCryptKey, currCryptKey, pubKey)
+	crypto cryptoPure, wKeys, rKeys UserDevicePublicKeys,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	pubKey kbfscrypto.TLFPublicKey,
+	privKey kbfscrypto.TLFPrivateKey,
+	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
+	serverHalves UserDeviceKeyServerHalves, err error) {
+	nextExtra, serverHalves, err := md.bareMd.AddKeyGeneration(
+		codec, crypto, md.extra, wKeys, rKeys, ePubKey, ePrivKey,
+		pubKey, currCryptKey, nextCryptKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	md.extra = newExtra
-	return nil
+	md.extra = nextExtra
+	md.data.TLFPrivateKey = privKey
+	return serverHalves, nil
 }
 
 func (md *RootMetadata) promoteReader(uid keybase1.UID) error {

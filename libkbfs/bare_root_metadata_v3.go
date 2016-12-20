@@ -1148,17 +1148,30 @@ func (md *BareRootMetadataV3) addKeyGenerationForTest(codec kbfscodec.Codec,
 // AddKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV3.
 func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
-	crypto cryptoPure, prevExtra ExtraMetadata,
-	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
-	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
+	crypto cryptoPure, currExtra ExtraMetadata,
+	wKeys, rKeys UserDevicePublicKeys,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	pubKey kbfscrypto.TLFPublicKey,
+	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
+	nextExtra ExtraMetadata,
+	serverHalves UserDeviceKeyServerHalves, err error) {
 	wUDKIM := make(UserDeviceKeyInfoMap)
 	rUDKIM := make(UserDeviceKeyInfoMap)
-	extra, err := md.addKeyGenerationHelper(codec, crypto, prevExtra,
+	nextExtra, err = md.addKeyGenerationHelper(codec, crypto, currExtra,
 		currCryptKey, nextCryptKey, pubKey, wUDKIM, rUDKIM, nil, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return extra, nil
+
+	serverHalves, err = md.UpdateKeyGeneration(
+		crypto, md.LatestKeyGeneration(), nextExtra, wKeys, rKeys,
+		ePubKey, ePrivKey, nextCryptKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return nextExtra, serverHalves, nil
 }
 
 // SetUnresolvedReaders implements the MutableBareRootMetadata interface for BareRootMetadataV3.

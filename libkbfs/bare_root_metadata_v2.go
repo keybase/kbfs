@@ -1201,22 +1201,32 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(
 // AddKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV2.
 func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
-	_ cryptoPure, _ ExtraMetadata,
-	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
-	pubKey kbfscrypto.TLFPublicKey) (ExtraMetadata, error) {
+	crypto cryptoPure, _ ExtraMetadata,
+	wKeys, rKeys UserDevicePublicKeys,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	pubKey kbfscrypto.TLFPublicKey,
+	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
+	nextExtra ExtraMetadata,
+	serverHalves UserDeviceKeyServerHalves, err error) {
 	if currCryptKey != (kbfscrypto.TLFCryptKey{}) {
-		return nil, errors.New("currCryptKey unexpectedly non-zero")
-	}
-	if nextCryptKey != (kbfscrypto.TLFCryptKey{}) {
-		return nil, errors.New("nextCryptKey unexpectedly non-zero")
+		return nil, nil, errors.New("currCryptKey unexpectedly non-zero")
 	}
 	wUDKIM := make(UserDeviceKeyInfoMap)
 	rUDKIM := make(UserDeviceKeyInfoMap)
-	err := md.addKeyGenerationHelper(codec, pubKey, wUDKIM, rUDKIM, nil, nil)
+	err = md.addKeyGenerationHelper(codec, pubKey, wUDKIM, rUDKIM, nil, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return nil, nil
+
+	serverHalves, err = md.UpdateKeyGeneration(
+		crypto, md.LatestKeyGeneration(), nil, wKeys, rKeys,
+		ePubKey, ePrivKey, nextCryptKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return nil, serverHalves, nil
 }
 
 // UpdateKeyGeneration implements the MutableBareRootMetadata interface
