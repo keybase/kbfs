@@ -1625,6 +1625,12 @@ type RekeyQueue interface {
 type BareRootMetadata interface {
 	// TlfID returns the ID of the TLF this BareRootMetadata is for.
 	TlfID() tlf.ID
+	// KeyGenerationToUpdates returns a range that has to be
+	// updated when rekeying. start is included, but end is not
+	// included. This range can be empty, in which case there's
+	// nothing to update, i.e. the TLF is public, or there aren't
+	// any existing key generations.
+	KeyGenerationsToUpdate() (start KeyGen, end KeyGen)
 	// LatestKeyGeneration returns the most recent key generation in this
 	// BareRootMetadata, or PublicKeyGen if this TLF is public.
 	LatestKeyGeneration() KeyGen

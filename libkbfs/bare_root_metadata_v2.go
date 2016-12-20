@@ -182,7 +182,19 @@ func (md *BareRootMetadataV2) TlfID() tlf.ID {
 	return md.ID
 }
 
-// LatestKeyGeneration implements the BareRootMetadata interface for BareRootMetadataV2.
+// KeyGenerationsToUpdate implements the BareRootMetadata interface
+// for BareRootMetadataV2.
+func (md *BareRootMetadataV2) KeyGenerationsToUpdate() (KeyGen, KeyGen) {
+	latest := md.LatestKeyGeneration()
+	if latest < FirstValidKeyGen {
+		return 0, 0
+	}
+	// We keep track of all known key generations.
+	return FirstValidKeyGen, latest + 1
+}
+
+// LatestKeyGeneration implements the BareRootMetadata interface for
+// BareRootMetadataV2.
 func (md *BareRootMetadataV2) LatestKeyGeneration() KeyGen {
 	if md.ID.IsPublic() {
 		return PublicKeyGen

@@ -4749,6 +4749,17 @@ func (_mr *_MockBareRootMetadataRecorder) TlfID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "TlfID")
 }
 
+func (_m *MockBareRootMetadata) KeyGenerationsToUpdate() (KeyGen, KeyGen) {
+	ret := _m.ctrl.Call(_m, "KeyGenerationsToUpdate")
+	ret0, _ := ret[0].(KeyGen)
+	ret1, _ := ret[1].(KeyGen)
+	return ret0, ret1
+}
+
+func (_mr *_MockBareRootMetadataRecorder) KeyGenerationsToUpdate() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "KeyGenerationsToUpdate")
+}
+
 func (_m *MockBareRootMetadata) LatestKeyGeneration() KeyGen {
 	ret := _m.ctrl.Call(_m, "LatestKeyGeneration")
 	ret0, _ := ret[0].(KeyGen)
@@ -5185,6 +5196,17 @@ func (_m *MockMutableBareRootMetadata) TlfID() tlf.ID {
 
 func (_mr *_MockMutableBareRootMetadataRecorder) TlfID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "TlfID")
+}
+
+func (_m *MockMutableBareRootMetadata) KeyGenerationsToUpdate() (KeyGen, KeyGen) {
+	ret := _m.ctrl.Call(_m, "KeyGenerationsToUpdate")
+	ret0, _ := ret[0].(KeyGen)
+	ret1, _ := ret[1].(KeyGen)
+	return ret0, ret1
+}
+
+func (_mr *_MockMutableBareRootMetadataRecorder) KeyGenerationsToUpdate() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "KeyGenerationsToUpdate")
 }
 
 func (_m *MockMutableBareRootMetadata) LatestKeyGeneration() KeyGen {
