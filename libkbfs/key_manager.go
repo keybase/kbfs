@@ -647,22 +647,22 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			return false, nil, errors.New(
 				"Unexpected empty range for key generations to update")
 		}
+		cryptKeys := make([]kbfscrypto.TLFCryptKey, end-start)
+		flags := getTLFCryptKeyAnyDevice
+		if promptPaper {
+			flags |= getTLFCryptKeyPromptPaper
+		}
 		for keyGen := start; keyGen < end; keyGen++ {
-			flags := getTLFCryptKeyAnyDevice
-			if promptPaper {
-				flags |= getTLFCryptKeyPromptPaper
-			}
-			currTlfCryptKey, err := km.getTLFCryptKey(ctx, md.ReadOnly(), keyGen, flags)
+			currTlfCryptKey, err := km.getTLFCryptKey(
+				ctx, md.ReadOnly(), keyGen, flags)
 			if err != nil {
 				return false, nil, err
 			}
-
+			cryptKeys[keyGen-start] = currTlfCryptKey
+		}
+		for keyGen := start; keyGen < end; keyGen++ {
 			err = km.updateKeyGeneration(ctx, md, keyGen, wKeys,
-				rKeys, ePubKey, ePrivKey, currTlfCryptKey)
-			if _, noDkim := err.(TLFCryptKeyNotPerDeviceEncrypted); noDkim {
-				// No DKIM for this generation. This is possible for MDv3.
-				continue
-			}
+				rKeys, ePubKey, ePrivKey, cryptKeys[keyGen-start])
 			if err != nil {
 				return false, nil, err
 			}
