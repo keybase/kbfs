@@ -522,6 +522,11 @@ func (md *RootMetadata) GetTLFCryptKeyParams(
 	return md.bareMd.GetTLFCryptKeyParams(keyGen, user, key, md.extra)
 }
 
+// KeyGenerationsToUpdate wraps the respective method of the underlying BareRootMetadata for convenience.
+func (md *RootMetadata) KeyGenerationsToUpdate() (KeyGen, KeyGen) {
+	return md.bareMd.KeyGenerationsToUpdate()
+}
+
 // LatestKeyGeneration wraps the respective method of the underlying BareRootMetadata for convenience.
 func (md *RootMetadata) LatestKeyGeneration() KeyGen {
 	return md.bareMd.LatestKeyGeneration()
