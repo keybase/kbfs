@@ -778,13 +778,14 @@ func (md *RootMetadata) revokeRemovedDevices(
 	return md.bareMd.RevokeRemovedDevices(wKeys, rKeys, md.extra)
 }
 
-func (md *RootMetadata) updateKeyGeneration(crypto cryptoPure, keyGen KeyGen,
+func (md *RootMetadata) updateKeyBundles(crypto cryptoPure,
 	wKeys, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
-	return md.bareMd.UpdateKeyGeneration(crypto, keyGen, md.extra,
-		wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
+	tlfCryptKeys []kbfscrypto.TLFCryptKey) (
+	[]UserDeviceKeyServerHalves, error) {
+	return md.bareMd.UpdateKeyBundles(crypto, md.extra,
+		wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKeys)
 }
 
 func (md *RootMetadata) finalizeRekey(crypto cryptoPure) error {

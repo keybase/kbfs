@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"fmt"
 	"runtime"
 
 	goerrors "github.com/go-errors/errors"
@@ -1100,6 +1101,54 @@ func (md *BareRootMetadataV3) addKeyGenerationHelper(codec kbfscodec.Codec,
 	return NewExtraMetadataV3(newWriterKeys, newReaderKeys, true, true), nil
 }
 
+func (md *BareRootMetadataV3) updateKeyBundles(crypto cryptoPure,
+	extra ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
+	if md.TlfID().IsPublic() {
+		return nil, InvalidPublicTLFOperation{
+			md.TlfID(), "updateKeyBundles", md.Version()}
+	}
+
+	wkb, rkb, err := md.getTLFKeyBundles(extra)
+	if err != nil {
+		return nil, err
+	}
+
+	// No need to explicitly handle the reader rekey case.
+
+	var newReaderIndex, newWriterIndex int
+	if len(rKeys) > 0 {
+		newReaderIndex = len(rkb.TLFEphemeralPublicKeys)
+	}
+	if len(wKeys) > 0 {
+		newWriterIndex = len(wkb.TLFEphemeralPublicKeys)
+	}
+
+	wServerHalves, err := wkb.Keys.fillInUserInfos(
+		crypto, newWriterIndex, wKeys, ePrivKey, tlfCryptKey)
+	if err != nil {
+		return nil, err
+	}
+	if len(wServerHalves) > 0 {
+		wkb.TLFEphemeralPublicKeys =
+			append(wkb.TLFEphemeralPublicKeys, ePubKey)
+	}
+
+	rServerHalves, err := rkb.Keys.fillInUserInfos(
+		crypto, newReaderIndex, rKeys, ePrivKey, tlfCryptKey)
+	if err != nil {
+		return nil, err
+	}
+	if len(rServerHalves) > 0 {
+		rkb.TLFEphemeralPublicKeys =
+			append(rkb.TLFEphemeralPublicKeys, ePubKey)
+	}
+
+	return wServerHalves.mergeUsers(rServerHalves)
+}
+
 // AddKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV3.
 func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
@@ -1111,6 +1160,10 @@ func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
 	nextExtra ExtraMetadata,
 	serverHalves UserDeviceKeyServerHalves, err error) {
+	if len(wKeys) == 0 {
+		return nil, nil, errors.New("wkeys unexpectedly non-empty")
+	}
+
 	wUDKIM := make(UserDeviceKeyInfoMap)
 	rUDKIM := make(UserDeviceKeyInfoMap)
 	nextExtra, err = md.addKeyGenerationHelper(codec, crypto, currExtra,
@@ -1119,9 +1172,8 @@ func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 		return nil, nil, err
 	}
 
-	serverHalves, err = md.UpdateKeyGeneration(
-		crypto, md.LatestKeyGeneration(), nextExtra, wKeys, rKeys,
-		ePubKey, ePrivKey, nextCryptKey)
+	serverHalves, err = md.updateKeyBundles(crypto, nextExtra, wKeys,
+		rKeys, ePubKey, ePrivKey, nextCryptKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1226,58 +1278,27 @@ func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(
 	return rUDKIM, wUDKIM, nil
 }
 
-// UpdateKeyGeneration implements the MutableBareRootMetadata interface
+// UpdateKeyBundles implements the MutableBareRootMetadata interface
 // for BareRootMetadataV3.
-func (md *BareRootMetadataV3) UpdateKeyGeneration(crypto cryptoPure,
-	keyGen KeyGen, extra ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
+func (md *BareRootMetadataV3) UpdateKeyBundles(crypto cryptoPure,
+	extra ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
-	if md.TlfID().IsPublic() {
-		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "UpdateKeyGeneration", md.Version()}
+	tlfCryptKeys []kbfscrypto.TLFCryptKey) (
+	[]UserDeviceKeyServerHalves, error) {
+	if len(tlfCryptKeys) != 1 {
+		return nil, fmt.Errorf(
+			"(MDv3) Expected 1 TLF crypt key, got %d",
+			len(tlfCryptKeys))
 	}
 
-	if keyGen != md.LatestKeyGeneration() {
-		return nil, TLFCryptKeyNotPerDeviceEncrypted{md.TlfID(), keyGen}
-	}
-
-	wkb, rkb, err := md.getTLFKeyBundles(extra)
-	if err != nil {
-		return UserDeviceKeyServerHalves{}, err
-	}
-
-	// No need to explicitly handle the reader rekey case.
-
-	var newReaderIndex, newWriterIndex int
-	if len(rKeys) > 0 {
-		newReaderIndex = len(rkb.TLFEphemeralPublicKeys)
-	}
-	if len(wKeys) > 0 {
-		newWriterIndex = len(wkb.TLFEphemeralPublicKeys)
-	}
-
-	wServerHalves, err := wkb.Keys.fillInUserInfos(
-		crypto, newWriterIndex, wKeys, ePrivKey, tlfCryptKey)
+	serverHalves, err := md.updateKeyBundles(crypto, extra, wKeys, rKeys,
+		ePubKey, ePrivKey, tlfCryptKeys[0])
 	if err != nil {
 		return nil, err
 	}
-	if len(wServerHalves) > 0 {
-		wkb.TLFEphemeralPublicKeys =
-			append(wkb.TLFEphemeralPublicKeys, ePubKey)
-	}
 
-	rServerHalves, err := rkb.Keys.fillInUserInfos(
-		crypto, newReaderIndex, rKeys, ePrivKey, tlfCryptKey)
-	if err != nil {
-		return nil, err
-	}
-	if len(rServerHalves) > 0 {
-		rkb.TLFEphemeralPublicKeys =
-			append(rkb.TLFEphemeralPublicKeys, ePubKey)
-	}
-
-	return wServerHalves.mergeUsers(rServerHalves)
+	return []UserDeviceKeyServerHalves{serverHalves}, nil
 }
 
 // GetTLFWriterKeyBundleID implements the BareRootMetadata interface for BareRootMetadataV3.

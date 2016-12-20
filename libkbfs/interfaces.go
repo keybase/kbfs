@@ -1844,8 +1844,8 @@ type MutableBareRootMetadata interface {
 		nextExtra ExtraMetadata,
 		serverHalves UserDeviceKeyServerHalves, err error)
 
-	// UpdateKeyGeneration ensures that every device in the given
-	// key generation for every writer and reader in the provided
+	// UpdateKeyBundles ensures that every device in the given key
+	// generation for every writer and reader in the provided
 	// lists has complete TLF crypt key info, and uses the new
 	// ephemeral key pair to generate the info if it doesn't yet
 	// exist.
@@ -1861,12 +1861,12 @@ type MutableBareRootMetadata interface {
 	// TODO: Also handle reader promotion.
 	//
 	// TODO: Move the key generation handling into this function.
-	UpdateKeyGeneration(crypto cryptoPure, keyGen KeyGen,
-		extra ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
+	UpdateKeyBundles(crypto cryptoPure, extra ExtraMetadata,
+		wKeys, rKeys UserDevicePublicKeys,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,
 		ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-		tlfCryptKey kbfscrypto.TLFCryptKey) (
-		UserDeviceKeyServerHalves, error)
+		tlfCryptKeys []kbfscrypto.TLFCryptKey) (
+		[]UserDeviceKeyServerHalves, error)
 
 	// PromoteReader converts the given user from a reader to a writer.
 	PromoteReader(uid keybase1.UID, extra ExtraMetadata) error

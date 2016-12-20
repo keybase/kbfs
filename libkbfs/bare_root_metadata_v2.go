@@ -1153,77 +1153,48 @@ func (md *BareRootMetadataV2) GetUserDeviceKeyInfoMaps(
 	return rUDKIM, wUDKIM, nil
 }
 
-// AddKeyGeneration implements the MutableBareRootMetadata interface
-// for BareRootMetadataV2.
-func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
-	crypto cryptoPure, _ ExtraMetadata,
-	wKeys, rKeys UserDevicePublicKeys,
-	ePubKey kbfscrypto.TLFEphemeralPublicKey,
-	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	pubKey kbfscrypto.TLFPublicKey,
-	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
-	nextExtra ExtraMetadata,
-	serverHalves UserDeviceKeyServerHalves, err error) {
-	if currCryptKey != (kbfscrypto.TLFCryptKey{}) {
-		return nil, nil, errors.New("currCryptKey unexpectedly non-zero")
-	}
-	wUDKIM := make(UserDeviceKeyInfoMap)
-	rUDKIM := make(UserDeviceKeyInfoMap)
-	err = md.addKeyGenerationHelper(codec, pubKey, wUDKIM, rUDKIM, nil, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	serverHalves, err = md.UpdateKeyGeneration(
-		crypto, md.LatestKeyGeneration(), nil, wKeys, rKeys,
-		ePubKey, ePrivKey, nextCryptKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return nil, serverHalves, nil
-}
-
-// UpdateKeyGeneration implements the MutableBareRootMetadata interface
-// for BareRootMetadataV2.
-func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
-	keyGen KeyGen, _ ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
+func (md *BareRootMetadataV2) updateKeyGenerationForReader(
+	crypto cryptoPure, keyGen KeyGen, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
-	if md.TlfID().IsPublic() {
-		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "UpdateKeyGeneration", md.Version()}
+	_, rkb, err := md.getTLFKeyBundles(keyGen)
+	if err != nil {
+		return nil, err
+	}
+
+	// This is VERY ugly, but we need it in order to avoid
+	// having to version the metadata. The index will be
+	// strictly negative for reader ephemeral public keys.
+	newIndex := -len(rkb.TLFReaderEphemeralPublicKeys) - 1
+
+	rServerHalves, err := rkb.RKeys.fillInUserInfos(
+		crypto, newIndex, rKeys, ePrivKey, tlfCryptKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rServerHalves) > 0 {
+		rkb.TLFReaderEphemeralPublicKeys = append(
+			rkb.TLFReaderEphemeralPublicKeys, ePubKey)
+	}
+
+	return rServerHalves, nil
+}
+
+func (md *BareRootMetadataV2) updateKeyGeneration(
+	crypto cryptoPure, keyGen KeyGen, wKeys, rKeys UserDevicePublicKeys,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
+	if len(wKeys) == 0 {
+		return nil, errors.New("wKeys unexpectedly non-empty")
 	}
 
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return nil, err
 	}
-
-	if len(wKeys) == 0 {
-		// Reader rekey case.
-
-		// This is VERY ugly, but we need it in order to avoid
-		// having to version the metadata. The index will be
-		// strictly negative for reader ephemeral public keys.
-		newIndex := -len(rkb.TLFReaderEphemeralPublicKeys) - 1
-
-		rServerHalves, err := rkb.RKeys.fillInUserInfos(
-			crypto, newIndex, rKeys, ePrivKey, tlfCryptKey)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(rServerHalves) > 0 {
-			rkb.TLFReaderEphemeralPublicKeys = append(
-				rkb.TLFReaderEphemeralPublicKeys, ePubKey)
-		}
-
-		return rServerHalves, nil
-	}
-
-	// Usual rekey case.
 
 	newIndex := len(wkb.TLFEphemeralPublicKeys)
 
@@ -1250,6 +1221,93 @@ func (md *BareRootMetadataV2) UpdateKeyGeneration(crypto cryptoPure,
 	}
 
 	return serverHalves, nil
+}
+
+// AddKeyGeneration implements the MutableBareRootMetadata interface
+// for BareRootMetadataV2.
+func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
+	crypto cryptoPure, _ ExtraMetadata,
+	wKeys, rKeys UserDevicePublicKeys,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	pubKey kbfscrypto.TLFPublicKey,
+	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
+	nextExtra ExtraMetadata,
+	serverHalves UserDeviceKeyServerHalves, err error) {
+	if currCryptKey != (kbfscrypto.TLFCryptKey{}) {
+		return nil, nil, errors.New("currCryptKey unexpectedly non-zero")
+	}
+
+	wUDKIM := make(UserDeviceKeyInfoMap)
+	rUDKIM := make(UserDeviceKeyInfoMap)
+	err = md.addKeyGenerationHelper(codec, pubKey, wUDKIM, rUDKIM, nil, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	serverHalves, err = md.updateKeyGeneration(
+		crypto, md.LatestKeyGeneration(), wKeys, rKeys,
+		ePubKey, ePrivKey, nextCryptKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return nil, serverHalves, nil
+}
+
+// UpdateKeyBundles implements the MutableBareRootMetadata interface
+// for BareRootMetadataV2.
+func (md *BareRootMetadataV2) UpdateKeyBundles(crypto cryptoPure,
+	_ ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
+	ePubKey kbfscrypto.TLFEphemeralPublicKey,
+	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
+	tlfCryptKeys []kbfscrypto.TLFCryptKey) (
+	[]UserDeviceKeyServerHalves, error) {
+	if md.TlfID().IsPublic() {
+		return nil, InvalidPublicTLFOperation{
+			md.TlfID(), "UpdateKeyBundles", md.Version()}
+	}
+
+	expectedTLFCryptKeyCount := int(
+		md.LatestKeyGeneration() - FirstValidKeyGen + 1)
+	if len(tlfCryptKeys) != expectedTLFCryptKeyCount {
+		return nil, fmt.Errorf(
+			"(MDv2) Expected %d TLF crypt keys, got %d",
+			expectedTLFCryptKeyCount, len(tlfCryptKeys))
+	}
+
+	serverHalves := make([]UserDeviceKeyServerHalves, len(tlfCryptKeys))
+	if len(wKeys) == 0 {
+		// Reader rekey case.
+		for keyGen := FirstValidKeyGen; keyGen <= md.LatestKeyGeneration(); keyGen++ {
+			serverHalvesGen, err := md.updateKeyGenerationForReader(
+				crypto, keyGen, rKeys, ePubKey, ePrivKey,
+				tlfCryptKeys[keyGen-FirstValidKeyGen])
+			if err != nil {
+				return nil, err
+			}
+
+			serverHalves[keyGen-FirstValidKeyGen] = serverHalvesGen
+		}
+
+		return serverHalves, nil
+	}
+
+	// Usual rekey case.
+
+	for keyGen := FirstValidKeyGen; keyGen <= md.LatestKeyGeneration(); keyGen++ {
+		serverHalvesGen, err := md.updateKeyGeneration(
+			crypto, keyGen, wKeys, rKeys,
+			ePubKey, ePrivKey,
+			tlfCryptKeys[keyGen-FirstValidKeyGen])
+		if err != nil {
+			return nil, err
+		}
+
+		serverHalves[keyGen-FirstValidKeyGen] = serverHalvesGen
+	}
+	return serverHalves, nil
+
 }
 
 // GetTLFWriterKeyBundleID implements the BareRootMetadata interface for BareRootMetadataV2.

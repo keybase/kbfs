@@ -315,14 +315,14 @@ func (km *KeyManagerStandard) unmaskTLFCryptKey(ctx context.Context, serverHalfI
 	return tlfCryptKey, nil
 }
 
-func (km *KeyManagerStandard) updateKeyGeneration(ctx context.Context,
-	md *RootMetadata, keyGen KeyGen, wKeys, rKeys UserDevicePublicKeys,
+func (km *KeyManagerStandard) updateKeyBundles(ctx context.Context,
+	md *RootMetadata, wKeys, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
-	tlfCryptKey kbfscrypto.TLFCryptKey) error {
+	tlfCryptKeys []kbfscrypto.TLFCryptKey) error {
 
-	serverHalves, err := md.updateKeyGeneration(km.config.Crypto(),
-		keyGen, wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKey)
+	serverHalves, err := md.updateKeyBundles(km.config.Crypto(),
+		wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKeys)
 	if err != nil {
 		return err
 	}
@@ -332,9 +332,11 @@ func (km *KeyManagerStandard) updateKeyGeneration(ctx context.Context,
 	// TODO: Should accumulate the server halves across multiple
 	// key generations and push them all at once right before the
 	// MD push, although this only really matters for MDv2.
-	if err = km.config.KeyOps().
-		PutTLFCryptKeyServerHalves(ctx, serverHalves); err != nil {
-		return err
+	for _, serverHalvesGen := range serverHalves {
+		if err = km.config.KeyOps().
+			PutTLFCryptKeyServerHalves(ctx, serverHalvesGen); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -660,12 +662,10 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			}
 			cryptKeys[keyGen-start] = currTlfCryptKey
 		}
-		for keyGen := start; keyGen < end; keyGen++ {
-			err = km.updateKeyGeneration(ctx, md, keyGen, wKeys,
-				rKeys, ePubKey, ePrivKey, cryptKeys[keyGen-start])
-			if err != nil {
-				return false, nil, err
-			}
+		err = km.updateKeyBundles(ctx, md, wKeys,
+			rKeys, ePubKey, ePrivKey, cryptKeys)
+		if err != nil {
+			return false, nil, err
 		}
 	}
 
