@@ -142,8 +142,7 @@ func MakeTLFPublicKey(data [32]byte) TLFPublicKey {
 }
 
 // TLFEphemeralPrivateKey (m_e) is used (with a CryptPublicKey) to
-// encrypt TLFCryptKeyClientHalf objects (t_u^{f,k,i} for a user u, a
-// folder f, a keygen k, and a device i) for non-public
+// encrypt TLFCryptKeyClientHalf objects for non-public
 // directories. (See §§ 4.1.1, 6.1.1, 6.3.) It is never stored
 // permanently.
 //
@@ -189,9 +188,8 @@ func (k CryptPrivateKey) GetPublicKey() CryptPublicKey {
 }
 
 // CryptPublicKey (M_u^i) is used (with a TLFEphemeralPrivateKey) to
-// encrypt TLFCryptKeyClientHalf objects (t_u^{f,0,i}) for non-public
-// directories. (See § 4.1.1.)  These are also sometimes known as
-// subkeys.
+// encrypt TLFCryptKeyClientHalf objects (See § 4.1.1, 6.1.1, 6.3.)
+// These are also sometimes known as subkeys.
 //
 // Copies of CryptPublicKey objects are deep copies.
 type CryptPublicKey struct {
@@ -215,8 +213,7 @@ func MakeCryptPublicKey(kid keybase1.KID) CryptPublicKey {
 }
 
 // TLFEphemeralPublicKey (M_e) is used along with a crypt private key
-// to decrypt TLFCryptKeyClientHalf objects (t_u^{f,k,i} for a user u,
-// a folder f, a keygen k, and a device i) for non-public
+// to decrypt TLFCryptKeyClientHalf objects for non-public
 // directories. (See §§ 4.1.1, 6.1.1, 6.3.)
 //
 // Copies of TLFEphemeralPublicKey objects are deep copies.
@@ -257,9 +254,10 @@ func MakeTLFCryptKeyServerHalf(data [32]byte) TLFCryptKeyServerHalf {
 	return TLFCryptKeyServerHalf{byte32Container{data}}
 }
 
-// TLFCryptKeyClientHalf (t_u^{f,0,i}) is the masked, client-side half
-// of a TLFCryptKey, which can be recovered only with both
-// halves. (See § 4.1.1.)
+// TLFCryptKeyClientHalf (t_u^{f,k,i} for a user u, a folder f, a key
+// generation k, and a device i) is the masked, client-side half of a
+// TLFCryptKey, which can be recovered only with both halves. (See
+// §§ 4.1.1, 6.1.1, 6.3.)
 //
 // Copies of TLFCryptKeyClientHalf objects are deep copies.
 type TLFCryptKeyClientHalf struct {
