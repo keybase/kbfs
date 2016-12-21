@@ -606,7 +606,12 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	}
 
 	if !isWriter {
-		if _, userHasNewKeys := newReaderUsers[uid]; userHasNewKeys && !promotedReaders[uid] {
+		if promotedReaders[uid] {
+			return false, nil, fmt.Errorf(
+				"%s isn't a writer, but is marked for reader promotion", uid)
+		}
+
+		if _, userHasNewKeys := newReaderUsers[uid]; userHasNewKeys {
 			// Only rekey the logged-in reader, and only if that reader isn't being promoted
 			rKeys = UserDevicePublicKeys{
 				uid: rKeys[uid],
