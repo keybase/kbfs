@@ -578,37 +578,40 @@ func (md *BareRootMetadataV3) TlfHandleExtensions() (
 	return extensions
 }
 
-// PromoteReader implements the BareRootMetadata interface for
+// PromoteReaders implements the BareRootMetadata interface for
 // BareRootMetadataV3.
-func (md *BareRootMetadataV3) PromoteReader(
-	uid keybase1.UID, extra ExtraMetadata) error {
+func (md *BareRootMetadataV3) PromoteReaders(
+	readersToPromote map[keybase1.UID]bool, extra ExtraMetadata) error {
 	if md.TlfID().IsPublic() {
-		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReader", md.Version()}
+		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReaders", md.Version()}
+	}
+
+	if len(readersToPromote) == 0 {
+		return nil
 	}
 
 	wkb, rkb, err := md.getTLFKeyBundles(extra)
 	if err != nil {
 		return err
 	}
-	dkim, ok := rkb.Keys[uid]
-	if !ok {
-		return errors.Errorf("Could not find %s in rkb", uid)
+
+	for reader := range readersToPromote {
+		dkim, ok := rkb.Keys[reader]
+		if !ok {
+			return errors.Errorf("Could not find %s in rkb", reader)
+		}
+		// TODO: This is incorrect, since dkim contains offsets info
+		// rkb.TLFEphemeralPublicKeys, which don't directly translate
+		// to offsets into wkb.TLFEphemeralPublicKeys.
+		//
+		// Also, doing this may leave some entries in
+		// rkb.TLFEphemeralPublicKeys unreferenced, so they should be
+		// removed.
+		//
+		// See KBFS-1719.
+		wkb.Keys[reader] = dkim
+		delete(rkb.Keys, reader)
 	}
-	// TODO: This is incorrect, since dkim contains offsets info
-	// rkb.TLFEphemeralPublicKeys, which don't directly translate
-	// to offsets into wkb.TLFEphemeralPublicKeys.
-	//
-	// Also, doing this may leave some entries in
-	// rkb.TLFEphemeralPublicKeys unreferenced, so they should be
-	// removed.
-	//
-	// See KBFS-1719.
-	//
-	// Currently, this bug is hidden by another bug where reader
-	// promotion incorrectly triggers a new key generation: see
-	// KBFS-1744.
-	wkb.Keys[uid] = dkim
-	delete(rkb.Keys, uid)
 	return nil
 }
 

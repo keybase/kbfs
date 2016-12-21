@@ -584,22 +584,31 @@ func (md *BareRootMetadataV2) TlfHandleExtensions() (
 	return extensions
 }
 
-// PromoteReader implements the BareRootMetadata interface for
+// PromoteReaders implements the BareRootMetadata interface for
 // BareRootMetadataV2.
-func (md *BareRootMetadataV2) PromoteReader(
-	uid keybase1.UID, _ ExtraMetadata) error {
+func (md *BareRootMetadataV2) PromoteReaders(
+	readersToPromote map[keybase1.UID]bool,
+	_ ExtraMetadata) error {
 	if md.TlfID().IsPublic() {
-		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReader", md.Version()}
+		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReaders", md.Version()}
 	}
 
 	for i, rkb := range md.RKeys {
-		dkim, ok := rkb.RKeys[uid]
-		if !ok {
-			return fmt.Errorf("Could not find %s in key gen %d",
-				uid, FirstValidKeyGen+KeyGen(i))
+		for reader := range readersToPromote {
+			dkim, ok := rkb.RKeys[reader]
+			if !ok {
+				return fmt.Errorf("Could not find %s in key gen %d",
+					reader, FirstValidKeyGen+KeyGen(i))
+			}
+			// TODO: This is incorrect, since dkim may
+			// contain negative offsets, and a lot of code
+			// assumes that writers will only contain
+			// non-negative offsets.
+			//
+			// See KBFS-1719.
+			md.WKeys[i].WKeys[reader] = dkim
+			delete(rkb.RKeys, reader)
 		}
-		md.WKeys[i].WKeys[uid] = dkim
-		delete(rkb.RKeys, uid)
 	}
 
 	return nil

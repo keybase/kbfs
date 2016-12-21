@@ -5854,14 +5854,14 @@ func (_mr *_MockMutableBareRootMetadataRecorder) UpdateKeyBundles(arg0, arg1, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateKeyBundles", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 }
 
-func (_m *MockMutableBareRootMetadata) PromoteReader(uid keybase1.UID, extra ExtraMetadata) error {
-	ret := _m.ctrl.Call(_m, "PromoteReader", uid, extra)
+func (_m *MockMutableBareRootMetadata) PromoteReaders(readersToPromote map[keybase1.UID]bool, extra ExtraMetadata) error {
+	ret := _m.ctrl.Call(_m, "PromoteReaders", readersToPromote, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) PromoteReader(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "PromoteReader", arg0, arg1)
+func (_mr *_MockMutableBareRootMetadataRecorder) PromoteReaders(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "PromoteReaders", arg0, arg1)
 }
 
 func (_m *MockMutableBareRootMetadata) RevokeRemovedDevices(wKeys UserDevicePublicKeys, rKeys UserDevicePublicKeys, extra ExtraMetadata) (ServerHalfRemovalInfo, error) {

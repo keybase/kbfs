@@ -1868,8 +1868,10 @@ type MutableBareRootMetadata interface {
 		tlfCryptKeys []kbfscrypto.TLFCryptKey) (
 		[]UserDeviceKeyServerHalves, error)
 
-	// PromoteReader converts the given user from a reader to a writer.
-	PromoteReader(uid keybase1.UID, extra ExtraMetadata) error
+	// PromoteReaders converts the given set of users (which may
+	// be empty) from readers to writers.
+	PromoteReaders(readersToPromote map[keybase1.UID]bool,
+		extra ExtraMetadata) error
 
 	// RevokeRemovedDevices removes key info for any device not in
 	// the given maps, and returns a corresponding map of server

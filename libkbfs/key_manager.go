@@ -544,7 +544,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	addNewWriterDevice := false
 	var newReaderUsers map[keybase1.UID]bool
 	var newWriterUsers map[keybase1.UID]bool
-	var promotedReaders map[keybase1.UID]bool
+	var readersToPromote map[keybase1.UID]bool
 
 	// Figure out if we need to add or remove any keys.
 	// If we're already incrementing the key generation then we don't need to
@@ -567,7 +567,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		wRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), wDkim, wKeys)
 		rRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), rDkim, rKeys)
 
-		promotedReaders = make(map[keybase1.UID]bool, len(rRemoved))
+		readersToPromote = make(map[keybase1.UID]bool, len(rRemoved))
 
 		// Before we add the removed devices, check if we are adding a
 		// new reader device for ourselves.
@@ -583,14 +583,14 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			// the following line adds all the removed writers to the writer
 			// set
 			if newWriterUsers[u] {
-				promotedReaders[u] = true
+				readersToPromote[u] = true
 			}
 		}
 		for u := range wRemoved {
 			newWriterUsers[u] = true
 		}
 
-		incKeyGen = len(wRemoved) > 0 || (len(rRemoved) > len(promotedReaders))
+		incKeyGen = len(wRemoved) > 0 || (len(rRemoved) > len(readersToPromote))
 
 		if err := km.identifyUIDSets(ctx, md.TlfID(), newWriterUsers, newReaderUsers); err != nil {
 			return false, nil, err
@@ -609,7 +609,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		// This shouldn't happen; see the code above where we
 		// either use the original handle or resolve only the
 		// current UID.
-		if len(promotedReaders) != 0 {
+		if len(readersToPromote) != 0 {
 			return false, nil, errors.New(
 				"promoted readers unexpectedly non-empty")
 		}
@@ -630,13 +630,9 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 	// If promotedReader is non-empty, then isWriter is true (see
 	// check above).
-	for uid := range promotedReaders {
-		// If there are readers that need to be promoted to
-		// writers, do that here.
-		err := md.promoteReader(uid)
-		if err != nil {
-			return false, nil, err
-		}
+	err = md.promoteReaders(readersToPromote)
+	if err != nil {
+		return false, nil, err
 	}
 
 	// Generate ephemeral keys to be used by addNewDevice,

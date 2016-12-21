@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"encoding"
+	"fmt"
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
@@ -110,6 +111,17 @@ func udkimToV3(codec kbfscodec.Codec, udkim UserDeviceKeyInfoMap) (
 
 func udkimV2ToV3(codec kbfscodec.Codec, udkimV2 UserDeviceKeyInfoMapV2) (
 	UserDeviceKeyInfoMapV3, error) {
+	// Check for an instance of KBFS-1719, specifically where a
+	// reader with a negative offset gets promoted to a writer.
+	for uid, dkimV2 := range udkimV2 {
+		for key, info := range dkimV2 {
+			if info.EPubKeyIndex < 0 {
+				return nil, fmt.Errorf(
+					"Unexpected negative index for user %s and device %s", uid, key)
+			}
+		}
+	}
+
 	udkim, err := udkimV2.toUDKIM(codec)
 	if err != nil {
 		return nil, err

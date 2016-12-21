@@ -775,8 +775,9 @@ func (md *RootMetadata) AddKeyGeneration(codec kbfscodec.Codec,
 	return serverHalves, nil
 }
 
-func (md *RootMetadata) promoteReader(uid keybase1.UID) error {
-	return md.bareMd.PromoteReader(uid, md.extra)
+func (md *RootMetadata) promoteReaders(
+	readersToPromote map[keybase1.UID]bool) error {
+	return md.bareMd.PromoteReaders(readersToPromote, md.extra)
 }
 
 func (md *RootMetadata) revokeRemovedDevices(
