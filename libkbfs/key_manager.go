@@ -612,7 +612,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 
 		if _, userHasNewKeys := newReaderUsers[uid]; userHasNewKeys {
-			// Only rekey the logged-in reader, and only if that reader isn't being promoted
+			// Only rekey the logged-in reader.
 			rKeys = UserDevicePublicKeys{
 				uid: rKeys[uid],
 			}
