@@ -496,9 +496,9 @@ type KeyMetadata interface {
 
 	// HasKeyForUser returns whether or not the given user has
 	// keys for at least one device at the given key
-	// generation. Returns false if the TLF is public, or if the
-	// given key generation is invalid.
-	HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool
+	// generation. Returns an error if the TLF is public, or if
+	// the given key generation is invalid.
+	HasKeyForUser(keyGen KeyGen, user keybase1.UID) (bool, error)
 
 	// GetTLFCryptKeyParams returns all the necessary info to
 	// construct the TLF crypt key for the given key generation,
@@ -1684,13 +1684,14 @@ type BareRootMetadata interface {
 	// is invalid.
 	GetDeviceKIDs(keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) (
 		[]keybase1.KID, error)
-	// HasKeyForUser returns whether or not the given user has keys for at
-	// least one device at the given key generation. Returns false if the
-	// TLF is public, or if the given key generation is invalid. Equivalent to:
-	//
-	//   kids, err := GetDeviceKIDs(keyGen, user)
-	//   return (err == nil) && (len(kids) > 0)
-	HasKeyForUser(keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) bool
+	// HasKeyForUser returns whether or not the given user has
+	// keys for at least one device at the given key
+	// generation. Returns an error if the TLF is public, or if
+	// the given key generation is invalid. May also return an
+	// error if the given key generation isn't the current one
+	// (i.e., for MDv3).
+	HasKeyForUser(keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) (
+		bool, error)
 	// GetTLFCryptKeyParams returns all the necessary info to construct
 	// the TLF crypt key for the given key generation, user, and device
 	// (identified by its crypt public key), or false if not found. This

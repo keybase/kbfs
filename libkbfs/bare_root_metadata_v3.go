@@ -660,14 +660,15 @@ func (md *BareRootMetadataV3) GetDeviceKIDs(
 	return kids, nil
 }
 
-// HasKeyForUser implements the BareRootMetadata interface for BareRootMetadataV3.
+// HasKeyForUser implements the BareRootMetadata interface for
+// BareRootMetadataV3.
 func (md *BareRootMetadataV3) HasKeyForUser(
-	keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) bool {
+	keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) (bool, error) {
 	wkb, rkb, err := md.getTLFKeyBundles(extra)
 	if err != nil {
-		panic(err)
+		return false, err
 	}
-	return (len(wkb.Keys[user]) > 0) || (len(rkb.Keys[user]) > 0)
+	return (len(wkb.Keys[user]) > 0) || (len(rkb.Keys[user]) > 0), nil
 }
 
 // GetTLFCryptKeyParams implements the BareRootMetadata interface for BareRootMetadataV3.

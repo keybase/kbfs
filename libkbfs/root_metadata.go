@@ -728,7 +728,8 @@ func (md *RootMetadata) SetTlfID(tlf tlf.ID) {
 }
 
 // HasKeyForUser wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool {
+func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) (
+	bool, error) {
 	return md.bareMd.HasKeyForUser(keyGen, user, md.extra)
 }
 

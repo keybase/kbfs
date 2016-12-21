@@ -37,8 +37,9 @@ func makeRekeyReadErrorHelper(
 
 	// Otherwise, this folder needs to be rekeyed for this device.
 	tlfName := resolvedHandle.GetCanonicalName()
-	if hasKeys := kmd.HasKeyForUser(keyGen, uid); hasKeys {
-		return NeedSelfRekeyError{tlfName, err}
+	hasKeys, err := kmd.HasKeyForUser(keyGen, uid)
+	if (err == nil) && hasKeys {
+		return NeedSelfRekeyError{tlfName}
 	}
 	return NeedOtherRekeyError{tlfName, err}
 }

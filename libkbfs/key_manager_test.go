@@ -194,8 +194,8 @@ func (kmd emptyKeyMetadata) LatestKeyGeneration() KeyGen {
 }
 
 func (kmd emptyKeyMetadata) HasKeyForUser(
-	keyGen KeyGen, user keybase1.UID) bool {
-	return false
+	keyGen KeyGen, user keybase1.UID) (bool, error) {
+	return false, nil
 }
 
 func (kmd emptyKeyMetadata) GetTLFCryptKeyParams(
