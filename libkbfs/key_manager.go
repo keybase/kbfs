@@ -606,9 +606,12 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	}
 
 	if !isWriter {
-		if promotedReaders[uid] {
-			return false, nil, fmt.Errorf(
-				"%s isn't a writer, but is marked for reader promotion", uid)
+		// This shouldn't happen; see the code above where we
+		// either use the original handle or resolve only the
+		// current UID.
+		if len(promotedReaders) != 0 {
+			return false, nil, errors.New(
+				"promoted readers unexpectedly non-empty")
 		}
 
 		if _, userHasNewKeys := newReaderUsers[uid]; userHasNewKeys {
@@ -625,8 +628,8 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 	}
 
-	// TODO: Should be done only if isWriter is true.
-
+	// If promotedReader is non-empty, then isWriter is true (see
+	// check above).
 	for uid := range promotedReaders {
 		// If there are readers that need to be promoted to
 		// writers, do that here.
