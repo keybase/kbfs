@@ -622,6 +622,8 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 	// TODO: Should be done only if isWriter is true.
 
+	km.log.CDebugf(ctx, "promoting %+v\n", promotedReaders)
+
 	for uid := range promotedReaders {
 		// If there are readers that need to be promoted to
 		// writers, do that here.
