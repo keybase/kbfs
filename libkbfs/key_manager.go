@@ -566,9 +566,6 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 		wRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), wDkim, wKeys)
 		rRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), rDkim, rKeys)
-		// TODO: This is incorrectly true if we're only
-		// promoting readers. This is KBFS-1744.
-		incKeyGen = len(wRemoved) > 0 || len(rRemoved) > 0
 
 		promotedReaders = make(map[keybase1.UID]bool, len(rRemoved))
 
@@ -592,6 +589,8 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		for u := range wRemoved {
 			newWriterUsers[u] = true
 		}
+
+		incKeyGen = len(wRemoved) > 0 || (len(rRemoved) > len(promotedReaders))
 
 		if err := km.identifyUIDSets(ctx, md.TlfID(), newWriterUsers, newReaderUsers); err != nil {
 			return false, nil, err
