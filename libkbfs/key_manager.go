@@ -437,7 +437,8 @@ func (km *KeyManagerStandard) generateKeyMapForUsers(
 }
 
 // Rekey implements the KeyManager interface for KeyManagerStandard.
-// TODO make this less terrible.
+//
+// TODO: Make this less terrible. See KBFS-1799.
 func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promptPaper bool) (
 	mdChanged bool, cryptKey *kbfscrypto.TLFCryptKey, err error) {
 	km.log.CDebugf(ctx, "Rekey %s (prompt for paper key: %t)",
