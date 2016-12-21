@@ -1682,7 +1682,7 @@ type BareRootMetadata interface {
 	// generation. Returns an error if the TLF is public, or if
 	// there are no key generations yet.
 	GetDevicePublicKeys(user keybase1.UID, extra ExtraMetadata) (
-		DevicePublicKeys, error)
+		isWriter bool, keys DevicePublicKeys, err error)
 	// HasKeyForUser returns whether or not the given user has
 	// keys for at least one device at the given key
 	// generation. Returns an error if the TLF is public, or if

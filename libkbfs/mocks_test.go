@@ -1231,10 +1231,11 @@ func (_mr *_MockKeyMetadataRecorder) GetTlfHandle() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTlfHandle")
 }
 
-func (_m *MockKeyMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) bool {
+func (_m *MockKeyMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) (bool, error) {
 	ret := _m.ctrl.Call(_m, "HasKeyForUser", keyGen, user)
 	ret0, _ := ret[0].(bool)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 func (_mr *_MockKeyMetadataRecorder) HasKeyForUser(arg0, arg1 interface{}) *gomock.Call {
@@ -4905,15 +4906,16 @@ func (_mr *_MockBareRootMetadataRecorder) TlfHandleExtensions() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "TlfHandleExtensions")
 }
 
-func (_m *MockBareRootMetadata) GetDeviceKIDs(keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) ([]keybase1.KID, error) {
-	ret := _m.ctrl.Call(_m, "GetDeviceKIDs", keyGen, user, extra)
-	ret0, _ := ret[0].([]keybase1.KID)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+func (_m *MockBareRootMetadata) GetDevicePublicKeys(user keybase1.UID, extra ExtraMetadata) (bool, DevicePublicKeys, error) {
+	ret := _m.ctrl.Call(_m, "GetDevicePublicKeys", user, extra)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(DevicePublicKeys)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
-func (_mr *_MockBareRootMetadataRecorder) GetDeviceKIDs(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetDeviceKIDs", arg0, arg1, arg2)
+func (_mr *_MockBareRootMetadataRecorder) GetDevicePublicKeys(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetDevicePublicKeys", arg0, arg1)
 }
 
 func (_m *MockBareRootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) (bool, error) {
@@ -5355,15 +5357,16 @@ func (_mr *_MockMutableBareRootMetadataRecorder) TlfHandleExtensions() *gomock.C
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "TlfHandleExtensions")
 }
 
-func (_m *MockMutableBareRootMetadata) GetDeviceKIDs(keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) ([]keybase1.KID, error) {
-	ret := _m.ctrl.Call(_m, "GetDeviceKIDs", keyGen, user, extra)
-	ret0, _ := ret[0].([]keybase1.KID)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+func (_m *MockMutableBareRootMetadata) GetDevicePublicKeys(user keybase1.UID, extra ExtraMetadata) (bool, DevicePublicKeys, error) {
+	ret := _m.ctrl.Call(_m, "GetDevicePublicKeys", user, extra)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(DevicePublicKeys)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) GetDeviceKIDs(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetDeviceKIDs", arg0, arg1, arg2)
+func (_mr *_MockMutableBareRootMetadataRecorder) GetDevicePublicKeys(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetDevicePublicKeys", arg0, arg1)
 }
 
 func (_m *MockMutableBareRootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) (bool, error) {

@@ -635,31 +635,34 @@ func (md *BareRootMetadataV3) RevokeRemovedDevices(
 // GetDevicePublicKeys implements the BareRootMetadata interface for
 // BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetDevicePublicKeys(
-	user keybase1.UID, extra ExtraMetadata) (DevicePublicKeys, error) {
+	user keybase1.UID, extra ExtraMetadata) (
+	isWriter bool, keys DevicePublicKeys, err error) {
 	if md.TlfID().IsPublic() {
-		return nil, InvalidPublicTLFOperation{
+		return false, nil, InvalidPublicTLFOperation{
 			md.TlfID(), "GetDevicePublicKeys", md.Version()}
 	}
 
 	wkb, rkb, err := md.getTLFKeyBundles(extra)
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 
 	dkim := wkb.Keys[user]
+	isWriter = true
 	if len(dkim) == 0 {
 		dkim = rkb.Keys[user]
+		isWriter = false
 		if len(dkim) == 0 {
-			return nil, nil
+			return false, nil, nil
 		}
 	}
 
-	keys := make(DevicePublicKeys, len(dkim))
+	keys = make(DevicePublicKeys, len(dkim))
 	for key := range dkim {
 		keys[key] = true
 	}
 
-	return keys, nil
+	return isWriter, keys, nil
 }
 
 // HasKeyForUser implements the BareRootMetadata interface for

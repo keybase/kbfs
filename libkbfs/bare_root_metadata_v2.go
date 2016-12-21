@@ -667,31 +667,35 @@ func (md *BareRootMetadataV2) getTLFKeyBundles(keyGen KeyGen) (
 // GetDevicePublicKeys implements the BareRootMetadata interface for
 // BareRootMetadataV2.
 func (md *BareRootMetadataV2) GetDevicePublicKeys(
-	user keybase1.UID, _ ExtraMetadata) (DevicePublicKeys, error) {
+	user keybase1.UID, _ ExtraMetadata) (
+	isWriter bool, keys DevicePublicKeys, err error) {
 	if md.ID.IsPublic() {
-		return nil, InvalidPublicTLFOperation{
+		return false, nil, InvalidPublicTLFOperation{
 			md.ID, "GetDevicePublicKeys", md.Version(),
 		}
 	}
 
 	if len(md.WKeys) == 0 {
-		return nil, errors.New("GetDevicePublicKeys called with no key generations (V2)")
+		return false, nil, errors.New(
+			"GetDevicePublicKeys called with no key generations (V2)")
 	}
 
 	dkim := md.WKeys[len(md.WKeys)-1].WKeys[user]
+	isWriter = true
 	if len(dkim) == 0 {
 		dkim = md.RKeys[len(md.RKeys)-1].RKeys[user]
+		isWriter = false
 		if len(dkim) == 0 {
-			return nil, nil
+			return false, nil, nil
 		}
 	}
 
-	keys := make(DevicePublicKeys, len(dkim))
+	keys = make(DevicePublicKeys, len(dkim))
 	for kid := range dkim {
 		keys[kbfscrypto.MakeCryptPublicKey(kid)] = true
 	}
 
-	return keys, nil
+	return isWriter, keys, nil
 }
 
 // HasKeyForUser implements the BareRootMetadata interface for
