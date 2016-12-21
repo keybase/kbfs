@@ -602,10 +602,10 @@ func testKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T, ver MetadataVer
 }
 
 func testKeyManagerPromoteReaderSuccessPrivate(t *testing.T, ver MetadataVer) {
-	config := MakeTestConfigOrBust(t, "alice", "bob")
-	defer CheckConfigAndShutdown(t, config)
-
 	ctx := context.Background()
+
+	config := MakeTestConfigOrBust(t, "alice", "bob")
+	defer CheckConfigAndShutdown(ctx, t, config)
 
 	id := tlf.FakeID(1, false)
 	h, err := ParseTlfHandle(ctx, config.KBPKI(),
@@ -655,6 +655,35 @@ func testKeyManagerPromoteReaderSuccessPrivate(t *testing.T, ver MetadataVer) {
 	require.Equal(t,
 		CanonicalTlfName("alice,bob"),
 		newH.GetCanonicalName())
+}
+
+func testKeyManagerPromoteReaderFailurePrivate(t *testing.T, ver MetadataVer) {
+	ctx := context.Background()
+
+	config := MakeTestConfigOrBust(t, "alice", "bob")
+	defer CheckConfigAndShutdown(ctx, t, config)
+
+	id := tlf.FakeID(1, false)
+	h, err := ParseTlfHandle(ctx, config.KBPKI(),
+		"alice@twitter,bob#alice", false)
+	require.NoError(t, err)
+
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
+	require.NoError(t, err)
+
+	// Make the first key generation.
+	done, _, err := config.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, done)
+
+	// Pretend that alice@twitter now resolves to alice.
+	daemon := config.KeybaseService().(*KeybaseDaemonLocal)
+	daemon.addNewAssertionForTestOrBust("alice", "alice@twitter")
+
+	// Try to make the second key generation, which should fail.
+	done, _, err = config.KeyManager().Rekey(ctx, rmd, false)
+	require.IsType(t, err, RekeyIncompleteError{})
+	require.False(t, done)
 }
 
 func testKeyManagerReaderRekeyResolveAgainSuccessPrivate(t *testing.T, ver MetadataVer) {
@@ -2050,6 +2079,7 @@ func TestKeyManager(t *testing.T) {
 		testKeyManagerRekeyResolveAgainSuccessPublicSelf,
 		testKeyManagerRekeyResolveAgainSuccessPrivate,
 		testKeyManagerPromoteReaderSuccessPrivate,
+		testKeyManagerPromoteReaderFailurePrivate,
 		testKeyManagerReaderRekeyResolveAgainSuccessPrivate,
 		testKeyManagerRekeyResolveAgainNoChangeSuccessPrivate,
 		testKeyManagerRekeyAddAndRevokeDevice,
