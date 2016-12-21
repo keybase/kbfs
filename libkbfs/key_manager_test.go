@@ -620,6 +620,16 @@ func testKeyManagerPromoteReaderSuccessPrivate(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 	require.True(t, done)
 
+	aliceUID := keybase1.MakeTestUID(1)
+	bobUID := keybase1.MakeTestUID(2)
+
+	isWriter, _, err := rmd.GetDevicePublicKeys(aliceUID)
+	require.NoError(t, err)
+	require.True(t, isWriter)
+	isWriter, _, err = rmd.GetDevicePublicKeys(bobUID)
+	require.NoError(t, err)
+	require.False(t, isWriter)
+
 	oldKeyGen := rmd.LatestKeyGeneration()
 
 	// Pretend that bob@twitter now resolves to bob.
@@ -633,6 +643,13 @@ func testKeyManagerPromoteReaderSuccessPrivate(t *testing.T, ver MetadataVer) {
 
 	// Reader promotion shouldn't increase the key generation.
 	require.Equal(t, oldKeyGen, rmd.LatestKeyGeneration())
+
+	isWriter, _, err = rmd.GetDevicePublicKeys(aliceUID)
+	require.NoError(t, err)
+	require.True(t, isWriter)
+	isWriter, _, err = rmd.GetDevicePublicKeys(bobUID)
+	require.NoError(t, err)
+	require.True(t, isWriter)
 
 	newH := rmd.GetTlfHandle()
 	require.Equal(t,

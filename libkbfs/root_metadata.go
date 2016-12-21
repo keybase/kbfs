@@ -727,6 +727,12 @@ func (md *RootMetadata) SetTlfID(tlf tlf.ID) {
 	md.bareMd.SetTlfID(tlf)
 }
 
+// GetDevicePublicKeys wraps the respective method of the underlying BareRootMetadata for convenience.
+func (md *RootMetadata) GetDevicePublicKeys(user keybase1.UID) (
+	isWriter bool, keys DevicePublicKeys, err error) {
+	return md.bareMd.GetDevicePublicKeys(user, md.extra)
+}
+
 // HasKeyForUser wraps the respective method of the underlying BareRootMetadata for convenience.
 func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) (
 	bool, error) {
