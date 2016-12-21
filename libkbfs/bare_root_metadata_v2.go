@@ -664,38 +664,44 @@ func (md *BareRootMetadataV2) getTLFKeyBundles(keyGen KeyGen) (
 	return &md.WKeys[i], &md.RKeys[i], nil
 }
 
-// GetDeviceKIDs implements the BareRootMetadata interface for
-// BareRootMetadataV2.  Note that it is legal for the returned slice
-// to be empty, if they only have a Keybase username with no device
-// keys yet.
-func (md *BareRootMetadataV2) GetDeviceKIDs(
-	keyGen KeyGen, user keybase1.UID, _ ExtraMetadata) (
-	[]keybase1.KID, error) {
-	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
-	if err != nil {
-		return nil, err
+// GetDevicePublicKeys implements the BareRootMetadata interface for
+// BareRootMetadataV2.
+func (md *BareRootMetadataV2) GetDevicePublicKeys(
+	user keybase1.UID, _ ExtraMetadata) (DevicePublicKeys, error) {
+	if md.ID.IsPublic() {
+		return nil, InvalidPublicTLFOperation{
+			md.ID, "GetDevicePublicKeys", md.Version(),
+		}
 	}
 
-	dkim := wkb.WKeys[user]
+	if len(md.WKeys) == 0 {
+		return nil, errors.New("GetDevicePublicKeys called with no key generations (V2)")
+	}
+
+	dkim := md.WKeys[len(md.WKeys)-1].WKeys[user]
 	if len(dkim) == 0 {
-		dkim = rkb.RKeys[user]
+		dkim = md.RKeys[len(md.RKeys)-1].RKeys[user]
 		if len(dkim) == 0 {
 			return nil, nil
 		}
 	}
 
-	kids := make([]keybase1.KID, 0, len(dkim))
+	keys := make(DevicePublicKeys, len(dkim))
 	for kid := range dkim {
-		kids = append(kids, kid)
+		keys[kbfscrypto.MakeCryptPublicKey(kid)] = true
 	}
 
-	return kids, nil
+	return keys, nil
 }
 
 // HasKeyForUser implements the BareRootMetadata interface for
 // BareRootMetadataV2.
 func (md *BareRootMetadataV2) HasKeyForUser(
 	keyGen KeyGen, user keybase1.UID, _ ExtraMetadata) (bool, error) {
+	if md.ID.IsPublic() {
+		return false, InvalidPublicTLFOperation{md.ID, "HasKeyForUser", md.Version()}
+	}
+
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return false, err

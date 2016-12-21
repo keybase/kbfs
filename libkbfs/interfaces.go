@@ -1677,13 +1677,12 @@ type BareRootMetadata interface {
 	MakeBareTlfHandle(extra ExtraMetadata) (tlf.Handle, error)
 	// TlfHandleExtensions returns a list of handle extensions associated with the TLf.
 	TlfHandleExtensions() (extensions []tlf.HandleExtension)
-	// GetDeviceKIDs returns the KIDs (of
-	// kbfscrypto.CryptPublicKeys) for all known devices for the
-	// given user at the given key generation, if any.  Returns an
-	// error if the TLF is public, or if the given key generation
-	// is invalid.
-	GetDeviceKIDs(keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) (
-		[]keybase1.KID, error)
+	// GetDevicePublicKeys returns the kbfscrypto.CryptPublicKeys
+	// for all known devices for the given user at the current key
+	// generation. Returns an error if the TLF is public, or if
+	// there are no key generations yet.
+	GetDevicePublicKeys(user keybase1.UID, extra ExtraMetadata) (
+		DevicePublicKeys, error)
 	// HasKeyForUser returns whether or not the given user has
 	// keys for at least one device at the given key
 	// generation. Returns an error if the TLF is public, or if
