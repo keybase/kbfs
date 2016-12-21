@@ -602,35 +602,37 @@ func testKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T, ver MetadataVer
 }
 
 func testKeyManagerPromoteReaderSuccessPrivate(t *testing.T, ver MetadataVer) {
-	mockCtrl, config, ctx := keyManagerInit(t, ver)
-	defer keyManagerShutdown(mockCtrl, config)
+	config := MakeTestConfigOrBust(t, "alice", "bob")
+	defer CheckConfigAndShutdown(t, config)
+
+	ctx := context.Background()
 
 	id := tlf.FakeID(1, false)
 	h, err := ParseTlfHandle(ctx, config.KBPKI(),
 		"alice,bob@twitter#bob", false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
-	oldKeyGen := rmd.LatestKeyGeneration()
+	// Make the first key generation.
+	done, _, err := config.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, done)
 
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	expectRekey(config, h.ToBareHandleOrBust(), 2, true, true, tlfCryptKey)
+	oldKeyGen := rmd.LatestKeyGeneration()
 
 	// Pretend that bob@twitter now resolves to bob.
 	daemon := config.KeybaseService().(*KeybaseDaemonLocal)
 	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
 
-	// Make the first key generation
-	if done, _, err := config.KeyManager().Rekey(ctx, rmd, false); !done || err != nil {
-		t.Fatalf("Got error on rekey: %t, %+v", done, err)
-	}
+	// Make the second key generation.
+	done, _, err = config.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, done)
 
-	if rmd.LatestKeyGeneration() != oldKeyGen+1 {
-		t.Fatalf("Bad key generation after rekey: %d", rmd.LatestKeyGeneration())
-	}
+	// Reader promotion shouldn't increase the key generation.
+	require.Equal(t, oldKeyGen, rmd.LatestKeyGeneration())
 
 	newH := rmd.GetTlfHandle()
 	require.Equal(t,
