@@ -620,12 +620,6 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 	}
 
-	// Generate ephemeral keys to be used by addNewDevice,
-	// incKeygen, or both. ePrivKey will be discarded at the end
-	// of the function.
-	ePubKey, ePrivKey, err :=
-		km.config.Crypto().MakeRandomTLFEphemeralKeys()
-
 	for uid := range promotedReaders {
 		// If there are readers that need to be promoted to
 		// writers, do that here.
@@ -634,6 +628,12 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			return false, nil, err
 		}
 	}
+
+	// Generate ephemeral keys to be used by addNewDevice,
+	// incKeygen, or both. ePrivKey will be discarded at the end
+	// of the function.
+	ePubKey, ePrivKey, err :=
+		km.config.Crypto().MakeRandomTLFEphemeralKeys()
 
 	// Note: For MDv3, if incKeyGen is true, then all the
 	// manipulations below aren't needed, since they'll just be
