@@ -716,7 +716,7 @@ func testKeyManagerPromoteReaderSelf(t *testing.T, ver MetadataVer) {
 		newH.GetCanonicalName())
 }
 
-func testKeyManagerPromoteReaderFailure2Private(t *testing.T, ver MetadataVer) {
+func testKeyManagerReaderRekeyShouldNotPromote(t *testing.T, ver MetadataVer) {
 	ctx := context.Background()
 
 	config := MakeTestConfigOrBust(t, "alice", "bob", "charlie")
@@ -724,7 +724,7 @@ func testKeyManagerPromoteReaderFailure2Private(t *testing.T, ver MetadataVer) {
 
 	id := tlf.FakeID(1, false)
 	h, err := ParseTlfHandle(ctx, config.KBPKI(),
-		"bob,charlie@twitter#alice,charlie", false)
+		"alice,charlie@twitter#bob,charlie", false)
 	require.NoError(t, err)
 
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
@@ -741,32 +741,33 @@ func testKeyManagerPromoteReaderFailure2Private(t *testing.T, ver MetadataVer) {
 
 	isWriter, _, err := rmd.GetDevicePublicKeys(aliceUID)
 	require.NoError(t, err)
-	require.False(t, isWriter)
+	require.True(t, isWriter)
 	isWriter, _, err = rmd.GetDevicePublicKeys(bobUID)
 	require.NoError(t, err)
-	require.True(t, isWriter)
+	require.False(t, isWriter)
 	isWriter, _, err = rmd.GetDevicePublicKeys(charlieUID)
 	require.NoError(t, err)
 	require.False(t, isWriter)
 
+	config2 := ConfigAsUser(config, "bob")
+
 	// Pretend that charlie@twitter now resolves to charlie.
-	daemon := config.KeybaseService().(*KeybaseDaemonLocal)
+	daemon := config2.KeybaseService().(*KeybaseDaemonLocal)
 	daemon.addNewAssertionForTestOrBust("charlie", "charlie@twitter")
 
-	AddDeviceForLocalUserOrBust(t, config, aliceUID)
+	AddDeviceForLocalUserOrBust(t, config2, bobUID)
 
-	// Try to make the second key generation, which should success
-	// partially.
-	done, _, err = config.KeyManager().Rekey(ctx, rmd, false)
-	require.IsType(t, err, RekeyIncompleteError{})
+	// Try to rekey as bob, which should succeed partially.
+	done, _, err = config2.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
 	require.True(t, done)
 
 	isWriter, _, err = rmd.GetDevicePublicKeys(aliceUID)
 	require.NoError(t, err)
-	require.False(t, isWriter)
+	require.True(t, isWriter)
 	isWriter, _, err = rmd.GetDevicePublicKeys(bobUID)
 	require.NoError(t, err)
-	require.True(t, isWriter)
+	require.False(t, isWriter)
 	isWriter, _, err = rmd.GetDevicePublicKeys(charlieUID)
 	require.NoError(t, err)
 	require.False(t, isWriter)
@@ -2166,7 +2167,7 @@ func TestKeyManager(t *testing.T) {
 		testKeyManagerRekeyResolveAgainSuccessPrivate,
 		testKeyManagerPromoteReaderSuccess,
 		testKeyManagerPromoteReaderSelf,
-		testKeyManagerPromoteReaderFailure2Private,
+		testKeyManagerReaderRekeyShouldNotPromote,
 		testKeyManagerReaderRekeyResolveAgainSuccessPrivate,
 		testKeyManagerRekeyResolveAgainNoChangeSuccessPrivate,
 		testKeyManagerRekeyAddAndRevokeDevice,
