@@ -743,6 +743,12 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		if err != nil {
 			return false, nil, err
 		}
+
+		if len(allRemovalInfo) == 0 {
+			return false, nil, errors.New(
+				"Didn't revoke any devices, but indicated incrementing the key generation")
+		}
+
 		kops := km.config.KeyOps()
 		for uid, userRemovalInfo := range allRemovalInfo {
 			if userRemovalInfo.userRemoved {
