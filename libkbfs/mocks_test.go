@@ -4918,18 +4918,6 @@ func (_mr *_MockBareRootMetadataRecorder) GetUserDevicePublicKeys(arg0 interface
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserDevicePublicKeys", arg0)
 }
 
-func (_m *MockBareRootMetadata) GetDevicePublicKeys(user keybase1.UID, extra ExtraMetadata) (bool, DevicePublicKeys, error) {
-	ret := _m.ctrl.Call(_m, "GetDevicePublicKeys", user, extra)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(DevicePublicKeys)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-func (_mr *_MockBareRootMetadataRecorder) GetDevicePublicKeys(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetDevicePublicKeys", arg0, arg1)
-}
-
 func (_m *MockBareRootMetadata) HasKeyForUser(user keybase1.UID, extra ExtraMetadata) (bool, error) {
 	ret := _m.ctrl.Call(_m, "HasKeyForUser", user, extra)
 	ret0, _ := ret[0].(bool)
@@ -5367,18 +5355,6 @@ func (_m *MockMutableBareRootMetadata) GetUserDevicePublicKeys(extra ExtraMetada
 
 func (_mr *_MockMutableBareRootMetadataRecorder) GetUserDevicePublicKeys(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserDevicePublicKeys", arg0)
-}
-
-func (_m *MockMutableBareRootMetadata) GetDevicePublicKeys(user keybase1.UID, extra ExtraMetadata) (bool, DevicePublicKeys, error) {
-	ret := _m.ctrl.Call(_m, "GetDevicePublicKeys", user, extra)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(DevicePublicKeys)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-func (_mr *_MockMutableBareRootMetadataRecorder) GetDevicePublicKeys(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetDevicePublicKeys", arg0, arg1)
 }
 
 func (_m *MockMutableBareRootMetadata) HasKeyForUser(user keybase1.UID, extra ExtraMetadata) (bool, error) {

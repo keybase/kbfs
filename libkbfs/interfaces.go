@@ -1682,12 +1682,6 @@ type BareRootMetadata interface {
 	// there are no key generations yet.
 	GetUserDevicePublicKeys(extra ExtraMetadata) (
 		writers, readers UserDevicePublicKeys, err error)
-	// GetDevicePublicKeys returns the kbfscrypto.CryptPublicKeys
-	// for all known devices for the given user at the current key
-	// generation. Returns an error if the TLF is public, or if
-	// there are no key generations yet.
-	GetDevicePublicKeys(user keybase1.UID, extra ExtraMetadata) (
-		isWriter bool, keys DevicePublicKeys, err error)
 	// HasKeyForUser returns whether or not the given user has
 	// keys for at least one device. Returns an error if the TLF
 	// is public.

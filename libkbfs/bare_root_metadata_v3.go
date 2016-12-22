@@ -652,39 +652,6 @@ func (md *BareRootMetadataV3) GetUserDevicePublicKeys(extra ExtraMetadata) (
 	return wkb.Keys.toPublicKeys(), rkb.Keys.toPublicKeys(), nil
 }
 
-// GetDevicePublicKeys implements the BareRootMetadata interface for
-// BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetDevicePublicKeys(
-	user keybase1.UID, extra ExtraMetadata) (
-	isWriter bool, keys DevicePublicKeys, err error) {
-	if md.TlfID().IsPublic() {
-		return false, nil, InvalidPublicTLFOperation{
-			md.TlfID(), "GetDevicePublicKeys", md.Version()}
-	}
-
-	wkb, rkb, err := md.getTLFKeyBundles(extra)
-	if err != nil {
-		return false, nil, err
-	}
-
-	dkim := wkb.Keys[user]
-	isWriter = true
-	if len(dkim) == 0 {
-		dkim = rkb.Keys[user]
-		isWriter = false
-		if len(dkim) == 0 {
-			return false, nil, nil
-		}
-	}
-
-	keys = make(DevicePublicKeys, len(dkim))
-	for key := range dkim {
-		keys[key] = true
-	}
-
-	return isWriter, keys, nil
-}
-
 // HasKeyForUser implements the BareRootMetadata interface for
 // BareRootMetadataV3.
 func (md *BareRootMetadataV3) HasKeyForUser(
