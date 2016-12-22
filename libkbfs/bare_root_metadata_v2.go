@@ -1067,10 +1067,16 @@ func (md *BareRootMetadataV2) GetUnresolvedParticipants() (readers, writers []ke
 }
 
 func (md *BareRootMetadataV2) updateKeyGenerationForReaderRekey(
-	crypto cryptoPure, keyGen KeyGen, rKeys UserDevicePublicKeys,
+	crypto cryptoPure, keyGen KeyGen,
+	updatedReaderKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
+	if len(updatedReaderKeys) != 1 {
+		return nil, fmt.Errorf("Expected updatedReaderKeys to have only one entry, got %d",
+			len(updatedReaderKeys))
+	}
+
 	_, rkb, err := md.getTLFKeyBundles(keyGen)
 	if err != nil {
 		return nil, err
@@ -1082,7 +1088,7 @@ func (md *BareRootMetadataV2) updateKeyGenerationForReaderRekey(
 	newIndex := -len(rkb.TLFReaderEphemeralPublicKeys) - 1
 
 	rServerHalves, err := rkb.RKeys.fillInUserInfos(
-		crypto, newIndex, rKeys, ePrivKey, tlfCryptKey)
+		crypto, newIndex, updatedReaderKeys, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
 	}
