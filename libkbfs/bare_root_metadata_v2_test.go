@@ -832,8 +832,7 @@ func TestBareRootMetadataV2UpdateKeyBundles(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
 
-	ePubKey1, ePrivKey1, err :=
-		crypto.MakeRandomTLFEphemeralKeys()
+	ePubKey1, ePrivKey1, err := crypto.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
 	// Add first key generations.
@@ -850,10 +849,9 @@ func TestBareRootMetadataV2UpdateKeyBundles(t *testing.T) {
 		// Use the same ephemeral keys for initial key
 		// generations, even though that can't happen in
 		// practice.
-		_, serverHalves1Gen, err := rmd.AddKeyGeneration(
-			codec, crypto, nil,
-			wKeys, rKeys, ePubKey1, ePrivKey1, pubKey,
-			kbfscrypto.TLFCryptKey{}, tlfCryptKey)
+		_, serverHalves1Gen, err := rmd.AddKeyGeneration(codec,
+			crypto, nil, wKeys, rKeys, ePubKey1, ePrivKey1,
+			pubKey, kbfscrypto.TLFCryptKey{}, tlfCryptKey)
 		require.NoError(t, err)
 		serverHalves1 = append(serverHalves1, serverHalves1Gen)
 

@@ -380,15 +380,30 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 	ePubKey1, ePrivKey1, err := crypto.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	pubKey, _, tlfCryptKey, err := crypto.MakeRandomTLFKeys()
-	require.NoError(t, err)
+	// Add first key generations, although only the last one
+	// matters.
 
-	// Add first key generation.
+	latestKeyGen := FirstValidKeyGen + 5
+	var pubKey kbfscrypto.TLFPublicKey
+	var tlfCryptKey kbfscrypto.TLFCryptKey
+	var extra ExtraMetadata
+	var serverHalves1 UserDeviceKeyServerHalves
+	for keyGen := FirstValidKeyGen; keyGen <= latestKeyGen; keyGen++ {
+		fakeKeyData := [32]byte{byte(keyGen)}
+		pubKey = kbfscrypto.MakeTLFPublicKey(fakeKeyData)
+		nextTLFCryptKey := kbfscrypto.MakeTLFCryptKey(fakeKeyData)
 
-	extra, serverHalves1, err := rmd.AddKeyGeneration(codec, crypto, nil,
-		wKeys, rKeys, ePubKey1, ePrivKey1, pubKey,
-		kbfscrypto.TLFCryptKey{}, tlfCryptKey)
-	require.NoError(t, err)
+		// Use the same ephemeral keys for initial key
+		// generations, even though that can't happen in
+		// practice.
+		var err error
+		extra, serverHalves1, err = rmd.AddKeyGeneration(codec,
+			crypto, extra, wKeys, rKeys, ePubKey1, ePrivKey1,
+			pubKey, tlfCryptKey, nextTLFCryptKey)
+		require.NoError(t, err)
+
+		tlfCryptKey = nextTLFCryptKey
+	}
 
 	wkb, rkb, err := rmd.getTLFKeyBundles(extra)
 	require.NoError(t, err)
