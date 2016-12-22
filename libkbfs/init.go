@@ -76,8 +76,8 @@ type InitParams struct {
 	WriteJournalRoot string
 }
 
-// GetDefaultBServer returns the default value for the -bserver flag.
-func GetDefaultBServer(ctx Context) string {
+// defaultBServer returns the default value for the -bserver flag.
+func defaultBServer(ctx Context) string {
 	switch ctx.GetRunMode() {
 	case libkb.DevelRunMode:
 		return memoryAddr
@@ -90,8 +90,8 @@ func GetDefaultBServer(ctx Context) string {
 	}
 }
 
-// GetDefaultMDServer returns the default value for the -mdserver flag.
-func GetDefaultMDServer(ctx Context) string {
+// defaultMDServer returns the default value for the -mdserver flag.
+func defaultMDServer(ctx Context) string {
 	switch ctx.GetRunMode() {
 	case libkb.DevelRunMode:
 		return memoryAddr
@@ -104,8 +104,8 @@ func GetDefaultMDServer(ctx Context) string {
 	}
 }
 
-// GetDefaultLocalUser returns the default value for the -localuser flag.
-func GetDefaultLocalUser(ctx Context) string {
+// defaultLocalUser returns the default value for the -localuser flag.
+func defaultLocalUser(ctx Context) string {
 	switch ctx.GetRunMode() {
 	case libkb.DevelRunMode:
 		return "strib"
@@ -118,9 +118,9 @@ func GetDefaultLocalUser(ctx Context) string {
 	}
 }
 
-// GetDefaultLocalFavoriteStorage returns the default value for the
+// defaultLocalFavoriteStorage returns the default value for the
 // -local-fav-storage flag.
-func GetDefaultLocalFavoriteStorage(ctx Context) string {
+func defaultLocalFavoriteStorage(ctx Context) string {
 	switch ctx.GetRunMode() {
 	case libkb.DevelRunMode:
 		return "memory"
@@ -133,8 +133,8 @@ func GetDefaultLocalFavoriteStorage(ctx Context) string {
 	}
 }
 
-// GetDefaultMetadataVersion returns the default metadata version per run mode.
-func GetDefaultMetadataVersion(ctx Context) MetadataVer {
+// defaultMetadataVersion returns the default metadata version per run mode.
+func defaultMetadataVersion(ctx Context) MetadataVer {
 	switch ctx.GetRunMode() {
 	case libkb.DevelRunMode:
 		return SegregatedKeyBundlesVer
@@ -155,12 +155,12 @@ func defaultLogPath(ctx Context) string {
 func DefaultInitParams(ctx Context) InitParams {
 	return InitParams{
 		Debug:                BoolForString(os.Getenv("KBFS_DEBUG")),
-		BServerAddr:          GetDefaultBServer(ctx),
-		MDServerAddr:         GetDefaultMDServer(ctx),
-		LocalUser:            GetDefaultLocalUser(ctx),
-		LocalFavoriteStorage: GetDefaultLocalFavoriteStorage(ctx),
+		BServerAddr:          defaultBServer(ctx),
+		MDServerAddr:         defaultMDServer(ctx),
+		LocalUser:            defaultLocalUser(ctx),
+		LocalFavoriteStorage: defaultLocalFavoriteStorage(ctx),
 		TLFValidDuration:     tlfValidDurationDefault,
-		MetadataVersion:      GetDefaultMetadataVersion(ctx),
+		MetadataVersion:      defaultMetadataVersion(ctx),
 		LogFileConfig: logger.LogFileConfig{
 			MaxAge:       30 * 24 * time.Hour,
 			MaxSize:      128 * 1024 * 1024,
@@ -220,10 +220,10 @@ func GetLocalUsageString() string {
 
 func GetDefaultsUsageString(ctx Context) string {
 	runMode := ctx.GetRunMode()
-	defaultBServer := GetDefaultBServer(ctx)
-	defaultMDServer := GetDefaultMDServer(ctx)
-	defaultLocalUser := GetDefaultLocalUser(ctx)
-	defaultLocalFavoriteStorage := GetDefaultLocalFavoriteStorage(ctx)
+	defaultBServer := defaultBServer(ctx)
+	defaultMDServer := defaultMDServer(ctx)
+	defaultLocalUser := defaultLocalUser(ctx)
+	defaultLocalFavoriteStorage := defaultLocalFavoriteStorage(ctx)
 	return fmt.Sprintf(`  (KEYBASE_RUN_MODE=%s)
   -bserver=%s
   -mdserver=%s
