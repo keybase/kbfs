@@ -91,13 +91,13 @@ func writerUDKIMV2ToV3(codec kbfscodec.Codec, udkimV2 UserDeviceKeyInfoMapV2) (
 // removeDevicesNotIn removes any info for any device that is not
 // contained in the given map of users and devices.
 func (udkimV3 UserDeviceKeyInfoMapV3) removeDevicesNotIn(
-	keys UserDevicePublicKeys) ServerHalfRemovalInfo {
+	updatedUserKeys UserDevicePublicKeys) ServerHalfRemovalInfo {
 	removalInfo := make(ServerHalfRemovalInfo)
 	for uid, dkim := range udkimV3 {
 		deviceServerHalfIDs := make(deviceServerHalfRemovalInfo)
 
 		for key, info := range dkim {
-			if !keys[uid][key] {
+			if !updatedUserKeys[uid][key] {
 				delete(dkim, key)
 				deviceServerHalfIDs[key] = append(
 					deviceServerHalfIDs[key],
