@@ -407,6 +407,9 @@ func (km *KeyManagerStandard) identifyUIDSets(ctx context.Context,
 	return identifyUserList(ctx, kbpki, kbpki, uids, tlfID.IsPublic())
 }
 
+// generateKeyMapForUsers returns a UserDevicePublicKeys object for
+// the given list of users. Note that keyless users are retained in
+// the returned UserDevicePublicKeys object.
 func (km *KeyManagerStandard) generateKeyMapForUsers(
 	ctx context.Context, users []keybase1.UID) (
 	UserDevicePublicKeys, error) {
