@@ -90,18 +90,12 @@ func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfos(crypto cryptoPure,
 	return serverHalves, nil
 }
 
-func (dkimV2 DeviceKeyInfoMapV2) toDKIM(codec kbfscodec.Codec) (
-	DeviceKeyInfoMap, error) {
-	dkim := make(DeviceKeyInfoMap, len(dkimV2))
-	for kid, info := range dkimV2 {
-		var infoCopy TLFCryptKeyInfo
-		err := kbfscodec.Update(codec, &infoCopy, info)
-		if err != nil {
-			return nil, err
-		}
-		dkim[kbfscrypto.MakeCryptPublicKey(kid)] = infoCopy
+func (dkimV2 DeviceKeyInfoMapV2) toPublicKeys() DevicePublicKeys {
+	publicKeys := make(DevicePublicKeys, len(dkimV2))
+	for kid := range dkimV2 {
+		publicKeys[kbfscrypto.MakeCryptPublicKey(kid)] = true
 	}
-	return dkim, nil
+	return publicKeys
 }
 
 func dkimToV2(codec kbfscodec.Codec, dkim DeviceKeyInfoMap) (
@@ -122,17 +116,12 @@ func dkimToV2(codec kbfscodec.Codec, dkim DeviceKeyInfoMap) (
 // DeviceKeyInfoMapV2.
 type UserDeviceKeyInfoMapV2 map[keybase1.UID]DeviceKeyInfoMapV2
 
-func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM(
-	codec kbfscodec.Codec) (UserDeviceKeyInfoMap, error) {
-	udkim := make(UserDeviceKeyInfoMap, len(udkimV2))
+func (udkimV2 UserDeviceKeyInfoMapV2) toPublicKeys() UserDevicePublicKeys {
+	publicKeys := make(UserDevicePublicKeys, len(udkimV2))
 	for u, dkimV2 := range udkimV2 {
-		dkim, err := dkimV2.toDKIM(codec)
-		if err != nil {
-			return nil, err
-		}
-		udkim[u] = dkim
+		publicKeys[u] = dkimV2.toPublicKeys()
 	}
-	return udkim, nil
+	return publicKeys
 }
 
 // removeDevicesNotIn removes any info for any device that is not

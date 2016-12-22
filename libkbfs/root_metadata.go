@@ -799,10 +799,9 @@ func (md *RootMetadata) finalizeRekey(crypto cryptoPure) error {
 	return md.bareMd.FinalizeRekey(crypto, md.extra)
 }
 
-func (md *RootMetadata) getUserDeviceKeyInfoMaps(
-	codec kbfscodec.Codec, keyGen KeyGen) (
-	rDkim, wDkim UserDeviceKeyInfoMap, err error) {
-	return md.bareMd.GetUserDeviceKeyInfoMaps(codec, keyGen, md.extra)
+func (md *RootMetadata) getUserDevicePublicKeys() (
+	writers, readers UserDevicePublicKeys, err error) {
+	return md.bareMd.GetUserDevicePublicKeys(md.extra)
 }
 
 // GetTLFWriterKeyBundleID returns the ID of the externally-stored

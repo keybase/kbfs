@@ -1677,6 +1677,12 @@ type BareRootMetadata interface {
 	// TlfHandleExtensions returns a list of handle extensions associated with the TLf.
 	TlfHandleExtensions() (extensions []tlf.HandleExtension)
 	// GetDevicePublicKeys returns the kbfscrypto.CryptPublicKeys
+	// for all known users and devices for the current key
+	// generation. Returns an error if the TLF is public, or if
+	// there are no key generations yet.
+	GetUserDevicePublicKeys(extra ExtraMetadata) (
+		writers, readers UserDevicePublicKeys, err error)
+	// GetDevicePublicKeys returns the kbfscrypto.CryptPublicKeys
 	// for all known devices for the given user at the current key
 	// generation. Returns an error if the TLF is public, or if
 	// there are no key generations yet.
@@ -1756,11 +1762,6 @@ type BareRootMetadata interface {
 	GetHistoricTLFCryptKey(c cryptoPure, keyGen KeyGen,
 		currentKey kbfscrypto.TLFCryptKey, extra ExtraMetadata) (
 		kbfscrypto.TLFCryptKey, error)
-	// GetUserDeviceKeyInfoMaps returns copies of the given user
-	// device key info maps for the given key generation.
-	GetUserDeviceKeyInfoMaps(
-		codec kbfscodec.Codec, keyGen KeyGen, extra ExtraMetadata) (
-		readers, writers UserDeviceKeyInfoMap, err error)
 }
 
 // MutableBareRootMetadata is a mutable interface to the bare serializeable MD that is signed by the reader or writer.

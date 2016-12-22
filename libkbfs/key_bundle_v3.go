@@ -50,18 +50,12 @@ func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfos(crypto cryptoPure,
 	return serverHalves, nil
 }
 
-func (dkimV3 DeviceKeyInfoMapV3) toDKIM(codec kbfscodec.Codec) (
-	DeviceKeyInfoMap, error) {
-	dkim := make(DeviceKeyInfoMap, len(dkimV3))
-	for key, info := range dkimV3 {
-		var infoCopy TLFCryptKeyInfo
-		err := kbfscodec.Update(codec, &infoCopy, info)
-		if err != nil {
-			return nil, err
-		}
-		dkim[key] = infoCopy
+func (dkimV3 DeviceKeyInfoMapV3) toPublicKeys() DevicePublicKeys {
+	publicKeys := make(DevicePublicKeys, len(dkimV3))
+	for key := range dkimV3 {
+		publicKeys[key] = true
 	}
-	return dkim, nil
+	return publicKeys
 }
 
 func dkimToV3(codec kbfscodec.Codec, dkim DeviceKeyInfoMap) (
@@ -82,17 +76,12 @@ func dkimToV3(codec kbfscodec.Codec, dkim DeviceKeyInfoMap) (
 // DeviceKeyInfoMapV3.
 type UserDeviceKeyInfoMapV3 map[keybase1.UID]DeviceKeyInfoMapV3
 
-func (udkimV3 UserDeviceKeyInfoMapV3) toUDKIM(
-	codec kbfscodec.Codec) (UserDeviceKeyInfoMap, error) {
-	udkim := make(UserDeviceKeyInfoMap, len(udkimV3))
+func (udkimV3 UserDeviceKeyInfoMapV3) toPublicKeys() UserDevicePublicKeys {
+	publicKeys := make(UserDevicePublicKeys, len(udkimV3))
 	for u, dkimV3 := range udkimV3 {
-		dkim, err := dkimV3.toDKIM(codec)
-		if err != nil {
-			return nil, err
-		}
-		udkim[u] = dkim
+		publicKeys[u] = dkimV3.toPublicKeys()
 	}
-	return udkim, nil
+	return publicKeys
 }
 
 func udkimToV3(codec kbfscodec.Codec, udkim UserDeviceKeyInfoMap) (
@@ -110,11 +99,20 @@ func udkimToV3(codec kbfscodec.Codec, udkim UserDeviceKeyInfoMap) (
 
 func writerUDKIMV2ToV3(codec kbfscodec.Codec, udkimV2 UserDeviceKeyInfoMapV2) (
 	UserDeviceKeyInfoMapV3, error) {
-	udkim, err := udkimV2.toUDKIM(codec)
-	if err != nil {
-		return nil, err
+	udkimV3 := make(UserDeviceKeyInfoMapV3, len(udkimV2))
+	for uid, dkimV2 := range udkimV2 {
+		dkimV3 := make(DeviceKeyInfoMapV3, len(dkimV2))
+		for kid, info := range dkimV2 {
+			var infoCopy TLFCryptKeyInfo
+			err := kbfscodec.Update(codec, &infoCopy, info)
+			if err != nil {
+				return nil, err
+			}
+			dkimV3[kbfscrypto.MakeCryptPublicKey(kid)] = infoCopy
+		}
+		udkimV3[uid] = dkimV3
 	}
-	return udkimToV3(codec, udkim)
+	return udkimV3, nil
 }
 
 // removeDevicesNotIn removes any info for any device that is not
@@ -217,7 +215,7 @@ func DeserializeTLFWriterKeyBundleV3(codec kbfscodec.Codec, path string) (
 	}
 	if len(wkb.Keys) == 0 {
 		return TLFWriterKeyBundleV3{}, errors.New(
-			"Writer key bundle with no keys (Deserialize)")
+			"Writer key bundle with no keys (DeserializeTLFWriterKeyBundleV3)")
 	}
 	return wkb, nil
 }

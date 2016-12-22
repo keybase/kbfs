@@ -340,11 +340,10 @@ func (km *KeyManagerStandard) updateKeyBundles(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
-	tlfID tlf.ID, keyInfoMap UserDeviceKeyInfoMap,
-	expectedKeys UserDevicePublicKeys) map[keybase1.UID]bool {
+	tlfID tlf.ID, keys, expectedKeys UserDevicePublicKeys) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
-	for u, keys := range expectedKeys {
-		kids, ok := keyInfoMap[u]
+	for u, expectedDeviceKeys := range expectedKeys {
+		deviceKeys, ok := keys[u]
 		if !ok {
 			// Currently there probably shouldn't be any new users
 			// in the handle, but don't error just in case we ever
@@ -353,11 +352,11 @@ func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
 			users[u] = true
 			continue
 		}
-		for k := range keys {
-			km.log.CDebugf(ctx, "Checking key %v", k.KID())
-			if _, ok := kids[k]; !ok {
+		for key := range expectedDeviceKeys {
+			km.log.CDebugf(ctx, "Checking key %v", key)
+			if !deviceKeys[key] {
 				km.log.CInfof(ctx, "Rekey %s: adding new device %s for user %s",
-					tlfID, k.KID(), u)
+					tlfID, key, u)
 				users[u] = true
 				break
 			}
@@ -367,11 +366,10 @@ func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
-	tlfID tlf.ID, keyInfoMap UserDeviceKeyInfoMap,
-	expectedKeys UserDevicePublicKeys) map[keybase1.UID]bool {
+	tlfID tlf.ID, keys, expectedKeys UserDevicePublicKeys) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
-	for u, keyInfos := range keyInfoMap {
-		keys, ok := expectedKeys[u]
+	for u, deviceKeys := range keys {
+		expectedDeviceKeys, ok := expectedKeys[u]
 		if !ok {
 			// Currently there probably shouldn't be any users removed
 			// from the handle, but don't error just in case we ever
@@ -380,15 +378,11 @@ func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
 			users[u] = true
 			continue
 		}
-		keyLookup := make(map[keybase1.KID]bool)
-		for key := range keys {
-			keyLookup[key.KID()] = true
-		}
-		for key := range keyInfos {
+		for key := range deviceKeys {
 			// Make sure every kid has an expected key
-			if !keyLookup[key.KID()] {
-				km.log.CInfof(ctx,
-					"Rekey %s: removing device %s for user %s", tlfID, key, u)
+			if !expectedDeviceKeys[key] {
+				km.log.CInfof(ctx, "Rekey %s: removing device %s for user %s",
+					tlfID, key, u)
 				users[u] = true
 				break
 			}
@@ -551,19 +545,18 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	if !incKeyGen {
 		// See if there is at least one new device in relation to the
 		// current key bundle
-		rDkim, wDkim, err := md.getUserDeviceKeyInfoMaps(
-			km.config.Codec(), currKeyGen)
+		writers, readers, err := md.getUserDevicePublicKeys()
 		if err != nil {
 			return false, nil, err
 		}
 
-		newWriterUsers = km.usersWithNewDevices(ctx, md.TlfID(), wDkim, wKeys)
-		newReaderUsers = km.usersWithNewDevices(ctx, md.TlfID(), rDkim, rKeys)
+		newWriterUsers = km.usersWithNewDevices(ctx, md.TlfID(), writers, wKeys)
+		newReaderUsers = km.usersWithNewDevices(ctx, md.TlfID(), readers, rKeys)
 		addNewWriterDevice = len(newWriterUsers) > 0
 		addNewReaderDevice = len(newReaderUsers) > 0
 
-		wRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), wDkim, wKeys)
-		rRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), rDkim, rKeys)
+		wRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), writers, wKeys)
+		rRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), readers, rKeys)
 
 		readersToPromote = make(map[keybase1.UID]bool, len(rRemoved))
 

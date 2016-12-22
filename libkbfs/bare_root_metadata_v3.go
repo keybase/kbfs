@@ -635,6 +635,23 @@ func (md *BareRootMetadataV3) RevokeRemovedDevices(
 	return wRemovalInfo.mergeUsers(rRemovalInfo)
 }
 
+// GetUserDevicePublicKeys implements the BareRootMetadata interface
+// for BareRootMetadataV3.
+func (md *BareRootMetadataV3) GetUserDevicePublicKeys(extra ExtraMetadata) (
+	writers, readers UserDevicePublicKeys, err error) {
+	if md.TlfID().IsPublic() {
+		return nil, nil, InvalidPublicTLFOperation{
+			md.TlfID(), "GetUserDevicePublicKeys", md.Version()}
+	}
+
+	wkb, rkb, err := md.getTLFKeyBundles(extra)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return wkb.Keys.toPublicKeys(), rkb.Keys.toPublicKeys(), nil
+}
+
 // GetDevicePublicKeys implements the BareRootMetadata interface for
 // BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetDevicePublicKeys(
@@ -1231,34 +1248,6 @@ func (md *BareRootMetadataV3) AreKeyGenerationsEqual(
 // GetUnresolvedParticipants implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion) {
 	return md.UnresolvedReaders, md.WriterMetadata.UnresolvedWriters
-}
-
-// GetUserDeviceKeyInfoMaps implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetUserDeviceKeyInfoMaps(
-	codec kbfscodec.Codec, keyGen KeyGen, extra ExtraMetadata) (
-	readers, writers UserDeviceKeyInfoMap, err error) {
-	if md.TlfID().IsPublic() {
-		return nil, nil, InvalidPublicTLFOperation{md.TlfID(), "GetTLFKeyBundles", md.Version()}
-	}
-	if keyGen != md.LatestKeyGeneration() {
-		return nil, nil, TLFCryptKeyNotPerDeviceEncrypted{md.TlfID(), keyGen}
-	}
-	wkb, rkb, err := md.getTLFKeyBundles(extra)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	rUDKIM, err := rkb.Keys.toUDKIM(codec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	wUDKIM, err := wkb.Keys.toUDKIM(codec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return rUDKIM, wUDKIM, nil
 }
 
 // UpdateKeyBundles implements the MutableBareRootMetadata interface
