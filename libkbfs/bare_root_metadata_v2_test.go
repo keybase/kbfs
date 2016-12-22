@@ -728,9 +728,11 @@ func userDeviceServerHalvesToPublicKeys(serverHalves UserDeviceKeyServerHalves) 
 // checkKeyBundlesV2 checks that wkb and rkb contain exactly the info
 // expected from expectedRekeyInfos and expectedPubKey.
 func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV2,
+	expectedLatestKeyGeneration KeyGen,
 	expectedTLFCryptKey kbfscrypto.TLFCryptKey,
 	expectedPubKey kbfscrypto.TLFPublicKey,
 	rmd *BareRootMetadataV2) {
+	require.Equal(t, expectedLatestKeyGeneration, rmd.LatestKeyGeneration())
 	for keyGen := FirstValidKeyGen; keyGen <= rmd.LatestKeyGeneration(); keyGen++ {
 		wkb, rkb, err := rmd.getTLFKeyBundles(FirstValidKeyGen)
 		require.NoError(t, err)
@@ -849,7 +851,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	}
 	expectedRekeyInfos := []expectedRekeyInfoV2{expectedRekeyInfo1}
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
 
 	// Do update to check idempotency.
 
@@ -863,7 +865,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo1b)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
 
 	// Rekey.
 
@@ -894,7 +896,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo2)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
 
 	// Do again to check idempotency.
 
@@ -908,7 +910,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo2b)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
 
 	// Rekey writers only.
 
@@ -934,7 +936,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo3)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
 
 	// Do again to check idempotency.
 
@@ -948,7 +950,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo3b)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
 
 	// Reader rekey.
 
@@ -978,7 +980,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		ePubKey:      ePubKey4,
 	}
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo4)
-	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
 
 	// Do again to check idempotency.
 
@@ -993,5 +995,5 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo4b)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
 }
