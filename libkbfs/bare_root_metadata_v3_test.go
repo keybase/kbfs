@@ -427,9 +427,12 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 
 	// Do update to check idempotency.
 
+	tlfCryptKeys := []kbfscrypto.TLFCryptKey{tlfCryptKey}
+
 	serverHalves1b, err := rmd.UpdateKeyBundles(crypto,
-		extra, wKeys, rKeys, ePubKey1, ePrivKey1, []kbfscrypto.TLFCryptKey{tlfCryptKey})
+		extra, wKeys, rKeys, ePubKey1, ePrivKey1, tlfCryptKeys)
 	require.NoError(t, err)
+	require.Equal(t, 1, len(serverHalves1b))
 
 	expectedRekeyInfo1b := expectedRekeyInfoV3{
 		serverHalves: serverHalves1b[0],
@@ -451,8 +454,9 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 	require.NoError(t, err)
 
 	serverHalves2, err := rmd.UpdateKeyBundles(crypto,
-		extra, wKeys, rKeys, ePubKey2, ePrivKey2, []kbfscrypto.TLFCryptKey{tlfCryptKey})
+		extra, wKeys, rKeys, ePubKey2, ePrivKey2, tlfCryptKeys)
 	require.NoError(t, err)
+	require.Equal(t, 1, len(serverHalves2))
 
 	expectedRekeyInfo2 := expectedRekeyInfoV3{
 		writerPrivKeys: userDevicePrivateKeys{
@@ -474,8 +478,9 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 	// Do again to check idempotency.
 
 	serverHalves2b, err := rmd.UpdateKeyBundles(crypto,
-		extra, wKeys, rKeys, ePubKey2, ePrivKey2, []kbfscrypto.TLFCryptKey{tlfCryptKey})
+		extra, wKeys, rKeys, ePubKey2, ePrivKey2, tlfCryptKeys)
 	require.NoError(t, err)
+	require.Equal(t, 1, len(serverHalves2b))
 
 	expectedRekeyInfo2b := expectedRekeyInfoV3{
 		serverHalves: serverHalves2b[0],
@@ -494,8 +499,9 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 	require.NoError(t, err)
 
 	serverHalves3, err := rmd.UpdateKeyBundles(crypto,
-		extra, wKeys, rKeys, ePubKey3, ePrivKey3, []kbfscrypto.TLFCryptKey{tlfCryptKey})
+		extra, wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKeys)
 	require.NoError(t, err)
+	require.Equal(t, 1, len(serverHalves3))
 
 	expectedRekeyInfo3 := expectedRekeyInfoV3{
 		writerPrivKeys: userDevicePrivateKeys{
@@ -515,8 +521,9 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 	// Do again to check idempotency.
 
 	serverHalves3b, err := rmd.UpdateKeyBundles(crypto,
-		extra, wKeys, rKeys, ePubKey3, ePrivKey3, []kbfscrypto.TLFCryptKey{tlfCryptKey})
+		extra, wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKeys)
 	require.NoError(t, err)
+	require.Equal(t, 1, len(serverHalves3b))
 
 	expectedRekeyInfo3b := expectedRekeyInfoV3{
 		serverHalves: serverHalves3b[0],
@@ -540,8 +547,9 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 		uid3: rKeys[uid3],
 	}
 	serverHalves4, err := rmd.UpdateKeyBundles(crypto,
-		extra, nil, rKeysReader, ePubKey4, ePrivKey4, []kbfscrypto.TLFCryptKey{tlfCryptKey})
+		extra, nil, rKeysReader, ePubKey4, ePrivKey4, tlfCryptKeys)
 	require.NoError(t, err)
+	require.Equal(t, 1, len(serverHalves4))
 
 	expectedRekeyInfo4 := expectedRekeyInfoV3{
 		writerPrivKeys: nil,
@@ -559,8 +567,9 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 	// Do again to check idempotency.
 
 	serverHalves4b, err := rmd.UpdateKeyBundles(crypto,
-		extra, nil, rKeysReader, ePubKey4, ePrivKey4, []kbfscrypto.TLFCryptKey{tlfCryptKey})
+		extra, nil, rKeysReader, ePubKey4, ePrivKey4, tlfCryptKeys)
 	require.NoError(t, err)
+	require.Equal(t, 1, len(serverHalves4b))
 
 	expectedRekeyInfo4b := expectedRekeyInfoV3{
 		serverHalves: serverHalves4b[0],
