@@ -35,6 +35,7 @@ To run against remote KBFS servers:
     [-bserver=host:port] [-mdserver=host:port]
     [-runtime-dir=path/to/dir] [-label=label] [-mount-type=force]
     [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]
+    [-mount-flags=n] [-dokan-dll=path/to/dokan.dll]
     -mount-from-service | /path/to/mountpoint
 
 To run in a local testing environment:
@@ -43,6 +44,7 @@ To run in a local testing environment:
     [-localuser=<user>] [-local-fav-storage=[memory|dir:/path/to/dir]]
     [-runtime-dir=path/to/dir] [-label=label] [-mount-type=force]
     [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]
+    [-mount-flags=n] [-dokan-dll=path/to/dokan.dll]
     -mount-from-service | /path/to/mountpoint
 
 defaults:
