@@ -30,35 +30,33 @@ const usageFormatStr = `Usage:
 
 To run against remote KBFS servers:
   kbfsfuse [-debug] [-cpuprofile=path/to/dir]
-    [-bserver=%s] [-mdserver=%s]
+    [-bserver=host:port] [-mdserver=host:port]
     [-runtime-dir=path/to/dir] [-label=label] [-mount-type=force]
-    [-log-to-file] [-log-file=path/to/file] [-md-version=version]
-		[-clean-bcache-cap=0]
+    [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]
     %s/path/to/mountpoint
 
 To run in a local testing environment:
   kbfsfuse [-debug] [-cpuprofile=path/to/dir]
-    [-server-in-memory|-server-root=path/to/dir] [-localuser=<user>]
+    [-bserver=[memory|dir:/path/to/dir]] [-mdserver=[memory|dir:/path/to/dir]]
+    [-localuser=<user>] [-local-fav-storage=[memory|dir:/path/to/dir]]
     [-runtime-dir=path/to/dir] [-label=label] [-mount-type=force]
-    [-log-to-file] [-log-file=path/to/file] [-md-version=version]
-		[-clean-bcache-cap=0]
+    [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]
     %s/path/to/mountpoint
 
+defaults:
+  -bserver=%s -mdserver=%s -localuser=%s -local-fav-storage=%s
 `
 
 func getUsageStr(ctx libkbfs.Context) string {
-	defaultBServer := libkbfs.GetDefaultBServer(ctx)
-	if len(defaultBServer) == 0 {
-		defaultBServer = "host:port"
-	}
-	defaultMDServer := libkbfs.GetDefaultMDServer(ctx)
-	if len(defaultMDServer) == 0 {
-		defaultMDServer = "host:port"
-	}
 	platformUsageString := libfuse.GetPlatformUsageString()
-	return fmt.Sprintf(
-		usageFormatStr, defaultBServer, defaultMDServer,
-		platformUsageString, platformUsageString)
+	defaultBServer := libkbfs.GetDefaultBServer(ctx)
+	defaultMDServer := libkbfs.GetDefaultMDServer(ctx)
+	defaultLocalUser := libkbfs.GetDefaultLocalUser(ctx)
+	defaultLocalFavoriteStorage :=
+		libkbfs.GetDefaultLocalFavoriteStorage(ctx)
+	return fmt.Sprintf(usageFormatStr, platformUsageString,
+		platformUsageString, defaultBServer, defaultMDServer,
+		defaultLocalUser, defaultLocalFavoriteStorage)
 }
 
 func start() *libfs.Error {
