@@ -203,12 +203,16 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 	return &params
 }
 
+// GetRemoteUsageString returns a string describing the flags to use
+// to run against remote KBFS servers.
 func GetRemoteUsageString() string {
 	return `    [-debug] [-cpuprofile=path/to/dir]
     [-bserver=host:port] [-mdserver=host:port]
     [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]`
 }
 
+// GetLocalUsageString returns a string describing the flags to use to
+// run in a local testing environment.
 func GetLocalUsageString() string {
 	return `    [-debug] [-cpuprofile=path/to/dir]
     [-bserver=(memory | dir:/path/to/dir | host:port)]
@@ -218,6 +222,8 @@ func GetLocalUsageString() string {
     [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]`
 }
 
+// GetDefaultsUsageString returns a string describing the default
+// values of flags based on the run mode.
 func GetDefaultsUsageString(ctx Context) string {
 	runMode := ctx.GetRunMode()
 	defaultBServer := defaultBServer(ctx)
