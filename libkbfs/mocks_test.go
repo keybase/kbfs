@@ -5084,17 +5084,6 @@ func (_mr *_MockBareRootMetadataRecorder) GetCurrentTLFPublicKey(arg0 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentTLFPublicKey", arg0)
 }
 
-func (_m *MockBareRootMetadata) AreKeyGenerationsEqual(_param0 kbfscodec.Codec, _param1 BareRootMetadata) (bool, error) {
-	ret := _m.ctrl.Call(_m, "AreKeyGenerationsEqual", _param0, _param1)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockBareRootMetadataRecorder) AreKeyGenerationsEqual(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "AreKeyGenerationsEqual", arg0, arg1)
-}
-
 func (_m *MockBareRootMetadata) GetUnresolvedParticipants() ([]keybase1.SocialAssertion, []keybase1.SocialAssertion) {
 	ret := _m.ctrl.Call(_m, "GetUnresolvedParticipants")
 	ret0, _ := ret[0].([]keybase1.SocialAssertion)
@@ -5510,17 +5499,6 @@ func (_m *MockMutableBareRootMetadata) GetCurrentTLFPublicKey(_param0 ExtraMetad
 
 func (_mr *_MockMutableBareRootMetadataRecorder) GetCurrentTLFPublicKey(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentTLFPublicKey", arg0)
-}
-
-func (_m *MockMutableBareRootMetadata) AreKeyGenerationsEqual(_param0 kbfscodec.Codec, _param1 BareRootMetadata) (bool, error) {
-	ret := _m.ctrl.Call(_m, "AreKeyGenerationsEqual", _param0, _param1)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockMutableBareRootMetadataRecorder) AreKeyGenerationsEqual(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "AreKeyGenerationsEqual", arg0, arg1)
 }
 
 func (_m *MockMutableBareRootMetadata) GetUnresolvedParticipants() ([]keybase1.SocialAssertion, []keybase1.SocialAssertion) {

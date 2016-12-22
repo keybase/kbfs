@@ -1061,29 +1061,6 @@ func (md *BareRootMetadataV2) GetCurrentTLFPublicKey(
 	return md.WKeys[len(md.WKeys)-1].TLFPublicKey, nil
 }
 
-// AreKeyGenerationsEqual implements the BareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) AreKeyGenerationsEqual(
-	codec kbfscodec.Codec, other BareRootMetadata) (
-	bool, error) {
-	md2, ok := other.(*BareRootMetadataV2)
-	if !ok {
-		// No idea what this is.
-		return false, errors.New("Unknown metadata version")
-	}
-	ok, err := kbfscodec.Equal(codec, md.WKeys, md2.WKeys)
-	if err != nil {
-		return false, err
-	}
-	if !ok {
-		return false, nil
-	}
-	ok, err = kbfscodec.Equal(codec, md.RKeys, md2.RKeys)
-	if err != nil {
-		return false, err
-	}
-	return ok, nil
-}
-
 // GetUnresolvedParticipants implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion) {
 	return md.UnresolvedReaders, md.WriterMetadataV2.Extra.UnresolvedWriters

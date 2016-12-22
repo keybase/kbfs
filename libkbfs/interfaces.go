@@ -1730,11 +1730,6 @@ type BareRootMetadata interface {
 	// GetCurrentTLFPublicKey returns the TLF public key for the
 	// current key generation.
 	GetCurrentTLFPublicKey(ExtraMetadata) (kbfscrypto.TLFPublicKey, error)
-	// AreKeyGenerationsEqual returns true if all key generations in the passed metadata are equal to those
-	// in this revision.
-	//
-	// TODO: Implement this fully.
-	AreKeyGenerationsEqual(kbfscodec.Codec, BareRootMetadata) (bool, error)
 	// GetUnresolvedParticipants returns any unresolved readers and writers present in this revision of metadata.
 	GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion)
 	// GetTLFWriterKeyBundleID returns the ID of the externally-stored writer key bundle, or the zero value if

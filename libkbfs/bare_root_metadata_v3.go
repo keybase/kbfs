@@ -1188,19 +1188,6 @@ func (md *BareRootMetadataV3) GetCurrentTLFPublicKey(
 	return wkb.TLFPublicKey, nil
 }
 
-// AreKeyGenerationsEqual implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) AreKeyGenerationsEqual(
-	codec kbfscodec.Codec, other BareRootMetadata) (bool, error) {
-	md3, ok := other.(*BareRootMetadataV3)
-	if !ok {
-		// MDv3 TODO: handle comparisons across versions
-		return false, nil
-	}
-	rekey := md3.RKeyBundleID != md.RKeyBundleID ||
-		md3.WriterMetadata.WKeyBundleID != md.WriterMetadata.WKeyBundleID
-	return rekey, nil
-}
-
 // GetUnresolvedParticipants implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion) {
 	return md.UnresolvedReaders, md.WriterMetadata.UnresolvedWriters
