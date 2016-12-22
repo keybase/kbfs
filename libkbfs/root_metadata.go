@@ -730,7 +730,11 @@ func (md *RootMetadata) SetTlfID(tlf tlf.ID) {
 // HasKeyForUser wraps the respective method of the underlying BareRootMetadata for convenience.
 func (md *RootMetadata) HasKeyForUser(user keybase1.UID) (
 	bool, error) {
-	return md.bareMd.HasKeyForUser(user, md.extra)
+	writers, readers, err := md.bareMd.GetUserDevicePublicKeys(md.extra)
+	if err != nil {
+		return false, err
+	}
+	return len(writers[user]) > 0 || len(readers[user]) > 0, nil
 }
 
 // fakeInitialRekey wraps the FakeInitialRekey test function for

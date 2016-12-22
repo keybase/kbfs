@@ -693,25 +693,6 @@ func (md *BareRootMetadataV2) GetUserDevicePublicKeys(_ ExtraMetadata) (
 	return wUDKIM.WKeys.toPublicKeys(), rUDKIM.RKeys.toPublicKeys(), nil
 }
 
-// HasKeyForUser implements the BareRootMetadata interface for
-// BareRootMetadataV2.
-func (md *BareRootMetadataV2) HasKeyForUser(
-	user keybase1.UID, _ ExtraMetadata) (bool, error) {
-	if md.ID.IsPublic() {
-		return false, InvalidPublicTLFOperation{md.ID, "HasKeyForUser", md.Version()}
-	}
-
-	if len(md.WKeys) == 0 || len(md.RKeys) == 0 {
-		return false, errors.New(
-			"HasKeyForUser called with no key generations (V2)")
-	}
-
-	wDKIM := md.WKeys[len(md.WKeys)-1].WKeys[user]
-	rDKIM := md.RKeys[len(md.RKeys)-1].RKeys[user]
-
-	return (len(wDKIM) > 0) || (len(rDKIM) > 0), nil
-}
-
 // GetTLFCryptKeyParams implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey,
