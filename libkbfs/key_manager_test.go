@@ -643,7 +643,7 @@ func testKeyManagerPromoteReaderSuccess(t *testing.T, ver MetadataVer) {
 	daemon := config.KeybaseService().(*KeybaseDaemonLocal)
 	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
 
-	// Make the second key generation.
+	// Rekey as alice.
 	done, _, err = config.KeyManager().Rekey(ctx, rmd, false)
 	require.NoError(t, err)
 	require.True(t, done)
@@ -693,8 +693,7 @@ func testKeyManagerPromoteReaderSelf(t *testing.T, ver MetadataVer) {
 	daemon := config2.KeybaseService().(*KeybaseDaemonLocal)
 	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
 
-	// Make the second key generation as bob, which should still
-	// succeed.
+	// Rekey as bob, which should still succeed.
 	done, _, err = config2.KeyManager().Rekey(ctx, rmd, false)
 	require.NoError(t, err)
 	require.True(t, done)
