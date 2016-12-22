@@ -41,14 +41,15 @@ type InitParams struct {
 	// MDServerAddr, and ServerRootDir.
 	ServerInMemory bool
 	// If true, use in-memory bserver and ignore BServerAddr,
-	// and ServerRootDir for the bserver.
+	// and BServerRootDir for the bserver.
 	BServerInMemory bool
 	// If true, use in-memory mdserver and ignore MDServerAddr,
-	// and ServerRootDir for the mdserver.
+	// and MDServerRootDir for the mdserver.
 	MDServerInMemory bool
-	// If non-empty, use on-disk servers and ignore BServerAddr
-	// and MDServerAddr.
-	ServerRootDir string
+	// If non-empty, use on-disk servers and ignore BServerAddr.
+	BServerRootDir string
+	// If non-empty, use on-disk servers and ignore MDServerAddr.
+	MDServerRootDir string
 	// Fake local user name. If non-empty, either ServerInMemory
 	// must be true or ServerRootDir must be non-empty.
 	LocalUser string
@@ -148,11 +149,11 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 	flags.StringVar(&params.BServerAddr, "bserver", defaultParams.BServerAddr, "host:port of the block server")
 	flags.StringVar(&params.MDServerAddr, "mdserver", defaultParams.MDServerAddr, "host:port of the metadata server")
 
-	flags.BoolVar(&params.ServerInMemory, "server-in-memory", false, "use in-memory server (and ignore -bserver, -mdserver, and -server-root)")
-	flags.BoolVar(&params.BServerInMemory, "bserver-in-memory", false, "use in-memory bserver (and ignore -bserver and -server-root for the bserver)")
-	flags.BoolVar(&params.MDServerInMemory, "mdserver-in-memory", false, "use in-memory mdserver (and ignore -mdserver, and -server-root for the mdserver)")
-	flags.StringVar(&params.ServerRootDir, "server-root", "", "directory to put local server files (and ignore -bserver and -mdserver)")
-	flags.StringVar(&params.LocalUser, "localuser", "", "fake local user (used only with -server-in-memory or -server-root)")
+	flags.BoolVar(&params.BServerInMemory, "bserver-in-memory", false, "use in-memory bserver (and ignore -bserver and -bserver-root for the bserver)")
+	flags.BoolVar(&params.MDServerInMemory, "mdserver-in-memory", false, "use in-memory mdserver (and ignore -mdserver, and -mdserver-root for the mdserver)")
+	flags.StringVar(&params.BServerRootDir, "bserver-root", "", "directory to put local block server files (and ignore -bserver)")
+	flags.StringVar(&params.MDServerRootDir, "mdserver-root", "", "directory to put local MD server files (and ignore -mdserver)")
+	flags.StringVar(&params.LocalUser, "localuser", "", "fake local user (used only with -{b,md}server-in-memory or -{b,md}server-root)")
 	flags.DurationVar(&params.TLFValidDuration, "tlf-valid", defaultParams.TLFValidDuration, "time tlfs are valid before redoing identification")
 	flags.BoolVar(&params.LogToFile, "log-to-file", false, fmt.Sprintf("Log to default file: %s", defaultLogPath(ctx)))
 	flags.StringVar(&params.LogFileConfig.Path, "log-file", "", "Path to log file")
@@ -397,7 +398,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 	config.SetCrypto(crypto)
 
 	mdServer, err := makeMDServer(
-		config, params.ServerInMemory || params.MDServerInMemory, params.ServerRootDir, params.MDServerAddr, ctx)
+		config, params.ServerInMemory || params.MDServerInMemory, params.MDServerRootDir, params.MDServerAddr, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("problem creating MD server: %v", err)
 	}
@@ -405,7 +406,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	// note: the mdserver is the keyserver at the moment.
 	keyServer, err := makeKeyServer(
-		config, params.ServerInMemory || params.MDServerInMemory, params.ServerRootDir, params.MDServerAddr)
+		config, params.ServerInMemory || params.MDServerInMemory, params.MDServerRootDir, params.MDServerAddr)
 	if err != nil {
 		return nil, fmt.Errorf("problem creating key server: %v", err)
 	}
@@ -416,7 +417,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config.SetKeyServer(keyServer)
 
-	bserv, err := makeBlockServer(config, params.ServerInMemory || params.BServerInMemory, params.ServerRootDir, params.BServerAddr, ctx, log)
+	bserv, err := makeBlockServer(config, params.ServerInMemory || params.BServerInMemory, params.BServerRootDir, params.BServerAddr, ctx, log)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open block database: %v", err)
 	}

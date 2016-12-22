@@ -46,14 +46,13 @@ func (k keybaseDaemon) NewKeybaseService(config Config, params InitParams, ctx C
 
 	localUID := localUsers[userIndex].UID
 	codec := config.Codec()
-	serverInMemory, serverRootDir := params.ServerInMemory, params.ServerRootDir
 
-	if serverInMemory {
+	if params.BServerInMemory && params.MDServerInMemory {
 		return NewKeybaseDaemonMemory(localUID, localUsers, codec), nil
 	}
 
-	if len(serverRootDir) > 0 {
-		favPath := filepath.Join(serverRootDir, "kbfs_favs")
+	if len(params.BServerRootDir) > 0 && len(params.MDServerRootDir) > 0 {
+		favPath := filepath.Join(params.MDServerRootDir, "kbfs_favs")
 		return NewKeybaseDaemonDisk(localUID, localUsers, favPath, codec)
 	}
 
