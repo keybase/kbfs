@@ -1854,8 +1854,6 @@ type MutableBareRootMetadata interface {
 	// private TLFs.
 	//
 	// TODO: Also handle reader promotion.
-	//
-	// TODO: Move the key generation handling into this function.
 	UpdateKeyBundles(crypto cryptoPure, extra ExtraMetadata,
 		wKeys, rKeys UserDevicePublicKeys,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,
