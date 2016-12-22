@@ -586,7 +586,7 @@ func (udpk userDevicePrivateKeys) toPublicKeys() UserDevicePublicKeys {
 // ePubKeyIndex and ePubKey are ignored.
 type expectedRekeyInfoV2 struct {
 	writerPrivKeys, readerPrivKeys userDevicePrivateKeys
-	serverHalves                   UserDeviceKeyServerHalves
+	serverHalves                   []UserDeviceKeyServerHalves
 	ePubKeyIndex                   int
 	ePubKey                        kbfscrypto.TLFEphemeralPublicKey
 }
@@ -615,13 +615,14 @@ func checkCryptKeyInfo(t *testing.T, privKey kbfscrypto.CryptPrivateKey,
 // checkGetTLFCryptKeyV2 checks that wkb and rkb contain the info
 // necessary to get the TLF crypt key for each user in expected, which
 // must all match expectedTLFCryptKey.
-func checkGetTLFCryptKeyV2(t *testing.T, expected expectedRekeyInfoV2,
+func checkGetTLFCryptKeyV2(t *testing.T, keyGen KeyGen,
+	expected expectedRekeyInfoV2,
 	expectedTLFCryptKey kbfscrypto.TLFCryptKey,
 	wkb *TLFWriterKeyBundleV2, rkb *TLFReaderKeyBundleV2) {
 	for uid, privKeys := range expected.writerPrivKeys {
 		for privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
-			serverHalf, ok := expected.serverHalves[uid][pubKey]
+			serverHalf, ok := expected.serverHalves[keyGen-FirstValidKeyGen][uid][pubKey]
 			require.True(t, ok, "writer uid=%s, key=%s",
 				uid, pubKey)
 
@@ -639,7 +640,7 @@ func checkGetTLFCryptKeyV2(t *testing.T, expected expectedRekeyInfoV2,
 	for uid, privKeys := range expected.readerPrivKeys {
 		for privKey := range privKeys {
 			pubKey := privKey.GetPublicKey()
-			serverHalf, ok := expected.serverHalves[uid][pubKey]
+			serverHalf, ok := expected.serverHalves[keyGen-FirstValidKeyGen][uid][pubKey]
 			require.True(t, ok, "reader uid=%s, key=%s",
 				uid, pubKey)
 
@@ -729,12 +730,12 @@ func userDeviceServerHalvesToPublicKeys(serverHalves UserDeviceKeyServerHalves) 
 // expected from expectedRekeyInfos and expectedPubKey.
 func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV2,
 	expectedLatestKeyGeneration KeyGen,
-	expectedTLFCryptKey kbfscrypto.TLFCryptKey,
-	expectedPubKey kbfscrypto.TLFPublicKey,
+	expectedTLFCryptKeys []kbfscrypto.TLFCryptKey,
+	expectedPubKeys []kbfscrypto.TLFPublicKey,
 	rmd *BareRootMetadataV2) {
 	require.Equal(t, expectedLatestKeyGeneration, rmd.LatestKeyGeneration())
 	for keyGen := FirstValidKeyGen; keyGen <= rmd.LatestKeyGeneration(); keyGen++ {
-		wkb, rkb, err := rmd.getTLFKeyBundles(FirstValidKeyGen)
+		wkb, rkb, err := rmd.getTLFKeyBundles(keyGen)
 		require.NoError(t, err)
 
 		expectedWriterPubKeys := make(UserDevicePublicKeys)
@@ -776,22 +777,25 @@ func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV2,
 		require.Equal(t, expectedWriterEPublicKeys, wkb.TLFEphemeralPublicKeys)
 		require.Equal(t, expectedReaderEPublicKeys, rkb.TLFReaderEphemeralPublicKeys)
 
-		require.Equal(t, expectedPubKey, wkb.TLFPublicKey)
+		require.Equal(t, expectedPubKeys[keyGen-FirstValidKeyGen], wkb.TLFPublicKey)
 
 		for _, expected := range expectedRekeyInfos {
+			require.Equal(t,
+				int(rmd.LatestKeyGeneration()-FirstValidKeyGen+1),
+				len(expected.serverHalves))
 			expectedUserPubKeys := unionPublicKeyUsers(
 				expected.writerPrivKeys.toPublicKeys(),
 				expected.readerPrivKeys.toPublicKeys())
 			userPubKeys := userDeviceServerHalvesToPublicKeys(
-				expected.serverHalves)
+				expected.serverHalves[keyGen-FirstValidKeyGen])
 			require.Equal(t, expectedUserPubKeys, userPubKeys)
-			checkGetTLFCryptKeyV2(t,
-				expected, expectedTLFCryptKey, wkb, rkb)
+			checkGetTLFCryptKeyV2(t, keyGen,
+				expected, expectedTLFCryptKeys[keyGen-FirstValidKeyGen], wkb, rkb)
 		}
 	}
 }
 
-func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
+func TestBareRootMetadataV2UpdateKeyBundles(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
 	uid3 := keybase1.MakeTestUID(3)
@@ -827,15 +831,26 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		crypto.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	pubKey, _, tlfCryptKey, err := crypto.MakeRandomTLFKeys()
-	require.NoError(t, err)
+	// Add first key generations.
 
-	// Add first key generation.
+	latestKeyGen := FirstValidKeyGen + 5
+	var pubKeys []kbfscrypto.TLFPublicKey
+	var tlfCryptKeys []kbfscrypto.TLFCryptKey
+	var serverHalves1 []UserDeviceKeyServerHalves
+	for keyGen := FirstValidKeyGen; keyGen <= latestKeyGen; keyGen++ {
+		pubKey := kbfscrypto.MakeTLFPublicKey([32]byte{byte(keyGen)})
+		tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{byte(keyGen)})
 
-	_, serverHalves1, err := rmd.AddKeyGeneration(codec, crypto, nil,
-		wKeys, rKeys, ePubKey1, ePrivKey1, pubKey,
-		kbfscrypto.TLFCryptKey{}, tlfCryptKey)
-	require.NoError(t, err)
+		_, serverHalves1Gen, err := rmd.AddKeyGeneration(
+			codec, crypto, nil,
+			wKeys, rKeys, ePubKey1, ePrivKey1, pubKey,
+			kbfscrypto.TLFCryptKey{}, tlfCryptKey)
+		require.NoError(t, err)
+		serverHalves1 = append(serverHalves1, serverHalves1Gen)
+
+		pubKeys = append(pubKeys, pubKey)
+		tlfCryptKeys = append(tlfCryptKeys, tlfCryptKey)
+	}
 
 	expectedRekeyInfo1 := expectedRekeyInfoV2{
 		writerPrivKeys: userDevicePrivateKeys{
@@ -851,12 +866,12 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	}
 	expectedRekeyInfos := []expectedRekeyInfoV2{expectedRekeyInfo1}
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, latestKeyGen, tlfCryptKeys, pubKeys, rmd)
 
 	// Do update to check idempotency.
 
-	serverHalves1b, err := rmd.updateKeyGeneration(crypto, FirstValidKeyGen,
-		wKeys, rKeys, ePubKey1, ePrivKey1, tlfCryptKey)
+	serverHalves1b, err := rmd.UpdateKeyBundles(crypto, nil,
+		wKeys, rKeys, ePubKey1, ePrivKey1, tlfCryptKeys)
 	require.NoError(t, err)
 
 	expectedRekeyInfo1b := expectedRekeyInfoV2{
@@ -865,7 +880,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo1b)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, latestKeyGen, tlfCryptKeys, pubKeys, rmd)
 
 	// Rekey.
 
@@ -878,8 +893,8 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	ePubKey2, ePrivKey2, err := crypto.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	serverHalves2, err := rmd.updateKeyGeneration(crypto, FirstValidKeyGen,
-		wKeys, rKeys, ePubKey2, ePrivKey2, tlfCryptKey)
+	serverHalves2, err := rmd.UpdateKeyBundles(crypto, nil,
+		wKeys, rKeys, ePubKey2, ePrivKey2, tlfCryptKeys)
 	require.NoError(t, err)
 
 	expectedRekeyInfo2 := expectedRekeyInfoV2{
@@ -896,12 +911,12 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo2)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, latestKeyGen, tlfCryptKeys, pubKeys, rmd)
 
 	// Do again to check idempotency.
 
-	serverHalves2b, err := rmd.updateKeyGeneration(crypto, FirstValidKeyGen,
-		wKeys, rKeys, ePubKey2, ePrivKey2, tlfCryptKey)
+	serverHalves2b, err := rmd.UpdateKeyBundles(crypto, nil,
+		wKeys, rKeys, ePubKey2, ePrivKey2, tlfCryptKeys)
 	require.NoError(t, err)
 
 	expectedRekeyInfo2b := expectedRekeyInfoV2{
@@ -910,7 +925,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo2b)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, latestKeyGen, tlfCryptKeys, pubKeys, rmd)
 
 	// Rekey writers only.
 
@@ -920,8 +935,8 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	ePubKey3, ePrivKey3, err := crypto.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	serverHalves3, err := rmd.updateKeyGeneration(crypto, FirstValidKeyGen,
-		wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKey)
+	serverHalves3, err := rmd.UpdateKeyBundles(crypto, nil,
+		wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKeys)
 	require.NoError(t, err)
 
 	expectedRekeyInfo3 := expectedRekeyInfoV2{
@@ -936,12 +951,12 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo3)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, latestKeyGen, tlfCryptKeys, pubKeys, rmd)
 
 	// Do again to check idempotency.
 
-	serverHalves3b, err := rmd.updateKeyGeneration(crypto, FirstValidKeyGen,
-		wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKey)
+	serverHalves3b, err := rmd.UpdateKeyBundles(crypto, nil,
+		wKeys, rKeys, ePubKey3, ePrivKey3, tlfCryptKeys)
 	require.NoError(t, err)
 
 	expectedRekeyInfo3b := expectedRekeyInfoV2{
@@ -950,7 +965,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo3b)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, latestKeyGen, tlfCryptKeys, pubKeys, rmd)
 
 	// Reader rekey.
 
@@ -965,9 +980,8 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	rKeysReader := UserDevicePublicKeys{
 		uid3: rKeys[uid3],
 	}
-	serverHalves4, err := rmd.updateKeyGenerationForReaderRekey(
-		crypto, FirstValidKeyGen, rKeysReader, ePubKey4, ePrivKey4,
-		tlfCryptKey)
+	serverHalves4, err := rmd.UpdateKeyBundles(crypto, nil,
+		nil, rKeysReader, ePubKey4, ePrivKey4, tlfCryptKeys)
 	require.NoError(t, err)
 
 	expectedRekeyInfo4 := expectedRekeyInfoV2{
@@ -980,13 +994,12 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 		ePubKey:      ePubKey4,
 	}
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo4)
-	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, latestKeyGen, tlfCryptKeys, pubKeys, rmd)
 
 	// Do again to check idempotency.
 
-	serverHalves4b, err := rmd.updateKeyGenerationForReaderRekey(
-		crypto, FirstValidKeyGen, rKeysReader, ePubKey4,
-		ePrivKey4, tlfCryptKey)
+	serverHalves4b, err := rmd.UpdateKeyBundles(crypto, nil,
+		nil, rKeysReader, ePubKey4, ePrivKey4, tlfCryptKeys)
 	require.NoError(t, err)
 
 	expectedRekeyInfo4b := expectedRekeyInfoV2{
@@ -995,5 +1008,5 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo4b)
 
-	checkKeyBundlesV2(t, expectedRekeyInfos, FirstValidKeyGen, tlfCryptKey, pubKey, rmd)
+	checkKeyBundlesV2(t, expectedRekeyInfos, latestKeyGen, tlfCryptKeys, pubKeys, rmd)
 }
