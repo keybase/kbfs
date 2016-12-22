@@ -1677,9 +1677,8 @@ type BareRootMetadata interface {
 	// TlfHandleExtensions returns a list of handle extensions associated with the TLf.
 	TlfHandleExtensions() (extensions []tlf.HandleExtension)
 	// GetDevicePublicKeys returns the kbfscrypto.CryptPublicKeys
-	// for all known users and devices for the current key
-	// generation. Returns an error if the TLF is public, or if
-	// there are no key generations yet.
+	// for all known users and devices. Returns an error if the
+	// TLF is public.
 	GetUserDevicePublicKeys(extra ExtraMetadata) (
 		writers, readers UserDevicePublicKeys, err error)
 	// GetTLFCryptKeyParams returns all the necessary info to construct
@@ -1830,11 +1829,12 @@ type MutableBareRootMetadata interface {
 		nextExtra ExtraMetadata,
 		serverHalves UserDeviceKeyServerHalves, err error)
 
-	// UpdateKeyBundles ensures that every device in the given key
-	// generation for every writer and reader in the provided
-	// lists has complete TLF crypt key info, and uses the new
-	// ephemeral key pair to generate the info if it doesn't yet
-	// exist.
+	// UpdateKeyBundles ensures that every device for every writer
+	// and reader in the provided lists has complete TLF crypt key
+	// info, and uses the new ephemeral key pair to generate the
+	// info if it doesn't yet exist. tlfCryptKeys must contain an
+	// entry for each key generation in KeyGenerationsToUpdate(),
+	// in ascending order.
 	//
 	// wKeys and rKeys usually contains the full maps of writers
 	// to per-device crypt public keys, but for reader rekey,
@@ -1843,6 +1843,10 @@ type MutableBareRootMetadata interface {
 	//
 	// UpdateKeyGeneration must only be called on metadata for
 	// private TLFs.
+	//
+	// An array of server halves to push to the server are
+	// returned, with each entry corresponding to each key
+	// generation in KeyGenerationsToUpdate(), in ascending order.
 	//
 	// TODO: Also handle reader promotion.
 	UpdateKeyBundles(crypto cryptoPure, extra ExtraMetadata,
