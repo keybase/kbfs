@@ -819,7 +819,7 @@ type cryptoPure interface {
 		kbfscrypto.TLFEphemeralPrivateKey, error)
 
 	// MakeRandomTLFKeys generates keys using a CSPRNG for a
-	// single key generation of TLF.
+	// single key generation of a TLF.
 	MakeRandomTLFKeys() (kbfscrypto.TLFPublicKey,
 		kbfscrypto.TLFPrivateKey, kbfscrypto.TLFCryptKey, error)
 	// MakeRandomTLFCryptKeyServerHalf generates the server-side of a
