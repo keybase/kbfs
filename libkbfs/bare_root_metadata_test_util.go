@@ -19,7 +19,7 @@ import (
 // server-side tests.
 func FakeInitialRekey(md MutableBareRootMetadata,
 	h tlf.Handle, pubKey kbfscrypto.TLFPublicKey) ExtraMetadata {
-	if md.LatestKeyGeneration() != 0 {
+	if md.LatestKeyGeneration() >= FirstValidKeyGen {
 		panic(fmt.Errorf("FakeInitialRekey called on MD with existing key generations"))
 	}
 
