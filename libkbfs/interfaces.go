@@ -1815,10 +1815,9 @@ type MutableBareRootMetadata interface {
 	//
 	// AddKeyGeneration must only be called on metadata for
 	// private TLFs.
-	//
-	// TODO: Use better names than wKeys, rKeys.
 	AddKeyGeneration(codec kbfscodec.Codec, crypto cryptoPure,
-		currExtra ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
+		currExtra ExtraMetadata,
+		updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,
 		ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 		pubKey kbfscrypto.TLFPublicKey,
@@ -1833,10 +1832,10 @@ type MutableBareRootMetadata interface {
 	// entry for each key generation in KeyGenerationsToUpdate(),
 	// in ascending order.
 	//
-	// wKeys and rKeys usually contains the full maps of writers
-	// to per-device crypt public keys, but for reader rekey,
-	// wKeys will be empty and rKeys will contain only a single
-	// entry.
+	// updatedWriterKeys and updatedReaderKeys usually contains
+	// the full maps of writers to per-device crypt public keys,
+	// but for reader rekey, updatedWriterKeys will be empty and
+	// updatedReaderKeys will contain only a single entry.
 	//
 	// UpdateKeyGeneration must only be called on metadata for
 	// private TLFs.
@@ -1847,7 +1846,7 @@ type MutableBareRootMetadata interface {
 	//
 	// TODO: Also handle reader promotion.
 	UpdateKeyBundles(crypto cryptoPure, extra ExtraMetadata,
-		wKeys, rKeys UserDevicePublicKeys,
+		updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,
 		ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 		tlfCryptKeys []kbfscrypto.TLFCryptKey) (
@@ -1865,7 +1864,8 @@ type MutableBareRootMetadata interface {
 	// Note: the returned server halves may not be for all key
 	// generations, e.g. for MDv3 it's only for the latest key
 	// generation.
-	RevokeRemovedDevices(wKeys, rKeys UserDevicePublicKeys,
+	RevokeRemovedDevices(
+		updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 		extra ExtraMetadata) (ServerHalfRemovalInfo, error)
 
 	// FinalizeRekey must be called called after all rekeying work
