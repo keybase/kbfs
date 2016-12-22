@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/kbfs/env"
 	"github.com/keybase/kbfs/libdokan"
 	"github.com/keybase/kbfs/libfs"
+	"github.com/keybase/kbfs/libfuse"
 	"github.com/keybase/kbfs/libkbfs"
 )
 
@@ -31,34 +32,31 @@ const usageFormatStr = `Usage:
   kbfsdokan -version
 
 To run against remote KBFS servers:
-  kbfsdokan [-debug] [-cpuprofile=path/to/dir]
-    [-bserver=host:port] [-mdserver=host:port]
+  kbfsdokan
     [-runtime-dir=path/to/dir] [-label=label] [-mount-type=force]
-    [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]
     [-mount-flags=n] [-dokan-dll=path/to/dokan.dll]
+%s
     -mount-from-service | /path/to/mountpoint
 
 To run in a local testing environment:
-  kbfsdokan [-debug] [-cpuprofile=path/to/dir]
-    [-bserver=[memory|dir:/path/to/dir]] [-mdserver=[memory|dir:/path/to/dir]]
-    [-localuser=<user>] [-local-fav-storage=[memory|dir:/path/to/dir]]
+  kbfsdokan
     [-runtime-dir=path/to/dir] [-label=label] [-mount-type=force]
-    [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]
     [-mount-flags=n] [-dokan-dll=path/to/dokan.dll]
+%s
     -mount-from-service | /path/to/mountpoint
 
-defaults:
-  -bserver=%s -mdserver=%s -localuser=%s -local-fav-storage=%s
+Defaults:
+%s
 `
 
-func getUsageStr(ctx libkbfs.Context) string {
-	defaultBServer := libkbfs.GetDefaultBServer(ctx)
-	defaultMDServer := libkbfs.GetDefaultMDServer(ctx)
-	defaultLocalUser := libkbfs.GetDefaultLocalUser(ctx)
-	defaultLocalFavoriteStorage :=
-		libkbfs.GetDefaultLocalFavoriteStorage(ctx)
-	return fmt.Sprintf(usageFormatStr, defaultBServer, defaultMDServer,
-		defaultLocalUser, defaultLocalFavoriteStorage)
+func getUsageString(ctx libkbfs.Context) string {
+	remoteUsageStr := libkbfs.GetRemoteUsageString()
+	localUsageStr := libkbfs.GetLocalUsageString()
+	platformUsageStr := libfuse.GetPlatformUsageString()
+	defaultUsageStr := libkbfs.GetDefaultsUsageString(ctx)
+	return fmt.Sprintf(usageFormatStr,
+		remoteUsageStr, platformUsageStr,
+		localUsageStr, platformUsageStr, defaultUsageStr)
 }
 
 func start() *libfs.Error {
@@ -80,7 +78,7 @@ func start() *libfs.Error {
 	var mountpoint string
 	if len(flag.Args()) < 1 {
 		if !*servicemount {
-			fmt.Print(getUsageStr(ctx))
+			fmt.Print(getUsageString(ctx))
 			return libfs.InitError("no mount specified")
 		}
 	} else {
@@ -88,7 +86,7 @@ func start() *libfs.Error {
 	}
 
 	if len(flag.Args()) > 1 {
-		fmt.Print(getUsageStr(ctx))
+		fmt.Print(getUsageString(ctx))
 		return libfs.InitError("extra arguments specified (flags go before the first argument)")
 	}
 
