@@ -600,6 +600,18 @@ func testKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T, ver MetadataVer
 	require.Equal(t, newH.ToBareHandleOrBust(), newBareH)
 }
 
+func hasWriterKey(t *testing.T, rmd *RootMetadata, uid keybase1.UID) bool {
+	writers, _, err := rmd.getUserDevicePublicKeys()
+	require.NoError(t, err)
+	return len(writers[uid]) > 0
+}
+
+func hasReaderKey(t *testing.T, rmd *RootMetadata, uid keybase1.UID) bool {
+	_, readers, err := rmd.getUserDevicePublicKeys()
+	require.NoError(t, err)
+	return len(readers[uid]) > 0
+}
+
 func testKeyManagerPromoteReaderSuccess(t *testing.T, ver MetadataVer) {
 	ctx := context.Background()
 
@@ -622,12 +634,8 @@ func testKeyManagerPromoteReaderSuccess(t *testing.T, ver MetadataVer) {
 	aliceUID := keybase1.MakeTestUID(1)
 	bobUID := keybase1.MakeTestUID(2)
 
-	isWriter, _, err := rmd.GetDevicePublicKeys(aliceUID)
-	require.NoError(t, err)
-	require.True(t, isWriter)
-	isWriter, _, err = rmd.GetDevicePublicKeys(bobUID)
-	require.NoError(t, err)
-	require.False(t, isWriter)
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.False(t, hasWriterKey(t, rmd, bobUID))
 
 	oldKeyGen := rmd.LatestKeyGeneration()
 
@@ -643,12 +651,8 @@ func testKeyManagerPromoteReaderSuccess(t *testing.T, ver MetadataVer) {
 	// Reader promotion shouldn't increase the key generation.
 	require.Equal(t, oldKeyGen, rmd.LatestKeyGeneration())
 
-	isWriter, _, err = rmd.GetDevicePublicKeys(aliceUID)
-	require.NoError(t, err)
-	require.True(t, isWriter)
-	isWriter, _, err = rmd.GetDevicePublicKeys(bobUID)
-	require.NoError(t, err)
-	require.True(t, isWriter)
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.True(t, hasWriterKey(t, rmd, bobUID))
 
 	newH := rmd.GetTlfHandle()
 	require.Equal(t,
@@ -678,12 +682,8 @@ func testKeyManagerPromoteReaderSelf(t *testing.T, ver MetadataVer) {
 	aliceUID := keybase1.MakeTestUID(1)
 	bobUID := keybase1.MakeTestUID(2)
 
-	isWriter, _, err := rmd.GetDevicePublicKeys(aliceUID)
-	require.NoError(t, err)
-	require.True(t, isWriter)
-	isWriter, _, err = rmd.GetDevicePublicKeys(bobUID)
-	require.NoError(t, err)
-	require.False(t, isWriter)
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.False(t, hasWriterKey(t, rmd, bobUID))
 
 	oldKeyGen := rmd.LatestKeyGeneration()
 
@@ -702,12 +702,8 @@ func testKeyManagerPromoteReaderSelf(t *testing.T, ver MetadataVer) {
 	// Reader promotion shouldn't increase the key generation.
 	require.Equal(t, oldKeyGen, rmd.LatestKeyGeneration())
 
-	isWriter, _, err = rmd.GetDevicePublicKeys(aliceUID)
-	require.NoError(t, err)
-	require.True(t, isWriter)
-	isWriter, _, err = rmd.GetDevicePublicKeys(bobUID)
-	require.NoError(t, err)
-	require.True(t, isWriter)
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.True(t, hasWriterKey(t, rmd, bobUID))
 
 	newH := rmd.GetTlfHandle()
 	require.Equal(t,
@@ -738,15 +734,9 @@ func testKeyManagerReaderRekeyShouldNotPromote(t *testing.T, ver MetadataVer) {
 	bobUID := keybase1.MakeTestUID(2)
 	charlieUID := keybase1.MakeTestUID(3)
 
-	isWriter, _, err := rmd.GetDevicePublicKeys(aliceUID)
-	require.NoError(t, err)
-	require.True(t, isWriter)
-	isWriter, _, err = rmd.GetDevicePublicKeys(bobUID)
-	require.NoError(t, err)
-	require.False(t, isWriter)
-	isWriter, _, err = rmd.GetDevicePublicKeys(charlieUID)
-	require.NoError(t, err)
-	require.False(t, isWriter)
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.False(t, hasWriterKey(t, rmd, bobUID))
+	require.False(t, hasWriterKey(t, rmd, charlieUID))
 
 	config2 := ConfigAsUser(config, "bob")
 
@@ -761,15 +751,9 @@ func testKeyManagerReaderRekeyShouldNotPromote(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 	require.True(t, done)
 
-	isWriter, _, err = rmd.GetDevicePublicKeys(aliceUID)
-	require.NoError(t, err)
-	require.True(t, isWriter)
-	isWriter, _, err = rmd.GetDevicePublicKeys(bobUID)
-	require.NoError(t, err)
-	require.False(t, isWriter)
-	isWriter, _, err = rmd.GetDevicePublicKeys(charlieUID)
-	require.NoError(t, err)
-	require.False(t, isWriter)
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.False(t, hasWriterKey(t, rmd, bobUID))
+	require.False(t, hasWriterKey(t, rmd, charlieUID))
 }
 
 func testKeyManagerReaderRekeyResolveAgainSuccessPrivate(t *testing.T, ver MetadataVer) {
