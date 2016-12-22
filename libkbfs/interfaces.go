@@ -1843,8 +1843,6 @@ type MutableBareRootMetadata interface {
 	// An array of server halves to push to the server are
 	// returned, with each entry corresponding to each key
 	// generation in KeyGenerationsToUpdate(), in ascending order.
-	//
-	// TODO: Also handle reader promotion.
 	UpdateKeyBundles(crypto cryptoPure, extra ExtraMetadata,
 		updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,
