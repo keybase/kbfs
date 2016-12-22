@@ -135,19 +135,6 @@ func (udkimV2 UserDeviceKeyInfoMapV2) toUDKIM(
 	return udkim, nil
 }
 
-func udkimToV2(codec kbfscodec.Codec, udkim UserDeviceKeyInfoMap) (
-	UserDeviceKeyInfoMapV2, error) {
-	udkimV2 := make(UserDeviceKeyInfoMapV2, len(udkim))
-	for u, dkim := range udkim {
-		dkimV2, err := dkimToV2(codec, dkim)
-		if err != nil {
-			return nil, err
-		}
-		udkimV2[u] = dkimV2
-	}
-	return udkimV2, nil
-}
-
 // removeDevicesNotIn removes any info for any device that is not
 // contained in the given map of users and devices.
 func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
