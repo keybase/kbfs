@@ -37,9 +37,6 @@ type InitParams struct {
 	// zero, the capacity is set using getDefaultBlockCacheCapacity().
 	CleanBlockCacheCapacity uint64
 
-	// If true, use in-memory servers and ignore BServerAddr,
-	// MDServerAddr, and ServerRootDir.
-	ServerInMemory bool
 	// If true, use in-memory bserver and ignore BServerAddr,
 	// and BServerRootDir for the bserver.
 	BServerInMemory bool
@@ -398,7 +395,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 	config.SetCrypto(crypto)
 
 	mdServer, err := makeMDServer(
-		config, params.ServerInMemory || params.MDServerInMemory, params.MDServerRootDir, params.MDServerAddr, ctx)
+		config, params.MDServerInMemory, params.MDServerRootDir, params.MDServerAddr, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("problem creating MD server: %v", err)
 	}
@@ -406,7 +403,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	// note: the mdserver is the keyserver at the moment.
 	keyServer, err := makeKeyServer(
-		config, params.ServerInMemory || params.MDServerInMemory, params.MDServerRootDir, params.MDServerAddr)
+		config, params.MDServerInMemory, params.MDServerRootDir, params.MDServerAddr)
 	if err != nil {
 		return nil, fmt.Errorf("problem creating key server: %v", err)
 	}
@@ -417,7 +414,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config.SetKeyServer(keyServer)
 
-	bserv, err := makeBlockServer(config, params.ServerInMemory || params.BServerInMemory, params.BServerRootDir, params.BServerAddr, ctx, log)
+	bserv, err := makeBlockServer(config, params.BServerInMemory, params.BServerRootDir, params.BServerAddr, ctx, log)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open block database: %v", err)
 	}
