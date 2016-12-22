@@ -182,7 +182,7 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 
 	flags.StringVar(&params.BServerAddr, "bserver", defaultParams.BServerAddr, "host:port of the block server, 'memory', or 'dir:/path/to/dir'")
 	flags.StringVar(&params.MDServerAddr, "mdserver", defaultParams.MDServerAddr, "host:port of the metadata server, 'memory', or 'dir:/path/to/dir'")
-	flags.StringVar(&params.LocalUser, "localuser", "", "fake local user (used only with -mdserver=memory or -mdserver=disk")
+	flags.StringVar(&params.LocalUser, "localuser", defaultParams.LocalUser, "fake local user (used only with -mdserver=memory or -mdserver=disk")
 	flags.StringVar(&params.LocalFavoriteStorage, "local-fav-storage", defaultParams.LocalFavoriteStorage, "where to put favorites; used only when -localuser is set, then must either be 'memory' or 'dir:/path/to/dir'")
 	flags.DurationVar(&params.TLFValidDuration, "tlf-valid", defaultParams.TLFValidDuration, "time tlfs are valid before redoing identification")
 	flags.BoolVar(&params.LogToFile, "log-to-file", false, fmt.Sprintf("Log to default file: %s", defaultLogPath(ctx)))
