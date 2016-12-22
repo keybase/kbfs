@@ -214,7 +214,7 @@ func GetLocalUsageString() string {
     [-bserver=(memory | dir:/path/to/dir | host:port)]
     [-mdserver=(memory | dir:/path/to/dir | host:port)]
     [-localuser=<user>]
-    [-local-fav-storage=(memory |dir :/path/to/dir)]
+    [-local-fav-storage=(memory | dir:/path/to/dir)]
     [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]`
 }
 
