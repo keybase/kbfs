@@ -47,7 +47,7 @@ type InitParams struct {
 	LocalUser string
 
 	// Where to put favorites. Has an effect only when LocalUser
-	// is non-empty. Must be either "memory" or
+	// is non-empty, in which case it must be either "memory" or
 	// "dir:/path/to/dir".
 	LocalFavoriteStorage string
 
@@ -79,24 +79,57 @@ type InitParams struct {
 // GetDefaultBServer returns the default value for the -bserver flag.
 func GetDefaultBServer(ctx Context) string {
 	switch ctx.GetRunMode() {
+	case libkb.DevelRunMode:
+		return memoryAddr
 	case libkb.StagingRunMode:
 		return "bserver.dev.keybase.io:443"
 	case libkb.ProductionRunMode:
 		return "bserver.kbfs.keybase.io:443"
 	default:
-		return memoryAddr
+		return ""
 	}
 }
 
 // GetDefaultMDServer returns the default value for the -mdserver flag.
 func GetDefaultMDServer(ctx Context) string {
 	switch ctx.GetRunMode() {
+	case libkb.DevelRunMode:
+		return memoryAddr
 	case libkb.StagingRunMode:
 		return "mdserver.dev.keybase.io:443"
 	case libkb.ProductionRunMode:
 		return "mdserver.kbfs.keybase.io:443"
 	default:
-		return memoryAddr
+		return ""
+	}
+}
+
+// GetDefaultLocalUser returns the default value for the -localuser flag.
+func GetDefaultLocalUser(ctx Context) string {
+	switch ctx.GetRunMode() {
+	case libkb.DevelRunMode:
+		return "strib"
+	case libkb.StagingRunMode:
+		return ""
+	case libkb.ProductionRunMode:
+		return ""
+	default:
+		return ""
+	}
+}
+
+// GetDefaultLocalFavoriteStorage returns the default value for the
+// -local-fav-storage flag.
+func GetDefaultLocalFavoriteStorage(ctx Context) string {
+	switch ctx.GetRunMode() {
+	case libkb.DevelRunMode:
+		return "memory"
+	case libkb.StagingRunMode:
+		return ""
+	case libkb.ProductionRunMode:
+		return ""
+	default:
+		return ""
 	}
 }
 
@@ -122,7 +155,8 @@ func DefaultInitParams(ctx Context) InitParams {
 		Debug:                BoolForString(os.Getenv("KBFS_DEBUG")),
 		BServerAddr:          GetDefaultBServer(ctx),
 		MDServerAddr:         GetDefaultMDServer(ctx),
-		LocalFavoriteStorage: memoryAddr,
+		LocalUser:            GetDefaultLocalUser(ctx),
+		LocalFavoriteStorage: GetDefaultLocalFavoriteStorage(ctx),
 		TLFValidDuration:     tlfValidDurationDefault,
 		MetadataVersion:      int(GetDefaultMetadataVersion(ctx)),
 		LogFileConfig: logger.LogFileConfig{
