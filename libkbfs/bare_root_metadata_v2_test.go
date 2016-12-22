@@ -961,7 +961,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 	rKeysReader := UserDevicePublicKeys{
 		uid3: rKeys[uid3],
 	}
-	serverHalves4, err := rmd.updateKeyGenerationForReader(
+	serverHalves4, err := rmd.updateKeyGenerationForReaderRekey(
 		crypto, FirstValidKeyGen, rKeysReader, ePubKey4, ePrivKey4,
 		tlfCryptKey)
 	require.NoError(t, err)
@@ -980,7 +980,7 @@ func TestBareRootMetadataV2UpdateKeyGeneration(t *testing.T) {
 
 	// Do again to check idempotency.
 
-	serverHalves4b, err := rmd.updateKeyGenerationForReader(
+	serverHalves4b, err := rmd.updateKeyGenerationForReaderRekey(
 		crypto, FirstValidKeyGen, rKeysReader, ePubKey4,
 		ePrivKey4, tlfCryptKey)
 	require.NoError(t, err)
