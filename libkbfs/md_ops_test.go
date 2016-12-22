@@ -576,7 +576,7 @@ type keyBundleMDServer struct {
 	MDServer
 	nextGetRange []*RootMetadataSigned
 
-	lock sync.Mutex
+	lock sync.RWMutex
 	wkbs map[TLFWriterKeyBundleID]TLFWriterKeyBundleV3
 	rkbs map[TLFReaderKeyBundleID]TLFReaderKeyBundleV3
 }
@@ -622,8 +622,8 @@ func (mds *keyBundleMDServer) GetRange(
 func (mds *keyBundleMDServer) GetKeyBundles(ctx context.Context, tlfID tlf.ID,
 	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	mds.lock.Lock()
-	defer mds.lock.Unlock()
+	mds.lock.RLock()
+	defer mds.lock.RUnlock()
 	wkb := mds.wkbs[wkbID]
 	rkb := mds.rkbs[rkbID]
 	return &wkb, &rkb, nil
