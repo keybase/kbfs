@@ -1815,6 +1815,8 @@ type MutableBareRootMetadata interface {
 	//
 	// AddKeyGeneration must only be called on metadata for
 	// private TLFs.
+	//
+	// TODO: Use better names than wKeys, rKeys.
 	AddKeyGeneration(codec kbfscodec.Codec, crypto cryptoPure,
 		currExtra ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,

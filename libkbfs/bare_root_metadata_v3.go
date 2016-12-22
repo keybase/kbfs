@@ -1073,6 +1073,9 @@ func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 		return nil, nil, errors.New("Zero next crypt key")
 	}
 
+	// TODO: If we already have existing keys, make sure wKeys and
+	// rKeys match them.
+
 	latestKeyGen := md.LatestKeyGeneration()
 	var encryptedHistoricKeys EncryptedTLFCryptKeys
 	if currCryptKey == (kbfscrypto.TLFCryptKey{}) {
