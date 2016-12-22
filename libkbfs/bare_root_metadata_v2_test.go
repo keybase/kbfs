@@ -991,11 +991,11 @@ func TestBareRootMetadataV2UpdateKeyBundles(t *testing.T) {
 	ePubKey4, ePrivKey4, err := crypto.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	updatedReaderKeysReader := UserDevicePublicKeys{
+	filteredReaderKeys := UserDevicePublicKeys{
 		uid3: updatedReaderKeys[uid3],
 	}
 	serverHalves4, err := rmd.UpdateKeyBundles(crypto, nil,
-		nil, updatedReaderKeysReader, ePubKey4, ePrivKey4, tlfCryptKeys)
+		nil, filteredReaderKeys, ePubKey4, ePrivKey4, tlfCryptKeys)
 	require.NoError(t, err)
 
 	expectedRekeyInfo4 := expectedRekeyInfoV2{
@@ -1013,7 +1013,7 @@ func TestBareRootMetadataV2UpdateKeyBundles(t *testing.T) {
 	// Do again to check idempotency.
 
 	serverHalves4b, err := rmd.UpdateKeyBundles(crypto, nil,
-		nil, updatedReaderKeysReader, ePubKey4, ePrivKey4, tlfCryptKeys)
+		nil, filteredReaderKeys, ePubKey4, ePrivKey4, tlfCryptKeys)
 	require.NoError(t, err)
 
 	expectedRekeyInfo4b := expectedRekeyInfoV2{
