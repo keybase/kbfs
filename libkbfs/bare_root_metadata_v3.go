@@ -1077,9 +1077,6 @@ func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 		return nil, nil, errors.New("Zero next crypt key")
 	}
 
-	// TODO: If we already have existing keys, make sure
-	// updatedWriterKeys and updatedReaderKeys match them.
-
 	latestKeyGen := md.LatestKeyGeneration()
 	var encryptedHistoricKeys EncryptedTLFCryptKeys
 	if currCryptKey == (kbfscrypto.TLFCryptKey{}) {
@@ -1089,16 +1086,33 @@ func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 				latestKeyGen)
 		}
 	} else {
+		currExtraV3, ok := currExtra.(*ExtraMetadataV3)
+		if !ok {
+			return nil, nil, errors.New("Invalid curr extra metadata")
+		}
+
+		existingWriterKeys := currExtraV3.wkb.Keys.toPublicKeys()
+		updatedWriterKeysRemoved := updatedWriterKeys.RemoveKeylessUsers()
+		if !existingWriterKeys.Equals(updatedWriterKeysRemoved) {
+			return nil, nil, fmt.Errorf(
+				"existingWriterKeys=%+v != updatedWriterKeysRemoved=%+v",
+				existingWriterKeys, updatedWriterKeysRemoved)
+		}
+
+		existingReaderKeys := currExtraV3.rkb.Keys.toPublicKeys()
+		updatedReaderKeysRemoved := updatedReaderKeys.RemoveKeylessUsers()
+		if !existingReaderKeys.Equals(updatedReaderKeysRemoved) {
+			return nil, nil, fmt.Errorf(
+				"existingReaderKeys=%+v != updatedReaderKeysRemoved=%+v",
+				existingReaderKeys, updatedReaderKeysRemoved)
+		}
+
 		if latestKeyGen < FirstValidKeyGen {
 			return nil, nil, errors.New(
 				"Non-zero current crypt key with no existing key generations")
 		}
 		var historicKeys []kbfscrypto.TLFCryptKey
 		if latestKeyGen > FirstValidKeyGen {
-			currExtraV3, ok := currExtra.(*ExtraMetadataV3)
-			if !ok {
-				return nil, nil, errors.New("Invalid curr extra metadata")
-			}
 			var err error
 			historicKeys, err = crypto.DecryptTLFCryptKeys(
 				currExtraV3.wkb.EncryptedHistoricTLFCryptKeys,

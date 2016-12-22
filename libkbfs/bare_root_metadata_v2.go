@@ -1108,7 +1108,8 @@ func (md *BareRootMetadataV2) updateKeyGeneration(
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
 	if len(updatedWriterKeys) == 0 {
-		return nil, errors.New("wKeys unexpectedly non-empty")
+		return nil, errors.New(
+			"updatedWriterKeys unexpectedly non-empty")
 	}
 
 	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
@@ -1168,8 +1169,31 @@ func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
 		return nil, nil, errors.New("currCryptKey unexpectedly non-zero")
 	}
 
-	// TODO: If we already have existing keys, make sure
-	// updatedWriterKeys and updatedReaderKeys match them.
+	if len(md.WKeys) != len(md.RKeys) {
+		return nil, nil, fmt.Errorf(
+			"Have %d writer key gens, but %d reader key gens",
+			len(md.WKeys), len(md.RKeys))
+	}
+
+	if len(md.WKeys) > 0 {
+		existingWriterKeys :=
+			md.WKeys[len(md.WKeys)-1].WKeys.toPublicKeys()
+		updatedWriterKeysRemoved := updatedWriterKeys.RemoveKeylessUsers()
+		if !existingWriterKeys.Equals(updatedWriterKeysRemoved) {
+			return nil, nil, fmt.Errorf(
+				"existingWriterKeys=%+v != updatedWriterKeysRemoved=%+v",
+				existingWriterKeys, updatedWriterKeysRemoved)
+		}
+
+		existingReaderKeys :=
+			md.RKeys[len(md.RKeys)-1].RKeys.toPublicKeys()
+		updatedReaderKeysRemoved := updatedReaderKeys.RemoveKeylessUsers()
+		if !existingReaderKeys.Equals(updatedReaderKeysRemoved) {
+			return nil, nil, fmt.Errorf(
+				"existingReaderKeys=%+v != updatedReaderKeysRemoved=%+v",
+				existingReaderKeys, updatedReaderKeysRemoved)
+		}
+	}
 
 	newWriterKeys := TLFWriterKeyBundleV2{
 		WKeys:        make(UserDeviceKeyInfoMapV2),

@@ -37,8 +37,51 @@ type TLFCryptKeyInfo struct {
 // corresponding device CryptPublicKey).
 type DevicePublicKeys map[kbfscrypto.CryptPublicKey]bool
 
+// Equals returns whether both sets of keys are equal.
+func (dpk DevicePublicKeys) Equals(other DevicePublicKeys) bool {
+	if len(dpk) != len(other) {
+		return false
+	}
+
+	for k := range dpk {
+		if !other[k] {
+			return false
+		}
+	}
+
+	return true
+}
+
 // UserDevicePublicKeys is a map from users to that user's set of devices.
 type UserDevicePublicKeys map[keybase1.UID]DevicePublicKeys
+
+// RemoveKeylessUsers returns a new UserDevicePublicKeys objects with
+// all the users with an empty DevicePublicKeys removed.
+func (udpk UserDevicePublicKeys) RemoveKeylessUsers() UserDevicePublicKeys {
+	udpkRemoved := make(UserDevicePublicKeys)
+	for u, dpk := range udpk {
+		if len(dpk) > 0 {
+			udpkRemoved[u] = dpk
+		}
+	}
+	return udpkRemoved
+}
+
+// Equals returns whether both sets of users are equal, and they all
+// have corresponding equal sets of keys.
+func (udpk UserDevicePublicKeys) Equals(other UserDevicePublicKeys) bool {
+	if len(udpk) != len(other) {
+		return false
+	}
+
+	for u, dpk := range udpk {
+		if !dpk.Equals(other[u]) {
+			return false
+		}
+	}
+
+	return true
+}
 
 // DeviceKeyServerHalves is a map from a user devices (identified by the
 // corresponding device CryptPublicKey) to corresponding key server
