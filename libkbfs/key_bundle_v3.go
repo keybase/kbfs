@@ -58,20 +58,6 @@ func (dkimV3 DeviceKeyInfoMapV3) toPublicKeys() DevicePublicKeys {
 	return publicKeys
 }
 
-func dkimToV3(codec kbfscodec.Codec, dkim DeviceKeyInfoMap) (
-	DeviceKeyInfoMapV3, error) {
-	dkimV3 := make(DeviceKeyInfoMapV3, len(dkim))
-	for key, info := range dkim {
-		var infoCopy TLFCryptKeyInfo
-		err := kbfscodec.Update(codec, &infoCopy, info)
-		if err != nil {
-			return nil, err
-		}
-		dkimV3[key] = infoCopy
-	}
-	return dkimV3, nil
-}
-
 // UserDeviceKeyInfoMapV3 maps a user's keybase UID to their
 // DeviceKeyInfoMapV3.
 type UserDeviceKeyInfoMapV3 map[keybase1.UID]DeviceKeyInfoMapV3
@@ -82,19 +68,6 @@ func (udkimV3 UserDeviceKeyInfoMapV3) toPublicKeys() UserDevicePublicKeys {
 		publicKeys[u] = dkimV3.toPublicKeys()
 	}
 	return publicKeys
-}
-
-func udkimToV3(codec kbfscodec.Codec, udkim UserDeviceKeyInfoMap) (
-	UserDeviceKeyInfoMapV3, error) {
-	udkimV3 := make(UserDeviceKeyInfoMapV3, len(udkim))
-	for u, dkim := range udkim {
-		dkimV3, err := dkimToV3(codec, dkim)
-		if err != nil {
-			return nil, err
-		}
-		udkimV3[u] = dkimV3
-	}
-	return udkimV3, nil
 }
 
 func writerUDKIMV2ToV3(codec kbfscodec.Codec, udkimV2 UserDeviceKeyInfoMapV2) (

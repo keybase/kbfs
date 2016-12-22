@@ -33,19 +33,6 @@ type TLFCryptKeyInfo struct {
 	codec.UnknownFieldSetHandler
 }
 
-// TODO: UserDeviceKeyInfoMap and DeviceKeyInfoMap exist only because
-// of BareRootMetadata.GetUserDeviceKeyInfoMaps. That will eventually
-// go away, so remove these types once that happens.
-
-// DeviceKeyInfoMap is a map from a user devices (identified by the
-// corresponding device CryptPublicKey) to the TLF's symmetric secret
-// key information.
-type DeviceKeyInfoMap map[kbfscrypto.CryptPublicKey]TLFCryptKeyInfo
-
-// UserDeviceKeyInfoMap maps a user's keybase UID to their
-// DeviceKeyInfoMap.
-type UserDeviceKeyInfoMap map[keybase1.UID]DeviceKeyInfoMap
-
 // DevicePublicKeys is a set of a user's devices (identified by the
 // corresponding device CryptPublicKey).
 type DevicePublicKeys map[kbfscrypto.CryptPublicKey]bool

@@ -98,20 +98,6 @@ func (dkimV2 DeviceKeyInfoMapV2) toPublicKeys() DevicePublicKeys {
 	return publicKeys
 }
 
-func dkimToV2(codec kbfscodec.Codec, dkim DeviceKeyInfoMap) (
-	DeviceKeyInfoMapV2, error) {
-	dkimV2 := make(DeviceKeyInfoMapV2, len(dkim))
-	for key, info := range dkim {
-		var infoCopy TLFCryptKeyInfo
-		err := kbfscodec.Update(codec, &infoCopy, info)
-		if err != nil {
-			return nil, err
-		}
-		dkimV2[key.KID()] = infoCopy
-	}
-	return dkimV2, nil
-}
-
 // UserDeviceKeyInfoMapV2 maps a user's keybase UID to their
 // DeviceKeyInfoMapV2.
 type UserDeviceKeyInfoMapV2 map[keybase1.UID]DeviceKeyInfoMapV2
