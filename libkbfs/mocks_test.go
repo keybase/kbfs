@@ -5763,8 +5763,8 @@ func (_mr *_MockMutableBareRootMetadataRecorder) SetTlfID(arg0 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetTlfID", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) AddKeyGeneration(codec kbfscodec.Codec, crypto cryptoPure, currExtra ExtraMetadata, wKeys UserDevicePublicKeys, rKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, pubKey kbfscrypto.TLFPublicKey, currCryptKey kbfscrypto.TLFCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (ExtraMetadata, UserDeviceKeyServerHalves, error) {
-	ret := _m.ctrl.Call(_m, "AddKeyGeneration", codec, crypto, currExtra, wKeys, rKeys, ePubKey, ePrivKey, pubKey, currCryptKey, nextCryptKey)
+func (_m *MockMutableBareRootMetadata) AddKeyGeneration(codec kbfscodec.Codec, crypto cryptoPure, currExtra ExtraMetadata, updatedWriterKeys UserDevicePublicKeys, updatedReaderKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, pubKey kbfscrypto.TLFPublicKey, currCryptKey kbfscrypto.TLFCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (ExtraMetadata, UserDeviceKeyServerHalves, error) {
+	ret := _m.ctrl.Call(_m, "AddKeyGeneration", codec, crypto, currExtra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, pubKey, currCryptKey, nextCryptKey)
 	ret0, _ := ret[0].(ExtraMetadata)
 	ret1, _ := ret[1].(UserDeviceKeyServerHalves)
 	ret2, _ := ret[2].(error)
@@ -5775,8 +5775,8 @@ func (_mr *_MockMutableBareRootMetadataRecorder) AddKeyGeneration(arg0, arg1, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddKeyGeneration", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 }
 
-func (_m *MockMutableBareRootMetadata) UpdateKeyBundles(crypto cryptoPure, extra ExtraMetadata, wKeys UserDevicePublicKeys, rKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKeys []kbfscrypto.TLFCryptKey) ([]UserDeviceKeyServerHalves, error) {
-	ret := _m.ctrl.Call(_m, "UpdateKeyBundles", crypto, extra, wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKeys)
+func (_m *MockMutableBareRootMetadata) UpdateKeyBundles(crypto cryptoPure, extra ExtraMetadata, updatedWriterKeys UserDevicePublicKeys, updatedReaderKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKeys []kbfscrypto.TLFCryptKey) ([]UserDeviceKeyServerHalves, error) {
+	ret := _m.ctrl.Call(_m, "UpdateKeyBundles", crypto, extra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, tlfCryptKeys)
 	ret0, _ := ret[0].([]UserDeviceKeyServerHalves)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -5796,8 +5796,8 @@ func (_mr *_MockMutableBareRootMetadataRecorder) PromoteReaders(arg0, arg1 inter
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PromoteReaders", arg0, arg1)
 }
 
-func (_m *MockMutableBareRootMetadata) RevokeRemovedDevices(wKeys UserDevicePublicKeys, rKeys UserDevicePublicKeys, extra ExtraMetadata) (ServerHalfRemovalInfo, error) {
-	ret := _m.ctrl.Call(_m, "RevokeRemovedDevices", wKeys, rKeys, extra)
+func (_m *MockMutableBareRootMetadata) RevokeRemovedDevices(updatedWriterKeys UserDevicePublicKeys, updatedReaderKeys UserDevicePublicKeys, extra ExtraMetadata) (ServerHalfRemovalInfo, error) {
+	ret := _m.ctrl.Call(_m, "RevokeRemovedDevices", updatedWriterKeys, updatedReaderKeys, extra)
 	ret0, _ := ret[0].(ServerHalfRemovalInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
