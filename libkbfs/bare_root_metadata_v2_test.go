@@ -841,6 +841,9 @@ func TestBareRootMetadataV2UpdateKeyBundles(t *testing.T) {
 		pubKey := kbfscrypto.MakeTLFPublicKey([32]byte{byte(keyGen)})
 		tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{byte(keyGen)})
 
+		// Use the same ephemeral keys for initial key
+		// generations, even though that can't happen in
+		// practice.
 		_, serverHalves1Gen, err := rmd.AddKeyGeneration(
 			codec, crypto, nil,
 			wKeys, rKeys, ePubKey1, ePrivKey1, pubKey,
