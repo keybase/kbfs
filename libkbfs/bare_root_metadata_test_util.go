@@ -15,7 +15,7 @@ import (
 // BareRootMetadata objects don't have enough data to build a
 // TlfHandle from until the first rekey. pubKey is non-empty only for
 // server-side tests.
-func FakeInitialRekey(md MutableBareRootMetadata, codec kbfscodec.Codec,
+func FakeInitialRekey(md MutableBareRootMetadata,
 	h tlf.Handle, pubKey kbfscrypto.TLFPublicKey) ExtraMetadata {
 	wKeys := make(UserDevicePublicKeys)
 	for _, w := range h.Writers {
@@ -33,6 +33,7 @@ func FakeInitialRekey(md MutableBareRootMetadata, codec kbfscodec.Codec,
 		}
 	}
 
+	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
 	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	extra, _, err := md.AddKeyGeneration(

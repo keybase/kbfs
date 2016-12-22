@@ -741,13 +741,12 @@ func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) (
 
 // fakeInitialRekey wraps the FakeInitialRekey test function for
 // convenience.
-func (md *RootMetadata) fakeInitialRekey(codec kbfscodec.Codec) {
+func (md *RootMetadata) fakeInitialRekey() {
 	bh, err := md.tlfHandle.ToBareHandle()
 	if err != nil {
 		panic(err)
 	}
-	md.extra = FakeInitialRekey(
-		md.bareMd, codec, bh, kbfscrypto.TLFPublicKey{})
+	md.extra = FakeInitialRekey(md.bareMd, bh, kbfscrypto.TLFPublicKey{})
 }
 
 // GetBareRootMetadata returns an interface to the underlying serializeable metadata.
