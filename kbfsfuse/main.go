@@ -40,7 +40,7 @@ To run in a local testing environment:
 %s
     %s/path/to/mountpoint
 
-defaults:
+Defaults:
 %s
 `
 
