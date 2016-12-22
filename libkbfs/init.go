@@ -219,15 +219,17 @@ func GetLocalUsageString() string {
 }
 
 func GetDefaultsUsageString(ctx Context) string {
+	runMode := ctx.GetRunMode()
 	defaultBServer := GetDefaultBServer(ctx)
 	defaultMDServer := GetDefaultMDServer(ctx)
 	defaultLocalUser := GetDefaultLocalUser(ctx)
 	defaultLocalFavoriteStorage := GetDefaultLocalFavoriteStorage(ctx)
-	return fmt.Sprintf(`  -bserver=%s
+	return fmt.Sprintf(`  (KEYBASE_RUN_MODE=%s)
+  -bserver=%s
   -mdserver=%s
   -localuser=%s
   -local-fav-storage=%s`,
-		defaultBServer, defaultMDServer, defaultLocalUser,
+		runMode, defaultBServer, defaultMDServer, defaultLocalUser,
 		defaultLocalFavoriteStorage)
 }
 
