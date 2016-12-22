@@ -479,8 +479,8 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config.SetBlockServer(bserv)
 
-	// TODO: Don't turn on journaling if -server-in-memory is
-	// used.
+	// TODO: Don't turn on journaling if either -bserver or
+	// -mdserver point to local implementations.
 
 	if len(params.WriteJournalRoot) > 0 {
 		config.EnableJournaling(params.WriteJournalRoot,
