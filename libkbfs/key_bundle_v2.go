@@ -67,11 +67,11 @@ type DeviceKeyInfoMapV2 map[keybase1.KID]TLFCryptKeyInfo
 func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfos(crypto cryptoPure,
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
-	publicKeys DevicePublicKeys) (
+	updatedDeviceKeys DevicePublicKeys) (
 	serverHalves DeviceKeyServerHalves, err error) {
-	serverHalves = make(DeviceKeyServerHalves, len(publicKeys))
+	serverHalves = make(DeviceKeyServerHalves, len(updatedDeviceKeys))
 	// TODO: parallelize
-	for k := range publicKeys {
+	for k := range updatedDeviceKeys {
 		// Skip existing entries, and only fill in new ones.
 		if _, ok := dkimV2[k.KID()]; ok {
 			continue
@@ -156,18 +156,19 @@ func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
 }
 
 func (udkimV2 UserDeviceKeyInfoMapV2) fillInUserInfos(
-	crypto cryptoPure, newIndex int, pubKeys UserDevicePublicKeys,
+	crypto cryptoPure, newIndex int, updatedUserKeys UserDevicePublicKeys,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (
 	serverHalves UserDeviceKeyServerHalves, err error) {
-	serverHalves = make(UserDeviceKeyServerHalves, len(pubKeys))
-	for u, keys := range pubKeys {
+	serverHalves = make(UserDeviceKeyServerHalves, len(updatedUserKeys))
+	for u, updatedDeviceKeys := range updatedUserKeys {
 		if _, ok := udkimV2[u]; !ok {
 			udkimV2[u] = DeviceKeyInfoMapV2{}
 		}
 
 		deviceServerHalves, err := udkimV2[u].fillInDeviceInfos(
-			crypto, u, tlfCryptKey, ePrivKey, newIndex, keys)
+			crypto, u, tlfCryptKey, ePrivKey, newIndex,
+			updatedDeviceKeys)
 		if err != nil {
 			return nil, err
 		}
