@@ -1686,9 +1686,8 @@ type BareRootMetadata interface {
 	// HasKeyForUser returns whether or not the given user has
 	// keys for at least one device at the given key
 	// generation. Returns an error if the TLF is public, or if
-	// the given key generation is invalid. May also return an
-	// error if the given key generation isn't the current one
-	// (i.e., for MDv3).
+	// the given key generation is invalid, or not in
+	// KeyGenerationsToUpdate().
 	HasKeyForUser(keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) (
 		bool, error)
 	// GetTLFCryptKeyParams returns all the necessary info to construct
