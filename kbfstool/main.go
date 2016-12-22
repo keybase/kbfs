@@ -32,7 +32,8 @@ or
 
 To run in a local testing environment:
   kbfstool [-debug] [-cpuprofile=path/to/dir]
-    [-server-in-memory|-server-root=path/to/dir] [-localuser=<user>]
+    [-bserver=[memory|dir:/path/to/dir]] [-mdserver=[memory|dir:/path/to/dir]]
+    [-localuser=<user>]
     <command> [<args>]
 
 The possible commands are:
