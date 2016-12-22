@@ -16,7 +16,6 @@ import (
 	"github.com/keybase/kbfs/env"
 	"github.com/keybase/kbfs/libdokan"
 	"github.com/keybase/kbfs/libfs"
-	"github.com/keybase/kbfs/libfuse"
 	"github.com/keybase/kbfs/libkbfs"
 )
 
@@ -52,11 +51,9 @@ Defaults:
 func getUsageString(ctx libkbfs.Context) string {
 	remoteUsageStr := libkbfs.GetRemoteUsageString()
 	localUsageStr := libkbfs.GetLocalUsageString()
-	platformUsageStr := libfuse.GetPlatformUsageString()
 	defaultUsageStr := libkbfs.GetDefaultsUsageString(ctx)
-	return fmt.Sprintf(usageFormatStr,
-		remoteUsageStr, platformUsageStr,
-		localUsageStr, platformUsageStr, defaultUsageStr)
+	return fmt.Sprintf(usageFormatStr, remoteUsageStr,
+		localUsageStr, defaultUsageStr)
 }
 
 func start() *libfs.Error {
