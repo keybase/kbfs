@@ -313,13 +313,15 @@ func (km *KeyManagerStandard) unmaskTLFCryptKey(ctx context.Context, serverHalfI
 }
 
 func (km *KeyManagerStandard) updateKeyBundles(ctx context.Context,
-	md *RootMetadata, wKeys, rKeys UserDevicePublicKeys,
+	md *RootMetadata,
+	updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKeys []kbfscrypto.TLFCryptKey) error {
 
 	serverHalves, err := md.updateKeyBundles(km.config.Crypto(),
-		wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKeys)
+		updatedWriterKeys, updatedReaderKeys,
+		ePubKey, ePrivKey, tlfCryptKeys)
 	if err != nil {
 		return err
 	}
@@ -522,12 +524,14 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	}
 
 	// All writer keys in the desired keyset
-	wKeys, err := km.generateKeyMapForUsers(ctx, resolvedHandle.ResolvedWriters())
+	updatedWriterKeys, err := km.generateKeyMapForUsers(
+		ctx, resolvedHandle.ResolvedWriters())
 	if err != nil {
 		return false, nil, err
 	}
 	// All reader keys in the desired keyset
-	rKeys, err := km.generateKeyMapForUsers(ctx, resolvedHandle.ResolvedReaders())
+	updatedReaderKeys, err := km.generateKeyMapForUsers(
+		ctx, resolvedHandle.ResolvedReaders())
 	if err != nil {
 		return false, nil, err
 	}
@@ -550,13 +554,17 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			return false, nil, err
 		}
 
-		newWriterUsers = km.usersWithNewDevices(ctx, md.TlfID(), writers, wKeys)
-		newReaderUsers = km.usersWithNewDevices(ctx, md.TlfID(), readers, rKeys)
+		newWriterUsers = km.usersWithNewDevices(
+			ctx, md.TlfID(), writers, updatedWriterKeys)
+		newReaderUsers = km.usersWithNewDevices(
+			ctx, md.TlfID(), readers, updatedReaderKeys)
 		addNewWriterDevice = len(newWriterUsers) > 0
 		addNewReaderDevice = len(newReaderUsers) > 0
 
-		wRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), writers, wKeys)
-		rRemoved := km.usersWithRemovedDevices(ctx, md.TlfID(), readers, rKeys)
+		wRemoved := km.usersWithRemovedDevices(
+			ctx, md.TlfID(), writers, updatedWriterKeys)
+		rRemoved := km.usersWithRemovedDevices(
+			ctx, md.TlfID(), readers, updatedReaderKeys)
 
 		readersToPromote = make(map[keybase1.UID]bool, len(rRemoved))
 
@@ -607,10 +615,10 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 		if _, userHasNewKeys := newReaderUsers[uid]; userHasNewKeys {
 			// Only rekey the logged-in reader.
-			rKeys = UserDevicePublicKeys{
-				uid: rKeys[uid],
+			updatedWriterKeys = nil
+			updatedReaderKeys = UserDevicePublicKeys{
+				uid: updatedReaderKeys[uid],
 			}
-			wKeys = nil
 			delete(newReaderUsers, uid)
 		} else {
 			// No new reader device for our user, so the reader can't do
@@ -658,8 +666,8 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 			}
 			cryptKeys[keyGen-start] = currTlfCryptKey
 		}
-		err = km.updateKeyBundles(ctx, md, wKeys,
-			rKeys, ePubKey, ePrivKey, cryptKeys)
+		err = km.updateKeyBundles(ctx, md, updatedWriterKeys,
+			updatedReaderKeys, ePubKey, ePrivKey, cryptKeys)
 		if err != nil {
 			return false, nil, err
 		}
@@ -735,7 +743,8 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	//
 	// TODO: Add test coverage for this.
 	if currKeyGen >= FirstValidKeyGen {
-		allRemovalInfo, err := md.revokeRemovedDevices(wKeys, rKeys)
+		allRemovalInfo, err := md.revokeRemovedDevices(
+			updatedWriterKeys, updatedReaderKeys)
 		if err != nil {
 			return false, nil, err
 		}
@@ -789,8 +798,9 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 	}
 	serverHalves, err := md.AddKeyGeneration(km.config.Codec(),
-		km.config.Crypto(), wKeys, rKeys, ePubKey, ePrivKey,
-		pubKey, privKey, currTLFCryptKey, tlfCryptKey)
+		km.config.Crypto(), updatedWriterKeys, updatedReaderKeys,
+		ePubKey, ePrivKey, pubKey, privKey,
+		currTLFCryptKey, tlfCryptKey)
 	if err != nil {
 		return false, nil, err
 	}
