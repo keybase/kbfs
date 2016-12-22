@@ -32,6 +32,7 @@ type InitParams struct {
 	// be "memory" for an in-memory test server or
 	// "dir:/path/to/dir" for an on-disk test server.
 	BServerAddr string
+
 	// If non-empty the host:port of the metadata server. If
 	// empty, a default value is used depending on the run mode.
 	// Can also be "memory" for an in-memory test server or
@@ -42,9 +43,13 @@ type InitParams struct {
 	// zero, the capacity is set using getDefaultBlockCacheCapacity().
 	CleanBlockCacheCapacity uint64
 
-	// Fake local user name. If non-empty, MDServerAddr must be
-	// either "memory" or "dir:/path/to/dir".
+	// Fake local user name.
 	LocalUser string
+
+	// Where to put favorites. Has an effect only when LocalUser
+	// is non-empty. Must be either "memory" or
+	// "dir:/path/to/dir".
+	LocalFavoriteStorage string
 
 	// TLFValidDuration is the duration that TLFs are valid
 	// before marked for lazy revalidation.
@@ -114,11 +119,12 @@ func defaultLogPath(ctx Context) string {
 // DefaultInitParams returns default init params
 func DefaultInitParams(ctx Context) InitParams {
 	return InitParams{
-		Debug:            BoolForString(os.Getenv("KBFS_DEBUG")),
-		BServerAddr:      GetDefaultBServer(ctx),
-		MDServerAddr:     GetDefaultMDServer(ctx),
-		TLFValidDuration: tlfValidDurationDefault,
-		MetadataVersion:  int(GetDefaultMetadataVersion(ctx)),
+		Debug:                BoolForString(os.Getenv("KBFS_DEBUG")),
+		BServerAddr:          GetDefaultBServer(ctx),
+		MDServerAddr:         GetDefaultMDServer(ctx),
+		LocalFavoriteStorage: memoryAddr,
+		TLFValidDuration:     tlfValidDurationDefault,
+		MetadataVersion:      int(GetDefaultMetadataVersion(ctx)),
 		LogFileConfig: logger.LogFileConfig{
 			MaxAge:       30 * 24 * time.Hour,
 			MaxSize:      128 * 1024 * 1024,
@@ -141,6 +147,7 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 	flags.StringVar(&params.BServerAddr, "bserver", defaultParams.BServerAddr, "host:port of the block server, 'memory', or 'dir:/path/to/dir'")
 	flags.StringVar(&params.MDServerAddr, "mdserver", defaultParams.MDServerAddr, "host:port of the metadata server, 'memory', or 'dir:/path/to/dir'")
 	flags.StringVar(&params.LocalUser, "localuser", "", "fake local user (used only with -mdserver=memory or -mdserver=disk")
+	flags.StringVar(&params.LocalFavoriteStorage, "local-fav-storage", defaultParams.LocalFavoriteStorage, "where to put favorites; used only when -localuser is set, then must either be 'memory' or 'dir:/path/to/dir'")
 	flags.DurationVar(&params.TLFValidDuration, "tlf-valid", defaultParams.TLFValidDuration, "time tlfs are valid before redoing identification")
 	flags.BoolVar(&params.LogToFile, "log-to-file", false, fmt.Sprintf("Log to default file: %s", defaultLogPath(ctx)))
 	flags.StringVar(&params.LogFileConfig.Path, "log-file", "", "Path to log file")
