@@ -57,7 +57,7 @@ type InitParams struct {
 
 	// MetadataVersion is the default version of metadata to use
 	// when creating new metadata.
-	MetadataVersion int
+	MetadataVersion MetadataVer
 
 	// LogToFile if true, logs to a default file location.
 	LogToFile bool
@@ -136,6 +136,8 @@ func GetDefaultLocalFavoriteStorage(ctx Context) string {
 // GetDefaultMetadataVersion returns the default metadata version per run mode.
 func GetDefaultMetadataVersion(ctx Context) MetadataVer {
 	switch ctx.GetRunMode() {
+	case libkb.DevelRunMode:
+		return SegregatedKeyBundlesVer
 	case libkb.StagingRunMode:
 		return SegregatedKeyBundlesVer
 	case libkb.ProductionRunMode:
@@ -158,7 +160,7 @@ func DefaultInitParams(ctx Context) InitParams {
 		LocalUser:            GetDefaultLocalUser(ctx),
 		LocalFavoriteStorage: GetDefaultLocalFavoriteStorage(ctx),
 		TLFValidDuration:     tlfValidDurationDefault,
-		MetadataVersion:      int(GetDefaultMetadataVersion(ctx)),
+		MetadataVersion:      GetDefaultMetadataVersion(ctx),
 		LogFileConfig: logger.LogFileConfig{
 			MaxAge:       30 * 24 * time.Hour,
 			MaxSize:      128 * 1024 * 1024,
@@ -197,7 +199,7 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 	// params.TLFJournalBackgroundWorkStatus via a flag.
 	params.TLFJournalBackgroundWorkStatus = defaultParams.TLFJournalBackgroundWorkStatus
 
-	flags.IntVar(&params.MetadataVersion, "md-version", defaultParams.MetadataVersion, "Metadata version to use when creating new metadata")
+	flags.IntVar((*int)(&params.MetadataVersion), "md-version", int(defaultParams.MetadataVersion), "Metadata version to use when creating new metadata")
 	return &params
 }
 
