@@ -684,7 +684,7 @@ func (md *BareRootMetadataV2) GetDevicePublicKeys(
 		}
 	}
 
-	if len(md.WKeys) == 0 {
+	if len(md.WKeys) == 0 || len(md.RKeys) == 0 {
 		return false, nil, errors.New(
 			"GetDevicePublicKeys called with no key generations (V2)")
 	}
@@ -710,17 +710,20 @@ func (md *BareRootMetadataV2) GetDevicePublicKeys(
 // HasKeyForUser implements the BareRootMetadata interface for
 // BareRootMetadataV2.
 func (md *BareRootMetadataV2) HasKeyForUser(
-	keyGen KeyGen, user keybase1.UID, _ ExtraMetadata) (bool, error) {
+	user keybase1.UID, _ ExtraMetadata) (bool, error) {
 	if md.ID.IsPublic() {
 		return false, InvalidPublicTLFOperation{md.ID, "HasKeyForUser", md.Version()}
 	}
 
-	wkb, rkb, err := md.getTLFKeyBundles(keyGen)
-	if err != nil {
-		return false, err
+	if len(md.WKeys) == 0 || len(md.RKeys) == 0 {
+		return false, errors.New(
+			"HasKeyForUser called with no key generations (V2)")
 	}
 
-	return (len(wkb.WKeys[user]) > 0) || (len(rkb.RKeys[user]) > 0), nil
+	wDKIM := md.WKeys[len(md.WKeys)-1].WKeys[user]
+	rDKIM := md.RKeys[len(md.RKeys)-1].RKeys[user]
+
+	return (len(wDKIM) > 0) || (len(rDKIM) > 0), nil
 }
 
 // GetTLFCryptKeyParams implements the BareRootMetadata interface for BareRootMetadataV2.

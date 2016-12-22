@@ -5,8 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
-
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -191,8 +189,7 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 	kbpki := km.config.KBPKI()
 	crypto := km.config.Crypto()
 	localMakeRekeyReadError := func(err error) error {
-		return makeRekeyReadError(ctx, err, kbpki,
-			kmd, keyGen, uid, username)
+		return makeRekeyReadError(ctx, err, kbpki, kmd, uid, username)
 	}
 
 	if flags&getTLFCryptKeyAnyDevice != 0 {

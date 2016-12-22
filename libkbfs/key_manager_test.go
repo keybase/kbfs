@@ -193,8 +193,7 @@ func (kmd emptyKeyMetadata) LatestKeyGeneration() KeyGen {
 	return kmd.keyGen
 }
 
-func (kmd emptyKeyMetadata) HasKeyForUser(
-	keyGen KeyGen, user keybase1.UID) (bool, error) {
+func (kmd emptyKeyMetadata) HasKeyForUser(user keybase1.UID) (bool, error) {
 	return false, nil
 }
 

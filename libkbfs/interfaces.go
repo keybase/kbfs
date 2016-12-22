@@ -495,10 +495,9 @@ type KeyMetadata interface {
 	GetTlfHandle() *TlfHandle
 
 	// HasKeyForUser returns whether or not the given user has
-	// keys for at least one device at the given key
-	// generation. Returns an error if the TLF is public, or if
-	// the given key generation is invalid.
-	HasKeyForUser(keyGen KeyGen, user keybase1.UID) (bool, error)
+	// keys for at least one device. Returns an error if the TLF
+	// is public.
+	HasKeyForUser(user keybase1.UID) (bool, error)
 
 	// GetTLFCryptKeyParams returns all the necessary info to
 	// construct the TLF crypt key for the given key generation,
@@ -1684,12 +1683,9 @@ type BareRootMetadata interface {
 	GetDevicePublicKeys(user keybase1.UID, extra ExtraMetadata) (
 		isWriter bool, keys DevicePublicKeys, err error)
 	// HasKeyForUser returns whether or not the given user has
-	// keys for at least one device at the given key
-	// generation. Returns an error if the TLF is public, or if
-	// the given key generation is invalid, or not in
-	// KeyGenerationsToUpdate().
-	HasKeyForUser(keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) (
-		bool, error)
+	// keys for at least one device. Returns an error if the TLF
+	// is public.
+	HasKeyForUser(user keybase1.UID, extra ExtraMetadata) (bool, error)
 	// GetTLFCryptKeyParams returns all the necessary info to construct
 	// the TLF crypt key for the given key generation, user, and device
 	// (identified by its crypt public key), or false if not found. This

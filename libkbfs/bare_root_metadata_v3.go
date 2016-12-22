@@ -671,7 +671,7 @@ func (md *BareRootMetadataV3) GetDevicePublicKeys(
 // HasKeyForUser implements the BareRootMetadata interface for
 // BareRootMetadataV3.
 func (md *BareRootMetadataV3) HasKeyForUser(
-	keyGen KeyGen, user keybase1.UID, extra ExtraMetadata) (bool, error) {
+	user keybase1.UID, extra ExtraMetadata) (bool, error) {
 	wkb, rkb, err := md.getTLFKeyBundles(extra)
 	if err != nil {
 		return false, err

@@ -215,21 +215,12 @@ func testMakeRekeyReadError(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 
 	dummyErr := errors.New("dummy")
-	err = makeRekeyReadErrorHelper(dummyErr,
-		rmd.ReadOnly(), h, FirstValidKeyGen, uid, u)
+	err = makeRekeyReadErrorHelper(dummyErr, rmd.ReadOnly(), h, uid, u)
 	require.Equal(t, NewReadAccessError(h, u, "/keybase/private/alice"), err)
 
 	err = makeRekeyReadErrorHelper(dummyErr,
-		rmd.ReadOnly(), h, FirstValidKeyGen, h.FirstResolvedWriter(), "alice")
+		rmd.ReadOnly(), h, h.FirstResolvedWriter(), "alice")
 	require.Equal(t, NeedSelfRekeyError{"alice", dummyErr}, err)
-
-	err = makeRekeyReadErrorHelper(dummyErr,
-		rmd.ReadOnly(), h, FirstValidKeyGen+1, h.FirstResolvedWriter(), "alice")
-	if ver < SegregatedKeyBundlesVer {
-		require.Equal(t, NeedOtherRekeyError{"alice", dummyErr}, err)
-	} else {
-		require.Equal(t, NeedSelfRekeyError{"alice", dummyErr}, err)
-	}
 }
 
 func testMakeRekeyReadErrorResolvedHandle(t *testing.T, ver MetadataVer) {
@@ -250,7 +241,7 @@ func testMakeRekeyReadErrorResolvedHandle(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 
 	err = makeRekeyReadErrorHelper(errors.New("dummy"),
-		rmd.ReadOnly(), h, FirstValidKeyGen, uid, u)
+		rmd.ReadOnly(), h, uid, u)
 	require.Equal(t, NewReadAccessError(h, u, "/keybase/private/alice,bob@twitter"), err)
 
 	config.KeybaseService().(*KeybaseDaemonLocal).addNewAssertionForTestOrBust(
@@ -261,7 +252,7 @@ func testMakeRekeyReadErrorResolvedHandle(t *testing.T, ver MetadataVer) {
 
 	dummyErr := errors.New("dummy")
 	err = makeRekeyReadErrorHelper(dummyErr,
-		rmd.ReadOnly(), resolvedHandle, FirstValidKeyGen, uid, u)
+		rmd.ReadOnly(), resolvedHandle, uid, u)
 	require.Equal(t, NeedOtherRekeyError{"alice,bob", dummyErr}, err)
 }
 

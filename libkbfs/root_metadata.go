@@ -734,9 +734,9 @@ func (md *RootMetadata) GetDevicePublicKeys(user keybase1.UID) (
 }
 
 // HasKeyForUser wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) HasKeyForUser(keyGen KeyGen, user keybase1.UID) (
+func (md *RootMetadata) HasKeyForUser(user keybase1.UID) (
 	bool, error) {
-	return md.bareMd.HasKeyForUser(keyGen, user, md.extra)
+	return md.bareMd.HasKeyForUser(user, md.extra)
 }
 
 // fakeInitialRekey wraps the FakeInitialRekey test function for
