@@ -1028,88 +1028,6 @@ func (md *BareRootMetadataV3) SetRevision(revision MetadataRevision) {
 	md.Revision = revision
 }
 
-func (md *BareRootMetadataV3) addKeyGenerationHelper(codec kbfscodec.Codec,
-	crypto cryptoPure, prevExtra ExtraMetadata,
-	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey,
-	pubKey kbfscrypto.TLFPublicKey,
-	wUDKIM, rUDKIM UserDeviceKeyInfoMap,
-	wPublicKeys, rPublicKeys []kbfscrypto.TLFEphemeralPublicKey) (
-	ExtraMetadata, error) {
-	if md.TlfID().IsPublic() {
-		return nil, InvalidPublicTLFOperation{
-			md.TlfID(), "addKeyGenerationHelper", md.Version()}
-	}
-	if nextCryptKey == (kbfscrypto.TLFCryptKey{}) {
-		return nil, errors.New("Zero next crypt key")
-	}
-	latestKeyGen := md.LatestKeyGeneration()
-	var encryptedHistoricKeys EncryptedTLFCryptKeys
-	if currCryptKey == (kbfscrypto.TLFCryptKey{}) {
-		if latestKeyGen >= FirstValidKeyGen {
-			return nil, errors.Errorf(
-				"Zero current crypt key with latest key generation %d",
-				latestKeyGen)
-		}
-	} else {
-		if latestKeyGen < FirstValidKeyGen {
-			return nil, errors.New(
-				"Non-zero current crypt key with no existing key generations")
-		}
-		var historicKeys []kbfscrypto.TLFCryptKey
-		if latestKeyGen > FirstValidKeyGen {
-			prevExtraV3, ok := prevExtra.(*ExtraMetadataV3)
-			if !ok {
-				return nil, errors.New("Invalid prev extra metadata")
-			}
-			var err error
-			historicKeys, err = crypto.DecryptTLFCryptKeys(
-				prevExtraV3.wkb.EncryptedHistoricTLFCryptKeys,
-				currCryptKey)
-			if err != nil {
-				return nil, err
-			}
-			expectedHistoricKeyCount :=
-				int(md.LatestKeyGeneration() - FirstValidKeyGen)
-			if len(historicKeys) != expectedHistoricKeyCount {
-				return nil, errors.Errorf(
-					"Expected %d historic keys, got %d",
-					expectedHistoricKeyCount,
-					len(historicKeys))
-			}
-		}
-		historicKeys = append(historicKeys, currCryptKey)
-		var err error
-		encryptedHistoricKeys, err = crypto.EncryptTLFCryptKeys(
-			historicKeys, nextCryptKey)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	wUDKIMV3, err := udkimToV3(codec, wUDKIM)
-	if err != nil {
-		return nil, err
-	}
-
-	rUDKIMV3, err := udkimToV3(codec, rUDKIM)
-	if err != nil {
-		return nil, err
-	}
-
-	newWriterKeys := TLFWriterKeyBundleV3{
-		Keys:                          wUDKIMV3,
-		TLFPublicKey:                  pubKey,
-		EncryptedHistoricTLFCryptKeys: encryptedHistoricKeys,
-		TLFEphemeralPublicKeys:        wPublicKeys,
-	}
-	newReaderKeys := TLFReaderKeyBundleV3{
-		Keys: rUDKIMV3,
-		TLFEphemeralPublicKeys: rPublicKeys,
-	}
-	md.WriterMetadata.LatestKeyGen++
-	return NewExtraMetadataV3(newWriterKeys, newReaderKeys, true, true), nil
-}
-
 func (md *BareRootMetadataV3) updateKeyBundles(crypto cryptoPure,
 	extra ExtraMetadata, wKeys, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
@@ -1169,17 +1087,73 @@ func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
 	nextExtra ExtraMetadata,
 	serverHalves UserDeviceKeyServerHalves, err error) {
+	if md.TlfID().IsPublic() {
+		return nil, nil, InvalidPublicTLFOperation{
+			md.TlfID(), "AddKeyGeneration", md.Version()}
+	}
+
 	if len(wKeys) == 0 {
 		return nil, nil, errors.New("wkeys unexpectedly non-empty")
 	}
 
-	wUDKIM := make(UserDeviceKeyInfoMap)
-	rUDKIM := make(UserDeviceKeyInfoMap)
-	nextExtra, err = md.addKeyGenerationHelper(codec, crypto, currExtra,
-		currCryptKey, nextCryptKey, pubKey, wUDKIM, rUDKIM, nil, nil)
-	if err != nil {
-		return nil, nil, err
+	if nextCryptKey == (kbfscrypto.TLFCryptKey{}) {
+		return nil, nil, errors.New("Zero next crypt key")
 	}
+
+	latestKeyGen := md.LatestKeyGeneration()
+	var encryptedHistoricKeys EncryptedTLFCryptKeys
+	if currCryptKey == (kbfscrypto.TLFCryptKey{}) {
+		if latestKeyGen >= FirstValidKeyGen {
+			return nil, nil, errors.Errorf(
+				"Zero current crypt key with latest key generation %d",
+				latestKeyGen)
+		}
+	} else {
+		if latestKeyGen < FirstValidKeyGen {
+			return nil, nil, errors.New(
+				"Non-zero current crypt key with no existing key generations")
+		}
+		var historicKeys []kbfscrypto.TLFCryptKey
+		if latestKeyGen > FirstValidKeyGen {
+			currExtraV3, ok := currExtra.(*ExtraMetadataV3)
+			if !ok {
+				return nil, nil, errors.New("Invalid curr extra metadata")
+			}
+			var err error
+			historicKeys, err = crypto.DecryptTLFCryptKeys(
+				currExtraV3.wkb.EncryptedHistoricTLFCryptKeys,
+				currCryptKey)
+			if err != nil {
+				return nil, nil, err
+			}
+			expectedHistoricKeyCount :=
+				int(md.LatestKeyGeneration() - FirstValidKeyGen)
+			if len(historicKeys) != expectedHistoricKeyCount {
+				return nil, nil, errors.Errorf(
+					"Expected %d historic keys, got %d",
+					expectedHistoricKeyCount,
+					len(historicKeys))
+			}
+		}
+		historicKeys = append(historicKeys, currCryptKey)
+		var err error
+		encryptedHistoricKeys, err = crypto.EncryptTLFCryptKeys(
+			historicKeys, nextCryptKey)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	newWriterKeys := TLFWriterKeyBundleV3{
+		Keys:                          make(UserDeviceKeyInfoMapV3),
+		TLFPublicKey:                  pubKey,
+		EncryptedHistoricTLFCryptKeys: encryptedHistoricKeys,
+	}
+	newReaderKeys := TLFReaderKeyBundleV3{
+		Keys: make(UserDeviceKeyInfoMapV3),
+	}
+	md.WriterMetadata.LatestKeyGen++
+	nextExtra = NewExtraMetadataV3(newWriterKeys, newReaderKeys, true, true)
 
 	serverHalves, err = md.updateKeyBundles(crypto, nextExtra, wKeys,
 		rKeys, ePubKey, ePrivKey, nextCryptKey)

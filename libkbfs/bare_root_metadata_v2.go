@@ -1031,38 +1031,6 @@ func (md *BareRootMetadataV2) SetRevision(revision MetadataRevision) {
 	md.Revision = revision
 }
 
-func (md *BareRootMetadataV2) addKeyGenerationHelper(codec kbfscodec.Codec,
-	pubKey kbfscrypto.TLFPublicKey, wUDKIM, rUDKIM UserDeviceKeyInfoMap,
-	wPublicKeys, rPublicKeys []kbfscrypto.TLFEphemeralPublicKey) error {
-	if md.TlfID().IsPublic() {
-		return InvalidPublicTLFOperation{
-			md.TlfID(), "addKeyGenerationHelper", md.Version()}
-	}
-
-	wUDKIMV2, err := udkimToV2(codec, wUDKIM)
-	if err != nil {
-		return err
-	}
-
-	rUDKIMV2, err := udkimToV2(codec, rUDKIM)
-	if err != nil {
-		return err
-	}
-
-	newWriterKeys := TLFWriterKeyBundleV2{
-		WKeys:                  wUDKIMV2,
-		TLFPublicKey:           pubKey,
-		TLFEphemeralPublicKeys: wPublicKeys,
-	}
-	newReaderKeys := TLFReaderKeyBundleV2{
-		RKeys: rUDKIMV2,
-		TLFReaderEphemeralPublicKeys: rPublicKeys,
-	}
-	md.WKeys = append(md.WKeys, newWriterKeys)
-	md.RKeys = append(md.RKeys, newReaderKeys)
-	return nil
-}
-
 // SetUnresolvedReaders implements the MutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) SetUnresolvedReaders(readers []keybase1.SocialAssertion) {
 	md.UnresolvedReaders = readers
@@ -1254,16 +1222,29 @@ func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
 	nextExtra ExtraMetadata,
 	serverHalves UserDeviceKeyServerHalves, err error) {
+	if md.TlfID().IsPublic() {
+		return nil, nil, InvalidPublicTLFOperation{
+			md.TlfID(), "AddKeyGeneration", md.Version()}
+	}
+
+	if len(wKeys) == 0 {
+		return nil, nil, errors.New("wkeys unexpectedly non-empty")
+	}
+
 	if currCryptKey != (kbfscrypto.TLFCryptKey{}) {
 		return nil, nil, errors.New("currCryptKey unexpectedly non-zero")
 	}
 
-	wUDKIM := make(UserDeviceKeyInfoMap)
-	rUDKIM := make(UserDeviceKeyInfoMap)
-	err = md.addKeyGenerationHelper(codec, pubKey, wUDKIM, rUDKIM, nil, nil)
-	if err != nil {
-		return nil, nil, err
+	newWriterKeys := TLFWriterKeyBundleV2{
+		WKeys:        make(UserDeviceKeyInfoMapV2),
+		TLFPublicKey: pubKey,
 	}
+	md.WKeys = append(md.WKeys, newWriterKeys)
+
+	newReaderKeys := TLFReaderKeyBundleV2{
+		RKeys: make(UserDeviceKeyInfoMapV2),
+	}
+	md.RKeys = append(md.RKeys, newReaderKeys)
 
 	serverHalves, err = md.updateKeyGeneration(
 		crypto, md.LatestKeyGeneration(), wKeys, rKeys,
