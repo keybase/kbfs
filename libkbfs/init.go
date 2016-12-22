@@ -203,6 +203,34 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 	return &params
 }
 
+func GetRemoteUsageString() string {
+	return `    [-debug] [-cpuprofile=path/to/dir]
+    [-bserver=host:port] [-mdserver=host:port]
+    [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]`
+}
+
+func GetLocalUsageString() string {
+	return `    [-debug] [-cpuprofile=path/to/dir]
+    [-bserver=(memory | dir:/path/to/dir | host:port)]
+    [-mdserver=(memory | dir:/path/to/dir | host:port)]
+    [-localuser=<user>]
+    [-local-fav-storage=(memory |dir :/path/to/dir)]
+    [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]`
+}
+
+func GetDefaultsUsageString(ctx Context) string {
+	defaultBServer := GetDefaultBServer(ctx)
+	defaultMDServer := GetDefaultMDServer(ctx)
+	defaultLocalUser := GetDefaultLocalUser(ctx)
+	defaultLocalFavoriteStorage := GetDefaultLocalFavoriteStorage(ctx)
+	return fmt.Sprintf(`  -bserver=%s
+  -mdserver=%s
+  -localuser=%s
+  -local-fav-storage=%s`,
+		defaultBServer, defaultMDServer, defaultLocalUser,
+		defaultLocalFavoriteStorage)
+}
+
 const memoryAddr = "memory"
 
 const dirAddrPrefix = "dir:"

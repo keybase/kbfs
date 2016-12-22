@@ -29,34 +29,29 @@ const usageFormatStr = `Usage:
   kbfsfuse -version
 
 To run against remote KBFS servers:
-  kbfsfuse [-debug] [-cpuprofile=path/to/dir]
-    [-bserver=host:port] [-mdserver=host:port]
+  kbfsfuse
     [-runtime-dir=path/to/dir] [-label=label] [-mount-type=force]
-    [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]
+%s
     %s/path/to/mountpoint
 
 To run in a local testing environment:
-  kbfsfuse [-debug] [-cpuprofile=path/to/dir]
-    [-bserver=[memory|dir:/path/to/dir]] [-mdserver=[memory|dir:/path/to/dir]]
-    [-localuser=<user>] [-local-fav-storage=[memory|dir:/path/to/dir]]
+  kbfsfuse
     [-runtime-dir=path/to/dir] [-label=label] [-mount-type=force]
-    [-log-to-file] [-log-file=path/to/file] [-clean-bcache-cap=0]
+%s
     %s/path/to/mountpoint
 
 defaults:
-  -bserver=%s -mdserver=%s -localuser=%s -local-fav-storage=%s
+%s
 `
 
-func getUsageStr(ctx libkbfs.Context) string {
-	platformUsageString := libfuse.GetPlatformUsageString()
-	defaultBServer := libkbfs.GetDefaultBServer(ctx)
-	defaultMDServer := libkbfs.GetDefaultMDServer(ctx)
-	defaultLocalUser := libkbfs.GetDefaultLocalUser(ctx)
-	defaultLocalFavoriteStorage :=
-		libkbfs.GetDefaultLocalFavoriteStorage(ctx)
-	return fmt.Sprintf(usageFormatStr, platformUsageString,
-		platformUsageString, defaultBServer, defaultMDServer,
-		defaultLocalUser, defaultLocalFavoriteStorage)
+func getUsageString(ctx libkbfs.Context) string {
+	remoteUsageStr := libkbfs.GetRemoteUsageString()
+	localUsageStr := libkbfs.GetLocalUsageString()
+	platformUsageStr := libfuse.GetPlatformUsageString()
+	defaultUsageStr := libkbfs.GetDefaultsUsageString(ctx)
+	return fmt.Sprintf(usageFormatStr,
+		remoteUsageStr, platformUsageStr,
+		localUsageStr, platformUsageStr, defaultUsageStr)
 }
 
 func start() *libfs.Error {
@@ -73,12 +68,12 @@ func start() *libfs.Error {
 	}
 
 	if len(flag.Args()) < 1 {
-		fmt.Print(getUsageStr(ctx))
+		fmt.Print(getUsageString(ctx))
 		return libfs.InitError("no mount specified")
 	}
 
 	if len(flag.Args()) > 1 {
-		fmt.Print(getUsageStr(ctx))
+		fmt.Print(getUsageString(ctx))
 		return libfs.InitError("extra arguments specified (flags go before the first argument)")
 	}
 
