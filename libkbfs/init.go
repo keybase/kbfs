@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime/pprof"
+	"strings"
 	"time"
 
 	"github.com/keybase/client/go/libkb"
@@ -27,28 +28,22 @@ type InitParams struct {
 	CPUProfile string
 
 	// If non-empty, the host:port of the block server. If empty,
-	// a default value is used depending on the run mode.
+	// a default value is used depending on the run mode. Can also
+	// be "memory" for an in-memory test server or
+	// "dir:/path/to/dir" for an on-disk test server.
 	BServerAddr string
 	// If non-empty the host:port of the metadata server. If
 	// empty, a default value is used depending on the run mode.
+	// Can also be "memory" for an in-memory test server or
+	// "dir:/path/to/dir" for an on-disk test server.
 	MDServerAddr string
 
 	// If non-zero, specifies the capacity (in bytes) of the block cache. If
 	// zero, the capacity is set using getDefaultBlockCacheCapacity().
 	CleanBlockCacheCapacity uint64
 
-	// If true, use in-memory bserver and ignore BServerAddr,
-	// and BServerRootDir for the bserver.
-	BServerInMemory bool
-	// If true, use in-memory mdserver and ignore MDServerAddr,
-	// and MDServerRootDir for the mdserver.
-	MDServerInMemory bool
-	// If non-empty, use on-disk servers and ignore BServerAddr.
-	BServerRootDir string
-	// If non-empty, use on-disk servers and ignore MDServerAddr.
-	MDServerRootDir string
-	// Fake local user name. If non-empty, either ServerInMemory
-	// must be true or ServerRootDir must be non-empty.
+	// Fake local user name. If non-empty, MDServerAddr must be
+	// either "memory" or "dir:/path/to/dir".
 	LocalUser string
 
 	// TLFValidDuration is the duration that TLFs are valid
@@ -84,7 +79,7 @@ func GetDefaultBServer(ctx Context) string {
 	case libkb.ProductionRunMode:
 		return "bserver.kbfs.keybase.io:443"
 	default:
-		return ""
+		return memoryAddr
 	}
 }
 
@@ -96,7 +91,7 @@ func GetDefaultMDServer(ctx Context) string {
 	case libkb.ProductionRunMode:
 		return "mdserver.kbfs.keybase.io:443"
 	default:
-		return ""
+		return memoryAddr
 	}
 }
 
@@ -143,14 +138,9 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 	flags.BoolVar(&params.Debug, "debug", defaultParams.Debug, "Print debug messages")
 	flags.StringVar(&params.CPUProfile, "cpuprofile", "", "write cpu profile to file")
 
-	flags.StringVar(&params.BServerAddr, "bserver", defaultParams.BServerAddr, "host:port of the block server")
-	flags.StringVar(&params.MDServerAddr, "mdserver", defaultParams.MDServerAddr, "host:port of the metadata server")
-
-	flags.BoolVar(&params.BServerInMemory, "bserver-in-memory", false, "use in-memory bserver (and ignore -bserver and -bserver-root for the bserver)")
-	flags.BoolVar(&params.MDServerInMemory, "mdserver-in-memory", false, "use in-memory mdserver (and ignore -mdserver, and -mdserver-root for the mdserver)")
-	flags.StringVar(&params.BServerRootDir, "bserver-root", "", "directory to put local block server files (and ignore -bserver)")
-	flags.StringVar(&params.MDServerRootDir, "mdserver-root", "", "directory to put local MD server files (and ignore -mdserver)")
-	flags.StringVar(&params.LocalUser, "localuser", "", "fake local user (used only with -{b,md}server-in-memory or -{b,md}server-root)")
+	flags.StringVar(&params.BServerAddr, "bserver", defaultParams.BServerAddr, "host:port of the block server, 'memory', or 'dir:/path/to/dir'")
+	flags.StringVar(&params.MDServerAddr, "mdserver", defaultParams.MDServerAddr, "host:port of the metadata server, 'memory', or 'dir:/path/to/dir'")
+	flags.StringVar(&params.LocalUser, "localuser", "", "fake local user (used only with -mdserver=memory or -mdserver=disk")
 	flags.DurationVar(&params.TLFValidDuration, "tlf-valid", defaultParams.TLFValidDuration, "time tlfs are valid before redoing identification")
 	flags.BoolVar(&params.LogToFile, "log-to-file", false, fmt.Sprintf("Log to default file: %s", defaultLogPath(ctx)))
 	flags.StringVar(&params.LogFileConfig.Path, "log-file", "", "Path to log file")
@@ -170,46 +160,67 @@ func AddFlags(flags *flag.FlagSet, ctx Context) *InitParams {
 	return &params
 }
 
-func makeMDServer(config Config, serverInMemory bool, serverRootDir, mdserverAddr string, ctx Context) (
-	MDServer, error) {
-	if serverInMemory {
+const memoryAddr = "memory"
+
+const dirAddrPrefix = "dir:"
+
+func parseRootDir(addr string) (string, bool) {
+	if !strings.HasPrefix(addr, dirAddrPrefix) {
+		return "", false
+	}
+	serverRootDir := addr[len(dirAddrPrefix):]
+	if len(serverRootDir) == 0 {
+		return "", false
+	}
+	return serverRootDir, true
+}
+
+func makeMDServer(config Config, mdserverAddr string, ctx Context,
+	log logger.Logger) (MDServer, error) {
+	if mdserverAddr == memoryAddr {
+		log.Debug("Using in-memory mdserver")
 		// local in-memory MD server
 		return NewMDServerMemory(mdServerLocalConfigAdapter{config})
-	}
-
-	if len(serverRootDir) > 0 {
-		// local persistent MD server
-		mdPath := filepath.Join(serverRootDir, "kbfs_md")
-		return NewMDServerDir(mdServerLocalConfigAdapter{config}, mdPath)
 	}
 
 	if len(mdserverAddr) == 0 {
 		return nil, errors.New("Empty MD server address")
 	}
 
+	if serverRootDir, ok := parseRootDir(mdserverAddr); ok {
+		log.Debug("Using on-disk mdserver at %s", serverRootDir)
+		// local persistent MD server
+		mdPath := filepath.Join(serverRootDir, "kbfs_md")
+		return NewMDServerDir(mdServerLocalConfigAdapter{config}, mdPath)
+	}
+
 	// remote MD server. this can't fail. reconnection attempts
 	// will be automatic.
+	log.Debug("Using remote mdserver %s", mdserverAddr)
 	mdServer := NewMDServerRemote(config, mdserverAddr, ctx)
 	return mdServer, nil
 }
 
-func makeKeyServer(config Config, serverInMemory bool, serverRootDir, keyserverAddr string) (
-	KeyServer, error) {
-	if serverInMemory {
+func makeKeyServer(config Config, keyserverAddr string,
+	log logger.Logger) (KeyServer, error) {
+	if keyserverAddr == memoryAddr {
+		log.Debug("Using in-memory keyserver")
 		// local in-memory key server
 		return NewKeyServerMemory(config)
-	}
-
-	if len(serverRootDir) > 0 {
-		// local persistent key server
-		keyPath := filepath.Join(serverRootDir, "kbfs_key")
-		return NewKeyServerDir(config, keyPath)
 	}
 
 	if len(keyserverAddr) == 0 {
 		return nil, errors.New("Empty key server address")
 	}
 
+	if serverRootDir, ok := parseRootDir(keyserverAddr); ok {
+		log.Debug("Using on-disk keyserver at %s", serverRootDir)
+		// local persistent key server
+		keyPath := filepath.Join(serverRootDir, "kbfs_key")
+		return NewKeyServerDir(config, keyPath)
+	}
+
+	log.Debug("Using remote keyserver %s (same as mdserver)", keyserverAddr)
 	// currently the MD server also acts as the key server.
 	keyServer, ok := config.MDServer().(KeyServer)
 	if !ok {
@@ -218,24 +229,26 @@ func makeKeyServer(config Config, serverInMemory bool, serverRootDir, keyserverA
 	return keyServer, nil
 }
 
-func makeBlockServer(config Config, serverInMemory bool, serverRootDir, bserverAddr string, ctx Context, log logger.Logger) (
-	BlockServer, error) {
-	if serverInMemory {
+func makeBlockServer(config Config, bserverAddr string, ctx Context,
+	log logger.Logger) (BlockServer, error) {
+	if bserverAddr == memoryAddr {
+		log.Debug("Using in-memory bserver")
 		bserverLog := config.MakeLogger("BSM")
 		// local in-memory block server
 		return NewBlockServerMemory(config.Crypto(), bserverLog), nil
 	}
 
-	if len(serverRootDir) > 0 {
+	if len(bserverAddr) == 0 {
+		return nil, errors.New("Empty block server address")
+	}
+
+	if serverRootDir, ok := parseRootDir(bserverAddr); ok {
+		log.Debug("Using on-disk bserver at %s", serverRootDir)
 		// local persistent block server
 		blockPath := filepath.Join(serverRootDir, "kbfs_block")
 		bserverLog := config.MakeLogger("BSD")
 		return NewBlockServerDir(config.Codec(), config.Crypto(),
 			bserverLog, blockPath), nil
-	}
-
-	if len(bserverAddr) == 0 {
-		return nil, errors.New("Empty block server address")
 	}
 
 	log.Debug("Using remote bserver %s", bserverAddr)
@@ -394,16 +407,14 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config.SetCrypto(crypto)
 
-	mdServer, err := makeMDServer(
-		config, params.MDServerInMemory, params.MDServerRootDir, params.MDServerAddr, ctx)
+	mdServer, err := makeMDServer(config, params.MDServerAddr, ctx, log)
 	if err != nil {
 		return nil, fmt.Errorf("problem creating MD server: %v", err)
 	}
 	config.SetMDServer(mdServer)
 
 	// note: the mdserver is the keyserver at the moment.
-	keyServer, err := makeKeyServer(
-		config, params.MDServerInMemory, params.MDServerRootDir, params.MDServerAddr)
+	keyServer, err := makeKeyServer(config, params.MDServerAddr, log)
 	if err != nil {
 		return nil, fmt.Errorf("problem creating key server: %v", err)
 	}
@@ -414,7 +425,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config.SetKeyServer(keyServer)
 
-	bserv, err := makeBlockServer(config, params.BServerInMemory, params.BServerRootDir, params.BServerAddr, ctx, log)
+	bserv, err := makeBlockServer(config, params.BServerAddr, ctx, log)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open block database: %v", err)
 	}

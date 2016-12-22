@@ -47,16 +47,19 @@ func (k keybaseDaemon) NewKeybaseService(config Config, params InitParams, ctx C
 	localUID := localUsers[userIndex].UID
 	codec := config.Codec()
 
-	if params.BServerInMemory && params.MDServerInMemory {
+	// Arbitrarily use the MDServer params to decide between
+	// memory/disk.
+
+	if params.MDServerAddr == memoryAddr {
 		return NewKeybaseDaemonMemory(localUID, localUsers, codec), nil
 	}
 
-	if len(params.BServerRootDir) > 0 && len(params.MDServerRootDir) > 0 {
-		favPath := filepath.Join(params.MDServerRootDir, "kbfs_favs")
+	if serverRootDir, ok := parseRootDir(params.MDServerAddr); ok {
+		favPath := filepath.Join(serverRootDir, "kbfs_favs")
 		return NewKeybaseDaemonDisk(localUID, localUsers, favPath, codec)
 	}
 
-	return nil, errors.New("Can't user localuser without a local server")
+	return nil, errors.New("Can't user localuser without a local MDserver")
 }
 
 func (k keybaseDaemon) NewCrypto(config Config, params InitParams, ctx Context, log logger.Logger) (Crypto, error) {
