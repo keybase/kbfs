@@ -114,16 +114,17 @@ func makeMDForTest(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 	return md
 }
 
-func putMDRange(t testing.TB, ver MetadataVer, tlfID tlf.ID,
-	signer kbfscrypto.Signer, ekg encryptionKeyGetter,
-	bsplit BlockSplitter, firstRevision MetadataRevision,
-	firstPrevRoot MdID, mdCount int, j *mdJournal) ([]*RootMetadata, MdID) {
+func putMDRangeHelper(t testing.TB, ver MetadataVer, tlfID tlf.ID,
+	signer kbfscrypto.Signer, firstRevision MetadataRevision,
+	firstPrevRoot MdID, mdCount int, uid keybase1.UID,
+	putMD func(context.Context, *RootMetadata) (MdID, error)) (
+	[]*RootMetadata, MdID) {
 	require.True(t, mdCount > 0)
 	ctx := context.Background()
 	var mds []*RootMetadata
 	md := makeMDForTest(
-		t, ver, tlfID, firstRevision, j.uid, signer, firstPrevRoot)
-	mdID, err := j.put(ctx, signer, ekg, bsplit, md, false)
+		t, ver, tlfID, firstRevision, uid, signer, firstPrevRoot)
+	mdID, err := putMD(ctx, md)
 	require.NoError(t, err)
 	mds = append(mds, md)
 	codec := kbfscodec.NewMsgpack()
@@ -133,12 +134,23 @@ func putMDRange(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 		md, err = md.MakeSuccessor(ctx, ver, codec, crypto,
 			nil, prevRoot, true)
 		require.NoError(t, err)
-		mdID, err := j.put(ctx, signer, ekg, bsplit, md, false)
+		mdID, err := putMD(ctx, md)
 		require.NoError(t, err)
 		mds = append(mds, md)
 		prevRoot = mdID
 	}
 	return mds, prevRoot
+}
+
+func putMDRange(t testing.TB, ver MetadataVer, tlfID tlf.ID,
+	signer kbfscrypto.Signer, ekg encryptionKeyGetter,
+	bsplit BlockSplitter, firstRevision MetadataRevision,
+	firstPrevRoot MdID, mdCount int, j *mdJournal) ([]*RootMetadata, MdID) {
+	return putMDRangeHelper(t, ver, tlfID, signer, firstRevision,
+		firstPrevRoot, mdCount, j.uid,
+		func(ctx context.Context, md *RootMetadata) (MdID, error) {
+			return j.put(ctx, signer, ekg, bsplit, md, false)
+		})
 }
 
 func checkBRMD(t *testing.T, uid keybase1.UID, key kbfscrypto.VerifyingKey,
@@ -200,15 +212,13 @@ func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer, mdCount int) {
 		setupMDJournalTest(noLogTB{b}, ver)
 	defer teardownMDJournalTest(b, tempdir)
 
-	revision := MetadataRevision(10)
-	prevRoot := fakeMdID(1)
-
-	b.StartTimer()
-
-	_, prevRoot = putMDRange(b, ver, id,
-		signer, ekg, bsplit, revision, prevRoot, mdCount, j)
-
-	b.StopTimer()
+	putMDRangeHelper(b, ver, id, signer, MetadataRevision(10),
+		fakeMdID(1), mdCount, j.uid,
+		func(ctx context.Context, md *RootMetadata) (MdID, error) {
+			b.StartTimer()
+			defer b.StopTimer()
+			return j.put(ctx, signer, ekg, bsplit, md, false)
+		})
 }
 
 func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
