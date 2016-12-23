@@ -137,13 +137,15 @@ func (extra *ExtraMetadataV3) updateNew(wkbNew, rkbNew bool) {
 // DeepCopy implements the ExtraMetadata interface for ExtraMetadataV3.
 func (extra ExtraMetadataV3) DeepCopy(codec kbfscodec.Codec) (
 	ExtraMetadata, error) {
-	wkb, rkb := TLFWriterKeyBundleV3{}, TLFReaderKeyBundleV3{}
-	if err := kbfscodec.Update(codec, &rkb, extra.rkb); err != nil {
+	wkb, err := extra.wkb.DeepCopy(codec)
+	if err != nil {
 		return nil, err
 	}
-	if err := kbfscodec.Update(codec, &wkb, extra.wkb); err != nil {
+	rkb, err := extra.rkb.DeepCopy(codec)
+	if err != nil {
 		return nil, err
 	}
+	// TODO: Justify dropping flags here.
 	return NewExtraMetadataV3(wkb, rkb, false, false), nil
 }
 
