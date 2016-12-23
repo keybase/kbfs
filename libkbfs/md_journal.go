@@ -475,7 +475,8 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 		return MdID{}, err
 	}
 
-	_, _, _, err = j.getMDAndExtra(id, true, false, false)
+	p := j.mdDataPath(id)
+	_, err = ioutil.Stat(p)
 	if ioutil.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
