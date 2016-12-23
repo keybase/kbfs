@@ -33,6 +33,8 @@ type mdIDJournal struct {
 type mdIDJournalEntry struct {
 	ID            MdID
 	IsLocalSquash bool
+	WKBNew        bool
+	RKBNew        bool
 
 	codec.UnknownFieldSetHandler
 }
