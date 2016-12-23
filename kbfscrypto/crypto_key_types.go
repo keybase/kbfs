@@ -188,7 +188,7 @@ func (k CryptPrivateKey) GetPublicKey() CryptPublicKey {
 }
 
 // CryptPublicKey (M_u^i) is used (with a TLFEphemeralPrivateKey) to
-// encrypt TLFCryptKeyClientHalf objects (See § 4.1.1, 6.1.1, 6.3.)
+// encrypt TLFCryptKeyClientHalf objects (See §§ 4.1.1, 6.1.1, 6.3.)
 // These are also sometimes known as subkeys.
 //
 // Copies of CryptPublicKey objects are deep copies.
