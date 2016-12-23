@@ -185,9 +185,6 @@ func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 	}
 }
 
-// TODO: Create a separate journal for each iteration, instead of
-// using the same one.
-
 func BenchmarkMDJournalBasic(b *testing.B) {
 	runBenchmarkOverMetadataVers(b, benchmarkMDJournalBasic)
 }
