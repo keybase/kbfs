@@ -79,7 +79,6 @@ func mdDumpBRMDV2(ctx context.Context, config libkbfs.Config,
 
 	fmt.Print("Writer metadata\n")
 	fmt.Print("---------------\n")
-	fmt.Print("Writers:\n")
 	mdDumpWMDV2(ctx, config, &rmd.WriterMetadataV2)
 
 	return nil
