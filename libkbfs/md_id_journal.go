@@ -32,9 +32,9 @@ type mdIDJournal struct {
 // false`, it will be the same in all the remaining entries.
 type mdIDJournalEntry struct {
 	ID            MdID
-	IsLocalSquash bool
-	WKBNew        bool
-	RKBNew        bool
+	IsLocalSquash bool `codec:",omitempty"`
+	WKBNew        bool `codec:",omitempty"`
+	RKBNew        bool `codec:",omitempty"`
 
 	codec.UnknownFieldSetHandler
 }

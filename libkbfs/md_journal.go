@@ -330,8 +330,8 @@ func (j mdJournal) getExtraMetadata(
 	return NewExtraMetadataV3(wkb, rkb, true, true), nil
 }
 
-func (j mdJournal) putExtraMetadata(
-	rmd BareRootMetadata, extra ExtraMetadata) error {
+func (j mdJournal) putExtraMetadata(rmd BareRootMetadata, extra ExtraMetadata) (
+	wkbNew, rkbNew bool, err error) {
 	wkbID := rmd.GetTLFWriterKeyBundleID()
 	rkbID := rmd.GetTLFReaderKeyBundleID()
 
@@ -342,7 +342,7 @@ func (j mdJournal) putExtraMetadata(
 		if rkbID != (TLFReaderKeyBundleID{}) {
 			panic(errors.Errorf("unexpected non-nil rkbID %s", rkbID))
 		}
-		return nil
+		return false, false, nil
 	}
 
 	if wkbID == (TLFWriterKeyBundleID{}) {
@@ -355,21 +355,21 @@ func (j mdJournal) putExtraMetadata(
 
 	extraV3, ok := extra.(*ExtraMetadataV3)
 	if !ok {
-		return errors.New("Invalid extra metadata")
+		return false, false, errors.New("Invalid extra metadata")
 	}
 
 	// TODO: We lose extraV3.wkbNew and extraV3.rkbNew here. Store
 	// it as part of the mdInfo, so we don't needlessly send it
 	// while flushing.
 
-	err := checkWKBID(j.crypto, wkbID, extraV3.wkb)
+	err = checkWKBID(j.crypto, wkbID, extraV3.wkb)
 	if err != nil {
-		return err
+		return false, false, err
 	}
 
 	err = checkRKBID(j.crypto, rkbID, extraV3.rkb)
 	if err != nil {
-		return err
+		return false, false, err
 	}
 
 	// TODO: Avoid serializing if the file already exists.
@@ -377,16 +377,16 @@ func (j mdJournal) putExtraMetadata(
 	err = kbfscodec.SerializeToFile(
 		j.codec, extraV3.wkb, j.writerKeyBundleV3Path(wkbID))
 	if err != nil {
-		return err
+		return false, false, err
 	}
 
 	err = kbfscodec.SerializeToFile(
 		j.codec, extraV3.rkb, j.readerKeyBundleV3Path(rkbID))
 	if err != nil {
-		return err
+		return false, false, err
 	}
 
-	return nil
+	return extraV3.wkbNew, extraV3.rkbNew, nil
 }
 
 // getMDAndExtra verifies the MD data, the writer signature (but not
@@ -1203,7 +1203,7 @@ func (j *mdJournal) put(
 		return MdID{}, err
 	}
 
-	err = j.putExtraMetadata(rmd.bareMd, rmd.extra)
+	wkbNew, rkbNew, err := j.putExtraMetadata(rmd.bareMd, rmd.extra)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1211,6 +1211,8 @@ func (j *mdJournal) put(
 	newEntry := mdIDJournalEntry{
 		ID:            id,
 		IsLocalSquash: isLocalSquash,
+		WKBNew:        wkbNew,
+		RKBNew:        rkbNew,
 	}
 	if head != (ImmutableBareRootMetadata{}) &&
 		rmd.Revision() == head.RevisionNumber() {
