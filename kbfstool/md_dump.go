@@ -193,9 +193,7 @@ func mdDumpExtraV3(ctx context.Context, config libkbfs.Config,
 }
 
 func mdDumpPrivateMetadata(ctx context.Context, config libkbfs.Config,
-	serializedSize int, pmd *libkbfs.PrivateMetadata) {
-	fmt.Printf("Serialized size: %d bytes\n", serializedSize)
-
+	pmd *libkbfs.PrivateMetadata) {
 	// TODO: Clean up output.
 	fmt.Printf("Dir: %s\n", pmd.Dir)
 	fmt.Print("TLF private key: {32 bytes}\n")
@@ -247,6 +245,11 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 		fmt.Printf("%+v\n", extra)
 	}
 	fmt.Print("\n")
+
+	fmt.Print("Private metadata\n")
+	fmt.Print("----------------\n")
+
+	mdDumpPrivateMetadata(ctx, config, rmd.Data())
 
 	return nil
 }
