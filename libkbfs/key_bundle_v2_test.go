@@ -137,6 +137,8 @@ func TestToTLFWriterKeyBundleV3(t *testing.T) {
 	wEPubKey1 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x1})
 	wEPubKey2 := kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0x2})
 
+	tlfPublicKey := kbfscrypto.MakeTLFPublicKey([32]byte{0x1})
+
 	wkbV2 := TLFWriterKeyBundleV2{
 		WKeys: UserDeviceKeyInfoMapV2{
 			uid1: DeviceKeyInfoMapV2{
@@ -159,6 +161,7 @@ func TestToTLFWriterKeyBundleV3(t *testing.T) {
 				},
 			},
 		},
+		TLFPublicKey: tlfPublicKey,
 		TLFEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
 			wEPubKey1, wEPubKey2,
 		},
@@ -196,15 +199,23 @@ func TestToTLFWriterKeyBundleV3(t *testing.T) {
 				},
 			},
 		},
+		TLFPublicKey: tlfPublicKey,
 		TLFEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
 			wEPubKey1, wEPubKey2,
 		},
 	}
 
-	_, wkbV3, err := wkg.ToTLFWriterKeyBundleV3(
+	retrievedWKBV2, wkbV3, err := wkg.ToTLFWriterKeyBundleV3(
 		codec, crypto, tlfCryptKeyGetter)
 	require.NoError(t, err)
+	require.Equal(t, wkbV2, retrievedWKBV2)
+	encryptedOldKeys := wkbV3.EncryptedHistoricTLFCryptKeys
+	wkbV3.EncryptedHistoricTLFCryptKeys = EncryptedTLFCryptKeys{}
 	require.Equal(t, expectedWKBV3, wkbV3)
+	oldKeys, err :=
+		crypto.DecryptTLFCryptKeys(encryptedOldKeys, tlfCryptKey2)
+	require.NoError(t, err)
+	require.Equal(t, oldKeys, []kbfscrypto.TLFCryptKey{tlfCryptKey1})
 }
 
 func TestToTLFReaderKeyBundleV3(t *testing.T) {
