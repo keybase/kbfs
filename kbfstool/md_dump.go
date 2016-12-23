@@ -22,13 +22,6 @@ func getUserString(
 	return fmt.Sprintf("%s (uid:%s)", username, uid)
 }
 
-func mdDumpOne(ctx context.Context, config libkbfs.Config,
-	rmd libkbfs.ImmutableRootMetadata) error {
-	fmt.Printf("MD ID: %s\n", rmd.MdID())
-
-	return mdDumpOneReadOnly(ctx, config, rmd.ReadOnly())
-}
-
 func mdDumpUDKIMV3(ctx context.Context, config libkbfs.Config,
 	udkimV3 libkbfs.UserDeviceKeyInfoMapV3) {
 	for uid, dkimV3 := range udkimV3 {
@@ -205,7 +198,7 @@ func mdDumpExtraV3(ctx context.Context, config libkbfs.Config,
 	// TODO: Print unknown fields.
 }
 
-func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
+func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	rmd libkbfs.ReadOnlyRootMetadata) error {
 	brmd := rmd.GetBareRootMetadata()
 	buf, err := config.Codec().Encode(brmd)
@@ -252,6 +245,13 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 		len(rmd.GetSerializedPrivateMetadata()), rmd.Data())
 
 	return nil
+}
+
+func mdDumpImmutableRMD(ctx context.Context, config libkbfs.Config,
+	rmd libkbfs.ImmutableRootMetadata) error {
+	fmt.Printf("MD ID: %s\n", rmd.MdID())
+
+	return mdDumpReadOnlyRMD(ctx, config, rmd.ReadOnly())
 }
 
 const mdDumpUsageStr = `Usage:
@@ -317,7 +317,7 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 
 		fmt.Printf("Result for %q:\n\n", input)
 
-		err = mdDumpOne(ctx, config, irmd)
+		err = mdDumpImmutableRMD(ctx, config, irmd)
 		if err != nil {
 			printError("md dump", err)
 			return 1
