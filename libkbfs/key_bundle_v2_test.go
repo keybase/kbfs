@@ -143,15 +143,15 @@ func TestToTLFWriterKeyBundleV3(t *testing.T) {
 		WKeys: UserDeviceKeyInfoMapV2{
 			uid1: DeviceKeyInfoMapV2{
 				key1a.KID(): TLFCryptKeyInfo{
-					EPubKeyIndex: -1,
+					EPubKeyIndex: 0,
 				},
 				key1b.KID(): TLFCryptKeyInfo{
-					EPubKeyIndex: +2,
+					EPubKeyIndex: 1,
 				},
 			},
 			uid2: DeviceKeyInfoMapV2{
 				key2a.KID(): TLFCryptKeyInfo{
-					EPubKeyIndex: -2,
+					EPubKeyIndex: 1,
 				},
 				key2b.KID(): TLFCryptKeyInfo{
 					EPubKeyIndex: 0,
@@ -181,15 +181,15 @@ func TestToTLFWriterKeyBundleV3(t *testing.T) {
 		Keys: UserDeviceKeyInfoMapV3{
 			uid1: DeviceKeyInfoMapV3{
 				key1a: TLFCryptKeyInfo{
-					EPubKeyIndex: -1,
+					EPubKeyIndex: 0,
 				},
 				key1b: TLFCryptKeyInfo{
-					EPubKeyIndex: +2,
+					EPubKeyIndex: 1,
 				},
 			},
 			uid2: DeviceKeyInfoMapV3{
 				key2a: TLFCryptKeyInfo{
-					EPubKeyIndex: -2,
+					EPubKeyIndex: 1,
 				},
 				key2b: TLFCryptKeyInfo{
 					EPubKeyIndex: 0,

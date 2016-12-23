@@ -275,10 +275,21 @@ func (wkg TLFWriterKeyGenerationsV2) ToTLFWriterKeyBundleV3(
 			errors.New("No key generations to convert")
 	}
 
+	wkbV2 := wkg[keyGen-FirstValidKeyGen]
+	for u, dkimV2 := range wkbV2.WKeys {
+		for kid, keyInfo := range dkimV2 {
+			index := keyInfo.EPubKeyIndex
+			if index < 0 || index >= len(wkbV2.TLFEphemeralPublicKeys) {
+				return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{},
+					fmt.Errorf("Invalid writer key index %d for user=%s, kid=%s",
+						index, u, kid)
+			}
+		}
+	}
+
 	var wkbV3 TLFWriterKeyBundleV3
 
 	// Copy the latest UserDeviceKeyInfoMap.
-	wkbV2 := wkg[keyGen-FirstValidKeyGen]
 	udkimV3, err := udkimV2ToV3(codec, wkbV2.WKeys)
 	if err != nil {
 		return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{}, err
