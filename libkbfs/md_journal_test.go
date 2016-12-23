@@ -614,7 +614,7 @@ func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 	mdcache := NewMDCacheStandard(10)
 	cachedMd := makeMDForTest(
 		t, ver, id, firstRevision, j.uid, signer, firstPrevRoot)
-	err = cachedMd.bareMd.SignWriterMetadataInternally(ctx, codec, signer)
+	err := cachedMd.bareMd.SignWriterMetadataInternally(ctx, codec, signer)
 	require.NoError(t, err)
 	cachedMdID, _, _, _, err := j.getEarliestWithExtra(false)
 	require.NoError(t, err)
