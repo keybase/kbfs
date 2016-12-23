@@ -182,7 +182,9 @@ func BenchmarkMDJournalBasic(b *testing.B) {
 	runBenchmarkOverMetadataVers(b, benchmarkMDJournalBasic)
 }
 
-func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
+func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer) {
+	b.StopTimer()
+
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(b, ver)
 	defer teardownMDJournalTest(b, tempdir)
 
@@ -190,13 +192,20 @@ func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
 	revision := MetadataRevision(10)
 	prevRoot := fakeMdID(1)
 
+	b.StartTimer()
+
+	_, prevRoot = putMDRange(b, ver, id,
+		signer, ekg, bsplit, revision, prevRoot, mdCount, j)
+
+	b.StopTimer()
+}
+
+func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
 	b.ResetTimer()
-	defer b.StopTimer()
+	b.StopTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, prevRoot = putMDRange(b, ver, id,
-			signer, ekg, bsplit, revision, prevRoot, mdCount, j)
-		revision += MetadataRevision(mdCount)
+		benchmarkMDJournalBasicBody(b, ver)
 	}
 }
 
