@@ -228,6 +228,7 @@ func (wkb TLFWriterKeyBundleV3) IsWriter(user keybase1.UID, deviceKID keybase1.K
 	return ok
 }
 
+// DeepCopy creates a deep copy of this key bundle.
 func (wkb TLFWriterKeyBundleV3) DeepCopy(codec kbfscodec.Codec) (
 	TLFWriterKeyBundleV3, error) {
 	if len(wkb.Keys) == 0 {
@@ -340,6 +341,7 @@ func (rkb TLFReaderKeyBundleV3) IsReader(user keybase1.UID, deviceKID keybase1.K
 	return ok
 }
 
+// DeepCopy creates a deep copy of this key bundle.
 func (rkb TLFReaderKeyBundleV3) DeepCopy(codec kbfscodec.Codec) (
 	TLFReaderKeyBundleV3, error) {
 	var rkbCopy TLFReaderKeyBundleV3
