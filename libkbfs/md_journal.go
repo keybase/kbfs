@@ -645,7 +645,7 @@ func (j *mdJournal) convertToBranch(
 	isPendingLocalSquash := bid == PendingLocalSquashBranchID
 	for _, entry := range allEntries {
 		brmd, _, ts, err := j.getMDAndExtra(
-			entry.ID, true, false, false)
+			entry.ID, true, entry.WKBNew, entry.RKBNew)
 		if err != nil {
 			return err
 		}
