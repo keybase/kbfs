@@ -182,10 +182,19 @@ func BenchmarkMDJournalBasic(b *testing.B) {
 	runBenchmarkOverMetadataVers(b, benchmarkMDJournalBasic)
 }
 
+type noLogTB struct {
+	testing.TB
+}
+
+func (tb noLogTB) Log(args ...interface{}) {}
+
+func (tb noLogTB) Logf(format string, args ...interface{}) {}
+
 func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer) {
 	b.StopTimer()
 
-	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(b, ver)
+	_, _, id, signer, ekg, bsplit, tempdir, j :=
+		setupMDJournalTest(noLogTB{b}, ver)
 	defer teardownMDJournalTest(b, tempdir)
 
 	mdCount := 500
