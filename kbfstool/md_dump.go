@@ -22,47 +22,29 @@ func getUserString(
 	return fmt.Sprintf("%s (uid:%s)", username, uid)
 }
 
-func mdDumpUDKIMV3(ctx context.Context, config libkbfs.Config,
-	udkimV3 libkbfs.UserDeviceKeyInfoMapV3) {
-	for uid, dkimV3 := range udkimV3 {
-		fmt.Printf("  User: %s\n", getUserString(ctx, config, uid))
-		for key, info := range dkimV3 {
-			fmt.Printf("    Device: %s\n", key)
-			clientHalf := info.ClientHalf
-			fmt.Printf("      Client half (encryption version=%d):\n",
-				clientHalf.Version)
-			fmt.Printf("        Encrypted data: %s\n",
-				hex.EncodeToString(clientHalf.EncryptedData))
-			fmt.Printf("        Nonce: %s\n",
-				hex.EncodeToString(clientHalf.Nonce))
-			fmt.Printf("      Server half ID: %s\n",
-				info.ServerHalfID)
-			fmt.Printf("      Ephemeral key index: %d\n",
-				info.EPubKeyIndex)
+func mdDumpWMDV2(ctx context.Context, config libkbfs.Config,
+	wmd *libkbfs.WriterMetadataV2) {
+	fmt.Printf("Serialized private metadata size: %d bytes\n",
+		len(wmd.SerializedPrivateMetadata))
+	fmt.Printf("Last modifying writer: %s\n",
+		getUserString(ctx, config, wmd.LastModifyingWriter))
+	fmt.Print("Writers:\n")
+	if wmd.ID.IsPublic() {
+		for _, writer := range wmd.Writers {
+			fmt.Printf("  %s\n", getUserString(ctx, config, writer))
 		}
+	} else {
+		// TODO: Print WKeys.
 	}
-}
-
-func mdDumpEphemeralPublicKeys(ePubKeys kbfscrypto.TLFEphemeralPublicKeys) {
-	for i, ePubKey := range ePubKeys {
-		fmt.Printf("    %d: %s\n", i, ePubKey)
-	}
-}
-
-func mdDumpPrivateMetadata(ctx context.Context, config libkbfs.Config,
-	serializedSize int, pmd *libkbfs.PrivateMetadata) {
-	fmt.Printf("Serialized size: %d bytes\n", serializedSize)
-
-	// TODO: Clean up output.
-	fmt.Printf("Dir: %s\n", pmd.Dir)
-	fmt.Print("TLF private key: {32 bytes}\n")
-	if pmd.ChangesBlockInfo() != (libkbfs.BlockInfo{}) {
-		fmt.Printf("Block changes block: %v\n", pmd.ChangesBlockInfo())
-	}
-	for i, op := range pmd.Changes.Ops {
-		fmt.Printf("Op[%d]: %s", i, op.StringWithRefs(1))
-	}
+	// TODO: Print unresolved writers.
+	fmt.Printf("TLF ID: %s\n", wmd.ID)
+	fmt.Printf("Branch ID: %s\n", wmd.BID)
+	// TODO: Print writer flags.
+	fmt.Printf("Disk usage: %d\n", wmd.DiskUsage)
+	fmt.Printf("Bytes in new blocks: %d\n", wmd.RefBytes)
+	fmt.Printf("Bytes in unreferenced blocks: %d\n", wmd.UnrefBytes)
 	// TODO: Print unknown fields.
+	fmt.Print("\n")
 }
 
 func mdDumpBRMDV2(ctx context.Context, config libkbfs.Config,
@@ -98,21 +80,7 @@ func mdDumpBRMDV2(ctx context.Context, config libkbfs.Config,
 	fmt.Print("Writer metadata\n")
 	fmt.Print("---------------\n")
 	fmt.Print("Writers:\n")
-	for _, writer := range bh.Writers {
-		fmt.Printf("  %s\n", getUserString(ctx, config, writer))
-	}
-	fmt.Printf("Last modifying writer: %s\n",
-		getUserString(ctx, config, rmd.LastModifyingWriter()))
-	// TODO: Print Writers/WKeys and unresolved writers.
-	fmt.Printf("TLF ID: %s\n", rmd.TlfID())
-	fmt.Printf("Branch ID: %s\n", rmd.BID())
-	fmt.Printf("Writer key bundle ID: %s\n", rmd.GetTLFWriterKeyBundleID())
-	// TODO: Print writer flags.
-	fmt.Printf("Disk usage: %d\n", rmd.DiskUsage())
-	fmt.Printf("Bytes in new blocks: %d\n", rmd.RefBytes())
-	fmt.Printf("Bytes in unreferenced blocks: %d\n", rmd.UnrefBytes())
-	// TODO: Print unknown fields.
-	fmt.Print("\n")
+	mdDumpWMDV2(ctx, config, &rmd.WriterMetadataV2)
 
 	return nil
 }
@@ -169,6 +137,33 @@ func mdDumpBRMDV3(ctx context.Context, config libkbfs.Config,
 	return nil
 }
 
+func mdDumpUDKIMV3(ctx context.Context, config libkbfs.Config,
+	udkimV3 libkbfs.UserDeviceKeyInfoMapV3) {
+	for uid, dkimV3 := range udkimV3 {
+		fmt.Printf("  User: %s\n", getUserString(ctx, config, uid))
+		for key, info := range dkimV3 {
+			fmt.Printf("    Device: %s\n", key)
+			clientHalf := info.ClientHalf
+			fmt.Printf("      Client half (encryption version=%d):\n",
+				clientHalf.Version)
+			fmt.Printf("        Encrypted data: %s\n",
+				hex.EncodeToString(clientHalf.EncryptedData))
+			fmt.Printf("        Nonce: %s\n",
+				hex.EncodeToString(clientHalf.Nonce))
+			fmt.Printf("      Server half ID: %s\n",
+				info.ServerHalfID)
+			fmt.Printf("      Ephemeral key index: %d\n",
+				info.EPubKeyIndex)
+		}
+	}
+}
+
+func mdDumpEphemeralPublicKeys(ePubKeys kbfscrypto.TLFEphemeralPublicKeys) {
+	for i, ePubKey := range ePubKeys {
+		fmt.Printf("    %d: %s\n", i, ePubKey)
+	}
+}
+
 func mdDumpExtraV3(ctx context.Context, config libkbfs.Config,
 	extraV3 *libkbfs.ExtraMetadataV3) {
 	fmt.Print("Type: ExtraMetadataV3\n")
@@ -195,6 +190,22 @@ func mdDumpExtraV3(ctx context.Context, config libkbfs.Config,
 	mdDumpUDKIMV3(ctx, config, rkb.Keys)
 	fmt.Print("  Ephemeral reader keys\n")
 	mdDumpEphemeralPublicKeys(wkb.TLFEphemeralPublicKeys)
+	// TODO: Print unknown fields.
+}
+
+func mdDumpPrivateMetadata(ctx context.Context, config libkbfs.Config,
+	serializedSize int, pmd *libkbfs.PrivateMetadata) {
+	fmt.Printf("Serialized size: %d bytes\n", serializedSize)
+
+	// TODO: Clean up output.
+	fmt.Printf("Dir: %s\n", pmd.Dir)
+	fmt.Print("TLF private key: {32 bytes}\n")
+	if pmd.ChangesBlockInfo() != (libkbfs.BlockInfo{}) {
+		fmt.Printf("Block changes block: %v\n", pmd.ChangesBlockInfo())
+	}
+	for i, op := range pmd.Changes.Ops {
+		fmt.Printf("Op[%d]: %s", i, op.StringWithRefs(1))
+	}
 	// TODO: Print unknown fields.
 }
 
@@ -237,12 +248,6 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 		fmt.Printf("%+v\n", extra)
 	}
 	fmt.Print("\n")
-
-	fmt.Print("Private metadata\n")
-	fmt.Print("----------------\n")
-
-	mdDumpPrivateMetadata(ctx, config,
-		len(rmd.GetSerializedPrivateMetadata()), rmd.Data())
 
 	return nil
 }
