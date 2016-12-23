@@ -4,8 +4,10 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"reflect"
 
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
@@ -20,6 +22,18 @@ func getUserString(
 		return uid.String()
 	}
 	return fmt.Sprintf("%s (uid:%s)", username, uid)
+}
+
+func mdDumpUnknownFields(handler codec.UnknownFieldSetHandler) {
+	if reflect.DeepEqual(handler, codec.UnknownFieldSetHandler{}) {
+		return
+	}
+
+	fmt.Printf("Unknown fields: %+v\n", handler)
+}
+
+func mdDumpWriterFlags(wFlags libkbfs.WriterFlags) {
+	fmt.Printf("Unmerged: %t\n", wFlags&libkbfs.MetadataFlagUnmerged != 0)
 }
 
 func mdDumpWMDV2(ctx context.Context, config libkbfs.Config,
@@ -39,11 +53,11 @@ func mdDumpWMDV2(ctx context.Context, config libkbfs.Config,
 	// TODO: Print unresolved writers.
 	fmt.Printf("TLF ID: %s\n", wmd.ID)
 	fmt.Printf("Branch ID: %s\n", wmd.BID)
-	// TODO: Print writer flags.
+	mdDumpWriterFlags(wmd.WFlags)
 	fmt.Printf("Disk usage: %d\n", wmd.DiskUsage)
 	fmt.Printf("Bytes in new blocks: %d\n", wmd.RefBytes)
 	fmt.Printf("Bytes in unreferenced blocks: %d\n", wmd.UnrefBytes)
-	// TODO: Print unknown fields.
+	mdDumpUnknownFields(wmd.Extra.UnknownFieldSetHandler)
 	fmt.Print("\n")
 }
 
