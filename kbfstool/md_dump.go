@@ -36,6 +36,45 @@ func mdDumpWriterFlags(wFlags libkbfs.WriterFlags) {
 	fmt.Printf("Unmerged: %t\n", wFlags&libkbfs.MetadataFlagUnmerged != 0)
 }
 
+func mdDumpUDKIMV2(ctx context.Context, config libkbfs.Config,
+	udkimV2 libkbfs.UserDeviceKeyInfoMapV2) {
+	for uid, dkimV2 := range udkimV2 {
+		fmt.Printf("  User: %s\n", getUserString(ctx, config, uid))
+		for kid, info := range dkimV2 {
+			fmt.Printf("    Device: %s\n", kid)
+			clientHalf := info.ClientHalf
+			fmt.Printf("      Client half (encryption version=%d):\n",
+				clientHalf.Version)
+			fmt.Printf("        Encrypted data: %s\n",
+				hex.EncodeToString(clientHalf.EncryptedData))
+			fmt.Printf("        Nonce: %s\n",
+				hex.EncodeToString(clientHalf.Nonce))
+			fmt.Printf("      Server half ID: %s\n",
+				info.ServerHalfID)
+			fmt.Printf("      Ephemeral key index: %d\n",
+				info.EPubKeyIndex)
+		}
+	}
+}
+
+func mdDumpEphemeralPublicKeys(ePubKeys kbfscrypto.TLFEphemeralPublicKeys) {
+	for i, ePubKey := range ePubKeys {
+		fmt.Printf("    %d: %s\n", i, ePubKey)
+	}
+}
+
+func mdDumpWriterKeyGenerationsV2(ctx context.Context, config libkbfs.Config,
+	wKeys libkbfs.TLFWriterKeyGenerationsV2) {
+	for i, wkb := range wKeys {
+		fmt.Printf("  KeyGen %d:\n", libkbfs.FirstValidKeyGen+libkbfs.KeyGen(i))
+		mdDumpUDKIMV2(ctx, config, wkb.WKeys)
+		fmt.Printf("  TLF public key: %s\n", wkb.TLFPublicKey)
+		mdDumpEphemeralPublicKeys(wkb.TLFEphemeralPublicKeys)
+		// TODO: Handle indent.
+		mdDumpUnknownFields(wkb.UnknownFieldSetHandler)
+	}
+}
+
 func mdDumpSocialAssertions(
 	name string, assertions []keybase1.SocialAssertion) {
 	if len(assertions) > 0 {
@@ -60,7 +99,7 @@ func mdDumpWMDV2(ctx context.Context, config libkbfs.Config,
 			fmt.Printf("  %s\n", getUserString(ctx, config, writer))
 		}
 	} else {
-		// TODO: Print WKeys.
+		mdDumpWriterKeyGenerationsV2(ctx, config, wmd.WKeys)
 	}
 	mdDumpSocialAssertions("Unresolved writers",
 		wmd.Extra.UnresolvedWriters)
@@ -181,12 +220,6 @@ func mdDumpUDKIMV3(ctx context.Context, config libkbfs.Config,
 			fmt.Printf("      Ephemeral key index: %d\n",
 				info.EPubKeyIndex)
 		}
-	}
-}
-
-func mdDumpEphemeralPublicKeys(ePubKeys kbfscrypto.TLFEphemeralPublicKeys) {
-	for i, ePubKey := range ePubKeys {
-		fmt.Printf("    %d: %s\n", i, ePubKey)
 	}
 }
 
