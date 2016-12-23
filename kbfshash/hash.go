@@ -259,6 +259,9 @@ type HMAC struct {
 var _ encoding.BinaryMarshaler = HMAC{}
 var _ encoding.BinaryUnmarshaler = (*HMAC)(nil)
 
+var _ json.Marshaler = HMAC{}
+var _ json.Unmarshaler = (*HMAC)(nil)
+
 // DefaultHMAC computes the HMAC with the given key of the given data
 // using the default hash.
 func DefaultHMAC(key, buf []byte) (HMAC, error) {
@@ -306,6 +309,18 @@ func (hmac HMAC) MarshalBinary() (data []byte, err error) {
 // the HMAC is invalid.
 func (hmac *HMAC) UnmarshalBinary(data []byte) error {
 	return hmac.h.UnmarshalBinary(data)
+}
+
+// MarshalJSON implements the encoding.json.Marshaler interface for
+// HMAC.
+func (h HMAC) MarshalJSON() ([]byte, error) {
+	return h.h.MarshalJSON()
+}
+
+// UnmarshalJSON implements the encoding.json.Unmarshaler interface
+// for HMAC.
+func (h *HMAC) UnmarshalJSON(data []byte) error {
+	return h.h.UnmarshalJSON(data)
 }
 
 // Verify makes sure that the HMAC matches the given data.
