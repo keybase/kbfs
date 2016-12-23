@@ -185,10 +185,6 @@ func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 	}
 }
 
-func BenchmarkMDJournalBasic(b *testing.B) {
-	runBenchmarkOverMetadataVers(b, benchmarkMDJournalBasic)
-}
-
 // noLogTB is an implementation of testing.TB that squelches all logs
 // (for benchmarks).
 type noLogTB struct {
@@ -198,6 +194,24 @@ type noLogTB struct {
 func (tb noLogTB) Log(args ...interface{}) {}
 
 func (tb noLogTB) Logf(format string, args ...interface{}) {}
+
+func BenchmarkMDJournalBasic(b *testing.B) {
+	runBenchmarkOverMetadataVers(b, benchmarkMDJournalBasic)
+}
+
+func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
+	for _, mdCount := range []int{1, 10, 100, 1000, 10000} {
+		mdCount := mdCount // capture range variable.
+		name := fmt.Sprintf("mdCount=%d", mdCount)
+		b.Run(name, func(b *testing.B) {
+			b.StopTimer()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				benchmarkMDJournalBasicBody(b, ver, mdCount)
+			}
+		})
+	}
+}
 
 func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer, mdCount int) {
 	b.StopTimer()
@@ -213,20 +227,6 @@ func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer, mdCount int) {
 			defer b.StopTimer()
 			return j.put(ctx, signer, ekg, bsplit, md, false)
 		})
-}
-
-func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
-	for _, mdCount := range []int{1, 10, 100, 1000, 10000} {
-		mdCount := mdCount // capture range variable.
-		name := fmt.Sprintf("mdCount=%d", mdCount)
-		b.Run(name, func(b *testing.B) {
-			b.StopTimer()
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				benchmarkMDJournalBasicBody(b, ver, mdCount)
-			}
-		})
-	}
 }
 
 func TestMDJournalBasic(t *testing.T) {
