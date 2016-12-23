@@ -371,8 +371,10 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(ctx context.Context, config Co
 	if md.LatestKeyGeneration() != PublicKeyGen {
 		// Fill out the writer key bundle.
 		wkbV2, wkbV3, err := md.WKeys.ToTLFWriterKeyBundleV3(
-			ctx, config.Codec(), config.Crypto(),
-			config.KeyManager(), kmd)
+			config.Codec(), config.Crypto(),
+			func() ([]kbfscrypto.TLFCryptKey, error) {
+				return config.KeyManager().GetTLFCryptKeyOfAllGenerations(ctx, kmd)
+			})
 		if err != nil {
 			return nil, nil, err
 		}

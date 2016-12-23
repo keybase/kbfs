@@ -12,7 +12,6 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type ePubKeyTypeV2 int
@@ -269,8 +268,8 @@ func (wkg TLFWriterKeyGenerationsV2) IsWriter(user keybase1.UID, deviceKID keyba
 //
 // TODO: Add a unit test for this.
 func (wkg TLFWriterKeyGenerationsV2) ToTLFWriterKeyBundleV3(
-	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure,
-	keyManager KeyManager, kmd KeyMetadata) (
+	codec kbfscodec.Codec, crypto cryptoPure,
+	tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error)) (
 	TLFWriterKeyBundleV2, TLFWriterKeyBundleV3, error) {
 	keyGen := wkg.LatestKeyGeneration()
 	if keyGen < FirstValidKeyGen {
@@ -298,7 +297,7 @@ func (wkg TLFWriterKeyGenerationsV2) ToTLFWriterKeyBundleV3(
 
 	if keyGen > FirstValidKeyGen {
 		// Fetch all of the TLFCryptKeys.
-		keys, err := keyManager.GetTLFCryptKeyOfAllGenerations(ctx, kmd)
+		keys, err := tlfCryptKeyGetter()
 		if err != nil {
 			return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{}, err
 		}
