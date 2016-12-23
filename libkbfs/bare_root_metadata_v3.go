@@ -145,7 +145,20 @@ func (extra ExtraMetadataV3) DeepCopy(codec kbfscodec.Codec) (
 	if err != nil {
 		return nil, err
 	}
-	// TODO: Justify dropping flags here.
+	return NewExtraMetadataV3(wkb, rkb, extra.wkbNew, extra.rkbNew), nil
+}
+
+// MakeSuccessorCopy implements the ExtraMetadata interface for ExtraMetadataV3.
+func (extra ExtraMetadataV3) MakeSuccessorCopy(codec kbfscodec.Codec) (
+	ExtraMetadata, error) {
+	wkb, err := extra.wkb.DeepCopy(codec)
+	if err != nil {
+		return nil, err
+	}
+	rkb, err := extra.rkb.DeepCopy(codec)
+	if err != nil {
+		return nil, err
+	}
 	return NewExtraMetadataV3(wkb, rkb, false, false), nil
 }
 
@@ -393,7 +406,7 @@ func (md *BareRootMetadataV3) MakeSuccessorCopy(
 	var extraCopy ExtraMetadata
 	if extra != nil {
 		var err error
-		extraCopy, err = extra.DeepCopy(codec)
+		extraCopy, err = extra.MakeSuccessorCopy(codec)
 		if err != nil {
 			return nil, nil, err
 		}

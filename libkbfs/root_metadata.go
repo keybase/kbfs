@@ -98,13 +98,6 @@ func (p PrivateMetadata) ChangesBlockInfo() BlockInfo {
 	return p.cachedChanges.Info
 }
 
-// ExtraMetadata is a per-version blob of extra metadata which may exist outside of the
-// given metadata block, e.g. key bundles for post-v2 metadata.
-type ExtraMetadata interface {
-	MetadataVersion() MetadataVer
-	DeepCopy(kbfscodec.Codec) (ExtraMetadata, error)
-}
-
 // A RootMetadata is a BareRootMetadata but with a deserialized
 // PrivateMetadata. However, note that it is possible that the
 // PrivateMetadata has to be left serialized due to not having the
