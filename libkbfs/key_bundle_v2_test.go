@@ -167,33 +167,32 @@ func TestToTLFWriterKeyBundleV3(t *testing.T) {
 	wkg := TLFWriterKeyGenerationsV2{TLFWriterKeyBundleV2{}, wkbV2}
 
 	codec := kbfscodec.NewMsgpack()
-	_, _, err := wkg.ToTLFWriterKeyBundleV3(codec, nil, nil)
-	require.Error(t, err)
-	require.True(t, strings.HasPrefix(err.Error(), "Invalid writer key index "),
-		"err: %v", err)
+	crypto := MakeCryptoCommon(codec)
+	tlfCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
+	tlfCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
+	tlfCryptKeyGetter := func() ([]kbfscrypto.TLFCryptKey, error) {
+		return []kbfscrypto.TLFCryptKey{tlfCryptKey1, tlfCryptKey2}, nil
+	}
 
-	// We need two expectedWKBV3s since the result depends on map
-	// iteration order.
-
-	expectedWKBV3a := TLFWriterKeyBundleV3{
+	expectedWKBV3 := TLFWriterKeyBundleV3{
 		Keys: UserDeviceKeyInfoMapV3{
 			uid1: DeviceKeyInfoMapV3{
 				key1a: TLFCryptKeyInfo{
-					EPubKeyIndex: 0,
+					EPubKeyIndex: -1,
 				},
 				key1b: TLFCryptKeyInfo{
-					EPubKeyIndex: 2,
+					EPubKeyIndex: +2,
 				},
 			},
 			uid2: DeviceKeyInfoMapV3{
 				key2a: TLFCryptKeyInfo{
-					EPubKeyIndex: 1,
+					EPubKeyIndex: -2,
 				},
 				key2b: TLFCryptKeyInfo{
-					EPubKeyIndex: 3,
+					EPubKeyIndex: 0,
 				},
 				key2c: TLFCryptKeyInfo{
-					EPubKeyIndex: 3,
+					EPubKeyIndex: 0,
 				},
 			},
 		},
@@ -202,38 +201,10 @@ func TestToTLFWriterKeyBundleV3(t *testing.T) {
 		},
 	}
 
-	expectedWKBV3b := TLFWriterKeyBundleV3{
-		Keys: UserDeviceKeyInfoMapV3{
-			uid1: DeviceKeyInfoMapV3{
-				key1a: TLFCryptKeyInfo{
-					EPubKeyIndex: 0,
-				},
-				key1b: TLFCryptKeyInfo{
-					EPubKeyIndex: 3,
-				},
-			},
-			uid2: DeviceKeyInfoMapV3{
-				key2a: TLFCryptKeyInfo{
-					EPubKeyIndex: 1,
-				},
-				key2b: TLFCryptKeyInfo{
-					EPubKeyIndex: 2,
-				},
-				key2c: TLFCryptKeyInfo{
-					EPubKeyIndex: 2,
-				},
-			},
-		},
-		TLFEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
-			wEPubKey1, wEPubKey2,
-		},
-	}
-
-	_, wkbV3, err := wkg.ToTLFWriterKeyBundleV3(codec, nil, nil)
+	_, wkbV3, err := wkg.ToTLFWriterKeyBundleV3(
+		codec, crypto, tlfCryptKeyGetter)
 	require.NoError(t, err)
-	if !reflect.DeepEqual(expectedWKBV3a, wkbV3) {
-		require.Equal(t, expectedWKBV3b, wkbV3)
-	}
+	require.Equal(t, expectedWKBV3, wkbV3)
 }
 
 func TestToTLFReaderKeyBundleV3(t *testing.T) {
