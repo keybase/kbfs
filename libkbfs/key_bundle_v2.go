@@ -265,8 +265,6 @@ func (wkg TLFWriterKeyGenerationsV2) IsWriter(user keybase1.UID, deviceKID keyba
 }
 
 // ToTLFWriterKeyBundleV3 converts a TLFWriterKeyGenerationsV2 to a TLFWriterKeyBundleV3.
-//
-// TODO: Add a unit test for this.
 func (wkg TLFWriterKeyGenerationsV2) ToTLFWriterKeyBundleV3(
 	codec kbfscodec.Codec, crypto cryptoPure,
 	tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error)) (
