@@ -313,14 +313,14 @@ func (hmac *HMAC) UnmarshalBinary(data []byte) error {
 
 // MarshalJSON implements the encoding.json.Marshaler interface for
 // HMAC.
-func (h HMAC) MarshalJSON() ([]byte, error) {
-	return h.h.MarshalJSON()
+func (hmac HMAC) MarshalJSON() ([]byte, error) {
+	return hmac.h.MarshalJSON()
 }
 
 // UnmarshalJSON implements the encoding.json.Unmarshaler interface
 // for HMAC.
-func (h *HMAC) UnmarshalJSON(data []byte) error {
-	return h.h.UnmarshalJSON(data)
+func (hmac *HMAC) UnmarshalJSON(data []byte) error {
+	return hmac.h.UnmarshalJSON(data)
 }
 
 // Verify makes sure that the HMAC matches the given data.
