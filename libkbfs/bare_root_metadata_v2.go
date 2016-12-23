@@ -325,18 +325,19 @@ func (md *BareRootMetadataV2) DeepCopy(
 
 // MakeSuccessorCopy implements the ImmutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) MakeSuccessorCopy(
-	ctx context.Context, config Config, kmd KeyMetadata,
-	extra ExtraMetadata, isReadableAndWriter bool) (
+	codec kbfscodec.Codec, crypto cryptoPure,
+	extra ExtraMetadata, latestMDVer MetadataVer,
+	tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error),
+	isReadableAndWriter bool) (
 	MutableBareRootMetadata, ExtraMetadata, error) {
 
-	if !isReadableAndWriter ||
-		config.MetadataVersion() < SegregatedKeyBundlesVer {
+	if !isReadableAndWriter || (latestMDVer < SegregatedKeyBundlesVer) {
 		// Continue with the current version.  If we're just a reader,
 		// or can't decrypt the MD, we have to continue with v2
 		// because we can't just copy a v2 signature into a v3 MD
 		// blindly.
 		mdCopy, err := md.makeSuccessorCopyV2(
-			config.Codec(), isReadableAndWriter)
+			codec, isReadableAndWriter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -344,10 +345,7 @@ func (md *BareRootMetadataV2) MakeSuccessorCopy(
 	}
 
 	// Upconvert to the new version.
-	return md.makeSuccessorCopyV3(config.Codec(), config.Crypto(),
-		func() ([]kbfscrypto.TLFCryptKey, error) {
-			return config.KeyManager().GetTLFCryptKeyOfAllGenerations(ctx, kmd)
-		})
+	return md.makeSuccessorCopyV3(codec, crypto, tlfCryptKeyGetter)
 }
 
 func (md *BareRootMetadataV2) makeSuccessorCopyV2(

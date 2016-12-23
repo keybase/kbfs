@@ -236,7 +236,11 @@ func (md *RootMetadata) MakeSuccessor(
 	isReadableAndWriter := md.IsReadable() && isWriter
 
 	brmdCopy, extraCopy, err := md.bareMd.MakeSuccessorCopy(
-		ctx, config, md, md.extra, isReadableAndWriter)
+		config.Codec(), config.Crypto(), md.extra,
+		config.MetadataVersion(),
+		func() ([]kbfscrypto.TLFCryptKey, error) {
+			return config.KeyManager().GetTLFCryptKeyOfAllGenerations(ctx, md)
+		}, isReadableAndWriter)
 	if err != nil {
 		return nil, err
 	}
