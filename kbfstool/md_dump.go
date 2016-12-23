@@ -36,23 +36,26 @@ func mdDumpWriterFlags(wFlags libkbfs.WriterFlags) {
 	fmt.Printf("Unmerged: %t\n", wFlags&libkbfs.MetadataFlagUnmerged != 0)
 }
 
+func mdDumpTLFCryptKeyInfo(info libkbfs.TLFCryptKeyInfo) {
+	fmt.Printf("      Client half (encryption version=%d):\n",
+		info.ClientHalf.Version)
+	fmt.Printf("        Encrypted data: %s\n",
+		hex.EncodeToString(info.ClientHalf.EncryptedData))
+	fmt.Printf("        Nonce: %s\n",
+		hex.EncodeToString(info.ClientHalf.Nonce))
+	fmt.Printf("      Server half ID: %s\n",
+		info.ServerHalfID)
+	fmt.Printf("      Ephemeral key index: %d\n",
+		info.EPubKeyIndex)
+}
+
 func mdDumpUDKIMV2(ctx context.Context, config libkbfs.Config,
 	udkimV2 libkbfs.UserDeviceKeyInfoMapV2) {
 	for uid, dkimV2 := range udkimV2 {
 		fmt.Printf("  User: %s\n", getUserString(ctx, config, uid))
 		for kid, info := range dkimV2 {
 			fmt.Printf("    Device: %s\n", kid)
-			clientHalf := info.ClientHalf
-			fmt.Printf("      Client half (encryption version=%d):\n",
-				clientHalf.Version)
-			fmt.Printf("        Encrypted data: %s\n",
-				hex.EncodeToString(clientHalf.EncryptedData))
-			fmt.Printf("        Nonce: %s\n",
-				hex.EncodeToString(clientHalf.Nonce))
-			fmt.Printf("      Server half ID: %s\n",
-				info.ServerHalfID)
-			fmt.Printf("      Ephemeral key index: %d\n",
-				info.EPubKeyIndex)
+			mdDumpTLFCryptKeyInfo(info)
 		}
 	}
 }
@@ -208,17 +211,7 @@ func mdDumpUDKIMV3(ctx context.Context, config libkbfs.Config,
 		fmt.Printf("  User: %s\n", getUserString(ctx, config, uid))
 		for key, info := range dkimV3 {
 			fmt.Printf("    Device: %s\n", key)
-			clientHalf := info.ClientHalf
-			fmt.Printf("      Client half (encryption version=%d):\n",
-				clientHalf.Version)
-			fmt.Printf("        Encrypted data: %s\n",
-				hex.EncodeToString(clientHalf.EncryptedData))
-			fmt.Printf("        Nonce: %s\n",
-				hex.EncodeToString(clientHalf.Nonce))
-			fmt.Printf("      Server half ID: %s\n",
-				info.ServerHalfID)
-			fmt.Printf("      Ephemeral key index: %d\n",
-				info.EPubKeyIndex)
+			mdDumpTLFCryptKeyInfo(info)
 		}
 	}
 }
