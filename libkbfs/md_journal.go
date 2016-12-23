@@ -290,8 +290,8 @@ func (j mdJournal) putMDInfo(
 // getExtraMetadata gets the extra metadata corresponding to the given
 // IDs, if any, after checking them.
 func (j mdJournal) getExtraMetadata(
-	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
-	ExtraMetadata, error) {
+	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID,
+	wkbNew, rkbNew bool) (ExtraMetadata, error) {
 	if (wkbID == TLFWriterKeyBundleID{}) !=
 		(rkbID == TLFReaderKeyBundleID{}) {
 		return nil, errors.Errorf(
@@ -326,8 +326,7 @@ func (j mdJournal) getExtraMetadata(
 		return nil, err
 	}
 
-	// TODO: Store and retrieve the wkbNew/rkbNew parameters.
-	return NewExtraMetadataV3(wkb, rkb, true, true), nil
+	return NewExtraMetadataV3(wkb, rkb, wkbNew, rkbNew), nil
 }
 
 func (j mdJournal) putExtraMetadata(rmd BareRootMetadata, extra ExtraMetadata) (
@@ -398,7 +397,7 @@ func (j mdJournal) putExtraMetadata(rmd BareRootMetadata, extra ExtraMetadata) (
 //
 // It returns a MutableBareRootMetadata so that it can be put in a
 // RootMetadataSigned object.
-func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID bool) (
+func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID, wkbNew, rkbNew bool) (
 	MutableBareRootMetadata, ExtraMetadata, time.Time, error) {
 	// Read info.
 
@@ -439,7 +438,8 @@ func (j mdJournal) getMDAndExtra(id MdID, verifyBranchID bool) (
 	}
 
 	extra, err := j.getExtraMetadata(
-		rmd.GetTLFWriterKeyBundleID(), rmd.GetTLFReaderKeyBundleID())
+		rmd.GetTLFWriterKeyBundleID(), rmd.GetTLFReaderKeyBundleID(),
+		wkbNew, rkbNew)
 	if err != nil {
 		return nil, nil, time.Time{}, err
 	}
@@ -475,7 +475,7 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 		return MdID{}, err
 	}
 
-	_, _, _, err = j.getMDAndExtra(id, true)
+	_, _, _, err = j.getMDAndExtra(id, true, false, false)
 	if ioutil.IsNotExist(err) {
 		// Continue on.
 	} else if err != nil {
@@ -527,8 +527,8 @@ func (j mdJournal) getEarliestWithExtra(verifyBranchID bool) (
 		return MdID{}, nil, nil, time.Time{}, nil
 	}
 	earliestID := entry.ID
-	earliest, extra, timestamp, err :=
-		j.getMDAndExtra(earliestID, verifyBranchID)
+	earliest, extra, timestamp, err := j.getMDAndExtra(
+		earliestID, verifyBranchID, entry.WKBNew, entry.RKBNew)
 	if err != nil {
 		return MdID{}, nil, nil, time.Time{}, err
 	}
@@ -546,7 +546,7 @@ func (j mdJournal) getLatest(verifyBranchID bool) (
 	}
 	latestID := entry.ID
 	latest, extra, timestamp, err := j.getMDAndExtra(
-		latestID, verifyBranchID)
+		latestID, verifyBranchID, entry.WKBNew, entry.RKBNew)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
@@ -643,7 +643,8 @@ func (j *mdJournal) convertToBranch(
 
 	isPendingLocalSquash := bid == PendingLocalSquashBranchID
 	for _, entry := range allEntries {
-		brmd, _, ts, err := j.getMDAndExtra(entry.ID, true)
+		brmd, _, ts, err := j.getMDAndExtra(
+			entry.ID, true, false, false)
 		if err != nil {
 			return err
 		}
@@ -945,7 +946,7 @@ func (j mdJournal) getHead(bid BranchID) (ImmutableBareRootMetadata, error) {
 		if entry.IsLocalSquash {
 			latestID := entry.ID
 			latest, extra, timestamp, err := j.getMDAndExtra(
-				latestID, false)
+				latestID, false, entry.WKBNew, entry.RKBNew)
 			if err != nil {
 				return ImmutableBareRootMetadata{}, err
 			}
@@ -988,7 +989,8 @@ func (j mdJournal) getRange(bid BranchID, start, stop MetadataRevision) (
 		}
 
 		expectedRevision := realStart + MetadataRevision(i)
-		brmd, extra, ts, err := j.getMDAndExtra(entry.ID, true)
+		brmd, extra, ts, err := j.getMDAndExtra(
+			entry.ID, true, entry.WKBNew, entry.RKBNew)
 		if err != nil {
 			return nil, err
 		}
