@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -182,6 +183,8 @@ func BenchmarkMDJournalBasic(b *testing.B) {
 	runBenchmarkOverMetadataVers(b, benchmarkMDJournalBasic)
 }
 
+// noLogTB is an implementation of testing.TB that squelches all logs
+// (for benchmarks).
 type noLogTB struct {
 	testing.TB
 }
@@ -190,14 +193,13 @@ func (tb noLogTB) Log(args ...interface{}) {}
 
 func (tb noLogTB) Logf(format string, args ...interface{}) {}
 
-func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer) {
+func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer, mdCount int) {
 	b.StopTimer()
 
 	_, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(noLogTB{b}, ver)
 	defer teardownMDJournalTest(b, tempdir)
 
-	mdCount := 500
 	revision := MetadataRevision(10)
 	prevRoot := fakeMdID(1)
 
@@ -210,11 +212,16 @@ func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer) {
 }
 
 func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
-	b.ResetTimer()
-	b.StopTimer()
-
-	for i := 0; i < b.N; i++ {
-		benchmarkMDJournalBasicBody(b, ver)
+	for _, mdCount := range []int{1, 10, 100, 1000, 10000} {
+		mdCount := mdCount // capture range variable.
+		name := fmt.Sprintf("mdCount=%d", mdCount)
+		b.Run(name, func(b *testing.B) {
+			b.StopTimer()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				benchmarkMDJournalBasicBody(b, ver, mdCount)
+			}
+		})
 	}
 }
 
