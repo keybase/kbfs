@@ -56,17 +56,25 @@ func mdDumpEphemeralPublicKeys(ePubKeys kbfscrypto.TLFEphemeralPublicKeys) {
 	}
 }
 
-func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
-	rmd libkbfs.ReadOnlyRootMetadata) error {
-	buf, err := config.Codec().Encode(rmd.GetBareRootMetadata())
-	if err != nil {
-		return err
-	}
-	fmt.Printf("MD size: %d bytes\nMD version: %s\n\n",
-		len(buf), rmd.Version())
+func mdDumpPrivateMetadata(ctx context.Context, config libkbfs.Config,
+	serializedSize int, pmd *libkbfs.PrivateMetadata) {
+	fmt.Printf("Serialized size: %d bytes\n", serializedSize)
 
-	h := rmd.GetTlfHandle()
-	bh, err := h.ToBareHandle()
+	// TODO: Clean up output.
+	fmt.Printf("Dir: %s\n", pmd.Dir)
+	fmt.Print("TLF private key: {32 bytes}\n")
+	if pmd.ChangesBlockInfo() != (libkbfs.BlockInfo{}) {
+		fmt.Printf("Block changes block: %v\n", pmd.ChangesBlockInfo())
+	}
+	for i, op := range pmd.Changes.Ops {
+		fmt.Printf("Op[%d]: %s", i, op.StringWithRefs(1))
+	}
+	// TODO: Print unknown fields.
+}
+
+func mdDumpBRMDV2(ctx context.Context, config libkbfs.Config,
+	rmd *libkbfs.BareRootMetadataV2, extra libkbfs.ExtraMetadata) error {
+	bh, err := rmd.MakeBareTlfHandle(extra)
 	if err != nil {
 		return err
 	}
@@ -85,10 +93,10 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 		}
 	}
 	fmt.Printf("Last modifying user: %s\n",
-		getUserString(ctx, config, rmd.LastModifyingUser()))
+		getUserString(ctx, config, rmd.LastModifyingUser))
 	// TODO: Print flags.
-	fmt.Printf("Revision: %s\n", rmd.Revision())
-	fmt.Printf("Prev MD ID: %s\n", rmd.PrevRoot())
+	fmt.Printf("Revision: %s\n", rmd.Revision)
+	fmt.Printf("Prev MD ID: %s\n", rmd.PrevRoot)
 	fmt.Printf("Reader key bundle ID: %s\n", rmd.GetTLFReaderKeyBundleID())
 	// TODO: Print RKeys, unresolved readers, conflict info,
 	// finalized info, and unknown fields.
@@ -113,38 +121,124 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 	// TODO: Print unknown fields.
 	fmt.Print("\n")
 
+	return nil
+}
+
+func mdDumpBRMDV3(ctx context.Context, config libkbfs.Config,
+	rmd *libkbfs.BareRootMetadataV3, extra libkbfs.ExtraMetadata) error {
+	bh, err := rmd.MakeBareTlfHandle(extra)
+	if err != nil {
+		return err
+	}
+
+	fmt.Print("Reader/writer metadata\n")
+	fmt.Print("----------------------\n")
+	if rmd.TlfID().IsPublic() {
+		fmt.Print("Readers: everybody (public)\n")
+	} else if len(bh.Readers) == 0 {
+		fmt.Print("Readers: empty\n")
+	} else {
+		fmt.Print("Readers:\n")
+		for _, reader := range bh.Readers {
+			fmt.Printf("  %s\n",
+				getUserString(ctx, config, reader))
+		}
+	}
+	fmt.Printf("Last modifying user: %s\n",
+		getUserString(ctx, config, rmd.LastModifyingUser))
+	// TODO: Print flags.
+	fmt.Printf("Revision: %s\n", rmd.Revision)
+	fmt.Printf("Prev MD ID: %s\n", rmd.PrevRoot)
+	fmt.Printf("Reader key bundle ID: %s\n", rmd.GetTLFReaderKeyBundleID())
+	// TODO: Print RKeys, unresolved readers, conflict info,
+	// finalized info, and unknown fields.
+	fmt.Print("\n")
+
+	fmt.Print("Writer metadata\n")
+	fmt.Print("---------------\n")
+	fmt.Print("Writers:\n")
+	for _, writer := range bh.Writers {
+		fmt.Printf("  %s\n", getUserString(ctx, config, writer))
+	}
+	fmt.Printf("Last modifying writer: %s\n",
+		getUserString(ctx, config, rmd.LastModifyingWriter()))
+	// TODO: Print Writers/WKeys and unresolved writers.
+	fmt.Printf("TLF ID: %s\n", rmd.TlfID())
+	fmt.Printf("Branch ID: %s\n", rmd.BID())
+	fmt.Printf("Writer key bundle ID: %s\n", rmd.GetTLFWriterKeyBundleID())
+	// TODO: Print writer flags.
+	fmt.Printf("Disk usage: %d\n", rmd.DiskUsage())
+	fmt.Printf("Bytes in new blocks: %d\n", rmd.RefBytes())
+	fmt.Printf("Bytes in unreferenced blocks: %d\n", rmd.UnrefBytes())
+	// TODO: Print unknown fields.
+	fmt.Print("\n")
+
+	return nil
+}
+
+func mdDumpExtraV3(ctx context.Context, config libkbfs.Config,
+	extraV3 *libkbfs.ExtraMetadataV3) {
+	fmt.Print("Type: ExtraMetadataV3\n")
+	wkb := extraV3.GetWriterKeyBundle()
+	fmt.Print("Writer key bundle:\n")
+	mdDumpUDKIMV3(ctx, config, wkb.Keys)
+	fmt.Printf("  TLF public key: %s\n", wkb.TLFPublicKey)
+	fmt.Print("  Ephemeral writer keys\n")
+	mdDumpEphemeralPublicKeys(wkb.TLFEphemeralPublicKeys)
+	encryptedHistoricKeys := wkb.EncryptedHistoricTLFCryptKeys
+	if encryptedHistoricKeys.Version == 0 {
+		fmt.Print("  Encrypted historic TLF crypt keys: none\n")
+	} else {
+		fmt.Printf("  Encrypted historic TLF crypt keys (encryption version=%d):\n",
+			encryptedHistoricKeys.Version)
+		fmt.Printf("    Encrypted data: %s\n",
+			hex.EncodeToString(encryptedHistoricKeys.EncryptedData))
+		fmt.Printf("    Nonce: %s\n",
+			hex.EncodeToString(encryptedHistoricKeys.Nonce))
+	}
+	// TODO: Print unknown fields.
+	rkb := extraV3.GetReaderKeyBundle()
+	fmt.Print("Reader key bundle\n")
+	mdDumpUDKIMV3(ctx, config, rkb.Keys)
+	fmt.Print("  Ephemeral reader keys\n")
+	mdDumpEphemeralPublicKeys(wkb.TLFEphemeralPublicKeys)
+	// TODO: Print unknown fields.
+}
+
+func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
+	rmd libkbfs.ReadOnlyRootMetadata) error {
+	brmd := rmd.GetBareRootMetadata()
+	buf, err := config.Codec().Encode(brmd)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("MD size: %d bytes\nMD version: %s\n\n",
+		len(buf), rmd.Version())
+
+	extra := rmd.Extra()
+
+	switch brmd := brmd.(type) {
+	case *libkbfs.BareRootMetadataV2:
+		err := mdDumpBRMDV2(ctx, config, brmd, extra)
+		if err != nil {
+			return err
+		}
+	case *libkbfs.BareRootMetadataV3:
+		err := mdDumpBRMDV3(ctx, config, brmd, extra)
+		if err != nil {
+			return err
+		}
+	default:
+		fmt.Printf("Unknown type: %T\n%+v\n", brmd, brmd)
+	}
+
 	fmt.Print("Extra metadata\n")
 	fmt.Print("--------------\n")
-	extra := rmd.Extra()
 	switch extra := extra.(type) {
 	case nil:
 		fmt.Print("Type: nil\n")
 	case *libkbfs.ExtraMetadataV3:
-		fmt.Print("Type: ExtraMetadataV3\n")
-		wkb := extra.GetWriterKeyBundle()
-		fmt.Print("Writer key bundle:\n")
-		mdDumpUDKIMV3(ctx, config, wkb.Keys)
-		fmt.Printf("  TLF public key: %s\n", wkb.TLFPublicKey)
-		fmt.Print("  Ephemeral writer keys\n")
-		mdDumpEphemeralPublicKeys(wkb.TLFEphemeralPublicKeys)
-		encryptedHistoricKeys := wkb.EncryptedHistoricTLFCryptKeys
-		if encryptedHistoricKeys.Version == 0 {
-			fmt.Print("  Encrypted historic TLF crypt keys: none\n")
-		} else {
-			fmt.Printf("  Encrypted historic TLF crypt keys (encryption version=%d):\n",
-				encryptedHistoricKeys.Version)
-			fmt.Printf("    Encrypted data: %s\n",
-				hex.EncodeToString(encryptedHistoricKeys.EncryptedData))
-			fmt.Printf("    Nonce: %s\n",
-				hex.EncodeToString(encryptedHistoricKeys.Nonce))
-		}
-		// TODO: Print unknown fields.
-		rkb := extra.GetReaderKeyBundle()
-		fmt.Print("Reader key bundle\n")
-		mdDumpUDKIMV3(ctx, config, rkb.Keys)
-		fmt.Print("  Ephemeral reader keys\n")
-		mdDumpEphemeralPublicKeys(wkb.TLFEphemeralPublicKeys)
-		// TODO: Print unknown fields.
+		mdDumpExtraV3(ctx, config, extra)
 	default:
 		fmt.Print("Type: unknown\n")
 		fmt.Printf("%+v\n", extra)
@@ -153,19 +247,9 @@ func mdDumpOneReadOnly(ctx context.Context, config libkbfs.Config,
 
 	fmt.Print("Private metadata\n")
 	fmt.Print("----------------\n")
-	fmt.Printf("Serialized size: %d bytes\n", len(rmd.GetSerializedPrivateMetadata()))
 
-	data := rmd.Data()
-	// TODO: Clean up output.
-	fmt.Printf("Dir: %s\n", data.Dir)
-	fmt.Print("TLF private key: {32 bytes}\n")
-	if data.ChangesBlockInfo() != (libkbfs.BlockInfo{}) {
-		fmt.Printf("Block changes block: %v\n", data.ChangesBlockInfo())
-	}
-	for i, op := range data.Changes.Ops {
-		fmt.Printf("Op[%d]: %s", i, op.StringWithRefs(1))
-	}
-	// TODO: Print unknown fields.
+	mdDumpPrivateMetadata(ctx, config,
+		len(rmd.GetSerializedPrivateMetadata()), rmd.Data())
 
 	return nil
 }
