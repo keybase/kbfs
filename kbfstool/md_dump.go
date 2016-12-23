@@ -36,6 +36,18 @@ func mdDumpWriterFlags(wFlags libkbfs.WriterFlags) {
 	fmt.Printf("Unmerged: %t\n", wFlags&libkbfs.MetadataFlagUnmerged != 0)
 }
 
+func mdDumpSocialAssertions(
+	name string, assertions []keybase1.SocialAssertion) {
+	if len(assertions) > 0 {
+		fmt.Printf("%s:\n", name)
+		for i, assertion := range assertions {
+			fmt.Printf("  %d: %s\n", i, assertion)
+		}
+	} else {
+		fmt.Printf("%s: none\n", name)
+	}
+}
+
 func mdDumpWMDV2(ctx context.Context, config libkbfs.Config,
 	wmd *libkbfs.WriterMetadataV2) {
 	fmt.Printf("Serialized private metadata size: %d bytes\n",
@@ -50,7 +62,8 @@ func mdDumpWMDV2(ctx context.Context, config libkbfs.Config,
 	} else {
 		// TODO: Print WKeys.
 	}
-	// TODO: Print unresolved writers.
+	mdDumpSocialAssertions("Unresolved writers",
+		wmd.Extra.UnresolvedWriters)
 	fmt.Printf("TLF ID: %s\n", wmd.ID)
 	fmt.Printf("Branch ID: %s\n", wmd.BID)
 	mdDumpWriterFlags(wmd.WFlags)
