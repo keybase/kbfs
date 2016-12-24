@@ -282,12 +282,14 @@ func (c CryptoCommon) EncryptTLFCryptKeyClientHalf(
 
 	clientHalfData := clientHalf.Data()
 	privateKeyData := privateKey.Data()
-	encryptedData := box.Seal(nil, clientHalfData[:], &nonce, (*[32]byte)(&dhKeyPair.Public), &privateKeyData)
+	encryptedBytes := box.Seal(nil, clientHalfData[:], &nonce, (*[32]byte)(&dhKeyPair.Public), &privateKeyData)
 
 	encryptedClientHalf = EncryptedTLFCryptKeyClientHalf{
-		Version:       EncryptionSecretbox,
-		Nonce:         nonce[:],
-		EncryptedData: encryptedData,
+		encryptedData{
+			Version:       EncryptionSecretbox,
+			Nonce:         nonce[:],
+			EncryptedData: encryptedBytes,
+		},
 	}
 	return
 }
@@ -322,7 +324,7 @@ func (c CryptoCommon) EncryptPrivateMetadata(
 		return
 	}
 
-	encryptedPmd = EncryptedPrivateMetadata(encryptedData)
+	encryptedPmd = EncryptedPrivateMetadata{encryptedData}
 	return
 }
 
@@ -349,7 +351,7 @@ func (c CryptoCommon) decryptData(encryptedData encryptedData, key [32]byte) ([]
 func (c CryptoCommon) DecryptPrivateMetadata(
 	encryptedPmd EncryptedPrivateMetadata, key kbfscrypto.TLFCryptKey) (
 	PrivateMetadata, error) {
-	encodedPmd, err := c.decryptData(encryptedData(encryptedPmd), key.Data())
+	encodedPmd, err := c.decryptData(encryptedPmd.encryptedData, key.Data())
 	if err != nil {
 		return PrivateMetadata{}, err
 	}
@@ -452,7 +454,7 @@ func (c CryptoCommon) EncryptBlock(block Block, key kbfscrypto.BlockCryptKey) (
 	}
 
 	plainSize = len(encodedBlock)
-	encryptedBlock = EncryptedBlock(encryptedData)
+	encryptedBlock = EncryptedBlock{encryptedData}
 	return
 }
 
@@ -460,7 +462,7 @@ func (c CryptoCommon) EncryptBlock(block Block, key kbfscrypto.BlockCryptKey) (
 func (c CryptoCommon) DecryptBlock(
 	encryptedBlock EncryptedBlock, key kbfscrypto.BlockCryptKey,
 	block Block) error {
-	paddedBlock, err := c.decryptData(encryptedData(encryptedBlock), key.Data())
+	paddedBlock, err := c.decryptData(encryptedBlock.encryptedData, key.Data())
 	if err != nil {
 		return err
 	}
@@ -566,7 +568,7 @@ func (c CryptoCommon) EncryptTLFCryptKeys(
 		return
 	}
 
-	encryptedKeys = EncryptedTLFCryptKeys(encryptedData)
+	encryptedKeys = EncryptedTLFCryptKeys{encryptedData}
 	return
 }
 
@@ -574,7 +576,7 @@ func (c CryptoCommon) EncryptTLFCryptKeys(
 func (c CryptoCommon) DecryptTLFCryptKeys(
 	encKeys EncryptedTLFCryptKeys, key kbfscrypto.TLFCryptKey) (
 	[]kbfscrypto.TLFCryptKey, error) {
-	encodedKeys, err := c.decryptData(encryptedData(encKeys), key.Data())
+	encodedKeys, err := c.decryptData(encKeys.encryptedData, key.Data())
 	if err != nil {
 		return nil, err
 	}
