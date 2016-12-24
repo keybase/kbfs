@@ -254,8 +254,9 @@ func parseRootDir(addr string) (string, bool) {
 	return serverRootDir, true
 }
 
-func makeMDServer(config Config, mdserverAddr string, ctx Context,
-	log logger.Logger) (MDServer, error) {
+func makeMDServer(config Config, mdserverAddr string,
+	rpcLogFactory *libkb.RPCLogFactory, log logger.Logger) (
+	MDServer, error) {
 	if mdserverAddr == memoryAddr {
 		log.Debug("Using in-memory mdserver")
 		// local in-memory MD server
@@ -276,7 +277,7 @@ func makeMDServer(config Config, mdserverAddr string, ctx Context,
 	// remote MD server. this can't fail. reconnection attempts
 	// will be automatic.
 	log.Debug("Using remote mdserver %s", mdserverAddr)
-	mdServer := NewMDServerRemote(config, mdserverAddr, ctx)
+	mdServer := NewMDServerRemote(config, mdserverAddr, rpcLogFactory)
 	return mdServer, nil
 }
 
@@ -308,7 +309,8 @@ func makeKeyServer(config Config, keyserverAddr string,
 	return keyServer, nil
 }
 
-func makeBlockServer(config Config, bserverAddr string, ctx Context,
+func makeBlockServer(config Config, bserverAddr string,
+	rpcLogFactory *libkb.RPCLogFactory,
 	log logger.Logger) (BlockServer, error) {
 	if bserverAddr == memoryAddr {
 		log.Debug("Using in-memory bserver")
@@ -333,7 +335,7 @@ func makeBlockServer(config Config, bserverAddr string, ctx Context,
 	log.Debug("Using remote bserver %s", bserverAddr)
 	bserverLog := config.MakeLogger("BSR")
 	return NewBlockServerRemote(config.Codec(), config.Crypto(),
-		config.KBPKI(), bserverLog, bserverAddr, ctx), nil
+		config.KBPKI(), bserverLog, bserverAddr, rpcLogFactory), nil
 }
 
 // InitLog sets up logging switching to a log file if necessary.
@@ -486,7 +488,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config.SetCrypto(crypto)
 
-	mdServer, err := makeMDServer(config, params.MDServerAddr, ctx, log)
+	mdServer, err := makeMDServer(config, params.MDServerAddr, ctx.NewRPCLogFactory(), log)
 	if err != nil {
 		return nil, fmt.Errorf("problem creating MD server: %v", err)
 	}
@@ -504,7 +506,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config.SetKeyServer(keyServer)
 
-	bserv, err := makeBlockServer(config, params.BServerAddr, ctx, log)
+	bserv, err := makeBlockServer(config, params.BServerAddr, ctx.NewRPCLogFactory(), log)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open block database: %v", err)
 	}

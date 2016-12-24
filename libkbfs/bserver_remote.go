@@ -138,8 +138,8 @@ var _ rpc.ConnectionHandler = (*blockServerRemoteClientHandler)(nil)
 // NewBlockServerRemote constructs a new BlockServerRemote for the
 // given address.
 func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
-	cig currentInfoGetter, log logger.Logger,
-	blkSrvAddr string, ctx Context) *BlockServerRemote {
+	cig currentInfoGetter, log logger.Logger, blkSrvAddr string,
+	rpcLogFactory *libkb.RPCLogFactory) *BlockServerRemote {
 	deferLog := log.CloneWithAddedDepth(1)
 	bs := &BlockServerRemote{
 		codec:      codec,
@@ -176,7 +176,7 @@ func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
 		kbfscrypto.GetRootCerts(blkSrvAddr),
 		kbfsblock.BServerErrorUnwrapper{}, putClientHandler,
 		false, /* connect only on-demand */
-		ctx.NewRPCLogFactory(), libkb.WrapError, log,
+		rpcLogFactory, libkb.WrapError, log,
 		LogTagsFromContext)
 	bs.putClient = keybase1.BlockClient{Cli: putConn.GetClient()}
 	putClientHandler.client = bs.putClient
@@ -184,7 +184,7 @@ func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
 		kbfscrypto.GetRootCerts(blkSrvAddr),
 		kbfsblock.BServerErrorUnwrapper{}, getClientHandler,
 		false, /* connect only on-demand */
-		ctx.NewRPCLogFactory(), libkb.WrapError, log,
+		rpcLogFactory, libkb.WrapError, log,
 		LogTagsFromContext)
 	bs.getClient = keybase1.BlockClient{Cli: getConn.GetClient()}
 	getClientHandler.client = bs.getClient
