@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD
 // license that can be found in the LICENSE file.
 
-package libkbfs
+package kbfsblock
 
 import (
 	"bytes"
@@ -12,30 +12,30 @@ import (
 	"github.com/keybase/kbfs/kbfshash"
 )
 
-func fakeBlockID(b byte) BlockID {
+func fakeID(b byte) ID {
 	dh := kbfshash.RawDefaultHash{b}
 	h, err := kbfshash.HashFromRaw(kbfshash.DefaultHashType, dh[:])
 	if err != nil {
 		panic(err)
 	}
-	return BlockID{h}
+	return ID{h}
 }
 
-func fakeBlockIDAdd(id BlockID, b byte) BlockID {
-	return fakeBlockID(id.h.Bytes()[1] + b)
+func fakeIDAdd(id ID, b byte) ID {
+	return fakeID(id.h.Bytes()[1] + b)
 }
 
-func fakeBlockIDMul(id BlockID, b byte) BlockID {
-	return fakeBlockID(id.h.Bytes()[1] * b)
+func fakeIDMul(id ID, b byte) ID {
+	return fakeID(id.h.Bytes()[1] * b)
 }
 
-// Make sure BlockID encodes and decodes properly with minimal overhead.
-func TestBlockIDEncodeDecode(t *testing.T) {
+// Make sure ID encodes and decodes properly with minimal overhead.
+func TestIDEncodeDecode(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 
-	id := fakeBlockID(1)
+	id := fakeID(1)
 
-	encodedBlockID, err := codec.Encode(id)
+	encodedID, err := codec.Encode(id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,14 +44,14 @@ func TestBlockIDEncodeDecode(t *testing.T) {
 	// https://github.com/msgpack/msgpack/blob/master/spec.md#formats-bin
 	// for why there are two bytes of overhead.
 	const overhead = 2
-	if len(encodedBlockID) != kbfshash.DefaultHashByteLength+overhead {
+	if len(encodedID) != kbfshash.DefaultHashByteLength+overhead {
 		t.Errorf("expected encoded length %d, got %d",
 			kbfshash.DefaultHashByteLength+overhead,
-			len(encodedBlockID))
+			len(encodedID))
 	}
 
-	var id2 BlockID
-	err = codec.Decode(encodedBlockID, &id2)
+	var id2 ID
+	err = codec.Decode(encodedID, &id2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,27 +61,27 @@ func TestBlockIDEncodeDecode(t *testing.T) {
 	}
 }
 
-// Make sure the zero BlockID value encodes and decodes properly.
-func TestBlockIDEncodeDecodeZero(t *testing.T) {
+// Make sure the zero ID value encodes and decodes properly.
+func TestIDEncodeDecodeZero(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
-	encodedBlockID, err := codec.Encode(BlockID{})
+	encodedID, err := codec.Encode(ID{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expectedEncodedBlockID := []byte{0xc0}
-	if !bytes.Equal(encodedBlockID, expectedEncodedBlockID) {
+	expectedEncodedID := []byte{0xc0}
+	if !bytes.Equal(encodedID, expectedEncodedID) {
 		t.Errorf("expected encoding %v, got %v",
-			expectedEncodedBlockID, encodedBlockID)
+			expectedEncodedID, encodedID)
 	}
 
-	var id BlockID
-	err = codec.Decode(encodedBlockID, &id)
+	var id ID
+	err = codec.Decode(encodedID, &id)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if id != (BlockID{}) {
+	if id != (ID{}) {
 		t.Errorf("expected empty block ID, got %s", id)
 	}
 }
