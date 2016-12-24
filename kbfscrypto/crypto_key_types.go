@@ -81,6 +81,8 @@ type byte32Container struct {
 var _ encoding.BinaryMarshaler = byte32Container{}
 var _ encoding.BinaryUnmarshaler = (*byte32Container)(nil)
 
+var _ json.Marshaler = byte32Container{}
+
 func (c byte32Container) Data() [32]byte {
 	return c.data
 }
@@ -98,6 +100,10 @@ func (c *byte32Container) UnmarshalBinary(data []byte) error {
 
 	copy(c.data[:], data)
 	return nil
+}
+
+func (c byte32Container) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.String())
 }
 
 func (c byte32Container) String() string {
