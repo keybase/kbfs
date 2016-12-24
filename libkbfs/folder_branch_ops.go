@@ -1757,7 +1757,7 @@ func (fbo *folderBranchOps) unembedBlockChanges(
 		DataVer: fbo.config.DataVersion(),
 		BlockContext: BlockContext{
 			Creator:  uid,
-			RefNonce: ZeroBlockRefNonce,
+			RefNonce: kbfsblock.ZeroRefNonce,
 		},
 	}
 	file := path{fbo.folderBranch,

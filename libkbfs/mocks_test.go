@@ -1822,9 +1822,9 @@ func (_mr *_MockcryptoPureRecorder) VerifyBlockID(arg0, arg1 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "VerifyBlockID", arg0, arg1)
 }
 
-func (_m *MockcryptoPure) MakeBlockRefNonce() (BlockRefNonce, error) {
+func (_m *MockcryptoPure) MakeBlockRefNonce() (kbfsblock.RefNonce, error) {
 	ret := _m.ctrl.Call(_m, "MakeBlockRefNonce")
-	ret0, _ := ret[0].(BlockRefNonce)
+	ret0, _ := ret[0].(kbfsblock.RefNonce)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2162,9 +2162,9 @@ func (_mr *_MockCryptoRecorder) VerifyBlockID(arg0, arg1 interface{}) *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "VerifyBlockID", arg0, arg1)
 }
 
-func (_m *MockCrypto) MakeBlockRefNonce() (BlockRefNonce, error) {
+func (_m *MockCrypto) MakeBlockRefNonce() (kbfsblock.RefNonce, error) {
 	ret := _m.ctrl.Call(_m, "MakeBlockRefNonce")
-	ret0, _ := ret[0].(BlockRefNonce)
+	ret0, _ := ret[0].(kbfsblock.RefNonce)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

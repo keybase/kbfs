@@ -10,6 +10,7 @@ import (
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/ioutil"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -91,7 +92,7 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 	crypto := config.Crypto()
 
 	uid1 := keybase1.MakeTestUID(1)
-	bCtx := BlockContext{uid1, "", ZeroBlockRefNonce}
+	bCtx := BlockContext{uid1, "", kbfsblock.ZeroRefNonce}
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
 	require.NoError(t, err)

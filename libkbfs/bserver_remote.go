@@ -426,8 +426,8 @@ func (b *BlockServerRemote) IsUnflushed(
 // batchDowngradeReferences archives or deletes a batch of references
 func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 	tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext, archive bool) (
-	doneRefs map[kbfsblock.ID]map[BlockRefNonce]int, finalError error) {
-	doneRefs = make(map[kbfsblock.ID]map[BlockRefNonce]int)
+	doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int, finalError error) {
+	doneRefs = make(map[kbfsblock.ID]map[kbfsblock.RefNonce]int)
 	notDone := b.getNotDone(contexts, doneRefs)
 
 	throttleErr := backoff.Retry(func() error {
@@ -464,10 +464,10 @@ func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 			}
 			nonces, ok := doneRefs[bid]
 			if !ok {
-				nonces = make(map[BlockRefNonce]int)
+				nonces = make(map[kbfsblock.RefNonce]int)
 				doneRefs[bid] = nonces
 			}
-			nonces[BlockRefNonce(ref.Ref.Nonce)] = ref.LiveCount
+			nonces[kbfsblock.RefNonce(ref.Ref.Nonce)] = ref.LiveCount
 		}
 		// update the list of references to downgrade
 		notDone = b.getNotDone(contexts, doneRefs)
@@ -508,7 +508,7 @@ func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 }
 
 // getNotDone returns the set of block references in "all" that do not yet appear in "results"
-func (b *BlockServerRemote) getNotDone(all map[kbfsblock.ID][]BlockContext, doneRefs map[kbfsblock.ID]map[BlockRefNonce]int) (
+func (b *BlockServerRemote) getNotDone(all map[kbfsblock.ID][]BlockContext, doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int) (
 	notDone []keybase1.BlockReference) {
 	for id, idContexts := range all {
 		for _, context := range idContexts {

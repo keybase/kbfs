@@ -137,9 +137,8 @@ func (c CryptoCommon) VerifyBlockID(encodedEncryptedData []byte, id kbfsblock.ID
 }
 
 // MakeBlockRefNonce implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeBlockRefNonce() (nonce BlockRefNonce, err error) {
-	err = kbfscrypto.RandRead(nonce[:])
-	return
+func (c CryptoCommon) MakeBlockRefNonce() (nonce kbfsblock.RefNonce, err error) {
+	return kbfsblock.MakeRefNonce()
 }
 
 // MakeRandomTLFEphemeralKeys implements the Crypto interface for

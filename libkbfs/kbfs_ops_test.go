@@ -4632,7 +4632,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	config.mockBops.EXPECT().Ready(gomock.Any(), kmdMatcher{rmd}, bBlock).
 		Return(bID, len(bBlock.Contents), readyBlockData, nil)
 
-	refNonce := BlockRefNonce{1}
+	refNonce := kbfsblock.RefNonce{1}
 	config.mockCrypto.EXPECT().MakeBlockRefNonce().AnyTimes().
 		Return(refNonce, nil)
 

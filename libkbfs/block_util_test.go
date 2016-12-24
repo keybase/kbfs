@@ -55,7 +55,7 @@ func TestBlockUtilPutIncRefSuccess(t *testing.T) {
 	// expect one call to put a block
 	id := kbfsblock.FakeID(1)
 	encData := []byte{1, 2, 3, 4}
-	nonce := BlockRefNonce([8]byte{1, 2, 3, 4, 5, 6, 7, 8})
+	nonce := kbfsblock.RefNonce([8]byte{1, 2, 3, 4, 5, 6, 7, 8})
 	blockPtr := BlockPointer{
 		ID: id,
 		BlockContext: BlockContext{

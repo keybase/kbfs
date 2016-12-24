@@ -41,7 +41,7 @@ func putBlockDisk(
 	require.NoError(t, err)
 
 	uid1 := keybase1.MakeTestUID(1)
-	bCtx := BlockContext{uid1, "", ZeroBlockRefNonce}
+	bCtx := BlockContext{uid1, "", kbfsblock.ZeroRefNonce}
 	serverHalf, err := s.crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
@@ -141,7 +141,7 @@ func TestBlockDiskStoreArchiveNonExistentReference(t *testing.T) {
 
 	uid1 := keybase1.MakeTestUID(1)
 
-	bCtx := BlockContext{uid1, "", ZeroBlockRefNonce}
+	bCtx := BlockContext{uid1, "", kbfsblock.ZeroRefNonce}
 
 	data := []byte{1, 2, 3, 4}
 	bID, err := s.crypto.MakePermanentBlockID(data)

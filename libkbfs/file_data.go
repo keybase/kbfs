@@ -10,6 +10,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
@@ -479,7 +480,7 @@ func (fd *fileData) createIndirectBlock(
 						DataVer: dver,
 						BlockContext: BlockContext{
 							Creator:  fd.uid,
-							RefNonce: ZeroBlockRefNonce,
+							RefNonce: kbfsblock.ZeroRefNonce,
 						},
 					},
 					EncodedSize: 0,
@@ -517,7 +518,7 @@ func (fd *fileData) newRightBlock(
 		DataVer: DefaultNewBlockDataVersion(false),
 		BlockContext: BlockContext{
 			Creator:  fd.uid,
-			RefNonce: ZeroBlockRefNonce,
+			RefNonce: kbfsblock.ZeroRefNonce,
 		},
 	}
 
@@ -1067,7 +1068,7 @@ func (fd *fileData) deepCopy(ctx context.Context, codec kbfscodec.Codec,
 			DataVer: dataVer,
 			BlockContext: BlockContext{
 				Creator:  fd.uid,
-				RefNonce: ZeroBlockRefNonce,
+				RefNonce: kbfsblock.ZeroRefNonce,
 			},
 		}
 	} else {
@@ -1119,7 +1120,7 @@ func (fd *fileData) undupChildrenInCopy(ctx context.Context,
 	// TODO: parallelize
 	blockInfos := make([]BlockInfo, len(topBlock.IPtrs))
 	for i, iptr := range topBlock.IPtrs {
-		if iptr.RefNonce == ZeroBlockRefNonce {
+		if iptr.RefNonce == kbfsblock.ZeroRefNonce {
 			// No need to un-dup mid-level indirect blocks.  TODO:
 			// fetch the blocks and add them to the bps (only needed
 			// for multiple levels of indirection).

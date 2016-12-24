@@ -782,10 +782,10 @@ type cryptoPure interface {
 	// data.
 	VerifyBlockID(encodedEncryptedData []byte, id kbfsblock.ID) error
 
-	// MakeRefNonce generates a block reference nonce using a
-	// CSPRNG. This is used for distinguishing different references to
-	// the same kbfsblock.ID.
-	MakeBlockRefNonce() (BlockRefNonce, error)
+	// MakeBlockRefNonce generates a block reference nonce using a
+	// CSPRNG. This is used for distinguishing different
+	// references to the same kbfsblock.ID.
+	MakeBlockRefNonce() (kbfsblock.RefNonce, error)
 
 	// MakeRandomTLFEphemeralKeys generates ephemeral keys using a
 	// CSPRNG for a TLF. These keys can then be used to key/rekey
@@ -1180,11 +1180,11 @@ type BlockServer interface {
 	// block.
 	Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) (
 		[]byte, kbfscrypto.BlockCryptKeyServerHalf, error)
-	// Put stores the (encrypted) block data under the given ID and
-	// context on the server, along with the server half of the block
-	// key.  context should contain a BlockRefNonce of zero.  There
-	// will be an initial reference for this block for the given
-	// context.
+	// Put stores the (encrypted) block data under the given ID
+	// and context on the server, along with the server half of
+	// the block key.  context should contain a kbfsblock.RefNonce
+	// of zero.  There will be an initial reference for this block
+	// for the given context.
 	//
 	// Put should be idempotent, although it should also return an
 	// error if, for a given ID, any of the other arguments differ
@@ -1197,11 +1197,12 @@ type BlockServer interface {
 		buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error
 
 	// AddBlockReference adds a new reference to the given block,
-	// defined by the given context (which should contain a non-zero
-	// BlockRefNonce).  (Contexts with a BlockRefNonce of zero should
-	// be used when putting the block for the first time via Put().)
-	// Returns a BServerErrorBlockNonExistent if id is unknown within
-	// this folder.
+	// defined by the given context (which should contain a
+	// non-zero kbfsblock.RefNonce).  (Contexts with a
+	// kbfsblock.RefNonce of zero should be used when putting the
+	// block for the first time via Put().)  Returns a
+	// BServerErrorBlockNonExistent if id is unknown within this
+	// folder.
 	//
 	// AddBlockReference should be idempotent, although it should
 	// also return an error if, for a given ID and refnonce, any

@@ -16,7 +16,7 @@ func makeFakeBlockContext(t *testing.T) BlockContext {
 	return BlockContext{
 		"fake creator",
 		"fake writer",
-		BlockRefNonce{0xb},
+		kbfsblock.RefNonce{0xb},
 	}
 }
 

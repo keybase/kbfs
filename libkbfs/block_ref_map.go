@@ -4,7 +4,11 @@
 
 package libkbfs
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/keybase/kbfs/kbfsblock"
+)
 
 type blockRefStatus int
 
@@ -43,7 +47,7 @@ func (e blockRefEntry) checkContext(context BlockContext) error {
 // blockRefMap is a map with additional checking methods.
 //
 // TODO: Make this into a struct type that supports unknown fields.
-type blockRefMap map[BlockRefNonce]blockRefEntry
+type blockRefMap map[kbfsblock.RefNonce]blockRefEntry
 
 func (refs blockRefMap) hasNonArchivedRef() bool {
 	for _, refEntry := range refs {
@@ -68,8 +72,8 @@ func (refs blockRefMap) checkExists(context BlockContext) (bool, error) {
 	return true, nil
 }
 
-func (refs blockRefMap) getStatuses() map[BlockRefNonce]blockRefStatus {
-	statuses := make(map[BlockRefNonce]blockRefStatus)
+func (refs blockRefMap) getStatuses() map[kbfsblock.RefNonce]blockRefStatus {
+	statuses := make(map[kbfsblock.RefNonce]blockRefStatus)
 	for ref, refEntry := range refs {
 		statuses[ref] = refEntry.Status
 	}

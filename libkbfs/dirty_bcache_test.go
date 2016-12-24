@@ -65,7 +65,7 @@ func TestDirtyBcachePutDuplicate(t *testing.T) {
 
 	// Dirty a specific reference nonce, and make sure the
 	// original is still not found.
-	newNonce := BlockRefNonce([8]byte{1, 0, 0, 0, 0, 0, 0, 0})
+	newNonce := kbfsblock.RefNonce([8]byte{1, 0, 0, 0, 0, 0, 0, 0})
 	newNonceBlock := NewFileBlock()
 	bp1 := BlockPointer{ID: id1}
 	bp2 := BlockPointer{

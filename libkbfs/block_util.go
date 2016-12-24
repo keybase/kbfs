@@ -25,7 +25,7 @@ func isRecoverableBlockError(err error) bool {
 func putBlockToServer(ctx context.Context, bserv BlockServer, tlfID tlf.ID,
 	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
 	var err error
-	if blockPtr.RefNonce == ZeroBlockRefNonce {
+	if blockPtr.RefNonce == kbfsblock.ZeroRefNonce {
 		err = bserv.Put(ctx, tlfID, blockPtr.ID, blockPtr.BlockContext,
 			readyBlockData.buf, readyBlockData.serverHalf)
 	} else {

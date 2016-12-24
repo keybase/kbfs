@@ -95,7 +95,7 @@ func validateBlockPut(
 			context.GetCreator(), context.GetWriter())
 	}
 
-	if context.GetRefNonce() != ZeroBlockRefNonce {
+	if context.GetRefNonce() != kbfsblock.ZeroRefNonce {
 		return errors.New("can't Put() a block with a non-zero refnonce")
 	}
 

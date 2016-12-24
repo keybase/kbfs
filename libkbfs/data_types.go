@@ -197,24 +197,11 @@ const (
 	FilesWithHolesDataVer DataVer = 2
 )
 
-// BlockRefNonce is a 64-bit unique sequence of bytes for identifying
-// this reference of a block ID from other references to the same
-// (duplicated) block.
-type BlockRefNonce [8]byte
-
-// ZeroBlockRefNonce is a special BlockRefNonce used for the initial
-// reference to a block.
-var ZeroBlockRefNonce = BlockRefNonce([8]byte{0, 0, 0, 0, 0, 0, 0, 0})
-
-func (nonce BlockRefNonce) String() string {
-	return hex.EncodeToString(nonce[:])
-}
-
 // BlockRef is a block ID/ref nonce pair, which defines a unique
 // reference to a block.
 type BlockRef struct {
 	ID       kbfsblock.ID
-	RefNonce BlockRefNonce
+	RefNonce kbfsblock.RefNonce
 }
 
 // IsValid returns true exactly when ID.IsValid() does.
@@ -224,7 +211,7 @@ func (r BlockRef) IsValid() bool {
 
 func (r BlockRef) String() string {
 	s := fmt.Sprintf("BlockRef{id: %s", r.ID)
-	if r.RefNonce != ZeroBlockRefNonce {
+	if r.RefNonce != kbfsblock.ZeroRefNonce {
 		s += fmt.Sprintf(", refNonce: %s", r.RefNonce)
 	}
 	s += "}"
@@ -253,7 +240,7 @@ type BlockContext struct {
 	// subsequent references to the same block must have a random
 	// RefNonce (it can't be a monotonically increasing number because
 	// that would require coordination among clients).
-	RefNonce BlockRefNonce `codec:"r,omitempty"`
+	RefNonce kbfsblock.RefNonce `codec:"r,omitempty"`
 }
 
 // GetCreator returns the creator of the associated block.
@@ -281,14 +268,14 @@ func (c *BlockContext) SetWriter(newWriter keybase1.UID) {
 }
 
 // GetRefNonce returns the ref nonce of the associated block.
-func (c BlockContext) GetRefNonce() BlockRefNonce {
+func (c BlockContext) GetRefNonce() kbfsblock.RefNonce {
 	return c.RefNonce
 }
 
 // IsFirstRef returns whether or not p represents the first reference
 // to the corresponding kbfsblock.ID.
 func (c BlockContext) IsFirstRef() bool {
-	return c.RefNonce == ZeroBlockRefNonce
+	return c.RefNonce == kbfsblock.ZeroRefNonce
 }
 
 func (c BlockContext) String() string {
@@ -299,7 +286,7 @@ func (c BlockContext) String() string {
 	if len(c.Writer) > 0 {
 		s += fmt.Sprintf(", Writer: %s", c.Writer)
 	}
-	if c.RefNonce != ZeroBlockRefNonce {
+	if c.RefNonce != kbfsblock.ZeroRefNonce {
 		s += fmt.Sprintf(", RefNonce: %s", c.RefNonce)
 	}
 	s += "}"

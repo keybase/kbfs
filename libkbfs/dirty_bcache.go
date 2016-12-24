@@ -17,7 +17,7 @@ import (
 
 type dirtyBlockID struct {
 	id       kbfsblock.ID
-	refNonce BlockRefNonce
+	refNonce kbfsblock.RefNonce
 	branch   BranchName
 }
 

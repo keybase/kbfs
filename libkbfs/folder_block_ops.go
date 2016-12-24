@@ -12,6 +12,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
@@ -1712,7 +1713,7 @@ func ReadyBlock(ctx context.Context, bcache BlockCache, bops BlockOps,
 			DataVer: block.DataVersion(),
 			BlockContext: BlockContext{
 				Creator:  uid,
-				RefNonce: ZeroBlockRefNonce,
+				RefNonce: kbfsblock.ZeroRefNonce,
 			},
 		}
 	}
