@@ -24,6 +24,9 @@ type kidContainer struct {
 var _ encoding.BinaryMarshaler = kidContainer{}
 var _ encoding.BinaryUnmarshaler = (*kidContainer)(nil)
 
+// TODO: Make keybase1.KID implement {Binary,Text}{M,Unm}arshaler
+// directly.
+
 var _ json.Marshaler = kidContainer{}
 var _ json.Unmarshaler = (*kidContainer)(nil)
 
