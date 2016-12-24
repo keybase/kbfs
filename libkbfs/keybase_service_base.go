@@ -72,7 +72,7 @@ type addCryptPublicKeyFunc func(kbfscrypto.CryptPublicKey)
 
 // processKey adds the given public key to the appropriate verifying
 // or crypt list (as return values), and also updates the given name
-// map in place.
+// map and parent map in place.
 func processKey(publicKey keybase1.PublicKey,
 	addVerifyingKey addVerifyingKeyFunc,
 	addCryptPublicKey addCryptPublicKeyFunc,
@@ -106,8 +106,23 @@ func processKey(publicKey keybase1.PublicKey,
 	return nil
 }
 
+// updateKIDNamesFromParents sets the name of each KID without a name
+// that has a a parent with a name, to that parent's name.
+func updateKIDNamesFromParents(kidNames map[keybase1.KID]string,
+	parents map[keybase1.KID]keybase1.KID) {
+	for kid, parent := range parents {
+		if _, ok := kidNames[kid]; ok {
+			continue
+		}
+		if parentName, ok := kidNames[parent]; ok {
+			kidNames[kid] = parentName
+		}
+	}
+}
+
 func filterKeys(keys []keybase1.PublicKey) (
-	[]kbfscrypto.VerifyingKey, []kbfscrypto.CryptPublicKey, map[keybase1.KID]string, error) {
+	[]kbfscrypto.VerifyingKey, []kbfscrypto.CryptPublicKey,
+	map[keybase1.KID]string, error) {
 	var verifyingKeys []kbfscrypto.VerifyingKey
 	var cryptPublicKeys []kbfscrypto.CryptPublicKey
 	var kidNames = map[keybase1.KID]string{}
@@ -127,14 +142,7 @@ func filterKeys(keys []keybase1.PublicKey) (
 			return nil, nil, nil, err
 		}
 	}
-	for kid, parent := range parents {
-		if _, ok := kidNames[kid]; ok {
-			continue
-		}
-		if parentName, ok := kidNames[parent]; ok {
-			kidNames[kid] = parentName
-		}
-	}
+	updateKIDNamesFromParents(kidNames, parents)
 	return verifyingKeys, cryptPublicKeys, kidNames, nil
 }
 
@@ -160,14 +168,7 @@ func filterRevokedKeys(keys []keybase1.RevokedKey) (
 			return nil, nil, nil, err
 		}
 	}
-	for kid, parent := range parents {
-		if _, ok := kidNames[kid]; ok {
-			continue
-		}
-		if parentName, ok := kidNames[parent]; ok {
-			kidNames[kid] = parentName
-		}
-	}
+	updateKIDNamesFromParents(kidNames, parents)
 	return verifyingKeys, cryptPublicKeys, kidNames, nil
 
 }
