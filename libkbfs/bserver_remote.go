@@ -268,7 +268,7 @@ func (b *BlockServerRemote) RefreshAuthToken(ctx context.Context) {
 	}
 }
 
-func makeBlockIDCombo(id kbfsblock.ID, context BlockContext) keybase1.BlockIdCombo {
+func makeBlockIDCombo(id kbfsblock.ID, context kbfsblock.Context) keybase1.BlockIdCombo {
 	// ChargedTo is somewhat confusing when this BlockIdCombo is
 	// used in a BlockReference -- it just refers to the original
 	// creator of the block, i.e. the original user charged for
@@ -281,7 +281,7 @@ func makeBlockIDCombo(id kbfsblock.ID, context BlockContext) keybase1.BlockIdCom
 	}
 }
 
-func makeBlockReference(id kbfsblock.ID, context BlockContext) keybase1.BlockReference {
+func makeBlockReference(id kbfsblock.ID, context kbfsblock.Context) keybase1.BlockReference {
 	return keybase1.BlockReference{
 		Bid: makeBlockIDCombo(id, context),
 		// The actual writer to modify quota for.
@@ -292,7 +292,7 @@ func makeBlockReference(id kbfsblock.ID, context BlockContext) keybase1.BlockRef
 
 // Get implements the BlockServer interface for BlockServerRemote.
 func (b *BlockServerRemote) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	context BlockContext) (
+	context kbfsblock.Context) (
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	size := -1
 	defer func() {
@@ -327,7 +327,7 @@ func (b *BlockServerRemote) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 
 // Put implements the BlockServer interface for BlockServerRemote.
 func (b *BlockServerRemote) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	context BlockContext, buf []byte,
+	context kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
 	size := len(buf)
 	defer func() {
@@ -357,7 +357,7 @@ func (b *BlockServerRemote) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 
 // AddBlockReference implements the BlockServer interface for BlockServerRemote
 func (b *BlockServerRemote) AddBlockReference(ctx context.Context, tlfID tlf.ID,
-	id kbfsblock.ID, context BlockContext) (err error) {
+	id kbfsblock.ID, context kbfsblock.BlockContext) (err error) {
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(
@@ -380,7 +380,7 @@ func (b *BlockServerRemote) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 // RemoveBlockReferences implements the BlockServer interface for
 // BlockServerRemote
 func (b *BlockServerRemote) RemoveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (liveCounts map[kbfsblock.ID]int, err error) {
+	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (liveCounts map[kbfsblock.ID]int, err error) {
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(ctx, "RemoveBlockReferences batch size=%d err=%v", len(contexts), err)
@@ -404,7 +404,7 @@ func (b *BlockServerRemote) RemoveBlockReferences(ctx context.Context,
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerRemote
 func (b *BlockServerRemote) ArchiveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (err error) {
+	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (err error) {
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(ctx, "ArchiveBlockReferences batch size=%d err=%v", len(contexts), err)
@@ -425,7 +425,7 @@ func (b *BlockServerRemote) IsUnflushed(
 
 // batchDowngradeReferences archives or deletes a batch of references
 func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext, archive bool) (
+	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context, archive bool) (
 	doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int, finalError error) {
 	doneRefs = make(map[kbfsblock.ID]map[kbfsblock.RefNonce]int)
 	notDone := b.getNotDone(contexts, doneRefs)
@@ -508,7 +508,7 @@ func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 }
 
 // getNotDone returns the set of block references in "all" that do not yet appear in "results"
-func (b *BlockServerRemote) getNotDone(all map[kbfsblock.ID][]BlockContext, doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int) (
+func (b *BlockServerRemote) getNotDone(all map[kbfsblock.ID][]kbfsblock.Context, doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int) (
 	notDone []keybase1.BlockReference) {
 	for id, idContexts := range all {
 		for _, context := range idContexts {

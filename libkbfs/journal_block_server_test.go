@@ -92,7 +92,7 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 	crypto := config.Crypto()
 
 	uid1 := keybase1.MakeTestUID(1)
-	bCtx := BlockContext{uid1, "", kbfsblock.ZeroRefNonce}
+	bCtx := kbfsblock.Context{uid1, "", kbfsblock.ZeroRefNonce}
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
 	require.NoError(t, err)
@@ -113,7 +113,7 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 	uid2 := keybase1.MakeTestUID(2)
 	nonce, err := crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
-	bCtx2 := BlockContext{uid1, uid2, nonce}
+	bCtx2 := kbfsblock.Context{uid1, uid2, nonce}
 	err = blockServer.AddBlockReference(ctx, tlfID, bID, bCtx2)
 	require.NoError(t, err)
 

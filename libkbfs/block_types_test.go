@@ -12,8 +12,8 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 )
 
-func makeFakeBlockContext(t *testing.T) BlockContext {
-	return BlockContext{
+func makeFakeBlockContext(t *testing.T) kbfsblock.Context {
+	return kbfsblock.Context{
 		"fake creator",
 		"fake writer",
 		kbfsblock.RefNonce{0xb},

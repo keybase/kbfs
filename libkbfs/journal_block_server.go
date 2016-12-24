@@ -21,7 +21,7 @@ type journalBlockServer struct {
 var _ BlockServer = journalBlockServer{}
 
 func (j journalBlockServer) Get(
-	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) (
+	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context) (
 	data []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
 		defer func() {
@@ -45,7 +45,7 @@ func (j journalBlockServer) Get(
 }
 
 func (j journalBlockServer) Put(
-	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext,
+	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context,
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
 	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
 		defer func() {
@@ -67,7 +67,7 @@ func (j journalBlockServer) Put(
 
 func (j journalBlockServer) AddBlockReference(
 	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	context BlockContext) (err error) {
+	context kbfsblock.Context) (err error) {
 	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
 		if !j.enableAddBlockReference {
 			// TODO: Temporarily return an error until KBFS-1149 is
@@ -97,7 +97,7 @@ func (j journalBlockServer) AddBlockReference(
 
 func (j journalBlockServer) RemoveBlockReferences(
 	ctx context.Context, tlfID tlf.ID,
-	contexts map[kbfsblock.ID][]BlockContext) (
+	contexts map[kbfsblock.ID][]kbfsblock.Context) (
 	liveCounts map[kbfsblock.ID]int, err error) {
 	// Deletes always go straight to the server, since they slow down
 	// the journal and already only happen in the background anyway.
@@ -109,7 +109,7 @@ func (j journalBlockServer) RemoveBlockReferences(
 
 func (j journalBlockServer) ArchiveBlockReferences(
 	ctx context.Context, tlfID tlf.ID,
-	contexts map[kbfsblock.ID][]BlockContext) (err error) {
+	contexts map[kbfsblock.ID][]kbfsblock.Context) (err error) {
 	// Archives always go straight to the server, since they slow down
 	// the journal and already only happen in the background anyway.
 	// Note that this means delete operations must be issued after the

@@ -69,8 +69,8 @@ func TestDirtyBcachePutDuplicate(t *testing.T) {
 	newNonceBlock := NewFileBlock()
 	bp1 := BlockPointer{ID: id1}
 	bp2 := BlockPointer{
-		ID:           id1,
-		BlockContext: BlockContext{RefNonce: newNonce},
+		ID:      id1,
+		Context: kbfsblock.Context{RefNonce: newNonce},
 	}
 	id := tlf.FakeID(1, false)
 	err := dirtyBcache.Put(id, bp2, MasterBranch, newNonceBlock)

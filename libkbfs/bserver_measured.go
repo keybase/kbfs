@@ -48,7 +48,7 @@ func NewBlockServerMeasured(delegate BlockServer, r metrics.Registry) BlockServe
 
 // Get implements the BlockServer interface for BlockServerMeasured.
 func (b BlockServerMeasured) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	context BlockContext) (
+	context kbfsblock.Context) (
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	b.getTimer.Time(func() {
 		buf, serverHalf, err = b.delegate.Get(ctx, tlfID, id, context)
@@ -58,7 +58,7 @@ func (b BlockServerMeasured) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock
 
 // Put implements the BlockServer interface for BlockServerMeasured.
 func (b BlockServerMeasured) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	context BlockContext, buf []byte,
+	context kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
 	b.putTimer.Time(func() {
 		err = b.delegate.Put(ctx, tlfID, id, context, buf, serverHalf)
@@ -69,7 +69,7 @@ func (b BlockServerMeasured) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock
 // AddBlockReference implements the BlockServer interface for
 // BlockServerMeasured.
 func (b BlockServerMeasured) AddBlockReference(ctx context.Context, tlfID tlf.ID,
-	id kbfsblock.ID, context BlockContext) (err error) {
+	id kbfsblock.ID, context kbfsblock.Context) (err error) {
 	b.addBlockReferenceTimer.Time(func() {
 		err = b.delegate.AddBlockReference(ctx, tlfID, id, context)
 	})
@@ -79,7 +79,7 @@ func (b BlockServerMeasured) AddBlockReference(ctx context.Context, tlfID tlf.ID
 // RemoveBlockReferences implements the BlockServer interface for
 // BlockServerMeasured.
 func (b BlockServerMeasured) RemoveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (
+	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (
 	liveCounts map[kbfsblock.ID]int, err error) {
 	b.removeBlockReferencesTimer.Time(func() {
 		liveCounts, err = b.delegate.RemoveBlockReferences(
@@ -91,7 +91,7 @@ func (b BlockServerMeasured) RemoveBlockReferences(ctx context.Context,
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerRemote
 func (b BlockServerMeasured) ArchiveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (err error) {
+	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (err error) {
 	b.archiveBlockReferencesTimer.Time(func() {
 		err = b.delegate.ArchiveBlockReferences(ctx, tlfID, contexts)
 	})

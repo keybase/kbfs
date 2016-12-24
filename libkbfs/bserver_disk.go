@@ -122,7 +122,7 @@ func (b *BlockServerDisk) getStorage(tlfID tlf.ID) (
 
 // Get implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	context BlockContext) (
+	context kbfsblock.Context) (
 	data []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
@@ -151,7 +151,7 @@ func (b *BlockServerDisk) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID
 
 // Put implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	context BlockContext, buf []byte,
+	context kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
@@ -184,7 +184,7 @@ func (b *BlockServerDisk) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID
 
 // AddBlockReference implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID tlf.ID,
-	id kbfsblock.ID, context BlockContext) error {
+	id kbfsblock.ID, context kbfsblock.Context) error {
 	b.log.CDebugf(ctx, "BlockServerDisk.AddBlockReference id=%s "+
 		"tlfID=%s context=%s", id, tlfID, context)
 	tlfStorage, err := b.getStorage(tlfID)
@@ -222,7 +222,7 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 // RemoveBlockReferences implements the BlockServer interface for
 // BlockServerDisk.
 func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (
+	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (
 	liveCounts map[kbfsblock.ID]int, err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
@@ -263,7 +263,7 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerDisk.
 func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (err error) {
+	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
 	}()

@@ -39,7 +39,7 @@ func TestBlockUtilPutNewBlockSuccess(t *testing.T) {
 		buf: encData,
 	}
 
-	bserver.EXPECT().Put(ctx, tlfID, id, blockPtr.BlockContext,
+	bserver.EXPECT().Put(ctx, tlfID, id, blockPtr.Context,
 		readyBlockData.buf, readyBlockData.serverHalf).Return(nil)
 
 	if err := putBlockToServer(ctx, bserver, tlfID, blockPtr,
@@ -58,7 +58,7 @@ func TestBlockUtilPutIncRefSuccess(t *testing.T) {
 	nonce := kbfsblock.RefNonce([8]byte{1, 2, 3, 4, 5, 6, 7, 8})
 	blockPtr := BlockPointer{
 		ID: id,
-		BlockContext: BlockContext{
+		Context: kbfsblock.Context{
 			RefNonce: nonce,
 		},
 	}
@@ -70,7 +70,7 @@ func TestBlockUtilPutIncRefSuccess(t *testing.T) {
 	}
 
 	bserver.EXPECT().AddBlockReference(ctx, kmd.TlfID(), id,
-		blockPtr.BlockContext).Return(nil)
+		blockPtr.Context).Return(nil)
 
 	if err := putBlockToServer(ctx, bserver, kmd.TlfID(), blockPtr,
 		readyBlockData); err != nil {
@@ -95,7 +95,7 @@ func TestBlockUtilPutFail(t *testing.T) {
 		buf: encData,
 	}
 
-	bserver.EXPECT().Put(ctx, tlfID, id, blockPtr.BlockContext,
+	bserver.EXPECT().Put(ctx, tlfID, id, blockPtr.Context,
 		readyBlockData.buf, readyBlockData.serverHalf).Return(err)
 
 	if err2 := putBlockToServer(ctx, bserver, tlfID, blockPtr,

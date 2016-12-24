@@ -1711,7 +1711,7 @@ func ReadyBlock(ctx context.Context, bcache BlockCache, bops BlockOps,
 			ID:      id,
 			KeyGen:  kmd.LatestKeyGeneration(),
 			DataVer: block.DataVersion(),
-			BlockContext: BlockContext{
+			Context: kbfsblock.Context{
 				Creator:  uid,
 				RefNonce: kbfsblock.ZeroRefNonce,
 			},

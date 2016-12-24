@@ -1178,7 +1178,7 @@ type BlockServer interface {
 	// the block, and fills in the provided block object with its
 	// contents, if the logged-in user has read permission for that
 	// block.
-	Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) (
+	Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context) (
 		[]byte, kbfscrypto.BlockCryptKeyServerHalf, error)
 	// Put stores the (encrypted) block data under the given ID
 	// and context on the server, along with the server half of
@@ -1193,7 +1193,7 @@ type BlockServer interface {
 	// If this returns a BServerErrorOverQuota, with Throttled=false,
 	// the caller can treat it as informational and otherwise ignore
 	// the error.
-	Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext,
+	Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context,
 		buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error
 
 	// AddBlockReference adds a new reference to the given block,
@@ -1213,7 +1213,7 @@ type BlockServer interface {
 	// the caller can treat it as informational and otherwise ignore
 	// the error.
 	AddBlockReference(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-		context BlockContext) error
+		context kbfsblock.Context) error
 	// RemoveBlockReferences removes the references to the given block
 	// ID defined by the given contexts.  If no references to the block
 	// remain after this call, the server is allowed to delete the
@@ -1222,7 +1222,7 @@ type BlockServer interface {
 	// It returns the number of remaining not-yet-deleted references after this
 	// reference has been removed
 	RemoveBlockReferences(ctx context.Context, tlfID tlf.ID,
-		contexts map[kbfsblock.ID][]BlockContext) (liveCounts map[kbfsblock.ID]int, err error)
+		contexts map[kbfsblock.ID][]kbfsblock.Context) (liveCounts map[kbfsblock.ID]int, err error)
 
 	// ArchiveBlockReferences marks the given block references as
 	// "archived"; that is, they are not being used in the current
@@ -1234,7 +1234,7 @@ type BlockServer interface {
 	// any of the other fields of the context differ from previous
 	// calls with the same ID/refnonce pair.
 	ArchiveBlockReferences(ctx context.Context, tlfID tlf.ID,
-		contexts map[kbfsblock.ID][]BlockContext) error
+		contexts map[kbfsblock.ID][]kbfsblock.Context) error
 
 	// IsUnflushed returns whether a given block is being queued
 	// locally for later flushing to another block server.

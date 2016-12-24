@@ -478,7 +478,7 @@ func (fd *fileData) createIndirectBlock(
 						ID:      newID,
 						KeyGen:  fd.kmd.LatestKeyGeneration(),
 						DataVer: dver,
-						BlockContext: BlockContext{
+						Context: kbfsblock.Context{
 							Creator:  fd.uid,
 							RefNonce: kbfsblock.ZeroRefNonce,
 						},
@@ -516,7 +516,7 @@ func (fd *fileData) newRightBlock(
 		ID:      newRID,
 		KeyGen:  fd.kmd.LatestKeyGeneration(),
 		DataVer: DefaultNewBlockDataVersion(false),
-		BlockContext: BlockContext{
+		Context: kbfsblock.Context{
 			Creator:  fd.uid,
 			RefNonce: kbfsblock.ZeroRefNonce,
 		},
@@ -1066,7 +1066,7 @@ func (fd *fileData) deepCopy(ctx context.Context, codec kbfscodec.Codec,
 			ID:      newID,
 			KeyGen:  fd.kmd.LatestKeyGeneration(),
 			DataVer: dataVer,
-			BlockContext: BlockContext{
+			Context: kbfsblock.Context{
 				Creator:  fd.uid,
 				RefNonce: kbfsblock.ZeroRefNonce,
 			},

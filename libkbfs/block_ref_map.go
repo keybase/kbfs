@@ -18,7 +18,7 @@ const (
 )
 
 type blockContextMismatchError struct {
-	expected, actual BlockContext
+	expected, actual kbfsblock.Context
 }
 
 func (e blockContextMismatchError) Error() string {
@@ -30,14 +30,14 @@ func (e blockContextMismatchError) Error() string {
 
 type blockRefEntry struct {
 	Status  blockRefStatus
-	Context BlockContext
+	Context kbfsblock.Context
 	// mostRecentTag, if non-nil, is used by callers to figure out
 	// if an entry has been modified by something else. See
 	// blockRefMap.remove.
 	MostRecentTag string
 }
 
-func (e blockRefEntry) checkContext(context BlockContext) error {
+func (e blockRefEntry) checkContext(context kbfsblock.Context) error {
 	if e.Context != context {
 		return blockContextMismatchError{e.Context, context}
 	}
@@ -58,7 +58,7 @@ func (refs blockRefMap) hasNonArchivedRef() bool {
 	return false
 }
 
-func (refs blockRefMap) checkExists(context BlockContext) (bool, error) {
+func (refs blockRefMap) checkExists(context kbfsblock.Context) (bool, error) {
 	refEntry, ok := refs[context.GetRefNonce()]
 	if !ok {
 		return false, nil
@@ -80,7 +80,7 @@ func (refs blockRefMap) getStatuses() map[kbfsblock.RefNonce]blockRefStatus {
 	return statuses
 }
 
-func (refs blockRefMap) put(context BlockContext, status blockRefStatus,
+func (refs blockRefMap) put(context kbfsblock.Context, status blockRefStatus,
 	tag string) error {
 	refNonce := context.GetRefNonce()
 	if refEntry, ok := refs[refNonce]; ok {
@@ -101,7 +101,7 @@ func (refs blockRefMap) put(context BlockContext, status blockRefStatus,
 // remove removes the entry with the given context, if any. If tag is
 // non-empty, then the entry will be removed only if its most recent
 // tag (passed in to put) matches the given one.
-func (refs blockRefMap) remove(context BlockContext, tag string) error {
+func (refs blockRefMap) remove(context kbfsblock.Context, tag string) error {
 	refNonce := context.GetRefNonce()
 	// If this check fails, this ref is already gone, which is not
 	// an error.

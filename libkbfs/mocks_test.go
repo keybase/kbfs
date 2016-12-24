@@ -3196,7 +3196,7 @@ func (_mr *_MockBlockServerRecorder) RefreshAuthToken(arg0 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RefreshAuthToken", arg0)
 }
 
-func (_m *MockBlockServer) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
+func (_m *MockBlockServer) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	ret := _m.ctrl.Call(_m, "Get", ctx, tlfID, id, context)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(kbfscrypto.BlockCryptKeyServerHalf)
@@ -3208,7 +3208,7 @@ func (_mr *_MockBlockServerRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockServer) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext, buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
+func (_m *MockBlockServer) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context, buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
 	ret := _m.ctrl.Call(_m, "Put", ctx, tlfID, id, context, buf, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3218,7 +3218,7 @@ func (_mr *_MockBlockServerRecorder) Put(arg0, arg1, arg2, arg3, arg4, arg5 inte
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockBlockServer) AddBlockReference(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) error {
+func (_m *MockBlockServer) AddBlockReference(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context) error {
 	ret := _m.ctrl.Call(_m, "AddBlockReference", ctx, tlfID, id, context)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3228,7 +3228,7 @@ func (_mr *_MockBlockServerRecorder) AddBlockReference(arg0, arg1, arg2, arg3 in
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddBlockReference", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockServer) RemoveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (map[kbfsblock.ID]int, error) {
+func (_m *MockBlockServer) RemoveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (map[kbfsblock.ID]int, error) {
 	ret := _m.ctrl.Call(_m, "RemoveBlockReferences", ctx, tlfID, contexts)
 	ret0, _ := ret[0].(map[kbfsblock.ID]int)
 	ret1, _ := ret[1].(error)
@@ -3239,7 +3239,7 @@ func (_mr *_MockBlockServerRecorder) RemoveBlockReferences(arg0, arg1, arg2 inte
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RemoveBlockReferences", arg0, arg1, arg2)
 }
 
-func (_m *MockBlockServer) ArchiveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) error {
+func (_m *MockBlockServer) ArchiveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) error {
 	ret := _m.ctrl.Call(_m, "ArchiveBlockReferences", ctx, tlfID, contexts)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3308,7 +3308,7 @@ func (_mr *_MockblockServerLocalRecorder) RefreshAuthToken(arg0 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RefreshAuthToken", arg0)
 }
 
-func (_m *MockblockServerLocal) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
+func (_m *MockblockServerLocal) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	ret := _m.ctrl.Call(_m, "Get", ctx, tlfID, id, context)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(kbfscrypto.BlockCryptKeyServerHalf)
@@ -3320,7 +3320,7 @@ func (_mr *_MockblockServerLocalRecorder) Get(arg0, arg1, arg2, arg3 interface{}
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockblockServerLocal) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext, buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
+func (_m *MockblockServerLocal) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context, buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
 	ret := _m.ctrl.Call(_m, "Put", ctx, tlfID, id, context, buf, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3330,7 +3330,7 @@ func (_mr *_MockblockServerLocalRecorder) Put(arg0, arg1, arg2, arg3, arg4, arg5
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockblockServerLocal) AddBlockReference(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) error {
+func (_m *MockblockServerLocal) AddBlockReference(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context) error {
 	ret := _m.ctrl.Call(_m, "AddBlockReference", ctx, tlfID, id, context)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3340,7 +3340,7 @@ func (_mr *_MockblockServerLocalRecorder) AddBlockReference(arg0, arg1, arg2, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddBlockReference", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockblockServerLocal) RemoveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (map[kbfsblock.ID]int, error) {
+func (_m *MockblockServerLocal) RemoveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (map[kbfsblock.ID]int, error) {
 	ret := _m.ctrl.Call(_m, "RemoveBlockReferences", ctx, tlfID, contexts)
 	ret0, _ := ret[0].(map[kbfsblock.ID]int)
 	ret1, _ := ret[1].(error)
@@ -3351,7 +3351,7 @@ func (_mr *_MockblockServerLocalRecorder) RemoveBlockReferences(arg0, arg1, arg2
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RemoveBlockReferences", arg0, arg1, arg2)
 }
 
-func (_m *MockblockServerLocal) ArchiveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) error {
+func (_m *MockblockServerLocal) ArchiveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) error {
 	ret := _m.ctrl.Call(_m, "ArchiveBlockReferences", ctx, tlfID, contexts)
 	ret0, _ := ret[0].(error)
 	return ret0

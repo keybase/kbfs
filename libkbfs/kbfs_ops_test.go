@@ -623,7 +623,7 @@ func makeBP(id kbfsblock.ID, kmd KeyMetadata, config Config,
 		ID:      id,
 		KeyGen:  kmd.LatestKeyGeneration(),
 		DataVer: DefaultNewBlockDataVersion(false),
-		BlockContext: BlockContext{
+		Context: kbfsblock.Context{
 			Creator: u,
 			// Refnonces not needed; explicit refnonce
 			// testing happens elsewhere.
@@ -656,7 +656,7 @@ func makeBIFromID(id kbfsblock.ID, user keybase1.UID) BlockInfo {
 	return BlockInfo{
 		BlockPointer: BlockPointer{
 			ID: id, KeyGen: 1, DataVer: 1,
-			BlockContext: BlockContext{
+			Context: kbfsblock.Context{
 				Creator: user,
 			},
 		},
@@ -3466,7 +3466,7 @@ func TestKBFSOpsWriteOverMultipleBlocks(t *testing.T) {
 	rootBlock := NewDirBlock().(*DirBlock)
 	filePtr := BlockPointer{
 		ID: fileID, KeyGen: 1, DataVer: 1,
-		BlockContext: BlockContext{
+		Context: kbfsblock.Context{
 			Creator: uid,
 		},
 	}
@@ -4648,7 +4648,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 
 	// manually add b
 	expectedPath.path = append(expectedPath.path,
-		pathNode{BlockPointer{ID: aID, BlockContext: BlockContext{RefNonce: refNonce}}, "b"})
+		pathNode{BlockPointer{ID: aID, Context: kbfsblock.Context{RefNonce: refNonce}}, "b"})
 	// TODO: build a context matcher that can check the refnonce.
 	config.mockBserv.EXPECT().AddBlockReference(gomock.Any(), rmd.TlfID(),
 		expectedPath.path[1].ID, gomock.Any()).Return(nil)
@@ -5522,7 +5522,7 @@ type corruptBlockServer struct {
 }
 
 func (cbs corruptBlockServer) Get(
-	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) (
+	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	data, keyServerHalf, err := cbs.BlockServer.Get(ctx, tlfID, id, context)
 	if err != nil {

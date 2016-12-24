@@ -1296,7 +1296,7 @@ func (j *tlfJournal) enable() error {
 // mdJournal function under j.journalLock.
 
 func (j *tlfJournal) getBlockDataWithContext(
-	id kbfsblock.ID, context BlockContext) (
+	id kbfsblock.ID, context kbfsblock.Context) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
@@ -1308,7 +1308,7 @@ func (j *tlfJournal) getBlockDataWithContext(
 }
 
 func (j *tlfJournal) putBlockData(
-	ctx context.Context, id kbfsblock.ID, context BlockContext, buf []byte,
+	ctx context.Context, id kbfsblock.ID, context kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
@@ -1336,7 +1336,7 @@ func (j *tlfJournal) putBlockData(
 }
 
 func (j *tlfJournal) addBlockReference(
-	ctx context.Context, id kbfsblock.ID, context BlockContext) error {
+	ctx context.Context, id kbfsblock.ID, context kbfsblock.Context) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {
@@ -1354,7 +1354,7 @@ func (j *tlfJournal) addBlockReference(
 }
 
 func (j *tlfJournal) removeBlockReferences(
-	ctx context.Context, contexts map[kbfsblock.ID][]BlockContext) (
+	ctx context.Context, contexts map[kbfsblock.ID][]kbfsblock.Context) (
 	liveCounts map[kbfsblock.ID]int, err error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
@@ -1379,7 +1379,7 @@ func (j *tlfJournal) removeBlockReferences(
 }
 
 func (j *tlfJournal) archiveBlockReferences(
-	ctx context.Context, contexts map[kbfsblock.ID][]BlockContext) error {
+	ctx context.Context, contexts map[kbfsblock.ID][]kbfsblock.Context) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {

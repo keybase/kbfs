@@ -26,13 +26,13 @@ func putBlockToServer(ctx context.Context, bserv BlockServer, tlfID tlf.ID,
 	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
 	var err error
 	if blockPtr.RefNonce == kbfsblock.ZeroRefNonce {
-		err = bserv.Put(ctx, tlfID, blockPtr.ID, blockPtr.BlockContext,
+		err = bserv.Put(ctx, tlfID, blockPtr.ID, blockPtr.Context,
 			readyBlockData.buf, readyBlockData.serverHalf)
 	} else {
 		// non-zero block refnonce means this is a new reference to an
 		// existing block.
 		err = bserv.AddBlockReference(ctx, tlfID, blockPtr.ID,
-			blockPtr.BlockContext)
+			blockPtr.Context)
 	}
 	return err
 }

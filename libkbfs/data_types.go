@@ -218,81 +218,6 @@ func (r BlockRef) String() string {
 	return s
 }
 
-// BlockContext contains all the information used by the server to
-// identify blocks (other than the ID).
-//
-// NOTE: Don't add or modify anything in this struct without
-// considering how old clients will handle them.
-type BlockContext struct {
-	// Creator is the UID that was first charged for the initial
-	// reference to this block.
-	Creator keybase1.UID `codec:"c"`
-	// Writer is the UID that should be charged for this reference to
-	// the block.  If empty, it defaults to Creator.
-	Writer keybase1.UID `codec:"w,omitempty"`
-	// When RefNonce is all 0s, this is the initial reference to a
-	// particular block.  Using a constant refnonce for the initial
-	// reference allows the server to identify and optimize for the
-	// common case where there is only one reference for a block.  Two
-	// initial references cannot happen simultaneously, because the
-	// encrypted block contents (and thus the block ID) will be
-	// randomized by the server-side block crypt key half.  All
-	// subsequent references to the same block must have a random
-	// RefNonce (it can't be a monotonically increasing number because
-	// that would require coordination among clients).
-	RefNonce kbfsblock.RefNonce `codec:"r,omitempty"`
-}
-
-// GetCreator returns the creator of the associated block.
-func (c BlockContext) GetCreator() keybase1.UID {
-	return c.Creator
-}
-
-// GetWriter returns the writer of the associated block.
-func (c BlockContext) GetWriter() keybase1.UID {
-	if !c.Writer.IsNil() {
-		return c.Writer
-	}
-	return c.Creator
-}
-
-// SetWriter sets the Writer field, if necessary.
-func (c *BlockContext) SetWriter(newWriter keybase1.UID) {
-	if c.Creator != newWriter {
-		c.Writer = newWriter
-	} else {
-		// save some bytes by not populating the separate Writer
-		// field if it matches the creator.
-		c.Writer = ""
-	}
-}
-
-// GetRefNonce returns the ref nonce of the associated block.
-func (c BlockContext) GetRefNonce() kbfsblock.RefNonce {
-	return c.RefNonce
-}
-
-// IsFirstRef returns whether or not p represents the first reference
-// to the corresponding kbfsblock.ID.
-func (c BlockContext) IsFirstRef() bool {
-	return c.RefNonce == kbfsblock.ZeroRefNonce
-}
-
-func (c BlockContext) String() string {
-	if c == (BlockContext{}) {
-		return "BlockContext{}"
-	}
-	s := fmt.Sprintf("BlockContext{Creator: %s", c.Creator)
-	if len(c.Writer) > 0 {
-		s += fmt.Sprintf(", Writer: %s", c.Writer)
-	}
-	if c.RefNonce != kbfsblock.ZeroRefNonce {
-		s += fmt.Sprintf(", RefNonce: %s", c.RefNonce)
-	}
-	s += "}"
-	return s
-}
-
 // BlockPointer contains the identifying information for a block in KBFS.
 //
 // NOTE: Don't add or modify anything in this struct without
@@ -301,7 +226,7 @@ type BlockPointer struct {
 	ID      kbfsblock.ID `codec:"i"`
 	KeyGen  KeyGen       `codec:"k"` // if valid, which generation of the TLF{Writer,Reader}KeyBundle to use.
 	DataVer DataVer      `codec:"d"` // if valid, which version of the KBFS data structures is pointed to
-	BlockContext
+	kbfsblock.Context
 }
 
 // IsValid returns whether the block pointer is valid. A zero block
@@ -321,7 +246,7 @@ func (p BlockPointer) String() string {
 	if p == (BlockPointer{}) {
 		return "BlockPointer{}"
 	}
-	return fmt.Sprintf("BlockPointer{ID: %s, KeyGen: %d, DataVer: %d, Context: %s}", p.ID, p.KeyGen, p.DataVer, p.BlockContext)
+	return fmt.Sprintf("BlockPointer{ID: %s, KeyGen: %d, DataVer: %d, Context: %s}", p.ID, p.KeyGen, p.DataVer, p.Context)
 }
 
 // IsInitialized returns whether or not this BlockPointer has non-nil data.

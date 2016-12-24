@@ -169,7 +169,7 @@ func (s *blockDiskStore) putInfo(id kbfsblock.ID, info blockJournalInfo) error {
 
 // addRefs adds references for the given contexts to the given ID, all
 // with the same status and tag.
-func (s *blockDiskStore) addRefs(id kbfsblock.ID, contexts []BlockContext,
+func (s *blockDiskStore) addRefs(id kbfsblock.ID, contexts []kbfsblock.Context,
 	status blockRefStatus, tag string) error {
 	info, err := s.getInfo(id)
 	if err != nil {
@@ -258,7 +258,7 @@ func (s *blockDiskStore) hasNonArchivedRef(id kbfsblock.ID) (bool, error) {
 	return info.Refs.hasNonArchivedRef(), nil
 }
 
-func (s *blockDiskStore) hasContext(id kbfsblock.ID, context BlockContext) (
+func (s *blockDiskStore) hasContext(id kbfsblock.ID, context kbfsblock.Context) (
 	bool, error) {
 	info, err := s.getInfo(id)
 	if err != nil {
@@ -317,7 +317,7 @@ func (s *blockDiskStore) getDataSize(id kbfsblock.ID) (int64, error) {
 	return fi.Size(), nil
 }
 
-func (s *blockDiskStore) getDataWithContext(id kbfsblock.ID, context BlockContext) (
+func (s *blockDiskStore) getDataWithContext(id kbfsblock.ID, context kbfsblock.Context) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	hasContext, err := s.hasContext(id, context)
 	if err != nil {
@@ -393,7 +393,7 @@ func (s *blockDiskStore) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, erro
 
 // put puts the given data for the block, which may already exist, and
 // adds a reference for the given context.
-func (s *blockDiskStore) put(id kbfsblock.ID, context BlockContext, buf []byte,
+func (s *blockDiskStore) put(id kbfsblock.ID, context kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf, tag string) error {
 	err := validateBlockPut(s.crypto, id, context, buf)
 	if err != nil {
@@ -448,7 +448,7 @@ func (s *blockDiskStore) put(id kbfsblock.ID, context BlockContext, buf []byte,
 		}
 	}
 
-	err = s.addRefs(id, []BlockContext{context}, liveBlockRef, tag)
+	err = s.addRefs(id, []kbfsblock.Context{context}, liveBlockRef, tag)
 	if err != nil {
 		return err
 	}
@@ -457,17 +457,17 @@ func (s *blockDiskStore) put(id kbfsblock.ID, context BlockContext, buf []byte,
 }
 
 func (s *blockDiskStore) addReference(
-	id kbfsblock.ID, context BlockContext, tag string) error {
+	id kbfsblock.ID, context kbfsblock.Context, tag string) error {
 	err := s.makeDir(id)
 	if err != nil {
 		return err
 	}
 
-	return s.addRefs(id, []BlockContext{context}, liveBlockRef, tag)
+	return s.addRefs(id, []kbfsblock.Context{context}, liveBlockRef, tag)
 }
 
 func (s *blockDiskStore) archiveReferences(
-	contexts map[kbfsblock.ID][]BlockContext, tag string) error {
+	contexts map[kbfsblock.ID][]kbfsblock.Context, tag string) error {
 	for id, idContexts := range contexts {
 		err := s.makeDir(id)
 		if err != nil {
@@ -488,7 +488,7 @@ func (s *blockDiskStore) archiveReferences(
 // removed only if its most recent tag (passed in to addRefs) matches
 // the given one.
 func (s *blockDiskStore) removeReferences(
-	id kbfsblock.ID, contexts []BlockContext, tag string) (
+	id kbfsblock.ID, contexts []kbfsblock.Context, tag string) (
 	liveCount int, err error) {
 	info, err := s.getInfo(id)
 	if err != nil {

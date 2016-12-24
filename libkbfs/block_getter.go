@@ -26,7 +26,7 @@ type realBlockGetter struct {
 func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer, block Block) error {
 	bserv := bg.config.BlockServer()
 	buf, blockServerHalf, err := bserv.Get(
-		ctx, kmd.TlfID(), blockPtr.ID, blockPtr.BlockContext)
+		ctx, kmd.TlfID(), blockPtr.ID, blockPtr.Context)
 	if err != nil {
 		// Temporary code to track down bad block
 		// requests. Remove when not needed anymore.

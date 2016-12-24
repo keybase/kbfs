@@ -36,12 +36,12 @@ func teardownBlockDiskStoreTest(t *testing.T, tempdir string) {
 
 func putBlockDisk(
 	t *testing.T, s *blockDiskStore, data []byte) (
-	kbfsblock.ID, BlockContext, kbfscrypto.BlockCryptKeyServerHalf) {
+	kbfsblock.ID, kbfsblock.Context, kbfscrypto.BlockCryptKeyServerHalf) {
 	bID, err := s.crypto.MakePermanentBlockID(data)
 	require.NoError(t, err)
 
 	uid1 := keybase1.MakeTestUID(1)
-	bCtx := BlockContext{uid1, "", kbfsblock.ZeroRefNonce}
+	bCtx := kbfsblock.Context{uid1, "", kbfsblock.ZeroRefNonce}
 	serverHalf, err := s.crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
@@ -52,20 +52,20 @@ func putBlockDisk(
 }
 
 func addBlockDiskRef(
-	t *testing.T, s *blockDiskStore, bID kbfsblock.ID) BlockContext {
+	t *testing.T, s *blockDiskStore, bID kbfsblock.ID) kbfsblock.Context {
 	nonce, err := s.crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
-	bCtx2 := BlockContext{uid1, uid2, nonce}
+	bCtx2 := kbfsblock.Context{uid1, uid2, nonce}
 	err = s.addReference(bID, bCtx2, "")
 	require.NoError(t, err)
 	return bCtx2
 }
 
 func getAndCheckBlockDiskData(t *testing.T, s *blockDiskStore,
-	bID kbfsblock.ID, bCtx BlockContext, expectedData []byte,
+	bID kbfsblock.ID, bCtx kbfsblock.Context, expectedData []byte,
 	expectedServerHalf kbfscrypto.BlockCryptKeyServerHalf) {
 	data, serverHalf, err := s.getDataWithContext(bID, bCtx)
 	require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestBlockDiskStoreArchiveReferences(t *testing.T) {
 
 	// Archive references.
 	err := s.archiveReferences(
-		map[kbfsblock.ID][]BlockContext{bID: {bCtx, bCtx2}}, "")
+		map[kbfsblock.ID][]kbfsblock.Context{bID: {bCtx, bCtx2}}, "")
 	require.NoError(t, err)
 
 	// Get block should still succeed.
@@ -141,14 +141,14 @@ func TestBlockDiskStoreArchiveNonExistentReference(t *testing.T) {
 
 	uid1 := keybase1.MakeTestUID(1)
 
-	bCtx := BlockContext{uid1, "", kbfsblock.ZeroRefNonce}
+	bCtx := kbfsblock.Context{uid1, "", kbfsblock.ZeroRefNonce}
 
 	data := []byte{1, 2, 3, 4}
 	bID, err := s.crypto.MakePermanentBlockID(data)
 	require.NoError(t, err)
 
 	// Archive references.
-	err = s.archiveReferences(map[kbfsblock.ID][]BlockContext{bID: {bCtx}}, "")
+	err = s.archiveReferences(map[kbfsblock.ID][]kbfsblock.Context{bID: {bCtx}}, "")
 	require.NoError(t, err)
 }
 
@@ -165,7 +165,7 @@ func TestBlockDiskStoreRemoveReferences(t *testing.T) {
 
 	// Remove references.
 	liveCount, err := s.removeReferences(
-		bID, []BlockContext{bCtx, bCtx2}, "")
+		bID, []kbfsblock.Context{bCtx, bCtx2}, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 
@@ -193,7 +193,7 @@ func TestBlockDiskStoreRemove(t *testing.T) {
 	require.Error(t, err, "Trying to remove data")
 
 	// Remove reference.
-	liveCount, err := s.removeReferences(bID, []BlockContext{bCtx}, "")
+	liveCount, err := s.removeReferences(bID, []kbfsblock.Context{bCtx}, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, liveCount)
 

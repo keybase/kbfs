@@ -204,7 +204,7 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	id := kbfsblock.FakeID(1)
 	encData := []byte{1, 2, 3, 4}
 	blockPtr := BlockPointer{ID: id}
-	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.BlockContext).Return(
+	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.Context).Return(
 		encData, kbfscrypto.BlockCryptKeyServerHalf{}, nil)
 	decData := &TestBlock{42}
 
@@ -230,7 +230,7 @@ func TestBlockOpsGetFailGet(t *testing.T) {
 	id := kbfsblock.FakeID(1)
 	err := errors.New("Fake fail")
 	blockPtr := BlockPointer{ID: id}
-	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.BlockContext).Return(
+	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.Context).Return(
 		nil, kbfscrypto.BlockCryptKeyServerHalf{}, err)
 
 	block := &TestBlock{}
@@ -250,7 +250,7 @@ func TestBlockOpsGetFailVerify(t *testing.T) {
 	err := errors.New("Fake verification fail")
 	blockPtr := BlockPointer{ID: id}
 	encData := []byte{1, 2, 3}
-	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.BlockContext).Return(
+	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.Context).Return(
 		encData, kbfscrypto.BlockCryptKeyServerHalf{}, nil)
 	config.mockCrypto.EXPECT().VerifyBlockID(encData, id).Return(err)
 
@@ -270,7 +270,7 @@ func TestBlockOpsGetFailDecryptBlockData(t *testing.T) {
 	id := kbfsblock.FakeID(1)
 	encData := []byte{1, 2, 3, 4}
 	blockPtr := BlockPointer{ID: id}
-	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.BlockContext).Return(
+	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.Context).Return(
 		encData, kbfscrypto.BlockCryptKeyServerHalf{}, nil)
 	err := errors.New("Fake fail")
 
@@ -375,11 +375,11 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 
 	// expect one call to delete several blocks
 
-	contexts := make(map[kbfsblock.ID][]BlockContext)
+	contexts := make(map[kbfsblock.ID][]kbfsblock.Context)
 	b1 := BlockPointer{ID: kbfsblock.FakeID(1)}
-	contexts[b1.ID] = []BlockContext{b1.BlockContext}
+	contexts[b1.ID] = []kbfsblock.Context{b1.Context}
 	b2 := BlockPointer{ID: kbfsblock.FakeID(2)}
-	contexts[b2.ID] = []BlockContext{b2.BlockContext}
+	contexts[b2.ID] = []kbfsblock.Context{b2.Context}
 	blockPtrs := []BlockPointer{b1, b2}
 	var liveCounts map[kbfsblock.ID]int
 	tlfID := tlf.FakeID(1, false)
@@ -398,11 +398,11 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 
 	// fail the delete call
 
-	contexts := make(map[kbfsblock.ID][]BlockContext)
+	contexts := make(map[kbfsblock.ID][]kbfsblock.Context)
 	b1 := BlockPointer{ID: kbfsblock.FakeID(1)}
-	contexts[b1.ID] = []BlockContext{b1.BlockContext}
+	contexts[b1.ID] = []kbfsblock.Context{b1.Context}
 	b2 := BlockPointer{ID: kbfsblock.FakeID(2)}
-	contexts[b2.ID] = []BlockContext{b2.BlockContext}
+	contexts[b2.ID] = []kbfsblock.Context{b2.Context}
 	blockPtrs := []BlockPointer{b1, b2}
 	err := errors.New("Fake fail")
 	var liveCounts map[kbfsblock.ID]int

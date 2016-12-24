@@ -147,10 +147,10 @@ func (c testTLFJournalConfig) MakeLogger(module string) logger.Logger {
 }
 
 func (c testTLFJournalConfig) makeBlock(data []byte) (
-	kbfsblock.ID, BlockContext, kbfscrypto.BlockCryptKeyServerHalf) {
+	kbfsblock.ID, kbfsblock.Context, kbfscrypto.BlockCryptKeyServerHalf) {
 	id, err := c.crypto.MakePermanentBlockID(data)
 	require.NoError(c.t, err)
-	bCtx := BlockContext{c.uid, "", kbfsblock.ZeroRefNonce}
+	bCtx := kbfsblock.Context{c.uid, "", kbfsblock.ZeroRefNonce}
 	serverHalf, err := c.crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(c.t, err)
 	return id, bCtx, serverHalf
@@ -382,7 +382,7 @@ type hangingBlockServer struct {
 }
 
 func (bs hangingBlockServer) Put(
-	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext,
+	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context,
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
 	close(bs.onPutCh)
 	// Hang until the context is cancelled.
@@ -751,7 +751,7 @@ type orderedBlockServer struct {
 }
 
 func (s *orderedBlockServer) Put(
-	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext,
+	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context,
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()

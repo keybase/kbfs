@@ -362,7 +362,7 @@ func (f *stallingBlockServer) maybeStall(ctx context.Context, opName StallableBl
 }
 
 func (f *stallingBlockServer) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	bctx BlockContext) (
+	bctx kbfsblock.Context) (
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	f.maybeStall(ctx, StallableBlockGet)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
@@ -374,7 +374,7 @@ func (f *stallingBlockServer) Get(ctx context.Context, tlfID tlf.ID, id kbfsbloc
 }
 
 func (f *stallingBlockServer) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	bctx BlockContext, buf []byte,
+	bctx kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
 	f.maybeStall(ctx, StallableBlockPut)
 	return runWithContextCheck(ctx, func(ctx context.Context) error {

@@ -117,7 +117,7 @@ type blockJournalEntry struct {
 	Op blockOpType
 	// Must have exactly one entry with one context for blockPutOp and
 	// addRefOp.  Used for all ops except for mdRevMarkerOp.
-	Contexts map[kbfsblock.ID][]BlockContext `codec:",omitempty"`
+	Contexts map[kbfsblock.ID][]kbfsblock.Context `codec:",omitempty"`
 	// Only used for mdRevMarkerOps.
 	Revision MetadataRevision `codec:",omitempty"`
 	// Ignore this entry while flushing if this is true.
@@ -129,17 +129,17 @@ type blockJournalEntry struct {
 // Get the single context stored in this entry. Only applicable to
 // blockPutOp and addRefOp.
 func (e blockJournalEntry) getSingleContext() (
-	kbfsblock.ID, BlockContext, error) {
+	kbfsblock.ID, kbfsblock.Context, error) {
 	switch e.Op {
 	case blockPutOp, addRefOp:
 		if len(e.Contexts) != 1 {
-			return kbfsblock.ID{}, BlockContext{}, errors.Errorf(
+			return kbfsblock.ID{}, kbfsblock.Context{}, errors.Errorf(
 				"Op %s doesn't have exactly one context: %v",
 				e.Op, e.Contexts)
 		}
 		for id, idContexts := range e.Contexts {
 			if len(idContexts) != 1 {
-				return kbfsblock.ID{}, BlockContext{}, errors.Errorf(
+				return kbfsblock.ID{}, kbfsblock.Context{}, errors.Errorf(
 					"Op %s doesn't have exactly one context for id=%s: %v",
 					e.Op, id, idContexts)
 			}
@@ -147,7 +147,7 @@ func (e blockJournalEntry) getSingleContext() (
 		}
 	}
 
-	return kbfsblock.ID{}, BlockContext{}, errors.Errorf(
+	return kbfsblock.ID{}, kbfsblock.Context{}, errors.Errorf(
 		"getSingleContext() erroneously called on op %s", e.Op)
 }
 
@@ -284,7 +284,7 @@ func (j *blockJournal) remove(id kbfsblock.ID) error {
 
 // All functions below are public functions.
 
-func (j *blockJournal) getDataWithContext(id kbfsblock.ID, context BlockContext) (
+func (j *blockJournal) getDataWithContext(id kbfsblock.ID, context kbfsblock.Context) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	return j.s.getDataWithContext(id, context)
 }
@@ -294,7 +294,7 @@ func (j *blockJournal) getUnflushedBytes() int64 {
 }
 
 func (j *blockJournal) putData(
-	ctx context.Context, id kbfsblock.ID, context BlockContext, buf []byte,
+	ctx context.Context, id kbfsblock.ID, context kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
 	j.log.CDebugf(ctx, "Putting %d bytes of data for block %s with context %v",
 		len(buf), id, context)
@@ -325,7 +325,7 @@ func (j *blockJournal) putData(
 
 	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
 		Op:       blockPutOp,
-		Contexts: map[kbfsblock.ID][]BlockContext{id: {context}},
+		Contexts: map[kbfsblock.ID][]kbfsblock.Context{id: {context}},
 	})
 	if err != nil {
 		return err
@@ -335,7 +335,7 @@ func (j *blockJournal) putData(
 }
 
 func (j *blockJournal) addReference(
-	ctx context.Context, id kbfsblock.ID, context BlockContext) (
+	ctx context.Context, id kbfsblock.ID, context kbfsblock.Context) (
 	err error) {
 	j.log.CDebugf(ctx, "Adding reference for block %s with context %v",
 		id, context)
@@ -359,7 +359,7 @@ func (j *blockJournal) addReference(
 
 	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
 		Op:       addRefOp,
-		Contexts: map[kbfsblock.ID][]BlockContext{id: {context}},
+		Contexts: map[kbfsblock.ID][]kbfsblock.Context{id: {context}},
 	})
 	if err != nil {
 		return err
@@ -369,7 +369,7 @@ func (j *blockJournal) addReference(
 }
 
 func (j *blockJournal) archiveReferences(
-	ctx context.Context, contexts map[kbfsblock.ID][]BlockContext) (err error) {
+	ctx context.Context, contexts map[kbfsblock.ID][]kbfsblock.Context) (err error) {
 	j.log.CDebugf(ctx, "Archiving references for %v", contexts)
 	defer func() {
 		if err != nil {
@@ -402,7 +402,7 @@ func (j *blockJournal) archiveReferences(
 // removeReferences removes references for the given contexts from
 // their respective IDs.
 func (j *blockJournal) removeReferences(
-	ctx context.Context, contexts map[kbfsblock.ID][]BlockContext) (
+	ctx context.Context, contexts map[kbfsblock.ID][]kbfsblock.Context) (
 	liveCounts map[kbfsblock.ID]int, err error) {
 	j.log.CDebugf(ctx, "Removing references for %v", contexts)
 	defer func() {
@@ -555,7 +555,7 @@ func (j *blockJournal) getNextEntriesToFlush(
 			}
 
 			entries.puts.addNewBlock(
-				BlockPointer{ID: id, BlockContext: bctx},
+				BlockPointer{ID: id, Context: bctx},
 				nil, /* only used by folderBranchOps */
 				ReadyBlockData{data, serverHalf}, nil)
 
@@ -566,7 +566,7 @@ func (j *blockJournal) getNextEntriesToFlush(
 			}
 
 			entries.adds.addNewBlock(
-				BlockPointer{ID: id, BlockContext: bctx},
+				BlockPointer{ID: id, Context: bctx},
 				nil, /* only used by folderBranchOps */
 				ReadyBlockData{}, nil)
 

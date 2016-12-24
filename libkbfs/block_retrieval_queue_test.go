@@ -21,7 +21,7 @@ func makeRandomBlockPointer(t *testing.T) BlockPointer {
 		id,
 		5,
 		1,
-		BlockContext{
+		kbfsblock.Context{
 			"fake creator",
 			"fake writer",
 			kbfsblock.RefNonce{0xb},
