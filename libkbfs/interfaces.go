@@ -773,6 +773,11 @@ type cryptoPure interface {
 	// committed to the server.
 	MakeTemporaryBlockID() (kbfsblock.ID, error)
 
+	// MakeRefNonce generates a block reference nonce using a
+	// CSPRNG. This is used for distinguishing different references to
+	// the same BlockID.
+	MakeBlockRefNonce() (kbfsblock.RefNonce, error)
+
 	// MakeRandomTLFEphemeralKeys generates ephemeral keys using a
 	// CSPRNG for a TLF. These keys can then be used to key/rekey
 	// the TLF.

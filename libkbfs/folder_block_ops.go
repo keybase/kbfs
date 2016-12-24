@@ -1680,7 +1680,7 @@ func (fbo *folderBlockOps) revertSyncInfoAfterRecoverableError(
 // ReadyBlock is a thin wrapper around BlockOps.Ready() that handles
 // checking for duplicates.
 func ReadyBlock(ctx context.Context, bcache BlockCache, bops BlockOps,
-	kmd KeyMetadata, block Block, uid keybase1.UID) (
+	crypto cryptoPure, kmd KeyMetadata, block Block, uid keybase1.UID) (
 	info BlockInfo, plainSize int, readyBlockData ReadyBlockData, err error) {
 	var ptr BlockPointer
 	if fBlock, ok := block.(*FileBlock); ok && !fBlock.IsInd {
@@ -1701,7 +1701,7 @@ func ReadyBlock(ctx context.Context, bcache BlockCache, bops BlockOps,
 	}
 
 	if ptr.IsInitialized() {
-		ptr.RefNonce, err = kbfsblock.MakeRefNonce()
+		ptr.RefNonce, err = crypto.MakeBlockRefNonce()
 		if err != nil {
 			return
 		}

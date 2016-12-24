@@ -4632,6 +4632,10 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	config.mockBops.EXPECT().Ready(gomock.Any(), kmdMatcher{rmd}, bBlock).
 		Return(bID, len(bBlock.Contents), readyBlockData, nil)
 
+	refNonce := kbfsblock.RefNonce{1}
+	config.mockCrypto.EXPECT().MakeBlockRefNonce().AnyTimes().
+		Return(refNonce, nil)
+
 	// sync block (but skip the last block)
 	var newRmd ImmutableRootMetadata
 	blocks := make([]kbfsblock.ID, 1)
