@@ -22,9 +22,9 @@ func mdDumpGetDeviceString(k kbfscrypto.CryptPublicKey, ui libkbfs.UserInfo) (
 	if revokedTime, ok := ui.RevokedCryptPublicKeys[k]; ok {
 		return fmt.Sprintf("%s (revoked %s) (kid:%s)",
 			deviceName, revokedTime.Unix.Time(), k), true
-	} else {
-		return fmt.Sprintf("%s (kid:%s)", deviceName, k), true
 	}
+
+	return fmt.Sprintf("%s (kid:%s)", deviceName, k), true
 }
 
 func mdDumpGetReplacements(ctx context.Context, codec kbfscodec.Codec,
