@@ -219,7 +219,7 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	if err != nil {
 		t.Errorf("Couldn't make block server key half: %v", err)
 	}
@@ -276,7 +276,6 @@ func TestBServerRemotePutCanceled(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"testuser"})
 	currentUID := localUsers[0].UID
-	crypto := MakeCryptoCommon(codec)
 	serverConn, conn := rpc.MakeConnectionForTest(t)
 	log := logger.NewTestLogger(t)
 	b := newBlockServerRemoteWithClient(codec, nil, log,
@@ -287,7 +286,7 @@ func TestBServerRemotePutCanceled(t *testing.T) {
 		tlfID := tlf.FakeID(2, false)
 		bCtx := kbfsblock.MakeFirstContext(currentUID)
 		data := []byte{1, 2, 3, 4}
-		serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+		serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 		if err != nil {
 			t.Errorf("Couldn't make block server key half: %v", err)
 		}

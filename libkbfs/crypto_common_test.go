@@ -164,34 +164,6 @@ func TestCryptoCommonRandomTLFCryptKeyServerHalf(t *testing.T) {
 	}
 }
 
-// Test (very superficially) that MakeRandomBlockCryptKeyServerHalf()
-// returns non-zero values that aren't equal.
-func TestCryptoCommonRandomBlockCryptKeyServerHalf(t *testing.T) {
-	c := MakeCryptoCommon(kbfscodec.NewMsgpack())
-
-	k1, err := c.MakeRandomBlockCryptKeyServerHalf()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if k1 == (kbfscrypto.BlockCryptKeyServerHalf{}) {
-		t.Errorf("zero BlockCryptKeyServerHalf k1")
-	}
-
-	k2, err := c.MakeRandomBlockCryptKeyServerHalf()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if k2 == (kbfscrypto.BlockCryptKeyServerHalf{}) {
-		t.Errorf("zero BlockCryptKeyServerHalf k2")
-	}
-
-	if k1 == k2 {
-		t.Errorf("k1 == k2")
-	}
-}
-
 // Test that MaskTLFCryptKey() returns bytes that are different from
 // the server half and the key, and that UnmaskTLFCryptKey() undoes
 // the masking properly.
@@ -230,7 +202,7 @@ func TestCryptoCommonMaskUnmaskTLFCryptKey(t *testing.T) {
 func TestCryptoCommonUnmaskTLFCryptKey(t *testing.T) {
 	c := MakeCryptoCommon(kbfscodec.NewMsgpack())
 
-	serverHalf, err := c.MakeRandomBlockCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	if err != nil {
 		t.Fatal(err)
 	}
