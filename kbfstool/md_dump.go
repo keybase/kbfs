@@ -23,18 +23,17 @@ func getUserString(
 
 func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	rmd libkbfs.ReadOnlyRootMetadata) error {
-	brmd := rmd.GetBareRootMetadata()
-	buf, err := config.Codec().Encode(brmd)
-	if err != nil {
-		return err
-	}
-
 	c := spew.NewDefaultConfig()
 	c.Indent = "  "
 	c.DisablePointerAddresses = true
 	c.DisableCapacities = true
 	c.SortKeys = true
 
+	brmd := rmd.GetBareRootMetadata()
+	serializedBRMD, err := config.Codec().Encode(brmd)
+	if err != nil {
+		return err
+	}
 	brmdCopy, err := brmd.DeepCopy(config.Codec())
 	if err != nil {
 		return err
@@ -52,19 +51,34 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 		// spewed, I guess.
 	}
 	fmt.Printf("MD size: %d bytes\n"+
-		"MD version: %s\n"+
-		"Private data size: %d bytes\n\n",
-		len(buf), rmd.Version(), len(serializedPrivateMetadata))
+		"MD version: %s\n\n", len(serializedBRMD), rmd.Version())
 	c.Dump(brmdCopy)
 	fmt.Print("\n")
 
 	fmt.Print("Extra metadata\n")
 	fmt.Print("--------------\n")
-	c.Dump(rmd.Extra())
+	extra := rmd.Extra()
+	switch extra := extra.(type) {
+	case *libkbfs.ExtraMetadataV3:
+		serializedWKB, err := config.Codec().Encode(
+			extra.GetWriterKeyBundle())
+		if err != nil {
+			return err
+		}
+		serializedRKB, err := config.Codec().Encode(
+			extra.GetReaderKeyBundle())
+		if err != nil {
+			return err
+		}
+		fmt.Printf("WKB size: %d\nRKB size: %d\n",
+			len(serializedWKB), len(serializedRKB))
+	}
+	c.Dump(extra)
 	fmt.Print("\n")
 
 	fmt.Print("Private metadata\n")
 	fmt.Print("----------------\n")
+	fmt.Printf("Size: %d bytes\n", len(serializedPrivateMetadata))
 	c.Dump(rmd.Data())
 
 	return nil
