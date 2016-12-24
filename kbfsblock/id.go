@@ -118,14 +118,14 @@ func FakeID(b byte) ID {
 	return ID{h}
 }
 
-// FakeIDAdd returns an ID derived from first byte of given ID plus
-// the given byte, suitable for testing.
+// FakeIDAdd returns an ID derived from the given ID and the given
+// byte, suitable for testing.
 func FakeIDAdd(id ID, b byte) ID {
 	return FakeID(id.h.Bytes()[1] + b)
 }
 
-// FakeIDMul returns an ID derived from first byte of given ID times
-// the given byte, suitable for testing.
+// FakeIDMul returns an ID derived from the given ID and given byte,
+// suitable for testing.
 func FakeIDMul(id ID, b byte) ID {
 	return FakeID(id.h.Bytes()[1] * b)
 }
