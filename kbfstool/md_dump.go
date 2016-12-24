@@ -28,19 +28,26 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	if err != nil {
 		return err
 	}
+
+	c := spew.NewDefaultConfig()
+	c.Indent = "  "
+	c.DisablePointerAddresses = true
+	c.DisableCapacities = true
+	c.SortKeys = true
+
 	fmt.Printf("MD size: %d bytes\nMD version: %s\n\n",
 		len(buf), rmd.Version())
-	spew.Dump(brmd)
+	c.Dump(brmd)
 	fmt.Print("\n")
 
 	fmt.Print("Extra metadata\n")
 	fmt.Print("--------------\n")
-	spew.Dump(rmd.Extra())
+	c.Dump(rmd.Extra())
 	fmt.Print("\n")
 
 	fmt.Print("Private metadata\n")
 	fmt.Print("----------------\n")
-	spew.Dump(rmd.Data())
+	c.Dump(rmd.Data())
 
 	return nil
 }
