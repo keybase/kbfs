@@ -1848,6 +1848,17 @@ func (_mr *_MockcryptoPureRecorder) MakeRandomTLFCryptKeyServerHalf() *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomTLFCryptKeyServerHalf")
 }
 
+func (_m *MockcryptoPure) MakeRandomBlockCryptKeyServerHalf() (kbfscrypto.BlockCryptKeyServerHalf, error) {
+	ret := _m.ctrl.Call(_m, "MakeRandomBlockCryptKeyServerHalf")
+	ret0, _ := ret[0].(kbfscrypto.BlockCryptKeyServerHalf)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockcryptoPureRecorder) MakeRandomBlockCryptKeyServerHalf() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomBlockCryptKeyServerHalf")
+}
+
 func (_m *MockcryptoPure) EncryptTLFCryptKeyClientHalf(privateKey kbfscrypto.TLFEphemeralPrivateKey, publicKey kbfscrypto.CryptPublicKey, clientHalf kbfscrypto.TLFCryptKeyClientHalf) (EncryptedTLFCryptKeyClientHalf, error) {
 	ret := _m.ctrl.Call(_m, "EncryptTLFCryptKeyClientHalf", privateKey, publicKey, clientHalf)
 	ret0, _ := ret[0].(EncryptedTLFCryptKeyClientHalf)
@@ -2111,6 +2122,17 @@ func (_m *MockCrypto) MakeRandomTLFCryptKeyServerHalf() (kbfscrypto.TLFCryptKeyS
 
 func (_mr *_MockCryptoRecorder) MakeRandomTLFCryptKeyServerHalf() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomTLFCryptKeyServerHalf")
+}
+
+func (_m *MockCrypto) MakeRandomBlockCryptKeyServerHalf() (kbfscrypto.BlockCryptKeyServerHalf, error) {
+	ret := _m.ctrl.Call(_m, "MakeRandomBlockCryptKeyServerHalf")
+	ret0, _ := ret[0].(kbfscrypto.BlockCryptKeyServerHalf)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockCryptoRecorder) MakeRandomBlockCryptKeyServerHalf() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomBlockCryptKeyServerHalf")
 }
 
 func (_m *MockCrypto) EncryptTLFCryptKeyClientHalf(privateKey kbfscrypto.TLFEphemeralPrivateKey, publicKey kbfscrypto.CryptPublicKey, clientHalf kbfscrypto.TLFCryptKeyClientHalf) (EncryptedTLFCryptKeyClientHalf, error) {

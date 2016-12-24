@@ -793,6 +793,11 @@ type cryptoPure interface {
 	MakeRandomTLFCryptKeyServerHalf() (
 		kbfscrypto.TLFCryptKeyServerHalf, error)
 
+	// MakeRandomBlockCryptKeyServerHalf generates the server-side of
+	// a block crypt key.
+	MakeRandomBlockCryptKeyServerHalf() (
+		kbfscrypto.BlockCryptKeyServerHalf, error)
+
 	// EncryptTLFCryptKeyClientHalf encrypts a TLFCryptKeyClientHalf
 	// using both a TLF's ephemeral private key and a device pubkey.
 	EncryptTLFCryptKeyClientHalf(
