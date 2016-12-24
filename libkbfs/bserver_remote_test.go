@@ -248,7 +248,7 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	}
 
 	// Add a reference.
-	nonce, err := crypto.MakeBlockRefNonce()
+	nonce, err := kbfsblock.MakeRefNonce()
 	if err != nil {
 		t.Fatal(err)
 	}
