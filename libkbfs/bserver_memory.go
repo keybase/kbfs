@@ -46,8 +46,8 @@ func NewBlockServerMemory(log logger.Logger) *BlockServerMemory {
 var errBlockServerMemoryShutdown = errors.New("BlockServerMemory is shutdown")
 
 // Get implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	context kbfsblock.Context) (
+func (b *BlockServerMemory) Get(ctx context.Context, tlfID tlf.ID,
+	id kbfsblock.ID, context kbfsblock.Context) (
 	data []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
@@ -86,8 +86,8 @@ func (b *BlockServerMemory) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 	return entry.blockData, entry.keyServerHalf, nil
 }
 
-func validateBlockPut(id kbfsblock.ID, context kbfsblock.Context,
-	buf []byte) error {
+func validateBlockPut(
+	id kbfsblock.ID, context kbfsblock.Context, buf []byte) error {
 	if context.GetCreator() != context.GetWriter() {
 		return fmt.Errorf("Can't Put() a block with creator=%s != writer=%s",
 			context.GetCreator(), context.GetWriter())
@@ -101,8 +101,8 @@ func validateBlockPut(id kbfsblock.ID, context kbfsblock.Context,
 }
 
 // Put implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	context kbfsblock.Context, buf []byte,
+func (b *BlockServerMemory) Put(ctx context.Context, tlfID tlf.ID,
+	id kbfsblock.ID, context kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
@@ -178,8 +178,9 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 
 	entry, ok := b.m[id]
 	if !ok {
-		return kbfsblock.BServerErrorBlockNonExistent{Msg: fmt.Sprintf("Block ID %s doesn't "+
-			"exist and cannot be referenced.", id)}
+		return kbfsblock.BServerErrorBlockNonExistent{
+			Msg: fmt.Sprintf("Block ID %s doesn't "+
+				"exist and cannot be referenced.", id)}
 	}
 
 	if entry.tlfID != tlfID {
@@ -189,15 +190,17 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 
 	// Only add it if there's a non-archived reference.
 	if !entry.refs.hasNonArchivedRef() {
-		return kbfsblock.BServerErrorBlockArchived{Msg: fmt.Sprintf("Block ID %s has "+
-			"been archived and cannot be referenced.", id)}
+		return kbfsblock.BServerErrorBlockArchived{
+			Msg: fmt.Sprintf("Block ID %s has "+
+				"been archived and cannot be referenced.", id)}
 	}
 
 	return entry.refs.put(context, liveBlockRef, "")
 }
 
 func (b *BlockServerMemory) removeBlockReference(
-	tlfID tlf.ID, id kbfsblock.ID, contexts []kbfsblock.Context) (int, error) {
+	tlfID tlf.ID, id kbfsblock.ID, contexts []kbfsblock.Context) (
+	int, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -261,8 +264,9 @@ func (b *BlockServerMemory) archiveBlockReference(
 
 	entry, ok := b.m[id]
 	if !ok {
-		return kbfsblock.BServerErrorBlockNonExistent{Msg: fmt.Sprintf("Block ID %s doesn't "+
-			"exist and cannot be archived.", id)}
+		return kbfsblock.BServerErrorBlockNonExistent{
+			Msg: fmt.Sprintf("Block ID %s doesn't "+
+				"exist and cannot be archived.", id)}
 	}
 
 	if entry.tlfID != tlfID {
@@ -275,8 +279,10 @@ func (b *BlockServerMemory) archiveBlockReference(
 		return err
 	}
 	if !exists {
-		return kbfsblock.BServerErrorBlockNonExistent{Msg: fmt.Sprintf("Block ID %s (ref %s) "+
-			"doesn't exist and cannot be archived.", id, context.GetRefNonce())}
+		return kbfsblock.BServerErrorBlockNonExistent{
+			Msg: fmt.Sprintf("Block ID %s (ref %s) "+
+				"doesn't exist and cannot be archived.",
+				id, context.GetRefNonce())}
 	}
 
 	return entry.refs.put(context, archivedBlockRef, "")
