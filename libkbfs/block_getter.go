@@ -7,6 +7,8 @@ package libkbfs
 import (
 	"fmt"
 
+	"github.com/keybase/kbfs/kbfsblock"
+
 	"golang.org/x/net/context"
 )
 
@@ -28,7 +30,7 @@ func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockP
 	if err != nil {
 		// Temporary code to track down bad block
 		// requests. Remove when not needed anymore.
-		if _, ok := err.(BServerErrorBadRequest); ok {
+		if _, ok := err.(kbfsblock.BServerErrorBadRequest); ok {
 			panic(fmt.Sprintf("Bad BServer request detected: err=%s, blockPtr=%s",
 				err, blockPtr))
 		}

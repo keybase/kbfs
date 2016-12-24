@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/keybase/kbfs/ioutil"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -188,7 +189,7 @@ func TestJournalServerLogOutLogIn(t *testing.T) {
 	// Get the block, which should fail.
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 
 	// Get the head, which should be empty.
 
@@ -304,7 +305,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 	// None of user 1's changes should be visible.
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID1, bCtx1)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 
 	head, err := mdOps.GetForTLF(ctx, tlfID)
 	require.NoError(t, err)
@@ -340,10 +341,10 @@ func TestJournalServerMultiUser(t *testing.T) {
 	// No block or MD should be visible.
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID1, bCtx1)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID2, bCtx2)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 
 	head, err = mdOps.GetForTLF(ctx, tlfID)
 	require.NoError(t, err)
@@ -365,7 +366,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 	require.Equal(t, serverHalf1, key)
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID2, bCtx2)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 
 	head, err = mdOps.GetForTLF(ctx, tlfID)
 	require.NoError(t, err)
@@ -384,7 +385,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 	// Only user 2's block and MD should be visible.
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID1, bCtx1)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 
 	buf, key, err = blockServer.Get(ctx, tlfID, bID2, bCtx2)
 	require.NoError(t, err)

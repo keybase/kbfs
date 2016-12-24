@@ -13,6 +13,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/ioutil"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -380,11 +381,11 @@ func TestBlockJournalFlush(t *testing.T) {
 
 	// Check they're all gone.
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx2)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 
 	length, err := j.length()
 	require.NoError(t, err)
@@ -487,10 +488,10 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 	flushOne()
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx2)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
@@ -520,7 +521,7 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 	flushOne()
 
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
-	require.IsType(t, BServerErrorBlockNonExistent{}, err)
+	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 
 	end, err := j.end()
 	require.NoError(t, err)

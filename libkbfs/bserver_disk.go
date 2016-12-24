@@ -13,6 +13,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/ioutil"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -202,7 +203,7 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 		return err
 	}
 	if !hasRef {
-		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s "+
+		return kbfsblock.BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s "+
 			"doesn't exist and cannot be referenced.", id)}
 	}
 
@@ -211,7 +212,7 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 		return err
 	}
 	if !hasNonArchivedRef {
-		return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
+		return kbfsblock.BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
 			"been archived and cannot be referenced.", id)}
 	}
 
@@ -286,7 +287,7 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 				return err
 			}
 			if !hasContext {
-				return BServerErrorBlockNonExistent{
+				return kbfsblock.BServerErrorBlockNonExistent{
 					fmt.Sprintf(
 						"Block ID %s (context %s) doesn't "+
 							"exist and cannot be archived.",

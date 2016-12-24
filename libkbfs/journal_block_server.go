@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
@@ -74,7 +75,7 @@ func (j journalBlockServer) AddBlockReference(
 			// journalBlockCache.CheckForBlockPtr, since
 			// CheckForBlockPtr may be called before journaling is
 			// turned on for a TLF.
-			return BServerErrorBlockNonExistent{}
+			return kbfsblock.BServerErrorBlockNonExistent{}
 		}
 
 		defer func() {

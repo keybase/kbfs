@@ -13,6 +13,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -117,10 +118,10 @@ func (b *blockServerRemoteClientHandler) ShouldRetry(rpcName string, err error) 
 	case "keybase.1.block.archiveReference":
 		return false
 	}
-	if _, ok := err.(BServerErrorThrottle); ok {
+	if _, ok := err.(kbfsblock.BServerErrorThrottle); ok {
 		return true
 	}
-	if quotaErr, ok := err.(BServerErrorOverQuota); ok && quotaErr.Throttled {
+	if quotaErr, ok := err.(kbfsblock.BServerErrorOverQuota); ok && quotaErr.Throttled {
 		return true
 	}
 	return false
@@ -173,7 +174,7 @@ func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
 
 	putConn := rpc.NewTLSConnection(blkSrvAddr,
 		kbfscrypto.GetRootCerts(blkSrvAddr),
-		bServerErrorUnwrapper{}, putClientHandler,
+		kbfsblock.BServerErrorUnwrapper{}, putClientHandler,
 		false, /* connect only on-demand */
 		ctx.NewRPCLogFactory(), libkb.WrapError, log,
 		LogTagsFromContext)
@@ -181,7 +182,7 @@ func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
 	putClientHandler.client = bs.putClient
 	getConn := rpc.NewTLSConnection(blkSrvAddr,
 		kbfscrypto.GetRootCerts(blkSrvAddr),
-		bServerErrorUnwrapper{}, getClientHandler,
+		kbfsblock.BServerErrorUnwrapper{}, getClientHandler,
 		false, /* connect only on-demand */
 		ctx.NewRPCLogFactory(), libkb.WrapError, log,
 		LogTagsFromContext)
@@ -482,7 +483,7 @@ func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 		// check whether to backoff and retry
 		if err != nil {
 			// if error is of type throttle, retry
-			if _, ok := err.(BServerErrorThrottle); ok {
+			if _, ok := err.(kbfsblock.BServerErrorThrottle); ok {
 				return err
 			}
 			// non-throttle error, do not retry here

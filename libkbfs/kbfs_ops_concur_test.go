@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
@@ -1804,7 +1805,7 @@ type blockOpsOverQuota struct {
 
 func (booq *blockOpsOverQuota) Put(ctx context.Context, tlfID tlf.ID,
 	blockPtr BlockPointer, readyBlockData ReadyBlockData) error {
-	return BServerErrorOverQuota{
+	return kbfsblock.BServerErrorOverQuota{
 		Throttled: true,
 	}
 }
@@ -1887,7 +1888,7 @@ func TestKBFSOpsErrorOnBlockedWriteDuringSync(t *testing.T) {
 	// Both errors should be an OverQuota error
 	syncErr := <-syncErrCh
 	writeErr := <-writeErrCh
-	if _, ok := syncErr.(BServerErrorOverQuota); !ok {
+	if _, ok := syncErr.(kbfsblock.BServerErrorOverQuota); !ok {
 		t.Fatalf("Unexpected sync err: %v", syncErr)
 	}
 	if writeErr != syncErr {

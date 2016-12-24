@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
@@ -2094,7 +2095,7 @@ func testKBFSOpsRemoveFileMissingBlockSuccess(t *testing.T, et EntryType) {
 	// The operation might be retried several times.
 	config.mockBops.EXPECT().Get(
 		gomock.Any(), gomock.Any(), p.tailPointer(),
-		gomock.Any()).Return(BServerErrorBlockNonExistent{}).MinTimes(1)
+		gomock.Any()).Return(kbfsblock.BServerErrorBlockNonExistent{}).MinTimes(1)
 
 	// sync block
 	var newRmd ImmutableRootMetadata
@@ -2155,7 +2156,7 @@ func TestKBFSOpsRemoveDirMissingBlock(t *testing.T) {
 	// The operation might be retried several times.
 	config.mockBops.EXPECT().Get(
 		gomock.Any(), gomock.Any(), p.tailPointer(),
-		gomock.Any()).Return(BServerErrorBlockNonExistent{}).MinTimes(1)
+		gomock.Any()).Return(kbfsblock.BServerErrorBlockNonExistent{}).MinTimes(1)
 
 	// sync block
 	var newRmd ImmutableRootMetadata

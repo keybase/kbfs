@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
@@ -66,7 +67,7 @@ func (b *BlockServerMemory) Get(ctx context.Context, tlfID tlf.ID, id BlockID,
 	entry, ok := b.m[id]
 	if !ok {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
-			BServerErrorBlockNonExistent{}
+			kbfsblock.BServerErrorBlockNonExistent{}
 	}
 
 	if entry.tlfID != tlfID {
@@ -189,7 +190,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 
 	entry, ok := b.m[id]
 	if !ok {
-		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
+		return kbfsblock.BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
 			"exist and cannot be referenced.", id)}
 	}
 
@@ -200,7 +201,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 
 	// Only add it if there's a non-archived reference.
 	if !entry.refs.hasNonArchivedRef() {
-		return BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
+		return kbfsblock.BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
 			"been archived and cannot be referenced.", id)}
 	}
 
@@ -272,7 +273,7 @@ func (b *BlockServerMemory) archiveBlockReference(
 
 	entry, ok := b.m[id]
 	if !ok {
-		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
+		return kbfsblock.BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
 			"exist and cannot be archived.", id)}
 	}
 
@@ -286,7 +287,7 @@ func (b *BlockServerMemory) archiveBlockReference(
 		return err
 	}
 	if !exists {
-		return BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
+		return kbfsblock.BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
 			"doesn't exist and cannot be archived.", id, context.GetRefNonce())}
 	}
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
@@ -540,9 +541,9 @@ func (fbm *folderBlockManager) processBlocksToDelete(ctx context.Context, toDele
 
 	_, err := fbm.deleteBlockRefs(ctx, toDelete.md.TlfID(), toDelete.blocks)
 	// Ignore permanent errors
-	_, isPermErr := err.(BServerError)
-	_, isNonceNonExistentErr := err.(BServerErrorNonceNonExistent)
-	_, isBadRequestErr := err.(BServerErrorBadRequest)
+	_, isPermErr := err.(kbfsblock.BServerError)
+	_, isNonceNonExistentErr := err.(kbfsblock.BServerErrorNonceNonExistent)
+	_, isBadRequestErr := err.(kbfsblock.BServerErrorBadRequest)
 	if err != nil {
 		fbm.log.CWarningf(ctx, "Couldn't delete some ref in batch %v: %v",
 			toDelete.blocks, err)
