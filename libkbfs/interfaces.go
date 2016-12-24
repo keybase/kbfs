@@ -768,25 +768,6 @@ type cryptoPure interface {
 	// for inclusion into the KBFS Merkle tree.
 	MakeMerkleHash(md *RootMetadataSigned) (MerkleHash, error)
 
-	// MakeTemporaryBlockID generates a temporary block ID using a
-	// CSPRNG. This is used for indirect blocks before they're
-	// committed to the server.
-	MakeTemporaryBlockID() (kbfsblock.ID, error)
-
-	// MakePermanentBlockID computes the permanent ID of a block
-	// given its encoded and encrypted contents.
-	MakePermanentBlockID(encodedEncryptedData []byte) (kbfsblock.ID, error)
-
-	// VerifyBlockID verifies that the given block ID is the
-	// permanent block ID for the given encoded and encrypted
-	// data.
-	VerifyBlockID(encodedEncryptedData []byte, id kbfsblock.ID) error
-
-	// MakeBlockRefNonce generates a block reference nonce using a
-	// CSPRNG. This is used for distinguishing different
-	// references to the same kbfsblock.ID.
-	MakeBlockRefNonce() (kbfsblock.RefNonce, error)
-
 	// MakeRandomTLFEphemeralKeys generates ephemeral keys using a
 	// CSPRNG for a TLF. These keys can then be used to key/rekey
 	// the TLF.
@@ -801,10 +782,6 @@ type cryptoPure interface {
 	// top-level folder crypt key.
 	MakeRandomTLFCryptKeyServerHalf() (
 		kbfscrypto.TLFCryptKeyServerHalf, error)
-	// MakeRandomBlockCryptKeyServerHalf generates the server-side of
-	// a block crypt key.
-	MakeRandomBlockCryptKeyServerHalf() (
-		kbfscrypto.BlockCryptKeyServerHalf, error)
 
 	// MaskTLFCryptKey returns the client-side of a top-level folder crypt key.
 	MaskTLFCryptKey(serverHalf kbfscrypto.TLFCryptKeyServerHalf,

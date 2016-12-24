@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"github.com/keybase/kbfs/kbfsblock"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
@@ -62,7 +63,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
 	}
 
 	// New server key half for the block.
-	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	if err != nil {
 		return
 	}
@@ -96,7 +97,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
 		return
 	}
 
-	id, err = crypto.MakePermanentBlockID(buf)
+	id, err = kbfsblock.MakePermanentID(buf)
 	if err != nil {
 		return
 	}

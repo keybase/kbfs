@@ -70,19 +70,16 @@ import (
 // blockDiskStore is not goroutine-safe, so any code that uses it must
 // guarantee that only one goroutine at a time calls its functions.
 type blockDiskStore struct {
-	codec  kbfscodec.Codec
-	crypto cryptoPure
-	dir    string
+	codec kbfscodec.Codec
+	dir   string
 }
 
 // makeBlockDiskStore returns a new blockDiskStore for the given
 // directory.
-func makeBlockDiskStore(codec kbfscodec.Codec, crypto cryptoPure,
-	dir string) *blockDiskStore {
+func makeBlockDiskStore(codec kbfscodec.Codec, dir string) *blockDiskStore {
 	return &blockDiskStore{
-		codec:  codec,
-		crypto: crypto,
-		dir:    dir,
+		codec: codec,
+		dir:   dir,
 	}
 }
 
@@ -219,14 +216,9 @@ func (s *blockDiskStore) getData(id kbfsblock.ID) (
 
 	// Check integrity.
 
-	dataID, err := s.crypto.MakePermanentBlockID(data)
+	err = kbfsblock.VerifyID(data, id)
 	if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
-	}
-
-	if id != dataID {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, errors.Errorf(
-			"Block ID mismatch: expected %s, got %s", id, dataID)
 	}
 
 	var serverHalf kbfscrypto.BlockCryptKeyServerHalf
@@ -395,7 +387,7 @@ func (s *blockDiskStore) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, erro
 // adds a reference for the given context.
 func (s *blockDiskStore) put(id kbfsblock.ID, context kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf, tag string) error {
-	err := validateBlockPut(s.crypto, id, context, buf)
+	err := validateBlockPut(id, context, buf)
 	if err != nil {
 		return err
 	}

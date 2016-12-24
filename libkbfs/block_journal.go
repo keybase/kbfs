@@ -57,9 +57,8 @@ import (
 // blockJournal is not goroutine-safe, so any code that uses it must
 // guarantee that only one goroutine at a time calls its functions.
 type blockJournal struct {
-	codec  kbfscodec.Codec
-	crypto cryptoPure
-	dir    string
+	codec kbfscodec.Codec
+	dir   string
 
 	log      logger.Logger
 	deferLog logger.Logger
@@ -158,18 +157,17 @@ func savedBlockJournalDir(dir string) string {
 // makeBlockJournal returns a new blockJournal for the given
 // directory. Any existing journal entries are read.
 func makeBlockJournal(
-	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure,
-	dir string, log logger.Logger) (*blockJournal, error) {
+	ctx context.Context, codec kbfscodec.Codec, dir string,
+	log logger.Logger) (*blockJournal, error) {
 	journalPath := filepath.Join(dir, "block_journal")
 	deferLog := log.CloneWithAddedDepth(1)
 	j := makeDiskJournal(
 		codec, journalPath, reflect.TypeOf(blockJournalEntry{}))
 
 	storeDir := filepath.Join(dir, "blocks")
-	s := makeBlockDiskStore(codec, crypto, storeDir)
+	s := makeBlockDiskStore(codec, storeDir)
 	journal := &blockJournal{
 		codec:    codec,
-		crypto:   crypto,
 		dir:      dir,
 		log:      log,
 		deferLog: deferLog,

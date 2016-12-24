@@ -280,8 +280,7 @@ func makeTLFJournal(
 
 	log := config.MakeLogger("TLFJ")
 
-	blockJournal, err := makeBlockJournal(
-		ctx, config.Codec(), config.Crypto(), dir, log)
+	blockJournal, err := makeBlockJournal(ctx, config.Codec(), dir, log)
 	if err != nil {
 		return nil, err
 	}

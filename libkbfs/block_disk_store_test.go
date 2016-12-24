@@ -20,12 +20,11 @@ import (
 
 func setupBlockDiskStoreTest(t *testing.T) (tempdir string, s *blockDiskStore) {
 	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
 
 	tempdir, err := ioutil.TempDir(os.TempDir(), "block_disk_store")
 	require.NoError(t, err)
 
-	s = makeBlockDiskStore(codec, crypto, tempdir)
+	s = makeBlockDiskStore(codec, tempdir)
 	return tempdir, s
 }
 
@@ -37,12 +36,12 @@ func teardownBlockDiskStoreTest(t *testing.T, tempdir string) {
 func putBlockDisk(
 	t *testing.T, s *blockDiskStore, data []byte) (
 	kbfsblock.ID, kbfsblock.Context, kbfscrypto.BlockCryptKeyServerHalf) {
-	bID, err := s.crypto.MakePermanentBlockID(data)
+	bID, err := kbfsblock.MakePermanentID(data)
 	require.NoError(t, err)
 
 	uid1 := keybase1.MakeTestUID(1)
 	bCtx := kbfsblock.Context{uid1, "", kbfsblock.ZeroRefNonce}
-	serverHalf, err := s.crypto.MakeRandomBlockCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
 	err = s.put(bID, bCtx, data, serverHalf, "")
@@ -53,7 +52,7 @@ func putBlockDisk(
 
 func addBlockDiskRef(
 	t *testing.T, s *blockDiskStore, bID kbfsblock.ID) kbfsblock.Context {
-	nonce, err := s.crypto.MakeBlockRefNonce()
+	nonce, err := kbfsblock.MakeRefNonce()
 	require.NoError(t, err)
 
 	uid1 := keybase1.MakeTestUID(1)
@@ -91,7 +90,7 @@ func TestBlockDiskStoreBasic(t *testing.T) {
 	getAndCheckBlockDiskData(t, s, bID, bCtx2, data, serverHalf)
 
 	// Shutdown and restart.
-	s = makeBlockDiskStore(s.codec, s.crypto, tempdir)
+	s = makeBlockDiskStore(s.codec, tempdir)
 
 	// Make sure we get the same block for both refs.
 
@@ -104,7 +103,7 @@ func TestBlockDiskStoreAddReference(t *testing.T) {
 	defer teardownBlockDiskStoreTest(t, tempdir)
 
 	data := []byte{1, 2, 3, 4}
-	bID, err := s.crypto.MakePermanentBlockID(data)
+	bID, err := kbfsblock.MakePermanentID(data)
 	require.NoError(t, err)
 
 	// Add a reference, which should succeed.
@@ -144,7 +143,7 @@ func TestBlockDiskStoreArchiveNonExistentReference(t *testing.T) {
 	bCtx := kbfsblock.Context{uid1, "", kbfsblock.ZeroRefNonce}
 
 	data := []byte{1, 2, 3, 4}
-	bID, err := s.crypto.MakePermanentBlockID(data)
+	bID, err := kbfsblock.MakePermanentID(data)
 	require.NoError(t, err)
 
 	// Archive references.

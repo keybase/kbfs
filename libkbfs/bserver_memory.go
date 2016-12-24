@@ -26,8 +26,7 @@ type blockMemEntry struct {
 // BlockServerMemory implements the BlockServer interface by just
 // storing blocks in memory.
 type BlockServerMemory struct {
-	crypto cryptoPure
-	log    logger.Logger
+	log logger.Logger
 
 	lock sync.RWMutex
 	// m is nil after Shutdown() is called.
@@ -38,10 +37,9 @@ var _ blockServerLocal = (*BlockServerMemory)(nil)
 
 // NewBlockServerMemory constructs a new BlockServerMemory that stores
 // its data in memory.
-func NewBlockServerMemory(
-	crypto cryptoPure, log logger.Logger) *BlockServerMemory {
+func NewBlockServerMemory(log logger.Logger) *BlockServerMemory {
 	return &BlockServerMemory{
-		crypto, log, sync.RWMutex{}, make(map[kbfsblock.ID]blockMemEntry),
+		log, sync.RWMutex{}, make(map[kbfsblock.ID]blockMemEntry),
 	}
 }
 
@@ -88,8 +86,8 @@ func (b *BlockServerMemory) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 	return entry.blockData, entry.keyServerHalf, nil
 }
 
-func validateBlockPut(
-	crypto cryptoPure, id kbfsblock.ID, context kbfsblock.Context, buf []byte) error {
+func validateBlockPut(id kbfsblock.ID, context kbfsblock.Context,
+	buf []byte) error {
 	if context.GetCreator() != context.GetWriter() {
 		return fmt.Errorf("Can't Put() a block with creator=%s != writer=%s",
 			context.GetCreator(), context.GetWriter())
@@ -99,17 +97,7 @@ func validateBlockPut(
 		return errors.New("can't Put() a block with a non-zero refnonce")
 	}
 
-	bufID, err := crypto.MakePermanentBlockID(buf)
-	if err != nil {
-		return err
-	}
-
-	if id != bufID {
-		return fmt.Errorf(
-			"Block ID mismatch: expected %s, got %s", id, bufID)
-	}
-
-	return nil
+	return kbfsblock.VerifyID(buf, id)
 }
 
 // Put implements the BlockServer interface for BlockServerMemory.
@@ -122,7 +110,7 @@ func (b *BlockServerMemory) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 	b.log.CDebugf(ctx, "BlockServerMemory.Put id=%s tlfID=%s context=%s "+
 		"size=%d", id, tlfID, context, len(buf))
 
-	err = validateBlockPut(b.crypto, id, context, buf)
+	err = validateBlockPut(id, context, buf)
 	if err != nil {
 		return err
 	}

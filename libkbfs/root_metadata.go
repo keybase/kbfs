@@ -488,7 +488,7 @@ func (md *RootMetadata) loadCachedBlockChanges(
 			fmt.Sprintf("<MD with revision %d>", md.Revision()),
 		}},
 	}
-	fd := newFileData(file, uid, nil, nil, md.ReadOnly(),
+	fd := newFileData(file, uid, nil, md.ReadOnly(),
 		func(_ context.Context, _ KeyMetadata, ptr BlockPointer,
 			_ path, _ blockReqType) (*FileBlock, bool, error) {
 			fblock, ok := fileBlocks[ptr]

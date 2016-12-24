@@ -1102,7 +1102,7 @@ func (fbo *folderBlockOps) PrepRename(
 func (fbo *folderBlockOps) newFileData(lState *lockState,
 	file path, uid keybase1.UID, kmd KeyMetadata) *fileData {
 	fbo.blockLock.AssertAnyLocked(lState)
-	return newFileData(file, uid, fbo.config.Crypto(),
+	return newFileData(file, uid,
 		fbo.config.BlockSplitter(), kmd,
 		func(ctx context.Context, kmd KeyMetadata, ptr BlockPointer,
 			file path, rtype blockReqType) (*FileBlock, bool, error) {
@@ -1680,7 +1680,7 @@ func (fbo *folderBlockOps) revertSyncInfoAfterRecoverableError(
 // ReadyBlock is a thin wrapper around BlockOps.Ready() that handles
 // checking for duplicates.
 func ReadyBlock(ctx context.Context, bcache BlockCache, bops BlockOps,
-	crypto cryptoPure, kmd KeyMetadata, block Block, uid keybase1.UID) (
+	kmd KeyMetadata, block Block, uid keybase1.UID) (
 	info BlockInfo, plainSize int, readyBlockData ReadyBlockData, err error) {
 	var ptr BlockPointer
 	if fBlock, ok := block.(*FileBlock); ok && !fBlock.IsInd {
@@ -1701,7 +1701,7 @@ func ReadyBlock(ctx context.Context, bcache BlockCache, bops BlockOps,
 	}
 
 	if ptr.IsInitialized() {
-		ptr.RefNonce, err = crypto.MakeBlockRefNonce()
+		ptr.RefNonce, err = kbfsblock.MakeRefNonce()
 		if err != nil {
 			return
 		}

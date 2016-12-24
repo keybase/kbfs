@@ -357,7 +357,7 @@ func (b *BlockServerRemote) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 
 // AddBlockReference implements the BlockServer interface for BlockServerRemote
 func (b *BlockServerRemote) AddBlockReference(ctx context.Context, tlfID tlf.ID,
-	id kbfsblock.ID, context kbfsblock.BlockContext) (err error) {
+	id kbfsblock.ID, context kbfsblock.Context) (err error) {
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(

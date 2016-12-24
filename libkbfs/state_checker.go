@@ -33,8 +33,7 @@ func NewStateChecker(config Config) *StateChecker {
 func (sc *StateChecker) newFileData(lState *lockState,
 	file path, kmd KeyMetadata, ops *folderBranchOps) *fileData {
 	var uid keybase1.UID // reads don't need UID
-	return newFileData(file, uid, sc.config.Crypto(),
-		sc.config.BlockSplitter(), kmd,
+	return newFileData(file, uid, sc.config.BlockSplitter(), kmd,
 		// We shouldn't ever be fetching dirty blocks during state
 		// checking.
 		func(ctx context.Context, kmd KeyMetadata, ptr BlockPointer,

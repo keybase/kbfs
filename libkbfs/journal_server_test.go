@@ -10,6 +10,7 @@ import (
 
 	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfsblock"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,7 +83,6 @@ func TestJournalServerRestart(t *testing.T) {
 
 	blockServer := config.BlockServer()
 	mdOps := config.MDOps()
-	crypto := config.Crypto()
 
 	h, err := ParseTlfHandle(ctx, config.KBPKI(), "test_user1", false)
 	require.NoError(t, err)
@@ -92,9 +92,9 @@ func TestJournalServerRestart(t *testing.T) {
 
 	bCtx := kbfsblock.Context{uid, "", kbfsblock.ZeroRefNonce}
 	data := []byte{1, 2, 3, 4}
-	bID, err := crypto.MakePermanentBlockID(data)
+	bID, err := kbfsblock.MakePermanentID(data)
 	require.NoError(t, err)
-	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 	err = blockServer.Put(ctx, tlfID, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
@@ -154,7 +154,6 @@ func TestJournalServerLogOutLogIn(t *testing.T) {
 
 	blockServer := config.BlockServer()
 	mdOps := config.MDOps()
-	crypto := config.Crypto()
 
 	h, err := ParseTlfHandle(ctx, config.KBPKI(), "test_user1", false)
 	require.NoError(t, err)
@@ -164,9 +163,9 @@ func TestJournalServerLogOutLogIn(t *testing.T) {
 
 	bCtx := kbfsblock.Context{uid, "", kbfsblock.ZeroRefNonce}
 	data := []byte{1, 2, 3, 4}
-	bID, err := crypto.MakePermanentBlockID(data)
+	bID, err := kbfsblock.MakePermanentID(data)
 	require.NoError(t, err)
-	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 	err = blockServer.Put(ctx, tlfID, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
@@ -257,7 +256,6 @@ func TestJournalServerMultiUser(t *testing.T) {
 
 	blockServer := config.BlockServer()
 	mdOps := config.MDOps()
-	crypto := config.Crypto()
 
 	h, err := ParseTlfHandle(
 		ctx, config.KBPKI(), "test_user1,test_user2", false)
@@ -269,9 +267,9 @@ func TestJournalServerMultiUser(t *testing.T) {
 
 	bCtx1 := kbfsblock.Context{uid1, "", kbfsblock.ZeroRefNonce}
 	data1 := []byte{1, 2, 3, 4}
-	bID1, err := crypto.MakePermanentBlockID(data1)
+	bID1, err := kbfsblock.MakePermanentID(data1)
 	require.NoError(t, err)
-	serverHalf1, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	serverHalf1, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 	err = blockServer.Put(ctx, tlfID, bID1, bCtx1, data1, serverHalf1)
 	require.NoError(t, err)
@@ -315,9 +313,9 @@ func TestJournalServerMultiUser(t *testing.T) {
 
 	bCtx2 := kbfsblock.Context{uid2, "", kbfsblock.ZeroRefNonce}
 	data2 := []byte{1, 2, 3, 4, 5}
-	bID2, err := crypto.MakePermanentBlockID(data2)
+	bID2, err := kbfsblock.MakePermanentID(data2)
 	require.NoError(t, err)
-	serverHalf2, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	serverHalf2, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 	err = blockServer.Put(ctx, tlfID, bID2, bCtx2, data2, serverHalf2)
 	require.NoError(t, err)
@@ -411,7 +409,6 @@ func TestJournalServerEnableAuto(t *testing.T) {
 	require.Len(t, tlfIDs, 0)
 
 	blockServer := config.BlockServer()
-	crypto := config.Crypto()
 	h, err := ParseTlfHandle(ctx, config.KBPKI(), "test_user1", false)
 	require.NoError(t, err)
 	uid := h.ResolvedWriters()[0]
@@ -419,9 +416,9 @@ func TestJournalServerEnableAuto(t *testing.T) {
 	// Access a TLF, which should create a journal automatically.
 	bCtx := kbfsblock.Context{uid, "", kbfsblock.ZeroRefNonce}
 	data := []byte{1, 2, 3, 4}
-	bID, err := crypto.MakePermanentBlockID(data)
+	bID, err := kbfsblock.MakePermanentID(data)
 	require.NoError(t, err)
-	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 	err = blockServer.Put(ctx, tlfID, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)

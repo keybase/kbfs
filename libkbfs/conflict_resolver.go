@@ -2069,7 +2069,7 @@ func (cr *ConflictResolver) fetchDirBlockCopy(ctx context.Context,
 func (cr *ConflictResolver) newFileData(lState *lockState,
 	file path, uid keybase1.UID, kmd KeyMetadata,
 	dirtyBcache DirtyBlockCache) *fileData {
-	return newFileData(file, uid, cr.config.Crypto(),
+	return newFileData(file, uid,
 		cr.config.BlockSplitter(), kmd,
 		// We shouldn't ever be fetching dirty blocks during a successful
 		// conflict resolution.

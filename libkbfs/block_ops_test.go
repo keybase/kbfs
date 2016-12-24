@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -15,6 +16,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
@@ -108,11 +110,8 @@ func blockOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 
 func expectBlockEncrypt(config *ConfigMock, kmd KeyMetadata, decData Block, plainSize int, encData []byte, err error) {
 	expectGetTLFCryptKeyForEncryption(config, kmd)
-	config.mockCrypto.EXPECT().MakeRandomBlockCryptKeyServerHalf().
-		Return(kbfscrypto.BlockCryptKeyServerHalf{}, nil)
 	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(
-		kbfscrypto.BlockCryptKeyServerHalf{},
-		kbfscrypto.TLFCryptKey{}).Return(
+		gomock.Any(), kbfscrypto.TLFCryptKey{}).Return(
 		kbfscrypto.BlockCryptKey{}, nil)
 	encryptedBlock := EncryptedBlock{
 		encryptedData{
@@ -128,20 +127,32 @@ func expectBlockEncrypt(config *ConfigMock, kmd KeyMetadata, decData Block, plai
 }
 
 func expectBlockDecrypt(config *ConfigMock, kmd KeyMetadata, blockPtr BlockPointer, encData []byte, block *TestBlock, err error) {
-	config.mockCrypto.EXPECT().VerifyBlockID(encData, blockPtr.ID).Return(nil)
 	expectGetTLFCryptKeyForBlockDecryption(config, kmd, blockPtr)
 	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(gomock.Any(), gomock.Any()).
 		Return(kbfscrypto.BlockCryptKey{}, nil)
 	config.mockCodec.EXPECT().Decode(encData, gomock.Any()).Return(nil)
-	config.mockCrypto.EXPECT().DecryptBlock(
-		gomock.Any(), kbfscrypto.BlockCryptKey{}, gomock.Any()).
-		Do(func(encryptedBlock EncryptedBlock,
-			key kbfscrypto.BlockCryptKey, b Block) {
-			if b != nil {
-				tb := b.(*TestBlock)
-				*tb = *block
-			}
-		}).Return(err)
+	if err != nil {
+		/*		config.mockCrypto.EXPECT().DecryptBlock(
+				gomock.Any(), kbfscrypto.BlockCryptKey{},
+				gomock.Any()).Do(func(encryptedBlock EncryptedBlock,
+				key kbfscrypto.BlockCryptKey, b Block) {
+				if b != nil {
+					tb := b.(*TestBlock)
+					*tb = *block
+				}
+				panic("what")
+			}).Return(err)*/
+	} else {
+		config.mockCrypto.EXPECT().DecryptBlock(
+			gomock.Any(), kbfscrypto.BlockCryptKey{}, gomock.Any()).
+			Do(func(encryptedBlock EncryptedBlock,
+				key kbfscrypto.BlockCryptKey, b Block) {
+				if b != nil {
+					tb := b.(*TestBlock)
+					*tb = *block
+				}
+			})
+	}
 }
 
 type emptyKeyMetadata struct {
@@ -201,24 +212,21 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	kmd := makeKMD()
 
 	// expect one call to fetch a block, and one to decrypt it
-	id := kbfsblock.FakeID(1)
 	encData := []byte{1, 2, 3, 4}
+	id, err := kbfsblock.MakePermanentID(encData)
+	require.NoError(t, err)
 	blockPtr := BlockPointer{ID: id}
 	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.Context).Return(
 		encData, kbfscrypto.BlockCryptKeyServerHalf{}, nil)
-	decData := &TestBlock{42}
+	decData := TestBlock{42}
 
-	expectBlockDecrypt(config, kmd, blockPtr, encData, decData, nil)
+	expectBlockDecrypt(config, kmd, blockPtr, encData, &decData, nil)
 
 	var gotBlock TestBlock
-	err := config.BlockOps().Get(ctx, kmd, blockPtr, &gotBlock)
-	if err != nil {
-		t.Fatalf("Got error on get: %v", err)
-	}
+	err = config.BlockOps().Get(ctx, kmd, blockPtr, &gotBlock)
+	require.NoError(t, err)
 
-	if gotBlock != *decData {
-		t.Errorf("Got back wrong block data on get: %v", gotBlock)
-	}
+	require.Equal(t, decData, gotBlock)
 }
 
 func TestBlockOpsGetFailGet(t *testing.T) {
@@ -247,40 +255,39 @@ func TestBlockOpsGetFailVerify(t *testing.T) {
 	kmd := makeKMD()
 	// fail the fetch call
 	id := kbfsblock.FakeID(1)
-	err := errors.New("Fake verification fail")
 	blockPtr := BlockPointer{ID: id}
 	encData := []byte{1, 2, 3}
 	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.Context).Return(
 		encData, kbfscrypto.BlockCryptKeyServerHalf{}, nil)
-	config.mockCrypto.EXPECT().VerifyBlockID(encData, id).Return(err)
 
-	block := &TestBlock{}
-	if err2 := config.BlockOps().Get(
-		ctx, kmd, blockPtr, block); err2 != err {
-		t.Errorf("Got bad error: %v", err2)
-	}
+	var block TestBlock
+	err := config.BlockOps().Get(ctx, kmd, blockPtr, &block)
+	require.True(t, strings.HasPrefix(err.Error(), "Hash mismatch"))
 }
 
 func TestBlockOpsGetFailDecryptBlockData(t *testing.T) {
 	mockCtrl, config, ctx := blockOpsInit(t)
 	defer blockOpsShutdown(mockCtrl, config)
+	codec := kbfscodec.NewMsgpack()
+	config.SetCodec(codec)
+	crypto := NewCryptoLocal(codec,
+		kbfscrypto.MakeFakeSigningKeyOrBust("test"),
+		kbfscrypto.MakeFakeCryptPrivateKeyOrBust("test"))
+	config.SetCrypto(crypto)
 
 	kmd := makeKMD()
 	// expect one call to fetch a block, then fail to decrypt
-	id := kbfsblock.FakeID(1)
 	encData := []byte{1, 2, 3, 4}
+	id, err := kbfsblock.MakePermanentID(encData)
+	require.NoError(t, err)
 	blockPtr := BlockPointer{ID: id}
 	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.Context).Return(
 		encData, kbfscrypto.BlockCryptKeyServerHalf{}, nil)
-	err := errors.New("Fake fail")
+	expectGetTLFCryptKeyForBlockDecryption(config, kmd, blockPtr)
 
-	block := &TestBlock{}
-	expectBlockDecrypt(config, kmd, blockPtr, encData, block, err)
-
-	if err2 := config.BlockOps().Get(
-		ctx, kmd, blockPtr, block); err2 != err {
-		t.Errorf("Got bad error: %v", err2)
-	}
+	var block TestBlock
+	err = config.BlockOps().Get(ctx, kmd, blockPtr, &block)
+	require.True(t, strings.HasPrefix(err.Error(), "failed to decode"))
 }
 
 func TestBlockOpsReadySuccess(t *testing.T) {
@@ -290,20 +297,15 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 	// expect one call to encrypt a block, one to hash it
 	decData := &TestBlock{42}
 	encData := []byte{1, 2, 3, 4}
-	id := kbfsblock.FakeID(1)
 
 	kmd := makeKMD()
 
 	expectedPlainSize := 4
 	expectBlockEncrypt(config, kmd, decData, expectedPlainSize, encData, nil)
-	config.mockCrypto.EXPECT().MakePermanentBlockID(encData).Return(id, nil)
-
-	id2, plainSize, readyBlockData, err :=
+	_, plainSize, readyBlockData, err :=
 		config.BlockOps().Ready(ctx, kmd, decData)
 	if err != nil {
 		t.Errorf("Got error on ready: %v", err)
-	} else if id2 != id {
-		t.Errorf("Got back wrong id on ready: %v", id)
 	} else if plainSize != expectedPlainSize {
 		t.Errorf("Expected plainSize %d, got %d", expectedPlainSize, plainSize)
 	} else if string(readyBlockData.buf) != string(encData) {
@@ -341,27 +343,6 @@ func TestBlockOpsReadyFailEncryptBlockData(t *testing.T) {
 	kmd := makeKMD()
 
 	expectBlockEncrypt(config, kmd, decData, 0, nil, err)
-
-	if _, _, _, err2 := config.BlockOps().Ready(
-		ctx, kmd, decData); err2 != err {
-		t.Errorf("Got bad error on ready: %v", err2)
-	}
-}
-
-func TestBlockOpsReadyFailMakePermanentBlockID(t *testing.T) {
-	mockCtrl, config, ctx := blockOpsInit(t)
-	defer blockOpsShutdown(mockCtrl, config)
-
-	// expect one call to encrypt a block, one to hash it
-	decData := &TestBlock{42}
-	encData := []byte{1, 2, 3, 4}
-	err := errors.New("Fake fail")
-
-	kmd := makeKMD()
-
-	expectBlockEncrypt(config, kmd, decData, 4, encData, nil)
-
-	config.mockCrypto.EXPECT().MakePermanentBlockID(encData).Return(kbfsblock.FakeID(0), err)
 
 	if _, _, _, err2 := config.BlockOps().Ready(
 		ctx, kmd, decData); err2 != err {

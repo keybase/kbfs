@@ -112,7 +112,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 
 	default:
 		log := config.MakeLogger("BSM")
-		blockServer = NewBlockServerMemory(config.Crypto(), log)
+		blockServer = NewBlockServerMemory(log)
 	}
 	config.SetBlockServer(blockServer)
 

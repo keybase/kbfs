@@ -314,7 +314,7 @@ func makeBlockServer(config Config, bserverAddr string, ctx Context,
 		log.Debug("Using in-memory bserver")
 		bserverLog := config.MakeLogger("BSM")
 		// local in-memory block server
-		return NewBlockServerMemory(config.Crypto(), bserverLog), nil
+		return NewBlockServerMemory(bserverLog), nil
 	}
 
 	if len(bserverAddr) == 0 {

@@ -34,7 +34,7 @@ func NewFakeBServerClient(
 	goChan <-chan struct{},
 	finishChan chan<- struct{}) *FakeBServerClient {
 	return &FakeBServerClient{
-		bserverMem: NewBlockServerMemory(crypto, log),
+		bserverMem: NewBlockServerMemory(log),
 		readyChan:  readyChan,
 		goChan:     goChan,
 		finishChan: finishChan,

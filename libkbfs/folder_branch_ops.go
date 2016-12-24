@@ -1137,7 +1137,7 @@ func ResetRootBlock(ctx context.Context, config Config,
 	Block, BlockInfo, ReadyBlockData, error) {
 	newDblock := NewDirBlock()
 	info, plainSize, readyBlockData, err :=
-		ReadyBlock(ctx, config.BlockCache(), config.BlockOps(), config.Crypto(),
+		ReadyBlock(ctx, config.BlockCache(), config.BlockOps(),
 			rmd.ReadOnly(), newDblock, currentUID)
 	if err != nil {
 		return nil, BlockInfo{}, ReadyBlockData{}, err
@@ -1727,7 +1727,7 @@ func (fbo *folderBranchOps) readyBlockMultiple(ctx context.Context,
 	bps *blockPutState) (info BlockInfo, plainSize int, err error) {
 	info, plainSize, readyBlockData, err :=
 		ReadyBlock(ctx, fbo.config.BlockCache(), fbo.config.BlockOps(),
-			fbo.config.Crypto(), kmd, currBlock, uid)
+			kmd, currBlock, uid)
 	if err != nil {
 		return
 	}
@@ -1747,7 +1747,7 @@ func (fbo *folderBranchOps) unembedBlockChanges(
 	// Treat the block change list as a file so we can reuse all the
 	// indirection code in fileData.
 	block := NewFileBlock().(*FileBlock)
-	bid, err := fbo.config.Crypto().MakeTemporaryBlockID()
+	bid, err := kbfsblock.MakeTemporaryID()
 	if err != nil {
 		return err
 	}
@@ -1789,7 +1789,7 @@ func (fbo *folderBranchOps) unembedBlockChanges(
 	}
 
 	df := newDirtyFile(file, dirtyBcache)
-	fd := newFileData(file, uid, fbo.config.Crypto(),
+	fd := newFileData(file, uid,
 		fbo.config.BlockSplitter(), md.ReadOnly(), getter, cacher, fbo.log)
 
 	// Write all the data.

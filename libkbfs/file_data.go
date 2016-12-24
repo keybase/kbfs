@@ -33,7 +33,6 @@ type dirtyBlockCacher func(ptr BlockPointer, block Block) error
 type fileData struct {
 	file   path
 	uid    keybase1.UID
-	crypto cryptoPure
 	kmd    KeyMetadata
 	bsplit BlockSplitter
 	getter fileBlockGetter
@@ -41,13 +40,12 @@ type fileData struct {
 	log    logger.Logger
 }
 
-func newFileData(file path, uid keybase1.UID, crypto cryptoPure,
+func newFileData(file path, uid keybase1.UID,
 	bsplit BlockSplitter, kmd KeyMetadata, getter fileBlockGetter,
 	cacher dirtyBlockCacher, log logger.Logger) *fileData {
 	return &fileData{
 		file:   file,
 		uid:    uid,
-		crypto: crypto,
 		bsplit: bsplit,
 		kmd:    kmd,
 		getter: getter,
@@ -463,7 +461,7 @@ func (fd *fileData) getBytes(ctx context.Context, startOff, endOff int64) (
 // indirect block that becomes the parent.
 func (fd *fileData) createIndirectBlock(
 	df *dirtyFile, dver DataVer) (*FileBlock, error) {
-	newID, err := fd.crypto.MakeTemporaryBlockID()
+	newID, err := kbfsblock.MakeTemporaryID()
 	if err != nil {
 		return nil, err
 	}
@@ -506,7 +504,7 @@ func (fd *fileData) createIndirectBlock(
 func (fd *fileData) newRightBlock(
 	ctx context.Context, ptr BlockPointer, pblock *FileBlock,
 	off int64) error {
-	newRID, err := fd.crypto.MakeTemporaryBlockID()
+	newRID, err := kbfsblock.MakeTemporaryID()
 	if err != nil {
 		return err
 	}
@@ -976,7 +974,7 @@ func (fd *fileData) ready(ctx context.Context, id tlf.ID, bcache BlockCache,
 		}
 
 		newInfo, _, readyBlockData, err :=
-			ReadyBlock(ctx, bcache, bops, fd.crypto, fd.kmd, block, fd.uid)
+			ReadyBlock(ctx, bcache, bops, fd.kmd, block, fd.uid)
 		if err != nil {
 			return nil, err
 		}
@@ -1058,7 +1056,7 @@ func (fd *fileData) deepCopy(ctx context.Context, codec kbfscodec.Codec,
 	}
 	newTopPtr = fd.file.tailPointer()
 	if topBlock.IsInd {
-		newID, err := fd.crypto.MakeTemporaryBlockID()
+		newID, err := kbfsblock.MakeTemporaryID()
 		if err != nil {
 			return zeroPtr, nil, err
 		}
@@ -1072,7 +1070,7 @@ func (fd *fileData) deepCopy(ctx context.Context, codec kbfscodec.Codec,
 			},
 		}
 	} else {
-		newTopPtr.RefNonce, err = fd.crypto.MakeBlockRefNonce()
+		newTopPtr.RefNonce, err = kbfsblock.MakeRefNonce()
 		if err != nil {
 			return zeroPtr, nil, err
 		}
@@ -1086,7 +1084,7 @@ func (fd *fileData) deepCopy(ctx context.Context, codec kbfscodec.Codec,
 	if topBlock.IsInd {
 		for i, iptr := range topBlock.IPtrs {
 			// Generate a new nonce for each one.
-			iptr.RefNonce, err = fd.crypto.MakeBlockRefNonce()
+			iptr.RefNonce, err = kbfsblock.MakeRefNonce()
 			if err != nil {
 				return zeroPtr, nil, err
 			}
@@ -1134,7 +1132,7 @@ func (fd *fileData) undupChildrenInCopy(ctx context.Context,
 		}
 
 		newInfo, _, readyBlockData, err :=
-			ReadyBlock(ctx, bcache, bops, fd.crypto, fd.kmd, childBlock, fd.uid)
+			ReadyBlock(ctx, bcache, bops, fd.kmd, childBlock, fd.uid)
 		topBlock.IPtrs[i].BlockInfo = newInfo
 		bps.addNewBlock(newInfo.BlockPointer, childBlock, readyBlockData, nil)
 		blockInfos = append(blockInfos, newInfo)

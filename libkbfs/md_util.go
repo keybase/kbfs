@@ -422,11 +422,11 @@ func reembedBlockChanges(ctx context.Context, codec kbfscodec.Codec,
 	cacher := func(ptr BlockPointer, block Block) error {
 		return nil
 	}
-	// Reading doesn't use crypto or the block splitter, so for now
-	// just pass in nil.  Also, reading doesn't depend on the UID, so
+	// Reading doesn't use the block splitter, so for now just
+	// pass in nil.  Also, reading doesn't depend on the UID, so
 	// it's ok to be empty.
 	var uid keybase1.UID
-	fd := newFileData(file, uid, nil, nil, rmdWithKeys, getter, cacher, log)
+	fd := newFileData(file, uid, nil, rmdWithKeys, getter, cacher, log)
 
 	buf, err := fd.getBytes(ctx, 0, -1)
 	if err != nil {
