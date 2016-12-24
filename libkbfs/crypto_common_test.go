@@ -460,7 +460,7 @@ func TestEncryptPrivateMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	encodedPrivateMetadata := checkSecretboxOpen(t, encryptedData(encryptedPrivateMetadata), cryptKey.Data())
+	encodedPrivateMetadata := checkSecretboxOpen(t, encryptedPrivateMetadata.encryptedData, cryptKey.Data())
 
 	if string(encodedPrivateMetadata) != string(expectedEncodedPrivateMetadata) {
 		t.Fatalf("Expected encoded data %v, got %v", expectedEncodedPrivateMetadata, encodedPrivateMetadata)
@@ -507,7 +507,7 @@ func TestDecryptPrivateMetadataSecretboxSeal(t *testing.T) {
 		TLFPrivateKey: tlfPrivateKey,
 	}
 
-	encryptedPrivateMetadata := EncryptedPrivateMetadata(secretboxSeal(t, &c, privateMetadata, cryptKey.Data()))
+	encryptedPrivateMetadata := EncryptedPrivateMetadata{secretboxSeal(t, &c, privateMetadata, cryptKey.Data())}
 
 	decryptedPrivateMetadata, err := c.DecryptPrivateMetadata(encryptedPrivateMetadata, cryptKey)
 	if err != nil {
@@ -623,10 +623,10 @@ func TestDecryptPrivateMetadataFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	checkDecryptionFailures(t, encryptedData(encryptedPrivateMetadata), cryptKey,
+	checkDecryptionFailures(t, encryptedPrivateMetadata.encryptedData, cryptKey,
 		func(encryptedData encryptedData, key interface{}) error {
 			_, err = c.DecryptPrivateMetadata(
-				EncryptedPrivateMetadata(encryptedData),
+				EncryptedPrivateMetadata{encryptedData},
 				key.(kbfscrypto.TLFCryptKey))
 			return err
 		},
@@ -672,7 +672,7 @@ func TestEncryptBlock(t *testing.T) {
 		t.Errorf("Expected plain size %d, got %d", len(expectedEncodedBlock), plainSize)
 	}
 
-	paddedBlock := checkSecretboxOpen(t, encryptedData(encryptedBlock), cryptKey.Data())
+	paddedBlock := checkSecretboxOpen(t, encryptedBlock.encryptedData, cryptKey.Data())
 	encodedBlock, err := c.depadBlock(paddedBlock)
 	if err != nil {
 		t.Fatal(err)
@@ -702,7 +702,7 @@ func TestDecryptBlockSecretboxSeal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	encryptedBlock := EncryptedBlock(secretboxSealEncoded(t, &c, paddedBlock, cryptKey.Data()))
+	encryptedBlock := EncryptedBlock{secretboxSealEncoded(t, &c, paddedBlock, cryptKey.Data())}
 
 	var decryptedBlock TestBlock
 	err = c.DecryptBlock(encryptedBlock, cryptKey, &decryptedBlock)
@@ -753,11 +753,11 @@ func TestDecryptBlockFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	checkDecryptionFailures(t, encryptedData(encryptedBlock), cryptKey,
+	checkDecryptionFailures(t, encryptedBlock.encryptedData, cryptKey,
 		func(encryptedData encryptedData, key interface{}) error {
 			var dummy TestBlock
 			return c.DecryptBlock(
-				EncryptedBlock(encryptedData),
+				EncryptedBlock{encryptedData},
 				key.(kbfscrypto.BlockCryptKey), &dummy)
 		},
 		func(key interface{}) interface{} {
