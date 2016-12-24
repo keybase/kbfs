@@ -63,7 +63,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
 	}
 
 	// New server key half for the block.
-	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
+	serverHalf, err := b.config.Crypto().MakeRandomBlockCryptKeyServerHalf()
 	if err != nil {
 		return
 	}

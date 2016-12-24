@@ -110,6 +110,8 @@ func blockOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 
 func expectBlockEncrypt(config *ConfigMock, kmd KeyMetadata, decData Block, plainSize int, encData []byte, err error) {
 	expectGetTLFCryptKeyForEncryption(config, kmd)
+	config.mockCrypto.EXPECT().MakeRandomBlockCryptKeyServerHalf().
+		Return(kbfscrypto.BlockCryptKeyServerHalf{}, nil)
 	encryptedBlock := EncryptedBlock{
 		encryptedData{
 			EncryptedData: encData,
