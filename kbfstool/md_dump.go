@@ -6,6 +6,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
@@ -30,6 +31,30 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	c.SortKeys = true
 
 	brmd := rmd.GetBareRootMetadata()
+	extra := rmd.Extra()
+
+	readers, writers, err := brmd.GetUserDeviceKeyInfoMaps(
+		config.Codec(), brmd.LatestKeyGeneration(), extra)
+	if err != nil {
+		return err
+	}
+	uids := make(map[keybase1.UID]bool)
+	devices := make(map[kbfscrypto.CryptPublicKey]bool)
+	for _, udkim := range []libkbfs.UserDeviceKeyInfoMap{writers, readers} {
+		for u, dkim := range udkim {
+			uids[u] = true
+			for k := range dkim {
+				devices[k] = true
+			}
+		}
+	}
+
+	for uid := range uids {
+		fmt.Printf("%s\n", getUserString(ctx, config, uid))
+	}
+
+	// TODO: Resolve device IDs, too.
+
 	serializedBRMD, err := config.Codec().Encode(brmd)
 	if err != nil {
 		return err
@@ -57,7 +82,6 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 
 	fmt.Print("Extra metadata\n")
 	fmt.Print("--------------\n")
-	extra := rmd.Extra()
 	switch extra := extra.(type) {
 	case *libkbfs.ExtraMetadataV3:
 		serializedWKB, err := config.Codec().Encode(
