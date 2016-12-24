@@ -208,12 +208,6 @@ func (c CryptoCommon) MakeRandomBlockCryptKeyServerHalf() (
 	return serverHalf, nil
 }
 
-// Verify implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) Verify(
-	msg []byte, sigInfo kbfscrypto.SignatureInfo) (err error) {
-	return kbfscrypto.Verify(msg, sigInfo)
-}
-
 // EncryptTLFCryptKeyClientHalf implements the Crypto interface for
 // CryptoCommon.
 func (c CryptoCommon) EncryptTLFCryptKeyClientHalf(

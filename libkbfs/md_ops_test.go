@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
@@ -397,12 +396,7 @@ func testMDOpsGetForHandlePublicFailVerify(t *testing.T, ver MetadataVer) {
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
 	rmds, _ := newRMDS(t, config, h)
 
-	// Do this before setting tlfHandle to nil.
-	expectedErr := libkb.VerificationError{}
-	verifyMDForPublic(config, rmds, expectedErr, nil)
-
-	config.SetCrypto(failVerifyCrypto{config.Crypto(), expectedErr})
-
+	rmds.MD.(MutableBareRootMetadata).SetRefBytes(100)
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(tlf.NullID, rmds, nil)
 
 	_, _, err := config.MDOps().GetForHandle(ctx, h, Merged)
@@ -748,7 +742,7 @@ func validatePutPublicRMDS(
 	// Verify signature of WriterMetadata.
 	buf, err := rmds.MD.GetSerializedWriterMetadata(config.Codec())
 	require.NoError(t, err)
-	err = config.Crypto().Verify(buf, rmds.GetWriterMetadataSigInfo())
+	err = kbfscrypto.Verify(buf, rmds.GetWriterMetadataSigInfo())
 	require.NoError(t, err)
 
 	// Verify encoded PrivateMetadata.
@@ -759,7 +753,7 @@ func validatePutPublicRMDS(
 	// Verify signature of RootMetadata.
 	buf, err = config.Codec().Encode(rmds.MD)
 	require.NoError(t, err)
-	err = config.Crypto().Verify(buf, rmds.SigInfo)
+	err = kbfscrypto.Verify(buf, rmds.SigInfo)
 	require.NoError(t, err)
 
 	expectedRmd, err := inputRmd.DeepCopy(config.Codec())

@@ -14,6 +14,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfsblock"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
@@ -135,7 +136,7 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 					return err
 				}
 
-				err = md.config.Crypto().Verify(
+				err = kbfscrypto.Verify(
 					buf, rmds.GetWriterMetadataSigInfo())
 				if err != nil {
 					return fmt.Errorf("Could not verify "+

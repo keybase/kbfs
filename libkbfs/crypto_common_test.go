@@ -210,10 +210,7 @@ func TestCryptoCommonMaskUnmaskTLFCryptKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	clientHalf, err := c.MaskTLFCryptKey(serverHalf, cryptKey)
-	if err != nil {
-		t.Fatal(err)
-	}
+	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
 	if clientHalf.Data() == serverHalf.Data() {
 		t.Error("client half == server half")
@@ -223,10 +220,7 @@ func TestCryptoCommonMaskUnmaskTLFCryptKey(t *testing.T) {
 		t.Error("client half == key")
 	}
 
-	cryptKey2, err := c.UnmaskTLFCryptKey(serverHalf, clientHalf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	cryptKey2 := kbfscrypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
 
 	if cryptKey2 != cryptKey {
 		t.Error("cryptKey != cryptKey2")
@@ -248,10 +242,7 @@ func TestCryptoCommonUnmaskTLFCryptKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	key, err := c.UnmaskBlockCryptKey(serverHalf, cryptKey)
-	if err != nil {
-		t.Fatal(err)
-	}
+	key := kbfscrypto.UnmaskBlockCryptKey(serverHalf, cryptKey)
 
 	if key.Data() == serverHalf.Data() {
 		t.Error("key == server half")
@@ -291,8 +282,6 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	msg := []byte("message")
 	sigInfo := signingKey.Sign(msg)
 
-	c := MakeCryptoCommon(kbfscodec.NewMsgpack())
-
 	var expectedErr, err error
 
 	// Wrong version.
@@ -300,7 +289,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	sigInfoWrongVersion := sigInfo.DeepCopy()
 	sigInfoWrongVersion.Version = 0
 	expectedErr = kbfscrypto.UnknownSigVer{Ver: sigInfoWrongVersion.Version}
-	err = c.Verify(msg, sigInfoWrongVersion)
+	err = kbfscrypto.Verify(msg, sigInfoWrongVersion)
 	if err != expectedErr {
 		t.Errorf("Expected %v, got %v", expectedErr, err)
 	}
@@ -310,7 +299,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	sigInfoCorruptKey := sigInfo.DeepCopy()
 	sigInfoCorruptKey.VerifyingKey = kbfscrypto.MakeVerifyingKey("")
 	expectedErr = libkb.KeyCannotVerifyError{}
-	err = c.Verify(msg, sigInfoCorruptKey)
+	err = kbfscrypto.Verify(msg, sigInfoCorruptKey)
 	if err != expectedErr {
 		t.Errorf("Expected %v, got %v", expectedErr, err)
 	}
@@ -320,7 +309,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	shortSigInfo := sigInfo.DeepCopy()
 	shortSigInfo.Signature = shortSigInfo.Signature[:len(shortSigInfo.Signature)-1]
 	expectedErr = libkb.VerificationError{}
-	err = c.Verify(msg, shortSigInfo)
+	err = kbfscrypto.Verify(msg, shortSigInfo)
 	if err != expectedErr {
 		t.Errorf("Expected %v, got %v", expectedErr, err)
 	}
@@ -328,7 +317,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	longSigInfo := sigInfo.DeepCopy()
 	longSigInfo.Signature = append(longSigInfo.Signature, byte(0))
 	expectedErr = libkb.VerificationError{}
-	err = c.Verify(msg, longSigInfo)
+	err = kbfscrypto.Verify(msg, longSigInfo)
 	if err != expectedErr {
 		t.Errorf("Expected %v, got %v", expectedErr, err)
 	}
@@ -338,7 +327,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	corruptSigInfo := sigInfo.DeepCopy()
 	corruptSigInfo.Signature[0] = ^sigInfo.Signature[0]
 	expectedErr = libkb.VerificationError{}
-	err = c.Verify(msg, corruptSigInfo)
+	err = kbfscrypto.Verify(msg, corruptSigInfo)
 	if err != expectedErr {
 		t.Errorf("Expected %v, got %v", expectedErr, err)
 	}
@@ -348,7 +337,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 	sigInfoWrongKey := sigInfo.DeepCopy()
 	sigInfoWrongKey.VerifyingKey = kbfscrypto.MakeFakeVerifyingKeyOrBust("wrong key")
 	expectedErr = libkb.VerificationError{}
-	err = c.Verify(msg, sigInfoWrongKey)
+	err = kbfscrypto.Verify(msg, sigInfoWrongKey)
 	if err != expectedErr {
 		t.Errorf("Expected %v, got %v", expectedErr, err)
 	}
@@ -357,7 +346,7 @@ func TestCryptoCommonVerifyFailures(t *testing.T) {
 
 	corruptMsg := append(msg, []byte("corruption")...)
 	expectedErr = libkb.VerificationError{}
-	err = c.Verify(corruptMsg, sigInfo)
+	err = kbfscrypto.Verify(corruptMsg, sigInfo)
 	if err != expectedErr {
 		t.Errorf("Expected %v, got %v", expectedErr, err)
 	}
@@ -386,10 +375,7 @@ func TestCryptoCommonEncryptTLFCryptKeyClientHalf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	clientHalf, err := c.MaskTLFCryptKey(serverHalf, cryptKey)
-	if err != nil {
-		t.Fatal(err)
-	}
+	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
 	encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, publicKey, clientHalf)
 	if err != nil {

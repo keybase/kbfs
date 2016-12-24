@@ -783,10 +783,6 @@ type cryptoPure interface {
 	MakeRandomTLFCryptKeyServerHalf() (
 		kbfscrypto.TLFCryptKeyServerHalf, error)
 
-	// Verify verifies that sig matches msg being signed with the
-	// private key that corresponds to verifyingKey.
-	Verify(msg []byte, sigInfo kbfscrypto.SignatureInfo) error
-
 	// EncryptTLFCryptKeyClientHalf encrypts a TLFCryptKeyClientHalf
 	// using both a TLF's ephemeral private key and a device pubkey.
 	EncryptTLFCryptKeyClientHalf(
