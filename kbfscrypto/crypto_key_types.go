@@ -314,7 +314,7 @@ type TLFEphemeralPublicKeys []TLFEphemeralPublicKey
 // Copies of TLFCryptKeyServerHalf objects are deep copies.
 type TLFCryptKeyServerHalf struct {
 	// Should only be used by implementations of Crypto.
-	privateByte32Container
+	publicByte32Container
 }
 
 var _ encoding.BinaryMarshaler = TLFCryptKeyServerHalf{}
@@ -326,7 +326,7 @@ var _ encoding.TextUnmarshaler = (*TLFCryptKeyServerHalf)(nil)
 // MakeTLFCryptKeyServerHalf returns a TLFCryptKeyServerHalf
 // containing the given data.
 func MakeTLFCryptKeyServerHalf(data [32]byte) TLFCryptKeyServerHalf {
-	return TLFCryptKeyServerHalf{privateByte32Container{data}}
+	return TLFCryptKeyServerHalf{publicByte32Container{data}}
 }
 
 // TLFCryptKeyClientHalf (t_u^{f,0,i}) is the masked, client-side half
@@ -336,7 +336,7 @@ func MakeTLFCryptKeyServerHalf(data [32]byte) TLFCryptKeyServerHalf {
 // Copies of TLFCryptKeyClientHalf objects are deep copies.
 type TLFCryptKeyClientHalf struct {
 	// Should only be used by implementations of Crypto.
-	privateByte32Container
+	publicByte32Container
 }
 
 var _ encoding.BinaryMarshaler = TLFCryptKeyClientHalf{}
@@ -348,7 +348,7 @@ var _ encoding.TextUnmarshaler = (*TLFCryptKeyClientHalf)(nil)
 // MakeTLFCryptKeyClientHalf returns a TLFCryptKeyClientHalf
 // containing the given data.
 func MakeTLFCryptKeyClientHalf(data [32]byte) TLFCryptKeyClientHalf {
-	return TLFCryptKeyClientHalf{privateByte32Container{data}}
+	return TLFCryptKeyClientHalf{publicByte32Container{data}}
 }
 
 // TLFCryptKey (s^{f,0}) is used to encrypt/decrypt the private
@@ -390,7 +390,7 @@ var PublicTLFCryptKey = MakeTLFCryptKey([32]byte{
 // Copies of BlockCryptKeyServerHalf objects are deep copies.
 type BlockCryptKeyServerHalf struct {
 	// Should only be used by implementations of Crypto.
-	privateByte32Container
+	publicByte32Container
 }
 
 var _ encoding.BinaryMarshaler = BlockCryptKeyServerHalf{}
@@ -402,7 +402,7 @@ var _ encoding.TextUnmarshaler = (*BlockCryptKeyServerHalf)(nil)
 // MakeBlockCryptKeyServerHalf returns a BlockCryptKeyServerHalf
 // containing the given data.
 func MakeBlockCryptKeyServerHalf(data [32]byte) BlockCryptKeyServerHalf {
-	return BlockCryptKeyServerHalf{privateByte32Container{data}}
+	return BlockCryptKeyServerHalf{publicByte32Container{data}}
 }
 
 // ParseBlockCryptKeyServerHalf returns a BlockCryptKeyServerHalf
