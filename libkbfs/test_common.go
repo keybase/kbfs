@@ -62,6 +62,8 @@ func newConfigForTest(loggerFn func(module string) logger.Logger) *ConfigLocal {
 	return config
 }
 
+// MakeTestBlockServerOrBust makes a block server from the given
+// arguments and environment variables.
 func MakeTestBlockServerOrBust(t logger.TestLogBackend, codec kbfscodec.Codec,
 	signer kbfscrypto.Signer, cig currentInfoGetter,
 	rpcLogFactory *libkb.RPCLogFactory, log logger.Logger) BlockServer {
