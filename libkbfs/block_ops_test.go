@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -200,7 +201,7 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	kmd := makeKMD()
 
 	// expect one call to fetch a block, and one to decrypt it
-	id := fakeBlockID(1)
+	id := kbfsblock.FakeID(1)
 	encData := []byte{1, 2, 3, 4}
 	blockPtr := BlockPointer{ID: id}
 	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.BlockContext).Return(
@@ -226,7 +227,7 @@ func TestBlockOpsGetFailGet(t *testing.T) {
 
 	kmd := makeKMD()
 	// fail the fetch call
-	id := fakeBlockID(1)
+	id := kbfsblock.FakeID(1)
 	err := errors.New("Fake fail")
 	blockPtr := BlockPointer{ID: id}
 	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.BlockContext).Return(
@@ -245,7 +246,7 @@ func TestBlockOpsGetFailVerify(t *testing.T) {
 
 	kmd := makeKMD()
 	// fail the fetch call
-	id := fakeBlockID(1)
+	id := kbfsblock.FakeID(1)
 	err := errors.New("Fake verification fail")
 	blockPtr := BlockPointer{ID: id}
 	encData := []byte{1, 2, 3}
@@ -266,7 +267,7 @@ func TestBlockOpsGetFailDecryptBlockData(t *testing.T) {
 
 	kmd := makeKMD()
 	// expect one call to fetch a block, then fail to decrypt
-	id := fakeBlockID(1)
+	id := kbfsblock.FakeID(1)
 	encData := []byte{1, 2, 3, 4}
 	blockPtr := BlockPointer{ID: id}
 	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.BlockContext).Return(
@@ -289,7 +290,7 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 	// expect one call to encrypt a block, one to hash it
 	decData := &TestBlock{42}
 	encData := []byte{1, 2, 3, 4}
-	id := fakeBlockID(1)
+	id := kbfsblock.FakeID(1)
 
 	kmd := makeKMD()
 
@@ -360,7 +361,7 @@ func TestBlockOpsReadyFailMakePermanentBlockID(t *testing.T) {
 
 	expectBlockEncrypt(config, kmd, decData, 4, encData, nil)
 
-	config.mockCrypto.EXPECT().MakePermanentBlockID(encData).Return(fakeBlockID(0), err)
+	config.mockCrypto.EXPECT().MakePermanentBlockID(encData).Return(kbfsblock.FakeID(0), err)
 
 	if _, _, _, err2 := config.BlockOps().Ready(
 		ctx, kmd, decData); err2 != err {
@@ -374,13 +375,13 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 
 	// expect one call to delete several blocks
 
-	contexts := make(map[BlockID][]BlockContext)
-	b1 := BlockPointer{ID: fakeBlockID(1)}
+	contexts := make(map[kbfsblock.ID][]BlockContext)
+	b1 := BlockPointer{ID: kbfsblock.FakeID(1)}
 	contexts[b1.ID] = []BlockContext{b1.BlockContext}
-	b2 := BlockPointer{ID: fakeBlockID(2)}
+	b2 := BlockPointer{ID: kbfsblock.FakeID(2)}
 	contexts[b2.ID] = []BlockContext{b2.BlockContext}
 	blockPtrs := []BlockPointer{b1, b2}
-	var liveCounts map[BlockID]int
+	var liveCounts map[kbfsblock.ID]int
 	tlfID := tlf.FakeID(1, false)
 	config.mockBserv.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
 		Return(liveCounts, nil)
@@ -397,14 +398,14 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 
 	// fail the delete call
 
-	contexts := make(map[BlockID][]BlockContext)
-	b1 := BlockPointer{ID: fakeBlockID(1)}
+	contexts := make(map[kbfsblock.ID][]BlockContext)
+	b1 := BlockPointer{ID: kbfsblock.FakeID(1)}
 	contexts[b1.ID] = []BlockContext{b1.BlockContext}
-	b2 := BlockPointer{ID: fakeBlockID(2)}
+	b2 := BlockPointer{ID: kbfsblock.FakeID(2)}
 	contexts[b2.ID] = []BlockContext{b2.BlockContext}
 	blockPtrs := []BlockPointer{b1, b2}
 	err := errors.New("Fake fail")
-	var liveCounts map[BlockID]int
+	var liveCounts map[kbfsblock.ID]int
 	tlfID := tlf.FakeID(1, false)
 	config.mockBserv.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
 		Return(liveCounts, err)

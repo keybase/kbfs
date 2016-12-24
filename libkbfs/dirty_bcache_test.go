@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
 
-func testDirtyBcachePut(t *testing.T, id BlockID, dirtyBcache DirtyBlockCache) {
+func testDirtyBcachePut(t *testing.T, id kbfsblock.ID, dirtyBcache DirtyBlockCache) {
 	block := NewFileBlock()
 	ptr := BlockPointer{ID: id}
 	branch := MasterBranch
@@ -37,7 +38,7 @@ func testDirtyBcachePut(t *testing.T, id BlockID, dirtyBcache DirtyBlockCache) {
 	}
 }
 
-func testExpectedMissingDirty(t *testing.T, id BlockID,
+func testExpectedMissingDirty(t *testing.T, id kbfsblock.ID,
 	dirtyBcache DirtyBlockCache) {
 	expectedErr := NoSuchBlockError{id}
 	ptr := BlockPointer{ID: id}
@@ -53,14 +54,14 @@ func TestDirtyBcachePut(t *testing.T) {
 	dirtyBcache := NewDirtyBlockCacheStandard(&wallClock{}, logger.NewTestLogger(t),
 		5<<20, 10<<20, 5<<20)
 	defer dirtyBcache.Shutdown()
-	testDirtyBcachePut(t, fakeBlockID(1), dirtyBcache)
+	testDirtyBcachePut(t, kbfsblock.FakeID(1), dirtyBcache)
 }
 
 func TestDirtyBcachePutDuplicate(t *testing.T) {
 	dirtyBcache := NewDirtyBlockCacheStandard(&wallClock{}, logger.NewTestLogger(t),
 		5<<20, 10<<20, 5<<20)
 	defer dirtyBcache.Shutdown()
-	id1 := fakeBlockID(1)
+	id1 := kbfsblock.FakeID(1)
 
 	// Dirty a specific reference nonce, and make sure the
 	// original is still not found.
@@ -107,7 +108,7 @@ func TestDirtyBcacheDelete(t *testing.T) {
 		5<<20, 10<<20, 5<<20)
 	defer dirtyBcache.Shutdown()
 
-	id1 := fakeBlockID(1)
+	id1 := kbfsblock.FakeID(1)
 	testDirtyBcachePut(t, id1, dirtyBcache)
 	newBranch := BranchName("dirtyBranch")
 	newBranchBlock := NewFileBlock()

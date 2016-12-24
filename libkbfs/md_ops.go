@@ -13,6 +13,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
@@ -575,7 +576,7 @@ func (md *MDOpsStandard) PruneBranch(
 
 // ResolveBranch implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) ResolveBranch(
-	ctx context.Context, id tlf.ID, bid BranchID, _ []BlockID,
+	ctx context.Context, id tlf.ID, bid BranchID, _ []kbfsblock.ID,
 	rmd *RootMetadata) (MdID, error) {
 	// Put the MD first.
 	mdID, err := md.Put(ctx, rmd)

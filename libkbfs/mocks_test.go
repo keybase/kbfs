@@ -1552,7 +1552,7 @@ func (_mr *_MockBlockCacheRecorder) DeleteTransient(arg0, arg1 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeleteTransient", arg0, arg1)
 }
 
-func (_m *MockBlockCache) DeletePermanent(id BlockID) error {
+func (_m *MockBlockCache) DeletePermanent(id kbfsblock.ID) error {
 	ret := _m.ctrl.Call(_m, "DeletePermanent", id)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -1790,9 +1790,9 @@ func (_mr *_MockcryptoPureRecorder) MakeMerkleHash(arg0 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeMerkleHash", arg0)
 }
 
-func (_m *MockcryptoPure) MakeTemporaryBlockID() (BlockID, error) {
+func (_m *MockcryptoPure) MakeTemporaryBlockID() (kbfsblock.ID, error) {
 	ret := _m.ctrl.Call(_m, "MakeTemporaryBlockID")
-	ret0, _ := ret[0].(BlockID)
+	ret0, _ := ret[0].(kbfsblock.ID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1801,9 +1801,9 @@ func (_mr *_MockcryptoPureRecorder) MakeTemporaryBlockID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeTemporaryBlockID")
 }
 
-func (_m *MockcryptoPure) MakePermanentBlockID(encodedEncryptedData []byte) (BlockID, error) {
+func (_m *MockcryptoPure) MakePermanentBlockID(encodedEncryptedData []byte) (kbfsblock.ID, error) {
 	ret := _m.ctrl.Call(_m, "MakePermanentBlockID", encodedEncryptedData)
-	ret0, _ := ret[0].(BlockID)
+	ret0, _ := ret[0].(kbfsblock.ID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1812,7 +1812,7 @@ func (_mr *_MockcryptoPureRecorder) MakePermanentBlockID(arg0 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakePermanentBlockID", arg0)
 }
 
-func (_m *MockcryptoPure) VerifyBlockID(encodedEncryptedData []byte, id BlockID) error {
+func (_m *MockcryptoPure) VerifyBlockID(encodedEncryptedData []byte, id kbfsblock.ID) error {
 	ret := _m.ctrl.Call(_m, "VerifyBlockID", encodedEncryptedData, id)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2130,9 +2130,9 @@ func (_mr *_MockCryptoRecorder) MakeMerkleHash(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeMerkleHash", arg0)
 }
 
-func (_m *MockCrypto) MakeTemporaryBlockID() (BlockID, error) {
+func (_m *MockCrypto) MakeTemporaryBlockID() (kbfsblock.ID, error) {
 	ret := _m.ctrl.Call(_m, "MakeTemporaryBlockID")
-	ret0, _ := ret[0].(BlockID)
+	ret0, _ := ret[0].(kbfsblock.ID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2141,9 +2141,9 @@ func (_mr *_MockCryptoRecorder) MakeTemporaryBlockID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeTemporaryBlockID")
 }
 
-func (_m *MockCrypto) MakePermanentBlockID(encodedEncryptedData []byte) (BlockID, error) {
+func (_m *MockCrypto) MakePermanentBlockID(encodedEncryptedData []byte) (kbfsblock.ID, error) {
 	ret := _m.ctrl.Call(_m, "MakePermanentBlockID", encodedEncryptedData)
-	ret0, _ := ret[0].(BlockID)
+	ret0, _ := ret[0].(kbfsblock.ID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2152,7 +2152,7 @@ func (_mr *_MockCryptoRecorder) MakePermanentBlockID(arg0 interface{}) *gomock.C
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakePermanentBlockID", arg0)
 }
 
-func (_m *MockCrypto) VerifyBlockID(encodedEncryptedData []byte, id BlockID) error {
+func (_m *MockCrypto) VerifyBlockID(encodedEncryptedData []byte, id kbfsblock.ID) error {
 	ret := _m.ctrl.Call(_m, "VerifyBlockID", encodedEncryptedData, id)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -2578,7 +2578,7 @@ func (_mr *_MockMDOpsRecorder) PruneBranch(arg0, arg1, arg2 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PruneBranch", arg0, arg1, arg2)
 }
 
-func (_m *MockMDOps) ResolveBranch(ctx context.Context, id tlf.ID, bid BranchID, blocksToDelete []BlockID, rmd *RootMetadata) (MdID, error) {
+func (_m *MockMDOps) ResolveBranch(ctx context.Context, id tlf.ID, bid BranchID, blocksToDelete []kbfsblock.ID, rmd *RootMetadata) (MdID, error) {
 	ret := _m.ctrl.Call(_m, "ResolveBranch", ctx, id, bid, blocksToDelete, rmd)
 	ret0, _ := ret[0].(MdID)
 	ret1, _ := ret[1].(error)
@@ -2683,9 +2683,9 @@ func (_mr *_MockBlockOpsRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockOps) Ready(ctx context.Context, kmd KeyMetadata, block Block) (BlockID, int, ReadyBlockData, error) {
+func (_m *MockBlockOps) Ready(ctx context.Context, kmd KeyMetadata, block Block) (kbfsblock.ID, int, ReadyBlockData, error) {
 	ret := _m.ctrl.Call(_m, "Ready", ctx, kmd, block)
-	ret0, _ := ret[0].(BlockID)
+	ret0, _ := ret[0].(kbfsblock.ID)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(ReadyBlockData)
 	ret3, _ := ret[3].(error)
@@ -2696,9 +2696,9 @@ func (_mr *_MockBlockOpsRecorder) Ready(arg0, arg1, arg2 interface{}) *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Ready", arg0, arg1, arg2)
 }
 
-func (_m *MockBlockOps) Delete(ctx context.Context, tlfID tlf.ID, ptrs []BlockPointer) (map[BlockID]int, error) {
+func (_m *MockBlockOps) Delete(ctx context.Context, tlfID tlf.ID, ptrs []BlockPointer) (map[kbfsblock.ID]int, error) {
 	ret := _m.ctrl.Call(_m, "Delete", ctx, tlfID, ptrs)
-	ret0, _ := ret[0].(map[BlockID]int)
+	ret0, _ := ret[0].(map[kbfsblock.ID]int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3196,7 +3196,7 @@ func (_mr *_MockBlockServerRecorder) RefreshAuthToken(arg0 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RefreshAuthToken", arg0)
 }
 
-func (_m *MockBlockServer) Get(ctx context.Context, tlfID tlf.ID, id BlockID, context BlockContext) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
+func (_m *MockBlockServer) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	ret := _m.ctrl.Call(_m, "Get", ctx, tlfID, id, context)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(kbfscrypto.BlockCryptKeyServerHalf)
@@ -3208,7 +3208,7 @@ func (_mr *_MockBlockServerRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockServer) Put(ctx context.Context, tlfID tlf.ID, id BlockID, context BlockContext, buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
+func (_m *MockBlockServer) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext, buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
 	ret := _m.ctrl.Call(_m, "Put", ctx, tlfID, id, context, buf, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3218,7 +3218,7 @@ func (_mr *_MockBlockServerRecorder) Put(arg0, arg1, arg2, arg3, arg4, arg5 inte
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockBlockServer) AddBlockReference(ctx context.Context, tlfID tlf.ID, id BlockID, context BlockContext) error {
+func (_m *MockBlockServer) AddBlockReference(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) error {
 	ret := _m.ctrl.Call(_m, "AddBlockReference", ctx, tlfID, id, context)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3228,9 +3228,9 @@ func (_mr *_MockBlockServerRecorder) AddBlockReference(arg0, arg1, arg2, arg3 in
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddBlockReference", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBlockServer) RemoveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[BlockID][]BlockContext) (map[BlockID]int, error) {
+func (_m *MockBlockServer) RemoveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (map[kbfsblock.ID]int, error) {
 	ret := _m.ctrl.Call(_m, "RemoveBlockReferences", ctx, tlfID, contexts)
-	ret0, _ := ret[0].(map[BlockID]int)
+	ret0, _ := ret[0].(map[kbfsblock.ID]int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3239,7 +3239,7 @@ func (_mr *_MockBlockServerRecorder) RemoveBlockReferences(arg0, arg1, arg2 inte
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RemoveBlockReferences", arg0, arg1, arg2)
 }
 
-func (_m *MockBlockServer) ArchiveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[BlockID][]BlockContext) error {
+func (_m *MockBlockServer) ArchiveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) error {
 	ret := _m.ctrl.Call(_m, "ArchiveBlockReferences", ctx, tlfID, contexts)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3249,7 +3249,7 @@ func (_mr *_MockBlockServerRecorder) ArchiveBlockReferences(arg0, arg1, arg2 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ArchiveBlockReferences", arg0, arg1, arg2)
 }
 
-func (_m *MockBlockServer) IsUnflushed(ctx context.Context, tlfID tlf.ID, id BlockID) (bool, error) {
+func (_m *MockBlockServer) IsUnflushed(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID) (bool, error) {
 	ret := _m.ctrl.Call(_m, "IsUnflushed", ctx, tlfID, id)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
@@ -3308,7 +3308,7 @@ func (_mr *_MockblockServerLocalRecorder) RefreshAuthToken(arg0 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RefreshAuthToken", arg0)
 }
 
-func (_m *MockblockServerLocal) Get(ctx context.Context, tlfID tlf.ID, id BlockID, context BlockContext) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
+func (_m *MockblockServerLocal) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	ret := _m.ctrl.Call(_m, "Get", ctx, tlfID, id, context)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(kbfscrypto.BlockCryptKeyServerHalf)
@@ -3320,7 +3320,7 @@ func (_mr *_MockblockServerLocalRecorder) Get(arg0, arg1, arg2, arg3 interface{}
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Get", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockblockServerLocal) Put(ctx context.Context, tlfID tlf.ID, id BlockID, context BlockContext, buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
+func (_m *MockblockServerLocal) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext, buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
 	ret := _m.ctrl.Call(_m, "Put", ctx, tlfID, id, context, buf, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3330,7 +3330,7 @@ func (_mr *_MockblockServerLocalRecorder) Put(arg0, arg1, arg2, arg3, arg4, arg5
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Put", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-func (_m *MockblockServerLocal) AddBlockReference(ctx context.Context, tlfID tlf.ID, id BlockID, context BlockContext) error {
+func (_m *MockblockServerLocal) AddBlockReference(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) error {
 	ret := _m.ctrl.Call(_m, "AddBlockReference", ctx, tlfID, id, context)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3340,9 +3340,9 @@ func (_mr *_MockblockServerLocalRecorder) AddBlockReference(arg0, arg1, arg2, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddBlockReference", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockblockServerLocal) RemoveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[BlockID][]BlockContext) (map[BlockID]int, error) {
+func (_m *MockblockServerLocal) RemoveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (map[kbfsblock.ID]int, error) {
 	ret := _m.ctrl.Call(_m, "RemoveBlockReferences", ctx, tlfID, contexts)
-	ret0, _ := ret[0].(map[BlockID]int)
+	ret0, _ := ret[0].(map[kbfsblock.ID]int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3351,7 +3351,7 @@ func (_mr *_MockblockServerLocalRecorder) RemoveBlockReferences(arg0, arg1, arg2
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RemoveBlockReferences", arg0, arg1, arg2)
 }
 
-func (_m *MockblockServerLocal) ArchiveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[BlockID][]BlockContext) error {
+func (_m *MockblockServerLocal) ArchiveBlockReferences(ctx context.Context, tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) error {
 	ret := _m.ctrl.Call(_m, "ArchiveBlockReferences", ctx, tlfID, contexts)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3361,7 +3361,7 @@ func (_mr *_MockblockServerLocalRecorder) ArchiveBlockReferences(arg0, arg1, arg
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ArchiveBlockReferences", arg0, arg1, arg2)
 }
 
-func (_m *MockblockServerLocal) IsUnflushed(ctx context.Context, tlfID tlf.ID, id BlockID) (bool, error) {
+func (_m *MockblockServerLocal) IsUnflushed(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID) (bool, error) {
 	ret := _m.ctrl.Call(_m, "IsUnflushed", ctx, tlfID, id)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
@@ -3391,9 +3391,9 @@ func (_mr *_MockblockServerLocalRecorder) GetUserQuotaInfo(arg0 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetUserQuotaInfo", arg0)
 }
 
-func (_m *MockblockServerLocal) getAllRefsForTest(ctx context.Context, tlfID tlf.ID) (map[BlockID]blockRefMap, error) {
+func (_m *MockblockServerLocal) getAllRefsForTest(ctx context.Context, tlfID tlf.ID) (map[kbfsblock.ID]blockRefMap, error) {
 	ret := _m.ctrl.Call(_m, "getAllRefsForTest", ctx, tlfID)
-	ret0, _ := ret[0].(map[BlockID]blockRefMap)
+	ret0, _ := ret[0].(map[kbfsblock.ID]blockRefMap)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

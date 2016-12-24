@@ -653,7 +653,7 @@ type BlockCache interface {
 	// Delete removes the permanent entry for the non-dirty block
 	// associated with the given block ID from the cache.  No
 	// error is returned if no block exists for the given ID.
-	DeletePermanent(id BlockID) error
+	DeletePermanent(id kbfsblock.ID) error
 	// DeleteKnownPtr removes the cached ID for the given file
 	// block. It does not remove the block itself.
 	DeleteKnownPtr(tlf tlf.ID, block *FileBlock) error
@@ -771,20 +771,20 @@ type cryptoPure interface {
 	// MakeTemporaryBlockID generates a temporary block ID using a
 	// CSPRNG. This is used for indirect blocks before they're
 	// committed to the server.
-	MakeTemporaryBlockID() (BlockID, error)
+	MakeTemporaryBlockID() (kbfsblock.ID, error)
 
 	// MakePermanentBlockID computes the permanent ID of a block
 	// given its encoded and encrypted contents.
-	MakePermanentBlockID(encodedEncryptedData []byte) (BlockID, error)
+	MakePermanentBlockID(encodedEncryptedData []byte) (kbfsblock.ID, error)
 
 	// VerifyBlockID verifies that the given block ID is the
 	// permanent block ID for the given encoded and encrypted
 	// data.
-	VerifyBlockID(encodedEncryptedData []byte, id BlockID) error
+	VerifyBlockID(encodedEncryptedData []byte, id kbfsblock.ID) error
 
 	// MakeRefNonce generates a block reference nonce using a
 	// CSPRNG. This is used for distinguishing different references to
-	// the same BlockID.
+	// the same kbfsblock.ID.
 	MakeBlockRefNonce() (BlockRefNonce, error)
 
 	// MakeRandomTLFEphemeralKeys generates ephemeral keys using a
@@ -976,7 +976,7 @@ type MDOps interface {
 	// are still in the local journal.  It also appends the given MD
 	// to the journal.
 	ResolveBranch(ctx context.Context, id tlf.ID, bid BranchID,
-		blocksToDelete []BlockID, rmd *RootMetadata) (MdID, error)
+		blocksToDelete []kbfsblock.ID, rmd *RootMetadata) (MdID, error)
 
 	// GetLatestHandleForTLF returns the server's idea of the latest handle for the TLF,
 	// which may not yet be reflected in the MD if the TLF hasn't been rekeyed since it
@@ -1023,13 +1023,13 @@ type BlockOps interface {
 	// of block puts in parallel for every write. Ready() must
 	// guarantee that plainSize <= readyBlockData.QuotaSize().
 	Ready(ctx context.Context, kmd KeyMetadata, block Block) (
-		id BlockID, plainSize int, readyBlockData ReadyBlockData, err error)
+		id kbfsblock.ID, plainSize int, readyBlockData ReadyBlockData, err error)
 
 	// Delete instructs the server to delete the given block references.
 	// It returns the number of not-yet deleted references to
 	// each block reference
 	Delete(ctx context.Context, tlfID tlf.ID, ptrs []BlockPointer) (
-		liveCounts map[BlockID]int, err error)
+		liveCounts map[kbfsblock.ID]int, err error)
 
 	// Archive instructs the server to mark the given block references
 	// as "archived"; that is, they are not being used in the current
@@ -1178,7 +1178,7 @@ type BlockServer interface {
 	// the block, and fills in the provided block object with its
 	// contents, if the logged-in user has read permission for that
 	// block.
-	Get(ctx context.Context, tlfID tlf.ID, id BlockID, context BlockContext) (
+	Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) (
 		[]byte, kbfscrypto.BlockCryptKeyServerHalf, error)
 	// Put stores the (encrypted) block data under the given ID and
 	// context on the server, along with the server half of the block
@@ -1193,7 +1193,7 @@ type BlockServer interface {
 	// If this returns a BServerErrorOverQuota, with Throttled=false,
 	// the caller can treat it as informational and otherwise ignore
 	// the error.
-	Put(ctx context.Context, tlfID tlf.ID, id BlockID, context BlockContext,
+	Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext,
 		buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) error
 
 	// AddBlockReference adds a new reference to the given block,
@@ -1211,7 +1211,7 @@ type BlockServer interface {
 	// If this returns a BServerErrorOverQuota, with Throttled=false,
 	// the caller can treat it as informational and otherwise ignore
 	// the error.
-	AddBlockReference(ctx context.Context, tlfID tlf.ID, id BlockID,
+	AddBlockReference(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
 		context BlockContext) error
 	// RemoveBlockReferences removes the references to the given block
 	// ID defined by the given contexts.  If no references to the block
@@ -1221,7 +1221,7 @@ type BlockServer interface {
 	// It returns the number of remaining not-yet-deleted references after this
 	// reference has been removed
 	RemoveBlockReferences(ctx context.Context, tlfID tlf.ID,
-		contexts map[BlockID][]BlockContext) (liveCounts map[BlockID]int, err error)
+		contexts map[kbfsblock.ID][]BlockContext) (liveCounts map[kbfsblock.ID]int, err error)
 
 	// ArchiveBlockReferences marks the given block references as
 	// "archived"; that is, they are not being used in the current
@@ -1233,11 +1233,11 @@ type BlockServer interface {
 	// any of the other fields of the context differ from previous
 	// calls with the same ID/refnonce pair.
 	ArchiveBlockReferences(ctx context.Context, tlfID tlf.ID,
-		contexts map[BlockID][]BlockContext) error
+		contexts map[kbfsblock.ID][]BlockContext) error
 
 	// IsUnflushed returns whether a given block is being queued
 	// locally for later flushing to another block server.
-	IsUnflushed(ctx context.Context, tlfID tlf.ID, id BlockID) (bool, error)
+	IsUnflushed(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID) (bool, error)
 
 	// Shutdown is called to shutdown a BlockServer connection.
 	Shutdown()
@@ -1253,7 +1253,7 @@ type blockServerLocal interface {
 	// getAllRefsForTest returns all the known block references
 	// for the given TLF, and should only be used during testing.
 	getAllRefsForTest(ctx context.Context, tlfID tlf.ID) (
-		map[BlockID]blockRefMap, error)
+		map[kbfsblock.ID]blockRefMap, error)
 }
 
 // BlockSplitter decides when a file or directory block needs to be split

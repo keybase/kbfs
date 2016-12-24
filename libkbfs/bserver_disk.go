@@ -121,7 +121,7 @@ func (b *BlockServerDisk) getStorage(tlfID tlf.ID) (
 }
 
 // Get implements the BlockServer interface for BlockServerDisk.
-func (b *BlockServerDisk) Get(ctx context.Context, tlfID tlf.ID, id BlockID,
+func (b *BlockServerDisk) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
 	context BlockContext) (
 	data []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	defer func() {
@@ -150,7 +150,7 @@ func (b *BlockServerDisk) Get(ctx context.Context, tlfID tlf.ID, id BlockID,
 }
 
 // Put implements the BlockServer interface for BlockServerDisk.
-func (b *BlockServerDisk) Put(ctx context.Context, tlfID tlf.ID, id BlockID,
+func (b *BlockServerDisk) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
 	context BlockContext, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
 	defer func() {
@@ -184,7 +184,7 @@ func (b *BlockServerDisk) Put(ctx context.Context, tlfID tlf.ID, id BlockID,
 
 // AddBlockReference implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID tlf.ID,
-	id BlockID, context BlockContext) error {
+	id kbfsblock.ID, context BlockContext) error {
 	b.log.CDebugf(ctx, "BlockServerDisk.AddBlockReference id=%s "+
 		"tlfID=%s context=%s", id, tlfID, context)
 	tlfStorage, err := b.getStorage(tlfID)
@@ -222,8 +222,8 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 // RemoveBlockReferences implements the BlockServer interface for
 // BlockServerDisk.
 func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[BlockID][]BlockContext) (
-	liveCounts map[BlockID]int, err error) {
+	tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (
+	liveCounts map[kbfsblock.ID]int, err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
 	}()
@@ -240,7 +240,7 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 		return nil, errBlockServerDiskShutdown
 	}
 
-	liveCounts = make(map[BlockID]int)
+	liveCounts = make(map[kbfsblock.ID]int)
 	for id, idContexts := range contexts {
 		liveCount, err := tlfStorage.store.removeReferences(
 			id, idContexts, "")
@@ -263,7 +263,7 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerDisk.
 func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[BlockID][]BlockContext) (err error) {
+	tlfID tlf.ID, contexts map[kbfsblock.ID][]BlockContext) (err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
 	}()
@@ -303,7 +303,7 @@ func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
 // getAllRefsForTest implements the blockServerLocal interface for
 // BlockServerDisk.
 func (b *BlockServerDisk) getAllRefsForTest(ctx context.Context, tlfID tlf.ID) (
-	map[BlockID]blockRefMap, error) {
+	map[kbfsblock.ID]blockRefMap, error) {
 	tlfStorage, err := b.getStorage(tlfID)
 	if err != nil {
 		return nil, err
@@ -320,7 +320,7 @@ func (b *BlockServerDisk) getAllRefsForTest(ctx context.Context, tlfID tlf.ID) (
 
 // IsUnflushed implements the BlockServer interface for BlockServerDisk.
 func (b *BlockServerDisk) IsUnflushed(ctx context.Context, tlfID tlf.ID,
-	_ BlockID) (bool, error) {
+	_ kbfsblock.ID) (bool, error) {
 	tlfStorage, err := b.getStorage(tlfID)
 	if err != nil {
 		return false, err

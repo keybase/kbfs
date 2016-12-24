@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
@@ -42,11 +43,11 @@ func (b *BlockOpsStandard) Get(ctx context.Context, kmd KeyMetadata,
 
 // Ready implements the BlockOps interface for BlockOpsStandard.
 func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
-	block Block) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
+	block Block) (id kbfsblock.ID, plainSize int, readyBlockData ReadyBlockData,
 	err error) {
 	defer func() {
 		if err != nil {
-			id = BlockID{}
+			id = kbfsblock.ID{}
 			plainSize = 0
 			readyBlockData = ReadyBlockData{}
 		}
@@ -108,8 +109,8 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
 
 // Delete implements the BlockOps interface for BlockOpsStandard.
 func (b *BlockOpsStandard) Delete(ctx context.Context, tlfID tlf.ID,
-	ptrs []BlockPointer) (liveCounts map[BlockID]int, err error) {
-	contexts := make(map[BlockID][]BlockContext)
+	ptrs []BlockPointer) (liveCounts map[kbfsblock.ID]int, err error) {
+	contexts := make(map[kbfsblock.ID][]BlockContext)
 	for _, ptr := range ptrs {
 		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.BlockContext)
 	}
@@ -119,7 +120,7 @@ func (b *BlockOpsStandard) Delete(ctx context.Context, tlfID tlf.ID,
 // Archive implements the BlockOps interface for BlockOpsStandard.
 func (b *BlockOpsStandard) Archive(ctx context.Context, tlfID tlf.ID,
 	ptrs []BlockPointer) error {
-	contexts := make(map[BlockID][]BlockContext)
+	contexts := make(map[kbfsblock.ID][]BlockContext)
 	for _, ptr := range ptrs {
 		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.BlockContext)
 	}

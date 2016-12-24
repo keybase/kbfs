@@ -13,6 +13,7 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 )
@@ -27,7 +28,7 @@ func TestCryptoCommonRandomBlockID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if b1 == (BlockID{}) {
+	if b1 == (kbfsblock.ID{}) {
 		t.Errorf("zero BlockID (b1)")
 	}
 
@@ -36,7 +37,7 @@ func TestCryptoCommonRandomBlockID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if b2 == (BlockID{}) {
+	if b2 == (kbfsblock.ID{}) {
 		t.Errorf("zero BlockID (b2)")
 	}
 

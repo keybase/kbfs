@@ -37,20 +37,6 @@ const (
 	TempdirServerAddr = "tempdir"
 )
 
-// RandomBlockID returns a randomly-generated BlockID for testing.
-func RandomBlockID() BlockID {
-	var dh kbfshash.RawDefaultHash
-	err := kbfscrypto.RandRead(dh[:])
-	if err != nil {
-		panic(err)
-	}
-	h, err := kbfshash.HashFromRaw(kbfshash.DefaultHashType, dh[:])
-	if err != nil {
-		panic(err)
-	}
-	return BlockID{h}
-}
-
 func fakeMdID(b byte) MdID {
 	dh := kbfshash.RawDefaultHash{b}
 	h, err := kbfshash.HashFromRaw(kbfshash.DefaultHashType, dh[:])

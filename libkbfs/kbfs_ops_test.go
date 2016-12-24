@@ -34,7 +34,7 @@ type CheckBlockOps struct {
 var _ BlockOps = (*CheckBlockOps)(nil)
 
 func (cbo *CheckBlockOps) Ready(ctx context.Context, kmd KeyMetadata,
-	block Block) (id BlockID, plainSize int, readyBlockData ReadyBlockData,
+	block Block) (id kbfsblock.ID, plainSize int, readyBlockData ReadyBlockData,
 	err error) {
 	id, plainSize, readyBlockData, err = cbo.BlockOps.Ready(ctx, kmd, block)
 	encodedSize := readyBlockData.GetEncodedSize()
@@ -208,7 +208,7 @@ func kbfsTestShutdownNoMocksNoCheck(t *testing.T, config *ConfigLocal,
 }
 
 func checkBlockCache(t *testing.T, config *ConfigMock, id tlf.ID,
-	expectedCleanBlocks []BlockID,
+	expectedCleanBlocks []kbfsblock.ID,
 	expectedDirtyBlocks map[BlockPointer]BranchName) {
 	bcache := config.BlockCache().(*BlockCacheStandard)
 	// make sure the LRU consists of exactly the right set of clean blocks
@@ -363,7 +363,7 @@ func TestKBFSOpsGetRootNodeCacheSuccess(t *testing.T) {
 	defer kbfsTestShutdown(mockCtrl, config, ctx, cancel)
 
 	_, id, rmd := injectNewRMD(t, config)
-	rmd.data.Dir.BlockPointer.ID = fakeBlockID(1)
+	rmd.data.Dir.BlockPointer.ID = kbfsblock.FakeID(1)
 	rmd.data.Dir.Type = Dir
 
 	ops := getOps(config, id)
@@ -392,7 +392,7 @@ func TestKBFSOpsGetRootNodeReIdentify(t *testing.T) {
 	defer kbfsTestShutdown(mockCtrl, config, ctx, cancel)
 
 	_, id, rmd := injectNewRMD(t, config)
-	rmd.data.Dir.BlockPointer.ID = fakeBlockID(1)
+	rmd.data.Dir.BlockPointer.ID = kbfsblock.FakeID(1)
 	rmd.data.Dir.Type = Dir
 
 	ops := getOps(config, id)
@@ -452,7 +452,7 @@ func TestKBFSOpsGetRootNodeCacheIdentifyFail(t *testing.T) {
 
 	_, id, rmd := injectNewRMD(t, config)
 
-	rmd.data.Dir.BlockPointer.ID = fakeBlockID(1)
+	rmd.data.Dir.BlockPointer.ID = kbfsblock.FakeID(1)
 	rmd.data.Dir.Type = Dir
 
 	ops := getOps(config, id)
@@ -508,7 +508,7 @@ func fillInNewMD(t *testing.T, config *ConfigMock, rmd *RootMetadata) {
 		rmd.fakeInitialRekey(config.Codec(), config.Crypto())
 	}
 	rootPtr := BlockPointer{
-		ID:      fakeBlockID(42),
+		ID:      kbfsblock.FakeID(42),
 		KeyGen:  1,
 		DataVer: 1,
 	}
@@ -570,7 +570,7 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 	rmd.data.Dir = DirEntry{
 		BlockInfo: BlockInfo{
 			BlockPointer: BlockPointer{
-				ID: fakeBlockID(1),
+				ID: kbfsblock.FakeID(1),
 			},
 			EncodedSize: 15,
 		},
@@ -617,7 +617,7 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 // the helper functions below, but all the callers would have to go
 // md.ReadOnly(), which doesn't buy us much in tests.
 
-func makeBP(id BlockID, kmd KeyMetadata, config Config,
+func makeBP(id kbfsblock.ID, kmd KeyMetadata, config Config,
 	u keybase1.UID) BlockPointer {
 	return BlockPointer{
 		ID:      id,
@@ -631,7 +631,7 @@ func makeBP(id BlockID, kmd KeyMetadata, config Config,
 	}
 }
 
-func makeBI(id BlockID, kmd KeyMetadata, config Config,
+func makeBI(id kbfsblock.ID, kmd KeyMetadata, config Config,
 	u keybase1.UID, encodedSize uint32) BlockInfo {
 	return BlockInfo{
 		BlockPointer: makeBP(id, kmd, config, u),
@@ -639,7 +639,7 @@ func makeBI(id BlockID, kmd KeyMetadata, config Config,
 	}
 }
 
-func makeIFP(id BlockID, kmd KeyMetadata, config Config,
+func makeIFP(id kbfsblock.ID, kmd KeyMetadata, config Config,
 	u keybase1.UID, encodedSize uint32, off int64) IndirectFilePtr {
 	return IndirectFilePtr{
 		BlockInfo{
@@ -652,7 +652,7 @@ func makeIFP(id BlockID, kmd KeyMetadata, config Config,
 	}
 }
 
-func makeBIFromID(id BlockID, user keybase1.UID) BlockInfo {
+func makeBIFromID(id kbfsblock.ID, user keybase1.UID) BlockInfo {
 	return BlockInfo{
 		BlockPointer: BlockPointer{
 			ID: id, KeyGen: 1, DataVer: 1,
@@ -691,7 +691,7 @@ func TestKBFSOpsGetBaseDirChildrenCacheSuccess(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["a"] = DirEntry{EntryInfo: EntryInfo{Type: File}}
 	dirBlock.Children["b"] = DirEntry{EntryInfo: EntryInfo{Type: Dir}}
@@ -724,7 +724,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedSuccess(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	dirBlock := NewDirBlock().(*DirBlock)
 	blockPtr := makeBP(rootID, rmd, config, u)
 	rmd.data.Dir.BlockPointer = blockPtr
@@ -759,7 +759,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailNonReader(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	node := pathNode{makeBP(rootID, rmd, config, uid), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 
@@ -782,7 +782,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailMissingBlock(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	dirBlock := NewDirBlock().(*DirBlock)
 	blockPtr := makeBP(rootID, rmd, config, u)
 	rmd.data.Dir.BlockPointer = blockPtr
@@ -814,9 +814,9 @@ func TestKBFSOpsGetNestedDirChildrenCacheSuccess(t *testing.T) {
 
 	u := h.FirstResolvedWriter()
 
-	rootID := fakeBlockID(42)
-	aID := fakeBlockID(43)
-	bID := fakeBlockID(44)
+	rootID := kbfsblock.FakeID(42)
+	aID := kbfsblock.FakeID(43)
+	bID := kbfsblock.FakeID(44)
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["a"] = DirEntry{EntryInfo: EntryInfo{Type: Exec}}
 	dirBlock.Children["b"] = DirEntry{EntryInfo: EntryInfo{Type: Sym}}
@@ -857,9 +857,9 @@ func TestKBFSOpsLookupSuccess(t *testing.T) {
 
 	u := h.FirstResolvedWriter()
 
-	rootID := fakeBlockID(42)
-	aID := fakeBlockID(43)
-	bID := fakeBlockID(44)
+	rootID := kbfsblock.FakeID(42)
+	aID := kbfsblock.FakeID(43)
+	bID := kbfsblock.FakeID(44)
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["b"] = DirEntry{
 		BlockInfo: makeBIFromID(bID, u),
@@ -900,9 +900,9 @@ func TestKBFSOpsLookupSymlinkSuccess(t *testing.T) {
 	ops.head = makeImmutableRMDForTest(t, config, rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
-	rootID := fakeBlockID(42)
-	aID := fakeBlockID(43)
-	bID := fakeBlockID(44)
+	rootID := kbfsblock.FakeID(42)
+	aID := kbfsblock.FakeID(43)
+	bID := kbfsblock.FakeID(44)
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["b"] = DirEntry{
 		BlockInfo: makeBIFromID(bID, u),
@@ -939,9 +939,9 @@ func TestKBFSOpsLookupNoSuchNameFail(t *testing.T) {
 	ops.head = makeImmutableRMDForTest(t, config, rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
-	rootID := fakeBlockID(42)
-	aID := fakeBlockID(43)
-	bID := fakeBlockID(44)
+	rootID := kbfsblock.FakeID(42)
+	aID := kbfsblock.FakeID(43)
+	bID := kbfsblock.FakeID(44)
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["b"] = DirEntry{
 		BlockInfo: makeBIFromID(bID, u),
@@ -975,9 +975,9 @@ func TestKBFSOpsLookupNewDataVersionFail(t *testing.T) {
 	ops.head = makeImmutableRMDForTest(t, config, rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
-	rootID := fakeBlockID(42)
-	aID := fakeBlockID(43)
-	bID := fakeBlockID(44)
+	rootID := kbfsblock.FakeID(42)
+	aID := kbfsblock.FakeID(43)
+	bID := kbfsblock.FakeID(44)
 	dirBlock := NewDirBlock().(*DirBlock)
 	bInfo := makeBIFromID(bID, u)
 	bInfo.DataVer = 10
@@ -1017,9 +1017,9 @@ func TestKBFSOpsStatSuccess(t *testing.T) {
 	ops.head = makeImmutableRMDForTest(t, config, rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
-	rootID := fakeBlockID(42)
-	aID := fakeBlockID(43)
-	bID := fakeBlockID(44)
+	rootID := kbfsblock.FakeID(42)
+	aID := kbfsblock.FakeID(43)
+	bID := kbfsblock.FakeID(44)
 	dirBlock := NewDirBlock().(*DirBlock)
 	dirBlock.Children["b"] = DirEntry{
 		BlockInfo: makeBIFromID(bID, u),
@@ -1093,7 +1093,7 @@ func expectSyncBlockHelper(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
 	uid keybase1.UID, id tlf.ID, name string, p path, kmd KeyMetadata,
 	newEntry bool, skipSync int, refBytes uint64, unrefBytes uint64,
-	newRmd *ImmutableRootMetadata, newBlockIDs []BlockID, isUnmerged bool) (
+	newRmd *ImmutableRootMetadata, newBlockIDs []kbfsblock.ID, isUnmerged bool) (
 	path, *gomock.Call) {
 	// construct new path
 	newPath := path{
@@ -1118,7 +1118,7 @@ func expectSyncBlockHelper(
 
 	lastID := p.tailPointer().ID
 	for i := len(newPath.path) - 1; i >= skipSync; i-- {
-		newID := fakeBlockIDMul(lastID, 2)
+		newID := kbfsblock.FakeIDMul(lastID, 2)
 		newBuf := []byte{byte(i)}
 		refBytes += uint64(len(newBuf))
 		lastID = newID
@@ -1175,7 +1175,7 @@ func expectSyncBlock(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
 	uid keybase1.UID, id tlf.ID, name string, p path, kmd KeyMetadata,
 	newEntry bool, skipSync int, refBytes uint64, unrefBytes uint64,
-	newRmd *ImmutableRootMetadata, newBlockIDs []BlockID) (path, *gomock.Call) {
+	newRmd *ImmutableRootMetadata, newBlockIDs []kbfsblock.ID) (path, *gomock.Call) {
 	return expectSyncBlockHelper(t, config, lastCall, uid, id, name, p, kmd,
 		newEntry, skipSync, refBytes, unrefBytes, newRmd, newBlockIDs, false)
 }
@@ -1184,7 +1184,7 @@ func expectSyncBlockUnmerged(
 	t *testing.T, config *ConfigMock, lastCall *gomock.Call,
 	uid keybase1.UID, id tlf.ID, name string, p path, kmd KeyMetadata,
 	newEntry bool, skipSync int, refBytes uint64, unrefBytes uint64,
-	newRmd *ImmutableRootMetadata, newBlockIDs []BlockID) (path, *gomock.Call) {
+	newRmd *ImmutableRootMetadata, newBlockIDs []kbfsblock.ID) (path, *gomock.Call) {
 	return expectSyncBlockHelper(t, config, lastCall, uid, id, name, p, kmd,
 		newEntry, skipSync, refBytes, unrefBytes, newRmd, newBlockIDs, true)
 }
@@ -1224,7 +1224,7 @@ func getFileBlockFromCache(t *testing.T, config Config, id tlf.ID,
 }
 
 func checkNewPath(t *testing.T, ctx context.Context, config Config,
-	newPath path, expectedPath path, rmd ReadOnlyRootMetadata, blocks []BlockID,
+	newPath path, expectedPath path, rmd ReadOnlyRootMetadata, blocks []kbfsblock.ID,
 	entryType EntryType, newName string, rename bool) {
 	// TODO: check that the observer updates match the expectedPath as
 	// well (but need to handle the rename case where there can be
@@ -1362,10 +1362,10 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
 	rmd.data.Dir.Type = Dir
-	aID := fakeBlockID(43)
+	aID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -1385,7 +1385,7 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 3)
+	blocks := make([]kbfsblock.ID, 3)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "b", p, rmd,
 			entryType != Sym, 0, 0, 0, &newRmd, blocks)
@@ -1476,8 +1476,8 @@ func testCreateEntryFailDupName(t *testing.T, isDir bool) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	aID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	aID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, u),
@@ -1522,7 +1522,7 @@ func testCreateEntryFailNameTooLong(t *testing.T, isDir bool) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rootBlock := NewDirBlock().(*DirBlock)
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
@@ -1563,7 +1563,7 @@ func testCreateEntryFailDirTooBig(t *testing.T, isDir bool) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rootBlock := NewDirBlock().(*DirBlock)
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
@@ -1604,8 +1604,8 @@ func testCreateEntryFailKBFSPrefix(t *testing.T, et EntryType) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	aID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	aID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, u),
@@ -1667,8 +1667,8 @@ func TestCreateLinkFailKBFSPrefix(t *testing.T) {
 func makeDirTree(id tlf.ID, uid keybase1.UID, components ...string) (
 	DirEntry, path, []*DirBlock) {
 	var idCounter byte = 0x10
-	makeBlockID := func() BlockID {
-		id := fakeBlockID(idCounter)
+	makeBlockID := func() kbfsblock.ID {
+		id := kbfsblock.FakeID(idCounter)
 		idCounter++
 		return id
 	}
@@ -1714,7 +1714,7 @@ func makeFile(dir path, parentDirBlock *DirBlock, name string, et EntryType) (
 	if et != File && et != Exec {
 		panic(fmt.Sprintf("Unexpected type %s", et))
 	}
-	bid := fakeBlockIDAdd(dir.tailPointer().ID, 1)
+	bid := kbfsblock.FakeIDAdd(dir.tailPointer().ID, 1)
 	bi := makeBIFromID(bid, dir.tailPointer().Creator)
 
 	parentDirBlock.Children[name] = DirEntry{
@@ -1730,7 +1730,7 @@ func makeFile(dir path, parentDirBlock *DirBlock, name string, et EntryType) (
 
 func makeDir(dir path, parentDirBlock *DirBlock, name string) (
 	path, *DirBlock) {
-	bid := fakeBlockIDAdd(dir.tailPointer().ID, 1)
+	bid := kbfsblock.FakeIDAdd(dir.tailPointer().ID, 1)
 	bi := makeBIFromID(bid, dir.tailPointer().Creator)
 
 	parentDirBlock.Children[name] = DirEntry{
@@ -1806,7 +1806,7 @@ func testKBFSOpsRemoveFileSuccess(t *testing.T, et EntryType) {
 
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blockIDs := make([]BlockID, len(dirPath.path))
+	blockIDs := make([]kbfsblock.ID, len(dirPath.path))
 	// a block of size 1 is being unreferenced
 	var unrefBytes uint64 = 1
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
@@ -1864,7 +1864,7 @@ func TestKBFSOpsRemoveDirSuccess(t *testing.T) {
 
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blockIDs := make([]BlockID, len(dirPath.path))
+	blockIDs := make([]kbfsblock.ID, len(dirPath.path))
 	// a block of size 1 is being unreferenced
 	var unrefBytes uint64 = 1
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
@@ -1916,7 +1916,7 @@ func TestKBFSOpsRemoveSymSuccess(t *testing.T) {
 
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blockIDs := make([]BlockID, len(dirPath.path))
+	blockIDs := make([]kbfsblock.ID, len(dirPath.path))
 	// No block is being referenced.
 	var unrefBytes uint64
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
@@ -1961,7 +1961,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 
 	entryName := "multiBlockFile"
 	lastBID := dirPath.tailPointer().ID
-	fileBID := fakeBlockIDAdd(lastBID, 1)
+	fileBID := kbfsblock.FakeIDAdd(lastBID, 1)
 	fileBI := makeBIFromID(fileBID, dirPath.tailPointer().Creator)
 
 	parentDirBlock.Children[entryName] = DirEntry{
@@ -1973,10 +1973,10 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 
 	// TODO: Write a helper function for making a file with
 	// indirect blocks and use it in other tests.
-	bid1 := fakeBlockIDAdd(lastBID, 2)
-	bid2 := fakeBlockIDAdd(lastBID, 3)
-	bid3 := fakeBlockIDAdd(lastBID, 4)
-	bid4 := fakeBlockIDAdd(lastBID, 5)
+	bid1 := kbfsblock.FakeIDAdd(lastBID, 2)
+	bid2 := kbfsblock.FakeIDAdd(lastBID, 3)
+	bid3 := kbfsblock.FakeIDAdd(lastBID, 4)
+	bid4 := kbfsblock.FakeIDAdd(lastBID, 5)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
@@ -2006,7 +2006,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 	testPutBlockInCache(t, config, fileBlock.IPtrs[3].BlockPointer, id, block4)
 
 	// sync block
-	blockIDs := make([]BlockID, len(dirPath.path))
+	blockIDs := make([]kbfsblock.ID, len(dirPath.path))
 	unrefBytes := uint64(1 + 4*5) // fileBlock + 4 indirect blocks
 	var newRmd ImmutableRootMetadata
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
@@ -2099,7 +2099,7 @@ func testKBFSOpsRemoveFileMissingBlockSuccess(t *testing.T, et EntryType) {
 
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blockIDs := make([]BlockID, len(dirPath.path))
+	blockIDs := make([]kbfsblock.ID, len(dirPath.path))
 	// a block of size 1 is being unreferenced
 	var unrefBytes uint64 = 1
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
@@ -2160,7 +2160,7 @@ func TestKBFSOpsRemoveDirMissingBlock(t *testing.T) {
 
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blockIDs := make([]BlockID, len(dirPath.path))
+	blockIDs := make([]kbfsblock.ID, len(dirPath.path))
 	// a block of size 1 is being unreferenced
 	var unrefBytes uint64 = 1
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
@@ -2215,10 +2215,10 @@ func TestRenameInDirSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(41)
+	rootID := kbfsblock.FakeID(41)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(42)
-	bID := fakeBlockID(43)
+	aID := kbfsblock.FakeID(42)
+	bID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -2244,7 +2244,7 @@ func TestRenameInDirSuccess(t *testing.T) {
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 3)
+	blocks := make([]kbfsblock.ID, 3)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false,
 			0, 0, 0, &newRmd, blocks)
@@ -2298,11 +2298,11 @@ func TestRenameInDirOverEntrySuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(41)
+	rootID := kbfsblock.FakeID(41)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(42)
-	bID := fakeBlockID(43)
-	cID := fakeBlockID(44)
+	aID := kbfsblock.FakeID(42)
+	bID := kbfsblock.FakeID(43)
+	cID := kbfsblock.FakeID(44)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -2337,7 +2337,7 @@ func TestRenameInDirOverEntrySuccess(t *testing.T) {
 	testPutBlockInCache(t, config, cNode.BlockPointer, id, cBlock)
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 3)
+	blocks := make([]kbfsblock.ID, 3)
 	unrefBytes := uint64(1)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false,
@@ -2392,9 +2392,9 @@ func TestRenameInRootSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(41)
+	rootID := kbfsblock.FakeID(41)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(42)
+	aID := kbfsblock.FakeID(42)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -2411,7 +2411,7 @@ func TestRenameInRootSuccess(t *testing.T) {
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]kbfsblock.ID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false,
 			0, 0, 0, &newRmd, blocks)
@@ -2463,10 +2463,10 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(41)
+	rootID := kbfsblock.FakeID(41)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(42)
-	bID := fakeBlockID(43)
+	aID := kbfsblock.FakeID(42)
+	bID := kbfsblock.FakeID(43)
 	rmd.data.Dir.ID = rootID
 	rmd.data.Dir.Type = Dir
 	rootBlock := NewDirBlock().(*DirBlock)
@@ -2489,7 +2489,7 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 	ops := getOps(config, id)
 	n1 := nodeFromPath(t, ops, p1)
 
-	dID := fakeBlockID(40)
+	dID := kbfsblock.FakeID(40)
 	rootBlock.Children["d"] = DirEntry{
 		BlockInfo: makeBIFromID(dID, uid),
 		EntryInfo: EntryInfo{
@@ -2508,11 +2508,11 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blocks1 := make([]BlockID, 2)
+	blocks1 := make([]kbfsblock.ID, 2)
 	expectedPath1, lastCall :=
 		expectSyncBlock(t, config, nil, uid, id, "", p1, rmd, false,
 			1, 0, 0, nil, blocks1)
-	blocks2 := make([]BlockID, 3)
+	blocks2 := make([]kbfsblock.ID, 3)
 	refBytes := uint64(1)   // need to include directory "a"
 	unrefBytes := uint64(1) // need to include directory "a"
 	expectedPath2, _ :=
@@ -2530,7 +2530,7 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 
 	// fix up blocks1 -- the first partial sync stops at aBlock, and
 	// checkNewPath expects {rootBlock, aBlock}
-	blocks1 = []BlockID{blocks2[0], blocks1[0]}
+	blocks1 = []kbfsblock.ID{blocks2[0], blocks1[0]}
 	checkNewPath(t, ctx, config, newP1, expectedPath1, newRmd.ReadOnly(), blocks1,
 		File, "", true)
 	checkNewPath(t, ctx, config, newP2, expectedPath2, newRmd.ReadOnly(), blocks2,
@@ -2577,11 +2577,11 @@ func TestRenameAcrossPrefixSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(41)
+	rootID := kbfsblock.FakeID(41)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(42)
-	bID := fakeBlockID(43)
-	dID := fakeBlockID(40)
+	aID := kbfsblock.FakeID(42)
+	bID := kbfsblock.FakeID(43)
+	dID := kbfsblock.FakeID(40)
 	rmd.data.Dir.ID = rootID
 	rmd.data.Dir.Type = Dir
 	rootBlock := NewDirBlock().(*DirBlock)
@@ -2622,7 +2622,7 @@ func TestRenameAcrossPrefixSuccess(t *testing.T) {
 
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 4)
+	blocks := make([]kbfsblock.ID, 4)
 	expectedPath2, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p2, rmd, false,
 			0, 0, 0, &newRmd, blocks)
@@ -2676,11 +2676,11 @@ func TestRenameAcrossOtherPrefixSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(41)
+	rootID := kbfsblock.FakeID(41)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(42)
-	bID := fakeBlockID(43)
-	dID := fakeBlockID(40)
+	aID := kbfsblock.FakeID(42)
+	bID := kbfsblock.FakeID(43)
+	dID := kbfsblock.FakeID(40)
 	rmd.data.Dir.ID = rootID
 	rmd.data.Dir.Type = Dir
 	rootBlock := NewDirBlock().(*DirBlock)
@@ -2720,11 +2720,11 @@ func TestRenameAcrossOtherPrefixSuccess(t *testing.T) {
 
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blocks1 := make([]BlockID, 3)
+	blocks1 := make([]kbfsblock.ID, 3)
 	expectedPath1, lastCall :=
 		expectSyncBlock(t, config, nil, uid, id, "", p1, rmd, false,
 			2, 0, 0, &newRmd, blocks1)
-	blocks2 := make([]BlockID, 3)
+	blocks2 := make([]kbfsblock.ID, 3)
 	refBytes := uint64(1)   // need to include directory "d"
 	unrefBytes := uint64(1) // need to include directory "d"
 	expectedPath2, _ :=
@@ -2796,16 +2796,16 @@ func TestRenameFailAcrossTopLevelFolders(t *testing.T) {
 	uid1 := h2.ResolvedWriters()[0]
 	uid2 := h2.ResolvedWriters()[2]
 
-	rootID1 := fakeBlockID(41)
-	aID1 := fakeBlockID(42)
+	rootID1 := kbfsblock.FakeID(41)
+	aID1 := kbfsblock.FakeID(42)
 	node1 := pathNode{makeBP(rootID1, rmd1, config, uid1), "p"}
 	aNode1 := pathNode{makeBP(aID1, rmd1, config, uid1), "a"}
 	p1 := path{FolderBranch{Tlf: id1}, []pathNode{node1, aNode1}}
 	ops1 := getOps(config, id1)
 	n1 := nodeFromPath(t, ops1, p1)
 
-	rootID2 := fakeBlockID(38)
-	aID2 := fakeBlockID(39)
+	rootID2 := kbfsblock.FakeID(38)
+	aID2 := kbfsblock.FakeID(39)
 	node2 := pathNode{makeBP(rootID2, rmd2, config, uid2), "p"}
 	aNode2 := pathNode{makeBP(aID2, rmd2, config, uid2), "a"}
 	p2 := path{FolderBranch{Tlf: id2}, []pathNode{node2, aNode2}}
@@ -2831,8 +2831,8 @@ func TestRenameFailAcrossBranches(t *testing.T) {
 	require.NoError(t, err)
 
 	uid1 := h1.FirstResolvedWriter()
-	rootID1 := fakeBlockID(41)
-	aID1 := fakeBlockID(42)
+	rootID1 := kbfsblock.FakeID(41)
+	aID1 := kbfsblock.FakeID(42)
 	node1 := pathNode{makeBP(rootID1, rmd1, config, uid1), "p"}
 	aNode1 := pathNode{makeBP(aID1, rmd1, config, uid1), "a"}
 	p1 := path{FolderBranch{Tlf: id1}, []pathNode{node1, aNode1}}
@@ -2857,8 +2857,8 @@ func TestKBFSOpsCacheReadFullSuccess(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -2886,8 +2886,8 @@ func TestKBFSOpsCacheReadPartialSuccess(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -2914,12 +2914,12 @@ func TestKBFSOpsCacheReadFullMultiBlockSuccess(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
-	id1 := fakeBlockID(44)
-	id2 := fakeBlockID(45)
-	id3 := fakeBlockID(46)
-	id4 := fakeBlockID(47)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
+	id1 := kbfsblock.FakeID(44)
+	id2 := kbfsblock.FakeID(45)
+	id3 := kbfsblock.FakeID(46)
+	id4 := kbfsblock.FakeID(47)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
@@ -2968,12 +2968,12 @@ func TestKBFSOpsCacheReadPartialMultiBlockSuccess(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
-	id1 := fakeBlockID(44)
-	id2 := fakeBlockID(45)
-	id3 := fakeBlockID(46)
-	id4 := fakeBlockID(47)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
+	id1 := kbfsblock.FakeID(44)
+	id2 := kbfsblock.FakeID(45)
+	id3 := kbfsblock.FakeID(46)
+	id4 := kbfsblock.FakeID(47)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.IsInd = true
 	fileBlock.IPtrs = []IndirectFilePtr{
@@ -3020,8 +3020,8 @@ func TestKBFSOpsCacheReadFailPastEnd(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -3046,8 +3046,8 @@ func TestKBFSOpsServerReadFullSuccess(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -3077,8 +3077,8 @@ func TestKBFSOpsServerReadFailNoSuchBlock(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	fileBlock := NewFileBlock().(*FileBlock)
 	fileBlock.Contents = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
@@ -3148,8 +3148,8 @@ func TestKBFSOpsWriteNewBlockSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
@@ -3204,7 +3204,7 @@ func TestKBFSOpsWriteNewBlockSuccess(t *testing.T) {
 		t.Errorf("Wrong size for written file: %d",
 			newRootBlock.Children["f"].Size)
 	}
-	checkBlockCache(t, config, id, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, id, []kbfsblock.ID{rootID, fileID},
 		map[BlockPointer]BranchName{
 			fileNode.BlockPointer: p.Branch,
 		})
@@ -3218,8 +3218,8 @@ func TestKBFSOpsWriteExtendSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
@@ -3265,7 +3265,7 @@ func TestKBFSOpsWriteExtendSuccess(t *testing.T) {
 	} else if !bytes.Equal(expectedFullData, newFileBlock.Contents) {
 		t.Errorf("Wrote bad contents: %v", data)
 	}
-	checkBlockCache(t, config, id, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, id, []kbfsblock.ID{rootID, fileID},
 		map[BlockPointer]BranchName{
 			fileNode.BlockPointer: p.Branch,
 		})
@@ -3279,8 +3279,8 @@ func TestKBFSOpsWritePastEndSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
@@ -3326,7 +3326,7 @@ func TestKBFSOpsWritePastEndSuccess(t *testing.T) {
 	} else if !bytes.Equal(expectedFullData, newFileBlock.Contents) {
 		t.Errorf("Wrote bad contents: %v", data)
 	}
-	checkBlockCache(t, config, id, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, id, []kbfsblock.ID{rootID, fileID},
 		map[BlockPointer]BranchName{
 			fileNode.BlockPointer: p.Branch,
 		})
@@ -3340,8 +3340,8 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
@@ -3372,8 +3372,8 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 			block.Contents = append([]byte{0}, data[0:5]...)
 		}).Return(int64(5))
 
-	id1 := fakeBlockID(44)
-	id2 := fakeBlockID(45)
+	id1 := kbfsblock.FakeID(44)
+	id2 := kbfsblock.FakeID(45)
 	// new left block
 	config.mockCrypto.EXPECT().MakeTemporaryBlockID().Return(id1, nil)
 	// new right block
@@ -3437,7 +3437,7 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 			newRootBlock.Children["f"].Size)
 	}
 
-	checkBlockCache(t, config, id, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, id, []kbfsblock.ID{rootID, fileID},
 		map[BlockPointer]BranchName{
 			fileNode.BlockPointer:        p.Branch,
 			pblock.IPtrs[0].BlockPointer: p.Branch,
@@ -3459,10 +3459,10 @@ func TestKBFSOpsWriteOverMultipleBlocks(t *testing.T) {
 	defer kbfsTestShutdown(mockCtrl, config, ctx, cancel)
 
 	uid, id, rmd := injectNewRMD(t, config)
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
-	id1 := fakeBlockID(44)
-	id2 := fakeBlockID(45)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
+	id1 := kbfsblock.FakeID(44)
+	id2 := kbfsblock.FakeID(45)
 	rootBlock := NewDirBlock().(*DirBlock)
 	filePtr := BlockPointer{
 		ID: fileID, KeyGen: 1, DataVer: 1,
@@ -3548,7 +3548,7 @@ func TestKBFSOpsWriteOverMultipleBlocks(t *testing.T) {
 	checkSyncOpInCache(t, config.Codec(), ops, fileNode.BlockPointer,
 		[]WriteRange{{Off: 2, Len: uint64(len(data))}})
 	mergeUnrefCache(ops, lState, p, rmd)
-	checkBlockCache(t, config, id, []BlockID{rootID, fileID, id1, id2},
+	checkBlockCache(t, config, id, []kbfsblock.ID{rootID, fileID, id1, id2},
 		map[BlockPointer]BranchName{
 			fileNode.BlockPointer:           p.Branch,
 			fileBlock.IPtrs[0].BlockPointer: p.Branch,
@@ -3562,8 +3562,8 @@ func TestKBFSOpsWriteFailTooBig(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
@@ -3603,8 +3603,8 @@ func TestKBFSOpsTruncateToZeroSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
@@ -3655,7 +3655,7 @@ func TestKBFSOpsTruncateToZeroSuccess(t *testing.T) {
 		t.Errorf("Wrong size for written file: %d",
 			newRootBlock.Children["f"].Size)
 	}
-	checkBlockCache(t, config, id, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, id, []kbfsblock.ID{rootID, fileID},
 		map[BlockPointer]BranchName{
 			fileNode.BlockPointer: p.Branch,
 		})
@@ -3669,8 +3669,8 @@ func TestKBFSOpsTruncateSameSize(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: makeBIFromID(fileID, u),
@@ -3698,7 +3698,7 @@ func TestKBFSOpsTruncateSameSize(t *testing.T) {
 	} else if !bytes.Equal(data, fileBlock.Contents) {
 		t.Errorf("Wrote bad contents: %v", data)
 	}
-	checkBlockCache(t, config, id, []BlockID{rootID, fileID}, nil)
+	checkBlockCache(t, config, id, []kbfsblock.ID{rootID, fileID}, nil)
 }
 
 func TestKBFSOpsTruncateSmallerSuccess(t *testing.T) {
@@ -3707,8 +3707,8 @@ func TestKBFSOpsTruncateSmallerSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
@@ -3748,7 +3748,7 @@ func TestKBFSOpsTruncateSmallerSuccess(t *testing.T) {
 	} else if !bytes.Equal(data, newFileBlock.Contents) {
 		t.Errorf("Wrote bad contents: %v", data)
 	}
-	checkBlockCache(t, config, id, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, id, []kbfsblock.ID{rootID, fileID},
 		map[BlockPointer]BranchName{
 			fileNode.BlockPointer: p.Branch,
 		})
@@ -3762,10 +3762,10 @@ func TestKBFSOpsTruncateShortensLastBlock(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
-	id1 := fakeBlockID(44)
-	id2 := fakeBlockID(45)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
+	id1 := kbfsblock.FakeID(44)
+	id2 := kbfsblock.FakeID(45)
 	rootBlock := NewDirBlock().(*DirBlock)
 	fileInfo := makeBIFromID(fileID, uid)
 	rootBlock.Children["f"] = DirEntry{
@@ -3835,7 +3835,7 @@ func TestKBFSOpsTruncateShortensLastBlock(t *testing.T) {
 		t.Errorf("Truncated block not correctly unref'd, unrefBytes = %d",
 			rmd.UnrefBytes())
 	}
-	checkBlockCache(t, config, id, []BlockID{rootID, fileID, id1, id2},
+	checkBlockCache(t, config, id, []kbfsblock.ID{rootID, fileID, id1, id2},
 		map[BlockPointer]BranchName{
 			fileNode.BlockPointer:           p.Branch,
 			fileBlock.IPtrs[1].BlockPointer: p.Branch,
@@ -3848,10 +3848,10 @@ func TestKBFSOpsTruncateRemovesABlock(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
-	id1 := fakeBlockID(44)
-	id2 := fakeBlockID(45)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
+	id1 := kbfsblock.FakeID(44)
+	id2 := kbfsblock.FakeID(45)
 	rootBlock := NewDirBlock().(*DirBlock)
 	fileInfo := makeBIFromID(fileID, uid)
 	rootBlock.Children["f"] = DirEntry{
@@ -3916,7 +3916,7 @@ func TestKBFSOpsTruncateRemovesABlock(t *testing.T) {
 		t.Errorf("Truncated block not correctly unref'd, unrefBytes = %d",
 			rmd.UnrefBytes())
 	}
-	checkBlockCache(t, config, id, []BlockID{rootID, fileID, id1},
+	checkBlockCache(t, config, id, []kbfsblock.ID{rootID, fileID, id1},
 		map[BlockPointer]BranchName{
 			fileNode.BlockPointer:           p.Branch,
 			fileBlock.IPtrs[0].BlockPointer: p.Branch,
@@ -3929,8 +3929,8 @@ func TestKBFSOpsTruncateBiggerSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	fileID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	fileID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
@@ -3975,7 +3975,7 @@ func TestKBFSOpsTruncateBiggerSuccess(t *testing.T) {
 	} else if !bytes.Equal(data, newFileBlock.Contents) {
 		t.Errorf("Wrote bad contents: %v", data)
 	}
-	checkBlockCache(t, config, id, []BlockID{rootID, fileID},
+	checkBlockCache(t, config, id, []kbfsblock.ID{rootID, fileID},
 		map[BlockPointer]BranchName{
 			fileNode.BlockPointer: p.Branch,
 		})
@@ -3991,9 +3991,9 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(43)
+	aID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -4019,10 +4019,10 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 
 	var expectedPath path
 	var newRmd ImmutableRootMetadata
-	var blocks []BlockID
+	var blocks []kbfsblock.ID
 	if expectedChanges > 0 {
 		// sync block
-		blocks = make([]BlockID, 2)
+		blocks = make([]kbfsblock.ID, 2)
 		expectedPath, _ = expectSyncBlock(t, config, nil, uid, id, "",
 			*p.parentPath(), rmd, false, 0, 0, 0, &newRmd, blocks)
 		expectedPath.path = append(expectedPath.path, aNode)
@@ -4126,9 +4126,9 @@ func TestSetExFailNoSuchName(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(43)
+	aID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
 	aNode := pathNode{makeBP(aID, rmd, config, u), "a"}
@@ -4155,9 +4155,9 @@ func TestSetMtimeSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(43)
+	aID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -4174,7 +4174,7 @@ func TestSetMtimeSuccess(t *testing.T) {
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]kbfsblock.ID, 2)
 	expectedPath, _ := expectSyncBlock(t, config, nil, uid, id, "",
 		*p.parentPath(), rmd, false, 0, 0, 0, &newRmd, blocks)
 	expectedPath.path = append(expectedPath.path, aNode)
@@ -4220,8 +4220,8 @@ func TestSetMtimeNull(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
-	aID := fakeBlockID(43)
+	rootID := kbfsblock.FakeID(42)
+	aID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	oldMtime := time.Now().UnixNano()
 	rootBlock.Children["a"] = DirEntry{
@@ -4255,9 +4255,9 @@ func TestMtimeFailNoSuchName(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(43)
+	aID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
 	aNode := pathNode{makeBP(aID, rmd, config, u), "a"}
@@ -4301,9 +4301,9 @@ func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(43)
+	aID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -4334,7 +4334,7 @@ func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
 
 	// sync block
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]kbfsblock.ID, 2)
 	var expectedPath path
 	if isUnmerged {
 		// Turn off the conflict resolver to avoid unexpected mock
@@ -4390,9 +4390,9 @@ func TestSyncCleanSuccess(t *testing.T) {
 
 	u, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(43)
+	aID := kbfsblock.FakeID(43)
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
 	aNode := pathNode{makeBP(aID, rmd, config, u), "a"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node, aNode}}
@@ -4434,7 +4434,7 @@ func expectSyncDirtyBlock(config *ConfigMock, kmd KeyMetadata,
 	}
 	c1 := config.mockBsplit.EXPECT().CheckSplit(block).Return(splitAt)
 
-	newID := fakeBlockIDAdd(ptr.ID, 100)
+	newID := kbfsblock.FakeIDAdd(ptr.ID, 100)
 	// Ideally, we'd use the size of block.Contents at the time
 	// that Ready() is called, but GoMock isn't expressive enough
 	// for that.
@@ -4465,13 +4465,13 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	fileID := fakeBlockID(43)
-	id1 := fakeBlockID(44)
-	id2 := fakeBlockID(45)
-	id3 := fakeBlockID(46)
-	id4 := fakeBlockID(47)
+	fileID := kbfsblock.FakeID(43)
+	id1 := kbfsblock.FakeID(44)
+	id2 := kbfsblock.FakeID(45)
+	id3 := kbfsblock.FakeID(46)
+	id4 := kbfsblock.FakeID(47)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(fileID, uid),
@@ -4531,7 +4531,7 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 		(len(block4.Contents) + pad4))
 	unrefBytes := uint64(5 + 5) // blocks 1 and 3
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]kbfsblock.ID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false, 0,
 			refBytes, unrefBytes, &newRmd, blocks)
@@ -4587,10 +4587,10 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(43)
-	bID := fakeBlockID(44)
+	aID := kbfsblock.FakeID(43)
+	bID := kbfsblock.FakeID(44)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -4638,7 +4638,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 
 	// sync block (but skip the last block)
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 1)
+	blocks := make([]kbfsblock.ID, 1)
 	unrefBytes := uint64(1) // unref'd block b
 	refBytes := uint64(len(readyBlockData.buf))
 	rootP := path{FolderBranch: p.FolderBranch, path: []pathNode{p.path[0]}}
@@ -4726,13 +4726,13 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	fileID := fakeBlockID(43)
-	id1 := fakeBlockID(44)
-	id2 := fakeBlockID(45)
-	id3 := fakeBlockID(46)
-	id4 := fakeBlockID(47)
+	fileID := kbfsblock.FakeID(43)
+	id1 := kbfsblock.FakeID(44)
+	id2 := kbfsblock.FakeID(45)
+	id3 := kbfsblock.FakeID(46)
+	id4 := kbfsblock.FakeID(47)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(fileID, uid),
@@ -4822,9 +4822,9 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 	pad5 := 1
 	c4 := expectSyncDirtyBlock(config, rmd, p, fileBlock.IPtrs[3].BlockPointer,
 		block4, int64(3), pad4, false)
-	var newID5 BlockID
+	var newID5 kbfsblock.ID
 	var newBlock5 *FileBlock
-	id5 := fakeBlockID(48)
+	id5 := kbfsblock.FakeID(48)
 	config.mockCrypto.EXPECT().MakeTemporaryBlockID().Return(id5, nil)
 	config.mockDirtyBcache.EXPECT().Put(gomock.Any(),
 		ptrMatcher{BlockPointer{ID: id5}}, p.Branch, gomock.Any()).
@@ -4848,15 +4848,15 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 		(len(block4.Contents) + pad4) + pad5)
 	unrefBytes := uint64(0) // no encoded sizes on dirty blocks
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]kbfsblock.ID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, c4, uid, id, "", p, rmd, false, 0,
 			refBytes, unrefBytes, &newRmd, blocks)
 	putAndCleanAnyBlock(config, p)
 
-	newID2 := fakeBlockIDAdd(id2, 100)
-	newID3 := fakeBlockIDAdd(id3, 100)
-	newID4 := fakeBlockIDAdd(id4, 100)
+	newID2 := kbfsblock.FakeIDAdd(id2, 100)
+	newID3 := kbfsblock.FakeIDAdd(id3, 100)
+	newID4 := kbfsblock.FakeIDAdd(id4, 100)
 
 	if err := config.KBFSOps().Sync(ctx, n); err != nil {
 		t.Errorf("Got unexpected error on sync: %v", err)
@@ -4888,7 +4888,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 		t.Errorf("Indirect pointer encoded size4 wrong: %d", fileBlock.IPtrs[3].EncodedSize)
 	} else if fileBlock.IPtrs[3].Off != 15 {
 		t.Errorf("Indirect pointer off4 wrong: %d", fileBlock.IPtrs[3].Off)
-	} else if fileBlock.IPtrs[4].ID != fakeBlockIDAdd(newID5, 100) {
+	} else if fileBlock.IPtrs[4].ID != kbfsblock.FakeIDAdd(newID5, 100) {
 		t.Errorf("Indirect pointer id5 wrong: %v", fileBlock.IPtrs[4].ID)
 	} else if fileBlock.IPtrs[4].EncodedSize != 1 {
 		t.Errorf("Indirect pointer encoded size5 wrong: %d", fileBlock.IPtrs[4].EncodedSize)
@@ -4928,13 +4928,13 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	fileID := fakeBlockID(43)
-	id1 := fakeBlockID(44)
-	id2 := fakeBlockID(45)
-	id3 := fakeBlockID(46)
-	id4 := fakeBlockID(47)
+	fileID := kbfsblock.FakeID(43)
+	id1 := kbfsblock.FakeID(44)
+	id2 := kbfsblock.FakeID(45)
+	id3 := kbfsblock.FakeID(46)
+	id4 := kbfsblock.FakeID(47)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(fileID, uid),
@@ -5047,15 +5047,15 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 		(len(block4.Contents) - int(split4At) + pad4))
 	unrefBytes := uint64(10 + 15) // id2 and id4
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]kbfsblock.ID, 2)
 	expectedPath, _ :=
 		expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false, 0,
 			refBytes, unrefBytes, &newRmd, blocks)
 	putAndCleanAnyBlock(config, p)
 
-	newID1 := fakeBlockIDAdd(id1, 100)
-	newID3 := fakeBlockIDAdd(id3, 100)
-	newID4 := fakeBlockIDAdd(id4, 100)
+	newID1 := kbfsblock.FakeIDAdd(id1, 100)
+	newID3 := kbfsblock.FakeIDAdd(id3, 100)
+	newID4 := kbfsblock.FakeIDAdd(id4, 100)
 
 	if err := config.KBFSOps().Sync(ctx, n); err != nil {
 		t.Errorf("Got unexpected error on sync: %v", err)
@@ -5101,9 +5101,9 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 
 	uid, id, rmd := injectNewRMD(t, config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	aID := fakeBlockID(43)
+	aID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -5135,18 +5135,18 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 	// sync block
 	refBytes := uint64(1) // 1 new block changes block
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]kbfsblock.ID, 2)
 	expectedPath, lastCall := expectSyncBlock(t, config, nil, uid, id, "", p,
 		rmd, false, 0, refBytes, 0, &newRmd, blocks)
 
 	// expected calls for block changes block
-	changeBlockID := fakeBlockID(253)
+	changeBlockID := kbfsblock.FakeID(253)
 	changePlainSize := 1
 	changeBuf := []byte{253}
 	changeReadyBlockData := ReadyBlockData{
 		buf: changeBuf,
 	}
-	tempBCID := fakeBlockID(252)
+	tempBCID := kbfsblock.FakeID(252)
 	config.mockCrypto.EXPECT().MakeTemporaryBlockID().Return(tempBCID, nil)
 	_ = config.mockBops.EXPECT().Ready(gomock.Any(), kmdMatcher{rmd},
 		gomock.Any()).Return(changeBlockID, changePlainSize,
@@ -5187,7 +5187,7 @@ func TestKBFSOpsStatRootSuccess(t *testing.T) {
 	ops.head = makeImmutableRMDForTest(t, config, rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	n := nodeFromPath(t, ops, p)
@@ -5208,7 +5208,7 @@ func TestKBFSOpsFailingRootOps(t *testing.T) {
 	ops.head = makeImmutableRMDForTest(t, config, rmd, fakeMdID(1))
 
 	u := h.FirstResolvedWriter()
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.BlockPointer = makeBP(rootID, rmd, config, u)
 	node := pathNode{rmd.data.Dir.BlockPointer, "p"}
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
@@ -5261,9 +5261,9 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 	// setHeadLocked will panic).
 	injectShimCrypto(config)
 
-	rootID := fakeBlockID(42)
+	rootID := kbfsblock.FakeID(42)
 	rmd.data.Dir.ID = rootID
-	fileID := fakeBlockID(43)
+	fileID := kbfsblock.FakeID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
 		BlockInfo: BlockInfo{
@@ -5296,7 +5296,7 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 
 	// expect a sync to happen in the background
 	var newRmd ImmutableRootMetadata
-	blocks := make([]BlockID, 2)
+	blocks := make([]kbfsblock.ID, 2)
 	expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false, 0, 0, 0,
 		&newRmd, blocks)
 
@@ -5320,7 +5320,7 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 		}).Return(int64(len(data)))
 	// expect another sync to happen in the background
 	var newRmd2 ImmutableRootMetadata
-	blocks = make([]BlockID, 2)
+	blocks = make([]kbfsblock.ID, 2)
 	expectSyncBlock(t, config, nil, uid, id, "", p, rmd, false, 0, 0, 0,
 		&newRmd2, blocks)
 
@@ -5522,7 +5522,7 @@ type corruptBlockServer struct {
 }
 
 func (cbs corruptBlockServer) Get(
-	ctx context.Context, tlfID tlf.ID, id BlockID, context BlockContext) (
+	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context BlockContext) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	data, keyServerHalf, err := cbs.BlockServer.Get(ctx, tlfID, id, context)
 	if err != nil {

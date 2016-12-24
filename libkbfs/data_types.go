@@ -13,6 +13,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 )
@@ -212,7 +213,7 @@ func (nonce BlockRefNonce) String() string {
 // BlockRef is a block ID/ref nonce pair, which defines a unique
 // reference to a block.
 type BlockRef struct {
-	ID       BlockID
+	ID       kbfsblock.ID
 	RefNonce BlockRefNonce
 }
 
@@ -285,7 +286,7 @@ func (c BlockContext) GetRefNonce() BlockRefNonce {
 }
 
 // IsFirstRef returns whether or not p represents the first reference
-// to the corresponding BlockID.
+// to the corresponding kbfsblock.ID.
 func (c BlockContext) IsFirstRef() bool {
 	return c.RefNonce == ZeroBlockRefNonce
 }
@@ -310,9 +311,9 @@ func (c BlockContext) String() string {
 // NOTE: Don't add or modify anything in this struct without
 // considering how old clients will handle them.
 type BlockPointer struct {
-	ID      BlockID `codec:"i"`
-	KeyGen  KeyGen  `codec:"k"` // if valid, which generation of the TLF{Writer,Reader}KeyBundle to use.
-	DataVer DataVer `codec:"d"` // if valid, which version of the KBFS data structures is pointed to
+	ID      kbfsblock.ID `codec:"i"`
+	KeyGen  KeyGen       `codec:"k"` // if valid, which generation of the TLF{Writer,Reader}KeyBundle to use.
+	DataVer DataVer      `codec:"d"` // if valid, which version of the KBFS data structures is pointed to
 	BlockContext
 }
 
@@ -338,7 +339,7 @@ func (p BlockPointer) String() string {
 
 // IsInitialized returns whether or not this BlockPointer has non-nil data.
 func (p BlockPointer) IsInitialized() bool {
-	return p.ID != BlockID{}
+	return p.ID != kbfsblock.ID{}
 }
 
 // Ref returns the BlockRef equivalent of this pointer.

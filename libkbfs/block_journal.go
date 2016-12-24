@@ -13,6 +13,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/ioutil"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -116,7 +117,7 @@ type blockJournalEntry struct {
 	Op blockOpType
 	// Must have exactly one entry with one context for blockPutOp and
 	// addRefOp.  Used for all ops except for mdRevMarkerOp.
-	Contexts map[BlockID][]BlockContext `codec:",omitempty"`
+	Contexts map[kbfsblock.ID][]BlockContext `codec:",omitempty"`
 	// Only used for mdRevMarkerOps.
 	Revision MetadataRevision `codec:",omitempty"`
 	// Ignore this entry while flushing if this is true.
@@ -128,17 +129,17 @@ type blockJournalEntry struct {
 // Get the single context stored in this entry. Only applicable to
 // blockPutOp and addRefOp.
 func (e blockJournalEntry) getSingleContext() (
-	BlockID, BlockContext, error) {
+	kbfsblock.ID, BlockContext, error) {
 	switch e.Op {
 	case blockPutOp, addRefOp:
 		if len(e.Contexts) != 1 {
-			return BlockID{}, BlockContext{}, errors.Errorf(
+			return kbfsblock.ID{}, BlockContext{}, errors.Errorf(
 				"Op %s doesn't have exactly one context: %v",
 				e.Op, e.Contexts)
 		}
 		for id, idContexts := range e.Contexts {
 			if len(idContexts) != 1 {
-				return BlockID{}, BlockContext{}, errors.Errorf(
+				return kbfsblock.ID{}, BlockContext{}, errors.Errorf(
 					"Op %s doesn't have exactly one context for id=%s: %v",
 					e.Op, id, idContexts)
 			}
@@ -146,7 +147,7 @@ func (e blockJournalEntry) getSingleContext() (
 		}
 	}
 
-	return BlockID{}, BlockContext{}, errors.Errorf(
+	return kbfsblock.ID{}, BlockContext{}, errors.Errorf(
 		"getSingleContext() erroneously called on op %s", e.Op)
 }
 
@@ -267,15 +268,15 @@ func (j *blockJournal) end() (journalOrdinal, error) {
 	return last + 1, nil
 }
 
-func (j *blockJournal) hasData(id BlockID) (bool, error) {
+func (j *blockJournal) hasData(id kbfsblock.ID) (bool, error) {
 	return j.s.hasData(id)
 }
 
-func (j *blockJournal) isUnflushed(id BlockID) (bool, error) {
+func (j *blockJournal) isUnflushed(id kbfsblock.ID) (bool, error) {
 	return j.s.isUnflushed(id)
 }
 
-func (j *blockJournal) remove(id BlockID) error {
+func (j *blockJournal) remove(id kbfsblock.ID) error {
 	// TODO: we'll eventually need a sweeper to clean up entries
 	// left behind if we crash here.
 	return j.s.remove(id)
@@ -283,7 +284,7 @@ func (j *blockJournal) remove(id BlockID) error {
 
 // All functions below are public functions.
 
-func (j *blockJournal) getDataWithContext(id BlockID, context BlockContext) (
+func (j *blockJournal) getDataWithContext(id kbfsblock.ID, context BlockContext) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
 	return j.s.getDataWithContext(id, context)
 }
@@ -293,7 +294,7 @@ func (j *blockJournal) getUnflushedBytes() int64 {
 }
 
 func (j *blockJournal) putData(
-	ctx context.Context, id BlockID, context BlockContext, buf []byte,
+	ctx context.Context, id kbfsblock.ID, context BlockContext, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
 	j.log.CDebugf(ctx, "Putting %d bytes of data for block %s with context %v",
 		len(buf), id, context)
@@ -324,7 +325,7 @@ func (j *blockJournal) putData(
 
 	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
 		Op:       blockPutOp,
-		Contexts: map[BlockID][]BlockContext{id: {context}},
+		Contexts: map[kbfsblock.ID][]BlockContext{id: {context}},
 	})
 	if err != nil {
 		return err
@@ -334,7 +335,7 @@ func (j *blockJournal) putData(
 }
 
 func (j *blockJournal) addReference(
-	ctx context.Context, id BlockID, context BlockContext) (
+	ctx context.Context, id kbfsblock.ID, context BlockContext) (
 	err error) {
 	j.log.CDebugf(ctx, "Adding reference for block %s with context %v",
 		id, context)
@@ -358,7 +359,7 @@ func (j *blockJournal) addReference(
 
 	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
 		Op:       addRefOp,
-		Contexts: map[BlockID][]BlockContext{id: {context}},
+		Contexts: map[kbfsblock.ID][]BlockContext{id: {context}},
 	})
 	if err != nil {
 		return err
@@ -368,7 +369,7 @@ func (j *blockJournal) addReference(
 }
 
 func (j *blockJournal) archiveReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext) (err error) {
+	ctx context.Context, contexts map[kbfsblock.ID][]BlockContext) (err error) {
 	j.log.CDebugf(ctx, "Archiving references for %v", contexts)
 	defer func() {
 		if err != nil {
@@ -401,8 +402,8 @@ func (j *blockJournal) archiveReferences(
 // removeReferences removes references for the given contexts from
 // their respective IDs.
 func (j *blockJournal) removeReferences(
-	ctx context.Context, contexts map[BlockID][]BlockContext) (
-	liveCounts map[BlockID]int, err error) {
+	ctx context.Context, contexts map[kbfsblock.ID][]BlockContext) (
+	liveCounts map[kbfsblock.ID]int, err error) {
 	j.log.CDebugf(ctx, "Removing references for %v", contexts)
 	defer func() {
 		if err != nil {
@@ -422,7 +423,7 @@ func (j *blockJournal) removeReferences(
 		return nil, err
 	}
 
-	liveCounts = make(map[BlockID]int)
+	liveCounts = make(map[kbfsblock.ID]int)
 	for id, idContexts := range contexts {
 		// Remove the references unconditionally here (i.e.,
 		// with an empty tag), since j.s should reflect the
@@ -764,7 +765,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 }
 
 func (j *blockJournal) ignoreBlocksAndMDRevMarkers(ctx context.Context,
-	blocksToIgnore []BlockID) error {
+	blocksToIgnore []kbfsblock.ID) error {
 	first, err := j.j.readEarliestOrdinal()
 	if ioutil.IsNotExist(err) {
 		return nil
@@ -776,7 +777,7 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkers(ctx context.Context,
 		return err
 	}
 
-	idsToIgnore := make(map[BlockID]bool)
+	idsToIgnore := make(map[kbfsblock.ID]bool)
 	for _, id := range blocksToIgnore {
 		idsToIgnore[id] = true
 	}
@@ -975,8 +976,8 @@ func (j *blockJournal) onMDFlush(ctx context.Context,
 	return 0, nil
 }
 
-func (j *blockJournal) getAllRefsForTest() (map[BlockID]blockRefMap, error) {
-	refs := make(map[BlockID]blockRefMap)
+func (j *blockJournal) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, error) {
+	refs := make(map[kbfsblock.ID]blockRefMap)
 
 	first, err := j.j.readEarliestOrdinal()
 	if ioutil.IsNotExist(err) {

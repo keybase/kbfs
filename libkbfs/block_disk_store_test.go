@@ -11,6 +11,7 @@ import (
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/ioutil"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +36,7 @@ func teardownBlockDiskStoreTest(t *testing.T, tempdir string) {
 
 func putBlockDisk(
 	t *testing.T, s *blockDiskStore, data []byte) (
-	BlockID, BlockContext, kbfscrypto.BlockCryptKeyServerHalf) {
+	kbfsblock.ID, BlockContext, kbfscrypto.BlockCryptKeyServerHalf) {
 	bID, err := s.crypto.MakePermanentBlockID(data)
 	require.NoError(t, err)
 
@@ -51,7 +52,7 @@ func putBlockDisk(
 }
 
 func addBlockDiskRef(
-	t *testing.T, s *blockDiskStore, bID BlockID) BlockContext {
+	t *testing.T, s *blockDiskStore, bID kbfsblock.ID) BlockContext {
 	nonce, err := s.crypto.MakeBlockRefNonce()
 	require.NoError(t, err)
 
@@ -64,7 +65,7 @@ func addBlockDiskRef(
 }
 
 func getAndCheckBlockDiskData(t *testing.T, s *blockDiskStore,
-	bID BlockID, bCtx BlockContext, expectedData []byte,
+	bID kbfsblock.ID, bCtx BlockContext, expectedData []byte,
 	expectedServerHalf kbfscrypto.BlockCryptKeyServerHalf) {
 	data, serverHalf, err := s.getDataWithContext(bID, bCtx)
 	require.NoError(t, err)
@@ -127,7 +128,7 @@ func TestBlockDiskStoreArchiveReferences(t *testing.T) {
 
 	// Archive references.
 	err := s.archiveReferences(
-		map[BlockID][]BlockContext{bID: {bCtx, bCtx2}}, "")
+		map[kbfsblock.ID][]BlockContext{bID: {bCtx, bCtx2}}, "")
 	require.NoError(t, err)
 
 	// Get block should still succeed.
@@ -147,7 +148,7 @@ func TestBlockDiskStoreArchiveNonExistentReference(t *testing.T) {
 	require.NoError(t, err)
 
 	// Archive references.
-	err = s.archiveReferences(map[BlockID][]BlockContext{bID: {bCtx}}, "")
+	err = s.archiveReferences(map[kbfsblock.ID][]BlockContext{bID: {bCtx}}, "")
 	require.NoError(t, err)
 }
 

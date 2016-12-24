@@ -12,28 +12,11 @@ import (
 	"github.com/keybase/kbfs/kbfshash"
 )
 
-func fakeID(b byte) ID {
-	dh := kbfshash.RawDefaultHash{b}
-	h, err := kbfshash.HashFromRaw(kbfshash.DefaultHashType, dh[:])
-	if err != nil {
-		panic(err)
-	}
-	return ID{h}
-}
-
-func fakeIDAdd(id ID, b byte) ID {
-	return fakeID(id.h.Bytes()[1] + b)
-}
-
-func fakeIDMul(id ID, b byte) ID {
-	return fakeID(id.h.Bytes()[1] * b)
-}
-
 // Make sure ID encodes and decodes properly with minimal overhead.
 func TestIDEncodeDecode(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 
-	id := fakeID(1)
+	id := FakeID(1)
 
 	encodedID, err := codec.Encode(id)
 	if err != nil {

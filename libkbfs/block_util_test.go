@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
@@ -28,7 +29,7 @@ func TestBlockUtilPutNewBlockSuccess(t *testing.T) {
 	defer blockUtilShutdown(mockCtrl, ctr)
 
 	// expect one call to put a block
-	id := fakeBlockID(1)
+	id := kbfsblock.FakeID(1)
 	encData := []byte{1, 2, 3, 4}
 	blockPtr := BlockPointer{ID: id}
 
@@ -52,7 +53,7 @@ func TestBlockUtilPutIncRefSuccess(t *testing.T) {
 	defer blockUtilShutdown(mockCtrl, ctr)
 
 	// expect one call to put a block
-	id := fakeBlockID(1)
+	id := kbfsblock.FakeID(1)
 	encData := []byte{1, 2, 3, 4}
 	nonce := BlockRefNonce([8]byte{1, 2, 3, 4, 5, 6, 7, 8})
 	blockPtr := BlockPointer{
@@ -82,7 +83,7 @@ func TestBlockUtilPutFail(t *testing.T) {
 	defer blockUtilShutdown(mockCtrl, ctr)
 
 	// fail the put call
-	id := fakeBlockID(1)
+	id := kbfsblock.FakeID(1)
 	encData := []byte{1, 2, 3, 4}
 	blockPtr := BlockPointer{ID: id}
 

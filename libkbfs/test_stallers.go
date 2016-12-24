@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"sync"
 
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 
@@ -360,7 +361,7 @@ func (f *stallingBlockServer) maybeStall(ctx context.Context, opName StallableBl
 		f.stallKey, f.staller)
 }
 
-func (f *stallingBlockServer) Get(ctx context.Context, tlfID tlf.ID, id BlockID,
+func (f *stallingBlockServer) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
 	bctx BlockContext) (
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	f.maybeStall(ctx, StallableBlockGet)
@@ -372,7 +373,7 @@ func (f *stallingBlockServer) Get(ctx context.Context, tlfID tlf.ID, id BlockID,
 	return buf, serverHalf, err
 }
 
-func (f *stallingBlockServer) Put(ctx context.Context, tlfID tlf.ID, id BlockID,
+func (f *stallingBlockServer) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
 	bctx BlockContext, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
 	f.maybeStall(ctx, StallableBlockPut)
@@ -502,7 +503,7 @@ func (m *stallingMDOps) PruneBranch(
 }
 
 func (m *stallingMDOps) ResolveBranch(
-	ctx context.Context, id tlf.ID, bid BranchID, blocksToDelete []BlockID,
+	ctx context.Context, id tlf.ID, bid BranchID, blocksToDelete []kbfsblock.ID,
 	rmd *RootMetadata) (mdID MdID, err error) {
 	m.maybeStall(ctx, StallableMDResolveBranch)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {

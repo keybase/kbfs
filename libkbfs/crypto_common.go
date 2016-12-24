@@ -13,6 +13,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
@@ -121,31 +122,18 @@ func (c CryptoCommon) MakeTLFReaderKeyBundleID(rkb TLFReaderKeyBundleV3) (
 }
 
 // MakeTemporaryBlockID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakeTemporaryBlockID() (BlockID, error) {
-	var dh kbfshash.RawDefaultHash
-	err := kbfscrypto.RandRead(dh[:])
-	if err != nil {
-		return BlockID{}, err
-	}
-	h, err := kbfshash.HashFromRaw(kbfshash.DefaultHashType, dh[:])
-	if err != nil {
-		return BlockID{}, err
-	}
-	return BlockID{h}, nil
+func (c CryptoCommon) MakeTemporaryBlockID() (kbfsblock.ID, error) {
+	return kbfsblock.MakeTemporaryID()
 }
 
 // MakePermanentBlockID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MakePermanentBlockID(encodedEncryptedData []byte) (BlockID, error) {
-	h, err := kbfshash.DefaultHash(encodedEncryptedData)
-	if err != nil {
-		return BlockID{}, err
-	}
-	return BlockID{h}, nil
+func (c CryptoCommon) MakePermanentBlockID(encodedEncryptedData []byte) (kbfsblock.ID, error) {
+	return kbfsblock.MakePermanentID(encodedEncryptedData)
 }
 
 // VerifyBlockID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) VerifyBlockID(encodedEncryptedData []byte, id BlockID) error {
-	return id.h.Verify(encodedEncryptedData)
+func (c CryptoCommon) VerifyBlockID(encodedEncryptedData []byte, id kbfsblock.ID) error {
+	return kbfsblock.VerifyID(encodedEncryptedData, id)
 }
 
 // MakeBlockRefNonce implements the Crypto interface for CryptoCommon.

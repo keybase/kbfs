@@ -10,12 +10,13 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
 
 type dirtyBlockID struct {
-	id       BlockID
+	id       kbfsblock.ID
 	refNonce BlockRefNonce
 	branch   BranchName
 }
