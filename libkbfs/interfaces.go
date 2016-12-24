@@ -1222,7 +1222,7 @@ type BlockServer interface {
 	// It returns the number of remaining not-yet-deleted references after this
 	// reference has been removed
 	RemoveBlockReferences(ctx context.Context, tlfID tlf.ID,
-		contexts map[kbfsblock.ID][]kbfsblock.Context) (liveCounts map[kbfsblock.ID]int, err error)
+		contexts kbfsblock.ContextMap) (liveCounts map[kbfsblock.ID]int, err error)
 
 	// ArchiveBlockReferences marks the given block references as
 	// "archived"; that is, they are not being used in the current
@@ -1234,7 +1234,7 @@ type BlockServer interface {
 	// any of the other fields of the context differ from previous
 	// calls with the same ID/refnonce pair.
 	ArchiveBlockReferences(ctx context.Context, tlfID tlf.ID,
-		contexts map[kbfsblock.ID][]kbfsblock.Context) error
+		contexts kbfsblock.ContextMap) error
 
 	// IsUnflushed returns whether a given block is being queued
 	// locally for later flushing to another block server.

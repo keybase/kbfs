@@ -222,7 +222,7 @@ func (b *BlockServerDisk) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 // RemoveBlockReferences implements the BlockServer interface for
 // BlockServerDisk.
 func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (
+	tlfID tlf.ID, contexts kbfsblock.ContextMap) (
 	liveCounts map[kbfsblock.ID]int, err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
@@ -263,7 +263,7 @@ func (b *BlockServerDisk) RemoveBlockReferences(ctx context.Context,
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerDisk.
 func (b *BlockServerDisk) ArchiveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (err error) {
+	tlfID tlf.ID, contexts kbfsblock.ContextMap) (err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
 	}()

@@ -1354,7 +1354,7 @@ func (j *tlfJournal) addBlockReference(
 }
 
 func (j *tlfJournal) removeBlockReferences(
-	ctx context.Context, contexts map[kbfsblock.ID][]kbfsblock.Context) (
+	ctx context.Context, contexts kbfsblock.ContextMap) (
 	liveCounts map[kbfsblock.ID]int, err error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
@@ -1379,7 +1379,7 @@ func (j *tlfJournal) removeBlockReferences(
 }
 
 func (j *tlfJournal) archiveBlockReferences(
-	ctx context.Context, contexts map[kbfsblock.ID][]kbfsblock.Context) error {
+	ctx context.Context, contexts kbfsblock.ContextMap) error {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {

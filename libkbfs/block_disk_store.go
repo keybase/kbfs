@@ -467,7 +467,7 @@ func (s *blockDiskStore) addReference(
 }
 
 func (s *blockDiskStore) archiveReferences(
-	contexts map[kbfsblock.ID][]kbfsblock.Context, tag string) error {
+	contexts kbfsblock.ContextMap, tag string) error {
 	for id, idContexts := range contexts {
 		err := s.makeDir(id)
 		if err != nil {

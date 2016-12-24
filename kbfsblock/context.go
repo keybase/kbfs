@@ -111,3 +111,6 @@ func (c Context) String() string {
 	s += "}"
 	return s
 }
+
+// ContextMap is a map from a block ID to a list of its contexts.
+type ContextMap map[ID][]Context

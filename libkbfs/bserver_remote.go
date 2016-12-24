@@ -380,7 +380,7 @@ func (b *BlockServerRemote) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 // RemoveBlockReferences implements the BlockServer interface for
 // BlockServerRemote
 func (b *BlockServerRemote) RemoveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (liveCounts map[kbfsblock.ID]int, err error) {
+	tlfID tlf.ID, contexts kbfsblock.ContextMap) (liveCounts map[kbfsblock.ID]int, err error) {
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(ctx, "RemoveBlockReferences batch size=%d err=%v", len(contexts), err)
@@ -404,7 +404,7 @@ func (b *BlockServerRemote) RemoveBlockReferences(ctx context.Context,
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerRemote
 func (b *BlockServerRemote) ArchiveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (err error) {
+	tlfID tlf.ID, contexts kbfsblock.ContextMap) (err error) {
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(ctx, "ArchiveBlockReferences batch size=%d err=%v", len(contexts), err)
@@ -425,7 +425,7 @@ func (b *BlockServerRemote) IsUnflushed(
 
 // batchDowngradeReferences archives or deletes a batch of references
 func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context, archive bool) (
+	tlfID tlf.ID, contexts kbfsblock.ContextMap, archive bool) (
 	doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int, finalError error) {
 	doneRefs = make(map[kbfsblock.ID]map[kbfsblock.RefNonce]int)
 	notDone := b.getNotDone(contexts, doneRefs)
@@ -508,7 +508,7 @@ func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 }
 
 // getNotDone returns the set of block references in "all" that do not yet appear in "results"
-func (b *BlockServerRemote) getNotDone(all map[kbfsblock.ID][]kbfsblock.Context, doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int) (
+func (b *BlockServerRemote) getNotDone(all kbfsblock.ContextMap, doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int) (
 	notDone []keybase1.BlockReference) {
 	for id, idContexts := range all {
 		for _, context := range idContexts {

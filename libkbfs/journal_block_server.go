@@ -97,7 +97,7 @@ func (j journalBlockServer) AddBlockReference(
 
 func (j journalBlockServer) RemoveBlockReferences(
 	ctx context.Context, tlfID tlf.ID,
-	contexts map[kbfsblock.ID][]kbfsblock.Context) (
+	contexts kbfsblock.ContextMap) (
 	liveCounts map[kbfsblock.ID]int, err error) {
 	// Deletes always go straight to the server, since they slow down
 	// the journal and already only happen in the background anyway.
@@ -109,7 +109,7 @@ func (j journalBlockServer) RemoveBlockReferences(
 
 func (j journalBlockServer) ArchiveBlockReferences(
 	ctx context.Context, tlfID tlf.ID,
-	contexts map[kbfsblock.ID][]kbfsblock.Context) (err error) {
+	contexts kbfsblock.ContextMap) (err error) {
 	// Archives always go straight to the server, since they slow down
 	// the journal and already only happen in the background anyway.
 	// Note that this means delete operations must be issued after the

@@ -39,7 +39,7 @@ func makeFakeBlockJournalEntryFuture(t *testing.T) blockJournalEntryFuture {
 	ef := blockJournalEntryFuture{
 		blockJournalEntry{
 			blockPutOp,
-			map[kbfsblock.ID][]kbfsblock.Context{
+			kbfsblock.ContextMap{
 				kbfsblock.FakeID(1): {
 					makeFakeBlockContext(t),
 					makeFakeBlockContext(t),
@@ -220,7 +220,7 @@ func TestBlockJournalArchiveReferences(t *testing.T) {
 
 	// Archive references.
 	err := j.archiveReferences(
-		ctx, map[kbfsblock.ID][]kbfsblock.Context{bID: {bCtx, bCtx2}})
+		ctx, kbfsblock.ContextMap{bID: {bCtx, bCtx2}})
 	require.NoError(t, err)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
 
@@ -242,7 +242,7 @@ func TestBlockJournalArchiveNonExistentReference(t *testing.T) {
 
 	// Archive references.
 	err = j.archiveReferences(
-		ctx, map[kbfsblock.ID][]kbfsblock.Context{bID: {bCtx}})
+		ctx, kbfsblock.ContextMap{bID: {bCtx}})
 	require.NoError(t, err)
 }
 
@@ -259,7 +259,7 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 
 	// Remove references.
 	liveCounts, err := j.removeReferences(
-		ctx, map[kbfsblock.ID][]kbfsblock.Context{bID: {bCtx, bCtx2}})
+		ctx, kbfsblock.ContextMap{bID: {bCtx, bCtx2}})
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID: 0}, liveCounts)
 	require.Equal(t, 3, getBlockJournalLength(t, j))
@@ -305,7 +305,7 @@ func TestBlockJournalFlush(t *testing.T) {
 	// Archive one of the references.
 
 	err := j.archiveReferences(
-		ctx, map[kbfsblock.ID][]kbfsblock.Context{
+		ctx, kbfsblock.ContextMap{
 			bID: {bCtx3},
 		})
 	require.NoError(t, err)
@@ -371,7 +371,7 @@ func TestBlockJournalFlush(t *testing.T) {
 
 	// Now remove all the references.
 	liveCounts, err := j.removeReferences(
-		ctx, map[kbfsblock.ID][]kbfsblock.Context{
+		ctx, kbfsblock.ContextMap{
 			bID: {bCtx, bCtx2, bCtx3},
 		})
 	require.NoError(t, err)
@@ -453,7 +453,7 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 	// Remove some references.
 
 	liveCounts, err := j.removeReferences(
-		ctx, map[kbfsblock.ID][]kbfsblock.Context{
+		ctx, kbfsblock.ContextMap{
 			bID: {bCtx, bCtx2},
 		})
 	require.NoError(t, err)
@@ -478,7 +478,7 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 	// Archive the rest.
 
 	err = j.archiveReferences(
-		ctx, map[kbfsblock.ID][]kbfsblock.Context{
+		ctx, kbfsblock.ContextMap{
 			bID: {bCtx3},
 		})
 	require.NoError(t, err)
@@ -501,7 +501,7 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 	// Remove the archived references.
 
 	liveCounts, err = j.removeReferences(
-		ctx, map[kbfsblock.ID][]kbfsblock.Context{
+		ctx, kbfsblock.ContextMap{
 			bID: {bCtx3},
 		})
 	require.NoError(t, err)
@@ -790,18 +790,18 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	require.NoError(t, err)
 
 	err = j.archiveReferences(
-		ctx, map[kbfsblock.ID][]kbfsblock.Context{bID2: {bCtx2}})
+		ctx, kbfsblock.ContextMap{bID2: {bCtx2}})
 	require.NoError(t, err)
 	requireSize(expectedSize)
 
 	liveCounts, err := j.removeReferences(
-		ctx, map[kbfsblock.ID][]kbfsblock.Context{bID1: {bCtx1, bCtx1b}})
+		ctx, kbfsblock.ContextMap{bID1: {bCtx1, bCtx1b}})
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID1: 0}, liveCounts)
 	requireSize(expectedSize)
 
 	liveCounts, err = j.removeReferences(
-		ctx, map[kbfsblock.ID][]kbfsblock.Context{bID2: {bCtx2}})
+		ctx, kbfsblock.ContextMap{bID2: {bCtx2}})
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID2: 0}, liveCounts)
 	requireSize(expectedSize)

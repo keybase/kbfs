@@ -128,7 +128,7 @@ func TestBlockDiskStoreArchiveReferences(t *testing.T) {
 
 	// Archive references.
 	err := s.archiveReferences(
-		map[kbfsblock.ID][]kbfsblock.Context{bID: {bCtx, bCtx2}}, "")
+		kbfsblock.ContextMap{bID: {bCtx, bCtx2}}, "")
 	require.NoError(t, err)
 
 	// Get block should still succeed.
@@ -148,7 +148,7 @@ func TestBlockDiskStoreArchiveNonExistentReference(t *testing.T) {
 	require.NoError(t, err)
 
 	// Archive references.
-	err = s.archiveReferences(map[kbfsblock.ID][]kbfsblock.Context{bID: {bCtx}}, "")
+	err = s.archiveReferences(kbfsblock.ContextMap{bID: {bCtx}}, "")
 	require.NoError(t, err)
 }
 

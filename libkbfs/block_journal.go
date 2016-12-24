@@ -117,7 +117,7 @@ type blockJournalEntry struct {
 	Op blockOpType
 	// Must have exactly one entry with one context for blockPutOp and
 	// addRefOp.  Used for all ops except for mdRevMarkerOp.
-	Contexts map[kbfsblock.ID][]kbfsblock.Context `codec:",omitempty"`
+	Contexts kbfsblock.ContextMap `codec:",omitempty"`
 	// Only used for mdRevMarkerOps.
 	Revision MetadataRevision `codec:",omitempty"`
 	// Ignore this entry while flushing if this is true.
@@ -325,7 +325,7 @@ func (j *blockJournal) putData(
 
 	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
 		Op:       blockPutOp,
-		Contexts: map[kbfsblock.ID][]kbfsblock.Context{id: {context}},
+		Contexts: kbfsblock.ContextMap{id: {context}},
 	})
 	if err != nil {
 		return err
@@ -359,7 +359,7 @@ func (j *blockJournal) addReference(
 
 	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
 		Op:       addRefOp,
-		Contexts: map[kbfsblock.ID][]kbfsblock.Context{id: {context}},
+		Contexts: kbfsblock.ContextMap{id: {context}},
 	})
 	if err != nil {
 		return err
@@ -369,7 +369,7 @@ func (j *blockJournal) addReference(
 }
 
 func (j *blockJournal) archiveReferences(
-	ctx context.Context, contexts map[kbfsblock.ID][]kbfsblock.Context) (err error) {
+	ctx context.Context, contexts kbfsblock.ContextMap) (err error) {
 	j.log.CDebugf(ctx, "Archiving references for %v", contexts)
 	defer func() {
 		if err != nil {
@@ -402,7 +402,7 @@ func (j *blockJournal) archiveReferences(
 // removeReferences removes references for the given contexts from
 // their respective IDs.
 func (j *blockJournal) removeReferences(
-	ctx context.Context, contexts map[kbfsblock.ID][]kbfsblock.Context) (
+	ctx context.Context, contexts kbfsblock.ContextMap) (
 	liveCounts map[kbfsblock.ID]int, err error) {
 	j.log.CDebugf(ctx, "Removing references for %v", contexts)
 	defer func() {

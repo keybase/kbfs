@@ -244,7 +244,7 @@ func (b *BlockServerMemory) removeBlockReference(
 // RemoveBlockReferences implements the BlockServer interface for
 // BlockServerMemory.
 func (b *BlockServerMemory) RemoveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (
+	tlfID tlf.ID, contexts kbfsblock.ContextMap) (
 	liveCounts map[kbfsblock.ID]int, err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
@@ -297,7 +297,7 @@ func (b *BlockServerMemory) archiveBlockReference(
 // ArchiveBlockReferences implements the BlockServer interface for
 // BlockServerMemory.
 func (b *BlockServerMemory) ArchiveBlockReferences(ctx context.Context,
-	tlfID tlf.ID, contexts map[kbfsblock.ID][]kbfsblock.Context) (err error) {
+	tlfID tlf.ID, contexts kbfsblock.ContextMap) (err error) {
 	defer func() {
 		err = translateToBlockServerError(err)
 	}()

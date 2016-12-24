@@ -375,7 +375,7 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 
 	// expect one call to delete several blocks
 
-	contexts := make(map[kbfsblock.ID][]kbfsblock.Context)
+	contexts := make(kbfsblock.ContextMap)
 	b1 := BlockPointer{ID: kbfsblock.FakeID(1)}
 	contexts[b1.ID] = []kbfsblock.Context{b1.Context}
 	b2 := BlockPointer{ID: kbfsblock.FakeID(2)}
@@ -398,7 +398,7 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 
 	// fail the delete call
 
-	contexts := make(map[kbfsblock.ID][]kbfsblock.Context)
+	contexts := make(kbfsblock.ContextMap)
 	b1 := BlockPointer{ID: kbfsblock.FakeID(1)}
 	contexts[b1.ID] = []kbfsblock.Context{b1.Context}
 	b2 := BlockPointer{ID: kbfsblock.FakeID(2)}
