@@ -212,7 +212,7 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	b := newBlockServerRemoteWithClient(codec, nil, log, fc)
 
 	tlfID := tlf.FakeID(2, false)
-	bCtx := kbfsblock.MakeInitialContext(currentUID)
+	bCtx := kbfsblock.MakeFirstContext(currentUID)
 	data := []byte{1, 2, 3, 4}
 	bID, err := crypto.MakePermanentBlockID(data)
 	if err != nil {
@@ -285,7 +285,7 @@ func TestBServerRemotePutCanceled(t *testing.T) {
 	f := func(ctx context.Context) error {
 		bID := kbfsblock.FakeID(1)
 		tlfID := tlf.FakeID(2, false)
-		bCtx := kbfsblock.MakeInitialContext(currentUID)
+		bCtx := kbfsblock.MakeFirstContext(currentUID)
 		data := []byte{1, 2, 3, 4}
 		serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
 		if err != nil {

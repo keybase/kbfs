@@ -90,7 +90,7 @@ func TestJournalServerRestart(t *testing.T) {
 
 	// Put a block.
 
-	bCtx := kbfsblock.MakeInitialContext(uid)
+	bCtx := kbfsblock.MakeFirstContext(uid)
 	data := []byte{1, 2, 3, 4}
 	bID, err := kbfsblock.MakePermanentID(data)
 	require.NoError(t, err)
@@ -161,7 +161,7 @@ func TestJournalServerLogOutLogIn(t *testing.T) {
 
 	// Put a block.
 
-	bCtx := kbfsblock.MakeInitialContext(uid)
+	bCtx := kbfsblock.MakeFirstContext(uid)
 	data := []byte{1, 2, 3, 4}
 	bID, err := kbfsblock.MakePermanentID(data)
 	require.NoError(t, err)
@@ -265,7 +265,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 
 	// Put a block under user 1.
 
-	bCtx1 := kbfsblock.MakeInitialContext(uid1)
+	bCtx1 := kbfsblock.MakeFirstContext(uid1)
 	data1 := []byte{1, 2, 3, 4}
 	bID1, err := kbfsblock.MakePermanentID(data1)
 	require.NoError(t, err)
@@ -311,7 +311,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 
 	// Put a block under user 2.
 
-	bCtx2 := kbfsblock.MakeInitialContext(uid2)
+	bCtx2 := kbfsblock.MakeFirstContext(uid2)
 	data2 := []byte{1, 2, 3, 4, 5}
 	bID2, err := kbfsblock.MakePermanentID(data2)
 	require.NoError(t, err)
@@ -414,7 +414,7 @@ func TestJournalServerEnableAuto(t *testing.T) {
 	uid := h.ResolvedWriters()[0]
 
 	// Access a TLF, which should create a journal automatically.
-	bCtx := kbfsblock.MakeInitialContext(uid)
+	bCtx := kbfsblock.MakeFirstContext(uid)
 	data := []byte{1, 2, 3, 4}
 	bID, err := kbfsblock.MakePermanentID(data)
 	require.NoError(t, err)

@@ -92,7 +92,7 @@ func TestJournalBlockServerPutGetAddReference(t *testing.T) {
 	blockServer := config.BlockServer()
 
 	uid1 := keybase1.MakeTestUID(1)
-	bCtx := kbfsblock.MakeInitialContext(uid1)
+	bCtx := kbfsblock.MakeFirstContext(uid1)
 	data := []byte{1, 2, 3, 4}
 	bID, err := kbfsblock.MakePermanentID(data)
 	require.NoError(t, err)

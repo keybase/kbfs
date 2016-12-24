@@ -121,7 +121,7 @@ func putBlockData(
 	require.NoError(t, err)
 
 	uid1 := keybase1.MakeTestUID(1)
-	bCtx := kbfsblock.MakeInitialContext(uid1)
+	bCtx := kbfsblock.MakeFirstContext(uid1)
 	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
@@ -233,7 +233,7 @@ func TestBlockJournalArchiveNonExistentReference(t *testing.T) {
 
 	uid1 := keybase1.MakeTestUID(1)
 
-	bCtx := kbfsblock.MakeInitialContext(uid1)
+	bCtx := kbfsblock.MakeFirstContext(uid1)
 
 	data := []byte{1, 2, 3, 4}
 	bID, err := kbfsblock.MakePermanentID(data)
@@ -830,7 +830,7 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	// first.
 
 	uid1 := keybase1.MakeTestUID(1)
-	bCtx3 := kbfsblock.MakeInitialContext(uid1)
+	bCtx3 := kbfsblock.MakeFirstContext(uid1)
 	serverHalf3, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 

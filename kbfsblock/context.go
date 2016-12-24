@@ -62,13 +62,15 @@ type Context struct {
 	RefNonce RefNonce `codec:"r,omitempty"`
 }
 
-// MakeInitialContext makes a context with the given creator.
-func MakeInitialContext(creator keybase1.UID) Context {
+// MakeFirstContext makes the initial context for a block with the
+// given creator.
+func MakeFirstContext(creator keybase1.UID) Context {
 	return Context{Creator: creator}
 }
 
 // MakeContext makes a context with the given creator, writer, and
-// nonce.
+// nonce, where the writer is not necessarily equal to the creator,
+// and the nonce is usually non-zero.
 func MakeContext(creator, writer keybase1.UID, nonce RefNonce) Context {
 	return Context{Creator: creator, Writer: writer, RefNonce: nonce}
 }
