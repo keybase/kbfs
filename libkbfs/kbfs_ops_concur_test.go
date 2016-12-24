@@ -1037,9 +1037,14 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 
 	// As a regression for KBFS-635, test that a second sync succeeds,
 	// and that future operations also succeed.
-	fc.readyChan = nil
-	fc.goChan = nil
-	fc.finishChan = nil
+	//
+	// Create new objects to avoid racing with goroutines from the
+	// first sync.
+	fc = NewFakeBServerClient(config.Crypto(), log, nil, nil, nil)
+	b = newBlockServerRemoteWithClient(
+		config.Codec(), config.KBPKI(), log, fc)
+	config.BlockServer().Shutdown()
+	config.SetBlockServer(b)
 	if err := kbfsOps.Sync(ctx, fileNode); err != nil {
 		t.Fatalf("Second sync failed: %v", err)
 	}
