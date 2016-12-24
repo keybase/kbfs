@@ -6,16 +6,77 @@ import (
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
 
-func mdDumpDumpWithReplacements(
-	s string, replacements map[string]string) {
+func mdDumpGetDeviceString(k kbfscrypto.CryptPublicKey, ui libkbfs.UserInfo) (
+	string, bool) {
+	deviceName, ok := ui.KIDNames[k.KID()]
+	if !ok {
+		return "", false
+	}
+
+	if revokedTime, ok := ui.RevokedCryptPublicKeys[k]; ok {
+		return fmt.Sprintf("%s (revoked %s) (kid:%s)",
+			deviceName, revokedTime, k), true
+	} else {
+		return fmt.Sprintf("%s (kid:%s)", deviceName, k), true
+	}
+}
+
+func mdDumpGetReplacements(ctx context.Context, codec kbfscodec.Codec,
+	service libkbfs.KeybaseService, brmd libkbfs.BareRootMetadata,
+	extra libkbfs.ExtraMetadata) (map[string]string, error) {
+	readers, writers, err := brmd.GetUserDeviceKeyInfoMaps(
+		codec, brmd.LatestKeyGeneration(), extra)
+	if err != nil {
+		return nil, err
+	}
+
+	replacements := make(map[string]string)
+	for _, udkim := range []libkbfs.UserDeviceKeyInfoMap{writers, readers} {
+		for u, dkim := range udkim {
+			if _, ok := replacements[u.String()]; ok {
+				continue
+			}
+
+			username, _, err := service.Resolve(
+				ctx, fmt.Sprintf("uid:%s", u))
+			if err == nil {
+				replacements[u.String()] = fmt.Sprintf(
+					"%s (uid:%s)", username, u)
+			} else {
+				printError("md dump", err)
+			}
+
+			ui, err := service.LoadUserPlusKeys(ctx, u)
+			if err != nil {
+				continue
+			}
+
+			for k := range dkim {
+				if _, ok := replacements[k.String()]; ok {
+					continue
+				}
+
+				if deviceStr, ok := mdDumpGetDeviceString(k, ui); ok {
+					replacements[k.String()] = deviceStr
+				}
+			}
+		}
+	}
+
+	return replacements, nil
+}
+
+func mdDumpReplaceAll(s string, replacements map[string]string) string {
 	for old, new := range replacements {
 		s = strings.Replace(s, old, new, -1)
 	}
-	fmt.Printf("%s", s)
+	return s
 }
 
 func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
@@ -29,42 +90,10 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	brmd := rmd.GetBareRootMetadata()
 	extra := rmd.Extra()
 
-	readers, writers, err := brmd.GetUserDeviceKeyInfoMaps(
-		config.Codec(), brmd.LatestKeyGeneration(), extra)
+	replacements, err := mdDumpGetReplacements(
+		ctx, config.Codec(), config.KeybaseService(), brmd, extra)
 	if err != nil {
-		return err
-	}
-	replacements := make(map[string]string)
-	for _, udkim := range []libkbfs.UserDeviceKeyInfoMap{writers, readers} {
-		for u, dkim := range udkim {
-			if _, ok := replacements[u.String()]; ok {
-				continue
-			}
-			username, _, err := config.KeybaseService().Resolve(
-				ctx, fmt.Sprintf("uid:%s", u))
-			if err == nil {
-				replacements[u.String()] = fmt.Sprintf(
-					"%s (uid:%s)", username, u)
-			} else {
-				printError("md dump", err)
-			}
-
-			ui, err := config.KeybaseService().LoadUserPlusKeys(
-				ctx, u)
-			if err == nil {
-				for k := range dkim {
-					if _, ok := replacements[k.String()]; ok {
-						continue
-					}
-					if deviceName, ok := ui.KIDNames[k.KID()]; ok {
-						replacements[k.String()] = fmt.Sprintf(
-							"%s (kid:%s)", deviceName, k)
-					}
-				}
-			} else {
-				printError("md dump", err)
-			}
-		}
+		printError("md dump", err)
 	}
 
 	brmdDump, err := libkbfs.DumpBareRootMetadata(config.Codec(), brmd)
@@ -72,8 +101,7 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 		return err
 	}
 
-	mdDumpDumpWithReplacements(brmdDump, replacements)
-	fmt.Print("\n")
+	fmt.Printf("%s\n", mdDumpReplaceAll(brmdDump, replacements))
 
 	fmt.Print("Extra metadata\n")
 	fmt.Print("--------------\n")
@@ -81,8 +109,7 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	if err != nil {
 		return err
 	}
-	mdDumpDumpWithReplacements(extraDump, replacements)
-	fmt.Print("\n")
+	fmt.Printf("%s\n", mdDumpReplaceAll(extraDump, replacements))
 
 	fmt.Print("Private metadata\n")
 	fmt.Print("----------------\n")
@@ -90,7 +117,7 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	if err != nil {
 		return err
 	}
-	mdDumpDumpWithReplacements(pmdDump, replacements)
+	fmt.Printf("%s\n", mdDumpReplaceAll(pmdDump, replacements))
 
 	return nil
 }
