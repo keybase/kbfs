@@ -266,6 +266,9 @@ func (c BlockContext) IsFirstRef() bool {
 }
 
 func (c BlockContext) String() string {
+	if c == (BlockContext{}) {
+		return "BlockContext{}"
+	}
 	s := fmt.Sprintf("BlockContext{Creator: %s", c.Creator)
 	if len(c.Writer) > 0 {
 		s += fmt.Sprintf(", Writer: %s", c.Writer)
@@ -302,6 +305,9 @@ func (p BlockPointer) IsValid() bool {
 }
 
 func (p BlockPointer) String() string {
+	if p == (BlockPointer{}) {
+		return "BlockPointer{}"
+	}
 	return fmt.Sprintf("BlockPointer{ID: %s, KeyGen: %d, DataVer: %d, Context: %s}", p.ID, p.KeyGen, p.DataVer, p.BlockContext)
 }
 
@@ -333,6 +339,9 @@ type BlockInfo struct {
 }
 
 func (bi BlockInfo) String() string {
+	if bi == (BlockInfo{}) {
+		return "BlockInfo{}"
+	}
 	return fmt.Sprintf("BlockInfo{BlockPointer: %s, EncodedSize: %d}",
 		bi.BlockPointer, bi.EncodedSize)
 }
