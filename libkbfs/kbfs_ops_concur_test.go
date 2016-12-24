@@ -1013,26 +1013,18 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 		default:
 		}
 
+		// Let all the workers go through.
 		cancel2()
 	}()
 
 	err = kbfsOps.Sync(ctx2, fileNode)
-	if err != context.Canceled {
+	if err != ctx2.Err() {
 		t.Errorf("Sync did not get canceled error: %v", err)
 	}
 	nowNBlocks := fc.numBlocks()
 	if nowNBlocks != prevNBlocks+2 {
 		t.Errorf("Unexpected number of blocks; prev = %d, now = %d",
 			prevNBlocks, nowNBlocks)
-	}
-
-	// Now clean up by letting the rest of the blocks through.
-	for i := 0; i < maxParallelBlockPuts; i++ {
-		select {
-		case <-finishChan:
-		case <-ctx.Done():
-			t.Fatal(ctx.Err())
-		}
 	}
 
 	// Make sure there are no more workers, i.e. the extra blocks
