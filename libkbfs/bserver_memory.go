@@ -369,7 +369,7 @@ func (b *BlockServerMemory) Shutdown() {
 func (b *BlockServerMemory) RefreshAuthToken(_ context.Context) {}
 
 // GetUserQuotaInfo implements the BlockServer interface for BlockServerMemory.
-func (b *BlockServerMemory) GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error) {
+func (b *BlockServerMemory) GetUserQuotaInfo(ctx context.Context) (info *kbfsblock.UserQuotaInfo, err error) {
 	// Return a dummy value here.
-	return &UserQuotaInfo{Limit: 0x7FFFFFFFFFFFFFFF}, nil
+	return &kbfsblock.UserQuotaInfo{Limit: 0x7FFFFFFFFFFFFFFF}, nil
 }

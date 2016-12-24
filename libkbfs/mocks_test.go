@@ -8,6 +8,7 @@ import (
 	libkb "github.com/keybase/client/go/libkb"
 	logger "github.com/keybase/client/go/logger"
 	keybase1 "github.com/keybase/client/go/protocol/keybase1"
+	kbfsblock "github.com/keybase/kbfs/kbfsblock"
 	kbfscodec "github.com/keybase/kbfs/kbfscodec"
 	kbfscrypto "github.com/keybase/kbfs/kbfscrypto"
 	tlf "github.com/keybase/kbfs/tlf"
@@ -3267,9 +3268,9 @@ func (_mr *_MockBlockServerRecorder) Shutdown() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
 }
 
-func (_m *MockBlockServer) GetUserQuotaInfo(ctx context.Context) (*UserQuotaInfo, error) {
+func (_m *MockBlockServer) GetUserQuotaInfo(ctx context.Context) (*kbfsblock.UserQuotaInfo, error) {
 	ret := _m.ctrl.Call(_m, "GetUserQuotaInfo", ctx)
-	ret0, _ := ret[0].(*UserQuotaInfo)
+	ret0, _ := ret[0].(*kbfsblock.UserQuotaInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3379,9 +3380,9 @@ func (_mr *_MockblockServerLocalRecorder) Shutdown() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
 }
 
-func (_m *MockblockServerLocal) GetUserQuotaInfo(ctx context.Context) (*UserQuotaInfo, error) {
+func (_m *MockblockServerLocal) GetUserQuotaInfo(ctx context.Context) (*kbfsblock.UserQuotaInfo, error) {
 	ret := _m.ctrl.Call(_m, "GetUserQuotaInfo", ctx)
-	ret0, _ := ret[0].(*UserQuotaInfo)
+	ret0, _ := ret[0].(*kbfsblock.UserQuotaInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

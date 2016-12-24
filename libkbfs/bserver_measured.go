@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	metrics "github.com/rcrowley/go-metrics"
@@ -120,6 +121,6 @@ func (b BlockServerMeasured) RefreshAuthToken(ctx context.Context) {
 }
 
 // GetUserQuotaInfo implements the BlockServer interface for BlockServerMeasured
-func (b BlockServerMeasured) GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error) {
+func (b BlockServerMeasured) GetUserQuotaInfo(ctx context.Context) (info *kbfsblock.UserQuotaInfo, err error) {
 	return b.delegate.GetUserQuotaInfo(ctx)
 }

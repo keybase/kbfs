@@ -10,6 +10,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -1242,7 +1243,7 @@ type BlockServer interface {
 	Shutdown()
 
 	// GetUserQuotaInfo returns the quota for the user.
-	GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error)
+	GetUserQuotaInfo(ctx context.Context) (info *kbfsblock.UserQuotaInfo, err error)
 }
 
 // blockServerLocal is the interface for BlockServer implementations

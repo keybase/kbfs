@@ -525,12 +525,12 @@ func (b *BlockServerRemote) getNotDone(all map[BlockID][]BlockContext, doneRefs 
 }
 
 // GetUserQuotaInfo implements the BlockServer interface for BlockServerRemote
-func (b *BlockServerRemote) GetUserQuotaInfo(ctx context.Context) (info *UserQuotaInfo, err error) {
+func (b *BlockServerRemote) GetUserQuotaInfo(ctx context.Context) (info *kbfsblock.UserQuotaInfo, err error) {
 	res, err := b.getClient.GetUserQuotaInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return UserQuotaInfoDecode(res, b.codec)
+	return kbfsblock.UserQuotaInfoDecode(res, b.codec)
 }
 
 // Shutdown implements the BlockServer interface for BlockServerRemote.
