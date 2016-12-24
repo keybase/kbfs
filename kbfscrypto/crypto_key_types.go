@@ -82,6 +82,7 @@ var _ encoding.BinaryMarshaler = byte32Container{}
 var _ encoding.BinaryUnmarshaler = (*byte32Container)(nil)
 
 var _ json.Marshaler = byte32Container{}
+var _ json.Unmarshaler = (*byte32Container)(nil)
 
 func (c byte32Container) Data() [32]byte {
 	return c.data
@@ -106,6 +107,19 @@ func (c byte32Container) MarshalJSON() ([]byte, error) {
 	return json.Marshal(c.String())
 }
 
+func (c *byte32Container) UnmarshalJSON(data []byte) error {
+	var s string
+	err := json.Unmarshal(data, &s)
+	if err != nil {
+		return err
+	}
+	buf, err := hex.DecodeString(s)
+	if err != nil {
+		return err
+	}
+	return c.UnmarshalBinary(buf)
+}
+
 func (c byte32Container) String() string {
 	return hex.EncodeToString(c.data[:])
 }
@@ -121,6 +135,9 @@ type TLFPrivateKey struct {
 
 var _ encoding.BinaryMarshaler = TLFPrivateKey{}
 var _ encoding.BinaryUnmarshaler = (*TLFPrivateKey)(nil)
+
+var _ json.Marshaler = TLFPrivateKey{}
+var _ json.Unmarshaler = (*TLFPrivateKey)(nil)
 
 // MakeTLFPrivateKey returns a TLFPrivateKey containing the given
 // data.
@@ -141,6 +158,9 @@ type TLFPublicKey struct {
 var _ encoding.BinaryMarshaler = TLFPublicKey{}
 var _ encoding.BinaryUnmarshaler = (*TLFPublicKey)(nil)
 
+var _ json.Marshaler = TLFPublicKey{}
+var _ json.Unmarshaler = (*TLFPublicKey)(nil)
+
 // MakeTLFPublicKey returns a TLFPublicKey containing the given
 // data.
 func MakeTLFPublicKey(data [32]byte) TLFPublicKey {
@@ -160,6 +180,9 @@ type TLFEphemeralPrivateKey struct {
 
 var _ encoding.BinaryMarshaler = TLFEphemeralPrivateKey{}
 var _ encoding.BinaryUnmarshaler = (*TLFEphemeralPrivateKey)(nil)
+
+var _ json.Marshaler = TLFEphemeralPrivateKey{}
+var _ json.Unmarshaler = (*TLFEphemeralPrivateKey)(nil)
 
 // MakeTLFEphemeralPrivateKey returns a TLFEphemeralPrivateKey
 // containing the given data.
@@ -232,6 +255,9 @@ type TLFEphemeralPublicKey struct {
 var _ encoding.BinaryMarshaler = TLFEphemeralPublicKey{}
 var _ encoding.BinaryUnmarshaler = (*TLFEphemeralPublicKey)(nil)
 
+var _ json.Marshaler = TLFEphemeralPublicKey{}
+var _ json.Unmarshaler = (*TLFEphemeralPublicKey)(nil)
+
 // MakeTLFEphemeralPublicKey returns a TLFEphemeralPublicKey
 // containing the given data.
 func MakeTLFEphemeralPublicKey(data [32]byte) TLFEphemeralPublicKey {
@@ -254,6 +280,9 @@ type TLFCryptKeyServerHalf struct {
 var _ encoding.BinaryMarshaler = TLFCryptKeyServerHalf{}
 var _ encoding.BinaryUnmarshaler = (*TLFCryptKeyServerHalf)(nil)
 
+var _ json.Marshaler = TLFCryptKeyServerHalf{}
+var _ json.Unmarshaler = (*TLFCryptKeyServerHalf)(nil)
+
 // MakeTLFCryptKeyServerHalf returns a TLFCryptKeyServerHalf
 // containing the given data.
 func MakeTLFCryptKeyServerHalf(data [32]byte) TLFCryptKeyServerHalf {
@@ -273,6 +302,9 @@ type TLFCryptKeyClientHalf struct {
 var _ encoding.BinaryMarshaler = TLFCryptKeyClientHalf{}
 var _ encoding.BinaryUnmarshaler = (*TLFCryptKeyClientHalf)(nil)
 
+var _ json.Marshaler = TLFCryptKeyClientHalf{}
+var _ json.Unmarshaler = (*TLFCryptKeyClientHalf)(nil)
+
 // MakeTLFCryptKeyClientHalf returns a TLFCryptKeyClientHalf
 // containing the given data.
 func MakeTLFCryptKeyClientHalf(data [32]byte) TLFCryptKeyClientHalf {
@@ -291,6 +323,9 @@ type TLFCryptKey struct {
 
 var _ encoding.BinaryMarshaler = TLFCryptKey{}
 var _ encoding.BinaryUnmarshaler = (*TLFCryptKey)(nil)
+
+var _ json.Marshaler = TLFCryptKey{}
+var _ json.Unmarshaler = (*TLFCryptKey)(nil)
 
 // MakeTLFCryptKey returns a TLFCryptKey containing the given data.
 func MakeTLFCryptKey(data [32]byte) TLFCryptKey {
@@ -321,6 +356,9 @@ type BlockCryptKeyServerHalf struct {
 var _ encoding.BinaryMarshaler = BlockCryptKeyServerHalf{}
 var _ encoding.BinaryUnmarshaler = (*BlockCryptKeyServerHalf)(nil)
 
+var _ json.Marshaler = BlockCryptKeyServerHalf{}
+var _ json.Unmarshaler = (*BlockCryptKeyServerHalf)(nil)
+
 // MakeBlockCryptKeyServerHalf returns a BlockCryptKeyServerHalf
 // containing the given data.
 func MakeBlockCryptKeyServerHalf(data [32]byte) BlockCryptKeyServerHalf {
@@ -350,6 +388,9 @@ type BlockCryptKey struct {
 
 var _ encoding.BinaryMarshaler = BlockCryptKey{}
 var _ encoding.BinaryUnmarshaler = (*BlockCryptKey)(nil)
+
+var _ json.Marshaler = BlockCryptKey{}
+var _ json.Unmarshaler = (*BlockCryptKey)(nil)
 
 // MakeBlockCryptKey returns a BlockCryptKey containing the given
 // data.
