@@ -61,7 +61,8 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 					// KIDNames only has mappings for
 					// verifying keys. Fix this.
 					if deviceName, ok := ui.KIDNames[k.KID()]; ok {
-						replacements[k.String()] = deviceName
+						replacements[k.String()] = fmt.Sprintf(
+							"%s (kid:%s)", deviceName, k)
 					}
 				}
 			} else {

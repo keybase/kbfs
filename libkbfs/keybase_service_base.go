@@ -76,7 +76,8 @@ type addCryptPublicKeyFunc func(kbfscrypto.CryptPublicKey)
 func processKey(publicKey keybase1.PublicKey,
 	addVerifyingKey addVerifyingKeyFunc,
 	addCryptPublicKey addCryptPublicKeyFunc,
-	kidNames map[keybase1.KID]string) error {
+	kidNames map[keybase1.KID]string,
+	parents map[keybase1.KID]keybase1.KID) error {
 	if len(publicKey.PGPFingerprint) > 0 {
 		return nil
 	}
@@ -93,6 +94,15 @@ func processKey(publicKey keybase1.PublicKey,
 	if publicKey.DeviceDescription != "" {
 		kidNames[publicKey.KID] = publicKey.DeviceDescription
 	}
+
+	if publicKey.ParentID != "" {
+		parentKID, err := keybase1.KIDFromStringChecked(
+			publicKey.ParentID)
+		if err != nil {
+			return err
+		}
+		parents[publicKey.KID] = parentKID
+	}
 	return nil
 }
 
@@ -101,6 +111,7 @@ func filterKeys(keys []keybase1.PublicKey) (
 	var verifyingKeys []kbfscrypto.VerifyingKey
 	var cryptPublicKeys []kbfscrypto.CryptPublicKey
 	var kidNames = map[keybase1.KID]string{}
+	var parents = map[keybase1.KID]keybase1.KID{}
 
 	addVerifyingKey := func(key kbfscrypto.VerifyingKey) {
 		verifyingKeys = append(verifyingKeys, key)
@@ -111,9 +122,17 @@ func filterKeys(keys []keybase1.PublicKey) (
 
 	for _, publicKey := range keys {
 		err := processKey(publicKey, addVerifyingKey, addCryptPublicKey,
-			kidNames)
+			kidNames, parents)
 		if err != nil {
 			return nil, nil, nil, err
+		}
+	}
+	for kid, parent := range parents {
+		if _, ok := kidNames[kid]; ok {
+			continue
+		}
+		if parentName, ok := kidNames[parent]; ok {
+			kidNames[kid] = parentName
 		}
 	}
 	return verifyingKeys, cryptPublicKeys, kidNames, nil
@@ -126,6 +145,7 @@ func filterRevokedKeys(keys []keybase1.RevokedKey) (
 	verifyingKeys := make(map[kbfscrypto.VerifyingKey]keybase1.KeybaseTime)
 	cryptPublicKeys := make(map[kbfscrypto.CryptPublicKey]keybase1.KeybaseTime)
 	var kidNames = map[keybase1.KID]string{}
+	var parents = map[keybase1.KID]keybase1.KID{}
 
 	for _, revokedKey := range keys {
 		addVerifyingKey := func(key kbfscrypto.VerifyingKey) {
@@ -135,9 +155,17 @@ func filterRevokedKeys(keys []keybase1.RevokedKey) (
 			cryptPublicKeys[key] = revokedKey.Time
 		}
 		err := processKey(revokedKey.Key, addVerifyingKey, addCryptPublicKey,
-			kidNames)
+			kidNames, parents)
 		if err != nil {
 			return nil, nil, nil, err
+		}
+	}
+	for kid, parent := range parents {
+		if _, ok := kidNames[kid]; ok {
+			continue
+		}
+		if parentName, ok := kidNames[parent]; ok {
+			kidNames[kid] = parentName
 		}
 	}
 	return verifyingKeys, cryptPublicKeys, kidNames, nil
