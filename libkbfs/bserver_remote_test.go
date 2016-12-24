@@ -214,7 +214,7 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	tlfID := tlf.FakeID(2, false)
 	bCtx := kbfsblock.MakeFirstContext(currentUID)
 	data := []byte{1, 2, 3, 4}
-	bID, err := crypto.MakePermanentBlockID(data)
+	bID, err := kbfsblock.MakePermanentID(data)
 	if err != nil {
 		t.Fatal(err)
 	}

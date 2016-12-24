@@ -21,9 +21,7 @@ import (
 // Test (very superficially) that MakeTemporaryBlockID() returns non-zero
 // values that aren't equal.
 func TestCryptoCommonRandomBlockID(t *testing.T) {
-	c := MakeCryptoCommon(kbfscodec.NewMsgpack())
-
-	b1, err := c.MakeTemporaryBlockID()
+	b1, err := kbfsblock.MakeTemporaryID()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +30,7 @@ func TestCryptoCommonRandomBlockID(t *testing.T) {
 		t.Errorf("zero BlockID (b1)")
 	}
 
-	b2, err := c.MakeTemporaryBlockID()
+	b2, err := kbfsblock.MakeTemporaryID()
 	if err != nil {
 		t.Fatal(err)
 	}

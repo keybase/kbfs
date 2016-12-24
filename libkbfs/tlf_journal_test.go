@@ -148,9 +148,9 @@ func (c testTLFJournalConfig) MakeLogger(module string) logger.Logger {
 
 func (c testTLFJournalConfig) makeBlock(data []byte) (
 	kbfsblock.ID, kbfsblock.Context, kbfscrypto.BlockCryptKeyServerHalf) {
-	id, err := c.crypto.MakePermanentBlockID(data)
+	id, err := kbfsblock.MakePermanentID(data)
 	require.NoError(c.t, err)
-	bCtx := kbfsblock.MakeContext(c.uid, "", kbfsblock.ZeroRefNonce)
+	bCtx := kbfsblock.MakeFirstContext(c.uid)
 	serverHalf, err := c.crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(c.t, err)
 	return id, bCtx, serverHalf
