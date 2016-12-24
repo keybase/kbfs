@@ -3372,6 +3372,13 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 			block.Contents = append([]byte{0}, data[0:5]...)
 		}).Return(int64(5))
 
+	id1 := kbfsblock.FakeID(44)
+	id2 := kbfsblock.FakeID(45)
+	// new left block
+	config.mockCrypto.EXPECT().MakeTemporaryBlockID().Return(id1, nil)
+	// new right block
+	config.mockCrypto.EXPECT().MakeTemporaryBlockID().Return(id2, nil)
+
 	// next we'll get the right block again
 	// then the second half
 	config.mockBsplit.EXPECT().CopyUntilSplit(
@@ -3391,10 +3398,10 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 
 	b, _ = config.DirtyBlockCache().Get(id, fileNode.BlockPointer, p.Branch)
 	pblock := b.(*FileBlock)
-	b, _ = config.DirtyBlockCache().Get(id, makeBP(pblock.IPtrs[0].ID, rmd, config, uid),
+	b, _ = config.DirtyBlockCache().Get(id, makeBP(id1, rmd, config, uid),
 		p.Branch)
 	block1 := b.(*FileBlock)
-	b, _ = config.DirtyBlockCache().Get(id, makeBP(pblock.IPtrs[1].ID, rmd, config, uid),
+	b, _ = config.DirtyBlockCache().Get(id, makeBP(id2, rmd, config, uid),
 		p.Branch)
 	block2 := b.(*FileBlock)
 
@@ -3413,6 +3420,12 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 		t.Errorf("Parent block is not indirect!")
 	} else if len(pblock.IPtrs) != 2 {
 		t.Errorf("Wrong number of pointers in pblock: %v", pblock.IPtrs)
+	} else if pblock.IPtrs[0].ID != id1 {
+		t.Errorf("Parent block has wrong id for block 1: %v (vs. %v)",
+			pblock.IPtrs[0].ID, id1)
+	} else if pblock.IPtrs[1].ID != id2 {
+		t.Errorf("Parent block has wrong id for block 2: %v",
+			pblock.IPtrs[1].ID)
 	} else if pblock.IPtrs[0].Off != 0 {
 		t.Errorf("Parent block has wrong offset for block 1: %d",
 			pblock.IPtrs[0].Off)
@@ -4808,8 +4821,10 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 		block4, int64(3), pad4, false)
 	var newID5 kbfsblock.ID
 	var newBlock5 *FileBlock
+	id5 := kbfsblock.FakeID(48)
+	config.mockCrypto.EXPECT().MakeTemporaryBlockID().Return(id5, nil)
 	config.mockDirtyBcache.EXPECT().Put(gomock.Any(),
-		gomock.Any(), p.Branch, gomock.Any()).
+		ptrMatcher{BlockPointer{ID: id5}}, p.Branch, gomock.Any()).
 		Do(func(id tlf.ID, ptr BlockPointer, branch BranchName, block Block) {
 			newID5 = ptr.ID
 			newBlock5 = block.(*FileBlock)
