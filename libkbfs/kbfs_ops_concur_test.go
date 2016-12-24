@@ -968,37 +968,55 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 	fc.finishChan = finishChan
 
 	prevNBlocks := fc.numBlocks()
-	ctx, cancel2 := context.WithCancel(ctx)
+	ctx2, cancel2 := context.WithCancel(ctx)
 	go func() {
 		// let the first initialBlocks blocks through.
 		for i := 0; i < initialBlocks; i++ {
-			<-readyChan
+			select {
+			case <-readyChan:
+			case <-ctx.Done():
+				t.Error(ctx.Err())
+			}
 		}
 
 		for i := 0; i < initialBlocks; i++ {
-			goChan <- struct{}{}
+			select {
+			case goChan <- struct{}{}:
+			case <-ctx.Done():
+				t.Error(ctx.Err())
+			}
 		}
 
 		for i := 0; i < initialBlocks; i++ {
-			<-finishChan
+			select {
+			case <-finishChan:
+			case <-ctx.Done():
+				t.Error(ctx.Err())
+			}
 		}
 
 		// Let each parallel block worker block on readyChan.
 		for i := 0; i < maxParallelBlockPuts; i++ {
-			<-readyChan
+			select {
+			case <-readyChan:
+			case <-ctx.Done():
+				t.Error(ctx.Err())
+			}
 		}
 
 		// Make sure all the workers are busy.
 		select {
 		case <-readyChan:
 			t.Error("Worker unexpectedly ready")
+		case <-ctx.Done():
+			t.Error(ctx.Err())
 		default:
 		}
 
 		cancel2()
 	}()
 
-	err = kbfsOps.Sync(ctx, fileNode)
+	err = kbfsOps.Sync(ctx2, fileNode)
 	if err != context.Canceled {
 		t.Errorf("Sync did not get canceled error: %v", err)
 	}
@@ -1010,7 +1028,11 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 
 	// Now clean up by letting the rest of the blocks through.
 	for i := 0; i < maxParallelBlockPuts; i++ {
-		<-finishChan
+		select {
+		case <-finishChan:
+		case <-ctx.Done():
+			t.Fatal(ctx.Err())
+		}
 	}
 
 	// Make sure there are no more workers, i.e. the extra blocks
@@ -1026,8 +1048,6 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 	fc.readyChan = nil
 	fc.goChan = nil
 	fc.finishChan = nil
-	ctx = BackgroundContextWithCancellationDelayer()
-	defer CleanupCancellationDelayer(ctx)
 	if err := kbfsOps.Sync(ctx, fileNode); err != nil {
 		t.Fatalf("Second sync failed: %v", err)
 	}
