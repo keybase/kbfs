@@ -13,11 +13,11 @@ import (
 )
 
 func makeFakeBlockContext(t *testing.T) kbfsblock.Context {
-	return kbfsblock.Context{
+	return kbfsblock.MakeContext(
 		"fake creator",
 		"fake writer",
 		kbfsblock.RefNonce{0xb},
-	}
+	)
 }
 
 func makeFakeBlockPointer(t *testing.T) BlockPointer {

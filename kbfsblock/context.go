@@ -62,6 +62,14 @@ type Context struct {
 	RefNonce RefNonce `codec:"r,omitempty"`
 }
 
+func MakeInitialContext(creator keybase1.UID) Context {
+	return Context{Creator: creator}
+}
+
+func MakeContext(creator, writer keybase1.UID, nonce RefNonce) Context {
+	return Context{Creator: creator, Writer: writer, RefNonce: nonce}
+}
+
 // GetCreator returns the creator of the associated block.
 func (c Context) GetCreator() keybase1.UID {
 	return c.Creator

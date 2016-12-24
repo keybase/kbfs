@@ -150,7 +150,7 @@ func (c testTLFJournalConfig) makeBlock(data []byte) (
 	kbfsblock.ID, kbfsblock.Context, kbfscrypto.BlockCryptKeyServerHalf) {
 	id, err := c.crypto.MakePermanentBlockID(data)
 	require.NoError(c.t, err)
-	bCtx := kbfsblock.Context{c.uid, "", kbfsblock.ZeroRefNonce}
+	bCtx := kbfsblock.MakeContext(c.uid, "", kbfsblock.ZeroRefNonce)
 	serverHalf, err := c.crypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(c.t, err)
 	return id, bCtx, serverHalf

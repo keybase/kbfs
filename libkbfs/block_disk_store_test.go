@@ -40,7 +40,7 @@ func putBlockDisk(
 	require.NoError(t, err)
 
 	uid1 := keybase1.MakeTestUID(1)
-	bCtx := kbfsblock.Context{uid1, "", kbfsblock.ZeroRefNonce}
+	bCtx := kbfsblock.MakeInitialContext(uid1)
 	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
@@ -57,7 +57,7 @@ func addBlockDiskRef(
 
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
-	bCtx2 := kbfsblock.Context{uid1, uid2, nonce}
+	bCtx2 := kbfsblock.MakeContext(uid1, uid2, nonce)
 	err = s.addReference(bID, bCtx2, "")
 	require.NoError(t, err)
 	return bCtx2
@@ -140,7 +140,7 @@ func TestBlockDiskStoreArchiveNonExistentReference(t *testing.T) {
 
 	uid1 := keybase1.MakeTestUID(1)
 
-	bCtx := kbfsblock.Context{uid1, "", kbfsblock.ZeroRefNonce}
+	bCtx := kbfsblock.MakeInitialContext(uid1)
 
 	data := []byte{1, 2, 3, 4}
 	bID, err := kbfsblock.MakePermanentID(data)

@@ -178,7 +178,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 
 	entry, ok := b.m[id]
 	if !ok {
-		return kbfsblock.BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
+		return kbfsblock.BServerErrorBlockNonExistent{Msg: fmt.Sprintf("Block ID %s doesn't "+
 			"exist and cannot be referenced.", id)}
 	}
 
@@ -189,7 +189,7 @@ func (b *BlockServerMemory) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 
 	// Only add it if there's a non-archived reference.
 	if !entry.refs.hasNonArchivedRef() {
-		return kbfsblock.BServerErrorBlockArchived{fmt.Sprintf("Block ID %s has "+
+		return kbfsblock.BServerErrorBlockArchived{Msg: fmt.Sprintf("Block ID %s has "+
 			"been archived and cannot be referenced.", id)}
 	}
 
@@ -261,7 +261,7 @@ func (b *BlockServerMemory) archiveBlockReference(
 
 	entry, ok := b.m[id]
 	if !ok {
-		return kbfsblock.BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s doesn't "+
+		return kbfsblock.BServerErrorBlockNonExistent{Msg: fmt.Sprintf("Block ID %s doesn't "+
 			"exist and cannot be archived.", id)}
 	}
 
@@ -275,7 +275,7 @@ func (b *BlockServerMemory) archiveBlockReference(
 		return err
 	}
 	if !exists {
-		return kbfsblock.BServerErrorBlockNonExistent{fmt.Sprintf("Block ID %s (ref %s) "+
+		return kbfsblock.BServerErrorBlockNonExistent{Msg: fmt.Sprintf("Block ID %s (ref %s) "+
 			"doesn't exist and cannot be archived.", id, context.GetRefNonce())}
 	}
 
