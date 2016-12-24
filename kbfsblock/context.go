@@ -67,8 +67,8 @@ func MakeInitialContext(creator keybase1.UID) Context {
 	return Context{Creator: creator}
 }
 
-// MakeInitialContext makes a context with the given creator, writer,
-// and nonce.
+// MakeContext makes a context with the given creator, writer, and
+// nonce.
 func MakeContext(creator, writer keybase1.UID, nonce RefNonce) Context {
 	return Context{Creator: creator, Writer: writer, RefNonce: nonce}
 }
