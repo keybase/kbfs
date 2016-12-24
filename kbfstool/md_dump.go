@@ -11,17 +11,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-func getUserString(
-	ctx context.Context, config libkbfs.Config, uid keybase1.UID) string {
-	username, _, err := config.KeybaseService().Resolve(
-		ctx, fmt.Sprintf("uid:%s", uid))
-	if err != nil {
-		printError("md dump", err)
-		return uid.String()
-	}
-	return fmt.Sprintf("%s (uid:%s)", username, uid)
-}
-
 func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	rmd libkbfs.ReadOnlyRootMetadata) error {
 	c := spew.NewDefaultConfig()
@@ -38,22 +27,41 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	if err != nil {
 		return err
 	}
-	uids := make(map[keybase1.UID]bool)
-	devices := make(map[kbfscrypto.CryptPublicKey]bool)
+	uidToString := make(map[keybase1.UID]string)
+	deviceToString := make(map[kbfscrypto.CryptPublicKey]string)
 	for _, udkim := range []libkbfs.UserDeviceKeyInfoMap{writers, readers} {
 		for u, dkim := range udkim {
-			uids[u] = true
-			for k := range dkim {
-				devices[k] = true
+			if _, ok := uidToString[u]; ok {
+				continue
+			}
+			username, _, err := config.KeybaseService().Resolve(
+				ctx, fmt.Sprintf("uid:%s", u))
+			if err == nil {
+				uidToString[u] = fmt.Sprintf(
+					"%s (uid:%s)", username, u)
+			} else {
+				printError("md dump", err)
+			}
+
+			ui, err := config.KeybaseService().LoadUserPlusKeys(
+				ctx, u)
+			if err == nil {
+				for k := range dkim {
+					if _, ok := deviceToString[k]; ok {
+						continue
+					}
+					// TODO: This doesn't work, because
+					// KIDNames only has mappings for
+					// verifying keys. Fix this.
+					if deviceName, ok := ui.KIDNames[k.KID()]; ok {
+						deviceToString[k] = deviceName
+					}
+				}
+			} else {
+				printError("md dump", err)
 			}
 		}
 	}
-
-	for uid := range uids {
-		fmt.Printf("%s\n", getUserString(ctx, config, uid))
-	}
-
-	// TODO: Resolve device IDs, too.
 
 	serializedBRMD, err := config.Codec().Encode(brmd)
 	if err != nil {
