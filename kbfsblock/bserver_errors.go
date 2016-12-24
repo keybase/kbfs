@@ -281,14 +281,17 @@ func (e BServerErrorThrottle) ToStatus() (s keybase1.Status) {
 	return
 }
 
+// BServerErrorUnwrapper unwraps errors for RPCs.
 type BServerErrorUnwrapper struct{}
 
 var _ rpc.ErrorUnwrapper = BServerErrorUnwrapper{}
 
+// MakeArg makes an initial version of the status.
 func (eu BServerErrorUnwrapper) MakeArg() interface{} {
 	return &keybase1.Status{}
 }
 
+// UnwrapError does the unwrapping.
 func (eu BServerErrorUnwrapper) UnwrapError(arg interface{}) (appError error, dispatchError error) {
 	s, ok := arg.(*keybase1.Status)
 	if !ok {
