@@ -82,8 +82,8 @@ type publicByte32Container struct {
 var _ encoding.BinaryMarshaler = publicByte32Container{}
 var _ encoding.BinaryUnmarshaler = (*publicByte32Container)(nil)
 
-var _ json.Marshaler = publicByte32Container{}
-var _ json.Unmarshaler = (*publicByte32Container)(nil)
+var _ encoding.TextMarshaler = publicByte32Container{}
+var _ encoding.TextUnmarshaler = (*publicByte32Container)(nil)
 
 func (c publicByte32Container) Data() [32]byte {
 	return c.data
@@ -104,17 +104,12 @@ func (c *publicByte32Container) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func (c publicByte32Container) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.String())
+func (c publicByte32Container) MarshalText() ([]byte, error) {
+	return []byte(c.String()), nil
 }
 
-func (c *publicByte32Container) UnmarshalJSON(data []byte) error {
-	var s string
-	err := json.Unmarshal(data, &s)
-	if err != nil {
-		return err
-	}
-	buf, err := hex.DecodeString(s)
+func (c *publicByte32Container) UnmarshalText(data []byte) error {
+	buf, err := hex.DecodeString(string(data))
 	if err != nil {
 		return err
 	}
@@ -132,8 +127,8 @@ type privateByte32Container struct {
 var _ encoding.BinaryMarshaler = privateByte32Container{}
 var _ encoding.BinaryUnmarshaler = (*privateByte32Container)(nil)
 
-var _ json.Marshaler = privateByte32Container{}
-var _ json.Unmarshaler = (*privateByte32Container)(nil)
+var _ encoding.TextMarshaler = privateByte32Container{}
+var _ encoding.TextUnmarshaler = (*privateByte32Container)(nil)
 
 func (c privateByte32Container) Data() [32]byte {
 	return c.data
@@ -154,12 +149,12 @@ func (c *privateByte32Container) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func (c privateByte32Container) MarshalJSON() ([]byte, error) {
-	return nil, errors.New("Cannot marshal private 32 bytes to JSON")
+func (c privateByte32Container) MarshalText() ([]byte, error) {
+	return nil, errors.New("Cannot marshal private 32 bytes to text")
 }
 
-func (c *privateByte32Container) UnmarshalJSON(data []byte) error {
-	return errors.New("Cannot unmarshal private 32 bytes from JSON")
+func (c *privateByte32Container) UnmarshalText(data []byte) error {
+	return errors.New("Cannot unmarshal private 32 bytes from text")
 }
 
 func (c privateByte32Container) String() string {
@@ -178,8 +173,8 @@ type TLFPrivateKey struct {
 var _ encoding.BinaryMarshaler = TLFPrivateKey{}
 var _ encoding.BinaryUnmarshaler = (*TLFPrivateKey)(nil)
 
-var _ json.Marshaler = TLFPrivateKey{}
-var _ json.Unmarshaler = (*TLFPrivateKey)(nil)
+var _ encoding.TextMarshaler = TLFPrivateKey{}
+var _ encoding.TextUnmarshaler = (*TLFPrivateKey)(nil)
 
 // MakeTLFPrivateKey returns a TLFPrivateKey containing the given
 // data.
@@ -200,8 +195,8 @@ type TLFPublicKey struct {
 var _ encoding.BinaryMarshaler = TLFPublicKey{}
 var _ encoding.BinaryUnmarshaler = (*TLFPublicKey)(nil)
 
-var _ json.Marshaler = TLFPublicKey{}
-var _ json.Unmarshaler = (*TLFPublicKey)(nil)
+var _ encoding.TextMarshaler = TLFPublicKey{}
+var _ encoding.TextUnmarshaler = (*TLFPublicKey)(nil)
 
 // MakeTLFPublicKey returns a TLFPublicKey containing the given
 // data.
@@ -223,8 +218,8 @@ type TLFEphemeralPrivateKey struct {
 var _ encoding.BinaryMarshaler = TLFEphemeralPrivateKey{}
 var _ encoding.BinaryUnmarshaler = (*TLFEphemeralPrivateKey)(nil)
 
-var _ json.Marshaler = TLFEphemeralPrivateKey{}
-var _ json.Unmarshaler = (*TLFEphemeralPrivateKey)(nil)
+var _ encoding.TextMarshaler = TLFEphemeralPrivateKey{}
+var _ encoding.TextUnmarshaler = (*TLFEphemeralPrivateKey)(nil)
 
 // MakeTLFEphemeralPrivateKey returns a TLFEphemeralPrivateKey
 // containing the given data.
@@ -297,8 +292,8 @@ type TLFEphemeralPublicKey struct {
 var _ encoding.BinaryMarshaler = TLFEphemeralPublicKey{}
 var _ encoding.BinaryUnmarshaler = (*TLFEphemeralPublicKey)(nil)
 
-var _ json.Marshaler = TLFEphemeralPublicKey{}
-var _ json.Unmarshaler = (*TLFEphemeralPublicKey)(nil)
+var _ encoding.TextMarshaler = TLFEphemeralPublicKey{}
+var _ encoding.TextUnmarshaler = (*TLFEphemeralPublicKey)(nil)
 
 // MakeTLFEphemeralPublicKey returns a TLFEphemeralPublicKey
 // containing the given data.
@@ -322,8 +317,8 @@ type TLFCryptKeyServerHalf struct {
 var _ encoding.BinaryMarshaler = TLFCryptKeyServerHalf{}
 var _ encoding.BinaryUnmarshaler = (*TLFCryptKeyServerHalf)(nil)
 
-var _ json.Marshaler = TLFCryptKeyServerHalf{}
-var _ json.Unmarshaler = (*TLFCryptKeyServerHalf)(nil)
+var _ encoding.TextMarshaler = TLFCryptKeyServerHalf{}
+var _ encoding.TextUnmarshaler = (*TLFCryptKeyServerHalf)(nil)
 
 // MakeTLFCryptKeyServerHalf returns a TLFCryptKeyServerHalf
 // containing the given data.
@@ -344,8 +339,8 @@ type TLFCryptKeyClientHalf struct {
 var _ encoding.BinaryMarshaler = TLFCryptKeyClientHalf{}
 var _ encoding.BinaryUnmarshaler = (*TLFCryptKeyClientHalf)(nil)
 
-var _ json.Marshaler = TLFCryptKeyClientHalf{}
-var _ json.Unmarshaler = (*TLFCryptKeyClientHalf)(nil)
+var _ encoding.TextMarshaler = TLFCryptKeyClientHalf{}
+var _ encoding.TextUnmarshaler = (*TLFCryptKeyClientHalf)(nil)
 
 // MakeTLFCryptKeyClientHalf returns a TLFCryptKeyClientHalf
 // containing the given data.
@@ -366,8 +361,8 @@ type TLFCryptKey struct {
 var _ encoding.BinaryMarshaler = TLFCryptKey{}
 var _ encoding.BinaryUnmarshaler = (*TLFCryptKey)(nil)
 
-var _ json.Marshaler = TLFCryptKey{}
-var _ json.Unmarshaler = (*TLFCryptKey)(nil)
+var _ encoding.TextMarshaler = TLFCryptKey{}
+var _ encoding.TextUnmarshaler = (*TLFCryptKey)(nil)
 
 // MakeTLFCryptKey returns a TLFCryptKey containing the given data.
 func MakeTLFCryptKey(data [32]byte) TLFCryptKey {
@@ -398,8 +393,8 @@ type BlockCryptKeyServerHalf struct {
 var _ encoding.BinaryMarshaler = BlockCryptKeyServerHalf{}
 var _ encoding.BinaryUnmarshaler = (*BlockCryptKeyServerHalf)(nil)
 
-var _ json.Marshaler = BlockCryptKeyServerHalf{}
-var _ json.Unmarshaler = (*BlockCryptKeyServerHalf)(nil)
+var _ encoding.TextMarshaler = BlockCryptKeyServerHalf{}
+var _ encoding.TextUnmarshaler = (*BlockCryptKeyServerHalf)(nil)
 
 // MakeBlockCryptKeyServerHalf returns a BlockCryptKeyServerHalf
 // containing the given data.
@@ -431,8 +426,8 @@ type BlockCryptKey struct {
 var _ encoding.BinaryMarshaler = BlockCryptKey{}
 var _ encoding.BinaryUnmarshaler = (*BlockCryptKey)(nil)
 
-var _ json.Marshaler = BlockCryptKey{}
-var _ json.Unmarshaler = (*BlockCryptKey)(nil)
+var _ encoding.TextMarshaler = BlockCryptKey{}
+var _ encoding.TextUnmarshaler = (*BlockCryptKey)(nil)
 
 // MakeBlockCryptKey returns a BlockCryptKey containing the given
 // data.
