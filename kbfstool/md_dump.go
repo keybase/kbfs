@@ -35,9 +35,27 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	c.DisableCapacities = true
 	c.SortKeys = true
 
-	fmt.Printf("MD size: %d bytes\nMD version: %s\n\n",
-		len(buf), rmd.Version())
-	c.Dump(brmd)
+	brmdCopy, err := brmd.DeepCopy(config.Codec())
+	if err != nil {
+		return err
+	}
+	var serializedPrivateMetadata []byte
+	switch brmdCopy := brmdCopy.(type) {
+	case *libkbfs.BareRootMetadataV2:
+		serializedPrivateMetadata = brmdCopy.SerializedPrivateMetadata
+		brmdCopy.SerializedPrivateMetadata = nil
+	case *libkbfs.BareRootMetadataV3:
+		serializedPrivateMetadata = brmdCopy.WriterMetadata.SerializedPrivateMetadata
+		brmdCopy.WriterMetadata.SerializedPrivateMetadata = nil
+	default:
+		// Do nothing, and let SerializedPrivateMetadata get
+		// spewed, I guess.
+	}
+	fmt.Printf("MD size: %d bytes\n"+
+		"MD version: %s\n"+
+		"Private data size: %d bytes\n\n",
+		len(buf), rmd.Version(), len(serializedPrivateMetadata))
+	c.Dump(brmdCopy)
 	fmt.Print("\n")
 
 	fmt.Print("Extra metadata\n")
