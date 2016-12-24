@@ -12,6 +12,8 @@ import (
 	"bazil.org/fuse"
 )
 
+// TODO: Figure out how to avoid pulling in bazil.org/fuse.
+
 var _ fuse.ErrorNumber = BServerErrorUnauthorized{}
 
 // Errno implements the fuse.ErrorNumber interface for BServerErrorUnauthorized.
