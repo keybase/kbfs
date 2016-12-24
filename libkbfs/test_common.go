@@ -99,7 +99,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 		log := config.MakeLogger("BSTD")
 		var err error
 		blockServer, err = NewBlockServerTempDir(
-			config.Codec(), config.Crypto(), log)
+			config.Codec(), log)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -326,7 +326,7 @@ func makeBlockServer(config Config, bserverAddr string, ctx Context,
 		// local persistent block server
 		blockPath := filepath.Join(serverRootDir, "kbfs_block")
 		bserverLog := config.MakeLogger("BSD")
-		return NewBlockServerDir(config.Codec(), config.Crypto(),
+		return NewBlockServerDir(config.Codec(),
 			bserverLog, blockPath), nil
 	}
 
