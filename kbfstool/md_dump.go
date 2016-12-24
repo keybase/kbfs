@@ -117,7 +117,7 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s\n", mdDumpReplaceAll(pmdDump, replacements))
+	fmt.Printf("%s", mdDumpReplaceAll(pmdDump, replacements))
 
 	return nil
 }
