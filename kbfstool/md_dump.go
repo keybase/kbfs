@@ -5,11 +5,15 @@ import (
 	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/keybase/client/go/protocol/keybase1"
-	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
+
+func mdDumpDumpWithReplacements(
+	c *spew.ConfigState, o interface{}, replacements map[string]string) {
+	s := c.Sdump(o)
+	fmt.Printf("%s", s)
+}
 
 func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	rmd libkbfs.ReadOnlyRootMetadata) error {
@@ -27,17 +31,16 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	if err != nil {
 		return err
 	}
-	uidToString := make(map[keybase1.UID]string)
-	deviceToString := make(map[kbfscrypto.CryptPublicKey]string)
+	replacements := make(map[string]string)
 	for _, udkim := range []libkbfs.UserDeviceKeyInfoMap{writers, readers} {
 		for u, dkim := range udkim {
-			if _, ok := uidToString[u]; ok {
+			if _, ok := replacements[u.String()]; ok {
 				continue
 			}
 			username, _, err := config.KeybaseService().Resolve(
 				ctx, fmt.Sprintf("uid:%s", u))
 			if err == nil {
-				uidToString[u] = fmt.Sprintf(
+				replacements[u.String()] = fmt.Sprintf(
 					"%s (uid:%s)", username, u)
 			} else {
 				printError("md dump", err)
@@ -47,14 +50,14 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 				ctx, u)
 			if err == nil {
 				for k := range dkim {
-					if _, ok := deviceToString[k]; ok {
+					if _, ok := replacements[k.String()]; ok {
 						continue
 					}
 					// TODO: This doesn't work, because
 					// KIDNames only has mappings for
 					// verifying keys. Fix this.
 					if deviceName, ok := ui.KIDNames[k.KID()]; ok {
-						deviceToString[k] = deviceName
+						replacements[k.String()] = deviceName
 					}
 				}
 			} else {
@@ -85,7 +88,7 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 	}
 	fmt.Printf("MD size: %d bytes\n"+
 		"MD version: %s\n\n", len(serializedBRMD), rmd.Version())
-	c.Dump(brmdCopy)
+	mdDumpDumpWithReplacements(c, brmdCopy, replacements)
 	fmt.Print("\n")
 
 	fmt.Print("Extra metadata\n")
@@ -105,13 +108,13 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 		fmt.Printf("WKB size: %d\nRKB size: %d\n",
 			len(serializedWKB), len(serializedRKB))
 	}
-	c.Dump(extra)
+	mdDumpDumpWithReplacements(c, extra, replacements)
 	fmt.Print("\n")
 
 	fmt.Print("Private metadata\n")
 	fmt.Print("----------------\n")
 	fmt.Printf("Size: %d bytes\n", len(serializedPrivateMetadata))
-	c.Dump(rmd.Data())
+	mdDumpDumpWithReplacements(c, rmd.Data(), replacements)
 
 	return nil
 }
