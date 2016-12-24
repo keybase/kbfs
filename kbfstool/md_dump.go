@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"strings"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/keybase/kbfs/libkbfs"
@@ -12,6 +13,9 @@ import (
 func mdDumpDumpWithReplacements(
 	c *spew.ConfigState, o interface{}, replacements map[string]string) {
 	s := c.Sdump(o)
+	for old, new := range replacements {
+		s = strings.Replace(s, old, new, -1)
+	}
 	fmt.Printf("%s", s)
 }
 
