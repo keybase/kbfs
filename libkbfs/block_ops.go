@@ -68,7 +68,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
 		return
 	}
 
-	blockKey, err := crypto.UnmaskBlockCryptKey(serverHalf, tlfCryptKey)
+	blockKey := kbfscrypto.UnmaskBlockCryptKey(serverHalf, tlfCryptKey)
 	if err != nil {
 		return
 	}

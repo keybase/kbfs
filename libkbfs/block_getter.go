@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/keybase/kbfs/kbfsblock"
+	"github.com/keybase/kbfs/kbfscrypto"
 
 	"golang.org/x/net/context"
 )
@@ -50,11 +51,8 @@ func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockP
 	}
 
 	// construct the block crypt key
-	blockCryptKey, err := crypto.UnmaskBlockCryptKey(
+	blockCryptKey := kbfscrypto.UnmaskBlockCryptKey(
 		blockServerHalf, tlfCryptKey)
-	if err != nil {
-		return err
-	}
 
 	var encryptedBlock EncryptedBlock
 	err = bg.config.Codec().Decode(buf, &encryptedBlock)

@@ -783,19 +783,6 @@ type cryptoPure interface {
 	MakeRandomTLFCryptKeyServerHalf() (
 		kbfscrypto.TLFCryptKeyServerHalf, error)
 
-	// MaskTLFCryptKey returns the client-side of a top-level folder crypt key.
-	MaskTLFCryptKey(serverHalf kbfscrypto.TLFCryptKeyServerHalf,
-		key kbfscrypto.TLFCryptKey) (
-		kbfscrypto.TLFCryptKeyClientHalf, error)
-	// UnmaskTLFCryptKey returns the top-level folder crypt key.
-	UnmaskTLFCryptKey(serverHalf kbfscrypto.TLFCryptKeyServerHalf,
-		clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
-		kbfscrypto.TLFCryptKey, error)
-	// UnmaskBlockCryptKey returns the block crypt key.
-	UnmaskBlockCryptKey(serverHalf kbfscrypto.BlockCryptKeyServerHalf,
-		tlfCryptKey kbfscrypto.TLFCryptKey) (
-		kbfscrypto.BlockCryptKey, error)
-
 	// Verify verifies that sig matches msg being signed with the
 	// private key that corresponds to verifyingKey.
 	Verify(msg []byte, sigInfo kbfscrypto.SignatureInfo) error

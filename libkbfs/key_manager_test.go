@@ -44,19 +44,6 @@ func (c shimKMCrypto) MakeTLFReaderKeyBundleID(
 	return c.pure.MakeTLFReaderKeyBundleID(wkb)
 }
 
-func (c shimKMCrypto) MaskTLFCryptKey(
-	serverHalf kbfscrypto.TLFCryptKeyServerHalf,
-	key kbfscrypto.TLFCryptKey) (kbfscrypto.TLFCryptKeyClientHalf, error) {
-	return c.pure.MaskTLFCryptKey(serverHalf, key)
-}
-
-func (c shimKMCrypto) UnmaskTLFCryptKey(
-	serverHalf kbfscrypto.TLFCryptKeyServerHalf,
-	clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
-	kbfscrypto.TLFCryptKey, error) {
-	return c.pure.UnmaskTLFCryptKey(serverHalf, clientHalf)
-}
-
 func keyManagerInit(t *testing.T, ver MetadataVer) (mockCtrl *gomock.Controller,
 	config *ConfigMock, ctx context.Context) {
 	ctr := NewSafeTestReporter(t)

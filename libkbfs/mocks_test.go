@@ -1826,39 +1826,6 @@ func (_mr *_MockcryptoPureRecorder) MakeRandomTLFCryptKeyServerHalf() *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomTLFCryptKeyServerHalf")
 }
 
-func (_m *MockcryptoPure) MaskTLFCryptKey(serverHalf kbfscrypto.TLFCryptKeyServerHalf, key kbfscrypto.TLFCryptKey) (kbfscrypto.TLFCryptKeyClientHalf, error) {
-	ret := _m.ctrl.Call(_m, "MaskTLFCryptKey", serverHalf, key)
-	ret0, _ := ret[0].(kbfscrypto.TLFCryptKeyClientHalf)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockcryptoPureRecorder) MaskTLFCryptKey(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaskTLFCryptKey", arg0, arg1)
-}
-
-func (_m *MockcryptoPure) UnmaskTLFCryptKey(serverHalf kbfscrypto.TLFCryptKeyServerHalf, clientHalf kbfscrypto.TLFCryptKeyClientHalf) (kbfscrypto.TLFCryptKey, error) {
-	ret := _m.ctrl.Call(_m, "UnmaskTLFCryptKey", serverHalf, clientHalf)
-	ret0, _ := ret[0].(kbfscrypto.TLFCryptKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockcryptoPureRecorder) UnmaskTLFCryptKey(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "UnmaskTLFCryptKey", arg0, arg1)
-}
-
-func (_m *MockcryptoPure) UnmaskBlockCryptKey(serverHalf kbfscrypto.BlockCryptKeyServerHalf, tlfCryptKey kbfscrypto.TLFCryptKey) (kbfscrypto.BlockCryptKey, error) {
-	ret := _m.ctrl.Call(_m, "UnmaskBlockCryptKey", serverHalf, tlfCryptKey)
-	ret0, _ := ret[0].(kbfscrypto.BlockCryptKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockcryptoPureRecorder) UnmaskBlockCryptKey(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "UnmaskBlockCryptKey", arg0, arg1)
-}
-
 func (_m *MockcryptoPure) Verify(msg []byte, sigInfo kbfscrypto.SignatureInfo) error {
 	ret := _m.ctrl.Call(_m, "Verify", msg, sigInfo)
 	ret0, _ := ret[0].(error)
@@ -2110,39 +2077,6 @@ func (_m *MockCrypto) MakeRandomTLFCryptKeyServerHalf() (kbfscrypto.TLFCryptKeyS
 
 func (_mr *_MockCryptoRecorder) MakeRandomTLFCryptKeyServerHalf() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "MakeRandomTLFCryptKeyServerHalf")
-}
-
-func (_m *MockCrypto) MaskTLFCryptKey(serverHalf kbfscrypto.TLFCryptKeyServerHalf, key kbfscrypto.TLFCryptKey) (kbfscrypto.TLFCryptKeyClientHalf, error) {
-	ret := _m.ctrl.Call(_m, "MaskTLFCryptKey", serverHalf, key)
-	ret0, _ := ret[0].(kbfscrypto.TLFCryptKeyClientHalf)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockCryptoRecorder) MaskTLFCryptKey(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaskTLFCryptKey", arg0, arg1)
-}
-
-func (_m *MockCrypto) UnmaskTLFCryptKey(serverHalf kbfscrypto.TLFCryptKeyServerHalf, clientHalf kbfscrypto.TLFCryptKeyClientHalf) (kbfscrypto.TLFCryptKey, error) {
-	ret := _m.ctrl.Call(_m, "UnmaskTLFCryptKey", serverHalf, clientHalf)
-	ret0, _ := ret[0].(kbfscrypto.TLFCryptKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockCryptoRecorder) UnmaskTLFCryptKey(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "UnmaskTLFCryptKey", arg0, arg1)
-}
-
-func (_m *MockCrypto) UnmaskBlockCryptKey(serverHalf kbfscrypto.BlockCryptKeyServerHalf, tlfCryptKey kbfscrypto.TLFCryptKey) (kbfscrypto.BlockCryptKey, error) {
-	ret := _m.ctrl.Call(_m, "UnmaskBlockCryptKey", serverHalf, tlfCryptKey)
-	ret0, _ := ret[0].(kbfscrypto.BlockCryptKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockCryptoRecorder) UnmaskBlockCryptKey(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "UnmaskBlockCryptKey", arg0, arg1)
 }
 
 func (_m *MockCrypto) Verify(msg []byte, sigInfo kbfscrypto.SignatureInfo) error {

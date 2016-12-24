@@ -110,49 +110,30 @@ func blockOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 
 func expectBlockEncrypt(config *ConfigMock, kmd KeyMetadata, decData Block, plainSize int, encData []byte, err error) {
 	expectGetTLFCryptKeyForEncryption(config, kmd)
-	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(
-		gomock.Any(), kbfscrypto.TLFCryptKey{}).Return(
-		kbfscrypto.BlockCryptKey{}, nil)
 	encryptedBlock := EncryptedBlock{
 		encryptedData{
 			EncryptedData: encData,
 		},
 	}
-	config.mockCrypto.EXPECT().EncryptBlock(decData,
-		kbfscrypto.BlockCryptKey{}).
+	config.mockCrypto.EXPECT().EncryptBlock(decData, gomock.Any()).
 		Return(plainSize, encryptedBlock, err)
 	if err == nil {
 		config.mockCodec.EXPECT().Encode(encryptedBlock).Return(encData, nil)
 	}
 }
 
-func expectBlockDecrypt(config *ConfigMock, kmd KeyMetadata, blockPtr BlockPointer, encData []byte, block *TestBlock, err error) {
+func expectBlockDecrypt(config *ConfigMock, kmd KeyMetadata, blockPtr BlockPointer, encData []byte, block *TestBlock) {
 	expectGetTLFCryptKeyForBlockDecryption(config, kmd, blockPtr)
-	config.mockCrypto.EXPECT().UnmaskBlockCryptKey(gomock.Any(), gomock.Any()).
-		Return(kbfscrypto.BlockCryptKey{}, nil)
 	config.mockCodec.EXPECT().Decode(encData, gomock.Any()).Return(nil)
-	if err != nil {
-		/*		config.mockCrypto.EXPECT().DecryptBlock(
-				gomock.Any(), kbfscrypto.BlockCryptKey{},
-				gomock.Any()).Do(func(encryptedBlock EncryptedBlock,
-				key kbfscrypto.BlockCryptKey, b Block) {
-				if b != nil {
-					tb := b.(*TestBlock)
-					*tb = *block
-				}
-				panic("what")
-			}).Return(err)*/
-	} else {
-		config.mockCrypto.EXPECT().DecryptBlock(
-			gomock.Any(), kbfscrypto.BlockCryptKey{}, gomock.Any()).
-			Do(func(encryptedBlock EncryptedBlock,
-				key kbfscrypto.BlockCryptKey, b Block) {
-				if b != nil {
-					tb := b.(*TestBlock)
-					*tb = *block
-				}
-			})
-	}
+	config.mockCrypto.EXPECT().DecryptBlock(
+		gomock.Any(), kbfscrypto.BlockCryptKey{}, gomock.Any()).
+		Do(func(encryptedBlock EncryptedBlock,
+			key kbfscrypto.BlockCryptKey, b Block) {
+			if b != nil {
+				tb := b.(*TestBlock)
+				*tb = *block
+			}
+		})
 }
 
 type emptyKeyMetadata struct {
@@ -220,7 +201,7 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 		encData, kbfscrypto.BlockCryptKeyServerHalf{}, nil)
 	decData := TestBlock{42}
 
-	expectBlockDecrypt(config, kmd, blockPtr, encData, &decData, nil)
+	expectBlockDecrypt(config, kmd, blockPtr, encData, &decData)
 
 	var gotBlock TestBlock
 	err = config.BlockOps().Get(ctx, kmd, blockPtr, &gotBlock)
