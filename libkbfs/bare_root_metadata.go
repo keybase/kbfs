@@ -36,13 +36,13 @@ func MakeInitialBareRootMetadata(
 	return MakeInitialBareRootMetadataV3(tlfID, h)
 }
 
-// ExtraMetadata is a per-version blob of extra metadata which may
-// exist outside of the given metadata block, e.g. key bundles for
-// post-v2 metadata.
-type ExtraMetadata interface {
-	MetadataVersion() MetadataVer
-	DeepCopy(kbfscodec.Codec) (ExtraMetadata, error)
-	MakeSuccessorCopy(kbfscodec.Codec) (ExtraMetadata, error)
+func dumpConfig() *spew.ConfigState {
+	c := spew.NewDefaultConfig()
+	c.Indent = "  "
+	c.DisablePointerAddresses = true
+	c.DisableCapacities = true
+	c.SortKeys = true
+	return c
 }
 
 // DumpBareRootMetadata returns a detailed dump of the given
@@ -60,12 +60,6 @@ func DumpBareRootMetadata(
 		return "", err
 	}
 
-	c := spew.NewDefaultConfig()
-	c.Indent = "  "
-	c.DisablePointerAddresses = true
-	c.DisableCapacities = true
-	c.SortKeys = true
-
 	switch brmdCopy := brmdCopy.(type) {
 	case *BareRootMetadataV2:
 		brmdCopy.SerializedPrivateMetadata = nil
@@ -77,6 +71,6 @@ func DumpBareRootMetadata(
 	}
 	s := fmt.Sprintf("MD size: %d bytes\n"+
 		"MD version: %s\n\n", len(serializedBRMD), brmd.Version())
-	s += c.Sdump(brmdCopy)
+	s += dumpConfig().Sdump(brmdCopy)
 	return s, nil
 }

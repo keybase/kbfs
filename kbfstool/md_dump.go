@@ -11,8 +11,7 @@ import (
 )
 
 func mdDumpDumpWithReplacements(
-	c *spew.ConfigState, o interface{}, replacements map[string]string) {
-	s := c.Sdump(o)
+	s string, replacements map[string]string) {
 	for old, new := range replacements {
 		s = strings.Replace(s, old, new, -1)
 	}
@@ -68,34 +67,30 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 		}
 	}
 
-	brmdDump := libkbfs.DumpBareRootMetadata(brmd)
-	mdDumpDumpWithReplacements(c, brmdDump, replacements)
+	brmdDump, err := libkbfs.DumpBareRootMetadata(config.Codec(), brmd)
+	if err != nil {
+		return err
+	}
+
+	mdDumpDumpWithReplacements(brmdDump, replacements)
 	fmt.Print("\n")
 
 	fmt.Print("Extra metadata\n")
 	fmt.Print("--------------\n")
-	switch extra := extra.(type) {
-	case *libkbfs.ExtraMetadataV3:
-		serializedWKB, err := config.Codec().Encode(
-			extra.GetWriterKeyBundle())
-		if err != nil {
-			return err
-		}
-		serializedRKB, err := config.Codec().Encode(
-			extra.GetReaderKeyBundle())
-		if err != nil {
-			return err
-		}
-		fmt.Printf("WKB size: %d\nRKB size: %d\n",
-			len(serializedWKB), len(serializedRKB))
+	extraDump, err := libkbfs.DumpExtraMetadata(config.Codec(), extra)
+	if err != nil {
+		return err
 	}
-	mdDumpDumpWithReplacements(c, extra, replacements)
+	mdDumpDumpWithReplacements(extraDump, replacements)
 	fmt.Print("\n")
 
 	fmt.Print("Private metadata\n")
 	fmt.Print("----------------\n")
-	fmt.Printf("Size: %d bytes\n", len(serializedPrivateMetadata))
-	mdDumpDumpWithReplacements(c, rmd.Data(), replacements)
+	pmdDump, err := libkbfs.DumpPrivateMetadata(config.Codec(), *rmd.Data())
+	if err != nil {
+		return err
+	}
+	mdDumpDumpWithReplacements(pmdDump, replacements)
 
 	return nil
 }
