@@ -70,12 +70,12 @@ func (id *ID) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the encoding.TextMarshaler interface for ID.
+// MarshalText implements the encoding.TextMarshaler interface for ID.
 func (id ID) MarshalText() ([]byte, error) {
 	return []byte(id.String()), nil
 }
 
-// UnmarshalJSON implements the encoding.TextUnmarshaler interface for
+// UnmarshalText implements the encoding.TextUnmarshaler interface for
 // ID.
 func (id *ID) UnmarshalText(buf []byte) error {
 	newID, err := ParseID(string(buf))
