@@ -208,30 +208,6 @@ func (c CryptoCommon) MakeRandomBlockCryptKeyServerHalf() (
 	return serverHalf, nil
 }
 
-// MaskTLFCryptKey implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) MaskTLFCryptKey(
-	serverHalf kbfscrypto.TLFCryptKeyServerHalf,
-	key kbfscrypto.TLFCryptKey) (
-	clientHalf kbfscrypto.TLFCryptKeyClientHalf, err error) {
-	return kbfscrypto.MaskTLFCryptKey(serverHalf, key), nil
-}
-
-// UnmaskTLFCryptKey implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) UnmaskTLFCryptKey(
-	serverHalf kbfscrypto.TLFCryptKeyServerHalf,
-	clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
-	key kbfscrypto.TLFCryptKey, err error) {
-	return kbfscrypto.UnmaskTLFCryptKey(serverHalf, clientHalf), nil
-}
-
-// UnmaskBlockCryptKey implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) UnmaskBlockCryptKey(
-	serverHalf kbfscrypto.BlockCryptKeyServerHalf,
-	tlfCryptKey kbfscrypto.TLFCryptKey) (
-	key kbfscrypto.BlockCryptKey, error error) {
-	return kbfscrypto.UnmaskBlockCryptKey(serverHalf, tlfCryptKey), nil
-}
-
 // Verify implements the Crypto interface for CryptoCommon.
 func (c CryptoCommon) Verify(
 	msg []byte, sigInfo kbfscrypto.SignatureInfo) (err error) {
