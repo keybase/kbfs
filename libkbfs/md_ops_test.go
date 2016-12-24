@@ -156,12 +156,6 @@ func verifyMDForPrivateHelper(
 		config.mockKbpki.EXPECT().HasVerifyingKey(gomock.Any(), gomock.Any(),
 			gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
 	}
-
-	config.mockCrypto.EXPECT().Verify(gomock.Any(), rmds.SigInfo).
-		MinTimes(minTimes).MaxTimes(maxTimes).Return(nil)
-	config.mockCrypto.EXPECT().
-		Verify(gomock.Any(), rmds.GetWriterMetadataSigInfo()).
-		MinTimes(minTimes).MaxTimes(maxTimes).Return(nil)
 }
 
 func verifyMDForPrivate(

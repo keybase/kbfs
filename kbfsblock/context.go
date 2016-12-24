@@ -26,8 +26,7 @@ func (nonce RefNonce) String() string {
 }
 
 // MakeRefNonce generates a block reference nonce using a CSPRNG. This
-// is used for distinguishing different references to the same
-// kbfsblock.ID.
+// is used for distinguishing different references to the same ID.
 func MakeRefNonce() (RefNonce, error) {
 	var nonce RefNonce
 	err := kbfscrypto.RandRead(nonce[:])

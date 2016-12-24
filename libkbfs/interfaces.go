@@ -768,6 +768,11 @@ type cryptoPure interface {
 	// for inclusion into the KBFS Merkle tree.
 	MakeMerkleHash(md *RootMetadataSigned) (MerkleHash, error)
 
+	// MakeTemporaryBlockID generates a temporary block ID using a
+	// CSPRNG. This is used for indirect blocks before they're
+	// committed to the server.
+	MakeTemporaryBlockID() (kbfsblock.ID, error)
+
 	// MakeRandomTLFEphemeralKeys generates ephemeral keys using a
 	// CSPRNG for a TLF. These keys can then be used to key/rekey
 	// the TLF.

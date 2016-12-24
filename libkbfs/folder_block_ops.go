@@ -1102,7 +1102,7 @@ func (fbo *folderBlockOps) PrepRename(
 func (fbo *folderBlockOps) newFileData(lState *lockState,
 	file path, uid keybase1.UID, kmd KeyMetadata) *fileData {
 	fbo.blockLock.AssertAnyLocked(lState)
-	return newFileData(file, uid,
+	return newFileData(file, uid, fbo.config.Crypto(),
 		fbo.config.BlockSplitter(), kmd,
 		func(ctx context.Context, kmd KeyMetadata, ptr BlockPointer,
 			file path, rtype blockReqType) (*FileBlock, bool, error) {

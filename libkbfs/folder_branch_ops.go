@@ -1789,7 +1789,7 @@ func (fbo *folderBranchOps) unembedBlockChanges(
 	}
 
 	df := newDirtyFile(file, dirtyBcache)
-	fd := newFileData(file, uid,
+	fd := newFileData(file, uid, fbo.config.Crypto(),
 		fbo.config.BlockSplitter(), md.ReadOnly(), getter, cacher, fbo.log)
 
 	// Write all the data.

@@ -195,6 +195,19 @@ func (c CryptoCommon) MakeRandomTLFCryptKeyServerHalf() (
 	return serverHalf, nil
 }
 
+// MakeRandomBlockCryptKeyServerHalf implements the Crypto interface
+// for CryptoCommon.
+func (c CryptoCommon) MakeRandomBlockCryptKeyServerHalf() (
+	serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
+	var data [32]byte
+	err = kbfscrypto.RandRead(data[:])
+	if err != nil {
+		return kbfscrypto.BlockCryptKeyServerHalf{}, err
+	}
+	serverHalf = kbfscrypto.MakeBlockCryptKeyServerHalf(data)
+	return serverHalf, nil
+}
+
 // EncryptTLFCryptKeyClientHalf implements the Crypto interface for
 // CryptoCommon.
 func (c CryptoCommon) EncryptTLFCryptKeyClientHalf(

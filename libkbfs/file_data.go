@@ -33,6 +33,7 @@ type dirtyBlockCacher func(ptr BlockPointer, block Block) error
 type fileData struct {
 	file   path
 	uid    keybase1.UID
+	crypto cryptoPure
 	kmd    KeyMetadata
 	bsplit BlockSplitter
 	getter fileBlockGetter
@@ -40,12 +41,13 @@ type fileData struct {
 	log    logger.Logger
 }
 
-func newFileData(file path, uid keybase1.UID,
+func newFileData(file path, uid keybase1.UID, crypto cryptoPure,
 	bsplit BlockSplitter, kmd KeyMetadata, getter fileBlockGetter,
 	cacher dirtyBlockCacher, log logger.Logger) *fileData {
 	return &fileData{
 		file:   file,
 		uid:    uid,
+		crypto: crypto,
 		bsplit: bsplit,
 		kmd:    kmd,
 		getter: getter,
@@ -461,7 +463,7 @@ func (fd *fileData) getBytes(ctx context.Context, startOff, endOff int64) (
 // indirect block that becomes the parent.
 func (fd *fileData) createIndirectBlock(
 	df *dirtyFile, dver DataVer) (*FileBlock, error) {
-	newID, err := kbfsblock.MakeTemporaryID()
+	newID, err := fd.crypto.MakeTemporaryBlockID()
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +506,7 @@ func (fd *fileData) createIndirectBlock(
 func (fd *fileData) newRightBlock(
 	ctx context.Context, ptr BlockPointer, pblock *FileBlock,
 	off int64) error {
-	newRID, err := kbfsblock.MakeTemporaryID()
+	newRID, err := fd.crypto.MakeTemporaryBlockID()
 	if err != nil {
 		return err
 	}
