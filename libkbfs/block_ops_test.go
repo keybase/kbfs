@@ -240,8 +240,8 @@ func (config testBlockOpsConfig) keyGetter() blockKeyGetter {
 }
 
 func TestBlockOpsReadySuccess2(t *testing.T) {
-	key := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
 	tlfID := tlf.FakeID(0, false)
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
 	var keyGen KeyGen = 5
 	kg := fakeBlockKeyGetter{
 		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
@@ -250,26 +250,47 @@ func TestBlockOpsReadySuccess2(t *testing.T) {
 				kbfscrypto.TLFCryptKey{},
 				kbfscrypto.TLFCryptKey{},
 				kbfscrypto.TLFCryptKey{},
-				key,
+				tlfCryptKey,
 			},
 		},
 	}
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
 	config := testBlockOpsConfig{blockServer, kg}
-
-	ctx := context.Background()
-
-	block := &FileBlock{
-		Contents: []byte{1, 2, 3, 4, 5},
-	}
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
 	kmd := emptyKeyMetadata{tlfID, keyGen}
 
-	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
-	id, _, readyBlockData, err := bops.Ready(ctx, kmd, block)
+	block := FileBlock{
+		Contents: []byte{1, 2, 3, 4, 5},
+	}
+
+	codec := kbfscodec.NewMsgpack()
+	encodedBlock, err := codec.Encode(block)
 	require.NoError(t, err)
-	_ = id
-	_ = readyBlockData
+
+	ctx := context.Background()
+	id, plainSize, readyBlockData, err := bops.Ready(ctx, kmd, &block)
+	require.NoError(t, err)
+
+	require.Equal(t, len(encodedBlock), plainSize)
+
+	err = kbfsblock.VerifyID(readyBlockData.buf, id)
+	require.NoError(t, err)
+
+	crypto := MakeCryptoCommon(codec)
+	var encryptedBlock EncryptedBlock
+	err = codec.Decode(readyBlockData.buf, &encryptedBlock)
+	require.NoError(t, err)
+
+	blockCryptKey := kbfscrypto.UnmaskBlockCryptKey(
+		readyBlockData.serverHalf, tlfCryptKey)
+
+	var decryptedBlock FileBlock
+	err = crypto.DecryptBlock(
+		encryptedBlock, blockCryptKey, &decryptedBlock)
+	require.NoError(t, err)
+	decryptedBlock.SetEncodedSize(uint32(readyBlockData.GetEncodedSize()))
+	require.Equal(t, block, decryptedBlock)
 }
 
 func TestBlockOpsGetSuccess(t *testing.T) {
