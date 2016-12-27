@@ -362,7 +362,7 @@ func TestKBFSOpsGetRootNodeCacheSuccess(t *testing.T) {
 	assert.Equal(t, id, p.Tlf)
 	require.Equal(t, 1, len(p.path))
 	assert.Equal(t, rmd.data.Dir.ID, p.path[0].ID)
-	assert.Equal(t, rmd.data.Dir.EntryInfo, ei)
+	assert.Equal(t, rmd.data.Dir.EntryInfo, ei.EntryInfo)
 	assert.Equal(t, rmd.GetTlfHandle(), h)
 
 	// Trigger identify.
@@ -391,7 +391,7 @@ func TestKBFSOpsGetRootNodeReIdentify(t *testing.T) {
 	assert.Equal(t, id, p.Tlf)
 	require.Equal(t, 1, len(p.path))
 	assert.Equal(t, rmd.data.Dir.ID, p.path[0].ID)
-	assert.Equal(t, rmd.data.Dir.EntryInfo, ei)
+	assert.Equal(t, rmd.data.Dir.EntryInfo, ei.EntryInfo)
 	assert.Equal(t, rmd.GetTlfHandle(), h)
 
 	// Trigger identify.
@@ -535,7 +535,7 @@ func testKBFSOpsGetRootNodeCreateNewSuccess(t *testing.T, public bool) {
 	require.Equal(t, id, p.Tlf)
 	require.Equal(t, 1, len(p.path))
 	require.Equal(t, rmd.data.Dir.ID, p.path[0].ID)
-	require.Equal(t, rmd.data.Dir.EntryInfo, ei)
+	require.Equal(t, rmd.data.Dir.EntryInfo, ei.EntryInfo)
 	require.Equal(t, rmd.GetTlfHandle(), h)
 }
 
@@ -697,7 +697,7 @@ func TestKBFSOpsGetBaseDirChildrenCacheSuccess(t *testing.T) {
 	for c, ei := range children {
 		if de, ok := dirBlock.Children[c]; !ok {
 			t.Errorf("No such child: %s", c)
-		} else if de.EntryInfo != ei {
+		} else if de.EntryInfo != ei.EntryInfo {
 			t.Errorf("Wrong EntryInfo for child %s: %v", c, ei)
 		}
 	}
@@ -825,7 +825,7 @@ func TestKBFSOpsGetNestedDirChildrenCacheSuccess(t *testing.T) {
 	for c, ei := range children {
 		if de, ok := dirBlock.Children[c]; !ok {
 			t.Errorf("No such child: %s", c)
-		} else if de.EntryInfo != ei {
+		} else if de.EntryInfo != ei.EntryInfo {
 			t.Errorf("Wrong EntryInfo for child %s: %v", c, ei)
 		}
 	}
@@ -866,7 +866,7 @@ func TestKBFSOpsLookupSuccess(t *testing.T) {
 	bPath := ops.nodeCache.PathFromNode(bn)
 	expectedBNode := pathNode{makeBP(bID, rmd, config, u), "b"}
 	expectedBNode.KeyGen = 1
-	if ei != dirBlock.Children["b"].EntryInfo {
+	if ei.EntryInfo != dirBlock.Children["b"].EntryInfo {
 		t.Errorf("Lookup returned a bad entry info: %v vs %v",
 			ei, dirBlock.Children["b"].EntryInfo)
 	} else if bPath.path[2] != expectedBNode {
@@ -906,7 +906,7 @@ func TestKBFSOpsLookupSymlinkSuccess(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error on Lookup: %v", err)
 	}
-	if ei != dirBlock.Children["b"].EntryInfo {
+	if ei.EntryInfo != dirBlock.Children["b"].EntryInfo {
 		t.Errorf("Lookup returned a bad directory entry: %v vs %v",
 			ei, dirBlock.Children["b"].EntryInfo)
 	} else if bn != nil {
@@ -1024,7 +1024,7 @@ func TestKBFSOpsStatSuccess(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error on Stat: %v", err)
 	}
-	if ei != dirBlock.Children["b"].EntryInfo {
+	if ei.EntryInfo != dirBlock.Children["b"].EntryInfo {
 		t.Errorf("Stat returned a bad entry info: %v vs %v",
 			ei, dirBlock.Children["b"].EntryInfo)
 	}

@@ -516,8 +516,9 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 	// them. If the context is cancelled after the Create call enters the
 	// critical portion, and grace period has passed before Attr happens, the
 	// Attr can result in EINTR which application does not expect. This caches
-	// the EntryInfo for the created node and allows the subsequent Attr call to
-	// use the cached EntryInfo instead of relying on a new Stat call.
+	// the EntryInfoExtended for the created node and allows the subsequent Attr
+	// call to use the cached EntryInfoExtended instead of relying on a new Stat
+	// call.
 	if reqID, ok := ctx.Value(CtxIDKey).(string); ok {
 		child.eiCache.set(reqID, ei)
 	}

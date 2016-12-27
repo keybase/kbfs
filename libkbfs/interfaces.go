@@ -125,32 +125,32 @@ type KBFSOps interface {
 	// remote-access operation.
 	GetOrCreateRootNode(
 		ctx context.Context, h *TlfHandle, branch BranchName) (
-		node Node, ei EntryInfo, err error)
+		node Node, ei EntryInfoExtended, err error)
 	// GetRootNode is like GetOrCreateRootNode but if the root node
 	// does not exist it will return a nil Node and not create it.
 	GetRootNode(
 		ctx context.Context, h *TlfHandle, branch BranchName) (
-		node Node, ei EntryInfo, err error)
+		node Node, ei EntryInfoExtended, err error)
 	// GetDirChildren returns a map of children in the directory,
-	// mapped to their EntryInfo, if the logged-in user has read
+	// mapped to their EntryInfoExtended, if the logged-in user has read
 	// permission for the top-level folder.  This is a remote-access
 	// operation.
-	GetDirChildren(ctx context.Context, dir Node) (map[string]EntryInfo, error)
+	GetDirChildren(ctx context.Context, dir Node) (map[string]EntryInfoExtended, error)
 	// Lookup returns the Node and entry info associated with a
 	// given name in a directory, if the logged-in user has read
 	// permissions to the top-level folder.  The returned Node is nil
 	// if the name is a symlink.  This is a remote-access operation.
-	Lookup(ctx context.Context, dir Node, name string) (Node, EntryInfo, error)
+	Lookup(ctx context.Context, dir Node, name string) (Node, EntryInfoExtended, error)
 	// Stat returns the entry info associated with a
 	// given Node, if the logged-in user has read permissions to the
 	// top-level folder.  This is a remote-access operation.
-	Stat(ctx context.Context, node Node) (EntryInfo, error)
+	Stat(ctx context.Context, node Node) (EntryInfoExtended, error)
 	// CreateDir creates a new subdirectory under the given node, if
 	// the logged-in user has write permission to the top-level
 	// folder.  Returns the new Node for the created subdirectory, and
 	// its new entry info.  This is a remote-sync operation.
 	CreateDir(ctx context.Context, dir Node, name string) (
-		Node, EntryInfo, error)
+		Node, EntryInfoExtended, error)
 	// CreateFile creates a new file under the given node, if the
 	// logged-in user has write permission to the top-level folder.
 	// Returns the new Node for the created file, and its new
@@ -160,13 +160,13 @@ type KBFSOps interface {
 	//
 	// This is a remote-sync operation.
 	CreateFile(ctx context.Context, dir Node, name string, isExec bool, excl Excl) (
-		Node, EntryInfo, error)
+		Node, EntryInfoExtended, error)
 	// CreateLink creates a new symlink under the given node, if the
 	// logged-in user has write permission to the top-level folder.
 	// Returns the new entry info for the created symlink.  This
 	// is a remote-sync operation.
 	CreateLink(ctx context.Context, dir Node, fromName string, toPath string) (
-		EntryInfo, error)
+		EntryInfoExtended, error)
 	// RemoveDir removes the subdirectory represented by the given
 	// node, if the logged-in user has write permission to the
 	// top-level folder.  Will return an error if the subdirectory is
