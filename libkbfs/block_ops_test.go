@@ -57,11 +57,7 @@ type fakeBlockKeyGetter struct{}
 
 func (kg fakeBlockKeyGetter) GetTLFCryptKeyForEncryption(
 	ctx context.Context, kmd KeyMetadata) (kbfscrypto.TLFCryptKey, error) {
-	fkmd, ok := kmd.(fakeKeyMetadata)
-	if !ok {
-		return kbfscrypto.TLFCryptKey{}, fmt.Errorf(
-			"unexpected type %T for kmd", kmd)
-	}
+	fkmd := kmd.(fakeKeyMetadata)
 	if len(fkmd.keys) == 0 {
 		return kbfscrypto.TLFCryptKey{}, errors.New(
 			"no keys for encryption")
@@ -72,11 +68,7 @@ func (kg fakeBlockKeyGetter) GetTLFCryptKeyForEncryption(
 func (kg fakeBlockKeyGetter) GetTLFCryptKeyForBlockDecryption(
 	ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer) (
 	kbfscrypto.TLFCryptKey, error) {
-	fkmd, ok := kmd.(fakeKeyMetadata)
-	if !ok {
-		return kbfscrypto.TLFCryptKey{}, fmt.Errorf(
-			"unexpected type %T for kmd", kmd)
-	}
+	fkmd := kmd.(fakeKeyMetadata)
 	i := int(blockPtr.KeyGen - FirstValidKeyGen)
 	if i >= len(fkmd.keys) {
 		return kbfscrypto.TLFCryptKey{}, fmt.Errorf(
