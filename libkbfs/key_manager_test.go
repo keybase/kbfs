@@ -169,6 +169,52 @@ func expectRekey(config *ConfigMock, bh tlf.Handle, numDevices int,
 		gomock.Any()).AnyTimes()
 }
 
+type emptyKeyMetadata struct {
+	tlfID  tlf.ID
+	keyGen KeyGen
+}
+
+var _ KeyMetadata = emptyKeyMetadata{}
+
+func (kmd emptyKeyMetadata) TlfID() tlf.ID {
+	return kmd.tlfID
+}
+
+// GetTlfHandle just returns nil. This contradicts the requirements
+// for KeyMetadata, but emptyKeyMetadata shouldn't be used in contexts
+// that actually use GetTlfHandle().
+func (kmd emptyKeyMetadata) GetTlfHandle() *TlfHandle {
+	return nil
+}
+
+func (kmd emptyKeyMetadata) LatestKeyGeneration() KeyGen {
+	return kmd.keyGen
+}
+
+func (kmd emptyKeyMetadata) HasKeyForUser(
+	keyGen KeyGen, user keybase1.UID) bool {
+	return false
+}
+
+func (kmd emptyKeyMetadata) GetTLFCryptKeyParams(
+	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
+	kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
+	TLFCryptKeyServerHalfID, bool, error) {
+	return kbfscrypto.TLFEphemeralPublicKey{},
+		EncryptedTLFCryptKeyClientHalf{},
+		TLFCryptKeyServerHalfID{}, false, nil
+}
+
+func (kmd emptyKeyMetadata) StoresHistoricTLFCryptKeys() bool {
+	return false
+}
+
+func (kmd emptyKeyMetadata) GetHistoricTLFCryptKey(
+	crypto cryptoPure, keyGen KeyGen, key kbfscrypto.TLFCryptKey) (
+	kbfscrypto.TLFCryptKey, error) {
+	return kbfscrypto.TLFCryptKey{}, nil
+}
+
 func TestKeyManagerPublicTLFCryptKey(t *testing.T) {
 	runTestOverMetadataVers(t, testKeyManagerPublicTLFCryptKey)
 }
