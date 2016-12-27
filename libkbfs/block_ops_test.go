@@ -543,7 +543,7 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 	ctx := context.Background()
 	tlfID := tlf.FakeID(1, false)
 	bserver.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
-		Return(map[kbfsblock.ID]int{}, nil)
+		Return(expectedLiveCounts, nil)
 
 	liveCounts, err := bops.Delete(ctx, tlfID, []BlockPointer{b1, b2})
 	require.NoError(t, err)
