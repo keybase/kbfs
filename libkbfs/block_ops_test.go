@@ -46,12 +46,6 @@ func (m kmdMatcher) String() string {
 // TODO: Add test coverage for decryption of blocks with an old key
 // generation.
 
-func expectGetTLFCryptKeyForBlockDecryption(
-	config *ConfigMock, kmd KeyMetadata, blockPtr BlockPointer) {
-	config.mockKeyman.EXPECT().GetTLFCryptKeyForBlockDecryption(gomock.Any(),
-		kmdMatcher{kmd}, blockPtr).Return(kbfscrypto.TLFCryptKey{}, nil)
-}
-
 type TestBlock struct {
 	A int
 }
@@ -92,20 +86,6 @@ func blockOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	config.ctr.CheckForFailures()
 	config.BlockOps().Shutdown()
 	mockCtrl.Finish()
-}
-
-func expectBlockDecrypt(config *ConfigMock, kmd KeyMetadata, blockPtr BlockPointer, encData []byte, block *TestBlock) {
-	expectGetTLFCryptKeyForBlockDecryption(config, kmd, blockPtr)
-	config.mockCodec.EXPECT().Decode(encData, gomock.Any()).Return(nil)
-	config.mockCrypto.EXPECT().DecryptBlock(
-		gomock.Any(), kbfscrypto.BlockCryptKey{}, gomock.Any()).
-		Do(func(encryptedBlock EncryptedBlock,
-			key kbfscrypto.BlockCryptKey, b Block) {
-			if b != nil {
-				tb := b.(*TestBlock)
-				*tb = *block
-			}
-		})
 }
 
 type emptyKeyMetadata struct {
