@@ -20,7 +20,7 @@ type blockGetter interface {
 
 // realBlockGetter obtains real blocks using the APIs available in Config.
 type realBlockGetter struct {
-	config Config
+	config blockOpsConfig
 }
 
 // getBlock implements the interface for realBlockGetter.
@@ -39,7 +39,7 @@ func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockP
 		return err
 	}
 
-	crypto := bg.config.Crypto()
+	crypto := bg.config.cryptoPure()
 	if err := kbfsblock.VerifyID(buf, blockPtr.ID); err != nil {
 		return err
 	}

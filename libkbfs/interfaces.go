@@ -1358,6 +1358,7 @@ type Config interface {
 	DirtyBlockCache() DirtyBlockCache
 	SetDirtyBlockCache(DirtyBlockCache)
 	Crypto() Crypto
+	cryptoPure() cryptoPure
 	SetCrypto(Crypto)
 	Codec() kbfscodec.Codec
 	SetCodec(kbfscodec.Codec)

@@ -384,6 +384,13 @@ func (c *ConfigLocal) Crypto() Crypto {
 	return c.crypto
 }
 
+// cryptoPure implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) cryptoPure() cryptoPure {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.crypto
+}
+
 // SetCrypto implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) SetCrypto(cr Crypto) {
 	c.lock.Lock()

@@ -3727,6 +3727,16 @@ func (_mr *_MockConfigRecorder) Crypto() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Crypto")
 }
 
+func (_m *MockConfig) cryptoPure() cryptoPure {
+	ret := _m.ctrl.Call(_m, "cryptoPure")
+	ret0, _ := ret[0].(cryptoPure)
+	return ret0
+}
+
+func (_mr *_MockConfigRecorder) cryptoPure() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "cryptoPure")
+}
+
 func (_m *MockConfig) SetCrypto(_param0 Crypto) {
 	_m.ctrl.Call(_m, "SetCrypto", _param0)
 }

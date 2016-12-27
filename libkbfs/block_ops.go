@@ -6,15 +6,23 @@ package libkbfs
 
 import (
 	"github.com/keybase/kbfs/kbfsblock"
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
 
+type blockOpsConfig interface {
+	BlockServer() BlockServer
+	Codec() kbfscodec.Codec
+	cryptoPure() cryptoPure
+	KeyManager() KeyManager
+}
+
 // BlockOpsStandard implements the BlockOps interface by relaying
 // requests to the block server.
 type BlockOpsStandard struct {
-	config  Config
+	config  blockOpsConfig
 	queue   *blockRetrievalQueue
 	workers []*blockRetrievalWorker
 }
@@ -22,7 +30,8 @@ type BlockOpsStandard struct {
 var _ BlockOps = (*BlockOpsStandard)(nil)
 
 // NewBlockOpsStandard creates a new BlockOpsStandard
-func NewBlockOpsStandard(config Config, queueSize int) *BlockOpsStandard {
+func NewBlockOpsStandard(config blockOpsConfig,
+	queueSize int) *BlockOpsStandard {
 	bops := &BlockOpsStandard{
 		config:  config,
 		queue:   newBlockRetrievalQueue(queueSize, config.Codec()),
@@ -54,7 +63,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
 		}
 	}()
 
-	crypto := b.config.Crypto()
+	crypto := b.config.cryptoPure()
 
 	tlfCryptKey, err := b.config.KeyManager().
 		GetTLFCryptKeyForEncryption(ctx, kmd)
@@ -63,7 +72,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
 	}
 
 	// New server key half for the block.
-	serverHalf, err := b.config.Crypto().MakeRandomBlockCryptKeyServerHalf()
+	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
 	if err != nil {
 		return
 	}
