@@ -53,8 +53,8 @@ func (k *KeyBundleCacheStandard) GetTLFWriterKeyBundle(
 	tlf tlf.ID, bundleID TLFWriterKeyBundleID) (*TLFWriterKeyBundleV3, error) {
 	cacheKey := keyBundleCacheKey{tlf, bundleID.String(), true}
 	if entry, ok := k.lru.Get(cacheKey); ok {
-		if rkb, ok := entry.(TLFWriterKeyBundleV3); ok {
-			return &rkb, nil
+		if wkb, ok := entry.(TLFWriterKeyBundleV3); ok {
+			return &wkb, nil
 		}
 		// Shouldn't be possible.
 		return nil, errors.New("Invalid key bundle type")
