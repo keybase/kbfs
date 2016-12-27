@@ -30,10 +30,11 @@ func statNode(ctx context.Context, config libkbfs.Config, nodePathStr string) er
 	// can't compare the two, since they might legitimately differ
 	// due to races.
 	if n != nil {
-		ei, err = config.KBFSOps().Stat(ctx, n)
+		eie, err := config.KBFSOps().Stat(ctx, n)
 		if err != nil {
 			return err
 		}
+		ei = eie.EntryInfo
 	}
 
 	var symPathStr string
