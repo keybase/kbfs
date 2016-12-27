@@ -259,7 +259,42 @@ func TestBlockOpsGetSuccess2(t *testing.T) {
 	kg := fakeBlockKeyGetter{key}
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
 	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
-	_ = config
+
+	ctx := context.Background()
+
+	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
+
+	blockKey := kbfscrypto.UnmaskBlockCryptKey(serverHalf, key)
+
+	block := &FileBlock{
+		Contents: []byte{1, 2, 3, 4, 5},
+	}
+	_, encryptedBlock, err := crypto.EncryptBlock(block, blockKey)
+	require.NoError(t, err)
+
+	encodedBlock, err := codec.Encode(encryptedBlock)
+	require.NoError(t, err)
+
+	id, err := kbfsblock.MakePermanentID(encodedBlock)
+	require.NoError(t, err)
+
+	tlfID := tlf.FakeID(0, false)
+
+	uid := keybase1.MakeTestUID(1)
+
+	bCtx := kbfsblock.MakeFirstContext(uid)
+
+	err = blockServer.Put(ctx, tlfID, id, bCtx, encodedBlock, serverHalf)
+	require.NoError(t, err)
+
+	var keyGen KeyGen = 5
+	kmd := emptyKeyMetadata{tlfID, keyGen}
+
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	var block2 FileBlock
+	err = bops.Get(ctx, kmd, BlockPointer{ID: id, KeyGen: keyGen, Context: bCtx}, &block2)
+	require.NoError(t, err)
 }
 
 func TestBlockOpsGetFailGet(t *testing.T) {
