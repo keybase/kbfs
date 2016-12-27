@@ -435,6 +435,41 @@ func TestBlockOpsReadyFailEncode(t *testing.T) {
 	require.EqualError(t, err, "could not encode")
 }
 
+type tooSmallEncoder struct {
+	kbfscodec.Codec
+}
+
+func (c tooSmallEncoder) Encode(o interface{}) ([]byte, error) {
+	return []byte{0x1}, nil
+}
+
+// TestBlockOpsReadyTooSmallEncode checks that
+// BlockOpsStandard.Ready() fails properly if the encrypted block
+// encodes to a too-small buffer.
+func TestBlockOpsReadyTooSmallEncode(t *testing.T) {
+	tlfID := tlf.FakeID(0, false)
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
+	kg := fakeBlockKeyGetter{
+		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
+			tlfID: {
+				tlfCryptKey,
+			},
+		},
+	}
+	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	config := testBlockOpsConfig{blockServer, tooSmallEncoder{codec},
+		crypto, kg}
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+
+	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
+
+	ctx := context.Background()
+	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
+	require.IsType(t, TooLowByteCountError{}, err)
+}
+
 func TestBlockOpsGetSuccess(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
@@ -582,43 +617,6 @@ func TestBlockOpsGetFailDecryptBlockData(t *testing.T) {
 	var block TestBlock
 	err = config.BlockOps().Get(ctx, kmd, blockPtr, &block)
 	require.True(t, strings.HasPrefix(err.Error(), "failed to decode"))
-}
-
-func TestBlockOpsReadyFailTooLowByteCount(t *testing.T) {
-	mockCtrl, config, ctx := blockOpsInit(t)
-	defer blockOpsShutdown(mockCtrl, config)
-
-	// expect just one call to encrypt a block
-	decData := &TestBlock{42}
-	encData := []byte{1, 2, 3}
-
-	kmd := makeKMD()
-
-	expectBlockEncrypt(config, kmd, decData, 4, encData, nil)
-
-	_, _, _, err := config.BlockOps().Ready(ctx, kmd, decData)
-	if _, ok := err.(TooLowByteCountError); !ok {
-		t.Errorf("Unexpectedly did not get TooLowByteCountError; "+
-			"instead got %v", err)
-	}
-}
-
-func TestBlockOpsReadyFailEncryptBlockData(t *testing.T) {
-	mockCtrl, config, ctx := blockOpsInit(t)
-	defer blockOpsShutdown(mockCtrl, config)
-
-	// expect one call to encrypt a block, one to hash it
-	decData := &TestBlock{42}
-	err := errors.New("Fake fail")
-
-	kmd := makeKMD()
-
-	expectBlockEncrypt(config, kmd, decData, 0, nil, err)
-
-	if _, _, _, err2 := config.BlockOps().Ready(
-		ctx, kmd, decData); err2 != err {
-		t.Errorf("Got bad error on ready: %v", err2)
-	}
 }
 
 func TestBlockOpsDeleteSuccess(t *testing.T) {
