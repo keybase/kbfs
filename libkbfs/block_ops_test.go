@@ -580,3 +580,64 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 	_, err := bops.Delete(ctx, tlfID, []BlockPointer{b1, b2})
 	require.Equal(t, expectedErr, err)
 }
+
+func TestBlockOpsArchiveSuccess(t *testing.T) {
+	ctr := NewSafeTestReporter(t)
+	mockCtrl := gomock.NewController(ctr)
+	defer mockCtrl.Finish()
+
+	bserver := NewMockBlockServer(mockCtrl)
+	config := makeTestBlockOpsConfig(t)
+	config.bserver = bserver
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
+
+	// Expect one call to archive several blocks.
+
+	b1 := BlockPointer{ID: kbfsblock.FakeID(1)}
+	b2 := BlockPointer{ID: kbfsblock.FakeID(2)}
+
+	contexts := kbfsblock.ContextMap{
+		b1.ID: {b1.Context},
+		b2.ID: {b2.Context},
+	}
+
+	ctx := context.Background()
+	tlfID := tlf.FakeID(1, false)
+	bserver.EXPECT().ArchiveBlockReferences(ctx, tlfID, contexts).
+		Return(nil)
+
+	err := bops.Archive(ctx, tlfID, []BlockPointer{b1, b2})
+	require.NoError(t, err)
+}
+
+func TestBlockOpsArchiveFail(t *testing.T) {
+	ctr := NewSafeTestReporter(t)
+	mockCtrl := gomock.NewController(ctr)
+	defer mockCtrl.Finish()
+
+	bserver := NewMockBlockServer(mockCtrl)
+	config := makeTestBlockOpsConfig(t)
+	config.bserver = bserver
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
+
+	b1 := BlockPointer{ID: kbfsblock.FakeID(1)}
+	b2 := BlockPointer{ID: kbfsblock.FakeID(2)}
+
+	contexts := kbfsblock.ContextMap{
+		b1.ID: {b1.Context},
+		b2.ID: {b2.Context},
+	}
+
+	// Fail the archive call.
+
+	ctx := context.Background()
+	tlfID := tlf.FakeID(1, false)
+	expectedErr := errors.New("Fake fail")
+	bserver.EXPECT().ArchiveBlockReferences(ctx, tlfID, contexts).
+		Return(expectedErr)
+
+	err := bops.Archive(ctx, tlfID, []BlockPointer{b1, b2})
+	require.Equal(t, expectedErr, err)
+}
