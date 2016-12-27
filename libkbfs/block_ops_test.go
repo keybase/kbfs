@@ -219,8 +219,10 @@ func (kg fakeBlockKeyGetter) GetTLFCryptKeyForBlockDecryption(
 }
 
 type testBlockOpsConfig struct {
-	bserver *BlockServerMemory
-	kg      fakeBlockKeyGetter
+	bserver      *BlockServerMemory
+	testCodec    kbfscodec.Codec
+	cryptoCommon CryptoCommon
+	kg           fakeBlockKeyGetter
 }
 
 func (config testBlockOpsConfig) blockServer() BlockServer {
@@ -228,17 +230,19 @@ func (config testBlockOpsConfig) blockServer() BlockServer {
 }
 
 func (config testBlockOpsConfig) codec() kbfscodec.Codec {
-	return kbfscodec.NewMsgpack()
+	return config.testCodec
 }
 
 func (config testBlockOpsConfig) crypto() cryptoPure {
-	return MakeCryptoCommon(config.codec())
+	return config.cryptoCommon
 }
 
 func (config testBlockOpsConfig) keyGetter() blockKeyGetter {
 	return config.kg
 }
 
+// TestBlockOpsReadySuccess checks that BlockOpsStandard.Ready()
+// encrypts its given block properly.
 func TestBlockOpsReadySuccess(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
@@ -255,7 +259,9 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 		},
 	}
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	config := testBlockOpsConfig{blockServer, kg}
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
 	kmd := emptyKeyMetadata{tlfID, keyGen}
@@ -264,7 +270,6 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 		Contents: []byte{1, 2, 3, 4, 5},
 	}
 
-	codec := kbfscodec.NewMsgpack()
 	encodedBlock, err := codec.Encode(block)
 	require.NoError(t, err)
 
@@ -277,7 +282,6 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 	err = kbfsblock.VerifyID(readyBlockData.buf, id)
 	require.NoError(t, err)
 
-	crypto := MakeCryptoCommon(codec)
 	var encryptedBlock EncryptedBlock
 	err = codec.Decode(readyBlockData.buf, &encryptedBlock)
 	require.NoError(t, err)
@@ -293,11 +297,33 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 	require.Equal(t, block, decryptedBlock)
 }
 
+// TestBlockOpsReadyFailKeyGet checks that BlockOpsStandard.Ready()
+// fails properly if the key is not retrievable.
 func TestBlockOpsReadyFailKeyGet(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	kg := fakeBlockKeyGetter{}
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	config := testBlockOpsConfig{blockServer, kg}
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+
+	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
+
+	ctx := context.Background()
+	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
+	require.True(t, strings.HasPrefix(err.Error(), "No keys for"))
+}
+
+// TestBlockOpsReadyFailServerHalfGet checks that BlockOpsStandard.Ready()
+// fails properly if a server half was failed to be generated.
+func TestBlockOpsReadyFailServerHalfGet(t *testing.T) {
+	tlfID := tlf.FakeID(0, false)
+	kg := fakeBlockKeyGetter{}
+	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
@@ -325,7 +351,7 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 		},
 	}
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	config := testBlockOpsConfig{blockServer, kg}
+	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
 
 	ctx := context.Background()
 
@@ -381,7 +407,7 @@ func TestBlockOpsGetFailGet(t *testing.T) {
 		},
 	}
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	config := testBlockOpsConfig{blockServer, kg}
+	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
 
 	ctx := context.Background()
 
