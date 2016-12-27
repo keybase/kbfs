@@ -562,7 +562,6 @@ func TestBlockOpsGetFailDecrypt(t *testing.T) {
 }
 
 func TestBlockOpsDeleteSuccess(t *testing.T) {
-	tlfID := tlf.FakeID(0, false)
 	ctr := NewSafeTestReporter(t)
 	mockCtrl := gomock.NewController(ctr)
 	defer mockCtrl.Finish()
@@ -583,6 +582,7 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 	blockPtrs := []BlockPointer{b1, b2}
 	var liveCounts map[kbfsblock.ID]int
 	ctx := context.Background()
+	tlfID := tlf.FakeID(1, false)
 	bserver.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
 		Return(liveCounts, nil)
 
@@ -591,8 +591,15 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 }
 
 func TestBlockOpsDeleteFail(t *testing.T) {
-	mockCtrl, config, ctx := blockOpsInit(t)
-	defer blockOpsShutdown(mockCtrl, config)
+	ctr := NewSafeTestReporter(t)
+	mockCtrl := gomock.NewController(ctr)
+	defer mockCtrl.Finish()
+
+	bserver := NewMockBlockServer(mockCtrl)
+	config := makeTestBlockOpsConfig(t)
+	config.bserver = bserver
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	// fail the delete call
 
@@ -605,11 +612,10 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 	err := errors.New("Fake fail")
 	var liveCounts map[kbfsblock.ID]int
 	tlfID := tlf.FakeID(1, false)
-	config.mockBserv.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
+	ctx := context.Background()
+	bserver.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
 		Return(liveCounts, err)
 
-	if _, err2 := config.BlockOps().Delete(
-		ctx, tlfID, blockPtrs); err2 != err {
-		t.Errorf("Got bad error on delete: %v", err2)
-	}
+	_, err2 := bops.Delete(ctx, tlfID, blockPtrs)
+	require.Equal(t, err, err2)
 }
