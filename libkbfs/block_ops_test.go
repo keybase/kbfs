@@ -297,7 +297,7 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	require.Equal(t, *block, block2)
 }
 
-func TestBlockOpsFailGet(t *testing.T) {
+func TestBlockOpsGetFailGet(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
 	key := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
