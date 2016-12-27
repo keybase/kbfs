@@ -491,6 +491,32 @@ func TestBlockOpsGetFailVerify(t *testing.T) {
 	require.IsType(t, kbfshash.HashMismatchError{}, err)
 }
 
+// TestBlockOpsReadyFailKeyGet checks that BlockOpsStandard.Get()
+// fails if it can't get the decryption key.
+func TestBlockOpsGetFailKeyGet(t *testing.T) {
+	tlfID := tlf.FakeID(0, false)
+	var latestKeyGen KeyGen = 5
+	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+
+	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
+
+	ctx := context.Background()
+	id, _, readyBlockData, err := bops.Ready(ctx, kmd, &FileBlock{})
+	require.NoError(t, err)
+
+	bCtx := kbfsblock.MakeFirstContext(keybase1.MakeTestUID(1))
+	err = config.bserver.Put(ctx, tlfID, id, bCtx,
+		readyBlockData.buf, readyBlockData.serverHalf)
+	require.NoError(t, err)
+
+	var decryptedBlock FileBlock
+	err = bops.Get(ctx, kmd,
+		BlockPointer{ID: id, KeyGen: latestKeyGen + 1, Context: bCtx},
+		&decryptedBlock)
+	require.True(t, strings.HasPrefix(err.Error(), "No key for"))
+}
+
 func TestBlockOpsGetFailDecryptBlockData(t *testing.T) {
 	mockCtrl, config, ctx := blockOpsInit(t)
 	defer blockOpsShutdown(mockCtrl, config)
