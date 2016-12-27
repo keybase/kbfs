@@ -96,7 +96,8 @@ func blockOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
 	ctr := NewSafeTestReporter(t)
 	mockCtrl = gomock.NewController(ctr)
 	config = NewConfigMock(mockCtrl, ctr)
-	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	bops := NewBlockOpsStandard(blockOpsConfigWrapper{config},
+		testBlockRetrievalWorkerQueueSize)
 	config.SetBlockOps(bops)
 	ctx = context.Background()
 	return
@@ -210,6 +211,13 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, decData, gotBlock)
+}
+
+func TestBlockOpsGetSuccess2(t *testing.T) {
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	_ = codec
+	_ = crypto
 }
 
 func TestBlockOpsGetFailGet(t *testing.T) {

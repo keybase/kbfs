@@ -54,7 +54,8 @@ func fakeMdID(b byte) MdID {
 func newConfigForTest(loggerFn func(module string) logger.Logger) *ConfigLocal {
 	config := NewConfigLocal(loggerFn)
 
-	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	bops := NewBlockOpsStandard(blockOpsConfigWrapper{config},
+		testBlockRetrievalWorkerQueueSize)
 	config.SetBlockOps(bops)
 
 	config.SetBlockSplitter(&BlockSplitterSimple{64 * 1024, 8 * 1024})

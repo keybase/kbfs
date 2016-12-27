@@ -1247,6 +1247,38 @@ func (_mr *_MockmdDecryptionKeyGetterRecorder) GetTLFCryptKeyForMDDecryption(arg
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForMDDecryption", arg0, arg1, arg2)
 }
 
+// Mock of blockDecryptionKeyGetter interface
+type MockblockDecryptionKeyGetter struct {
+	ctrl     *gomock.Controller
+	recorder *_MockblockDecryptionKeyGetterRecorder
+}
+
+// Recorder for MockblockDecryptionKeyGetter (not exported)
+type _MockblockDecryptionKeyGetterRecorder struct {
+	mock *MockblockDecryptionKeyGetter
+}
+
+func NewMockblockDecryptionKeyGetter(ctrl *gomock.Controller) *MockblockDecryptionKeyGetter {
+	mock := &MockblockDecryptionKeyGetter{ctrl: ctrl}
+	mock.recorder = &_MockblockDecryptionKeyGetterRecorder{mock}
+	return mock
+}
+
+func (_m *MockblockDecryptionKeyGetter) EXPECT() *_MockblockDecryptionKeyGetterRecorder {
+	return _m.recorder
+}
+
+func (_m *MockblockDecryptionKeyGetter) GetTLFCryptKeyForBlockDecryption(ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer) (kbfscrypto.TLFCryptKey, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyForBlockDecryption", ctx, kmd, blockPtr)
+	ret0, _ := ret[0].(kbfscrypto.TLFCryptKey)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockblockDecryptionKeyGetterRecorder) GetTLFCryptKeyForBlockDecryption(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForBlockDecryption", arg0, arg1, arg2)
+}
+
 // Mock of KeyManager interface
 type MockKeyManager struct {
 	ctrl     *gomock.Controller
@@ -3725,16 +3757,6 @@ func (_m *MockConfig) Crypto() Crypto {
 
 func (_mr *_MockConfigRecorder) Crypto() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Crypto")
-}
-
-func (_m *MockConfig) cryptoPure() cryptoPure {
-	ret := _m.ctrl.Call(_m, "cryptoPure")
-	ret0, _ := ret[0].(cryptoPure)
-	return ret0
-}
-
-func (_mr *_MockConfigRecorder) cryptoPure() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "cryptoPure")
 }
 
 func (_m *MockConfig) SetCrypto(_param0 Crypto) {

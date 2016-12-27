@@ -530,17 +530,25 @@ type mdDecryptionKeyGetter interface {
 		kbfscrypto.TLFCryptKey, error)
 }
 
-// KeyManager fetches and constructs the keys needed for KBFS file
-// operations.
-type KeyManager interface {
-	encryptionKeyGetter
-	mdDecryptionKeyGetter
-
+type blockDecryptionKeyGetter interface {
 	// GetTLFCryptKeyForBlockDecryption gets the crypt key to use
 	// for the TLF with the given metadata to decrypt the block
 	// pointed to by the given pointer.
 	GetTLFCryptKeyForBlockDecryption(ctx context.Context, kmd KeyMetadata,
 		blockPtr BlockPointer) (kbfscrypto.TLFCryptKey, error)
+}
+
+type blockKeyGetter interface {
+	encryptionKeyGetter
+	blockDecryptionKeyGetter
+}
+
+// KeyManager fetches and constructs the keys needed for KBFS file
+// operations.
+type KeyManager interface {
+	encryptionKeyGetter
+	mdDecryptionKeyGetter
+	blockDecryptionKeyGetter
 
 	// GetTLFCryptKeyOfAllGenerations gets the crypt keys of all generations
 	// for current devices. keys contains crypt keys from all generations, in
@@ -1358,7 +1366,6 @@ type Config interface {
 	DirtyBlockCache() DirtyBlockCache
 	SetDirtyBlockCache(DirtyBlockCache)
 	Crypto() Crypto
-	cryptoPure() cryptoPure
 	SetCrypto(Crypto)
 	Codec() kbfscodec.Codec
 	SetCodec(kbfscodec.Codec)

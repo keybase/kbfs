@@ -44,7 +44,7 @@ func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockP
 		return err
 	}
 
-	tlfCryptKey, err := bg.config.KeyManager().
+	tlfCryptKey, err := bg.config.keyGetter().
 		GetTLFCryptKeyForBlockDecryption(ctx, kmd, blockPtr)
 	if err != nil {
 		return err

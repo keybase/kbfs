@@ -16,7 +16,27 @@ type blockOpsConfig interface {
 	BlockServer() BlockServer
 	Codec() kbfscodec.Codec
 	cryptoPure() cryptoPure
-	KeyManager() KeyManager
+	keyGetter() blockKeyGetter
+}
+
+type blockOpsConfigWrapper struct {
+	config Config
+}
+
+func (config blockOpsConfigWrapper) BlockServer() BlockServer {
+	return config.config.BlockServer()
+}
+
+func (config blockOpsConfigWrapper) Codec() kbfscodec.Codec {
+	return config.config.Codec()
+}
+
+func (config blockOpsConfigWrapper) cryptoPure() cryptoPure {
+	return config.config.Crypto()
+}
+
+func (config blockOpsConfigWrapper) keyGetter() blockKeyGetter {
+	return config.config.KeyManager()
 }
 
 // BlockOpsStandard implements the BlockOps interface by relaying
@@ -65,7 +85,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
 
 	crypto := b.config.cryptoPure()
 
-	tlfCryptKey, err := b.config.KeyManager().
+	tlfCryptKey, err := b.config.keyGetter().
 		GetTLFCryptKeyForEncryption(ctx, kmd)
 	if err != nil {
 		return
