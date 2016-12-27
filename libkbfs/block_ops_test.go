@@ -219,31 +219,27 @@ func (kg fakeBlockKeyGetter) GetTLFCryptKeyForBlockDecryption(
 }
 
 type testBlockOpsConfig struct {
-	_blockServer BlockServer
-	_codec       kbfscodec.Codec
-	_crypto      cryptoPure
-	_keyGetter   blockKeyGetter
+	bserver *BlockServerMemory
+	kg      fakeBlockKeyGetter
 }
 
 func (config testBlockOpsConfig) blockServer() BlockServer {
-	return config._blockServer
+	return config.bserver
 }
 
 func (config testBlockOpsConfig) codec() kbfscodec.Codec {
-	return config._codec
+	return kbfscodec.NewMsgpack()
 }
 
 func (config testBlockOpsConfig) crypto() cryptoPure {
-	return config._crypto
+	return MakeCryptoCommon(config.codec())
 }
 
 func (config testBlockOpsConfig) keyGetter() blockKeyGetter {
-	return config._keyGetter
+	return config.kg
 }
 
 func TestBlockOpsReadySuccess2(t *testing.T) {
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
 	key := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
 	tlfID := tlf.FakeID(0, false)
 	var keyGen KeyGen = 5
@@ -259,7 +255,7 @@ func TestBlockOpsReadySuccess2(t *testing.T) {
 		},
 	}
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
+	config := testBlockOpsConfig{blockServer, kg}
 
 	ctx := context.Background()
 
@@ -294,7 +290,7 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 		},
 	}
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
+	config := testBlockOpsConfig{blockServer, kg}
 
 	ctx := context.Background()
 
@@ -350,7 +346,7 @@ func TestBlockOpsGetFailGet(t *testing.T) {
 		},
 	}
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
+	config := testBlockOpsConfig{blockServer, kg}
 
 	ctx := context.Background()
 
