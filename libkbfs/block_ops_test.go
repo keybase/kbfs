@@ -387,6 +387,54 @@ func TestBlockOpsReadyFailEncryption(t *testing.T) {
 	require.EqualError(t, err, "could not encrypt block")
 }
 
+type tooSmallBlockEncryptor struct {
+	CryptoCommon
+}
+
+func (c tooSmallBlockEncryptor) EncryptBlock(
+	block Block, key kbfscrypto.BlockCryptKey) (
+	plainSize int, encryptedBlock EncryptedBlock, err error) {
+	plainSize, encryptedBlock, err = c.CryptoCommon.EncryptBlock(block, key)
+	if err != nil {
+		return 0, EncryptedBlock{}, err
+	}
+	encryptedBlock.EncryptedData = nil
+	return plainSize, encryptedBlock, nil
+}
+
+type badEncoder struct {
+	kbfscodec.Codec
+}
+
+func (c badEncoder) Encode(o interface{}) ([]byte, error) {
+	return nil, errors.New("could not encode")
+}
+
+// TestBlockOpsReadyFailEncode checks that BlockOpsStandard.Ready()
+// fails properly if we fail to encode the encrypted block.
+func TestBlockOpsReadyFailEncode(t *testing.T) {
+	tlfID := tlf.FakeID(0, false)
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
+	kg := fakeBlockKeyGetter{
+		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
+			tlfID: {
+				tlfCryptKey,
+			},
+		},
+	}
+	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	config := testBlockOpsConfig{blockServer, badEncoder{codec}, crypto, kg}
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+
+	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
+
+	ctx := context.Background()
+	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
+	require.EqualError(t, err, "could not encode")
+}
+
 func TestBlockOpsGetSuccess(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
