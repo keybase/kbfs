@@ -422,14 +422,14 @@ type badDecoder struct {
 	errors     map[string]error
 }
 
-func (c badDecoder) putError(buf []byte, err error) {
+func (c *badDecoder) putError(buf []byte, err error) {
 	k := string(buf)
 	c.errorsLock.Lock()
 	c.errorsLock.Unlock()
 	c.errors[k] = err
 }
 
-func (c badDecoder) Decode(buf []byte, o interface{}) error {
+func (c *badDecoder) Decode(buf []byte, o interface{}) error {
 	k := string(buf)
 	err := func() error {
 		c.errorsLock.RLock()
