@@ -43,9 +43,6 @@ func (m kmdMatcher) String() string {
 		m.kmd.TlfID(), m.kmd.LatestKeyGeneration())
 }
 
-// TODO: Add test coverage for decryption of blocks with an old key
-// generation.
-
 type TestBlock struct {
 	A int
 }
@@ -384,7 +381,8 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
-	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
+	var keyGen KeyGen = 3
+	kmd := emptyKeyMetadata{tlfID, keyGen}
 
 	block := FileBlock{
 		Contents: []byte{1, 2, 3, 4, 5},
@@ -401,7 +399,7 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 
 	var decryptedBlock FileBlock
 	err = bops.Get(ctx, kmd,
-		BlockPointer{ID: id, KeyGen: latestKeyGen, Context: bCtx},
+		BlockPointer{ID: id, KeyGen: keyGen, Context: bCtx},
 		&decryptedBlock)
 	require.NoError(t, err)
 	require.Equal(t, block, decryptedBlock)
