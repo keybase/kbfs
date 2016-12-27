@@ -394,60 +394,35 @@ func TestBlockOpsReadyTooSmallEncode(t *testing.T) {
 	require.IsType(t, TooLowByteCountError{}, err)
 }
 
+// TestBlockOpsReadySuccess checks that BlockOpsStandard.Get()
+// retrieves a block properly.
 func TestBlockOpsGetSuccess(t *testing.T) {
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	key := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
 	tlfID := tlf.FakeID(0, false)
-	var keyGen KeyGen = 5
-	kg := fakeBlockKeyGetter{
-		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
-			tlfID: {
-				kbfscrypto.TLFCryptKey{},
-				kbfscrypto.TLFCryptKey{},
-				kbfscrypto.TLFCryptKey{},
-				kbfscrypto.TLFCryptKey{},
-				key,
-			},
-		},
-	}
-	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
+	var latestKeyGen KeyGen = 5
+	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
-	ctx := context.Background()
+	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
 
-	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
-	require.NoError(t, err)
-
-	blockKey := kbfscrypto.UnmaskBlockCryptKey(serverHalf, key)
-
-	block := &FileBlock{
+	block := FileBlock{
 		Contents: []byte{1, 2, 3, 4, 5},
 	}
-	_, encryptedBlock, err := crypto.EncryptBlock(block, blockKey)
+
+	ctx := context.Background()
+	id, _, readyBlockData, err := bops.Ready(ctx, kmd, &block)
 	require.NoError(t, err)
 
-	encodedBlock, err := codec.Encode(encryptedBlock)
+	bCtx := kbfsblock.MakeFirstContext(keybase1.MakeTestUID(1))
+	err = config.bserver.Put(ctx, tlfID, id, bCtx,
+		readyBlockData.buf, readyBlockData.serverHalf)
 	require.NoError(t, err)
 
-	id, err := kbfsblock.MakePermanentID(encodedBlock)
+	var decryptedBlock FileBlock
+	err = bops.Get(ctx, kmd,
+		BlockPointer{ID: id, KeyGen: latestKeyGen, Context: bCtx},
+		&decryptedBlock)
 	require.NoError(t, err)
-
-	uid := keybase1.MakeTestUID(1)
-
-	bCtx := kbfsblock.MakeFirstContext(uid)
-
-	err = blockServer.Put(ctx, tlfID, id, bCtx, encodedBlock, serverHalf)
-	require.NoError(t, err)
-
-	kmd := emptyKeyMetadata{tlfID, keyGen}
-
-	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
-	var block2 FileBlock
-	err = bops.Get(ctx, kmd, BlockPointer{ID: id, KeyGen: keyGen, Context: bCtx}, &block2)
-	require.NoError(t, err)
-	block2.cachedEncodedSize = 0
-	require.Equal(t, *block, block2)
+	require.Equal(t, block, decryptedBlock)
 }
 
 func TestBlockOpsGetFailGet(t *testing.T) {
