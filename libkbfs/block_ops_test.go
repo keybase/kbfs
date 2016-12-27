@@ -190,43 +190,32 @@ func makeKMD() KeyMetadata {
 	return emptyKeyMetadata{tlf.FakeID(0, false), 1}
 }
 
-func TestBlockOpsGetSuccess(t *testing.T) {
-	mockCtrl, config, ctx := blockOpsInit(t)
-	defer blockOpsShutdown(mockCtrl, config)
-
-	kmd := makeKMD()
-
-	// expect one call to fetch a block, and one to decrypt it
-	encData := []byte{1, 2, 3, 4}
-	id, err := kbfsblock.MakePermanentID(encData)
-	require.NoError(t, err)
-	blockPtr := BlockPointer{ID: id}
-	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.Context).Return(
-		encData, kbfscrypto.BlockCryptKeyServerHalf{}, nil)
-	decData := TestBlock{42}
-
-	expectBlockDecrypt(config, kmd, blockPtr, encData, &decData)
-
-	var gotBlock TestBlock
-	err = config.BlockOps().Get(ctx, kmd, blockPtr, &gotBlock)
-	require.NoError(t, err)
-
-	require.Equal(t, decData, gotBlock)
-}
-
 type fakeBlockKeyGetter struct {
-	key kbfscrypto.TLFCryptKey
+	keys map[tlf.ID][]kbfscrypto.TLFCryptKey
 }
 
 func (kg fakeBlockKeyGetter) GetTLFCryptKeyForEncryption(
 	ctx context.Context, kmd KeyMetadata) (kbfscrypto.TLFCryptKey, error) {
-	return kg.key, nil
+	id := kmd.TlfID()
+	tlfKeys := kg.keys[id]
+	if len(tlfKeys) == 0 {
+		return kbfscrypto.TLFCryptKey{}, fmt.Errorf(
+			"No keys for %s", id)
+	}
+	return tlfKeys[len(tlfKeys)-1], nil
 }
 
 func (kg fakeBlockKeyGetter) GetTLFCryptKeyForBlockDecryption(
 	ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer) (
 	kbfscrypto.TLFCryptKey, error) {
-	return kg.key, nil
+	id := kmd.TlfID()
+	tlfKeys := kg.keys[id]
+	i := int(blockPtr.KeyGen - FirstValidKeyGen)
+	if i >= len(tlfKeys) {
+		return kbfscrypto.TLFCryptKey{}, fmt.Errorf(
+			"No key for %s (key gen=%d)", id, blockPtr.KeyGen)
+	}
+	return tlfKeys[i], nil
 }
 
 type testBlockOpsConfig struct {
@@ -252,11 +241,23 @@ func (config testBlockOpsConfig) keyGetter() blockKeyGetter {
 	return config._keyGetter
 }
 
-func TestBlockOpsGetSuccess2(t *testing.T) {
+func TestBlockOpsGetSuccess(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
 	key := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
-	kg := fakeBlockKeyGetter{key}
+	tlfID := tlf.FakeID(0, false)
+	var keyGen KeyGen = 5
+	kg := fakeBlockKeyGetter{
+		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
+			tlfID: {
+				kbfscrypto.TLFCryptKey{},
+				kbfscrypto.TLFCryptKey{},
+				kbfscrypto.TLFCryptKey{},
+				kbfscrypto.TLFCryptKey{},
+				key,
+			},
+		},
+	}
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
 	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
 
@@ -279,8 +280,6 @@ func TestBlockOpsGetSuccess2(t *testing.T) {
 	id, err := kbfsblock.MakePermanentID(encodedBlock)
 	require.NoError(t, err)
 
-	tlfID := tlf.FakeID(0, false)
-
 	uid := keybase1.MakeTestUID(1)
 
 	bCtx := kbfsblock.MakeFirstContext(uid)
@@ -288,7 +287,6 @@ func TestBlockOpsGetSuccess2(t *testing.T) {
 	err = blockServer.Put(ctx, tlfID, id, bCtx, encodedBlock, serverHalf)
 	require.NoError(t, err)
 
-	var keyGen KeyGen = 5
 	kmd := emptyKeyMetadata{tlfID, keyGen}
 
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
