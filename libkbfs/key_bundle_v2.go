@@ -275,6 +275,8 @@ func (wkg TLFWriterKeyGenerationsV2) ToTLFWriterKeyBundleV3(
 			errors.New("No key generations to convert")
 	}
 
+	// Check for invalid indices into
+	// wkbV2.TLFEphemeralPublicKeys.
 	wkbV2 := wkg[keyGen-FirstValidKeyGen]
 	for u, dkimV2 := range wkbV2.WKeys {
 		for kid, keyInfo := range dkimV2 {

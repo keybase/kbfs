@@ -399,9 +399,8 @@ func (md *BareRootMetadataV3) DeepCopy(
 // MakeSuccessorCopy implements the ImmutableBareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) MakeSuccessorCopy(
 	codec kbfscodec.Codec, crypto cryptoPure,
-	extra ExtraMetadata, latestMDVer MetadataVer,
-	tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error),
-	isReadableAndWriter bool) (
+	extra ExtraMetadata, _ MetadataVer,
+	_ func() ([]kbfscrypto.TLFCryptKey, error), isReadableAndWriter bool) (
 	MutableBareRootMetadata, ExtraMetadata, error) {
 	var extraCopy ExtraMetadata
 	if extra != nil {
