@@ -168,6 +168,7 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 	var latestKeyGen KeyGen = 5
 	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
 
@@ -209,6 +210,7 @@ func TestBlockOpsReadyFailKeyGet(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	config := makeTestBlockOpsConfig(t, tlfID, 0)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
 
@@ -234,6 +236,7 @@ func TestBlockOpsReadyFailServerHalfGet(t *testing.T) {
 	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
 	config.cryptoPure = badServerHalfMaker{config.cryptoPure}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
 
@@ -259,6 +262,7 @@ func TestBlockOpsReadyFailEncryption(t *testing.T) {
 	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
 	config.cryptoPure = badBlockEncryptor{config.cryptoPure}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
 
@@ -297,6 +301,7 @@ func TestBlockOpsReadyFailEncode(t *testing.T) {
 	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
 	config.testCodec = badEncoder{config.testCodec}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
 
@@ -321,6 +326,7 @@ func TestBlockOpsReadyTooSmallEncode(t *testing.T) {
 	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
 	config.testCodec = tooSmallEncoder{config.testCodec}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
 
@@ -336,6 +342,7 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	var latestKeyGen KeyGen = 5
 	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	var keyGen KeyGen = 3
 	kmd := emptyKeyMetadata{tlfID, keyGen}
@@ -368,6 +375,7 @@ func TestBlockOpsGetFailServerGet(t *testing.T) {
 	var latestKeyGen KeyGen = 5
 	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
 
@@ -407,6 +415,7 @@ func TestBlockOpsGetFailVerify(t *testing.T) {
 	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
 	config.bserver = badGetBlockServer{config.bserver}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
 
@@ -433,6 +442,7 @@ func TestBlockOpsGetFailKeyGet(t *testing.T) {
 	var latestKeyGen KeyGen = 5
 	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
 
@@ -491,6 +501,7 @@ func TestBlockOpsGetFailDecode(t *testing.T) {
 	}
 	config.testCodec = badDecoder
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
 
@@ -530,6 +541,7 @@ func TestBlockOpsGetFailDecrypt(t *testing.T) {
 	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
 	config.cryptoPure = badBlockDecryptor{config.cryptoPure}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
 
@@ -559,6 +571,7 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 	config := makeTestBlockOpsConfig(t, tlfID, 0)
 	config.bserver = bserver
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	defer bops.Shutdown()
 
 	// expect one call to delete several blocks
 
