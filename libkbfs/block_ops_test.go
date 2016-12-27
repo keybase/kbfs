@@ -219,10 +219,10 @@ func (kg fakeBlockKeyGetter) GetTLFCryptKeyForBlockDecryption(
 }
 
 type testBlockOpsConfig struct {
-	bserver      *BlockServerMemory
-	testCodec    kbfscodec.Codec
-	cryptoCommon CryptoCommon
-	kg           fakeBlockKeyGetter
+	bserver    *BlockServerMemory
+	testCodec  kbfscodec.Codec
+	cryptoPure cryptoPure
+	kg         fakeBlockKeyGetter
 }
 
 func (config testBlockOpsConfig) blockServer() BlockServer {
@@ -234,7 +234,7 @@ func (config testBlockOpsConfig) codec() kbfscodec.Codec {
 }
 
 func (config testBlockOpsConfig) crypto() cryptoPure {
-	return config.cryptoCommon
+	return config.cryptoPure
 }
 
 func (config testBlockOpsConfig) keyGetter() blockKeyGetter {
@@ -315,22 +315,40 @@ func TestBlockOpsReadyFailKeyGet(t *testing.T) {
 	require.True(t, strings.HasPrefix(err.Error(), "No keys for"))
 }
 
+type badServerHalfMaker struct {
+	CryptoCommon
+}
+
+func (c badServerHalfMaker) MakeRandomBlockCryptKeyServerHalf() (
+	kbfscrypto.BlockCryptKeyServerHalf, error) {
+	return kbfscrypto.BlockCryptKeyServerHalf{}, errors.New(
+		"could not make server half")
+}
+
 // TestBlockOpsReadyFailServerHalfGet checks that BlockOpsStandard.Ready()
 // fails properly if a server half was failed to be generated.
 func TestBlockOpsReadyFailServerHalfGet(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
-	kg := fakeBlockKeyGetter{}
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
+	kg := fakeBlockKeyGetter{
+		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
+			tlfID: {
+				tlfCryptKey,
+			},
+		},
+	}
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
-	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
+	config := testBlockOpsConfig{blockServer, codec,
+		badServerHalfMaker{crypto}, kg}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
 
 	ctx := context.Background()
 	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
-	require.True(t, strings.HasPrefix(err.Error(), "No keys for"))
+	require.EqualError(t, err, "could not make server half")
 }
 
 func TestBlockOpsGetSuccess(t *testing.T) {
