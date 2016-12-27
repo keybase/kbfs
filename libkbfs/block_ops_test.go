@@ -425,54 +425,25 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	require.Equal(t, block, decryptedBlock)
 }
 
-func TestBlockOpsGetFailGet(t *testing.T) {
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	key := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
+// TestBlockOpsReadySuccess checks that BlockOpsStandard.Get() fails
+// if it can't retrieve the block from the server.
+func TestBlockOpsGetFailServerGet(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
-	var keyGen KeyGen = 5
-	kg := fakeBlockKeyGetter{
-		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
-			tlfID: {
-				kbfscrypto.TLFCryptKey{},
-				kbfscrypto.TLFCryptKey{},
-				kbfscrypto.TLFCryptKey{},
-				kbfscrypto.TLFCryptKey{},
-				key,
-			},
-		},
-	}
-	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
+	var latestKeyGen KeyGen = 5
+	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+
+	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
 
 	ctx := context.Background()
-
-	serverHalf, err := crypto.MakeRandomBlockCryptKeyServerHalf()
+	id, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
 	require.NoError(t, err)
 
-	blockKey := kbfscrypto.UnmaskBlockCryptKey(serverHalf, key)
-
-	block := &FileBlock{
-		Contents: []byte{1, 2, 3, 4, 5},
-	}
-	_, encryptedBlock, err := crypto.EncryptBlock(block, blockKey)
-	require.NoError(t, err)
-
-	encodedBlock, err := codec.Encode(encryptedBlock)
-	require.NoError(t, err)
-
-	id, err := kbfsblock.MakePermanentID(encodedBlock)
-	require.NoError(t, err)
-
-	uid := keybase1.MakeTestUID(1)
-
-	bCtx := kbfsblock.MakeFirstContext(uid)
-
-	kmd := emptyKeyMetadata{tlfID, keyGen}
-
-	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
-	var block2 FileBlock
-	err = bops.Get(ctx, kmd, BlockPointer{ID: id, KeyGen: keyGen, Context: bCtx}, &block2)
+	bCtx := kbfsblock.MakeFirstContext(keybase1.MakeTestUID(1))
+	var decryptedBlock FileBlock
+	err = bops.Get(ctx, kmd,
+		BlockPointer{ID: id, KeyGen: latestKeyGen, Context: bCtx},
+		&decryptedBlock)
 	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 }
 
