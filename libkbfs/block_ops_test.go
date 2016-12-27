@@ -43,30 +43,6 @@ func (m kmdMatcher) String() string {
 		m.kmd.TlfID(), m.kmd.LatestKeyGeneration())
 }
 
-type TestBlock struct {
-	A int
-}
-
-func (TestBlock) DataVersion() DataVer {
-	return FirstValidDataVer
-}
-
-func (tb TestBlock) GetEncodedSize() uint32 {
-	return 0
-}
-
-func (tb TestBlock) SetEncodedSize(size uint32) {
-}
-
-func (tb TestBlock) NewEmpty() Block {
-	return &TestBlock{}
-}
-
-func (tb *TestBlock) Set(other Block, _ kbfscodec.Codec) {
-	otherTb := other.(*TestBlock)
-	tb.A = otherTb.A
-}
-
 func blockOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config *ConfigMock, ctx context.Context) {
 	ctr := NewSafeTestReporter(t)
