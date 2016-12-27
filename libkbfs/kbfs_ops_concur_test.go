@@ -1336,14 +1336,18 @@ func TestKBFSOpsMultiBlockWriteWithRetryAndError(t *testing.T) {
 	}
 
 	// Sync the initial three data blocks
-	errChan := make(chan error)
+	errChan := make(chan error, 1)
 	// start the sync
 	go func() {
 		errChan <- kbfsOps.Sync(ctxStallSync, fileNode2)
 	}()
 
 	// Wait for the first block to finish (before the retry)
-	<-onSyncStalledCh
+	select {
+	case <-onSyncStalledCh:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 
 	// Dirty the last block and extend it, so the one that was sent as
 	// part of the first sync is no longer part of the file.
@@ -1351,16 +1355,32 @@ func TestKBFSOpsMultiBlockWriteWithRetryAndError(t *testing.T) {
 	if err != nil {
 		t.Errorf("Couldn't write file: %v", err)
 	}
-	syncUnstallCh <- struct{}{}
+	select {
+	case syncUnstallCh <- struct{}{}:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 
 	// Wait for the rest of the first set of  block to finish (before the retry)
 	for i := 0; i < 5; i++ {
-		<-onSyncStalledCh
-		syncUnstallCh <- struct{}{}
+		select {
+		case <-onSyncStalledCh:
+		case <-ctx.Done():
+			t.Fatal(ctx.Err())
+		}
+		select {
+		case syncUnstallCh <- struct{}{}:
+		case <-ctx.Done():
+			t.Fatal(ctx.Err())
+		}
 	}
 
 	// Once the first block of the retry comes in, cancel everything.
-	<-onSyncStalledCh
+	select {
+	case <-onSyncStalledCh:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 	cancel2()
 
 	// Unstall the sync.
