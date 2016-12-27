@@ -41,24 +41,6 @@ func (m kmdMatcher) String() string {
 		m.kmd.TlfID(), m.kmd.LatestKeyGeneration())
 }
 
-func expectGetTLFCryptKeyForEncryption(config *ConfigMock, kmd KeyMetadata) {
-	config.mockKeyman.EXPECT().GetTLFCryptKeyForEncryption(gomock.Any(),
-		kmdMatcher{kmd}).Return(kbfscrypto.TLFCryptKey{}, nil)
-}
-
-func expectGetTLFCryptKeyForMDDecryption(config *ConfigMock, kmd KeyMetadata) {
-	config.mockKeyman.EXPECT().GetTLFCryptKeyForMDDecryption(gomock.Any(),
-		kmdMatcher{kmd}, kmdMatcher{kmd}).Return(
-		kbfscrypto.TLFCryptKey{}, nil)
-}
-
-func expectGetTLFCryptKeyForMDDecryptionAtMostOnce(config *ConfigMock,
-	kmd KeyMetadata) {
-	config.mockKeyman.EXPECT().GetTLFCryptKeyForMDDecryption(gomock.Any(),
-		kmdMatcher{kmd}, kmdMatcher{kmd}).MaxTimes(1).Return(
-		kbfscrypto.TLFCryptKey{}, nil)
-}
-
 // TODO: Add test coverage for decryption of blocks with an old key
 // generation.
 
@@ -108,22 +90,6 @@ func blockOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	config.ctr.CheckForFailures()
 	config.BlockOps().Shutdown()
 	mockCtrl.Finish()
-}
-
-func expectBlockEncrypt(config *ConfigMock, kmd KeyMetadata, decData Block, plainSize int, encData []byte, err error) {
-	expectGetTLFCryptKeyForEncryption(config, kmd)
-	config.mockCrypto.EXPECT().MakeRandomBlockCryptKeyServerHalf().
-		Return(kbfscrypto.BlockCryptKeyServerHalf{}, nil)
-	encryptedBlock := EncryptedBlock{
-		encryptedData{
-			EncryptedData: encData,
-		},
-	}
-	config.mockCrypto.EXPECT().EncryptBlock(decData, gomock.Any()).
-		Return(plainSize, encryptedBlock, err)
-	if err == nil {
-		config.mockCodec.EXPECT().Encode(encryptedBlock).Return(encData, nil)
-	}
 }
 
 func expectBlockDecrypt(config *ConfigMock, kmd KeyMetadata, blockPtr BlockPointer, encData []byte, block *TestBlock) {

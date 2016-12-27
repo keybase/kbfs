@@ -134,6 +134,24 @@ func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
 	}
 }
 
+func expectGetTLFCryptKeyForEncryption(config *ConfigMock, kmd KeyMetadata) {
+	config.mockKeyman.EXPECT().GetTLFCryptKeyForEncryption(gomock.Any(),
+		kmdMatcher{kmd}).Return(kbfscrypto.TLFCryptKey{}, nil)
+}
+
+func expectGetTLFCryptKeyForMDDecryption(config *ConfigMock, kmd KeyMetadata) {
+	config.mockKeyman.EXPECT().GetTLFCryptKeyForMDDecryption(gomock.Any(),
+		kmdMatcher{kmd}, kmdMatcher{kmd}).Return(
+		kbfscrypto.TLFCryptKey{}, nil)
+}
+
+func expectGetTLFCryptKeyForMDDecryptionAtMostOnce(config *ConfigMock,
+	kmd KeyMetadata) {
+	config.mockKeyman.EXPECT().GetTLFCryptKeyForMDDecryption(gomock.Any(),
+		kmdMatcher{kmd}, kmdMatcher{kmd}).MaxTimes(1).Return(
+		kbfscrypto.TLFCryptKey{}, nil)
+}
+
 func verifyMDForPrivateHelper(
 	config *ConfigMock, rmds *RootMetadataSigned, minTimes, maxTimes int) {
 	mdCopy, err := rmds.MD.DeepCopy(config.Codec())
