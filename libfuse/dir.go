@@ -395,7 +395,7 @@ func (d *Dir) attr(ctx context.Context, a *fuse.Attr) (err error) {
 	}
 	fillAttr(&de, a)
 
-	a.Mode = os.ModeDir | 0700
+	a.Mode |= os.ModeDir | 0500
 	if d.folder.list.public {
 		a.Mode |= 0055
 	}
