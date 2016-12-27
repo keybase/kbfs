@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"testing"
 
@@ -42,8 +41,18 @@ func blockOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 }
 
 type fakeKeyMetadata struct {
-	tlfID  tlf.ID
-	keyGen KeyGen
+	tlfID tlf.ID
+	keys  []kbfscrypto.TLFCryptKey
+}
+
+func makeFakeKeyMetadata(tlfID tlf.ID, latestKeyGen KeyGen) fakeKeyMetadata {
+	keys := make([]kbfscrypto.TLFCryptKey, 0,
+		latestKeyGen-FirstValidKeyGen+1)
+	for keyGen := FirstValidKeyGen; keyGen <= latestKeyGen; keyGen++ {
+		keys = append(keys,
+			kbfscrypto.MakeTLFCryptKey([32]byte{byte(keyGen)}))
+	}
+	return fakeKeyMetadata{tlfID, keys}
 }
 
 var _ KeyMetadata = fakeKeyMetadata{}
@@ -60,7 +69,7 @@ func (kmd fakeKeyMetadata) GetTlfHandle() *TlfHandle {
 }
 
 func (kmd fakeKeyMetadata) LatestKeyGeneration() KeyGen {
-	return kmd.keyGen
+	return FirstValidKeyGen + KeyGen(len(kmd.keys))
 }
 
 func (kmd fakeKeyMetadata) HasKeyForUser(
@@ -74,7 +83,7 @@ func (kmd fakeKeyMetadata) GetTLFCryptKeyParams(
 	TLFCryptKeyServerHalfID, bool, error) {
 	return kbfscrypto.TLFEphemeralPublicKey{},
 		EncryptedTLFCryptKeyClientHalf{},
-		TLFCryptKeyServerHalfID{}, false, nil
+		TLFCryptKeyServerHalfID{}, false, errors.New("no key params")
 }
 
 func (kmd fakeKeyMetadata) StoresHistoricTLFCryptKeys() bool {
@@ -84,35 +93,40 @@ func (kmd fakeKeyMetadata) StoresHistoricTLFCryptKeys() bool {
 func (kmd fakeKeyMetadata) GetHistoricTLFCryptKey(
 	crypto cryptoPure, keyGen KeyGen, key kbfscrypto.TLFCryptKey) (
 	kbfscrypto.TLFCryptKey, error) {
-	return kbfscrypto.TLFCryptKey{}, nil
+	return kbfscrypto.TLFCryptKey{}, errors.New("no historic keys")
 }
 
-type fakeBlockKeyGetter struct {
-	keys map[tlf.ID][]kbfscrypto.TLFCryptKey
-}
+type fakeBlockKeyGetter struct{}
 
 func (kg fakeBlockKeyGetter) GetTLFCryptKeyForEncryption(
 	ctx context.Context, kmd KeyMetadata) (kbfscrypto.TLFCryptKey, error) {
-	id := kmd.TlfID()
-	tlfKeys := kg.keys[id]
-	if len(tlfKeys) == 0 {
+	fkmd, ok := kmd.(fakeKeyMetadata)
+	if !ok {
 		return kbfscrypto.TLFCryptKey{}, fmt.Errorf(
-			"No keys for %s", id)
+			"unexpected type %T for kmd", kmd)
 	}
-	return tlfKeys[len(tlfKeys)-1], nil
+	if len(fkmd.keys) == 0 {
+		return kbfscrypto.TLFCryptKey{}, errors.New(
+			"no keys for encryption")
+	}
+	return fkmd.keys[len(fkmd.keys)-1], nil
 }
 
 func (kg fakeBlockKeyGetter) GetTLFCryptKeyForBlockDecryption(
 	ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer) (
 	kbfscrypto.TLFCryptKey, error) {
-	id := kmd.TlfID()
-	tlfKeys := kg.keys[id]
-	i := int(blockPtr.KeyGen - FirstValidKeyGen)
-	if i >= len(tlfKeys) {
+	fkmd, ok := kmd.(fakeKeyMetadata)
+	if !ok {
 		return kbfscrypto.TLFCryptKey{}, fmt.Errorf(
-			"No key for %s (key gen=%d)", id, blockPtr.KeyGen)
+			"unexpected type %T for kmd", kmd)
 	}
-	return tlfKeys[i], nil
+	i := int(blockPtr.KeyGen - FirstValidKeyGen)
+	if i >= len(fkmd.keys) {
+		return kbfscrypto.TLFCryptKey{}, fmt.Errorf(
+			"no key for block decryption (keygen=%d)",
+			blockPtr.KeyGen)
+	}
+	return fkmd.keys[i], nil
 }
 
 type testBlockOpsConfig struct {
@@ -138,22 +152,11 @@ func (config testBlockOpsConfig) keyGetter() blockKeyGetter {
 	return config.kg
 }
 
-func makeTestBlockOpsConfig(t *testing.T, tlfID tlf.ID,
-	latestKeyGen KeyGen) testBlockOpsConfig {
+func makeTestBlockOpsConfig(t *testing.T) testBlockOpsConfig {
 	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
-	tlfKeys := make([]kbfscrypto.TLFCryptKey, 0,
-		latestKeyGen-FirstValidKeyGen+1)
-	for keyGen := FirstValidKeyGen; keyGen <= latestKeyGen; keyGen++ {
-		tlfKeys = append(tlfKeys,
-			kbfscrypto.MakeTLFCryptKey([32]byte{byte(keyGen)}))
-	}
-	kg := fakeBlockKeyGetter{
-		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
-			tlfID: tlfKeys,
-		},
-	}
+	kg := fakeBlockKeyGetter{}
 	return testBlockOpsConfig{blockServer, codec, crypto, kg}
 }
 
@@ -162,11 +165,11 @@ func makeTestBlockOpsConfig(t *testing.T, tlfID tlf.ID,
 func TestBlockOpsReadySuccess(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	var latestKeyGen KeyGen = 5
-	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	config := makeTestBlockOpsConfig(t)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	kmd := fakeKeyMetadata{tlfID, latestKeyGen}
+	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	block := FileBlock{
 		Contents: []byte{1, 2, 3, 4, 5},
@@ -190,7 +193,7 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 
 	blockCryptKey := kbfscrypto.UnmaskBlockCryptKey(
 		readyBlockData.serverHalf,
-		config.kg.keys[tlfID][latestKeyGen-FirstValidKeyGen])
+		kmd.keys[latestKeyGen-FirstValidKeyGen])
 
 	var decryptedBlock FileBlock
 	err = config.cryptoPure.DecryptBlock(
@@ -203,16 +206,16 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 // TestBlockOpsReadyFailKeyGet checks that BlockOpsStandard.Ready()
 // fails properly if we fail to retrieve the key.
 func TestBlockOpsReadyFailKeyGet(t *testing.T) {
-	tlfID := tlf.FakeID(0, false)
-	config := makeTestBlockOpsConfig(t, tlfID, 0)
+	config := makeTestBlockOpsConfig(t)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	kmd := fakeKeyMetadata{tlfID, FirstValidKeyGen}
+	tlfID := tlf.FakeID(0, false)
+	kmd := makeFakeKeyMetadata(tlfID, 0)
 
 	ctx := context.Background()
 	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
-	require.True(t, strings.HasPrefix(err.Error(), "No keys for"))
+	require.EqualError(t, err, "no keys for encryption")
 }
 
 type badServerHalfMaker struct {
@@ -228,13 +231,13 @@ func (c badServerHalfMaker) MakeRandomBlockCryptKeyServerHalf() (
 // TestBlockOpsReadyFailServerHalfGet checks that BlockOpsStandard.Ready()
 // fails properly if we fail to generate a  server half.
 func TestBlockOpsReadyFailServerHalfGet(t *testing.T) {
-	tlfID := tlf.FakeID(0, false)
-	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
+	config := makeTestBlockOpsConfig(t)
 	config.cryptoPure = badServerHalfMaker{config.cryptoPure}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	kmd := fakeKeyMetadata{tlfID, FirstValidKeyGen}
+	tlfID := tlf.FakeID(0, false)
+	kmd := makeFakeKeyMetadata(tlfID, FirstValidKeyGen)
 
 	ctx := context.Background()
 	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -254,13 +257,13 @@ func (c badBlockEncryptor) EncryptBlock(
 // TestBlockOpsReadyFailEncryption checks that BlockOpsStandard.Ready()
 // fails properly if we fail to encrypt the block.
 func TestBlockOpsReadyFailEncryption(t *testing.T) {
-	tlfID := tlf.FakeID(0, false)
-	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
+	config := makeTestBlockOpsConfig(t)
 	config.cryptoPure = badBlockEncryptor{config.cryptoPure}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	kmd := fakeKeyMetadata{tlfID, FirstValidKeyGen}
+	tlfID := tlf.FakeID(0, false)
+	kmd := makeFakeKeyMetadata(tlfID, FirstValidKeyGen)
 
 	ctx := context.Background()
 	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -293,13 +296,13 @@ func (c badEncoder) Encode(o interface{}) ([]byte, error) {
 // TestBlockOpsReadyFailEncode checks that BlockOpsStandard.Ready()
 // fails properly if we fail to encode the encrypted block.
 func TestBlockOpsReadyFailEncode(t *testing.T) {
-	tlfID := tlf.FakeID(0, false)
-	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
+	config := makeTestBlockOpsConfig(t)
 	config.testCodec = badEncoder{config.testCodec}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	kmd := fakeKeyMetadata{tlfID, FirstValidKeyGen}
+	tlfID := tlf.FakeID(0, false)
+	kmd := makeFakeKeyMetadata(tlfID, FirstValidKeyGen)
 
 	ctx := context.Background()
 	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -318,13 +321,13 @@ func (c tooSmallEncoder) Encode(o interface{}) ([]byte, error) {
 // BlockOpsStandard.Ready() fails properly if the encrypted block
 // encodes to a too-small buffer.
 func TestBlockOpsReadyTooSmallEncode(t *testing.T) {
-	tlfID := tlf.FakeID(0, false)
-	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
+	config := makeTestBlockOpsConfig(t)
 	config.testCodec = tooSmallEncoder{config.testCodec}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	kmd := fakeKeyMetadata{tlfID, FirstValidKeyGen}
+	tlfID := tlf.FakeID(0, false)
+	kmd := makeFakeKeyMetadata(tlfID, FirstValidKeyGen)
 
 	ctx := context.Background()
 	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -334,14 +337,13 @@ func TestBlockOpsReadyTooSmallEncode(t *testing.T) {
 // TestBlockOpsReadySuccess checks that BlockOpsStandard.Get()
 // retrieves a block properly.
 func TestBlockOpsGetSuccess(t *testing.T) {
-	tlfID := tlf.FakeID(0, false)
-	var latestKeyGen KeyGen = 5
-	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	config := makeTestBlockOpsConfig(t)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
+	tlfID := tlf.FakeID(0, false)
 	var keyGen KeyGen = 3
-	kmd := fakeKeyMetadata{tlfID, keyGen}
+	kmd := makeFakeKeyMetadata(tlfID, keyGen)
 
 	block := FileBlock{
 		Contents: []byte{1, 2, 3, 4, 5},
@@ -369,11 +371,11 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 func TestBlockOpsGetFailServerGet(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	var latestKeyGen KeyGen = 5
-	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	config := makeTestBlockOpsConfig(t)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	kmd := fakeKeyMetadata{tlfID, latestKeyGen}
+	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	ctx := context.Background()
 	id, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -408,12 +410,12 @@ func (bserver badGetBlockServer) Get(
 func TestBlockOpsGetFailVerify(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	var latestKeyGen KeyGen = 5
-	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	config := makeTestBlockOpsConfig(t)
 	config.bserver = badGetBlockServer{config.bserver}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	kmd := fakeKeyMetadata{tlfID, latestKeyGen}
+	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	ctx := context.Background()
 	id, _, readyBlockData, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -436,11 +438,11 @@ func TestBlockOpsGetFailVerify(t *testing.T) {
 func TestBlockOpsGetFailKeyGet(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	var latestKeyGen KeyGen = 5
-	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	config := makeTestBlockOpsConfig(t)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	kmd := fakeKeyMetadata{tlfID, latestKeyGen}
+	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	ctx := context.Background()
 	id, _, readyBlockData, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -455,7 +457,8 @@ func TestBlockOpsGetFailKeyGet(t *testing.T) {
 	err = bops.Get(ctx, kmd,
 		BlockPointer{ID: id, KeyGen: latestKeyGen + 1, Context: bCtx},
 		&decryptedBlock)
-	require.True(t, strings.HasPrefix(err.Error(), "No key for"))
+	require.EqualError(t, err, fmt.Sprintf(
+		"no key for block decryption (keygen=%d)", latestKeyGen+1))
 }
 
 type badDecoder struct {
@@ -490,7 +493,7 @@ func (c badDecoder) Decode(buf []byte, o interface{}) error {
 func TestBlockOpsGetFailDecode(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	var latestKeyGen KeyGen = 5
-	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	config := makeTestBlockOpsConfig(t)
 	badDecoder := badDecoder{
 		Codec:  config.testCodec,
 		errors: make(map[string]error),
@@ -499,7 +502,7 @@ func TestBlockOpsGetFailDecode(t *testing.T) {
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	kmd := fakeKeyMetadata{tlfID, latestKeyGen}
+	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	ctx := context.Background()
 	id, _, readyBlockData, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -534,12 +537,12 @@ func (c badBlockDecryptor) DecryptBlock(encryptedBlock EncryptedBlock,
 func TestBlockOpsGetFailDecrypt(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	var latestKeyGen KeyGen = 5
-	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	config := makeTestBlockOpsConfig(t)
 	config.cryptoPure = badBlockDecryptor{config.cryptoPure}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	kmd := fakeKeyMetadata{tlfID, latestKeyGen}
+	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	ctx := context.Background()
 	id, _, readyBlockData, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -564,7 +567,7 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	bserver := NewMockBlockServer(mockCtrl)
-	config := makeTestBlockOpsConfig(t, tlfID, 0)
+	config := makeTestBlockOpsConfig(t)
 	config.bserver = bserver
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
