@@ -87,10 +87,6 @@ func (kmd emptyKeyMetadata) GetHistoricTLFCryptKey(
 	return kbfscrypto.TLFCryptKey{}, nil
 }
 
-func makeKMD() KeyMetadata {
-	return emptyKeyMetadata{tlf.FakeID(0, false), 1}
-}
-
 type fakeBlockKeyGetter struct {
 	keys map[tlf.ID][]kbfscrypto.TLFCryptKey
 }

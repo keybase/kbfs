@@ -63,16 +63,16 @@ func TestBlockUtilPutIncRefSuccess(t *testing.T) {
 		},
 	}
 
-	kmd := makeKMD()
+	tlfID := tlf.FakeID(0, false)
 
 	readyBlockData := ReadyBlockData{
 		buf: encData,
 	}
 
-	bserver.EXPECT().AddBlockReference(ctx, kmd.TlfID(), id,
+	bserver.EXPECT().AddBlockReference(ctx, tlfID, id,
 		blockPtr.Context).Return(nil)
 
-	if err := putBlockToServer(ctx, bserver, kmd.TlfID(), blockPtr,
+	if err := putBlockToServer(ctx, bserver, tlfID, blockPtr,
 		readyBlockData); err != nil {
 		t.Errorf("Got error on put: %v", err)
 	}
