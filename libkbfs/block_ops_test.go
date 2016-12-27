@@ -308,7 +308,7 @@ func TestBlockOpsReadyFailServerHalfGet(t *testing.T) {
 }
 
 type badBlockEncryptor struct {
-	CryptoCommon
+	cryptoPure
 }
 
 func (c badBlockEncryptor) EncryptBlock(
@@ -321,19 +321,8 @@ func (c badBlockEncryptor) EncryptBlock(
 // fails properly if we fail to encrypt the block.
 func TestBlockOpsReadyFailEncryption(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
-	kg := fakeBlockKeyGetter{
-		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
-			tlfID: {
-				tlfCryptKey,
-			},
-		},
-	}
-	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	config := testBlockOpsConfig{blockServer, codec,
-		badBlockEncryptor{crypto}, kg}
+	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
+	config.cryptoPure = badBlockEncryptor{config.cryptoPure}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
@@ -370,18 +359,8 @@ func (c badEncoder) Encode(o interface{}) ([]byte, error) {
 // fails properly if we fail to encode the encrypted block.
 func TestBlockOpsReadyFailEncode(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
-	kg := fakeBlockKeyGetter{
-		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
-			tlfID: {
-				tlfCryptKey,
-			},
-		},
-	}
-	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	config := testBlockOpsConfig{blockServer, badEncoder{codec}, crypto, kg}
+	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
+	config.testCodec = badEncoder{config.testCodec}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
@@ -404,19 +383,8 @@ func (c tooSmallEncoder) Encode(o interface{}) ([]byte, error) {
 // encodes to a too-small buffer.
 func TestBlockOpsReadyTooSmallEncode(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
-	kg := fakeBlockKeyGetter{
-		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
-			tlfID: {
-				tlfCryptKey,
-			},
-		},
-	}
-	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	config := testBlockOpsConfig{blockServer, tooSmallEncoder{codec},
-		crypto, kg}
+	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
+	config.testCodec = tooSmallEncoder{config.testCodec}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
