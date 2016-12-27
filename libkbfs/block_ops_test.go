@@ -525,22 +525,29 @@ func TestBlockOpsDeleteSuccess(t *testing.T) {
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	// expect one call to delete several blocks
+	// Expect one call to delete several blocks.
 
-	contexts := make(kbfsblock.ContextMap)
 	b1 := BlockPointer{ID: kbfsblock.FakeID(1)}
-	contexts[b1.ID] = []kbfsblock.Context{b1.Context}
 	b2 := BlockPointer{ID: kbfsblock.FakeID(2)}
-	contexts[b2.ID] = []kbfsblock.Context{b2.Context}
-	blockPtrs := []BlockPointer{b1, b2}
-	var liveCounts map[kbfsblock.ID]int
+
+	contexts := kbfsblock.ContextMap{
+		b1.ID: {b1.Context},
+		b2.ID: {b2.Context},
+	}
+
+	expectedLiveCounts := map[kbfsblock.ID]int{
+		b1.ID: 5,
+		b2.ID: 3,
+	}
+
 	ctx := context.Background()
 	tlfID := tlf.FakeID(1, false)
 	bserver.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
-		Return(liveCounts, nil)
+		Return(map[kbfsblock.ID]int{}, nil)
 
-	_, err := bops.Delete(ctx, tlfID, blockPtrs)
+	liveCounts, err := bops.Delete(ctx, tlfID, []BlockPointer{b1, b2})
 	require.NoError(t, err)
+	require.Equal(t, expectedLiveCounts, liveCounts)
 }
 
 func TestBlockOpsDeleteFail(t *testing.T) {
@@ -554,21 +561,22 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
-	// fail the delete call
-
-	contexts := make(kbfsblock.ContextMap)
 	b1 := BlockPointer{ID: kbfsblock.FakeID(1)}
-	contexts[b1.ID] = []kbfsblock.Context{b1.Context}
 	b2 := BlockPointer{ID: kbfsblock.FakeID(2)}
-	contexts[b2.ID] = []kbfsblock.Context{b2.Context}
-	blockPtrs := []BlockPointer{b1, b2}
-	err := errors.New("Fake fail")
-	var liveCounts map[kbfsblock.ID]int
-	tlfID := tlf.FakeID(1, false)
-	ctx := context.Background()
-	bserver.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
-		Return(liveCounts, err)
 
-	_, err2 := bops.Delete(ctx, tlfID, blockPtrs)
-	require.Equal(t, err, err2)
+	contexts := kbfsblock.ContextMap{
+		b1.ID: {b1.Context},
+		b2.ID: {b2.Context},
+	}
+
+	// Fail the delete call.
+
+	ctx := context.Background()
+	tlfID := tlf.FakeID(1, false)
+	expectedErr := errors.New("Fake fail")
+	bserver.EXPECT().RemoveBlockReferences(ctx, tlfID, contexts).
+		Return(nil, expectedErr)
+
+	_, err := bops.Delete(ctx, tlfID, []BlockPointer{b1, b2})
+	require.Equal(t, expectedErr, err)
 }
