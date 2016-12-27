@@ -23,26 +23,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// kmdMatcher implements the gomock.Matcher interface to compare
-// KeyMetadata objects.
-type kmdMatcher struct {
-	kmd KeyMetadata
-}
-
-func (m kmdMatcher) Matches(x interface{}) bool {
-	kmd, ok := x.(KeyMetadata)
-	if !ok {
-		return false
-	}
-	return (m.kmd.TlfID() == kmd.TlfID()) &&
-		(m.kmd.LatestKeyGeneration() == kmd.LatestKeyGeneration())
-}
-
-func (m kmdMatcher) String() string {
-	return fmt.Sprintf("Matches KeyMetadata with TlfID=%s and key generation %d",
-		m.kmd.TlfID(), m.kmd.LatestKeyGeneration())
-}
-
 func blockOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config *ConfigMock, ctx context.Context) {
 	ctr := NewSafeTestReporter(t)
