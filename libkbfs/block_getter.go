@@ -25,7 +25,7 @@ type realBlockGetter struct {
 
 // getBlock implements the interface for realBlockGetter.
 func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer, block Block) error {
-	bserv := bg.config.BlockServer()
+	bserv := bg.config.blockServer()
 	buf, blockServerHalf, err := bserv.Get(
 		ctx, kmd.TlfID(), blockPtr.ID, blockPtr.Context)
 	if err != nil {
@@ -39,7 +39,7 @@ func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockP
 		return err
 	}
 
-	crypto := bg.config.cryptoPure()
+	crypto := bg.config.crypto()
 	if err := kbfsblock.VerifyID(buf, blockPtr.ID); err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockP
 		blockServerHalf, tlfCryptKey)
 
 	var encryptedBlock EncryptedBlock
-	err = bg.config.Codec().Decode(buf, &encryptedBlock)
+	err = bg.config.codec().Decode(buf, &encryptedBlock)
 	if err != nil {
 		return err
 	}

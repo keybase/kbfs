@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
@@ -96,7 +97,7 @@ func blockOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
 	ctr := NewSafeTestReporter(t)
 	mockCtrl = gomock.NewController(ctr)
 	config = NewConfigMock(mockCtrl, ctr)
-	bops := NewBlockOpsStandard(blockOpsConfigWrapper{config},
+	bops := NewBlockOpsStandard(blockOpsConfigAdapter{config},
 		testBlockRetrievalWorkerQueueSize)
 	config.SetBlockOps(bops)
 	ctx = context.Background()
@@ -213,11 +214,52 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	require.Equal(t, decData, gotBlock)
 }
 
+type fakeBlockKeyGetter struct {
+	key kbfscrypto.TLFCryptKey
+}
+
+func (kg fakeBlockKeyGetter) GetTLFCryptKeyForEncryption(
+	ctx context.Context, kmd KeyMetadata) (kbfscrypto.TLFCryptKey, error) {
+	return kg.key, nil
+}
+
+func (kg fakeBlockKeyGetter) GetTLFCryptKeyForBlockDecryption(
+	ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer) (
+	kbfscrypto.TLFCryptKey, error) {
+	return kg.key, nil
+}
+
+type testBlockOpsConfig struct {
+	_blockServer BlockServer
+	_codec       kbfscodec.Codec
+	_crypto      cryptoPure
+	_keyGetter   blockKeyGetter
+}
+
+func (config testBlockOpsConfig) blockServer() BlockServer {
+	return config._blockServer
+}
+
+func (config testBlockOpsConfig) codec() kbfscodec.Codec {
+	return config._codec
+}
+
+func (config testBlockOpsConfig) crypto() cryptoPure {
+	return config._crypto
+}
+
+func (config testBlockOpsConfig) keyGetter() blockKeyGetter {
+	return config._keyGetter
+}
+
 func TestBlockOpsGetSuccess2(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
-	_ = codec
-	_ = crypto
+	key := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
+	kg := fakeBlockKeyGetter{key}
+	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
+	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
+	_ = config
 }
 
 func TestBlockOpsGetFailGet(t *testing.T) {

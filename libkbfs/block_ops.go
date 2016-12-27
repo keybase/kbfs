@@ -13,29 +13,29 @@ import (
 )
 
 type blockOpsConfig interface {
-	BlockServer() BlockServer
-	Codec() kbfscodec.Codec
-	cryptoPure() cryptoPure
+	blockServer() BlockServer
+	codec() kbfscodec.Codec
+	crypto() cryptoPure
 	keyGetter() blockKeyGetter
 }
 
-type blockOpsConfigWrapper struct {
+type blockOpsConfigAdapter struct {
 	config Config
 }
 
-func (config blockOpsConfigWrapper) BlockServer() BlockServer {
+func (config blockOpsConfigAdapter) blockServer() BlockServer {
 	return config.config.BlockServer()
 }
 
-func (config blockOpsConfigWrapper) Codec() kbfscodec.Codec {
+func (config blockOpsConfigAdapter) codec() kbfscodec.Codec {
 	return config.config.Codec()
 }
 
-func (config blockOpsConfigWrapper) cryptoPure() cryptoPure {
+func (config blockOpsConfigAdapter) crypto() cryptoPure {
 	return config.config.Crypto()
 }
 
-func (config blockOpsConfigWrapper) keyGetter() blockKeyGetter {
+func (config blockOpsConfigAdapter) keyGetter() blockKeyGetter {
 	return config.config.KeyManager()
 }
 
@@ -54,7 +54,7 @@ func NewBlockOpsStandard(config blockOpsConfig,
 	queueSize int) *BlockOpsStandard {
 	bops := &BlockOpsStandard{
 		config:  config,
-		queue:   newBlockRetrievalQueue(queueSize, config.Codec()),
+		queue:   newBlockRetrievalQueue(queueSize, config.codec()),
 		workers: make([]*blockRetrievalWorker, 0, queueSize),
 	}
 	bg := &realBlockGetter{config: config}
@@ -83,7 +83,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
 		}
 	}()
 
-	crypto := b.config.cryptoPure()
+	crypto := b.config.crypto()
 
 	tlfCryptKey, err := b.config.keyGetter().
 		GetTLFCryptKeyForEncryption(ctx, kmd)
@@ -107,7 +107,7 @@ func (b *BlockOpsStandard) Ready(ctx context.Context, kmd KeyMetadata,
 		return
 	}
 
-	buf, err := b.config.Codec().Encode(encryptedBlock)
+	buf, err := b.config.codec().Encode(encryptedBlock)
 	if err != nil {
 		return
 	}
@@ -144,7 +144,7 @@ func (b *BlockOpsStandard) Delete(ctx context.Context, tlfID tlf.ID,
 	for _, ptr := range ptrs {
 		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.Context)
 	}
-	return b.config.BlockServer().RemoveBlockReferences(ctx, tlfID, contexts)
+	return b.config.blockServer().RemoveBlockReferences(ctx, tlfID, contexts)
 }
 
 // Archive implements the BlockOps interface for BlockOpsStandard.
@@ -155,7 +155,7 @@ func (b *BlockOpsStandard) Archive(ctx context.Context, tlfID tlf.ID,
 		contexts[ptr.ID] = append(contexts[ptr.ID], ptr.Context)
 	}
 
-	return b.config.BlockServer().ArchiveBlockReferences(ctx, tlfID, contexts)
+	return b.config.blockServer().ArchiveBlockReferences(ctx, tlfID, contexts)
 }
 
 // Shutdown implements the BlockOps interface for BlockOpsStandard.
