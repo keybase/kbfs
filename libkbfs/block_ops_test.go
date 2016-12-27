@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/keybase/kbfs/kbfshash"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -185,7 +186,7 @@ func (kg fakeBlockKeyGetter) GetTLFCryptKeyForBlockDecryption(
 }
 
 type testBlockOpsConfig struct {
-	bserver    *BlockServerMemory
+	bserver    BlockServer
 	testCodec  kbfscodec.Codec
 	cryptoPure cryptoPure
 	kg         fakeBlockKeyGetter
@@ -447,21 +448,47 @@ func TestBlockOpsGetFailServerGet(t *testing.T) {
 	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
 }
 
+type badGetBlockServer struct {
+	BlockServer
+}
+
+func (bserver badGetBlockServer) Get(
+	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
+	context kbfsblock.Context) (
+	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
+	buf, serverHalf, err := bserver.BlockServer.Get(ctx, tlfID, id, context)
+	if err != nil {
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, nil
+	}
+
+	return append(buf, 0x1), serverHalf, nil
+}
+
+// TestBlockOpsReadyFailVerify checks that BlockOpsStandard.Get()
+// fails if it can't verify the block retrieved from the server.
 func TestBlockOpsGetFailVerify(t *testing.T) {
-	mockCtrl, config, ctx := blockOpsInit(t)
-	defer blockOpsShutdown(mockCtrl, config)
+	tlfID := tlf.FakeID(0, false)
+	var latestKeyGen KeyGen = 5
+	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	config.bserver = badGetBlockServer{config.bserver}
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
-	kmd := makeKMD()
-	// fail the fetch call
-	id := kbfsblock.FakeID(1)
-	blockPtr := BlockPointer{ID: id}
-	encData := []byte{1, 2, 3}
-	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.Context).Return(
-		encData, kbfscrypto.BlockCryptKeyServerHalf{}, nil)
+	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
 
-	var block TestBlock
-	err := config.BlockOps().Get(ctx, kmd, blockPtr, &block)
-	require.True(t, strings.HasPrefix(err.Error(), "Hash mismatch"))
+	ctx := context.Background()
+	id, _, readyBlockData, err := bops.Ready(ctx, kmd, &FileBlock{})
+	require.NoError(t, err)
+
+	bCtx := kbfsblock.MakeFirstContext(keybase1.MakeTestUID(1))
+	err = config.bserver.Put(ctx, tlfID, id, bCtx,
+		readyBlockData.buf, readyBlockData.serverHalf)
+	require.NoError(t, err)
+
+	var decryptedBlock FileBlock
+	err = bops.Get(ctx, kmd,
+		BlockPointer{ID: id, KeyGen: latestKeyGen, Context: bCtx},
+		&decryptedBlock)
+	require.IsType(t, kbfshash.HashMismatchError{}, err)
 }
 
 func TestBlockOpsGetFailDecryptBlockData(t *testing.T) {
