@@ -298,7 +298,7 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 }
 
 // TestBlockOpsReadyFailKeyGet checks that BlockOpsStandard.Ready()
-// fails properly if the key is not retrievable.
+// fails properly if we fail to retrieve the key.
 func TestBlockOpsReadyFailKeyGet(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	kg := fakeBlockKeyGetter{}
@@ -326,7 +326,7 @@ func (c badServerHalfMaker) MakeRandomBlockCryptKeyServerHalf() (
 }
 
 // TestBlockOpsReadyFailServerHalfGet checks that BlockOpsStandard.Ready()
-// fails properly if a server half was failed to be generated.
+// fails properly if we fail to generate a  server half.
 func TestBlockOpsReadyFailServerHalfGet(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
@@ -349,6 +349,42 @@ func TestBlockOpsReadyFailServerHalfGet(t *testing.T) {
 	ctx := context.Background()
 	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
 	require.EqualError(t, err, "could not make server half")
+}
+
+type badBlockEncryptor struct {
+	CryptoCommon
+}
+
+func (c badBlockEncryptor) EncryptBlock(
+	block Block, key kbfscrypto.BlockCryptKey) (
+	plainSize int, encryptedBlock EncryptedBlock, err error) {
+	return 0, EncryptedBlock{}, errors.New("could not encrypt block")
+}
+
+// TestBlockOpsReadyFailEncryption checks that BlockOpsStandard.Ready()
+// fails properly if we fail to encrypt the block.
+func TestBlockOpsReadyFailEncryption(t *testing.T) {
+	tlfID := tlf.FakeID(0, false)
+	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
+	kg := fakeBlockKeyGetter{
+		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
+			tlfID: {
+				tlfCryptKey,
+			},
+		},
+	}
+	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	config := testBlockOpsConfig{blockServer, codec,
+		badBlockEncryptor{crypto}, kg}
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+
+	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
+
+	ctx := context.Background()
+	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
+	require.EqualError(t, err, "could not encrypt block")
 }
 
 func TestBlockOpsGetSuccess(t *testing.T) {
