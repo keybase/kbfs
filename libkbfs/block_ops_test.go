@@ -293,6 +293,8 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	var block2 FileBlock
 	err = bops.Get(ctx, kmd, BlockPointer{ID: id, KeyGen: keyGen, Context: bCtx}, &block2)
 	require.NoError(t, err)
+	block2.cachedEncodedSize = 0
+	require.Equal(t, *block, block2)
 }
 
 func TestBlockOpsGetFailGet(t *testing.T) {
