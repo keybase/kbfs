@@ -22,29 +22,20 @@ import (
 	"golang.org/x/net/context"
 )
 
-func blockOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
-	config *ConfigMock, ctx context.Context) {
-	ctr := NewSafeTestReporter(t)
-	mockCtrl = gomock.NewController(ctr)
-	config = NewConfigMock(mockCtrl, ctr)
-	bops := NewBlockOpsStandard(blockOpsConfigAdapter{config},
-		testBlockRetrievalWorkerQueueSize)
-	config.SetBlockOps(bops)
-	ctx = context.Background()
-	return
-}
-
-func blockOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
-	config.ctr.CheckForFailures()
-	config.BlockOps().Shutdown()
-	mockCtrl.Finish()
-}
-
+// fakeKeyMetadata is an implementation of KeyMetadata that just
+// stores TLFCryptKeys directly. It's meant to be used with
+// fakeBlockKeyGetter.
 type fakeKeyMetadata struct {
 	tlfID tlf.ID
 	keys  []kbfscrypto.TLFCryptKey
 }
 
+var _ KeyMetadata = fakeKeyMetadata{}
+
+// makeFakeKeyMetadata returns a fakeKeyMetadata with keys for each
+// KeyGen up to latestKeyGen. The key for KeyGen i is a deterministic
+// function of i, so multiple calls to this function will have the
+// same keys.
 func makeFakeKeyMetadata(tlfID tlf.ID, latestKeyGen KeyGen) fakeKeyMetadata {
 	keys := make([]kbfscrypto.TLFCryptKey, 0,
 		latestKeyGen-FirstValidKeyGen+1)
@@ -55,17 +46,12 @@ func makeFakeKeyMetadata(tlfID tlf.ID, latestKeyGen KeyGen) fakeKeyMetadata {
 	return fakeKeyMetadata{tlfID, keys}
 }
 
-var _ KeyMetadata = fakeKeyMetadata{}
-
 func (kmd fakeKeyMetadata) TlfID() tlf.ID {
 	return kmd.tlfID
 }
 
-// GetTlfHandle just returns nil. This contradicts the requirements
-// for KeyMetadata, but fakeKeyMetadata shouldn't be used in contexts
-// that actually use GetTlfHandle().
 func (kmd fakeKeyMetadata) GetTlfHandle() *TlfHandle {
-	return nil
+	panic("GetTlfHandle unexpectedly called")
 }
 
 func (kmd fakeKeyMetadata) LatestKeyGeneration() KeyGen {
@@ -74,26 +60,24 @@ func (kmd fakeKeyMetadata) LatestKeyGeneration() KeyGen {
 
 func (kmd fakeKeyMetadata) HasKeyForUser(
 	keyGen KeyGen, user keybase1.UID) bool {
-	return false
+	panic("HasKeyForUser unexpectedly called")
 }
 
 func (kmd fakeKeyMetadata) GetTLFCryptKeyParams(
 	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
 	kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
-	return kbfscrypto.TLFEphemeralPublicKey{},
-		EncryptedTLFCryptKeyClientHalf{},
-		TLFCryptKeyServerHalfID{}, false, errors.New("no key params")
+	panic("GetTLFCryptKeyParams unexpectedly called")
 }
 
 func (kmd fakeKeyMetadata) StoresHistoricTLFCryptKeys() bool {
-	return false
+	panic("StoresHistoricTLFCryptKeys unexpectedly called")
 }
 
 func (kmd fakeKeyMetadata) GetHistoricTLFCryptKey(
 	crypto cryptoPure, keyGen KeyGen, key kbfscrypto.TLFCryptKey) (
 	kbfscrypto.TLFCryptKey, error) {
-	return kbfscrypto.TLFCryptKey{}, errors.New("no historic keys")
+	panic("GetHistoricTLFCryptKey unexpectedly called")
 }
 
 type fakeBlockKeyGetter struct{}
