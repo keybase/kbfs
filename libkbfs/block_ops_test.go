@@ -241,6 +241,41 @@ func (config testBlockOpsConfig) keyGetter() blockKeyGetter {
 	return config._keyGetter
 }
 
+func TestBlockOpsReadySuccess2(t *testing.T) {
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	key := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
+	tlfID := tlf.FakeID(0, false)
+	var keyGen KeyGen = 5
+	kg := fakeBlockKeyGetter{
+		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
+			tlfID: {
+				kbfscrypto.TLFCryptKey{},
+				kbfscrypto.TLFCryptKey{},
+				kbfscrypto.TLFCryptKey{},
+				kbfscrypto.TLFCryptKey{},
+				key,
+			},
+		},
+	}
+	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
+	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
+
+	ctx := context.Background()
+
+	block := &FileBlock{
+		Contents: []byte{1, 2, 3, 4, 5},
+	}
+
+	kmd := emptyKeyMetadata{tlfID, keyGen}
+
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+	id, _, readyBlockData, err := bops.Ready(ctx, kmd, block)
+	require.NoError(t, err)
+	_ = id
+	_ = readyBlockData
+}
+
 func TestBlockOpsGetSuccess(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
