@@ -579,29 +579,40 @@ func TestBlockOpsGetFailDecode(t *testing.T) {
 	require.Equal(t, decodeErr, err)
 }
 
-func TestBlockOpsGetFailDecryptBlockData(t *testing.T) {
-	mockCtrl, config, ctx := blockOpsInit(t)
-	defer blockOpsShutdown(mockCtrl, config)
-	codec := kbfscodec.NewMsgpack()
-	config.SetCodec(codec)
-	crypto := NewCryptoLocal(codec,
-		kbfscrypto.MakeFakeSigningKeyOrBust("test"),
-		kbfscrypto.MakeFakeCryptPrivateKeyOrBust("test"))
-	config.SetCrypto(crypto)
+type badBlockDecryptor struct {
+	cryptoPure
+}
 
-	kmd := makeKMD()
-	// expect one call to fetch a block, then fail to decrypt
-	encData := []byte{1, 2, 3, 4}
-	id, err := kbfsblock.MakePermanentID(encData)
+func (c badBlockDecryptor) DecryptBlock(encryptedBlock EncryptedBlock,
+	key kbfscrypto.BlockCryptKey, block Block) error {
+	return errors.New("could not decrypt block")
+}
+
+// TestBlockOpsReadyFailDecrypt checks that BlockOpsStandard.Get()
+// fails if it can't decrypt the encrypted block.
+func TestBlockOpsGetFailDecrypt(t *testing.T) {
+	tlfID := tlf.FakeID(0, false)
+	var latestKeyGen KeyGen = 5
+	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	config.cryptoPure = badBlockDecryptor{config.cryptoPure}
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+
+	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
+
+	ctx := context.Background()
+	id, _, readyBlockData, err := bops.Ready(ctx, kmd, &FileBlock{})
 	require.NoError(t, err)
-	blockPtr := BlockPointer{ID: id}
-	config.mockBserv.EXPECT().Get(gomock.Any(), kmd.TlfID(), id, blockPtr.Context).Return(
-		encData, kbfscrypto.BlockCryptKeyServerHalf{}, nil)
-	expectGetTLFCryptKeyForBlockDecryption(config, kmd, blockPtr)
 
-	var block TestBlock
-	err = config.BlockOps().Get(ctx, kmd, blockPtr, &block)
-	require.True(t, strings.HasPrefix(err.Error(), "failed to decode"))
+	bCtx := kbfsblock.MakeFirstContext(keybase1.MakeTestUID(1))
+	err = config.bserver.Put(ctx, tlfID, id, bCtx,
+		readyBlockData.buf, readyBlockData.serverHalf)
+	require.NoError(t, err)
+
+	var decryptedBlock FileBlock
+	err = bops.Get(ctx, kmd,
+		BlockPointer{ID: id, KeyGen: latestKeyGen, Context: bCtx},
+		&decryptedBlock)
+	require.EqualError(t, err, "could not decrypt block")
 }
 
 func TestBlockOpsDeleteSuccess(t *testing.T) {
