@@ -101,10 +101,10 @@ func (config testBlockOpsConfig) keyGetter() blockKeyGetter {
 }
 
 func makeTestBlockOpsConfig(t *testing.T) testBlockOpsConfig {
-	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
+	bserver := NewBlockServerMemory(logger.NewTestLogger(t))
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
-	return testBlockOpsConfig{blockServer, codec, crypto}
+	return testBlockOpsConfig{bserver, codec, crypto}
 }
 
 // TestBlockOpsReadySuccess checks that BlockOpsStandard.Ready()
