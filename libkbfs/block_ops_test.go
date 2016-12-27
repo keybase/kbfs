@@ -450,7 +450,7 @@ func TestBlockOpsGetFailDecode(t *testing.T) {
 		Codec:  config.testCodec,
 		errors: make(map[string]error),
 	}
-	config.testCodec = badDecoder
+	config.testCodec = &badDecoder
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 	defer bops.Shutdown()
 
