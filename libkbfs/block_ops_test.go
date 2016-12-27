@@ -293,6 +293,20 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 	require.Equal(t, block, decryptedBlock)
 }
 
+func TestBlockOpsReadyFailKeyGet(t *testing.T) {
+	tlfID := tlf.FakeID(0, false)
+	kg := fakeBlockKeyGetter{}
+	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
+	config := testBlockOpsConfig{blockServer, kg}
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+
+	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
+
+	ctx := context.Background()
+	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
+	require.True(t, strings.HasPrefix(err.Error(), "No keys for"))
+}
+
 func TestBlockOpsGetSuccess(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
