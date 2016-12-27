@@ -26,6 +26,9 @@ import (
 // stores TLFCryptKeys directly. It's meant to be used with
 // fakeBlockKeyGetter.
 type fakeKeyMetadata struct {
+	// Embed a KeyMetadata that's always empty, so that all
+	// methods besides TlfID() panic.
+	KeyMetadata
 	tlfID tlf.ID
 	keys  []kbfscrypto.TLFCryptKey
 }
@@ -43,41 +46,11 @@ func makeFakeKeyMetadata(tlfID tlf.ID, latestKeyGen KeyGen) fakeKeyMetadata {
 		keys = append(keys,
 			kbfscrypto.MakeTLFCryptKey([32]byte{byte(keyGen)}))
 	}
-	return fakeKeyMetadata{tlfID, keys}
+	return fakeKeyMetadata{nil, tlfID, keys}
 }
 
 func (kmd fakeKeyMetadata) TlfID() tlf.ID {
 	return kmd.tlfID
-}
-
-func (kmd fakeKeyMetadata) GetTlfHandle() *TlfHandle {
-	panic("GetTlfHandle unexpectedly called")
-}
-
-func (kmd fakeKeyMetadata) LatestKeyGeneration() KeyGen {
-	return FirstValidKeyGen + KeyGen(len(kmd.keys))
-}
-
-func (kmd fakeKeyMetadata) HasKeyForUser(
-	keyGen KeyGen, user keybase1.UID) bool {
-	panic("HasKeyForUser unexpectedly called")
-}
-
-func (kmd fakeKeyMetadata) GetTLFCryptKeyParams(
-	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
-	kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
-	TLFCryptKeyServerHalfID, bool, error) {
-	panic("GetTLFCryptKeyParams unexpectedly called")
-}
-
-func (kmd fakeKeyMetadata) StoresHistoricTLFCryptKeys() bool {
-	panic("StoresHistoricTLFCryptKeys unexpectedly called")
-}
-
-func (kmd fakeKeyMetadata) GetHistoricTLFCryptKey(
-	crypto cryptoPure, keyGen KeyGen, key kbfscrypto.TLFCryptKey) (
-	kbfscrypto.TLFCryptKey, error) {
-	panic("GetHistoricTLFCryptKey unexpectedly called")
 }
 
 type fakeBlockKeyGetter struct{}
