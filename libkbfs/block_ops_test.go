@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -515,6 +516,67 @@ func TestBlockOpsGetFailKeyGet(t *testing.T) {
 		BlockPointer{ID: id, KeyGen: latestKeyGen + 1, Context: bCtx},
 		&decryptedBlock)
 	require.True(t, strings.HasPrefix(err.Error(), "No key for"))
+}
+
+type badDecoder struct {
+	kbfscodec.Codec
+
+	errorsLock sync.RWMutex
+	errors     map[string]error
+}
+
+func (c badDecoder) putError(buf []byte, err error) {
+	k := string(buf)
+	c.errorsLock.Lock()
+	c.errorsLock.Unlock()
+	c.errors[k] = err
+}
+
+func (c badDecoder) Decode(buf []byte, o interface{}) error {
+	k := string(buf)
+	err := func() error {
+		c.errorsLock.RLock()
+		defer c.errorsLock.RUnlock()
+		return c.errors[k]
+	}()
+	if err != nil {
+		return err
+	}
+	return c.Codec.Decode(buf, o)
+}
+
+// TestBlockOpsReadyFailDecode checks that BlockOpsStandard.Get()
+// fails if it can't decode the encrypted block.
+func TestBlockOpsGetFailDecode(t *testing.T) {
+	tlfID := tlf.FakeID(0, false)
+	var latestKeyGen KeyGen = 5
+	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
+	badDecoder := badDecoder{
+		Codec:  config.testCodec,
+		errors: make(map[string]error),
+	}
+	config.testCodec = badDecoder
+	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
+
+	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
+
+	ctx := context.Background()
+	id, _, readyBlockData, err := bops.Ready(ctx, kmd, &FileBlock{})
+	require.NoError(t, err)
+
+	decodeErr := errors.New("could not decode")
+	badDecoder.putError(readyBlockData.buf, decodeErr)
+
+	bCtx := kbfsblock.MakeFirstContext(keybase1.MakeTestUID(1))
+	err = config.bserver.Put(ctx, tlfID, id, bCtx,
+		readyBlockData.buf, readyBlockData.serverHalf)
+	require.NoError(t, err)
+
+	var decryptedBlock FileBlock
+	err = bops.Get(ctx, kmd,
+		BlockPointer{ID: id, KeyGen: latestKeyGen, Context: bCtx},
+		&decryptedBlock)
+	require.Equal(t, decodeErr, err)
 }
 
 func TestBlockOpsGetFailDecryptBlockData(t *testing.T) {
