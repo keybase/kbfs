@@ -239,7 +239,7 @@ func (config testBlockOpsConfig) keyGetter() blockKeyGetter {
 	return config.kg
 }
 
-func TestBlockOpsReadySuccess2(t *testing.T) {
+func TestBlockOpsReadySuccess(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
 	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
 	var keyGen KeyGen = 5
@@ -440,29 +440,6 @@ func TestBlockOpsGetFailDecryptBlockData(t *testing.T) {
 	var block TestBlock
 	err = config.BlockOps().Get(ctx, kmd, blockPtr, &block)
 	require.True(t, strings.HasPrefix(err.Error(), "failed to decode"))
-}
-
-func TestBlockOpsReadySuccess(t *testing.T) {
-	mockCtrl, config, ctx := blockOpsInit(t)
-	defer blockOpsShutdown(mockCtrl, config)
-
-	// expect one call to encrypt a block, one to hash it
-	decData := &TestBlock{42}
-	encData := []byte{1, 2, 3, 4}
-
-	kmd := makeKMD()
-
-	expectedPlainSize := 4
-	expectBlockEncrypt(config, kmd, decData, expectedPlainSize, encData, nil)
-	_, plainSize, readyBlockData, err :=
-		config.BlockOps().Ready(ctx, kmd, decData)
-	if err != nil {
-		t.Errorf("Got error on ready: %v", err)
-	} else if plainSize != expectedPlainSize {
-		t.Errorf("Expected plainSize %d, got %d", expectedPlainSize, plainSize)
-	} else if string(readyBlockData.buf) != string(encData) {
-		t.Errorf("Got back wrong data on get: %v", readyBlockData.buf)
-	}
 }
 
 func TestBlockOpsReadyFailTooLowByteCount(t *testing.T) {
