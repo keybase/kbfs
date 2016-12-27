@@ -7,6 +7,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
@@ -42,10 +43,8 @@ func TestBlockUtilPutNewBlockSuccess(t *testing.T) {
 	bserver.EXPECT().Put(ctx, tlfID, id, blockPtr.Context,
 		readyBlockData.buf, readyBlockData.serverHalf).Return(nil)
 
-	if err := putBlockToServer(ctx, bserver, tlfID, blockPtr,
-		readyBlockData); err != nil {
-		t.Errorf("Got error on put: %v", err)
-	}
+	err := putBlockToServer(ctx, bserver, tlfID, blockPtr, readyBlockData)
+	require.NoError(t, err)
 }
 
 func TestBlockUtilPutIncRefSuccess(t *testing.T) {
@@ -72,10 +71,8 @@ func TestBlockUtilPutIncRefSuccess(t *testing.T) {
 	bserver.EXPECT().AddBlockReference(ctx, tlfID, id,
 		blockPtr.Context).Return(nil)
 
-	if err := putBlockToServer(ctx, bserver, tlfID, blockPtr,
-		readyBlockData); err != nil {
-		t.Errorf("Got error on put: %v", err)
-	}
+	err := putBlockToServer(ctx, bserver, tlfID, blockPtr, readyBlockData)
+	require.NoError(t, err)
 }
 
 func TestBlockUtilPutFail(t *testing.T) {
@@ -87,7 +84,7 @@ func TestBlockUtilPutFail(t *testing.T) {
 	encData := []byte{1, 2, 3, 4}
 	blockPtr := BlockPointer{ID: id}
 
-	err := errors.New("Fake fail")
+	expectedErr := errors.New("Fake fail")
 
 	tlfID := tlf.FakeID(1, false)
 
@@ -96,10 +93,9 @@ func TestBlockUtilPutFail(t *testing.T) {
 	}
 
 	bserver.EXPECT().Put(ctx, tlfID, id, blockPtr.Context,
-		readyBlockData.buf, readyBlockData.serverHalf).Return(err)
+		readyBlockData.buf, readyBlockData.serverHalf).Return(
+		expectedErr)
 
-	if err2 := putBlockToServer(ctx, bserver, tlfID, blockPtr,
-		readyBlockData); err2 != err {
-		t.Errorf("Got bad error on put: %v", err2)
-	}
+	err := putBlockToServer(ctx, bserver, tlfID, blockPtr, readyBlockData)
+	require.Equal(t, expectedErr, err)
 }

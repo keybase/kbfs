@@ -584,7 +584,10 @@ func TestBlockOpsDeleteFail(t *testing.T) {
 func TestBlockOpsArchiveSuccess(t *testing.T) {
 	ctr := NewSafeTestReporter(t)
 	mockCtrl := gomock.NewController(ctr)
-	defer mockCtrl.Finish()
+	defer func() {
+		ctr.CheckForFailures()
+		mockCtrl.Finish()
+	}()
 
 	bserver := NewMockBlockServer(mockCtrl)
 	config := makeTestBlockOpsConfig(t)
@@ -614,7 +617,10 @@ func TestBlockOpsArchiveSuccess(t *testing.T) {
 func TestBlockOpsArchiveFail(t *testing.T) {
 	ctr := NewSafeTestReporter(t)
 	mockCtrl := gomock.NewController(ctr)
-	defer mockCtrl.Finish()
+	defer func() {
+		ctr.CheckForFailures()
+		mockCtrl.Finish()
+	}()
 
 	bserver := NewMockBlockServer(mockCtrl)
 	config := makeTestBlockOpsConfig(t)
