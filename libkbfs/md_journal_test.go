@@ -199,20 +199,6 @@ func BenchmarkMDJournalBasic(b *testing.B) {
 	runBenchmarkOverMetadataVers(b, benchmarkMDJournalBasic)
 }
 
-func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
-	for _, mdCount := range []int{1, 10, 100, 1000, 10000} {
-		mdCount := mdCount // capture range variable.
-		name := fmt.Sprintf("mdCount=%d", mdCount)
-		b.Run(name, func(b *testing.B) {
-			b.StopTimer()
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				benchmarkMDJournalBasicBody(b, ver, mdCount)
-			}
-		})
-	}
-}
-
 func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer, mdCount int) {
 	b.StopTimer()
 
@@ -227,6 +213,20 @@ func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer, mdCount int) {
 			defer b.StopTimer()
 			return j.put(ctx, signer, ekg, bsplit, md, false)
 		})
+}
+
+func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
+	for _, mdCount := range []int{1, 10, 100, 1000, 10000} {
+		mdCount := mdCount // capture range variable.
+		name := fmt.Sprintf("mdCount=%d", mdCount)
+		b.Run(name, func(b *testing.B) {
+			b.StopTimer()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				benchmarkMDJournalBasicBody(b, ver, mdCount)
+			}
+		})
+	}
 }
 
 func TestMDJournalBasic(t *testing.T) {
