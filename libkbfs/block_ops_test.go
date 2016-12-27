@@ -343,14 +343,14 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 
 	tlfID := tlf.FakeID(0, false)
 	var keyGen KeyGen = 3
-	kmd := makeFakeKeyMetadata(tlfID, keyGen)
+	kmd1 := makeFakeKeyMetadata(tlfID, keyGen)
 
 	block := FileBlock{
 		Contents: []byte{1, 2, 3, 4, 5},
 	}
 
 	ctx := context.Background()
-	id, _, readyBlockData, err := bops.Ready(ctx, kmd, &block)
+	id, _, readyBlockData, err := bops.Ready(ctx, kmd1, &block)
 	require.NoError(t, err)
 
 	bCtx := kbfsblock.MakeFirstContext(keybase1.MakeTestUID(1))
@@ -358,8 +358,9 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 		readyBlockData.buf, readyBlockData.serverHalf)
 	require.NoError(t, err)
 
+	kmd2 := makeFakeKeyMetadata(tlfID, keyGen+3)
 	var decryptedBlock FileBlock
-	err = bops.Get(ctx, kmd,
+	err = bops.Get(ctx, kmd2,
 		BlockPointer{ID: id, KeyGen: keyGen, Context: bCtx},
 		&decryptedBlock)
 	require.NoError(t, err)
