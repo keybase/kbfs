@@ -207,36 +207,40 @@ func (config testBlockOpsConfig) keyGetter() blockKeyGetter {
 	return config.kg
 }
 
+func makeTestBlockOpsConfig(t *testing.T, tlfID tlf.ID,
+	latestKeyGen KeyGen) testBlockOpsConfig {
+	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	tlfKeys := make([]kbfscrypto.TLFCryptKey, 0,
+		latestKeyGen-FirstValidKeyGen+1)
+	for keyGen := FirstValidKeyGen; keyGen <= latestKeyGen; keyGen++ {
+		tlfKeys = append(tlfKeys,
+			kbfscrypto.MakeTLFCryptKey([32]byte{byte(keyGen)}))
+	}
+	kg := fakeBlockKeyGetter{
+		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
+			tlfID: tlfKeys,
+		},
+	}
+	return testBlockOpsConfig{blockServer, codec, crypto, kg}
+}
+
 // TestBlockOpsReadySuccess checks that BlockOpsStandard.Ready()
 // encrypts its given block properly.
 func TestBlockOpsReadySuccess(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
-	var keyGen KeyGen = 5
-	kg := fakeBlockKeyGetter{
-		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
-			tlfID: {
-				kbfscrypto.TLFCryptKey{},
-				kbfscrypto.TLFCryptKey{},
-				kbfscrypto.TLFCryptKey{},
-				kbfscrypto.TLFCryptKey{},
-				tlfCryptKey,
-			},
-		},
-	}
-	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
+	var latestKeyGen KeyGen = 5
+	config := makeTestBlockOpsConfig(t, tlfID, latestKeyGen)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
-	kmd := emptyKeyMetadata{tlfID, keyGen}
+	kmd := emptyKeyMetadata{tlfID, latestKeyGen}
 
 	block := FileBlock{
 		Contents: []byte{1, 2, 3, 4, 5},
 	}
 
-	encodedBlock, err := codec.Encode(block)
+	encodedBlock, err := config.testCodec.Encode(block)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -249,14 +253,15 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	var encryptedBlock EncryptedBlock
-	err = codec.Decode(readyBlockData.buf, &encryptedBlock)
+	err = config.testCodec.Decode(readyBlockData.buf, &encryptedBlock)
 	require.NoError(t, err)
 
 	blockCryptKey := kbfscrypto.UnmaskBlockCryptKey(
-		readyBlockData.serverHalf, tlfCryptKey)
+		readyBlockData.serverHalf,
+		config.kg.keys[tlfID][latestKeyGen-FirstValidKeyGen])
 
 	var decryptedBlock FileBlock
-	err = crypto.DecryptBlock(
+	err = config.cryptoPure.DecryptBlock(
 		encryptedBlock, blockCryptKey, &decryptedBlock)
 	require.NoError(t, err)
 	decryptedBlock.SetEncodedSize(uint32(readyBlockData.GetEncodedSize()))
@@ -267,11 +272,7 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 // fails properly if we fail to retrieve the key.
 func TestBlockOpsReadyFailKeyGet(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
-	kg := fakeBlockKeyGetter{}
-	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	config := testBlockOpsConfig{blockServer, codec, crypto, kg}
+	config := makeTestBlockOpsConfig(t, tlfID, 0)
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
@@ -282,7 +283,7 @@ func TestBlockOpsReadyFailKeyGet(t *testing.T) {
 }
 
 type badServerHalfMaker struct {
-	CryptoCommon
+	cryptoPure
 }
 
 func (c badServerHalfMaker) MakeRandomBlockCryptKeyServerHalf() (
@@ -295,19 +296,8 @@ func (c badServerHalfMaker) MakeRandomBlockCryptKeyServerHalf() (
 // fails properly if we fail to generate a  server half.
 func TestBlockOpsReadyFailServerHalfGet(t *testing.T) {
 	tlfID := tlf.FakeID(0, false)
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x5})
-	kg := fakeBlockKeyGetter{
-		keys: map[tlf.ID][]kbfscrypto.TLFCryptKey{
-			tlfID: {
-				tlfCryptKey,
-			},
-		},
-	}
-	blockServer := NewBlockServerMemory(logger.NewTestLogger(t))
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	config := testBlockOpsConfig{blockServer, codec,
-		badServerHalfMaker{crypto}, kg}
+	config := makeTestBlockOpsConfig(t, tlfID, FirstValidKeyGen)
+	config.cryptoPure = badServerHalfMaker{config.cryptoPure}
 	bops := NewBlockOpsStandard(config, testBlockRetrievalWorkerQueueSize)
 
 	kmd := emptyKeyMetadata{tlfID, FirstValidKeyGen}
