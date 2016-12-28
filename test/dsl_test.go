@@ -58,6 +58,7 @@ func runTestOverMetadataVers(
 	for _, ver := range libkbfs.GetTestMetadataVers() {
 		ver := ver // capture range variable.
 		t.Run(ver.String(), func(t *testing.T) {
+			t.Parallel()
 			f(t, ver)
 		})
 	}
