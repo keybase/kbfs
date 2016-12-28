@@ -36,7 +36,8 @@ func setupJournalMDOpsTest(t *testing.T) (
 	// Clean up the config if the rest of the setup fails.
 	defer func() {
 		if !setupSucceeded {
-			CheckConfigAndShutdown(t, config)
+			ctx := context.Background()
+			CheckConfigAndShutdown(t, ctx, config)
 		}
 	}()
 
@@ -53,7 +54,8 @@ func setupJournalMDOpsTest(t *testing.T) (
 }
 
 func teardownJournalMDOpsTest(t *testing.T, tempdir string, config Config) {
-	CheckConfigAndShutdown(t, config)
+	ctx := context.Background()
+	CheckConfigAndShutdown(t, ctx, config)
 	err := ioutil.RemoveAll(tempdir)
 	assert.NoError(t, err)
 }

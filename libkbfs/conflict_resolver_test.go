@@ -356,7 +356,7 @@ func TestCRMergedChainsSimple(t *testing.T) {
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
 	config2 := ConfigAsUser(config1, userName2)
-	defer CheckConfigAndShutdown(t, config2)
+	defer CheckConfigAndShutdown(t, ctx, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -416,7 +416,7 @@ func TestCRMergedChainsDifferentDirectories(t *testing.T) {
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
 	config2 := ConfigAsUser(config1, userName2)
-	defer CheckConfigAndShutdown(t, config2)
+	defer CheckConfigAndShutdown(t, ctx, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -478,7 +478,7 @@ func TestCRMergedChainsDeletedDirectories(t *testing.T) {
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
 	config2 := ConfigAsUser(config1, userName2)
-	defer CheckConfigAndShutdown(t, config2)
+	defer CheckConfigAndShutdown(t, ctx, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -575,7 +575,7 @@ func TestCRMergedChainsRenamedDirectory(t *testing.T) {
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
 	config2 := ConfigAsUser(config1, userName2)
-	defer CheckConfigAndShutdown(t, config2)
+	defer CheckConfigAndShutdown(t, ctx, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -655,7 +655,7 @@ func TestCRMergedChainsComplex(t *testing.T) {
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
 	config2 := ConfigAsUser(config1, userName2)
-	defer CheckConfigAndShutdown(t, config2)
+	defer CheckConfigAndShutdown(t, ctx, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -840,7 +840,7 @@ func TestCRMergedChainsRenameCycleSimple(t *testing.T) {
 	config1.SetClock(clock)
 
 	config2 := ConfigAsUser(config1, userName2)
-	defer CheckConfigAndShutdown(t, config2)
+	defer CheckConfigAndShutdown(t, ctx, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -926,7 +926,7 @@ func TestCRMergedChainsConflictSimple(t *testing.T) {
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
 	config2 := ConfigAsUser(config1, userName2)
-	defer CheckConfigAndShutdown(t, config2)
+	defer CheckConfigAndShutdown(t, ctx, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -994,7 +994,7 @@ func TestCRMergedChainsConflictFileCollapse(t *testing.T) {
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
 	config2 := ConfigAsUser(config1, userName2)
-	defer CheckConfigAndShutdown(t, config2)
+	defer CheckConfigAndShutdown(t, ctx, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -1103,7 +1103,7 @@ func TestCRDoActionsSimple(t *testing.T) {
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
 	config2 := ConfigAsUser(config1, userName2)
-	defer CheckConfigAndShutdown(t, config2)
+	defer CheckConfigAndShutdown(t, ctx, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -1191,7 +1191,7 @@ func TestCRDoActionsWriteConflict(t *testing.T) {
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
 	config2 := ConfigAsUser(config1, userName2)
-	defer CheckConfigAndShutdown(t, config2)
+	defer CheckConfigAndShutdown(t, ctx, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
