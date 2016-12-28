@@ -56,7 +56,7 @@ func testExpectedMissing(t *testing.T, id BlockID, bcache BlockCache) {
 func TestBcachePut(t *testing.T) {
 	ctx := context.Background()
 	config := blockCacheTestInit(t, 100, 1<<30)
-	defer CheckConfigAndShutdown(t, ctx, config)
+	defer CheckConfigAndShutdown(ctx, t, config)
 	testBcachePut(t, fakeBlockID(1), config.BlockCache(), TransientEntry)
 	testBcachePut(t, fakeBlockID(2), config.BlockCache(), PermanentEntry)
 }
@@ -64,7 +64,7 @@ func TestBcachePut(t *testing.T) {
 func TestBcachePutPastCapacity(t *testing.T) {
 	ctx := context.Background()
 	config := blockCacheTestInit(t, 2, 1<<30)
-	defer CheckConfigAndShutdown(t, ctx, config)
+	defer CheckConfigAndShutdown(ctx, t, config)
 	bcache := config.BlockCache()
 	id1 := fakeBlockID(1)
 	testBcachePut(t, id1, bcache, TransientEntry)
@@ -87,7 +87,7 @@ func TestBcachePutPastCapacity(t *testing.T) {
 func TestBcacheCheckPtrSuccess(t *testing.T) {
 	ctx := context.Background()
 	config := blockCacheTestInit(t, 100, 1<<30)
-	defer CheckConfigAndShutdown(t, ctx, config)
+	defer CheckConfigAndShutdown(ctx, t, config)
 	bcache := config.BlockCache()
 
 	block := NewFileBlock().(*FileBlock)
@@ -137,7 +137,7 @@ func TestBcacheCheckPtrPermanent(t *testing.T) {
 func TestBcacheCheckPtrNotFound(t *testing.T) {
 	ctx := context.Background()
 	config := blockCacheTestInit(t, 100, 1<<30)
-	defer CheckConfigAndShutdown(t, ctx, config)
+	defer CheckConfigAndShutdown(ctx, t, config)
 	bcache := config.BlockCache()
 
 	block := NewFileBlock().(*FileBlock)
@@ -164,7 +164,7 @@ func TestBcacheCheckPtrNotFound(t *testing.T) {
 func TestBcacheDeleteTransient(t *testing.T) {
 	ctx := context.Background()
 	config := blockCacheTestInit(t, 100, 1<<30)
-	defer CheckConfigAndShutdown(t, ctx, config)
+	defer CheckConfigAndShutdown(ctx, t, config)
 	bcache := config.BlockCache()
 
 	block := NewFileBlock().(*FileBlock)
@@ -194,7 +194,7 @@ func TestBcacheDeleteTransient(t *testing.T) {
 func TestBcacheDeletePermanent(t *testing.T) {
 	ctx := context.Background()
 	config := blockCacheTestInit(t, 100, 1<<30)
-	defer CheckConfigAndShutdown(t, ctx, config)
+	defer CheckConfigAndShutdown(ctx, t, config)
 	bcache := config.BlockCache()
 
 	id1 := fakeBlockID(1)
@@ -377,7 +377,7 @@ func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
 func TestPutNoHashCalculation(t *testing.T) {
 	ctx := context.Background()
 	config := blockCacheTestInit(t, 100, 1<<30)
-	defer CheckConfigAndShutdown(t, ctx, config)
+	defer CheckConfigAndShutdown(ctx, t, config)
 	bcache := config.BlockCache()
 	ptr := BlockPointer{ID: fakeBlockID(1)}
 	tlf := tlf.FakeID(1, false)

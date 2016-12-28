@@ -179,7 +179,7 @@ func kbfsOpsInitNoMocks(t *testing.T, users ...libkb.NormalizedUsername) (
 
 func kbfsTestShutdownNoMocks(t *testing.T, config *ConfigLocal,
 	ctx context.Context, cancel context.CancelFunc) {
-	CheckConfigAndShutdown(t, ctx, config)
+	CheckConfigAndShutdown(ctx, t, config)
 	cancel()
 	CleanupCancellationDelayer(ctx)
 }
@@ -5534,7 +5534,7 @@ func TestKBFSOpsFailToReadUnverifiableBlock(t *testing.T) {
 
 	// Read using a different "device"
 	config2 := ConfigAsUser(config, "test_user")
-	defer CheckConfigAndShutdown(t, ctx, config2)
+	defer CheckConfigAndShutdown(ctx, t, config2)
 	// Shutdown the mdserver explicitly before the state checker tries to run
 	defer config2.MDServer().Shutdown()
 

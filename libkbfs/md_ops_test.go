@@ -785,7 +785,7 @@ func testMDOpsPutPublicSuccess(t *testing.T, ver MetadataVer) {
 	ctx := context.Background()
 	config := MakeTestConfigOrBust(t, "alice", "bob")
 	config.SetMetadataVersion(ver)
-	defer CheckConfigAndShutdown(t, ctx, config)
+	defer CheckConfigAndShutdown(ctx, t, config)
 
 	config.MDServer().Shutdown()
 	var mdServer fakeMDServerPut
