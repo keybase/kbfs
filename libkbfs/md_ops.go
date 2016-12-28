@@ -371,7 +371,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id tlf.ID,
 		return nil, nil
 	}
 
-	var eg errgroup.Group
+	eg, groupCtx := errgroup.WithContext(ctx)
 
 	// Parallelize the MD decryption, because it could involve
 	// fetching blocks to get unembedded block changes.
@@ -380,7 +380,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id tlf.ID,
 	var getRangeLock sync.Mutex
 	worker := func() error {
 		for rmds := range rmdsChan {
-			extra, err := md.getExtraMD(ctx, rmds.MD)
+			extra, err := md.getExtraMD(groupCtx, rmds.MD)
 			if err != nil {
 				return err
 			}
@@ -388,11 +388,11 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id tlf.ID,
 			if err != nil {
 				return err
 			}
-			handle, err := MakeTlfHandle(ctx, bareHandle, md.config.KBPKI())
+			handle, err := MakeTlfHandle(groupCtx, bareHandle, md.config.KBPKI())
 			if err != nil {
 				return err
 			}
-			irmd, err := md.processMetadataWithID(ctx, id, bid,
+			irmd, err := md.processMetadataWithID(groupCtx, id, bid,
 				handle, rmds, extra, &getRangeLock)
 			if err != nil {
 				return err
