@@ -7,10 +7,9 @@ package libkbfs
 import (
 	"testing"
 
-	"golang.org/x/net/context"
-
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
 )
 
 func getKeyBundlesForTesting(t *testing.T, c Config, tlfByte byte, handleStr string) (
