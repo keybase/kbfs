@@ -410,7 +410,7 @@ func (k *LibKBFS) Lookup(u User, parentDir Node, name string) (file Node, symPat
 // GetDirChildrenTypes implements the Engine interface.
 func (k *LibKBFS) GetDirChildrenTypes(u User, parentDir Node) (childrenTypes map[string]string, err error) {
 	kbfsOps := u.(*libkbfs.ConfigLocal).KBFSOps()
-	var entries map[string]libkbfs.EntryInfoExtended
+	var entries map[string]libkbfs.EntryInfo
 	ctx, cancel := k.newContext(u)
 	defer cancel()
 	entries, err = kbfsOps.GetDirChildren(ctx, parentDir.(libkbfs.Node))
@@ -446,7 +446,7 @@ func (k *LibKBFS) SetMtime(u User, file Node, mtime time.Time) (err error) {
 func (k *LibKBFS) GetMtime(u User, file Node) (mtime time.Time, err error) {
 	config := u.(*libkbfs.ConfigLocal)
 	kbfsOps := config.KBFSOps()
-	var info libkbfs.EntryInfoExtended
+	var info libkbfs.EntryInfo
 	ctx, cancel := k.newContext(u)
 	defer cancel()
 	if node, ok := file.(libkbfs.Node); ok {
