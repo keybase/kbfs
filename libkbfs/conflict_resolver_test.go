@@ -20,8 +20,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func crTestInit(t *testing.T) (mockCtrl *gomock.Controller, config *ConfigMock,
-	ctx context.Context, cr *ConflictResolver) {
+func crTestInit(t *testing.T) (ctx context.Context, mockCtrl *gomock.Controller,
+	config *ConfigMock, cr *ConflictResolver) {
 	ctr := NewSafeTestReporter(t)
 	mockCtrl = gomock.NewController(ctr)
 	config = NewConfigMock(mockCtrl, ctr)
@@ -37,11 +37,11 @@ func crTestInit(t *testing.T) (mockCtrl *gomock.Controller, config *ConfigMock,
 	mockDaemon.EXPECT().LoadUserPlusKeys(gomock.Any(), gomock.Any()).AnyTimes().Return(UserInfo{Name: "mockUser"}, nil)
 	config.SetKeybaseService(mockDaemon)
 	ctx = BackgroundContextWithCancellationDelayer()
-	return mockCtrl, config, ctx, fbo.cr
+	return ctx, mockCtrl, config, fbo.cr
 }
 
-func crTestShutdown(mockCtrl *gomock.Controller, config *ConfigMock,
-	ctx context.Context, cr *ConflictResolver) {
+func crTestShutdown(ctx context.Context, mockCtrl *gomock.Controller,
+	config *ConfigMock, cr *ConflictResolver) {
 	CleanupCancellationDelayer(ctx)
 	config.ctr.CheckForFailures()
 	cr.fbo.Shutdown(ctx)
@@ -80,8 +80,8 @@ func crMakeFakeRMD(rev MetadataRevision, bid BranchID) ImmutableRootMetadata {
 }
 
 func TestCRInput(t *testing.T) {
-	mockCtrl, config, ctx, cr := crTestInit(t)
-	defer crTestShutdown(mockCtrl, config, ctx, cr)
+	ctx, mockCtrl, config, cr := crTestInit(t)
+	defer crTestShutdown(ctx, mockCtrl, config, cr)
 
 	// First try a completely unknown revision
 	cr.Resolve(MetadataRevisionUninitialized, MetadataRevisionUninitialized)
@@ -141,8 +141,8 @@ func TestCRInput(t *testing.T) {
 }
 
 func TestCRInputFracturedRange(t *testing.T) {
-	mockCtrl, config, ctx, cr := crTestInit(t)
-	defer crTestShutdown(mockCtrl, config, ctx, cr)
+	ctx, mockCtrl, config, cr := crTestInit(t)
+	defer crTestShutdown(ctx, mockCtrl, config, cr)
 
 	// Next, try resolving a few items
 	branchPoint := MetadataRevision(2)
