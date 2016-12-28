@@ -73,7 +73,8 @@ func runBenchmarkOverMetadataVers(
 	}
 }
 
-func runOneTestOrBenchmar(t testing.TB, actions ...optionOp) {
+func runOneTestOrBenchmark(
+	tb testing.TB, ver libkbfs.MetadataVer, actions ...optionOp) {
 	o := &opt{}
 	o.engine = createEngine(tb, ver)
 	o.engine.Init()
@@ -86,14 +87,14 @@ func runOneTestOrBenchmar(t testing.TB, actions ...optionOp) {
 
 func test(t *testing.T, actions ...optionOp) {
 	runTestOverMetadataVers(t, func(t *testing.T, ver libkbfs.MetadataVer) {
-		runOneTestOrBenchmark(t, actions...)
+		runOneTestOrBenchmark(t, ver, actions...)
 	})
 }
 
 func benchmark(b *testing.B, tb testing.TB, actions ...optionOp) {
 	runBenchmarkOverMetadataVers(
 		b, func(b *testing.B, ver libkbfs.MetadataVer) {
-			runOneTestOrBenchmark(tb, actions...)
+			runOneTestOrBenchmark(tb, ver, actions...)
 		})
 }
 
