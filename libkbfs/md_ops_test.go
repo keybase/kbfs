@@ -123,16 +123,9 @@ func newRMDS(t *testing.T, config Config, h *TlfHandle) (
 }
 
 func verifyMDForPublic(config *ConfigMock, rmds *RootMetadataSigned,
-	verifyErr, hasVerifyingKeyErr error) {
-	if verifyErr != nil {
-		return
-	}
+	hasVerifyingKeyErr error) {
 	config.mockKbpki.EXPECT().HasVerifyingKey(gomock.Any(), gomock.Any(),
 		gomock.Any(), gomock.Any()).AnyTimes().Return(hasVerifyingKeyErr)
-
-	if hasVerifyingKeyErr != nil {
-		return
-	}
 }
 
 // kmdMatcher implements the gomock.Matcher interface to compare
@@ -223,7 +216,7 @@ func testMDOpsGetForHandlePublicSuccess(t *testing.T, ver MetadataVer) {
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
 	rmds, _ := newRMDS(t, config, h)
 
-	verifyMDForPublic(config, rmds, nil, nil)
+	verifyMDForPublic(config, rmds, nil)
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(tlf.NullID, rmds, nil)
 
@@ -277,7 +270,7 @@ func testMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T, ver MetadataVer)
 	rmds, _ := newRMDS(t, config, h)
 
 	// Do this before setting tlfHandle to nil.
-	verifyMDForPublic(config, rmds, nil, nil)
+	verifyMDForPublic(config, rmds, nil)
 
 	hUnresolved, err := ParseTlfHandle(ctx, config.KBPKI(),
 		"alice,bob@twitter", true)
@@ -327,8 +320,8 @@ func testMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T, ver MetadataVe
 	rmds3, _ := newRMDS(t, config, mdHandle3)
 
 	// Do this before setting tlfHandles to nil.
-	verifyMDForPublic(config, rmds2, nil, nil)
-	verifyMDForPublic(config, rmds3, nil, nil)
+	verifyMDForPublic(config, rmds2, nil)
+	verifyMDForPublic(config, rmds3, nil)
 
 	h, err := ParseTlfHandle(
 		ctx, config.KBPKI(), "alice,bob,charlie@twitter", true)
@@ -399,7 +392,7 @@ func testMDOpsGetForHandlePublicFailFindKey(t *testing.T, ver MetadataVer) {
 	rmds, _ := newRMDS(t, config, h)
 
 	// Do this before setting tlfHandle to nil.
-	verifyMDForPublic(config, rmds, nil, KeyNotFoundError{})
+	verifyMDForPublic(config, rmds, KeyNotFoundError{})
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(tlf.NullID, rmds, nil)
 
