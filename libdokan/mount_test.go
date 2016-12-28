@@ -84,7 +84,6 @@ func makeFSE(t testing.TB, ctx context.Context, config *libkbfs.ConfigLocal,
 	makeSuccess = true
 	return cm, filesys, func() {
 		cancelFn()
-		libkbfs.CleanupCancellationDelayer(ctx)
 	}
 }
 
