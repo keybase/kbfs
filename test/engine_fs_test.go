@@ -528,6 +528,7 @@ func (e *fsEngine) InitTest(t testing.TB, blockSize int64,
 
 	// create the first user specially
 	config0 := libkbfs.MakeTestConfigOrBust(t, users...)
+	config0.SetMetadataVersion(e.ver)
 	config0.SetClock(clock)
 
 	setBlockSizes(t, config0, blockSize, blockChangeSize)
