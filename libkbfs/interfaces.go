@@ -546,9 +546,8 @@ type blockKeyGetter interface {
 // KeyManager fetches and constructs the keys needed for KBFS file
 // operations.
 type KeyManager interface {
-	encryptionKeyGetter
+	blockKeyGetter
 	mdDecryptionKeyGetter
-	blockDecryptionKeyGetter
 
 	// GetTLFCryptKeyOfAllGenerations gets the crypt keys of all generations
 	// for current devices. keys contains crypt keys from all generations, in
