@@ -126,11 +126,6 @@ func (c CryptoCommon) MakeTemporaryBlockID() (kbfsblock.ID, error) {
 	return kbfsblock.MakeTemporaryID()
 }
 
-// VerifyBlockID implements the Crypto interface for CryptoCommon.
-func (c CryptoCommon) VerifyBlockID(encodedEncryptedData []byte, id kbfsblock.ID) error {
-	return kbfsblock.VerifyID(encodedEncryptedData, id)
-}
-
 // MakeBlockRefNonce implements the Crypto interface for CryptoCommon.
 func (c CryptoCommon) MakeBlockRefNonce() (nonce kbfsblock.RefNonce, err error) {
 	return kbfsblock.MakeRefNonce()
