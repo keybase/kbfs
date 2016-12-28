@@ -62,7 +62,7 @@ func (*fsEngine) Init() {}
 
 // Name returns the name of the Engine.
 func (e *fsEngine) Name() string {
-	return e.name
+	return fmt.Sprintf("%s(%s)", e.name, e.ver)
 }
 
 // GetUID is called by the test harness to retrieve a user instance's UID.
