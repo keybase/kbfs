@@ -7,10 +7,9 @@ package libkbfs
 import (
 	"testing"
 
-	"golang.org/x/net/context"
-
 	"github.com/keybase/kbfs/kbfshash"
 	"github.com/keybase/kbfs/tlf"
+	"golang.org/x/net/context"
 )
 
 func blockCacheTestInit(t *testing.T, capacity int,
