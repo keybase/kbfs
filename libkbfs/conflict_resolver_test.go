@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -18,10 +17,11 @@ import (
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
 )
 
-func crTestInit(t *testing.T) (ctx context.Context, mockCtrl *gomock.Controller,
-	config *ConfigMock, cr *ConflictResolver) {
+func crTestInit(t *testing.T) (ctx context.Context, cancel context.CancelFunc,
+	mockCtrl *gomock.Controller, config *ConfigMock, cr *ConflictResolver) {
 	ctr := NewSafeTestReporter(t)
 	mockCtrl = gomock.NewController(ctr)
 	config = NewConfigMock(mockCtrl, ctr)
@@ -36,15 +36,26 @@ func crTestInit(t *testing.T) (ctx context.Context, mockCtrl *gomock.Controller,
 	mockDaemon := NewMockKeybaseService(mockCtrl)
 	mockDaemon.EXPECT().LoadUserPlusKeys(gomock.Any(), gomock.Any()).AnyTimes().Return(UserInfo{Name: "mockUser"}, nil)
 	config.SetKeybaseService(mockDaemon)
-	ctx = BackgroundContextWithCancellationDelayer()
-	return ctx, mockCtrl, config, fbo.cr
+
+	timeoutCtx, cancel := context.WithTimeout(
+		context.Background(), individualTestTimeout)
+
+	if ctx, err := NewContextWithCancellationDelayer(NewContextReplayable(
+		timeoutCtx, func(c context.Context) context.Context {
+			return c
+		})); err != nil {
+		cancel()
+		panic(err)
+	}
+	return ctx, cancel, mockCtrl, config, fbo.cr
 }
 
-func crTestShutdown(ctx context.Context, mockCtrl *gomock.Controller,
-	config *ConfigMock, cr *ConflictResolver) {
+func crTestShutdown(ctx context.Context, cancel context.CancelFunc,
+	mockCtrl *gomock.Controller, config *ConfigMock, cr *ConflictResolver) {
 	CleanupCancellationDelayer(ctx)
 	config.ctr.CheckForFailures()
 	cr.fbo.Shutdown(ctx)
+	cancel()
 	mockCtrl.Finish()
 }
 
@@ -80,8 +91,8 @@ func crMakeFakeRMD(rev MetadataRevision, bid BranchID) ImmutableRootMetadata {
 }
 
 func TestCRInput(t *testing.T) {
-	ctx, mockCtrl, config, cr := crTestInit(t)
-	defer crTestShutdown(ctx, mockCtrl, config, cr)
+	ctx, cancel, mockCtrl, config, cr := crTestInit(t)
+	defer crTestShutdown(ctx, cancel, mockCtrl, config, cr)
 
 	// First try a completely unknown revision
 	cr.Resolve(MetadataRevisionUninitialized, MetadataRevisionUninitialized)
@@ -141,8 +152,8 @@ func TestCRInput(t *testing.T) {
 }
 
 func TestCRInputFracturedRange(t *testing.T) {
-	ctx, mockCtrl, config, cr := crTestInit(t)
-	defer crTestShutdown(ctx, mockCtrl, config, cr)
+	ctx, cancel, mockCtrl, config, cr := crTestInit(t)
+	defer crTestShutdown(ctx, cancel, mockCtrl, config, cr)
 
 	// Next, try resolving a few items
 	branchPoint := MetadataRevision(2)
