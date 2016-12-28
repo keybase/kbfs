@@ -61,11 +61,12 @@ type File struct {
 
 var _ fs.Node = (*File)(nil)
 
-func fillAttrWithMode(ei *libkbfs.EntryInfo, a *fuse.Attr) {
-	fillAttr(ei, a)
-	a.Mode = 0644
+func (f *File) fillAttrWithMode(
+	ctx context.Context, ei *libkbfs.EntryInfo, a *fuse.Attr) {
+	f.folder.fillAttrWithUIDAndWritePerm(ctx, ei, a)
+	a.Mode |= 0400
 	if ei.Type == libkbfs.Exec {
-		a.Mode |= 0111
+		a.Mode |= 0100
 	}
 }
 
@@ -76,7 +77,7 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 
 	if reqID, ok := ctx.Value(CtxIDKey).(string); ok {
 		if ei := f.eiCache.getAndDestroyIfMatches(reqID); ei != nil {
-			fillAttrWithMode(ei, a)
+			f.fillAttrWithMode(ctx, ei, a)
 			return nil
 		}
 	}
@@ -100,7 +101,7 @@ func (f *File) attr(ctx context.Context, a *fuse.Attr) (err error) {
 		return err
 	}
 
-	fillAttrWithMode(&de, a)
+	f.fillAttrWithMode(ctx, &de, a)
 	return nil
 }
 

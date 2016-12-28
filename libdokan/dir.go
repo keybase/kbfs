@@ -162,7 +162,7 @@ func (f *Folder) TlfHandleChange(ctx context.Context,
 	// Handle in the background because we shouldn't lock during
 	// the notification
 	f.fs.queueNotification(func() {
-		cuser, err := libkbfs.GetCurrentUsernameIfPossible(ctx, f.fs.config.KBPKI(), f.list.public)
+		cuser, err := libkbfs.GetCurrentUserInfoIfPossible(ctx, f.fs.config.KBPKI(), f.list.public)
 		// Here we get an error, but there is little that can be done.
 		// cuser will be empty in the error case in which case we will default to the
 		// canonical format.
