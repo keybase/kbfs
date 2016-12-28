@@ -49,15 +49,56 @@ type opt struct {
 	journal                  bool
 }
 
-func test(t testing.TB, actions ...optionOp) {
-	o := &opt{}
-	o.engine = createEngine(t)
-	o.engine.Init()
-	o.t = t
-	defer o.close()
-	for _, omod := range actions {
-		omod(o)
+var testMetadataVers = []libkbfs.MetadataVer{
+	libkbfs.InitialExtraMetadataVer, libkbfs.SegregatedKeyBundlesVer,
+}
+
+func runTestOverMetadataVers(
+	t *testing.T, f func(t *testing.T, ver libkbfs.MetadataVer)) {
+	for _, ver := range testMetadataVers {
+		ver := ver // capture range variable.
+		t.Run(ver.String(), func(t *testing.T) {
+			f(t, ver)
+		})
 	}
+}
+
+func runBenchmarkOverMetadataVers(
+	b *testing.B, f func(b *testing.B, ver libkbfs.MetadataVer)) {
+	for _, ver := range testMetadataVers {
+		ver := ver // capture range variable.
+		b.Run(ver.String(), func(b *testing.B) {
+			f(b, ver)
+		})
+	}
+}
+
+func test(t *testing.T, actions ...optionOp) {
+	runTestOverMetadataVers(t, func(t *testing.T, ver libkbfs.MetadataVer) {
+		// TODO: Plumb through ver.
+		o := &opt{}
+		o.engine = createEngine(t)
+		o.engine.Init()
+		o.t = t
+		defer o.close()
+		for _, omod := range actions {
+			omod(o)
+		}
+	})
+}
+
+func benchmark(b *testing.B, actions ...optionOp) {
+	runBenchmarkOverMetadataVers(b, func(b *testing.B, ver libkbfs.MetadataVer) {
+		// TODO: Plumb through ver.
+		o := &opt{}
+		o.engine = createEngine(b)
+		o.engine.Init()
+		o.t = b
+		defer o.close()
+		for _, omod := range actions {
+			omod(o)
+		}
+	})
 }
 
 func parallel(actions ...optionOp) optionOp {

@@ -40,7 +40,7 @@ func runTestOverMetadataVers(
 	for _, ver := range testMetadataVers {
 		ver := ver // capture range variable.
 		t.Run(ver.String(), func(t *testing.T) {
-			f(t, ver)
+p			f(t, ver)
 		})
 	}
 }

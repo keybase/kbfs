@@ -59,6 +59,7 @@ func (k *LibKBFS) InitTest(t testing.TB, blockSize int64, blockChangeSize int64,
 	userMap := make(map[libkb.NormalizedUsername]User)
 	// create the first user specially
 	config := libkbfs.MakeTestConfigOrBust(t, users...)
+	config.SetMetadataVersion(libkbfs.InitialExtraMetadataVer)
 
 	setBlockSizes(t, config, blockSize, blockChangeSize)
 	maybeSetBw(t, config, bwKBps)
