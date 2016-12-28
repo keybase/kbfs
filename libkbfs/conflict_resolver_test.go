@@ -40,7 +40,8 @@ func crTestInit(t *testing.T) (ctx context.Context, cancel context.CancelFunc,
 	timeoutCtx, cancel := context.WithTimeout(
 		context.Background(), individualTestTimeout)
 
-	if ctx, err := NewContextWithCancellationDelayer(NewContextReplayable(
+	var err error
+	if ctx, err = NewContextWithCancellationDelayer(NewContextReplayable(
 		timeoutCtx, func(c context.Context) context.Context {
 			return c
 		})); err != nil {
