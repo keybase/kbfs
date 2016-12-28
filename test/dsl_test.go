@@ -86,12 +86,12 @@ func test(t *testing.T, actions ...optionOp) {
 	})
 }
 
-func benchmark(b *testing.B, actions ...optionOp) {
+func benchmark(b *testing.B, tb testing.TB, actions ...optionOp) {
 	runBenchmarkOverMetadataVers(b, func(b *testing.B, ver libkbfs.MetadataVer) {
 		o := &opt{}
 		o.engine = createEngine(b, ver)
 		o.engine.Init()
-		o.t = b
+		o.t = tb
 		defer o.close()
 		for _, omod := range actions {
 			omod(o)
