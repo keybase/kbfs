@@ -5,6 +5,9 @@
 package libkbfs
 
 import (
+	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -216,8 +219,16 @@ func (kmd emptyKeyMetadata) GetHistoricTLFCryptKey(
 }
 
 func TestKeyManager(t *testing.T) {
-	t.Run("publicTLFCryptKey", metadataVerTestToTest(testKeyManagerPublicTLFCryptKey))
-	t.Run("cachedSecretKeyForEncryptionSuccess", metadataVerTestToTest(testKeyManagerCachedSecretKeyForEncryptionSuccess))
+	tests := []func(*testing.T, MetadataVer){
+		testKeyManagerPublicTLFCryptKey,
+		testKeyManagerCachedSecretKeyForEncryptionSuccess,
+	}
+
+	for _, f := range tests {
+		name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+		name = name[strings.LastIndex(name, ".")+1:]
+		t.Run(name, metadataVerTestToTest(f))
+	}
 }
 
 func testKeyManagerPublicTLFCryptKey(t *testing.T, ver MetadataVer) {
