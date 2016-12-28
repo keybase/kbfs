@@ -20,6 +20,18 @@ var testMetadataVers = []MetadataVer{
 	InitialExtraMetadataVer, SegregatedKeyBundlesVer,
 }
 
+func metadataVerTestToTest(
+	f func(t *testing.T, ver MetadataVer)) func(t *testing.T) {
+	return func(t *testing.T) {
+		for _, ver := range testMetadataVers {
+			ver := ver // capture range variable.
+			t.Run(ver.String(), func(t *testing.T) {
+				f(t, ver)
+			})
+		}
+	}
+}
+
 // runTestOverMetadataVers runs the given test function over all
 // metadata versions to test. Example use:
 //
@@ -34,12 +46,7 @@ var testMetadataVers = []MetadataVer{
 // }
 func runTestOverMetadataVers(
 	t *testing.T, f func(t *testing.T, ver MetadataVer)) {
-	for _, ver := range testMetadataVers {
-		ver := ver // capture range variable.
-		t.Run(ver.String(), func(t *testing.T) {
-			f(t, ver)
-		})
-	}
+	metadataVerTestToTest(f)(t)
 }
 
 // runBenchmarkOverMetadataVers runs the given benchmark function over
