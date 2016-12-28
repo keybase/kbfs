@@ -1081,15 +1081,17 @@ func TestRemoveFileWhileOpenReading(t *testing.T) {
 }
 
 func TestRemoveFileWhileOpenReadingAcrossMounts(t *testing.T) {
+	ctx := libkbfs.BackgroundContextWithCancellationDelayer()
+	defer libkbfs.CleanupCancellationDelayer(ctx)
 	config1 := libkbfs.MakeTestConfigOrBust(t, "user1",
 		"user2")
-	defer config1.Shutdown()
+	defer config1.Shutdown(ctx)
 	mnt1, fs1, cancelFn1 := makeFS(t, ctx, config1)
 	defer mnt1.Close()
 	defer cancelFn1()
 
 	config2 := libkbfs.ConfigAsUser(config1, "user2")
-	defer config2.Shutdown()
+	defer config2.Shutdown(ctx)
 	mnt2, _, cancelFn2 := makeFSE(t, ctx, config2, 'U')
 	defer mnt2.Close()
 	defer cancelFn2()
@@ -1134,15 +1136,17 @@ func TestRemoveFileWhileOpenReadingAcrossMounts(t *testing.T) {
 }
 
 func TestRenameOverFileWhileOpenReadingAcrossMounts(t *testing.T) {
+	ctx := libkbfs.BackgroundContextWithCancellationDelayer()
+	defer libkbfs.CleanupCancellationDelayer(ctx)
 	config1 := libkbfs.MakeTestConfigOrBust(t, "user1",
 		"user2")
-	defer config1.Shutdown()
+	defer config1.Shutdown(ctx)
 	mnt1, fs1, cancelFn1 := makeFS(t, ctx, config1)
 	defer mnt1.Close()
 	defer cancelFn1()
 
 	config2 := libkbfs.ConfigAsUser(config1, "user2")
-	defer config2.Shutdown()
+	defer config2.Shutdown(ctx)
 	mnt2, _, cancelFn2 := makeFSE(t, ctx, config2, 'U')
 	defer mnt2.Close()
 	defer cancelFn2()
@@ -1536,7 +1540,7 @@ func TestReaddirOtherFolderAsReader(t *testing.T) {
 	}()
 
 	c2 := libkbfs.ConfigAsUser(config, "wsmith")
-	defer c2.Shutdown()
+	defer c2.Shutdown(ctx)
 	mnt, _, cancelFn := makeFS(t, ctx, c2)
 	defer mnt.Close()
 	defer cancelFn()
@@ -2369,8 +2373,6 @@ func TestUnstageFile(t *testing.T) {
 	checkDir(t, myroot2, map[string]fileInfoCheck{})
 
 	// turn updates off for user 2
-	ctx := libkbfs.BackgroundContextWithCancellationDelayer()
-	defer libkbfs.CleanupCancellationDelayer(ctx)
 	rootNode2 := libkbfs.GetRootNodeOrBust(ctx, t, config2, "user1,user2", false)
 	_, err := libkbfs.DisableUpdatesForTesting(config2,
 		rootNode2.GetFolderBranch())
