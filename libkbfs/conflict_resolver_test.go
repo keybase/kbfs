@@ -42,7 +42,7 @@ func crTestInit(t *testing.T) (mockCtrl *gomock.Controller, config *ConfigMock,
 func crTestShutdown(mockCtrl *gomock.Controller, config *ConfigMock,
 	cr *ConflictResolver) {
 	config.ctr.CheckForFailures()
-	cr.fbo.Shutdown()
+	cr.fbo.Shutdown(context.TODO())
 	mockCtrl.Finish()
 }
 

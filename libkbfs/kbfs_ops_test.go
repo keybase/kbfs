@@ -139,7 +139,7 @@ func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 func kbfsTestShutdown(mockCtrl *gomock.Controller, config *ConfigMock,
 	ctx context.Context, cancel context.CancelFunc) {
 	config.ctr.CheckForFailures()
-	config.KBFSOps().(*KBFSOpsStandard).Shutdown()
+	config.KBFSOps().(*KBFSOpsStandard).Shutdown(ctx)
 	if config.mockDirtyBcache == nil {
 		if err := config.DirtyBlockCache().Shutdown(); err != nil {
 			// Ignore error; some tests intentionally leave around dirty data.

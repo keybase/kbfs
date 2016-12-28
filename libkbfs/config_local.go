@@ -807,7 +807,7 @@ func (c *ConfigLocal) Shutdown() error {
 	}
 
 	var errors []error
-	err := c.KBFSOps().Shutdown()
+	err := c.KBFSOps().Shutdown(context.TODO())
 	if err != nil {
 		errors = append(errors, err)
 		// Continue with shutdown regardless of err.
