@@ -1058,7 +1058,7 @@ func (fd *fileData) deepCopy(ctx context.Context, codec kbfscodec.Codec,
 	}
 	newTopPtr = fd.file.tailPointer()
 	if topBlock.IsInd {
-		newID, err := kbfsblock.MakeTemporaryID()
+		newID, err := fd.crypto.MakeTemporaryBlockID()
 		if err != nil {
 			return zeroPtr, nil, err
 		}

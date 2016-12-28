@@ -1747,7 +1747,7 @@ func (fbo *folderBranchOps) unembedBlockChanges(
 	// Treat the block change list as a file so we can reuse all the
 	// indirection code in fileData.
 	block := NewFileBlock().(*FileBlock)
-	bid, err := kbfsblock.MakeTemporaryID()
+	bid, err := fbo.config.Crypto().MakeTemporaryBlockID()
 	if err != nil {
 		return err
 	}
