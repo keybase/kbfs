@@ -1567,7 +1567,7 @@ func TestStatOtherFolder(t *testing.T) {
 	}()
 
 	c2 := libkbfs.ConfigAsUser(config, "wsmith")
-	defer c2.Shutdown()
+	defer c2.Shutdown(ctx)
 	mnt, _, cancelFn := makeFSE(t, ctx, c2, 'U')
 	defer mnt.Close()
 	defer cancelFn()
@@ -1588,7 +1588,7 @@ func TestStatOtherFolderFirstUse(t *testing.T) {
 	defer libkbfs.CheckConfigAndShutdown(t, ctx, config)
 
 	c2 := libkbfs.ConfigAsUser(config, "wsmith")
-	defer c2.Shutdown()
+	defer c2.Shutdown(ctx)
 	mnt, _, cancelFn := makeFSE(t, ctx, c2, 'U')
 	defer mnt.Close()
 	defer cancelFn()
@@ -1618,7 +1618,7 @@ func TestStatOtherFolderPublic(t *testing.T) {
 	}()
 
 	c2 := libkbfs.ConfigAsUser(config, "wsmith")
-	defer c2.Shutdown()
+	defer c2.Shutdown(ctx)
 	mnt, _, cancelFn := makeFSE(t, ctx, c2, 'U')
 	defer mnt.Close()
 	defer cancelFn()
@@ -1653,7 +1653,7 @@ func TestReadPublicFile(t *testing.T) {
 	}()
 
 	c2 := libkbfs.ConfigAsUser(config, "wsmith")
-	defer c2.Shutdown()
+	defer c2.Shutdown(ctx)
 	mnt, _, cancelFn := makeFSE(t, ctx, c2, 'U')
 	defer mnt.Close()
 	defer cancelFn()
@@ -1685,7 +1685,7 @@ func TestReaddirOtherFolderPublicAsAnyone(t *testing.T) {
 	}()
 
 	c2 := libkbfs.ConfigAsUser(config, "wsmith")
-	defer c2.Shutdown()
+	defer c2.Shutdown(ctx)
 	mnt, _, cancelFn := makeFSE(t, ctx, c2, 'U')
 	defer mnt.Close()
 	defer cancelFn()
@@ -1713,7 +1713,7 @@ func TestReaddirOtherFolderAsAnyone(t *testing.T) {
 	}()
 
 	c2 := libkbfs.ConfigAsUser(config, "wsmith")
-	defer c2.Shutdown()
+	defer c2.Shutdown(ctx)
 	mnt, _, cancelFn := makeFSE(t, ctx, c2, 'U')
 	defer mnt.Close()
 	defer cancelFn()
@@ -2458,6 +2458,8 @@ func TestUnstageFile(t *testing.T) {
 }
 
 func TestSimpleCRNoConflict(t *testing.T) {
+	ctx := libkbfs.BackgroundContextWithCancellationDelayer()
+	defer libkbfs.CleanupCancellationDelayer(ctx)
 	config1 := libkbfs.MakeTestConfigOrBust(t, "user1", "user2")
 	mnt1, fs1, cancelFn1 := makeFS(t, ctx, config1)
 	defer mnt1.Close()
@@ -2606,6 +2608,8 @@ func TestSimpleCRNoConflict(t *testing.T) {
 }
 
 func TestSimpleCRConflictOnOpenFiles(t *testing.T) {
+	ctx := libkbfs.BackgroundContextWithCancellationDelayer()
+	defer libkbfs.CleanupCancellationDelayer(ctx)
 	config1 := libkbfs.MakeTestConfigOrBust(t, "user1",
 		"user2")
 	mnt1, fs1, cancelFn1 := makeFS(t, ctx, config1)
@@ -2793,6 +2797,8 @@ func TestSimpleCRConflictOnOpenFiles(t *testing.T) {
 }
 
 func TestSimpleCRConflictOnOpenMergedFile(t *testing.T) {
+	ctx := libkbfs.BackgroundContextWithCancellationDelayer()
+	defer libkbfs.CleanupCancellationDelayer(ctx)
 	config1 := libkbfs.MakeTestConfigOrBust(t, "user1",
 		"user2")
 	mnt1, fs1, cancelFn1 := makeFS(t, ctx, config1)
