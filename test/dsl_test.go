@@ -73,30 +73,28 @@ func runBenchmarkOverMetadataVers(
 	}
 }
 
+func runOneTestOrBenchmar(t testing.TB, actions ...optionOp) {
+	o := &opt{}
+	o.engine = createEngine(tb, ver)
+	o.engine.Init()
+	o.t = tb
+	defer o.close()
+	for _, omod := range actions {
+		omod(o)
+	}
+}
+
 func test(t *testing.T, actions ...optionOp) {
 	runTestOverMetadataVers(t, func(t *testing.T, ver libkbfs.MetadataVer) {
-		o := &opt{}
-		o.engine = createEngine(t, ver)
-		o.engine.Init()
-		o.t = t
-		defer o.close()
-		for _, omod := range actions {
-			omod(o)
-		}
+		runOneTestOrBenchmark(t, actions...)
 	})
 }
 
 func benchmark(b *testing.B, tb testing.TB, actions ...optionOp) {
-	runBenchmarkOverMetadataVers(b, func(b *testing.B, ver libkbfs.MetadataVer) {
-		o := &opt{}
-		o.engine = createEngine(b, ver)
-		o.engine.Init()
-		o.t = tb
-		defer o.close()
-		for _, omod := range actions {
-			omod(o)
-		}
-	})
+	runBenchmarkOverMetadataVers(
+		b, func(b *testing.B, ver libkbfs.MetadataVer) {
+			runOneTestOrBenchmark(tb, actions...)
+		})
 }
 
 func parallel(actions ...optionOp) optionOp {
