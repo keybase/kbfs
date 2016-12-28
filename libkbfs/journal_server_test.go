@@ -16,7 +16,8 @@ import (
 )
 
 func setupJournalServerTest(t *testing.T) (
-	tempdir string, config *ConfigLocal, jServer *JournalServer) {
+	tempdir string, ctx context.Context, cancel context.CancelFunc,
+	config *ConfigLocal, jServer *JournalServer) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_server")
 	require.NoError(t, err)
 
@@ -26,6 +27,16 @@ func setupJournalServerTest(t *testing.T) (
 		if !setupSucceeded {
 			err := ioutil.RemoveAll(tempdir)
 			assert.NoError(t, err)
+		}
+	}()
+
+	ctx, cancel = context.WithTimeout(
+		context.Background(), individualTestTimeout)
+
+	// Clean up the context if the rest of the setup fails.
+	defer func() {
+		if !setupSucceeded {
+			cancel()
 		}
 	}()
 
@@ -44,26 +55,25 @@ func setupJournalServerTest(t *testing.T) (
 	require.NoError(t, err)
 
 	setupSucceeded = true
-	return tempdir, config, jServer
+	return tempdir, ctx, cancel, config, jServer
 }
 
 func teardownJournalServerTest(
-	t *testing.T, tempdir string, config Config) {
-	ctx := context.Background()
+	t *testing.T, tempdir string, ctx context.Context,
+	cancel context.CancelFunc, config Config) {
 	CheckConfigAndShutdown(ctx, t, config)
+	cancel()
 	err := ioutil.RemoveAll(tempdir)
 	assert.NoError(t, err)
 }
 
 func TestJournalServerRestart(t *testing.T) {
-	tempdir, config, jServer := setupJournalServerTest(t)
-	defer teardownJournalServerTest(t, tempdir, config)
+	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
 
 	// Use a shutdown-only BlockServer so that it errors if the
 	// journal tries to access it.
 	jServer.delegateBlockServer = shutdownOnlyBlockServer{}
-
-	ctx := context.Background()
 
 	tlfID := tlf.FakeID(2, false)
 	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
@@ -130,14 +140,12 @@ func TestJournalServerRestart(t *testing.T) {
 }
 
 func TestJournalServerLogOutLogIn(t *testing.T) {
-	tempdir, config, jServer := setupJournalServerTest(t)
-	defer teardownJournalServerTest(t, tempdir, config)
+	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
 
 	// Use a shutdown-only BlockServer so that it errors if the
 	// journal tries to access it.
 	jServer.delegateBlockServer = shutdownOnlyBlockServer{}
-
-	ctx := context.Background()
 
 	tlfID := tlf.FakeID(2, false)
 	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
@@ -206,10 +214,8 @@ func TestJournalServerLogOutLogIn(t *testing.T) {
 }
 
 func TestJournalServerLogOutDirtyOp(t *testing.T) {
-	tempdir, config, jServer := setupJournalServerTest(t)
-	defer teardownJournalServerTest(t, tempdir, config)
-
-	ctx := context.Background()
+	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
 
 	tlfID := tlf.FakeID(2, false)
 	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
@@ -237,14 +243,12 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 }
 
 func TestJournalServerMultiUser(t *testing.T) {
-	tempdir, config, jServer := setupJournalServerTest(t)
-	defer teardownJournalServerTest(t, tempdir, config)
+	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
 
 	// Use a shutdown-only BlockServer so that it errors if the
 	// journal tries to access it.
 	jServer.delegateBlockServer = shutdownOnlyBlockServer{}
-
-	ctx := context.Background()
 
 	tlfID := tlf.FakeID(2, false)
 	err := jServer.Enable(ctx, tlfID, TLFJournalBackgroundWorkPaused)
@@ -393,10 +397,8 @@ func TestJournalServerMultiUser(t *testing.T) {
 }
 
 func TestJournalServerEnableAuto(t *testing.T) {
-	tempdir, config, jServer := setupJournalServerTest(t)
-	defer teardownJournalServerTest(t, tempdir, config)
-
-	ctx := context.Background()
+	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
 
 	tlfID := tlf.FakeID(2, false)
 	err := jServer.EnableAuto(ctx)
