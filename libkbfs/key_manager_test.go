@@ -803,7 +803,7 @@ func testKeyManagerRekeyAddAndRevokeDevice(t *testing.T, ver MetadataVer) {
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1028,7 +1028,7 @@ func testKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T, ver MetadataVer) 
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1119,7 +1119,7 @@ func testKeyManagerSelfRekeyAcrossDevices(t *testing.T, ver MetadataVer) {
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1201,13 +1201,13 @@ func testKeyManagerReaderRekey(t *testing.T, ver MetadataVer) {
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx, cancel := kbfsOpsConcurInit(t, u1, u2)
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
-	_, uid1, err := config1.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid1, err := config1.KBPKI().GetCurrentUserInfo(ctx)
 
 	config1.SetMetadataVersion(ver)
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1295,7 +1295,7 @@ func testKeyManagerReaderRekeyAndRevoke(t *testing.T, ver MetadataVer) {
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1393,7 +1393,7 @@ func testKeyManagerRekeyBit(t *testing.T, ver MetadataVer) {
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1401,7 +1401,7 @@ func testKeyManagerRekeyBit(t *testing.T, ver MetadataVer) {
 
 	config3 := ConfigAsUser(config1, u3)
 	defer CheckConfigAndShutdown(ctx, t, config3)
-	_, uid3, err := config3.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid3, err := config3.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1565,7 +1565,7 @@ func testKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T, ver Metadat
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1711,7 +1711,7 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1835,7 +1835,7 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1961,7 +1961,7 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
