@@ -39,7 +39,6 @@ func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockP
 		return err
 	}
 
-	crypto := bg.config.crypto()
 	if err := kbfsblock.VerifyID(buf, blockPtr.ID); err != nil {
 		return err
 	}
@@ -61,7 +60,8 @@ func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockP
 	}
 
 	// decrypt the block
-	err = crypto.DecryptBlock(encryptedBlock, blockCryptKey, block)
+	err = bg.config.crypto().DecryptBlock(
+		encryptedBlock, blockCryptKey, block)
 	if err != nil {
 		return err
 	}
