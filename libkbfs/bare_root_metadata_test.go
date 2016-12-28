@@ -6,6 +6,9 @@ package libkbfs
 
 import (
 	"context"
+	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,18 +21,6 @@ import (
 
 var testMetadataVers = []MetadataVer{
 	InitialExtraMetadataVer, SegregatedKeyBundlesVer,
-}
-
-func metadataVerTestToTest(
-	f func(t *testing.T, ver MetadataVer)) func(t *testing.T) {
-	return func(t *testing.T) {
-		for _, ver := range testMetadataVers {
-			ver := ver // capture range variable.
-			t.Run(ver.String(), func(t *testing.T) {
-				f(t, ver)
-			})
-		}
-	}
 }
 
 // runTestOverMetadataVers runs the given test function over all
@@ -46,7 +37,29 @@ func metadataVerTestToTest(
 // }
 func runTestOverMetadataVers(
 	t *testing.T, f func(t *testing.T, ver MetadataVer)) {
-	metadataVerTestToTest(f)(t)
+	for _, ver := range testMetadataVers {
+		ver := ver // capture range variable.
+		t.Run(ver.String(), func(t *testing.T) {
+			f(t, ver)
+		})
+	}
+}
+
+func runTestsOverMetadataVers(t *testing.T, prefix string,
+	fs []func(t *testing.T, ver MetadataVer)) {
+	for _, f := range fs {
+		name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+		i := strings.LastIndex(name, prefix)
+		if i >= 0 {
+			i += len(prefix)
+		} else {
+			i = 0
+		}
+		name = name[i:]
+		t.Run(name, func(t *testing.T) {
+			runTestOverMetadataVers(t, f)
+		})
+	}
 }
 
 // runBenchmarkOverMetadataVers runs the given benchmark function over

@@ -5,9 +5,6 @@
 package libkbfs
 
 import (
-	"reflect"
-	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -245,12 +242,7 @@ func TestKeyManager(t *testing.T) {
 		testKeyManagerRekeyAddDeviceWithPromptAfterRestart,
 		testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess,
 	}
-
-	for _, f := range tests {
-		name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
-		name = name[strings.LastIndex(name, ".testKeyManager")+len(".testKeyManager"):]
-		t.Run(name, metadataVerTestToTest(f))
-	}
+	runTestsOverMetadataVers(t, "testKeyManager", tests)
 }
 
 func testKeyManagerPublicTLFCryptKey(t *testing.T, ver MetadataVer) {
