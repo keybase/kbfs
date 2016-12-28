@@ -158,22 +158,29 @@ func kbfsOpsInitNoMocks(t *testing.T, users ...libkb.NormalizedUsername) (
 	*ConfigLocal, keybase1.UID, context.Context, context.CancelFunc) {
 	config := MakeTestConfigOrBust(t, users...)
 
-	_, currentUID, err := config.KBPKI().GetCurrentUserInfo(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	timeoutCtx, cancel := context.WithTimeout(
 		context.Background(), individualTestTimeout)
+	initSuccess := false
+	defer func() {
+		if !initSuccess {
+			cancel()
+		}
+	}()
 
 	ctx, err := NewContextWithCancellationDelayer(NewContextReplayable(
 		timeoutCtx, func(c context.Context) context.Context {
 			return c
 		}))
 	if err != nil {
-		cancel()
-		panic(err)
+		t.Fatal(err)
 	}
+
+	_, currentUID, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	initSuccess = true
 	return config, currentUID, ctx, cancel
 }
 
