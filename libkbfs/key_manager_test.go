@@ -215,8 +215,9 @@ func (kmd emptyKeyMetadata) GetHistoricTLFCryptKey(
 	return kbfscrypto.TLFCryptKey{}, nil
 }
 
-func TestKeyManagerPublicTLFCryptKey(t *testing.T) {
-	runTestOverMetadataVers(t, testKeyManagerPublicTLFCryptKey)
+func TestKeyManager(t *testing.T) {
+	t.Run("publicTLFCryptKey", metadataVerTestToTest(testKeyManagerPublicTLFCryptKey))
+	t.Run("cachedSecretKeyForEncryptionSuccess", metadataVerTestToTest(testKeyManagerCachedSecretKeyForEncryptionSuccess))
 }
 
 func testKeyManagerPublicTLFCryptKey(t *testing.T, ver MetadataVer) {
@@ -258,11 +259,6 @@ func testKeyManagerPublicTLFCryptKey(t *testing.T, ver MetadataVer) {
 		t.Errorf("got %v, expected %v",
 			tlfCryptKey, kbfscrypto.PublicTLFCryptKey)
 	}
-}
-
-func TestKeyManagerCachedSecretKeyForEncryptionSuccess(t *testing.T) {
-	runTestOverMetadataVers(t,
-		testKeyManagerCachedSecretKeyForEncryptionSuccess)
 }
 
 func testKeyManagerCachedSecretKeyForEncryptionSuccess(t *testing.T, ver MetadataVer) {
