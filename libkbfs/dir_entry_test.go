@@ -24,7 +24,7 @@ func (cof dirEntryFuture) ToCurrentStruct() kbfscodec.CurrentStruct {
 	return cof.toCurrent()
 }
 
-func makeFakeDirEntryFuture(t *testing.T, writable bool) dirEntryFuture {
+func makeFakeDirEntryFuture(t *testing.T) dirEntryFuture {
 	cof := dirEntryFuture{
 		DirEntry{
 			makeFakeBlockInfo(t),
@@ -43,5 +43,5 @@ func makeFakeDirEntryFuture(t *testing.T, writable bool) dirEntryFuture {
 }
 
 func TestDirEntryUnknownFields(t *testing.T) {
-	testStructUnknownFields(t, makeFakeDirEntryFuture(t, true))
+	testStructUnknownFields(t, makeFakeDirEntryFuture(t))
 }

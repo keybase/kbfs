@@ -14,11 +14,11 @@ import (
 )
 
 type eiCache struct {
-	ei    libkbfs.EntryInfoExtended
+	ei    libkbfs.EntryInfo
 	reqID string
 }
 
-// eiCacheHolder caches the EntryInfoExtended for a particular reqID. It's used for the
+// eiCacheHolder caches the EntryInfo for a particular reqID. It's used for the
 // Attr call after Create. This should only be used for operations with same
 // reqID.
 type eiCacheHolder struct {
@@ -32,7 +32,7 @@ func (c *eiCacheHolder) destroy() {
 	c.cache = nil
 }
 
-func (c *eiCacheHolder) getAndDestroyIfMatches(reqID string) (ei *libkbfs.EntryInfoExtended) {
+func (c *eiCacheHolder) getAndDestroyIfMatches(reqID string) (ei *libkbfs.EntryInfo) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.cache != nil && c.cache.reqID == reqID {
@@ -42,7 +42,7 @@ func (c *eiCacheHolder) getAndDestroyIfMatches(reqID string) (ei *libkbfs.EntryI
 	return ei
 }
 
-func (c *eiCacheHolder) set(reqID string, ei libkbfs.EntryInfoExtended) {
+func (c *eiCacheHolder) set(reqID string, ei libkbfs.EntryInfo) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.cache = &eiCache{
@@ -61,7 +61,7 @@ type File struct {
 
 var _ fs.Node = (*File)(nil)
 
-func fillAttrWithMode(ei *libkbfs.EntryInfoExtended, a *fuse.Attr) {
+func fillAttrWithMode(ei *libkbfs.EntryInfo, a *fuse.Attr) {
 	fillAttr(ei, a)
 	a.Mode |= 0400
 	if ei.Type == libkbfs.Exec {

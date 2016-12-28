@@ -159,7 +159,7 @@ func makeFakeDirBlockFuture(t *testing.T) dirBlockFuture {
 			nil,
 		},
 		map[string]dirEntryFuture{
-			"child1": makeFakeDirEntryFuture(t, true),
+			"child1": makeFakeDirEntryFuture(t),
 		},
 		[]indirectDirPtrFuture{
 			makeFakeIndirectDirPtrFuture(t),

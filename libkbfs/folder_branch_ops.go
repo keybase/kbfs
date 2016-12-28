@@ -1284,14 +1284,14 @@ func (fbo *folderBranchOps) GetTLFID(ctx context.Context, h *TlfHandle) (tlf.ID,
 
 func (fbo *folderBranchOps) GetOrCreateRootNode(
 	ctx context.Context, h *TlfHandle, branch BranchName) (
-	node Node, ei EntryInfoExtended, err error) {
-	return nil, EntryInfoExtended{}, errors.New("GetOrCreateRootNode is not supported by folderBranchOps")
+	node Node, ei EntryInfo, err error) {
+	return nil, EntryInfo{}, errors.New("GetOrCreateRootNode is not supported by folderBranchOps")
 }
 
 func (fbo *folderBranchOps) GetRootNode(
 	ctx context.Context, h *TlfHandle, branch BranchName) (
-	node Node, ei EntryInfoExtended, err error) {
-	return nil, EntryInfoExtended{}, errors.New("GetRootNode is not supported by folderBranchOps")
+	node Node, ei EntryInfo, err error) {
+	return nil, EntryInfo{}, errors.New("GetRootNode is not supported by folderBranchOps")
 }
 
 func (fbo *folderBranchOps) checkNode(node Node) error {
@@ -1444,27 +1444,8 @@ func (fbo *folderBranchOps) execMDReadNoIdentifyThenMDWrite(
 	return err
 }
 
-func (fbo *folderBranchOps) makeEntryInfoExtendedMap(ctx context.Context,
-	eis map[string]EntryInfo) map[string]EntryInfoExtended {
-	ret := make(map[string]EntryInfoExtended)
-	for k, v := range eis {
-		ret[k] = fbo.makeEntryInfoExtended(ctx, v)
-	}
-	return ret
-}
-
-func (fbo *folderBranchOps) makeEntryInfoExtended(ctx context.Context,
-	ei EntryInfo) EntryInfoExtended {
-	eie := EntryInfoExtended{EntryInfo: ei}
-	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
-	if err == nil { // writable is only possible if user is logged in
-		eie.Writable = fbo.getHead(makeFBOLockState()).GetTlfHandle().IsWriter(uid)
-	}
-	return eie
-}
-
 func (fbo *folderBranchOps) getRootNode(ctx context.Context) (
-	node Node, ei EntryInfoExtended, handle *TlfHandle, err error) {
+	node Node, ei EntryInfo, handle *TlfHandle, err error) {
 	fbo.log.CDebugf(ctx, "getRootNode")
 	defer func() {
 		if err != nil {
@@ -1485,22 +1466,22 @@ func (fbo *folderBranchOps) getRootNode(ctx context.Context) (
 			return err
 		})
 	if err != nil {
-		return nil, EntryInfoExtended{}, nil, err
+		return nil, EntryInfo{}, nil, err
 	}
 
 	// we may be an unkeyed client
 	if err := isReadableOrError(ctx, fbo.config, md.ReadOnly()); err != nil {
-		return nil, EntryInfoExtended{}, nil, err
+		return nil, EntryInfo{}, nil, err
 	}
 
 	handle = md.GetTlfHandle()
 	node, err = fbo.nodeCache.GetOrCreate(md.data.Dir.BlockPointer,
 		string(handle.GetCanonicalName()), nil)
 	if err != nil {
-		return nil, EntryInfoExtended{}, nil, err
+		return nil, EntryInfo{}, nil, err
 	}
 
-	return node, fbo.makeEntryInfoExtended(ctx, md.Data().Dir.EntryInfo), handle, nil
+	return node, md.Data().Dir.EntryInfo, handle, nil
 }
 
 type makeNewBlock func() Block
@@ -1529,7 +1510,7 @@ func (fbo *folderBranchOps) pathFromNodeForMDWriteLocked(
 }
 
 func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
-	children map[string]EntryInfoExtended, err error) {
+	children map[string]EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "GetDirChildren %p", dir.GetID())
 	defer func() { fbo.deferLog.CDebugf(ctx, "Done GetDirChildren: %v", err) }()
 
@@ -1565,12 +1546,11 @@ func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
 			return nil
 		}
 
-		childrenEIs, err := fbo.blocks.GetDirtyDirChildren(
+		children, err = fbo.blocks.GetDirtyDirChildren(
 			ctx, lState, md.ReadOnly(), dirPath)
 		if err != nil {
 			return err
 		}
-		children = fbo.makeEntryInfoExtendedMap(ctx, childrenEIs)
 		return nil
 	})
 	if err != nil {
@@ -1580,13 +1560,13 @@ func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
 }
 
 func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
-	node Node, ei EntryInfoExtended, err error) {
+	node Node, ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "Lookup %p %s", dir.GetID(), name)
 	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %v", err) }()
 
 	err = fbo.checkNode(dir)
 	if err != nil {
-		return nil, EntryInfoExtended{}, err
+		return nil, EntryInfo{}, err
 	}
 
 	var de DirEntry
@@ -1605,9 +1585,9 @@ func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 		return nil
 	})
 	if err != nil {
-		return nil, EntryInfoExtended{}, err
+		return nil, EntryInfo{}, err
 	}
-	return node, fbo.makeEntryInfoExtended(ctx, de.EntryInfo), nil
+	return node, de.EntryInfo, nil
 }
 
 // statEntry is like Stat, but it returns a DirEntry. This is used by
@@ -1650,6 +1630,11 @@ func (fbo *folderBranchOps) statEntry(ctx context.Context, node Node) (
 		de = md.data.Dir
 	}
 
+	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err == nil { // writable is only possible if user is logged in
+		de.Writable = fbo.getHead(lState).GetTlfHandle().IsWriter(uid)
+	}
+
 	return de, nil
 }
 
@@ -1663,7 +1648,7 @@ type blockState struct {
 }
 
 func (fbo *folderBranchOps) Stat(ctx context.Context, node Node) (
-	ei EntryInfoExtended, err error) {
+	ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "Stat %p", node.GetID())
 	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %v", err) }()
 
@@ -1673,10 +1658,9 @@ func (fbo *folderBranchOps) Stat(ctx context.Context, node Node) (
 		return err
 	})
 	if err != nil {
-		return EntryInfoExtended{}, err
+		return EntryInfo{}, err
 	}
-
-	return fbo.makeEntryInfoExtended(ctx, de.EntryInfo), nil
+	return de.EntryInfo, nil
 }
 
 func (fbo *folderBranchOps) GetNodeMetadata(ctx context.Context, node Node) (
@@ -2685,7 +2669,7 @@ func (fbo *folderBranchOps) doMDWriteWithRetryUnlessCanceled(
 
 func (fbo *folderBranchOps) CreateDir(
 	ctx context.Context, dir Node, path string) (
-	n Node, ei EntryInfoExtended, err error) {
+	n Node, ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "CreateDir %p %s", dir.GetID(), path)
 	defer func() {
 		if err != nil {
@@ -2697,11 +2681,11 @@ func (fbo *folderBranchOps) CreateDir(
 
 	err = fbo.checkNode(dir)
 	if err != nil {
-		return nil, EntryInfoExtended{}, err
+		return nil, EntryInfo{}, err
 	}
 
 	var retNode Node
-	var retEntryInfo EntryInfoExtended
+	var retEntryInfo EntryInfo
 	err = fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
 			node, de, err :=
@@ -2709,18 +2693,18 @@ func (fbo *folderBranchOps) CreateDir(
 			// Don't set node and ei directly, as that can cause a
 			// race when the Create is canceled.
 			retNode = node
-			retEntryInfo = fbo.makeEntryInfoExtended(ctx, de.EntryInfo)
+			retEntryInfo = de.EntryInfo
 			return err
 		})
 	if err != nil {
-		return nil, EntryInfoExtended{}, err
+		return nil, EntryInfo{}, err
 	}
 	return retNode, retEntryInfo, nil
 }
 
 func (fbo *folderBranchOps) CreateFile(
 	ctx context.Context, dir Node, path string, isExec bool, excl Excl) (
-	n Node, ei EntryInfoExtended, err error) {
+	n Node, ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "CreateFile %p %s isExec=%v Excl=%s",
 		dir.GetID(), path, isExec, excl)
 	defer func() {
@@ -2733,7 +2717,7 @@ func (fbo *folderBranchOps) CreateFile(
 
 	err = fbo.checkNode(dir)
 	if err != nil {
-		return nil, EntryInfoExtended{}, err
+		return nil, EntryInfo{}, err
 	}
 
 	var entryType EntryType
@@ -2752,12 +2736,12 @@ func (fbo *folderBranchOps) CreateFile(
 
 	if excl == WithExcl {
 		if err = fbo.cr.Wait(ctx); err != nil {
-			return nil, EntryInfoExtended{}, err
+			return nil, EntryInfo{}, err
 		}
 	}
 
 	var retNode Node
-	var retEntryInfo EntryInfoExtended
+	var retEntryInfo EntryInfo
 	err = fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
 			// Don't set node and ei directly, as that can cause a
@@ -2765,11 +2749,11 @@ func (fbo *folderBranchOps) CreateFile(
 			node, de, err :=
 				fbo.createEntryLocked(ctx, lState, dir, path, entryType, excl)
 			retNode = node
-			retEntryInfo = fbo.makeEntryInfoExtended(ctx, de.EntryInfo)
+			retEntryInfo = de.EntryInfo
 			return err
 		})
 	if err != nil {
-		return nil, EntryInfoExtended{}, err
+		return nil, EntryInfo{}, err
 	}
 	return retNode, retEntryInfo, nil
 }
@@ -2846,27 +2830,27 @@ func (fbo *folderBranchOps) createLinkLocked(
 
 func (fbo *folderBranchOps) CreateLink(
 	ctx context.Context, dir Node, fromName string, toPath string) (
-	ei EntryInfoExtended, err error) {
+	ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "CreateLink %p %s -> %s",
 		dir.GetID(), fromName, toPath)
 	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %v", err) }()
 
 	err = fbo.checkNode(dir)
 	if err != nil {
-		return EntryInfoExtended{}, err
+		return EntryInfo{}, err
 	}
 
-	var retEntryInfo EntryInfoExtended
+	var retEntryInfo EntryInfo
 	err = fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
 			// Don't set ei directly, as that can cause a race when
 			// the Create is canceled.
 			de, err := fbo.createLinkLocked(ctx, lState, dir, fromName, toPath)
-			retEntryInfo = fbo.makeEntryInfoExtended(ctx, de.EntryInfo)
+			retEntryInfo = de.EntryInfo
 			return err
 		})
 	if err != nil {
-		return EntryInfoExtended{}, err
+		return EntryInfo{}, err
 	}
 	return retEntryInfo, nil
 }

@@ -77,7 +77,7 @@ func makeFakePrivateMetadataFuture(t *testing.T) privateMetadataFuture {
 			codec.UnknownFieldSetHandler{},
 			BlockChanges{},
 		},
-		makeFakeDirEntryFuture(t, true),
+		makeFakeDirEntryFuture(t),
 		kbfscodec.MakeExtraOrBust("PrivateMetadata", t),
 	}
 	return pmf

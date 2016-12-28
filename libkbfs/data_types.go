@@ -563,12 +563,6 @@ type EntryInfo struct {
 	Mtime int64
 	// Ctime is in unix nanoseconds
 	Ctime int64
-}
-
-// EntryInfoExtended extends the EntryInfo with some locally computed
-// attributes.
-type EntryInfoExtended struct {
-	EntryInfo
 	// Writable is true iif the user has write permission on the entry.
 	Writable bool
 }

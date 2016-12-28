@@ -375,7 +375,7 @@ func (fs *KBFSOpsStandard) GetTLFID(ctx context.Context,
 // getMaybeCreateRootNode is called for GetOrCreateRootNode and GetRootNode.
 func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 	ctx context.Context, h *TlfHandle, branch BranchName, create bool) (
-	node Node, ei EntryInfoExtended, err error) {
+	node Node, ei EntryInfo, err error) {
 	fs.log.CDebugf(ctx, "getMaybeCreateRootNode(%s, %v, %v)",
 		h.GetCanonicalPath(), branch, create)
 	defer func() { fs.deferLog.CDebugf(ctx, "Done: %#v", err) }()
@@ -385,7 +385,7 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 	// TODO: only do this the first time, cache the folder ID after that
 	_, md, err := mdops.GetForHandle(ctx, h, Unmerged)
 	if err != nil {
-		return nil, EntryInfoExtended{}, err
+		return nil, EntryInfo{}, err
 	}
 
 	if md == (ImmutableRootMetadata{}) {
@@ -394,7 +394,7 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 		initialized, md, id, err = fs.getOrInitializeNewMDMaster(
 			ctx, mdops, h, create)
 		if err != nil {
-			return nil, EntryInfoExtended{}, err
+			return nil, EntryInfo{}, err
 		}
 		if initialized {
 			fb := FolderBranch{Tlf: id, Branch: MasterBranch}
@@ -402,7 +402,7 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 
 			node, ei, _, err = fops.getRootNode(ctx)
 			if err != nil {
-				return nil, EntryInfoExtended{}, err
+				return nil, EntryInfo{}, err
 			}
 
 			if err := fops.addToFavoritesByHandle(ctx, fs.favs, h, true); err != nil {
@@ -417,7 +417,7 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 			kbpki := fs.config.KBPKI()
 			err := identifyHandle(ctx, kbpki, kbpki, h)
 			if err != nil {
-				return nil, EntryInfoExtended{}, err
+				return nil, EntryInfo{}, err
 			}
 			fb := FolderBranch{Tlf: id, Branch: MasterBranch}
 			fops := fs.getOpsByHandle(ctx, h, fb)
@@ -427,7 +427,7 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 				// and move on.
 				fs.log.CDebugf(ctx, "Couldn't add favorite: %v", err)
 			}
-			return nil, EntryInfoExtended{}, nil
+			return nil, EntryInfo{}, nil
 		}
 	}
 
@@ -445,19 +445,19 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 				"access due to unreadable MD for %s", h.GetCanonicalPath())
 			go ops.rekeyWithPrompt()
 		}
-		return nil, EntryInfoExtended{}, err
+		return nil, EntryInfo{}, err
 	}
 
 	ops := fs.getOpsByHandle(ctx, h, fb)
 
 	err = ops.SetInitialHeadFromServer(ctx, md)
 	if err != nil {
-		return nil, EntryInfoExtended{}, err
+		return nil, EntryInfo{}, err
 	}
 
 	node, ei, _, err = ops.getRootNode(ctx)
 	if err != nil {
-		return nil, EntryInfoExtended{}, err
+		return nil, EntryInfo{}, err
 	}
 
 	if err := ops.addToFavoritesByHandle(ctx, fs.favs, h, false); err != nil {
@@ -472,7 +472,7 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 // KBFSOpsStandard
 func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 	ctx context.Context, h *TlfHandle, branch BranchName) (
-	node Node, ei EntryInfoExtended, err error) {
+	node Node, ei EntryInfo, err error) {
 	return fs.getMaybeCreateRootNode(ctx, h, branch, true)
 }
 
@@ -481,34 +481,34 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 // if the tlf does not exist but there is no error present.
 func (fs *KBFSOpsStandard) GetRootNode(
 	ctx context.Context, h *TlfHandle, branch BranchName) (
-	node Node, ei EntryInfoExtended, err error) {
+	node Node, ei EntryInfo, err error) {
 	return fs.getMaybeCreateRootNode(ctx, h, branch, false)
 }
 
 // GetDirChildren implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) GetDirChildren(ctx context.Context, dir Node) (
-	map[string]EntryInfoExtended, error) {
+	map[string]EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.GetDirChildren(ctx, dir)
 }
 
 // Lookup implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Lookup(ctx context.Context, dir Node, name string) (
-	Node, EntryInfoExtended, error) {
+	Node, EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.Lookup(ctx, dir, name)
 }
 
 // Stat implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Stat(ctx context.Context, node Node) (
-	EntryInfoExtended, error) {
+	EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, node)
 	return ops.Stat(ctx, node)
 }
 
 // CreateDir implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) CreateDir(
-	ctx context.Context, dir Node, name string) (Node, EntryInfoExtended, error) {
+	ctx context.Context, dir Node, name string) (Node, EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateDir(ctx, dir, name)
 }
@@ -516,7 +516,7 @@ func (fs *KBFSOpsStandard) CreateDir(
 // CreateFile implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) CreateFile(
 	ctx context.Context, dir Node, name string, isExec bool, excl Excl) (
-	Node, EntryInfoExtended, error) {
+	Node, EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateFile(ctx, dir, name, isExec, excl)
 }
@@ -524,7 +524,7 @@ func (fs *KBFSOpsStandard) CreateFile(
 // CreateLink implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) CreateLink(
 	ctx context.Context, dir Node, fromName string, toPath string) (
-	EntryInfoExtended, error) {
+	EntryInfo, error) {
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateLink(ctx, dir, fromName, toPath)
 }
