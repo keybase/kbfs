@@ -21,7 +21,7 @@ import (
 )
 
 func crTestInit(t *testing.T) (mockCtrl *gomock.Controller, config *ConfigMock,
-	cr *ConflictResolver) {
+	ctx context.Context, cr *ConflictResolver) {
 	ctr := NewSafeTestReporter(t)
 	mockCtrl = gomock.NewController(ctr)
 	config = NewConfigMock(mockCtrl, ctr)
@@ -36,13 +36,15 @@ func crTestInit(t *testing.T) (mockCtrl *gomock.Controller, config *ConfigMock,
 	mockDaemon := NewMockKeybaseService(mockCtrl)
 	mockDaemon.EXPECT().LoadUserPlusKeys(gomock.Any(), gomock.Any()).AnyTimes().Return(UserInfo{Name: "mockUser"}, nil)
 	config.SetKeybaseService(mockDaemon)
-	return mockCtrl, config, fbo.cr
+	ctx = BackgroundContextWithCancellationDelayer()
+	return mockCtrl, config, ctx, fbo.cr
 }
 
 func crTestShutdown(mockCtrl *gomock.Controller, config *ConfigMock,
-	cr *ConflictResolver) {
+	ctx context.Context, cr *ConflictResolver) {
+	CleanupCancellationDelayer(ctx)
 	config.ctr.CheckForFailures()
-	cr.fbo.Shutdown(context.TODO())
+	cr.fbo.Shutdown(ctx)
 	mockCtrl.Finish()
 }
 
@@ -78,10 +80,8 @@ func crMakeFakeRMD(rev MetadataRevision, bid BranchID) ImmutableRootMetadata {
 }
 
 func TestCRInput(t *testing.T) {
-	mockCtrl, config, cr := crTestInit(t)
-	defer crTestShutdown(mockCtrl, config, cr)
-	ctx := BackgroundContextWithCancellationDelayer()
-	defer CleanupCancellationDelayer(ctx)
+	mockCtrl, config, ctx, cr := crTestInit(t)
+	defer crTestShutdown(mockCtrl, config, ctx, cr)
 
 	// First try a completely unknown revision
 	cr.Resolve(MetadataRevisionUninitialized, MetadataRevisionUninitialized)
@@ -141,10 +141,8 @@ func TestCRInput(t *testing.T) {
 }
 
 func TestCRInputFracturedRange(t *testing.T) {
-	mockCtrl, config, cr := crTestInit(t)
-	defer crTestShutdown(mockCtrl, config, cr)
-	ctx := BackgroundContextWithCancellationDelayer()
-	defer CleanupCancellationDelayer(ctx)
+	mockCtrl, config, ctx, cr := crTestInit(t)
+	defer crTestShutdown(mockCtrl, config, ctx, cr)
 
 	// Next, try resolving a few items
 	branchPoint := MetadataRevision(2)
