@@ -422,6 +422,8 @@ func testMDOpsGetForHandlePublicFailVerify(t *testing.T, ver MetadataVer) {
 	h := parseTlfHandleOrBust(t, config, "alice,bob", true)
 	rmds, _ := newRMDS(t, config, h)
 
+	// Change something in rmds that affects the computed MdID,
+	// which will then cause an MDMismatchError.
 	rmds.MD.(MutableBareRootMetadata).SetRefBytes(100)
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(), Merged).Return(tlf.NullID, rmds, nil)
 
