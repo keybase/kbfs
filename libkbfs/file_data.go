@@ -1133,9 +1133,8 @@ func (fd *fileData) undupChildrenInCopy(ctx context.Context,
 			return nil, err
 		}
 
-		newInfo, _, readyBlockData, err := ReadyBlock(
-			ctx, bcache, bops, fd.crypto, fd.kmd, childBlock,
-			fd.uid)
+		newInfo, _, readyBlockData, err :=
+			ReadyBlock(ctx, bcache, bops, fd.crypto, fd.kmd, childBlock, fd.uid)
 		topBlock.IPtrs[i].BlockInfo = newInfo
 		bps.addNewBlock(newInfo.BlockPointer, childBlock, readyBlockData, nil)
 		blockInfos = append(blockInfos, newInfo)
