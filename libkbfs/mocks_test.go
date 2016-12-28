@@ -5084,11 +5084,10 @@ func (_mr *_MockBareRootMetadataRecorder) GetCurrentTLFPublicKey(arg0 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentTLFPublicKey", arg0)
 }
 
-func (_m *MockBareRootMetadata) GetUnresolvedParticipants() ([]keybase1.SocialAssertion, []keybase1.SocialAssertion) {
+func (_m *MockBareRootMetadata) GetUnresolvedParticipants() []keybase1.SocialAssertion {
 	ret := _m.ctrl.Call(_m, "GetUnresolvedParticipants")
 	ret0, _ := ret[0].([]keybase1.SocialAssertion)
-	ret1, _ := ret[1].([]keybase1.SocialAssertion)
-	return ret0, ret1
+	return ret0
 }
 
 func (_mr *_MockBareRootMetadataRecorder) GetUnresolvedParticipants() *gomock.Call {
@@ -5501,11 +5500,10 @@ func (_mr *_MockMutableBareRootMetadataRecorder) GetCurrentTLFPublicKey(arg0 int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentTLFPublicKey", arg0)
 }
 
-func (_m *MockMutableBareRootMetadata) GetUnresolvedParticipants() ([]keybase1.SocialAssertion, []keybase1.SocialAssertion) {
+func (_m *MockMutableBareRootMetadata) GetUnresolvedParticipants() []keybase1.SocialAssertion {
 	ret := _m.ctrl.Call(_m, "GetUnresolvedParticipants")
 	ret0, _ := ret[0].([]keybase1.SocialAssertion)
-	ret1, _ := ret[1].([]keybase1.SocialAssertion)
-	return ret0, ret1
+	return ret0
 }
 
 func (_mr *_MockMutableBareRootMetadataRecorder) GetUnresolvedParticipants() *gomock.Call {
