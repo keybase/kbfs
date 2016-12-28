@@ -62,12 +62,15 @@ type File struct {
 var _ fs.Node = (*File)(nil)
 
 func (f *File) fillAttrWithMode(
-	ctx context.Context, ei *libkbfs.EntryInfo, a *fuse.Attr) {
-	f.folder.fillAttrWithUIDAndWritePerm(ctx, ei, a)
+	ctx context.Context, ei *libkbfs.EntryInfo, a *fuse.Attr) (err error) {
+	if err = f.folder.fillAttrWithUIDAndWritePerm(ctx, ei, a); err != nil {
+		return err
+	}
 	a.Mode |= 0400
 	if ei.Type == libkbfs.Exec {
 		a.Mode |= 0100
 	}
+	return nil
 }
 
 // Attr implements the fs.Node interface for File.
@@ -77,7 +80,9 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 
 	if reqID, ok := ctx.Value(CtxIDKey).(string); ok {
 		if ei := f.eiCache.getAndDestroyIfMatches(reqID); ei != nil {
-			f.fillAttrWithMode(ctx, ei, a)
+			if err = f.fillAttrWithMode(ctx, ei, a); err != nil {
+				return err
+			}
 			return nil
 		}
 	}
@@ -101,8 +106,7 @@ func (f *File) attr(ctx context.Context, a *fuse.Attr) (err error) {
 		return err
 	}
 
-	f.fillAttrWithMode(ctx, &de, a)
-	return nil
+	return f.fillAttrWithMode(ctx, &de, a)
 }
 
 var _ fs.NodeFsyncer = (*File)(nil)

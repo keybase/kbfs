@@ -346,7 +346,7 @@ func (f *Folder) tlfHandleChangeInvalidate(ctx context.Context,
 // pops in correct UID and write permissions. It only handles fields common to
 // all entryinfo types.
 func (f *Folder) fillAttrWithUIDAndWritePerm(
-	ctx context.Context, ei *libkbfs.EntryInfo, a *fuse.Attr) {
+	ctx context.Context, ei *libkbfs.EntryInfo, a *fuse.Attr) error {
 	a.Valid = 1 * time.Minute
 
 	a.Size = ei.Size
@@ -358,15 +358,18 @@ func (f *Folder) fillAttrWithUIDAndWritePerm(
 	a.Mode &^= os.FileMode(0222) // clear write perm bits
 	_, uid, err := libkbfs.GetCurrentUserInfoIfPossible(
 		ctx, f.fs.config.KBPKI(), f.list.public)
-	// Here we get an error, but there is little that can be done.
-	// cuser will be empty in the error case in which case we will default to the
-	// canonical format.
+	// We are using GetCurrentUserInfoIfPossible here so err is only non-nil if
+	// a real problem happened. If the user is logged out, we will get an empty
+	// username and uid, with a nil error.
 	if err != nil {
-		f.fs.log.CDebugf(ctx, "fillAttrWithUIDAndWritePerm: "+
-			"GetCurrentUserInfoIfPossible failed: %v", err)
-	} else if f.isWriter(uid) {
+		return err
+	}
+
+	if f.isWriter(uid) {
 		a.Mode |= 0200
 	}
+
+	return nil
 }
 
 // TODO: Expire TLF nodes periodically. See
@@ -428,7 +431,9 @@ func (d *Dir) attr(ctx context.Context, a *fuse.Attr) (err error) {
 		}
 		return err
 	}
-	d.folder.fillAttrWithUIDAndWritePerm(ctx, &de, a)
+	if err = d.folder.fillAttrWithUIDAndWritePerm(ctx, &de, a); err != nil {
+		return err
+	}
 
 	a.Mode |= os.ModeDir | 0500
 	if d.folder.list.public {
