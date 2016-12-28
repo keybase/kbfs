@@ -49,13 +49,13 @@ type opt struct {
 	journal                  bool
 }
 
-var testMetadataVers = []libkbfs.MetadataVer{
-	libkbfs.InitialExtraMetadataVer, libkbfs.SegregatedKeyBundlesVer,
-}
+// run{Test,Benchmark}OverMetadataVers are copied from
+// libkbfs/bare_root_metadata_test.go, so as to avoid having libkbfs
+// depend on testing.
 
 func runTestOverMetadataVers(
 	t *testing.T, f func(t *testing.T, ver libkbfs.MetadataVer)) {
-	for _, ver := range testMetadataVers {
+	for _, ver := range libkbfs.GetTestMetadataVers() {
 		ver := ver // capture range variable.
 		t.Run(ver.String(), func(t *testing.T) {
 			f(t, ver)
@@ -65,7 +65,7 @@ func runTestOverMetadataVers(
 
 func runBenchmarkOverMetadataVers(
 	b *testing.B, f func(b *testing.B, ver libkbfs.MetadataVer)) {
-	for _, ver := range testMetadataVers {
+	for _, ver := range libkbfs.GetTestMetadataVers() {
 		ver := ver // capture range variable.
 		b.Run(ver.String(), func(b *testing.B) {
 			f(b, ver)
