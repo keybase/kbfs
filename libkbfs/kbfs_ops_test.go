@@ -121,19 +121,26 @@ func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 
 	timeoutCtx, cancel := context.WithTimeout(
 		context.Background(), individualTestTimeout)
+	initSuccess := false
+	defer func() {
+		if !initSuccess {
+			cancel()
+		}
+	}()
 
 	// make the context identifiable, to verify that it is passed
 	// correctly to the observer
 	id := rand.Int()
-	var err error
-	if ctx, err = NewContextWithCancellationDelayer(NewContextReplayable(
+	ctx, err := NewContextWithCancellationDelayer(NewContextReplayable(
 		timeoutCtx, func(ctx context.Context) context.Context {
 			return context.WithValue(ctx, tCtxID, id)
-		})); err != nil {
-		cancel()
-		panic(err)
+		}))
+	if err != nil {
+		t.Fatal(err)
 	}
-	return
+
+	initSuccess = true
+	return mockCtrl, config, ctx, cancel
 }
 
 func kbfsTestShutdown(mockCtrl *gomock.Controller, config *ConfigMock,

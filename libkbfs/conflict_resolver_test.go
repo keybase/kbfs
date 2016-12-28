@@ -39,15 +39,21 @@ func crTestInit(t *testing.T) (ctx context.Context, cancel context.CancelFunc,
 
 	timeoutCtx, cancel := context.WithTimeout(
 		context.Background(), individualTestTimeout)
+	initSuccess := false
+	defer func() {
+		if !initSuccess {
+			cancel()
+		}
+	}()
 
-	var err error
-	if ctx, err = NewContextWithCancellationDelayer(NewContextReplayable(
+	ctx, err := NewContextWithCancellationDelayer(NewContextReplayable(
 		timeoutCtx, func(c context.Context) context.Context {
 			return c
-		})); err != nil {
-		cancel()
-		panic(err)
+		}))
+	if err != nil {
+		t.Fatal(err)
 	}
+	initSuccess = true
 	return ctx, cancel, mockCtrl, config, fbo.cr
 }
 
