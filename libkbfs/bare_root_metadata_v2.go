@@ -1061,9 +1061,15 @@ func (md *BareRootMetadataV2) GetCurrentTLFPublicKey(
 	return md.WKeys[len(md.WKeys)-1].TLFPublicKey, nil
 }
 
-// GetUnresolvedParticipants implements the BareRootMetadata interface for BareRootMetadataV2.
-func (md *BareRootMetadataV2) GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion) {
-	return md.UnresolvedReaders, md.WriterMetadataV2.Extra.UnresolvedWriters
+// GetUnresolvedParticipants implements the BareRootMetadata interface
+// for BareRootMetadataV2.
+func (md *BareRootMetadataV2) GetUnresolvedParticipants() []keybase1.SocialAssertion {
+	writers := md.WriterMetadataV2.Extra.UnresolvedWriters
+	readers := md.UnresolvedReaders
+	users := make([]keybase1.SocialAssertion, 0, len(writers)+len(readers))
+	users = append(users, writers...)
+	users = append(users, readers...)
+	return users
 }
 
 func (md *BareRootMetadataV2) updateKeyGenerationForReaderRekey(

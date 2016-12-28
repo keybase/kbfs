@@ -1730,8 +1730,10 @@ type BareRootMetadata interface {
 	// GetCurrentTLFPublicKey returns the TLF public key for the
 	// current key generation.
 	GetCurrentTLFPublicKey(ExtraMetadata) (kbfscrypto.TLFPublicKey, error)
-	// GetUnresolvedParticipants returns any unresolved readers and writers present in this revision of metadata.
-	GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion)
+	// GetUnresolvedParticipants returns any unresolved readers
+	// and writers present in this revision of metadata. The
+	// returned array should be safe to modify by the caller.
+	GetUnresolvedParticipants() []keybase1.SocialAssertion
 	// GetTLFWriterKeyBundleID returns the ID of the externally-stored writer key bundle, or the zero value if
 	// this object stores it internally.
 	GetTLFWriterKeyBundleID() TLFWriterKeyBundleID

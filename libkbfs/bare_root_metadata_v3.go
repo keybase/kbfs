@@ -1211,8 +1211,13 @@ func (md *BareRootMetadataV3) GetCurrentTLFPublicKey(
 }
 
 // GetUnresolvedParticipants implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetUnresolvedParticipants() (readers, writers []keybase1.SocialAssertion) {
-	return md.UnresolvedReaders, md.WriterMetadata.UnresolvedWriters
+func (md *BareRootMetadataV3) GetUnresolvedParticipants() []keybase1.SocialAssertion {
+	writers := md.WriterMetadata.UnresolvedWriters
+	readers := md.UnresolvedReaders
+	users := make([]keybase1.SocialAssertion, 0, len(writers)+len(readers))
+	users = append(users, writers...)
+	users = append(users, readers...)
+	return users
 }
 
 // UpdateKeyBundles implements the MutableBareRootMetadata interface
