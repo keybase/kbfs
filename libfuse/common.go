@@ -5,7 +5,6 @@
 package libfuse
 
 import (
-	"os"
 	"time"
 
 	"bazil.org/fuse"
@@ -39,12 +38,4 @@ func fillAttr(ei *libkbfs.EntryInfo, a *fuse.Attr) {
 	a.Size = ei.Size
 	a.Mtime = time.Unix(0, ei.Mtime)
 	a.Ctime = time.Unix(0, ei.Ctime)
-	fillAttrUIDAndWritePerm(a, ei.Writable)
-}
-
-func fillAttrUIDAndWritePerm(a *fuse.Attr, writable bool) {
-	a.Uid = uint32(os.Getuid())
-	if writable {
-		a.Mode |= 0200
-	}
 }

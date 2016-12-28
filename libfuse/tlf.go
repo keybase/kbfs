@@ -142,7 +142,7 @@ func (tlf *TLF) Attr(ctx context.Context, a *fuse.Attr) error {
 		// stale data for too long if we end up loading the
 		// dir.
 		a.Valid = 1 * time.Second
-		a.Mode = os.ModeDir | 0500
+		a.Mode = os.ModeDir | 0700
 		if tlf.isPublic() {
 			a.Mode |= 0055
 		}

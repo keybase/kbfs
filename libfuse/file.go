@@ -63,9 +63,9 @@ var _ fs.Node = (*File)(nil)
 
 func fillAttrWithMode(ei *libkbfs.EntryInfo, a *fuse.Attr) {
 	fillAttr(ei, a)
-	a.Mode |= 0400
+	a.Mode = 0644
 	if ei.Type == libkbfs.Exec {
-		a.Mode |= 0100
+		a.Mode |= 0111
 	}
 }
 

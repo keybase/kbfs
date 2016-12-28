@@ -1630,11 +1630,6 @@ func (fbo *folderBranchOps) statEntry(ctx context.Context, node Node) (
 		de = md.data.Dir
 	}
 
-	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
-	if err == nil { // writable is only possible if user is logged in
-		de.Writable = fbo.getHead(lState).GetTlfHandle().IsWriter(uid)
-	}
-
 	return de, nil
 }
 
