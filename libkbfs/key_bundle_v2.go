@@ -233,37 +233,21 @@ func (wkg TLFWriterKeyGenerationsV2) ToTLFWriterKeyBundleV3(
 			errors.New("No key generations to convert")
 	}
 
-	// Check for invalid indices into
-	// wkbV2.TLFEphemeralPublicKeys.
-	wkbV2 := wkg[keyGen-FirstValidKeyGen]
-	for u, dkimV2 := range wkbV2.WKeys {
-		for kid, keyInfo := range dkimV2 {
-			index := keyInfo.EPubKeyIndex
-			if index < 0 || index >= len(wkbV2.TLFEphemeralPublicKeys) {
-				return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{},
-					fmt.Errorf("Invalid writer key index %d for user=%s, kid=%s",
-						index, u, kid)
-			}
-		}
-	}
-
-	var wkbV3 TLFWriterKeyBundleV3
-
 	// Copy the latest UserDeviceKeyInfoMap.
-	wkbV2 = wkg[keyGen-FirstValidKeyGen]
-	udkimV3, err := writerUDKIMV2ToV3(codec, wkbV2.WKeys)
+	wkbV2 := wkg[keyGen-FirstValidKeyGen]
+	ePubKeyCount := len(wkbV2.TLFEphemeralPublicKeys)
+	udkimV3, err := writerUDKIMV2ToV3(codec, wkbV2.WKeys, ePubKeyCount)
 	if err != nil {
 		return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{}, err
 	}
-	wkbV3.Keys = udkimV3
-
+	wkbV3 := TLFWriterKeyBundleV3{
+		Keys: udkimV3,
+		TLFEphemeralPublicKeys: make(
+			kbfscrypto.TLFEphemeralPublicKeys, ePubKeyCount),
+		TLFPublicKey: wkbV2.TLFPublicKey,
+	}
 	// Copy all of the TLFEphemeralPublicKeys at this generation.
-	wkbV3.TLFEphemeralPublicKeys = make(kbfscrypto.TLFEphemeralPublicKeys,
-		len(wkbV2.TLFEphemeralPublicKeys))
 	copy(wkbV3.TLFEphemeralPublicKeys[:], wkbV2.TLFEphemeralPublicKeys)
-
-	// Copy the current TLFPublicKey.
-	wkbV3.TLFPublicKey = wkbV2.TLFPublicKey
 
 	if keyGen > FirstValidKeyGen {
 		// Fetch all of the TLFCryptKeys.

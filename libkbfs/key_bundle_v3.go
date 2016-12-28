@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"encoding"
+	"fmt"
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
@@ -70,12 +71,20 @@ func (udkimV3 UserDeviceKeyInfoMapV3) toPublicKeys() UserDevicePublicKeys {
 	return publicKeys
 }
 
-func writerUDKIMV2ToV3(codec kbfscodec.Codec, udkimV2 UserDeviceKeyInfoMapV2) (
+func writerUDKIMV2ToV3(codec kbfscodec.Codec, udkimV2 UserDeviceKeyInfoMapV2,
+	ePubKeyCount int) (
 	UserDeviceKeyInfoMapV3, error) {
 	udkimV3 := make(UserDeviceKeyInfoMapV3, len(udkimV2))
 	for uid, dkimV2 := range udkimV2 {
 		dkimV3 := make(DeviceKeyInfoMapV3, len(dkimV2))
 		for kid, info := range dkimV2 {
+			index := info.EPubKeyIndex
+			if index < 0 || index >= ePubKeyCount {
+				return nil, fmt.Errorf(
+					"Invalid writer key index %d for user=%s, kid=%s",
+					index, uid, kid)
+			}
+
 			var infoCopy TLFCryptKeyInfo
 			err := kbfscodec.Update(codec, &infoCopy, info)
 			if err != nil {
