@@ -75,9 +75,8 @@ func runBenchmarkOverMetadataVers(
 
 func test(t *testing.T, actions ...optionOp) {
 	runTestOverMetadataVers(t, func(t *testing.T, ver libkbfs.MetadataVer) {
-		// TODO: Plumb through ver.
 		o := &opt{}
-		o.engine = createEngine(t)
+		o.engine = createEngine(t, ver)
 		o.engine.Init()
 		o.t = t
 		defer o.close()
@@ -89,9 +88,8 @@ func test(t *testing.T, actions ...optionOp) {
 
 func benchmark(b *testing.B, actions ...optionOp) {
 	runBenchmarkOverMetadataVers(b, func(b *testing.B, ver libkbfs.MetadataVer) {
-		// TODO: Plumb through ver.
 		o := &opt{}
-		o.engine = createEngine(b)
+		o.engine = createEngine(b, ver)
 		o.engine.Init()
 		o.t = b
 		defer o.close()

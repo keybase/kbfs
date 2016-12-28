@@ -6,8 +6,12 @@
 
 package test
 
-import "testing"
+import (
+	"testing"
 
-func createEngine(t testing.TB) Engine {
-	return &LibKBFS{}
+	"github.com/keybase/kbfs/libkbfs"
+)
+
+func createEngine(t testing.TB, ver libkbfs.MetadataVer) Engine {
+	return &LibKBFS{ver: ver}
 }

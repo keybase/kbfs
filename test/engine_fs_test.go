@@ -31,6 +31,7 @@ type createUserFn func(t testing.TB, ith int, config *libkbfs.ConfigLocal,
 	opTimeout time.Duration) *fsUser
 
 type fsEngine struct {
+	ver        libkbfs.MetadataVer
 	name       string
 	t          testing.TB
 	createUser createUserFn

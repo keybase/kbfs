@@ -21,6 +21,7 @@ import (
 
 // LibKBFS implements the Engine interface for direct test harness usage of libkbfs.
 type LibKBFS struct {
+	ver libkbfs.MetadataVer
 	// hack: hold references on behalf of the test harness
 	refs map[libkbfs.Config]map[libkbfs.Node]bool
 	// channels used to re-enable updates if disabled

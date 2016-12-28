@@ -22,9 +22,10 @@ type dokanEngine struct {
 	fsEngine
 }
 
-func createEngine(t testing.TB) Engine {
+func createEngine(t testing.TB, ver libkbfs.MetadataVer) Engine {
 	return &dokanEngine{
 		fsEngine: fsEngine{
+			ver:        ver,
 			name:       "dokan",
 			t:          t,
 			createUser: createUserDokan,
