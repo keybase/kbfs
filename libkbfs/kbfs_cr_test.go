@@ -1258,7 +1258,7 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 
 	config2Dev2 := ConfigAsUser(config1, userName2)
 	// we don't check the config because this device can't read all of the md blocks.
-	defer config2Dev2.Shutdown()
+	defer config2Dev2.Shutdown(ctx)
 	config2Dev2.MDServer().DisableRekeyUpdatesForTesting()
 
 	// Now give u2 a new device.  The configs don't share a Keybase
@@ -1445,7 +1445,7 @@ func TestBasicCRFileConflictWithMergedRekey(t *testing.T) {
 
 	config2Dev2 := ConfigAsUser(config1, userName2)
 	// we don't check the config because this device can't read all of the md blocks.
-	defer config2Dev2.Shutdown()
+	defer config2Dev2.Shutdown(ctx)
 	config2Dev2.MDServer().DisableRekeyUpdatesForTesting()
 
 	// Now give u2 a new device.  The configs don't share a Keybase

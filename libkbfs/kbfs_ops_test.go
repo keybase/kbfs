@@ -187,7 +187,7 @@ func kbfsTestShutdownNoMocks(t *testing.T, config *ConfigLocal,
 // TODO: Get rid of all users of this.
 func kbfsTestShutdownNoMocksNoCheck(t *testing.T, config *ConfigLocal,
 	ctx context.Context, cancel context.CancelFunc) {
-	config.Shutdown()
+	config.Shutdown(ctx)
 	cancel()
 	CleanupCancellationDelayer(ctx)
 }

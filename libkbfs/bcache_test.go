@@ -7,6 +7,8 @@ package libkbfs
 import (
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"github.com/keybase/kbfs/kbfshash"
 	"github.com/keybase/kbfs/tlf"
 )
@@ -105,8 +107,9 @@ func TestBcacheCheckPtrSuccess(t *testing.T) {
 }
 
 func TestBcacheCheckPtrPermanent(t *testing.T) {
+	ctx := context.Background()
 	config := blockCacheTestInit(t, 100, 1<<30)
-	defer config.Shutdown()
+	defer config.Shutdown(ctx)
 	bcache := config.BlockCache()
 
 	block := NewFileBlock().(*FileBlock)
@@ -207,8 +210,9 @@ func TestBcacheDeletePermanent(t *testing.T) {
 }
 
 func TestBcacheEmptyTransient(t *testing.T) {
+	ctx := context.Background()
 	config := blockCacheTestInit(t, 0, 1<<30)
-	defer config.Shutdown()
+	defer config.Shutdown(ctx)
 
 	bcache := config.BlockCache()
 
@@ -241,9 +245,10 @@ func TestBcacheEmptyTransient(t *testing.T) {
 }
 
 func TestBcacheEvictOnBytes(t *testing.T) {
+	ctx := context.Background()
 	// Make a cache that can only handle 5 bytes
 	config := blockCacheTestInit(t, 1000, 5)
-	defer config.Shutdown()
+	defer config.Shutdown(ctx)
 
 	bcache := config.BlockCache()
 
@@ -275,9 +280,10 @@ func TestBcacheEvictOnBytes(t *testing.T) {
 }
 
 func TestBcacheEvictIncludesPermanentSize(t *testing.T) {
+	ctx := context.Background()
 	// Make a cache that can only handle 5 bytes
 	config := blockCacheTestInit(t, 1000, 5)
-	defer config.Shutdown()
+	defer config.Shutdown(ctx)
 
 	bcache := config.BlockCache()
 

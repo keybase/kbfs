@@ -4294,14 +4294,14 @@ func (_mr *_MockConfigRecorder) SetTLFValidDuration(arg0 interface{}) *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetTLFValidDuration", arg0)
 }
 
-func (_m *MockConfig) Shutdown() error {
-	ret := _m.ctrl.Call(_m, "Shutdown")
+func (_m *MockConfig) Shutdown(_param0 context.Context) error {
+	ret := _m.ctrl.Call(_m, "Shutdown", _param0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockConfigRecorder) Shutdown() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
+func (_mr *_MockConfigRecorder) Shutdown(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown", arg0)
 }
 
 func (_m *MockConfig) CheckStateOnShutdown() bool {

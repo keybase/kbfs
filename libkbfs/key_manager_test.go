@@ -1422,7 +1422,7 @@ func testKeyManagerRekeyBit(t *testing.T, ver MetadataVer) {
 
 	config2Dev2 := ConfigAsUser(config1, u2)
 	// we don't check the config because this device can't read all of the md blocks.
-	defer config2Dev2.Shutdown()
+	defer config2Dev2.Shutdown(ctx)
 	config2Dev2.MDServer().DisableRekeyUpdatesForTesting()
 
 	// Now give u2 a new device.  The configs don't share a Keybase
@@ -1483,7 +1483,7 @@ func testKeyManagerRekeyBit(t *testing.T, ver MetadataVer) {
 
 	config3Dev2 := ConfigAsUser(config1, u3)
 	// we don't check the config because this device can't read all of the md blocks.
-	defer config3Dev2.Shutdown()
+	defer config3Dev2.Shutdown(ctx)
 	config3Dev2.MDServer().DisableRekeyUpdatesForTesting()
 
 	// Now give u3 a new device.

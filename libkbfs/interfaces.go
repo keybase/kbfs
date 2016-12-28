@@ -1475,7 +1475,7 @@ type Config interface {
 	// SetTLFValidDuration sets TLFValidDuration.
 	SetTLFValidDuration(time.Duration)
 	// Shutdown is called to free config resources.
-	Shutdown() error
+	Shutdown(context.Context) error
 	// CheckStateOnShutdown tells the caller whether or not it is safe
 	// to check the state of the system on shutdown.
 	CheckStateOnShutdown() bool

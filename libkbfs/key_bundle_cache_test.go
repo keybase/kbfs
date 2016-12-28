@@ -7,6 +7,8 @@ package libkbfs
 import (
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/require"
 )
@@ -27,8 +29,9 @@ func getKeyBundlesForTesting(t *testing.T, c Config, tlfByte byte, handleStr str
 }
 
 func TestKeyBundleCacheBasic(t *testing.T) {
+	ctx := context.Background()
 	config := MakeTestConfigOrBust(t, "alice", "bob", "charlie")
-	defer config.Shutdown()
+	defer config.Shutdown(ctx)
 
 	tlf, wkbID, wkb, rkbID, rkb := getKeyBundlesForTesting(t, config, 1, "alice,bob#charlie")
 	tlf2, wkbID2, wkb2, rkbID2, rkb2 := getKeyBundlesForTesting(t, config, 2, "bob,charlie#alice")
