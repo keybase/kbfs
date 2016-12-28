@@ -1279,6 +1279,49 @@ func (_mr *_MockblockDecryptionKeyGetterRecorder) GetTLFCryptKeyForBlockDecrypti
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForBlockDecryption", arg0, arg1, arg2)
 }
 
+// Mock of blockKeyGetter interface
+type MockblockKeyGetter struct {
+	ctrl     *gomock.Controller
+	recorder *_MockblockKeyGetterRecorder
+}
+
+// Recorder for MockblockKeyGetter (not exported)
+type _MockblockKeyGetterRecorder struct {
+	mock *MockblockKeyGetter
+}
+
+func NewMockblockKeyGetter(ctrl *gomock.Controller) *MockblockKeyGetter {
+	mock := &MockblockKeyGetter{ctrl: ctrl}
+	mock.recorder = &_MockblockKeyGetterRecorder{mock}
+	return mock
+}
+
+func (_m *MockblockKeyGetter) EXPECT() *_MockblockKeyGetterRecorder {
+	return _m.recorder
+}
+
+func (_m *MockblockKeyGetter) GetTLFCryptKeyForEncryption(ctx context.Context, kmd KeyMetadata) (kbfscrypto.TLFCryptKey, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyForEncryption", ctx, kmd)
+	ret0, _ := ret[0].(kbfscrypto.TLFCryptKey)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockblockKeyGetterRecorder) GetTLFCryptKeyForEncryption(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForEncryption", arg0, arg1)
+}
+
+func (_m *MockblockKeyGetter) GetTLFCryptKeyForBlockDecryption(ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer) (kbfscrypto.TLFCryptKey, error) {
+	ret := _m.ctrl.Call(_m, "GetTLFCryptKeyForBlockDecryption", ctx, kmd, blockPtr)
+	ret0, _ := ret[0].(kbfscrypto.TLFCryptKey)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockblockKeyGetterRecorder) GetTLFCryptKeyForBlockDecryption(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyForBlockDecryption", arg0, arg1, arg2)
+}
+
 // Mock of KeyManager interface
 type MockKeyManager struct {
 	ctrl     *gomock.Controller
