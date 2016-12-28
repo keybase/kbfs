@@ -286,7 +286,7 @@ func (p Path) GetNode(ctx context.Context, config libkbfs.Config) (libkbfs.Node,
 		entryInfo = lookupEntryInfo
 	}
 
-	return node, entryInfo.EntryInfo, nil
+	return node, entryInfo, nil
 }
 
 // GetFileNode returns a file node

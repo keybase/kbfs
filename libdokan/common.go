@@ -31,9 +31,9 @@ const (
 	CtxIDKey CtxTagKey = iota
 )
 
-// eiToStat converts from a libkbfs.EntryInfoExtended and error to a *dokan.Stat and error.
+// eiToStat converts from a libkbfs.EntryInfo and error to a *dokan.Stat and error.
 // Note that handling symlinks to directories requires extra processing not done here.
-func eiToStat(ei libkbfs.EntryInfoExtended, err error) (*dokan.Stat, error) {
+func eiToStat(ei libkbfs.EntryInfo, err error) (*dokan.Stat, error) {
 	if err != nil {
 		return nil, errToDokan(err)
 	}
@@ -44,7 +44,7 @@ func eiToStat(ei libkbfs.EntryInfoExtended, err error) (*dokan.Stat, error) {
 
 // fillStat fill a dokan.Stat from a libkbfs.DirEntry.
 // Note that handling symlinks to directories requires extra processing not done here.
-func fillStat(a *dokan.Stat, de *libkbfs.EntryInfoExtended) {
+func fillStat(a *dokan.Stat, de *libkbfs.EntryInfo) {
 	a.FileSize = int64(de.Size)
 	a.LastWrite = time.Unix(0, de.Mtime)
 	a.LastAccess = a.LastWrite
