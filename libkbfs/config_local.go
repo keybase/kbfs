@@ -766,7 +766,7 @@ func (c *ConfigLocal) TLFValidDuration() time.Duration {
 // Shutdown implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) Shutdown(ctx context.Context) error {
 	c.RekeyQueue().Clear()
-	c.RekeyQueue().Wait(context.Background())
+	c.RekeyQueue().Wait(ctx)
 	if c.CheckStateOnShutdown() {
 		// Before we do anything, wait for all archiving and
 		// journaling to finish.
@@ -776,10 +776,6 @@ func (c *ConfigLocal) Shutdown(ctx context.Context) error {
 				continue
 			}
 			for _, fbo := range kbfsOps.ops {
-				// Use a fresh context so we don't
-				// skip this if the passed-in context
-				// has been canceled.
-				ctx := context.Background()
 				if err := fbo.fbm.waitForArchives(ctx); err != nil {
 					return err
 				}
