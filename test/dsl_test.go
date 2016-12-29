@@ -38,7 +38,7 @@ type opt struct {
 	tlfIsPublic              bool
 	users                    map[libkb.NormalizedUsername]User
 	stallers                 map[libkb.NormalizedUsername]*libkbfs.NaïveStaller
-	t                        testing.TB
+	tb                       testing.TB
 	initOnce                 sync.Once
 	engine                   Engine
 	blockSize                int64
@@ -90,7 +90,7 @@ func runOneTestOrBenchmark(
 	tb testing.TB, ver libkbfs.MetadataVer, actions ...optionOp) {
 	o := &opt{
 		ver:    ver,
-		t:      tb,
+		tb:     tb,
 		engine: createEngine(tb, ver),
 	}
 	o.engine.Init()
@@ -167,7 +167,7 @@ func (o *opt) runInitOnce() {
 	o.initOnce.Do(func() {
 		o.clock = &libkbfs.TestClock{}
 		o.clock.Set(time.Unix(0, 0))
-		o.users = o.engine.InitTest(o.t, o.blockSize, o.blockChangeSize,
+		o.users = o.engine.InitTest(o.tb, o.blockSize, o.blockChangeSize,
 			o.bwKBps, o.timeout, o.usernames, o.clock, o.journal)
 		o.stallers = o.makeStallers()
 	})
@@ -223,9 +223,9 @@ func journal() optionOp {
 }
 
 func skip(implementation, reason string) optionOp {
-	return func(c *opt) {
-		if c.engine.Name() == implementation {
-			c.t.Skip(reason)
+	return func(o *opt) {
+		if o.engine.Name() == implementation {
+			o.tb.Skip(reason)
 		}
 	}
 }
@@ -279,7 +279,7 @@ func inPublicTlfNonCanonical(name, expectedCanonicalName string) optionOp {
 
 func addNewAssertion(oldAssertion, newAssertion string) optionOp {
 	return func(o *opt) {
-		o.t.Logf("addNewAssertion: %q -> %q", oldAssertion, newAssertion)
+		o.tb.Logf("addNewAssertion: %q -> %q", oldAssertion, newAssertion)
 		for _, u := range o.users {
 			err := o.engine.AddNewAssertion(u, oldAssertion, newAssertion)
 			o.expectSuccess("addNewAssertion", err)
@@ -310,10 +310,10 @@ type ctx struct {
 
 func runFileOpHelper(c *ctx, fop fileOp) (string, error) {
 	desc := fmt.Sprintf("(%s) %s", c.username, fop.description)
-	c.t.Log(desc)
+	c.tb.Log(desc)
 	err := fop.operation(c)
 	if err != nil {
-		c.t.Logf("%s failed with %s", desc, err)
+		c.tb.Logf("%s failed with %s", desc, err)
 	}
 	return desc, err
 }
@@ -360,9 +360,9 @@ func (o *opt) expectSuccess(reason string, err error) {
 			// FailNow/Fatalf can only be called from the goroutine running the Test
 			// function. In parallel tests, this is not always true. So we use Errorf
 			// to mark the test as failed without an implicit FailNow.
-			o.t.Errorf("Error %s: %v", reason, err)
+			o.tb.Errorf("Error %s: %v", reason, err)
 		} else {
-			o.t.Fatalf("Error %s: %v", reason, err)
+			o.tb.Fatalf("Error %s: %v", reason, err)
 		}
 	}
 }
@@ -376,7 +376,7 @@ func addTime(d time.Duration) fileOp {
 
 func as(user username, fops ...fileOp) optionOp {
 	return func(o *opt) {
-		o.t.Log("as:", user)
+		o.tb.Log("as:", user)
 		o.runInitOnce()
 		u := libkb.NewNormalizedUsername(string(user))
 		ctx := &ctx{
@@ -848,7 +848,7 @@ func lsfavoritesOp(c *ctx, expected []string, public bool) error {
 	if err != nil {
 		return err
 	}
-	c.t.Log("lsfavorites", public, "=>", favorites)
+	c.tb.Log("lsfavorites", public, "=>", favorites)
 	expectedMap := make(map[string]bool)
 	for _, f := range expected {
 		if !favorites[f] {
@@ -887,7 +887,7 @@ func lsdir(name string, contents m) fileOp {
 		if err != nil {
 			return err
 		}
-		c.t.Log("lsdir =>", entries)
+		c.tb.Log("lsdir =>", entries)
 	outer:
 		for restr, ty := range contents {
 			re := regexp.MustCompile(restr)
@@ -952,7 +952,7 @@ func (c *ctx) getNode(filepath string, create createType, sym symBehavior) (
 		filepath = filepath[:len(filepath)-1]
 	}
 	components := strings.Split(filepath, "/")
-	c.t.Log("getNode:", filepath, create, components, len(components))
+	c.tb.Log("getNode:", filepath, create, components, len(components))
 	var symPath string
 	var err error
 	var node, parent Node
@@ -960,7 +960,7 @@ func (c *ctx) getNode(filepath string, create createType, sym symBehavior) (
 	wasCreated := false
 	for i, name := range components {
 		node, symPath, err = c.engine.Lookup(c.user, parent, name)
-		c.t.Log("getNode:", i, name, node, symPath, err)
+		c.tb.Log("getNode:", i, name, node, symPath, err)
 
 		if i+1 == len(components) { // last element in path
 			switch {
@@ -969,15 +969,15 @@ func (c *ctx) getNode(filepath string, create createType, sym symBehavior) (
 					return nil, false, libkbfs.NameExistsError{}
 				}
 			case create == createFileExcl:
-				c.t.Log("getNode: CreateFileExcl")
+				c.tb.Log("getNode: CreateFileExcl")
 				node, err = c.engine.CreateFileExcl(c.user, parent, name)
 				wasCreated = true
 			case create == createFile:
-				c.t.Log("getNode: CreateFile")
+				c.tb.Log("getNode: CreateFile")
 				node, err = c.engine.CreateFile(c.user, parent, name)
 				wasCreated = true
 			case create == createDir:
-				c.t.Log("getNode: CreateDir")
+				c.tb.Log("getNode: CreateDir")
 				node, err = c.engine.CreateDir(c.user, parent, name)
 				wasCreated = true
 			case create == noCreate:
@@ -987,7 +987,7 @@ func (c *ctx) getNode(filepath string, create createType, sym symBehavior) (
 			}
 		} else { // intermediate element in path
 			if err != nil && create != noCreate {
-				c.t.Log("getNode: CreateDir")
+				c.tb.Log("getNode: CreateDir")
 				node, err = c.engine.CreateDir(c.user, parent, name)
 				wasCreated = true
 			} // otherwise let it error!
@@ -1012,7 +1012,7 @@ func (c *ctx) getNode(filepath string, create createType, sym symBehavior) (
 			}
 			tmp = append(tmp, components[i+1:]...)
 			newpath := path.Clean(path.Join(tmp...))
-			c.t.Log("getNode: symlink ", symPath, " redirecting to ", newpath)
+			c.tb.Log("getNode: symlink ", symPath, " redirecting to ", newpath)
 			return c.getNode(newpath, create, sym)
 		}
 	}
