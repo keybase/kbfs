@@ -215,36 +215,6 @@ func (kmd emptyKeyMetadata) GetHistoricTLFCryptKey(
 	return kbfscrypto.TLFCryptKey{}, nil
 }
 
-func TestKeyManager(t *testing.T) {
-	tests := []func(*testing.T, MetadataVer){
-		testKeyManagerPublicTLFCryptKey,
-		testKeyManagerCachedSecretKeyForEncryptionSuccess,
-		testKeyManagerCachedSecretKeyForMDDecryptionSuccess,
-		testKeyManagerCachedSecretKeyForBlockDecryptionSuccess,
-		testKeyManagerUncachedSecretKeyForEncryptionSuccess,
-		testKeyManagerUncachedSecretKeyForMDDecryptionSuccess,
-		testKeyManagerUncachedSecretKeyForBlockDecryptionSuccess,
-		testKeyManagerRekeySuccessPrivate,
-		testKeyManagerRekeyResolveAgainSuccessPublic,
-		testKeyManagerRekeyResolveAgainSuccessPublicSelf,
-		testKeyManagerRekeyResolveAgainSuccessPrivate,
-		testKeyManagerPromoteReaderSuccessPrivate,
-		testKeyManagerReaderRekeyResolveAgainSuccessPrivate,
-		testKeyManagerRekeyResolveAgainNoChangeSuccessPrivate,
-		testKeyManagerRekeyAddAndRevokeDevice,
-		testKeyManagerRekeyAddWriterAndReaderDevice,
-		testKeyManagerSelfRekeyAcrossDevices,
-		testKeyManagerReaderRekey,
-		testKeyManagerReaderRekeyAndRevoke,
-		testKeyManagerRekeyBit,
-		testKeyManagerRekeyAddAndRevokeDeviceWithConflict,
-		testKeyManagerRekeyAddDeviceWithPrompt,
-		testKeyManagerRekeyAddDeviceWithPromptAfterRestart,
-		testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess,
-	}
-	runTestsOverMetadataVers(t, "testKeyManager", tests)
-}
-
 func testKeyManagerPublicTLFCryptKey(t *testing.T, ver MetadataVer) {
 	mockCtrl, config, ctx := keyManagerInit(t, ver)
 	defer keyManagerShutdown(mockCtrl, config)
@@ -2027,4 +1997,34 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	ops.mdWriterLock.Unlock(lState)
 
 	GetRootNodeOrBust(ctx, t, config2Dev2, name, false)
+}
+
+func TestKeyManager(t *testing.T) {
+	tests := []func(*testing.T, MetadataVer){
+		testKeyManagerPublicTLFCryptKey,
+		testKeyManagerCachedSecretKeyForEncryptionSuccess,
+		testKeyManagerCachedSecretKeyForMDDecryptionSuccess,
+		testKeyManagerCachedSecretKeyForBlockDecryptionSuccess,
+		testKeyManagerUncachedSecretKeyForEncryptionSuccess,
+		testKeyManagerUncachedSecretKeyForMDDecryptionSuccess,
+		testKeyManagerUncachedSecretKeyForBlockDecryptionSuccess,
+		testKeyManagerRekeySuccessPrivate,
+		testKeyManagerRekeyResolveAgainSuccessPublic,
+		testKeyManagerRekeyResolveAgainSuccessPublicSelf,
+		testKeyManagerRekeyResolveAgainSuccessPrivate,
+		testKeyManagerPromoteReaderSuccessPrivate,
+		testKeyManagerReaderRekeyResolveAgainSuccessPrivate,
+		testKeyManagerRekeyResolveAgainNoChangeSuccessPrivate,
+		testKeyManagerRekeyAddAndRevokeDevice,
+		testKeyManagerRekeyAddWriterAndReaderDevice,
+		testKeyManagerSelfRekeyAcrossDevices,
+		testKeyManagerReaderRekey,
+		testKeyManagerReaderRekeyAndRevoke,
+		testKeyManagerRekeyBit,
+		testKeyManagerRekeyAddAndRevokeDeviceWithConflict,
+		testKeyManagerRekeyAddDeviceWithPrompt,
+		testKeyManagerRekeyAddDeviceWithPromptAfterRestart,
+		testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess,
+	}
+	runTestsOverMetadataVers(t, "testKeyManager", tests)
 }

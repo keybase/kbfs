@@ -205,32 +205,6 @@ func putMDForPrivate(config *ConfigMock, rmd *RootMetadata) {
 	config.mockMdserv.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 }
 
-func TestMDOps(t *testing.T) {
-	tests := []func(*testing.T, MetadataVer){
-		testMDOpsGetForHandlePublicSuccess,
-		testMDOpsGetForHandlePrivateSuccess,
-		testMDOpsGetForUnresolvedHandlePublicSuccess,
-		testMDOpsGetForUnresolvedMdHandlePublicSuccess,
-		testMDOpsGetForUnresolvedHandlePublicFailure,
-		testMDOpsGetForHandlePublicFailFindKey,
-		testMDOpsGetForHandlePublicFailVerify,
-		testMDOpsGetForHandleFailGet,
-		testMDOpsGetForHandleFailHandleCheck,
-		testMDOpsGetSuccess,
-		testMDOpsGetBlankSigFailure,
-		testMDOpsGetFailGet,
-		testMDOpsGetFailIDCheck,
-		testMDOpsGetRangeSuccess,
-		testMDOpsGetRangeFromStartSuccess,
-		testMDOpsGetRangeFailBadPrevRoot,
-		testMDOpsPutPublicSuccess,
-		testMDOpsPutPrivateSuccess,
-		testMDOpsPutFailEncode,
-		testMDOpsGetRangeFailFinal,
-	}
-	runTestsOverMetadataVers(t, "testMDOps", tests)
-}
-
 func testMDOpsGetForHandlePublicSuccess(t *testing.T, ver MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
@@ -868,4 +842,30 @@ func testMDOpsGetRangeFailFinal(t *testing.T, ver MetadataVer) {
 	}
 	_, err := config.MDOps().GetRange(ctx, rmdses[0].MD.TlfID(), start, stop)
 	require.IsType(t, MDMismatchError{}, err)
+}
+
+func TestMDOps(t *testing.T) {
+	tests := []func(*testing.T, MetadataVer){
+		testMDOpsGetForHandlePublicSuccess,
+		testMDOpsGetForHandlePrivateSuccess,
+		testMDOpsGetForUnresolvedHandlePublicSuccess,
+		testMDOpsGetForUnresolvedMdHandlePublicSuccess,
+		testMDOpsGetForUnresolvedHandlePublicFailure,
+		testMDOpsGetForHandlePublicFailFindKey,
+		testMDOpsGetForHandlePublicFailVerify,
+		testMDOpsGetForHandleFailGet,
+		testMDOpsGetForHandleFailHandleCheck,
+		testMDOpsGetSuccess,
+		testMDOpsGetBlankSigFailure,
+		testMDOpsGetFailGet,
+		testMDOpsGetFailIDCheck,
+		testMDOpsGetRangeSuccess,
+		testMDOpsGetRangeFromStartSuccess,
+		testMDOpsGetRangeFailBadPrevRoot,
+		testMDOpsPutPublicSuccess,
+		testMDOpsPutPrivateSuccess,
+		testMDOpsPutFailEncode,
+		testMDOpsGetRangeFailFinal,
+	}
+	runTestsOverMetadataVers(t, "testMDOps", tests)
 }

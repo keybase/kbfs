@@ -103,19 +103,6 @@ func makeFakeTlfHandle(
 	}
 }
 
-func TestRootMetadata(t *testing.T) {
-	tests := []func(*testing.T, MetadataVer){
-		testRootMetadataGetTlfHandlePublic,
-		testRootMetadataGetTlfHandlePrivate,
-		testRootMetadataLatestKeyGenerationPrivate,
-		testRootMetadataLatestKeyGenerationPublic,
-		testMakeRekeyReadError,
-		testMakeRekeyReadErrorResolvedHandle,
-		testRootMetadataFinalIsFinal,
-	}
-	runTestsOverMetadataVers(t, "testRootMetadata", tests)
-}
-
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for
 // public TLFs.
 func testRootMetadataGetTlfHandlePublic(t *testing.T, ver MetadataVer) {
@@ -632,4 +619,17 @@ func TestRootMetadataReaderUpconversionPrivate(t *testing.T) {
 	err = rmds.IsValidAndSigned(configReader.Codec(), configReader.Crypto(),
 		rmd2.extra)
 	require.NoError(t, err)
+}
+
+func TestRootMetadata(t *testing.T) {
+	tests := []func(*testing.T, MetadataVer){
+		testRootMetadataGetTlfHandlePublic,
+		testRootMetadataGetTlfHandlePrivate,
+		testRootMetadataLatestKeyGenerationPrivate,
+		testRootMetadataLatestKeyGenerationPublic,
+		testMakeRekeyReadError,
+		testMakeRekeyReadErrorResolvedHandle,
+		testRootMetadataFinalIsFinal,
+	}
+	runTestsOverMetadataVers(t, "testRootMetadata", tests)
 }

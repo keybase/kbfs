@@ -229,31 +229,6 @@ func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
 	}
 }
 
-func TestMDJournal(t *testing.T) {
-	tests := []func(*testing.T, MetadataVer){
-		testMDJournalBasic,
-		testMDJournalGetNextEntry,
-		testMDJournalPutCase1Empty,
-		testMDJournalPutCase1Conflict,
-		testMDJournalPutCase1ReplaceHead,
-		testMDJournalPutCase2NonEmptyReplace,
-		testMDJournalPutCase2NonEmptyAppend,
-		testMDJournalPutCase2Empty,
-		testMDJournalPutCase3NonEmptyAppend,
-		testMDJournalPutCase3NonEmptyReplace,
-		testMDJournalPutCase3EmptyAppend,
-		testMDJournalPutCase4,
-		testMDJournalBranchConversion,
-		testMDJournalResolveAndClearRemoteBranch,
-		testMDJournalResolveAndClearLocalSquash,
-		testMDJournalBranchConversionPreservesUnknownFields,
-		testMDJournalClear,
-		testMDJournalRestart,
-		testMDJournalRestartAfterBranchConversion,
-	}
-	runTestsOverMetadataVers(t, "testMDJournal", tests)
-}
-
 func testMDJournalBasic(t *testing.T, ver MetadataVer) {
 	codec, crypto, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t, ver)
@@ -978,4 +953,29 @@ func testMDJournalRestartAfterBranchConversion(t *testing.T, ver MetadataVer) {
 		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].BID())
 
 	flushAllMDs(t, ctx, signer, j)
+}
+
+func TestMDJournal(t *testing.T) {
+	tests := []func(*testing.T, MetadataVer){
+		testMDJournalBasic,
+		testMDJournalGetNextEntry,
+		testMDJournalPutCase1Empty,
+		testMDJournalPutCase1Conflict,
+		testMDJournalPutCase1ReplaceHead,
+		testMDJournalPutCase2NonEmptyReplace,
+		testMDJournalPutCase2NonEmptyAppend,
+		testMDJournalPutCase2Empty,
+		testMDJournalPutCase3NonEmptyAppend,
+		testMDJournalPutCase3NonEmptyReplace,
+		testMDJournalPutCase3EmptyAppend,
+		testMDJournalPutCase4,
+		testMDJournalBranchConversion,
+		testMDJournalResolveAndClearRemoteBranch,
+		testMDJournalResolveAndClearLocalSquash,
+		testMDJournalBranchConversionPreservesUnknownFields,
+		testMDJournalClear,
+		testMDJournalRestart,
+		testMDJournalRestartAfterBranchConversion,
+	}
+	runTestsOverMetadataVers(t, "testMDJournal", tests)
 }

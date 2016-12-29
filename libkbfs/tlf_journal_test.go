@@ -313,26 +313,6 @@ func putOneMD(ctx context.Context, config *testTLFJournalConfig,
 	require.NoError(config.t, err)
 }
 
-func TestTLFJournal(t *testing.T) {
-	tests := []func(*testing.T, MetadataVer){
-		testTLFJournalBasic,
-		testTLFJournalPauseResume,
-		testTLFJournalPauseShutdown,
-		testTLFJournalBlockOpBusyShutdown,
-		testTLFJournalSecondBlockOpWhileBusy,
-		testTLFJournalMDServerBusyPause,
-		testTLFJournalMDServerBusyShutdown,
-		testTLFJournalBlockOpWhileBusy,
-		testTLFJournalFlushMDBasic,
-		testTLFJournalFlushMDConflict,
-		testTLFJournalFlushOrdering,
-		testTLFJournalFlushInterleaving,
-		testTLFJournalFlushRetry,
-		testTLFJournalResolveBranch,
-	}
-	runTestsOverMetadataVers(t, "testTLFJournal", tests)
-}
-
 // The tests below primarily test the background work thread's
 // behavior.
 
@@ -1075,4 +1055,24 @@ func testTLFJournalResolveBranch(t *testing.T, ver MetadataVer) {
 	// resolveBranch resumes background work.
 	delegate.requireNextState(ctx, bwIdle)
 	delegate.requireNextState(ctx, bwBusy)
+}
+
+func TestTLFJournal(t *testing.T) {
+	tests := []func(*testing.T, MetadataVer){
+		testTLFJournalBasic,
+		testTLFJournalPauseResume,
+		testTLFJournalPauseShutdown,
+		testTLFJournalBlockOpBusyShutdown,
+		testTLFJournalSecondBlockOpWhileBusy,
+		testTLFJournalMDServerBusyPause,
+		testTLFJournalMDServerBusyShutdown,
+		testTLFJournalBlockOpWhileBusy,
+		testTLFJournalFlushMDBasic,
+		testTLFJournalFlushMDConflict,
+		testTLFJournalFlushOrdering,
+		testTLFJournalFlushInterleaving,
+		testTLFJournalFlushRetry,
+		testTLFJournalResolveBranch,
+	}
+	runTestsOverMetadataVers(t, "testTLFJournal", tests)
 }
