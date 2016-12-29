@@ -25,7 +25,8 @@ type LibKBFS struct {
 	refs map[libkbfs.Config]map[libkbfs.Node]bool
 	// channels used to re-enable updates if disabled
 	updateChannels map[libkbfs.Config]map[libkbfs.FolderBranch]chan<- struct{}
-	tb             testing.TB
+	// test object, for logging.
+	tb testing.TB
 	// timeout for all KBFS calls
 	opTimeout time.Duration
 	// journal directory
