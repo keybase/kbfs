@@ -45,6 +45,20 @@ func runTestOverMetadataVers(
 	}
 }
 
+// runTestsOverMetadataVers runs the given list of test functions over
+// all metadata versions to test. prefix should be the common prefix
+// for all the test function names, and the names of the subtest will
+// be taken to be the strings after that prefix. Example use:
+//
+// func TestFoo(t *testing.T) {
+// 	tests := []func(*testing.T, MetadataVer){
+//		testFooBar1,
+//		testFooBar2,
+//		testFooBar3,
+//		...
+//	}
+//	runTestsOverMetadataVers(t, "testFoo", tests)
+// }
 func runTestsOverMetadataVers(t *testing.T, prefix string,
 	fs []func(t *testing.T, ver MetadataVer)) {
 	for _, f := range fs {
