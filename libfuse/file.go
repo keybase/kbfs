@@ -73,6 +73,28 @@ func (f *File) fillAttrWithMode(
 	return nil
 }
 
+// Access implements the fs.NodeAccesser interface for File. This is necessary
+// for macOS to correctly identify plaintext file as plaintext. If not
+// implemented, bazil-fuse returns a nil error for every thing, so when macOS
+// checks for executable bit using Access (instead of Attr!), it gets a
+// success, which makes it think the file is executable, yielding a "Unix
+// executable" UTI.
+func (f *File) Access(ctx context.Context, r *fuse.AccessRequest) error {
+	if r.Mask&0111 != 0 {
+		ei, err := f.folder.fs.config.KBFSOps().Stat(ctx, f.node)
+		if err != nil {
+			if isNoSuchNameError(err) {
+				return fuse.ESTALE
+			}
+			return err
+		}
+		if ei.Type != libkbfs.Exec {
+			return fuse.EPERM
+		}
+	}
+	return nil
+}
+
 // Attr implements the fs.Node interface for File.
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File Attr")
