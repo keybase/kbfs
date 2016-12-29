@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/libfs"
@@ -32,7 +33,7 @@ type createUserFn func(t testing.TB, ith int, config *libkbfs.ConfigLocal,
 
 type fsEngine struct {
 	name       string
-	t          testing.TB
+	log        logger.Logger
 	createUser createUserFn
 	// journal directory
 	journalDir string
@@ -67,9 +68,11 @@ func (e *fsEngine) Name() string {
 // GetUID is called by the test harness to retrieve a user instance's UID.
 func (e *fsEngine) GetUID(user User) keybase1.UID {
 	u := user.(*fsUser)
-	_, uid, err := u.config.KBPKI().GetCurrentUserInfo(context.Background())
+	ctx := context.Background()
+	_, uid, err := u.config.KBPKI().GetCurrentUserInfo(ctx)
 	if err != nil {
-		e.t.Fatalf("GetUID: GetCurrentUserInfo failed with %v", err)
+		e.log.CFatalf(
+			ctx, "GetUID: GetCurrentUserInfo failed with %v", err)
 	}
 	return uid
 }
@@ -423,7 +426,8 @@ func (e *fsEngine) Shutdown(user User) error {
 		}
 		// Remove the overall journal dir if it's empty.
 		if err := ioutil.Remove(e.journalDir); err != nil {
-			e.t.Logf("Journal dir %s not empty yet", e.journalDir)
+			e.log.CDebugf(ctx,
+				"Journal dir %s not empty yet", e.journalDir)
 		}
 	}
 	return nil
@@ -509,7 +513,6 @@ func (e *fsEngine) InitTest(t testing.TB, ver libkbfs.MetadataVer,
 	blockSize int64, blockChangeSize int64, bwKBps int,
 	opTimeout time.Duration, users []libkb.NormalizedUsername,
 	clock libkbfs.Clock, journal bool) map[libkb.NormalizedUsername]User {
-	e.t = t
 	res := map[libkb.NormalizedUsername]User{}
 	initSuccess := false
 	defer func() {
@@ -522,7 +525,7 @@ func (e *fsEngine) InitTest(t testing.TB, ver libkbfs.MetadataVer,
 
 	if int(opTimeout) > 0 {
 		// TODO: wrap fs calls in our own timeout-able layer?
-		t.Logf("Ignoring op timeout for FS test")
+		e.log.Debug("Ignoring op timeout for FS test")
 	}
 
 	// create the first user specially
