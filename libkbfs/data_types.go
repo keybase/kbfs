@@ -183,12 +183,6 @@ func (v MetadataVer) String() string {
 	}
 }
 
-// GetTestMetadataVers returns the MetadataVers that should be used
-// for testing.
-func GetTestMetadataVers() []MetadataVer {
-	return []MetadataVer{InitialExtraMetadataVer, SegregatedKeyBundlesVer}
-}
-
 // DataVer is the type of a version for marshalled KBFS data
 // structures.
 type DataVer int

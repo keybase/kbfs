@@ -53,6 +53,12 @@ type opt struct {
 // libkbfs/bare_root_metadata_test.go, so as to avoid having libkbfs
 // depend on testing.
 
+// Also copy testMetadataVers, so that we can set it independently
+// from libkbfs tests.
+var testMetadataVers = []libkbfs.MetadataVer{
+	libkbfs.InitialExtraMetadataVer, libkbfs.SegregatedKeyBundlesVer,
+}
+
 func runTestOverMetadataVers(
 	t *testing.T, f func(t *testing.T, ver libkbfs.MetadataVer)) {
 	for _, ver := range libkbfs.GetTestMetadataVers() {

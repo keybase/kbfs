@@ -19,6 +19,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testMetadataVers = []MetadataVer{
+	InitialExtraMetadataVer, SegregatedKeyBundlesVer,
+}
+
 // runTestOverMetadataVers runs the given test function over all
 // metadata versions to test. Example use:
 //
@@ -33,7 +37,7 @@ import (
 // }
 func runTestOverMetadataVers(
 	t *testing.T, f func(t *testing.T, ver MetadataVer)) {
-	for _, ver := range GetTestMetadataVers() {
+	for _, ver := range testMetadataVers {
 		ver := ver // capture range variable.
 		t.Run(ver.String(), func(t *testing.T) {
 			f(t, ver)
@@ -86,7 +90,7 @@ func runTestsOverMetadataVers(t *testing.T, prefix string,
 // }
 func runBenchmarkOverMetadataVers(
 	b *testing.B, f func(b *testing.B, ver MetadataVer)) {
-	for _, ver := range GetTestMetadataVers() {
+	for _, ver := range testMetadataVers {
 		ver := ver // capture range variable.
 		b.Run(ver.String(), func(b *testing.B) {
 			f(b, ver)
