@@ -167,7 +167,7 @@ func (o *opt) runInitOnce() {
 	o.initOnce.Do(func() {
 		o.clock = &libkbfs.TestClock{}
 		o.clock.Set(time.Unix(0, 0))
-		o.users = o.engine.InitTest(o.tb, o.ver, o.blockSize,
+		o.users = o.engine.InitTest(o.ver, o.blockSize,
 			o.blockChangeSize, o.bwKBps, o.timeout, o.usernames,
 			o.clock, o.journal)
 		o.stallers = o.makeStallers()

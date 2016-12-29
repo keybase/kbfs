@@ -5,7 +5,6 @@
 package test
 
 import (
-	"testing"
 	"time"
 
 	"github.com/keybase/client/go/libkb"
@@ -39,7 +38,7 @@ type Engine interface {
 	// second; if zero, the engine defaults are used.  opTimeout
 	// specifies a per-operation timeout; if it is more than the
 	// default engine timeout, or if it is zero, it has no effect.
-	InitTest(t testing.TB, ver libkbfs.MetadataVer, blockSize int64,
+	InitTest(ver libkbfs.MetadataVer, blockSize int64,
 		blockChangeSize int64, bwKBps int, opTimeout time.Duration,
 		users []libkb.NormalizedUsername, clock libkbfs.Clock,
 		journal bool) map[libkb.NormalizedUsername]User

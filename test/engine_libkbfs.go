@@ -25,7 +25,7 @@ type LibKBFS struct {
 	refs map[libkbfs.Config]map[libkbfs.Node]bool
 	// channels used to re-enable updates if disabled
 	updateChannels map[libkbfs.Config]map[libkbfs.FolderBranch]chan<- struct{}
-	log            logger.Logger
+	tb             testing.TB
 	// timeout for all KBFS calls
 	opTimeout time.Duration
 	// journal directory
@@ -49,17 +49,17 @@ func (k *LibKBFS) Init() {
 }
 
 // InitTest implements the Engine interface.
-func (k *LibKBFS) InitTest(t testing.TB, ver libkbfs.MetadataVer,
+func (k *LibKBFS) InitTest(ver libkbfs.MetadataVer,
 	blockSize int64, blockChangeSize int64, bwKBps int,
 	opTimeout time.Duration, users []libkb.NormalizedUsername,
 	clock libkbfs.Clock, journal bool) map[libkb.NormalizedUsername]User {
 	userMap := make(map[libkb.NormalizedUsername]User)
 	// create the first user specially
-	config := libkbfs.MakeTestConfigOrBust(t, users...)
+	config := libkbfs.MakeTestConfigOrBust(k.tb, users...)
 	config.SetMetadataVersion(ver)
 
-	setBlockSizes(t, config, blockSize, blockChangeSize)
-	maybeSetBw(t, config, bwKBps)
+	setBlockSizes(k.tb, config, blockSize, blockChangeSize)
+	maybeSetBw(k.tb, config, bwKBps)
 	k.opTimeout = opTimeout
 
 	config.SetClock(clock)
@@ -79,10 +79,10 @@ func (k *LibKBFS) InitTest(t testing.TB, ver libkbfs.MetadataVer,
 	if journal {
 		jdir, err := ioutil.TempDir(os.TempDir(), "kbfs_journal")
 		if err != nil {
-			k.log.Fatalf("Couldn't enable journaling: %v", err)
+			k.tb.Fatalf("Couldn't enable journaling: %v", err)
 		}
 		k.journalDir = jdir
-		k.log.Debug("Journal directory: %s", k.journalDir)
+		k.tb.Logf("Journal directory: %s", k.journalDir)
 		for name, c := range userMap {
 			c.(*libkbfs.ConfigLocal).EnableJournaling(
 				filepath.Join(jdir, name.String()),
@@ -728,8 +728,7 @@ func (k *LibKBFS) Shutdown(u User) error {
 		}
 		// Remove the overall journal dir if it's empty.
 		if err := ioutil.Remove(k.journalDir); err != nil {
-			k.log.CDebugf(ctx,
-				"Journal dir %s not empty yet", k.journalDir)
+			k.tb.Logf("Journal dir %s not empty yet", k.journalDir)
 		}
 	}
 	return nil

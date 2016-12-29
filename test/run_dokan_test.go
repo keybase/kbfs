@@ -22,11 +22,11 @@ type dokanEngine struct {
 	fsEngine
 }
 
-func createEngine(t testing.TB) Engine {
+func createEngine(tb testing.TB) Engine {
 	return &dokanEngine{
 		fsEngine: fsEngine{
 			name:       "dokan",
-			t:          t,
+			t:          tb,
 			createUser: createUserDokan,
 		},
 	}

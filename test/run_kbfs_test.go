@@ -6,13 +6,8 @@
 
 package test
 
-import (
-	"testing"
+import "testing"
 
-	"github.com/keybase/client/go/logger"
-)
-
-func createEngine(t testing.TB) Engine {
-	log := logger.NewTestLogger(t)
-	return &LibKBFS{log: log}
+func createEngine(tb testing.TB) Engine {
+	return &LibKBFS{tb: tb}
 }
