@@ -40,14 +40,6 @@ func (k *LibKBFS) Name() string {
 	return "libkbfs"
 }
 
-// Init implements the Engine interface.
-func (k *LibKBFS) Init() {
-	// Initialize reference holder and channels maps
-	k.refs = make(map[libkbfs.Config]map[libkbfs.Node]bool)
-	k.updateChannels =
-		make(map[libkbfs.Config]map[libkbfs.FolderBranch]chan<- struct{})
-}
-
 // InitTest implements the Engine interface.
 func (k *LibKBFS) InitTest(ver libkbfs.MetadataVer,
 	blockSize int64, blockChangeSize int64, bwKBps int,

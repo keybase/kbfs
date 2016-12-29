@@ -57,9 +57,6 @@ func (u *fsUser) shutdown() {
 	u.close()
 }
 
-// Perform Init for the engine
-func (*fsEngine) Init() {}
-
 // Name returns the name of the Engine.
 func (e *fsEngine) Name() string {
 	return e.name

@@ -93,7 +93,6 @@ func runOneTestOrBenchmark(
 		tb:     tb,
 		engine: createEngine(tb),
 	}
-	o.engine.Init()
 	defer o.close()
 	for _, omod := range actions {
 		omod(o)

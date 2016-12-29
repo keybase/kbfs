@@ -25,8 +25,6 @@ type username string
 type Engine interface {
 	// Name returns the name of the engine.
 	Name() string
-	// Init is called by the test harness once prior to using a KBFS interface implementation.
-	Init()
 	// InitTest is called by the test harness to initialize user
 	// instances and set up the configuration of the test.
 	// blockChange indicates the maximum size of each data block.
