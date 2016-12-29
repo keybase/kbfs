@@ -26,7 +26,7 @@ func createEngine(tb testing.TB) Engine {
 	return &dokanEngine{
 		fsEngine: fsEngine{
 			name:       "dokan",
-			t:          tb,
+			tb:         tb,
 			createUser: createUserDokan,
 		},
 	}
@@ -36,7 +36,7 @@ func createUserDokan(tb testing.TB, ith int, config *libkbfs.ConfigLocal,
 	opTimeout time.Duration) *fsUser {
 	driveLetter := 'T' + byte(ith)
 	if driveLetter > 'Z' {
-		t.Error("Too many users - out of drive letters")
+		tb.Error("Too many users - out of drive letters")
 	}
 
 	createSuccess := false
@@ -63,7 +63,7 @@ func createUserDokan(tb testing.TB, ith int, config *libkbfs.ConfigLocal,
 	ctx = logger.NewContextWithLogTags(ctx, logTags)
 	ctx = context.WithValue(ctx, CtxUserKey, username)
 
-	fs, err := libdokan.NewFS(ctx, config, logger.NewTestLogger(t))
+	fs, err := libdokan.NewFS(ctx, config, logger.NewTestLogger(tb))
 	if err != nil {
 		tb.Fatal(err)
 	}
