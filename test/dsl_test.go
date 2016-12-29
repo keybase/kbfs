@@ -31,6 +31,7 @@ const (
 )
 
 type opt struct {
+	ver                      libkbfs.MetadataVer
 	usernames                []libkb.NormalizedUsername
 	tlfName                  string
 	expectedCanonicalTlfName string
@@ -87,10 +88,12 @@ func runBenchmarkOverMetadataVers(
 
 func runOneTestOrBenchmark(
 	tb testing.TB, ver libkbfs.MetadataVer, actions ...optionOp) {
-	o := &opt{}
-	o.engine = createEngine(tb, ver)
+	o := &opt{
+		ver:    ver,
+		t:      tb,
+		engine: createEngine(tb, ver),
+	}
 	o.engine.Init()
-	o.t = tb
 	defer o.close()
 	for _, omod := range actions {
 		omod(o)
