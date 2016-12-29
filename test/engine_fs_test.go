@@ -31,7 +31,6 @@ type createUserFn func(t testing.TB, ith int, config *libkbfs.ConfigLocal,
 	opTimeout time.Duration) *fsUser
 
 type fsEngine struct {
-	ver        libkbfs.MetadataVer
 	name       string
 	t          testing.TB
 	createUser createUserFn
@@ -62,7 +61,7 @@ func (*fsEngine) Init() {}
 
 // Name returns the name of the Engine.
 func (e *fsEngine) Name() string {
-	return fmt.Sprintf("%s(%s)", e.name, e.ver)
+	return e.name
 }
 
 // GetUID is called by the test harness to retrieve a user instance's UID.
@@ -506,9 +505,9 @@ func fiTypeString(fi os.FileInfo) string {
 	return "OTHER"
 }
 
-func (e *fsEngine) InitTest(t testing.TB, blockSize int64,
-	blockChangeSize int64, bwKBps int, opTimeout time.Duration,
-	users []libkb.NormalizedUsername,
+func (e *fsEngine) InitTest(t testing.TB, ver libkbfs.MetadataVer,
+	blockSize int64, blockChangeSize int64, bwKBps int,
+	opTimeout time.Duration, users []libkb.NormalizedUsername,
 	clock libkbfs.Clock, journal bool) map[libkb.NormalizedUsername]User {
 	e.t = t
 	res := map[libkb.NormalizedUsername]User{}
@@ -528,7 +527,7 @@ func (e *fsEngine) InitTest(t testing.TB, blockSize int64,
 
 	// create the first user specially
 	config0 := libkbfs.MakeTestConfigOrBust(t, users...)
-	config0.SetMetadataVersion(e.ver)
+	config0.SetMetadataVersion(ver)
 	config0.SetClock(clock)
 
 	setBlockSizes(t, config0, blockSize, blockChangeSize)

@@ -21,7 +21,6 @@ import (
 
 // LibKBFS implements the Engine interface for direct test harness usage of libkbfs.
 type LibKBFS struct {
-	ver libkbfs.MetadataVer
 	// hack: hold references on behalf of the test harness
 	refs map[libkbfs.Config]map[libkbfs.Node]bool
 	// channels used to re-enable updates if disabled
@@ -39,7 +38,7 @@ var _ Engine = (*LibKBFS)(nil)
 
 // Name returns the name of the Engine.
 func (k *LibKBFS) Name() string {
-	return fmt.Sprintf("libkbfs(%s)", k.ver)
+	return "libkbfs"
 }
 
 // Init implements the Engine interface.
@@ -51,8 +50,9 @@ func (k *LibKBFS) Init() {
 }
 
 // InitTest implements the Engine interface.
-func (k *LibKBFS) InitTest(t testing.TB, blockSize int64, blockChangeSize int64,
-	bwKBps int, opTimeout time.Duration, users []libkb.NormalizedUsername,
+func (k *LibKBFS) InitTest(t testing.TB, ver libkbfs.MetadataVer,
+	blockSize int64, blockChangeSize int64, bwKBps int,
+	opTimeout time.Duration, users []libkb.NormalizedUsername,
 	clock libkbfs.Clock, journal bool) map[libkb.NormalizedUsername]User {
 	// Start a new log for this test.
 	k.t = t
@@ -60,7 +60,7 @@ func (k *LibKBFS) InitTest(t testing.TB, blockSize int64, blockChangeSize int64,
 	userMap := make(map[libkb.NormalizedUsername]User)
 	// create the first user specially
 	config := libkbfs.MakeTestConfigOrBust(t, users...)
-	config.SetMetadataVersion(k.ver)
+	config.SetMetadataVersion(ver)
 
 	setBlockSizes(t, config, blockSize, blockChangeSize)
 	maybeSetBw(t, config, bwKBps)

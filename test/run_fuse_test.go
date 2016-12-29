@@ -23,13 +23,12 @@ type fuseEngine struct {
 	fsEngine
 }
 
-func createEngine(t testing.TB, ver libkbfs.MetadataVer) Engine {
+func createEngine(t testing.TB) Engine {
 	log := logger.NewTestLogger(t)
 	debugLog := log.CloneWithAddedDepth(1)
 	fuse.Debug = libfuse.MakeFuseDebugFn(debugLog, false /* superVerbose */)
 	return &fuseEngine{
 		fsEngine: fsEngine{
-			ver:        ver,
 			name:       "fuse",
 			t:          t,
 			createUser: createUserFuse,
