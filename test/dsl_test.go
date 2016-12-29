@@ -59,6 +59,9 @@ var testMetadataVers = []libkbfs.MetadataVer{
 	libkbfs.InitialExtraMetadataVer, libkbfs.SegregatedKeyBundlesVer,
 }
 
+// runTestOverMetadataVers runs the given test function over all
+// metadata versions to test. The test is assumed to be parallelizable
+// with other instances of itself.
 func runTestOverMetadataVers(
 	t *testing.T, f func(t *testing.T, ver libkbfs.MetadataVer)) {
 	for _, ver := range libkbfs.GetTestMetadataVers() {
@@ -70,6 +73,8 @@ func runTestOverMetadataVers(
 	}
 }
 
+// runBenchmarkOverMetadataVers runs the given benchmark function over
+// all metadata versions to test.
 func runBenchmarkOverMetadataVers(
 	b *testing.B, f func(b *testing.B, ver libkbfs.MetadataVer)) {
 	for _, ver := range libkbfs.GetTestMetadataVers() {
