@@ -503,7 +503,7 @@ func fiTypeString(fi os.FileInfo) string {
 	return "OTHER"
 }
 
-func (e *fsEngine) InitTest(t testing.TB, ver libkbfs.MetadataVer,
+func (e *fsEngine) InitTest(ver libkbfs.MetadataVer,
 	blockSize int64, blockChangeSize int64, bwKBps int,
 	opTimeout time.Duration, users []libkb.NormalizedUsername,
 	clock libkbfs.Clock, journal bool) map[libkb.NormalizedUsername]User {
