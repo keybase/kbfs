@@ -64,7 +64,7 @@ var testMetadataVers = []libkbfs.MetadataVer{
 // with other instances of itself.
 func runTestOverMetadataVers(
 	t *testing.T, f func(t *testing.T, ver libkbfs.MetadataVer)) {
-	for _, ver := range libkbfs.GetTestMetadataVers() {
+	for _, ver := range testMetadataVers {
 		ver := ver // capture range variable.
 		t.Run(ver.String(), func(t *testing.T) {
 			t.Parallel()
@@ -77,7 +77,7 @@ func runTestOverMetadataVers(
 // all metadata versions to test.
 func runBenchmarkOverMetadataVers(
 	b *testing.B, f func(b *testing.B, ver libkbfs.MetadataVer)) {
-	for _, ver := range libkbfs.GetTestMetadataVers() {
+	for _, ver := range testMetadataVers {
 		ver := ver // capture range variable.
 		b.Run(ver.String(), func(b *testing.B) {
 			f(b, ver)
