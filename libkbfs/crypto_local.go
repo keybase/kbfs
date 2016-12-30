@@ -40,23 +40,21 @@ func (c CryptoLocal) prepareTLFCryptKeyClientHalf(
 	clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
 	nonce [24]byte, err error) {
 	if encryptedClientHalf.Version != EncryptionSecretbox {
-		err = UnknownEncryptionVer{encryptedClientHalf.Version}
-		return
+		return [24]byte{}, errors.WithStack(
+			UnknownEncryptionVer{encryptedClientHalf.Version})
 	}
 
 	// This check isn't strictly needed, but parallels the
 	// implementation in CryptoClient.
 	if len(encryptedClientHalf.EncryptedData) != len(clientHalf.Data())+box.Overhead {
-		err = errors.WithStack(libkb.DecryptionError{})
-		return
+		return [24]byte{}, errors.WithStack(libkb.DecryptionError{})
 	}
 
 	if len(encryptedClientHalf.Nonce) != len(nonce) {
-		err = InvalidNonceError{encryptedClientHalf.Nonce}
-		return
+		return [24]byte{}, InvalidNonceError{encryptedClientHalf.Nonce}
 	}
 	copy(nonce[:], encryptedClientHalf.Nonce)
-	return
+	return nonce, nil
 }
 
 // DecryptTLFCryptKeyClientHalf implements the Crypto interface for
@@ -75,13 +73,14 @@ func (c CryptoLocal) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 	decryptedData, ok := box.Open(nil, encryptedClientHalf.EncryptedData,
 		&nonce, &publicKeyData, &privateKeyData)
 	if !ok {
-		err = errors.WithStack(libkb.DecryptionError{})
-		return
+		return kbfscrypto.TLFCryptKeyClientHalf{},
+			errors.WithStack(libkb.DecryptionError{})
 	}
 
 	if len(decryptedData) != len(clientHalf.Data()) {
 		err = errors.WithStack(libkb.DecryptionError{})
-		return
+		return kbfscrypto.TLFCryptKeyClientHalf{},
+			errors.WithStack(libkb.DecryptionError{})
 	}
 
 	var clientHalfData [32]byte
@@ -95,11 +94,13 @@ func (c CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 	keys []EncryptedTLFCryptKeyClientAndEphemeral, _ bool) (
 	clientHalf kbfscrypto.TLFCryptKeyClientHalf, index int, err error) {
 	if len(keys) == 0 {
-		return clientHalf, index, NoKeysError{}
+		return kbfscrypto.TLFCryptKeyClientHalf{}, -1,
+			errors.WithStack(NoKeysError{})
 	}
 	for i, k := range keys {
 		nonce, err := c.prepareTLFCryptKeyClientHalf(k.ClientHalf, clientHalf)
 		if err != nil {
+			// TODO: Keep track of error.
 			continue
 		}
 		ePubKeyData := k.EPubKey.Data()
@@ -114,8 +115,8 @@ func (c CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 				clientHalfData), i, nil
 		}
 	}
-	err = errors.WithStack(libkb.DecryptionError{})
-	return
+	return kbfscrypto.TLFCryptKeyClientHalf{}, -1,
+		errors.WithStack(libkb.DecryptionError{})
 }
 
 // Shutdown implements the Crypto interface for CryptoLocal.
