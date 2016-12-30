@@ -114,6 +114,11 @@ func (c CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 		}
 		return clientHalf, i, nil
 	}
+	// This is to mimic the behavior in
+	// CryptoClient.DecryptTLFCryptKeyClientHalfAny, which is to,
+	// if all calls to prepareTLFCryptKeyClientHalf failed, return
+	// the first prep error, and otherwise to return the error
+	// from the service, which is usually libkb.DecryptionError.
 	if firstNonDecryptionErr != nil {
 		return kbfscrypto.TLFCryptKeyClientHalf{}, -1,
 			firstNonDecryptionErr
