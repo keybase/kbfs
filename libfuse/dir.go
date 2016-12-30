@@ -15,7 +15,6 @@ import (
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
-	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
@@ -70,12 +69,6 @@ func (f *Folder) name() libkbfs.CanonicalTlfName {
 	f.handleMu.RLock()
 	defer f.handleMu.RUnlock()
 	return libkbfs.CanonicalTlfName(f.hPreferredName)
-}
-
-func (f *Folder) isWriter(uid keybase1.UID) bool {
-	f.handleMu.RLock()
-	defer f.handleMu.RUnlock()
-	return f.h.IsWriter(uid)
 }
 
 func (f *Folder) reportErr(ctx context.Context,
@@ -342,11 +335,41 @@ func (f *Folder) tlfHandleChangeInvalidate(ctx context.Context,
 	}
 }
 
+func (f *Folder) isWriter(
+	ctx context.Context, ei *libkbfs.EntryInfo) (bool, error) {
+	_, uid, err := libkbfs.GetCurrentUserInfoIfPossible(
+		ctx, f.fs.config.KBPKI(), f.list.public)
+	// We are using GetCurrentUserInfoIfPossible here so err is only non-nil if
+	// a real problem happened. If the user is logged out, we will get an empty
+	// username and uid, with a nil error.
+	if err != nil {
+		return false, err
+	}
+	f.handleMu.RLock()
+	defer f.handleMu.RUnlock()
+	return f.h.IsWriter(uid), nil
+}
+
+func (f *Folder) writePermMode(ctx context.Context,
+	ei *libkbfs.EntryInfo, original os.FileMode) (os.FileMode, error) {
+	original &^= os.FileMode(0222) // clear write perm bits
+
+	isWriter, err := f.isWriter(ctx, ei)
+	if err != nil {
+		return 0, err
+	}
+	if isWriter {
+		original |= 0200
+	}
+
+	return original, nil
+}
+
 // fillAttrWithUIDAndWritePerm sets attributes based on the entry info, and
 // pops in correct UID and write permissions. It only handles fields common to
 // all entryinfo types.
 func (f *Folder) fillAttrWithUIDAndWritePerm(
-	ctx context.Context, ei *libkbfs.EntryInfo, a *fuse.Attr) error {
+	ctx context.Context, ei *libkbfs.EntryInfo, a *fuse.Attr) (err error) {
 	a.Valid = 1 * time.Minute
 
 	a.Size = ei.Size
@@ -355,18 +378,8 @@ func (f *Folder) fillAttrWithUIDAndWritePerm(
 
 	a.Uid = uint32(os.Getuid())
 
-	a.Mode &^= os.FileMode(0222) // clear write perm bits
-	_, uid, err := libkbfs.GetCurrentUserInfoIfPossible(
-		ctx, f.fs.config.KBPKI(), f.list.public)
-	// We are using GetCurrentUserInfoIfPossible here so err is only non-nil if
-	// a real problem happened. If the user is logged out, we will get an empty
-	// username and uid, with a nil error.
-	if err != nil {
+	if a.Mode, err = f.writePermMode(ctx, ei, a.Mode); err != nil {
 		return err
-	}
-
-	if f.isWriter(uid) {
-		a.Mode |= 0200
 	}
 
 	return nil
@@ -379,6 +392,7 @@ func (f *Folder) fillAttrWithUIDAndWritePerm(
 // wraps a Dir should implement.
 type DirInterface interface {
 	fs.Node
+	fs.NodeAccesser
 	fs.NodeRequestLookuper
 	fs.NodeCreater
 	fs.NodeMkdirer
@@ -408,6 +422,38 @@ func newDir(folder *Folder, node libkbfs.Node) *Dir {
 
 var _ DirInterface = (*Dir)(nil)
 
+// Access implements the fs.NodeAccesser interface for File. See comment for
+// File.Access for more details.
+func (d *Dir) Access(ctx context.Context, r *fuse.AccessRequest) error {
+	if int(r.Uid) != os.Getuid() {
+		// short path: not accessible by anybody other than the logged in user.
+		// This is in case we enable AllowOther in the future.
+		return fuse.EPERM
+	}
+
+	if r.Mask&02 == 0 {
+		// For directory, we only check for the w bit, we can return nil early
+		// here.
+		return nil
+	}
+
+	ei, err := d.folder.fs.config.KBFSOps().Stat(ctx, d.node)
+	if err != nil {
+		if isNoSuchNameError(err) {
+			return fuse.ESTALE
+		}
+		return err
+	}
+	wp, err := d.folder.writePermMode(ctx, &ei, 0)
+	if err != nil {
+		return err
+	}
+	if wp&0200 == 0 {
+		return fuse.EPERM
+	}
+	return nil
+}
+
 // Attr implements the fs.Node interface for Dir.
 func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	d.folder.fs.log.CDebugf(ctx, "Dir Attr")
@@ -436,9 +482,6 @@ func (d *Dir) attr(ctx context.Context, a *fuse.Attr) (err error) {
 	}
 
 	a.Mode |= os.ModeDir | 0500
-	if d.folder.list.public {
-		a.Mode |= 0055
-	}
 	return nil
 }
 

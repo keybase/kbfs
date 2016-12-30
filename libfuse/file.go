@@ -5,6 +5,7 @@
 package libfuse
 
 import (
+	"os"
 	"sync"
 
 	"bazil.org/fuse"
@@ -73,28 +74,6 @@ func (f *File) fillAttrWithMode(
 	return nil
 }
 
-// Access implements the fs.NodeAccesser interface for File. This is necessary
-// for macOS to correctly identify plaintext file as plaintext. If not
-// implemented, bazil-fuse returns a nil error for every thing, so when macOS
-// checks for executable bit using Access (instead of Attr!), it gets a
-// success, which makes it think the file is executable, yielding a "Unix
-// executable" UTI.
-func (f *File) Access(ctx context.Context, r *fuse.AccessRequest) error {
-	if r.Mask&0111 != 0 {
-		ei, err := f.folder.fs.config.KBFSOps().Stat(ctx, f.node)
-		if err != nil {
-			if isNoSuchNameError(err) {
-				return fuse.ESTALE
-			}
-			return err
-		}
-		if ei.Type != libkbfs.Exec {
-			return fuse.EPERM
-		}
-	}
-	return nil
-}
-
 // Attr implements the fs.Node interface for File.
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File Attr")
@@ -129,6 +108,48 @@ func (f *File) attr(ctx context.Context, a *fuse.Attr) (err error) {
 	}
 
 	return f.fillAttrWithMode(ctx, &de, a)
+}
+
+var _ fs.NodeAccesser = (*File)(nil)
+
+// Access implements the fs.NodeAccesser interface for File. This is necessary
+// for macOS to correctly identify plaintext files as plaintext. If not
+// implemented, bazil-fuse returns a nil error for every call, so when macOS
+// checks for executable bit using Access (instead of Attr!), it gets a
+// success, which makes it think the file is executable, yielding a "Unix
+// executable" UTI.
+func (f *File) Access(ctx context.Context, r *fuse.AccessRequest) error {
+	if int(r.Uid) != os.Getuid() {
+		// short path: not accessible by anybody other than the logged in user.
+		// This is in case we enable AllowOther in the future.
+		return fuse.EPERM
+	}
+
+	if r.Mask&03 == 0 {
+		// Since we only check for w and x bits, we can return nil early here.
+		return nil
+	}
+
+	ei, err := f.folder.fs.config.KBFSOps().Stat(ctx, f.node)
+	if err != nil {
+		if isNoSuchNameError(err) {
+			return fuse.ESTALE
+		}
+		return err
+	}
+	if r.Mask&01 != 0 && ei.Type != libkbfs.Exec {
+		return fuse.EPERM
+	}
+	if r.Mask&02 != 0 {
+		wp, err := f.folder.writePermMode(ctx, &ei, 0)
+		if err != nil {
+			return err
+		}
+		if wp&0200 == 0 {
+			return fuse.EPERM
+		}
+	}
+	return nil
 }
 
 var _ fs.NodeFsyncer = (*File)(nil)
