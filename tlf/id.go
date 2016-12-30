@@ -75,18 +75,22 @@ func (id *ID) UnmarshalBinary(data []byte) error {
 
 // MarshalText implements the encoding.TextMarshaler interface for ID.
 func (id ID) MarshalText() ([]byte, error) {
-	return []byte(id.String()), nil
+	bytes, err := id.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	return []byte(hex.EncodeToString(bytes)), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface for
 // ID.
 func (id *ID) UnmarshalText(buf []byte) error {
-	newID, err := ParseID(string(buf))
+	s := string(buf)
+	bytes, err := hex.DecodeString(s)
 	if err != nil {
-		return err
+		return errors.WithStack(InvalidIDError{s})
 	}
-	*id = newID
-	return nil
+	return id.UnmarshalBinary(bytes)
 }
 
 // IsPublic returns true if this ID is for a public top-level folder
@@ -97,17 +101,10 @@ func (id ID) IsPublic() bool {
 // ParseID parses a hex encoded ID. Returns NullID and an
 // InvalidIDError on failure.
 func ParseID(s string) (ID, error) {
-	if len(s) != idStringLen {
-		return NullID, errors.WithStack(InvalidIDError{s})
-	}
-	bytes, err := hex.DecodeString(s)
-	if err != nil {
-		return NullID, errors.WithStack(InvalidIDError{s})
-	}
 	var id ID
-	err = id.UnmarshalBinary(bytes)
+	err := id.UnmarshalText([]byte(s))
 	if err != nil {
-		return NullID, err
+		return ID{}, err
 	}
 	return id, nil
 }
