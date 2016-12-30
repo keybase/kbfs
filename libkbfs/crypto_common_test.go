@@ -77,57 +77,6 @@ func TestCryptoCommonRandomTLFCryptKeyServerHalf(t *testing.T) {
 	require.NotEqual(t, k1, k2)
 }
 
-// Test that MaskTLFCryptKey() returns bytes that are different from
-// the server half and the key, and that UnmaskTLFCryptKey() undoes
-// the masking properly.
-func TestCryptoCommonMaskUnmaskTLFCryptKey(t *testing.T) {
-	c := MakeCryptoCommon(kbfscodec.NewMsgpack())
-
-	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
-	require.NoError(t, err)
-
-	_, _, cryptKey, err := c.MakeRandomTLFKeys()
-	require.NoError(t, err)
-
-	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
-
-	if clientHalf.Data() == serverHalf.Data() {
-		t.Error("client half == server half")
-	}
-
-	if clientHalf.Data() == cryptKey.Data() {
-		t.Error("client half == key")
-	}
-
-	cryptKey2 := kbfscrypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
-
-	if cryptKey2 != cryptKey {
-		t.Error("cryptKey != cryptKey2")
-	}
-}
-
-// Test that UnmaskBlockCryptKey() returns bytes that are different from
-// the server half and the key.
-func TestCryptoCommonUnmaskTLFCryptKey(t *testing.T) {
-	c := MakeCryptoCommon(kbfscodec.NewMsgpack())
-
-	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
-	require.NoError(t, err)
-
-	_, _, cryptKey, err := c.MakeRandomTLFKeys()
-	require.NoError(t, err)
-
-	key := kbfscrypto.UnmaskBlockCryptKey(serverHalf, cryptKey)
-
-	if key.Data() == serverHalf.Data() {
-		t.Error("key == server half")
-	}
-
-	if key.Data() == cryptKey.Data() {
-		t.Error("key == crypt key")
-	}
-}
-
 type TestBlock struct {
 	A int
 }

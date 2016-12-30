@@ -9,6 +9,7 @@ import (
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -285,26 +286,40 @@ func TestBlockCryptKeyEncodeDecode(t *testing.T) {
 
 // Test (very superficially) that MakeRandomBlockCryptKeyServerHalf()
 // returns non-zero values that aren't equal.
-func TestCryptoCommonRandomBlockCryptKeyServerHalf(t *testing.T) {
+func TestRandomBlockCryptKeyServerHalf(t *testing.T) {
 	k1, err := MakeRandomBlockCryptKeyServerHalf()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if k1 == (BlockCryptKeyServerHalf{}) {
-		t.Errorf("zero BlockCryptKeyServerHalf k1")
-	}
+	require.NoError(t, err)
+	require.NotEqual(t, BlockCryptKeyServerHalf{}, k1)
 
 	k2, err := MakeRandomBlockCryptKeyServerHalf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.NotEqual(t, BlockCryptKeyServerHalf{}, k2)
 
-	if k2 == (BlockCryptKeyServerHalf{}) {
-		t.Errorf("zero BlockCryptKeyServerHalf k2")
-	}
+	require.NotEqual(t, k1, k2)
+}
 
-	if k1 == k2 {
-		t.Errorf("k1 == k2")
-	}
+// Test that MaskTLFCryptKey() returns bytes that are different from
+// the server half and the key, and that UnmaskTLFCryptKey() undoes
+// the masking properly.
+func TestMaskUnmaskTLFCryptKey(t *testing.T) {
+	serverHalf := MakeTLFCryptKeyServerHalf([32]byte{0x1, 0x2, 0x3})
+	cryptKey := MakeTLFCryptKey([32]byte{0x4, 0x5, 0x6})
+
+	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
+	require.NotEqual(t, serverHalf.Data(), clientHalf.Data())
+	require.NotEqual(t, cryptKey.Data(), clientHalf.Data())
+
+	cryptKey2 := kbfscrypto.UnmaskTLFCryptKey(serverHalf, clientHalf)
+	require.Equal(t, cryptKey, cryptKey2)
+}
+
+// Test that UnmaskBlockCryptKey() returns bytes that are different from
+// the server half and the key.
+func TestUnmaskTLFCryptKey(t *testing.T) {
+	serverHalf := MakeTLFCryptKeyServerHalf([32]byte{0x1, 0x2, 0x3})
+	cryptKey := MakeTLFCryptKey([32]byte{0x4, 0x5, 0x6})
+
+	key := kbfscrypto.UnmaskBlockCryptKey(serverHalf, cryptKey)
+	require.NotEqual(t, serverHalf.Data(), key.Data())
+	require.NotEqual(t, cryptKey.Data(), key.Data())
 }
