@@ -1619,12 +1619,17 @@ func testKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T, ver Metadat
 	}
 }
 
+type promptResult struct {
+	promptPaper  bool
+	errWithStack error
+}
+
 // cryptoLocalTrapAny traps every DecryptTLFCryptKeyClientHalfAny
 // call, and sends on the given channel whether each call had
 // promptPaper set or not.
 type cryptoLocalTrapAny struct {
 	Crypto
-	promptCh    chan<- bool
+	promptCh    chan<- promptResult
 	cryptoToUse Crypto
 }
 
@@ -1632,8 +1637,9 @@ func (clta *cryptoLocalTrapAny) DecryptTLFCryptKeyClientHalfAny(
 	ctx context.Context,
 	keys []EncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
 	kbfscrypto.TLFCryptKeyClientHalf, int, error) {
+	res := promptResult{promptPaper, errors.Errorf("promptPaper was %t", promptPaper)}
 	select {
-	case clta.promptCh <- promptPaper:
+	case clta.promptCh <- res:
 	case <-ctx.Done():
 		return kbfscrypto.TLFCryptKeyClientHalf{}, 0,
 			errors.WithStack(ctx.Err())
@@ -1712,20 +1718,19 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 		t.Fatalf("Couldn't set rekey bit")
 	}
 
-	c := make(chan bool)
+	c := make(chan promptResult)
 	// Use our other device as a standin for the paper key.
 	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), c, config2.Crypto()}
 	config2Dev2.SetCrypto(clta)
 
 	ops.rekeyWithPromptTimer.Reset(1 * time.Millisecond)
-	var promptPaper bool
 	select {
-	case promptPaper = <-c:
+	case res := <-c:
+		if !res.promptPaper {
+			t.Fatalf("%+v", res.errWithStack)
+		}
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
-	}
-	if !promptPaper {
-		t.Fatalf("Didn't prompt paper")
 	}
 	// called a second time for decrypting the private data
 	select {
@@ -1852,20 +1857,19 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 		t.Fatalf("Third rekey failed %+v", err)
 	}
 
-	c := make(chan bool)
+	c := make(chan promptResult)
 	// Use our other device as a standin for the paper key.
 	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), c, config2.Crypto()}
 	config2Dev2.SetCrypto(clta)
 
 	ops.rekeyWithPromptTimer.Reset(1 * time.Millisecond)
-	var promptPaper bool
 	select {
-	case promptPaper = <-c:
+	case res := <-c:
+		if !res.promptPaper {
+			t.Fatalf("%+v", res.errWithStack)
+		}
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
-	}
-	if !promptPaper {
-		t.Fatalf("Didn't prompt paper")
 	}
 	// called a second time for decrypting the private data
 	select {
@@ -1944,18 +1948,17 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 
 	// Allow the prompt rekey attempt to fail by using dev2's crypto
 	// (which still isn't keyed for)
-	c := make(chan bool)
+	c := make(chan promptResult)
 	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), c, config2Dev2.Crypto()}
 	config2Dev2.SetCrypto(clta)
 	ops.rekeyWithPromptTimer.Reset(1 * time.Millisecond)
-	var promptPaper bool
 	select {
-	case promptPaper = <-c:
+	case res := <-c:
+		if !res.promptPaper {
+			t.Fatalf("%+v", res.errWithStack)
+		}
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
-	}
-	if !promptPaper {
-		t.Fatalf("Didn't prompt paper")
 	}
 	// Make sure the rekey attempt is finished by taking the lock.
 	// Keep the lock for a while, to control when the second rekey starts.
@@ -1994,12 +1997,12 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	}()
 
 	select {
-	case promptPaper = <-c:
+	case res := <-c:
+		if !res.promptPaper {
+			t.Fatalf("%+v", res.errWithStack)
+		}
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
-	}
-	if !promptPaper {
-		t.Fatalf("Didn't prompt paper")
 	}
 	// called a second time for decrypting the private data
 	select {
