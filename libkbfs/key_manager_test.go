@@ -14,6 +14,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -1634,7 +1635,8 @@ func (clta *cryptoLocalTrapAny) DecryptTLFCryptKeyClientHalfAny(
 	select {
 	case clta.promptCh <- promptPaper:
 	case <-ctx.Done():
-		return kbfscrypto.TLFCryptKeyClientHalf{}, 0, ctx.Err()
+		return kbfscrypto.TLFCryptKeyClientHalf{}, 0,
+			errors.WithStack(ctx.Err())
 	}
 	// Decrypt the key half with the given config object
 	return clta.cryptoToUse.DecryptTLFCryptKeyClientHalfAny(
@@ -1956,7 +1958,7 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 			select {
 			case errCh <- err:
 			case <-ctx.Done():
-				errCh <- ctx.Err()
+				errCh <- errors.WithStack(ctx.Err())
 			}
 		}()
 		// One failed decryption attempt
