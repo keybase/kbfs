@@ -54,8 +54,9 @@ func (k *kidContainer) UnmarshalBinary(data []byte) error {
 	// TODO: Use the more stringent checks from
 	// KIDFromStringChecked instead.
 	if !k.kid.IsValid() {
+		err := InvalidKIDError{k.kid}
 		*k = kidContainer{}
-		return errors.WithStack(InvalidKIDError{k.kid})
+		return errors.WithStack(err)
 	}
 
 	return nil
@@ -105,8 +106,9 @@ func (c publicByte32Container) MarshalBinary() (data []byte, err error) {
 
 func (c *publicByte32Container) UnmarshalBinary(data []byte) error {
 	if len(data) != len(c.data) {
+		err := InvalidByte32DataError{data}
 		*c = publicByte32Container{}
-		return errors.WithStack(InvalidByte32DataError{data})
+		return errors.WithStack(err)
 	}
 
 	copy(c.data[:], data)
@@ -149,8 +151,9 @@ func (c privateByte32Container) MarshalBinary() (data []byte, err error) {
 
 func (c *privateByte32Container) UnmarshalBinary(data []byte) error {
 	if len(data) != len(c.data) {
+		err := InvalidByte32DataError{data}
 		*c = privateByte32Container{}
-		return errors.WithStack(InvalidByte32DataError{data})
+		return errors.WithStack(err)
 	}
 
 	copy(c.data[:], data)
