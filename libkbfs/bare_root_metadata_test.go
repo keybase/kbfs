@@ -73,6 +73,7 @@ func runTestsOverMetadataVers(t *testing.T, prefix string,
 		}
 		name = name[i:]
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			runTestOverMetadataVers(t, f)
 		})
 	}
