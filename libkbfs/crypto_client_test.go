@@ -49,7 +49,7 @@ func (fc FakeCryptoClient) maybeWaitOnChannel(ctx context.Context) error {
 	case <-fc.goChan:
 		return nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.WithStack(ctx.Err())
 	}
 }
 
@@ -190,7 +190,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfBoxSeal(t *testing.T) {
 	ephPublicKey, ephPrivateKey, err := c.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	_, _, cryptKey, err := c.MakeRandomTLFKeys()
+	cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 	require.NoError(t, err)
 
 	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
@@ -238,7 +238,7 @@ func TestCryptoClientDecryptEncryptedTLFCryptKeyClientHalf(t *testing.T) {
 	ephPublicKey, ephPrivateKey, err := c.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	_, _, cryptKey, err := c.MakeRandomTLFKeys()
+	cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 	require.NoError(t, err)
 
 	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
@@ -291,7 +291,7 @@ func TestCryptoClientDecryptEncryptedTLFCryptKeyClientHalfAny(t *testing.T) {
 			c.MakeRandomTLFEphemeralKeys()
 		require.NoError(t, err)
 
-		_, _, cryptKey, err := c.MakeRandomTLFKeys()
+		cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 		require.NoError(t, err)
 
 		serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
@@ -333,7 +333,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfAnyFailures(t *testing.T) {
 	ephPublicKey, ephPrivateKey, err := c.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	_, _, cryptKey, err := c.MakeRandomTLFKeys()
+	cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 	require.NoError(t, err)
 
 	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
@@ -413,7 +413,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 	ephPublicKey, ephPrivateKey, err := c.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	_, _, cryptKey, err := c.MakeRandomTLFKeys()
+	cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 	require.NoError(t, err)
 
 	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
@@ -481,7 +481,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfCanceled(t *testing.T) {
 	ephPublicKey, ephPrivateKey, err := c.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	_, _, cryptKey, err := c.MakeRandomTLFKeys()
+	cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 	require.NoError(t, err)
 
 	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
