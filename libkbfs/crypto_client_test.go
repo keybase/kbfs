@@ -222,7 +222,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfBoxSeal(t *testing.T) {
 	decryptedClientHalf, err := c.DecryptTLFCryptKeyClientHalf(
 		context.Background(), ephPublicKey, encryptedClientHalf)
 	require.NoError(t, err)
-	require.Equal(t, clientHalf, decryptClientHalf)
+	require.Equal(t, clientHalf, decryptedClientHalf)
 }
 
 // Test that decrypting a TLF crypt key client half encrypted with the

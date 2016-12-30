@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -20,6 +19,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -429,7 +429,7 @@ func testRPCWithCanceledContext(t logger.TestLogBackend,
 	}()
 
 	err := fn(ctx)
-	if err != context.Canceled {
+	if errors.Cause(err) != context.Canceled {
 		t.Fatalf("Function did not return a canceled error: %v", err)
 	}
 }
