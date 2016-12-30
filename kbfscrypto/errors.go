@@ -10,6 +10,9 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 )
 
+// Errors below aren't returned directly, but can be returned by
+// errors.Cause().
+
 // InvalidKIDError is returned whenever an invalid KID is detected.
 type InvalidKIDError struct {
 	kid keybase1.KID
