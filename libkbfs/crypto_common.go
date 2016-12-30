@@ -22,8 +22,6 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 )
 
-// TODO: Wrap errors coming from Crypto.
-
 // CryptoCommon contains many of the function implementations need for
 // the Crypto interface, which can be reused by other implementations.
 type CryptoCommon struct {
@@ -194,7 +192,7 @@ func (c CryptoCommon) EncryptTLFCryptKeyClientHalf(
 	var nonce [24]byte
 	err = kbfscrypto.RandRead(nonce[:])
 	if err != nil {
-		return
+		return EncryptedTLFCryptKeyClientHalf{}, err
 	}
 
 	keypair, err := libkb.ImportKeypairFromKID(publicKey.KID())
@@ -243,16 +241,15 @@ func (c CryptoCommon) EncryptPrivateMetadata(
 	encryptedPmd EncryptedPrivateMetadata, err error) {
 	encodedPmd, err := c.codec.Encode(pmd)
 	if err != nil {
-		return
+		return EncryptedPrivateMetadata{}, err
 	}
 
 	encryptedData, err := c.encryptData(encodedPmd, key.Data())
 	if err != nil {
-		return
+		return EncryptedPrivateMetadata{}, err
 	}
 
-	encryptedPmd = EncryptedPrivateMetadata{encryptedData}
-	return
+	return EncryptedPrivateMetadata{encryptedData}, nil
 }
 
 func (c CryptoCommon) decryptData(encryptedData encryptedData, key [32]byte) ([]byte, error) {
@@ -268,7 +265,8 @@ func (c CryptoCommon) decryptData(encryptedData encryptedData, key [32]byte) ([]
 	}
 	copy(nonce[:], encryptedData.Nonce)
 
-	decryptedData, ok := secretbox.Open(nil, encryptedData.EncryptedData, &nonce, &key)
+	decryptedData, ok := secretbox.Open(
+		nil, encryptedData.EncryptedData, &nonce, &key)
 	if !ok {
 		return nil, errors.WithStack(libkb.DecryptionError{})
 	}
@@ -371,29 +369,30 @@ func (c CryptoCommon) EncryptBlock(block Block, key kbfscrypto.BlockCryptKey) (
 	plainSize int, encryptedBlock EncryptedBlock, err error) {
 	encodedBlock, err := c.codec.Encode(block)
 	if err != nil {
-		return
+		return -1, EncryptedBlock{}, err
 	}
 
 	paddedBlock, err := c.padBlock(encodedBlock)
 	if err != nil {
-		return
+		return -1, EncryptedBlock{}, err
 	}
 
 	encryptedData, err := c.encryptData(paddedBlock, key.Data())
 	if err != nil {
-		return
+		return -1, EncryptedBlock{}, err
 	}
 
 	plainSize = len(encodedBlock)
 	encryptedBlock = EncryptedBlock{encryptedData}
-	return
+	return plainSize, encryptedBlock, nil
 }
 
 // DecryptBlock implements the Crypto interface for CryptoCommon.
 func (c CryptoCommon) DecryptBlock(
 	encryptedBlock EncryptedBlock, key kbfscrypto.BlockCryptKey,
 	block Block) error {
-	paddedBlock, err := c.decryptData(encryptedBlock.encryptedData, key.Data())
+	paddedBlock, err := c.decryptData(
+		encryptedBlock.encryptedData, key.Data())
 	if err != nil {
 		return err
 	}
@@ -405,7 +404,7 @@ func (c CryptoCommon) DecryptBlock(
 
 	err = c.codec.Decode(encodedBlock, &block)
 	if err != nil {
-		return BlockDecodeError{err}
+		return errors.WithStack(BlockDecodeError{err})
 	}
 	return nil
 }
@@ -456,7 +455,8 @@ func (c CryptoCommon) EncryptMerkleLeaf(leaf MerkleLeaf,
 	// encrypt the encoded leaf
 	pubKeyData := pubKey.Data()
 	privKeyData := ePrivKey.Data()
-	encryptedData := box.Seal(nil, leafBytes[:], nonce, &pubKeyData, &privKeyData)
+	encryptedData := box.Seal(
+		nil, leafBytes[:], nonce, &pubKeyData, &privKeyData)
 	return EncryptedMerkleLeaf{
 		Version:       EncryptionSecretbox,
 		EncryptedData: encryptedData,
@@ -474,7 +474,8 @@ func (c CryptoCommon) DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf,
 	}
 	pubKeyData := ePubKey.Data()
 	privKeyData := privKey.Data()
-	leafBytes, ok := box.Open(nil, encryptedLeaf.EncryptedData[:], nonce, &pubKeyData, &privKeyData)
+	leafBytes, ok := box.Open(
+		nil, encryptedLeaf.EncryptedData[:], nonce, &pubKeyData, &privKeyData)
 	if !ok {
 		return nil, errors.WithStack(libkb.DecryptionError{})
 	}
@@ -492,16 +493,15 @@ func (c CryptoCommon) EncryptTLFCryptKeys(
 	encryptedKeys EncryptedTLFCryptKeys, err error) {
 	encodedKeys, err := c.codec.Encode(oldKeys)
 	if err != nil {
-		return
+		return EncryptedTLFCryptKeys{}, err
 	}
 
 	encryptedData, err := c.encryptData(encodedKeys, key.Data())
 	if err != nil {
-		return
+		return EncryptedTLFCryptKeys{}, err
 	}
 
-	encryptedKeys = EncryptedTLFCryptKeys{encryptedData}
-	return
+	return EncryptedTLFCryptKeys{encryptedData}, nil
 }
 
 // DecryptTLFCryptKeys implements the Crypto interface for CryptoCommon.
