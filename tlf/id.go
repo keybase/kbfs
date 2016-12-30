@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -51,7 +52,7 @@ func (id ID) String() string {
 func (id ID) MarshalBinary() (data []byte, err error) {
 	suffix := id.id[idByteLen-1]
 	if suffix != idSuffix && suffix != pubIDSuffix {
-		return nil, InvalidIDError{id.String()}
+		return nil, errors.WithStack(InvalidIDError{id.String()})
 	}
 	return id.id[:], nil
 }
@@ -60,11 +61,13 @@ func (id ID) MarshalBinary() (data []byte, err error) {
 // for ID.
 func (id *ID) UnmarshalBinary(data []byte) error {
 	if len(data) != idByteLen {
-		return InvalidIDError{hex.EncodeToString(data)}
+		return errors.WithStack(
+			InvalidIDError{hex.EncodeToString(data)})
 	}
 	suffix := data[idByteLen-1]
 	if suffix != idSuffix && suffix != pubIDSuffix {
-		return InvalidIDError{hex.EncodeToString(data)}
+		return errors.WithStack(
+			InvalidIDError{hex.EncodeToString(data)})
 	}
 	copy(id.id[:], data)
 	return nil
@@ -95,16 +98,16 @@ func (id ID) IsPublic() bool {
 // InvalidIDError on failure.
 func ParseID(s string) (ID, error) {
 	if len(s) != idStringLen {
-		return NullID, InvalidIDError{s}
+		return NullID, errors.WithStack(InvalidIDError{s})
 	}
 	bytes, err := hex.DecodeString(s)
 	if err != nil {
-		return NullID, InvalidIDError{s}
+		return NullID, errors.WithStack(InvalidIDError{s})
 	}
 	var id ID
 	err = id.UnmarshalBinary(bytes)
 	if err != nil {
-		return NullID, InvalidIDError{s}
+		return NullID, errors.WithStack(InvalidIDError{s})
 	}
 	return id, nil
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -100,7 +101,7 @@ func TestHashVerify(t *testing.T) {
 
 	// Zero (invalid) hash.
 	err := (Hash{}).Verify(data)
-	assert.Equal(t, InvalidHashError{Hash{}}, err)
+	assert.Equal(t, InvalidHashError{Hash{}}, errors.Cause(err))
 
 	validH, err := DefaultHash(data)
 	require.NoError(t, err)
@@ -109,22 +110,22 @@ func TestHashVerify(t *testing.T) {
 	copy(corruptData, data)
 	corruptData[0] ^= 1
 	err = validH.Verify(corruptData)
-	assert.IsType(t, HashMismatchError{}, err)
+	assert.IsType(t, HashMismatchError{}, errors.Cause(err))
 
 	invalidH := hashFromRawNoCheck(InvalidHash, validH.hashData())
 	err = invalidH.Verify(data)
-	assert.Equal(t, InvalidHashError{invalidH}, err)
+	assert.Equal(t, InvalidHashError{invalidH}, errors.Cause(err))
 
 	unknownType := validH.hashType() + 1
 	unknownH := hashFromRawNoCheck(unknownType, validH.hashData())
 	err = unknownH.Verify(data)
-	assert.Equal(t, UnknownHashTypeError{unknownType}, err)
+	assert.Equal(t, UnknownHashTypeError{unknownType}, errors.Cause(err))
 
 	hashData := validH.hashData()
 	hashData[0] ^= 1
 	corruptH := hashFromRawNoCheck(validH.hashType(), hashData)
 	err = corruptH.Verify(data)
-	assert.IsType(t, HashMismatchError{}, err)
+	assert.IsType(t, HashMismatchError{}, errors.Cause(err))
 }
 
 // Make sure HMAC encodes and decodes properly with minimal overhead.
@@ -194,35 +195,35 @@ func TestVerify(t *testing.T) {
 
 	// Zero (invalid) HMAC.
 	err := (HMAC{}).Verify(key, data)
-	assert.Equal(t, InvalidHashError{Hash{}}, err)
+	assert.Equal(t, InvalidHashError{Hash{}}, errors.Cause(err))
 
 	validHMAC, err := DefaultHMAC(key, data)
-	require.NoError(t, err)
+	require.NoError(t, errors.Cause(err))
 
 	corruptKey := make([]byte, len(key))
 	copy(corruptKey, key)
 	corruptKey[0] ^= 1
 	err = validHMAC.Verify(corruptKey, data)
-	assert.IsType(t, HashMismatchError{}, err)
+	assert.IsType(t, HashMismatchError{}, errors.Cause(err))
 
 	corruptData := make([]byte, len(data))
 	copy(corruptData, data)
 	corruptData[0] ^= 1
 	err = validHMAC.Verify(key, corruptData)
-	assert.IsType(t, HashMismatchError{}, err)
+	assert.IsType(t, HashMismatchError{}, errors.Cause(err))
 
 	invalidHMAC := hmacFromRawNoCheck(InvalidHash, validHMAC.hashData())
 	err = invalidHMAC.Verify(key, data)
-	assert.Equal(t, InvalidHashError{invalidHMAC.h}, err)
+	assert.Equal(t, InvalidHashError{invalidHMAC.h}, errors.Cause(err))
 
 	unknownType := validHMAC.hashType() + 1
 	unknownHMAC := hmacFromRawNoCheck(unknownType, validHMAC.hashData())
 	err = unknownHMAC.Verify(key, data)
-	assert.Equal(t, UnknownHashTypeError{unknownType}, err)
+	assert.Equal(t, UnknownHashTypeError{unknownType}, errors.Cause(err))
 
 	hashData := validHMAC.hashData()
 	hashData[0] ^= 1
 	corruptHMAC := hmacFromRawNoCheck(validHMAC.hashType(), hashData)
 	err = corruptHMAC.Verify(key, data)
-	assert.IsType(t, HashMismatchError{}, err)
+	assert.IsType(t, HashMismatchError{}, errors.Cause(err))
 }
