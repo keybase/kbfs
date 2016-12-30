@@ -113,10 +113,7 @@ func TestCryptoCommonEncryptDecryptBlock(t *testing.T) {
 	var decryptedBlock TestBlock
 	err = c.DecryptBlock(encryptedBlock, key, &decryptedBlock)
 	require.NoError(t, err)
-
-	if block != decryptedBlock {
-		t.Errorf("Expected block %v got %v", block, decryptedBlock)
-	}
+	require.Equal(t, block, decryptedBlock)
 }
 
 // Test that crypto.EncryptTLFCryptKeyClientHalf() encrypts its
@@ -140,66 +137,42 @@ func TestCryptoCommonEncryptTLFCryptKeyClientHalf(t *testing.T) {
 
 	encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, publicKey, clientHalf)
 	require.NoError(t, err)
-
-	if encryptedClientHalf.Version != EncryptionSecretbox {
-		t.Errorf("Expected version %v, got %v", EncryptionSecretbox, encryptedClientHalf.Version)
-	}
+	require.Equal(t, EncryptionSecretbox, encryptedClientHalf.Version)
 
 	expectedEncryptedLength := len(clientHalf.Data()) + box.Overhead
-	if len(encryptedClientHalf.EncryptedData) != expectedEncryptedLength {
-		t.Errorf("Expected encrypted length %d, got %d", expectedEncryptedLength, len(encryptedClientHalf.EncryptedData))
-	}
-
-	if len(encryptedClientHalf.Nonce) != 24 {
-		t.Fatalf("Expected nonce length 24, got %d", len(encryptedClientHalf.Nonce))
-	}
+	require.Equal(t, expectedEncryptedLength,
+		len(encryptedClientHalf.EncryptedData))
+	require.Equal(t, 24, len(encryptedClientHalf.Nonce))
 
 	var nonce [24]byte
 	copy(nonce[:], encryptedClientHalf.Nonce)
-	if nonce == ([24]byte{}) {
-		t.Error("Empty nonce")
-	}
+	require.NotEqual(t, [24]byte{}, nonce)
 
 	ephPublicKeyData := ephPublicKey.Data()
 	privateKeyData := privateKey.Data()
 	decryptedData, ok := box.Open(
 		nil, encryptedClientHalf.EncryptedData, &nonce,
 		&ephPublicKeyData, &privateKeyData)
-	if !ok {
-		t.Fatal("Decryption failed")
-	}
+	require.True(t, ok)
 
-	if len(decryptedData) != len(clientHalf.Data()) {
-		t.Fatalf("Expected decrypted data length %d, got %d", len(clientHalf.Data()), len(decryptedData))
-	}
+	require.Equal(t, len(clientHalf.Data()), len(decryptedData))
 
 	var clientHalf2Data [32]byte
 	copy(clientHalf2Data[:], decryptedData)
 	clientHalf2 := kbfscrypto.MakeTLFCryptKeyClientHalf(clientHalf2Data)
-	if clientHalf != clientHalf2 {
-		t.Fatal("client half != decrypted client half")
-	}
+	require.Equal(t, clientHalf, clientHalf2)
 }
 
 func checkSecretboxOpen(t *testing.T, encryptedData encryptedData, key [32]byte) (encodedData []byte) {
-	if encryptedData.Version != EncryptionSecretbox {
-		t.Errorf("Expected version %v, got %v", EncryptionSecretbox, encryptedData.Version)
-	}
-
-	if len(encryptedData.Nonce) != 24 {
-		t.Fatalf("Expected nonce length 24, got %d", len(encryptedData.Nonce))
-	}
+	require.Equal(t, EncryptionSecretbox, encryptedData.Version)
+	require.Equal(t, 24, len(encryptedData.Nonce))
 
 	var nonce [24]byte
 	copy(nonce[:], encryptedData.Nonce)
-	if nonce == ([24]byte{}) {
-		t.Error("Empty nonce")
-	}
+	require.NotEqual(t, [24]byte{}, nonce)
 
 	encodedData, ok := secretbox.Open(nil, encryptedData.EncryptedData, &nonce, &key)
-	if !ok {
-		t.Fatal("Decryption failed")
-	}
+	require.True(t, ok)
 
 	return encodedData
 }
@@ -223,9 +196,7 @@ func TestEncryptPrivateMetadata(t *testing.T) {
 
 	encodedPrivateMetadata := checkSecretboxOpen(t, encryptedPrivateMetadata.encryptedData, cryptKey.Data())
 
-	if string(encodedPrivateMetadata) != string(expectedEncodedPrivateMetadata) {
-		t.Fatalf("Expected encoded data %v, got %v", expectedEncodedPrivateMetadata, encodedPrivateMetadata)
-	}
+	require.Equal(t, expectedEncodedPrivateMetadata, encodedPrivateMetadata)
 }
 
 func secretboxSeal(t *testing.T, c *CryptoCommon, data interface{}, key [32]byte) encryptedData {
@@ -266,13 +237,7 @@ func TestDecryptPrivateMetadataSecretboxSeal(t *testing.T) {
 
 	decryptedPrivateMetadata, err := c.DecryptPrivateMetadata(encryptedPrivateMetadata, cryptKey)
 	require.NoError(t, err)
-
-	pmEquals, err := kbfscodec.Equal(
-		c.codec, decryptedPrivateMetadata, privateMetadata)
-	require.NoError(t, err)
-	if !pmEquals {
-		t.Errorf("Decrypted private metadata %v doesn't match %v", decryptedPrivateMetadata, privateMetadata)
-	}
+	require.Equal(t, privateMetadata, decryptedPrivateMetadata)
 }
 
 // Test that crypto.DecryptPrivateMetadata() decrypts a
@@ -293,13 +258,7 @@ func TestDecryptEncryptedPrivateMetadata(t *testing.T) {
 
 	decryptedPrivateMetadata, err := c.DecryptPrivateMetadata(encryptedPrivateMetadata, cryptKey)
 	require.NoError(t, err)
-
-	pmEquals, err := kbfscodec.Equal(
-		c.codec, decryptedPrivateMetadata, privateMetadata)
-	require.NoError(t, err)
-	if !pmEquals {
-		t.Errorf("Decrypted private metadata %v doesn't match %v", decryptedPrivateMetadata, privateMetadata)
-	}
+	require.Equal(t, privateMetadata, decryptedPrivateMetadata)
 }
 
 func checkDecryptionFailures(
@@ -391,18 +350,12 @@ func TestEncryptBlock(t *testing.T) {
 
 	plainSize, encryptedBlock, err := c.EncryptBlock(&block, cryptKey)
 	require.NoError(t, err)
-
-	if plainSize != len(expectedEncodedBlock) {
-		t.Errorf("Expected plain size %d, got %d", len(expectedEncodedBlock), plainSize)
-	}
+	require.Equal(t, len(expectedEncodedBlock), plainSize)
 
 	paddedBlock := checkSecretboxOpen(t, encryptedBlock.encryptedData, cryptKey.Data())
 	encodedBlock, err := c.depadBlock(paddedBlock)
 	require.NoError(t, err)
-
-	if string(encodedBlock) != string(expectedEncodedBlock) {
-		t.Fatalf("Expected encoded data %v, got %v", expectedEncodedBlock, encodedBlock)
-	}
+	require.Equal(t, expectedEncodedBlock, encodedBlock)
 }
 
 // Test that crypto.DecryptBlock() decrypts a Block object encrypted
@@ -425,10 +378,7 @@ func TestDecryptBlockSecretboxSeal(t *testing.T) {
 	var decryptedBlock TestBlock
 	err = c.DecryptBlock(encryptedBlock, cryptKey, &decryptedBlock)
 	require.NoError(t, err)
-
-	if decryptedBlock != block {
-		t.Errorf("Decrypted block %d doesn't match %d", decryptedBlock, block)
-	}
+	require.Equal(t, block, decryptedBlock)
 }
 
 // Test that crypto.DecryptBlock() decrypts a Block object encrypted
@@ -446,10 +396,7 @@ func TestDecryptEncryptedBlock(t *testing.T) {
 	var decryptedBlock TestBlock
 	err = c.DecryptBlock(encryptedBlock, cryptKey, &decryptedBlock)
 	require.NoError(t, err)
-
-	if decryptedBlock != block {
-		t.Errorf("Decrypted block %d doesn't match %d", decryptedBlock, block)
-	}
+	require.Equal(t, block, decryptedBlock)
 }
 
 // Test various failure cases for crypto.DecryptBlock().
@@ -504,9 +451,8 @@ func TestBlockPadding(t *testing.T) {
 		return true
 	}
 
-	if err := quick.Check(f, nil); err != nil {
-		t.Error(err)
-	}
+	err := quick.Check(f, nil)
+	require.NoError(t, err)
 }
 
 // Tests padding -> depadding results in same block data.
@@ -529,9 +475,8 @@ func TestBlockDepadding(t *testing.T) {
 		return true
 	}
 
-	if err := quick.Check(f, nil); err != nil {
-		t.Error(err)
-	}
+	err := quick.Check(f, nil)
+	require.NoError(t, err)
 }
 
 // Test padding of blocks results in blocks at least 2^8.
@@ -539,16 +484,11 @@ func TestBlockPadMinimum(t *testing.T) {
 	var c CryptoCommon
 	for i := 0; i < 256; i++ {
 		b := make([]byte, i)
-		if err := kbfscrypto.RandRead(b); err != nil {
-			t.Fatal(err)
-		}
+		err := kbfscrypto.RandRead(b)
+		require.NoError(t, err)
 		padded, err := c.padBlock(b)
-		if err != nil {
-			t.Errorf("padBlock error: %s", err)
-		}
-		if len(padded) != 260 {
-			t.Errorf("padded block len: %d, expected 260", len(padded))
-		}
+		require.NoError(t, err)
+		require.Equal(t, 260, len(padded))
 	}
 }
 
@@ -565,9 +505,8 @@ func TestSecretboxEncryptedLen(t *testing.T) {
 	// index into it. Note that we're intentionally re-using most
 	// of the data between iterations intentionally.
 	randomData := make([]byte, endSize+iterations)
-	if err := kbfscrypto.RandRead(randomData); err != nil {
-		t.Fatal(err)
-	}
+	err := kbfscrypto.RandRead(randomData)
+	require.NoError(t, err)
 
 	cryptKeys := make([]kbfscrypto.BlockCryptKey, iterations)
 	for j := 0; j < iterations; j++ {
@@ -581,8 +520,8 @@ func TestSecretboxEncryptedLen(t *testing.T) {
 			enc := secretboxSealEncoded(t, &c, data, cryptKeys[j].Data())
 			if j == 0 {
 				enclen = len(enc.EncryptedData)
-			} else if len(enc.EncryptedData) != enclen {
-				t.Errorf("encrypted data len: %d, expected %d", len(enc.EncryptedData), enclen)
+			} else {
+				assert.Equal(t, len(enc.EncryptedData), enclen)
 			}
 		}
 	}
@@ -634,10 +573,6 @@ func TestBlockEncryptedLen(t *testing.T) {
 			expectedLen = len(encBlock.EncryptedData)
 			continue
 		}
-
-		if len(encBlock.EncryptedData) != expectedLen {
-			t.Errorf("len encrypted data: %d, expected %d (input len: %d)",
-				len(encBlock.EncryptedData), expectedLen, i)
-		}
+		require.Equal(t, expectedLen, len(encBlock.EncryptedData))
 	}
 }
