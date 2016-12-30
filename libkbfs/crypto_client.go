@@ -56,7 +56,7 @@ func (c *CryptoClient) Sign(ctx context.Context, msg []byte) (
 	sigInfo kbfscrypto.SignatureInfo, err error) {
 	c.log.CDebugf(ctx, "Signing %d-byte message", len(msg))
 	defer func() {
-		c.deferLog.CDebugf(ctx, "Signed %d-byte message with %s: err=%v", len(msg),
+		c.deferLog.CDebugf(ctx, "Signed %d-byte message with %s: err=%+v", len(msg),
 			sigInfo, err)
 	}()
 
@@ -82,7 +82,7 @@ func (c *CryptoClient) SignForKBFS(ctx context.Context, msg []byte) (
 	sigInfo kbfscrypto.SignatureInfo, err error) {
 	c.log.CDebugf(ctx, "Signing %d-byte message", len(msg))
 	defer func() {
-		c.deferLog.CDebugf(ctx, "Signed %d-byte message with %s: err=%v", len(msg),
+		c.deferLog.CDebugf(ctx, "Signed %d-byte message with %s: err=%+v", len(msg),
 			sigInfo, err)
 	}()
 
@@ -108,7 +108,7 @@ func (c *CryptoClient) SignToString(ctx context.Context, msg []byte) (
 	signature string, err error) {
 	c.log.CDebugf(ctx, "Signing %d-byte message to string", len(msg))
 	defer func() {
-		c.deferLog.CDebugf(ctx, "Signed %d-byte message: err=%v", len(msg), err)
+		c.deferLog.CDebugf(ctx, "Signed %d-byte message: err=%+v", len(msg), err)
 	}()
 
 	timer := c.logAboutTooLongUnlessCancelled(ctx, "SignToString")
@@ -154,7 +154,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 	clientHalf kbfscrypto.TLFCryptKeyClientHalf, err error) {
 	c.log.CDebugf(ctx, "Decrypting TLF client key half")
 	defer func() {
-		c.deferLog.CDebugf(ctx, "Decrypted TLF client key half: %v", err)
+		c.deferLog.CDebugf(ctx, "Decrypted TLF client key half: %+v", err)
 	}()
 	encryptedData, nonce, err := c.prepareTLFCryptKeyClientHalf(encryptedClientHalf)
 	if err != nil {
@@ -183,7 +183,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 	clientHalf kbfscrypto.TLFCryptKeyClientHalf, index int, err error) {
 	c.log.CDebugf(ctx, "Decrypting TLF client key half with any key")
 	defer func() {
-		c.deferLog.CDebugf(ctx, "Decrypted TLF client key half with any key: %v",
+		c.deferLog.CDebugf(ctx, "Decrypted TLF client key half with any key: %+v",
 			err)
 	}()
 	if len(keys) == 0 {
