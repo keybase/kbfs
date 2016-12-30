@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"sync"
@@ -348,7 +347,7 @@ func RevokeDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config,
 func SwitchDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config, index int) {
 	name, uid, err := config.KBPKI().GetCurrentUserInfo(context.Background())
 	if err != nil {
-		t.Fatalf("Couldn't get UID: %v", err)
+		t.Fatalf("Couldn't get UID: %+v", err)
 	}
 
 	kbd, ok := config.KeybaseService().(*KeybaseDaemonLocal)
@@ -399,10 +398,10 @@ func AddNewAssertionForTest(
 	// idempotent call.
 	newSocialAssertion, ok := externals.NormalizeSocialAssertion(newAssertion)
 	if !ok {
-		return fmt.Errorf("%s couldn't be parsed as a social assertion", newAssertion)
+		return errors.Errorf("%s couldn't be parsed as a social assertion", newAssertion)
 	}
 	if err := md.addNewAssertionForTest(uid, newSocialAssertion); err != nil {
-		return fmt.Errorf("Couldn't update md server: %v", err)
+		return errors.Errorf("Couldn't update md server: %+v", err)
 	}
 	return nil
 }
@@ -430,7 +429,7 @@ func testRPCWithCanceledContext(t logger.TestLogBackend,
 
 	err := fn(ctx)
 	if errors.Cause(err) != context.Canceled {
-		t.Fatalf("Function did not return a canceled error: %v", err)
+		t.Fatalf("Function did not return a canceled error: %+v", err)
 	}
 }
 
@@ -569,7 +568,7 @@ func GetRootNodeOrBust(
 	config Config, name string, public bool) Node {
 	n, err := GetRootNodeForTest(ctx, config, name, public)
 	if err != nil {
-		t.Fatalf("Couldn't get root node for %s (public=%t): %v",
+		t.Fatalf("Couldn't get root node for %s (public=%t): %+v",
 			name, public, err)
 	}
 	return n
