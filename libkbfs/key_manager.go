@@ -215,7 +215,7 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 					kbfscrypto.CryptPublicKey{}, err
 			}
 			if err != nil {
-				km.log.CDebugf(ctx, "Got error for GetTLFCryptKeyParams(%d, %v, %v); skipping: %v", keyGen, uid, k, err)
+				km.log.CDebugf(ctx, "Got error for GetTLFCryptKeyParams(%d, %v, %v); skipping: %+v", keyGen, uid, k, err)
 				continue
 			}
 			if !found {
@@ -244,7 +244,7 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 		_, isDecryptError := cause.(libkb.DecryptionError)
 		_, isNoKeyError := cause.(libkb.NoSecretKeyError)
 		if isDecryptError || isNoKeyError {
-			km.log.CDebugf(ctx, "Got decryption error from service: %v", err)
+			km.log.CDebugf(ctx, "Got decryption error from service: %+v", err)
 			err = localMakeRekeyReadError()
 			return kbfscrypto.TLFCryptKeyClientHalf{},
 				TLFCryptKeyServerHalfID{},
@@ -435,7 +435,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	mdChanged bool, cryptKey *kbfscrypto.TLFCryptKey, err error) {
 	km.log.CDebugf(ctx, "Rekey %s (prompt for paper key: %t)",
 		md.TlfID(), promptPaper)
-	defer func() { km.deferLog.CDebugf(ctx, "Rekey %s done: %#v", md.TlfID(), err) }()
+	defer func() { km.deferLog.CDebugf(ctx, "Rekey %s done: %+v", md.TlfID(), err) }()
 
 	currKeyGen := md.LatestKeyGeneration()
 	if md.TlfID().IsPublic() != (currKeyGen == PublicKeyGen) {
