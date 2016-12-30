@@ -123,24 +123,28 @@ func (c *CryptoClient) SignToString(ctx context.Context, msg []byte) (
 	return signature, nil
 }
 
-func (c *CryptoClient) prepareTLFCryptKeyClientHalf(encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (
-	encryptedData keybase1.EncryptedBytes32, nonce keybase1.BoxNonce, err error) {
+func (c *CryptoClient) prepareTLFCryptKeyClientHalf(
+	encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (
+	encryptedData keybase1.EncryptedBytes32, nonce keybase1.BoxNonce,
+	err error) {
 	if encryptedClientHalf.Version != EncryptionSecretbox {
 		return keybase1.EncryptedBytes32{}, keybase1.BoxNonce{},
-			errors.WithStack(
-				UnknownEncryptionVer{encryptedClientHalf.Version})
+			errors.WithStack(UnknownEncryptionVer{
+				encryptedClientHalf.Version})
 	}
 
 	if len(encryptedClientHalf.EncryptedData) != len(encryptedData) {
 		return keybase1.EncryptedBytes32{}, keybase1.BoxNonce{},
-			errors.WithStack(libkb.DecryptionError{})
+			errors.Errorf("Expected %d bytes, got %d",
+				len(encryptedData),
+				len(encryptedClientHalf.EncryptedData))
 	}
 	copy(encryptedData[:], encryptedClientHalf.EncryptedData)
 
 	if len(encryptedClientHalf.Nonce) != len(nonce) {
 		return keybase1.EncryptedBytes32{}, keybase1.BoxNonce{},
-			errors.WithStack(
-				InvalidNonceError{encryptedClientHalf.Nonce})
+			errors.WithStack(InvalidNonceError{
+				encryptedClientHalf.Nonce})
 	}
 	copy(nonce[:], encryptedClientHalf.Nonce)
 	return encryptedData, nonce, nil
@@ -154,9 +158,11 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 	clientHalf kbfscrypto.TLFCryptKeyClientHalf, err error) {
 	c.log.CDebugf(ctx, "Decrypting TLF client key half")
 	defer func() {
-		c.deferLog.CDebugf(ctx, "Decrypted TLF client key half: %+v", err)
+		c.deferLog.CDebugf(ctx, "Decrypted TLF client key half: %+v",
+			err)
 	}()
-	encryptedData, nonce, err := c.prepareTLFCryptKeyClientHalf(encryptedClientHalf)
+	encryptedData, nonce, err := c.prepareTLFCryptKeyClientHalf(
+		encryptedClientHalf)
 	if err != nil {
 		return kbfscrypto.TLFCryptKeyClientHalf{}, err
 	}
@@ -183,20 +189,22 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 	clientHalf kbfscrypto.TLFCryptKeyClientHalf, index int, err error) {
 	c.log.CDebugf(ctx, "Decrypting TLF client key half with any key")
 	defer func() {
-		c.deferLog.CDebugf(ctx, "Decrypted TLF client key half with any key: %+v",
+		c.deferLog.CDebugf(ctx,
+			"Decrypted TLF client key half with any key: %+v",
 			err)
 	}()
 	if len(keys) == 0 {
-		return kbfscrypto.TLFCryptKeyClientHalf{}, -1, errors.WithStack(
-			NoKeysError{})
+		return kbfscrypto.TLFCryptKeyClientHalf{}, -1,
+			errors.WithStack(NoKeysError{})
 	}
 	bundles := make([]keybase1.CiphertextBundle, 0, len(keys))
-	errs := make([]error, 0, len(keys))
+	prepErrs := make([]error, 0, len(keys))
 	indexLookup := make([]int, 0, len(keys))
 	for i, k := range keys {
-		encryptedData, nonce, err := c.prepareTLFCryptKeyClientHalf(k.ClientHalf)
+		encryptedData, nonce, prepErr :=
+			c.prepareTLFCryptKeyClientHalf(k.ClientHalf)
 		if err != nil {
-			errs = append(errs, err)
+			prepErrs = append(prepErrs, prepErr)
 		} else {
 			bundles = append(bundles, keybase1.CiphertextBundle{
 				Kid:        k.PubKey.KID(),
@@ -208,7 +216,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 		}
 	}
 	if len(bundles) == 0 {
-		return kbfscrypto.TLFCryptKeyClientHalf{}, -1, errs[0]
+		return kbfscrypto.TLFCryptKeyClientHalf{}, -1, prepErrs[0]
 	}
 	timer := c.logAboutTooLongUnlessCancelled(ctx, "UnboxBytes32Any")
 	defer timer.Stop()

@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/keybase/client/go/libkb"
@@ -441,7 +442,10 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 	encryptedClientHalfWrongSize.EncryptedData = encryptedClientHalfWrongSize.EncryptedData[:len(encryptedClientHalfWrongSize.EncryptedData)-1]
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfWrongSize)
-	assert.Equal(t, libkb.DecryptionError{}, errors.Cause(err))
+	assert.EqualError(t, errors.Cause(err),
+		fmt.Sprintf("Expected %d bytes, got %d",
+			len(encryptedClientHalf.EncryptedData),
+			len(encryptedClientHalfWrongSize.EncryptedData)))
 
 	encryptedClientHalfWrongNonceSize := encryptedClientHalf
 	encryptedClientHalfWrongNonceSize.Nonce = encryptedClientHalfWrongNonceSize.Nonce[:len(encryptedClientHalfWrongNonceSize.Nonce)-1]
