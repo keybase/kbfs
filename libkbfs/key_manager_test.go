@@ -2006,6 +2006,7 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 }
 
 func TestKeyManager(t *testing.T) {
+	t.Parallel()
 	tests := []func(*testing.T, MetadataVer){
 		testKeyManagerPublicTLFCryptKey,
 		testKeyManagerCachedSecretKeyForEncryptionSuccess,
