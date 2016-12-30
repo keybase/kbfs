@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/keybase/client/go/libkb"
@@ -138,12 +137,12 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 		return nil
 
 	default:
-		return fmt.Errorf("Unknown call: %s %v %v", s, args, res)
+		return errors.Errorf("Unknown call: %s %v %v", s, args, res)
 	}
 }
 
 func (fc FakeCryptoClient) Notify(_ context.Context, s string, args interface{}) error {
-	return fmt.Errorf("Unknown notify: %s %v", s, args)
+	return errors.Errorf("Unknown notify: %s %v", s, args)
 }
 
 // Test that signing a message and then verifying it works.
@@ -157,14 +156,10 @@ func TestCryptoClientSignAndVerify(t *testing.T) {
 
 	msg := []byte("message")
 	sigInfo, err := c.Sign(context.Background(), msg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = kbfscrypto.Verify(msg, sigInfo)
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 }
 
 // Test that canceling a signing RPC returns the correct error
@@ -193,37 +188,25 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfBoxSeal(t *testing.T) {
 	c := newCryptoClientWithClient(codec, log, fc)
 
 	ephPublicKey, ephPrivateKey, err := c.MakeRandomTLFEphemeralKeys()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, _, cryptKey, err := c.MakeRandomTLFKeys()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
 	var nonce [24]byte
 	err = kbfscrypto.RandRead(nonce[:])
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	keypair, err := libkb.ImportKeypairFromKID(cryptPrivateKey.GetPublicKey().KID())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	dhKeyPair, ok := keypair.(libkb.NaclDHKeyPair)
-	if !ok {
-		t.Fatal(libkb.KeyCannotEncryptError{})
-	}
+	require.True(t, ok)
 
 	clientHalfData := clientHalf.Data()
 	ephPrivateKeyData := ephPrivateKey.Data()
@@ -238,13 +221,8 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfBoxSeal(t *testing.T) {
 
 	decryptedClientHalf, err := c.DecryptTLFCryptKeyClientHalf(
 		context.Background(), ephPublicKey, encryptedClientHalf)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if clientHalf != decryptedClientHalf {
-		t.Error("clientHalf != decryptedClientHalf")
-	}
+	require.NoError(t, err)
+	require.Equal(t, clientHalf, decryptClientHalf)
 }
 
 // Test that decrypting a TLF crypt key client half encrypted with the
@@ -258,42 +236,26 @@ func TestCryptoClientDecryptEncryptedTLFCryptKeyClientHalf(t *testing.T) {
 	c := newCryptoClientWithClient(codec, log, fc)
 
 	ephPublicKey, ephPrivateKey, err := c.MakeRandomTLFEphemeralKeys()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, _, cryptKey, err := c.MakeRandomTLFKeys()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
 	// See crypto_common_test.go for tests that this actually
 	// performs encryption.
 	encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if encryptedClientHalf.Version != EncryptionSecretbox {
-		t.Fatalf("Unexpected encryption version %d", encryptedClientHalf.Version)
-	}
+	require.NoError(t, err)
+	require.Equal(t, EncryptionSecretbox, encryptedClientHalf.Version)
 
 	decryptedClientHalf, err := c.DecryptTLFCryptKeyClientHalf(
 		context.Background(), ephPublicKey, encryptedClientHalf)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if clientHalf != decryptedClientHalf {
-		t.Error("clientHalf != decryptedClientHalf")
-	}
+	require.NoError(t, err)
+	require.Equal(t, clientHalf, decryptedClientHalf)
 }
 
 // Test that attempting to decrypt an empty set of client keys fails.
@@ -309,9 +271,7 @@ func TestCryptoClientDecryptEmptyEncryptedTLFCryptKeyClientHalfAny(t *testing.T)
 
 	_, _, err := c.DecryptTLFCryptKeyClientHalfAny(
 		context.Background(), keys, false)
-	if _, ok := err.(NoKeysError); !ok {
-		t.Fatalf("expected NoKeysError. Actual error: %v", err)
-	}
+	require.IsType(t, NoKeysError{}, errors.Cause(err))
 }
 
 // Test that when decrypting set of client keys, the first working one
@@ -329,32 +289,22 @@ func TestCryptoClientDecryptEncryptedTLFCryptKeyClientHalfAny(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		ephPublicKey, ephPrivateKey, err :=
 			c.MakeRandomTLFEphemeralKeys()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		_, _, cryptKey, err := c.MakeRandomTLFKeys()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
 		// See crypto_common_test.go for tests that this actually
 		// performs encryption.
 		encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if encryptedClientHalf.Version != EncryptionSecretbox {
-			t.Fatalf("Unexpected encryption version %d", encryptedClientHalf.Version)
-		}
+		require.NoError(t, err)
+		require.Equal(t, EncryptionSecretbox,
+			encryptedClientHalf.Version)
 		keys = append(keys, EncryptedTLFCryptKeyClientAndEphemeral{
 			PubKey:     cryptPrivateKey.GetPublicKey(),
 			ClientHalf: encryptedClientHalf,
@@ -365,17 +315,9 @@ func TestCryptoClientDecryptEncryptedTLFCryptKeyClientHalfAny(t *testing.T) {
 
 	decryptedClientHalf, index, err := c.DecryptTLFCryptKeyClientHalfAny(
 		context.Background(), keys, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if index != 0 {
-		t.Errorf("expected first key to work. Actual key index: %d", index)
-	}
-
-	if clientHalves[0] != decryptedClientHalf {
-		t.Error("clientHalf != decryptedClientHalf")
-	}
+	require.NoError(t, err)
+	require.Equal(t, clientHalves[0], decryptedClientHalf)
+	require.Equal(t, 0, index)
 }
 
 // Test various failure cases for DecryptTLFCryptKeyClientHalfAny and that
@@ -389,26 +331,18 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfAnyFailures(t *testing.T) {
 	c := newCryptoClientWithClient(codec, log, fc)
 
 	ephPublicKey, ephPrivateKey, err := c.MakeRandomTLFEphemeralKeys()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, _, cryptKey, err := c.MakeRandomTLFKeys()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
 	encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Wrong version.
 	encryptedClientHalfWrongVersion := encryptedClientHalf
@@ -463,13 +397,8 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfAnyFailures(t *testing.T) {
 
 	_, index, err := c.DecryptTLFCryptKeyClientHalfAny(
 		context.Background(), keys, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if index != len(keys)-1 {
-		t.Errorf("expected last key to work. Actual key index: %d", index)
-	}
+	require.NoError(t, err)
+	require.Equal(t, len(keys)-1, index)
 }
 
 // Test various failure cases for DecryptTLFCryptKeyClientHalf.
@@ -550,26 +479,18 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfCanceled(t *testing.T) {
 	c := newCryptoClientWithClient(codec, log, conn.GetClient())
 
 	ephPublicKey, ephPrivateKey, err := c.MakeRandomTLFEphemeralKeys()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, _, cryptKey, err := c.MakeRandomTLFKeys()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
 	encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	f := func(ctx context.Context) error {
 		_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
