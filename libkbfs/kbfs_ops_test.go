@@ -6,7 +6,6 @@ package libkbfs
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -21,6 +20,7 @@ import (
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -5558,7 +5558,7 @@ func TestKBFSOpsFailToReadUnverifiableBlock(t *testing.T) {
 	// Lookup the file, which should fail on block ID verification
 	kbfsOps2 := config2.KBFSOps()
 	_, _, err = kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if _, ok := err.(kbfshash.HashMismatchError); !ok {
+	if _, ok := errors.Cause(err).(kbfshash.HashMismatchError); !ok {
 		t.Fatalf("Could unexpectedly lookup the file: %v", err)
 	}
 }
