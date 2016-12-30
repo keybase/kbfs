@@ -237,6 +237,7 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 				kbfscrypto.CryptPublicKey{},
 				localMakeRekeyReadError(err)
 		}
+		km.log.CDebugf(ctx, "Trying to decrypt with keys = %#v", keys)
 		var index int
 		clientHalf, index, err = crypto.DecryptTLFCryptKeyClientHalfAny(ctx,
 			keys, flags&getTLFCryptKeyPromptPaper != 0)
