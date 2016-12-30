@@ -40,7 +40,9 @@ func runTestOverMetadataVers(
 	t *testing.T, f func(t *testing.T, ver MetadataVer)) {
 	for _, ver := range testMetadataVers {
 		ver := ver // capture range variable.
+		t.Logf("Running ver %s", ver)
 		t.Run(ver.String(), func(t *testing.T) {
+			t.Logf("Inside running ver %s", ver)
 			t.Parallel()
 			f(t, ver)
 		})
@@ -72,7 +74,9 @@ func runTestsOverMetadataVers(t *testing.T, prefix string,
 			i = 0
 		}
 		name = name[i:]
+		t.Logf("Running %s", name)
 		t.Run(name, func(t *testing.T) {
+			t.Logf("Inside running %s", name)
 			t.Parallel()
 			runTestOverMetadataVers(t, f)
 		})
