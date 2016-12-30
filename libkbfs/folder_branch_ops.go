@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -4376,7 +4375,7 @@ func (fbo *folderBranchOps) UnstageForTesting(
 // mdWriterLock must be taken by the caller.
 func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 	lState *lockState, promptPaper bool) (err error) {
-	fbo.log.CDebugf(ctx, "rekeyLocked: %s", debug.Stack())
+	fbo.log.CDebugf(ctx, "rekeyLocked")
 	defer func() {
 		fbo.deferLog.CDebugf(ctx, "rekeyLocked done: %+v", err)
 	}()
@@ -4572,8 +4571,6 @@ func (fbo *folderBranchOps) Rekey(ctx context.Context, tlf tlf.ID) (err error) {
 	if fb != fbo.folderBranch {
 		return WrongOpsError{fbo.folderBranch, fb}
 	}
-
-	fbo.log.CDebugf(ctx, "Rekey %s", debug.Stack())
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
