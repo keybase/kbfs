@@ -1680,6 +1680,8 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
+	t.Log("Doing first rekey")
+
 	// The new device should be unable to rekey on its own, and will
 	// just set the rekey bit.
 	kbfsOps2Dev2 := config2Dev2.KBFSOps()
@@ -1690,6 +1692,8 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 
 	ops := getOps(config2Dev2, rootNode1.GetFolderBranch().Tlf)
 	rev1 := ops.head.Revision()
+
+	t.Log("Doing second rekey")
 
 	// Do it again, to simulate the mdserver sending back this node's
 	// own rekey request.  This shouldn't increase the MD version.
@@ -1803,6 +1807,8 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 	clock.Add(1 * time.Minute)
 	RevokeDeviceForLocalUserOrBust(t, config2Dev2, uid1, 0)
 
+	t.Log("Doing first rekey")
+
 	// The new device should be unable to rekey on its own, and will
 	// just set the rekey bit.
 	kbfsOps2Dev2 := config2Dev2.KBFSOps()
@@ -1813,6 +1819,8 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 
 	ops := getOps(config2Dev2, rootNode1.GetFolderBranch().Tlf)
 	rev1 := ops.head.Revision()
+
+	t.Log("Doing second rekey")
 
 	// Do it again, to simulate the mdserver sending back this node's
 	// own rekey request.  This shouldn't increase the MD version.
@@ -1835,7 +1843,9 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 	ops.rekeyWithPromptTimer.Stop()
 	ops.rekeyWithPromptTimer = nil
 
-	// Try again, which should reset the timer (and so the Reser below
+	t.Log("Doing third rekey")
+
+	// Try again, which should reset the timer (and so the Reset below
 	// will be on a non-nil timer).
 	err = kbfsOps2Dev2.Rekey(ctx, rootNode1.GetFolderBranch().Tlf)
 	if err != nil {
