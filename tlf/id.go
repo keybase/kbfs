@@ -107,7 +107,7 @@ func ParseID(s string) (ID, error) {
 	var id ID
 	err = id.UnmarshalBinary(bytes)
 	if err != nil {
-		return NullID, errors.WithStack(InvalidIDError{s})
+		return NullID, err
 	}
 	return id, nil
 }
