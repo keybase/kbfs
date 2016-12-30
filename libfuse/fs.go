@@ -230,6 +230,10 @@ func (*Root) Access(ctx context.Context, r *fuse.AccessRequest) error {
 		return fuse.EPERM
 	}
 
+	if r.Mask&02 != 0 {
+		return fuse.EPERM
+	}
+
 	return nil
 }
 

@@ -130,25 +130,29 @@ func (f *File) Access(ctx context.Context, r *fuse.AccessRequest) error {
 		return nil
 	}
 
-	ei, err := f.folder.fs.config.KBFSOps().Stat(ctx, f.node)
-	if err != nil {
-		if isNoSuchNameError(err) {
-			return fuse.ESTALE
-		}
-		return err
-	}
-	if r.Mask&01 != 0 && ei.Type != libkbfs.Exec {
-		return fuse.EPERM
-	}
-	if r.Mask&02 != 0 {
-		wp, err := f.folder.writePermMode(ctx, &ei, 0)
+	if r.Mask&01 != 0 {
+		ei, err := f.folder.fs.config.KBFSOps().Stat(ctx, f.node)
 		if err != nil {
+			if isNoSuchNameError(err) {
+				return fuse.ESTALE
+			}
 			return err
 		}
-		if wp&0200 == 0 {
+		if ei.Type != libkbfs.Exec {
 			return fuse.EPERM
 		}
 	}
+
+	if r.Mask&02 != 0 {
+		iw, err := f.folder.isWriter(ctx)
+		if err != nil {
+			return err
+		}
+		if !iw {
+			return fuse.EPERM
+		}
+	}
+
 	return nil
 }
 

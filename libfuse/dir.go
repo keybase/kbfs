@@ -335,8 +335,7 @@ func (f *Folder) tlfHandleChangeInvalidate(ctx context.Context,
 	}
 }
 
-func (f *Folder) isWriter(
-	ctx context.Context, ei *libkbfs.EntryInfo) (bool, error) {
+func (f *Folder) isWriter(ctx context.Context) (bool, error) {
 	_, uid, err := libkbfs.GetCurrentUserInfoIfPossible(
 		ctx, f.fs.config.KBPKI(), f.list.public)
 	// We are using GetCurrentUserInfoIfPossible here so err is only non-nil if
@@ -351,10 +350,10 @@ func (f *Folder) isWriter(
 }
 
 func (f *Folder) writePermMode(ctx context.Context,
-	ei *libkbfs.EntryInfo, original os.FileMode) (os.FileMode, error) {
+	original os.FileMode) (os.FileMode, error) {
 	original &^= os.FileMode(0222) // clear write perm bits
 
-	isWriter, err := f.isWriter(ctx, ei)
+	isWriter, err := f.isWriter(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -378,8 +377,31 @@ func (f *Folder) fillAttrWithUIDAndWritePerm(
 
 	a.Uid = uint32(os.Getuid())
 
-	if a.Mode, err = f.writePermMode(ctx, ei, a.Mode); err != nil {
+	if a.Mode, err = f.writePermMode(ctx, a.Mode); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (f *Folder) access(ctx context.Context, r *fuse.AccessRequest) error {
+	if int(r.Uid) != os.Getuid() {
+		// short path: not accessible by anybody other than the logged in user.
+		// This is in case we enable AllowOther in the future.
+		return fuse.EPERM
+	}
+
+	if r.Mask&02 == 0 {
+		// For directory, we only check for the w bit.
+		return nil
+	}
+
+	iw, err := f.isWriter(ctx)
+	if err != nil {
+		return nil
+	}
+	if !iw {
+		return fuse.EPERM
 	}
 
 	return nil
@@ -425,33 +447,7 @@ var _ DirInterface = (*Dir)(nil)
 // Access implements the fs.NodeAccesser interface for File. See comment for
 // File.Access for more details.
 func (d *Dir) Access(ctx context.Context, r *fuse.AccessRequest) error {
-	if int(r.Uid) != os.Getuid() {
-		// short path: not accessible by anybody other than the logged in user.
-		// This is in case we enable AllowOther in the future.
-		return fuse.EPERM
-	}
-
-	if r.Mask&02 == 0 {
-		// For directory, we only check for the w bit, we can return nil early
-		// here.
-		return nil
-	}
-
-	ei, err := d.folder.fs.config.KBFSOps().Stat(ctx, d.node)
-	if err != nil {
-		if isNoSuchNameError(err) {
-			return fuse.ESTALE
-		}
-		return err
-	}
-	wp, err := d.folder.writePermMode(ctx, &ei, 0)
-	if err != nil {
-		return err
-	}
-	if wp&0200 == 0 {
-		return fuse.EPERM
-	}
-	return nil
+	return d.folder.access(ctx, r)
 }
 
 // Attr implements the fs.Node interface for Dir.
