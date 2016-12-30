@@ -5,8 +5,6 @@
 package libkbfs
 
 import (
-	"fmt"
-
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -190,8 +188,9 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 	cryptPublicKey kbfscrypto.CryptPublicKey, err error) {
 	kbpki := km.config.KBPKI()
 	crypto := km.config.Crypto()
-	localMakeRekeyReadError := func() error {
-		return makeRekeyReadError(ctx, km.config, kmd, keyGen, uid, username)
+	localMakeRekeyReadError := func(err error) error {
+		return makeRekeyReadError(ctx, err, kbpki,
+			kmd, keyGen, uid, username)
 	}
 
 	if flags&getTLFCryptKeyAnyDevice != 0 {
@@ -232,10 +231,11 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 			publicKeyLookup = append(publicKeyLookup, i)
 		}
 		if len(keys) == 0 {
-			err = localMakeRekeyReadError()
+			err := errors.New("no valid public keys found")
 			return kbfscrypto.TLFCryptKeyClientHalf{},
 				TLFCryptKeyServerHalfID{},
-				kbfscrypto.CryptPublicKey{}, err
+				kbfscrypto.CryptPublicKey{},
+				localMakeRekeyReadError(err)
 		}
 		var index int
 		clientHalf, index, err = crypto.DecryptTLFCryptKeyClientHalfAny(ctx,
@@ -245,10 +245,10 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 		_, isNoKeyError := cause.(libkb.NoSecretKeyError)
 		if isDecryptError || isNoKeyError {
 			km.log.CDebugf(ctx, "Got decryption error from service: %+v", err)
-			err = localMakeRekeyReadError()
 			return kbfscrypto.TLFCryptKeyClientHalf{},
 				TLFCryptKeyServerHalfID{},
-				kbfscrypto.CryptPublicKey{}, err
+				kbfscrypto.CryptPublicKey{},
+				localMakeRekeyReadError(err)
 		} else if err != nil {
 			return kbfscrypto.TLFCryptKeyClientHalf{},
 				TLFCryptKeyServerHalfID{},
@@ -276,10 +276,10 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 				TLFCryptKeyServerHalfID{},
 				kbfscrypto.CryptPublicKey{}, err
 		} else if !found {
-			err = localMakeRekeyReadError()
 			return kbfscrypto.TLFCryptKeyClientHalf{},
 				TLFCryptKeyServerHalfID{},
-				kbfscrypto.CryptPublicKey{}, err
+				kbfscrypto.CryptPublicKey{},
+				localMakeRekeyReadError(err)
 		}
 
 		clientHalf, err = crypto.DecryptTLFCryptKeyClientHalf(
@@ -439,13 +439,13 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 	currKeyGen := md.LatestKeyGeneration()
 	if md.TlfID().IsPublic() != (currKeyGen == PublicKeyGen) {
-		return false, nil, fmt.Errorf(
+		return false, nil, errors.Errorf(
 			"ID %v has isPublic=%t but currKeyGen is %d (isPublic=%t)",
 			md.TlfID(), md.TlfID().IsPublic(), currKeyGen, currKeyGen == PublicKeyGen)
 	}
 
 	if promptPaper && md.TlfID().IsPublic() {
-		return false, nil, fmt.Errorf("promptPaper set for public TLF %v", md.TlfID())
+		return false, nil, errors.Errorf("promptPaper set for public TLF %v", md.TlfID())
 	}
 
 	handle := md.GetTlfHandle()
