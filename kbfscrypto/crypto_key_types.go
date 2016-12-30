@@ -337,6 +337,19 @@ func MakeTLFCryptKeyServerHalf(data [32]byte) TLFCryptKeyServerHalf {
 	return TLFCryptKeyServerHalf{publicByte32Container{data}}
 }
 
+// MakeRandomTLFCryptKeyServerHalf generates the server-side of a
+// top-level folder crypt key.
+func MakeRandomTLFCryptKeyServerHalf() (
+	serverHalf TLFCryptKeyServerHalf, err error) {
+	var data [32]byte
+	err = RandRead(data[:])
+	if err != nil {
+		return TLFCryptKeyServerHalf{}, err
+	}
+	serverHalf = MakeTLFCryptKeyServerHalf(data)
+	return serverHalf, nil
+}
+
 // TLFCryptKeyClientHalf (t_u^{f,k,i} for a user u, a folder f, a key
 // generation k, and a device i) is the masked, client-side half of a
 // TLFCryptKey, which can be recovered only with both halves. (See

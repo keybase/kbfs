@@ -300,7 +300,8 @@ func TestRandomBlockCryptKeyServerHalf(t *testing.T) {
 // the server half and the key, and that UnmaskTLFCryptKey() undoes
 // the masking properly.
 func TestMaskUnmaskTLFCryptKey(t *testing.T) {
-	serverHalf := MakeTLFCryptKeyServerHalf([32]byte{0x1, 0x2, 0x3})
+	serverHalf, err := MakeRandomTLFCryptKeyServerHalf()
+	require.NoError(t, err)
 	cryptKey := MakeTLFCryptKey([32]byte{0x4, 0x5, 0x6})
 
 	clientHalf := MaskTLFCryptKey(serverHalf, cryptKey)
@@ -314,7 +315,8 @@ func TestMaskUnmaskTLFCryptKey(t *testing.T) {
 // Test that UnmaskBlockCryptKey() returns bytes that are different from
 // the server half and the key.
 func TestUnmaskTLFCryptKey(t *testing.T) {
-	serverHalf := MakeBlockCryptKeyServerHalf([32]byte{0x1, 0x2, 0x3})
+	serverHalf, err := MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
 	cryptKey := MakeTLFCryptKey([32]byte{0x4, 0x5, 0x6})
 
 	key := UnmaskBlockCryptKey(serverHalf, cryptKey)

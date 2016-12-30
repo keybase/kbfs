@@ -184,13 +184,7 @@ func (c CryptoCommon) MakeRandomTLFKeys() (kbfscrypto.TLFPublicKey,
 // CryptoCommon.
 func (c CryptoCommon) MakeRandomTLFCryptKeyServerHalf() (
 	serverHalf kbfscrypto.TLFCryptKeyServerHalf, err error) {
-	var data [32]byte
-	err = kbfscrypto.RandRead(data[:])
-	if err != nil {
-		return kbfscrypto.TLFCryptKeyServerHalf{}, err
-	}
-	serverHalf = kbfscrypto.MakeTLFCryptKeyServerHalf(data)
-	return serverHalf, nil
+	return kbfscrypto.MakeRandomTLFCryptKeyServerHalf()
 }
 
 // EncryptTLFCryptKeyClientHalf implements the Crypto interface for
