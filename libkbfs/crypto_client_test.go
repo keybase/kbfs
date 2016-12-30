@@ -14,6 +14,8 @@ import (
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/net/context"
 )
@@ -510,9 +512,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 	ctx := context.Background()
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfWrongVersion)
-	if err != expectedErr {
-		t.Errorf("Expected %v, got %v", expectedErr, err)
-	}
+	assert.Equal(t, expectedErr, errors.Cause(err))
 
 	// Wrong sizes.
 
@@ -521,18 +521,14 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 	expectedErr = libkb.DecryptionError{}
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfWrongSize)
-	if err != expectedErr {
-		t.Errorf("Expected %v, got %v", expectedErr, err)
-	}
+	assert.Equal(t, expectedErr, errors.Cause(err))
 
 	encryptedClientHalfWrongNonceSize := encryptedClientHalf
 	encryptedClientHalfWrongNonceSize.Nonce = encryptedClientHalfWrongNonceSize.Nonce[:len(encryptedClientHalfWrongNonceSize.Nonce)-1]
 	expectedErr = InvalidNonceError{encryptedClientHalfWrongNonceSize.Nonce}
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfWrongNonceSize)
-	if err.Error() != expectedErr.Error() {
-		t.Errorf("Expected %v, got %v", expectedErr, err)
-	}
+	assert.Equal(t, expectedErr, errors.Cause(err))
 
 	// Corrupt key.
 
@@ -543,9 +539,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 	expectedErr = libkb.DecryptionError{}
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKeyCorrupt,
 		encryptedClientHalf)
-	if err != expectedErr {
-		t.Errorf("Expected %v, got %v", expectedErr, err)
-	}
+	assert.Equal(t, expectedErr, errors.Cause(err))
 
 	// Corrupt data.
 
@@ -554,9 +548,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 	expectedErr = libkb.DecryptionError{}
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfCorruptData)
-	if err != expectedErr {
-		t.Errorf("Expected %v, got %v", expectedErr, err)
-	}
+	assert.Equal(t, expectedErr, errors.Cause(err))
 }
 
 // Test that canceling a signing RPC returns the correct error

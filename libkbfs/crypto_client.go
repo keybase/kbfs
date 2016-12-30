@@ -12,6 +12,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -129,7 +130,7 @@ func (c *CryptoClient) prepareTLFCryptKeyClientHalf(encryptedClientHalf Encrypte
 	}
 
 	if len(encryptedClientHalf.EncryptedData) != len(encryptedData) {
-		err = libkb.DecryptionError{}
+		err = errors.WithStack(libkb.DecryptionError{})
 		return
 	}
 	copy(encryptedData[:], encryptedClientHalf.EncryptedData)

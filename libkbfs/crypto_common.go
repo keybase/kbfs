@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"errors"
 	"io"
 
 	"github.com/keybase/client/go/libkb"
@@ -18,6 +17,7 @@ import (
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/secretbox"
 )
@@ -277,7 +277,7 @@ func (c CryptoCommon) decryptData(encryptedData encryptedData, key [32]byte) ([]
 
 	decryptedData, ok := secretbox.Open(nil, encryptedData.EncryptedData, &nonce, &key)
 	if !ok {
-		return nil, libkb.DecryptionError{}
+		return nil, errors.WithStack(libkb.DecryptionError{})
 	}
 
 	return decryptedData, nil
@@ -480,7 +480,7 @@ func (c CryptoCommon) DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf,
 	privKeyData := privKey.Data()
 	leafBytes, ok := box.Open(nil, encryptedLeaf.EncryptedData[:], nonce, &pubKeyData, &privKeyData)
 	if !ok {
-		return nil, libkb.DecryptionError{}
+		return nil, errors.WithStack(libkb.DecryptionError{})
 	}
 	// decode the leaf
 	var leaf MerkleLeaf

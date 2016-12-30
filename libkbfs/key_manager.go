@@ -12,6 +12,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -239,8 +240,9 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 		var index int
 		clientHalf, index, err = crypto.DecryptTLFCryptKeyClientHalfAny(ctx,
 			keys, flags&getTLFCryptKeyPromptPaper != 0)
-		_, isDecryptError := err.(libkb.DecryptionError)
-		_, isNoKeyError := err.(libkb.NoSecretKeyError)
+		cause := errors.Cause(err)
+		_, isDecryptError := cause.(libkb.DecryptionError)
+		_, isNoKeyError := cause.(libkb.NoSecretKeyError)
 		if isDecryptError || isNoKeyError {
 			km.log.CDebugf(ctx, "Got decryption error from service: %v", err)
 			err = localMakeRekeyReadError()

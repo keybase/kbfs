@@ -8,6 +8,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/net/context"
 )
@@ -46,7 +47,7 @@ func (c CryptoLocal) prepareTLFCryptKeyClientHalf(
 	// This check isn't strictly needed, but parallels the
 	// implementation in CryptoClient.
 	if len(encryptedClientHalf.EncryptedData) != len(clientHalf.Data())+box.Overhead {
-		err = libkb.DecryptionError{}
+		err = errors.WithStack(libkb.DecryptionError{})
 		return
 	}
 
@@ -74,12 +75,12 @@ func (c CryptoLocal) DecryptTLFCryptKeyClientHalf(ctx context.Context,
 	decryptedData, ok := box.Open(nil, encryptedClientHalf.EncryptedData,
 		&nonce, &publicKeyData, &privateKeyData)
 	if !ok {
-		err = libkb.DecryptionError{}
+		err = errors.WithStack(libkb.DecryptionError{})
 		return
 	}
 
 	if len(decryptedData) != len(clientHalf.Data()) {
-		err = libkb.DecryptionError{}
+		err = errors.WithStack(libkb.DecryptionError{})
 		return
 	}
 
@@ -113,7 +114,7 @@ func (c CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 				clientHalfData), i, nil
 		}
 	}
-	err = libkb.DecryptionError{}
+	err = errors.WithStack(libkb.DecryptionError{})
 	return
 }
 

@@ -16,6 +16,8 @@ import (
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 // Test (very superficially) that MakeTemporaryBlockID() returns non-zero
@@ -592,9 +594,7 @@ func checkDecryptionFailures(
 	keyCorrupt := corruptKeyFn(key)
 	expectedErr = libkb.DecryptionError{}
 	err = decryptFn(encryptedData, keyCorrupt)
-	if err != expectedErr {
-		t.Errorf("Expected %v, got %v", expectedErr, err)
-	}
+	assert.Equal(t, expectedErr, errors.Cause(err))
 
 	// Corrupt data.
 
@@ -602,9 +602,7 @@ func checkDecryptionFailures(
 	encryptedDataCorruptData.EncryptedData[0] = ^encryptedDataCorruptData.EncryptedData[0]
 	expectedErr = libkb.DecryptionError{}
 	err = decryptFn(encryptedDataCorruptData, key)
-	if err != expectedErr {
-		t.Errorf("Expected %v, got %v", expectedErr, err)
-	}
+	assert.Equal(t, expectedErr, errors.Cause(err))
 }
 
 // Test various failure cases for crypto.DecryptPrivateMetadata().
