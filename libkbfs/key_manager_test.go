@@ -1913,6 +1913,8 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
+	t.Log("Doing first rekey")
+
 	// The new device should be unable to rekey on its own, and will
 	// just set the rekey bit.
 	kbfsOps2Dev2 := config2Dev2.KBFSOps()
@@ -1927,6 +1929,8 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	if !ops.head.IsRekeySet() {
 		t.Fatalf("Couldn't set rekey bit")
 	}
+
+	t.Log("Switching crypto")
 
 	// Allow the prompt rekey attempt to fail by using dev2's crypto
 	// (which still isn't keyed for)
