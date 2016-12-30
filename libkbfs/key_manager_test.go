@@ -1886,7 +1886,6 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 }
 
 func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver MetadataVer) {
-	t.Log("Am in PromptViaFolderAccess")
 	var u1, u2 libkb.NormalizedUsername = "u1", "u2"
 	config1, _, ctx, cancel := kbfsOpsConcurInit(t, u1, u2)
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
