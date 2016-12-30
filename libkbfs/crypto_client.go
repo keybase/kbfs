@@ -208,8 +208,7 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 		}
 	}
 	if len(bundles) == 0 {
-		return kbfscrypto.TLFCryptKeyClientHalf{}, -1, errors.WithStack(
-			errs[0])
+		return kbfscrypto.TLFCryptKeyClientHalf{}, -1, errs[0]
 	}
 	timer := c.logAboutTooLongUnlessCancelled(ctx, "UnboxBytes32Any")
 	defer timer.Stop()
@@ -219,8 +218,8 @@ func (c *CryptoClient) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 		PromptPaper: promptPaper,
 	})
 	if err != nil {
-		return kbfscrypto.TLFCryptKeyClientHalf{}, -1, errors.WithStack(
-			err)
+		return kbfscrypto.TLFCryptKeyClientHalf{}, -1,
+			errors.WithStack(err)
 	}
 	return kbfscrypto.MakeTLFCryptKeyClientHalf(res.Plaintext),
 		indexLookup[res.Index], nil
