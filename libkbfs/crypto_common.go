@@ -146,7 +146,8 @@ func (c CryptoCommon) MakeRandomTLFEphemeralKeys() (
 	keyPair, err := libkb.GenerateNaclDHKeyPair()
 	if err != nil {
 		return kbfscrypto.TLFEphemeralPublicKey{},
-			kbfscrypto.TLFEphemeralPrivateKey{}, err
+			kbfscrypto.TLFEphemeralPrivateKey{},
+			errors.WithStack(err)
 	}
 
 	ePubKey := kbfscrypto.MakeTLFEphemeralPublicKey(keyPair.Public)
@@ -161,7 +162,7 @@ func (c CryptoCommon) MakeRandomTLFKeys() (kbfscrypto.TLFPublicKey,
 	publicKey, privateKey, err := box.GenerateKey(rand.Reader)
 	if err != nil {
 		return kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
-			kbfscrypto.TLFCryptKey{}, err
+			kbfscrypto.TLFCryptKey{}, errors.WithStack(err)
 	}
 
 	pubKey := kbfscrypto.MakeTLFPublicKey(*publicKey)
@@ -207,27 +208,26 @@ func (c CryptoCommon) EncryptTLFCryptKeyClientHalf(
 
 	keypair, err := libkb.ImportKeypairFromKID(publicKey.KID())
 	if err != nil {
-		return
+		return EncryptedTLFCryptKeyClientHalf{}, errors.WithStack(err)
 	}
 
 	dhKeyPair, ok := keypair.(libkb.NaclDHKeyPair)
 	if !ok {
-		err = libkb.KeyCannotEncryptError{}
-		return
+		return EncryptedTLFCryptKeyClientHalf{}, errors.WithStack(
+			libkb.KeyCannotEncryptError{})
 	}
 
 	clientHalfData := clientHalf.Data()
 	privateKeyData := privateKey.Data()
 	encryptedBytes := box.Seal(nil, clientHalfData[:], &nonce, (*[32]byte)(&dhKeyPair.Public), &privateKeyData)
 
-	encryptedClientHalf = EncryptedTLFCryptKeyClientHalf{
+	return EncryptedTLFCryptKeyClientHalf{
 		encryptedData{
 			Version:       EncryptionSecretbox,
 			Nonce:         nonce[:],
 			EncryptedData: encryptedBytes,
 		},
-	}
-	return
+	}, nil
 }
 
 func (c CryptoCommon) encryptData(data []byte, key [32]byte) (encryptedData, error) {
@@ -266,12 +266,14 @@ func (c CryptoCommon) EncryptPrivateMetadata(
 
 func (c CryptoCommon) decryptData(encryptedData encryptedData, key [32]byte) ([]byte, error) {
 	if encryptedData.Version != EncryptionSecretbox {
-		return nil, UnknownEncryptionVer{encryptedData.Version}
+		return nil, errors.WithStack(
+			UnknownEncryptionVer{encryptedData.Version})
 	}
 
 	var nonce [24]byte
 	if len(encryptedData.Nonce) != len(nonce) {
-		return nil, InvalidNonceError{encryptedData.Nonce}
+		return nil, errors.WithStack(
+			InvalidNonceError{encryptedData.Nonce})
 	}
 	copy(nonce[:], encryptedData.Nonce)
 
@@ -337,7 +339,7 @@ func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
 
 	// first 4 bytes contain the length of the block data
 	if err := binary.Write(buf, binary.LittleEndian, blockLen); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	// followed by the actual block data
@@ -346,10 +348,11 @@ func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
 	// followed by random data
 	n, err := io.CopyN(buf, rand.Reader, padLen)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	if n != padLen {
-		return nil, kbfscrypto.UnexpectedShortCryptoRandRead{}
+		return nil, errors.WithStack(
+			kbfscrypto.UnexpectedShortCryptoRandRead{})
 	}
 
 	return buf.Bytes(), nil
@@ -361,12 +364,13 @@ func (c CryptoCommon) depadBlock(paddedBlock []byte) ([]byte, error) {
 
 	var blockLen uint32
 	if err := binary.Read(buf, binary.LittleEndian, &blockLen); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	blockEndPos := int(blockLen + padPrefixSize)
 
 	if len(paddedBlock) < blockEndPos {
-		return nil, PaddedBlockReadError{ActualLen: len(paddedBlock), ExpectedLen: blockEndPos}
+		return nil, errors.WithStack(
+			PaddedBlockReadError{ActualLen: len(paddedBlock), ExpectedLen: blockEndPos})
 	}
 	return buf.Next(int(blockLen)), nil
 }
@@ -474,7 +478,8 @@ func (c CryptoCommon) DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf,
 	privKey kbfscrypto.TLFPrivateKey, nonce *[24]byte,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey) (*MerkleLeaf, error) {
 	if encryptedLeaf.Version != EncryptionSecretbox {
-		return nil, UnknownEncryptionVer{encryptedLeaf.Version}
+		return nil, errors.WithStack(
+			UnknownEncryptionVer{encryptedLeaf.Version})
 	}
 	pubKeyData := ePubKey.Data()
 	privKeyData := privKey.Data()

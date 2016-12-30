@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/net/context"
 )
@@ -481,54 +482,45 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 	c := newCryptoClientWithClient(codec, log, fc)
 
 	ephPublicKey, ephPrivateKey, err := c.MakeRandomTLFEphemeralKeys()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, _, cryptKey, err := c.MakeRandomTLFKeys()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
 	encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var expectedErr error
+	require.NoError(t, err)
 
 	// Wrong version.
 
 	encryptedClientHalfWrongVersion := encryptedClientHalf
 	encryptedClientHalfWrongVersion.Version++
-	expectedErr = UnknownEncryptionVer{encryptedClientHalfWrongVersion.Version}
 	ctx := context.Background()
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfWrongVersion)
-	assert.Equal(t, expectedErr, errors.Cause(err))
+	assert.Equal(t,
+		UnknownEncryptionVer{encryptedClientHalfWrongVersion.Version},
+		errors.Cause(err))
 
 	// Wrong sizes.
 
 	encryptedClientHalfWrongSize := encryptedClientHalf
 	encryptedClientHalfWrongSize.EncryptedData = encryptedClientHalfWrongSize.EncryptedData[:len(encryptedClientHalfWrongSize.EncryptedData)-1]
-	expectedErr = libkb.DecryptionError{}
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfWrongSize)
-	assert.Equal(t, expectedErr, errors.Cause(err))
+	assert.Equal(t, libkb.DecryptionError{}, errors.Cause(err))
 
 	encryptedClientHalfWrongNonceSize := encryptedClientHalf
 	encryptedClientHalfWrongNonceSize.Nonce = encryptedClientHalfWrongNonceSize.Nonce[:len(encryptedClientHalfWrongNonceSize.Nonce)-1]
-	expectedErr = InvalidNonceError{encryptedClientHalfWrongNonceSize.Nonce}
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfWrongNonceSize)
-	assert.Equal(t, expectedErr, errors.Cause(err))
+	assert.Equal(t,
+		InvalidNonceError{encryptedClientHalfWrongNonceSize.Nonce},
+		errors.Cause(err))
 
 	// Corrupt key.
 
@@ -536,19 +528,17 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 	ephPublicKeyCorruptData[0] = ^ephPublicKeyCorruptData[0]
 	ephPublicKeyCorrupt := kbfscrypto.MakeTLFEphemeralPublicKey(
 		ephPublicKeyCorruptData)
-	expectedErr = libkb.DecryptionError{}
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKeyCorrupt,
 		encryptedClientHalf)
-	assert.Equal(t, expectedErr, errors.Cause(err))
+	assert.Equal(t, libkb.DecryptionError{}, errors.Cause(err))
 
 	// Corrupt data.
 
 	encryptedClientHalfCorruptData := encryptedClientHalf
 	encryptedClientHalfCorruptData.EncryptedData[0] = ^encryptedClientHalfCorruptData.EncryptedData[0]
-	expectedErr = libkb.DecryptionError{}
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfCorruptData)
-	assert.Equal(t, expectedErr, errors.Cause(err))
+	assert.Equal(t, libkb.DecryptionError{}, errors.Cause(err))
 }
 
 // Test that canceling a signing RPC returns the correct error

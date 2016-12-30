@@ -490,42 +490,37 @@ func checkDecryptionFailures(
 	t *testing.T, encryptedData encryptedData, key interface{},
 	decryptFn func(encryptedData encryptedData, key interface{}) error,
 	corruptKeyFn func(interface{}) interface{}) {
-	var err, expectedErr error
 
 	// Wrong version.
 
 	encryptedDataWrongVersion := encryptedData
 	encryptedDataWrongVersion.Version++
-	expectedErr = UnknownEncryptionVer{encryptedDataWrongVersion.Version}
-	err = decryptFn(encryptedDataWrongVersion, key)
-	if err != expectedErr {
-		t.Errorf("Expected %v, got %v", expectedErr, err)
-	}
+	err := decryptFn(encryptedDataWrongVersion, key)
+	assert.Equal(t,
+		UnknownEncryptionVer{encryptedDataWrongVersion.Version},
+		errors.Cause(err))
 
 	// Wrong nonce size.
 
 	encryptedDataWrongNonceSize := encryptedData
 	encryptedDataWrongNonceSize.Nonce = encryptedDataWrongNonceSize.Nonce[:len(encryptedDataWrongNonceSize.Nonce)-1]
-	expectedErr = InvalidNonceError{encryptedDataWrongNonceSize.Nonce}
 	err = decryptFn(encryptedDataWrongNonceSize, key)
-	if err.Error() != expectedErr.Error() {
-		t.Errorf("Expected %v, got %v", expectedErr, err)
-	}
+	assert.Equal(t,
+		InvalidNonceError{encryptedDataWrongNonceSize.Nonce},
+		errors.Cause(err))
 
 	// Corrupt key.
 
 	keyCorrupt := corruptKeyFn(key)
-	expectedErr = libkb.DecryptionError{}
 	err = decryptFn(encryptedData, keyCorrupt)
-	assert.Equal(t, expectedErr, errors.Cause(err))
+	assert.Equal(t, libkb.DecryptionError{}, errors.Cause(err))
 
 	// Corrupt data.
 
 	encryptedDataCorruptData := encryptedData
 	encryptedDataCorruptData.EncryptedData[0] = ^encryptedDataCorruptData.EncryptedData[0]
-	expectedErr = libkb.DecryptionError{}
 	err = decryptFn(encryptedDataCorruptData, key)
-	assert.Equal(t, expectedErr, errors.Cause(err))
+	assert.Equal(t, libkb.DecryptionError{}, errors.Cause(err))
 }
 
 // Test various failure cases for crypto.DecryptPrivateMetadata().
