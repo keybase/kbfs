@@ -4540,7 +4540,6 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 }
 
 func (fbo *folderBranchOps) rekeyWithPrompt() {
-	var err error
 	ctx := ctxWithRandomIDReplayable(
 		context.Background(), CtxRekeyIDKey, CtxRekeyOpID, fbo.log)
 	// Only give the user limited time to enter their paper key, so we
@@ -4548,6 +4547,7 @@ func (fbo *folderBranchOps) rekeyWithPrompt() {
 	d := fbo.config.RekeyWithPromptWaitTime()
 	ctx, cancel := context.WithTimeout(ctx, d)
 	defer cancel()
+	var err error
 	if ctx, err = NewContextWithCancellationDelayer(ctx); err != nil {
 		panic(err)
 	}
