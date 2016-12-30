@@ -1395,11 +1395,6 @@ func (fbo *folderBranchOps) SetInitialHeadFromServer(
 // object and sets the head to that.
 func (fbo *folderBranchOps) SetInitialHeadToNew(
 	ctx context.Context, id tlf.ID, handle *TlfHandle) (err error) {
-	fbo.log.CDebugf(ctx, "SetInitialHeadToNew")
-	defer func() {
-		fbo.deferLog.CDebugf(ctx, "Done: %+v", err)
-	}()
-
 	rmd, err := makeInitialRootMetadata(
 		fbo.config.MetadataVersion(), id, handle)
 	if err != nil {
@@ -1407,6 +1402,12 @@ func (fbo *folderBranchOps) SetInitialHeadToNew(
 	}
 
 	return runUnlessCanceled(ctx, func() error {
+		fbo.log.CDebugf(ctx, "SetInitialHeadToNew")
+		defer func() {
+			fbo.deferLog.CDebugf(ctx,
+				"SetInitialHeadToNew done: %+v", err)
+		}()
+
 		fb := FolderBranch{rmd.TlfID(), MasterBranch}
 		if fb != fbo.folderBranch {
 			return WrongOpsError{fbo.folderBranch, fb}
@@ -1457,11 +1458,11 @@ func (fbo *folderBranchOps) getRootNode(ctx context.Context) (
 	fbo.log.CDebugf(ctx, "getRootNode")
 	defer func() {
 		if err != nil {
-			fbo.deferLog.CDebugf(ctx, "Error: %+v", err)
+			fbo.deferLog.CDebugf(ctx, "getRootNode error: %+v", err)
 		} else {
 			// node may still be nil if we're unwinding
 			// from a panic.
-			fbo.deferLog.CDebugf(ctx, "Done: %v", node)
+			fbo.deferLog.CDebugf(ctx, "getRootNode done: %v", node)
 		}
 	}()
 
@@ -4865,7 +4866,9 @@ func (fbo *folderBranchOps) registerForUpdates(ctx context.Context) (
 	lState := makeFBOLockState()
 	currRev := fbo.getLatestMergedRevision(lState)
 	fbo.log.CDebugf(ctx, "Registering for updates (curr rev = %d)", currRev)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() {
+		fbo.deferLog.CDebugf(ctx, "Registering for updates: %+v", err)
+	}()
 	// RegisterForUpdate will itself retry on connectivity issues
 	return fbo.config.MDServer().RegisterForUpdate(ctx, fbo.id(), currRev)
 }
