@@ -13,38 +13,11 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 
 	"github.com/keybase/client/go/libkb"
-	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
-
-// Test (very superficially) that MakeTemporaryBlockID() returns non-zero
-// values that aren't equal.
-func TestCryptoCommonRandomBlockID(t *testing.T) {
-	b1, err := kbfsblock.MakeTemporaryID()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if b1 == (kbfsblock.ID{}) {
-		t.Errorf("zero BlockID (b1)")
-	}
-
-	b2, err := kbfsblock.MakeTemporaryID()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if b2 == (kbfsblock.ID{}) {
-		t.Errorf("zero BlockID (b2)")
-	}
-
-	if b1 == b2 {
-		t.Errorf("b1 == b2")
-	}
-}
 
 // Test (very superficially) that MakeRandomTLFEphemeralKeys() returns
 // non-zero values that aren't equal.
