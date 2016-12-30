@@ -71,7 +71,7 @@ func (kg fakeBlockKeyGetter) GetTLFCryptKeyForBlockDecryption(
 	fkmd := kmd.(fakeKeyMetadata)
 	i := int(blockPtr.KeyGen - FirstValidKeyGen)
 	if i >= len(fkmd.keys) {
-		return kbfscrypto.TLFCryptKey{}, fmt.Errorf(
+		return kbfscrypto.TLFCryptKey{}, errors.Errorf(
 			"no key for block decryption (keygen=%d)",
 			blockPtr.KeyGen)
 	}
