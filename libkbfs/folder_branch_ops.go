@@ -1315,7 +1315,7 @@ func (fbo *folderBranchOps) SetInitialHeadFromServer(
 	fbo.log.CDebugf(ctx, "SetInitialHeadFromServer, revision=%d (%s)",
 		md.Revision(), md.MergedStatus())
 	defer func() {
-		fbo.deferLog.CDebugf(ctx, "Done: %+v", err)
+		fbo.deferLog.CDebugf(ctx, "SetInitialHeadFromServer done: %+v", err)
 	}()
 
 	if md.data.Dir.Type != Dir {
@@ -1521,7 +1521,7 @@ func (fbo *folderBranchOps) pathFromNodeForMDWriteLocked(
 func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
 	children map[string]EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "GetDirChildren %p", dir.GetID())
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done GetDirChildren: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "GetDirChildren done: %+v", err) }()
 
 	err = fbo.checkNode(dir)
 	if err != nil {
@@ -1571,7 +1571,7 @@ func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
 func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 	node Node, ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "Lookup %p %s", dir.GetID(), name)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "Lookup done: %+v", err) }()
 
 	err = fbo.checkNode(dir)
 	if err != nil {
@@ -1654,7 +1654,7 @@ type blockState struct {
 func (fbo *folderBranchOps) Stat(ctx context.Context, node Node) (
 	ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "Stat %p", node.GetID())
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "Stat done: %+v", err) }()
 
 	var de DirEntry
 	err = runUnlessCanceled(ctx, func() error {
@@ -1670,7 +1670,7 @@ func (fbo *folderBranchOps) Stat(ctx context.Context, node Node) (
 func (fbo *folderBranchOps) GetNodeMetadata(ctx context.Context, node Node) (
 	ei NodeMetadata, err error) {
 	fbo.log.CDebugf(ctx, "GetNodeMetadata %p", node.GetID())
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "GetNodeMetadata done: %+v", err) }()
 
 	var de DirEntry
 	err = runUnlessCanceled(ctx, func() error {
@@ -2677,9 +2677,9 @@ func (fbo *folderBranchOps) CreateDir(
 	fbo.log.CDebugf(ctx, "CreateDir %p %s", dir.GetID(), path)
 	defer func() {
 		if err != nil {
-			fbo.deferLog.CDebugf(ctx, "Error: %+v", err)
+			fbo.deferLog.CDebugf(ctx, "CreateDir error: %+v", err)
 		} else {
-			fbo.deferLog.CDebugf(ctx, "Done: %p", n.GetID())
+			fbo.deferLog.CDebugf(ctx, "CreateDir done: %p", n.GetID())
 		}
 	}()
 
@@ -2713,9 +2713,9 @@ func (fbo *folderBranchOps) CreateFile(
 		dir.GetID(), path, isExec, excl)
 	defer func() {
 		if err != nil {
-			fbo.deferLog.CDebugf(ctx, "Error: %+v", err)
+			fbo.deferLog.CDebugf(ctx, "CreateFile error: %+v", err)
 		} else {
-			fbo.deferLog.CDebugf(ctx, "Done: %p", n.GetID())
+			fbo.deferLog.CDebugf(ctx, "CreateFile done: %p", n.GetID())
 		}
 	}()
 
@@ -2837,7 +2837,7 @@ func (fbo *folderBranchOps) CreateLink(
 	ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "CreateLink %p %s -> %s",
 		dir.GetID(), fromName, toPath)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "CreateLink done: %+v", err) }()
 
 	err = fbo.checkNode(dir)
 	if err != nil {
@@ -2971,7 +2971,7 @@ func (fbo *folderBranchOps) removeDirLocked(ctx context.Context,
 func (fbo *folderBranchOps) RemoveDir(
 	ctx context.Context, dir Node, dirName string) (err error) {
 	fbo.log.CDebugf(ctx, "RemoveDir %p %s", dir.GetID(), dirName)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "RemoveDir done: %+v", err) }()
 
 	err = fbo.checkNode(dir)
 	if err != nil {
@@ -2987,7 +2987,7 @@ func (fbo *folderBranchOps) RemoveDir(
 func (fbo *folderBranchOps) RemoveEntry(ctx context.Context, dir Node,
 	name string) (err error) {
 	fbo.log.CDebugf(ctx, "RemoveEntry %p %s", dir.GetID(), name)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "RemoveEntry done: %+v", err) }()
 
 	err = fbo.checkNode(dir)
 	if err != nil {
@@ -3159,7 +3159,7 @@ func (fbo *folderBranchOps) Rename(
 	newName string) (err error) {
 	fbo.log.CDebugf(ctx, "Rename %p/%s -> %p/%s", oldParent.GetID(),
 		oldName, newParent.GetID(), newName)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "Rename done: %+v", err) }()
 
 	err = fbo.checkNode(newParent)
 	if err != nil {
@@ -3192,7 +3192,7 @@ func (fbo *folderBranchOps) Read(
 	ctx context.Context, file Node, dest []byte, off int64) (
 	n int64, err error) {
 	fbo.log.CDebugf(ctx, "Read %p %d %d", file.GetID(), len(dest), off)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "Read done: %+v", err) }()
 
 	err = fbo.checkNode(file)
 	if err != nil {
@@ -3252,7 +3252,7 @@ func (fbo *folderBranchOps) Read(
 func (fbo *folderBranchOps) Write(
 	ctx context.Context, file Node, data []byte, off int64) (err error) {
 	fbo.log.CDebugf(ctx, "Write %p %d %d", file.GetID(), len(data), off)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "Write done: %+v", err) }()
 
 	err = fbo.checkNode(file)
 	if err != nil {
@@ -3284,7 +3284,7 @@ func (fbo *folderBranchOps) Write(
 func (fbo *folderBranchOps) Truncate(
 	ctx context.Context, file Node, size uint64) (err error) {
 	fbo.log.CDebugf(ctx, "Truncate %p %d", file.GetID(), size)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "Truncate done: %+v", err) }()
 
 	err = fbo.checkNode(file)
 	if err != nil {
@@ -3381,7 +3381,7 @@ func (fbo *folderBranchOps) setExLocked(
 func (fbo *folderBranchOps) SetEx(
 	ctx context.Context, file Node, ex bool) (err error) {
 	fbo.log.CDebugf(ctx, "SetEx %p %t", file.GetID(), ex)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "SetEx done: %+v", err) }()
 
 	err = fbo.checkNode(file)
 	if err != nil {
@@ -3450,7 +3450,7 @@ func (fbo *folderBranchOps) setMtimeLocked(
 func (fbo *folderBranchOps) SetMtime(
 	ctx context.Context, file Node, mtime *time.Time) (err error) {
 	fbo.log.CDebugf(ctx, "SetMtime %p %v", file.GetID(), mtime)
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "SetMtime done: %+v", err) }()
 
 	if mtime == nil {
 		// Can happen on some OSes (e.g. OSX) when trying to set the atime only
@@ -3581,7 +3581,7 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 
 func (fbo *folderBranchOps) Sync(ctx context.Context, file Node) (err error) {
 	fbo.log.CDebugf(ctx, "Sync %p", file.GetID())
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "Sync done: %+v", err) }()
 
 	err = fbo.checkNode(file)
 	if err != nil {
@@ -3614,7 +3614,7 @@ func (fbo *folderBranchOps) FolderStatus(
 	ctx context.Context, folderBranch FolderBranch) (
 	fbs FolderBranchStatus, updateChan <-chan StatusUpdate, err error) {
 	fbo.log.CDebugf(ctx, "Status")
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "Status done: %+v", err) }()
 
 	if folderBranch != fbo.folderBranch {
 		return FolderBranchStatus{}, nil,
@@ -4329,7 +4329,7 @@ func (fbo *folderBranchOps) unstageLocked(ctx context.Context,
 func (fbo *folderBranchOps) UnstageForTesting(
 	ctx context.Context, folderBranch FolderBranch) (err error) {
 	fbo.log.CDebugf(ctx, "UnstageForTesting")
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "UnstageForTesting done: %+v", err) }()
 
 	if folderBranch != fbo.folderBranch {
 		return WrongOpsError{fbo.folderBranch, folderBranch}
@@ -4581,7 +4581,7 @@ func (fbo *folderBranchOps) Rekey(ctx context.Context, tlf tlf.ID) (err error) {
 func (fbo *folderBranchOps) SyncFromServerForTesting(
 	ctx context.Context, folderBranch FolderBranch) (err error) {
 	fbo.log.CDebugf(ctx, "SyncFromServerForTesting")
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "SyncFromServerForTesting done: %+v", err) }()
 
 	if folderBranch != fbo.folderBranch {
 		return WrongOpsError{fbo.folderBranch, folderBranch}
@@ -4878,7 +4878,7 @@ func (fbo *folderBranchOps) waitForAndProcessUpdates(
 	updateChan <-chan error) (currUpdate time.Time, err error) {
 	// successful registration; now, wait for an update or a shutdown
 	fbo.log.CDebugf(ctx, "Waiting for updates")
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "Waiting for updates done: %+v", err) }()
 
 	lState := makeFBOLockState()
 
@@ -5254,7 +5254,7 @@ func (fbo *folderBranchOps) onMDFlush(bid BranchID, rev MetadataRevision) {
 func (fbo *folderBranchOps) GetUpdateHistory(ctx context.Context,
 	folderBranch FolderBranch) (history TLFUpdateHistory, err error) {
 	fbo.log.CDebugf(ctx, "GetUpdateHistory")
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "GetUpdateHistory done: %+v", err) }()
 
 	if folderBranch != fbo.folderBranch {
 		return TLFUpdateHistory{}, WrongOpsError{fbo.folderBranch, folderBranch}
@@ -5318,7 +5318,7 @@ func (fbo *folderBranchOps) GetUpdateHistory(ctx context.Context,
 func (fbo *folderBranchOps) GetEditHistory(ctx context.Context,
 	folderBranch FolderBranch) (edits TlfWriterEdits, err error) {
 	fbo.log.CDebugf(ctx, "GetEditHistory")
-	defer func() { fbo.deferLog.CDebugf(ctx, "Done: %+v", err) }()
+	defer func() { fbo.deferLog.CDebugf(ctx, "GetEditHistory done: %+v", err) }()
 
 	if folderBranch != fbo.folderBranch {
 		return nil, WrongOpsError{fbo.folderBranch, folderBranch}
