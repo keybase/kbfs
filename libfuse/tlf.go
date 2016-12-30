@@ -131,6 +131,7 @@ func (tlf *TLF) loadDirAllowNonexistent(ctx context.Context) (
 	return tlf.loadDirHelper(ctx, libkbfs.ReadMode, true)
 }
 
+// Access implements the fs.NodeAccesser interface for *TLF.
 func (tlf *TLF) Access(ctx context.Context, r *fuse.AccessRequest) error {
 	if int(r.Uid) != os.Getuid() {
 		// short path: not accessible by anybody other than the logged in user.
