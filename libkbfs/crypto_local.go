@@ -118,6 +118,9 @@ func (c CryptoLocal) DecryptTLFCryptKeyClientHalfAny(ctx context.Context,
 			return kbfscrypto.MakeTLFCryptKeyClientHalf(
 				clientHalfData), i, nil
 		}
+		if firstErr == nil {
+			firstErr = errors.WithStack(libkb.DecryptionError{})
+		}
 	}
 	return kbfscrypto.TLFCryptKeyClientHalf{}, -1, firstErr
 }
