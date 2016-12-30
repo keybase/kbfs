@@ -539,7 +539,7 @@ func (tc *TestClock) Add(d time.Duration) {
 func CheckConfigAndShutdown(
 	ctx context.Context, t logger.TestLogBackend, config Config) {
 	if err := config.Shutdown(ctx); err != nil {
-		t.Errorf(err.Error())
+		t.Errorf("err=%+v", err)
 	}
 }
 
