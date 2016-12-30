@@ -60,7 +60,7 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 			return err
 		}
 		arg := args.([]interface{})[0].(keybase1.SignED25519Arg)
-		sigInfo, err := fc.Local.Sign(context.Background(), arg.Msg)
+		sigInfo, err := fc.Local.Sign(ctx, arg.Msg)
 		if err != nil {
 			return err
 		}
@@ -93,7 +93,7 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 			},
 		}
 		clientHalf, err := fc.Local.DecryptTLFCryptKeyClientHalf(
-			context.Background(), publicKey, encryptedClientHalf)
+			ctx, publicKey, encryptedClientHalf)
 		if err != nil {
 			return err
 		}
@@ -126,7 +126,7 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 			})
 		}
 		clientHalf, index, err := fc.Local.DecryptTLFCryptKeyClientHalfAny(
-			context.Background(), keys, arg.PromptPaper)
+			ctx, keys, arg.PromptPaper)
 		if err != nil {
 			return err
 		}
