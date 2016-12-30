@@ -394,6 +394,16 @@ func MakeTLFCryptKey(data [32]byte) TLFCryptKey {
 	return TLFCryptKey{privateByte32Container{data}}
 }
 
+// MakeRandomTLFCryptKey returns a random top-level folder crypt key.
+func MakeRandomTLFCryptKey() (TLFCryptKey, error) {
+	var data [32]byte
+	err := RandRead(data[:])
+	if err != nil {
+		return TLFCryptKey{}, err
+	}
+	return MakeTLFCryptKey(data), nil
+}
+
 // PublicTLFCryptKey is the TLFCryptKey used for all public TLFs. That
 // means that anyone with just the block key for a public TLF can
 // decrypt that block. This is not the zero TLFCryptKey so that we can

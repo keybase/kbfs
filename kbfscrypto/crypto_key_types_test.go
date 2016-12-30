@@ -302,7 +302,8 @@ func TestRandomBlockCryptKeyServerHalf(t *testing.T) {
 func TestMaskUnmaskTLFCryptKey(t *testing.T) {
 	serverHalf, err := MakeRandomTLFCryptKeyServerHalf()
 	require.NoError(t, err)
-	cryptKey := MakeTLFCryptKey([32]byte{0x4, 0x5, 0x6})
+	cryptKey, err := MakeRandomTLFCryptKey()
+	require.NoError(t, err)
 
 	clientHalf := MaskTLFCryptKey(serverHalf, cryptKey)
 	require.NotEqual(t, serverHalf.Data(), clientHalf.Data())
@@ -317,7 +318,8 @@ func TestMaskUnmaskTLFCryptKey(t *testing.T) {
 func TestUnmaskTLFCryptKey(t *testing.T) {
 	serverHalf, err := MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
-	cryptKey := MakeTLFCryptKey([32]byte{0x4, 0x5, 0x6})
+	cryptKey, err := MakeRandomTLFCryptKey()
+	require.NoError(t, err)
 
 	key := UnmaskBlockCryptKey(serverHalf, cryptKey)
 	require.NotEqual(t, serverHalf.Data(), key.Data())

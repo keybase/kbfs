@@ -168,14 +168,11 @@ func (c CryptoCommon) MakeRandomTLFKeys() (kbfscrypto.TLFPublicKey,
 	pubKey := kbfscrypto.MakeTLFPublicKey(*publicKey)
 	privKey := kbfscrypto.MakeTLFPrivateKey(*privateKey)
 
-	var data [32]byte
-	err = kbfscrypto.RandRead(data[:])
+	cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 	if err != nil {
 		return kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
 			kbfscrypto.TLFCryptKey{}, err
 	}
-
-	cryptKey := kbfscrypto.MakeTLFCryptKey(data)
 
 	return pubKey, privKey, cryptKey, nil
 }
