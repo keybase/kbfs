@@ -200,6 +200,7 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *ConfigLocal {
 	c := newConfigForTest(config.loggerFn)
 	c.SetMetadataVersion(config.MetadataVersion())
+	c.SetRekeyWithPromptWaitTime(config.RekeyWithPromptWaitTime())
 
 	kbfsOps := NewKBFSOpsStandard(c)
 	c.SetKBFSOps(kbfsOps)
