@@ -1935,7 +1935,6 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	// Allow the prompt rekey attempt to fail by using dev2's crypto
 	// (which still isn't keyed for)
 	c := make(chan bool)
-	// Use our other device as a standin for the paper key.
 	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), c, config2Dev2.Crypto()}
 	config2Dev2.SetCrypto(clta)
 	ops.rekeyWithPromptTimer.Reset(1 * time.Millisecond)
