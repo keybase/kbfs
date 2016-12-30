@@ -1189,6 +1189,7 @@ func (fbo *folderBranchOps) initMDLocked(
 	if md.TlfID().IsPublic() {
 		expectedKeyGen = PublicKeyGen
 	} else {
+		fbo.log.CDebugf(ctx, "Doing initial rekey")
 		var rekeyDone bool
 		// create a new set of keys for this metadata
 		rekeyDone, tlfCryptKey, err = fbo.config.KeyManager().Rekey(ctx, md, false)
