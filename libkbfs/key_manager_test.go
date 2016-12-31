@@ -1959,11 +1959,15 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 			t.Fatalf("Got unexpected error when reading with new key: %+v", err)
 		}
 
+		t.Log("Switching crypto again")
+
 		// Let the background rekeyer decrypt.
-		c := make(chan struct{}, 1)
-		clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), sync.Once{}, c, config2.Crypto()}
+		c = make(chan struct{}, 1)
+		clta = &cryptoLocalTrapAny{config2Dev2.Crypto(), sync.Once{}, c, config2.Crypto()}
 		config2Dev2.SetCrypto(clta)
 	}()
+
+	t.Log("Waiting for rekey attempt")
 
 	select {
 	case <-c:
@@ -1973,6 +1977,8 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	// Make sure the rekey attempt is finished
 	ops.mdWriterLock.Lock(lState)
 	ops.mdWriterLock.Unlock(lState)
+
+	t.Log("Getting the root node, which should now succeed")
 
 	GetRootNodeOrBust(ctx, t, config2Dev2, name, false)
 }
