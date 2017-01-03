@@ -2028,6 +2028,7 @@ func TestKeyManager(t *testing.T) {
 }
 
 func TestKeyManagerFlake(t *testing.T) {
+	// TODO: testKeyManagerRekeyAddAndRevokeDevice is flaky, too.
 	flakyTests := []func(*testing.T, MetadataVer){
 		testKeyManagerRekeyAddDeviceWithPrompt,
 		testKeyManagerRekeyAddDeviceWithPromptAfterRestart,
