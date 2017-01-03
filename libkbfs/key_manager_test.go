@@ -1712,6 +1712,8 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 		t.Fatalf("Couldn't set rekey bit")
 	}
 
+	t.Log("Switching crypto")
+
 	c := make(chan struct{}, 1)
 	// Use our other device as a standin for the paper key.
 	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), sync.Once{}, c, config2.Crypto()}
@@ -1841,6 +1843,8 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 	if err != nil {
 		t.Fatalf("Third rekey failed %+v", err)
 	}
+
+	t.Log("Switching crypto")
 
 	c := make(chan struct{}, 1)
 	// Use our other device as a standin for the paper key.
