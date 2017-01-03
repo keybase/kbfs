@@ -1673,6 +1673,8 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2Dev2)
 
+	config2Dev2.SetKeyCache(&dummyNoKeyCache{})
+
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
 	AddDeviceForLocalUserOrBust(t, config1, uid2)
