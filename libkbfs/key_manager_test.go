@@ -2017,3 +2017,10 @@ func TestKeyManager(t *testing.T) {
 	}
 	runTestsOverMetadataVers(t, "testKeyManager", tests)
 }
+
+func TestKeyManagerFlake(t *testing.T) {
+	runTestCopiesInParallel(t, 100, func(t *testing.T) {
+		testKeyManagerRekeyAddDeviceWithPrompt(t,
+			SegregatedKeyBundlesVer)
+	})
+}
