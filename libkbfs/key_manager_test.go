@@ -5,6 +5,9 @@
 package libkbfs
 
 import (
+	"reflect"
+	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -2021,8 +2024,24 @@ func TestKeyManager(t *testing.T) {
 }
 
 func TestKeyManagerFlake(t *testing.T) {
-	runTestCopiesInParallel(t, 100, func(t *testing.T) {
-		testKeyManagerRekeyAddDeviceWithPrompt(t,
-			SegregatedKeyBundlesVer)
-	})
+	flakyTests := []func(*testing.T, MetadataVer){
+		testKeyManagerRekeyAddDeviceWithPrompt,
+		testKeyManagerRekeyAddDeviceWithPromptAfterRestart,
+		testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess,
+	}
+	prefix := "testKeyManager"
+	for _, f := range flakyTests {
+		f := f // capture range variable.
+		name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+		i := strings.LastIndex(name, prefix)
+		if i >= 0 {
+			i += len(prefix)
+		} else {
+			i = 0
+		}
+		name = name[i:]
+		runTestWithParallelCopies(t, name, 100, func(t *testing.T) {
+			runTestOverMetadataVers(t, f)
+		})
+	}
 }
