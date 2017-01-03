@@ -1794,6 +1794,8 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2Dev2)
 
+	config2Dev2.SetKeyCache(&dummyNoKeyCache{})
+
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
 	AddDeviceForLocalUserOrBust(t, config1, uid2)
@@ -1904,6 +1906,8 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	rootNode1 := GetRootNodeOrBust(ctx, t, config1, name, false)
 	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2Dev2)
+
+	config2Dev2.SetKeyCache(&dummyNoKeyCache{})
 
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
