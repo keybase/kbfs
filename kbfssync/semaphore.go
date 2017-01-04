@@ -27,7 +27,7 @@ type waiter struct {
 // count, and exposes methods to try acquiring those resources --
 // waiting if necessary -- and releasing those resources back.
 type Semaphore struct {
-	lock    sync.Mutex
+	lock    sync.RWMutex
 	count   int64
 	waiters []waiter
 }
@@ -54,8 +54,8 @@ func (s *Semaphore) Adjust(n int64) {
 // Count returns the current resource count. It should be used only
 // for logging or testing.
 func (s *Semaphore) Count() int64 {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.count
 }
 
