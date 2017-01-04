@@ -1476,7 +1476,7 @@ func getNodeIDStr(n Node) string {
 	if n == nil {
 		return "NodeID(nil)"
 	}
-	return fmt.Sprintf("NodeID(%p)", n.GetID())
+	return fmt.Sprintf("NodeID(%v)", n.GetID())
 }
 
 func (fbo *folderBranchOps) getRootNode(ctx context.Context) (
