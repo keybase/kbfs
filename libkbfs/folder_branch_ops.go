@@ -1472,6 +1472,13 @@ func (fbo *folderBranchOps) execMDReadNoIdentifyThenMDWrite(
 	return err
 }
 
+func getNodeIDStr(n Node) string {
+	if n == nil {
+		return "NodeID(nil)"
+	}
+	return fmt.Sprintf("NodeID(%p)", n.GetID())
+}
+
 func (fbo *folderBranchOps) getRootNode(ctx context.Context) (
 	node Node, ei EntryInfo, handle *TlfHandle, err error) {
 	fbo.log.CDebugf(ctx, "getRootNode")
@@ -1539,10 +1546,10 @@ func (fbo *folderBranchOps) pathFromNodeForMDWriteLocked(
 
 func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
 	children map[string]EntryInfo, err error) {
-	fbo.log.CDebugf(ctx, "GetDirChildren %p", dir.GetID())
+	fbo.log.CDebugf(ctx, "GetDirChildren %p", getNodeIDStr(dir))
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
-			"GetDirChildren %p done: %v", dir.GetID(), err)
+			"GetDirChildren %p done: %v", getNodeIDStr(dir), err)
 	}()
 
 	err = fbo.checkNode(dir)
@@ -1592,10 +1599,10 @@ func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
 
 func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 	node Node, ei EntryInfo, err error) {
-	fbo.log.CDebugf(ctx, "Lookup %p %s", dir.GetID(), name)
+	fbo.log.CDebugf(ctx, "Lookup %p %s", getNodeIDStr(dir), name)
 	defer func() {
 		fbo.deferLog.CDebugf(ctx, "Lookup %p %s done: %+v",
-			dir.GetID(), name, err)
+			getNodeIDStr(dir), name, err)
 	}()
 
 	err = fbo.checkNode(dir)
@@ -1678,10 +1685,10 @@ type blockState struct {
 
 func (fbo *folderBranchOps) Stat(ctx context.Context, node Node) (
 	ei EntryInfo, err error) {
-	fbo.log.CDebugf(ctx, "Stat %p", node.GetID())
+	fbo.log.CDebugf(ctx, "Stat %p", getNodeIDStr(node))
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
-			"Stat %p done: %+v", node.GetID(), err)
+			"Stat %p done: %+v", getNodeIDStr(node), err)
 	}()
 
 	var de DirEntry
@@ -1697,10 +1704,10 @@ func (fbo *folderBranchOps) Stat(ctx context.Context, node Node) (
 
 func (fbo *folderBranchOps) GetNodeMetadata(ctx context.Context, node Node) (
 	ei NodeMetadata, err error) {
-	fbo.log.CDebugf(ctx, "GetNodeMetadata %p", node.GetID())
+	fbo.log.CDebugf(ctx, "GetNodeMetadata %p", getNodeIDStr(node))
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
-			"GetNodeMetadata %p done: %+v", node.GetID(), err)
+			"GetNodeMetadata %p done: %+v", getNodeIDStr(node), err)
 	}()
 
 	var de DirEntry
@@ -2705,14 +2712,14 @@ func (fbo *folderBranchOps) doMDWriteWithRetryUnlessCanceled(
 func (fbo *folderBranchOps) CreateDir(
 	ctx context.Context, dir Node, path string) (
 	n Node, ei EntryInfo, err error) {
-	fbo.log.CDebugf(ctx, "CreateDir %p %s", dir.GetID(), path)
+	fbo.log.CDebugf(ctx, "CreateDir %p %s", getNodeIDStr(dir), path)
 	defer func() {
 		if err != nil {
 			fbo.deferLog.CDebugf(ctx, "CreateDir %p %s error: %+v",
-				dir.GetID(), path, err)
+				getNodeIDStr(dir), path, err)
 		} else {
 			fbo.deferLog.CDebugf(ctx, "CreateDir %p %s done: %p",
-				dir.GetID(), path, n.GetID())
+				getNodeIDStr(dir), path, getNodeIDStr(n))
 		}
 	}()
 
@@ -2743,14 +2750,14 @@ func (fbo *folderBranchOps) CreateFile(
 	ctx context.Context, dir Node, path string, isExec bool, excl Excl) (
 	n Node, ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "CreateFile %p %s isExec=%v Excl=%s",
-		dir.GetID(), path, isExec, excl)
+		getNodeIDStr(dir), path, isExec, excl)
 	defer func() {
 		if err != nil {
 			fbo.deferLog.CDebugf(ctx,
 				"CreateFile %p %s isExec=%v Excl=%s error: %+v", err)
 		} else {
 			fbo.deferLog.CDebugf(ctx,
-				"CreateFile %p %s isExec=%v Excl=%s done: %p", n.GetID())
+				"CreateFile %p %s isExec=%v Excl=%s done: %p", getNodeIDStr(n))
 		}
 	}()
 
@@ -2871,11 +2878,11 @@ func (fbo *folderBranchOps) CreateLink(
 	ctx context.Context, dir Node, fromName string, toPath string) (
 	ei EntryInfo, err error) {
 	fbo.log.CDebugf(ctx, "CreateLink %p %s -> %s",
-		dir.GetID(), fromName, toPath)
+		getNodeIDStr(dir), fromName, toPath)
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
 			"CreateLink %p %s -> %s done: %+v",
-			dir.GetID(), fromName, toPath, err)
+			getNodeIDStr(dir), fromName, toPath, err)
 	}()
 
 	err = fbo.checkNode(dir)
@@ -3009,10 +3016,10 @@ func (fbo *folderBranchOps) removeDirLocked(ctx context.Context,
 
 func (fbo *folderBranchOps) RemoveDir(
 	ctx context.Context, dir Node, dirName string) (err error) {
-	fbo.log.CDebugf(ctx, "RemoveDir %p %s", dir.GetID(), dirName)
+	fbo.log.CDebugf(ctx, "RemoveDir %p %s", getNodeIDStr(dir), dirName)
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
-			"RemoveDir %p %s done: %+v", dir.GetID(), dirName, err)
+			"RemoveDir %p %s done: %+v", getNodeIDStr(dir), dirName, err)
 	}()
 
 	err = fbo.checkNode(dir)
@@ -3028,10 +3035,10 @@ func (fbo *folderBranchOps) RemoveDir(
 
 func (fbo *folderBranchOps) RemoveEntry(ctx context.Context, dir Node,
 	name string) (err error) {
-	fbo.log.CDebugf(ctx, "RemoveEntry %p %s", dir.GetID(), name)
+	fbo.log.CDebugf(ctx, "RemoveEntry %p %s", getNodeIDStr(dir), name)
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
-			"RemoveEntry %p %s done: %+v", dir.GetID(), name, err)
+			"RemoveEntry %p %s done: %+v", getNodeIDStr(dir), name, err)
 	}()
 
 	err = fbo.checkNode(dir)
@@ -3202,13 +3209,13 @@ func (fbo *folderBranchOps) renameLocked(
 func (fbo *folderBranchOps) Rename(
 	ctx context.Context, oldParent Node, oldName string, newParent Node,
 	newName string) (err error) {
-	fbo.log.CDebugf(ctx, "Rename %p/%s -> %p/%s", oldParent.GetID(),
-		oldName, newParent.GetID(), newName)
+	fbo.log.CDebugf(ctx, "Rename %p/%s -> %p/%s", getNodeIDStr(oldParent),
+		oldName, getNodeIDStr(newParent), newName)
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
 			"Rename %p/%s -> %p/%s done: %+v",
-			oldParent.GetID(),
-			oldName, newParent.GetID(), newName, err)
+			getNodeIDStr(oldParent),
+			oldName, getNodeIDStr(newParent), newName, err)
 	}()
 
 	err = fbo.checkNode(newParent)
@@ -3241,10 +3248,10 @@ func (fbo *folderBranchOps) Rename(
 func (fbo *folderBranchOps) Read(
 	ctx context.Context, file Node, dest []byte, off int64) (
 	n int64, err error) {
-	fbo.log.CDebugf(ctx, "Read %p %d %d", file.GetID(), len(dest), off)
+	fbo.log.CDebugf(ctx, "Read %p %d %d", getNodeIDStr(file), len(dest), off)
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
-			"Read %p %d %d done: %+v", file.GetID(), len(dest), err)
+			"Read %p %d %d done: %+v", getNodeIDStr(file), len(dest), err)
 	}()
 
 	err = fbo.checkNode(file)
@@ -3304,10 +3311,10 @@ func (fbo *folderBranchOps) Read(
 
 func (fbo *folderBranchOps) Write(
 	ctx context.Context, file Node, data []byte, off int64) (err error) {
-	fbo.log.CDebugf(ctx, "Write %p %d %d", file.GetID(), len(data), off)
+	fbo.log.CDebugf(ctx, "Write %p %d %d", getNodeIDStr(file), len(data), off)
 	defer func() {
 		fbo.deferLog.CDebugf(ctx, "Write %p %d %d done: %+v",
-			file.GetID(), len(data), err)
+			getNodeIDStr(file), len(data), err)
 	}()
 
 	err = fbo.checkNode(file)
@@ -3339,10 +3346,10 @@ func (fbo *folderBranchOps) Write(
 
 func (fbo *folderBranchOps) Truncate(
 	ctx context.Context, file Node, size uint64) (err error) {
-	fbo.log.CDebugf(ctx, "Truncate %p %d", file.GetID(), size)
+	fbo.log.CDebugf(ctx, "Truncate %p %d", getNodeIDStr(file), size)
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
-			"Truncate %p %d done: %+v", file.GetID(), size, err)
+			"Truncate %p %d done: %+v", getNodeIDStr(file), size, err)
 	}()
 
 	err = fbo.checkNode(file)
@@ -3439,10 +3446,10 @@ func (fbo *folderBranchOps) setExLocked(
 
 func (fbo *folderBranchOps) SetEx(
 	ctx context.Context, file Node, ex bool) (err error) {
-	fbo.log.CDebugf(ctx, "SetEx %p %t", file.GetID(), ex)
+	fbo.log.CDebugf(ctx, "SetEx %p %t", getNodeIDStr(file), ex)
 	defer func() {
 		fbo.deferLog.CDebugf(
-			ctx, "SetEx %p %t done: %+v", file.GetID(), ex, err)
+			ctx, "SetEx %p %t done: %+v", getNodeIDStr(file), ex, err)
 	}()
 
 	err = fbo.checkNode(file)
@@ -3511,10 +3518,10 @@ func (fbo *folderBranchOps) setMtimeLocked(
 
 func (fbo *folderBranchOps) SetMtime(
 	ctx context.Context, file Node, mtime *time.Time) (err error) {
-	fbo.log.CDebugf(ctx, "SetMtime %p %v", file.GetID(), mtime)
+	fbo.log.CDebugf(ctx, "SetMtime %p %v", getNodeIDStr(file), mtime)
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
-			"SetMtime %p %v done: %+v", file.GetID(), mtime, err)
+			"SetMtime %p %v done: %+v", getNodeIDStr(file), mtime, err)
 	}()
 
 	if mtime == nil {
@@ -3645,10 +3652,10 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 }
 
 func (fbo *folderBranchOps) Sync(ctx context.Context, file Node) (err error) {
-	fbo.log.CDebugf(ctx, "Sync %p", file.GetID())
+	fbo.log.CDebugf(ctx, "Sync %p", getNodeIDStr(file))
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
-			"Sync %p done: %+v", file.GetID(), err)
+			"Sync %p done: %+v", getNodeIDStr(file), err)
 	}()
 
 	err = fbo.checkNode(file)
@@ -3795,7 +3802,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			return
 		}
 		fbo.log.CDebugf(ctx, "notifyOneOp: create %s in node %p",
-			realOp.NewName, node.GetID())
+			realOp.NewName, getNodeIDStr(node))
 		changes = append(changes, NodeChange{
 			Node:       node,
 			DirUpdated: []string{realOp.NewName},
@@ -3806,7 +3813,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			return
 		}
 		fbo.log.CDebugf(ctx, "notifyOneOp: remove %s in node %p",
-			realOp.OldName, node.GetID())
+			realOp.OldName, getNodeIDStr(node))
 		changes = append(changes, NodeChange{
 			Node:       node,
 			DirUpdated: []string{realOp.OldName},
@@ -3846,13 +3853,9 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 		}
 
 		if oldNode != nil {
-			var newNodeID NodeID
-			if newNode != nil {
-				newNodeID = newNode.GetID()
-			}
 			fbo.log.CDebugf(ctx, "notifyOneOp: rename %v from %s/%p to %s/%p",
-				realOp.Renamed, realOp.OldName, oldNode.GetID(), realOp.NewName,
-				newNodeID)
+				realOp.Renamed, realOp.OldName, getNodeIDStr(oldNode), realOp.NewName,
+				getNodeIDStr(newNode))
 
 			if newNode == nil {
 				if childNode :=
@@ -3900,7 +3903,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			return
 		}
 		fbo.log.CDebugf(ctx, "notifyOneOp: sync %d writes in node %p",
-			len(realOp.Writes), node.GetID())
+			len(realOp.Writes), getNodeIDStr(node))
 
 		changes = append(changes, NodeChange{
 			Node:        node,
@@ -3912,7 +3915,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			return
 		}
 		fbo.log.CDebugf(ctx, "notifyOneOp: setAttr %s for file %s in node %p",
-			realOp.Attr, realOp.Name, node.GetID())
+			realOp.Attr, realOp.Name, getNodeIDStr(node))
 
 		p, err := fbo.pathFromNodeForRead(node)
 		if err != nil {
@@ -3977,7 +3980,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			}
 
 			fbo.log.CDebugf(ctx, "resolutionOp: remove %s, node %p",
-				p.tailPointer(), node.GetID())
+				p.tailPointer(), getNodeIDStr(node))
 			// Revert the path back to the original BlockPointers,
 			// before the updates were applied.
 			if len(reverseUpdates) == 0 {
@@ -5084,7 +5087,7 @@ func (fbo *folderBranchOps) backgroundFlusher(betweenFlushes time.Duration) {
 					p := fbo.nodeCache.PathFromNode(node)
 					fbo.log.CWarningf(ctx, "Couldn't sync dirty file with "+
 						"ref=%v, nodeID=%p, and path=%v: %v",
-						ref, node.GetID(), p, err)
+						ref, getNodeIDStr(node), p, err)
 				}
 			}
 			return nil
