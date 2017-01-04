@@ -172,20 +172,16 @@ func TestAcquireDifferentSizes(t *testing.T) {
 	for i := 0; i < acquirerCount; i++ {
 		requireEmpty(t, acquirerCh)
 
-		if i > 0 {
-			s.Release(1)
-			require.Equal(t, int64(1), s.Count())
-		} else {
+		if i == 0 {
 			require.Equal(t, int64(0), s.Count())
+		} else {
+			s.Release(int64(i))
+			require.Equal(t, int64(i), s.Count())
 		}
 
 		requireEmpty(t, acquirerCh)
 
-		if i == 0 {
-			s.Release(1)
-		} else {
-			s.Release(int64(i))
-		}
+		s.Release(1)
 
 		select {
 		case a := <-acquirerCh:
