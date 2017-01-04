@@ -153,11 +153,11 @@ func TestAcquireDifferentSizes(t *testing.T) {
 	n := 0
 	acquirerCh := make(chan acquirer, acquirerCount)
 	for i := 0; i < acquirerCount; i++ {
-		go func() {
+		go func(i int) {
 			err := s.Acquire(ctx, int64(i+1))
 			n++
 			acquirerCh <- acquirer{int64(i + 1), err}
-		}()
+		}(i)
 	}
 
 	for i := 0; i < acquirerCount; i++ {
