@@ -36,6 +36,33 @@ func TestSimple(t *testing.T) {
 	}
 }
 
+func TestCancel(t *testing.T) {
+	ctx, cancel := context.WithTimeout(
+		context.Background(), 10*time.Second)
+	defer cancel()
+
+	n := 10
+
+	ctx2, cancel2 := context.WithCancel(ctx)
+	defer cancel2()
+
+	s := NewSemaphore()
+	errCh := make(chan error)
+	go func() {
+		errCh <- s.Acquire(ctx2, int64(n))
+	}()
+
+	s.Release(int64(n - 1))
+
+	cancel2()
+	select {
+	case err := <-errCh:
+		require.Equal(t, ctx2.Err(), err)
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+}
+
 func TestSerial(t *testing.T) {
 	n := 100
 	count := 0
