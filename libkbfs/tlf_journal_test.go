@@ -18,6 +18,7 @@ import (
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/keybase/kbfs/kbfssync"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -255,9 +256,10 @@ func setupTLFJournalTest(
 
 	delegateBlockServer := NewBlockServerMemory(log)
 
+	diskLimitSemaphore := kbfssync.NewSemaphore()
 	tlfJournal, err = makeTLFJournal(ctx, uid, verifyingKey,
 		tempdir, config.tlfID, config, delegateBlockServer,
-		bwStatus, delegate, nil, nil)
+		bwStatus, delegate, nil, nil, diskLimitSemaphore)
 	require.NoError(t, err)
 
 	switch bwStatus {

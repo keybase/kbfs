@@ -178,6 +178,8 @@ type tlfJournal struct {
 	onBranchChange      branchChangeListener
 	onMDFlush           mdFlushListener
 
+	diskLimitSemaphore *kbfssync.Semaphore
+
 	// All the channels below are used as simple on/off
 	// signals. They're buffered for one object, and all sends are
 	// asynchronous, so multiple sends get collapsed into one
@@ -252,7 +254,8 @@ func makeTLFJournal(
 	dir string, tlfID tlf.ID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, bws TLFJournalBackgroundWorkStatus,
 	bwDelegate tlfJournalBWDelegate, onBranchChange branchChangeListener,
-	onMDFlush mdFlushListener) (*tlfJournal, error) {
+	onMDFlush mdFlushListener, diskLimitSemaphore *kbfssync.Semaphore) (
+	*tlfJournal, error) {
 	if uid == keybase1.UID("") {
 		return nil, errors.New("Empty user")
 	}
@@ -320,6 +323,7 @@ func makeTLFJournal(
 		deferLog:             log.CloneWithAddedDepth(1),
 		onBranchChange:       onBranchChange,
 		onMDFlush:            onMDFlush,
+		diskLimitSemaphore:   diskLimitSemaphore,
 		hasWorkCh:            make(chan struct{}, 1),
 		needPauseCh:          make(chan struct{}, 1),
 		needResumeCh:         make(chan struct{}, 1),
@@ -709,11 +713,12 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 			blockEnd, mdEnd)
 
 		// Flush the block journal ops in parallel.
-		_, numFlushed, maxMDRevToFlush, err := j.flushBlockEntries(
-			ctx, blockEnd)
+		totalFlushedBytes, numFlushed, maxMDRevToFlush,
+			err := j.flushBlockEntries(ctx, blockEnd)
 		if err != nil {
 			return err
 		}
+		_ = totalFlushedBytes
 		flushedBlockEntries += numFlushed
 
 		if numFlushed == 0 {

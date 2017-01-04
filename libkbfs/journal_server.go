@@ -373,7 +373,7 @@ func (j *JournalServer) enableLocked(
 	tlfJournal, err := makeTLFJournal(
 		ctx, j.currentUID, j.currentVerifyingKey, tlfDir,
 		tlfID, tlfJournalConfigAdapter{j.config}, j.delegateBlockServer,
-		bws, nil, j.onBranchChange, j.onMDFlush)
+		bws, nil, j.onBranchChange, j.onMDFlush, j.diskLimitSemaphore)
 	if err != nil {
 		return err
 	}
