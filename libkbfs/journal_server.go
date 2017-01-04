@@ -378,14 +378,7 @@ func (j *JournalServer) enableLocked(
 		return err
 	}
 
-	unflushedBytes, err := tlfJournal.getUnflushedBytes()
-	if err != nil {
-		return err
-	}
-	j.diskLimitSemaphore.Adjust(-unflushedBytes)
-
 	j.tlfJournals[tlfID] = tlfJournal
-
 	return nil
 }
 

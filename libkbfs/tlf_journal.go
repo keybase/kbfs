@@ -354,6 +354,10 @@ func makeTLFJournal(
 		j.wg.Pause()
 	}
 
+	// Do this only once we're sure we won't error.
+	unflushedBytes := blockJournal.getUnflushedBytes()
+	diskLimitSemaphore.Adjust(-unflushedBytes)
+
 	go j.doBackgroundWorkLoop(bws, backoff.NewExponentialBackOff())
 
 	// Signal work to pick up any existing journal entries.
