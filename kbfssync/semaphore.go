@@ -7,6 +7,8 @@ package kbfssync
 import (
 	"context"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 // A waiter represents a goroutine blocked on resource acquisition.
@@ -52,8 +54,8 @@ func (s *Semaphore) Adjust(n int64) {
 // Acquire blocks until it is possible to atomically subtract n (which
 // must be positive) from the resource count without causing it to go
 // negative, and then returns nil. If the given context is canceled
-// first, it instead returns ctx.Err() and does not change the
-// resource count.
+// first, it instead returns a wrapped ctx.Err() and does not change
+// the resource count.
 func (s *Semaphore) Acquire(ctx context.Context, n int64) error {
 	if n <= 0 {
 		panic("n must be positive")
@@ -85,7 +87,7 @@ func (s *Semaphore) Acquire(ctx context.Context, n int64) error {
 		case <-onRelease:
 			// Go to the top of the loop.
 		case <-ctx.Done():
-			return ctx.Err()
+			return errors.WithStack(ctx.Err())
 		}
 	}
 }
