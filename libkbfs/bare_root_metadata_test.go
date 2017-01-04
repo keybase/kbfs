@@ -24,8 +24,8 @@ var testMetadataVers = []MetadataVer{
 }
 
 // runTestOverMetadataVers runs the given test function over all
-// metadata versions to test. The test is assumed to be parallelizable
-// with other instances of itself. Example use:
+// metadata versions to test. The test is assumed to be runnable
+// concurrently with other instances of itself. Example use:
 //
 // func TestFoo(t *testing.T) {
 //	runTestOverMetadataVers(t, testFoo)
@@ -47,7 +47,8 @@ func runTestOverMetadataVers(
 }
 
 // runTestsOverMetadataVers runs the given list of test functions over
-// all metadata versions to test. prefix should be the common prefix
+// all metadata versions to test, all of which are assumed to be
+// mutually concurrently runnable. prefix should be the common prefix
 // for all the test function names, and the names of the subtest will
 // be taken to be the strings after that prefix. Example use:
 //
@@ -73,6 +74,7 @@ func runTestsOverMetadataVers(t *testing.T, prefix string,
 		}
 		name = name[i:]
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			runTestOverMetadataVers(t, f)
 		})
 	}
