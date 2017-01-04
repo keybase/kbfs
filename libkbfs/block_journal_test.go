@@ -647,9 +647,9 @@ func TestBlockJournalIgnoreBlocks(t *testing.T) {
 	defer teardownBlockJournalTest(t, ctx, cancel, tempdir, j)
 
 	// Put a few blocks
-	data1 := []byte{1, 2, 3, 4}
+	data1 := []byte{1, 2, 3}
 	bID1, _, _ := putBlockData(ctx, t, j, data1)
-	data2 := []byte{5, 6, 7, 8}
+	data2 := []byte{4, 5, 6, 7}
 	bID2, _, _ := putBlockData(ctx, t, j, data2)
 
 	// Put a revision marker
@@ -657,9 +657,9 @@ func TestBlockJournalIgnoreBlocks(t *testing.T) {
 	err := j.markMDRevision(ctx, rev)
 	require.NoError(t, err)
 
-	data3 := []byte{9, 10, 11, 12}
+	data3 := []byte{8, 9, 10, 11, 12}
 	bID3, _, _ := putBlockData(ctx, t, j, data3)
-	data4 := []byte{13, 14, 15, 16}
+	data4 := []byte{13, 14, 15, 16, 17, 18}
 	bID4, _, _ := putBlockData(ctx, t, j, data4)
 
 	// Put a revision marker
@@ -692,8 +692,11 @@ func TestBlockJournalIgnoreBlocks(t *testing.T) {
 		bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 		entries)
 	require.NoError(t, err)
-	_, err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+	totalFlushedBytes, err := j.removeFlushedEntries(
+		ctx, entries, tlfID, reporter)
 	require.NoError(t, err)
+	require.Equal(t,
+		int64(len(data1)+len(data4)), totalFlushedBytes)
 	err = j.checkInSyncForTest()
 	require.NoError(t, err)
 }
