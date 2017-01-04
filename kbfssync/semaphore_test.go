@@ -108,12 +108,12 @@ func TestSerialRelease(t *testing.T) {
 	acquirerCount := 100
 
 	s := NewSemaphore()
-	n := 0
+	acquireCount := 0
 	errCh := make(chan error, acquirerCount)
 	for i := 0; i < acquirerCount; i++ {
 		go func() {
 			err := s.Acquire(ctx, 1)
-			n++
+			acquireCount++
 			errCh <- err
 		}()
 	}
@@ -134,8 +134,8 @@ func TestSerialRelease(t *testing.T) {
 		require.Equal(t, int64(0), s.Count())
 	}
 
-	// n should have been incremented race-free.
-	require.Equal(t, n, acquirerCount)
+	// acquireCount should have been incremented race-free.
+	require.Equal(t, acquirerCount, acquireCount)
 }
 
 func TestAcquireDifferentSizes(t *testing.T) {
@@ -159,12 +159,12 @@ func TestAcquireDifferentSizes(t *testing.T) {
 	}
 
 	s := NewSemaphore()
-	n := 0
+	acquireCount := 0
 	acquirerCh := make(chan acquirer, acquirerCount)
 	for i := 0; i < acquirerCount; i++ {
 		go func(i int) {
 			err := s.Acquire(ctx, int64(i+1))
-			n++
+			acquireCount++
 			acquirerCh <- acquirer{int64(i + 1), err}
 		}(i)
 	}
@@ -195,6 +195,6 @@ func TestAcquireDifferentSizes(t *testing.T) {
 		require.Equal(t, int64(0), s.Count())
 	}
 
-	// n should have been incremented race-free.
-	require.Equal(t, n, acquirerCount)
+	// acquireCount should have been incremented race-free.
+	require.Equal(t, acquirerCount, acquireCount)
 }
