@@ -748,7 +748,7 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 	reporter := NewReporterSimple(nil, 0)
 
 	// Flush all the entries, but they should still remain accessible.
-	flushAll := func() {
+	flushAll := func() int64 {
 		last, err := j.j.readLatestOrdinal()
 		require.NoError(t, err)
 		entries, _, err := j.getNextEntriesToFlush(ctx, last+1,
@@ -758,10 +758,15 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 			bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 			entries)
 		require.NoError(t, err)
-		_, err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+		totalFlushedBytes, err := j.removeFlushedEntries(
+			ctx, entries, tlfID, reporter)
 		require.NoError(t, err)
+		return totalFlushedBytes
 	}
-	flushAll()
+	totalFlushedBytes := flushAll()
+	require.Equal(t,
+		int64(len(data1)+len(data2)+len(data3)+len(data4)),
+		totalFlushedBytes)
 
 	// The blocks can still be fetched from the journal.
 	for _, bid := range savedBlocks {
@@ -785,7 +790,8 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 	data6 := []byte{21, 22, 23, 24}
 	bID6, _, _ := putBlockData(ctx, t, j, data6)
 	savedBlocks = append(savedBlocks, bID5, bID6)
-	flushAll()
+	totalFlushedBytes = flushAll()
+	require.Equal(t, int64(len(data5)+len(data6)), totalFlushedBytes)
 
 	// Make sure all the blocks still exist, including both the old
 	// and the new ones.
