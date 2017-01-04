@@ -402,7 +402,7 @@ func testTLFJournalBlockOpBasic(t *testing.T, ver MetadataVer) {
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
-	numFlushed, rev, err := tlfJournal.flushBlockEntries(ctx, 1)
+	_, numFlushed, rev, err := tlfJournal.flushBlockEntries(ctx, 1)
 	require.NoError(t, err)
 	require.Equal(t, 1, numFlushed)
 	require.Equal(t, rev, MetadataRevisionUninitialized)

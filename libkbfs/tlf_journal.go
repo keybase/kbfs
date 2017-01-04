@@ -709,7 +709,8 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 			blockEnd, mdEnd)
 
 		// Flush the block journal ops in parallel.
-		numFlushed, maxMDRevToFlush, err := j.flushBlockEntries(ctx, blockEnd)
+		_, numFlushed, maxMDRevToFlush, err := j.flushBlockEntries(
+			ctx, blockEnd)
 		if err != nil {
 			return err
 		}
@@ -792,14 +793,15 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 }
 
 func (j *tlfJournal) flushBlockEntries(
-	ctx context.Context, end journalOrdinal) (int, MetadataRevision, error) {
+	ctx context.Context, end journalOrdinal) (
+	int64, int, MetadataRevision, error) {
 	entries, maxMDRevToFlush, err := j.getNextBlockEntriesToFlush(ctx, end)
 	if err != nil {
-		return 0, MetadataRevisionUninitialized, err
+		return 0, 0, MetadataRevisionUninitialized, err
 	}
 
 	if entries.length() == 0 {
-		return 0, maxMDRevToFlush, nil
+		return 0, 0, maxMDRevToFlush, nil
 	}
 
 	// TODO: fill this in for logging/error purposes.
@@ -808,15 +810,15 @@ func (j *tlfJournal) flushBlockEntries(
 		j.config.BlockCache(), j.config.Reporter(),
 		j.tlfID, tlfName, entries)
 	if err != nil {
-		return 0, MetadataRevisionUninitialized, err
+		return 0, 0, MetadataRevisionUninitialized, err
 	}
 
-	_, err = j.removeFlushedBlockEntries(ctx, entries)
+	totalFlushedBytes, err := j.removeFlushedBlockEntries(ctx, entries)
 	if err != nil {
-		return 0, MetadataRevisionUninitialized, err
+		return 0, 0, MetadataRevisionUninitialized, err
 	}
 
-	return entries.length(), maxMDRevToFlush, nil
+	return totalFlushedBytes, entries.length(), maxMDRevToFlush, nil
 }
 
 func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
