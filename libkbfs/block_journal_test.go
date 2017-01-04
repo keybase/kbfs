@@ -413,7 +413,7 @@ func TestBlockJournalFlush(t *testing.T) {
 			tlfID, CanonicalTlfName("fake TLF"), entries)
 		require.NoError(t, err)
 
-		err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+		_, err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
 		require.NoError(t, err)
 	}
 
@@ -476,7 +476,7 @@ func flushBlockJournalOne(ctx context.Context, t *testing.T,
 		bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 		entries)
 	require.NoError(t, err)
-	err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+	_, err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
 	require.NoError(t, err)
 	err = j.checkInSyncForTest()
 	require.NoError(t, err)
@@ -634,7 +634,7 @@ func TestBlockJournalFlushMDRevMarker(t *testing.T) {
 		bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 		entries)
 	require.NoError(t, err)
-	err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+	_, err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
 	require.NoError(t, err)
 	err = j.checkInSyncForTest()
 	require.NoError(t, err)
@@ -690,7 +690,7 @@ func TestBlockJournalIgnoreBlocks(t *testing.T) {
 		bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 		entries)
 	require.NoError(t, err)
-	err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+	_, err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
 	require.NoError(t, err)
 	err = j.checkInSyncForTest()
 	require.NoError(t, err)
@@ -741,7 +741,7 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 			bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 			entries)
 		require.NoError(t, err)
-		err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+		_, err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
 		require.NoError(t, err)
 	}
 	flushAll()

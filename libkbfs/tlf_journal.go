@@ -772,19 +772,19 @@ func (j *tlfJournal) getNextBlockEntriesToFlush(
 }
 
 func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
-	entries blockEntriesToFlush) error {
+	entries blockEntriesToFlush) (totalFlushedBytes int64, err error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {
-		return err
+		return 0, err
 	}
 
 	// Keep the flushed blocks around until we know for sure the MD
 	// flush will succeed; otherwise if we become unmerged, conflict
 	// resolution will be very expensive.
-	err := j.blockJournal.saveBlocksUntilNextMDFlush()
+	err = j.blockJournal.saveBlocksUntilNextMDFlush()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	return j.blockJournal.removeFlushedEntries(ctx, entries, j.tlfID,
@@ -811,7 +811,7 @@ func (j *tlfJournal) flushBlockEntries(
 		return 0, MetadataRevisionUninitialized, err
 	}
 
-	err = j.removeFlushedBlockEntries(ctx, entries)
+	_, err = j.removeFlushedBlockEntries(ctx, entries)
 	if err != nil {
 		return 0, MetadataRevisionUninitialized, err
 	}
