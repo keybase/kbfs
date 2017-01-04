@@ -1401,7 +1401,12 @@ func (j *tlfJournal) putBlockData(
 		return err
 	}
 
-	err := j.blockJournal.putData(ctx, id, context, buf, serverHalf)
+	err := j.diskLimitSemaphore.Acquire(ctx, int64(len(buf)))
+	if err != nil {
+		return err
+	}
+
+	err = j.blockJournal.putData(ctx, id, context, buf, serverHalf)
 	if err != nil {
 		return err
 	}

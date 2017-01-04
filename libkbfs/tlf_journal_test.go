@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"errors"
+	"math"
 	"os"
 	"reflect"
 	"sync"
@@ -257,6 +258,7 @@ func setupTLFJournalTest(
 	delegateBlockServer := NewBlockServerMemory(log)
 
 	diskLimitSemaphore := kbfssync.NewSemaphore()
+	diskLimitSemaphore.Release(math.MaxInt64)
 	tlfJournal, err = makeTLFJournal(ctx, uid, verifyingKey,
 		tempdir, config.tlfID, config, delegateBlockServer,
 		bwStatus, delegate, nil, nil, diskLimitSemaphore)
