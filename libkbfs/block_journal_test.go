@@ -385,11 +385,11 @@ func TestBlockJournalFlush(t *testing.T) {
 	bcache := NewBlockCacheStandard(0, 0)
 	reporter := NewReporterSimple(nil, 0)
 
-	flush := func() {
+	flush := func() int64 {
 		end, err := j.end()
 		require.NoError(t, err)
 		if end == 0 {
-			return
+			return 0
 		}
 
 		// Test that the end parameter is respected.
@@ -413,11 +413,14 @@ func TestBlockJournalFlush(t *testing.T) {
 			tlfID, CanonicalTlfName("fake TLF"), entries)
 		require.NoError(t, err)
 
-		_, err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+		totalFlushedBytes, err := j.removeFlushedEntries(
+			ctx, entries, tlfID, reporter)
 		require.NoError(t, err)
+		return totalFlushedBytes
 	}
 
-	flush()
+	totalFlushedBytes := flush()
+	require.Equal(t, int64(len(data)), totalFlushedBytes)
 
 	// Check the Put.
 	buf, key, err := blockServer.Get(ctx, tlfID, bID, bCtx)
@@ -445,7 +448,8 @@ func TestBlockJournalFlush(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID: 0}, liveCounts)
 
-	flush()
+	totalFlushedBytes = flush()
+	require.Equal(t, int64(0), totalFlushedBytes)
 
 	// Check they're all gone.
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx)
