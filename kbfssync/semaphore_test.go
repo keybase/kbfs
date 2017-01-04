@@ -15,6 +15,14 @@ import (
 
 var testTimeout = 10 * time.Second
 
+func requireEmpty(t *testing.T, errCh <-chan error) {
+	select {
+	case err := <-errCh:
+		require.Fail(t, "Unexpected error: %+v", err)
+	default:
+	}
+}
+
 // TestSimple tests that Adjust, Acquire, and Release work in a simple
 // two-goroutine scenario.
 func TestSimple(t *testing.T) {
@@ -30,19 +38,11 @@ func TestSimple(t *testing.T) {
 		errCh <- s.Acquire(ctx, n)
 	}()
 
-	select {
-	case err := <-errCh:
-		require.Fail(t, "Unexpected error: %+v", err)
-	default:
-	}
+	requireEmpty(t, errCh)
 
 	s.Adjust(n - 1)
 
-	select {
-	case err := <-errCh:
-		require.Fail(t, "Unexpected error: %+v", err)
-	default:
-	}
+	requireEmpty(t, errCh)
 
 	s.Release(1)
 
@@ -71,19 +71,11 @@ func TestCancel(t *testing.T) {
 		errCh <- s.Acquire(ctx2, n)
 	}()
 
-	select {
-	case err := <-errCh:
-		require.Fail(t, "Unexpected error: %+v", err)
-	default:
-	}
+	requireEmpty(t, errCh)
 
 	s.Adjust(n - 1)
 
-	select {
-	case err := <-errCh:
-		require.Fail(t, "Unexpected error: %+v", err)
-	default:
-	}
+	requireEmpty(t, errCh)
 
 	cancel2()
 
@@ -95,14 +87,16 @@ func TestCancel(t *testing.T) {
 	}
 }
 
+// TestSerialRelease tests that Release(1) causes exactly one waiting
+// Acquire(1) to wake up at a time.
 func TestSerialRelease(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
 	acquirerCount := 100
-	n := 0
 
 	s := NewSemaphore()
+	n := 0
 	errCh := make(chan error, acquirerCount)
 	for i := 0; i < acquirerCount; i++ {
 		go func() {
@@ -113,6 +107,8 @@ func TestSerialRelease(t *testing.T) {
 	}
 
 	for i := 0; i < acquirerCount; i++ {
+		requireEmpty(t, errCh)
+
 		s.Release(1)
 		select {
 		case err := <-errCh:
@@ -120,7 +116,10 @@ func TestSerialRelease(t *testing.T) {
 		case <-ctx.Done():
 			t.Fatal(ctx.Err())
 		}
+
+		requireEmpty(t, errCh)
 	}
 
+	// n should have been incremented race-free.
 	require.Equal(t, n, acquirerCount)
 }
