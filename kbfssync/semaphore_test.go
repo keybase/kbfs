@@ -72,6 +72,8 @@ func TestCancel(t *testing.T) {
 	var n int64 = 10
 
 	s := NewSemaphore()
+	require.Equal(t, int64(0), s.Count())
+
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- s.Acquire(ctx2, n)
@@ -80,10 +82,12 @@ func TestCancel(t *testing.T) {
 	requireEmpty(t, errCh)
 
 	s.Adjust(n - 1)
+	require.Equal(t, n-1, s.Count())
 
 	requireEmpty(t, errCh)
 
 	cancel2()
+	require.Equal(t, n-1, s.Count())
 
 	select {
 	case err := <-errCh:
@@ -91,6 +95,8 @@ func TestCancel(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
+
+	require.Equal(t, n-1, s.Count())
 }
 
 // TestSerialRelease tests that Release(1) causes exactly one waiting
@@ -124,6 +130,8 @@ func TestSerialRelease(t *testing.T) {
 		}
 
 		requireEmpty(t, errCh)
+
+		require.Equal(t, int64(0), s.Count())
 	}
 
 	// n should have been incremented race-free.
