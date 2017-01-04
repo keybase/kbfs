@@ -897,9 +897,11 @@ func (c *ConfigLocal) EnableJournaling(
 	log := c.MakeLogger("")
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
+	// 10 GiB
+	var journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,
-		flushListener)
+		flushListener, journalDiskLimit)
 	ctx := context.Background()
 	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, c.KBPKI())
 	if err != nil {

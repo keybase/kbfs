@@ -88,6 +88,8 @@ type JournalServer struct {
 	onBranchChange          branchChangeListener
 	onMDFlush               mdFlushListener
 
+	journalDiskLimit int64
+
 	// Protects all fields below.
 	lock                sync.RWMutex
 	currentUID          keybase1.UID
@@ -102,7 +104,7 @@ func makeJournalServer(
 	config Config, log logger.Logger, dir string,
 	bcache BlockCache, dirtyBcache DirtyBlockCache, bserver BlockServer,
 	mdOps MDOps, onBranchChange branchChangeListener,
-	onMDFlush mdFlushListener) *JournalServer {
+	onMDFlush mdFlushListener, journalDiskLimit int64) *JournalServer {
 	jServer := JournalServer{
 		config:                  config,
 		log:                     log,
@@ -115,6 +117,7 @@ func makeJournalServer(
 		onBranchChange:          onBranchChange,
 		onMDFlush:               onMDFlush,
 		tlfJournals:             make(map[tlf.ID]*tlfJournal),
+		journalDiskLimit:        journalDiskLimit,
 	}
 	jServer.dirtyOpsDone = sync.NewCond(&jServer.lock)
 	return &jServer
@@ -372,7 +375,14 @@ func (j *JournalServer) enableLocked(
 		return err
 	}
 
+	unflushedBytes, err := tlfJournal.getUnflushedBytes()
+	if err != nil {
+		return err
+	}
+	_ = unflushedBytes
+
 	j.tlfJournals[tlfID] = tlfJournal
+
 	return nil
 }
 
