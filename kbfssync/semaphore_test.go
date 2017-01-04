@@ -6,7 +6,6 @@ package kbfssync
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
@@ -16,9 +15,7 @@ import (
 func TestSerial(t *testing.T) {
 	n := 100
 	count := 0
-
-	var wg sync.WaitGroup
-	wg.Add(n)
+	ch := make(chan struct{}, n)
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(), 10*time.Second)
@@ -27,18 +24,21 @@ func TestSerial(t *testing.T) {
 	s := NewSemaphore()
 	for i := 0; i < n; i++ {
 		go func() {
-			defer wg.Done()
 			err := s.Acquire(ctx, 1)
 			require.NoError(t, err)
 			count++
+			ch <- struct{}{}
 		}()
 	}
 
 	for i := 0; i < n; i++ {
 		s.Release(1)
+		select {
+		case <-ch:
+		case <-ctx.Done():
+			t.Fatal(ctx.Err())
+		}
 	}
-
-	wg.Wait()
 
 	require.Equal(t, n, count)
 }
