@@ -12,6 +12,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestSimple(t *testing.T) {
+	ctx, cancel := context.WithTimeout(
+		context.Background(), 10*time.Second)
+	defer cancel()
+
+	n := 10
+
+	s := NewSemaphore()
+	errCh := make(chan error)
+	go func() {
+		errCh <- s.Acquire(ctx, int64(n))
+	}()
+
+	s.Release(int64(n - 1))
+
+	s.Release(1)
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+}
+
 func TestSerial(t *testing.T) {
 	n := 100
 	count := 0
