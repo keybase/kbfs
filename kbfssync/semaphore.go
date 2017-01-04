@@ -27,6 +27,7 @@ func NewSemaphore() *Semaphore {
 func (s *Semaphore) Release(n int64) {
 	if n <= 0 {
 		panic("n must be positive")
+		p
 	}
 
 	s.lock.Lock()
@@ -37,6 +38,12 @@ func (s *Semaphore) Release(n int64) {
 		close(waiter.onRelease)
 	}
 	s.waiters = nil
+}
+
+func (s *Semaphore) AcquireNoWait(n int64) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.n -= n
 }
 
 func (s *Semaphore) Acquire(ctx context.Context, n int64) error {

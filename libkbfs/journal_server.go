@@ -13,6 +13,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/keybase/kbfs/kbfssync"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -88,7 +89,7 @@ type JournalServer struct {
 	onBranchChange          branchChangeListener
 	onMDFlush               mdFlushListener
 
-	journalDiskLimit int64
+	diskLimitSemaphore *kbfssync.Semaphore
 
 	// Protects all fields below.
 	lock                sync.RWMutex
@@ -105,6 +106,8 @@ func makeJournalServer(
 	bcache BlockCache, dirtyBcache DirtyBlockCache, bserver BlockServer,
 	mdOps MDOps, onBranchChange branchChangeListener,
 	onMDFlush mdFlushListener, journalDiskLimit int64) *JournalServer {
+	diskLimitSemaphore := kbfssync.NewSemaphore()
+	diskLimitSemaphore.Release(journalDiskLimit)
 	jServer := JournalServer{
 		config:                  config,
 		log:                     log,
@@ -117,7 +120,7 @@ func makeJournalServer(
 		onBranchChange:          onBranchChange,
 		onMDFlush:               onMDFlush,
 		tlfJournals:             make(map[tlf.ID]*tlfJournal),
-		journalDiskLimit:        journalDiskLimit,
+		diskLimitSemaphore:      diskLimitSemaphore,
 	}
 	jServer.dirtyOpsDone = sync.NewCond(&jServer.lock)
 	return &jServer
@@ -379,7 +382,7 @@ func (j *JournalServer) enableLocked(
 	if err != nil {
 		return err
 	}
-	_ = unflushedBytes
+	j.diskLimitSemaphore.AcquireNoWait(unflushedBytes)
 
 	j.tlfJournals[tlfID] = tlfJournal
 
