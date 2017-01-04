@@ -18,7 +18,7 @@ var testTimeout = 10 * time.Second
 func requireEmpty(t *testing.T, errCh <-chan error) {
 	select {
 	case err := <-errCh:
-		require.Fail(t, "Unexpected error: %+v", err)
+		t.Fatalf("Unexpected error: %+v", err)
 	default:
 	}
 }
@@ -130,6 +130,74 @@ func TestSerialRelease(t *testing.T) {
 		}
 
 		requireEmpty(t, errCh)
+
+		require.Equal(t, int64(0), s.Count())
+	}
+
+	// n should have been incremented race-free.
+	require.Equal(t, n, acquirerCount)
+}
+
+func TestAcquireDifferentSizes(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	acquirerCount := 10
+
+	type acquirer struct {
+		n   int64
+		err error
+	}
+
+	s := NewSemaphore()
+	n := 0
+	acquirerCh := make(chan acquirer, acquirerCount)
+	for i := 0; i < acquirerCount; i++ {
+		go func() {
+			err := s.Acquire(ctx, int64(i+1))
+			n++
+			acquirerCh <- acquirer{int64(i + 1), err}
+		}()
+	}
+
+	for i := 0; i < acquirerCount; i++ {
+		select {
+		case a := <-acquirerCh:
+			t.Fatalf("Unexpected acquirer: %+v", a)
+		default:
+		}
+
+		if i > 0 {
+			s.Release(1)
+			require.Equal(t, int64(1), s.Count())
+		} else {
+			require.Equal(t, int64(0), s.Count())
+		}
+
+		select {
+		case a := <-acquirerCh:
+			t.Fatalf("Unexpected acquirer: %+v", a)
+		default:
+		}
+
+		if i == 0 {
+			s.Release(1)
+		} else {
+			s.Release(int64(i))
+		}
+
+		select {
+		case a := <-acquirerCh:
+			require.Equal(t, acquirer{int64(i + 1), nil}, a)
+		case <-ctx.Done():
+			t.Fatalf("err=%+v, i=%d", ctx.Err(), i)
+		}
+
+		select {
+		case a := <-acquirerCh:
+			t.Fatalf("Unexpected acquirer: %+v", a)
+		default:
+		}
 
 		require.Equal(t, int64(0), s.Count())
 	}
