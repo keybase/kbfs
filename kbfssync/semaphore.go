@@ -51,6 +51,14 @@ func (s *Semaphore) Adjust(n int64) {
 	s.count += n
 }
 
+// Count returns the current resource count. It should be used only
+// for logging or testing.
+func (s *Semaphore) Count() int64 {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.count
+}
+
 // Acquire blocks until it is possible to atomically subtract n (which
 // must be positive) from the resource count without causing it to go
 // negative, and then returns nil. If the given context is canceled

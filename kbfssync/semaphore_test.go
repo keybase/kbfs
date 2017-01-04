@@ -32,6 +32,7 @@ func TestSimple(t *testing.T) {
 	var n int64 = 10
 
 	s := NewSemaphore()
+	require.Equal(t, int64(0), s.Count())
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -41,10 +42,13 @@ func TestSimple(t *testing.T) {
 	requireEmpty(t, errCh)
 
 	s.Adjust(n - 1)
+	require.Equal(t, n-1, s.Count())
 
 	requireEmpty(t, errCh)
 
 	s.Release(1)
+
+	// s.Count() should go to n, then 0.
 
 	select {
 	case err := <-errCh:
@@ -52,6 +56,8 @@ func TestSimple(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
+
+	require.Equal(t, int64(0), s.Count())
 }
 
 // TestCancel tests that cancelling the context passed into Acquire
