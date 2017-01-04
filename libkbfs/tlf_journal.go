@@ -718,7 +718,9 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 		if err != nil {
 			return err
 		}
-		_ = totalFlushedBytes
+		if totalFlushedBytes > 0 {
+			j.diskLimitSemaphore.Release(totalFlushedBytes)
+		}
 		flushedBlockEntries += numFlushed
 
 		if numFlushed == 0 {
