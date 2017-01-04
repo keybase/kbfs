@@ -107,7 +107,7 @@ func makeJournalServer(
 	mdOps MDOps, onBranchChange branchChangeListener,
 	onMDFlush mdFlushListener, journalDiskLimit int64) *JournalServer {
 	diskLimitSemaphore := kbfssync.NewSemaphore()
-	diskLimitSemaphore.Release(journalDiskLimit)
+	diskLimitSemaphore.Adjust(journalDiskLimit)
 	jServer := JournalServer{
 		config:                  config,
 		log:                     log,
@@ -382,7 +382,7 @@ func (j *JournalServer) enableLocked(
 	if err != nil {
 		return err
 	}
-	j.diskLimitSemaphore.AcquireNoWait(unflushedBytes)
+	j.diskLimitSemaphore.Adjust(-unflushedBytes)
 
 	j.tlfJournals[tlfID] = tlfJournal
 
