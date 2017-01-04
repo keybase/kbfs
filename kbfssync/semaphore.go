@@ -27,7 +27,6 @@ func NewSemaphore() *Semaphore {
 func (s *Semaphore) Release(n int64) {
 	if n <= 0 {
 		panic("n must be positive")
-		p
 	}
 
 	s.lock.Lock()
