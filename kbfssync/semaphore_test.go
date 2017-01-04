@@ -95,33 +95,32 @@ func TestCancel(t *testing.T) {
 	}
 }
 
-func TestSerial(t *testing.T) {
-	n := 100
-	count := 0
-	ch := make(chan struct{}, n)
-
-	ctx, cancel := context.WithTimeout(
-		context.Background(), 10*time.Second)
+func TestSerialRelease(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
+	acquirerCount := 100
+	n := 0
+
 	s := NewSemaphore()
-	for i := 0; i < n; i++ {
+	errCh := make(chan error, acquirerCount)
+	for i := 0; i < acquirerCount; i++ {
 		go func() {
 			err := s.Acquire(ctx, 1)
-			require.NoError(t, err)
-			count++
-			ch <- struct{}{}
+			n++
+			errCh <- err
 		}()
 	}
 
-	for i := 0; i < n; i++ {
+	for i := 0; i < acquirerCount; i++ {
 		s.Release(1)
 		select {
-		case <-ch:
+		case err := <-errCh:
+			require.NoError(t, err)
 		case <-ctx.Done():
 			t.Fatal(ctx.Err())
 		}
 	}
 
-	require.Equal(t, n, count)
+	require.Equal(t, n, acquirerCount)
 }
