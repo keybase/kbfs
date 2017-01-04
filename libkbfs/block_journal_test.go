@@ -634,8 +634,10 @@ func TestBlockJournalFlushMDRevMarker(t *testing.T) {
 		bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 		entries)
 	require.NoError(t, err)
-	_, err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+	totalFlushedBytes, err := j.removeFlushedEntries(
+		ctx, entries, tlfID, reporter)
 	require.NoError(t, err)
+	require.Equal(t, int64(len(data)), totalFlushedBytes)
 	err = j.checkInSyncForTest()
 	require.NoError(t, err)
 }
