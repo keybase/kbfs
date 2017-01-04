@@ -149,6 +149,15 @@ func TestAcquireDifferentSizes(t *testing.T) {
 		err error
 	}
 
+	// Shadow the global requireEmpty.
+	var requireEmpty = func(t *testing.T, acquirerCh <-chan acquirer) {
+		select {
+		case a := <-acquirerCh:
+			t.Fatalf("Unexpected acquirer: %+v", a)
+		default:
+		}
+	}
+
 	s := NewSemaphore()
 	n := 0
 	acquirerCh := make(chan acquirer, acquirerCount)
@@ -161,11 +170,7 @@ func TestAcquireDifferentSizes(t *testing.T) {
 	}
 
 	for i := 0; i < acquirerCount; i++ {
-		select {
-		case a := <-acquirerCh:
-			t.Fatalf("Unexpected acquirer: %+v", a)
-		default:
-		}
+		requireEmpty(t, acquirerCh)
 
 		if i > 0 {
 			s.Release(1)
@@ -174,11 +179,7 @@ func TestAcquireDifferentSizes(t *testing.T) {
 			require.Equal(t, int64(0), s.Count())
 		}
 
-		select {
-		case a := <-acquirerCh:
-			t.Fatalf("Unexpected acquirer: %+v", a)
-		default:
-		}
+		requireEmpty(t, acquirerCh)
 
 		if i == 0 {
 			s.Release(1)
@@ -193,11 +194,7 @@ func TestAcquireDifferentSizes(t *testing.T) {
 			t.Fatalf("err=%+v, i=%d", ctx.Err(), i)
 		}
 
-		select {
-		case a := <-acquirerCh:
-			t.Fatalf("Unexpected acquirer: %+v", a)
-		default:
-		}
+		requireEmpty(t, acquirerCh)
 
 		require.Equal(t, int64(0), s.Count())
 	}
