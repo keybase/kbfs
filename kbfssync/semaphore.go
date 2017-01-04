@@ -30,7 +30,7 @@ func (s *Semaphore) Release(n int64) {
 	}
 
 	s.lock.Lock()
-	s.lock.Unlock()
+	defer s.lock.Unlock()
 	// TODO: check for overflow.
 	s.n += n
 	for _, waiter := range s.waiters {

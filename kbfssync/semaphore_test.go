@@ -15,7 +15,7 @@ import (
 
 func TestSerial(t *testing.T) {
 	n := 100
-	i := 0
+	count := 0
 
 	var wg sync.WaitGroup
 	wg.Add(n)
@@ -30,7 +30,7 @@ func TestSerial(t *testing.T) {
 			defer wg.Done()
 			err := s.Acquire(ctx, 1)
 			require.NoError(t, err)
-			i++
+			count++
 		}()
 	}
 
@@ -40,5 +40,5 @@ func TestSerial(t *testing.T) {
 
 	wg.Wait()
 
-	require.Equal(t, n, i)
+	require.Equal(t, n, count)
 }
