@@ -61,14 +61,14 @@ var testMetadataVers = []libkbfs.MetadataVer{
 }
 
 // runTestOverMetadataVers runs the given test function over all
-// metadata versions to test. The test is assumed to be parallelizable
-// with other instances of itself.
+// metadata versions to test.
 func runTestOverMetadataVers(
 	t *testing.T, f func(t *testing.T, ver libkbfs.MetadataVer)) {
 	for _, ver := range testMetadataVers {
 		ver := ver // capture range variable.
 		t.Run(ver.String(), func(t *testing.T) {
-			t.Parallel()
+			// Don't do t.Parallel() for now, as FUSE DSL
+			// tests might not like it.
 			f(t, ver)
 		})
 	}
@@ -841,6 +841,12 @@ func checkUnflushedPaths(expectedPaths []string) fileOp {
 		}
 		return nil
 	}, IsInit, fmt.Sprintf("checkUnflushedPaths(%s)", expectedPaths)}
+}
+
+func disablePrefetch() fileOp {
+	return fileOp{func(c *ctx) error {
+		return c.engine.TogglePrefetch(c.user, false)
+	}, IsInit, "disablePrefetch()"}
 }
 
 func lsfavoritesOp(c *ctx, expected []string, public bool) error {

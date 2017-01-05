@@ -41,7 +41,6 @@ func runTestOverMetadataVers(
 	for _, ver := range testMetadataVers {
 		ver := ver // capture range variable.
 		t.Run(ver.String(), func(t *testing.T) {
-			t.Parallel()
 			f(t, ver)
 		})
 	}
@@ -64,6 +63,7 @@ func runTestOverMetadataVers(
 func runTestsOverMetadataVers(t *testing.T, prefix string,
 	fs []func(t *testing.T, ver MetadataVer)) {
 	for _, f := range fs {
+		f := f // capture range variable.
 		name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 		i := strings.LastIndex(name, prefix)
 		if i >= 0 {

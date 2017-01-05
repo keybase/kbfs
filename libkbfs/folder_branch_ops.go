@@ -1012,6 +1012,24 @@ func (fbo *folderBranchOps) getMDForReadNeedIdentify(
 	return fbo.getMDForReadHelper(ctx, lState, mdReadNeedIdentify)
 }
 
+// getMDForReadNeedIdentifyOnMaybeFirstAccess should be called by a
+// code path (like chat) that might be accessing this folder for the
+// first time.  Other folderBranchOps methods like Lookup which know
+// the folder has already been accessed at least once (to get the root
+// node, for example) do not need to call this.
+func (fbo *folderBranchOps) getMDForReadNeedIdentifyOnMaybeFirstAccess(
+	ctx context.Context, lState *lockState) (ImmutableRootMetadata, error) {
+	irmd, err := fbo.getMDForReadHelper(ctx, lState, mdReadNeedIdentify)
+
+	if _, ok := err.(MDWriteNeededInRequest); ok {
+		fbo.mdWriterLock.Lock(lState)
+		defer fbo.mdWriterLock.Unlock(lState)
+		irmd, err = fbo.getMDForReadHelper(ctx, lState, mdWrite)
+	}
+
+	return irmd, err
+}
+
 // getMDForWriteLocked returns a new RootMetadata object with an
 // incremented version number for modification. If the returned object
 // is put to the MDServer (via MDOps), mdWriterLock must be held until
@@ -1322,6 +1340,8 @@ func (fbo *folderBranchOps) SetInitialHeadFromServer(
 		return errors.Errorf("MD with revision=%d not initialized",
 			md.Revision())
 	}
+	fbo.config.BlockOps().Prefetcher().PrefetchDirBlock(
+		md.data.Dir.BlockPointer, md, dirEntryPrefetchPriority)
 
 	// Return early if the head is already set.  This avoids taking
 	// mdWriterLock for no reason, and it also avoids any side effects
