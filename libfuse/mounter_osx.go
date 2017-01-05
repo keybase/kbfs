@@ -40,6 +40,11 @@ func getPlatformSpecificMountOptions(dir string, platformParams PlatformParams) 
 
 	options = append(options, fuse.VolumeName(volName))
 	options = append(options, fuse.ExclCreate())
+
+	// Finder likes to use UID 0 for some operations. This allows root access the
+	// mount. See KBFS-1733 for more details.
+	options = append(options, fuse.AllowRoot())
+
 	if platformParams.UseLocal {
 		options = append(options, fuse.LocalVolume())
 	}
