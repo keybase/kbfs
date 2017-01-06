@@ -610,12 +610,16 @@ func (c *ConfigLocal) SetDoBackgroundFlushes(doBGFlush bool) {
 // RekeyWithPromptWaitTime implements the Config interface for
 // ConfigLocal.
 func (c *ConfigLocal) RekeyWithPromptWaitTime() time.Duration {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	return c.rwpWaitTime
 }
 
 // SetRekeyWithPromptWaitTime implements the Config interface for
 // ConfigLocal.
 func (c *ConfigLocal) SetRekeyWithPromptWaitTime(d time.Duration) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	c.rwpWaitTime = d
 }
 
