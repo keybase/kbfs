@@ -35,9 +35,9 @@ var _ fs.NodeAccesser = (*FolderList)(nil)
 
 // Access implements fs.NodeAccesser interface for *FolderList.
 func (*FolderList) Access(ctx context.Context, r *fuse.AccessRequest) error {
-	if int(r.Uid) != os.Getuid() {
-		// short path: not accessible by anybody other than the logged in user.
-		// This is in case we enable AllowOther in the future.
+	if int(r.Uid) != os.Getuid() && int(r.Uid) != 0 {
+		// short path: not accessible by anybody other than root or the user who
+		// executed the kbfsfuse process.
 		return fuse.EPERM
 	}
 
