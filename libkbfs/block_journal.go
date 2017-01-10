@@ -205,6 +205,7 @@ func makeBlockJournal(
 // Ideally, this would be a JSON file, but we'd need a JSON
 // encoder/decoder that supports unknown fields.
 type aggregateInfo struct {
+	StoredBytes    int64
 	UnflushedBytes int64
 
 	codec.UnknownFieldSetHandler
@@ -214,8 +215,30 @@ func aggregateInfoPath(dir string) string {
 	return filepath.Join(dir, "block_aggregate_info")
 }
 
-func (j *blockJournal) adjustUnflushedBytes(delta int64) error {
-	j.aggregateInfo.UnflushedBytes += delta
+func (j *blockJournal) accumulateBytes(n int64) error {
+	if n < 0 {
+		panic("n unexpectedly negative")
+	}
+	j.aggregateInfo.StoredBytes += n
+	j.aggregateInfo.UnflushedBytes += n
+	return kbfscodec.SerializeToFile(
+		j.codec, j.aggregateInfo, aggregateInfoPath(j.dir))
+}
+
+func (j *blockJournal) flushBytes(n int64) error {
+	if n < 0 {
+		panic("n unexpectedly negative")
+	}
+	j.aggregateInfo.UnflushedBytes -= n
+	return kbfscodec.SerializeToFile(
+		j.codec, j.aggregateInfo, aggregateInfoPath(j.dir))
+}
+
+func (j *blockJournal) unstoreBytes(n int64) error {
+	if n < 0 {
+		panic("n unexpectedly negative")
+	}
+	j.aggregateInfo.StoredBytes -= n
 	return kbfscodec.SerializeToFile(
 		j.codec, j.aggregateInfo, aggregateInfoPath(j.dir))
 }
@@ -275,6 +298,8 @@ func (j *blockJournal) isUnflushed(id kbfsblock.ID) (bool, error) {
 }
 
 func (j *blockJournal) remove(id kbfsblock.ID) error {
+	// TODO: Call unstoreBytes.
+
 	// TODO: we'll eventually need a sweeper to clean up entries
 	// left behind if we crash here.
 	return j.s.remove(id)
@@ -314,14 +339,13 @@ func (j *blockJournal) putData(
 		return err
 	}
 
+	// TODO: Detect duplicate puts and adjust bytes accordingly.
 	err = j.s.put(id, context, buf, serverHalf, next.String())
 	if err != nil {
 		return err
 	}
 
-	// Decremented when the put journal entry is ignored or
-	// flushed.
-	err = j.adjustUnflushedBytes(int64(len(buf)))
+	err = j.accumulateBytes(int64(len(buf)))
 	if err != nil {
 		return err
 	}
@@ -714,7 +738,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 			return 0, err
 		}
 
-		err = j.adjustUnflushedBytes(-flushedBytes)
+		err = j.flushBytes(flushedBytes)
 		if err != nil {
 			return 0, err
 		}
@@ -816,7 +840,7 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkers(ctx context.Context,
 					return err
 				}
 
-				err = j.adjustUnflushedBytes(-ignoredBytes)
+				err = j.flushBytes(ignoredBytes)
 				if err != nil {
 					return err
 				}
