@@ -927,25 +927,27 @@ func TestBlockJournalUnflushedBytesIgnore(t *testing.T) {
 	ctx, cancel, tempdir, _, j := setupBlockJournalTest(t)
 	defer teardownBlockJournalTest(t, ctx, cancel, tempdir, j)
 
-	requireSize := func(expectedSize int) {
-		require.Equal(t, int64(expectedSize), j.getUnflushedBytes())
+	requireSize := func(expectedStoredSize, expectedUnflushedSize int) {
+		require.Equal(t, int64(expectedStoredSize), j.getStoredBytes())
+		require.Equal(t, int64(expectedUnflushedSize),
+			j.getUnflushedBytes())
 	}
 
 	// Prime the cache.
-	requireSize(0)
+	requireSize(0, 0)
 
 	data1 := []byte{1, 2, 3, 4}
 	bID1, _, _ := putBlockData(ctx, t, j, data1)
 
-	requireSize(len(data1))
+	requireSize(len(data1), len(data1))
 
 	data2 := []byte{1, 2, 3, 4, 5}
 	_, _, _ = putBlockData(ctx, t, j, data2)
 
-	requireSize(len(data1) + len(data2))
+	requireSize(len(data1)+len(data2), len(data1)+len(data2))
 
 	err := j.ignoreBlocksAndMDRevMarkers(ctx, []kbfsblock.ID{bID1})
 	require.NoError(t, err)
 
-	requireSize(len(data2))
+	requireSize(len(data1)+len(data2), len(data2))
 }
