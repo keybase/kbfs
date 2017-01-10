@@ -815,7 +815,10 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	ctx, cancel, tempdir, log, j := setupBlockJournalTest(t)
 	defer teardownBlockJournalTest(t, ctx, cancel, tempdir, j)
 
+	// In this test, stored bytes and unflushed bytes should
+	// change identically.
 	requireSize := func(expectedSize int) {
+		require.Equal(t, int64(expectedSize), j.getStoredBytes())
 		require.Equal(t, int64(expectedSize), j.getUnflushedBytes())
 		var info aggregateInfo
 		err := kbfscodec.DeserializeFromFile(
@@ -823,6 +826,7 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 		if !ioutil.IsNotExist(err) {
 			require.NoError(t, err)
 		}
+		require.Equal(t, int64(expectedSize), info.StoredBytes)
 		require.Equal(t, int64(expectedSize), info.UnflushedBytes)
 	}
 
