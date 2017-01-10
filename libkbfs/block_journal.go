@@ -358,12 +358,12 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	didPut, err := j.s.put(id, context, buf, serverHalf, next.String())
+	putData, err := j.s.put(id, context, buf, serverHalf, next.String())
 	if err != nil {
 		return err
 	}
 
-	if didPut {
+	if putData {
 		err = j.accumulateBytes(int64(len(buf)))
 		if err != nil {
 			return err
