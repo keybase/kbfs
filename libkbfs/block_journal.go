@@ -39,7 +39,7 @@ import (
 // dir/saved_block_journal/...
 //
 // block_aggregate_info holds aggregate info about the block journal;
-// currently it just holds the count of unflushed bytes.
+// currently it just holds the count of stored and unflushed bytes.
 //
 // Each entry in the journal in dir/block_journal contains the
 // mutating operation and arguments for a single operation, except for
