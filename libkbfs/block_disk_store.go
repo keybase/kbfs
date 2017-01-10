@@ -384,10 +384,13 @@ func (s *blockDiskStore) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, erro
 }
 
 // put puts the given data for the block, which may already exist, and
-// adds a reference for the given context.
+// adds a reference for the given context. If err is nil, putData
+// indicates whether the data didn't already exist and was put; if
+// false, it means that the data already exists, but this might have
+// added a new ref.
 func (s *blockDiskStore) put(id kbfsblock.ID, context kbfsblock.Context,
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf,
-	tag string) (didPut bool, err error) {
+	tag string) (putData bool, err error) {
 	err = validateBlockPut(id, context, buf)
 	if err != nil {
 		return false, err
