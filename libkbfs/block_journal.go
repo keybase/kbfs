@@ -205,7 +205,13 @@ func makeBlockJournal(
 // Ideally, this would be a JSON file, but we'd need a JSON
 // encoder/decoder that supports unknown fields.
 type aggregateInfo struct {
-	StoredBytes    int64
+	// StoredBytes counts the number of bytes of block data stored
+	// on disk.
+	StoredBytes int64
+	// UnflushedBytes counts the number of bytes of block data
+	// that is intended to be flushed to the server, but hasn't
+	// been yet. This should be always less than or equal to
+	// StoredBytes.
 	UnflushedBytes int64
 
 	codec.UnknownFieldSetHandler
@@ -215,32 +221,33 @@ func aggregateInfoPath(dir string) string {
 	return filepath.Join(dir, "block_aggregate_info")
 }
 
+func (j *blockJournal) changeBytes(
+	deltaStoredBytes, deltaUnflushedBytes int64) error {
+	j.aggregateInfo.StoredBytes += deltaStoredBytes
+	j.aggregateInfo.UnflushedBytes += deltaUnflushedBytes
+	return kbfscodec.SerializeToFile(
+		j.codec, j.aggregateInfo, aggregateInfoPath(j.dir))
+}
+
 func (j *blockJournal) accumulateBytes(n int64) error {
 	if n < 0 {
 		panic("n unexpectedly negative")
 	}
-	j.aggregateInfo.StoredBytes += n
-	j.aggregateInfo.UnflushedBytes += n
-	return kbfscodec.SerializeToFile(
-		j.codec, j.aggregateInfo, aggregateInfoPath(j.dir))
+	return j.changeBytes(n, n)
 }
 
 func (j *blockJournal) flushBytes(n int64) error {
 	if n < 0 {
 		panic("n unexpectedly negative")
 	}
-	j.aggregateInfo.UnflushedBytes -= n
-	return kbfscodec.SerializeToFile(
-		j.codec, j.aggregateInfo, aggregateInfoPath(j.dir))
+	return j.changeBytes(0, -n)
 }
 
 func (j *blockJournal) unstoreBytes(n int64) error {
 	if n < 0 {
 		panic("n unexpectedly negative")
 	}
-	j.aggregateInfo.StoredBytes -= n
-	return kbfscodec.SerializeToFile(
-		j.codec, j.aggregateInfo, aggregateInfoPath(j.dir))
+	return j.changeBytes(-n, 0)
 }
 
 // The functions below are for reading and writing journal entries.
