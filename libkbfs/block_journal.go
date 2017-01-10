@@ -298,11 +298,19 @@ func (j *blockJournal) isUnflushed(id kbfsblock.ID) (bool, error) {
 }
 
 func (j *blockJournal) remove(id kbfsblock.ID) error {
-	// TODO: Call unstoreBytes.
+	removedBytes, err := j.s.getDataSize(id)
+	if err != nil {
+		return err
+	}
 
 	// TODO: we'll eventually need a sweeper to clean up entries
 	// left behind if we crash here.
-	return j.s.remove(id)
+	err = j.s.remove(id)
+	if err != nil {
+		return err
+	}
+
+	return j.unstoreBytes(removedBytes)
 }
 
 // All functions below are public functions.
