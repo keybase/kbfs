@@ -209,6 +209,9 @@ func TestBlockJournalDuplicatePut(t *testing.T) {
 	err = j.putData(ctx, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 
+	require.Equal(t, int64(len(data)), j.getStoredBytes())
+	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
+
 	// Put a second time.
 	err = j.putData(ctx, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
@@ -302,6 +305,38 @@ func TestBlockJournalRemoveReferences(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, half)
+}
+
+func TestBlockJournalDuplicateRemove(t *testing.T) {
+	ctx, cancel, tempdir, _, j := setupBlockJournalTest(t)
+	defer teardownBlockJournalTest(t, ctx, cancel, tempdir, j)
+
+	// Put the block.
+	data := []byte{1, 2, 3, 4}
+	bID, bCtx, _ := putBlockData(ctx, t, j, data)
+
+	require.Equal(t, int64(len(data)), j.getStoredBytes())
+	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
+
+	// Remove the only reference to the block, then remove the
+	// block.
+	liveCounts, err := j.removeReferences(
+		ctx, kbfsblock.ContextMap{bID: {bCtx}})
+	require.NoError(t, err)
+	require.Equal(t, map[kbfsblock.ID]int{bID: 0}, liveCounts)
+	err = j.remove(bID)
+	require.NoError(t, err)
+
+	require.Equal(t, int64(0), j.getStoredBytes())
+	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
+
+	// Remove the block again.
+	err = j.remove(bID)
+	require.NoError(t, err)
+
+	// Shouldn't account for the block again.
+	require.Equal(t, int64(0), j.getStoredBytes())
+	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
 }
 
 func testBlockJournalGCd(t *testing.T, j *blockJournal) {
