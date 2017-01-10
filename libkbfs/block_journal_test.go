@@ -190,6 +190,36 @@ func TestBlockJournalBasic(t *testing.T) {
 	getAndCheckBlockData(ctx, t, j, bID, bCtx2, data, serverHalf)
 }
 
+func TestBlockJournalDuplicatePut(t *testing.T) {
+	ctx, cancel, tempdir, _, j := setupBlockJournalTest(t)
+	defer teardownBlockJournalTest(t, ctx, cancel, tempdir, j)
+
+	data := []byte{1, 2, 3, 4}
+
+	oldLength := getBlockJournalLength(t, j)
+
+	bID, err := kbfsblock.MakePermanentID(data)
+	require.NoError(t, err)
+
+	uid1 := keybase1.MakeTestUID(1)
+	bCtx := kbfsblock.MakeFirstContext(uid1)
+	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
+
+	err = j.putData(ctx, bID, bCtx, data, serverHalf)
+	require.NoError(t, err)
+
+	// Put a second time.
+	err = j.putData(ctx, bID, bCtx, data, serverHalf)
+	require.NoError(t, err)
+
+	require.Equal(t, oldLength+2, getBlockJournalLength(t, j))
+
+	// Shouldn't count the block twice.
+	require.Equal(t, int64(len(data)), j.getStoredBytes())
+	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
+}
+
 func TestBlockJournalAddReference(t *testing.T) {
 	ctx, cancel, tempdir, _, j := setupBlockJournalTest(t)
 	defer teardownBlockJournalTest(t, ctx, cancel, tempdir, j)

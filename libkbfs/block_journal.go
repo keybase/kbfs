@@ -317,6 +317,10 @@ func (j *blockJournal) getData(id kbfsblock.ID) (
 	return j.s.getData(id)
 }
 
+func (j *blockJournal) getStoredBytes() int64 {
+	return j.aggregateInfo.StoredBytes
+}
+
 func (j *blockJournal) getUnflushedBytes() int64 {
 	return j.aggregateInfo.UnflushedBytes
 }
@@ -339,15 +343,16 @@ func (j *blockJournal) putData(
 		return err
 	}
 
-	// TODO: Detect duplicate puts and adjust bytes accordingly.
-	err = j.s.put(id, context, buf, serverHalf, next.String())
+	didPut, err := j.s.put(id, context, buf, serverHalf, next.String())
 	if err != nil {
 		return err
 	}
 
-	err = j.accumulateBytes(int64(len(buf)))
-	if err != nil {
-		return err
+	if didPut {
+		err = j.accumulateBytes(int64(len(buf)))
+		if err != nil {
+			return err
+		}
 	}
 
 	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
