@@ -116,10 +116,6 @@ func (s *blockDiskStore) infoPath(id kbfsblock.ID) string {
 	return filepath.Join(s.blockPath(id), "refs")
 }
 
-func (s *blockDiskStore) flushedPath(id kbfsblock.ID) string {
-	return filepath.Join(s.blockPath(id), "f")
-}
-
 // makeDir makes the directory for the given block ID and writes the
 // ID file, if necessary.
 func (s *blockDiskStore) makeDir(id kbfsblock.ID) error {
