@@ -1454,18 +1454,18 @@ func (j *tlfJournal) getBlockData(id kbfsblock.ID) (
 func (j *tlfJournal) putBlockData(
 	ctx context.Context, id kbfsblock.ID, context kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
-	j.journalLock.Lock()
-	defer j.journalLock.Unlock()
-	if err := j.checkEnabledLocked(); err != nil {
+	// Since Acquire can block, it should happen outside of the
+	// journal lock.
+	bufLen := int64(len(buf))
+	j.log.CDebugf(ctx, "Acquiring %d bytes for %s", bufLen, j.tlfID)
+	availableBytes, err := j.diskLimiter.Acquire(ctx, bufLen)
+	if err != nil {
 		return err
 	}
 
-	bufLen := int64(len(buf))
-
-	j.log.CDebugf(ctx, "Acquiring %d bytes for %s", bufLen, j.tlfID)
-
-	availableBytes, err := j.diskLimiter.Acquire(ctx, bufLen)
-	if err != nil {
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
+	if err := j.checkEnabledLocked(); err != nil {
 		return err
 	}
 
