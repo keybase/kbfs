@@ -243,9 +243,39 @@ func TestAcquireDifferentSizes(t *testing.T) {
 	require.Equal(t, acquirerCount, acquireCount)
 }
 
-func TestPanics(t *testing.T) {
+func TestAcquirePanic(t *testing.T) {
 	s := NewSemaphore()
-	require.Equal(t, int64(0), s.Count())
+	ctx := context.Background()
+	require.Panics(t, func() {
+		s.Acquire(ctx, 0)
+	})
+	require.Panics(t, func() {
+		s.Acquire(ctx, -1)
+	})
+}
+
+func TestForceAcquirePanic(t *testing.T) {
+	s := NewSemaphore()
+	require.Panics(t, func() {
+		s.ForceAcquire(0)
+	})
+	require.Panics(t, func() {
+		s.ForceAcquire(-1)
+	})
+	s.ForceAcquire(2)
+	require.Panics(t, func() {
+		s.ForceAcquire(math.MaxInt64)
+	})
+}
+
+func TestReleasePanic(t *testing.T) {
+	s := NewSemaphore()
+	require.Panics(t, func() {
+		s.Release(0)
+	})
+	require.Panics(t, func() {
+		s.Release(-1)
+	})
 	s.Release(1)
 	require.Panics(t, func() {
 		s.Release(math.MaxInt64)

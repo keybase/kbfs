@@ -59,7 +59,7 @@ func (s *Semaphore) tryAcquire(n int64) <-chan struct{} {
 // the resource count.
 func (s *Semaphore) Acquire(ctx context.Context, n int64) error {
 	if n <= 0 {
-		panic("n must be positive")
+		panic(fmt.Sprintf("n=%d must be positive", n))
 	}
 
 	for {
@@ -84,12 +84,15 @@ func (s *Semaphore) Acquire(ctx context.Context, n int64) error {
 // count to overflow (in the negative direction).
 func (s *Semaphore) ForceAcquire(n int64) {
 	if n <= 0 {
-		panic("n must be positive")
+		panic(fmt.Sprintf("n=%d must be positive", n))
 	}
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	// TODO: Check for overflow.
+	if s.count < (math.MinInt64 + n) {
+		panic(fmt.Sprintf("s.count=%d - n=%d would overflow",
+			s.count, n))
+	}
 	s.count -= n
 }
 
@@ -105,9 +108,9 @@ func (s *Semaphore) Release(n int64) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if s.count > (math.MaxInt64 - n) {
-		panic(fmt.Sprintf("s.count=%d + n=%d would overflow"))
+		panic(fmt.Sprintf("s.count=%d + n=%d would overflow",
+			s.count, n))
 	}
-	// TODO: check for overflow.
 	s.count += n
 	close(s.onRelease)
 	s.onRelease = make(chan struct{})
