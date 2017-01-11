@@ -11,31 +11,21 @@ import (
 	"golang.org/x/net/context"
 )
 
-// A waiter represents a goroutine blocked on resource acquisition.
-type waiter struct {
-	// n is the resource count this waiter wants to acquire.
-	//
-	// TODO: Actually use this to e.g. avoid waking up waiters
-	// when the current resource count is too low.
-	n int64
-	// onRelease is a channel that is closed when some resources
-	// are released.
-	onRelease chan<- struct{}
-}
-
 // Semaphore implements a counting semaphore; it maintains a resource
 // count, and exposes methods to try acquiring those resources --
 // waiting if necessary -- and releasing those resources back.
 type Semaphore struct {
-	lock    sync.RWMutex
-	count   int64
-	waiters []waiter
+	lock      sync.RWMutex
+	count     int64
+	onRelease chan struct{}
 }
 
 // NewSemaphore returns a new Semaphore with a resource count of
 // 0. Use Release() to set the initial resource count.
 func NewSemaphore() *Semaphore {
-	return &Semaphore{}
+	return &Semaphore{
+		onRelease: make(chan struct{}),
+	}
 }
 
 // Count returns the current resource count. It should be used only
@@ -65,13 +55,7 @@ func (s *Semaphore) Acquire(ctx context.Context, n int64) error {
 				return nil
 			}
 
-			onRelease := make(chan struct{})
-			waiter := waiter{
-				n:         n,
-				onRelease: onRelease,
-			}
-			s.waiters = append(s.waiters, waiter)
-			return onRelease
+			return s.onRelease
 		}()
 
 		if onRelease == nil {
@@ -115,8 +99,6 @@ func (s *Semaphore) Release(n int64) {
 	defer s.lock.Unlock()
 	// TODO: check for overflow.
 	s.count += n
-	for _, waiter := range s.waiters {
-		close(waiter.onRelease)
-	}
-	s.waiters = nil
+	close(s.onRelease)
+	s.onRelease = make(chan struct{})
 }
