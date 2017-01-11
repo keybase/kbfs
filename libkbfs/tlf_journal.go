@@ -359,10 +359,10 @@ func makeTLFJournal(
 	// Do this only once we're sure we won't error.
 	storedBytes := j.blockJournal.getStoredBytes()
 	if storedBytes > 0 {
-		j.diskLimiter.ForceAcquire(storedBytes)
+		availableBytes := j.diskLimiter.ForceAcquire(storedBytes)
 		j.log.CDebugf(ctx,
-			"Force-acquired %d bytes for %s: diskLimiter=%v",
-			storedBytes, tlfID, j.diskLimiter)
+			"Force-acquired %d bytes for %s: available=%d",
+			storedBytes, tlfID, availableBytes)
 	}
 
 	go j.doBackgroundWorkLoop(bws, backoff.NewExponentialBackOff())
@@ -724,8 +724,7 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 			blockEnd, mdEnd)
 
 		// Flush the block journal ops in parallel.
-		numFlushed, maxMDRevToFlush, err :=
-			j.flushBlockEntries(ctx, blockEnd)
+		numFlushed, maxMDRevToFlush, err := j.flushBlockEntries(ctx, blockEnd)
 		if err != nil {
 			return err
 		}
@@ -831,8 +830,7 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 }
 
 func (j *tlfJournal) flushBlockEntries(
-	ctx context.Context, end journalOrdinal) (
-	int, MetadataRevision, error) {
+	ctx context.Context, end journalOrdinal) (int, MetadataRevision, error) {
 	entries, maxMDRevToFlush, err := j.getNextBlockEntriesToFlush(ctx, end)
 	if err != nil {
 		return 0, MetadataRevisionUninitialized, err
@@ -942,7 +940,7 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 	// system operations that need the lock for too long.
 	var lastToRemove journalOrdinal
 	for {
-		nextLastToRemove, totalRemovedBytes, err := func() (journalOrdinal, int64, error) {
+		nextLastToRemove, removedBytes, err := func() (journalOrdinal, int64, error) {
 			j.journalLock.Lock()
 			defer j.journalLock.Unlock()
 			if err := j.checkEnabledLocked(); err != nil {
@@ -973,8 +971,11 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		if err != nil {
 			return err
 		}
-		if totalRemovedBytes > 0 {
-			j.diskLimiter.Release(totalRemovedBytes)
+		if removedBytes > 0 {
+			availableBytes := j.diskLimiter.Release(removedBytes)
+			j.log.CDebugf(ctx,
+				"Released %d bytes for %s: available=%d",
+				removedBytes, j.tlfID, availableBytes)
 		}
 		if nextLastToRemove == 0 {
 			break
@@ -1363,10 +1364,10 @@ func (j *tlfJournal) shutdown() {
 	// up this journal again, so we need to adjust them here.
 	storedBytes := j.blockJournal.getStoredBytes()
 	if storedBytes > 0 {
-		j.diskLimiter.Release(storedBytes)
+		availableBytes := j.diskLimiter.Release(storedBytes)
 		j.log.Debug(
-			"Released %d bytes for %s on shutdown: diskLimiter=%v",
-			storedBytes, j.tlfID, j.diskLimiter)
+			"Released %d bytes for %s on shutdown: available=%d",
+			storedBytes, j.tlfID, availableBytes)
 	}
 
 	// Make further accesses error out.
@@ -1461,7 +1462,7 @@ func (j *tlfJournal) putBlockData(
 
 	bufLen := int64(len(buf))
 
-	err := j.diskLimiter.Acquire(ctx, bufLen)
+	availableBytes, err := j.diskLimiter.Acquire(ctx, bufLen)
 	if err != nil {
 		return err
 	}
