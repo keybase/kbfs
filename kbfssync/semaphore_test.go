@@ -27,7 +27,7 @@ func callAcquire(ctx context.Context, s *Semaphore, n int64) acquireCall {
 	return acquireCall{n, count, err}
 }
 
-func requireEmpty(t *testing.T, callCh <-chan acquireCall) {
+func requireNoCall(t *testing.T, callCh <-chan acquireCall) {
 	select {
 	case call := <-callCh:
 		t.Fatalf("Unexpected call: %+v", call)
@@ -51,13 +51,13 @@ func TestSimple(t *testing.T) {
 		callCh <- callAcquire(ctx, s, n)
 	}()
 
-	requireEmpty(t, callCh)
+	requireNoCall(t, callCh)
 
 	count := s.Release(n - 1)
 	require.Equal(t, n-1, count)
 	require.Equal(t, n-1, s.Count())
 
-	requireEmpty(t, callCh)
+	requireNoCall(t, callCh)
 
 	count = s.Release(1)
 	require.Equal(t, n, count)
@@ -88,13 +88,13 @@ func TestForceAcquire(t *testing.T) {
 		callCh <- callAcquire(ctx, s, n)
 	}()
 
-	requireEmpty(t, callCh)
+	requireNoCall(t, callCh)
 
 	count := s.Release(n - 1)
 	require.Equal(t, n-1, count)
 	require.Equal(t, n-1, s.Count())
 
-	requireEmpty(t, callCh)
+	requireNoCall(t, callCh)
 
 	count = s.ForceAcquire(n)
 	require.Equal(t, int64(-1), count)
@@ -131,13 +131,13 @@ func TestCancel(t *testing.T) {
 		callCh <- callAcquire(ctx2, s, n)
 	}()
 
-	requireEmpty(t, callCh)
+	requireNoCall(t, callCh)
 
 	count := s.Release(n - 1)
 	require.Equal(t, n-1, count)
 	require.Equal(t, n-1, s.Count())
 
-	requireEmpty(t, callCh)
+	requireNoCall(t, callCh)
 
 	cancel2()
 	require.Equal(t, n-1, s.Count())
@@ -173,7 +173,7 @@ func TestSerialRelease(t *testing.T) {
 	}
 
 	for i := 0; i < acquirerCount; i++ {
-		requireEmpty(t, callCh)
+		requireNoCall(t, callCh)
 
 		count := s.Release(1)
 		require.Equal(t, int64(1), count)
@@ -185,7 +185,7 @@ func TestSerialRelease(t *testing.T) {
 			t.Fatal(ctx.Err())
 		}
 
-		requireEmpty(t, callCh)
+		requireNoCall(t, callCh)
 
 		require.Equal(t, int64(0), s.Count())
 	}
@@ -215,7 +215,7 @@ func TestAcquireDifferentSizes(t *testing.T) {
 	}
 
 	for i := 0; i < acquirerCount; i++ {
-		requireEmpty(t, callCh)
+		requireNoCall(t, callCh)
 
 		if i == 0 {
 			require.Equal(t, int64(0), s.Count())
@@ -224,7 +224,7 @@ func TestAcquireDifferentSizes(t *testing.T) {
 			require.Equal(t, int64(i), s.Count())
 		}
 
-		requireEmpty(t, callCh)
+		requireNoCall(t, callCh)
 
 		s.Release(1)
 
@@ -235,7 +235,7 @@ func TestAcquireDifferentSizes(t *testing.T) {
 			t.Fatalf("err=%+v, i=%d", ctx.Err(), i)
 		}
 
-		requireEmpty(t, callCh)
+		requireNoCall(t, callCh)
 
 		require.Equal(t, int64(0), s.Count())
 	}
