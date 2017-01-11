@@ -470,6 +470,41 @@ func testTLFJournalSecondBlockOpWhileBusy(t *testing.T, ver MetadataVer) {
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4, 5})
 }
 
+func testTLFJournalBlockOpDiskLimit(t *testing.T, ver MetadataVer) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	tlfJournal.diskLimiter.ForceAcquire(math.MaxInt64)
+	tlfJournal.diskLimiter.Release(6)
+
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+
+	errCh := make(chan error, 1)
+	go func() {
+		data2 := []byte{5, 6, 7}
+		id, bCtx, serverHalf := config.makeBlock(data2)
+		errCh <- tlfJournal.putBlockData(
+			ctx, id, bCtx, data2, serverHalf)
+	}()
+
+	numFlushed, rev, err := tlfJournal.flushBlockEntries(ctx, 1)
+	require.NoError(t, err)
+	require.Equal(t, 1, numFlushed)
+	require.Equal(t, rev, MetadataRevisionUninitialized)
+
+	// Fake an MD flush.
+	err = tlfJournal.doOnMDFlush(ctx, nil)
+
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+}
+
 type hangingMDServer struct {
 	MDServer
 	// Closed on put.
@@ -1078,6 +1113,7 @@ func TestTLFJournal(t *testing.T) {
 		testTLFJournalMDServerBusyPause,
 		testTLFJournalMDServerBusyShutdown,
 		testTLFJournalBlockOpWhileBusy,
+		testTLFJournalBlockOpDiskLimit,
 		testTLFJournalFlushMDBasic,
 		testTLFJournalFlushMDConflict,
 		testTLFJournalFlushOrdering,
