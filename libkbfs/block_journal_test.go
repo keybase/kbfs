@@ -923,7 +923,8 @@ func TestBlockJournalByteCounters(t *testing.T) {
 			ctx, t, j, blockServer, bcache, reporter, tlfID)
 	}
 
-	// Flush the first put.
+	// Flush the first put. This causes the block to be GCed since
+	// the subsequent ops for that block remove the references.
 	removedBytes := flushOne()
 	require.Equal(t, int64(len(data1)), removedBytes)
 	expectedSize = len(data2)
