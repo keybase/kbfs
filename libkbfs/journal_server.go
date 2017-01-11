@@ -13,7 +13,6 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscrypto"
-	"github.com/keybase/kbfs/kbfssync"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -59,6 +58,12 @@ type mdFlushListener interface {
 	onMDFlush(tlf.ID, BranchID, MetadataRevision)
 }
 
+type diskLimiter interface {
+	Adjust(deltaBytes int64)
+	Acquire(ctx context.Context, nBytes int64) error
+	Release(nBytes int64)
+}
+
 // TODO: JournalServer isn't really a server, although it can create
 // objects that act as servers. Rename to JournalManager.
 
@@ -89,7 +94,7 @@ type JournalServer struct {
 	onBranchChange          branchChangeListener
 	onMDFlush               mdFlushListener
 
-	diskLimitSemaphore *kbfssync.Semaphore
+	diskLimiter diskLimiter
 
 	// Protects all fields below.
 	lock                sync.RWMutex
@@ -105,9 +110,7 @@ func makeJournalServer(
 	config Config, log logger.Logger, dir string,
 	bcache BlockCache, dirtyBcache DirtyBlockCache, bserver BlockServer,
 	mdOps MDOps, onBranchChange branchChangeListener,
-	onMDFlush mdFlushListener, journalDiskLimit int64) *JournalServer {
-	diskLimitSemaphore := kbfssync.NewSemaphore()
-	diskLimitSemaphore.Adjust(journalDiskLimit)
+	onMDFlush mdFlushListener, diskLimiter diskLimiter) *JournalServer {
 	jServer := JournalServer{
 		config:                  config,
 		log:                     log,
@@ -120,7 +123,7 @@ func makeJournalServer(
 		onBranchChange:          onBranchChange,
 		onMDFlush:               onMDFlush,
 		tlfJournals:             make(map[tlf.ID]*tlfJournal),
-		diskLimitSemaphore:      diskLimitSemaphore,
+		diskLimiter:             diskLimiter,
 	}
 	jServer.dirtyOpsDone = sync.NewCond(&jServer.lock)
 	return &jServer
@@ -373,7 +376,7 @@ func (j *JournalServer) enableLocked(
 	tlfJournal, err := makeTLFJournal(
 		ctx, j.currentUID, j.currentVerifyingKey, tlfDir,
 		tlfID, tlfJournalConfigAdapter{j.config}, j.delegateBlockServer,
-		bws, nil, j.onBranchChange, j.onMDFlush, j.diskLimitSemaphore)
+		bws, nil, j.onBranchChange, j.onMDFlush, j.diskLimiter)
 	if err != nil {
 		return err
 	}

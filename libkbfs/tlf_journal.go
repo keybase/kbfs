@@ -157,12 +157,6 @@ type tlfJournalBWDelegate interface {
 	OnShutdown(ctx context.Context)
 }
 
-type diskLimiter interface {
-	Adjust(deltaBytes int64)
-	Acquire(ctx context.Context, nBytes int64) error
-	Release(nBytes int64)
-}
-
 // A tlfJournal contains all the journals for a (TLF, user, device)
 // tuple and controls the synchronization between the objects that are
 // adding to those journals (via journalBlockServer or journalMDOps)

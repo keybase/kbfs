@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"math"
 	"os"
 	"testing"
 
@@ -117,7 +116,7 @@ func TestJournalServerRestart(t *testing.T) {
 		config, jServer.log, tempdir, jServer.delegateBlockCache,
 		jServer.delegateDirtyBlockCache,
 		jServer.delegateBlockServer, jServer.delegateMDOps, nil, nil,
-		math.MaxInt64)
+		jServer.diskLimiter)
 	uid, verifyingKey, err :=
 		getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
 	require.NoError(t, err)
@@ -440,7 +439,7 @@ func TestJournalServerEnableAuto(t *testing.T) {
 		config, jServer.log, tempdir, jServer.delegateBlockCache,
 		jServer.delegateDirtyBlockCache,
 		jServer.delegateBlockServer, jServer.delegateMDOps, nil, nil,
-		math.MaxInt64)
+		jServer.diskLimiter)
 	uid, verifyingKey, err :=
 		getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
 	require.NoError(t, err)
