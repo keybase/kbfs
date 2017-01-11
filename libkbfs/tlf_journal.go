@@ -360,6 +360,9 @@ func makeTLFJournal(
 	storedBytes := j.blockJournal.getStoredBytes()
 	if storedBytes > 0 {
 		j.diskLimiter.ForceAcquire(storedBytes)
+		j.log.CDebugf(ctx,
+			"Force-acquired %d bytes for %s: diskLimiter=%v",
+			storedBytes, tlfID, j.diskLimiter)
 	}
 
 	go j.doBackgroundWorkLoop(bws, backoff.NewExponentialBackOff())
@@ -818,7 +821,7 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 	}
 
 	// storedBytes shouldn't change since removedBytes is 0.
-	if storedBytesBefore != storedBytesAfter {
+	if storedBytesAfter != storedBytesBefore {
 		panic(fmt.Sprintf(
 			"storedBytes unexpectedly changed from %d to %d",
 			storedBytesBefore, storedBytesAfter))
@@ -1361,6 +1364,9 @@ func (j *tlfJournal) shutdown() {
 	storedBytes := j.blockJournal.getStoredBytes()
 	if storedBytes > 0 {
 		j.diskLimiter.Release(storedBytes)
+		j.log.Debug(
+			"Released %d bytes for %s on shutdown: diskLimiter=%v",
+			storedBytes, j.tlfID, j.diskLimiter)
 	}
 
 	// Make further accesses error out.
@@ -1453,14 +1459,26 @@ func (j *tlfJournal) putBlockData(
 		return err
 	}
 
-	err := j.diskLimiter.Acquire(ctx, int64(len(buf)))
+	bufLen := int64(len(buf))
+
+	err := j.diskLimiter.Acquire(ctx, bufLen)
 	if err != nil {
 		return err
 	}
 
+	storedBytesBefore := j.blockJournal.getStoredBytes()
+
 	err = j.blockJournal.putData(ctx, id, context, buf, serverHalf)
 	if err != nil {
 		return err
+	}
+
+	storedBytesAfter := j.blockJournal.getStoredBytes()
+
+	if storedBytesAfter != (storedBytesBefore + bufLen) {
+		panic(fmt.Sprintf(
+			"storedBytes changed from %d to %d, but bufLen is %d",
+			storedBytesBefore, storedBytesAfter, bufLen))
 	}
 
 	j.config.Reporter().NotifySyncStatus(ctx, &keybase1.FSPathSyncStatus{
