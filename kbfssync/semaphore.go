@@ -95,10 +95,15 @@ func (s *Semaphore) Release(n int64) {
 		panic("n must be positive")
 	}
 
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	// TODO: check for overflow.
-	s.count += n
-	close(s.onRelease)
-	s.onRelease = make(chan struct{})
+	onRelease := func() chan<- struct{} {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+		// TODO: check for overflow.
+		s.count += n
+		onRelease := s.onRelease
+		s.onRelease = make(chan struct{})
+		return onRelease
+	}()
+
+	close(onRelease)
 }
