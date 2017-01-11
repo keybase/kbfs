@@ -1268,6 +1268,16 @@ func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
 	return jStatus, nil
 }
 
+func (j *tlfJournal) getStoredBytes() (int64, error) {
+	j.journalLock.RLock()
+	defer j.journalLock.RUnlock()
+	if err := j.checkEnabledLocked(); err != nil {
+		return 0, err
+	}
+
+	return j.blockJournal.getStoredBytes(), nil
+}
+
 func (j *tlfJournal) getUnflushedBytes() (int64, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
