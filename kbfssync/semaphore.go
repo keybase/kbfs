@@ -5,10 +5,10 @@
 package kbfssync
 
 import (
-	"context"
 	"sync"
 
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // A waiter represents a goroutine blocked on resource acquisition.

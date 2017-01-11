@@ -157,6 +157,12 @@ type tlfJournalBWDelegate interface {
 	OnShutdown(ctx context.Context)
 }
 
+type diskLimiter interface {
+	Adjust(deltaBytes int64)
+	Acquire(ctx context.Context, nBytes int64) error
+	Release(nBytes int64)
+}
+
 // A tlfJournal contains all the journals for a (TLF, user, device)
 // tuple and controls the synchronization between the objects that are
 // adding to those journals (via journalBlockServer or journalMDOps)
@@ -178,7 +184,7 @@ type tlfJournal struct {
 	onBranchChange      branchChangeListener
 	onMDFlush           mdFlushListener
 
-	diskLimitSemaphore *kbfssync.Semaphore
+	diskLimiter diskLimiter
 
 	// All the channels below are used as simple on/off
 	// signals. They're buffered for one object, and all sends are
@@ -254,7 +260,7 @@ func makeTLFJournal(
 	dir string, tlfID tlf.ID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, bws TLFJournalBackgroundWorkStatus,
 	bwDelegate tlfJournalBWDelegate, onBranchChange branchChangeListener,
-	onMDFlush mdFlushListener, diskLimitSemaphore *kbfssync.Semaphore) (
+	onMDFlush mdFlushListener, diskLimiter diskLimiter) (
 	*tlfJournal, error) {
 	if uid == keybase1.UID("") {
 		return nil, errors.New("Empty user")
@@ -323,7 +329,7 @@ func makeTLFJournal(
 		deferLog:             log.CloneWithAddedDepth(1),
 		onBranchChange:       onBranchChange,
 		onMDFlush:            onMDFlush,
-		diskLimitSemaphore:   diskLimitSemaphore,
+		diskLimiter:          diskLimiter,
 		hasWorkCh:            make(chan struct{}, 1),
 		needPauseCh:          make(chan struct{}, 1),
 		needResumeCh:         make(chan struct{}, 1),
@@ -356,7 +362,7 @@ func makeTLFJournal(
 
 	// Do this only once we're sure we won't error.
 	unflushedBytes := blockJournal.getUnflushedBytes()
-	diskLimitSemaphore.Adjust(-unflushedBytes)
+	j.diskLimiter.Adjust(-unflushedBytes)
 
 	go j.doBackgroundWorkLoop(bws, backoff.NewExponentialBackOff())
 
@@ -723,7 +729,7 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 			return err
 		}
 		if totalRemovedBytes > 0 {
-			j.diskLimitSemaphore.Release(totalRemovedBytes)
+			j.diskLimiter.Release(totalRemovedBytes)
 		}
 		flushedBlockEntries += numFlushed
 
@@ -934,7 +940,7 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 			return err
 		}
 		if totalRemovedBytes > 0 {
-			j.diskLimitSemaphore.Release(totalRemovedBytes)
+			j.diskLimiter.Release(totalRemovedBytes)
 		}
 		if nextLastToRemove == 0 {
 			break
@@ -1408,7 +1414,7 @@ func (j *tlfJournal) putBlockData(
 		return err
 	}
 
-	err := j.diskLimitSemaphore.Acquire(ctx, int64(len(buf)))
+	err := j.diskLimiter.Acquire(ctx, int64(len(buf)))
 	if err != nil {
 		return err
 	}
