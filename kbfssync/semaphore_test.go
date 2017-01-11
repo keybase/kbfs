@@ -98,6 +98,7 @@ func TestForceAcquire(t *testing.T) {
 
 	count = s.ForceAcquire(n)
 	require.Equal(t, int64(-1), count)
+	require.Equal(t, int64(-1), s.Count())
 
 	count = s.Release(n + 1)
 	require.Equal(t, n, count)
@@ -220,13 +221,15 @@ func TestAcquireDifferentSizes(t *testing.T) {
 		if i == 0 {
 			require.Equal(t, int64(0), s.Count())
 		} else {
-			s.Release(int64(i))
+			count := s.Release(int64(i))
+			require.Equal(t, int64(i), count)
 			require.Equal(t, int64(i), s.Count())
 		}
 
 		requireNoCall(t, callCh)
 
-		s.Release(1)
+		count := s.Release(1)
+		require.Equal(t, int64(i+1), count)
 
 		select {
 		case call := <-callCh:
