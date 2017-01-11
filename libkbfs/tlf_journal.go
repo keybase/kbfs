@@ -355,8 +355,8 @@ func makeTLFJournal(
 	}
 
 	// Do this only once we're sure we won't error.
-	unflushedBytes := blockJournal.getUnflushedBytes()
-	j.diskLimiter.Adjust(-unflushedBytes)
+	storedBytes := blockJournal.getStoredBytes()
+	j.diskLimiter.Adjust(-storedBytes)
 
 	go j.doBackgroundWorkLoop(bws, backoff.NewExponentialBackOff())
 
@@ -1321,6 +1321,8 @@ func (j *tlfJournal) shutdown() {
 	// Make further accesses error out.
 	j.blockJournal = nil
 	j.mdJournal = nil
+
+	// TODO: Reset diskLimiter back.
 }
 
 // disable prevents new operations from hitting the journal.  Will
