@@ -12,8 +12,8 @@ import (
 )
 
 // Semaphore implements a counting semaphore; it maintains a resource
-// count, and exposes methods to try acquiring those resources --
-// waiting if necessary -- and releasing those resources back.
+// count, and exposes methods for acquiring those resources -- waiting
+// if desired -- and releasing those resources back.
 type Semaphore struct {
 	lock      sync.RWMutex
 	count     int64
@@ -36,6 +36,20 @@ func (s *Semaphore) Count() int64 {
 	return s.count
 }
 
+// tryAcquire tries to acquire n resources. If successful, nil is
+// returned. Otherwise, a channel which will be closed when new
+// resources are available is returned.
+func (s *Semaphore) tryAcquire(n int64) <-chan struct{} {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if n <= s.count {
+		s.count -= n
+		return nil
+	}
+
+	return s.onRelease
+}
+
 // Acquire blocks until it is possible to atomically subtract n (which
 // must be positive) from the resource count without causing it to go
 // negative, and then returns nil. If the given context is canceled
@@ -47,17 +61,7 @@ func (s *Semaphore) Acquire(ctx context.Context, n int64) error {
 	}
 
 	for {
-		onRelease := func() <-chan struct{} {
-			s.lock.Lock()
-			defer s.lock.Unlock()
-			if n <= s.count {
-				s.count -= n
-				return nil
-			}
-
-			return s.onRelease
-		}()
-
+		onRelease := s.tryAcquire(n)
 		if onRelease == nil {
 			return nil
 		}
@@ -83,6 +87,7 @@ func (s *Semaphore) ForceAcquire(n int64) {
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	// Check for overflow.
 	s.count -= n
 }
 
@@ -91,19 +96,10 @@ func (s *Semaphore) ForceAcquire(n int64) {
 // are waiting acquirers, it wakes up at least one of them to make
 // progress, assuming that no new acquirers arrive in the meantime.
 func (s *Semaphore) Release(n int64) {
-	if n <= 0 {
-		panic("n must be positive")
-	}
-
-	onRelease := func() chan<- struct{} {
-		s.lock.Lock()
-		defer s.lock.Unlock()
-		// TODO: check for overflow.
-		s.count += n
-		onRelease := s.onRelease
-		s.onRelease = make(chan struct{})
-		return onRelease
-	}()
-
-	close(onRelease)
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	// TODO: check for overflow.
+	s.count += n
+	close(s.onRelease)
+	s.onRelease = make(chan struct{})
 }
