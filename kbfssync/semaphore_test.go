@@ -138,6 +138,9 @@ func TestSerialRelease(t *testing.T) {
 	require.Equal(t, acquirerCount, acquireCount)
 }
 
+// TestAcquireDifferentSizes tests the scenario where there are
+// multiple acquirers for different sizes, and we release each size in
+// increasing order.
 func TestAcquireDifferentSizes(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
