@@ -113,6 +113,9 @@ func (s *Semaphore) Release(n int64) {
 			s.count, n))
 	}
 	s.count += n
+	// TODO: A better implementation would keep track of each
+	// waiter and how much it wants to acquire and only wake up
+	// waiters that could possibly succeed.
 	close(s.onRelease)
 	s.onRelease = make(chan struct{})
 }
