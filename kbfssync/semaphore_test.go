@@ -16,10 +16,16 @@ import (
 
 var testTimeout = 10 * time.Second
 
-func requireEmpty(t *testing.T, errCh <-chan error) {
+type acquireCall struct {
+	n     int64
+	count int64
+	err   error
+}
+
+func requireEmpty(t *testing.T, callCh <-chan acquireCall) {
 	select {
-	case err := <-errCh:
-		t.Fatalf("Unexpected error: %+v", err)
+	case call := <-callCh:
+		t.Fatalf("Unexpected call: %+v", call)
 	default:
 	}
 }
@@ -35,28 +41,26 @@ func TestSimple(t *testing.T) {
 	s := NewSemaphore()
 	require.Equal(t, int64(0), s.Count())
 
-	errCh := make(chan error, 1)
+	callCh := make(chan acquireCall, 1)
 	go func() {
-		_, err := s.Acquire(ctx, n)
-		errCh <- err
+		count, err := s.Acquire(ctx, n)
+		callCh <- acquireCall{n, count, err}
 	}()
 
-	requireEmpty(t, errCh)
+	requireEmpty(t, callCh)
 
 	count := s.Release(n - 1)
 	require.Equal(t, n-1, count)
 	require.Equal(t, n-1, s.Count())
 
-	requireEmpty(t, errCh)
+	requireEmpty(t, callCh)
 
 	count = s.Release(1)
 	require.Equal(t, n, count)
 
-	// s.Count() should go to 0.
-
 	select {
-	case err := <-errCh:
-		require.NoError(t, err)
+	case call := <-callCh:
+		require.Equal(t, acquireCall{n, 0, nil}, call)
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
@@ -75,30 +79,29 @@ func TestForceAcquire(t *testing.T) {
 	s := NewSemaphore()
 	require.Equal(t, int64(0), s.Count())
 
-	errCh := make(chan error, 1)
+	callCh := make(chan acquireCall, 1)
 	go func() {
-		_, err := s.Acquire(ctx, n)
-		errCh <- err
+		count, err := s.Acquire(ctx, n)
+		callCh <- acquireCall{n, count, err}
 	}()
 
-	requireEmpty(t, errCh)
+	requireEmpty(t, callCh)
 
 	count := s.Release(n - 1)
 	require.Equal(t, n-1, count)
 	require.Equal(t, n-1, s.Count())
 
-	requireEmpty(t, errCh)
+	requireEmpty(t, callCh)
 
 	count = s.ForceAcquire(n)
 	require.Equal(t, int64(-1), count)
 
 	count = s.Release(n + 1)
 	require.Equal(t, n, count)
-	// s.Count() should go to 0.
 
 	select {
-	case err := <-errCh:
-		require.NoError(t, err)
+	case call := <-callCh:
+		require.Equal(t, acquireCall{n, 0, nil}, call)
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
@@ -120,26 +123,27 @@ func TestCancel(t *testing.T) {
 	s := NewSemaphore()
 	require.Equal(t, int64(0), s.Count())
 
-	errCh := make(chan error, 1)
+	callCh := make(chan acquireCall, 1)
 	go func() {
-		_, err := s.Acquire(ctx2, n)
-		errCh <- err
+		count, err := s.Acquire(ctx2, n)
+		callCh <- acquireCall{n, count, err}
 	}()
 
-	requireEmpty(t, errCh)
+	requireEmpty(t, callCh)
 
 	count := s.Release(n - 1)
 	require.Equal(t, n-1, count)
 	require.Equal(t, n-1, s.Count())
 
-	requireEmpty(t, errCh)
+	requireEmpty(t, callCh)
 
 	cancel2()
 	require.Equal(t, n-1, s.Count())
 
 	select {
-	case err := <-errCh:
-		require.Equal(t, ctx2.Err(), errors.Cause(err))
+	case call := <-callCh:
+		call.err = errors.Cause(call.err)
+		require.Equal(t, acquireCall{n, n - 1, ctx2.Err()}, call)
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
@@ -157,29 +161,29 @@ func TestSerialRelease(t *testing.T) {
 
 	s := NewSemaphore()
 	acquireCount := 0
-	errCh := make(chan error, acquirerCount)
+	callCh := make(chan acquireCall, acquirerCount)
 	for i := 0; i < acquirerCount; i++ {
 		go func() {
-			_, err := s.Acquire(ctx, 1)
+			count, err := s.Acquire(ctx, 1)
 			acquireCount++
-			errCh <- err
+			callCh <- acquireCall{1, count, err}
 		}()
 	}
 
 	for i := 0; i < acquirerCount; i++ {
-		requireEmpty(t, errCh)
+		requireEmpty(t, callCh)
 
 		count := s.Release(1)
 		require.Equal(t, int64(1), count)
 
 		select {
-		case err := <-errCh:
-			require.NoError(t, err)
+		case call := <-callCh:
+			require.Equal(t, acquireCall{1, 0, nil}, call)
 		case <-ctx.Done():
 			t.Fatal(ctx.Err())
 		}
 
-		requireEmpty(t, errCh)
+		requireEmpty(t, callCh)
 
 		require.Equal(t, int64(0), s.Count())
 	}
@@ -197,33 +201,19 @@ func TestAcquireDifferentSizes(t *testing.T) {
 
 	acquirerCount := 10
 
-	type acquirer struct {
-		n   int64
-		err error
-	}
-
-	// Shadow the global requireEmpty.
-	var requireEmpty = func(t *testing.T, acquirerCh <-chan acquirer) {
-		select {
-		case a := <-acquirerCh:
-			t.Fatalf("Unexpected acquirer: %+v", a)
-		default:
-		}
-	}
-
 	s := NewSemaphore()
 	acquireCount := 0
-	acquirerCh := make(chan acquirer, acquirerCount)
+	callCh := make(chan acquireCall, acquirerCount)
 	for i := 0; i < acquirerCount; i++ {
 		go func(i int) {
-			_, err := s.Acquire(ctx, int64(i+1))
+			count, err := s.Acquire(ctx, int64(i+1))
 			acquireCount++
-			acquirerCh <- acquirer{int64(i + 1), err}
+			callCh <- acquireCall{int64(i + 1), count, err}
 		}(i)
 	}
 
 	for i := 0; i < acquirerCount; i++ {
-		requireEmpty(t, acquirerCh)
+		requireEmpty(t, callCh)
 
 		if i == 0 {
 			require.Equal(t, int64(0), s.Count())
@@ -232,18 +222,18 @@ func TestAcquireDifferentSizes(t *testing.T) {
 			require.Equal(t, int64(i), s.Count())
 		}
 
-		requireEmpty(t, acquirerCh)
+		requireEmpty(t, callCh)
 
 		s.Release(1)
 
 		select {
-		case a := <-acquirerCh:
-			require.Equal(t, acquirer{int64(i + 1), nil}, a)
+		case call := <-callCh:
+			require.Equal(t, acquireCall{int64(i + 1), 0, nil}, call)
 		case <-ctx.Done():
 			t.Fatalf("err=%+v, i=%d", ctx.Err(), i)
 		}
 
-		requireEmpty(t, acquirerCh)
+		requireEmpty(t, callCh)
 
 		require.Equal(t, int64(0), s.Count())
 	}
