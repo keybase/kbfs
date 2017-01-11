@@ -60,6 +60,46 @@ func TestSimple(t *testing.T) {
 	require.Equal(t, int64(0), s.Count())
 }
 
+// TestForceAcquire tests that ForceAcquire works in a simple two-goroutine
+// scenario.
+func TestForceAcquire(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	var n int64 = 10
+
+	s := NewSemaphore()
+	require.Equal(t, int64(0), s.Count())
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- s.Acquire(ctx, n)
+	}()
+
+	requireEmpty(t, errCh)
+
+	s.Release(n - 1)
+	require.Equal(t, n-1, s.Count())
+
+	requireEmpty(t, errCh)
+
+	s.ForceAcquire(n)
+	require.Equal(t, int64(-1), s.Count())
+
+	s.Release(n + 1)
+
+	// s.Count() should go to n, then 0.
+
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+
+	require.Equal(t, int64(0), s.Count())
+}
+
 // TestCancel tests that cancelling the context passed into Acquire
 // causes it to return an error.
 func TestCancel(t *testing.T) {
