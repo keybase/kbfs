@@ -126,8 +126,11 @@ func fillInJournalStatusUnflushedPaths(ctx context.Context, config Config,
 		jStatus.UnflushedPaths = append(jStatus.UnflushedPaths,
 			incompleteUnflushedPathsMarker)
 	} else {
-		// Replace the existing byte counters with ones that
-		// are guaranteed consistent with the unflushed paths.
+		// Replace the existing unflushed byte count with one
+		// that's guaranteed consistent with the unflushed
+		// paths, and also replace the existing stored byte
+		// count with one that's guaranteed consistent with
+		// the new unflushed byte count.
 		jStatus.StoredBytes = 0
 		for sb := range storedBytes {
 			jStatus.StoredBytes += sb
