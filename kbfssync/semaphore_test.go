@@ -23,7 +23,7 @@ func requireEmpty(t *testing.T, errCh <-chan error) {
 	}
 }
 
-// TestSimple tests that Adjust, Acquire, and Release work in a simple
+// TestSimple tests that Acquire and Release work in a simple
 // two-goroutine scenario.
 func TestSimple(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -41,7 +41,7 @@ func TestSimple(t *testing.T) {
 
 	requireEmpty(t, errCh)
 
-	s.Adjust(n - 1)
+	s.Release(n - 1)
 	require.Equal(t, n-1, s.Count())
 
 	requireEmpty(t, errCh)
@@ -81,7 +81,7 @@ func TestCancel(t *testing.T) {
 
 	requireEmpty(t, errCh)
 
-	s.Adjust(n - 1)
+	s.Release(n - 1)
 	require.Equal(t, n-1, s.Count())
 
 	requireEmpty(t, errCh)

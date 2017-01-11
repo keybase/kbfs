@@ -901,7 +901,7 @@ func (c *ConfigLocal) EnableJournaling(
 	// 10 GiB
 	var journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
 	diskLimitSemaphore := kbfssync.NewSemaphore()
-	diskLimitSemaphore.Adjust(journalDiskLimit)
+	diskLimitSemaphore.Release(journalDiskLimit)
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,
 		flushListener, diskLimitSemaphore)

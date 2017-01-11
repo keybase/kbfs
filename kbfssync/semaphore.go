@@ -33,22 +33,9 @@ type Semaphore struct {
 }
 
 // NewSemaphore returns a new Semaphore with a resource count of
-// 0. Use Adjust() to set the initial resource count.
+// 0. Use Release() to set the initial resource count.
 func NewSemaphore() *Semaphore {
 	return &Semaphore{}
-}
-
-// Adjust atomically adds n to the resource count without waking up
-// any waiting acquirers. It is meant for setting the initial resource
-// count of the semaphore, or adjusting it. It's okay if adding n
-// causes the resource count goes negative, but it must not cause the
-// resource count to overflow in either the positive or negative
-// direction.
-func (s *Semaphore) Adjust(n int64) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	// TODO: Check for overflow.
-	s.count += n
 }
 
 // Count returns the current resource count. It should be used only
@@ -98,6 +85,21 @@ func (s *Semaphore) Acquire(ctx context.Context, n int64) error {
 			return errors.WithStack(ctx.Err())
 		}
 	}
+}
+
+// ForceAcquire atomically adds n to the resource count without waking
+// up any waiting acquirers. It is meant for correcting the initial
+// resource count of the semaphore. It's okay if adding n causes the
+// resource count goes negative, but it must not cause the resource
+// count to overflow in the negative direction.
+func (s *Semaphore) ForceAcquire(n int64) {
+	if n <= 0 {
+		panic("n must be positive")
+	}
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.count -= n
 }
 
 // Release atomically adds n (which must be positive) to the resource

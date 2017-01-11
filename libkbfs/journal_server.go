@@ -59,8 +59,8 @@ type mdFlushListener interface {
 }
 
 type diskLimiter interface {
-	Adjust(deltaBytes int64)
 	Acquire(ctx context.Context, nBytes int64) error
+	ForceAcquire(nBytes int64)
 	Release(nBytes int64)
 }
 

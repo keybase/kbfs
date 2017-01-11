@@ -356,7 +356,7 @@ func makeTLFJournal(
 
 	// Do this only once we're sure we won't error.
 	storedBytes := blockJournal.getStoredBytes()
-	j.diskLimiter.Adjust(-storedBytes)
+	j.diskLimiter.ForceAcquire(storedBytes)
 
 	go j.doBackgroundWorkLoop(bws, backoff.NewExponentialBackOff())
 
