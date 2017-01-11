@@ -1324,7 +1324,9 @@ func (j *tlfJournal) shutdown() {
 	// space, but we don't want to double-count them if we start
 	// up this journal again, so we need to adjust them here.
 	storedBytes := j.blockJournal.getStoredBytes()
-	j.diskLimiter.Release(storedBytes)
+	if storedBytes > 0 {
+		j.diskLimiter.Release(storedBytes)
+	}
 
 	// Make further accesses error out.
 	j.blockJournal = nil

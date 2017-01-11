@@ -77,11 +77,12 @@ func (s *Semaphore) Acquire(ctx context.Context, n int64) error {
 	}
 }
 
-// ForceAcquire atomically adds n to the resource count without waking
-// up any waiting acquirers. It is meant for correcting the initial
-// resource count of the semaphore. It's okay if adding n causes the
-// resource count goes negative, but it must not cause the resource
-// count to overflow (in the negative direction).
+// ForceAcquire atomically adds n (which must be positive) to the
+// resource count without waking up any waiting acquirers. It is meant
+// for correcting the initial resource count of the semaphore. It's
+// okay if adding n causes the resource count goes negative, but it
+// must not cause the resource count to overflow (in the negative
+// direction).
 func (s *Semaphore) ForceAcquire(n int64) {
 	if n <= 0 {
 		panic(fmt.Sprintf("n=%d must be positive", n))
