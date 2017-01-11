@@ -313,10 +313,11 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 
 	// Put the block.
 	data := []byte{1, 2, 3, 4}
+	dataLen := int64(len(data))
 	bID, bCtx, _ := putBlockData(ctx, t, j, data)
 
-	require.Equal(t, int64(len(data)), j.getStoredBytes())
-	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
+	require.Equal(t, dataLen, j.getStoredBytes())
+	require.Equal(t, dataLen, j.getUnflushedBytes())
 
 	// Remove the only reference to the block, then remove the
 	// block.
@@ -324,23 +325,25 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 		ctx, kbfsblock.ContextMap{bID: {bCtx}})
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID: 0}, liveCounts)
-	_, err = j.remove(bID)
+	removedBytes, err := j.remove(bID)
 	require.NoError(t, err)
+	require.Equal(t, dataLen, removedBytes)
 
 	// This violates the invariant that UnflushedBytes <=
 	// StoredBytes, but that's because we're manually removing the
 	// block -- normally, the block would be flushed first, then
 	// removed.
 	require.Equal(t, int64(0), j.getStoredBytes())
-	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
+	require.Equal(t, dataLen, j.getUnflushedBytes())
 
 	// Remove the block again.
-	_, err = j.remove(bID)
+	removedBytes, err = j.remove(bID)
 	require.NoError(t, err)
+	require.Equal(t, int64(0), removedBytes)
 
 	// Shouldn't account for the block again.
 	require.Equal(t, int64(0), j.getStoredBytes())
-	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
+	require.Equal(t, dataLen, j.getUnflushedBytes())
 }
 
 func testBlockJournalGCd(t *testing.T, j *blockJournal) {
