@@ -717,13 +717,13 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 			blockEnd, mdEnd)
 
 		// Flush the block journal ops in parallel.
-		totalFlushedBytes, numFlushed, maxMDRevToFlush,
+		totalRemovedBytes, numFlushed, maxMDRevToFlush,
 			err := j.flushBlockEntries(ctx, blockEnd)
 		if err != nil {
 			return err
 		}
-		if totalFlushedBytes > 0 {
-			j.diskLimitSemaphore.Release(totalFlushedBytes)
+		if totalRemovedBytes > 0 {
+			j.diskLimitSemaphore.Release(totalRemovedBytes)
 		}
 		flushedBlockEntries += numFlushed
 
@@ -824,12 +824,12 @@ func (j *tlfJournal) flushBlockEntries(
 		return 0, 0, MetadataRevisionUninitialized, err
 	}
 
-	totalFlushedBytes, err := j.removeFlushedBlockEntries(ctx, entries)
+	totalRemovedBytes, err := j.removeFlushedBlockEntries(ctx, entries)
 	if err != nil {
 		return 0, 0, MetadataRevisionUninitialized, err
 	}
 
-	return totalFlushedBytes, entries.length(), maxMDRevToFlush, nil
+	return totalRemovedBytes, entries.length(), maxMDRevToFlush, nil
 }
 
 func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
@@ -913,30 +913,33 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 
 	// Remove saved blocks in chunks to avoid starving foreground file
 	// system operations that need the lock for too long.
-	lastToRemove := journalOrdinal(0)
+	var lastToRemove journalOrdinal
 	for {
-		err := func() error {
+		nextLastToRemove, totalRemovedBytes, err := func() (journalOrdinal, int64, error) {
 			j.journalLock.Lock()
 			defer j.journalLock.Unlock()
 			if err := j.checkEnabledLocked(); err != nil {
-				return err
+				return 0, 0, err
 			}
 
-			var err error
-			lastToRemove, err = j.blockJournal.onMDFlush(
+			nextLastToRemove, totalRemovedBytes, err := j.blockJournal.onMDFlush(
 				ctx, maxSavedBlockRemovalsAtATime, lastToRemove)
 			if err != nil {
-				return err
+				return 0, 0, err
 			}
 
-			return nil
+			return nextLastToRemove, totalRemovedBytes, nil
 		}()
 		if err != nil {
 			return err
 		}
-		if lastToRemove == 0 {
+		if totalRemovedBytes > 0 {
+			j.diskLimitSemaphore.Release(totalRemovedBytes)
+		}
+		if nextLastToRemove == 0 {
 			break
 		}
+		lastToRemove = nextLastToRemove
 		// Explicitly allow other goroutines (such as foreground file
 		// system operations) to grab the lock to avoid starvation.
 		// See https://github.com/golang/go/issues/13086.
