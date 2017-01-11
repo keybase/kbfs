@@ -1318,11 +1318,15 @@ func (j *tlfJournal) shutdown() {
 		return
 	}
 
+	// Even if we shut down the journal, its blocks still take up
+	// space, but we don't want to double-count them if we start
+	// up this journal again, so we need to adjust them here.
+	storedBytes := j.blockJournal.getStoredBytes()
+	j.diskLimiter.Release(storedBytes)
+
 	// Make further accesses error out.
 	j.blockJournal = nil
 	j.mdJournal = nil
-
-	// TODO: Reset diskLimiter back.
 }
 
 // disable prevents new operations from hitting the journal.  Will
