@@ -87,7 +87,7 @@ func (s *Semaphore) ForceAcquire(n int64) {
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	// Check for overflow.
+	// TODO: Check for overflow.
 	s.count -= n
 }
 
