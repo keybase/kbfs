@@ -2,13 +2,11 @@
 // Use of this source code is governed by a BSD
 // license that can be found in the LICENSE file.
 
-// +build darwin
+// +build linux darwin
 
 package main
 
 import (
-	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -22,49 +20,6 @@ import (
 	"bazil.org/fuse/fs"
 	"golang.org/x/net/context"
 )
-
-func usage() {
-	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "  %s ROOT MOUNTPOINT\n", os.Args[0])
-	flag.PrintDefaults()
-}
-
-func main() {
-	flag.Usage = usage
-	flag.Parse()
-
-	if flag.NArg() != 2 {
-		usage()
-		os.Exit(2)
-	}
-	mountpoint := flag.Arg(1)
-
-	c, err := fuse.Mount(
-		mountpoint,
-		fuse.FSName("helloworld"),
-		fuse.Subtype("hellofs"),
-		fuse.VolumeName("Hello world!"),
-		fuse.AllowRoot(),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer c.Close()
-
-	// check if the mount process has an error to report
-	<-c.Ready
-	if err := c.MountError; err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("mounted!")
-
-	err = fs.Serve(c, &FS{rootPath: flag.Arg(0)})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-}
 
 const (
 	attrValidDuration = time.Second
@@ -130,11 +85,113 @@ func (f *FS) Statfs(ctx context.Context,
 	resp.Bavail = stat.Bavail
 	resp.Files = 0 // TODO
 	resp.Ffree = stat.Ffree
-	resp.Bsize = stat.Bsize
+	resp.Bsize = uint32(stat.Bsize)
 	resp.Namelen = 255 // TODO
 	resp.Frsize = 8    // TODO
 
 	return nil
+}
+
+// Handle represent an open file or directory
+type Handle struct {
+	fs       *FS
+	reopener func() (*os.File, error)
+
+	f *os.File
+}
+
+var _ fs.HandleFlusher = (*Handle)(nil)
+
+// Flush implements fs.HandleFlusher interface for *Handle
+func (h *Handle) Flush(ctx context.Context,
+	req *fuse.FlushRequest) (err error) {
+	defer func() { log.Printf("Handle(%s).Flush(): error=%v", h.f.Name(), err) }()
+	return h.f.Sync()
+}
+
+var _ fs.HandleReadAller = (*Handle)(nil)
+
+// ReadAll implements fs.HandleReadAller interface for *Handle
+func (h *Handle) ReadAll(ctx context.Context) (d []byte, err error) {
+	defer func() {
+		log.Printf("Handle(%s).ReadAll(): error=%v",
+			h.f.Name(), err)
+	}()
+	return ioutil.ReadAll(h.f)
+}
+
+var _ fs.HandleReadDirAller = (*Handle)(nil)
+
+// ReadDirAll implements fs.HandleReadDirAller interface for *Handle
+func (h *Handle) ReadDirAll(ctx context.Context) (
+	dirs []fuse.Dirent, err error) {
+	defer func() {
+		log.Printf("Handle(%s).ReadDirAll(): %#+v error=%v",
+			h.f.Name(), dirs, err)
+	}()
+	fis, err := h.f.Readdir(0)
+	if err != nil {
+		return nil, err
+	}
+
+	// Readdir() reads up the entire dir stream but never resets the pointer.
+	// Consequently, when Readdir is called again on the same *File, it gets
+	// nothing. As a result, we need to close the file descriptor and re-open it
+	// so next call would work.
+	if err = h.f.Close(); err != nil {
+		return nil, err
+	}
+	if h.f, err = h.reopener(); err != nil {
+		return nil, err
+	}
+
+	return getDirentsWithFileInfos(fis), nil
+}
+
+var _ fs.HandleReader = (*Handle)(nil)
+
+// Read implements fs.HandleReader interface for *Handle
+func (h *Handle) Read(ctx context.Context,
+	req *fuse.ReadRequest, resp *fuse.ReadResponse) (err error) {
+	defer func() {
+		log.Printf("Handle(%s).Read(): error=%v",
+			h.f.Name(), err)
+	}()
+	resp.Data = make([]byte, req.Size)
+	n, err := h.f.Read(resp.Data)
+	resp.Data = resp.Data[:n]
+	return err
+}
+
+var _ fs.HandleReleaser = (*Handle)(nil)
+
+// Release implements fs.HandleReleaser interface for *Handle
+func (h *Handle) Release(ctx context.Context,
+	req *fuse.ReleaseRequest) (err error) {
+	defer func() {
+		log.Printf("Handle(%s).Release(): error=%v",
+			h.f.Name(), err)
+	}()
+	h.fs.forgetHandle(req.Handle)
+	return h.f.Close()
+}
+
+var _ fs.HandleWriter = (*Handle)(nil)
+
+// Write implements fs.HandleWriter interface for *Handle
+func (h *Handle) Write(ctx context.Context,
+	req *fuse.WriteRequest, resp *fuse.WriteResponse) (err error) {
+	defer func() {
+		log.Printf("Handle(%s).Write(): error=%v",
+			h.f.Name(), err)
+	}()
+
+	if _, err = h.f.Seek(req.Offset, 0); err != nil {
+		return err
+	}
+	n, err := h.f.Write(req.Data)
+	resp.Size = n
+	return err
 }
 
 // Node is the node for both directories and files
@@ -143,24 +200,6 @@ type Node struct {
 
 	realPath string
 	isDir    bool
-}
-
-func fillAttrWithFileInfo(a *fuse.Attr, fi os.FileInfo) {
-	s := fi.Sys().(*syscall.Stat_t)
-	a.Valid = attrValidDuration
-	a.Inode = s.Ino
-	a.Size = uint64(s.Size)
-	a.Blocks = uint64(s.Blocks)
-	a.Atime = time.Unix(s.Atimespec.Unix())
-	a.Mtime = time.Unix(s.Mtimespec.Unix())
-	a.Ctime = time.Unix(s.Ctimespec.Unix())
-	a.Crtime = time.Unix(s.Birthtimespec.Unix())
-	a.Mode = fi.Mode()
-	a.Nlink = uint32(s.Nlink)
-	a.Uid = s.Uid
-	a.Gid = s.Gid
-	a.Flags = s.Flags
-	a.BlockSize = uint32(s.Blksize)
 }
 
 var _ fs.NodeAccesser = (*Node)(nil)
@@ -244,7 +283,8 @@ func getDirentsWithFileInfos(fis []os.FileInfo) (dirs []fuse.Dirent) {
 	return dirs
 }
 
-func fuseOpenFlagsToOSStuff(f fuse.OpenFlags) (flag int, perm os.FileMode) {
+func fuseOpenFlagsToOSFlagsAndPerms(
+	f fuse.OpenFlags) (flag int, perm os.FileMode) {
 	flag = int(f & fuse.OpenAccessModeMask)
 	if f&fuse.OpenAppend != 0 {
 		perm |= os.ModeAppend
@@ -259,6 +299,7 @@ func fuseOpenFlagsToOSStuff(f fuse.OpenFlags) (flag int, perm os.FileMode) {
 		perm |= os.ModeExclusive
 	}
 	if f&fuse.OpenNonblock != 0 {
+		log.Printf("fuse.OpenNonblock is set in OpenFlags but ignored")
 	}
 	if f&fuse.OpenSync != 0 {
 		flag |= os.O_SYNC
@@ -275,7 +316,7 @@ var _ fs.NodeOpener = (*Node)(nil)
 // Open implements fs.NodeOpener interface for *Node
 func (n *Node) Open(ctx context.Context,
 	req *fuse.OpenRequest, resp *fuse.OpenResponse) (h fs.Handle, err error) {
-	flags, perm := fuseOpenFlagsToOSStuff(req.Flags)
+	flags, perm := fuseOpenFlagsToOSFlagsAndPerms(req.Flags)
 	defer func() {
 		log.Printf("%s.Open(): %o %o error=%v",
 			n.realPath, flags, perm, err)
@@ -301,7 +342,7 @@ var _ fs.NodeCreater = (*Node)(nil)
 func (n *Node) Create(
 	ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (
 	fsn fs.Node, fsh fs.Handle, err error) {
-	flags, _ := fuseOpenFlagsToOSStuff(req.Flags)
+	flags, _ := fuseOpenFlagsToOSFlagsAndPerms(req.Flags)
 	name := filepath.Join(n.realPath, req.Name)
 	defer func() {
 		log.Printf("%s.Create(%s): %o %o error=%v",
@@ -355,13 +396,6 @@ func (n *Node) Fsync(ctx context.Context, req *fuse.FsyncRequest) (err error) {
 	return n.fs.getHandle(req.Handle).f.Sync()
 }
 
-func tToTv(t time.Time) (tv syscall.Timeval) {
-	tv.Sec = int64(t.Unix())
-	tv.Usec = int32(t.UnixNano() % time.Second.Nanoseconds() /
-		time.Microsecond.Nanoseconds())
-	return tv
-}
-
 var _ fs.NodeSetattrer = (*Node)(nil)
 
 // Setattr implements fs.NodeSetattrer interface for *Node
@@ -385,7 +419,8 @@ func (n *Node) Setattr(ctx context.Context,
 	}
 
 	if req.Valid.Handle() {
-		// panic("no idea what this is for")
+		log.Printf("%s.Setattr(): unhandled request: req.Valid.Handle() == true",
+			n.realPath)
 	}
 
 	if req.Valid.Mode() {
@@ -416,11 +451,16 @@ func (n *Node) Setattr(ctx context.Context,
 		}
 	}
 
-	if req.Valid.Flags() {
-		if err = syscall.Chflags(n.realPath, int(req.Flags)); err != nil {
-			return err
-		}
+	if err = n.setattrPlatformSpecific(ctx, req, resp); err != nil {
+		return err
 	}
+
+	fi, err := os.Stat(n.realPath)
+	if err != nil {
+		return err
+	}
+
+	fillAttrWithFileInfo(&resp.Attr, fi)
 
 	return nil
 }
@@ -437,103 +477,4 @@ func (n *Node) Rename(ctx context.Context,
 			n.realPath, op, np, err)
 	}()
 	return os.Rename(op, np)
-}
-
-// Handle represent an open file or directory
-type Handle struct {
-	fs       *FS
-	reopener func() (*os.File, error)
-
-	f *os.File
-}
-
-var _ fs.HandleFlusher = (*Handle)(nil)
-
-// Flush implements fs.HandleFlusher interface for *Handle
-func (h *Handle) Flush(ctx context.Context,
-	req *fuse.FlushRequest) (err error) {
-	defer func() { log.Printf("Handle(%s).Flush(): error=%v", h.f.Name(), err) }()
-	return h.f.Sync()
-}
-
-var _ fs.HandleReadAller = (*Handle)(nil)
-
-// ReadAll implements fs.HandleReadAller interface for *Handle
-func (h *Handle) ReadAll(ctx context.Context) (d []byte, err error) {
-	defer func() {
-		log.Printf("Handle(%s).ReadAll(): error=%v",
-			h.f.Name(), err)
-	}()
-	return ioutil.ReadAll(h.f)
-}
-
-var _ fs.HandleReadDirAller = (*Handle)(nil)
-
-// ReadDirAll implements fs.HandleReadDirAller interface for *Handle
-func (h *Handle) ReadDirAll(ctx context.Context) (
-	dirs []fuse.Dirent, err error) {
-	defer func() {
-		log.Printf("Handle(%s).ReadDirAll(): %#+v error=%v",
-			h.f.Name(), dirs, err)
-	}()
-	fis, err := h.f.Readdir(0)
-	if err != nil {
-		return nil, err
-	}
-	if err = h.f.Close(); err != nil {
-		return nil, err
-	}
-
-	// reopen the fd so next readdirall would work
-	if h.f, err = h.reopener(); err != nil {
-		return nil, err
-	}
-
-	return getDirentsWithFileInfos(fis), nil
-}
-
-var _ fs.HandleReader = (*Handle)(nil)
-
-// Read implements fs.HandleReader interface for *Handle
-func (h *Handle) Read(ctx context.Context,
-	req *fuse.ReadRequest, resp *fuse.ReadResponse) (err error) {
-	defer func() {
-		log.Printf("Handle(%s).Read(): error=%v",
-			h.f.Name(), err)
-	}()
-	resp.Data = make([]byte, req.Size)
-	n, err := h.f.Read(resp.Data)
-	resp.Data = resp.Data[:n]
-	return err
-}
-
-var _ fs.HandleReleaser = (*Handle)(nil)
-
-// Release implements fs.HandleReleaser interface for *Handle
-func (h *Handle) Release(ctx context.Context,
-	req *fuse.ReleaseRequest) (err error) {
-	defer func() {
-		log.Printf("Handle(%s).Release(): error=%v",
-			h.f.Name(), err)
-	}()
-	h.fs.forgetHandle(req.Handle)
-	return h.f.Close()
-}
-
-var _ fs.HandleWriter = (*Handle)(nil)
-
-// Write implements fs.HandleWriter interface for *Handle
-func (h *Handle) Write(ctx context.Context,
-	req *fuse.WriteRequest, resp *fuse.WriteResponse) (err error) {
-	defer func() {
-		log.Printf("Handle(%s).Write(): error=%v",
-			h.f.Name(), err)
-	}()
-
-	if _, err = h.f.Seek(req.Offset, 0); err != nil {
-		return err
-	}
-	n, err := h.f.Write(req.Data)
-	resp.Size = n
-	return err
 }
