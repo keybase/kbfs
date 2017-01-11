@@ -304,7 +304,7 @@ func (j *blockJournal) isUnflushed(id kbfsblock.ID) (bool, error) {
 	return j.s.isUnflushed(id)
 }
 
-func (j *blockJournal) remove(id kbfsblock.ID) (
+func (j *blockJournal) remove(ctx context.Context, id kbfsblock.ID) (
 	removedBytes int64, err error) {
 	bytesToRemove, err := j.s.getDataSize(id)
 	if err != nil {
@@ -322,6 +322,8 @@ func (j *blockJournal) remove(id kbfsblock.ID) (
 	if err != nil {
 		return 0, err
 	}
+
+	j.log.CDebugf(ctx, "Removed %s for %d bytes", id, bytesToRemove)
 
 	return bytesToRemove, nil
 }
@@ -786,7 +788,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		if j.saveUntilMDFlush == nil && liveCount == 0 {
 			// Garbage-collect the old entry if we are not
 			// saving blocks until the next MD flush.
-			idRemovedBytes, err := j.remove(id)
+			idRemovedBytes, err := j.remove(ctx, id)
 			if err != nil {
 				return 0, 0, err
 			}
@@ -1008,7 +1010,7 @@ func (j *blockJournal) onMDFlush(ctx context.Context,
 			}
 			if !hasRef {
 				// Garbage-collect the old entry.
-				idRemovedBytes, err := j.remove(id)
+				idRemovedBytes, err := j.remove(ctx, id)
 				if err != nil {
 					return 0, 0, err
 				}

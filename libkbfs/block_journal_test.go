@@ -325,7 +325,7 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 		ctx, kbfsblock.ContextMap{bID: {bCtx}})
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID: 0}, liveCounts)
-	removedBytes, err := j.remove(bID)
+	removedBytes, err := j.remove(ctx, bID)
 	require.NoError(t, err)
 	require.Equal(t, dataLen, removedBytes)
 
@@ -337,7 +337,7 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 	require.Equal(t, dataLen, j.getUnflushedBytes())
 
 	// Remove the block again.
-	removedBytes, err = j.remove(bID)
+	removedBytes, err = j.remove(ctx, bID)
 	require.NoError(t, err)
 	require.Equal(t, int64(0), removedBytes)
 
@@ -422,6 +422,8 @@ func TestBlockJournalFlush(t *testing.T) {
 		return removedBytes
 	}
 
+	// Flushing all the reference adds should remove the
+	// (now-unreferenced) block.
 	removedBytes := flush()
 	require.Equal(t, int64(len(data)), removedBytes)
 
@@ -547,6 +549,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
 
+	// Flushing the last reference add should remove the
+	// (now-unreferenced) block.
 	removedBytes = flushOne()
 	require.Equal(t, int64(len(data)), removedBytes)
 
@@ -817,6 +821,8 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 			ctx, 1, lastToRemove)
 		require.NoError(t, err)
 		require.NotZero(t, lastToRemove, "Iter %d", i)
+		// Set expectedSize to 4 only for the puts of
+		// data{1,2,3,4,5,6}.
 		var expectedSize int64
 		if i%3 != 2 {
 			expectedSize = 4
@@ -846,7 +852,7 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 	testBlockJournalGCd(t, j)
 }
 
-func TestBlockJournalUnflushedBytes(t *testing.T) {
+func TestBlockJournalByteCounters(t *testing.T) {
 	ctx, cancel, tempdir, log, j := setupBlockJournalTest(t)
 	defer teardownBlockJournalTest(t, ctx, cancel, tempdir, j)
 
