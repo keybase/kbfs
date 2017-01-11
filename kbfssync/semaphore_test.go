@@ -22,6 +22,11 @@ type acquireCall struct {
 	err   error
 }
 
+func callAcquire(ctx context.Context, s *Semaphore, n int64) acquireCall {
+	count, err := s.Acquire(ctx, n)
+	return acquireCall{n, count, err}
+}
+
 func requireEmpty(t *testing.T, callCh <-chan acquireCall) {
 	select {
 	case call := <-callCh:
@@ -43,8 +48,7 @@ func TestSimple(t *testing.T) {
 
 	callCh := make(chan acquireCall, 1)
 	go func() {
-		count, err := s.Acquire(ctx, n)
-		callCh <- acquireCall{n, count, err}
+		callCh <- callAcquire(ctx, s, n)
 	}()
 
 	requireEmpty(t, callCh)
@@ -81,8 +85,7 @@ func TestForceAcquire(t *testing.T) {
 
 	callCh := make(chan acquireCall, 1)
 	go func() {
-		count, err := s.Acquire(ctx, n)
-		callCh <- acquireCall{n, count, err}
+		callCh <- callAcquire(ctx, s, n)
 	}()
 
 	requireEmpty(t, callCh)
@@ -125,8 +128,7 @@ func TestCancel(t *testing.T) {
 
 	callCh := make(chan acquireCall, 1)
 	go func() {
-		count, err := s.Acquire(ctx2, n)
-		callCh <- acquireCall{n, count, err}
+		callCh <- callAcquire(ctx2, s, n)
 	}()
 
 	requireEmpty(t, callCh)
@@ -164,9 +166,9 @@ func TestSerialRelease(t *testing.T) {
 	callCh := make(chan acquireCall, acquirerCount)
 	for i := 0; i < acquirerCount; i++ {
 		go func() {
-			count, err := s.Acquire(ctx, 1)
+			call := callAcquire(ctx, s, 1)
 			acquireCount++
-			callCh <- acquireCall{1, count, err}
+			callCh <- call
 		}()
 	}
 
@@ -206,9 +208,9 @@ func TestAcquireDifferentSizes(t *testing.T) {
 	callCh := make(chan acquireCall, acquirerCount)
 	for i := 0; i < acquirerCount; i++ {
 		go func(i int) {
-			count, err := s.Acquire(ctx, int64(i+1))
+			call := callAcquire(ctx, s, int64(i+1))
 			acquireCount++
-			callCh <- acquireCall{int64(i + 1), count, err}
+			callCh <- call
 		}(i)
 	}
 
