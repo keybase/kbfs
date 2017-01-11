@@ -1462,10 +1462,15 @@ func (j *tlfJournal) putBlockData(
 
 	bufLen := int64(len(buf))
 
+	j.log.CDebugf(ctx, "Acquiring %d bytes for %s", bufLen, j.tlfID)
+
 	availableBytes, err := j.diskLimiter.Acquire(ctx, bufLen)
 	if err != nil {
 		return err
 	}
+
+	j.log.CDebugf(ctx, "Acquired %d bytes for %s: available=%d",
+		bufLen, j.tlfID, availableBytes)
 
 	storedBytesBefore := j.blockJournal.getStoredBytes()
 
