@@ -178,6 +178,8 @@ type tlfJournal struct {
 	onBranchChange      branchChangeListener
 	onMDFlush           mdFlushListener
 
+	// Invariant: this tlfJournal acquires exactly
+	// blockJournal.getStoredBytes() until shutdown.
 	diskLimiter diskLimiter
 
 	// All the channels below are used as simple on/off
@@ -798,17 +800,28 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 		return err
 	}
 
+	storedBytesBefore := j.blockJournal.getStoredBytes()
+
 	removedBytes, err := j.blockJournal.removeFlushedEntries(
 		ctx, entries, j.tlfID, j.config.Reporter())
 	if err != nil {
 		return err
 	}
 
+	storedBytesAfter := j.blockJournal.getStoredBytes()
+
 	// removedBytes should be zero since we're always saving
 	// blocks.
 	if removedBytes != 0 {
 		panic(fmt.Sprintf("removedBytes=%d unexpectedly non-zero",
 			removedBytes))
+	}
+
+	// storedBytes shouldn't change since removedBytes is 0.
+	if storedBytesBefore != storedBytesAfter {
+		panic(fmt.Sprintf(
+			"storedBytes unexpectedly changed from %d to %d",
+			storedBytesBefore, storedBytesAfter))
 	}
 
 	return nil
@@ -933,13 +946,26 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 				return 0, 0, err
 			}
 
-			nextLastToRemove, totalRemovedBytes, err := j.blockJournal.onMDFlush(
-				ctx, maxSavedBlockRemovalsAtATime, lastToRemove)
+			storedBytesBefore := j.blockJournal.getStoredBytes()
+
+			nextLastToRemove, removedBytes, err :=
+				j.blockJournal.onMDFlush(
+					ctx, maxSavedBlockRemovalsAtATime,
+					lastToRemove)
 			if err != nil {
 				return 0, 0, err
 			}
 
-			return nextLastToRemove, totalRemovedBytes, nil
+			storedBytesAfter := j.blockJournal.getStoredBytes()
+
+			if storedBytesAfter != (storedBytesBefore - removedBytes) {
+				panic(fmt.Sprintf(
+					"storedBytes changed from %d to %d, but removedBytes is %d",
+					storedBytesBefore, storedBytesAfter,
+					removedBytes))
+			}
+
+			return nextLastToRemove, removedBytes, nil
 		}()
 		if err != nil {
 			return err
