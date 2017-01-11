@@ -82,12 +82,15 @@ const (
 // display in diagnostics. It is suitable for encoding directly as
 // JSON.
 type TLFJournalStatus struct {
-	Dir            string
-	RevisionStart  MetadataRevision
-	RevisionEnd    MetadataRevision
-	BranchID       string
-	BlockOpCount   uint64
-	UnflushedBytes int64 // (signed because os.FileInfo.Size() is signed)
+	Dir           string
+	RevisionStart MetadataRevision
+	RevisionEnd   MetadataRevision
+	BranchID      string
+	BlockOpCount  uint64
+	// The byte counters below are signed because
+	// os.FileInfo.Size() is signed.
+	StoredBytes    int64
+	UnflushedBytes int64
 	UnflushedPaths []string
 	LastFlushErr   string `json:",omitempty"`
 }
@@ -1066,6 +1069,7 @@ func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
 	if j.lastFlushErr != nil {
 		lastFlushErr = j.lastFlushErr.Error()
 	}
+	storedBytes := j.blockJournal.getStoredBytes()
 	unflushedBytes := j.blockJournal.getUnflushedBytes()
 	return TLFJournalStatus{
 		Dir:            j.dir,
@@ -1073,6 +1077,7 @@ func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
 		RevisionStart:  earliestRevision,
 		RevisionEnd:    latestRevision,
 		BlockOpCount:   blockEntryCount,
+		StoredBytes:    storedBytes,
 		UnflushedBytes: unflushedBytes,
 		LastFlushErr:   lastFlushErr,
 	}, nil
