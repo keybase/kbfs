@@ -327,6 +327,10 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 	err = j.remove(bID)
 	require.NoError(t, err)
 
+	// This violates the invariant that UnflushedBytes <=
+	// StoredBytes, but that's because we're manually removing the
+	// block -- normally, the block would be flushed first, then
+	// removed.
 	require.Equal(t, int64(0), j.getStoredBytes())
 	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
 
