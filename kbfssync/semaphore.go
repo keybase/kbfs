@@ -5,6 +5,8 @@
 package kbfssync
 
 import (
+	"fmt"
+	"math"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -79,7 +81,7 @@ func (s *Semaphore) Acquire(ctx context.Context, n int64) error {
 // up any waiting acquirers. It is meant for correcting the initial
 // resource count of the semaphore. It's okay if adding n causes the
 // resource count goes negative, but it must not cause the resource
-// count to overflow in the negative direction.
+// count to overflow (in the negative direction).
 func (s *Semaphore) ForceAcquire(n int64) {
 	if n <= 0 {
 		panic("n must be positive")
@@ -96,8 +98,15 @@ func (s *Semaphore) ForceAcquire(n int64) {
 // are waiting acquirers, it wakes up at least one of them to make
 // progress, assuming that no new acquirers arrive in the meantime.
 func (s *Semaphore) Release(n int64) {
+	if n <= 0 {
+		panic(fmt.Sprintf("n=%d must be positive", n))
+	}
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	if s.count > (math.MaxInt64 - n) {
+		panic(fmt.Sprintf("s.count=%d + n=%d would overflow"))
+	}
 	// TODO: check for overflow.
 	s.count += n
 	close(s.onRelease)

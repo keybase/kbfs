@@ -6,6 +6,7 @@ package kbfssync
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -240,4 +241,13 @@ func TestAcquireDifferentSizes(t *testing.T) {
 
 	// acquireCount should have been incremented race-free.
 	require.Equal(t, acquirerCount, acquireCount)
+}
+
+func TestPanics(t *testing.T) {
+	s := NewSemaphore()
+	require.Equal(t, int64(0), s.Count())
+	s.Release(1)
+	require.Panics(t, func() {
+		s.Release(math.MaxInt64)
+	})
 }
