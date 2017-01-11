@@ -898,8 +898,11 @@ func (c *ConfigLocal) EnableJournaling(
 	log := c.MakeLogger("")
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
-	// 10 GiB
+	// Set the journal disk limit to 10 GiB for now. TODO: Make
+	// this configurable.
 	var journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
+	// TODO: Use a diskLimiter implementation that applies
+	// backpressure.
 	diskLimitSemaphore := kbfssync.NewSemaphore()
 	diskLimitSemaphore.Release(journalDiskLimit)
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
