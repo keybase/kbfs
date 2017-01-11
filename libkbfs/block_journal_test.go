@@ -810,14 +810,21 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 	// revision markers that also need removal.
 	lastToRemove := journalOrdinal(0)
 	for i := 0; i < len(savedBlocks)-1+2; i++ {
-		lastToRemove, _, err = j.onMDFlush(ctx, 1, lastToRemove)
+		lastToRemove, totalRemovedBytes, err = j.onMDFlush(
+			ctx, 1, lastToRemove)
 		require.NoError(t, err)
 		require.NotZero(t, lastToRemove, "Iter %d", i)
+		var expectedSize int64
+		if i%3 != 2 {
+			expectedSize = 4
+		}
+		require.Equal(t, expectedSize, totalRemovedBytes, "Iter %d", i)
 		require.NotNil(t, j.saveUntilMDFlush)
 	}
 	lastToRemove, _, err = j.onMDFlush(ctx, 1, lastToRemove)
 	require.NoError(t, err)
 	require.Zero(t, lastToRemove)
+	require.Equal(t, int64(4), totalRemovedBytes)
 	require.Nil(t, j.saveUntilMDFlush)
 
 	ok, err := j.isUnflushed(bID1)
