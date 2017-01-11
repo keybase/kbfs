@@ -42,14 +42,16 @@ func TestSimple(t *testing.T) {
 
 	requireEmpty(t, errCh)
 
-	s.Release(n - 1)
+	count := s.Release(n - 1)
+	require.Equal(t, n-1, count)
 	require.Equal(t, n-1, s.Count())
 
 	requireEmpty(t, errCh)
 
-	s.Release(1)
+	count = s.Release(1)
+	require.Equal(t, n, count)
 
-	// s.Count() should go to n, then 0.
+	// s.Count() should go to 0.
 
 	select {
 	case err := <-errCh:
@@ -79,17 +81,18 @@ func TestForceAcquire(t *testing.T) {
 
 	requireEmpty(t, errCh)
 
-	s.Release(n - 1)
+	count := s.Release(n - 1)
+	require.Equal(t, n-1, count)
 	require.Equal(t, n-1, s.Count())
 
 	requireEmpty(t, errCh)
 
-	s.ForceAcquire(n)
-	require.Equal(t, int64(-1), s.Count())
+	count = s.ForceAcquire(n)
+	require.Equal(t, int64(-1), count)
 
-	s.Release(n + 1)
-
-	// s.Count() should go to n, then 0.
+	count = s.Release(n + 1)
+	require.Equal(t, n, count)
+	// s.Count() should go to 0.
 
 	select {
 	case err := <-errCh:
@@ -122,7 +125,8 @@ func TestCancel(t *testing.T) {
 
 	requireEmpty(t, errCh)
 
-	s.Release(n - 1)
+	count := s.Release(n - 1)
+	require.Equal(t, n-1, count)
 	require.Equal(t, n-1, s.Count())
 
 	requireEmpty(t, errCh)
@@ -162,7 +166,9 @@ func TestSerialRelease(t *testing.T) {
 	for i := 0; i < acquirerCount; i++ {
 		requireEmpty(t, errCh)
 
-		s.Release(1)
+		count := s.Release(1)
+		require.Equal(t, int64(1), count)
+
 		select {
 		case err := <-errCh:
 			require.NoError(t, err)

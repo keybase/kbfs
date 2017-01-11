@@ -82,8 +82,8 @@ func (s *Semaphore) Acquire(ctx context.Context, n int64) error {
 // for correcting the initial resource count of the semaphore. It's
 // okay if adding n causes the resource count goes negative, but it
 // must not cause the resource count to overflow (in the negative
-// direction).
-func (s *Semaphore) ForceAcquire(n int64) {
+// direction). The updated resource count is returned.
+func (s *Semaphore) ForceAcquire(n int64) int64 {
 	if n <= 0 {
 		panic(fmt.Sprintf("n=%d must be positive", n))
 	}
@@ -95,13 +95,15 @@ func (s *Semaphore) ForceAcquire(n int64) {
 			s.count, n))
 	}
 	s.count -= n
+	return s.count
 }
 
 // Release atomically adds n (which must be positive) to the resource
 // count. It must not cause the resource count to overflow. If there
 // are waiting acquirers, it wakes up at least one of them to make
 // progress, assuming that no new acquirers arrive in the meantime.
-func (s *Semaphore) Release(n int64) {
+// The updated resource count is returned.
+func (s *Semaphore) Release(n int64) int64 {
 	if n <= 0 {
 		panic(fmt.Sprintf("n=%d must be positive", n))
 	}
@@ -118,4 +120,5 @@ func (s *Semaphore) Release(n int64) {
 	// waiters that could possibly succeed.
 	close(s.onRelease)
 	s.onRelease = make(chan struct{})
+	return s.count
 }
