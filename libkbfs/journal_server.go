@@ -58,6 +58,10 @@ type mdFlushListener interface {
 	onMDFlush(tlf.ID, BranchID, MetadataRevision)
 }
 
+// diskLimiter is an interface for limiting disk usage. A simple
+// implementation would use a semaphore initialized with the maximum
+// disk usage, but a more sophisticated implementation would apply
+// backpressure on Acquire.
 type diskLimiter interface {
 	Acquire(ctx context.Context, nBytes int64) error
 	ForceAcquire(nBytes int64)
