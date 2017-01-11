@@ -37,7 +37,8 @@ func TestSimple(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- s.Acquire(ctx, n)
+		_, err := s.Acquire(ctx, n)
+		errCh <- err
 	}()
 
 	requireEmpty(t, errCh)
@@ -76,7 +77,8 @@ func TestForceAcquire(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- s.Acquire(ctx, n)
+		_, err := s.Acquire(ctx, n)
+		errCh <- err
 	}()
 
 	requireEmpty(t, errCh)
@@ -120,7 +122,8 @@ func TestCancel(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- s.Acquire(ctx2, n)
+		_, err := s.Acquire(ctx2, n)
+		errCh <- err
 	}()
 
 	requireEmpty(t, errCh)
@@ -157,7 +160,7 @@ func TestSerialRelease(t *testing.T) {
 	errCh := make(chan error, acquirerCount)
 	for i := 0; i < acquirerCount; i++ {
 		go func() {
-			err := s.Acquire(ctx, 1)
+			_, err := s.Acquire(ctx, 1)
 			acquireCount++
 			errCh <- err
 		}()
@@ -213,7 +216,7 @@ func TestAcquireDifferentSizes(t *testing.T) {
 	acquirerCh := make(chan acquirer, acquirerCount)
 	for i := 0; i < acquirerCount; i++ {
 		go func(i int) {
-			err := s.Acquire(ctx, int64(i+1))
+			_, err := s.Acquire(ctx, int64(i+1))
 			acquireCount++
 			acquirerCh <- acquirer{int64(i + 1), err}
 		}(i)

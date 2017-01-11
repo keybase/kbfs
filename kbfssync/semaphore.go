@@ -40,39 +40,40 @@ func (s *Semaphore) Count() int64 {
 
 // tryAcquire tries to acquire n resources. If successful, nil is
 // returned. Otherwise, a channel which will be closed when new
-// resources are available is returned.
-func (s *Semaphore) tryAcquire(n int64) <-chan struct{} {
+// resources are available is returned. In either case, the
+// possibly-updated resource count is returned.
+func (s *Semaphore) tryAcquire(n int64) (<-chan struct{}, int64) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if n <= s.count {
 		s.count -= n
-		return nil
+		return nil, s.count
 	}
 
-	return s.onRelease
+	return s.onRelease, s.count
 }
 
 // Acquire blocks until it is possible to atomically subtract n (which
 // must be positive) from the resource count without causing it to go
 // negative, and then returns nil. If the given context is canceled
 // first, it instead returns a wrapped ctx.Err() and does not change
-// the resource count.
-func (s *Semaphore) Acquire(ctx context.Context, n int64) error {
+// the resource count. The possibly-updated resource count is returned.
+func (s *Semaphore) Acquire(ctx context.Context, n int64) (int64, error) {
 	if n <= 0 {
 		panic(fmt.Sprintf("n=%d must be positive", n))
 	}
 
 	for {
-		onRelease := s.tryAcquire(n)
+		onRelease, count := s.tryAcquire(n)
 		if onRelease == nil {
-			return nil
+			return count, nil
 		}
 
 		select {
 		case <-onRelease:
 			// Go to the top of the loop.
 		case <-ctx.Done():
-			return errors.WithStack(ctx.Err())
+			return count, errors.WithStack(ctx.Err())
 		}
 	}
 }
