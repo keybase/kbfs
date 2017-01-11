@@ -355,7 +355,7 @@ func makeTLFJournal(
 	}
 
 	// Do this only once we're sure we won't error.
-	storedBytes := blockJournal.getStoredBytes()
+	storedBytes := j.blockJournal.getStoredBytes()
 	if storedBytes > 0 {
 		j.diskLimiter.ForceAcquire(storedBytes)
 	}
