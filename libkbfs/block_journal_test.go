@@ -324,7 +324,7 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 		ctx, kbfsblock.ContextMap{bID: {bCtx}})
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID: 0}, liveCounts)
-	err = j.remove(bID)
+	_, err = j.remove(bID)
 	require.NoError(t, err)
 
 	// This violates the invariant that UnflushedBytes <=
@@ -335,7 +335,7 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
 
 	// Remove the block again.
-	err = j.remove(bID)
+	_, err = j.remove(bID)
 	require.NoError(t, err)
 
 	// Shouldn't account for the block again.
@@ -413,14 +413,14 @@ func TestBlockJournalFlush(t *testing.T) {
 			tlfID, CanonicalTlfName("fake TLF"), entries)
 		require.NoError(t, err)
 
-		totalFlushedBytes, err := j.removeFlushedEntries(
+		totalRemovedBytes, err := j.removeFlushedEntries(
 			ctx, entries, tlfID, reporter)
 		require.NoError(t, err)
-		return totalFlushedBytes
+		return totalRemovedBytes
 	}
 
-	totalFlushedBytes := flush()
-	require.Equal(t, int64(len(data)), totalFlushedBytes)
+	totalRemovedBytes := flush()
+	require.Equal(t, int64(len(data)), totalRemovedBytes)
 
 	// Check the Put.
 	buf, key, err := blockServer.Get(ctx, tlfID, bID, bCtx)
@@ -448,8 +448,8 @@ func TestBlockJournalFlush(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID: 0}, liveCounts)
 
-	totalFlushedBytes = flush()
-	require.Equal(t, int64(0), totalFlushedBytes)
+	totalRemovedBytes = flush()
+	require.Equal(t, int64(0), totalRemovedBytes)
 
 	// Check they're all gone.
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx)
@@ -480,12 +480,12 @@ func flushBlockJournalOne(ctx context.Context, t *testing.T,
 		bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 		entries)
 	require.NoError(t, err)
-	totalFlushedBytes, err := j.removeFlushedEntries(
+	totalRemovedBytes, err := j.removeFlushedEntries(
 		ctx, entries, tlfID, reporter)
 	require.NoError(t, err)
 	err = j.checkInSyncForTest()
 	require.NoError(t, err)
-	return totalFlushedBytes
+	return totalRemovedBytes
 }
 
 func TestBlockJournalFlushInterleaved(t *testing.T) {
@@ -517,8 +517,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 			ctx, t, j, blockServer, bcache, reporter, tlfID)
 	}
 
-	totalFlushedBytes := flushOne()
-	require.Equal(t, int64(len(data)), totalFlushedBytes)
+	totalRemovedBytes := flushOne()
+	require.Equal(t, int64(0), totalRemovedBytes)
 
 	buf, key, err := blockServer.Get(ctx, tlfID, bID, bCtx)
 	require.NoError(t, err)
@@ -536,16 +536,16 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the reference adds.
 
-	totalFlushedBytes = flushOne()
-	require.Equal(t, int64(0), totalFlushedBytes)
+	totalRemovedBytes = flushOne()
+	require.Equal(t, int64(0), totalRemovedBytes)
 
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx2)
 	require.NoError(t, err)
 	require.Equal(t, data, buf)
 	require.Equal(t, serverHalf, key)
 
-	totalFlushedBytes = flushOne()
-	require.Equal(t, int64(0), totalFlushedBytes)
+	totalRemovedBytes = flushOne()
+	require.Equal(t, int64(len(data)), totalRemovedBytes)
 
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
@@ -562,8 +562,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the reference removals.
 
-	totalFlushedBytes = flushOne()
-	require.Equal(t, int64(0), totalFlushedBytes)
+	totalRemovedBytes = flushOne()
+	require.Equal(t, int64(0), totalRemovedBytes)
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx)
 	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
@@ -587,8 +587,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the reference archival.
 
-	totalFlushedBytes = flushOne()
-	require.Equal(t, int64(0), totalFlushedBytes)
+	totalRemovedBytes = flushOne()
+	require.Equal(t, int64(0), totalRemovedBytes)
 
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
@@ -597,8 +597,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the last removal.
 
-	totalFlushedBytes = flushOne()
-	require.Equal(t, int64(0), totalFlushedBytes)
+	totalRemovedBytes = flushOne()
+	require.Equal(t, int64(0), totalRemovedBytes)
 
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
@@ -646,10 +646,10 @@ func TestBlockJournalFlushMDRevMarker(t *testing.T) {
 		bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 		entries)
 	require.NoError(t, err)
-	totalFlushedBytes, err := j.removeFlushedEntries(
+	totalRemovedBytes, err := j.removeFlushedEntries(
 		ctx, entries, tlfID, reporter)
 	require.NoError(t, err)
-	require.Equal(t, int64(len(data)), totalFlushedBytes)
+	require.Equal(t, int64(len(data)), totalRemovedBytes)
 	err = j.checkInSyncForTest()
 	require.NoError(t, err)
 }
@@ -704,11 +704,11 @@ func TestBlockJournalIgnoreBlocks(t *testing.T) {
 		bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 		entries)
 	require.NoError(t, err)
-	totalFlushedBytes, err := j.removeFlushedEntries(
+	totalRemovedBytes, err := j.removeFlushedEntries(
 		ctx, entries, tlfID, reporter)
 	require.NoError(t, err)
-	require.Equal(t,
-		int64(len(data1)+len(data4)), totalFlushedBytes)
+	require.Equal(t, int64(len(data1)+len(data2)+len(data3)+len(data4)),
+		totalRemovedBytes)
 	err = j.checkInSyncForTest()
 	require.NoError(t, err)
 }
@@ -758,15 +758,13 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 			bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 			entries)
 		require.NoError(t, err)
-		totalFlushedBytes, err := j.removeFlushedEntries(
+		totalRemovedBytes, err := j.removeFlushedEntries(
 			ctx, entries, tlfID, reporter)
 		require.NoError(t, err)
-		return totalFlushedBytes
+		return totalRemovedBytes
 	}
-	totalFlushedBytes := flushAll()
-	require.Equal(t,
-		int64(len(data1)+len(data2)+len(data3)+len(data4)),
-		totalFlushedBytes)
+	totalRemovedBytes := flushAll()
+	require.Equal(t, int64(0), totalRemovedBytes)
 
 	// The blocks can still be fetched from the journal.
 	for _, bid := range savedBlocks {
@@ -790,8 +788,8 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 	data6 := []byte{21, 22, 23, 24}
 	bID6, _, _ := putBlockData(ctx, t, j, data6)
 	savedBlocks = append(savedBlocks, bID5, bID6)
-	totalFlushedBytes = flushAll()
-	require.Equal(t, int64(len(data5)+len(data6)), totalFlushedBytes)
+	totalRemovedBytes = flushAll()
+	require.Equal(t, int64(0), totalRemovedBytes)
 
 	// Make sure all the blocks still exist, including both the old
 	// and the new ones.
@@ -910,19 +908,19 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 	}
 
 	// Flush the first put.
-	totalFlushedBytes := flushOne()
-	require.Equal(t, int64(len(data1)), totalFlushedBytes)
+	totalRemovedBytes := flushOne()
+	require.Equal(t, int64(len(data1)), totalRemovedBytes)
 	expectedSize = len(data2)
 	requireSize(expectedSize)
 
 	// Flush the second put.
-	totalFlushedBytes = flushOne()
-	require.Equal(t, int64(len(data2)), totalFlushedBytes)
+	totalRemovedBytes = flushOne()
+	require.Equal(t, int64(len(data2)), totalRemovedBytes)
 	requireSize(0)
 
 	// Flush the first add ref.
-	totalFlushedBytes = flushOne()
-	require.Equal(t, int64(0), totalFlushedBytes)
+	totalRemovedBytes = flushOne()
+	require.Equal(t, int64(0), totalRemovedBytes)
 	requireSize(0)
 
 	// Flush the second add ref, but push the block to the server
@@ -937,23 +935,23 @@ func TestBlockJournalUnflushedBytes(t *testing.T) {
 		context.Background(), tlfID, bID3, bCtx3, data3, serverHalf3)
 	require.NoError(t, err)
 
-	totalFlushedBytes = flushOne()
-	require.Equal(t, int64(0), totalFlushedBytes)
+	totalRemovedBytes = flushOne()
+	require.Equal(t, int64(0), totalRemovedBytes)
 	requireSize(0)
 
 	// Flush the add archive.
-	totalFlushedBytes = flushOne()
-	require.Equal(t, int64(0), totalFlushedBytes)
+	totalRemovedBytes = flushOne()
+	require.Equal(t, int64(0), totalRemovedBytes)
 	requireSize(0)
 
 	// Flush the first remove.
-	totalFlushedBytes = flushOne()
-	require.Equal(t, int64(0), totalFlushedBytes)
+	totalRemovedBytes = flushOne()
+	require.Equal(t, int64(0), totalRemovedBytes)
 	requireSize(0)
 
 	// Flush the second remove.
-	totalFlushedBytes = flushOne()
-	require.Equal(t, int64(0), totalFlushedBytes)
+	totalRemovedBytes = flushOne()
+	require.Equal(t, int64(0), totalRemovedBytes)
 	requireSize(0)
 }
 

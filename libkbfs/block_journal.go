@@ -304,20 +304,26 @@ func (j *blockJournal) isUnflushed(id kbfsblock.ID) (bool, error) {
 	return j.s.isUnflushed(id)
 }
 
-func (j *blockJournal) remove(id kbfsblock.ID) error {
+func (j *blockJournal) remove(id kbfsblock.ID) (
+	removedBytes int64, err error) {
 	bytesToRemove, err := j.s.getDataSize(id)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// TODO: we'll eventually need a sweeper to clean up entries
 	// left behind if we crash here.
 	err = j.s.remove(id)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return j.unstoreBytes(bytesToRemove)
+	err = j.unstoreBytes(bytesToRemove)
+	if err != nil {
+		return 0, err
+	}
+
+	return bytesToRemove, nil
 }
 
 // All functions below are public functions.
@@ -725,42 +731,42 @@ func flushBlockEntries(ctx context.Context, log logger.Logger,
 
 func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	ordinal journalOrdinal, entry blockJournalEntry) (
-	flushedBytes int64, err error) {
+	removedBytes, flushedBytes int64, err error) {
 	earliestOrdinal, err := j.j.readEarliestOrdinal()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	if ordinal != earliestOrdinal {
-		return 0, errors.Errorf("Expected ordinal %d, got %d",
+		return 0, 0, errors.Errorf("Expected ordinal %d, got %d",
 			ordinal, earliestOrdinal)
 	}
 
 	_, err = j.j.removeEarliest()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	// Store the block byte count if we've finished a Put.
 	if entry.Op == blockPutOp && !entry.Ignore {
 		id, _, err := entry.getSingleContext()
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 
 		err = j.s.markFlushed(id)
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 
 		flushedBytes, err = j.s.getDataSize(id)
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 
 		err = j.flushBytes(flushedBytes)
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 	}
 
@@ -773,35 +779,36 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		liveCount, err := j.s.removeReferences(
 			id, idContexts, earliestOrdinal.String())
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 		// If j.saveUntilMDFlush is non-nil, then postpone
 		// garbage collection until it becomes nil.
 		if j.saveUntilMDFlush == nil && liveCount == 0 {
 			// Garbage-collect the old entry if we are not
 			// saving blocks until the next MD flush.
-			err := j.remove(id)
+			idRemovedBytes, err := j.remove(id)
 			if err != nil {
-				return 0, err
+				return 0, 0, err
 			}
+			removedBytes += idRemovedBytes
 		}
 	}
 
-	return flushedBytes, nil
+	return removedBytes, flushedBytes, nil
 }
 
 func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 	entries blockEntriesToFlush, tlfID tlf.ID, reporter Reporter) (
-	totalFlushedBytes int64, err error) {
+	totalRemovedBytes int64, err error) {
 	// Remove them all!
 	for i, entry := range entries.all {
-		flushedBytes, err := j.removeFlushedEntry(
+		removedBytes, flushedBytes, err := j.removeFlushedEntry(
 			ctx, entries.first+journalOrdinal(i), entry)
 		if err != nil {
 			return 0, err
 		}
 
-		totalFlushedBytes += flushedBytes
+		totalRemovedBytes += removedBytes
 		reporter.NotifySyncStatus(ctx, &keybase1.FSPathSyncStatus{
 			PublicTopLevelFolder: tlfID.IsPublic(),
 			// Path: TODO,
@@ -810,7 +817,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 			SyncedBytes: flushedBytes,
 		})
 	}
-	return totalFlushedBytes, nil
+	return totalRemovedBytes, nil
 }
 
 func (j *blockJournal) ignoreBlocksAndMDRevMarkers(ctx context.Context,
@@ -1000,7 +1007,7 @@ func (j *blockJournal) onMDFlush(ctx context.Context,
 			}
 			if !hasRef {
 				// Garbage-collect the old entry.
-				err = j.remove(id)
+				_, err = j.remove(id)
 				if err != nil {
 					return 0, err
 				}
