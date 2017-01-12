@@ -1268,7 +1268,7 @@ func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
 	return jStatus, nil
 }
 
-func (j *tlfJournal) getByteCounters() (
+func (j *tlfJournal) getByteCounts() (
 	storedBytes, unflushedBytes int64, err error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()

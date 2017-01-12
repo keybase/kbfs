@@ -557,10 +557,10 @@ func (j *JournalServer) Status(
 	var totalStoredBytes, totalUnflushedBytes int64
 	tlfIDs := make([]tlf.ID, 0, len(j.tlfJournals))
 	for _, tlfJournal := range j.tlfJournals {
-		storedBytes, unflushedBytes, err := tlfJournal.getByteCounters()
+		storedBytes, unflushedBytes, err := tlfJournal.getByteCounts()
 		if err != nil {
 			j.log.CWarningf(ctx,
-				"Couldn't calculate stored bytes for %s: %+v",
+				"Couldn't calculate stored/unflushed bytes for %s: %+v",
 				tlfJournal.tlfID, err)
 		}
 		totalStoredBytes += storedBytes
