@@ -600,10 +600,10 @@ func (md *BareRootMetadataV2) PromoteReaders(
 				return fmt.Errorf("Could not find %s in key gen %d",
 					reader, FirstValidKeyGen+KeyGen(i))
 			}
-			// TODO: This is incorrect, since dkim may
-			// contain negative offsets, and a lot of code
-			// assumes that writers will only contain
-			// non-negative offsets.
+			// TODO: This may be incorrect, since dkim may
+			// contain negative EPubKey indices, and the
+			// upconversion code assumes that writers will
+			// only contain non-negative EPubKey indices.
 			//
 			// See KBFS-1719.
 			md.WKeys[i].WKeys[reader] = dkim
