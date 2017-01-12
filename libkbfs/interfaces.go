@@ -1842,7 +1842,7 @@ type MutableBareRootMetadata interface {
 	// but for reader rekey, updatedWriterKeys will be empty and
 	// updatedReaderKeys will contain only a single entry.
 	//
-	// UpdateKeyGeneration must only be called on metadata for
+	// UpdateKeyBundles must only be called on metadata for
 	// private TLFs.
 	//
 	// An array of server halves to push to the server are
