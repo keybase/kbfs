@@ -1029,6 +1029,8 @@ func (md *BareRootMetadataV3) updateKeyBundles(crypto cryptoPure,
 	if err != nil {
 		return nil, err
 	}
+	// If we didn't fill in any new writer infos, don't add a new
+	// writer ephemeral key.
 	if len(wServerHalves) > 0 {
 		wkb.TLFEphemeralPublicKeys =
 			append(wkb.TLFEphemeralPublicKeys, ePubKey)
@@ -1044,6 +1046,8 @@ func (md *BareRootMetadataV3) updateKeyBundles(crypto cryptoPure,
 	if err != nil {
 		return nil, err
 	}
+	// If we didn't fill in any new reader infos, don't add a new
+	// reader ephemeral key.
 	if len(rServerHalves) > 0 {
 		rkb.TLFEphemeralPublicKeys =
 			append(rkb.TLFEphemeralPublicKeys, ePubKey)

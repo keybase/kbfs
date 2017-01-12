@@ -1099,6 +1099,8 @@ func (md *BareRootMetadataV2) updateKeyGenerationForReaderRekey(
 		return nil, err
 	}
 
+	// If we didn't fill in any new user infos, don't add a new
+	// ephemeral key.
 	if len(rServerHalves) > 0 {
 		rkb.TLFReaderEphemeralPublicKeys = append(
 			rkb.TLFReaderEphemeralPublicKeys, ePubKey)
@@ -1142,6 +1144,8 @@ func (md *BareRootMetadataV2) updateKeyGeneration(
 		return nil, err
 	}
 
+	// If we didn't fill in any new user infos, don't add a new
+	// ephemeral key.
 	if len(serverHalves) > 0 {
 		wkb.TLFEphemeralPublicKeys =
 			append(wkb.TLFEphemeralPublicKeys, ePubKey)
