@@ -40,6 +40,8 @@ func FakeInitialRekey(md MutableBareRootMetadata,
 	}
 
 	codec := kbfscodec.NewMsgpack()
+	// TODO: Consider making crypto a parameter once we remove all
+	// uses of mocked-out crypto.
 	crypto := MakeCryptoCommon(codec)
 	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	extra, _, err := md.AddKeyGeneration(
