@@ -1074,7 +1074,7 @@ func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 
 	if len(updatedWriterKeys) == 0 {
 		return nil, nil, errors.New(
-			"updatedWriterKeys unexpectedly non-empty")
+			"updatedWriterKeys unexpectedly empty")
 	}
 
 	if nextCryptKey == (kbfscrypto.TLFCryptKey{}) {
