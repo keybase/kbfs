@@ -25,12 +25,12 @@ type fakeBlockEntry struct {
 	refs     map[keybase1.BlockRefNonce]keybase1.BlockReference
 }
 
-type FakeBServerClient struct {
+type fakeBServerClient struct {
 	keybase1.BlockInterface
 	entries map[keybase1.BlockIdCombo]fakeBlockEntry
 }
 
-func (fc *FakeBServerClient) PutBlock(
+func (fc *fakeBServerClient) PutBlock(
 	ctx context.Context, arg keybase1.PutBlockArg) error {
 	var refs map[keybase1.BlockRefNonce]keybase1.BlockReference
 	if e, ok := fc.entries[arg.Bid]; ok {
@@ -47,7 +47,7 @@ func (fc *FakeBServerClient) PutBlock(
 	return nil
 }
 
-func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlockArg) (keybase1.GetBlockRes, error) {
+func (fc *fakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlockArg) (keybase1.GetBlockRes, error) {
 	e, ok := fc.entries[arg.Bid]
 	if !ok {
 		return keybase1.GetBlockRes{}, kbfsblock.BServerErrorBlockNonExistent{}
@@ -58,7 +58,7 @@ func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlock
 	}, nil
 }
 
-func (fc *FakeBServerClient) AddReference(ctx context.Context, arg keybase1.AddReferenceArg) error {
+func (fc *fakeBServerClient) AddReference(ctx context.Context, arg keybase1.AddReferenceArg) error {
 	e, ok := fc.entries[arg.Ref.Bid]
 	if !ok {
 		return kbfsblock.BServerErrorBlockNonExistent{}
@@ -72,7 +72,7 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	currentUID := keybase1.MakeTestUID(1)
 	log := logger.NewTestLogger(t)
-	fc := FakeBServerClient{
+	fc := fakeBServerClient{
 		entries: make(map[keybase1.BlockIdCombo]fakeBlockEntry),
 	}
 	b := newBlockServerRemoteWithClient(codec, nil, log, &fc)
