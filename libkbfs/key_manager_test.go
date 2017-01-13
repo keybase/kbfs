@@ -890,6 +890,7 @@ func testKeyManagerRekeyAddAndRevokeDevice(t *testing.T, ver MetadataVer) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	// Create a shared folder
 	name := u1.String() + "," + u2.String()
@@ -919,9 +920,9 @@ func testKeyManagerRekeyAddAndRevokeDevice(t *testing.T, ver MetadataVer) {
 
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config2, uid2)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
 	// user 2 should be unable to read the data now since its device
@@ -978,17 +979,17 @@ func testKeyManagerRekeyAddAndRevokeDevice(t *testing.T, ver MetadataVer) {
 	config2Dev3 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2Dev3)
 	defer config2Dev3.SetKeyCache(NewKeyCacheStandard(5000))
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
-	devIndex = AddDeviceForLocalUserOrBust(t, config2Dev3, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config2, uid2)
+	AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
+	devIndex = AddDeviceForLocalUserOrBust(t, config2Dev3, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev3, devIndex)
 
 	// Now revoke the original user 2 device (the last writer)
 	clock.Add(1 * time.Minute)
-	RevokeDeviceForLocalUserOrBust(t, config1, session2.UID, 0)
-	RevokeDeviceForLocalUserOrBust(t, config2Dev2, session2.UID, 0)
-	RevokeDeviceForLocalUserOrBust(t, config2Dev3, session2.UID, 0)
+	RevokeDeviceForLocalUserOrBust(t, config1, uid2, 0)
+	RevokeDeviceForLocalUserOrBust(t, config2Dev2, uid2, 0)
+	RevokeDeviceForLocalUserOrBust(t, config2Dev3, uid2, 0)
 
 	// First request a rekey from the new device, which will only be
 	// able to set the rekey bit (copying the root MD).
@@ -1121,6 +1122,7 @@ func testKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T, ver MetadataVer) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	// Create a shared folder
 	name := u1.String() + "," + u2.String() + ReaderSep + u3.String()
@@ -1143,9 +1145,9 @@ func testKeyManagerRekeyAddWriterAndReaderDevice(t *testing.T, ver MetadataVer) 
 
 	// Now give u2 and u3 new devices.  The configs don't share a
 	// Keybase Daemon so we have to do it in all places.
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config2, uid2)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 	AddDeviceForLocalUserOrBust(t, config1, uid3)
 	AddDeviceForLocalUserOrBust(t, config2, uid3)
@@ -1208,6 +1210,7 @@ func testKeyManagerSelfRekeyAcrossDevices(t *testing.T, ver MetadataVer) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	t.Log("Create a shared folder")
 	name := u1.String() + "," + u2.String()
@@ -1225,8 +1228,8 @@ func testKeyManagerSelfRekeyAcrossDevices(t *testing.T, ver MetadataVer) {
 	t.Log("User 2 adds a device")
 	// The configs don't share a Keybase Daemon so we have to do it in all
 	// places.
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2, uid2)
 
 	config2Dev2 := ConfigAsUser(config2, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2Dev2)
@@ -1292,6 +1295,7 @@ func testKeyManagerReaderRekey(t *testing.T, ver MetadataVer) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	t.Log("Create a shared folder")
 	name := u1.String() + ReaderSep + u2.String()
@@ -1319,9 +1323,9 @@ func testKeyManagerReaderRekey(t *testing.T, ver MetadataVer) {
 	t.Log("User 2 adds a device")
 	// The configs don't share a Keybase Daemon so we have to do it in all
 	// places.
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config1Dev2, session2.UID)
-	devIndex = AddDeviceForLocalUserOrBust(t, config2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config1Dev2, uid2)
+	devIndex = AddDeviceForLocalUserOrBust(t, config2, uid2)
 
 	config2Dev2 := ConfigAsUser(config2, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2Dev2)
@@ -1376,9 +1380,11 @@ func testKeyManagerReaderRekeyAndRevoke(t *testing.T, ver MetadataVer) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
+
 	// The reader has a second device at the start.
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2, uid2)
 	config2Dev2 := ConfigAsUser(config2, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2Dev2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
@@ -1399,18 +1405,18 @@ func testKeyManagerReaderRekeyAndRevoke(t *testing.T, ver MetadataVer) {
 	t.Log("User 2 adds a device")
 	// The configs don't share a Keybase Daemon so we have to do it in all
 	// places.
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
-	devIndex = AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config2, uid2)
+	devIndex = AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	config2Dev3 := ConfigAsUser(config2, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2Dev3)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev3, devIndex)
 
 	// Revoke the original user 2 device
 	clock.Add(1 * time.Minute)
-	RevokeDeviceForLocalUserOrBust(t, config1, session2.UID, 0)
-	RevokeDeviceForLocalUserOrBust(t, config2Dev2, session2.UID, 0)
-	RevokeDeviceForLocalUserOrBust(t, config2Dev3, session2.UID, 0)
+	RevokeDeviceForLocalUserOrBust(t, config1, uid2, 0)
+	RevokeDeviceForLocalUserOrBust(t, config2Dev2, uid2, 0)
+	RevokeDeviceForLocalUserOrBust(t, config2Dev3, uid2, 0)
 
 	t.Log("Check that user 2 device 3 is unable to read the file")
 	// user 2 device 3 should be unable to read the data now since its device
@@ -1471,6 +1477,8 @@ func testKeyManagerRekeyBit(t *testing.T, ver MetadataVer) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
+
 	config2.MDServer().DisableRekeyUpdatesForTesting()
 
 	config3 := ConfigAsUser(config1, u3)
@@ -1501,10 +1509,10 @@ func testKeyManagerRekeyBit(t *testing.T, ver MetadataVer) {
 
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config3, session2.UID)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config2, uid2)
+	AddDeviceForLocalUserOrBust(t, config3, uid2)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
 	// user 2 should be unable to read the data now since its device
@@ -1640,6 +1648,7 @@ func testKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T, ver Metadat
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	// create a shared folder
 	name := u1.String() + "," + u2.String()
@@ -1658,9 +1667,9 @@ func testKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T, ver Metadat
 	defer CheckConfigAndShutdown(ctx, t, config2Dev2)
 
 	// give user 2 a new device
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config2, uid2)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
 	// user 2 should be unable to read the data now since its device
@@ -1682,8 +1691,8 @@ func testKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T, ver Metadat
 
 	// Now revoke the original user 2 device
 	clock.Add(1 * time.Minute)
-	RevokeDeviceForLocalUserOrBust(t, config1, session2.UID, 0)
-	RevokeDeviceForLocalUserOrBust(t, config2Dev2, session2.UID, 0)
+	RevokeDeviceForLocalUserOrBust(t, config1, uid2, 0)
+	RevokeDeviceForLocalUserOrBust(t, config2Dev2, uid2, 0)
 
 	// Stall user 1's rekey, to ensure a conflict.
 	onPutStalledCh, putUnstallCh, putCtx :=
@@ -1782,6 +1791,7 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	// Create a shared folder
 	name := u1.String() + "," + u2.String()
@@ -1803,9 +1813,9 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config2, uid2)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
 	t.Log("Doing first rekey")
@@ -1900,6 +1910,7 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	// Create a shared folder
 	name := u1.String() + "," + u2.String()
@@ -1921,9 +1932,9 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config2, uid2)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 	// Revoke some previous device
 	clock.Add(1 * time.Minute)
@@ -2022,6 +2033,7 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	// Create a shared folder
 	name := u1.String() + "," + u2.String()
@@ -2034,9 +2046,9 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config2, uid2)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
 	t.Log("Doing first rekey")
