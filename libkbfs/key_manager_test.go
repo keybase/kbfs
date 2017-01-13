@@ -83,7 +83,7 @@ func expectUncachedGetTLFCryptKey(t *testing.T, config *ConfigMock, tlfID tlf.ID
 	} else {
 		keyToUse = tlfCryptKey
 	}
-	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, currTLFCryptKey)
+	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, keyToUse)
 
 	// get the xor'd key out of the metadata
 	config.mockCrypto.EXPECT().DecryptTLFCryptKeyClientHalf(
