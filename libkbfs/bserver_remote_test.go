@@ -124,7 +124,7 @@ func TestBServerRemotePutCanceled(t *testing.T) {
 		tlfID := tlf.FakeID(2, false)
 		bCtx := kbfsblock.MakeFirstContext(currentUID)
 		data := []byte{1, 2, 3, 4}
-		serverHalf, err := kbfscrypto.MakeBlockCryptKeyServerHalf(
+		serverHalf := kbfscrypto.MakeBlockCryptKeyServerHalf(
 			[32]byte{0x1})
 		return b.Put(ctx, tlfID, bID, bCtx, data, serverHalf)
 	}
