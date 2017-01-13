@@ -446,8 +446,6 @@ type normalizedUsernameGetter interface {
 }
 
 type currentInfoGetter interface {
-	// GetCurrentToken gets the current keybase session token.
-	GetCurrentToken(ctx context.Context) (string, error)
 	// GetCurrentUserInfo gets the name and UID of the current
 	// logged-in user.
 	GetCurrentUserInfo(ctx context.Context) (

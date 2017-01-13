@@ -36,17 +36,6 @@ func NewKBPKIClient(
 	return &KBPKIClient{serviceOwner, log}
 }
 
-// GetCurrentToken implements the KBPKI interface for KBPKIClient.
-func (k *KBPKIClient) GetCurrentToken(ctx context.Context) (string, error) {
-	s, err := k.session(ctx)
-	if err != nil {
-		// XXX shouldn't ignore this...
-		k.log.CWarningf(ctx, "error getting session: %q", err)
-		return "", err
-	}
-	return s.Token, nil
-}
-
 // GetCurrentUserInfo implements the KBPKI interface for KBPKIClient.
 func (k *KBPKIClient) GetCurrentUserInfo(ctx context.Context) (
 	libkb.NormalizedUsername, keybase1.UID, error) {

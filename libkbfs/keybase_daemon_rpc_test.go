@@ -72,7 +72,6 @@ func (c *fakeKeybaseClient) Call(ctx context.Context, s string, args interface{}
 		*res.(*keybase1.Session) = keybase1.Session{
 			Uid:             c.session.UID,
 			Username:        "fake username",
-			Token:           c.session.Token,
 			DeviceSubkeyKid: c.session.CryptPublicKey.KID(),
 			DeviceSibkeyKid: c.session.VerifyingKey.KID(),
 		}
@@ -166,7 +165,6 @@ func TestKeybaseDaemonSessionCache(t *testing.T) {
 	session := SessionInfo{
 		Name:           name,
 		UID:            keybase1.UID("fake uid"),
-		Token:          "fake token",
 		CryptPublicKey: k,
 		VerifyingKey:   v,
 	}

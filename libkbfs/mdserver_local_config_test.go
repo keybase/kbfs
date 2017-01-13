@@ -14,16 +14,10 @@ import (
 )
 
 type singleCurrentInfoGetter struct {
-	token          string
 	name           libkb.NormalizedUsername
 	uid            keybase1.UID
 	cryptPublicKey kbfscrypto.CryptPublicKey
 	verifyingKey   kbfscrypto.VerifyingKey
-}
-
-func (cig singleCurrentInfoGetter) GetCurrentToken(
-	ctx context.Context) (string, error) {
-	return cig.token, nil
 }
 
 func (cig singleCurrentInfoGetter) GetCurrentUserInfo(ctx context.Context) (
