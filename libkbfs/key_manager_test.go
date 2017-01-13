@@ -73,34 +73,21 @@ func keyManagerShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 var serverHalf = kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
 
 func expectUncachedGetTLFCryptKey(t *testing.T, config *ConfigMock, tlfID tlf.ID, keyGen, currKeyGen KeyGen,
-	storesHistoric bool, tlfCryptKey, currTLFCryptKey kbfscrypto.TLFCryptKey) {
+	tlfCryptKey, currTLFCryptKey kbfscrypto.TLFCryptKey) {
 	if keyGen == currKeyGen {
 		require.Equal(t, tlfCryptKey, currTLFCryptKey)
 	}
-	if storesHistoric {
-		clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, currTLFCryptKey)
+	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, currTLFCryptKey)
 
-		// get the xor'd key out of the metadata
-		config.mockCrypto.EXPECT().DecryptTLFCryptKeyClientHalf(
-			gomock.Any(), kbfscrypto.TLFEphemeralPublicKey{},
-			gomock.Any()).Return(clientHalf, nil)
+	// get the xor'd key out of the metadata
+	config.mockCrypto.EXPECT().DecryptTLFCryptKeyClientHalf(
+		gomock.Any(), kbfscrypto.TLFEphemeralPublicKey{},
+		gomock.Any()).Return(clientHalf, nil)
 
-		// get the server-side half and retrieve the real
-		// current secret key
-		config.mockKops.EXPECT().GetTLFCryptKeyServerHalf(gomock.Any(),
-			gomock.Any(), gomock.Any()).Return(serverHalf, nil)
-	} else {
-		clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, tlfCryptKey)
-
-		// get the xor'd key out of the metadata
-		config.mockCrypto.EXPECT().DecryptTLFCryptKeyClientHalf(
-			gomock.Any(), kbfscrypto.TLFEphemeralPublicKey{},
-			gomock.Any()).Return(clientHalf, nil)
-
-		// get the server-side half and retrieve the real secret key
-		config.mockKops.EXPECT().GetTLFCryptKeyServerHalf(gomock.Any(),
-			gomock.Any(), gomock.Any()).Return(serverHalf, nil)
-	}
+	// get the server-side half and retrieve the real
+	// current secret key
+	config.mockKops.EXPECT().GetTLFCryptKeyServerHalf(gomock.Any(),
+		gomock.Any(), gomock.Any()).Return(serverHalf, nil)
 }
 
 func expectUncachedGetTLFCryptKeyAnyDevice(
@@ -327,10 +314,9 @@ func testKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T, ver Metad
 		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey)
 	require.NoError(t, err)
 
-	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
 	expectUncachedGetTLFCryptKey(t, config, rmd.TlfID(),
 		rmd.LatestKeyGeneration(), rmd.LatestKeyGeneration(),
-		storesHistoric, storedTLFCryptKey, storedTLFCryptKey)
+		storedTLFCryptKey, storedTLFCryptKey)
 
 	tlfCryptKey, err := config.KeyManager().GetTLFCryptKeyForEncryption(ctx, rmd)
 	require.NoError(t, err)
@@ -406,10 +392,9 @@ func testKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T, ver 
 	require.NoError(t, err)
 
 	keyGen := rmd.LatestKeyGeneration() - 1
-	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
 	expectUncachedGetTLFCryptKey(t, config, rmd.TlfID(), keyGen,
-		rmd.LatestKeyGeneration(), storesHistoric,
-		storedTLFCryptKey1, storedTLFCryptKey2)
+		rmd.LatestKeyGeneration(), storedTLFCryptKey1,
+		storedTLFCryptKey2)
 
 	tlfCryptKey, err := config.KeyManager().GetTLFCryptKeyForBlockDecryption(
 		ctx, rmd, BlockPointer{KeyGen: 1})
