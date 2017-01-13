@@ -80,6 +80,7 @@ func writerUDKIMV2ToV3(codec kbfscodec.Codec, udkimV2 UserDeviceKeyInfoMapV2,
 		for kid, info := range dkimV2 {
 			index := info.EPubKeyIndex
 			if index < 0 {
+				// TODO: Fix this; see KBFS-1719.
 				return nil, fmt.Errorf(
 					"Writer key with index %d for user=%s, kid=%s not handled yet",
 					index, uid, kid)

@@ -14,21 +14,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-type ePubKeyTypeV2 int
+type ePubKeyLocationV2 int
 
 const (
-	writerEPubKey ePubKeyTypeV2 = 1
-	readerEPubKey ePubKeyTypeV2 = 2
+	writerEPubKeys ePubKeyLocationV2 = 1
+	readerEPubKeys ePubKeyLocationV2 = 2
 )
 
-func (t ePubKeyTypeV2) String() string {
+func (t ePubKeyLocationV2) String() string {
 	switch t {
-	case writerEPubKey:
-		return "writer"
-	case readerEPubKey:
-		return "reader"
+	case writerEPubKeys:
+		return "writerEPubKeys"
+	case readerEPubKeys:
+		return "readerEPubKeys"
 	default:
-		return fmt.Sprintf("ePubKeyTypeV2(%d)", t)
+		return fmt.Sprintf("ePubKeyLocationV2(%d)", t)
 	}
 }
 
@@ -37,26 +37,26 @@ func (t ePubKeyTypeV2) String() string {
 // BareRootMetadataV2.UpdateKeyGeneration.
 func getEphemeralPublicKeyInfoV2(info TLFCryptKeyInfo,
 	wkb TLFWriterKeyBundleV2, rkb TLFReaderKeyBundleV2) (
-	keyType ePubKeyTypeV2, index int,
+	keyLocation ePubKeyLocationV2, index int,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey, err error) {
 	var publicKeys kbfscrypto.TLFEphemeralPublicKeys
 	if info.EPubKeyIndex >= 0 {
 		index = info.EPubKeyIndex
 		publicKeys = wkb.TLFEphemeralPublicKeys
-		keyType = writerEPubKey
+		keyLocation = writerEPubKeys
 	} else {
 		index = -1 - info.EPubKeyIndex
 		publicKeys = rkb.TLFReaderEphemeralPublicKeys
-		keyType = readerEPubKey
+		keyLocation = readerEPubKeys
 	}
 	keyCount := len(publicKeys)
 	if index >= keyCount {
 		return ePubKeyTypeV2(0), 0, kbfscrypto.TLFEphemeralPublicKey{},
-			fmt.Errorf("Invalid %s key index %d >= %d",
+			fmt.Errorf("Invalid key in %s with index %d >= %d",
 				keyType, index, keyCount)
 	}
 
-	return keyType, index, publicKeys[index], nil
+	return keyLocation, index, publicKeys[index], nil
 }
 
 // DeviceKeyInfoMapV2 is a map from a user devices (identified by the
@@ -354,13 +354,14 @@ func (rkg TLFReaderKeyGenerationsV2) ToTLFReaderKeyBundleV3(
 				return TLFReaderKeyBundleV3{}, err
 			}
 
-			keyType, index, ePubKey, err := getEphemeralPublicKeyInfoV2(info, wkb, rkb)
+			keyLocation, index, ePubKey, err :=
+				getEphemeralPublicKeyInfoV2(info, wkb, rkb)
 			if err != nil {
 				return TLFReaderKeyBundleV3{}, err
 			}
 
-			switch keyType {
-			case writerEPubKey:
+			switch keyLocation {
+			case writerEPubKeys:
 				// Map the old index in the writer list to a new index
 				// at the end of the reader list.
 				newIndex, ok := pubKeyIndicesMap[index]
@@ -375,7 +376,7 @@ func (rkg TLFReaderKeyGenerationsV2) ToTLFReaderKeyBundleV3(
 					pubKeyIndicesMap[index] = newIndex
 				}
 				infoCopy.EPubKeyIndex = newIndex
-			case readerEPubKey:
+			case readerEPubKeys:
 				// Use the real index in the reader list.
 				infoCopy.EPubKeyIndex = index
 			default:
