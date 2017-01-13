@@ -79,7 +79,12 @@ func writerUDKIMV2ToV3(codec kbfscodec.Codec, udkimV2 UserDeviceKeyInfoMapV2,
 		dkimV3 := make(DeviceKeyInfoMapV3, len(dkimV2))
 		for kid, info := range dkimV2 {
 			index := info.EPubKeyIndex
-			if index < 0 || index >= ePubKeyCount {
+			if index < 0 {
+				return nil, fmt.Errorf(
+					"Writer key with index %d for user=%s, kid=%s not handled yet",
+					index, uid, kid)
+			}
+			if index >= ePubKeyCount {
 				return nil, fmt.Errorf(
 					"Invalid writer key index %d for user=%s, kid=%s",
 					index, uid, kid)
