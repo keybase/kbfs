@@ -1693,9 +1693,9 @@ type BareRootMetadata interface {
 	// folder.  This is only expected to be set for folder resets.
 	IsFinal() bool
 	// IsWriter returns whether or not the user+device is an authorized writer.
-	IsWriter(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool
+	IsWriter(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool
 	// IsReader returns whether or not the user+device is an authorized reader.
-	IsReader(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool
+	IsReader(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool
 	// DeepCopy returns a deep copy of the underlying data structure.
 	DeepCopy(codec kbfscodec.Codec) (MutableBareRootMetadata, error)
 	// MakeSuccessorCopy returns a newly constructed successor
