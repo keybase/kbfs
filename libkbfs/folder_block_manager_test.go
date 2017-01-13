@@ -468,6 +468,7 @@ func TestQuotaReclamationFailAfterRekeyRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	// Create a shared folder.
 	name := u1.String() + "," + u2.String()
@@ -478,9 +479,9 @@ func TestQuotaReclamationFailAfterRekeyRequest(t *testing.T) {
 
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config2, uid2)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
 	// user 2 should be unable to read the data now since its device
