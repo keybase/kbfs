@@ -892,7 +892,7 @@ type cryptoPure interface {
 
 	// VerifyTLFCryptKeyServerHalfID verifies the ID is the proper HMAC result.
 	VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID,
-		user keybase1.UID, deviceKID keybase1.KID,
+		user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey,
 		serverHalf kbfscrypto.TLFCryptKeyServerHalf) error
 
 	// EncryptMerkleLeaf encrypts a Merkle leaf node with the TLFPublicKey.

@@ -2241,8 +2241,8 @@ func (_mr *_MockcryptoPureRecorder) GetTLFCryptKeyServerHalfID(arg0, arg1, arg2 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalfID", arg0, arg1, arg2)
 }
 
-func (_m *MockcryptoPure) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, deviceKID keybase1.KID, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
-	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, deviceKID, serverHalf)
+func (_m *MockcryptoPure) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
+	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, devicePubKey, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -2517,8 +2517,8 @@ func (_mr *_MockCryptoRecorder) GetTLFCryptKeyServerHalfID(arg0, arg1, arg2 inte
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalfID", arg0, arg1, arg2)
 }
 
-func (_m *MockCrypto) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, deviceKID keybase1.KID, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
-	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, deviceKID, serverHalf)
+func (_m *MockCrypto) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
+	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, devicePubKey, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
