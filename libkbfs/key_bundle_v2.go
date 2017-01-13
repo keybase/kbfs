@@ -14,6 +14,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ePubKeyLocationV2 represents the location of a user's ephemeral
+// public key. Note that for V2, a reader ePubKey can be in either the
+// writers array (if rekeyed normally) or the readers array (if
+// rekeyed by a reader), but a writer ePubKey can be in either array
+// also; if a reader whose ePubKey is in the readers array is
+// promoted, then the reader becomes a writer whose ePubKey is still
+// in the readers array.
 type ePubKeyLocationV2 int
 
 const (
