@@ -1495,6 +1495,8 @@ func testKeyManagerRekeyBit(t *testing.T, ver MetadataVer) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid3 := session3.UID
+
 	config3.MDServer().DisableRekeyUpdatesForTesting()
 
 	// 2 writers 1 reader
@@ -1577,11 +1579,11 @@ func testKeyManagerRekeyBit(t *testing.T, ver MetadataVer) {
 	config3Dev2.MDServer().DisableRekeyUpdatesForTesting()
 
 	// Now give u3 a new device.
-	AddDeviceForLocalUserOrBust(t, config1, session3.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session3.UID)
-	AddDeviceForLocalUserOrBust(t, config2Dev2, session3.UID)
-	AddDeviceForLocalUserOrBust(t, config3, session3.UID)
-	devIndex = AddDeviceForLocalUserOrBust(t, config3Dev2, session3.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid3)
+	AddDeviceForLocalUserOrBust(t, config2, uid3)
+	AddDeviceForLocalUserOrBust(t, config2Dev2, uid3)
+	AddDeviceForLocalUserOrBust(t, config3, uid3)
+	devIndex = AddDeviceForLocalUserOrBust(t, config3Dev2, uid3)
 	SwitchDeviceForLocalUserOrBust(t, config3Dev2, devIndex)
 
 	// user 3 dev 2 should be unable to read the data now since its device
