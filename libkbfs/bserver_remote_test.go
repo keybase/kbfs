@@ -22,55 +22,12 @@ import (
 
 type FakeBServerClient struct {
 	bserverMem *BlockServerMemory
-
-	readyChan  chan<- struct{}
-	goChan     <-chan struct{}
-	finishChan chan<- struct{}
 }
 
-func NewFakeBServerClient(
-	crypto cryptoPure, log logger.Logger,
-	readyChan chan<- struct{},
-	goChan <-chan struct{},
-	finishChan chan<- struct{}) *FakeBServerClient {
+func NewFakeBServerClient(log logger.Logger) *FakeBServerClient {
 	return &FakeBServerClient{
 		bserverMem: NewBlockServerMemory(log),
-		readyChan:  readyChan,
-		goChan:     goChan,
-		finishChan: finishChan,
 	}
-}
-
-func (fc *FakeBServerClient) maybeWaitOnChannel(ctx context.Context) error {
-	if fc.readyChan == nil {
-		return nil
-	}
-
-	// say we're ready, and wait for a signal to proceed or a
-	// cancellation.
-	select {
-	case fc.readyChan <- struct{}{}:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-	select {
-	case <-fc.goChan:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-func (fc *FakeBServerClient) maybeFinishOnChannel(ctx context.Context) error {
-	if fc.finishChan != nil {
-		select {
-		case fc.finishChan <- struct{}{}:
-			return nil
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-	return nil
 }
 
 func (fc *FakeBServerClient) GetSessionChallenge(context.Context) (keybase1.ChallengeInfo, error) {
@@ -82,17 +39,6 @@ func (fc *FakeBServerClient) AuthenticateSession(context.Context, string) error 
 }
 
 func (fc *FakeBServerClient) PutBlock(ctx context.Context, arg keybase1.PutBlockArg) error {
-	err := fc.maybeWaitOnChannel(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		finishErr := fc.maybeFinishOnChannel(ctx)
-		if err == nil {
-			err = finishErr
-		}
-	}()
-
 	id, err := kbfsblock.IDFromString(arg.Bid.BlockHash)
 	if err != nil {
 		return err
@@ -116,17 +62,6 @@ func (fc *FakeBServerClient) PutBlock(ctx context.Context, arg keybase1.PutBlock
 }
 
 func (fc *FakeBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlockArg) (keybase1.GetBlockRes, error) {
-	err := fc.maybeWaitOnChannel(ctx)
-	if err != nil {
-		return keybase1.GetBlockRes{}, err
-	}
-	defer func() {
-		finishErr := fc.maybeFinishOnChannel(ctx)
-		if err == nil {
-			err = finishErr
-		}
-	}()
-
 	id, err := kbfsblock.IDFromString(arg.Bid.BlockHash)
 	if err != nil {
 		return keybase1.GetBlockRes{}, err
@@ -207,8 +142,7 @@ func TestBServerRemotePutAndGet(t *testing.T) {
 	localUsers := MakeLocalUsers([]libkb.NormalizedUsername{"user1", "user2"})
 	currentUID := localUsers[0].UID
 	log := logger.NewTestLogger(t)
-	crypto := MakeCryptoCommon(codec)
-	fc := NewFakeBServerClient(crypto, log, nil, nil, nil)
+	fc := NewFakeBServerClient(log)
 	b := newBlockServerRemoteWithClient(codec, nil, log, fc)
 
 	tlfID := tlf.FakeID(2, false)

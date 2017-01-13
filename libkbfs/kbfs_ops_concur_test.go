@@ -14,6 +14,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
 	"github.com/keybase/kbfs/kbfsblock"
@@ -1092,6 +1093,180 @@ func TestKBFSOpsConcurWriteDuringSyncMultiBlocks(t *testing.T) {
 	}
 }
 
+type StallingBServerClient struct {
+	bserverMem *BlockServerMemory
+
+	readyChan  chan<- struct{}
+	goChan     <-chan struct{}
+	finishChan chan<- struct{}
+}
+
+func NewStallingBServerClient(log logger.Logger) *StallingBServerClient {
+	return &StallingBServerClient{
+		bserverMem: NewBlockServerMemory(log),
+	}
+}
+
+func (fc *StallingBServerClient) maybeWaitOnChannel(ctx context.Context) error {
+	if fc.readyChan == nil {
+		return nil
+	}
+
+	// say we're ready, and wait for a signal to proceed or a
+	// cancellation.
+	select {
+	case fc.readyChan <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	select {
+	case <-fc.goChan:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (fc *StallingBServerClient) maybeFinishOnChannel(ctx context.Context) error {
+	if fc.finishChan != nil {
+		select {
+		case fc.finishChan <- struct{}{}:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
+}
+
+func (fc *StallingBServerClient) GetSessionChallenge(context.Context) (keybase1.ChallengeInfo, error) {
+	return keybase1.ChallengeInfo{}, errors.New("GetSessionChallenge not implemented")
+}
+
+func (fc *StallingBServerClient) AuthenticateSession(context.Context, string) error {
+	return errors.New("AuthenticateSession not implemented")
+}
+
+func (fc *StallingBServerClient) PutBlock(ctx context.Context, arg keybase1.PutBlockArg) error {
+	err := fc.maybeWaitOnChannel(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		finishErr := fc.maybeFinishOnChannel(ctx)
+		if err == nil {
+			err = finishErr
+		}
+	}()
+
+	id, err := kbfsblock.IDFromString(arg.Bid.BlockHash)
+	if err != nil {
+		return err
+	}
+
+	tlfID, err := tlf.ParseID(arg.Folder)
+	if err != nil {
+		return err
+	}
+
+	serverHalf, err := kbfscrypto.ParseBlockCryptKeyServerHalf(arg.BlockKey)
+	if err != nil {
+		return err
+	}
+
+	bCtx := kbfsblock.Context{
+		RefNonce: kbfsblock.ZeroRefNonce,
+		Creator:  arg.Bid.ChargedTo,
+	}
+	return fc.bserverMem.Put(ctx, tlfID, id, bCtx, arg.Buf, serverHalf)
+}
+
+func (fc *StallingBServerClient) GetBlock(ctx context.Context, arg keybase1.GetBlockArg) (keybase1.GetBlockRes, error) {
+	err := fc.maybeWaitOnChannel(ctx)
+	if err != nil {
+		return keybase1.GetBlockRes{}, err
+	}
+	defer func() {
+		finishErr := fc.maybeFinishOnChannel(ctx)
+		if err == nil {
+			err = finishErr
+		}
+	}()
+
+	id, err := kbfsblock.IDFromString(arg.Bid.BlockHash)
+	if err != nil {
+		return keybase1.GetBlockRes{}, err
+	}
+
+	tlfID, err := tlf.ParseID(arg.Folder)
+	if err != nil {
+		return keybase1.GetBlockRes{}, err
+	}
+
+	// Always use this block context (the one the block was
+	// originally put with) since the RPC API doesn't pass along
+	// all the info from the block context passed into
+	// BlockServer.Get().
+	bCtx := kbfsblock.Context{
+		RefNonce: kbfsblock.ZeroRefNonce,
+		Creator:  arg.Bid.ChargedTo,
+	}
+
+	data, serverHalf, err := fc.bserverMem.Get(ctx, tlfID, id, bCtx)
+	if err != nil {
+		return keybase1.GetBlockRes{}, err
+	}
+	return keybase1.GetBlockRes{
+		BlockKey: serverHalf.String(),
+		Buf:      data,
+	}, nil
+}
+
+func (fc *StallingBServerClient) AddReference(ctx context.Context, arg keybase1.AddReferenceArg) error {
+	id, err := kbfsblock.IDFromString(arg.Ref.Bid.BlockHash)
+	if err != nil {
+		return err
+	}
+
+	tlfID, err := tlf.ParseID(arg.Folder)
+	if err != nil {
+		return err
+	}
+
+	bCtx := kbfsblock.Context{
+		RefNonce: kbfsblock.RefNonce(arg.Ref.Nonce),
+		Creator:  arg.Ref.ChargedTo,
+	}
+
+	return fc.bserverMem.AddBlockReference(ctx, tlfID, id, bCtx)
+}
+
+func (fc *StallingBServerClient) DelReference(context.Context, keybase1.DelReferenceArg) error {
+	return errors.New("DelReference not implemented")
+}
+
+func (fc *StallingBServerClient) DelReferenceWithCount(context.Context, keybase1.DelReferenceWithCountArg) (
+	res keybase1.DowngradeReferenceRes, err error) {
+	return res, errors.New("DelReferenceWithCount not implemented")
+}
+
+func (fc *StallingBServerClient) ArchiveReference(context.Context, keybase1.ArchiveReferenceArg) ([]keybase1.BlockReference, error) {
+	return nil, errors.New("ArchiveReference not implemented")
+}
+
+func (fc *StallingBServerClient) ArchiveReferenceWithCount(context.Context, keybase1.ArchiveReferenceWithCountArg) (
+	res keybase1.DowngradeReferenceRes, err error) {
+	return res, errors.New("ArchiveReference not implemented")
+}
+
+func (fc *StallingBServerClient) GetUserQuotaInfo(context.Context) ([]byte, error) {
+	return nil, errors.New("GetUserQuotaInfo not implemented")
+}
+
+func (fc *StallingBServerClient) numBlocks() int {
+	return fc.bserverMem.numBlocks()
+}
+
 // Test that a write consisting of multiple blocks can be canceled
 // before all blocks have been written.
 func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
@@ -1103,7 +1278,7 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 
 	// give it a remote block server with a fake client
 	log := config.MakeLogger("")
-	fc := NewFakeBServerClient(config.Crypto(), log, nil, nil, nil)
+	fc := NewStallingBServerClient(log)
 	b := newBlockServerRemoteWithClient(
 		config.Codec(), config.KBPKI(), log, fc)
 	config.BlockServer().Shutdown()
@@ -1221,7 +1396,7 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 	//
 	// Create new objects to avoid racing with goroutines from the
 	// first sync.
-	fc = NewFakeBServerClient(config.Crypto(), log, nil, nil, nil)
+	fc = NewStallingBServerClient(log)
 	b = newBlockServerRemoteWithClient(
 		config.Codec(), config.KBPKI(), log, fc)
 	config.BlockServer().Shutdown()
