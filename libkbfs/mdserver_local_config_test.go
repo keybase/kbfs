@@ -40,18 +40,18 @@ type testMDServerLocalConfig struct {
 	clock  Clock
 	codec  kbfscodec.Codec
 	crypto cryptoPure
-	cig    currentInfoGetter
+	csg    currentSessionGetter
 }
 
 func newTestMDServerLocalConfig(
-	log logger.Logger, cig currentInfoGetter) testMDServerLocalConfig {
+	log logger.Logger, csg currentSessionGetter) testMDServerLocalConfig {
 	codec := kbfscodec.NewMsgpack()
 	return testMDServerLocalConfig{
 		log:    log,
 		clock:  newTestClockNow(),
 		codec:  codec,
 		crypto: MakeCryptoCommon(codec),
-		cig:    cig,
+		csg:    csg,
 	}
 }
 

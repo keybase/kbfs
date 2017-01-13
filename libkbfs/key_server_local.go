@@ -107,13 +107,13 @@ func (ks *KeyServerLocal) GetTLFCryptKeyServerHalf(ctx context.Context,
 		return kbfscrypto.TLFCryptKeyServerHalf{}, err
 	}
 
-	_, uid, err := ks.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := ks.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return kbfscrypto.TLFCryptKeyServerHalf{}, err
 	}
 
 	err = ks.config.Crypto().VerifyTLFCryptKeyServerHalfID(
-		serverHalfID, uid, key.KID(), serverHalf)
+		serverHalfID, session.UID, key.KID(), serverHalf)
 	if err != nil {
 		ks.log.CDebugf(ctx, "error verifying server half ID: %s", err)
 		return kbfscrypto.TLFCryptKeyServerHalf{}, MDServerErrorUnauthorized{}
