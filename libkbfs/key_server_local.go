@@ -139,12 +139,12 @@ func (ks *KeyServerLocal) PutTLFCryptKeyServerHalves(ctx context.Context,
 	batch := &leveldb.Batch{}
 	crypto := ks.config.Crypto()
 	for uid, deviceMap := range keyServerHalves {
-		for deviceKID, serverHalf := range deviceMap {
+		for deviceKey, serverHalf := range deviceMap {
 			buf, err := ks.config.Codec().Encode(serverHalf)
 			if err != nil {
 				return err
 			}
-			id, err := crypto.GetTLFCryptKeyServerHalfID(uid, deviceKID, serverHalf)
+			id, err := crypto.GetTLFCryptKeyServerHalfID(uid, deviceKey, serverHalf)
 			if err != nil {
 				return err
 			}
