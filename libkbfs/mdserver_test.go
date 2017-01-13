@@ -59,9 +59,10 @@ func TestMDServerBasics(t *testing.T) {
 
 	session, err := config.KBPKI().GetCurrentSession(ctx)
 	require.NoError(t, err)
+	uid := session.UID
 
 	// (1) get metadata -- allocates an ID
-	h, err := tlf.MakeHandle([]keybase1.UID{session.UID}, nil, nil, nil, nil)
+	h, err := tlf.MakeHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	id, rmds, err := mdServer.GetForHandle(ctx, h, Merged)
@@ -72,7 +73,7 @@ func TestMDServerBasics(t *testing.T) {
 	prevRoot := MdID{}
 	middleRoot := MdID{}
 	for i := MetadataRevision(1); i <= 10; i++ {
-		brmd := makeBRMDForTest(t, config.Codec(), config.Crypto(), id, h, i, session.UID, prevRoot)
+		brmd := makeBRMDForTest(t, config.Codec(), config.Crypto(), id, h, i, uid, prevRoot)
 		rmds := signRMDSForTest(t, config.Codec(), config.Crypto(), brmd)
 		// MDv3 TODO: pass actual key bundles
 		err = mdServer.Put(ctx, rmds, nil)
@@ -85,7 +86,7 @@ func TestMDServerBasics(t *testing.T) {
 	}
 
 	// (3) trigger a conflict
-	brmd := makeBRMDForTest(t, config.Codec(), config.Crypto(), id, h, 10, session.UID, prevRoot)
+	brmd := makeBRMDForTest(t, config.Codec(), config.Crypto(), id, h, 10, uid, prevRoot)
 	rmds = signRMDSForTest(t, config.Codec(), config.Crypto(), brmd)
 	// MDv3 TODO: pass actual key bundles
 	err = mdServer.Put(ctx, rmds, nil)
@@ -97,7 +98,7 @@ func TestMDServerBasics(t *testing.T) {
 	bid, err := config.Crypto().MakeRandomBranchID()
 	require.NoError(t, err)
 	for i := MetadataRevision(6); i < 41; i++ {
-		brmd := makeBRMDForTest(t, config.Codec(), config.Crypto(), id, h, i, session.UID, prevRoot)
+		brmd := makeBRMDForTest(t, config.Codec(), config.Crypto(), id, h, i, uid, prevRoot)
 		brmd.SetUnmerged()
 		brmd.SetBranchID(bid)
 		rmds := signRMDSForTest(t, config.Codec(), config.Crypto(), brmd)
@@ -171,9 +172,10 @@ func TestMDServerRegisterForUpdate(t *testing.T) {
 
 	session, err := config.KBPKI().GetCurrentSession(ctx)
 	require.NoError(t, err)
+	uid := session.UID
 
 	// Create first TLF.
-	h1, err := tlf.MakeHandle([]keybase1.UID{session.UID}, nil, nil, nil, nil)
+	h1, err := tlf.MakeHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	id1, _, err := mdServer.GetForHandle(ctx, h1, Merged)
@@ -181,7 +183,7 @@ func TestMDServerRegisterForUpdate(t *testing.T) {
 
 	// Create second TLF, which should end up being different from
 	// the first one.
-	h2, err := tlf.MakeHandle([]keybase1.UID{session.UID}, []keybase1.UID{keybase1.PUBLIC_UID}, nil, nil, nil)
+	h2, err := tlf.MakeHandle([]keybase1.UID{uid}, []keybase1.UID{keybase1.PUBLIC_UID}, nil, nil, nil)
 	require.NoError(t, err)
 
 	id2, _, err := mdServer.GetForHandle(ctx, h2, Merged)

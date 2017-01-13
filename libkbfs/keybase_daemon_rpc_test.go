@@ -404,8 +404,10 @@ func TestKeybaseDaemonRPCEditList(t *testing.T) {
 
 	session1, err := config1.KBPKI().GetCurrentSession(context.Background())
 	require.NoError(t, err)
+	uid1 := session1.UID
 	session2, err := config2.KBPKI().GetCurrentSession(context.Background())
 	require.NoError(t, err)
+	uid2 := uid2
 
 	// We should see 1 create edit for each user.
 	expectedEdits := []keybase1.FSNotification{
@@ -414,7 +416,7 @@ func TestKeybaseDaemonRPCEditList(t *testing.T) {
 			Filename:             name + "/a",
 			StatusCode:           keybase1.FSStatusCode_FINISH,
 			NotificationType:     keybase1.FSNotificationType_FILE_CREATED,
-			WriterUid:            session1.UID,
+			WriterUid:            uid1,
 			LocalTime:            keybase1.ToTime(now),
 		},
 		{
@@ -422,14 +424,14 @@ func TestKeybaseDaemonRPCEditList(t *testing.T) {
 			Filename:             name + "/b",
 			StatusCode:           keybase1.FSStatusCode_FINISH,
 			NotificationType:     keybase1.FSNotificationType_FILE_CREATED,
-			WriterUid:            session2.UID,
+			WriterUid:            uid2,
 			LocalTime:            keybase1.ToTime(now),
 		},
 	}
 
 	users := map[keybase1.UID]UserInfo{
-		session1.UID: {Name: userName1},
-		session2.UID: {Name: userName2},
+		uid1: {Name: userName1},
+		uid2: {Name: userName2},
 	}
 	client1 := &fakeKeybaseClient{users: users}
 	c1 := newKeybaseDaemonRPCWithClient(
@@ -445,7 +447,7 @@ func TestKeybaseDaemonRPCEditList(t *testing.T) {
 	edits := client1.editResponse.Edits
 	require.Len(t, edits, 2)
 	// Order doesn't matter between writers, so swap them.
-	if edits[0].WriterUid == session2.UID {
+	if edits[0].WriterUid == uid2 {
 		edits[0], edits[1] = edits[1], edits[0]
 	}
 
