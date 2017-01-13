@@ -23,6 +23,7 @@ func TestRekeyQueueBasic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	config3 := ConfigAsUser(config1, u3)
 	defer config3.Shutdown(ctx)
@@ -64,9 +65,9 @@ func TestRekeyQueueBasic(t *testing.T) {
 	// Create a new device for user 2
 	config2Dev2 := ConfigAsUser(config1, u2)
 	defer config2Dev2.Shutdown(ctx)
-	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
-	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config1, uid2)
+	AddDeviceForLocalUserOrBust(t, config2, uid2)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
 	// user 2 should be unable to read the data now since its device
