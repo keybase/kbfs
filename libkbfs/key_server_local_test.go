@@ -9,7 +9,6 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/kbfs/kbfscrypto"
-	"golang.org/x/net/context"
 )
 
 // Test that Put/Get works for TLF crypt key server halves.
@@ -19,18 +18,19 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 	config1, uid1, ctx, cancel := kbfsOpsConcurInit(t, userName1, userName2)
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 
-	config2 := ConfigAsUser(config1, userName2)
-	defer CheckConfigAndShutdown(ctx, t, config2)
-	session2, err := config2.KBPKI().GetCurrentSession(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	session1, err := config1.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	publicKey1 := session1.CryptPublicKey
+
+	config2 := ConfigAsUser(config1, userName2)
+	defer CheckConfigAndShutdown(ctx, t, config2)
+	session2, err := config2.KBPKI().GetCurrentSession(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	uid2 := session2.UID
 	publicKey2 := session2.CryptPublicKey
 
 	serverHalf1 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{1})
@@ -67,7 +67,7 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 	deviceHalves1[publicKey1] = serverHalf3
 	keyHalves[uid1] = deviceHalves1
 	deviceHalves2[publicKey2] = serverHalf4
-	keyHalves[session2.UID] = deviceHalves2
+	keyHalves[uid2] = deviceHalves2
 
 	err = config1.KeyOps().PutTLFCryptKeyServerHalves(ctx, keyHalves)
 	if err != nil {
@@ -93,7 +93,7 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 	}
 
 	serverHalfID4, err :=
-		config1.Crypto().GetTLFCryptKeyServerHalfID(session2.UID, publicKey2, serverHalf4)
+		config1.Crypto().GetTLFCryptKeyServerHalfID(uid2, publicKey2, serverHalf4)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -187,8 +187,10 @@ func TestLongTlfEditHistory(t *testing.T) {
 
 	session1, err := config1.KBPKI().GetCurrentSession(context.Background())
 	require.NoError(t, err)
+	uid1 := session1.UID
 	session2, err := config2.KBPKI().GetCurrentSession(context.Background())
 	require.NoError(t, err)
+	uid2 := session2.UID
 	createRemainders := map[keybase1.UID]int{
 		uid1: 0,
 		uid2: 1,

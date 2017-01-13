@@ -407,7 +407,7 @@ func TestKeybaseDaemonRPCEditList(t *testing.T) {
 	uid1 := session1.UID
 	session2, err := config2.KBPKI().GetCurrentSession(context.Background())
 	require.NoError(t, err)
-	uid2 := uid2
+	uid2 := session2.UID
 
 	// We should see 1 create edit for each user.
 	expectedEdits := []keybase1.FSNotification{
