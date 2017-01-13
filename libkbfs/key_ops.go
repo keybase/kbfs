@@ -52,8 +52,8 @@ func (k *KeyOpsStandard) PutTLFCryptKeyServerHalves(ctx context.Context,
 
 // DeleteTLFCryptKeyServerHalf is an implementation of the KeyOps interface.
 func (k *KeyOpsStandard) DeleteTLFCryptKeyServerHalf(ctx context.Context,
-	uid keybase1.UID, kid keybase1.KID,
+	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
 	serverHalfID TLFCryptKeyServerHalfID) error {
 	return k.config.KeyServer().DeleteTLFCryptKeyServerHalf(
-		ctx, uid, kid, serverHalfID)
+		ctx, uid, key, serverHalfID)
 }

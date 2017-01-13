@@ -157,7 +157,7 @@ func (ks *KeyServerLocal) PutTLFCryptKeyServerHalves(ctx context.Context,
 // DeleteTLFCryptKeyServerHalf implements the KeyOps interface for
 // KeyServerLocal.
 func (ks *KeyServerLocal) DeleteTLFCryptKeyServerHalf(ctx context.Context,
-	_ keybase1.UID, _ keybase1.KID,
+	_ keybase1.UID, _ kbfscrypto.CryptPublicKey,
 	serverHalfID TLFCryptKeyServerHalfID) error {
 	if err := checkContext(ctx); err != nil {
 		return err

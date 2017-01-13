@@ -2830,8 +2830,8 @@ func (_mr *_MockKeyOpsRecorder) PutTLFCryptKeyServerHalves(arg0, arg1 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PutTLFCryptKeyServerHalves", arg0, arg1)
 }
 
-func (_m *MockKeyOps) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, kid keybase1.KID, serverHalfID TLFCryptKeyServerHalfID) error {
-	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, kid, serverHalfID)
+func (_m *MockKeyOps) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, key kbfscrypto.CryptPublicKey, serverHalfID TLFCryptKeyServerHalfID) error {
+	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, key, serverHalfID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -3789,8 +3789,8 @@ func (_mr *_MockKeyServerRecorder) PutTLFCryptKeyServerHalves(arg0, arg1 interfa
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PutTLFCryptKeyServerHalves", arg0, arg1)
 }
 
-func (_m *MockKeyServer) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, kid keybase1.KID, serverHalfID TLFCryptKeyServerHalfID) error {
-	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, kid, serverHalfID)
+func (_m *MockKeyServer) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, key kbfscrypto.CryptPublicKey, serverHalfID TLFCryptKeyServerHalfID) error {
+	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, key, serverHalfID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
