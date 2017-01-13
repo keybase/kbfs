@@ -586,8 +586,8 @@ func ParseTlfHandlePreferred(
 		return nil, err
 	}
 	pref := h.GetPreferredFormat(session.Name)
-	if string(pref) != session.Name.String() {
-		return nil, TlfNameNotCanonical{session.Name.String(), string(pref)}
+	if string(pref) != name {
+		return nil, TlfNameNotCanonical{name, string(pref)}
 	}
 	return h, nil
 }
