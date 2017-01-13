@@ -19,21 +19,21 @@ func TestRekeyQueueBasic(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, u2)
 	defer config2.Shutdown(ctx)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	session2, err := config2.KBPKI().GetCurrentSession(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	config3 := ConfigAsUser(config1, u3)
 	defer config3.Shutdown(ctx)
-	_, _, err = config3.KBPKI().GetCurrentUserInfo(context.Background())
+	_, err = config3.KBPKI().GetCurrentSession(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	config4 := ConfigAsUser(config1, u4)
 	defer config4.Shutdown(ctx)
-	_, _, err = config4.KBPKI().GetCurrentUserInfo(context.Background())
+	_, err = config4.KBPKI().GetCurrentSession(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,9 +64,9 @@ func TestRekeyQueueBasic(t *testing.T) {
 	// Create a new device for user 2
 	config2Dev2 := ConfigAsUser(config1, u2)
 	defer config2Dev2.Shutdown(ctx)
-	AddDeviceForLocalUserOrBust(t, config1, uid2)
-	AddDeviceForLocalUserOrBust(t, config2, uid2)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
+	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
 	// user 2 should be unable to read the data now since its device

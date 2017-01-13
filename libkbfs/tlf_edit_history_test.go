@@ -64,19 +64,19 @@ func TestBasicTlfEditHistory(t *testing.T) {
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
 	require.NoError(t, err)
 
-	_, uid1, err := config1.KBPKI().GetCurrentUserInfo(context.Background())
+	session1, err := config1.KBPKI().GetCurrentSession(context.Background())
 	require.NoError(t, err)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	session2, err := config2.KBPKI().GetCurrentSession(context.Background())
 	require.NoError(t, err)
 
 	// Each user should see 1 create edit for each user
 	expectedEdits := make(TlfWriterEdits)
-	expectedEdits[uid1] = TlfEditList{{
+	expectedEdits[session1.UID] = TlfEditList{{
 		Filepath:  name + "/a",
 		Type:      FileCreated,
 		LocalTime: now,
 	}}
-	expectedEdits[uid2] = TlfEditList{{
+	expectedEdits[session2.UID] = TlfEditList{{
 		Filepath:  name + "/b",
 		Type:      FileCreated,
 		LocalTime: now,
@@ -183,13 +183,13 @@ func TestLongTlfEditHistory(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	_, uid1, err := config1.KBPKI().GetCurrentUserInfo(context.Background())
+	session1, err := config1.KBPKI().GetCurrentSession(context.Background())
 	require.NoError(t, err)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	session2, err := config2.KBPKI().GetCurrentSession(context.Background())
 	require.NoError(t, err)
 	createRemainders := map[keybase1.UID]int{
-		uid1: 0,
-		uid2: 1,
+		session1.UID: 0,
+		session2.UID: 1,
 	}
 
 	// Now alternately create and edit files between the two users.
@@ -200,10 +200,10 @@ func TestLongTlfEditHistory(t *testing.T) {
 		clock.Set(now)
 
 		// User 1
-		testDoTlfEdit(t, ctx, name, kbfsOps1, rootNode1, i, uid1, now,
+		testDoTlfEdit(t, ctx, name, kbfsOps1, rootNode1, i, session1.UID, now,
 			createRemainders, expectedEdits)
 		// User 2
-		testDoTlfEdit(t, ctx, name, kbfsOps2, rootNode2, i, uid2, now,
+		testDoTlfEdit(t, ctx, name, kbfsOps2, rootNode2, i, session2.UID, now,
 			createRemainders, expectedEdits)
 	}
 
@@ -234,37 +234,37 @@ func TestLongTlfEditHistory(t *testing.T) {
 	rmIndex := 9
 	renameIndex := 19
 	editIndex := 4
-	rmFile1 := filepath.Base(expectedEdits[uid1][rmIndex].Filepath)
-	rmFile2 := filepath.Base(expectedEdits[uid2][rmIndex].Filepath)
-	renameFile := filepath.Base(expectedEdits[uid1][renameIndex].Filepath)
-	editFile := filepath.Base(expectedEdits[uid2][editIndex].Filepath)
+	rmFile1 := filepath.Base(expectedEdits[session1.UID][rmIndex].Filepath)
+	rmFile2 := filepath.Base(expectedEdits[session2.UID][rmIndex].Filepath)
+	renameFile := filepath.Base(expectedEdits[session1.UID][renameIndex].Filepath)
+	editFile := filepath.Base(expectedEdits[session2.UID][editIndex].Filepath)
 
 	// Expect some new edits
-	expectedEdits[uid1] = append(expectedEdits[uid1][:rmIndex],
-		expectedEdits[uid1][rmIndex+1:]...)
-	expectedEdits[uid2] = append(expectedEdits[uid2][:rmIndex],
-		expectedEdits[uid2][rmIndex+1:]...)
+	expectedEdits[session1.UID] = append(expectedEdits[session1.UID][:rmIndex],
+		expectedEdits[session1.UID][rmIndex+1:]...)
+	expectedEdits[session2.UID] = append(expectedEdits[session2.UID][:rmIndex],
+		expectedEdits[session2.UID][rmIndex+1:]...)
 	renameIndex--
-	expectedEdits[uid1][renameIndex].Filepath = name + "/" + renameFile + ".New"
-	newEdit := expectedEdits[uid2][editIndex]
+	expectedEdits[session1.UID][renameIndex].Filepath = name + "/" + renameFile + ".New"
+	newEdit := expectedEdits[session2.UID][editIndex]
 	newEdit.Type = FileModified
 	newEdit.LocalTime = clock.Now()
-	expectedEdits[uid2] = append(expectedEdits[uid2][:editIndex],
-		expectedEdits[uid2][editIndex+1:]...)
-	expectedEdits[uid2] = append(expectedEdits[uid2], newEdit)
+	expectedEdits[session2.UID] = append(expectedEdits[session2.UID][:editIndex],
+		expectedEdits[session2.UID][editIndex+1:]...)
+	expectedEdits[session2.UID] = append(expectedEdits[session2.UID], newEdit)
 
 	// Two older edits are now on the fronts of the lists.
-	oldNow := expectedEdits[uid1][0].LocalTime.Add(-1 * time.Minute)
-	expectedEdits[uid1] = append([]TlfEdit{{
+	oldNow := expectedEdits[session1.UID][0].LocalTime.Add(-1 * time.Minute)
+	expectedEdits[session1.UID] = append([]TlfEdit{{
 		Filepath:  name + "/file19",
 		Type:      FileModified,
 		LocalTime: oldNow,
-	}}, expectedEdits[uid1]...)
-	expectedEdits[uid2] = append([]TlfEdit{{
+	}}, expectedEdits[session1.UID]...)
+	expectedEdits[session2.UID] = append([]TlfEdit{{
 		Filepath:  name + "/file69",
 		Type:      FileCreated,
 		LocalTime: oldNow,
-	}}, expectedEdits[uid2]...)
+	}}, expectedEdits[session2.UID]...)
 
 	err = kbfsOps1.RemoveEntry(ctx, rootNode1, rmFile1)
 	require.NoError(t, err)

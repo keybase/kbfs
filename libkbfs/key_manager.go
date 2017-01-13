@@ -264,7 +264,7 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 				TLFCryptKeyServerHalfID{},
 				kbfscrypto.CryptPublicKey{}, err
 		}
-		cryptPublicKey := session.CryptPublicKey
+		cryptPublicKey = session.CryptPublicKey
 
 		ePublicKey, encryptedClientHalf, foundServerHalfID, found, err :=
 			kmd.GetTLFCryptKeyParams(keyGen, uid, cryptPublicKey)

@@ -57,7 +57,7 @@ func (ctr *SafeTestReporter) Fatalf(format string, args ...interface{}) {
 	ctr.error(s)
 	// panic here, since a Goexit() might leave the main thread
 	// waiting for results.
-	panic(s)
+	//panic(s)
 }
 
 func (ctr *SafeTestReporter) CheckForFailures() {

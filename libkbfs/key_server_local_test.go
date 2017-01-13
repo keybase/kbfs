@@ -21,19 +21,17 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	session2, err := config2.KBPKI().GetCurrentSession(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	publicKey1, err := config1.KBPKI().GetCurrentCryptPublicKey(ctx)
+	session1, err := config1.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	publicKey2, err := config2.KBPKI().GetCurrentCryptPublicKey(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	publicKey1 := session1.CryptPublicKey
+	publicKey2 := session2.CryptPublicKey
 
 	serverHalf1 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{1})
 	serverHalf2 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{2})
@@ -69,7 +67,7 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 	deviceHalves1[publicKey1] = serverHalf3
 	keyHalves[uid1] = deviceHalves1
 	deviceHalves2[publicKey2] = serverHalf4
-	keyHalves[uid2] = deviceHalves2
+	keyHalves[session2.UID] = deviceHalves2
 
 	err = config1.KeyOps().PutTLFCryptKeyServerHalves(ctx, keyHalves)
 	if err != nil {
@@ -95,7 +93,7 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 	}
 
 	serverHalfID4, err :=
-		config1.Crypto().GetTLFCryptKeyServerHalfID(uid2, publicKey2, serverHalf4)
+		config1.Crypto().GetTLFCryptKeyServerHalfID(session2.UID, publicKey2, serverHalf4)
 	if err != nil {
 		t.Fatal(err)
 	}

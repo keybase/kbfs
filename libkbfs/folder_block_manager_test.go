@@ -464,7 +464,7 @@ func TestQuotaReclamationFailAfterRekeyRequest(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
+	session2, err := config2.KBPKI().GetCurrentSession(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -478,9 +478,9 @@ func TestQuotaReclamationFailAfterRekeyRequest(t *testing.T) {
 
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
-	AddDeviceForLocalUserOrBust(t, config1, uid2)
-	AddDeviceForLocalUserOrBust(t, config2, uid2)
-	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
+	AddDeviceForLocalUserOrBust(t, config1, session2.UID)
+	AddDeviceForLocalUserOrBust(t, config2, session2.UID)
+	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, session2.UID)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
 
 	// user 2 should be unable to read the data now since its device
