@@ -51,9 +51,10 @@ func getEphemeralPublicKeyInfoV2(info TLFCryptKeyInfo,
 	}
 	keyCount := len(publicKeys)
 	if index >= keyCount {
-		return ePubKeyTypeV2(0), 0, kbfscrypto.TLFEphemeralPublicKey{},
+		return ePubKeyLocationV2(0),
+			0, kbfscrypto.TLFEphemeralPublicKey{},
 			fmt.Errorf("Invalid key in %s with index %d >= %d",
-				keyType, index, keyCount)
+				keyLocation, index, keyCount)
 	}
 
 	return keyLocation, index, publicKeys[index], nil
@@ -380,7 +381,7 @@ func (rkg TLFReaderKeyGenerationsV2) ToTLFReaderKeyBundleV3(
 				// Use the real index in the reader list.
 				infoCopy.EPubKeyIndex = index
 			default:
-				return TLFReaderKeyBundleV3{}, fmt.Errorf("Unknown key type %s", keyType)
+				return TLFReaderKeyBundleV3{}, fmt.Errorf("Unknown key location %s", keyLocation)
 			}
 			dkimV3[kbfscrypto.MakeCryptPublicKey(kid)] = infoCopy
 		}
