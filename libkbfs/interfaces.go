@@ -1744,8 +1744,8 @@ type BareRootMetadata interface {
 	IsValidAndSigned(codec kbfscodec.Codec,
 		crypto cryptoPure, extra ExtraMetadata) error
 	// IsLastModifiedBy verifies that the BareRootMetadata is
-	// written by the given user and device (identified by the KID
-	// of the device verifying key), and returns an error if not.
+	// written by the given user and device (identified by the
+	// device verifying key), and returns an error if not.
 	IsLastModifiedBy(uid keybase1.UID, key kbfscrypto.VerifyingKey) error
 	// LastModifyingWriter return the UID of the last user to modify the writer metadata.
 	LastModifyingWriter() keybase1.UID
