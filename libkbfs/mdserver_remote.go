@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/keybase/backoff"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -84,10 +85,13 @@ func NewMDServerRemote(config Config, srvAddr string,
 	mdServer.authToken = kbfscrypto.NewAuthToken(config.Crypto(),
 		MdServerTokenServer, MdServerTokenExpireIn,
 		"libkbfs_mdserver_remote", VersionString(), mdServer)
+	opts := rpc.ConnectionOpts{
+		WrapErrorFunc:    libkb.WrapError,
+		TagsFunc:         LogTagsFromContext,
+		ReconnectBackoff: backoff.NewConstantBackOff(RPCReconnectInterval),
+	}
 	conn := rpc.NewTLSConnection(srvAddr, kbfscrypto.GetRootCerts(srvAddr),
-		MDServerErrorUnwrapper{}, mdServer, true,
-		rpcLogFactory, libkb.WrapError,
-		config.MakeLogger(""), LogTagsFromContext)
+		MDServerErrorUnwrapper{}, mdServer, rpcLogFactory, config.MakeLogger(""), opts)
 	mdServer.conn = conn
 	mdServer.client = keybase1.MetadataClient{Cli: conn.GetClient()}
 

@@ -13,37 +13,35 @@ import (
 )
 
 type blockOpsConfig interface {
+	dataVersioner
+	logMaker
+	blockCacher
 	blockServer() BlockServer
 	codec() kbfscodec.Codec
 	crypto() cryptoPure
 	keyGetter() blockKeyGetter
-	blockCache() BlockCache
 }
 
 type blockOpsConfigAdapter struct {
-	config Config
+	Config
 }
 
 var _ blockOpsConfig = (*blockOpsConfigAdapter)(nil)
 
 func (config blockOpsConfigAdapter) blockServer() BlockServer {
-	return config.config.BlockServer()
+	return config.Config.BlockServer()
 }
 
 func (config blockOpsConfigAdapter) codec() kbfscodec.Codec {
-	return config.config.Codec()
+	return config.Config.Codec()
 }
 
 func (config blockOpsConfigAdapter) crypto() cryptoPure {
-	return config.config.Crypto()
+	return config.Config.Crypto()
 }
 
 func (config blockOpsConfigAdapter) keyGetter() blockKeyGetter {
-	return config.config.KeyManager()
-}
-
-func (config blockOpsConfigAdapter) blockCache() BlockCache {
-	return config.config.BlockCache()
+	return config.Config.KeyManager()
 }
 
 // BlockOpsStandard implements the BlockOps interface by relaying
@@ -59,7 +57,7 @@ var _ BlockOps = (*BlockOpsStandard)(nil)
 // NewBlockOpsStandard creates a new BlockOpsStandard
 func NewBlockOpsStandard(config blockOpsConfig,
 	queueSize int) *BlockOpsStandard {
-	q := newBlockRetrievalQueue(queueSize, config.codec(), config.blockCache)
+	q := newBlockRetrievalQueue(queueSize, config)
 	bops := &BlockOpsStandard{
 		config:  config,
 		queue:   q,

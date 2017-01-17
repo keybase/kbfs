@@ -105,6 +105,8 @@ func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 	// Ignore Archive calls for now
 	config.mockBops.EXPECT().Archive(gomock.Any(), gomock.Any(),
 		gomock.Any()).AnyTimes().Return(nil)
+	// Ignore Prefetcher calls
+	config.mockBops.EXPECT().Prefetcher().AnyTimes().Return(newBlockPrefetcher(nil, &testBlockRetrievalConfig{nil, config.BlockCache(), t}))
 
 	// Ignore key bundle ID creation calls for now
 	config.mockCrypto.EXPECT().MakeTLFWriterKeyBundleID(gomock.Any()).
@@ -165,6 +167,7 @@ func kbfsTestShutdown(mockCtrl *gomock.Controller, config *ConfigMock,
 func kbfsOpsInitNoMocks(t *testing.T, users ...libkb.NormalizedUsername) (
 	*ConfigLocal, keybase1.UID, context.Context, context.CancelFunc) {
 	config := MakeTestConfigOrBust(t, users...)
+	config.SetRekeyWithPromptWaitTime(individualTestTimeout)
 
 	timeoutCtx, cancel := context.WithTimeout(
 		context.Background(), individualTestTimeout)
@@ -345,7 +348,7 @@ func injectNewRMD(t *testing.T, config *ConfigMock) (
 			EncodedSize: 1,
 		},
 	}
-	rmd.fakeInitialRekey(config.Codec(), config.Crypto())
+	rmd.fakeInitialRekey()
 
 	ops := getOps(config, id)
 	ops.head = makeImmutableRMDForTest(
@@ -472,13 +475,7 @@ func expectBlock(config *ConfigMock, kmd KeyMetadata, blockPtr BlockPointer, blo
 		ptrMatcher{blockPtr}, gomock.Any(), gomock.Any()).
 		Do(func(ctx context.Context, kmd KeyMetadata,
 			blockPtr BlockPointer, getBlock Block, lifetime BlockCacheLifetime) {
-			switch v := getBlock.(type) {
-			case *FileBlock:
-				*v = *block.(*FileBlock)
-
-			case *DirBlock:
-				*v = *block.(*DirBlock)
-			}
+			getBlock.Set(block, config.Codec())
 			config.BlockCache().Put(blockPtr, kmd.TlfID(), getBlock, lifetime)
 		}).Return(err)
 }
@@ -506,7 +503,7 @@ func (p ptrMatcher) String() string {
 
 func fillInNewMD(t *testing.T, config *ConfigMock, rmd *RootMetadata) {
 	if !rmd.TlfID().IsPublic() {
-		rmd.fakeInitialRekey(config.Codec(), config.Crypto())
+		rmd.fakeInitialRekey()
 	}
 	rootPtr := BlockPointer{
 		ID:      kbfsblock.FakeID(42),
@@ -591,7 +588,6 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 	assert.False(t, fboIdentityDone(ops))
 
 	ops.head = makeImmutableRMDForTest(t, config, rmd, fakeMdID(2))
-	config.mockBops.EXPECT().Prefetcher().Return(newBlockPrefetcher(nil))
 	n, ei, err :=
 		config.KBFSOps().GetOrCreateRootNode(ctx, h, MasterBranch)
 	require.NoError(t, err)
@@ -685,6 +681,9 @@ func testPutBlockInCache(
 	block Block) {
 	err := config.BlockCache().Put(ptr, id, block, TransientEntry)
 	require.NoError(t, err)
+	if config.mockBcache != nil {
+		config.mockBcache.EXPECT().Get(ptr).AnyTimes().Return(block, nil)
+	}
 }
 
 func TestKBFSOpsGetBaseDirChildrenCacheSuccess(t *testing.T) {
@@ -1362,6 +1361,7 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 	mockCtrl, config, ctx, cancel := kbfsOpsInit(t, true)
 	defer kbfsTestShutdown(mockCtrl, config, ctx, cancel)
 
+	t.Log("Setup RootMetadata")
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := kbfsblock.FakeID(42)
@@ -1382,10 +1382,11 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
 
-	// creating "a/b"
+	t.Log("Create a/b")
 	testPutBlockInCache(t, config, aNode.BlockPointer, id, aBlock)
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
-	// sync block
+
+	t.Log("Sync block")
 	var newRmd ImmutableRootMetadata
 	blocks := make([]kbfsblock.ID, 3)
 	expectedPath, _ :=
@@ -1430,6 +1431,7 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 			t.Errorf("New file has non-zero size: %d", de.Size)
 		}
 	}
+	t.Log("Check block cache")
 	checkBlockCache(t, config, id, append(blocks, rootID, aID), nil)
 
 	// make sure the createOp is correct
@@ -1444,6 +1446,7 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 	updates := []blockUpdate{
 		{rmd.data.Dir.BlockPointer, newP.path[0].BlockPointer},
 	}
+	t.Log("Check op")
 	checkOp(t, co.OpCommon, refBlocks, nil, updates)
 	dirUpdate := blockUpdate{rootBlock.Children["a"].BlockPointer,
 		newP.path[1].BlockPointer}
@@ -4780,8 +4783,8 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 	config.mockDirtyBcache.EXPECT().Get(gomock.Any(),
 		ptrMatcher{fileBlock.IPtrs[2].BlockPointer}, p.Branch).Return(nil,
 		NoSuchBlockError{fileBlock.IPtrs[2].BlockPointer.ID})
-	config.mockBcache.EXPECT().Get(ptrMatcher{fileBlock.IPtrs[2].BlockPointer}).
-		Return(block3, nil)
+	config.mockBcache.EXPECT().GetWithPrefetch(ptrMatcher{fileBlock.IPtrs[2].BlockPointer}).
+		Return(block3, true, nil)
 	config.mockDirtyBcache.EXPECT().IsDirty(gomock.Any(),
 		ptrMatcher{fileBlock.IPtrs[3].BlockPointer},
 		p.Branch).AnyTimes().Return(false)
@@ -4795,6 +4798,10 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 		ptrMatcher{fileNode.BlockPointer}, p.Branch).AnyTimes().Return(true)
 	config.mockDirtyBcache.EXPECT().Get(gomock.Any(),
 		ptrMatcher{fileNode.BlockPointer}, p.Branch).
+		AnyTimes().Return(fileBlock, nil)
+	config.mockBcache.EXPECT().Get(ptrMatcher{node.BlockPointer}).
+		AnyTimes().Return(rootBlock, nil)
+	config.mockBcache.EXPECT().Get(ptrMatcher{fileNode.BlockPointer}).
 		AnyTimes().Return(fileBlock, nil)
 
 	// no matching pointers
@@ -4986,19 +4993,23 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 	config.mockDirtyBcache.EXPECT().Get(gomock.Any(),
 		ptrMatcher{fileBlock.IPtrs[1].BlockPointer}, p.Branch).Return(nil,
 		NoSuchBlockError{fileBlock.IPtrs[1].BlockPointer.ID})
-	config.mockBcache.EXPECT().Get(ptrMatcher{fileBlock.IPtrs[1].BlockPointer}).
-		Return(block2, nil)
+	config.mockBcache.EXPECT().GetWithPrefetch(ptrMatcher{fileBlock.IPtrs[1].BlockPointer}).
+		Return(block2, true, nil)
 	config.mockDirtyBcache.EXPECT().IsDirty(gomock.Any(),
 		ptrMatcher{fileBlock.IPtrs[1].BlockPointer},
 		p.Branch).AnyTimes().Return(false)
 	config.mockDirtyBcache.EXPECT().Get(gomock.Any(),
 		ptrMatcher{fileBlock.IPtrs[3].BlockPointer}, p.Branch).Return(nil,
 		NoSuchBlockError{fileBlock.IPtrs[3].BlockPointer.ID})
-	config.mockBcache.EXPECT().Get(ptrMatcher{fileBlock.IPtrs[3].BlockPointer}).
-		Return(block4, nil)
+	config.mockBcache.EXPECT().GetWithPrefetch(ptrMatcher{fileBlock.IPtrs[3].BlockPointer}).
+		Return(block4, true, nil)
 	config.mockDirtyBcache.EXPECT().IsDirty(gomock.Any(),
 		ptrMatcher{fileBlock.IPtrs[3].BlockPointer},
 		p.Branch).Return(false)
+	config.mockBcache.EXPECT().Get(ptrMatcher{node.BlockPointer}).
+		Times(1).Return(rootBlock, nil)
+	config.mockBcache.EXPECT().Get(ptrMatcher{fileNode.BlockPointer}).
+		Times(1).Return(fileBlock, nil)
 
 	// no matching pointers
 	config.mockBcache.EXPECT().CheckForKnownPtr(gomock.Any(), gomock.Any()).

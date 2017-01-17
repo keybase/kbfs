@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -191,9 +193,8 @@ func (kmd emptyKeyMetadata) LatestKeyGeneration() KeyGen {
 	return kmd.keyGen
 }
 
-func (kmd emptyKeyMetadata) HasKeyForUser(
-	keyGen KeyGen, user keybase1.UID) bool {
-	return false
+func (kmd emptyKeyMetadata) HasKeyForUser(user keybase1.UID) (bool, error) {
+	return false, nil
 }
 
 func (kmd emptyKeyMetadata) GetTLFCryptKeyParams(
@@ -306,12 +307,10 @@ func testKeyManagerCachedSecretKeyForBlockDecryptionSuccess(t *testing.T, ver Me
 
 // makeDirWKeyInfoMap creates a new user device key info map with a writer key.
 func makeDirWKeyInfoMap(uid keybase1.UID,
-	cryptPublicKey kbfscrypto.CryptPublicKey) UserDeviceKeyInfoMap {
-	return UserDeviceKeyInfoMap{
+	cryptPublicKey kbfscrypto.CryptPublicKey) UserDevicePublicKeys {
+	return UserDevicePublicKeys{
 		uid: {
-			cryptPublicKey: TLFCryptKeyInfo{
-				EPubKeyIndex: 0,
-			},
+			cryptPublicKey: true,
 		},
 	}
 }
@@ -328,9 +327,15 @@ func testKeyManagerUncachedSecretKeyForEncryptionSuccess(t *testing.T, ver Metad
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
-		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
-		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
+
+	crypto := MakeCryptoCommon(config.Codec())
+	_, err = rmd.AddKeyGeneration(config.Codec(), crypto,
+		makeDirWKeyInfoMap(uid, subkey), UserDevicePublicKeys{},
+		kbfscrypto.TLFEphemeralPublicKey{},
+		kbfscrypto.TLFEphemeralPrivateKey{},
+		kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
+		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey)
+	require.NoError(t, err)
 
 	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
 	expectUncachedGetTLFCryptKey(t, config, rmd.TlfID(),
@@ -355,9 +360,15 @@ func testKeyManagerUncachedSecretKeyForMDDecryptionSuccess(t *testing.T, ver Met
 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	storedTLFCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
-		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey,
-		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
+
+	crypto := MakeCryptoCommon(config.Codec())
+	_, err = rmd.AddKeyGeneration(config.Codec(), crypto,
+		makeDirWKeyInfoMap(uid, subkey), UserDevicePublicKeys{},
+		kbfscrypto.TLFEphemeralPublicKey{},
+		kbfscrypto.TLFEphemeralPrivateKey{},
+		kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
+		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey)
+	require.NoError(t, err)
 
 	expectUncachedGetTLFCryptKeyAnyDevice(
 		config, rmd.TlfID(), rmd.LatestKeyGeneration(), uid, subkey,
@@ -382,13 +393,27 @@ func testKeyManagerUncachedSecretKeyForBlockDecryptionSuccess(t *testing.T, ver 
 	subkey := kbfscrypto.MakeFakeCryptPublicKeyOrBust("crypt public key")
 	storedTLFCryptKey1 := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	storedTLFCryptKey2 := kbfscrypto.MakeTLFCryptKey([32]byte{0x2})
-	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
-		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey1,
-		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
 
-	rmd.addKeyGenerationForTest(config.Codec(), config.Crypto(),
-		storedTLFCryptKey1, storedTLFCryptKey2,
-		makeDirWKeyInfoMap(uid, subkey), UserDeviceKeyInfoMap{})
+	crypto := MakeCryptoCommon(config.Codec())
+	_, err = rmd.AddKeyGeneration(config.Codec(), crypto,
+		makeDirWKeyInfoMap(uid, subkey), UserDevicePublicKeys{},
+		kbfscrypto.TLFEphemeralPublicKey{},
+		kbfscrypto.TLFEphemeralPrivateKey{},
+		kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
+		kbfscrypto.TLFCryptKey{}, storedTLFCryptKey1)
+	require.NoError(t, err)
+
+	var currCryptKey kbfscrypto.TLFCryptKey
+	if rmd.StoresHistoricTLFCryptKeys() {
+		currCryptKey = storedTLFCryptKey1
+	}
+	_, err = rmd.AddKeyGeneration(config.Codec(), crypto,
+		makeDirWKeyInfoMap(uid, subkey), UserDevicePublicKeys{},
+		kbfscrypto.TLFEphemeralPublicKey{},
+		kbfscrypto.TLFEphemeralPrivateKey{},
+		kbfscrypto.TLFPublicKey{}, kbfscrypto.TLFPrivateKey{},
+		currCryptKey, storedTLFCryptKey2)
+	require.NoError(t, err)
 
 	keyGen := rmd.LatestKeyGeneration() - 1
 	storesHistoric := rmd.StoresHistoricTLFCryptKeys()
@@ -575,41 +600,159 @@ func testKeyManagerRekeyResolveAgainSuccessPrivate(t *testing.T, ver MetadataVer
 	require.Equal(t, newH.ToBareHandleOrBust(), newBareH)
 }
 
-func testKeyManagerPromoteReaderSuccessPrivate(t *testing.T, ver MetadataVer) {
-	mockCtrl, config, ctx := keyManagerInit(t, ver)
-	defer keyManagerShutdown(mockCtrl, config)
+func hasWriterKey(t *testing.T, rmd *RootMetadata, uid keybase1.UID) bool {
+	writers, _, err := rmd.getUserDevicePublicKeys()
+	require.NoError(t, err)
+	return len(writers[uid]) > 0
+}
+
+func hasReaderKey(t *testing.T, rmd *RootMetadata, uid keybase1.UID) bool {
+	_, readers, err := rmd.getUserDevicePublicKeys()
+	require.NoError(t, err)
+	return len(readers[uid]) > 0
+}
+
+func testKeyManagerPromoteReaderSuccess(t *testing.T, ver MetadataVer) {
+	ctx := context.Background()
+
+	config := MakeTestConfigOrBust(t, "alice", "bob")
+	defer CheckConfigAndShutdown(ctx, t, config)
 
 	id := tlf.FakeID(1, false)
 	h, err := ParseTlfHandle(ctx, config.KBPKI(),
 		"alice,bob@twitter#bob", false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)
 
-	oldKeyGen := rmd.LatestKeyGeneration()
+	// Make the first key generation.
+	done, _, err := config.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, done)
 
-	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
-	expectRekey(config, h.ToBareHandleOrBust(), 2, true, true, tlfCryptKey)
+	aliceUID := keybase1.MakeTestUID(1)
+	bobUID := keybase1.MakeTestUID(2)
+
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.False(t, hasWriterKey(t, rmd, bobUID))
+
+	oldKeyGen := rmd.LatestKeyGeneration()
 
 	// Pretend that bob@twitter now resolves to bob.
 	daemon := config.KeybaseService().(*KeybaseDaemonLocal)
 	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
 
-	// Make the first key generation
-	if done, _, err := config.KeyManager().Rekey(ctx, rmd, false); !done || err != nil {
-		t.Fatalf("Got error on rekey: %t, %+v", done, err)
-	}
+	// Rekey as alice.
+	done, _, err = config.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, done)
 
-	if rmd.LatestKeyGeneration() != oldKeyGen+1 {
-		t.Fatalf("Bad key generation after rekey: %d", rmd.LatestKeyGeneration())
-	}
+	// Reader promotion shouldn't increase the key generation.
+	require.Equal(t, oldKeyGen, rmd.LatestKeyGeneration())
+
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.True(t, hasWriterKey(t, rmd, bobUID))
 
 	newH := rmd.GetTlfHandle()
 	require.Equal(t,
 		CanonicalTlfName("alice,bob"),
 		newH.GetCanonicalName())
+}
+
+func testKeyManagerPromoteReaderSelf(t *testing.T, ver MetadataVer) {
+	ctx := context.Background()
+
+	config := MakeTestConfigOrBust(t, "alice", "bob")
+	defer CheckConfigAndShutdown(ctx, t, config)
+
+	id := tlf.FakeID(1, false)
+	h, err := ParseTlfHandle(ctx, config.KBPKI(),
+		"alice,bob@twitter#bob", false)
+	require.NoError(t, err)
+
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
+	require.NoError(t, err)
+
+	// Make the first key generation.
+	done, _, err := config.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, done)
+
+	aliceUID := keybase1.MakeTestUID(1)
+	bobUID := keybase1.MakeTestUID(2)
+
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.False(t, hasWriterKey(t, rmd, bobUID))
+
+	oldKeyGen := rmd.LatestKeyGeneration()
+
+	config2 := ConfigAsUser(config, "bob")
+
+	// Pretend that bob@twitter now resolves to bob.
+	daemon := config2.KeybaseService().(*KeybaseDaemonLocal)
+	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
+
+	// Rekey as bob, which should still succeed.
+	done, _, err = config2.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, done)
+
+	// Reader promotion shouldn't increase the key generation.
+	require.Equal(t, oldKeyGen, rmd.LatestKeyGeneration())
+
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.True(t, hasWriterKey(t, rmd, bobUID))
+
+	newH := rmd.GetTlfHandle()
+	require.Equal(t,
+		CanonicalTlfName("alice,bob"),
+		newH.GetCanonicalName())
+}
+
+func testKeyManagerReaderRekeyShouldNotPromote(t *testing.T, ver MetadataVer) {
+	ctx := context.Background()
+
+	config := MakeTestConfigOrBust(t, "alice", "bob", "charlie")
+	defer CheckConfigAndShutdown(ctx, t, config)
+
+	id := tlf.FakeID(1, false)
+	h, err := ParseTlfHandle(ctx, config.KBPKI(),
+		"alice,charlie@twitter#bob,charlie", false)
+	require.NoError(t, err)
+
+	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
+	require.NoError(t, err)
+
+	// Make the first key generation.
+	done, _, err := config.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, done)
+
+	aliceUID := keybase1.MakeTestUID(1)
+	bobUID := keybase1.MakeTestUID(2)
+	charlieUID := keybase1.MakeTestUID(3)
+
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.False(t, hasWriterKey(t, rmd, bobUID))
+	require.False(t, hasWriterKey(t, rmd, charlieUID))
+
+	config2 := ConfigAsUser(config, "bob")
+
+	// Pretend that charlie@twitter now resolves to charlie.
+	daemon := config2.KeybaseService().(*KeybaseDaemonLocal)
+	daemon.addNewAssertionForTestOrBust("charlie", "charlie@twitter")
+
+	AddDeviceForLocalUserOrBust(t, config2, bobUID)
+
+	// Try to rekey as bob, which should succeed partially.
+	done, _, err = config2.KeyManager().Rekey(ctx, rmd, false)
+	require.NoError(t, err)
+	require.True(t, done)
+
+	require.True(t, hasWriterKey(t, rmd, aliceUID))
+	require.False(t, hasWriterKey(t, rmd, bobUID))
+	require.False(t, hasWriterKey(t, rmd, charlieUID))
 }
 
 func testKeyManagerReaderRekeyResolveAgainSuccessPrivate(t *testing.T, ver MetadataVer) {
@@ -1619,24 +1762,24 @@ func testKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T, ver Metadat
 }
 
 // cryptoLocalTrapAny traps every DecryptTLFCryptKeyClientHalfAny
-// call, and sends on the given channel whether each call had
-// promptPaper set or not.
+// call, and closes the given channel the first time it receives one
+// with promptPaper set to true.
 type cryptoLocalTrapAny struct {
 	Crypto
-	promptCh    chan<- bool
-	cryptoToUse Crypto
+	promptPaperChOnce sync.Once
+	promptPaperCh     chan<- struct{}
+	cryptoToUse       Crypto
 }
 
 func (clta *cryptoLocalTrapAny) DecryptTLFCryptKeyClientHalfAny(
 	ctx context.Context,
 	keys []EncryptedTLFCryptKeyClientAndEphemeral, promptPaper bool) (
 	kbfscrypto.TLFCryptKeyClientHalf, int, error) {
-	select {
-	case clta.promptCh <- promptPaper:
-	case <-ctx.Done():
-		return kbfscrypto.TLFCryptKeyClientHalf{}, 0, ctx.Err()
+	if promptPaper {
+		clta.promptPaperChOnce.Do(func() {
+			close(clta.promptPaperCh)
+		})
 	}
-	// Decrypt the key half with the given config object
 	return clta.cryptoToUse.DecryptTLFCryptKeyClientHalfAny(
 		ctx, keys, promptPaper)
 }
@@ -1671,12 +1814,16 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2Dev2)
 
+	config2Dev2.SetKeyCache(&dummyNoKeyCache{})
+
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
 	AddDeviceForLocalUserOrBust(t, config1, uid2)
 	AddDeviceForLocalUserOrBust(t, config2, uid2)
 	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
+
+	t.Log("Doing first rekey")
 
 	// The new device should be unable to rekey on its own, and will
 	// just set the rekey bit.
@@ -1688,6 +1835,8 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 
 	ops := getOps(config2Dev2, rootNode1.GetFolderBranch().Tlf)
 	rev1 := ops.head.Revision()
+
+	t.Log("Doing second rekey")
 
 	// Do it again, to simulate the mdserver sending back this node's
 	// own rekey request.  This shouldn't increase the MD version.
@@ -1706,22 +1855,14 @@ func testKeyManagerRekeyAddDeviceWithPrompt(t *testing.T, ver MetadataVer) {
 		t.Fatalf("Couldn't set rekey bit")
 	}
 
-	c := make(chan bool)
+	t.Log("Switching crypto")
+
+	c := make(chan struct{}, 1)
 	// Use our other device as a standin for the paper key.
-	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), c, config2.Crypto()}
+	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), sync.Once{}, c, config2.Crypto()}
 	config2Dev2.SetCrypto(clta)
 
 	ops.rekeyWithPromptTimer.Reset(1 * time.Millisecond)
-	var promptPaper bool
-	select {
-	case promptPaper = <-c:
-	case <-ctx.Done():
-		t.Fatal(ctx.Err())
-	}
-	if !promptPaper {
-		t.Fatalf("Didn't prompt paper")
-	}
-	// called a second time for decrypting the private data
 	select {
 	case <-c:
 	case <-ctx.Done():
@@ -1791,6 +1932,8 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2Dev2)
 
+	config2Dev2.SetKeyCache(&dummyNoKeyCache{})
+
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
 	AddDeviceForLocalUserOrBust(t, config1, uid2)
@@ -1800,6 +1943,8 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 	// Revoke some previous device
 	clock.Add(1 * time.Minute)
 	RevokeDeviceForLocalUserOrBust(t, config2Dev2, uid1, 0)
+
+	t.Log("Doing first rekey")
 
 	// The new device should be unable to rekey on its own, and will
 	// just set the rekey bit.
@@ -1811,6 +1956,8 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 
 	ops := getOps(config2Dev2, rootNode1.GetFolderBranch().Tlf)
 	rev1 := ops.head.Revision()
+
+	t.Log("Doing second rekey")
 
 	// Do it again, to simulate the mdserver sending back this node's
 	// own rekey request.  This shouldn't increase the MD version.
@@ -1833,29 +1980,23 @@ func testKeyManagerRekeyAddDeviceWithPromptAfterRestart(t *testing.T, ver Metada
 	ops.rekeyWithPromptTimer.Stop()
 	ops.rekeyWithPromptTimer = nil
 
-	// Try again, which should reset the timer (and so the Reser below
+	t.Log("Doing third rekey")
+
+	// Try again, which should reset the timer (and so the Reset below
 	// will be on a non-nil timer).
 	err = kbfsOps2Dev2.Rekey(ctx, rootNode1.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Third rekey failed %+v", err)
 	}
 
-	c := make(chan bool)
+	t.Log("Switching crypto")
+
+	c := make(chan struct{}, 1)
 	// Use our other device as a standin for the paper key.
-	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), c, config2.Crypto()}
+	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), sync.Once{}, c, config2.Crypto()}
 	config2Dev2.SetCrypto(clta)
 
 	ops.rekeyWithPromptTimer.Reset(1 * time.Millisecond)
-	var promptPaper bool
-	select {
-	case promptPaper = <-c:
-	case <-ctx.Done():
-		t.Fatal(ctx.Err())
-	}
-	if !promptPaper {
-		t.Fatalf("Didn't prompt paper")
-	}
-	// called a second time for decrypting the private data
 	select {
 	case <-c:
 	case <-ctx.Done():
@@ -1904,12 +2045,16 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	config2Dev2 := ConfigAsUser(config1, u2)
 	defer CheckConfigAndShutdown(ctx, t, config2Dev2)
 
+	config2Dev2.SetKeyCache(&dummyNoKeyCache{})
+
 	// Now give u2 a new device.  The configs don't share a Keybase
 	// Daemon so we have to do it in all places.
 	AddDeviceForLocalUserOrBust(t, config1, uid2)
 	AddDeviceForLocalUserOrBust(t, config2, uid2)
 	devIndex := AddDeviceForLocalUserOrBust(t, config2Dev2, uid2)
 	SwitchDeviceForLocalUserOrBust(t, config2Dev2, devIndex)
+
+	t.Log("Doing first rekey")
 
 	// The new device should be unable to rekey on its own, and will
 	// just set the rekey bit.
@@ -1926,21 +2071,18 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 		t.Fatalf("Couldn't set rekey bit")
 	}
 
+	t.Log("Switching crypto")
+
 	// Allow the prompt rekey attempt to fail by using dev2's crypto
 	// (which still isn't keyed for)
-	c := make(chan bool)
-	// Use our other device as a standin for the paper key.
-	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), c, config2Dev2.Crypto()}
+	c := make(chan struct{}, 1)
+	clta := &cryptoLocalTrapAny{config2Dev2.Crypto(), sync.Once{}, c, config2Dev2.Crypto()}
 	config2Dev2.SetCrypto(clta)
 	ops.rekeyWithPromptTimer.Reset(1 * time.Millisecond)
-	var promptPaper bool
 	select {
-	case promptPaper = <-c:
+	case <-c:
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
-	}
-	if !promptPaper {
-		t.Fatalf("Didn't prompt paper")
 	}
 	// Make sure the rekey attempt is finished by taking the lock.
 	// Keep the lock for a while, to control when the second rekey starts.
@@ -1956,15 +2098,9 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 			select {
 			case errCh <- err:
 			case <-ctx.Done():
-				errCh <- ctx.Err()
+				errCh <- errors.WithStack(ctx.Err())
 			}
 		}()
-		// One failed decryption attempt
-		select {
-		case <-c:
-		case <-ctx.Done():
-			t.Fatal(ctx.Err())
-		}
 		select {
 		case err = <-errCh:
 		case <-ctx.Done():
@@ -1974,19 +2110,16 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 			t.Fatalf("Got unexpected error when reading with new key: %+v", err)
 		}
 
+		t.Log("Switching crypto again")
+
 		// Let the background rekeyer decrypt.
-		clta.cryptoToUse = config2.Crypto()
+		c = make(chan struct{}, 1)
+		clta = &cryptoLocalTrapAny{config2Dev2.Crypto(), sync.Once{}, c, config2.Crypto()}
+		config2Dev2.SetCrypto(clta)
 	}()
 
-	select {
-	case promptPaper = <-c:
-	case <-ctx.Done():
-		t.Fatal(ctx.Err())
-	}
-	if !promptPaper {
-		t.Fatalf("Didn't prompt paper")
-	}
-	// called a second time for decrypting the private data
+	t.Log("Waiting for rekey attempt")
+
 	select {
 	case <-c:
 	case <-ctx.Done():
@@ -1995,6 +2128,8 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	// Make sure the rekey attempt is finished
 	ops.mdWriterLock.Lock(lState)
 	ops.mdWriterLock.Unlock(lState)
+
+	t.Log("Getting the root node, which should now succeed")
 
 	GetRootNodeOrBust(ctx, t, config2Dev2, name, false)
 }
@@ -2012,7 +2147,9 @@ func TestKeyManager(t *testing.T) {
 		testKeyManagerRekeyResolveAgainSuccessPublic,
 		testKeyManagerRekeyResolveAgainSuccessPublicSelf,
 		testKeyManagerRekeyResolveAgainSuccessPrivate,
-		testKeyManagerPromoteReaderSuccessPrivate,
+		testKeyManagerPromoteReaderSuccess,
+		testKeyManagerPromoteReaderSelf,
+		testKeyManagerReaderRekeyShouldNotPromote,
 		testKeyManagerReaderRekeyResolveAgainSuccessPrivate,
 		testKeyManagerRekeyResolveAgainNoChangeSuccessPrivate,
 		testKeyManagerRekeyAddAndRevokeDevice,

@@ -172,20 +172,25 @@ func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
 		"libkbfs_bserver_remote", VersionString(), getClientHandler)
 	getClientHandler.authToken = bs.getAuthToken
 
+	opts := rpc.ConnectionOpts{
+		DontConnectNow: true, // connect only on-demand
+		WrapErrorFunc:  libkb.WrapError,
+		TagsFunc:       LogTagsFromContext,
+		// This constant backoff is safe to share between multiple connections,
+		// because it has no internal state. But beware: an exponential backoff
+		// shouldn't be shared.
+		ReconnectBackoff: backoff.NewConstantBackOff(RPCReconnectInterval),
+	}
 	putConn := rpc.NewTLSConnection(blkSrvAddr,
 		kbfscrypto.GetRootCerts(blkSrvAddr),
 		kbfsblock.BServerErrorUnwrapper{}, putClientHandler,
-		false, /* connect only on-demand */
-		rpcLogFactory, libkb.WrapError, log,
-		LogTagsFromContext)
+		rpcLogFactory, log, opts)
 	bs.putClient = keybase1.BlockClient{Cli: putConn.GetClient()}
 	putClientHandler.client = bs.putClient
 	getConn := rpc.NewTLSConnection(blkSrvAddr,
 		kbfscrypto.GetRootCerts(blkSrvAddr),
 		kbfsblock.BServerErrorUnwrapper{}, getClientHandler,
-		false, /* connect only on-demand */
-		rpcLogFactory, libkb.WrapError, log,
-		LogTagsFromContext)
+		rpcLogFactory, log, opts)
 	bs.getClient = keybase1.BlockClient{Cli: getConn.GetClient()}
 	getClientHandler.client = bs.getClient
 
