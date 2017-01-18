@@ -519,11 +519,12 @@ func testTLFJournalBlockOpDiskLimitCancel(t *testing.T, ver MetadataVer) {
 
 	tlfJournal.diskLimiter.ForceAcquire(math.MaxInt64)
 
-	cancel()
+	ctx2, cancel2 := context.WithCancel(ctx)
+	cancel2()
 
 	data := []byte{1, 2, 3, 4}
 	id, bCtx, serverHalf := config.makeBlock(data)
-	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
+	err := tlfJournal.putBlockData(ctx2, id, bCtx, data, serverHalf)
 	require.Equal(t, context.Canceled, errors.Cause(err))
 }
 

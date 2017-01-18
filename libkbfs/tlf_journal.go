@@ -1492,7 +1492,7 @@ func (j *tlfJournal) putBlockData(
 	switch errors.Cause(err) {
 	case nil:
 		// Continue.
-	case acquireCtx.Err():
+	case context.DeadlineExceeded:
 		return errors.WithStack(ErrDiskLimitTimeout{
 			timeout, bufLen, availableBytes, err,
 		})
