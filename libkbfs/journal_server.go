@@ -77,9 +77,9 @@ type diskLimiter interface {
 	ForceAcquire(n int64) int64
 
 	// Release is called after an operation that has freed up n
-	// bytes of disk space. It is also called when shutting down
-	// an TLF journal. The updated number of bytes available
-	// (which can be negative) must be returned.
+	// bytes of disk space. It is also called when shutting down a
+	// TLF journal. The updated number of bytes available (which
+	// can be negative) must be returned.
 	Release(n int64) int64
 }
 
