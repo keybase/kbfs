@@ -1457,6 +1457,8 @@ func (j *tlfJournal) getBlockData(id kbfsblock.ID) (
 
 const diskLimitTimeout = 3 * time.Second
 
+// ErrDiskLimitTimeout is returned when putBlockData exceeds
+// diskLimitTimeout when trying to acquire bytes to put.
 type ErrDiskLimitTimeout struct {
 	timeout        time.Duration
 	requestedBytes int64
