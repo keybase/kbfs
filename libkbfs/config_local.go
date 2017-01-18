@@ -898,9 +898,12 @@ func (c *ConfigLocal) EnableJournaling(
 	log := c.MakeLogger("")
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
-	// Set the journal disk limit to 10 GiB for now. TODO: Base
-	// this on the size of the disk, e.g. a quarter of the total
-	// size of the disk up to a maximum of 100 GB.
+	// Set the journal disk limit to 10 GiB for now.
+	//
+	// TODO: Base this on the size of the disk, e.g. a quarter of
+	// the total size of the disk up to a maximum of 100 GB.
+	//
+	// TODO: Also keep track of and limit the inode count.
 	var journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
 	// TODO: Use a diskLimiter implementation that applies
 	// backpressure.
