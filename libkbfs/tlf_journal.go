@@ -1362,6 +1362,10 @@ func (j *tlfJournal) shutdown() {
 	// Even if we shut down the journal, its blocks still take up
 	// space, but we don't want to double-count them if we start
 	// up this journal again, so we need to adjust them here.
+	//
+	// TODO: If we ever expect to shut down non-empty journals any
+	// time other than during shutdown, we should still count
+	// shut-down journals against the disk limit.
 	storedBytes := j.blockJournal.getStoredBytes()
 	if storedBytes > 0 {
 		availableBytes := j.diskLimiter.Release(storedBytes)
