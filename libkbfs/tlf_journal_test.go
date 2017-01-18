@@ -71,22 +71,23 @@ func (d testBWDelegate) requireNextState(
 // testTLFJournalConfig is the config we pass to the tlfJournal, and
 // also contains some helper functions for testing.
 type testTLFJournalConfig struct {
-	t            *testing.T
-	log          logger.Logger
-	tlfID        tlf.ID
-	splitter     BlockSplitter
-	codec        kbfscodec.Codec
-	crypto       CryptoLocal
-	bcache       BlockCache
-	bops         BlockOps
-	mdcache      MDCache
-	ver          MetadataVer
-	reporter     Reporter
-	uid          keybase1.UID
-	verifyingKey kbfscrypto.VerifyingKey
-	ekg          singleEncryptionKeyGetter
-	nug          normalizedUsernameGetter
-	mdserver     MDServer
+	t                 *testing.T
+	log               logger.Logger
+	tlfID             tlf.ID
+	splitter          BlockSplitter
+	codec             kbfscodec.Codec
+	crypto            CryptoLocal
+	bcache            BlockCache
+	bops              BlockOps
+	mdcache           MDCache
+	ver               MetadataVer
+	reporter          Reporter
+	uid               keybase1.UID
+	verifyingKey      kbfscrypto.VerifyingKey
+	ekg               singleEncryptionKeyGetter
+	nug               normalizedUsernameGetter
+	mdserver          MDServer
+	_diskLimitTimeout time.Duration
 }
 
 func (c testTLFJournalConfig) BlockSplitter() BlockSplitter {
@@ -147,6 +148,10 @@ func (c testTLFJournalConfig) MDServer() MDServer {
 
 func (c testTLFJournalConfig) MakeLogger(module string) logger.Logger {
 	return c.log
+}
+
+func (c testTLFJournalConfig) diskLimitTimeout() time.Duration {
+	return c._diskLimitTimeout
 }
 
 func (c testTLFJournalConfig) makeBlock(data []byte) (
@@ -223,7 +228,7 @@ func setupTLFJournalTest(
 	config = &testTLFJournalConfig{
 		t, log, tlf.FakeID(1, false), bsplitter, codec, crypto,
 		nil, nil, NewMDCacheStandard(10), ver,
-		NewReporterSimple(newTestClockNow(), 10), uid, verifyingKey, ekg, nil, mdserver,
+		NewReporterSimple(newTestClockNow(), 10), uid, verifyingKey, ekg, nil, mdserver, defaultDiskLimitTimeout,
 	}
 
 	ctx, cancel = context.WithTimeout(
@@ -513,6 +518,7 @@ func testTLFJournalBlockOpDiskLimitTimeout(t *testing.T, ver MetadataVer) {
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	tlfJournal.diskLimiter.ForceAcquire(math.MaxInt64)
+	config._diskLimitTimeout = 3 * time.Microsecond
 
 	data := []byte{1, 2, 3, 4}
 	id, bCtx, serverHalf := config.makeBlock(data)
@@ -522,7 +528,7 @@ func testTLFJournalBlockOpDiskLimitTimeout(t *testing.T, ver MetadataVer) {
 	require.Error(t, timeoutErr.err)
 	timeoutErr.err = nil
 	require.Equal(t, ErrDiskLimitTimeout{
-		3 * time.Second, int64(len(data)), 0, nil,
+		3 * time.Microsecond, int64(len(data)), 0, nil,
 	}, timeoutErr)
 }
 

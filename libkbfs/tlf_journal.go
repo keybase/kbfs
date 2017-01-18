@@ -41,6 +41,7 @@ type tlfJournalConfig interface {
 	MDServer() MDServer
 	usernameGetter() normalizedUsernameGetter
 	MakeLogger(module string) logger.Logger
+	diskLimitTimeout() time.Duration
 }
 
 // tlfJournalConfigWrapper is an adapter for Config objects to the
@@ -59,6 +60,12 @@ func (ca tlfJournalConfigAdapter) mdDecryptionKeyGetter() mdDecryptionKeyGetter 
 
 func (ca tlfJournalConfigAdapter) usernameGetter() normalizedUsernameGetter {
 	return ca.Config.KBPKI()
+}
+
+const defaultDiskLimitTimeout = 3 * time.Second
+
+func (ca tlfJournalConfigAdapter) diskLimitTimeout() time.Duration {
+	return defaultDiskLimitTimeout
 }
 
 const (
@@ -1455,8 +1462,6 @@ func (j *tlfJournal) getBlockData(id kbfsblock.ID) (
 	return j.blockJournal.getData(id)
 }
 
-const diskLimitTimeout = 3 * time.Second
-
 // ErrDiskLimitTimeout is returned when putBlockData exceeds
 // diskLimitTimeout when trying to acquire bytes to put.
 type ErrDiskLimitTimeout struct {
@@ -1477,7 +1482,8 @@ func (j *tlfJournal) putBlockData(
 	// Since Acquire can block, it should happen outside of the
 	// journal lock.
 
-	acquireCtx, cancel := context.WithTimeout(ctx, diskLimitTimeout)
+	timeout := j.config.diskLimitTimeout()
+	acquireCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	bufLen := int64(len(buf))
@@ -1488,7 +1494,7 @@ func (j *tlfJournal) putBlockData(
 		// Continue.
 	case acquireCtx.Err():
 		return errors.WithStack(ErrDiskLimitTimeout{
-			diskLimitTimeout, bufLen, availableBytes, err,
+			timeout, bufLen, availableBytes, err,
 		})
 	default:
 		return err
