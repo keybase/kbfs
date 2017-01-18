@@ -1455,15 +1455,39 @@ func (j *tlfJournal) getBlockData(id kbfsblock.ID) (
 	return j.blockJournal.getData(id)
 }
 
+const diskLimitTimeout = 3 * time.Second
+
+type ErrDiskLimitTimeout struct {
+	timeout        time.Duration
+	requestedBytes int64
+	availableBytes int64
+}
+
+func (e ErrDiskLimitTimeout) Error() string {
+	return fmt.Sprintf("Disk limit timeout of %s reached; requested %d bytes, only %d bytes available",
+		e.timeout, e.requestedBytes, e.availableBytes)
+}
+
 func (j *tlfJournal) putBlockData(
-	ctx context.Context, id kbfsblock.ID, context kbfsblock.Context, buf []byte,
+	ctx context.Context, id kbfsblock.ID, blockCtx kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
 	// Since Acquire can block, it should happen outside of the
 	// journal lock.
+
+	acquireCtx, cancel := context.WithTimeout(ctx, diskLimitTimeout)
+	defer cancel()
+
 	bufLen := int64(len(buf))
-	j.log.CDebugf(ctx, "Acquiring %d bytes for %s", bufLen, j.tlfID)
-	availableBytes, err := j.diskLimiter.Acquire(ctx, bufLen)
-	if err != nil {
+	j.log.CDebugf(acquireCtx, "Acquiring %d bytes for %s", bufLen, j.tlfID)
+	availableBytes, err := j.diskLimiter.Acquire(acquireCtx, bufLen)
+	switch err {
+	case nil:
+		// Continue.
+	case acquireCtx.Err():
+		return errors.WithStack(ErrDiskLimitTimeout{
+			diskLimitTimeout, bufLen, availableBytes,
+		})
+	default:
 		return err
 	}
 	j.log.CDebugf(ctx, "Acquired %d bytes for %s: available=%d",
@@ -1473,7 +1497,7 @@ func (j *tlfJournal) putBlockData(
 		if err != nil {
 			j.log.CDebugf(ctx, "Releasing %d bytes for %s due to error %+v",
 				bufLen, j.tlfID, err)
-			j.diskLimiter.Release(availableBytes)
+			j.diskLimiter.Release(bufLen)
 		}
 	}()
 
@@ -1485,7 +1509,7 @@ func (j *tlfJournal) putBlockData(
 
 	storedBytesBefore := j.blockJournal.getStoredBytes()
 
-	err = j.blockJournal.putData(ctx, id, context, buf, serverHalf)
+	err = j.blockJournal.putData(ctx, id, blockCtx, buf, serverHalf)
 	if err != nil {
 		return err
 	}
