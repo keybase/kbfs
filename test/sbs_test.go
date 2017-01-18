@@ -444,6 +444,7 @@ func TestSBSMultipleResolutions(t *testing.T) {
 // that get resolved to the same one don't get merged, but that one is
 // chosen and the others pick up a conflict marker.
 func TestSBSConflicts(t *testing.T) {
+	t.Skip("flaky test")
 	test(t,
 		users("alice", "bob", "charlie"),
 		inPrivateTlf("alice,bob,charlie@twitter"),
