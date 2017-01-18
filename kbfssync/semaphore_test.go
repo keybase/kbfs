@@ -27,6 +27,10 @@ func callAcquire(ctx context.Context, s *Semaphore, n int64) acquireCall {
 	return acquireCall{n, count, err}
 }
 
+// requireNoCall checks that there is nothing to read from
+// callCh. This is a racy check since it doesn't distinguish between
+// the goroutine with the call not having run yet, and the goroutine
+// with the call having run but being blocked on the semaphore.
 func requireNoCall(t *testing.T, callCh <-chan acquireCall) {
 	select {
 	case call := <-callCh:

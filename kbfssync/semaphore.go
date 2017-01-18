@@ -57,7 +57,8 @@ func (s *Semaphore) tryAcquire(n int64) (<-chan struct{}, int64) {
 // must be positive) from the resource count without causing it to go
 // negative, and then returns nil. If the given context is canceled
 // first, it instead returns a wrapped ctx.Err() and does not change
-// the resource count. The possibly-updated resource count is returned.
+// the resource count. The possibly-updated resource count is
+// returned, even when err != nil.
 func (s *Semaphore) Acquire(ctx context.Context, n int64) (int64, error) {
 	if n <= 0 {
 		panic(fmt.Sprintf("n=%d must be positive", n))
@@ -78,12 +79,12 @@ func (s *Semaphore) Acquire(ctx context.Context, n int64) (int64, error) {
 	}
 }
 
-// ForceAcquire atomically adds n (which must be positive) to the
-// resource count without waking up any waiting acquirers. It is meant
-// for correcting the initial resource count of the semaphore. It's
-// okay if adding n causes the resource count goes negative, but it
-// must not cause the resource count to overflow (in the negative
-// direction). The updated resource count is returned.
+// ForceAcquire atomically subtracts n (which must be positive) from
+// the resource count without waking up any waiting acquirers. It is
+// meant for correcting the initial resource count of the
+// semaphore. It's okay if adding n causes the resource count goes
+// negative, but it must not cause the resource count to overflow (in
+// the negative direction). The updated resource count is returned.
 func (s *Semaphore) ForceAcquire(n int64) int64 {
 	if n <= 0 {
 		panic(fmt.Sprintf("n=%d must be positive", n))
