@@ -1463,11 +1463,12 @@ type ErrDiskLimitTimeout struct {
 	timeout        time.Duration
 	requestedBytes int64
 	availableBytes int64
+	err            error
 }
 
 func (e ErrDiskLimitTimeout) Error() string {
-	return fmt.Sprintf("Disk limit timeout of %s reached; requested %d bytes, only %d bytes available",
-		e.timeout, e.requestedBytes, e.availableBytes)
+	return fmt.Sprintf("Disk limit timeout of %s reached; requested %d bytes, only %d bytes available: %+v",
+		e.timeout, e.requestedBytes, e.availableBytes, e.err)
 }
 
 func (j *tlfJournal) putBlockData(
@@ -1482,12 +1483,12 @@ func (j *tlfJournal) putBlockData(
 	bufLen := int64(len(buf))
 	j.log.CDebugf(acquireCtx, "Acquiring %d bytes for %s", bufLen, j.tlfID)
 	availableBytes, err := j.diskLimiter.Acquire(acquireCtx, bufLen)
-	switch err {
+	switch errors.Cause(err) {
 	case nil:
 		// Continue.
 	case acquireCtx.Err():
 		return errors.WithStack(ErrDiskLimitTimeout{
-			diskLimitTimeout, bufLen, availableBytes,
+			diskLimitTimeout, bufLen, availableBytes, err,
 		})
 	default:
 		return err

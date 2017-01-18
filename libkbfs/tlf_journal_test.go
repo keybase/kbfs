@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
 	"math"
 	"os"
 	"reflect"
@@ -22,6 +21,7 @@ import (
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -504,6 +504,26 @@ func testTLFJournalBlockOpDiskLimit(t *testing.T, ver MetadataVer) {
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
+}
+
+func testTLFJournalBlockOpDiskLimitTimeout(t *testing.T, ver MetadataVer) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	tlfJournal.diskLimiter.ForceAcquire(math.MaxInt64)
+
+	data := []byte{1, 2, 3, 4}
+	id, bCtx, serverHalf := config.makeBlock(data)
+	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
+	timeoutErr, ok := errors.Cause(err).(ErrDiskLimitTimeout)
+	require.True(t, ok)
+	require.Error(t, timeoutErr.err)
+	timeoutErr.err = nil
+	require.Equal(t, ErrDiskLimitTimeout{
+		3 * time.Second, int64(len(data)), 0, nil,
+	}, timeoutErr)
 }
 
 func testTLFJournalBlockOpDiskLimitPutFailure(t *testing.T, ver MetadataVer) {
@@ -1136,6 +1156,7 @@ func TestTLFJournal(t *testing.T) {
 		testTLFJournalMDServerBusyShutdown,
 		testTLFJournalBlockOpWhileBusy,
 		testTLFJournalBlockOpDiskLimit,
+		testTLFJournalBlockOpDiskLimitTimeout,
 		testTLFJournalBlockOpDiskLimitPutFailure,
 		testTLFJournalFlushMDBasic,
 		testTLFJournalFlushMDConflict,
