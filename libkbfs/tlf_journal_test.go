@@ -511,6 +511,22 @@ func testTLFJournalBlockOpDiskLimit(t *testing.T, ver MetadataVer) {
 	}
 }
 
+func testTLFJournalBlockOpDiskLimitCancel(t *testing.T, ver MetadataVer) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	tlfJournal.diskLimiter.ForceAcquire(math.MaxInt64)
+
+	cancel()
+
+	data := []byte{1, 2, 3, 4}
+	id, bCtx, serverHalf := config.makeBlock(data)
+	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
+	require.Equal(t, context.Canceled, errors.Cause(err))
+}
+
 func testTLFJournalBlockOpDiskLimitTimeout(t *testing.T, ver MetadataVer) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
@@ -1162,6 +1178,7 @@ func TestTLFJournal(t *testing.T) {
 		testTLFJournalMDServerBusyShutdown,
 		testTLFJournalBlockOpWhileBusy,
 		testTLFJournalBlockOpDiskLimit,
+		testTLFJournalBlockOpDiskLimitCancel,
 		testTLFJournalBlockOpDiskLimitTimeout,
 		testTLFJournalBlockOpDiskLimitPutFailure,
 		testTLFJournalFlushMDBasic,
