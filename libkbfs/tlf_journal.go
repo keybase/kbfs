@@ -1467,14 +1467,14 @@ func (j *tlfJournal) putBlockData(
 		return err
 	}
 
+	j.log.CDebugf(ctx, "Acquired %d bytes for %s: available=%d",
+		bufLen, j.tlfID, availableBytes)
+
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {
 		return err
 	}
-
-	j.log.CDebugf(ctx, "Acquired %d bytes for %s: available=%d",
-		bufLen, j.tlfID, availableBytes)
 
 	storedBytesBefore := j.blockJournal.getStoredBytes()
 
