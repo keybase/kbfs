@@ -8,7 +8,6 @@ import (
 	"math"
 	"os"
 	"reflect"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -19,6 +18,7 @@ import (
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/keybase/kbfs/kbfshash"
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
@@ -560,11 +560,8 @@ func testTLFJournalBlockOpDiskLimitPutFailure(t *testing.T, ver MetadataVer) {
 
 	data := []byte{1, 2, 3, 4}
 	id, bCtx, serverHalf := config.makeBlock(data)
-	bCtxBad := kbfsblock.MakeContext(
-		keybase1.MakeTestUID(1), keybase1.MakeTestUID(2),
-		kbfsblock.ZeroRefNonce)
-	err := tlfJournal.putBlockData(ctx, id, bCtxBad, data, serverHalf)
-	require.True(t, strings.HasPrefix(err.Error(), "Can't Put() a block"))
+	err := tlfJournal.putBlockData(ctx, id, bCtx, []byte{1}, serverHalf)
+	require.IsType(t, kbfshash.HashMismatchError{}, errors.Cause(err))
 
 	// If the above incorrectly does not release bytes from
 	// diskLimiter on error, this will hang.
