@@ -150,7 +150,7 @@ func TestCancel(t *testing.T) {
 	select {
 	case call := <-callCh:
 		call.err = errors.Cause(call.err)
-		require.Equal(t, acquireCall{n, n - 1, ctx2.Err()}, call)
+		require.Equal(t, acquireCall{n, n - 1, context.Canceled}, call)
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
