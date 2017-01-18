@@ -12,7 +12,11 @@ import "flag"
 // passed to New{Default,Force}Mounter.
 type PlatformParams struct{}
 
-func (p PlatformParams) shouldAppendPlatformRootDirs() bool {
+// ProcessPlatformFlags does nothing in this file.
+func (p PlatformParams) ProcessPlatformFlags() {
+}
+
+func (p PlatformParams) macosRootSpecialFilesEnabled() bool {
 	return false
 }
 

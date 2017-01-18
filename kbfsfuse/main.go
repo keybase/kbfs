@@ -61,6 +61,7 @@ func start() *libfs.Error {
 	platformParams := libfuse.AddPlatformFlags(flag.CommandLine)
 
 	flag.Parse()
+	platformParams.ProcessPlatformFlags()
 
 	if *version {
 		fmt.Printf("%s\n", libkbfs.VersionString())

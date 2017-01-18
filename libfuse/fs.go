@@ -321,7 +321,7 @@ func (r *Root) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 			Name: PublicName,
 		},
 	}
-	if r.private.fs.platformParams.shouldAppendPlatformRootDirs() {
+	if r.private.fs.platformParams.macosRootSpecialFilesEnabled() {
 		res = append(res, platformRootDirs...)
 	}
 

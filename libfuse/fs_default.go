@@ -14,10 +14,6 @@ import (
 
 var platformRootDirs []fuse.Dirent
 
-func shouldAppendPlatformRootDirs(parmas PlatformParams) bool {
-	return false
-}
-
 func (r *Root) platformLookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	return nil, nil
 }

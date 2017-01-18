@@ -64,7 +64,7 @@ func (r *Root) platformLookup(ctx context.Context, req *fuse.LookupRequest, resp
 		return newExternalBundleResourceFile("ExtendedAttributeFinderInfo.bin")
 	}
 
-	if r.private.fs.platformParams.UseLocal {
+	if r.private.fs.platformParams.macosRootSpecialFilesEnabled() {
 		if mountRootSpecialPaths[req.Name] {
 			cuser, _, err := libkbfs.GetCurrentUserInfoIfPossible(ctx, r.private.fs.config.KBPKI(), false)
 			if err != nil {
