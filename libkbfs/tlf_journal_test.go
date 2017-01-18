@@ -71,23 +71,23 @@ func (d testBWDelegate) requireNextState(
 // testTLFJournalConfig is the config we pass to the tlfJournal, and
 // also contains some helper functions for testing.
 type testTLFJournalConfig struct {
-	t                 *testing.T
-	log               logger.Logger
-	tlfID             tlf.ID
-	splitter          BlockSplitter
-	codec             kbfscodec.Codec
-	crypto            CryptoLocal
-	bcache            BlockCache
-	bops              BlockOps
-	mdcache           MDCache
-	ver               MetadataVer
-	reporter          Reporter
-	uid               keybase1.UID
-	verifyingKey      kbfscrypto.VerifyingKey
-	ekg               singleEncryptionKeyGetter
-	nug               normalizedUsernameGetter
-	mdserver          MDServer
-	_diskLimitTimeout time.Duration
+	t            *testing.T
+	log          logger.Logger
+	tlfID        tlf.ID
+	splitter     BlockSplitter
+	codec        kbfscodec.Codec
+	crypto       CryptoLocal
+	bcache       BlockCache
+	bops         BlockOps
+	mdcache      MDCache
+	ver          MetadataVer
+	reporter     Reporter
+	uid          keybase1.UID
+	verifyingKey kbfscrypto.VerifyingKey
+	ekg          singleEncryptionKeyGetter
+	nug          normalizedUsernameGetter
+	mdserver     MDServer
+	dlTimeout    time.Duration
 }
 
 func (c testTLFJournalConfig) BlockSplitter() BlockSplitter {
@@ -151,7 +151,7 @@ func (c testTLFJournalConfig) MakeLogger(module string) logger.Logger {
 }
 
 func (c testTLFJournalConfig) diskLimitTimeout() time.Duration {
-	return c._diskLimitTimeout
+	return c.dlTimeout
 }
 
 func (c testTLFJournalConfig) makeBlock(data []byte) (
@@ -535,7 +535,7 @@ func testTLFJournalBlockOpDiskLimitTimeout(t *testing.T, ver MetadataVer) {
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	tlfJournal.diskLimiter.ForceAcquire(math.MaxInt64)
-	config._diskLimitTimeout = 3 * time.Microsecond
+	config.dlTimeout = 3 * time.Microsecond
 
 	data := []byte{1, 2, 3, 4}
 	id, bCtx, serverHalf := config.makeBlock(data)
