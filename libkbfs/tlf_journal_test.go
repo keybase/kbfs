@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -505,6 +506,29 @@ func testTLFJournalBlockOpDiskLimit(t *testing.T, ver MetadataVer) {
 	}
 }
 
+func testTLFJournalBlockOpDiskLimitPutFailure(t *testing.T, ver MetadataVer) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	tlfJournal.diskLimiter.ForceAcquire(math.MaxInt64)
+	tlfJournal.diskLimiter.Release(6)
+
+	data := []byte{1, 2, 3, 4}
+	id, bCtx, serverHalf := config.makeBlock(data)
+	bCtxBad := kbfsblock.MakeContext(
+		keybase1.MakeTestUID(1), keybase1.MakeTestUID(2),
+		kbfsblock.ZeroRefNonce)
+	err := tlfJournal.putBlockData(ctx, id, bCtxBad, data, serverHalf)
+	require.True(t, strings.HasPrefix(err.Error(), "Can't Put() a block"))
+
+	// If the above incorrectly does not release bytes from
+	// diskLimiter on error, this will hang.
+	err = tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
+	require.NoError(t, err)
+}
+
 type hangingMDServer struct {
 	MDServer
 	// Closed on put.
@@ -788,11 +812,10 @@ func (s *orderedMDServer) Put(
 func (s *orderedMDServer) Shutdown() {
 }
 
-// TestTLFJournalFlushOrdering tests that we respect the relative
+// testTLFJournalFlushOrdering tests that we respect the relative
 // orderings of blocks and MD ops when flushing, i.e. if a block op
 // was added to the block journal before an MD op was added to the MD
 // journal, then that block op will be flushed before that MD op.
-
 func testTLFJournalFlushOrdering(t *testing.T, ver MetadataVer) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
@@ -874,10 +897,9 @@ func testTLFJournalFlushOrdering(t *testing.T, ver MetadataVer) {
 		expectedPuts2, puts)
 }
 
-// TestTLFJournalFlushInterleaving tests that we interleave block and
+// testTLFJournalFlushInterleaving tests that we interleave block and
 // MD ops while respecting the relative orderings of blocks and MD ops
 // when flushing.
-
 func testTLFJournalFlushInterleaving(t *testing.T, ver MetadataVer) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
@@ -1114,6 +1136,7 @@ func TestTLFJournal(t *testing.T) {
 		testTLFJournalMDServerBusyShutdown,
 		testTLFJournalBlockOpWhileBusy,
 		testTLFJournalBlockOpDiskLimit,
+		testTLFJournalBlockOpDiskLimitPutFailure,
 		testTLFJournalFlushMDBasic,
 		testTLFJournalFlushMDConflict,
 		testTLFJournalFlushOrdering,
