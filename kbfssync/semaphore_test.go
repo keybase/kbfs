@@ -131,16 +131,16 @@ func TestCancel(t *testing.T) {
 	s := NewSemaphore()
 	require.Equal(t, int64(0), s.countForTest())
 
+	// Do this before spawning the goroutine to avoid a race on
+	// the count field of the result of callAcquire.
+	count := s.Release(n - 1)
+	require.Equal(t, n-1, count)
+	require.Equal(t, n-1, s.countForTest())
+
 	callCh := make(chan acquireCall, 1)
 	go func() {
 		callCh <- callAcquire(ctx2, s, n)
 	}()
-
-	requireNoCall(t, callCh)
-
-	count := s.Release(n - 1)
-	require.Equal(t, n-1, count)
-	require.Equal(t, n-1, s.countForTest())
 
 	requireNoCall(t, callCh)
 
