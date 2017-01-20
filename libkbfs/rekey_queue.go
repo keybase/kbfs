@@ -14,6 +14,10 @@ import (
 	"golang.org/x/net/context"
 )
 
+const (
+	numRekeyWorkers = 8
+)
+
 type rekeyQueueEntry struct {
 	id tlf.ID
 	ch chan error
@@ -57,7 +61,9 @@ func (rkq *RekeyQueueStandard) Enqueue(id tlf.ID) <-chan error {
 			// spawn goroutine if needed
 			var ctx context.Context
 			ctx, rkq.cancel = context.WithCancel(context.Background())
-			go rkq.processRekeys(ctx, rkq.hasWorkCh)
+			for i := 0; i < numRekeyWorkers; i++ {
+				go rkq.processRekeys(ctx)
+			}
 		}
 		rkq.queue = append(rkq.queue, rekeyQueueEntry{id, c})
 	}()
@@ -95,6 +101,7 @@ func (rkq *RekeyQueueStandard) Clear() {
 			// cancel
 			rkq.cancel()
 			rkq.cancel = nil
+			close(rkq.hasWorkCh)
 		}
 		// collect channels and clear queue
 		var channels []chan error
@@ -130,12 +137,12 @@ const (
 const CtxRekeyOpID = "REKEYID"
 
 // Dedicated goroutine to process the rekey queue.
-func (rkq *RekeyQueueStandard) processRekeys(ctx context.Context, hasWorkCh chan struct{}) {
+func (rkq *RekeyQueueStandard) processRekeys(ctx context.Context) {
 	for {
 		select {
-		case <-hasWorkCh:
+		case <-rkq.hasWorkCh:
 			for {
-				id := rkq.peek()
+				id, errChan := rkq.dequeue()
 				if id == tlf.NullID {
 					break
 				}
@@ -146,39 +153,31 @@ func (rkq *RekeyQueueStandard) processRekeys(ctx context.Context, hasWorkCh chan
 						CtxRekeyOpID, nil)
 					rkq.log.CDebugf(newCtx, "Processing rekey for %s", id)
 					err := rkq.config.KBFSOps().Rekey(newCtx, id)
-					if ch := rkq.dequeue(); ch != nil {
-						ch <- err
-						close(ch)
+					if errChan != nil {
+						errChan <- err
+						close(errChan)
 					}
 				}()
 				if ctx.Err() != nil {
-					close(hasWorkCh)
 					return
 				}
 			}
 		case <-ctx.Done():
-			close(hasWorkCh)
 			return
 		}
 	}
 }
 
-func (rkq *RekeyQueueStandard) peek() tlf.ID {
-	rkq.queueMu.Lock()
-	defer rkq.queueMu.Unlock()
-	if len(rkq.queue) != 0 {
-		return rkq.queue[0].id
-	}
-	return tlf.NullID
-}
-
-func (rkq *RekeyQueueStandard) dequeue() chan<- error {
+// dequeue, as name suggests, does a dequeue, and return the TLF ID and error
+// channel that associates with it. If and only if there's nothing in the
+// queue, it returns tlf.NullID and nil.
+func (rkq *RekeyQueueStandard) dequeue() (tid tlf.ID, errChan chan<- error) {
 	rkq.queueMu.Lock()
 	defer rkq.queueMu.Unlock()
 	if len(rkq.queue) == 0 {
-		return nil
+		return tlf.NullID, nil
 	}
-	ch := rkq.queue[0].ch
+	tid, errChan = rkq.queue[0].id, rkq.queue[0].ch
 	rkq.queue = rkq.queue[1:]
-	return ch
+	return tid, errChan
 }
