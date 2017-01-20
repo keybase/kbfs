@@ -979,7 +979,7 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 			return err
 		}
 		if removedBytes > 0 {
-			availableBytes := j.diskLimiter.Release(removedBytes)
+			j.diskLimiter.Release(removedBytes)
 		}
 		if nextLastToRemove == 0 {
 			break
@@ -1372,7 +1372,7 @@ func (j *tlfJournal) shutdown() {
 	// shut-down journals against the disk limit.
 	storedBytes := j.blockJournal.getStoredBytes()
 	if storedBytes > 0 {
-		availableBytes := j.diskLimiter.Release(storedBytes)
+		j.diskLimiter.Release(storedBytes)
 	}
 
 	// Make further accesses error out.
