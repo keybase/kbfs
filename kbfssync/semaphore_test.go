@@ -131,10 +131,8 @@ func TestCancel(t *testing.T) {
 	s := NewSemaphore()
 	require.Equal(t, int64(0), s.countForTest())
 
-	// Do this before spawning the goroutine. Otherwise, the
-	// s.Release() will race with the s.Acquire() in
-	// callAcquire(), and depending on which one happens first,
-	// s.Acquire() will return either 0 or n - 1.
+	// Do this before spawning the goroutine, so that the
+	// callAcquire() will always return a count of n-1.
 	count := s.Release(n - 1)
 	require.Equal(t, n-1, count)
 	require.Equal(t, n-1, s.countForTest())
