@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	numRekeyWorkers = 8
+	numRekeyWorkers = 64
 )
 
 type rekeyQueueEntry struct {
@@ -57,7 +57,7 @@ func (rkq *RekeyQueueStandard) Enqueue(id tlf.ID) <-chan error {
 		defer rkq.queueMu.Unlock()
 		if rkq.cancel == nil {
 			// create a new channel
-			rkq.hasWorkCh = make(chan struct{}, 1)
+			rkq.hasWorkCh = make(chan struct{}, numRekeyWorkers)
 			// spawn goroutine if needed
 			var ctx context.Context
 			ctx, rkq.cancel = context.WithCancel(context.Background())
