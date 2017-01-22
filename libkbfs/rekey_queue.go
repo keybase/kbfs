@@ -16,111 +16,8 @@ import (
 
 const (
 	numRekeyWorkers = 64
+	rekeyQueueSize  = 1024 // 24 KB
 )
-
-type rekeyQueueEntry struct {
-	id tlf.ID
-	ch chan error
-}
-
-// RekeyQueueStandard implements the RekeyQueue interface.
-type RekeyQueueStandard struct {
-	config    Config
-	log       logger.Logger
-	queueMu   sync.RWMutex // protects all of the below
-	queue     []rekeyQueueEntry
-	hasWorkCh chan struct{}
-	cancel    context.CancelFunc
-	wg        kbfssync.RepeatedWaitGroup
-}
-
-// Test that RekeyQueueStandard fully implements the RekeyQueue interface.
-var _ RekeyQueue = (*RekeyQueueStandard)(nil)
-
-// NewRekeyQueueStandard instantiates a new rekey worker.
-func NewRekeyQueueStandard(config Config) *RekeyQueueStandard {
-	log := config.MakeLogger("RQ")
-	rkq := &RekeyQueueStandard{
-		config: config,
-		log:    log,
-	}
-	return rkq
-}
-
-// Enqueue implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) Enqueue(id tlf.ID) <-chan error {
-	rkq.log.Debug("Enqueueing %s for rekey", id)
-	c := make(chan error, 1)
-	rkq.wg.Add(1)
-	func() {
-		rkq.queueMu.Lock()
-		defer rkq.queueMu.Unlock()
-		if rkq.cancel == nil {
-			// create a new channel
-			rkq.hasWorkCh = make(chan struct{}, numRekeyWorkers)
-			// spawn goroutine if needed
-			var ctx context.Context
-			ctx, rkq.cancel = context.WithCancel(context.Background())
-			for i := 0; i < numRekeyWorkers; i++ {
-				go rkq.processRekeys(ctx)
-			}
-		}
-		rkq.queue = append(rkq.queue, rekeyQueueEntry{id, c})
-	}()
-	// poke the channel
-	select {
-	case rkq.hasWorkCh <- struct{}{}:
-	default:
-	}
-	return c
-}
-
-// IsRekeyPending implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) IsRekeyPending(id tlf.ID) bool {
-	return rkq.GetRekeyChannel(id) != nil
-}
-
-// GetRekeyChannel implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) GetRekeyChannel(id tlf.ID) <-chan error {
-	rkq.queueMu.RLock()
-	defer rkq.queueMu.RUnlock()
-	for _, e := range rkq.queue {
-		if e.id == id {
-			return e.ch
-		}
-	}
-	return nil
-}
-
-// Clear implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) Clear() {
-	channels := func() []chan error {
-		rkq.queueMu.Lock()
-		defer rkq.queueMu.Unlock()
-		if rkq.cancel != nil {
-			// cancel
-			rkq.cancel()
-			rkq.cancel = nil
-			close(rkq.hasWorkCh)
-		}
-		// collect channels and clear queue
-		var channels []chan error
-		for _, e := range rkq.queue {
-			channels = append(channels, e.ch)
-		}
-		rkq.queue = make([]rekeyQueueEntry, 0)
-		return channels
-	}()
-	for _, c := range channels {
-		c <- context.Canceled
-		close(c)
-	}
-}
-
-// Wait implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) Wait(ctx context.Context) error {
-	return rkq.wg.Wait(ctx)
-}
 
 // CtxRekeyTagKey is the type used for unique context tags within an
 // enqueued Rekey.
@@ -136,48 +33,141 @@ const (
 // enqueued rekey ID tag.
 const CtxRekeyOpID = "REKEYID"
 
-// Dedicated goroutine to process the rekey queue.
-func (rkq *RekeyQueueStandard) processRekeys(ctx context.Context) {
+type rekeyQueueEntry struct {
+	id tlf.ID
+	ch chan error
+}
+
+// RekeyQueueStandard implements the RekeyQueue interface.
+type RekeyQueueStandard struct {
+	config Config
+	log    logger.Logger
+	queue  chan rekeyQueueEntry
+
+	wg kbfssync.RepeatedWaitGroup
+
+	lock     sync.RWMutex // protects all of the below
+	pendings map[tlf.ID]<-chan error
+	// cancel, if non-nil, is for all spawned workers. If nil, no workers should
+	// be running. Calling cancel would cause all workers to stop.
+	cancel context.CancelFunc
+}
+
+// Test that RekeyQueueStandard fully implements the RekeyQueue interface.
+var _ RekeyQueue = (*RekeyQueueStandard)(nil)
+
+// NewRekeyQueueStandard instantiates a new rekey worker.
+func NewRekeyQueueStandard(config Config) *RekeyQueueStandard {
+	log := config.MakeLogger("RQ")
+	rkq := &RekeyQueueStandard{
+		config:   config,
+		log:      log,
+		queue:    make(chan rekeyQueueEntry, rekeyQueueSize),
+		pendings: make(map[tlf.ID]<-chan error),
+	}
+	return rkq
+}
+
+func (rkq *RekeyQueueStandard) doneLocked(entry rekeyQueueEntry, err error) {
+	entry.ch <- err
+	close(entry.ch)
+	delete(rkq.pendings, entry.id)
+	rkq.wg.Done()
+}
+
+func (rkq *RekeyQueueStandard) done(entry rekeyQueueEntry, err error) {
+	rkq.lock.Lock()
+	defer rkq.lock.Unlock()
+	rkq.doneLocked(entry, err)
+}
+
+func (rkq *RekeyQueueStandard) work(ctx context.Context) {
 	for {
 		select {
-		case <-rkq.hasWorkCh:
-			for {
-				id, errChan := rkq.dequeue()
-				if id == tlf.NullID {
-					break
-				}
-				func() {
-					defer rkq.wg.Done()
-					// Assign an ID to this rekey operation so we can track it.
-					newCtx := ctxWithRandomIDReplayable(ctx, CtxRekeyIDKey,
-						CtxRekeyOpID, nil)
-					rkq.log.CDebugf(newCtx, "Processing rekey for %s", id)
-					err := rkq.config.KBFSOps().Rekey(newCtx, id)
-					if errChan != nil {
-						errChan <- err
-						close(errChan)
-					}
-				}()
-				if ctx.Err() != nil {
-					return
-				}
-			}
 		case <-ctx.Done():
 			return
+		case entry := <-rkq.queue:
+			newCtx := ctxWithRandomIDReplayable(ctx, CtxRekeyIDKey,
+				CtxRekeyOpID, nil)
+			rkq.log.CDebugf(newCtx, "Processing rekey for %s", entry.id)
+			err := rkq.config.KBFSOps().Rekey(newCtx, entry.id)
+			rkq.done(entry, err)
 		}
 	}
 }
 
-// dequeue, as name suggests, does a dequeue, and return the TLF ID and error
-// channel that associates with it. If and only if there's nothing in the
-// queue, it returns tlf.NullID and nil.
-func (rkq *RekeyQueueStandard) dequeue() (tid tlf.ID, errChan chan<- error) {
-	rkq.queueMu.Lock()
-	defer rkq.queueMu.Unlock()
-	if len(rkq.queue) == 0 {
-		return tlf.NullID, nil
+func (rkq *RekeyQueueStandard) ensureRunningLocked() {
+	if rkq.cancel != nil {
+		return
 	}
-	tid, errChan = rkq.queue[0].id, rkq.queue[0].ch
-	rkq.queue = rkq.queue[1:]
-	return tid, errChan
+	var ctx context.Context
+	ctx, rkq.cancel = context.WithCancel(context.Background())
+	for i := 0; i < numRekeyWorkers; i++ {
+		go rkq.work(ctx)
+	}
+}
+
+// Enqueue implements the RekeyQueue interface for RekeyQueueStandard.
+func (rkq *RekeyQueueStandard) Enqueue(id tlf.ID) <-chan error {
+	rkq.log.Debug("Enqueueing %s for rekey", id)
+
+	if ch := rkq.GetRekeyChannel(id); ch != nil {
+		return ch
+	}
+
+	rkq.wg.Add(1)
+
+	rkq.lock.Lock()
+	defer rkq.lock.Unlock()
+
+	rkq.ensureRunningLocked()
+
+	ch := make(chan error, 1)
+	rkq.queue <- rekeyQueueEntry{id: id, ch: ch}
+	rkq.pendings[id] = ch
+
+	return ch
+}
+
+// IsRekeyPending implements the RekeyQueue interface for RekeyQueueStandard.
+func (rkq *RekeyQueueStandard) IsRekeyPending(id tlf.ID) bool {
+	rkq.lock.RLock()
+	defer rkq.lock.RUnlock()
+	_, ok := rkq.pendings[id]
+	return ok
+}
+
+// GetRekeyChannel implements the RekeyQueue interface for RekeyQueueStandard.
+func (rkq *RekeyQueueStandard) GetRekeyChannel(id tlf.ID) <-chan error {
+	rkq.lock.RLock()
+	defer rkq.lock.RUnlock()
+	if ch, ok := rkq.pendings[id]; ok {
+		return ch
+	}
+	return nil
+}
+
+// Clear implements the RekeyQueue interface for RekeyQueueStandard.
+func (rkq *RekeyQueueStandard) Clear() {
+	rkq.lock.Lock()
+	defer rkq.lock.Unlock()
+	if rkq.cancel == nil {
+		return
+	}
+
+	rkq.cancel()
+	for more := true; more; { // drain rkq.queue
+		select {
+		case e := <-rkq.queue:
+			rkq.doneLocked(e, context.Canceled)
+		default:
+			more = false
+		}
+	}
+	rkq.cancel = nil
+}
+
+// Wait implements the RekeyQueue interface for RekeyQueueStandard.
+func (rkq *RekeyQueueStandard) Wait(ctx context.Context) error {
+	return rkq.wg.Wait(ctx)
 }
