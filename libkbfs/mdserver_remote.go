@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -574,7 +573,23 @@ func (md *MDServerRemote) MetadataUpdate(_ context.Context, arg keybase1.Metadat
 // FoldersNeedRekey implements the MetadataUpdateProtocol interface.
 func (md *MDServerRemote) FoldersNeedRekey(_ context.Context,
 	requests []keybase1.RekeyRequest) error {
-	return errors.New("unimplemented")
+	if md.squelchRekey {
+		md.log.Debug("MDServerRemote: rekey updates squelched for testing")
+		return nil
+	}
+	for _, req := range requests {
+		id, err := tlf.ParseID(req.FolderID)
+		if err != nil {
+			return err
+		}
+		md.log.Debug("MDServerRemote: folder needs rekey: %s", id.String())
+		// queue the folder for rekeying
+		md.config.RekeyQueue().Enqueue(id)
+	}
+	// Reset the timer in case there are a lot of rekey folders
+	// dribbling in from the server still.
+	md.rekeyTimer.Reset(MdServerBackgroundRekeyPeriod)
+	return nil
 }
 
 // FolderNeedsRekey implements the MetadataUpdateProtocol interface.
@@ -590,12 +605,7 @@ func (md *MDServerRemote) FolderNeedsRekey(_ context.Context,
 		return nil
 	}
 	// queue the folder for rekeying
-	errChan := md.config.RekeyQueue().Enqueue(id)
-	select {
-	case err := <-errChan:
-		md.log.Warning("MDServerRemote: error queueing %s for rekey: %v", id, err)
-	default:
-	}
+	md.config.RekeyQueue().Enqueue(id)
 	// Reset the timer in case there are a lot of rekey folders
 	// dribbling in from the server still.
 	md.rekeyTimer.Reset(MdServerBackgroundRekeyPeriod)
