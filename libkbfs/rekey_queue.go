@@ -87,11 +87,14 @@ func (rkq *RekeyQueueStandard) work(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case entry := <-rkq.queue:
-			newCtx := ctxWithRandomIDReplayable(ctx, CtxRekeyIDKey,
-				CtxRekeyOpID, nil)
-			rkq.log.CDebugf(newCtx, "Processing rekey for %s", entry.id)
-			err := rkq.config.KBFSOps().Rekey(newCtx, entry.id)
-			rkq.done(entry, err)
+			func() {
+				var err error
+				defer rkq.done(entry, err) // deferred in case a panic happens below
+				newCtx := ctxWithRandomIDReplayable(ctx, CtxRekeyIDKey,
+					CtxRekeyOpID, nil)
+				rkq.log.CDebugf(newCtx, "Processing rekey for %s", entry.id)
+				err = rkq.config.KBFSOps().Rekey(newCtx, entry.id)
+			}()
 		}
 	}
 }
@@ -120,11 +123,25 @@ func (rkq *RekeyQueueStandard) Enqueue(id tlf.ID) <-chan error {
 	rkq.lock.Lock()
 	defer rkq.lock.Unlock()
 
+	// Now we are locked, check again in case another one slips in. This wouldn't
+	// matter that much since Rekey is idempotent. But since we have the lock
+	// already, it won't hurt.
+	if ch := rkq.getRekeyChannelRLocked(id); ch != nil {
+		return ch
+	}
+
 	rkq.ensureRunningLocked()
 
 	ch := make(chan error, 1)
-	rkq.queue <- rekeyQueueEntry{id: id, ch: ch}
 	rkq.pendings[id] = ch
+
+	select {
+	case rkq.queue <- rekeyQueueEntry{id: id, ch: ch}:
+	default:
+		// The queue is full; avoid blocking by spawning a goroutine.
+		rkq.log.Debug("Rekey queue is full; enqueuing %s in the background", id)
+		go func() { rkq.queue <- rekeyQueueEntry{id: id, ch: ch} }()
+	}
 
 	return ch
 }
@@ -141,6 +158,10 @@ func (rkq *RekeyQueueStandard) IsRekeyPending(id tlf.ID) bool {
 func (rkq *RekeyQueueStandard) GetRekeyChannel(id tlf.ID) <-chan error {
 	rkq.lock.RLock()
 	defer rkq.lock.RUnlock()
+	return rkq.getRekeyChannelRLocked(id)
+}
+
+func (rkq *RekeyQueueStandard) getRekeyChannelRLocked(id tlf.ID) <-chan error {
 	if ch, ok := rkq.pendings[id]; ok {
 		return ch
 	}
