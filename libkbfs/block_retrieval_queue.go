@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/keybase/kbfs/kbfscodec"
 	"golang.org/x/net/context"
 )
 
@@ -25,8 +24,7 @@ type blockRetrievalConfig interface {
 	dataVersioner
 	logMaker
 	blockCacher
-	// Codec for copying blocks
-	codec() kbfscodec.Codec
+	codecGetter
 }
 
 // blockRetrievalRequest represents one consumer's request for a block.
@@ -171,14 +169,18 @@ func (brq *blockRetrievalQueue) Request(ctx context.Context, priority int, kmd K
 	for {
 		br, exists := brq.ptrs[bpLookup]
 		if !exists {
-			// Attempt to retrieve the block from the cache. This might be a
-			// specific type where the request blocks are CommonBlocks, but
-			// that direction can Set correctly. The cache will never have
-			// CommonBlocks.
-			cachedBlock, hasPrefetched, err :=
+			// Attempt to retrieve the block from the cache. This
+			// might be a specific type where the request blocks are
+			// CommonBlocks, but that direction can Set correctly. The
+			// cache will never have CommonBlocks.  TODO: verify that
+			// the returned lifetime here matches `lifetime` (which
+			// should always be TransientEntry, since a PermanentEntry
+			// would have been served directly from the cache
+			// elsewhere)?
+			cachedBlock, hasPrefetched, _, err :=
 				brq.config.BlockCache().GetWithPrefetch(ptr)
 			if err == nil && cachedBlock != nil {
-				block.Set(cachedBlock, brq.config.codec())
+				block.Set(cachedBlock, brq.config.Codec())
 				// This must be called in a goroutine to prevent deadlock in
 				// case this Request call was triggered by the prefetcher
 				// itself.
@@ -276,7 +278,7 @@ func (brq *blockRetrievalQueue) FinalizeRequest(
 		req := r
 		if block != nil {
 			// Copy the decrypted block to the caller
-			req.block.Set(block, brq.config.codec())
+			req.block.Set(block, brq.config.Codec())
 		}
 		// Since we created this channel with a buffer size of 1, this won't block.
 		req.doneCh <- err

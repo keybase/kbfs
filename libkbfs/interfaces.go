@@ -31,6 +31,22 @@ type blockCacher interface {
 	BlockCache() BlockCache
 }
 
+type keyGetterGetter interface {
+	keyGetter() blockKeyGetter
+}
+
+type codecGetter interface {
+	Codec() kbfscodec.Codec
+}
+
+type blockServerGetter interface {
+	BlockServer() BlockServer
+}
+
+type cryptoPureGetter interface {
+	cryptoPure() cryptoPure
+}
+
 // Block just needs to be (de)serialized using msgpack
 type Block interface {
 	dataVersioner
@@ -686,7 +702,7 @@ type BlockCache interface {
 	// GetWithPrefetch retrieves a block from the cache, along with whether or
 	// not it has triggered a prefetch.
 	GetWithPrefetch(ptr BlockPointer) (
-		block Block, hasPrefetched bool, err error)
+		block Block, hasPrefetched bool, lifetime BlockCacheLifetime, err error)
 	// PutWithPrefetch puts a block into the cache, along with whether or not
 	// it has triggered a prefetch.
 	PutWithPrefetch(ptr BlockPointer, tlf tlf.ID, block Block,
@@ -1407,6 +1423,10 @@ type Config interface {
 	dataVersioner
 	logMaker
 	blockCacher
+	blockServerGetter
+	codecGetter
+	cryptoPureGetter
+	keyGetterGetter
 	KBFSOps() KBFSOps
 	SetKBFSOps(KBFSOps)
 	KBPKI() KBPKI
@@ -1426,7 +1446,6 @@ type Config interface {
 	SetDirtyBlockCache(DirtyBlockCache)
 	Crypto() Crypto
 	SetCrypto(Crypto)
-	Codec() kbfscodec.Codec
 	SetCodec(kbfscodec.Codec)
 	MDOps() MDOps
 	SetMDOps(MDOps)
@@ -1436,7 +1455,6 @@ type Config interface {
 	SetBlockOps(BlockOps)
 	MDServer() MDServer
 	SetMDServer(MDServer)
-	BlockServer() BlockServer
 	SetBlockServer(BlockServer)
 	KeyServer() KeyServer
 	SetKeyServer(KeyServer)
