@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -570,8 +571,15 @@ func (md *MDServerRemote) MetadataUpdate(_ context.Context, arg keybase1.Metadat
 	return nil
 }
 
+// FoldersNeedRekey implements the MetadataUpdateProtocol interface.
+func (md *MDServerRemote) FoldersNeedRekey(_ context.Context,
+	requests []keybase1.RekeyRequest) error {
+	return errors.New("unimplemented")
+}
+
 // FolderNeedsRekey implements the MetadataUpdateProtocol interface.
-func (md *MDServerRemote) FolderNeedsRekey(_ context.Context, arg keybase1.FolderNeedsRekeyArg) error {
+func (md *MDServerRemote) FolderNeedsRekey(_ context.Context,
+	arg keybase1.FolderNeedsRekeyArg) error {
 	id, err := tlf.ParseID(arg.FolderID)
 	if err != nil {
 		return err
