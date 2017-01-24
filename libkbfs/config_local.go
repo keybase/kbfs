@@ -900,17 +900,16 @@ func (c *ConfigLocal) EnableJournaling(
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
 
-	// Set the maximum journal disk limit to 50 GiB.
-	const maxAvailableBytes uint64 = 50 * 1024 * 1024 * 1024
 	availableBytes, err := getDiskLimits(journalRoot)
 	if err != nil {
 		return err
 	}
 	// Set journalDiskLimit to a quarter of the free disk space,
 	// up to 50 GiB.
+	const maxJournalDiskLimit uint64 = 50 * 1024 * 1024 * 1024
 	var journalDiskLimit = availableBytes / 4
-	if availableBytes > maxAvailableBytes {
-		availableBytes = maxAvailableBytes
+	if journalDiskLimit > maxJournalDiskLimit {
+		journalDiskLimit = maxJournalDiskLimit
 	}
 	log.Debug("Setting journal disk limit to %d bytes", journalDiskLimit)
 	// TODO: Also keep track of and limit the inode count.
