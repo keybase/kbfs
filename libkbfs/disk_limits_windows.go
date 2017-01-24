@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sys/windows"
 )
 
 // getDiskLimits gets a diskLimits object for the logical disk
@@ -15,7 +16,7 @@ import (
 //
 // TODO: Also return available files.
 func getDiskLimits(path string) (availableBytes uint64, err error) {
-	pathPtr, err := UTF16PtrFromString(path)
+	pathPtr, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
