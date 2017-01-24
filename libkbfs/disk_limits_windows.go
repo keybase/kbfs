@@ -12,27 +12,26 @@ import (
 
 // getDiskLimits gets a diskLimits object for the logical disk
 // containing the given path.
-func getDiskLimits(path string) (diskLimits, error) {
+//
+// TODO: Also return available files.
+func getDiskLimits(path string) (availableBytes uint64, err error) {
 	pathPtr, err := UTF16PtrFromString(path)
 	if err != nil {
-		return diskLimits{}, errors.WithStack(err)
+		return 0, errors.WithStack(err)
 	}
 
-	var availableBytes uint64
 	dll := windows.NewLazySystemDLL("kernel32.dll")
 	proc := dll.NewProc("GetDiskFreeSpaceExW")
 	r1, _, err := proc.Call(uintptr(unsafe.Pointer(pathPtr)),
 		uintptr(unsafe.Pointer(&availableBytes)), 0, 0)
 	if r1 == 0 {
-		return diskLimits{}, errors.WithStack(err)
+		return 0, errors.WithStack(err)
 	}
 
 	// TODO: According to http://superuser.com/a/104224 , on
 	// Windows, the available file limit is determined just from
 	// the filesystem type. Detect the filesystem type and use
-	// that to fill in availableFiles, when we add that field.
+	// that to determine and return availableFiles.
 
-	return diskLimits{
-		availableBytes: availableBytes,
-	}, nil
+	return availableBytes, nil
 }
