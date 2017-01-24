@@ -899,17 +899,26 @@ func (c *ConfigLocal) EnableJournaling(
 	log := c.MakeLogger("")
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
-	// Set the journal disk limit to 10 GiB for now.
-	//
-	// TODO: Base this on the size of the disk, e.g. a quarter of
-	// the total size of the disk up to a maximum of 100 GB.
-	//
+
+	// Set the maximum journal disk limit to 50 GiB.
+	const maxAvailableBytes uint64 = 50 * 1024 * 1024 * 1024
+	availableBytes, err := getDiskLimits(journalRoot)
+	if err != nil {
+		return err
+	}
+	// Set journalDiskLimit to a quarter of the free disk space,
+	// up to 50 GiB.
+	var journalDiskLimit = availableBytes / 4
+	if availableBytes > maxAvailableBytes {
+		availableBytes = maxAvailableBytes
+	}
+	log.Debug("Setting journal disk limit to %d bytes", journalDiskLimit)
 	// TODO: Also keep track of and limit the inode count.
-	var journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
+	//
 	// TODO: Use a diskLimiter implementation that applies
 	// backpressure.
 	diskLimitSemaphore := kbfssync.NewSemaphore()
-	diskLimitSemaphore.Release(journalDiskLimit)
+	diskLimitSemaphore.Release(int64(journalDiskLimit))
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,
 		flushListener, diskLimitSemaphore)
