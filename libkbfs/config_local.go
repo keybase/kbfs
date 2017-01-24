@@ -911,7 +911,9 @@ func (c *ConfigLocal) EnableJournaling(
 	if journalDiskLimit > maxJournalDiskLimit {
 		journalDiskLimit = maxJournalDiskLimit
 	}
-	log.Debug("Setting journal disk limit to %d bytes", journalDiskLimit)
+	log.Debug("Setting journal disk limit to %d bytes "+
+		"(disk containing %s has %d available bytes)",
+		journalDiskLimit, journalRoot, availableBytes)
 	// TODO: Also keep track of and limit the inode count.
 	//
 	// TODO: Use a diskLimiter implementation that applies
