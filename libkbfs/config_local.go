@@ -901,6 +901,7 @@ func (c *ConfigLocal) EnableJournaling(
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
 
+	// getDiskLimits requires its argument to exist.
 	err = ioutil.MkdirAll(journalRoot, 0700)
 	if err != nil {
 		return err
