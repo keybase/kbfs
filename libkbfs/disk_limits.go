@@ -5,8 +5,9 @@
 package libkbfs
 
 // diskLimits contains information about a particular logical disk's
-// limits. For now, it only tracks available bytes, but in the future
-// it may also track available files.
+// limits.
+//
+// TODO: Also track available files.
 type diskLimits struct {
 	availableBytes uint64
 }

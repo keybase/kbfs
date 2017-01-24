@@ -11,6 +11,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// getDiskLimits gets a diskLimits object for the logical disk
+// containing the given path.
 func getDiskLimits(path string) (diskLimits, error) {
 	var stat unix.Statfs_t
 	err := unix.Statfs(path, &stat)
@@ -20,6 +22,9 @@ func getDiskLimits(path string) (diskLimits, error) {
 
 	// Bavail is the free block count for an unprivileged user.
 	availableBytes := stat.Bavail * uint64(stat.Bsize)
+
+	// TODO: Use stat.Ffree for availableFiles when we add
+	// that field.
 
 	return diskLimits{
 		availableBytes: availableBytes,

@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// getDiskLimits gets a diskLimits object for the logical disk
+// containing the given path.
 func getDiskLimits(path string) (diskLimits, error) {
 	pathPtr, err := UTF16PtrFromString(path)
 	if err != nil {
@@ -24,6 +26,11 @@ func getDiskLimits(path string) (diskLimits, error) {
 	if r1 == 0 {
 		return diskLimits{}, errors.WithStack(err)
 	}
+
+	// TODO: According to http://superuser.com/a/104224 , on
+	// Windows, the available file limit is determined just from
+	// the filesystem type. Detect the filesystem type and use
+	// that to fill in availableFiles, when we add that field.
 
 	return diskLimits{
 		availableBytes: availableBytes,
