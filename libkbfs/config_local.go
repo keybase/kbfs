@@ -11,6 +11,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfssync"
@@ -899,6 +900,11 @@ func (c *ConfigLocal) EnableJournaling(
 	log := c.MakeLogger("")
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
+
+	err = ioutil.MkdirAll(journalRoot, 0700)
+	if err != nil {
+		return err
+	}
 
 	availableBytes, err := getDiskLimits(journalRoot)
 	if err != nil {
