@@ -136,10 +136,10 @@ func TestRemoveLastDeviceV2(t *testing.T) {
 	uid4 := keybase1.MakeTestUID(0x4)
 
 	key1 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key1")
-	key2 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key3")
+	key2 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key2")
 
 	half1 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x1})
-	half2 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x3})
+	half2 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
 
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
