@@ -31,6 +31,22 @@ type blockCacher interface {
 	BlockCache() BlockCache
 }
 
+type keyGetterGetter interface {
+	keyGetter() blockKeyGetter
+}
+
+type codecGetter interface {
+	Codec() kbfscodec.Codec
+}
+
+type blockServerGetter interface {
+	BlockServer() BlockServer
+}
+
+type cryptoPureGetter interface {
+	cryptoPure() cryptoPure
+}
+
 // Block just needs to be (de)serialized using msgpack
 type Block interface {
 	dataVersioner
@@ -686,7 +702,7 @@ type BlockCache interface {
 	// GetWithPrefetch retrieves a block from the cache, along with whether or
 	// not it has triggered a prefetch.
 	GetWithPrefetch(ptr BlockPointer) (
-		block Block, hasPrefetched bool, err error)
+		block Block, hasPrefetched bool, lifetime BlockCacheLifetime, err error)
 	// PutWithPrefetch puts a block into the cache, along with whether or not
 	// it has triggered a prefetch.
 	PutWithPrefetch(ptr BlockPointer, tlf tlf.ID, block Block,
@@ -1023,8 +1039,9 @@ type Prefetcher interface {
 	// PrefetchAfterBlockRetrieved allows the prefetcher to trigger prefetches
 	// after a block has been retrieved. Whichever component is responsible for
 	// retrieving blocks will call this method once it's done retrieving a
-	// block.
-	PrefetchAfterBlockRetrieved(b Block, kmd KeyMetadata, priority int,
+	// block. It caches if it has triggered a prefetch.
+	PrefetchAfterBlockRetrieved(b Block, blockPtr BlockPointer,
+		kmd KeyMetadata, priority int, lifetime BlockCacheLifetime,
 		hasPrefetched bool)
 	// Shutdown shuts down the prefetcher idempotently. Future calls to
 	// the various Prefetch* methods will return io.EOF. The returned channel
@@ -1406,6 +1423,10 @@ type Config interface {
 	dataVersioner
 	logMaker
 	blockCacher
+	blockServerGetter
+	codecGetter
+	cryptoPureGetter
+	keyGetterGetter
 	KBFSOps() KBFSOps
 	SetKBFSOps(KBFSOps)
 	KBPKI() KBPKI
@@ -1425,7 +1446,6 @@ type Config interface {
 	SetDirtyBlockCache(DirtyBlockCache)
 	Crypto() Crypto
 	SetCrypto(Crypto)
-	Codec() kbfscodec.Codec
 	SetCodec(kbfscodec.Codec)
 	MDOps() MDOps
 	SetMDOps(MDOps)
@@ -1435,7 +1455,6 @@ type Config interface {
 	SetBlockOps(BlockOps)
 	MDServer() MDServer
 	SetMDServer(MDServer)
-	BlockServer() BlockServer
 	SetBlockServer(BlockServer)
 	KeyServer() KeyServer
 	SetKeyServer(KeyServer)
@@ -1456,9 +1475,6 @@ type Config interface {
 	// ReqsBufSize indicates the number of read or write operations
 	// that can be buffered per folder
 	ReqsBufSize() int
-	// MaxFileBytes indicates the maximum supported plaintext size of
-	// a file in bytes.
-	MaxFileBytes() uint64
 	// MaxNameBytes indicates the maximum supported size of a
 	// directory entry name in bytes.
 	MaxNameBytes() uint32

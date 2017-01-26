@@ -158,6 +158,21 @@ func TestKBFSOpsConcurReadDuringSync(t *testing.T) {
 	}
 }
 
+func testCalcNumFileBlocks(dataLen int, bsplitter *BlockSplitterSimple) int {
+	nChildBlocks := 1 + dataLen/int(bsplitter.maxSize)
+	nFileBlocks := nChildBlocks
+	for nChildBlocks > 1 {
+		parentBlocks := 0
+		// Add parent blocks for each level of the tree.
+		for i := 0; i < nChildBlocks; i += bsplitter.MaxPtrsPerBlock() {
+			parentBlocks++
+		}
+		nFileBlocks += parentBlocks
+		nChildBlocks = parentBlocks
+	}
+	return nFileBlocks
+}
+
 // Test that writes can happen concurrently with a sync
 func testKBFSOpsConcurWritesDuringSync(t *testing.T,
 	initialWriteBytes int, nOneByteWrites int) {
@@ -249,10 +264,7 @@ func testKBFSOpsConcurWritesDuringSync(t *testing.T,
 	// applicable).
 	bcs := config.BlockCache().(*BlockCacheStandard)
 	numCleanBlocks := bcs.cleanTransient.Len()
-	nFileBlocks := 1 + len(data)/int(bsplitter.maxSize)
-	if nFileBlocks > 1 {
-		nFileBlocks++ // top indirect block
-	}
+	nFileBlocks := testCalcNumFileBlocks(len(data), bsplitter)
 	if g, e := numCleanBlocks, 4+nFileBlocks; g != e {
 		t.Errorf("Unexpected number of cached clean blocks: %d vs %d (%d vs %d)\n", g, e, totalSize, bsplitter.maxSize)
 	}
@@ -984,8 +996,12 @@ func TestKBFSOpsConcurWriteDuringSyncMultiBlocks(t *testing.T) {
 	onPutStalledCh, putUnstallCh, putCtx :=
 		StallMDOp(ctx, config, StallableMDAfterPut, 1)
 
-	// make blocks small
-	config.BlockSplitter().(*BlockSplitterSimple).maxSize = 5
+	// Make the blocks small, with multiple levels of indirection, but
+	// make the unembedded size large, so we don't create thousands of
+	// unembedded block change blocks.
+	blockSize := int64(5)
+	bsplit := &BlockSplitterSimple{blockSize, 2, 100 * 1024}
+	config.SetBlockSplitter(bsplit)
 
 	// create and write to a file
 	rootNode := GetRootNodeOrBust(ctx, t, config, "test_user", false)
@@ -1093,9 +1109,12 @@ func TestKBFSOpsConcurWriteParallelBlocksCanceled(t *testing.T) {
 	config.BlockServer().Shutdown()
 	config.SetBlockServer(b)
 
-	// make blocks small
+	// Make the blocks small, with multiple levels of indirection, but
+	// make the unembedded size large, so we don't create thousands of
+	// unembedded block change blocks.
 	blockSize := int64(5)
-	config.BlockSplitter().(*BlockSplitterSimple).maxSize = blockSize
+	bsplit := &BlockSplitterSimple{blockSize, 2, 100 * 1024}
+	config.SetBlockSplitter(bsplit)
 
 	// create and write to a file
 	rootNode := GetRootNodeOrBust(ctx, t, config, "test_user", false)
@@ -1240,9 +1259,12 @@ func TestKBFSOpsConcurWriteParallelBlocksError(t *testing.T) {
 	b.EXPECT().ArchiveBlockReferences(gomock.Any(), gomock.Any(),
 		gomock.Any()).AnyTimes().Return(nil)
 
-	// make blocks small
+	// Make the blocks small, with multiple levels of indirection, but
+	// make the unembedded size large, so we don't create thousands of
+	// unembedded block change blocks.
 	blockSize := int64(5)
-	config.BlockSplitter().(*BlockSplitterSimple).maxSize = blockSize
+	bsplit := &BlockSplitterSimple{blockSize, 2, 100 * 1024}
+	config.SetBlockSplitter(bsplit)
 
 	// create and write to a file
 	rootNode := GetRootNodeOrBust(ctx, t, config, "test_user", false)
@@ -1315,9 +1337,9 @@ func TestKBFSOpsConcurWriteParallelBlocksError(t *testing.T) {
 	// leave ourselves in a dirty state.
 }
 
-// Test that writes that happen on a multi-block file concurrently
-// with a sync, which has to retry due to an archived block, works
-// correctly.  Regression test for KBFS-700.
+// When writes happen on a multi-block file concurrently with a sync,
+// and the sync has to retry due to an archived block, test that
+// everything works correctly.  Regression test for KBFS-700.
 func TestKBFSOpsMultiBlockWriteDuringRetriedSync(t *testing.T) {
 	config, _, ctx, cancel := kbfsOpsConcurInit(t, "test_user")
 	defer kbfsConcurTestShutdown(t, config, ctx, cancel)
@@ -1522,8 +1544,10 @@ func TestKBFSOpsMultiBlockWriteWithRetryAndError(t *testing.T) {
 		t.Fatal(ctx.Err())
 	}
 
-	// Wait for the rest of the first set of  block to finish (before the retry)
-	for i := 0; i < 5; i++ {
+	nFileBlocks := testCalcNumFileBlocks(40, bsplitter)
+
+	// Wait for the rest of the first set of blocks to finish (before the retry)
+	for i := 0; i < nFileBlocks-1; i++ {
 		select {
 		case <-onSyncStalledCh:
 		case <-ctx.Done():

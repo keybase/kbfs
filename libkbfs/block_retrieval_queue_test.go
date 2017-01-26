@@ -30,7 +30,7 @@ func newTestBlockRetrievalConfig(t *testing.T) *testBlockRetrievalConfig {
 	}
 }
 
-func (c *testBlockRetrievalConfig) codec() kbfscodec.Codec {
+func (c *testBlockRetrievalConfig) Codec() kbfscodec.Codec {
 	return c.testCodec
 }
 
@@ -43,7 +43,7 @@ func (c *testBlockRetrievalConfig) MakeLogger(_ string) logger.Logger {
 }
 
 func (c testBlockRetrievalConfig) DataVersion() DataVer {
-	return FilesWithHolesDataVer
+	return ChildHolesDataVer
 }
 
 func makeRandomBlockPointer(t *testing.T) BlockPointer {
@@ -53,6 +53,7 @@ func makeRandomBlockPointer(t *testing.T) BlockPointer {
 		id,
 		5,
 		1,
+		DirectBlock,
 		kbfsblock.MakeContext(
 			"fake creator",
 			"fake writer",
@@ -65,17 +66,11 @@ func makeKMD() KeyMetadata {
 	return emptyKeyMetadata{tlf.FakeID(0, false), 1}
 }
 
-func makeBlockCache() func() BlockCache {
-	cache := NewBlockCacheStandard(10, getDefaultCleanBlockCacheCapacity())
-	return func() BlockCache {
-		return cache
-	}
-}
-
 func TestBlockRetrievalQueueBasic(t *testing.T) {
 	t.Log("Add a block retrieval request to the queue and retrieve it.")
 	q := newBlockRetrievalQueue(1, newTestBlockRetrievalConfig(t))
 	require.NotNil(t, q)
+	defer q.Shutdown()
 
 	ctx := context.Background()
 	ptr1 := makeRandomBlockPointer(t)
@@ -98,6 +93,7 @@ func TestBlockRetrievalQueuePreemptPriority(t *testing.T) {
 	t.Log("Preempt a lower-priority block retrieval request with a higher priority request.")
 	q := newBlockRetrievalQueue(1, newTestBlockRetrievalConfig(t))
 	require.NotNil(t, q)
+	defer q.Shutdown()
 
 	ctx := context.Background()
 	ptr1 := makeRandomBlockPointer(t)
@@ -126,6 +122,7 @@ func TestBlockRetrievalQueueInterleavedPreemption(t *testing.T) {
 	t.Log("Handle a first request and then preempt another one.")
 	q := newBlockRetrievalQueue(1, newTestBlockRetrievalConfig(t))
 	require.NotNil(t, q)
+	defer q.Shutdown()
 
 	ctx := context.Background()
 	ptr1 := makeRandomBlockPointer(t)
@@ -165,6 +162,7 @@ func TestBlockRetrievalQueueMultipleRequestsSameBlock(t *testing.T) {
 	t.Log("Request the same block multiple times.")
 	q := newBlockRetrievalQueue(1, newTestBlockRetrievalConfig(t))
 	require.NotNil(t, q)
+	defer q.Shutdown()
 
 	ctx := context.Background()
 	ptr1 := makeRandomBlockPointer(t)
@@ -190,6 +188,7 @@ func TestBlockRetrievalQueueElevatePriorityExistingRequest(t *testing.T) {
 	t.Log("Elevate the priority on an existing request.")
 	q := newBlockRetrievalQueue(1, newTestBlockRetrievalConfig(t))
 	require.NotNil(t, q)
+	defer q.Shutdown()
 
 	ctx := context.Background()
 	ptr1 := makeRandomBlockPointer(t)
@@ -231,6 +230,7 @@ func TestBlockRetrievalQueueCurrentlyProcessingRequest(t *testing.T) {
 	t.Log("Begin processing a request and then add another one for the same block.")
 	q := newBlockRetrievalQueue(1, newTestBlockRetrievalConfig(t))
 	require.NotNil(t, q)
+	defer q.Shutdown()
 
 	ctx := context.Background()
 	ptr1 := makeRandomBlockPointer(t)

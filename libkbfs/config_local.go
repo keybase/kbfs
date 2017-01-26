@@ -15,15 +15,13 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/keybase/kbfs/kbfssync"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/shirou/gopsutil/mem"
 	"golang.org/x/net/context"
 )
 
 const (
-	// Max supported plaintext size of a file in KBFS.  TODO: increase
-	// this once we support multiple levels of indirection.
-	maxFileBytesDefault = 2 * 1024 * 1024 * 1024
 	// Max supported size of a directory entry name.
 	maxNameBytesDefault = 255
 	// Maximum supported plaintext size of a directory in KBFS. TODO:
@@ -76,7 +74,6 @@ type ConfigLocal struct {
 	noBGFlush   bool // logic opposite so the default value is the common setting
 	rwpWaitTime time.Duration
 
-	maxFileBytes uint64
 	maxNameBytes uint32
 	maxDirBytes  uint64
 	rekeyQueue   RekeyQueue
@@ -243,7 +240,6 @@ func NewConfigLocal(loggerFn func(module string) logger.Logger) *ConfigLocal {
 	config.SetKeyOps(&KeyOpsStandard{config})
 	config.SetRekeyQueue(NewRekeyQueueStandard(config))
 
-	config.maxFileBytes = maxFileBytesDefault
 	config.maxNameBytes = maxNameBytesDefault
 	config.maxDirBytes = maxDirBytesDefault
 	config.rwpWaitTime = rekeyWithPromptWaitTimeDefault
@@ -305,6 +301,13 @@ func (c *ConfigLocal) SetKeyManager(k KeyManager) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.keyman = k
+}
+
+// KeyGetter implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) keyGetter() blockKeyGetter {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.keyman
 }
 
 // Reporter implements the Config interface for ConfigLocal.
@@ -389,6 +392,13 @@ func (c *ConfigLocal) SetCrypto(cr Crypto) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.crypto = cr
+}
+
+// CryptoPure implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) cryptoPure() cryptoPure {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.crypto
 }
 
 // Codec implements the Config interface for ConfigLocal.
@@ -590,7 +600,7 @@ func (c *ConfigLocal) SetMetadataVersion(mdVer MetadataVer) {
 
 // DataVersion implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) DataVersion() DataVer {
-	return FilesWithHolesDataVer
+	return AtLeastTwoLevelsOfChildrenDataVer
 }
 
 // DoBackgroundFlushes implements the Config interface for ConfigLocal.
@@ -651,11 +661,6 @@ func (c *ConfigLocal) QuotaReclamationMinHeadAge() time.Duration {
 // ReqsBufSize implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) ReqsBufSize() int {
 	return 20
-}
-
-// MaxFileBytes implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) MaxFileBytes() uint64 {
-	return c.maxFileBytes
 }
 
 // MaxNameBytes implements the Config interface for ConfigLocal.
@@ -739,7 +744,7 @@ func (c *ConfigLocal) ResetCaches() {
 // MakeLogger implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) MakeLogger(module string) logger.Logger {
 	// No need to lock since c.loggerFn is initialized once at
-	// construction.
+	// construction. Also resetCachesWithoutShutdown would deadlock.
 	return c.loggerFn(module)
 }
 
@@ -897,9 +902,20 @@ func (c *ConfigLocal) EnableJournaling(
 	log := c.MakeLogger("")
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
+	// Set the journal disk limit to 10 GiB for now.
+	//
+	// TODO: Base this on the size of the disk, e.g. a quarter of
+	// the total size of the disk up to a maximum of 100 GB.
+	//
+	// TODO: Also keep track of and limit the inode count.
+	var journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
+	// TODO: Use a diskLimiter implementation that applies
+	// backpressure.
+	diskLimitSemaphore := kbfssync.NewSemaphore()
+	diskLimitSemaphore.Release(journalDiskLimit)
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,
-		flushListener)
+		flushListener, diskLimitSemaphore)
 	ctx := context.Background()
 	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, c.KBPKI())
 	if err != nil {

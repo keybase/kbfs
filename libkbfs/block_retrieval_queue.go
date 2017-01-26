@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/keybase/kbfs/kbfscodec"
 	"golang.org/x/net/context"
 )
 
@@ -25,8 +24,7 @@ type blockRetrievalConfig interface {
 	dataVersioner
 	logMaker
 	blockCacher
-	// Codec for copying blocks
-	codec() kbfscodec.Codec
+	codecGetter
 }
 
 // blockRetrievalRequest represents one consumer's request for a block.
@@ -164,24 +162,36 @@ func (brq *blockRetrievalQueue) Request(ctx context.Context, priority int, kmd K
 
 	brq.mtx.Lock()
 	defer brq.mtx.Unlock()
-	// Might have to retry if the context has been canceled.
-	// This loop will iterate a maximum of 2 times. It either hits the `return`
-	// statement at the bottom on the first iteration, or the `continue`
-	// statement first which causes it to `return` on the next iteration.
+	// We might have to retry if the context has been canceled.  This loop will
+	// iterate a maximum of 2 times. It either hits the `return` statement at
+	// the bottom on the first iteration, or the `continue` statement first
+	// which causes it to `return` on the next iteration.
 	for {
 		br, exists := brq.ptrs[bpLookup]
 		if !exists {
-			// Attempt to retrieve the block from the cache. This might be a
-			// specific type where the request blocks are CommonBlocks, but
-			// that direction can Set correctly. The cache will never have
-			// CommonBlocks.
-			cachedBlock, hasPrefetched, err :=
+			// Attempt to retrieve the block from the cache. This
+			// might be a specific type where the request blocks are
+			// CommonBlocks, but that direction can Set correctly. The
+			// cache will never have CommonBlocks.  TODO: verify that
+			// the returned lifetime here matches `lifetime` (which
+			// should always be TransientEntry, since a PermanentEntry
+			// would have been served directly from the cache
+			// elsewhere)?
+			cachedBlock, hasPrefetched, _, err :=
 				brq.config.BlockCache().GetWithPrefetch(ptr)
 			if err == nil && cachedBlock != nil {
-				block.Set(cachedBlock, brq.config.codec())
-				brq.triggerPrefetchAfterBlockRetrieved(
-					cachedBlock, kmd, priority, hasPrefetched)
-				ch <- nil
+				block.Set(cachedBlock, brq.config.Codec())
+				// This must be called in a goroutine to prevent deadlock in
+				// case this Request call was triggered by the prefetcher
+				// itself.
+				go func() {
+					brq.Prefetcher().PrefetchAfterBlockRetrieved(
+						cachedBlock, ptr, kmd, priority, lifetime, hasPrefetched)
+					// To prevent races, we don't tell the requestor that we're
+					// done until we've attempted to prefetch and cached the
+					// result of that attempt.
+					ch <- nil
+				}()
 				return ch
 			}
 			// Add to the heap
@@ -235,20 +245,6 @@ func (brq *blockRetrievalQueue) WorkOnRequest() <-chan *blockRetrieval {
 	return ch
 }
 
-func (brq *blockRetrievalQueue) triggerPrefetchAfterBlockRetrieved(
-	block Block, kmd KeyMetadata, priority int, hasPrefetched bool) {
-	if hasPrefetched {
-		return
-	}
-	// We have to trigger prefetches in a goroutine because otherwise we
-	// can deadlock with `TogglePrefetcher`.
-	go func() {
-		brq.prefetchMtx.RLock()
-		defer brq.prefetchMtx.RUnlock()
-		brq.prefetcher.PrefetchAfterBlockRetrieved(block, kmd, priority, false)
-	}()
-}
-
 // FinalizeRequest is the last step of a retrieval request once a block has
 // been obtained. It removes the request from the blockRetrievalQueue,
 // preventing more requests from mutating the retrieval, then notifies all
@@ -265,15 +261,11 @@ func (brq *blockRetrievalQueue) FinalizeRequest(
 
 	// Cache the block and trigger prefetches if there is no error.
 	if err == nil {
-		if brq.config.BlockCache() != nil {
-			_ = brq.config.BlockCache().PutWithPrefetch(
-				retrieval.blockPtr, retrieval.kmd.TlfID(), block,
-				retrieval.cacheLifetime, true)
-		}
 		// We treat this request as not having been prefetched, because the
 		// only way to get here is if the request wasn't already cached.
-		brq.triggerPrefetchAfterBlockRetrieved(
-			block, retrieval.kmd, retrieval.priority, false)
+		brq.Prefetcher().PrefetchAfterBlockRetrieved(block,
+			retrieval.blockPtr, retrieval.kmd, retrieval.priority,
+			retrieval.cacheLifetime, false)
 	}
 
 	// This is a symbolic lock, since there shouldn't be any other goroutines
@@ -286,7 +278,7 @@ func (brq *blockRetrievalQueue) FinalizeRequest(
 		req := r
 		if block != nil {
 			// Copy the decrypted block to the caller
-			req.block.Set(block, brq.config.codec())
+			req.block.Set(block, brq.config.Codec())
 		}
 		// Since we created this channel with a buffer size of 1, this won't block.
 		req.doneCh <- err
@@ -313,12 +305,9 @@ func (brq *blockRetrievalQueue) TogglePrefetcher(ctx context.Context, enable boo
 	// this function doesn't leak prefetchers.
 	brq.prefetchMtx.Lock()
 	defer brq.prefetchMtx.Unlock()
-	shutdownCh := brq.prefetcher.Shutdown()
-	select {
-	case <-shutdownCh:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	// Don't wait for the existing prefetcher to shutdown so we don't deadlock
+	// any callers.
+	_ = brq.prefetcher.Shutdown()
 	if enable {
 		brq.prefetcher = newBlockPrefetcher(brq, brq.config)
 	}

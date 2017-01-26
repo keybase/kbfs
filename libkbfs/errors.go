@@ -1163,3 +1163,22 @@ func (e TLFCryptKeyNotPerDeviceEncrypted) Error() string {
 	return fmt.Sprintf("TLF crypt key for %s at generation %d is not per-device encrypted",
 		e.tlf, e.keyGen)
 }
+
+type cachePutCacheFullError struct {
+	ptr BlockPointer
+}
+
+func (e cachePutCacheFullError) Error() string {
+	return fmt.Sprintf("tried and failed to put transient block into the cache because it is full. Pointer: %+v", e.ptr)
+}
+
+// FileTooBigForCRError indicates that a file is too big to fit in
+// memory, and CR can't handle it.
+type FileTooBigForCRError struct {
+	p path
+}
+
+// Error implements the error interface for FileTooBigForCRError.
+func (e FileTooBigForCRError) Error() string {
+	return fmt.Sprintf("Cannot complete CR because the file %s is too big", e.p)
+}

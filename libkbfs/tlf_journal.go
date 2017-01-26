@@ -41,6 +41,7 @@ type tlfJournalConfig interface {
 	MDServer() MDServer
 	usernameGetter() normalizedUsernameGetter
 	MakeLogger(module string) logger.Logger
+	diskLimitTimeout() time.Duration
 }
 
 // tlfJournalConfigWrapper is an adapter for Config objects to the
@@ -59,6 +60,12 @@ func (ca tlfJournalConfigAdapter) mdDecryptionKeyGetter() mdDecryptionKeyGetter 
 
 func (ca tlfJournalConfigAdapter) usernameGetter() normalizedUsernameGetter {
 	return ca.Config.KBPKI()
+}
+
+const defaultDiskLimitTimeout = 3 * time.Second
+
+func (ca tlfJournalConfigAdapter) diskLimitTimeout() time.Duration {
+	return defaultDiskLimitTimeout
 }
 
 const (
@@ -178,6 +185,10 @@ type tlfJournal struct {
 	onBranchChange      branchChangeListener
 	onMDFlush           mdFlushListener
 
+	// Invariant: this tlfJournal acquires exactly
+	// blockJournal.getStoredBytes() until shutdown.
+	diskLimiter diskLimiter
+
 	// All the channels below are used as simple on/off
 	// signals. They're buffered for one object, and all sends are
 	// asynchronous, so multiple sends get collapsed into one
@@ -252,7 +263,8 @@ func makeTLFJournal(
 	dir string, tlfID tlf.ID, config tlfJournalConfig,
 	delegateBlockServer BlockServer, bws TLFJournalBackgroundWorkStatus,
 	bwDelegate tlfJournalBWDelegate, onBranchChange branchChangeListener,
-	onMDFlush mdFlushListener) (*tlfJournal, error) {
+	onMDFlush mdFlushListener, diskLimiter diskLimiter) (
+	*tlfJournal, error) {
 	if uid == keybase1.UID("") {
 		return nil, errors.New("Empty user")
 	}
@@ -320,6 +332,7 @@ func makeTLFJournal(
 		deferLog:             log.CloneWithAddedDepth(1),
 		onBranchChange:       onBranchChange,
 		onMDFlush:            onMDFlush,
+		diskLimiter:          diskLimiter,
 		hasWorkCh:            make(chan struct{}, 1),
 		needPauseCh:          make(chan struct{}, 1),
 		needResumeCh:         make(chan struct{}, 1),
@@ -348,6 +361,15 @@ func makeTLFJournal(
 	}
 	if bws == TLFJournalBackgroundWorkPaused {
 		j.wg.Pause()
+	}
+
+	// Do this only once we're sure we won't error.
+	storedBytes := j.blockJournal.getStoredBytes()
+	if storedBytes > 0 {
+		availableBytes := j.diskLimiter.ForceAcquire(storedBytes)
+		j.log.CDebugf(ctx,
+			"Force-acquired %d bytes for %s: available=%d",
+			storedBytes, tlfID, availableBytes)
 	}
 
 	go j.doBackgroundWorkLoop(bws, backoff.NewExponentialBackOff())
@@ -482,7 +504,7 @@ func (j *tlfJournal) doBackgroundWorkLoop(
 
 				if err != nil {
 					j.log.CWarningf(ctx,
-						"Background work error for %s: %v",
+						"Background work error for %s: %+v",
 						j.tlfID, err)
 
 					bTime := retry.NextBackOff()
@@ -787,8 +809,31 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 		return err
 	}
 
-	return j.blockJournal.removeFlushedEntries(ctx, entries, j.tlfID,
-		j.config.Reporter())
+	storedBytesBefore := j.blockJournal.getStoredBytes()
+
+	removedBytes, err := j.blockJournal.removeFlushedEntries(
+		ctx, entries, j.tlfID, j.config.Reporter())
+	if err != nil {
+		return err
+	}
+
+	storedBytesAfter := j.blockJournal.getStoredBytes()
+
+	// removedBytes should be zero since we're always saving
+	// blocks.
+	if removedBytes != 0 {
+		panic(fmt.Sprintf("removedBytes=%d unexpectedly non-zero",
+			removedBytes))
+	}
+
+	// storedBytes shouldn't change since removedBytes is 0.
+	if storedBytesAfter != storedBytesBefore {
+		panic(fmt.Sprintf(
+			"storedBytes unexpectedly changed from %d to %d",
+			storedBytesBefore, storedBytesAfter))
+	}
+
+	return nil
 }
 
 func (j *tlfJournal) flushBlockEntries(
@@ -900,30 +945,46 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 
 	// Remove saved blocks in chunks to avoid starving foreground file
 	// system operations that need the lock for too long.
-	lastToRemove := journalOrdinal(0)
+	var lastToRemove journalOrdinal
 	for {
-		err := func() error {
+		nextLastToRemove, removedBytes, err := func() (journalOrdinal, int64, error) {
 			j.journalLock.Lock()
 			defer j.journalLock.Unlock()
 			if err := j.checkEnabledLocked(); err != nil {
-				return err
+				return 0, 0, err
 			}
 
-			var err error
-			lastToRemove, err = j.blockJournal.onMDFlush(
-				ctx, maxSavedBlockRemovalsAtATime, lastToRemove)
+			storedBytesBefore := j.blockJournal.getStoredBytes()
+
+			nextLastToRemove, removedBytes, err :=
+				j.blockJournal.onMDFlush(
+					ctx, maxSavedBlockRemovalsAtATime,
+					rmds.MD.RevisionNumber(), lastToRemove)
 			if err != nil {
-				return err
+				return 0, 0, err
 			}
 
-			return nil
+			storedBytesAfter := j.blockJournal.getStoredBytes()
+
+			if storedBytesAfter != (storedBytesBefore - removedBytes) {
+				panic(fmt.Sprintf(
+					"storedBytes changed from %d to %d, but removedBytes is %d",
+					storedBytesBefore, storedBytesAfter,
+					removedBytes))
+			}
+
+			return nextLastToRemove, removedBytes, nil
 		}()
 		if err != nil {
 			return err
 		}
-		if lastToRemove == 0 {
+		if removedBytes > 0 {
+			j.diskLimiter.Release(removedBytes)
+		}
+		if nextLastToRemove == 0 {
 			break
 		}
+		lastToRemove = nextLastToRemove
 		// Explicitly allow other goroutines (such as foreground file
 		// system operations) to grab the lock to avoid starvation.
 		// See https://github.com/golang/go/issues/13086.
@@ -1302,6 +1363,18 @@ func (j *tlfJournal) shutdown() {
 		return
 	}
 
+	// Even if we shut down the journal, its blocks still take up
+	// space, but we don't want to double-count them if we start
+	// up this journal again, so we need to adjust them here.
+	//
+	// TODO: If we ever expect to shut down non-empty journals any
+	// time other than during shutdown, we should still count
+	// shut-down journals against the disk limit.
+	storedBytes := j.blockJournal.getStoredBytes()
+	if storedBytes > 0 {
+		j.diskLimiter.Release(storedBytes)
+	}
+
 	// Make further accesses error out.
 	j.blockJournal = nil
 	j.mdJournal = nil
@@ -1383,18 +1456,68 @@ func (j *tlfJournal) getBlockData(id kbfsblock.ID) (
 	return j.blockJournal.getData(id)
 }
 
+// ErrDiskLimitTimeout is returned when putBlockData exceeds
+// diskLimitTimeout when trying to acquire bytes to put.
+type ErrDiskLimitTimeout struct {
+	timeout        time.Duration
+	requestedBytes int64
+	availableBytes int64
+	err            error
+}
+
+func (e ErrDiskLimitTimeout) Error() string {
+	return fmt.Sprintf("Disk limit timeout of %s reached; requested %d bytes, only %d bytes available: %+v",
+		e.timeout, e.requestedBytes, e.availableBytes, e.err)
+}
+
 func (j *tlfJournal) putBlockData(
-	ctx context.Context, id kbfsblock.ID, context kbfsblock.Context, buf []byte,
-	serverHalf kbfscrypto.BlockCryptKeyServerHalf) error {
+	ctx context.Context, id kbfsblock.ID, blockCtx kbfsblock.Context, buf []byte,
+	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
+	// Since Acquire can block, it should happen outside of the
+	// journal lock.
+
+	timeout := j.config.diskLimitTimeout()
+	acquireCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	bufLen := int64(len(buf))
+	availableBytes, err := j.diskLimiter.Acquire(acquireCtx, bufLen)
+	switch errors.Cause(err) {
+	case nil:
+		// Continue.
+	case context.DeadlineExceeded:
+		return errors.WithStack(ErrDiskLimitTimeout{
+			timeout, bufLen, availableBytes, err,
+		})
+	default:
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			j.diskLimiter.Release(bufLen)
+		}
+	}()
+
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {
 		return err
 	}
 
-	err := j.blockJournal.putData(ctx, id, context, buf, serverHalf)
+	storedBytesBefore := j.blockJournal.getStoredBytes()
+
+	err = j.blockJournal.putData(ctx, id, blockCtx, buf, serverHalf)
 	if err != nil {
 		return err
+	}
+
+	storedBytesAfter := j.blockJournal.getStoredBytes()
+
+	if storedBytesAfter != (storedBytesBefore + bufLen) {
+		panic(fmt.Sprintf(
+			"storedBytes changed from %d to %d, but bufLen is %d",
+			storedBytesBefore, storedBytesAfter, bufLen))
 	}
 
 	j.config.Reporter().NotifySyncStatus(ctx, &keybase1.FSPathSyncStatus{
@@ -1531,7 +1654,7 @@ func (j *tlfJournal) doPutMD(ctx context.Context, rmd *RootMetadata,
 		return MdID{}, false, err
 	}
 
-	err = j.blockJournal.markMDRevision(ctx, rmd.Revision())
+	err = j.blockJournal.markMDRevision(ctx, rmd.Revision(), false)
 	if err != nil {
 		return MdID{}, false, err
 	}
@@ -1663,7 +1786,8 @@ func (j *tlfJournal) doResolveBranch(ctx context.Context,
 	}
 
 	// Finally, append a new, non-ignored md rev marker for the new revision.
-	err = j.blockJournal.markMDRevision(ctx, rmd.Revision())
+	err = j.blockJournal.markMDRevision(
+		ctx, rmd.Revision(), isPendingLocalSquash)
 	if err != nil {
 		return MdID{}, false, err
 	}

@@ -1718,13 +1718,15 @@ func makeDirTree(id tlf.ID, uid keybase1.UID, components ...string) (
 	return rootEntry, path{FolderBranch{Tlf: id}, nodes}, blocks
 }
 
-func makeFile(dir path, parentDirBlock *DirBlock, name string, et EntryType) (
+func makeFile(dir path, parentDirBlock *DirBlock, name string, et EntryType,
+	directType BlockDirectType) (
 	path, *FileBlock) {
 	if et != File && et != Exec {
 		panic(fmt.Sprintf("Unexpected type %s", et))
 	}
 	bid := kbfsblock.FakeIDAdd(dir.tailPointer().ID, 1)
 	bi := makeBIFromID(bid, dir.tailPointer().Creator)
+	bi.DirectType = directType
 
 	parentDirBlock.Children[name] = DirEntry{
 		BlockInfo: bi,
@@ -1810,8 +1812,7 @@ func testKBFSOpsRemoveFileSuccess(t *testing.T, et EntryType) {
 	if et == Exec {
 		entryName += ".exe"
 	}
-	p, block := makeFile(dirPath, parentDirBlock, entryName, et)
-	testPutBlockInCache(t, config, p.tailPointer(), id, block)
+	p, _ := makeFile(dirPath, parentDirBlock, entryName, et, DirectBlock)
 
 	// sync block
 	var newRmd ImmutableRootMetadata
@@ -1832,7 +1833,8 @@ func testKBFSOpsRemoveFileSuccess(t *testing.T, et EntryType) {
 	_, ok := newParentDirBlock.Children[entryName]
 	require.False(t, ok)
 
-	for _, n := range p.path {
+	for i := 0; i < len(p.path)-1; i++ {
+		n := p.path[i]
 		blockIDs = append(blockIDs, n.ID)
 	}
 	checkBlockCache(t, config, id, blockIDs, nil)
@@ -1994,25 +1996,19 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 		makeIFP(bid3, rmd, config, uid, 5, 10),
 		makeIFP(bid4, rmd, config, uid, 5, 15),
 	}
-	block1 := NewFileBlock().(*FileBlock)
-	block1.Contents = []byte{5, 4, 3, 2, 1}
-	block2 := NewFileBlock().(*FileBlock)
-	block2.Contents = []byte{10, 9, 8, 7, 6}
-	block3 := NewFileBlock().(*FileBlock)
-	block3.Contents = []byte{15, 14, 13, 12, 11}
-	block4 := NewFileBlock().(*FileBlock)
-	block4.Contents = []byte{20, 19, 18, 17, 16}
+	fileBlock.IPtrs[0].DirectType = DirectBlock
+	fileBlock.IPtrs[1].DirectType = DirectBlock
+	fileBlock.IPtrs[2].DirectType = DirectBlock
+	fileBlock.IPtrs[3].DirectType = DirectBlock
 	fileBP := makeBP(fileBID, rmd, config, uid)
 	p := dirPath.ChildPath(entryName, fileBP)
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, dirPath)
 
-	// let the top block be uncached, so we have to fetch it from BlockOps.
+	// Let the top block be uncached, so we have to fetch it from
+	// BlockOps.  Don't cache any of the file direct blocks, to make
+	// sure we don't try to fetch them.
 	expectBlock(config, rmd, fileBP, fileBlock, nil)
-	testPutBlockInCache(t, config, fileBlock.IPtrs[0].BlockPointer, id, block1)
-	testPutBlockInCache(t, config, fileBlock.IPtrs[1].BlockPointer, id, block2)
-	testPutBlockInCache(t, config, fileBlock.IPtrs[2].BlockPointer, id, block3)
-	testPutBlockInCache(t, config, fileBlock.IPtrs[3].BlockPointer, id, block4)
 
 	// sync block
 	blockIDs := make([]kbfsblock.ID, len(dirPath.path))
@@ -2035,7 +2031,6 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 	for _, n := range p.path {
 		blockIDs = append(blockIDs, n.ID)
 	}
-	blockIDs = append(blockIDs, bid1, bid2, bid3, bid4)
 	checkBlockCache(t, config, id, blockIDs, nil)
 
 	unrefBlocks := []BlockPointer{
@@ -2100,7 +2095,7 @@ func testKBFSOpsRemoveFileMissingBlockSuccess(t *testing.T, et EntryType) {
 	if et == Exec {
 		entryName += ".exe"
 	}
-	p, _ := makeFile(dirPath, parentDirBlock, entryName, et)
+	p, _ := makeFile(dirPath, parentDirBlock, entryName, et, IndirectBlock)
 	// The operation might be retried several times.
 	config.mockBops.EXPECT().Get(
 		gomock.Any(), gomock.Any(), p.tailPointer(),
@@ -3565,44 +3560,6 @@ func TestKBFSOpsWriteOverMultipleBlocks(t *testing.T) {
 		})
 }
 
-func TestKBFSOpsWriteFailTooBig(t *testing.T) {
-	mockCtrl, config, ctx, cancel := kbfsOpsInit(t, true)
-	defer kbfsTestShutdown(mockCtrl, config, ctx, cancel)
-
-	uid, id, rmd := injectNewRMD(t, config)
-
-	rootID := kbfsblock.FakeID(42)
-	fileID := kbfsblock.FakeID(43)
-	rootBlock := NewDirBlock().(*DirBlock)
-	rootBlock.Children["f"] = DirEntry{
-		BlockInfo: BlockInfo{
-			BlockPointer: makeBP(fileID, rmd, config, uid),
-			EncodedSize:  1,
-		},
-		EntryInfo: EntryInfo{
-			Type: File,
-			Size: 10,
-		},
-	}
-	fileBlock := NewFileBlock().(*FileBlock)
-	fileBlock.Contents = []byte{1, 2, 3, 4, 5}
-	node := pathNode{makeBP(rootID, rmd, config, uid), "p"}
-	fileNode := pathNode{makeBP(fileID, rmd, config, uid), "f"}
-	p := path{FolderBranch{Tlf: id}, []pathNode{node, fileNode}}
-	ops := getOps(config, id)
-	n := nodeFromPath(t, ops, p)
-	data := []byte{6, 7, 8}
-
-	config.maxFileBytes = 12
-
-	err := config.KBFSOps().Write(ctx, n, data, 10)
-	if err == nil {
-		t.Errorf("Got no expected error on Write")
-	} else if _, ok := err.(FileTooBigError); !ok {
-		t.Errorf("Got unexpected error on Write: %+v", err)
-	}
-}
-
 // Read tests check the same error cases, so no need for similar write
 // error tests
 
@@ -4789,7 +4746,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 		ptrMatcher{fileBlock.IPtrs[2].BlockPointer}, p.Branch).Return(nil,
 		NoSuchBlockError{fileBlock.IPtrs[2].BlockPointer.ID})
 	config.mockBcache.EXPECT().GetWithPrefetch(ptrMatcher{fileBlock.IPtrs[2].BlockPointer}).
-		Return(block3, true, nil)
+		Return(block3, true, TransientEntry, nil)
 	config.mockDirtyBcache.EXPECT().IsDirty(gomock.Any(),
 		ptrMatcher{fileBlock.IPtrs[3].BlockPointer},
 		p.Branch).AnyTimes().Return(false)
@@ -4999,7 +4956,7 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 		ptrMatcher{fileBlock.IPtrs[1].BlockPointer}, p.Branch).Return(nil,
 		NoSuchBlockError{fileBlock.IPtrs[1].BlockPointer.ID})
 	config.mockBcache.EXPECT().GetWithPrefetch(ptrMatcher{fileBlock.IPtrs[1].BlockPointer}).
-		Return(block2, true, nil)
+		Return(block2, true, TransientEntry, nil)
 	config.mockDirtyBcache.EXPECT().IsDirty(gomock.Any(),
 		ptrMatcher{fileBlock.IPtrs[1].BlockPointer},
 		p.Branch).AnyTimes().Return(false)
@@ -5007,14 +4964,10 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 		ptrMatcher{fileBlock.IPtrs[3].BlockPointer}, p.Branch).Return(nil,
 		NoSuchBlockError{fileBlock.IPtrs[3].BlockPointer.ID})
 	config.mockBcache.EXPECT().GetWithPrefetch(ptrMatcher{fileBlock.IPtrs[3].BlockPointer}).
-		Return(block4, true, nil)
+		Return(block4, true, TransientEntry, nil)
 	config.mockDirtyBcache.EXPECT().IsDirty(gomock.Any(),
 		ptrMatcher{fileBlock.IPtrs[3].BlockPointer},
 		p.Branch).Return(false)
-	config.mockBcache.EXPECT().Get(ptrMatcher{node.BlockPointer}).
-		Times(1).Return(rootBlock, nil)
-	config.mockBcache.EXPECT().Get(ptrMatcher{fileNode.BlockPointer}).
-		Times(1).Return(fileBlock, nil)
 
 	// no matching pointers
 	config.mockBcache.EXPECT().CheckForKnownPtr(gomock.Any(), gomock.Any()).
@@ -5480,9 +5433,12 @@ func TestKBFSOpsMultiBlockSyncWithArchivedBlock(t *testing.T) {
 	config, _, ctx, cancel := kbfsOpsInitNoMocks(t, "test_user")
 	defer kbfsTestShutdownNoMocks(t, config, ctx, cancel)
 
-	// make blocks small
+	// Make the blocks small, with multiple levels of indirection, but
+	// make the unembedded size large, so we don't create thousands of
+	// unembedded block change blocks.
 	blockSize := int64(5)
-	config.BlockSplitter().(*BlockSplitterSimple).maxSize = blockSize
+	bsplit := &BlockSplitterSimple{blockSize, 2, 100 * 1024}
+	config.SetBlockSplitter(bsplit)
 
 	// create a file.
 	rootNode := GetRootNodeOrBust(ctx, t, config, "test_user", false)

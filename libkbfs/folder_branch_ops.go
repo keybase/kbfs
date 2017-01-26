@@ -1780,9 +1780,10 @@ func (fbo *folderBranchOps) unembedBlockChanges(
 		return err
 	}
 	ptr := BlockPointer{
-		ID:      bid,
-		KeyGen:  md.LatestKeyGeneration(),
-		DataVer: fbo.config.DataVersion(),
+		ID:         bid,
+		KeyGen:     md.LatestKeyGeneration(),
+		DataVer:    fbo.config.DataVersion(),
+		DirectType: DirectBlock,
 		Context: kbfsblock.Context{
 			Creator:  uid,
 			RefNonce: kbfsblock.ZeroRefNonce,
@@ -2349,10 +2350,10 @@ func (fbo *folderBranchOps) finalizeMDRekeyWriteLocked(ctx context.Context,
 	}
 
 	if isConflict {
-		// drop this block. we've probably collided with someone also
+		// Drop this block. We've probably collided with someone also
 		// trying to rekey the same folder but that's not necessarily
-		// the case. we'll queue another rekey just in case. it should
-		// be safe as it's idempotent. we don't want any rekeys present
+		// the case. We'll queue another rekey just in case. It should
+		// be safe as it's idempotent. We don't want any rekeys present
 		// in unmerged history or that will just make a mess.
 		fbo.config.RekeyQueue().Enqueue(md.TlfID())
 		return RekeyConflictError{err}
@@ -3705,7 +3706,7 @@ func (fbo *folderBranchOps) notifyBatchLocked(
 	fbo.headLock.AssertLocked(lState)
 
 	lastOp := md.data.Changes.Ops[len(md.data.Changes.Ops)-1]
-	fbo.notifyOneOpLocked(ctx, lState, lastOp, md)
+	fbo.notifyOneOpLocked(ctx, lState, lastOp, md, false)
 	fbo.editHistory.UpdateHistory(ctx, []ImmutableRootMetadata{md})
 }
 
@@ -3764,10 +3765,10 @@ func (fbo *folderBranchOps) unlinkFromCache(op op, oldDir BlockPointer,
 }
 
 func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
-	lState *lockState, op op, md ImmutableRootMetadata) {
+	lState *lockState, op op, md ImmutableRootMetadata, shouldPrefetch bool) {
 	fbo.headLock.AssertLocked(lState)
 
-	fbo.blocks.UpdatePointers(md, lState, op)
+	fbo.blocks.UpdatePointers(md, lState, op, shouldPrefetch)
 
 	var changes []NodeChange
 	switch realOp := op.(type) {
@@ -4010,6 +4011,17 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			return err
 		}
 		if mergedRev != MetadataRevisionUninitialized {
+			if len(rmds) > 0 {
+				// We should update our view of the merged master though,
+				// to avoid re-registering for the same updates again.
+				func() {
+					fbo.headLock.Lock(lState)
+					defer fbo.headLock.Unlock(lState)
+					fbo.setLatestMergedRevisionLocked(
+						ctx, lState, rmds[len(rmds)-1].Revision(), false)
+				}()
+			}
+
 			fbo.log.CDebugf(ctx,
 				"Ignoring fetched revisions while MDs are in journal")
 			return nil
@@ -4078,7 +4090,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			continue
 		}
 		for _, op := range rmd.data.Changes.Ops {
-			fbo.notifyOneOpLocked(ctx, lState, op, rmd)
+			fbo.notifyOneOpLocked(ctx, lState, op, rmd, true)
 		}
 		appliedRevs = append(appliedRevs, rmd)
 	}
@@ -4141,7 +4153,7 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 					err, ops[j])
 				continue
 			}
-			fbo.notifyOneOpLocked(ctx, lState, io, rmd)
+			fbo.notifyOneOpLocked(ctx, lState, io, rmd, false)
 		}
 	}
 	// TODO: update the edit history?
@@ -4476,6 +4488,7 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 		}
 	}
 
+	currKeyGen := md.LatestKeyGeneration()
 	rekeyDone, tlfCryptKey, err := fbo.config.KeyManager().
 		Rekey(ctx, md, promptPaper)
 
@@ -4581,8 +4594,10 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 
 	// send rekey finish notification
 	handle := md.GetTlfHandle()
-	fbo.config.Reporter().Notify(ctx,
-		rekeyNotification(ctx, fbo.config, handle, true))
+	if currKeyGen >= FirstValidKeyGen {
+		fbo.config.Reporter().Notify(ctx,
+			rekeyNotification(ctx, fbo.config, handle, true))
+	}
 	if !stillNeedsRekey && fbo.rekeyWithPromptTimer != nil {
 		fbo.log.CDebugf(ctx, "Scheduled rekey timer no longer needed")
 		fbo.rekeyWithPromptTimer.Stop()
@@ -4825,7 +4840,9 @@ func (fbo *folderBranchOps) maybeFastForward(ctx context.Context,
 	}
 
 	// Invalidate all the affected nodes.
-	fbo.observers.batchChanges(ctx, changes)
+	if len(changes) > 0 {
+		fbo.observers.batchChanges(ctx, changes)
+	}
 
 	// Reset the edit history.  TODO: notify any listeners that we've
 	// done this.
@@ -5145,7 +5162,7 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 
 	// notifyOneOp for every fixed-up merged op.
 	for _, op := range newOps {
-		fbo.notifyOneOpLocked(ctx, lState, op, irmd)
+		fbo.notifyOneOpLocked(ctx, lState, op, irmd, false)
 	}
 	fbo.editHistory.UpdateHistory(ctx, []ImmutableRootMetadata{irmd})
 	return nil
