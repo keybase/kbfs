@@ -16,6 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestRemoveDevicesNotInV2 checks basic functionality of
+// removeDevicesNotIn().
 func TestRemoveDevicesNotInV2(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(0x1)
 	uid2 := keybase1.MakeTestUID(0x2)
@@ -124,6 +126,9 @@ func TestRemoveDevicesNotInV2(t *testing.T) {
 	}, removalInfo)
 }
 
+// TestRemoveLastDeviceV2 checks behavior of removeDevicesNotIn() with
+// respect to removing the last device vs. removing the user
+// completely.
 func TestRemoveLastDeviceV2(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(0x1)
 	uid2 := keybase1.MakeTestUID(0x2)
