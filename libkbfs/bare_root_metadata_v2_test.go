@@ -956,8 +956,7 @@ func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV2,
 				expected.readerPrivKeys.toPublicKeys())
 			userPubKeys := userDeviceServerHalvesToPublicKeys(
 				expected.serverHalves[keyGen-FirstValidKeyGen])
-			// TODO: Remove need for RemoveKeylessUsers().
-			require.Equal(t, expectedUserPubKeys.RemoveKeylessUsers(), userPubKeys)
+			require.Equal(t, expectedUserPubKeys.removeKeylessUsersForTest(), userPubKeys)
 			checkGetTLFCryptKeyV2(t, keyGen, expected,
 				expectedTLFCryptKeys[keyGen-FirstValidKeyGen],
 				wkb, rkb)
