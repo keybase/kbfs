@@ -1138,6 +1138,8 @@ func TestBareRootMetadataV2UpdateKeyBundles(t *testing.T) {
 	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKeys, pubKeys, rmd)
 }
 
+// TestBareRootMetadataV2AddKeyGenerationKeylessUsers checks that
+// keyless users are handled properly by AddKeyGeneration.
 func TestBareRootMetadataV2AddKeyGenerationKeylessUsers(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(1)
 	uid2 := keybase1.MakeTestUID(2)
@@ -1175,9 +1177,6 @@ func TestBareRootMetadataV2AddKeyGenerationKeylessUsers(t *testing.T) {
 	pubKey := kbfscrypto.MakeTLFPublicKey(fakeKeyData)
 	tlfCryptKey := kbfscrypto.MakeTLFCryptKey(fakeKeyData)
 
-	// Use the same ephemeral keys for initial key
-	// generations, even though that can't happen in
-	// practice.
 	_, serverHalves1Gen, err := rmd.AddKeyGeneration(codec,
 		crypto, nil, updatedWriterKeys, updatedReaderKeys,
 		ePubKey1, ePrivKey1,
@@ -1199,21 +1198,6 @@ func TestBareRootMetadataV2AddKeyGenerationKeylessUsers(t *testing.T) {
 		serverHalves: serverHalves1,
 	}
 	expectedRekeyInfos := []expectedRekeyInfoV2{expectedRekeyInfo1}
-
-	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKeys, pubKeys, rmd)
-
-	// Do update to check idempotency.
-
-	serverHalves1b, err := rmd.UpdateKeyBundles(crypto, nil,
-		updatedWriterKeys, updatedReaderKeys,
-		ePubKey1, ePrivKey1, tlfCryptKeys)
-	require.NoError(t, err)
-
-	expectedRekeyInfo1b := expectedRekeyInfoV2{
-		serverHalves: serverHalves1b,
-	}
-
-	expectedRekeyInfos = append(expectedRekeyInfos, expectedRekeyInfo1b)
 
 	checkKeyBundlesV2(t, expectedRekeyInfos, tlfCryptKeys, pubKeys, rmd)
 }
