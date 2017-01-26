@@ -127,6 +127,8 @@ func TestRemoveDevicesNotInV2(t *testing.T) {
 func TestRemoveLastDeviceV2(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(0x1)
 	uid2 := keybase1.MakeTestUID(0x2)
+	uid3 := keybase1.MakeTestUID(0x3)
+	uid4 := keybase1.MakeTestUID(0x4)
 
 	key1 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key1")
 	key2 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key3")
@@ -154,14 +156,18 @@ func TestRemoveLastDeviceV2(t *testing.T) {
 				EPubKeyIndex: -2,
 			},
 		},
+		uid3: DeviceKeyInfoMapV2{},
+		uid4: DeviceKeyInfoMapV2{},
 	}
 
 	removalInfo := udkimV2.removeDevicesNotIn(UserDevicePublicKeys{
 		uid1: {},
+		uid3: {},
 	})
 
 	require.Equal(t, UserDeviceKeyInfoMapV2{
 		uid1: DeviceKeyInfoMapV2{},
+		uid3: DeviceKeyInfoMapV2{},
 	}, udkimV2)
 
 	require.Equal(t, ServerHalfRemovalInfo{
@@ -176,6 +182,10 @@ func TestRemoveLastDeviceV2(t *testing.T) {
 			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
 				key2: []TLFCryptKeyServerHalfID{id2},
 			},
+		},
+		uid4: userServerHalfRemovalInfo{
+			userRemoved:         true,
+			deviceServerHalfIDs: deviceServerHalfRemovalInfo{},
 		},
 	}, removalInfo)
 }
