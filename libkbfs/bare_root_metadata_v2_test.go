@@ -533,6 +533,9 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 	require.Equal(t, expectedRKeys, brmd.RKeys)
 }
 
+// TestRevokeLastDeviceV2 checks behavior of RevokeRemovedDevices with
+// respect to removing the last device of a user vs. removing the user
+// completely.
 func TestRevokeLastDeviceV2(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(0x1)
 	uid2 := keybase1.MakeTestUID(0x2)

@@ -161,7 +161,7 @@ func TestRemoveDevicesNotInV3(t *testing.T) {
 }
 
 // TestRemoveLastDeviceV3 checks behavior of removeDevicesNotIn() with
-// respect to removing the last device vs. removing the user
+// respect to removing the last device of a user vs. removing the user
 // completely.
 func TestRemoveLastDeviceV3(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(0x1)
