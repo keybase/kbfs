@@ -221,6 +221,109 @@ func TestRevokeRemovedDevicesV3(t *testing.T) {
 	require.Equal(t, expectedRKB, *rkb)
 }
 
+// TestRevokeLastDeviceV3 checks behavior of RevokeRemovedDevices with
+// respect to removing the last device of a user vs. removing the user
+// completely.
+func TestRevokeLastDeviceV3(t *testing.T) {
+	uid1 := keybase1.MakeTestUID(0x1)
+	uid2 := keybase1.MakeTestUID(0x2)
+	uid3 := keybase1.MakeTestUID(0x3)
+	uid4 := keybase1.MakeTestUID(0x4)
+
+	key1 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key1")
+	key2 := kbfscrypto.MakeFakeCryptPublicKeyOrBust("key2")
+
+	half1 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x1})
+	half2 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
+
+	codec := kbfscodec.NewMsgpack()
+	crypto := MakeCryptoCommon(codec)
+	id1, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1, half1)
+	require.NoError(t, err)
+	id2, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2, half2)
+	require.NoError(t, err)
+
+	tlfID := tlf.FakeID(1, false)
+
+	bh, err := tlf.MakeHandle(
+		[]keybase1.UID{uid1, uid2}, []keybase1.UID{uid3, uid4}, nil, nil, nil)
+	require.NoError(t, err)
+
+	brmd, err := MakeInitialBareRootMetadataV3(tlfID, bh)
+	require.NoError(t, err)
+
+	extra := FakeInitialRekey(brmd, bh, kbfscrypto.TLFPublicKey{})
+
+	wkb, rkb, err := brmd.getTLFKeyBundles(extra)
+	require.NoError(t, err)
+
+	*wkb = TLFWriterKeyBundleV3{
+		Keys: UserDeviceKeyInfoMapV3{
+			uid1: DeviceKeyInfoMapV3{
+				key1: TLFCryptKeyInfo{
+					ServerHalfID: id1,
+					EPubKeyIndex: 0,
+				},
+			},
+			uid2: DeviceKeyInfoMapV3{
+				key2: TLFCryptKeyInfo{
+					ServerHalfID: id2,
+					EPubKeyIndex: 1,
+				},
+			},
+		},
+	}
+
+	*rkb = TLFReaderKeyBundleV3{
+		Keys: UserDeviceKeyInfoMapV3{
+			uid3: DeviceKeyInfoMapV3{},
+			uid4: DeviceKeyInfoMapV3{},
+		},
+	}
+
+	updatedWriterKeys := UserDevicePublicKeys{
+		uid1: {},
+	}
+	updatedReaderKeys := UserDevicePublicKeys{
+		uid3: {},
+	}
+
+	removalInfo, err := brmd.RevokeRemovedDevices(
+		updatedWriterKeys, updatedReaderKeys, extra)
+	require.NoError(t, err)
+	require.Equal(t, ServerHalfRemovalInfo{
+		uid1: userServerHalfRemovalInfo{
+			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+				key1: []TLFCryptKeyServerHalfID{id1},
+			},
+		},
+		uid2: userServerHalfRemovalInfo{
+			userRemoved: true,
+			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+				key2: []TLFCryptKeyServerHalfID{id2},
+			},
+		},
+		uid4: userServerHalfRemovalInfo{
+			userRemoved:         true,
+			deviceServerHalfIDs: deviceServerHalfRemovalInfo{},
+		},
+	}, removalInfo)
+
+	expectedWKB := TLFWriterKeyBundleV3{
+		Keys: UserDeviceKeyInfoMapV3{
+			uid1: DeviceKeyInfoMapV3{},
+		},
+	}
+	require.Equal(t, expectedWKB, *wkb)
+
+	expectedRKB := TLFReaderKeyBundleV3{
+		Keys: UserDeviceKeyInfoMapV3{
+			uid3: DeviceKeyInfoMapV3{},
+		},
+	}
+	require.Equal(t, expectedRKB, *rkb)
+}
+
 // expectedRekeyInfoV3 contains all the information needed to check a
 // rekey run (that doesn't add a generation).
 //
