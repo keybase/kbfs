@@ -840,6 +840,8 @@ func (fbo *folderBranchOps) identifyOnce(
 
 	ei := getExtendedIdentify(ctx)
 	if fbo.identifyDone && !ei.behavior.AlwaysRunIdentify() {
+		// TODO: provide a way for the service to break this cache when identify
+		// state changes on a TLF. For now, we do it this way to make chat work.
 		return nil
 	}
 
