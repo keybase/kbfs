@@ -73,7 +73,7 @@ func setupJournalServerTest(t *testing.T) (
 		}
 	}()
 
-	_, err = initializeJournalForTest(
+	jServer, err = initializeJournalForTest(
 		t, ctx, config, tempdir, TLFJournalBackgroundWorkEnabled)
 	require.NoError(t, err)
 
