@@ -172,13 +172,8 @@ func TestGetTLFCryptKeysWhileUnmergedAfterRestart(t *testing.T) {
 		err := ioutil.RemoveAll(tempdir)
 		assert.NoError(t, err)
 	}()
-	err = config1.InitializeJournalServer(tempdir)
-	require.NoError(t, err)
-	jServer, err := GetJournalServer(config1)
-	require.NoError(t, err)
-	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config1.KBPKI())
-	require.NoError(t, err)
-	err = jServer.EnableExistingJournals(ctx, uid, key, TLFJournalBackgroundWorkEnabled)
+	jServer, err := initializeJournalForTest(
+		t, ctx, config1, tempdir, TLFJournalBackgroundWorkEnabled)
 	require.NoError(t, err)
 	jServer.onBranchChange = nil
 	jServer.onMDFlush = nil
@@ -233,13 +228,8 @@ func TestGetTLFCryptKeysWhileUnmergedAfterRestart(t *testing.T) {
 	// now re-login u1
 	config1B := ConfigAsUser(config1, userName1)
 	defer CheckConfigAndShutdown(ctx, t, config1B)
-	err = config1B.InitializeJournalServer(tempdir)
-	require.NoError(t, err)
-	jServer, err = GetJournalServer(config1B)
-	require.NoError(t, err)
-	uid, key, err = getCurrentUIDAndVerifyingKey(ctx, config1B.KBPKI())
-	require.NoError(t, err)
-	err = jServer.EnableExistingJournals(ctx, uid, key, TLFJournalBackgroundWorkEnabled)
+	jServer, err = initializeJournalForTest(
+		t, ctx, config1B, tempdir, TLFJournalBackgroundWorkEnabled)
 	require.NoError(t, err)
 	jServer.onBranchChange = nil
 	jServer.onMDFlush = nil

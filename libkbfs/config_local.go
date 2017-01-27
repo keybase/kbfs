@@ -888,12 +888,13 @@ func (c *ConfigLocal) journalizeBcaches() error {
 // this config. No journals can be enabled, though, until
 // EnableExistingJournals is called on the journal server
 // successfully.
-func (c *ConfigLocal) InitializeJournalServer(journalRoot string) error {
+func (c *ConfigLocal) InitializeJournalServer(
+	journalRoot string) (*JournalServer, error) {
 	jServer, err := GetJournalServer(c)
 	if err == nil {
 		// Journaling shouldn't be enabled twice for the same
 		// config.
-		return errors.New("Trying to enable journaling twice")
+		return nil, errors.New("Trying to enable journaling twice")
 	}
 
 	// TODO: Sanity-check the root directory, e.g. create
@@ -919,5 +920,10 @@ func (c *ConfigLocal) InitializeJournalServer(journalRoot string) error {
 
 	c.SetBlockServer(jServer.blockServer())
 	c.SetMDOps(jServer.mdOps())
-	return c.journalizeBcaches()
+	err = c.journalizeBcaches()
+	if err != nil {
+		return nil, err
+	}
+
+	return jServer, nil
 }

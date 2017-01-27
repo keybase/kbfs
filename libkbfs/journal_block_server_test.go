@@ -52,13 +52,8 @@ func setupJournalBlockServerTest(t *testing.T) (
 		}
 	}()
 
-	err = config.InitializeJournalServer(tempdir)
-	require.NoError(t, err)
-	jServer, err = GetJournalServer(config)
-	require.NoError(t, err)
-	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
-	require.NoError(t, err)
-	err = jServer.EnableExistingJournals(ctx, uid, key, TLFJournalBackgroundWorkEnabled)
+	jServer, err = initializeJournalForTest(
+		t, ctx, config, tempdir, TLFJournalBackgroundWorkEnabled)
 	require.NoError(t, err)
 	blockServer := jServer.blockServer()
 	// Turn this on for testing.

@@ -342,7 +342,7 @@ func initializeJournal(ctx context.Context, config *ConfigLocal,
 	// TODO: Don't turn on journaling if either -bserver or
 	// -mdserver point to local implementations.
 
-	err := config.InitializeJournalServer(params.WriteJournalRoot)
+	jServer, err := config.InitializeJournalServer(params.WriteJournalRoot)
 	if err != nil {
 		log.Warning("Could not initialize journal server: %+v", err)
 		return
@@ -356,12 +356,6 @@ func initializeJournal(ctx context.Context, config *ConfigLocal,
 	if err != nil {
 		log.Warning("Could not get current user info; will enable "+
 			"existing journals on successful login: %+v", err)
-		return
-	}
-
-	jServer, err := GetJournalServer(config)
-	if err != nil {
-		log.Warning("Could not get journal server: %+v", err)
 		return
 	}
 

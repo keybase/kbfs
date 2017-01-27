@@ -17,6 +17,27 @@ import (
 	"golang.org/x/net/context"
 )
 
+func initializeJournalForTest(t *testing.T, ctx context.Context,
+	config *ConfigLocal, journalRoot string,
+	bws TLFJournalBackgroundWorkStatus) (*JournalServer, error) {
+	jServer, err := config.InitializeJournalServer(journalRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
+	if err != nil {
+		return nil, err
+	}
+
+	err = jServer.EnableExistingJournals(ctx, uid, key, bws)
+	if err != nil {
+		return nil, err
+	}
+
+	return jServer, nil
+}
+
 func setupJournalServerTest(t *testing.T) (
 	tempdir string, ctx context.Context, cancel context.CancelFunc,
 	config *ConfigLocal, jServer *JournalServer) {
@@ -52,13 +73,8 @@ func setupJournalServerTest(t *testing.T) (
 		}
 	}()
 
-	err = config.InitializeJournalServer(tempdir)
-	require.NoError(t, err)
-	jServer, err = GetJournalServer(config)
-	require.NoError(t, err)
-	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
-	require.NoError(t, err)
-	err = jServer.EnableExistingJournals(ctx, uid, key, TLFJournalBackgroundWorkEnabled)
+	_, err = initializeJournalForTest(
+		t, ctx, config, tempdir, TLFJournalBackgroundWorkEnabled)
 	require.NoError(t, err)
 
 	setupSucceeded = true
