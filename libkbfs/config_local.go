@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -864,7 +863,7 @@ func (c *ConfigLocal) journalizeBcaches() error {
 
 	syncCache, ok := c.DirtyBlockCache().(*DirtyBlockCacheStandard)
 	if !ok {
-		return fmt.Errorf("Dirty bcache unexpectedly type %T", syncCache)
+		return errors.Errorf("Dirty bcache unexpectedly type %T", syncCache)
 	}
 	jServer.delegateDirtyBlockCache = syncCache
 
