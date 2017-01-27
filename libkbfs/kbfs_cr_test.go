@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"io/ioutil"
 	"os"
 	"reflect"
 	"sync"
@@ -13,7 +12,9 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
 
@@ -209,6 +210,10 @@ func TestGetTLFCryptKeysWhileUnmergedAfterRestart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("creating tempdir error: %+v", err)
 	}
+	defer func() {
+		err := ioutil.RemoveAll(tempdir)
+		assert.NoError(t, err)
+	}()
 	config1.EnableJournaling(tempdir, TLFJournalBackgroundWorkEnabled)
 	jServer, err := GetJournalServer(config1)
 	if err != nil {
