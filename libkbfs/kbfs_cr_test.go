@@ -172,8 +172,8 @@ func TestGetTLFCryptKeysWhileUnmergedAfterRestart(t *testing.T) {
 		err := ioutil.RemoveAll(tempdir)
 		assert.NoError(t, err)
 	}()
-	jServer, err := initializeJournalForTest(
-		t, ctx, config1, tempdir, TLFJournalBackgroundWorkEnabled)
+	jServer, err := InitializeJournalForTest(
+		ctx, config1, tempdir, TLFJournalBackgroundWorkEnabled)
 	require.NoError(t, err)
 	jServer.onBranchChange = nil
 	jServer.onMDFlush = nil
@@ -228,8 +228,8 @@ func TestGetTLFCryptKeysWhileUnmergedAfterRestart(t *testing.T) {
 	// now re-login u1
 	config1B := ConfigAsUser(config1, userName1)
 	defer CheckConfigAndShutdown(ctx, t, config1B)
-	jServer, err = initializeJournalForTest(
-		t, ctx, config1B, tempdir, TLFJournalBackgroundWorkEnabled)
+	jServer, err = InitializeJournalForTest(
+		ctx, config1B, tempdir, TLFJournalBackgroundWorkEnabled)
 	require.NoError(t, err)
 	jServer.onBranchChange = nil
 	jServer.onMDFlush = nil

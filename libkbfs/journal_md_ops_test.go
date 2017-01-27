@@ -51,8 +51,8 @@ func setupJournalMDOpsTest(t *testing.T) (
 	}()
 
 	oldMDOps = config.MDOps()
-	jServer, err = initializeJournalForTest(
-		t, ctx, config, tempdir, TLFJournalBackgroundWorkEnabled)
+	jServer, err = InitializeJournalForTest(
+		ctx, config, tempdir, TLFJournalBackgroundWorkEnabled)
 	require.NoError(t, err)
 	// Turn off listeners to avoid background MD pushes for CR.
 	jServer.onBranchChange = nil

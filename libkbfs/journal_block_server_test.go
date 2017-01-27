@@ -52,8 +52,8 @@ func setupJournalBlockServerTest(t *testing.T) (
 		}
 	}()
 
-	jServer, err = initializeJournalForTest(
-		t, ctx, config, tempdir, TLFJournalBackgroundWorkEnabled)
+	jServer, err = InitializeJournalForTest(
+		ctx, config, tempdir, TLFJournalBackgroundWorkEnabled)
 	require.NoError(t, err)
 	blockServer := jServer.blockServer()
 	// Turn this on for testing.

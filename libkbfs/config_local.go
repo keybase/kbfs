@@ -927,3 +927,29 @@ func (c *ConfigLocal) InitializeJournalServer(
 
 	return jServer, nil
 }
+
+// InitializeJournalForTest initializes the journal for testing with
+// the given parameters.
+func InitializeJournalForTest(ctx context.Context, config *ConfigLocal,
+	journalRoot string, bws TLFJournalBackgroundWorkStatus) (
+	*JournalServer, error) {
+	if len(journalRoot) == 0 {
+		return nil, errors.New("Cannot initialize journal with empty root")
+	}
+	jServer, err := config.InitializeJournalServer(journalRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
+	if err != nil {
+		return nil, err
+	}
+
+	err = jServer.EnableExistingJournals(ctx, uid, key, bws)
+	if err != nil {
+		return nil, err
+	}
+
+	return jServer, nil
+}
