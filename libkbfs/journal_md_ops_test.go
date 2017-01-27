@@ -53,6 +53,10 @@ func setupJournalMDOpsTest(t *testing.T) (
 	oldMDOps = config.MDOps()
 	config.EnableJournaling(tempdir, TLFJournalBackgroundWorkEnabled)
 	jServer, err = GetJournalServer(config)
+	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
+	require.NoError(t, err)
+	err = jServer.EnableExistingJournals(ctx, uid, key, TLFJournalBackgroundWorkEnabled)
+	require.NoError(t, err)
 	// Turn off listeners to avoid background MD pushes for CR.
 	jServer.onBranchChange = nil
 	jServer.onMDFlush = nil

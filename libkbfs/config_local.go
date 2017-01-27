@@ -916,16 +916,7 @@ func (c *ConfigLocal) EnableJournaling(
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,
 		flushListener, diskLimitSemaphore)
-	ctx := context.Background()
-	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, c.KBPKI())
-	if err != nil {
-		log.Warning("Failed to get current UID and key; not enabling existing journals: %v", err)
-		return
-	}
-	err = jServer.EnableExistingJournals(ctx, uid, key, bws)
-	if err != nil {
-		log.Warning("Failed to enable existing journals: %v", err)
-	}
+
 	c.SetBlockServer(jServer.blockServer())
 	c.SetMDOps(jServer.mdOps())
 	if err := c.journalizeBcaches(); err != nil {

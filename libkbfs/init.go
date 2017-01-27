@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -488,6 +489,22 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 	if len(params.WriteJournalRoot) > 0 {
 		config.EnableJournaling(params.WriteJournalRoot,
 			params.TLFJournalBackgroundWorkStatus)
+
+		func() {
+			ctx := context.Background()
+			uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
+			if err != nil {
+				log.Warning("Failed to get current UID and key; not enabling existing journals: %v", err)
+				return
+			}
+
+			if jServer, err := GetJournalServer(config); err == nil {
+				err = jServer.EnableExistingJournals(ctx, uid, key, params.TLFJournalBackgroundWorkStatus)
+				if err != nil {
+					log.Warning("Failed to enable existing journals: %v", err)
+				}
+			}
+		}()
 	}
 
 	return config, nil

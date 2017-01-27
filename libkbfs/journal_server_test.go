@@ -55,6 +55,10 @@ func setupJournalServerTest(t *testing.T) (
 	config.EnableJournaling(tempdir, TLFJournalBackgroundWorkEnabled)
 	jServer, err = GetJournalServer(config)
 	require.NoError(t, err)
+	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
+	require.NoError(t, err)
+	err = jServer.EnableExistingJournals(ctx, uid, key, TLFJournalBackgroundWorkEnabled)
+	require.NoError(t, err)
 
 	setupSucceeded = true
 	return tempdir, ctx, cancel, config, jServer
