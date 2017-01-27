@@ -327,10 +327,39 @@ func InitLog(params InitParams, ctx Context) (logger.Logger, error) {
 	log.Info("KBFS version %s", VersionString())
 
 	if err != nil {
-		log.Warning("Failed to setup log file %q: %v", params.LogFileConfig.Path, err)
+		log.Warning("Failed to setup log file %q: %+v", params.LogFileConfig.Path, err)
 	}
 
 	return log, err
+}
+
+func initializeJournal(ctx context.Context, config *ConfigLocal,
+	params InitParams, log logger.Logger) error {
+	err := config.InitializeJournalServer(params.WriteJournalRoot)
+	if err != nil {
+		return err
+	}
+
+	// If any of the below functions fail, then the journal server
+	// is initialized but no existing journals are enabled. When
+	// the login state changes, there will be another attempt to
+	// enable existing journals (see serviceLoggedIn()).
+	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
+	if err != nil {
+		return err
+	}
+
+	jServer, err := GetJournalServer(config)
+	if err != nil {
+		return err
+	}
+
+	err = jServer.EnableExistingJournals(ctx, uid, key, params.TLFJournalBackgroundWorkStatus)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Init initializes a config and returns it.
@@ -456,14 +485,14 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	mdServer, err := makeMDServer(config, params.MDServerAddr, ctx.NewRPCLogFactory(), log)
 	if err != nil {
-		return nil, fmt.Errorf("problem creating MD server: %v", err)
+		return nil, fmt.Errorf("problem creating MD server: %+v", err)
 	}
 	config.SetMDServer(mdServer)
 
 	// note: the mdserver is the keyserver at the moment.
 	keyServer, err := makeKeyServer(config, params.MDServerAddr, log)
 	if err != nil {
-		return nil, fmt.Errorf("problem creating key server: %v", err)
+		return nil, fmt.Errorf("problem creating key server: %+v", err)
 	}
 
 	if registry := config.MetricsRegistry(); registry != nil {
@@ -474,7 +503,7 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	bserv, err := makeBlockServer(config, params.BServerAddr, ctx.NewRPCLogFactory(), log)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open block database: %v", err)
+		return nil, fmt.Errorf("cannot open block database: %+v", err)
 	}
 
 	if registry := config.MetricsRegistry(); registry != nil {
@@ -487,26 +516,11 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 	// -mdserver point to local implementations.
 
 	if len(params.WriteJournalRoot) > 0 {
-		err := config.InitializeJournalServer(params.WriteJournalRoot)
+		err := initializeJournal(context.Background(), config,
+			params, log)
 		if err != nil {
-			panic(err)
+			log.Warning("Error when initializing journal: %+v", err)
 		}
-
-		func() {
-			ctx := context.Background()
-			uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
-			if err != nil {
-				log.Warning("Failed to get current UID and key; not enabling existing journals: %v", err)
-				return
-			}
-
-			if jServer, err := GetJournalServer(config); err == nil {
-				err = jServer.EnableExistingJournals(ctx, uid, key, params.TLFJournalBackgroundWorkStatus)
-				if err != nil {
-					log.Warning("Failed to enable existing journals: %v", err)
-				}
-			}
-		}()
 	}
 
 	return config, nil
