@@ -6,7 +6,6 @@ package libkbfs
 
 import (
 	"os"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -29,9 +28,7 @@ func readAndCompareData(t *testing.T, config Config, ctx context.Context,
 	data := make([]byte, 1)
 	_, err = kbfsOps.Read(ctx, fileNode, data, 0)
 	require.NoError(t, err)
-	if data[0] != expectedData[0] {
-		t.Errorf("User %s didn't see expected data: %v", user, data)
-	}
+	assert.Equal(t, expectedData[0], data[0])
 }
 
 type testCRObserver struct {
@@ -59,15 +56,9 @@ func checkStatus(t *testing.T, ctx context.Context, kbfsOps KBFSOps,
 	staged bool, headWriter libkb.NormalizedUsername, dirtyPaths []string, fb FolderBranch,
 	prefix string) {
 	status, _, err := kbfsOps.FolderStatus(ctx, fb)
-	if err != nil {
-		t.Fatalf("%s: Couldn't get status", prefix)
-	}
-	if status.Staged != staged {
-		t.Errorf("%s: Staged doesn't match, according to status", prefix)
-	}
-	if status.HeadWriter != headWriter {
-		t.Errorf("%s: Unexpected head writer: %s", prefix, status.HeadWriter)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, status.Staged, staged)
+	assert.Equal(t, status.HeadWriter, headWriter)
 	checkStringSlices(t, dirtyPaths, status.DirtyPaths)
 }
 
@@ -87,9 +78,7 @@ func TestBasicMDUpdate(t *testing.T) {
 
 	kbfsOps2 := config2.KBFSOps()
 	_, statusChan, err := kbfsOps2.FolderStatus(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't get status")
-	}
+	require.NoError(t, err)
 
 	// user 1 creates a file
 	kbfsOps1 := config1.KBFSOps()
@@ -101,13 +90,9 @@ func TestBasicMDUpdate(t *testing.T) {
 
 	entries, err := kbfsOps2.GetDirChildren(ctx, rootNode2)
 	require.NoError(t, err)
-	if len(entries) != 1 {
-		t.Fatalf("User 2 sees wrong number of entries in root dir: %d vs 1",
-			len(entries))
-	}
-	if _, ok := entries["a"]; !ok {
-		t.Fatalf("User 2 doesn't see file a")
-	}
+	require.Equal(t, 1, len(entries))
+	_, ok := entries["a"]
+	require.True(t, ok)
 
 	// The status should have fired as well (though in this case the
 	// writer is the same as before)
@@ -129,10 +114,9 @@ func testMultipleMDUpdates(t *testing.T, unembedChanges bool) {
 
 	if unembedChanges {
 		bss1, ok1 := config1.BlockSplitter().(*BlockSplitterSimple)
+		require.True(t, ok1)
 		bss2, ok2 := config2.BlockSplitter().(*BlockSplitterSimple)
-		if !ok1 || !ok2 {
-			t.Fatalf("Couldn't convert BlockSplitters!")
-		}
+		require.True(t, ok2)
 		bss1.blockChangeEmbedMaxSize = 3
 		bss2.blockChangeEmbedMaxSize = 3
 	}
@@ -161,16 +145,11 @@ func testMultipleMDUpdates(t *testing.T, unembedChanges bool) {
 
 	entries, err := kbfsOps2.GetDirChildren(ctx, rootNode2)
 	require.NoError(t, err)
-	if len(entries) != 2 {
-		t.Fatalf("User 2 sees wrong number of entries in root dir: %d vs 2",
-			len(entries))
-	}
-	if _, ok := entries["b"]; !ok {
-		t.Fatalf("User 2 doesn't see file b")
-	}
-	if _, ok := entries["c"]; !ok {
-		t.Fatalf("User 2 doesn't see file c")
-	}
+	require.Equal(t, 2, len(entries))
+	_, ok := entries["b"]
+	require.True(t, ok)
+	_, ok = entries["c"]
+	require.True(t, ok)
 }
 
 func TestMultipleMDUpdates(t *testing.T) {
@@ -355,9 +334,7 @@ func TestUnmergedAfterRestart(t *testing.T) {
 	ops1B := getOps(config1B, fileNode1B.GetFolderBranch().Tlf)
 	ops2B := getOps(config2B, fileNode1B.GetFolderBranch().Tlf)
 	lState := makeFBOLockState()
-	if ops1B.getLatestMergedRevision(lState) != ops2B.getCurrMDRevision(lState) {
-		t.Fatalf("latest merged revision from ops1B differs from that from ops2B")
-	}
+	require.Equal(t, ops1B.getLatestMergedRevision(lState), ops2B.getCurrMDRevision(lState))
 
 	// Unstage user 1's changes, and make sure everyone is back in
 	// sync.  TODO: remove this once we have automatic conflict
@@ -379,27 +356,22 @@ func TestUnmergedAfterRestart(t *testing.T) {
 		t.Fatal("No 2nd update!")
 	}
 	// make sure we see two sync op changes, on the same node
-	if len(cro.changes) != 2 {
-		t.Errorf("Unexpected number of changes: %d", len(cro.changes))
-	}
+	assert.Equal(t, 2, len(cro.changes))
 	var n Node
 	for _, change := range cro.changes {
 		if n == nil {
 			n = change.Node
-		} else if n.GetID() != change.Node.GetID() {
-			t.Errorf("Changes involve different nodes, %v vs %v",
-				n.GetID(), change.Node.GetID())
+		} else {
+			assert.Equal(t, n.GetID(), change.Node.GetID())
 		}
 	}
 
-	if err := config1B.KBFSOps().SyncFromServerForTesting(
-		ctx, fileNode1B.GetFolderBranch()); err != nil {
-		t.Fatal("Couldn't sync user 1 from server")
-	}
-	if err := config2B.KBFSOps().
-		SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch()); err != nil {
-		t.Fatal("Couldn't sync user 2 from server")
-	}
+	err = config1B.KBFSOps().SyncFromServerForTesting(
+		ctx, fileNode1B.GetFolderBranch())
+	require.NoError(t, err)
+	err = config2B.KBFSOps().
+		SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
+	require.NoError(t, err)
 
 	readAndCompareData(t, config1B, ctx, name, data2, userName2)
 	readAndCompareData(t, config2B, ctx, name, data2, userName2)
@@ -472,10 +444,9 @@ func testBasicCRNoConflict(t *testing.T, unembedChanges bool) {
 
 	if unembedChanges {
 		bss1, ok1 := config1.BlockSplitter().(*BlockSplitterSimple)
+		require.True(t, ok1)
 		bss2, ok2 := config2.BlockSplitter().(*BlockSplitterSimple)
-		if !ok1 || !ok2 {
-			t.Fatalf("Couldn't convert BlockSplitters!")
-		}
+		require.True(t, ok2)
 		// 128 seems to be a good size that works on both 386 and x64
 		// platforms.
 		bss1.blockChangeEmbedMaxSize = 128
@@ -532,29 +503,21 @@ func testBasicCRNoConflict(t *testing.T, unembedChanges bool) {
 	children2, err := kbfsOps2.GetDirChildren(ctx, rootNode2)
 	require.NoError(t, err)
 
-	if g, e := len(children1), len(expectedChildren); g != e {
-		t.Errorf("Wrong number of children: %d vs %d", g, e)
-	}
+	assert.Equal(t, len(expectedChildren), len(children1))
 
 	for _, child := range expectedChildren {
-		if _, ok := children1[child]; !ok {
-			t.Errorf("Couldn't find child %s", child)
-		}
+		_, ok := children1[child]
+		assert.True(t, ok)
 	}
 
-	if !reflect.DeepEqual(children1, children2) {
-		t.Fatalf("Users 1 and 2 see different children: %v vs %v",
-			children1, children2)
-	}
+	require.Equal(t, children1, children2)
 
 	if unembedChanges {
 		// Make sure the MD has an unembedded change block.
 		md, err := config1.MDOps().GetForTLF(ctx,
 			rootNode1.GetFolderBranch().Tlf)
 		require.NoError(t, err)
-		if md.data.cachedChanges.Info.BlockPointer == zeroPtr {
-			t.Fatalf("No unembedded changes for ops %v", md.data.Changes.Ops)
-		}
+		require.NotEqual(t, zeroPtr, md.data.cachedChanges.Info.BlockPointer)
 	}
 }
 
@@ -674,9 +637,7 @@ func TestCRFileConflictWithMoreUpdatesFromOneUser(t *testing.T) {
 		}
 	}
 
-	if !equal {
-		t.Fatalf("client does not track latest remote revision")
-	}
+	require.True(t, equal)
 }
 
 // Tests that two users can make independent writes while forked, and
@@ -757,20 +718,14 @@ func TestBasicCRFileConflict(t *testing.T) {
 	children2, err := kbfsOps2.GetDirChildren(ctx, dirA2)
 	require.NoError(t, err)
 
-	if g, e := len(children1), len(expectedChildren); g != e {
-		t.Errorf("Wrong number of children: %d vs %d", g, e)
-	}
+	assert.Equal(t, len(expectedChildren), len(children1))
 
 	for _, child := range expectedChildren {
-		if _, ok := children1[child]; !ok {
-			t.Errorf("Couldn't find child %s", child)
-		}
+		_, ok := children1[child]
+		assert.True(t, ok)
 	}
 
-	if !reflect.DeepEqual(children1, children2) {
-		t.Fatalf("Users 1 and 2 see different children: %v vs %v",
-			children1, children2)
-	}
+	require.Equal(t, children1, children2)
 }
 
 // Tests that two users can create the same file simultaneously, and
@@ -843,20 +798,14 @@ func TestBasicCRFileCreateUnmergedWriteConflict(t *testing.T) {
 	children2, err := kbfsOps2.GetDirChildren(ctx, dirA2)
 	require.NoError(t, err)
 
-	if g, e := len(children1), len(expectedChildren); g != e {
-		t.Errorf("Wrong number of children: %d vs %d", g, e)
-	}
+	assert.Equal(t, len(expectedChildren), len(children1))
 
 	for _, child := range expectedChildren {
-		if _, ok := children1[child]; !ok {
-			t.Errorf("Couldn't find child %s", child)
-		}
+		_, ok := children1[child]
+		assert.True(t, ok)
 	}
 
-	if !reflect.DeepEqual(children1, children2) {
-		t.Fatalf("Users 1 and 2 see different children: %v vs %v",
-			children1, children2)
-	}
+	require.Equal(t, children1, children2)
 }
 
 // Test that two conflict resolutions work correctly.
@@ -870,9 +819,7 @@ func TestCRDouble(t *testing.T) {
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
 	_, _, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config2.MDServer().DisableRekeyUpdatesForTesting()
 
 	config2.SetClock(newTestClockNow())
@@ -918,9 +865,7 @@ func TestCRDouble(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		err = kbfsOps2.Sync(syncCtx, fileNodeC)
-		if err != context.Canceled {
-			t.Errorf("Bad sync error, expected canceled: %+v", err)
-		}
+		assert.Equal(t, context.Canceled, err)
 	}()
 	<-onSyncStalledCh
 	cancel()
@@ -984,9 +929,8 @@ func waitForRekey(t *testing.T, config Config, id tlf.ID) {
 	rekeyCh := config.RekeyQueue().GetRekeyChannel(id)
 	if rekeyCh != nil {
 		// rekey in progress still
-		if err := <-rekeyCh; err != nil {
-			t.Fatal(err)
-		}
+		err := <-rekeyCh
+		require.NoError(t, err)
 	}
 }
 
@@ -1003,9 +947,7 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config2.MDServer().DisableRekeyUpdatesForTesting()
 
 	clock, now := newTestClockAndTimeNow()
@@ -1045,9 +987,7 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 	// user2 device 2 should be unable to read the data now since its device
 	// wasn't registered when the folder was originally created.
 	_, err = GetRootNodeForTest(ctx, config2Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
-		t.Fatalf("Got unexpected error when reading with new key: %+v", err)
-	}
+	require.IsType(t, NeedSelfRekeyError{}, err)
 
 	// User 2 syncs
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
@@ -1120,25 +1060,15 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 	children2Dev2, err := kbfsOps2Dev2.GetDirChildren(ctx, dirA2Dev2)
 	require.NoError(t, err)
 
-	if g, e := len(children1), len(expectedChildren); g != e {
-		t.Errorf("Wrong number of children: %d vs %d", g, e)
-	}
+	assert.Equal(t, len(expectedChildren), len(children1))
 
 	for _, child := range expectedChildren {
-		if _, ok := children1[child]; !ok {
-			t.Errorf("Couldn't find child %s", child)
-		}
+		_, ok := children1[child]
+		assert.True(t, ok)
 	}
 
-	if !reflect.DeepEqual(children1, children2) {
-		t.Fatalf("Users 1 and 2 see different children: %v vs %v",
-			children1, children2)
-	}
-
-	if !reflect.DeepEqual(children2, children2Dev2) {
-		t.Fatalf("User 2 device 1 and 2 see different children: %v vs %v",
-			children2, children2Dev2)
-	}
+	require.Equal(t, children1, children2)
+	require.Equal(t, children2, children2Dev2)
 }
 
 // Same as above, except the "winner" is the rekey request, and the
@@ -1153,9 +1083,7 @@ func TestBasicCRFileConflictWithMergedRekey(t *testing.T) {
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
 	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config2.MDServer().DisableRekeyUpdatesForTesting()
 
 	config2.SetClock(newTestClockNow())
@@ -1192,9 +1120,7 @@ func TestBasicCRFileConflictWithMergedRekey(t *testing.T) {
 	// user2 device 2 should be unable to read the data now since its device
 	// wasn't registered when the folder was originally created.
 	_, err = GetRootNodeForTest(ctx, config2Dev2, name, false)
-	if _, ok := err.(NeedSelfRekeyError); !ok {
-		t.Fatalf("Got unexpected error when reading with new key: %+v", err)
-	}
+	require.IsType(t, NeedSelfRekeyError{}, err)
 
 	// User 2 syncs
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
@@ -1258,25 +1184,15 @@ func TestBasicCRFileConflictWithMergedRekey(t *testing.T) {
 	children2Dev2, err := kbfsOps2Dev2.GetDirChildren(ctx, dirA2Dev2)
 	require.NoError(t, err)
 
-	if g, e := len(children1), len(expectedChildren); g != e {
-		t.Errorf("Wrong number of children: %d vs %d", g, e)
-	}
+	assert.Equal(t, len(expectedChildren), len(children1))
 
 	for _, child := range expectedChildren {
-		if _, ok := children1[child]; !ok {
-			t.Errorf("Couldn't find child %s", child)
-		}
+		_, ok := children1[child]
+		assert.True(t, ok)
 	}
 
-	if !reflect.DeepEqual(children1, children2) {
-		t.Fatalf("Users 1 and 2 see different children: %v vs %v",
-			children1, children2)
-	}
-
-	if !reflect.DeepEqual(children2, children2Dev2) {
-		t.Fatalf("User 2 device 1 and 2 see different children: %v vs %v",
-			children2, children2Dev2)
-	}
+	require.Equal(t, children1, children2)
+	require.Equal(t, children2, children2Dev2)
 }
 
 // Test that, when writing multiple blocks in parallel under conflict
@@ -1294,9 +1210,7 @@ func TestCRSyncParallelBlocksErrorCleanup(t *testing.T) {
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
 	_, _, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config2.MDServer().DisableRekeyUpdatesForTesting()
 
 	config2.SetClock(newTestClockNow())
@@ -1378,10 +1292,7 @@ func TestCRSyncParallelBlocksErrorCleanup(t *testing.T) {
 	close(syncUnstallCh)
 	wg.Wait()
 
-	if syncErr != context.Canceled {
-		t.Fatalf("wrong error returned; expected: %v; got: %v",
-			context.Canceled, syncErr)
-	}
+	require.Equal(t, context.Canceled, syncErr)
 
 	// Get the mdWriterLock to be sure the sync has exited (since the
 	// cleanup logic happens in a background goroutine)
@@ -1423,9 +1334,7 @@ func TestCRCanceledAfterNewOperation(t *testing.T) {
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
 	_, _, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config2.MDServer().DisableRekeyUpdatesForTesting()
 
 	clock, now := newTestClockAndTimeNow()
@@ -1482,16 +1391,10 @@ func TestCRCanceledAfterNewOperation(t *testing.T) {
 		// stalling.
 		err = RestartCRForTesting(putCtx, config2,
 			rootNode2.GetFolderBranch())
-		if err != nil {
-			t.Errorf("Couldn't disable updates: %+v", err)
-			return
-		}
+		assert.NoError(t, err)
 		err = kbfsOps2.SyncFromServerForTesting(putCtx,
 			rootNode2.GetFolderBranch())
-		if err == nil {
-			t.Errorf("Unexpected successful sync/CR: %+v", err)
-			return
-		}
+		assert.Error(t, err)
 	}()
 	<-onPutStalledCh
 	cancel2()
@@ -1525,13 +1428,10 @@ func TestCRCanceledAfterNewOperation(t *testing.T) {
 	}
 	children2, err := kbfsOps2.GetDirChildren(ctx, rootNode2)
 	require.NoError(t, err)
-	if g, e := len(children2), len(expectedChildren); g != e {
-		t.Errorf("Wrong number of children: %d vs %d", g, e)
-	}
+	assert.Equal(t, len(expectedChildren), len(children2))
 	for _, child := range expectedChildren {
-		if _, ok := children2[child]; !ok {
-			t.Errorf("Couldn't find child %s", child)
-		}
+		_, ok := children2[child]
+		assert.True(t, ok)
 	}
 }
 
@@ -1600,19 +1500,16 @@ func TestBasicCRBlockUnmergedWrites(t *testing.T) {
 		// stalling.
 		err = RestartCRForTesting(firstPutCtx, config2,
 			rootNode2.GetFolderBranch())
-		if err != nil {
-			t.Errorf("Couldn't disable updates: %+v", err)
+		if !assert.NoError(t, err) {
 			return
 		}
 		err = kbfsOps2.SyncFromServerForTesting(firstPutCtx,
 			rootNode2.GetFolderBranch())
-		if err == nil {
-			t.Errorf("Unexpected successful sync/CR: %+v", err)
+		if !assert.Error(t, err) {
 			return
 		}
 		err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-		if err != nil {
-			t.Errorf("Couldn't disable updates: %+v", err)
+		if !assert.NoError(t, err) {
 			return
 		}
 	}()
@@ -1634,14 +1531,12 @@ func TestBasicCRBlockUnmergedWrites(t *testing.T) {
 		// stalling.
 		err = RestartCRForTesting(putCtx, config2,
 			rootNode2.GetFolderBranch())
-		if err != nil {
-			t.Errorf("Couldn't disable updates: %+v", err)
+		if !assert.NoError(t, err) {
 			return
 		}
 		err = kbfsOps2.SyncFromServerForTesting(putCtx,
 			rootNode2.GetFolderBranch())
-		if err != nil {
-			t.Errorf("Unexpected unsuccessful sync/CR: %+v", err)
+		if !assert.NoError(t, err) {
 			return
 		}
 	}()
@@ -1652,9 +1547,7 @@ func TestBasicCRBlockUnmergedWrites(t *testing.T) {
 	writeErrCh := make(chan error, 1)
 	go func() {
 		_, _, err := kbfsOps2.CreateFile(ctx, dirA2, "g", false, NoExcl)
-		if err != nil {
-			t.Errorf("Couldn't create file: %+v", err)
-		}
+		assert.NoError(t, err)
 		writeErrCh <- err
 	}()
 
@@ -1689,9 +1582,7 @@ func TestUnmergedPutAfterCanceledUnmergedPut(t *testing.T) {
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
 	_, _, err := config2.KBPKI().GetCurrentUserInfo(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config2.MDServer().DisableRekeyUpdatesForTesting()
 
 	name := userName1.String() + "," + userName2.String()
@@ -1738,9 +1629,7 @@ func TestUnmergedPutAfterCanceledUnmergedPut(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		_, _, err = kbfsOps2.CreateFile(putCtx, rootNode2, "c", false, NoExcl)
-		if err == nil {
-			t.Errorf("Could create file without error: %+v", err)
-		}
+		assert.Error(t, err)
 	}()
 	<-onPutStalledCh
 	cancel2()
@@ -1768,12 +1657,9 @@ func TestUnmergedPutAfterCanceledUnmergedPut(t *testing.T) {
 	}
 	children2, err := kbfsOps2.GetDirChildren(ctx, rootNode2)
 	require.NoError(t, err)
-	if g, e := len(children2), len(expectedChildren); g != e {
-		t.Errorf("Wrong number of children: %d vs %d", g, e)
-	}
+	assert.Equal(t, len(expectedChildren), len(children2))
 	for _, child := range expectedChildren {
-		if _, ok := children2[child]; !ok {
-			t.Errorf("Couldn't find child %s", child)
-		}
+		_, ok := children2[child]
+		assert.True(t, ok)
 	}
 }
