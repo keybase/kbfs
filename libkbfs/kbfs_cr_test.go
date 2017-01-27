@@ -15,6 +15,7 @@ import (
 	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
@@ -24,14 +25,10 @@ func readAndCompareData(t *testing.T, config Config, ctx context.Context,
 
 	kbfsOps := config.KBFSOps()
 	fileNode, _, err := kbfsOps.Lookup(ctx, rootNode, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup file: %+v", err)
-	}
+	require.NoError(t, err)
 	data := make([]byte, 1)
 	_, err = kbfsOps.Read(ctx, fileNode, data, 0)
-	if err != nil {
-		t.Fatalf("Couldn't read file: %+v", err)
-	}
+	require.NoError(t, err)
 	if data[0] != expectedData[0] {
 		t.Errorf("User %s didn't see expected data: %v", user, data)
 	}
@@ -97,19 +94,13 @@ func TestBasicMDUpdate(t *testing.T) {
 	// user 1 creates a file
 	kbfsOps1 := config1.KBFSOps()
 	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	entries, err := kbfsOps2.GetDirChildren(ctx, rootNode2)
-	if err != nil {
-		t.Fatalf("User 2 couldn't see the root dir: %+v", err)
-	}
+	require.NoError(t, err)
 	if len(entries) != 1 {
 		t.Fatalf("User 2 sees wrong number of entries in root dir: %d vs 1",
 			len(entries))
@@ -153,33 +144,23 @@ func testMultipleMDUpdates(t *testing.T, unembedChanges bool) {
 	kbfsOps1 := config1.KBFSOps()
 	// user 1 creates a file
 	_, _, err := kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// user 2 looks up the directory (and sees the file)
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	// now user 1 renames the old file, and creates a new one
 	err = kbfsOps1.Rename(ctx, rootNode1, "a", rootNode1, "b")
-	if err != nil {
-		t.Fatalf("Couldn't rename file: %+v", err)
-	}
+	require.NoError(t, err)
 	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "c", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	kbfsOps2 := config2.KBFSOps()
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	entries, err := kbfsOps2.GetDirChildren(ctx, rootNode2)
-	if err != nil {
-		t.Fatalf("User 2 couldn't see the root dir: %+v", err)
-	}
+	require.NoError(t, err)
 	if len(entries) != 2 {
 		t.Fatalf("User 2 sees wrong number of entries in root dir: %d vs 2",
 			len(entries))
@@ -207,18 +188,14 @@ func TestGetTLFCryptKeysWhileUnmergedAfterRestart(t *testing.T) {
 
 	// enable journaling to see patrick's error
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_for_gettlfcryptkeys")
-	if err != nil {
-		t.Fatalf("creating tempdir error: %+v", err)
-	}
+	require.NoError(t, err)
 	defer func() {
 		err := ioutil.RemoveAll(tempdir)
 		assert.NoError(t, err)
 	}()
 	config1.EnableJournaling(tempdir, TLFJournalBackgroundWorkEnabled)
 	jServer, err := GetJournalServer(config1)
-	if err != nil {
-		t.Fatalf("error in GetJournalServer: %+v", err)
-	}
+	require.NoError(t, err)
 	jServer.onBranchChange = nil
 	jServer.onMDFlush = nil
 	jServer.EnableAuto(ctx)
@@ -232,83 +209,59 @@ func TestGetTLFCryptKeysWhileUnmergedAfterRestart(t *testing.T) {
 
 	kbfsOps1 := config1.KBFSOps()
 	fileNode1, _, err := kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	_, err = DisableUpdatesForTesting(config1, rootNode1.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	DisableCRForTesting(config1, rootNode1.GetFolderBranch())
 
 	// Wait for "a" to flush to the server.
 	err = jServer.Wait(ctx, rootNode1.GetFolderBranch().Tlf)
-	if err != nil {
-		t.Fatalf("Couldn't wait on journal: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// then user2 write to the file
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	fileNode2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup file: %+v", err)
-	}
+	require.NoError(t, err)
 	data2 := []byte{2}
 	err = kbfsOps2.Write(ctx, fileNode2, data2, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	checkStatus(t, ctx, kbfsOps2, false, userName1, []string{"u1,u2/a"},
 		rootNode2.GetFolderBranch(), "Node 2 (after write)")
 	err = kbfsOps2.Sync(ctx, fileNode2)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Now when user 1 tries to write to file 1 and sync, it will
 	// become unmerged.
 	data1 := []byte{1}
 	err = kbfsOps1.Write(ctx, fileNode1, data1, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	// sync the file from u1 so that we get a clean exit state
 	err = kbfsOps1.Sync(ctx, fileNode1)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Wait for the conflict to be detected.
 	err = jServer.Wait(ctx, rootNode1.GetFolderBranch().Tlf)
-	if err != nil {
-		t.Fatalf("Couldn't wait on journal: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// now re-login u1
 	config1B := ConfigAsUser(config1, userName1)
 	defer CheckConfigAndShutdown(ctx, t, config1B)
 	config1B.EnableJournaling(tempdir, TLFJournalBackgroundWorkEnabled)
 	jServer, err = GetJournalServer(config1B)
-	if err != nil {
-		t.Fatalf("error in GetJournalServer: %+v", err)
-	}
+	require.NoError(t, err)
 	jServer.onBranchChange = nil
 	jServer.onMDFlush = nil
 
 	DisableCRForTesting(config1B, rootNode1.GetFolderBranch())
 
 	tlfHandle, err := ParseTlfHandle(ctx, config1B.KBPKI(), name, false)
-	if err != nil {
-		t.Fatalf("error making tlfHandle: %s", err)
-	}
+	require.NoError(t, err)
 
 	_, _, err = config1B.KBFSOps().GetTLFCryptKeys(ctx, tlfHandle)
-	if err != nil {
-		t.Fatalf("error in GetTLFCryptKeys on unmerged TLF after restart: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 // Tests that, in the face of a conflict, a user will commit its
@@ -330,14 +283,10 @@ func TestUnmergedAfterRestart(t *testing.T) {
 
 	kbfsOps1 := config1.KBFSOps()
 	fileNode1, _, err := kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	_, err = DisableUpdatesForTesting(config1, rootNode1.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	DisableCRForTesting(config1, rootNode1.GetFolderBranch())
 
 	// then user2 write to the file
@@ -345,20 +294,14 @@ func TestUnmergedAfterRestart(t *testing.T) {
 
 	kbfsOps2 := config2.KBFSOps()
 	fileNode2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup file: %+v", err)
-	}
+	require.NoError(t, err)
 	data2 := []byte{2}
 	err = kbfsOps2.Write(ctx, fileNode2, data2, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	checkStatus(t, ctx, kbfsOps2, false, userName1, []string{"u1,u2/a"},
 		rootNode2.GetFolderBranch(), "Node 2 (after write)")
 	err = kbfsOps2.Sync(ctx, fileNode2)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Now when user 1 tries to write to file 1 and sync, it will
 	// become unmerged.  Because this happens in the same goroutine as
@@ -367,15 +310,11 @@ func TestUnmergedAfterRestart(t *testing.T) {
 	// conflict.
 	data1 := []byte{1}
 	err = kbfsOps1.Write(ctx, fileNode1, data1, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	checkStatus(t, ctx, kbfsOps1, false, userName1, []string{"u1,u2/a"},
 		rootNode1.GetFolderBranch(), "Node 1 (after write)")
 	err = kbfsOps1.Sync(ctx, fileNode1)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	checkStatus(t, ctx, kbfsOps1, true, userName1, nil,
 		rootNode1.GetFolderBranch(), "Node 1")
@@ -397,9 +336,7 @@ func TestUnmergedAfterRestart(t *testing.T) {
 
 	kbfsOps1B := config1B.KBFSOps()
 	fileNode1B, _, err := kbfsOps1B.Lookup(ctx, rootNode1B, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	readAndCompareData(t, config1B, ctx, name, data1, userName1)
 	readAndCompareData(t, config2B, ctx, name, data2, userName2)
@@ -427,9 +364,7 @@ func TestUnmergedAfterRestart(t *testing.T) {
 	// resolution.
 	err = config1B.KBFSOps().UnstageForTesting(ctx,
 		rootNode1B.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't unstage: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// we should have had two updates, one for the unstaging and one
 	// for the fast-forward
@@ -492,53 +427,37 @@ func TestMultiUserWrite(t *testing.T) {
 
 	kbfsOps1 := config1.KBFSOps()
 	_, _, err := kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// then user2 write to the file
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	fileNode2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	data2 := []byte{2}
 	err = kbfsOps2.Write(ctx, fileNode2, data2, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	// Write twice to make sure that multiple write operations within
 	// a sync work when the writer is changing.
 	err = kbfsOps2.Write(ctx, fileNode2, data2, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.Sync(ctx, fileNode2)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 	readAndCompareData(t, config2, ctx, name, data2, userName2)
 
 	// A second write by the same user
 	data3 := []byte{3}
 	err = kbfsOps2.Write(ctx, fileNode2, data3, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.Sync(ctx, fileNode2)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	readAndCompareData(t, config2, ctx, name, data3, userName2)
 
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 	readAndCompareData(t, config1, ctx, name, data3, userName2)
 }
 
@@ -570,70 +489,48 @@ func testBasicCRNoConflict(t *testing.T, unembedChanges bool) {
 
 	kbfsOps1 := config1.KBFSOps()
 	_, _, err := kbfsOps1.CreateFile(ctx, rootNode1, "a", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// look it up on user2
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	_, _, err = kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// disable updates on user 2
 	c, err := DisableUpdatesForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 1 makes a new file
 	_, _, err = kbfsOps1.CreateFile(ctx, rootNode1, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 makes a new different file
 	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "c", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// re-enable updates, and wait for CR to complete
 	c <- struct{}{}
 	err = RestartCRForTesting(
 		BackgroundContextWithCancellationDelayer(), config2,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Make sure they both see the same set of children
 	expectedChildren := []string{"a", "b", "c"}
 	children1, err := kbfsOps1.GetDirChildren(ctx, rootNode1)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	children2, err := kbfsOps2.GetDirChildren(ctx, rootNode2)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	if g, e := len(children1), len(expectedChildren); g != e {
 		t.Errorf("Wrong number of children: %d vs %d", g, e)
@@ -654,9 +551,7 @@ func testBasicCRNoConflict(t *testing.T, unembedChanges bool) {
 		// Make sure the MD has an unembedded change block.
 		md, err := config1.MDOps().GetForTLF(ctx,
 			rootNode1.GetFolderBranch().Tlf)
-		if err != nil {
-			t.Fatalf("Couldn't get MD: %+v", err)
-		}
+		require.NoError(t, err)
 		if md.data.cachedChanges.Info.BlockPointer == zeroPtr {
 			t.Fatalf("No unembedded changes for ops %v", md.data.Changes.Ops)
 		}
@@ -720,48 +615,32 @@ func TestCRFileConflictWithMoreUpdatesFromOneUser(t *testing.T) {
 
 	kbfsOps1 := config1.KBFSOps()
 	dirA1, _, err := kbfsOps1.CreateDir(ctx, rootNode1, "a")
-	if err != nil {
-		t.Fatalf("Couldn't create dir: %+v", err)
-	}
+	require.NoError(t, err)
 	fileB1, _, err := kbfsOps1.CreateFile(ctx, dirA1, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// look it up on user2
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	dirA2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 	fileB2, _, err := kbfsOps2.Lookup(ctx, dirA2, "b")
-	if err != nil {
-		t.Fatalf("Couldn't lookup file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// disable updates on user 2
 	chForEnablingUpdates, err := DisableUpdatesForTesting(
 		config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable CR: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 1 writes the file
 	data := []byte{1, 2, 3, 4, 5}
 	err = kbfsOps1.Write(ctx, fileB1, data, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps1.Sync(ctx, fileB1)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 makes a few changes in the file
 	for i := byte(0); i < 4; i++ {
@@ -772,14 +651,10 @@ func TestCRFileConflictWithMoreUpdatesFromOneUser(t *testing.T) {
 
 		data = []byte{1, 2, 3, 4, i}
 		err = kbfsOps2.Write(ctx, fileB2, data, 0)
-		if err != nil {
-			t.Fatalf("Couldn't write file: %+v", err)
-		}
+		require.NoError(t, err)
 
 		err = kbfsOps2.Sync(ctx, fileB2)
-		if err != nil {
-			t.Fatalf("Couldn't sync file: %+v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	chForEnablingUpdates <- struct{}{}
@@ -792,9 +667,7 @@ func TestCRFileConflictWithMoreUpdatesFromOneUser(t *testing.T) {
 		record := <-chForMdServer2
 		mergedRev, err := mdServ.getCurrentMergedHeadRevision(
 			ctx, rootNode2.GetFolderBranch().Tlf)
-		if err != nil {
-			t.Fatalf("getting current merged head revision error: %+v", err)
-		}
+		require.NoError(t, err)
 		if record.currHead == mergedRev {
 			equal = true
 			break
@@ -827,76 +700,50 @@ func TestBasicCRFileConflict(t *testing.T) {
 
 	kbfsOps1 := config1.KBFSOps()
 	dirA1, _, err := kbfsOps1.CreateDir(ctx, rootNode1, "a")
-	if err != nil {
-		t.Fatalf("Couldn't create dir: %+v", err)
-	}
+	require.NoError(t, err)
 	fileB1, _, err := kbfsOps1.CreateFile(ctx, dirA1, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// look it up on user2
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	dirA2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 	fileB2, _, err := kbfsOps2.Lookup(ctx, dirA2, "b")
-	if err != nil {
-		t.Fatalf("Couldn't lookup file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// disable updates on user 2
 	c, err := DisableUpdatesForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 1 writes the file
 	data1 := []byte{1, 2, 3, 4, 5}
 	err = kbfsOps1.Write(ctx, fileB1, data1, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps1.Sync(ctx, fileB1)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 makes a new different file
 	data2 := []byte{5, 4, 3, 2, 1}
 	err = kbfsOps2.Write(ctx, fileB2, data2, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.Sync(ctx, fileB2)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// re-enable updates, and wait for CR to complete
 	c <- struct{}{}
 	err = RestartCRForTesting(
 		BackgroundContextWithCancellationDelayer(), config2,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	cre := WriterDeviceDateConflictRenamer{}
 	// Make sure they both see the same set of children
@@ -905,14 +752,10 @@ func TestBasicCRFileConflict(t *testing.T) {
 		cre.ConflictRenameHelper(now, "u2", "dev1", "b"),
 	}
 	children1, err := kbfsOps1.GetDirChildren(ctx, dirA1)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	children2, err := kbfsOps2.GetDirChildren(ctx, dirA2)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	if g, e := len(children1), len(expectedChildren); g != e {
 		t.Errorf("Wrong number of children: %d vs %d", g, e)
@@ -951,80 +794,54 @@ func TestBasicCRFileCreateUnmergedWriteConflict(t *testing.T) {
 
 	kbfsOps1 := config1.KBFSOps()
 	dirA1, _, err := kbfsOps1.CreateDir(ctx, rootNode1, "a")
-	if err != nil {
-		t.Fatalf("Couldn't create dir: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// look it up on user2
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	dirA2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 	// disable updates and CR on user 2
 	c, err := DisableUpdatesForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 1 creates a file
 	_, _, err = kbfsOps1.CreateFile(ctx, dirA1, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 creates the same file, and writes to it.
 	fileB2, _, err := kbfsOps2.CreateFile(ctx, dirA2, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 	data2 := []byte{5, 4, 3, 2, 1}
 	err = kbfsOps2.Write(ctx, fileB2, data2, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.Sync(ctx, fileB2)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// re-enable updates, and wait for CR to complete
 	c <- struct{}{}
 	err = RestartCRForTesting(
 		BackgroundContextWithCancellationDelayer(), config2,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Make sure they both see the same set of children
 	expectedChildren := []string{
 		"b",
 	}
 	children1, err := kbfsOps1.GetDirChildren(ctx, dirA1)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	children2, err := kbfsOps2.GetDirChildren(ctx, dirA2)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	if g, e := len(children1), len(expectedChildren); g != e {
 		t.Errorf("Wrong number of children: %d vs %d", g, e)
@@ -1065,43 +882,29 @@ func TestCRDouble(t *testing.T) {
 	rootNode := GetRootNodeOrBust(ctx, t, config1, name, false)
 	kbfsOps1 := config1.KBFSOps()
 	_, _, err = kbfsOps1.CreateFile(ctx, rootNode, "a", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// look it up on user2
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	_, _, err = kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 	// disable updates and CR on user 2
 	c, err := DisableUpdatesForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 1 creates a new file to start a conflict.
 	_, _, err = kbfsOps1.CreateFile(ctx, rootNode, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 makes a couple revisions
 	fileNodeC, _, err := kbfsOps2.CreateFile(ctx, rootNode2, "c", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.Write(ctx, fileNodeC, []byte{0}, 0)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	var wg sync.WaitGroup
 	syncCtx, cancel := context.WithCancel(ctx)
@@ -1126,32 +929,22 @@ func TestCRDouble(t *testing.T) {
 
 	// Sync for real to clear out the dirty files.
 	err = kbfsOps2.Sync(ctx, fileNodeC)
-	if err != nil {
-		t.Fatalf("Couldn't sync: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Do one CR.
 	c <- struct{}{}
 	err = RestartCRForTesting(
 		BackgroundContextWithCancellationDelayer(), config2,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// A few merged revisions
 	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "e", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "f", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	ops := getOps(config2, rootNode.GetFolderBranch().Tlf)
 	// Wait for the processor to try to delete the failed revision
@@ -1161,45 +954,29 @@ func TestCRDouble(t *testing.T) {
 
 	// Sync user 1, then start another round of CR.
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 	// disable updates and CR on user 2
 	c, err = DisableUpdatesForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	_, _, err = kbfsOps1.CreateFile(ctx, rootNode, "g", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 makes a couple unmerged revisions
 	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "h", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "i", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Do a second CR.
 	c <- struct{}{}
 	err = RestartCRForTesting(
 		BackgroundContextWithCancellationDelayer(), config2,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 }
 
 // Helper to block on rekey of a given folder.
@@ -1240,26 +1017,18 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 
 	kbfsOps1 := config1.KBFSOps()
 	dirA1, _, err := kbfsOps1.CreateDir(ctx, rootNode1, "a")
-	if err != nil {
-		t.Fatalf("Couldn't create dir: %+v", err)
-	}
+	require.NoError(t, err)
 	fileB1, _, err := kbfsOps1.CreateFile(ctx, dirA1, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// look it up on user2
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	dirA2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 	fileB2, _, err := kbfsOps2.Lookup(ctx, dirA2, "b")
-	if err != nil {
-		t.Fatalf("Couldn't lookup file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	config2Dev2 := ConfigAsUser(config1, userName2)
 	// we don't check the config because this device can't read all of the md blocks.
@@ -1282,54 +1051,36 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 
 	// User 2 syncs
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// disable updates on user2
 	c, err := DisableUpdatesForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 1 writes the file
 	data1 := []byte{1, 2, 3, 4, 5}
 	err = kbfsOps1.Write(ctx, fileB1, data1, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps1.Sync(ctx, fileB1)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 dev 2 should set the rekey bit
 	kbfsOps2Dev2 := config2Dev2.KBFSOps()
 	err = kbfsOps2Dev2.Rekey(ctx, rootNode2.GetFolderBranch().Tlf)
-	if err != nil {
-		t.Fatalf("Couldn't set rekey bit: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 1 syncs
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 makes a new different file
 	data2 := []byte{5, 4, 3, 2, 1}
 	err = kbfsOps2.Write(ctx, fileB2, data2, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.Sync(ctx, fileB2)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// re-enable updates, and wait for CR to complete.
 	// this should also cause a rekey of the folder.
@@ -1337,32 +1088,22 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 	err = RestartCRForTesting(
 		BackgroundContextWithCancellationDelayer(), config2,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 	// wait for the rekey to happen
 	waitForRekey(t, config2, rootNode2.GetFolderBranch().Tlf)
 
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Look it up on user 2 dev 2 after syncing.
 	err = kbfsOps2Dev2.SyncFromServerForTesting(ctx,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 	rootNode2Dev2 := GetRootNodeOrBust(ctx, t, config2Dev2, name, false)
 	dirA2Dev2, _, err := kbfsOps2Dev2.Lookup(ctx, rootNode2Dev2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 
 	cre := WriterDeviceDateConflictRenamer{}
 	// Make sure they all see the same set of children
@@ -1371,19 +1112,13 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 		cre.ConflictRenameHelper(now, "u2", "dev1", "b"),
 	}
 	children1, err := kbfsOps1.GetDirChildren(ctx, dirA1)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	children2, err := kbfsOps2.GetDirChildren(ctx, dirA2)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	children2Dev2, err := kbfsOps2Dev2.GetDirChildren(ctx, dirA2Dev2)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	if g, e := len(children1), len(expectedChildren); g != e {
 		t.Errorf("Wrong number of children: %d vs %d", g, e)
@@ -1431,22 +1166,16 @@ func TestBasicCRFileConflictWithMergedRekey(t *testing.T) {
 
 	kbfsOps1 := config1.KBFSOps()
 	dirA1, _, err := kbfsOps1.CreateDir(ctx, rootNode1, "a")
-	if err != nil {
-		t.Fatalf("Couldn't create dir: %+v", err)
-	}
+	require.NoError(t, err)
 	fileB1, _, err := kbfsOps1.CreateFile(ctx, dirA1, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// look it up on user2
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	dirA2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 
 	config2Dev2 := ConfigAsUser(config1, userName2)
 	// we don't check the config because this device can't read all of the md blocks.
@@ -1469,37 +1198,25 @@ func TestBasicCRFileConflictWithMergedRekey(t *testing.T) {
 
 	// User 2 syncs
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// disable updates on user1
 	c, err := DisableUpdatesForTesting(config1, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config1, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 dev 2 should set the rekey bit
 	kbfsOps2Dev2 := config2Dev2.KBFSOps()
 	err = kbfsOps2Dev2.Rekey(ctx, rootNode2.GetFolderBranch().Tlf)
-	if err != nil {
-		t.Fatalf("Couldn't set rekey bit: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 1 writes the file
 	data1 := []byte{1, 2, 3, 4, 5}
 	err = kbfsOps1.Write(ctx, fileB1, data1, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps1.Sync(ctx, fileB1)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// re-enable updates, and wait for CR to complete.
 	// this should also cause a rekey of the folder.
@@ -1507,59 +1224,39 @@ func TestBasicCRFileConflictWithMergedRekey(t *testing.T) {
 	err = RestartCRForTesting(
 		BackgroundContextWithCancellationDelayer(), config1,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, err)
 	// wait for the rekey to happen
 	waitForRekey(t, config1, rootNode1.GetFolderBranch().Tlf)
 
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Look it up on user 2 dev 2 after syncing.
 	err = kbfsOps2Dev2.SyncFromServerForTesting(ctx,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 	rootNode2Dev2 := GetRootNodeOrBust(ctx, t, config2Dev2, name, false)
 	dirA2Dev2, _, err := kbfsOps2Dev2.Lookup(ctx, rootNode2Dev2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Make sure they all see the same set of children
 	expectedChildren := []string{
 		"b",
 	}
 	children1, err := kbfsOps1.GetDirChildren(ctx, dirA1)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	children2, err := kbfsOps2.GetDirChildren(ctx, dirA2)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	children2Dev2, err := kbfsOps2Dev2.GetDirChildren(ctx, dirA2Dev2)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 
 	if g, e := len(children1), len(expectedChildren); g != e {
 		t.Errorf("Wrong number of children: %d vs %d", g, e)
@@ -1616,39 +1313,27 @@ func TestCRSyncParallelBlocksErrorCleanup(t *testing.T) {
 	rootNode := GetRootNodeOrBust(ctx, t, config1, name, false)
 	kbfsOps1 := config1.KBFSOps()
 	_, _, err = kbfsOps1.CreateFile(ctx, rootNode, "a", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// look it up on user2
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	_, _, err = kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 	// disable updates and CR on user 2
 	c, err := DisableUpdatesForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 1 creates a new file to start a conflict.
 	_, _, err = kbfsOps1.CreateFile(ctx, rootNode, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 does one successful operation to create the first unmerged MD.
 	fileNodeB, _, err := kbfsOps2.CreateFile(ctx, rootNode2, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 writes some data
 	fileBlocks := int64(maxParallelBlockPuts + 5)
@@ -1657,9 +1342,7 @@ func TestCRSyncParallelBlocksErrorCleanup(t *testing.T) {
 		data = append(data, byte(i))
 	}
 	err = kbfsOps2.Write(ctx, fileNodeB, data, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Start the sync and wait for it to stall.
 	var wg sync.WaitGroup
@@ -1714,25 +1397,17 @@ func TestCRSyncParallelBlocksErrorCleanup(t *testing.T) {
 		data[i] = byte(i + 10)
 	}
 	err = kbfsOps2.Write(ctx, fileNodeB, data, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.Sync(ctx, fileNodeB)
-	if err != nil {
-		t.Fatalf("Couldn't sync: %+v", err)
-	}
+	require.NoError(t, err)
 
 	c <- struct{}{}
 	err = RestartCRForTesting(
 		BackgroundContextWithCancellationDelayer(), config2,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't sync from server: %+v", err)
-	}
+	require.NoError(t, err)
 }
 
 // Test that a resolution can be canceled right before the Put due to
@@ -1761,57 +1436,37 @@ func TestCRCanceledAfterNewOperation(t *testing.T) {
 	rootNode := GetRootNodeOrBust(ctx, t, config1, name, false)
 	kbfsOps1 := config1.KBFSOps()
 	aNode1, _, err := kbfsOps1.CreateFile(ctx, rootNode, "a", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 	data := []byte{1, 2, 3, 4, 5}
 	err = kbfsOps1.Write(ctx, aNode1, data, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps1.Sync(ctx, aNode1)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// look it up on user2
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	aNode2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 	// disable updates and CR on user 2
 	c, err := DisableUpdatesForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 1 truncates file a.
 	err = kbfsOps1.Truncate(ctx, aNode1, 0)
-	if err != nil {
-		t.Fatalf("Couldn't truncate file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps1.Sync(ctx, aNode1)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 writes to the file, creating a conflict.
 	data2 := []byte{5, 4, 3, 2, 1}
 	err = kbfsOps2.Write(ctx, aNode2, data2, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.Sync(ctx, aNode2)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	onPutStalledCh, putUnstallCh, putCtx :=
 		StallMDOp(context.Background(), config2, StallableMDResolveBranch, 1)
@@ -1845,30 +1500,20 @@ func TestCRCanceledAfterNewOperation(t *testing.T) {
 
 	// Disable again
 	c, err = DisableUpdatesForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Do a second operation and complete the resolution.
 	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 	c <- struct{}{}
 	err = RestartCRForTesting(
 		BackgroundContextWithCancellationDelayer(), config2,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't finish resolution: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Now there should be a conflict file containing data2.
 	cre := WriterDeviceDateConflictRenamer{}
@@ -1879,9 +1524,7 @@ func TestCRCanceledAfterNewOperation(t *testing.T) {
 		"b",
 	}
 	children2, err := kbfsOps2.GetDirChildren(ctx, rootNode2)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 	if g, e := len(children2), len(expectedChildren); g != e {
 		t.Errorf("Wrong number of children: %d vs %d", g, e)
 	}
@@ -1910,13 +1553,9 @@ func TestBasicCRBlockUnmergedWrites(t *testing.T) {
 
 	kbfsOps1 := config1.KBFSOps()
 	dirA1, _, err := kbfsOps1.CreateDir(ctx, rootNode1, "a")
-	if err != nil {
-		t.Fatalf("Couldn't create dir: %+v", err)
-	}
+	require.NoError(t, err)
 	_, _, err = kbfsOps1.CreateFile(ctx, dirA1, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// look it up on user2
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
@@ -1925,39 +1564,25 @@ func TestBasicCRBlockUnmergedWrites(t *testing.T) {
 	ops2 := getOps(config2, rootNode2.GetFolderBranch().Tlf)
 	ops2.cr.maxRevsThreshold = 2
 	dirA2, _, err := kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 	_, _, err = kbfsOps2.Lookup(ctx, dirA2, "b")
-	if err != nil {
-		t.Fatalf("Couldn't lookup file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// disable updates on user 2
 	c, err := DisableUpdatesForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// One write for user 1
 	_, _, err = kbfsOps1.CreateFile(ctx, dirA1, "c", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Two writes for user 2
 	_, _, err = kbfsOps2.CreateFile(ctx, dirA2, "d", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 	_, _, err = kbfsOps2.CreateFile(ctx, dirA2, "e", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Start CR, but cancel it before it completes, which should lead
 	// to it locking next time (since it has seen how many revisions
@@ -1998,9 +1623,7 @@ func TestBasicCRBlockUnmergedWrites(t *testing.T) {
 
 	// Pretend that CR was canceled by another write.
 	_, _, err = kbfsOps2.CreateFile(ctx, dirA2, "f", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Now restart CR, and make sure it blocks all writes.
 	wg.Add(1)
@@ -2051,9 +1674,7 @@ func TestBasicCRBlockUnmergedWrites(t *testing.T) {
 
 	// Now the write can finish
 	err = <-writeErrCh
-	if err != nil {
-		t.Fatalf("Couldn't write after blocking on CR: %+v", err)
-	}
+	require.NoError(t, err)
 }
 
 // Test that an umerged put can be canceled, and the next put will
@@ -2079,52 +1700,34 @@ func TestUnmergedPutAfterCanceledUnmergedPut(t *testing.T) {
 	rootNode := GetRootNodeOrBust(ctx, t, config1, name, false)
 	kbfsOps1 := config1.KBFSOps()
 	aNode1, _, err := kbfsOps1.CreateFile(ctx, rootNode, "a", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 	data := []byte{1, 2, 3, 4, 5}
 	err = kbfsOps1.Write(ctx, aNode1, data, 0)
-	if err != nil {
-		t.Fatalf("Couldn't write file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps1.Sync(ctx, aNode1)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// look it up on user2
 	rootNode2 := GetRootNodeOrBust(ctx, t, config2, name, false)
 
 	kbfsOps2 := config2.KBFSOps()
 	_, _, err = kbfsOps2.Lookup(ctx, rootNode2, "a")
-	if err != nil {
-		t.Fatalf("Couldn't lookup dir: %+v", err)
-	}
+	require.NoError(t, err)
 	// disable updates and CR on user 2
 	c, err := DisableUpdatesForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = DisableCRForTesting(config2, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 1 truncates file a.
 	err = kbfsOps1.Truncate(ctx, aNode1, 0)
-	if err != nil {
-		t.Fatalf("Couldn't truncate file: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps1.Sync(ctx, aNode1)
-	if err != nil {
-		t.Fatalf("Couldn't sync file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// User 2 creates a file to start a conflict branch.
 	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "b", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	onPutStalledCh, putUnstallCh, putCtx :=
 		StallMDOp(ctx, config2, StallableMDAfterPutUnmerged, 1)
@@ -2146,21 +1749,15 @@ func TestUnmergedPutAfterCanceledUnmergedPut(t *testing.T) {
 
 	// Now try another create.  This should succeed without a revision conflict.
 	_, _, err = kbfsOps2.CreateFile(ctx, rootNode2, "d", false, NoExcl)
-	if err != nil {
-		t.Fatalf("Couldn't create file: %+v", err)
-	}
+	require.NoError(t, err)
 
 	c <- struct{}{}
 	err = RestartCRForTesting(
 		BackgroundContextWithCancellationDelayer(), config2,
 		rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't disable updates: %+v", err)
-	}
+	require.NoError(t, err)
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
-	if err != nil {
-		t.Fatalf("Couldn't finish resolution: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// Make sure they both see the same set of children.
 	expectedChildren := []string{
@@ -2170,9 +1767,7 @@ func TestUnmergedPutAfterCanceledUnmergedPut(t *testing.T) {
 		"d",
 	}
 	children2, err := kbfsOps2.GetDirChildren(ctx, rootNode2)
-	if err != nil {
-		t.Fatalf("Couldn't get children: %+v", err)
-	}
+	require.NoError(t, err)
 	if g, e := len(children2), len(expectedChildren); g != e {
 		t.Errorf("Wrong number of children: %d vs %d", g, e)
 	}
