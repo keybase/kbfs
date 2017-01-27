@@ -129,6 +129,8 @@ func TestRemoveDevicesNotInV2(t *testing.T) {
 // TestRemoveLastDeviceV2 checks behavior of removeDevicesNotIn() with
 // respect to removing the last device of a user vs. removing the user
 // completely.
+//
+// This is a regression test for KBFS-1898.
 func TestRemoveLastDeviceV2(t *testing.T) {
 	uid1 := keybase1.MakeTestUID(0x1)
 	uid2 := keybase1.MakeTestUID(0x2)
