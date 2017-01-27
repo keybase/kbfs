@@ -51,7 +51,8 @@ func setupJournalMDOpsTest(t *testing.T) (
 	}()
 
 	oldMDOps = config.MDOps()
-	config.EnableJournaling(tempdir, TLFJournalBackgroundWorkEnabled)
+	err = config.InitializeJournalServer(tempdir)
+	require.NoError(t, err)
 	jServer, err = GetJournalServer(config)
 	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
 	require.NoError(t, err)

@@ -66,9 +66,9 @@ type InitParams struct {
 	// LogFileConfig tells us where to log and rotation config.
 	LogFileConfig logger.LogFileConfig
 
-	// TLFJournalBackgroundWorkStatus is the status to use to
-	// pass into config.EnableJournaling. Only has an effect when
-	// WriteJournalRoot is non-empty.
+	// TLFJournalBackgroundWorkStatus is the status to use to pass
+	// into journalServer.EnableExistingJournals. Only has an
+	// effect when WriteJournalRoot is non-empty.
 	TLFJournalBackgroundWorkStatus TLFJournalBackgroundWorkStatus
 
 	// WriteJournalRoot, if non-empty, points to a path to a local
@@ -487,8 +487,10 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 	// -mdserver point to local implementations.
 
 	if len(params.WriteJournalRoot) > 0 {
-		config.EnableJournaling(params.WriteJournalRoot,
-			params.TLFJournalBackgroundWorkStatus)
+		err := config.InitializeJournalServer(params.WriteJournalRoot)
+		if err != nil {
+			panic(err)
+		}
 
 		func() {
 			ctx := context.Background()

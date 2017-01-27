@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfssync"
+	"github.com/pkg/errors"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/shirou/gopsutil/mem"
 	"golang.org/x/net/context"
@@ -820,10 +820,10 @@ func (c *ConfigLocal) Shutdown(ctx context.Context) error {
 		}
 	}
 
-	var errors []error
+	var errorList []error
 	err := c.KBFSOps().Shutdown(ctx)
 	if err != nil {
-		errors = append(errors, err)
+		errorList = append(errorList, err)
 		// Continue with shutdown regardless of err.
 	}
 	c.BlockOps().Shutdown()
@@ -835,14 +835,14 @@ func (c *ConfigLocal) Shutdown(ctx context.Context) error {
 	c.Reporter().Shutdown()
 	err = c.DirtyBlockCache().Shutdown()
 	if err != nil {
-		errors = append(errors, err)
+		errorList = append(errorList, err)
 	}
 
-	if len(errors) == 1 {
-		return errors[0]
-	} else if len(errors) > 1 {
+	if len(errorList) == 1 {
+		return errorList[0]
+	} else if len(errorList) > 1 {
 		// Aggregate errors
-		return fmt.Errorf("Multiple errors on shutdown: %v", errors)
+		return errors.Errorf("Multiple errors on shutdown: %+v", errorList)
 	}
 	return nil
 }
@@ -884,16 +884,16 @@ func (c *ConfigLocal) journalizeBcaches() error {
 	return nil
 }
 
-// EnableJournaling creates a JournalServer, but journaling may still
-// be enabled manually for individual folders, depending on whether
-// auto-enable is on.
-func (c *ConfigLocal) EnableJournaling(
-	journalRoot string, bws TLFJournalBackgroundWorkStatus) {
+// InitializeJournalServer creates a JournalServer and attaches it to
+// this config. No journals can be enabled, though, until
+// EnableExistingJournals is called on the journal server
+// successfully.
+func (c *ConfigLocal) InitializeJournalServer(journalRoot string) error {
 	jServer, err := GetJournalServer(c)
 	if err == nil {
 		// Journaling shouldn't be enabled twice for the same
 		// config.
-		panic(errors.New("Trying to enable journaling twice"))
+		return errors.New("Trying to enable journaling twice")
 	}
 
 	// TODO: Sanity-check the root directory, e.g. create
@@ -919,7 +919,5 @@ func (c *ConfigLocal) EnableJournaling(
 
 	c.SetBlockServer(jServer.blockServer())
 	c.SetMDOps(jServer.mdOps())
-	if err := c.journalizeBcaches(); err != nil {
-		panic(err)
-	}
+	return c.journalizeBcaches()
 }
