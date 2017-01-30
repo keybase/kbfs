@@ -214,6 +214,12 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest,
 	f.folder.fs.log.CDebugf(ctx, "File Write sz=%d ", len(req.Data))
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
+	if f.node.GetID().ParentID() == nil {
+		f.folder.fs.log.CDebugf(ctx,
+			"Ignoring write on unlinked file.", len(req.Data))
+		return nil
+	}
+
 	f.eiCache.destroy()
 	if err := f.folder.fs.config.KBFSOps().Write(
 		ctx, f.node, req.Data, req.Offset); err != nil {
