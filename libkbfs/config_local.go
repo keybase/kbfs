@@ -881,16 +881,16 @@ func (c *ConfigLocal) journalizeBcaches(jServer *JournalServer) error {
 }
 
 // InitializeJournalServer creates a JournalServer and attaches it to
-// this config. No journals can be enabled, though, until
-// EnableExistingJournals is called on the journal server
-// successfully.
+// this config. journalRoot must be non-empty. Errors returned are
+// non-fatal.
 func (c *ConfigLocal) InitializeJournalServer(
-	journalRoot string) (*JournalServer, error) {
+	ctx context.Context, journalRoot string,
+	bws TLFJournalBackgroundWorkStatus) error {
 	jServer, err := GetJournalServer(c)
 	if err == nil {
 		// Journaling shouldn't be enabled twice for the same
 		// config.
-		return nil, errors.New("Trying to enable journaling twice")
+		return errors.New("Trying to enable journaling twice")
 	}
 
 	// TODO: Sanity-check the root directory, e.g. create
@@ -916,36 +916,34 @@ func (c *ConfigLocal) InitializeJournalServer(
 
 	c.SetBlockServer(jServer.blockServer())
 	c.SetMDOps(jServer.mdOps())
-	err = c.journalizeBcaches(jServer)
-	if err != nil {
-		return nil, err
+
+	bcacheErr := c.journalizeBcaches(jServer)
+	enableErr := func() error {
+		// If this fails, then existing journals will be
+		// enabled when we receive the login notification.
+		uid, key, err :=
+			getCurrentUIDAndVerifyingKey(ctx, c.KBPKI())
+		if err != nil {
+			return err
+		}
+
+		err = jServer.EnableExistingJournals(ctx, uid, key, bws)
+		if err != nil {
+			return err
+		}
+		return nil
+	}()
+	switch {
+	case bcacheErr != nil && enableErr != nil:
+		err = errors.Errorf(
+			"Got errors %+v and %+v", bcacheErr, enableErr)
+	case bcacheErr != nil:
+		err = bcacheErr
+	case enableErr != nil:
+		err = enableErr
+	default:
+		err = nil
 	}
 
-	return jServer, nil
-}
-
-// InitializeJournalForTest initializes the journal for testing with
-// the given parameters.
-func InitializeJournalForTest(ctx context.Context, config *ConfigLocal,
-	journalRoot string, bws TLFJournalBackgroundWorkStatus) (
-	*JournalServer, error) {
-	if len(journalRoot) == 0 {
-		return nil, errors.New("Cannot initialize journal with empty root")
-	}
-	jServer, err := config.InitializeJournalServer(journalRoot)
-	if err != nil {
-		return nil, err
-	}
-
-	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
-	if err != nil {
-		return nil, err
-	}
-
-	err = jServer.EnableExistingJournals(ctx, uid, key, bws)
-	if err != nil {
-		return nil, err
-	}
-
-	return jServer, nil
+	return err
 }

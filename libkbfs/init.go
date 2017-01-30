@@ -333,39 +333,6 @@ func InitLog(params InitParams, ctx Context) (logger.Logger, error) {
 	return log, err
 }
 
-func initializeJournal(ctx context.Context, config *ConfigLocal,
-	params InitParams, log logger.Logger) {
-	if len(params.WriteJournalRoot) == 0 {
-		return
-	}
-
-	// TODO: Don't turn on journaling if either -bserver or
-	// -mdserver point to local implementations.
-
-	jServer, err := config.InitializeJournalServer(params.WriteJournalRoot)
-	if err != nil {
-		log.Warning("Could not initialize journal server: %+v", err)
-		return
-	}
-
-	// If any of the below functions fail, then the journal server
-	// is initialized but no existing journals are enabled. When
-	// the login state changes, there will be another attempt to
-	// enable existing journals (see serviceLoggedIn()).
-	uid, key, err := getCurrentUIDAndVerifyingKey(ctx, config.KBPKI())
-	if err != nil {
-		log.Warning("Could not get current user info; will enable "+
-			"existing journals on successful login: %+v", err)
-		return
-	}
-
-	err = jServer.EnableExistingJournals(ctx, uid, key, params.TLFJournalBackgroundWorkStatus)
-	if err != nil {
-		log.Warning("Could not enable existing journals: %+v", err)
-		return
-	}
-}
-
 // Init initializes a config and returns it.
 //
 // onInterruptFn is called whenever an interrupt signal is received
@@ -516,7 +483,16 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 
 	config.SetBlockServer(bserv)
 
-	initializeJournal(context.Background(), config, params, log)
+	// TODO: Don't turn on journaling if either -bserver or
+	// -mdserver point to local implementations.
+	if len(params.WriteJournalRoot) != 0 {
+		err := config.InitializeJournalServer(
+			context.Background(), params.WriteJournalRoot,
+			params.TLFJournalBackgroundWorkStatus)
+		if err != nil {
+			log.Warning("Could not initialize journal server: %+v", err)
+		}
+	}
 
 	return config, nil
 }
