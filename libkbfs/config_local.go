@@ -727,7 +727,7 @@ func (c *ConfigLocal) ResetCaches() {
 	if err == nil {
 		if err := c.journalizeBcaches(jServer); err != nil {
 			if log := c.MakeLogger(""); log != nil {
-				log.CWarningf(nil, "Error journalizing dirty block cache: %v", err)
+				log.CWarningf(nil, "Error journalizing dirty block cache: %+v", err)
 			}
 		}
 	}
@@ -737,7 +737,7 @@ func (c *ConfigLocal) ResetCaches() {
 		if err := oldDirtyBcache.Shutdown(); err != nil {
 			if log := c.MakeLogger(""); log != nil {
 				log.CWarningf(nil,
-					"Error shutting down old dirty block cache: %v", err)
+					"Error shutting down old dirty block cache: %+v", err)
 			}
 		}
 	}
