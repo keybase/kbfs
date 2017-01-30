@@ -52,8 +52,10 @@ func setupJournalServerTest(t *testing.T) (
 		}
 	}()
 
-	jServer, err = InitializeJournalForTest(
-		ctx, config, tempdir, TLFJournalBackgroundWorkEnabled)
+	err = config.EnableJournaling(
+		ctx, tempdir, TLFJournalBackgroundWorkEnabled)
+	require.NoError(t, err)
+	jServer, err = GetJournalServer(config)
 	require.NoError(t, err)
 
 	setupSucceeded = true
