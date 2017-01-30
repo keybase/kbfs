@@ -723,9 +723,12 @@ func (c *ConfigLocal) resetCachesWithoutShutdown() DirtyBlockCache {
 // ResetCaches implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) ResetCaches() {
 	oldDirtyBcache := c.resetCachesWithoutShutdown()
-	if err := c.journalizeBcaches(); err != nil {
-		if log := c.MakeLogger(""); log != nil {
-			log.CWarningf(nil, "Error journalizing dirty block cache: %v", err)
+	jServer, err := GetJournalServer(c)
+	if err == nil {
+		if err := c.journalizeBcaches(jServer); err != nil {
+			if log := c.MakeLogger(""); log != nil {
+				log.CWarningf(nil, "Error journalizing dirty block cache: %v", err)
+			}
 		}
 	}
 	if oldDirtyBcache != nil {
@@ -854,13 +857,7 @@ func (c *ConfigLocal) CheckStateOnShutdown() bool {
 	return false
 }
 
-func (c *ConfigLocal) journalizeBcaches() error {
-	jServer, err := GetJournalServer(c)
-	if err != nil {
-		// Journaling is disabled.
-		return nil
-	}
-
+func (c *ConfigLocal) journalizeBcaches(jServer *JournalServer) error {
 	syncCache, ok := c.DirtyBlockCache().(*DirtyBlockCacheStandard)
 	if !ok {
 		return errors.Errorf("Dirty bcache unexpectedly type %T", syncCache)
@@ -919,7 +916,7 @@ func (c *ConfigLocal) InitializeJournalServer(
 
 	c.SetBlockServer(jServer.blockServer())
 	c.SetMDOps(jServer.mdOps())
-	err = c.journalizeBcaches()
+	err = c.journalizeBcaches(jServer)
 	if err != nil {
 		return nil, err
 	}
