@@ -25,8 +25,12 @@ func getDiskLimits(path string) (availableBytes uint64, err error) {
 	proc := dll.NewProc("GetDiskFreeSpaceExW")
 	r1, _, err := proc.Call(uintptr(unsafe.Pointer(pathPtr)),
 		uintptr(unsafe.Pointer(&availableBytes)), 0, 0)
+	// err is always non-nil, but meaningful only when r1 == 0
+	// (which signifies function failure).
 	if r1 == 0 {
 		return 0, errors.WithStack(err)
+	} else {
+		err = nil
 	}
 
 	// TODO: According to http://superuser.com/a/104224 , on
