@@ -880,10 +880,10 @@ func (c *ConfigLocal) journalizeBcaches(jServer *JournalServer) error {
 	return nil
 }
 
-// InitializeJournalServer creates a JournalServer and attaches it to
+// EnableJournaling creates a JournalServer and attaches it to
 // this config. journalRoot must be non-empty. Errors returned are
 // non-fatal.
-func (c *ConfigLocal) InitializeJournalServer(
+func (c *ConfigLocal) EnableJournaling(
 	ctx context.Context, journalRoot string,
 	bws TLFJournalBackgroundWorkStatus) error {
 	jServer, err := GetJournalServer(c)
