@@ -935,15 +935,13 @@ func (c *ConfigLocal) EnableJournaling(
 	}()
 	switch {
 	case bcacheErr != nil && enableErr != nil:
-		err = errors.Errorf(
+		return errors.Errorf(
 			"Got errors %+v and %+v", bcacheErr, enableErr)
 	case bcacheErr != nil:
-		err = bcacheErr
+		return bcacheErr
 	case enableErr != nil:
-		err = enableErr
-	default:
-		err = nil
+		return enableErr
 	}
 
-	return err
+	return nil
 }
