@@ -41,7 +41,7 @@ func (fc *fakeBServerClient) PutBlock(
 			arg.Folder, arg.Buf, arg.BlockKey, refs,
 		}
 	}
-	refs[kbfsblock.ZeroRefNonce] = keybase1.BlockReference{
+	refs[keybase1.BlockRefNonce{}] = keybase1.BlockReference{
 		Bid: arg.Bid,
 	}
 	return nil
