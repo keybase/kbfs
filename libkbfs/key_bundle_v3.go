@@ -111,9 +111,9 @@ func (udkimV3 UserDeviceKeyInfoMapV3) removeDevicesNotIn(
 	for uid, dkim := range udkimV3 {
 		userRemoved := false
 		deviceServerHalfIDs := make(deviceServerHalfRemovalInfo)
-		if _, hasUpdatedUser := updatedUserKeys[uid]; hasUpdatedUser {
+		if deviceKeys, ok := updatedUserKeys[uid]; ok {
 			for key, info := range dkim {
-				if !updatedUserKeys[uid][key] {
+				if !deviceKeys[key] {
 					delete(dkim, key)
 					deviceServerHalfIDs[key] = append(
 						deviceServerHalfIDs[key],
@@ -125,17 +125,16 @@ func (udkimV3 UserDeviceKeyInfoMapV3) removeDevicesNotIn(
 				continue
 			}
 		} else {
+			// The user was completely removed, which
+			// shouldn't happen but might as well make it
+			// work just in case.
 			userRemoved = true
 			for key, info := range dkim {
-				delete(dkim, key)
 				deviceServerHalfIDs[key] = append(
 					deviceServerHalfIDs[key],
 					info.ServerHalfID)
 			}
 
-			// The user was completely removed, which
-			// shouldn't happen but might as well make it
-			// work just in case.
 			delete(udkimV3, uid)
 		}
 

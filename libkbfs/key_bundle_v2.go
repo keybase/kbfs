@@ -126,10 +126,10 @@ func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
 	for uid, dkim := range udkimV2 {
 		userRemoved := false
 		deviceServerHalfIDs := make(deviceServerHalfRemovalInfo)
-		if _, hasUpdatedUser := updatedUserKeys[uid]; hasUpdatedUser {
+		if deviceKeys, ok := updatedUserKeys[uid]; ok {
 			for kid, info := range dkim {
 				key := kbfscrypto.MakeCryptPublicKey(kid)
-				if !updatedUserKeys[uid][key] {
+				if !deviceKeys[key] {
 					delete(dkim, kid)
 					deviceServerHalfIDs[key] = append(
 						deviceServerHalfIDs[key],
@@ -141,18 +141,17 @@ func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
 				continue
 			}
 		} else {
+			// The user was completely removed, which
+			// shouldn't happen but might as well make it
+			// work just in case.
 			userRemoved = true
 			for kid, info := range dkim {
 				key := kbfscrypto.MakeCryptPublicKey(kid)
-				delete(dkim, kid)
 				deviceServerHalfIDs[key] = append(
 					deviceServerHalfIDs[key],
 					info.ServerHalfID)
 			}
 
-			// The user was completely removed, which
-			// shouldn't happen but might as well make it
-			// work just in case.
 			delete(udkimV2, uid)
 		}
 
