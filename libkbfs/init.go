@@ -66,8 +66,8 @@ type InitParams struct {
 	// LogFileConfig tells us where to log and rotation config.
 	LogFileConfig logger.LogFileConfig
 
-	// TLFJournalBackgroundWorkStatus is the status to use to pass
-	// into journalServer.EnableJournaling. Only has an effect when
+	// TLFJournalBackgroundWorkStatus is the status to use to
+	// pass into journalServer.EnableJournaling. Only has an effect when
 	// WriteJournalRoot is non-empty.
 	TLFJournalBackgroundWorkStatus TLFJournalBackgroundWorkStatus
 
