@@ -914,7 +914,7 @@ func (c *ConfigLocal) EnableJournaling(
 	// Set journalDiskLimit to a quarter of the free disk space,
 	// up to 50 GiB.
 	const maxJournalDiskLimit uint64 = 50 * 1024 * 1024 * 1024
-	var journalDiskLimit = availableBytes / 4
+	journalDiskLimit := availableBytes / 4
 	if journalDiskLimit > maxJournalDiskLimit {
 		journalDiskLimit = maxJournalDiskLimit
 	}
