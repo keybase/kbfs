@@ -54,12 +54,10 @@ func (s *semaphoreDiskLimiter) getByteLimit() int64 {
 	return s.byteLimit
 }
 
-func (s *semaphoreDiskLimiter) onUpdateAvailableBytes(
-	availableBytes uint64) int64 {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	dividedAvailableBytes := availableBytes / uint64(s.availableByteDivisor)
+func (s *semaphoreDiskLimiter) recalculateLimitsLocked() {
+	// TODO: Check for overflow.
+	dividedAvailableBytes := (s.availableBytes + uint64(s.journalBytes)) /
+		uint64(s.availableByteDivisor)
 	var newByteLimit int64
 	if dividedAvailableBytes > uint64(s.maxByteLimit) {
 		newByteLimit = s.maxByteLimit
@@ -67,17 +65,35 @@ func (s *semaphoreDiskLimiter) onUpdateAvailableBytes(
 		newByteLimit = int64(dividedAvailableBytes)
 	}
 
-	s.availableBytes = availableBytes
 	oldByteLimit := s.byteLimit
 	s.byteLimit = newByteLimit
 
 	if newByteLimit > oldByteLimit {
-		return s.s.Release(newByteLimit - oldByteLimit)
+		s.s.Release(newByteLimit - oldByteLimit)
+	} else if newByteLimit < oldByteLimit {
+		s.s.ForceAcquire(oldByteLimit - newByteLimit)
 	}
-	if newByteLimit < oldByteLimit {
-		return s.s.ForceAcquire(oldByteLimit - newByteLimit)
-	}
-	return s.byteLimit
+}
+
+func (s *semaphoreDiskLimiter) onUpdateAvailableBytes(availableBytes uint64) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.availableBytes = availableBytes
+	s.recalculateLimitsLocked()
+}
+
+func (s *semaphoreDiskLimiter) onJournalEnable(journalBytes int64) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.journalBytes += journalBytes
+	s.recalculateLimitsLocked()
+}
+
+func (s *semaphoreDiskLimiter) onJournalDisable(journalBytes int64) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.journalBytes -= journalBytes
+	s.recalculateLimitsLocked()
 }
 
 func (s semaphoreDiskLimiter) beforeBlockPut(
@@ -91,12 +107,4 @@ func (s semaphoreDiskLimiter) onBlockPutFail(blockBytes int64) int64 {
 
 func (s semaphoreDiskLimiter) onBlockDelete(blockBytes int64) int64 {
 	return s.s.Release(blockBytes)
-}
-
-func (s *semaphoreDiskLimiter) onJournalEnable(journalBytes int64) int64 {
-	return s.s.ForceAcquire(journalBytes)
-}
-
-func (s *semaphoreDiskLimiter) onJournalDisable(journalBytes int64) int64 {
-	return s.s.Release(journalBytes)
 }

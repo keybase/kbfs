@@ -921,11 +921,10 @@ func (c *ConfigLocal) EnableJournaling(
 	// backpressure.
 	diskLimitSemaphore := newSemaphoreDiskLimiter(
 		journalAvailableByteDivisor, journalMaxByteLimit)
-	initialByteLimit := diskLimitSemaphore.onUpdateAvailableBytes(
-		availableBytes)
-	log.Debug("Setting journal byte limit to %d bytes "+
+	diskLimitSemaphore.onUpdateAvailableBytes(availableBytes)
+	log.Debug("Setting journal byte limit to %v "+
 		"(disk containing %s has %d available bytes)",
-		initialByteLimit, journalRoot, availableBytes)
+		diskLimitSemaphore, journalRoot, availableBytes)
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,
 		flushListener, diskLimitSemaphore)

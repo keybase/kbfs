@@ -66,7 +66,15 @@ type diskLimiter interface {
 	//
 	// TODO: Also call this periodically whenever the available
 	// bytes on disk changes.
-	onUpdateAvailableBytes(availableBytes uint64) int64
+	onUpdateAvailableBytes(availableBytes uint64)
+
+	// onJournalEnable is called when initializing a TLF journal
+	// with that journal's current disk usage.
+	onJournalEnable(journalSize int64)
+
+	// onJournalDisable is called when shutting down a TLF journal
+	// with that journal's current disk usage.
+	onJournalDisable(journalSize int64)
 
 	// beforeBlockPut is called before putting a block of the
 	// given size. It may block, but must return immediately with
@@ -84,18 +92,6 @@ type diskLimiter interface {
 	// number of bytes of disk space. The updated number of bytes
 	// available (which can be negative) must be returned.
 	onBlockDelete(blockBytes int64) int64
-
-	// onJournalEnable is called when initializing a TLF journal
-	// with that journal's current disk usage. The updated number
-	// of bytes available (which can be negative) must be
-	// returned.
-	onJournalEnable(journalSize int64) int64
-
-	// onJournalDisable is called when shutting down a TLF journal
-	// with that journal's current disk usage. The updated number
-	// of bytes available (which can be negative) must be
-	// returned.
-	onJournalDisable(journalSize int64) int64
 }
 
 // TODO: JournalServer isn't really a server, although it can create
