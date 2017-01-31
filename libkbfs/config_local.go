@@ -911,10 +911,22 @@ func (c *ConfigLocal) EnableJournaling(
 	if err != nil {
 		return err
 	}
-	// Set journalDiskLimit to a quarter of the free disk space,
-	// up to 50 GiB.
+	// We want the journal size J to be at most some maximum value
+	// M, i.e. J <= M. At the same time, we also want it to be at
+	// most some fraction p of the available disk space without
+	// the journal, i.e. J <= p (A + J), where A is the available
+	// disk space with the journal. That leads to
+	//
+	//   J <= min(M, (p/(1-p)) * A),
+	//
+	// which leads to setting the initial journalDiskLimit to the
+	// right-hand side, and letting each enabled journal acquire
+	// its initial size from diskLimitSemaphore.
+	//
+	// Here we set M = 50 GiB, and p = 25%, which leads to p/(1-p)
+	// to be 33 1/3%.
 	const maxJournalDiskLimit uint64 = 50 * 1024 * 1024 * 1024
-	journalDiskLimit := availableBytes / 4
+	journalDiskLimit := availableBytes / 3
 	if journalDiskLimit > maxJournalDiskLimit {
 		journalDiskLimit = maxJournalDiskLimit
 	}
