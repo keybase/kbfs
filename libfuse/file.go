@@ -217,6 +217,7 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest,
 	if f.node.GetID().ParentID() == nil {
 		f.folder.fs.log.CDebugf(ctx,
 			"Ignoring write on unlinked file.", len(req.Data))
+		resp.Size = len(req.Data)
 		return nil
 	}
 
