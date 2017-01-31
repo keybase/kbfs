@@ -910,16 +910,20 @@ func (c *ConfigLocal) EnableJournaling(
 	if err != nil {
 		return err
 	}
-	const maxJournalDiskLimit uint64 = 50 * 1024 * 1024 * 1024
+	// 25% of available disk space, up to a maximum of...
+	const journalAvailableByteDivisor uint64 = 4
+	// ...50 GiB.
+	const journalMaxByteLimit uint64 = 50 * 1024 * 1024 * 1024
 	// TODO: Also keep track of and limit the inode count.
 	//
 	// TODO: Use a diskLimiter implementation that applies
 	// backpressure.
-	diskLimitSemaphore, initialDiskLimit := newDiskLimitSemaphore(
-		availableBytes, maxJournalDiskLimit)
-	log.Debug("Setting journal disk limit to %d bytes "+
+	diskLimitSemaphore, initialByteLimit := newDiskLimitSemaphore(
+		availableBytes, journalMaxByteLimit,
+		journalAvailableByteDivisor)
+	log.Debug("Setting journal byte limit to %d bytes "+
 		"(disk containing %s has %d available bytes)",
-		initialDiskLimit, journalRoot, availableBytes)
+		initialByteLimit, journalRoot, availableBytes)
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,
 		flushListener, diskLimitSemaphore)

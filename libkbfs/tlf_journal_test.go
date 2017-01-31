@@ -263,7 +263,7 @@ func setupTLFJournalTest(
 	delegateBlockServer := NewBlockServerMemory(log)
 
 	diskLimitSemaphore, _ := newDiskLimitSemaphore(
-		math.MaxInt64, math.MaxInt64/4)
+		math.MaxInt64, math.MaxInt64, 1)
 	tlfJournal, err = makeTLFJournal(ctx, uid, verifyingKey,
 		tempdir, config.tlfID, config, delegateBlockServer,
 		bwStatus, delegate, nil, nil, diskLimitSemaphore)
@@ -481,7 +481,7 @@ func testTLFJournalBlockOpDiskLimit(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64 / 4)
+	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64)
 	tlfJournal.diskLimiter.onBlockDelete(6)
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
@@ -517,7 +517,7 @@ func testTLFJournalBlockOpDiskLimitCancel(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64 / 4)
+	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64)
 
 	ctx2, cancel2 := context.WithCancel(ctx)
 	cancel2()
@@ -534,7 +534,7 @@ func testTLFJournalBlockOpDiskLimitTimeout(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64 / 4)
+	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64)
 	config.dlTimeout = 3 * time.Microsecond
 
 	data := []byte{1, 2, 3, 4}
@@ -555,7 +555,7 @@ func testTLFJournalBlockOpDiskLimitPutFailure(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64 / 4)
+	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64)
 	tlfJournal.diskLimiter.onBlockDelete(6)
 
 	data := []byte{1, 2, 3, 4}

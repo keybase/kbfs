@@ -15,22 +15,23 @@ type diskLimitSemaphore struct {
 	s                 *kbfssync.Semaphore
 	totalJournalBytes uint64
 	availableBytes    uint64
-	maxAvailableBytes uint64
+	maxByteLimit      uint64
 }
 
 var _ diskLimiter = (*diskLimitSemaphore)(nil)
 
-func newDiskLimitSemaphore(initialAvailableBytes, maxAvailableBytes uint64) (
-	s *diskLimitSemaphore, initialDiskLimit uint64) {
+func newDiskLimitSemaphore(
+	initialAvailableBytes, maxByteLimit, availableByteDivisor uint64) (
+	s *diskLimitSemaphore, initialByteLimit uint64) {
 	semaphore := kbfssync.NewSemaphore()
-	journalDiskLimit := initialAvailableBytes / 4
-	if journalDiskLimit > maxAvailableBytes {
-		journalDiskLimit = maxAvailableBytes
+	byteLimit := initialAvailableBytes / availableByteDivisor
+	if byteLimit > maxByteLimit {
+		byteLimit = maxByteLimit
 	}
-	semaphore.Release(int64(journalDiskLimit))
+	semaphore.Release(int64(byteLimit))
 	return &diskLimitSemaphore{
-		semaphore, 0, initialAvailableBytes, maxAvailableBytes,
-	}, journalDiskLimit
+		semaphore, 0, initialAvailableBytes, maxByteLimit,
+	}, byteLimit
 }
 
 func (s diskLimitSemaphore) beforeBlockPut(
