@@ -63,31 +63,33 @@ type mdFlushListener interface {
 // disk usage, but a more sophisticated implementation would apply
 // backpressure on Acquire.
 type diskLimiter interface {
-	// Acquire is called before an operation that would take up n
-	// bytes of disk space. It may block, but must return
+	// beforeBlockPut is called before an operation that would take up
+	// n bytes of disk space. It may block, but must return
 	// immediately with a (possibly-wrapped) ctx.Err() if ctx is
 	// cancelled. The (possibly-updated) number of bytes available
 	// (which can be negative) must be returned, even if the error
 	// is non-nil.
-	Acquire(ctx context.Context, n int64) (int64, error)
+	beforeBlockPut(ctx context.Context, n int64) (int64, error)
 
-	// Release is called after an operation that has freed up n
-	// bytes of disk space. It is also called when shutting down a
-	// TLF journal. The updated number of bytes available (which
-	// can be negative) must be returned.
-	Release(n int64) int64
+	onBlockPutFail(n int64) int64
 
-	// OnJournalEnable is called when initializing a TLF journal
+	// onBlockDelete is called after an operation that has freed
+	// up n bytes of disk space. It is also called when shutting
+	// down a TLF journal. The updated number of bytes available
+	// (which can be negative) must be returned.
+	onBlockDelete(n int64) int64
+
+	// onJournalEnable is called when initializing a TLF journal
 	// with that journal's current disk usage. The updated number
 	// of bytes available (which can be negative) must be
 	// returned.
-	OnJournalEnable(journalSize int64) int64
+	onJournalEnable(journalSize int64) int64
 
-	// OnJournalDisable is called when shutting down a TLF journal
+	// onJournalDisable is called when shutting down a TLF journal
 	// with that journal's current disk usage. The updated number
 	// of bytes available (which can be negative) must be
 	// returned.
-	OnJournalDisable(journalSize int64) int64
+	onJournalDisable(journalSize int64) int64
 }
 
 // TODO: JournalServer isn't really a server, although it can create

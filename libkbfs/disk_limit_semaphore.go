@@ -30,19 +30,23 @@ func newDiskLimitSemaphore(
 	}, journalDiskLimit
 }
 
-func (s diskLimitSemaphore) Acquire(
+func (s diskLimitSemaphore) beforeBlockPut(
 	ctx context.Context, n int64) (int64, error) {
 	return s.s.Acquire(ctx, n)
 }
 
-func (s diskLimitSemaphore) Release(n int64) int64 {
+func (s diskLimitSemaphore) onBlockPutFail(n int64) int64 {
 	return s.s.Release(n)
 }
 
-func (s *diskLimitSemaphore) OnJournalEnable(journalSize int64) int64 {
-	return s.s.Release(journalSize)
+func (s diskLimitSemaphore) onBlockDelete(n int64) int64 {
+	return s.s.Release(n)
 }
 
-func (s *diskLimitSemaphore) OnJournalDisable(journalSize int64) int64 {
+func (s *diskLimitSemaphore) onJournalEnable(journalSize int64) int64 {
 	return s.s.ForceAcquire(journalSize)
+}
+
+func (s *diskLimitSemaphore) onJournalDisable(journalSize int64) int64 {
+	return s.s.Release(journalSize)
 }
