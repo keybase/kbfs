@@ -131,7 +131,7 @@ func makeJournalServer(
 	mdOps MDOps, onBranchChange branchChangeListener,
 	onMDFlush mdFlushListener, diskLimiter diskLimiter) *JournalServer {
 	if len(dir) == 0 {
-		panic("dir unexpectedly empty")
+		panic("journal root path string unexpectedly empty")
 	}
 	jServer := JournalServer{
 		config:                  config,
