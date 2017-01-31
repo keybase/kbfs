@@ -16,6 +16,8 @@ type diskLimitSemaphore struct {
 	maxAvailableBytes uint64
 }
 
+var _ diskLimiter = (*diskLimitSemaphore)(nil)
+
 func newDiskLimitSemaphore(initialAvailableBytes, maxAvailableBytes uint64) (
 	s *diskLimitSemaphore, initialDiskLimit uint64) {
 	semaphore := kbfssync.NewSemaphore()
