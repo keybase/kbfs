@@ -15,26 +15,36 @@ import (
 // a semaphore.
 type semaphoreDiskLimiter struct {
 	s                    *kbfssync.Semaphore
-	availableByteDivisor int
+	availableByteDivisor int64
 	maxByteLimit         int64
 
-	lock              sync.RWMutex
-	byteLimit         int64
-	totalJournalBytes uint64
-	availableBytes    uint64
+	lock sync.RWMutex
+	// byteLimit is min(maxByteLimit,
+	// (availableBytes + journalBytes) / availableByteDivisor).
+	byteLimit      int64
+	journalBytes   int64
+	availableBytes uint64
 }
 
 var _ diskLimiter = (*semaphoreDiskLimiter)(nil)
 
 func newSemaphoreDiskLimiter(
-	availableByteDivisor int, maxByteLimit int64) *semaphoreDiskLimiter {
+	availableByteDivisor, maxByteLimit int64) *semaphoreDiskLimiter {
+	if availableByteDivisor < 1 {
+		panic("availableByteDivisor must be >= 1")
+	}
+	if maxByteLimit <= 0 {
+		panic("maxByteLimit must be > 0")
+	}
+
 	s := kbfssync.NewSemaphore()
 	s.Release(maxByteLimit)
 	return &semaphoreDiskLimiter{
 		s:                    s,
 		availableByteDivisor: availableByteDivisor,
-		byteLimit:            maxByteLimit,
 		maxByteLimit:         maxByteLimit,
+
+		byteLimit: maxByteLimit,
 	}
 }
 
@@ -49,20 +59,23 @@ func (s *semaphoreDiskLimiter) onUpdateAvailableBytes(
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	byteLimit := int64(availableBytes) / int64(s.availableByteDivisor)
-	if byteLimit > s.maxByteLimit {
-		byteLimit = s.maxByteLimit
+	dividedAvailableBytes := availableBytes / uint64(s.availableByteDivisor)
+	var newByteLimit int64
+	if dividedAvailableBytes > uint64(s.maxByteLimit) {
+		newByteLimit = s.maxByteLimit
+	} else {
+		newByteLimit = int64(dividedAvailableBytes)
 	}
 
 	s.availableBytes = availableBytes
 	oldByteLimit := s.byteLimit
-	s.byteLimit = byteLimit
+	s.byteLimit = newByteLimit
 
-	if s.byteLimit > oldByteLimit {
-		return s.s.Release(int64(s.byteLimit - oldByteLimit))
+	if newByteLimit > oldByteLimit {
+		return s.s.Release(newByteLimit - oldByteLimit)
 	}
-	if s.byteLimit < oldByteLimit {
-		return s.s.ForceAcquire(int64(oldByteLimit - s.byteLimit))
+	if newByteLimit < oldByteLimit {
+		return s.s.ForceAcquire(oldByteLimit - newByteLimit)
 	}
 	return s.byteLimit
 }
