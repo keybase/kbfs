@@ -918,7 +918,7 @@ func (c *ConfigLocal) EnableJournaling(
 	//
 	// TODO: Use a diskLimiter implementation that applies
 	// backpressure.
-	diskLimitSemaphore, initialByteLimit := newDiskLimitSemaphore(
+	diskLimitSemaphore, initialByteLimit := newSemaphoreDiskLimiter(
 		availableBytes, journalMaxByteLimit,
 		journalAvailableByteDivisor)
 	log.Debug("Setting journal byte limit to %d bytes "+

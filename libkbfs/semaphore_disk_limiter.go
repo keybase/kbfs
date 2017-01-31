@@ -9,48 +9,48 @@ import (
 	"golang.org/x/net/context"
 )
 
-// diskLimitSemaphore is an implementation of diskLimiter that wraps a
-// semaphore.
-type diskLimitSemaphore struct {
+// semaphoreDiskLimiter is an implementation of diskLimiter that uses
+// a semaphore.
+type semaphoreDiskLimiter struct {
 	s                 *kbfssync.Semaphore
 	totalJournalBytes uint64
 	availableBytes    uint64
 	maxByteLimit      uint64
 }
 
-var _ diskLimiter = (*diskLimitSemaphore)(nil)
+var _ diskLimiter = (*semaphoreDiskLimiter)(nil)
 
-func newDiskLimitSemaphore(
+func newSemaphoreDiskLimiter(
 	initialAvailableBytes, maxByteLimit, availableByteDivisor uint64) (
-	s *diskLimitSemaphore, initialByteLimit uint64) {
+	s *semaphoreDiskLimiter, initialByteLimit uint64) {
 	semaphore := kbfssync.NewSemaphore()
 	byteLimit := initialAvailableBytes / availableByteDivisor
 	if byteLimit > maxByteLimit {
 		byteLimit = maxByteLimit
 	}
 	semaphore.Release(int64(byteLimit))
-	return &diskLimitSemaphore{
+	return &semaphoreDiskLimiter{
 		semaphore, 0, initialAvailableBytes, maxByteLimit,
 	}, byteLimit
 }
 
-func (s diskLimitSemaphore) beforeBlockPut(
+func (s semaphoreDiskLimiter) beforeBlockPut(
 	ctx context.Context, blockBytes int64) (int64, error) {
 	return s.s.Acquire(ctx, blockBytes)
 }
 
-func (s diskLimitSemaphore) onBlockPutFail(blockBytes int64) int64 {
+func (s semaphoreDiskLimiter) onBlockPutFail(blockBytes int64) int64 {
 	return s.s.Release(blockBytes)
 }
 
-func (s diskLimitSemaphore) onBlockDelete(blockBytes int64) int64 {
+func (s semaphoreDiskLimiter) onBlockDelete(blockBytes int64) int64 {
 	return s.s.Release(blockBytes)
 }
 
-func (s *diskLimitSemaphore) onJournalEnable(journalBytes int64) int64 {
+func (s *semaphoreDiskLimiter) onJournalEnable(journalBytes int64) int64 {
 	return s.s.ForceAcquire(journalBytes)
 }
 
-func (s *diskLimitSemaphore) onJournalDisable(journalBytes int64) int64 {
+func (s *semaphoreDiskLimiter) onJournalDisable(journalBytes int64) int64 {
 	return s.s.Release(journalBytes)
 }
