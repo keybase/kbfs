@@ -12,26 +12,46 @@ import (
 // semaphoreDiskLimiter is an implementation of diskLimiter that uses
 // a semaphore.
 type semaphoreDiskLimiter struct {
-	s                 *kbfssync.Semaphore
-	totalJournalBytes uint64
-	availableBytes    uint64
-	maxByteLimit      uint64
+	s                    *kbfssync.Semaphore
+	availableByteDivisor int
+	maxByteLimit         int64
+	byteLimit            int64
+	totalJournalBytes    uint64
+	availableBytes       uint64
 }
 
 var _ diskLimiter = (*semaphoreDiskLimiter)(nil)
 
 func newSemaphoreDiskLimiter(
-	initialAvailableBytes, maxByteLimit, availableByteDivisor uint64) (
-	s *semaphoreDiskLimiter, initialByteLimit uint64) {
-	semaphore := kbfssync.NewSemaphore()
-	byteLimit := initialAvailableBytes / availableByteDivisor
-	if byteLimit > maxByteLimit {
-		byteLimit = maxByteLimit
-	}
-	semaphore.Release(int64(byteLimit))
+	availableByteDivisor int, maxByteLimit int64) *semaphoreDiskLimiter {
+	s := kbfssync.NewSemaphore()
+	s.Release(maxByteLimit)
 	return &semaphoreDiskLimiter{
-		semaphore, 0, initialAvailableBytes, maxByteLimit,
-	}, byteLimit
+		s:                    s,
+		availableByteDivisor: availableByteDivisor,
+		byteLimit:            maxByteLimit,
+		maxByteLimit:         maxByteLimit,
+	}
+}
+
+func (s *semaphoreDiskLimiter) onUpdateAvailableBytes(
+	availableBytes uint64) int64 {
+	byteLimit := int64(availableBytes) / int64(s.availableByteDivisor)
+	if byteLimit > s.maxByteLimit {
+		byteLimit = s.maxByteLimit
+	}
+
+	s.availableBytes = availableBytes
+	oldByteLimit := s.byteLimit
+	s.byteLimit = byteLimit
+
+	if s.byteLimit > oldByteLimit {
+		return s.s.Release(int64(s.byteLimit - oldByteLimit))
+	}
+	if s.byteLimit < oldByteLimit {
+		return s.s.ForceAcquire(int64(byteLimit - s.byteLimit))
+	}
+	return s.byteLimit
 }
 
 func (s semaphoreDiskLimiter) beforeBlockPut(

@@ -7,6 +7,6 @@ package libkbfs
 import "testing"
 
 func TestSemaphoreDiskLimiterBasic(t *testing.T) {
-	s, _ := newSemaphoreDiskLimiter(100, 100, 2)
+	s := newSemaphoreDiskLimiter(2, 100)
 	_ = s
 }

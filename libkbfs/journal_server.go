@@ -60,6 +60,14 @@ type mdFlushListener interface {
 
 // diskLimiter is an interface for limiting disk usage.
 type diskLimiter interface {
+	// onUpdateAvailableBytes is called whenever the available
+	// bytes on disk first becomes known. The number of bytes
+	// available must be returned.
+	//
+	// TODO: Also call this periodically whenever the available
+	// bytes on disk changes.
+	onUpdateAvailableBytes(availableBytes uint64) int64
+
 	// beforeBlockPut is called before putting a block of the
 	// given size. It may block, but must return immediately with
 	// a (possibly-wrapped) ctx.Err() if ctx is cancelled. The

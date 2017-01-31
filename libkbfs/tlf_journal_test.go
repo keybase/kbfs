@@ -262,8 +262,8 @@ func setupTLFJournalTest(
 
 	delegateBlockServer := NewBlockServerMemory(log)
 
-	diskLimitSemaphore, _ := newSemaphoreDiskLimiter(
-		math.MaxInt64, math.MaxInt64, 1)
+	diskLimitSemaphore := newSemaphoreDiskLimiter(1, math.MaxInt64)
+	diskLimitSemaphore.onUpdateAvailableBytes(math.MaxInt64)
 	tlfJournal, err = makeTLFJournal(ctx, uid, verifyingKey,
 		tempdir, config.tlfID, config, delegateBlockServer,
 		bwStatus, delegate, nil, nil, diskLimitSemaphore)
