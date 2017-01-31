@@ -1235,7 +1235,14 @@ func TestRemoveFileWhileOpenWriting(t *testing.T) {
 	defer mnt.Close()
 	defer cancelFn()
 
-	p := path.Join(mnt.Dir, PrivateName, "jdoe", "myfile")
+	// See KBFS-1891. An incorrect behavior only happens when the
+	// file-to-be-removed is inside a subdir within the TLF root.
+	dirPath := path.Join(mnt.Dir, PrivateName, "jdoe", "dir")
+	if err := os.Mkdir(dirPath, 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	p := path.Join(dirPath, "myfile")
 	f, err := os.Create(p)
 	if err != nil {
 		t.Fatalf("cannot create file: %v", err)
@@ -1255,7 +1262,7 @@ func TestRemoveFileWhileOpenWriting(t *testing.T) {
 		t.Fatalf("error on close: %v", err)
 	}
 
-	checkDir(t, path.Join(mnt.Dir, PrivateName, "jdoe"), map[string]fileInfoCheck{})
+	checkDir(t, dirPath, map[string]fileInfoCheck{})
 
 	if _, err := ioutil.ReadFile(p); !ioutil.IsNotExist(err) {
 		t.Errorf("file still exists: %v", err)
