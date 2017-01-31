@@ -71,16 +71,23 @@ type diskLimiter interface {
 	// is non-nil.
 	Acquire(ctx context.Context, n int64) (int64, error)
 
-	// ForceAcquire is called when initializing a TLF journal with
-	// that journal's current disk usage. The updated number of
-	// bytes available (which can be negative) must be returned.
-	ForceAcquire(n int64) int64
-
 	// Release is called after an operation that has freed up n
 	// bytes of disk space. It is also called when shutting down a
 	// TLF journal. The updated number of bytes available (which
 	// can be negative) must be returned.
 	Release(n int64) int64
+
+	// OnJournalEnable is called when initializing a TLF journal
+	// with that journal's current disk usage. The updated number
+	// of bytes available (which can be negative) must be
+	// returned.
+	OnJournalEnable(journalSize int64) int64
+
+	// OnJournalDisable is called when shutting down a TLF journal
+	// with that journal's current disk usage. The updated number
+	// of bytes available (which can be negative) must be
+	// returned.
+	OnJournalDisable(journalSize int64) int64
 }
 
 // TODO: JournalServer isn't really a server, although it can create

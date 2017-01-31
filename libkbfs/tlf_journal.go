@@ -366,7 +366,7 @@ func makeTLFJournal(
 	// Do this only once we're sure we won't error.
 	storedBytes := j.blockJournal.getStoredBytes()
 	if storedBytes > 0 {
-		availableBytes := j.diskLimiter.ForceAcquire(storedBytes)
+		availableBytes := j.diskLimiter.OnJournalEnable(storedBytes)
 		j.log.CDebugf(ctx,
 			"Force-acquired %d bytes for %s: available=%d",
 			storedBytes, tlfID, availableBytes)
@@ -1372,7 +1372,7 @@ func (j *tlfJournal) shutdown() {
 	// shut-down journals against the disk limit.
 	storedBytes := j.blockJournal.getStoredBytes()
 	if storedBytes > 0 {
-		j.diskLimiter.Release(storedBytes)
+		j.diskLimiter.OnJournalDisable(storedBytes)
 	}
 
 	// Make further accesses error out.

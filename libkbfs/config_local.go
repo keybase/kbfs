@@ -14,7 +14,6 @@ import (
 	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
-	"github.com/keybase/kbfs/kbfssync"
 	"github.com/pkg/errors"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/shirou/gopsutil/mem"
@@ -911,34 +910,16 @@ func (c *ConfigLocal) EnableJournaling(
 	if err != nil {
 		return err
 	}
-	// We want the journal size J to be at most some maximum value
-	// M, i.e. J <= M. At the same time, we also want it to be at
-	// most some fraction p of the available disk space without
-	// the journal, i.e. J <= p (A + J), where A is the available
-	// disk space with the journal. That leads to
-	//
-	//   J <= min(M, (p/(1-p)) * A),
-	//
-	// which leads to setting the initial journalDiskLimit to the
-	// right-hand side, and letting each enabled journal acquire
-	// its initial size from diskLimitSemaphore.
-	//
-	// Here we set M = 50 GiB, and p = 25%, which leads to p/(1-p)
-	// to be 33 1/3%.
 	const maxJournalDiskLimit uint64 = 50 * 1024 * 1024 * 1024
-	journalDiskLimit := availableBytes / 3
-	if journalDiskLimit > maxJournalDiskLimit {
-		journalDiskLimit = maxJournalDiskLimit
-	}
-	log.Debug("Setting journal disk limit to %d bytes "+
-		"(disk containing %s has %d available bytes)",
-		journalDiskLimit, journalRoot, availableBytes)
 	// TODO: Also keep track of and limit the inode count.
 	//
 	// TODO: Use a diskLimiter implementation that applies
 	// backpressure.
-	diskLimitSemaphore := kbfssync.NewSemaphore()
-	diskLimitSemaphore.Release(int64(journalDiskLimit))
+	diskLimitSemaphore, initialDiskLimit := newDiskLimitSemaphore(
+		availableBytes, maxJournalDiskLimit)
+	log.Debug("Setting journal disk limit to %d bytes "+
+		"(disk containing %s has %d available bytes)",
+		initialDiskLimit, journalRoot, availableBytes)
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,
 		flushListener, diskLimitSemaphore)
