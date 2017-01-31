@@ -58,26 +58,24 @@ type mdFlushListener interface {
 	onMDFlush(tlf.ID, BranchID, MetadataRevision)
 }
 
-// diskLimiter is an interface for limiting disk usage. A simple
-// implementation would use a semaphore initialized with the maximum
-// disk usage, but a more sophisticated implementation would apply
-// backpressure on Acquire.
+// diskLimiter is an interface for limiting disk usage.
 type diskLimiter interface {
-	// beforeBlockPut is called before an operation that would take up
-	// n bytes of disk space. It may block, but must return
-	// immediately with a (possibly-wrapped) ctx.Err() if ctx is
-	// cancelled. The (possibly-updated) number of bytes available
-	// (which can be negative) must be returned, even if the error
-	// is non-nil.
-	beforeBlockPut(ctx context.Context, n int64) (int64, error)
+	// beforeBlockPut is called before putting a block of the
+	// given size. It may block, but must return immediately with
+	// a (possibly-wrapped) ctx.Err() if ctx is cancelled. The
+	// (possibly-updated) number of bytes available (which can be
+	// negative) must be returned, even if the error is non-nil.
+	beforeBlockPut(ctx context.Context, blockBytes int64) (int64, error)
 
-	onBlockPutFail(n int64) int64
+	// onBlockPutFail is called if putting a block of the given
+	// size fails. The updated number of bytes available (which
+	// can be negative) must be returned.
+	onBlockPutFail(blockBytes int64) int64
 
-	// onBlockDelete is called after an operation that has freed
-	// up n bytes of disk space. It is also called when shutting
-	// down a TLF journal. The updated number of bytes available
-	// (which can be negative) must be returned.
-	onBlockDelete(n int64) int64
+	// onBlockDelete is called after deleting a block of the given
+	// number of bytes of disk space. The updated number of bytes
+	// available (which can be negative) must be returned.
+	onBlockDelete(blockBytes int64) int64
 
 	// onJournalEnable is called when initializing a TLF journal
 	// with that journal's current disk usage. The updated number

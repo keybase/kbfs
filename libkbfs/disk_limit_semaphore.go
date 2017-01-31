@@ -11,42 +11,41 @@ import (
 
 type diskLimitSemaphore struct {
 	s                 *kbfssync.Semaphore
-	journalSize       uint64
-	availableSpace    uint64
-	maxAvailableSpace uint64
+	totalJournalBytes uint64
+	availableBytes    uint64
+	maxAvailableBytes uint64
 }
 
-func newDiskLimitSemaphore(
-	initialAvailableSpace, maxAvailableSpace uint64) (
+func newDiskLimitSemaphore(initialAvailableBytes, maxAvailableBytes uint64) (
 	s *diskLimitSemaphore, initialDiskLimit uint64) {
 	semaphore := kbfssync.NewSemaphore()
-	journalDiskLimit := initialAvailableSpace / 4
-	if journalDiskLimit > maxAvailableSpace {
-		journalDiskLimit = maxAvailableSpace
+	journalDiskLimit := initialAvailableBytes / 4
+	if journalDiskLimit > maxAvailableBytes {
+		journalDiskLimit = maxAvailableBytes
 	}
 	semaphore.Release(int64(journalDiskLimit))
 	return &diskLimitSemaphore{
-		semaphore, 0, initialAvailableSpace, maxAvailableSpace,
+		semaphore, 0, initialAvailableBytes, maxAvailableBytes,
 	}, journalDiskLimit
 }
 
 func (s diskLimitSemaphore) beforeBlockPut(
-	ctx context.Context, n int64) (int64, error) {
-	return s.s.Acquire(ctx, n)
+	ctx context.Context, blockBytes int64) (int64, error) {
+	return s.s.Acquire(ctx, blockBytes)
 }
 
-func (s diskLimitSemaphore) onBlockPutFail(n int64) int64 {
-	return s.s.Release(n)
+func (s diskLimitSemaphore) onBlockPutFail(blockBytes int64) int64 {
+	return s.s.Release(blockBytes)
 }
 
-func (s diskLimitSemaphore) onBlockDelete(n int64) int64 {
-	return s.s.Release(n)
+func (s diskLimitSemaphore) onBlockDelete(blockBytes int64) int64 {
+	return s.s.Release(blockBytes)
 }
 
-func (s *diskLimitSemaphore) onJournalEnable(journalSize int64) int64 {
-	return s.s.ForceAcquire(journalSize)
+func (s *diskLimitSemaphore) onJournalEnable(journalBytes int64) int64 {
+	return s.s.ForceAcquire(journalBytes)
 }
 
-func (s *diskLimitSemaphore) onJournalDisable(journalSize int64) int64 {
-	return s.s.Release(journalSize)
+func (s *diskLimitSemaphore) onJournalDisable(journalBytes int64) int64 {
+	return s.s.Release(journalBytes)
 }
