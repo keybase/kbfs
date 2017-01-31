@@ -9,6 +9,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+// diskLimitSemaphore is an implementation of diskLimiter that wraps a
+// semaphore.
 type diskLimitSemaphore struct {
 	s                 *kbfssync.Semaphore
 	totalJournalBytes uint64
