@@ -96,15 +96,15 @@ func (s *semaphoreDiskLimiter) onJournalDisable(journalBytes int64) {
 	s.recalculateLimitsLocked()
 }
 
-func (s semaphoreDiskLimiter) beforeBlockPut(
+func (s *semaphoreDiskLimiter) beforeBlockPut(
 	ctx context.Context, blockBytes int64) (int64, error) {
 	return s.s.Acquire(ctx, blockBytes)
 }
 
-func (s semaphoreDiskLimiter) onBlockPutFail(blockBytes int64) int64 {
+func (s *semaphoreDiskLimiter) onBlockPutFail(blockBytes int64) int64 {
 	return s.s.Release(blockBytes)
 }
 
-func (s semaphoreDiskLimiter) onBlockDelete(blockBytes int64) int64 {
+func (s *semaphoreDiskLimiter) onBlockDelete(blockBytes int64) int64 {
 	return s.s.Release(blockBytes)
 }
