@@ -5,6 +5,8 @@
 package libkbfs
 
 import (
+	"sync"
+
 	"github.com/keybase/kbfs/kbfssync"
 	"golang.org/x/net/context"
 )
@@ -15,9 +17,11 @@ type semaphoreDiskLimiter struct {
 	s                    *kbfssync.Semaphore
 	availableByteDivisor int
 	maxByteLimit         int64
-	byteLimit            int64
-	totalJournalBytes    uint64
-	availableBytes       uint64
+
+	lock              sync.RWMutex
+	byteLimit         int64
+	totalJournalBytes uint64
+	availableBytes    uint64
 }
 
 var _ diskLimiter = (*semaphoreDiskLimiter)(nil)
@@ -34,8 +38,17 @@ func newSemaphoreDiskLimiter(
 	}
 }
 
+func (s *semaphoreDiskLimiter) getByteLimit() int64 {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return s.byteLimit
+}
+
 func (s *semaphoreDiskLimiter) onUpdateAvailableBytes(
 	availableBytes uint64) int64 {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	byteLimit := int64(availableBytes) / int64(s.availableByteDivisor)
 	if byteLimit > s.maxByteLimit {
 		byteLimit = s.maxByteLimit
@@ -49,7 +62,7 @@ func (s *semaphoreDiskLimiter) onUpdateAvailableBytes(
 		return s.s.Release(int64(s.byteLimit - oldByteLimit))
 	}
 	if s.byteLimit < oldByteLimit {
-		return s.s.ForceAcquire(int64(byteLimit - s.byteLimit))
+		return s.s.ForceAcquire(int64(oldByteLimit - s.byteLimit))
 	}
 	return s.byteLimit
 }
