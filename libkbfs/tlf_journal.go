@@ -62,7 +62,8 @@ func (ca tlfJournalConfigAdapter) usernameGetter() normalizedUsernameGetter {
 	return ca.Config.KBPKI()
 }
 
-const defaultDiskLimitTimeout = 3 * time.Second
+// Should be slightly more than maxDelay in config_local.go.
+const defaultDiskLimitTimeout = 11 * time.Second
 
 func (ca tlfJournalConfigAdapter) diskLimitTimeout() time.Duration {
 	return defaultDiskLimitTimeout

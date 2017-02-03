@@ -60,42 +60,46 @@ func (s semaphoreDiskLimiter) onJournalDisable(journalBytes int64) {
 	}
 }
 
+func (s semaphoreDiskLimiter) getDelay() time.Duration {
+	// Slight hack to get semaphore value.
+	s.s.ForceAcquire(1)
+	availBytes := s.s.Release(1)
+
+	usedBytes := s.byteLimit - availBytes
+	if usedBytes <= s.backpressureMinThreshold {
+		return 0
+	}
+
+	if usedBytes >= s.backpressureMaxThreshold {
+		return s.maxDelay
+	}
+
+	scale := float64(usedBytes-s.backpressureMinThreshold) /
+		float64(s.backpressureMaxThreshold-s.backpressureMinThreshold)
+	delayNs := int64(float64(s.maxDelay.Nanoseconds()) * scale)
+	return time.Duration(delayNs) * time.Nanosecond
+}
+
 func (s semaphoreDiskLimiter) beforeBlockPut(
 	ctx context.Context, blockBytes int64) (int64, error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
 		//
-		// TODO: Return the current semaphore count here, too?
+		// TODO: Return current semaphore count.
 		return 0, errors.New("beforeBlockPut called with 0 blockBytes")
 	}
-	availBytes, err := s.s.Acquire(ctx, blockBytes)
-	if err != nil {
-		return availBytes, err
-	}
 
-	usedBytes := s.byteLimit - availBytes
-	if usedBytes <= s.backpressureMinThreshold {
-		return availBytes, nil
-	}
-
-	var delay time.Duration
-	if usedBytes >= s.backpressureMaxThreshold {
-		delay = s.maxDelay
-	} else {
-		scale := float64(usedBytes-s.backpressureMinThreshold) / float64(s.backpressureMaxThreshold-s.backpressureMinThreshold)
-		delayNs := int64(float64(s.maxDelay.Nanoseconds()) * scale)
-		delay = time.Duration(delayNs) * time.Nanosecond
-	}
+	delay := s.getDelay()
 	timer := time.NewTimer(delay)
 	select {
 	case <-timer.C:
-		// TODO: Return a more current count?
-		return availBytes, nil
 	case <-ctx.Done():
 		timer.Stop()
-		// TODO: Return a more current count?
-		return availBytes, errors.WithStack(ctx.Err())
+		// TODO: Return current semaphore count.
+		return 0, errors.WithStack(ctx.Err())
 	}
+
+	return s.s.Acquire(ctx, blockBytes)
 }
 
 func (s semaphoreDiskLimiter) onBlockPutFail(blockBytes int64) {
