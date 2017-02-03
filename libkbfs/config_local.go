@@ -905,9 +905,11 @@ func (c *ConfigLocal) EnableJournaling(
 	//
 	// TODO: Also keep track of and limit the inode count.
 	var journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
-	// TODO: Use a diskLimiter implementation that applies
-	// backpressure.
-	diskLimitSemaphore := newSemaphoreDiskLimiter(journalDiskLimit)
+	var backpressureMinThreshold int64 = journalDiskLimit / 2
+	var backpressureMaxThreshold int64 = journalDiskLimit * 19 / 20
+	diskLimitSemaphore := newSemaphoreDiskLimiter(
+		backpressureMinThreshold, backpressureMaxThreshold,
+		journalDiskLimit)
 	log.Debug("Setting journal byte limit to %v", journalDiskLimit)
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,

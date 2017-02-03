@@ -13,15 +13,27 @@ import (
 // semaphoreDiskLimiter is an implementation of diskLimiter that uses
 // a semaphore.
 type semaphoreDiskLimiter struct {
-	s *kbfssync.Semaphore
+	backpressureMinThreshold int64
+	backpressureMaxThreshold int64
+	s                        *kbfssync.Semaphore
 }
 
 var _ diskLimiter = semaphoreDiskLimiter{}
 
-func newSemaphoreDiskLimiter(byteLimit int64) semaphoreDiskLimiter {
+func newSemaphoreDiskLimiter(
+	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64) semaphoreDiskLimiter {
+	if backpressureMinThreshold < 0 {
+		panic("backpressureMinThreshold < 0")
+	}
+	if backpressureMaxThreshold < backpressureMinThreshold {
+		panic("backpressureMaxThreshold < backpressureMinThreshold")
+	}
+	if byteLimit < backpressureMaxThreshold {
+		panic("byteLimit < backpressureMaxThreshold")
+	}
 	s := kbfssync.NewSemaphore()
 	s.Release(byteLimit)
-	return semaphoreDiskLimiter{s}
+	return semaphoreDiskLimiter{backpressureMinThreshold, backpressureMaxThreshold, s}
 }
 
 func (s semaphoreDiskLimiter) onJournalEnable(journalBytes int64) int64 {
