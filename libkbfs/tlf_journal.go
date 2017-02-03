@@ -365,19 +365,16 @@ func makeTLFJournal(
 
 	// Do this only once we're sure we won't error.
 	storedBytes := j.blockJournal.getStoredBytes()
-	j.diskLimiter.onJournalEnable(storedBytes)
-	if storedBytes > 0 {
-		j.log.CDebugf(ctx,
-			"Force-acquired %d bytes for %s: %v",
-			storedBytes, tlfID, j.diskLimiter)
-	}
+	availableBytes := j.diskLimiter.onJournalEnable(storedBytes)
 
 	go j.doBackgroundWorkLoop(bws, backoff.NewExponentialBackOff())
 
 	// Signal work to pick up any existing journal entries.
 	j.signalWork()
 
-	j.log.CDebugf(ctx, "Enabled journal for %s with path %s", tlfID, dir)
+	j.log.CDebugf(ctx,
+		"Enabled journal for %s (stored bytes=%d, available bytes=%d) with path %s",
+		tlfID, storedBytes, availableBytes, dir)
 	return j, nil
 }
 

@@ -24,10 +24,14 @@ func newSemaphoreDiskLimiter(byteLimit int64) semaphoreDiskLimiter {
 	return semaphoreDiskLimiter{s}
 }
 
-func (s semaphoreDiskLimiter) onJournalEnable(journalBytes int64) {
-	if journalBytes > 0 {
-		s.s.ForceAcquire(journalBytes)
+func (s semaphoreDiskLimiter) onJournalEnable(journalBytes int64) int64 {
+	if journalBytes == 0 {
+		// TODO: This is a bit weird. Add a function to get
+		// the current semaphore count, or let ForceAcquire
+		// take 0.
+		return 0
 	}
+	return s.s.ForceAcquire(journalBytes)
 }
 
 func (s semaphoreDiskLimiter) onJournalDisable(journalBytes int64) {

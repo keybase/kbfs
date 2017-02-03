@@ -62,8 +62,9 @@ type mdFlushListener interface {
 type diskLimiter interface {
 	// onJournalEnable is called when initializing a TLF journal
 	// with that journal's current disk usage. journalSize must be
-	// >= 0.
-	onJournalEnable(journalSize int64)
+	// >= 0. If the argument is nn-zer0, the updated available
+	// byte count must be returned.
+	onJournalEnable(journalSize int64) int64
 
 	// onJournalDisable is called when shutting down a TLF journal
 	// with that journal's current disk usage. journalSize must be
