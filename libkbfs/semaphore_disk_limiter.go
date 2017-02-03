@@ -36,10 +36,10 @@ func (s semaphoreDiskLimiter) beforeBlockPut(
 	return s.s.Acquire(ctx, blockBytes)
 }
 
-func (s semaphoreDiskLimiter) onBlockPutFail(blockBytes int64) int64 {
-	return s.s.Release(blockBytes)
+func (s semaphoreDiskLimiter) onBlockPutFail(blockBytes int64) {
+	s.s.Release(blockBytes)
 }
 
-func (s semaphoreDiskLimiter) onBlockDelete(blockBytes int64) int64 {
-	return s.s.Release(blockBytes)
+func (s semaphoreDiskLimiter) onBlockDelete(blockBytes int64) {
+	s.s.Release(blockBytes)
 }

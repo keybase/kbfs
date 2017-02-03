@@ -76,14 +76,12 @@ type diskLimiter interface {
 	beforeBlockPut(ctx context.Context, blockBytes int64) (int64, error)
 
 	// onBlockPutFail is called if putting a block of the given
-	// size fails. The updated number of bytes available (which
-	// can be negative) must be returned.
-	onBlockPutFail(blockBytes int64) int64
+	// size fails.
+	onBlockPutFail(blockBytes int64)
 
 	// onBlockDelete is called after deleting a block of the given
-	// number of bytes of disk space. The updated number of bytes
-	// available (which can be negative) must be returned.
-	onBlockDelete(blockBytes int64) int64
+	// number of bytes of disk space.
+	onBlockDelete(blockBytes int64)
 }
 
 // TODO: JournalServer isn't really a server, although it can create
