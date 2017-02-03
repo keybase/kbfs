@@ -1459,13 +1459,12 @@ func (j *tlfJournal) getBlockData(id kbfsblock.ID) (
 type ErrDiskLimitTimeout struct {
 	timeout        time.Duration
 	requestedBytes int64
-	availableBytes int64
 	err            error
 }
 
 func (e ErrDiskLimitTimeout) Error() string {
-	return fmt.Sprintf("Disk limit timeout of %s reached; requested %d bytes, only %d bytes available: %+v",
-		e.timeout, e.requestedBytes, e.availableBytes, e.err)
+	return fmt.Sprintf("Disk limit timeout of %s reached; requested %d bytes: %+v",
+		e.timeout, e.requestedBytes, e.err)
 }
 
 func (j *tlfJournal) putBlockData(
@@ -1479,13 +1478,13 @@ func (j *tlfJournal) putBlockData(
 	defer cancel()
 
 	bufLen := int64(len(buf))
-	availableBytes, err := j.diskLimiter.beforeBlockPut(acquireCtx, bufLen)
+	err = j.diskLimiter.beforeBlockPut(acquireCtx, bufLen)
 	switch errors.Cause(err) {
 	case nil:
 		// Continue.
 	case context.DeadlineExceeded:
 		return errors.WithStack(ErrDiskLimitTimeout{
-			timeout, bufLen, availableBytes, err,
+			timeout, bufLen, err,
 		})
 	default:
 		return err

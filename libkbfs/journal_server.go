@@ -73,12 +73,8 @@ type diskLimiter interface {
 	// beforeBlockPut is called before putting a block of the
 	// given size, which must be > 0. It may block, but must
 	// return immediately with a (possibly-wrapped) ctx.Err() if
-	// ctx is cancelled. If the returned error is nil, the updated
-	// number of bytes available (which can be negative) must be
-	// returned. If the returned error is a cancellation error,
-	// the number of bytes available at the time it blocked (which
-	// is necessarily less than n) must be returned.
-	beforeBlockPut(ctx context.Context, blockBytes int64) (int64, error)
+	// ctx is cancelled.
+	beforeBlockPut(ctx context.Context, blockBytes int64) error
 
 	// onBlockPutFail is called if putting a block of the given
 	// size (which must be > 0) fails.

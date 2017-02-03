@@ -38,12 +38,13 @@ func (s semaphoreDiskLimiter) onJournalDisable(journalBytes int64) {
 }
 
 func (s semaphoreDiskLimiter) beforeBlockPut(
-	ctx context.Context, blockBytes int64) (int64, error) {
+	ctx context.Context, blockBytes int64) error {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
-		return 0, errors.New("beforeBlockPut called with 0 blockBytes")
+		return errors.New("beforeBlockPut called with 0 blockBytes")
 	}
-	return s.s.Acquire(ctx, blockBytes)
+	_, err := s.s.Acquire(ctx, blockBytes)
+	return err
 }
 
 func (s semaphoreDiskLimiter) onBlockPutFail(blockBytes int64) {
