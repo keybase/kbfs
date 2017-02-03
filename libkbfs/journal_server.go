@@ -60,14 +60,6 @@ type mdFlushListener interface {
 
 // diskLimiter is an interface for limiting disk usage.
 type diskLimiter interface {
-	// onUpdateAvailableBytes is called whenever the available
-	// bytes on disk first becomes known. The number of bytes
-	// available must be returned.
-	//
-	// TODO: Also call this periodically whenever the available
-	// bytes on disk changes.
-	onUpdateAvailableBytes(availableBytes uint64)
-
 	// onJournalEnable is called when initializing a TLF journal
 	// with that journal's current disk usage.
 	onJournalEnable(journalSize int64)

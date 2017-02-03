@@ -11,7 +11,6 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
-	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/pkg/errors"
@@ -899,32 +898,17 @@ func (c *ConfigLocal) EnableJournaling(
 	log := c.MakeLogger("")
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
-
-	// getDiskLimits requires its argument to exist.
-	err = ioutil.MkdirAll(journalRoot, 0700)
-	if err != nil {
-		return err
-	}
-
-	availableBytes, err := getDiskLimits(journalRoot)
-	if err != nil {
-		return err
-	}
-
-	// 25% of available disk space, up to a maximum of...
-	const journalAvailableByteDivisor = 4
-	// ...50 GiB.
-	const journalMaxByteLimit = 50 * 1024 * 1024 * 1024
-	// TODO: Also keep track of and limit the inode count.
+	// Set the journal disk limit to 10 GiB for now.
 	//
+	// TODO: Base this on the size of the disk, e.g. a quarter of
+	// the total size of the disk up to a maximum of 100 GB.
+	//
+	// TODO: Also keep track of and limit the inode count.
+	var journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
 	// TODO: Use a diskLimiter implementation that applies
 	// backpressure.
-	diskLimitSemaphore := newSemaphoreDiskLimiter(
-		journalAvailableByteDivisor, journalMaxByteLimit)
-	diskLimitSemaphore.onUpdateAvailableBytes(availableBytes)
-	log.Debug("Setting journal byte limit to %v "+
-		"(disk containing %s has %d available bytes)",
-		diskLimitSemaphore, journalRoot, availableBytes)
+	diskLimitSemaphore := newSemaphoreDiskLimiter(journalDiskLimit)
+	log.Debug("Setting journal byte limit to %v", journalDiskLimit)
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,
 		flushListener, diskLimitSemaphore)
