@@ -907,9 +907,10 @@ func (c *ConfigLocal) EnableJournaling(
 	var journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
 	var backpressureMinThreshold int64 = journalDiskLimit / 2
 	var backpressureMaxThreshold int64 = journalDiskLimit * 19 / 20
+	var maxDelay = 10 * time.Second
 	diskLimitSemaphore := newSemaphoreDiskLimiter(
 		backpressureMinThreshold, backpressureMaxThreshold,
-		journalDiskLimit)
+		journalDiskLimit, maxDelay)
 	log.Debug("Setting journal byte limit to %v", journalDiskLimit)
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,

@@ -5,6 +5,8 @@
 package libkbfs
 
 import (
+	"time"
+
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -15,13 +17,15 @@ import (
 type semaphoreDiskLimiter struct {
 	backpressureMinThreshold int64
 	backpressureMaxThreshold int64
+	maxDelay                 time.Duration
 	s                        *kbfssync.Semaphore
 }
 
 var _ diskLimiter = semaphoreDiskLimiter{}
 
 func newSemaphoreDiskLimiter(
-	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64) semaphoreDiskLimiter {
+	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64,
+	maxDelay time.Duration) semaphoreDiskLimiter {
 	if backpressureMinThreshold < 0 {
 		panic("backpressureMinThreshold < 0")
 	}
@@ -33,7 +37,9 @@ func newSemaphoreDiskLimiter(
 	}
 	s := kbfssync.NewSemaphore()
 	s.Release(byteLimit)
-	return semaphoreDiskLimiter{backpressureMinThreshold, backpressureMaxThreshold, s}
+	return semaphoreDiskLimiter{
+		backpressureMinThreshold, backpressureMaxThreshold, maxDelay, s,
+	}
 }
 
 func (s semaphoreDiskLimiter) onJournalEnable(journalBytes int64) int64 {
