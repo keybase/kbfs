@@ -905,8 +905,8 @@ func (c *ConfigLocal) EnableJournaling(
 	//
 	// TODO: Also keep track of and limit the inode count.
 	var journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
-	var backpressureMinThreshold int64 = journalDiskLimit / 2
-	var backpressureMaxThreshold int64 = journalDiskLimit * 19 / 20
+	var backpressureMinThreshold = journalDiskLimit / 2
+	var backpressureMaxThreshold = journalDiskLimit * 19 / 20
 	var maxDelay = 10 * time.Second
 	diskLimitSemaphore := newBackpressureDiskLimiter(
 		backpressureMinThreshold, backpressureMaxThreshold,
