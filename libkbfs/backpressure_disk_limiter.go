@@ -19,14 +19,16 @@ type backpressureDiskLimiter struct {
 	backpressureMaxThreshold int64
 	byteLimit                int64
 	maxDelay                 time.Duration
+	delayFn                  func(context.Context, time.Duration) error
 	s                        *kbfssync.Semaphore
 }
 
 var _ diskLimiter = backpressureDiskLimiter{}
 
-func newBackpressureDiskLimiter(
+func newBackpressureDiskLimiterWithDelayFunction(
 	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64,
-	maxDelay time.Duration) backpressureDiskLimiter {
+	maxDelay time.Duration,
+	delayFn func(context.Context, time.Duration) error) backpressureDiskLimiter {
 	if backpressureMinThreshold < 0 {
 		panic("backpressureMinThreshold < 0")
 	}
@@ -40,8 +42,31 @@ func newBackpressureDiskLimiter(
 	s.Release(byteLimit)
 	return backpressureDiskLimiter{
 		backpressureMinThreshold, backpressureMaxThreshold,
-		byteLimit, maxDelay, s,
+		byteLimit, maxDelay, delayFn, s,
 	}
+}
+
+func defaultDoDelay(ctx context.Context, delay time.Duration) error {
+	if delay == 0 {
+		return nil
+	}
+
+	timer := time.NewTimer(delay)
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		timer.Stop()
+		return errors.WithStack(ctx.Err())
+	}
+}
+
+func newBackpressureDiskLimiter(
+	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64,
+	maxDelay time.Duration) backpressureDiskLimiter {
+	return newBackpressureDiskLimiterWithDelayFunction(
+		backpressureMinThreshold, backpressureMaxThreshold,
+		byteLimit, maxDelay, defaultDoDelay)
 }
 
 func (s backpressureDiskLimiter) onJournalEnable(journalBytes int64) int64 {
@@ -90,13 +115,10 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 	}
 
 	delay := s.getDelay()
-	timer := time.NewTimer(delay)
-	select {
-	case <-timer.C:
-	case <-ctx.Done():
-		timer.Stop()
+	err := s.delayFn(ctx, delay)
+	if err != nil {
 		// TODO: Return current semaphore count.
-		return 0, errors.WithStack(ctx.Err())
+		return 0, err
 	}
 
 	return s.s.Acquire(ctx, blockBytes)
