@@ -5,9 +5,8 @@
 package libkbfs
 
 import (
-	"errors"
-
 	"github.com/keybase/kbfs/kbfssync"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
