@@ -5,8 +5,6 @@
 package libkbfs
 
 import (
-	"time"
-
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -15,33 +13,15 @@ import (
 // semaphoreDiskLimiter is an implementation of diskLimiter that uses
 // a semaphore.
 type semaphoreDiskLimiter struct {
-	backpressureMinThreshold int64
-	backpressureMaxThreshold int64
-	byteLimit                int64
-	maxDelay                 time.Duration
-	s                        *kbfssync.Semaphore
+	s *kbfssync.Semaphore
 }
 
 var _ diskLimiter = semaphoreDiskLimiter{}
 
-func newSemaphoreDiskLimiter(
-	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64,
-	maxDelay time.Duration) semaphoreDiskLimiter {
-	if backpressureMinThreshold < 0 {
-		panic("backpressureMinThreshold < 0")
-	}
-	if backpressureMaxThreshold < backpressureMinThreshold {
-		panic("backpressureMaxThreshold < backpressureMinThreshold")
-	}
-	if byteLimit < backpressureMaxThreshold {
-		panic("byteLimit < backpressureMaxThreshold")
-	}
+func newSemaphoreDiskLimiter(byteLimit int64) semaphoreDiskLimiter {
 	s := kbfssync.NewSemaphore()
 	s.Release(byteLimit)
-	return semaphoreDiskLimiter{
-		backpressureMinThreshold, backpressureMaxThreshold,
-		byteLimit, maxDelay, s,
-	}
+	return semaphoreDiskLimiter{s}
 }
 
 func (s semaphoreDiskLimiter) onJournalEnable(journalBytes int64) int64 {
@@ -60,26 +40,6 @@ func (s semaphoreDiskLimiter) onJournalDisable(journalBytes int64) {
 	}
 }
 
-func (s semaphoreDiskLimiter) getDelay() time.Duration {
-	// Slight hack to get semaphore value.
-	s.s.ForceAcquire(1)
-	availBytes := s.s.Release(1)
-
-	usedBytes := s.byteLimit - availBytes
-	if usedBytes <= s.backpressureMinThreshold {
-		return 0
-	}
-
-	if usedBytes >= s.backpressureMaxThreshold {
-		return s.maxDelay
-	}
-
-	scale := float64(usedBytes-s.backpressureMinThreshold) /
-		float64(s.backpressureMaxThreshold-s.backpressureMinThreshold)
-	delayNs := int64(float64(s.maxDelay.Nanoseconds()) * scale)
-	return time.Duration(delayNs) * time.Nanosecond
-}
-
 func (s semaphoreDiskLimiter) beforeBlockPut(
 	ctx context.Context, blockBytes int64) (int64, error) {
 	if blockBytes == 0 {
@@ -87,16 +47,6 @@ func (s semaphoreDiskLimiter) beforeBlockPut(
 		//
 		// TODO: Return current semaphore count.
 		return 0, errors.New("beforeBlockPut called with 0 blockBytes")
-	}
-
-	delay := s.getDelay()
-	timer := time.NewTimer(delay)
-	select {
-	case <-timer.C:
-	case <-ctx.Done():
-		timer.Stop()
-		// TODO: Return current semaphore count.
-		return 0, errors.WithStack(ctx.Err())
 	}
 
 	return s.s.Acquire(ctx, blockBytes)

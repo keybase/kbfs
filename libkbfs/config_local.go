@@ -908,7 +908,7 @@ func (c *ConfigLocal) EnableJournaling(
 	var backpressureMinThreshold int64 = journalDiskLimit / 2
 	var backpressureMaxThreshold int64 = journalDiskLimit * 19 / 20
 	var maxDelay = 10 * time.Second
-	diskLimitSemaphore := newSemaphoreDiskLimiter(
+	diskLimitSemaphore := newBackpressureDiskLimiter(
 		backpressureMinThreshold, backpressureMaxThreshold,
 		journalDiskLimit, maxDelay)
 	log.Debug("Setting journal byte limit to %v", journalDiskLimit)
