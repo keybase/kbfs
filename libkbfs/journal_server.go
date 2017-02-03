@@ -61,29 +61,33 @@ type mdFlushListener interface {
 // diskLimiter is an interface for limiting disk usage.
 type diskLimiter interface {
 	// onJournalEnable is called when initializing a TLF journal
-	// with that journal's current disk usage.
+	// with that journal's current disk usage. journalSize must be
+	// >= 0.
 	onJournalEnable(journalSize int64)
 
 	// onJournalDisable is called when shutting down a TLF journal
-	// with that journal's current disk usage.
+	// with that journal's current disk usage. journalSize must be
+	// >= 0.
 	onJournalDisable(journalSize int64)
 
 	// beforeBlockPut is called before putting a block of the
-	// given size. It may block, but must return immediately with
-	// a (possibly-wrapped) ctx.Err() if ctx is cancelled. If the
-	// returned error is nil, the updated number of bytes
-	// available (which can be negative) must be returned. If the
-	// returned error is non-nil, the number of bytes available at
-	// the time it blocked (which is necessarily less than n) must
-	// be returned.
+	// given size, which must be > 0. It may block, but must
+	// return immediately with a (possibly-wrapped) ctx.Err() if
+	// ctx is cancelled. If the returned error is nil, the updated
+	// number of bytes available (which can be negative) must be
+	// returned. If the returned error is a cancellation error,
+	// the number of bytes available at the time it blocked (which
+	// is necessarily less than n) must be returned.
 	beforeBlockPut(ctx context.Context, blockBytes int64) (int64, error)
 
 	// onBlockPutFail is called if putting a block of the given
-	// size fails.
+	// size (which must be > 0) fails.
 	onBlockPutFail(blockBytes int64)
 
 	// onBlockDelete is called after deleting a block of the given
-	// number of bytes of disk space.
+	// number of bytes of disk space, which must be >=
+	// 0. (Deleting a zero-sized block shouldn't happen, but may
+	// as well let it go through.)
 	onBlockDelete(blockBytes int64)
 }
 

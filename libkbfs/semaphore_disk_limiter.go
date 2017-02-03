@@ -5,6 +5,8 @@
 package libkbfs
 
 import (
+	"errors"
+
 	"github.com/keybase/kbfs/kbfssync"
 	"golang.org/x/net/context"
 )
@@ -24,15 +26,23 @@ func newSemaphoreDiskLimiter(byteLimit int64) semaphoreDiskLimiter {
 }
 
 func (s semaphoreDiskLimiter) onJournalEnable(journalBytes int64) {
-	s.s.ForceAcquire(journalBytes)
+	if journalBytes > 0 {
+		s.s.ForceAcquire(journalBytes)
+	}
 }
 
 func (s semaphoreDiskLimiter) onJournalDisable(journalBytes int64) {
-	s.s.Release(journalBytes)
+	if journalBytes > 0 {
+		s.s.Release(journalBytes)
+	}
 }
 
 func (s semaphoreDiskLimiter) beforeBlockPut(
 	ctx context.Context, blockBytes int64) (int64, error) {
+	if blockBytes == 0 {
+		// Better to return an error than to panic in Acquire.
+		return 0, errors.New("beforeBlockPut called with 0 blockBytes")
+	}
 	return s.s.Acquire(ctx, blockBytes)
 }
 
@@ -41,5 +51,7 @@ func (s semaphoreDiskLimiter) onBlockPutFail(blockBytes int64) {
 }
 
 func (s semaphoreDiskLimiter) onBlockDelete(blockBytes int64) {
-	s.s.Release(blockBytes)
+	if blockBytes > 0 {
+		s.s.Release(blockBytes)
+	}
 }

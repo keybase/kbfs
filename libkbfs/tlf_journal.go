@@ -365,8 +365,8 @@ func makeTLFJournal(
 
 	// Do this only once we're sure we won't error.
 	storedBytes := j.blockJournal.getStoredBytes()
+	j.diskLimiter.onJournalEnable(storedBytes)
 	if storedBytes > 0 {
-		j.diskLimiter.onJournalEnable(storedBytes)
 		j.log.CDebugf(ctx,
 			"Force-acquired %d bytes for %s: %v",
 			storedBytes, tlfID, j.diskLimiter)
