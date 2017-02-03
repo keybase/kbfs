@@ -17,6 +17,7 @@ import (
 type semaphoreDiskLimiter struct {
 	backpressureMinThreshold int64
 	backpressureMaxThreshold int64
+	byteLimit                int64
 	maxDelay                 time.Duration
 	s                        *kbfssync.Semaphore
 }
@@ -38,7 +39,8 @@ func newSemaphoreDiskLimiter(
 	s := kbfssync.NewSemaphore()
 	s.Release(byteLimit)
 	return semaphoreDiskLimiter{
-		backpressureMinThreshold, backpressureMaxThreshold, maxDelay, s,
+		backpressureMinThreshold, backpressureMaxThreshold,
+		byteLimit, maxDelay, s,
 	}
 }
 
@@ -66,7 +68,34 @@ func (s semaphoreDiskLimiter) beforeBlockPut(
 		// TODO: Return the current semaphore count here, too?
 		return 0, errors.New("beforeBlockPut called with 0 blockBytes")
 	}
-	return s.s.Acquire(ctx, blockBytes)
+	availBytes, err := s.s.Acquire(ctx, blockBytes)
+	if err != nil {
+		return availBytes, err
+	}
+
+	usedBytes := s.byteLimit - availBytes
+	if usedBytes <= s.backpressureMinThreshold {
+		return availBytes, nil
+	}
+
+	var delay time.Duration
+	if usedBytes >= s.backpressureMaxThreshold {
+		delay = s.maxDelay
+	} else {
+		scale := float64(usedBytes-s.backpressureMinThreshold) / float64(s.backpressureMaxThreshold-s.backpressureMinThreshold)
+		delayNs := int64(float64(s.maxDelay.Nanoseconds()) * scale)
+		delay = time.Duration(delayNs) * time.Nanosecond
+	}
+	timer := time.NewTimer(delay)
+	select {
+	case <-timer.C:
+		// TODO: Return a more current count?
+		return availBytes, nil
+	case <-ctx.Done():
+		timer.Stop()
+		// TODO: Return a more current count?
+		return availBytes, errors.WithStack(ctx.Err())
+	}
 }
 
 func (s semaphoreDiskLimiter) onBlockPutFail(blockBytes int64) {
