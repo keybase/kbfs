@@ -1369,9 +1369,7 @@ func (j *tlfJournal) shutdown() {
 	// time other than during shutdown, we should still count
 	// shut-down journals against the disk limit.
 	storedBytes := j.blockJournal.getStoredBytes()
-	if storedBytes > 0 {
-		j.diskLimiter.onJournalDisable(storedBytes)
-	}
+	j.diskLimiter.onJournalDisable(storedBytes)
 
 	// Make further accesses error out.
 	j.blockJournal = nil
