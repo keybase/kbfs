@@ -978,9 +978,7 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		if err != nil {
 			return err
 		}
-		if removedBytes > 0 {
-			j.diskLimiter.onBlockDelete(removedBytes)
-		}
+		j.diskLimiter.onBlockDelete(removedBytes)
 		if nextLastToRemove == 0 {
 			break
 		}
