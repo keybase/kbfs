@@ -910,13 +910,13 @@ func (c *ConfigLocal) EnableJournaling(
 		return err
 	}
 
-	// Set the journal disk limit to 10 GiB for now.
+	// Set the absolute journal disk limit to 50 GiB for now.
 	//
 	// TODO: Base this on the size of the disk, e.g. a quarter of
 	// the total size of the disk up to a maximum of 100 GB.
 	//
 	// TODO: Also keep track of and limit the inode count.
-	const journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
+	const journalDiskLimit int64 = 50 * 1024 * 1024 * 1024
 	const backpressureMinThreshold = 0.5
 	const backpressureMaxThreshold = 0.95
 	bdl := newBackpressureDiskLimiter(
