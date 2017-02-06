@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestBackpressureDiskLimiter(t *testing.T) {
+func TestBackpressureDiskLimiterLargeDisk(t *testing.T) {
 	var lastDelay time.Duration
 	delayFn := func(ctx context.Context, delay time.Duration) error {
 		lastDelay = delay
@@ -22,7 +22,13 @@ func TestBackpressureDiskLimiter(t *testing.T) {
 
 	log := logger.NewTestLogger(t)
 	bdl := newBackpressureDiskLimiterWithDelayFunction(
+<<<<<<< 7e9c43bfafa34333b4e3bc6c4142bb360189a2d3
 		log, 0.1, 0.9, 110, 9*time.Second, delayFn)
+||||||| merged common ancestors
+		0.1, 0.9, 110, 9*time.Second, delayFn)
+=======
+		0.1, 0.9, 100, 9*time.Second, delayFn)
+>>>>>>> Fail test
 	ctx := context.Background()
 	_, err := bdl.beforeBlockPut(ctx, 10)
 	require.NoError(t, err)
