@@ -879,9 +879,13 @@ func (c *ConfigLocal) journalizeBcaches(jServer *JournalServer) error {
 	return nil
 }
 
+// defaultDiskLimitMaxDelay is the maximum amount to delay a block
+// put.
 const defaultDiskLimitMaxDelay = 10 * time.Second
 
-// Should be slightly more than maxDelay.
+// defaultDiskLimitTimeout is how much of a delay will cause a block
+// put to give up and return. This should be slightly more than
+// maxDelay.
 const defaultDiskLimitTimeout = 11 * time.Second
 
 // EnableJournaling creates a JournalServer and attaches it to
@@ -903,6 +907,7 @@ func (c *ConfigLocal) EnableJournaling(
 	log := c.MakeLogger("")
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
+
 	// Set the journal disk limit to 10 GiB for now.
 	//
 	// TODO: Base this on the size of the disk, e.g. a quarter of
@@ -910,8 +915,15 @@ func (c *ConfigLocal) EnableJournaling(
 	//
 	// TODO: Also keep track of and limit the inode count.
 	const journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
+
+	// Start backpressure when 50% of the disk limit has been
+	// reached.
 	const backpressureMinThreshold = journalDiskLimit / 2
+
+	// When 95% of the disk limit has been reached, just delay for
+	// the maximum duration.
 	const backpressureMaxThreshold = journalDiskLimit * 19 / 20
+
 	diskLimitSemaphore := newBackpressureDiskLimiter(
 		backpressureMinThreshold, backpressureMaxThreshold,
 		journalDiskLimit, defaultDiskLimitMaxDelay)
