@@ -118,7 +118,7 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 	delay := s.getDelay()
 	if delay > 0 {
 		log.CDebugf(ctx, "Delaying block put of %d bytes by %d s",
-			delay.Seconds())
+			blockBytes, delay.Seconds())
 	}
 	err := s.delayFn(ctx, delay)
 	if err != nil {
