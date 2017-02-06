@@ -434,14 +434,16 @@ type DirInterface interface {
 // Dir represents a subdirectory of a KBFS top-level folder (including
 // the TLF root directory itself).
 type Dir struct {
-	folder *Folder
-	node   libkbfs.Node
+	folder  *Folder
+	node    libkbfs.Node
+	renamer renamer
 }
 
 func newDir(folder *Folder, node libkbfs.Node) *Dir {
 	d := &Dir{
-		folder: folder,
-		node:   node,
+		folder:  folder,
+		node:    node,
+		renamer: noXDevRenamer{kbfsOps: folder.fs.config.KBFSOps()},
 	}
 	return d
 }
@@ -680,35 +682,19 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 		if err != nil {
 			return err
 		}
+	case *FolderList, *Root:
+		// This normally wouldn't happen since a presumably pre-check on
+		// destination permissions would have failed. But in case it happens, it
+		// should be a EACCES according to rename() man page.
+		return fuse.Errno(syscall.EACCES)
 	default:
-		// The destination is not a TLF instance, probably
-		// because it's Root (or some other node type added
-		// later). The kernel won't let a rename newDir point
-		// to a non-directory.
-		//
-		// We have no cheap atomic rename across folders, so
-		// we can't serve this. EXDEV makes `mv` do a
-		// copy+delete, and the Lookup on the destination path
-		// will decide whether it's legal.
+		// This shouldn't happen unless we add other nodes. EIO is not in the error
+		// codes listed in rename(), but there doesn't seem to be any suitable
+		// error code listed for this situation either.
 		return fuse.Errno(syscall.EXDEV)
 	}
 
-	if d.folder != realNewDir.folder {
-		// Check this explicitly, not just trusting KBFSOps.Rename to
-		// return an error, because we rely on it for locking
-		// correctness.
-		return fuse.Errno(syscall.EXDEV)
-	}
-
-	// overwritten node, if any, will be removed from Folder.nodes, if
-	// it is there in the first place, by its Forget
-
-	if err := d.folder.fs.config.KBFSOps().Rename(
-		ctx, d.node, req.OldName, realNewDir.node, req.NewName); err != nil {
-		return err
-	}
-
-	return nil
+	return d.renamer.Rename(ctx, d, req.OldName, realNewDir, req.NewName, req)
 }
 
 // Remove implements the fs.NodeRemover interface for Dir.
