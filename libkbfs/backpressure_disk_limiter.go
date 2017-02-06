@@ -131,6 +131,9 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 			"beforeBlockPut called with 0 blockBytes")
 	}
 
+	// We don't actually look at blockBytes -- we're assuming that
+	// it's small compared to the other numbers.
+
 	delay := s.getDelay()
 	if delay > 0 {
 		s.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
