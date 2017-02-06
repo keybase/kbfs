@@ -22,7 +22,7 @@ func TestBackpressureDiskLimiter(t *testing.T) {
 
 	log := logger.NewTestLogger(t)
 	bdl := newBackpressureDiskLimiterWithDelayFunction(
-		log, 10, 100, 110, 9*time.Second, delayFn)
+		log, 0.1, 0.9, 110, 9*time.Second, delayFn)
 	ctx := context.Background()
 	_, err := bdl.beforeBlockPut(ctx, 10)
 	require.NoError(t, err)

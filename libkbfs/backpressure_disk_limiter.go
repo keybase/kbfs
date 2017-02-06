@@ -8,21 +8,29 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
-	"github.com/keybase/kbfs/kbfssync"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
 // backpressureDiskLimiter is an implementation of diskLimiter that
 // uses backpressure.
+//
+// Let J be the (approximate) byte usage of the journal and A be the
+// available bytes on disk. Then J/(J + A) is the byte usage ratio of
+// the journal. We want to set thresholds m and M such that we apply
+// proportional backpressure when m <= J/(J+A) <= M. In addition, we
+// want to have an absolute byte usage limit L and apply backpressure
+// when m <= J/L <= M.
 type backpressureDiskLimiter struct {
-	log                      logger.Logger
-	backpressureMinThreshold int64
-	backpressureMaxThreshold int64
-	byteLimit                int64
-	maxDelay                 time.Duration
-	delayFn                  func(context.Context, time.Duration) error
-	s                        *kbfssync.Semaphore
+	log logger.Logger
+	// backpressureMinThreshold is m in the above.
+	backpressureMinThreshold float64
+	// backpressureMaxThreshold is M in the above.
+	backpressureMaxThreshold float64
+	// maxJournalBytes is L in the above.
+	maxJournalBytes int64
+	maxDelay        time.Duration
+	delayFn         func(context.Context, time.Duration) error
 }
 
 var _ diskLimiter = backpressureDiskLimiter{}
@@ -32,23 +40,21 @@ var _ diskLimiter = backpressureDiskLimiter{}
 // given delay function, which is overridden in tests.
 func newBackpressureDiskLimiterWithDelayFunction(
 	log logger.Logger,
-	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64,
-	maxDelay time.Duration,
+	backpressureMinThreshold, backpressureMaxThreshold float64,
+	maxJournalBytes int64, maxDelay time.Duration,
 	delayFn func(context.Context, time.Duration) error) backpressureDiskLimiter {
-	if backpressureMinThreshold < 0 {
-		panic("backpressureMinThreshold < 0")
+	if backpressureMinThreshold < 0.0 {
+		panic("backpressureMinThreshold < 0.0")
 	}
 	if backpressureMaxThreshold < backpressureMinThreshold {
 		panic("backpressureMaxThreshold < backpressureMinThreshold")
 	}
-	if byteLimit < backpressureMaxThreshold {
-		panic("byteLimit < backpressureMaxThreshold")
+	if 1.0 < backpressureMaxThreshold {
+		panic("1.0 < backpressureMaxThreshold")
 	}
-	s := kbfssync.NewSemaphore()
-	s.Release(byteLimit)
 	return backpressureDiskLimiter{
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		byteLimit, maxDelay, delayFn, s,
+		maxJournalBytes, maxDelay, delayFn,
 	}
 }
 
@@ -72,8 +78,8 @@ func defaultDoDelay(ctx context.Context, delay time.Duration) error {
 // with the given parameters.
 func newBackpressureDiskLimiter(
 	log logger.Logger,
-	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64,
-	maxDelay time.Duration) backpressureDiskLimiter {
+	backpressureMinThreshold, backpressureMaxThreshold float64,
+	byteLimit int64, maxDelay time.Duration) backpressureDiskLimiter {
 	return newBackpressureDiskLimiterWithDelayFunction(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
 		byteLimit, maxDelay, defaultDoDelay)
@@ -81,41 +87,22 @@ func newBackpressureDiskLimiter(
 
 func (s backpressureDiskLimiter) onJournalEnable(
 	ctx context.Context, journalBytes int64) int64 {
-	if journalBytes == 0 {
-		return s.s.Count()
-	}
-	return s.s.ForceAcquire(journalBytes)
+	return 0
 }
 
 func (s backpressureDiskLimiter) onJournalDisable(
 	ctx context.Context, journalBytes int64) {
-	if journalBytes > 0 {
-		s.s.Release(journalBytes)
-	}
 }
 
 func (s backpressureDiskLimiter) getDelay() time.Duration {
-	availBytes := s.s.Count()
-	usedBytes := s.byteLimit - availBytes
-	if usedBytes <= s.backpressureMinThreshold {
-		return 0
-	}
-
-	if usedBytes >= s.backpressureMaxThreshold {
-		return s.maxDelay
-	}
-
-	scale := float64(usedBytes-s.backpressureMinThreshold) /
-		float64(s.backpressureMaxThreshold-s.backpressureMinThreshold)
-	delayNs := int64(float64(s.maxDelay.Nanoseconds()) * scale)
-	return time.Duration(delayNs) * time.Nanosecond
+	return 0
 }
 
 func (s backpressureDiskLimiter) beforeBlockPut(
 	ctx context.Context, blockBytes int64) (int64, error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
-		return s.s.Count(), errors.New(
+		return 0, errors.New(
 			"beforeBlockPut called with 0 blockBytes")
 	}
 
@@ -126,22 +113,16 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 	}
 	err := s.delayFn(ctx, delay)
 	if err != nil {
-		return s.s.Count(), err
+		return 0, err
 	}
 
-	return s.s.Acquire(ctx, blockBytes)
+	return 0, nil
 }
 
 func (s backpressureDiskLimiter) afterBlockPut(
 	ctx context.Context, blockBytes int64, putData bool) {
-	if !putData {
-		s.s.Release(blockBytes)
-	}
 }
 
 func (s backpressureDiskLimiter) onBlockDelete(
 	ctx context.Context, blockBytes int64) {
-	if blockBytes > 0 {
-		s.s.Release(blockBytes)
-	}
 }

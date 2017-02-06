@@ -915,15 +915,8 @@ func (c *ConfigLocal) EnableJournaling(
 	//
 	// TODO: Also keep track of and limit the inode count.
 	const journalDiskLimit int64 = 10 * 1024 * 1024 * 1024
-
-	// Start backpressure when 50% of the disk limit has been
-	// reached.
-	const backpressureMinThreshold = journalDiskLimit / 2
-
-	// When 95% of the disk limit has been reached, just delay for
-	// the maximum duration.
-	const backpressureMaxThreshold = journalDiskLimit * 19 / 20
-
+	const backpressureMinThreshold = 0.5
+	const backpressureMaxThreshold = 0.95
 	bdl := newBackpressureDiskLimiter(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
 		journalDiskLimit, defaultDiskLimitMaxDelay)
