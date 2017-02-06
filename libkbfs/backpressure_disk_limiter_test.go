@@ -24,20 +24,24 @@ func TestBackpressureDiskLimiterLargeDisk(t *testing.T) {
 	bdl := newBackpressureDiskLimiterWithDelayFunction(
 		log, 0.1, 0.9, 100, 8*time.Second, delayFn)
 	ctx := context.Background()
-	_, err := bdl.beforeBlockPut(ctx, 10)
-	require.NoError(t, err)
-	require.Equal(t, 0*time.Second, lastDelay)
-	bdl.afterBlockPut(ctx, 10, true)
 
-	for i := 0; i < 9; i++ {
-		_, err = bdl.beforeBlockPut(ctx, 10)
+	for i := 0; i < 2; i++ {
+		_, err := bdl.beforeBlockPut(ctx, 10)
 		require.NoError(t, err)
-		require.Equal(t, time.Duration(i)*time.Second, lastDelay, "i=%d", i)
+		require.Equal(t, 0*time.Second, lastDelay)
 		bdl.afterBlockPut(ctx, 10, true)
 	}
 
-	_, err = bdl.beforeBlockPut(ctx, 10)
+	for i := 1; i < 9; i++ {
+		_, err := bdl.beforeBlockPut(ctx, 10)
+		require.NoError(t, err)
+		require.InEpsilon(t, float64(i), lastDelay.Seconds(),
+			0.01, "i=%d", i)
+		bdl.afterBlockPut(ctx, 10, true)
+	}
+
+	_, err := bdl.beforeBlockPut(ctx, 10)
 	require.NoError(t, err)
-	require.Equal(t, 9*time.Second, lastDelay)
+	require.Equal(t, 8*time.Second, lastDelay)
 	bdl.afterBlockPut(ctx, 10, true)
 }
