@@ -12,8 +12,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-// backpressureDiskLimiter is an implementation of diskLimiter that uses
-// a backpressure.
+// backpressureDiskLimiter is an implementation of diskLimiter that
+// uses backpressure.
 type backpressureDiskLimiter struct {
 	backpressureMinThreshold int64
 	backpressureMaxThreshold int64
