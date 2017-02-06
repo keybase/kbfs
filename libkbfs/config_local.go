@@ -884,11 +884,6 @@ func (c *ConfigLocal) journalizeBcaches(jServer *JournalServer) error {
 // put.
 const defaultDiskLimitMaxDelay = 10 * time.Second
 
-// defaultDiskLimitTimeout is how much of a delay will cause a block
-// put to give up and return. This should be slightly more than
-// maxDelay.
-const defaultDiskLimitTimeout = 11 * time.Second
-
 // EnableJournaling creates a JournalServer and attaches it to
 // this config. journalRoot must be non-empty. Errors returned are
 // non-fatal.
