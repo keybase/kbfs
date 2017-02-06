@@ -26,6 +26,9 @@ type backpressureDiskLimiter struct {
 
 var _ diskLimiter = backpressureDiskLimiter{}
 
+// newBackpressureDiskLimiterWithDelayFunction constructs a new
+// backpressureDiskLimiter with the given parameters, and also the
+// given delay function, which is overridden in tests.
 func newBackpressureDiskLimiterWithDelayFunction(
 	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64,
 	maxDelay time.Duration,
@@ -47,6 +50,7 @@ func newBackpressureDiskLimiterWithDelayFunction(
 	}
 }
 
+// defaultDoDelay uses a timer to delay by the given duration.
 func defaultDoDelay(ctx context.Context, delay time.Duration) error {
 	if delay == 0 {
 		return nil
@@ -62,6 +66,8 @@ func defaultDoDelay(ctx context.Context, delay time.Duration) error {
 	}
 }
 
+// newBackpressureDiskLimiter constructs a new backpressureDiskLimiter
+// with the given parameters.
 func newBackpressureDiskLimiter(
 	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64,
 	maxDelay time.Duration) backpressureDiskLimiter {
@@ -88,6 +94,9 @@ func (s backpressureDiskLimiter) onJournalDisable(journalBytes int64) {
 
 func (s backpressureDiskLimiter) getDelay() time.Duration {
 	// Slight hack to get backpressure value.
+	//
+	// TODO: Add a way to get the semaphore value without doing
+	// this.
 	s.s.ForceAcquire(1)
 	availBytes := s.s.Release(1)
 
