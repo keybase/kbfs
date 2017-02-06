@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -41,7 +42,8 @@ func (s semaphoreDiskLimiter) onJournalDisable(journalBytes int64) {
 }
 
 func (s semaphoreDiskLimiter) beforeBlockPut(
-	ctx context.Context, blockBytes int64) (int64, error) {
+	ctx context.Context, blockBytes int64,
+	log logger.Logger) (int64, error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
 		//

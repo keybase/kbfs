@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"time"
 
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -106,7 +107,8 @@ func (s backpressureDiskLimiter) getDelay() time.Duration {
 }
 
 func (s backpressureDiskLimiter) beforeBlockPut(
-	ctx context.Context, blockBytes int64) (int64, error) {
+	ctx context.Context, blockBytes int64,
+	log logger.Logger) (int64, error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
 		//
@@ -115,6 +117,10 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 	}
 
 	delay := s.getDelay()
+	if delay > 0 {
+		log.CDebugf(ctx, "Delaying block put of %d bytes by %d s",
+			delay.Seconds())
+	}
 	err := s.delayFn(ctx, delay)
 	if err != nil {
 		// TODO: Return current semaphore count.

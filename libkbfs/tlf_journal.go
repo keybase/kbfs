@@ -1478,7 +1478,8 @@ func (j *tlfJournal) putBlockData(
 	defer cancel()
 
 	bufLen := int64(len(buf))
-	availableBytes, err := j.diskLimiter.beforeBlockPut(acquireCtx, bufLen)
+	availableBytes, err := j.diskLimiter.beforeBlockPut(
+		acquireCtx, bufLen, j.log)
 	switch errors.Cause(err) {
 	case nil:
 		// Continue.

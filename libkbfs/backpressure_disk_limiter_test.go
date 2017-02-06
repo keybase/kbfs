@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keybase/client/go/logger"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -22,17 +23,18 @@ func TestBackpressureDiskLimiter(t *testing.T) {
 	bdl := newBackpressureDiskLimiterWithDelayFunction(
 		10, 100, 110, 9*time.Second, delayFn)
 	ctx := context.Background()
-	_, err := bdl.beforeBlockPut(ctx, 10)
+	log := logger.NewTestLogger(t)
+	_, err := bdl.beforeBlockPut(ctx, 10, log)
 	require.NoError(t, err)
 	require.Equal(t, 0*time.Second, lastDelay)
 
 	for i := 0; i < 9; i++ {
-		_, err = bdl.beforeBlockPut(ctx, 10)
+		_, err = bdl.beforeBlockPut(ctx, 10, log)
 		require.NoError(t, err)
 		require.Equal(t, time.Duration(i)*time.Second, lastDelay)
 	}
 
-	_, err = bdl.beforeBlockPut(ctx, 10)
+	_, err = bdl.beforeBlockPut(ctx, 10, log)
 	require.NoError(t, err)
 	require.Equal(t, 9*time.Second, lastDelay)
 }
