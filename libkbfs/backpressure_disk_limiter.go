@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"sync"
 	"time"
 
 	"github.com/keybase/client/go/logger"
@@ -31,9 +32,12 @@ type backpressureDiskLimiter struct {
 	maxJournalBytes int64
 	maxDelay        time.Duration
 	delayFn         func(context.Context, time.Duration) error
+
+	journalBytesLock sync.RWMutex
+	journalBytes     int64
 }
 
-var _ diskLimiter = backpressureDiskLimiter{}
+var _ diskLimiter = (*backpressureDiskLimiter)(nil)
 
 // newBackpressureDiskLimiterWithDelayFunction constructs a new
 // backpressureDiskLimiter with the given parameters, and also the
@@ -42,7 +46,7 @@ func newBackpressureDiskLimiterWithDelayFunction(
 	log logger.Logger,
 	backpressureMinThreshold, backpressureMaxThreshold float64,
 	maxJournalBytes int64, maxDelay time.Duration,
-	delayFn func(context.Context, time.Duration) error) backpressureDiskLimiter {
+	delayFn func(context.Context, time.Duration) error) *backpressureDiskLimiter {
 	if backpressureMinThreshold < 0.0 {
 		panic("backpressureMinThreshold < 0.0")
 	}
@@ -52,9 +56,9 @@ func newBackpressureDiskLimiterWithDelayFunction(
 	if 1.0 < backpressureMaxThreshold {
 		panic("1.0 < backpressureMaxThreshold")
 	}
-	return backpressureDiskLimiter{
+	return &backpressureDiskLimiter{
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		maxJournalBytes, maxDelay, delayFn,
+		maxJournalBytes, maxDelay, delayFn, sync.RWMutex{}, 0,
 	}
 }
 
@@ -79,7 +83,7 @@ func defaultDoDelay(ctx context.Context, delay time.Duration) error {
 func newBackpressureDiskLimiter(
 	log logger.Logger,
 	backpressureMinThreshold, backpressureMaxThreshold float64,
-	byteLimit int64, maxDelay time.Duration) backpressureDiskLimiter {
+	byteLimit int64, maxDelay time.Duration) *backpressureDiskLimiter {
 	return newBackpressureDiskLimiterWithDelayFunction(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
 		byteLimit, maxDelay, defaultDoDelay)
@@ -87,14 +91,20 @@ func newBackpressureDiskLimiter(
 
 func (s backpressureDiskLimiter) onJournalEnable(
 	ctx context.Context, journalBytes int64) int64 {
+	s.journalBytesLock.Lock()
+	defer s.journalBytesLock.Unlock()
+	s.journalBytes += journalBytes
 	return 0
 }
 
 func (s backpressureDiskLimiter) onJournalDisable(
 	ctx context.Context, journalBytes int64) {
+	s.journalBytesLock.Lock()
+	defer s.journalBytesLock.Unlock()
+	s.journalBytes -= journalBytes
 }
 
-func (s backpressureDiskLimiter) getDelay() time.Duration {
+func (s *backpressureDiskLimiter) getDelay() time.Duration {
 	return 0
 }
 
