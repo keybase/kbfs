@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -21,8 +22,11 @@ func TestBackpressureDiskLimiterLargeDisk(t *testing.T) {
 	}
 
 	log := logger.NewTestLogger(t)
-	bdl := newBackpressureDiskLimiterWithDelayFunction(
-		log, 0.1, 0.9, 100, 8*time.Second, delayFn)
+	bdl := newBackpressureDiskLimiterWithFunctions(
+		log, 0.1, 0.9, 100, 8*time.Second, delayFn,
+		func() (int64, error) {
+			return math.MaxInt64, nil
+		})
 	ctx := context.Background()
 
 	for i := 0; i < 2; i++ {
@@ -44,4 +48,27 @@ func TestBackpressureDiskLimiterLargeDisk(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 8*time.Second, lastDelay)
 	bdl.afterBlockPut(ctx, 10, true)
+}
+
+func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
+	var lastDelay time.Duration
+	delayFn := func(ctx context.Context, delay time.Duration) error {
+		lastDelay = delay
+		return nil
+	}
+
+	log := logger.NewTestLogger(t)
+	bdl := newBackpressureDiskLimiterWithFunctions(
+		log, 0.1, 0.9, math.MaxInt64, 8*time.Second, delayFn,
+		func() (int64, error) {
+			return math.MaxInt64, nil
+		})
+	ctx := context.Background()
+
+	for i := 0; i < 2; i++ {
+		_, err := bdl.beforeBlockPut(ctx, 10)
+		require.NoError(t, err)
+		require.Equal(t, 0*time.Second, lastDelay)
+		bdl.afterBlockPut(ctx, 10, true)
+	}
 }

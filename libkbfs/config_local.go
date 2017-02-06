@@ -11,6 +11,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/pkg/errors"
@@ -908,6 +909,12 @@ func (c *ConfigLocal) EnableJournaling(
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
 
+	// the backpressure disk limiter needs the dir to exist first.
+	err = ioutil.MkdirAll(journalRoot, 0700)
+	if err != nil {
+		return err
+	}
+
 	// Set the journal disk limit to 10 GiB for now.
 	//
 	// TODO: Base this on the size of the disk, e.g. a quarter of
@@ -919,7 +926,7 @@ func (c *ConfigLocal) EnableJournaling(
 	const backpressureMaxThreshold = 0.95
 	bdl := newBackpressureDiskLimiter(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		journalDiskLimit, defaultDiskLimitMaxDelay)
+		journalDiskLimit, defaultDiskLimitMaxDelay, journalRoot)
 	log.Debug("Setting journal byte limit to %v", journalDiskLimit)
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,

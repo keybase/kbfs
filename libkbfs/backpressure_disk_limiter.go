@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"math"
 	"sync"
 	"time"
 
@@ -32,6 +33,7 @@ type backpressureDiskLimiter struct {
 	maxJournalBytes int64
 	maxDelay        time.Duration
 	delayFn         func(context.Context, time.Duration) error
+	availBytesFn    func() (int64, error)
 
 	journalBytesLock sync.RWMutex
 	journalBytes     int64
@@ -39,14 +41,15 @@ type backpressureDiskLimiter struct {
 
 var _ diskLimiter = (*backpressureDiskLimiter)(nil)
 
-// newBackpressureDiskLimiterWithDelayFunction constructs a new
+// newBackpressureDiskLimiterWithFunctions constructs a new
 // backpressureDiskLimiter with the given parameters, and also the
 // given delay function, which is overridden in tests.
-func newBackpressureDiskLimiterWithDelayFunction(
+func newBackpressureDiskLimiterWithFunctions(
 	log logger.Logger,
 	backpressureMinThreshold, backpressureMaxThreshold float64,
 	maxJournalBytes int64, maxDelay time.Duration,
-	delayFn func(context.Context, time.Duration) error) *backpressureDiskLimiter {
+	delayFn func(context.Context, time.Duration) error,
+	availBytesFn func() (int64, error)) *backpressureDiskLimiter {
 	if backpressureMinThreshold < 0.0 {
 		panic("backpressureMinThreshold < 0.0")
 	}
@@ -58,7 +61,8 @@ func newBackpressureDiskLimiterWithDelayFunction(
 	}
 	return &backpressureDiskLimiter{
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		maxJournalBytes, maxDelay, delayFn, sync.RWMutex{}, 0,
+		maxJournalBytes, maxDelay, delayFn, availBytesFn,
+		sync.RWMutex{}, 0,
 	}
 }
 
@@ -83,10 +87,21 @@ func defaultDoDelay(ctx context.Context, delay time.Duration) error {
 func newBackpressureDiskLimiter(
 	log logger.Logger,
 	backpressureMinThreshold, backpressureMaxThreshold float64,
-	byteLimit int64, maxDelay time.Duration) *backpressureDiskLimiter {
-	return newBackpressureDiskLimiterWithDelayFunction(
+	byteLimit int64, maxDelay time.Duration,
+	journalPath string) *backpressureDiskLimiter {
+	return newBackpressureDiskLimiterWithFunctions(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		byteLimit, maxDelay, defaultDoDelay)
+		byteLimit, maxDelay, defaultDoDelay, func() (int64, error) {
+			availBytes, err := getDiskLimits(journalPath)
+			if err != nil {
+				return 0, err
+			}
+
+			if availBytes > uint64(math.MaxInt64) {
+				return math.MaxInt64, nil
+			}
+			return int64(availBytes), nil
+		})
 }
 
 func (s backpressureDiskLimiter) onJournalEnable(
@@ -120,7 +135,9 @@ func (s *backpressureDiskLimiter) getDelay() time.Duration {
 	if absScale > 1 {
 		absScale = 1
 	}
-	return time.Duration(absScale * float64(s.maxDelay))
+	absDelay := time.Duration(absScale * float64(s.maxDelay))
+
+	return absDelay
 }
 
 func (s backpressureDiskLimiter) beforeBlockPut(
