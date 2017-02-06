@@ -57,11 +57,14 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		return nil
 	}
 
+	var journalSize int64
+	var diskSize int64 = 100
+
 	log := logger.NewTestLogger(t)
 	bdl := newBackpressureDiskLimiterWithFunctions(
 		log, 0.1, 0.9, math.MaxInt64, 8*time.Second, delayFn,
 		func() (int64, error) {
-			return math.MaxInt64, nil
+			return diskSize - journalSize, nil
 		})
 	ctx := context.Background()
 
@@ -70,5 +73,21 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 0*time.Second, lastDelay)
 		bdl.afterBlockPut(ctx, 10, true)
+		journalSize += 10
 	}
+
+	for i := 1; i < 9; i++ {
+		_, err := bdl.beforeBlockPut(ctx, 10)
+		require.NoError(t, err)
+		require.InEpsilon(t, float64(i), lastDelay.Seconds(),
+			0.01, "i=%d", i)
+		bdl.afterBlockPut(ctx, 10, true)
+		journalSize += 10
+	}
+
+	_, err := bdl.beforeBlockPut(ctx, 10)
+	require.NoError(t, err)
+	require.Equal(t, 8*time.Second, lastDelay)
+	bdl.afterBlockPut(ctx, 10, true)
+	journalSize += 10
 }
