@@ -105,7 +105,22 @@ func (s backpressureDiskLimiter) onJournalDisable(
 }
 
 func (s *backpressureDiskLimiter) getDelay() time.Duration {
-	return 0
+	journalBytes := func() int64 {
+		s.journalBytesLock.RLock()
+		defer s.journalBytesLock.RUnlock()
+		return s.journalBytes
+	}()
+
+	absRatio := float64(journalBytes) / float64(s.maxJournalBytes)
+	absScale := float64(absRatio-s.backpressureMinThreshold) /
+		float64(s.backpressureMaxThreshold-s.backpressureMinThreshold)
+	if absScale < 0 {
+		absScale = 0
+	}
+	if absScale > 1 {
+		absScale = 1
+	}
+	return time.Duration(absScale * float64(s.maxDelay))
 }
 
 func (s backpressureDiskLimiter) beforeBlockPut(
