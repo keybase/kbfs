@@ -119,25 +119,24 @@ func (s backpressureDiskLimiter) onJournalDisable(
 	s.journalBytes -= journalBytes
 }
 
-func (s *backpressureDiskLimiter) getDelay() time.Duration {
+func boundedLerp(x, min, max float64) float64 {
+	return math.Min(1.0, math.Max(0.0, (x-min)/(max-min)))
+}
+
+func (s *backpressureDiskLimiter) getDelay(availBytes int64) time.Duration {
 	journalBytes := func() int64 {
 		s.journalBytesLock.RLock()
 		defer s.journalBytesLock.RUnlock()
 		return s.journalBytes
 	}()
 
-	absRatio := float64(journalBytes) / float64(s.maxJournalBytes)
-	absScale := float64(absRatio-s.backpressureMinThreshold) /
-		float64(s.backpressureMaxThreshold-s.backpressureMinThreshold)
-	if absScale < 0 {
-		absScale = 0
-	}
-	if absScale > 1 {
-		absScale = 1
-	}
-	absDelay := time.Duration(absScale * float64(s.maxDelay))
-
-	return absDelay
+	r := math.Max(
+		float64(journalBytes)/float64(s.maxJournalBytes),
+		float64(journalBytes)/(float64(journalBytes)+float64(availBytes)))
+	m := s.backpressureMinThreshold
+	M := s.backpressureMaxThreshold
+	scale := math.Min(1.0, math.Max(0.0, (r-m)/(M-m)))
+	return time.Duration(scale * float64(s.maxDelay))
 }
 
 func (s backpressureDiskLimiter) beforeBlockPut(
@@ -151,12 +150,17 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 	// We don't actually look at blockBytes -- we're assuming that
 	// it's small compared to the other numbers.
 
-	delay := s.getDelay()
+	availBytes, err := s.availBytesFn()
+	if err != nil {
+		return 0, err
+	}
+
+	delay := s.getDelay(availBytes)
 	if delay > 0 {
 		s.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
 			blockBytes, delay.Seconds())
 	}
-	err := s.delayFn(ctx, delay)
+	err = s.delayFn(ctx, delay)
 	if err != nil {
 		return 0, err
 	}
