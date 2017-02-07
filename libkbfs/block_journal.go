@@ -396,7 +396,8 @@ func (j *blockJournal) putData(
 	}
 
 	if putData {
-		err = j.accumulateBlock(int64(len(buf)), filesPerBlockMax)
+		var putFiles int64 = filesPerBlockMax
+		err = j.accumulateBlock(int64(len(buf)), putFiles)
 		if err != nil {
 			return false, err
 		}
