@@ -320,29 +320,29 @@ func (j *blockJournal) isUnflushed(id kbfsblock.ID) (bool, error) {
 }
 
 func (j *blockJournal) remove(ctx context.Context, id kbfsblock.ID) (
-	removedBytes int64, err error) {
+	removedBytes, removedFiles int64, err error) {
 	bytesToRemove, err := j.s.getDataSize(id)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	// TODO: we'll eventually need a sweeper to clean up entries
 	// left behind if we crash here.
 	err = j.s.remove(id)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	var files int64
+	var filesToRemove int64
 	if bytesToRemove > 0 {
-		files = filesPerBlockMax
+		filesToRemove = filesPerBlockMax
 	}
-	err = j.unstoreBlock(bytesToRemove, files)
+	err = j.unstoreBlock(bytesToRemove, filesToRemove)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	return bytesToRemove, nil
+	return bytesToRemove, filesToRemove, nil
 }
 
 // All functions below are public functions.
@@ -762,42 +762,42 @@ func flushBlockEntries(ctx context.Context, log logger.Logger,
 
 func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	ordinal journalOrdinal, entry blockJournalEntry) (
-	removedBytes, flushedBytes int64, err error) {
+	removedBytes, flushedBytes, removedFiles int64, err error) {
 	earliestOrdinal, err := j.j.readEarliestOrdinal()
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	if ordinal != earliestOrdinal {
-		return 0, 0, errors.Errorf("Expected ordinal %d, got %d",
+		return 0, 0, 0, errors.Errorf("Expected ordinal %d, got %d",
 			ordinal, earliestOrdinal)
 	}
 
 	_, err = j.j.removeEarliest()
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	// Store the block byte count if we've finished a Put.
 	if entry.Op == blockPutOp && !entry.Ignore {
 		id, _, err := entry.getSingleContext()
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 
 		err = j.s.markFlushed(id)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 
 		flushedBytes, err = j.s.getDataSize(id)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 
 		err = j.flushBlock(flushedBytes)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 	}
 
@@ -810,36 +810,39 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		liveCount, err := j.s.removeReferences(
 			id, idContexts, earliestOrdinal.String())
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 		// If j.saveUntilMDFlush is non-nil, then postpone
 		// garbage collection until it becomes nil.
 		if j.saveUntilMDFlush == nil && liveCount == 0 {
 			// Garbage-collect the old entry if we are not
 			// saving blocks until the next MD flush.
-			idRemovedBytes, err := j.remove(ctx, id)
+			idRemovedBytes, idRemovedFiles, err := j.remove(ctx, id)
 			if err != nil {
-				return 0, 0, err
+				return 0, 0, 0, err
 			}
 			removedBytes += idRemovedBytes
+			removedFiles += idRemovedFiles
 		}
 	}
 
-	return removedBytes, flushedBytes, nil
+	return removedBytes, flushedBytes, removedFiles, nil
 }
 
 func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 	entries blockEntriesToFlush, tlfID tlf.ID, reporter Reporter) (
-	removedBytes int64, err error) {
+	removedBytes, removedFiles int64, err error) {
 	// Remove them all!
 	for i, entry := range entries.all {
-		entryRemovedBytes, flushedBytes, err := j.removeFlushedEntry(
-			ctx, entries.first+journalOrdinal(i), entry)
+		entryRemovedBytes, flushedBytes, entryRemovedFiles, err :=
+			j.removeFlushedEntry(
+				ctx, entries.first+journalOrdinal(i), entry)
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 
 		removedBytes += entryRemovedBytes
+		removedFiles += entryRemovedFiles
 		reporter.NotifySyncStatus(ctx, &keybase1.FSPathSyncStatus{
 			PublicTopLevelFolder: tlfID.IsPublic(),
 			// Path: TODO,
@@ -848,7 +851,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 			SyncedBytes: flushedBytes,
 		})
 	}
-	return removedBytes, nil
+	return removedBytes, removedFiles, nil
 }
 
 func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
@@ -1024,36 +1027,37 @@ func (j *blockJournal) saveBlocksUntilNextMDFlush() error {
 func (j *blockJournal) onMDFlush(ctx context.Context,
 	maxToRemove uint64, flushedMDRev MetadataRevision,
 	lastToRemove journalOrdinal) (
-	nextLastToRemove journalOrdinal, removedBytes int64, err error) {
+	nextLastToRemove journalOrdinal,
+	removedBytes, removedFiles int64, err error) {
 	if j.saveUntilMDFlush == nil {
-		return 0, 0, nil
+		return 0, 0, 0, nil
 	}
 
 	if maxToRemove == 0 {
-		return 0, 0, errors.New("maxToRemove must be non-zero")
+		return 0, 0, 0, errors.New("maxToRemove must be non-zero")
 	}
 
 	// Delete the block data for anything in the saved journal.
 	first, err := j.saveUntilMDFlush.readEarliestOrdinal()
 	if ioutil.IsNotExist(err) {
-		return 0, 0, nil
+		return 0, 0, 0, nil
 	} else if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	last, err := j.saveUntilMDFlush.readLatestOrdinal()
 	if ioutil.IsNotExist(err) {
-		return 0, 0, nil
+		return 0, 0, 0, nil
 	} else if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	if lastToRemove != 0 {
 		if last < lastToRemove {
-			return 0, 0, errors.Errorf("Last removal requested is %d, but "+
+			return 0, 0, 0, errors.Errorf("Last removal requested is %d, but "+
 				"last entry in journal is %d", lastToRemove, last)
 		} else if first > lastToRemove {
-			return 0, 0, errors.Errorf("Last removal requested is %d, but first "+
+			return 0, 0, 0, errors.Errorf("Last removal requested is %d, but first "+
 				"entry in journal is %d", lastToRemove, first)
 		}
 
@@ -1072,17 +1076,17 @@ func (j *blockJournal) onMDFlush(ctx context.Context,
 	for i := first; i <= lastMin; i++ {
 		e, err := j.saveUntilMDFlush.readJournalEntry(i)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 
 		_, err = j.saveUntilMDFlush.removeEarliest()
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 
 		entry, ok := e.(blockJournalEntry)
 		if !ok {
-			return 0, 0, errors.New("Unexpected block journal entry type in saved")
+			return 0, 0, 0, errors.New("Unexpected block journal entry type in saved")
 		}
 
 		if entry.Op == mdRevMarkerOp && !entry.Ignore &&
@@ -1092,21 +1096,23 @@ func (j *blockJournal) onMDFlush(ctx context.Context,
 			// journal, so return early without removing it.
 			j.log.CDebugf(ctx, "Reached the marker for flushed revision %d "+
 				"at ordinal %d", flushedMDRev, i)
-			return 0, removedBytes, nil
+			return 0, removedBytes, removedFiles, nil
 		}
 
 		for id := range entry.Contexts {
 			hasRef, err := j.s.hasAnyRef(id)
 			if err != nil {
-				return 0, 0, err
+				return 0, 0, 0, err
 			}
 			if !hasRef {
 				// Garbage-collect the old entry.
-				idRemovedBytes, err := j.remove(ctx, id)
+				idRemovedBytes, idRemovedFiles, err :=
+					j.remove(ctx, id)
 				if err != nil {
-					return 0, 0, err
+					return 0, 0, 0, err
 				}
 				removedBytes += idRemovedBytes
+				removedFiles += idRemovedFiles
 			}
 		}
 	}
@@ -1115,17 +1121,17 @@ func (j *blockJournal) onMDFlush(ctx context.Context,
 		// The saved journal isn't empty and we were asked to remove
 		// more entries than we were able to; the caller must call us
 		// again.
-		return last, removedBytes, nil
+		return last, removedBytes, removedFiles, nil
 	}
 
 	j.log.CDebugf(ctx, "Removed last saved entry, removing saved journal")
 	err = ioutil.RemoveAll(j.saveUntilMDFlush.dir)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	j.saveUntilMDFlush = nil
-	return 0, removedBytes, nil
+	return 0, removedBytes, removedFiles, nil
 }
 
 func (j *blockJournal) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, error) {

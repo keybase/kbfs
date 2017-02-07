@@ -808,11 +808,14 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 
 	storedBytesBefore := j.blockJournal.getStoredBytes()
 
-	removedBytes, err := j.blockJournal.removeFlushedEntries(
+	// TODO: Check storedFiles.
+
+	removedBytes, removedFiles, err := j.blockJournal.removeFlushedEntries(
 		ctx, entries, j.tlfID, j.config.Reporter())
 	if err != nil {
 		return err
 	}
+	_ = removedFiles
 
 	storedBytesAfter := j.blockJournal.getStoredBytes()
 
@@ -944,21 +947,21 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 	// system operations that need the lock for too long.
 	var lastToRemove journalOrdinal
 	for {
-		nextLastToRemove, removedBytes, err := func() (journalOrdinal, int64, error) {
+		nextLastToRemove, removedBytes, removedFiles, err := func() (journalOrdinal, int64, int64, error) {
 			j.journalLock.Lock()
 			defer j.journalLock.Unlock()
 			if err := j.checkEnabledLocked(); err != nil {
-				return 0, 0, err
+				return 0, 0, 0, err
 			}
 
 			storedBytesBefore := j.blockJournal.getStoredBytes()
 
-			nextLastToRemove, removedBytes, err :=
+			nextLastToRemove, removedBytes, removedFiles, err :=
 				j.blockJournal.onMDFlush(
 					ctx, maxSavedBlockRemovalsAtATime,
 					rmds.MD.RevisionNumber(), lastToRemove)
 			if err != nil {
-				return 0, 0, err
+				return 0, 0, 0, err
 			}
 
 			storedBytesAfter := j.blockJournal.getStoredBytes()
@@ -970,11 +973,12 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 					removedBytes))
 			}
 
-			return nextLastToRemove, removedBytes, nil
+			return nextLastToRemove, removedBytes, removedFiles, nil
 		}()
 		if err != nil {
 			return err
 		}
+		_ = removedFiles
 		j.diskLimiter.onBlockDelete(ctx, removedBytes)
 		if nextLastToRemove == 0 {
 			break
