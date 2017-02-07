@@ -333,7 +333,11 @@ func (j *blockJournal) remove(ctx context.Context, id kbfsblock.ID) (
 		return 0, err
 	}
 
-	err = j.unstoreBlock(bytesToRemove, 0 /* TODO: fill in block count */)
+	var files int64
+	if bytesToRemove > 0 {
+		files = filesPerBlockMax
+	}
+	err = j.unstoreBlock(bytesToRemove, files)
 	if err != nil {
 		return 0, err
 	}
@@ -388,7 +392,7 @@ func (j *blockJournal) putData(
 	}
 
 	if putData {
-		err = j.accumulateBlock(int64(len(buf)), 0 /* TODO: Fill in block count */)
+		err = j.accumulateBlock(int64(len(buf)), filesPerBlockMax)
 		if err != nil {
 			return false, err
 		}
