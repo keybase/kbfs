@@ -191,7 +191,7 @@ func (bdl *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
 }
 
 func (bdl *backpressureDiskLimiter) onJournalEnable(
-	ctx context.Context, journalBytes int64) int64 {
+	ctx context.Context, journalBytes, journalFiles int64) int64 {
 	bdl.bytesLock.Lock()
 	defer bdl.bytesLock.Unlock()
 	bdl.journalBytes += journalBytes
@@ -203,7 +203,7 @@ func (bdl *backpressureDiskLimiter) onJournalEnable(
 }
 
 func (bdl *backpressureDiskLimiter) onJournalDisable(
-	ctx context.Context, journalBytes int64) {
+	ctx context.Context, journalBytes, journalFiles int64) {
 	bdl.bytesLock.Lock()
 	defer bdl.bytesLock.Unlock()
 	bdl.journalBytes -= journalBytes
@@ -239,7 +239,7 @@ func (bdl *backpressureDiskLimiter) calculateDelay(
 }
 
 func (bdl *backpressureDiskLimiter) beforeBlockPut(
-	ctx context.Context, blockBytes int64) (int64, error) {
+	ctx context.Context, blockBytes, blockFiles int64) (int64, error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
 		return bdl.bytesSemaphore.Count(), errors.New(
@@ -279,7 +279,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 }
 
 func (bdl *backpressureDiskLimiter) afterBlockPut(
-	ctx context.Context, blockBytes int64, putData bool) {
+	ctx context.Context, blockBytes, blockFiles int64, putData bool) {
 	if putData {
 		bdl.bytesLock.Lock()
 		defer bdl.bytesLock.Unlock()
@@ -291,7 +291,7 @@ func (bdl *backpressureDiskLimiter) afterBlockPut(
 }
 
 func (bdl *backpressureDiskLimiter) onBlockDelete(
-	ctx context.Context, blockBytes int64) {
+	ctx context.Context, blockBytes, blockFiles int64) {
 	if blockBytes == 0 {
 		return
 	}
