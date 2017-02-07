@@ -214,6 +214,7 @@ func TestBlockJournalDuplicatePut(t *testing.T) {
 
 	require.Equal(t, int64(len(data)), j.getStoredBytes())
 	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
+	require.Equal(t, int64(filesPerBlockMax), j.getStoredFiles())
 
 	// Put a second time.
 	putData, err = j.putData(ctx, bID, bCtx, data, serverHalf)
@@ -225,6 +226,7 @@ func TestBlockJournalDuplicatePut(t *testing.T) {
 	// Shouldn't count the block twice.
 	require.Equal(t, int64(len(data)), j.getStoredBytes())
 	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
+	require.Equal(t, int64(filesPerBlockMax), j.getStoredFiles())
 }
 
 func TestBlockJournalAddReference(t *testing.T) {
@@ -322,6 +324,7 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 
 	require.Equal(t, dataLen, j.getStoredBytes())
 	require.Equal(t, dataLen, j.getUnflushedBytes())
+	require.Equal(t, int64(filesPerBlockMax), j.getStoredFiles())
 
 	// Remove the only reference to the block, then remove the
 	// block.
@@ -339,6 +342,7 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 	// removed.
 	require.Equal(t, int64(0), j.getStoredBytes())
 	require.Equal(t, dataLen, j.getUnflushedBytes())
+	require.Equal(t, int64(0), j.getStoredFiles())
 
 	// Remove the block again.
 	removedBytes, err = j.remove(ctx, bID)
@@ -348,6 +352,7 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 	// Shouldn't account for the block again.
 	require.Equal(t, int64(0), j.getStoredBytes())
 	require.Equal(t, dataLen, j.getUnflushedBytes())
+	require.Equal(t, int64(0), j.getStoredFiles())
 }
 
 func testBlockJournalGCd(t *testing.T, j *blockJournal) {
@@ -947,38 +952,40 @@ func TestBlockJournalByteCounters(t *testing.T) {
 
 	// In this test, stored bytes and unflushed bytes should
 	// change identically.
-	requireSize := func(expectedSize int) {
-		require.Equal(t, int64(expectedSize), j.getStoredBytes())
-		require.Equal(t, int64(expectedSize), j.getUnflushedBytes())
+	requireCounts := func(expectedBytes, expectedFiles int) {
+		require.Equal(t, int64(expectedBytes), j.getStoredBytes())
+		require.Equal(t, int64(expectedBytes), j.getUnflushedBytes())
+		require.Equal(t, int64(expectedFiles), j.getStoredFiles())
 		var info aggregateInfo
 		err := kbfscodec.DeserializeFromFile(
 			j.codec, aggregateInfoPath(j.dir), &info)
 		if !ioutil.IsNotExist(err) {
 			require.NoError(t, err)
 		}
-		require.Equal(t, int64(expectedSize), info.StoredBytes)
-		require.Equal(t, int64(expectedSize), info.UnflushedBytes)
+		require.Equal(t, int64(expectedBytes), info.StoredBytes)
+		require.Equal(t, int64(expectedBytes), info.UnflushedBytes)
+		require.Equal(t, int64(expectedFiles), info.StoredFiles)
 	}
 
 	// Prime the cache.
-	requireSize(0)
+	requireCounts(0, 0)
 
 	data1 := []byte{1, 2, 3, 4}
 	bID1, bCtx1, _ := putBlockData(ctx, t, j, data1)
 
-	requireSize(len(data1))
+	requireCounts(len(data1), filesPerBlockMax)
 
 	data2 := []byte{1, 2, 3, 4, 5}
 	bID2, bCtx2, _ := putBlockData(ctx, t, j, data2)
 
 	expectedSize := len(data1) + len(data2)
-	requireSize(expectedSize)
+	requireCounts(expectedSize, 2*filesPerBlockMax)
 
 	// Adding, archive, or removing references shouldn't change
 	// anything.
 
 	bCtx1b := addBlockRef(ctx, t, j, bID1)
-	requireSize(expectedSize)
+	requireCounts(expectedSize, 2*filesPerBlockMax)
 
 	data3 := []byte{1, 2, 3}
 	bID3, err := kbfsblock.MakePermanentID(data3)
@@ -989,19 +996,19 @@ func TestBlockJournalByteCounters(t *testing.T) {
 	err = j.archiveReferences(
 		ctx, kbfsblock.ContextMap{bID2: {bCtx2}})
 	require.NoError(t, err)
-	requireSize(expectedSize)
+	requireCounts(expectedSize, 2*filesPerBlockMax)
 
 	liveCounts, err := j.removeReferences(
 		ctx, kbfsblock.ContextMap{bID1: {bCtx1, bCtx1b}})
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID1: 0}, liveCounts)
-	requireSize(expectedSize)
+	requireCounts(expectedSize, 2*filesPerBlockMax)
 
 	liveCounts, err = j.removeReferences(
 		ctx, kbfsblock.ContextMap{bID2: {bCtx2}})
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID2: 0}, liveCounts)
-	requireSize(expectedSize)
+	requireCounts(expectedSize, 2*filesPerBlockMax)
 
 	blockServer := NewBlockServerMemory(log)
 	tlfID := tlf.FakeID(1, false)
@@ -1017,17 +1024,17 @@ func TestBlockJournalByteCounters(t *testing.T) {
 	removedBytes := flushOne()
 	require.Equal(t, int64(len(data1)), removedBytes)
 	expectedSize = len(data2)
-	requireSize(expectedSize)
+	requireCounts(expectedSize, filesPerBlockMax)
 
 	// Flush the second put.
 	removedBytes = flushOne()
 	require.Equal(t, int64(len(data2)), removedBytes)
-	requireSize(0)
+	requireCounts(0, 0)
 
 	// Flush the first add ref.
 	removedBytes = flushOne()
 	require.Equal(t, int64(0), removedBytes)
-	requireSize(0)
+	requireCounts(0, 0)
 
 	// Flush the second add ref, but push the block to the server
 	// first.
@@ -1043,50 +1050,53 @@ func TestBlockJournalByteCounters(t *testing.T) {
 
 	removedBytes = flushOne()
 	require.Equal(t, int64(0), removedBytes)
-	requireSize(0)
+	requireCounts(0, 0)
 
 	// Flush the add archive.
 	removedBytes = flushOne()
 	require.Equal(t, int64(0), removedBytes)
-	requireSize(0)
+	requireCounts(0, 0)
 
 	// Flush the first remove.
 	removedBytes = flushOne()
 	require.Equal(t, int64(0), removedBytes)
-	requireSize(0)
+	requireCounts(0, 0)
 
 	// Flush the second remove.
 	removedBytes = flushOne()
 	require.Equal(t, int64(0), removedBytes)
-	requireSize(0)
+	requireCounts(0, 0)
 }
 
 func TestBlockJournalUnflushedBytesIgnore(t *testing.T) {
 	ctx, cancel, tempdir, _, j := setupBlockJournalTest(t)
 	defer teardownBlockJournalTest(t, ctx, cancel, tempdir, j)
 
-	requireSize := func(expectedStoredSize, expectedUnflushedSize int) {
-		require.Equal(t, int64(expectedStoredSize), j.getStoredBytes())
-		require.Equal(t, int64(expectedUnflushedSize),
+	requireCounts := func(expectedStoredBytes, expectedUnflushedBytes,
+		expectedStoredFiles int) {
+		require.Equal(t, int64(expectedStoredBytes), j.getStoredBytes())
+		require.Equal(t, int64(expectedUnflushedBytes),
 			j.getUnflushedBytes())
+		require.Equal(t, int64(expectedStoredFiles), j.getStoredFiles())
 	}
 
 	// Prime the cache.
-	requireSize(0, 0)
+	requireCounts(0, 0, 0)
 
 	data1 := []byte{1, 2, 3, 4}
 	bID1, _, _ := putBlockData(ctx, t, j, data1)
 
-	requireSize(len(data1), len(data1))
+	requireCounts(len(data1), len(data1), filesPerBlockMax)
 
 	data2 := []byte{1, 2, 3, 4, 5}
 	_, _, _ = putBlockData(ctx, t, j, data2)
 
-	requireSize(len(data1)+len(data2), len(data1)+len(data2))
+	requireCounts(len(data1)+len(data2), len(data1)+len(data2),
+		2*filesPerBlockMax)
 
 	err := j.ignoreBlocksAndMDRevMarkers(
 		ctx, []kbfsblock.ID{bID1}, MetadataRevision(0))
 	require.NoError(t, err)
 
-	requireSize(len(data1)+len(data2), len(data2))
+	requireCounts(len(data1)+len(data2), len(data2), 2*filesPerBlockMax)
 }

@@ -365,6 +365,10 @@ func (j *blockJournal) getUnflushedBytes() int64 {
 	return j.aggregateInfo.UnflushedBytes
 }
 
+func (j *blockJournal) getStoredFiles() int64 {
+	return j.aggregateInfo.StoredFiles
+}
+
 // putData puts the given block data. If err is non-nil, putData will
 // always be false.
 func (j *blockJournal) putData(
