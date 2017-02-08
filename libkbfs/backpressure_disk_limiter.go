@@ -181,6 +181,8 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 		s.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
 			blockBytes, delay.Seconds())
 	}
+	// TODO: Update delay if any variables change (i.e., we
+	// suddenly free up a lot of space).
 	err = s.delayFn(ctx, delay)
 	if err != nil {
 		return s.bytesSemaphore.Count(), err
