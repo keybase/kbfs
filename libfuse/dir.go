@@ -441,9 +441,14 @@ type Dir struct {
 
 func newDir(folder *Folder, node libkbfs.Node) *Dir {
 	d := &Dir{
-		folder:  folder,
-		node:    node,
-		renamer: noXDevRenamer{kbfsOps: folder.fs.config.KBFSOps()},
+		folder: folder,
+		node:   node,
+		renamer: newRenamer(
+			newNaiveRenamerOp(),
+			newAmnestyRenamerOp(exePathFinder),
+			newMVRenamerOp("/bin/mv", 10*time.Second),
+			newNotifyingRenamerOp(),
+		),
 	}
 	return d
 }
@@ -694,7 +699,7 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 		return fuse.Errno(syscall.EXDEV)
 	}
 
-	return d.renamer.Rename(ctx, d, req.OldName, realNewDir, req.NewName, req)
+	return d.renamer.rename(ctx, d, req.OldName, realNewDir, req.NewName, req)
 }
 
 // Remove implements the fs.NodeRemover interface for Dir.

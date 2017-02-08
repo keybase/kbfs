@@ -378,6 +378,16 @@ func (fs *KBFSOpsStandard) getMDByHandle(ctx context.Context,
 	return rmd, nil
 }
 
+// GetPathStringByNode implements the KBFSOps interface for KBFSOpsStandard
+func (fs *KBFSOpsStandard) GetPathStringByNode(ctx context.Context,
+	node Node) (string, error) {
+	p, err := fs.getOps(ctx, node.GetFolderBranch()).pathFromNodeForRead(node)
+	if err != nil {
+		return "", err
+	}
+	return p.CanonicalPathString(), nil
+}
+
 // GetTLFCryptKeys implements the KBFSOps interface for
 // KBFSOpsStandard
 func (fs *KBFSOpsStandard) GetTLFCryptKeys(
