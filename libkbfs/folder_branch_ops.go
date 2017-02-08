@@ -920,8 +920,8 @@ func (fbo *folderBranchOps) getMDLocked(
 	}
 
 	if mergedMD == (ImmutableRootMetadata{}) {
-		return ImmutableRootMetadata{}, errors.Errorf(
-			"Got nil RMD for %s", fbo.id())
+		return ImmutableRootMetadata{},
+			errors.WithStack(NoMergedMDError{fbo.id()})
 	}
 
 	if md == (ImmutableRootMetadata{}) {
@@ -1012,7 +1012,10 @@ func (fbo *folderBranchOps) getMDForReadNeedIdentify(
 // code path (like chat) that might be accessing this folder for the
 // first time.  Other folderBranchOps methods like Lookup which know
 // the folder has already been accessed at least once (to get the root
-// node, for example) do not need to call this.
+// node, for example) do not need to call this.  Unlike other getMD
+// calls, this one may return a nil ImmutableRootMetadata along with a
+// nil error, to indicate that there isn't any MD for this TLF yet and
+// one must be created by the caller.
 func (fbo *folderBranchOps) getMDForReadNeedIdentifyOnMaybeFirstAccess(
 	ctx context.Context, lState *lockState) (ImmutableRootMetadata, error) {
 	irmd, err := fbo.getMDForReadHelper(ctx, lState, mdReadNeedIdentify)
@@ -1021,6 +1024,10 @@ func (fbo *folderBranchOps) getMDForReadNeedIdentifyOnMaybeFirstAccess(
 		fbo.mdWriterLock.Lock(lState)
 		defer fbo.mdWriterLock.Unlock(lState)
 		irmd, err = fbo.getMDForReadHelper(ctx, lState, mdWrite)
+	}
+
+	if _, noMD := errors.Cause(err).(NoMergedMDError); noMD {
+		return ImmutableRootMetadata{}, nil
 	}
 
 	return irmd, err
@@ -4804,6 +4811,36 @@ func (fbo *folderBranchOps) runUnlessShutdown(fn func(ctx context.Context) error
 	}
 }
 
+func (fbo *folderBranchOps) doFastForwardLocked(ctx context.Context,
+	lState *lockState, currHead ImmutableRootMetadata) error {
+	fbo.mdWriterLock.AssertLocked(lState)
+	fbo.headLock.AssertLocked(lState)
+
+	fbo.log.CDebugf(ctx, "Fast-forwarding from rev %d to rev %d",
+		fbo.latestMergedRevision, currHead.Revision())
+	changes, err := fbo.blocks.FastForwardAllNodes(
+		ctx, lState, currHead.ReadOnly())
+	if err != nil {
+		return err
+	}
+
+	err = fbo.setHeadSuccessorLocked(ctx, lState, currHead, true /*rebase*/)
+	if err != nil {
+		return err
+	}
+
+	// Invalidate all the affected nodes.
+	if len(changes) > 0 {
+		fbo.observers.batchChanges(ctx, changes)
+	}
+
+	// Reset the edit history.  TODO: notify any listeners that we've
+	// done this.
+	fbo.editHistory.Shutdown()
+	fbo.editHistory = NewTlfEditHistory(fbo.config, fbo, fbo.log)
+	return nil
+}
+
 func (fbo *folderBranchOps) maybeFastForward(ctx context.Context,
 	lState *lockState, lastUpdate time.Time, currUpdate time.Time) (
 	fastForwardDone bool, err error) {
@@ -4847,28 +4884,10 @@ func (fbo *folderBranchOps) maybeFastForward(ctx context.Context,
 		return false, nil
 	}
 
-	fbo.log.CDebugf(ctx, "Fast-forwarding from rev %d to rev %d",
-		fbo.latestMergedRevision, currHead.Revision())
-	changes, err := fbo.blocks.FastForwardAllNodes(
-		ctx, lState, currHead.ReadOnly())
+	err = fbo.doFastForwardLocked(ctx, lState, currHead)
 	if err != nil {
 		return false, err
 	}
-
-	err = fbo.setHeadSuccessorLocked(ctx, lState, currHead, true /*rebase*/)
-	if err != nil {
-		return false, err
-	}
-
-	// Invalidate all the affected nodes.
-	if len(changes) > 0 {
-		fbo.observers.batchChanges(ctx, changes)
-	}
-
-	// Reset the edit history.  TODO: notify any listeners that we've
-	// done this.
-	fbo.editHistory.Shutdown()
-	fbo.editHistory = NewTlfEditHistory(fbo.config, fbo, fbo.log)
 	return true, nil
 }
 
@@ -5560,6 +5579,47 @@ func (fbo *folderBranchOps) ClearPrivateFolderMD(ctx context.Context) {
 
 	fbo.head = ImmutableRootMetadata{}
 	fbo.latestMergedRevision = MetadataRevisionUninitialized
+}
+
+// ForceFastForward implements the KBFSOps interface for
+// folderBranchOps.
+func (fbo *folderBranchOps) ForceFastForward(ctx context.Context) {
+	lState := makeFBOLockState()
+	fbo.headLock.RLock(lState)
+	defer fbo.headLock.RUnlock(lState)
+	if fbo.head != (ImmutableRootMetadata{}) {
+		// We're already up to date.
+		return
+	}
+
+	go func() {
+		ctx, cancelFunc := fbo.newCtxWithFBOID()
+		defer cancelFunc()
+
+		fbo.log.CDebugf(ctx, "Forcing a fast-forward")
+		currHead, err := fbo.config.MDOps().GetForTLF(ctx, fbo.id())
+		if err != nil {
+			fbo.log.CDebugf(ctx, "Fast-forward failed: %v", err)
+			return
+		}
+		fbo.log.CDebugf(ctx, "Current head is revision %d", currHead.Revision())
+
+		lState := makeFBOLockState()
+		fbo.mdWriterLock.Lock(lState)
+		defer fbo.mdWriterLock.Unlock(lState)
+		fbo.headLock.Lock(lState)
+		defer fbo.headLock.Unlock(lState)
+		if fbo.head != (ImmutableRootMetadata{}) {
+			// We're already up to date.
+			fbo.log.CDebugf(ctx, "Already up-to-date: %v", err)
+			return
+		}
+
+		err = fbo.doFastForwardLocked(ctx, lState, currHead)
+		if err != nil {
+			fbo.log.CDebugf(ctx, "Fast-forward failed: %v", err)
+		}
+	}()
 }
 
 // PushConnectionStatusChange pushes human readable connection status changes.

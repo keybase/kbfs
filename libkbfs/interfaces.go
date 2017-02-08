@@ -318,6 +318,11 @@ type KBFSOps interface {
 	// e.g. on a logout.
 	ClearPrivateFolderMD(ctx context.Context)
 
+	// ForceFastForward forwards the nodes of all folders to their
+	// newest version, if the folder is not currently receiving
+	// updates.  It works asynchronously, so no error is returned.
+	ForceFastForward(ctx context.Context)
+
 	// GetPathStringByNode gets the full canonical path for a give node.
 	GetPathStringByNode(ctx context.Context, node Node) (string, error)
 }
