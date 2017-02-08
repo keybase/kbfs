@@ -141,14 +141,24 @@ func (s backpressureDiskLimiter) onJournalDisable(
 }
 
 func (s *backpressureDiskLimiter) getDelay(
-	journalBytes, availBytes int64) time.Duration {
-	r := math.Max(
-		float64(journalBytes)/float64(s.maxJournalBytes),
-		float64(journalBytes)/(float64(journalBytes)+float64(availBytes)))
+	ctx context.Context, journalBytes, availBytes int64) time.Duration {
+	// Convert first to avoid overflow.
+	journalBytesFloat := float64(journalBytes)
+	maxJournalBytesFloat := float64(s.maxJournalBytes)
+	availBytesFloat := float64(availBytes)
+	r := math.Max(journalBytesFloat/maxJournalBytesFloat,
+		journalBytesFloat/(journalBytesFloat+availBytesFloat))
 	m := s.backpressureMinThreshold
 	M := s.backpressureMaxThreshold
 	scale := math.Min(1.0, math.Max(0.0, (r-m)/(M-m)))
-	return time.Duration(scale * float64(s.maxDelay))
+	maxDelay := s.maxDelay
+	if deadline, ok := ctx.Deadline(); ok {
+		remainingTime := deadline.Sub(time.Now())
+		if remainingTime < maxDelay {
+			maxDelay = remainingTime
+		}
+	}
+	return time.Duration(scale * float64(maxDelay))
 }
 
 func (s backpressureDiskLimiter) beforeBlockPut(
@@ -176,7 +186,7 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 		return s.bytesSemaphore.Count(), err
 	}
 
-	delay := s.getDelay(journalBytes, availBytes)
+	delay := s.getDelay(ctx, journalBytes, availBytes)
 	if delay > 0 {
 		s.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
 			blockBytes, delay.Seconds())
