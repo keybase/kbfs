@@ -25,6 +25,7 @@ type Mounter interface {
 type DefaultMounter struct {
 	dir            string
 	platformParams PlatformParams
+	c              *fuse.Conn
 }
 
 // NewDefaultMounter creates a default mounter.
@@ -33,13 +34,18 @@ func NewDefaultMounter(dir string, platformParams PlatformParams) DefaultMounter
 }
 
 // Mount uses default mount
-func (m DefaultMounter) Mount() (*fuse.Conn, error) {
-	return fuseMountDir(m.dir, m.platformParams)
+func (m DefaultMounter) Mount() (c *fuse.Conn, err error) {
+	m.c, err = fuseMountDir(m.dir, m.platformParams)
+	return m.c, err
 }
 
 // Unmount uses default unmount
-func (m DefaultMounter) Unmount() error {
-	return fuse.Unmount(m.dir)
+func (m DefaultMounter) Unmount() (err error) {
+	err = fuse.Unmount(m.dir)
+	if m.c != nil {
+		m.c.Close()
+	}
+	return err
 }
 
 // Dir returns mount directory.
@@ -51,6 +57,7 @@ func (m DefaultMounter) Dir() string {
 type ForceMounter struct {
 	dir            string
 	platformParams PlatformParams
+	c              *fuse.Conn
 }
 
 // NewForceMounter creates a force mounter.
@@ -59,18 +66,18 @@ func NewForceMounter(dir string, platformParams PlatformParams) ForceMounter {
 }
 
 // Mount tries to mount and then unmount, re-mount if unsuccessful
-func (m ForceMounter) Mount() (*fuse.Conn, error) {
-	c, err := fuseMountDir(m.dir, m.platformParams)
+func (m ForceMounter) Mount() (c *fuse.Conn, err error) {
+	m.c, err = fuseMountDir(m.dir, m.platformParams)
 	if err == nil {
-		return c, nil
+		return m.c, nil
 	}
 
 	// Mount failed, let's try to unmount and then try mounting again, even
 	// if unmounting errors here.
 	m.Unmount()
 
-	c, err = fuseMountDir(m.dir, m.platformParams)
-	return c, err
+	m.c, err = fuseMountDir(m.dir, m.platformParams)
+	return m.c, err
 }
 
 // Unmount tries to unmount normally and then force if unsuccessful
@@ -80,6 +87,9 @@ func (m ForceMounter) Unmount() (err error) {
 	if err != nil {
 		// Unmount failed, so let's try and force it.
 		err = m.forceUnmount()
+	}
+	if m.c != nil {
+		m.c.Close()
 	}
 	return
 }
