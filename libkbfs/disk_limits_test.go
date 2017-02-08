@@ -19,3 +19,9 @@ func TestDiskLimits(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, uint64(0), availableBytes)
 }
+
+func BenchmarkDiskLimits(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		getDiskLimits("/")
+	}
+}
