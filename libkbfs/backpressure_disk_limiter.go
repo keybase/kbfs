@@ -39,6 +39,7 @@ type backpressureDiskLimiter struct {
 	bytesLock      sync.RWMutex
 	availBytes     int64
 	journalBytes   int64
+	semaphoreMax   int64
 	bytesSemaphore *kbfssync.Semaphore
 }
 
@@ -65,7 +66,7 @@ func newBackpressureDiskLimiterWithFunctions(
 	return &backpressureDiskLimiter{
 		log, backpressureMinThreshold, backpressureMaxThreshold,
 		maxJournalBytes, maxDelay, delayFn, availBytesFn,
-		sync.RWMutex{}, 0, 0, kbfssync.NewSemaphore(),
+		sync.RWMutex{}, 0, 0, 0, kbfssync.NewSemaphore(),
 	}
 }
 
@@ -108,18 +109,18 @@ func newBackpressureDiskLimiter(
 }
 
 func (s *backpressureDiskLimiter) updateBytesSemaphoreLocked() {
-	oldCount := s.bytesSemaphore.Count()
-	newCount := s.maxJournalBytes - s.journalBytes
-	if s.availBytes < newCount {
-		newCount = s.availBytes
+	newMax := s.maxJournalBytes - s.journalBytes
+	if s.availBytes < newMax {
+		newMax = s.availBytes
 	}
 
-	delta := newCount - oldCount
+	delta := newMax - s.semaphoreMax
 	if delta > 0 {
 		s.bytesSemaphore.Release(delta)
 	} else if delta < 0 {
 		s.bytesSemaphore.ForceAcquire(-delta)
 	}
+	s.semaphoreMax = newMax
 }
 
 func (s backpressureDiskLimiter) onJournalEnable(
@@ -139,13 +140,8 @@ func (s backpressureDiskLimiter) onJournalDisable(
 	s.updateBytesSemaphoreLocked()
 }
 
-func (s *backpressureDiskLimiter) getDelay(availBytes int64) time.Duration {
-	journalBytes := func() int64 {
-		s.bytesLock.RLock()
-		defer s.bytesLock.RUnlock()
-		return s.journalBytes
-	}()
-
+func (s *backpressureDiskLimiter) getDelay(
+	journalBytes, availBytes int64) time.Duration {
 	r := math.Max(
 		float64(journalBytes)/float64(s.maxJournalBytes),
 		float64(journalBytes)/(float64(journalBytes)+float64(availBytes)))
@@ -166,24 +162,24 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 	// We don't actually look at blockBytes -- we're assuming that
 	// it's small compared to the other numbers.
 
-	availBytes, err := func() (int64, error) {
+	journalBytes, availBytes, err := func() (int64, int64, error) {
 		s.bytesLock.Lock()
 		defer s.bytesLock.Unlock()
 
 		availBytes, err := s.availBytesFn()
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 
 		s.availBytes = availBytes
 		s.updateBytesSemaphoreLocked()
-		return availBytes, nil
+		return s.journalBytes, availBytes, nil
 	}()
 	if err != nil {
 		return 0, err
 	}
 
-	delay := s.getDelay(availBytes)
+	delay := s.getDelay(journalBytes, availBytes)
 	if delay > 0 {
 		s.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
 			blockBytes, delay.Seconds())
