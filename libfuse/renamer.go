@@ -89,13 +89,15 @@ func (r naiveRenamerOp) do(ctx context.Context,
 	err = oldParent.folder.fs.config.KBFSOps().Rename(ctx,
 		oldParent.node, oldEntryName, newParent.node, newEntryName)
 	switch err.(type) {
+	case nil:
+		return nil, renamerDone
 	case libkbfs.RenameAcrossDirsError:
 		// Carry on to the next renamer in case we need an effort to resolve EXDEV
 		// before returning from the fuse handler.
 		return err, renamerNext
 	default:
 		// Either rename succeeded, or it's an error other than EXDEV. Either way
-		// return it and mark as done.
+		// return and error and mark as done.
 		//
 		// fbo already logs it so there's no need to log the error again.
 		return fuse.EIO, renamerDone
