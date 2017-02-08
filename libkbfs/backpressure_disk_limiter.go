@@ -203,6 +203,10 @@ func (s backpressureDiskLimiter) afterBlockPut(
 
 func (s backpressureDiskLimiter) onBlockDelete(
 	ctx context.Context, blockBytes int64) {
+	if blockBytes > 0 {
+		s.bytesSemaphore.Release(blockBytes)
+	}
+
 	s.bytesLock.Lock()
 	defer s.bytesLock.Unlock()
 	s.journalBytes -= blockBytes
