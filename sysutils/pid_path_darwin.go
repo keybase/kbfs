@@ -11,14 +11,15 @@ import (
 )
 
 const (
-	proc_pidpathinfo      = 11
-	proc_pidpathinfo_size = 1024
-	proc_callnum_pidinfo  = 2
+	procpidpathinfo     = 11
+	procpidpathinfosize = 1024
+	proccallnumpidinfo  = 2
 )
 
+// GetExecPathFromPID returns the process's executable path for given PID.
 func GetExecPathFromPID(pid int) (string, error) {
-	buf := make([]byte, proc_pidpathinfo_size)
-	_, _, errno := syscall.Syscall6(syscall.SYS_PROC_INFO, proc_callnum_pidinfo, uintptr(pid), proc_pidpathinfo, 0, uintptr(unsafe.Pointer(&buf[0])), proc_pidpathinfo_size)
+	buf := make([]byte, procpidpathinfosize)
+	_, _, errno := syscall.Syscall6(syscall.SYS_PROC_INFO, proccallnumpidinfo, uintptr(pid), procpidpathinfo, 0, uintptr(unsafe.Pointer(&buf[0])), procpidpathinfosize)
 	if errno != 0 {
 		return "", errno
 	}

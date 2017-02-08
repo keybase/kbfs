@@ -6,8 +6,11 @@
 
 package sysutils
 
+// NotImplementedError is returned on platforms where GetExecPathFromPID is not
+// implemented.
 type NotImplementedError struct{}
 
+// GetExecPathFromPID returns the process's executable path for given PID.
 func GetExecPathFromPID(pid int) (string, error) {
 	return "", NotImplementedError{}
 }
