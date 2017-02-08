@@ -446,7 +446,7 @@ func newDir(folder *Folder, node libkbfs.Node) *Dir {
 		renamer: newRenamer(
 			newNaiveRenamerOp(),
 			newAmnestyRenamerOp(exePathFinder),
-			newMVRenamerOp("/bin/mv", 10*time.Second),
+			// newMVRenamerOp("/bin/mv", 10*time.Second),
 			newNotifyingRenamerOp(),
 		),
 	}
