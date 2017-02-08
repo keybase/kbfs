@@ -109,9 +109,9 @@ func newBackpressureDiskLimiter(
 }
 
 func (s *backpressureDiskLimiter) updateBytesSemaphoreLocked() {
-	newMax := s.maxJournalBytes - s.journalBytes
+	newMax := s.maxJournalBytes
 	if s.availBytes < newMax {
-		newMax = s.availBytes
+		newMax = s.availBytes + s.journalBytes
 	}
 
 	delta := newMax - s.semaphoreMax
@@ -155,12 +155,9 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 	ctx context.Context, blockBytes int64) (int64, error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
-		return 0, errors.New(
+		return s.bytesSemaphore.Count(), errors.New(
 			"beforeBlockPut called with 0 blockBytes")
 	}
-
-	// We don't actually look at blockBytes -- we're assuming that
-	// it's small compared to the other numbers.
 
 	journalBytes, availBytes, err := func() (int64, int64, error) {
 		s.bytesLock.Lock()
@@ -176,7 +173,7 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 		return s.journalBytes, availBytes, nil
 	}()
 	if err != nil {
-		return 0, err
+		return s.bytesSemaphore.Count(), err
 	}
 
 	delay := s.getDelay(journalBytes, availBytes)
@@ -186,10 +183,10 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 	}
 	err = s.delayFn(ctx, delay)
 	if err != nil {
-		return 0, err
+		return s.bytesSemaphore.Count(), err
 	}
 
-	return 0, nil
+	return s.bytesSemaphore.Acquire(ctx, blockBytes)
 }
 
 func (s backpressureDiskLimiter) afterBlockPut(
@@ -199,6 +196,8 @@ func (s backpressureDiskLimiter) afterBlockPut(
 		defer s.bytesLock.Unlock()
 		s.journalBytes += blockBytes
 		s.updateBytesSemaphoreLocked()
+	} else {
+		s.bytesSemaphore.Release(blockBytes)
 	}
 }
 
