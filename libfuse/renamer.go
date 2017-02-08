@@ -129,7 +129,7 @@ func (r amnestyRenamerOp) do(ctx context.Context,
 		// and mark as done.
 		oldParent.folder.fs.log.CDebugf(ctx,
 			"amnestyRenamerOp: unsupported error=%v", err)
-		return fuse.EIO, renamerDone
+		return fuse.Errno(syscall.EXDEV), renamerDone
 	}
 	var exe string
 	if exe, err = sysutils.GetExecPathFromPID(int(req.Pid)); err != nil {
@@ -180,12 +180,14 @@ func (r *mvRenamerOp) do(ctx context.Context,
 		return err, renamerNext
 	}
 	oldPath := filepath.Join(op, oldEntryName)
-	newPath := filepath.Join(np, newEntryName)
+
+	newEntryNameTemp := "." + newEntryName + ".kbfs.moving"
+	newPathTemporary := filepath.Join(np, newEntryNameTemp)
 
 	ctx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, r.mvPath, oldPath, newPath)
+	cmd := exec.CommandContext(ctx, r.mvPath, oldPath, newPathTemporary)
 	if err = cmd.Start(); err != nil {
 		if cerr := ctx.Err(); cerr != nil {
 			return cerr, renamerNext
@@ -194,7 +196,7 @@ func (r *mvRenamerOp) do(ctx context.Context,
 		// Not a timeout error; must be something else. Log it and mark as done.
 		oldParent.folder.fs.log.CDebugf(ctx,
 			"mvRenamerOp: cmd.Start: error=%v", err)
-		return fuse.EIO, renamerDone
+		return fuse.Errno(syscall.EXDEV), renamerDone
 	}
 
 	if err = cmd.Wait(); err != nil {
@@ -205,7 +207,12 @@ func (r *mvRenamerOp) do(ctx context.Context,
 		// Not a timeout error; must be something else. Log it and mark as done.
 		oldParent.folder.fs.log.CDebugf(ctx,
 			"mvRenamerOp: cmd.Wait: error=%v", err)
-		return fuse.EIO, renamerDone
+		return fuse.Errno(syscall.EXDEV), renamerDone
+	}
+
+	if err = newParent.folder.fs.config.KBFSOps().Rename(ctx, newParent.node,
+		newEntryNameTemp, newParent.node, newEntryName); err != nil {
+		return err, renamerNext
 	}
 
 	return nil, renamerDone
@@ -223,5 +230,6 @@ func (r notifyingRenamerOp) do(ctx context.Context,
 	req *fuse.RenameRequest, prevErr error) (error, renamerStatus) {
 	oldParent.folder.fs.log.CDebugf(ctx,
 		"notifyingRenamerOp: called but not implemented. prevErr=%v", prevErr)
-	return nil, renamerDone
+	// TODO: send notification
+	return fuse.Errno(syscall.EXDEV), renamerDone
 }
