@@ -110,8 +110,9 @@ func newBackpressureDiskLimiter(
 
 func (s *backpressureDiskLimiter) updateBytesSemaphoreLocked() {
 	newMax := s.maxJournalBytes
-	if s.availBytes+s.journalBytes < newMax {
-		newMax = s.availBytes + s.journalBytes
+	totalAvail := s.availBytes + s.journalBytes
+	if totalAvail < newMax {
+		newMax = totalAvail
 	}
 
 	delta := newMax - s.semaphoreMax
@@ -129,7 +130,7 @@ func (s backpressureDiskLimiter) onJournalEnable(
 	defer s.bytesLock.Unlock()
 	s.journalBytes += journalBytes
 	s.updateBytesSemaphoreLocked()
-	return 0
+	return s.bytesSemaphore.Count()
 }
 
 func (s backpressureDiskLimiter) onJournalDisable(
