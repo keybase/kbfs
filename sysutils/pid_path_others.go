@@ -10,6 +10,10 @@ package sysutils
 // implemented.
 type NotImplementedError struct{}
 
+func (NotImplementedError) Error() string {
+	return "not implemented"
+}
+
 // GetExecPathFromPID returns the process's executable path for given PID.
 func GetExecPathFromPID(pid int) (string, error) {
 	return "", NotImplementedError{}
