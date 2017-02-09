@@ -269,11 +269,6 @@ func (bdl *backpressureDiskLimiter) afterBlockPut(
 		bdl.updateBytesSemaphoreMaxLocked()
 	} else {
 		bdl.bytesSemaphore.Release(blockBytes)
-
-		bdl.bytesLock.Lock()
-		defer bdl.bytesLock.Unlock()
-		bdl.journalBytes -= blockBytes
-		bdl.updateBytesSemaphoreMaxLocked()
 	}
 }
 

@@ -125,7 +125,10 @@ func TestBackpressureDiskLimiterStats(t *testing.T) {
 	require.Equal(t, int64(51), bytesSemaphoreMax)
 	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
 
+	// Add more free bytes and put a block successfully.
+
 	fakeFreeBytes = 100
+
 	availBytes, err = bdl.beforeBlockPut(context.Background(), 10)
 	require.NoError(t, err)
 	require.Equal(t, int64(89), availBytes)
@@ -133,6 +136,37 @@ func TestBackpressureDiskLimiterStats(t *testing.T) {
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(1), journalBytes)
+	require.Equal(t, int64(100), freeBytes)
+	require.Equal(t, int64(100), bytesSemaphoreMax)
+	require.Equal(t, int64(89), bdl.bytesSemaphore.Count())
+
+	bdl.afterBlockPut(ctx, 10, true)
+
+	journalBytes, freeBytes, bytesSemaphoreMax =
+		bdl.getLockedVarsForTest()
+	require.Equal(t, int64(11), journalBytes)
+	require.Equal(t, int64(100), freeBytes)
+	require.Equal(t, int64(100), bytesSemaphoreMax)
+	require.Equal(t, int64(89), bdl.bytesSemaphore.Count())
+
+	// Then try to put a block but fail it.
+
+	availBytes, err = bdl.beforeBlockPut(context.Background(), 9)
+	require.NoError(t, err)
+	require.Equal(t, int64(80), availBytes)
+
+	journalBytes, freeBytes, bytesSemaphoreMax =
+		bdl.getLockedVarsForTest()
+	require.Equal(t, int64(11), journalBytes)
+	require.Equal(t, int64(100), freeBytes)
+	require.Equal(t, int64(100), bytesSemaphoreMax)
+	require.Equal(t, int64(80), bdl.bytesSemaphore.Count())
+
+	bdl.afterBlockPut(ctx, 9, false)
+
+	journalBytes, freeBytes, bytesSemaphoreMax =
+		bdl.getLockedVarsForTest()
+	require.Equal(t, int64(11), journalBytes)
 	require.Equal(t, int64(100), freeBytes)
 	require.Equal(t, int64(100), bytesSemaphoreMax)
 	require.Equal(t, int64(89), bdl.bytesSemaphore.Count())
