@@ -1493,9 +1493,7 @@ func (j *tlfJournal) putBlockData(
 
 	var putData bool
 	defer func() {
-		if !putData {
-			j.diskLimiter.onBlockPutFail(bufLen)
-		}
+		j.diskLimiter.afterBlockPut(bufLen, putData)
 	}()
 
 	j.journalLock.Lock()
