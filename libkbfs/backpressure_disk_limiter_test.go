@@ -195,6 +195,9 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
 }
 
+// TestBackpressureDiskLimiterCalculateDelay tests the delay
+// calculation, and makes sure it takes into account the context
+// deadline.
 func TestBackpressureDiskLimiterCalculateDelay(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
