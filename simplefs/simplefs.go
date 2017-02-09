@@ -29,8 +29,8 @@ func (k *SimpleFS) SimpleFSListRecursive(_ context.Context, arg keybase1.SimpleF
 
 // SimpleFSReadList - Get list of Paths in progress. Can indicate status of pending
 // to get more entries.
-func (k *SimpleFS) SimpleFSReadList(context.Context, keybase1.OpID) (keybase1.SfListResult, error) {
-	return keybase1.SfListResult{}, errors.New("not implemented")
+func (k *SimpleFS) SimpleFSReadList(context.Context, keybase1.OpID) (keybase1.SimpleFSListResult, error) {
+	return keybase1.SimpleFSListResult{}, errors.New("not implemented")
 }
 
 // SimpleFSCopy - Begin copy of file or directory
