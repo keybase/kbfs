@@ -35,11 +35,12 @@ func TestBackpressureDiskLimiterStats(t *testing.T) {
 
 	var fakeAvailBytes int64 = 50
 	log := logger.NewTestLogger(t)
-	bdl := newBackpressureDiskLimiterWithFunctions(
+	bdl, err := newBackpressureDiskLimiterWithFunctions(
 		log, 0.1, 0.9, 100, 8*time.Second, delayFn,
 		func() (int64, error) {
 			return fakeAvailBytes, nil
 		})
+	require.NoError(t, err)
 
 	journalBytes, availBytes, bytesSemaphoreMax :=
 		bdl.getLockedVarsForTest()
@@ -92,11 +93,13 @@ func TestBackpressureDiskLimiterLargeDisk(t *testing.T) {
 	}
 
 	log := logger.NewTestLogger(t)
-	bdl := newBackpressureDiskLimiterWithFunctions(
+	bdl, err := newBackpressureDiskLimiterWithFunctions(
 		log, 0.1, 0.9, 100, 8*time.Second, delayFn,
 		func() (int64, error) {
 			return math.MaxInt64, nil
 		})
+	require.NoError(t, err)
+
 	ctx := context.Background()
 
 	for i := 0; i < 2; i++ {
@@ -127,11 +130,13 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 	var diskSize int64 = 200
 
 	log := logger.NewTestLogger(t)
-	bdl := newBackpressureDiskLimiterWithFunctions(
+	bdl, err := newBackpressureDiskLimiterWithFunctions(
 		log, 0.1, 0.9, math.MaxInt64, 8*time.Second, delayFn,
 		func() (int64, error) {
 			return diskSize - otherSize - journalSize, nil
 		})
+	require.NoError(t, err)
+
 	ctx := context.Background()
 
 	for i := 0; i < 2; i++ {

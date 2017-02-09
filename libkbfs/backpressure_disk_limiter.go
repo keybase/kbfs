@@ -61,21 +61,36 @@ func newBackpressureDiskLimiterWithFunctions(
 	backpressureMinThreshold, backpressureMaxThreshold float64,
 	maxJournalBytes int64, maxDelay time.Duration,
 	delayFn func(context.Context, time.Duration) error,
-	availBytesFn func() (int64, error)) *backpressureDiskLimiter {
+	availBytesFn func() (int64, error)) (
+	*backpressureDiskLimiter, error) {
 	if backpressureMinThreshold < 0.0 {
-		panic("backpressureMinThreshold < 0.0")
+		return nil, errors.Errorf("backpressureMinThreshold=%d < 0.0",
+			backpressureMinThreshold)
 	}
 	if backpressureMaxThreshold < backpressureMinThreshold {
-		panic("backpressureMaxThreshold < backpressureMinThreshold")
+		return nil, errors.Errorf(
+			"backpressureMaxThreshold=%d < backpressureMinThreshold=%d",
+			backpressureMaxThreshold, backpressureMinThreshold)
 	}
 	if 1.0 < backpressureMaxThreshold {
-		panic("1.0 < backpressureMaxThreshold")
+		return nil, errors.Errorf("1.0 < backpressureMaxThreshold=%d",
+			backpressureMaxThreshold)
 	}
-	return &backpressureDiskLimiter{
+	availBytes, err := availBytesFn()
+	if err != nil {
+		return nil, err
+	}
+	bdl := &backpressureDiskLimiter{
 		log, backpressureMinThreshold, backpressureMaxThreshold,
 		maxJournalBytes, maxDelay, delayFn, availBytesFn,
-		sync.Mutex{}, 0, 0, 0, kbfssync.NewSemaphore(),
+		sync.Mutex{}, 0, availBytes, 0, kbfssync.NewSemaphore(),
 	}
+	func() {
+		bdl.bytesLock.Lock()
+		defer bdl.bytesLock.Unlock()
+		bdl.updateBytesSemaphoreMaxLocked()
+	}()
+	return bdl, nil
 }
 
 // defaultDoDelay uses a timer to delay by the given duration.
@@ -112,7 +127,7 @@ func newBackpressureDiskLimiter(
 	log logger.Logger,
 	backpressureMinThreshold, backpressureMaxThreshold float64,
 	byteLimit int64, maxDelay time.Duration,
-	journalPath string) *backpressureDiskLimiter {
+	journalPath string) (*backpressureDiskLimiter, error) {
 	return newBackpressureDiskLimiterWithFunctions(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
 		byteLimit, maxDelay, defaultDoDelay,
