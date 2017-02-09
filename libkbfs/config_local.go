@@ -904,7 +904,7 @@ func (c *ConfigLocal) EnableJournaling(
 	branchListener := c.KBFSOps().(branchChangeListener)
 	flushListener := c.KBFSOps().(mdFlushListener)
 
-	// the backpressure disk limiter needs the dir to exist first.
+	// The backpressure disk limiter needs the dir to exist first.
 	err = ioutil.MkdirAll(journalRoot, 0700)
 	if err != nil {
 		return err
