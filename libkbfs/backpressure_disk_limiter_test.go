@@ -26,6 +26,60 @@ func TestDefaultDoDelayCancel(t *testing.T) {
 	require.Equal(t, ctx.Err(), errors.Cause(err))
 }
 
+func TestBackpressureDiskLimiterStats(t *testing.T) {
+	var lastDelay time.Duration
+	delayFn := func(ctx context.Context, delay time.Duration) error {
+		lastDelay = delay
+		return nil
+	}
+
+	var fakeAvailBytes int64 = 50
+	bdl := newBackpressureDiskLimiterWithFunctions(
+		0.1, 0.9, 100, 8*time.Second, delayFn, func() (int64, error) {
+			return fakeAvailBytes, nil
+		})
+
+	journalBytes, availBytes, bytesSemaphoreMax :=
+		bdl.getLockedVarsForTest()
+	require.Equal(t, int64(0), journalBytes)
+	require.Equal(t, int64(0), availBytes)
+	require.Equal(t, int64(0), bytesSemaphoreMax)
+	require.Equal(t, int64(0), bdl.bytesSemaphore.Count())
+
+	availBytes = bdl.onJournalEnable(10)
+	require.Equal(t, int64(0), availBytes)
+
+	/*
+		journalBytes, availBytes, bytesSemaphoreMax :=
+			bdl.getLockedVarsForTest()
+		require.Equal(t, int64(10), journalBytes)
+		require.Equal(t, int64(0), availBytes)
+		require.Equal(t, int64(10), bytesSemaphoreMax)
+		require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
+
+		bdl.onJournalDisable(9)
+
+		journalBytes, availBytes, bytesSemaphoreMax :=
+			bdl.getLockedVarsForTest()
+		require.Equal(t, int64(1), journalBytes)
+		require.Equal(t, math.MaxInt64, availBytes)
+		require.Equal(t, int64(101), bytesSemaphoreMax)
+		require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
+
+		fakeAvailBytes = 99
+		availBytes, err := bdl.beforeBlockPut(
+			context.Background(), 8, logger.NewTestLogger(t))
+		require.NoError(t, err)
+		require.Equal(t, int64(99), availBytes)
+
+		journalBytes, availBytes, bytesSemaphoreMax :=
+			bdl.getLockedVarsForTest()
+		require.Equal(t, int64(9), journalBytes)
+		require.Equal(t, int64(101), bytesSemaphoreMax)
+		require.Equal(t, int64(92), bdl.bytesSemaphore.Count())
+	*/
+}
+
 func TestBackpressureDiskLimiterLargeDisk(t *testing.T) {
 	var lastDelay time.Duration
 	delayFn := func(ctx context.Context, delay time.Duration) error {
