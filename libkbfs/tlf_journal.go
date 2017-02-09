@@ -1491,8 +1491,9 @@ func (j *tlfJournal) putBlockData(
 		return err
 	}
 
+	var putData bool
 	defer func() {
-		if err != nil {
+		if !putData {
 			j.diskLimiter.onBlockPutFail(bufLen)
 		}
 	}()
@@ -1505,7 +1506,8 @@ func (j *tlfJournal) putBlockData(
 
 	storedBytesBefore := j.blockJournal.getStoredBytes()
 
-	err = j.blockJournal.putData(ctx, id, blockCtx, buf, serverHalf)
+	putData, err = j.blockJournal.putData(
+		ctx, id, blockCtx, buf, serverHalf)
 	if err != nil {
 		return err
 	}
