@@ -274,6 +274,8 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 	checkCounters(0)
 }
 
+// TestBackpressureDiskLimiterLargeDiskDelay checks the delays when
+// pretending to have a small disk.
 func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 	var lastDelay time.Duration
 	delayFn := func(ctx context.Context, delay time.Duration) error {
@@ -281,15 +283,19 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		return nil
 	}
 
-	var journalSize int64
-	var otherSize int64 = 100
-	var diskSize int64 = 200
+	const blockSize = 10
+	const diskSize = 100
 
 	log := logger.NewTestLogger(t)
+	var bdl *backpressureDiskLimiter
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
 		log, 0.1, 0.9, math.MaxInt64, 8*time.Second, delayFn,
 		func() (int64, error) {
-			return diskSize - otherSize - journalSize, nil
+			if bdl == nil {
+				return diskSize, nil
+			}
+
+			return diskSize - bdl.journalBytes, nil
 		})
 	require.NoError(t, err)
 
@@ -300,7 +306,6 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 0*time.Second, lastDelay)
 		bdl.afterBlockPut(ctx, 10, true)
-		journalSize += 10
 	}
 
 	for i := 1; i < 9; i++ {
@@ -309,6 +314,5 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		require.InEpsilon(t, float64(i), lastDelay.Seconds(),
 			0.01, "i=%d", i)
 		bdl.afterBlockPut(ctx, 10, true)
-		journalSize += 10
 	}
 }
