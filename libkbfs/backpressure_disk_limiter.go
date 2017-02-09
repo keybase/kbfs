@@ -112,8 +112,7 @@ func (s backpressureDiskLimiter) getDelay() time.Duration {
 }
 
 func (s backpressureDiskLimiter) beforeBlockPut(
-	ctx context.Context, blockBytes int64,
-	log logger.Logger) (int64, error) {
+	ctx context.Context, blockBytes int64) (int64, error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
 		return s.s.Count(), errors.New(
@@ -122,7 +121,7 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 
 	delay := s.getDelay()
 	if delay > 0 {
-		log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
+		s.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
 			blockBytes, delay.Seconds())
 	}
 	err := s.delayFn(ctx, delay)
