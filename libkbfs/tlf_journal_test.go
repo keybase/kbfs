@@ -309,7 +309,7 @@ func teardownTLFJournalTest(
 	}
 
 	config.mdserver.Shutdown()
-	tlfJournal.delegateBlockServer.Shutdown()
+	tlfJournal.delegateBlockServer.Shutdown(ctx)
 
 	err := ioutil.RemoveAll(tempdir)
 	assert.NoError(config.t, err)
@@ -847,8 +847,7 @@ func (s *orderedBlockServer) Put(
 	return nil
 }
 
-func (s *orderedBlockServer) Shutdown() {
-}
+func (s *orderedBlockServer) Shutdown(context.Context) {}
 
 type orderedMDServer struct {
 	MDServer
@@ -869,8 +868,7 @@ func (s *orderedMDServer) Put(
 	return nil
 }
 
-func (s *orderedMDServer) Shutdown() {
-}
+func (s *orderedMDServer) Shutdown() {}
 
 // testTLFJournalFlushOrdering tests that we respect the relative
 // orderings of blocks and MD ops when flushing, i.e. if a block op
@@ -896,7 +894,7 @@ func testTLFJournalFlushOrdering(t *testing.T, ver MetadataVer) {
 		puts: &puts,
 	}
 
-	tlfJournal.delegateBlockServer.Shutdown()
+	tlfJournal.delegateBlockServer.Shutdown(ctx)
 	tlfJournal.delegateBlockServer = &bserver
 
 	mdserver := orderedMDServer{
@@ -974,7 +972,7 @@ func testTLFJournalFlushInterleaving(t *testing.T, ver MetadataVer) {
 		puts: &puts,
 	}
 
-	tlfJournal.delegateBlockServer.Shutdown()
+	tlfJournal.delegateBlockServer.Shutdown(ctx)
 	tlfJournal.delegateBlockServer = &bserver
 
 	mdserver := orderedMDServer{
