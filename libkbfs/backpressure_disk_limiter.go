@@ -16,14 +16,19 @@ import (
 )
 
 // backpressureDiskLimiter is an implementation of diskLimiter that
-// uses backpressure.
+// uses backpressure to slow down block puts before they hit the disk
+// limit.
 //
 // Let J be the (approximate) byte usage of the journal and A be the
-// available bytes on disk. Then J/(J + A) is the byte usage ratio of
-// the journal. We want to set thresholds m and M such that we apply
-// proportional backpressure when m <= J/(J+A) <= M. In addition, we
-// want to have an absolute byte usage limit L and apply backpressure
-// when m <= J/L <= M.
+// available bytes on disk. Then we want to enforce
+//
+//   J <= min(J+A, L),
+//
+// where L is the absolute byte usage limit. But in addition to that,
+// we want to set thresholds 0 <= m <= M <= 1 such that we apply
+// proportional backpressure (with a given maximum delay) when
+//
+//   m <= max(J/(J+A), J/L) <= M.
 type backpressureDiskLimiter struct {
 	log logger.Logger
 	// backpressureMinThreshold is m in the above.
