@@ -173,7 +173,9 @@ func (s *backpressureDiskLimiter) onJournalEnable(
 	defer s.bytesLock.Unlock()
 	s.journalBytes += journalBytes
 	s.updateBytesSemaphoreMaxLocked()
-	s.bytesSemaphore.ForceAcquire(journalBytes)
+	if journalBytes > 0 {
+		s.bytesSemaphore.ForceAcquire(journalBytes)
+	}
 	return s.bytesSemaphore.Count()
 }
 
@@ -183,7 +185,9 @@ func (s *backpressureDiskLimiter) onJournalDisable(
 	defer s.bytesLock.Unlock()
 	s.journalBytes -= journalBytes
 	s.updateBytesSemaphoreMaxLocked()
-	s.bytesSemaphore.Release(journalBytes)
+	if journalBytes > 0 {
+		s.bytesSemaphore.Release(journalBytes)
+	}
 }
 
 func (s *backpressureDiskLimiter) calculateDelay(
