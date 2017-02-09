@@ -10,9 +10,21 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/logger"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
+
+// TestDefaultDoDelayCancel checks that defaultDoDelay respects
+// context cancellation.
+func TestDefaultDoDelayCancel(t *testing.T) {
+	ctx, cancel := context.WithTimeout(
+		context.Background(), individualTestTimeout)
+	cancel()
+
+	err := defaultDoDelay(ctx, individualTestTimeout)
+	require.Equal(t, ctx.Err(), errors.Cause(err))
+}
 
 func TestBackpressureDiskLimiterLargeDisk(t *testing.T) {
 	var lastDelay time.Duration
