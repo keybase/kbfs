@@ -76,14 +76,16 @@ func newBackpressureDiskLimiter(
 		byteLimit, maxDelay, defaultDoDelay)
 }
 
-func (s backpressureDiskLimiter) onJournalEnable(journalBytes int64) int64 {
+func (s backpressureDiskLimiter) onJournalEnable(
+	ctx context.Context, journalBytes int64) int64 {
 	if journalBytes == 0 {
 		return s.s.Count()
 	}
 	return s.s.ForceAcquire(journalBytes)
 }
 
-func (s backpressureDiskLimiter) onJournalDisable(journalBytes int64) {
+func (s backpressureDiskLimiter) onJournalDisable(
+	ctx context.Context, journalBytes int64) {
 	if journalBytes > 0 {
 		s.s.Release(journalBytes)
 	}
@@ -128,13 +130,15 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 	return s.s.Acquire(ctx, blockBytes)
 }
 
-func (s backpressureDiskLimiter) afterBlockPut(blockBytes int64, putData bool) {
+func (s backpressureDiskLimiter) afterBlockPut(
+	ctx context.Context, blockBytes int64, putData bool) {
 	if !putData {
 		s.s.Release(blockBytes)
 	}
 }
 
-func (s backpressureDiskLimiter) onBlockDelete(blockBytes int64) {
+func (s backpressureDiskLimiter) onBlockDelete(
+	ctx context.Context, blockBytes int64) {
 	if blockBytes > 0 {
 		s.s.Release(blockBytes)
 	}

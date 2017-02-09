@@ -130,6 +130,6 @@ func (j journalBlockServer) IsUnflushed(ctx context.Context, tlfID tlf.ID,
 }
 
 func (j journalBlockServer) Shutdown() {
-	j.jServer.shutdown()
+	j.jServer.shutdown(context.Background())
 	j.BlockServer.Shutdown()
 }

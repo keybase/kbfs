@@ -293,7 +293,7 @@ func teardownTLFJournalTest(
 	delegate testBWDelegate) {
 	// Shutdown first so we don't get the Done() signal (from the
 	// cancel() call) spuriously.
-	tlfJournal.shutdown()
+	tlfJournal.shutdown(ctx)
 	select {
 	case <-delegate.shutdownCh:
 	case <-ctx.Done():
@@ -480,7 +480,7 @@ func testTLFJournalBlockOpDiskLimit(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64 - 6)
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64-6)
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
@@ -515,7 +515,7 @@ func testTLFJournalBlockOpDiskLimitDuplicate(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64 - 8)
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64-8)
 
 	data := []byte{1, 2, 3, 4}
 	id, bCtx, serverHalf := config.makeBlock(data)
@@ -538,7 +538,7 @@ func testTLFJournalBlockOpDiskLimitCancel(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64)
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64)
 
 	ctx2, cancel2 := context.WithCancel(ctx)
 	cancel2()
@@ -555,7 +555,7 @@ func testTLFJournalBlockOpDiskLimitTimeout(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64)
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64)
 	config.dlTimeout = 3 * time.Microsecond
 
 	data := []byte{1, 2, 3, 4}
@@ -576,7 +576,7 @@ func testTLFJournalBlockOpDiskLimitPutFailure(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64 - 6)
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64-6)
 
 	data := []byte{1, 2, 3, 4}
 	id, bCtx, serverHalf := config.makeBlock(data)
