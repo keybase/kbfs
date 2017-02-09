@@ -44,51 +44,51 @@ func TestBackpressureDiskLimiterStats(t *testing.T) {
 		return nil
 	}
 
-	var fakeAvailBytes int64 = 50
+	var fakeFreeBytes int64 = 50
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
 		log, 0.1, 0.9, 100, 8*time.Second, delayFn,
 		func() (int64, error) {
-			return fakeAvailBytes, nil
+			return fakeFreeBytes, nil
 		})
 	require.NoError(t, err)
 
-	journalBytes, availBytes, bytesSemaphoreMax :=
+	journalBytes, freeBytes, bytesSemaphoreMax :=
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(0), journalBytes)
-	require.Equal(t, int64(50), availBytes)
+	require.Equal(t, int64(50), freeBytes)
 	require.Equal(t, int64(50), bytesSemaphoreMax)
 	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
 
 	ctx := context.Background()
 
-	availBytes = bdl.onJournalEnable(ctx, 10)
+	availBytes := bdl.onJournalEnable(ctx, 10)
 	require.Equal(t, int64(40), availBytes)
 
 	/*
-		journalBytes, availBytes, bytesSemaphoreMax :=
+		journalBytes, freeBytes, bytesSemaphoreMax :=
 			bdl.getLockedVarsForTest()
 		require.Equal(t, int64(10), journalBytes)
-		require.Equal(t, int64(0), availBytes)
+		require.Equal(t, int64(0), freeBytes)
 		require.Equal(t, int64(10), bytesSemaphoreMax)
 		require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
 
 		bdl.onJournalDisable(9)
 
-		journalBytes, availBytes, bytesSemaphoreMax :=
+		journalBytes, freeBytes, bytesSemaphoreMax :=
 			bdl.getLockedVarsForTest()
 		require.Equal(t, int64(1), journalBytes)
-		require.Equal(t, math.MaxInt64, availBytes)
+		require.Equal(t, math.MaxInt64, freeBytes)
 		require.Equal(t, int64(101), bytesSemaphoreMax)
 		require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
 
-		fakeAvailBytes = 99
+		fakeFreeBytes = 99
 		availBytes, err := bdl.beforeBlockPut(
 			context.Background(), 8, logger.NewTestLogger(t))
 		require.NoError(t, err)
 		require.Equal(t, int64(99), availBytes)
 
-		journalBytes, availBytes, bytesSemaphoreMax :=
+		journalBytes, freeBytes, bytesSemaphoreMax :=
 			bdl.getLockedVarsForTest()
 		require.Equal(t, int64(9), journalBytes)
 		require.Equal(t, int64(101), bytesSemaphoreMax)

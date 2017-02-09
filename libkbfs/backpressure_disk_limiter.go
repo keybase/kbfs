@@ -19,16 +19,16 @@ import (
 // uses backpressure to slow down block puts before they hit the disk
 // limit.
 //
-// Let J be the (approximate) byte usage of the journal and A be the
-// available bytes on disk. Then we want to enforce
+// Let J be the (approximate) byte usage of the journal and F be the
+// free bytes on disk. Then we want to enforce
 //
-//   J <= min(J+A, L),
+//   J <= min(J+F, L),
 //
 // where L is the absolute byte usage limit. But in addition to that,
 // we want to set thresholds 0 <= m <= M <= 1 such that we apply
 // proportional backpressure (with a given maximum delay) when
 //
-//   m <= max(J/(J+A), J/L) <= M.
+//   m <= max(J/(J+F), J/L) <= M.
 type backpressureDiskLimiter struct {
 	log logger.Logger
 	// backpressureMinThreshold is m in the above.
@@ -39,14 +39,14 @@ type backpressureDiskLimiter struct {
 	maxJournalBytes int64
 	maxDelay        time.Duration
 	delayFn         func(context.Context, time.Duration) error
-	availBytesFn    func() (int64, error)
+	freeBytesFn     func() (int64, error)
 
-	// bytesLock protects availBytes, journalBytes,
+	// bytesLock protects freeBytes, journalBytes,
 	// bytesSemaphoreMax, and the (implicit) maximum value of
 	// bytesSemaphore (== bytesSemaphoreMax).
 	bytesLock         sync.Mutex
 	journalBytes      int64
-	availBytes        int64
+	freeBytes         int64
 	bytesSemaphoreMax int64
 	bytesSemaphore    *kbfssync.Semaphore
 }
@@ -61,7 +61,7 @@ func newBackpressureDiskLimiterWithFunctions(
 	backpressureMinThreshold, backpressureMaxThreshold float64,
 	maxJournalBytes int64, maxDelay time.Duration,
 	delayFn func(context.Context, time.Duration) error,
-	availBytesFn func() (int64, error)) (
+	freeBytesFn func() (int64, error)) (
 	*backpressureDiskLimiter, error) {
 	if backpressureMinThreshold < 0.0 {
 		return nil, errors.Errorf("backpressureMinThreshold=%d < 0.0",
@@ -76,14 +76,14 @@ func newBackpressureDiskLimiterWithFunctions(
 		return nil, errors.Errorf("1.0 < backpressureMaxThreshold=%d",
 			backpressureMaxThreshold)
 	}
-	availBytes, err := availBytesFn()
+	freeBytes, err := freeBytesFn()
 	if err != nil {
 		return nil, err
 	}
 	bdl := &backpressureDiskLimiter{
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		maxJournalBytes, maxDelay, delayFn, availBytesFn,
-		sync.Mutex{}, 0, availBytes, 0, kbfssync.NewSemaphore(),
+		maxJournalBytes, maxDelay, delayFn, freeBytesFn,
+		sync.Mutex{}, 0, freeBytes, 0, kbfssync.NewSemaphore(),
 	}
 	func() {
 		bdl.bytesLock.Lock()
@@ -109,16 +109,19 @@ func defaultDoDelay(ctx context.Context, delay time.Duration) error {
 	}
 }
 
-func defaultGetAvailBytes(path string) (int64, error) {
-	availBytes, err := getDiskLimits(path)
+func defaultGetFreeBytes(path string) (int64, error) {
+	// getDiskLimits returns availableBytes, but we want to avoid
+	// confusing that with availBytes in the sense of the
+	// semaphore value.
+	freeBytes, err := getDiskLimits(path)
 	if err != nil {
 		return 0, err
 	}
 
-	if availBytes > uint64(math.MaxInt64) {
+	if freeBytes > uint64(math.MaxInt64) {
 		return math.MaxInt64, nil
 	}
-	return int64(availBytes), nil
+	return int64(freeBytes), nil
 }
 
 // newBackpressureDiskLimiter constructs a new backpressureDiskLimiter
@@ -132,25 +135,25 @@ func newBackpressureDiskLimiter(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
 		byteLimit, maxDelay, defaultDoDelay,
 		func() (int64, error) {
-			return defaultGetAvailBytes(journalPath)
+			return defaultGetFreeBytes(journalPath)
 		})
 }
 
 func (s *backpressureDiskLimiter) getLockedVarsForTest() (
-	journalBytes int64, availBytes int64, bytesSemaphoreMax int64) {
+	journalBytes int64, freeBytes int64, bytesSemaphoreMax int64) {
 	s.bytesLock.Lock()
 	defer s.bytesLock.Unlock()
-	return s.journalBytes, s.availBytes, s.bytesSemaphoreMax
+	return s.journalBytes, s.freeBytes, s.bytesSemaphoreMax
 }
 
 // updateBytesSemaphoreMaxLocked must be called (under s.bytesLock)
-// whenever s.journalBytes or s.availBytes changes.
+// whenever s.journalBytes or s.freeBytes changes.
 func (s *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
-	// Set newMax to min(J+A, L).
-	availBytesWithoutJournal := s.journalBytes + s.availBytes
+	// Set newMax to min(J+F, L).
+	freeBytesWithoutJournal := s.journalBytes + s.freeBytes
 	newMax := s.maxJournalBytes
-	if availBytesWithoutJournal < newMax {
-		newMax = availBytesWithoutJournal
+	if freeBytesWithoutJournal < newMax {
+		newMax = freeBytesWithoutJournal
 	}
 
 	delta := newMax - s.bytesSemaphoreMax
@@ -180,14 +183,14 @@ func (s backpressureDiskLimiter) onJournalDisable(
 }
 
 func (s *backpressureDiskLimiter) calculateDelay(
-	ctx context.Context, journalBytes, availBytes int64) time.Duration {
+	ctx context.Context, journalBytes, freeBytes int64) time.Duration {
 	// Convert first to avoid overflow.
 	journalBytesFloat := float64(journalBytes)
 	maxJournalBytesFloat := float64(s.maxJournalBytes)
-	availBytesFloat := float64(availBytes)
+	freeBytesFloat := float64(freeBytes)
 
-	//   Set r to max(J/(J+A), J/L).
-	r := math.Max(journalBytesFloat/(journalBytesFloat+availBytesFloat),
+	// Set r to max(J/(J+F), J/L).
+	r := math.Max(journalBytesFloat/(journalBytesFloat+freeBytesFloat),
 		journalBytesFloat/maxJournalBytesFloat)
 
 	// We want the delay to be 0 if r <= m and the max delay if r
@@ -217,24 +220,24 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 			"backpressureDiskLimiter.beforeBlockPut called with 0 blockBytes")
 	}
 
-	journalBytes, availBytes, err := func() (int64, int64, error) {
+	journalBytes, freeBytes, err := func() (int64, int64, error) {
 		s.bytesLock.Lock()
 		defer s.bytesLock.Unlock()
 
-		availBytes, err := s.availBytesFn()
+		freeBytes, err := s.freeBytesFn()
 		if err != nil {
 			return 0, 0, err
 		}
 
-		s.availBytes = availBytes
+		s.freeBytes = freeBytes
 		s.updateBytesSemaphoreMaxLocked()
-		return s.journalBytes, s.availBytes, nil
+		return s.journalBytes, s.freeBytes, nil
 	}()
 	if err != nil {
 		return s.bytesSemaphore.Count(), err
 	}
 
-	delay := s.calculateDelay(ctx, journalBytes, availBytes)
+	delay := s.calculateDelay(ctx, journalBytes, freeBytes)
 	if delay > 0 {
 		s.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
 			blockBytes, delay.Seconds())
