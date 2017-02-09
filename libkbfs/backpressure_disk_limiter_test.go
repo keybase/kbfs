@@ -34,8 +34,10 @@ func TestBackpressureDiskLimiterStats(t *testing.T) {
 	}
 
 	var fakeAvailBytes int64 = 50
+	log := logger.NewTestLogger(t)
 	bdl := newBackpressureDiskLimiterWithFunctions(
-		0.1, 0.9, 100, 8*time.Second, delayFn, func() (int64, error) {
+		log, 0.1, 0.9, 100, 8*time.Second, delayFn,
+		func() (int64, error) {
 			return fakeAvailBytes, nil
 		})
 
@@ -46,7 +48,9 @@ func TestBackpressureDiskLimiterStats(t *testing.T) {
 	require.Equal(t, int64(0), bytesSemaphoreMax)
 	require.Equal(t, int64(0), bdl.bytesSemaphore.Count())
 
-	availBytes = bdl.onJournalEnable(10)
+	ctx := context.Background()
+
+	availBytes = bdl.onJournalEnable(ctx, 10)
 	require.Equal(t, int64(0), availBytes)
 
 	/*
