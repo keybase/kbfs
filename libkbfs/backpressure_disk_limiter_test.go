@@ -63,16 +63,16 @@ func TestBackpressureDiskLimiterStats(t *testing.T) {
 	ctx := context.Background()
 
 	availBytes := bdl.onJournalEnable(ctx, 10)
-	require.Equal(t, int64(40), availBytes)
+	require.Equal(t, int64(60), availBytes)
+
+	journalBytes, freeBytes, bytesSemaphoreMax =
+		bdl.getLockedVarsForTest()
+	require.Equal(t, int64(10), journalBytes)
+	require.Equal(t, int64(50), freeBytes)
+	require.Equal(t, int64(60), bytesSemaphoreMax)
+	require.Equal(t, int64(60), bdl.bytesSemaphore.Count())
 
 	/*
-		journalBytes, freeBytes, bytesSemaphoreMax :=
-			bdl.getLockedVarsForTest()
-		require.Equal(t, int64(10), journalBytes)
-		require.Equal(t, int64(0), freeBytes)
-		require.Equal(t, int64(10), bytesSemaphoreMax)
-		require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
-
 		bdl.onJournalDisable(9)
 
 		journalBytes, freeBytes, bytesSemaphoreMax :=
