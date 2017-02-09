@@ -154,7 +154,8 @@ func (s *backpressureDiskLimiter) getDelay(
 	scale := math.Min(1.0, math.Max(0.0, (r-m)/(M-m)))
 	maxDelay := s.maxDelay
 	if deadline, ok := ctx.Deadline(); ok {
-		remainingTime := deadline.Sub(time.Now())
+		// Subtract a second to allow for some slack.
+		remainingTime := deadline.Sub(time.Now()) - time.Second
 		if remainingTime < maxDelay {
 			maxDelay = remainingTime
 		}
