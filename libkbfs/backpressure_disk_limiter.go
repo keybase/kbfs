@@ -41,11 +41,14 @@ type backpressureDiskLimiter struct {
 	delayFn         func(context.Context, time.Duration) error
 	availBytesFn    func() (int64, error)
 
-	bytesLock      sync.RWMutex
-	availBytes     int64
-	journalBytes   int64
-	semaphoreMax   int64
-	bytesSemaphore *kbfssync.Semaphore
+	// bytesLock protects availBytes, journalBytes,
+	// bytesSemaphoreMax, and the (implicit) maximum value of
+	// bytesSemaphore (== bytesSemaphoreMax).
+	bytesLock         sync.RWMutex
+	availBytes        int64
+	journalBytes      int64
+	bytesSemaphoreMax int64
+	bytesSemaphore    *kbfssync.Semaphore
 }
 
 var _ diskLimiter = (*backpressureDiskLimiter)(nil)
@@ -91,6 +94,18 @@ func defaultDoDelay(ctx context.Context, delay time.Duration) error {
 	}
 }
 
+func defaultGetAvailBytes(path string) (int64, error) {
+	availBytes, err := getDiskLimits(path)
+	if err != nil {
+		return 0, err
+	}
+
+	if availBytes > uint64(math.MaxInt64) {
+		return math.MaxInt64, nil
+	}
+	return int64(availBytes), nil
+}
+
 // newBackpressureDiskLimiter constructs a new backpressureDiskLimiter
 // with the given parameters.
 func newBackpressureDiskLimiter(
@@ -100,33 +115,29 @@ func newBackpressureDiskLimiter(
 	journalPath string) *backpressureDiskLimiter {
 	return newBackpressureDiskLimiterWithFunctions(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		byteLimit, maxDelay, defaultDoDelay, func() (int64, error) {
-			availBytes, err := getDiskLimits(journalPath)
-			if err != nil {
-				return 0, err
-			}
-
-			if availBytes > uint64(math.MaxInt64) {
-				return math.MaxInt64, nil
-			}
-			return int64(availBytes), nil
+		byteLimit, maxDelay, defaultDoDelay,
+		func() (int64, error) {
+			return defaultGetAvailBytes(journalPath)
 		})
 }
 
-func (s *backpressureDiskLimiter) updateBytesSemaphoreLocked() {
+// updateBytesSemaphoreMaxLocked must be called (under s.bytesLock)
+// whenever s.journalBytes or s.availBytes changes.
+func (s *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
+	// Set newMax to min(J+A, L).
+	availBytesWithoutJournal := s.journalBytes + s.availBytes
 	newMax := s.maxJournalBytes
-	totalAvail := s.availBytes + s.journalBytes
-	if totalAvail < newMax {
-		newMax = totalAvail
+	if availBytesWithoutJournal < newMax {
+		newMax = availBytesWithoutJournal
 	}
 
-	delta := newMax - s.semaphoreMax
+	delta := newMax - s.bytesSemaphoreMax
 	if delta > 0 {
 		s.bytesSemaphore.Release(delta)
 	} else if delta < 0 {
 		s.bytesSemaphore.ForceAcquire(-delta)
 	}
-	s.semaphoreMax = newMax
+	s.bytesSemaphoreMax = newMax
 }
 
 func (s backpressureDiskLimiter) onJournalEnable(
@@ -134,7 +145,7 @@ func (s backpressureDiskLimiter) onJournalEnable(
 	s.bytesLock.Lock()
 	defer s.bytesLock.Unlock()
 	s.journalBytes += journalBytes
-	s.updateBytesSemaphoreLocked()
+	s.updateBytesSemaphoreMaxLocked()
 	return s.bytesSemaphore.Count()
 }
 
@@ -143,7 +154,7 @@ func (s backpressureDiskLimiter) onJournalDisable(
 	s.bytesLock.Lock()
 	defer s.bytesLock.Unlock()
 	s.journalBytes -= journalBytes
-	s.updateBytesSemaphoreLocked()
+	s.updateBytesSemaphoreMaxLocked()
 }
 
 func (s *backpressureDiskLimiter) getDelay(
@@ -186,7 +197,7 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 		}
 
 		s.availBytes = availBytes
-		s.updateBytesSemaphoreLocked()
+		s.updateBytesSemaphoreMaxLocked()
 		return s.journalBytes, availBytes, nil
 	}()
 	if err != nil {
@@ -214,7 +225,7 @@ func (s backpressureDiskLimiter) afterBlockPut(
 		s.bytesLock.Lock()
 		defer s.bytesLock.Unlock()
 		s.journalBytes += blockBytes
-		s.updateBytesSemaphoreLocked()
+		s.updateBytesSemaphoreMaxLocked()
 	} else {
 		s.bytesSemaphore.Release(blockBytes)
 	}
@@ -229,5 +240,5 @@ func (s backpressureDiskLimiter) onBlockDelete(
 	s.bytesLock.Lock()
 	defer s.bytesLock.Unlock()
 	s.journalBytes -= blockBytes
-	s.updateBytesSemaphoreLocked()
+	s.updateBytesSemaphoreMaxLocked()
 }
