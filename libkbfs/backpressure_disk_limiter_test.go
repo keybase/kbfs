@@ -37,7 +37,9 @@ func TestBackpressureConstructorError(t *testing.T) {
 	require.Equal(t, fakeErr, err)
 }
 
-func TestBackpressureDiskLimiterStats(t *testing.T) {
+// TestBackpressureDiskLimiterCounters checks that various counters
+// are updated properly for each public method.
+func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	var lastDelay time.Duration
 	delayFn := func(ctx context.Context, delay time.Duration) error {
 		lastDelay = delay
@@ -170,6 +172,27 @@ func TestBackpressureDiskLimiterStats(t *testing.T) {
 	require.Equal(t, int64(100), freeBytes)
 	require.Equal(t, int64(100), bytesSemaphoreMax)
 	require.Equal(t, int64(89), bdl.bytesSemaphore.Count())
+
+	// Finally, delete a block.
+
+	bdl.onBlockDelete(ctx, 11)
+
+	journalBytes, freeBytes, bytesSemaphoreMax =
+		bdl.getLockedVarsForTest()
+	require.Equal(t, int64(0), journalBytes)
+	require.Equal(t, int64(100), freeBytes)
+	require.Equal(t, int64(100), bytesSemaphoreMax)
+	require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
+
+	// This should be a no-op.
+	bdl.onBlockDelete(ctx, 0)
+
+	journalBytes, freeBytes, bytesSemaphoreMax =
+		bdl.getLockedVarsForTest()
+	require.Equal(t, int64(0), journalBytes)
+	require.Equal(t, int64(100), freeBytes)
+	require.Equal(t, int64(100), bytesSemaphoreMax)
+	require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
 }
 
 func TestBackpressureDiskLimiterLargeDisk(t *testing.T) {

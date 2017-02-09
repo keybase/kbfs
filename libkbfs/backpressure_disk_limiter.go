@@ -274,9 +274,11 @@ func (bdl *backpressureDiskLimiter) afterBlockPut(
 
 func (bdl *backpressureDiskLimiter) onBlockDelete(
 	ctx context.Context, blockBytes int64) {
-	if blockBytes > 0 {
-		bdl.bytesSemaphore.Release(blockBytes)
+	if blockBytes == 0 {
+		return
 	}
+
+	bdl.bytesSemaphore.Release(blockBytes)
 
 	bdl.bytesLock.Lock()
 	defer bdl.bytesLock.Unlock()
