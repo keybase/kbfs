@@ -37,6 +37,13 @@ func Start(mounter Mounter, options StartOptions, kbCtx libkbfs.Context) *libfs.
 		}
 	}
 
+	log.Debug("Mounting: %s", mounter.Dir())
+	c, err := mounter.Mount()
+	if err != nil {
+		return libfs.MountError(err.Error())
+	}
+	defer mounter.Unmount()
+
 	done := make(chan struct{})
 
 	log.Debug("Initializing")
@@ -51,13 +58,6 @@ func Start(mounter Mounter, options StartOptions, kbCtx libkbfs.Context) *libfs.
 	}
 
 	defer libkbfs.Shutdown()
-
-	log.Debug("Mounting: %s", mounter.Dir())
-	c, err := mounter.Mount()
-	if err != nil {
-		return libfs.MountError(err.Error())
-	}
-	defer mounter.Unmount()
 
 	if c != nil {
 		<-c.Ready

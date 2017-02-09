@@ -41,10 +41,10 @@ func (m DefaultMounter) Mount() (c *fuse.Conn, err error) {
 
 // Unmount uses default unmount
 func (m DefaultMounter) Unmount() (err error) {
-	err = fuse.Unmount(m.dir)
 	if m.c != nil {
 		m.c.Close()
 	}
+	err = fuse.Unmount(m.dir)
 	return err
 }
 
@@ -82,14 +82,14 @@ func (m ForceMounter) Mount() (c *fuse.Conn, err error) {
 
 // Unmount tries to unmount normally and then force if unsuccessful
 func (m ForceMounter) Unmount() (err error) {
+	if m.c != nil {
+		m.c.Close()
+	}
 	// Try unmount
 	err = fuse.Unmount(m.dir)
 	if err != nil {
 		// Unmount failed, so let's try and force it.
 		err = m.forceUnmount()
-	}
-	if m.c != nil {
-		m.c.Close()
 	}
 	return
 }
