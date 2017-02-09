@@ -165,7 +165,7 @@ func (s *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
 	s.bytesSemaphoreMax = newMax
 }
 
-func (s backpressureDiskLimiter) onJournalEnable(
+func (s *backpressureDiskLimiter) onJournalEnable(
 	ctx context.Context, journalBytes int64) int64 {
 	s.bytesLock.Lock()
 	defer s.bytesLock.Unlock()
@@ -174,7 +174,7 @@ func (s backpressureDiskLimiter) onJournalEnable(
 	return s.bytesSemaphore.Count()
 }
 
-func (s backpressureDiskLimiter) onJournalDisable(
+func (s *backpressureDiskLimiter) onJournalDisable(
 	ctx context.Context, journalBytes int64) {
 	s.bytesLock.Lock()
 	defer s.bytesLock.Unlock()
