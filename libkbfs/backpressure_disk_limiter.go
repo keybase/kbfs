@@ -149,11 +149,12 @@ func (bdl *backpressureDiskLimiter) getLockedVarsForTest() (
 // updateBytesSemaphoreMaxLocked must be called (under s.bytesLock)
 // whenever s.journalBytes or s.freeBytes changes.
 func (bdl *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
-	// Set newMax to min(J+F, L).
-	freeBytesWithoutJournal := bdl.journalBytes + bdl.freeBytes
+	// Set newMax to min(J+F, L), carefully avoiding overflow.
+	freeBytesWithoutJournal :=
+		uint64(bdl.journalBytes) + uint64(bdl.freeBytes)
 	newMax := bdl.maxJournalBytes
-	if freeBytesWithoutJournal < newMax {
-		newMax = freeBytesWithoutJournal
+	if freeBytesWithoutJournal < uint64(newMax) {
+		newMax = int64(freeBytesWithoutJournal)
 	}
 
 	delta := newMax - bdl.bytesSemaphoreMax
