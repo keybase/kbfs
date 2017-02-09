@@ -163,11 +163,18 @@ func (s *backpressureDiskLimiter) getDelay(
 	journalBytesFloat := float64(journalBytes)
 	maxJournalBytesFloat := float64(s.maxJournalBytes)
 	availBytesFloat := float64(availBytes)
-	r := math.Max(journalBytesFloat/maxJournalBytesFloat,
-		journalBytesFloat/(journalBytesFloat+availBytesFloat))
+
+	//   Set r to max(J/(J+A), J/L).
+	r := math.Max(journalBytesFloat/(journalBytesFloat+availBytesFloat),
+		journalBytesFloat/maxJournalBytesFloat)
+
+	// We want the delay to be 0 if r <= m and the max delay if r
+	// >= M, so linearly interpolate the delay based on r.
 	m := s.backpressureMinThreshold
 	M := s.backpressureMaxThreshold
 	scale := math.Min(1.0, math.Max(0.0, (r-m)/(M-m)))
+
+	// Set maxDelay to min(s.maxDelay, time until deadline - 1s).
 	maxDelay := s.maxDelay
 	if deadline, ok := ctx.Deadline(); ok {
 		// Subtract a second to allow for some slack.
@@ -176,6 +183,7 @@ func (s *backpressureDiskLimiter) getDelay(
 			maxDelay = remainingTime
 		}
 	}
+
 	return time.Duration(scale * float64(maxDelay))
 }
 
