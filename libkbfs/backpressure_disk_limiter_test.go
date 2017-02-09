@@ -104,6 +104,27 @@ func TestBackpressureDiskLimiterStats(t *testing.T) {
 	require.Equal(t, int64(51), bytesSemaphoreMax)
 	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
 
+	// This should be a no-op.
+	availBytes = bdl.onJournalEnable(ctx, 0)
+	require.Equal(t, int64(50), availBytes)
+
+	journalBytes, freeBytes, bytesSemaphoreMax =
+		bdl.getLockedVarsForTest()
+	require.Equal(t, int64(1), journalBytes)
+	require.Equal(t, int64(50), freeBytes)
+	require.Equal(t, int64(51), bytesSemaphoreMax)
+	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
+
+	// So should this.
+	bdl.onJournalDisable(ctx, 0)
+
+	journalBytes, freeBytes, bytesSemaphoreMax =
+		bdl.getLockedVarsForTest()
+	require.Equal(t, int64(1), journalBytes)
+	require.Equal(t, int64(50), freeBytes)
+	require.Equal(t, int64(51), bytesSemaphoreMax)
+	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
+
 	fakeFreeBytes = 100
 	availBytes, err = bdl.beforeBlockPut(context.Background(), 10)
 	require.NoError(t, err)
