@@ -207,9 +207,18 @@ func TestBackpressureDiskLimiterCalculateDelay(t *testing.T) {
 		})
 	require.NoError(t, err)
 
+	now := time.Now()
+
 	ctx := context.Background()
-	delay := bdl.calculateDelay(ctx, 50, 50)
+	delay := bdl.calculateDelay(ctx, 50, 50, now)
 	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
+
+	deadline := now.Add(5 * time.Second)
+	ctx2, cancel2 := context.WithDeadline(ctx, deadline)
+	defer cancel2()
+
+	delay = bdl.calculateDelay(ctx2, 50, 50, now)
+	require.InEpsilon(t, float64(2), delay.Seconds(), 0.01)
 }
 
 // TestBackpressureDiskLimiterLargeDiskDelay checks the delays when

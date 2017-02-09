@@ -192,7 +192,8 @@ func (bdl *backpressureDiskLimiter) onJournalDisable(
 }
 
 func (bdl *backpressureDiskLimiter) calculateDelay(
-	ctx context.Context, journalBytes, freeBytes int64) time.Duration {
+	ctx context.Context, journalBytes, freeBytes int64,
+	now time.Time) time.Duration {
 	// Convert first to avoid overflow.
 	journalBytesFloat := float64(journalBytes)
 	maxJournalBytesFloat := float64(bdl.maxJournalBytes)
@@ -212,7 +213,7 @@ func (bdl *backpressureDiskLimiter) calculateDelay(
 	maxDelay := bdl.maxDelay
 	if deadline, ok := ctx.Deadline(); ok {
 		// Subtract a second to allow for some slack.
-		remainingTime := deadline.Sub(time.Now()) - time.Second
+		remainingTime := deadline.Sub(now) - time.Second
 		if remainingTime < maxDelay {
 			maxDelay = remainingTime
 		}
@@ -246,7 +247,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		return bdl.bytesSemaphore.Count(), err
 	}
 
-	delay := bdl.calculateDelay(ctx, journalBytes, freeBytes)
+	delay := bdl.calculateDelay(ctx, journalBytes, freeBytes, time.Now())
 	if delay > 0 {
 		bdl.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
 			blockBytes, delay.Seconds())
