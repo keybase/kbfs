@@ -139,62 +139,62 @@ func newBackpressureDiskLimiter(
 		})
 }
 
-func (s *backpressureDiskLimiter) getLockedVarsForTest() (
+func (bdl *backpressureDiskLimiter) getLockedVarsForTest() (
 	journalBytes int64, freeBytes int64, bytesSemaphoreMax int64) {
-	s.bytesLock.Lock()
-	defer s.bytesLock.Unlock()
-	return s.journalBytes, s.freeBytes, s.bytesSemaphoreMax
+	bdl.bytesLock.Lock()
+	defer bdl.bytesLock.Unlock()
+	return bdl.journalBytes, bdl.freeBytes, bdl.bytesSemaphoreMax
 }
 
 // updateBytesSemaphoreMaxLocked must be called (under s.bytesLock)
 // whenever s.journalBytes or s.freeBytes changes.
-func (s *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
+func (bdl *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
 	// Set newMax to min(J+F, L).
-	freeBytesWithoutJournal := s.journalBytes + s.freeBytes
-	newMax := s.maxJournalBytes
+	freeBytesWithoutJournal := bdl.journalBytes + bdl.freeBytes
+	newMax := bdl.maxJournalBytes
 	if freeBytesWithoutJournal < newMax {
 		newMax = freeBytesWithoutJournal
 	}
 
-	delta := newMax - s.bytesSemaphoreMax
+	delta := newMax - bdl.bytesSemaphoreMax
 	// These operations are adjusting the *maximum* value of
-	// s.bytesSemaphore.
+	// bdl.bytesSemaphore.
 	if delta > 0 {
-		s.bytesSemaphore.Release(delta)
+		bdl.bytesSemaphore.Release(delta)
 	} else if delta < 0 {
-		s.bytesSemaphore.ForceAcquire(-delta)
+		bdl.bytesSemaphore.ForceAcquire(-delta)
 	}
-	s.bytesSemaphoreMax = newMax
+	bdl.bytesSemaphoreMax = newMax
 }
 
-func (s *backpressureDiskLimiter) onJournalEnable(
+func (bdl *backpressureDiskLimiter) onJournalEnable(
 	ctx context.Context, journalBytes int64) int64 {
-	s.bytesLock.Lock()
-	defer s.bytesLock.Unlock()
-	s.journalBytes += journalBytes
-	s.updateBytesSemaphoreMaxLocked()
+	bdl.bytesLock.Lock()
+	defer bdl.bytesLock.Unlock()
+	bdl.journalBytes += journalBytes
+	bdl.updateBytesSemaphoreMaxLocked()
 	if journalBytes > 0 {
-		s.bytesSemaphore.ForceAcquire(journalBytes)
+		bdl.bytesSemaphore.ForceAcquire(journalBytes)
 	}
-	return s.bytesSemaphore.Count()
+	return bdl.bytesSemaphore.Count()
 }
 
-func (s *backpressureDiskLimiter) onJournalDisable(
+func (bdl *backpressureDiskLimiter) onJournalDisable(
 	ctx context.Context, journalBytes int64) {
-	s.bytesLock.Lock()
-	defer s.bytesLock.Unlock()
-	s.journalBytes -= journalBytes
-	s.updateBytesSemaphoreMaxLocked()
+	bdl.bytesLock.Lock()
+	defer bdl.bytesLock.Unlock()
+	bdl.journalBytes -= journalBytes
+	bdl.updateBytesSemaphoreMaxLocked()
 	if journalBytes > 0 {
-		s.bytesSemaphore.Release(journalBytes)
+		bdl.bytesSemaphore.Release(journalBytes)
 	}
 }
 
-func (s *backpressureDiskLimiter) calculateDelay(
+func (bdl *backpressureDiskLimiter) calculateDelay(
 	ctx context.Context, journalBytes, freeBytes int64) time.Duration {
 	// Convert first to avoid overflow.
 	journalBytesFloat := float64(journalBytes)
-	maxJournalBytesFloat := float64(s.maxJournalBytes)
+	maxJournalBytesFloat := float64(bdl.maxJournalBytes)
 	freeBytesFloat := float64(freeBytes)
 
 	// Set r to max(J/(J+F), J/L).
@@ -203,12 +203,12 @@ func (s *backpressureDiskLimiter) calculateDelay(
 
 	// We want the delay to be 0 if r <= m and the max delay if r
 	// >= M, so linearly interpolate the delay based on r.
-	m := s.backpressureMinThreshold
-	M := s.backpressureMaxThreshold
+	m := bdl.backpressureMinThreshold
+	M := bdl.backpressureMaxThreshold
 	scale := math.Min(1.0, math.Max(0.0, (r-m)/(M-m)))
 
-	// Set maxDelay to min(s.maxDelay, time until deadline - 1s).
-	maxDelay := s.maxDelay
+	// Set maxDelay to min(bdl.maxDelay, time until deadline - 1s).
+	maxDelay := bdl.maxDelay
 	if deadline, ok := ctx.Deadline(); ok {
 		// Subtract a second to allow for some slack.
 		remainingTime := deadline.Sub(time.Now()) - time.Second
@@ -220,71 +220,71 @@ func (s *backpressureDiskLimiter) calculateDelay(
 	return time.Duration(scale * float64(maxDelay))
 }
 
-func (s *backpressureDiskLimiter) beforeBlockPut(
+func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	ctx context.Context, blockBytes int64) (int64, error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
-		return s.bytesSemaphore.Count(), errors.New(
+		return bdl.bytesSemaphore.Count(), errors.New(
 			"backpressureDiskLimiter.beforeBlockPut called with 0 blockBytes")
 	}
 
 	journalBytes, freeBytes, err := func() (int64, int64, error) {
-		s.bytesLock.Lock()
-		defer s.bytesLock.Unlock()
+		bdl.bytesLock.Lock()
+		defer bdl.bytesLock.Unlock()
 
-		freeBytes, err := s.freeBytesFn()
+		freeBytes, err := bdl.freeBytesFn()
 		if err != nil {
 			return 0, 0, err
 		}
 
-		s.freeBytes = freeBytes
-		s.updateBytesSemaphoreMaxLocked()
-		return s.journalBytes, s.freeBytes, nil
+		bdl.freeBytes = freeBytes
+		bdl.updateBytesSemaphoreMaxLocked()
+		return bdl.journalBytes, bdl.freeBytes, nil
 	}()
 	if err != nil {
-		return s.bytesSemaphore.Count(), err
+		return bdl.bytesSemaphore.Count(), err
 	}
 
-	delay := s.calculateDelay(ctx, journalBytes, freeBytes)
+	delay := bdl.calculateDelay(ctx, journalBytes, freeBytes)
 	if delay > 0 {
-		s.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
+		bdl.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
 			blockBytes, delay.Seconds())
 	}
 	// TODO: Update delay if any variables change (i.e., we
 	// suddenly free up a lot of space).
-	err = s.delayFn(ctx, delay)
+	err = bdl.delayFn(ctx, delay)
 	if err != nil {
-		return s.bytesSemaphore.Count(), err
+		return bdl.bytesSemaphore.Count(), err
 	}
 
-	return s.bytesSemaphore.Acquire(ctx, blockBytes)
+	return bdl.bytesSemaphore.Acquire(ctx, blockBytes)
 }
 
-func (s *backpressureDiskLimiter) afterBlockPut(
+func (bdl *backpressureDiskLimiter) afterBlockPut(
 	ctx context.Context, blockBytes int64, putData bool) {
 	if putData {
-		s.bytesLock.Lock()
-		defer s.bytesLock.Unlock()
-		s.journalBytes += blockBytes
-		s.updateBytesSemaphoreMaxLocked()
+		bdl.bytesLock.Lock()
+		defer bdl.bytesLock.Unlock()
+		bdl.journalBytes += blockBytes
+		bdl.updateBytesSemaphoreMaxLocked()
 	} else {
-		s.bytesSemaphore.Release(blockBytes)
+		bdl.bytesSemaphore.Release(blockBytes)
 
-		s.bytesLock.Lock()
-		defer s.bytesLock.Unlock()
-		s.journalBytes -= blockBytes
-		s.updateBytesSemaphoreMaxLocked()
+		bdl.bytesLock.Lock()
+		defer bdl.bytesLock.Unlock()
+		bdl.journalBytes -= blockBytes
+		bdl.updateBytesSemaphoreMaxLocked()
 	}
 }
 
-func (s *backpressureDiskLimiter) onBlockDelete(
+func (bdl *backpressureDiskLimiter) onBlockDelete(
 	ctx context.Context, blockBytes int64) {
 	if blockBytes > 0 {
-		s.bytesSemaphore.Release(blockBytes)
+		bdl.bytesSemaphore.Release(blockBytes)
 	}
 
-	s.bytesLock.Lock()
-	defer s.bytesLock.Unlock()
-	s.journalBytes -= blockBytes
-	s.updateBytesSemaphoreMaxLocked()
+	bdl.bytesLock.Lock()
+	defer bdl.bytesLock.Unlock()
+	bdl.journalBytes -= blockBytes
+	bdl.updateBytesSemaphoreMaxLocked()
 }
