@@ -157,7 +157,7 @@ func (s backpressureDiskLimiter) onJournalDisable(
 	s.updateBytesSemaphoreMaxLocked()
 }
 
-func (s *backpressureDiskLimiter) getDelay(
+func (s *backpressureDiskLimiter) calculateDelay(
 	ctx context.Context, journalBytes, availBytes int64) time.Duration {
 	// Convert first to avoid overflow.
 	journalBytesFloat := float64(journalBytes)
@@ -192,7 +192,7 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
 		return s.bytesSemaphore.Count(), errors.New(
-			"beforeBlockPut called with 0 blockBytes")
+			"backpressureDiskLimiter.beforeBlockPut called with 0 blockBytes")
 	}
 
 	journalBytes, availBytes, err := func() (int64, int64, error) {
@@ -212,7 +212,7 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 		return s.bytesSemaphore.Count(), err
 	}
 
-	delay := s.getDelay(ctx, journalBytes, availBytes)
+	delay := s.calculateDelay(ctx, journalBytes, availBytes)
 	if delay > 0 {
 		s.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s",
 			blockBytes, delay.Seconds())
@@ -236,6 +236,11 @@ func (s backpressureDiskLimiter) afterBlockPut(
 		s.updateBytesSemaphoreMaxLocked()
 	} else {
 		s.bytesSemaphore.Release(blockBytes)
+
+		s.bytesLock.Lock()
+		defer s.bytesLock.Unlock()
+		s.journalBytes -= blockBytes
+		s.updateBytesSemaphoreMaxLocked()
 	}
 }
 

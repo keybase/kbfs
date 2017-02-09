@@ -44,7 +44,7 @@ func (s semaphoreDiskLimiter) beforeBlockPut(
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
 		return s.s.Count(), errors.New(
-			"beforeBlockPut called with 0 blockBytes")
+			"semaphore.DiskLimiter.beforeBlockPut called with 0 blockBytes")
 	}
 
 	return s.s.Acquire(ctx, blockBytes)
