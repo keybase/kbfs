@@ -62,26 +62,28 @@ func TestBackpressureDiskLimiterStats(t *testing.T) {
 
 	ctx := context.Background()
 
+	// This should change only journalBytes and bytesSemaphoreMax.
 	availBytes := bdl.onJournalEnable(ctx, 10)
-	require.Equal(t, int64(60), availBytes)
+	require.Equal(t, int64(50), availBytes)
 
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(10), journalBytes)
 	require.Equal(t, int64(50), freeBytes)
 	require.Equal(t, int64(60), bytesSemaphoreMax)
-	require.Equal(t, int64(60), bdl.bytesSemaphore.Count())
+	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
+
+	bdl.onJournalDisable(ctx, 9)
+
+	// So should this.
+	journalBytes, freeBytes, bytesSemaphoreMax =
+		bdl.getLockedVarsForTest()
+	require.Equal(t, int64(1), journalBytes)
+	require.Equal(t, int64(50), freeBytes)
+	require.Equal(t, int64(51), bytesSemaphoreMax)
+	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
 
 	/*
-		bdl.onJournalDisable(9)
-
-		journalBytes, freeBytes, bytesSemaphoreMax :=
-			bdl.getLockedVarsForTest()
-		require.Equal(t, int64(1), journalBytes)
-		require.Equal(t, math.MaxInt64, freeBytes)
-		require.Equal(t, int64(101), bytesSemaphoreMax)
-		require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
-
 		fakeFreeBytes = 99
 		availBytes, err := bdl.beforeBlockPut(
 			context.Background(), 8, logger.NewTestLogger(t))
