@@ -16,6 +16,7 @@ import (
 // backpressureDiskLimiter is an implementation of diskLimiter that
 // uses backpressure.
 type backpressureDiskLimiter struct {
+	log                      logger.Logger
 	backpressureMinThreshold int64
 	backpressureMaxThreshold int64
 	byteLimit                int64
@@ -30,6 +31,7 @@ var _ diskLimiter = backpressureDiskLimiter{}
 // backpressureDiskLimiter with the given parameters, and also the
 // given delay function, which is overridden in tests.
 func newBackpressureDiskLimiterWithDelayFunction(
+	log logger.Logger,
 	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64,
 	maxDelay time.Duration,
 	delayFn func(context.Context, time.Duration) error) backpressureDiskLimiter {
@@ -45,7 +47,7 @@ func newBackpressureDiskLimiterWithDelayFunction(
 	s := kbfssync.NewSemaphore()
 	s.Release(byteLimit)
 	return backpressureDiskLimiter{
-		backpressureMinThreshold, backpressureMaxThreshold,
+		log, backpressureMinThreshold, backpressureMaxThreshold,
 		byteLimit, maxDelay, delayFn, s,
 	}
 }
@@ -69,10 +71,11 @@ func defaultDoDelay(ctx context.Context, delay time.Duration) error {
 // newBackpressureDiskLimiter constructs a new backpressureDiskLimiter
 // with the given parameters.
 func newBackpressureDiskLimiter(
+	log logger.Logger,
 	backpressureMinThreshold, backpressureMaxThreshold, byteLimit int64,
 	maxDelay time.Duration) backpressureDiskLimiter {
 	return newBackpressureDiskLimiterWithDelayFunction(
-		backpressureMinThreshold, backpressureMaxThreshold,
+		log, backpressureMinThreshold, backpressureMaxThreshold,
 		byteLimit, maxDelay, defaultDoDelay)
 }
 
