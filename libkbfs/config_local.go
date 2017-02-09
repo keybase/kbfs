@@ -831,7 +831,7 @@ func (c *ConfigLocal) Shutdown(ctx context.Context) error {
 	c.MDServer().Shutdown()
 	c.KeyServer().Shutdown()
 	c.KeybaseService().Shutdown()
-	c.BlockServer().Shutdown()
+	c.BlockServer().Shutdown(ctx)
 	c.Crypto().Shutdown()
 	c.Reporter().Shutdown()
 	err = c.DirtyBlockCache().Shutdown()
