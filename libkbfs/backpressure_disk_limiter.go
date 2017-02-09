@@ -216,7 +216,7 @@ func (s *backpressureDiskLimiter) calculateDelay(
 	return time.Duration(scale * float64(maxDelay))
 }
 
-func (s backpressureDiskLimiter) beforeBlockPut(
+func (s *backpressureDiskLimiter) beforeBlockPut(
 	ctx context.Context, blockBytes int64) (int64, error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
@@ -256,7 +256,7 @@ func (s backpressureDiskLimiter) beforeBlockPut(
 	return s.bytesSemaphore.Acquire(ctx, blockBytes)
 }
 
-func (s backpressureDiskLimiter) afterBlockPut(
+func (s *backpressureDiskLimiter) afterBlockPut(
 	ctx context.Context, blockBytes int64, putData bool) {
 	if putData {
 		s.bytesLock.Lock()
@@ -273,7 +273,7 @@ func (s backpressureDiskLimiter) afterBlockPut(
 	}
 }
 
-func (s backpressureDiskLimiter) onBlockDelete(
+func (s *backpressureDiskLimiter) onBlockDelete(
 	ctx context.Context, blockBytes int64) {
 	if blockBytes > 0 {
 		s.bytesSemaphore.Release(blockBytes)
