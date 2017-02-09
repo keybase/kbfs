@@ -64,16 +64,16 @@ func newBackpressureDiskLimiterWithFunctions(
 	freeBytesFn func() (int64, error)) (
 	*backpressureDiskLimiter, error) {
 	if backpressureMinThreshold < 0.0 {
-		return nil, errors.Errorf("backpressureMinThreshold=%d < 0.0",
+		return nil, errors.Errorf("backpressureMinThreshold=%f < 0.0",
 			backpressureMinThreshold)
 	}
 	if backpressureMaxThreshold < backpressureMinThreshold {
 		return nil, errors.Errorf(
-			"backpressureMaxThreshold=%d < backpressureMinThreshold=%d",
+			"backpressureMaxThreshold=%f < backpressureMinThreshold=%f",
 			backpressureMaxThreshold, backpressureMinThreshold)
 	}
 	if 1.0 < backpressureMaxThreshold {
-		return nil, errors.Errorf("1.0 < backpressureMaxThreshold=%d",
+		return nil, errors.Errorf("1.0 < backpressureMaxThreshold=%f",
 			backpressureMaxThreshold)
 	}
 	freeBytes, err := freeBytesFn()
