@@ -195,6 +195,23 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
 }
 
+func TestBackpressureDiskLimiterCalculateDelay(t *testing.T) {
+	log := logger.NewTestLogger(t)
+	bdl, err := newBackpressureDiskLimiterWithFunctions(
+		log, 0.1, 0.9, 100, 8*time.Second,
+		func(ctx context.Context, delay time.Duration) error {
+			return nil
+		},
+		func() (int64, error) {
+			return math.MaxInt64, nil
+		})
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	delay := bdl.calculateDelay(ctx, 50, 50)
+	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
+}
+
 // TestBackpressureDiskLimiterLargeDiskDelay checks the delays when
 // pretending to have a large disk.
 func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
