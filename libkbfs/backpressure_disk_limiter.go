@@ -36,8 +36,8 @@ type backpressureDiskLimiter struct {
 	backpressureMinThreshold float64
 	// backpressureMaxThreshold is M in the above.
 	backpressureMaxThreshold float64
-	// maxJournalByteUsage is k in the above.
-	maxJournalByteUsage float64
+	// maxJournalByteFrac is k in the above.
+	maxJournalByteFrac float64
 	// maxJournalBytes is L in the above.
 	maxJournalBytes int64
 	maxDelay        time.Duration
@@ -61,7 +61,7 @@ var _ diskLimiter = (*backpressureDiskLimiter)(nil)
 // given delay function, which is overridden in tests.
 func newBackpressureDiskLimiterWithFunctions(
 	log logger.Logger,
-	backpressureMinThreshold, backpressureMaxThreshold, maxJournalByteUsage float64,
+	backpressureMinThreshold, backpressureMaxThreshold, maxJournalByteFrac float64,
 	maxJournalBytes int64, maxDelay time.Duration,
 	delayFn func(context.Context, time.Duration) error,
 	freeBytesFn func() (int64, error)) (
@@ -79,13 +79,13 @@ func newBackpressureDiskLimiterWithFunctions(
 		return nil, errors.Errorf("1.0 < backpressureMaxThreshold=%f",
 			backpressureMaxThreshold)
 	}
-	if maxJournalByteUsage < 0.01 {
-		return nil, errors.Errorf("maxJournalByteUsage=%f < 0.01",
-			maxJournalByteUsage)
+	if maxJournalByteFrac < 0.01 {
+		return nil, errors.Errorf("maxJournalByteFrac=%f < 0.01",
+			maxJournalByteFrac)
 	}
-	if maxJournalByteUsage > 1.0 {
-		return nil, errors.Errorf("maxJournalByteUsage=%f > 1.0",
-			maxJournalByteUsage)
+	if maxJournalByteFrac > 1.0 {
+		return nil, errors.Errorf("maxJournalByteFrac=%f > 1.0",
+			maxJournalByteFrac)
 	}
 	freeBytes, err := freeBytesFn()
 	if err != nil {
@@ -93,7 +93,7 @@ func newBackpressureDiskLimiterWithFunctions(
 	}
 	bdl := &backpressureDiskLimiter{
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		maxJournalByteUsage, maxJournalBytes, maxDelay,
+		maxJournalByteFrac, maxJournalBytes, maxDelay,
 		delayFn, freeBytesFn, sync.Mutex{}, 0,
 		freeBytes, 0, kbfssync.NewSemaphore(),
 	}
@@ -140,12 +140,12 @@ func defaultGetFreeBytes(path string) (int64, error) {
 // with the given parameters.
 func newBackpressureDiskLimiter(
 	log logger.Logger,
-	backpressureMinThreshold, backpressureMaxThreshold, maxJournalByteUsage float64,
+	backpressureMinThreshold, backpressureMaxThreshold, maxJournalByteFrac float64,
 	maxJournalBytes int64, maxDelay time.Duration,
 	journalPath string) (*backpressureDiskLimiter, error) {
 	return newBackpressureDiskLimiterWithFunctions(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		maxJournalByteUsage, maxJournalBytes, maxDelay,
+		maxJournalByteFrac, maxJournalBytes, maxDelay,
 		defaultDoDelay, func() (int64, error) {
 			return defaultGetFreeBytes(journalPath)
 		})
@@ -163,7 +163,7 @@ func (bdl *backpressureDiskLimiter) getScaledFreeBytesWithoutJournalLocked() flo
 	// overflow.
 	journalBytesFloat := float64(bdl.journalBytes)
 	freeBytesFloat := float64(bdl.freeBytes)
-	return bdl.maxJournalByteUsage * (journalBytesFloat + freeBytesFloat)
+	return bdl.maxJournalByteFrac * (journalBytesFloat + freeBytesFloat)
 }
 
 // updateBytesSemaphoreMaxLocked must be called (under s.bytesLock)
