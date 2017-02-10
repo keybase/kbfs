@@ -160,22 +160,18 @@ func (bdl *backpressureDiskLimiter) getLockedVarsForTest() (
 
 func (bdl *backpressureDiskLimiter) getScaledFreeBytesWithoutJournalLocked() float64 {
 	// Return k(K+F), converting to float64 first to avoid
-	// overflow.
+	// overflow, although losing some precision in the process.
 	journalBytesFloat := float64(bdl.journalBytes)
 	freeBytesFloat := float64(bdl.freeBytes)
-	return bdl.maxJournalByteFrac * (journalBytesFloat + freeBytesFloat)
+	dynMax := bdl.maxJournalByteFrac * (journalBytesFloat + freeBytesFloat)
+	return math.Min(dynMax, float64(bdl.maxJournalBytes))
 }
 
 // updateBytesSemaphoreMaxLocked must be called (under s.bytesLock)
 // whenever s.journalBytes or s.freeBytes changes.
 func (bdl *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
 	// Set newMax to min(k(J+F), L).
-	scaledFreeBytesWithoutJournal := bdl.getScaledFreeBytesWithoutJournalLocked()
-	newMax := bdl.maxJournalBytes
-	if scaledFreeBytesWithoutJournal < float64(newMax) {
-		newMax = int64(scaledFreeBytesWithoutJournal)
-	}
-
+	newMax := int64(bdl.getScaledFreeBytesWithoutJournalLocked())
 	delta := newMax - bdl.bytesSemaphoreMax
 	// These operations are adjusting the *maximum* value of
 	// bdl.bytesSemaphore.
@@ -214,11 +210,8 @@ func (bdl *backpressureDiskLimiter) calculateDelay(
 	ctx context.Context, journalBytes, freeBytes int64,
 	now time.Time) time.Duration {
 	journalBytesFloat := float64(journalBytes)
-	maxJournalBytesFloat := float64(bdl.maxJournalBytes)
 	// Set r to max(J/(k(J+F)), J/L).
-	r := journalBytesFloat / math.Min(
-		bdl.getScaledFreeBytesWithoutJournalLocked(),
-		maxJournalBytesFloat)
+	r := journalBytesFloat / bdl.getScaledFreeBytesWithoutJournalLocked()
 
 	// We want the delay to be 0 if r <= m and the max delay if r
 	// >= M, so linearly interpolate the delay based on r.
