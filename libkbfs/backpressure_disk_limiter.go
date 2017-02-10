@@ -34,6 +34,8 @@ import (
 // which is equivalent to
 //
 //   m <= J/min(k(J+F), L) <= M.
+//
+// TODO: Also do limiting based on file counts.
 type backpressureDiskLimiter struct {
 	log logger.Logger
 	// backpressureMinThreshold is m in the above.

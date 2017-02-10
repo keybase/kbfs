@@ -16,6 +16,8 @@ const defaultAvailableFiles = math.MaxInt64
 
 // semaphoreDiskLimiter is an implementation of diskLimiter that uses
 // a semaphore.
+//
+// TODO: Also do limiting based on file counts.
 type semaphoreDiskLimiter struct {
 	s *kbfssync.Semaphore
 }
