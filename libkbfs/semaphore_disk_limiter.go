@@ -19,7 +19,8 @@ const defaultAvailableFiles = math.MaxInt64
 //
 // TODO: Also do limiting based on file counts.
 type semaphoreDiskLimiter struct {
-	bytesSemaphore *kbfssync.Semaphore
+	maxJournalBytes int64
+	bytesSemaphore  *kbfssync.Semaphore
 }
 
 var _ diskLimiter = semaphoreDiskLimiter{}
@@ -27,7 +28,7 @@ var _ diskLimiter = semaphoreDiskLimiter{}
 func newSemaphoreDiskLimiter(maxJournalBytes int64) semaphoreDiskLimiter {
 	bytesSemaphore := kbfssync.NewSemaphore()
 	bytesSemaphore.Release(maxJournalBytes)
-	return semaphoreDiskLimiter{bytesSemaphore}
+	return semaphoreDiskLimiter{maxJournalBytes, bytesSemaphore}
 }
 
 func (sdl semaphoreDiskLimiter) onJournalEnable(
@@ -74,6 +75,14 @@ func (sdl semaphoreDiskLimiter) onBlockDelete(
 	}
 }
 
+type semaphoreDiskLimiterStatus struct {
+	MaxJournalBytes     int64
+	BytesSemaphoreCount int64
+}
+
 func (sdl semaphoreDiskLimiter) getStatus() interface{} {
-	return nil
+	return semaphoreDiskLimiterStatus{
+		MaxJournalBytes:     sdl.maxJournalBytes,
+		BytesSemaphoreCount: sdl.bytesSemaphore.Count(),
+	}
 }
