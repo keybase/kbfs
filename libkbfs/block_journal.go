@@ -213,14 +213,14 @@ type aggregateInfo struct {
 	// StoredBytes counts the number of bytes of block data stored
 	// on disk.
 	StoredBytes int64
+	// StoredFiles counts an upper bound for the number of files
+	// of block data stored on disk.
+	StoredFiles int64
 	// UnflushedBytes counts the number of bytes of block data
 	// that is intended to be flushed to the server, but hasn't
 	// been yet. This should be always less than or equal to
 	// StoredBytes.
 	UnflushedBytes int64
-	// StoredFiles counts an upper bound for the number of files
-	// of block data stored on disk.
-	StoredFiles int64
 
 	codec.UnknownFieldSetHandler
 }
@@ -230,10 +230,10 @@ func aggregateInfoPath(dir string) string {
 }
 
 func (j *blockJournal) changeCounts(
-	deltaStoredBytes, deltaUnflushedBytes, deltaStoredFiles int64) error {
+	deltaStoredBytes, deltaStoredFiles, deltaUnflushedBytes int64) error {
 	j.aggregateInfo.StoredBytes += deltaStoredBytes
-	j.aggregateInfo.UnflushedBytes += deltaUnflushedBytes
 	j.aggregateInfo.StoredFiles += deltaStoredFiles
+	j.aggregateInfo.UnflushedBytes += deltaUnflushedBytes
 	return kbfscodec.SerializeToFile(
 		j.codec, j.aggregateInfo, aggregateInfoPath(j.dir))
 }
@@ -245,14 +245,14 @@ func (j *blockJournal) accumulateBlock(bytes, files int64) error {
 	if files < 0 {
 		panic("files unexpectedly negative")
 	}
-	return j.changeCounts(bytes, bytes, files)
+	return j.changeCounts(bytes, files, bytes)
 }
 
 func (j *blockJournal) flushBlock(bytes int64) error {
 	if bytes < 0 {
 		panic("bytes unexpectedly negative")
 	}
-	return j.changeCounts(0, -bytes, 0)
+	return j.changeCounts(0, 0, -bytes)
 }
 
 func (j *blockJournal) unstoreBlock(bytes, files int64) error {
@@ -262,7 +262,7 @@ func (j *blockJournal) unstoreBlock(bytes, files int64) error {
 	if files < 0 {
 		panic("files unexpectedly negative")
 	}
-	return j.changeCounts(-bytes, 0, -files)
+	return j.changeCounts(-bytes, -files, 0)
 }
 
 // The functions below are for reading and writing journal entries.
@@ -762,7 +762,7 @@ func flushBlockEntries(ctx context.Context, log logger.Logger,
 
 func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	ordinal journalOrdinal, entry blockJournalEntry) (
-	removedBytes, flushedBytes, removedFiles int64, err error) {
+	removedBytes, removedFiles, flushedBytes int64, err error) {
 	earliestOrdinal, err := j.j.readEarliestOrdinal()
 	if err != nil {
 		return 0, 0, 0, err
@@ -826,7 +826,7 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		}
 	}
 
-	return removedBytes, flushedBytes, removedFiles, nil
+	return removedBytes, removedFiles, flushedBytes, nil
 }
 
 func (j *blockJournal) removeFlushedEntries(ctx context.Context,
@@ -834,7 +834,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 	removedBytes, removedFiles int64, err error) {
 	// Remove them all!
 	for i, entry := range entries.all {
-		entryRemovedBytes, flushedBytes, entryRemovedFiles, err :=
+		entryRemovedBytes, entryRemovedFiles, flushedBytes, err :=
 			j.removeFlushedEntry(
 				ctx, entries.first+journalOrdinal(i), entry)
 		if err != nil {
