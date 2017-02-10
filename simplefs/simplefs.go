@@ -15,6 +15,9 @@ import (
 // SimpleFS - implement keybase1.SimpleFS
 type SimpleFS struct{}
 
+// make sure the interface is implemented
+var _ keybase1.SimpleFSInterface = (*SimpleFS)(nil)
+
 // SimpleFSList - Begin list of items in directory at path
 // Retrieve results with readList()
 // Can be a single file to get flags/status
