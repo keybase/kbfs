@@ -320,6 +320,11 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		return nil
 	}
 
+	// Set up parameters so that bytesSemaphoreMax always has
+	// value 80 when called in beforeBlockPut, and every block put
+	// (of size 0.1 * 80 = 8) beyond the min threshold leads to an
+	// increase in timeout of 1 second up to the max.
+
 	const blockSize = 8
 	const diskSize = 320
 
@@ -355,6 +360,16 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 
 	var bytesPut int
 
+	checkCountersAfterBeforeBlockPut := func() {
+		journalBytes, freeBytes, bytesSemaphoreMax =
+			bdl.getLockedVarsForTest()
+		require.Equal(t, int64(bytesPut), journalBytes)
+		require.Equal(t, int64(diskSize-journalBytes), freeBytes)
+		require.Equal(t, int64(80), bytesSemaphoreMax)
+		require.Equal(t, int64(80-bytesPut-blockSize),
+			bdl.bytesSemaphore.Count())
+	}
+
 	checkCounters := func(before bool) {
 		journalBytes, freeBytes, bytesSemaphoreMax =
 			bdl.getLockedVarsForTest()
@@ -382,7 +397,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		_, err = bdl.beforeBlockPut(ctx, blockSize)
 		require.NoError(t, err)
 		require.Equal(t, 0*time.Second, lastDelay)
-		checkCounters(true)
+		checkCountersAfterBeforeBlockPut()
 
 		bdl.afterBlockPut(ctx, blockSize, true)
 		bytesPut += blockSize
@@ -397,7 +412,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		require.NoError(t, err)
 		require.InEpsilon(t, float64(i), lastDelay.Seconds(),
 			0.01, "i=%d", i)
-		checkCounters(true)
+		checkCountersAfterBeforeBlockPut()
 
 		bdl.afterBlockPut(ctx, blockSize, true)
 		bytesPut += blockSize
