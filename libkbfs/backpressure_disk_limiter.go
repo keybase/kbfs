@@ -29,7 +29,11 @@ import (
 // <= m <= M <= 1 such that we apply proportional backpressure (with a
 // given maximum delay) when
 //
-//   m <= max(J/(k(J+F)), J/L) <= M.
+//   m <= max(J/(k(J+F)), J/L) <= M,
+//
+// which is equivalent to
+//
+//   m <= J/min(k(J+F), L) <= M.
 type backpressureDiskLimiter struct {
 	log logger.Logger
 	// backpressureMinThreshold is m in the above.
@@ -158,20 +162,23 @@ func (bdl *backpressureDiskLimiter) getLockedVarsForTest() (
 	return bdl.journalBytes, bdl.freeBytes, bdl.bytesSemaphoreMax
 }
 
-func (bdl *backpressureDiskLimiter) getScaledFreeBytesWithoutJournalLocked() float64 {
-	// Return k(K+F), converting to float64 first to avoid
+// getMaxJournalBytes returns the byte limit for the journal, taking
+// into account the amount of free space left. This is min(k(J+F), L).
+func (bdl *backpressureDiskLimiter) getMaxJournalBytes(
+	journalBytes, freeBytes int64) float64 {
+	// Calculate k(J+F), converting to float64 first to avoid
 	// overflow, although losing some precision in the process.
-	journalBytesFloat := float64(bdl.journalBytes)
-	freeBytesFloat := float64(bdl.freeBytes)
-	dynMax := bdl.maxJournalByteFrac * (journalBytesFloat + freeBytesFloat)
-	return math.Min(dynMax, float64(bdl.maxJournalBytes))
+	journalBytesFloat := float64(journalBytes)
+	freeBytesFloat := float64(freeBytes)
+	maxJournalBytes :=
+		bdl.maxJournalByteFrac * (journalBytesFloat + freeBytesFloat)
+	return math.Min(maxJournalBytes, float64(bdl.maxJournalBytes))
 }
 
 // updateBytesSemaphoreMaxLocked must be called (under s.bytesLock)
 // whenever s.journalBytes or s.freeBytes changes.
 func (bdl *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
-	// Set newMax to min(k(J+F), L).
-	newMax := int64(bdl.getScaledFreeBytesWithoutJournalLocked())
+	newMax := int64(bdl.getMaxJournalBytes(bdl.journalBytes, bdl.freeBytes))
 	delta := newMax - bdl.bytesSemaphoreMax
 	// These operations are adjusting the *maximum* value of
 	// bdl.bytesSemaphore.
@@ -210,8 +217,7 @@ func (bdl *backpressureDiskLimiter) calculateDelay(
 	ctx context.Context, journalBytes, freeBytes int64,
 	now time.Time) time.Duration {
 	journalBytesFloat := float64(journalBytes)
-	// Set r to max(J/(k(J+F)), J/L).
-	r := journalBytesFloat / bdl.getScaledFreeBytesWithoutJournalLocked()
+	r := journalBytesFloat / bdl.getMaxJournalBytes(journalBytes, freeBytes)
 
 	// We want the delay to be 0 if r <= m and the max delay if r
 	// >= M, so linearly interpolate the delay based on r.
