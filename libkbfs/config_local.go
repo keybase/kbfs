@@ -910,23 +910,23 @@ func (c *ConfigLocal) EnableJournaling(
 		return err
 	}
 
-	// Set the absolute journal disk limit to 50 GiB for now.
+	// Set the absolute journal byte limit to 50 GiB for now.
 	//
 	// TODO: Also keep track of and limit the inode count.
-	const journalDiskLimit int64 = 50 * 1024 * 1024 * 1024
+	const journalByteLimit int64 = 50 * 1024 * 1024 * 1024
 	const backpressureMinThreshold = 0.5
 	const backpressureMaxThreshold = 0.95
 	// Cap journal usage to a quarter of the free space.
 	const maxJournalByteFrac = 0.25
 	bdl, err := newBackpressureDiskLimiter(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		maxJournalByteFrac, journalDiskLimit,
+		maxJournalByteFrac, journalByteLimit,
 		defaultDiskLimitMaxDelay, journalRoot)
 	if err != nil {
 		return err
 	}
 
-	log.Debug("Setting journal byte limit to %v", journalDiskLimit)
+	log.Debug("Setting journal byte limit to %v", journalByteLimit)
 	jServer = makeJournalServer(c, log, journalRoot, c.BlockCache(),
 		c.DirtyBlockCache(), c.BlockServer(), c.MDOps(), branchListener,
 		flushListener, bdl)
