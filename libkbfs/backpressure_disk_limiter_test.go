@@ -46,7 +46,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 		return nil
 	}
 
-	var fakeFreeBytes int64 = 50
+	var fakeFreeBytes int64 = 200
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
 		log, 0.1, 0.9, 0.25, 100, 8*time.Second, delayFn,
@@ -55,67 +55,75 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 		})
 	require.NoError(t, err)
 
+	// bytesSemaphoreMax = min(k(J+F), L) = min(0.25(0+200), 100) = 50.
 	journalBytes, freeBytes, bytesSemaphoreMax :=
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(0), journalBytes)
-	require.Equal(t, int64(50), freeBytes)
+	require.Equal(t, int64(200), freeBytes)
 	require.Equal(t, int64(50), bytesSemaphoreMax)
 	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
 
 	ctx := context.Background()
 
-	// This should change only journalBytes and bytesSemaphoreMax.
+	// Increase J by 10, so that increases bSM by 0.25*10 = 2.5, so
+	// bSM is now 52.
+
 	availBytes := bdl.onJournalEnable(ctx, 10)
-	require.Equal(t, int64(50), availBytes)
+	require.Equal(t, int64(42), availBytes)
 
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(10), journalBytes)
-	require.Equal(t, int64(50), freeBytes)
-	require.Equal(t, int64(60), bytesSemaphoreMax)
-	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
+	require.Equal(t, int64(200), freeBytes)
+	require.Equal(t, int64(52), bytesSemaphoreMax)
+	require.Equal(t, int64(42), bdl.bytesSemaphore.Count())
+
+	// Decrease J by 9, so that decreases bSM by 0.25*9 = 2.25, so
+	// bSM is back to 50.
 
 	bdl.onJournalDisable(ctx, 9)
 
-	// So should this.
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(1), journalBytes)
-	require.Equal(t, int64(50), freeBytes)
-	require.Equal(t, int64(51), bytesSemaphoreMax)
-	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
+	require.Equal(t, int64(200), freeBytes)
+	require.Equal(t, int64(50), bytesSemaphoreMax)
+	require.Equal(t, int64(49), bdl.bytesSemaphore.Count())
 
-	// This should max out bytesSemaphoreMax and cause
-	// bytesSemaphore to go negative.
-	availBytes = bdl.onJournalEnable(ctx, 110)
-	require.Equal(t, int64(-11), availBytes)
+	// Increase J by 440, so that increases bSM by 0.25*110 = 110,
+	// so bSM maxes out at 100, and bytesSemaphore should do negative.
+
+	availBytes = bdl.onJournalEnable(ctx, 440)
+	require.Equal(t, int64(-341), availBytes)
 
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
-	require.Equal(t, int64(111), journalBytes)
-	require.Equal(t, int64(50), freeBytes)
+	require.Equal(t, int64(441), journalBytes)
+	require.Equal(t, int64(200), freeBytes)
 	require.Equal(t, int64(100), bytesSemaphoreMax)
-	require.Equal(t, int64(-11), bdl.bytesSemaphore.Count())
+	require.Equal(t, int64(-341), bdl.bytesSemaphore.Count())
 
-	bdl.onJournalDisable(ctx, 110)
+	// Now revert that increase.
+
+	bdl.onJournalDisable(ctx, 440)
 
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(1), journalBytes)
-	require.Equal(t, int64(50), freeBytes)
-	require.Equal(t, int64(51), bytesSemaphoreMax)
-	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
+	require.Equal(t, int64(200), freeBytes)
+	require.Equal(t, int64(50), bytesSemaphoreMax)
+	require.Equal(t, int64(49), bdl.bytesSemaphore.Count())
 
 	// This should be a no-op.
 	availBytes = bdl.onJournalEnable(ctx, 0)
-	require.Equal(t, int64(50), availBytes)
+	require.Equal(t, int64(49), availBytes)
 
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(1), journalBytes)
-	require.Equal(t, int64(50), freeBytes)
-	require.Equal(t, int64(51), bytesSemaphoreMax)
-	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
+	require.Equal(t, int64(200), freeBytes)
+	require.Equal(t, int64(50), bytesSemaphoreMax)
+	require.Equal(t, int64(49), bdl.bytesSemaphore.Count())
 
 	// So should this.
 	bdl.onJournalDisable(ctx, 0)
@@ -123,13 +131,13 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(1), journalBytes)
-	require.Equal(t, int64(50), freeBytes)
-	require.Equal(t, int64(51), bytesSemaphoreMax)
-	require.Equal(t, int64(50), bdl.bytesSemaphore.Count())
+	require.Equal(t, int64(200), freeBytes)
+	require.Equal(t, int64(50), bytesSemaphoreMax)
+	require.Equal(t, int64(49), bdl.bytesSemaphore.Count())
 
 	// Add more free bytes and put a block successfully.
 
-	fakeFreeBytes = 100
+	fakeFreeBytes = 400
 
 	availBytes, err = bdl.beforeBlockPut(context.Background(), 10)
 	require.NoError(t, err)
@@ -138,7 +146,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(1), journalBytes)
-	require.Equal(t, int64(100), freeBytes)
+	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), bytesSemaphoreMax)
 	require.Equal(t, int64(89), bdl.bytesSemaphore.Count())
 
@@ -147,7 +155,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(11), journalBytes)
-	require.Equal(t, int64(100), freeBytes)
+	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), bytesSemaphoreMax)
 	require.Equal(t, int64(89), bdl.bytesSemaphore.Count())
 
@@ -160,7 +168,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(11), journalBytes)
-	require.Equal(t, int64(100), freeBytes)
+	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), bytesSemaphoreMax)
 	require.Equal(t, int64(80), bdl.bytesSemaphore.Count())
 
@@ -169,7 +177,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(11), journalBytes)
-	require.Equal(t, int64(100), freeBytes)
+	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), bytesSemaphoreMax)
 	require.Equal(t, int64(89), bdl.bytesSemaphore.Count())
 
@@ -180,7 +188,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(0), journalBytes)
-	require.Equal(t, int64(100), freeBytes)
+	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), bytesSemaphoreMax)
 	require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
 
@@ -190,7 +198,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(0), journalBytes)
-	require.Equal(t, int64(100), freeBytes)
+	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), bytesSemaphoreMax)
 	require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
 }

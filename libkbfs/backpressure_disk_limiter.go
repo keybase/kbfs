@@ -79,6 +79,14 @@ func newBackpressureDiskLimiterWithFunctions(
 		return nil, errors.Errorf("1.0 < backpressureMaxThreshold=%f",
 			backpressureMaxThreshold)
 	}
+	if maxJournalByteUsage < 0.01 {
+		return nil, errors.Errorf("maxJournalByteUsage=%f < 0.01",
+			maxJournalByteUsage)
+	}
+	if maxJournalByteUsage > 1.0 {
+		return nil, errors.Errorf("maxJournalByteUsage=%f > 1.0",
+			maxJournalByteUsage)
+	}
 	freeBytes, err := freeBytesFn()
 	if err != nil {
 		return nil, err
@@ -150,15 +158,22 @@ func (bdl *backpressureDiskLimiter) getLockedVarsForTest() (
 	return bdl.journalBytes, bdl.freeBytes, bdl.bytesSemaphoreMax
 }
 
+func (bdl *backpressureDiskLimiter) getScaledFreeBytesWithoutJournalLocked() float64 {
+	// Return k(K+F), converting to float64 first to avoid
+	// overflow.
+	journalBytesFloat := float64(bdl.journalBytes)
+	freeBytesFloat := float64(bdl.freeBytes)
+	return bdl.maxJournalByteUsage * (journalBytesFloat + freeBytesFloat)
+}
+
 // updateBytesSemaphoreMaxLocked must be called (under s.bytesLock)
 // whenever s.journalBytes or s.freeBytes changes.
 func (bdl *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
-	// Set newMax to min(k(J+F), L), carefully avoiding overflow.
-	freeBytesWithoutJournal :=
-		uint64(bdl.journalBytes) + uint64(bdl.freeBytes)
+	// Set newMax to min(k(J+F), L).
+	scaledFreeBytesWithoutJournal := bdl.getScaledFreeBytesWithoutJournalLocked()
 	newMax := bdl.maxJournalBytes
-	if freeBytesWithoutJournal < uint64(newMax) {
-		newMax = int64(freeBytesWithoutJournal)
+	if scaledFreeBytesWithoutJournal < float64(newMax) {
+		newMax = int64(scaledFreeBytesWithoutJournal)
 	}
 
 	delta := newMax - bdl.bytesSemaphoreMax
@@ -198,13 +213,11 @@ func (bdl *backpressureDiskLimiter) onJournalDisable(
 func (bdl *backpressureDiskLimiter) calculateDelay(
 	ctx context.Context, journalBytes, freeBytes int64,
 	now time.Time) time.Duration {
-	// Convert first to avoid overflow.
 	journalBytesFloat := float64(journalBytes)
 	maxJournalBytesFloat := float64(bdl.maxJournalBytes)
-	freeBytesFloat := float64(freeBytes)
-
-	// Set r to max(J/(J+F), J/L).
-	r := math.Max(journalBytesFloat/(journalBytesFloat+freeBytesFloat),
+	// Set r to max(J/(k(J+F)), J/L).
+	r := math.Max(
+		journalBytesFloat/bdl.getScaledFreeBytesWithoutJournalLocked(),
 		journalBytesFloat/maxJournalBytesFloat)
 
 	// We want the delay to be 0 if r <= m and the max delay if r
