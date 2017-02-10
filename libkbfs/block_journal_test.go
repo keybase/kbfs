@@ -126,8 +126,9 @@ func putBlockData(
 	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
-	err = j.putData(ctx, bID, bCtx, data, serverHalf)
+	putData, err := j.putData(ctx, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
+	require.True(t, putData)
 
 	require.Equal(t, oldLength+1, getBlockJournalLength(t, j))
 
@@ -207,15 +208,17 @@ func TestBlockJournalDuplicatePut(t *testing.T) {
 	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 
-	err = j.putData(ctx, bID, bCtx, data, serverHalf)
+	putData, err := j.putData(ctx, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
+	require.True(t, putData)
 
 	require.Equal(t, int64(len(data)), j.getStoredBytes())
 	require.Equal(t, int64(len(data)), j.getUnflushedBytes())
 
 	// Put a second time.
-	err = j.putData(ctx, bID, bCtx, data, serverHalf)
+	putData, err = j.putData(ctx, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
+	require.False(t, putData)
 
 	require.Equal(t, oldLength+2, getBlockJournalLength(t, j))
 
@@ -687,7 +690,7 @@ func TestBlockJournalFlushMDRevMarkerForPendingLocalSquash(t *testing.T) {
 	err = j.markMDRevision(ctx, rev, false)
 	require.NoError(t, err)
 
-	err = j.ignoreBlocksAndMDRevMarkers(ctx, []kbfsblock.ID{id2, id3})
+	err = j.ignoreBlocksAndMDRevMarkers(ctx, []kbfsblock.ID{id2, id3}, rev)
 	require.NoError(t, err)
 
 	blockServer := NewBlockServerMemory(log)
@@ -731,12 +734,19 @@ func TestBlockJournalIgnoreBlocks(t *testing.T) {
 	// Put a few blocks
 	data1 := []byte{1, 2, 3}
 	bID1, _, _ := putBlockData(ctx, t, j, data1)
+
+	// Put a revision marker
+	rev := MetadataRevision(9)
+	firstRev := rev
+	err := j.markMDRevision(ctx, rev, false)
+	require.NoError(t, err)
+
 	data2 := []byte{4, 5, 6, 7}
 	bID2, _, _ := putBlockData(ctx, t, j, data2)
 
 	// Put a revision marker
-	rev := MetadataRevision(10)
-	err := j.markMDRevision(ctx, rev, false)
+	rev = MetadataRevision(10)
+	err = j.markMDRevision(ctx, rev, false)
 	require.NoError(t, err)
 
 	data3 := []byte{8, 9, 10, 11, 12}
@@ -754,7 +764,8 @@ func TestBlockJournalIgnoreBlocks(t *testing.T) {
 	err = j.saveBlocksUntilNextMDFlush()
 	require.NoError(t, err)
 
-	err = j.ignoreBlocksAndMDRevMarkers(ctx, []kbfsblock.ID{bID2, bID3})
+	err = j.ignoreBlocksAndMDRevMarkers(
+		ctx, []kbfsblock.ID{bID2, bID3}, firstRev)
 	require.NoError(t, err)
 
 	blockServer := NewBlockServerMemory(log)
@@ -769,10 +780,10 @@ func TestBlockJournalIgnoreBlocks(t *testing.T) {
 		maxJournalBlockFlushBatchSize)
 	require.NoError(t, err)
 	require.Equal(t, MetadataRevisionUninitialized, gotRev)
-	require.Equal(t, 6, entries.length())
+	require.Equal(t, 7, entries.length())
 	require.Len(t, entries.puts.blockStates, 2)
 	require.Len(t, entries.adds.blockStates, 0)
-	require.Len(t, entries.other, 4)
+	require.Len(t, entries.other, 5)
 	require.Equal(t, bID1, entries.puts.blockStates[0].blockPtr.ID)
 	require.Equal(t, bID4, entries.puts.blockStates[1].blockPtr.ID)
 	err = flushBlockEntries(ctx, j.log, blockServer,
@@ -1073,7 +1084,8 @@ func TestBlockJournalUnflushedBytesIgnore(t *testing.T) {
 
 	requireSize(len(data1)+len(data2), len(data1)+len(data2))
 
-	err := j.ignoreBlocksAndMDRevMarkers(ctx, []kbfsblock.ID{bID1})
+	err := j.ignoreBlocksAndMDRevMarkers(
+		ctx, []kbfsblock.ID{bID1}, MetadataRevision(0))
 	require.NoError(t, err)
 
 	requireSize(len(data1)+len(data2), len(data2))

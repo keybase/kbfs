@@ -6,6 +6,8 @@ package libkbfs
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -98,7 +100,33 @@ func (j diskJournal) readOrdinal(path string) (journalOrdinal, error) {
 
 func (j diskJournal) writeOrdinal(
 	path string, o journalOrdinal) error {
-	return ioutil.WriteFile(path, []byte(o.String()), 0600)
+	// Don't use ioutil.WriteFile because it truncates the file first,
+	// and if there's a crash it will leave the journal in an unknown
+	// state.  TODO: it's technically possible a partial write could
+	// lead to corrupted ordinal.  If we ever get rid of the block
+	// journal (which would greatly reduce the number of times this is
+	// called) it might make sense to do an atomic rename here
+	// instead.
+	f, err := ioutil.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		closeErr := f.Close()
+		if err == nil {
+			err = errors.WithStack(closeErr)
+		}
+	}()
+	// Overwrite whatever data is there.  This works as long as the
+	// ordinals are a constant size.
+	s := o.String()
+	n, err := f.WriteString(s)
+	if err != nil {
+		return errors.WithStack(err)
+	} else if n < len(s) {
+		return errors.WithStack(io.ErrShortWrite)
+	}
+	return nil
 }
 
 func (j diskJournal) readEarliestOrdinal() (

@@ -317,6 +317,11 @@ type KBFSOps interface {
 	// ClearPrivateFolderMD clears any cached private folder metadata,
 	// e.g. on a logout.
 	ClearPrivateFolderMD(ctx context.Context)
+	// ForceFastForward forwards the nodes of all folders that have
+	// been previously cleared with `ClearPrivateFolderMD` to their
+	// newest version.  It works asynchronously, so no error is
+	// returned.
+	ForceFastForward(ctx context.Context)
 }
 
 // KeybaseService is an interface for communicating with the keybase
@@ -1304,7 +1309,7 @@ type BlockServer interface {
 	IsUnflushed(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID) (bool, error)
 
 	// Shutdown is called to shutdown a BlockServer connection.
-	Shutdown()
+	Shutdown(ctx context.Context)
 
 	// GetUserQuotaInfo returns the quota for the user.
 	GetUserQuotaInfo(ctx context.Context) (info *kbfsblock.UserQuotaInfo, err error)

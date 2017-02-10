@@ -781,6 +781,14 @@ func (_mr *_MockKBFSOpsRecorder) ClearPrivateFolderMD(arg0 interface{}) *gomock.
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ClearPrivateFolderMD", arg0)
 }
 
+func (_m *MockKBFSOps) ForceFastForward(ctx context.Context) {
+	_m.ctrl.Call(_m, "ForceFastForward", ctx)
+}
+
+func (_mr *_MockKBFSOpsRecorder) ForceFastForward(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ForceFastForward", arg0)
+}
+
 // Mock of KeybaseService interface
 type MockKeybaseService struct {
 	ctrl     *gomock.Controller
@@ -3593,12 +3601,12 @@ func (_mr *_MockBlockServerRecorder) IsUnflushed(arg0, arg1, arg2 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsUnflushed", arg0, arg1, arg2)
 }
 
-func (_m *MockBlockServer) Shutdown() {
-	_m.ctrl.Call(_m, "Shutdown")
+func (_m *MockBlockServer) Shutdown(ctx context.Context) {
+	_m.ctrl.Call(_m, "Shutdown", ctx)
 }
 
-func (_mr *_MockBlockServerRecorder) Shutdown() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
+func (_mr *_MockBlockServerRecorder) Shutdown(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown", arg0)
 }
 
 func (_m *MockBlockServer) GetUserQuotaInfo(ctx context.Context) (*kbfsblock.UserQuotaInfo, error) {
@@ -3705,12 +3713,12 @@ func (_mr *_MockblockServerLocalRecorder) IsUnflushed(arg0, arg1, arg2 interface
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsUnflushed", arg0, arg1, arg2)
 }
 
-func (_m *MockblockServerLocal) Shutdown() {
-	_m.ctrl.Call(_m, "Shutdown")
+func (_m *MockblockServerLocal) Shutdown(ctx context.Context) {
+	_m.ctrl.Call(_m, "Shutdown", ctx)
 }
 
-func (_mr *_MockblockServerLocalRecorder) Shutdown() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
+func (_mr *_MockblockServerLocalRecorder) Shutdown(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown", arg0)
 }
 
 func (_m *MockblockServerLocal) GetUserQuotaInfo(ctx context.Context) (*kbfsblock.UserQuotaInfo, error) {

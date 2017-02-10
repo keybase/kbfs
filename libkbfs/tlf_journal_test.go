@@ -227,7 +227,7 @@ func setupTLFJournalTest(
 	config = &testTLFJournalConfig{
 		t, log, tlf.FakeID(1, false), bsplitter, codec, crypto,
 		nil, nil, NewMDCacheStandard(10), ver,
-		NewReporterSimple(newTestClockNow(), 10), uid, verifyingKey, ekg, nil, mdserver, defaultDiskLimitTimeout,
+		NewReporterSimple(newTestClockNow(), 10), uid, verifyingKey, ekg, nil, mdserver, defaultDiskLimitMaxDelay + time.Second,
 	}
 
 	ctx, cancel = context.WithTimeout(
@@ -293,7 +293,7 @@ func teardownTLFJournalTest(
 	delegate testBWDelegate) {
 	// Shutdown first so we don't get the Done() signal (from the
 	// cancel() call) spuriously.
-	tlfJournal.shutdown()
+	tlfJournal.shutdown(ctx)
 	select {
 	case <-delegate.shutdownCh:
 	case <-ctx.Done():
@@ -309,7 +309,7 @@ func teardownTLFJournalTest(
 	}
 
 	config.mdserver.Shutdown()
-	tlfJournal.delegateBlockServer.Shutdown()
+	tlfJournal.delegateBlockServer.Shutdown(ctx)
 
 	err := ioutil.RemoveAll(tempdir)
 	assert.NoError(config.t, err)
@@ -480,7 +480,7 @@ func testTLFJournalBlockOpDiskLimit(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64 - 6)
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64-6)
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
@@ -509,13 +509,36 @@ func testTLFJournalBlockOpDiskLimit(t *testing.T, ver MetadataVer) {
 	}
 }
 
+func testTLFJournalBlockOpDiskLimitDuplicate(t *testing.T, ver MetadataVer) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64-8)
+
+	data := []byte{1, 2, 3, 4}
+	id, bCtx, serverHalf := config.makeBlock(data)
+	err := tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
+	require.NoError(t, err)
+
+	// This should acquire some bytes, but then release them.
+	err = tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
+	require.NoError(t, err)
+
+	// If the above incorrectly does not release bytes, this will
+	// hang.
+	err = tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
+	require.NoError(t, err)
+}
+
 func testTLFJournalBlockOpDiskLimitCancel(t *testing.T, ver MetadataVer) {
 	tempdir, config, ctx, cancel, tlfJournal, delegate :=
 		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64)
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64)
 
 	ctx2, cancel2 := context.WithCancel(ctx)
 	cancel2()
@@ -532,7 +555,7 @@ func testTLFJournalBlockOpDiskLimitTimeout(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64)
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64)
 	config.dlTimeout = 3 * time.Microsecond
 
 	data := []byte{1, 2, 3, 4}
@@ -553,7 +576,7 @@ func testTLFJournalBlockOpDiskLimitPutFailure(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(math.MaxInt64 - 6)
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64-6)
 
 	data := []byte{1, 2, 3, 4}
 	id, bCtx, serverHalf := config.makeBlock(data)
@@ -824,8 +847,7 @@ func (s *orderedBlockServer) Put(
 	return nil
 }
 
-func (s *orderedBlockServer) Shutdown() {
-}
+func (s *orderedBlockServer) Shutdown(context.Context) {}
 
 type orderedMDServer struct {
 	MDServer
@@ -846,8 +868,7 @@ func (s *orderedMDServer) Put(
 	return nil
 }
 
-func (s *orderedMDServer) Shutdown() {
-}
+func (s *orderedMDServer) Shutdown() {}
 
 // testTLFJournalFlushOrdering tests that we respect the relative
 // orderings of blocks and MD ops when flushing, i.e. if a block op
@@ -873,7 +894,7 @@ func testTLFJournalFlushOrdering(t *testing.T, ver MetadataVer) {
 		puts: &puts,
 	}
 
-	tlfJournal.delegateBlockServer.Shutdown()
+	tlfJournal.delegateBlockServer.Shutdown(ctx)
 	tlfJournal.delegateBlockServer = &bserver
 
 	mdserver := orderedMDServer{
@@ -951,7 +972,7 @@ func testTLFJournalFlushInterleaving(t *testing.T, ver MetadataVer) {
 		puts: &puts,
 	}
 
-	tlfJournal.delegateBlockServer.Shutdown()
+	tlfJournal.delegateBlockServer.Shutdown(ctx)
 	tlfJournal.delegateBlockServer = &bserver
 
 	mdserver := orderedMDServer{
@@ -1173,6 +1194,7 @@ func TestTLFJournal(t *testing.T) {
 		testTLFJournalMDServerBusyShutdown,
 		testTLFJournalBlockOpWhileBusy,
 		testTLFJournalBlockOpDiskLimit,
+		testTLFJournalBlockOpDiskLimitDuplicate,
 		testTLFJournalBlockOpDiskLimitCancel,
 		testTLFJournalBlockOpDiskLimitTimeout,
 		testTLFJournalBlockOpDiskLimitPutFailure,
