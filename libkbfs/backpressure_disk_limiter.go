@@ -217,17 +217,28 @@ func (bdl *backpressureDiskLimiter) onJournalDisable(
 	}
 }
 
+func (bdl *backpressureDiskLimiter) calculateJournalByteFrac(
+	journalBytes, freeBytes int64) float64 {
+	journalBytesFloat := float64(journalBytes)
+	return journalBytesFloat /
+		bdl.getMaxJournalBytes(journalBytes, freeBytes)
+}
+
+func (bdl *backpressureDiskLimiter) calculateDelayScale(
+	journalByteFrac float64) float64 {
+	// We want the delay to be 0 if journalByteFrac <= m and the
+	// max delay if journalByteFrac >= M, so linearly interpolate
+	// the delay scale.
+	m := bdl.backpressureMinThreshold
+	M := bdl.backpressureMaxThreshold
+	return math.Min(1.0, math.Max(0.0, (journalByteFrac-m)/(M-m)))
+}
+
 func (bdl *backpressureDiskLimiter) calculateDelay(
 	ctx context.Context, journalBytes, freeBytes int64,
 	now time.Time) time.Duration {
-	journalBytesFloat := float64(journalBytes)
-	r := journalBytesFloat / bdl.getMaxJournalBytes(journalBytes, freeBytes)
-
-	// We want the delay to be 0 if r <= m and the max delay if r
-	// >= M, so linearly interpolate the delay based on r.
-	m := bdl.backpressureMinThreshold
-	M := bdl.backpressureMaxThreshold
-	scale := math.Min(1.0, math.Max(0.0, (r-m)/(M-m)))
+	journalByteFrac := bdl.calculateJournalByteFrac(journalBytes, freeBytes)
+	delayScale := bdl.calculateDelayScale(journalByteFrac)
 
 	// Set maxDelay to min(bdl.maxDelay, time until deadline - 1s).
 	maxDelay := bdl.maxDelay
@@ -239,7 +250,7 @@ func (bdl *backpressureDiskLimiter) calculateDelay(
 		}
 	}
 
-	return time.Duration(scale * float64(maxDelay))
+	return time.Duration(delayScale * float64(maxDelay))
 }
 
 func (bdl *backpressureDiskLimiter) beforeBlockPut(
@@ -317,18 +328,23 @@ type backpressureDiskLimiterStatus struct {
 	MaxJournalMB             float64
 	MaxDelaySeconds          float64
 
+	JournalByteFrac     float64
+	DelayScale          float64
+	CurrentDelaySeconds float64
+
 	JournalMB        float64
 	FreeMB           float64
 	MBSemaphoreMax   float64
 	MBSemaphoreCount float64
-
-	CurrentDelaySeconds float64
 }
 
 func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 	bdl.bytesLock.Lock()
 	defer bdl.bytesLock.Unlock()
 
+	journalByteFrac := bdl.calculateJournalByteFrac(
+		bdl.journalBytes, bdl.freeBytes)
+	delayScale := bdl.calculateDelayScale(journalByteFrac)
 	currentDelay := bdl.calculateDelay(context.Background(),
 		bdl.journalBytes, bdl.freeBytes, time.Now())
 
@@ -341,11 +357,13 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 		MaxJournalMB:             float64(bdl.maxJournalBytes) / MB,
 		MaxDelaySeconds:          bdl.maxDelay.Seconds(),
 
+		JournalByteFrac:     journalByteFrac,
+		DelayScale:          delayScale,
+		CurrentDelaySeconds: currentDelay.Seconds(),
+
 		JournalMB:        float64(bdl.journalBytes) / MB,
 		FreeMB:           float64(bdl.freeBytes) / MB,
 		MBSemaphoreMax:   float64(bdl.bytesSemaphoreMax) / MB,
 		MBSemaphoreCount: float64(bdl.bytesSemaphore.Count()) / MB,
-
-		CurrentDelaySeconds: currentDelay.Seconds(),
 	}
 }
