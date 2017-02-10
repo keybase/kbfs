@@ -19,7 +19,35 @@ import (
 )
 
 type journalServerConfig struct {
+	// EnableAuto, if true, means the user has explicitly set its
+	// value. If false, then either the user turned it on and then
+	// off, or the user hasn't turned it on at all.
 	EnableAuto bool
+
+	// EnableAutoSetByUser means the user has explicitly set the
+	// value of EnableAuto (after this field was added).
+	EnableAutoSetByUser bool
+}
+
+func (jsc journalServerConfig) getEnableAuto(currentUID keybase1.UID) bool {
+	// If EnableAuto is true, the user has explicitly set its value.
+	if jsc.EnableAuto {
+		return true
+	}
+
+	// Otherwise, if EnableAutoSetByUser is true, it means the
+	// user has explicitly set the value of EnableAuto (after that
+	// field was added).
+	if jsc.EnableAutoSetByUser {
+		return false
+	}
+
+	// Otherwise, either the user turned on journaling and then
+	// turned it off before that field was added, or the user
+	// hasn't touched the field. In either case, determine the
+	// value based on whether the current UID is in the
+	// journaling beta list.
+	return false
 }
 
 // JournalServerStatus represents the overall status of the
@@ -216,12 +244,12 @@ func (j *JournalServer) getTLFJournal(tlfID tlf.ID) (*tlfJournal, bool) {
 		j.lock.RLock()
 		defer j.lock.RUnlock()
 		tlfJournal, ok := j.tlfJournals[tlfID]
-		return tlfJournal, j.serverConfig.EnableAuto, ok
+		return tlfJournal, j.serverConfig.getEnableAuto(j.currentUID), ok
 	}
 	tlfJournal, enableAuto, ok := getJournalFn()
 	if !ok && enableAuto {
 		ctx := context.TODO() // plumb through from callers
-		j.log.CDebugf(ctx, "Enabling a new journal for %s", tlfID)
+		j.log.CDebugf(ctx, "Enabling a new journal for %s (enableAuto=%t)", tlfID, enableAuto)
 		err := j.Enable(ctx, tlfID, TLFJournalBackgroundWorkEnabled)
 		if err != nil {
 			j.log.CWarningf(ctx, "Couldn't enable journal for %s: %+v", tlfID, err)
@@ -446,6 +474,7 @@ func (j *JournalServer) EnableAuto(ctx context.Context) error {
 
 	j.log.CDebugf(ctx, "Enabling auto-journaling")
 	j.serverConfig.EnableAuto = true
+	j.serverConfig.EnableAutoSetByUser = true
 	return j.writeConfig()
 }
 
@@ -462,6 +491,7 @@ func (j *JournalServer) DisableAuto(ctx context.Context) error {
 
 	j.log.CDebugf(ctx, "Disabling auto-journaling")
 	j.serverConfig.EnableAuto = false
+	j.serverConfig.EnableAutoSetByUser = true
 	return j.writeConfig()
 }
 
@@ -622,7 +652,7 @@ func (j *JournalServer) Status(
 		Version:             1,
 		CurrentUID:          j.currentUID,
 		CurrentVerifyingKey: j.currentVerifyingKey,
-		EnableAuto:          j.serverConfig.EnableAuto,
+		EnableAuto:          j.serverConfig.getEnableAuto(j.currentUID),
 		JournalCount:        len(tlfIDs),
 		StoredBytes:         totalStoredBytes,
 		UnflushedBytes:      totalUnflushedBytes,
