@@ -375,8 +375,8 @@ func makeTLFJournal(
 	j.signalWork()
 
 	j.log.CDebugf(ctx,
-		"Enabled journal for %s (stored bytes=%d, available bytes=%d, available files=%d) with path %s",
-		tlfID, storedBytes, availableBytes, availableFiles, dir)
+		"Enabled journal for %s (stored bytes=%d/files=%d, available bytes=%d/files=%d) with path %s",
+		tlfID, storedBytes, storedFiles, availableBytes, availableFiles, dir)
 	return j, nil
 }
 
@@ -810,7 +810,7 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 
 	storedBytesBefore := j.blockJournal.getStoredBytes()
 
-	// TODO: Check storedFiles.
+	// TODO: Check storedFiles also.
 
 	removedBytes, removedFiles, err := j.blockJournal.removeFlushedEntries(
 		ctx, entries, j.tlfID, j.config.Reporter())
@@ -1481,9 +1481,6 @@ func (j *tlfJournal) putBlockData(
 	timeout := j.config.diskLimitTimeout()
 	acquireCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-
-	// TODO: We'll have to guess the value of putFiles to pass
-	// into beforeBlockPut.
 
 	bufLen := int64(len(buf))
 	availableBytes, availableFiles, err := j.diskLimiter.beforeBlockPut(
