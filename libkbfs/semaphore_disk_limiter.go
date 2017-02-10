@@ -5,6 +5,8 @@
 package libkbfs
 
 import (
+	"math"
+
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -25,11 +27,13 @@ func newSemaphoreDiskLimiter(byteLimit int64) semaphoreDiskLimiter {
 }
 
 func (sdl semaphoreDiskLimiter) onJournalEnable(
-	ctx context.Context, journalBytes, journalFiles int64) int64 {
+	ctx context.Context, journalBytes, journalFiles int64) (
+	availableBytes, availableFiles int64) {
 	if journalBytes == 0 {
-		return sdl.s.Count()
+		return sdl.s.Count(), math.MaxInt64
 	}
-	return sdl.s.ForceAcquire(journalBytes)
+	availableBytes = sdl.s.ForceAcquire(journalBytes)
+	return availableBytes, math.MaxInt64
 }
 
 func (sdl semaphoreDiskLimiter) onJournalDisable(
@@ -40,14 +44,16 @@ func (sdl semaphoreDiskLimiter) onJournalDisable(
 }
 
 func (sdl semaphoreDiskLimiter) beforeBlockPut(
-	ctx context.Context, blockBytes, blockFiles int64) (int64, error) {
+	ctx context.Context, blockBytes, blockFiles int64) (
+	availableBytes, availableFiles int64, err error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
-		return sdl.s.Count(), errors.New(
+		return sdl.s.Count(), math.MaxInt64, errors.New(
 			"semaphore.DiskLimiter.beforeBlockPut called with 0 blockBytes")
 	}
 
-	return sdl.s.Acquire(ctx, blockBytes)
+	availableBytes, err = sdl.s.Acquire(ctx, blockBytes)
+	return availableBytes, math.MaxInt64, err
 }
 
 func (sdl semaphoreDiskLimiter) afterBlockPut(

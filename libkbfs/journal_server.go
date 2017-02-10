@@ -62,10 +62,11 @@ type mdFlushListener interface {
 type diskLimiter interface {
 	// onJournalEnable is called when initializing a TLF journal
 	// with that journal's current disk usage. Both journalBytes
-	// and journalFiles must be >= 0. If the argument is non-zero,
-	// the updated available byte count must be returned.
+	// and journalFiles must be >= 0. The updated available byte
+	// and file count must be returned.
 	onJournalEnable(
-		ctx context.Context, journalBytes, journalFiles int64) int64
+		ctx context.Context, journalBytes, journalFiles int64) (
+		availableBytes, availableFiles int64)
 
 	// onJournalDisable is called when shutting down a TLF journal
 	// with that journal's current disk usage. Both journalBytes
@@ -75,12 +76,12 @@ type diskLimiter interface {
 	// beforeBlockPut is called before putting a block of the
 	// given byte and file count, both of which must be > 0. It
 	// may block, but must return immediately with a
-	// (possibly-wrapped) ctx.Err() if ctx is cancelled. If the
-	// returned error is nil, the updated available byte count
-	// must be returned. Otherwise, the non-updated available byte
-	// count, or zero, may be returned.
+	// (possibly-wrapped) ctx.Err() if ctx is cancelled. The
+	// updated available byte and file count must be returned,
+	// even if err is non-nil.
 	beforeBlockPut(ctx context.Context,
-		blockBytes, blockFiles int64) (int64, error)
+		blockBytes, blockFiles int64) (
+		availableBytes, availableFiles int64, err error)
 
 	// afterBlockPut is called after putting a block of the given
 	// byte and file count, which must match the corresponding call to

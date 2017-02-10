@@ -191,15 +191,17 @@ func (bdl *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
 }
 
 func (bdl *backpressureDiskLimiter) onJournalEnable(
-	ctx context.Context, journalBytes, journalFiles int64) int64 {
+	ctx context.Context, journalBytes, journalFiles int64) (
+	availableBytes, availableFiles int64) {
 	bdl.bytesLock.Lock()
 	defer bdl.bytesLock.Unlock()
 	bdl.journalBytes += journalBytes
 	bdl.updateBytesSemaphoreMaxLocked()
-	if journalBytes > 0 {
-		bdl.bytesSemaphore.ForceAcquire(journalBytes)
+	if journalBytes == 0 {
+		return bdl.bytesSemaphore.Count(), math.MaxInt64
 	}
-	return bdl.bytesSemaphore.Count()
+	availableBytes = bdl.bytesSemaphore.ForceAcquire(journalBytes)
+	return availableBytes, math.MaxInt64
 }
 
 func (bdl *backpressureDiskLimiter) onJournalDisable(
@@ -239,10 +241,11 @@ func (bdl *backpressureDiskLimiter) calculateDelay(
 }
 
 func (bdl *backpressureDiskLimiter) beforeBlockPut(
-	ctx context.Context, blockBytes, blockFiles int64) (int64, error) {
+	ctx context.Context, blockBytes, blockFiles int64) (
+	availableBytes, availableFiles int64, err error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
-		return bdl.bytesSemaphore.Count(), errors.New(
+		return bdl.bytesSemaphore.Count(), math.MaxInt64, errors.New(
 			"backpressureDiskLimiter.beforeBlockPut called with 0 blockBytes")
 	}
 
@@ -260,7 +263,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		return bdl.journalBytes, bdl.freeBytes, nil
 	}()
 	if err != nil {
-		return bdl.bytesSemaphore.Count(), err
+		return bdl.bytesSemaphore.Count(), math.MaxInt64, err
 	}
 
 	delay := bdl.calculateDelay(ctx, journalBytes, freeBytes, time.Now())
@@ -272,10 +275,11 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	// suddenly free up a lot of space).
 	err = bdl.delayFn(ctx, delay)
 	if err != nil {
-		return bdl.bytesSemaphore.Count(), err
+		return bdl.bytesSemaphore.Count(), math.MaxInt64, err
 	}
 
-	return bdl.bytesSemaphore.Acquire(ctx, blockBytes)
+	availableFiles, err = bdl.bytesSemaphore.Acquire(ctx, blockBytes)
+	return availableFiles, math.MaxInt64, err
 }
 
 func (bdl *backpressureDiskLimiter) afterBlockPut(

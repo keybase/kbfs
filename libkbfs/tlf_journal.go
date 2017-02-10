@@ -366,7 +366,7 @@ func makeTLFJournal(
 	// Do this only once we're sure we won't error.
 	storedBytes := j.blockJournal.getStoredBytes()
 	storedFiles := j.blockJournal.getStoredFiles()
-	availableBytes := j.diskLimiter.onJournalEnable(
+	availableBytes, availableFiles := j.diskLimiter.onJournalEnable(
 		ctx, storedBytes, storedFiles)
 
 	go j.doBackgroundWorkLoop(bws, backoff.NewExponentialBackOff())
@@ -375,8 +375,8 @@ func makeTLFJournal(
 	j.signalWork()
 
 	j.log.CDebugf(ctx,
-		"Enabled journal for %s (stored bytes=%d, available bytes=%d) with path %s",
-		tlfID, storedBytes, availableBytes, dir)
+		"Enabled journal for %s (stored bytes=%d, available bytes=%d, available files=%d) with path %s",
+		tlfID, storedBytes, availableBytes, availableFiles, dir)
 	return j, nil
 }
 
@@ -1460,19 +1460,16 @@ func (j *tlfJournal) getBlockData(id kbfsblock.ID) (
 type ErrDiskLimitTimeout struct {
 	timeout        time.Duration
 	requestedBytes int64
+	requestedFiles int64
 	availableBytes int64
+	availableFiles int64
 	err            error
 }
 
 func (e ErrDiskLimitTimeout) Error() string {
-	var availableStr string
-	if e.availableBytes > 0 {
-		availableStr = fmt.Sprintf("%d bytes available", e.availableBytes)
-	} else {
-		availableStr = "0 bytes available (or unknown)"
-	}
-	return fmt.Sprintf("Disk limit timeout of %s reached; requested %d bytes, %s: %+v",
-		e.timeout, e.requestedBytes, availableStr, e.err)
+	return fmt.Sprintf("Disk limit timeout of %s reached; requested %d bytes and %d files, %d bytes and %d files available: %+v",
+		e.timeout, e.requestedBytes, e.requestedFiles,
+		e.availableBytes, e.availableFiles, e.err)
 }
 
 func (j *tlfJournal) putBlockData(
@@ -1489,14 +1486,15 @@ func (j *tlfJournal) putBlockData(
 	// into beforeBlockPut.
 
 	bufLen := int64(len(buf))
-	availableBytes, err := j.diskLimiter.beforeBlockPut(
+	availableBytes, availableFiles, err := j.diskLimiter.beforeBlockPut(
 		acquireCtx, bufLen, filesPerBlockMax)
 	switch errors.Cause(err) {
 	case nil:
 		// Continue.
 	case context.DeadlineExceeded:
 		return errors.WithStack(ErrDiskLimitTimeout{
-			timeout, bufLen, availableBytes, err,
+			timeout, bufLen, filesPerBlockMax,
+			availableBytes, availableFiles, err,
 		})
 	default:
 		return err
