@@ -94,9 +94,9 @@ func doUnmount(dir string, force bool) (err error) {
 		}
 	case "linux":
 		if force {
-			_, err = exec.Command("umount", "-l", dir).Output()
+			_, err = exec.Command("fusermount", "-ul", dir).Output()
 		} else {
-			_, err = exec.Command("umount", dir).Output()
+			_, err = exec.Command("fusermount", "-u", dir).Output()
 		}
 	default:
 		if force {
