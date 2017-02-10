@@ -370,22 +370,15 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 			bdl.bytesSemaphore.Count())
 	}
 
-	checkCounters := func(before bool) {
+	checkCountersAfterBlockPut := func() {
 		journalBytes, freeBytes, bytesSemaphoreMax =
 			bdl.getLockedVarsForTest()
 		require.Equal(t, int64(bytesPut), journalBytes)
-		expectedFreeBytes := int64(diskSize - journalBytes)
-		expectedBytesSemaphoreMax := int64(80)
+		// freeBytes is only updated on beforeBlockPut, so we
+		// have to compensate for that.
+		expectedFreeBytes := int64(diskSize - journalBytes + blockSize)
+		expectedBytesSemaphoreMax := int64(80) + blockSize/4
 		expectedBytesSemaphore := expectedBytesSemaphoreMax - int64(bytesPut)
-		if before {
-			expectedBytesSemaphore -= blockSize
-		} else {
-			// freeBytes is only updated on
-			// beforeBlockPut, so we have to compensate.
-			expectedFreeBytes += blockSize
-			expectedBytesSemaphoreMax += blockSize / 4
-			expectedBytesSemaphore += blockSize / 4
-		}
 		require.Equal(t, expectedFreeBytes, freeBytes)
 		require.Equal(t, expectedBytesSemaphoreMax, bytesSemaphoreMax)
 		require.Equal(t, expectedBytesSemaphore, bdl.bytesSemaphore.Count())
@@ -401,7 +394,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 
 		bdl.afterBlockPut(ctx, blockSize, true)
 		bytesPut += blockSize
-		checkCounters(false)
+		checkCountersAfterBlockPut()
 	}
 
 	// ...but the next eight should encounter increasing
@@ -416,7 +409,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 
 		bdl.afterBlockPut(ctx, blockSize, true)
 		bytesPut += blockSize
-		checkCounters(false)
+		checkCountersAfterBlockPut()
 	}
 
 	// ...and the last one should stall completely, if not for the
@@ -431,10 +424,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 	journalBytes, freeBytes, bytesSemaphoreMax =
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(bytesPut), journalBytes)
-	expectedFreeBytes := int64(diskSize - journalBytes)
-	expectedBytesSemaphoreMax := int64(80)
-	expectedBytesSemaphore := expectedBytesSemaphoreMax - int64(bytesPut)
-	require.Equal(t, expectedFreeBytes, freeBytes)
-	require.Equal(t, expectedBytesSemaphoreMax, bytesSemaphoreMax)
-	require.Equal(t, expectedBytesSemaphore, bdl.bytesSemaphore.Count())
+	require.Equal(t, int64(diskSize-journalBytes), freeBytes)
+	require.Equal(t, int64(80), bytesSemaphoreMax)
+	require.Equal(t, int64(80-bytesPut), bdl.bytesSemaphore.Count())
 }
