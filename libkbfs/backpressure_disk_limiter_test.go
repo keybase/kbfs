@@ -209,7 +209,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 func TestBackpressureDiskLimiterCalculateDelay(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
-		log, 0.1, 0.9, 0.25, 100, 8*time.Second,
+		log, 0.1, 0.9, 0.25, math.MaxInt64, 8*time.Second,
 		func(ctx context.Context, delay time.Duration) error {
 			return nil
 		},
@@ -221,14 +221,14 @@ func TestBackpressureDiskLimiterCalculateDelay(t *testing.T) {
 	now := time.Now()
 
 	ctx := context.Background()
-	delay := bdl.calculateDelay(ctx, 50, 50, now)
+	delay := bdl.calculateDelay(ctx, 50, 350, now)
 	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
 
 	deadline := now.Add(5 * time.Second)
 	ctx2, cancel2 := context.WithDeadline(ctx, deadline)
 	defer cancel2()
 
-	delay = bdl.calculateDelay(ctx2, 50, 50, now)
+	delay = bdl.calculateDelay(ctx2, 50, 350, now)
 	require.InEpsilon(t, float64(2), delay.Seconds(), 0.01)
 }
 
