@@ -300,7 +300,7 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 		checkCounters(0)
 	}
 
-	// and the last one should stall completely, if not for the
+	// ...and the last one should stall completely, if not for the
 	// cancelled context.
 
 	ctx2, cancel2 := context.WithCancel(ctx)
@@ -389,12 +389,37 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		checkCounters(false)
 	}
 
+	// ...but the next eight should encounter increasing
+	// backpressure...
+
 	for i := 1; i < 9; i++ {
 		_, err := bdl.beforeBlockPut(ctx, blockSize)
 		require.NoError(t, err)
 		require.InEpsilon(t, float64(i), lastDelay.Seconds(),
 			0.01, "i=%d", i)
+		checkCounters(true)
+
 		bdl.afterBlockPut(ctx, blockSize, true)
 		bytesPut += blockSize
+		checkCounters(false)
 	}
+
+	// ...and the last one should stall completely, if not for the
+	// cancelled context.
+
+	ctx2, cancel2 := context.WithCancel(ctx)
+	cancel2()
+	_, err = bdl.beforeBlockPut(ctx2, blockSize)
+	require.Equal(t, ctx2.Err(), errors.Cause(err))
+	require.Equal(t, 8*time.Second, lastDelay)
+
+	journalBytes, freeBytes, bytesSemaphoreMax =
+		bdl.getLockedVarsForTest()
+	require.Equal(t, int64(bytesPut), journalBytes)
+	expectedFreeBytes := int64(diskSize - journalBytes)
+	expectedBytesSemaphoreMax := int64(80)
+	expectedBytesSemaphore := expectedBytesSemaphoreMax - int64(bytesPut)
+	require.Equal(t, expectedFreeBytes, freeBytes)
+	require.Equal(t, expectedBytesSemaphoreMax, bytesSemaphoreMax)
+	require.Equal(t, expectedBytesSemaphore, bdl.bytesSemaphore.Count())
 }
