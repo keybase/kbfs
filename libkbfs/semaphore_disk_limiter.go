@@ -76,13 +76,18 @@ func (sdl semaphoreDiskLimiter) onBlockDelete(
 }
 
 type semaphoreDiskLimiterStatus struct {
-	MaxJournalBytes     int64
-	BytesSemaphoreCount int64
+	Type string
+
+	MaxJournalMB     float64
+	MBSemaphoreCount float64
 }
 
 func (sdl semaphoreDiskLimiter) getStatus() interface{} {
+	MB := float64(1024 * 1024)
+
 	return semaphoreDiskLimiterStatus{
-		MaxJournalBytes:     sdl.maxJournalBytes,
-		BytesSemaphoreCount: sdl.bytesSemaphore.Count(),
+		Type:             "SemaphoreDiskLimiter",
+		MaxJournalMB:     float64(sdl.maxJournalBytes) / MB,
+		MBSemaphoreCount: float64(sdl.bytesSemaphore.Count()) / MB,
 	}
 }

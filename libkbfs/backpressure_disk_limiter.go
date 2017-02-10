@@ -322,6 +322,8 @@ func (bdl *backpressureDiskLimiter) onBlockDelete(
 }
 
 type backpressureDiskLimiterStatus struct {
+	Type string
+
 	BackpressureMinThreshold float64
 	BackpressureMaxThreshold float64
 	MaxJournalByteFrac       float64
@@ -351,6 +353,8 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 	MB := float64(1024 * 1024)
 
 	return backpressureDiskLimiterStatus{
+		Type: "BackpressureDiskLimiter",
+
 		BackpressureMinThreshold: bdl.backpressureMinThreshold,
 		BackpressureMaxThreshold: bdl.backpressureMaxThreshold,
 		MaxJournalByteFrac:       bdl.maxJournalByteFrac,
