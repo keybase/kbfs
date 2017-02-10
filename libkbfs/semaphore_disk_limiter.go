@@ -19,31 +19,31 @@ const defaultAvailableFiles = math.MaxInt64
 //
 // TODO: Also do limiting based on file counts.
 type semaphoreDiskLimiter struct {
-	s *kbfssync.Semaphore
+	bytesSemaphore *kbfssync.Semaphore
 }
 
 var _ diskLimiter = semaphoreDiskLimiter{}
 
-func newSemaphoreDiskLimiter(byteLimit int64) semaphoreDiskLimiter {
-	s := kbfssync.NewSemaphore()
-	s.Release(byteLimit)
-	return semaphoreDiskLimiter{s}
+func newSemaphoreDiskLimiter(maxJournalBytes int64) semaphoreDiskLimiter {
+	bytesSemaphore := kbfssync.NewSemaphore()
+	bytesSemaphore.Release(maxJournalBytes)
+	return semaphoreDiskLimiter{bytesSemaphore}
 }
 
 func (sdl semaphoreDiskLimiter) onJournalEnable(
 	ctx context.Context, journalBytes, journalFiles int64) (
 	availableBytes, availableFiles int64) {
 	if journalBytes == 0 {
-		return sdl.s.Count(), defaultAvailableFiles
+		return sdl.bytesSemaphore.Count(), defaultAvailableFiles
 	}
-	availableBytes = sdl.s.ForceAcquire(journalBytes)
+	availableBytes = sdl.bytesSemaphore.ForceAcquire(journalBytes)
 	return availableBytes, defaultAvailableFiles
 }
 
 func (sdl semaphoreDiskLimiter) onJournalDisable(
 	ctx context.Context, journalBytes, journalFiles int64) {
 	if journalBytes > 0 {
-		sdl.s.Release(journalBytes)
+		sdl.bytesSemaphore.Release(journalBytes)
 	}
 }
 
@@ -52,24 +52,24 @@ func (sdl semaphoreDiskLimiter) beforeBlockPut(
 	availableBytes, availableFiles int64, err error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
-		return sdl.s.Count(), defaultAvailableFiles, errors.New(
+		return sdl.bytesSemaphore.Count(), defaultAvailableFiles, errors.New(
 			"semaphore.DiskLimiter.beforeBlockPut called with 0 blockBytes")
 	}
 
-	availableBytes, err = sdl.s.Acquire(ctx, blockBytes)
+	availableBytes, err = sdl.bytesSemaphore.Acquire(ctx, blockBytes)
 	return availableBytes, defaultAvailableFiles, err
 }
 
 func (sdl semaphoreDiskLimiter) afterBlockPut(
 	ctx context.Context, blockBytes, blockFiles int64, putData bool) {
 	if !putData {
-		sdl.s.Release(blockBytes)
+		sdl.bytesSemaphore.Release(blockBytes)
 	}
 }
 
 func (sdl semaphoreDiskLimiter) onBlockDelete(
 	ctx context.Context, blockBytes, blockFiles int64) {
 	if blockBytes > 0 {
-		sdl.s.Release(blockBytes)
+		sdl.bytesSemaphore.Release(blockBytes)
 	}
 }

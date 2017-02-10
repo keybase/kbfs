@@ -17,7 +17,7 @@ import (
 
 // backpressureDiskLimiter is an implementation of diskLimiter that
 // uses backpressure to slow down block puts before they hit the disk
-// limit.
+// limits.
 //
 // Let J be the (approximate) byte usage of the journal and F be the
 // free bytes on disk. Then we want to enforce
