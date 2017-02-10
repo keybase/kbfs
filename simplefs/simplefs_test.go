@@ -28,8 +28,7 @@ func deleteTempRemotePath(path keybase1.Path) {
 	os.RemoveAll(path.Kbfs())
 }
 
-// ExampleListLocal - Meant to be named TestListLocal when implemented
-func ExampleListLocal(t *testing.T) {
+func TestListLocal(t *testing.T) {
 	ctx := context.Background()
 	sfs := &SimpleFS{}
 
