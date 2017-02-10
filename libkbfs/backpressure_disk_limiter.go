@@ -216,9 +216,9 @@ func (bdl *backpressureDiskLimiter) calculateDelay(
 	journalBytesFloat := float64(journalBytes)
 	maxJournalBytesFloat := float64(bdl.maxJournalBytes)
 	// Set r to max(J/(k(J+F)), J/L).
-	r := math.Max(
-		journalBytesFloat/bdl.getScaledFreeBytesWithoutJournalLocked(),
-		journalBytesFloat/maxJournalBytesFloat)
+	r := journalBytesFloat / math.Min(
+		bdl.getScaledFreeBytesWithoutJournalLocked(),
+		maxJournalBytesFloat)
 
 	// We want the delay to be 0 if r <= m and the max delay if r
 	// >= M, so linearly interpolate the delay based on r.
