@@ -28,7 +28,7 @@ func deleteTempRemotePath(path keybase1.Path) {
 	os.RemoveAll(path.Kbfs())
 }
 
-func TestListLocal(t *testing.T) {
+func TestList(t *testing.T) {
 	ctx := context.Background()
 	sfs := &SimpleFS{}
 
@@ -67,8 +67,7 @@ func TestListLocal(t *testing.T) {
 	require.Error(t, err)
 }
 
-// Meant to be named TestCopyToLocal when implemented
-func ExampleCopyToLocal(t *testing.T) {
+func TestCopyToLocal(t *testing.T) {
 	ctx := context.Background()
 	sfs := &SimpleFS{}
 
@@ -107,8 +106,7 @@ func ExampleCopyToLocal(t *testing.T) {
 	assert.True(t, exists, "File copy destination must exist")
 }
 
-// Meant to be named TestCopyToRemote when implemented
-func ExampleCopyToRemote(t *testing.T) {
+func TestCopyToRemote(t *testing.T) {
 	ctx := context.Background()
 	sfs := &SimpleFS{}
 
