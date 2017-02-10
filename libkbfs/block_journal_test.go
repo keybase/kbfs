@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -58,6 +59,30 @@ func makeFakeBlockJournalEntryFuture(t *testing.T) blockJournalEntryFuture {
 
 func TestBlockJournalEntryUnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeBlockJournalEntryFuture(t))
+}
+
+func TestSaturateAdd(t *testing.T) {
+	var x int64
+	saturateAdd(&x, math.MaxInt64-1)
+	require.Equal(t, int64(math.MaxInt64-1), x)
+	saturateAdd(&x, math.MaxInt64-1)
+	require.Equal(t, int64(math.MaxInt64), x)
+	saturateAdd(&x, math.MinInt64+2)
+	require.Equal(t, int64(1), x)
+	saturateAdd(&x, math.MinInt64)
+	require.Equal(t, int64(0), x)
+
+	x = math.MinInt64
+	saturateAdd(&x, math.MinInt64)
+	require.Equal(t, int64(0), x)
+
+	x = -1
+	saturateAdd(&x, math.MinInt64)
+	require.Equal(t, int64(0), x)
+
+	x = -1
+	saturateAdd(&x, -1)
+	require.Equal(t, int64(0), x)
 }
 
 func getBlockJournalLength(t *testing.T, j *blockJournal) int {

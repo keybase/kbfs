@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"fmt"
+	"math"
 	"path/filepath"
 	"reflect"
 
@@ -229,11 +230,29 @@ func aggregateInfoPath(dir string) string {
 	return filepath.Join(dir, "block_aggregate_info")
 }
 
+// saturateAdd adds the given delta to the int64 at x; if the result
+// would be over MaxInt64, *x is instead set to MaxInt64, and if the
+// result would be negative, *x is instead set to 0. If *x is already
+// negative, *x is first set to 0 before doing the addition.
+func saturateAdd(x *int64, delta int64) {
+	if *x < 0 {
+		*x = 0
+	}
+
+	if delta > 0 && *x > (math.MaxInt64-delta) {
+		*x = math.MaxInt64
+	} else if delta < 0 && *x+delta < 0 {
+		*x = 0
+	} else {
+		*x += delta
+	}
+}
+
 func (j *blockJournal) changeCounts(
 	deltaStoredBytes, deltaStoredFiles, deltaUnflushedBytes int64) error {
-	j.aggregateInfo.StoredBytes += deltaStoredBytes
-	j.aggregateInfo.StoredFiles += deltaStoredFiles
-	j.aggregateInfo.UnflushedBytes += deltaUnflushedBytes
+	saturateAdd(&j.aggregateInfo.StoredBytes, deltaStoredBytes)
+	saturateAdd(&j.aggregateInfo.StoredFiles, deltaStoredFiles)
+	saturateAdd(&j.aggregateInfo.UnflushedBytes, deltaUnflushedBytes)
 	return kbfscodec.SerializeToFile(
 		j.codec, j.aggregateInfo, aggregateInfoPath(j.dir))
 }
