@@ -12,6 +12,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+const defaultAvailableFiles = math.MaxInt64
+
 // semaphoreDiskLimiter is an implementation of diskLimiter that uses
 // a semaphore.
 type semaphoreDiskLimiter struct {
@@ -30,10 +32,10 @@ func (sdl semaphoreDiskLimiter) onJournalEnable(
 	ctx context.Context, journalBytes, journalFiles int64) (
 	availableBytes, availableFiles int64) {
 	if journalBytes == 0 {
-		return sdl.s.Count(), math.MaxInt64
+		return sdl.s.Count(), defaultAvailableFiles
 	}
 	availableBytes = sdl.s.ForceAcquire(journalBytes)
-	return availableBytes, math.MaxInt64
+	return availableBytes, defaultAvailableFiles
 }
 
 func (sdl semaphoreDiskLimiter) onJournalDisable(
@@ -48,12 +50,12 @@ func (sdl semaphoreDiskLimiter) beforeBlockPut(
 	availableBytes, availableFiles int64, err error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
-		return sdl.s.Count(), math.MaxInt64, errors.New(
+		return sdl.s.Count(), defaultAvailableFiles, errors.New(
 			"semaphore.DiskLimiter.beforeBlockPut called with 0 blockBytes")
 	}
 
 	availableBytes, err = sdl.s.Acquire(ctx, blockBytes)
-	return availableBytes, math.MaxInt64, err
+	return availableBytes, defaultAvailableFiles, err
 }
 
 func (sdl semaphoreDiskLimiter) afterBlockPut(
