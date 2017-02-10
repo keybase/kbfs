@@ -309,3 +309,7 @@ func (bdl *backpressureDiskLimiter) onBlockDelete(
 	bdl.journalBytes -= blockBytes
 	bdl.updateBytesSemaphoreMaxLocked()
 }
+
+func (bdl *backpressureDiskLimiter) getStatus() interface{} {
+	return nil
+}

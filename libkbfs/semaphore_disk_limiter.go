@@ -73,3 +73,7 @@ func (sdl semaphoreDiskLimiter) onBlockDelete(
 		sdl.bytesSemaphore.Release(blockBytes)
 	}
 }
+
+func (sdl semaphoreDiskLimiter) getStatus() interface{} {
+	return nil
+}

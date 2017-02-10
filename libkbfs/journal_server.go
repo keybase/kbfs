@@ -70,9 +70,10 @@ type JournalServerStatus struct {
 	JournalCount        int
 	// The byte counters below are signed because
 	// os.FileInfo.Size() is signed.
-	StoredBytes    int64
-	UnflushedBytes int64
-	UnflushedPaths []string
+	StoredBytes       int64
+	UnflushedBytes    int64
+	UnflushedPaths    []string
+	DiskLimiterStatus interface{}
 }
 
 // branchChangeListener describes a caller that will get updates via
@@ -132,6 +133,10 @@ type diskLimiter interface {
 	// a block with either zero byte or zero file count shouldn't
 	// happen, but may as well let it go through.)
 	onBlockDelete(ctx context.Context, blockBytes, blockFiles int64)
+
+	// getStatus returns an object that's marshallable into JSON
+	// for use in displaying status.
+	getStatus() interface{}
 }
 
 // TODO: JournalServer isn't really a server, although it can create
@@ -673,6 +678,7 @@ func (j *JournalServer) Status(
 		JournalCount:        len(tlfIDs),
 		StoredBytes:         totalStoredBytes,
 		UnflushedBytes:      totalUnflushedBytes,
+		DiskLimiterStatus:   j.diskLimiter.getStatus(),
 	}, tlfIDs
 }
 
