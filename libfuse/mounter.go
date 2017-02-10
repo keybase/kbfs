@@ -25,7 +25,6 @@ type Mounter interface {
 type DefaultMounter struct {
 	dir            string
 	platformParams PlatformParams
-	c              *fuse.Conn
 }
 
 // NewDefaultMounter creates a default mounter.
@@ -34,13 +33,12 @@ func NewDefaultMounter(dir string, platformParams PlatformParams) DefaultMounter
 }
 
 // Mount uses default mount
-func (m DefaultMounter) Mount() (c *fuse.Conn, err error) {
-	m.c, err = fuseMountDir(m.dir, m.platformParams)
-	return m.c, err
+func (m DefaultMounter) Mount() (*fuse.Conn, error) {
+	return fuseMountDir(m.dir, m.platformParams)
 }
 
 // Unmount uses default unmount
-func (m DefaultMounter) Unmount() (err error) {
+func (m DefaultMounter) Unmount() error {
 	return fuse.Unmount(m.dir)
 }
 
@@ -53,7 +51,6 @@ func (m DefaultMounter) Dir() string {
 type ForceMounter struct {
 	dir            string
 	platformParams PlatformParams
-	c              *fuse.Conn
 }
 
 // NewForceMounter creates a force mounter.
@@ -62,18 +59,18 @@ func NewForceMounter(dir string, platformParams PlatformParams) ForceMounter {
 }
 
 // Mount tries to mount and then unmount, re-mount if unsuccessful
-func (m ForceMounter) Mount() (c *fuse.Conn, err error) {
-	m.c, err = fuseMountDir(m.dir, m.platformParams)
+func (m ForceMounter) Mount() (*fuse.Conn, error) {
+	c, err := fuseMountDir(m.dir, m.platformParams)
 	if err == nil {
-		return m.c, nil
+		return c, nil
 	}
 
 	// Mount failed, let's try to unmount and then try mounting again, even
 	// if unmounting errors here.
 	m.Unmount()
 
-	m.c, err = fuseMountDir(m.dir, m.platformParams)
-	return m.c, err
+	c, err = fuseMountDir(m.dir, m.platformParams)
+	return c, err
 }
 
 // Unmount tries to unmount normally and then force if unsuccessful
