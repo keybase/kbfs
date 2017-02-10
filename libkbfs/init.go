@@ -298,9 +298,7 @@ func makeBlockServer(config Config, bserverAddr string,
 	}
 
 	log.Debug("Using remote bserver %s", bserverAddr)
-	bserverLog := config.MakeLogger("BSR")
-	return NewBlockServerRemote(config.Codec(), config.Crypto(),
-		config.KBPKI(), bserverLog, bserverAddr, rpcLogFactory), nil
+	return NewBlockServerRemote(config, bserverAddr, rpcLogFactory), nil
 }
 
 // InitLog sets up logging switching to a log file if necessary.

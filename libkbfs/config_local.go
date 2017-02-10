@@ -281,6 +281,13 @@ func (c *ConfigLocal) KBPKI() KBPKI {
 	return c.kbpki
 }
 
+// currentInfoGetter implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) currentInfoGetter() currentInfoGetter {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.kbpki
+}
+
 // SetKBPKI implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) SetKBPKI(k KBPKI) {
 	c.lock.Lock()
@@ -381,6 +388,13 @@ func (c *ConfigLocal) SetDirtyBlockCache(d DirtyBlockCache) {
 
 // Crypto implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) Crypto() Crypto {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.crypto
+}
+
+// Signer implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) Signer() kbfscrypto.Signer {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.crypto
