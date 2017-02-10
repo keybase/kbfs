@@ -247,13 +247,17 @@ func (j *JournalServer) tlfJournalPathLocked(tlfID tlf.ID) string {
 	return filepath.Join(j.rootPath(), dir)
 }
 
+func (j *JournalServer) getEnableAutoLocked() (
+	enableAuto, enableAutoSetByUser bool) {
+	return j.serverConfig.getEnableAuto(j.currentUID)
+}
+
 func (j *JournalServer) getTLFJournal(tlfID tlf.ID) (*tlfJournal, bool) {
 	getJournalFn := func() (*tlfJournal, bool, bool, bool) {
 		j.lock.RLock()
 		defer j.lock.RUnlock()
 		tlfJournal, ok := j.tlfJournals[tlfID]
-		enableAuto, enableAutoSetByUser :=
-			j.serverConfig.getEnableAuto(j.currentUID)
+		enableAuto, enableAutoSetByUser := j.getEnableAutoLocked()
 		return tlfJournal, enableAuto, enableAutoSetByUser, ok
 	}
 	tlfJournal, enableAuto, enableAutoSetByUser, ok := getJournalFn()
@@ -658,8 +662,7 @@ func (j *JournalServer) Status(
 		totalUnflushedBytes += unflushedBytes
 		tlfIDs = append(tlfIDs, tlfJournal.tlfID)
 	}
-	enableAuto, enableAutoSetByUser :=
-		j.serverConfig.getEnableAuto(j.currentUID)
+	enableAuto, enableAutoSetByUser := j.getEnableAutoLocked()
 	return JournalServerStatus{
 		RootDir:             j.rootPath(),
 		Version:             1,
