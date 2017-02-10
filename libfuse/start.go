@@ -37,6 +37,15 @@ func Start(mounter Mounter, options StartOptions, kbCtx libkbfs.Context) *libfs.
 		}
 	}
 
+	log.Debug("Initializing")
+	interruptFn := func() {}
+	config, err := libkbfs.Init(
+		kbCtx, options.KbfsParams, nil, func() { interruptFn() }, log)
+	if err != nil {
+		return libfs.InitError(err.Error())
+	}
+	defer libkbfs.Shutdown()
+
 	log.Debug("Mounting: %s", mounter.Dir())
 	c, err := mounter.Mount()
 	if err != nil {
@@ -45,38 +54,15 @@ func Start(mounter Mounter, options StartOptions, kbCtx libkbfs.Context) *libfs.
 	defer mounter.Unmount()
 
 	done := make(chan struct{})
-	var interruptFn func()
 	if c != nil { // c can be nil for NoopMounter
 		interruptFn = func() {
-			closeDone := make(chan struct{})
-			go func() {
-				// keep dumping requests into FUSE until Close() succeeds.
-				for {
-					select {
-					case <-closeDone:
-					default:
-						os.Stat(mounter.Dir())
-					}
-				}
-			}()
-			c.Close()
-			close(closeDone)
+			mounter.Unmount()
 		}
 	} else {
 		interruptFn = func() {
 			close(done)
 		}
 	}
-
-	log.Debug("Initializing")
-
-	config, err := libkbfs.Init(
-		kbCtx, options.KbfsParams, nil, interruptFn, log)
-	if err != nil {
-		return libfs.InitError(err.Error())
-	}
-
-	defer libkbfs.Shutdown()
 
 	if c != nil {
 		<-c.Ready
