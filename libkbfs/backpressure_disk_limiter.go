@@ -314,13 +314,13 @@ type backpressureDiskLimiterStatus struct {
 	BackpressureMinThreshold float64
 	BackpressureMaxThreshold float64
 	MaxJournalByteFrac       float64
-	MaxJournalBytes          int64
+	MaxJournalMB             float64
 	MaxDelaySeconds          float64
 
-	JournalBytes        int64
-	FreeBytes           int64
-	BytesSemaphoreMax   int64
-	BytesSemaphoreCount int64
+	JournalMB        float64
+	FreeMB           float64
+	MBSemaphoreMax   float64
+	MBSemaphoreCount float64
 
 	CurrentDelaySeconds float64
 }
@@ -332,17 +332,19 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 	currentDelay := bdl.calculateDelay(context.Background(),
 		bdl.journalBytes, bdl.freeBytes, time.Now())
 
+	MB := float64(1024 * 1024)
+
 	return backpressureDiskLimiterStatus{
 		BackpressureMinThreshold: bdl.backpressureMinThreshold,
 		BackpressureMaxThreshold: bdl.backpressureMaxThreshold,
 		MaxJournalByteFrac:       bdl.maxJournalByteFrac,
-		MaxJournalBytes:          bdl.maxJournalBytes,
+		MaxJournalMB:             float64(bdl.maxJournalBytes) / MB,
 		MaxDelaySeconds:          bdl.maxDelay.Seconds(),
 
-		JournalBytes:        bdl.journalBytes,
-		FreeBytes:           bdl.freeBytes,
-		BytesSemaphoreMax:   bdl.bytesSemaphoreMax,
-		BytesSemaphoreCount: bdl.bytesSemaphore.Count(),
+		JournalMB:        float64(bdl.journalBytes) / MB,
+		FreeMB:           float64(bdl.freeBytes) / MB,
+		MBSemaphoreMax:   float64(bdl.bytesSemaphoreMax) / MB,
+		MBSemaphoreCount: float64(bdl.bytesSemaphore.Count()) / MB,
 
 		CurrentDelaySeconds: currentDelay.Seconds(),
 	}
