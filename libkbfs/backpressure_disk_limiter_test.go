@@ -241,6 +241,11 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 		return nil
 	}
 
+	// Set up parameters so that bytesSemaphoreMax always has
+	// value 100 when called in beforeBlockPut, and every block
+	// put (of size 0.1 * 100 = 10) beyond the min threshold leads
+	// to an increase in timeout of 1 second up to the max.
+
 	const blockSize = 10
 
 	log := logger.NewTestLogger(t)
@@ -262,13 +267,23 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 
 	var bytesPut int
 
-	checkCounters := func(bytesBeingPut int) {
+	checkCountersAfterBeforeBlockPut := func() {
 		journalBytes, freeBytes, bytesSemaphoreMax =
 			bdl.getLockedVarsForTest()
 		require.Equal(t, int64(bytesPut), journalBytes)
 		require.Equal(t, int64(math.MaxInt64), freeBytes)
 		require.Equal(t, int64(100), bytesSemaphoreMax)
-		require.Equal(t, int64(100-bytesPut-bytesBeingPut),
+		require.Equal(t, int64(100-bytesPut-blockSize),
+			bdl.bytesSemaphore.Count())
+	}
+
+	checkCountersAfterBlockPut := func() {
+		journalBytes, freeBytes, bytesSemaphoreMax =
+			bdl.getLockedVarsForTest()
+		require.Equal(t, int64(bytesPut), journalBytes)
+		require.Equal(t, int64(math.MaxInt64), freeBytes)
+		require.Equal(t, int64(100), bytesSemaphoreMax)
+		require.Equal(t, int64(100-bytesPut),
 			bdl.bytesSemaphore.Count())
 	}
 
@@ -278,11 +293,11 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 		_, err = bdl.beforeBlockPut(ctx, blockSize)
 		require.NoError(t, err)
 		require.Equal(t, 0*time.Second, lastDelay)
-		checkCounters(blockSize)
+		checkCountersAfterBeforeBlockPut()
 
 		bdl.afterBlockPut(ctx, blockSize, true)
 		bytesPut += blockSize
-		checkCounters(0)
+		checkCountersAfterBlockPut()
 	}
 
 	// ...but the next eight should encounter increasing
@@ -293,11 +308,11 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 		require.NoError(t, err)
 		require.InEpsilon(t, float64(i), lastDelay.Seconds(),
 			0.01, "i=%d", i)
-		checkCounters(blockSize)
+		checkCountersAfterBeforeBlockPut()
 
 		bdl.afterBlockPut(ctx, 10, true)
 		bytesPut += blockSize
-		checkCounters(0)
+		checkCountersAfterBlockPut()
 	}
 
 	// ...and the last one should stall completely, if not for the
@@ -308,7 +323,15 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 	_, err = bdl.beforeBlockPut(ctx2, blockSize)
 	require.Equal(t, ctx2.Err(), errors.Cause(err))
 	require.Equal(t, 8*time.Second, lastDelay)
-	checkCounters(0)
+
+	// This does the same thing as checkCountersAfterBlockPut(),
+	// but only by coincidence; contrast with similar block in
+	// TestBackpressureDiskLimiterSmallDisk below.
+	journalBytes, freeBytes, bytesSemaphoreMax = bdl.getLockedVarsForTest()
+	require.Equal(t, int64(bytesPut), journalBytes)
+	require.Equal(t, int64(math.MaxInt64), freeBytes)
+	require.Equal(t, int64(100), bytesSemaphoreMax)
+	require.Equal(t, int64(100-bytesPut), bdl.bytesSemaphore.Count())
 }
 
 // TestBackpressureDiskLimiterSmallDiskDelay checks the delays when
