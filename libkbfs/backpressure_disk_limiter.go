@@ -356,7 +356,7 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 
 	mbSemaphoreMax := float64(bdl.bytesSemaphoreMax) / MB
 	mbSemaphoreCount := float64(bdl.bytesSemaphore.Count()) / MB
-	mbSemaphoreUsageFrac := mbSemaphoreCount / mbSemaphoreMax
+	mbSemaphoreUsageFrac := 1 - mbSemaphoreCount/mbSemaphoreMax
 
 	return backpressureDiskLimiterStatus{
 		Type: "BackpressureDiskLimiter",

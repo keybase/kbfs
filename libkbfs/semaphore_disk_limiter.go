@@ -88,7 +88,7 @@ func (sdl semaphoreDiskLimiter) getStatus() interface{} {
 
 	maxJournalMB := float64(sdl.maxJournalBytes) / MB
 	mbSemaphoreCount := float64(sdl.bytesSemaphore.Count()) / MB
-	mbSemaphoreUsageFrac := mbSemaphoreCount / maxJournalMB
+	mbSemaphoreUsageFrac := 1 - mbSemaphoreCount/maxJournalMB
 
 	return semaphoreDiskLimiterStatus{
 		Type: "SemaphoreDiskLimiter",
