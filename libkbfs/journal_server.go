@@ -18,6 +18,12 @@ import (
 	"golang.org/x/net/context"
 )
 
+// TODO: Expand this list to the whole team.
+var journalingBetaList = map[keybase1.UID]bool{
+	"ef2e49961eddaa77094b45ed635cfc00": true, // Jeremy Stribling, "strib"
+	"ebbe1d99410ab70123262cf8dfc87900": true, // Fred Akalin, "akalin"
+}
+
 type journalServerConfig struct {
 	// EnableAuto, if true, means the user has explicitly set its
 	// value. If false, then either the user turned it on and then
@@ -48,7 +54,7 @@ func (jsc journalServerConfig) getEnableAuto(currentUID keybase1.UID) (
 	// hasn't touched the field. In either case, determine the
 	// value based on whether the current UID is in the
 	// journaling beta list.
-	return false, false
+	return journalingBetaList[currentUID], false
 }
 
 // JournalServerStatus represents the overall status of the
