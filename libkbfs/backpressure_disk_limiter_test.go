@@ -321,7 +321,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 	}
 
 	const blockSize = 8
-	const diskSize = 400
+	const diskSize = 320
 
 	var bdl *backpressureDiskLimiter
 
@@ -348,8 +348,8 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(0), journalBytes)
 	require.Equal(t, int64(diskSize), freeBytes)
-	require.Equal(t, int64(100), bytesSemaphoreMax)
-	require.Equal(t, int64(100), bdl.bytesSemaphore.Count())
+	require.Equal(t, int64(80), bytesSemaphoreMax)
+	require.Equal(t, int64(80), bdl.bytesSemaphore.Count())
 
 	ctx := context.Background()
 
@@ -360,7 +360,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 			bdl.getLockedVarsForTest()
 		require.Equal(t, int64(bytesPut), journalBytes)
 		expectedFreeBytes := int64(diskSize - journalBytes)
-		expectedBytesSemaphoreMax := int64(100)
+		expectedBytesSemaphoreMax := int64(80)
 		expectedBytesSemaphore := expectedBytesSemaphoreMax - int64(bytesPut)
 		if before {
 			expectedBytesSemaphore -= blockSize
@@ -378,18 +378,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 
 	// The first two puts shouldn't encounter any backpressure...
 
-	for i := 0; i < 1; i++ {
-		_, err = bdl.beforeBlockPut(ctx, blockSize)
-		require.NoError(t, err)
-		require.Equal(t, 0*time.Second, lastDelay)
-		checkCounters(true)
-
-		bdl.afterBlockPut(ctx, blockSize, true)
-		bytesPut += blockSize
-		checkCounters(false)
-	}
-
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 2; i++ {
 		_, err = bdl.beforeBlockPut(ctx, blockSize)
 		require.NoError(t, err)
 		require.Equal(t, 0*time.Second, lastDelay)
