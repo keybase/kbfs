@@ -321,7 +321,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 	}
 
 	const blockSize = 10
-	const diskSize = 100
+	const diskSize = 400
 
 	var bdl *backpressureDiskLimiter
 
