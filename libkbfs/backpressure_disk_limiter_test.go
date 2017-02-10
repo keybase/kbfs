@@ -303,7 +303,7 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 	checkCounters(0)
 }
 
-// TestBackpressureDiskLimiterLargeDiskDelay checks the delays when
+// TestBackpressureDiskLimiterSmallDiskDelay checks the delays when
 // pretending to have a small disk.
 func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 	var lastDelay time.Duration
