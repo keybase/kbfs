@@ -81,7 +81,7 @@ func TestSaturateAdd(t *testing.T) {
 	require.Equal(t, int64(0), x)
 
 	x = -1
-	saturateAdd(&x, -1)
+	saturateAdd(&x, 0)
 	require.Equal(t, int64(0), x)
 }
 
