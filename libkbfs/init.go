@@ -369,6 +369,11 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 		close(done)
 	}()
 
+	// Spawn a new goroutine for `doInit` so that we can `select` on `done` and
+	// `errCh` below. This is particularly for the situation where a SIGINT comes
+	// in while `doInit` is still not finished (because e.g. service daemon is
+	// not up), where the process can fail to exit while being stuck in `doInit`.
+	// This allows us to not call `os.Exit()` in the interrupt handler.
 	errCh := make(chan error)
 	go func() {
 		var er error
