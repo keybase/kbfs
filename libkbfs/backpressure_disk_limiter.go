@@ -310,6 +310,40 @@ func (bdl *backpressureDiskLimiter) onBlockDelete(
 	bdl.updateBytesSemaphoreMaxLocked()
 }
 
+type backpressureDiskLimiterStatus struct {
+	BackpressureMinThreshold float64
+	BackpressureMaxThreshold float64
+	MaxJournalByteFrac       float64
+	MaxJournalBytes          int64
+	MaxDelaySeconds          float64
+
+	JournalBytes        int64
+	FreeBytes           int64
+	BytesSemaphoreMax   int64
+	BytesSemaphoreCount int64
+
+	CurrentDelaySeconds float64
+}
+
 func (bdl *backpressureDiskLimiter) getStatus() interface{} {
-	return nil
+	bdl.bytesLock.Lock()
+	defer bdl.bytesLock.Unlock()
+
+	currentDelay := bdl.calculateDelay(context.Background(),
+		bdl.journalBytes, bdl.freeBytes, time.Now())
+
+	return backpressureDiskLimiterStatus{
+		BackpressureMinThreshold: bdl.backpressureMinThreshold,
+		BackpressureMaxThreshold: bdl.backpressureMaxThreshold,
+		MaxJournalByteFrac:       bdl.maxJournalByteFrac,
+		MaxJournalBytes:          bdl.maxJournalBytes,
+		MaxDelaySeconds:          bdl.maxDelay.Seconds(),
+
+		JournalBytes:        bdl.journalBytes,
+		FreeBytes:           bdl.freeBytes,
+		BytesSemaphoreMax:   bdl.bytesSemaphoreMax,
+		BytesSemaphoreCount: bdl.bytesSemaphore.Count(),
+
+		CurrentDelaySeconds: currentDelay.Seconds(),
+	}
 }
