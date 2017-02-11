@@ -5,10 +5,10 @@
 package libkbfs
 
 import (
+	"testing"
+
 	"github.com/keybase/client/go/libkb"
-	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
-	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"golang.org/x/net/context"
 )
@@ -42,31 +42,27 @@ func (cig singleCurrentInfoGetter) GetCurrentVerifyingKey(
 }
 
 type testMDServerLocalConfig struct {
-	log    logger.Logger
+	codecGetter
+	logMaker
 	clock  Clock
-	codec  kbfscodec.Codec
 	crypto cryptoPure
 	cig    currentInfoGetter
 }
 
-func newTestMDServerLocalConfig(
-	log logger.Logger, cig currentInfoGetter) testMDServerLocalConfig {
-	codec := kbfscodec.NewMsgpack()
+func newTestMDServerLocalConfig(t *testing.T,
+	cig currentInfoGetter) testMDServerLocalConfig {
+	cg := newTestCodecGetter()
 	return testMDServerLocalConfig{
-		log:    log,
-		clock:  newTestClockNow(),
-		codec:  codec,
-		crypto: MakeCryptoCommon(codec),
-		cig:    cig,
+		codecGetter: cg,
+		logMaker:    newTestLogMaker(t),
+		clock:       newTestClockNow(),
+		crypto:      MakeCryptoCommon(cg.Codec()),
+		cig:         cig,
 	}
 }
 
 func (c testMDServerLocalConfig) Clock() Clock {
 	return c.clock
-}
-
-func (c testMDServerLocalConfig) Codec() kbfscodec.Codec {
-	return c.codec
 }
 
 func (c testMDServerLocalConfig) cryptoPure() cryptoPure {
@@ -79,8 +75,4 @@ func (c testMDServerLocalConfig) currentInfoGetter() currentInfoGetter {
 
 func (c testMDServerLocalConfig) MetadataVersion() MetadataVer {
 	return defaultClientMetadataVer
-}
-
-func (c testMDServerLocalConfig) MakeLogger(module string) logger.Logger {
-	return c.log
 }

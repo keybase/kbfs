@@ -220,10 +220,10 @@ func setupTLFJournalTest(
 		uid:          uid,
 		verifyingKey: verifyingKey,
 	}
-	log := logger.NewTestLogger(t)
-	mdserver, err := NewMDServerMemory(newTestMDServerLocalConfig(log, cig))
+	mdserver, err := NewMDServerMemory(newTestMDServerLocalConfig(t, cig))
 	require.NoError(t, err)
 
+	log := logger.NewTestLogger(t)
 	config = &testTLFJournalConfig{
 		t, log, tlf.FakeID(1, false), bsplitter, codec, crypto,
 		nil, nil, NewMDCacheStandard(10), ver,
