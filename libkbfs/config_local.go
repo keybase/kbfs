@@ -910,17 +910,16 @@ func (c *ConfigLocal) EnableJournaling(
 		return err
 	}
 
-	// Set the absolute journal byte limit to 50 GiB for now.
-	//
-	// TODO: Also keep track of and limit the inode count.
-	const journalByteLimit int64 = 50 * 1024 * 1024 * 1024
 	const backpressureMinThreshold = 0.5
 	const backpressureMaxThreshold = 0.95
 	// Cap journal usage to a quarter of the free space.
-	const maxJournalByteFrac = 0.25
+	const journalByteLimitFrac = 0.25
+	// Set the absolute journal byte limit to 50 GiB for now.
+	const journalByteLimit int64 = 50 * 1024 * 1024 * 1024
+	// TODO: Also limit the inode count.
 	bdl, err := newBackpressureDiskLimiter(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		maxJournalByteFrac, journalByteLimit,
+		journalByteLimitFrac, journalByteLimit,
 		defaultDiskLimitMaxDelay, journalRoot)
 	if err != nil {
 		return err

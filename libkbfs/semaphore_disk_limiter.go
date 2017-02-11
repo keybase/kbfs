@@ -79,7 +79,7 @@ type semaphoreDiskLimiterStatus struct {
 	Type string
 
 	// Derived numbers.
-	UsageFracMB float64
+	UsageFrac float64
 
 	// Raw numbers.
 	LimitMB     float64
@@ -91,12 +91,12 @@ func (sdl semaphoreDiskLimiter) getStatus() interface{} {
 
 	limitMB := float64(sdl.byteLimit) / MB
 	availableMB := float64(sdl.byteSemaphore.Count()) / MB
-	usageFracMB := 1 - availableMB/limitMB
+	usageFrac := 1 - availableMB/limitMB
 
 	return semaphoreDiskLimiterStatus{
 		Type: "SemaphoreDiskLimiter",
 
-		UsageFracMB: usageFracMB,
+		UsageFrac: usageFrac,
 
 		LimitMB:     limitMB,
 		AvailableMB: availableMB,
