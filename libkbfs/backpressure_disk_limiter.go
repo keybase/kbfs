@@ -329,7 +329,7 @@ type backpressureDiskLimiterStatus struct {
 
 	// Derived numbers.
 	FreeSpaceFrac   float64
-	UsageFrac       float64
+	ByteUsageFrac   float64
 	DelayScale      float64
 	CurrentDelaySec float64
 
@@ -361,13 +361,13 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 
 	limitMB := float64(bdl.byteSemaphoreMax) / MB
 	availableMB := float64(bdl.byteSemaphore.Count()) / MB
-	usageFrac := 1 - availableMB/limitMB
+	byteUsageFrac := 1 - availableMB/limitMB
 
 	return backpressureDiskLimiterStatus{
 		Type: "BackpressureDiskLimiter",
 
 		FreeSpaceFrac:   freeSpaceFrac,
-		UsageFrac:       usageFrac,
+		ByteUsageFrac:   byteUsageFrac,
 		DelayScale:      delayScale,
 		CurrentDelaySec: currentDelay.Seconds(),
 
