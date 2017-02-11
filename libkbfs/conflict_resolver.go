@@ -1072,6 +1072,12 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
+	// TODO: limit both the number and total RefBytes size of the
+	// unmerged list, and run CR several times until we've completed
+	// all CR.  This means ResolveBranch must take a range of
+	// revisions, and we have to track things like blockIDsToDelete
+	// across several CR runs.
+
 	// Make the chains
 	unmergedChains, mergedChains, err = cr.makeChains(ctx, unmerged, merged)
 	if err != nil {
