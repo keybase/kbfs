@@ -5324,13 +5324,13 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 // out the given newOps notifications locally.  This is used for
 // completing conflict resolution.
 func (fbo *folderBranchOps) finalizeResolution(ctx context.Context,
-	lState *lockState, md *RootMetadata, bps *blockPutState,
-	newOps []op, blocksToDelete []kbfsblock.ID) error {
+	lState *lockState, mds []*RootMetadata, bps *blockPutState,
+	newOps [][]op, blocksToDelete []kbfsblock.ID) error {
 	// Take the writer lock.
 	fbo.mdWriterLock.Lock(lState)
 	defer fbo.mdWriterLock.Unlock(lState)
 	return fbo.finalizeResolutionLocked(
-		ctx, lState, md, bps, newOps, blocksToDelete)
+		ctx, lState, mds, bps, newOps, blocksToDelete)
 }
 
 func (fbo *folderBranchOps) unstageAfterFailedResolution(ctx context.Context,
