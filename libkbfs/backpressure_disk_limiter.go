@@ -70,11 +70,11 @@ type backpressureTracker struct {
 
 // getMaxResources returns the resource limit, taking into account the
 // amount of free resources left. This is min(k(J+F), L).
-func (bt backpressureTracker) getMaxResources(used, free int64) float64 {
+func (bt backpressureTracker) getMaxResources() float64 {
 	// Calculate k(J+F), converting to float64 first to avoid
 	// overflow, although losing some precision in the process.
-	usedFloat := float64(used)
-	freeFloat := float64(free)
+	usedFloat := float64(bt.used)
+	freeFloat := float64(bt.free)
 	limit := bt.limitFrac * (usedFloat + freeFloat)
 	return math.Min(limit, float64(bt.limit))
 }
@@ -82,7 +82,7 @@ func (bt backpressureTracker) getMaxResources(used, free int64) float64 {
 // updateSemaphoreMax must be called whenever bt.used or bt.free
 // changes.
 func (bt *backpressureTracker) updateSemaphoreMax() {
-	newMax := int64(bt.getMaxResources(bt.used, bt.free))
+	newMax := int64(bt.getMaxResources())
 	delta := newMax - bt.semaphoreMax
 	// These operations are adjusting the *maximum* value of
 	// bt.semaphore.
@@ -94,8 +94,13 @@ func (bt *backpressureTracker) updateSemaphoreMax() {
 	bt.semaphoreMax = newMax
 }
 
-func (bt backpressureTracker) calculateDelayScale(
-	freeSpaceFrac float64) float64 {
+func (bt backpressureTracker) calculateFreeSpaceFrac() float64 {
+	return float64(bt.used) / bt.getMaxResources()
+}
+
+func (bt backpressureTracker) calculateDelayScale() float64 {
+	freeSpaceFrac := bt.calculateFreeSpaceFrac()
+
 	// We want the delay to be 0 if freeSpaceFrac <= m and the
 	// max delay if freeSpaceFrac >= M, so linearly interpolate
 	// the delay scale.
@@ -249,23 +254,9 @@ func (bdl *backpressureDiskLimiter) onJournalDisable(
 	}
 }
 
-func (bdl *backpressureDiskLimiter) calculateFreeSpaceFrac(
-	journalBytes, freeBytes int64) float64 {
-	journalBytesFloat := float64(journalBytes)
-	return journalBytesFloat /
-		bdl.byteTracker.getMaxResources(journalBytes, freeBytes)
-}
-
-func (bdl *backpressureDiskLimiter) calculateDelayScale(
-	freeSpaceFrac float64) float64 {
-	return bdl.byteTracker.calculateDelayScale(freeSpaceFrac)
-}
-
 func (bdl *backpressureDiskLimiter) calculateDelayLocked(
 	ctx context.Context, now time.Time) time.Duration {
-	freeSpaceFrac := bdl.calculateFreeSpaceFrac(
-		bdl.byteTracker.used, bdl.byteTracker.free)
-	delayScale := bdl.calculateDelayScale(freeSpaceFrac)
+	delayScale := bdl.byteTracker.calculateDelayScale()
 
 	// Set maxDelay to min(bdl.maxDelay, time until deadline - 1s).
 	maxDelay := bdl.maxDelay
@@ -378,9 +369,8 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
 
-	freeSpaceFrac := bdl.calculateFreeSpaceFrac(
-		bdl.byteTracker.used, bdl.byteTracker.free)
-	delayScale := bdl.calculateDelayScale(freeSpaceFrac)
+	freeSpaceFrac := bdl.byteTracker.calculateFreeSpaceFrac()
+	delayScale := bdl.byteTracker.calculateDelayScale()
 	currentDelay := bdl.calculateDelayLocked(
 		context.Background(), time.Now())
 
