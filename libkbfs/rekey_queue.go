@@ -15,10 +15,10 @@ import (
 )
 
 // When provisioning a new device from an existing device, the provisionee
-// needs one of existing devices to rekey for it, or it has to use paperkey for
-// the rekey. For the case where an existing device does the rekey, there are
-// three routines which eventually all go through this rekey queue. These three
-// rekey routines are:
+// needs one of the existing devices to rekey for it, or it has to use paperkey
+// for the rekey. For the case where an existing device does the rekey, there
+// are three routines which eventually all go through this rekey queue. These
+// three rekey routines are:
 //
 // 1. When a new device is added, the service on provisioner calls an RPC into
 // KBFS, notifying the latter about the new device (provisionee) and that it
@@ -27,7 +27,7 @@ import (
 // mdserver to check for TLFs that needs rekey. Note that this happens on all
 // KBFS devices, no matter it has rekey capability or now.
 //
-// Both 1 and 2 do this by calling MDServerRemote.CheckForRekey to send back a
+// Both 1 and 2 do this by calling MDServerRemote.CheckForRekeys to send back a
 // FoldersNeedRekey request.
 //
 // 3. When the provisionee gets provisioned, it goes through all TLFs and sends
