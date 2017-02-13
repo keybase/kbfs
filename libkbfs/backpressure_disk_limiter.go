@@ -19,34 +19,33 @@ import (
 // uses backpressure to slow down block puts before they hit the disk
 // limits.
 //
-// Let J be the (approximate) byte usage of the journal and F be the
-// free bytes on disk. Then we want to enforce
+// Let J be the (approximate) byte/file usage of the journal and F be
+// the free bytes/files on disk. Then we want to enforce
 //
 //   J <= min(k(J+F), L),
 //
-// where 0 < k <= 1 is some fraction, and L > 0 is the absolute byte
-// usage limit. But in addition to that, we want to set thresholds 0
-// <= m <= M <= 1 such that we apply proportional backpressure (with a
-// given maximum delay) when
+// where 0 < k <= 1 is some fraction, and L > 0 is the absolute
+// byte/file usage limit. But in addition to that, we want to set
+// thresholds 0 <= m <= M <= 1 such that we apply proportional
+// backpressure (with a given maximum delay) when
 //
 //   m <= max(J/(k(J+F)), J/L) <= M,
 //
 // which is equivalent to
 //
 //   m <= J/min(k(J+F), L) <= M.
-//
-// TODO: Also do limiting based on file counts.
 type backpressureDiskLimiter struct {
 	log logger.Logger
 	// backpressureMinThreshold is m in the above.
 	backpressureMinThreshold float64
 	// backpressureMaxThreshold is M in the above.
 	backpressureMaxThreshold float64
-	// byteLimitFrac is k in the above.
-	byteLimitFrac float64
+	// limitFrac is k in the above.
+	limitFrac float64
+
 	// byteLimit is L in the above.
 	byteLimit int64
-
+	// fileLimit is L in the above.
 	fileLimit int64
 
 	maxDelay            time.Duration
@@ -72,7 +71,7 @@ var _ diskLimiter = (*backpressureDiskLimiter)(nil)
 // given delay function, which is overridden in tests.
 func newBackpressureDiskLimiterWithFunctions(
 	log logger.Logger,
-	backpressureMinThreshold, backpressureMaxThreshold, byteLimitFrac float64,
+	backpressureMinThreshold, backpressureMaxThreshold, limitFrac float64,
 	byteLimit, fileLimit int64, maxDelay time.Duration,
 	delayFn func(context.Context, time.Duration) error,
 	freeBytesAndFilesFn func() (int64, int64, error)) (
@@ -90,13 +89,13 @@ func newBackpressureDiskLimiterWithFunctions(
 		return nil, errors.Errorf("1.0 < backpressureMaxThreshold=%f",
 			backpressureMaxThreshold)
 	}
-	if byteLimitFrac < 0.01 {
-		return nil, errors.Errorf("byteLimitFrac=%f < 0.01",
-			byteLimitFrac)
+	if limitFrac < 0.01 {
+		return nil, errors.Errorf("limitFrac=%f < 0.01",
+			limitFrac)
 	}
-	if byteLimitFrac > 1.0 {
-		return nil, errors.Errorf("byteLimitFrac=%f > 1.0",
-			byteLimitFrac)
+	if limitFrac > 1.0 {
+		return nil, errors.Errorf("limitFrac=%f > 1.0",
+			limitFrac)
 	}
 	freeBytes, _, err := freeBytesAndFilesFn()
 	if err != nil {
@@ -104,7 +103,7 @@ func newBackpressureDiskLimiterWithFunctions(
 	}
 	bdl := &backpressureDiskLimiter{
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		byteLimitFrac, byteLimit, fileLimit, maxDelay,
+		limitFrac, byteLimit, fileLimit, maxDelay,
 		delayFn, freeBytesAndFilesFn, sync.Mutex{}, 0,
 		freeBytes, 0, kbfssync.NewSemaphore(),
 	}
@@ -154,12 +153,12 @@ func defaultGetFreeBytesAndFiles(path string) (int64, int64, error) {
 // with the given parameters.
 func newBackpressureDiskLimiter(
 	log logger.Logger,
-	backpressureMinThreshold, backpressureMaxThreshold, byteLimitFrac float64,
+	backpressureMinThreshold, backpressureMaxThreshold, limitFrac float64,
 	byteLimit, fileLimit int64, maxDelay time.Duration,
 	journalPath string) (*backpressureDiskLimiter, error) {
 	return newBackpressureDiskLimiterWithFunctions(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		byteLimitFrac, byteLimit, fileLimit, maxDelay,
+		limitFrac, byteLimit, fileLimit, maxDelay,
 		defaultDoDelay, func() (int64, int64, error) {
 			return defaultGetFreeBytesAndFiles(journalPath)
 		})
@@ -181,7 +180,7 @@ func (bdl *backpressureDiskLimiter) getMaxJournalBytes(
 	journalBytesFloat := float64(journalBytes)
 	freeBytesFloat := float64(freeBytes)
 	byteLimit :=
-		bdl.byteLimitFrac * (journalBytesFloat + freeBytesFloat)
+		bdl.limitFrac * (journalBytesFloat + freeBytesFloat)
 	return math.Min(byteLimit, float64(bdl.byteLimit))
 }
 
@@ -379,7 +378,7 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 
 		BackpressureMinThreshold: bdl.backpressureMinThreshold,
 		BackpressureMaxThreshold: bdl.backpressureMaxThreshold,
-		ByteLimitFrac:            bdl.byteLimitFrac,
+		ByteLimitFrac:            bdl.limitFrac,
 		FixedLimitMB:             float64(bdl.byteLimit) / MB,
 		MaxDelaySec:              bdl.maxDelay.Seconds(),
 
