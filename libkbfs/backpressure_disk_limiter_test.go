@@ -222,14 +222,17 @@ func TestBackpressureDiskLimiterCalculateDelay(t *testing.T) {
 	now := time.Now()
 
 	ctx := context.Background()
-	delay := bdl.calculateDelay(ctx, 50, 350, now)
+	// TODO: Clean up.
+	bdl.byteTracker.used = 50
+	bdl.byteTracker.free = 350
+	delay := bdl.calculateDelayLocked(ctx, now)
 	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
 
 	deadline := now.Add(5 * time.Second)
 	ctx2, cancel2 := context.WithDeadline(ctx, deadline)
 	defer cancel2()
 
-	delay = bdl.calculateDelay(ctx2, 50, 350, now)
+	delay = bdl.calculateDelayLocked(ctx2, now)
 	require.InEpsilon(t, float64(2), delay.Seconds(), 0.01)
 }
 

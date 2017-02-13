@@ -261,10 +261,10 @@ func (bdl *backpressureDiskLimiter) calculateDelayScale(
 	return bdl.byteTracker.calculateDelayScale(freeSpaceFrac)
 }
 
-func (bdl *backpressureDiskLimiter) calculateDelay(
-	ctx context.Context, journalBytes, freeBytes int64,
-	now time.Time) time.Duration {
-	freeSpaceFrac := bdl.calculateFreeSpaceFrac(journalBytes, freeBytes)
+func (bdl *backpressureDiskLimiter) calculateDelayLocked(
+	ctx context.Context, now time.Time) time.Duration {
+	freeSpaceFrac := bdl.calculateFreeSpaceFrac(
+		bdl.byteTracker.used, bdl.byteTracker.free)
 	delayScale := bdl.calculateDelayScale(freeSpaceFrac)
 
 	// Set maxDelay to min(bdl.maxDelay, time until deadline - 1s).
@@ -289,29 +289,31 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 			"backpressureDiskLimiter.beforeBlockPut called with 0 blockBytes")
 	}
 
-	journalBytes, freeBytes, err := func() (int64, int64, error) {
+	delay, err := func() (time.Duration, error) {
 		bdl.lock.Lock()
 		defer bdl.lock.Unlock()
 
 		freeBytes, _, err := bdl.freeBytesAndFilesFn()
 		if err != nil {
-			return 0, 0, err
+			return 0, err
 		}
 
 		bdl.byteTracker.free = freeBytes
 		bdl.updateBytesSemaphoreMaxLocked()
-		return bdl.byteTracker.used, bdl.byteTracker.free, nil
+
+		delay := bdl.calculateDelayLocked(ctx, time.Now())
+		if delay > 0 {
+			bdl.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s ("+
+				"journalBytes=%d freeBytes=%d)",
+				blockBytes, delay.Seconds(), journalBytes, freeBytes)
+		}
+
+		return delay, nil
 	}()
 	if err != nil {
 		return bdl.byteTracker.semaphore.Count(), defaultAvailableFiles, err
 	}
 
-	delay := bdl.calculateDelay(ctx, journalBytes, freeBytes, time.Now())
-	if delay > 0 {
-		bdl.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s ("+
-			"journalBytes=%d freeBytes=%d)",
-			blockBytes, delay.Seconds(), journalBytes, freeBytes)
-	}
 	// TODO: Update delay if any variables change (i.e., we
 	// suddenly free up a lot of space).
 	err = bdl.delayFn(ctx, delay)
@@ -379,8 +381,8 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 	freeSpaceFrac := bdl.calculateFreeSpaceFrac(
 		bdl.byteTracker.used, bdl.byteTracker.free)
 	delayScale := bdl.calculateDelayScale(freeSpaceFrac)
-	currentDelay := bdl.calculateDelay(context.Background(),
-		bdl.byteTracker.used, bdl.byteTracker.free, time.Now())
+	currentDelay := bdl.calculateDelayLocked(
+		context.Background(), time.Now())
 
 	const MB float64 = 1024 * 1024
 
