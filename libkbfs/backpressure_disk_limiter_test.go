@@ -61,7 +61,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(0), journalBytes)
 	require.Equal(t, int64(200), freeBytes)
 	require.Equal(t, int64(50), byteSemaphoreMax)
-	require.Equal(t, int64(50), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(50), bdl.byteTracker.semaphore.Count())
 
 	ctx := context.Background()
 
@@ -76,7 +76,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(10), journalBytes)
 	require.Equal(t, int64(200), freeBytes)
 	require.Equal(t, int64(52), byteSemaphoreMax)
-	require.Equal(t, int64(42), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(42), bdl.byteTracker.semaphore.Count())
 
 	// Decrease J by 9, so that decreases bSM by 0.25*9 = 2.25, so
 	// bSM is back to 50.
@@ -88,7 +88,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(1), journalBytes)
 	require.Equal(t, int64(200), freeBytes)
 	require.Equal(t, int64(50), byteSemaphoreMax)
-	require.Equal(t, int64(49), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(49), bdl.byteTracker.semaphore.Count())
 
 	// Increase J by 440, so that increases bSM by 0.25*110 = 110,
 	// so bSM maxes out at 100, and byteSemaphore should do negative.
@@ -101,7 +101,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(441), journalBytes)
 	require.Equal(t, int64(200), freeBytes)
 	require.Equal(t, int64(100), byteSemaphoreMax)
-	require.Equal(t, int64(-341), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(-341), bdl.byteTracker.semaphore.Count())
 
 	// Now revert that increase.
 
@@ -112,7 +112,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(1), journalBytes)
 	require.Equal(t, int64(200), freeBytes)
 	require.Equal(t, int64(50), byteSemaphoreMax)
-	require.Equal(t, int64(49), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(49), bdl.byteTracker.semaphore.Count())
 
 	// This should be a no-op.
 	availBytes, _ = bdl.onJournalEnable(ctx, 0, 0)
@@ -123,7 +123,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(1), journalBytes)
 	require.Equal(t, int64(200), freeBytes)
 	require.Equal(t, int64(50), byteSemaphoreMax)
-	require.Equal(t, int64(49), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(49), bdl.byteTracker.semaphore.Count())
 
 	// So should this.
 	bdl.onJournalDisable(ctx, 0, 0)
@@ -133,7 +133,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(1), journalBytes)
 	require.Equal(t, int64(200), freeBytes)
 	require.Equal(t, int64(50), byteSemaphoreMax)
-	require.Equal(t, int64(49), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(49), bdl.byteTracker.semaphore.Count())
 
 	// Add more free bytes and put a block successfully.
 
@@ -148,7 +148,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(1), journalBytes)
 	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), byteSemaphoreMax)
-	require.Equal(t, int64(89), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(89), bdl.byteTracker.semaphore.Count())
 
 	bdl.afterBlockPut(ctx, 10, 0, true)
 
@@ -157,7 +157,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(11), journalBytes)
 	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), byteSemaphoreMax)
-	require.Equal(t, int64(89), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(89), bdl.byteTracker.semaphore.Count())
 
 	// Then try to put a block but fail it.
 
@@ -170,7 +170,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(11), journalBytes)
 	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), byteSemaphoreMax)
-	require.Equal(t, int64(80), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(80), bdl.byteTracker.semaphore.Count())
 
 	bdl.afterBlockPut(ctx, 9, 0, false)
 
@@ -179,7 +179,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(11), journalBytes)
 	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), byteSemaphoreMax)
-	require.Equal(t, int64(89), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(89), bdl.byteTracker.semaphore.Count())
 
 	// Finally, delete a block.
 
@@ -190,7 +190,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(0), journalBytes)
 	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), byteSemaphoreMax)
-	require.Equal(t, int64(100), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(100), bdl.byteTracker.semaphore.Count())
 
 	// This should be a no-op.
 	bdl.onBlockDelete(ctx, 0, 0)
@@ -200,7 +200,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	require.Equal(t, int64(0), journalBytes)
 	require.Equal(t, int64(400), freeBytes)
 	require.Equal(t, int64(100), byteSemaphoreMax)
-	require.Equal(t, int64(100), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(100), bdl.byteTracker.semaphore.Count())
 }
 
 // TestBackpressureDiskLimiterCalculateDelay tests the delay
@@ -262,7 +262,7 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 	require.Equal(t, int64(0), journalBytes)
 	require.Equal(t, int64(math.MaxInt64), freeBytes)
 	require.Equal(t, int64(100), byteSemaphoreMax)
-	require.Equal(t, int64(100), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(100), bdl.byteTracker.semaphore.Count())
 
 	ctx := context.Background()
 
@@ -275,7 +275,7 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 		require.Equal(t, int64(math.MaxInt64), freeBytes)
 		require.Equal(t, int64(100), byteSemaphoreMax)
 		require.Equal(t, int64(100-bytesPut-blockSize),
-			bdl.byteSemaphore.Count())
+			bdl.byteTracker.semaphore.Count())
 	}
 
 	checkCountersAfterBlockPut := func() {
@@ -285,7 +285,7 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 		require.Equal(t, int64(math.MaxInt64), freeBytes)
 		require.Equal(t, int64(100), byteSemaphoreMax)
 		require.Equal(t, int64(100-bytesPut),
-			bdl.byteSemaphore.Count())
+			bdl.byteTracker.semaphore.Count())
 	}
 
 	// The first two puts shouldn't encounter any backpressure...
@@ -332,7 +332,7 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 	require.Equal(t, int64(bytesPut), journalBytes)
 	require.Equal(t, int64(math.MaxInt64), freeBytes)
 	require.Equal(t, int64(100), byteSemaphoreMax)
-	require.Equal(t, int64(100-bytesPut), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(100-bytesPut), bdl.byteTracker.semaphore.Count())
 }
 
 // TestBackpressureDiskLimiterSmallDiskDelay checks the delays when
@@ -364,7 +364,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		// When called in subsequent times from
 		// beforeBlockPut, simulate the journal taking up
 		// space.
-		return diskSize - bdl.journalBytes, math.MaxInt64, nil
+		return diskSize - bdl.byteTracker.used, math.MaxInt64, nil
 	}
 
 	log := logger.NewTestLogger(t)
@@ -378,7 +378,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 	require.Equal(t, int64(0), journalBytes)
 	require.Equal(t, int64(diskSize), freeBytes)
 	require.Equal(t, int64(80), byteSemaphoreMax)
-	require.Equal(t, int64(80), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(80), bdl.byteTracker.semaphore.Count())
 
 	ctx := context.Background()
 
@@ -391,7 +391,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		require.Equal(t, int64(diskSize-journalBytes), freeBytes)
 		require.Equal(t, int64(80), byteSemaphoreMax)
 		require.Equal(t, int64(80-bytesPut-blockSize),
-			bdl.byteSemaphore.Count())
+			bdl.byteTracker.semaphore.Count())
 	}
 
 	checkCountersAfterBlockPut := func() {
@@ -405,7 +405,7 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 		expectedBytesSemaphore := expectedBytesSemaphoreMax - int64(bytesPut)
 		require.Equal(t, expectedFreeBytes, freeBytes)
 		require.Equal(t, expectedBytesSemaphoreMax, byteSemaphoreMax)
-		require.Equal(t, expectedBytesSemaphore, bdl.byteSemaphore.Count())
+		require.Equal(t, expectedBytesSemaphore, bdl.byteTracker.semaphore.Count())
 	}
 
 	// The first two puts shouldn't encounter any backpressure...
@@ -450,5 +450,5 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 	require.Equal(t, int64(bytesPut), journalBytes)
 	require.Equal(t, int64(diskSize-journalBytes), freeBytes)
 	require.Equal(t, int64(80), byteSemaphoreMax)
-	require.Equal(t, int64(80-bytesPut), bdl.byteSemaphore.Count())
+	require.Equal(t, int64(80-bytesPut), bdl.byteTracker.semaphore.Count())
 }
