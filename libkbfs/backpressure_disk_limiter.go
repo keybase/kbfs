@@ -112,6 +112,38 @@ func (bt *backpressureTracker) onJournalDisable(journalResources int64) {
 	}
 }
 
+func (bt *backpressureTracker) updateFree(freeResources int64) {
+	bt.free = freeResources
+	bt.updateSemaphoreMax()
+}
+
+func (bt *backpressureTracker) beforeBlockPut(
+	ctx context.Context, blockResources int64) (
+	availableResources int64, err error) {
+	return bt.semaphore.Acquire(ctx, blockResources)
+}
+
+func (bt *backpressureTracker) afterBlockPut(
+	blockResources int64, putData bool) {
+	if putData {
+		bt.used += blockResources
+		bt.updateSemaphoreMax()
+	} else {
+		bt.semaphore.Release(blockResources)
+	}
+}
+
+func (bt *backpressureTracker) onBlockDelete(blockResources int64) {
+	if blockResources == 0 {
+		return
+	}
+
+	bt.semaphore.Release(blockResources)
+
+	bt.used -= blockResources
+	bt.updateSemaphoreMax()
+}
+
 func (bt backpressureTracker) calculateFreeSpaceFrac() float64 {
 	return float64(bt.used) / bt.getMaxResources()
 }
@@ -298,8 +330,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 			return 0, err
 		}
 
-		bdl.byteTracker.free = freeBytes
-		bdl.updateBytesSemaphoreMaxLocked()
+		bdl.byteTracker.updateFree(freeBytes)
 
 		delay := bdl.calculateDelayLocked(ctx, time.Now())
 		if delay > 0 {
@@ -321,34 +352,22 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		return bdl.byteTracker.semaphore.Count(), defaultAvailableFiles, err
 	}
 
-	availableFiles, err = bdl.byteTracker.semaphore.Acquire(ctx, blockBytes)
+	availableFiles, err = bdl.byteTracker.beforeBlockPut(ctx, blockBytes)
 	return availableFiles, defaultAvailableFiles, err
 }
 
 func (bdl *backpressureDiskLimiter) afterBlockPut(
 	ctx context.Context, blockBytes, blockFiles int64, putData bool) {
-	if putData {
-		bdl.lock.Lock()
-		defer bdl.lock.Unlock()
-		bdl.byteTracker.used += blockBytes
-		bdl.updateBytesSemaphoreMaxLocked()
-	} else {
-		bdl.byteTracker.semaphore.Release(blockBytes)
-	}
+	bdl.lock.Lock()
+	defer bdl.lock.Unlock()
+	bdl.byteTracker.afterBlockPut(blockBytes, putData)
 }
 
 func (bdl *backpressureDiskLimiter) onBlockDelete(
 	ctx context.Context, blockBytes, blockFiles int64) {
-	if blockBytes == 0 {
-		return
-	}
-
-	bdl.byteTracker.semaphore.Release(blockBytes)
-
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	bdl.byteTracker.used -= blockBytes
-	bdl.updateBytesSemaphoreMaxLocked()
+	bdl.byteTracker.onBlockDelete(blockBytes)
 }
 
 type backpressureDiskLimiterStatus struct {
