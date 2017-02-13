@@ -79,6 +79,21 @@ func (bt backpressureTracker) getMaxResources(used, free int64) float64 {
 	return math.Min(limit, float64(bt.limit))
 }
 
+// updateSemaphoreMax must be called whenever bt.used or bt.free
+// changes.
+func (bt *backpressureTracker) updateSemaphoreMax() {
+	newMax := int64(bt.getMaxResources(bt.used, bt.free))
+	delta := newMax - bt.semaphoreMax
+	// These operations are adjusting the *maximum* value of
+	// bt.semaphore.
+	if delta > 0 {
+		bt.semaphore.Release(delta)
+	} else if delta < 0 {
+		bt.semaphore.ForceAcquire(-delta)
+	}
+	bt.semaphoreMax = newMax
+}
+
 var _ diskLimiter = (*backpressureDiskLimiter)(nil)
 
 // newBackpressureDiskLimiterWithFunctions constructs a new
@@ -196,17 +211,7 @@ func (bdl *backpressureDiskLimiter) getLockedVarsForTest() (
 // updateBytesSemaphoreMaxLocked must be called (under s.lock)
 // whenever s.journalBytes or s.freeBytes changes.
 func (bdl *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
-	newMax := int64(bdl.byteTracker.getMaxResources(
-		bdl.byteTracker.used, bdl.byteTracker.free))
-	delta := newMax - bdl.byteTracker.semaphoreMax
-	// These operations are adjusting the *maximum* value of
-	// bdl.byteSemaphore.
-	if delta > 0 {
-		bdl.byteTracker.semaphore.Release(delta)
-	} else if delta < 0 {
-		bdl.byteTracker.semaphore.ForceAcquire(-delta)
-	}
-	bdl.byteTracker.semaphoreMax = newMax
+	bdl.byteTracker.updateSemaphoreMax()
 }
 
 func (bdl *backpressureDiskLimiter) onJournalEnable(
