@@ -68,6 +68,17 @@ type backpressureTracker struct {
 	semaphore    *kbfssync.Semaphore
 }
 
+// getMaxResources returns the resource limit, taking into account the
+// amount of free resources left. This is min(k(J+F), L).
+func (bt backpressureTracker) getMaxResources(used, free int64) float64 {
+	// Calculate k(J+F), converting to float64 first to avoid
+	// overflow, although losing some precision in the process.
+	usedFloat := float64(used)
+	freeFloat := float64(free)
+	limit := bt.limitFrac * (usedFloat + freeFloat)
+	return math.Min(limit, float64(bt.limit))
+}
+
 var _ diskLimiter = (*backpressureDiskLimiter)(nil)
 
 // newBackpressureDiskLimiterWithFunctions constructs a new
@@ -182,23 +193,11 @@ func (bdl *backpressureDiskLimiter) getLockedVarsForTest() (
 	return bdl.byteTracker.used, bdl.byteTracker.free, bdl.byteTracker.semaphoreMax
 }
 
-// getMaxJournalBytes returns the byte limit for the journal, taking
-// into account the amount of free space left. This is min(k(J+F), L).
-func (bdl *backpressureDiskLimiter) getMaxJournalBytes(
-	journalBytes, freeBytes int64) float64 {
-	// Calculate k(J+F), converting to float64 first to avoid
-	// overflow, although losing some precision in the process.
-	journalBytesFloat := float64(journalBytes)
-	freeBytesFloat := float64(freeBytes)
-	byteLimit :=
-		bdl.byteTracker.limitFrac * (journalBytesFloat + freeBytesFloat)
-	return math.Min(byteLimit, float64(bdl.byteTracker.limit))
-}
-
 // updateBytesSemaphoreMaxLocked must be called (under s.lock)
 // whenever s.journalBytes or s.freeBytes changes.
 func (bdl *backpressureDiskLimiter) updateBytesSemaphoreMaxLocked() {
-	newMax := int64(bdl.getMaxJournalBytes(bdl.byteTracker.used, bdl.byteTracker.free))
+	newMax := int64(bdl.byteTracker.getMaxResources(
+		bdl.byteTracker.used, bdl.byteTracker.free))
 	delta := newMax - bdl.byteTracker.semaphoreMax
 	// These operations are adjusting the *maximum* value of
 	// bdl.byteSemaphore.
@@ -239,7 +238,7 @@ func (bdl *backpressureDiskLimiter) calculateFreeSpaceFrac(
 	journalBytes, freeBytes int64) float64 {
 	journalBytesFloat := float64(journalBytes)
 	return journalBytesFloat /
-		bdl.getMaxJournalBytes(journalBytes, freeBytes)
+		bdl.byteTracker.getMaxResources(journalBytes, freeBytes)
 }
 
 func (bdl *backpressureDiskLimiter) calculateDelayScale(
