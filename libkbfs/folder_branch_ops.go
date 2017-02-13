@@ -5231,9 +5231,17 @@ func (fbo *folderBranchOps) unblockUnmergedWrites(lState *lockState) {
 }
 
 func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
-	lState *lockState, md *RootMetadata, bps *blockPutState,
-	newOps []op, blocksToDelete []kbfsblock.ID) error {
+	lState *lockState, mds *[]RootMetadata, bps *blockPutState,
+	newOps [][]op, blocksToDelete []kbfsblock.ID) error {
 	fbo.mdWriterLock.AssertLocked(lState)
+
+	if len(mds) == 0 {
+		fbo.log.CDebugf(ctx, "No MDs needed to complete resolution")
+		return nil
+	} else if len(mds) != len(newOps) {
+		panic(fmt.Sprintf("len(mds)=%d must match len(newOps)=%d",
+			len(mds), len(newOps)))
+	}
 
 	// Put the blocks into the cache so that, even if we fail below,
 	// future attempts may reuse the blocks.
@@ -5249,8 +5257,8 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 	default:
 	}
 
-	mdID, err := fbo.config.MDOps().ResolveBranch(ctx, fbo.id(), fbo.bid,
-		blocksToDelete, md)
+	mdIDs, err := fbo.config.MDOps().ResolveBranch(ctx, fbo.id(), fbo.bid,
+		blocksToDelete, mds)
 	doUnmergedPut := isRevisionConflict(err)
 	if doUnmergedPut {
 		fbo.log.CDebugf(ctx, "Got a conflict after resolution; aborting CR")
@@ -5261,11 +5269,13 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 	}
 
 	// Queue a rekey if the bit was set.
-	if md.IsRekeySet() {
-		defer fbo.config.RekeyQueue().Enqueue(md.TlfID())
-	}
+	for _, md := range mds {
+		if md.IsRekeySet() {
+			defer fbo.config.RekeyQueue().Enqueue(md.TlfID())
+		}
 
-	md.loadCachedBlockChanges(ctx, bps)
+		md.loadCachedBlockChanges(ctx, bps)
+	}
 
 	err = fbo.finalizeBlocks(bps)
 	if err != nil {
@@ -5279,9 +5289,12 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	irmd := MakeImmutableRootMetadata(
-		md, key, mdID, fbo.config.Clock().Now())
-	err = fbo.setHeadConflictResolvedLocked(ctx, lState, irmd)
+	irmds := make([]ImmutableRootMetadata, len(mds))
+	for i := range mds {
+		irmds[i] = MakeImmutableRootMetadata(
+			mds[i], key, mdIDs[i], fbo.config.Clock().Now())
+	}
+	err = fbo.setHeadConflictResolvedLocked(ctx, lState, irmds[len(irmds)-1])
 	if err != nil {
 		fbo.log.CWarningf(ctx, "Couldn't set local MD head after a "+
 			"successful put: %v", err)
@@ -5291,14 +5304,18 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 
 	// Archive the old, unref'd blocks if journaling is off.
 	if !TLFJournalEnabled(fbo.config, fbo.id()) {
-		fbo.fbm.archiveUnrefBlocks(irmd.ReadOnly())
+		for _, md := range mds {
+			fbo.fbm.archiveUnrefBlocks(md.ReadOnly())
+		}
 	}
 
 	// notifyOneOp for every fixed-up merged op.
-	for _, op := range newOps {
-		fbo.notifyOneOpLocked(ctx, lState, op, irmd, false)
+	for i := range newOps {
+		for _, op := range newOps[i] {
+			fbo.notifyOneOpLocked(ctx, lState, op, irmds[i], false)
+		}
 	}
-	fbo.editHistory.UpdateHistory(ctx, []ImmutableRootMetadata{irmd})
+	fbo.editHistory.UpdateHistory(ctx, irmds)
 	return nil
 }
 
