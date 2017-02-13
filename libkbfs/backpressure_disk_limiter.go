@@ -94,6 +94,24 @@ func (bt *backpressureTracker) updateSemaphoreMax() {
 	bt.semaphoreMax = newMax
 }
 
+func (bt *backpressureTracker) onJournalEnable(journalResources int64) (
+	availableResources int64) {
+	bt.used += journalResources
+	bt.updateSemaphoreMax()
+	if journalResources == 0 {
+		return bt.semaphore.Count()
+	}
+	return bt.semaphore.ForceAcquire(journalResources)
+}
+
+func (bt *backpressureTracker) onJournalDisable(journalResources int64) {
+	bt.used -= journalResources
+	bt.updateSemaphoreMax()
+	if journalResources > 0 {
+		bt.semaphore.Release(journalResources)
+	}
+}
+
 func (bt backpressureTracker) calculateFreeSpaceFrac() float64 {
 	return float64(bt.used) / bt.getMaxResources()
 }
@@ -234,12 +252,7 @@ func (bdl *backpressureDiskLimiter) onJournalEnable(
 	availableBytes, availableFiles int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	bdl.byteTracker.used += journalBytes
-	bdl.updateBytesSemaphoreMaxLocked()
-	if journalBytes == 0 {
-		return bdl.byteTracker.semaphore.Count(), defaultAvailableFiles
-	}
-	availableBytes = bdl.byteTracker.semaphore.ForceAcquire(journalBytes)
+	availableBytes = bdl.byteTracker.onJournalEnable(journalBytes)
 	return availableBytes, defaultAvailableFiles
 }
 
@@ -247,11 +260,7 @@ func (bdl *backpressureDiskLimiter) onJournalDisable(
 	ctx context.Context, journalBytes, journalFiles int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	bdl.byteTracker.used -= journalBytes
-	bdl.updateBytesSemaphoreMaxLocked()
-	if journalBytes > 0 {
-		bdl.byteTracker.semaphore.Release(journalBytes)
-	}
+	bdl.byteTracker.onJournalDisable(journalBytes)
 }
 
 func (bdl *backpressureDiskLimiter) calculateDelayLocked(
