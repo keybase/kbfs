@@ -353,7 +353,7 @@ type KeybaseService interface {
 	//
 	// pollForKID, if non empty, causes `PollForKID` field to be populated, which
 	// causes the service to poll for the given KID. This is useful during
-	// provision where the provisioner needs to get the MD revision that the
+	// provisioning where the provisioner needs to get the MD revision that the
 	// provisionee has set the rekey bit on.
 	LoadUserPlusKeys(ctx context.Context,
 		uid keybase1.UID, pollForKID keybase1.KID) (UserInfo, error)
