@@ -31,8 +31,8 @@ func TestBackpressureConstructorError(t *testing.T) {
 	fakeErr := errors.New("Fake error")
 	_, err := newBackpressureDiskLimiterWithFunctions(
 		log, 0.1, 0.9, 0.25, 100, 10, 8*time.Second, nil,
-		func() (int64, error) {
-			return 0, fakeErr
+		func() (int64, int64, error) {
+			return 0, 0, fakeErr
 		})
 	require.Equal(t, fakeErr, err)
 }
@@ -50,8 +50,8 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
 		log, 0.1, 0.9, 0.25, 100, 10, 8*time.Second, delayFn,
-		func() (int64, error) {
-			return fakeFreeBytes, nil
+		func() (int64, int64, error) {
+			return fakeFreeBytes, math.MaxInt64, nil
 		})
 	require.NoError(t, err)
 
@@ -214,8 +214,8 @@ func TestBackpressureDiskLimiterCalculateDelay(t *testing.T) {
 		func(ctx context.Context, delay time.Duration) error {
 			return nil
 		},
-		func() (int64, error) {
-			return math.MaxInt64, nil
+		func() (int64, int64, error) {
+			return math.MaxInt64, math.MaxInt64, nil
 		})
 	require.NoError(t, err)
 
@@ -252,8 +252,8 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
 		log, 0.1, 0.9, 0.25, 10*blockSize, 10, 8*time.Second, delayFn,
-		func() (int64, error) {
-			return math.MaxInt64, nil
+		func() (int64, int64, error) {
+			return math.MaxInt64, math.MaxInt64, nil
 		})
 	require.NoError(t, err)
 
@@ -354,23 +354,23 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 
 	var bdl *backpressureDiskLimiter
 
-	getFreeBytesFn := func() (int64, error) {
+	getFreeBytesAndFilesFn := func() (int64, int64, error) {
 		// When called for the first time from the
 		// constructor, bdl will be nil.
 		if bdl == nil {
-			return diskSize, nil
+			return diskSize, math.MaxInt64, nil
 		}
 
 		// When called in subsequent times from
 		// beforeBlockPut, simulate the journal taking up
 		// space.
-		return diskSize - bdl.journalBytes, nil
+		return diskSize - bdl.journalBytes, math.MaxInt64, nil
 	}
 
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
 		log, 0.1, 0.9, 0.25, math.MaxInt64, math.MaxInt64,
-		8*time.Second, delayFn, getFreeBytesFn)
+		8*time.Second, delayFn, getFreeBytesAndFilesFn)
 	require.NoError(t, err)
 
 	journalBytes, freeBytes, byteSemaphoreMax :=

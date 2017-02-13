@@ -49,9 +49,9 @@ type backpressureDiskLimiter struct {
 
 	fileLimit int64
 
-	maxDelay    time.Duration
-	delayFn     func(context.Context, time.Duration) error
-	freeBytesFn func() (int64, error)
+	maxDelay            time.Duration
+	delayFn             func(context.Context, time.Duration) error
+	freeBytesAndFilesFn func() (int64, int64, error)
 
 	// bytesLock protects freeBytes, journalBytes,
 	// bytesSemaphoreMax, and the (implicit) maximum value of
@@ -75,7 +75,7 @@ func newBackpressureDiskLimiterWithFunctions(
 	backpressureMinThreshold, backpressureMaxThreshold, byteLimitFrac float64,
 	byteLimit, fileLimit int64, maxDelay time.Duration,
 	delayFn func(context.Context, time.Duration) error,
-	freeBytesFn func() (int64, error)) (
+	freeBytesAndFilesFn func() (int64, int64, error)) (
 	*backpressureDiskLimiter, error) {
 	if backpressureMinThreshold < 0.0 {
 		return nil, errors.Errorf("backpressureMinThreshold=%f < 0.0",
@@ -98,14 +98,14 @@ func newBackpressureDiskLimiterWithFunctions(
 		return nil, errors.Errorf("byteLimitFrac=%f > 1.0",
 			byteLimitFrac)
 	}
-	freeBytes, err := freeBytesFn()
+	freeBytes, _, err := freeBytesAndFilesFn()
 	if err != nil {
 		return nil, err
 	}
 	bdl := &backpressureDiskLimiter{
 		log, backpressureMinThreshold, backpressureMaxThreshold,
 		byteLimitFrac, byteLimit, fileLimit, maxDelay,
-		delayFn, freeBytesFn, sync.Mutex{}, 0,
+		delayFn, freeBytesAndFilesFn, sync.Mutex{}, 0,
 		freeBytes, 0, kbfssync.NewSemaphore(),
 	}
 	func() {
@@ -132,19 +132,22 @@ func defaultDoDelay(ctx context.Context, delay time.Duration) error {
 	}
 }
 
-func defaultGetFreeBytes(path string) (int64, error) {
-	// getDiskLimits returns availableBytes, but we want to avoid
-	// confusing that with availBytes in the sense of the
-	// semaphore value.
-	freeBytes, err := getDiskLimits(path)
+func defaultGetFreeBytesAndFiles(path string) (int64, int64, error) {
+	// getDiskLimits returns availableBytes and availableFiles,
+	// but we want to avoid confusing that with availBytes and
+	// availFiles in the sense of the semaphore value.
+	freeBytes, freeFiles, err := getDiskLimits(path)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	if freeBytes > uint64(math.MaxInt64) {
-		return math.MaxInt64, nil
+		freeBytes = math.MaxInt64
 	}
-	return int64(freeBytes), nil
+	if freeFiles > uint64(math.MaxInt64) {
+		freeFiles = math.MaxInt64
+	}
+	return int64(freeBytes), int64(freeFiles), nil
 }
 
 // newBackpressureDiskLimiter constructs a new backpressureDiskLimiter
@@ -157,8 +160,8 @@ func newBackpressureDiskLimiter(
 	return newBackpressureDiskLimiterWithFunctions(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
 		byteLimitFrac, byteLimit, fileLimit, maxDelay,
-		defaultDoDelay, func() (int64, error) {
-			return defaultGetFreeBytes(journalPath)
+		defaultDoDelay, func() (int64, int64, error) {
+			return defaultGetFreeBytesAndFiles(journalPath)
 		})
 }
 
@@ -271,7 +274,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		bdl.bytesLock.Lock()
 		defer bdl.bytesLock.Unlock()
 
-		freeBytes, err := bdl.freeBytesFn()
+		freeBytes, _, err := bdl.freeBytesAndFilesFn()
 		if err != nil {
 			return 0, 0, err
 		}

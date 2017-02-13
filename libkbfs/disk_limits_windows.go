@@ -5,17 +5,17 @@
 package libkbfs
 
 import (
+	"math"
 	"unsafe"
 
 	"github.com/pkg/errors"
 	"golang.org/x/sys/windows"
 )
 
-// getDiskLimits gets a diskLimits object for the logical disk
-// containing the given path.
-//
-// TODO: Also return available files.
-func getDiskLimits(path string) (availableBytes uint64, err error) {
+// getDiskLimits gets the disk limits for the logical disk containing
+// the given path.
+func getDiskLimits(path string) (
+	availableBytes, availableFiles uint64, err error) {
 	pathPtr, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return 0, errors.WithStack(err)
@@ -38,5 +38,7 @@ func getDiskLimits(path string) (availableBytes uint64, err error) {
 	// the filesystem type. Detect the filesystem type and use
 	// that to determine and return availableFiles.
 
-	return availableBytes, nil
+	// For now, assume all FSs on Windows are NTFS, or have
+	// similarly large file limits.
+	return availableBytes, math.MaxInt64, nil
 }
