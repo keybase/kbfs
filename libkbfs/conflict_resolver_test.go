@@ -271,8 +271,14 @@ func testCRCheckPathsAndActions(t *testing.T, cr *ConflictResolver,
 	lState := makeFBOLockState()
 
 	// Step 1 -- check the chains and paths
+	unmergedMDs, mergedMDs, err := cr.getMDsAndUpdateInput(ctx, lState, false)
+	if err != nil {
+		t.Fatalf("Couldn't get MDs: %v", err)
+	}
+
 	unmergedChains, mergedChains, unmergedPaths, mergedPaths,
-		recreateOps, _, _, err := cr.buildChainsAndPaths(ctx, lState, false)
+		recreateOps, err := cr.buildChainsAndPaths(
+		ctx, lState, unmergedMDs, mergedMDs)
 	if err != nil {
 		t.Fatalf("Couldn't build chains and paths: %v", err)
 	}
@@ -1162,8 +1168,14 @@ func TestCRDoActionsSimple(t *testing.T) {
 	lState := makeFBOLockState()
 
 	// Now run through conflict resolution manually for user2.
+	unmergedMDs, mergedMDs, err := cr2.getMDsAndUpdateInput(ctx, lState, false)
+	if err != nil {
+		t.Fatalf("Couldn't get MDs: %v", err)
+	}
+
 	unmergedChains, mergedChains, unmergedPaths, mergedPaths,
-		recreateOps, _, _, err := cr2.buildChainsAndPaths(ctx, lState, false)
+		recreateOps, err := cr2.buildChainsAndPaths(
+		ctx, lState, unmergedMDs, mergedMDs)
 	if err != nil {
 		t.Fatalf("Couldn't build chains and paths: %v", err)
 	}
@@ -1279,8 +1291,14 @@ func TestCRDoActionsWriteConflict(t *testing.T) {
 	lState := makeFBOLockState()
 
 	// Now run through conflict resolution manually for user2.
+	unmergedMDs, mergedMDs, err := cr2.getMDsAndUpdateInput(ctx, lState, false)
+	if err != nil {
+		t.Fatalf("Couldn't get MDs: %v", err)
+	}
+
 	unmergedChains, mergedChains, unmergedPaths, mergedPaths,
-		recreateOps, _, _, err := cr2.buildChainsAndPaths(ctx, lState, false)
+		recreateOps, err := cr2.buildChainsAndPaths(
+		ctx, lState, unmergedMDs, mergedMDs)
 	if err != nil {
 		t.Fatalf("Couldn't build chains and paths: %v", err)
 	}

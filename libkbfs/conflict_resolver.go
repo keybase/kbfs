@@ -1038,38 +1038,31 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 	return mergedPaths, recreateOps, newUnmergedPaths, nil
 }
 
-// buildChainsAndPaths make crChains for both the unmerged and merged
-// branches since the branch point, the corresponding full paths for
-// those changes, any new recreate ops, and returns the MDs used to
-// compute all this. Note that even if err is nil, the merged MD list
-// might be non-nil to allow for better error handling.
-func (cr *ConflictResolver) buildChainsAndPaths(
+func (cr *ConflictResolver) getMDsAndUpdateInput(
 	ctx context.Context, lState *lockState, writerLocked bool) (
-	unmergedChains, mergedChains *crChains, unmergedPaths []path,
-	mergedPaths map[BlockPointer]path, recreateOps []*createOp,
 	unmerged, merged []ImmutableRootMetadata, err error) {
 	// Fetch the merged and unmerged MDs
 	unmerged, merged, err = cr.getMDs(ctx, lState, writerLocked)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	if len(unmerged) == 0 {
 		cr.log.CDebugf(ctx, "Skipping merge process due to empty MD list")
-		return nil, nil, nil, nil, nil, nil, nil, nil
+		return nil, nil, nil
 	}
 
 	// Update the current input to reflect the MDs we'll actually be
 	// working with.
 	err = cr.updateCurrInput(ctx, unmerged, merged)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	// Canceled before we start the heavy lifting?
 	err = cr.checkDone(ctx)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	// TODO: limit both the number and total RefBytes size of the
@@ -1077,11 +1070,28 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 	// all CR.  This means ResolveBranch must take a range of
 	// revisions, and we have to track things like blockIDsToDelete
 	// across several CR runs.
+	return unmerged, merged, nil
+}
+
+// buildChainsAndPaths make crChains for both the unmerged and merged
+// branches since the branch point, the corresponding full paths for
+// those changes, any new recreate ops, and returns the MDs used to
+// compute all this. Note that even if err is nil, the merged MD list
+// might be non-nil to allow for better error handling.
+func (cr *ConflictResolver) buildChainsAndPaths(
+	ctx context.Context, lState *lockState,
+	unmerged, merged []ImmutableRootMetadata) (
+	unmergedChains, mergedChains *crChains, unmergedPaths []path,
+	mergedPaths map[BlockPointer]path, recreateOps []*createOp, err error) {
+	if len(unmerged) == 0 {
+		// Nothing to merge, so don't bother building any chains.
+		return nil, nil, nil, nil, nil, nil
+	}
 
 	// Make the chains
 	unmergedChains, mergedChains, err = cr.makeChains(ctx, unmerged, merged)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	// TODO: if the root node didn't change in either chain, we can
@@ -1094,14 +1104,14 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 	unmergedPaths, err = unmergedChains.getPaths(ctx, &cr.fbo.blocks,
 		cr.log, cr.fbo.nodeCache, false)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	// Add in any directory paths that were created in both branches.
 	newUnmergedPaths, err := cr.findCreatedDirsToMerge(ctx, unmergedPaths,
 		unmergedChains, mergedChains)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	unmergedPaths = append(unmergedPaths, newUnmergedPaths...)
 	if len(newUnmergedPaths) > 0 {
@@ -1112,12 +1122,12 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 	kbpki := cr.config.KBPKI()
 	_, uid, err := kbpki.GetCurrentUserInfo(ctx)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	key, err := kbpki.GetCurrentVerifyingKey(ctx)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	currUnmergedWriterInfo := newWriterInfo(
@@ -1132,7 +1142,7 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 	if err != nil {
 		// Return mergedChains in this error case, to allow the error
 		// handling code to unstage if necessary.
-		return nil, nil, nil, nil, nil, nil, merged, err
+		return nil, nil, nil, nil, nil, err
 	}
 	unmergedPaths = append(unmergedPaths, newUnmergedPaths...)
 	if len(newUnmergedPaths) > 0 {
@@ -1140,7 +1150,7 @@ func (cr *ConflictResolver) buildChainsAndPaths(
 	}
 
 	return unmergedChains, mergedChains, unmergedPaths, mergedPaths,
-		recreateOps, unmerged, merged, nil
+		recreateOps, nil
 }
 
 // addRecreateOpsToUnmergedChains inserts each recreateOp, into its
@@ -3869,9 +3879,13 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 	//   * A set of "recreate" ops that must be applied on the merged branch
 	//     to recreate any directories that were modified in the unmerged
 	//     branch but removed in the merged branch.
-	unmergedChains, mergedChains, unmergedPaths, mergedPaths, recOps,
-		unmergedMDs, mergedMDs, err :=
-		cr.buildChainsAndPaths(ctx, lState, doLock)
+	unmergedMDs, mergedMDs, err := cr.getMDsAndUpdateInput(ctx, lState, doLock)
+	if err != nil {
+		return
+	}
+
+	unmergedChains, mergedChains, unmergedPaths, mergedPaths, recOps, err :=
+		cr.buildChainsAndPaths(ctx, lState, unmergedMDs, mergedMDs)
 	if err != nil {
 		return
 	}
