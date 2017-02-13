@@ -47,6 +47,8 @@ type backpressureDiskLimiter struct {
 	// byteLimit is L in the above.
 	byteLimit int64
 
+	fileLimit int64
+
 	maxDelay    time.Duration
 	delayFn     func(context.Context, time.Duration) error
 	freeBytesFn func() (int64, error)
@@ -71,7 +73,7 @@ var _ diskLimiter = (*backpressureDiskLimiter)(nil)
 func newBackpressureDiskLimiterWithFunctions(
 	log logger.Logger,
 	backpressureMinThreshold, backpressureMaxThreshold, byteLimitFrac float64,
-	byteLimit int64, maxDelay time.Duration,
+	byteLimit, fileLimit int64, maxDelay time.Duration,
 	delayFn func(context.Context, time.Duration) error,
 	freeBytesFn func() (int64, error)) (
 	*backpressureDiskLimiter, error) {
@@ -102,7 +104,7 @@ func newBackpressureDiskLimiterWithFunctions(
 	}
 	bdl := &backpressureDiskLimiter{
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		byteLimitFrac, byteLimit, maxDelay,
+		byteLimitFrac, byteLimit, fileLimit, maxDelay,
 		delayFn, freeBytesFn, sync.Mutex{}, 0,
 		freeBytes, 0, kbfssync.NewSemaphore(),
 	}
@@ -150,11 +152,11 @@ func defaultGetFreeBytes(path string) (int64, error) {
 func newBackpressureDiskLimiter(
 	log logger.Logger,
 	backpressureMinThreshold, backpressureMaxThreshold, byteLimitFrac float64,
-	byteLimit int64, maxDelay time.Duration,
+	byteLimit, fileLimit int64, maxDelay time.Duration,
 	journalPath string) (*backpressureDiskLimiter, error) {
 	return newBackpressureDiskLimiterWithFunctions(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		byteLimitFrac, byteLimit, maxDelay,
+		byteLimitFrac, byteLimit, fileLimit, maxDelay,
 		defaultDoDelay, func() (int64, error) {
 			return defaultGetFreeBytes(journalPath)
 		})

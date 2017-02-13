@@ -30,7 +30,7 @@ func TestBackpressureConstructorError(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	fakeErr := errors.New("Fake error")
 	_, err := newBackpressureDiskLimiterWithFunctions(
-		log, 0.1, 0.9, 0.25, 100, 8*time.Second, nil,
+		log, 0.1, 0.9, 0.25, 100, 10, 8*time.Second, nil,
 		func() (int64, error) {
 			return 0, fakeErr
 		})
@@ -49,7 +49,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 	var fakeFreeBytes int64 = 200
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
-		log, 0.1, 0.9, 0.25, 100, 8*time.Second, delayFn,
+		log, 0.1, 0.9, 0.25, 100, 10, 8*time.Second, delayFn,
 		func() (int64, error) {
 			return fakeFreeBytes, nil
 		})
@@ -209,7 +209,8 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 func TestBackpressureDiskLimiterCalculateDelay(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
-		log, 0.1, 0.9, 0.25, math.MaxInt64, 8*time.Second,
+		log, 0.1, 0.9, 0.25, math.MaxInt64, math.MaxInt64,
+		8*time.Second,
 		func(ctx context.Context, delay time.Duration) error {
 			return nil
 		},
@@ -250,7 +251,7 @@ func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
 
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
-		log, 0.1, 0.9, 0.25, 10*blockSize, 8*time.Second, delayFn,
+		log, 0.1, 0.9, 0.25, 10*blockSize, 10, 8*time.Second, delayFn,
 		func() (int64, error) {
 			return math.MaxInt64, nil
 		})
@@ -368,8 +369,8 @@ func TestBackpressureDiskLimiterSmallDisk(t *testing.T) {
 
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
-		log, 0.1, 0.9, 0.25, math.MaxInt64, 8*time.Second, delayFn,
-		getFreeBytesFn)
+		log, 0.1, 0.9, 0.25, math.MaxInt64, math.MaxInt64,
+		8*time.Second, delayFn, getFreeBytesFn)
 	require.NoError(t, err)
 
 	journalBytes, freeBytes, byteSemaphoreMax :=
