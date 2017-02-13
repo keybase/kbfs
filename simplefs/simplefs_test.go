@@ -18,12 +18,12 @@ import (
 )
 
 func newTempRemotePath() (keybase1.Path, error) {
-	// TODO: make a kbfs type path instead of a local one
+	// TODO: make a KBFS type path instead of a local one
 	tempdir, err := ioutil.TempDir("", "simpleFstest")
 	return keybase1.NewPathWithKbfs(tempdir), err
 }
 
-// TODO: This is for deleting a kbfs type path, but for now it just expects a local one
+// TODO: This is for deleting a KBFS type path, but for now it just expects a local one
 func deleteTempRemotePath(path keybase1.Path) {
 	os.RemoveAll(path.Kbfs())
 }
