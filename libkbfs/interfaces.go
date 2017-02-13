@@ -63,6 +63,10 @@ type diskBlockCacheGetter interface {
 	DiskBlockCache() DiskBlockCache
 }
 
+type clockGetter interface {
+	Clock() Clock
+}
+
 // Block just needs to be (de)serialized using msgpack
 type Block interface {
 	dataVersioner
@@ -1489,6 +1493,7 @@ type Config interface {
 	signerGetter
 	currentInfoGetterGetter
 	diskBlockCacheGetter
+	clockGetter
 	KBFSOps() KBFSOps
 	SetKBFSOps(KBFSOps)
 	KBPKI() KBPKI
@@ -1525,7 +1530,6 @@ type Config interface {
 	SetBlockSplitter(BlockSplitter)
 	Notifier() Notifier
 	SetNotifier(Notifier)
-	Clock() Clock
 	SetClock(Clock)
 	ConflictRenamer() ConflictRenamer
 	SetConflictRenamer(ConflictRenamer)
