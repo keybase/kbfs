@@ -94,6 +94,16 @@ func (bt *backpressureTracker) updateSemaphoreMax() {
 	bt.semaphoreMax = newMax
 }
 
+func (bt backpressureTracker) calculateDelayScale(
+	freeSpaceFrac float64) float64 {
+	// We want the delay to be 0 if freeSpaceFrac <= m and the
+	// max delay if freeSpaceFrac >= M, so linearly interpolate
+	// the delay scale.
+	m := bt.minThreshold
+	M := bt.maxThreshold
+	return math.Min(1.0, math.Max(0.0, (freeSpaceFrac-m)/(M-m)))
+}
+
 var _ diskLimiter = (*backpressureDiskLimiter)(nil)
 
 // newBackpressureDiskLimiterWithFunctions constructs a new
@@ -248,12 +258,7 @@ func (bdl *backpressureDiskLimiter) calculateFreeSpaceFrac(
 
 func (bdl *backpressureDiskLimiter) calculateDelayScale(
 	freeSpaceFrac float64) float64 {
-	// We want the delay to be 0 if freeSpaceFrac <= m and the
-	// max delay if freeSpaceFrac >= M, so linearly interpolate
-	// the delay scale.
-	m := bdl.byteTracker.minThreshold
-	M := bdl.byteTracker.maxThreshold
-	return math.Min(1.0, math.Max(0.0, (freeSpaceFrac-m)/(M-m)))
+	return bdl.byteTracker.calculateDelayScale(freeSpaceFrac)
 }
 
 func (bdl *backpressureDiskLimiter) calculateDelay(
