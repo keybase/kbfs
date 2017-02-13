@@ -594,7 +594,8 @@ func testTLFJournalBlockOpDiskLimitTimeout(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64, 0)
+	tlfJournal.diskLimiter.onJournalEnable(
+		ctx, math.MaxInt64, math.MaxInt64-1)
 	config.dlTimeout = 3 * time.Microsecond
 
 	data := []byte{1, 2, 3, 4}
@@ -606,7 +607,7 @@ func testTLFJournalBlockOpDiskLimitTimeout(t *testing.T, ver MetadataVer) {
 	timeoutErr.err = nil
 	require.Equal(t, ErrDiskLimitTimeout{
 		3 * time.Microsecond, int64(len(data)),
-		filesPerBlockMax, 0, math.MaxInt64, nil,
+		filesPerBlockMax, 0, 1, nil,
 	}, timeoutErr)
 }
 
@@ -616,14 +617,15 @@ func testTLFJournalBlockOpDiskLimitPutFailure(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64-6, 0)
+	tlfJournal.diskLimiter.onJournalEnable(
+		ctx, math.MaxInt64-6, math.MaxInt64-filesPerBlockMax)
 
 	data := []byte{1, 2, 3, 4}
 	id, bCtx, serverHalf := config.makeBlock(data)
 	err := tlfJournal.putBlockData(ctx, id, bCtx, []byte{1}, serverHalf)
 	require.IsType(t, kbfshash.HashMismatchError{}, errors.Cause(err))
 
-	// If the above incorrectly does not release bytes from
+	// If the above incorrectly does not release bytes or files from
 	// diskLimiter on error, this will hang.
 	err = tlfJournal.putBlockData(ctx, id, bCtx, data, serverHalf)
 	require.NoError(t, err)
