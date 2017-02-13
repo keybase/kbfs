@@ -159,6 +159,50 @@ func (bt backpressureTracker) calculateDelayScale() float64 {
 	return math.Min(1.0, math.Max(0.0, (freeSpaceFrac-m)/(M-m)))
 }
 
+type backpressureTrackerStatus struct {
+	// Derived numbers.
+	FreeFrac   float64
+	UsageFrac  float64
+	DelayScale float64
+
+	// Constants.
+	MinThreshold float64
+	MaxThreshold float64
+	LimitFrac    float64
+	FixedLimit   float64
+
+	// Raw numbers.
+	Used      float64
+	Free      float64
+	Limit     float64
+	Available float64
+}
+
+func (bt *backpressureTracker) getStatus() backpressureTrackerStatus {
+	freeFrac := bt.calculateFreeSpaceFrac()
+	delayScale := bt.calculateDelayScale()
+
+	limit := float64(bt.semaphoreMax)
+	available := float64(bt.semaphore.Count())
+	usageFrac := 1 - available/limit
+
+	return backpressureTrackerStatus{
+		FreeFrac:   freeFrac,
+		UsageFrac:  usageFrac,
+		DelayScale: delayScale,
+
+		MinThreshold: bt.minThreshold,
+		MaxThreshold: bt.maxThreshold,
+		LimitFrac:    bt.limitFrac,
+		FixedLimit:   float64(bt.limit),
+
+		Used:      float64(bt.used),
+		Free:      float64(bt.free),
+		Limit:     limit,
+		Available: available,
+	}
+}
+
 var _ diskLimiter = (*backpressureDiskLimiter)(nil)
 
 // newBackpressureDiskLimiterWithFunctions constructs a new
@@ -374,57 +418,25 @@ type backpressureDiskLimiterStatus struct {
 	Type string
 
 	// Derived numbers.
-	FreeSpaceFrac   float64
-	ByteUsageFrac   float64
-	DelayScale      float64
 	CurrentDelaySec float64
 
-	// Constants.
-	BackpressureMinThreshold float64
-	BackpressureMaxThreshold float64
-	ByteLimitFrac            float64
-	FixedLimitMB             float64
-	MaxDelaySec              float64
-
-	// Raw numbers.
-	JournalMB   float64
-	FreeMB      float64
-	LimitMB     float64
-	AvailableMB float64
+	ByteTrackerStatus backpressureTrackerStatus
+	FileTrackerStatus backpressureTrackerStatus
 }
 
 func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
 
-	freeSpaceFrac := bdl.byteTracker.calculateFreeSpaceFrac()
-	delayScale := bdl.byteTracker.calculateDelayScale()
 	currentDelay := bdl.calculateDelayLocked(
 		context.Background(), time.Now())
-
-	const MB float64 = 1024 * 1024
-
-	limitMB := float64(bdl.byteTracker.semaphoreMax) / MB
-	availableMB := float64(bdl.byteTracker.semaphore.Count()) / MB
-	byteUsageFrac := 1 - availableMB/limitMB
 
 	return backpressureDiskLimiterStatus{
 		Type: "BackpressureDiskLimiter",
 
-		FreeSpaceFrac:   freeSpaceFrac,
-		ByteUsageFrac:   byteUsageFrac,
-		DelayScale:      delayScale,
 		CurrentDelaySec: currentDelay.Seconds(),
 
-		BackpressureMinThreshold: bdl.byteTracker.minThreshold,
-		BackpressureMaxThreshold: bdl.byteTracker.maxThreshold,
-		ByteLimitFrac:            bdl.byteTracker.limitFrac,
-		FixedLimitMB:             float64(bdl.byteTracker.limit) / MB,
-		MaxDelaySec:              bdl.maxDelay.Seconds(),
-
-		JournalMB:   float64(bdl.byteTracker.used) / MB,
-		FreeMB:      float64(bdl.byteTracker.free) / MB,
-		LimitMB:     limitMB,
-		AvailableMB: availableMB,
+		ByteTrackerStatus: bdl.byteTracker.getStatus(),
+		FileTrackerStatus: bdl.fileTracker.getStatus(),
 	}
 }
