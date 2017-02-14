@@ -359,7 +359,9 @@ func (bdl *backpressureDiskLimiter) onJournalDisable(
 
 func (bdl *backpressureDiskLimiter) getDelayLocked(
 	ctx context.Context, now time.Time) time.Duration {
-	delayScale := bdl.byteTracker.delayScale()
+	byteDelayScale := bdl.byteTracker.delayScale()
+	fileDelayScale := bdl.fileTracker.delayScale()
+	delayScale := math.Max(byteDelayScale, fileDelayScale)
 
 	// Set maxDelay to min(bdl.maxDelay, time until deadline - 1s).
 	maxDelay := bdl.maxDelay
