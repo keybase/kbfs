@@ -13,15 +13,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestBackpressureTrackerCounters checks that the tracker's counters
-// are updated properly for each public method.
+// TestSemaphoreDiskLimiterBeforeBlockPutError checks that
+// semaphoreDiskLimiter.beforeBlockPut handles errors correctly; in
+// particular, that we don't leak either bytes or files if either
+// semaphore times out.
 func TestSemaphoreDiskLimiterBeforeBlockPutError(t *testing.T) {
 	sdl := newSemaphoreDiskLimiter(10, 1)
 	ctx, cancel := context.WithTimeout(
 		context.Background(), 3*time.Millisecond)
 	defer cancel()
+
 	availBytes, availFiles, err := sdl.beforeBlockPut(ctx, 10, 2)
 	require.Equal(t, ctx.Err(), errors.Cause(err))
 	require.Equal(t, int64(10), availBytes)
 	require.Equal(t, int64(1), availFiles)
+
+	require.Equal(t, int64(10), sdl.byteSemaphore.Count())
+	require.Equal(t, int64(1), sdl.fileSemaphore.Count())
 }

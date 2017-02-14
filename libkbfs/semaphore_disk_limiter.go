@@ -74,6 +74,13 @@ func (sdl semaphoreDiskLimiter) beforeBlockPut(
 	if err != nil {
 		return availableBytes, sdl.fileSemaphore.Count(), err
 	}
+	defer func() {
+		if err != nil {
+			sdl.byteSemaphore.Release(blockBytes)
+			availableBytes = sdl.byteSemaphore.Count()
+		}
+	}()
+
 	availableFiles, err = sdl.fileSemaphore.Acquire(ctx, blockFiles)
 	return availableBytes, availableFiles, err
 }
