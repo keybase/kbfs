@@ -88,9 +88,9 @@ func newBackpressureTracker(minThreshold, maxThreshold, limitFrac float64,
 	return bt, nil
 }
 
-// getMaxResources returns the resource limit, taking into account the
-// amount of free resources left. This is min(k(U+F), L).
-func (bt backpressureTracker) getMaxResources() float64 {
+// max returns the resource limit, taking into account the amount of
+// free resources left. This is min(k(U+F), L).
+func (bt backpressureTracker) max() float64 {
 	// Calculate k(U+F), converting to float64 first to avoid
 	// overflow, although losing some precision in the process.
 	usedFloat := float64(bt.used)
@@ -99,15 +99,15 @@ func (bt backpressureTracker) getMaxResources() float64 {
 	return math.Min(limit, float64(bt.limit))
 }
 
-func (bt backpressureTracker) getFreeFrac() float64 {
-	return float64(bt.used) / bt.getMaxResources()
+func (bt backpressureTracker) freeFrac() float64 {
+	return float64(bt.used) / bt.max()
 }
 
-// getDelayScale returns a number between 0 and 1, which should be
+// delayScale returns a number between 0 and 1, which should be
 // multiplied with the maximum delay to get the backpressure delay to
 // apply.
-func (bt backpressureTracker) getDelayScale() float64 {
-	freeSpaceFrac := bt.getFreeFrac()
+func (bt backpressureTracker) delayScale() float64 {
+	freeSpaceFrac := bt.freeFrac()
 
 	// We want the delay to be 0 if freeSpaceFrac <= m and the
 	// max delay if freeSpaceFrac >= M, so linearly interpolate
@@ -120,7 +120,7 @@ func (bt backpressureTracker) getDelayScale() float64 {
 // updateSemaphoreMax must be called whenever bt.used or bt.free
 // changes.
 func (bt *backpressureTracker) updateSemaphoreMax() {
-	newMax := int64(bt.getMaxResources())
+	newMax := int64(bt.max())
 	delta := newMax - bt.semaphoreMax
 	// These operations are adjusting the *maximum* value of
 	// bt.semaphore.
@@ -202,8 +202,8 @@ type backpressureTrackerStatus struct {
 }
 
 func (bt *backpressureTracker) getStatus() backpressureTrackerStatus {
-	freeFrac := bt.getFreeFrac()
-	delayScale := bt.getDelayScale()
+	freeFrac := bt.freeFrac()
+	delayScale := bt.delayScale()
 
 	limit := float64(bt.semaphoreMax)
 	available := float64(bt.semaphore.Count())
@@ -359,7 +359,7 @@ func (bdl *backpressureDiskLimiter) onJournalDisable(
 
 func (bdl *backpressureDiskLimiter) getDelayLocked(
 	ctx context.Context, now time.Time) time.Duration {
-	delayScale := bdl.byteTracker.getDelayScale()
+	delayScale := bdl.byteTracker.delayScale()
 
 	// Set maxDelay to min(bdl.maxDelay, time until deadline - 1s).
 	maxDelay := bdl.maxDelay
