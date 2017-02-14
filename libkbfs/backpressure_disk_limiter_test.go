@@ -261,13 +261,14 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 		return nil
 	}
 
-	// Set up parameters so that semaphoreMax always has value 100
-	// when called in beforeBlockPut, and every block put (of size
-	// 0.1 * 100 = 10) beyond the min threshold leads to an
-	// increase in timeout of 1 second up to the max.
-
 	const blockBytes = 100
 	const blockFiles = 10
+
+	// Set the bottleneck, based on the test type; i.e. set
+	// parameters so that semaphoreMax for the bottleneck always
+	// has value 10 * blockX when called in beforeBlockPut, and
+	// every block put beyond the min threshold leads to an
+	// increase in timeout of 1 second up to the max.
 	var byteLimit, fileLimit int64
 	switch testType {
 	case byteTest:
@@ -417,14 +418,16 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 		return nil
 	}
 
-	// Set up parameters so that semaphoreMax always has value 80
-	// when called in beforeBlockPut, and every block put (of size
-	// 0.1 * 80 = 8) beyond the min threshold leads to an increase
-	// in timeout of 1 second up to the max.
-
 	const blockBytes = 80
 	const blockFiles = 8
+
+	// Set the bottleneck, based on the test type; i.e. set
+	// parameters so that semaphoreMax for the bottleneck always
+	// has value 10 * blockX when called in beforeBlockPut, and
+	// every block put beyond the min threshold leads to an
+	// increase in timeout of 1 second up to the max.
 	var diskBytes, diskFiles int64
+	// Multiply by 4 to compensate for the 0.25 limitFrac.
 	switch testType {
 	case byteTest:
 		// Make bytes be the bottleneck.
