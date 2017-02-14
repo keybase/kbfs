@@ -329,10 +329,19 @@ func newBackpressureDiskLimiter(
 }
 
 func (bdl *backpressureDiskLimiter) getLockedByteVarsForTest() (
-	journalBytes int64, freeBytes int64, byteSemaphoreMax int64) {
+	journalBytes, freeBytes, byteSemaphoreMax, byteSemaphoreCount int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	return bdl.byteTracker.used, bdl.byteTracker.free, bdl.byteTracker.semaphoreMax
+	return bdl.byteTracker.used, bdl.byteTracker.free,
+		bdl.byteTracker.semaphoreMax, bdl.byteTracker.semaphore.Count()
+}
+
+func (bdl *backpressureDiskLimiter) getLockedFileVarsForTest() (
+	journalFiles, freeFiles, fileSemaphoreMax, fileSemaphoreCount int64) {
+	bdl.lock.Lock()
+	defer bdl.lock.Unlock()
+	return bdl.fileTracker.used, bdl.fileTracker.free,
+		bdl.fileTracker.semaphoreMax, bdl.fileTracker.semaphore.Count()
 }
 
 // updateBytesSemaphoreMaxLocked must be called (under s.lock)
