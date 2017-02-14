@@ -1,11 +1,15 @@
 package libfuse
 
 import (
+	"errors"
+	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/libkbfs"
 	"github.com/keybase/kbfs/sysutils"
 	"golang.org/x/net/context"
@@ -21,6 +25,9 @@ const (
 	renamerNext
 )
 
+// renamerOp is a step, or an approach, to do the rename. It's part of a
+// renamer, which is created with newRenamer(). Implementation of the renamerOp
+// should be stateless as the same instance can be used over multiple requests.
 type renamerOp interface {
 	// do is where a renamerOp implements its processing of the rename() request.
 	//
@@ -68,7 +75,7 @@ func (r renamer) rename(ctx context.Context, oldParent *Dir, oldEntryName string
 //	 renamer := newRenamer(
 //     newNaiveRenamerOp(folder.fs.config.KBFSOps()),
 //     newAmnestyRenamerOp(exePathFinder),
-//     newMVRenamerOp("/bin/mv", 10*time.Second),
+//     newFinderTrickingRenamerOp("/bin/mv", 10*time.Second), TODO: fix this
 //     newNotifyingRenamerOp(),
 //   )
 //
@@ -76,8 +83,7 @@ func newRenamer(renamerOps ...renamerOp) renamer {
 	return renamer{ops: renamerOps}
 }
 
-type naiveRenamerOp struct {
-}
+type naiveRenamerOp struct{}
 
 func newNaiveRenamerOp() renamerOp {
 	return naiveRenamerOp{}
@@ -109,7 +115,7 @@ const (
 )
 
 // An amnestyRenamer returns (prevErr, renamerNext) for processes in paths, and
-// (prevErr, renamerDone) for others. This works as a filter to determine
+// (err, renamerDone) for others. This works as a filter to determine
 // whether subsequent renamers should keep working on the same request.
 type amnestyRenamerOp struct {
 	paths map[string]bool
@@ -131,7 +137,7 @@ func (r amnestyRenamerOp) do(ctx context.Context,
 		// and mark as done.
 		oldParent.folder.fs.log.CDebugf(ctx,
 			"amnestyRenamerOp: unsupported error=%v", err)
-		return fuse.Errno(syscall.EXDEV), renamerDone
+		return fuse.Errno(syscall.EIO), renamerDone
 	}
 	var exe string
 	if exe, err = sysutils.GetExecPathFromPID(int(req.Pid)); err != nil {
@@ -153,75 +159,98 @@ func (r amnestyRenamerOp) do(ctx context.Context,
 	return fuse.Errno(syscall.EXDEV), renamerDone
 }
 
-// mvRenameOp uses the "mv" command to do the actual "move". This is useful
-// when application doesn't support EXDEV but called an rename() across TLFs.
-type mvRenamerOp struct {
-	mvPath  string
-	timeout time.Duration
+// finderTrickingRenameOp creates a secondary mount, and uses Mac Automation to
+// get Finder to move the thing into the secondary mount ...
+// TODO: finish this.
+type finderTrickingRenamerOp struct {
 }
 
-func newMVRenamerOp(mvCmdPath string, timeout time.Duration) renamerOp {
-	return &mvRenamerOp{mvPath: mvCmdPath, timeout: timeout}
+func newFinderTrickingRenamerOp() renamerOp {
+	return &finderTrickingRenamerOp{}
 }
 
-func (r *mvRenamerOp) do(ctx context.Context,
+const osaMoveJS = `Application('Finder').move(Path(%q), {'to': Path(%q)})`
+
+func (r *finderTrickingRenamerOp) rewriteNewParentPath(p string) string {
+	return strings.Replace(p, "/keybase", "/tmp/k", 1)
+}
+
+func (r *finderTrickingRenamerOp) spawnOSAMoveWithWatch(
+	ctx context.Context, logger logger.Logger,
+	oldEntryPath, rewrittenNewParentPath string, watchDuration time.Duration) (
+	watchErr error) {
+	cmd := exec.Command("/usr/bin/osascript", "-l", "JavaScript")
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	if err = cmd.Start(); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdin, osaMoveJS, oldEntryPath, rewrittenNewParentPath)
+	if err = stdin.Close(); err != nil {
+		return err
+	}
+
+	waitCh := make(chan error, 1)
+	go func() {
+		er := cmd.Wait()
+		if er != nil {
+			o, _ := cmd.CombinedOutput()
+			er = errors.New(er.Error() + ": " + string(o))
+		}
+		waitCh <- er
+		close(waitCh)
+	}()
+
+	select {
+	case <-time.After(watchDuration):
+		// No error after watchDuration, so we assume it's working on the move.
+		// Note that OSA doesn't return an error if the operation is canceled by
+		// the user, so we don't have to / cannot worry about that case.
+		//
+		// Spawn a new routine here to wait for and log the error when the cmd
+		// finishes.
+		go func() {
+			logger.CDebugf(ctx, "finderTrickingRenamerOp: cmd.Wait: error=%v", <-waitCh)
+		}()
+		return nil
+	case err = <-waitCh:
+		return err
+	}
+}
+
+func (r *finderTrickingRenamerOp) do(ctx context.Context,
 	oldParent *Dir, oldEntryName string, newParent *Dir, newEntryName string,
 	req *fuse.RenameRequest, prevErr error) (error, renamerStatus) {
 	op, err := oldParent.folder.fs.config.KBFSOps().GetPathStringByNode(
 		ctx, oldParent.node)
 	if err != nil {
 		oldParent.folder.fs.log.CDebugf(ctx,
-			"mvRenamerOp: oldParent,GetPathStringByNode: error=%v", err)
+			"finderTrickingRenamerOp: oldParent,GetPathStringByNode: error=%v", err)
 		return err, renamerNext
 	}
 	np, err := newParent.folder.fs.config.KBFSOps().GetPathStringByNode(
 		ctx, newParent.node)
 	if err != nil {
 		newParent.folder.fs.log.CDebugf(ctx,
-			"mvRenamerOp: newParent,GetPathStringByNode: error=%v", err)
+			"finderTrickingRenamerOp: newParent,GetPathStringByNode: error=%v", err)
 		return err, renamerNext
 	}
 	oldPath := filepath.Join(op, oldEntryName)
 
-	newEntryNameTemp := "." + newEntryName + ".kbfs.moving"
-	newPathTemporary := filepath.Join(np, newEntryNameTemp)
-
-	ctx, cancel := context.WithTimeout(ctx, r.timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, r.mvPath, oldPath, newPathTemporary)
-	if err = cmd.Start(); err != nil {
-		if cerr := ctx.Err(); cerr != nil {
-			return cerr, renamerNext
-		}
-
-		// Not a timeout error; must be something else. Log it and mark as done.
-		oldParent.folder.fs.log.CDebugf(ctx,
-			"mvRenamerOp: cmd.Start: error=%v", err)
-		return fuse.Errno(syscall.EXDEV), renamerDone
-	}
-
-	if err = cmd.Wait(); err != nil {
-		if cerr := ctx.Err(); cerr != nil {
-			return cerr, renamerNext
-		}
-
-		// Not a timeout error; must be something else. Log it and mark as done.
-		oldParent.folder.fs.log.CDebugf(ctx,
-			"mvRenamerOp: cmd.Wait: error=%v", err)
-		return fuse.Errno(syscall.EXDEV), renamerDone
-	}
-
-	if err = newParent.folder.fs.config.KBFSOps().Rename(ctx, newParent.node,
-		newEntryNameTemp, newParent.node, newEntryName); err != nil {
+	if err = r.spawnOSAMoveWithWatch(ctx, oldParent.folder.fs.log,
+		oldPath, r.rewriteNewParentPath(np), 4*time.Second); err != nil {
+		newParent.folder.fs.log.CDebugf(ctx,
+			"finderTrickingRenamerOp: spawnOSAMoveWithWatch: error=%v", err)
 		return err, renamerNext
 	}
 
+	// Return a nil error so Finder doesn't complain to user.
 	return nil, renamerDone
 }
 
-type notifyingRenamerOp struct {
-}
+type notifyingRenamerOp struct{}
 
 func newNotifyingRenamerOp() renamerOp {
 	return notifyingRenamerOp{}
