@@ -442,6 +442,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	defer func() {
 		if err != nil {
 			bdl.byteTracker.afterBlockPut(blockBytes, false)
+			availableBytes = bdl.byteTracker.semaphore.Count()
 		}
 	}()
 
