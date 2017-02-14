@@ -110,7 +110,7 @@ func kbfsOpsInit(t *testing.T, changeMd bool) (mockCtrl *gomock.Controller,
 	config.mockBops.EXPECT().Archive(gomock.Any(), gomock.Any(),
 		gomock.Any()).AnyTimes().Return(nil)
 	// Ignore Prefetcher calls
-	config.mockBops.EXPECT().Prefetcher().AnyTimes().Return(newBlockPrefetcher(nil, &testBlockRetrievalConfig{nil, config.BlockCache(), t}))
+	config.mockBops.EXPECT().Prefetcher().AnyTimes().Return(newBlockPrefetcher(nil, &testBlockRetrievalConfig{nil, config.BlockCache(), nil, t}))
 
 	// Ignore key bundle ID creation calls for now
 	config.mockCrypto.EXPECT().MakeTLFWriterKeyBundleID(gomock.Any()).
@@ -5644,5 +5644,36 @@ func TestGetTLFCryptKeysAfterFirstError(t *testing.T) {
 	_, _, err = config.KBFSOps().GetTLFCryptKeys(ctx, h)
 	if err != createErr {
 		t.Fatalf("Got unexpected error when creating TLF: %+v", err)
+	}
+}
+
+func TestForceFastForwardOnEmptyTLF(t *testing.T) {
+	config, _, ctx, cancel := kbfsOpsInitNoMocks(t, "alice", "bob")
+	// TODO: Use kbfsTestShutdownNoMocks.
+	defer kbfsTestShutdownNoMocksNoCheck(t, config, ctx, cancel)
+
+	// Look up bob's public folder.
+	h := parseTlfHandleOrBust(t, config, "bob", true)
+	_, _, err := config.KBFSOps().GetOrCreateRootNode(ctx, h, MasterBranch)
+	if _, ok := err.(WriteAccessError); !ok {
+		t.Fatalf("Unexpected err reading a public TLF: %+v", err)
+	}
+
+	// There's only one folder at this point.
+	kbfsOps := config.KBFSOps().(*KBFSOpsStandard)
+	kbfsOps.opsLock.RLock()
+	var ops *folderBranchOps
+	for _, fbo := range kbfsOps.ops {
+		ops = fbo
+		break
+	}
+	kbfsOps.opsLock.RUnlock()
+
+	// FastForward shouldn't do anything, since the TLF hasn't been
+	// cleared yet.
+	config.KBFSOps().ForceFastForward(ctx)
+	err = ops.forcedFastForwards.Wait(ctx)
+	if err != nil {
+		t.Fatalf("Couldn't wait for fast forward: %+v", err)
 	}
 }

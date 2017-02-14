@@ -230,11 +230,13 @@ type folderBranchOps struct {
 	// should only be taken in the following order to avoid deadlock:
 	mdWriterLock leveledMutex // taken by any method making MD modifications
 
-	// protects access to head and latestMergedRevision.
+	// protects access to head, latestMergedRevision and hasBeenCleared.
 	headLock leveledRWMutex
 	head     ImmutableRootMetadata
 	// latestMergedRevision tracks the latest heard merged revision on server
 	latestMergedRevision MetadataRevision
+	// Has this folder ever been cleared?
+	hasBeenCleared bool
 
 	blocks folderBlockOps
 
@@ -305,8 +307,9 @@ type folderBranchOps struct {
 
 	editHistory *TlfEditHistory
 
-	branchChanges kbfssync.RepeatedWaitGroup
-	mdFlushes     kbfssync.RepeatedWaitGroup
+	branchChanges      kbfssync.RepeatedWaitGroup
+	mdFlushes          kbfssync.RepeatedWaitGroup
+	forcedFastForwards kbfssync.RepeatedWaitGroup
 }
 
 var _ KBFSOps = (*folderBranchOps)(nil)
@@ -2242,6 +2245,8 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		return ExclOnUnmergedError{}
 	}
 
+	doResolve := false
+	resolveMergedRev := mergedRev
 	if doUnmergedPut {
 		// We're out of date, and this is not an exclusive write, so put it as an
 		// unmerged MD.
@@ -2255,7 +2260,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		}
 		bid := md.BID()
 		fbo.setBranchIDLocked(lState, bid)
-		fbo.cr.Resolve(md.Revision(), mergedRev)
+		doResolve = true
 	} else {
 		fbo.setBranchIDLocked(lState, NullBranchID)
 
@@ -2283,7 +2288,8 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	if rebased {
 		bid := md.BID()
 		fbo.setBranchIDLocked(lState, bid)
-		fbo.cr.Resolve(md.Revision(), MetadataRevisionUninitialized)
+		doResolve = true
+		resolveMergedRev = MetadataRevisionUninitialized
 	}
 
 	key, err := fbo.config.KBPKI().GetCurrentVerifyingKey(ctx)
@@ -2306,6 +2312,12 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	}
 
 	fbo.notifyBatchLocked(ctx, lState, irmd)
+
+	// Call Resolve() after the head is set, to make sure it fetches
+	// the correct unmerged MD range during resolution.
+	if doResolve {
+		fbo.cr.Resolve(md.Revision(), resolveMergedRev)
+	}
 	return nil
 }
 
@@ -2435,6 +2447,9 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *GCOp) (
 	}
 
 	md.AddOp(gco)
+	// TODO: if the revision number of this new commit is sequential
+	// with `LatestRev`, we can probably change this to
+	// `gco.LatestRev+1`.
 	md.SetLastGCRevision(gco.LatestRev)
 
 	bps, err := fbo.maybeUnembedAndPutBlocks(ctx, md)
@@ -5558,6 +5573,11 @@ func (fbo *folderBranchOps) ClearPrivateFolderMD(ctx context.Context) {
 	defer fbo.mdWriterLock.Unlock(lState)
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
+	if fbo.head == (ImmutableRootMetadata{}) {
+		// Nothing to clear.
+		return
+	}
+
 	fbo.log.CDebugf(ctx, "Clearing folder MD")
 
 	// First cancel the background goroutine that's registered for
@@ -5579,6 +5599,7 @@ func (fbo *folderBranchOps) ClearPrivateFolderMD(ctx context.Context) {
 
 	fbo.head = ImmutableRootMetadata{}
 	fbo.latestMergedRevision = MetadataRevisionUninitialized
+	fbo.hasBeenCleared = true
 }
 
 // ForceFastForward implements the KBFSOps interface for
@@ -5591,8 +5612,15 @@ func (fbo *folderBranchOps) ForceFastForward(ctx context.Context) {
 		// We're already up to date.
 		return
 	}
+	if !fbo.hasBeenCleared {
+		// No reason to fast-forward here if it hasn't ever been
+		// cleared.
+		return
+	}
 
+	fbo.forcedFastForwards.Add(1)
 	go func() {
+		defer fbo.forcedFastForwards.Done()
 		ctx, cancelFunc := fbo.newCtxWithFBOID()
 		defer cancelFunc()
 
@@ -5600,6 +5628,10 @@ func (fbo *folderBranchOps) ForceFastForward(ctx context.Context) {
 		currHead, err := fbo.config.MDOps().GetForTLF(ctx, fbo.id())
 		if err != nil {
 			fbo.log.CDebugf(ctx, "Fast-forward failed: %v", err)
+			return
+		}
+		if currHead == (ImmutableRootMetadata{}) {
+			fbo.log.CDebugf(ctx, "No MD yet")
 			return
 		}
 		fbo.log.CDebugf(ctx, "Current head is revision %d", currHead.Revision())

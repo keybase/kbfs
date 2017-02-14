@@ -844,15 +844,15 @@ func (_mr *_MockKeybaseServiceRecorder) Identify(arg0, arg1, arg2 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Identify", arg0, arg1, arg2)
 }
 
-func (_m *MockKeybaseService) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID) (UserInfo, error) {
-	ret := _m.ctrl.Call(_m, "LoadUserPlusKeys", ctx, uid)
+func (_m *MockKeybaseService) LoadUserPlusKeys(ctx context.Context, uid keybase1.UID, pollForKID keybase1.KID) (UserInfo, error) {
+	ret := _m.ctrl.Call(_m, "LoadUserPlusKeys", ctx, uid, pollForKID)
 	ret0, _ := ret[0].(UserInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockKeybaseServiceRecorder) LoadUserPlusKeys(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "LoadUserPlusKeys", arg0, arg1)
+func (_mr *_MockKeybaseServiceRecorder) LoadUserPlusKeys(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "LoadUserPlusKeys", arg0, arg1, arg2)
 }
 
 func (_m *MockKeybaseService) LoadUnverifiedKeys(ctx context.Context, uid keybase1.UID) ([]keybase1.PublicKey, error) {
@@ -3612,12 +3612,12 @@ func (_mr *_MockBlockServerRecorder) IsUnflushed(arg0, arg1, arg2 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsUnflushed", arg0, arg1, arg2)
 }
 
-func (_m *MockBlockServer) Shutdown() {
-	_m.ctrl.Call(_m, "Shutdown")
+func (_m *MockBlockServer) Shutdown(ctx context.Context) {
+	_m.ctrl.Call(_m, "Shutdown", ctx)
 }
 
-func (_mr *_MockBlockServerRecorder) Shutdown() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
+func (_mr *_MockBlockServerRecorder) Shutdown(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown", arg0)
 }
 
 func (_m *MockBlockServer) GetUserQuotaInfo(ctx context.Context) (*kbfsblock.UserQuotaInfo, error) {
@@ -3724,12 +3724,12 @@ func (_mr *_MockblockServerLocalRecorder) IsUnflushed(arg0, arg1, arg2 interface
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsUnflushed", arg0, arg1, arg2)
 }
 
-func (_m *MockblockServerLocal) Shutdown() {
-	_m.ctrl.Call(_m, "Shutdown")
+func (_m *MockblockServerLocal) Shutdown(ctx context.Context) {
+	_m.ctrl.Call(_m, "Shutdown", ctx)
 }
 
-func (_mr *_MockblockServerLocalRecorder) Shutdown() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
+func (_mr *_MockblockServerLocalRecorder) Shutdown(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown", arg0)
 }
 
 func (_m *MockblockServerLocal) GetUserQuotaInfo(ctx context.Context) (*kbfsblock.UserQuotaInfo, error) {

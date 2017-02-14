@@ -63,7 +63,9 @@ func (ca tlfJournalConfigAdapter) usernameGetter() normalizedUsernameGetter {
 }
 
 func (ca tlfJournalConfigAdapter) diskLimitTimeout() time.Duration {
-	return defaultDiskLimitTimeout
+	// Set this to slightly larger than the max delay, so that we
+	// don't start failing writes when we hit the max delay.
+	return defaultDiskLimitMaxDelay + time.Second
 }
 
 const (
@@ -93,8 +95,10 @@ type TLFJournalStatus struct {
 	BranchID      string
 	BlockOpCount  uint64
 	// The byte counters below are signed because
-	// os.FileInfo.Size() is signed.
+	// os.FileInfo.Size() is signed. The file counter is signed
+	// for consistency.
 	StoredBytes    int64
+	StoredFiles    int64
 	UnflushedBytes int64
 	UnflushedPaths []string
 	LastFlushErr   string `json:",omitempty"`
@@ -184,7 +188,8 @@ type tlfJournal struct {
 	onMDFlush           mdFlushListener
 
 	// Invariant: this tlfJournal acquires exactly
-	// blockJournal.getStoredBytes() until shutdown.
+	// blockJournal.getStoredBytes() and
+	// blockJournal.getStoredFiles() until shutdown.
 	diskLimiter diskLimiter
 
 	// All the channels below are used as simple on/off
@@ -363,7 +368,9 @@ func makeTLFJournal(
 
 	// Do this only once we're sure we won't error.
 	storedBytes := j.blockJournal.getStoredBytes()
-	availableBytes := j.diskLimiter.onJournalEnable(storedBytes)
+	storedFiles := j.blockJournal.getStoredFiles()
+	availableBytes, availableFiles := j.diskLimiter.onJournalEnable(
+		ctx, storedBytes, storedFiles)
 
 	go j.doBackgroundWorkLoop(bws, backoff.NewExponentialBackOff())
 
@@ -371,8 +378,8 @@ func makeTLFJournal(
 	j.signalWork()
 
 	j.log.CDebugf(ctx,
-		"Enabled journal for %s (stored bytes=%d, available bytes=%d) with path %s",
-		tlfID, storedBytes, availableBytes, dir)
+		"Enabled journal for %s (stored bytes=%d/files=%d, available bytes=%d/files=%d) with path %s",
+		tlfID, storedBytes, storedFiles, availableBytes, availableFiles, dir)
 	return j, nil
 }
 
@@ -806,11 +813,14 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 
 	storedBytesBefore := j.blockJournal.getStoredBytes()
 
-	removedBytes, err := j.blockJournal.removeFlushedEntries(
+	// TODO: Check storedFiles also.
+
+	removedBytes, removedFiles, err := j.blockJournal.removeFlushedEntries(
 		ctx, entries, j.tlfID, j.config.Reporter())
 	if err != nil {
 		return err
 	}
+	_ = removedFiles
 
 	storedBytesAfter := j.blockJournal.getStoredBytes()
 
@@ -942,21 +952,21 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 	// system operations that need the lock for too long.
 	var lastToRemove journalOrdinal
 	for {
-		nextLastToRemove, removedBytes, err := func() (journalOrdinal, int64, error) {
+		nextLastToRemove, removedBytes, removedFiles, err := func() (journalOrdinal, int64, int64, error) {
 			j.journalLock.Lock()
 			defer j.journalLock.Unlock()
 			if err := j.checkEnabledLocked(); err != nil {
-				return 0, 0, err
+				return 0, 0, 0, err
 			}
 
 			storedBytesBefore := j.blockJournal.getStoredBytes()
 
-			nextLastToRemove, removedBytes, err :=
+			nextLastToRemove, removedBytes, removedFiles, err :=
 				j.blockJournal.onMDFlush(
 					ctx, maxSavedBlockRemovalsAtATime,
 					rmds.MD.RevisionNumber(), lastToRemove)
 			if err != nil {
-				return 0, 0, err
+				return 0, 0, 0, err
 			}
 
 			storedBytesAfter := j.blockJournal.getStoredBytes()
@@ -968,12 +978,12 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 					removedBytes))
 			}
 
-			return nextLastToRemove, removedBytes, nil
+			return nextLastToRemove, removedBytes, removedFiles, nil
 		}()
 		if err != nil {
 			return err
 		}
-		j.diskLimiter.onBlockDelete(removedBytes)
+		j.diskLimiter.onBlockDelete(ctx, removedBytes, removedFiles)
 		if nextLastToRemove == 0 {
 			break
 		}
@@ -1131,6 +1141,7 @@ func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
 		lastFlushErr = j.lastFlushErr.Error()
 	}
 	storedBytes := j.blockJournal.getStoredBytes()
+	storedFiles := j.blockJournal.getStoredFiles()
 	unflushedBytes := j.blockJournal.getUnflushedBytes()
 	return TLFJournalStatus{
 		Dir:            j.dir,
@@ -1139,6 +1150,7 @@ func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
 		RevisionEnd:    latestRevision,
 		BlockOpCount:   blockEntryCount,
 		StoredBytes:    storedBytes,
+		StoredFiles:    storedFiles,
 		UnflushedBytes: unflushedBytes,
 		LastFlushErr:   lastFlushErr,
 	}, nil
@@ -1330,18 +1342,18 @@ func (j *tlfJournal) getJournalStatusWithPaths(ctx context.Context,
 }
 
 func (j *tlfJournal) getByteCounts() (
-	storedBytes, unflushedBytes int64, err error) {
+	storedBytes, storedFiles, unflushedBytes int64, err error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
-	return j.blockJournal.getStoredBytes(),
+	return j.blockJournal.getStoredBytes(), j.blockJournal.getStoredFiles(),
 		j.blockJournal.getUnflushedBytes(), nil
 }
 
-func (j *tlfJournal) shutdown() {
+func (j *tlfJournal) shutdown(ctx context.Context) {
 	select {
 	case j.needShutdownCh <- struct{}{}:
 	default:
@@ -1364,7 +1376,8 @@ func (j *tlfJournal) shutdown() {
 	// time other than during shutdown, we should still count
 	// shut-down journals against the disk limit.
 	storedBytes := j.blockJournal.getStoredBytes()
-	j.diskLimiter.onJournalDisable(storedBytes)
+	storedFiles := j.blockJournal.getStoredFiles()
+	j.diskLimiter.onJournalDisable(ctx, storedBytes, storedFiles)
 
 	// Make further accesses error out.
 	j.blockJournal = nil
@@ -1452,19 +1465,16 @@ func (j *tlfJournal) getBlockData(id kbfsblock.ID) (
 type ErrDiskLimitTimeout struct {
 	timeout        time.Duration
 	requestedBytes int64
+	requestedFiles int64
 	availableBytes int64
+	availableFiles int64
 	err            error
 }
 
 func (e ErrDiskLimitTimeout) Error() string {
-	var availableStr string
-	if e.availableBytes > 0 {
-		availableStr = fmt.Sprintf("%d bytes available", e.availableBytes)
-	} else {
-		availableStr = "0 bytes available (or unknown)"
-	}
-	return fmt.Sprintf("Disk limit timeout of %s reached; requested %d bytes, %s: %+v",
-		e.timeout, e.requestedBytes, availableStr, e.err)
+	return fmt.Sprintf("Disk limit timeout of %s reached; requested %d bytes and %d files, %d bytes and %d files available: %+v",
+		e.timeout, e.requestedBytes, e.requestedFiles,
+		e.availableBytes, e.availableFiles, e.err)
 }
 
 func (j *tlfJournal) putBlockData(
@@ -1478,23 +1488,24 @@ func (j *tlfJournal) putBlockData(
 	defer cancel()
 
 	bufLen := int64(len(buf))
-	availableBytes, err := j.diskLimiter.beforeBlockPut(
-		acquireCtx, bufLen, j.log)
+	availableBytes, availableFiles, err := j.diskLimiter.beforeBlockPut(
+		acquireCtx, bufLen, filesPerBlockMax)
 	switch errors.Cause(err) {
 	case nil:
 		// Continue.
 	case context.DeadlineExceeded:
 		return errors.WithStack(ErrDiskLimitTimeout{
-			timeout, bufLen, availableBytes, err,
+			timeout, bufLen, filesPerBlockMax,
+			availableBytes, availableFiles, err,
 		})
 	default:
 		return err
 	}
 
+	var putData bool
 	defer func() {
-		if err != nil {
-			j.diskLimiter.onBlockPutFail(bufLen)
-		}
+		j.diskLimiter.afterBlockPut(
+			ctx, bufLen, filesPerBlockMax, putData)
 	}()
 
 	j.journalLock.Lock()
@@ -1505,20 +1516,22 @@ func (j *tlfJournal) putBlockData(
 
 	storedBytesBefore := j.blockJournal.getStoredBytes()
 
-	err = j.blockJournal.putData(ctx, id, blockCtx, buf, serverHalf)
+	putData, err = j.blockJournal.putData(
+		ctx, id, blockCtx, buf, serverHalf)
 	if err != nil {
 		return err
 	}
 
 	storedBytesAfter := j.blockJournal.getStoredBytes()
 
-	// Either the stored bytes increased by `bufLen`, or stayed the
-	// same because the already existed.
-	if storedBytesAfter != (storedBytesBefore+bufLen) &&
-		storedBytesBefore != storedBytesAfter {
+	if putData && storedBytesAfter != (storedBytesBefore+bufLen) {
 		panic(fmt.Sprintf(
-			"storedBytes changed from %d to %d, but bufLen is %d",
+			"storedBytes changed from %d to %d, but %d bytes of data was put",
 			storedBytesBefore, storedBytesAfter, bufLen))
+	} else if !putData && storedBytesBefore != storedBytesAfter {
+		panic(fmt.Sprintf(
+			"storedBytes changed from %d to %d, but data was not put",
+			storedBytesBefore, storedBytesAfter))
 	}
 
 	j.config.Reporter().NotifySyncStatus(ctx, &keybase1.FSPathSyncStatus{
@@ -1777,7 +1790,8 @@ func (j *tlfJournal) doResolveBranch(ctx context.Context,
 	}
 
 	// Then go through and mark blocks and md rev markers for ignoring.
-	err = j.blockJournal.ignoreBlocksAndMDRevMarkers(ctx, blocksToDelete)
+	err = j.blockJournal.ignoreBlocksAndMDRevMarkers(ctx, blocksToDelete,
+		rmd.Revision())
 	if err != nil {
 		return MdID{}, false, err
 	}

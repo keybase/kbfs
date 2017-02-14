@@ -18,8 +18,60 @@ import (
 	"golang.org/x/net/context"
 )
 
+// TODO: Add a server endpoint to get this data.
+var journalingBetaList = map[keybase1.UID]bool{
+	"23260c2ce19420f97b58d7d95b68ca00": true, // Chris Coyne "chris"
+	"dbb165b7879fe7b1174df73bed0b9500": true, // Max Krohn, "max"
+	"ef2e49961eddaa77094b45ed635cfc00": true, // Jeremy Stribling, "strib"
+	"41b1f75fb55046d370608425a3208100": true, // Jack O'Connor, "oconnor663"
+	"9403ede05906b942fd7361f40a679500": true, // Jinyang Li, "jinyang"
+	"b7c2eaddcced7727bcb229751d91e800": true, // Gabriel Handford, "gabrielh"
+	"1563ec26dc20fd162a4f783551141200": true, // Patrick Crosby, "patrick"
+	"ebbe1d99410ab70123262cf8dfc87900": true, // Fred Akalin, "akalin"
+	"8bc0fd2f5fefd30d3ec04452600f4300": true, // Andy Alness, "alness"
+	"e0b4166c9c839275cf5633ff65c3e819": true, // Chris Nojima, "chrisnojima"
+	"d95f137b3b4a3600bc9e39350adba819": true, // Cécile Boucheron, "cecileb"
+	"4c230ae8d2f922dc2ccc1d2f94890700": true, // Marco Polo, "marcopolo"
+	"237e85db5d939fbd4b84999331638200": true, // Chris Ball, "cjb"
+	"69da56f622a2ac750b8e590c3658a700": true, // John Zila, "jzila"
+	"673a740cd20fb4bd348738b16d228219": true, // Steve Sanders, "zanderz"
+	"95e88f2087e480cae28f08d81554bc00": true, // Mike Maxim, "mikem"
+	"5c2ef2d4eddd2381daa681ac1a901519": true, // Max Goodman, "chromakode"
+	"08abe80bd2da8984534b2d8f7b12c700": true, // Song Gao, "songgao"
+	"eb08cb06e608ea41bd893946445d7919": true, // Miles Steele, "mlsteele"
+}
+
 type journalServerConfig struct {
+	// EnableAuto, if true, means the user has explicitly set its
+	// value. If false, then either the user turned it on and then
+	// off, or the user hasn't turned it on at all.
 	EnableAuto bool
+
+	// EnableAutoSetByUser means the user has explicitly set the
+	// value of EnableAuto (after this field was added).
+	EnableAutoSetByUser bool
+}
+
+func (jsc journalServerConfig) getEnableAuto(currentUID keybase1.UID) (
+	enableAuto, enableAutoSetByUser bool) {
+	// If EnableAuto is true, the user has explicitly set its value.
+	if jsc.EnableAuto {
+		return true, true
+	}
+
+	// Otherwise, if EnableAutoSetByUser is true, it means the
+	// user has explicitly set the value of EnableAuto (after that
+	// field was added).
+	if jsc.EnableAutoSetByUser {
+		return false, true
+	}
+
+	// Otherwise, either the user turned on journaling and then
+	// turned it off before that field was added, or the user
+	// hasn't touched the field. In either case, determine the
+	// value based on whether the current UID is in the
+	// journaling beta list.
+	return journalingBetaList[currentUID], false
 }
 
 // JournalServerStatus represents the overall status of the
@@ -31,12 +83,16 @@ type JournalServerStatus struct {
 	CurrentUID          keybase1.UID
 	CurrentVerifyingKey kbfscrypto.VerifyingKey
 	EnableAuto          bool
+	EnableAutoSetByUser bool
 	JournalCount        int
 	// The byte counters below are signed because
-	// os.FileInfo.Size() is signed.
-	StoredBytes    int64
-	UnflushedBytes int64
-	UnflushedPaths []string
+	// os.FileInfo.Size() is signed. The file counter is signed
+	// for consistency.
+	StoredBytes       int64
+	StoredFiles       int64
+	UnflushedBytes    int64
+	UnflushedPaths    []string
+	DiskLimiterStatus interface{}
 }
 
 // branchChangeListener describes a caller that will get updates via
@@ -61,34 +117,45 @@ type mdFlushListener interface {
 // diskLimiter is an interface for limiting disk usage.
 type diskLimiter interface {
 	// onJournalEnable is called when initializing a TLF journal
-	// with that journal's current disk usage. journalSize must be
-	// >= 0. If the argument is non-zero, the updated available
-	// byte count must be returned.
-	onJournalEnable(journalSize int64) int64
+	// with that journal's current disk usage. Both journalBytes
+	// and journalFiles must be >= 0. The updated available byte
+	// and file count must be returned.
+	onJournalEnable(
+		ctx context.Context, journalBytes, journalFiles int64) (
+		availableBytes, availableFiles int64)
 
 	// onJournalDisable is called when shutting down a TLF journal
-	// with that journal's current disk usage. journalSize must be
-	// >= 0.
-	onJournalDisable(journalSize int64)
+	// with that journal's current disk usage. Both journalBytes
+	// and journalFiles must be >= 0.
+	onJournalDisable(ctx context.Context, journalBytes, journalFiles int64)
 
 	// beforeBlockPut is called before putting a block of the
-	// given size, which must be > 0. It may block, but must
-	// return immediately with a (possibly-wrapped) ctx.Err() if
-	// ctx is cancelled. If the returned error is nil, the updated
-	// available byte count must be returned. Otherwise, the
-	// non-updated available byte count, or zero, may be returned.
-	beforeBlockPut(ctx context.Context, blockBytes int64,
-		log logger.Logger) (int64, error)
+	// given byte and file count, both of which must be > 0. It
+	// may block, but must return immediately with a
+	// (possibly-wrapped) ctx.Err() if ctx is cancelled. The
+	// updated available byte and file count must be returned,
+	// even if err is non-nil.
+	beforeBlockPut(ctx context.Context,
+		blockBytes, blockFiles int64) (
+		availableBytes, availableFiles int64, err error)
 
-	// onBlockPutFail is called if putting a block of the given
-	// size (which must be > 0) fails.
-	onBlockPutFail(blockBytes int64)
+	// afterBlockPut is called after putting a block of the given
+	// byte and file count, which must match the corresponding call to
+	// beforeBlockPut. putData reflects whether or not the data
+	// was actually put; if it's false, it's either because of an
+	// error or because the block already existed.
+	afterBlockPut(ctx context.Context,
+		blockBytes, blockFiles int64, putData bool)
 
 	// onBlockDelete is called after deleting a block of the given
-	// number of bytes of disk space, which must be >=
-	// 0. (Deleting a zero-sized block shouldn't happen, but may
-	// as well let it go through.)
-	onBlockDelete(blockBytes int64)
+	// byte and file count, both of which must be >= 0. (Deleting
+	// a block with either zero byte or zero file count shouldn't
+	// happen, but may as well let it go through.)
+	onBlockDelete(ctx context.Context, blockBytes, blockFiles int64)
+
+	// getStatus returns an object that's marshallable into JSON
+	// for use in displaying status.
+	getStatus() interface{}
 }
 
 // TODO: JournalServer isn't really a server, although it can create
@@ -204,23 +271,30 @@ func (j *JournalServer) tlfJournalPathLocked(tlfID tlf.ID) string {
 	return filepath.Join(j.rootPath(), dir)
 }
 
+func (j *JournalServer) getEnableAutoLocked() (
+	enableAuto, enableAutoSetByUser bool) {
+	return j.serverConfig.getEnableAuto(j.currentUID)
+}
+
 func (j *JournalServer) getTLFJournal(tlfID tlf.ID) (*tlfJournal, bool) {
-	getJournalFn := func() (*tlfJournal, bool, bool) {
+	getJournalFn := func() (*tlfJournal, bool, bool, bool) {
 		j.lock.RLock()
 		defer j.lock.RUnlock()
 		tlfJournal, ok := j.tlfJournals[tlfID]
-		return tlfJournal, j.serverConfig.EnableAuto, ok
+		enableAuto, enableAutoSetByUser := j.getEnableAutoLocked()
+		return tlfJournal, enableAuto, enableAutoSetByUser, ok
 	}
-	tlfJournal, enableAuto, ok := getJournalFn()
+	tlfJournal, enableAuto, enableAutoSetByUser, ok := getJournalFn()
 	if !ok && enableAuto {
 		ctx := context.TODO() // plumb through from callers
-		j.log.CDebugf(ctx, "Enabling a new journal for %s", tlfID)
+		j.log.CDebugf(ctx, "Enabling a new journal for %s (enableAuto=%t, set by user=%t)",
+			tlfID, enableAuto, enableAutoSetByUser)
 		err := j.Enable(ctx, tlfID, TLFJournalBackgroundWorkEnabled)
 		if err != nil {
 			j.log.CWarningf(ctx, "Couldn't enable journal for %s: %+v", tlfID, err)
 			return nil, false
 		}
-		tlfJournal, _, ok = getJournalFn()
+		tlfJournal, _, _, ok = getJournalFn()
 	}
 	return tlfJournal, ok
 }
@@ -251,6 +325,10 @@ func (j *JournalServer) EnableExistingJournals(
 				err)
 		}
 	}()
+
+	// TODO: We should also look up journals from other
+	// users/devices so that we can take into account their
+	// journal usage.
 
 	j.lock.Lock()
 	defer j.lock.Unlock()
@@ -435,6 +513,7 @@ func (j *JournalServer) EnableAuto(ctx context.Context) error {
 
 	j.log.CDebugf(ctx, "Enabling auto-journaling")
 	j.serverConfig.EnableAuto = true
+	j.serverConfig.EnableAutoSetByUser = true
 	return j.writeConfig()
 }
 
@@ -451,6 +530,7 @@ func (j *JournalServer) DisableAuto(ctx context.Context) error {
 
 	j.log.CDebugf(ctx, "Disabling auto-journaling")
 	j.serverConfig.EnableAuto = false
+	j.serverConfig.EnableAutoSetByUser = true
 	return j.writeConfig()
 }
 
@@ -593,28 +673,34 @@ func (j *JournalServer) Status(
 	ctx context.Context) (JournalServerStatus, []tlf.ID) {
 	j.lock.RLock()
 	defer j.lock.RUnlock()
-	var totalStoredBytes, totalUnflushedBytes int64
+	var totalStoredBytes, totalStoredFiles, totalUnflushedBytes int64
 	tlfIDs := make([]tlf.ID, 0, len(j.tlfJournals))
 	for _, tlfJournal := range j.tlfJournals {
-		storedBytes, unflushedBytes, err := tlfJournal.getByteCounts()
+		storedBytes, storedFiles, unflushedBytes, err :=
+			tlfJournal.getByteCounts()
 		if err != nil {
 			j.log.CWarningf(ctx,
-				"Couldn't calculate stored/unflushed bytes for %s: %+v",
+				"Couldn't calculate stored bytes/stored files/unflushed bytes for %s: %+v",
 				tlfJournal.tlfID, err)
 		}
 		totalStoredBytes += storedBytes
+		totalStoredFiles += storedFiles
 		totalUnflushedBytes += unflushedBytes
 		tlfIDs = append(tlfIDs, tlfJournal.tlfID)
 	}
+	enableAuto, enableAutoSetByUser := j.getEnableAutoLocked()
 	return JournalServerStatus{
 		RootDir:             j.rootPath(),
 		Version:             1,
 		CurrentUID:          j.currentUID,
 		CurrentVerifyingKey: j.currentVerifyingKey,
-		EnableAuto:          j.serverConfig.EnableAuto,
+		EnableAuto:          enableAuto,
+		EnableAutoSetByUser: enableAutoSetByUser,
 		JournalCount:        len(tlfIDs),
 		StoredBytes:         totalStoredBytes,
+		StoredFiles:         totalStoredFiles,
 		UnflushedBytes:      totalUnflushedBytes,
+		DiskLimiterStatus:   j.diskLimiter.getStatus(),
 	}, tlfIDs
 }
 
@@ -660,7 +746,7 @@ func (j *JournalServer) shutdownExistingJournalsLocked(ctx context.Context) {
 	j.log.CDebugf(ctx, "Shutting down existing journals")
 
 	for _, tlfJournal := range j.tlfJournals {
-		tlfJournal.shutdown()
+		tlfJournal.shutdown(ctx)
 	}
 
 	j.tlfJournals = make(map[tlf.ID]*tlfJournal)
@@ -679,12 +765,12 @@ func (j *JournalServer) shutdownExistingJournals(ctx context.Context) {
 	j.shutdownExistingJournalsLocked(ctx)
 }
 
-func (j *JournalServer) shutdown() {
-	j.log.CDebugf(context.Background(), "Shutting down journal")
+func (j *JournalServer) shutdown(ctx context.Context) {
+	j.log.CDebugf(ctx, "Shutting down journal")
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	for _, tlfJournal := range j.tlfJournals {
-		tlfJournal.shutdown()
+		tlfJournal.shutdown(ctx)
 	}
 
 	// Leave all the tlfJournals in j.tlfJournals, so that any
