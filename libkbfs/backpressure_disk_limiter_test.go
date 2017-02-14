@@ -183,8 +183,10 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 	func() {
 		bdl.lock.Lock()
 		defer bdl.lock.Unlock()
-		bdl.byteTracker.used = 500
-		bdl.byteTracker.free = 3500
+		// byteDelayScale should be 25/(.25(350 + 25)) = 0.267.
+		bdl.byteTracker.used = 25
+		bdl.byteTracker.free = 350
+		// fileDelayScale should by 50/(.25(350 + 50)) = 0.5.
 		bdl.fileTracker.used = 50
 		bdl.fileTracker.free = 350
 	}()
