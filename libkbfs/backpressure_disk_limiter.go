@@ -53,6 +53,16 @@ type backpressureTracker struct {
 	semaphore    *kbfssync.Semaphore
 }
 
+func newBackpressureTracker(minThreshold, maxThreshold, limitFrac float64,
+	limit, initialFree int64) *backpressureTracker {
+	bt := &backpressureTracker{
+		minThreshold, maxThreshold, limitFrac, limit,
+		0, initialFree, 0, kbfssync.NewSemaphore(),
+	}
+	bt.updateSemaphoreMax()
+	return bt
+}
+
 // getMaxResources returns the resource limit, taking into account the
 // amount of free resources left. This is min(k(U+F), L).
 func (bt backpressureTracker) getMaxResources() float64 {
@@ -206,7 +216,7 @@ type backpressureDiskLimiter struct {
 	// where x = Bytes or Files.
 	lock sync.Mutex
 
-	byteTracker, fileTracker backpressureTracker
+	byteTracker, fileTracker *backpressureTracker
 }
 
 var _ diskLimiter = (*backpressureDiskLimiter)(nil)
@@ -248,22 +258,13 @@ func newBackpressureDiskLimiterWithFunctions(
 	}
 	bdl := &backpressureDiskLimiter{
 		log, maxDelay, delayFn, freeBytesAndFilesFn, sync.Mutex{},
-		backpressureTracker{
+		newBackpressureTracker(
 			backpressureMinThreshold, backpressureMaxThreshold,
-			limitFrac, byteLimit, 0, freeBytes, 0,
-			kbfssync.NewSemaphore(),
-		},
-		backpressureTracker{
+			limitFrac, byteLimit, freeBytes),
+		newBackpressureTracker(
 			backpressureMinThreshold, backpressureMaxThreshold,
-			limitFrac, fileLimit, 0, freeFiles, 0,
-			kbfssync.NewSemaphore(),
-		},
+			limitFrac, fileLimit, freeFiles),
 	}
-	func() {
-		bdl.lock.Lock()
-		defer bdl.lock.Unlock()
-		bdl.updateBytesSemaphoreMaxLocked()
-	}()
 	return bdl, nil
 }
 

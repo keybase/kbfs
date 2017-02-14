@@ -15,6 +15,131 @@ import (
 	"golang.org/x/net/context"
 )
 
+// TestBackpressureTrackerCounters checks that the tracker's counters
+// are updated properly for each public method.
+func TestBackpressureTrackerCounters(t *testing.T) {
+	bt := newBackpressureTracker(0.1, 0.9, 0.25, 100, 200)
+
+	// semaphoreMax = min(k(U+F), L) = min(0.25(0+200), 100) = 50.
+	require.Equal(t, int64(0), bt.used)
+	require.Equal(t, int64(200), bt.free)
+	require.Equal(t, int64(50), bt.semaphoreMax)
+	require.Equal(t, int64(50), bt.semaphore.Count())
+
+	// Increase U by 10, so that increases sM by 0.25*10 = 2.5, so
+	// sM is now 52.
+
+	avail := bt.onJournalEnable(10)
+	require.Equal(t, int64(42), avail)
+
+	require.Equal(t, int64(10), bt.used)
+	require.Equal(t, int64(200), bt.free)
+	require.Equal(t, int64(52), bt.semaphoreMax)
+	require.Equal(t, int64(42), bt.semaphore.Count())
+
+	// Decrease U by 9, so that decreases sM by 0.25*9 = 2.25, so
+	// sM is back to 50.
+
+	bt.onJournalDisable(9)
+
+	require.Equal(t, int64(1), bt.used)
+	require.Equal(t, int64(200), bt.free)
+	require.Equal(t, int64(50), bt.semaphoreMax)
+	require.Equal(t, int64(49), bt.semaphore.Count())
+
+	// Increase U by 440, so that increases sM by 0.25*110 = 110,
+	// so sM maxes out at 100, and semaphore should go negative.
+
+	avail = bt.onJournalEnable(440)
+	require.Equal(t, int64(-341), avail)
+
+	require.Equal(t, int64(441), bt.used)
+	require.Equal(t, int64(200), bt.free)
+	require.Equal(t, int64(100), bt.semaphoreMax)
+	require.Equal(t, int64(-341), bt.semaphore.Count())
+
+	// Now revert that increase.
+
+	bt.onJournalDisable(440)
+
+	require.Equal(t, int64(1), bt.used)
+	require.Equal(t, int64(200), bt.free)
+	require.Equal(t, int64(50), bt.semaphoreMax)
+	require.Equal(t, int64(49), bt.semaphore.Count())
+
+	// This should be a no-op.
+	avail = bt.onJournalEnable(0)
+	require.Equal(t, int64(49), avail)
+
+	require.Equal(t, int64(1), bt.used)
+	require.Equal(t, int64(200), bt.free)
+	require.Equal(t, int64(50), bt.semaphoreMax)
+	require.Equal(t, int64(49), bt.semaphore.Count())
+
+	// So should this.
+	bt.onJournalDisable(0)
+
+	require.Equal(t, int64(1), bt.used)
+	require.Equal(t, int64(200), bt.free)
+	require.Equal(t, int64(50), bt.semaphoreMax)
+	require.Equal(t, int64(49), bt.semaphore.Count())
+
+	// Add more free resources and put a block successfully.
+
+	bt.updateFree(400)
+
+	avail, err := bt.beforeBlockPut(context.Background(), 10)
+	require.NoError(t, err)
+	require.Equal(t, int64(89), avail)
+
+	require.Equal(t, int64(1), bt.used)
+	require.Equal(t, int64(400), bt.free)
+	require.Equal(t, int64(100), bt.semaphoreMax)
+	require.Equal(t, int64(89), bt.semaphore.Count())
+
+	bt.afterBlockPut(10, true)
+
+	require.Equal(t, int64(11), bt.used)
+	require.Equal(t, int64(400), bt.free)
+	require.Equal(t, int64(100), bt.semaphoreMax)
+	require.Equal(t, int64(89), bt.semaphore.Count())
+
+	// Then try to put a block but fail it.
+
+	avail, err = bt.beforeBlockPut(context.Background(), 9)
+	require.NoError(t, err)
+	require.Equal(t, int64(80), avail)
+
+	require.Equal(t, int64(11), bt.used)
+	require.Equal(t, int64(400), bt.free)
+	require.Equal(t, int64(100), bt.semaphoreMax)
+	require.Equal(t, int64(80), bt.semaphore.Count())
+
+	bt.afterBlockPut(9, false)
+
+	require.Equal(t, int64(11), bt.used)
+	require.Equal(t, int64(400), bt.free)
+	require.Equal(t, int64(100), bt.semaphoreMax)
+	require.Equal(t, int64(89), bt.semaphore.Count())
+
+	// Finally, delete a block.
+
+	bt.onBlockDelete(11)
+
+	require.Equal(t, int64(0), bt.used)
+	require.Equal(t, int64(400), bt.free)
+	require.Equal(t, int64(100), bt.semaphoreMax)
+	require.Equal(t, int64(100), bt.semaphore.Count())
+
+	// This should be a no-op.
+	bt.onBlockDelete(0)
+
+	require.Equal(t, int64(0), bt.used)
+	require.Equal(t, int64(400), bt.free)
+	require.Equal(t, int64(100), bt.semaphoreMax)
+	require.Equal(t, int64(100), bt.semaphore.Count())
+}
+
 // TestDefaultDoDelayCancel checks that defaultDoDelay respects
 // context cancellation.
 func TestDefaultDoDelayCancel(t *testing.T) {
@@ -55,7 +180,7 @@ func TestBackpressureDiskLimiterCounters(t *testing.T) {
 		})
 	require.NoError(t, err)
 
-	// byteSemaphoreMax = min(k(J+F), L) = min(0.25(0+200), 100) = 50.
+	// byteSemaphoreMax = min(k(U+F), L) = min(0.25(0+200), 100) = 50.
 	journalBytes, freeBytes, byteSemaphoreMax :=
 		bdl.getLockedVarsForTest()
 	require.Equal(t, int64(0), journalBytes)
