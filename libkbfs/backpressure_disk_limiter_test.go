@@ -18,7 +18,8 @@ import (
 // TestBackpressureTrackerCounters checks that the tracker's counters
 // are updated properly for each public method.
 func TestBackpressureTrackerCounters(t *testing.T) {
-	bt := newBackpressureTracker(0.1, 0.9, 0.25, 100, 200)
+	bt, err := newBackpressureTracker(0.1, 0.9, 0.25, 100, 200)
+	require.NoError(t, err)
 
 	// semaphoreMax = min(k(U+F), L) = min(0.25(0+200), 100) = 50.
 	require.Equal(t, int64(0), bt.used)
@@ -88,7 +89,7 @@ func TestBackpressureTrackerCounters(t *testing.T) {
 
 	bt.updateFree(400)
 
-	avail, err := bt.beforeBlockPut(context.Background(), 10)
+	avail, err = bt.beforeBlockPut(context.Background(), 10)
 	require.NoError(t, err)
 	require.Equal(t, int64(89), avail)
 

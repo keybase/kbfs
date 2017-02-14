@@ -54,13 +54,38 @@ type backpressureTracker struct {
 }
 
 func newBackpressureTracker(minThreshold, maxThreshold, limitFrac float64,
-	limit, initialFree int64) *backpressureTracker {
+	limit, initialFree int64) (*backpressureTracker, error) {
+	if minThreshold < 0.0 {
+		return nil, errors.Errorf("minThreshold=%f < 0.0",
+			minThreshold)
+	}
+	if maxThreshold < minThreshold {
+		return nil, errors.Errorf(
+			"maxThreshold=%f < minThreshold=%f",
+			maxThreshold, minThreshold)
+	}
+	if 1.0 < maxThreshold {
+		return nil, errors.Errorf("1.0 < maxThreshold=%f",
+			maxThreshold)
+	}
+	if limitFrac < 0.01 {
+		return nil, errors.Errorf("limitFrac=%f < 0.01", limitFrac)
+	}
+	if limitFrac > 1.0 {
+		return nil, errors.Errorf("limitFrac=%f > 1.0", limitFrac)
+	}
+	if limit < 0 {
+		return nil, errors.Errorf("limit=%d < 0", limit)
+	}
+	if initialFree < 0 {
+		return nil, errors.Errorf("initialFree=%d < 0", initialFree)
+	}
 	bt := &backpressureTracker{
 		minThreshold, maxThreshold, limitFrac, limit,
 		0, initialFree, 0, kbfssync.NewSemaphore(),
 	}
 	bt.updateSemaphoreMax()
-	return bt
+	return bt, nil
 }
 
 // getMaxResources returns the resource limit, taking into account the
@@ -231,39 +256,25 @@ func newBackpressureDiskLimiterWithFunctions(
 	delayFn func(context.Context, time.Duration) error,
 	freeBytesAndFilesFn func() (int64, int64, error)) (
 	*backpressureDiskLimiter, error) {
-	if backpressureMinThreshold < 0.0 {
-		return nil, errors.Errorf("backpressureMinThreshold=%f < 0.0",
-			backpressureMinThreshold)
-	}
-	if backpressureMaxThreshold < backpressureMinThreshold {
-		return nil, errors.Errorf(
-			"backpressureMaxThreshold=%f < backpressureMinThreshold=%f",
-			backpressureMaxThreshold, backpressureMinThreshold)
-	}
-	if 1.0 < backpressureMaxThreshold {
-		return nil, errors.Errorf("1.0 < backpressureMaxThreshold=%f",
-			backpressureMaxThreshold)
-	}
-	if limitFrac < 0.01 {
-		return nil, errors.Errorf("limitFrac=%f < 0.01",
-			limitFrac)
-	}
-	if limitFrac > 1.0 {
-		return nil, errors.Errorf("limitFrac=%f > 1.0",
-			limitFrac)
-	}
 	freeBytes, freeFiles, err := freeBytesAndFilesFn()
+	if err != nil {
+		return nil, err
+	}
+	byteTracker, err := newBackpressureTracker(
+		backpressureMinThreshold, backpressureMaxThreshold,
+		limitFrac, byteLimit, freeBytes)
+	if err != nil {
+		return nil, err
+	}
+	fileTracker, err := newBackpressureTracker(
+		backpressureMinThreshold, backpressureMaxThreshold,
+		limitFrac, fileLimit, freeFiles)
 	if err != nil {
 		return nil, err
 	}
 	bdl := &backpressureDiskLimiter{
 		log, maxDelay, delayFn, freeBytesAndFilesFn, sync.Mutex{},
-		newBackpressureTracker(
-			backpressureMinThreshold, backpressureMaxThreshold,
-			limitFrac, byteLimit, freeBytes),
-		newBackpressureTracker(
-			backpressureMinThreshold, backpressureMaxThreshold,
-			limitFrac, fileLimit, freeFiles),
+		byteTracker, fileTracker,
 	}
 	return bdl, nil
 }
