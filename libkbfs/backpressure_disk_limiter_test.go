@@ -399,12 +399,12 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 	switch testType {
 	case byteTest:
 		// Make bytes be the bottleneck.
-		diskBytes = 10 * blockBytes
-		diskFiles = 100 * blockFiles
+		diskBytes = 40 * blockBytes
+		diskFiles = 400 * blockFiles
 	case fileTest:
 		// Make files be the bottleneck.
-		diskBytes = 100 * blockBytes
-		diskFiles = 10 * blockFiles
+		diskBytes = 400 * blockBytes
+		diskFiles = 40 * blockFiles
 	default:
 		panic(fmt.Sprintf("unknown test type %s", testType))
 	}
@@ -455,13 +455,13 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 			used:  bytesPut,
 			free:  diskBytes - bytesPut,
 			max:   diskBytes / 4,
-			count: diskBytes/4 - bytesPut/4,
+			count: diskBytes/4 - bytesPut - blockBytes,
 		}, byteSnapshot, "i=%d", i)
 		require.Equal(t, bdlSnapshot{
 			used:  filesPut,
 			free:  diskFiles - filesPut,
 			max:   diskFiles / 4,
-			count: diskFiles/4 - filesPut/4,
+			count: diskFiles/4 - filesPut - blockFiles,
 		}, fileSnapshot, "i=%d", i)
 	}
 
@@ -473,13 +473,13 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 			used:  bytesPut,
 			free:  diskBytes - bytesPut + blockBytes,
 			max:   diskBytes/4 + blockBytes/4,
-			count: diskBytes/4 + blockBytes/4 - bytesPut/4,
+			count: diskBytes/4 + blockBytes/4 - bytesPut,
 		}, byteSnapshot, "i=%d", i)
 		require.Equal(t, bdlSnapshot{
 			used:  filesPut,
 			free:  diskFiles - filesPut + blockFiles,
 			max:   diskFiles/4 + blockFiles/4,
-			count: diskFiles/4 + blockFiles/4 - filesPut/4,
+			count: diskFiles/4 + blockFiles/4 - filesPut,
 		}, fileSnapshot, "i=%d", i)
 	}
 
