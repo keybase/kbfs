@@ -236,11 +236,10 @@ type backpressureDiskLimiter struct {
 	delayFn             func(context.Context, time.Duration) error
 	freeBytesAndFilesFn func() (int64, int64, error)
 
-	// lock protects freeX, journalX, xSemaphoreMax, and the
-	// (implicit) maximum value of xSemaphore (== xSemaphoreMax),
-	// where x = Bytes or Files.
-	lock sync.RWMutex
-
+	// lock protects everything in the trackers, including the
+	// (implicit) maximum values of the semaphores, but not the
+	// actual semaphore itself.
+	lock                     sync.RWMutex
 	byteTracker, fileTracker *backpressureTracker
 }
 
