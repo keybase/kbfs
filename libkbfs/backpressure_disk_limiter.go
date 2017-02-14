@@ -414,9 +414,10 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 
 		delay := bdl.getDelayLocked(ctx, time.Now())
 		if delay > 0 {
-			bdl.log.CDebugf(ctx, "Delaying block put of %d bytes by %f s ("+
-				"journalBytes=%d freeBytes=%d)",
-				blockBytes, delay.Seconds(), journalBytes, freeBytes)
+			bdl.log.CDebugf(ctx, "Delaying block put of %d bytes and %d files by %f s ("+
+				"freeBytes=%d, freeFiles=%d)",
+				blockBytes, blockFiles,
+				delay.Seconds(), freeBytes, freeFiles)
 		}
 
 		return delay, nil
