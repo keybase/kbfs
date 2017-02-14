@@ -5,14 +5,10 @@
 package libkbfs
 
 import (
-	"math"
-
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
-
-const defaultAvailableFiles = math.MaxInt64
 
 // semaphoreDiskLimiter is an implementation of diskLimiter that uses
 // semaphores to limit the byte and file usage.
