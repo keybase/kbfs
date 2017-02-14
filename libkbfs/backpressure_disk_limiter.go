@@ -192,22 +192,22 @@ type backpressureTrackerStatus struct {
 	MinThreshold float64
 	MaxThreshold float64
 	LimitFrac    float64
-	FixedLimit   float64
+	Limit        int64
 
 	// Raw numbers.
-	Used      float64
-	Free      float64
-	Limit     float64
-	Available float64
+	Used  int64
+	Free  int64
+	Max   int64
+	Count int64
 }
 
 func (bt *backpressureTracker) getStatus() backpressureTrackerStatus {
 	freeFrac := bt.freeFrac()
 	delayScale := bt.delayScale()
 
-	limit := float64(bt.semaphoreMax)
-	available := float64(bt.semaphore.Count())
-	usageFrac := 1 - available/limit
+	max := bt.semaphoreMax
+	count := bt.semaphore.Count()
+	usageFrac := 1 - float64(count)/float64(max)
 
 	return backpressureTrackerStatus{
 		FreeFrac:   freeFrac,
@@ -217,12 +217,12 @@ func (bt *backpressureTracker) getStatus() backpressureTrackerStatus {
 		MinThreshold: bt.minThreshold,
 		MaxThreshold: bt.maxThreshold,
 		LimitFrac:    bt.limitFrac,
-		FixedLimit:   float64(bt.limit),
+		Limit:        bt.limit,
 
-		Used:      float64(bt.used),
-		Free:      float64(bt.free),
-		Limit:     limit,
-		Available: available,
+		Used:  bt.used,
+		Free:  bt.free,
+		Max:   max,
+		Count: count,
 	}
 }
 
