@@ -328,20 +328,23 @@ func newBackpressureDiskLimiter(
 		})
 }
 
-func (bdl *backpressureDiskLimiter) getLockedByteVarsForTest() (
-	journalBytes, freeBytes, byteSemaphoreMax, byteSemaphoreCount int64) {
-	bdl.lock.Lock()
-	defer bdl.lock.Unlock()
-	return bdl.byteTracker.used, bdl.byteTracker.free,
-		bdl.byteTracker.semaphoreMax, bdl.byteTracker.semaphore.Count()
+type bdlSnapshot struct {
+	used  int64
+	free  int64
+	max   int64
+	count int64
 }
 
-func (bdl *backpressureDiskLimiter) getLockedFileVarsForTest() (
-	journalFiles, freeFiles, fileSemaphoreMax, fileSemaphoreCount int64) {
-	bdl.lock.Lock()
-	defer bdl.lock.Unlock()
-	return bdl.fileTracker.used, bdl.fileTracker.free,
-		bdl.fileTracker.semaphoreMax, bdl.fileTracker.semaphore.Count()
+func (bdl *backpressureDiskLimiter) getSnapshotsForTest() (
+	byteSnapshot, fileSnapshot bdlSnapshot) {
+	bdl.lock.RLock()
+	defer bdl.lock.RUnlock()
+	return bdlSnapshot{bdl.byteTracker.used, bdl.byteTracker.free,
+			bdl.byteTracker.semaphoreMax,
+			bdl.byteTracker.semaphore.Count()},
+		bdlSnapshot{bdl.fileTracker.used, bdl.fileTracker.free,
+			bdl.fileTracker.semaphoreMax,
+			bdl.fileTracker.semaphore.Count()}
 }
 
 func (bdl *backpressureDiskLimiter) onJournalEnable(
