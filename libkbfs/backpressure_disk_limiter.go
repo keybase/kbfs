@@ -328,7 +328,7 @@ func newBackpressureDiskLimiter(
 		})
 }
 
-func (bdl *backpressureDiskLimiter) getLockedVarsForTest() (
+func (bdl *backpressureDiskLimiter) getLockedByteVarsForTest() (
 	journalBytes int64, freeBytes int64, byteSemaphoreMax int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
