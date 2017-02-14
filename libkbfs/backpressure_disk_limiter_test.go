@@ -164,6 +164,35 @@ func TestBackpressureConstructorError(t *testing.T) {
 	require.Equal(t, fakeErr, err)
 }
 
+// TestBackpressureDiskLimiterBeforeBlockPutError checks that
+// backpressureDiskLimiter.beforeBlockPut handles errors correctly; in
+// particular, that we don't leak either bytes or files if either
+// semaphore times out.
+func TestBackpressureDiskLimiterBeforeBlockPutError(t *testing.T) {
+	log := logger.NewTestLogger(t)
+	bdl, err := newBackpressureDiskLimiterWithFunctions(
+		log, 0.1, 0.9, 0.25, 10, 1, 8*time.Second,
+		func(ctx context.Context, delay time.Duration) error {
+			return nil
+		},
+		func() (int64, int64, error) {
+			return math.MaxInt64, math.MaxInt64, nil
+		})
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(
+		context.Background(), 3*time.Millisecond)
+	defer cancel()
+
+	availBytes, availFiles, err := bdl.beforeBlockPut(ctx, 10, 2)
+	require.Equal(t, ctx.Err(), errors.Cause(err))
+	require.Equal(t, int64(10), availBytes)
+	require.Equal(t, int64(1), availFiles)
+
+	require.Equal(t, int64(10), bdl.byteTracker.semaphore.Count())
+	require.Equal(t, int64(1), bdl.fileTracker.semaphore.Count())
+}
+
 // TestBackpressureDiskLimiterGetDelay tests the delay calculation,
 // and makes sure it takes into account the context deadline.
 func TestBackpressureDiskLimiterGetDelay(t *testing.T) {

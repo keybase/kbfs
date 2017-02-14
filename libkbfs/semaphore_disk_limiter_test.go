@@ -19,6 +19,7 @@ import (
 // semaphore times out.
 func TestSemaphoreDiskLimiterBeforeBlockPutError(t *testing.T) {
 	sdl := newSemaphoreDiskLimiter(10, 1)
+
 	ctx, cancel := context.WithTimeout(
 		context.Background(), 3*time.Millisecond)
 	defer cancel()
