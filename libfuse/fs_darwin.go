@@ -42,6 +42,7 @@ var mountRootSpecialPaths = map[string]bool{
 }
 
 var platformRootDirs = []fuse.Dirent{
+/*
 	{
 		Type: fuse.DT_Dir,
 		Name: TrashDirName,
@@ -54,6 +55,7 @@ var platformRootDirs = []fuse.Dirent{
 		Type: fuse.DT_File,
 		Name: DSStoreFileName,
 	},
+*/
 }
 
 func (r *Root) platformLookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {

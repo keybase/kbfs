@@ -1,8 +1,11 @@
 package libfuse
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -169,7 +172,13 @@ func newFinderTrickingRenamerOp() renamerOp {
 	return &finderTrickingRenamerOp{}
 }
 
-const osaMoveJS = `Application('Finder').move(Path(%q), {'to': Path(%q)})`
+const osaMoveAS = `
+set origin to POSIX file %q as alias
+set dst to POSIX file %q as alias
+tell application "Finder"
+	move origin to dst
+end tell
+`
 
 func (r *finderTrickingRenamerOp) rewriteNewParentPath(p string) string {
 	return strings.Replace(p, "/keybase", "/tmp/k", 1)
@@ -179,16 +188,15 @@ func (r *finderTrickingRenamerOp) spawnOSAMoveWithWatch(
 	ctx context.Context, logger logger.Logger,
 	oldEntryPath, rewrittenNewParentPath string, watchDuration time.Duration) (
 	watchErr error) {
-	cmd := exec.Command("/usr/bin/osascript", "-l", "JavaScript")
-	stdin, err := cmd.StdinPipe()
+	input, output := new(bytes.Buffer), new(bytes.Buffer)
+	cmd := exec.Command("/usr/bin/osascript", "-l", "AppleScript")
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = input, output, output
+
+	// TODO clean up output
+	fmt.Fprintf(io.MultiWriter(input, os.Stdout), osaMoveAS, oldEntryPath, rewrittenNewParentPath)
+
+	err := cmd.Start()
 	if err != nil {
-		return err
-	}
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-	fmt.Fprintf(stdin, osaMoveJS, oldEntryPath, rewrittenNewParentPath)
-	if err = stdin.Close(); err != nil {
 		return err
 	}
 
@@ -196,8 +204,7 @@ func (r *finderTrickingRenamerOp) spawnOSAMoveWithWatch(
 	go func() {
 		er := cmd.Wait()
 		if er != nil {
-			o, _ := cmd.CombinedOutput()
-			er = errors.New(er.Error() + ": " + string(o))
+			er = errors.New(er.Error() + ": " + output.String())
 		}
 		waitCh <- er
 		close(waitCh)
@@ -239,15 +246,21 @@ func (r *finderTrickingRenamerOp) do(ctx context.Context,
 	}
 	oldPath := filepath.Join(op, oldEntryName)
 
-	if err = r.spawnOSAMoveWithWatch(ctx, oldParent.folder.fs.log,
-		oldPath, r.rewriteNewParentPath(np), 4*time.Second); err != nil {
-		newParent.folder.fs.log.CDebugf(ctx,
-			"finderTrickingRenamerOp: spawnOSAMoveWithWatch: error=%v", err)
-		return err, renamerNext
-	}
+	/*
+		if err = r.spawnOSAMoveWithWatch(ctx, oldParent.folder.fs.log,
+			oldPath, r.rewriteNewParentPath(np), 4*time.Second); err != nil {
+			newParent.folder.fs.log.CDebugf(ctx,
+				"finderTrickingRenamerOp: spawnOSAMoveWithWatch: error=%v", err)
+			return err, renamerNext
+		}
+	*/
+	go func() {
+		time.Sleep(2 * time.Second)
+		r.spawnOSAMoveWithWatch(ctx, oldParent.folder.fs.log, r.rewriteNewParentPath(oldPath), np, 0)
+	}()
 
 	// Return a nil error so Finder doesn't complain to user.
-	return nil, renamerDone
+	return fuse.Errno(syscall.EXDEV), renamerDone
 }
 
 type notifyingRenamerOp struct{}
