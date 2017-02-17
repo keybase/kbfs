@@ -1221,3 +1221,14 @@ type NoMergedMDError struct {
 func (e NoMergedMDError) Error() string {
 	return fmt.Sprintf("No MD yet for TLF %s", e.tlf)
 }
+
+// DiskCacheClosedError indicates that the disk cache has been
+// closed, and thus isn't accepting any more operations.
+type DiskCacheClosedError struct {
+	op string
+}
+
+// Error implements the error interface for DiskCacheClosedError.
+func (e DiskCacheClosedError) Error() string {
+	return fmt.Sprintf("Error performing %s operation: the disk cache is closed.", e.op)
+}

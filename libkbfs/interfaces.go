@@ -47,6 +47,22 @@ type cryptoPureGetter interface {
 	cryptoPure() cryptoPure
 }
 
+type cryptoGetter interface {
+	Crypto() Crypto
+}
+
+type currentInfoGetterGetter interface {
+	currentInfoGetter() currentInfoGetter
+}
+
+type signerGetter interface {
+	Signer() kbfscrypto.Signer
+}
+
+type diskBlockCacheGetter interface {
+	DiskBlockCache() DiskBlockCache
+}
+
 // Block just needs to be (de)serialized using msgpack
 type Block interface {
 	dataVersioner
@@ -813,6 +829,22 @@ type DirtyBlockCache interface {
 	Shutdown() error
 }
 
+// DiskBlockCache caches blocks to the disk.
+type DiskBlockCache interface {
+	// Get gets a block from the disk cache.
+	Get(ctx context.Context, tlfID tlf.ID, blockID kbfsblock.ID) (
+		[]byte, kbfscrypto.BlockCryptKeyServerHalf, error)
+	// Put puts a block to the disk cache.
+	Put(ctx context.Context, tlfID tlf.ID, blockID kbfsblock.ID, buf []byte,
+		serverHalf kbfscrypto.BlockCryptKeyServerHalf) error
+	// Delete deletes some blocks from the disk cache.
+	Delete(ctx context.Context, tlfID tlf.ID, blockIDs []kbfsblock.ID) error
+	// Evict evicts some number of blocks from the disk cache.
+	Evict(ctx context.Context, tlfID tlf.ID, numBlocks int) error
+	// Shutdown cleanly shuts down the disk block cache.
+	Shutdown()
+}
+
 // cryptoPure contains all methods of Crypto that don't depend on
 // implicit state, i.e. they're pure functions of the input.
 type cryptoPure interface {
@@ -1449,6 +1481,10 @@ type Config interface {
 	codecGetter
 	cryptoPureGetter
 	keyGetterGetter
+	cryptoGetter
+	signerGetter
+	currentInfoGetterGetter
+	diskBlockCacheGetter
 	KBFSOps() KBFSOps
 	SetKBFSOps(KBFSOps)
 	KBPKI() KBPKI
@@ -1466,7 +1502,6 @@ type Config interface {
 	SetBlockCache(BlockCache)
 	DirtyBlockCache() DirtyBlockCache
 	SetDirtyBlockCache(DirtyBlockCache)
-	Crypto() Crypto
 	SetCrypto(Crypto)
 	SetCodec(kbfscodec.Codec)
 	MDOps() MDOps
