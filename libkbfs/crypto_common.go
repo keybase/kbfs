@@ -292,13 +292,13 @@ func (c CryptoCommon) DecryptPrivateMetadata(
 	return pmd, nil
 }
 
-const MinBlockSize = 256
+const minBlockSize = 256
 
 // thisPowerOfTwo returns next power of 2 greater than or equal to the input n.
 // https://en.wikipedia.org/wiki/Power_of_two#Algorithm_to_round_up_to_power_of_two
 func thisPowerOfTwo(n int) int {
-	if n <= MinBlockSize {
-		return MinBlockSize
+	if n <= minBlockSize {
+		return minBlockSize
 	}
 	if n&(n-1) == 0 {
 		// if n is already power of 2, return it
