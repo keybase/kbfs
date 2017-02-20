@@ -372,6 +372,7 @@ func (f *Folder) fillAttrWithUIDAndWritePerm(
 	a.Valid = 1 * time.Minute
 
 	a.Size = ei.Size
+	a.Blocks = (ei.Size-1)/512 + 1
 	a.Mtime = time.Unix(0, ei.Mtime)
 	a.Ctime = time.Unix(0, ei.Ctime)
 
@@ -381,6 +382,7 @@ func (f *Folder) fillAttrWithUIDAndWritePerm(
 		return err
 	}
 
+	fmt.Printf("SONGGAO: %#+v\n", a)
 	return nil
 }
 

@@ -199,15 +199,13 @@ func (f *FS) Root() (fs.Node, error) {
 
 // Statfs implements the fs.FSStatfser interface for FS.
 func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.StatfsResponse) error {
-	// TODO: Fill in real values for these.
-	var bsize uint32 = 32 * 1024
 	*resp = fuse.StatfsResponse{
-		Blocks:  ^uint64(0) / uint64(bsize),
-		Bfree:   ^uint64(0) / uint64(bsize),
-		Bavail:  ^uint64(0) / uint64(bsize),
+		Blocks:  ^uint64(0) / uint64(fuseBlockSize),
+		Bfree:   ^uint64(0) / uint64(fuseBlockSize),
+		Bavail:  ^uint64(0) / uint64(fuseBlockSize),
 		Files:   0,
 		Ffree:   0,
-		Bsize:   bsize,
+		Bsize:   fuseBlockSize,
 		Namelen: ^uint32(0),
 		Frsize:  0,
 	}

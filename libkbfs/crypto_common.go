@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"io"
 
 	"github.com/keybase/client/go/libkb"
@@ -292,17 +293,17 @@ func (c CryptoCommon) DecryptPrivateMetadata(
 	return pmd, nil
 }
 
-const minBlockSize = 256
+const MinBlockSize = 256
 
-// nextPowerOfTwo returns next power of 2 greater than the input n.
+// thisPowerOfTwo returns next power of 2 greater than or equal to the input n.
 // https://en.wikipedia.org/wiki/Power_of_two#Algorithm_to_round_up_to_power_of_two
-func nextPowerOfTwo(n uint32) uint32 {
-	if n < minBlockSize {
-		return minBlockSize
+func thisPowerOfTwo(n int) int {
+	if n <= MinBlockSize {
+		return MinBlockSize
 	}
 	if n&(n-1) == 0 {
-		// if n is already power of 2, get the next one
-		n++
+		// if n is already power of 2, return it
+		return n
 	}
 
 	n--
@@ -311,6 +312,7 @@ func nextPowerOfTwo(n uint32) uint32 {
 	n = n | (n >> 4)
 	n = n | (n >> 8)
 	n = n | (n >> 16)
+	n = n | (n >> 32) // so that it works with 64-bit int as well
 	n++
 
 	return n
@@ -320,8 +322,8 @@ const padPrefixSize = 4
 
 // padBlock adds random padding to an encoded block.
 func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
-	blockLen := uint32(len(block))
-	overallLen := nextPowerOfTwo(blockLen)
+	blockLen := len(block)
+	overallLen := thisPowerOfTwo(blockLen)
 	padLen := int64(overallLen - blockLen)
 
 	buf := bytes.NewBuffer(make([]byte, 0, overallLen+padPrefixSize))
@@ -384,6 +386,7 @@ func (c CryptoCommon) EncryptBlock(block Block, key kbfscrypto.BlockCryptKey) (
 
 	plainSize = len(encodedBlock)
 	encryptedBlock = EncryptedBlock{encryptedData}
+	fmt.Printf("SONGGAO: paddedBlock: %d, encodedBlock: %d, encryptedBlock: %d\n", len(paddedBlock), plainSize, len(encryptedData.EncryptedData))
 	return plainSize, encryptedBlock, nil
 }
 
