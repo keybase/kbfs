@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"io"
 
 	"github.com/keybase/client/go/libkb"
@@ -386,7 +385,6 @@ func (c CryptoCommon) EncryptBlock(block Block, key kbfscrypto.BlockCryptKey) (
 
 	plainSize = len(encodedBlock)
 	encryptedBlock = EncryptedBlock{encryptedData}
-	fmt.Printf("SONGGAO: paddedBlock: %d, encodedBlock: %d, encryptedBlock: %d\n", len(paddedBlock), plainSize, len(encryptedData.EncryptedData))
 	return plainSize, encryptedBlock, nil
 }
 
