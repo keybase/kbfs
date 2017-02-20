@@ -328,7 +328,7 @@ func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(make([]byte, 0, overallLen+padPrefixSize))
 
 	// first 4 bytes contain the length of the block data
-	if err := binary.Write(buf, binary.LittleEndian, blockLen); err != nil {
+	if err := binary.Write(buf, binary.LittleEndian, int32(blockLen)); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
