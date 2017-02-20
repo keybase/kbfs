@@ -373,7 +373,6 @@ func (f *Folder) fillAttrWithUIDAndWritePerm(
 
 	a.Size = ei.Size
 	a.Blocks = (ei.Size-1)/fuseBlockSize + 1
-	a.BlockSize = 8192
 	a.Mtime = time.Unix(0, ei.Mtime)
 	a.Ctime = time.Unix(0, ei.Ctime)
 
