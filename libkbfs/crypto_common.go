@@ -311,7 +311,7 @@ func thisPowerOfTwo(n int) int {
 	n = n | (n >> 4)
 	n = n | (n >> 8)
 	n = n | (n >> 16)
-	n = n | (n >> 32) // so that it works with 64-bit int as well
+	n = n | (n >> 16 >> 16) // make it work with 64 bit int; no effect on 32bit.
 	n++
 
 	return n
