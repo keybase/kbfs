@@ -11,3 +11,7 @@ package libfuse
 // response or not. Bazil FUSE's documentation verifies this:
 // https://github.com/bazil/fuse/blob/371fbbdaa8987b715bdd21d6adc4c9b20155f748/fuse.go#L1320
 const fuseBlockSize = 512
+
+func getNumBlocksFromSize(size uint64) uint64 {
+	return (size-1)/fuseBlockSize + 1
+}
