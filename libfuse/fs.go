@@ -211,6 +211,17 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 		Namelen: ^uint32(0),
 		Frsize:  0,
 	}
+	status, _, err := f.config.KBFSOps().Status(ctx)
+	if err != nil {
+		return fuse.EIO
+	}
+
+	total := getNumBlocksFromSize(uint64(status.LimitBytes))
+	used := getNumBlocksFromSize(uint64(status.UsageBytes))
+	resp.Blocks = total
+	resp.Bavail = total - used
+	resp.Bfree = total - used
+
 	return nil
 }
 
