@@ -207,7 +207,7 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 		Ffree:   0,
 		Bsize:   fuseBlockSize,
 		Namelen: ^uint32(0),
-		Frsize:  0,
+		Frsize:  fuseBlockSize,
 	}
 	status, _, err := f.config.KBFSOps().Status(ctx)
 	if err != nil {
