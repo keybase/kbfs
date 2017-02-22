@@ -59,7 +59,7 @@ func (f *SpecialReadFile) Open(ctx context.Context, req *fuse.OpenRequest,
 // SpecialReadBlockingFile represents a file whose contents are
 // determined by a function.
 type SpecialReadBlockingFile struct {
-	blockAndRead func(context.Context) ([]byte, time.Time, error)
+	blockAndRead func(context.Context) ([]byte, error)
 }
 
 var _ fs.Node = (*SpecialReadBlockingFile)(nil)
@@ -85,7 +85,7 @@ var _ fs.NodeOpener = (*SpecialReadBlockingFile)(nil)
 // Open implements the fs.NodeOpener interface for SpecialReadBlockingFile.
 func (f *SpecialReadBlockingFile) Open(ctx context.Context, req *fuse.OpenRequest,
 	resp *fuse.OpenResponse) (fs.Handle, error) {
-	data, _, err := f.blockAndRead(ctx)
+	data, err := f.blockAndRead(ctx)
 	if err != nil {
 		return nil, err
 	}

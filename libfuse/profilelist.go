@@ -5,8 +5,11 @@
 package libfuse
 
 import (
+	"bytes"
 	"os"
 	"runtime/pprof"
+	"runtime/trace"
+	"time"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
@@ -14,8 +17,6 @@ import (
 
 	"golang.org/x/net/context"
 )
-
-// TODO: Also have a file for CPU profiles.
 
 // ProfileList is a node that can list all of the available profiles.
 type ProfileList struct{}
@@ -32,6 +33,44 @@ var _ fs.NodeRequestLookuper = ProfileList{}
 
 // Lookup implements the fs.NodeRequestLookuper interface.
 func (pl ProfileList) Lookup(_ context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
+	if req.Name == "profile" {
+		blockAndReadFn := func(ctx context.Context) ([]byte, error) {
+			var buf bytes.Buffer
+			err := pprof.StartCPUProfile(&buf)
+			if err != nil {
+				return nil, err
+			}
+			defer pprof.StopCPUProfile()
+
+			d := 30 * time.Second
+			select {
+			case <-time.After(d):
+			case <-ctx.Done():
+			}
+
+			return buf.Bytes(), nil
+		}
+		return &SpecialReadBlockingFile{blockAndReadFn}, nil
+	} else if req.Name == "trace" {
+		blockAndReadFn := func(ctx context.Context) ([]byte, error) {
+			var buf bytes.Buffer
+			err := trace.Start(&buf)
+			if err != nil {
+				return nil, err
+			}
+			defer trace.Stop()
+
+			d := 1 * time.Second
+			select {
+			case <-time.After(d):
+			case <-ctx.Done():
+			}
+
+			return buf.Bytes(), nil
+		}
+		return &SpecialReadBlockingFile{blockAndReadFn}, nil
+	}
+
 	f := libfs.ProfileGet(req.Name)
 	if f == nil {
 		return nil, fuse.ENOENT
@@ -54,10 +93,18 @@ func (pl ProfileList) ReadDirAll(_ context.Context) (res []fuse.Dirent, err erro
 			continue
 		}
 		res = append(res, fuse.Dirent{
-			Type: fuse.DT_Dir,
+			Type: fuse.DT_File,
 			Name: name,
 		})
 	}
+	res = append(res, fuse.Dirent{
+		Type: fuse.DT_File,
+		Name: "profile",
+	})
+	res = append(res, fuse.Dirent{
+		Type: fuse.DT_File,
+		Name: "trace",
+	})
 	return res, nil
 }
 
