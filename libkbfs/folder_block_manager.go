@@ -945,6 +945,7 @@ func (fbm *folderBlockManager) finalizeReclamation(ctx context.Context,
 	}
 
 	ctx, err := makeExtendedIdentify(
+		// TLFIdentifyBehavior_KBFS_QR makes service suppress the tracker popup.
 		ctx, keybase1.TLFIdentifyBehavior_KBFS_QR)
 	if err != nil {
 		return err
