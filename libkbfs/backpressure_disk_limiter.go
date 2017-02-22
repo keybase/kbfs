@@ -91,9 +91,9 @@ func newBackpressureTracker(minThreshold, maxThreshold, limitFrac float64,
 	return bt, nil
 }
 
-// max returns the resource limit, taking into account the amount of
-// free resources left. This is min(k(U+F), L).
-func (bt backpressureTracker) max() float64 {
+// currLimit returns the resource limit, taking into account the
+// amount of free resources left. This is min(k(U+F), L).
+func (bt backpressureTracker) currLimit() float64 {
 	// Calculate k(U+F), converting to float64 first to avoid
 	// overflow, although losing some precision in the process.
 	usedFloat := float64(bt.used)
@@ -103,7 +103,7 @@ func (bt backpressureTracker) max() float64 {
 }
 
 func (bt backpressureTracker) freeFrac() float64 {
-	return float64(bt.used) / bt.max()
+	return float64(bt.used) / bt.currLimit()
 }
 
 // delayScale returns a number between 0 and 1, which should be
@@ -123,7 +123,7 @@ func (bt backpressureTracker) delayScale() float64 {
 // updateSemaphoreMax must be called whenever bt.used or bt.free
 // changes.
 func (bt *backpressureTracker) updateSemaphoreMax() {
-	newMax := int64(bt.max())
+	newMax := int64(bt.currLimit())
 	delta := newMax - bt.semaphoreMax
 	// These operations are adjusting the *maximum* value of
 	// bt.semaphore.
