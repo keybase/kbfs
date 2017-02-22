@@ -13,5 +13,8 @@ package libfuse
 const fuseBlockSize = 512
 
 func getNumBlocksFromSize(size uint64) uint64 {
+	if size == 0 {
+		return 0
+	}
 	return (size-1)/fuseBlockSize + 1
 }
