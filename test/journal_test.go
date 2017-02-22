@@ -111,9 +111,7 @@ func TestJournalCrSimple(t *testing.T) {
 	)
 }
 
-// bob creates many conflicting files while running the journal.
-func TestJournalCrManyFiles(t *testing.T) {
-	var busyWork []fileOp
+func giveMeHiWork() (busyWork []fileOp) {
 	busyWork = append(busyWork, mkfile("hi", "hello"))
 	iters := 20
 	for i := 0; i < iters; i++ {
@@ -121,6 +119,12 @@ func TestJournalCrManyFiles(t *testing.T) {
 		busyWork = append(busyWork, write("hi", content))
 	}
 	busyWork = append(busyWork, rm("hi"))
+	return busyWork
+}
+
+// bob creates many conflicting files while running the journal.
+func TestJournalCrManyFiles(t *testing.T) {
+	busyWork := giveMeHiWork()
 
 	test(t, journal(),
 		users("alice", "bob"),
@@ -402,6 +406,7 @@ func TestJournalCoalescingBasicCreates(t *testing.T) {
 		),
 		as(bob,
 			enableJournal(),
+			checkUnflushedPaths(nil),
 			pauseJournal(),
 		),
 		as(bob, busyWork...),
@@ -456,6 +461,7 @@ func TestJournalCoalescingCreatesPlusCR(t *testing.T) {
 		),
 		as(bob,
 			enableJournal(),
+			checkUnflushedPaths(nil),
 			pauseJournal(),
 		),
 		as(bob, busyWork...),
@@ -510,6 +516,7 @@ func TestJournalCoalescingWrites(t *testing.T) {
 		),
 		as(bob,
 			enableJournal(),
+			checkUnflushedPaths(nil),
 			pauseJournal(),
 		),
 		as(bob, busyWork...),
@@ -558,6 +565,7 @@ func TestJournalCoalescingMixedOperations(t *testing.T) {
 		),
 		as(bob,
 			enableJournal(),
+			checkUnflushedPaths(nil),
 			pauseJournal(),
 			// bob does a bunch of stuff:
 			//  * writes to an existing file a/b
@@ -579,7 +587,6 @@ func TestJournalCoalescingMixedOperations(t *testing.T) {
 		as(bob, busyWork...),
 		as(bob,
 			checkUnflushedPaths([]string{
-				"",
 				"alice,bob",
 				"alice,bob/a",
 				"alice,bob/a/b",
@@ -621,12 +628,7 @@ func TestJournalCoalescingMixedOperations(t *testing.T) {
 // bob makes a bunch of changes that cancel each other out, and get
 // coalesced together.
 func TestJournalCoalescingNoChanges(t *testing.T) {
-	var busyWork []fileOp
-	iters := libkbfs.ForcedBranchSquashThreshold + 1
-	for i := 0; i < iters; i++ {
-		name := fmt.Sprintf("a%d", i)
-		busyWork = append(busyWork, mkfile(name, "hello"), rm(name))
-	}
+	busyWork := giveMeHiWork()
 
 	test(t, journal(),
 		users("alice", "bob"),
@@ -635,13 +637,14 @@ func TestJournalCoalescingNoChanges(t *testing.T) {
 		),
 		as(bob,
 			enableJournal(),
+			checkUnflushedPaths(nil),
 			pauseJournal(),
 		),
 		as(bob, busyWork...),
 		as(bob,
 			checkUnflushedPaths([]string{
-				"",
 				"alice,bob",
+				"alice,bob/hi",
 			}),
 			resumeJournal(),
 			// This should kick off conflict resolution.
