@@ -1735,7 +1735,8 @@ func (fbo *folderBlockOps) revertSyncInfoAfterRecoverableError(
 // ReadyBlock is a thin wrapper around BlockOps.Ready() that handles
 // checking for duplicates.
 func ReadyBlock(ctx context.Context, bcache BlockCache, bops BlockOps,
-	crypto cryptoPure, kmd KeyMetadata, block Block, uid keybase1.UID) (
+	crypto cryptoPure, kmd KeyMetadata, block Block, uid keybase1.UID,
+	bType keybase1.BlockType) (
 	info BlockInfo, plainSize int, readyBlockData ReadyBlockData, err error) {
 	var ptr BlockPointer
 	directType := IndirectBlock
@@ -1776,10 +1777,7 @@ func ReadyBlock(ctx context.Context, bcache BlockCache, bops BlockOps,
 			KeyGen:     kmd.LatestKeyGeneration(),
 			DataVer:    block.DataVersion(),
 			DirectType: directType,
-			Context: kbfsblock.Context{
-				Creator:  uid,
-				RefNonce: kbfsblock.ZeroRefNonce,
-			},
+			Context:    kbfsblock.MakeFirstContext(uid, bType),
 		}
 	}
 
@@ -1884,6 +1882,7 @@ func (fbo *folderBlockOps) startSyncWrite(ctx context.Context,
 		md.SetRefBytes(si.refBytes)
 		md.AddDiskUsage(si.refBytes)
 		md.SetUnrefBytes(si.unrefBytes)
+		md.SetMDRefBytes(0) // this will be calculated anew
 		md.SetDiskUsage(md.DiskUsage() - si.unrefBytes)
 		syncState.newIndirectFileBlockPtrs = append(
 			syncState.newIndirectFileBlockPtrs, si.op.Refs()...)

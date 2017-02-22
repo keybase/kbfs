@@ -12,6 +12,7 @@ import (
 
 	"github.com/keybase/backoff"
 	"github.com/keybase/client/go/logger"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/keybase/kbfs/tlf"
@@ -942,6 +943,15 @@ func (fbm *folderBlockManager) finalizeReclamation(ctx context.Context,
 	for _, id := range zeroRefCounts {
 		gco.AddUnrefBlock(BlockPointer{ID: id})
 	}
+
+	// For now, pretend to be a rekey so the service suppresses
+	// popups.  TODO: add a more specific behavior type for QR.
+	ctx, err := makeExtendedIdentify(
+		ctx, keybase1.TLFIdentifyBehavior_KBFS_REKEY)
+	if err != nil {
+		return err
+	}
+
 	fbm.log.CDebugf(ctx, "Finalizing reclamation %s with %d ptrs", gco,
 		len(ptrs))
 	// finalizeGCOp could wait indefinitely on locks, so run it in a
@@ -1020,6 +1030,8 @@ func (fbm *folderBlockManager) doReclamation(timer *time.Timer) (err error) {
 		return err
 	} else if head.MergedStatus() != Merged {
 		return errors.New("Supposedly fully-merged MD is unexpectedly unmerged")
+	} else if head.IsFinal() {
+		return MetadataIsFinalError{}
 	}
 
 	// Make sure we're a writer
@@ -1143,12 +1155,16 @@ func (fbm *folderBlockManager) reclaimQuotaInBackground() {
 		}
 
 		err := fbm.doReclamation(timer)
-		if _, ok := err.(WriteAccessError); ok {
-			// If we got a write access error, don't bother with the
-			// timer anymore. Don't completely shut down, since we
-			// don't want forced reclamations to hang.
+		_, isWriteError := err.(WriteAccessError)
+		_, isFinalError := err.(MetadataIsFinalError)
+		if isWriteError || isFinalError {
+			// If we can't write the MD, don't bother with the timer
+			// anymore. Don't completely shut down, since we don't
+			// want forced reclamations to hang.
 			timer.Stop()
 			timerChan = make(chan time.Time)
+			fbm.log.CDebugf(context.Background(),
+				"Permanently stopping QR due to error: %+v", err)
 		}
 	}
 }

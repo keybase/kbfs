@@ -519,6 +519,10 @@ func (fbo *folderBranchOps) isMasterBranchLocked(lState *lockState) bool {
 func (fbo *folderBranchOps) setBranchIDLocked(lState *lockState, bid BranchID) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
+	if fbo.bid != bid {
+		fbo.cr.BeginNewBranch()
+	}
+
 	fbo.bid = bid
 	if bid == NullBranchID {
 		fbo.status.setCRSummary(nil, nil)
@@ -1163,7 +1167,8 @@ func ResetRootBlock(ctx context.Context, config Config,
 	newDblock := NewDirBlock()
 	info, plainSize, readyBlockData, err :=
 		ReadyBlock(ctx, config.BlockCache(), config.BlockOps(),
-			config.Crypto(), rmd.ReadOnly(), newDblock, currentUID)
+			config.Crypto(), rmd.ReadOnly(), newDblock, currentUID,
+			keybase1.BlockType_DATA)
 	if err != nil {
 		return nil, BlockInfo{}, ReadyBlockData{}, err
 	}
@@ -1771,10 +1776,11 @@ func (bps *blockPutState) DeepCopy() *blockPutState {
 
 func (fbo *folderBranchOps) readyBlockMultiple(ctx context.Context,
 	kmd KeyMetadata, currBlock Block, uid keybase1.UID,
-	bps *blockPutState) (info BlockInfo, plainSize int, err error) {
+	bps *blockPutState, bType keybase1.BlockType) (
+	info BlockInfo, plainSize int, err error) {
 	info, plainSize, readyBlockData, err :=
 		ReadyBlock(ctx, fbo.config.BlockCache(), fbo.config.BlockOps(),
-			fbo.config.Crypto(), kmd, currBlock, uid)
+			fbo.config.Crypto(), kmd, currBlock, uid, bType)
 	if err != nil {
 		return
 	}
@@ -1803,10 +1809,7 @@ func (fbo *folderBranchOps) unembedBlockChanges(
 		KeyGen:     md.LatestKeyGeneration(),
 		DataVer:    fbo.config.DataVersion(),
 		DirectType: DirectBlock,
-		Context: kbfsblock.Context{
-			Creator:  uid,
-			RefNonce: kbfsblock.ZeroRefNonce,
-		},
+		Context:    kbfsblock.MakeFirstContext(uid, keybase1.BlockType_MD),
 	}
 	file := path{fbo.folderBranch,
 		[]pathNode{{ptr, fmt.Sprintf("<MD rev %d>", md.Revision())}}}
@@ -1863,20 +1866,20 @@ func (fbo *folderBranchOps) unembedBlockChanges(
 		return err
 	}
 	for info := range infos {
-		md.AddRefBytes(uint64(info.EncodedSize))
-		md.AddDiskUsage(uint64(info.EncodedSize))
+		md.AddMDRefBytes(uint64(info.EncodedSize))
+		md.AddMDDiskUsage(uint64(info.EncodedSize))
 	}
 	fbo.log.CDebugf(ctx, "%d unembedded child blocks", len(infos))
 
 	// Ready the top block.
 	info, _, err := fbo.readyBlockMultiple(
-		ctx, md.ReadOnly(), block, uid, bps)
+		ctx, md.ReadOnly(), block, uid, bps, keybase1.BlockType_MD)
 	if err != nil {
 		return err
 	}
 
-	md.AddRefBytes(uint64(info.EncodedSize))
-	md.AddDiskUsage(uint64(info.EncodedSize))
+	md.AddMDRefBytes(uint64(info.EncodedSize))
+	md.AddMDDiskUsage(uint64(info.EncodedSize))
 	md.data.cachedChanges = *changes
 	changes.Info = info
 	changes.Ops = nil
@@ -1925,7 +1928,7 @@ func (fbo *folderBranchOps) syncBlock(
 	now := fbo.nowUnixNano()
 	for len(newPath.path) < len(dir.path)+1 {
 		info, plainSize, err := fbo.readyBlockMultiple(
-			ctx, md.ReadOnly(), currBlock, uid, bps)
+			ctx, md.ReadOnly(), currBlock, uid, bps, keybase1.BlockType_DATA)
 		if err != nil {
 			return path{}, DirEntry{}, nil, err
 		}
@@ -5386,7 +5389,6 @@ func (fbo *folderBranchOps) handleTLFBranchChange(ctx context.Context,
 
 	// Kick off conflict resolution and set the head to the correct branch.
 	fbo.setBranchIDLocked(lState, newBID)
-	fbo.cr.BeginNewBranch()
 	fbo.cr.Resolve(md.Revision(), MetadataRevisionUninitialized)
 
 	fbo.headLock.Lock(lState)
