@@ -34,6 +34,9 @@ import (
 // which is equivalent to
 //
 //   m <= U/min(k(U+F), L) <= M.
+//
+// Note that this type doesn't do any locking, so it's the caller's
+// responsibility to do so.
 type backpressureTracker struct {
 	// minThreshold is m in the above.
 	minThreshold float64
