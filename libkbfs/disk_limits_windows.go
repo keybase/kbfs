@@ -18,7 +18,7 @@ func getDiskLimits(path string) (
 	availableBytes, availableFiles uint64, err error) {
 	pathPtr, err := windows.UTF16PtrFromString(path)
 	if err != nil {
-		return 0, errors.WithStack(err)
+		return 0, 0, errors.WithStack(err)
 	}
 
 	dll := windows.NewLazySystemDLL("kernel32.dll")
@@ -28,7 +28,7 @@ func getDiskLimits(path string) (
 	// err is always non-nil, but meaningful only when r1 == 0
 	// (which signifies function failure).
 	if r1 == 0 {
-		return 0, errors.WithStack(err)
+		return 0, 0, errors.WithStack(err)
 	} else {
 		err = nil
 	}
