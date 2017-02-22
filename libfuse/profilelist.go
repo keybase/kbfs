@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"runtime/trace"
+	"strings"
 	"time"
 
 	"bazil.org/fuse"
@@ -33,7 +34,12 @@ var _ fs.NodeRequestLookuper = ProfileList{}
 
 // Lookup implements the fs.NodeRequestLookuper interface.
 func (pl ProfileList) Lookup(_ context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
-	if req.Name == "profile" {
+	if strings.HasPrefix(req.Name, "profile.") {
+		dStr := strings.TrimPrefix(req.Name, "profile.")
+		d, err := time.ParseDuration(dStr)
+		if err != nil {
+			return nil, err
+		}
 		blockAndReadFn := func(ctx context.Context) ([]byte, error) {
 			var buf bytes.Buffer
 			err := pprof.StartCPUProfile(&buf)
@@ -42,7 +48,6 @@ func (pl ProfileList) Lookup(_ context.Context, req *fuse.LookupRequest, resp *f
 			}
 			defer pprof.StopCPUProfile()
 
-			d := 30 * time.Second
 			select {
 			case <-time.After(d):
 			case <-ctx.Done():
@@ -52,7 +57,12 @@ func (pl ProfileList) Lookup(_ context.Context, req *fuse.LookupRequest, resp *f
 			return buf.Bytes(), nil
 		}
 		return &SpecialReadBlockingFile{blockAndReadFn}, nil
-	} else if req.Name == "trace" {
+	} else if strings.HasPrefix(req.Name, "trace.") {
+		dStr := strings.TrimPrefix(req.Name, "trace.")
+		d, err := time.ParseDuration(dStr)
+		if err != nil {
+			return nil, err
+		}
 		blockAndReadFn := func(ctx context.Context) ([]byte, error) {
 			var buf bytes.Buffer
 			err := trace.Start(&buf)
@@ -61,7 +71,6 @@ func (pl ProfileList) Lookup(_ context.Context, req *fuse.LookupRequest, resp *f
 			}
 			defer trace.Stop()
 
-			d := 1 * time.Second
 			select {
 			case <-time.After(d):
 			case <-ctx.Done():
@@ -101,11 +110,11 @@ func (pl ProfileList) ReadDirAll(_ context.Context) (res []fuse.Dirent, err erro
 	}
 	res = append(res, fuse.Dirent{
 		Type: fuse.DT_File,
-		Name: "profile",
+		Name: "profile.30s",
 	})
 	res = append(res, fuse.Dirent{
 		Type: fuse.DT_File,
-		Name: "trace",
+		Name: "trace.1s",
 	})
 	return res, nil
 }
