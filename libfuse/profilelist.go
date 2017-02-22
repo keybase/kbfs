@@ -48,6 +48,7 @@ func (pl ProfileList) Lookup(_ context.Context, req *fuse.LookupRequest, resp *f
 			case <-ctx.Done():
 			}
 
+			pprof.StopCPUProfile()
 			return buf.Bytes(), nil
 		}
 		return &SpecialReadBlockingFile{blockAndReadFn}, nil
@@ -66,6 +67,7 @@ func (pl ProfileList) Lookup(_ context.Context, req *fuse.LookupRequest, resp *f
 			case <-ctx.Done():
 			}
 
+			trace.Stop()
 			return buf.Bytes(), nil
 		}
 		return &SpecialReadBlockingFile{blockAndReadFn}, nil
