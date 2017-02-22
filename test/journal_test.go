@@ -114,11 +114,13 @@ func TestJournalCrSimple(t *testing.T) {
 // bob creates many conflicting files while running the journal.
 func TestJournalCrManyFiles(t *testing.T) {
 	var busyWork []fileOp
+	busyWork = append(busyWork, mkfile("hi", "hello"))
 	iters := 20
 	for i := 0; i < iters; i++ {
-		name := fmt.Sprintf("a%d", i)
-		busyWork = append(busyWork, mkfile(name, "hello"), rm(name))
+		content := fmt.Sprintf("a%d", i)
+		busyWork = append(busyWork, write("hi", content))
 	}
+	busyWork = append(busyWork, rm("hi"))
 
 	test(t, journal(),
 		users("alice", "bob"),
@@ -127,13 +129,14 @@ func TestJournalCrManyFiles(t *testing.T) {
 		),
 		as(bob,
 			enableJournal(),
+			checkUnflushedPaths(nil),
 			pauseJournal(),
 		),
 		as(bob, busyWork...),
 		as(bob,
 			checkUnflushedPaths([]string{
-				"",
 				"alice,bob",
+				"alice,bob/hi",
 			}),
 			// Don't flush yet.
 		),
