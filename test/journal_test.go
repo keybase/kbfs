@@ -546,12 +546,7 @@ func TestJournalCoalescingWrites(t *testing.T) {
 // bob does a bunch of operations in a journal and the operations get
 // coalesced together.
 func TestJournalCoalescingMixedOperations(t *testing.T) {
-	var busyWork []fileOp
-	iters := libkbfs.ForcedBranchSquashThreshold + 1
-	for i := 0; i < iters; i++ {
-		name := fmt.Sprintf("a%d", i)
-		busyWork = append(busyWork, mkfile(name, "hello"), rm(name))
-	}
+	busyWork := giveMeHiWork()
 
 	targetMtime := time.Now().Add(1 * time.Minute)
 	test(t, journal(), blockSize(100), blockChangeSize(5),
@@ -594,6 +589,7 @@ func TestJournalCoalescingMixedOperations(t *testing.T) {
 				"alice,bob/f",
 				"alice,bob/f/g",
 				"alice,bob/h",
+				"alice,bob/hi",
 			}),
 			resumeJournal(),
 			// This should kick off conflict resolution.
