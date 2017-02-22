@@ -164,6 +164,28 @@ func TestBackpressureConstructorError(t *testing.T) {
 	require.Equal(t, fakeErr, err)
 }
 
+// TestBackpressureDiskLimiterBeforeBlockPut checks that
+// backpressureDiskLimiter.beforeBlockPut keeps track and returns the
+// available bytes/files correctly.
+func TestBackpressureDiskLimiterBeforeBlockPut(t *testing.T) {
+	log := logger.NewTestLogger(t)
+	bdl, err := newBackpressureDiskLimiterWithFunctions(
+		log, 0.1, 0.9, 0.25, 22, 5, 8*time.Second,
+		func(ctx context.Context, delay time.Duration) error {
+			return nil
+		},
+		func() (int64, int64, error) {
+			return math.MaxInt64, math.MaxInt64, nil
+		})
+	require.NoError(t, err)
+
+	availBytes, availFiles, err := bdl.beforeBlockPut(
+		context.Background(), 10, 2)
+	require.NoError(t, err)
+	require.Equal(t, int64(12), availBytes)
+	require.Equal(t, int64(3), availFiles)
+}
+
 // TestBackpressureDiskLimiterBeforeBlockPutError checks that
 // backpressureDiskLimiter.beforeBlockPut handles errors correctly; in
 // particular, that we don't leak either bytes or files if either

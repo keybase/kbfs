@@ -451,7 +451,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	}()
 
 	availableFiles, err = bdl.fileTracker.beforeBlockPut(ctx, blockFiles)
-	return availableFiles, availableFiles, err
+	return availableBytes, availableFiles, err
 }
 
 func (bdl *backpressureDiskLimiter) afterBlockPut(
