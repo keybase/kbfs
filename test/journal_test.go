@@ -387,7 +387,7 @@ func TestJournalCoalescingBasicCreates(t *testing.T) {
 	var busyWork []fileOp
 	var reads []fileOp
 	listing := m{"^a$": "DIR"}
-	iters := libkbfs.ForcedBranchSquashThreshold + 1
+	iters := libkbfs.ForcedBranchSquashRevThreshold + 1
 	unflushedPaths := []string{"alice,bob"}
 	for i := 0; i < iters; i++ {
 		name := fmt.Sprintf("a%d", i)
@@ -435,7 +435,7 @@ func TestJournalCoalescingCreatesPlusCR(t *testing.T) {
 	var busyWork []fileOp
 	var reads []fileOp
 	listing := m{"^a$": "DIR", "^b$": "DIR"}
-	iters := libkbfs.ForcedBranchSquashThreshold + 1
+	iters := libkbfs.ForcedBranchSquashRevThreshold + 1
 	unflushedPaths := []string{"alice,bob"}
 	for i := 0; i < iters; i++ {
 		name := fmt.Sprintf("a%d", i)
@@ -501,7 +501,7 @@ func TestJournalCoalescingCreatesPlusCR(t *testing.T) {
 // get coalesced together.
 func TestJournalCoalescingWrites(t *testing.T) {
 	var busyWork []fileOp
-	iters := libkbfs.ForcedBranchSquashThreshold + 1
+	iters := libkbfs.ForcedBranchSquashRevThreshold + 1
 	var contents string
 	for i := 0; i < iters; i++ {
 		contents += fmt.Sprintf("hello%d", i)
@@ -545,7 +545,7 @@ func TestJournalCoalescingWrites(t *testing.T) {
 // bob does a bunch of operations in a journal and the operations get
 // coalesced together.
 func TestJournalCoalescingMixedOperations(t *testing.T) {
-	busyWork := giveMeHiWork(libkbfs.ForcedBranchSquashThreshold + 1)
+	busyWork := giveMeHiWork(libkbfs.ForcedBranchSquashRevThreshold + 1)
 
 	targetMtime := time.Now().Add(1 * time.Minute)
 	test(t, journal(), blockSize(100), blockChangeSize(5),
@@ -623,7 +623,7 @@ func TestJournalCoalescingMixedOperations(t *testing.T) {
 // bob makes a bunch of changes that cancel each other out, and get
 // coalesced together.
 func TestJournalCoalescingNoChanges(t *testing.T) {
-	busyWork := giveMeHiWork(libkbfs.ForcedBranchSquashThreshold + 1)
+	busyWork := giveMeHiWork(libkbfs.ForcedBranchSquashRevThreshold + 1)
 
 	test(t, journal(),
 		users("alice", "bob"),

@@ -17,16 +17,23 @@ import (
 	"github.com/keybase/kbfs/kbfscrypto"
 )
 
-// SimpleFS - implement keybase1.SimpleFS
+// SimpleFS is the simple filesystem rpc layer implementation.
 type SimpleFS struct {
-	lock    sync.RWMutex
-	config  Config
-	handles map[keybase1.OpID]*handle
+	lock       sync.RWMutex
+	config     Config
+	handles    map[keybase1.OpID]*handle
+	inProgress map[keybase1.OpID]*inprogress
+}
+
+type inprogress struct {
+	desc keybase1.OpDescription
+	done chan struct{}
 }
 
 type handle struct {
 	node  Node
 	async interface{}
+	path  keybase1.Path
 }
 
 // make sure the interface is implemented
@@ -34,8 +41,9 @@ var _ keybase1.SimpleFSInterface = (*SimpleFS)(nil)
 
 func newSimpleFS(config Config) *SimpleFS {
 	return &SimpleFS{
-		config:  config,
-		handles: map[keybase1.OpID]*handle{},
+		config:     config,
+		handles:    map[keybase1.OpID]*handle{},
+		inProgress: map[keybase1.OpID]*inprogress{},
 	}
 }
 
@@ -44,6 +52,15 @@ func newSimpleFS(config Config) *SimpleFS {
 // Cannot be a single file to get flags/status,
 // must be a directory.
 func (k *SimpleFS) SimpleFSList(ctx context.Context, arg keybase1.SimpleFSListArg) error {
+	ctx, err := k.startOp(ctx, arg.OpID, keybase1.NewOpDescriptionWithList(
+		keybase1.ListArgs{
+			OpID: arg.OpID, Path: arg.Path,
+		}))
+	if err != nil {
+		return err
+	}
+	defer CleanupCancellationDelayer(ctx)
+
 	node, err := k.getRemoteNode(ctx, arg.Path)
 	if err != nil {
 		return err
@@ -69,6 +86,15 @@ func (k *SimpleFS) SimpleFSList(ctx context.Context, arg keybase1.SimpleFSListAr
 
 // SimpleFSListRecursive - Begin recursive list of items in directory at path
 func (k *SimpleFS) SimpleFSListRecursive(ctx context.Context, arg keybase1.SimpleFSListRecursiveArg) error {
+	ctx, err := k.startOp(ctx, arg.OpID, keybase1.NewOpDescriptionWithListRecursive(
+		keybase1.ListArgs{
+			OpID: arg.OpID, Path: arg.Path,
+		}))
+	if err != nil {
+		return err
+	}
+	defer k.doneOp(ctx, arg.OpID)
+
 	// A stack of paths to process - ordering does not matter.
 	// Here we don't walk symlinks, so no loops possible.
 	var paths = []keybase1.Path{arg.Path}
@@ -126,6 +152,17 @@ func (k *SimpleFS) SimpleFSReadList(ctx context.Context, opid keybase1.OpID) (ke
 
 // SimpleFSCopy - Begin copy of file or directory
 func (k *SimpleFS) SimpleFSCopy(ctx context.Context, arg keybase1.SimpleFSCopyArg) error {
+	ctx, err := k.startOp(ctx, arg.OpID, keybase1.NewOpDescriptionWithCopy(
+		keybase1.CopyArgs{OpID: arg.OpID, Src: arg.Src, Dest: arg.Dest},
+	))
+	if err != nil {
+		return err
+	}
+	defer k.doneOp(ctx, arg.OpID)
+	return k.simpleFSCopy(ctx, arg)
+}
+
+func (k *SimpleFS) simpleFSCopy(ctx context.Context, arg keybase1.SimpleFSCopyArg) error {
 	// Note this is also used by move, so if this changes update SimpleFSMove
 	// code also.
 	src, err := k.pathIO(ctx, arg.Src, keybase1.OpenFlags_READ|keybase1.OpenFlags_EXISTING, nil)
@@ -156,7 +193,14 @@ type pathPair struct {
 
 // SimpleFSCopyRecursive - Begin recursive copy of directory
 func (k *SimpleFS) SimpleFSCopyRecursive(ctx context.Context, arg keybase1.SimpleFSCopyRecursiveArg) error {
-	var err error
+	ctx, err := k.startOp(ctx, arg.OpID, keybase1.NewOpDescriptionWithCopy(
+		keybase1.CopyArgs{OpID: arg.OpID, Src: arg.Src, Dest: arg.Dest},
+	))
+	if err != nil {
+		return err
+	}
+	defer k.doneOp(ctx, arg.OpID)
+
 	var paths = []pathPair{{src: arg.Src, dest: arg.Dest}}
 	for len(paths) > 0 {
 		// wrap in a function for defers.
@@ -214,7 +258,16 @@ func pathAppend(p keybase1.Path, leaf string) keybase1.Path {
 
 // SimpleFSMove - Begin move of file or directory, from/to KBFS only
 func (k *SimpleFS) SimpleFSMove(ctx context.Context, arg keybase1.SimpleFSMoveArg) error {
-	err := k.SimpleFSCopy(ctx, keybase1.SimpleFSCopyArg{
+	ctx, err := k.startOp(ctx, arg.OpID, keybase1.NewOpDescriptionWithMove(
+		keybase1.MoveArgs{
+			OpID: arg.OpID, Src: arg.Src, Dest: arg.Dest,
+		}))
+	if err != nil {
+		return err
+	}
+	defer k.doneOp(ctx, arg.OpID)
+
+	err = k.simpleFSCopy(ctx, keybase1.SimpleFSCopyArg{
 		OpID: arg.OpID, Src: arg.Src, Dest: arg.Dest,
 	})
 	if err != nil {
@@ -227,7 +280,7 @@ func (k *SimpleFS) SimpleFSMove(ctx context.Context, arg keybase1.SimpleFSMoveAr
 	}
 	switch pt {
 	case keybase1.PathType_KBFS:
-		err = k.SimpleFSRemove(ctx, keybase1.SimpleFSRemoveArg{
+		err = k.simpleFSRemove(ctx, keybase1.SimpleFSRemoveArg{
 			OpID: arg.OpID, Path: arg.Src,
 		})
 	case keybase1.PathType_LOCAL:
@@ -241,6 +294,12 @@ func (k *SimpleFS) SimpleFSMove(ctx context.Context, arg keybase1.SimpleFSMoveAr
 
 // SimpleFSRename - Rename file or directory, KBFS side only
 func (k *SimpleFS) SimpleFSRename(ctx context.Context, arg keybase1.SimpleFSRenameArg) error {
+	ctx, err := k.startSyncOp(ctx)
+	if err != nil {
+		return err
+	}
+	defer k.doneSyncOp(ctx)
+
 	snode, sleaf, err := k.getRemoteNodeParent(ctx, arg.Src)
 	if err != nil {
 		return err
@@ -258,6 +317,12 @@ func (k *SimpleFS) SimpleFSRename(ctx context.Context, arg keybase1.SimpleFSRena
 // or create a directory
 // Files must be closed afterwards.
 func (k *SimpleFS) SimpleFSOpen(ctx context.Context, arg keybase1.SimpleFSOpenArg) error {
+	ctx, err := k.startSyncOp(ctx)
+	if err != nil {
+		return err
+	}
+	defer k.doneSyncOp(ctx)
+
 	node, _, err := k.open(ctx, arg.Dest, arg.Flags)
 
 	if err != nil {
@@ -265,7 +330,7 @@ func (k *SimpleFS) SimpleFSOpen(ctx context.Context, arg keybase1.SimpleFSOpenAr
 	}
 
 	k.lock.Lock()
-	k.handles[arg.OpID] = &handle{node: node}
+	k.handles[arg.OpID] = &handle{node: node, path: arg.Dest}
 	k.lock.Unlock()
 
 	return nil
@@ -273,6 +338,12 @@ func (k *SimpleFS) SimpleFSOpen(ctx context.Context, arg keybase1.SimpleFSOpenAr
 
 // SimpleFSSetStat - Set/clear file bits - only executable for now
 func (k *SimpleFS) SimpleFSSetStat(ctx context.Context, arg keybase1.SimpleFSSetStatArg) error {
+	ctx, err := k.startSyncOp(ctx)
+	if err != nil {
+		return err
+	}
+	defer k.doneSyncOp(ctx)
+
 	node, err := k.getRemoteNode(ctx, arg.Dest)
 	if err != nil {
 		return err
@@ -304,6 +375,19 @@ func (k *SimpleFS) SimpleFSRead(ctx context.Context,
 	if !ok {
 		return keybase1.FileContent{}, errNoSuchHandle
 	}
+
+	ctx, err := k.startOp(ctx, arg.OpID, keybase1.NewOpDescriptionWithRead(
+		keybase1.ReadArgs{
+			OpID:   arg.OpID,
+			Path:   h.path,
+			Offset: arg.Offset,
+			Size:   arg.Size,
+		}))
+	if err != nil {
+		return keybase1.FileContent{}, err
+	}
+	defer k.doneOp(ctx, arg.OpID)
+
 	bs := make([]byte, arg.Size)
 	k.config.KBFSOps().Read(ctx, h.node, bs, arg.Offset)
 	return keybase1.FileContent{
@@ -320,12 +404,34 @@ func (k *SimpleFS) SimpleFSWrite(ctx context.Context, arg keybase1.SimpleFSWrite
 	if !ok {
 		return errNoSuchHandle
 	}
-	err := k.config.KBFSOps().Write(ctx, h.node, arg.Content, arg.Offset)
+
+	ctx, err := k.startOp(ctx, arg.OpID, keybase1.NewOpDescriptionWithWrite(
+		keybase1.WriteArgs{
+			OpID: arg.OpID, Path: h.path, Offset: arg.Offset,
+		}))
+	if err != nil {
+		return err
+	}
+	defer k.doneOp(ctx, arg.OpID)
+
+	err = k.config.KBFSOps().Write(ctx, h.node, arg.Content, arg.Offset)
 	return err
 }
 
 // SimpleFSRemove - Remove file or directory from filesystem
 func (k *SimpleFS) SimpleFSRemove(ctx context.Context, arg keybase1.SimpleFSRemoveArg) error {
+	ctx, err := k.startOp(ctx, arg.OpID, keybase1.NewOpDescriptionWithRemove(
+		keybase1.RemoveArgs{
+			OpID: arg.OpID, Path: arg.Path,
+		}))
+	if err != nil {
+		return err
+	}
+	defer k.doneOp(ctx, arg.OpID)
+	return k.simpleFSRemove(ctx, arg)
+}
+
+func (k *SimpleFS) simpleFSRemove(ctx context.Context, arg keybase1.SimpleFSRemoveArg) error {
 	node, leaf, err := k.getRemoteNodeParent(ctx, arg.Path)
 	if err != nil {
 		return err
@@ -346,6 +452,12 @@ func (k *SimpleFS) SimpleFSRemove(ctx context.Context, arg keybase1.SimpleFSRemo
 
 // SimpleFSStat - Get info about file
 func (k *SimpleFS) SimpleFSStat(ctx context.Context, path keybase1.Path) (keybase1.Dirent, error) {
+	ctx, err := k.startSyncOp(ctx)
+	if err != nil {
+		return keybase1.Dirent{}, err
+	}
+	defer k.doneSyncOp(ctx)
+
 	node, err := k.getRemoteNode(ctx, path)
 	if err != nil {
 		return keybase1.Dirent{}, err
@@ -363,6 +475,12 @@ func (k *SimpleFS) SimpleFSMakeOpid(_ context.Context) (keybase1.OpID, error) {
 // SimpleFSClose - Close OpID, cancels any pending operation.
 // Must be called after list/copy/remove
 func (k *SimpleFS) SimpleFSClose(ctx context.Context, opid keybase1.OpID) error {
+	ctx, err := k.startSyncOp(ctx)
+	if err != nil {
+		return err
+	}
+	defer k.doneSyncOp(ctx)
+
 	k.lock.Lock()
 	defer k.lock.Unlock()
 	h, ok := k.handles[opid]
@@ -371,9 +489,9 @@ func (k *SimpleFS) SimpleFSClose(ctx context.Context, opid keybase1.OpID) error 
 	}
 	delete(k.handles, opid)
 	if h.node != nil {
-		k.config.KBFSOps().Sync(ctx, h.node)
+		err = k.config.KBFSOps().Sync(ctx, h.node)
 	}
-	return nil
+	return err
 }
 
 // SimpleFSCheck - Check progress of pending operation
@@ -384,13 +502,26 @@ func (k *SimpleFS) SimpleFSCheck(_ context.Context, opid keybase1.OpID) (keybase
 
 // SimpleFSGetOps - Get all the outstanding operations
 func (k *SimpleFS) SimpleFSGetOps(_ context.Context) ([]keybase1.OpDescription, error) {
-	return []keybase1.OpDescription{}, errors.New("not implemented")
+	k.lock.RLock()
+	r := make([]keybase1.OpDescription, 0, len(k.inProgress))
+	for _, p := range k.inProgress {
+		r = append(r, p.desc)
+	}
+	k.lock.RUnlock()
+	return r, nil
 }
 
 // SimpleFSWait - Blocking wait for the pending operation to finish
 func (k *SimpleFS) SimpleFSWait(_ context.Context, opid keybase1.OpID) error {
-	// TODO
-	return errors.New("not implemented")
+	k.lock.RLock()
+	w, ok := k.inProgress[opid]
+	k.lock.RUnlock()
+	if !ok {
+		return errNoSuchHandle
+	}
+
+	<-w.done
+	return nil
 }
 
 // remotePath decodes a remote path for us.
@@ -666,6 +797,34 @@ func ty2Kbfs(mode os.FileMode) EntryType {
 		return Exec
 	}
 	return File
+}
+
+func (k *SimpleFS) startOp(outer context.Context, opid keybase1.OpID,
+	desc keybase1.OpDescription) (context.Context, error) {
+	k.lock.Lock()
+	k.inProgress[opid] = &inprogress{desc, make(chan struct{})}
+	k.lock.Unlock()
+	return k.startSyncOp(outer)
+}
+func (k *SimpleFS) startSyncOp(outer context.Context) (context.Context, error) {
+	return NewContextWithCancellationDelayer(NewContextReplayable(
+		outer, func(c context.Context) context.Context {
+			return c
+		}))
+}
+
+func (k *SimpleFS) doneOp(ctx context.Context, opid keybase1.OpID) {
+	k.lock.Lock()
+	w, ok := k.inProgress[opid]
+	delete(k.inProgress, opid)
+	k.lock.Unlock()
+	if ok {
+		close(w.done)
+	}
+	k.doneSyncOp(ctx)
+}
+func (k *SimpleFS) doneSyncOp(ctx context.Context) {
+	CleanupCancellationDelayer(ctx)
 }
 
 var errOnlyRemotePathSupported = errors.New("Only remote paths are supported for this operation")
