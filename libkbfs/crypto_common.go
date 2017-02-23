@@ -294,9 +294,10 @@ func (c CryptoCommon) DecryptPrivateMetadata(
 
 const minBlockSize = 256
 
-// thisPowerOfTwo returns next power of 2 greater than or equal to the input n.
+// powerOfTwoEqualOrGreater returns smallest power of 2 greater than or equal
+// to the input n.
 // https://en.wikipedia.org/wiki/Power_of_two#Algorithm_to_round_up_to_power_of_two
-func thisPowerOfTwo(n int) int {
+func powerOfTwoEqualOrGreater(n int) int {
 	if n <= minBlockSize {
 		return minBlockSize
 	}
@@ -322,7 +323,7 @@ const padPrefixSize = 4
 // padBlock adds random padding to an encoded block.
 func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
 	blockLen := len(block)
-	overallLen := thisPowerOfTwo(blockLen)
+	overallLen := powerOfTwoEqualOrGreater(blockLen)
 	padLen := int64(overallLen - blockLen)
 
 	buf := bytes.NewBuffer(make([]byte, 0, overallLen+padPrefixSize))

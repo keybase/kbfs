@@ -111,19 +111,19 @@ func TestJournalCrSimple(t *testing.T) {
 	)
 }
 
-func giveMeHiWork(iters int) (busyWork []fileOp) {
-	busyWork = append(busyWork, mkfile("hi", "hello"))
+func makeBusyWork(filename string, iters int) (busyWork []fileOp) {
+	busyWork = append(busyWork, mkfile(filename, "hello"))
 	for i := 0; i < iters; i++ {
 		content := fmt.Sprintf("a%d", i)
-		busyWork = append(busyWork, write("hi", content))
+		busyWork = append(busyWork, write(filename, content))
 	}
-	busyWork = append(busyWork, rm("hi"))
+	busyWork = append(busyWork, rm(filename))
 	return busyWork
 }
 
 // bob creates many conflicting files while running the journal.
 func TestJournalCrManyFiles(t *testing.T) {
-	busyWork := giveMeHiWork(20)
+	busyWork := makeBusyWork("hi", 20)
 
 	test(t, journal(),
 		users("alice", "bob"),
@@ -545,7 +545,7 @@ func TestJournalCoalescingWrites(t *testing.T) {
 // bob does a bunch of operations in a journal and the operations get
 // coalesced together.
 func TestJournalCoalescingMixedOperations(t *testing.T) {
-	busyWork := giveMeHiWork(libkbfs.ForcedBranchSquashRevThreshold + 1)
+	busyWork := makeBusyWork("hi", libkbfs.ForcedBranchSquashRevThreshold+1)
 
 	targetMtime := time.Now().Add(1 * time.Minute)
 	test(t, journal(), blockSize(100), blockChangeSize(5),
@@ -623,7 +623,7 @@ func TestJournalCoalescingMixedOperations(t *testing.T) {
 // bob makes a bunch of changes that cancel each other out, and get
 // coalesced together.
 func TestJournalCoalescingNoChanges(t *testing.T) {
-	busyWork := giveMeHiWork(libkbfs.ForcedBranchSquashRevThreshold + 1)
+	busyWork := makeBusyWork("hi", libkbfs.ForcedBranchSquashRevThreshold+1)
 
 	test(t, journal(),
 		users("alice", "bob"),
