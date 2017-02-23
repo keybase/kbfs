@@ -5,11 +5,13 @@
 package libkbfs
 
 import (
-	"context"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/net/context"
+
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/kbfsblock"
 )
 
@@ -23,6 +25,7 @@ type cachedQuotaUsage struct {
 // which can choose to accept stale data to reduce calls into block servers.
 type EventuallyConsistentQuotaUsage struct {
 	config Config
+	log    logger.Logger
 
 	backgroundInProcess int32
 
@@ -36,6 +39,7 @@ func NewEventuallyConsistentQuotaUsage(
 	config Config) *EventuallyConsistentQuotaUsage {
 	return &EventuallyConsistentQuotaUsage{
 		config: config,
+		log:    q.config.MakeLogger("ECQU"),
 	}
 }
 
@@ -65,14 +69,14 @@ func (q *EventuallyConsistentQuotaUsage) getAndCache(
 // frequent calls into bserver, caller can provide a positive tolerance, to
 // accept stale LimitBytes and UsageByts data.
 //
-// 1) If the cached (stale) data is older for less than tolerance, the stale
-// data is returned immediately.
-// 2) If the cached (stale) data is older for more than tolerance, but not
-// more than twice of tolerance, a background RPC is spawned to refresh
-// cached data, and the stale data is returned immediately.
-// 3) If the cached (stale) data is older for more than twice of d, a
-// blocking RPC is issued and the function only returns after RPC finishes,
-// with the newest data from RPC.
+// 1) If the cached (stale) data is older for less than half of tolerance, the
+// stale data is returned immediately.
+// 2) If the cached (stale) data is older for more than half of tolerance, but
+// not more than tolerance, a background RPC is spawned to refresh cached data,
+// and the stale data is returned immediately.
+// 3) If the cached (stale) data is older for more than tolerance, a blocking
+// RPC is issued and the function only returns after RPC finishes, with the
+// newest data from RPC.
 func (q *EventuallyConsistentQuotaUsage) Get(ctx context.Context,
 	tolerance time.Duration) (usageBytes, limitBytes int64, err error) {
 	c := func() cachedQuotaUsage {
@@ -82,23 +86,31 @@ func (q *EventuallyConsistentQuotaUsage) Get(ctx context.Context,
 	}()
 	past := time.Since(c.timestamp)
 	switch {
-	case past > 2*tolerance:
+	case past > tolerance:
+		q.log.CDebugf(ctx, "Blocking on getAndCache. Cached data is %s old.", past)
 		c, err = q.getAndCache(ctx)
 		if err != nil {
 			return -1, -1, err
 		}
-	case past > tolerance:
+	case past > tolerance/2:
 		if atomic.CompareAndSwapInt32(&q.backgroundInProcess, 0, 1) {
+			q.log.CDebugf(ctx,
+				"Spawning getAndCache in background. Cached data is %s old.", past)
 			go func() {
 				// Make sure a timeout is on the context, in case the RPC blocks
 				// forever somehow, where we'd end up with never resetting
 				// backgroundInProcess flag again.
-				withTimeout, _ := context.WithTimeout(ctx, 10*time.Second)
+				withTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
+				defer cancel()
 				q.getAndCache(withTimeout)
 				atomic.StoreInt32(&q.backgroundInProcess, 0)
 			}()
+		} else {
+			q.log.CDebugf(ctx,
+				"Cached data is %s old, but background getAndCache is already running.", past)
 		}
 	default:
+		q.log.CDebugf(ctx, "Returning cached data from %s ago.", past)
 	}
 	return c.usageBytes, c.limitBytes, nil
 }

@@ -8,4 +8,4 @@ import "time"
 
 // QuotaUsageStaleTolerance is the age of stale usage data, less than which
 // KBFS shouldn't bother making a RPC call to block server to refresh.
-const QuotaUsageStaleTolerance = 5 * time.Second
+const QuotaUsageStaleTolerance = 10 * time.Second
