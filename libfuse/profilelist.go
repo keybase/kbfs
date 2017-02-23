@@ -6,6 +6,7 @@ package libfuse
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"runtime/pprof"
 	"runtime/trace"
@@ -18,6 +19,77 @@ import (
 
 	"golang.org/x/net/context"
 )
+
+type TimedProfile interface {
+	Start(w io.Writer) error
+	Stop()
+}
+
+type CPUProfile struct{}
+
+func (p CPUProfile) Start(w io.Writer) error {
+	return pprof.StartCPUProfile(w)
+}
+
+func (p CPUProfile) Stop() {
+	pprof.StopCPUProfile()
+}
+
+type TraceProfile struct{}
+
+func (p TraceProfile) Start(w io.Writer) error {
+	return trace.Start(w)
+}
+
+func (p TraceProfile) Stop() {
+	trace.Stop()
+}
+
+// TimedProfileFile represents a file whose contents are
+// determined by a timed profile.
+type TimedProfileFile struct {
+	duration time.Duration
+	profile  TimedProfile
+}
+
+var _ fs.Node = TimedProfileFile{}
+
+// Attr implements the fs.Node interface for TimedProfileFile.
+func (f TimedProfileFile) Attr(ctx context.Context, a *fuse.Attr) error {
+	// Have a low non-zero value for Valid to avoid being swamped
+	// with requests.
+	a.Valid = 1 * time.Second
+	now := time.Now()
+	a.Size = 0
+	a.Mtime = now
+	a.Ctime = now
+	a.Mode = 0444
+	return nil
+}
+
+var _ fs.Handle = TimedProfileFile{}
+
+var _ fs.NodeOpener = TimedProfileFile{}
+
+// Open implements the fs.NodeOpener interface for TimedProfileFile.
+func (f TimedProfileFile) Open(ctx context.Context,
+	req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	var buf bytes.Buffer
+	err := f.profile.Start(&buf)
+	if err != nil {
+		return nil, err
+	}
+
+	select {
+	case <-time.After(f.duration):
+	case <-ctx.Done():
+	}
+
+	f.profile.Stop()
+
+	resp.Flags |= fuse.OpenDirectIO
+	return fs.DataHandle(buf.Bytes()), nil
+}
 
 // ProfileList is a node that can list all of the available profiles.
 type ProfileList struct{}
@@ -40,46 +112,15 @@ func (pl ProfileList) Lookup(_ context.Context, req *fuse.LookupRequest, resp *f
 		if err != nil {
 			return nil, err
 		}
-		blockAndReadFn := func(ctx context.Context) ([]byte, error) {
-			var buf bytes.Buffer
-			err := pprof.StartCPUProfile(&buf)
-			if err != nil {
-				return nil, err
-			}
-			defer pprof.StopCPUProfile()
 
-			select {
-			case <-time.After(d):
-			case <-ctx.Done():
-			}
-
-			pprof.StopCPUProfile()
-			return buf.Bytes(), nil
-		}
-		return &SpecialReadBlockingFile{blockAndReadFn}, nil
+		return TimedProfileFile{d, CPUProfile{}}, nil
 	} else if strings.HasPrefix(req.Name, "trace.") {
 		dStr := strings.TrimPrefix(req.Name, "trace.")
 		d, err := time.ParseDuration(dStr)
 		if err != nil {
 			return nil, err
 		}
-		blockAndReadFn := func(ctx context.Context) ([]byte, error) {
-			var buf bytes.Buffer
-			err := trace.Start(&buf)
-			if err != nil {
-				return nil, err
-			}
-			defer trace.Stop()
-
-			select {
-			case <-time.After(d):
-			case <-ctx.Done():
-			}
-
-			trace.Stop()
-			return buf.Bytes(), nil
-		}
-		return &SpecialReadBlockingFile{blockAndReadFn}, nil
+		return TimedProfileFile{d, TraceProfile{}}, nil
 	}
 
 	f := libfs.ProfileGet(req.Name)
