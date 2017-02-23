@@ -104,23 +104,27 @@ func (ProfileList) Attr(_ context.Context, a *fuse.Attr) error {
 
 var _ fs.NodeRequestLookuper = ProfileList{}
 
+const cpuProfilePrefix = "profile."
+const traceProfilePrefix = "trace."
+
 // Lookup implements the fs.NodeRequestLookuper interface.
 func (pl ProfileList) Lookup(_ context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
-	if strings.HasPrefix(req.Name, "profile.") {
-		dStr := strings.TrimPrefix(req.Name, "profile.")
-		d, err := time.ParseDuration(dStr)
+	// Handle timed profiles first.
+	if strings.HasPrefix(req.Name, cpuProfilePrefix) {
+		durationStr := strings.TrimPrefix(req.Name, cpuProfilePrefix)
+		duration, err := time.ParseDuration(durationStr)
 		if err != nil {
 			return nil, err
 		}
 
-		return timedProfileFile{d, cpuProfile{}}, nil
-	} else if strings.HasPrefix(req.Name, "trace.") {
-		dStr := strings.TrimPrefix(req.Name, "trace.")
-		d, err := time.ParseDuration(dStr)
+		return timedProfileFile{duration, cpuProfile{}}, nil
+	} else if strings.HasPrefix(req.Name, traceProfilePrefix) {
+		durationStr := strings.TrimPrefix(req.Name, traceProfilePrefix)
+		duration, err := time.ParseDuration(durationStr)
 		if err != nil {
 			return nil, err
 		}
-		return timedProfileFile{d, traceProfile{}}, nil
+		return timedProfileFile{duration, traceProfile{}}, nil
 	}
 
 	f := libfs.ProfileGet(req.Name)
@@ -151,11 +155,11 @@ func (pl ProfileList) ReadDirAll(_ context.Context) (res []fuse.Dirent, err erro
 	}
 	res = append(res, fuse.Dirent{
 		Type: fuse.DT_File,
-		Name: "profile.30s",
+		Name: cpuProfilePrefix + "30s",
 	})
 	res = append(res, fuse.Dirent{
 		Type: fuse.DT_File,
-		Name: "trace.1s",
+		Name: traceProfilePrefix + "1s",
 	})
 	return res, nil
 }
