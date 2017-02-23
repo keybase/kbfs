@@ -39,6 +39,8 @@ type FS struct {
 	root Root
 
 	platformParams PlatformParams
+
+	quotaUsage *libkbfs.EventuallyConsistentQuotaUsage
 }
 
 // NewFS creates an FS
@@ -60,6 +62,7 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 		errLog:         errLog,
 		notifications:  libfs.NewFSNotifications(log),
 		platformParams: platformParams,
+		quotaUsage:     libkbfs.NewEventuallyConsistentQuotaUsage(config),
 	}
 	fs.root.private = &FolderList{
 		fs:      fs,
@@ -204,13 +207,13 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 		Namelen: ^uint32(0),
 		Frsize:  fuseBlockSize,
 	}
-	status, _, err := f.config.KBFSOps().Status(ctx)
+	usageBytes, limitBytes, err := f.quotaUsage.Get(ctx, QuotaUsageStaleTolerance)
 	if err != nil {
 		return fuse.EIO
 	}
 
-	total := getNumBlocksFromSize(uint64(status.LimitBytes))
-	used := getNumBlocksFromSize(uint64(status.UsageBytes))
+	total := getNumBlocksFromSize(uint64(limitBytes))
+	used := getNumBlocksFromSize(uint64(usageBytes))
 	resp.Blocks = total
 	resp.Bavail = total - used
 	resp.Bfree = total - used
