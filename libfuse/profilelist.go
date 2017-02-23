@@ -20,42 +20,41 @@ import (
 	"golang.org/x/net/context"
 )
 
-type TimedProfile interface {
+type timedProfile interface {
 	Start(w io.Writer) error
 	Stop()
 }
 
-type CPUProfile struct{}
+type cpuProfile struct{}
 
-func (p CPUProfile) Start(w io.Writer) error {
+func (p cpuProfile) Start(w io.Writer) error {
 	return pprof.StartCPUProfile(w)
 }
 
-func (p CPUProfile) Stop() {
+func (p cpuProfile) Stop() {
 	pprof.StopCPUProfile()
 }
 
-type TraceProfile struct{}
+type traceProfile struct{}
 
-func (p TraceProfile) Start(w io.Writer) error {
+func (p traceProfile) Start(w io.Writer) error {
 	return trace.Start(w)
 }
 
-func (p TraceProfile) Stop() {
+func (p traceProfile) Stop() {
 	trace.Stop()
 }
 
-// TimedProfileFile represents a file whose contents are
-// determined by a timed profile.
-type TimedProfileFile struct {
+// timedProfileFile represents a file whose contents are determined by
+// taking a profile for some duration.
+type timedProfileFile struct {
 	duration time.Duration
-	profile  TimedProfile
+	profile  timedProfile
 }
 
-var _ fs.Node = TimedProfileFile{}
+var _ fs.Node = timedProfileFile{}
 
-// Attr implements the fs.Node interface for TimedProfileFile.
-func (f TimedProfileFile) Attr(ctx context.Context, a *fuse.Attr) error {
+func (f timedProfileFile) Attr(ctx context.Context, a *fuse.Attr) error {
 	// Have a low non-zero value for Valid to avoid being swamped
 	// with requests.
 	a.Valid = 1 * time.Second
@@ -67,12 +66,11 @@ func (f TimedProfileFile) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
-var _ fs.Handle = TimedProfileFile{}
+var _ fs.Handle = timedProfileFile{}
 
-var _ fs.NodeOpener = TimedProfileFile{}
+var _ fs.NodeOpener = timedProfileFile{}
 
-// Open implements the fs.NodeOpener interface for TimedProfileFile.
-func (f TimedProfileFile) Open(ctx context.Context,
+func (f timedProfileFile) Open(ctx context.Context,
 	req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
 	var buf bytes.Buffer
 	err := f.profile.Start(&buf)
@@ -83,6 +81,8 @@ func (f TimedProfileFile) Open(ctx context.Context,
 	select {
 	case <-time.After(f.duration):
 	case <-ctx.Done():
+		// Don't return an error and fall through, so we
+		// return the partial profile data.
 	}
 
 	f.profile.Stop()
@@ -113,14 +113,14 @@ func (pl ProfileList) Lookup(_ context.Context, req *fuse.LookupRequest, resp *f
 			return nil, err
 		}
 
-		return TimedProfileFile{d, CPUProfile{}}, nil
+		return timedProfileFile{d, cpuProfile{}}, nil
 	} else if strings.HasPrefix(req.Name, "trace.") {
 		dStr := strings.TrimPrefix(req.Name, "trace.")
 		d, err := time.ParseDuration(dStr)
 		if err != nil {
 			return nil, err
 		}
-		return TimedProfileFile{d, TraceProfile{}}, nil
+		return timedProfileFile{d, traceProfile{}}, nil
 	}
 
 	f := libfs.ProfileGet(req.Name)
