@@ -39,7 +39,7 @@ func NewEventuallyConsistentQuotaUsage(
 	config Config) *EventuallyConsistentQuotaUsage {
 	return &EventuallyConsistentQuotaUsage{
 		config: config,
-		log:    q.config.MakeLogger("ECQU"),
+		log:    config.MakeLogger("ECQU"),
 	}
 }
 
