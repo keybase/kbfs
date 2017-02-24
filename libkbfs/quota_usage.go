@@ -18,6 +18,7 @@ import (
 //ECQUCtxTagKey is the type for unique ECQU background opertaion IDs.
 type ECQUCtxTagKey struct{}
 
+// ECQUID == "ECQU"
 const ECQUID = "ECQU"
 
 type cachedQuotaUsage struct {
