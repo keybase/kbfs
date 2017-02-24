@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 	"testing/quick"
 
@@ -585,7 +586,7 @@ func TestBlockEncryptedLen(t *testing.T) {
 	}
 }
 
-func BenchmarkEncryptBlock(b *testing.B) {
+func benchmarkEncryptBlock(b *testing.B, blockSize int) {
 	c := MakeCryptoCommon(kbfscodec.NewMsgpack())
 
 	// Fill in the block with varying data to make sure not to
@@ -602,5 +603,22 @@ func BenchmarkEncryptBlock(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		c.EncryptBlock(&block, key)
+	}
+}
+
+func BenchmarkEncryptBlock(b *testing.B) {
+	blockSizes := []int{
+		0,
+		1024,
+		32 * 1024,
+		512 * 1024,
+	}
+	for _, blockSize := range blockSizes {
+		// Capture range variable.
+		blockSize := blockSize
+		b.Run(fmt.Sprintf("blockSize=%d", blockSize),
+			func(b *testing.B) {
+				benchmarkEncryptBlock(b, blockSize)
+			})
 	}
 }
