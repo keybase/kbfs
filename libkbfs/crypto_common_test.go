@@ -598,6 +598,8 @@ func BenchmarkEncryptBlock(b *testing.B) {
 		Contents: data,
 	}
 	key := kbfscrypto.BlockCryptKey{}
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		c.EncryptBlock(&block, key)
 	}
