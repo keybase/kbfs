@@ -15,6 +15,11 @@ import (
 	"github.com/keybase/kbfs/kbfsblock"
 )
 
+//ECQUCtxTagKey is the type for unique ECQU background opertaion IDs.
+type ECQUCtxTagKey struct{}
+
+const ECQUID = "ECQU"
+
 type cachedQuotaUsage struct {
 	timestamp  time.Time
 	usageBytes int64
@@ -39,12 +44,15 @@ func NewEventuallyConsistentQuotaUsage(
 	config Config) *EventuallyConsistentQuotaUsage {
 	return &EventuallyConsistentQuotaUsage{
 		config: config,
-		log:    config.MakeLogger("ECQU"),
+		log:    config.MakeLogger(ECQUID),
 	}
 }
 
 func (q *EventuallyConsistentQuotaUsage) getAndCache(
 	ctx context.Context) (usage cachedQuotaUsage, err error) {
+	defer func() {
+		q.log.CDebugf(ctx, "getAndCache: error=%v", err)
+	}()
 	quotaInfo, err := q.config.BlockServer().GetUserQuotaInfo(ctx)
 	if err != nil {
 		return usage, err
@@ -94,15 +102,24 @@ func (q *EventuallyConsistentQuotaUsage) Get(ctx context.Context,
 		}
 	case past > tolerance/2:
 		if atomic.CompareAndSwapInt32(&q.backgroundInProcess, 0, 1) {
-			q.log.CDebugf(ctx,
-				"Spawning getAndCache in background. Cached data is %s old.", past)
+			id, err := MakeRandomRequestID()
+			if err != nil {
+				q.log.Warning("Couldn't generate a random request ID: %v", err)
+			}
+			q.log.CDebugf(ctx, "Cached data is %s old. Spawning getAndCache in "+
+				"background with tag:%s=%v.", past, ECQUID, id)
 			go func() {
+				// Make a new context so that it doesn't get canceled when returned.
+				logTags := make(logger.CtxLogTags)
+				logTags[ECQUCtxTagKey{}] = ECQUID
+				bgCtx := logger.NewContextWithLogTags(context.Background(), logTags)
+				bgCtx = context.WithValue(bgCtx, ECQUCtxTagKey{}, id)
 				// Make sure a timeout is on the context, in case the RPC blocks
 				// forever somehow, where we'd end up with never resetting
 				// backgroundInProcess flag again.
-				withTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
+				bgCtx, cancel := context.WithTimeout(bgCtx, 10*time.Second)
 				defer cancel()
-				q.getAndCache(withTimeout)
+				q.getAndCache(bgCtx)
 				atomic.StoreInt32(&q.backgroundInProcess, 0)
 			}()
 		} else {
