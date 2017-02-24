@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"io"
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -322,31 +321,14 @@ const padPrefixSize = 4
 
 // padBlock adds random padding to an encoded block.
 func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
-	blockLen := len(block)
-	overallLen := powerOfTwoEqualOrGreater(blockLen)
-	padLen := int64(overallLen - blockLen)
+	blockLen := uint32(len(block))
+	totalLen := powerOfTwoEqualOrGreater(blockLen)
 
-	buf := bytes.NewBuffer(make([]byte, 0, overallLen+padPrefixSize))
+	buf := make([]byte, padPrefixSize+totalLen)
+	binary.LittleEndian.PutUint32(buf, blockLen)
 
-	// first 4 bytes contain the length of the block data
-	if err := binary.Write(buf, binary.LittleEndian, int32(blockLen)); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	// followed by the actual block data
-	buf.Write(block)
-
-	// followed by random data
-	n, err := io.CopyN(buf, rand.Reader, padLen)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if n != padLen {
-		return nil, errors.WithStack(
-			kbfscrypto.UnexpectedShortCryptoRandRead{})
-	}
-
-	return buf.Bytes(), nil
+	copy(buf[padPrefixSize:], block)
+	return buf, nil
 }
 
 // depadBlock extracts the actual block data from a padded block.
