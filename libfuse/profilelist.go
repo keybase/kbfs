@@ -70,6 +70,12 @@ var _ fs.NodeOpener = timedProfileFile{}
 
 func (f timedProfileFile) Open(ctx context.Context,
 	req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	// Blocking here until the profile is done is weird, but has a
+	// nice side effect of being exempt from the macOS FUSE
+	// timeout.
+	//
+	// The downside is that there's no easy way to start capturing
+	// a profile and then interrupt when done.
 	var buf bytes.Buffer
 	err := f.profile.Start(&buf)
 	if err != nil {
@@ -79,8 +85,7 @@ func (f timedProfileFile) Open(ctx context.Context,
 	select {
 	case <-time.After(f.duration):
 	case <-ctx.Done():
-		// Don't return an error and fall through, so we
-		// return the partial profile data.
+		return nil, ctx.Err()
 	}
 
 	f.profile.Stop()
