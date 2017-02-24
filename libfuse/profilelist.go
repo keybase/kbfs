@@ -75,7 +75,10 @@ func (f timedProfileFile) Open(ctx context.Context,
 	// timeout.
 	//
 	// The downside is that there's no easy way to start capturing
-	// a profile and then interrupt when done.
+	// a profile and then interrupt when done. But even if we try
+	// and stream the profile data, one problem is that the CPU
+	// profile is, at least as of go 1.8, buffered until it's
+	// stopped anyway, so we'd run into timeouts.
 	var buf bytes.Buffer
 	err := f.profile.Start(&buf)
 	if err != nil {
