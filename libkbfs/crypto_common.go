@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"io"
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -334,10 +335,7 @@ func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
 func (c CryptoCommon) depadBlock(paddedBlock []byte) ([]byte, error) {
 	paddedLen := len(paddedBlock)
 	if paddedLen < padPrefixSize {
-		return nil, errors.WithStack(PaddedBlockReadError{
-			ActualLen:   paddedLen,
-			ExpectedLen: padPrefixSize,
-		})
+		return nil, errors.WithStack(io.ErrUnexpectedEOF)
 	}
 
 	blockLen := binary.LittleEndian.Uint32(paddedBlock)
