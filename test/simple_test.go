@@ -31,6 +31,7 @@ func TestRenameDirOverDir(t *testing.T) {
 		as(alice,
 			mkdir("a/b"),
 			mkfile("a/c/d", "hello"),
+			rm("a/b"),
 			rename("a/c", "a/b"),
 			lsdir("a/", m{"b": "DIR"}),
 			lsdir("a/b", m{"d": "FILE"}),
