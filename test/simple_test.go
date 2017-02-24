@@ -26,12 +26,16 @@ func TestRenameFileOverFile(t *testing.T) {
 }
 
 func TestRenameDirOverDir(t *testing.T) {
+	if isFUSE {
+		// os.Rename doesn't support overriding empty dst dir, so skip this test if
+		// FUSE engine is used.
+		return
+	}
 	test(t,
 		users("alice"),
 		as(alice,
 			mkdir("a/b"),
 			mkfile("a/c/d", "hello"),
-			rm("a/b"),
 			rename("a/c", "a/b"),
 			lsdir("a/", m{"b": "DIR"}),
 			lsdir("a/b", m{"d": "FILE"}),

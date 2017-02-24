@@ -19,6 +19,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+const isFUSE = true
+
 type fuseEngine struct {
 	fsEngine
 }

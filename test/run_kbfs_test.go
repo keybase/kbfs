@@ -12,6 +12,8 @@ import (
 	"github.com/keybase/kbfs/libkbfs"
 )
 
+const isFUSE = false
+
 func createEngine(tb testing.TB) Engine {
 	return &LibKBFS{
 		tb:             tb,
