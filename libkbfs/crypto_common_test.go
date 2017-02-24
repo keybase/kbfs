@@ -588,8 +588,14 @@ func TestBlockEncryptedLen(t *testing.T) {
 func BenchmarkEncryptBlock(b *testing.B) {
 	c := MakeCryptoCommon(kbfscodec.NewMsgpack())
 
+	// Fill in the block with varying data to make sure not to
+	// trigger any encoding optimizations.
+	data := make([]byte, 512<<10)
+	for i := 0; i < len(data); i++ {
+		data[i] = byte(i)
+	}
 	block := FileBlock{
-		Contents: make([]byte, 512<<10),
+		Contents: data,
 	}
 	key := kbfscrypto.BlockCryptKey{}
 	for i := 0; i < b.N; i++ {
