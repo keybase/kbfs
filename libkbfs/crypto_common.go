@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/binary"
 
@@ -333,19 +332,25 @@ func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
 
 // depadBlock extracts the actual block data from a padded block.
 func (c CryptoCommon) depadBlock(paddedBlock []byte) ([]byte, error) {
-	buf := bytes.NewBuffer(paddedBlock)
-
-	var blockLen uint32
-	if err := binary.Read(buf, binary.LittleEndian, &blockLen); err != nil {
-		return nil, errors.WithStack(err)
+	paddedLen := len(paddedBlock)
+	if paddedLen < padPrefixSize {
+		return nil, errors.WithStack(PaddedBlockReadError{
+			ActualLen:   paddedLen,
+			ExpectedLen: padPrefixSize,
+		})
 	}
+
+	blockLen := binary.LittleEndian.Uint32(paddedBlock)
 	blockEndPos := int(blockLen + padPrefixSize)
 
-	if len(paddedBlock) < blockEndPos {
+	if paddedLen < blockEndPos {
 		return nil, errors.WithStack(
-			PaddedBlockReadError{ActualLen: len(paddedBlock), ExpectedLen: blockEndPos})
+			PaddedBlockReadError{
+				ActualLen:   paddedLen,
+				ExpectedLen: blockEndPos,
+			})
 	}
-	return buf.Next(int(blockLen)), nil
+	return paddedBlock[padPrefixSize:blockEndPos], nil
 }
 
 // EncryptBlock implements the Crypto interface for CryptoCommon.
