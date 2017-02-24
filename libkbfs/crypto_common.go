@@ -319,7 +319,7 @@ func powerOfTwoEqualOrGreater(n int) int {
 
 const padPrefixSize = 4
 
-// padBlock adds random padding to an encoded block.
+// padBlock adds zero padding to an encoded block.
 func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
 	blockLen := uint32(len(block))
 	totalLen := powerOfTwoEqualOrGreater(blockLen)
