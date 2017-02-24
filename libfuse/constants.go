@@ -6,6 +6,7 @@ package libfuse
 
 import "time"
 
-// QuotaUsageStaleTolerance is the age of stale usage data, less than which
-// KBFS shouldn't bother making a RPC call to block server to refresh.
+// QuotaUsageStaleTolerance is the lifespan of stale usage data that libfuse
+// accetps in the Statfs handler. In other words, this causes libkbfs to issue
+// a fresh RPC call if cached usage data is older than 10s.
 const QuotaUsageStaleTolerance = 10 * time.Second
