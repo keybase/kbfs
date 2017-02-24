@@ -66,8 +66,6 @@ func (f timedProfileFile) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
-var _ fs.Handle = timedProfileFile{}
-
 var _ fs.NodeOpener = timedProfileFile{}
 
 func (f timedProfileFile) Open(ctx context.Context,
