@@ -584,3 +584,15 @@ func TestBlockEncryptedLen(t *testing.T) {
 		require.Equal(t, expectedLen, len(encBlock.EncryptedData))
 	}
 }
+
+func BenchmarkEncryptBlock(b *testing.B) {
+	c := MakeCryptoCommon(kbfscodec.NewMsgpack())
+
+	block := FileBlock{
+		Contents: make([]byte, 512<<10),
+	}
+	key := kbfscrypto.BlockCryptKey{}
+	for i := 0; i < b.N; i++ {
+		c.EncryptBlock(&block, key)
+	}
+}
