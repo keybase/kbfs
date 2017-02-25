@@ -1240,7 +1240,7 @@ func (j *mdJournal) put(
 
 // clear removes all the journal entries, and deletes the
 // corresponding MD updates.  If the branch is a pending local squash,
-// it preserved the MD updates corresponding to the prefix of existing
+// it preserves the MD updates corresponding to the prefix of existing
 // local squashes, so they can be re-used in the newly-resolved
 // journal.
 func (j *mdJournal) clear(
