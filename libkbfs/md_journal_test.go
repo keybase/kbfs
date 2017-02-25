@@ -924,11 +924,15 @@ func testMDJournalClearPendingWithMaster(t *testing.T, ver MetadataVer) {
 
 	bid := j.branchID
 
-	// Clearing the correct branch ID should clear the entire
-	// journal, and reset the branch ID.
+	// Clearing the correct branch ID should clear just the last
+	// half of the journal and reset the branch ID.
 	err = j.clear(ctx, bid)
 	require.NoError(t, err)
 	require.Equal(t, NullBranchID, j.branchID)
+
+	length, err := j.length()
+	require.NoError(t, err)
+	require.Equal(t, mdCount, length)
 
 	head, err := j.getHead(bid)
 	require.NoError(t, err)
@@ -936,7 +940,8 @@ func testMDJournalClearPendingWithMaster(t *testing.T, ver MetadataVer) {
 
 	head, err = j.getHead(NullBranchID)
 	require.NoError(t, err)
-	require.Equal(t, ImmutableBareRootMetadata{}, head)
+	require.NotEqual(t, ImmutableBareRootMetadata{}, head)
+	require.Equal(t, NullBranchID, head.BID())
 }
 
 func testMDJournalRestart(t *testing.T, ver MetadataVer) {
