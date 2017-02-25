@@ -830,6 +830,8 @@ func (j *mdJournal) removeFlushedEntry(
 		j.log.CDebugf(ctx,
 			"Journal is now empty; saving last MdID=%s", mdID)
 		j.lastMdID = mdID
+
+		// TODO: Nuke directory here.
 	}
 
 	// Garbage-collect the old entry.  TODO: we'll eventually need a
