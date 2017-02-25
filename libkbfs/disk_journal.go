@@ -146,7 +146,7 @@ func (j diskJournal) writeLatestOrdinal(o journalOrdinal) error {
 	return j.writeOrdinal(j.latestPath(), o)
 }
 
-func (j diskJournal) clearOrdinals() error {
+func (j diskJournal) clear() error {
 	earliestOrdinal, err := j.readEarliestOrdinal()
 	if err != nil {
 		return err
@@ -189,7 +189,7 @@ func (j diskJournal) removeEarliest() (empty bool, err error) {
 	}
 
 	if earliestOrdinal == latestOrdinal {
-		err := j.clearOrdinals()
+		err := j.clear()
 		if err != nil {
 			return false, err
 		}
