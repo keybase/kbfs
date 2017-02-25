@@ -821,9 +821,6 @@ func testMDJournalBranchConversionPreservesUnknownFields(t *testing.T, ver Metad
 	flushAllMDs(t, ctx, signer, j)
 }
 
-// TODO: Write a test to test clearing a local squash branch with
-// master entries.
-
 func testMDJournalClear(t *testing.T, ver MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
@@ -898,6 +895,48 @@ func testMDJournalClear(t *testing.T, ver MetadataVer) {
 	require.Equal(t, NullBranchID, j.branchID)
 
 	flushAllMDs(t, ctx, signer, j)
+}
+
+func testMDJournalClearPendingWithMaster(t *testing.T, ver MetadataVer) {
+	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
+	defer teardownMDJournalTest(t, tempdir)
+
+	firstRevision := MetadataRevision(10)
+	firstPrevRoot := fakeMdID(1)
+	mdCount := 10
+
+	_, prevRoot := putMDRangeHelper(t, ver, id, signer, firstRevision,
+		firstPrevRoot, mdCount, j.uid,
+		func(ctx context.Context, md *RootMetadata) (MdID, error) {
+			return j.put(ctx, signer, ekg, bsplit, md, true)
+		})
+
+	putMDRange(t, ver, id, signer, ekg, bsplit,
+		firstRevision+MetadataRevision(mdCount), prevRoot, mdCount, j)
+
+	ctx := context.Background()
+
+	err := j.convertToBranch(
+		ctx, PendingLocalSquashBranchID, signer, kbfscodec.NewMsgpack(), id,
+		NewMDCacheStandard(10))
+	require.NoError(t, err)
+	require.NotEqual(t, NullBranchID, j.branchID)
+
+	bid := j.branchID
+
+	// Clearing the correct branch ID should clear the entire
+	// journal, and reset the branch ID.
+	err = j.clear(ctx, bid)
+	require.NoError(t, err)
+	require.Equal(t, NullBranchID, j.branchID)
+
+	head, err := j.getHead(bid)
+	require.NoError(t, err)
+	require.Equal(t, ImmutableBareRootMetadata{}, head)
+
+	head, err = j.getHead(NullBranchID)
+	require.NoError(t, err)
+	require.Equal(t, ImmutableBareRootMetadata{}, head)
 }
 
 func testMDJournalRestart(t *testing.T, ver MetadataVer) {
@@ -994,6 +1033,7 @@ func TestMDJournal(t *testing.T) {
 		testMDJournalResolveAndClearLocalSquash,
 		testMDJournalBranchConversionPreservesUnknownFields,
 		testMDJournalClear,
+		testMDJournalClearPendingWithMaster,
 		testMDJournalRestart,
 		testMDJournalRestartAfterBranchConversion,
 	}
