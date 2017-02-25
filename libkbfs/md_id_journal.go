@@ -238,6 +238,8 @@ func (j mdIDJournal) clear() error {
 	return j.j.clear()
 }
 
+// Note that since diskJournal.move takes a pointer receiver, so must
+// this.
 func (j *mdIDJournal) move(newDir string) (oldDir string, err error) {
 	return j.j.move(newDir)
 }
