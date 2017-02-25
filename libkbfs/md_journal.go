@@ -1389,6 +1389,7 @@ func (j *mdJournal) resolveAndClear(
 	// Put the local squashes back into the new journal, since they
 	// weren't part of the resolve.
 	if bid == PendingLocalSquashBranchID {
+		// TODO: Preserve earliest non-local squash revision.
 		for ; earliestRevision <= latestRevision; earliestRevision++ {
 			entry, err := j.j.readJournalEntry(earliestRevision)
 			if err != nil {

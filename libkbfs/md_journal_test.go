@@ -821,6 +821,9 @@ func testMDJournalBranchConversionPreservesUnknownFields(t *testing.T, ver Metad
 	flushAllMDs(t, ctx, signer, j)
 }
 
+// TODO: Write a test to test clearing a local squash branch with
+// master entries.
+
 func testMDJournalClear(t *testing.T, ver MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
