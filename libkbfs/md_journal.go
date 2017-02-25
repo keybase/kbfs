@@ -1431,10 +1431,10 @@ func (j *mdJournal) resolveAndClear(
 	// Set new journal to one with the new revision.
 	j.log.CDebugf(ctx, "Moved new journal from %s to %s",
 		otherIDJournalOldDir, dir)
-	*j, *otherJournal = *otherJournal, *j
 
-	// Transform the other journal into the old journal, so we can
-	// clear it out.
+	// Transform the other journal into the old journal and clear
+	// it out.
+	*j, *otherJournal = *otherJournal, *j
 	err = otherJournal.clear(ctx, bid)
 	if err != nil {
 		return MdID{}, err
