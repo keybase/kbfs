@@ -459,6 +459,7 @@ func testMDJournalPutCase3NonEmptyAppend(t *testing.T, ver MetadataVer) {
 
 	head, err := j.getHead(bid)
 	require.NoError(t, err)
+	require.NotEqual(t, ImmutableBareRootMetadata{}, head)
 
 	md2 := makeMDForTest(t, ver, id, MetadataRevision(11), j.uid, signer, head.mdID)
 	md2.SetUnmerged()
@@ -484,6 +485,7 @@ func testMDJournalPutCase3NonEmptyReplace(t *testing.T, ver MetadataVer) {
 
 	head, err := j.getHead(bid)
 	require.NoError(t, err)
+	require.NotEqual(t, ImmutableBareRootMetadata{}, head)
 
 	md.SetUnmerged()
 	md.SetBranchID(head.BID())
