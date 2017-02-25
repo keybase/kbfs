@@ -40,4 +40,7 @@ func TestDiskJournalClear(t *testing.T) {
 
 	err = j.clear()
 	require.NoError(t, err)
+
+	_, err = ioutil.Stat(tempdir)
+	require.True(t, ioutil.IsNotExist(err))
 }
