@@ -17,6 +17,10 @@ import (
 // MdIDs (with possible other fields in the future) with sequential
 // MetadataRevisions for a single branch.
 //
+// Like diskJournal, this type assumes that the directory passed into
+// makeMdIDJournal isn't used by anything else, and that all
+// synchronization is done at a higher level.
+//
 // TODO: Write unit tests for this. For now, we're relying on
 // md_journal.go's unit tests.
 type mdIDJournal struct {
