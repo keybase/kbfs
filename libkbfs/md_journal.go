@@ -857,6 +857,108 @@ func getMdID(ctx context.Context, mdserver MDServer, crypto cryptoPure,
 	return crypto.MakeMdID(rmdses[0].MD)
 }
 
+// clearHelper removes all the journal entries, and deletes the
+// corresponding MD updates.  If the branch is a pending local squash,
+// it preserves the MD updates corresponding to the prefix of existing
+// local squashes, so they can be re-used in the newly-resolved
+// journal.
+func (j *mdJournal) clearHelper(ctx context.Context, bid BranchID,
+	earliestBranchRevision MetadataRevision) (err error) {
+	j.log.CDebugf(ctx, "Clearing journal for branch %s", bid)
+	defer func() {
+		if err != nil {
+			j.deferLog.CDebugf(ctx,
+				"Clearing journal for branch %s failed with %+v",
+				bid, err)
+		}
+	}()
+
+	if bid == NullBranchID {
+		return errors.New("Cannot clear master branch")
+	}
+
+	if j.branchID != bid {
+		// Nothing to do.
+		j.log.CDebugf(ctx, "Ignoring clear for branch %s while on branch %s",
+			bid, j.branchID)
+		return nil
+	}
+
+	head, err := j.getHead(bid)
+	if err != nil {
+		return err
+	}
+
+	if head == (ImmutableBareRootMetadata{}) {
+		// The journal has been flushed but not cleared yet.
+		j.branchID = NullBranchID
+		return nil
+	}
+
+	if head.BID() != j.branchID {
+		return errors.Errorf("Head branch ID %s doesn't match journal "+
+			"branch ID %s while clearing", head.BID(), j.branchID)
+	}
+
+	earliestRevision, err := j.j.readEarliestRevision()
+	if err != nil {
+		return err
+	}
+
+	latestRevision, err := j.j.readLatestRevision()
+	if err != nil {
+		return err
+	}
+
+	_, allEntries, err := j.j.getEntryRange(
+		earliestBranchRevision, latestRevision)
+	if err != nil {
+		return err
+	}
+
+	j.branchID = NullBranchID
+
+	// No need to set lastMdID in this case.
+
+	if earliestBranchRevision == earliestRevision {
+		j.log.CDebugf(ctx, "Clearing entire journal for branch %s", bid)
+		err = j.j.clear()
+		if err != nil {
+			return err
+		}
+	} else {
+		j.log.CDebugf(ctx, "Clearing journal for branch %s starting from %d",
+			bid, earliestBranchRevision)
+		err := j.j.writeLatestRevision(earliestBranchRevision - 1)
+		if err != nil {
+			return err
+		}
+
+		for r := earliestBranchRevision; r <= latestRevision; r++ {
+			o, err := revisionToOrdinal(r)
+			if err != nil {
+				return err
+			}
+			p := j.j.j.journalEntryPath(o)
+			err = ioutil.Remove(p)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Garbage-collect the old branch entries.  TODO: we'll eventually
+	// need a sweeper to clean up entries left behind if we crash
+	// here.
+	for _, entry := range allEntries {
+		err := j.removeMD(entry.ID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // All functions below are public functions.
 
 func (j mdJournal) readEarliestRevision() (MetadataRevision, error) {
@@ -1245,83 +1347,31 @@ func (j *mdJournal) put(
 // it preserves the MD updates corresponding to the prefix of existing
 // local squashes, so they can be re-used in the newly-resolved
 // journal.
-func (j *mdJournal) clear(
-	ctx context.Context, bid BranchID) (err error) {
-	j.log.CDebugf(ctx, "Clearing journal for branch %s", bid)
-	defer func() {
-		if err != nil {
-			j.deferLog.CDebugf(ctx,
-				"Clearing journal for branch %s failed with %+v",
-				bid, err)
-		}
-	}()
-
-	if bid == NullBranchID {
-		return errors.New("Cannot clear master branch")
-	}
-
-	if j.branchID != bid {
-		// Nothing to do.
-		j.log.CDebugf(ctx, "Ignoring clear for branch %s while on branch %s",
-			bid, j.branchID)
-		return nil
-	}
-
-	head, err := j.getHead(bid)
+func (j *mdJournal) clear(ctx context.Context, bid BranchID) error {
+	earliestBranchRevision, err := j.j.readEarliestRevision()
 	if err != nil {
 		return err
 	}
 
-	if head == (ImmutableBareRootMetadata{}) {
-		// The journal has been flushed but not cleared yet.
-		j.branchID = NullBranchID
-		return nil
-	}
-
-	if head.BID() != j.branchID {
-		return errors.Errorf("Head branch ID %s doesn't match journal "+
-			"branch ID %s while clearing", head.BID(), j.branchID)
-	}
-
-	earliestRevision, err := j.j.readEarliestRevision()
-	if err != nil {
-		return err
-	}
-
-	latestRevision, err := j.j.readLatestRevision()
-	if err != nil {
-		return err
-	}
-
-	_, allEntries, err := j.j.getEntryRange(
-		earliestRevision, latestRevision)
-	if err != nil {
-		return err
-	}
-
-	j.branchID = NullBranchID
-
-	// No need to set lastMdID in this case.
-
-	err = j.j.clear()
-	if err != nil {
-		return err
-	}
-
-	// Garbage-collect the old branch entries.  TODO: we'll eventually
-	// need a sweeper to clean up entries left behind if we crash
-	// here.
-	isPendingLocalSquash := bid == PendingLocalSquashBranchID
-	for _, entry := range allEntries {
-		if entry.IsLocalSquash && isPendingLocalSquash {
-			continue
-		}
-		err := j.removeMD(entry.ID)
+	if earliestBranchRevision != MetadataRevisionUninitialized &&
+		bid == PendingLocalSquashBranchID {
+		latestRevision, err := j.j.readLatestRevision()
 		if err != nil {
 			return err
 		}
+
+		for ; earliestBranchRevision <= latestRevision; earliestBranchRevision++ {
+			entry, err := j.j.readJournalEntry(earliestBranchRevision)
+			if err != nil {
+				return err
+			}
+			if !entry.IsLocalSquash {
+				break
+			}
+		}
 	}
-	return nil
+
+	return j.clearHelper(ctx, bid, earliestBranchRevision)
 }
 
 func (j *mdJournal) resolveAndClear(
@@ -1352,7 +1402,7 @@ func (j *mdJournal) resolveAndClear(
 			"while on branch %s", bid, j.branchID)
 	}
 
-	earliestRevision, err := j.j.readEarliestRevision()
+	earliestBranchRevision, err := j.j.readEarliestRevision()
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1391,9 +1441,8 @@ func (j *mdJournal) resolveAndClear(
 	// Put the local squashes back into the new journal, since they
 	// weren't part of the resolve.
 	if bid == PendingLocalSquashBranchID {
-		// TODO: Preserve earliest non-local squash revision.
-		for ; earliestRevision <= latestRevision; earliestRevision++ {
-			entry, err := j.j.readJournalEntry(earliestRevision)
+		for ; earliestBranchRevision <= latestRevision; earliestBranchRevision++ {
+			entry, err := j.j.readJournalEntry(earliestBranchRevision)
 			if err != nil {
 				return MdID{}, err
 			}
@@ -1401,7 +1450,7 @@ func (j *mdJournal) resolveAndClear(
 				break
 			}
 			j.log.CDebugf(ctx, "Preserving entry %s", entry.ID)
-			otherIDJournal.append(earliestRevision, entry)
+			otherIDJournal.append(earliestBranchRevision, entry)
 		}
 	}
 
@@ -1438,7 +1487,7 @@ func (j *mdJournal) resolveAndClear(
 	// Transform the other journal into the old journal and clear
 	// it out.
 	*j, *otherJournal = *otherJournal, *j
-	err = otherJournal.clear(ctx, bid)
+	err = otherJournal.clearHelper(ctx, bid, earliestBranchRevision)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1447,7 +1496,7 @@ func (j *mdJournal) resolveAndClear(
 	idJournalTempDir = oldIDJournalTempDir
 
 	// Delete all of the branch MDs from the md cache.
-	for rev := earliestRevision; rev <= latestRevision; rev++ {
+	for rev := earliestBranchRevision; rev <= latestRevision; rev++ {
 		mdcache.Delete(j.tlfID, rev, bid)
 	}
 

@@ -932,7 +932,7 @@ func testMDJournalClearPendingWithMaster(t *testing.T, ver MetadataVer) {
 
 	length, err := j.length()
 	require.NoError(t, err)
-	require.Equal(t, mdCount, length)
+	require.Equal(t, uint64(mdCount), length)
 
 	head, err := j.getHead(bid)
 	require.NoError(t, err)
