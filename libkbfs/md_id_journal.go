@@ -244,6 +244,11 @@ func (j mdIDJournal) clearFrom(revision MetadataRevision) error {
 		return err
 	}
 
+	if revision < earliestRevision {
+		return errors.Errorf("Cannot call clearFrom with revision %s < %s",
+			revision, earliestRevision)
+	}
+
 	if revision == earliestRevision {
 		return j.clear()
 	}
