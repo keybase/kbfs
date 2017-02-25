@@ -238,6 +238,47 @@ func (j mdIDJournal) clear() error {
 	return j.j.clear()
 }
 
+func (j mdIDJournal) clearFrom(revision MetadataRevision) error {
+	earliestRevision, err := j.readEarliestRevision()
+	if err != nil {
+		return err
+	}
+
+	if revision == earliestRevision {
+		return j.clear()
+	}
+
+	latestRevision, err := j.readLatestRevision()
+	if err != nil {
+		return err
+	}
+
+	err = j.writeLatestRevision(revision - 1)
+	if err != nil {
+		return err
+	}
+
+	o, err := revisionToOrdinal(revision)
+	if err != nil {
+		return err
+	}
+
+	latestOrdinal, err := revisionToOrdinal(latestRevision)
+	if err != nil {
+		return err
+	}
+
+	for ; o <= latestOrdinal; o++ {
+		p := j.j.journalEntryPath(o)
+		err = ioutil.Remove(p)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Note that since diskJournal.move takes a pointer receiver, so must
 // this.
 func (j *mdIDJournal) move(newDir string) (oldDir string, err error) {

@@ -900,11 +900,6 @@ func (j *mdJournal) clearHelper(ctx context.Context, bid BranchID,
 			"branch ID %s while clearing", head.BID(), j.branchID)
 	}
 
-	earliestRevision, err := j.j.readEarliestRevision()
-	if err != nil {
-		return err
-	}
-
 	latestRevision, err := j.j.readLatestRevision()
 	if err != nil {
 		return err
@@ -916,36 +911,14 @@ func (j *mdJournal) clearHelper(ctx context.Context, bid BranchID,
 		return err
 	}
 
+	err = j.j.clearFrom(earliestBranchRevision)
+	if err != nil {
+		return err
+	}
+
 	j.branchID = NullBranchID
 
 	// No need to set lastMdID in this case.
-
-	if earliestBranchRevision == earliestRevision {
-		j.log.CDebugf(ctx, "Clearing entire journal for branch %s", bid)
-		err = j.j.clear()
-		if err != nil {
-			return err
-		}
-	} else {
-		j.log.CDebugf(ctx, "Clearing journal for branch %s starting from %d",
-			bid, earliestBranchRevision)
-		err := j.j.writeLatestRevision(earliestBranchRevision - 1)
-		if err != nil {
-			return err
-		}
-
-		for r := earliestBranchRevision; r <= latestRevision; r++ {
-			o, err := revisionToOrdinal(r)
-			if err != nil {
-				return err
-			}
-			p := j.j.j.journalEntryPath(o)
-			err = ioutil.Remove(p)
-			if err != nil {
-				return err
-			}
-		}
-	}
 
 	// Garbage-collect the old branch entries.  TODO: we'll eventually
 	// need a sweeper to clean up entries left behind if we crash
