@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -43,4 +44,25 @@ func TestDiskJournalClear(t *testing.T) {
 
 	_, err = ioutil.Stat(tempdir)
 	require.True(t, ioutil.IsNotExist(err))
+}
+
+func TestDiskJournalMoveEmpty(t *testing.T) {
+	tempdir, err := ioutil.TempDir(os.TempDir(), "disk_journal")
+	require.NoError(t, err)
+	defer func() {
+		err := ioutil.RemoveAll(tempdir)
+		assert.NoError(t, err)
+	}()
+
+	oldDir := filepath.Join(tempdir, "journaldir")
+	newDir := oldDir + ".new"
+
+	codec := kbfscodec.NewMsgpack()
+	j := makeDiskJournal(codec, oldDir, reflect.TypeOf(testJournalEntry{}))
+	require.Equal(t, oldDir, j.dir)
+
+	moveOldDir, err := j.move(newDir)
+	require.NoError(t, err)
+	require.Equal(t, oldDir, moveOldDir)
+	require.Equal(t, newDir, j.dir)
 }

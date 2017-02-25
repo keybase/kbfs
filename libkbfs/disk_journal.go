@@ -268,12 +268,11 @@ func (j diskJournal) appendJournalEntry(
 	return next, nil
 }
 
-// move moves the journal to the given directory, assuming it
-// exists. If the directory doesn't exist, an error is returned and
-// the journal directory remains the same.
+// move moves the journal to the given directory, which should share
+// the same parent directory as the current journal directory.
 func (j *diskJournal) move(newDir string) (oldDir string, err error) {
 	err = ioutil.Rename(j.dir, newDir)
-	if err != nil {
+	if err != nil && !ioutil.IsNotExist(err) {
 		return "", err
 	}
 	oldDir = j.dir
