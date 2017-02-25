@@ -66,3 +66,32 @@ func TestDiskJournalMoveEmpty(t *testing.T) {
 	require.Equal(t, oldDir, moveOldDir)
 	require.Equal(t, newDir, j.dir)
 }
+
+func TestDiskJournalMove(t *testing.T) {
+	tempdir, err := ioutil.TempDir(os.TempDir(), "disk_journal")
+	require.NoError(t, err)
+	defer func() {
+		err := ioutil.RemoveAll(tempdir)
+		assert.NoError(t, err)
+	}()
+
+	oldDir := filepath.Join(tempdir, "journaldir")
+	newDir := oldDir + ".new"
+
+	codec := kbfscodec.NewMsgpack()
+	j := makeDiskJournal(codec, oldDir, reflect.TypeOf(testJournalEntry{}))
+	require.Equal(t, oldDir, j.dir)
+
+	o, err := j.appendJournalEntry(nil, testJournalEntry{1})
+	require.NoError(t, err)
+	require.Equal(t, journalOrdinal(0), o)
+
+	moveOldDir, err := j.move(newDir)
+	require.NoError(t, err)
+	require.Equal(t, oldDir, moveOldDir)
+	require.Equal(t, newDir, j.dir)
+
+	entry, err := j.readJournalEntry(o)
+	require.NoError(t, err)
+	require.Equal(t, testJournalEntry{1}, entry)
+}
