@@ -857,11 +857,17 @@ func getMdID(ctx context.Context, mdserver MDServer, crypto cryptoPure,
 	return crypto.MakeMdID(rmdses[0].MD)
 }
 
-// clearHelper removes all the journal entries, and deletes the
-// corresponding MD updates.  If the branch is a pending local squash,
-// it preserves the MD updates corresponding to the prefix of existing
-// local squashes, so they can be re-used in the newly-resolved
-// journal.
+// clearHelper removes all the journal entries starting from
+// earliestBranchRevision and deletes the corresponding MD
+// updates. All MDs from earliestBranchRevision onwards must have
+// branch equal to the given one, which must not be NullBranchID. This
+// means that, if bid != PendingLocalSquashBranchID,
+// earliestBranchRevision must equal the earliest revision, and if bid
+// == PendingLocalSquashBranchID, earliestBranchRevision must equal
+// one past the last local squash revision. If the branch is a pending
+// local squash, it preserves the MD updates corresponding to the
+// prefix of existing local squashes, so they can be re-used in the
+// newly-resolved journal.
 func (j *mdJournal) clearHelper(ctx context.Context, bid BranchID,
 	earliestBranchRevision MetadataRevision) (err error) {
 	j.log.CDebugf(ctx, "Clearing journal for branch %s", bid)
