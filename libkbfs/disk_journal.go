@@ -17,7 +17,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// diskJournal stores an ordered list of entries.
+// diskJournal stores an ordered list of entries in a directory, which
+// is assumed to not be used by anything else.
 //
 // The directory layout looks like:
 //
