@@ -176,8 +176,9 @@ func (j diskJournal) removeEarliest() (empty bool, err error) {
 		return false, err
 	}
 
-	// Garbage-collect the old entry.  TODO: we'll eventually need a
-	// sweeper to clean up entries left behind if we crash right here.
+	// Garbage-collect the old entry. If we crash here and leave
+	// behind an entry, it'll be cleaned up the next time clear()
+	// is called.
 	p := j.journalEntryPath(earliestOrdinal)
 	err = ioutil.Remove(p)
 	if err != nil {
