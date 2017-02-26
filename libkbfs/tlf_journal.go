@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"fmt"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"time"
 
@@ -22,6 +21,7 @@ import (
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
+	"golang.org/x/sync/errgroup"
 )
 
 // tlfJournalConfig is the subset of the Config interface needed by
@@ -201,10 +201,11 @@ type tlfJournal struct {
 	// signals. They're buffered for one object, and all sends are
 	// asynchronous, so multiple sends get collapsed into one
 	// signal.
-	hasWorkCh      chan struct{}
-	needPauseCh    chan struct{}
-	needResumeCh   chan struct{}
-	needShutdownCh chan struct{}
+	hasWorkCh         chan struct{}
+	needPauseCh       chan struct{}
+	needResumeCh      chan struct{}
+	needShutdownCh    chan struct{}
+	needBranchCheckCh chan struct{}
 
 	// Track the ways in which the journal is paused.  We don't allow
 	// work to resume unless a resume has come in corresponding to
@@ -221,7 +222,8 @@ type tlfJournal struct {
 	// Tracks background work.
 	wg kbfssync.RepeatedWaitGroup
 
-	// Protects all operations on blockJournal and mdJournal.
+	// Protects all operations on blockJournal and mdJournal, and all
+	// the fields until the next blank line.
 	//
 	// TODO: Consider using https://github.com/pkg/singlefile
 	// instead.
@@ -235,6 +237,7 @@ type tlfJournal struct {
 	// An estimate of how many bytes have been written since the last
 	// squash.
 	unsquashedBytes uint64
+	flushingBlocks  map[kbfsblock.ID]bool
 
 	bwDelegate tlfJournalBWDelegate
 }
@@ -349,9 +352,11 @@ func makeTLFJournal(
 		needPauseCh:          make(chan struct{}, 1),
 		needResumeCh:         make(chan struct{}, 1),
 		needShutdownCh:       make(chan struct{}, 1),
+		needBranchCheckCh:    make(chan struct{}, 1),
 		backgroundShutdownCh: make(chan struct{}),
 		blockJournal:         blockJournal,
 		mdJournal:            mdJournal,
+		flushingBlocks:       make(map[kbfsblock.ID]bool),
 		bwDelegate:           bwDelegate,
 	}
 
@@ -717,10 +722,16 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 		}
 		if isConflict {
 			j.log.CDebugf(ctx, "Ignoring flush while on conflict branch")
+			// It's safe to send a pause signal here, because even if
+			// CR has already resolved the conflict and send the
+			// resume signal, we know the background work loop is
+			// still waiting for this flush() loop to finish before it
+			// processes either the pause or the resume channel.
+			j.pause(journalPauseConflict)
 			return nil
 		}
 
-		converted, err := j.convertMDsToBranchIfOverThreshold(ctx)
+		converted, err := j.convertMDsToBranchIfOverThreshold(ctx, true)
 		if err != nil {
 			return err
 		}
@@ -742,11 +753,22 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 			blockEnd, mdEnd)
 
 		// Flush the block journal ops in parallel.
-		numFlushed, maxMDRevToFlush, err := j.flushBlockEntries(ctx, blockEnd)
+		numFlushed, maxMDRevToFlush, converted, err :=
+			j.flushBlockEntries(ctx, blockEnd)
 		if err != nil {
 			return err
 		}
 		flushedBlockEntries += numFlushed
+
+		// If we ever switched branches while flushing block entries,
+		// we need to make sure `mdEnd` still reflects reality, since
+		// the number of md entries could have shrunk.
+		if converted {
+			_, mdEnd, err = j.getJournalEnds(ctx)
+			if err != nil {
+				return err
+			}
+		}
 
 		if numFlushed == 0 {
 			// There were no blocks to flush, so we can flush all of
@@ -812,33 +834,16 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 		return err
 	}
 
-	// Keep the flushed blocks around until we know for sure the MD
-	// flush will succeed; otherwise if we become unmerged, conflict
-	// resolution will be very expensive.
-	err := j.blockJournal.saveBlocksUntilNextMDFlush()
-	if err != nil {
-		return err
-	}
-
 	storedBytesBefore := j.blockJournal.getStoredBytes()
 
 	// TODO: Check storedFiles also.
 
-	removedBytes, removedFiles, err := j.blockJournal.removeFlushedEntries(
+	err := j.blockJournal.removeFlushedEntries(
 		ctx, entries, j.tlfID, j.config.Reporter())
 	if err != nil {
 		return err
 	}
-	_ = removedFiles
-
 	storedBytesAfter := j.blockJournal.getStoredBytes()
-
-	// removedBytes should be zero since we're always saving
-	// blocks.
-	if removedBytes != 0 {
-		panic(fmt.Sprintf("removedBytes=%d unexpectedly non-zero",
-			removedBytes))
-	}
 
 	// storedBytes shouldn't change since removedBytes is 0.
 	if storedBytesAfter != storedBytesBefore {
@@ -851,34 +856,113 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 }
 
 func (j *tlfJournal) flushBlockEntries(
-	ctx context.Context, end journalOrdinal) (int, MetadataRevision, error) {
+	ctx context.Context, end journalOrdinal) (
+	numFlushed int, maxMDRevToFlush MetadataRevision,
+	converted bool, err error) {
 	entries, maxMDRevToFlush, err := j.getNextBlockEntriesToFlush(ctx, end)
 	if err != nil {
-		return 0, MetadataRevisionUninitialized, err
+		return 0, MetadataRevisionUninitialized, false, err
 	}
 
 	if entries.length() == 0 {
-		return 0, maxMDRevToFlush, nil
+		return 0, maxMDRevToFlush, false, nil
 	}
 
 	j.log.CDebugf(ctx, "Flushing %d blocks, up to rev %d",
 		len(entries.puts.blockStates), maxMDRevToFlush)
 
+	// Mark these blocks as flushing, and clear when done.
+	err = j.markFlushingBlockIDs(entries)
+	if err != nil {
+		return 0, MetadataRevisionUninitialized, false, err
+	}
+	cleared := false
+	defer func() {
+		if !cleared {
+			clearErr := j.clearFlushingBlockIDs(entries)
+			if err != nil {
+				err = clearErr
+			}
+		}
+	}()
+
 	// TODO: fill this in for logging/error purposes.
 	var tlfName CanonicalTlfName
-	err = flushBlockEntries(ctx, j.log, j.delegateBlockServer,
-		j.config.BlockCache(), j.config.Reporter(),
-		j.tlfID, tlfName, entries)
+
+	eg, groupCtx := errgroup.WithContext(ctx)
+	convertCtx, convertCancel := context.WithCancel(groupCtx)
+
+	// Flush the blocks in a goroutine. Alongside make another
+	// goroutine that listens for MD puts and checks the size of the
+	// MD journal, and converts to a local squash branch if it gets
+	// too large.  While the 2nd goroutine is waiting, it should exit
+	// immediately as soon as the 1st one finishes, but if it is
+	// already working on a conversion it should finish that work.
+	//
+	// If the 2nd goroutine makes a branch, foreground writes could
+	// trigger CR while blocks are still being flushed.  This can't
+	// usually happen, because flushing is paused while CR is
+	// happening.  flush() has to make sure to get the new MD journal
+	// end, and we need to make sure `maxMDRevToFlush` is still valid.
+	eg.Go(func() error {
+		defer convertCancel()
+		return flushBlockEntries(groupCtx, j.log, j.delegateBlockServer,
+			j.config.BlockCache(), j.config.Reporter(),
+			j.tlfID, tlfName, entries)
+	})
+	converted = false
+	eg.Go(func() error {
+		// We might need to run multiple conversions during a single
+		// batch of block flushes, so loop until the batch finishes.
+		for {
+			select {
+			case <-j.needBranchCheckCh:
+				// Don't signal a pause when doing this conversion in
+				// a separate goroutine, because it ends up canceling
+				// the flush context, which means all the block puts
+				// would get canceled and we don't want that.
+				// Instead, let the current iteration of the flush
+				// finish, and then signal at the top of the next
+				// iteration.
+				convertedNow, err :=
+					j.convertMDsToBranchIfOverThreshold(groupCtx, false)
+				if err != nil {
+					return err
+				}
+				converted = converted || convertedNow
+			case <-convertCtx.Done():
+				return nil // Canceled because the block puts finished
+			}
+		}
+	})
+
+	err = eg.Wait()
 	if err != nil {
-		return 0, MetadataRevisionUninitialized, err
+		return 0, MetadataRevisionUninitialized, false, err
+	}
+
+	err = j.clearFlushingBlockIDs(entries)
+	cleared = true
+	if err != nil {
+		return 0, MetadataRevisionUninitialized, false, err
 	}
 
 	err = j.removeFlushedBlockEntries(ctx, entries)
 	if err != nil {
-		return 0, MetadataRevisionUninitialized, err
+		return 0, MetadataRevisionUninitialized, false, err
 	}
 
-	return entries.length(), maxMDRevToFlush, nil
+	// If a conversion happened, the original `maxMDRevToFlush` only
+	// applies for sure if its mdRevMarker entry was unignorable
+	// (i.e., the MD was already a local squash).  TODO: conversion
+	// might not have actually happened yet, in which case it's still
+	// ok to flush maxMDRevToFlush.
+	if converted && maxMDRevToFlush != MetadataRevisionUninitialized &&
+		!entries.revIsLocalSquash(maxMDRevToFlush) {
+		maxMDRevToFlush = MetadataRevisionUninitialized
+	}
+
+	return entries.length(), maxMDRevToFlush, converted, nil
 }
 
 func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
@@ -893,7 +977,7 @@ func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
 }
 
 func (j *tlfJournal) convertMDsToBranchLocked(
-	ctx context.Context, bid BranchID) error {
+	ctx context.Context, bid BranchID, doSignal bool) error {
 	err := j.mdJournal.convertToBranch(
 		ctx, bid, j.config.Crypto(), j.config.Codec(), j.tlfID,
 		j.config.MDCache())
@@ -903,7 +987,9 @@ func (j *tlfJournal) convertMDsToBranchLocked(
 	j.unsquashedBytes = 0
 
 	// Pause while on a conflict branch.
-	j.pause(journalPauseConflict)
+	if doSignal {
+		j.pause(journalPauseConflict)
+	}
 
 	if j.onBranchChange != nil {
 		j.onBranchChange.onTLFBranchChange(j.tlfID, bid)
@@ -924,15 +1010,21 @@ func (j *tlfJournal) convertMDsToBranch(ctx context.Context) error {
 		return err
 	}
 
-	return j.convertMDsToBranchLocked(ctx, bid)
+	return j.convertMDsToBranchLocked(ctx, bid, true)
 }
 
-func (j *tlfJournal) convertMDsToBranchIfOverThreshold(ctx context.Context) (
+func (j *tlfJournal) convertMDsToBranchIfOverThreshold(ctx context.Context,
+	doSignal bool) (
 	bool, error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {
 		return false, err
+	}
+
+	if j.mdJournal.getBranchID() != NullBranchID {
+		// Already on a conflict branch, so nothing to do.
+		return false, nil
 	}
 
 	atLeastOneRev, err := j.mdJournal.atLeastNNonLocalSquashes(1)
@@ -980,16 +1072,37 @@ func (j *tlfJournal) convertMDsToBranchIfOverThreshold(ctx context.Context) (
 			if err != nil {
 				return false, err
 			}
+
+			err = j.blockJournal.markLatestRevMarkerAsUnignorable()
+			if err != nil {
+				return false, err
+			}
+
 			j.unsquashedBytes = 0
 			return true, nil
 		}
 	}
 
-	err = j.convertMDsToBranchLocked(ctx, PendingLocalSquashBranchID)
+	err = j.convertMDsToBranchLocked(ctx, PendingLocalSquashBranchID, doSignal)
 	if err != nil {
 		return false, err
 	}
 	return true, nil
+}
+
+func (j *tlfJournal) getMDFlushRange() (
+	blockJournal *blockJournal, length int, earliest, latest journalOrdinal,
+	err error) {
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
+	if err := j.checkEnabledLocked(); err != nil {
+		return nil, 0, 0, 0, err
+	}
+	length, earliest, latest, err = j.blockJournal.getDeferredGCRange()
+	if err != nil {
+		return nil, 0, 0, 0, err
+	}
+	return j.blockJournal, length, earliest, latest, nil
 }
 
 func (j *tlfJournal) doOnMDFlush(ctx context.Context,
@@ -999,52 +1112,39 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 			rmds.MD.RevisionNumber())
 	}
 
-	// Remove saved blocks in chunks to avoid starving foreground file
-	// system operations that need the lock for too long.
-	var lastToRemove journalOrdinal
-	for {
-		nextLastToRemove, removedBytes, removedFiles, err := func() (journalOrdinal, int64, int64, error) {
-			j.journalLock.Lock()
-			defer j.journalLock.Unlock()
-			if err := j.checkEnabledLocked(); err != nil {
-				return 0, 0, 0, err
-			}
-
-			storedBytesBefore := j.blockJournal.getStoredBytes()
-
-			nextLastToRemove, removedBytes, removedFiles, err :=
-				j.blockJournal.onMDFlush(
-					ctx, maxSavedBlockRemovalsAtATime,
-					rmds.MD.RevisionNumber(), lastToRemove)
-			if err != nil {
-				return 0, 0, 0, err
-			}
-
-			storedBytesAfter := j.blockJournal.getStoredBytes()
-
-			if storedBytesAfter != (storedBytesBefore - removedBytes) {
-				panic(fmt.Sprintf(
-					"storedBytes changed from %d to %d, but removedBytes is %d",
-					storedBytesBefore, storedBytesAfter,
-					removedBytes))
-			}
-
-			return nextLastToRemove, removedBytes, removedFiles, nil
-		}()
-		if err != nil {
-			return err
-		}
-		j.diskLimiter.onBlockDelete(ctx, removedBytes, removedFiles)
-		if nextLastToRemove == 0 {
-			break
-		}
-		lastToRemove = nextLastToRemove
-		// Explicitly allow other goroutines (such as foreground file
-		// system operations) to grab the lock to avoid starvation.
-		// See https://github.com/golang/go/issues/13086.
-		runtime.Gosched()
+	blockJournal, length, earliest, latest, err := j.getMDFlushRange()
+	if err != nil {
+		return err
+	}
+	if length == 0 {
+		return nil
 	}
 
+	// onMDFlush() only needs to be called under the flushLock, not
+	// the journalLock, as it doesn't touch the actual journal, only
+	// the deferred GC journal.
+	removedBytes, removedFiles, err := blockJournal.doGC(ctx, earliest, latest)
+	if err != nil {
+		return err
+	}
+
+	j.diskLimiter.onBlockDelete(ctx, removedBytes, removedFiles)
+
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
+	if err := j.checkEnabledLocked(); err != nil {
+		return err
+	}
+
+	err = j.blockJournal.clearDeferredGCRange(earliest, latest)
+	if err != nil {
+		return err
+	}
+
+	// TODO: if we crash before calling this, the journal bytes/files
+	// counts will be inaccurate.  I think the only way to fix that is
+	// a periodic repair scan?
+	j.blockJournal.unstoreBlock(removedBytes, removedFiles)
 	return nil
 }
 
@@ -1662,7 +1762,36 @@ func (j *tlfJournal) isBlockUnflushed(id kbfsblock.ID) (bool, error) {
 		return false, err
 	}
 
+	// Conservatively assume that a block that's on its way to the
+	// server _has_ been flushed, so that the caller will try to clean
+	// it up if it's not needed anymore.
+	if j.flushingBlocks[id] {
+		return true, nil
+	}
+
 	return j.blockJournal.isUnflushed(id)
+}
+
+func (j *tlfJournal) markFlushingBlockIDs(entries blockEntriesToFlush) error {
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
+	if err := j.checkEnabledLocked(); err != nil {
+		return err
+	}
+
+	entries.markFlushingBlockIDs(j.flushingBlocks)
+	return nil
+}
+
+func (j *tlfJournal) clearFlushingBlockIDs(entries blockEntriesToFlush) error {
+	j.journalLock.Lock()
+	defer j.journalLock.Unlock()
+	if err := j.checkEnabledLocked(); err != nil {
+		return err
+	}
+
+	entries.clearFlushingBlockIDs(j.flushingBlocks)
+	return nil
 }
 
 func (j *tlfJournal) getBranchID() (BranchID, error) {
@@ -1729,6 +1858,11 @@ func (j *tlfJournal) doPutMD(ctx context.Context, rmd *RootMetadata,
 	}
 
 	j.signalWork()
+
+	select {
+	case j.needBranchCheckCh <- struct{}{}:
+	default:
+	}
 
 	return mdID, false, nil
 }
@@ -1847,10 +1981,6 @@ func (j *tlfJournal) doResolveBranch(ctx context.Context,
 	// Then go through and mark blocks and md rev markers for ignoring.
 	err = j.blockJournal.ignoreBlocksAndMDRevMarkers(ctx, blocksToDelete,
 		rmd.Revision())
-	if err != nil {
-		return MdID{}, false, err
-	}
-	err = j.blockJournal.saveBlocksUntilNextMDFlush()
 	if err != nil {
 		return MdID{}, false, err
 	}
