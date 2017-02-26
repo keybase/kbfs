@@ -9,16 +9,19 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/kbfsblock"
+	"golang.org/x/net/context"
 )
 
-//ECQUCtxTagKey is the type for unique ECQU background opertaion IDs.
+// ECQUCtxTagKey is the type for unique ECQU background opertaion IDs.
 type ECQUCtxTagKey struct{}
 
-// ECQUID == "ECQU"
+// ECQUID is used in EventuallyConsistentQuotaUsage for only background RPCs.
+// More specifically, when we need to spawn a background goroutine for
+// GetUserQuotaInfo, a new context with this tag is created and used. This is
+// also used as a prefix for the logger module name in
+// EventuallyConsistentQuotaUsage.
 const ECQUID = "ECQU"
 
 type cachedQuotaUsage struct {
@@ -42,10 +45,10 @@ type EventuallyConsistentQuotaUsage struct {
 // NewEventuallyConsistentQuotaUsage creates a new
 // EventuallyConsistentQuotaUsage object.
 func NewEventuallyConsistentQuotaUsage(
-	config Config) *EventuallyConsistentQuotaUsage {
+	config Config, loggerSuffix string) *EventuallyConsistentQuotaUsage {
 	return &EventuallyConsistentQuotaUsage{
 		config: config,
-		log:    config.MakeLogger(ECQUID),
+		log:    config.MakeLogger(ECQUID + "-" + loggerSuffix),
 	}
 }
 
@@ -56,7 +59,7 @@ func (q *EventuallyConsistentQuotaUsage) getAndCache(
 	}()
 	quotaInfo, err := q.config.BlockServer().GetUserQuotaInfo(ctx)
 	if err != nil {
-		return usage, err
+		return cachedQuotaUsage{}, err
 	}
 
 	usage.limitBytes = quotaInfo.Limit
@@ -65,7 +68,7 @@ func (q *EventuallyConsistentQuotaUsage) getAndCache(
 	} else {
 		usage.usageBytes = 0
 	}
-	usage.timestamp = time.Now()
+	usage.timestamp = q.config.Clock().Now()
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -76,16 +79,17 @@ func (q *EventuallyConsistentQuotaUsage) getAndCache(
 
 // Get returns KBFS bytes used and limit for user. To help avoid having too
 // frequent calls into bserver, caller can provide a positive tolerance, to
-// accept stale LimitBytes and UsageByts data.
+// accept stale LimitBytes and UsageByts data. If tolerance is 0 or negative,
+// this always makes a blocking RPC to bserver and return latest quota usage.
 //
-// 1) If the cached (stale) data is older for less than half of tolerance, the
+// 1) If the age of cached data is less than half of tolerance, the cached
 // stale data is returned immediately.
-// 2) If the cached (stale) data is older for more than half of tolerance, but
-// not more than tolerance, a background RPC is spawned to refresh cached data,
-// and the stale data is returned immediately.
-// 3) If the cached (stale) data is older for more than tolerance, a blocking
-// RPC is issued and the function only returns after RPC finishes, with the
-// newest data from RPC.
+// 2) If the age of cached data is more than half of tolerance, but not more
+// than tolerance, a background RPC is spawned to refresh cached data, and the
+// stale data is returned immediately.
+// 3) If the age of cached data is more than tolerance, a blocking RPC is
+// issued and the function only returns after RPC finishes, with the newest
+// data from RPC. The RPC causes cached data to be refreshed as well.
 func (q *EventuallyConsistentQuotaUsage) Get(ctx context.Context,
 	tolerance time.Duration) (usageBytes, limitBytes int64, err error) {
 	c := func() cachedQuotaUsage {
@@ -93,10 +97,12 @@ func (q *EventuallyConsistentQuotaUsage) Get(ctx context.Context,
 		defer q.mu.RUnlock()
 		return q.cached
 	}()
-	past := time.Since(c.timestamp)
+	past := q.config.Clock().Now().Sub(c.timestamp)
 	switch {
 	case past > tolerance:
 		q.log.CDebugf(ctx, "Blocking on getAndCache. Cached data is %s old.", past)
+		// TODO: optimize this to make sure there's only one outstanding RPC. In
+		// other words, wait for it to finish if one is already in progress.
 		c, err = q.getAndCache(ctx)
 		if err != nil {
 			return -1, -1, err
@@ -120,7 +126,9 @@ func (q *EventuallyConsistentQuotaUsage) Get(ctx context.Context,
 				// backgroundInProcess flag again.
 				bgCtx, cancel := context.WithTimeout(bgCtx, 10*time.Second)
 				defer cancel()
-				q.getAndCache(bgCtx)
+				// The error is igonred here without logging since getAndCache already
+				// logs it.
+				_, _ = q.getAndCache(bgCtx)
 				atomic.StoreInt32(&q.backgroundInProcess, 0)
 			}()
 		} else {

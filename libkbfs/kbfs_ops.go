@@ -13,7 +13,6 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
-
 	"golang.org/x/net/context"
 )
 
@@ -53,7 +52,7 @@ func NewKBFSOpsStandard(config Config) *KBFSOpsStandard {
 		opsByFav:              make(map[Favorite]*folderBranchOps),
 		reIdentifyControlChan: make(chan chan<- struct{}),
 		favs:       NewFavorites(config),
-		quotaUsage: NewEventuallyConsistentQuotaUsage(config),
+		quotaUsage: NewEventuallyConsistentQuotaUsage(config, "KBFSOps"),
 	}
 	kops.currentStatus.Init()
 	go kops.markForReIdentifyIfNeededLoop()
@@ -668,9 +667,13 @@ func (fs *KBFSOpsStandard) Status(ctx context.Context) (
 	// service/GUI by handling multiple simultaneous passphrase
 	// requests at once.
 	if err == nil && fs.config.MDServer().IsConnected() {
-		// The error is ignored here so that other fields can still be populated
-		// even if this fails.
-		usageBytes, limitBytes, _ = fs.quotaUsage.Get(ctx, 0)
+		var quErr error
+		usageBytes, limitBytes, quErr = fs.quotaUsage.Get(ctx, 0)
+		if quErr != nil {
+			// The error is ignored here so that other fields can still be populated
+			// even if this fails.
+			fs.log.CDebugf(ctx, "Getting quota usage error: %v", quErr)
+		}
 	}
 	failures, ch := fs.currentStatus.CurrentStatus()
 	var jServerStatus *JournalServerStatus

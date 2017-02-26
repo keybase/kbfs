@@ -62,7 +62,7 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 		errLog:         errLog,
 		notifications:  libfs.NewFSNotifications(log),
 		platformParams: platformParams,
-		quotaUsage:     libkbfs.NewEventuallyConsistentQuotaUsage(config),
+		quotaUsage:     libkbfs.NewEventuallyConsistentQuotaUsage(config, "FS"),
 	}
 	fs.root.private = &FolderList{
 		fs:      fs,
@@ -200,6 +200,11 @@ func (f *FS) Root() (fs.Node, error) {
 	return &f.root, nil
 }
 
+// QuotaUsageStaleTolerance is the lifespan of stale usage data that libfuse
+// accepts in the Statfs handler. In other words, this causes libkbfs to issue
+// a fresh RPC call if cached usage data is older than 10s.
+const quotaUsageStaleTolerance = 10 * time.Second
+
 // Statfs implements the fs.FSStatfser interface for FS.
 func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.StatfsResponse) error {
 	*resp = fuse.StatfsResponse{
@@ -207,9 +212,10 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 		Namelen: ^uint32(0),
 		Frsize:  fuseBlockSize,
 	}
-	usageBytes, limitBytes, err := f.quotaUsage.Get(ctx, QuotaUsageStaleTolerance)
+	usageBytes, limitBytes, err := f.quotaUsage.Get(ctx, quotaUsageStaleTolerance)
 	if err != nil {
-		return fuse.EIO
+		f.log.CDebugf(ctx, "Getting quota usage error: %v", err)
+		return err
 	}
 
 	total := getNumBlocksFromSize(uint64(limitBytes))
