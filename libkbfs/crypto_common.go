@@ -333,18 +333,18 @@ func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
 
 // depadBlock extracts the actual block data from a padded block.
 func (c CryptoCommon) depadBlock(paddedBlock []byte) ([]byte, error) {
-	paddedLen := len(paddedBlock)
-	if paddedLen < padPrefixSize {
+	totalLen := len(paddedBlock)
+	if totalLen < padPrefixSize {
 		return nil, errors.WithStack(io.ErrUnexpectedEOF)
 	}
 
 	blockLen := binary.LittleEndian.Uint32(paddedBlock)
 	blockEndPos := int(blockLen + padPrefixSize)
 
-	if paddedLen < blockEndPos {
+	if totalLen < blockEndPos {
 		return nil, errors.WithStack(
 			PaddedBlockReadError{
-				ActualLen:   paddedLen,
+				ActualLen:   totalLen,
 				ExpectedLen: blockEndPos,
 			})
 	}
