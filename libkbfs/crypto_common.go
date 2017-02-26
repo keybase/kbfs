@@ -322,7 +322,7 @@ const padPrefixSize = 4
 // padBlock adds zero padding to an encoded block.
 func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
 	blockLen := uint32(len(block))
-	totalLen := powerOfTwoEqualOrGreater(blockLen)
+	totalLen := powerOfTwoEqualOrGreater(int(blockLen))
 
 	buf := make([]byte, padPrefixSize+totalLen)
 	binary.LittleEndian.PutUint32(buf, blockLen)
