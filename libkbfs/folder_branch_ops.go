@@ -4511,8 +4511,9 @@ func (fbo *folderBranchOps) UnstageForTesting(
 
 // mdWriterLock must be taken by the caller.
 func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
-	lState *lockState, promptPaper bool) (err error) {
-	fbo.log.CDebugf(ctx, "rekeyLocked")
+	lState *lockState, promptPaper bool, ttl int) (err error) {
+	fbo.log.CDebugf(ctx, "rekeyLocked ttl=%d->%d", ttl, ttl-1)
+	ttl--
 	defer func() {
 		fbo.deferLog.CDebugf(ctx, "rekeyLocked done: %+v", err)
 	}()
@@ -4636,7 +4637,9 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 		if fbo.rekeyWithPromptTimer == nil {
 			d := fbo.config.RekeyWithPromptWaitTime()
 			fbo.log.CDebugf(ctx, "Scheduling a rekeyWithPrompt in %s", d)
-			fbo.rekeyWithPromptTimer = time.AfterFunc(d, fbo.rekeyWithPrompt)
+			fbo.rekeyWithPromptTimer = time.AfterFunc(d, func() {
+				fbo.rekeyWithPrompt(ttl)
+			})
 		}
 
 		if rekeyWasSet {
@@ -4679,7 +4682,7 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 		fbo.rekeyWithPromptTimer = nil
 	}
 
-	if rekeyDone && !stillNeedsRekey {
+	if rekeyDone && !stillNeedsRekey && ttl > 0 {
 		// We did do the rekey, and there isn't another rekey scheduled. We enqueue
 		// the rekey here again, in case we missed a device due to a race
 		// condition. This is specifically for the situation where user provisions
@@ -4689,14 +4692,19 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 		// since it's already set. As a result, the TLF won't get rekeyed for the
 		// second device until the next 1-hour timer triggers another scan.
 		time.AfterFunc(rekeyRecheckInterval, func() {
-			fbo.config.RekeyQueue().Enqueue(fbo.folderBranch.Tlf)
+			newCtx := ctxWithRandomIDReplayable(context.Background(), CtxRekeyIDKey,
+				CtxRekeyOpID, nil)
+			fbo.doMDWriteWithRetryUnlessCanceled(newCtx,
+				func(lState *lockState) error {
+					return fbo.rekeyLocked(newCtx, lState, false, ttl)
+				})
 		})
 	}
 
 	return nil
 }
 
-func (fbo *folderBranchOps) rekeyWithPrompt() {
+func (fbo *folderBranchOps) rekeyWithPrompt(ttl int) {
 	var err error
 	ctx := ctxWithRandomIDReplayable(
 		context.Background(), CtxRekeyIDKey, CtxRekeyOpID, fbo.log)
@@ -4711,7 +4719,7 @@ func (fbo *folderBranchOps) rekeyWithPrompt() {
 
 	err = fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
-			return fbo.rekeyLocked(ctx, lState, true)
+			return fbo.rekeyLocked(ctx, lState, true, ttl)
 		})
 }
 
@@ -4724,7 +4732,7 @@ func (fbo *folderBranchOps) Rekey(ctx context.Context, tlf tlf.ID) (err error) {
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
-			return fbo.rekeyLocked(ctx, lState, false)
+			return fbo.rekeyLocked(ctx, lState, false, rekeyInitialTTL)
 		})
 }
 

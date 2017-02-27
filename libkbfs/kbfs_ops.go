@@ -490,7 +490,7 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 		if ops, ok := fs.ops[fb]; ok {
 			fs.log.CDebugf(ctx, "Triggering a paper prompt rekey on folder "+
 				"access due to unreadable MD for %s", h.GetCanonicalPath())
-			go ops.rekeyWithPrompt()
+			go ops.rekeyWithPrompt(rekeyInitialTTL)
 		}
 		return nil, EntryInfo{}, err
 	}
