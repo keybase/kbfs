@@ -14,7 +14,6 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
 	"github.com/keybase/kbfs/kbfsblock"
-	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
@@ -27,11 +26,17 @@ const (
 	BServerTokenExpireIn = 2 * 60 * 60 // 2 hours
 )
 
+type blockServerRemoteConfig interface {
+	diskBlockCacheGetter
+	codecGetter
+	currentInfoGetterGetter
+	logMaker
+}
+
 // BlockServerRemote implements the BlockServer interface and
 // represents a remote KBFS block server.
 type BlockServerRemote struct {
-	codec      kbfscodec.Codec
-	cig        currentInfoGetter
+	config     blockServerRemoteConfig
 	shutdownFn func()
 	putClient  keybase1.BlockInterface
 	getClient  keybase1.BlockInterface
@@ -137,13 +142,13 @@ var _ rpc.ConnectionHandler = (*blockServerRemoteClientHandler)(nil)
 
 // NewBlockServerRemote constructs a new BlockServerRemote for the
 // given address.
-func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
-	cig currentInfoGetter, log logger.Logger, blkSrvAddr string,
+func NewBlockServerRemote(config blockServerRemoteConfig,
+	signer kbfscrypto.Signer, blkSrvAddr string,
 	rpcLogFactory *libkb.RPCLogFactory) *BlockServerRemote {
+	log := config.MakeLogger("BSR")
 	deferLog := log.CloneWithAddedDepth(1)
 	bs := &BlockServerRemote{
-		codec:      codec,
-		cig:        cig,
+		config:     config,
 		log:        log,
 		deferLog:   deferLog,
 		blkSrvAddr: blkSrvAddr,
@@ -202,16 +207,14 @@ func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
 }
 
 // For testing.
-func newBlockServerRemoteWithClient(codec kbfscodec.Codec,
-	cig currentInfoGetter, log logger.Logger,
+func newBlockServerRemoteWithClient(config blockServerRemoteConfig,
 	client keybase1.BlockInterface) *BlockServerRemote {
+	log := config.MakeLogger("BSR")
 	deferLog := log.CloneWithAddedDepth(1)
 	bs := &BlockServerRemote{
-		codec:     codec,
-		cig:       cig,
+		config:    config,
 		putClient: client,
 		getClient: client,
-		log:       log,
 		deferLog:  deferLog,
 	}
 	return bs
@@ -232,7 +235,7 @@ func (b *BlockServerRemote) resetAuth(
 		b.log.Debug("BlockServerRemote: resetAuth called, err: %#v", err)
 	}()
 
-	_, _, err = b.cig.GetCurrentUserInfo(ctx)
+	_, _, err = b.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		b.log.Debug("BlockServerRemote: User logged out, skipping resetAuth")
 		return nil
@@ -245,11 +248,11 @@ func (b *BlockServerRemote) resetAuth(
 	}
 
 	// get UID, deviceKID and normalized username
-	username, uid, err := b.cig.GetCurrentUserInfo(ctx)
+	username, uid, err := b.config.currentInfoGetter().GetCurrentUserInfo(ctx)
 	if err != nil {
 		return err
 	}
-	key, err := b.cig.GetCurrentVerifyingKey(ctx)
+	key, err := b.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
 	if err != nil {
 		return err
 	}
@@ -302,6 +305,13 @@ func makeBlockReference(id kbfsblock.ID, context kbfsblock.Context) keybase1.Blo
 func (b *BlockServerRemote) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
 	context kbfsblock.Context) (
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
+	// TODO: do this in parallel.
+	if b.config.DiskBlockCache() != nil {
+		buf, serverHalf, err = b.config.DiskBlockCache().Get(ctx, tlfID, id)
+		if err == nil {
+			return
+		}
+	}
 	size := -1
 	defer func() {
 		if err != nil {
@@ -335,23 +345,26 @@ func (b *BlockServerRemote) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 
 // Put implements the BlockServer interface for BlockServerRemote.
 func (b *BlockServerRemote) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
-	context kbfsblock.Context, buf []byte,
+	bContext kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
+	if b.config.DiskBlockCache() != nil {
+		go b.config.DiskBlockCache().Put(ctx, tlfID, id, buf, serverHalf)
+	}
 	size := len(buf)
 	defer func() {
 		if err != nil {
 			b.deferLog.CWarningf(
 				ctx, "Put id=%s tlf=%s context=%s sz=%d err=%v",
-				id, tlfID, context, size, err)
+				id, tlfID, bContext, size, err)
 		} else {
 			b.deferLog.CDebugf(
 				ctx, "Put id=%s tlf=%s context=%s sz=%d",
-				id, tlfID, context, size)
+				id, tlfID, bContext, size)
 		}
 	}()
 
 	arg := keybase1.PutBlockArg{
-		Bid: makeBlockIDCombo(id, context),
+		Bid: makeBlockIDCombo(id, bContext),
 		// BlockKey is misnamed -- it contains just the server
 		// half.
 		BlockKey: serverHalf.String(),
@@ -538,7 +551,7 @@ func (b *BlockServerRemote) GetUserQuotaInfo(ctx context.Context) (info *kbfsblo
 	if err != nil {
 		return nil, err
 	}
-	return kbfsblock.UserQuotaInfoDecode(res, b.codec)
+	return kbfsblock.UserQuotaInfoDecode(res, b.config.Codec())
 }
 
 // Shutdown implements the BlockServer interface for BlockServerRemote.
