@@ -8,3 +8,5 @@ import "time"
 
 // RPCReconnectInterval specifies the time between reconnect attempts for RPC Connections.
 const RPCReconnectInterval = 2 * time.Second
+
+const rekeyRecheckInterval = time.Minute

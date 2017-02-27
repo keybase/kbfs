@@ -4678,6 +4678,21 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 		fbo.rekeyWithPromptTimer.Stop()
 		fbo.rekeyWithPromptTimer = nil
 	}
+
+	if rekeyDone && !stillNeedsRekey {
+		// We did do the rekey, and there isn't another rekey scheduled. We enqueue
+		// the rekey here again, in case we missed a device due to a race
+		// condition. This is specifically for the situation where user provisions
+		// two devices in a row, and the key update for the 2nd device only comes
+		// in after rekey for a TLF is done, which didn't include the second
+		// device. At this point, there wouldn't be a new MD with rekey bit set
+		// since it's already set. As a result, the TLF won't get rekeyed for the
+		// second device until the next 1-hour timer triggers another scan.
+		time.AfterFunc(rekeyRecheckInterval, func() {
+			fbo.config.RekeyQueue().Enqueue(fbo.folderBranch.Tlf)
+		})
+	}
+
 	return nil
 }
 

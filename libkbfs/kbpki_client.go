@@ -104,7 +104,7 @@ func (k *KBPKIClient) GetNormalizedUsername(ctx context.Context, uid keybase1.UI
 
 func (k *KBPKIClient) hasVerifyingKey(ctx context.Context, uid keybase1.UID,
 	verifyingKey kbfscrypto.VerifyingKey, atServerTime time.Time) (bool, error) {
-	userInfo, err := k.loadUserPlusKeys(ctx, uid, verifyingKey.KID())
+	userInfo, err := k.loadUserPlusKeys(ctx, uid, verifyingKey.KID(), false)
 	if err != nil {
 		return false, err
 	}
@@ -209,7 +209,7 @@ func (k *KBPKIClient) HasUnverifiedVerifyingKey(
 // GetCryptPublicKeys implements the KBPKI interface for KBPKIClient.
 func (k *KBPKIClient) GetCryptPublicKeys(ctx context.Context,
 	uid keybase1.UID) (keys []kbfscrypto.CryptPublicKey, err error) {
-	userInfo, err := k.loadUserPlusKeys(ctx, uid, "")
+	userInfo, err := k.loadUserPlusKeys(ctx, uid, "", true)
 	if err != nil {
 		return nil, err
 	}
@@ -217,8 +217,9 @@ func (k *KBPKIClient) GetCryptPublicKeys(ctx context.Context,
 }
 
 func (k *KBPKIClient) loadUserPlusKeys(ctx context.Context,
-	uid keybase1.UID, pollForKID keybase1.KID) (UserInfo, error) {
-	return k.serviceOwner.KeybaseService().LoadUserPlusKeys(ctx, uid, pollForKID)
+	uid keybase1.UID, pollForKID keybase1.KID, noCache bool) (UserInfo, error) {
+	return k.serviceOwner.KeybaseService().LoadUserPlusKeys(ctx,
+		uid, pollForKID, noCache)
 }
 
 func (k *KBPKIClient) session(ctx context.Context) (SessionInfo, error) {

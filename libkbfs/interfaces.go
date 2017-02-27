@@ -357,8 +357,11 @@ type KeybaseService interface {
 	// causes the service to poll for the given KID. This is useful during
 	// provisioning where the provisioner needs to get the MD revision that the
 	// provisionee has set the rekey bit on.
+	//
+	// noCache, if set to true, tells service to always check with server and
+	// never return cached results.
 	LoadUserPlusKeys(ctx context.Context,
-		uid keybase1.UID, pollForKID keybase1.KID) (UserInfo, error)
+		uid keybase1.UID, pollForKID keybase1.KID, noCache bool) (UserInfo, error)
 
 	// LoadUnverifiedKeys returns a list of unverified public keys.  They are the union
 	// of all known public keys associated with the account and the currently verified
