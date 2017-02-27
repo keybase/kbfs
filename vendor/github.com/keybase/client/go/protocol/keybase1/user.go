@@ -110,10 +110,9 @@ type LoadUserByNameArg struct {
 }
 
 type LoadUserPlusKeysArg struct {
-	SessionID  int  `codec:"sessionID" json:"sessionID"`
-	Uid        UID  `codec:"uid" json:"uid"`
-	PollForKID KID  `codec:"pollForKID" json:"pollForKID"`
-	NoCache    bool `codec:"noCache" json:"noCache"`
+	SessionID  int `codec:"sessionID" json:"sessionID"`
+	Uid        UID `codec:"uid" json:"uid"`
+	PollForKID KID `codec:"pollForKID" json:"pollForKID"`
 }
 
 type LoadPublicKeysArg struct {

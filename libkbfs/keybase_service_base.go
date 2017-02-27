@@ -357,17 +357,13 @@ func (k *KeybaseServiceBase) Identify(ctx context.Context, assertion, reason str
 
 // LoadUserPlusKeys implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) LoadUserPlusKeys(ctx context.Context,
-	uid keybase1.UID, pollForKID keybase1.KID, noCache bool) (UserInfo, error) {
+	uid keybase1.UID, pollForKID keybase1.KID) (UserInfo, error) {
 	cachedUserInfo := k.getCachedUserInfo(uid)
 	if cachedUserInfo.Name != libkb.NormalizedUsername("") {
 		return cachedUserInfo, nil
 	}
 
-	arg := keybase1.LoadUserPlusKeysArg{
-		Uid:        uid,
-		PollForKID: pollForKID,
-		NoCache:    noCache,
-	}
+	arg := keybase1.LoadUserPlusKeysArg{Uid: uid, PollForKID: pollForKID}
 	res, err := k.userClient.LoadUserPlusKeys(ctx, arg)
 	if err != nil {
 		return UserInfo{}, err
