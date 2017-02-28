@@ -253,13 +253,20 @@ func (fs *KBFSOpsStandard) getOpsNoAdd(fb FolderBranch) *folderBranchOps {
 	return ops
 }
 
+// CtxNoAddToFavoriteKey is a context key. If a non-nil value with key
+// CtxNoAddToFavoriteKey{} exists in the ctx passed to getOps() or
+// getOpsByHandle(), these two methods don't add the TLF to favorites.
+type CtxNoAddToFavoriteKey struct{}
+
 func (fs *KBFSOpsStandard) getOps(
 	ctx context.Context, fb FolderBranch) *folderBranchOps {
 	ops := fs.getOpsNoAdd(fb)
-	if err := ops.addToFavorites(ctx, fs.favs, false); err != nil {
-		// Failure to favorite shouldn't cause a failure.  Just log
-		// and move on.
-		fs.log.CDebugf(ctx, "Couldn't add favorite: %v", err)
+	if ctx.Value(CtxNoAddToFavoriteKey{}) == nil {
+		if err := ops.addToFavorites(ctx, fs.favs, false); err != nil {
+			// Failure to favorite shouldn't cause a failure.  Just log
+			// and move on.
+			fs.log.CDebugf(ctx, "Couldn't add favorite: %v", err)
+		}
 	}
 	return ops
 }
@@ -272,11 +279,13 @@ func (fs *KBFSOpsStandard) getOpsByNode(ctx context.Context,
 func (fs *KBFSOpsStandard) getOpsByHandle(ctx context.Context,
 	handle *TlfHandle, fb FolderBranch) *folderBranchOps {
 	ops := fs.getOpsNoAdd(fb)
-	if err := ops.addToFavoritesByHandle(
-		ctx, fs.favs, handle, false); err != nil {
-		// Failure to favorite shouldn't cause a failure.  Just log
-		// and move on.
-		fs.log.CDebugf(ctx, "Couldn't add favorite: %v", err)
+	if ctx.Value(CtxNoAddToFavoriteKey{}) == nil {
+		if err := ops.addToFavoritesByHandle(
+			ctx, fs.favs, handle, false); err != nil {
+			// Failure to favorite shouldn't cause a failure.  Just log
+			// and move on.
+			fs.log.CDebugf(ctx, "Couldn't add favorite: %v", err)
+		}
 	}
 
 	fs.opsLock.Lock()

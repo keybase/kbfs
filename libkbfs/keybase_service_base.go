@@ -649,6 +649,8 @@ func (k *KeybaseServiceBase) GetTLFCryptKeys(ctx context.Context,
 		return keybase1.GetTLFCryptKeysRes{}, err
 	}
 
+	ctx = context.WithValue(ctx, CtxNoAddToFavoriteKey{}, true)
+
 	tlfHandle, err := k.getHandleFromFolderName(ctx, query.TlfName, false)
 	if err != nil {
 		return res, err
