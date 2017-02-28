@@ -37,6 +37,8 @@ import (
 //
 // TODO: Do all high-level operations atomically on the file-system
 // level.
+//
+// TODO: Make IO ops cancellable.
 type diskJournal struct {
 	codec     kbfscodec.Codec
 	dir       string
