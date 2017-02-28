@@ -163,6 +163,9 @@ func (j diskJournal) clear() error {
 		return err
 	}
 
+	// j.dir will be recreated on the next call to
+	// writeJournalEntry (via kbfscodec.SerializeToFile), which
+	// must always come before any ordinal write.
 	return ioutil.RemoveAll(j.dir)
 }
 
