@@ -154,6 +154,10 @@ func (j diskJournal) clear() error {
 	// Clear ordinals first to reduce the chances of leaving the
 	// journal in a weird state if we crash in the middle of
 	// removing the files.
+	//
+	// TODO: When we read ordinals into memory on startup, treat
+	// the absence of either ordinal as the journal being empty,
+	// so as to make clearing atomic.
 	err := ioutil.Remove(j.earliestPath())
 	if err != nil {
 		return err
