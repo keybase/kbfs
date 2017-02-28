@@ -4691,13 +4691,17 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 		// device. At this point, there wouldn't be a new MD with rekey bit set
 		// since it's already set. As a result, the TLF won't get rekeyed for the
 		// second device until the next 1-hour timer triggers another scan.
+		fbo.log.CDebugf(ctx,
+			"Rekey happened. Rechecking in %s", rekeyRecheckInterval)
 		time.AfterFunc(rekeyRecheckInterval, func() {
 			newCtx := ctxWithRandomIDReplayable(context.Background(), CtxRekeyIDKey,
 				CtxRekeyOpID, nil)
-			fbo.doMDWriteWithRetryUnlessCanceled(newCtx,
-				func(lState *lockState) error {
-					return fbo.rekeyLocked(newCtx, lState, false, ttl)
-				})
+			fbo.log.CDebugf(newCtx, "Background rekey check finished with error=%v",
+				fbo.doMDWriteWithRetryUnlessCanceled(newCtx,
+					func(lState *lockState) error {
+						return fbo.rekeyLocked(newCtx, lState, false, ttl)
+					}))
+
 		})
 	}
 
