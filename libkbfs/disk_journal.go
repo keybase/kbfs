@@ -149,6 +149,18 @@ func (j diskJournal) writeLatestOrdinal(o journalOrdinal) error {
 
 // clear completely removes the journal directory.
 func (j diskJournal) clear() error {
+	// Clear ordinals first to reduce the chances of leaving the
+	// journal in a weird state if we crash in the middle of
+	// removing the files.
+	err := ioutil.Remove(j.earliestPath())
+	if err != nil {
+		return err
+	}
+	err = ioutil.Remove(j.latestPath())
+	if err != nil {
+		return err
+	}
+
 	return ioutil.RemoveAll(j.dir)
 }
 
