@@ -943,6 +943,8 @@ func testMDJournalClearPendingWithMaster(t *testing.T, ver MetadataVer) {
 	head, err = j.getHead(NullBranchID)
 	require.NoError(t, err)
 	require.NotEqual(t, ImmutableBareRootMetadata{}, head)
+	require.Equal(t, firstRevision+MetadataRevision(mdCount-1),
+		head.RevisionNumber())
 	require.Equal(t, NullBranchID, head.BID())
 }
 
