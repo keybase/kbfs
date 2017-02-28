@@ -481,7 +481,7 @@ func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
 		return MdID{}, err
 	} else {
 		// Entry exists, so nothing else to do.
-		return MdID{}, nil
+		return id, nil
 	}
 
 	err = kbfscodec.SerializeToFileIfNotExist(
@@ -1449,4 +1449,26 @@ func (j *mdJournal) resolveAndClear(
 	}
 
 	return mdID, nil
+}
+
+// markLatestAsLocalSquash marks the head revision as a local squash,
+// without the need to go through resolveAndClear.  It's assumed that
+// the caller already guaranteed that there is no more than 1
+// non-local-squash at the end of the journal.
+func (j *mdJournal) markLatestAsLocalSquash(ctx context.Context) error {
+	if j.branchID != NullBranchID {
+		return errors.Errorf("Can't mark latest as local squash when on a "+
+			"branch (bid=%s)", j.branchID)
+	}
+
+	entry, exists, err := j.j.getLatestEntry()
+	if err != nil {
+		return err
+	}
+	if !exists || entry.IsLocalSquash {
+		return nil
+	}
+
+	entry.IsLocalSquash = true
+	return j.j.replaceHead(entry)
 }

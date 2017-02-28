@@ -35,9 +35,9 @@ import (
 // dir/block_journal/0...001
 // dir/block_journal/0...fff
 // dir/blocks/...
-// dir/saved_block_journal/EARLIEST
-// dir/saved_block_journal/LATEST
-// dir/saved_block_journal/...
+// dir/gc_block_journal/EARLIEST
+// dir/gc_block_journal/LATEST
+// dir/gc_journal/...
 //
 // block_aggregate_info holds aggregate info about the block journal;
 // currently it just holds the count of stored and unflushed bytes.
@@ -73,7 +73,7 @@ type blockJournal struct {
 	//
 	// TODO: We only really need to save a list of IDs, and not a
 	// full journal.
-	saveUntilMDFlush *diskJournal
+	deferredGC diskJournal
 
 	// s stores all the block data. s should always reflect the
 	// state you get by replaying all the entries in j.
@@ -156,8 +156,8 @@ func (e blockJournalEntry) getSingleContext() (
 		"getSingleContext() erroneously called on op %s", e.Op)
 }
 
-func savedBlockJournalDir(dir string) string {
-	return filepath.Join(dir, "saved_block_journal")
+func deferredGCBlockJournalDir(dir string) string {
+	return filepath.Join(dir, "gc_block_journal")
 }
 
 // makeBlockJournal returns a new blockJournal for the given
@@ -169,35 +169,24 @@ func makeBlockJournal(
 	deferLog := log.CloneWithAddedDepth(1)
 	j := makeDiskJournal(
 		codec, journalPath, reflect.TypeOf(blockJournalEntry{}))
+	gcJournalPath := deferredGCBlockJournalDir(dir)
+	gcj := makeDiskJournal(
+		codec, gcJournalPath, reflect.TypeOf(blockJournalEntry{}))
 
 	storeDir := filepath.Join(dir, "blocks")
 	s := makeBlockDiskStore(codec, storeDir)
 	journal := &blockJournal{
-		codec:    codec,
-		dir:      dir,
-		log:      log,
-		deferLog: deferLog,
-		j:        j,
-		s:        s,
-	}
-
-	// If a saved block journal exists, we need to remove its entries
-	// on the next successful MD flush.
-	savedJournalDir := savedBlockJournalDir(dir)
-	fi, err := ioutil.Stat(savedJournalDir)
-	if err == nil {
-		if !fi.IsDir() {
-			return nil,
-				errors.Errorf("%s exists, but is not a dir", savedJournalDir)
-		}
-		log.CDebugf(ctx, "A saved block journal exists at %s", savedJournalDir)
-		sj := makeDiskJournal(
-			codec, savedJournalDir, reflect.TypeOf(blockJournalEntry{}))
-		journal.saveUntilMDFlush = &sj
+		codec:      codec,
+		dir:        dir,
+		log:        log,
+		deferLog:   deferLog,
+		j:          j,
+		deferredGC: gcj,
+		s:          s,
 	}
 
 	// Get initial aggregate info.
-	err = kbfscodec.DeserializeFromFile(
+	err := kbfscodec.DeserializeFromFile(
 		codec, aggregateInfoPath(dir), &journal.aggregateInfo)
 	if !ioutil.IsNotExist(err) && err != nil {
 		return nil, err
@@ -304,15 +293,6 @@ func (j *blockJournal) appendJournalEntry(
 		return 0, err
 	}
 
-	if j.saveUntilMDFlush != nil {
-		_, err := j.saveUntilMDFlush.appendJournalEntry(nil, entry)
-		if err != nil {
-			// TODO: Should we remove it from the main journal and
-			// fail the whole append?
-			j.log.CWarningf(ctx, "Appending to the saved list failed: %+v", err)
-		}
-	}
-
 	return ordinal, nil
 }
 
@@ -355,10 +335,6 @@ func (j *blockJournal) remove(ctx context.Context, id kbfsblock.ID) (
 	var filesToRemove int64
 	if bytesToRemove > 0 {
 		filesToRemove = filesPerBlockMax
-	}
-	err = j.unstoreBlock(bytesToRemove, filesToRemove)
-	if err != nil {
-		return 0, 0, err
 	}
 
 	return bytesToRemove, filesToRemove, nil
@@ -581,6 +557,27 @@ func (be blockEntriesToFlush) flushNeeded() bool {
 	return be.length() > 0
 }
 
+func (be blockEntriesToFlush) revIsLocalSquash(rev MetadataRevision) bool {
+	for _, entry := range be.other {
+		if !entry.Ignore && entry.Op == mdRevMarkerOp && entry.Revision == rev {
+			return entry.Unignorable
+		}
+	}
+	return false
+}
+
+func (be blockEntriesToFlush) markFlushingBlockIDs(ids map[kbfsblock.ID]bool) {
+	for _, bs := range be.puts.blockStates {
+		ids[bs.blockPtr.ID] = true
+	}
+}
+
+func (be blockEntriesToFlush) clearFlushingBlockIDs(ids map[kbfsblock.ID]bool) {
+	for _, bs := range be.puts.blockStates {
+		delete(ids, bs.blockPtr.ID)
+	}
+}
+
 // Only entries with ordinals less than the given ordinal (assumed to
 // be <= latest ordinal + 1) are returned.  Also returns the maximum
 // MD revision that can be merged after the returned entries are
@@ -781,42 +778,37 @@ func flushBlockEntries(ctx context.Context, log logger.Logger,
 
 func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 	ordinal journalOrdinal, entry blockJournalEntry) (
-	removedBytes, removedFiles, flushedBytes int64, err error) {
+	flushedBytes int64, err error) {
 	earliestOrdinal, err := j.j.readEarliestOrdinal()
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, err
 	}
 
 	if ordinal != earliestOrdinal {
-		return 0, 0, 0, errors.Errorf("Expected ordinal %d, got %d",
+		return 0, errors.Errorf("Expected ordinal %d, got %d",
 			ordinal, earliestOrdinal)
-	}
-
-	_, err = j.j.removeEarliest()
-	if err != nil {
-		return 0, 0, 0, err
 	}
 
 	// Store the block byte count if we've finished a Put.
 	if entry.Op == blockPutOp && !entry.Ignore {
 		id, _, err := entry.getSingleContext()
 		if err != nil {
-			return 0, 0, 0, err
+			return 0, err
 		}
 
 		err = j.s.markFlushed(id)
 		if err != nil {
-			return 0, 0, 0, err
+			return 0, err
 		}
 
 		flushedBytes, err = j.s.getDataSize(id)
 		if err != nil {
-			return 0, 0, 0, err
+			return 0, err
 		}
 
 		err = j.flushBlock(flushedBytes)
 		if err != nil {
-			return 0, 0, 0, err
+			return 0, err
 		}
 	}
 
@@ -829,39 +821,35 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 		liveCount, err := j.s.removeReferences(
 			id, idContexts, earliestOrdinal.String())
 		if err != nil {
-			return 0, 0, 0, err
+			return 0, err
 		}
-		// If j.saveUntilMDFlush is non-nil, then postpone
-		// garbage collection until it becomes nil.
-		if j.saveUntilMDFlush == nil && liveCount == 0 {
-			// Garbage-collect the old entry if we are not
-			// saving blocks until the next MD flush.
-			idRemovedBytes, idRemovedFiles, err := j.remove(ctx, id)
+		// Postpone garbage collection until the next MD flush.
+		if liveCount == 0 {
+			_, err := j.deferredGC.appendJournalEntry(nil, entry)
 			if err != nil {
-				return 0, 0, 0, err
+				return 0, err
 			}
-			removedBytes += idRemovedBytes
-			removedFiles += idRemovedFiles
 		}
 	}
 
-	return removedBytes, removedFiles, flushedBytes, nil
+	_, err = j.j.removeEarliest()
+	if err != nil {
+		return 0, err
+	}
+
+	return flushedBytes, nil
 }
 
 func (j *blockJournal) removeFlushedEntries(ctx context.Context,
-	entries blockEntriesToFlush, tlfID tlf.ID, reporter Reporter) (
-	removedBytes, removedFiles int64, err error) {
+	entries blockEntriesToFlush, tlfID tlf.ID, reporter Reporter) error {
 	// Remove them all!
 	for i, entry := range entries.all {
-		entryRemovedBytes, entryRemovedFiles, flushedBytes, err :=
-			j.removeFlushedEntry(
-				ctx, entries.first+journalOrdinal(i), entry)
+		flushedBytes, err := j.removeFlushedEntry(
+			ctx, entries.first+journalOrdinal(i), entry)
 		if err != nil {
-			return 0, 0, err
+			return err
 		}
 
-		removedBytes += entryRemovedBytes
-		removedFiles += entryRemovedFiles
 		reporter.NotifySyncStatus(ctx, &keybase1.FSPathSyncStatus{
 			PublicTopLevelFolder: tlfID.IsPublic(),
 			// Path: TODO,
@@ -870,7 +858,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 			SyncedBytes: flushedBytes,
 		})
 	}
-	return removedBytes, removedFiles, nil
+	return nil
 }
 
 func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
@@ -978,157 +966,79 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkers(ctx context.Context,
 		idsToIgnore[id] = true
 	}
 
-	err := j.ignoreBlocksAndMDRevMarkersInJournal(ctx, idsToIgnore, rev, j.j)
-	if err != nil {
-		return err
-	}
-
-	if j.saveUntilMDFlush == nil {
-		return nil
-	}
-
-	return j.ignoreBlocksAndMDRevMarkersInJournal(
-		ctx, idsToIgnore, rev, *j.saveUntilMDFlush)
+	return j.ignoreBlocksAndMDRevMarkersInJournal(ctx, idsToIgnore, rev, j.j)
 }
 
-func (j *blockJournal) saveBlocksUntilNextMDFlush() error {
-	if j.saveUntilMDFlush != nil {
-		return nil
-	}
-
-	// Copy the current journal entries into a new journal.  After the
-	// next MD flush, we can use the saved journal to delete the block
-	// data for all the entries in the saved journal.
-	first, err := j.j.readEarliestOrdinal()
+// getDeferredRange gets the earliest and latest revision of the
+// deferred GC journal.  If the returned length is 0, there's no need
+// for further GC.
+func (j *blockJournal) getDeferredGCRange() (
+	len int, earliest, latest journalOrdinal, err error) {
+	earliest, err = j.deferredGC.readEarliestOrdinal()
 	if ioutil.IsNotExist(err) {
-		return nil
+		return 0, 0, 0, nil
 	} else if err != nil {
-		return err
+		return 0, 0, 0, err
 	}
 
-	last, err := j.j.readLatestOrdinal()
+	latest, err = j.deferredGC.readLatestOrdinal()
 	if ioutil.IsNotExist(err) {
-		return nil
+		return 0, 0, 0, nil
 	} else if err != nil {
-		return err
+		return 0, 0, 0, err
 	}
 
-	savedJournalDir := savedBlockJournalDir(j.dir)
-	sj := makeDiskJournal(
-		j.codec, savedJournalDir, reflect.TypeOf(blockJournalEntry{}))
-	savedJournal := &sj
-
-	for i := first; i <= last; i++ {
-		e, err := j.readJournalEntry(i)
-		if err != nil {
-			return err
-		}
-
-		savedJournal.appendJournalEntry(nil, e)
-	}
-
-	j.saveUntilMDFlush = savedJournal
-	return nil
+	return int(latest - earliest + 1), earliest, latest, nil
 }
 
-// onMDFlush removes at most `maxToRemove` blocks from the
-// `saveUntilMDFlush` journal if one exists.  If `lastToRemove` is
-// zero, it flushes the complete `saveUntilMDFlush` if it has fewer
-// than `maxToRemove` entries; if it doesn't flush the entire journal,
-// it returns the ordinal of the current last entry.  If
-// `lastToRemove` is non-zero, it only flushes up to the minimum of
-// `lastToRemove` and the earliest entry + `maxToRemove`; if this
-// flushes the entire saved journal or reaches a non-ignored marker
-// for MD revision `flushedMDRev`, it returns 0, otherwise it returns
-// `lastToRemove`.  It's intended that the caller should call this
-// function repeatedly until it returns 0, releasing any locks in
-// between calls so it doesn't block other operations for too long.
-func (j *blockJournal) onMDFlush(ctx context.Context,
-	maxToRemove uint64, flushedMDRev MetadataRevision,
-	lastToRemove journalOrdinal) (
-	nextLastToRemove journalOrdinal,
+// doGC collects any unreferenced blocks from flushed
+// entries. earliest and latest should be from a call to
+// getDeferredGCRange, and clearDeferredGCRange should be called after
+// this function. This function only reads the deferred GC journal at
+// the given range and reads/writes the block store, so callers may
+// use that to relax any synchronization requirements.
+func (j *blockJournal) doGC(ctx context.Context,
+	earliest, latest journalOrdinal) (
 	removedBytes, removedFiles int64, err error) {
-	if j.saveUntilMDFlush == nil {
-		return 0, 0, 0, nil
+	// Safe to check the earliest ordinal, even if the caller is using
+	// relaxed synchronization, since this is the only function that
+	// removes items from the deferred journal.
+	first, err := j.deferredGC.readEarliestOrdinal()
+	if err != nil {
+		return 0, 0, err
+	}
+	if first != earliest {
+		return 0, 0, errors.Errorf("Expected deferred earliest %d, "+
+			"but actual earliest is %d", earliest, first)
 	}
 
-	if maxToRemove == 0 {
-		return 0, 0, 0, errors.New("maxToRemove must be non-zero")
-	}
-
-	// Delete the block data for anything in the saved journal.
-	first, err := j.saveUntilMDFlush.readEarliestOrdinal()
-	if ioutil.IsNotExist(err) {
-		return 0, 0, 0, nil
-	} else if err != nil {
-		return 0, 0, 0, err
-	}
-
-	last, err := j.saveUntilMDFlush.readLatestOrdinal()
-	if ioutil.IsNotExist(err) {
-		return 0, 0, 0, nil
-	} else if err != nil {
-		return 0, 0, 0, err
-	}
-
-	if lastToRemove != 0 {
-		if last < lastToRemove {
-			return 0, 0, 0, errors.Errorf("Last removal requested is %d, but "+
-				"last entry in journal is %d", lastToRemove, last)
-		} else if first > lastToRemove {
-			return 0, 0, 0, errors.Errorf("Last removal requested is %d, but first "+
-				"entry in journal is %d", lastToRemove, first)
-		}
-
-		last = lastToRemove
-	}
-
-	lastMin := last
-	if max := journalOrdinal(maxToRemove); lastMin > first+max-1 {
-		j.log.CDebugf(ctx, "Last removal requested is %d, but capping at %d",
-			last, first+max-1)
-		lastMin = first + max - 1
-	}
-
-	j.log.CDebugf(ctx, "Removing saved data for entries [%d, %d]",
-		first, lastMin)
-	for i := first; i <= lastMin; i++ {
-		e, err := j.saveUntilMDFlush.readJournalEntry(i)
+	// Delete the block data for anything in the GC journal.
+	j.log.CDebugf(ctx, "Garbage-collecting blocks for entries [%d, %d]",
+		earliest, latest)
+	for i := earliest; i <= latest; i++ {
+		e, err := j.deferredGC.readJournalEntry(i)
 		if err != nil {
-			return 0, 0, 0, err
-		}
-
-		_, err = j.saveUntilMDFlush.removeEarliest()
-		if err != nil {
-			return 0, 0, 0, err
+			return 0, 0, err
 		}
 
 		entry, ok := e.(blockJournalEntry)
 		if !ok {
-			return 0, 0, 0, errors.New("Unexpected block journal entry type in saved")
-		}
-
-		if entry.Op == mdRevMarkerOp && !entry.Ignore &&
-			entry.Revision >= flushedMDRev && i != last {
-			// We've reached the marker for the flushed revision, but
-			// there are still more things to keep in the saved
-			// journal, so return early without removing it.
-			j.log.CDebugf(ctx, "Reached the marker for flushed revision %d "+
-				"at ordinal %d", flushedMDRev, i)
-			return 0, removedBytes, removedFiles, nil
+			return 0, 0, errors.New("Unexpected block journal entry type to GC")
 		}
 
 		for id := range entry.Contexts {
+			// TODO: once we support references, this needs to be made
+			// goroutine-safe.
 			hasRef, err := j.s.hasAnyRef(id)
 			if err != nil {
-				return 0, 0, 0, err
+				return 0, 0, err
 			}
 			if !hasRef {
 				// Garbage-collect the old entry.
 				idRemovedBytes, idRemovedFiles, err :=
 					j.remove(ctx, id)
 				if err != nil {
-					return 0, 0, 0, err
+					return 0, 0, err
 				}
 				removedBytes += idRemovedBytes
 				removedFiles += idRemovedFiles
@@ -1136,21 +1046,19 @@ func (j *blockJournal) onMDFlush(ctx context.Context,
 		}
 	}
 
-	if last > lastMin {
-		// The saved journal isn't empty and we were asked to remove
-		// more entries than we were able to; the caller must call us
-		// again.
-		return last, removedBytes, removedFiles, nil
-	}
+	return removedBytes, removedFiles, nil
+}
 
-	j.log.CDebugf(ctx, "Removed last saved entry, removing saved journal")
-	err = ioutil.RemoveAll(j.saveUntilMDFlush.dir)
-	if err != nil {
-		return 0, 0, 0, err
+// clearDeferredGCRange removes the given range from the deferred journal.
+func (j *blockJournal) clearDeferredGCRange(
+	earliest, latest journalOrdinal) error {
+	for i := earliest; i <= latest; i++ {
+		_, err := j.deferredGC.removeEarliest()
+		if err != nil {
+			return err
+		}
 	}
-
-	j.saveUntilMDFlush = nil
-	return 0, removedBytes, removedFiles, nil
+	return nil
 }
 
 func (j *blockJournal) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, error) {
@@ -1241,6 +1149,37 @@ func (j *blockJournal) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, error)
 		}
 	}
 	return refs, nil
+}
+
+func (j *blockJournal) markLatestRevMarkerAsUnignorable() error {
+	first, err := j.j.readEarliestOrdinal()
+	if ioutil.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	last, err := j.j.readLatestOrdinal()
+	if err != nil {
+		return err
+	}
+
+	// Iterate backwards to find the latest md marker.
+	for i := last; i >= first && i <= last; i-- {
+		entry, err := j.j.readJournalEntry(i)
+		if err != nil {
+			return err
+		}
+		e := entry.(blockJournalEntry)
+		if e.Ignore || e.Op != mdRevMarkerOp {
+			continue
+		}
+
+		e.Unignorable = true
+		return j.j.writeJournalEntry(i, e)
+	}
+
+	return errors.Errorf("Couldn't find an md rev marker between %d and %d",
+		first, last)
 }
 
 func (j *blockJournal) checkInSyncForTest() error {

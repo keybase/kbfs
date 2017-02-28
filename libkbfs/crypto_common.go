@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/binary"
 	"io"
@@ -294,15 +293,16 @@ func (c CryptoCommon) DecryptPrivateMetadata(
 
 const minBlockSize = 256
 
-// nextPowerOfTwo returns next power of 2 greater than the input n.
+// powerOfTwoEqualOrGreater returns smallest power of 2 greater than or equal
+// to the input n.
 // https://en.wikipedia.org/wiki/Power_of_two#Algorithm_to_round_up_to_power_of_two
-func nextPowerOfTwo(n uint32) uint32 {
-	if n < minBlockSize {
+func powerOfTwoEqualOrGreater(n int) int {
+	if n <= minBlockSize {
 		return minBlockSize
 	}
 	if n&(n-1) == 0 {
-		// if n is already power of 2, get the next one
-		n++
+		// if n is already power of 2, return it
+		return n
 	}
 
 	n--
@@ -311,6 +311,7 @@ func nextPowerOfTwo(n uint32) uint32 {
 	n = n | (n >> 4)
 	n = n | (n >> 8)
 	n = n | (n >> 16)
+	n = n | (n >> 16 >> 16) // make it work with 64 bit int; no effect on 32bit.
 	n++
 
 	return n
@@ -318,50 +319,35 @@ func nextPowerOfTwo(n uint32) uint32 {
 
 const padPrefixSize = 4
 
-// padBlock adds random padding to an encoded block.
+// padBlock adds zero padding to an encoded block.
 func (c CryptoCommon) padBlock(block []byte) ([]byte, error) {
-	blockLen := uint32(len(block))
-	overallLen := nextPowerOfTwo(blockLen)
-	padLen := int64(overallLen - blockLen)
+	totalLen := powerOfTwoEqualOrGreater(len(block))
 
-	buf := bytes.NewBuffer(make([]byte, 0, overallLen+padPrefixSize))
+	buf := make([]byte, padPrefixSize+totalLen)
+	binary.LittleEndian.PutUint32(buf, uint32(len(block)))
 
-	// first 4 bytes contain the length of the block data
-	if err := binary.Write(buf, binary.LittleEndian, blockLen); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	// followed by the actual block data
-	buf.Write(block)
-
-	// followed by random data
-	n, err := io.CopyN(buf, rand.Reader, padLen)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if n != padLen {
-		return nil, errors.WithStack(
-			kbfscrypto.UnexpectedShortCryptoRandRead{})
-	}
-
-	return buf.Bytes(), nil
+	copy(buf[padPrefixSize:], block)
+	return buf, nil
 }
 
 // depadBlock extracts the actual block data from a padded block.
 func (c CryptoCommon) depadBlock(paddedBlock []byte) ([]byte, error) {
-	buf := bytes.NewBuffer(paddedBlock)
-
-	var blockLen uint32
-	if err := binary.Read(buf, binary.LittleEndian, &blockLen); err != nil {
-		return nil, errors.WithStack(err)
+	totalLen := len(paddedBlock)
+	if totalLen < padPrefixSize {
+		return nil, errors.WithStack(io.ErrUnexpectedEOF)
 	}
+
+	blockLen := binary.LittleEndian.Uint32(paddedBlock)
 	blockEndPos := int(blockLen + padPrefixSize)
 
-	if len(paddedBlock) < blockEndPos {
+	if totalLen < blockEndPos {
 		return nil, errors.WithStack(
-			PaddedBlockReadError{ActualLen: len(paddedBlock), ExpectedLen: blockEndPos})
+			PaddedBlockReadError{
+				ActualLen:   totalLen,
+				ExpectedLen: blockEndPos,
+			})
 	}
-	return buf.Next(int(blockLen)), nil
+	return paddedBlock[padPrefixSize:blockEndPos], nil
 }
 
 // EncryptBlock implements the Crypto interface for CryptoCommon.

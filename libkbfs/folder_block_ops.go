@@ -273,6 +273,7 @@ func (fbo *folderBlockOps) getBlockHelperLocked(ctx context.Context,
 		fbo.id(), ptr, branch); err == nil {
 		return block, nil
 	}
+
 	if block, hasPrefetched, lifetime, err := fbo.config.BlockCache().GetWithPrefetch(ptr); err == nil {
 		// If the block was cached in the past, we need to handle it as if it's
 		// an on-demand request so that its downstream prefetches are triggered
@@ -287,12 +288,7 @@ func (fbo *folderBlockOps) getBlockHelperLocked(ctx context.Context,
 		return nil, err
 	}
 
-	// fetch the block, and add to cache
-	block := newBlock()
-
-	bops := fbo.config.BlockOps()
-
-	if notifyPath.isValid() {
+	if notifyPath.isValidForNotification() {
 		fbo.config.Reporter().Notify(ctx, readNotification(notifyPath, false))
 		defer fbo.config.Reporter().Notify(ctx,
 			readNotification(notifyPath, true))
@@ -308,6 +304,9 @@ func (fbo *folderBlockOps) getBlockHelperLocked(ctx context.Context,
 	// same lState, we can't safely unlock since some of the other
 	// goroutines may be operating on the data assuming they have the
 	// lock.
+	// fetch the block, and add to cache
+	block := newBlock()
+	bops := fbo.config.BlockOps()
 	var err error
 	if rtype != blockReadParallel && rtype != blockLookup {
 		fbo.blockLock.DoRUnlockedIfPossible(lState, func(*lockState) {
@@ -640,7 +639,10 @@ func (fbo *folderBlockOps) DeepCopyFile(
 	// so only a read lock is needed.
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
-	var uid keybase1.UID // Data reads don't depend on the uid.
+	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return BlockPointer{}, nil, err
+	}
 	fd := fbo.newFileDataWithCache(lState, file, uid, kmd, dirtyBcache)
 	return fd.deepCopy(ctx, dataVer)
 }
@@ -650,7 +652,10 @@ func (fbo *folderBlockOps) UndupChildrenInCopy(ctx context.Context,
 	dirtyBcache DirtyBlockCache, topBlock *FileBlock) ([]BlockInfo, error) {
 	fbo.blockLock.Lock(lState)
 	defer fbo.blockLock.Unlock(lState)
-	var uid keybase1.UID // Data reads don't depend on the uid.
+	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
 	fd := fbo.newFileDataWithCache(lState, file, uid, kmd, dirtyBcache)
 	return fd.undupChildrenInCopy(ctx, fbo.config.BlockCache(),
 		fbo.config.BlockOps(), bps, topBlock)
@@ -661,7 +666,10 @@ func (fbo *folderBlockOps) ReadyNonLeafBlocksInCopy(ctx context.Context,
 	dirtyBcache DirtyBlockCache, topBlock *FileBlock) ([]BlockInfo, error) {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
-	var uid keybase1.UID // Data reads don't depend on the uid.
+	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
 	fd := fbo.newFileDataWithCache(lState, file, uid, kmd, dirtyBcache)
 	return fd.readyNonLeafBlocksInCopy(ctx, fbo.config.BlockCache(),
 		fbo.config.BlockOps(), bps, topBlock)
@@ -1735,7 +1743,8 @@ func (fbo *folderBlockOps) revertSyncInfoAfterRecoverableError(
 // ReadyBlock is a thin wrapper around BlockOps.Ready() that handles
 // checking for duplicates.
 func ReadyBlock(ctx context.Context, bcache BlockCache, bops BlockOps,
-	crypto cryptoPure, kmd KeyMetadata, block Block, uid keybase1.UID) (
+	crypto cryptoPure, kmd KeyMetadata, block Block, uid keybase1.UID,
+	bType keybase1.BlockType) (
 	info BlockInfo, plainSize int, readyBlockData ReadyBlockData, err error) {
 	var ptr BlockPointer
 	directType := IndirectBlock
@@ -1776,10 +1785,7 @@ func ReadyBlock(ctx context.Context, bcache BlockCache, bops BlockOps,
 			KeyGen:     kmd.LatestKeyGeneration(),
 			DataVer:    block.DataVersion(),
 			DirectType: directType,
-			Context: kbfsblock.Context{
-				Creator:  uid,
-				RefNonce: kbfsblock.ZeroRefNonce,
-			},
+			Context:    kbfsblock.MakeFirstContext(uid, bType),
 		}
 	}
 
@@ -1884,6 +1890,7 @@ func (fbo *folderBlockOps) startSyncWrite(ctx context.Context,
 		md.SetRefBytes(si.refBytes)
 		md.AddDiskUsage(si.refBytes)
 		md.SetUnrefBytes(si.unrefBytes)
+		md.SetMDRefBytes(0) // this will be calculated anew
 		md.SetDiskUsage(md.DiskUsage() - si.unrefBytes)
 		syncState.newIndirectFileBlockPtrs = append(
 			syncState.newIndirectFileBlockPtrs, si.op.Refs()...)

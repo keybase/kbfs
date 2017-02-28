@@ -62,19 +62,29 @@ type Context struct {
 	// RefNonce (it can't be a monotonically increasing number because
 	// that would require coordination among clients).
 	RefNonce RefNonce `codec:"r,omitempty"`
+	// BlockType indicates the type of the block (data
+	// vs. metadata). This is used, for example, when deciding how the
+	// block affects quotas.
+	BlockType keybase1.BlockType `codec:"b,omitempty"`
 }
 
 // MakeFirstContext makes the initial context for a block with the
 // given creator.
-func MakeFirstContext(creator keybase1.UID) Context {
-	return Context{Creator: creator}
+func MakeFirstContext(creator keybase1.UID, bType keybase1.BlockType) Context {
+	return Context{Creator: creator, BlockType: bType}
 }
 
 // MakeContext makes a context with the given creator, writer, and
 // nonce, where the writer is not necessarily equal to the creator,
 // and the nonce is usually non-zero.
-func MakeContext(creator, writer keybase1.UID, nonce RefNonce) Context {
-	return Context{Creator: creator, Writer: writer, RefNonce: nonce}
+func MakeContext(creator, writer keybase1.UID, nonce RefNonce,
+	bType keybase1.BlockType) Context {
+	return Context{
+		Creator:   creator,
+		Writer:    writer,
+		RefNonce:  nonce,
+		BlockType: bType,
+	}
 }
 
 // GetCreator returns the creator of the associated block.
@@ -106,6 +116,11 @@ func (c Context) GetRefNonce() RefNonce {
 	return c.RefNonce
 }
 
+// GetBlockType returns the block type of the associated block.
+func (c Context) GetBlockType() keybase1.BlockType {
+	return c.BlockType
+}
+
 // IsFirstRef returns whether or not p represents the first reference
 // to the corresponding ID.
 func (c Context) IsFirstRef() bool {
@@ -122,6 +137,9 @@ func (c Context) String() string {
 	}
 	if c.RefNonce != ZeroRefNonce {
 		s += fmt.Sprintf(", RefNonce: %s", c.RefNonce)
+	}
+	if c.BlockType != keybase1.BlockType_DATA {
+		s += ", BlockType: MD"
 	}
 	s += "}"
 	return s

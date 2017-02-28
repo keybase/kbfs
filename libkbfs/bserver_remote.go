@@ -283,10 +283,13 @@ func makeBlockIDCombo(id kbfsblock.ID, context kbfsblock.Context) keybase1.Block
 	return keybase1.BlockIdCombo{
 		BlockHash: id.String(),
 		ChargedTo: context.GetCreator(),
+		BlockType: context.GetBlockType(),
 	}
 }
 
 func makeBlockReference(id kbfsblock.ID, context kbfsblock.Context) keybase1.BlockReference {
+	// Block references to MD blocks are allowed, because they can be
+	// deleted in the case of an MD put failing.
 	return keybase1.BlockReference{
 		Bid: makeBlockIDCombo(id, context),
 		// The actual writer to modify quota for.

@@ -868,8 +868,7 @@ func (c *ConfigLocal) journalizeBcaches(jServer *JournalServer) error {
 	// server.  Since this doesn't rely directly on the network,
 	// there's no need for an adaptive sync buffer size, so we
 	// always set the min and max to the same thing.
-	maxSyncBufferSize :=
-		int64(MaxBlockSizeBytesDefault * maxParallelBlockPuts * 2)
+	maxSyncBufferSize := int64(ForcedBranchSquashBytesThresholdDefault)
 	log := c.MakeLogger("DBCJ")
 	journalCache := NewDirtyBlockCacheStandard(c.clock, log,
 		maxSyncBufferSize, maxSyncBufferSize, maxSyncBufferSize)
@@ -916,10 +915,11 @@ func (c *ConfigLocal) EnableJournaling(
 	const journalByteLimitFrac = 0.25
 	// Set the absolute journal byte limit to 50 GiB for now.
 	const journalByteLimit int64 = 50 * 1024 * 1024 * 1024
-	// TODO: Also limit the inode count.
+	// Set the absolute journal file limit to 1.5 million for now.
+	const journalFileLimit int64 = 1500000
 	bdl, err := newBackpressureDiskLimiter(
 		log, backpressureMinThreshold, backpressureMaxThreshold,
-		journalByteLimitFrac, journalByteLimit,
+		journalByteLimitFrac, journalByteLimit, journalFileLimit,
 		defaultDiskLimitMaxDelay, journalRoot)
 	if err != nil {
 		return err

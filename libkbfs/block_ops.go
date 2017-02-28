@@ -49,6 +49,21 @@ func NewBlockOpsStandard(config blockOpsConfig,
 // Get implements the BlockOps interface for BlockOpsStandard.
 func (b *BlockOpsStandard) Get(ctx context.Context, kmd KeyMetadata,
 	blockPtr BlockPointer, block Block, lifetime BlockCacheLifetime) error {
+	// Check the journal explicitly first, so we don't get stuck in
+	// the block-fetching queue.
+	if journalBServer, ok := b.config.BlockServer().(journalBlockServer); ok {
+		data, serverHalf, found, err := journalBServer.getBlockFromJournal(
+			kmd.TlfID(), blockPtr.ID)
+		if err != nil {
+			return err
+		}
+		if found {
+			return assembleBlock(
+				ctx, b.config.keyGetter(), b.config.Codec(),
+				b.config.cryptoPure(), kmd, blockPtr, block, data, serverHalf)
+		}
+	}
+
 	errCh := b.queue.Request(ctx, defaultOnDemandRequestPriority, kmd, blockPtr, block, lifetime)
 	return <-errCh
 }
