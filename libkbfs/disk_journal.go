@@ -39,6 +39,8 @@ import (
 // level.
 //
 // TODO: Make IO ops cancellable.
+//
+// TODO: Read ordinals into memory on startup.
 type diskJournal struct {
 	codec     kbfscodec.Codec
 	dir       string
