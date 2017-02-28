@@ -88,7 +88,8 @@ func (f timedProfileFile) Open(ctx context.Context,
 	select {
 	case <-time.After(f.duration):
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		// Ignore the error and continue, returning the
+		// profile data up to now.
 	}
 
 	f.profile.Stop()
