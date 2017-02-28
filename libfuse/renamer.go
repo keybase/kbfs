@@ -38,11 +38,11 @@ type renamerOp interface {
 	// renamerDone should be returned. Otherwise, renamerNext should be returned
 	// so that renamer knows to try next renamerOp.
 	//
-	// It is important that, when renamerDone is returned, error is set to either
-	// nil, or something FUSE understands, since in this case error is directly
-	// returned back to FUSE.  On the other hand, when renamerNext is returned,
-	// error should set to the real error so subsequent renamerOps have enough
-	// information to deal with it.
+	// Note that when renamerDone is returned, the error, if non-nil, is directly
+	// returned back to FUSE. So it's necessary to translate error to something
+	// FUSE understands if EIO isn't good enough. On the other hand, when
+	// renamerNext is returned, error should set to the real error so subsequent
+	// renamerOps have enough information to deal with it.
 	do(ctx context.Context,
 		oldParent *Dir, oldEntryName string, newParent *Dir, newEntryName string,
 		req *fuse.RenameRequest, prevErr error) (error, renamerStatus)
