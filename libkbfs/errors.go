@@ -1221,3 +1221,11 @@ type NoMergedMDError struct {
 func (e NoMergedMDError) Error() string {
 	return fmt.Sprintf("No MD yet for TLF %s", e.tlf)
 }
+
+// InvalidFavoritesOpError indicates an unknown FavoritesOp has been provided.
+type InvalidFavoritesOpError struct{}
+
+// Error implements the error interface for InvalidFavoritesOpError.
+func (InvalidFavoritesOpError) Error() string {
+	return "invalid FavoritesOp"
+}
