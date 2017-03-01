@@ -712,3 +712,19 @@ type NodeMetadata struct {
 	LastWriterUnverified libkb.NormalizedUsername
 	BlockInfo            BlockInfo
 }
+
+type FavoritesOp int
+
+const (
+	_ FavoritesOp = iota
+	FavoritesOpAdd
+	FavoritesOpAddNewlyCreated
+	FavoritesOpRemove
+	FavoritesOpNoChange
+)
+
+type InvalidFavoritesOpError struct{}
+
+func (InvalidFavoritesOpError) Error() string {
+	return "invalid FavoritesOp"
+}
