@@ -45,17 +45,34 @@ type diskJournal struct {
 	codec     kbfscodec.Codec
 	dir       string
 	entryType reflect.Type
+
+	earliest, latest journalOrdinal
 }
 
 // makeDiskJournal returns a new diskJournal for the given directory.
 func makeDiskJournal(
 	codec kbfscodec.Codec, dir string, entryType reflect.Type) (
 	*diskJournal, error) {
-	return &diskJournal{
+	j := &diskJournal{
 		codec:     codec,
 		dir:       dir,
 		entryType: entryType,
-	}, nil
+	}
+
+	earliest, err := j.readEarliestOrdinalReal()
+	if err != nil {
+		return nil, err
+	}
+
+	latest, err := j.readLatestOrdinalReal()
+	if err != nil {
+		return nil, err
+	}
+
+	j.earliest = earliest
+	j.latest = latest
+
+	return j, nil
 }
 
 // journalOrdinal is the ordinal used for naming journal entries.
@@ -131,6 +148,15 @@ func (j *diskJournal) writeOrdinal(
 		return errors.WithStack(io.ErrShortWrite)
 	}
 	return nil
+}
+
+func (j diskJournal) readEarliestOrdinalReal() (
+	journalOrdinal, error) {
+	return j.readOrdinal(j.earliestPath())
+}
+
+func (j diskJournal) readLatestOrdinalReal() (journalOrdinal, error) {
+	return j.readOrdinal(j.latestPath())
 }
 
 func (j diskJournal) readEarliestOrdinal() (
