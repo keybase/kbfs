@@ -345,6 +345,45 @@ func (fs *KBFSOpsStandard) getOrInitializeNewMDMaster(ctx context.Context,
 
 }
 
+// setFirstRMDIfNeeded sets the given RMD as the initial trusted head
+// of the folderBranchOps corresponding the TlfID of `rmd`, if a
+// folderbranchOps instance didn't already exist for that TlfID.  If
+// that folderBranchOps already existed (perhaps under a different
+// tlfHandle), it will only be updated if it didn't already have a
+// head set (and will otherwise rely on the normal notification
+// channel for updates).
+func (fs *KBFSOpsStandard) setFirstRMDIfNeeded(ctx context.Context,
+	tlfHandle *TlfHandle, rmd ImmutableRootMetadata, fop FavoritesOp) error {
+	// Make sure fbo exists and head is set so that next time we use this we
+	// don't need to hit server even when there isn't any FS activity.
+	fb := FolderBranch{Tlf: rmd.TlfID(), Branch: MasterBranch}
+	fboAlreadyExists := func() bool {
+		fs.opsLock.RLock()
+		defer fs.opsLock.RUnlock()
+		_, ok := fs.ops[fb]
+		return ok
+	}()
+	fbo := fs.getOpsByHandle(ctx, tlfHandle, fb, fop)
+	if fboAlreadyExists {
+		// The existing FBO will get the update via the normal
+		// registration channels.
+		fs.log.CDebugf(ctx, "Ignoring handle-changing MD for TLF %s "+
+			"(new handle %s)", rmd.TlfID(), tlfHandle.GetCanonicalPath())
+
+		// Get the head again, just in case the FBO was created but no
+		// head has been set yet.
+		lState := makeFBOLockState()
+		_, err := fbo.getMDForReadNeedIdentifyOnMaybeFirstAccess(ctx, lState)
+		if err != nil {
+			return err
+		}
+	} else if err := fbo.SetInitialHeadFromServer(ctx, rmd); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (fs *KBFSOpsStandard) getMDByHandle(ctx context.Context,
 	tlfHandle *TlfHandle, fop FavoritesOp) (rmd ImmutableRootMetadata, err error) {
 	fbo := func() *folderBranchOps {
@@ -381,16 +420,10 @@ func (fs *KBFSOpsStandard) getMDByHandle(ctx context.Context,
 		}
 	}
 
-	// Make sure fbo exists and head is set so that next time we use this we
-	// don't need to hit server even when there isn't any FS activity.
-	if fbo == nil {
-		fb := FolderBranch{Tlf: rmd.TlfID(), Branch: MasterBranch}
-		fbo = fs.getOpsByHandle(ctx, tlfHandle, fb, fop)
-	}
-	if err = fbo.SetInitialHeadFromServer(ctx, rmd); err != nil {
+	err = fs.setFirstRMDIfNeeded(ctx, tlfHandle, rmd, fop)
+	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
-
 	return rmd, nil
 }
 
@@ -487,12 +520,12 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 		return nil, EntryInfo{}, err
 	}
 
-	ops := fs.getOpsByHandle(ctx, h, fb, FavoritesOpAdd)
-
-	err = ops.SetInitialHeadFromServer(ctx, md)
+	err = fs.setFirstRMDIfNeeded(ctx, h, md, FavoritesOpAdd)
 	if err != nil {
 		return nil, EntryInfo{}, err
 	}
+
+	ops := fs.getOpsByHandle(ctx, h, fb, FavoritesOpAdd)
 
 	node, ei, _, err = ops.getRootNode(ctx)
 	if err != nil {
