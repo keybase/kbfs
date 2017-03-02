@@ -29,7 +29,9 @@ func TestDiskJournalClear(t *testing.T) {
 	}()
 
 	codec := kbfscodec.NewMsgpack()
-	j := makeDiskJournal(codec, tempdir, reflect.TypeOf(testJournalEntry{}))
+	j, err := makeDiskJournal(
+		codec, tempdir, reflect.TypeOf(testJournalEntry{}))
+	require.NoError(t, err)
 
 	o, err := j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
@@ -58,7 +60,9 @@ func TestDiskJournalMoveEmpty(t *testing.T) {
 	newDir := oldDir + ".new"
 
 	codec := kbfscodec.NewMsgpack()
-	j := makeDiskJournal(codec, oldDir, reflect.TypeOf(testJournalEntry{}))
+	j, err := makeDiskJournal(
+		codec, oldDir, reflect.TypeOf(testJournalEntry{}))
+	require.NoError(t, err)
 	require.Equal(t, oldDir, j.dir)
 
 	moveOldDir, err := j.move(newDir)
@@ -79,7 +83,9 @@ func TestDiskJournalMove(t *testing.T) {
 	newDir := oldDir + ".new"
 
 	codec := kbfscodec.NewMsgpack()
-	j := makeDiskJournal(codec, oldDir, reflect.TypeOf(testJournalEntry{}))
+	j, err := makeDiskJournal(
+		codec, oldDir, reflect.TypeOf(testJournalEntry{}))
+	require.NoError(t, err)
 	require.Equal(t, oldDir, j.dir)
 
 	o, err := j.appendJournalEntry(nil, testJournalEntry{1})
