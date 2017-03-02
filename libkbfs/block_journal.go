@@ -65,7 +65,7 @@ type blockJournal struct {
 	deferLog logger.Logger
 
 	// j is the main journal.
-	j diskJournal
+	j *diskJournal
 
 	// saveUntilMDFlush, when non-nil, prevents garbage collection
 	// of blocks. When removed, all the referenced blocks are
@@ -73,7 +73,7 @@ type blockJournal struct {
 	//
 	// TODO: We only really need to save a list of IDs, and not a
 	// full journal.
-	deferredGC diskJournal
+	deferredGC *diskJournal
 
 	// s stores all the block data. s should always reflect the
 	// state you get by replaying all the entries in j.
@@ -881,7 +881,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 
 func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 	idsToIgnore map[kbfsblock.ID]bool, rev MetadataRevision,
-	dj diskJournal) error {
+	dj *diskJournal) error {
 	first, err := dj.readEarliestOrdinal()
 	if ioutil.IsNotExist(err) {
 		return nil

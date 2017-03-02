@@ -50,8 +50,8 @@ type diskJournal struct {
 // makeDiskJournal returns a new diskJournal for the given directory.
 func makeDiskJournal(
 	codec kbfscodec.Codec, dir string, entryType reflect.Type) (
-	diskJournal, error) {
-	return diskJournal{
+	*diskJournal, error) {
+	return &diskJournal{
 		codec:     codec,
 		dir:       dir,
 		entryType: entryType,
@@ -102,7 +102,7 @@ func (j diskJournal) readOrdinal(path string) (journalOrdinal, error) {
 	return makeJournalOrdinal(string(buf))
 }
 
-func (j diskJournal) writeOrdinal(
+func (j *diskJournal) writeOrdinal(
 	path string, o journalOrdinal) error {
 	// Don't use ioutil.WriteFile because it truncates the file first,
 	// and if there's a crash it will leave the journal in an unknown
@@ -138,7 +138,7 @@ func (j diskJournal) readEarliestOrdinal() (
 	return j.readOrdinal(j.earliestPath())
 }
 
-func (j diskJournal) writeEarliestOrdinal(o journalOrdinal) error {
+func (j *diskJournal) writeEarliestOrdinal(o journalOrdinal) error {
 	return j.writeOrdinal(j.earliestPath(), o)
 }
 
@@ -146,12 +146,12 @@ func (j diskJournal) readLatestOrdinal() (journalOrdinal, error) {
 	return j.readOrdinal(j.latestPath())
 }
 
-func (j diskJournal) writeLatestOrdinal(o journalOrdinal) error {
+func (j *diskJournal) writeLatestOrdinal(o journalOrdinal) error {
 	return j.writeOrdinal(j.latestPath(), o)
 }
 
 // clear completely removes the journal directory.
-func (j diskJournal) clear() error {
+func (j *diskJournal) clear() error {
 	// Clear ordinals first to reduce the chances of leaving the
 	// journal in a weird state if we crash in the middle of
 	// removing the files.
@@ -177,7 +177,7 @@ func (j diskJournal) clear() error {
 // removeEarliest removes the earliest entry in the journal. If that
 // entry was the last one, clear() is also called, and true is
 // returned.
-func (j diskJournal) removeEarliest() (empty bool, err error) {
+func (j *diskJournal) removeEarliest() (empty bool, err error) {
 	earliestOrdinal, err := j.readEarliestOrdinal()
 	if err != nil {
 		return false, err
@@ -226,7 +226,7 @@ func (j diskJournal) readJournalEntry(o journalOrdinal) (interface{}, error) {
 	return entry.Elem().Interface(), nil
 }
 
-func (j diskJournal) writeJournalEntry(
+func (j *diskJournal) writeJournalEntry(
 	o journalOrdinal, entry interface{}) error {
 	entryType := reflect.TypeOf(entry)
 	if entryType != j.entryType {
@@ -245,7 +245,7 @@ func (j diskJournal) writeJournalEntry(
 // an error if *o is not the successor of the latest ordinal. If
 // successful, appendJournalEntry returns the ordinal of the
 // just-appended entry.
-func (j diskJournal) appendJournalEntry(
+func (j *diskJournal) appendJournalEntry(
 	o *journalOrdinal, entry interface{}) (journalOrdinal, error) {
 	// TODO: Consider caching the latest ordinal in memory instead
 	// of reading it from disk every time.

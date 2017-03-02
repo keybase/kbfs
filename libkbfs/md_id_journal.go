@@ -24,7 +24,7 @@ import (
 // TODO: Write unit tests for this. For now, we're relying on
 // md_journal.go's unit tests.
 type mdIDJournal struct {
-	j diskJournal
+	j *diskJournal
 }
 
 // An mdIDJournalEntry is an MdID and a boolean describing whether
