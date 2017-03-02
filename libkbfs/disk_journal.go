@@ -49,12 +49,13 @@ type diskJournal struct {
 
 // makeDiskJournal returns a new diskJournal for the given directory.
 func makeDiskJournal(
-	codec kbfscodec.Codec, dir string, entryType reflect.Type) diskJournal {
+	codec kbfscodec.Codec, dir string, entryType reflect.Type) (
+	diskJournal, error) {
 	return diskJournal{
 		codec:     codec,
 		dir:       dir,
 		entryType: entryType,
-	}
+	}, nil
 }
 
 // journalOrdinal is the ordinal used for naming journal entries.

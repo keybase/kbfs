@@ -51,9 +51,13 @@ type mdIDJournalEntry struct {
 	codec.UnknownFieldSetHandler
 }
 
-func makeMdIDJournal(codec kbfscodec.Codec, dir string) mdIDJournal {
-	j := makeDiskJournal(codec, dir, reflect.TypeOf(mdIDJournalEntry{}))
-	return mdIDJournal{j}
+func makeMdIDJournal(codec kbfscodec.Codec, dir string) (mdIDJournal, error) {
+	j, err :=
+		makeDiskJournal(codec, dir, reflect.TypeOf(mdIDJournalEntry{}))
+	if err != nil {
+		return mdIDJournal{}, err
+	}
+	return mdIDJournal{j}, nil
 }
 
 func ordinalToRevision(o journalOrdinal) (MetadataRevision, error) {

@@ -170,11 +170,18 @@ func makeBlockJournal(
 	log logger.Logger) (*blockJournal, error) {
 	journalPath := filepath.Join(dir, "block_journal")
 	deferLog := log.CloneWithAddedDepth(1)
-	j := makeDiskJournal(
+	j, err := makeDiskJournal(
 		codec, journalPath, reflect.TypeOf(blockJournalEntry{}))
+	if err != nil {
+		return nil, err
+	}
+
 	gcJournalPath := deferredGCBlockJournalDir(dir)
-	gcj := makeDiskJournal(
+	gcj, err := makeDiskJournal(
 		codec, gcJournalPath, reflect.TypeOf(blockJournalEntry{}))
+	if err != nil {
+		return nil, err
+	}
 
 	storeDir := filepath.Join(dir, "blocks")
 	s := makeBlockDiskStore(codec, storeDir)
@@ -189,7 +196,7 @@ func makeBlockJournal(
 	}
 
 	// Get initial aggregate info.
-	err := kbfscodec.DeserializeFromFile(
+	err = kbfscodec.DeserializeFromFile(
 		codec, aggregateInfoPath(dir), &journal.aggregateInfo)
 	if !ioutil.IsNotExist(err) && err != nil {
 		return nil, err
