@@ -39,15 +39,19 @@ import (
 // level.
 //
 // TODO: Make IO ops cancellable.
-//
-// TODO: Read ordinals into memory on startup.
 type diskJournal struct {
 	codec     kbfscodec.Codec
 	dir       string
 	entryType reflect.Type
 
-	earliestValid, latestValid bool
-	earliest, latest           journalOrdinal
+	// The journal must be considered empty when either
+	// earliestValid or latestValid is valse.
+
+	earliestValid bool
+	earliest      journalOrdinal
+
+	latestValid bool
+	latest      journalOrdinal
 }
 
 // makeDiskJournal returns a new diskJournal for the given directory.
@@ -165,6 +169,10 @@ func (j diskJournal) readLatestOrdinalFromDisk() (journalOrdinal, error) {
 	return j.readOrdinalFromDisk(j.latestPath())
 }
 
+// TODO: Change {read,write}{Earliest,Latest}Ordinal() to
+// {get,set}{Earliest,Latest}Ordinal(), and have the getters return an
+// isValid bool, or an invalid journalOrdinal instead of an error.
+
 func (j diskJournal) readEarliestOrdinal() (journalOrdinal, error) {
 	if !j.earliestValid {
 		return journalOrdinal(0), errors.WithStack(os.ErrNotExist)
@@ -204,21 +212,22 @@ func (j *diskJournal) clear() error {
 	// Clear ordinals first to reduce the chances of leaving the
 	// journal in a weird state if we crash in the middle of
 	// removing the files.
-	//
-	// TODO: When we read ordinals into memory on startup, treat
-	// the absence of either ordinal as the journal being empty,
-	// so as to make clearing atomic.
 	err := ioutil.Remove(j.earliestPath())
 	if err != nil {
 		return err
 	}
+
+	// If we crash here, on the next startup the journal will
+	// already be cnosidered to be empty.
+
+	j.earliestValid = false
+	j.earliest = journalOrdinal(0)
+
 	err = ioutil.Remove(j.latestPath())
 	if err != nil {
 		return err
 	}
 
-	j.earliestValid = false
-	j.earliest = journalOrdinal(0)
 	j.latestValid = false
 	j.latest = journalOrdinal(0)
 
