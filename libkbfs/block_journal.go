@@ -313,7 +313,7 @@ func (j *blockJournal) length() uint64 {
 func (j *blockJournal) next() (journalOrdinal, error) {
 	last, err := j.j.readLatestOrdinal()
 	if ioutil.IsNotExist(err) {
-		return 1, nil
+		return firstValidJournalOrdinal, nil
 	} else if err != nil {
 		return 0, err
 	}

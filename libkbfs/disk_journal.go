@@ -17,6 +17,29 @@ import (
 	"github.com/pkg/errors"
 )
 
+// journalOrdinal is the ordinal used for naming journal entries.
+type journalOrdinal uint64
+
+// TODO: Define the zero journalOrdinal as invalid, once no existing
+// journals use them.
+
+const firstValidJournalOrdinal journalOrdinal = 1
+
+func makeJournalOrdinal(s string) (journalOrdinal, error) {
+	if len(s) != 16 {
+		return 0, errors.Errorf("invalid journal ordinal %q", s)
+	}
+	u, err := strconv.ParseUint(s, 16, 64)
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to parse %q", s)
+	}
+	return journalOrdinal(u), nil
+}
+
+func (o journalOrdinal) String() string {
+	return fmt.Sprintf("%016x", uint64(o))
+}
+
 // diskJournal stores an ordered list of entries in a directory, which
 // is assumed to not be used by anything else.
 //
@@ -85,24 +108,6 @@ func makeDiskJournal(
 	}
 
 	return j, nil
-}
-
-// journalOrdinal is the ordinal used for naming journal entries.
-type journalOrdinal uint64
-
-func makeJournalOrdinal(s string) (journalOrdinal, error) {
-	if len(s) != 16 {
-		return 0, errors.Errorf("invalid journal ordinal %q", s)
-	}
-	u, err := strconv.ParseUint(s, 16, 64)
-	if err != nil {
-		return 0, errors.Wrapf(err, "failed to parse %q", s)
-	}
-	return journalOrdinal(u), nil
-}
-
-func (o journalOrdinal) String() string {
-	return fmt.Sprintf("%016x", uint64(o))
 }
 
 // The functions below are for building various paths for the journal.
@@ -316,10 +321,7 @@ func (j *diskJournal) appendJournalEntry(
 		if o != nil {
 			next = *o
 		} else {
-			// TODO: Define the zero journalOrdinal as
-			// invalid, once no existing journals use
-			// them.
-			next = 1
+			next = firstValidJournalOrdinal
 		}
 	} else {
 		next = j.latest + 1
