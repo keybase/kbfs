@@ -20,6 +20,16 @@ type testJournalEntry struct {
 	I int
 }
 
+func requireEqualOrdinal(t *testing.T, o journalOrdinal, err error,
+	oDisk journalOrdinal, errDisk error) {
+	require.Equal(t, oDisk, o)
+	if ioutil.IsNotExist(err) && ioutil.IsNotExist(errDisk) {
+		return
+	}
+	require.NoError(t, err)
+	require.NoError(t, errDisk)
+}
+
 // TestDiskJournalOrdinals makes sure the in-memory ordinals stay in
 // sync with the on-disk ones.
 func TestDiskJournalOrdinals(t *testing.T) {
@@ -37,25 +47,15 @@ func TestDiskJournalOrdinals(t *testing.T) {
 
 	readEarliest := func() (journalOrdinal, error) {
 		earliest, err := j.readEarliestOrdinal()
-		earliestReal, errReal := j.readEarliestOrdinalFromDisk()
-		require.Equal(t, earliestReal, earliest)
-		if ioutil.IsNotExist(err) && ioutil.IsNotExist(errReal) {
-			return earliest, err
-		}
-		require.NoError(t, err)
-		require.NoError(t, errReal)
+		earliestDisk, errDisk := j.readEarliestOrdinalFromDisk()
+		requireEqualOrdinal(t, earliest, err, earliestDisk, errDisk)
 		return earliest, err
 	}
 
 	readLatest := func() (journalOrdinal, error) {
 		latest, err := j.readLatestOrdinal()
-		latestReal, errReal := j.readLatestOrdinalFromDisk()
-		require.Equal(t, latestReal, latest)
-		if ioutil.IsNotExist(err) && ioutil.IsNotExist(errReal) {
-			return latest, err
-		}
-		require.NoError(t, err)
-		require.NoError(t, errReal)
+		latestDisk, errDisk := j.readLatestOrdinalFromDisk()
+		requireEqualOrdinal(t, latest, err, latestDisk, errDisk)
 		return latest, err
 	}
 
