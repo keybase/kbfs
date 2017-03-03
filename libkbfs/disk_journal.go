@@ -241,7 +241,7 @@ func (j *diskJournal) clear() error {
 // entry was the last one, clear() is also called, and true is
 // returned.
 func (j *diskJournal) removeEarliest() (empty bool, err error) {
-	if !j.earliestValid || !j.latestValid {
+	if j.empty() {
 		// TODO: Return a more meaningful error.
 		return false, errors.WithStack(os.ErrNotExist)
 	}
@@ -307,9 +307,8 @@ func (j *diskJournal) writeJournalEntry(
 // just-appended entry.
 func (j *diskJournal) appendJournalEntry(
 	o *journalOrdinal, entry interface{}) (journalOrdinal, error) {
-	empty := !j.earliestValid || !j.latestValid
 	var next journalOrdinal
-	if empty {
+	if j.empty() {
 		if o != nil {
 			next = *o
 		} else {
@@ -334,7 +333,7 @@ func (j *diskJournal) appendJournalEntry(
 		return 0, err
 	}
 
-	if empty {
+	if j.empty() {
 		err := j.writeEarliestOrdinal(next)
 		if err != nil {
 			return 0, err
@@ -359,8 +358,12 @@ func (j *diskJournal) move(newDir string) (oldDir string, err error) {
 	return oldDir, nil
 }
 
+func (j diskJournal) empty() bool {
+	return !j.earliestValid || !j.latestValid
+}
+
 func (j diskJournal) length() uint64 {
-	if !j.earliestValid || !j.latestValid {
+	if j.empty() {
 		return 0
 	}
 	return uint64(j.latest - j.earliest + 1)
