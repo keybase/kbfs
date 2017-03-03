@@ -174,7 +174,7 @@ func (j diskJournal) readLatestOrdinalFromDisk() (journalOrdinal, error) {
 // isValid bool, or an invalid journalOrdinal instead of an error.
 
 func (j diskJournal) readEarliestOrdinal() (journalOrdinal, error) {
-	if !j.earliestValid {
+	if j.empty() {
 		return journalOrdinal(0), errors.WithStack(os.ErrNotExist)
 	}
 	return j.earliest, nil
@@ -191,7 +191,7 @@ func (j *diskJournal) writeEarliestOrdinal(o journalOrdinal) error {
 }
 
 func (j diskJournal) readLatestOrdinal() (journalOrdinal, error) {
-	if !j.latestValid {
+	if j.empty() {
 		return journalOrdinal(0), errors.WithStack(os.ErrNotExist)
 	}
 	return j.latest, nil
