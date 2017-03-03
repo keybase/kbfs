@@ -83,19 +83,19 @@ func TestDiskJournalOrdinals(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, firstValidJournalOrdinal, o)
 
-	expectRange(1, 1)
+	expectRange(firstValidJournalOrdinal, firstValidJournalOrdinal)
 
 	o, err = j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
 	require.Equal(t, firstValidJournalOrdinal+1, o)
 
-	expectRange(1, 2)
+	expectRange(firstValidJournalOrdinal, firstValidJournalOrdinal+1)
 
 	empty, err := j.removeEarliest()
 	require.NoError(t, err)
 	require.False(t, empty)
 
-	expectRange(2, 2)
+	expectRange(firstValidJournalOrdinal+1, firstValidJournalOrdinal+1)
 
 	err = j.clear()
 	require.NoError(t, err)
