@@ -20,6 +20,83 @@ type testJournalEntry struct {
 	I int
 }
 
+func TestDiskJournalOrdinals(t *testing.T) {
+	tempdir, err := ioutil.TempDir(os.TempDir(), "disk_journal")
+	require.NoError(t, err)
+	defer func() {
+		err := ioutil.RemoveAll(tempdir)
+		assert.NoError(t, err)
+	}()
+
+	codec := kbfscodec.NewMsgpack()
+	j, err := makeDiskJournal(
+		codec, tempdir, reflect.TypeOf(testJournalEntry{}))
+	require.NoError(t, err)
+
+	readEarliest := func() (journalOrdinal, error) {
+		earliest, err := j.readEarliestOrdinal()
+		earliestReal, errReal := j.readEarliestOrdinalReal()
+		require.Equal(t, earliestReal, earliest)
+		if ioutil.IsNotExist(err) && ioutil.IsNotExist(errReal) {
+			return earliest, err
+		}
+		require.NoError(t, err)
+		require.NoError(t, errReal)
+		return earliest, err
+	}
+
+	readLatest := func() (journalOrdinal, error) {
+		latest, err := j.readLatestOrdinal()
+		latestReal, errReal := j.readLatestOrdinalReal()
+		require.Equal(t, latestReal, latest)
+		if ioutil.IsNotExist(err) && ioutil.IsNotExist(errReal) {
+			return latest, err
+		}
+		require.NoError(t, err)
+		require.NoError(t, errReal)
+		return latest, err
+	}
+
+	_, err = readEarliest()
+	require.True(t, ioutil.IsNotExist(err))
+
+	_, err = readLatest()
+	require.True(t, ioutil.IsNotExist(err))
+
+	o, err := j.appendJournalEntry(nil, testJournalEntry{1})
+	require.NoError(t, err)
+	require.Equal(t, journalOrdinal(0), o)
+
+	earliest, err := readEarliest()
+	require.NoError(t, err)
+	require.Equal(t, journalOrdinal(0), earliest)
+
+	latest, err := readLatest()
+	require.NoError(t, err)
+	require.Equal(t, journalOrdinal(0), latest)
+
+	o, err = j.appendJournalEntry(nil, testJournalEntry{1})
+	require.NoError(t, err)
+	require.Equal(t, journalOrdinal(1), o)
+
+	earliest, err = readEarliest()
+	require.NoError(t, err)
+	require.Equal(t, journalOrdinal(0), earliest)
+
+	latest, err = readLatest()
+	require.NoError(t, err)
+	require.Equal(t, journalOrdinal(1), latest)
+
+	err = j.clear()
+	require.NoError(t, err)
+
+	_, err = readEarliest()
+	require.True(t, ioutil.IsNotExist(err))
+
+	_, err = readLatest()
+	require.True(t, ioutil.IsNotExist(err))
+}
+
 func TestDiskJournalClear(t *testing.T) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "disk_journal")
 	require.NoError(t, err)
