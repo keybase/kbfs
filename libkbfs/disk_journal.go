@@ -46,8 +46,8 @@ type diskJournal struct {
 	dir       string
 	entryType reflect.Type
 
-	empty            bool
-	earliest, latest journalOrdinal
+	earliestValid, latestValid bool
+	earliest, latest           journalOrdinal
 }
 
 // makeDiskJournal returns a new diskJournal for the given directory.
@@ -58,28 +58,27 @@ func makeDiskJournal(
 		codec:     codec,
 		dir:       dir,
 		entryType: entryType,
-		empty:     true,
 	}
 
 	earliest, err := j.readEarliestOrdinalReal()
 	if ioutil.IsNotExist(err) {
-		return j, nil
-	}
-	if err != nil {
+		// Continue with j.earliestValid = false.
+	} else if err != nil {
 		return nil, err
+	} else {
+		j.earliestValid = true
+		j.earliest = earliest
 	}
 
 	latest, err := j.readLatestOrdinalReal()
 	if ioutil.IsNotExist(err) {
-		return j, nil
-	}
-	if err != nil {
+		// Continue with j.latestValid = false.
+	} else if err != nil {
 		return nil, err
+	} else {
+		j.latestValid = true
+		j.latest = latest
 	}
-
-	j.empty = false
-	j.earliest = earliest
-	j.latest = latest
 
 	return j, nil
 }
@@ -174,7 +173,11 @@ func (j diskJournal) readEarliestOrdinal() (
 }
 
 func (j *diskJournal) writeEarliestOrdinal(o journalOrdinal) error {
-	return j.writeOrdinal(j.earliestPath(), o)
+	err := j.writeOrdinal(j.earliestPath(), o)
+	if err != nil {
+		return err
+	}
+	return err
 }
 
 func (j diskJournal) readLatestOrdinal() (journalOrdinal, error) {
