@@ -370,15 +370,8 @@ func (j *diskJournal) move(newDir string) (oldDir string, err error) {
 }
 
 func (j diskJournal) length() (uint64, error) {
-	first, err := j.readEarliestOrdinal()
-	if ioutil.IsNotExist(err) {
+	if !j.earliestValid || !j.latestValid {
 		return 0, nil
-	} else if err != nil {
-		return 0, err
 	}
-	last, err := j.readLatestOrdinal()
-	if err != nil {
-		return 0, err
-	}
-	return uint64(last - first + 1), nil
+	return uint64(j.latest - j.earliest + 1), nil
 }
