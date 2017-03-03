@@ -20,6 +20,8 @@ type testJournalEntry struct {
 	I int
 }
 
+// TestDiskJournalOrdinals makes sure the in-memory ordinals stay in
+// sync with the on-disk ones.
 func TestDiskJournalOrdinals(t *testing.T) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "disk_journal")
 	require.NoError(t, err)
@@ -57,56 +59,48 @@ func TestDiskJournalOrdinals(t *testing.T) {
 		return latest, err
 	}
 
-	_, err = readEarliest()
-	require.True(t, ioutil.IsNotExist(err))
+	expectEmpty := func() {
+		_, err = readEarliest()
+		require.True(t, ioutil.IsNotExist(err))
+		_, err = readLatest()
+		require.True(t, ioutil.IsNotExist(err))
+	}
 
-	_, err = readLatest()
-	require.True(t, ioutil.IsNotExist(err))
+	expectRange := func(
+		expectedEarliest, expectedLatest journalOrdinal) {
+		earliest, err := readEarliest()
+		require.NoError(t, err)
+		require.Equal(t, expectedEarliest, earliest)
+
+		latest, err := readLatest()
+		require.NoError(t, err)
+		require.Equal(t, expectedLatest, latest)
+	}
+
+	expectEmpty()
 
 	o, err := j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
 	require.Equal(t, journalOrdinal(1), o)
 
-	earliest, err := readEarliest()
-	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(1), earliest)
-
-	latest, err := readLatest()
-	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(1), latest)
+	expectRange(1, 1)
 
 	o, err = j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
 	require.Equal(t, journalOrdinal(2), o)
 
-	earliest, err = readEarliest()
-	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(1), earliest)
-
-	latest, err = readLatest()
-	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(2), latest)
+	expectRange(1, 2)
 
 	empty, err := j.removeEarliest()
 	require.NoError(t, err)
 	require.False(t, empty)
 
-	earliest, err = readEarliest()
-	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(2), earliest)
-
-	latest, err = readLatest()
-	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(2), latest)
+	expectRange(2, 2)
 
 	err = j.clear()
 	require.NoError(t, err)
 
-	_, err = readEarliest()
-	require.True(t, ioutil.IsNotExist(err))
-
-	_, err = readLatest()
-	require.True(t, ioutil.IsNotExist(err))
+	expectEmpty()
 }
 
 func TestDiskJournalClear(t *testing.T) {
