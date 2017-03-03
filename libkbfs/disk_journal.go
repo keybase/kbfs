@@ -177,7 +177,9 @@ func (j *diskJournal) writeEarliestOrdinal(o journalOrdinal) error {
 	if err != nil {
 		return err
 	}
-	return err
+	j.earliestValid = true
+	j.earliest = o
+	return nil
 }
 
 func (j diskJournal) readLatestOrdinal() (journalOrdinal, error) {
@@ -185,7 +187,13 @@ func (j diskJournal) readLatestOrdinal() (journalOrdinal, error) {
 }
 
 func (j *diskJournal) writeLatestOrdinal(o journalOrdinal) error {
-	return j.writeOrdinal(j.latestPath(), o)
+	err := j.writeOrdinal(j.latestPath(), o)
+	if err != nil {
+		return err
+	}
+	j.latestValid = true
+	j.latest = o
+	return nil
 }
 
 // clear completely removes the journal directory.
@@ -205,6 +213,11 @@ func (j *diskJournal) clear() error {
 	if err != nil {
 		return err
 	}
+
+	j.earliestValid = false
+	j.earliest = journalOrdinal(0)
+	j.latestValid = false
+	j.latest = journalOrdinal(0)
 
 	// j.dir will be recreated on the next call to
 	// writeJournalEntry (via kbfscodec.SerializeToFile), which
