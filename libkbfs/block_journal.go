@@ -861,6 +861,10 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 			SyncedBytes: flushedBytes,
 		})
 	}
+
+	// TODO: If the block journal is now empty, nuke all block
+	// journal dirs.
+
 	return nil
 }
 
