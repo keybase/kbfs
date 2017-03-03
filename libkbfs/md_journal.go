@@ -211,6 +211,10 @@ func makeMDJournalWithIDJournal(
 	return &journal, nil
 }
 
+func mdJournalPath(dir string) string {
+	return filepath.Join(dir, "md_journal")
+}
+
 func makeMDJournal(
 	ctx context.Context, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 	codec kbfscodec.Codec, crypto cryptoPure, clock Clock, tlfID tlf.ID,
@@ -223,10 +227,6 @@ func makeMDJournal(
 }
 
 // The functions below are for building various paths.
-
-func mdJournalPath(dir string) string {
-	return filepath.Join(dir, "md_journal")
-}
 
 func (j mdJournal) mdsPath() string {
 	return filepath.Join(j.dir, "mds")
