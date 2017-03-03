@@ -209,16 +209,16 @@ func (j *diskJournal) writeLatestOrdinal(o journalOrdinal) error {
 
 // clear completely removes the journal directory.
 func (j *diskJournal) clear() error {
-	// Clear ordinals first to reduce the chances of leaving the
-	// journal in a weird state if we crash in the middle of
-	// removing the files.
+	// Clear ordinals first to not leave the journal in a weird
+	// state if we crash in the middle of removing the files,
+	// assuming that file removal is atomic.
 	err := ioutil.Remove(j.earliestPath())
 	if err != nil {
 		return err
 	}
 
 	// If we crash here, on the next startup the journal will
-	// already be cnosidered to be empty.
+	// still be considered empty.
 
 	j.earliestValid = false
 	j.earliest = journalOrdinal(0)
