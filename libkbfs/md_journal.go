@@ -857,6 +857,7 @@ func (j *mdJournal) removeFlushedEntry(
 		// crash in the middle. The various directories will
 		// be recreated as needed.
 		for _, dir := range j.mdJournalDirs() {
+			j.log.CDebugf(ctx, "Removing all files in %s", dir)
 			err := ioutil.RemoveAll(dir)
 			if err != nil {
 				return err

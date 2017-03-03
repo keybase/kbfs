@@ -563,6 +563,45 @@ func flushAllMDs(
 	testMDJournalGCd(t, j)
 }
 
+func testMDJournalFlushAll(t *testing.T, ver MetadataVer) {
+	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
+	defer teardownMDJournalTest(t, tempdir)
+
+	firstRevision := MetadataRevision(10)
+	firstPrevRoot := fakeMdID(1)
+	mdCount := 10
+	putMDRange(t, ver, id, signer, ekg, bsplit,
+		firstRevision, firstPrevRoot, mdCount, j)
+
+	ctx := context.Background()
+
+	fileInfos, err := ioutil.ReadDir(j.dir)
+	require.NoError(t, err)
+	var names []string
+	for _, fileInfo := range fileInfos {
+		names = append(names, fileInfo.Name())
+	}
+	var expectedNames []string
+	if ver < SegregatedKeyBundlesVer {
+		expectedNames = []string{"md_journal", "mds"}
+	} else {
+		expectedNames = []string{
+			"md_journal", "mds", "rkbv3", "wkbv3",
+		}
+	}
+	require.Equal(t, expectedNames, names)
+
+	flushAllMDs(t, ctx, signer, j)
+
+	fileInfos, err = ioutil.ReadDir(j.dir)
+	require.NoError(t, err)
+	names = nil
+	for _, fileInfo := range fileInfos {
+		names = append(names, fileInfo.Name())
+	}
+	require.Nil(t, names)
+}
+
 func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 	codec, crypto, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t, ver)
@@ -1037,6 +1076,7 @@ func TestMDJournal(t *testing.T) {
 		testMDJournalPutCase3NonEmptyReplace,
 		testMDJournalPutCase3EmptyAppend,
 		testMDJournalPutCase4,
+		testMDJournalFlushAll,
 		testMDJournalBranchConversion,
 		testMDJournalResolveAndClearRemoteBranch,
 		testMDJournalResolveAndClearLocalSquash,
