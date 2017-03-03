@@ -169,6 +169,10 @@ func (j diskJournal) readLatestOrdinalFromDisk() (journalOrdinal, error) {
 	return j.readOrdinalFromDisk(j.latestPath())
 }
 
+func (j diskJournal) empty() bool {
+	return !j.earliestValid || !j.latestValid
+}
+
 // TODO: Change {read,write}{Earliest,Latest}Ordinal() to
 // {get,set}{Earliest,Latest}Ordinal(), and have the getters return an
 // isValid bool, or an invalid journalOrdinal instead of an error.
@@ -359,10 +363,6 @@ func (j *diskJournal) move(newDir string) (oldDir string, err error) {
 	oldDir = j.dir
 	j.dir = newDir
 	return oldDir, nil
-}
-
-func (j diskJournal) empty() bool {
-	return !j.earliestValid || !j.latestValid
 }
 
 func (j diskJournal) length() uint64 {
