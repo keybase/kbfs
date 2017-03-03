@@ -241,17 +241,12 @@ func (j *diskJournal) clear() error {
 // entry was the last one, clear() is also called, and true is
 // returned.
 func (j *diskJournal) removeEarliest() (empty bool, err error) {
-	earliestOrdinal, err := j.readEarliestOrdinal()
-	if err != nil {
-		return false, err
+	if !j.earliestValid || !j.latestValid {
+		// TODO: Return a more meaningful error.
+		return false, errors.WithStack(os.ErrNotExist)
 	}
 
-	latestOrdinal, err := j.readLatestOrdinal()
-	if err != nil {
-		return false, err
-	}
-
-	if earliestOrdinal == latestOrdinal {
+	if j.earliest == j.latest {
 		err := j.clear()
 		if err != nil {
 			return false, err
@@ -259,7 +254,9 @@ func (j *diskJournal) removeEarliest() (empty bool, err error) {
 		return true, nil
 	}
 
-	err = j.writeEarliestOrdinal(earliestOrdinal + 1)
+	oldEarliest := j.earliest
+
+	err = j.writeEarliestOrdinal(oldEarliest + 1)
 	if err != nil {
 		return false, err
 	}
@@ -267,7 +264,7 @@ func (j *diskJournal) removeEarliest() (empty bool, err error) {
 	// Garbage-collect the old entry. If we crash here and leave
 	// behind an entry, it'll be cleaned up the next time clear()
 	// is called.
-	p := j.journalEntryPath(earliestOrdinal)
+	p := j.journalEntryPath(oldEarliest)
 	err = ioutil.Remove(p)
 	if err != nil {
 		return false, err

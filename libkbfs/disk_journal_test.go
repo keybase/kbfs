@@ -87,6 +87,18 @@ func TestDiskJournalOrdinals(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, journalOrdinal(1), latest)
 
+	empty, err := j.removeEarliest()
+	require.NoError(t, err)
+	require.False(t, empty)
+
+	earliest, err = readEarliest()
+	require.NoError(t, err)
+	require.Equal(t, journalOrdinal(1), earliest)
+
+	latest, err = readLatest()
+	require.NoError(t, err)
+	require.Equal(t, journalOrdinal(1), latest)
+
 	err = j.clear()
 	require.NoError(t, err)
 
