@@ -563,6 +563,16 @@ func flushAllMDs(
 	testMDJournalGCd(t, j)
 }
 
+func listDir(t *testing.T, dir string) []string {
+	fileInfos, err := ioutil.ReadDir(dir)
+	require.NoError(t, err)
+	var names []string
+	for _, fileInfo := range fileInfos {
+		names = append(names, fileInfo.Name())
+	}
+	return names
+}
+
 func testMDJournalFlushAll(t *testing.T, ver MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
@@ -575,12 +585,7 @@ func testMDJournalFlushAll(t *testing.T, ver MetadataVer) {
 
 	ctx := context.Background()
 
-	fileInfos, err := ioutil.ReadDir(j.dir)
-	require.NoError(t, err)
-	var names []string
-	for _, fileInfo := range fileInfos {
-		names = append(names, fileInfo.Name())
-	}
+	names := listDir(t, j.dir)
 	var expectedNames []string
 	if ver < SegregatedKeyBundlesVer {
 		expectedNames = []string{"md_journal", "mds"}
@@ -593,12 +598,7 @@ func testMDJournalFlushAll(t *testing.T, ver MetadataVer) {
 
 	flushAllMDs(t, ctx, signer, j)
 
-	fileInfos, err = ioutil.ReadDir(j.dir)
-	require.NoError(t, err)
-	names = nil
-	for _, fileInfo := range fileInfos {
-		names = append(names, fileInfo.Name())
-	}
+	names = listDir(t, j.dir)
 	require.Nil(t, names)
 }
 
@@ -633,12 +633,7 @@ func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 
 	// Branch conversion shouldn't leave old folders behind.
-	fileInfos, err := ioutil.ReadDir(j.dir)
-	require.NoError(t, err)
-	var names []string
-	for _, fileInfo := range fileInfos {
-		names = append(names, fileInfo.Name())
-	}
+	names := listDir(t, j.dir)
 	var expectedNames []string
 	if ver < SegregatedKeyBundlesVer {
 		expectedNames = []string{"md_journal", "mds"}
