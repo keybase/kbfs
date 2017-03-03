@@ -45,7 +45,7 @@ type diskJournal struct {
 	entryType reflect.Type
 
 	// The journal must be considered empty when either
-	// earliestValid or latestValid is valse.
+	// earliestValid or latestValid is false.
 
 	earliestValid bool
 	earliest      journalOrdinal
