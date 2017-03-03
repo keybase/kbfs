@@ -359,9 +359,9 @@ func (j *diskJournal) move(newDir string) (oldDir string, err error) {
 	return oldDir, nil
 }
 
-func (j diskJournal) length() (uint64, error) {
+func (j diskJournal) length() uint64 {
 	if !j.earliestValid || !j.latestValid {
-		return 0, nil
+		return 0
 	}
-	return uint64(j.latest - j.earliest + 1), nil
+	return uint64(j.latest - j.earliest + 1)
 }

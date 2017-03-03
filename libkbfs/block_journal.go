@@ -306,7 +306,7 @@ func (j *blockJournal) appendJournalEntry(
 	return ordinal, nil
 }
 
-func (j *blockJournal) length() (uint64, error) {
+func (j *blockJournal) length() uint64 {
 	return j.j.length()
 }
 

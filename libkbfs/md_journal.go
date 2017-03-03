@@ -992,16 +992,13 @@ func (j mdJournal) readLatestRevision() (MetadataRevision, error) {
 	return j.j.readLatestRevision()
 }
 
-func (j mdJournal) length() (uint64, error) {
+func (j mdJournal) length() uint64 {
 	return j.j.length()
 }
 
 func (j mdJournal) atLeastNNonLocalSquashes(
 	numNonLocalSquashes uint64) (bool, error) {
-	size, err := j.length()
-	if err != nil {
-		return false, err
-	}
+	size := j.length()
 	if size < numNonLocalSquashes {
 		return false, nil
 	}

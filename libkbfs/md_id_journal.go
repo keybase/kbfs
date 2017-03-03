@@ -132,7 +132,7 @@ func (j mdIDJournal) readJournalEntry(r MetadataRevision) (
 
 // All functions below are public functions.
 
-func (j mdIDJournal) length() (uint64, error) {
+func (j mdIDJournal) length() uint64 {
 	return j.j.length()
 }
 

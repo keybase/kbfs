@@ -1249,16 +1249,8 @@ func (j *tlfJournal) getJournalEntryCounts() (
 		return 0, 0, err
 	}
 
-	blockEntryCount, err = j.blockJournal.length()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	mdEntryCount, err = j.mdJournal.length()
-	if err != nil {
-		return 0, 0, err
-	}
-
+	blockEntryCount = j.blockJournal.length()
+	mdEntryCount = j.mdJournal.length()
 	return blockEntryCount, mdEntryCount, nil
 }
 
@@ -1286,10 +1278,7 @@ func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
 	if err != nil {
 		return TLFJournalStatus{}, err
 	}
-	blockEntryCount, err := j.blockJournal.length()
-	if err != nil {
-		return TLFJournalStatus{}, err
-	}
+	blockEntryCount := j.blockJournal.length()
 	lastFlushErr := ""
 	if j.lastFlushErr != nil {
 		lastFlushErr = j.lastFlushErr.Error()
@@ -1555,15 +1544,8 @@ func (j *tlfJournal) disable() (wasEnabled bool, err error) {
 		return false, err
 	}
 
-	blockEntryCount, err := j.blockJournal.length()
-	if err != nil {
-		return false, err
-	}
-
-	mdEntryCount, err := j.mdJournal.length()
-	if err != nil {
-		return false, err
-	}
+	blockEntryCount := j.blockJournal.length()
+	mdEntryCount := j.mdJournal.length()
 
 	// You can only disable an empty journal.
 	if blockEntryCount > 0 || mdEntryCount > 0 {
