@@ -307,20 +307,16 @@ func (j *diskJournal) writeJournalEntry(
 // just-appended entry.
 func (j *diskJournal) appendJournalEntry(
 	o *journalOrdinal, entry interface{}) (journalOrdinal, error) {
-	// TODO: Consider caching the latest ordinal in memory instead
-	// of reading it from disk every time.
+	empty := !j.earliestValid || !j.latestValid
 	var next journalOrdinal
-	lo, err := j.readLatestOrdinal()
-	if ioutil.IsNotExist(err) {
+	if empty {
 		if o != nil {
 			next = *o
 		} else {
 			next = 0
 		}
-	} else if err != nil {
-		return 0, err
 	} else {
-		next = lo + 1
+		next = j.latest + 1
 		if next == 0 {
 			// Rollover is almost certainly a bug.
 			return 0, errors.Errorf(
@@ -329,23 +325,20 @@ func (j *diskJournal) appendJournalEntry(
 		if o != nil && next != *o {
 			return 0, errors.Errorf(
 				"%v unexpectedly does not follow %v for %+v",
-				*o, lo, entry)
+				*o, j.latest, entry)
 		}
 	}
 
-	err = j.writeJournalEntry(next, entry)
+	err := j.writeJournalEntry(next, entry)
 	if err != nil {
 		return 0, err
 	}
 
-	_, err = j.readEarliestOrdinal()
-	if ioutil.IsNotExist(err) {
+	if empty {
 		err := j.writeEarliestOrdinal(next)
 		if err != nil {
 			return 0, err
 		}
-	} else if err != nil {
-		return 0, err
 	}
 	err = j.writeLatestOrdinal(next)
 	if err != nil {
