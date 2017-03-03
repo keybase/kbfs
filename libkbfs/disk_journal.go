@@ -169,7 +169,10 @@ func (j diskJournal) readLatestOrdinalReal() (journalOrdinal, error) {
 
 func (j diskJournal) readEarliestOrdinal() (
 	journalOrdinal, error) {
-	return j.readOrdinal(j.earliestPath())
+	if !j.earliestValid {
+		return journalOrdinal(0), errors.WithStack(os.ErrNotExist)
+	}
+	return j.earliest, nil
 }
 
 func (j *diskJournal) writeEarliestOrdinal(o journalOrdinal) error {
@@ -183,7 +186,10 @@ func (j *diskJournal) writeEarliestOrdinal(o journalOrdinal) error {
 }
 
 func (j diskJournal) readLatestOrdinal() (journalOrdinal, error) {
-	return j.readOrdinal(j.latestPath())
+	if !j.latestValid {
+		return journalOrdinal(0), errors.WithStack(os.ErrNotExist)
+	}
+	return j.latest, nil
 }
 
 func (j *diskJournal) writeLatestOrdinal(o journalOrdinal) error {
