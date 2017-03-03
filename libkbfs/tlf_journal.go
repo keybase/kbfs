@@ -953,10 +953,10 @@ func (j *tlfJournal) flushBlockEntries(
 	}
 
 	// If a conversion happened, the original `maxMDRevToFlush` only
-	// applies for sure if its mdRevMarker entry was unignorable
-	// (i.e., the MD was already a local squash).  TODO: conversion
-	// might not have actually happened yet, in which case it's still
-	// ok to flush maxMDRevToFlush.
+	// applies for sure if its mdRevMarker entry was already for a
+	// local squash.  TODO: conversion might not have actually
+	// happened yet, in which case it's still ok to flush
+	// maxMDRevToFlush.
 	if converted && maxMDRevToFlush != MetadataRevisionUninitialized &&
 		!entries.revIsLocalSquash(maxMDRevToFlush) {
 		maxMDRevToFlush = MetadataRevisionUninitialized
@@ -1073,7 +1073,7 @@ func (j *tlfJournal) convertMDsToBranchIfOverThreshold(ctx context.Context,
 				return false, err
 			}
 
-			err = j.blockJournal.markLatestRevMarkerAsUnignorable()
+			err = j.blockJournal.markLatestRevMarkerAsLocalSquash()
 			if err != nil {
 				return false, err
 			}
@@ -1609,6 +1609,23 @@ func (j *tlfJournal) getBlockData(id kbfsblock.ID) (
 	}
 
 	return j.blockJournal.getData(id)
+}
+
+func (j *tlfJournal) getBlockSize(id kbfsblock.ID) (uint32, error) {
+	j.journalLock.RLock()
+	defer j.journalLock.RUnlock()
+	if err := j.checkEnabledLocked(); err != nil {
+		return 0, err
+	}
+
+	size, err := j.blockJournal.getDataSize(id)
+	if err != nil {
+		return 0, err
+	}
+	// Block sizes are restricted, but `size` is an int64 because
+	// that's what the OS gives us.  Convert it to a uint32. TODO:
+	// check this is safe?
+	return uint32(size), nil
 }
 
 // ErrDiskLimitTimeout is returned when putBlockData exceeds
