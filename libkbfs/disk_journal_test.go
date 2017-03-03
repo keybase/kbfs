@@ -81,13 +81,13 @@ func TestDiskJournalOrdinals(t *testing.T) {
 
 	o, err := j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(1), o)
+	require.Equal(t, firstValidJournalOrdinal, o)
 
 	expectRange(1, 1)
 
 	o, err = j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(2), o)
+	require.Equal(t, firstValidJournalOrdinal+1, o)
 
 	expectRange(1, 2)
 
@@ -118,11 +118,11 @@ func TestDiskJournalClear(t *testing.T) {
 
 	o, err := j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(1), o)
+	require.Equal(t, firstValidJournalOrdinal, o)
 
 	o, err = j.appendJournalEntry(nil, testJournalEntry{2})
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(2), o)
+	require.Equal(t, firstValidJournalOrdinal+1, o)
 
 	err = j.clear()
 	require.NoError(t, err)
@@ -173,7 +173,7 @@ func TestDiskJournalMove(t *testing.T) {
 
 	o, err := j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(1), o)
+	require.Equal(t, firstValidJournalOrdinal, o)
 
 	moveOldDir, err := j.move(newDir)
 	require.NoError(t, err)
