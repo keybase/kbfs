@@ -450,7 +450,7 @@ func TestBlockJournalFlush(t *testing.T) {
 		// Test that the end parameter is respected.
 		var partialEntries blockEntriesToFlush
 		var rev MetadataRevision
-		if end > 2 {
+		if end > firstValidJournalOrdinal+1 {
 			partialEntries, rev, err = j.getNextEntriesToFlush(ctx, end-1,
 				maxJournalBlockFlushBatchSize)
 			require.NoError(t, err)
