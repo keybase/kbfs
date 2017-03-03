@@ -494,7 +494,7 @@ func testTLFJournalBlockOpDiskByteLimit(t *testing.T, ver MetadataVer) {
 			ctx, id, bCtx, data2, serverHalf)
 	}()
 
-	numFlushed, rev, converted, err := tlfJournal.flushBlockEntries(ctx, 1)
+	numFlushed, rev, converted, err := tlfJournal.flushBlockEntries(ctx, 2)
 	require.NoError(t, err)
 	require.Equal(t, 1, numFlushed)
 	require.Equal(t, rev, MetadataRevisionUninitialized)
@@ -531,7 +531,7 @@ func testTLFJournalBlockOpDiskFileLimit(t *testing.T, ver MetadataVer) {
 			ctx, id, bCtx, data2, serverHalf)
 	}()
 
-	numFlushed, rev, converted, err := tlfJournal.flushBlockEntries(ctx, 1)
+	numFlushed, rev, converted, err := tlfJournal.flushBlockEntries(ctx, 2)
 	require.NoError(t, err)
 	require.Equal(t, 1, numFlushed)
 	require.Equal(t, rev, MetadataRevisionUninitialized)

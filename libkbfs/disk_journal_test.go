@@ -65,31 +65,19 @@ func TestDiskJournalOrdinals(t *testing.T) {
 
 	o, err := j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(0), o)
+	require.Equal(t, journalOrdinal(1), o)
 
 	earliest, err := readEarliest()
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(0), earliest)
+	require.Equal(t, journalOrdinal(1), earliest)
 
 	latest, err := readLatest()
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(0), latest)
+	require.Equal(t, journalOrdinal(1), latest)
 
 	o, err = j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(1), o)
-
-	earliest, err = readEarliest()
-	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(0), earliest)
-
-	latest, err = readLatest()
-	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(1), latest)
-
-	empty, err := j.removeEarliest()
-	require.NoError(t, err)
-	require.False(t, empty)
+	require.Equal(t, journalOrdinal(2), o)
 
 	earliest, err = readEarliest()
 	require.NoError(t, err)
@@ -97,7 +85,19 @@ func TestDiskJournalOrdinals(t *testing.T) {
 
 	latest, err = readLatest()
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(1), latest)
+	require.Equal(t, journalOrdinal(2), latest)
+
+	empty, err := j.removeEarliest()
+	require.NoError(t, err)
+	require.False(t, empty)
+
+	earliest, err = readEarliest()
+	require.NoError(t, err)
+	require.Equal(t, journalOrdinal(2), earliest)
+
+	latest, err = readLatest()
+	require.NoError(t, err)
+	require.Equal(t, journalOrdinal(2), latest)
 
 	err = j.clear()
 	require.NoError(t, err)
@@ -124,11 +124,11 @@ func TestDiskJournalClear(t *testing.T) {
 
 	o, err := j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(0), o)
+	require.Equal(t, journalOrdinal(1), o)
 
 	o, err = j.appendJournalEntry(nil, testJournalEntry{2})
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(1), o)
+	require.Equal(t, journalOrdinal(2), o)
 
 	err = j.clear()
 	require.NoError(t, err)
@@ -179,7 +179,7 @@ func TestDiskJournalMove(t *testing.T) {
 
 	o, err := j.appendJournalEntry(nil, testJournalEntry{1})
 	require.NoError(t, err)
-	require.Equal(t, journalOrdinal(0), o)
+	require.Equal(t, journalOrdinal(1), o)
 
 	moveOldDir, err := j.move(newDir)
 	require.NoError(t, err)

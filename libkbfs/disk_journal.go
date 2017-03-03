@@ -312,7 +312,10 @@ func (j *diskJournal) appendJournalEntry(
 		if o != nil {
 			next = *o
 		} else {
-			next = 0
+			// TODO: Define the zero journalOrdinal as
+			// invalid, once no existing journals use
+			// them.
+			next = 1
 		}
 	} else {
 		next = j.latest + 1

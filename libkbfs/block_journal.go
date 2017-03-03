@@ -310,6 +310,16 @@ func (j *blockJournal) length() uint64 {
 	return j.j.length()
 }
 
+func (j *blockJournal) next() (journalOrdinal, error) {
+	last, err := j.j.readLatestOrdinal()
+	if ioutil.IsNotExist(err) {
+		return 1, nil
+	} else if err != nil {
+		return 0, err
+	}
+	return last + 1, nil
+}
+
 func (j *blockJournal) end() (journalOrdinal, error) {
 	last, err := j.j.readLatestOrdinal()
 	if ioutil.IsNotExist(err) {
@@ -394,7 +404,7 @@ func (j *blockJournal) putData(
 		}
 	}()
 
-	next, err := j.end()
+	next, err := j.next()
 	if err != nil {
 		return false, err
 	}
@@ -436,7 +446,7 @@ func (j *blockJournal) addReference(
 		}
 	}()
 
-	next, err := j.end()
+	next, err := j.next()
 	if err != nil {
 		return err
 	}
@@ -467,7 +477,7 @@ func (j *blockJournal) archiveReferences(
 		}
 	}()
 
-	next, err := j.end()
+	next, err := j.next()
 	if err != nil {
 		return err
 	}
