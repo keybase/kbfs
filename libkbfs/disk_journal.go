@@ -60,7 +60,7 @@ func makeDiskJournal(
 		entryType: entryType,
 	}
 
-	earliest, err := j.readEarliestOrdinalReal()
+	earliest, err := j.readEarliestOrdinalFromDisk()
 	if ioutil.IsNotExist(err) {
 		// Continue with j.earliestValid = false.
 	} else if err != nil {
@@ -70,7 +70,7 @@ func makeDiskJournal(
 		j.earliest = earliest
 	}
 
-	latest, err := j.readLatestOrdinalReal()
+	latest, err := j.readLatestOrdinalFromDisk()
 	if ioutil.IsNotExist(err) {
 		// Continue with j.latestValid = false.
 	} else if err != nil {
@@ -119,7 +119,7 @@ func (j diskJournal) journalEntryPath(o journalOrdinal) string {
 // latest ordinals. The read functions may return an error for which
 // ioutil.IsNotExist() returns true.
 
-func (j diskJournal) readOrdinal(path string) (journalOrdinal, error) {
+func (j diskJournal) readOrdinalFromDisk(path string) (journalOrdinal, error) {
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {
 		return 0, err
@@ -127,8 +127,7 @@ func (j diskJournal) readOrdinal(path string) (journalOrdinal, error) {
 	return makeJournalOrdinal(string(buf))
 }
 
-func (j *diskJournal) writeOrdinal(
-	path string, o journalOrdinal) error {
+func (j *diskJournal) writeOrdinalToDisk(path string, o journalOrdinal) error {
 	// Don't use ioutil.WriteFile because it truncates the file first,
 	// and if there's a crash it will leave the journal in an unknown
 	// state.  TODO: it's technically possible a partial write could
@@ -158,12 +157,12 @@ func (j *diskJournal) writeOrdinal(
 	return nil
 }
 
-func (j diskJournal) readEarliestOrdinalReal() (journalOrdinal, error) {
-	return j.readOrdinal(j.earliestPath())
+func (j diskJournal) readEarliestOrdinalFromDisk() (journalOrdinal, error) {
+	return j.readOrdinalFromDisk(j.earliestPath())
 }
 
-func (j diskJournal) readLatestOrdinalReal() (journalOrdinal, error) {
-	return j.readOrdinal(j.latestPath())
+func (j diskJournal) readLatestOrdinalFromDisk() (journalOrdinal, error) {
+	return j.readOrdinalFromDisk(j.latestPath())
 }
 
 func (j diskJournal) readEarliestOrdinal() (journalOrdinal, error) {
@@ -174,7 +173,7 @@ func (j diskJournal) readEarliestOrdinal() (journalOrdinal, error) {
 }
 
 func (j *diskJournal) writeEarliestOrdinal(o journalOrdinal) error {
-	err := j.writeOrdinal(j.earliestPath(), o)
+	err := j.writeOrdinalToDisk(j.earliestPath(), o)
 	if err != nil {
 		return err
 	}
@@ -191,7 +190,7 @@ func (j diskJournal) readLatestOrdinal() (journalOrdinal, error) {
 }
 
 func (j *diskJournal) writeLatestOrdinal(o journalOrdinal) error {
-	err := j.writeOrdinal(j.latestPath(), o)
+	err := j.writeOrdinalToDisk(j.latestPath(), o)
 	if err != nil {
 		return err
 	}

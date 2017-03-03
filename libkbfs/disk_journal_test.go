@@ -35,7 +35,7 @@ func TestDiskJournalOrdinals(t *testing.T) {
 
 	readEarliest := func() (journalOrdinal, error) {
 		earliest, err := j.readEarliestOrdinal()
-		earliestReal, errReal := j.readEarliestOrdinalReal()
+		earliestReal, errReal := j.readEarliestOrdinalFromDisk()
 		require.Equal(t, earliestReal, earliest)
 		if ioutil.IsNotExist(err) && ioutil.IsNotExist(errReal) {
 			return earliest, err
@@ -47,7 +47,7 @@ func TestDiskJournalOrdinals(t *testing.T) {
 
 	readLatest := func() (journalOrdinal, error) {
 		latest, err := j.readLatestOrdinal()
-		latestReal, errReal := j.readLatestOrdinalReal()
+		latestReal, errReal := j.readLatestOrdinalFromDisk()
 		require.Equal(t, latestReal, latest)
 		if ioutil.IsNotExist(err) && ioutil.IsNotExist(errReal) {
 			return latest, err
