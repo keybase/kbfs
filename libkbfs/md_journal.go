@@ -1435,6 +1435,10 @@ func (j *mdJournal) resolveAndClear(
 	if err != nil {
 		return MdID{}, err
 	}
+
+	// TODO: If we crash without removing the temp dir, it should
+	// be cleaned up whenever the entire journal goes empty.
+
 	j.log.CDebugf(ctx, "Using temp dir %s for new IDs", idJournalTempDir)
 	otherIDJournal := makeMdIDJournal(j.codec, idJournalTempDir)
 	defer func() {
