@@ -712,3 +712,9 @@ type NodeMetadata struct {
 	LastWriterUnverified libkb.NormalizedUsername
 	BlockInfo            BlockInfo
 }
+
+// RekeyResult represents the result of an rekey operation.
+type RekeyResult struct {
+	DidRekey      bool
+	NeedsPaperKey bool
+}

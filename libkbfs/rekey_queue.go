@@ -125,7 +125,7 @@ func (rkq *RekeyQueueStandard) work(ctx context.Context) {
 				newCtx := ctxWithRandomIDReplayable(ctx, CtxRekeyIDKey,
 					CtxRekeyOpID, nil)
 				rkq.log.CDebugf(newCtx, "Processing rekey for %s", entry.id)
-				err = rkq.config.KBFSOps().Rekey(newCtx, entry.id)
+				err = rkq.config.KBFSOps().RequestRekey(newCtx, entry.id)
 			}()
 		}
 	}

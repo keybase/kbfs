@@ -490,7 +490,14 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 		if ops, ok := fs.ops[fb]; ok {
 			fs.log.CDebugf(ctx, "Triggering a paper prompt rekey on folder "+
 				"access due to unreadable MD for %s", h.GetCanonicalPath())
-			go ops.rekeyWithPrompt(rekeyInitialTTL)
+			d := ops.config.RekeyWithPromptWaitTime()
+			ops.rekeyFSM.Event(NewRekeyRequestEvent(RekeyRequest{
+				Delay: d,
+				RekeyTask: RekeyTask{
+					Timeout:     &d,
+					promptPaper: true,
+				},
+			}))
 		}
 		return nil, EntryInfo{}, err
 	}
@@ -706,11 +713,11 @@ func (fs *KBFSOpsStandard) UnstageForTesting(
 	return ops.UnstageForTesting(ctx, folderBranch)
 }
 
-// Rekey implements the KBFSOps interface for KBFSOpsStandard
-func (fs *KBFSOpsStandard) Rekey(ctx context.Context, id tlf.ID) error {
+// RequestRekey implements the KBFSOps interface for KBFSOpsStandard
+func (fs *KBFSOpsStandard) RequestRekey(ctx context.Context, id tlf.ID) error {
 	// We currently only support rekeys of master branches.
 	ops := fs.getOpsNoAdd(FolderBranch{Tlf: id, Branch: MasterBranch})
-	return ops.Rekey(ctx, id)
+	return ops.RequestRekey(ctx, id)
 }
 
 // SyncFromServerForTesting implements the KBFSOps interface for KBFSOpsStandard
