@@ -714,10 +714,10 @@ func (fs *KBFSOpsStandard) UnstageForTesting(
 }
 
 // RequestRekey implements the KBFSOps interface for KBFSOpsStandard
-func (fs *KBFSOpsStandard) RequestRekey(ctx context.Context, id tlf.ID) error {
+func (fs *KBFSOpsStandard) RequestRekey(id tlf.ID) {
 	// We currently only support rekeys of master branches.
 	ops := fs.getOpsNoAdd(FolderBranch{Tlf: id, Branch: MasterBranch})
-	return ops.RequestRekey(ctx, id)
+	ops.RequestRekey(id)
 }
 
 // SyncFromServerForTesting implements the KBFSOps interface for KBFSOpsStandard

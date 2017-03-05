@@ -281,7 +281,7 @@ type KBFSOps interface {
 	// folder-branch.
 	UnstageForTesting(ctx context.Context, folderBranch FolderBranch) error
 	// RequestRekey requests to rekey this folder.
-	RequestRekey(ctx context.Context, id tlf.ID) error
+	RequestRekey(id tlf.ID)
 	// SyncFromServerForTesting blocks until the local client has
 	// contacted the server and guaranteed that all known updates
 	// for the given top-level folder have been applied locally

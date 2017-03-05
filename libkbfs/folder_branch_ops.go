@@ -4660,13 +4660,13 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 	}, nil
 }
 
-func (fbo *folderBranchOps) RequestRekey(ctx context.Context, tlf tlf.ID) error {
+func (fbo *folderBranchOps) RequestRekey(tlf tlf.ID) {
 	fb := FolderBranch{tlf, MasterBranch}
 	if fb != fbo.folderBranch {
-		return WrongOpsError{fbo.folderBranch, fb}
+		// TODO: log instead of panic?
+		panic(WrongOpsError{fbo.folderBranch, fb})
 	}
 	fbo.rekeyFSM.Event(NewRekeyRequestEvent(RekeyRequest{}))
-	return nil
 }
 
 func (fbo *folderBranchOps) SyncFromServerForTesting(

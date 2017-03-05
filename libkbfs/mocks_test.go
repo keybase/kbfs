@@ -694,14 +694,12 @@ func (_mr *_MockKBFSOpsRecorder) UnstageForTesting(arg0, arg1 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "UnstageForTesting", arg0, arg1)
 }
 
-func (_m *MockKBFSOps) Rekey(ctx context.Context, id tlf.ID) error {
-	ret := _m.ctrl.Call(_m, "Rekey", ctx, id)
-	ret0, _ := ret[0].(error)
-	return ret0
+func (_m *MockKBFSOps) RequestRekey(id tlf.ID) {
+	_m.ctrl.Call(_m, "RequestRekey", id)
 }
 
-func (_mr *_MockKBFSOpsRecorder) Rekey(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Rekey", arg0, arg1)
+func (_mr *_MockKBFSOpsRecorder) RequestRekey(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "RequestRekey", arg0)
 }
 
 func (_m *MockKBFSOps) SyncFromServerForTesting(ctx context.Context, folderBranch FolderBranch) error {

@@ -1002,7 +1002,7 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 
 	// User 2 dev 2 should set the rekey bit
 	kbfsOps2Dev2 := config2Dev2.KBFSOps()
-	err = kbfsOps2Dev2.Rekey(ctx, rootNode2.GetFolderBranch().Tlf)
+	_, err = requestRekeyAndWaitForOneFinishEvent(kbfsOps2Dev2, rootNode2.GetFolderBranch().Tlf)
 	require.NoError(t, err)
 
 	// User 1 syncs
@@ -1128,7 +1128,7 @@ func TestBasicCRFileConflictWithMergedRekey(t *testing.T) {
 
 	// User 2 dev 2 should set the rekey bit
 	kbfsOps2Dev2 := config2Dev2.KBFSOps()
-	err = kbfsOps2Dev2.Rekey(ctx, rootNode2.GetFolderBranch().Tlf)
+	_, err = requestRekeyAndWaitForOneFinishEvent(kbfsOps2Dev2, rootNode2.GetFolderBranch().Tlf)
 	require.NoError(t, err)
 
 	// User 1 writes the file
