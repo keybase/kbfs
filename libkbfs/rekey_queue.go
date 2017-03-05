@@ -45,38 +45,35 @@ type RekeyQueueStandard struct {
 	log     logger.Logger
 	queue   chan tlf.ID
 	limiter *rate.Limiter
+	cancel  context.CancelFunc
 
 	mu       sync.RWMutex // guards everything below
 	pendings map[tlf.ID]bool
-	cancel   context.CancelFunc
 }
 
 // TODO: comment
 func NewRekeyQueueStandard(config Config) (rkq *RekeyQueueStandard) {
-	return &RekeyQueueStandard{
+	ctx, cancel := context.WithCancel(context.Background())
+	rkq = &RekeyQueueStandard{
 		config:   config,
 		log:      config.MakeLogger("RQ"),
 		queue:    make(chan tlf.ID, rekeyQueueSize),
 		limiter:  rate.NewLimiter(rekeysPerSecond, numConcurrentRekeys),
 		pendings: make(map[tlf.ID]bool),
+		cancel:   cancel,
 	}
+	rkq.start(ctx)
+	return rkq
 }
 
-func (rkq *RekeyQueueStandard) startIfNeededLocked() {
-	rkq.mu.Lock()
-	defer rkq.mu.Unlock()
-	if rkq.cancel != nil {
-		return
-	}
-	var ctx context.Context
-	ctx, rkq.cancel = context.WithCancel(context.Background())
+func (rkq *RekeyQueueStandard) start(ctx context.Context) {
 	go func() {
 		for id := range rkq.queue {
 			if err := rkq.limiter.Wait(ctx); err != nil {
 				rkq.log.Debug("Waiting on rate limiter for tlf=%v error: %v", id, err)
-				return
+			} else {
+				rkq.config.KBFSOps().RequestRekey(id)
 			}
-			rkq.config.KBFSOps().RequestRekey(id)
 			go func() {
 				rkq.mu.Lock()
 				defer rkq.mu.Unlock()
@@ -90,7 +87,6 @@ func (rkq *RekeyQueueStandard) Enqueue(id tlf.ID) {
 	rkq.mu.Lock()
 	defer rkq.mu.Unlock()
 	rkq.pendings[id] = true
-	rkq.startIfNeededLocked()
 
 	select {
 	case rkq.queue <- id:
@@ -107,9 +103,14 @@ func (rkq *RekeyQueueStandard) IsRekeyPending(id tlf.ID) bool {
 	return rkq.pendings[id]
 }
 
-func (rkq *RekeyQueueStandard) Clear() {
+func (rkq *RekeyQueueStandard) Shutdown() {
 	rkq.mu.Lock()
 	defer rkq.mu.Unlock()
 	rkq.cancel()
 	rkq.cancel = nil
+}
+
+func (rkq *RekeyQueueStandard) New() RekeyQueue {
+	rkq.Shutdown()
+	return NewRekeyQueueStandard(rkq.config)
 }

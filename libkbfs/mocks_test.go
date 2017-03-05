@@ -4858,10 +4858,8 @@ func (_m *MockRekeyQueue) EXPECT() *_MockRekeyQueueRecorder {
 	return _m.recorder
 }
 
-func (_m *MockRekeyQueue) Enqueue(_param0 tlf.ID) <-chan error {
-	ret := _m.ctrl.Call(_m, "Enqueue", _param0)
-	ret0, _ := ret[0].(<-chan error)
-	return ret0
+func (_m *MockRekeyQueue) Enqueue(_param0 tlf.ID) {
+	_m.ctrl.Call(_m, "Enqueue", _param0)
 }
 
 func (_mr *_MockRekeyQueueRecorder) Enqueue(arg0 interface{}) *gomock.Call {
@@ -4878,22 +4876,22 @@ func (_mr *_MockRekeyQueueRecorder) IsRekeyPending(arg0 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsRekeyPending", arg0)
 }
 
-func (_m *MockRekeyQueue) Clear() {
-	_m.ctrl.Call(_m, "Clear")
+func (_m *MockRekeyQueue) Shutdown() {
+	_m.ctrl.Call(_m, "Shutdown")
 }
 
-func (_mr *_MockRekeyQueueRecorder) Clear() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Clear")
+func (_mr *_MockRekeyQueueRecorder) Shutdown() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
 }
 
-func (_m *MockRekeyQueue) Wait(ctx context.Context) error {
-	ret := _m.ctrl.Call(_m, "Wait", ctx)
-	ret0, _ := ret[0].(error)
+func (_m *MockRekeyQueue) New() RekeyQueue {
+	ret := _m.ctrl.Call(_m, "New")
+	ret0, _ := ret[0].(RekeyQueue)
 	return ret0
 }
 
-func (_mr *_MockRekeyQueueRecorder) Wait(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Wait", arg0)
+func (_mr *_MockRekeyQueueRecorder) New() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "New")
 }
 
 // Mock of BareRootMetadata interface

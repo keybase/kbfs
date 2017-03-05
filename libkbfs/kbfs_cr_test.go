@@ -1026,7 +1026,7 @@ func TestBasicCRFileConflictWithRekey(t *testing.T) {
 	err = kbfsOps2.SyncFromServerForTesting(ctx, rootNode2.GetFolderBranch())
 	require.NoError(t, err)
 	// wait for the rekey to happen
-	config2.RekeyQueue().Wait(ctx)
+	requestRekeyAndWaitForOneFinishEvent(config2.KBFSOps(), rootNode2.GetFolderBranch().Tlf)
 
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
 	require.NoError(t, err)
@@ -1149,7 +1149,7 @@ func TestBasicCRFileConflictWithMergedRekey(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, err)
 	// wait for the rekey to happen
-	config1.RekeyQueue().Wait(ctx)
+	requestRekeyAndWaitForOneFinishEvent(config1.KBFSOps(), rootNode1.GetFolderBranch().Tlf)
 
 	err = kbfsOps1.SyncFromServerForTesting(ctx, rootNode1.GetFolderBranch())
 	require.NoError(t, err)

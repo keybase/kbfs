@@ -1662,9 +1662,12 @@ type RekeyQueue interface {
 	// IsRekeyPending returns true if the given folder is in the rekey queue.
 	// Note that an ongoing rekey doesn't count as "pending".
 	IsRekeyPending(tlf.ID) bool
-	// Clear cancels all pending rekey actions and clears the queue. It doesn't
-	// cancel ongoing rekeys.
-	Clear()
+	// Shutdown cancels all pending rekey actions and clears the queue. It
+	// doesn't cancel ongoing rekeys. After Shutdown() is called, the same
+	// RekeyQueue shouldn't be used anymore.
+	Shutdown()
+	// New calls Shutdown() and returns a new RekeyQueue.
+	New() RekeyQueue
 }
 
 // BareRootMetadata is a read-only interface to the bare serializeable MD that
