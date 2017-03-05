@@ -91,10 +91,10 @@ type rekeyState interface {
 }
 
 type rekeyStateIdle struct {
-	fsm RekeyFSM
+	fsm *rekeyFSM
 }
 
-func newRekeyStateIdle(fsm RekeyFSM) *rekeyStateIdle {
+func newRekeyStateIdle(fsm *rekeyFSM) *rekeyStateIdle {
 	return &rekeyStateIdle{fsm: fsm}
 }
 
@@ -108,7 +108,7 @@ func (r *rekeyStateIdle) reactToEvent(event rekeyEvent) rekeyState {
 }
 
 type rekeyStateScheduled struct {
-	fsm RekeyFSM
+	fsm *rekeyFSM
 
 	timer    *time.Timer
 	deadline time.Time
@@ -116,7 +116,7 @@ type rekeyStateScheduled struct {
 	task RekeyTask
 }
 
-func newRekeyStateScheduled(fsm RekeyFSM, req RekeyRequest) *rekeyStateScheduled {
+func newRekeyStateScheduled(fsm *rekeyFSM, req RekeyRequest) *rekeyStateScheduled {
 	defaultTTL := rekeyInitialTTL
 	if req.ttl == nil {
 		req.ttl = &defaultTTL
@@ -138,6 +138,7 @@ func (r *rekeyStateScheduled) reactToEvent(event rekeyEvent) rekeyState {
 		return newRekeyStateStarted(r.fsm, r.task)
 	case rekeyRequestEvent:
 		if !r.deadline.After(time.Now().Add(event.request.Delay)) {
+			r.task.promptPaper = event.request.promptPaper
 			return r
 		}
 		r.timer.Stop()
@@ -148,20 +149,20 @@ func (r *rekeyStateScheduled) reactToEvent(event rekeyEvent) rekeyState {
 	case rekeyCancelEventForTest:
 		r.timer.Stop()
 		return newRekeyStateIdle(r.fsm)
+	case rekeyShutdownEvent:
+		r.timer.Stop()
+		return r
 	default:
-		r.task.promptPaper = event.request.promptPaper
 		return r
 	}
 }
 
-// TODO: split this state into multiple representing different rekey states,
-// e.g. waiting for paper key prompt, etc.
 type rekeyStateStarted struct {
-	fsm  RekeyFSM
+	fsm  *rekeyFSM
 	task RekeyTask
 }
 
-func newRekeyStateStarted(fsm RekeyFSM, task RekeyTask) *rekeyStateStarted {
+func newRekeyStateStarted(fsm *rekeyFSM, task RekeyTask) *rekeyStateStarted {
 	ctx := task.injectContextForTest
 	if ctx == nil {
 		ctx = ctxWithRandomIDReplayable(context.Background(), CtxRekeyIDKey,
@@ -172,13 +173,14 @@ func newRekeyStateStarted(fsm RekeyFSM, task RekeyTask) *rekeyStateStarted {
 		ctx, cancel = context.WithTimeout(ctx, *task.Timeout)
 	}
 	go func() {
+		rkq.log.CDebugf(newCtx, "Processing rekey for %s", fsm.fbo.folderBranch.Tlf)
 		var res RekeyResult
-		err := fsm.folderBranchOps().doMDWriteWithRetryUnlessCanceled(ctx,
+		err := fsm.fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 			func(lState *lockState) (err error) {
-				res, err = fsm.folderBranchOps().rekeyLocked(ctx, lState, false)
+				res, err = fsm.fbo.rekeyLocked(ctx, lState, false)
 				return err
 			})
-		fsm.folderBranchOps().log.CDebugf(ctx, "Rekey finished with res=%v, error=%v", res, err)
+		fsm.fbo.log.CDebugf(ctx, "Rekey finished with res=%#+v, error=%v", res, err)
 		fsm.Event(newRekeyFinishedEvent(res, err))
 		if cancel != nil {
 			cancel()
@@ -214,7 +216,7 @@ func (r *rekeyStateStarted) reactToEvent(event rekeyEvent) rekeyState {
 			return newRekeyStateIdle(r.fsm)
 		}
 
-		d := r.fsm.config().RekeyWithPromptWaitTime()
+		d := r.fsm.fbo.config.RekeyWithPromptWaitTime()
 
 		if ttl > 0 && event.rekeyFinished.NeedsPaperKey {
 			return newRekeyStateScheduled(r.fsm, RekeyRequest{
@@ -256,33 +258,36 @@ type RekeyFSM interface {
 	Event(event rekeyEvent)
 	Shutdown()
 
-	config() Config
-	folderBranchOps() *folderBranchOps
-
 	listenOnceOnEventForTest(event rekeyEventType, callback func(rekeyEvent))
 }
 
 type listenerForTest struct {
-	once sync.Once
+	once *sync.Once
 	body func(rekeyEvent)
 }
 
 func (l *listenerForTest) do(e rekeyEvent) {
-	l.once.Do(func() {
+	if l.once != nil {
+		l.once.Do(func() {
+			l.body(e)
+		})
+	} else {
 		l.body(e)
-	})
+	}
 }
 
+// TODO: report status in FolderBranchStatus?
 type rekeyFSM struct {
 	reqs chan rekeyEvent
 	fbo  *folderBranchOps
 
 	current rekeyState
 
-	listenersForTest map[rekeyEventType][]*listenerForTest
+	muListenersForTest sync.RWMutex
+	listenersForTest   map[rekeyEventType][]*listenerForTest
 }
 
-func (m rekeyFSM) loop() {
+func (m *rekeyFSM) loop() {
 	for e := range m.reqs {
 		if e.eventType == rekeyShutdownEvent {
 			close(m.reqs)
@@ -290,22 +295,12 @@ func (m rekeyFSM) loop() {
 
 		m.current = m.current.reactToEvent(e)
 
-		for _, cb := range m.listenersForTest[e.eventType] {
-			cb.do(e)
-		}
+		m.triggerCallbacksForTest(e)
 	}
 }
 
-func (m rekeyFSM) config() Config {
-	return m.fbo.config
-}
-
-func (m rekeyFSM) folderBranchOps() *folderBranchOps {
-	return m.fbo
-}
-
 func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
-	fsm := rekeyFSM{
+	fsm := &rekeyFSM{
 		reqs: make(chan rekeyEvent, rekeyQueueSize),
 		fbo:  fbo,
 
@@ -316,7 +311,7 @@ func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 	return fsm
 }
 
-func (m rekeyFSM) Event(event rekeyEvent) {
+func (m *rekeyFSM) Event(event rekeyEvent) {
 	select {
 	case m.reqs <- event:
 	default:
@@ -324,12 +319,29 @@ func (m rekeyFSM) Event(event rekeyEvent) {
 	}
 }
 
-func (m rekeyFSM) Shutdown() {
+func (m *rekeyFSM) Shutdown() {
 	m.Event(newRekeyShutdownEvent())
 }
 
-func (m rekeyFSM) listenOnceOnEventForTest(event rekeyEventType, callback func(rekeyEvent)) {
+func (m *rekeyFSM) triggerCallbacksForTest(e rekeyEvent) {
+	m.muListenersForTest.RLock()
+	cbs := m.listenersForTest[e.eventType]
+	m.muListenersForTest.RUnlock()
+	for _, cb := range cbs {
+		cb.do(e)
+	}
+}
+
+func (m *rekeyFSM) listenOnceOnEventForTest(
+	event rekeyEventType, callback func(rekeyEvent), repeatedly bool) {
+	m.muListenersForTest.Lock()
+	defer m.muListenersForTest.Unlock()
+	var once *sync.Once
+	if !repeatedly {
+		once = &sync.Once{}
+	}
 	m.listenersForTest[event] = append(m.listenersForTest[event], &listenerForTest{
 		body: callback,
+		once: once,
 	})
 }

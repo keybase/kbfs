@@ -70,45 +70,6 @@ func keyManagerShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 	mockCtrl.Finish()
 }
 
-func getRekeyFSM(ops KBFSOps, tlfID tlf.ID) RekeyFSM {
-	switch o := ops.(type) {
-	case *KBFSOpsStandard:
-		return o.getOpsNoAdd(FolderBranch{Tlf: tlfID, Branch: MasterBranch}).rekeyFSM
-	case *folderBranchOps:
-		return o.rekeyFSM
-	}
-	return rekeyFSM{}
-}
-
-func requestRekeyWithContextAndWaitForOneFinishEvent(ctx context.Context, ops KBFSOps, tlfID tlf.ID) (res RekeyResult, err error) {
-	fsm := getRekeyFSM(ops, tlfID)
-	rekeyWaiter := make(chan struct{})
-	// now user 1 should rekey
-	fsm.listenOnceOnEventForTest(rekeyFinishedEvent, func(e rekeyEvent) {
-		res = e.rekeyFinished.RekeyResult
-		err = e.rekeyFinished.err
-		close(rekeyWaiter)
-	})
-	fsm.Event(NewRekeyRequestEvent(RekeyRequest{RekeyTask: RekeyTask{
-		injectContextForTest: ctx}}))
-	<-rekeyWaiter
-	return res, err
-}
-
-func requestRekeyAndWaitForOneFinishEvent(ops KBFSOps, tlfID tlf.ID) (res RekeyResult, err error) {
-	fsm := getRekeyFSM(ops, tlfID)
-	rekeyWaiter := make(chan struct{})
-	// now user 1 should rekey
-	fsm.listenOnceOnEventForTest(rekeyFinishedEvent, func(e rekeyEvent) {
-		res = e.rekeyFinished.RekeyResult
-		err = e.rekeyFinished.err
-		close(rekeyWaiter)
-	})
-	ops.RequestRekey(tlfID)
-	<-rekeyWaiter
-	return res, err
-}
-
 var serverHalf = kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
 
 func expectUncachedGetTLFCryptKey(t *testing.T, config *ConfigMock, tlfID tlf.ID, keyGen, currKeyGen KeyGen,
