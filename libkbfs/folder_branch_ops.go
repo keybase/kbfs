@@ -419,6 +419,7 @@ func (fbo *folderBranchOps) Shutdown(ctx context.Context) error {
 	fbo.cr.Shutdown()
 	fbo.fbm.shutdown()
 	fbo.editHistory.Shutdown()
+	fbo.rekeyFSM.Shutdown()
 	// Wait for the update goroutine to finish, so that we don't have
 	// any races with logging during test reporting.
 	if fbo.updateDoneChan != nil {

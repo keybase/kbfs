@@ -6,6 +6,20 @@ import (
 	"time"
 )
 
+// CtxRekeyTagKey is the type used for unique context tags within an
+// enqueued Rekey.
+type CtxRekeyTagKey int
+
+const (
+	// CtxRekeyIDKey is the type of the tag for unique operation IDs
+	// within an enqueued Rekey.
+	CtxRekeyIDKey CtxRekeyTagKey = iota
+)
+
+// CtxRekeyOpID is the display name for the unique operation
+// enqueued rekey ID tag.
+const CtxRekeyOpID = "REKEYID"
+
 type RekeyRequest struct {
 	Delay time.Duration
 	RekeyTask
@@ -173,7 +187,7 @@ func newRekeyStateStarted(fsm *rekeyFSM, task RekeyTask) *rekeyStateStarted {
 		ctx, cancel = context.WithTimeout(ctx, *task.Timeout)
 	}
 	go func() {
-		rkq.log.CDebugf(newCtx, "Processing rekey for %s", fsm.fbo.folderBranch.Tlf)
+		fsm.fbo.log.CDebugf(ctx, "Processing rekey for %s", fsm.fbo.folderBranch.Tlf)
 		var res RekeyResult
 		err := fsm.fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 			func(lState *lockState) (err error) {
@@ -258,7 +272,7 @@ type RekeyFSM interface {
 	Event(event rekeyEvent)
 	Shutdown()
 
-	listenOnceOnEventForTest(event rekeyEventType, callback func(rekeyEvent))
+	listenOnceOnEventForTest(event rekeyEventType, callback func(rekeyEvent), repeatedly bool)
 }
 
 type listenerForTest struct {

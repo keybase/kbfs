@@ -1653,20 +1653,18 @@ type crAction interface {
 	String() string
 }
 
-// RekeyQueue is a managed queue of folders needing some rekey action taken upon them
-// by the current client.
+// RekeyQueue is a managed queue of folders needing some rekey action taken
+// upon them by the current client.
 type RekeyQueue interface {
 	// Enqueue enqueues a folder for rekey action. If the TLF is already in the
 	// rekey queue, the error channel of the existing one is returned.
-	Enqueue(tlf.ID) <-chan error
+	Enqueue(tlf.ID)
 	// IsRekeyPending returns true if the given folder is in the rekey queue.
-	// Note that a rekey request that a worker has already picked up and is
-	// working on doesn't count as "pending".
+	// Note that an ongoing rekey doesn't count as "pending".
 	IsRekeyPending(tlf.ID) bool
-	// Clear cancels all pending rekey actions and clears the queue.
+	// Clear cancels all pending rekey actions and clears the queue. It doesn't
+	// cancel ongoing rekeys.
 	Clear()
-	// Waits for all queued rekeys to finish
-	Wait(ctx context.Context) error
 }
 
 // BareRootMetadata is a read-only interface to the bare serializeable MD that
