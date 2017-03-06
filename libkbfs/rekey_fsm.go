@@ -272,7 +272,7 @@ type RekeyFSM interface {
 	Event(event rekeyEvent)
 	Shutdown()
 
-	listenOnceOnEventForTest(event rekeyEventType, callback func(rekeyEvent), repeatedly bool)
+	listenOnEventForTest(event rekeyEventType, callback func(rekeyEvent), repeatedly bool)
 }
 
 type listenerForTest struct {
@@ -346,7 +346,7 @@ func (m *rekeyFSM) triggerCallbacksForTest(e rekeyEvent) {
 	}
 }
 
-func (m *rekeyFSM) listenOnceOnEventForTest(
+func (m *rekeyFSM) listenOnEventForTest(
 	event rekeyEventType, callback func(rekeyEvent), repeatedly bool) {
 	m.muListenersForTest.Lock()
 	defer m.muListenersForTest.Unlock()
