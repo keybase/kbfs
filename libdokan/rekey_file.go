@@ -20,6 +20,7 @@ type RekeyFile struct {
 // WriteFile implements writes for dokan.
 func (f *RekeyFile) WriteFile(ctx context.Context, fi *dokan.FileInfo, bs []byte, offset int64) (n int, err error) {
 	f.folder.fs.logEnter(ctx, "RekeyFile Write")
+	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 	if len(bs) == 0 {
 		return 0, nil
 	}
@@ -29,6 +30,6 @@ func (f *RekeyFile) WriteFile(ctx context.Context, fi *dokan.FileInfo, bs []byte
 	if err != nil {
 		return 0, err
 	}
-	// TODO: do we need notification here?
+	f.folder.fs.NotificationGroupWait()
 	return len(bs), nil
 }
