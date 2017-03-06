@@ -40,6 +40,7 @@ const (
 	rekeyQueueSize                 = 1024 // 24 KB
 )
 
+// RekeyQueueStandard implements the RekeyQueue interface.
 type RekeyQueueStandard struct {
 	config  Config
 	log     logger.Logger
@@ -51,7 +52,10 @@ type RekeyQueueStandard struct {
 	pendings map[tlf.ID]bool
 }
 
-// TODO: comment
+// Test that RekeyQueueStandard fully implements the RekeyQueue interface.
+var _ RekeyQueue = (*RekeyQueueStandard)(nil)
+
+// NewRekeyQueueStandard creates a new rekey queue.
 func NewRekeyQueueStandard(config Config) (rkq *RekeyQueueStandard) {
 	ctx, cancel := context.WithCancel(context.Background())
 	rkq = &RekeyQueueStandard{
@@ -66,6 +70,8 @@ func NewRekeyQueueStandard(config Config) (rkq *RekeyQueueStandard) {
 	return rkq
 }
 
+// start spawns a goroutine that dispatches rekey requests to correct folder
+// branch ops while conforming to the rater limiter.
 func (rkq *RekeyQueueStandard) start(ctx context.Context) {
 	go func() {
 		for id := range rkq.queue {
@@ -74,15 +80,16 @@ func (rkq *RekeyQueueStandard) start(ctx context.Context) {
 			} else {
 				rkq.config.KBFSOps().RequestRekey(id)
 			}
-			go func() {
+			go func(id tlf.ID) {
 				rkq.mu.Lock()
 				defer rkq.mu.Unlock()
 				delete(rkq.pendings, id)
-			}()
+			}(id)
 		}
 	}()
 }
 
+// Enqueue implements the RekeyQueue interface for RekeyQueueStandard.
 func (rkq *RekeyQueueStandard) Enqueue(id tlf.ID) {
 	rkq.mu.Lock()
 	defer rkq.mu.Unlock()
@@ -97,12 +104,14 @@ func (rkq *RekeyQueueStandard) Enqueue(id tlf.ID) {
 	}
 }
 
+// IsRekeyPending implements the RekeyQueue interface for RekeyQueueStandard.
 func (rkq *RekeyQueueStandard) IsRekeyPending(id tlf.ID) bool {
 	rkq.mu.RLock()
 	defer rkq.mu.RUnlock()
 	return rkq.pendings[id]
 }
 
+// Shutdown implements the RekeyQueue interface for RekeyQueueStandard.
 func (rkq *RekeyQueueStandard) Shutdown() {
 	rkq.mu.Lock()
 	defer rkq.mu.Unlock()
@@ -110,6 +119,7 @@ func (rkq *RekeyQueueStandard) Shutdown() {
 	rkq.cancel = nil
 }
 
+// New implements the RekeyQueue interface for RekeyQueueStandard.
 func (rkq *RekeyQueueStandard) New() RekeyQueue {
 	rkq.Shutdown()
 	return NewRekeyQueueStandard(rkq.config)

@@ -1958,3 +1958,24 @@ type KeyBundleCache interface {
 	// PutTLFWriterKeyBundle stores the given TLFWriterKeyBundleV3.
 	PutTLFWriterKeyBundle(tlf.ID, TLFWriterKeyBundleID, TLFWriterKeyBundleV3)
 }
+
+// RekeyFSM is a Finite State Machine (FSM) for housekeeping rekey states for a
+// FolderBranch. Each FolderBranch has its own FSM for rekeys.
+// TODO: finish this ...
+//
+// TODO: move this into interfaces.go
+// TODO: report FSM status in FolderBranchStatus?
+type RekeyFSM interface {
+	// Event sends an event to the FSM.
+	Event(event RekeyEvent)
+	// Shutdown shuts down the FSM. No new event should be sent into the FSM
+	// after this method is called.
+	Shutdown()
+
+	// listenOnEventForTest adds a listener (callback) to the FSM so that when
+	// event happens, callback is called with the received event. If repeatedly
+	// is set to false, callback is called only once. Otherwise it's called every
+	// time event happens.
+	listenOnEventForTest(
+		event rekeyEventType, callback func(RekeyEvent), repeatedly bool)
+}

@@ -22,19 +22,6 @@ const (
 // enqueued rekey ID tag.
 const CtxRekeyOpID = "REKEYID"
 
-type RekeyRequest struct {
-	Delay time.Duration
-	RekeyTask
-}
-
-type RekeyTask struct {
-	Timeout     *time.Duration
-	ttl         *int
-	promptPaper bool
-
-	injectContextForTest context.Context
-}
-
 type rekeyEventType int
 
 const (
@@ -49,27 +36,51 @@ const (
 	rekeyCancelEventForTest
 )
 
+// RekeyTask describes a rekey task.
+type RekeyTask struct {
+	// Timeout, if non-nil, causes rekey to fail if it takes more than this
+	// duration since it enters rekeyStateStarted.
+	Timeout     *time.Duration
+	ttl         *int
+	promptPaper bool
+
+	// injectContextForTest, if non-nil, is used when calling fbo.rekeyLocked.
+	injectContextForTest context.Context
+}
+
+// RekeyRequest describes a rekey request.
+type RekeyRequest struct {
+	// Delay is the duration to wait for since the request enters the FSM until
+	// starting the rekey.
+	Delay time.Duration
+	RekeyTask
+}
+
+// RekeyFinished describes a rekeyFinishedEvent. It contains results from an
+// actual rekey operation.
 type RekeyFinished struct {
 	RekeyResult
 	err error
 }
 
-type rekeyEvent struct {
+// RekeyEvent describes an event to send into the RekeyFSM. A function, e.g.,
+// NewRekeyRequestEvent, should be used to construct one
+type RekeyEvent struct {
 	eventType     rekeyEventType
 	request       *RekeyRequest
 	rekeyFinished *RekeyFinished
-	// rekeyTimeupEvent has no argument
 }
 
-func NewRekeyRequestEvent(req RekeyRequest) rekeyEvent {
-	return rekeyEvent{
+// NewRekeyRequestEvent creates a rekey request Event with req.
+func NewRekeyRequestEvent(req RekeyRequest) RekeyEvent {
+	return RekeyEvent{
 		eventType: rekeyRequestEvent,
 		request:   &req,
 	}
 }
 
-func newRekeyFinishedEvent(res RekeyResult, err error) rekeyEvent {
-	return rekeyEvent{
+func newRekeyFinishedEvent(res RekeyResult, err error) RekeyEvent {
+	return RekeyEvent{
 		eventType: rekeyFinishedEvent,
 		rekeyFinished: &RekeyFinished{
 			RekeyResult: res,
@@ -78,32 +89,32 @@ func newRekeyFinishedEvent(res RekeyResult, err error) rekeyEvent {
 	}
 }
 
-func newRekeyTimeupEvent() rekeyEvent {
-	return rekeyEvent{
+func newRekeyTimeupEvent() RekeyEvent {
+	return RekeyEvent{
 		eventType: rekeyTimeupEvent,
 	}
 }
 
-func newRekeyShutdownEvent() rekeyEvent {
-	return rekeyEvent{
+func newRekeyShutdownEvent() RekeyEvent {
+	return RekeyEvent{
 		eventType: rekeyShutdownEvent,
 	}
 }
 
-func newRekeyKickoffEventForTest() rekeyEvent {
-	return rekeyEvent{
+func newRekeyKickoffEventForTest() RekeyEvent {
+	return RekeyEvent{
 		eventType: rekeyKickoffEventForTest,
 	}
 }
 
-func newRekeyCancelEventForTest() rekeyEvent {
-	return rekeyEvent{
+func newRekeyCancelEventForTest() RekeyEvent {
+	return RekeyEvent{
 		eventType: rekeyCancelEventForTest,
 	}
 }
 
 type rekeyState interface {
-	reactToEvent(event rekeyEvent) rekeyState
+	reactToEvent(event RekeyEvent) rekeyState
 }
 
 type rekeyStateIdle struct {
@@ -114,7 +125,7 @@ func newRekeyStateIdle(fsm *rekeyFSM) *rekeyStateIdle {
 	return &rekeyStateIdle{fsm: fsm}
 }
 
-func (r *rekeyStateIdle) reactToEvent(event rekeyEvent) rekeyState {
+func (r *rekeyStateIdle) reactToEvent(event RekeyEvent) rekeyState {
 	switch event.eventType {
 	case rekeyRequestEvent:
 		return newRekeyStateScheduled(r.fsm, *event.request)
@@ -148,7 +159,7 @@ func newRekeyStateScheduled(fsm *rekeyFSM, req RekeyRequest) *rekeyStateSchedule
 	}
 }
 
-func (r *rekeyStateScheduled) reactToEvent(event rekeyEvent) rekeyState {
+func (r *rekeyStateScheduled) reactToEvent(event RekeyEvent) rekeyState {
 	switch event.eventType {
 	case rekeyTimeupEvent:
 		return newRekeyStateStarted(r.fsm, r.task)
@@ -208,9 +219,7 @@ func newRekeyStateStarted(fsm *rekeyFSM, task RekeyTask) *rekeyStateStarted {
 	}
 }
 
-func (r *rekeyStateStarted) reactToEvent(event rekeyEvent) rekeyState {
-	// TODO: make sure fbo doesn't assumed request during "Started" state will be
-	// processed
+func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 	ttl := *r.task.ttl - 1
 	switch event.eventType {
 	case rekeyFinishedEvent:
@@ -269,38 +278,19 @@ func (r *rekeyStateStarted) reactToEvent(event rekeyEvent) rekeyState {
 	}
 }
 
-// TODO: move this into interfaces.go
-type RekeyFSM interface {
-	Event(event rekeyEvent)
-	Shutdown()
-
-	listenOnEventForTest(event rekeyEventType, callback func(rekeyEvent), repeatedly bool)
-}
-
 type listenerForTest struct {
-	once *sync.Once
-	body func(rekeyEvent)
+	repeatedly bool
+	body       func(RekeyEvent)
 }
 
-func (l *listenerForTest) do(e rekeyEvent) {
-	if l.once != nil {
-		l.once.Do(func() {
-			l.body(e)
-		})
-	} else {
-		l.body(e)
-	}
-}
-
-// TODO: report status in FolderBranchStatus?
 type rekeyFSM struct {
-	reqs chan rekeyEvent
+	reqs chan RekeyEvent
 	fbo  *folderBranchOps
 
 	current rekeyState
 
-	muListenersForTest sync.RWMutex
-	listenersForTest   map[rekeyEventType][]*listenerForTest
+	muListenersForTest sync.Mutex
+	listenersForTest   map[rekeyEventType][]listenerForTest
 }
 
 func (m *rekeyFSM) loop() {
@@ -315,19 +305,21 @@ func (m *rekeyFSM) loop() {
 	}
 }
 
+// NewRekeyFSM creates a new rekey FSM.
 func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 	fsm := &rekeyFSM{
-		reqs: make(chan rekeyEvent, rekeyQueueSize),
+		reqs: make(chan RekeyEvent, rekeyQueueSize),
 		fbo:  fbo,
 
-		listenersForTest: make(map[rekeyEventType][]*listenerForTest),
+		listenersForTest: make(map[rekeyEventType][]listenerForTest),
 	}
 	fsm.current = newRekeyStateIdle(fsm)
 	go fsm.loop()
 	return fsm
 }
 
-func (m *rekeyFSM) Event(event rekeyEvent) {
+// Event implements RekeyFSM interface for rekeyFSM.
+func (m *rekeyFSM) Event(event RekeyEvent) {
 	select {
 	case m.reqs <- event:
 	default:
@@ -335,30 +327,38 @@ func (m *rekeyFSM) Event(event rekeyEvent) {
 	}
 }
 
+// Shutdown implements RekeyFSM interface for rekeyFSM.
 func (m *rekeyFSM) Shutdown() {
 	m.Event(newRekeyShutdownEvent())
 }
 
-func (m *rekeyFSM) triggerCallbacksForTest(e rekeyEvent) {
-	m.muListenersForTest.RLock()
-	cbs := m.listenersForTest[e.eventType]
-	m.muListenersForTest.RUnlock()
+func (m *rekeyFSM) triggerCallbacksForTest(e RekeyEvent) {
+	var cbs []listenerForTest
+	func() {
+		m.muListenersForTest.Lock()
+		defer m.muListenersForTest.Unlock()
+		cbs = m.listenersForTest[e.eventType]
+		m.listenersForTest[e.eventType] = nil
+		for _, cb := range cbs {
+			if cb.repeatedly {
+				m.listenersForTest[e.eventType] = append(
+					m.listenersForTest[e.eventType], cb)
+			}
+		}
+	}()
 	for _, cb := range cbs {
-		cb.do(e)
+		cb.body(e)
 	}
 }
 
+// listenOnEventForTest implements RekeyFSM interface for rekeyFSM.
 func (m *rekeyFSM) listenOnEventForTest(
-	event rekeyEventType, callback func(rekeyEvent), repeatedly bool) {
+	event rekeyEventType, callback func(RekeyEvent), repeatedly bool) {
 	m.muListenersForTest.Lock()
 	defer m.muListenersForTest.Unlock()
-	var once *sync.Once
-	if !repeatedly {
-		once = &sync.Once{}
-	}
-	m.listenersForTest[event] = append(m.listenersForTest[event], &listenerForTest{
-		body: callback,
-		once: once,
+	m.listenersForTest[event] = append(m.listenersForTest[event], listenerForTest{
+		body:       callback,
+		repeatedly: repeatedly,
 	})
 }
 
@@ -372,12 +372,15 @@ func getRekeyFSMForTest(ops KBFSOps, tlfID tlf.ID) RekeyFSM {
 	return nil
 }
 
+// RequestRekeyAndWaitForOneFinishEventForTest sends a rekey request to the FSM
+// associated with tlfID, and wait for exact one rekeyFinished event. This can
+// be useful for waiting for a rekey result in tests.
 func RequestRekeyAndWaitForOneFinishEventForTest(
 	ops KBFSOps, tlfID tlf.ID) (res RekeyResult, err error) {
 	fsm := getRekeyFSMForTest(ops, tlfID)
 	rekeyWaiter := make(chan struct{})
 	// now user 1 should rekey
-	fsm.listenOnEventForTest(rekeyFinishedEvent, func(e rekeyEvent) {
+	fsm.listenOnEventForTest(rekeyFinishedEvent, func(e RekeyEvent) {
 		res = e.rekeyFinished.RekeyResult
 		err = e.rekeyFinished.err
 		close(rekeyWaiter)
