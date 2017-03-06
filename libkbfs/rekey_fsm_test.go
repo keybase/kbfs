@@ -15,12 +15,11 @@ func requestRekeyWithContextAndWaitForOneFinishEvent(ctx context.Context, ops KB
 	rekeyWaiter := make(chan struct{})
 	// now user 1 should rekey
 	fsm.listenOnEventForTest(rekeyFinishedEvent, func(e RekeyEvent) {
-		res = e.rekeyFinished.RekeyResult
-		err = e.rekeyFinished.err
+		res = e.finished.RekeyResult
+		err = e.finished.err
 		close(rekeyWaiter)
 	}, false)
-	fsm.Event(NewRekeyRequestEvent(RekeyRequest{RekeyTask: RekeyTask{
-		injectContextForTest: ctx}}))
+	fsm.Event(newRekeyRequestEventWithContext(ctx))
 	<-rekeyWaiter
 	return res, err
 }

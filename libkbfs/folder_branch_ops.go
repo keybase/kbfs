@@ -4780,7 +4780,7 @@ func (fbo *folderBranchOps) RequestRekey(tlf tlf.ID) {
 		// TODO: log instead of panic?
 		panic(WrongOpsError{fbo.folderBranch, fb})
 	}
-	fbo.rekeyFSM.Event(NewRekeyRequestEvent(RekeyRequest{}))
+	fbo.rekeyFSM.Event(NewRekeyRequestEvent())
 }
 
 func (fbo *folderBranchOps) SyncFromServerForTesting(

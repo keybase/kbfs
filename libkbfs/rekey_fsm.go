@@ -2,9 +2,11 @@ package libkbfs
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/tlf"
 )
 
@@ -59,29 +61,47 @@ const (
 	rekeyCancelEventForTest
 )
 
-// RekeyTask describes a rekey task.
-type RekeyTask struct {
-	// Timeout, if non-nil, causes rekey to fail if it takes more than this
+func (e rekeyEventType) String() string {
+	switch e {
+	case rekeyRequestEvent:
+		return "rekeyRequestEvent"
+	case rekeyFinishedEvent:
+		return "rekeyFinishedEvent"
+	case rekeyTimeupEvent:
+		return "rekeyTimeupEvent"
+	case rekeyShutdownEvent:
+		return "rekeyShutdownEvent"
+	case rekeyKickoffEventForTest:
+		return "rekeyKickoffEventForTest"
+	case rekeyCancelEventForTest:
+		return "rekeyCancelEventForTest"
+	default:
+		return "unknown"
+	}
+}
+
+// rekeyTask describes a rekey task.
+type rekeyTask struct {
+	// timeout, if non-nil, causes rekey to fail if it takes more than this
 	// duration since it enters rekeyStateStarted.
-	Timeout     *time.Duration
-	ttl         *int
+	timeout     *time.Duration
+	ttl         int
 	promptPaper bool
 
-	// injectContextForTest, if non-nil, is used when calling fbo.rekeyLocked.
-	injectContextForTest context.Context
+	ctx context.Context
 }
 
-// RekeyRequest describes a rekey request.
-type RekeyRequest struct {
-	// Delay is the duration to wait for since the request enters the FSM until
+// rekeyRequest describes a rekey request.
+type rekeyRequest struct {
+	// delay is the duration to wait for since the request enters the FSM until
 	// starting the rekey.
-	Delay time.Duration
-	RekeyTask
+	delay time.Duration
+	rekeyTask
 }
 
-// RekeyFinished describes a rekeyFinishedEvent. It contains results from an
+// rekeyFinished describes a rekeyFinishedEvent. It contains results from an
 // actual rekey operation.
-type RekeyFinished struct {
+type rekeyFinished struct {
 	RekeyResult
 	err error
 }
@@ -89,23 +109,51 @@ type RekeyFinished struct {
 // RekeyEvent describes an event to send into the RekeyFSM. A function, e.g.,
 // NewRekeyRequestEvent, should be used to construct one
 type RekeyEvent struct {
-	eventType     rekeyEventType
-	request       *RekeyRequest
-	rekeyFinished *RekeyFinished
+	eventType rekeyEventType
+	request   *rekeyRequest
+	finished  *rekeyFinished
 }
 
-// NewRekeyRequestEvent creates a rekey request Event with req.
-func NewRekeyRequestEvent(req RekeyRequest) RekeyEvent {
+func (e RekeyEvent) String() string {
+	switch e.eventType {
+	case rekeyRequestEvent:
+		return fmt.Sprintf("%s [%#+v]", e.eventType, e.request)
+	case rekeyFinishedEvent:
+		return fmt.Sprintf("%s [%#+v]", e.eventType, e.finished)
+	default:
+		return e.eventType.String()
+	}
+}
+
+func newRekeyRequestEvent(req rekeyRequest) RekeyEvent {
 	return RekeyEvent{
 		eventType: rekeyRequestEvent,
 		request:   &req,
 	}
 }
 
+func newRekeyRequestEventWithContext(ctx context.Context) RekeyEvent {
+	return newRekeyRequestEvent(rekeyRequest{
+		delay: 0,
+		rekeyTask: rekeyTask{
+			timeout:     nil,
+			promptPaper: false,
+			ttl:         rekeyInitialTTL,
+			ctx:         ctx,
+		},
+	})
+}
+
+// NewRekeyRequestEvent creates a rekey request Event.
+func NewRekeyRequestEvent() RekeyEvent {
+	return newRekeyRequestEventWithContext(ctxWithRandomIDReplayable(
+		context.Background(), CtxRekeyIDKey, CtxRekeyOpID, nil))
+}
+
 func newRekeyFinishedEvent(res RekeyResult, err error) RekeyEvent {
 	return RekeyEvent{
 		eventType: rekeyFinishedEvent,
-		rekeyFinished: &RekeyFinished{
+		finished: &rekeyFinished{
 			RekeyResult: res,
 			err:         err,
 		},
@@ -164,7 +212,8 @@ func newRekeyStateIdle(fsm *rekeyFSM) *rekeyStateIdle {
 func (r *rekeyStateIdle) reactToEvent(event RekeyEvent) rekeyState {
 	switch event.eventType {
 	case rekeyRequestEvent:
-		return newRekeyStateScheduled(r.fsm, *event.request)
+		return newRekeyStateScheduled(r.fsm,
+			event.request.delay, event.request.rekeyTask)
 	default:
 		return r
 	}
@@ -176,22 +225,18 @@ type rekeyStateScheduled struct {
 	timer    *time.Timer
 	deadline time.Time
 
-	task RekeyTask
+	task rekeyTask
 }
 
-func newRekeyStateScheduled(fsm *rekeyFSM, req RekeyRequest) *rekeyStateScheduled {
-	defaultTTL := rekeyInitialTTL
-	if req.ttl == nil {
-		req.ttl = &defaultTTL
-	}
-
+func newRekeyStateScheduled(
+	fsm *rekeyFSM, delay time.Duration, task rekeyTask) *rekeyStateScheduled {
 	return &rekeyStateScheduled{
 		fsm: fsm,
-		timer: time.AfterFunc(req.Delay, func() {
+		timer: time.AfterFunc(delay, func() {
 			fsm.Event(newRekeyTimeupEvent())
 		}),
-		deadline: time.Now().Add(req.Delay),
-		task:     req.RekeyTask,
+		deadline: time.Now().Add(delay),
+		task:     task,
 	}
 }
 
@@ -200,12 +245,18 @@ func (r *rekeyStateScheduled) reactToEvent(event RekeyEvent) rekeyState {
 	case rekeyTimeupEvent:
 		return newRekeyStateStarted(r.fsm, r.task)
 	case rekeyRequestEvent:
-		if !r.deadline.After(time.Now().Add(event.request.Delay)) {
-			r.task.promptPaper = event.request.promptPaper
+		if !r.deadline.After(time.Now().Add(event.request.delay)) {
+			r.task.promptPaper = r.task.promptPaper || event.request.promptPaper
+			if r.task.timeout == nil {
+				r.task.timeout = event.request.timeout
+			}
+			r.task.ttl = event.request.ttl
+			r.fsm.log.CDebugf(r.task.ctx, "Reusing existing timer")
 			return r
 		}
 		r.timer.Stop()
-		return newRekeyStateScheduled(r.fsm, *event.request)
+		return newRekeyStateScheduled(r.fsm,
+			event.request.delay, event.request.rekeyTask)
 	case rekeyKickoffEventForTest:
 		r.timer.Reset(time.Millisecond)
 		return r
@@ -222,28 +273,24 @@ func (r *rekeyStateScheduled) reactToEvent(event RekeyEvent) rekeyState {
 
 type rekeyStateStarted struct {
 	fsm  *rekeyFSM
-	task RekeyTask
+	task rekeyTask
 }
 
-func newRekeyStateStarted(fsm *rekeyFSM, task RekeyTask) *rekeyStateStarted {
-	ctx := task.injectContextForTest
-	if ctx == nil {
-		ctx = ctxWithRandomIDReplayable(context.Background(), CtxRekeyIDKey,
-			CtxRekeyOpID, nil)
-	}
+func newRekeyStateStarted(fsm *rekeyFSM, task rekeyTask) *rekeyStateStarted {
+	ctx := task.ctx
 	var cancel context.CancelFunc
-	if task.Timeout != nil {
-		ctx, cancel = context.WithTimeout(ctx, *task.Timeout)
+	if task.timeout != nil {
+		ctx, cancel = context.WithTimeout(task.ctx, *task.timeout)
 	}
 	go func() {
-		fsm.fbo.log.CDebugf(ctx, "Processing rekey for %s", fsm.fbo.folderBranch.Tlf)
+		fsm.log.CDebugf(ctx, "Processing rekey for %s", fsm.fbo.folderBranch.Tlf)
 		var res RekeyResult
 		err := fsm.fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 			func(lState *lockState) (err error) {
 				res, err = fsm.fbo.rekeyLocked(ctx, lState, false)
 				return err
 			})
-		fsm.fbo.log.CDebugf(ctx, "Rekey finished with res=%#+v, error=%v", res, err)
+		fsm.log.CDebugf(ctx, "Rekey finished with res=%#+v, error=%v", res, err)
 		fsm.Event(newRekeyFinishedEvent(res, err))
 		if cancel != nil {
 			cancel()
@@ -256,41 +303,43 @@ func newRekeyStateStarted(fsm *rekeyFSM, task RekeyTask) *rekeyStateStarted {
 }
 
 func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
-	ttl := *r.task.ttl - 1
 	switch event.eventType {
 	case rekeyFinishedEvent:
-		switch event.rekeyFinished.err {
-		case nil:
-			// TODO logging
-		default:
-			// TODO logging
-			if ttl > 0 {
-				return newRekeyStateScheduled(r.fsm, RekeyRequest{
-					Delay: 0,
-					RekeyTask: RekeyTask{
-						Timeout:     r.task.Timeout,
-						promptPaper: r.task.promptPaper,
-						ttl:         &ttl,
-					},
-				})
-			}
+		ttl := r.task.ttl - 1
+		r.fsm.log.CDebugf(r.task.ctx,
+			"Rekey Finished. ttl: %d -> %d", r.task.ttl, ttl)
+
+		if ttl <= 0 {
+			r.fsm.log.CDebugf(r.task.ctx,
+				"Not scheduling new rekey because TTL expired.")
 			return newRekeyStateIdle(r.fsm)
 		}
 
-		d := r.fsm.fbo.config.RekeyWithPromptWaitTime()
-
-		if ttl > 0 && event.rekeyFinished.NeedsPaperKey {
-			return newRekeyStateScheduled(r.fsm, RekeyRequest{
-				Delay: d,
-				RekeyTask: RekeyTask{
-					Timeout:     &d,
-					promptPaper: true,
-					ttl:         &ttl,
-				},
+		switch event.finished.err {
+		case nil:
+		default:
+			r.fsm.log.CDebugf(r.task.ctx, "Rekey errored. Scheduling new rekey.")
+			return newRekeyStateScheduled(r.fsm, 0, rekeyTask{
+				timeout:     r.task.timeout,
+				promptPaper: r.task.promptPaper,
+				ttl:         ttl,
+				ctx:         r.task.ctx,
 			})
 		}
 
-		if ttl > 0 && event.rekeyFinished.DidRekey {
+		d := r.fsm.fbo.config.RekeyWithPromptWaitTime()
+		if event.finished.NeedsPaperKey {
+			r.fsm.log.CDebugf(r.task.ctx,
+				"Scheduling rekey due to NeedsPaperKey==true.")
+			return newRekeyStateScheduled(r.fsm, d, rekeyTask{
+				timeout:     &d,
+				promptPaper: true,
+				ttl:         ttl,
+				ctx:         r.task.ctx,
+			})
+		}
+
+		if event.finished.DidRekey {
 			// We enqueue the rekey here again, in case we missed a device due to a
 			// race condition. This is specifically for the situation where user
 			// provisions two devices in a row, and the key update for the 2nd device
@@ -299,15 +348,17 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 			// bit set since it's already set. As a result, the TLF won't get rekeyed
 			// for the second device until the next 1-hour timer triggers another
 			// scan.
-			return newRekeyStateScheduled(r.fsm, RekeyRequest{
-				Delay: rekeyRecheckInterval,
-				RekeyTask: RekeyTask{
-					promptPaper: false,
-					ttl:         &ttl,
-				},
+			r.fsm.log.CDebugf(r.task.ctx,
+				"Scheduling rekey (recheck) due to DidRekey==true.")
+			return newRekeyStateScheduled(r.fsm, rekeyRecheckInterval, rekeyTask{
+				promptPaper: false,
+				ttl:         ttl,
+				ctx:         r.task.ctx,
 			})
 		}
 
+		r.fsm.log.CDebugf(r.task.ctx,
+			"Not scheduling rekey because no more rekey or recheck is needed.")
 		return newRekeyStateIdle(r.fsm)
 	default:
 		return r
@@ -322,6 +373,7 @@ type listenerForTest struct {
 type rekeyFSM struct {
 	reqs chan RekeyEvent
 	fbo  *folderBranchOps
+	log  logger.Logger
 
 	current rekeyState
 
@@ -335,7 +387,10 @@ func (m *rekeyFSM) loop() {
 			close(m.reqs)
 		}
 
-		m.current = m.current.reactToEvent(e)
+		next := m.current.reactToEvent(e)
+		m.log.Debug("RekeyFSM transition: %T + %s -> %T",
+			m.current, e, next)
+		m.current = next
 
 		m.triggerCallbacksForTest(e)
 	}
@@ -346,6 +401,7 @@ func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 	fsm := &rekeyFSM{
 		reqs: make(chan RekeyEvent, rekeyQueueSize),
 		fbo:  fbo,
+		log:  fbo.config.MakeLogger("RekeyFSM"),
 
 		listenersForTest: make(map[rekeyEventType][]listenerForTest),
 	}
@@ -417,8 +473,8 @@ func RequestRekeyAndWaitForOneFinishEventForTest(
 	rekeyWaiter := make(chan struct{})
 	// now user 1 should rekey
 	fsm.listenOnEventForTest(rekeyFinishedEvent, func(e RekeyEvent) {
-		res = e.rekeyFinished.RekeyResult
-		err = e.rekeyFinished.err
+		res = e.finished.RekeyResult
+		err = e.finished.err
 		close(rekeyWaiter)
 	}, false)
 	ops.RequestRekey(tlfID)
