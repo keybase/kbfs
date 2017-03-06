@@ -6,7 +6,6 @@ package libdokan
 
 import (
 	"github.com/keybase/kbfs/dokan"
-	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
 
@@ -20,14 +19,13 @@ type RekeyFile struct {
 // WriteFile implements writes for dokan.
 func (f *RekeyFile) WriteFile(ctx context.Context, fi *dokan.FileInfo, bs []byte, offset int64) (n int, err error) {
 	f.folder.fs.logEnter(ctx, "RekeyFile Write")
-	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 	if len(bs) == 0 {
 		return 0, nil
 	}
-	err = f.folder.fs.config.KBFSOps().Rekey(ctx, f.folder.getFolderBranch().Tlf)
+	f.folder.fs.config.KBFSOps().RequestRekey(f.folder.getFolderBranch().Tlf)
 	if err != nil {
 		return 0, err
 	}
-	f.folder.fs.NotificationGroupWait()
+	// TODO: do we need notification here?
 	return len(bs), nil
 }
