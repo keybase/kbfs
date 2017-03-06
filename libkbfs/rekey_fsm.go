@@ -245,18 +245,23 @@ func (r *rekeyStateScheduled) reactToEvent(event RekeyEvent) rekeyState {
 	case rekeyTimeupEvent:
 		return newRekeyStateStarted(r.fsm, r.task)
 	case rekeyRequestEvent:
+		task := r.task
+		task.promptPaper = task.promptPaper || event.request.promptPaper
+		if task.timeout == nil {
+			task.timeout = event.request.timeout
+		}
+		task.ttl = event.request.ttl
+		r.fsm.log.CDebugf(task.ctx, "Replacing context")
+		task.ctx = event.request.ctx
+		r.fsm.log.CDebugf(task.ctx, "Context replaced")
 		if !r.deadline.After(time.Now().Add(event.request.delay)) {
-			r.task.promptPaper = r.task.promptPaper || event.request.promptPaper
-			if r.task.timeout == nil {
-				r.task.timeout = event.request.timeout
-			}
-			r.task.ttl = event.request.ttl
 			r.fsm.log.CDebugf(r.task.ctx, "Reusing existing timer")
+			r.task = task
 			return r
 		}
 		r.timer.Stop()
 		return newRekeyStateScheduled(r.fsm,
-			event.request.delay, event.request.rekeyTask)
+			event.request.delay, task)
 	case rekeyKickoffEventForTest:
 		r.timer.Reset(time.Millisecond)
 		return r
@@ -287,7 +292,7 @@ func newRekeyStateStarted(fsm *rekeyFSM, task rekeyTask) *rekeyStateStarted {
 		var res RekeyResult
 		err := fsm.fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 			func(lState *lockState) (err error) {
-				res, err = fsm.fbo.rekeyLocked(ctx, lState, false)
+				res, err = fsm.fbo.rekeyLocked(ctx, lState, task.promptPaper)
 				return err
 			})
 		fsm.log.CDebugf(ctx, "Rekey finished with res=%#+v, error=%v", res, err)

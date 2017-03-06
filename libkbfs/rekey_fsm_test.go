@@ -10,7 +10,8 @@ import (
 	"github.com/keybase/kbfs/tlf"
 )
 
-func requestRekeyWithContextAndWaitForOneFinishEvent(ctx context.Context, ops KBFSOps, tlfID tlf.ID) (res RekeyResult, err error) {
+func requestRekeyWithContextAndWaitForOneFinishEvent(
+	ctx context.Context, ops KBFSOps, tlfID tlf.ID) (res RekeyResult, err error) {
 	fsm := getRekeyFSMForTest(ops, tlfID)
 	rekeyWaiter := make(chan struct{})
 	// now user 1 should rekey
