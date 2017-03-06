@@ -1961,9 +1961,9 @@ type KeyBundleCache interface {
 
 // RekeyFSM is a Finite State Machine (FSM) for housekeeping rekey states for a
 // FolderBranch. Each FolderBranch has its own FSM for rekeys.
-// TODO: finish this ...
 //
-// TODO: move this into interfaces.go
+// See rekey_fsm.go for implementation details.
+//
 // TODO: report FSM status in FolderBranchStatus?
 type RekeyFSM interface {
 	// Event sends an event to the FSM.

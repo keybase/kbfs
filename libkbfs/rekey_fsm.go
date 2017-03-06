@@ -8,6 +8,29 @@ import (
 	"github.com/keybase/kbfs/tlf"
 )
 
+/*
+
+ This file defines a finite state machine (FSM) for rekey operation scheduling.
+ The state chart is described in following dot graph:
+
+digraph rekeyFSM {
+  graph [rankdir=LR]
+  start [shape=plaintext]
+
+  Idle -> Idle [label="*"]
+  Scheduled -> Scheduled [label="*"]
+  Started -> Started [label="*"]
+
+  start -> Idle
+  Idle -> Scheduled [label=Request]
+  Scheduled -> Scheduled [label=Request]
+  Scheduled -> Started [label=Timeup]
+  Started -> Scheduled [label="Finished(TTL valid && (rekey done || needs paper))"]
+  Started -> Idle [label="Finished (*)"]
+}
+
+*/
+
 // CtxRekeyTagKey is the type used for unique context tags within an
 // enqueued Rekey.
 type CtxRekeyTagKey int
@@ -113,7 +136,20 @@ func newRekeyCancelEventForTest() RekeyEvent {
 	}
 }
 
+// rekeyState models a state in the FSM. rekeyFSM keeps exactly one instance of
+// rekeyState at any given time.
 type rekeyState interface {
+	// reactToEvent defines how this state reacts to an event. Implementations of
+	// rekeyState should handle necessary transition actions in reactToEvent(),
+	// and retur a new rekeyState instance after transition is finished. rekeyFSM
+	// sends event to the rekeyState instance it holds whenever it receives an
+	// event, and use the returned rekeyState instance as new state. It's OK to
+	// return the receiver itself as "new" state.
+	//
+	// rekeyFSM runs an event loop in a dedicated goroutine that calls
+	// reactToEvent and updates states. In other words, it's safe to assume
+	// reactToEvent is only called within the same goroutine, and that it's
+	// impossible that multiple reactToEvent calls are issued concurrently.
 	reactToEvent(event RekeyEvent) rekeyState
 }
 
