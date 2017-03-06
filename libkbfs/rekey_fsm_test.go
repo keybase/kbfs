@@ -10,18 +10,8 @@ import (
 	"github.com/keybase/kbfs/tlf"
 )
 
-func getRekeyFSM(ops KBFSOps, tlfID tlf.ID) RekeyFSM {
-	switch o := ops.(type) {
-	case *KBFSOpsStandard:
-		return o.getOpsNoAdd(FolderBranch{Tlf: tlfID, Branch: MasterBranch}).rekeyFSM
-	case *folderBranchOps:
-		return o.rekeyFSM
-	}
-	return nil
-}
-
 func requestRekeyWithContextAndWaitForOneFinishEvent(ctx context.Context, ops KBFSOps, tlfID tlf.ID) (res RekeyResult, err error) {
-	fsm := getRekeyFSM(ops, tlfID)
+	fsm := getRekeyFSMForTest(ops, tlfID)
 	rekeyWaiter := make(chan struct{})
 	// now user 1 should rekey
 	fsm.listenOnEventForTest(rekeyFinishedEvent, func(e rekeyEvent) {
@@ -31,20 +21,6 @@ func requestRekeyWithContextAndWaitForOneFinishEvent(ctx context.Context, ops KB
 	}, false)
 	fsm.Event(NewRekeyRequestEvent(RekeyRequest{RekeyTask: RekeyTask{
 		injectContextForTest: ctx}}))
-	<-rekeyWaiter
-	return res, err
-}
-
-func requestRekeyAndWaitForOneFinishEvent(ops KBFSOps, tlfID tlf.ID) (res RekeyResult, err error) {
-	fsm := getRekeyFSM(ops, tlfID)
-	rekeyWaiter := make(chan struct{})
-	// now user 1 should rekey
-	fsm.listenOnEventForTest(rekeyFinishedEvent, func(e rekeyEvent) {
-		res = e.rekeyFinished.RekeyResult
-		err = e.rekeyFinished.err
-		close(rekeyWaiter)
-	}, false)
-	ops.RequestRekey(tlfID)
 	<-rekeyWaiter
 	return res, err
 }

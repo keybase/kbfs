@@ -7,6 +7,7 @@ package libfuse
 import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
+	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
 
@@ -36,7 +37,11 @@ func (f *RekeyFile) Write(ctx context.Context, req *fuse.WriteRequest,
 	if len(req.Data) == 0 {
 		return nil
 	}
-	f.folder.fs.config.KBFSOps().RequestRekey(f.folder.getFolderBranch().Tlf)
+	_, err = libkbfs.RequestRekeyAndWaitForOneFinishEventForTest(
+		f.folder.fs.config.KBFSOps(), f.folder.getFolderBranch().Tlf)
+	if err != nil {
+		return err
+	}
 	resp.Size = len(req.Data)
 	// TODO: do we need notification here?
 	return nil

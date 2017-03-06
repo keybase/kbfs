@@ -493,7 +493,7 @@ func TestQuotaReclamationFailAfterRekeyRequest(t *testing.T) {
 	// Request a rekey from the new device, which will only be
 	// able to set the rekey bit (copying the root MD).
 	kbfsOps2Dev2 := config2Dev2.KBFSOps()
-	_, err = requestRekeyAndWaitForOneFinishEvent(kbfsOps2Dev2, rootNode1.GetFolderBranch().Tlf)
+	_, err = RequestRekeyAndWaitForOneFinishEventForTest(kbfsOps2Dev2, rootNode1.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't rekey: %+v", err)
 	}
@@ -513,7 +513,7 @@ func TestQuotaReclamationFailAfterRekeyRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't sync from server: %+v", err)
 	}
-	_, err = requestRekeyAndWaitForOneFinishEvent(kbfsOps1, rootNode1.GetFolderBranch().Tlf)
+	_, err = RequestRekeyAndWaitForOneFinishEventForTest(kbfsOps1, rootNode1.GetFolderBranch().Tlf)
 	if err != nil {
 		t.Fatalf("Couldn't rekey: %+v", err)
 	}

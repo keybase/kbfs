@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/keybase/kbfs/tlf"
 )
 
 // CtxRekeyTagKey is the type used for unique context tags within an
@@ -358,4 +360,29 @@ func (m *rekeyFSM) listenOnEventForTest(
 		body: callback,
 		once: once,
 	})
+}
+
+func getRekeyFSMForTest(ops KBFSOps, tlfID tlf.ID) RekeyFSM {
+	switch o := ops.(type) {
+	case *KBFSOpsStandard:
+		return o.getOpsNoAdd(FolderBranch{Tlf: tlfID, Branch: MasterBranch}).rekeyFSM
+	case *folderBranchOps:
+		return o.rekeyFSM
+	}
+	return nil
+}
+
+func RequestRekeyAndWaitForOneFinishEventForTest(
+	ops KBFSOps, tlfID tlf.ID) (res RekeyResult, err error) {
+	fsm := getRekeyFSMForTest(ops, tlfID)
+	rekeyWaiter := make(chan struct{})
+	// now user 1 should rekey
+	fsm.listenOnEventForTest(rekeyFinishedEvent, func(e rekeyEvent) {
+		res = e.rekeyFinished.RekeyResult
+		err = e.rekeyFinished.err
+		close(rekeyWaiter)
+	}, false)
+	ops.RequestRekey(tlfID)
+	<-rekeyWaiter
+	return res, err
 }

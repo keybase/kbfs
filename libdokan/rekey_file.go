@@ -6,6 +6,7 @@ package libdokan
 
 import (
 	"github.com/keybase/kbfs/dokan"
+	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
 
@@ -22,7 +23,8 @@ func (f *RekeyFile) WriteFile(ctx context.Context, fi *dokan.FileInfo, bs []byte
 	if len(bs) == 0 {
 		return 0, nil
 	}
-	f.folder.fs.config.KBFSOps().RequestRekey(f.folder.getFolderBranch().Tlf)
+	_, err = libkbfs.RequestRekeyAndWaitForOneFinishEventForTest(
+		f.folder.fs.config.KBFSOps(), f.folder.getFOlderBranch().Tlf)
 	if err != nil {
 		return 0, err
 	}

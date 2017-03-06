@@ -83,7 +83,7 @@ func TestRekeyQueueBasic(t *testing.T) {
 	// now user 1 should rekey via its rekey worker
 	for _, name := range names {
 		rootNode1 := GetRootNodeOrBust(ctx, t, config1, name, false)
-		getRekeyFSM(config1.KBFSOps(), rootNode1.GetFolderBranch().Tlf).listenOnceOnEventForTest(rekeyFinishedEvent, func(e rekeyEvent) {
+		getRekeyFSMForTest(config1.KBFSOps(), rootNode1.GetFolderBranch().Tlf).listenOnceOnEventForTest(rekeyFinishedEvent, func(e rekeyEvent) {
 			fch <- e.rekeyFinished.err
 		}, false)
 		// queue it for rekey
