@@ -880,7 +880,7 @@ func (j *tlfJournal) flushBlockEntries(
 	defer func() {
 		if !cleared {
 			clearErr := j.clearFlushingBlockIDs(entries)
-			if err != nil {
+			if err == nil {
 				err = clearErr
 			}
 		}
@@ -952,11 +952,14 @@ func (j *tlfJournal) flushBlockEntries(
 		return 0, MetadataRevisionUninitialized, false, err
 	}
 
+	// TODO: If both the block and MD journals are empty, nuke the
+	// entire TLF journal directory.
+
 	// If a conversion happened, the original `maxMDRevToFlush` only
-	// applies for sure if its mdRevMarker entry was unignorable
-	// (i.e., the MD was already a local squash).  TODO: conversion
-	// might not have actually happened yet, in which case it's still
-	// ok to flush maxMDRevToFlush.
+	// applies for sure if its mdRevMarker entry was already for a
+	// local squash.  TODO: conversion might not have actually
+	// happened yet, in which case it's still ok to flush
+	// maxMDRevToFlush.
 	if converted && maxMDRevToFlush != MetadataRevisionUninitialized &&
 		!entries.revIsLocalSquash(maxMDRevToFlush) {
 		maxMDRevToFlush = MetadataRevisionUninitialized
@@ -1073,7 +1076,7 @@ func (j *tlfJournal) convertMDsToBranchIfOverThreshold(ctx context.Context,
 				return false, err
 			}
 
-			err = j.blockJournal.markLatestRevMarkerAsUnignorable()
+			err = j.blockJournal.markLatestRevMarkerAsLocalSquash()
 			if err != nil {
 				return false, err
 			}
@@ -1167,6 +1170,12 @@ func (j *tlfJournal) removeFlushedMDEntry(ctx context.Context,
 func (j *tlfJournal) flushOneMDOp(
 	ctx context.Context, end MetadataRevision,
 	maxMDRevToFlush MetadataRevision) (flushed bool, err error) {
+	if maxMDRevToFlush == MetadataRevisionUninitialized {
+		// Short-cut `getNextMDEntryToFlush`, which would otherwise read
+		// an MD from disk and sign it unnecessarily.
+		return false, nil
+	}
+
 	j.log.CDebugf(ctx, "Flushing one MD to server")
 	defer func() {
 		if err != nil {
@@ -1176,6 +1185,9 @@ func (j *tlfJournal) flushOneMDOp(
 
 	mdServer := j.config.MDServer()
 
+	// TODO: Do we need `end` at all, or can we just pass
+	// `maxMDRevToFlush+1` here?  The only argument for `end` is that
+	// it might help if the block and MD journals are out of sync.
 	mdID, rmds, extra, err := j.getNextMDEntryToFlush(ctx, end)
 	if err != nil {
 		return false, err
@@ -1246,16 +1258,8 @@ func (j *tlfJournal) getJournalEntryCounts() (
 		return 0, 0, err
 	}
 
-	blockEntryCount, err = j.blockJournal.length()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	mdEntryCount, err = j.mdJournal.length()
-	if err != nil {
-		return 0, 0, err
-	}
-
+	blockEntryCount = j.blockJournal.length()
+	mdEntryCount = j.mdJournal.length()
 	return blockEntryCount, mdEntryCount, nil
 }
 
@@ -1283,10 +1287,7 @@ func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
 	if err != nil {
 		return TLFJournalStatus{}, err
 	}
-	blockEntryCount, err := j.blockJournal.length()
-	if err != nil {
-		return TLFJournalStatus{}, err
-	}
+	blockEntryCount := j.blockJournal.length()
 	lastFlushErr := ""
 	if j.lastFlushErr != nil {
 		lastFlushErr = j.lastFlushErr.Error()
@@ -1552,15 +1553,8 @@ func (j *tlfJournal) disable() (wasEnabled bool, err error) {
 		return false, err
 	}
 
-	blockEntryCount, err := j.blockJournal.length()
-	if err != nil {
-		return false, err
-	}
-
-	mdEntryCount, err := j.mdJournal.length()
-	if err != nil {
-		return false, err
-	}
+	blockEntryCount := j.blockJournal.length()
+	mdEntryCount := j.mdJournal.length()
 
 	// You can only disable an empty journal.
 	if blockEntryCount > 0 || mdEntryCount > 0 {
@@ -1609,6 +1603,23 @@ func (j *tlfJournal) getBlockData(id kbfsblock.ID) (
 	}
 
 	return j.blockJournal.getData(id)
+}
+
+func (j *tlfJournal) getBlockSize(id kbfsblock.ID) (uint32, error) {
+	j.journalLock.RLock()
+	defer j.journalLock.RUnlock()
+	if err := j.checkEnabledLocked(); err != nil {
+		return 0, err
+	}
+
+	size, err := j.blockJournal.getDataSize(id)
+	if err != nil {
+		return 0, err
+	}
+	// Block sizes are restricted, but `size` is an int64 because
+	// that's what the OS gives us.  Convert it to a uint32. TODO:
+	// check this is safe?
+	return uint32(size), nil
 }
 
 // ErrDiskLimitTimeout is returned when putBlockData exceeds

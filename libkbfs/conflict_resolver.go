@@ -2896,6 +2896,105 @@ func (cr *ConflictResolver) syncTree(ctx context.Context, lState *lockState,
 	return bps, nil
 }
 
+// updateResolutionUsage figures out how many bytes are referenced and
+// unreferenced in the merged branch by this resolution.  Only needs
+// to be called for non-squash resolutions.
+func (cr *ConflictResolver) updateResolutionUsage(ctx context.Context,
+	lState *lockState, md *RootMetadata, bps *blockPutState,
+	unmergedChains, mergedChains *crChains,
+	mostRecentMergedMD ImmutableRootMetadata,
+	refs, unrefs map[BlockPointer]bool) error {
+	md.SetRefBytes(0)
+	md.SetUnrefBytes(0)
+	md.SetMDRefBytes(0)
+	md.SetDiskUsage(mostRecentMergedMD.DiskUsage())
+	md.SetMDDiskUsage(mostRecentMergedMD.MDDiskUsage())
+
+	localBlocks := make(map[BlockPointer]Block)
+	for _, bs := range bps.blockStates {
+		if bs.block != nil {
+			localBlocks[bs.blockPtr] = bs.block
+		}
+	}
+
+	// Add bytes for every ref'd block.
+	refPtrsToFetch := make([]BlockPointer, 0, len(refs))
+	var refSum uint64
+	for ptr := range refs {
+		if block, ok := localBlocks[ptr]; ok {
+			refSum += uint64(block.GetEncodedSize())
+		} else {
+			refPtrsToFetch = append(refPtrsToFetch, ptr)
+		}
+		cr.log.CDebugf(ctx, "Ref'ing block %v", ptr)
+	}
+
+	// Look up the total sum of the ref blocks in parallel to get
+	// their sizes.
+	//
+	// TODO: If the blocks weren't already in the cache, this call
+	// won't cache them, so it's kind of wasting work.  Furthermore,
+	// we might be able to get the encoded size from other sources as
+	// well (such as its directory entry or its indirect file block)
+	// if we happened to have come across it before.
+	refSumFetched, err := cr.fbo.blocks.GetCleanEncodedBlocksSizeSum(
+		ctx, lState, md.ReadOnly(), refPtrsToFetch, nil, cr.fbo.branch())
+	if err != nil {
+		return err
+	}
+	refSum += refSumFetched
+
+	cr.log.CDebugf(ctx, "Ref'ing a total of %d bytes", refSum)
+	md.AddRefBytes(refSum)
+	md.AddDiskUsage(refSum)
+
+	unrefPtrsToFetch := make([]BlockPointer, 0, len(unrefs))
+	for ptr := range unrefs {
+		original, ok := unmergedChains.originals[ptr]
+		if !ok {
+			original = ptr
+		}
+		if original != ptr || unmergedChains.isCreated(original) {
+			// Only unref pointers that weren't created as part of the
+			// unmerged branch.  Either they existed already or they
+			// were created as part of the merged branch.
+			continue
+		}
+		// Also make sure this wasn't already removed or overwritten
+		// on the merged branch.
+		original, ok = mergedChains.originals[ptr]
+		if !ok {
+			original = ptr
+		}
+		mergedChain, ok := mergedChains.byOriginal[original]
+		if (ok && original != mergedChain.mostRecent && original == ptr) ||
+			mergedChains.isDeleted(original) {
+			continue
+		}
+
+		unrefPtrsToFetch = append(unrefPtrsToFetch, ptr)
+	}
+
+	// Look up the unref blocks in parallel to get their sizes.  Since
+	// we don't know whether these are files or directories, just look
+	// them up generically.  Ignore any recoverable errors for unrefs.
+	// Note that we can't combine these with the above ref fetches
+	// since they require a different MD.
+	unrefSum, err := cr.fbo.blocks.GetCleanEncodedBlocksSizeSum(
+		ctx, lState, mostRecentMergedMD, unrefPtrsToFetch, unrefs,
+		cr.fbo.branch())
+	if err != nil {
+		return err
+	}
+
+	// Subtract bytes for every unref'd block that wasn't created in
+	// the unmerged branch.
+	cr.log.CDebugf(ctx, "Unref'ing a total of %d bytes", unrefSum)
+	md.AddUnrefBytes(unrefSum)
+	md.SetDiskUsage(md.DiskUsage() - unrefSum)
+	return nil
+}
+
 // addUnrefToFinalResOp makes a resolutionOp at the end of opsList if
 // one doesn't exist yet, and then adds the given pointer as an unref
 // block to it.
@@ -2909,21 +3008,18 @@ func addUnrefToFinalResOp(ops opsList, ptr BlockPointer) opsList {
 	return ops
 }
 
-// calculateResolutionBytes figured out how many bytes are referenced
-// and unreferenced in the merged branch by this resolution.  It
-// should be called before the block changes are unembedded in md.  It
-// returns the list of blocks that can be remove from the flushing
-// queue, if any.
-func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
-	lState *lockState, md *RootMetadata, bps *blockPutState,
-	unmergedChains, mergedChains *crChains,
-	mostRecentMergedMD ImmutableRootMetadata) (
+// updateResolutionUsageAndPointers figures out how many bytes are
+// referenced and unreferenced in the merged branch by this resolution
+// (if needed), and adds referenced and unreferenced pointers to a
+// final `resolutionOp` as necessary. It should be called before the
+// block changes are unembedded in md.  It returns the list of blocks
+// that can be remove from the flushing queue, if any.
+func (cr *ConflictResolver) updateResolutionUsageAndPointers(
+	ctx context.Context, lState *lockState, md *RootMetadata,
+	bps *blockPutState, unmergedChains, mergedChains *crChains,
+	mostRecentUnmergedMD, mostRecentMergedMD ImmutableRootMetadata,
+	isLocalSquash bool) (
 	blocksToDelete []kbfsblock.ID, err error) {
-	md.SetRefBytes(0)
-	md.SetUnrefBytes(0)
-	md.SetMDRefBytes(0)
-	md.SetDiskUsage(mostRecentMergedMD.DiskUsage())
-	md.SetMDDiskUsage(mostRecentMergedMD.MDDiskUsage())
 
 	// Track the refs and unrefs in a set, to ensure no duplicates
 	refs := make(map[BlockPointer]bool)
@@ -2967,107 +3063,44 @@ func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 		}
 	}
 
-	localBlocks := make(map[BlockPointer]Block)
-	for _, bs := range bps.blockStates {
-		if bs.block != nil {
-			localBlocks[bs.blockPtr] = bs.block
-		}
-	}
+	if isLocalSquash {
+		unmergedUsage := mostRecentUnmergedMD.DiskUsage()
+		mergedUsage := mostRecentMergedMD.DiskUsage()
 
-	// Add bytes for every ref'd block.
-	refPtrsToFetch := make([]BlockPointer, 0, len(refs))
-	for ptr := range refs {
-		if _, ok := localBlocks[ptr]; !ok {
-			refPtrsToFetch = append(refPtrsToFetch, ptr)
-		}
-	}
-
-	// Look up the ref blocks in parallel to get their sizes.  Since
-	// we don't know whether these are files or directories, just look
-	// them up generically.
-	//
-	// TODO: If the blocks weren't already in the cache, this
-	// call won't cache them, so it's kind of wasting work.
-	// Furthermore, we might be able to get the encoded size
-	// from other sources as well (such as its directory entry
-	// or its indirect file block) if we happened to have come
-	// across it before.
-	refBlocks, err := cr.fbo.blocks.GetBlocksForReading(ctx, lState,
-		md.ReadOnly(), refPtrsToFetch, nil, cr.fbo.branch())
-	if err != nil {
-		return nil, err
-	}
-
-	for ptr := range refs {
-		block, ok := localBlocks[ptr]
-		if !ok {
-			block, ok = refBlocks[ptr]
-			if !ok {
-				return nil, fmt.Errorf("Didn't fetch ref ptr %v", ptr)
-			}
+		// Local squashes can just use the bytes and usage from the
+		// latest unmerged MD, and we can avoid all the block fetching
+		// done by `updateResolutionUsage()`.
+		md.SetDiskUsage(unmergedUsage)
+		// TODO: it might be better to add up all the ref bytes, and
+		// all the unref bytes, from all unmerged MDs, instead of just
+		// calculating the difference between the usages.  But that's
+		// not quite right either since it counts blocks that are
+		// ref'd and unref'd within the squash.
+		if md.DiskUsage() > mergedUsage {
+			md.SetRefBytes(md.DiskUsage() - mergedUsage)
+			md.SetUnrefBytes(0)
+		} else {
+			md.SetRefBytes(0)
+			md.SetUnrefBytes(mergedUsage - md.DiskUsage())
 		}
 
-		cr.log.CDebugf(ctx, "Ref'ing block %v", ptr)
-		size := uint64(block.GetEncodedSize())
-		md.AddRefBytes(size)
-		md.AddDiskUsage(size)
-	}
-
-	unrefPtrsToFetch := make([]BlockPointer, 0, len(unrefs))
-	for ptr := range unrefs {
-		original, ok := unmergedChains.originals[ptr]
-		if !ok {
-			original = ptr
-		}
-		if original != ptr || unmergedChains.isCreated(original) {
-			// Only unref pointers that weren't created as part of the
-			// unmerged branch.  Either they existed already or they
-			// were created as part of the merged branch.
-			continue
-		}
-		// Also make sure this wasn't already removed or overwritten
-		// on the merged branch.
-		original, ok = mergedChains.originals[ptr]
-		if !ok {
-			original = ptr
-		}
-		mergedChain, ok := mergedChains.byOriginal[original]
-		if (ok && original != mergedChain.mostRecent && original == ptr) ||
-			mergedChains.isDeleted(original) {
-			continue
+		mergedMDUsage := mostRecentMergedMD.MDDiskUsage()
+		if md.MDDiskUsage() < mergedMDUsage {
+			return nil, fmt.Errorf("MD disk usage went down on unmerged "+
+				"branch: %d vs %d", md.MDDiskUsage(), mergedMDUsage)
 		}
 
-		unrefPtrsToFetch = append(unrefPtrsToFetch, ptr)
-	}
-
-	// Look up the unref blocks in parallel to get their sizes.  Since
-	// we don't know whether these are files or directories, just look
-	// them up generically.  Ignore any recoverable errors for unrefs.
-	// Note that we can't combine these with the above ref fetches
-	// since they require a different MD.
-	unrefBlocks, err := cr.fbo.blocks.GetBlocksForReading(ctx, lState,
-		mostRecentMergedMD, unrefPtrsToFetch, unrefs, cr.fbo.branch())
-	if err != nil {
-		return nil, err
-	}
-
-	// Subtract bytes for every unref'd block that wasn't created in
-	// the unmerged branch.
-	for ptr := range unrefs {
-		block, ok := unrefBlocks[ptr]
-		if !ok {
-			// TODO: we might be able to recover the size of the
-			// top-most block of a removed file using the merged
-			// directory entry, the same way we do in
-			// `folderBranchOps.unrefEntry`.
-			cr.log.CDebugf(ctx, "Unref'ing a non-existent block %v, "+
-				"excluding it from the MD size calculations: %v", ptr, err)
-			continue
+		// Additional MD disk usage will be determined entirely by the
+		// later `unembedBlockChanges()` call.
+		md.SetMDDiskUsage(mergedMDUsage)
+		md.SetMDRefBytes(0)
+	} else {
+		err = cr.updateResolutionUsage(
+			ctx, lState, md, bps, unmergedChains, mergedChains,
+			mostRecentMergedMD, refs, unrefs)
+		if err != nil {
+			return nil, err
 		}
-
-		size := uint64(block.GetEncodedSize())
-		md.AddUnrefBytes(size)
-		md.SetDiskUsage(md.DiskUsage() - size)
 	}
 
 	// Any blocks that were created on the unmerged branch and have
@@ -3218,7 +3251,7 @@ func (cr *ConflictResolver) makeSyncTree(ctx context.Context,
 // flushing queue.
 func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
 	md *RootMetadata, unmergedChains, mergedChains *crChains,
-	mostRecentMergedMD ImmutableRootMetadata,
+	mostRecentUnmergedMD, mostRecentMergedMD ImmutableRootMetadata,
 	resolvedPaths map[BlockPointer]path, lbc localBcache,
 	newFileBlocks fileBlockMap, dirtyBcache DirtyBlockCache) (
 	updates map[BlockPointer]BlockPointer, bps *blockPutState,
@@ -3457,8 +3490,7 @@ func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
 					resOp.AddUpdate(update.Unref, update.Ref)
 				} else if !isMostRecent {
 					cr.log.CDebugf(ctx, "Unrefing an update from old resOp: "+
-						"%v and %v", update.Unref, update.Ref)
-					newOps = addUnrefToFinalResOp(newOps, update.Unref)
+						"%v (original=%v)", update.Ref, update.Unref)
 					newOps = addUnrefToFinalResOp(newOps, update.Ref)
 				}
 			}
@@ -3478,8 +3510,9 @@ func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
 		}
 	}
 
-	blocksToDelete, err = cr.calculateResolutionUsage(ctx, lState, md, bps,
-		unmergedChains, mergedChains, mostRecentMergedMD)
+	blocksToDelete, err = cr.updateResolutionUsageAndPointers(ctx, lState, md,
+		bps, unmergedChains, mergedChains, mostRecentUnmergedMD,
+		mostRecentMergedMD, isSquash)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -3679,8 +3712,8 @@ func (cr *ConflictResolver) finalizeResolution(ctx context.Context,
 func (cr *ConflictResolver) completeResolution(ctx context.Context,
 	lState *lockState, unmergedChains, mergedChains *crChains,
 	unmergedPaths []path, mergedPaths map[BlockPointer]path,
-	mostRecentMergedMD ImmutableRootMetadata, lbc localBcache,
-	newFileBlocks fileBlockMap, dirtyBcache DirtyBlockCache,
+	mostRecentUnmergedMD, mostRecentMergedMD ImmutableRootMetadata,
+	lbc localBcache, newFileBlocks fileBlockMap, dirtyBcache DirtyBlockCache,
 	writerLocked bool) (err error) {
 	md, err := cr.createResolvedMD(
 		ctx, lState, unmergedPaths, unmergedChains,
@@ -3697,7 +3730,8 @@ func (cr *ConflictResolver) completeResolution(ctx context.Context,
 
 	updates, bps, blocksToDelete, err := cr.syncBlocks(
 		ctx, lState, md, unmergedChains, mergedChains,
-		mostRecentMergedMD, resolvedPaths, lbc, newFileBlocks, dirtyBcache)
+		mostRecentUnmergedMD, mostRecentMergedMD, resolvedPaths, lbc,
+		newFileBlocks, dirtyBcache)
 	if err != nil {
 		return err
 	}
@@ -3772,7 +3806,11 @@ outer:
 		return err
 	}
 
-	handle := cr.fbo.getHead(lState).GetTlfHandle()
+	head := cr.fbo.getTrustedHead(lState)
+	if head == (ImmutableRootMetadata{}) {
+		panic("maybeUnstageAfterFailure: head is nil (should be impossible)")
+	}
+	handle := head.GetTlfHandle()
 	cr.config.Reporter().ReportErr(ctx,
 		handle.GetCanonicalName(), handle.IsPublic(),
 		WriteMode, reportedError)
@@ -3796,7 +3834,11 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 	defer func() {
 		cr.log.CDebugf(ctx, "Finished conflict resolution: %v", err)
 		if err != nil {
-			handle := cr.fbo.getHead(lState).GetTlfHandle()
+			head := cr.fbo.getTrustedHead(lState)
+			if head == (ImmutableRootMetadata{}) {
+				panic("doResolve: head is nil (should be impossible)")
+			}
+			handle := head.GetTlfHandle()
 			cr.config.Reporter().ReportErr(ctx,
 				handle.GetCanonicalName(), handle.IsPublic(),
 				WriteMode, CRWrapError{err})
@@ -3894,7 +3936,8 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 		newFileBlocks := make(fileBlockMap)
 		err = cr.completeResolution(ctx, lState, unmergedChains,
 			mergedChains, unmergedPaths, mergedPaths,
-			mostRecentMergedMD, lbc, newFileBlocks, nil, doLock)
+			unmergedMDs[len(unmergedMDs)-1], mostRecentMergedMD, lbc,
+			newFileBlocks, nil, doLock)
 		return
 	}
 
@@ -3995,8 +4038,8 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 	// putting the final resolved MD, and issuing all the local
 	// notifications.
 	err = cr.completeResolution(ctx, lState, unmergedChains, mergedChains,
-		unmergedPaths, mergedPaths, mostRecentMergedMD,
-		lbc, newFileBlocks, dirtyBcache, doLock)
+		unmergedPaths, mergedPaths, unmergedMDs[len(unmergedMDs)-1],
+		mostRecentMergedMD, lbc, newFileBlocks, dirtyBcache, doLock)
 	if err != nil {
 		return
 	}

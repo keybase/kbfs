@@ -37,7 +37,7 @@ import (
 // dir/blocks/...
 // dir/gc_block_journal/EARLIEST
 // dir/gc_block_journal/LATEST
-// dir/gc_journal/...
+// dir/gc_block_journal/...
 //
 // block_aggregate_info holds aggregate info about the block journal;
 // currently it just holds the count of stored and unflushed bytes.
@@ -65,7 +65,7 @@ type blockJournal struct {
 	deferLog logger.Logger
 
 	// j is the main journal.
-	j diskJournal
+	j *diskJournal
 
 	// saveUntilMDFlush, when non-nil, prevents garbage collection
 	// of blocks. When removed, all the referenced blocks are
@@ -73,7 +73,7 @@ type blockJournal struct {
 	//
 	// TODO: We only really need to save a list of IDs, and not a
 	// full journal.
-	deferredGC diskJournal
+	deferredGC *diskJournal
 
 	// s stores all the block data. s should always reflect the
 	// state you get by replaying all the entries in j.
@@ -122,10 +122,13 @@ type blockJournalEntry struct {
 	Revision MetadataRevision `codec:",omitempty"`
 	// Ignore this entry while flushing if this is true.
 	Ignore bool `codec:",omitempty"`
-	// Do not ever mark this as ignorable.  If this is true, Ignore
-	// should never be true.  TODO: combine this with Ignore using a
-	// more generic flags or state field, once we can change the
-	// journal format.
+	// This is an MD rev marker that represents a local squash.  TODO:
+	// combine this with Ignore using a more generic flags or state
+	// field, once we can change the journal format.
+	IsLocalSquash bool `codec:",omitempty"`
+	// This is legacy and only present for backwards compatibility.
+	// It can be removed as soon as we are sure there are no more
+	// journal entries in the wild with this set.
 	Unignorable bool `codec:",omitempty"`
 
 	codec.UnknownFieldSetHandler
@@ -167,11 +170,18 @@ func makeBlockJournal(
 	log logger.Logger) (*blockJournal, error) {
 	journalPath := filepath.Join(dir, "block_journal")
 	deferLog := log.CloneWithAddedDepth(1)
-	j := makeDiskJournal(
+	j, err := makeDiskJournal(
 		codec, journalPath, reflect.TypeOf(blockJournalEntry{}))
+	if err != nil {
+		return nil, err
+	}
+
 	gcJournalPath := deferredGCBlockJournalDir(dir)
-	gcj := makeDiskJournal(
+	gcj, err := makeDiskJournal(
 		codec, gcJournalPath, reflect.TypeOf(blockJournalEntry{}))
+	if err != nil {
+		return nil, err
+	}
 
 	storeDir := filepath.Join(dir, "blocks")
 	s := makeBlockDiskStore(codec, storeDir)
@@ -186,7 +196,7 @@ func makeBlockJournal(
 	}
 
 	// Get initial aggregate info.
-	err := kbfscodec.DeserializeFromFile(
+	err = kbfscodec.DeserializeFromFile(
 		codec, aggregateInfoPath(dir), &journal.aggregateInfo)
 	if !ioutil.IsNotExist(err) && err != nil {
 		return nil, err
@@ -296,8 +306,18 @@ func (j *blockJournal) appendJournalEntry(
 	return ordinal, nil
 }
 
-func (j *blockJournal) length() (uint64, error) {
+func (j *blockJournal) length() uint64 {
 	return j.j.length()
+}
+
+func (j *blockJournal) next() (journalOrdinal, error) {
+	last, err := j.j.readLatestOrdinal()
+	if ioutil.IsNotExist(err) {
+		return firstValidJournalOrdinal, nil
+	} else if err != nil {
+		return 0, err
+	}
+	return last + 1, nil
 }
 
 func (j *blockJournal) end() (journalOrdinal, error) {
@@ -352,6 +372,10 @@ func (j *blockJournal) getData(id kbfsblock.ID) (
 	return j.s.getData(id)
 }
 
+func (j *blockJournal) getDataSize(id kbfsblock.ID) (int64, error) {
+	return j.s.getDataSize(id)
+}
+
 func (j *blockJournal) getStoredBytes() int64 {
 	return j.aggregateInfo.StoredBytes
 }
@@ -380,7 +404,7 @@ func (j *blockJournal) putData(
 		}
 	}()
 
-	next, err := j.end()
+	next, err := j.next()
 	if err != nil {
 		return false, err
 	}
@@ -422,7 +446,7 @@ func (j *blockJournal) addReference(
 		}
 	}()
 
-	next, err := j.end()
+	next, err := j.next()
 	if err != nil {
 		return err
 	}
@@ -453,7 +477,7 @@ func (j *blockJournal) archiveReferences(
 		}
 	}()
 
-	next, err := j.end()
+	next, err := j.next()
 	if err != nil {
 		return err
 	}
@@ -530,7 +554,7 @@ func (j *blockJournal) markMDRevision(ctx context.Context,
 		// If this MD represents a pending local squash, it should
 		// never be ignored since the revision it refers to can't be
 		// squashed again.
-		Unignorable: isPendingLocalSquash,
+		IsLocalSquash: isPendingLocalSquash,
 	})
 	if err != nil {
 		return err
@@ -560,7 +584,7 @@ func (be blockEntriesToFlush) flushNeeded() bool {
 func (be blockEntriesToFlush) revIsLocalSquash(rev MetadataRevision) bool {
 	for _, entry := range be.other {
 		if !entry.Ignore && entry.Op == mdRevMarkerOp && entry.Revision == rev {
-			return entry.Unignorable
+			return entry.IsLocalSquash || entry.Unignorable
 		}
 	}
 	return false
@@ -858,12 +882,16 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 			SyncedBytes: flushedBytes,
 		})
 	}
+
+	// TODO: If the block journal is now empty, nuke all block
+	// journal dirs.
+
 	return nil
 }
 
 func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 	idsToIgnore map[kbfsblock.ID]bool, rev MetadataRevision,
-	dj diskJournal) error {
+	dj *diskJournal) error {
 	first, err := dj.readEarliestOrdinal()
 	if ioutil.IsNotExist(err) {
 		return nil
@@ -903,11 +931,6 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 			}
 			ignored++
 
-			if e.Unignorable {
-				return fmt.Errorf("Block op %s (op %s) is marked as "+
-					"unignorable, which isn't allowed", id, e.Op)
-			}
-
 			e.Ignore = true
 			err = dj.writeJournalEntry(i, e)
 			if err != nil {
@@ -929,7 +952,7 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 			}
 
 		case mdRevMarkerOp:
-			if e.Unignorable {
+			if ignoredRev {
 				continue
 			}
 
@@ -1151,7 +1174,7 @@ func (j *blockJournal) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, error)
 	return refs, nil
 }
 
-func (j *blockJournal) markLatestRevMarkerAsUnignorable() error {
+func (j *blockJournal) markLatestRevMarkerAsLocalSquash() error {
 	first, err := j.j.readEarliestOrdinal()
 	if ioutil.IsNotExist(err) {
 		return nil
@@ -1174,7 +1197,7 @@ func (j *blockJournal) markLatestRevMarkerAsUnignorable() error {
 			continue
 		}
 
-		e.Unignorable = true
+		e.IsLocalSquash = true
 		return j.j.writeJournalEntry(i, e)
 	}
 
