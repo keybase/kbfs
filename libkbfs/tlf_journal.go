@@ -1140,10 +1140,14 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		return err
 	}
 
-	err = j.blockJournal.clearDeferredGCRange(ctx, earliest, latest)
+	clearedJournal, err := j.blockJournal.clearDeferredGCRange(
+		ctx, earliest, latest)
 	if err != nil {
 		return err
 	}
+
+	// TODO: Do something with leftover bytes/files.
+	_ = clearedJournal
 
 	// TODO: if we crash before calling this, the journal bytes/files
 	// counts will be inaccurate.  I think the only way to fix that is

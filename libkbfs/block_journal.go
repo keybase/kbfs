@@ -1088,34 +1088,39 @@ func (j *blockJournal) doGC(ctx context.Context,
 	return removedBytes, removedFiles, nil
 }
 
-// clearDeferredGCRange removes the given range from the deferred journal.
+// clearDeferredGCRange removes the given range from the deferred
+// journal. If the journal goes completely empty, it then nukes the
+// journal directories.
 func (j *blockJournal) clearDeferredGCRange(
-	ctx context.Context, earliest, latest journalOrdinal) error {
+	ctx context.Context, earliest, latest journalOrdinal) (
+	clearedJournal bool, err error) {
 	for i := earliest; i <= latest; i++ {
 		_, err := j.deferredGC.removeEarliest()
 		if err != nil {
-			return err
+			return false, err
 		}
 	}
 
-	if j.j.empty() && j.deferredGC.empty() {
-		j.log.CDebugf(ctx, "Block journal is now empty")
+	if !j.j.empty() || !j.deferredGC.empty() {
+		return false, nil
+	}
 
-		err := j.s.clear()
+	j.log.CDebugf(ctx, "Block journal is now empty")
+
+	err = j.s.clear()
+	if err != nil {
+		return false, err
+	}
+
+	for _, dir := range j.blockJournalDirs() {
+		j.log.CDebugf(ctx, "Removing all files in %s", dir)
+		err := ioutil.RemoveAll(dir)
 		if err != nil {
-			return err
-		}
-
-		for _, dir := range j.blockJournalDirs() {
-			j.log.CDebugf(ctx, "Removing all files in %s", dir)
-			err := ioutil.RemoveAll(dir)
-			if err != nil {
-				return err
-			}
+			return false, err
 		}
 	}
 
-	return nil
+	return true, nil
 }
 
 func (j *blockJournal) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, error) {
