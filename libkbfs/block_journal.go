@@ -1120,14 +1120,14 @@ func (j *blockJournal) clearDeferredGCRange(
 		j.aggregateInfo = aggregateInfo{}
 
 		return true, nil
-	} else {
-		// TODO: if we crash before calling this, the journal
-		// bytes/files counts will be inaccurate.  I think the
-		// only way to fix that is a periodic repair scan?
-		j.unstoreBlock(removedBytes, removedFiles)
-
-		return false, nil
 	}
+
+	// TODO: if we crash before calling this, the journal
+	// bytes/files counts will be inaccurate.  I think the only
+	// way to fix that is a periodic repair scan?
+	j.unstoreBlock(removedBytes, removedFiles)
+
+	return false, nil
 }
 
 func (j *blockJournal) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, error) {
