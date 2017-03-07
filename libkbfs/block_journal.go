@@ -1122,9 +1122,9 @@ func (j *blockJournal) clearDeferredGCRange(
 		return true, nil
 	}
 
-	// TODO: if we crash before calling this, the journal
-	// bytes/files counts will be inaccurate.  I think the only
-	// way to fix that is a periodic repair scan?
+	// If we crash before calling this, the journal bytes/files
+	// counts will be inaccurate. But this will be resolved when
+	// the journal goes empty in the clause above.
 	j.unstoreBlock(removedBytes, removedFiles)
 
 	return false, nil
