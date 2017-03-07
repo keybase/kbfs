@@ -59,7 +59,8 @@ func (ibrmd ImmutableBareRootMetadata) MakeBareTlfHandleWithExtra() (
 
 // mdJournal stores a single ordered list of metadata IDs for a (TLF,
 // user, device) tuple, along with the associated metadata objects, in
-// flat files on disk.
+// flat files on disk in a directory, which is assumed to not be used
+// by anything else.
 //
 // The directory layout looks like:
 //
