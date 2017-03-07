@@ -1157,8 +1157,13 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 			j.log.CWarningf(ctx,
 				"Cleared block journal for %s, but still has aggregate info %+v",
 				j.tlfID, aggregateInfo)
-			j.diskLimiter.onJournalDisable(ctx,
-				aggregateInfo.StoredBytes, aggregateInfo.StoredFiles)
+			// TODO: Consider trying to adjust the disk
+			// limiter state to compensate for the
+			// leftover bytes/files here. Ideally, the
+			// disk limiter would keep track of per-TLF
+			// state, so we could just call
+			// j.diskLimiter.onJournalClear(tlfID) to have
+			// it clear its state for this TLF.
 		}
 	}
 
