@@ -1132,7 +1132,7 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		return err
 	}
 
-	j.diskLimiter.onBlockDelete(ctx, removedBytes, removedFiles)
+	j.diskLimiter.onBlocksDelete(ctx, removedBytes, removedFiles)
 
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
