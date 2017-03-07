@@ -398,7 +398,7 @@ func goGCForTest(t *testing.T, ctx context.Context, j *blockJournal) (
 	}
 	removedBytes, removedFiles, err := j.doGC(ctx, earliest, latest)
 	require.NoError(t, err)
-	_, err := j.clearDeferredGCRange(
+	_, err = j.clearDeferredGCRange(
 		ctx, removedBytes, removedFiles, earliest, latest)
 	require.NoError(t, err)
 	return removedBytes, removedFiles
@@ -977,7 +977,7 @@ func TestBlockJournalByteCounters(t *testing.T) {
 		require.Equal(t, int64(expectedBytes), j.getStoredBytes())
 		require.Equal(t, int64(expectedBytes), j.getUnflushedBytes())
 		require.Equal(t, int64(expectedFiles), j.getStoredFiles())
-		var info aggregateInfo
+		var info blockAggregateInfo
 		err := kbfscodec.DeserializeFromFile(
 			j.codec, aggregateInfoPath(j.dir), &info)
 		if !ioutil.IsNotExist(err) {

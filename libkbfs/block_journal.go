@@ -79,7 +79,7 @@ type blockJournal struct {
 	// state you get by replaying all the entries in j.
 	s *blockDiskStore
 
-	aggregateInfo aggregateInfo
+	aggregateInfo blockAggregateInfo
 }
 
 type blockOpType int
@@ -224,7 +224,7 @@ func (j *blockJournal) blockJournalFiles() []string {
 
 // Ideally, this would be a JSON file, but we'd need a JSON
 // encoder/decoder that supports unknown fields.
-type aggregateInfo struct {
+type blockAggregateInfo struct {
 	// StoredBytes counts the number of bytes of block data stored
 	// on disk.
 	StoredBytes int64
@@ -1102,7 +1102,7 @@ func (j *blockJournal) clearDeferredGCRange(
 	if j.j.empty() && j.deferredGC.empty() {
 		j.log.CDebugf(ctx, "Block journal is now empty")
 
-		j.aggregateInfo = aggregateInfo{}
+		j.aggregateInfo = blockAggregateInfo{}
 
 		for _, dir := range j.blockJournalFiles() {
 			j.log.CDebugf(ctx, "Removing all files in %s", dir)
