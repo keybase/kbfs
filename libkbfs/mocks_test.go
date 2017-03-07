@@ -789,17 +789,6 @@ func (_mr *_MockKBFSOpsRecorder) ForceFastForward(arg0 interface{}) *gomock.Call
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ForceFastForward", arg0)
 }
 
-func (_m *MockKBFSOps) GetPathStringByNode(ctx context.Context, node Node) (string, error) {
-	ret := _m.ctrl.Call(_m, "GetPathStringByNode", ctx, node)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockKBFSOpsRecorder) GetPathStringByNode(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetPathStringByNode", arg0, arg1)
-}
-
 // Mock of KeybaseService interface
 type MockKeybaseService struct {
 	ctrl     *gomock.Controller

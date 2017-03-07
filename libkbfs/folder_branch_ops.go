@@ -1307,10 +1307,6 @@ func (fbo *folderBranchOps) initMDLocked(
 	return nil
 }
 
-func (fbo *folderBranchOps) GetPathStringByNode(ctx context.Context,
-	node Node) (string, error) {
-	return "", errors.New("GetPathStringByNode is not supported by folderBranchOps")
-}
 func (fbo *folderBranchOps) GetTLFCryptKeys(ctx context.Context,
 	h *TlfHandle) (keys []kbfscrypto.TLFCryptKey, id tlf.ID, err error) {
 	return nil, tlf.ID{}, errors.New("GetTLFCryptKeys is not supported by folderBranchOps")

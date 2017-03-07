@@ -324,9 +324,6 @@ type KBFSOps interface {
 	// newest version.  It works asynchronously, so no error is
 	// returned.
 	ForceFastForward(ctx context.Context)
-
-	// GetPathStringByNode gets the full canonical path for a give node.
-	GetPathStringByNode(ctx context.Context, node Node) (string, error)
 }
 
 // KeybaseService is an interface for communicating with the keybase
