@@ -360,8 +360,6 @@ func (j *blockJournal) remove(ctx context.Context, id kbfsblock.ID) (
 		return 0, 0, err
 	}
 
-	// TODO: we'll eventually need a sweeper to clean up entries
-	// left behind if we crash here.
 	err = j.s.remove(id)
 	if err != nil {
 		return 0, 0, err
@@ -1093,8 +1091,7 @@ func (j *blockJournal) doGC(ctx context.Context,
 // journal directories.
 func (j *blockJournal) clearDeferredGCRange(
 	ctx context.Context, removedBytes, removedFiles int64,
-	earliest, latest journalOrdinal) (
-	clearedJournal bool, err error) {
+	earliest, latest journalOrdinal) (clearedJournal bool, err error) {
 	for i := earliest; i <= latest; i++ {
 		_, err := j.deferredGC.removeEarliest()
 		if err != nil {
