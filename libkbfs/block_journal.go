@@ -1092,7 +1092,8 @@ func (j *blockJournal) doGC(ctx context.Context,
 // journal. If the journal goes completely empty, it then nukes the
 // journal directories.
 func (j *blockJournal) clearDeferredGCRange(
-	ctx context.Context, earliest, latest journalOrdinal) (
+	ctx context.Context, removedBytes, removedFiles int64,
+	earliest, latest journalOrdinal) (
 	clearedJournal bool, err error) {
 	for i := earliest; i <= latest; i++ {
 		_, err := j.deferredGC.removeEarliest()
@@ -1101,26 +1102,30 @@ func (j *blockJournal) clearDeferredGCRange(
 		}
 	}
 
-	if !j.j.empty() || !j.deferredGC.empty() {
-		return false, nil
-	}
+	if j.j.empty() && j.deferredGC.empty() {
+		j.log.CDebugf(ctx, "Block journal is now empty")
 
-	j.log.CDebugf(ctx, "Block journal is now empty")
-
-	err = j.s.clear()
-	if err != nil {
-		return false, err
-	}
-
-	for _, dir := range j.blockJournalDirs() {
-		j.log.CDebugf(ctx, "Removing all files in %s", dir)
-		err := ioutil.RemoveAll(dir)
 		if err != nil {
 			return false, err
 		}
-	}
 
-	return true, nil
+		for _, dir := range j.blockJournalDirs() {
+			j.log.CDebugf(ctx, "Removing all files in %s", dir)
+			err := ioutil.RemoveAll(dir)
+			if err != nil {
+				return false, err
+			}
+		}
+
+		return true, nil
+	} else {
+		// TODO: if we crash before calling this, the journal
+		// bytes/files counts will be inaccurate.  I think the
+		// only way to fix that is a periodic repair scan?
+		j.unstoreBlock(removedBytes, removedFiles)
+
+		return false, nil
+	}
 }
 
 func (j *blockJournal) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, error) {

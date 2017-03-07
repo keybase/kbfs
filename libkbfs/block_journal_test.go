@@ -406,8 +406,9 @@ func goGCForTest(t *testing.T, ctx context.Context, j *blockJournal) (
 	}
 	removedBytes, removedFiles, err := j.doGC(ctx, earliest, latest)
 	require.NoError(t, err)
-	clearedJournal, err := j.clearDeferredGCRange(ctx, earliest, latest)
-	// TODO: Do something with clearedJournal.
+	clearedJournal, err := j.clearDeferredGCRange(
+		ctx, removedBytes, removedFiles, earliest, latest)
+	// TODO: do something with clearedJournal.
 	_ = clearedJournal
 	require.NoError(t, err)
 	return removedBytes, removedFiles
@@ -545,7 +546,6 @@ func flushBlockJournalOne(ctx context.Context, t *testing.T,
 	require.NoError(t, err)
 	removedBytes, removedFiles = goGCForTest(t, ctx, j)
 	require.NoError(t, err)
-	j.unstoreBlock(removedBytes, removedFiles)
 
 	err = j.checkInSyncForTest()
 	require.NoError(t, err)
