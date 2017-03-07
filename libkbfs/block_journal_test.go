@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"math"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/keybase/client/go/logger"
@@ -383,18 +382,11 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 }
 
 func testBlockJournalGCd(t *testing.T, j *blockJournal) {
-	err := filepath.Walk(j.dir,
-		func(path string, info os.FileInfo, _ error) error {
-			// We should only find the blocks directories and
-			// aggregate info file here.
-			if path != j.dir && path != j.s.dir && path != j.j.dir &&
-				path != aggregateInfoPath(j.dir) &&
-				path != deferredGCBlockJournalDir(j.dir) {
-				t.Errorf("Found unexpected block path: %s", path)
-			}
-			return nil
-		})
-	require.NoError(t, err)
+	// None of these dirs should exist.
+	for _, file := range j.blockJournalFiles() {
+		_, err := ioutil.Stat(file)
+		require.True(t, ioutil.IsNotExist(err))
+	}
 }
 
 func goGCForTest(t *testing.T, ctx context.Context, j *blockJournal) (
