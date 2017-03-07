@@ -17,7 +17,7 @@ const (
 )
 
 // GetExecPathFromPID returns the process's executable path for given PID.
-func GetExecPathFromPID(pid int) (string, error) {
+func GetExecPathFromPID(pid uint32) (string, error) {
 	buf := make([]byte, procpidpathinfosize)
 	_, _, errno := syscall.Syscall6(syscall.SYS_PROC_INFO, proccallnumpidinfo, uintptr(pid), procpidpathinfo, 0, uintptr(unsafe.Pointer(&buf[0])), procpidpathinfosize)
 	if errno != 0 {

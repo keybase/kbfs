@@ -28,6 +28,7 @@ const (
 	errorParamRenameOldFilename = "oldFilename"
 	errorParamFoldersCreated    = "foldersCreated"
 	errorParamFolderLimit       = "folderLimit"
+	errorParamExecPath          = "execPath"
 
 	// error operation modes
 	errorModeRead  = "read"
@@ -158,6 +159,9 @@ func (r *ReporterKBPKI) ReportErr(ctx context.Context,
 		code = keybase1.FSErrorType_TOO_MANY_FOLDERS
 		params[errorParamFolderLimit] = strconv.FormatUint(e.Limit, 10)
 		params[errorParamFoldersCreated] = strconv.FormatUint(e.Created, 10)
+	case ExdevForUnsupportedApplicationError:
+		code = keybase1.FSErrorType_EXDEV_NOT_SUPPORTED
+		params[errorParamExecPath] = e.ExecPath
 	}
 
 	if code < 0 && err == context.DeadlineExceeded {

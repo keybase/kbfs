@@ -17,6 +17,7 @@ import (
 	"bazil.org/fuse/fs"
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
+	"github.com/keybase/kbfs/sysutils"
 	"golang.org/x/net/context"
 )
 
@@ -435,21 +436,14 @@ type DirInterface interface {
 // Dir represents a subdirectory of a KBFS top-level folder (including
 // the TLF root directory itself).
 type Dir struct {
-	folder  *Folder
-	node    libkbfs.Node
-	renamer renamer
+	folder *Folder
+	node   libkbfs.Node
 }
 
 func newDir(folder *Folder, node libkbfs.Node) *Dir {
 	d := &Dir{
 		folder: folder,
 		node:   node,
-		renamer: newRenamer(
-			newNaiveRenamerOp(),
-			newAmnestyRenamerOp(exePathFinder),
-			newFinderTrickingRenamerOp(),
-			newNotifyingRenamerOp(),
-		),
 	}
 	return d
 }
@@ -697,10 +691,26 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 		// This shouldn't happen unless we add other nodes. EIO is not in the error
 		// codes listed in rename(), but there doesn't seem to be any suitable
 		// error code listed for this situation either.
-		return fuse.Errno(syscall.EXDEV)
+		return fuse.Errno(syscall.EIO)
 	}
 
-	return d.renamer.rename(ctx, d, req.OldName, realNewDir, req.NewName, req)
+	err = d.folder.fs.config.KBFSOps().Rename(ctx,
+		d.node, req.OldName, realNewDir.node, req.NewName)
+
+	switch err.(type) {
+	case nil:
+		return nil
+	case libkbfs.RenameAcrossDirsError:
+		epath, er := sysutils.GetExecPathFromPID(req.Pid)
+		if er != nil {
+			d.folder.fs.log.CDebugf(ctx,
+				"Dir Rename: getting exec path for PID %d error: %v", req.Pid, er)
+			return err
+		}
+		return libkbfs.ExdevForUnsupportedApplicationError{ExecPath: epath}
+	default:
+		return err
+	}
 }
 
 // Remove implements the fs.NodeRemover interface for Dir.
