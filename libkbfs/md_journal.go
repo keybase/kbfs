@@ -640,6 +640,13 @@ func (j *mdJournal) convertToBranch(
 
 	mdsToRemove := make([]MdID, 0, len(allEntries))
 	defer func() {
+		// If we crash here and leave behind the tempdir, it
+		// won't be cleaned up automatically when the journal
+		// is completely drained, but it'll be cleaned up when
+		// the parent journal (i.e., tlfJournal) is completely
+		// drained. As for the entries, they'll be cleaned up
+		// the next time the journal is completely drained.
+
 		j.log.CDebugf(ctx, "Removing temp dir %s and %d old MDs",
 			journalTempDir, len(mdsToRemove))
 		removeErr := ioutil.RemoveAll(journalTempDir)
@@ -648,9 +655,7 @@ func (j *mdJournal) convertToBranch(
 				"Error when removing temp dir %s: %+v",
 				journalTempDir, removeErr)
 		}
-		// Garbage-collect the unnecessary MD entries.  TODO: we'll
-		// eventually need a sweeper to clean up entries left behind
-		// if we crash here.
+		// Garbage-collect the unnecessary MD entries.
 		for _, id := range mdsToRemove {
 			removeErr := j.removeMD(id)
 			if removeErr != nil {
