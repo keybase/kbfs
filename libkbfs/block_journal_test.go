@@ -360,7 +360,7 @@ func TestBlockJournalDuplicateRemove(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, dataLen, removedBytes)
 	require.Equal(t, int64(filesPerBlockMax), removedFiles)
-	j.unstoreBlock(removedBytes, removedFiles)
+	j.unstoreBlocks(removedBytes, removedFiles)
 
 	// This violates the invariant that UnflushedBytes <=
 	// StoredBytes, but that's because we're manually removing the

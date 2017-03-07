@@ -288,7 +288,7 @@ func (j *blockJournal) flushBlock(bytes int64) error {
 	return j.changeCounts(0, 0, -bytes)
 }
 
-func (j *blockJournal) unstoreBlock(bytes, files int64) error {
+func (j *blockJournal) unstoreBlocks(bytes, files int64) error {
 	if bytes < 0 {
 		panic("bytes unexpectedly negative")
 	}
@@ -1105,9 +1105,7 @@ func (j *blockJournal) clearDeferredGCRange(
 	if j.j.empty() && j.deferredGC.empty() {
 		j.log.CDebugf(ctx, "Block journal is now empty")
 
-		if err != nil {
-			return false, err
-		}
+		j.aggregateInfo = aggregateInfo{}
 
 		for _, dir := range j.blockJournalFiles() {
 			j.log.CDebugf(ctx, "Removing all files in %s", dir)
@@ -1117,15 +1115,13 @@ func (j *blockJournal) clearDeferredGCRange(
 			}
 		}
 
-		j.aggregateInfo = aggregateInfo{}
-
 		return true, nil
 	}
 
 	// If we crash before calling this, the journal bytes/files
 	// counts will be inaccurate. But this will be resolved when
 	// the journal goes empty in the clause above.
-	j.unstoreBlock(removedBytes, removedFiles)
+	j.unstoreBlocks(removedBytes, removedFiles)
 
 	return false, nil
 }
