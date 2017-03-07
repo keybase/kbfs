@@ -213,10 +213,10 @@ func makeBlockJournal(
 	return journal, nil
 }
 
-func (j *blockJournal) blockJournalDirs() []string {
+func (j *blockJournal) blockJournalFiles() []string {
 	return []string{
 		blockJournalDir(j.dir), deferredGCBlockJournalDir(j.dir),
-		blockJournalStoreDir(j.dir),
+		blockJournalStoreDir(j.dir), aggregateInfoPath(j.dir),
 	}
 }
 
@@ -1109,13 +1109,15 @@ func (j *blockJournal) clearDeferredGCRange(
 			return false, err
 		}
 
-		for _, dir := range j.blockJournalDirs() {
+		for _, dir := range j.blockJournalFiles() {
 			j.log.CDebugf(ctx, "Removing all files in %s", dir)
 			err := ioutil.RemoveAll(dir)
 			if err != nil {
 				return false, err
 			}
 		}
+
+		j.aggregateInfo = aggregateInfo{}
 
 		return true, nil
 	} else {
