@@ -862,7 +862,7 @@ func (j *mdJournal) removeFlushedEntry(
 	// MD-related directories.
 	if empty {
 		j.log.CDebugf(ctx,
-			"Journal is now empty; saving last MdID=%s", mdID)
+			"MD journal is now empty; saving last MdID=%s", mdID)
 		j.lastMdID = mdID
 
 		// The disk journal has already been cleared, so we

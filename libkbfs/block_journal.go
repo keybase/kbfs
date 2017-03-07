@@ -159,6 +159,14 @@ func (e blockJournalEntry) getSingleContext() (
 		"getSingleContext() erroneously called on op %s", e.Op)
 }
 
+func blockJournalDir(dir string) string {
+	return filepath.Join(dir, "block_journal")
+}
+
+func blockJournalStoreDir(dir string) string {
+	return filepath.Join(dir, "blocks")
+}
+
 func deferredGCBlockJournalDir(dir string) string {
 	return filepath.Join(dir, "gc_block_journal")
 }
@@ -168,7 +176,7 @@ func deferredGCBlockJournalDir(dir string) string {
 func makeBlockJournal(
 	ctx context.Context, codec kbfscodec.Codec, dir string,
 	log logger.Logger) (*blockJournal, error) {
-	journalPath := filepath.Join(dir, "block_journal")
+	journalPath := blockJournalDir(dir)
 	deferLog := log.CloneWithAddedDepth(1)
 	j, err := makeDiskJournal(
 		codec, journalPath, reflect.TypeOf(blockJournalEntry{}))
@@ -183,7 +191,7 @@ func makeBlockJournal(
 		return nil, err
 	}
 
-	storeDir := filepath.Join(dir, "blocks")
+	storeDir := blockJournalStoreDir(dir)
 	s := makeBlockDiskStore(codec, storeDir)
 	journal := &blockJournal{
 		codec:      codec,
@@ -203,6 +211,13 @@ func makeBlockJournal(
 	}
 
 	return journal, nil
+}
+
+func (j *blockJournal) blockJournalDirs() []string {
+	return []string{
+		blockJournalDir(j.dir), deferredGCBlockJournalDir(j.dir),
+		blockJournalStoreDir(j.dir),
+	}
 }
 
 // The functions below are for reading and writing aggregate info.
@@ -883,8 +898,9 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 		})
 	}
 
-	// TODO: If the block journal is now empty, nuke all block
-	// journal dirs.
+	// The block journal might be empty, but deferredGC might
+	// still be non-empty, so we have to wait for that to be empty
+	// before nuking the whole journal (see clearDeferredGCRange).
 
 	return nil
 }
@@ -1074,13 +1090,31 @@ func (j *blockJournal) doGC(ctx context.Context,
 
 // clearDeferredGCRange removes the given range from the deferred journal.
 func (j *blockJournal) clearDeferredGCRange(
-	earliest, latest journalOrdinal) error {
+	ctx context.Context, earliest, latest journalOrdinal) error {
 	for i := earliest; i <= latest; i++ {
 		_, err := j.deferredGC.removeEarliest()
 		if err != nil {
 			return err
 		}
 	}
+
+	if j.j.empty() && j.deferredGC.empty() {
+		j.log.CDebugf(ctx, "Block journal is now empty")
+
+		err := j.s.clear()
+		if err != nil {
+			return err
+		}
+
+		for _, dir := range j.blockJournalDirs() {
+			j.log.CDebugf(ctx, "Removing all files in %s", dir)
+			err := ioutil.RemoveAll(dir)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
