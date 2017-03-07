@@ -1221,3 +1221,15 @@ type NoMergedMDError struct {
 func (e NoMergedMDError) Error() string {
 	return fmt.Sprintf("No MD yet for TLF %s", e.tlf)
 }
+
+// ExdevForUnsupportedApplicationError indicates that a rename across TLFs was
+// received from a program that is known to be incapable of handling EXDEV.
+type ExdevForUnsupportedApplicationError struct {
+	ExecPath string
+}
+
+// Error implements the error interface for ExdevForUnsupportedApplicationError.
+func (e ExdevForUnsupportedApplicationError) Error() string {
+	return fmt.Sprintf(
+		"%s tried to rename across TLFs but it doesn't support EXDEV", e.ExecPath)
+}
