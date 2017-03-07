@@ -312,9 +312,9 @@ func canonicalNameIfNotNil(h *libkbfs.TlfHandle) string {
 
 func (f *Folder) tlfHandleChangeInvalidate(ctx context.Context,
 	newHandle *libkbfs.TlfHandle) {
-	cuser, _, err := libkbfs.GetCurrentUserInfoIfPossible(ctx, f.fs.config.KBPKI(), f.list.public)
+	session, err := libkbfs.GetCurrentSessionIfPossible(ctx, f.fs.config.KBPKI(), f.list.public)
 	// Here we get an error, but there is little that can be done.
-	// cuser will be empty in the error case in which case we will default to the
+	// session will be empty in the error case in which case we will default to the
 	// canonical format.
 	if err != nil {
 		f.fs.log.CDebugf(ctx,
@@ -327,7 +327,7 @@ func (f *Folder) tlfHandleChangeInvalidate(ctx context.Context,
 		if newHandle != nil {
 			f.h = newHandle
 		}
-		f.hPreferredName = f.h.GetPreferredFormat(cuser)
+		f.hPreferredName = f.h.GetPreferredFormat(session.Name)
 		return oldName, f.hPreferredName
 	}()
 
@@ -337,7 +337,7 @@ func (f *Folder) tlfHandleChangeInvalidate(ctx context.Context,
 }
 
 func (f *Folder) isWriter(ctx context.Context) (bool, error) {
-	_, uid, err := libkbfs.GetCurrentUserInfoIfPossible(
+	session, err := libkbfs.GetCurrentSessionIfPossible(
 		ctx, f.fs.config.KBPKI(), f.list.public)
 	// We are using GetCurrentUserInfoIfPossible here so err is only non-nil if
 	// a real problem happened. If the user is logged out, we will get an empty
@@ -347,7 +347,7 @@ func (f *Folder) isWriter(ctx context.Context) (bool, error) {
 	}
 	f.handleMu.RLock()
 	defer f.handleMu.RUnlock()
-	return f.h.IsWriter(uid), nil
+	return f.h.IsWriter(session.UID), nil
 }
 
 func (f *Folder) writePermMode(ctx context.Context,

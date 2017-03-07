@@ -36,8 +36,10 @@ const (
 	qrPeriodDefault = 1 * time.Minute
 	// How long must something be unreferenced before we reclaim it?
 	qrUnrefAgeDefault = 1 * time.Minute
-	// How old must the most recent revision be before we run QR?
-	qrMinHeadAgeDefault = 5 * time.Minute
+	// How old must the most recent TLF revision be before another
+	// device can run QR on that TLF?  This is large, to avoid
+	// unnecessary conflicts on the TLF between devices.
+	qrMinHeadAgeDefault = 24 * time.Hour
 	// tlfValidDurationDefault is the default for tlf validity before redoing identify.
 	tlfValidDurationDefault = 6 * time.Hour
 )
@@ -937,13 +939,13 @@ func (c *ConfigLocal) EnableJournaling(
 	enableErr := func() error {
 		// If this fails, then existing journals will be
 		// enabled when we receive the login notification.
-		uid, key, err :=
-			getCurrentUIDAndVerifyingKey(ctx, c.KBPKI())
+		session, err := c.KBPKI().GetCurrentSession(ctx)
 		if err != nil {
 			return err
 		}
 
-		err = jServer.EnableExistingJournals(ctx, uid, key, bws)
+		err = jServer.EnableExistingJournals(
+			ctx, session.UID, session.VerifyingKey, bws)
 		if err != nil {
 			return err
 		}

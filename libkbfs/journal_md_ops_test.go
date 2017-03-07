@@ -60,6 +60,11 @@ func setupJournalMDOpsTest(t *testing.T) (
 	jServer.onMDFlush = nil
 	require.NoError(t, err)
 
+	// Tests need to explicitly enable journaling, to avoid races
+	// where journals are enabled before they can be paused.
+	err = jServer.DisableAuto(ctx)
+	require.NoError(t, err)
+
 	setupSucceeded = true
 	return tempdir, ctx, cancel, config, oldMDOps, jServer
 }
@@ -91,11 +96,11 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	tempdir, ctx, cancel, config, oldMDOps, jServer := setupJournalMDOpsTest(t)
 	defer teardownJournalMDOpsTest(t, tempdir, ctx, cancel, config)
 
-	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := config.KBPKI().GetCurrentSession(ctx)
 	require.NoError(t, err)
 
 	// (1) get metadata -- allocates an ID
-	bh, err := tlf.MakeHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	bh, err := tlf.MakeHandle([]keybase1.UID{session.UID}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	h, err := MakeTlfHandle(ctx, bh, config.KBPKI())
@@ -129,12 +134,12 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	id, head, err := mdOps.GetForHandle(ctx, h, Merged)
 	require.NoError(t, err)
 	require.NotEqual(t, tlf.NullID, id)
-	require.NotNil(t, head)
+	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, MetadataRevision(7), head.Revision())
 
 	head, err = mdOps.GetForTLF(ctx, id)
 	require.NoError(t, err)
-	require.NotNil(t, head)
+	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, MetadataRevision(7), head.Revision())
 
 	head, err = oldMDOps.GetForTLF(ctx, id)
@@ -146,12 +151,12 @@ func TestJournalMDOpsBasics(t *testing.T) {
 
 	head, err = mdOps.GetForTLF(ctx, id)
 	require.NoError(t, err)
-	require.NotNil(t, head)
+	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, MetadataRevision(7), head.Revision())
 
 	head, err = oldMDOps.GetForTLF(ctx, id)
 	require.NoError(t, err)
-	require.NotNil(t, head)
+	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, MetadataRevision(7), head.Revision())
 
 	// (3) trigger a conflict
@@ -175,12 +180,12 @@ func TestJournalMDOpsBasics(t *testing.T) {
 
 	head, err = mdOps.GetForTLF(ctx, id)
 	require.NoError(t, err)
-	require.NotNil(t, head)
+	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, MetadataRevision(8), head.Revision())
 
 	head, err = oldMDOps.GetForTLF(ctx, id)
 	require.NoError(t, err)
-	require.NotNil(t, head)
+	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, MetadataRevision(8), head.Revision())
 
 	// Find the branch ID.
@@ -190,12 +195,12 @@ func TestJournalMDOpsBasics(t *testing.T) {
 
 	head, err = mdOps.GetUnmergedForTLF(ctx, id, bid)
 	require.NoError(t, err)
-	require.NotNil(t, head)
+	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, MetadataRevision(10), head.Revision())
 
 	_, head, err = mdOps.GetForHandle(ctx, h, Unmerged)
 	require.NoError(t, err)
-	require.NotNil(t, head)
+	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, MetadataRevision(10), head.Revision())
 	require.Equal(t, bid, head.BID())
 
@@ -215,7 +220,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	// (5) check for proper unmerged head
 	head, err = mdOps.GetUnmergedForTLF(ctx, id, bid)
 	require.NoError(t, err)
-	require.NotNil(t, head)
+	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, MetadataRevision(40), head.Revision())
 
 	// (6a) try to get unmerged range
@@ -251,7 +256,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	// (10) check for proper merged head
 	head, err = mdOps.GetForTLF(ctx, id)
 	require.NoError(t, err)
-	require.NotNil(t, head)
+	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, MetadataRevision(8), head.Revision())
 
 	// (11) try to get merged range
@@ -270,10 +275,10 @@ func TestJournalMDOpsPutUnmerged(t *testing.T) {
 	tempdir, ctx, cancel, config, _, jServer := setupJournalMDOpsTest(t)
 	defer teardownJournalMDOpsTest(t, tempdir, ctx, cancel, config)
 
-	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := config.KBPKI().GetCurrentSession(ctx)
 	require.NoError(t, err)
 
-	bh, err := tlf.MakeHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	bh, err := tlf.MakeHandle([]keybase1.UID{session.UID}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	h, err := MakeTlfHandle(ctx, bh, config.KBPKI())
@@ -300,10 +305,10 @@ func TestJournalMDOpsPutUnmergedError(t *testing.T) {
 	tempdir, ctx, cancel, config, _, jServer := setupJournalMDOpsTest(t)
 	defer teardownJournalMDOpsTest(t, tempdir, ctx, cancel, config)
 
-	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := config.KBPKI().GetCurrentSession(ctx)
 	require.NoError(t, err)
 
-	bh, err := tlf.MakeHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	bh, err := tlf.MakeHandle([]keybase1.UID{session.UID}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	h, err := MakeTlfHandle(ctx, bh, config.KBPKI())
@@ -329,10 +334,10 @@ func TestJournalMDOpsLocalSquashBranch(t *testing.T) {
 	tempdir, ctx, cancel, config, _, jServer := setupJournalMDOpsTest(t)
 	defer teardownJournalMDOpsTest(t, tempdir, ctx, cancel, config)
 
-	_, uid, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := config.KBPKI().GetCurrentSession(ctx)
 	require.NoError(t, err)
 
-	bh, err := tlf.MakeHandle([]keybase1.UID{uid}, nil, nil, nil, nil)
+	bh, err := tlf.MakeHandle([]keybase1.UID{session.UID}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	h, err := MakeTlfHandle(ctx, bh, config.KBPKI())

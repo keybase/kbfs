@@ -51,7 +51,6 @@ type UserInfo struct {
 type SessionInfo struct {
 	Name           libkb.NormalizedUsername
 	UID            keybase1.UID
-	Token          string
 	CryptPublicKey kbfscrypto.CryptPublicKey
 	VerifyingKey   kbfscrypto.VerifyingKey
 }
@@ -698,7 +697,6 @@ func SessionInfoFromProtocol(session keybase1.Session) (SessionInfo, error) {
 	return SessionInfo{
 		Name:           libkb.NewNormalizedUsername(session.Username),
 		UID:            keybase1.UID(session.Uid),
-		Token:          session.Token,
 		CryptPublicKey: cryptPublicKey,
 		VerifyingKey:   verifyingKey,
 	}, nil
@@ -712,3 +710,19 @@ type NodeMetadata struct {
 	LastWriterUnverified libkb.NormalizedUsername
 	BlockInfo            BlockInfo
 }
+
+// FavoritesOp defines an operation related to favorites.
+type FavoritesOp int
+
+const (
+	_ FavoritesOp = iota
+	// FavoritesOpAdd means TLF should be added to favorites.
+	FavoritesOpAdd
+	// FavoritesOpAddNewlyCreated means TLF should be added to favorites, and it
+	// should be considered newly created.
+	FavoritesOpAddNewlyCreated
+	// FavoritesOpRemove means TLF should be removed from favorites.
+	FavoritesOpRemove
+	// FavoritesOpNoChange means no changes regarding to favorites should be made.
+	FavoritesOpNoChange
+)

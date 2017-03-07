@@ -246,6 +246,63 @@ func (fbo *folderBlockOps) GetState(lState *lockState) overallBlockState {
 	return dirtyState
 }
 
+// getCleanEncodedBlockHelperLocked retrieves the encoded size of the
+// clean block pointed to by ptr, which must be valid, either from the
+// cache or from the server.  If `rtype` is `blockReadParallel`, it's
+// assumed that some coordinating goroutine is holding the correct
+// locks, and in that case `lState` must be `nil`.
+func (fbo *folderBlockOps) getCleanEncodedBlockSizeLocked(ctx context.Context,
+	lState *lockState, kmd KeyMetadata, ptr BlockPointer, branch BranchName,
+	rtype blockReqType) (uint32, error) {
+	if rtype != blockReadParallel {
+		if rtype == blockWrite {
+			panic("Cannot get the size of a block for writing")
+		}
+		fbo.blockLock.AssertAnyLocked(lState)
+	} else if lState != nil {
+		panic("Non-nil lState passed to getCleanEncodedBlockSizeLocked " +
+			"with blockReadParallel")
+	}
+
+	if !ptr.IsValid() {
+		return 0, InvalidBlockRefError{ptr.Ref()}
+	}
+
+	if block, err := fbo.config.BlockCache().Get(ptr); err == nil {
+		return block.GetEncodedSize(), nil
+	}
+
+	if err := checkDataVersion(fbo.config, path{}, ptr); err != nil {
+		return 0, err
+	}
+
+	// Unlock the blockLock while we wait for the network, only if
+	// it's locked for reading by a single goroutine.  If it's locked
+	// for writing, that indicates we are performing an atomic write
+	// operation, and we need to ensure that nothing else comes in and
+	// modifies the blocks, so don't unlock.
+	//
+	// If there may be multiple goroutines fetching blocks under the
+	// same lState, we can't safely unlock since some of the other
+	// goroutines may be operating on the data assuming they have the
+	// lock.
+	bops := fbo.config.BlockOps()
+	var size uint32
+	var err error
+	if rtype != blockReadParallel && rtype != blockLookup {
+		fbo.blockLock.DoRUnlockedIfPossible(lState, func(*lockState) {
+			size, err = bops.GetEncodedSize(ctx, kmd, ptr)
+		})
+	} else {
+		size, err = bops.GetEncodedSize(ctx, kmd, ptr)
+	}
+	if err != nil {
+		return 0, err
+	}
+
+	return size, nil
+}
+
 // getBlockHelperLocked retrieves the block pointed to by ptr, which
 // must be valid, either from the cache or from the server. If
 // notifyPath is valid and the block isn't cached, trigger a read
@@ -376,34 +433,34 @@ func (fbo *folderBlockOps) GetBlockForReading(ctx context.Context,
 		NewCommonBlock, NoCacheEntry, path{}, blockRead)
 }
 
-// GetBlocksForReading retrieves the blocks pointed to by ptrs, all of
-// which must be valid, either from the cache or from the server.  The
-// returned block may have a generic type (not DirBlock or FileBlock).
+// GetCleanEncodedBlocksSizeSum retrieves the sum of the encoded sizes
+// of the blocks pointed to by ptrs, all of which must be valid,
+// either from the cache or from the server.
 //
 // The caller can specify a set of pointers using
 // `ignoreRecoverableForRemovalErrors` for which "recoverable" fetch
-// errors are tolerated.  In that case, the returned map will not have
-// an entry for any pointers in the
+// errors are tolerated.  In that case, the returned sum will not
+// include the size for any pointers in the
 // `ignoreRecoverableForRemovalErrors` set that hit such an error.
 //
 // This should be called for "internal" operations, like conflict
 // resolution and state checking, which don't know what kind of block
-// the pointers refer to.  The blocks will not be cached, if they
-// weren't in the cache already.
-func (fbo *folderBlockOps) GetBlocksForReading(ctx context.Context,
+// the pointers refer to.  Any downloaded blocks will not be cached,
+// if they weren't in the cache already.
+func (fbo *folderBlockOps) GetCleanEncodedBlocksSizeSum(ctx context.Context,
 	lState *lockState, kmd KeyMetadata, ptrs []BlockPointer,
 	ignoreRecoverableForRemovalErrors map[BlockPointer]bool,
-	branch BranchName) (map[BlockPointer]Block, error) {
+	branch BranchName) (uint64, error) {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
 
-	blockResults := make([]Block, len(ptrs))
+	sumCh := make(chan uint32, len(ptrs))
 	eg, groupCtx := errgroup.WithContext(ctx)
-	for i, ptr := range ptrs {
-		i, ptr := i, ptr
+	for _, ptr := range ptrs {
+		ptr := ptr // capture range variable
 		eg.Go(func() error {
-			block, err := fbo.getBlockHelperLocked(groupCtx, nil, kmd, ptr,
-				branch, NewCommonBlock, NoCacheEntry, path{}, blockReadParallel)
+			size, err := fbo.getCleanEncodedBlockSizeLocked(groupCtx, nil,
+				kmd, ptr, branch, blockReadParallel)
 			// TODO: we might be able to recover the size of the
 			// top-most block of a removed file using the merged
 			// directory entry, the same way we do in
@@ -418,23 +475,21 @@ func (fbo *folderBlockOps) GetBlocksForReading(ctx context.Context,
 			if err != nil {
 				return err
 			}
-			blockResults[i] = block
+			sumCh <- size
 			return nil
 		})
 	}
 
 	if err := eg.Wait(); err != nil {
-		return nil, err
+		return 0, err
 	}
+	close(sumCh)
 
-	blocks := make(map[BlockPointer]Block, len(ptrs))
-	for i, ptr := range ptrs {
-		block := blockResults[i]
-		if block != nil {
-			blocks[ptr] = block
-		}
+	var sum uint64
+	for size := range sumCh {
+		sum += uint64(size)
 	}
-	return blocks, nil
+	return sum, nil
 }
 
 // getDirBlockHelperLocked retrieves the block pointed to by ptr, which
@@ -639,11 +694,12 @@ func (fbo *folderBlockOps) DeepCopyFile(
 	// so only a read lock is needed.
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
-	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return BlockPointer{}, nil, err
 	}
-	fd := fbo.newFileDataWithCache(lState, file, uid, kmd, dirtyBcache)
+	fd := fbo.newFileDataWithCache(
+		lState, file, session.UID, kmd, dirtyBcache)
 	return fd.deepCopy(ctx, dataVer)
 }
 
@@ -652,11 +708,12 @@ func (fbo *folderBlockOps) UndupChildrenInCopy(ctx context.Context,
 	dirtyBcache DirtyBlockCache, topBlock *FileBlock) ([]BlockInfo, error) {
 	fbo.blockLock.Lock(lState)
 	defer fbo.blockLock.Unlock(lState)
-	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return nil, err
 	}
-	fd := fbo.newFileDataWithCache(lState, file, uid, kmd, dirtyBcache)
+	fd := fbo.newFileDataWithCache(
+		lState, file, session.UID, kmd, dirtyBcache)
 	return fd.undupChildrenInCopy(ctx, fbo.config.BlockCache(),
 		fbo.config.BlockOps(), bps, topBlock)
 }
@@ -666,11 +723,12 @@ func (fbo *folderBlockOps) ReadyNonLeafBlocksInCopy(ctx context.Context,
 	dirtyBcache DirtyBlockCache, topBlock *FileBlock) ([]BlockInfo, error) {
 	fbo.blockLock.RLock(lState)
 	defer fbo.blockLock.RUnlock(lState)
-	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return nil, err
 	}
-	fd := fbo.newFileDataWithCache(lState, file, uid, kmd, dirtyBcache)
+	fd := fbo.newFileDataWithCache(
+		lState, file, session.UID, kmd, dirtyBcache)
 	return fd.readyNonLeafBlocksInCopy(ctx, fbo.config.BlockCache(),
 		fbo.config.BlockOps(), bps, topBlock)
 }
@@ -1019,12 +1077,12 @@ func (fbo *folderBlockOps) fixChildBlocksAfterRecoverableErrorLocked(
 		return
 	}
 
-	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		fbo.log.CWarningf(ctx, "Couldn't find uid during recovery: %v", err)
 		return
 	}
-	fd := fbo.newFileData(lState, file, uid, kmd)
+	fd := fbo.newFileData(lState, file, session.UID, kmd)
 
 	// If a copy of the top indirect block was made, we need to
 	// redirty all the sync'd blocks under their new IDs, so that
@@ -1273,18 +1331,19 @@ func (fbo *folderBlockOps) writeGetFileLocked(
 	file path) (*FileBlock, keybase1.UID, error) {
 	fbo.blockLock.AssertLocked(lState)
 
-	username, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return nil, "", err
 	}
-	if !kmd.GetTlfHandle().IsWriter(uid) {
-		return nil, "", NewWriteAccessError(kmd.GetTlfHandle(), username, file.String())
+	if !kmd.GetTlfHandle().IsWriter(session.UID) {
+		return nil, "", NewWriteAccessError(kmd.GetTlfHandle(),
+			session.Name, file.String())
 	}
 	fblock, err := fbo.getFileLocked(ctx, lState, kmd, file, blockWrite)
 	if err != nil {
 		return nil, "", err
 	}
-	return fblock, uid, nil
+	return fblock, session.UID, nil
 }
 
 // Returns the set of blocks dirtied during this write that might need

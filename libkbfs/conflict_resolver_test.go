@@ -115,6 +115,7 @@ func TestCRInput(t *testing.T) {
 	mergedHead := MetadataRevision(15)
 
 	cr.fbo.head = crMakeFakeRMD(unmergedHead, cr.fbo.bid)
+	cr.fbo.headStatus = headTrusted
 	// serve all the MDs from the cache
 	config.mockMdcache.EXPECT().Put(gomock.Any()).AnyTimes().Return(nil)
 	for i := unmergedHead; i >= branchPoint+1; i-- {
@@ -170,6 +171,7 @@ func TestCRInputFracturedRange(t *testing.T) {
 	mergedHead := MetadataRevision(15)
 
 	cr.fbo.head = crMakeFakeRMD(unmergedHead, cr.fbo.bid)
+	cr.fbo.headStatus = headTrusted
 	// serve all the MDs from the cache
 	config.mockMdcache.EXPECT().Put(gomock.Any()).AnyTimes().Return(nil)
 	for i := unmergedHead; i >= branchPoint+1; i-- {
@@ -377,10 +379,11 @@ func TestCRMergedChainsSimple(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
+	session2, err := config2.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	name := userName1.String() + "," + userName2.String()
 
@@ -437,10 +440,11 @@ func TestCRMergedChainsDifferentDirectories(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
+	session2, err := config2.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	name := userName1.String() + "," + userName2.String()
 
@@ -499,10 +503,11 @@ func TestCRMergedChainsDeletedDirectories(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
+	session2, err := config2.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	name := userName1.String() + "," + userName2.String()
 
@@ -596,10 +601,11 @@ func TestCRMergedChainsRenamedDirectory(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
+	session2, err := config2.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	name := userName1.String() + "," + userName2.String()
 
@@ -676,10 +682,11 @@ func TestCRMergedChainsComplex(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
+	session2, err := config2.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	// Setup:
 	// /dirA/dirB/dirC
@@ -861,10 +868,11 @@ func TestCRMergedChainsRenameCycleSimple(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
+	session2, err := config2.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	name := userName1.String() + "," + userName2.String()
 
@@ -947,10 +955,11 @@ func TestCRMergedChainsConflictSimple(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
+	session2, err := config2.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	clock, now := newTestClockAndTimeNow()
 	config2.SetClock(clock)
@@ -1015,10 +1024,11 @@ func TestCRMergedChainsConflictFileCollapse(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
+	session2, err := config2.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	clock, now := newTestClockAndTimeNow()
 	config2.SetClock(clock)
@@ -1124,10 +1134,11 @@ func TestCRDoActionsSimple(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
+	session2, err := config2.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	name := userName1.String() + "," + userName2.String()
 
@@ -1213,10 +1224,11 @@ func TestCRDoActionsWriteConflict(t *testing.T) {
 
 	config2 := ConfigAsUser(config1, userName2)
 	defer CheckConfigAndShutdown(ctx, t, config2)
-	_, uid2, err := config2.KBPKI().GetCurrentUserInfo(ctx)
+	session2, err := config2.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	uid2 := session2.UID
 
 	clock, now := newTestClockAndTimeNow()
 	config2.SetClock(clock)

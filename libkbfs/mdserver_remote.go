@@ -88,10 +88,11 @@ func NewMDServerRemote(config Config, srvAddr string,
 	mdServer.authToken = kbfscrypto.NewAuthToken(config.Crypto(),
 		MdServerTokenServer, MdServerTokenExpireIn,
 		"libkbfs_mdserver_remote", VersionString(), mdServer)
+	constBackoff := backoff.NewConstantBackOff(RPCReconnectInterval)
 	opts := rpc.ConnectionOpts{
 		WrapErrorFunc:    libkb.WrapError,
 		TagsFunc:         LogTagsFromContext,
-		ReconnectBackoff: backoff.NewConstantBackOff(RPCReconnectInterval),
+		ReconnectBackoff: func() backoff.BackOff { return constBackoff },
 	}
 	conn := rpc.NewTLSConnection(srvAddr, kbfscrypto.GetRootCerts(srvAddr),
 		MDServerErrorUnwrapper{}, mdServer, rpcLogFactory, config.MakeLogger(""), opts)
@@ -169,7 +170,7 @@ func (md *MDServerRemote) resetAuth(ctx context.Context, c keybase1.MetadataClie
 		md.authenticatedMtx.Unlock()
 	}()
 
-	_, _, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := md.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		md.log.Debug("MDServerRemote: User logged out, skipping resetAuth")
 		return MdServerDefaultPingIntervalSeconds, NoCurrentSessionError{}
@@ -182,18 +183,9 @@ func (md *MDServerRemote) resetAuth(ctx context.Context, c keybase1.MetadataClie
 	}
 	md.log.Debug("MDServerRemote: received challenge")
 
-	// get UID, deviceKID and normalized username
-	username, uid, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return 0, err
-	}
-	key, err := md.config.KBPKI().GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		return 0, err
-	}
-
 	// get a new signature
-	signature, err := md.authToken.Sign(ctx, username, uid, key, challenge)
+	signature, err := md.authToken.Sign(ctx, session.Name, session.UID,
+		session.VerifyingKey, challenge)
 	if err != nil {
 		md.log.Warning("MDServerRemote: error signing authentication token: %v", err)
 		return 0, err
@@ -775,11 +767,11 @@ func (md *MDServerRemote) CheckForRekeys(ctx context.Context) <-chan error {
 func (md *MDServerRemote) getFoldersForRekey(ctx context.Context,
 	client keybase1.MetadataClient) error {
 	// get this device's crypt public key
-	cryptKey, err := md.config.KBPKI().GetCurrentCryptPublicKey(ctx)
+	session, err := md.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return err
 	}
-	return client.GetFoldersForRekey(ctx, cryptKey.KID())
+	return client.GetFoldersForRekey(ctx, session.CryptPublicKey.KID())
 }
 
 // Shutdown implements the MDServer interface for MDServerRemote.
@@ -870,7 +862,7 @@ func (md *MDServerRemote) PutTLFCryptKeyServerHalves(ctx context.Context,
 
 // DeleteTLFCryptKeyServerHalf is an implementation of the KeyServer interface.
 func (md *MDServerRemote) DeleteTLFCryptKeyServerHalf(ctx context.Context,
-	uid keybase1.UID, kid keybase1.KID,
+	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
 	serverHalfID TLFCryptKeyServerHalfID) error {
 	// encode the ID
 	idBytes, err := md.config.Codec().Encode(serverHalfID)
@@ -881,7 +873,7 @@ func (md *MDServerRemote) DeleteTLFCryptKeyServerHalf(ctx context.Context,
 	// get the key
 	arg := keybase1.DeleteKeyArg{
 		Uid:       uid,
-		DeviceKID: kid,
+		DeviceKID: key.KID(),
 		KeyHalfID: idBytes,
 		LogTags:   nil,
 	}
