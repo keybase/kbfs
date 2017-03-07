@@ -1091,13 +1091,22 @@ func (j *blockJournal) doGC(ctx context.Context,
 // journal directories.
 func (j *blockJournal) clearDeferredGCRange(
 	ctx context.Context, removedBytes, removedFiles int64,
-	earliest, latest journalOrdinal) (clearedJournal bool, err error) {
+	earliest, latest journalOrdinal) (
+	clearedJournal bool, aggregateInfo blockAggregateInfo,
+	err error) {
 	for i := earliest; i <= latest; i++ {
 		_, err := j.deferredGC.removeEarliest()
 		if err != nil {
-			return false, err
+			return false, blockAggregateInfo{}, err
 		}
 	}
+
+	// If we crash before calling this, the journal bytes/files
+	// counts will be inaccurate. But this will be resolved when
+	// the journal goes empty in the clause above.
+	j.unstoreBlocks(removedBytes, removedFiles)
+
+	aggregateInfo = j.aggregateInfo
 
 	if j.j.empty() && j.deferredGC.empty() {
 		j.log.CDebugf(ctx, "Block journal is now empty")
@@ -1108,19 +1117,14 @@ func (j *blockJournal) clearDeferredGCRange(
 			j.log.CDebugf(ctx, "Removing all files in %s", dir)
 			err := ioutil.RemoveAll(dir)
 			if err != nil {
-				return false, err
+				return false, blockAggregateInfo{}, err
 			}
 		}
 
-		return true, nil
+		clearedJournal = true
 	}
 
-	// If we crash before calling this, the journal bytes/files
-	// counts will be inaccurate. But this will be resolved when
-	// the journal goes empty in the clause above.
-	j.unstoreBlocks(removedBytes, removedFiles)
-
-	return false, nil
+	return clearedJournal, aggregateInfo, nil
 }
 
 func (j *blockJournal) getAllRefsForTest() (map[kbfsblock.ID]blockRefMap, error) {

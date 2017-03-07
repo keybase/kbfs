@@ -1140,14 +1140,27 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		return err
 	}
 
-	clearedJournal, err := j.blockJournal.clearDeferredGCRange(
-		ctx, removedBytes, removedFiles, earliest, latest)
+	clearedJournal, aggregateInfo, err :=
+		j.blockJournal.clearDeferredGCRange(
+			ctx, removedBytes, removedFiles, earliest, latest)
 	if err != nil {
 		return err
 	}
 
-	// TODO: Do something with leftover bytes/files.
-	_ = clearedJournal
+	if clearedJournal {
+		equal, err := kbfscodec.Equal(
+			j.config.Codec(), aggregateInfo, blockAggregateInfo{})
+		if err != nil {
+			return err
+		}
+		if !equal {
+			j.log.CWarningf(ctx,
+				"Cleared block journal for %s, but still has aggregate info %+v",
+				j.tlfID, aggregateInfo)
+			j.diskLimiter.onJournalDisable(ctx,
+				aggregateInfo.StoredBytes, aggregateInfo.StoredFiles)
+		}
+	}
 
 	return nil
 }
