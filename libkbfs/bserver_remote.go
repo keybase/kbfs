@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/cenkalti/backoff"
+	"github.com/keybase/backoff"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -29,7 +29,7 @@ const (
 type blockServerRemoteConfig interface {
 	diskBlockCacheGetter
 	codecGetter
-	currentInfoGetterGetter
+	currentSessionGetterGetter
 	logMaker
 }
 
@@ -177,6 +177,7 @@ func NewBlockServerRemote(config blockServerRemoteConfig,
 		"libkbfs_bserver_remote", VersionString(), getClientHandler)
 	getClientHandler.authToken = bs.getAuthToken
 
+	constBackoff := backoff.NewConstantBackOff(RPCReconnectInterval)
 	opts := rpc.ConnectionOpts{
 		DontConnectNow: true, // connect only on-demand
 		WrapErrorFunc:  libkb.WrapError,
@@ -184,7 +185,7 @@ func NewBlockServerRemote(config blockServerRemoteConfig,
 		// This constant backoff is safe to share between multiple connections,
 		// because it has no internal state. But beware: an exponential backoff
 		// shouldn't be shared.
-		ReconnectBackoff: backoff.NewConstantBackOff(RPCReconnectInterval),
+		ReconnectBackoff: func() backoff.BackOff { return constBackoff },
 	}
 	putConn := rpc.NewTLSConnection(blkSrvAddr,
 		kbfscrypto.GetRootCerts(blkSrvAddr),
@@ -235,7 +236,7 @@ func (b *BlockServerRemote) resetAuth(
 		b.log.Debug("BlockServerRemote: resetAuth called, err: %#v", err)
 	}()
 
-	_, _, err = b.config.currentInfoGetter().GetCurrentUserInfo(ctx)
+	session, err := b.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
 		b.log.Debug("BlockServerRemote: User logged out, skipping resetAuth")
 		return nil
@@ -247,18 +248,9 @@ func (b *BlockServerRemote) resetAuth(
 		return err
 	}
 
-	// get UID, deviceKID and normalized username
-	username, uid, err := b.config.currentInfoGetter().GetCurrentUserInfo(ctx)
-	if err != nil {
-		return err
-	}
-	key, err := b.config.currentInfoGetter().GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		return err
-	}
-
 	// get a new signature
-	signature, err := authToken.Sign(ctx, username, uid, key, challenge)
+	signature, err := authToken.Sign(ctx, session.Name,
+		session.UID, session.VerifyingKey, challenge)
 	if err != nil {
 		return err
 	}

@@ -37,7 +37,7 @@ func NewMDOpsStandard(config Config) *MDOpsStandard {
 // signed by a key that is no longer associated with the last writer.
 func (md *MDOpsStandard) convertVerifyingKeyError(ctx context.Context,
 	rmds *RootMetadataSigned, handle *TlfHandle, err error) error {
-	if _, ok := err.(KeyNotFoundError); !ok {
+	if _, ok := err.(VerifyingKeyNotFoundError); !ok {
 		return err
 	}
 
@@ -203,10 +203,11 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	// Get the UID unless this is a public tlf - then proceed with empty uid.
 	var uid keybase1.UID
 	if !handle.IsPublic() {
-		_, uid, err = md.config.KBPKI().GetCurrentUserInfo(ctx)
+		session, err := md.config.KBPKI().GetCurrentSession(ctx)
 		if err != nil {
 			return ImmutableRootMetadata{}, err
 		}
+		uid = session.UID
 	}
 
 	// TODO: Avoid having to do this type assertion.
@@ -519,7 +520,7 @@ func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id tlf.ID,
 
 func (md *MDOpsStandard) put(
 	ctx context.Context, rmd *RootMetadata) (MdID, error) {
-	_, me, err := md.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := md.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return MdID{}, err
 	}
@@ -534,7 +535,7 @@ func (md *MDOpsStandard) put(
 
 	err = encryptMDPrivateData(
 		ctx, md.config.Codec(), md.config.Crypto(),
-		md.config.Crypto(), md.config.KeyManager(), me, rmd)
+		md.config.Crypto(), md.config.KeyManager(), session.UID, rmd)
 	if err != nil {
 		return MdID{}, err
 	}

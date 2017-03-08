@@ -38,12 +38,6 @@ func (g singleEncryptionKeyGetter) GetTLFCryptKeyForMDDecryption(
 	return g.k, nil
 }
 
-func getMDJournalLength(t *testing.T, j *mdJournal) int {
-	len, err := j.length()
-	require.NoError(t, err)
-	return int(len)
-}
-
 func setupMDJournalTest(t testing.TB, ver MetadataVer) (
 	codec kbfscodec.Codec, crypto CryptoCommon, tlfID tlf.ID,
 	signer kbfscrypto.Signer, ekg singleEncryptionKeyGetter,
@@ -237,7 +231,7 @@ func testMDJournalBasic(t *testing.T, ver MetadataVer) {
 	head, err := j.getHead(NullBranchID)
 	require.NoError(t, err)
 	require.Equal(t, ImmutableBareRootMetadata{}, head)
-	require.Equal(t, 0, getMDJournalLength(t, j))
+	require.Equal(t, uint64(0), j.length())
 
 	// Push some new metadata blocks.
 
@@ -248,7 +242,7 @@ func testMDJournalBasic(t *testing.T, ver MetadataVer) {
 		firstRevision, firstPrevRoot, mdCount, j)
 
 	require.Equal(t, mdCount, len(mds))
-	require.Equal(t, mdCount, getMDJournalLength(t, j))
+	require.Equal(t, uint64(mdCount), j.length())
 
 	// Should now be non-empty.
 	ibrmds, err := j.getRange(
@@ -533,19 +527,11 @@ func testMDJournalPutCase4(t *testing.T, ver MetadataVer) {
 }
 
 func testMDJournalGCd(t *testing.T, j *mdJournal) {
-	err := filepath.Walk(j.j.j.dir, func(path string, _ os.FileInfo, _ error) error {
-		// We should only find the root directory here.
-		require.Equal(t, path, j.j.j.dir)
-		return nil
-	})
-	require.NoError(t, err)
-	err = filepath.Walk(j.mdsPath(),
-		func(path string, info os.FileInfo, _ error) error {
-			// We should only find the MD directory here.
-			require.Equal(t, path, j.mdsPath())
-			return nil
-		})
-	require.NoError(t, err)
+	// None of these dirs should exist.
+	for _, dir := range j.mdJournalDirs() {
+		_, err := ioutil.Stat(dir)
+		require.True(t, ioutil.IsNotExist(err))
+	}
 }
 
 func flushAllMDs(
@@ -561,6 +547,53 @@ func flushAllMDs(
 		j.removeFlushedEntry(ctx, mdID, rmds)
 	}
 	testMDJournalGCd(t, j)
+}
+
+func listDir(t *testing.T, dir string) []string {
+	fileInfos, err := ioutil.ReadDir(dir)
+	require.NoError(t, err)
+	var names []string
+	for _, fileInfo := range fileInfos {
+		names = append(names, fileInfo.Name())
+	}
+	return names
+}
+
+func getMDJournalNames(ver MetadataVer) []string {
+	var expectedNames []string
+	if ver < SegregatedKeyBundlesVer {
+		expectedNames = []string{"md_journal", "mds"}
+	} else {
+		expectedNames = []string{
+			"md_journal", "mds", "rkbv3", "wkbv3",
+		}
+	}
+	return expectedNames
+}
+
+func testMDJournalFlushAll(t *testing.T, ver MetadataVer) {
+	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
+	defer teardownMDJournalTest(t, tempdir)
+
+	firstRevision := MetadataRevision(10)
+	firstPrevRoot := fakeMdID(1)
+	mdCount := 10
+	putMDRange(t, ver, id, signer, ekg, bsplit,
+		firstRevision, firstPrevRoot, mdCount, j)
+
+	ctx := context.Background()
+
+	names := listDir(t, j.dir)
+	require.Equal(t, getMDJournalNames(ver), names)
+
+	err := ioutil.WriteFile(filepath.Join(j.dir, "extra_file"), nil, 0600)
+	require.NoError(t, err)
+
+	flushAllMDs(t, ctx, signer, j)
+
+	// The flush shouldn't remove the entire directory.
+	names = listDir(t, j.dir)
+	require.Equal(t, []string{"extra_file"}, names)
 }
 
 func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
@@ -594,21 +627,8 @@ func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 
 	// Branch conversion shouldn't leave old folders behind.
-	fileInfos, err := ioutil.ReadDir(j.dir)
-	require.NoError(t, err)
-	var names []string
-	for _, fileInfo := range fileInfos {
-		names = append(names, fileInfo.Name())
-	}
-	var expectedNames []string
-	if ver < SegregatedKeyBundlesVer {
-		expectedNames = []string{"md_journal", "mds"}
-	} else {
-		expectedNames = []string{
-			"md_journal", "mds", "rkbv3", "wkbv3",
-		}
-	}
-	require.Equal(t, expectedNames, names)
+	names := listDir(t, j.dir)
+	require.Equal(t, getMDJournalNames(ver), names)
 
 	ibrmds, err := j.getRange(
 		bid, 1, firstRevision+MetadataRevision(2*mdCount))
@@ -618,7 +638,7 @@ func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 	checkIBRMDRange(t, j.uid, j.key, codec, crypto,
 		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].BID())
 
-	require.Equal(t, 10, getMDJournalLength(t, j))
+	require.Equal(t, uint64(10), j.length())
 
 	head, err := j.getHead(bid)
 	require.NoError(t, err)
@@ -659,7 +679,7 @@ func testMDJournalResolveAndClear(t *testing.T, ver MetadataVer, bid BranchID) {
 		ctx, signer, ekg, bsplit, mdcache, bid, md)
 	require.NoError(t, err)
 
-	require.Equal(t, 1, getMDJournalLength(t, j))
+	require.Equal(t, uint64(1), j.length())
 	head, err := j.getHead(NullBranchID)
 	require.NoError(t, err)
 	require.Equal(t, md.Revision(), head.RevisionNumber())
@@ -682,7 +702,7 @@ func testMDJournalResolveAndClear(t *testing.T, ver MetadataVer, bid BranchID) {
 	md = makeMDForTest(t, ver, id, resolveRev, j.uid, signer, prevRoot)
 	_, err = j.resolveAndClear(ctx, signer, ekg, bsplit, mdcache, bid, md)
 	require.NoError(t, err)
-	require.Equal(t, numExpectedMDs, getMDJournalLength(t, j))
+	require.Equal(t, uint64(numExpectedMDs), j.length())
 	head, err = j.getHead(NullBranchID)
 	require.NoError(t, err)
 	require.Equal(t, md.Revision(), head.RevisionNumber())
@@ -751,7 +771,7 @@ func TestMDJournalBranchConversionAtomic(t *testing.T) {
 	checkIBRMDRange(t, j.uid, j.key, codec, crypto,
 		ibrmds, firstRevision, firstPrevRoot, Merged, NullBranchID)
 
-	require.Equal(t, 10, getMDJournalLength(t, j))
+	require.Equal(t, uint64(10), j.length())
 
 	head, err := j.getHead(NullBranchID)
 	require.NoError(t, err)
@@ -932,9 +952,7 @@ func testMDJournalClearPendingWithMaster(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 	require.Equal(t, NullBranchID, j.branchID)
 
-	length, err := j.length()
-	require.NoError(t, err)
-	require.Equal(t, uint64(mdCount), length)
+	require.Equal(t, uint64(mdCount), j.length())
 
 	head, err := j.getHead(bid)
 	require.NoError(t, err)
@@ -967,7 +985,7 @@ func testMDJournalRestart(t *testing.T, ver MetadataVer) {
 		j.tlfID, j.mdVer, j.dir, j.log)
 	require.NoError(t, err)
 
-	require.Equal(t, mdCount, getMDJournalLength(t, j))
+	require.Equal(t, uint64(mdCount), j.length())
 
 	ibrmds, err := j.getRange(
 		NullBranchID, 1, firstRevision+MetadataRevision(2*mdCount))
@@ -1009,7 +1027,7 @@ func testMDJournalRestartAfterBranchConversion(t *testing.T, ver MetadataVer) {
 		j.tlfID, j.mdVer, j.dir, j.log)
 	require.NoError(t, err)
 
-	require.Equal(t, mdCount, getMDJournalLength(t, j))
+	require.Equal(t, uint64(mdCount), j.length())
 
 	ibrmds, err := j.getRange(
 		bid, 1, firstRevision+MetadataRevision(2*mdCount))
@@ -1037,6 +1055,7 @@ func TestMDJournal(t *testing.T) {
 		testMDJournalPutCase3NonEmptyReplace,
 		testMDJournalPutCase3EmptyAppend,
 		testMDJournalPutCase4,
+		testMDJournalFlushAll,
 		testMDJournalBranchConversion,
 		testMDJournalResolveAndClearRemoteBranch,
 		testMDJournalResolveAndClearLocalSquash,

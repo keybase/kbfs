@@ -51,8 +51,13 @@ type cryptoGetter interface {
 	Crypto() Crypto
 }
 
-type currentInfoGetterGetter interface {
-	currentInfoGetter() currentInfoGetter
+type currentSessionGetter interface {
+	// GetCurrentSession gets the current session info.
+	GetCurrentSession(ctx context.Context) (SessionInfo, error)
+}
+
+type currentSessionGetterGetter interface {
+	currentSessionGetter() currentSessionGetter
 }
 
 type signerGetter interface {
@@ -465,26 +470,9 @@ type normalizedUsernameGetter interface {
 	GetNormalizedUsername(ctx context.Context, uid keybase1.UID) (libkb.NormalizedUsername, error)
 }
 
-type currentInfoGetter interface {
-	// GetCurrentToken gets the current keybase session token.
-	GetCurrentToken(ctx context.Context) (string, error)
-	// GetCurrentUserInfo gets the name and UID of the current
-	// logged-in user.
-	GetCurrentUserInfo(ctx context.Context) (
-		libkb.NormalizedUsername, keybase1.UID, error)
-	// GetCurrentCryptPublicKey gets the crypt public key for the
-	// currently-active device.
-	GetCurrentCryptPublicKey(ctx context.Context) (
-		kbfscrypto.CryptPublicKey, error)
-	// GetCurrentVerifyingKey gets the public key used for signing for the
-	// currently-active device.
-	GetCurrentVerifyingKey(ctx context.Context) (
-		kbfscrypto.VerifyingKey, error)
-}
-
 // KBPKI interacts with the Keybase daemon to fetch user info.
 type KBPKI interface {
-	currentInfoGetter
+	currentSessionGetter
 	resolver
 	identifier
 	normalizedUsernameGetter
@@ -938,7 +926,7 @@ type cryptoPure interface {
 
 	// VerifyTLFCryptKeyServerHalfID verifies the ID is the proper HMAC result.
 	VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID,
-		user keybase1.UID, deviceKID keybase1.KID,
+		user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey,
 		serverHalf kbfscrypto.TLFCryptKeyServerHalf) error
 
 	// EncryptMerkleLeaf encrypts a Merkle leaf node with the TLFPublicKey.
@@ -1079,7 +1067,7 @@ type KeyOps interface {
 	// DeleteTLFCryptKeyServerHalf deletes a server-side key half for a
 	// device given the key half ID.
 	DeleteTLFCryptKeyServerHalf(ctx context.Context,
-		uid keybase1.UID, kid keybase1.KID,
+		uid keybase1.UID, key kbfscrypto.CryptPublicKey,
 		serverHalfID TLFCryptKeyServerHalfID) error
 }
 
@@ -1420,7 +1408,7 @@ type KeyServer interface {
 	// DeleteTLFCryptKeyServerHalf deletes a server-side key half for a
 	// device given the key half ID.
 	DeleteTLFCryptKeyServerHalf(ctx context.Context,
-		uid keybase1.UID, kid keybase1.KID,
+		uid keybase1.UID, key kbfscrypto.CryptPublicKey,
 		serverHalfID TLFCryptKeyServerHalfID) error
 
 	// Shutdown is called to free any KeyServer resources.
@@ -1497,7 +1485,7 @@ type Config interface {
 	keyGetterGetter
 	cryptoGetter
 	signerGetter
-	currentInfoGetterGetter
+	currentSessionGetterGetter
 	diskBlockCacheGetter
 	clockGetter
 	KBFSOps() KBFSOps
@@ -1742,9 +1730,9 @@ type BareRootMetadata interface {
 	// folder.  This is only expected to be set for folder resets.
 	IsFinal() bool
 	// IsWriter returns whether or not the user+device is an authorized writer.
-	IsWriter(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool
+	IsWriter(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool
 	// IsReader returns whether or not the user+device is an authorized reader.
-	IsReader(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool
+	IsReader(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool
 	// DeepCopy returns a deep copy of the underlying data structure.
 	DeepCopy(codec kbfscodec.Codec) (MutableBareRootMetadata, error)
 	// MakeSuccessorCopy returns a newly constructed successor
@@ -1793,8 +1781,8 @@ type BareRootMetadata interface {
 	IsValidAndSigned(codec kbfscodec.Codec,
 		crypto cryptoPure, extra ExtraMetadata) error
 	// IsLastModifiedBy verifies that the BareRootMetadata is
-	// written by the given user and device (identified by the KID
-	// of the device verifying key), and returns an error if not.
+	// written by the given user and device (identified by the
+	// device verifying key), and returns an error if not.
 	IsLastModifiedBy(uid keybase1.UID, key kbfscrypto.VerifyingKey) error
 	// LastModifyingWriter return the UID of the last user to modify the writer metadata.
 	LastModifyingWriter() keybase1.UID

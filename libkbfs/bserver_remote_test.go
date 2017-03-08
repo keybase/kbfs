@@ -69,7 +69,7 @@ type testBlockServerRemoteConfig struct {
 	codecGetter
 	logMaker
 	signer         kbfscrypto.Signer
-	infoGetter     currentInfoGetter
+	sessionGetter  currentSessionGetter
 	diskBlockCache DiskBlockCache
 }
 
@@ -79,8 +79,8 @@ func (c testBlockServerRemoteConfig) Signer() kbfscrypto.Signer {
 	return c.signer
 }
 
-func (c testBlockServerRemoteConfig) currentInfoGetter() currentInfoGetter {
-	return c.infoGetter
+func (c testBlockServerRemoteConfig) currentSessionGetter() currentSessionGetter {
+	return c.sessionGetter
 }
 
 func (c testBlockServerRemoteConfig) DiskBlockCache() DiskBlockCache {

@@ -265,35 +265,67 @@ func (_mr *_MockcryptoGetterRecorder) Crypto() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Crypto")
 }
 
-// Mock of currentInfoGetterGetter interface
-type MockcurrentInfoGetterGetter struct {
+// Mock of currentSessionGetter interface
+type MockcurrentSessionGetter struct {
 	ctrl     *gomock.Controller
-	recorder *_MockcurrentInfoGetterGetterRecorder
+	recorder *_MockcurrentSessionGetterRecorder
 }
 
-// Recorder for MockcurrentInfoGetterGetter (not exported)
-type _MockcurrentInfoGetterGetterRecorder struct {
-	mock *MockcurrentInfoGetterGetter
+// Recorder for MockcurrentSessionGetter (not exported)
+type _MockcurrentSessionGetterRecorder struct {
+	mock *MockcurrentSessionGetter
 }
 
-func NewMockcurrentInfoGetterGetter(ctrl *gomock.Controller) *MockcurrentInfoGetterGetter {
-	mock := &MockcurrentInfoGetterGetter{ctrl: ctrl}
-	mock.recorder = &_MockcurrentInfoGetterGetterRecorder{mock}
+func NewMockcurrentSessionGetter(ctrl *gomock.Controller) *MockcurrentSessionGetter {
+	mock := &MockcurrentSessionGetter{ctrl: ctrl}
+	mock.recorder = &_MockcurrentSessionGetterRecorder{mock}
 	return mock
 }
 
-func (_m *MockcurrentInfoGetterGetter) EXPECT() *_MockcurrentInfoGetterGetterRecorder {
+func (_m *MockcurrentSessionGetter) EXPECT() *_MockcurrentSessionGetterRecorder {
 	return _m.recorder
 }
 
-func (_m *MockcurrentInfoGetterGetter) currentInfoGetter() currentInfoGetter {
-	ret := _m.ctrl.Call(_m, "currentInfoGetter")
-	ret0, _ := ret[0].(currentInfoGetter)
+func (_m *MockcurrentSessionGetter) GetCurrentSession(ctx context.Context) (SessionInfo, error) {
+	ret := _m.ctrl.Call(_m, "GetCurrentSession", ctx)
+	ret0, _ := ret[0].(SessionInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockcurrentSessionGetterRecorder) GetCurrentSession(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentSession", arg0)
+}
+
+// Mock of currentSessionGetterGetter interface
+type MockcurrentSessionGetterGetter struct {
+	ctrl     *gomock.Controller
+	recorder *_MockcurrentSessionGetterGetterRecorder
+}
+
+// Recorder for MockcurrentSessionGetterGetter (not exported)
+type _MockcurrentSessionGetterGetterRecorder struct {
+	mock *MockcurrentSessionGetterGetter
+}
+
+func NewMockcurrentSessionGetterGetter(ctrl *gomock.Controller) *MockcurrentSessionGetterGetter {
+	mock := &MockcurrentSessionGetterGetter{ctrl: ctrl}
+	mock.recorder = &_MockcurrentSessionGetterGetterRecorder{mock}
+	return mock
+}
+
+func (_m *MockcurrentSessionGetterGetter) EXPECT() *_MockcurrentSessionGetterGetterRecorder {
+	return _m.recorder
+}
+
+func (_m *MockcurrentSessionGetterGetter) currentSessionGetter() currentSessionGetter {
+	ret := _m.ctrl.Call(_m, "currentSessionGetter")
+	ret0, _ := ret[0].(currentSessionGetter)
 	return ret0
 }
 
-func (_mr *_MockcurrentInfoGetterGetterRecorder) currentInfoGetter() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "currentInfoGetter")
+func (_mr *_MockcurrentSessionGetterGetterRecorder) currentSessionGetter() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "currentSessionGetter")
 }
 
 // Mock of signerGetter interface
@@ -356,6 +388,37 @@ func (_m *MockdiskBlockCacheGetter) DiskBlockCache() DiskBlockCache {
 
 func (_mr *_MockdiskBlockCacheGetterRecorder) DiskBlockCache() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DiskBlockCache")
+}
+
+// Mock of clockGetter interface
+type MockclockGetter struct {
+	ctrl     *gomock.Controller
+	recorder *_MockclockGetterRecorder
+}
+
+// Recorder for MockclockGetter (not exported)
+type _MockclockGetterRecorder struct {
+	mock *MockclockGetter
+}
+
+func NewMockclockGetter(ctrl *gomock.Controller) *MockclockGetter {
+	mock := &MockclockGetter{ctrl: ctrl}
+	mock.recorder = &_MockclockGetterRecorder{mock}
+	return mock
+}
+
+func (_m *MockclockGetter) EXPECT() *_MockclockGetterRecorder {
+	return _m.recorder
+}
+
+func (_m *MockclockGetter) Clock() Clock {
+	ret := _m.ctrl.Call(_m, "Clock")
+	ret0, _ := ret[0].(Clock)
+	return ret0
+}
+
+func (_mr *_MockclockGetterRecorder) Clock() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Clock")
 }
 
 // Mock of Block interface
@@ -1216,72 +1279,6 @@ func (_mr *_MocknormalizedUsernameGetterRecorder) GetNormalizedUsername(arg0, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetNormalizedUsername", arg0, arg1)
 }
 
-// Mock of currentInfoGetter interface
-type MockcurrentInfoGetter struct {
-	ctrl     *gomock.Controller
-	recorder *_MockcurrentInfoGetterRecorder
-}
-
-// Recorder for MockcurrentInfoGetter (not exported)
-type _MockcurrentInfoGetterRecorder struct {
-	mock *MockcurrentInfoGetter
-}
-
-func NewMockcurrentInfoGetter(ctrl *gomock.Controller) *MockcurrentInfoGetter {
-	mock := &MockcurrentInfoGetter{ctrl: ctrl}
-	mock.recorder = &_MockcurrentInfoGetterRecorder{mock}
-	return mock
-}
-
-func (_m *MockcurrentInfoGetter) EXPECT() *_MockcurrentInfoGetterRecorder {
-	return _m.recorder
-}
-
-func (_m *MockcurrentInfoGetter) GetCurrentToken(ctx context.Context) (string, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentToken", ctx)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockcurrentInfoGetterRecorder) GetCurrentToken(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentToken", arg0)
-}
-
-func (_m *MockcurrentInfoGetter) GetCurrentUserInfo(ctx context.Context) (libkb.NormalizedUsername, keybase1.UID, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentUserInfo", ctx)
-	ret0, _ := ret[0].(libkb.NormalizedUsername)
-	ret1, _ := ret[1].(keybase1.UID)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-func (_mr *_MockcurrentInfoGetterRecorder) GetCurrentUserInfo(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentUserInfo", arg0)
-}
-
-func (_m *MockcurrentInfoGetter) GetCurrentCryptPublicKey(ctx context.Context) (kbfscrypto.CryptPublicKey, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentCryptPublicKey", ctx)
-	ret0, _ := ret[0].(kbfscrypto.CryptPublicKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockcurrentInfoGetterRecorder) GetCurrentCryptPublicKey(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentCryptPublicKey", arg0)
-}
-
-func (_m *MockcurrentInfoGetter) GetCurrentVerifyingKey(ctx context.Context) (kbfscrypto.VerifyingKey, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentVerifyingKey", ctx)
-	ret0, _ := ret[0].(kbfscrypto.VerifyingKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockcurrentInfoGetterRecorder) GetCurrentVerifyingKey(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentVerifyingKey", arg0)
-}
-
 // Mock of KBPKI interface
 type MockKBPKI struct {
 	ctrl     *gomock.Controller
@@ -1303,49 +1300,15 @@ func (_m *MockKBPKI) EXPECT() *_MockKBPKIRecorder {
 	return _m.recorder
 }
 
-func (_m *MockKBPKI) GetCurrentToken(ctx context.Context) (string, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentToken", ctx)
-	ret0, _ := ret[0].(string)
+func (_m *MockKBPKI) GetCurrentSession(ctx context.Context) (SessionInfo, error) {
+	ret := _m.ctrl.Call(_m, "GetCurrentSession", ctx)
+	ret0, _ := ret[0].(SessionInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockKBPKIRecorder) GetCurrentToken(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentToken", arg0)
-}
-
-func (_m *MockKBPKI) GetCurrentUserInfo(ctx context.Context) (libkb.NormalizedUsername, keybase1.UID, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentUserInfo", ctx)
-	ret0, _ := ret[0].(libkb.NormalizedUsername)
-	ret1, _ := ret[1].(keybase1.UID)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-func (_mr *_MockKBPKIRecorder) GetCurrentUserInfo(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentUserInfo", arg0)
-}
-
-func (_m *MockKBPKI) GetCurrentCryptPublicKey(ctx context.Context) (kbfscrypto.CryptPublicKey, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentCryptPublicKey", ctx)
-	ret0, _ := ret[0].(kbfscrypto.CryptPublicKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockKBPKIRecorder) GetCurrentCryptPublicKey(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentCryptPublicKey", arg0)
-}
-
-func (_m *MockKBPKI) GetCurrentVerifyingKey(ctx context.Context) (kbfscrypto.VerifyingKey, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentVerifyingKey", ctx)
-	ret0, _ := ret[0].(kbfscrypto.VerifyingKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockKBPKIRecorder) GetCurrentVerifyingKey(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentVerifyingKey", arg0)
+func (_mr *_MockKBPKIRecorder) GetCurrentSession(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentSession", arg0)
 }
 
 func (_m *MockKBPKI) Resolve(ctx context.Context, assertion string) (libkb.NormalizedUsername, keybase1.UID, error) {
@@ -2286,12 +2249,12 @@ func (_mr *_MockDiskBlockCacheRecorder) Delete(arg0, arg1, arg2 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Delete", arg0, arg1, arg2)
 }
 
-func (_m *MockDiskBlockCache) Shutdown() {
-	_m.ctrl.Call(_m, "Shutdown")
+func (_m *MockDiskBlockCache) Shutdown(ctx context.Context) {
+	_m.ctrl.Call(_m, "Shutdown", ctx)
 }
 
-func (_mr *_MockDiskBlockCacheRecorder) Shutdown() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
+func (_mr *_MockDiskBlockCacheRecorder) Shutdown(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown", arg0)
 }
 
 // Mock of cryptoPure interface
@@ -2494,8 +2457,8 @@ func (_mr *_MockcryptoPureRecorder) GetTLFCryptKeyServerHalfID(arg0, arg1, arg2 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalfID", arg0, arg1, arg2)
 }
 
-func (_m *MockcryptoPure) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, deviceKID keybase1.KID, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
-	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, deviceKID, serverHalf)
+func (_m *MockcryptoPure) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
+	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, devicePubKey, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -2770,8 +2733,8 @@ func (_mr *_MockCryptoRecorder) GetTLFCryptKeyServerHalfID(arg0, arg1, arg2 inte
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalfID", arg0, arg1, arg2)
 }
 
-func (_m *MockCrypto) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, deviceKID keybase1.KID, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
-	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, deviceKID, serverHalf)
+func (_m *MockCrypto) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
+	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, devicePubKey, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -3083,8 +3046,8 @@ func (_mr *_MockKeyOpsRecorder) PutTLFCryptKeyServerHalves(arg0, arg1 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PutTLFCryptKeyServerHalves", arg0, arg1)
 }
 
-func (_m *MockKeyOps) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, kid keybase1.KID, serverHalfID TLFCryptKeyServerHalfID) error {
-	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, kid, serverHalfID)
+func (_m *MockKeyOps) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, key kbfscrypto.CryptPublicKey, serverHalfID TLFCryptKeyServerHalfID) error {
+	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, key, serverHalfID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -4042,8 +4005,8 @@ func (_mr *_MockKeyServerRecorder) PutTLFCryptKeyServerHalves(arg0, arg1 interfa
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PutTLFCryptKeyServerHalves", arg0, arg1)
 }
 
-func (_m *MockKeyServer) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, kid keybase1.KID, serverHalfID TLFCryptKeyServerHalfID) error {
-	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, kid, serverHalfID)
+func (_m *MockKeyServer) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, key kbfscrypto.CryptPublicKey, serverHalfID TLFCryptKeyServerHalfID) error {
+	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, key, serverHalfID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -4320,14 +4283,14 @@ func (_mr *_MockConfigRecorder) Signer() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Signer")
 }
 
-func (_m *MockConfig) currentInfoGetter() currentInfoGetter {
-	ret := _m.ctrl.Call(_m, "currentInfoGetter")
-	ret0, _ := ret[0].(currentInfoGetter)
+func (_m *MockConfig) currentSessionGetter() currentSessionGetter {
+	ret := _m.ctrl.Call(_m, "currentSessionGetter")
+	ret0, _ := ret[0].(currentSessionGetter)
 	return ret0
 }
 
-func (_mr *_MockConfigRecorder) currentInfoGetter() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "currentInfoGetter")
+func (_mr *_MockConfigRecorder) currentSessionGetter() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "currentSessionGetter")
 }
 
 func (_m *MockConfig) DiskBlockCache() DiskBlockCache {
@@ -4338,6 +4301,16 @@ func (_m *MockConfig) DiskBlockCache() DiskBlockCache {
 
 func (_mr *_MockConfigRecorder) DiskBlockCache() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DiskBlockCache")
+}
+
+func (_m *MockConfig) Clock() Clock {
+	ret := _m.ctrl.Call(_m, "Clock")
+	ret0, _ := ret[0].(Clock)
+	return ret0
+}
+
+func (_mr *_MockConfigRecorder) Clock() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Clock")
 }
 
 func (_m *MockConfig) KBFSOps() KBFSOps {
@@ -4658,16 +4631,6 @@ func (_m *MockConfig) SetNotifier(_param0 Notifier) {
 
 func (_mr *_MockConfigRecorder) SetNotifier(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetNotifier", arg0)
-}
-
-func (_m *MockConfig) Clock() Clock {
-	ret := _m.ctrl.Call(_m, "Clock")
-	ret0, _ := ret[0].(Clock)
-	return ret0
-}
-
-func (_mr *_MockConfigRecorder) Clock() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Clock")
 }
 
 func (_m *MockConfig) SetClock(_param0 Clock) {
@@ -5227,8 +5190,8 @@ func (_mr *_MockBareRootMetadataRecorder) IsFinal() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsFinal")
 }
 
-func (_m *MockBareRootMetadata) IsWriter(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool {
-	ret := _m.ctrl.Call(_m, "IsWriter", user, deviceKID, extra)
+func (_m *MockBareRootMetadata) IsWriter(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool {
+	ret := _m.ctrl.Call(_m, "IsWriter", user, deviceKey, extra)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
@@ -5237,8 +5200,8 @@ func (_mr *_MockBareRootMetadataRecorder) IsWriter(arg0, arg1, arg2 interface{})
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsWriter", arg0, arg1, arg2)
 }
 
-func (_m *MockBareRootMetadata) IsReader(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool {
-	ret := _m.ctrl.Call(_m, "IsReader", user, deviceKID, extra)
+func (_m *MockBareRootMetadata) IsReader(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool {
+	ret := _m.ctrl.Call(_m, "IsReader", user, deviceKey, extra)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
@@ -5663,8 +5626,8 @@ func (_mr *_MockMutableBareRootMetadataRecorder) IsFinal() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsFinal")
 }
 
-func (_m *MockMutableBareRootMetadata) IsWriter(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool {
-	ret := _m.ctrl.Call(_m, "IsWriter", user, deviceKID, extra)
+func (_m *MockMutableBareRootMetadata) IsWriter(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool {
+	ret := _m.ctrl.Call(_m, "IsWriter", user, deviceKey, extra)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
@@ -5673,8 +5636,8 @@ func (_mr *_MockMutableBareRootMetadataRecorder) IsWriter(arg0, arg1, arg2 inter
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsWriter", arg0, arg1, arg2)
 }
 
-func (_m *MockMutableBareRootMetadata) IsReader(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool {
-	ret := _m.ctrl.Call(_m, "IsReader", user, deviceKID, extra)
+func (_m *MockMutableBareRootMetadata) IsReader(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool {
+	ret := _m.ctrl.Call(_m, "IsReader", user, deviceKey, extra)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }

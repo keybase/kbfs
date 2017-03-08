@@ -78,10 +78,19 @@ func (k *LibKBFS) InitTest(ver libkbfs.MetadataVer,
 		k.journalDir = jdir
 		k.tb.Logf("Journal directory: %s", k.journalDir)
 		for name, c := range userMap {
-			c.(*libkbfs.ConfigLocal).EnableJournaling(
+			config := c.(*libkbfs.ConfigLocal)
+			config.EnableJournaling(
 				context.Background(),
 				filepath.Join(jdir, name.String()),
 				libkbfs.TLFJournalBackgroundWorkEnabled)
+			jServer, err := libkbfs.GetJournalServer(config)
+			if err != nil {
+				panic(fmt.Sprintf("No journal server for %s: %+v", name, err))
+			}
+			err = jServer.DisableAuto(context.Background())
+			if err != nil {
+				panic(fmt.Sprintf("Couldn't disable journaling: %+v", err))
+			}
 		}
 	}
 
@@ -114,7 +123,7 @@ func (k *LibKBFS) newContext(u User) (context.Context, context.CancelFunc) {
 	if !ok {
 		panic("passed parameter isn't a config object")
 	}
-	username, _, err := config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -141,7 +150,7 @@ func (k *LibKBFS) newContext(u User) (context.Context, context.CancelFunc) {
 				ctx = context.WithValue(ctx, CtxIDKey, id)
 			}
 
-			ctx = context.WithValue(ctx, CtxUserKey, username)
+			ctx = context.WithValue(ctx, CtxUserKey, session.Name)
 
 			return ctx
 		}))
@@ -164,11 +173,11 @@ func (k *LibKBFS) GetUID(u User) (uid keybase1.UID) {
 	var err error
 	ctx, cancel := k.newContext(u)
 	defer cancel()
-	_, uid, err = config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		panic(err.Error())
 	}
-	return uid
+	return session.UID
 }
 
 func parseTlfHandle(
@@ -712,11 +721,12 @@ func (k *LibKBFS) Shutdown(u User) error {
 	var userName libkb.NormalizedUsername
 	if k.journalDir != "" {
 		var err error
-		userName, _, err =
-			config.KBPKI().GetCurrentUserInfo(context.Background())
+		session, err :=
+			config.KBPKI().GetCurrentSession(context.Background())
 		if err != nil {
 			return err
 		}
+		userName = session.Name
 	}
 
 	// shutdown

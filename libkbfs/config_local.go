@@ -284,8 +284,8 @@ func (c *ConfigLocal) KBPKI() KBPKI {
 	return c.kbpki
 }
 
-// currentInfoGetter implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) currentInfoGetter() currentInfoGetter {
+// currentSessionGetter implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) currentSessionGetter() currentSessionGetter {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.kbpki
@@ -964,13 +964,13 @@ func (c *ConfigLocal) EnableJournaling(
 	enableErr := func() error {
 		// If this fails, then existing journals will be
 		// enabled when we receive the login notification.
-		uid, key, err :=
-			getCurrentUIDAndVerifyingKey(ctx, c.KBPKI())
+		session, err := c.KBPKI().GetCurrentSession(ctx)
 		if err != nil {
 			return err
 		}
 
-		err = jServer.EnableExistingJournals(ctx, uid, key, bws)
+		err = jServer.EnableExistingJournals(
+			ctx, session.UID, session.VerifyingKey, bws)
 		if err != nil {
 			return err
 		}

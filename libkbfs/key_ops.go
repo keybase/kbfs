@@ -29,14 +29,14 @@ func (k *KeyOpsStandard) GetTLFCryptKeyServerHalf(ctx context.Context,
 		return kbfscrypto.TLFCryptKeyServerHalf{}, err
 	}
 	// get current uid and deviceKID
-	_, uid, err := k.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := k.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return kbfscrypto.TLFCryptKeyServerHalf{}, err
 	}
 
 	// verify we got the expected key
 	crypto := k.config.Crypto()
-	err = crypto.VerifyTLFCryptKeyServerHalfID(serverHalfID, uid, key.KID(), serverHalf)
+	err = crypto.VerifyTLFCryptKeyServerHalfID(serverHalfID, session.UID, key, serverHalf)
 	if err != nil {
 		return kbfscrypto.TLFCryptKeyServerHalf{}, err
 	}
@@ -52,8 +52,8 @@ func (k *KeyOpsStandard) PutTLFCryptKeyServerHalves(ctx context.Context,
 
 // DeleteTLFCryptKeyServerHalf is an implementation of the KeyOps interface.
 func (k *KeyOpsStandard) DeleteTLFCryptKeyServerHalf(ctx context.Context,
-	uid keybase1.UID, kid keybase1.KID,
+	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
 	serverHalfID TLFCryptKeyServerHalfID) error {
 	return k.config.KeyServer().DeleteTLFCryptKeyServerHalf(
-		ctx, uid, kid, serverHalfID)
+		ctx, uid, key, serverHalfID)
 }

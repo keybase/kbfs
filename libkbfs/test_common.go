@@ -251,7 +251,7 @@ func ConfigAsUser(config *ConfigLocal, loggedInUser libkb.NormalizedUsername) *C
 		keyServer = mdServer.(*MDServerRemote)
 	} else {
 		// copy the existing mdServer but update the config
-		// this way the current device KID is paired with
+		// this way the current device key is paired with
 		// the proper user yet the DB state is all shared.
 		mdServerToCopy := config.MDServer().(mdServerLocal)
 		mdServer = mdServerToCopy.copy(mdServerLocalConfigAdapter{c})
@@ -342,7 +342,7 @@ func RevokeDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config,
 
 // SwitchDeviceForLocalUserOrBust switches the current user's current device
 func SwitchDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config, index int) {
-	name, uid, err := config.KBPKI().GetCurrentUserInfo(context.Background())
+	session, err := config.KBPKI().GetCurrentSession(context.Background())
 	if err != nil {
 		t.Fatalf("Couldn't get UID: %+v", err)
 	}
@@ -352,7 +352,7 @@ func SwitchDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config, inde
 		t.Fatal("Bad keybase daemon")
 	}
 
-	if err := kbd.switchDeviceForTesting(uid, index); err != nil {
+	if err := kbd.switchDeviceForTesting(session.UID, index); err != nil {
 		t.Fatal(err.Error())
 	}
 
@@ -360,7 +360,7 @@ func SwitchDeviceForLocalUserOrBust(t logger.TestLogBackend, config Config, inde
 		t.Fatal("Bad crypto")
 	}
 
-	keySalt := keySaltForUserDevice(name, index)
+	keySalt := keySaltForUserDevice(session.Name, index)
 	signingKey := MakeLocalUserSigningKeyOrBust(keySalt)
 	cryptPrivateKey := MakeLocalUserCryptPrivateKeyOrBust(keySalt)
 	config.SetCrypto(

@@ -880,7 +880,7 @@ func (j *tlfJournal) flushBlockEntries(
 	defer func() {
 		if !cleared {
 			clearErr := j.clearFlushingBlockIDs(entries)
-			if err != nil {
+			if err == nil {
 				err = clearErr
 			}
 		}
@@ -951,6 +951,9 @@ func (j *tlfJournal) flushBlockEntries(
 	if err != nil {
 		return 0, MetadataRevisionUninitialized, false, err
 	}
+
+	// TODO: If both the block and MD journals are empty, nuke the
+	// entire TLF journal directory.
 
 	// If a conversion happened, the original `maxMDRevToFlush` only
 	// applies for sure if its mdRevMarker entry was already for a
@@ -1123,12 +1126,13 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 	// onMDFlush() only needs to be called under the flushLock, not
 	// the journalLock, as it doesn't touch the actual journal, only
 	// the deferred GC journal.
-	removedBytes, removedFiles, err := blockJournal.doGC(ctx, earliest, latest)
+	removedBytes, removedFiles, err := blockJournal.doGC(
+		ctx, earliest, latest)
 	if err != nil {
 		return err
 	}
 
-	j.diskLimiter.onBlockDelete(ctx, removedBytes, removedFiles)
+	j.diskLimiter.onBlocksDelete(ctx, removedBytes, removedFiles)
 
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
@@ -1136,15 +1140,33 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		return err
 	}
 
-	err = j.blockJournal.clearDeferredGCRange(earliest, latest)
+	clearedJournal, aggregateInfo, err :=
+		j.blockJournal.clearDeferredGCRange(
+			ctx, removedBytes, removedFiles, earliest, latest)
 	if err != nil {
 		return err
 	}
 
-	// TODO: if we crash before calling this, the journal bytes/files
-	// counts will be inaccurate.  I think the only way to fix that is
-	// a periodic repair scan?
-	j.blockJournal.unstoreBlock(removedBytes, removedFiles)
+	if clearedJournal {
+		equal, err := kbfscodec.Equal(
+			j.config.Codec(), aggregateInfo, blockAggregateInfo{})
+		if err != nil {
+			return err
+		}
+		if !equal {
+			j.log.CWarningf(ctx,
+				"Cleared block journal for %s, but still has aggregate info %+v",
+				j.tlfID, aggregateInfo)
+			// TODO: Consider trying to adjust the disk
+			// limiter state to compensate for the
+			// leftover bytes/files here. Ideally, the
+			// disk limiter would keep track of per-TLF
+			// state, so we could just call
+			// j.diskLimiter.onJournalClear(tlfID) to have
+			// it clear its state for this TLF.
+		}
+	}
+
 	return nil
 }
 
@@ -1167,6 +1189,12 @@ func (j *tlfJournal) removeFlushedMDEntry(ctx context.Context,
 func (j *tlfJournal) flushOneMDOp(
 	ctx context.Context, end MetadataRevision,
 	maxMDRevToFlush MetadataRevision) (flushed bool, err error) {
+	if maxMDRevToFlush == MetadataRevisionUninitialized {
+		// Short-cut `getNextMDEntryToFlush`, which would otherwise read
+		// an MD from disk and sign it unnecessarily.
+		return false, nil
+	}
+
 	j.log.CDebugf(ctx, "Flushing one MD to server")
 	defer func() {
 		if err != nil {
@@ -1176,6 +1204,9 @@ func (j *tlfJournal) flushOneMDOp(
 
 	mdServer := j.config.MDServer()
 
+	// TODO: Do we need `end` at all, or can we just pass
+	// `maxMDRevToFlush+1` here?  The only argument for `end` is that
+	// it might help if the block and MD journals are out of sync.
 	mdID, rmds, extra, err := j.getNextMDEntryToFlush(ctx, end)
 	if err != nil {
 		return false, err
@@ -1246,16 +1277,8 @@ func (j *tlfJournal) getJournalEntryCounts() (
 		return 0, 0, err
 	}
 
-	blockEntryCount, err = j.blockJournal.length()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	mdEntryCount, err = j.mdJournal.length()
-	if err != nil {
-		return 0, 0, err
-	}
-
+	blockEntryCount = j.blockJournal.length()
+	mdEntryCount = j.mdJournal.length()
 	return blockEntryCount, mdEntryCount, nil
 }
 
@@ -1283,10 +1306,7 @@ func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
 	if err != nil {
 		return TLFJournalStatus{}, err
 	}
-	blockEntryCount, err := j.blockJournal.length()
-	if err != nil {
-		return TLFJournalStatus{}, err
-	}
+	blockEntryCount := j.blockJournal.length()
 	lastFlushErr := ""
 	if j.lastFlushErr != nil {
 		lastFlushErr = j.lastFlushErr.Error()
@@ -1552,15 +1572,8 @@ func (j *tlfJournal) disable() (wasEnabled bool, err error) {
 		return false, err
 	}
 
-	blockEntryCount, err := j.blockJournal.length()
-	if err != nil {
-		return false, err
-	}
-
-	mdEntryCount, err := j.mdJournal.length()
-	if err != nil {
-		return false, err
-	}
+	blockEntryCount := j.blockJournal.length()
+	mdEntryCount := j.mdJournal.length()
 
 	// You can only disable an empty journal.
 	if blockEntryCount > 0 || mdEntryCount > 0 {
