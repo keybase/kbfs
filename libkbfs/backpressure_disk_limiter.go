@@ -29,7 +29,7 @@ import (
 // thresholds 0 <= m <= M <= 1 such that we apply proportional
 // backpressure (with a given maximum delay) when
 //
-//   m <= max(U/(k(U+F)), J/L) <= M,
+//   m <= max(U/(k(U+F)), U/L) <= M,
 //
 // which is equivalent to
 //
