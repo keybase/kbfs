@@ -1113,6 +1113,11 @@ func (j *blockJournal) clearDeferredGCRange(
 
 		j.aggregateInfo = blockAggregateInfo{}
 
+		err = j.s.clear()
+		if err != nil {
+			return false, blockAggregateInfo{}, err
+		}
+
 		for _, dir := range j.blockJournalFiles() {
 			j.log.CDebugf(ctx, "Removing all files in %s", dir)
 			err := ioutil.RemoveAll(dir)
