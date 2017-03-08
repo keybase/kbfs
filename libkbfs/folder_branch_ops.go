@@ -4709,7 +4709,13 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 		stillNeedsRekey = true
 
 	default:
-		return RekeyResult{}, err
+		if err == context.DeadlineExceeded {
+			fbo.log.CDebugf(ctx, "Paper key prompt timed out")
+			// Reschedule the prompt in the timeout case.
+			stillNeedsRekey = true
+		} else {
+			return RekeyResult{}, err
+		}
 	}
 
 	if stillNeedsRekey {
