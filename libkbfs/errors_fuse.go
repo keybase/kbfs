@@ -135,7 +135,7 @@ func (e NoSuchFolderListError) Errno() fuse.Errno {
 }
 
 // Errno implements the fuse.ErrorNumber interface for
-// ExdevForUnsupportedApplicationError.
-func (e ExdevForUnsupportedApplicationError) Errno() fuse.Errno {
+// RenameAcrossDirsError.
+func (e RenameAcrossDirsError) Errno() fuse.Errno {
 	return fuse.Errno(syscall.EXDEV)
 }

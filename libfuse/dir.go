@@ -697,17 +697,18 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 	err = d.folder.fs.config.KBFSOps().Rename(ctx,
 		d.node, req.OldName, realNewDir.node, req.NewName)
 
-	switch err.(type) {
+	switch e := err.(type) {
 	case nil:
 		return nil
 	case libkbfs.RenameAcrossDirsError:
-		epath, er := sysutils.GetExecPathFromPID(req.Pid)
-		if er != nil {
+		var execPathErr error
+		e.ApplicationExecPath, execPathErr = sysutils.GetExecPathFromPID(req.Pid)
+		if execPathErr != nil {
 			d.folder.fs.log.CDebugf(ctx,
-				"Dir Rename: getting exec path for PID %d error: %v", req.Pid, er)
-			return err
+				"Dir Rename: getting exec path for PID %d error: %v",
+				req.Pid, execPathErr)
 		}
-		return libkbfs.ExdevForUnsupportedApplicationError{ExecPath: epath}
+		return e
 	default:
 		return err
 	}

@@ -137,6 +137,9 @@ func (e TlfAccessError) Error() string {
 // RenameAcrossDirsError indicates that the user tried to do an atomic
 // rename across directories.
 type RenameAcrossDirsError struct {
+	// ApplicationExecPath, if not empty, is the exec path of the application
+	// that issued the rename.
+	ApplicationExecPath string
 }
 
 // Error implements the error interface for RenameAcrossDirsError
@@ -1245,16 +1248,4 @@ func (e SimpleFSError) ToStatus() keybase1.Status {
 		Code: int(keybase1.StatusCode_SCGeneric),
 		Desc: e.Error(),
 	}
-}
-
-// ExdevForUnsupportedApplicationError indicates that a rename across TLFs was
-// received from a program that is known to be incapable of handling EXDEV.
-type ExdevForUnsupportedApplicationError struct {
-	ExecPath string
-}
-
-// Error implements the error interface for ExdevForUnsupportedApplicationError.
-func (e ExdevForUnsupportedApplicationError) Error() string {
-	return fmt.Sprintf(
-		"%s tried to rename across TLFs but it doesn't support EXDEV", e.ExecPath)
 }
