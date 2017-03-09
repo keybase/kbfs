@@ -93,7 +93,7 @@ type rekeyTask struct {
 	ttl         int
 	promptPaper bool
 
-	ctx context.Context
+	ctx *protectedContext
 }
 
 // rekeyRequest describes a rekey request.
@@ -144,7 +144,7 @@ func newRekeyRequestEventWithContext(ctx context.Context) RekeyEvent {
 			timeout:     nil,
 			promptPaper: false,
 			ttl:         rekeyInitialTTL,
-			ctx:         ctx,
+			ctx:         newProtectedContext(ctx, nil),
 		},
 	})
 }
@@ -245,6 +245,7 @@ type rekeyStateScheduled struct {
 
 func newRekeyStateScheduled(
 	fsm *rekeyFSM, delay time.Duration, task rekeyTask) *rekeyStateScheduled {
+	task.ctx.setLogger(fsm.log)
 	return &rekeyStateScheduled{
 		fsm: fsm,
 		timer: time.AfterFunc(delay, func() {
@@ -266,11 +267,9 @@ func (r *rekeyStateScheduled) reactToEvent(event RekeyEvent) rekeyState {
 			task.timeout = event.request.timeout
 		}
 		task.ttl = event.request.ttl
-		r.fsm.log.CDebugf(task.ctx, "Replacing context")
-		task.ctx = event.request.ctx
-		r.fsm.log.CDebugf(task.ctx, "Context replaced")
+		task.ctx.maybeReplaceContext(event.request.ctx.context())
 		if !r.deadline.After(time.Now().Add(event.request.delay)) {
-			r.fsm.log.CDebugf(task.ctx, "Reusing existing timer")
+			r.fsm.log.CDebugf(task.ctx.context(), "Reusing existing timer")
 			r.task = task
 			return r
 		}
@@ -296,10 +295,10 @@ type rekeyStateStarted struct {
 }
 
 func newRekeyStateStarted(fsm *rekeyFSM, task rekeyTask) *rekeyStateStarted {
-	ctx := task.ctx
+	ctx := task.ctx.context()
 	var cancel context.CancelFunc
 	if task.timeout != nil {
-		ctx, cancel = context.WithTimeout(task.ctx, *task.timeout)
+		ctx, cancel = context.WithTimeout(task.ctx.context(), *task.timeout)
 	}
 	go func() {
 		if cancel != nil {
@@ -325,11 +324,11 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 	switch event.eventType {
 	case rekeyFinishedEvent:
 		ttl := r.task.ttl - 1
-		r.fsm.log.CDebugf(r.task.ctx,
+		r.fsm.log.CDebugf(r.task.ctx.context(),
 			"Rekey finished, ttl: %d -> %d", r.task.ttl, ttl)
 
 		if ttl <= 0 {
-			r.fsm.log.CDebugf(r.task.ctx,
+			r.fsm.log.CDebugf(r.task.ctx.context(),
 				"Not scheduling new rekey because TTL expired")
 			return newRekeyStateIdle(r.fsm)
 		}
@@ -337,7 +336,7 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 		switch event.finished.err {
 		case nil:
 		default:
-			r.fsm.log.CDebugf(r.task.ctx, "Rekey errored; scheduling new rekey")
+			r.fsm.log.CDebugf(r.task.ctx.context(), "Rekey errored; scheduling new rekey")
 			return newRekeyStateScheduled(r.fsm, 0, rekeyTask{
 				timeout:     r.task.timeout,
 				promptPaper: r.task.promptPaper,
@@ -348,7 +347,7 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 
 		d := r.fsm.fbo.config.RekeyWithPromptWaitTime()
 		if event.finished.NeedsPaperKey {
-			r.fsm.log.CDebugf(r.task.ctx,
+			r.fsm.log.CDebugf(r.task.ctx.context(),
 				"Scheduling rekey due to NeedsPaperKey==true")
 			return newRekeyStateScheduled(r.fsm, d, rekeyTask{
 				timeout:     &d,
@@ -367,7 +366,7 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 			// bit set since it's already set. As a result, the TLF won't get rekeyed
 			// for the second device until the next 1-hour timer triggers another
 			// scan.
-			r.fsm.log.CDebugf(r.task.ctx,
+			r.fsm.log.CDebugf(r.task.ctx.context(),
 				"Scheduling rekey (recheck) due to DidRekey==true")
 			return newRekeyStateScheduled(r.fsm, rekeyRecheckInterval, rekeyTask{
 				timeout:     nil,
@@ -377,7 +376,7 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 			})
 		}
 
-		r.fsm.log.CDebugf(r.task.ctx,
+		r.fsm.log.CDebugf(r.task.ctx.context(),
 			"Not scheduling rekey because no more rekeys or rechecks are needed")
 		return newRekeyStateIdle(r.fsm)
 	default:
@@ -500,7 +499,6 @@ func getRekeyFSMForTest(ops KBFSOps, tlfID tlf.ID) RekeyFSM {
 	default:
 		panic("unknown KBFSOps")
 	}
-	return nil
 }
 
 // RequestRekeyAndWaitForOneFinishEvent sends a rekey request to the FSM

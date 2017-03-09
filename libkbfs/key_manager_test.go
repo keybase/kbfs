@@ -2163,6 +2163,26 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 	GetRootNodeOrBust(ctx, t, config2Dev2, name, false)
 }
 
+// maybeReplaceContext, defined on *protectedContext, enables replacing context
+// stored in protectedContext.
+//
+// This is importantly defined in a _test.go file since we should not use it
+// anywhere other than in tests.
+//
+// For now, the only application for this is to cause states in rekey_fsm
+// to replace existing context when new request comes in. This is needed
+// because stallers stores staller key in context, and context needs to be
+// updated in states in order for stalling to be effective.
+func (c *protectedContext) maybeReplaceContext(newCtx context.Context) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.log != nil {
+		c.log.CDebugf(c.ctx, "Replacing context")
+		defer c.log.CDebugf(newCtx, "Context replaced")
+	}
+	c.ctx = newCtx
+}
+
 func TestKeyManager(t *testing.T) {
 	tests := []func(*testing.T, MetadataVer){
 		testKeyManagerPublicTLFCryptKey,
