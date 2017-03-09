@@ -586,7 +586,7 @@ func (k *LibKBFS) Rekey(u User, tlfName string, isPublic bool) error {
 		return err
 	}
 
-	_, err = libkbfs.RequestRekeyAndWaitForOneFinishEvent(
+	_, err = libkbfs.RequestRekeyAndWaitForOneFinishEvent(ctx,
 		config.KBFSOps(), dir.GetFolderBranch().Tlf)
 	return err
 }

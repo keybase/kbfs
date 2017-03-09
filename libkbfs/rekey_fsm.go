@@ -503,17 +503,19 @@ func getRekeyFSMForTest(ops KBFSOps, tlfID tlf.ID) RekeyFSM {
 // RequestRekeyAndWaitForOneFinishEvent sends a rekey request to the FSM
 // associated with tlfID, and wait for exact one rekeyFinished event. This can
 // be useful for waiting for a rekey result in tests.
-func RequestRekeyAndWaitForOneFinishEvent(
+//
+// Currently this is only used in tests and RekeyFile. Normal rekey activities
+// should go through the FSM asychronously.
+func RequestRekeyAndWaitForOneFinishEvent(ctx context.Context,
 	ops KBFSOps, tlfID tlf.ID) (res RekeyResult, err error) {
 	fsm := getRekeyFSMForTest(ops, tlfID)
 	rekeyWaiter := make(chan struct{})
-	// now user 1 should rekey
 	fsm.listenOnEventForTest(rekeyFinishedEvent, func(e RekeyEvent) {
 		res = e.finished.RekeyResult
 		err = e.finished.err
 		close(rekeyWaiter)
 	}, false)
-	ops.RequestRekey(tlfID)
+	fsm.Event(newRekeyRequestEventWithContext(ctx))
 	<-rekeyWaiter
 	return res, err
 }
