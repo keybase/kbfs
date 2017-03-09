@@ -239,6 +239,32 @@ func (bt *backpressureTracker) getStatus() backpressureTrackerStatus {
 	}
 }
 
+// quotaBackpressureTracker keeps track of the variables used to
+// calculate quota-related backpressure.
+//
+// Let U be the (approximate) byte usage of the journal, R be the
+// remote byte usage, and Q be the quota. Then we want to set
+// thresholds 0 <= m <= M such that we apply proportional
+// backpressure (with a given maximum delay) when
+//
+//   m <= (U+R)/Q <= M.
+//
+// Note that this type doesn't do any locking, so it's the caller's
+// responsibility to do so.
+type quotaBackpressureTracker struct {
+	// minThreshold is m in the above.
+	minThreshold float64
+	// maxThreshold is M in the above.
+	maxThreshold float64
+	// quota is Q in the above.
+	quota int64
+
+	// remoteUsed is R in the above.
+	remoteUsed int64
+	// used is U in the above.
+	used int64
+}
+
 // backpressureDiskLimiter is an implementation of diskLimiter that
 // uses backpressure to slow down block puts before they hit the disk
 // limits.
