@@ -582,6 +582,8 @@ func (fbo *folderBranchOps) setBranchIDLocked(lState *lockState, bid BranchID) {
 }
 
 var errNoFlushedRevisions = errors.New("No flushed MDs yet")
+var errNoMergedRevWhileStaged = errors.New(
+	"Cannot find most recent merged revision while staged")
 
 // getJournalPredecessorRevision returns the revision that precedes
 // the current journal head if journaling enabled and there are
@@ -607,8 +609,7 @@ func (fbo *folderBranchOps) getJournalPredecessorRevision(ctx context.Context) (
 	}
 
 	if jStatus.BranchID != NullBranchID.String() {
-		return MetadataRevisionUninitialized,
-			errors.New("Cannot find most recent merged revision while staged")
+		return MetadataRevisionUninitialized, errNoMergedRevWhileStaged
 	}
 
 	if jStatus.RevisionStart == MetadataRevisionUninitialized {
@@ -4897,6 +4898,8 @@ func (fbo *folderBranchOps) SyncFromServerForTesting(
 				}
 			}
 			if _, isUnmerged := err.(UnmergedError); isUnmerged {
+				continue
+			} else if err == errNoMergedRevWhileStaged {
 				continue
 			}
 			return err
