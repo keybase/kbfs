@@ -265,8 +265,8 @@ type quotaBackpressureTracker struct {
 	usedBytes int64
 }
 
-func newQuotaBackpressureTracker(minThreshold, maxThreshold float64,
-	quotaBytes, remotedUsedBytes int64) (*quotaBackpressureTracker, error) {
+func newQuotaBackpressureTracker(minThreshold, maxThreshold float64) (
+	*quotaBackpressureTracker, error) {
 	if minThreshold < 0.0 {
 		return nil, errors.Errorf("minThreshold=%f < 0.0",
 			minThreshold)
@@ -277,7 +277,7 @@ func newQuotaBackpressureTracker(minThreshold, maxThreshold float64,
 			maxThreshold, minThreshold)
 	}
 	qbt := &quotaBackpressureTracker{
-		minThreshold, maxThreshold, quotaBytes, remotedUsedBytes, 0,
+		minThreshold, maxThreshold, math.MaxInt64, 0, 0,
 	}
 	return qbt, nil
 }
@@ -306,7 +306,7 @@ func (qbt *quotaBackpressureTracker) onJournalDisable(journalBytes int64) {
 }
 
 func (qbt *quotaBackpressureTracker) updateRemote(
-	quotaBytes, remoteUsedBytes int64) {
+	remoteUsedBytes, quotaBytes int64) {
 	qbt.quotaBytes = quotaBytes
 	qbt.remoteUsedBytes = remoteUsedBytes
 }
@@ -462,10 +462,9 @@ func newBackpressureDiskLimiter(
 	diskCacheByteLimit := int64((float64(params.byteLimit) * params.diskCacheFrac) + 0.5)
 	diskCacheByteTracker, err := newBackpressureTracker(
 		1.0, 1.0, params.diskCacheFrac, diskCacheByteLimit, freeBytes)
+
 	quotaTracker, err := newQuotaBackpressureTracker(
-		params.quotaMinThreshold, params.quotaMaxThreshold,
-		// TODO: Fill in with real values.
-		10*1024*1024, 0)
+		params.quotaMinThreshold, params.quotaMaxThreshold)
 	if err != nil {
 		return nil, err
 	}
@@ -617,6 +616,11 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 				"backpressureDiskLimiter.beforeBlockPut called with 0 blockFiles")
 	}
 
+	remoteUsedBytes, quotaBytes, quotaErr := bdl.quotaFn(ctx)
+	if quotaErr != nil {
+		// TODO: Log error.
+	}
+
 	delay, err := func() (time.Duration, error) {
 		bdl.lock.Lock()
 		defer bdl.lock.Unlock()
@@ -624,6 +628,11 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		freeBytes, freeFiles, err := bdl.updateFreeLocked()
 		if err != nil {
 			return 0, err
+		}
+
+		if quotaErr == nil {
+			bdl.quotaTracker.updateRemote(
+				remoteUsedBytes, quotaBytes)
 		}
 
 		delay := bdl.getDelayLocked(ctx, time.Now())
