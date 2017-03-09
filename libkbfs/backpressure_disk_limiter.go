@@ -265,6 +265,23 @@ type quotaBackpressureTracker struct {
 	usedBytes int64
 }
 
+func newQuotaBackpressureTracker(minThreshold, maxThreshold float64,
+	quotaBytes, remotedUsedBytes int64) (*quotaBackpressureTracker, error) {
+	if minThreshold < 0.0 {
+		return nil, errors.Errorf("minThreshold=%f < 0.0",
+			minThreshold)
+	}
+	if maxThreshold < minThreshold {
+		return nil, errors.Errorf(
+			"maxThreshold=%f < minThreshold=%f",
+			maxThreshold, minThreshold)
+	}
+	qbt := &quotaBackpressureTracker{
+		minThreshold, maxThreshold, quotaBytes, remotedUsedBytes, 0,
+	}
+	return qbt, nil
+}
+
 func (qbt *quotaBackpressureTracker) onJournalEnable(journalBytes int64) {
 	qbt.usedBytes += journalBytes
 }
