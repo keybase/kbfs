@@ -331,6 +331,7 @@ type backpressureDiskLimiter struct {
 	maxDelay            time.Duration
 	delayFn             func(context.Context, time.Duration) error
 	freeBytesAndFilesFn func() (int64, int64, error)
+	quotaFn             func() (int64, int64)
 
 	// lock protects everything in the trackers, including the
 	// (implicit) maximum values of the semaphores, but not the
@@ -383,6 +384,9 @@ type backpressureDiskLimiterParams struct {
 	// free bytes and files on the disk containing the
 	// journal/disk cache directory. Overridable for testing.
 	freeBytesAndFilesFn func() (int64, int64, error)
+	// quotaFn is a function that returns the current used and
+	// total quota bytes. Overridable for testing.
+	quotaFn func() (int64, int64)
 }
 
 // defaultDiskLimitMaxDelay is the maximum amount to delay a block
@@ -420,6 +424,9 @@ func makeDefaultBackpressureDiskLimiterParams(
 		delayFn:   defaultDoDelay,
 		freeBytesAndFilesFn: func() (int64, int64, error) {
 			return defaultGetFreeBytesAndFiles(storageRoot)
+		},
+		quotaFn: func() (int64, int64) {
+			return 0, math.MaxInt64
 		},
 	}
 }
@@ -462,7 +469,8 @@ func newBackpressureDiskLimiter(
 		return nil, err
 	}
 	bdl := &backpressureDiskLimiter{
-		log, params.maxDelay, params.delayFn, params.freeBytesAndFilesFn, sync.RWMutex{},
+		log, params.maxDelay, params.delayFn,
+		params.freeBytesAndFilesFn, params.quotaFn, sync.RWMutex{},
 		byteTracker, fileTracker, diskCacheByteTracker, quotaTracker,
 	}
 	return bdl, nil
