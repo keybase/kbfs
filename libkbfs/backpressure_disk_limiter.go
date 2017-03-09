@@ -256,13 +256,38 @@ type quotaBackpressureTracker struct {
 	minThreshold float64
 	// maxThreshold is M in the above.
 	maxThreshold float64
-	// quota is Q in the above.
-	quota int64
+	// quotaBytes is Q in the above.
+	quotaBytes int64
 
-	// remoteUsed is R in the above.
-	remoteUsed int64
-	// used is U in the above.
-	used int64
+	// remoteUsedBytes is R in the above.
+	remoteUsedBytes int64
+	// usedBytes is U in the above.
+	usedBytes int64
+}
+
+func (qbt *quotaBackpressureTracker) onJournalEnable(journalBytes int64) {
+	qbt.usedBytes += journalBytes
+}
+
+func (qbt *quotaBackpressureTracker) onJournalDisable(journalBytes int64) {
+	qbt.usedBytes -= journalBytes
+}
+
+func (qbt *quotaBackpressureTracker) updateRemote(
+	quotaBytes, remoteUsedBytes int64) {
+	qbt.quotaBytes = quotaBytes
+	qbt.remoteUsedBytes = remoteUsedBytes
+}
+
+func (qbt *quotaBackpressureTracker) afterBlockPut(
+	blockBytes int64, putData bool) {
+	if putData {
+		qbt.usedBytes += blockBytes
+	}
+}
+
+func (qbt *quotaBackpressureTracker) onBlocksDelete(blockBytes int64) {
+	qbt.usedBytes -= blockBytes
 }
 
 // backpressureDiskLimiter is an implementation of diskLimiter that
