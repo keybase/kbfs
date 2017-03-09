@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"context"
 	"math"
 	"testing"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -72,7 +72,9 @@ func newDiskBlockCacheStandardForTest(config *testDiskBlockCacheConfig,
 				freeBytes := maxBytes - int64(cache.currBytes)
 				return freeBytes, maxFiles, nil
 			},
-			quotaFn: func() (int64, int64) { return 0, math.MaxInt64 },
+			quotaFn: func(context.Context) (int64, int64, error) {
+				return 0, math.MaxInt64, nil
+			},
 		}
 		limiter, err = newBackpressureDiskLimiter(
 			config.MakeLogger(""), params)

@@ -331,7 +331,7 @@ type backpressureDiskLimiter struct {
 	maxDelay            time.Duration
 	delayFn             func(context.Context, time.Duration) error
 	freeBytesAndFilesFn func() (int64, int64, error)
-	quotaFn             func() (int64, int64)
+	quotaFn             func(ctx context.Context) (int64, int64, error)
 
 	// lock protects everything in the trackers, including the
 	// (implicit) maximum values of the semaphores, but not the
@@ -386,7 +386,7 @@ type backpressureDiskLimiterParams struct {
 	freeBytesAndFilesFn func() (int64, int64, error)
 	// quotaFn is a function that returns the current used and
 	// total quota bytes. Overridable for testing.
-	quotaFn func() (int64, int64)
+	quotaFn func(context.Context) (int64, int64, error)
 }
 
 // defaultDiskLimitMaxDelay is the maximum amount to delay a block
@@ -395,7 +395,8 @@ type backpressureDiskLimiterParams struct {
 const defaultDiskLimitMaxDelay = 10 * time.Second
 
 func makeDefaultBackpressureDiskLimiterParams(
-	storageRoot string) backpressureDiskLimiterParams {
+	storageRoot string,
+	quotaUsage *EventuallyConsistentQuotaUsage) backpressureDiskLimiterParams {
 	return backpressureDiskLimiterParams{
 		// Start backpressure when 50% of free bytes or files
 		// are used...
@@ -425,8 +426,8 @@ func makeDefaultBackpressureDiskLimiterParams(
 		freeBytesAndFilesFn: func() (int64, int64, error) {
 			return defaultGetFreeBytesAndFiles(storageRoot)
 		},
-		quotaFn: func() (int64, int64) {
-			return 0, math.MaxInt64
+		quotaFn: func(ctx context.Context) (int64, int64, error) {
+			return quotaUsage.Get(ctx, 1*time.Minute)
 		},
 	}
 }

@@ -170,7 +170,9 @@ func makeTestBackpressureDiskLimiterParams() backpressureDiskLimiterParams {
 		freeBytesAndFilesFn: func() (int64, int64, error) {
 			return math.MaxInt64, math.MaxInt64, nil
 		},
-		quotaFn: func() (int64, int64) { return 0, math.MaxInt64 },
+		quotaFn: func(context.Context) (int64, int64, error) {
+			return 0, math.MaxInt64, nil
+		},
 	}
 }
 
