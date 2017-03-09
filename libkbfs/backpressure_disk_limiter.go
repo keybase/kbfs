@@ -113,8 +113,8 @@ func (bt backpressureTracker) delayScale() float64 {
 	freeFrac := bt.freeFrac()
 
 	// We want the delay to be 0 if freeFrac <= m and the max
-	// delay if freeSpaceFrac >= M, so linearly interpolate the
-	// delay scale.
+	// delay if freeFrac >= M, so linearly interpolate the delay
+	// scale.
 	m := bt.minThreshold
 	M := bt.maxThreshold
 	return math.Min(1.0, math.Max(0.0, (freeFrac-m)/(M-m)))
