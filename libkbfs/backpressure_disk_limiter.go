@@ -289,8 +289,8 @@ func (qbt quotaBackpressureTracker) delayScale() float64 {
 	usedFrac := (float64(qbt.usedBytes) + float64(qbt.remoteUsedBytes)) /
 		float64(qbt.quotaBytes)
 
-	// We want the delay to be 0 if freeFrac <= m and the max
-	// delay if freeFrac >= M, so linearly interpolate the delay
+	// We want the delay to be 0 if usedFrac <= m and the max
+	// delay if usedFrac >= M, so linearly interpolate the delay
 	// scale.
 	m := qbt.minThreshold
 	M := qbt.maxThreshold
