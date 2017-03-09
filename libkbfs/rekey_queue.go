@@ -77,10 +77,10 @@ func (rkq *RekeyQueueStandard) start(ctx context.Context) {
 		for id := range rkq.queue {
 			if err := rkq.limiter.Wait(ctx); err != nil {
 				rkq.log.Debug("Waiting on rate limiter for tlf=%v error: %v", id, err)
-			} else {
-				rkq.config.KBFSOps().RequestRekey(context.Background(), id)
+				return
 			}
-			go func(id tlf.ID) {
+			rkq.config.KBFSOps().RequestRekey(context.Background(), id)
+			func(id tlf.ID) {
 				rkq.mu.Lock()
 				defer rkq.mu.Unlock()
 				delete(rkq.pendings, id)
@@ -117,10 +117,4 @@ func (rkq *RekeyQueueStandard) Shutdown() {
 	defer rkq.mu.Unlock()
 	rkq.cancel()
 	rkq.cancel = nil
-}
-
-// New implements the RekeyQueue interface for RekeyQueueStandard.
-func (rkq *RekeyQueueStandard) New() RekeyQueue {
-	rkq.Shutdown()
-	return NewRekeyQueueStandard(rkq.config)
 }

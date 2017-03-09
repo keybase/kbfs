@@ -4895,16 +4895,6 @@ func (_mr *_MockRekeyQueueRecorder) Shutdown() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
 }
 
-func (_m *MockRekeyQueue) New() RekeyQueue {
-	ret := _m.ctrl.Call(_m, "New")
-	ret0, _ := ret[0].(RekeyQueue)
-	return ret0
-}
-
-func (_mr *_MockRekeyQueueRecorder) New() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "New")
-}
-
 // Mock of BareRootMetadata interface
 type MockBareRootMetadata struct {
 	ctrl     *gomock.Controller

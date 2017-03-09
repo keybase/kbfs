@@ -1,3 +1,7 @@
+// Copyright 2017 Keybase Inc. All rights reserved.
+// Use of this source code is governed by a BSD
+// license that can be found in the LICENSE file.
+
 package libkbfs
 
 import (
@@ -108,7 +112,7 @@ type rekeyFinished struct {
 }
 
 // RekeyEvent describes an event to send into the RekeyFSM. A function, e.g.,
-// NewRekeyRequestEvent, should be used to construct one
+// NewRekeyRequestEvent, should be used to construct one.
 type RekeyEvent struct {
 	eventType rekeyEventType
 	request   *rekeyRequest
@@ -200,10 +204,10 @@ func newRekeyCancelEventForTest() RekeyEvent {
 type rekeyState interface {
 	// reactToEvent defines how this state reacts to an event. Implementations of
 	// rekeyState should handle necessary transition actions in reactToEvent(),
-	// and retur a new rekeyState instance after transition is finished. rekeyFSM
-	// sends event to the rekeyState instance it holds whenever it receives an
-	// event, and use the returned rekeyState instance as new state. It's OK to
-	// return the receiver itself as "new" state.
+	// and return a new rekeyState instance after transition is finished.
+	// rekeyFSM sends event to the rekeyState instance it holds whenever it
+	// receives an event, and use the returned rekeyState instance as new state.
+	// It's OK to return the receiver itself as "new" state.
 	//
 	// rekeyFSM runs an event loop in a dedicated goroutine that calls
 	// reactToEvent and updates states. In other words, it's safe to assume
@@ -271,8 +275,7 @@ func (r *rekeyStateScheduled) reactToEvent(event RekeyEvent) rekeyState {
 			return r
 		}
 		r.timer.Stop()
-		return newRekeyStateScheduled(r.fsm,
-			event.request.delay, task)
+		return newRekeyStateScheduled(r.fsm, event.request.delay, task)
 	case rekeyKickoffEventForTest:
 		r.timer.Reset(time.Millisecond)
 		return r
@@ -323,18 +326,18 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 	case rekeyFinishedEvent:
 		ttl := r.task.ttl - 1
 		r.fsm.log.CDebugf(r.task.ctx,
-			"Rekey Finished. ttl: %d -> %d", r.task.ttl, ttl)
+			"Rekey finished, ttl: %d -> %d", r.task.ttl, ttl)
 
 		if ttl <= 0 {
 			r.fsm.log.CDebugf(r.task.ctx,
-				"Not scheduling new rekey because TTL expired.")
+				"Not scheduling new rekey because TTL expired")
 			return newRekeyStateIdle(r.fsm)
 		}
 
 		switch event.finished.err {
 		case nil:
 		default:
-			r.fsm.log.CDebugf(r.task.ctx, "Rekey errored. Scheduling new rekey.")
+			r.fsm.log.CDebugf(r.task.ctx, "Rekey errored; scheduling new rekey")
 			return newRekeyStateScheduled(r.fsm, 0, rekeyTask{
 				timeout:     r.task.timeout,
 				promptPaper: r.task.promptPaper,
@@ -346,7 +349,7 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 		d := r.fsm.fbo.config.RekeyWithPromptWaitTime()
 		if event.finished.NeedsPaperKey {
 			r.fsm.log.CDebugf(r.task.ctx,
-				"Scheduling rekey due to NeedsPaperKey==true.")
+				"Scheduling rekey due to NeedsPaperKey==true")
 			return newRekeyStateScheduled(r.fsm, d, rekeyTask{
 				timeout:     &d,
 				promptPaper: true,
@@ -365,7 +368,7 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 			// for the second device until the next 1-hour timer triggers another
 			// scan.
 			r.fsm.log.CDebugf(r.task.ctx,
-				"Scheduling rekey (recheck) due to DidRekey==true.")
+				"Scheduling rekey (recheck) due to DidRekey==true")
 			return newRekeyStateScheduled(r.fsm, rekeyRecheckInterval, rekeyTask{
 				timeout:     nil,
 				promptPaper: false,
@@ -375,7 +378,7 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 		}
 
 		r.fsm.log.CDebugf(r.task.ctx,
-			"Not scheduling rekey because no more rekey or recheck is needed.")
+			"Not scheduling rekey because no more rekeys or rechecks are needed")
 		return newRekeyStateIdle(r.fsm)
 	default:
 		return r

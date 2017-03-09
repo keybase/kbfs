@@ -1673,8 +1673,6 @@ type RekeyQueue interface {
 	// doesn't cancel ongoing rekeys. After Shutdown() is called, the same
 	// RekeyQueue shouldn't be used anymore.
 	Shutdown()
-	// New calls Shutdown() and returns a new RekeyQueue.
-	New() RekeyQueue
 }
 
 // BareRootMetadata is a read-only interface to the bare serializeable MD that

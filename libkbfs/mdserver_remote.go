@@ -360,7 +360,8 @@ func (md *MDServerRemote) OnDisconnected(ctx context.Context,
 	if md.authToken != nil {
 		md.authToken.Shutdown()
 	}
-	md.config.SetRekeyQueue(md.config.RekeyQueue().New())
+	md.config.RekeyQueue().Shutdown()
+	md.config.SetRekeyQueue(NewRekeyQueueStandard(md.config))
 	// Reset the timer since we will get folders for rekey again on
 	// the re-connect.
 	md.rekeyTimer.Reset(MdServerBackgroundRekeyPeriod)
