@@ -336,7 +336,8 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 		switch event.finished.err {
 		case nil:
 		default:
-			r.fsm.log.CDebugf(r.task.ctx.context(), "Rekey errored; scheduling new rekey")
+			r.fsm.log.CDebugf(r.task.ctx.context(),
+				"Rekey errored; scheduling new rekey")
 			return newRekeyStateScheduled(r.fsm, 0, rekeyTask{
 				timeout:     r.task.timeout,
 				promptPaper: r.task.promptPaper,
