@@ -102,7 +102,7 @@ func (bt backpressureTracker) currLimit() float64 {
 	return math.Min(limit, float64(bt.limit))
 }
 
-func (bt backpressureTracker) freeFrac() float64 {
+func (bt backpressureTracker) usedFrac() float64 {
 	return float64(bt.used) / bt.currLimit()
 }
 
@@ -110,14 +110,14 @@ func (bt backpressureTracker) freeFrac() float64 {
 // multiplied with the maximum delay to get the backpressure delay to
 // apply.
 func (bt backpressureTracker) delayScale() float64 {
-	freeFrac := bt.freeFrac()
+	usedFrac := bt.usedFrac()
 
-	// We want the delay to be 0 if freeFrac <= m and the max
-	// delay if freeFrac >= M, so linearly interpolate the delay
+	// We want the delay to be 0 if usedFrac <= m and the max
+	// delay if usedFrac >= M, so linearly interpolate the delay
 	// scale.
 	m := bt.minThreshold
 	M := bt.maxThreshold
-	return math.Min(1.0, math.Max(0.0, (freeFrac-m)/(M-m)))
+	return math.Min(1.0, math.Max(0.0, (usedFrac-m)/(M-m)))
 }
 
 // updateSemaphoreMax must be called whenever bt.used or bt.free
@@ -187,9 +187,9 @@ func (bt *backpressureTracker) onBlocksDelete(blockResources int64) {
 
 type backpressureTrackerStatus struct {
 	// Derived numbers.
-	FreeFrac   float64
-	UsageFrac  float64
-	DelayScale float64
+	UsedFrac    float64
+	UsedFracSem float64
+	DelayScale  float64
 
 	// Constants.
 	MinThreshold float64
@@ -205,17 +205,17 @@ type backpressureTrackerStatus struct {
 }
 
 func (bt *backpressureTracker) getStatus() backpressureTrackerStatus {
-	freeFrac := bt.freeFrac()
+	usedFrac := bt.usedFrac()
 	delayScale := bt.delayScale()
 
 	max := bt.semaphoreMax
 	count := bt.semaphore.Count()
-	usageFrac := 1 - float64(count)/float64(max)
+	usedFracSem := 1 - float64(count)/float64(max)
 
 	return backpressureTrackerStatus{
-		FreeFrac:   freeFrac,
-		UsageFrac:  usageFrac,
-		DelayScale: delayScale,
+		UsedFrac:    usedFrac,
+		UsedFracSem: usedFracSem,
+		DelayScale:  delayScale,
 
 		MinThreshold: bt.minThreshold,
 		MaxThreshold: bt.maxThreshold,
