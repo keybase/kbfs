@@ -110,14 +110,14 @@ func (bt backpressureTracker) freeFrac() float64 {
 // multiplied with the maximum delay to get the backpressure delay to
 // apply.
 func (bt backpressureTracker) delayScale() float64 {
-	freeSpaceFrac := bt.freeFrac()
+	freeFrac := bt.freeFrac()
 
-	// We want the delay to be 0 if freeSpaceFrac <= m and the
-	// max delay if freeSpaceFrac >= M, so linearly interpolate
-	// the delay scale.
+	// We want the delay to be 0 if freeFrac <= m and the max
+	// delay if freeSpaceFrac >= M, so linearly interpolate the
+	// delay scale.
 	m := bt.minThreshold
 	M := bt.maxThreshold
-	return math.Min(1.0, math.Max(0.0, (freeSpaceFrac-m)/(M-m)))
+	return math.Min(1.0, math.Max(0.0, (freeFrac-m)/(M-m)))
 }
 
 // updateSemaphoreMax must be called whenever bt.used or bt.free
@@ -451,6 +451,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	}()
 
 	availableFiles, err = bdl.fileTracker.beforeBlockPut(ctx, blockFiles)
+	// No need to call anything on bdl.quotaTracker.
 	return availableBytes, availableFiles, err
 }
 
