@@ -12,6 +12,7 @@ import (
 
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -27,7 +28,7 @@ type mdBlockKey struct {
 
 type mdBranchKey struct {
 	tlfID     tlf.ID
-	deviceKID keybase1.KID
+	deviceKey kbfscrypto.CryptPublicKey
 }
 
 type mdExtraWriterKey struct {
@@ -67,7 +68,7 @@ type mdServerMemShared struct {
 	writerKeyBundleDb map[mdExtraWriterKey]TLFWriterKeyBundleV3
 	// Reader key bundle ID -> reader key bundles
 	readerKeyBundleDb map[mdExtraReaderKey]TLFReaderKeyBundleV3
-	// (TLF ID, device KID) -> branch ID
+	// (TLF ID, crypt public key) -> branch ID
 	branchDb            map[mdBranchKey]BranchID
 	truncateLockManager *mdServerLocalTruncateLockManager
 
@@ -142,11 +143,11 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle tlf.Handle,
 	}
 
 	// Non-readers shouldn't be able to create the dir.
-	_, uid, err := md.config.currentInfoGetter().GetCurrentUserInfo(ctx)
+	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
 		return tlf.NullID, false, MDServerError{err}
 	}
-	if !handle.IsReader(uid) {
+	if !handle.IsReader(session.UID) {
 		return tlf.NullID, false, MDServerErrorUnauthorized{}
 	}
 
@@ -199,7 +200,7 @@ func (md *MDServerMemory) checkGetParams(
 		return NullBranchID, MDServerError{err}
 	}
 
-	_, currentUID, err := md.config.currentInfoGetter().GetCurrentUserInfo(ctx)
+	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
 		return NullBranchID, MDServerError{err}
 	}
@@ -211,7 +212,7 @@ func (md *MDServerMemory) checkGetParams(
 		if err != nil {
 			return NullBranchID, MDServerError{err}
 		}
-		ok, err := isReader(currentUID, mergedMasterHead.MD, extra)
+		ok, err := isReader(session.UID, mergedMasterHead.MD, extra)
 		if err != nil {
 			return NullBranchID, MDServerError{err}
 		}
@@ -292,20 +293,21 @@ func (md *MDServerMemory) getMDKey(
 
 func (md *MDServerMemory) getBranchKey(ctx context.Context, id tlf.ID) (
 	mdBranchKey, error) {
-	// add device KID
-	deviceKID, err := md.getCurrentDeviceKID(ctx)
+	// add device key
+	deviceKey, err := md.getCurrentDeviceKey(ctx)
 	if err != nil {
 		return mdBranchKey{}, err
 	}
-	return mdBranchKey{id, deviceKID}, nil
+	return mdBranchKey{id, deviceKey}, nil
 }
 
-func (md *MDServerMemory) getCurrentDeviceKID(ctx context.Context) (keybase1.KID, error) {
-	key, err := md.config.currentInfoGetter().GetCurrentCryptPublicKey(ctx)
+func (md *MDServerMemory) getCurrentDeviceKey(ctx context.Context) (
+	kbfscrypto.CryptPublicKey, error) {
+	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
-		return keybase1.KID(""), err
+		return kbfscrypto.CryptPublicKey{}, err
 	}
-	return key.KID(), nil
+	return session.CryptPublicKey, nil
 }
 
 // GetRange implements the MDServer interface for MDServerMemory.
@@ -382,8 +384,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		return err
 	}
 
-	currentUID, currentVerifyingKey, err :=
-		getCurrentUIDAndVerifyingKey(ctx, md.config.currentInfoGetter())
+	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
 		return MDServerError{err}
 	}
@@ -394,7 +395,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		return MDServerErrorBadRequest{Reason: err.Error()}
 	}
 
-	err = rmds.IsLastModifiedBy(currentUID, currentVerifyingKey)
+	err = rmds.IsLastModifiedBy(session.UID, session.VerifyingKey)
 	if err != nil {
 		return MDServerErrorBadRequest{Reason: err.Error()}
 	}
@@ -417,9 +418,8 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 			return MDServerError{err}
 		}
 		ok, err := isWriterOrValidRekey(
-			md.config.Codec(), currentUID,
-			mergedMasterHead.MD, rmds.MD,
-			prevExtra, extra)
+			md.config.Codec(), session.UID, mergedMasterHead.MD,
+			rmds.MD, prevExtra, extra)
 		if err != nil {
 			return MDServerError{err}
 		}
@@ -610,14 +610,14 @@ func (md *MDServerMemory) CancelRegistration(_ context.Context, id tlf.ID) {
 	md.updateManager.cancel(id, md)
 }
 
-func (md *MDServerMemory) getCurrentDeviceKIDBytes(ctx context.Context) (
+func (md *MDServerMemory) getCurrentDeviceKeyBytes(ctx context.Context) (
 	[]byte, error) {
 	buf := &bytes.Buffer{}
-	deviceKID, err := md.getCurrentDeviceKID(ctx)
+	deviceKey, err := md.getCurrentDeviceKey(ctx)
 	if err != nil {
 		return []byte{}, err
 	}
-	_, err = buf.Write(deviceKID.ToBytes())
+	_, err = buf.Write(deviceKey.KID().ToBytes())
 	if err != nil {
 		return []byte{}, err
 	}
@@ -638,12 +638,12 @@ func (md *MDServerMemory) TruncateLock(ctx context.Context, id tlf.ID) (
 		return false, err
 	}
 
-	myKID, err := md.getCurrentDeviceKID(ctx)
+	myKey, err := md.getCurrentDeviceKey(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	return md.truncateLockManager.truncateLock(myKID, id)
+	return md.truncateLockManager.truncateLock(myKey, id)
 }
 
 // TruncateUnlock implements the MDServer interface for MDServerMemory.
@@ -660,12 +660,12 @@ func (md *MDServerMemory) TruncateUnlock(ctx context.Context, id tlf.ID) (
 		return false, err
 	}
 
-	myKID, err := md.getCurrentDeviceKID(ctx)
+	myKey, err := md.getCurrentDeviceKey(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	return md.truncateLockManager.truncateUnlock(myKID, id)
+	return md.truncateLockManager.truncateUnlock(myKey, id)
 }
 
 // Shutdown implements the MDServer interface for MDServerMemory.

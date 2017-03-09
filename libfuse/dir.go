@@ -17,6 +17,7 @@ import (
 	"bazil.org/fuse/fs"
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
+	"github.com/keybase/kbfs/sysutils"
 	"golang.org/x/net/context"
 )
 
@@ -311,9 +312,9 @@ func canonicalNameIfNotNil(h *libkbfs.TlfHandle) string {
 
 func (f *Folder) tlfHandleChangeInvalidate(ctx context.Context,
 	newHandle *libkbfs.TlfHandle) {
-	cuser, _, err := libkbfs.GetCurrentUserInfoIfPossible(ctx, f.fs.config.KBPKI(), f.list.public)
+	session, err := libkbfs.GetCurrentSessionIfPossible(ctx, f.fs.config.KBPKI(), f.list.public)
 	// Here we get an error, but there is little that can be done.
-	// cuser will be empty in the error case in which case we will default to the
+	// session will be empty in the error case in which case we will default to the
 	// canonical format.
 	if err != nil {
 		f.fs.log.CDebugf(ctx,
@@ -326,7 +327,7 @@ func (f *Folder) tlfHandleChangeInvalidate(ctx context.Context,
 		if newHandle != nil {
 			f.h = newHandle
 		}
-		f.hPreferredName = f.h.GetPreferredFormat(cuser)
+		f.hPreferredName = f.h.GetPreferredFormat(session.Name)
 		return oldName, f.hPreferredName
 	}()
 
@@ -336,7 +337,7 @@ func (f *Folder) tlfHandleChangeInvalidate(ctx context.Context,
 }
 
 func (f *Folder) isWriter(ctx context.Context) (bool, error) {
-	_, uid, err := libkbfs.GetCurrentUserInfoIfPossible(
+	session, err := libkbfs.GetCurrentSessionIfPossible(
 		ctx, f.fs.config.KBPKI(), f.list.public)
 	// We are using GetCurrentUserInfoIfPossible here so err is only non-nil if
 	// a real problem happened. If the user is logged out, we will get an empty
@@ -346,7 +347,7 @@ func (f *Folder) isWriter(ctx context.Context) (bool, error) {
 	}
 	f.handleMu.RLock()
 	defer f.handleMu.RUnlock()
-	return f.h.IsWriter(uid), nil
+	return f.h.IsWriter(session.UID), nil
 }
 
 func (f *Folder) writePermMode(ctx context.Context,
@@ -681,35 +682,36 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 		if err != nil {
 			return err
 		}
+	case *FolderList, *Root:
+		// This normally wouldn't happen since a presumably pre-check on
+		// destination permissions would have failed. But in case it happens, it
+		// should be a EACCES according to rename() man page.
+		return fuse.Errno(syscall.EACCES)
 	default:
-		// The destination is not a TLF instance, probably
-		// because it's Root (or some other node type added
-		// later). The kernel won't let a rename newDir point
-		// to a non-directory.
-		//
-		// We have no cheap atomic rename across folders, so
-		// we can't serve this. EXDEV makes `mv` do a
-		// copy+delete, and the Lookup on the destination path
-		// will decide whether it's legal.
-		return fuse.Errno(syscall.EXDEV)
+		// This shouldn't happen unless we add other nodes. EIO is not in the error
+		// codes listed in rename(), but there doesn't seem to be any suitable
+		// error code listed for this situation either.
+		return fuse.Errno(syscall.EIO)
 	}
 
-	if d.folder != realNewDir.folder {
-		// Check this explicitly, not just trusting KBFSOps.Rename to
-		// return an error, because we rely on it for locking
-		// correctness.
-		return fuse.Errno(syscall.EXDEV)
-	}
+	err = d.folder.fs.config.KBFSOps().Rename(ctx,
+		d.node, req.OldName, realNewDir.node, req.NewName)
 
-	// overwritten node, if any, will be removed from Folder.nodes, if
-	// it is there in the first place, by its Forget
-
-	if err := d.folder.fs.config.KBFSOps().Rename(
-		ctx, d.node, req.OldName, realNewDir.node, req.NewName); err != nil {
+	switch e := err.(type) {
+	case nil:
+		return nil
+	case libkbfs.RenameAcrossDirsError:
+		var execPathErr error
+		e.ApplicationExecPath, execPathErr = sysutils.GetExecPathFromPID(req.Pid)
+		if execPathErr != nil {
+			d.folder.fs.log.CDebugf(ctx,
+				"Dir Rename: getting exec path for PID %d error: %v",
+				req.Pid, execPathErr)
+		}
+		return e
+	default:
 		return err
 	}
-
-	return nil
 }
 
 // Remove implements the fs.NodeRemover interface for Dir.

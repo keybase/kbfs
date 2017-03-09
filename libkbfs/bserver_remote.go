@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/cenkalti/backoff"
+	"github.com/keybase/backoff"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -31,7 +31,7 @@ const (
 // represents a remote KBFS block server.
 type BlockServerRemote struct {
 	codec      kbfscodec.Codec
-	cig        currentInfoGetter
+	csg        currentSessionGetter
 	shutdownFn func()
 	putClient  keybase1.BlockInterface
 	getClient  keybase1.BlockInterface
@@ -138,12 +138,12 @@ var _ rpc.ConnectionHandler = (*blockServerRemoteClientHandler)(nil)
 // NewBlockServerRemote constructs a new BlockServerRemote for the
 // given address.
 func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
-	cig currentInfoGetter, log logger.Logger, blkSrvAddr string,
+	csg currentSessionGetter, log logger.Logger, blkSrvAddr string,
 	rpcLogFactory *libkb.RPCLogFactory) *BlockServerRemote {
 	deferLog := log.CloneWithAddedDepth(1)
 	bs := &BlockServerRemote{
 		codec:      codec,
-		cig:        cig,
+		csg:        csg,
 		log:        log,
 		deferLog:   deferLog,
 		blkSrvAddr: blkSrvAddr,
@@ -172,6 +172,7 @@ func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
 		"libkbfs_bserver_remote", VersionString(), getClientHandler)
 	getClientHandler.authToken = bs.getAuthToken
 
+	constBackoff := backoff.NewConstantBackOff(RPCReconnectInterval)
 	opts := rpc.ConnectionOpts{
 		DontConnectNow: true, // connect only on-demand
 		WrapErrorFunc:  libkb.WrapError,
@@ -179,7 +180,7 @@ func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
 		// This constant backoff is safe to share between multiple connections,
 		// because it has no internal state. But beware: an exponential backoff
 		// shouldn't be shared.
-		ReconnectBackoff: backoff.NewConstantBackOff(RPCReconnectInterval),
+		ReconnectBackoff: func() backoff.BackOff { return constBackoff },
 	}
 	putConn := rpc.NewTLSConnection(blkSrvAddr,
 		kbfscrypto.GetRootCerts(blkSrvAddr),
@@ -203,12 +204,12 @@ func NewBlockServerRemote(codec kbfscodec.Codec, signer kbfscrypto.Signer,
 
 // For testing.
 func newBlockServerRemoteWithClient(codec kbfscodec.Codec,
-	cig currentInfoGetter, log logger.Logger,
+	csg currentSessionGetter, log logger.Logger,
 	client keybase1.BlockInterface) *BlockServerRemote {
 	deferLog := log.CloneWithAddedDepth(1)
 	bs := &BlockServerRemote{
 		codec:     codec,
-		cig:       cig,
+		csg:       csg,
 		putClient: client,
 		getClient: client,
 		log:       log,
@@ -232,7 +233,7 @@ func (b *BlockServerRemote) resetAuth(
 		b.log.Debug("BlockServerRemote: resetAuth called, err: %#v", err)
 	}()
 
-	_, _, err = b.cig.GetCurrentUserInfo(ctx)
+	session, err := b.csg.GetCurrentSession(ctx)
 	if err != nil {
 		b.log.Debug("BlockServerRemote: User logged out, skipping resetAuth")
 		return nil
@@ -244,18 +245,9 @@ func (b *BlockServerRemote) resetAuth(
 		return err
 	}
 
-	// get UID, deviceKID and normalized username
-	username, uid, err := b.cig.GetCurrentUserInfo(ctx)
-	if err != nil {
-		return err
-	}
-	key, err := b.cig.GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		return err
-	}
-
 	// get a new signature
-	signature, err := authToken.Sign(ctx, username, uid, key, challenge)
+	signature, err := authToken.Sign(ctx, session.Name,
+		session.UID, session.VerifyingKey, challenge)
 	if err != nil {
 		return err
 	}

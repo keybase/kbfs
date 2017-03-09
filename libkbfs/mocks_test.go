@@ -1090,70 +1090,36 @@ func (_mr *_MocknormalizedUsernameGetterRecorder) GetNormalizedUsername(arg0, ar
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetNormalizedUsername", arg0, arg1)
 }
 
-// Mock of currentInfoGetter interface
-type MockcurrentInfoGetter struct {
+// Mock of currentSessionGetter interface
+type MockcurrentSessionGetter struct {
 	ctrl     *gomock.Controller
-	recorder *_MockcurrentInfoGetterRecorder
+	recorder *_MockcurrentSessionGetterRecorder
 }
 
-// Recorder for MockcurrentInfoGetter (not exported)
-type _MockcurrentInfoGetterRecorder struct {
-	mock *MockcurrentInfoGetter
+// Recorder for MockcurrentSessionGetter (not exported)
+type _MockcurrentSessionGetterRecorder struct {
+	mock *MockcurrentSessionGetter
 }
 
-func NewMockcurrentInfoGetter(ctrl *gomock.Controller) *MockcurrentInfoGetter {
-	mock := &MockcurrentInfoGetter{ctrl: ctrl}
-	mock.recorder = &_MockcurrentInfoGetterRecorder{mock}
+func NewMockcurrentSessionGetter(ctrl *gomock.Controller) *MockcurrentSessionGetter {
+	mock := &MockcurrentSessionGetter{ctrl: ctrl}
+	mock.recorder = &_MockcurrentSessionGetterRecorder{mock}
 	return mock
 }
 
-func (_m *MockcurrentInfoGetter) EXPECT() *_MockcurrentInfoGetterRecorder {
+func (_m *MockcurrentSessionGetter) EXPECT() *_MockcurrentSessionGetterRecorder {
 	return _m.recorder
 }
 
-func (_m *MockcurrentInfoGetter) GetCurrentToken(ctx context.Context) (string, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentToken", ctx)
-	ret0, _ := ret[0].(string)
+func (_m *MockcurrentSessionGetter) GetCurrentSession(ctx context.Context) (SessionInfo, error) {
+	ret := _m.ctrl.Call(_m, "GetCurrentSession", ctx)
+	ret0, _ := ret[0].(SessionInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockcurrentInfoGetterRecorder) GetCurrentToken(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentToken", arg0)
-}
-
-func (_m *MockcurrentInfoGetter) GetCurrentUserInfo(ctx context.Context) (libkb.NormalizedUsername, keybase1.UID, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentUserInfo", ctx)
-	ret0, _ := ret[0].(libkb.NormalizedUsername)
-	ret1, _ := ret[1].(keybase1.UID)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-func (_mr *_MockcurrentInfoGetterRecorder) GetCurrentUserInfo(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentUserInfo", arg0)
-}
-
-func (_m *MockcurrentInfoGetter) GetCurrentCryptPublicKey(ctx context.Context) (kbfscrypto.CryptPublicKey, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentCryptPublicKey", ctx)
-	ret0, _ := ret[0].(kbfscrypto.CryptPublicKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockcurrentInfoGetterRecorder) GetCurrentCryptPublicKey(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentCryptPublicKey", arg0)
-}
-
-func (_m *MockcurrentInfoGetter) GetCurrentVerifyingKey(ctx context.Context) (kbfscrypto.VerifyingKey, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentVerifyingKey", ctx)
-	ret0, _ := ret[0].(kbfscrypto.VerifyingKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockcurrentInfoGetterRecorder) GetCurrentVerifyingKey(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentVerifyingKey", arg0)
+func (_mr *_MockcurrentSessionGetterRecorder) GetCurrentSession(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentSession", arg0)
 }
 
 // Mock of KBPKI interface
@@ -1177,49 +1143,15 @@ func (_m *MockKBPKI) EXPECT() *_MockKBPKIRecorder {
 	return _m.recorder
 }
 
-func (_m *MockKBPKI) GetCurrentToken(ctx context.Context) (string, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentToken", ctx)
-	ret0, _ := ret[0].(string)
+func (_m *MockKBPKI) GetCurrentSession(ctx context.Context) (SessionInfo, error) {
+	ret := _m.ctrl.Call(_m, "GetCurrentSession", ctx)
+	ret0, _ := ret[0].(SessionInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockKBPKIRecorder) GetCurrentToken(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentToken", arg0)
-}
-
-func (_m *MockKBPKI) GetCurrentUserInfo(ctx context.Context) (libkb.NormalizedUsername, keybase1.UID, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentUserInfo", ctx)
-	ret0, _ := ret[0].(libkb.NormalizedUsername)
-	ret1, _ := ret[1].(keybase1.UID)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-func (_mr *_MockKBPKIRecorder) GetCurrentUserInfo(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentUserInfo", arg0)
-}
-
-func (_m *MockKBPKI) GetCurrentCryptPublicKey(ctx context.Context) (kbfscrypto.CryptPublicKey, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentCryptPublicKey", ctx)
-	ret0, _ := ret[0].(kbfscrypto.CryptPublicKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockKBPKIRecorder) GetCurrentCryptPublicKey(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentCryptPublicKey", arg0)
-}
-
-func (_m *MockKBPKI) GetCurrentVerifyingKey(ctx context.Context) (kbfscrypto.VerifyingKey, error) {
-	ret := _m.ctrl.Call(_m, "GetCurrentVerifyingKey", ctx)
-	ret0, _ := ret[0].(kbfscrypto.VerifyingKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockKBPKIRecorder) GetCurrentVerifyingKey(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentVerifyingKey", arg0)
+func (_mr *_MockKBPKIRecorder) GetCurrentSession(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentSession", arg0)
 }
 
 func (_m *MockKBPKI) Resolve(ctx context.Context, assertion string) (libkb.NormalizedUsername, keybase1.UID, error) {
@@ -2307,8 +2239,8 @@ func (_mr *_MockcryptoPureRecorder) GetTLFCryptKeyServerHalfID(arg0, arg1, arg2 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalfID", arg0, arg1, arg2)
 }
 
-func (_m *MockcryptoPure) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, deviceKID keybase1.KID, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
-	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, deviceKID, serverHalf)
+func (_m *MockcryptoPure) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
+	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, devicePubKey, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -2583,8 +2515,8 @@ func (_mr *_MockCryptoRecorder) GetTLFCryptKeyServerHalfID(arg0, arg1, arg2 inte
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyServerHalfID", arg0, arg1, arg2)
 }
 
-func (_m *MockCrypto) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, deviceKID keybase1.KID, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
-	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, deviceKID, serverHalf)
+func (_m *MockCrypto) VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID, user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey, serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
+	ret := _m.ctrl.Call(_m, "VerifyTLFCryptKeyServerHalfID", serverHalfID, user, devicePubKey, serverHalf)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -2896,8 +2828,8 @@ func (_mr *_MockKeyOpsRecorder) PutTLFCryptKeyServerHalves(arg0, arg1 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PutTLFCryptKeyServerHalves", arg0, arg1)
 }
 
-func (_m *MockKeyOps) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, kid keybase1.KID, serverHalfID TLFCryptKeyServerHalfID) error {
-	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, kid, serverHalfID)
+func (_m *MockKeyOps) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, key kbfscrypto.CryptPublicKey, serverHalfID TLFCryptKeyServerHalfID) error {
+	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, key, serverHalfID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -3855,8 +3787,8 @@ func (_mr *_MockKeyServerRecorder) PutTLFCryptKeyServerHalves(arg0, arg1 interfa
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PutTLFCryptKeyServerHalves", arg0, arg1)
 }
 
-func (_m *MockKeyServer) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, kid keybase1.KID, serverHalfID TLFCryptKeyServerHalfID) error {
-	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, kid, serverHalfID)
+func (_m *MockKeyServer) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, key kbfscrypto.CryptPublicKey, serverHalfID TLFCryptKeyServerHalfID) error {
+	ret := _m.ctrl.Call(_m, "DeleteTLFCryptKeyServerHalf", ctx, uid, key, serverHalfID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }

@@ -485,7 +485,7 @@ func (fbo *folderBranchOps) addToFavorites(ctx context.Context,
 
 func (fbo *folderBranchOps) addToFavoritesByHandle(ctx context.Context,
 	favorites *Favorites, handle *TlfHandle, created bool) (err error) {
-	if _, _, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx); err != nil {
+	if _, err := fbo.config.KBPKI().GetCurrentSession(ctx); err != nil {
 		// Can't favorite while not logged in
 		return nil
 	}
@@ -496,7 +496,7 @@ func (fbo *folderBranchOps) addToFavoritesByHandle(ctx context.Context,
 
 func (fbo *folderBranchOps) deleteFromFavorites(ctx context.Context,
 	favorites *Favorites) error {
-	if _, _, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx); err != nil {
+	if _, err := fbo.config.KBPKI().GetCurrentSession(ctx); err != nil {
 		// Can't unfavorite while not logged in
 		return nil
 	}
@@ -683,7 +683,6 @@ func (fbo *folderBranchOps) setHeadLocked(
 		fbo.cr.Resolve(md.Revision(), MetadataRevisionUninitialized)
 	} else if md.MergedStatus() == Merged {
 		journalEnabled := TLFJournalEnabled(fbo.config, fbo.id())
-		var key kbfscrypto.VerifyingKey
 		if journalEnabled {
 			if isFirstHead {
 				// If journaling is on, and this is the first head
@@ -719,11 +718,11 @@ func (fbo *folderBranchOps) setHeadLocked(
 				// then latter case will be handled by onMDFlush when
 				// the update is properly flushed to the server.  So
 				// ignore updates written by this device.
-				key, err = fbo.config.KBPKI().GetCurrentVerifyingKey(ctx)
+				session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 				if err != nil {
 					return err
 				}
-				if key != md.LastModifyingWriterVerifyingKey() {
+				if session.VerifyingKey != md.LastModifyingWriterVerifyingKey() {
 					fbo.setLatestMergedRevisionLocked(
 						ctx, lState, md.Revision(), false)
 				}
@@ -1073,12 +1072,13 @@ func (fbo *folderBranchOps) getMDForReadHelper(
 		return ImmutableRootMetadata{}, err
 	}
 	if !md.TlfID().IsPublic() {
-		username, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+		session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 		if err != nil {
 			return ImmutableRootMetadata{}, err
 		}
-		if !md.GetTlfHandle().IsReader(uid) {
-			return ImmutableRootMetadata{}, NewReadAccessError(md.GetTlfHandle(), username, md.GetTlfHandle().GetCanonicalPath())
+		if !md.GetTlfHandle().IsReader(session.UID) {
+			return ImmutableRootMetadata{}, NewReadAccessError(
+				md.GetTlfHandle(), session.Name, md.GetTlfHandle().GetCanonicalPath())
 		}
 	}
 	return md, nil
@@ -1149,12 +1149,13 @@ func (fbo *folderBranchOps) getMDForReadNeedIdentifyOnMaybeFirstAccess(
 	}
 
 	if !md.TlfID().IsPublic() {
-		username, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+		session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 		if err != nil {
 			return ImmutableRootMetadata{}, err
 		}
-		if !md.GetTlfHandle().IsReader(uid) {
-			return ImmutableRootMetadata{}, NewReadAccessError(md.GetTlfHandle(), username, md.GetTlfHandle().GetCanonicalPath())
+		if !md.GetTlfHandle().IsReader(session.UID) {
+			return ImmutableRootMetadata{}, NewReadAccessError(
+				md.GetTlfHandle(), session.Name, md.GetTlfHandle().GetCanonicalPath())
 		}
 	}
 
@@ -1179,12 +1180,13 @@ func (fbo *folderBranchOps) getMDForWriteLockedForFilename(
 		return nil, err
 	}
 
-	username, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if !md.GetTlfHandle().IsWriter(uid) {
-		return nil, NewWriteAccessError(md.GetTlfHandle(), username, filename)
+	if !md.GetTlfHandle().IsWriter(session.UID) {
+		return nil, NewWriteAccessError(
+			md.GetTlfHandle(), session.Name, filename)
 	}
 
 	// Make a new successor of the current MD to hold the coming
@@ -1211,7 +1213,7 @@ func (fbo *folderBranchOps) getMDForRekeyWriteLocked(
 		return nil, kbfscrypto.VerifyingKey{}, false, err
 	}
 
-	username, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return nil, kbfscrypto.VerifyingKey{}, false, err
 	}
@@ -1219,22 +1221,22 @@ func (fbo *folderBranchOps) getMDForRekeyWriteLocked(
 	handle := md.GetTlfHandle()
 
 	// must be a reader or writer (it checks both.)
-	if !handle.IsReader(uid) {
+	if !handle.IsReader(session.UID) {
 		return nil, kbfscrypto.VerifyingKey{}, false,
-			NewRekeyPermissionError(md.GetTlfHandle(), username)
+			NewRekeyPermissionError(md.GetTlfHandle(), session.Name)
 	}
 
 	newMd, err := md.MakeSuccessor(ctx, fbo.config.MetadataVersion(),
 		fbo.config.Codec(), fbo.config.Crypto(),
-		fbo.config.KeyManager(), md.mdID, handle.IsWriter(uid))
+		fbo.config.KeyManager(), md.mdID, handle.IsWriter(session.UID))
 	if err != nil {
 		return nil, kbfscrypto.VerifyingKey{}, false, err
 	}
 
 	// readers shouldn't modify writer metadata
-	if !handle.IsWriter(uid) && !newMd.IsWriterMetadataCopiedSet() {
+	if !handle.IsWriter(session.UID) && !newMd.IsWriterMetadataCopiedSet() {
 		return nil, kbfscrypto.VerifyingKey{}, false,
-			NewRekeyPermissionError(handle, username)
+			NewRekeyPermissionError(handle, session.Name)
 	}
 
 	return newMd, md.LastModifyingWriterVerifyingKey(), md.IsRekeySet(), nil
@@ -1250,13 +1252,13 @@ func (fbo *folderBranchOps) maybeUnembedAndPutBlocks(ctx context.Context,
 		return nil, nil
 	}
 
-	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	bps := newBlockPutState(1)
-	err = fbo.unembedBlockChanges(ctx, bps, md, &md.data.Changes, uid)
+	err = fbo.unembedBlockChanges(ctx, bps, md, &md.data.Changes, session.UID)
 	if err != nil {
 		return nil, err
 	}
@@ -1322,7 +1324,7 @@ func (fbo *folderBranchOps) initMDLocked(
 	ctx context.Context, lState *lockState, md *RootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 
-	username, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return err
 	}
@@ -1330,8 +1332,9 @@ func (fbo *folderBranchOps) initMDLocked(
 	handle := md.GetTlfHandle()
 
 	// make sure we're a writer before rekeying or putting any blocks.
-	if !handle.IsWriter(uid) {
-		return NewWriteAccessError(handle, username, handle.GetCanonicalPath())
+	if !handle.IsWriter(session.UID) {
+		return NewWriteAccessError(
+			handle, session.Name, handle.GetCanonicalPath())
 	}
 
 	var expectedKeyGen KeyGen
@@ -1358,7 +1361,7 @@ func (fbo *folderBranchOps) initMDLocked(
 
 	// create a dblock since one doesn't exist yet
 	newDblock, info, readyBlockData, err :=
-		ResetRootBlock(ctx, fbo.config, uid, md)
+		ResetRootBlock(ctx, fbo.config, session.UID, md)
 	if err != nil {
 		return err
 	}
@@ -1390,11 +1393,6 @@ func (fbo *folderBranchOps) initMDLocked(
 		return err
 	}
 
-	key, err := fbo.config.KBPKI().GetCurrentVerifyingKey(ctx)
-	if err != nil {
-		return err
-	}
-
 	// finally, write out the new metadata
 	mdID, err := fbo.config.MDOps().Put(ctx, md)
 	if err != nil {
@@ -1412,7 +1410,7 @@ func (fbo *folderBranchOps) initMDLocked(
 	}
 
 	fbo.setNewInitialHeadLocked(ctx, lState, MakeImmutableRootMetadata(
-		md, key, mdID, fbo.config.Clock().Now()))
+		md, session.VerifyingKey, mdID, fbo.config.Clock().Now()))
 	if err != nil {
 		return err
 	}
@@ -2204,14 +2202,14 @@ func (fbo *folderBranchOps) syncBlockAndCheckEmbedLocked(ctx context.Context,
 	path, DirEntry, *blockPutState, error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
-	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return path{}, DirEntry{}, nil, err
 	}
 
 	newPath, newDe, bps, err := fbo.syncBlockLocked(
-		ctx, lState, uid, md, newBlock, dir, name, entryType, mtime,
-		ctime, stopAt, lbc)
+		ctx, lState, session.UID, md, newBlock, dir, name, entryType,
+		mtime, ctime, stopAt, lbc)
 	if err != nil {
 		return path{}, DirEntry{}, nil, err
 	}
@@ -2221,8 +2219,8 @@ func (fbo *folderBranchOps) syncBlockAndCheckEmbedLocked(ctx context.Context,
 	if stopAt == zeroPtr {
 		bsplit := fbo.config.BlockSplitter()
 		if !bsplit.ShouldEmbedBlockChanges(&md.data.Changes) {
-			err = fbo.unembedBlockChanges(ctx, bps, md, &md.data.Changes,
-				uid)
+			err = fbo.unembedBlockChanges(
+				ctx, bps, md, &md.data.Changes, session.UID)
 			if err != nil {
 				return path{}, DirEntry{}, nil, err
 			}
@@ -2335,7 +2333,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		return err
 	}
 
-	key, err := fbo.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return err
 	}
@@ -2409,7 +2407,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
 	irmd := MakeImmutableRootMetadata(
-		md, key, mdID, fbo.config.Clock().Now())
+		md, session.VerifyingKey, mdID, fbo.config.Clock().Now())
 	err = fbo.setHeadSuccessorLocked(ctx, lState, irmd, rebased)
 	if err != nil {
 		return err
@@ -2516,10 +2514,11 @@ func (fbo *folderBranchOps) finalizeMDRekeyWriteLocked(ctx context.Context,
 		key = lastWriterVerifyingKey
 	} else {
 		var err error
-		key, err = fbo.config.KBPKI().GetCurrentVerifyingKey(ctx)
+		session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 		if err != nil {
 			return err
 		}
+		key = session.VerifyingKey
 	}
 
 	fbo.headLock.Lock(lState)
@@ -2572,7 +2571,7 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *GCOp) (
 		return err
 	}
 
-	key, err := fbo.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return err
 	}
@@ -2598,7 +2597,7 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *GCOp) (
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
 	irmd := MakeImmutableRootMetadata(
-		md, key, mdID, fbo.config.Clock().Now())
+		md, session.VerifyingKey, mdID, fbo.config.Clock().Now())
 	err = fbo.setHeadSuccessorLocked(ctx, lState, irmd, rebased)
 	if err != nil {
 		return err
@@ -3744,7 +3743,7 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 		return true, fbo.blocks.ClearCacheInfo(lState, file)
 	}
 
-	_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return true, err
 	}
@@ -3758,7 +3757,7 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 	// Filled in by doBlockPuts below.
 	var blocksToRemove []BlockPointer
 	fblock, bps, lbc, syncState, err :=
-		fbo.blocks.StartSync(ctx, lState, md, uid, file)
+		fbo.blocks.StartSync(ctx, lState, md, session.UID, file)
 	defer func() {
 		fbo.blocks.CleanupSyncState(
 			ctx, lState, md.ReadOnly(), file, blocksToRemove, syncState, err)
@@ -4227,11 +4226,11 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			// before the conflict was detected.  Assume we'll hear
 			// about the conflict via callbacks from the journal.
 			if TLFJournalEnabled(fbo.config, fbo.id()) {
-				key, err := fbo.config.KBPKI().GetCurrentVerifyingKey(ctx)
+				session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 				if err != nil {
 					return err
 				}
-				if key == latestMerged.LastModifyingWriterVerifyingKey() {
+				if session.VerifyingKey == latestMerged.LastModifyingWriterVerifyingKey() {
 					return UnmergedError{}
 				}
 			}
@@ -4675,7 +4674,7 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 		}
 		// Clear the rekey bit if any.
 		md.clearRekeyBit()
-		_, uid, err := fbo.config.KBPKI().GetCurrentUserInfo(ctx)
+		session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 		if err != nil {
 			return RekeyResult{}, err
 		}
@@ -4685,7 +4684,7 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 		// 2) Readers need the MetadataFlagWriterMetadataCopied bit set for
 		//	  MDServer to authorize the write.
 		// Without this check, MDServer returns an Unauthorized error.
-		if md.GetTlfHandle().IsWriter(uid) {
+		if md.GetTlfHandle().IsWriter(session.UID) {
 			md.clearLastRevision()
 		}
 
@@ -5401,12 +5400,12 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 	// Set the head to the new MD.
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
-	key, err := fbo.config.KBPKI().GetCurrentVerifyingKey(ctx)
+	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return err
 	}
 	irmd := MakeImmutableRootMetadata(
-		md, key, mdID, fbo.config.Clock().Now())
+		md, session.VerifyingKey, mdID, fbo.config.Clock().Now())
 	err = fbo.setHeadConflictResolvedLocked(ctx, lState, irmd)
 	if err != nil {
 		fbo.log.CWarningf(ctx, "Couldn't set local MD head after a "+
