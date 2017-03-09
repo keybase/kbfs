@@ -319,10 +319,11 @@ type backpressureDiskLimiter struct {
 
 	// lock protects everything in the trackers, including the
 	// (implicit) maximum values of the semaphores, but not the
-	// actual semaphore itself.
+	// actual semaphores themselves.
 	lock                                   sync.RWMutex
 	journalByteTracker, journalFileTracker *backpressureTracker
 	diskCacheByteTracker                   *backpressureTracker
+	quotaTracker                           *quotaBackpressureTracker
 }
 
 var _ DiskLimiter = (*backpressureDiskLimiter)(nil)
@@ -334,6 +335,12 @@ type backpressureDiskLimiterParams struct {
 	// maxThreshold is the fraction of the free bytes/files at
 	// which we max out on backpressure.
 	maxThreshold float64
+	// quotaMinThreshold is the fraction of used quota at which we
+	// start to apply backpressure.
+	quotaMinThreshold float64
+	// quotamaxThreshold is the fraction of used quota at which we
+	// max out on backpressure.
+	quotaMaxThreshold float64
 	// journalFrac is fraction of the free bytes/files that the
 	// journal is allowed to use.
 	journalFrac float64
@@ -377,6 +384,9 @@ func makeDefaultBackpressureDiskLimiterParams(
 		// ...and max it out at 95% (slightly less than 100%
 		// to allow for inaccuracies in estimates).
 		maxThreshold: 0.95,
+		// TODO: Add comments.
+		quotaMinThreshold: 0.8,
+		quotaMaxThreshold: 1.2,
 		// Cap journal usage to 15% of free bytes and files...
 		journalFrac: 0.15,
 		// ...and cap disk cache usage to 10% of free
@@ -429,9 +439,16 @@ func newBackpressureDiskLimiter(
 	diskCacheByteLimit := int64((float64(params.byteLimit) * params.diskCacheFrac) + 0.5)
 	diskCacheByteTracker, err := newBackpressureTracker(
 		1.0, 1.0, params.diskCacheFrac, diskCacheByteLimit, freeBytes)
+	quotaTracker, err := newQuotaBackpressureTracker(
+		params.quotaMinThreshold, params.quotaMaxThreshold,
+		// TODO: Fill in with real values.
+		10*1024*1024, 0)
+	if err != nil {
+		return nil, err
+	}
 	bdl := &backpressureDiskLimiter{
 		log, params.maxDelay, params.delayFn, params.freeBytesAndFilesFn, sync.RWMutex{},
-		byteTracker, fileTracker, diskCacheByteTracker,
+		byteTracker, fileTracker, diskCacheByteTracker, quotaTracker,
 	}
 	return bdl, nil
 }

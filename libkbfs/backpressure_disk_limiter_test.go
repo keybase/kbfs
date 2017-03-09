@@ -155,13 +155,15 @@ func TestDefaultDoDelayCancel(t *testing.T) {
 
 func makeTestBackpressureDiskLimiterParams() backpressureDiskLimiterParams {
 	return backpressureDiskLimiterParams{
-		minThreshold:  0.1,
-		maxThreshold:  0.9,
-		journalFrac:   0.25,
-		diskCacheFrac: 0.1,
-		byteLimit:     400,
-		fileLimit:     40,
-		maxDelay:      8 * time.Second,
+		minThreshold:      0.1,
+		maxThreshold:      0.9,
+		quotaMinThreshold: 0.8,
+		quotaMaxThreshold: 1.2,
+		journalFrac:       0.25,
+		diskCacheFrac:     0.1,
+		byteLimit:         400,
+		fileLimit:         40,
+		maxDelay:          8 * time.Second,
 		delayFn: func(context.Context, time.Duration) error {
 			return nil
 		},
