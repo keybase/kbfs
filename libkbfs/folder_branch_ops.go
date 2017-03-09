@@ -4780,7 +4780,7 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 	}, nil
 }
 
-func (fbo *folderBranchOps) RequestRekey(tlf tlf.ID) {
+func (fbo *folderBranchOps) RequestRekey(_ context.Context, tlf tlf.ID) {
 	fb := FolderBranch{tlf, MasterBranch}
 	if fb != fbo.folderBranch {
 		// TODO: log instead of panic?

@@ -504,6 +504,9 @@ func getRekeyFSMForTest(ops KBFSOps, tlfID tlf.ID) RekeyFSM {
 // associated with tlfID, and wait for exact one rekeyFinished event. This can
 // be useful for waiting for a rekey result in tests.
 //
+// Note that the supplied ctx is injected to the rekey task, so canceling ctx
+// would actually cancel the rekey.
+//
 // Currently this is only used in tests and RekeyFile. Normal rekey activities
 // should go through the FSM asychronously.
 func RequestRekeyAndWaitForOneFinishEvent(ctx context.Context,

@@ -694,12 +694,12 @@ func (_mr *_MockKBFSOpsRecorder) UnstageForTesting(arg0, arg1 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "UnstageForTesting", arg0, arg1)
 }
 
-func (_m *MockKBFSOps) RequestRekey(id tlf.ID) {
-	_m.ctrl.Call(_m, "RequestRekey", id)
+func (_m *MockKBFSOps) RequestRekey(ctx context.Context, id tlf.ID) {
+	_m.ctrl.Call(_m, "RequestRekey", ctx, id)
 }
 
-func (_mr *_MockKBFSOpsRecorder) RequestRekey(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "RequestRekey", arg0)
+func (_mr *_MockKBFSOpsRecorder) RequestRekey(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "RequestRekey", arg0, arg1)
 }
 
 func (_m *MockKBFSOps) SyncFromServerForTesting(ctx context.Context, folderBranch FolderBranch) error {
@@ -6130,4 +6130,49 @@ func (_m *MockKeyBundleCache) PutTLFWriterKeyBundle(_param0 tlf.ID, _param1 TLFW
 
 func (_mr *_MockKeyBundleCacheRecorder) PutTLFWriterKeyBundle(arg0, arg1, arg2 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PutTLFWriterKeyBundle", arg0, arg1, arg2)
+}
+
+// Mock of RekeyFSM interface
+type MockRekeyFSM struct {
+	ctrl     *gomock.Controller
+	recorder *_MockRekeyFSMRecorder
+}
+
+// Recorder for MockRekeyFSM (not exported)
+type _MockRekeyFSMRecorder struct {
+	mock *MockRekeyFSM
+}
+
+func NewMockRekeyFSM(ctrl *gomock.Controller) *MockRekeyFSM {
+	mock := &MockRekeyFSM{ctrl: ctrl}
+	mock.recorder = &_MockRekeyFSMRecorder{mock}
+	return mock
+}
+
+func (_m *MockRekeyFSM) EXPECT() *_MockRekeyFSMRecorder {
+	return _m.recorder
+}
+
+func (_m *MockRekeyFSM) Event(event RekeyEvent) {
+	_m.ctrl.Call(_m, "Event", event)
+}
+
+func (_mr *_MockRekeyFSMRecorder) Event(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Event", arg0)
+}
+
+func (_m *MockRekeyFSM) Shutdown() {
+	_m.ctrl.Call(_m, "Shutdown")
+}
+
+func (_mr *_MockRekeyFSMRecorder) Shutdown() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
+}
+
+func (_m *MockRekeyFSM) listenOnEventForTest(event rekeyEventType, callback func(RekeyEvent), repeatedly bool) {
+	_m.ctrl.Call(_m, "listenOnEventForTest", event, callback, repeatedly)
+}
+
+func (_mr *_MockRekeyFSMRecorder) listenOnEventForTest(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "listenOnEventForTest", arg0, arg1, arg2)
 }

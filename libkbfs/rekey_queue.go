@@ -78,7 +78,7 @@ func (rkq *RekeyQueueStandard) start(ctx context.Context) {
 			if err := rkq.limiter.Wait(ctx); err != nil {
 				rkq.log.Debug("Waiting on rate limiter for tlf=%v error: %v", id, err)
 			} else {
-				rkq.config.KBFSOps().RequestRekey(id)
+				rkq.config.KBFSOps().RequestRekey(context.Background(), id)
 			}
 			go func(id tlf.ID) {
 				rkq.mu.Lock()

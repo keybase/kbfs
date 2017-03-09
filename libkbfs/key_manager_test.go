@@ -1729,7 +1729,7 @@ func testKeyManagerRekeyAddAndRevokeDeviceWithConflict(t *testing.T, ver Metadat
 	// Have user 1 also try to rekey but fail due to conflict
 	errChan := make(chan error, 1)
 	go func() {
-		_, err := requestRekeyWithContextAndWaitForOneFinishEvent(putCtx, kbfsOps1, rootNode1.GetFolderBranch().Tlf)
+		_, err := RequestRekeyAndWaitForOneFinishEvent(putCtx, kbfsOps1, rootNode1.GetFolderBranch().Tlf)
 		errChan <- err
 	}()
 	select {
