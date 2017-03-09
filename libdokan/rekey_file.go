@@ -25,7 +25,7 @@ func (f *RekeyFile) WriteFile(ctx context.Context, fi *dokan.FileInfo, bs []byte
 		return 0, nil
 	}
 	// TODO: get rid of this and use RequestRekey instead
-	_, err = libkbfs.RequestRekeyAndWaitForOneFinishEventForTest(
+	_, err = libkbfs.RequestRekeyAndWaitForOneFinishEvent(
 		f.folder.fs.config.KBFSOps(), f.folder.getFolderBranch().Tlf)
 	if err != nil {
 		return 0, err

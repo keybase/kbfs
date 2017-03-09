@@ -39,7 +39,7 @@ func (f *RekeyFile) Write(ctx context.Context, req *fuse.WriteRequest,
 		return nil
 	}
 	// TODO: get rid of this and use RequestRekey instead
-	_, err = libkbfs.RequestRekeyAndWaitForOneFinishEventForTest(
+	_, err = libkbfs.RequestRekeyAndWaitForOneFinishEvent(
 		f.folder.fs.config.KBFSOps(), f.folder.getFolderBranch().Tlf)
 	if err != nil {
 		return err

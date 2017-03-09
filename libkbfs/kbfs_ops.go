@@ -482,8 +482,7 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 		if ops, ok := fs.ops[fb]; ok {
 			fs.log.CDebugf(ctx, "Triggering a paper prompt rekey on folder "+
 				"access due to unreadable MD for %s", h.GetCanonicalPath())
-			// TODO: do we really need explicit paper prompt here?
-			ops.rekeyFSM.Event(NewRekeyRequestEvent())
+			ops.rekeyFSM.Event(NewRekeyRequestWithPaperPromptEvent())
 		}
 		return nil, EntryInfo{}, err
 	}
