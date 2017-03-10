@@ -25,7 +25,7 @@ fi
 
 keybase -debug service &
 SERVICE=$!
-KEYBASE_DEBUG=1 kbfsfuse -debug -mdserver $MDSERVER_ADDR -bserver $BSERVER_ADDR -localuser= -md-version $KBFS_METADATA_VERSION -log-to-file /keybase &
+KEYBASE_DEBUG=1 kbfsfuse -debug -enable-disk-cache -mdserver $MDSERVER_ADDR -bserver $BSERVER_ADDR -localuser= -md-version $KBFS_METADATA_VERSION -log-to-file /keybase &
 KBFS=$!
 
 # Disable journals for tests, since some tests depend on the sync

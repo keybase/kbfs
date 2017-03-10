@@ -47,6 +47,31 @@ type cryptoPureGetter interface {
 	cryptoPure() cryptoPure
 }
 
+type cryptoGetter interface {
+	Crypto() Crypto
+}
+
+type currentSessionGetter interface {
+	// GetCurrentSession gets the current session info.
+	GetCurrentSession(ctx context.Context) (SessionInfo, error)
+}
+
+type currentSessionGetterGetter interface {
+	currentSessionGetter() currentSessionGetter
+}
+
+type signerGetter interface {
+	Signer() kbfscrypto.Signer
+}
+
+type diskBlockCacheGetter interface {
+	DiskBlockCache() DiskBlockCache
+}
+
+type clockGetter interface {
+	Clock() Clock
+}
+
 // Block just needs to be (de)serialized using msgpack
 type Block interface {
 	dataVersioner
@@ -446,11 +471,6 @@ type normalizedUsernameGetter interface {
 	GetNormalizedUsername(ctx context.Context, uid keybase1.UID) (libkb.NormalizedUsername, error)
 }
 
-type currentSessionGetter interface {
-	// GetCurrentSession gets the current session info.
-	GetCurrentSession(ctx context.Context) (SessionInfo, error)
-}
-
 // KBPKI interacts with the Keybase daemon to fetch user info.
 type KBPKI interface {
 	currentSessionGetter
@@ -802,6 +822,20 @@ type DirtyBlockCache interface {
 	// Shutdown frees any resources associated with this instance.  It
 	// returns an error if there are any unsynced blocks.
 	Shutdown() error
+}
+
+// DiskBlockCache caches blocks to the disk.
+type DiskBlockCache interface {
+	// Get gets a block from the disk cache.
+	Get(ctx context.Context, tlfID tlf.ID, blockID kbfsblock.ID) (
+		[]byte, kbfscrypto.BlockCryptKeyServerHalf, error)
+	// Put puts a block to the disk cache.
+	Put(ctx context.Context, tlfID tlf.ID, blockID kbfsblock.ID, buf []byte,
+		serverHalf kbfscrypto.BlockCryptKeyServerHalf) error
+	// DeleteByTLF deletes some blocks from the disk cache.
+	DeleteByTLF(ctx context.Context, tlfID tlf.ID, blockIDs []kbfsblock.ID) error
+	// Shutdown cleanly shuts down the disk block cache.
+	Shutdown(ctx context.Context)
 }
 
 // cryptoPure contains all methods of Crypto that don't depend on
@@ -1450,6 +1484,11 @@ type Config interface {
 	codecGetter
 	cryptoPureGetter
 	keyGetterGetter
+	cryptoGetter
+	signerGetter
+	currentSessionGetterGetter
+	diskBlockCacheGetter
+	clockGetter
 	KBFSOps() KBFSOps
 	SetKBFSOps(KBFSOps)
 	KBPKI() KBPKI
@@ -1467,7 +1506,6 @@ type Config interface {
 	SetBlockCache(BlockCache)
 	DirtyBlockCache() DirtyBlockCache
 	SetDirtyBlockCache(DirtyBlockCache)
-	Crypto() Crypto
 	SetCrypto(Crypto)
 	SetCodec(kbfscodec.Codec)
 	MDOps() MDOps
@@ -1487,7 +1525,6 @@ type Config interface {
 	SetBlockSplitter(BlockSplitter)
 	Notifier() Notifier
 	SetNotifier(Notifier)
-	Clock() Clock
 	SetClock(Clock)
 	ConflictRenamer() ConflictRenamer
 	SetConflictRenamer(ConflictRenamer)
