@@ -4930,8 +4930,8 @@ func (_mr *_MockBareRootMetadataRecorder) IsFinal() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsFinal")
 }
 
-func (_m *MockBareRootMetadata) IsWriter(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool {
-	ret := _m.ctrl.Call(_m, "IsWriter", user, deviceKID, extra)
+func (_m *MockBareRootMetadata) IsWriter(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool {
+	ret := _m.ctrl.Call(_m, "IsWriter", user, deviceKey, extra)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
@@ -4940,8 +4940,8 @@ func (_mr *_MockBareRootMetadataRecorder) IsWriter(arg0, arg1, arg2 interface{})
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsWriter", arg0, arg1, arg2)
 }
 
-func (_m *MockBareRootMetadata) IsReader(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool {
-	ret := _m.ctrl.Call(_m, "IsReader", user, deviceKID, extra)
+func (_m *MockBareRootMetadata) IsReader(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool {
+	ret := _m.ctrl.Call(_m, "IsReader", user, deviceKey, extra)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
@@ -5366,8 +5366,8 @@ func (_mr *_MockMutableBareRootMetadataRecorder) IsFinal() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsFinal")
 }
 
-func (_m *MockMutableBareRootMetadata) IsWriter(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool {
-	ret := _m.ctrl.Call(_m, "IsWriter", user, deviceKID, extra)
+func (_m *MockMutableBareRootMetadata) IsWriter(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool {
+	ret := _m.ctrl.Call(_m, "IsWriter", user, deviceKey, extra)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
@@ -5376,8 +5376,8 @@ func (_mr *_MockMutableBareRootMetadataRecorder) IsWriter(arg0, arg1, arg2 inter
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsWriter", arg0, arg1, arg2)
 }
 
-func (_m *MockMutableBareRootMetadata) IsReader(user keybase1.UID, deviceKID keybase1.KID, extra ExtraMetadata) bool {
-	ret := _m.ctrl.Call(_m, "IsReader", user, deviceKID, extra)
+func (_m *MockMutableBareRootMetadata) IsReader(user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool {
+	ret := _m.ctrl.Call(_m, "IsReader", user, deviceKey, extra)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
@@ -6091,10 +6091,10 @@ func (_mr *_MockRekeyFSMRecorder) Shutdown() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Shutdown")
 }
 
-func (_m *MockRekeyFSM) listenOnEventForTest(event rekeyEventType, callback func(RekeyEvent), repeatedly bool) {
-	_m.ctrl.Call(_m, "listenOnEventForTest", event, callback, repeatedly)
+func (_m *MockRekeyFSM) listenOnEvent(event rekeyEventType, callback func(RekeyEvent), repeatedly bool) {
+	_m.ctrl.Call(_m, "listenOnEvent", event, callback, repeatedly)
 }
 
-func (_mr *_MockRekeyFSMRecorder) listenOnEventForTest(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "listenOnEventForTest", arg0, arg1, arg2)
+func (_mr *_MockRekeyFSMRecorder) listenOnEvent(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "listenOnEvent", arg0, arg1, arg2)
 }

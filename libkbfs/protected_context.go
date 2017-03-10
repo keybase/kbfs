@@ -15,10 +15,10 @@ type defaultContextReplacer struct{}
 
 func (defaultContextReplacer) maybeReplaceContext(context.Context) {}
 
-// protectedContexte is a construct that helps avoid unwanted change of context
+// protectedContext is a construct that helps avoid unwanted change of context
 // when the context needs to be stored.
 type protectedContext struct {
-	mu  sync.Mutex
+	mu  sync.RWMutex
 	ctx context.Context
 	log logger.Logger
 
@@ -40,7 +40,7 @@ func (c *protectedContext) setLogger(log logger.Logger) {
 
 // context returns the context stored in the protectedContext.
 func (c *protectedContext) context() context.Context {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.ctx
 }

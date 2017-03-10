@@ -337,8 +337,8 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 		case nil:
 		default:
 			r.fsm.log.CDebugf(r.task.ctx.context(),
-				"Rekey errored; scheduling new rekey")
-			return newRekeyStateScheduled(r.fsm, 0, rekeyTask{
+				"Rekey errored; scheduling new rekey in %s", rekeyRecheckInterval)
+			return newRekeyStateScheduled(r.fsm, rekeyRecheckInterval, rekeyTask{
 				timeout:     r.task.timeout,
 				promptPaper: r.task.promptPaper,
 				ttl:         ttl,
@@ -385,7 +385,7 @@ func (r *rekeyStateStarted) reactToEvent(event RekeyEvent) rekeyState {
 	}
 }
 
-type listenerForTest struct {
+type rekeyFSMListener struct {
 	repeatedly bool
 	onEvent    func(RekeyEvent)
 }
@@ -399,8 +399,8 @@ type rekeyFSM struct {
 
 	current rekeyState
 
-	muListenersForTest sync.Mutex
-	listenersForTest   map[rekeyEventType][]listenerForTest
+	muListeners sync.Mutex
+	listeners   map[rekeyEventType][]rekeyFSMListener
 }
 
 // NewRekeyFSM creates a new rekey FSM.
@@ -410,7 +410,7 @@ func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 		fbo:  fbo,
 		log:  fbo.config.MakeLogger("RekeyFSM"),
 
-		listenersForTest: make(map[rekeyEventType][]listenerForTest),
+		listeners: make(map[rekeyEventType][]rekeyFSMListener),
 	}
 	fsm.current = newRekeyStateIdle(fsm)
 	go fsm.loop()
@@ -462,16 +462,16 @@ func (m *rekeyFSM) Shutdown() {
 }
 
 func (m *rekeyFSM) triggerCallbacksForTest(e RekeyEvent) {
-	var cbs []listenerForTest
+	var cbs []rekeyFSMListener
 	func() {
-		m.muListenersForTest.Lock()
-		defer m.muListenersForTest.Unlock()
-		cbs = m.listenersForTest[e.eventType]
-		m.listenersForTest[e.eventType] = nil
+		m.muListeners.Lock()
+		defer m.muListeners.Unlock()
+		cbs = m.listeners[e.eventType]
+		m.listeners[e.eventType] = nil
 		for _, cb := range cbs {
 			if cb.repeatedly {
-				m.listenersForTest[e.eventType] = append(
-					m.listenersForTest[e.eventType], cb)
+				m.listeners[e.eventType] = append(
+					m.listeners[e.eventType], cb)
 			}
 		}
 	}()
@@ -480,18 +480,18 @@ func (m *rekeyFSM) triggerCallbacksForTest(e RekeyEvent) {
 	}
 }
 
-// listenOnEventForTest implements RekeyFSM interface for rekeyFSM.
-func (m *rekeyFSM) listenOnEventForTest(
+// listenOnEvent implements RekeyFSM interface for rekeyFSM.
+func (m *rekeyFSM) listenOnEvent(
 	event rekeyEventType, callback func(RekeyEvent), repeatedly bool) {
-	m.muListenersForTest.Lock()
-	defer m.muListenersForTest.Unlock()
-	m.listenersForTest[event] = append(m.listenersForTest[event], listenerForTest{
+	m.muListeners.Lock()
+	defer m.muListeners.Unlock()
+	m.listeners[event] = append(m.listeners[event], rekeyFSMListener{
 		onEvent:    callback,
 		repeatedly: repeatedly,
 	})
 }
 
-func getRekeyFSMForTest(ops KBFSOps, tlfID tlf.ID) RekeyFSM {
+func getRekeyFSM(ops KBFSOps, tlfID tlf.ID) RekeyFSM {
 	switch o := ops.(type) {
 	case *KBFSOpsStandard:
 		return o.getOpsNoAdd(FolderBranch{Tlf: tlfID, Branch: MasterBranch}).rekeyFSM
@@ -513,9 +513,9 @@ func getRekeyFSMForTest(ops KBFSOps, tlfID tlf.ID) RekeyFSM {
 // should go through the FSM asychronously.
 func RequestRekeyAndWaitForOneFinishEvent(ctx context.Context,
 	ops KBFSOps, tlfID tlf.ID) (res RekeyResult, err error) {
-	fsm := getRekeyFSMForTest(ops, tlfID)
+	fsm := getRekeyFSM(ops, tlfID)
 	rekeyWaiter := make(chan struct{})
-	fsm.listenOnEventForTest(rekeyFinishedEvent, func(e RekeyEvent) {
+	fsm.listenOnEvent(rekeyFinishedEvent, func(e RekeyEvent) {
 		res = e.finished.RekeyResult
 		err = e.finished.err
 		close(rekeyWaiter)

@@ -1959,10 +1959,13 @@ type RekeyFSM interface {
 	// after this method is called.
 	Shutdown()
 
-	// listenOnEventForTest adds a listener (callback) to the FSM so that when
+	// listenOnEvent adds a listener (callback) to the FSM so that when
 	// event happens, callback is called with the received event. If repeatedly
 	// is set to false, callback is called only once. Otherwise it's called every
 	// time event happens.
-	listenOnEventForTest(
+	//
+	// Currently this is only used in tests and for RekeyFile. See comment for
+	// RequestRekeyAndWaitForOneFinishEvent for more details.
+	listenOnEvent(
 		event rekeyEventType, callback func(RekeyEvent), repeatedly bool)
 }

@@ -2168,7 +2168,7 @@ func testKeyManagerRekeyAddDeviceWithPromptViaFolderAccess(t *testing.T, ver Met
 //
 // For now, the only application for this is to cause states in rekey_fsm
 // to replace existing context when new request comes in. This is needed
-// because stallers stores staller key in context, and context needs to be
+// because stallers store staller key in context, and context needs to be
 // updated in states in order for stalling to be effective.
 func (c *protectedContext) maybeReplaceContext(newCtx context.Context) {
 	c.mu.Lock()
