@@ -192,9 +192,9 @@ func (bt *backpressureTracker) onBlocksDelete(blockResources int64) {
 
 type backpressureTrackerStatus struct {
 	// Derived numbers.
-	UsedFrac    float64
-	UsedFracSem float64
-	DelayScale  float64
+	UsedFrac   float64
+	InFlight   int64
+	DelayScale float64
 
 	// Constants.
 	MinThreshold float64
@@ -210,17 +210,10 @@ type backpressureTrackerStatus struct {
 }
 
 func (bt *backpressureTracker) getStatus() backpressureTrackerStatus {
-	usedFrac := bt.usedFrac()
-	delayScale := bt.delayScale()
-
-	max := bt.semaphoreMax
-	count := bt.semaphore.Count()
-	usedFracSem := 1 - float64(count)/float64(max)
-
 	return backpressureTrackerStatus{
-		UsedFrac:    usedFrac,
-		UsedFracSem: usedFracSem,
-		DelayScale:  delayScale,
+		UsedFrac:   bt.usedFrac(),
+		InFlight:   bt.used - bt.semaphore.Count(),
+		DelayScale: bt.delayScale(),
 
 		MinThreshold: bt.minThreshold,
 		MaxThreshold: bt.maxThreshold,
@@ -229,8 +222,8 @@ func (bt *backpressureTracker) getStatus() backpressureTrackerStatus {
 
 		Used:  bt.used,
 		Free:  bt.free,
-		Max:   max,
-		Count: count,
+		Max:   bt.semaphoreMax,
+		Count: bt.semaphore.Count(),
 	}
 }
 
