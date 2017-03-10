@@ -402,6 +402,9 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		bdl.lock.Lock()
 		defer bdl.lock.Unlock()
 
+		// Call this under lock to avoid problems with its
+		// return values going stale while blocking on
+		// bdl.lock.
 		freeBytes, freeFiles, err := bdl.freeBytesAndFilesFn()
 		if err != nil {
 			return 0, err
