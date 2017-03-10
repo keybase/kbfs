@@ -55,9 +55,9 @@ type backpressureTracker struct {
 	// semaphoreMax is the last calculated value of currLimit(),
 	// which is min(k(U+F), L).
 	semaphoreMax int64
-	// The value of the semaphore is U - I, where I is the
-	// resource count that is currently "in-flight", i.e. between
-	// beforeBlockPut() and afterBlockPut() calls.
+	// The count of the semaphore is semaphoreMax - U - I, where I
+	// is the resource count that is currently "in-flight",
+	// i.e. between beforeBlockPut() and afterBlockPut() calls.
 	semaphore *kbfssync.Semaphore
 }
 
@@ -210,9 +210,11 @@ type backpressureTrackerStatus struct {
 }
 
 func (bt *backpressureTracker) getStatus() backpressureTrackerStatus {
+	count := bt.semaphore.Count()
+
 	return backpressureTrackerStatus{
 		UsedFrac:   bt.usedFrac(),
-		InFlight:   bt.used - bt.semaphore.Count(),
+		InFlight:   bt.semaphoreMax - count - bt.used,
 		DelayScale: bt.delayScale(),
 
 		MinThreshold: bt.minThreshold,
@@ -223,7 +225,7 @@ func (bt *backpressureTracker) getStatus() backpressureTrackerStatus {
 		Used:  bt.used,
 		Free:  bt.free,
 		Max:   bt.semaphoreMax,
-		Count: bt.semaphore.Count(),
+		Count: count,
 	}
 }
 
