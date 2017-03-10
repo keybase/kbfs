@@ -449,7 +449,6 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	}()
 
 	availableFiles, err = bdl.fileTracker.beforeBlockPut(ctx, blockFiles)
-	// No need to call anything on bdl.quotaTracker.
 	return availableBytes, availableFiles, err
 }
 
