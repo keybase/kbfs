@@ -52,8 +52,13 @@ type backpressureTracker struct {
 	// free is F in the above.
 	free int64
 
+	// semaphoreMax is the last calculated value of currLimit(),
+	// which is min(k(U+F), L).
 	semaphoreMax int64
-	semaphore    *kbfssync.Semaphore
+	// The value of the semaphore is U - I, where I is the
+	// resource count that is currently "in-flight", i.e. between
+	// beforeBlockPut() and afterBlockPut() calls.
+	semaphore *kbfssync.Semaphore
 }
 
 func newBackpressureTracker(minThreshold, maxThreshold, limitFrac float64,
