@@ -2391,6 +2391,7 @@ func TestKBFSOpsConcurWriteBetweenSyncAndDeferredWrites(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't create block splitter: %v", err)
 	}
+	//bsplitter.maxPtrsPerBlock = 100
 	config.SetBlockSplitter(bsplitter)
 
 	rootNode := GetRootNodeOrBust(ctx, t, config, "test_user", false)
@@ -2402,7 +2403,7 @@ func TestKBFSOpsConcurWriteBetweenSyncAndDeferredWrites(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't create file: %v", err)
 	}
-	data := make([]byte, 30)
+	data := make([]byte, 16)
 	// Write 2 blocks worth of data
 	for i := 0; i < len(data); i++ {
 		data[i] = byte(i)
@@ -2426,7 +2427,7 @@ func TestKBFSOpsConcurWriteBetweenSyncAndDeferredWrites(t *testing.T) {
 	}
 
 	// Queue up a few deferred writes (appending to the end of the file).
-	data2 := make([]byte, 30)
+	data2 := make([]byte, 4)
 	// Write 2 blocks worth of data
 	for i := 0; i < len(data2); i++ {
 		data2[i] = byte(i + len(data))
@@ -2467,7 +2468,7 @@ func TestKBFSOpsConcurWriteBetweenSyncAndDeferredWrites(t *testing.T) {
 	lock.blockCh = nil
 
 	// Slip another write in at this point.
-	data3 := make([]byte, 30)
+	data3 := make([]byte, 4)
 	// Write 2 blocks worth of data
 	for i := 0; i < len(data3); i++ {
 		data3[i] = byte(i + len(data) + len(data2))
@@ -2488,12 +2489,6 @@ func TestKBFSOpsConcurWriteBetweenSyncAndDeferredWrites(t *testing.T) {
 		t.Fatalf("Timeout waiting for sync")
 	}
 
-	// Sync the deferred and final writes.
-	err = kbfsOps.Sync(ctx, fileNode)
-	if err != nil {
-		t.Errorf("Couldn't sync file")
-	}
-
 	// Make sure the data works out.
 	gotData := make([]byte, len(data)+len(data2)+len(data3))
 	expectData := make([]byte, len(data)+len(data2)+len(data3))
@@ -2501,10 +2496,23 @@ func TestKBFSOpsConcurWriteBetweenSyncAndDeferredWrites(t *testing.T) {
 	copy(expectData[len(data):len(data)+len(data2)], data2)
 	copy(expectData[len(data)+len(data2):], data3)
 
-	_, err = kbfsOps.Read(ctx, fileNode, gotData, 0)
+	n, err := kbfsOps.Read(ctx, fileNode, gotData, 0)
 	if err != nil {
 		t.Fatalf("Couldn't read: %+v", err)
 	} else if !bytes.Equal(gotData, expectData) {
-		t.Fatalf("Bad read: got=%v, expected=%v", gotData, expectData)
+		t.Fatalf("Bad read: got=%v (%d), expected=%v", gotData, n, expectData)
+	}
+
+	// Sync the deferred and final writes.
+	err = kbfsOps.Sync(ctx, fileNode)
+	if err != nil {
+		t.Errorf("Couldn't sync file")
+	}
+
+	n, err = kbfsOps.Read(ctx, fileNode, gotData, 0)
+	if err != nil {
+		t.Fatalf("Couldn't read: %+v", err)
+	} else if !bytes.Equal(gotData, expectData) {
+		t.Fatalf("Bad read: got=%v (%d), expected=%v", gotData, n, expectData)
 	}
 }
