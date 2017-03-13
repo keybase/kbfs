@@ -87,17 +87,27 @@ func (m ForceMounter) Unmount() (err error) {
 
 func doUnmount(dir string, force bool) (err error) {
 	switch runtime.GOOS {
-	case "darwin":
-		if force {
-			_, err = exec.Command("/usr/sbin/diskutil", "unmountDisk", "force", dir).Output()
-		} else {
-			_, err = exec.Command("/sbin/umount", dir).Output()
+	case "darwin", "linux":
+		switch runtime.GOOS {
+		case "darwin":
+			if force {
+				_, err = exec.Command(
+					"/usr/sbin/diskutil", "unmountDisk", "force", dir).Output()
+			} else {
+				_, err = exec.Command("/sbin/umount", dir).Output()
+			}
+		case "linux":
+			if force {
+				_, err = exec.Command("fusermount", "-ul", dir).Output()
+			} else {
+				_, err = exec.Command("fusermount", "-u", dir).Output()
+			}
 		}
-	case "linux":
-		if force {
-			_, err = exec.Command("fusermount", "-ul", dir).Output()
-		} else {
-			_, err = exec.Command("fusermount", "-u", dir).Output()
+		if err != nil {
+			if execErr, ok := err.(*exec.ExitError); ok && execErr.Stderr != nil {
+				err = fmt.Errorf("%s (%s)", execErr, execErr.Stderr)
+			}
+			return err
 		}
 	default:
 		if force {

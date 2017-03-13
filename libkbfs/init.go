@@ -354,11 +354,18 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 	go func() {
 		_ = <-interruptChan
 
+		close(done)
+
 		if onInterruptFn != nil {
 			onInterruptFn()
+
+			// Keep listening on the signal channel in case unmount fails the first
+			// time and user continues pressing Ctrl-C.
+			for range interruptChan {
+				onInterruptFn()
+			}
 		}
 
-		close(done)
 	}()
 
 	// Spawn a new goroutine for `doInit` so that we can `select` on `done` and
