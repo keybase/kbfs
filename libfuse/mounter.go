@@ -107,11 +107,8 @@ func doUnmount(dir string, force bool) (err error) {
 			err = fuse.Unmount(dir)
 		}
 	}
-	if err != nil {
-		if execErr, ok := err.(*exec.ExitError); ok && execErr.Stderr != nil {
-			err = fmt.Errorf("%s (%s)", execErr, execErr.Stderr)
-		}
-		return err
+	if execErr, ok := err.(*exec.ExitError); ok && execErr.Stderr != nil {
+		err = fmt.Errorf("%s (%s)", execErr, execErr.Stderr)
 	}
 	return err
 }
