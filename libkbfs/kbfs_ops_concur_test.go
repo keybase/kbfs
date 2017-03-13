@@ -2359,3 +2359,152 @@ func TestKBFSOpsLookupSyncRace(t *testing.T) {
 		t.Errorf("Read wrong data.  Expected %v, got %v", data, gotData)
 	}
 }
+
+type blockingBlockLock struct {
+	blockLock
+	blockCh  <-chan struct{}
+	notifyCh chan<- struct{}
+}
+
+func (bl *blockingBlockLock) Lock(lState *lockState) {
+	if bl.blockCh != nil {
+		ch := bl.blockCh
+		bl.notifyCh <- struct{}{}
+		<-ch
+	}
+
+	bl.blockLock.Lock(lState)
+}
+
+// Test that a write that sneaks in after a sync, but before the
+// deferred writes are applied, don't corrupt the file.  This is a
+// regression test for KBFS-2004.
+func TestKBFSOpsConcurWriteBetweenSyncAndDeferredWrites(t *testing.T) {
+	config, _, ctx, cancel := kbfsOpsConcurInit(t, "test_user")
+	defer kbfsConcurTestShutdown(t, config, ctx, cancel)
+
+	onPutStalledCh, putUnstallCh, putCtx :=
+		StallMDOp(ctx, config, StallableMDAfterPut, 1)
+
+	// Use the smallest possible block size.
+	bsplitter, err := NewBlockSplitterSimple(20, 8*1024, config.Codec())
+	if err != nil {
+		t.Fatalf("Couldn't create block splitter: %v", err)
+	}
+	config.SetBlockSplitter(bsplitter)
+
+	rootNode := GetRootNodeOrBust(ctx, t, config, "test_user", false)
+	ops := getOps(config, rootNode.GetFolderBranch().Tlf)
+
+	// Create and write to a file.
+	kbfsOps := config.KBFSOps()
+	fileNode, _, err := kbfsOps.CreateFile(ctx, rootNode, "a", false, NoExcl)
+	if err != nil {
+		t.Fatalf("Couldn't create file: %v", err)
+	}
+	data := make([]byte, 30)
+	// Write 2 blocks worth of data
+	for i := 0; i < len(data); i++ {
+		data[i] = byte(i)
+	}
+	err = kbfsOps.Write(ctx, fileNode, data, 0)
+	if err != nil {
+		t.Errorf("Couldn't write file: %v", err)
+	}
+
+	// Start and stall the sync.
+	errChan := make(chan error)
+	go func() {
+		errChan <- kbfsOps.Sync(putCtx, fileNode)
+	}()
+
+	// Wait until Sync gets stuck at MDOps.Put().
+	select {
+	case <-onPutStalledCh:
+	case <-ctx.Done():
+		t.Fatalf("Timeout waiting for put to stall")
+	}
+
+	// Queue up a few deferred writes (appending to the end of the file).
+	data2 := make([]byte, 30)
+	// Write 2 blocks worth of data
+	for i := 0; i < len(data2); i++ {
+		data2[i] = byte(i + len(data))
+	}
+	half := int64(len(data2) / 2)
+	err = kbfsOps.Write(ctx, fileNode, data2[0:half], int64(len(data)))
+	if err != nil {
+		t.Errorf("Couldn't write file: %v", err)
+	}
+	err = kbfsOps.Write(ctx, fileNode, data2[half:], int64(len(data))+half)
+	if err != nil {
+		t.Errorf("Couldn't write file: %v", err)
+	}
+
+	// Now let the sync finish, but block it from taking the
+	// blockLock.
+	blockCh := make(chan struct{})
+	notifyCh := make(chan struct{}, 1)
+	lock := &blockingBlockLock{
+		ops.blocks.blockLock, blockCh, notifyCh}
+	ops.blocks.blockLock = lock
+	close(putUnstallCh)
+
+	// Let the first attempt go through (it's for updating the node cache).
+	select {
+	case <-notifyCh:
+	case <-ctx.Done():
+		t.Fatalf("Timeout waiting for block lock")
+	}
+	blockCh <- struct{}{}
+	// Block the second attempt.
+	select {
+	case <-notifyCh:
+	case <-ctx.Done():
+		t.Fatalf("Timeout waiting for block lock")
+	}
+	// Prevent future blocks.
+	lock.blockCh = nil
+
+	// Slip another write in at this point.
+	data3 := make([]byte, 30)
+	// Write 2 blocks worth of data
+	for i := 0; i < len(data3); i++ {
+		data3[i] = byte(i + len(data) + len(data2))
+	}
+	err = kbfsOps.Write(ctx, fileNode, data3, int64(len(data)+len(data2)))
+	if err != nil {
+		t.Errorf("Couldn't write file: %v", err)
+	}
+
+	// Let the sync finish
+	blockCh <- struct{}{}
+	select {
+	case err := <-errChan:
+		if err != nil {
+			t.Fatalf("Couldn't sync: %+v", err)
+		}
+	case <-ctx.Done():
+		t.Fatalf("Timeout waiting for sync")
+	}
+
+	// Sync the deferred and final writes.
+	err = kbfsOps.Sync(ctx, fileNode)
+	if err != nil {
+		t.Errorf("Couldn't sync file")
+	}
+
+	// Make sure the data works out.
+	gotData := make([]byte, len(data)+len(data2)+len(data3))
+	expectData := make([]byte, len(data)+len(data2)+len(data3))
+	copy(expectData[0:len(data)], data)
+	copy(expectData[len(data):len(data)+len(data2)], data2)
+	copy(expectData[len(data)+len(data2):], data3)
+
+	_, err = kbfsOps.Read(ctx, fileNode, gotData, 0)
+	if err != nil {
+		t.Fatalf("Couldn't read: %+v", err)
+	} else if !bytes.Equal(gotData, expectData) {
+		t.Fatalf("Bad read: got=%v, expected=%v", gotData, expectData)
+	}
+}
