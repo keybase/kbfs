@@ -359,8 +359,16 @@ func Init(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn, onI
 		if onInterruptFn != nil {
 			onInterruptFn()
 
-			// Keep listening on the signal channel in case unmount fails the first
-			// time and user continues pressing Ctrl-C.
+			// Unmount can fail if there are open file handles. In this case, the
+			// files need to be closed before calling unmount again. We keep
+			// listening on the signal channel in case unmount fails the first time,
+			// so user can press Ctrl-C again after closing open files.
+			//
+			// Not closing the channel here because we need to keep it open to handle
+			// further incoming signals. We don't explicitly call os.Exit here so
+			// that the process exits through normal workflow as a result of Ctrl-C.
+			// If the process needs to exit immediately no matter unmount succeeds or
+			// not, a different interrupt (e.g. SIGTERM) can be used to skip this.
 			for range interruptChan {
 				onInterruptFn()
 			}

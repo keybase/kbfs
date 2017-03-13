@@ -87,34 +87,31 @@ func (m ForceMounter) Unmount() (err error) {
 
 func doUnmount(dir string, force bool) (err error) {
 	switch runtime.GOOS {
-	case "darwin", "linux":
-		switch runtime.GOOS {
-		case "darwin":
-			if force {
-				_, err = exec.Command(
-					"/usr/sbin/diskutil", "unmountDisk", "force", dir).Output()
-			} else {
-				_, err = exec.Command("/sbin/umount", dir).Output()
-			}
-		case "linux":
-			if force {
-				_, err = exec.Command("fusermount", "-ul", dir).Output()
-			} else {
-				_, err = exec.Command("fusermount", "-u", dir).Output()
-			}
+	case "darwin":
+		if force {
+			_, err = exec.Command(
+				"/usr/sbin/diskutil", "unmountDisk", "force", dir).Output()
+		} else {
+			_, err = exec.Command("/sbin/umount", dir).Output()
 		}
-		if err != nil {
-			if execErr, ok := err.(*exec.ExitError); ok && execErr.Stderr != nil {
-				err = fmt.Errorf("%s (%s)", execErr, execErr.Stderr)
-			}
-			return err
+	case "linux":
+		if force {
+			_, err = exec.Command("fusermount", "-ul", dir).Output()
+		} else {
+			_, err = exec.Command("fusermount", "-u", dir).Output()
 		}
 	default:
 		if force {
 			err = errors.New("Forced unmount is not supported on this platform yet")
 		} else {
-			fuse.Unmount(dir)
+			err = fuse.Unmount(dir)
 		}
+	}
+	if err != nil {
+		if execErr, ok := err.(*exec.ExitError); ok && execErr.Stderr != nil {
+			err = fmt.Errorf("%s (%s)", execErr, execErr.Stderr)
+		}
+		return err
 	}
 	return err
 }
