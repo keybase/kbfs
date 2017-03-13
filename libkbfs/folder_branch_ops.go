@@ -142,18 +142,29 @@ func makeFBOLockState() *lockState {
 }
 
 // blockLock is just like a sync.RWMutex, but with an extra operation
-// (DoRUnlockedIfPossible).
-type blockLock struct {
+// (DoRUnlockedIfPossible) plus assert methods.
+type blockLock interface {
+	Lock(lState *lockState)
+	Unlock(lState *lockState)
+	RLock(lState *lockState)
+	RUnlock(lState *lockState)
+	DoRUnlockedIfPossible(*lockState, func(*lockState))
+	AssertLocked(*lockState)
+	AssertRLocked(*lockState)
+	AssertAnyLocked(*lockState)
+}
+
+type blockLockStandard struct {
 	leveledRWMutex
 	locked bool
 }
 
-func (bl *blockLock) Lock(lState *lockState) {
+func (bl *blockLockStandard) Lock(lState *lockState) {
 	bl.leveledRWMutex.Lock(lState)
 	bl.locked = true
 }
 
-func (bl *blockLock) Unlock(lState *lockState) {
+func (bl *blockLockStandard) Unlock(lState *lockState) {
 	bl.locked = false
 	bl.leveledRWMutex.Unlock(lState)
 }
@@ -161,7 +172,8 @@ func (bl *blockLock) Unlock(lState *lockState) {
 // DoRUnlockedIfPossible must be called when r- or w-locked. If
 // r-locked, r-unlocks, runs the given function, and r-locks after
 // it's done. Otherwise, just runs the given function.
-func (bl *blockLock) DoRUnlockedIfPossible(lState *lockState, f func(*lockState)) {
+func (bl *blockLockStandard) DoRUnlockedIfPossible(
+	lState *lockState, f func(*lockState)) {
 	if !bl.locked {
 		bl.RUnlock(lState)
 		defer bl.RLock(lState)
@@ -371,7 +383,7 @@ func newFolderBranchOps(config Config, fb FolderBranch,
 			folderBranch:  fb,
 			observers:     observers,
 			forceSyncChan: forceSyncChan,
-			blockLock: blockLock{
+			blockLock: &blockLockStandard{
 				leveledRWMutex: blockLockMu,
 			},
 			dirtyFiles: make(map[BlockPointer]*dirtyFile),
