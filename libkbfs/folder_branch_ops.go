@@ -3970,10 +3970,10 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 
 		switch realOp := op.(type) {
 		case *rmOp:
-			node = fbo.nodeCache.Get(realOp.Dir.Ref.Ref())
+			node = fbo.nodeCache.Get(realOp.Dir.Unref.Ref())
 			childName = realOp.OldName
 		case *renameOp:
-			node = fbo.nodeCache.Get(realOp.NewDir.Ref.Ref())
+			node = fbo.nodeCache.Get(realOp.NewDir.Unref.Ref())
 			childName = realOp.NewName
 		}
 		if node == nil {
