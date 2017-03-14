@@ -215,8 +215,6 @@ func (ncs *nodeCacheStandard) Move(
 
 // Unlink implements the NodeCache interface for nodeCacheStandard.
 func (ncs *nodeCacheStandard) Unlink(ref BlockRef, oldPath path) bool {
-	fmt.Printf("SONGGAO: Unlink: .ID: %v\n", oldPath.path[0].BlockPointer.ID)
-
 	if ref == (BlockRef{}) {
 		return false
 	}
@@ -251,12 +249,9 @@ func (ncs *nodeCacheStandard) PathFromNode(node Node) (p path) {
 		return
 	}
 
-	fmt.Printf("SONGGAO: ns: %#v\n", ns)
 	for ns != nil {
 		core := ns.core
-		fmt.Printf("SONGGAO: core.parent: %#v; len(core.cachedPath.path): %d;\n", core.parent, len(core.cachedPath.path))
 		if core.parent == nil && len(core.cachedPath.path) > 0 {
-			fmt.Printf("SONGGAO: core.cachedPath.path[0].BlockPointer.ID: %s\n", core.cachedPath.path[0].BlockPointer.ID)
 			// The node was unlinked, but is still in use, so use its
 			// cached path.  The path is already reversed, so append
 			// it backwards one-by-one to the existing path.  If this

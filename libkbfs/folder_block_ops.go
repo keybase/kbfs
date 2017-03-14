@@ -1456,7 +1456,6 @@ func (fbo *folderBlockOps) Write(
 		return err
 	}
 
-	fmt.Printf("SONGGAO: folderBlockOps Write: filepath[0] ... .ID:  %s\n", filePath.path[0].BlockPointer.ID)
 	defer func() {
 		fbo.doDeferWrite = false
 	}()

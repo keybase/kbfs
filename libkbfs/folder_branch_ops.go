@@ -3091,12 +3091,6 @@ func (fbo *folderBranchOps) unrefEntry(ctx context.Context,
 func (fbo *folderBranchOps) removeEntryLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata, dir path, name string) error {
 	fbo.mdWriterLock.AssertLocked(lState)
-	fmt.Printf("SONGGAO: removeEntryLocked: md.data.Dir.BlockPointer.ID:  %s\n", md.data.Dir.BlockPointer.ID)
-	fmt.Printf("SONGGAO: removeEntryLocked: dir.path[0].BlockPointer.ID:  %s\n", dir.path[0].BlockPointer.ID)
-	defer func() {
-		fmt.Printf("SONGGAO: defer removeEntryLocked: md.data.Dir.BlockPointer.ID:  %s\n", md.data.Dir.BlockPointer.ID)
-		fmt.Printf("SONGGAO: defer removeEntryLocked: dir.path[0].BlockPointer.ID:  %s\n", dir.path[0].BlockPointer.ID)
-	}()
 
 	pblock, err := fbo.blocks.GetDir(
 		ctx, lState, md.ReadOnly(), dir, blockWrite)
@@ -3196,9 +3190,7 @@ func (fbo *folderBranchOps) RemoveDir(
 func (fbo *folderBranchOps) RemoveEntry(ctx context.Context, dir Node,
 	name string) (err error) {
 	fbo.log.CDebugf(ctx, "RemoveEntry %s %s", getNodeIDStr(dir), name)
-	fmt.Printf("SONGGAO: RemoveEntry dir: %#v\n", dir)
 	defer func() {
-		fmt.Printf("SONGGAO: defer RemoveEntry dir: %#v\n", dir)
 		fbo.deferLog.CDebugf(ctx, "RemoveEntry %s %s done: %+v",
 			getNodeIDStr(dir), name, err)
 	}()
@@ -3496,9 +3488,6 @@ func (fbo *folderBranchOps) Write(
 			return err
 		}
 
-		fmt.Printf("SONGGAO: Write: md.data.Dir.BlockPointer.ID:  %s\n", md.data.Dir.BlockPointer.ID)
-		fmt.Printf("SONGGAO: folderBranchOps Write md.data.Dir: %#v\n", md.data.Dir)
-
 		err = fbo.blocks.Write(
 			ctx, lState, md.ReadOnly(), file, data, off)
 		if err != nil {
@@ -3730,12 +3719,6 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 		return true, err
 	}
 
-	fmt.Printf("SONGGAO: syncLocked: md.data.Dir.BlockPointer.ID:  %s\n", md.data.Dir.BlockPointer.ID)
-	fmt.Printf("SONGGAO: syncLocked: file.path[0].BlockPointer.ID: %s\n", file.path[0].BlockPointer.ID)
-	defer func() {
-		fmt.Printf("SONGGAO: defer syncLocked: md.data.Dir.BlockPointer.ID:  %s\n", md.data.Dir.BlockPointer.ID)
-		fmt.Printf("SONGGAO: defer syncLocked: file.path[0].BlockPointer.ID: %s\n", file.path[0].BlockPointer.ID)
-	}()
 	// If the MD doesn't match the MD expected by the path, that
 	// implies we are using a cached path, which implies the node has
 	// been unlinked.  In that case, we can safely ignore this sync.
@@ -3828,7 +3811,6 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 }
 
 func (fbo *folderBranchOps) Sync(ctx context.Context, file Node) (err error) {
-	fbo.log.CDebugf(ctx, "SONGGAO Sync %s", getNodeIDStr(file))
 	fbo.log.CDebugf(ctx, "Sync %s", getNodeIDStr(file))
 	defer func() {
 		fbo.deferLog.CDebugf(ctx, "Sync %s done: %+v",
@@ -3977,7 +3959,6 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			childName = realOp.NewName
 		}
 		if node == nil {
-			fmt.Println("SONGGAO: notify node==nil")
 			return path{}, false
 		}
 
@@ -4022,7 +4003,6 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 		// If this node exists, then the child node might exist too,
 		// and we need to unlink it in the node cache.
 		if toUnlink {
-			fmt.Println("SONGGAO notify calling unlinkFromCache")
 			err := fbo.unlinkFromCache(op, unlinkPath)
 			if err != nil {
 				fbo.log.CErrorf(ctx, "Couldn't unlink from cache: %v", err)
