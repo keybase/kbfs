@@ -3091,6 +3091,12 @@ func (fbo *folderBranchOps) unrefEntry(ctx context.Context,
 func (fbo *folderBranchOps) removeEntryLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata, dir path, name string) error {
 	fbo.mdWriterLock.AssertLocked(lState)
+	fmt.Printf("SONGGAO: removeEntryLocked: md.data.Dir.BlockPointer.ID:  %s\n", md.data.Dir.BlockPointer.ID)
+	fmt.Printf("SONGGAO: removeEntryLocked: dir.path[0].BlockPointer.ID:  %s\n", dir.path[0].BlockPointer.ID)
+	defer func() {
+		fmt.Printf("SONGGAO: defer removeEntryLocked: md.data.Dir.BlockPointer.ID:  %s\n", md.data.Dir.BlockPointer.ID)
+		fmt.Printf("SONGGAO: defer removeEntryLocked: dir.path[0].BlockPointer.ID:  %s\n", dir.path[0].BlockPointer.ID)
+	}()
 
 	pblock, err := fbo.blocks.GetDir(
 		ctx, lState, md.ReadOnly(), dir, blockWrite)
@@ -3190,7 +3196,9 @@ func (fbo *folderBranchOps) RemoveDir(
 func (fbo *folderBranchOps) RemoveEntry(ctx context.Context, dir Node,
 	name string) (err error) {
 	fbo.log.CDebugf(ctx, "RemoveEntry %s %s", getNodeIDStr(dir), name)
+	fmt.Printf("SONGGAO: RemoveEntry dir: %#v\n", dir)
 	defer func() {
+		fmt.Printf("SONGGAO: defer RemoveEntry dir: %#v\n", dir)
 		fbo.deferLog.CDebugf(ctx, "RemoveEntry %s %s done: %+v",
 			getNodeIDStr(dir), name, err)
 	}()
@@ -3488,6 +3496,9 @@ func (fbo *folderBranchOps) Write(
 			return err
 		}
 
+		fmt.Printf("SONGGAO: Write: md.data.Dir.BlockPointer.ID:  %s\n", md.data.Dir.BlockPointer.ID)
+		fmt.Printf("SONGGAO: folderBranchOps Write md.data.Dir: %#v\n", md.data.Dir)
+
 		err = fbo.blocks.Write(
 			ctx, lState, md.ReadOnly(), file, data, off)
 		if err != nil {
@@ -3719,6 +3730,12 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 		return true, err
 	}
 
+	fmt.Printf("SONGGAO: syncLocked: md.data.Dir.BlockPointer.ID:  %s\n", md.data.Dir.BlockPointer.ID)
+	fmt.Printf("SONGGAO: syncLocked: file.path[0].BlockPointer.ID: %s\n", file.path[0].BlockPointer.ID)
+	defer func() {
+		fmt.Printf("SONGGAO: defer syncLocked: md.data.Dir.BlockPointer.ID:  %s\n", md.data.Dir.BlockPointer.ID)
+		fmt.Printf("SONGGAO: defer syncLocked: file.path[0].BlockPointer.ID: %s\n", file.path[0].BlockPointer.ID)
+	}()
 	// If the MD doesn't match the MD expected by the path, that
 	// implies we are using a cached path, which implies the node has
 	// been unlinked.  In that case, we can safely ignore this sync.
@@ -3811,6 +3828,7 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 }
 
 func (fbo *folderBranchOps) Sync(ctx context.Context, file Node) (err error) {
+	fbo.log.CDebugf(ctx, "SONGGAO Sync %s", getNodeIDStr(file))
 	fbo.log.CDebugf(ctx, "Sync %s", getNodeIDStr(file))
 	defer func() {
 		fbo.deferLog.CDebugf(ctx, "Sync %s done: %+v",
@@ -3922,26 +3940,16 @@ func (fbo *folderBranchOps) searchForNode(ctx context.Context,
 	return n, nil
 }
 
-func (fbo *folderBranchOps) unlinkFromCache(op op, oldDir BlockPointer,
-	node Node, name string) error {
+func (fbo *folderBranchOps) unlinkFromCache(op op, unlinkPath path) error {
 	// The entry could be under any one of the unref'd blocks, and
 	// it's safe to perform this when the pointer isn't real, so just
 	// try them all to avoid the overhead of looking up the right
 	// pointer in the old version of the block.
-	p, err := fbo.pathFromNodeForRead(node)
-	if err != nil {
-		return err
-	}
-
-	childPath := p.ChildPathNoPtr(name)
-
-	// revert the parent pointer
-	childPath.path[len(childPath.path)-2].BlockPointer = oldDir
 	for _, ptr := range op.Unrefs() {
 		// It's ok to modify this path, since we break as soon as the
 		// node cache takes a reference to it.
-		childPath.path[len(childPath.path)-1].BlockPointer = ptr
-		found := fbo.nodeCache.Unlink(ptr.Ref(), childPath)
+		unlinkPath.path[len(unlinkPath.path)-1].BlockPointer = ptr
+		found := fbo.nodeCache.Unlink(ptr.Ref(), unlinkPath)
 		if found {
 			break
 		}
@@ -3953,6 +3961,34 @@ func (fbo *folderBranchOps) unlinkFromCache(op op, oldDir BlockPointer,
 func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 	lState *lockState, op op, md ImmutableRootMetadata, shouldPrefetch bool) {
 	fbo.headLock.AssertLocked(lState)
+
+	unlinkPath, toUnlink := func() (path, bool) {
+		var (
+			node      Node
+			childName string
+		)
+
+		switch realOp := op.(type) {
+		case *rmOp:
+			node = fbo.nodeCache.Get(realOp.Dir.Ref.Ref())
+			childName = realOp.OldName
+		case *renameOp:
+			node = fbo.nodeCache.Get(realOp.NewDir.Ref.Ref())
+			childName = realOp.NewName
+		}
+		if node == nil {
+			fmt.Println("SONGGAO: notify node==nil")
+			return path{}, false
+		}
+
+		p, err := fbo.pathFromNodeForRead(node)
+		if err != nil {
+			fbo.log.CErrorf(ctx, "Calling pathFromNodeForRead error: %v", err)
+			return path{}, false
+		}
+
+		return p.ChildPathNoPtr(childName), true
+	}()
 
 	fbo.blocks.UpdatePointers(md, lState, op, shouldPrefetch)
 
@@ -3985,10 +4021,13 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 
 		// If this node exists, then the child node might exist too,
 		// and we need to unlink it in the node cache.
-		err := fbo.unlinkFromCache(op, realOp.Dir.Unref, node, realOp.OldName)
-		if err != nil {
-			fbo.log.CErrorf(ctx, "Couldn't unlink from cache: %v", err)
-			return
+		if toUnlink {
+			fmt.Println("SONGGAO notify calling unlinkFromCache")
+			err := fbo.unlinkFromCache(op, unlinkPath)
+			if err != nil {
+				fbo.log.CErrorf(ctx, "Couldn't unlink from cache: %v", err)
+				return
+			}
 		}
 	case *renameOp:
 		oldNode := fbo.nodeCache.Get(realOp.OldDir.Ref.Ref())
@@ -4041,20 +4080,14 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 			}
 
 			if newNode != nil {
-				// If new node exists as well, unlink any previously
-				// existing entry and move the node.
-				var unrefPtr BlockPointer
-				if oldNode != newNode {
-					unrefPtr = realOp.NewDir.Unref
-				} else {
-					unrefPtr = realOp.OldDir.Unref
+				if toUnlink {
+					err := fbo.unlinkFromCache(op, unlinkPath)
+					if err != nil {
+						fbo.log.CErrorf(ctx, "Couldn't unlink from cache: %v", err)
+						return
+					}
 				}
-				err := fbo.unlinkFromCache(op, unrefPtr, newNode, realOp.NewName)
-				if err != nil {
-					fbo.log.CErrorf(ctx, "Couldn't unlink from cache: %v", err)
-					return
-				}
-				err = fbo.nodeCache.Move(realOp.Renamed.Ref(), newNode, realOp.NewName)
+				err := fbo.nodeCache.Move(realOp.Renamed.Ref(), newNode, realOp.NewName)
 				if err != nil {
 					fbo.log.CErrorf(ctx, "Couldn't move node in cache: %v", err)
 					return
