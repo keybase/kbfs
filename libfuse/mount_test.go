@@ -1227,7 +1227,7 @@ func TestRemoveFileWhileOpenSetEx(t *testing.T) {
 	}
 }
 
-func TestRemoveFileWhileOpenWriting(t *testing.T) {
+func TestRemoveFileWhileOpenWritingInTLFRoot(t *testing.T) {
 	ctx := libkbfs.BackgroundContextWithCancellationDelayer()
 	defer libkbfs.CleanupCancellationDelayer(ctx)
 	config := libkbfs.MakeTestConfigOrBust(t, "jdoe")
@@ -1257,6 +1257,47 @@ func TestRemoveFileWhileOpenWriting(t *testing.T) {
 	}
 
 	checkDir(t, path.Join(mnt.Dir, PrivateName, "jdoe"), map[string]fileInfoCheck{})
+
+	if _, err := ioutil.ReadFile(p); !ioutil.IsNotExist(err) {
+		t.Errorf("file still exists: %v", err)
+	}
+}
+
+func TestRemoveFileWhileOpenWritingInSubDir(t *testing.T) {
+	ctx := libkbfs.BackgroundContextWithCancellationDelayer()
+	defer libkbfs.CleanupCancellationDelayer(ctx)
+	config := libkbfs.MakeTestConfigOrBust(t, "jdoe")
+	defer libkbfs.CheckConfigAndShutdown(ctx, t, config)
+	mnt, _, cancelFn := makeFS(t, ctx, config)
+	defer mnt.Close()
+	defer cancelFn()
+
+	dirPath := path.Join(mnt.Dir, PrivateName, "jdoe", "dir")
+	if err := os.Mkdir(dirPath, 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	p := path.Join(dirPath, "myfile")
+	f, err := os.Create(p)
+	if err != nil {
+		t.Fatalf("cannot create file: %v", err)
+	}
+	defer f.Close()
+
+	if err := ioutil.Remove(p); err != nil {
+		t.Fatalf("cannot delete file: %v", err)
+	}
+
+	// this must not resurrect a deleted file
+	const input = "hello, world\n"
+	if _, err := f.Write([]byte(input)); err != nil {
+		t.Fatalf("cannot write: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("error on close: %v", err)
+	}
+
+	checkDir(t, dirPath, map[string]fileInfoCheck{})
 
 	if _, err := ioutil.ReadFile(p); !ioutil.IsNotExist(err) {
 		t.Errorf("file still exists: %v", err)
