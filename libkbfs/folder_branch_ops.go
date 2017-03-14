@@ -3944,6 +3944,8 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 	lState *lockState, op op, md ImmutableRootMetadata, shouldPrefetch bool) {
 	fbo.headLock.AssertLocked(lState)
 
+	// We need to get unlinkPath before calling UpdatePointers so that
+	// nodeCache.Unlink can properly update cachedPath.
 	unlinkPath, toUnlink := func() (path, bool) {
 		var (
 			node      Node
