@@ -204,6 +204,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf tlf.ID) error 
 			}
 			if !isGCOp {
 				for _, ptr := range op.Unrefs() {
+					sc.log.CDebugf(ctx, "(%d): Unref op %s: %v", rmd.Revision(), op, ptr)
 					delete(expectedLiveBlocks, ptr)
 					if ptr != zeroPtr {
 						// If the revision has been garbage-collected,
@@ -221,6 +222,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf tlf.ID) error 
 				}
 			}
 			for _, update := range op.allUpdates() {
+				sc.log.CDebugf(ctx, "(%d): Unref op %s: %v", rmd.Revision(), op, update.Unref)
 				delete(expectedLiveBlocks, update.Unref)
 				if update.Unref != zeroPtr && update.Ref != update.Unref {
 					if rmd.Revision() <= gcRevision {

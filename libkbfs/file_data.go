@@ -438,6 +438,10 @@ func (fd *fileData) getByteSlicesInOffsetRange(ctx context.Context,
 		return nil, err
 	}
 
+	for _, iptr := range topBlock.IPtrs {
+		fd.log.CDebugf(ctx, "IPtr from %v: %v (%d)", fd.rootBlockPointer(), iptr, iptr.Off)
+	}
+
 	// Find all the indirect pointers to leaf blocks in the offset range.
 	var iptrs []IndirectFilePtr
 	firstBlockOff := int64(-1)
@@ -459,6 +463,7 @@ func (fd *fileData) getByteSlicesInOffsetRange(ctx context.Context,
 			}
 			lowestAncestor := p[len(p)-1]
 			iptr := lowestAncestor.childIPtr()
+			fd.log.CDebugf(ctx, "iptr in range: %v", iptr)
 			iptrs = append(iptrs, iptr)
 			if firstBlockOff < 0 {
 				firstBlockOff = iptr.Off
@@ -495,6 +500,7 @@ func (fd *fileData) getByteSlicesInOffsetRange(ctx context.Context,
 		block := blockMap[iptr.BlockPointer]
 		blockLen := int64(len(block.Contents))
 		nextByte := nRead + startOff
+		fd.log.CDebugf(ctx, "Reading from %v starting at %d (len=%d)", iptr, nextByte, blockLen)
 		toRead := n - nRead
 		blockOff := iptr.Off
 		lastByteInBlock := blockOff + blockLen
@@ -1098,8 +1104,10 @@ func (fd *fileData) write(ctx context.Context, data []byte, off int64,
 		// "hole"), and the last block is already full.
 		if nCopied == oldNCopied && oldLen == len(block.Contents) &&
 			!switchToIndirect {
+			fd.log.CDebugf(ctx, "Continuing early after %v", ptr)
 			continue
 		}
+		fd.log.CDebugf(ctx, "Continuing on to dirty %v", ptr)
 
 		// Only in the last block does the file size grow.
 		if oldLen != len(block.Contents) && nextBlockOff < 0 {

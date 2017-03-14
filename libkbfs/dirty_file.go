@@ -148,6 +148,14 @@ func (df *dirtyFile) isBlockOrphaned(ptr BlockPointer) bool {
 	return df.fileBlockStates[ptr].orphaned
 }
 
+func (df *dirtyFile) fakeBlockSyncing(ptr BlockPointer) {
+	df.lock.Lock()
+	defer df.lock.Unlock()
+	state := df.fileBlockStates[ptr]
+	state.sync = blockSyncing
+	df.fileBlockStates[ptr] = state
+}
+
 func (df *dirtyFile) setBlockSyncing(ptr BlockPointer) error {
 	df.lock.Lock()
 	defer df.lock.Unlock()
