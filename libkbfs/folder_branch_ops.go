@@ -3972,7 +3972,8 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 
 		p, err := fbo.pathFromNodeForRead(node)
 		if err != nil {
-			fbo.log.CErrorf(ctx, "Calling pathFromNodeForRead error: %v", err)
+			fbo.log.CErrorf(ctx,
+				"Calling pathFromNodeForRead error: %v", err)
 			return path{}, false
 		}
 
