@@ -13,6 +13,7 @@ import (
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -597,6 +598,12 @@ func (fd *fileData) read(ctx context.Context, dest []byte, startOff int64) (
 		copy(dest[currLen:currLen+bLen], b)
 		currLen += bLen
 	}
+
+	if tr, ok := trace.FromContext(ctx); ok {
+		dt := time.Since(now)
+		tr.LazyPrintf("fileData.read took %f s", dt.Seconds())
+	}
+
 	return currLen, nil
 }
 
