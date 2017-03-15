@@ -79,7 +79,13 @@ func (f *File) fillAttrWithMode(
 // Attr implements the fs.Node interface for File.
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	tr := trace.New("File.Attr", f.node.GetBasename())
-	defer tr.Finish()
+	defer func() {
+		if err != nil {
+			tr.LazyPrintf("err=%+v", err)
+			tr.SetError()
+		}
+		tr.Finish()
+	}()
 	ctx = trace.NewContext(ctx, tr)
 
 	f.folder.fs.log.CDebugf(ctx, "File Attr")
@@ -124,9 +130,15 @@ var _ fs.NodeAccesser = (*File)(nil)
 // checks for executable bit using Access (instead of Attr!), it gets a
 // success, which makes it think the file is executable, yielding a "Unix
 // executable" UTI.
-func (f *File) Access(ctx context.Context, r *fuse.AccessRequest) error {
+func (f *File) Access(ctx context.Context, r *fuse.AccessRequest) (err error) {
 	tr := trace.New("File.Access", f.node.GetBasename())
-	defer tr.Finish()
+	defer func() {
+		if err != nil {
+			tr.LazyPrintf("err=%+v", err)
+			tr.SetError()
+		}
+		tr.Finish()
+	}()
 	ctx = trace.NewContext(ctx, tr)
 
 	if int(r.Uid) != os.Getuid() &&
@@ -185,7 +197,13 @@ func (f *File) sync(ctx context.Context) error {
 // Fsync implements the fs.NodeFsyncer interface for File.
 func (f *File) Fsync(ctx context.Context, req *fuse.FsyncRequest) (err error) {
 	tr := trace.New("File.Fsync", f.node.GetBasename())
-	defer tr.Finish()
+	defer func() {
+		if err != nil {
+			tr.LazyPrintf("err=%+v", err)
+			tr.SetError()
+		}
+		tr.Finish()
+	}()
 	ctx = trace.NewContext(ctx, tr)
 
 	f.folder.fs.log.CDebugf(ctx, "File Fsync")
@@ -211,7 +229,13 @@ func (f *File) Read(ctx context.Context, req *fuse.ReadRequest,
 	tr := trace.New("File.Read",
 		fmt.Sprintf("%s off=%d sz=%s", f.node.GetBasename(),
 			req.Offset, cap(resp.Data)))
-	defer tr.Finish()
+	defer func() {
+		if err != nil {
+			tr.LazyPrintf("err=%+v", err)
+			tr.SetError()
+		}
+		tr.Finish()
+	}()
 	ctx = trace.NewContext(ctx, tr)
 
 	f.folder.fs.log.CDebugf(ctx, "File Read")
@@ -232,7 +256,13 @@ var _ fs.HandleWriter = (*File)(nil)
 func (f *File) Write(ctx context.Context, req *fuse.WriteRequest,
 	resp *fuse.WriteResponse) (err error) {
 	tr := trace.New("File.Write", f.node.GetBasename())
-	defer tr.Finish()
+	defer func() {
+		if err != nil {
+			tr.LazyPrintf("err=%+v", err)
+			tr.SetError()
+		}
+		tr.Finish()
+	}()
 	ctx = trace.NewContext(ctx, tr)
 
 	f.folder.fs.log.CDebugf(ctx, "File Write sz=%d ", len(req.Data))
@@ -252,7 +282,13 @@ var _ fs.HandleFlusher = (*File)(nil)
 // Flush implements the fs.HandleFlusher interface for File.
 func (f *File) Flush(ctx context.Context, req *fuse.FlushRequest) (err error) {
 	tr := trace.New("File.Flush", f.node.GetBasename())
-	defer tr.Finish()
+	defer func() {
+		if err != nil {
+			tr.LazyPrintf("err=%+v", err)
+			tr.SetError()
+		}
+		tr.Finish()
+	}()
 	ctx = trace.NewContext(ctx, tr)
 
 	f.folder.fs.log.CDebugf(ctx, "File Flush")
@@ -276,7 +312,13 @@ var _ fs.NodeSetattrer = (*File)(nil)
 func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 	resp *fuse.SetattrResponse) (err error) {
 	tr := trace.New("File.SetAttr", f.node.GetBasename())
-	defer tr.Finish()
+	defer func() {
+		if err != nil {
+			tr.LazyPrintf("err=%+v", err)
+			tr.SetError()
+		}
+		tr.Finish()
+	}()
 	ctx = trace.NewContext(ctx, tr)
 
 	f.folder.fs.log.CDebugf(ctx, "File SetAttr")
