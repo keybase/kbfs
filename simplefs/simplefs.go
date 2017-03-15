@@ -519,8 +519,14 @@ func (k *SimpleFS) SimpleFSClose(ctx context.Context, opid keybase1.OpID) (err e
 
 // SimpleFSCheck - Check progress of pending operation
 func (k *SimpleFS) SimpleFSCheck(_ context.Context, opid keybase1.OpID) (keybase1.Progress, error) {
-	// TODO
-	return 0, simpleFSError{"Not implemented"}
+	k.lock.RLock()
+	defer k.lock.RUnlock()
+	if _, ok := k.inProgress[opid]; ok {
+		return 0, nil
+	} else if _, ok := k.handles[opid]; ok {
+		return 0, nil
+	}
+	return 0, errNoResult
 }
 
 // SimpleFSGetOps - Get all the outstanding operations
