@@ -9,6 +9,7 @@ import (
 
 	"github.com/keybase/kbfs/kbfsblock"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 )
 
 // blockGetter provides the API for the block retrieval worker to obtain blocks.
@@ -23,6 +24,12 @@ type realBlockGetter struct {
 
 // getBlock implements the interface for realBlockGetter.
 func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer, block Block) error {
+	tr, trOk := trace.FromContext(ctx)
+
+	if trOk {
+		tr.LazyPrintf("getBlock start")
+	}
+
 	bserv := bg.config.BlockServer()
 	buf, blockServerHalf, err := bserv.Get(
 		ctx, kmd.TlfID(), blockPtr.ID, blockPtr.Context)
@@ -37,7 +44,17 @@ func (bg *realBlockGetter) getBlock(ctx context.Context, kmd KeyMetadata, blockP
 		return err
 	}
 
-	return assembleBlock(
+	if trOk {
+		tr.LazyPrintf("getBlock end")
+	}
+
+	err = assembleBlock(
 		ctx, bg.config.keyGetter(), bg.config.Codec(), bg.config.cryptoPure(),
 		kmd, blockPtr, block, buf, blockServerHalf)
+
+	if trOk {
+		tr.LazyPrintf("assembleBlock end")
+	}
+
+	return err
 }
