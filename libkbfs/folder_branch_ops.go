@@ -3945,6 +3945,37 @@ func (fbo *folderBranchOps) unlinkFromCache(op op, unlinkPath path) error {
 	return nil
 }
 
+func (fbo *folderBranchOps) getUnlinkPathBeforeUpdatingPointers(
+	ctx context.Context, op op) (unlinkPath path, toUnlink bool, err error) {
+	var node Node
+	var childName string
+
+	switch realOp := op.(type) {
+	case *rmOp:
+		node = fbo.nodeCache.Get(realOp.Dir.Unref.Ref())
+		childName = realOp.OldName
+	case *renameOp:
+		if realOp.NewDir.Unref != zeroPtr {
+			// moving to a new dir
+			node = fbo.nodeCache.Get(realOp.NewDir.Unref.Ref())
+		} else {
+			// moving to the same dir
+			node = fbo.nodeCache.Get(realOp.OldDir.Unref.Ref())
+		}
+		childName = realOp.NewName
+	}
+	if node == nil {
+		return path{}, false, nil
+	}
+
+	p, err := fbo.pathFromNodeForRead(node)
+	if err != nil {
+		return path{}, false, err
+	}
+
+	return p.ChildPathNoPtr(childName), true, nil
+}
+
 func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 	lState *lockState, op op, md ImmutableRootMetadata, shouldPrefetch bool,
 	afterUpdateFn func() error) error {
@@ -3952,35 +3983,14 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 
 	// We need to get unlinkPath before calling UpdatePointers so that
 	// nodeCache.Unlink can properly update cachedPath.
-	unlinkPath, toUnlink := func() (path, bool) {
-		var (
-			node      Node
-			childName string
-		)
+	unlinkPath, toUnlink, err := fbo.getUnlinkPathBeforeUpdatingPointers(ctx, op)
+	if err != nil {
+		return err
+		fbo.log.CErrorf(ctx,
+			"Calling getUnlinkPathBeforeUpdatingPointers error: %v", err)
+	}
 
-		switch realOp := op.(type) {
-		case *rmOp:
-			node = fbo.nodeCache.Get(realOp.Dir.Unref.Ref())
-			childName = realOp.OldName
-		case *renameOp:
-			node = fbo.nodeCache.Get(realOp.NewDir.Unref.Ref())
-			childName = realOp.NewName
-		}
-		if node == nil {
-			return path{}, false
-		}
-
-		p, err := fbo.pathFromNodeForRead(node)
-		if err != nil {
-			fbo.log.CErrorf(ctx,
-				"Calling pathFromNodeForRead error: %v", err)
-			return path{}, false
-		}
-
-		return p.ChildPathNoPtr(childName), true
-	}()
-
-	err := fbo.blocks.UpdatePointers(
+	err = fbo.blocks.UpdatePointers(
 		md, lState, op, shouldPrefetch, afterUpdateFn)
 	if err != nil {
 		return err
