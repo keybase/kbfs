@@ -594,7 +594,7 @@ func getEXCLFromCreateRequest(req *fuse.CreateRequest) libkbfs.Excl {
 
 // Create implements the fs.NodeCreater interface for Dir.
 func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (node fs.Node, handle fs.Handle, err error) {
-	tr := trace.New("Dir.Create", d.node.GetBasename())
+	tr := trace.New("Dir.Create", d.node.GetBasename()+" "+req.Name)
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
@@ -633,7 +633,7 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 // Mkdir implements the fs.NodeMkdirer interface for Dir.
 func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (
 	node fs.Node, err error) {
-	tr := trace.New("Dir.Mkdir", d.node.GetBasename())
+	tr := trace.New("Dir.Mkdir", d.node.GetBasename()+" "+req.Name)
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
@@ -663,7 +663,7 @@ func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (
 // Symlink implements the fs.NodeSymlinker interface for Dir.
 func (d *Dir) Symlink(ctx context.Context, req *fuse.SymlinkRequest) (
 	node fs.Node, err error) {
-	tr := trace.New("Dir.Symlink", d.node.GetBasename())
+	tr := trace.New("Dir.Symlink", d.node.GetBasename()+" "+req.NewName+" -> "+req.Target)
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
@@ -693,7 +693,7 @@ func (d *Dir) Symlink(ctx context.Context, req *fuse.SymlinkRequest) (
 // Rename implements the fs.NodeRenamer interface for Dir.
 func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 	newDir fs.Node) (err error) {
-	tr := trace.New("Dir.Rename", d.node.GetBasename())
+	tr := trace.New("Dir.Rename", d.node.GetBasename()+" "+req.OldName+" -> "+req.NewName)
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
@@ -745,7 +745,7 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 
 // Remove implements the fs.NodeRemover interface for Dir.
 func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) (err error) {
-	tr := trace.New("Dir.Remove", d.node.GetBasename())
+	tr := trace.New("Dir.Remove", d.node.GetBasename()+" "+req.Name)
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
