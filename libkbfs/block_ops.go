@@ -5,10 +5,13 @@
 package libkbfs
 
 import (
+	"time"
+
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 )
 
 type blockOpsConfig interface {
@@ -64,8 +67,14 @@ func (b *BlockOpsStandard) Get(ctx context.Context, kmd KeyMetadata,
 		}
 	}
 
+	now := time.Now()
 	errCh := b.queue.Request(ctx, defaultOnDemandRequestPriority, kmd, blockPtr, block, lifetime)
-	return <-errCh
+	err := <-errCh
+	if tr, trOk := trace.FromContext(ctx); trOk {
+		dt := time.Since(now)
+		tr.LazyPrintf("queue request took %f s", dt.Seconds())
+	}
+	return err
 }
 
 // GetEncodedSize implements the BlockOps interface for

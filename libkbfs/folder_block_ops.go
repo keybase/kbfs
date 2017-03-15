@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -322,6 +323,12 @@ func (fbo *folderBlockOps) getBlockHelperLocked(ctx context.Context,
 			"with blockReadParallel")
 	}
 
+	tr, trOk := trace.FromContext(ctx)
+
+	if trOk {
+		tr.LazyPrintf("getBlockHelperLocked start")
+	}
+
 	if !ptr.IsValid() {
 		return nil, InvalidBlockRefError{ptr.Ref()}
 	}
@@ -351,6 +358,10 @@ func (fbo *folderBlockOps) getBlockHelperLocked(ctx context.Context,
 			readNotification(notifyPath, true))
 	}
 
+	if trOk {
+		tr.LazyPrintf("getBlockHelperLocked actual get")
+	}
+
 	// Unlock the blockLock while we wait for the network, only if
 	// it's locked for reading by a single goroutine.  If it's locked
 	// for writing, that indicates we are performing an atomic write
@@ -374,6 +385,10 @@ func (fbo *folderBlockOps) getBlockHelperLocked(ctx context.Context,
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	if trOk {
+		tr.LazyPrintf("getBlockHelperLocked end")
 	}
 
 	return block, nil
