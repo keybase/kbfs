@@ -18,6 +18,7 @@ import (
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 )
 
 const (
@@ -428,6 +429,14 @@ func (md *MDServerRemote) signalObserverLocked(observerChan chan<- error, id tlf
 func (md *MDServerRemote) get(ctx context.Context, id tlf.ID,
 	handle *tlf.Handle, bid BranchID, mStatus MergeStatus,
 	start, stop MetadataRevision) (tlf.ID, []*RootMetadataSigned, error) {
+	if tr, ok := trace.FromContext(ctx); ok {
+		ts := time.Now()
+		defer func() {
+			dt := time.Since(ts)
+			tr.LazyPrintf("MDServer.get took %f s", dt.Seconds())
+		}()
+	}
+
 	// figure out which args to send
 	if id == tlf.NullID && handle == nil {
 		panic("nil tlf.ID and handle passed into MDServerRemote.get")
