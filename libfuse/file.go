@@ -227,7 +227,7 @@ var _ fs.HandleReader = (*File)(nil)
 func (f *File) Read(ctx context.Context, req *fuse.ReadRequest,
 	resp *fuse.ReadResponse) (err error) {
 	tr := trace.New("File.Read",
-		fmt.Sprintf("%s off=%d sz=%s", f.node.GetBasename(),
+		fmt.Sprintf("%s off=%d sz=%d", f.node.GetBasename(),
 			req.Offset, cap(resp.Data)))
 	defer func() {
 		if err != nil {
