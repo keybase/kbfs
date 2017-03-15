@@ -5,6 +5,7 @@
 package libfuse
 
 import (
+	"fmt"
 	"os"
 	"sync"
 
@@ -207,7 +208,9 @@ var _ fs.HandleReader = (*File)(nil)
 // Read implements the fs.HandleReader interface for File.
 func (f *File) Read(ctx context.Context, req *fuse.ReadRequest,
 	resp *fuse.ReadResponse) (err error) {
-	tr := trace.New("File.Read", f.node.GetBasename())
+	tr := trace.New("File.Read",
+		fmt.Sprintf("%s off=%d sz=%s", f.node.GetBasename(),
+			req.Offset, cap(resp.Data)))
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
