@@ -23,6 +23,7 @@ import (
 	"github.com/keybase/kbfs/libkbfs"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 )
 
 // FS implements the newfuse FS interface for KBFS.
@@ -77,6 +78,26 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 	serveMux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
 	serveMux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
 	serveMux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+
+	// Replicate the default endpoints from net/trace's init function.
+	serveMux.HandleFunc("/debug/requests", func(w http.ResponseWriter, req *http.Request) {
+		any, sensitive := trace.AuthRequest(req)
+		if !any {
+			http.Error(w, "not allowed", http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		trace.Render(w, req, sensitive)
+	})
+	serveMux.HandleFunc("/debug/events", func(w http.ResponseWriter, req *http.Request) {
+		any, sensitive := trace.AuthRequest(req)
+		if !any {
+			http.Error(w, "not allowed", http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		trace.RenderEvents(w, req, sensitive)
+	})
 
 	// Leave Addr blank to be set in enableDebugServer() and
 	// disableDebugServer().
