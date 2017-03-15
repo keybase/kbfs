@@ -9,6 +9,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	"bazil.org/fuse"
@@ -105,6 +107,8 @@ func start() *libfs.Error {
 }
 
 func main() {
+	http.ListenAndServe(":8080", nil)
+
 	err := start()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "kbfsfuse error: (%d) %s\n", err.Code, err.Message)
