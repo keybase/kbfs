@@ -297,14 +297,6 @@ func (fd *fileData) getBlocksForOffsetRange(ctx context.Context,
 		respChans = append(respChans, respCh)
 		// Don't reference the uncaptured `i` or `iptr` variables below.
 		eg.Go(func() error {
-			if tr, ok := trace.FromContext(ctx); ok {
-				now := time.Now()
-				defer func() {
-					dt := time.Since(now)
-					tr.LazyPrintf("fileData.getLeafBlock took %f s", dt.Seconds())
-				}()
-			}
-
 			var pfr [][]parentBlockAndChildIndex
 			var blocks map[BlockPointer]*FileBlock
 			var nextBlockOffset int64
@@ -314,10 +306,19 @@ func (fd *fileData) getBlocksForOffsetRange(ctx context.Context,
 			// blocks, since there weren't multiple levels of
 			// indirection before the introduction of the flag.
 			if getDirect || ptr.DirectType == IndirectBlock {
+				now := time.Now()
+
 				block, _, err := fd.getter(
 					groupCtx, fd.kmd, ptr, fd.file, blockReadParallel)
 				if err != nil {
 					return err
+				}
+
+				if tr, ok := trace.FromContext(ctx); ok {
+					defer func() {
+						dt := time.Since(now)
+						tr.LazyPrintf("fileData.getLeafBlock took %f s", dt.Seconds())
+					}()
 				}
 
 				// Recurse down to the level of the child.
