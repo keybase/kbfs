@@ -5,11 +5,14 @@
 package libkbfs
 
 import (
+	"time"
+
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 )
 
 type journalBlockServer struct {
@@ -21,12 +24,22 @@ type journalBlockServer struct {
 var _ BlockServer = journalBlockServer{}
 
 func (j journalBlockServer) getBlockFromJournal(
-	tlfID tlf.ID, id kbfsblock.ID) (
+	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID) (
 	data []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf,
 	found bool, err error) {
 	tlfJournal, ok := j.jServer.getTLFJournal(tlfID)
 	if !ok {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, false, nil
+	}
+
+	if tr, ok := trace.FromContext(ctx); ok {
+		ts := time.Now()
+		defer func() {
+			if len(data) > 0 {
+				dt := time.Since(ts)
+				tr.LazyPrintf("tlfJournal.getBlockData took %f s for %d bytes", dt.Seconds(), len(data))
+			}
+		}()
 	}
 
 	defer func() {
@@ -72,7 +85,7 @@ func (j journalBlockServer) getBlockSizeFromJournal(
 func (j journalBlockServer) Get(
 	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context) (
 	data []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
-	data, serverHalf, found, err := j.getBlockFromJournal(tlfID, id)
+	data, serverHalf, found, err := j.getBlockFromJournal(ctx, tlfID, id)
 	if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
 	}

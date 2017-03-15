@@ -53,7 +53,7 @@ func (b *BlockOpsStandard) Get(ctx context.Context, kmd KeyMetadata,
 	// the block-fetching queue.
 	if journalBServer, ok := b.config.BlockServer().(journalBlockServer); ok {
 		data, serverHalf, found, err := journalBServer.getBlockFromJournal(
-			kmd.TlfID(), blockPtr.ID)
+			ctx, kmd.TlfID(), blockPtr.ID)
 		if err != nil {
 			return err
 		}
