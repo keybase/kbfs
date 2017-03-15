@@ -80,7 +80,7 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File Attr")
 	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
-	tr := trace.New("File", "Attr")
+	tr := trace.New("File.Attr", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
@@ -124,7 +124,7 @@ var _ fs.NodeAccesser = (*File)(nil)
 // success, which makes it think the file is executable, yielding a "Unix
 // executable" UTI.
 func (f *File) Access(ctx context.Context, r *fuse.AccessRequest) error {
-	tr := trace.New("File", "Access")
+	tr := trace.New("File.Access", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
@@ -186,7 +186,7 @@ func (f *File) Fsync(ctx context.Context, req *fuse.FsyncRequest) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File Fsync")
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
-	tr := trace.New("File", "Fsync")
+	tr := trace.New("File.Fsync", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
@@ -210,7 +210,7 @@ func (f *File) Read(ctx context.Context, req *fuse.ReadRequest,
 	f.folder.fs.log.CDebugf(ctx, "File Read")
 	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
-	tr := trace.New("File", "Read")
+	tr := trace.New("File.Read", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
@@ -231,7 +231,7 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest,
 	f.folder.fs.log.CDebugf(ctx, "File Write sz=%d ", len(req.Data))
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
-	tr := trace.New("File", "Write")
+	tr := trace.New("File.Write", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
@@ -253,7 +253,7 @@ func (f *File) Flush(ctx context.Context, req *fuse.FlushRequest) (err error) {
 	// differentiate between Flush and Fsync.
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
-	tr := trace.New("File", "Flush")
+	tr := trace.New("File.Flush", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
@@ -275,7 +275,7 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 	f.folder.fs.log.CDebugf(ctx, "File SetAttr")
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
-	tr := trace.New("File", "SetAttr")
+	tr := trace.New("File.SetAttr", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
 
