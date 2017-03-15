@@ -12,6 +12,7 @@ import (
 	"bazil.org/fuse/fs"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 )
 
 type eiCache struct {
@@ -196,6 +197,11 @@ func (f *File) Read(ctx context.Context, req *fuse.ReadRequest,
 	resp *fuse.ReadResponse) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File Read")
 	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
+
+	tr := trace.New("File", "Read")
+	defer tr.Finish()
+
+	ctx = trace.NewContext(ctx, tr)
 
 	n, err := f.folder.fs.config.KBFSOps().Read(
 		ctx, f.node, resp.Data[:cap(resp.Data)], req.Offset)
