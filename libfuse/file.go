@@ -77,12 +77,12 @@ func (f *File) fillAttrWithMode(
 
 // Attr implements the fs.Node interface for File.
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
-	f.folder.fs.log.CDebugf(ctx, "File Attr")
-	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
-
 	tr := trace.New("File.Attr", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
+
+	f.folder.fs.log.CDebugf(ctx, "File Attr")
+	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
 	if reqID, ok := ctx.Value(CtxIDKey).(string); ok {
 		if ei := f.eiCache.getAndDestroyIfMatches(reqID); ei != nil {
@@ -183,12 +183,12 @@ func (f *File) sync(ctx context.Context) error {
 
 // Fsync implements the fs.NodeFsyncer interface for File.
 func (f *File) Fsync(ctx context.Context, req *fuse.FsyncRequest) (err error) {
-	f.folder.fs.log.CDebugf(ctx, "File Fsync")
-	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
-
 	tr := trace.New("File.Fsync", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
+
+	f.folder.fs.log.CDebugf(ctx, "File Fsync")
+	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
 	// This fits in situation 1 as described in libkbfs/delayed_cancellation.go
 	err = libkbfs.EnableDelayedCancellationWithGracePeriod(
@@ -207,12 +207,12 @@ var _ fs.HandleReader = (*File)(nil)
 // Read implements the fs.HandleReader interface for File.
 func (f *File) Read(ctx context.Context, req *fuse.ReadRequest,
 	resp *fuse.ReadResponse) (err error) {
-	f.folder.fs.log.CDebugf(ctx, "File Read")
-	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
-
 	tr := trace.New("File.Read", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
+
+	f.folder.fs.log.CDebugf(ctx, "File Read")
+	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
 	n, err := f.folder.fs.config.KBFSOps().Read(
 		ctx, f.node, resp.Data[:cap(resp.Data)], req.Offset)
@@ -228,12 +228,12 @@ var _ fs.HandleWriter = (*File)(nil)
 // Write implements the fs.HandleWriter interface for File.
 func (f *File) Write(ctx context.Context, req *fuse.WriteRequest,
 	resp *fuse.WriteResponse) (err error) {
-	f.folder.fs.log.CDebugf(ctx, "File Write sz=%d ", len(req.Data))
-	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
-
 	tr := trace.New("File.Write", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
+
+	f.folder.fs.log.CDebugf(ctx, "File Write sz=%d ", len(req.Data))
+	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
 	f.eiCache.destroy()
 	if err := f.folder.fs.config.KBFSOps().Write(
@@ -248,14 +248,14 @@ var _ fs.HandleFlusher = (*File)(nil)
 
 // Flush implements the fs.HandleFlusher interface for File.
 func (f *File) Flush(ctx context.Context, req *fuse.FlushRequest) (err error) {
+	tr := trace.New("File.Flush", f.node.GetBasename())
+	defer tr.Finish()
+	ctx = trace.NewContext(ctx, tr)
+
 	f.folder.fs.log.CDebugf(ctx, "File Flush")
 	// I'm not sure about the guarantees from KBFSOps, so we don't
 	// differentiate between Flush and Fsync.
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
-
-	tr := trace.New("File.Flush", f.node.GetBasename())
-	defer tr.Finish()
-	ctx = trace.NewContext(ctx, tr)
 
 	// This fits in situation 1 as described in libkbfs/delayed_cancellation.go
 	err = libkbfs.EnableDelayedCancellationWithGracePeriod(
@@ -272,12 +272,12 @@ var _ fs.NodeSetattrer = (*File)(nil)
 // Setattr implements the fs.NodeSetattrer interface for File.
 func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 	resp *fuse.SetattrResponse) (err error) {
-	f.folder.fs.log.CDebugf(ctx, "File SetAttr")
-	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
-
 	tr := trace.New("File.SetAttr", f.node.GetBasename())
 	defer tr.Finish()
 	ctx = trace.NewContext(ctx, tr)
+
+	f.folder.fs.log.CDebugf(ctx, "File SetAttr")
+	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
 	f.eiCache.destroy()
 
