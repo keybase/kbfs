@@ -107,7 +107,9 @@ func start() *libfs.Error {
 }
 
 func main() {
-	http.ListenAndServe(":8080", nil)
+	go func() {
+		http.ListenAndServe(":8080", nil)
+	}()
 
 	err := start()
 	if err != nil {
