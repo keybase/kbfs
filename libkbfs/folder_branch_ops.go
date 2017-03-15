@@ -3986,8 +3986,6 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 	unlinkPath, toUnlink, err := fbo.getUnlinkPathBeforeUpdatingPointers(ctx, op)
 	if err != nil {
 		return err
-		fbo.log.CErrorf(ctx,
-			"Calling getUnlinkPathBeforeUpdatingPointers error: %v", err)
 	}
 
 	err = fbo.blocks.UpdatePointers(
