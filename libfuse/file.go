@@ -80,6 +80,10 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File Attr")
 	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
 
+	tr := trace.New("File", "Attr")
+	defer tr.Finish()
+	ctx = trace.NewContext(ctx, tr)
+
 	if reqID, ok := ctx.Value(CtxIDKey).(string); ok {
 		if ei := f.eiCache.getAndDestroyIfMatches(reqID); ei != nil {
 			if err = f.fillAttrWithMode(ctx, ei, a); err != nil {
@@ -120,6 +124,10 @@ var _ fs.NodeAccesser = (*File)(nil)
 // success, which makes it think the file is executable, yielding a "Unix
 // executable" UTI.
 func (f *File) Access(ctx context.Context, r *fuse.AccessRequest) error {
+	tr := trace.New("File", "Access")
+	defer tr.Finish()
+	ctx = trace.NewContext(ctx, tr)
+
 	if int(r.Uid) != os.Getuid() &&
 		// Finder likes to use UID 0 for some operations. osxfuse already allows
 		// ACCESS and GETXATTR requests from root to go through. This allows root
@@ -178,6 +186,10 @@ func (f *File) Fsync(ctx context.Context, req *fuse.FsyncRequest) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File Fsync")
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
+	tr := trace.New("File", "Fsync")
+	defer tr.Finish()
+	ctx = trace.NewContext(ctx, tr)
+
 	// This fits in situation 1 as described in libkbfs/delayed_cancellation.go
 	err = libkbfs.EnableDelayedCancellationWithGracePeriod(
 		ctx, f.folder.fs.config.DelayedCancellationGracePeriod())
@@ -200,7 +212,6 @@ func (f *File) Read(ctx context.Context, req *fuse.ReadRequest,
 
 	tr := trace.New("File", "Read")
 	defer tr.Finish()
-
 	ctx = trace.NewContext(ctx, tr)
 
 	n, err := f.folder.fs.config.KBFSOps().Read(
@@ -220,6 +231,10 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest,
 	f.folder.fs.log.CDebugf(ctx, "File Write sz=%d ", len(req.Data))
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
+	tr := trace.New("File", "Write")
+	defer tr.Finish()
+	ctx = trace.NewContext(ctx, tr)
+
 	f.eiCache.destroy()
 	if err := f.folder.fs.config.KBFSOps().Write(
 		ctx, f.node, req.Data, req.Offset); err != nil {
@@ -238,6 +253,10 @@ func (f *File) Flush(ctx context.Context, req *fuse.FlushRequest) (err error) {
 	// differentiate between Flush and Fsync.
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
 
+	tr := trace.New("File", "Flush")
+	defer tr.Finish()
+	ctx = trace.NewContext(ctx, tr)
+
 	// This fits in situation 1 as described in libkbfs/delayed_cancellation.go
 	err = libkbfs.EnableDelayedCancellationWithGracePeriod(
 		ctx, f.folder.fs.config.DelayedCancellationGracePeriod())
@@ -255,6 +274,10 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 	resp *fuse.SetattrResponse) (err error) {
 	f.folder.fs.log.CDebugf(ctx, "File SetAttr")
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
+
+	tr := trace.New("File", "SetAttr")
+	defer tr.Finish()
+	ctx = trace.NewContext(ctx, tr)
 
 	f.eiCache.destroy()
 
