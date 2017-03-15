@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 )
 
 const (
@@ -180,6 +181,8 @@ func (brq *blockRetrievalQueue) Request(ctx context.Context, priority int, kmd K
 
 	bpLookup := blockPtrLookup{ptr, reflect.TypeOf(block)}
 
+	tr, trOk := trace.FromContext(ctx)
+
 	brq.mtx.Lock()
 	defer brq.mtx.Unlock()
 	// We might have to retry if the context has been canceled.  This loop will
@@ -189,6 +192,9 @@ func (brq *blockRetrievalQueue) Request(ctx context.Context, priority int, kmd K
 	for {
 		br, exists := brq.ptrs[bpLookup]
 		if !exists {
+			if trOk {
+				tr.LazyPrintf("creating new block request")
+			}
 			// Attempt to retrieve the block from the cache. This
 			// might be a specific type where the request blocks are
 			// CommonBlocks, but that direction can Set correctly. The
@@ -229,6 +235,9 @@ func (brq *blockRetrievalQueue) Request(ctx context.Context, priority int, kmd K
 			heap.Push(brq.heap, br)
 			go brq.notifyWorker()
 		} else {
+			if trOk {
+				tr.LazyPrintf("using existing block request")
+			}
 			err := br.ctx.AddContext(ctx)
 			if err == context.Canceled {
 				// We need to delete the request pointer, but we'll still let the
