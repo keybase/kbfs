@@ -297,6 +297,14 @@ func (fd *fileData) getBlocksForOffsetRange(ctx context.Context,
 		respChans = append(respChans, respCh)
 		// Don't reference the uncaptured `i` or `iptr` variables below.
 		eg.Go(func() error {
+			if tr, ok := trace.FromContext(ctx); ok {
+				now := time.Now()
+				defer func() {
+					dt := time.Since(now)
+					tr.LazyPrintf("fileData.getLeafBlock took %f s", dt.Seconds())
+				}()
+			}
+
 			var pfr [][]parentBlockAndChildIndex
 			var blocks map[BlockPointer]*FileBlock
 			var nextBlockOffset int64
@@ -433,11 +441,20 @@ func (fd *fileData) getByteSlicesInOffsetRange(ctx context.Context,
 		return nil, nil
 	}
 
+	now := time.Now()
+
 	topBlock, _, err := fd.getter(ctx, fd.kmd, fd.rootBlockPointer(),
 		fd.file, blockRead)
 	if err != nil {
 		return nil, err
 	}
+
+	if tr, ok := trace.FromContext(ctx); ok {
+		dt := time.Since(now)
+		tr.LazyPrintf("fileData.getByteSlicesInOffsetRange get top block took %f s", dt.Seconds())
+	}
+
+	now = time.Now()
 
 	// Find all the indirect pointers to leaf blocks in the offset range.
 	var iptrs []IndirectFilePtr
@@ -451,6 +468,11 @@ func (fd *fileData) getByteSlicesInOffsetRange(ctx context.Context,
 			ctx, fd.rootBlockPointer(), topBlock, startOff, endOff, prefixOk)
 		if err != nil {
 			return nil, err
+		}
+
+		if tr, ok := trace.FromContext(ctx); ok {
+			dt := time.Since(now)
+			tr.LazyPrintf("fileData get leaf blocks took %f s", dt.Seconds())
 		}
 
 		for i, p := range pfr {
