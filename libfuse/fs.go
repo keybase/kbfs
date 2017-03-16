@@ -6,7 +6,7 @@ package libfuse
 
 import (
 	"net/http"
-	_ "net/http/pprof"
+	"net/http/pprof"
 	"os"
 	"runtime"
 	"strings"
@@ -60,9 +60,15 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 		errLog.Configure("", true, "")
 	}
 
+	serveMux := http.NewServeMux()
+	serveMux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+	serveMux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	serveMux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	serveMux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	serveMux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 	debugServer := &http.Server{
 		Addr:         ":8080",
-		Handler:      nil, // TODO: Fill in custom handler.
+		Handler:      serveMux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
