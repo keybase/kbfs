@@ -433,7 +433,7 @@ func makeDefaultBackpressureDiskLimiterParams(
 				return 0, 0, err
 			}
 
-			if timestamp == (time.Time{}) {
+			if timestamp.IsZero() {
 				return 0, math.MaxInt64, nil
 			}
 
