@@ -5,6 +5,9 @@
 package libfuse
 
 import (
+	"strconv"
+	"strings"
+
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"github.com/keybase/kbfs/libkbfs"
@@ -37,12 +40,14 @@ func (f *DebugServerFile) Write(ctx context.Context, req *fuse.WriteRequest,
 	resp *fuse.WriteResponse) (err error) {
 	f.fs.log.CDebugf(ctx, "DebugServerFile (enable: %t) Write", f.enable)
 	defer func() { f.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
-	if len(req.Data) == 0 {
-		return nil
-	}
-
 	if f.enable {
-		err := f.fs.enableDebugServer(ctx)
+		portStr := strings.TrimSpace(string(req.Data))
+		port, err := strconv.ParseUint(portStr, 10, 16)
+		if err != nil {
+			return err
+		}
+
+		err = f.fs.enableDebugServer(ctx, uint16(port))
 		if err != nil {
 			return err
 		}

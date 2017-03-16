@@ -10,6 +10,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -122,7 +123,7 @@ func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 	return tc, nil
 }
 
-func (f *FS) enableDebugServer(ctx context.Context) error {
+func (f *FS) enableDebugServer(ctx context.Context, port uint16) error {
 	f.debugServerLock.Lock()
 	defer f.debugServerLock.Unlock()
 
@@ -131,7 +132,8 @@ func (f *FS) enableDebugServer(ctx context.Context) error {
 			f.debugServer.Addr)
 	}
 
-	addr := net.JoinHostPort("localhost", "8080")
+	addr := net.JoinHostPort("localhost",
+		strconv.FormatUint(uint64(port), 10))
 	f.log.CDebugf(ctx, "Enabling debug http server at %s", addr)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
