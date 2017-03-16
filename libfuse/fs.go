@@ -24,24 +24,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
-// connections. It's used by ListenAndServe and ListenAndServeTLS so
-// dead TCP connections (e.g. closing laptop mid-download) eventually
-// go away.
-type tcpKeepAliveListener struct {
-	*net.TCPListener
-}
-
-func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
-	tc, err := ln.AcceptTCP()
-	if err != nil {
-		return
-	}
-	tc.SetKeepAlive(true)
-	tc.SetKeepAlivePeriod(3 * time.Minute)
-	return tc, nil
-}
-
 // FS implements the newfuse FS interface for KBFS.
 type FS struct {
 	config libkbfs.Config
@@ -123,6 +105,23 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 	return fs
 }
 
+// tcpKeepAliveListener is copied from net/http/server.go, since it is
+// used in http.(*Server).ListenAndServe() which we want to emulate in
+// enableDebugServer.
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return
+	}
+	tc.SetKeepAlive(true)
+	tc.SetKeepAlivePeriod(3 * time.Minute)
+	return tc, nil
+}
+
 func (f *FS) enableDebugServer(ctx context.Context) error {
 	f.debugServerLock.Lock()
 	defer f.debugServerLock.Unlock()
@@ -132,7 +131,7 @@ func (f *FS) enableDebugServer(ctx context.Context) error {
 			f.debugServer.Addr)
 	}
 
-	addr := ":8080"
+	addr := net.JoinHostPort("localhost", "8080")
 	f.log.CDebugf(ctx, "Enabling debug http server at %s", addr)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
