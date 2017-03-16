@@ -1663,8 +1663,8 @@ func (e ErrDiskLimitTimeout) Error() string {
 func (j *tlfJournal) putBlockData(
 	ctx context.Context, id kbfsblock.ID, blockCtx kbfsblock.Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
-	// Since Acquire can block, it should happen outside of the
-	// journal lock.
+	// Since beforeBLockPut can block, it should happen outside of
+	// the journal lock.
 
 	timeout := j.config.diskLimitTimeout()
 	acquireCtx, cancel := context.WithTimeout(ctx, timeout)
