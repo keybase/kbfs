@@ -316,11 +316,10 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 		bdl.quotaTracker.quotaBytes = 100
 	}()
 
-	// TODO: Test throttle error here, too.
-
 	ctx := context.Background()
-	delay := bdl.getDelayLocked(ctx, now)
+	delay, fromQuota := bdl.getDelayLocked(ctx, now)
 	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
+	require.True(t, fromQuota)
 
 	func() {
 		bdl.lock.Lock()
@@ -333,8 +332,9 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 		bdl.journalFileTracker.free = 350
 	}()
 
-	delay = bdl.getDelayLocked(ctx, now)
+	delay, fromQuota = bdl.getDelayLocked(ctx, now)
 	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
+	require.True(t, fromQuota)
 
 	func() {
 		bdl.lock.Lock()
@@ -354,18 +354,19 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 		bdl.quotaTracker.quotaBytes = 100
 	}()
 
-	delay = bdl.getDelayLocked(ctx, now)
+	delay, fromQuota = bdl.getDelayLocked(ctx, now)
 	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
+	require.True(t, fromQuota)
 }
 
 // TestBackpressureDiskLimiterGetDelayWithDeadline makes sure the
 // delay calculation takes into account the context deadline.
 func TestBackpressureDiskLimiterGetDelayWithDeadline(t *testing.T) {
 	log := logger.NewTestLogger(t)
-	bdl, err := newBackpressureDiskLimiterWithFunctions(
-		log, 0.1, 0.9, 0.25, 0.25, math.MaxInt64, math.MaxInt64,
-		0.8, 1.2, 8*time.Second,
-		fakeDelay, fakeGetFreeBytesAndFiles, fakeGetQuota)
+	params := makeTestBackpressureDiskLimiterParams()
+	params.byteLimit = math.MaxInt64
+	params.fileLimit = math.MaxInt64
+	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
 	now := time.Now()
@@ -384,8 +385,9 @@ func TestBackpressureDiskLimiterGetDelayWithDeadline(t *testing.T) {
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
 
-	delay := bdl.getDelayLocked(ctx, now)
+	delay, fromQuota := bdl.getDelayLocked(ctx, now)
 	require.InEpsilon(t, float64(2), delay.Seconds(), 0.01)
+	require.False(t, fromQuota)
 }
 
 type backpressureTestType int
@@ -440,7 +442,6 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 
 	log := logger.NewTestLogger(t)
 	params := makeTestBackpressureDiskLimiterParams()
-	// 4 = 1/(journalFrac=0.25)
 	params.byteLimit = byteLimit * 4
 	params.fileLimit = fileLimit * 4
 	params.delayFn = delayFn
@@ -767,7 +768,6 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 
 	log := logger.NewTestLogger(t)
 	params := makeTestBackpressureDiskLimiterParams()
-	// 4 = 1/(journalFrac=0.25)
 	params.byteLimit = math.MaxInt64
 	params.fileLimit = math.MaxInt64
 	params.delayFn = delayFn
@@ -903,7 +903,7 @@ func TestBackpressureDiskLimiterSmallDiskDelay(t *testing.T) {
 }
 
 // TestBackpressureDiskLimiterNearQuota checks the delays when
-// pretending to have be close to the quota limit.
+// pretending to near and over the quota limit.
 func TestBackpressureDiskLimiterNearQuota(t *testing.T) {
 	var lastDelay time.Duration
 	delayFn := func(ctx context.Context, delay time.Duration) error {
@@ -917,13 +917,15 @@ func TestBackpressureDiskLimiterNearQuota(t *testing.T) {
 	const quotaBytes = 1000
 
 	log := logger.NewTestLogger(t)
-	bdl, err := newBackpressureDiskLimiterWithFunctions(
-		log, 0.1, 0.9, 0.25, 0.25, math.MaxInt64, math.MaxInt64,
-		0.8, 1.2, 4*time.Second, delayFn,
-		fakeGetFreeBytesAndFiles,
-		func(_ context.Context) (int64, int64) {
-			return remoteUsedBytes, quotaBytes
-		})
+	params := makeTestBackpressureDiskLimiterParams()
+	params.byteLimit = math.MaxInt64
+	params.fileLimit = math.MaxInt64
+	params.maxDelay = 4 * time.Second
+	params.delayFn = delayFn
+	params.quotaFn = func(_ context.Context) (int64, int64) {
+		return remoteUsedBytes, quotaBytes
+	}
+	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
 	quotaSnapshot := bdl.getQuotaSnapshotForTest()
