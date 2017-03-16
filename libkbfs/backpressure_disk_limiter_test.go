@@ -240,8 +240,8 @@ func TestBackpressureConstructorError(t *testing.T) {
 }
 
 // TestBackpressureDiskLimiterBeforeBlockPut checks that
-// backpressureDiskLimiter.beforeBlockPut keeps track and returns the
-// available bytes/files correctly.
+// backpressureDiskLimiter.beforeBlockPut keeps track of and returns
+// the available bytes/files correctly.
 func TestBackpressureDiskLimiterBeforeBlockPut(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	params := makeTestBackpressureDiskLimiterParams()
