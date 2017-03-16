@@ -518,6 +518,8 @@ func (k *SimpleFS) SimpleFSClose(ctx context.Context, opid keybase1.OpID) (err e
 }
 
 // SimpleFSCheck - Check progress of pending operation
+// Progress variable is still TBD.
+// Return errNoResult if no operation found.
 func (k *SimpleFS) SimpleFSCheck(_ context.Context, opid keybase1.OpID) (keybase1.Progress, error) {
 	k.lock.RLock()
 	defer k.lock.RUnlock()
