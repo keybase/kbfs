@@ -539,6 +539,14 @@ func (bdl *backpressureDiskLimiter) getSnapshotsForTest() (
 			bdl.journalFileTracker.semaphore.Count()}
 }
 
+func (bdl *backpressureDiskLimiter) getQuotaSnapshotForTest() bdlSnapshot {
+	bdl.lock.RLock()
+	defer bdl.lock.RUnlock()
+	used := bdl.quotaTracker.usedBytes + bdl.quotaTracker.remoteUsedBytes
+	free := bdl.quotaTracker.quotaBytes - used
+	return bdlSnapshot{used, free, 0, 0}
+}
+
 func (bdl *backpressureDiskLimiter) onJournalEnable(
 	ctx context.Context, journalBytes, journalFiles int64) (
 	availableBytes, availableFiles int64) {
@@ -646,10 +654,15 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		if delay > 0 {
 			bdl.log.CDebugf(ctx, "Delaying block put of %d bytes and %d files by %f s ("+
 				"journalBytes=%d, freeBytes=%d, "+
-				"journalFiles=%d, freeFiles=%d)",
+				"journalFiles=%d, freeFiles=%d, "+
+				"quotaUsedBytes=%d, quotaRemoteUsedBytes=%d, "+
+				"quotaBytes=%d)",
 				blockBytes, blockFiles, delay.Seconds(),
 				bdl.journalByteTracker.used, freeBytes,
-				bdl.journalFileTracker.used, freeFiles)
+				bdl.journalFileTracker.used, freeFiles,
+				bdl.quotaTracker.usedBytes,
+				bdl.quotaTracker.remoteUsedBytes,
+				bdl.quotaTracker.quotaBytes)
 		}
 
 		return delay, nil

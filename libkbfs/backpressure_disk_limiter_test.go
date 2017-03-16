@@ -358,8 +358,8 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
 }
 
-// TestBackpressureDiskLimiterWithDeadline makes sure the delay
-// calculation takes into account the context deadline.
+// TestBackpressureDiskLimiterGetDelayWithDeadline makes sure the
+// delay calculation takes into account the context deadline.
 func TestBackpressureDiskLimiterGetDelayWithDeadline(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	bdl, err := newBackpressureDiskLimiterWithFunctions(
@@ -900,4 +900,83 @@ func TestBackpressureDiskLimiterSmallDiskDelay(t *testing.T) {
 	t.Run(fileTest.String(), func(t *testing.T) {
 		testBackpressureDiskLimiterSmallDiskDelay(t, fileTest)
 	})
+}
+
+// TestBackpressureDiskLimiterNearQuota checks the delays when
+// pretending to have be close to the quota limit.
+func TestBackpressureDiskLimiterNearQuota(t *testing.T) {
+	var lastDelay time.Duration
+	delayFn := func(ctx context.Context, delay time.Duration) error {
+		lastDelay = delay
+		return nil
+	}
+
+	const blockBytes = 100
+	const blockFiles = 10
+	const remoteUsedBytes = 400
+	const quotaBytes = 1000
+
+	log := logger.NewTestLogger(t)
+	bdl, err := newBackpressureDiskLimiterWithFunctions(
+		log, 0.1, 0.9, 0.25, 0.25, math.MaxInt64, math.MaxInt64,
+		0.8, 1.2, 4*time.Second, delayFn,
+		fakeGetFreeBytesAndFiles,
+		func(_ context.Context) (int64, int64) {
+			return remoteUsedBytes, quotaBytes
+		})
+	require.NoError(t, err)
+
+	quotaSnapshot := bdl.getQuotaSnapshotForTest()
+	require.Equal(t, bdlSnapshot{
+		used: 0,
+		free: math.MaxInt64,
+	}, quotaSnapshot)
+
+	ctx := context.Background()
+
+	var bytesPut int64
+
+	checkCounters := func(i int) {
+		quotaSnapshot := bdl.getQuotaSnapshotForTest()
+		used := remoteUsedBytes + bytesPut
+		require.Equal(t, bdlSnapshot{
+			used: used,
+			free: quotaBytes - used,
+		}, quotaSnapshot, "i=%d", i)
+	}
+
+	// The first five puts shouldn't encounter any backpressure...
+
+	for i := 0; i < 5; i++ {
+		_, _, err := bdl.beforeBlockPut(ctx, blockBytes, blockFiles)
+		require.NoError(t, err)
+		require.Equal(t, 0*time.Second, lastDelay, "i=%d", i)
+		checkCounters(i)
+
+		bdl.afterBlockPut(ctx, blockBytes, blockFiles, true)
+		bytesPut += blockBytes
+		checkCounters(i)
+	}
+
+	// ...but the next four should encounter increasing
+	// backpressure...
+
+	for i := 1; i <= 4; i++ {
+		_, _, err := bdl.beforeBlockPut(ctx, blockBytes, blockFiles)
+		require.NoError(t, err)
+		require.InEpsilon(t, float64(i), lastDelay.Seconds(),
+			0.01, "i=%d", i)
+		checkCounters(i)
+
+		bdl.afterBlockPut(ctx, blockBytes, blockFiles, true)
+		bytesPut += blockBytes
+		checkCounters(i)
+	}
+
+	// ...and the last one should encounter the max backpressure.
+
+	_, _, err = bdl.beforeBlockPut(ctx, blockBytes, blockFiles)
+	require.NoError(t, err)
+	require.Equal(t, 4*time.Second, lastDelay)
+	checkCounters(0)
 }
