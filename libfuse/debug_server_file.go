@@ -16,7 +16,12 @@ import (
 
 // DebugServerFile represents a write-only file where any write of at
 // least one byte triggers either disabling or enabling the debug
-// server.  It is mainly useful for testing.
+// server. For enabling, the port number to listen on must be what is
+// written, e.g.
+//
+//   echo 8080 > /keybase/.kbfs_enable_debug_server
+//
+// will spawn the HTTP debug server on port 8080.
 type DebugServerFile struct {
 	fs     *FS
 	enable bool
@@ -40,6 +45,10 @@ func (f *DebugServerFile) Write(ctx context.Context, req *fuse.WriteRequest,
 	resp *fuse.WriteResponse) (err error) {
 	f.fs.log.CDebugf(ctx, "DebugServerFile (enable: %t) Write", f.enable)
 	defer func() { f.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
+	if len(req.Data) == 0 {
+		return nil
+	}
+
 	if f.enable {
 		portStr := strings.TrimSpace(string(req.Data))
 		port, err := strconv.ParseUint(portStr, 10, 16)
