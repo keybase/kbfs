@@ -36,7 +36,9 @@ type FS struct {
 	// Protects debugServerListener and debugServer.addr.
 	debugServerLock     sync.Mutex
 	debugServerListener net.Listener
-	debugServer         *http.Server
+	// An HTTP server used for debugging. Normally off unless
+	// turned on via enableDebugServer().
+	debugServer *http.Server
 
 	notifications *libfs.FSNotifications
 
