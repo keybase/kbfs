@@ -90,8 +90,9 @@ func (q *EventuallyConsistentQuotaUsage) getAndCache(
 // 3) If the age of cached data is more than tolerance, a blocking RPC is
 // issued and the function only returns after RPC finishes, with the newest
 // data from RPC. The RPC causes cached data to be refreshed as well.
-func (q *EventuallyConsistentQuotaUsage) Get(ctx context.Context,
-	tolerance time.Duration) (usageBytes, limitBytes int64, err error) {
+func (q *EventuallyConsistentQuotaUsage) Get(
+	ctx context.Context, tolerance time.Duration) (
+	timestamp time.Time, usageBytes, limitBytes int64, err error) {
 	c := func() cachedQuotaUsage {
 		q.mu.RLock()
 		defer q.mu.RUnlock()
@@ -105,7 +106,7 @@ func (q *EventuallyConsistentQuotaUsage) Get(ctx context.Context,
 		// other words, wait for it to finish if one is already in progress.
 		c, err = q.getAndCache(ctx)
 		if err != nil {
-			return -1, -1, err
+			return time.Time{}, -1, -1, err
 		}
 	case past > tolerance/2:
 		if atomic.CompareAndSwapInt32(&q.backgroundInProcess, 0, 1) {
@@ -138,5 +139,5 @@ func (q *EventuallyConsistentQuotaUsage) Get(ctx context.Context,
 	default:
 		q.log.CDebugf(ctx, "Returning cached data from %s ago.", past)
 	}
-	return c.usageBytes, c.limitBytes, nil
+	return c.timestamp, c.usageBytes, c.limitBytes, nil
 }

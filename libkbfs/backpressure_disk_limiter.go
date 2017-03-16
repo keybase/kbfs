@@ -427,7 +427,17 @@ func makeDefaultBackpressureDiskLimiterParams(
 			return defaultGetFreeBytesAndFiles(storageRoot)
 		},
 		quotaFn: func(ctx context.Context) (int64, int64, error) {
-			return quotaUsage.Get(ctx, 1*time.Minute)
+			timestamp, usageBytes, limitBytes, err :=
+				quotaUsage.Get(ctx, 1*time.Minute)
+			if err != nil {
+				return 0, 0, err
+			}
+
+			if timestamp == (time.Time{}) {
+				return 0, math.MaxInt64, nil
+			}
+
+			return usageBytes, limitBytes, nil
 		},
 	}
 }
