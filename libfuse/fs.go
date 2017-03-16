@@ -5,6 +5,7 @@
 package libfuse
 
 import (
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -73,12 +74,6 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 		WriteTimeout: 10 * time.Second,
 	}
 
-	go func() {
-		log.Debug("Starting debug http server at %s", debugServer)
-		err := debugServer.ListenAndServe()
-		log.Debug("Debug http server ended with %+v", err)
-	}()
-
 	fs := &FS{
 		config:         config,
 		conn:           conn,
@@ -102,6 +97,47 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 		time.AfterFunc(d, f)
 	}
 	return fs
+}
+
+// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
+// connections. It's used by ListenAndServe and ListenAndServeTLS so
+// dead TCP connections (e.g. closing laptop mid-download) eventually
+// go away.
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return
+	}
+	tc.SetKeepAlive(true)
+	tc.SetKeepAlivePeriod(3 * time.Minute)
+	return tc, nil
+}
+
+func (f *FS) enableDebugServer(ctx context.Context) error {
+	f.log.CDebugf(ctx,
+		"Enabling debug http server at %s", f.debugServer.Addr)
+	ln, err := net.Listen("tcp", f.debugServer.Addr)
+	if err != nil {
+		f.log.CDebugf(ctx, "Got error when listening on %s: %+v",
+			f.debugServer.Addr, err)
+		return err
+	}
+	go func() {
+		err := f.debugServer.Serve(tcpKeepAliveListener{ln.(*net.TCPListener)})
+		f.log.CDebugf(ctx, "Debug http server ended with %+v", err)
+	}()
+	return nil
+}
+
+func (f *FS) disableDebugServer(ctx context.Context) error {
+	f.log.Debug("Disabling debug http server at %s", f.debugServer.Addr)
+	err := f.debugServer.Shutdown(ctx)
+	f.log.Debug("Debug http server shutdown with %+v", err)
+	return err
 }
 
 // SetFuseConn sets fuse connection for this FS.
