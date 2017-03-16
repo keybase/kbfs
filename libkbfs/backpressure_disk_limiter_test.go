@@ -284,8 +284,7 @@ func TestBackpressureDiskLimiterBeforeBlockPutError(t *testing.T) {
 	require.Equal(t, int64(1), bdl.journalFileTracker.semaphore.Count())
 }
 
-// TestBackpressureDiskLimiterGetDelay tests the delay calculation,
-// and makes sure it takes into account the context deadline.
+// TestBackpressureDiskLimiterGetDelay tests the delay calculation.
 func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	params := makeTestBackpressureDiskLimiterParams()
@@ -299,29 +298,93 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 	func() {
 		bdl.lock.Lock()
 		defer bdl.lock.Unlock()
-		// byteDelayScale should be 25/(.25(350 + 25)) = 0.267.
+		// byteDelayScale should be 25/(.25(350 + 25)) =
+		// 0.267, which turns into a delay fraction of
+		// (0.267-0.1)/(0.9-0.1) = 0.209.
 		bdl.journalByteTracker.used = 25
 		bdl.journalByteTracker.free = 350
-		// fileDelayScale should by 50/(.25(350 + 50)) = 0.5.
+		// fileDelayScale should be 50/(.25(350 + 50)) = 0.5,
+		// which turns into a delay fraction of
+		// (0.5-0.1)/(0.9-0.1) = 0.5.
 		bdl.journalFileTracker.used = 50
 		bdl.journalFileTracker.free = 350
-		// quotaDelayScale should be (10+20)/100 = 0.3.
-		bdl.quotaTracker.usedBytes = 10
-		bdl.quotaTracker.remoteUsedBytes = 20
+		// quotaDelayScale should be (80+10)/100 = 0.9, which
+		// turns into a delay fraction of (0.9-0.8)/(1.2-0.8)
+		// = 0.25.
+		bdl.quotaTracker.usedBytes = 80
+		bdl.quotaTracker.remoteUsedBytes = 10
 		bdl.quotaTracker.quotaBytes = 100
 	}()
 
-	// TODO: Test throttle probability here, too.
+	// TODO: Test throttle error here, too.
 
 	ctx := context.Background()
 	delay := bdl.getDelayLocked(ctx, now)
 	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
 
-	deadline := now.Add(5 * time.Second)
-	ctx2, cancel2 := context.WithDeadline(ctx, deadline)
-	defer cancel2()
+	func() {
+		bdl.lock.Lock()
+		defer bdl.lock.Unlock()
+		// Swap byte and file delay fractions.
+		bdl.journalByteTracker.used = 50
+		bdl.journalByteTracker.free = 350
 
-	delay = bdl.getDelayLocked(ctx2, now)
+		bdl.journalFileTracker.used = 25
+		bdl.journalFileTracker.free = 350
+	}()
+
+	delay = bdl.getDelayLocked(ctx, now)
+	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
+
+	func() {
+		bdl.lock.Lock()
+		defer bdl.lock.Unlock()
+		// Reduce byte and delay fractions.
+		bdl.journalByteTracker.used = 25
+		bdl.journalByteTracker.free = 350
+
+		bdl.journalFileTracker.used = 25
+		bdl.journalFileTracker.free = 350
+
+		// quotaDelayScale should be (80+20)/100 = 1.0, which
+		// turns into a delay fraction of (0.9-0.8)/(1.2-0.8)
+		// = 0.5.
+		bdl.quotaTracker.usedBytes = 80
+		bdl.quotaTracker.remoteUsedBytes = 20
+		bdl.quotaTracker.quotaBytes = 100
+	}()
+
+	delay = bdl.getDelayLocked(ctx, now)
+	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
+}
+
+// TestBackpressureDiskLimiterWithDeadline makes sure the delay
+// calculation takes into account the context deadline.
+func TestBackpressureDiskLimiterGetDelayWithDeadline(t *testing.T) {
+	log := logger.NewTestLogger(t)
+	bdl, err := newBackpressureDiskLimiterWithFunctions(
+		log, 0.1, 0.9, 0.25, 0.25, math.MaxInt64, math.MaxInt64,
+		0.8, 1.2, 8*time.Second,
+		fakeDelay, fakeGetFreeBytesAndFiles, fakeGetQuota)
+	require.NoError(t, err)
+
+	now := time.Now()
+
+	func() {
+		bdl.lock.Lock()
+		defer bdl.lock.Unlock()
+		// fileDelayScale should be 50/(.25(350 + 50)) = 0.5,
+		// which turns into a delay fraction of
+		// (0.5-0.1)/(0.9-0.1) = 0.5.
+		bdl.journalFileTracker.used = 50
+		bdl.journalFileTracker.free = 350
+	}()
+
+	deadline := now.Add(5 * time.Second)
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+
+	delay := bdl.getDelayLocked(ctx, now)
 	require.InEpsilon(t, float64(2), delay.Seconds(), 0.01)
 }
 
