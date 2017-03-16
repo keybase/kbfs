@@ -16,8 +16,8 @@ import (
 
 // DebugServerFile represents a write-only file where any write of at
 // least one byte triggers either disabling or enabling the debug
-// server. For enabling, the port number to listen on must be what is
-// written, e.g.
+// server. For enabling, the port number to listen on (with localhost)
+// must be what is written, e.g.
 //
 //   echo 8080 > /keybase/.kbfs_enable_debug_server
 //
