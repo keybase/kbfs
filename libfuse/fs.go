@@ -176,6 +176,8 @@ func (f *FS) disableDebugServer(ctx context.Context) error {
 
 	f.log.CDebugf(ctx, "Disabling debug http server at %s",
 		f.debugServer.Addr)
+	// TODO: Use f.debugServer.Close() or f.debugServer.Shutdown()
+	// when we switch to go 1.8.
 	err := f.debugServerListener.Close()
 	f.log.CDebugf(ctx, "Debug http server shutdown with %+v", err)
 
