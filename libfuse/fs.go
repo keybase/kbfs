@@ -11,6 +11,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"bazil.org/fuse"
@@ -19,8 +20,27 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
+
+// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
+// connections. It's used by ListenAndServe and ListenAndServeTLS so
+// dead TCP connections (e.g. closing laptop mid-download) eventually
+// go away.
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return
+	}
+	tc.SetKeepAlive(true)
+	tc.SetKeepAlivePeriod(3 * time.Minute)
+	return tc, nil
+}
 
 // FS implements the newfuse FS interface for KBFS.
 type FS struct {
@@ -30,7 +50,10 @@ type FS struct {
 	log    logger.Logger
 	errLog logger.Logger
 
-	debugServer *http.Server
+	// Protects debugServerListener and debugServer.addr.
+	debugServerLock     sync.Mutex
+	debugServerListener net.Listener
+	debugServer         *http.Server
 
 	notifications *libfs.FSNotifications
 
@@ -67,8 +90,9 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 	serveMux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
 	serveMux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
 	serveMux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+	// Leave Addr blank to be set in enableDebugServer() and
+	// disableDebugServer().
 	debugServer := &http.Server{
-		Addr:         ":8080",
 		Handler:      serveMux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -99,44 +123,52 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 	return fs
 }
 
-// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
-// connections. It's used by ListenAndServe and ListenAndServeTLS so
-// dead TCP connections (e.g. closing laptop mid-download) eventually
-// go away.
-type tcpKeepAliveListener struct {
-	*net.TCPListener
-}
-
-func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
-	tc, err := ln.AcceptTCP()
-	if err != nil {
-		return
-	}
-	tc.SetKeepAlive(true)
-	tc.SetKeepAlivePeriod(3 * time.Minute)
-	return tc, nil
-}
-
 func (f *FS) enableDebugServer(ctx context.Context) error {
-	f.log.CDebugf(ctx,
-		"Enabling debug http server at %s", f.debugServer.Addr)
-	ln, err := net.Listen("tcp", f.debugServer.Addr)
+	f.debugServerLock.Lock()
+	defer f.debugServerLock.Unlock()
+
+	if f.debugServer.Addr != "" {
+		return errors.Errorf("Debug server already enabled at %s",
+			f.debugServer.Addr)
+	}
+
+	addr := ":8080"
+	f.log.CDebugf(ctx, "Enabling debug http server at %s", addr)
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		f.log.CDebugf(ctx, "Got error when listening on %s: %+v",
-			f.debugServer.Addr, err)
+			addr, err)
 		return err
 	}
-	go func() {
-		err := f.debugServer.Serve(tcpKeepAliveListener{ln.(*net.TCPListener)})
-		f.log.CDebugf(ctx, "Debug http server ended with %+v", err)
-	}()
+
+	f.debugServer.Addr = addr
+	f.debugServerListener =
+		tcpKeepAliveListener{listener.(*net.TCPListener)}
+
+	go func(server *http.Server, listener net.Listener) {
+		err := server.Serve(listener)
+		f.log.Debug("Debug http server ended with %+v", err)
+	}(f.debugServer, f.debugServerListener)
+
 	return nil
 }
 
 func (f *FS) disableDebugServer(ctx context.Context) error {
-	f.log.Debug("Disabling debug http server at %s", f.debugServer.Addr)
-	err := f.debugServer.Shutdown(ctx)
-	f.log.Debug("Debug http server shutdown with %+v", err)
+	f.debugServerLock.Lock()
+	defer f.debugServerLock.Unlock()
+
+	if f.debugServer.Addr == "" {
+		return errors.New("Debug server already disabled")
+	}
+
+	f.log.CDebugf(ctx, "Disabling debug http server at %s",
+		f.debugServer.Addr)
+	err := f.debugServerListener.Close()
+	f.log.CDebugf(ctx, "Debug http server shutdown with %+v", err)
+
+	f.debugServer.Addr = ""
+	f.debugServerListener = nil
+
 	return err
 }
 
