@@ -1732,6 +1732,9 @@ func (j *tlfJournal) putBlockData(
 
 	j.signalWork()
 
+	// TODO: Consult quota info and signal to caller that we're
+	// over quota. (Maybe at a higher level?)
+
 	return nil
 }
 
