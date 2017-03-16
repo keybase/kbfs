@@ -581,6 +581,9 @@ func (bdl *backpressureDiskLimiter) getDelayLocked(
 	delayScale := math.Max(
 		math.Max(byteDelayScale, fileDelayScale), quotaDelayScale)
 
+	// TODO: Sometimes fake a throttle error if quotaDelayScale >
+	// 0.
+
 	// Set maxDelay to min(bdl.maxDelay, time until deadline - 1s).
 	maxDelay := bdl.maxDelay
 	if deadline, ok := ctx.Deadline(); ok {
