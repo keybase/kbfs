@@ -79,11 +79,11 @@ const EnableBlockPrefetchingFileName = ".kbfs_enable_block_prefetching"
 const DisableBlockPrefetchingFileName = ".kbfs_disable_block_prefetching"
 
 // EnableDebugServerFileName is the name of the file to turn on the
-// debug HTTP server. It's accessible anywhere only from /kbfs.
+// debug HTTP server. It's accessible anywhere outside a TLF.
 const EnableDebugServerFileName = ".kbfs_enable_debug_server"
 
 // DisableDebugServerFileName is the name of the file to turn on the
-// debug HTTP server. It's accessible anywhere only from /kbfs.
+// debug HTTP server. It's accessible anywhere outside a TLF.
 const DisableDebugServerFileName = ".kbfs_disable_debug_server"
 
 // EditHistoryName is the name of the KBFS TLF edit history file --
