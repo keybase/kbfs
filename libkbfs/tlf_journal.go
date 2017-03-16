@@ -1732,8 +1732,22 @@ func (j *tlfJournal) putBlockData(
 
 	j.signalWork()
 
-	// TODO: Consult quota info and signal to caller that we're
-	// over quota. (Maybe at a higher level?)
+	// TODO: Scheme:
+	//
+	//   Three possible states:
+	//     1) remoteSize+journalSize < quota
+	//          no backpressure
+	//     2) remoteSize < quota, remoteSize+journalSize > quota
+	//          backpressure proportional to journalSize
+	//     3) remoteSize > quota,
+	//          backpressure proportional to
+	//          (remoteSize+journalSize)/quota - 1.
+	//
+	//   Need to figure out smooth transition function.
+	//
+	//   - Even without backpressure, if we're in states 2 or 3,
+	//   signal to caller that we're over quota via
+	//   kbfsblock.BServerErrorOverQuota (at a higher level).
 
 	return nil
 }
