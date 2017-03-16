@@ -142,6 +142,57 @@ func TestBackpressureTrackerCounters(t *testing.T) {
 	require.Equal(t, int64(100), bt.semaphore.Count())
 }
 
+// TestQuotaBackpressureTrackerCounters checks that the quota tracker's
+// counters are updated properly for each public method.
+func TestQuotaBackpressureTrackerCounters(t *testing.T) {
+	qbt, err := newQuotaBackpressureTracker(0.1, 0.9)
+	require.NoError(t, err)
+
+	require.Equal(t, int64(0), qbt.usedBytes)
+	require.Equal(t, int64(0), qbt.remoteUsedBytes)
+	require.Equal(t, int64(math.MaxInt64), qbt.quotaBytes)
+
+	qbt.onJournalEnable(10)
+	require.Equal(t, int64(10), qbt.usedBytes)
+	require.Equal(t, int64(0), qbt.remoteUsedBytes)
+	require.Equal(t, int64(math.MaxInt64), qbt.quotaBytes)
+
+	qbt.onJournalDisable(9)
+	require.Equal(t, int64(1), qbt.usedBytes)
+	require.Equal(t, int64(0), qbt.remoteUsedBytes)
+	require.Equal(t, int64(math.MaxInt64), qbt.quotaBytes)
+
+	// Add more free resources and put a block successfully.
+
+	qbt.updateRemote(10, 100)
+
+	require.Equal(t, int64(1), qbt.usedBytes)
+	require.Equal(t, int64(10), qbt.remoteUsedBytes)
+	require.Equal(t, int64(100), qbt.quotaBytes)
+
+	qbt.afterBlockPut(10, true)
+
+	require.Equal(t, int64(11), qbt.usedBytes)
+	require.Equal(t, int64(10), qbt.remoteUsedBytes)
+	require.Equal(t, int64(100), qbt.quotaBytes)
+
+	// Then try to put a block but fail it.
+
+	qbt.afterBlockPut(9, false)
+
+	require.Equal(t, int64(11), qbt.usedBytes)
+	require.Equal(t, int64(10), qbt.remoteUsedBytes)
+	require.Equal(t, int64(100), qbt.quotaBytes)
+
+	// Finally, delete a block.
+
+	qbt.onBlocksDelete(10)
+
+	require.Equal(t, int64(1), qbt.usedBytes)
+	require.Equal(t, int64(10), qbt.remoteUsedBytes)
+	require.Equal(t, int64(100), qbt.quotaBytes)
+}
+
 // TestDefaultDoDelayCancel checks that defaultDoDelay respects
 // context cancellation.
 func TestDefaultDoDelayCancel(t *testing.T) {

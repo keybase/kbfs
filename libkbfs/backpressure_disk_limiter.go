@@ -256,13 +256,13 @@ type quotaBackpressureTracker struct {
 	minThreshold float64
 	// maxThreshold is M in the above.
 	maxThreshold float64
-	// quotaBytes is Q in the above.
-	quotaBytes int64
 
-	// remoteUsedBytes is R in the above.
-	remoteUsedBytes int64
 	// usedBytes is U in the above.
 	usedBytes int64
+	// remoteUsedBytes is R in the above.
+	remoteUsedBytes int64
+	// quotaBytes is Q in the above.
+	quotaBytes int64
 }
 
 func newQuotaBackpressureTracker(minThreshold, maxThreshold float64) (
@@ -277,7 +277,7 @@ func newQuotaBackpressureTracker(minThreshold, maxThreshold float64) (
 			maxThreshold, minThreshold)
 	}
 	qbt := &quotaBackpressureTracker{
-		minThreshold, maxThreshold, math.MaxInt64, 0, 0,
+		minThreshold, maxThreshold, 0, 0, math.MaxInt64,
 	}
 	return qbt, nil
 }
@@ -307,8 +307,8 @@ func (qbt *quotaBackpressureTracker) onJournalDisable(journalBytes int64) {
 
 func (qbt *quotaBackpressureTracker) updateRemote(
 	remoteUsedBytes, quotaBytes int64) {
-	qbt.quotaBytes = quotaBytes
 	qbt.remoteUsedBytes = remoteUsedBytes
+	qbt.quotaBytes = quotaBytes
 }
 
 func (qbt *quotaBackpressureTracker) afterBlockPut(
