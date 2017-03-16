@@ -72,8 +72,8 @@ func newDiskBlockCacheStandardForTest(config *testDiskBlockCacheConfig,
 				freeBytes := maxBytes - int64(cache.currBytes)
 				return freeBytes, maxFiles, nil
 			},
-			quotaFn: func(context.Context) (int64, int64, error) {
-				return 0, math.MaxInt64, nil
+			quotaFn: func(context.Context) (int64, int64) {
+				return 0, math.MaxInt64
 			},
 		}
 		limiter, err = newBackpressureDiskLimiter(

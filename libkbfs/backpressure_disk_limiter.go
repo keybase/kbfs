@@ -331,7 +331,7 @@ type backpressureDiskLimiter struct {
 	maxDelay            time.Duration
 	delayFn             func(context.Context, time.Duration) error
 	freeBytesAndFilesFn func() (int64, int64, error)
-	quotaFn             func(ctx context.Context) (int64, int64, error)
+	quotaFn             func(ctx context.Context) (int64, int64)
 
 	// lock protects everything in the trackers, including the
 	// (implicit) maximum values of the semaphores, but not the
@@ -386,7 +386,7 @@ type backpressureDiskLimiterParams struct {
 	freeBytesAndFilesFn func() (int64, int64, error)
 	// quotaFn is a function that returns the current used and
 	// total quota bytes. Overridable for testing.
-	quotaFn func(context.Context) (int64, int64, error)
+	quotaFn func(context.Context) (int64, int64)
 }
 
 // defaultDiskLimitMaxDelay is the maximum amount to delay a block
@@ -426,18 +426,18 @@ func makeDefaultBackpressureDiskLimiterParams(
 		freeBytesAndFilesFn: func() (int64, int64, error) {
 			return defaultGetFreeBytesAndFiles(storageRoot)
 		},
-		quotaFn: func(ctx context.Context) (int64, int64, error) {
+		quotaFn: func(ctx context.Context) (int64, int64) {
 			timestamp, usageBytes, limitBytes, err :=
 				quotaUsage.Get(ctx, 1*time.Minute, math.MaxInt64)
 			if err != nil {
-				return 0, 0, err
+				return 0, math.MaxInt64
 			}
 
 			if timestamp.IsZero() {
-				return 0, math.MaxInt64, nil
+				return 0, math.MaxInt64
 			}
 
-			return usageBytes, limitBytes, nil
+			return usageBytes, limitBytes
 		},
 	}
 }
@@ -626,10 +626,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 				"backpressureDiskLimiter.beforeBlockPut called with 0 blockFiles")
 	}
 
-	remoteUsedBytes, quotaBytes, quotaErr := bdl.quotaFn(ctx)
-	if quotaErr != nil {
-		// TODO: Log error.
-	}
+	remoteUsedBytes, quotaBytes := bdl.quotaFn(ctx)
 
 	delay, err := func() (time.Duration, error) {
 		bdl.lock.Lock()
@@ -640,10 +637,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 			return 0, err
 		}
 
-		if quotaErr == nil {
-			bdl.quotaTracker.updateRemote(
-				remoteUsedBytes, quotaBytes)
-		}
+		bdl.quotaTracker.updateRemote(remoteUsedBytes, quotaBytes)
 
 		delay := bdl.getDelayLocked(ctx, time.Now())
 		if delay > 0 {
