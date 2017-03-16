@@ -70,11 +70,14 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 	}
 
 	serveMux := http.NewServeMux()
+
+	// Replicate the default endpoints from pprof's init function.
 	serveMux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
 	serveMux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
 	serveMux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
 	serveMux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
 	serveMux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+
 	// Leave Addr blank to be set in enableDebugServer() and
 	// disableDebugServer().
 	debugServer := &http.Server{
