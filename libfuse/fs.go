@@ -5,6 +5,8 @@
 package libfuse
 
 import (
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"strings"
@@ -26,6 +28,8 @@ type FS struct {
 	conn   *fuse.Conn
 	log    logger.Logger
 	errLog logger.Logger
+
+	debugServer *http.Server
 
 	notifications *libfs.FSNotifications
 
@@ -55,11 +59,26 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 		log.Configure("", true, "")
 		errLog.Configure("", true, "")
 	}
+
+	debugServer := &http.Server{
+		Addr:         ":8080",
+		Handler:      nil, // TODO: Fill in custom handler.
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+
+	go func() {
+		log.Debug("Starting debug http server at %s", debugServer)
+		err := debugServer.ListenAndServe()
+		log.Debug("Debug http server ended with %+v", err)
+	}()
+
 	fs := &FS{
 		config:         config,
 		conn:           conn,
 		log:            log,
 		errLog:         errLog,
+		debugServer:    debugServer,
 		notifications:  libfs.NewFSNotifications(log),
 		platformParams: platformParams,
 		quotaUsage:     libkbfs.NewEventuallyConsistentQuotaUsage(config, "FS"),
