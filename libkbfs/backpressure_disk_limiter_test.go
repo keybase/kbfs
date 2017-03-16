@@ -305,6 +305,7 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 		// fileDelayScale should by 50/(.25(350 + 50)) = 0.5.
 		bdl.journalFileTracker.used = 50
 		bdl.journalFileTracker.free = 350
+		// TODO: Test throttle probability here, too.
 	}()
 
 	ctx := context.Background()
