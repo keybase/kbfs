@@ -179,6 +179,8 @@ func (f *FS) disableDebugServer(ctx context.Context) error {
 	err := f.debugServerListener.Close()
 	f.log.CDebugf(ctx, "Debug http server shutdown with %+v", err)
 
+	// Assume the close succeeds in stopping the server, even if
+	// it returns an error.
 	f.debugServer.Addr = ""
 	f.debugServerListener = nil
 
