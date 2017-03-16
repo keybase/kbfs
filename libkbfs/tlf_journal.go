@@ -1738,7 +1738,7 @@ func (j *tlfJournal) putBlockData(
 	//     1) remoteSize+journalSize < quota
 	//          no backpressure
 	//     2) remoteSize < quota, remoteSize+journalSize > quota
-	//          backpressure proportional to journalSize
+	//          backpressure proportional to journalSize/(quota-remoteSize)
 	//     3) remoteSize > quota,
 	//          backpressure proportional to
 	//          (remoteSize+journalSize)/quota - 1.

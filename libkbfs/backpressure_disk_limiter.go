@@ -706,7 +706,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 			bdl.journalFileTracker.semaphore.Count(), err
 	}
 
-	_ = fromQuota
+	_ = hasQuotaDelay
 	// TODO: Update delay if any variables change (i.e., we
 	// suddenly free up a lot of space).
 	err = bdl.delayFn(ctx, delay)
