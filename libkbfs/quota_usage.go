@@ -30,10 +30,19 @@ type cachedQuotaUsage struct {
 	limitBytes int64
 }
 
+// EventuallyConsistentQuotaUsageConfig is the subset of the Config
+// interface needed by EventuallyConsistentQuotaUsage (for ease of
+// testing).
+type EventuallyConsistentQuotaUsageConfig interface {
+	Clock() Clock
+	BlockServer() BlockServer
+	MakeLogger(module string) logger.Logger
+}
+
 // EventuallyConsistentQuotaUsage keeps tracks of quota usage, in a way user of
 // which can choose to accept stale data to reduce calls into block servers.
 type EventuallyConsistentQuotaUsage struct {
-	config Config
+	config EventuallyConsistentQuotaUsageConfig
 	log    logger.Logger
 
 	backgroundInProcess int32
@@ -45,7 +54,8 @@ type EventuallyConsistentQuotaUsage struct {
 // NewEventuallyConsistentQuotaUsage creates a new
 // EventuallyConsistentQuotaUsage object.
 func NewEventuallyConsistentQuotaUsage(
-	config Config, loggerSuffix string) *EventuallyConsistentQuotaUsage {
+	config EventuallyConsistentQuotaUsageConfig,
+	loggerSuffix string) *EventuallyConsistentQuotaUsage {
 	return &EventuallyConsistentQuotaUsage{
 		config: config,
 		log:    config.MakeLogger(ECQUID + "-" + loggerSuffix),
