@@ -317,9 +317,9 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 	}()
 
 	ctx := context.Background()
-	delay, fromQuota := bdl.getDelayLocked(ctx, now)
+	delay, hasQuotaDelay := bdl.getDelayLocked(ctx, now)
 	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
-	require.True(t, fromQuota)
+	require.True(t, hasQuotaDelay)
 
 	func() {
 		bdl.lock.Lock()
@@ -332,9 +332,9 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 		bdl.journalFileTracker.free = 350
 	}()
 
-	delay, fromQuota = bdl.getDelayLocked(ctx, now)
+	delay, hasQuotaDelay = bdl.getDelayLocked(ctx, now)
 	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
-	require.True(t, fromQuota)
+	require.True(t, hasQuotaDelay)
 
 	func() {
 		bdl.lock.Lock()
@@ -354,9 +354,9 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 		bdl.quotaTracker.quotaBytes = 100
 	}()
 
-	delay, fromQuota = bdl.getDelayLocked(ctx, now)
+	delay, hasQuotaDelay = bdl.getDelayLocked(ctx, now)
 	require.InEpsilon(t, float64(4), delay.Seconds(), 0.01)
-	require.True(t, fromQuota)
+	require.True(t, hasQuotaDelay)
 }
 
 // TestBackpressureDiskLimiterGetDelayWithDeadline makes sure the
@@ -385,9 +385,9 @@ func TestBackpressureDiskLimiterGetDelayWithDeadline(t *testing.T) {
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
 
-	delay, fromQuota := bdl.getDelayLocked(ctx, now)
+	delay, hasQuotaDelay := bdl.getDelayLocked(ctx, now)
 	require.InEpsilon(t, float64(2), delay.Seconds(), 0.01)
-	require.False(t, fromQuota)
+	require.False(t, hasQuotaDelay)
 }
 
 type backpressureTestType int

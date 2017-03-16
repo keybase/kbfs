@@ -601,8 +601,8 @@ func (bdl *backpressureDiskLimiter) getDelayLocked(
 		}
 	}
 
-	fromQuota := quotaDelayScale > 0
-	return time.Duration(delayScale * float64(maxDelay)), fromQuota
+	hasQuotaDelay := quotaDelayScale > 0
+	return time.Duration(delayScale * float64(maxDelay)), hasQuotaDelay
 }
 
 func (bdl *backpressureDiskLimiter) updateFreeLocked() (
@@ -639,7 +639,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 
 	remoteUsedBytes, quotaBytes := bdl.quotaFn(ctx)
 
-	delay, fromQuota, err := func() (time.Duration, bool, error) {
+	delay, hasQuotaDelay, err := func() (time.Duration, bool, error) {
 		bdl.lock.Lock()
 		defer bdl.lock.Unlock()
 
@@ -650,23 +650,23 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 
 		bdl.quotaTracker.updateRemote(remoteUsedBytes, quotaBytes)
 
-		delay, fromQuota := bdl.getDelayLocked(ctx, time.Now())
+		delay, hasQuotaDelay := bdl.getDelayLocked(ctx, time.Now())
 		if delay > 0 {
 			bdl.log.CDebugf(ctx, "Delaying block put of %d bytes and %d files by %f s ("+
 				"journalBytes=%d, freeBytes=%d, "+
 				"journalFiles=%d, freeFiles=%d, "+
 				"quotaUsedBytes=%d, quotaRemoteUsedBytes=%d, "+
-				"quotaBytes=%d, fromQuota=%t)",
+				"quotaBytes=%d, hasQuotaDelay=%t)",
 				blockBytes, blockFiles, delay.Seconds(),
 				bdl.journalByteTracker.used, freeBytes,
 				bdl.journalFileTracker.used, freeFiles,
 				bdl.quotaTracker.usedBytes,
 				bdl.quotaTracker.remoteUsedBytes,
 				bdl.quotaTracker.quotaBytes,
-				fromQuota)
+				hasQuotaDelay)
 		}
 
-		return delay, fromQuota, nil
+		return delay, hasQuotaDelay, nil
 	}()
 	if err != nil {
 		return bdl.journalByteTracker.semaphore.Count(),
@@ -755,8 +755,8 @@ type backpressureDiskLimiterStatus struct {
 	Type string
 
 	// Derived stats.
-	CurrentDelaySec       float64
-	CurrentDelayFromQuota bool
+	CurrentDelaySec float64
+	HasQuotaDelay   bool
 
 	ByteTrackerStatus backpressureTrackerStatus
 	FileTrackerStatus backpressureTrackerStatus
@@ -766,14 +766,14 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 	bdl.lock.RLock()
 	defer bdl.lock.RUnlock()
 
-	currentDelay, fromQuota :=
+	currentDelay, hasQuotaDelay :=
 		bdl.getDelayLocked(context.Background(), time.Now())
 
 	return backpressureDiskLimiterStatus{
 		Type: "BackpressureDiskLimiter",
 
-		CurrentDelaySec:       currentDelay.Seconds(),
-		CurrentDelayFromQuota: fromQuota,
+		CurrentDelaySec: currentDelay.Seconds(),
+		HasQuotaDelay:   hasQuotaDelay,
 
 		ByteTrackerStatus: bdl.journalByteTracker.getStatus(),
 		FileTrackerStatus: bdl.journalFileTracker.getStatus(),
