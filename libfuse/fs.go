@@ -140,6 +140,9 @@ func (f *FS) enableDebugServer(ctx context.Context, port uint16) error {
 	addr := net.JoinHostPort("localhost",
 		strconv.FormatUint(uint64(port), 10))
 	f.log.CDebugf(ctx, "Enabling debug http server at %s", addr)
+
+	// Do Listen and Serve separately so we can catch errors with
+	// the port (e.g. "port already in use") and return it.
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		f.log.CDebugf(ctx, "Got error when listening on %s: %+v",
@@ -151,6 +154,10 @@ func (f *FS) enableDebugServer(ctx context.Context, port uint16) error {
 	f.debugServerListener =
 		tcpKeepAliveListener{listener.(*net.TCPListener)}
 
+	// This seems racy because the spawned goroutine may be
+	// scheduled to run after disableDebugServer is called. But
+	// that's okay since Serve will error out immediately when
+	// f.debugServerListener.Close() is called.
 	go func(server *http.Server, listener net.Listener) {
 		err := server.Serve(listener)
 		f.log.Debug("Debug http server ended with %+v", err)
