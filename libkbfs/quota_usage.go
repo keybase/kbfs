@@ -91,7 +91,7 @@ func (q *EventuallyConsistentQuotaUsage) getAndCache(
 // issued and the function only returns after RPC finishes, with the newest
 // data from RPC. The RPC causes cached data to be refreshed as well.
 func (q *EventuallyConsistentQuotaUsage) Get(
-	ctx context.Context, tolerance time.Duration) (
+	ctx context.Context, bgTolerance, blockTolerance time.Duration) (
 	timestamp time.Time, usageBytes, limitBytes int64, err error) {
 	c := func() cachedQuotaUsage {
 		q.mu.RLock()
@@ -100,7 +100,7 @@ func (q *EventuallyConsistentQuotaUsage) Get(
 	}()
 	past := q.config.Clock().Now().Sub(c.timestamp)
 	switch {
-	case past > tolerance:
+	case past > blockTolerance:
 		q.log.CDebugf(ctx, "Blocking on getAndCache. Cached data is %s old.", past)
 		// TODO: optimize this to make sure there's only one outstanding RPC. In
 		// other words, wait for it to finish if one is already in progress.
@@ -108,7 +108,7 @@ func (q *EventuallyConsistentQuotaUsage) Get(
 		if err != nil {
 			return time.Time{}, -1, -1, err
 		}
-	case past > tolerance/2:
+	case past > bgTolerance:
 		if atomic.CompareAndSwapInt32(&q.backgroundInProcess, 0, 1) {
 			id, err := MakeRandomRequestID()
 			if err != nil {
