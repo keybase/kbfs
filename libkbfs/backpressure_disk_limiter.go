@@ -282,12 +282,16 @@ func newQuotaBackpressureTracker(minThreshold, maxThreshold float64) (
 	return qbt, nil
 }
 
+func (qbt quotaBackpressureTracker) usedFrac() float64 {
+	return (float64(qbt.usedBytes) + float64(qbt.remoteUsedBytes)) /
+		float64(qbt.quotaBytes)
+}
+
 // delayScale returns a number between 0 and 1, which should be
 // multiplied with the maximum delay to get the backpressure delay to
 // apply.
 func (qbt quotaBackpressureTracker) delayScale() float64 {
-	usedFrac := (float64(qbt.usedBytes) + float64(qbt.remoteUsedBytes)) /
-		float64(qbt.quotaBytes)
+	usedFrac := qbt.usedFrac()
 
 	// We want the delay to be 0 if usedFrac <= m and the max
 	// delay if usedFrac >= M, so linearly interpolate the delay
@@ -320,6 +324,35 @@ func (qbt *quotaBackpressureTracker) afterBlockPut(
 
 func (qbt *quotaBackpressureTracker) onBlocksDelete(blockBytes int64) {
 	qbt.usedBytes -= blockBytes
+}
+
+type quotaBackpressureTrackerStatus struct {
+	// Derived numbers.
+	UsedFrac   float64
+	DelayScale float64
+
+	// Constants.
+	MinThreshold float64
+	MaxThreshold float64
+
+	// Raw numbers.
+	UsedBytes       int64
+	RemoteUsedBytes int64
+	QuotaBytes      int64
+}
+
+func (qbt *quotaBackpressureTracker) getStatus() quotaBackpressureTrackerStatus {
+	return quotaBackpressureTrackerStatus{
+		UsedFrac:   qbt.usedFrac(),
+		DelayScale: qbt.delayScale(),
+
+		MinThreshold: qbt.minThreshold,
+		MaxThreshold: qbt.maxThreshold,
+
+		UsedBytes:       qbt.usedBytes,
+		RemoteUsedBytes: qbt.remoteUsedBytes,
+		QuotaBytes:      qbt.quotaBytes,
+	}
 }
 
 // backpressureDiskLimiter is an implementation of diskLimiter that
@@ -760,6 +793,7 @@ type backpressureDiskLimiterStatus struct {
 
 	ByteTrackerStatus backpressureTrackerStatus
 	FileTrackerStatus backpressureTrackerStatus
+	QuotaStatus       quotaBackpressureTrackerStatus
 }
 
 func (bdl *backpressureDiskLimiter) getStatus() interface{} {
@@ -777,5 +811,6 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 
 		ByteTrackerStatus: bdl.journalByteTracker.getStatus(),
 		FileTrackerStatus: bdl.journalFileTracker.getStatus(),
+		QuotaStatus:       bdl.quotaTracker.getStatus(),
 	}
 }
