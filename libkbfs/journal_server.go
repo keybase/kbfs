@@ -665,11 +665,11 @@ func (j *JournalServer) maybeReturnOverQuotaError(
 	defer j.lastQuotaErrorLock.Unlock()
 
 	now := time.Now()
-	if now.Sub(j.lastQuotaError) < time.Minute {
-		// Return OverQuota errors only occasionally, so we
-		// don't spam the keybase daemon with
-		// notifications. (See PutBlockCheckQuota in
-		// block_util.go.)
+	// Return OverQuota errors only occasionally, so we don't spam
+	// the keybase daemon with notifications. (See
+	// PutBlockCheckQuota in block_util.go.)
+	const overQuotaDuration = time.Minute
+	if now.Sub(j.lastQuotaError) < overQuotaDuration {
 		return nil
 	}
 
