@@ -204,16 +204,19 @@ func TestJournalServerOverQuotaError(t *testing.T) {
 	require.Equal(t, expectedQuotaError, err)
 
 	// Putting it again shouldn't encounter an error.
-
 	err = blockServer.Put(ctx, tlfID1, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 
 	// Advancing the time by overQuotaDuration should make it
 	// return another quota error.
 	clock.Add(time.Minute)
-
 	err = blockServer.Put(ctx, tlfID1, bID, bCtx, data, serverHalf)
 	require.Equal(t, expectedQuotaError, err)
+
+	// Putting it again shouldn't encounter an error.
+	clock.Add(30 * time.Second)
+	err = blockServer.Put(ctx, tlfID1, bID, bCtx, data, serverHalf)
+	require.NoError(t, err)
 }
 
 func TestJournalServerRestart(t *testing.T) {
