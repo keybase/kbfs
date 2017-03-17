@@ -156,7 +156,7 @@ func (f *FS) enableDebugServer(ctx context.Context, port uint16) error {
 
 	// This seems racy because the spawned goroutine may be
 	// scheduled to run after disableDebugServer is called. But
-	// that's okay since Serve will error out immediately when
+	// that's okay since Serve will error out immediately after
 	// f.debugServerListener.Close() is called.
 	go func(server *http.Server, listener net.Listener) {
 		err := server.Serve(listener)
