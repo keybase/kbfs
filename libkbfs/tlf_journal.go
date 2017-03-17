@@ -192,7 +192,6 @@ type tlfJournal struct {
 	onMDFlush           mdFlushListener
 	forcedSquashByBytes uint64
 
-	quotaUsage *EventuallyConsistentQuotaUsage
 	// Invariant: this tlfJournal acquires exactly
 	// blockJournal.getStoredBytes() and
 	// blockJournal.getStoredFiles() until shutdown.
