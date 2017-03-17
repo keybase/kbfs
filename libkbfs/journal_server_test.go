@@ -9,6 +9,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/ioutil"
@@ -166,6 +167,9 @@ func TestJournalServerOverQuotaError(t *testing.T) {
 	qbs := &quotaBlockServer{BlockServer: config.BlockServer()}
 	config.SetBlockServer(qbs)
 
+	clock := newTestClockNow()
+	config.SetClock(clock)
+
 	// Set initial quota usage.
 	qbs.setUserQuotaInfo(1010, 1000)
 	_, _, _, err := jServer.quotaUsage.Get(ctx, 0, 0)
@@ -191,19 +195,25 @@ func TestJournalServerOverQuotaError(t *testing.T) {
 	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
 	require.NoError(t, err)
 	err = blockServer.Put(ctx, tlfID1, bID, bCtx, data, serverHalf)
-	require.Equal(t, kbfsblock.BServerErrorOverQuota{
+	expectedQuotaError := kbfsblock.BServerErrorOverQuota{
 		Msg:       "Over quota: local usage bytes = 4",
 		Usage:     1014,
 		Limit:     1000,
 		Throttled: false,
-	}, err)
+	}
+	require.Equal(t, expectedQuotaError, err)
 
 	// Putting it again shouldn't encounter an error.
 
 	err = blockServer.Put(ctx, tlfID1, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 
-	// TODO: Test advancing the clock.
+	// Advancing the time by overQuotaDuration should make it
+	// return another quota error.
+	clock.Add(time.Minute)
+
+	err = blockServer.Put(ctx, tlfID1, bID, bCtx, data, serverHalf)
+	require.Equal(t, expectedQuotaError, err)
 }
 
 func TestJournalServerRestart(t *testing.T) {
