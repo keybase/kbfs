@@ -5,7 +5,9 @@
 package libkbfs
 
 import (
+	"math"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -72,6 +74,35 @@ func teardownJournalServerTest(
 	cancel()
 	err := ioutil.RemoveAll(tempdir)
 	assert.NoError(t, err)
+}
+
+type quotaBlockServer struct {
+	BlockServer
+
+	quotaInfoLock sync.Mutex
+	quotaInfo     kbfsblock.UserQuotaInfo
+}
+
+func (qbs *quotaBlockServer) GetUserQuotaInfo(ctx context.Context) (
+	info *kbfsblock.UserQuotaInfo, err error) {
+	qbs.quotaInfoLock.Lock()
+	defer qbs.quotaInfoLock.Unlock()
+	infoCopy := qbs.quotaInfo
+	return &infoCopy, nil
+}
+
+func TestJournalServerOverQuota(t *testing.T) {
+	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
+
+	qbs := &quotaBlockServer{BlockServer: config.BlockServer()}
+	config.SetBlockServer(qbs)
+
+	localUsageBytes, remoteUsageBytes, limitBytes :=
+		jServer.estimateQuotaUsage(ctx)
+	require.Equal(t, int64(0), localUsageBytes)
+	require.Equal(t, int64(0), remoteUsageBytes)
+	require.Equal(t, int64(math.MaxInt64), limitBytes)
 }
 
 func TestJournalServerRestart(t *testing.T) {
