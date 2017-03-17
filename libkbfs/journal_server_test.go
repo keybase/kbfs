@@ -83,6 +83,18 @@ type quotaBlockServer struct {
 	quotaInfo     kbfsblock.UserQuotaInfo
 }
 
+func (qbs *quotaBlockServer) setUserQuotaInfo(
+	remoteUsageBytes, limitBytes int64) {
+	qbs.quotaInfoLock.Lock()
+	defer qbs.quotaInfoLock.Unlock()
+	qbs.quotaInfo.Limit = limitBytes
+	qbs.quotaInfo.Total = &kbfsblock.UsageStat{
+		Bytes: map[kbfsblock.UsageType]int64{
+			kbfsblock.UsageWrite: remoteUsageBytes,
+		},
+	}
+}
+
 func (qbs *quotaBlockServer) GetUserQuotaInfo(ctx context.Context) (
 	info *kbfsblock.UserQuotaInfo, err error) {
 	qbs.quotaInfoLock.Lock()
@@ -105,8 +117,15 @@ func TestJournalServerOverQuota(t *testing.T) {
 	require.Equal(t, int64(0), remoteUsageBytes)
 	require.Equal(t, int64(math.MaxInt64), limitBytes)
 
+	// Set quota usage since there's a background task to retrieve
+	// the quota usage, which will return 0 for the limit.
+	qbs.setUserQuotaInfo(100, 1000)
+	// Force quotaUsage to update.
+	_, _, _, err := jServer.quotaUsage.Get(ctx, 0, 0)
+	require.NoError(t, err)
+
 	tlfID1 := tlf.FakeID(1, false)
-	err := jServer.Enable(ctx, tlfID1, TLFJournalBackgroundWorkPaused)
+	err = jServer.Enable(ctx, tlfID1, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 
 	tlfID2 := tlf.FakeID(2, false)
@@ -133,12 +152,11 @@ func TestJournalServerOverQuota(t *testing.T) {
 	err = blockServer.Put(ctx, tlfID2, bID, bCtx, data, serverHalf)
 	require.NoError(t, err)
 
-	// Should change local usage.
 	localUsageBytes, remoteUsageBytes, limitBytes =
 		jServer.estimateQuotaUsage(ctx)
 	require.Equal(t, int64(len(data)*2), localUsageBytes)
-	require.Equal(t, int64(0), remoteUsageBytes)
-	require.Equal(t, int64(math.MaxInt64), limitBytes)
+	require.Equal(t, int64(100), remoteUsageBytes)
+	require.Equal(t, int64(1000), limitBytes)
 }
 
 func TestJournalServerRestart(t *testing.T) {
