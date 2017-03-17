@@ -98,9 +98,45 @@ func TestJournalServerOverQuota(t *testing.T) {
 	qbs := &quotaBlockServer{BlockServer: config.BlockServer()}
 	config.SetBlockServer(qbs)
 
+	// Check initial state.
 	localUsageBytes, remoteUsageBytes, limitBytes :=
 		jServer.estimateQuotaUsage(ctx)
 	require.Equal(t, int64(0), localUsageBytes)
+	require.Equal(t, int64(0), remoteUsageBytes)
+	require.Equal(t, int64(math.MaxInt64), limitBytes)
+
+	tlfID1 := tlf.FakeID(1, false)
+	err := jServer.Enable(ctx, tlfID1, TLFJournalBackgroundWorkPaused)
+	require.NoError(t, err)
+
+	tlfID2 := tlf.FakeID(2, false)
+	err = jServer.Enable(ctx, tlfID2, TLFJournalBackgroundWorkPaused)
+	require.NoError(t, err)
+
+	blockServer := config.BlockServer()
+
+	h, err := ParseTlfHandle(
+		ctx, config.KBPKI(), "test_user1,test_user2", false)
+	require.NoError(t, err)
+	uid1 := h.ResolvedWriters()[0]
+
+	// Put blocks to TLFs 1 and 2.
+
+	bCtx := kbfsblock.MakeFirstContext(uid1, keybase1.BlockType_DATA)
+	data := []byte{1, 2, 3, 4}
+	bID, err := kbfsblock.MakePermanentID(data)
+	require.NoError(t, err)
+	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
+	require.NoError(t, err)
+	err = blockServer.Put(ctx, tlfID1, bID, bCtx, data, serverHalf)
+	require.NoError(t, err)
+	err = blockServer.Put(ctx, tlfID2, bID, bCtx, data, serverHalf)
+	require.NoError(t, err)
+
+	// Should change local usage.
+	localUsageBytes, remoteUsageBytes, limitBytes =
+		jServer.estimateQuotaUsage(ctx)
+	require.Equal(t, int64(len(data)*2), localUsageBytes)
 	require.Equal(t, int64(0), remoteUsageBytes)
 	require.Equal(t, int64(math.MaxInt64), limitBytes)
 }
