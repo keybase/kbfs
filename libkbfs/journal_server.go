@@ -664,7 +664,7 @@ func (j *JournalServer) maybeReturnOverQuotaError(
 	j.lastQuotaErrorLock.Lock()
 	defer j.lastQuotaErrorLock.Unlock()
 
-	now := time.Now()
+	now := j.config.Clock().Now()
 	// Return OverQuota errors only occasionally, so we don't spam
 	// the keybase daemon with notifications. (See
 	// PutBlockCheckQuota in block_util.go.)
