@@ -311,9 +311,9 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 		// quotaDelayScale should be (80+10)/100 = 0.9, which
 		// turns into a delay fraction of (0.9-0.8)/(1.2-0.8)
 		// = 0.25.
-		bdl.quotaTracker.usedBytes = 80
-		bdl.quotaTracker.remoteUsedBytes = 10
-		bdl.quotaTracker.quotaBytes = 100
+		bdl.journalQuotaTracker.usedBytes = 80
+		bdl.journalQuotaTracker.remoteUsedBytes = 10
+		bdl.journalQuotaTracker.quotaBytes = 100
 	}()
 
 	ctx := context.Background()
@@ -349,9 +349,9 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 		// quotaDelayScale should be (80+20)/100 = 1.0, which
 		// turns into a delay fraction of (0.9-0.8)/(1.2-0.8)
 		// = 0.5.
-		bdl.quotaTracker.usedBytes = 80
-		bdl.quotaTracker.remoteUsedBytes = 20
-		bdl.quotaTracker.quotaBytes = 100
+		bdl.journalQuotaTracker.usedBytes = 80
+		bdl.journalQuotaTracker.remoteUsedBytes = 20
+		bdl.journalQuotaTracker.quotaBytes = 100
 	}()
 
 	delay, hasQuotaDelay = bdl.getDelayLocked(ctx, now)
