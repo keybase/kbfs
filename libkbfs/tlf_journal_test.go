@@ -475,7 +475,7 @@ func testTLFJournalBlockOpDiskByteLimit(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64-6, 0)
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64-6, 0, 0)
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
@@ -513,7 +513,7 @@ func testTLFJournalBlockOpDiskFileLimit(t *testing.T, ver MetadataVer) {
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	tlfJournal.diskLimiter.onJournalEnable(
-		ctx, 0, math.MaxInt64-2*filesPerBlockMax+1)
+		ctx, 0, 0, math.MaxInt64-2*filesPerBlockMax+1)
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
@@ -551,7 +551,7 @@ func testTLFJournalBlockOpDiskLimitDuplicate(t *testing.T, ver MetadataVer) {
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	tlfJournal.diskLimiter.onJournalEnable(
-		ctx, math.MaxInt64-8, math.MaxInt64-2*filesPerBlockMax)
+		ctx, math.MaxInt64-8, 0, math.MaxInt64-2*filesPerBlockMax)
 
 	data := []byte{1, 2, 3, 4}
 	id, bCtx, serverHalf := config.makeBlock(data)
@@ -575,7 +575,7 @@ func testTLFJournalBlockOpDiskLimitCancel(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
-	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64, 0)
+	tlfJournal.diskLimiter.onJournalEnable(ctx, math.MaxInt64, 0, 0)
 
 	ctx2, cancel2 := context.WithCancel(ctx)
 	cancel2()
@@ -593,7 +593,7 @@ func testTLFJournalBlockOpDiskLimitTimeout(t *testing.T, ver MetadataVer) {
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	tlfJournal.diskLimiter.onJournalEnable(
-		ctx, math.MaxInt64, math.MaxInt64-1)
+		ctx, math.MaxInt64, 0, math.MaxInt64-1)
 	config.dlTimeout = 3 * time.Microsecond
 
 	data := []byte{1, 2, 3, 4}
@@ -616,7 +616,7 @@ func testTLFJournalBlockOpDiskLimitPutFailure(t *testing.T, ver MetadataVer) {
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	tlfJournal.diskLimiter.onJournalEnable(
-		ctx, math.MaxInt64-6, math.MaxInt64-filesPerBlockMax)
+		ctx, math.MaxInt64-6, 0, math.MaxInt64-filesPerBlockMax)
 
 	data := []byte{1, 2, 3, 4}
 	id, bCtx, serverHalf := config.makeBlock(data)

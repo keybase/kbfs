@@ -36,13 +36,13 @@ type DiskLimiter interface {
 	// and journalFiles must be >= 0. The updated available byte
 	// and file count must be returned.
 	onJournalEnable(
-		ctx context.Context, journalBytes, journalFiles int64) (
+		ctx context.Context, journalStoredBytes, journalUnflushedBytes, journalFiles int64) (
 		availableBytes, availableFiles int64)
 
 	// onJournalDisable is called when shutting down a TLF journal
 	// with that journal's current disk usage. Both journalBytes
 	// and journalFiles must be >= 0.
-	onJournalDisable(ctx context.Context, journalBytes, journalFiles int64)
+	onJournalDisable(ctx context.Context, journalStoredBytes, journalUnflushedBytes, journalFiles int64)
 
 	// beforeBlockPut is called before putting a block of the
 	// given byte and file count, both of which must be > 0. It

@@ -34,13 +34,15 @@ func newSemaphoreDiskLimiter(byteLimit, fileLimit int64) semaphoreDiskLimiter {
 }
 
 func (sdl semaphoreDiskLimiter) onJournalEnable(
-	ctx context.Context, journalBytes, journalFiles int64) (
+	ctx context.Context,
+	journalStoredBytes, journalUnflushedBytes, journalFiles int64) (
 	availableBytes, availableFiles int64) {
-	if journalBytes != 0 {
-		availableBytes = sdl.byteSemaphore.ForceAcquire(journalBytes)
+	if journalStoredBytes != 0 {
+		availableBytes = sdl.byteSemaphore.ForceAcquire(journalStoredBytes)
 	} else {
 		availableBytes = sdl.byteSemaphore.Count()
 	}
+	// TODO: Sanity-check journal*Bytes.
 	if journalFiles != 0 {
 		availableFiles = sdl.fileSemaphore.ForceAcquire(journalFiles)
 	} else {
@@ -50,10 +52,12 @@ func (sdl semaphoreDiskLimiter) onJournalEnable(
 }
 
 func (sdl semaphoreDiskLimiter) onJournalDisable(
-	ctx context.Context, journalBytes, journalFiles int64) {
-	if journalBytes != 0 {
-		sdl.byteSemaphore.Release(journalBytes)
+	ctx context.Context,
+	journalStoredBytes, journalUnflushedBytes, journalFiles int64) {
+	if journalStoredBytes != 0 {
+		sdl.byteSemaphore.Release(journalStoredBytes)
 	}
+	// TODO: Sanity-check journal*Bytes.
 	if journalFiles != 0 {
 		sdl.fileSemaphore.Release(journalFiles)
 	}

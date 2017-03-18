@@ -590,23 +590,27 @@ func (bdl *backpressureDiskLimiter) getQuotaSnapshotForTest() bdlSnapshot {
 }
 
 func (bdl *backpressureDiskLimiter) onJournalEnable(
-	ctx context.Context, journalBytes, journalFiles int64) (
+	ctx context.Context,
+	journalStoredBytes, journalUnflushedBytes, journalFiles int64) (
 	availableBytes, availableFiles int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	availableBytes = bdl.journalByteTracker.onEnable(journalBytes)
+	// TODO: Sanity-check journal*Bytes.
+	availableBytes = bdl.journalByteTracker.onEnable(journalStoredBytes)
 	availableFiles = bdl.journalFileTracker.onEnable(journalFiles)
-	bdl.journalQuotaTracker.onJournalEnable(journalBytes)
+	bdl.journalQuotaTracker.onJournalEnable(journalUnflushedBytes)
 	return availableBytes, availableFiles
 }
 
 func (bdl *backpressureDiskLimiter) onJournalDisable(
-	ctx context.Context, journalBytes, journalFiles int64) {
+	ctx context.Context,
+	journalStoredBytes, journalUnflushedBytes, journalFiles int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	bdl.journalByteTracker.onDisable(journalBytes)
+	// TODO: Sanity-check journal*Bytes.
+	bdl.journalByteTracker.onDisable(journalStoredBytes)
 	bdl.journalFileTracker.onDisable(journalFiles)
-	bdl.journalQuotaTracker.onJournalDisable(journalBytes)
+	bdl.journalQuotaTracker.onJournalDisable(journalUnflushedBytes)
 }
 
 func (bdl *backpressureDiskLimiter) onDiskBlockCacheEnable(ctx context.Context,

@@ -382,9 +382,10 @@ func makeTLFJournal(
 
 	// Do this only once we're sure we won't error.
 	storedBytes := j.blockJournal.getStoredBytes()
+	unflushedBytes := j.blockJournal.getUnflushedBytes()
 	storedFiles := j.blockJournal.getStoredFiles()
 	availableBytes, availableFiles := j.diskLimiter.onJournalEnable(
-		ctx, storedBytes, storedFiles)
+		ctx, storedBytes, unflushedBytes, storedFiles)
 
 	go j.doBackgroundWorkLoop(bws, backoff.NewExponentialBackOff())
 
@@ -1551,8 +1552,10 @@ func (j *tlfJournal) shutdown(ctx context.Context) {
 	// time other than during shutdown, we should still count
 	// shut-down journals against the disk limit.
 	storedBytes := j.blockJournal.getStoredBytes()
+	unflushedBytes := j.blockJournal.getUnflushedBytes()
 	storedFiles := j.blockJournal.getStoredFiles()
-	j.diskLimiter.onJournalDisable(ctx, storedBytes, storedFiles)
+	j.diskLimiter.onJournalDisable(
+		ctx, storedBytes, unflushedBytes, storedFiles)
 
 	// Make further accesses error out.
 	j.blockJournal = nil
