@@ -282,11 +282,11 @@ type backpressureDiskLimiterParams struct {
 	maxDelay time.Duration
 	// delayFn is a function that takes a context and a duration
 	// and returns after sleeping for that duration, or if the
-	// context is cancelled.
+	// context is cancelled. Overridden for testing.
 	delayFn func(context.Context, time.Duration) error
 	// freeBytesAndFilesFn is a function that returns the current
 	// free bytes and files on the disk containing KBFS's storage
-	// directory.
+	// directory. Overridden for testing.
 	freeBytesAndFilesFn func() (int64, int64, error)
 }
 
