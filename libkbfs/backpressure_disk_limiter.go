@@ -443,20 +443,6 @@ func defaultGetFreeBytesAndFiles(path string) (int64, int64, error) {
 	return int64(freeBytes), int64(freeFiles), nil
 }
 
-// newBackpressureDiskLimiter constructs a new backpressureDiskLimiter
-// with the given parameters.
-func newBackpressureDiskLimiter(log logger.Logger, backpressureMinThreshold,
-	backpressureMaxThreshold, journalFrac, diskCacheFrac float64, byteLimit,
-	fileLimit int64, maxDelay time.Duration, journalPath string) (
-	*backpressureDiskLimiter, error) {
-	return newBackpressureDiskLimiterWithFunctions(
-		log, backpressureMinThreshold, backpressureMaxThreshold,
-		journalFrac, diskCacheFrac, byteLimit, fileLimit, maxDelay,
-		defaultDoDelay, func() (int64, int64, error) {
-			return defaultGetFreeBytesAndFiles(journalPath)
-		})
-}
-
 type bdlSnapshot struct {
 	used  int64
 	free  int64
