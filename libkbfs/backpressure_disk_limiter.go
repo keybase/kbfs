@@ -273,8 +273,8 @@ type backpressureDiskLimiterParams struct {
 	// diskCacheFrac is the fraction of the available bytes/files
 	// that the disk cache is allowed to use.
 	diskCacheFrac float64
-	// byteLimit is absolute byte limit that the journal and the disk cache
-	// is allowed to use.
+	// byteLimit is absolute byte limit that the journal and the
+	// disk cache is allowed to use.
 	byteLimit int64
 	// fileLimit is absolute file limit that the journal and the
 	// disk cache is allowed to use.
@@ -306,6 +306,9 @@ func newBackpressureDiskLimiterWithFunctions(log logger.Logger,
 	}
 	// byteLimit and fileLimit must be scaled by the proportion of the limit
 	// that the journal should consume.
+	//
+	// TODO: Need to use journalFrac/(journalFrac+diskCacheFrac)
+	// instead.
 	journalByteLimit := int64((float64(byteLimit) * journalFrac) + 0.5)
 	byteTracker, err := newBackpressureTracker(
 		backpressureMinThreshold, backpressureMaxThreshold,
