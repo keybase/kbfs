@@ -148,17 +148,17 @@ func TestQuotaBackpressureTrackerCounters(t *testing.T) {
 	qbt, err := newQuotaBackpressureTracker(0.1, 0.9)
 	require.NoError(t, err)
 
-	require.Equal(t, int64(0), qbt.usedBytes)
+	require.Equal(t, int64(0), qbt.unflushedBytes)
 	require.Equal(t, int64(0), qbt.remoteUsedBytes)
 	require.Equal(t, int64(math.MaxInt64), qbt.quotaBytes)
 
 	qbt.onJournalEnable(10)
-	require.Equal(t, int64(10), qbt.usedBytes)
+	require.Equal(t, int64(10), qbt.unflushedBytes)
 	require.Equal(t, int64(0), qbt.remoteUsedBytes)
 	require.Equal(t, int64(math.MaxInt64), qbt.quotaBytes)
 
 	qbt.onJournalDisable(9)
-	require.Equal(t, int64(1), qbt.usedBytes)
+	require.Equal(t, int64(1), qbt.unflushedBytes)
 	require.Equal(t, int64(0), qbt.remoteUsedBytes)
 	require.Equal(t, int64(math.MaxInt64), qbt.quotaBytes)
 
@@ -166,13 +166,13 @@ func TestQuotaBackpressureTrackerCounters(t *testing.T) {
 
 	qbt.updateRemote(10, 100)
 
-	require.Equal(t, int64(1), qbt.usedBytes)
+	require.Equal(t, int64(1), qbt.unflushedBytes)
 	require.Equal(t, int64(10), qbt.remoteUsedBytes)
 	require.Equal(t, int64(100), qbt.quotaBytes)
 
 	qbt.afterBlockPut(10, true)
 
-	require.Equal(t, int64(11), qbt.usedBytes)
+	require.Equal(t, int64(11), qbt.unflushedBytes)
 	require.Equal(t, int64(10), qbt.remoteUsedBytes)
 	require.Equal(t, int64(100), qbt.quotaBytes)
 
@@ -180,15 +180,15 @@ func TestQuotaBackpressureTrackerCounters(t *testing.T) {
 
 	qbt.afterBlockPut(9, false)
 
-	require.Equal(t, int64(11), qbt.usedBytes)
+	require.Equal(t, int64(11), qbt.unflushedBytes)
 	require.Equal(t, int64(10), qbt.remoteUsedBytes)
 	require.Equal(t, int64(100), qbt.quotaBytes)
 
-	// Finally, delete a block.
+	// Finally, flush a block.
 
-	qbt.onBlocksDelete(10)
+	qbt.onBlocksFlush(10)
 
-	require.Equal(t, int64(1), qbt.usedBytes)
+	require.Equal(t, int64(1), qbt.unflushedBytes)
 	require.Equal(t, int64(10), qbt.remoteUsedBytes)
 	require.Equal(t, int64(100), qbt.quotaBytes)
 }
@@ -311,7 +311,7 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 		// quotaDelayScale should be (80+10)/100 = 0.9, which
 		// turns into a delay fraction of (0.9-0.8)/(1.2-0.8)
 		// = 0.25.
-		bdl.journalQuotaTracker.usedBytes = 80
+		bdl.journalQuotaTracker.unflushedBytes = 80
 		bdl.journalQuotaTracker.remoteUsedBytes = 10
 		bdl.journalQuotaTracker.quotaBytes = 100
 	}()
@@ -349,7 +349,7 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 		// quotaDelayScale should be (80+20)/100 = 1.0, which
 		// turns into a delay fraction of (0.9-0.8)/(1.2-0.8)
 		// = 0.5.
-		bdl.journalQuotaTracker.usedBytes = 80
+		bdl.journalQuotaTracker.unflushedBytes = 80
 		bdl.journalQuotaTracker.remoteUsedBytes = 20
 		bdl.journalQuotaTracker.quotaBytes = 100
 	}()

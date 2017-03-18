@@ -257,8 +257,8 @@ type quotaBackpressureTracker struct {
 	// maxThreshold is M in the above.
 	maxThreshold float64
 
-	// usedBytes is U in the above.
-	usedBytes int64
+	// unflushedBytes is U in the above.
+	unflushedBytes int64
 	// remoteUsedBytes is R in the above.
 	remoteUsedBytes int64
 	// quotaBytes is Q in the above.
@@ -283,7 +283,7 @@ func newQuotaBackpressureTracker(minThreshold, maxThreshold float64) (
 }
 
 func (qbt quotaBackpressureTracker) usedFrac() float64 {
-	return (float64(qbt.usedBytes) + float64(qbt.remoteUsedBytes)) /
+	return (float64(qbt.unflushedBytes) + float64(qbt.remoteUsedBytes)) /
 		float64(qbt.quotaBytes)
 }
 
@@ -306,12 +306,12 @@ func (qbt quotaBackpressureTracker) delayScale() float64 {
 	return math.Min(1.0, math.Max(0.0, (usedFrac-m)/(M-m)))
 }
 
-func (qbt *quotaBackpressureTracker) onJournalEnable(journalBytes int64) {
-	qbt.usedBytes += journalBytes
+func (qbt *quotaBackpressureTracker) onJournalEnable(unflushedBytes int64) {
+	qbt.unflushedBytes += unflushedBytes
 }
 
-func (qbt *quotaBackpressureTracker) onJournalDisable(journalBytes int64) {
-	qbt.usedBytes -= journalBytes
+func (qbt *quotaBackpressureTracker) onJournalDisable(unflushedBytes int64) {
+	qbt.unflushedBytes -= unflushedBytes
 }
 
 func (qbt *quotaBackpressureTracker) updateRemote(
@@ -323,12 +323,12 @@ func (qbt *quotaBackpressureTracker) updateRemote(
 func (qbt *quotaBackpressureTracker) afterBlockPut(
 	blockBytes int64, putData bool) {
 	if putData {
-		qbt.usedBytes += blockBytes
+		qbt.unflushedBytes += blockBytes
 	}
 }
 
-func (qbt *quotaBackpressureTracker) onBlocksDelete(blockBytes int64) {
-	qbt.usedBytes -= blockBytes
+func (qbt *quotaBackpressureTracker) onBlocksFlush(blockBytes int64) {
+	qbt.unflushedBytes -= blockBytes
 }
 
 type quotaBackpressureTrackerStatus struct {
@@ -341,7 +341,7 @@ type quotaBackpressureTrackerStatus struct {
 	MaxThreshold float64
 
 	// Raw numbers.
-	UsedBytes       int64
+	UnflushedBytes  int64
 	RemoteUsedBytes int64
 	QuotaBytes      int64
 }
@@ -354,7 +354,7 @@ func (qbt *quotaBackpressureTracker) getStatus() quotaBackpressureTrackerStatus 
 		MinThreshold: qbt.minThreshold,
 		MaxThreshold: qbt.maxThreshold,
 
-		UsedBytes:       qbt.usedBytes,
+		UnflushedBytes:  qbt.unflushedBytes,
 		RemoteUsedBytes: qbt.remoteUsedBytes,
 		QuotaBytes:      qbt.quotaBytes,
 	}
@@ -583,7 +583,7 @@ func (bdl *backpressureDiskLimiter) getSnapshotsForTest() (
 func (bdl *backpressureDiskLimiter) getQuotaSnapshotForTest() bdlSnapshot {
 	bdl.lock.RLock()
 	defer bdl.lock.RUnlock()
-	used := bdl.journalQuotaTracker.usedBytes + bdl.journalQuotaTracker.remoteUsedBytes
+	used := bdl.journalQuotaTracker.unflushedBytes + bdl.journalQuotaTracker.remoteUsedBytes
 	free := bdl.journalQuotaTracker.quotaBytes - used
 	return bdlSnapshot{used, free, 0, 0}
 }
@@ -699,7 +699,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 				blockBytes, blockFiles, delay.Seconds(),
 				bdl.journalByteTracker.used, freeBytes,
 				bdl.journalFileTracker.used, freeFiles,
-				bdl.journalQuotaTracker.usedBytes,
+				bdl.journalQuotaTracker.unflushedBytes,
 				bdl.journalQuotaTracker.remoteUsedBytes,
 				bdl.journalQuotaTracker.quotaBytes,
 				hasQuotaDelay)
@@ -752,7 +752,8 @@ func (bdl *backpressureDiskLimiter) onBlocksDelete(
 	defer bdl.lock.Unlock()
 	bdl.journalByteTracker.onBlocksDelete(blockBytes)
 	bdl.journalFileTracker.onBlocksDelete(blockFiles)
-	bdl.journalQuotaTracker.onBlocksDelete(blockBytes)
+	// TODO: Need separate function.
+	bdl.journalQuotaTracker.onBlocksFlush(blockBytes)
 }
 
 func (bdl *backpressureDiskLimiter) onDiskBlockCacheDelete(
