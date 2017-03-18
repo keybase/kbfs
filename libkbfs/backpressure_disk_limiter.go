@@ -260,7 +260,6 @@ type backpressureDiskLimiter struct {
 var _ DiskLimiter = (*backpressureDiskLimiter)(nil)
 
 type backpressureDiskLimiterParams struct {
-	log logger.Logger
 	// minThreshold is the fraction of the available bytes/files
 	// at which we start to apply backpressure.
 	minThreshold float64
@@ -289,6 +288,41 @@ type backpressureDiskLimiterParams struct {
 	// free bytes and files on the disk containing KBFS's storage
 	// directory.
 	freeBytesAndFilesFn func() (int64, int64, error)
+}
+
+// defaultDiskLimitMaxDelay is the maximum amount to delay a block
+// put.
+const defaultDiskLimitMaxDelay = 10 * time.Second
+
+func makeDefaultBackpressureDiskLimiterParams(
+	storageRoot string) backpressureDiskLimiterParams {
+	const (
+		minThreshold = 0.5
+		maxThreshold = 0.95
+		// Cap journal usage to a 15% of free space.
+		journalFrac = 0.15
+		// Cap disk cache usage to a 10% of free space.
+		diskCacheFrac = 0.10
+		// Set the absolute filesystem byte limit to 200
+		// GiB. This will be scaled by the various *Frac
+		// parameters.
+		byteLimit int64 = 200 * 1024 * 1024 * 1024
+		// Set the absolute file limit to 6 million for now.
+		fileLimit int64 = 6000000
+	)
+	return backpressureDiskLimiterParams{
+		minThreshold:  minThreshold,
+		maxThreshold:  maxThreshold,
+		journalFrac:   journalFrac,
+		diskCacheFrac: diskCacheFrac,
+		byteLimit:     byteLimit,
+		fileLimit:     fileLimit,
+		maxDelay:      defaultDiskLimitMaxDelay,
+		delayFn:       defaultDoDelay,
+		freeBytesAndFilesFn: func() (int64, int64, error) {
+			return defaultGetFreeBytesAndFiles(storageRoot)
+		},
+	}
 }
 
 // newBackpressureDiskLimiterWithFunctions constructs a new

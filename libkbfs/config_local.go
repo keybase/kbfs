@@ -946,10 +946,6 @@ func (c *ConfigLocal) journalizeBcaches(jServer *JournalServer) error {
 	return nil
 }
 
-// defaultDiskLimitMaxDelay is the maximum amount to delay a block
-// put.
-const defaultDiskLimitMaxDelay = 10 * time.Second
-
 // MakeDiskLimiter makes a DiskLimiter for use in journaling and disk caching.
 func (c *ConfigLocal) MakeDiskLimiter(configRoot string) (DiskLimiter, error) {
 	const (
