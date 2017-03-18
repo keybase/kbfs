@@ -179,7 +179,7 @@ func TestBackpressureConstructorError(t *testing.T) {
 	params.freeBytesAndFilesFn = func() (int64, int64, error) {
 		return 0, 0, fakeErr
 	}
-	_, err := newBackpressureDiskLimiterWithParams(log, params)
+	_, err := newBackpressureDiskLimiter(log, params)
 	require.Equal(t, fakeErr, err)
 }
 
@@ -191,7 +191,7 @@ func TestBackpressureDiskLimiterBeforeBlockPut(t *testing.T) {
 	params := makeTestBackpressureDiskLimiterParams()
 	params.byteLimit = 88
 	params.fileLimit = 20
-	bdl, err := newBackpressureDiskLimiterWithParams(log, params)
+	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
 	availBytes, availFiles, err := bdl.beforeBlockPut(
@@ -212,7 +212,7 @@ func TestBackpressureDiskLimiterBeforeBlockPutError(t *testing.T) {
 	params := makeTestBackpressureDiskLimiterParams()
 	params.byteLimit = 40
 	params.fileLimit = 4
-	bdl, err := newBackpressureDiskLimiterWithParams(log, params)
+	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(
@@ -235,7 +235,7 @@ func TestBackpressureDiskLimiterGetDelay(t *testing.T) {
 	params := makeTestBackpressureDiskLimiterParams()
 	params.byteLimit = math.MaxInt64
 	params.fileLimit = math.MaxInt64
-	bdl, err := newBackpressureDiskLimiterWithParams(log, params)
+	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
 	now := time.Now()
@@ -319,7 +319,7 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 	params.byteLimit = byteLimit * 4
 	params.fileLimit = fileLimit * 4
 	params.delayFn = delayFn
-	bdl, err := newBackpressureDiskLimiterWithParams(log, params)
+	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
 	byteSnapshot, fileSnapshot := bdl.getSnapshotsForTest()
@@ -482,7 +482,7 @@ func TestBackpressureDiskLimiterJournalAndDiskCache(t *testing.T) {
 	params.freeBytesAndFilesFn = func() (int64, int64, error) {
 		return maxFreeBytes, math.MaxInt64, nil
 	}
-	bdl, err := newBackpressureDiskLimiterWithParams(log, params)
+	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
 	byteSnapshot, _ := bdl.getSnapshotsForTest()
@@ -647,7 +647,7 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 	params.fileLimit = math.MaxInt64
 	params.delayFn = delayFn
 	params.freeBytesAndFilesFn = getFreeBytesAndFilesFn
-	bdl, err := newBackpressureDiskLimiterWithParams(log, params)
+	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
 	byteSnapshot, fileSnapshot := bdl.getSnapshotsForTest()

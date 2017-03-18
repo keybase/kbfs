@@ -954,7 +954,7 @@ func (c *ConfigLocal) MakeDiskLimiter(configRoot string) (DiskLimiter, error) {
 		params.byteLimit, params.fileLimit)
 	os.MkdirAll(configRoot, 0700)
 	var err error
-	c.diskLimiter, err = newBackpressureDiskLimiterWithParams(log, params)
+	c.diskLimiter, err = newBackpressureDiskLimiter(log, params)
 	return c.diskLimiter, err
 }
 

@@ -69,7 +69,7 @@ func newDiskBlockCacheStandardForTest(config *testDiskBlockCacheConfig,
 				return freeBytes, maxFiles, nil
 			},
 		}
-		limiter, err = newBackpressureDiskLimiterWithParams(
+		limiter, err = newBackpressureDiskLimiter(
 			config.MakeLogger(""), params)
 		if err != nil {
 			return nil, err
