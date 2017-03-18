@@ -624,7 +624,7 @@ func (bdl *backpressureDiskLimiter) onDiskBlockCacheDisable(ctx context.Context,
 }
 
 func (bdl *backpressureDiskLimiter) getDelayLocked(
-	ctx context.Context, now time.Time) (time.Duration, bool) {
+	ctx context.Context, now time.Time) time.Duration {
 	byteDelayScale := bdl.journalByteTracker.delayScale()
 	fileDelayScale := bdl.journalFileTracker.delayScale()
 	quotaDelayScale := bdl.journalQuotaTracker.delayScale()
@@ -641,8 +641,7 @@ func (bdl *backpressureDiskLimiter) getDelayLocked(
 		}
 	}
 
-	hasQuotaDelay := quotaDelayScale > 0
-	return time.Duration(delayScale * float64(maxDelay)), hasQuotaDelay
+	return time.Duration(delayScale * float64(maxDelay))
 }
 
 func (bdl *backpressureDiskLimiter) updateFreeLocked() (
@@ -677,43 +676,40 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 				"backpressureDiskLimiter.beforeBlockPut called with 0 blockFiles")
 	}
 
-	remoteUsedBytes, quotaBytes := bdl.quotaFn(ctx)
-
-	delay, hasQuotaDelay, err := func() (time.Duration, bool, error) {
+	delay, err := func() (time.Duration, error) {
 		bdl.lock.Lock()
 		defer bdl.lock.Unlock()
 
 		freeBytes, freeFiles, err := bdl.updateFreeLocked()
 		if err != nil {
-			return 0, false, err
+			return 0, err
 		}
 
+		remoteUsedBytes, quotaBytes := bdl.quotaFn(ctx)
 		bdl.journalQuotaTracker.updateRemote(remoteUsedBytes, quotaBytes)
 
-		delay, hasQuotaDelay := bdl.getDelayLocked(ctx, time.Now())
+		delay := bdl.getDelayLocked(ctx, time.Now())
 		if delay > 0 {
 			bdl.log.CDebugf(ctx, "Delaying block put of %d bytes and %d files by %f s ("+
 				"journalBytes=%d, freeBytes=%d, "+
 				"journalFiles=%d, freeFiles=%d, "+
 				"quotaUnflushedBytes=%d, quotaRemoteUsedBytes=%d, "+
-				"quotaBytes=%d, hasQuotaDelay=%t)",
+				"quotaBytes=%d)",
 				blockBytes, blockFiles, delay.Seconds(),
 				bdl.journalByteTracker.used, freeBytes,
 				bdl.journalFileTracker.used, freeFiles,
 				bdl.journalQuotaTracker.unflushedBytes,
 				bdl.journalQuotaTracker.remoteUsedBytes,
-				bdl.journalQuotaTracker.quotaBytes,
-				hasQuotaDelay)
+				bdl.journalQuotaTracker.quotaBytes)
 		}
 
-		return delay, hasQuotaDelay, nil
+		return delay, nil
 	}()
 	if err != nil {
 		return bdl.journalByteTracker.semaphore.Count(),
 			bdl.journalFileTracker.semaphore.Count(), err
 	}
 
-	_ = hasQuotaDelay
 	// TODO: Update delay if any variables change (i.e., we
 	// suddenly free up a lot of space).
 	err = bdl.delayFn(ctx, delay)
@@ -734,6 +730,23 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	}()
 
 	availableFiles, err = bdl.journalFileTracker.beforeBlockPut(ctx, blockFiles)
+	if err != nil {
+		return availableBytes, availableFiles, err
+	}
+
+	usedBytes, quotaBytes := func() (int64, int64) {
+		bdl.lock.Lock()
+		defer bdl.lock.Unlock()
+
+		remoteUsedBytes, quotaBytes := bdl.quotaFn(ctx)
+		bdl.journalQuotaTracker.updateRemote(remoteUsedBytes, quotaBytes)
+		return bdl.journalQuotaTracker.unflushedBytes + remoteUsedBytes, quotaBytes
+	}()
+
+	// TODO: Plumb this up.
+	_ = usedBytes
+	_ = quotaBytes
+
 	// No need to call anything on bdl.journalQuotaTracker.
 	return availableBytes, availableFiles, err
 }
@@ -808,14 +821,12 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 	bdl.lock.RLock()
 	defer bdl.lock.RUnlock()
 
-	currentDelay, hasQuotaDelay :=
-		bdl.getDelayLocked(context.Background(), time.Now())
+	currentDelay := bdl.getDelayLocked(context.Background(), time.Now())
 
 	return backpressureDiskLimiterStatus{
 		Type: "BackpressureDiskLimiter",
 
 		CurrentDelaySec: currentDelay.Seconds(),
-		HasQuotaDelay:   hasQuotaDelay,
 
 		ByteTrackerStatus: bdl.journalByteTracker.getStatus(),
 		FileTrackerStatus: bdl.journalFileTracker.getStatus(),
