@@ -259,6 +259,38 @@ type backpressureDiskLimiter struct {
 
 var _ DiskLimiter = (*backpressureDiskLimiter)(nil)
 
+type backpressureDiskLimiterParams struct {
+	log logger.Logger
+	// minThreshold is the fraction of the available bytes/files
+	// at which we start to apply backpressure.
+	minThreshold float64
+	// maxThreshold is the fraction of the available bytes/files
+	// at which we max out on backpressure.
+	maxThreshold float64
+	// journalFrac is fraction of the available bytes/files that
+	// the journal is allowed to use.
+	journalFrac float64
+	// diskCacheFrac is the fraction of the available bytes/files
+	// that the disk cache is allowed to use.
+	diskCacheFrac float64
+	// byteLimit is absolute byte limit that the journal and the disk cache
+	// is allowed to use.
+	byteLimit int64
+	// fileLimit is absolute file limit that the journal and the
+	// disk cache is allowed to use.
+	fileLimit int64
+	// maxDelay is the maximum delay used for backpressure.
+	maxDelay time.Duration
+	// delayFn is a function that takes a context and a duration
+	// and returns after sleeping for that duration, or if the
+	// context is cancelled.
+	delayFn func(context.Context, time.Duration) error
+	// freeBytesAndFilesFn is a function that returns the current
+	// free bytes and files on the disk containing KBFS's storage
+	// directory.
+	freeBytesAndFilesFn func() (int64, int64, error)
+}
+
 // newBackpressureDiskLimiterWithFunctions constructs a new
 // backpressureDiskLimiter with the given parameters, and also the
 // given delay function, which is overridden in tests.
