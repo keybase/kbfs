@@ -695,7 +695,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 			bdl.log.CDebugf(ctx, "Delaying block put of %d bytes and %d files by %f s ("+
 				"journalBytes=%d, freeBytes=%d, "+
 				"journalFiles=%d, freeFiles=%d, "+
-				"quotaUsedBytes=%d, quotaRemoteUsedBytes=%d, "+
+				"quotaUnflushedBytes=%d, quotaRemoteUsedBytes=%d, "+
 				"quotaBytes=%d, hasQuotaDelay=%t)",
 				blockBytes, blockFiles, delay.Seconds(),
 				bdl.journalByteTracker.used, freeBytes,
