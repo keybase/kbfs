@@ -325,6 +325,46 @@ func makeDefaultBackpressureDiskLimiterParams(
 	}
 }
 
+// newBackpressureDiskLimiterWithParams constructs a new
+// backpressureDiskLimiter with the given params.
+func newBackpressureDiskLimiterWithParams(log logger.Logger,
+	params backpressureDiskLimiterParams) (
+	*backpressureDiskLimiter, error) {
+	freeBytes, freeFiles, err := params.freeBytesAndFilesFn()
+	if err != nil {
+		return nil, err
+	}
+	// byteLimit and fileLimit must be scaled by the proportion of the limit
+	// that the journal should consume.
+	//
+	// TODO: Need to use journalFrac/(journalFrac+diskCacheFrac)
+	// instead.
+	journalByteLimit := int64((float64(params.byteLimit) * params.journalFrac) + 0.5)
+	byteTracker, err := newBackpressureTracker(
+		params.minThreshold, params.maxThreshold,
+		params.journalFrac, journalByteLimit, freeBytes)
+	if err != nil {
+		return nil, err
+	}
+	// the fileLimit is only used here, but in the interest of consistency with
+	// how we treat the byteLimit, we multiply it by the journalFrac.
+	journalFileLimit := int64((float64(params.fileLimit) * params.journalFrac) + 0.5)
+	fileTracker, err := newBackpressureTracker(
+		params.minThreshold, params.maxThreshold,
+		params.journalFrac, journalFileLimit, freeFiles)
+	if err != nil {
+		return nil, err
+	}
+	diskCacheByteLimit := int64((float64(params.byteLimit) * params.diskCacheFrac) + 0.5)
+	diskCacheByteTracker, err := newBackpressureTracker(
+		1.0, 1.0, params.diskCacheFrac, diskCacheByteLimit, freeBytes)
+	bdl := &backpressureDiskLimiter{
+		log, params.maxDelay, params.delayFn, params.freeBytesAndFilesFn, sync.RWMutex{},
+		byteTracker, fileTracker, diskCacheByteTracker,
+	}
+	return bdl, nil
+}
+
 // newBackpressureDiskLimiterWithFunctions constructs a new
 // backpressureDiskLimiter with the given parameters, and also the
 // given delay function, which is overridden in tests.
