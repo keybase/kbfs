@@ -153,6 +153,24 @@ func TestDefaultDoDelayCancel(t *testing.T) {
 	require.Equal(t, ctx.Err(), errors.Cause(err))
 }
 
+func makeTestBackpressureDiskLimiterParams() backpressureDiskLimiterParams {
+	return backpressureDiskLimiterParams{
+		minThreshold:  0.1,
+		maxThreshold:  0.9,
+		journalFrac:   0.25,
+		diskCacheFrac: 0.1,
+		byteLimit:     400,
+		fileLimit:     40,
+		maxDelay:      8 * time.Second,
+		delayFn: func(context.Context, time.Duration) error {
+			return nil
+		},
+		freeBytesAndFilesFn: func() (int64, int64, error) {
+			return math.MaxInt64, math.MaxInt64, nil
+		},
+	}
+}
+
 func TestBackpressureConstructorError(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	fakeErr := errors.New("Fake error")
