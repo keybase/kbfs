@@ -760,14 +760,19 @@ func (bdl *backpressureDiskLimiter) afterBlockPut(
 	bdl.journalQuotaTracker.afterBlockPut(blockBytes, putData)
 }
 
+func (bdl *backpressureDiskLimiter) onBlocksFlush(
+	ctx context.Context, blockBytes int64) {
+	bdl.lock.Lock()
+	defer bdl.lock.Unlock()
+	bdl.journalQuotaTracker.onBlocksFlush(blockBytes)
+}
+
 func (bdl *backpressureDiskLimiter) onBlocksDelete(
 	ctx context.Context, blockBytes, blockFiles int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
 	bdl.journalByteTracker.onBlocksDelete(blockBytes)
 	bdl.journalFileTracker.onBlocksDelete(blockFiles)
-	// TODO: Need separate function.
-	bdl.journalQuotaTracker.onBlocksFlush(blockBytes)
 }
 
 func (bdl *backpressureDiskLimiter) onDiskBlockCacheDelete(

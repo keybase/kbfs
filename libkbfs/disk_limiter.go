@@ -62,6 +62,12 @@ type DiskLimiter interface {
 	afterBlockPut(ctx context.Context,
 		blockBytes, blockFiles int64, putData bool)
 
+	// onBlocksFlush is called after flushing blocks of the given
+	// byte count, which must be >= 0. (Flushing a block with a
+	// zero byte count shouldn't happen, but may as well let it go
+	// through.)
+	onBlocksFlush(ctx context.Context, blockBytes int64)
+
 	// onBlocksDelete is called after deleting blocks of the given
 	// byte and file count, both of which must be >= 0. (Deleting
 	// a block with either zero byte or zero file count shouldn't

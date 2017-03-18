@@ -109,6 +109,11 @@ func (sdl semaphoreDiskLimiter) afterBlockPut(
 	}
 }
 
+func (sdl semaphoreDiskLimiter) onBlocksFlush(
+	ctx context.Context, blockBytes int64) {
+	// Do nothing, since we don't keep track of quota.
+}
+
 func (sdl semaphoreDiskLimiter) onBlocksDelete(
 	ctx context.Context, blockBytes, blockFiles int64) {
 	if blockBytes != 0 {
