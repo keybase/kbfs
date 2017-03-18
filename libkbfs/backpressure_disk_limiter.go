@@ -442,8 +442,9 @@ func makeDefaultBackpressureDiskLimiterParams(
 		// ...and max it out at 95% (slightly less than 100%
 		// to allow for inaccuracies in estimates).
 		maxThreshold: 0.95,
-		// TODO: Add comments.
+		// Start backpressure when we've used 80% of our quota...
 		quotaMinThreshold: 0.8,
+		// ...and max it out at 120% of quota.
 		quotaMaxThreshold: 1.2,
 		// Cap journal usage to 15% of free bytes and files...
 		journalFrac: 0.15,
