@@ -5,6 +5,8 @@
 package libkbfs
 
 import (
+	"math"
+
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -136,6 +138,10 @@ func (sdl semaphoreDiskLimiter) afterDiskBlockCachePut(ctx context.Context,
 	if !putData {
 		sdl.byteSemaphore.Release(blockBytes)
 	}
+}
+
+func (sdl semaphoreDiskLimiter) getQuotaInfo() (usedQuotaBytes, quotaBytes int64) {
+	return 0, math.MaxInt64
 }
 
 type semaphoreDiskLimiterStatus struct {

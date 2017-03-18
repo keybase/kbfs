@@ -68,6 +68,8 @@ type DiskLimiter interface {
 	// happen, but may as well let it go through.)
 	onBlocksDelete(ctx context.Context, blockBytes, blockFiles int64)
 
+	getQuotaInfo() (usedQuotaBytes, quotaBytes int64)
+
 	// getStatus returns an object that's marshallable into JSON
 	// for use in displaying status.
 	getStatus() interface{}

@@ -1752,6 +1752,10 @@ func (j *tlfJournal) putBlockData(
 	return nil
 }
 
+func (j *tlfJournal) getQuotaInfo() (usedQuotaBytes, quotaBytes int64) {
+	return j.diskLimiter.getQuotaInfo()
+}
+
 func (j *tlfJournal) addBlockReference(
 	ctx context.Context, id kbfsblock.ID, context kbfsblock.Context) error {
 	j.journalLock.Lock()
