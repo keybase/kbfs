@@ -392,7 +392,7 @@ type backpressureDiskLimiterParams struct {
 	// quotaMinThreshold is the fraction of used quota at which we
 	// start to apply backpressure.
 	quotaMinThreshold float64
-	// quotamaxThreshold is the fraction of used quota at which we
+	// quotaMaxThreshold is the fraction of used quota at which we
 	// max out on backpressure.
 	quotaMaxThreshold float64
 	// journalFrac is fraction of the free bytes/files that the
