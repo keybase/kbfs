@@ -365,50 +365,6 @@ func newBackpressureDiskLimiterWithParams(log logger.Logger,
 	return bdl, nil
 }
 
-// newBackpressureDiskLimiterWithFunctions constructs a new
-// backpressureDiskLimiter with the given parameters, and also the
-// given delay function, which is overridden in tests.
-func newBackpressureDiskLimiterWithFunctions(log logger.Logger,
-	backpressureMinThreshold, backpressureMaxThreshold, journalFrac,
-	diskCacheFrac float64, byteLimit, fileLimit int64, maxDelay time.Duration,
-	delayFn func(context.Context, time.Duration) error,
-	freeBytesAndFilesFn func() (int64, int64, error)) (
-	*backpressureDiskLimiter, error) {
-	freeBytes, freeFiles, err := freeBytesAndFilesFn()
-	if err != nil {
-		return nil, err
-	}
-	// byteLimit and fileLimit must be scaled by the proportion of the limit
-	// that the journal should consume.
-	//
-	// TODO: Need to use journalFrac/(journalFrac+diskCacheFrac)
-	// instead.
-	journalByteLimit := int64((float64(byteLimit) * journalFrac) + 0.5)
-	byteTracker, err := newBackpressureTracker(
-		backpressureMinThreshold, backpressureMaxThreshold,
-		journalFrac, journalByteLimit, freeBytes)
-	if err != nil {
-		return nil, err
-	}
-	// the fileLimit is only used here, but in the interest of consistency with
-	// how we treat the byteLimit, we multiply it by the journalFrac.
-	journalFileLimit := int64((float64(fileLimit) * journalFrac) + 0.5)
-	fileTracker, err := newBackpressureTracker(
-		backpressureMinThreshold, backpressureMaxThreshold,
-		journalFrac, journalFileLimit, freeFiles)
-	if err != nil {
-		return nil, err
-	}
-	diskCacheByteLimit := int64((float64(byteLimit) * diskCacheFrac) + 0.5)
-	diskCacheByteTracker, err := newBackpressureTracker(
-		1.0, 1.0, diskCacheFrac, diskCacheByteLimit, freeBytes)
-	bdl := &backpressureDiskLimiter{
-		log, maxDelay, delayFn, freeBytesAndFilesFn, sync.RWMutex{},
-		byteTracker, fileTracker, diskCacheByteTracker,
-	}
-	return bdl, nil
-}
-
 // defaultDoDelay uses a timer to delay by the given duration.
 func defaultDoDelay(ctx context.Context, delay time.Duration) error {
 	if delay == 0 {
