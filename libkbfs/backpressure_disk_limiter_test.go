@@ -174,11 +174,12 @@ func makeTestBackpressureDiskLimiterParams() backpressureDiskLimiterParams {
 func TestBackpressureConstructorError(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	fakeErr := errors.New("Fake error")
-	_, err := newBackpressureDiskLimiterWithFunctions(
-		log, 0.1, 0.9, 0.25, 0.1, 400, 40, 8*time.Second, nil,
-		func() (int64, int64, error) {
-			return 0, 0, fakeErr
-		})
+	params := makeTestBackpressureDiskLimiterParams()
+	params.delayFn = nil
+	params.freeBytesAndFilesFn = func() (int64, int64, error) {
+		return 0, 0, fakeErr
+	}
+	_, err := newBackpressureDiskLimiterWithParams(log, params)
 	require.Equal(t, fakeErr, err)
 }
 
@@ -187,20 +188,18 @@ func TestBackpressureConstructorError(t *testing.T) {
 // available bytes/files correctly.
 func TestBackpressureDiskLimiterBeforeBlockPut(t *testing.T) {
 	log := logger.NewTestLogger(t)
-	bdl, err := newBackpressureDiskLimiterWithFunctions(
-		log, 0.1, 0.9, 0.25, 0.1, 88, 20, 8*time.Second,
-		func(ctx context.Context, delay time.Duration) error {
-			return nil
-		},
-		func() (int64, int64, error) {
-			return math.MaxInt64, math.MaxInt64, nil
-		})
+	params := makeTestBackpressureDiskLimiterParams()
+	params.byteLimit = 88
+	params.fileLimit = 20
+	bdl, err := newBackpressureDiskLimiterWithParams(log, params)
 	require.NoError(t, err)
 
 	availBytes, availFiles, err := bdl.beforeBlockPut(
 		context.Background(), 10, 2)
 	require.NoError(t, err)
+	// (byteLimit=88) * (journalFrac=0.25) - 10 = 12.
 	require.Equal(t, int64(12), availBytes)
+	// (fileLimit=20) * (journalFrac=0.25) - 2 = 3.
 	require.Equal(t, int64(3), availFiles)
 }
 
