@@ -852,8 +852,7 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 			storedBytesBefore, storedBytesAfter))
 	}
 
-	// TODO: Notify disk limiter.
-	_ = flushedBytes
+	j.diskLimiter.onBlocksFlush(ctx, flushedBytes)
 
 	return nil
 }
