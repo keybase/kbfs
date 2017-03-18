@@ -878,14 +878,16 @@ func (j *blockJournal) removeFlushedEntry(ctx context.Context,
 }
 
 func (j *blockJournal) removeFlushedEntries(ctx context.Context,
-	entries blockEntriesToFlush, tlfID tlf.ID, reporter Reporter) error {
+	entries blockEntriesToFlush, tlfID tlf.ID, reporter Reporter) (
+	totalFlushedBytes int64, err error) {
 	// Remove them all!
 	for i, entry := range entries.all {
 		flushedBytes, err := j.removeFlushedEntry(
 			ctx, entries.first+journalOrdinal(i), entry)
 		if err != nil {
-			return err
+			return 0, err
 		}
+		totalFlushedBytes += flushedBytes
 
 		reporter.NotifySyncStatus(ctx, &keybase1.FSPathSyncStatus{
 			PublicTopLevelFolder: tlfID.IsPublic(),
@@ -900,7 +902,7 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 	// still be non-empty, so we have to wait for that to be empty
 	// before nuking the whole journal (see clearDeferredGCRange).
 
-	return nil
+	return totalFlushedBytes, nil
 }
 
 func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,

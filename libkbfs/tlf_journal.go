@@ -838,7 +838,7 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 
 	// TODO: Check storedFiles also.
 
-	err := j.blockJournal.removeFlushedEntries(
+	flushedBytes, err := j.blockJournal.removeFlushedEntries(
 		ctx, entries, j.tlfID, j.config.Reporter())
 	if err != nil {
 		return err
@@ -851,6 +851,9 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 			"storedBytes unexpectedly changed from %d to %d",
 			storedBytesBefore, storedBytesAfter))
 	}
+
+	// TODO: Notify disk limiter.
+	_ = flushedBytes
 
 	return nil
 }
