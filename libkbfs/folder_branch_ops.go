@@ -2829,6 +2829,8 @@ func (fbo *folderBranchOps) maybeWaitForSquash(
 	}
 
 	fbo.log.CDebugf(ctx, "Blocking until squash finishes")
+	tr, trOk := trace.FromContext(ctx)
+
 	// Limit the time we wait to just under the ctx deadline if there
 	// is one, or 10s if there isn't.
 	deadline, ok := ctx.Deadline()
@@ -2844,9 +2846,15 @@ func (fbo *folderBranchOps) maybeWaitForSquash(
 	// concurrent writes, the current CR could be canceled, and when
 	// the call belows returns, the branch still won't be squashed.
 	// That's ok, this is just an optimization.
+	if trOk {
+		tr.LazyPrintf("Waiting for CR to finish")
+	}
 	err := fbo.cr.Wait(ctx)
 	if err != nil {
 		fbo.log.CDebugf(ctx, "Error while waiting for CR: %+v", err)
+	}
+	if trOk {
+		tr.LazyPrintf("Done waiting")
 	}
 }
 
