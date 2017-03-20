@@ -13,7 +13,6 @@ import (
 	"bazil.org/fuse/fs"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
-	"golang.org/x/net/trace"
 )
 
 type eiCache struct {
@@ -78,15 +77,8 @@ func (f *File) fillAttrWithMode(
 
 // Attr implements the fs.Node interface for File.
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) (err error) {
-	tr := trace.New("File.Attr", f.node.GetBasename())
-	defer func() {
-		if err != nil {
-			tr.LazyPrintf("err=%+v", err)
-			tr.SetError()
-		}
-		tr.Finish()
-	}()
-	ctx = trace.NewContext(ctx, tr)
+	ctx = f.folder.fs.maybeStartTrace(ctx, "File.Attr", f.node.GetBasename())
+	defer func() { f.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	f.folder.fs.log.CDebugf(ctx, "File Attr")
 	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
@@ -131,15 +123,8 @@ var _ fs.NodeAccesser = (*File)(nil)
 // success, which makes it think the file is executable, yielding a "Unix
 // executable" UTI.
 func (f *File) Access(ctx context.Context, r *fuse.AccessRequest) (err error) {
-	tr := trace.New("File.Access", f.node.GetBasename())
-	defer func() {
-		if err != nil {
-			tr.LazyPrintf("err=%+v", err)
-			tr.SetError()
-		}
-		tr.Finish()
-	}()
-	ctx = trace.NewContext(ctx, tr)
+	ctx = f.folder.fs.maybeStartTrace(ctx, "File.Access", f.node.GetBasename())
+	defer func() { f.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	if int(r.Uid) != os.Getuid() &&
 		// Finder likes to use UID 0 for some operations. osxfuse already allows
@@ -196,15 +181,8 @@ func (f *File) sync(ctx context.Context) error {
 
 // Fsync implements the fs.NodeFsyncer interface for File.
 func (f *File) Fsync(ctx context.Context, req *fuse.FsyncRequest) (err error) {
-	tr := trace.New("File.Fsync", f.node.GetBasename())
-	defer func() {
-		if err != nil {
-			tr.LazyPrintf("err=%+v", err)
-			tr.SetError()
-		}
-		tr.Finish()
-	}()
-	ctx = trace.NewContext(ctx, tr)
+	ctx = f.folder.fs.maybeStartTrace(ctx, "File.Fsync", f.node.GetBasename())
+	defer func() { f.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	f.folder.fs.log.CDebugf(ctx, "File Fsync")
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
@@ -226,17 +204,9 @@ var _ fs.HandleReader = (*File)(nil)
 // Read implements the fs.HandleReader interface for File.
 func (f *File) Read(ctx context.Context, req *fuse.ReadRequest,
 	resp *fuse.ReadResponse) (err error) {
-	tr := trace.New("File.Read",
+	ctx = f.folder.fs.maybeStartTrace(ctx, "File.Read",
 		fmt.Sprintf("%s off=%d sz=%d", f.node.GetBasename(),
 			req.Offset, cap(resp.Data)))
-	defer func() {
-		if err != nil {
-			tr.LazyPrintf("err=%+v", err)
-			tr.SetError()
-		}
-		tr.Finish()
-	}()
-	ctx = trace.NewContext(ctx, tr)
 
 	f.folder.fs.log.CDebugf(ctx, "File Read")
 	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
@@ -255,15 +225,8 @@ var _ fs.HandleWriter = (*File)(nil)
 // Write implements the fs.HandleWriter interface for File.
 func (f *File) Write(ctx context.Context, req *fuse.WriteRequest,
 	resp *fuse.WriteResponse) (err error) {
-	tr := trace.New("File.Write", f.node.GetBasename())
-	defer func() {
-		if err != nil {
-			tr.LazyPrintf("err=%+v", err)
-			tr.SetError()
-		}
-		tr.Finish()
-	}()
-	ctx = trace.NewContext(ctx, tr)
+	ctx = f.folder.fs.maybeStartTrace(ctx, "File.Write", f.node.GetBasename())
+	defer func() { f.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	f.folder.fs.log.CDebugf(ctx, "File Write sz=%d ", len(req.Data))
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
@@ -281,15 +244,8 @@ var _ fs.HandleFlusher = (*File)(nil)
 
 // Flush implements the fs.HandleFlusher interface for File.
 func (f *File) Flush(ctx context.Context, req *fuse.FlushRequest) (err error) {
-	tr := trace.New("File.Flush", f.node.GetBasename())
-	defer func() {
-		if err != nil {
-			tr.LazyPrintf("err=%+v", err)
-			tr.SetError()
-		}
-		tr.Finish()
-	}()
-	ctx = trace.NewContext(ctx, tr)
+	ctx = f.folder.fs.maybeStartTrace(ctx, "File.Flush", f.node.GetBasename())
+	defer func() { f.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	f.folder.fs.log.CDebugf(ctx, "File Flush")
 	// I'm not sure about the guarantees from KBFSOps, so we don't
@@ -311,15 +267,8 @@ var _ fs.NodeSetattrer = (*File)(nil)
 // Setattr implements the fs.NodeSetattrer interface for File.
 func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 	resp *fuse.SetattrResponse) (err error) {
-	tr := trace.New("File.SetAttr", f.node.GetBasename())
-	defer func() {
-		if err != nil {
-			tr.LazyPrintf("err=%+v", err)
-			tr.SetError()
-		}
-		tr.Finish()
-	}()
-	ctx = trace.NewContext(ctx, tr)
+	ctx = f.folder.fs.maybeStartTrace(ctx, "File.SetAttr", f.node.GetBasename())
+	defer func() { f.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	f.folder.fs.log.CDebugf(ctx, "File SetAttr")
 	defer func() { f.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
