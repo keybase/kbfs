@@ -4475,6 +4475,16 @@ func (fbo *folderBranchOps) getAndApplyMDUpdates(ctx context.Context,
 
 func (fbo *folderBranchOps) getAndApplyNewestUnmergedHead(ctx context.Context,
 	lState *lockState) error {
+	tr, trOk := trace.FromContext(ctx)
+	if trOk {
+		tr.LazyPrintf("Fetching the newest unmerged head")
+	}
+	defer func() {
+		if trOk {
+			tr.LazyPrintf("Fetched the newest unmerged head")
+		}
+	}()
+
 	fbo.log.CDebugf(ctx, "Fetching the newest unmerged head")
 	bid := func() BranchID {
 		fbo.mdWriterLock.Lock(lState)

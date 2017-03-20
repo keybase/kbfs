@@ -284,6 +284,7 @@ func (f *FS) maybeStartTrace(
 	// TODO: Add options to enable/disable tracing, or adjust
 	// trace detail.
 	tr := trace.New(family, title)
+	tr.SetMaxEvents(100)
 	ctx = trace.NewContext(ctx, tr)
 	return ctx
 }
