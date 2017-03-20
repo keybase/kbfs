@@ -283,6 +283,8 @@ func (f *FS) WithContext(ctx context.Context) context.Context {
 
 func (f *FS) maybeStartTrace(
 	ctx context.Context, family, title string) context.Context {
+	// TODO: Add options to enable/disable tracing, or adjust
+	// trace detail.
 	tr := trace.New(family, title)
 	ctx = trace.NewContext(ctx, tr)
 	return ctx
