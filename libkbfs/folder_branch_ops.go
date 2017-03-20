@@ -22,6 +22,7 @@ import (
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 )
 
 // mdReadType indicates whether a read needs identifies.
@@ -2622,6 +2623,12 @@ func (fbo *folderBranchOps) syncBlockAndFinalizeLocked(ctx context.Context,
 	lState *lockState, md *RootMetadata, newBlock Block, dir path,
 	name string, entryType EntryType, mtime bool, ctime bool,
 	stopAt BlockPointer, excl Excl) (de DirEntry, err error) {
+	tr, trOk := trace.FromContext(ctx)
+
+	if trOk {
+		tr.LazyPrintf("syncBlockAndFinalizeLocked start")
+	}
+
 	fbo.mdWriterLock.AssertLocked(lState)
 	_, de, bps, err := fbo.syncBlockAndCheckEmbedLocked(
 		ctx, lState, md, newBlock, dir, name, entryType, mtime,
@@ -2637,16 +2644,30 @@ func (fbo *folderBranchOps) syncBlockAndFinalizeLocked(ctx context.Context,
 		}
 	}()
 
+	if trOk {
+		tr.LazyPrintf("syncBlockAndFinalizeLocked doBlockPuts")
+	}
+
 	_, err = doBlockPuts(ctx, fbo.config.BlockServer(),
 		fbo.config.BlockCache(), fbo.config.Reporter(), fbo.log, md.TlfID(),
 		md.GetTlfHandle().GetCanonicalName(), *bps)
 	if err != nil {
 		return DirEntry{}, err
 	}
+
+	if trOk {
+		tr.LazyPrintf("syncBlockAndFinalizeLocked finalizeMDWrite")
+	}
+
 	err = fbo.finalizeMDWriteLocked(ctx, lState, md, bps, excl, nil)
 	if err != nil {
 		return DirEntry{}, err
 	}
+
+	if trOk {
+		tr.LazyPrintf("syncBlockAndFinalizeLocked done")
+	}
+
 	return de, nil
 }
 
