@@ -544,16 +544,17 @@ func (k *SimpleFS) SimpleFSClose(ctx context.Context, opid keybase1.OpID) (err e
 
 // SimpleFSCancel starts to cancel op with the given opid.
 // Also remove any pending references of opid everywhere.
-func (k *SimpleFS) SimpleFSCancel(_ context.Context, opid keybase1.OpID) {
+func (k *SimpleFS) SimpleFSCancel(_ context.Context, opid keybase1.OpID) error {
 	k.lock.Lock()
 	defer k.lock.Unlock()
 	w, ok := k.inProgress[opid]
 	if !ok {
-		return
+		return nil
 	}
 	delete(k.inProgress, opid)
 	delete(k.handles, opid)
 	w.cancel()
+	return nil
 }
 
 // SimpleFSCheck - Check progress of pending operation
