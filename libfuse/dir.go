@@ -453,7 +453,8 @@ var _ DirInterface = (*Dir)(nil)
 // Access implements the fs.NodeAccesser interface for File. See comment for
 // File.Access for more details.
 func (d *Dir) Access(ctx context.Context, r *fuse.AccessRequest) (err error) {
-	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Access", d.node.GetBasename())
+	ctx = d.folder.fs.maybeStartTrace(
+		ctx, "Dir.Access", d.node.GetBasename())
 	defer func() { d.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	return d.folder.access(ctx, r)
@@ -461,7 +462,8 @@ func (d *Dir) Access(ctx context.Context, r *fuse.AccessRequest) (err error) {
 
 // Attr implements the fs.Node interface for Dir.
 func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) (err error) {
-	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Attr", d.node.GetBasename())
+	ctx = d.folder.fs.maybeStartTrace(
+		ctx, "Dir.Attr", d.node.GetBasename())
 	defer func() { d.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	d.folder.fs.log.CDebugf(ctx, "Dir Attr")
@@ -495,7 +497,8 @@ func (d *Dir) attr(ctx context.Context, a *fuse.Attr) (err error) {
 
 // Lookup implements the fs.NodeRequestLookuper interface for Dir.
 func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (node fs.Node, err error) {
-	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Lookup", d.node.GetBasename())
+	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Lookup",
+		fmt.Sprintf("%s %s", d.node.GetBasename(), req.Name))
 	defer func() { d.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	d.folder.fs.log.CDebugf(ctx, "Dir Lookup %s", req.Name)
@@ -590,7 +593,8 @@ func getEXCLFromCreateRequest(req *fuse.CreateRequest) libkbfs.Excl {
 
 // Create implements the fs.NodeCreater interface for Dir.
 func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (node fs.Node, handle fs.Handle, err error) {
-	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Create", d.node.GetBasename()+" "+req.Name)
+	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Create",
+		fmt.Sprintf("%s %s", d.node.GetBasename(), req.Name))
 	defer func() { d.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	d.folder.fs.log.CDebugf(ctx, "Dir Create %s", req.Name)
@@ -628,7 +632,8 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 // Mkdir implements the fs.NodeMkdirer interface for Dir.
 func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (
 	node fs.Node, err error) {
-	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Mkdir", d.node.GetBasename()+" "+req.Name)
+	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Mkdir",
+		fmt.Sprintf("%s %s", d.node.GetBasename(), req.Name))
 	defer func() { d.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	d.folder.fs.log.CDebugf(ctx, "Dir Mkdir %s", req.Name)
@@ -657,7 +662,9 @@ func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (
 // Symlink implements the fs.NodeSymlinker interface for Dir.
 func (d *Dir) Symlink(ctx context.Context, req *fuse.SymlinkRequest) (
 	node fs.Node, err error) {
-	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Symlink", d.node.GetBasename()+" "+req.NewName+" -> "+req.Target)
+	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Symlink",
+		fmt.Sprintf("%s %s -> %s", d.node.GetBasename(),
+			req.NewName, req.Target))
 	defer func() { d.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	d.folder.fs.log.CDebugf(ctx, "Dir Symlink %s -> %s",
@@ -686,7 +693,9 @@ func (d *Dir) Symlink(ctx context.Context, req *fuse.SymlinkRequest) (
 // Rename implements the fs.NodeRenamer interface for Dir.
 func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 	newDir fs.Node) (err error) {
-	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Rename", d.node.GetBasename()+" "+req.OldName+" -> "+req.NewName)
+	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Rename",
+		fmt.Sprintf("%s %s -> %s", d.node.GetBasename(),
+			req.OldName, req.NewName))
 	defer func() { d.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	d.folder.fs.log.CDebugf(ctx, "Dir Rename %s -> %s",
@@ -737,7 +746,8 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 
 // Remove implements the fs.NodeRemover interface for Dir.
 func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) (err error) {
-	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Remove", d.node.GetBasename()+" "+req.Name)
+	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Remove",
+		fmt.Sprintf("%s %s", d.node.GetBasename(), req.Name))
 	defer func() { d.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	d.folder.fs.log.CDebugf(ctx, "Dir Remove %s", req.Name)
@@ -767,7 +777,8 @@ func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) (err error) {
 
 // ReadDirAll implements the fs.NodeReadDirAller interface for Dir.
 func (d *Dir) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
-	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.ReadDirAll", d.node.GetBasename())
+	ctx = d.folder.fs.maybeStartTrace(
+		ctx, "Dir.ReadDirAll", d.node.GetBasename())
 	defer func() { d.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	d.folder.fs.log.CDebugf(ctx, "Dir ReadDirAll")
@@ -802,13 +813,13 @@ func (d *Dir) Forget() {
 
 // Setattr implements the fs.NodeSetattrer interface for Dir.
 func (d *Dir) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse.SetattrResponse) (err error) {
-	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Setattr", d.node.GetBasename())
+	valid := req.Valid
+	ctx = d.folder.fs.maybeStartTrace(ctx, "Dir.Setattr",
+		fmt.Sprintf("%s %s", d.node.GetBasename(), valid))
 	defer func() { d.folder.fs.maybeFinishTrace(ctx, err) }()
 
-	d.folder.fs.log.CDebugf(ctx, "Dir SetAttr")
+	d.folder.fs.log.CDebugf(ctx, "Dir SetAttr %s", valid)
 	defer func() { d.folder.reportErr(ctx, libkbfs.WriteMode, err) }()
-
-	valid := req.Valid
 
 	if valid.Mode() {
 		// You can't set the mode on KBFS directories, but we don't
