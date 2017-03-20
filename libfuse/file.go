@@ -13,6 +13,7 @@ import (
 	"bazil.org/fuse/fs"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 )
 
 type eiCache struct {
@@ -313,6 +314,8 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 		valid &^= fuse.SetattrMode
 	}
 
+	tr, trOk := trace.FromContext(ctx)
+
 	if valid.Mtime() {
 		err := f.folder.fs.config.KBFSOps().SetMtime(
 			ctx, f.node, &req.Mtime)
@@ -321,7 +324,9 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 		}
 		valid &^= fuse.SetattrMtime | fuse.SetattrMtimeNow
 
-		tr.LazyPrintf("Set mtime done")
+		if trOk {
+			tr.LazyPrintf("Set mtime done")
+		}
 	}
 
 	if valid.Uid() || valid.Gid() {
@@ -350,7 +355,9 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 		return fuse.ENOSYS
 	}
 
-	tr.LazyPrintf("Attring")
+	if trOk {
+		tr.LazyPrintf("Attring")
+	}
 
 	if err := f.attr(ctx, &resp.Attr); err != nil {
 		return err
