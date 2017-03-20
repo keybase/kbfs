@@ -211,6 +211,7 @@ func (f *File) Read(ctx context.Context, req *fuse.ReadRequest,
 	sz := cap(resp.Data)
 	ctx = f.folder.fs.maybeStartTrace(ctx, "File.Read",
 		fmt.Sprintf("%s off=%d sz=%d", f.node.GetBasename(), off, sz))
+	defer func() { f.folder.fs.maybeFinishTrace(ctx, err) }()
 
 	f.folder.fs.log.CDebugf(ctx, "File Read off=%d sz=%d", off, sz)
 	defer func() { f.folder.reportErr(ctx, libkbfs.ReadMode, err) }()
