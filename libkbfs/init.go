@@ -458,6 +458,9 @@ func doInit(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn,
 	log logger.Logger) (Config, error) {
 	mode := InitDefault
 	switch params.Mode {
+	case "":
+		log.Debug("Initializing in default mode due to unspecified Mode")
+		// Already the default
 	case InitDefaultString:
 		log.Debug("Initializing in default mode")
 		// Already the default
