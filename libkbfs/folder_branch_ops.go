@@ -350,8 +350,10 @@ func newFolderBranchOps(config Config, fb FolderBranch,
 	tlfStringFull := fb.Tlf.String()
 	// Shorten the TLF ID for the module name.  8 characters should be
 	// unique enough for a local node.
-	log := config.MakeLogger(fmt.Sprintf("FBO %s%s", tlfStringFull[:8],
-		branchSuffix))
+	log := traceLogger{
+		config.MakeLogger(fmt.Sprintf("FBO %s%s", tlfStringFull[:8],
+			branchSuffix)),
+	}
 	// But print it out once in full, just in case.
 	log.CInfof(nil, "Created new folder-branch for %s", tlfStringFull)
 

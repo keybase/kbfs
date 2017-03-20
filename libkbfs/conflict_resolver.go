@@ -51,6 +51,60 @@ type conflictInput struct {
 	merged   MetadataRevision
 }
 
+type traceLogger struct {
+	logger.Logger
+}
+
+func (tl traceLogger) trace(
+	ctx context.Context, format string, args ...interface{}) {
+	if tr, ok := trace.FromContext(ctx); ok {
+		// Eagerly print to match logger behavior.
+		tr.LazyPrintf(fmt.Sprintf(format, args...))
+	}
+}
+
+func (tl traceLogger) CDebugf(
+	ctx context.Context, format string, args ...interface{}) {
+	tl.trace(ctx, format, args...)
+	tl.Logger.CDebugf(ctx, format, args...)
+}
+
+func (tl traceLogger) CInfof(
+	ctx context.Context, format string, args ...interface{}) {
+	tl.trace(ctx, format, args...)
+	tl.Logger.CInfof(ctx, format, args...)
+}
+
+func (tl traceLogger) CNoticef(
+	ctx context.Context, format string, args ...interface{}) {
+	tl.trace(ctx, format, args...)
+	tl.Logger.CNoticef(ctx, format, args...)
+}
+
+func (tl traceLogger) CWarningf(
+	ctx context.Context, format string, args ...interface{}) {
+	tl.trace(ctx, format, args...)
+	tl.Logger.CWarningf(ctx, format, args...)
+}
+
+func (tl traceLogger) CErrorf(
+	ctx context.Context, format string, args ...interface{}) {
+	tl.trace(ctx, format, args...)
+	tl.Logger.CErrorf(ctx, format, args...)
+}
+
+func (tl traceLogger) CCriticalf(
+	ctx context.Context, format string, args ...interface{}) {
+	tl.trace(ctx, format, args...)
+	tl.Logger.CCriticalf(ctx, format, args...)
+}
+
+func (tl traceLogger) CFatalf(
+	ctx context.Context, format string, args ...interface{}) {
+	tl.trace(ctx, format, args...)
+	tl.Logger.CFatalf(ctx, format, args...)
+}
+
 // ConflictResolver is responsible for resolving conflicts in the
 // background.
 type ConflictResolver struct {
@@ -82,8 +136,10 @@ func NewConflictResolver(
 		branchSuffix = " " + string(fbo.branch())
 	}
 	tlfStringFull := fbo.id().String()
-	log := config.MakeLogger(fmt.Sprintf("CR %s%s", tlfStringFull[:8],
-		branchSuffix))
+	log := traceLogger{
+		config.MakeLogger(fmt.Sprintf("CR %s%s", tlfStringFull[:8],
+			branchSuffix)),
+	}
 
 	cr := &ConflictResolver{
 		config:           config,
@@ -3151,8 +3207,10 @@ func (cr *ConflictResolver) updateResolutionUsageAndPointers(
 			// `unmergedChains.toUnrefPointers` after a chain collapse.
 			continue
 		}
+		cr.log.CDebugf(ctx, "Is unflushed %v", ptr.ID)
 		isUnflushed, err := cr.config.BlockServer().IsUnflushed(
 			ctx, cr.fbo.id(), ptr.ID)
+		cr.log.CDebugf(ctx, "Is unflushed %v done", ptr.ID)
 		if err != nil {
 			return nil, err
 		}
