@@ -348,9 +348,12 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 		return fuse.ENOSYS
 	}
 
+	tr.LazyPrintf("Attring")
+
 	if err := f.attr(ctx, &resp.Attr); err != nil {
 		return err
 	}
+
 	return nil
 }
 
