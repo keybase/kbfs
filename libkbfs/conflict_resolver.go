@@ -3857,8 +3857,8 @@ func (e CRWrapError) Error() string {
 
 func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 	var err error
-	ctx = cr.maybeStartTrace(ctx, "ConflictResolver",
-		fmt.Sprintf("doResolve %s %+v", cr.fbo.folderBranch, ci))
+	ctx = cr.maybeStartTrace(ctx, "CR.doResolve",
+		fmt.Sprintf("%s %+v", cr.fbo.folderBranch, ci))
 	defer func() { cr.maybeFinishTrace(ctx, err) }()
 	cr.log.CDebugf(ctx, "Starting conflict resolution with input %+v", ci)
 	lState := makeFBOLockState()
