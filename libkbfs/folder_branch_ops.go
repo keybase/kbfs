@@ -355,7 +355,7 @@ func newFolderBranchOps(config Config, fb FolderBranch,
 			branchSuffix)),
 	}
 	// But print it out once in full, just in case.
-	log.CInfof(nil, "Created new folder-branch for %s", tlfStringFull)
+	log.Info("Created new folder-branch for %s", tlfStringFull)
 
 	observers := newObserverList()
 
