@@ -2348,6 +2348,12 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		return err
 	}
 
+	tr, trOk := trace.FromContext(ctx)
+
+	if trOk {
+		tr.LazyPrintf("MD put")
+	}
+
 	if fbo.isMasterBranchLocked(lState) {
 		// only do a normal Put if we're not already staged.
 		mdID, err = mdops.Put(ctx, md)
@@ -2414,8 +2420,17 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		resolveMergedRev = MetadataRevisionUninitialized
 	}
 
+	if trOk {
+		tr.LazyPrintf("head lock stuff")
+	}
+
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
+
+	if trOk {
+		tr.LazyPrintf("head lock acquired")
+	}
+
 	irmd := MakeImmutableRootMetadata(
 		md, session.VerifyingKey, mdID, fbo.config.Clock().Now())
 	err = fbo.setHeadSuccessorLocked(ctx, lState, irmd, rebased)
@@ -2428,9 +2443,17 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		fbo.fbm.archiveUnrefBlocks(irmd.ReadOnly())
 	}
 
+	if trOk {
+		tr.LazyPrintf("notifying")
+	}
+
 	err = fbo.notifyBatchLocked(ctx, lState, irmd, afterUpdateFn)
 	if err != nil {
 		return err
+	}
+
+	if trOk {
+		tr.LazyPrintf("done")
 	}
 
 	// Call Resolve() after the head is set, to make sure it fetches

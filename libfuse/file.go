@@ -320,6 +320,8 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 			return err
 		}
 		valid &^= fuse.SetattrMtime | fuse.SetattrMtimeNow
+
+		tr.LazyPrintf("Set mtime done")
 	}
 
 	if valid.Uid() || valid.Gid() {
