@@ -281,6 +281,23 @@ func (f *FS) WithContext(ctx context.Context) context.Context {
 	return ctx
 }
 
+func (f *FS) maybeStartTrace(
+	ctx context.Context, family, title string) context.Context {
+	tr := trace.New(family, title)
+	ctx = trace.NewContext(ctx, tr)
+	return ctx
+}
+
+func (f *FS) maybeFinishTrace(ctx context.Context, err error) {
+	if tr, ok := trace.FromContext(ctx); ok {
+		if err != nil {
+			tr.LazyPrintf("err=%+v", err)
+			tr.SetError()
+		}
+		tr.Finish()
+	}
+}
+
 // Serve FS. Will block.
 func (f *FS) Serve(ctx context.Context) error {
 	srv := fs.New(f.conn, &fs.Config{
