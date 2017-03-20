@@ -3200,6 +3200,7 @@ func (cr *ConflictResolver) updateResolutionUsageAndPointers(
 		toUnref[ptr] = true
 	}
 	deletedBlocks := make(map[BlockPointer]bool)
+	cr.log.CDebugf(ctx, "Is unflushed %d", len(toUnref))
 	for ptr := range toUnref {
 		if ptr == zeroPtr {
 			// A zero pointer can sneak in from the unrefs field of a
@@ -3207,10 +3208,8 @@ func (cr *ConflictResolver) updateResolutionUsageAndPointers(
 			// `unmergedChains.toUnrefPointers` after a chain collapse.
 			continue
 		}
-		cr.log.CDebugf(ctx, "Is unflushed %v", ptr.ID)
 		isUnflushed, err := cr.config.BlockServer().IsUnflushed(
 			ctx, cr.fbo.id(), ptr.ID)
-		cr.log.CDebugf(ctx, "Is unflushed %v done", ptr.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -3226,6 +3225,7 @@ func (cr *ConflictResolver) updateResolutionUsageAndPointers(
 		cr.log.CDebugf(ctx, "Unreferencing dropped block %v", ptr)
 		md.data.Changes.Ops = addUnrefToFinalResOp(md.data.Changes.Ops, ptr)
 	}
+	cr.log.CDebugf(ctx, "Is unflushed done")
 
 	// Scrub all unrefs of blocks that never made it to the server,
 	// for smaller updates and to make things easier on the
