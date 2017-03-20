@@ -202,7 +202,7 @@ func (cr *ConflictResolver) maybeStartTrace(
 	ctx context.Context, family, title string) context.Context {
 	// TODO: Obey tracing options when we add them.
 	tr := trace.New(family, title)
-	tr.SetMaxEvents(100)
+	tr.SetMaxEvents(1000)
 	ctx = trace.NewContext(ctx, tr)
 	return ctx
 }
