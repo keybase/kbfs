@@ -3590,7 +3590,8 @@ func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
 	for _, op := range newOps {
 		cr.log.CDebugf(ctx, "remote op %s: refs: %v", op, op.Refs())
 		cr.log.CDebugf(ctx, "remote op %s: unrefs: %v", op, op.Unrefs())
-		for _, update := range op.allUpdates() {
+		updates := op.allUpdates()
+		for _, update := range updates {
 			cr.log.CDebugf(ctx, "remote op %s: update: %v -> %v", op,
 				update.Unref, update.Ref)
 		}

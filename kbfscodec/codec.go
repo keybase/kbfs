@@ -6,8 +6,10 @@ package kbfscodec
 
 import (
 	"bytes"
+	"fmt"
 	"path/filepath"
 	"reflect"
+	"time"
 
 	"github.com/keybase/kbfs/ioutil"
 )
@@ -79,16 +81,20 @@ func Update(c Codec, dstPtr interface{}, src interface{}) error {
 // SerializeToFile serializes the given object and writes it to the
 // given file, making its parent directory first if necessary.
 func SerializeToFile(c Codec, obj interface{}, path string) error {
+	fmt.Printf("%s: About to mkdir\n", time.Now())
 	err := ioutil.MkdirAll(filepath.Dir(path), 0700)
 	if err != nil {
 		return err
 	}
 
+	fmt.Printf("%s: About to encode\n", time.Now())
 	buf, err := c.Encode(obj)
 	if err != nil {
 		return err
 	}
 
+	fmt.Printf("%s: About to write file %d bytes\n", time.Now(), len(buf))
+	defer func() { fmt.Printf("%s: done writing file %d bytes\n", time.Now(), len(buf)) }()
 	return ioutil.WriteFile(path, buf, 0600)
 }
 

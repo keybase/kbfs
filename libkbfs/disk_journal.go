@@ -303,6 +303,7 @@ func (j *diskJournal) writeJournalEntry(
 			j.entryType, entryType))
 	}
 
+	fmt.Printf("About to serialize\n")
 	return kbfscodec.SerializeToFile(j.codec, entry, j.journalEntryPath(o))
 }
 
@@ -337,17 +338,20 @@ func (j *diskJournal) appendJournalEntry(
 		}
 	}
 
+	fmt.Printf("Writing entry %d\n", o)
 	err := j.writeJournalEntry(next, entry)
 	if err != nil {
 		return 0, err
 	}
 
 	if j.empty() {
+		fmt.Printf("Writing earliest\n")
 		err := j.writeEarliestOrdinal(next)
 		if err != nil {
 			return 0, err
 		}
 	}
+	fmt.Printf("Writing latest\n")
 	err = j.writeLatestOrdinal(next)
 	if err != nil {
 		return 0, err

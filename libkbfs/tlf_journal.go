@@ -1090,6 +1090,7 @@ func (j *tlfJournal) convertMDsToBranchIfOverThreshold(ctx context.Context,
 	if err != nil {
 		return false, err
 	}
+	j.log.CDebugf(ctx, "Done converting branch")
 	return true, nil
 }
 

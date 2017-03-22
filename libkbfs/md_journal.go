@@ -1203,6 +1203,8 @@ func (j *mdJournal) put(
 
 	mStatus := rmd.MergedStatus()
 
+	j.log.CDebugf(ctx, "mdJournal.put 1")
+
 	// Make modifications for the Unmerged cases.
 	if mStatus == Unmerged {
 		var lastMdID MdID
@@ -1248,6 +1250,8 @@ func (j *mdJournal) put(
 		}
 	}
 
+	j.log.CDebugf(ctx, "mdJournal.put 2")
+
 	// The below is code common to all the cases.
 
 	if (mStatus == Merged) != (rmd.BID() == NullBranchID) {
@@ -1271,6 +1275,8 @@ func (j *mdJournal) put(
 		return MdID{}, errors.Errorf("A local squash must have a null branch ID,"+
 			" but this one has bid=%s", rmd.BID())
 	}
+
+	j.log.CDebugf(ctx, "mdJournal.put 3")
 
 	// Check permissions and consistency with head, if it exists.
 	if head != (ImmutableBareRootMetadata{}) {
@@ -1315,11 +1321,15 @@ func (j *mdJournal) put(
 			errors.New("MD has embedded block changes, but shouldn't")
 	}
 
+	j.log.CDebugf(ctx, "mdJournal.put 4")
+
 	err = encryptMDPrivateData(
 		ctx, j.codec, j.crypto, signer, ekg, j.uid, rmd)
 	if err != nil {
 		return MdID{}, err
 	}
+
+	j.log.CDebugf(ctx, "mdJournal.put 5")
 
 	err = rmd.bareMd.IsValidAndSigned(j.codec, j.crypto, rmd.extra)
 	if err != nil {
@@ -1331,10 +1341,14 @@ func (j *mdJournal) put(
 		return MdID{}, err
 	}
 
+	j.log.CDebugf(ctx, "mdJournal.put 6")
+
 	wkbNew, rkbNew, err := j.putExtraMetadata(rmd.bareMd, rmd.extra)
 	if err != nil {
 		return MdID{}, err
 	}
+
+	j.log.CDebugf(ctx, "mdJournal.put 7")
 
 	newEntry := mdIDJournalEntry{
 		ID:            id,
@@ -1362,6 +1376,8 @@ func (j *mdJournal) put(
 			return MdID{}, err
 		}
 	}
+
+	j.log.CDebugf(ctx, "mdJournal.put 8")
 
 	// Since the journal is now non-empty, clear lastMdID.
 	j.lastMdID = MdID{}
