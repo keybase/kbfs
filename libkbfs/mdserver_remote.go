@@ -527,6 +527,13 @@ func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.ID,
 // Put implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 	extra ExtraMetadata) error {
+	if tr, ok := trace.FromContext(ctx); ok {
+		ts := time.Now()
+		defer func() {
+			dt := time.Since(ts)
+			tr.LazyPrintf("MDServer.Put took %f s", dt.Seconds())
+		}()
+	}
 	// encode MD block
 	rmdsBytes, err := EncodeRootMetadataSigned(md.config.Codec(), rmds)
 	if err != nil {
@@ -583,6 +590,14 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 // PruneBranch implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) error {
+	if tr, ok := trace.FromContext(ctx); ok {
+		ts := time.Now()
+		defer func() {
+			dt := time.Since(ts)
+			tr.LazyPrintf("MDServer.PruneBranch took %f s", dt.Seconds())
+		}()
+	}
+
 	arg := keybase1.PruneBranchArg{
 		FolderID: id.String(),
 		BranchID: bid.String(),
@@ -732,18 +747,40 @@ func (md *MDServerRemote) RegisterForUpdate(ctx context.Context, id tlf.ID,
 // TruncateLock implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) TruncateLock(ctx context.Context, id tlf.ID) (
 	bool, error) {
+	if tr, ok := trace.FromContext(ctx); ok {
+		ts := time.Now()
+		defer func() {
+			dt := time.Since(ts)
+			tr.LazyPrintf("MDServer.TruncateLock took %f s", dt.Seconds())
+		}()
+	}
 	return md.getClient().TruncateLock(ctx, id.String())
 }
 
 // TruncateUnlock implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) TruncateUnlock(ctx context.Context, id tlf.ID) (
 	bool, error) {
+	if tr, ok := trace.FromContext(ctx); ok {
+		ts := time.Now()
+		defer func() {
+			dt := time.Since(ts)
+			tr.LazyPrintf("MDServer.TruncateUnlock took %f s", dt.Seconds())
+		}()
+	}
 	return md.getClient().TruncateUnlock(ctx, id.String())
 }
 
 // GetLatestHandleForTLF implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetLatestHandleForTLF(ctx context.Context, id tlf.ID) (
 	tlf.Handle, error) {
+	if tr, ok := trace.FromContext(ctx); ok {
+		ts := time.Now()
+		defer func() {
+			dt := time.Since(ts)
+			tr.LazyPrintf("MDServer.GetLatestHandleForTLF took %f s", dt.Seconds())
+		}()
+	}
+
 	buf, err := md.getClient().GetLatestFolderHandle(ctx, id.String())
 	if err != nil {
 		return tlf.Handle{}, err
@@ -839,6 +876,14 @@ func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
 	serverHalfID TLFCryptKeyServerHalfID,
 	cryptKey kbfscrypto.CryptPublicKey) (
 	serverHalf kbfscrypto.TLFCryptKeyServerHalf, err error) {
+	if tr, ok := trace.FromContext(ctx); ok {
+		ts := time.Now()
+		defer func() {
+			dt := time.Since(ts)
+			tr.LazyPrintf("MDServer.GetTLFCryptKeyServerHalf took %f s", dt.Seconds())
+		}()
+	}
+
 	// encode the ID
 	idBytes, err := md.config.Codec().Encode(serverHalfID)
 	if err != nil {
@@ -868,6 +913,13 @@ func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
 // PutTLFCryptKeyServerHalves is an implementation of the KeyServer interface.
 func (md *MDServerRemote) PutTLFCryptKeyServerHalves(ctx context.Context,
 	keyServerHalves UserDeviceKeyServerHalves) error {
+	if tr, ok := trace.FromContext(ctx); ok {
+		ts := time.Now()
+		defer func() {
+			dt := time.Since(ts)
+			tr.LazyPrintf("MDServer.PutTLFCryptKeyServerHalves took %f s", dt.Seconds())
+		}()
+	}
 	// flatten out the map into an array
 	var keyHalves []keybase1.KeyHalf
 	for user, deviceMap := range keyServerHalves {
@@ -896,6 +948,14 @@ func (md *MDServerRemote) PutTLFCryptKeyServerHalves(ctx context.Context,
 func (md *MDServerRemote) DeleteTLFCryptKeyServerHalf(ctx context.Context,
 	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
 	serverHalfID TLFCryptKeyServerHalfID) error {
+	if tr, ok := trace.FromContext(ctx); ok {
+		ts := time.Now()
+		defer func() {
+			dt := time.Since(ts)
+			tr.LazyPrintf("MDServer.DeleteTLFCryptKeyServerHalf took %f s", dt.Seconds())
+		}()
+	}
+
 	// encode the ID
 	idBytes, err := md.config.Codec().Encode(serverHalfID)
 	if err != nil {
@@ -965,6 +1025,13 @@ func (md *MDServerRemote) backgroundRekeyChecker(ctx context.Context) {
 func (md *MDServerRemote) GetKeyBundles(ctx context.Context,
 	tlf tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
+	if tr, ok := trace.FromContext(ctx); ok {
+		ts := time.Now()
+		defer func() {
+			dt := time.Since(ts)
+			tr.LazyPrintf("MDServer.GetKeyBundles took %f s", dt.Seconds())
+		}()
+	}
 
 	arg := keybase1.GetKeyBundlesArg{
 		FolderID:       tlf.String(),
