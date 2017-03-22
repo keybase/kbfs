@@ -5,6 +5,7 @@
 package libfuse
 
 import (
+	"io"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -57,6 +58,18 @@ type FS struct {
 	quotaUsage *libkbfs.EventuallyConsistentQuotaUsage
 }
 
+func makeTraceHandler(renderFn func(io.Writer, *http.Request, bool)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		any, sensitive := trace.AuthRequest(req)
+		if !any {
+			http.Error(w, "not allowed", http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		renderFn(w, req, sensitive)
+	}
+}
+
 // NewFS creates an FS
 func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams PlatformParams) *FS {
 	log := config.MakeLogger("kbfsfuse")
@@ -73,31 +86,15 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 	serveMux := http.NewServeMux()
 
 	// Replicate the default endpoints from pprof's init function.
-	serveMux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
-	serveMux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
-	serveMux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
-	serveMux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-	serveMux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+	serveMux.HandleFunc("/debug/pprof/", pprof.Index)
+	serveMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	serveMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	serveMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	serveMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	// Replicate the default endpoints from net/trace's init function.
-	serveMux.HandleFunc("/debug/requests", func(w http.ResponseWriter, req *http.Request) {
-		any, sensitive := trace.AuthRequest(req)
-		if !any {
-			http.Error(w, "not allowed", http.StatusUnauthorized)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		trace.Render(w, req, sensitive)
-	})
-	serveMux.HandleFunc("/debug/events", func(w http.ResponseWriter, req *http.Request) {
-		any, sensitive := trace.AuthRequest(req)
-		if !any {
-			http.Error(w, "not allowed", http.StatusUnauthorized)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		trace.RenderEvents(w, req, sensitive)
-	})
+	serveMux.HandleFunc("/debug/requests", makeTraceHandler(trace.Render))
+	serveMux.HandleFunc("/debug/events", makeTraceHandler(trace.RenderEvents))
 
 	// Leave Addr blank to be set in enableDebugServer() and
 	// disableDebugServer().
