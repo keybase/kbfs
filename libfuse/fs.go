@@ -5,7 +5,6 @@
 package libfuse
 
 import (
-	"io"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -58,7 +57,7 @@ type FS struct {
 	quotaUsage *libkbfs.EventuallyConsistentQuotaUsage
 }
 
-func makeTraceHandler(renderFn func(io.Writer, *http.Request, bool)) func(http.ResponseWriter, *http.Request) {
+func makeTraceHandler(renderFn func(http.ResponseWriter, *http.Request, bool)) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		any, sensitive := trace.AuthRequest(req)
 		if !any {
@@ -93,7 +92,9 @@ func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams Pl
 	serveMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	// Replicate the default endpoints from net/trace's init function.
-	serveMux.HandleFunc("/debug/requests", makeTraceHandler(trace.Render))
+	serveMux.HandleFunc("/debug/requests", makeTraceHandler(func(w http.ResponseWriter, req *http.Request, sensitive bool) {
+		trace.Render(w, req, sensitive)
+	}))
 	serveMux.HandleFunc("/debug/events", makeTraceHandler(trace.RenderEvents))
 
 	// Leave Addr blank to be set in enableDebugServer() and
