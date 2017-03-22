@@ -321,7 +321,7 @@ func makeTLFJournal(
 		}
 	}
 
-	log := config.MakeLogger("TLFJ")
+	log := traceLogger{config.MakeLogger("TLFJ")}
 
 	blockJournal, err := makeBlockJournal(ctx, config.Codec(), dir, log)
 	if err != nil {
