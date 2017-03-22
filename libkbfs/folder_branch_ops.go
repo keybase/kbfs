@@ -5493,6 +5493,12 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 	newOps []op, blocksToDelete []kbfsblock.ID) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 
+	tr, trOk := trace.FromContext(ctx)
+
+	if trOk {
+		tr.LazyPrintf("finalizing blocks")
+	}
+
 	// Put the blocks into the cache so that, even if we fail below,
 	// future attempts may reuse the blocks.
 	err := fbo.finalizeBlocks(bps)
@@ -5505,6 +5511,10 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
+	}
+
+	if trOk {
+		tr.LazyPrintf("resolving branch")
 	}
 
 	mdID, err := fbo.config.MDOps().ResolveBranch(ctx, fbo.id(), fbo.bid,
@@ -5523,11 +5533,23 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 		defer fbo.config.RekeyQueue().Enqueue(md.TlfID())
 	}
 
+	if trOk {
+		tr.LazyPrintf("loading cached block changes")
+	}
+
 	md.loadCachedBlockChanges(ctx, bps)
+
+	if trOk {
+		tr.LazyPrintf("waiting for headlock")
+	}
 
 	// Set the head to the new MD.
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
+	if trOk {
+		tr.LazyPrintf("got headlock")
+	}
+
 	session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
 		return err

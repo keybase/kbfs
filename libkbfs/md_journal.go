@@ -177,8 +177,8 @@ func makeMDJournalWithIDJournal(
 		tlfID:    tlfID,
 		mdVer:    mdVer,
 		dir:      dir,
-		log:      log,
-		deferLog: deferLog,
+		log:      traceLogger{log},
+		deferLog: traceLogger{deferLog},
 		j:        idJournal,
 	}
 

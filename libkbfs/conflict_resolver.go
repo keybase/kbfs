@@ -3201,7 +3201,10 @@ func (cr *ConflictResolver) updateResolutionUsageAndPointers(
 	}
 	deletedBlocks := make(map[BlockPointer]bool)
 	cr.log.CDebugf(ctx, "Is unflushed %d", len(toUnref))
+	i := 0
 	for ptr := range toUnref {
+		i++
+		cr.log.CDebugf(ctx, "Is unflushed %d/%d", i, len(toUnref))
 		if ptr == zeroPtr {
 			// A zero pointer can sneak in from the unrefs field of a
 			// syncOp following a failed syncOp, via
