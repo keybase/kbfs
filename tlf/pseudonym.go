@@ -1,4 +1,4 @@
-// Copyright 2016 Keybase Inc. All rights reserved.
+// Copyright 2017 Keybase Inc. All rights reserved.
 // Use of this source code is governed by a BSD
 // license that can be found in the LICENSE file.
 
@@ -23,11 +23,13 @@ type pseudonymInput struct {
 	KeyGen  keyGen
 }
 
+const initialVersion = 1
+
 // MakePseudonym makes a TLF pseudonym from the given input.
-func MakePseudonym(version int, name string, id ID,
+func MakePseudonym(name string, id ID,
 	keyGen keyGen, key [32]byte) ([32]byte, error) {
 	input := pseudonymInput{
-		Version: version,
+		Version: initialVersion,
 		Name:    name,
 		ID:      id,
 		KeyGen:  keyGen,
