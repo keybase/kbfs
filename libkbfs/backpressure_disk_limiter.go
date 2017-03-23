@@ -424,22 +424,20 @@ func (jt journalTracker) getQuotaSnapshotForTest() jtSnapshot {
 	return jtSnapshot{usedQuotaBytes, free, 0, 0}
 }
 
-func (jt journalTracker) onJournalEnable(
-	journalStoredBytes, journalUnflushedBytes, journalFiles int64) (
+func (jt journalTracker) onEnable(storedBytes, unflushedBytes, files int64) (
 	availableBytes, availableFiles int64) {
-	// TODO: Sanity-check journal*Bytes.
-	availableBytes = jt.byte.onEnable(journalStoredBytes)
-	availableFiles = jt.file.onEnable(journalFiles)
-	jt.quota.onJournalEnable(journalUnflushedBytes)
+	// TODO: Sanity-check *Bytes.
+	availableBytes = jt.byte.onEnable(storedBytes)
+	availableFiles = jt.file.onEnable(files)
+	jt.quota.onJournalEnable(unflushedBytes)
 	return availableBytes, availableFiles
 }
 
-func (jt journalTracker) onJournalDisable(
-	journalStoredBytes, journalUnflushedBytes, journalFiles int64) {
-	// TODO: Sanity-check journal*Bytes.
-	jt.byte.onDisable(journalStoredBytes)
-	jt.file.onDisable(journalFiles)
-	jt.quota.onJournalDisable(journalUnflushedBytes)
+func (jt journalTracker) onDisable(storedBytes, unflushedBytes, files int64) {
+	// TODO: Sanity-check *Bytes.
+	jt.byte.onDisable(storedBytes)
+	jt.file.onDisable(files)
+	jt.quota.onJournalDisable(unflushedBytes)
 }
 
 func (jt journalTracker) getDelayScale() float64 {
@@ -753,7 +751,7 @@ func (bdl *backpressureDiskLimiter) onJournalEnable(
 	availableBytes, availableFiles int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	return bdl.journalTracker.onJournalEnable(
+	return bdl.journalTracker.onEnable(
 		journalStoredBytes, journalUnflushedBytes, journalFiles)
 }
 
@@ -762,7 +760,7 @@ func (bdl *backpressureDiskLimiter) onJournalDisable(
 	journalStoredBytes, journalUnflushedBytes, journalFiles int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	bdl.journalTracker.onJournalDisable(
+	bdl.journalTracker.onDisable(
 		journalStoredBytes, journalUnflushedBytes, journalFiles)
 }
 

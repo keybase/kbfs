@@ -230,24 +230,36 @@ func TestJournalTrackerCounters(t *testing.T) {
 		free: math.MaxInt64,
 	}, quotaSnapshot)
 
+	// For stored bytes, increase U by 10, so that increases max
+	// by 0.15*10 = 1.5, so max is now 16. For files, increase U
+	// by 20, so that increases max by 0.15*20 = 3, so max is now
+	// 33.
+
+	availBytes, availFiles := jt.onEnable(10, 5, 20)
+	require.Equal(t, int64(6), availBytes)
+	require.Equal(t, int64(13), availFiles)
+
+	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	require.Equal(t, jtSnapshot{
+		used:  10,
+		free:  100,
+		max:   16,
+		count: 6,
+	}, byteSnapshot)
+	require.Equal(t, jtSnapshot{
+		used:  20,
+		free:  200,
+		max:   33,
+		count: 13,
+	}, fileSnapshot)
+
+	quotaSnapshot = jt.getQuotaSnapshotForTest()
+	require.Equal(t, jtSnapshot{
+		used: 5,
+		free: math.MaxInt64 - 5,
+	}, quotaSnapshot)
+
 	/*
-		// semaphoreMax = min(k(U+F), L) = min(0.25(0+200), 100) = 50.
-		require.Equal(t, int64(0), bt.used)
-		require.Equal(t, int64(200), bt.free)
-		require.Equal(t, int64(50), bt.semaphoreMax)
-		require.Equal(t, int64(50), bt.semaphore.Count())
-
-		// Increase U by 10, so that increases sM by 0.25*10 = 2.5, so
-		// sM is now 52.
-
-		avail := bt.onEnable(10)
-		require.Equal(t, int64(42), avail)
-
-		require.Equal(t, int64(10), bt.used)
-		require.Equal(t, int64(200), bt.free)
-		require.Equal(t, int64(52), bt.semaphoreMax)
-		require.Equal(t, int64(42), bt.semaphore.Count())
-
 		// Decrease U by 9, so that decreases sM by 0.25*9 = 2.25, so
 		// sM is back to 50.
 
