@@ -789,7 +789,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	_ = quotaBytes
 
 	// No need to call anything on bdl.journalTrackers.quota.
-	return availableBytes, availableFiles, err
+	return availableBytes, availableFiles, nil
 }
 
 func (bdl *backpressureDiskLimiter) afterBlockPut(
