@@ -428,6 +428,10 @@ func (jt journalTrackers) updateRemote(remoteUsedBytes, quotaBytes int64) (
 	return jt.quota.unflushedBytes + remoteUsedBytes
 }
 
+func (jt journalTrackers) getSemaphoreCounts() (byteCount, fileCount int64) {
+	return jt.byte.semaphore.Count(), jt.file.semaphore.Count()
+}
+
 func (jt journalTrackers) beforeBlockPut(
 	ctx context.Context, blockBytes, blockFiles int64) (
 	availableBytes, availableFiles int64, err error) {
@@ -731,20 +735,25 @@ func (bdl *backpressureDiskLimiter) getDelayLocked(
 	return time.Duration(delayScale * float64(maxDelay))
 }
 
+func (bdl *backpressureDiskLimiter) onBeforeBlockPutError(err error) (
+	availableBytes, availableFiles int64, _ error) {
+	availableBytes, availableFiles =
+		bdl.journalTrackers.getSemaphoreCounts()
+	return availableBytes, availableFiles, err
+}
+
 func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	ctx context.Context, blockBytes, blockFiles int64) (
 	availableBytes, availableFiles int64, err error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
-		return bdl.journalTrackers.byte.semaphore.Count(),
-			bdl.journalTrackers.file.semaphore.Count(), errors.New(
-				"backpressureDiskLimiter.beforeBlockPut called with 0 blockBytes")
+		return bdl.onBeforeBlockPutError(errors.New(
+			"backpressureDiskLimiter.beforeBlockPut called with 0 blockBytes"))
 	}
 	if blockFiles == 0 {
 		// Better to return an error than to panic in Acquire.
-		return bdl.journalTrackers.byte.semaphore.Count(),
-			bdl.journalTrackers.file.semaphore.Count(), errors.New(
-				"backpressureDiskLimiter.beforeBlockPut called with 0 blockFiles")
+		return bdl.onBeforeBlockPutError(errors.New(
+			"backpressureDiskLimiter.beforeBlockPut called with 0 blockFiles"))
 	}
 
 	delay, err := func() (time.Duration, error) {
@@ -785,16 +794,14 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		return delay, nil
 	}()
 	if err != nil {
-		return bdl.journalTrackers.byte.semaphore.Count(),
-			bdl.journalTrackers.file.semaphore.Count(), err
+		return bdl.onBeforeBlockPutError(err)
 	}
 
 	// TODO: Update delay if any variables change (i.e., we
 	// suddenly free up a lot of space).
 	err = bdl.delayFn(ctx, delay)
 	if err != nil {
-		return bdl.journalTrackers.byte.semaphore.Count(),
-			bdl.journalTrackers.file.semaphore.Count(), err
+		return bdl.onBeforeBlockPutError(err)
 	}
 
 	return bdl.journalTrackers.beforeBlockPut(ctx, blockBytes, blockFiles)
