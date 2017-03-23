@@ -298,9 +298,12 @@ func (qbt quotaBackpressureTracker) delayScale() float64 {
 	// scale.
 	//
 	// TODO: Consider a scheme which applies backpressure
-	// differently if R/Q <= 1, but (U+R)/Q > 1. For example, if
-	// R/Q = 0.9 but U = 0, then we want the backpressure to start
-	// from 0.9.
+	// differently if R/Q > m, but (U+R)/Q <= 1. In that case, we
+	// don't want to "permanently" apply backpressure before the
+	// quota is actually hit. In that case, the backpressure
+	// should probably be proportional to U/(Q-R) until (U+R)/Q =
+	// 1, at which point it should smoothly transition to a
+	// formula that is proportional to (U+R)/Q.
 	m := qbt.minThreshold
 	M := qbt.maxThreshold
 	return math.Min(1.0, math.Max(0.0, (usedFrac-m)/(M-m)))
