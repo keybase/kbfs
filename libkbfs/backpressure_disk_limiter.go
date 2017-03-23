@@ -416,6 +416,18 @@ func (jt journalTrackers) getDelayScale() float64 {
 	return delayScale
 }
 
+func (jt journalTrackers) updateFree(
+	freeFiles, freeBytes, diskCacheUsedBytes int64) {
+	jt.file.updateFree(freeFiles)
+	jt.byte.updateFree(freeBytes + diskCacheUsedBytes)
+}
+
+func (jt journalTrackers) updateRemote(remoteUsedBytes, quotaBytes int64) (
+	usedBytes int64) {
+	jt.quota.updateRemote(remoteUsedBytes, quotaBytes)
+	return jt.quota.unflushedBytes + remoteUsedBytes
+}
+
 // backpressureDiskLimiter is an implementation of diskLimiter that
 // uses backpressure to slow down block puts before they hit the disk
 // limits.
@@ -709,11 +721,11 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 			return 0, err
 		}
 
-		bdl.journalTrackers.file.updateFree(freeFiles)
-		bdl.journalTrackers.byte.updateFree(freeBytes + bdl.diskCacheByteTracker.used)
+		bdl.journalTrackers.updateFree(
+			freeFiles, freeBytes, bdl.diskCacheByteTracker.used)
 
 		remoteUsedBytes, quotaBytes := bdl.quotaFn(ctx)
-		bdl.journalTrackers.quota.updateRemote(remoteUsedBytes, quotaBytes)
+		bdl.journalTrackers.updateRemote(remoteUsedBytes, quotaBytes)
 
 		delay := bdl.getDelayLocked(ctx, time.Now())
 		if delay > 0 {
@@ -723,8 +735,10 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 				"quotaUnflushedBytes=%d, quotaRemoteUsedBytes=%d, "+
 				"quotaBytes=%d)",
 				blockBytes, blockFiles, delay.Seconds(),
-				bdl.journalTrackers.byte.used, freeBytes,
-				bdl.journalTrackers.file.used, freeFiles,
+				bdl.journalTrackers.byte.used,
+				bdl.journalTrackers.byte.free,
+				bdl.journalTrackers.file.used,
+				bdl.journalTrackers.file.free,
 				bdl.journalTrackers.quota.unflushedBytes,
 				bdl.journalTrackers.quota.remoteUsedBytes,
 				bdl.journalTrackers.quota.quotaBytes)
@@ -766,8 +780,8 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		defer bdl.lock.Unlock()
 
 		remoteUsedBytes, quotaBytes := bdl.quotaFn(ctx)
-		bdl.journalTrackers.quota.updateRemote(remoteUsedBytes, quotaBytes)
-		return bdl.journalTrackers.quota.unflushedBytes + remoteUsedBytes, quotaBytes
+		return bdl.journalTrackers.updateRemote(
+			remoteUsedBytes, quotaBytes), quotaBytes
 	}()
 
 	// TODO: Plumb this up.
