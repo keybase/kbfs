@@ -363,6 +363,11 @@ func (qbt *quotaBackpressureTracker) getStatus() quotaBackpressureTrackerStatus 
 	}
 }
 
+type journalTrackers struct {
+	byte, file *backpressureTracker
+	quota      *quotaBackpressureTracker
+}
+
 // backpressureDiskLimiter is an implementation of diskLimiter that
 // uses backpressure to slow down block puts before they hit the disk
 // limits.
@@ -374,13 +379,13 @@ type backpressureDiskLimiter struct {
 	freeBytesAndFilesFn func() (int64, int64, error)
 	quotaFn             func(ctx context.Context) (int64, int64)
 
-	// lock protects everything in the trackers, including the
-	// (implicit) maximum values of the semaphores, but not the
-	// actual semaphores themselves.
-	lock                                   sync.RWMutex
-	journalByteTracker, journalFileTracker *backpressureTracker
-	journalQuotaTracker                    *quotaBackpressureTracker
-	diskCacheByteTracker                   *backpressureTracker
+	// lock protects everything in journalTrackers and
+	// diskCacheByteTracker, including the (implicit) maximum
+	// values of the semaphores, but not the actual semaphores
+	// themselves.
+	lock                 sync.RWMutex
+	journalTrackers      journalTrackers
+	diskCacheByteTracker *backpressureTracker
 }
 
 var _ DiskLimiter = (*backpressureDiskLimiter)(nil)
@@ -523,7 +528,7 @@ func newBackpressureDiskLimiter(
 	bdl := &backpressureDiskLimiter{
 		log, params.maxDelay, params.delayFn,
 		params.freeBytesAndFilesFn, params.quotaFn, sync.RWMutex{},
-		byteTracker, fileTracker, journalQuotaTracker,
+		journalTrackers{byteTracker, fileTracker, journalQuotaTracker},
 		diskCacheByteTracker,
 	}
 	return bdl, nil
@@ -576,19 +581,19 @@ func (bdl *backpressureDiskLimiter) getSnapshotsForTest() (
 	byteSnapshot, fileSnapshot bdlSnapshot) {
 	bdl.lock.RLock()
 	defer bdl.lock.RUnlock()
-	return bdlSnapshot{bdl.journalByteTracker.used, bdl.journalByteTracker.free,
-			bdl.journalByteTracker.semaphoreMax,
-			bdl.journalByteTracker.semaphore.Count()},
-		bdlSnapshot{bdl.journalFileTracker.used, bdl.journalFileTracker.free,
-			bdl.journalFileTracker.semaphoreMax,
-			bdl.journalFileTracker.semaphore.Count()}
+	return bdlSnapshot{bdl.journalTrackers.byte.used, bdl.journalTrackers.byte.free,
+			bdl.journalTrackers.byte.semaphoreMax,
+			bdl.journalTrackers.byte.semaphore.Count()},
+		bdlSnapshot{bdl.journalTrackers.file.used, bdl.journalTrackers.file.free,
+			bdl.journalTrackers.file.semaphoreMax,
+			bdl.journalTrackers.file.semaphore.Count()}
 }
 
 func (bdl *backpressureDiskLimiter) getQuotaSnapshotForTest() bdlSnapshot {
 	bdl.lock.RLock()
 	defer bdl.lock.RUnlock()
-	used := bdl.journalQuotaTracker.unflushedBytes + bdl.journalQuotaTracker.remoteUsedBytes
-	free := bdl.journalQuotaTracker.quotaBytes - used
+	used := bdl.journalTrackers.quota.unflushedBytes + bdl.journalTrackers.quota.remoteUsedBytes
+	free := bdl.journalTrackers.quota.quotaBytes - used
 	return bdlSnapshot{used, free, 0, 0}
 }
 
@@ -599,9 +604,9 @@ func (bdl *backpressureDiskLimiter) onJournalEnable(
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
 	// TODO: Sanity-check journal*Bytes.
-	availableBytes = bdl.journalByteTracker.onEnable(journalStoredBytes)
-	availableFiles = bdl.journalFileTracker.onEnable(journalFiles)
-	bdl.journalQuotaTracker.onJournalEnable(journalUnflushedBytes)
+	availableBytes = bdl.journalTrackers.byte.onEnable(journalStoredBytes)
+	availableFiles = bdl.journalTrackers.file.onEnable(journalFiles)
+	bdl.journalTrackers.quota.onJournalEnable(journalUnflushedBytes)
 	return availableBytes, availableFiles
 }
 
@@ -611,9 +616,9 @@ func (bdl *backpressureDiskLimiter) onJournalDisable(
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
 	// TODO: Sanity-check journal*Bytes.
-	bdl.journalByteTracker.onDisable(journalStoredBytes)
-	bdl.journalFileTracker.onDisable(journalFiles)
-	bdl.journalQuotaTracker.onJournalDisable(journalUnflushedBytes)
+	bdl.journalTrackers.byte.onDisable(journalStoredBytes)
+	bdl.journalTrackers.file.onDisable(journalFiles)
+	bdl.journalTrackers.quota.onJournalDisable(journalUnflushedBytes)
 }
 
 func (bdl *backpressureDiskLimiter) onDiskBlockCacheEnable(ctx context.Context,
@@ -632,9 +637,9 @@ func (bdl *backpressureDiskLimiter) onDiskBlockCacheDisable(ctx context.Context,
 
 func (bdl *backpressureDiskLimiter) getDelayLocked(
 	ctx context.Context, now time.Time) time.Duration {
-	byteDelayScale := bdl.journalByteTracker.delayScale()
-	fileDelayScale := bdl.journalFileTracker.delayScale()
-	quotaDelayScale := bdl.journalQuotaTracker.delayScale()
+	byteDelayScale := bdl.journalTrackers.byte.delayScale()
+	fileDelayScale := bdl.journalTrackers.file.delayScale()
+	quotaDelayScale := bdl.journalTrackers.quota.delayScale()
 	delayScale := math.Max(
 		math.Max(byteDelayScale, fileDelayScale), quotaDelayScale)
 
@@ -661,9 +666,9 @@ func (bdl *backpressureDiskLimiter) updateFreeLocked() (
 		return 0, 0, err
 	}
 
-	bdl.journalFileTracker.updateFree(freeFiles)
-	bdl.journalByteTracker.updateFree(freeBytes + bdl.diskCacheByteTracker.used)
-	bdl.diskCacheByteTracker.updateFree(freeBytes + bdl.journalByteTracker.used)
+	bdl.journalTrackers.file.updateFree(freeFiles)
+	bdl.journalTrackers.byte.updateFree(freeBytes + bdl.diskCacheByteTracker.used)
+	bdl.diskCacheByteTracker.updateFree(freeBytes + bdl.journalTrackers.byte.used)
 	return freeBytes, freeFiles, nil
 }
 
@@ -672,14 +677,14 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	availableBytes, availableFiles int64, err error) {
 	if blockBytes == 0 {
 		// Better to return an error than to panic in Acquire.
-		return bdl.journalByteTracker.semaphore.Count(),
-			bdl.journalFileTracker.semaphore.Count(), errors.New(
+		return bdl.journalTrackers.byte.semaphore.Count(),
+			bdl.journalTrackers.file.semaphore.Count(), errors.New(
 				"backpressureDiskLimiter.beforeBlockPut called with 0 blockBytes")
 	}
 	if blockFiles == 0 {
 		// Better to return an error than to panic in Acquire.
-		return bdl.journalByteTracker.semaphore.Count(),
-			bdl.journalFileTracker.semaphore.Count(), errors.New(
+		return bdl.journalTrackers.byte.semaphore.Count(),
+			bdl.journalTrackers.file.semaphore.Count(), errors.New(
 				"backpressureDiskLimiter.beforeBlockPut called with 0 blockFiles")
 	}
 
@@ -693,7 +698,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		}
 
 		remoteUsedBytes, quotaBytes := bdl.quotaFn(ctx)
-		bdl.journalQuotaTracker.updateRemote(remoteUsedBytes, quotaBytes)
+		bdl.journalTrackers.quota.updateRemote(remoteUsedBytes, quotaBytes)
 
 		delay := bdl.getDelayLocked(ctx, time.Now())
 		if delay > 0 {
@@ -703,40 +708,40 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 				"quotaUnflushedBytes=%d, quotaRemoteUsedBytes=%d, "+
 				"quotaBytes=%d)",
 				blockBytes, blockFiles, delay.Seconds(),
-				bdl.journalByteTracker.used, freeBytes,
-				bdl.journalFileTracker.used, freeFiles,
-				bdl.journalQuotaTracker.unflushedBytes,
-				bdl.journalQuotaTracker.remoteUsedBytes,
-				bdl.journalQuotaTracker.quotaBytes)
+				bdl.journalTrackers.byte.used, freeBytes,
+				bdl.journalTrackers.file.used, freeFiles,
+				bdl.journalTrackers.quota.unflushedBytes,
+				bdl.journalTrackers.quota.remoteUsedBytes,
+				bdl.journalTrackers.quota.quotaBytes)
 		}
 
 		return delay, nil
 	}()
 	if err != nil {
-		return bdl.journalByteTracker.semaphore.Count(),
-			bdl.journalFileTracker.semaphore.Count(), err
+		return bdl.journalTrackers.byte.semaphore.Count(),
+			bdl.journalTrackers.file.semaphore.Count(), err
 	}
 
 	// TODO: Update delay if any variables change (i.e., we
 	// suddenly free up a lot of space).
 	err = bdl.delayFn(ctx, delay)
 	if err != nil {
-		return bdl.journalByteTracker.semaphore.Count(),
-			bdl.journalFileTracker.semaphore.Count(), err
+		return bdl.journalTrackers.byte.semaphore.Count(),
+			bdl.journalTrackers.file.semaphore.Count(), err
 	}
 
-	availableBytes, err = bdl.journalByteTracker.beforeBlockPut(ctx, blockBytes)
+	availableBytes, err = bdl.journalTrackers.byte.beforeBlockPut(ctx, blockBytes)
 	if err != nil {
-		return availableFiles, bdl.journalFileTracker.semaphore.Count(), err
+		return availableFiles, bdl.journalTrackers.file.semaphore.Count(), err
 	}
 	defer func() {
 		if err != nil {
-			bdl.journalByteTracker.afterBlockPut(blockBytes, false)
-			availableBytes = bdl.journalByteTracker.semaphore.Count()
+			bdl.journalTrackers.byte.afterBlockPut(blockBytes, false)
+			availableBytes = bdl.journalTrackers.byte.semaphore.Count()
 		}
 	}()
 
-	availableFiles, err = bdl.journalFileTracker.beforeBlockPut(ctx, blockFiles)
+	availableFiles, err = bdl.journalTrackers.file.beforeBlockPut(ctx, blockFiles)
 	if err != nil {
 		return availableBytes, availableFiles, err
 	}
@@ -746,15 +751,15 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		defer bdl.lock.Unlock()
 
 		remoteUsedBytes, quotaBytes := bdl.quotaFn(ctx)
-		bdl.journalQuotaTracker.updateRemote(remoteUsedBytes, quotaBytes)
-		return bdl.journalQuotaTracker.unflushedBytes + remoteUsedBytes, quotaBytes
+		bdl.journalTrackers.quota.updateRemote(remoteUsedBytes, quotaBytes)
+		return bdl.journalTrackers.quota.unflushedBytes + remoteUsedBytes, quotaBytes
 	}()
 
 	// TODO: Plumb this up.
 	_ = usedBytes
 	_ = quotaBytes
 
-	// No need to call anything on bdl.journalQuotaTracker.
+	// No need to call anything on bdl.journalTrackers.quota.
 	return availableBytes, availableFiles, err
 }
 
@@ -762,24 +767,24 @@ func (bdl *backpressureDiskLimiter) afterBlockPut(
 	ctx context.Context, blockBytes, blockFiles int64, putData bool) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	bdl.journalByteTracker.afterBlockPut(blockBytes, putData)
-	bdl.journalFileTracker.afterBlockPut(blockFiles, putData)
-	bdl.journalQuotaTracker.afterBlockPut(blockBytes, putData)
+	bdl.journalTrackers.byte.afterBlockPut(blockBytes, putData)
+	bdl.journalTrackers.file.afterBlockPut(blockFiles, putData)
+	bdl.journalTrackers.quota.afterBlockPut(blockBytes, putData)
 }
 
 func (bdl *backpressureDiskLimiter) onBlocksFlush(
 	ctx context.Context, blockBytes int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	bdl.journalQuotaTracker.onBlocksFlush(blockBytes)
+	bdl.journalTrackers.quota.onBlocksFlush(blockBytes)
 }
 
 func (bdl *backpressureDiskLimiter) onBlocksDelete(
 	ctx context.Context, blockBytes, blockFiles int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	bdl.journalByteTracker.onBlocksDelete(blockBytes)
-	bdl.journalFileTracker.onBlocksDelete(blockFiles)
+	bdl.journalTrackers.byte.onBlocksDelete(blockBytes)
+	bdl.journalTrackers.file.onBlocksDelete(blockFiles)
 }
 
 func (bdl *backpressureDiskLimiter) onDiskBlockCacheDelete(
@@ -820,8 +825,8 @@ func (bdl *backpressureDiskLimiter) afterDiskBlockCachePut(
 func (bdl *backpressureDiskLimiter) getQuotaInfo() (usedQuotaBytes, quotaBytes int64) {
 	bdl.lock.RLock()
 	defer bdl.lock.RUnlock()
-	usedQuotaBytes = bdl.journalQuotaTracker.unflushedBytes + bdl.journalQuotaTracker.remoteUsedBytes
-	quotaBytes = bdl.journalQuotaTracker.quotaBytes
+	usedQuotaBytes = bdl.journalTrackers.quota.unflushedBytes + bdl.journalTrackers.quota.remoteUsedBytes
+	quotaBytes = bdl.journalTrackers.quota.quotaBytes
 	return usedQuotaBytes, quotaBytes
 }
 
@@ -848,8 +853,8 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 
 		CurrentDelaySec: currentDelay.Seconds(),
 
-		ByteTrackerStatus: bdl.journalByteTracker.getStatus(),
-		FileTrackerStatus: bdl.journalFileTracker.getStatus(),
-		QuotaStatus:       bdl.journalQuotaTracker.getStatus(),
+		ByteTrackerStatus: bdl.journalTrackers.byte.getStatus(),
+		FileTrackerStatus: bdl.journalTrackers.file.getStatus(),
+		QuotaStatus:       bdl.journalTrackers.quota.getStatus(),
 	}
 }
