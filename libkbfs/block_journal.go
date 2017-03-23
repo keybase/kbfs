@@ -22,6 +22,12 @@ import (
 	"golang.org/x/net/context"
 )
 
+type bufferedBlock struct {
+	context    kbfsblock.Context
+	buf        []byte
+	serverHalf kbfscrypto.BlockCryptKeyServerHalf
+}
+
 // blockJournal stores a single ordered list of block operations for a
 // single TLF, along with the associated block data, in flat files in
 // a directory on disk.
@@ -63,6 +69,9 @@ type blockJournal struct {
 
 	log      logger.Logger
 	deferLog logger.Logger
+
+	bufEntries []blockJournalEntry
+	bufBlocks  map[kbfsblock.ID]bufferedBlock
 
 	// j is the main journal.
 	j *diskJournal
@@ -199,6 +208,7 @@ func makeBlockJournal(
 		log:        log,
 		deferLog:   deferLog,
 		j:          j,
+		bufBlocks:  make(map[kbfsblock.ID]bufferedBlock),
 		deferredGC: gcj,
 		s:          s,
 	}
@@ -346,10 +356,18 @@ func (j *blockJournal) end() (journalOrdinal, error) {
 }
 
 func (j *blockJournal) hasData(id kbfsblock.ID) (bool, error) {
+	if _, ok := j.bufBlocks[id]; ok {
+		return true, nil
+	}
+
 	return j.s.hasData(id)
 }
 
 func (j *blockJournal) isUnflushed(id kbfsblock.ID) (bool, error) {
+	if _, ok := j.bufBlocks[id]; ok {
+		return true, nil
+	}
+
 	return j.s.isUnflushed(id)
 }
 
@@ -370,6 +388,8 @@ func (j *blockJournal) remove(ctx context.Context, id kbfsblock.ID) (
 		filesToRemove = filesPerBlockMax
 	}
 
+	//delete(j.bufBlocks, id)
+
 	return bytesToRemove, filesToRemove, nil
 }
 
@@ -377,15 +397,27 @@ func (j *blockJournal) remove(ctx context.Context, id kbfsblock.ID) (
 
 func (j *blockJournal) getDataWithContext(id kbfsblock.ID, context kbfsblock.Context) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
+	if b, ok := j.bufBlocks[id]; ok {
+		return b.buf, b.serverHalf, nil
+	}
+
 	return j.s.getDataWithContext(id, context)
 }
 
 func (j *blockJournal) getData(id kbfsblock.ID) (
 	[]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
+	if b, ok := j.bufBlocks[id]; ok {
+		return b.buf, b.serverHalf, nil
+	}
+
 	return j.s.getData(id)
 }
 
 func (j *blockJournal) getDataSize(id kbfsblock.ID) (int64, error) {
+	if b, ok := j.bufBlocks[id]; ok {
+		return int64(len(b.buf)), nil
+	}
+
 	return j.s.getDataSize(id)
 }
 
@@ -401,9 +433,40 @@ func (j *blockJournal) getStoredFiles() int64 {
 	return j.aggregateInfo.StoredFiles
 }
 
-// putData puts the given block data. If err is non-nil, putData will
-// always be false.
+// putData buffers the given block.
 func (j *blockJournal) putData(
+	ctx context.Context, id kbfsblock.ID, context kbfsblock.Context,
+	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) (
+	putData bool, err error) {
+	j.log.CDebugf(ctx, "Putting %d bytes of data for block %s with context %v",
+		len(buf), id, context)
+	defer func() {
+		if err != nil {
+			j.deferLog.CDebugf(ctx,
+				"Put for block %s with context %v failed with %+v",
+				id, context, err)
+		}
+	}()
+
+	j.bufBlocks[id] = bufferedBlock{context, buf, serverHalf}
+
+	var putFiles int64 = filesPerBlockMax
+	err = j.accumulateBlock(int64(len(buf)), putFiles)
+	if err != nil {
+		return false, err
+	}
+
+	j.bufEntries = append(j.bufEntries, blockJournalEntry{
+		Op:       blockPutOp,
+		Contexts: kbfsblock.ContextMap{id: {context}},
+	})
+
+	return true, nil
+}
+
+// putDataToDisk puts the given block data. If err is non-nil, putData will
+// always be false.
+func (j *blockJournal) putDataToDisk(
 	ctx context.Context, id kbfsblock.ID, context kbfsblock.Context,
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) (
 	putData bool, err error) {
@@ -561,16 +624,22 @@ func (j *blockJournal) markMDRevision(ctx context.Context,
 		}
 	}()
 
-	_, err = j.appendJournalEntry(ctx, blockJournalEntry{
+	e := blockJournalEntry{
 		Op:       mdRevMarkerOp,
 		Revision: rev,
 		// If this MD represents a pending local squash, it should
 		// never be ignored since the revision it refers to can't be
 		// squashed again.
 		IsLocalSquash: isPendingLocalSquash,
-	})
-	if err != nil {
-		return err
+	}
+	if isPendingLocalSquash {
+		_, err = j.appendJournalEntry(ctx, e)
+		if err != nil {
+			return err
+		}
+	} else {
+		// TODO: what about real conflicts???
+		j.bufEntries = append(j.bufEntries, e)
 	}
 	return nil
 }
@@ -906,92 +975,32 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 	idsToIgnore map[kbfsblock.ID]bool, rev MetadataRevision,
 	dj *diskJournal) error {
-	first, err := dj.readEarliestOrdinal()
-	if ioutil.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	last, err := dj.readLatestOrdinal()
-	if err != nil {
-		return err
-	}
-
-	isMainJournal := dj.dir == j.j.dir
-
-	// Iterate backwards since the blocks to ignore are likely to be
-	// at the end of the journal.
-	ignored := 0
-	ignoredRev := false
-	// i is unsigned, so make sure to handle overflow when `first` is
-	// 0 by checking that it's less than `last`.  TODO: handle
-	// first==0 and last==maxuint?
-	for i := last; i >= first && i <= last; i-- {
-		entry, err := dj.readJournalEntry(i)
-		if err != nil {
-			return err
-		}
-		e := entry.(blockJournalEntry)
-
+	for _, e := range j.bufEntries {
 		switch e.Op {
-		case blockPutOp, addRefOp:
+		case blockPutOp:
 			id, _, err := e.getSingleContext()
 			if err != nil {
 				return err
 			}
 
-			if !idsToIgnore[id] {
-				continue
-			}
-			ignored++
-
-			e.Ignore = true
-			err = dj.writeJournalEntry(i, e)
-			if err != nil {
-				return err
-			}
-
-			if e.Op == blockPutOp && isMainJournal {
-				// Treat ignored put ops as flushed
-				// for the purposes of accounting.
-				ignoredBytes, err := j.s.getDataSize(id)
-				if err != nil {
-					return err
-				}
-
-				err = j.flushBlock(ignoredBytes)
-				if err != nil {
-					return err
-				}
-			}
-
-		case mdRevMarkerOp:
-			if ignoredRev {
+			if idsToIgnore[id] {
 				continue
 			}
 
-			e.Ignore = true
-			err = dj.writeJournalEntry(i, e)
+			b, ok := j.bufBlocks[id]
+			if !ok {
+				panic("WHHAT")
+			}
+
+			_, err = j.putDataToDisk(ctx, id, b.context, b.buf, b.serverHalf)
 			if err != nil {
 				return err
 			}
-
-			// We must ignore all the way up to the MD marker that
-			// matches the revision of the squash, otherwise we may
-			// put the new squash MD before all the blocks have been
-			// put.
-			if e.Revision == rev {
-				ignoredRev = true
-			}
-		}
-
-		// If we've ignored all of the block IDs in `idsToIgnore`, and
-		// the earliest md marker we care about, we can avoid
-		// iterating through the rest of the journal.
-		if len(idsToIgnore) == ignored && ignoredRev {
-			return nil
 		}
 	}
+
+	j.bufEntries = nil
+	j.bufBlocks = make(map[kbfsblock.ID]bufferedBlock)
 
 	return nil
 }
