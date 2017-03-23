@@ -227,7 +227,7 @@ func makeTestBackpressureDiskLimiterParams() backpressureDiskLimiterParams {
 	}
 }
 
-func TestBackpressureConstructorError(t *testing.T) {
+func TestBackpressureDiskLimiterConstructorError(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	fakeErr := errors.New("Fake error")
 	params := makeTestBackpressureDiskLimiterParams()
