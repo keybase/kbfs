@@ -260,9 +260,9 @@ func TestBackpressureDiskLimiterBeforeBlockPut(t *testing.T) {
 }
 
 // TestBackpressureDiskLimiterBeforeBlockPutByteError checks that
-// backpressureDiskLimiter.beforeBlockPut handles errors correctly; in
-// particular, that we return the right info even with a non-nil
-// error.
+// backpressureDiskLimiter.beforeBlockPut handles errors correctly
+// when getting the byte semaphore; in particular, that we return the
+// right info even with a non-nil error.
 func TestBackpressureDiskLimiterBeforeBlockPutByteError(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	params := makeTestBackpressureDiskLimiterParams()
@@ -284,9 +284,9 @@ func TestBackpressureDiskLimiterBeforeBlockPutByteError(t *testing.T) {
 }
 
 // TestBackpressureDiskLimiterBeforeBlockPutFileError checks that
-// backpressureDiskLimiter.beforeBlockPut handles errors correctly; in
-// particular, that we don't leak either bytes or files if either
-// semaphore times out.
+// backpressureDiskLimiter.beforeBlockPut handles errors correctly
+// when acquiring the file semaphore; in particular, that we don't
+// leak either bytes or files if either semaphore times out.
 func TestBackpressureDiskLimiterBeforeBlockPutFileError(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	params := makeTestBackpressureDiskLimiterParams()
@@ -295,12 +295,11 @@ func TestBackpressureDiskLimiterBeforeBlockPutFileError(t *testing.T) {
 	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
-	// This is technically racy, since we're relying on the byte
-	// tracker not encountering an error, but the file one doing
-	// so.
-	ctx, cancel := context.WithTimeout(
-		context.Background(), 3*time.Millisecond)
-	defer cancel()
+	// We're relying on the fact that a semaphore acquire will
+	// succeed if it is immediately fulfillable, so that the byte
+	// acquire will succeed.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 
 	availBytes, availFiles, err := bdl.beforeBlockPut(ctx, 10, 2)
 	require.Equal(t, ctx.Err(), errors.Cause(err))
