@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -468,6 +469,21 @@ func (jt journalTrackers) onBlocksDelete(blockBytes, blockFiles int64) {
 	jt.file.onBlocksDelete(blockFiles)
 }
 
+func (jt journalTrackers) getUsedBytes() int64 {
+	return jt.byte.used
+}
+
+func (jt journalTrackers) getStatusLine() string {
+	return fmt.Sprintf("journalBytes=%d, freeBytes=%d, "+
+		"journalFiles=%d, freeFiles=%d, "+
+		"quotaUnflushedBytes=%d, quotaRemoteUsedBytes=%d, "+
+		"quotaBytes=%d",
+		jt.byte.used, jt.byte.free,
+		jt.file.used, jt.file.free,
+		jt.quota.unflushedBytes, jt.quota.remoteUsedBytes,
+		jt.quota.quotaBytes)
+}
+
 func (jt journalTrackers) getQuotaInfo() (usedQuotaBytes, quotaBytes int64) {
 	usedQuotaBytes = jt.quota.unflushedBytes + jt.quota.remoteUsedBytes
 	quotaBytes = jt.quota.quotaBytes
@@ -794,19 +810,9 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 
 		delay := bdl.getDelayLocked(ctx, time.Now())
 		if delay > 0 {
-			bdl.log.CDebugf(ctx, "Delaying block put of %d bytes and %d files by %f s ("+
-				"journalBytes=%d, freeBytes=%d, "+
-				"journalFiles=%d, freeFiles=%d, "+
-				"quotaUnflushedBytes=%d, quotaRemoteUsedBytes=%d, "+
-				"quotaBytes=%d)",
+			bdl.log.CDebugf(ctx, "Delaying block put of %d bytes and %d files by %f s (%s)",
 				blockBytes, blockFiles, delay.Seconds(),
-				bdl.journalTrackers.byte.used,
-				bdl.journalTrackers.byte.free,
-				bdl.journalTrackers.file.used,
-				bdl.journalTrackers.file.free,
-				bdl.journalTrackers.quota.unflushedBytes,
-				bdl.journalTrackers.quota.remoteUsedBytes,
-				bdl.journalTrackers.quota.quotaBytes)
+				bdl.journalTrackers.getStatusLine())
 		}
 
 		return delay, nil
@@ -874,7 +880,7 @@ func (bdl *backpressureDiskLimiter) beforeDiskBlockCachePut(
 		return 0, err
 	}
 
-	bdl.diskCacheByteTracker.updateFree(freeBytes + bdl.journalTrackers.byte.used)
+	bdl.diskCacheByteTracker.updateFree(freeBytes + bdl.journalTrackers.getUsedBytes())
 
 	return bdl.diskCacheByteTracker.beforeDiskBlockCachePut(blockBytes), nil
 }
