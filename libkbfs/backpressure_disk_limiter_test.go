@@ -259,11 +259,11 @@ func TestBackpressureDiskLimiterBeforeBlockPut(t *testing.T) {
 	require.Equal(t, int64(3), availFiles)
 }
 
-// TestBackpressureDiskLimiterBeforeBlockPutError checks that
+// TestBackpressureDiskLimiterBeforeBlockPutByteError checks that
 // backpressureDiskLimiter.beforeBlockPut handles errors correctly; in
-// particular, that we don't leak either bytes or files if either
-// semaphore times out.
-func TestBackpressureDiskLimiterBeforeBlockPutError(t *testing.T) {
+// particular, that we return the right info even with a non-nil
+// error.
+func TestBackpressureDiskLimiterBeforeBlockPutByteError(t *testing.T) {
 	log := logger.NewTestLogger(t)
 	params := makeTestBackpressureDiskLimiterParams()
 	params.byteLimit = 40
@@ -271,6 +271,33 @@ func TestBackpressureDiskLimiterBeforeBlockPutError(t *testing.T) {
 	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	availBytes, availFiles, err := bdl.beforeBlockPut(ctx, 11, 1)
+	require.Equal(t, ctx.Err(), errors.Cause(err))
+	require.Equal(t, int64(10), availBytes)
+	require.Equal(t, int64(1), availFiles)
+
+	require.Equal(t, int64(10), bdl.journalTrackers.byte.semaphore.Count())
+	require.Equal(t, int64(1), bdl.journalTrackers.file.semaphore.Count())
+}
+
+// TestBackpressureDiskLimiterBeforeBlockPutFileError checks that
+// backpressureDiskLimiter.beforeBlockPut handles errors correctly; in
+// particular, that we don't leak either bytes or files if either
+// semaphore times out.
+func TestBackpressureDiskLimiterBeforeBlockPutFileError(t *testing.T) {
+	log := logger.NewTestLogger(t)
+	params := makeTestBackpressureDiskLimiterParams()
+	params.byteLimit = 40
+	params.fileLimit = 4
+	bdl, err := newBackpressureDiskLimiter(log, params)
+	require.NoError(t, err)
+
+	// This is technically racy, since we're relying on the byte
+	// tracker not encountering an error, but the file one doing
+	// so.
 	ctx, cancel := context.WithTimeout(
 		context.Background(), 3*time.Millisecond)
 	defer cancel()
