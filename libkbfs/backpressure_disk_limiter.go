@@ -681,22 +681,6 @@ func (bdl *backpressureDiskLimiter) getDelayLocked(
 	return time.Duration(delayScale * float64(maxDelay))
 }
 
-func (bdl *backpressureDiskLimiter) updateFreeLocked() (
-	freeBytes, freeFiles int64, err error) {
-	// Call this under lock to avoid problems with its
-	// return values going stale while blocking on
-	// bdl.lock.
-	freeBytes, freeFiles, err = bdl.freeBytesAndFilesFn()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	bdl.journalTrackers.file.updateFree(freeFiles)
-	bdl.journalTrackers.byte.updateFree(freeBytes + bdl.diskCacheByteTracker.used)
-	bdl.diskCacheByteTracker.updateFree(freeBytes + bdl.journalTrackers.byte.used)
-	return freeBytes, freeFiles, nil
-}
-
 func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	ctx context.Context, blockBytes, blockFiles int64) (
 	availableBytes, availableFiles int64, err error) {
@@ -717,10 +701,16 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 		bdl.lock.Lock()
 		defer bdl.lock.Unlock()
 
-		freeBytes, freeFiles, err := bdl.updateFreeLocked()
+		// Call this under lock to avoid problems with its
+		// return values going stale while blocking on
+		// bdl.lock.
+		freeBytes, freeFiles, err := bdl.freeBytesAndFilesFn()
 		if err != nil {
 			return 0, err
 		}
+
+		bdl.journalTrackers.file.updateFree(freeFiles)
+		bdl.journalTrackers.byte.updateFree(freeBytes + bdl.diskCacheByteTracker.used)
 
 		remoteUsedBytes, quotaBytes := bdl.quotaFn(ctx)
 		bdl.journalTrackers.quota.updateRemote(remoteUsedBytes, quotaBytes)
@@ -832,10 +822,15 @@ func (bdl *backpressureDiskLimiter) beforeDiskBlockCachePut(
 	}
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	_, _, err = bdl.updateFreeLocked()
+
+	// Call this under lock to avoid problems with its return
+	// values going stale while blocking on bdl.lock.
+	freeBytes, _, err := bdl.freeBytesAndFilesFn()
 	if err != nil {
 		return 0, err
 	}
+
+	bdl.diskCacheByteTracker.updateFree(freeBytes + bdl.journalTrackers.byte.used)
 
 	return bdl.diskCacheByteTracker.beforeDiskBlockCachePut(blockBytes), nil
 }
