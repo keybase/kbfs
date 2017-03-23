@@ -474,6 +474,20 @@ func (jt journalTrackers) getQuotaInfo() (usedQuotaBytes, quotaBytes int64) {
 	return usedQuotaBytes, quotaBytes
 }
 
+type journalTrackerStatus struct {
+	ByteStatus  backpressureTrackerStatus
+	FileStatus  backpressureTrackerStatus
+	QuotaStatus quotaBackpressureTrackerStatus
+}
+
+func (jt journalTrackers) getStatus() journalTrackerStatus {
+	return journalTrackerStatus{
+		ByteStatus:  jt.byte.getStatus(),
+		FileStatus:  jt.file.getStatus(),
+		QuotaStatus: jt.quota.getStatus(),
+	}
+}
+
 // backpressureDiskLimiter is an implementation of diskLimiter that
 // uses backpressure to slow down block puts before they hit the disk
 // limits.
@@ -872,7 +886,8 @@ func (bdl *backpressureDiskLimiter) afterDiskBlockCachePut(
 	bdl.diskCacheByteTracker.afterBlockPut(blockBytes, putData)
 }
 
-func (bdl *backpressureDiskLimiter) getQuotaInfo() (usedQuotaBytes, quotaBytes int64) {
+func (bdl *backpressureDiskLimiter) getQuotaInfo() (
+	usedQuotaBytes, quotaBytes int64) {
 	bdl.lock.RLock()
 	defer bdl.lock.RUnlock()
 	return bdl.journalTrackers.getQuotaInfo()
@@ -883,11 +898,9 @@ type backpressureDiskLimiterStatus struct {
 
 	// Derived stats.
 	CurrentDelaySec float64
-	HasQuotaDelay   bool
 
-	ByteTrackerStatus backpressureTrackerStatus
-	FileTrackerStatus backpressureTrackerStatus
-	QuotaStatus       quotaBackpressureTrackerStatus
+	JournalTrackerStatus journalTrackerStatus
+	DiskCacheByteStatus  backpressureTrackerStatus
 }
 
 func (bdl *backpressureDiskLimiter) getStatus() interface{} {
@@ -901,8 +914,7 @@ func (bdl *backpressureDiskLimiter) getStatus() interface{} {
 
 		CurrentDelaySec: currentDelay.Seconds(),
 
-		ByteTrackerStatus: bdl.journalTrackers.byte.getStatus(),
-		FileTrackerStatus: bdl.journalTrackers.file.getStatus(),
-		QuotaStatus:       bdl.journalTrackers.quota.getStatus(),
+		JournalTrackerStatus: bdl.journalTrackers.getStatus(),
+		DiskCacheByteStatus:  bdl.diskCacheByteTracker.getStatus(),
 	}
 }
