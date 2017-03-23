@@ -384,9 +384,9 @@ func (jt journalTrackers) getByteFileSnapshotsForTest() (
 }
 
 func (jt journalTrackers) getQuotaSnapshotForTest() bdlSnapshot {
-	used := jt.quota.unflushedBytes + jt.quota.remoteUsedBytes
-	free := jt.quota.quotaBytes - used
-	return bdlSnapshot{used, free, 0, 0}
+	usedQuotaBytes, quotaBytes := jt.getQuotaInfo()
+	free := quotaBytes - usedQuotaBytes
+	return bdlSnapshot{usedQuotaBytes, free, 0, 0}
 }
 
 func (jt journalTrackers) onJournalEnable(
@@ -422,10 +422,8 @@ func (jt journalTrackers) updateFree(
 	jt.byte.updateFree(freeBytes + diskCacheUsedBytes)
 }
 
-func (jt journalTrackers) updateRemote(remoteUsedBytes, quotaBytes int64) (
-	usedBytes int64) {
+func (jt journalTrackers) updateRemote(remoteUsedBytes, quotaBytes int64) {
 	jt.quota.updateRemote(remoteUsedBytes, quotaBytes)
-	return jt.quota.unflushedBytes + remoteUsedBytes
 }
 
 func (jt journalTrackers) getSemaphoreCounts() (byteCount, fileCount int64) {
@@ -468,6 +466,12 @@ func (jt journalTrackers) onBlocksFlush(blockBytes int64) {
 func (jt journalTrackers) onBlocksDelete(blockBytes, blockFiles int64) {
 	jt.byte.onBlocksDelete(blockBytes)
 	jt.file.onBlocksDelete(blockFiles)
+}
+
+func (jt journalTrackers) getQuotaInfo() (usedQuotaBytes, quotaBytes int64) {
+	usedQuotaBytes = jt.quota.unflushedBytes + jt.quota.remoteUsedBytes
+	quotaBytes = jt.quota.quotaBytes
+	return usedQuotaBytes, quotaBytes
 }
 
 // backpressureDiskLimiter is an implementation of diskLimiter that
