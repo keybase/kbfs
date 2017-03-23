@@ -368,6 +368,21 @@ type journalTrackers struct {
 	quota      *quotaBackpressureTracker
 }
 
+type bdlSnapshot struct {
+	used  int64
+	free  int64
+	max   int64
+	count int64
+}
+
+func (jt journalTrackers) getSnapshotsForTest() (
+	byteSnapshot, fileSnapshot bdlSnapshot) {
+	return bdlSnapshot{jt.byte.used, jt.byte.free,
+			jt.byte.semaphoreMax, jt.byte.semaphore.Count()},
+		bdlSnapshot{jt.file.used, jt.file.free,
+			jt.file.semaphoreMax, jt.file.semaphore.Count()}
+}
+
 // backpressureDiskLimiter is an implementation of diskLimiter that
 // uses backpressure to slow down block puts before they hit the disk
 // limits.
@@ -570,23 +585,11 @@ func defaultGetFreeBytesAndFiles(path string) (int64, int64, error) {
 	return int64(freeBytes), int64(freeFiles), nil
 }
 
-type bdlSnapshot struct {
-	used  int64
-	free  int64
-	max   int64
-	count int64
-}
-
-func (bdl *backpressureDiskLimiter) getSnapshotsForTest() (
+func (bdl *backpressureDiskLimiter) getJournalSnapshotsForTest() (
 	byteSnapshot, fileSnapshot bdlSnapshot) {
 	bdl.lock.RLock()
 	defer bdl.lock.RUnlock()
-	return bdlSnapshot{bdl.journalTrackers.byte.used, bdl.journalTrackers.byte.free,
-			bdl.journalTrackers.byte.semaphoreMax,
-			bdl.journalTrackers.byte.semaphore.Count()},
-		bdlSnapshot{bdl.journalTrackers.file.used, bdl.journalTrackers.file.free,
-			bdl.journalTrackers.file.semaphoreMax,
-			bdl.journalTrackers.file.semaphore.Count()}
+	return bdl.journalTrackers.getSnapshotsForTest()
 }
 
 func (bdl *backpressureDiskLimiter) getQuotaSnapshotForTest() bdlSnapshot {
