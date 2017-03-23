@@ -418,11 +418,14 @@ func (jt journalTrackers) getDelayScale() float64 {
 }
 
 func (jt journalTrackers) updateFree(
-	freeBytes, diskCacheUsedBytes, freeFiles int64) {
+	freeBytes, otherUsedBytes, freeFiles int64) {
 	// We calculate the total free bytes by adding up the reported
-	// free bytes, the journal used bytes, *and* the disk cache
-	// used bytes.
-	jt.byte.updateFree(freeBytes + diskCacheUsedBytes)
+	// free bytes, the journal used bytes, *and* any other used
+	// bytes (e.g., the disk cache). For now, we hack this by
+	// lumping the other used bytes with the reported free bytes.
+	//
+	// TODO: Keep track of other used bytes separately.
+	jt.byte.updateFree(freeBytes + otherUsedBytes)
 	jt.file.updateFree(freeFiles)
 }
 
@@ -884,8 +887,11 @@ func (bdl *backpressureDiskLimiter) beforeDiskBlockCachePut(
 	}
 
 	// We calculate the total free bytes by adding up the reported
-	// free bytes, the disk cache used bytes, *and* the journal
-	// used bytes.
+	// free bytes, the disk cache used bytes, *and* any other used
+	// bytes (e.g., the journal cache). For now, we hack this by
+	// lumping the other used bytes with the reported free bytes.
+	//
+	// TODO: Keep track of other used bytes separately.
 	bdl.diskCacheByteTracker.updateFree(
 		freeBytes + bdl.journalTrackers.getUsedBytes())
 
