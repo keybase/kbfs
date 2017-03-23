@@ -457,6 +457,15 @@ func (jt journalTrackers) afterBlockPut(
 	jt.quota.afterBlockPut(blockBytes, putData)
 }
 
+func (jt journalTrackers) onBlocksFlush(blockBytes int64) {
+	jt.quota.onBlocksFlush(blockBytes)
+}
+
+func (jt journalTrackers) onBlocksDelete(blockBytes, blockFiles int64) {
+	jt.byte.onBlocksDelete(blockBytes)
+	jt.file.onBlocksDelete(blockFiles)
+}
+
 // backpressureDiskLimiter is an implementation of diskLimiter that
 // uses backpressure to slow down block puts before they hit the disk
 // limits.
@@ -821,15 +830,14 @@ func (bdl *backpressureDiskLimiter) onBlocksFlush(
 	ctx context.Context, blockBytes int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	bdl.journalTrackers.quota.onBlocksFlush(blockBytes)
+	bdl.journalTrackers.onBlocksFlush(blockBytes)
 }
 
 func (bdl *backpressureDiskLimiter) onBlocksDelete(
 	ctx context.Context, blockBytes, blockFiles int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	bdl.journalTrackers.byte.onBlocksDelete(blockBytes)
-	bdl.journalTrackers.file.onBlocksDelete(blockFiles)
+	bdl.journalTrackers.onBlocksDelete(blockBytes, blockFiles)
 }
 
 func (bdl *backpressureDiskLimiter) onDiskBlockCacheDelete(
