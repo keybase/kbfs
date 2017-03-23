@@ -797,26 +797,7 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 			bdl.journalTrackers.file.semaphore.Count(), err
 	}
 
-	availableBytes, availableFiles, err =
-		bdl.journalTrackers.beforeBlockPut(ctx, blockBytes, blockFiles)
-	if err != nil {
-		return availableBytes, availableFiles, err
-	}
-
-	usedBytes, quotaBytes := func() (int64, int64) {
-		bdl.lock.Lock()
-		defer bdl.lock.Unlock()
-
-		remoteUsedBytes, quotaBytes := bdl.quotaFn(ctx)
-		return bdl.journalTrackers.updateRemote(
-			remoteUsedBytes, quotaBytes), quotaBytes
-	}()
-
-	// TODO: Plumb this up.
-	_ = usedBytes
-	_ = quotaBytes
-
-	return availableBytes, availableFiles, nil
+	return bdl.journalTrackers.beforeBlockPut(ctx, blockBytes, blockFiles)
 }
 
 func (bdl *backpressureDiskLimiter) afterBlockPut(
