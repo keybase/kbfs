@@ -34,7 +34,7 @@ const (
 	MdServerDefaultPingIntervalSeconds = 10
 	// MdServerPingTimeout is how long to wait for a ping response
 	// before breaking the connection and trying to reconnect.
-	MdServerPingTimeout = 30 * time.Second
+	MdServerPingTimeout = 5 * time.Second
 )
 
 // MDServerRemote is an implementation of the MDServer interface.
