@@ -389,6 +389,33 @@ func (jt journalTrackers) getQuotaSnapshotForTest() bdlSnapshot {
 	return bdlSnapshot{used, free, 0, 0}
 }
 
+func (jt journalTrackers) onJournalEnable(
+	journalStoredBytes, journalUnflushedBytes, journalFiles int64) (
+	availableBytes, availableFiles int64) {
+	// TODO: Sanity-check journal*Bytes.
+	availableBytes = jt.byte.onEnable(journalStoredBytes)
+	availableFiles = jt.file.onEnable(journalFiles)
+	jt.quota.onJournalEnable(journalUnflushedBytes)
+	return availableBytes, availableFiles
+}
+
+func (jt journalTrackers) onJournalDisable(
+	journalStoredBytes, journalUnflushedBytes, journalFiles int64) {
+	// TODO: Sanity-check journal*Bytes.
+	jt.byte.onDisable(journalStoredBytes)
+	jt.file.onDisable(journalFiles)
+	jt.quota.onJournalDisable(journalUnflushedBytes)
+}
+
+func (jt journalTrackers) getDelayScale() float64 {
+	byteDelayScale := jt.byte.delayScale()
+	fileDelayScale := jt.file.delayScale()
+	quotaDelayScale := jt.quota.delayScale()
+	delayScale := math.Max(
+		math.Max(byteDelayScale, fileDelayScale), quotaDelayScale)
+	return delayScale
+}
+
 // backpressureDiskLimiter is an implementation of diskLimiter that
 // uses backpressure to slow down block puts before they hit the disk
 // limits.
@@ -610,11 +637,8 @@ func (bdl *backpressureDiskLimiter) onJournalEnable(
 	availableBytes, availableFiles int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	// TODO: Sanity-check journal*Bytes.
-	availableBytes = bdl.journalTrackers.byte.onEnable(journalStoredBytes)
-	availableFiles = bdl.journalTrackers.file.onEnable(journalFiles)
-	bdl.journalTrackers.quota.onJournalEnable(journalUnflushedBytes)
-	return availableBytes, availableFiles
+	return bdl.journalTrackers.onJournalEnable(
+		journalStoredBytes, journalUnflushedBytes, journalFiles)
 }
 
 func (bdl *backpressureDiskLimiter) onJournalDisable(
@@ -622,10 +646,8 @@ func (bdl *backpressureDiskLimiter) onJournalDisable(
 	journalStoredBytes, journalUnflushedBytes, journalFiles int64) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	// TODO: Sanity-check journal*Bytes.
-	bdl.journalTrackers.byte.onDisable(journalStoredBytes)
-	bdl.journalTrackers.file.onDisable(journalFiles)
-	bdl.journalTrackers.quota.onJournalDisable(journalUnflushedBytes)
+	bdl.journalTrackers.onJournalDisable(
+		journalStoredBytes, journalUnflushedBytes, journalFiles)
 }
 
 func (bdl *backpressureDiskLimiter) onDiskBlockCacheEnable(ctx context.Context,
@@ -644,11 +666,7 @@ func (bdl *backpressureDiskLimiter) onDiskBlockCacheDisable(ctx context.Context,
 
 func (bdl *backpressureDiskLimiter) getDelayLocked(
 	ctx context.Context, now time.Time) time.Duration {
-	byteDelayScale := bdl.journalTrackers.byte.delayScale()
-	fileDelayScale := bdl.journalTrackers.file.delayScale()
-	quotaDelayScale := bdl.journalTrackers.quota.delayScale()
-	delayScale := math.Max(
-		math.Max(byteDelayScale, fileDelayScale), quotaDelayScale)
+	delayScale := bdl.journalTrackers.getDelayScale()
 
 	// Set maxDelay to min(bdl.maxDelay, time until deadline - 1s).
 	maxDelay := bdl.maxDelay
