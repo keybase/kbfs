@@ -16,8 +16,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-// TestBackpressureTrackerCounters checks that the tracker's counters
-// are updated properly for each public method.
+// TestBackpressureTrackerCounters checks that a backpressure
+// tracker's counters are updated properly for each public method.
 func TestBackpressureTrackerCounters(t *testing.T) {
 	bt, err := newBackpressureTracker(0.1, 0.9, 0.25, 100, 200)
 	require.NoError(t, err)
@@ -142,7 +142,7 @@ func TestBackpressureTrackerCounters(t *testing.T) {
 	require.Equal(t, int64(100), bt.semaphore.Count())
 }
 
-// TestQuotaBackpressureTrackerCounters checks that the quota tracker's
+// TestQuotaBackpressureTrackerCounters checks that a quota tracker's
 // counters are updated properly for each public method.
 func TestQuotaBackpressureTrackerCounters(t *testing.T) {
 	qbt, err := newQuotaBackpressureTracker(0.1, 0.9)
@@ -191,6 +191,165 @@ func TestQuotaBackpressureTrackerCounters(t *testing.T) {
 	require.Equal(t, int64(1), qbt.unflushedBytes)
 	require.Equal(t, int64(10), qbt.remoteUsedBytes)
 	require.Equal(t, int64(100), qbt.quotaBytes)
+}
+
+// TestJournalTrackerCounters checks that a journal tracker's counters
+// are updated properly for each public method.
+func TestJournalTrackerCounters(t *testing.T) {
+	jt, err := newJournalTracker(
+		0.1,  // minThreshold
+		0.9,  // maxThreshold
+		0.8,  // quotaMinThreshold
+		1.2,  // quotaMaxThreshold
+		0.15, // journalFrac
+		400,  // byteLimit
+		800,  // fileLimit
+		100,  // freeBytes
+		200)  // freeFiles
+	require.NoError(t, err)
+
+	byteSnapshot, fileSnapshot := jt.getByteFileSnapshotsForTest()
+	// max = count = min(k(U+F), L) = min(0.15(0+100), 400) = 15.
+	require.Equal(t, jtSnapshot{
+		used:  0,
+		free:  100,
+		max:   15,
+		count: 15,
+	}, byteSnapshot)
+	// max = count = min(k(U+F), L) = min(0.15(0+200), 800) = 30.
+	require.Equal(t, jtSnapshot{
+		used:  0,
+		free:  200,
+		max:   30,
+		count: 30,
+	}, fileSnapshot)
+
+	quotaSnapshot := jt.getQuotaSnapshotForTest()
+	require.Equal(t, jtSnapshot{
+		used: 0,
+		free: math.MaxInt64,
+	}, quotaSnapshot)
+
+	/*
+		// semaphoreMax = min(k(U+F), L) = min(0.25(0+200), 100) = 50.
+		require.Equal(t, int64(0), bt.used)
+		require.Equal(t, int64(200), bt.free)
+		require.Equal(t, int64(50), bt.semaphoreMax)
+		require.Equal(t, int64(50), bt.semaphore.Count())
+
+		// Increase U by 10, so that increases sM by 0.25*10 = 2.5, so
+		// sM is now 52.
+
+		avail := bt.onEnable(10)
+		require.Equal(t, int64(42), avail)
+
+		require.Equal(t, int64(10), bt.used)
+		require.Equal(t, int64(200), bt.free)
+		require.Equal(t, int64(52), bt.semaphoreMax)
+		require.Equal(t, int64(42), bt.semaphore.Count())
+
+		// Decrease U by 9, so that decreases sM by 0.25*9 = 2.25, so
+		// sM is back to 50.
+
+		bt.onDisable(9)
+
+		require.Equal(t, int64(1), bt.used)
+		require.Equal(t, int64(200), bt.free)
+		require.Equal(t, int64(50), bt.semaphoreMax)
+		require.Equal(t, int64(49), bt.semaphore.Count())
+
+		// Increase U by 440, so that increases sM by 0.25*110 = 110,
+		// so sM maxes out at 100, and semaphore should go negative.
+
+		avail = bt.onEnable(440)
+		require.Equal(t, int64(-341), avail)
+
+		require.Equal(t, int64(441), bt.used)
+		require.Equal(t, int64(200), bt.free)
+		require.Equal(t, int64(100), bt.semaphoreMax)
+		require.Equal(t, int64(-341), bt.semaphore.Count())
+
+		// Now revert that increase.
+
+		bt.onDisable(440)
+
+		require.Equal(t, int64(1), bt.used)
+		require.Equal(t, int64(200), bt.free)
+		require.Equal(t, int64(50), bt.semaphoreMax)
+		require.Equal(t, int64(49), bt.semaphore.Count())
+
+		// This should be a no-op.
+		avail = bt.onEnable(0)
+		require.Equal(t, int64(49), avail)
+
+		require.Equal(t, int64(1), bt.used)
+		require.Equal(t, int64(200), bt.free)
+		require.Equal(t, int64(50), bt.semaphoreMax)
+		require.Equal(t, int64(49), bt.semaphore.Count())
+
+		// So should this.
+		bt.onDisable(0)
+
+		require.Equal(t, int64(1), bt.used)
+		require.Equal(t, int64(200), bt.free)
+		require.Equal(t, int64(50), bt.semaphoreMax)
+		require.Equal(t, int64(49), bt.semaphore.Count())
+
+		// Add more free resources and put a block successfully.
+
+		bt.updateFree(400)
+
+		avail, err = bt.beforeBlockPut(context.Background(), 10)
+		require.NoError(t, err)
+		require.Equal(t, int64(89), avail)
+
+		require.Equal(t, int64(1), bt.used)
+		require.Equal(t, int64(400), bt.free)
+		require.Equal(t, int64(100), bt.semaphoreMax)
+		require.Equal(t, int64(89), bt.semaphore.Count())
+
+		bt.afterBlockPut(10, true)
+
+		require.Equal(t, int64(11), bt.used)
+		require.Equal(t, int64(400), bt.free)
+		require.Equal(t, int64(100), bt.semaphoreMax)
+		require.Equal(t, int64(89), bt.semaphore.Count())
+
+		// Then try to put a block but fail it.
+
+		avail, err = bt.beforeBlockPut(context.Background(), 9)
+		require.NoError(t, err)
+		require.Equal(t, int64(80), avail)
+
+		require.Equal(t, int64(11), bt.used)
+		require.Equal(t, int64(400), bt.free)
+		require.Equal(t, int64(100), bt.semaphoreMax)
+		require.Equal(t, int64(80), bt.semaphore.Count())
+
+		bt.afterBlockPut(9, false)
+
+		require.Equal(t, int64(11), bt.used)
+		require.Equal(t, int64(400), bt.free)
+		require.Equal(t, int64(100), bt.semaphoreMax)
+		require.Equal(t, int64(89), bt.semaphore.Count())
+
+		// Finally, delete a block.
+
+		bt.onBlocksDelete(11)
+
+		require.Equal(t, int64(0), bt.used)
+		require.Equal(t, int64(400), bt.free)
+		require.Equal(t, int64(100), bt.semaphoreMax)
+		require.Equal(t, int64(100), bt.semaphore.Count())
+
+		// This should be a no-op.
+		bt.onBlocksDelete(0)
+
+		require.Equal(t, int64(0), bt.used)
+		require.Equal(t, int64(400), bt.free)
+		require.Equal(t, int64(100), bt.semaphoreMax)
+		require.Equal(t, int64(100), bt.semaphore.Count())
+	*/
 }
 
 // TestDefaultDoDelayCancel checks that defaultDoDelay respects
