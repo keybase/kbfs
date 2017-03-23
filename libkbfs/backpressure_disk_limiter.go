@@ -370,6 +370,39 @@ type journalTracker struct {
 	quota      *quotaBackpressureTracker
 }
 
+func newJournalTracker(
+	minThreshold, maxThreshold, quotaMinThreshold, quotaMaxThreshold, journalFrac float64,
+	byteLimit, fileLimit, freeBytes, freeFiles int64) (
+	journalTracker, error) {
+	// byteLimit and fileLimit must be scaled by the proportion of
+	// the limit that the journal should consume.
+	journalByteLimit := int64((float64(byteLimit) * journalFrac) + 0.5)
+	byteTracker, err := newBackpressureTracker(
+		minThreshold, maxThreshold, journalFrac, journalByteLimit,
+		freeBytes)
+	if err != nil {
+		return journalTracker{}, err
+	}
+	// the fileLimit is only used here, but in the interest of
+	// consistency with how we treat the byteLimit, we multiply it
+	// by the journalFrac.
+	journalFileLimit := int64((float64(fileLimit) * journalFrac) + 0.5)
+	fileTracker, err := newBackpressureTracker(
+		minThreshold, maxThreshold, journalFrac, journalFileLimit,
+		freeFiles)
+	if err != nil {
+		return journalTracker{}, err
+	}
+
+	journalQuotaTracker, err := newQuotaBackpressureTracker(
+		quotaMinThreshold, quotaMaxThreshold)
+	if err != nil {
+		return journalTracker{}, err
+	}
+
+	return journalTracker{byteTracker, fileTracker, journalQuotaTracker}, nil
+}
+
 type jtSnapshot struct {
 	used  int64
 	free  int64
@@ -641,38 +674,26 @@ func newBackpressureDiskLimiter(
 	if err != nil {
 		return nil, err
 	}
-	// byteLimit and fileLimit must be scaled by the proportion of
-	// the limit that the journal should consume.
-	journalByteLimit := int64((float64(params.byteLimit) * params.journalFrac) + 0.5)
-	byteTracker, err := newBackpressureTracker(
+
+	journalTracker, err := newJournalTracker(
 		params.minThreshold, params.maxThreshold,
-		params.journalFrac, journalByteLimit, freeBytes)
+		params.quotaMinThreshold, params.quotaMaxThreshold,
+		params.journalFrac, params.byteLimit, params.fileLimit,
+		freeBytes, freeFiles)
 	if err != nil {
 		return nil, err
 	}
-	// the fileLimit is only used here, but in the interest of consistency with
-	// how we treat the byteLimit, we multiply it by the journalFrac.
-	journalFileLimit := int64((float64(params.fileLimit) * params.journalFrac) + 0.5)
-	fileTracker, err := newBackpressureTracker(
-		params.minThreshold, params.maxThreshold,
-		params.journalFrac, journalFileLimit, freeFiles)
-	if err != nil {
-		return nil, err
-	}
+
+	// byteLimit must be scaled by the proportion of the limit
+	// that the disk journal should consume.
 	diskCacheByteLimit := int64((float64(params.byteLimit) * params.diskCacheFrac) + 0.5)
 	diskCacheByteTracker, err := newBackpressureTracker(
 		1.0, 1.0, params.diskCacheFrac, diskCacheByteLimit, freeBytes)
 
-	journalQuotaTracker, err := newQuotaBackpressureTracker(
-		params.quotaMinThreshold, params.quotaMaxThreshold)
-	if err != nil {
-		return nil, err
-	}
 	bdl := &backpressureDiskLimiter{
 		log, params.maxDelay, params.delayFn,
 		params.freeBytesAndFilesFn, params.quotaFn, sync.RWMutex{},
-		journalTracker{byteTracker, fileTracker, journalQuotaTracker},
-		diskCacheByteTracker,
+		journalTracker, diskCacheByteTracker,
 	}
 	return bdl, nil
 }
