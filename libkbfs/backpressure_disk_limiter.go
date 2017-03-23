@@ -428,6 +428,35 @@ func (jt journalTrackers) updateRemote(remoteUsedBytes, quotaBytes int64) (
 	return jt.quota.unflushedBytes + remoteUsedBytes
 }
 
+func (jt journalTrackers) beforeBlockPut(
+	ctx context.Context, blockBytes, blockFiles int64) (
+	availableBytes, availableFiles int64, err error) {
+	availableBytes, err = jt.byte.beforeBlockPut(ctx, blockBytes)
+	if err != nil {
+		return availableBytes, jt.file.semaphore.Count(), err
+	}
+	defer func() {
+		if err != nil {
+			jt.byte.afterBlockPut(blockBytes, false)
+			availableBytes = jt.byte.semaphore.Count()
+		}
+	}()
+
+	availableFiles, err = jt.file.beforeBlockPut(ctx, blockFiles)
+	if err != nil {
+		return availableBytes, availableFiles, err
+	}
+
+	return availableBytes, availableFiles, nil
+}
+
+func (jt journalTrackers) afterBlockPut(
+	blockBytes, blockFiles int64, putData bool) {
+	jt.byte.afterBlockPut(blockBytes, putData)
+	jt.file.afterBlockPut(blockFiles, putData)
+	jt.quota.afterBlockPut(blockBytes, putData)
+}
+
 // backpressureDiskLimiter is an implementation of diskLimiter that
 // uses backpressure to slow down block puts before they hit the disk
 // limits.
@@ -759,18 +788,8 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 			bdl.journalTrackers.file.semaphore.Count(), err
 	}
 
-	availableBytes, err = bdl.journalTrackers.byte.beforeBlockPut(ctx, blockBytes)
-	if err != nil {
-		return availableBytes, bdl.journalTrackers.file.semaphore.Count(), err
-	}
-	defer func() {
-		if err != nil {
-			bdl.journalTrackers.byte.afterBlockPut(blockBytes, false)
-			availableBytes = bdl.journalTrackers.byte.semaphore.Count()
-		}
-	}()
-
-	availableFiles, err = bdl.journalTrackers.file.beforeBlockPut(ctx, blockFiles)
+	availableBytes, availableFiles, err =
+		bdl.journalTrackers.beforeBlockPut(ctx, blockBytes, blockFiles)
 	if err != nil {
 		return availableBytes, availableFiles, err
 	}
@@ -788,7 +807,6 @@ func (bdl *backpressureDiskLimiter) beforeBlockPut(
 	_ = usedBytes
 	_ = quotaBytes
 
-	// No need to call anything on bdl.journalTrackers.quota.
 	return availableBytes, availableFiles, nil
 }
 
@@ -796,9 +814,7 @@ func (bdl *backpressureDiskLimiter) afterBlockPut(
 	ctx context.Context, blockBytes, blockFiles int64, putData bool) {
 	bdl.lock.Lock()
 	defer bdl.lock.Unlock()
-	bdl.journalTrackers.byte.afterBlockPut(blockBytes, putData)
-	bdl.journalTrackers.file.afterBlockPut(blockFiles, putData)
-	bdl.journalTrackers.quota.afterBlockPut(blockBytes, putData)
+	bdl.journalTrackers.afterBlockPut(blockBytes, blockFiles, putData)
 }
 
 func (bdl *backpressureDiskLimiter) onBlocksFlush(
