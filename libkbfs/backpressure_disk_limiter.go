@@ -875,9 +875,7 @@ func (bdl *backpressureDiskLimiter) afterDiskBlockCachePut(
 func (bdl *backpressureDiskLimiter) getQuotaInfo() (usedQuotaBytes, quotaBytes int64) {
 	bdl.lock.RLock()
 	defer bdl.lock.RUnlock()
-	usedQuotaBytes = bdl.journalTrackers.quota.unflushedBytes + bdl.journalTrackers.quota.remoteUsedBytes
-	quotaBytes = bdl.journalTrackers.quota.quotaBytes
-	return usedQuotaBytes, quotaBytes
+	return bdl.journalTrackers.getQuotaInfo()
 }
 
 type backpressureDiskLimiterStatus struct {
