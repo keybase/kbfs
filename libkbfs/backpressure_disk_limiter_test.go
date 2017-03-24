@@ -386,26 +386,57 @@ func TestJournalTrackerCounters(t *testing.T) {
 		free: 79,
 	}, quotaSnapshot)
 
+	// Then try to put a block but fail it.
+
+	availBytes, availFiles, err = jt.beforeBlockPut(
+		context.Background(), 10, 5)
+	require.NoError(t, err)
+	require.Equal(t, int64(16), availBytes)
+	require.Equal(t, int64(4), availFiles)
+
+	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	require.Equal(t, jtSnapshot{
+		used:  11,
+		free:  240,
+		max:   37,
+		count: 16,
+	}, byteSnapshot)
+	require.Equal(t, jtSnapshot{
+		used:  6,
+		free:  100,
+		max:   15,
+		count: 4,
+	}, fileSnapshot)
+
+	quotaSnapshot = jt.getQuotaSnapshotForTest()
+	require.Equal(t, jtSnapshot{
+		used: 21,
+		free: 79,
+	}, quotaSnapshot)
+
+	jt.afterBlockPut(10, 5, false)
+
+	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	require.Equal(t, jtSnapshot{
+		used:  11,
+		free:  240,
+		max:   37,
+		count: 26,
+	}, byteSnapshot)
+	require.Equal(t, jtSnapshot{
+		used:  6,
+		free:  100,
+		max:   15,
+		count: 9,
+	}, fileSnapshot)
+
+	quotaSnapshot = jt.getQuotaSnapshotForTest()
+	require.Equal(t, jtSnapshot{
+		used: 21,
+		free: 79,
+	}, quotaSnapshot)
+
 	/*
-
-		// Then try to put a block but fail it.
-
-		avail, err = bt.beforeBlockPut(context.Background(), 9)
-		require.NoError(t, err)
-		require.Equal(t, int64(80), avail)
-
-		require.Equal(t, int64(11), bt.used)
-		require.Equal(t, int64(400), bt.free)
-		require.Equal(t, int64(100), bt.semaphoreMax)
-		require.Equal(t, int64(80), bt.semaphore.Count())
-
-		bt.afterBlockPut(9, false)
-
-		require.Equal(t, int64(11), bt.used)
-		require.Equal(t, int64(400), bt.free)
-		require.Equal(t, int64(100), bt.semaphoreMax)
-		require.Equal(t, int64(89), bt.semaphore.Count())
-
 		// Finally, delete a block.
 
 		bt.onBlocksDelete(11)
