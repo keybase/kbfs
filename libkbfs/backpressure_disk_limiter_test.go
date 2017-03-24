@@ -372,7 +372,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   37,
 		count: 26,
 	}, byteSnapshot)
-	// max = min(k(U+F), L) = min(0.15(6+100), 400) = 15.
+	// max = min(k(U+F), L) = min(0.15(6+100), 800) = 15.
 	require.Equal(t, jtSnapshot{
 		used:  6,
 		free:  100,
@@ -462,24 +462,29 @@ func TestJournalTrackerCounters(t *testing.T) {
 
 	// ...and, finally, delete it.
 
-	/*
-		// Finally, delete a block.
+	jt.onBlocksDelete(10, 5)
 
-		bt.onBlocksDelete(11)
+	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	// max = min(k(U+F), L) = min(0.15(1+240), 400) = 36.
+	require.Equal(t, jtSnapshot{
+		used:  1,
+		free:  240,
+		max:   36,
+		count: 35,
+	}, byteSnapshot)
+	// max = min(k(U+F), L) = min(0.15(1+100), 800) = 15.
+	require.Equal(t, jtSnapshot{
+		used:  1,
+		free:  100,
+		max:   15,
+		count: 14,
+	}, fileSnapshot)
 
-		require.Equal(t, int64(0), bt.used)
-		require.Equal(t, int64(400), bt.free)
-		require.Equal(t, int64(100), bt.semaphoreMax)
-		require.Equal(t, int64(100), bt.semaphore.Count())
-
-		// This should be a no-op.
-		bt.onBlocksDelete(0)
-
-		require.Equal(t, int64(0), bt.used)
-		require.Equal(t, int64(400), bt.free)
-		require.Equal(t, int64(100), bt.semaphoreMax)
-		require.Equal(t, int64(100), bt.semaphore.Count())
-	*/
+	quotaSnapshot = jt.getQuotaSnapshotForTest()
+	require.Equal(t, jtSnapshot{
+		used: 11,
+		free: 89,
+	}, quotaSnapshot)
 }
 
 // TestDefaultDoDelayCancel checks that defaultDoDelay respects
