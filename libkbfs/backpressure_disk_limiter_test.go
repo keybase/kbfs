@@ -259,53 +259,34 @@ func TestJournalTrackerCounters(t *testing.T) {
 		free: math.MaxInt64 - 5,
 	}, quotaSnapshot)
 
+	// For stored bytes, decrease U by 9, so that decreases max by
+	// 0.15*9 = 1.35, so max is back to 15. For files, decrease U
+	// by 19, so that decreases max by 0.15*19 = 2.85, so max back to
+	// 30.
+
+	jt.onDisable(9, 4, 19)
+
+	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	require.Equal(t, jtSnapshot{
+		used:  1,
+		free:  100,
+		max:   15,
+		count: 14,
+	}, byteSnapshot)
+	require.Equal(t, jtSnapshot{
+		used:  1,
+		free:  200,
+		max:   30,
+		count: 29,
+	}, fileSnapshot)
+
+	quotaSnapshot = jt.getQuotaSnapshotForTest()
+	require.Equal(t, jtSnapshot{
+		used: 1,
+		free: math.MaxInt64 - 1,
+	}, quotaSnapshot)
+
 	/*
-		// Decrease U by 9, so that decreases sM by 0.25*9 = 2.25, so
-		// sM is back to 50.
-
-		bt.onDisable(9)
-
-		require.Equal(t, int64(1), bt.used)
-		require.Equal(t, int64(200), bt.free)
-		require.Equal(t, int64(50), bt.semaphoreMax)
-		require.Equal(t, int64(49), bt.semaphore.Count())
-
-		// Increase U by 440, so that increases sM by 0.25*110 = 110,
-		// so sM maxes out at 100, and semaphore should go negative.
-
-		avail = bt.onEnable(440)
-		require.Equal(t, int64(-341), avail)
-
-		require.Equal(t, int64(441), bt.used)
-		require.Equal(t, int64(200), bt.free)
-		require.Equal(t, int64(100), bt.semaphoreMax)
-		require.Equal(t, int64(-341), bt.semaphore.Count())
-
-		// Now revert that increase.
-
-		bt.onDisable(440)
-
-		require.Equal(t, int64(1), bt.used)
-		require.Equal(t, int64(200), bt.free)
-		require.Equal(t, int64(50), bt.semaphoreMax)
-		require.Equal(t, int64(49), bt.semaphore.Count())
-
-		// This should be a no-op.
-		avail = bt.onEnable(0)
-		require.Equal(t, int64(49), avail)
-
-		require.Equal(t, int64(1), bt.used)
-		require.Equal(t, int64(200), bt.free)
-		require.Equal(t, int64(50), bt.semaphoreMax)
-		require.Equal(t, int64(49), bt.semaphore.Count())
-
-		// So should this.
-		bt.onDisable(0)
-
-		require.Equal(t, int64(1), bt.used)
-		require.Equal(t, int64(200), bt.free)
-		require.Equal(t, int64(50), bt.semaphoreMax)
-		require.Equal(t, int64(49), bt.semaphore.Count())
 
 		// Add more free resources and put a block successfully.
 
