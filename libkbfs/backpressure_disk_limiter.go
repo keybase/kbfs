@@ -426,7 +426,8 @@ func (jt journalTracker) getQuotaSnapshotForTest() jtSnapshot {
 
 func (jt journalTracker) onEnable(storedBytes, unflushedBytes, files int64) (
 	availableBytes, availableFiles int64) {
-	// TODO: Sanity-check *Bytes.
+	// storedBytes should be >= unflushedBytes. But it's not too
+	// bad to let it go through.
 	availableBytes = jt.byte.onEnable(storedBytes)
 	availableFiles = jt.file.onEnable(files)
 	jt.quota.onJournalEnable(unflushedBytes)
@@ -434,7 +435,8 @@ func (jt journalTracker) onEnable(storedBytes, unflushedBytes, files int64) (
 }
 
 func (jt journalTracker) onDisable(storedBytes, unflushedBytes, files int64) {
-	// TODO: Sanity-check *Bytes.
+	// As above, storedBytes should be >= unflushedBytes. Let it
+	// go through here, too.
 	jt.byte.onDisable(storedBytes)
 	jt.file.onDisable(files)
 	jt.quota.onJournalDisable(unflushedBytes)
