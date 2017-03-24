@@ -42,7 +42,8 @@ func (sdl semaphoreDiskLimiter) onJournalEnable(
 	} else {
 		availableBytes = sdl.byteSemaphore.Count()
 	}
-	// TODO: Sanity-check journal*Bytes.
+	// storedBytes should be >= unflushedBytes. But it's not too
+	// bad to let it go through.
 	if journalFiles != 0 {
 		availableFiles = sdl.fileSemaphore.ForceAcquire(journalFiles)
 	} else {
@@ -57,7 +58,8 @@ func (sdl semaphoreDiskLimiter) onJournalDisable(
 	if journalStoredBytes != 0 {
 		sdl.byteSemaphore.Release(journalStoredBytes)
 	}
-	// TODO: Sanity-check journal*Bytes.
+	// As above, storedBytes should be >= unflushedBytes. Let it
+	// go through here, too.
 	if journalFiles != 0 {
 		sdl.fileSemaphore.Release(journalFiles)
 	}
