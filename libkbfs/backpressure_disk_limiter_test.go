@@ -286,11 +286,55 @@ func TestJournalTrackerCounters(t *testing.T) {
 		free: math.MaxInt64 - 1,
 	}, quotaSnapshot)
 
+	// Update free resources.
+
+	jt.updateFree(200, 40, 100)
+
+	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	require.Equal(t, jtSnapshot{
+		used:  1,
+		free:  240,
+		max:   36,
+		count: 35,
+	}, byteSnapshot)
+	require.Equal(t, jtSnapshot{
+		used:  1,
+		free:  100,
+		max:   15,
+		count: 14,
+	}, fileSnapshot)
+
+	quotaSnapshot = jt.getQuotaSnapshotForTest()
+	require.Equal(t, jtSnapshot{
+		used: 1,
+		free: math.MaxInt64 - 1,
+	}, quotaSnapshot)
+
+	// Update remote resources.
+
+	jt.updateRemote(10, 100)
+
+	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	require.Equal(t, jtSnapshot{
+		used:  1,
+		free:  240,
+		max:   36,
+		count: 35,
+	}, byteSnapshot)
+	require.Equal(t, jtSnapshot{
+		used:  1,
+		free:  100,
+		max:   15,
+		count: 14,
+	}, fileSnapshot)
+
+	quotaSnapshot = jt.getQuotaSnapshotForTest()
+	require.Equal(t, jtSnapshot{
+		used: 11,
+		free: 89,
+	}, quotaSnapshot)
+
 	/*
-
-		// Add more free resources and put a block successfully.
-
-		bt.updateFree(400)
 
 		avail, err = bt.beforeBlockPut(context.Background(), 10)
 		require.NoError(t, err)
