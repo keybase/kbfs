@@ -704,8 +704,6 @@ func defaultDoDelay(ctx context.Context, delay time.Duration) error {
 		return nil
 	}
 
-	// TODO: Sometimes fake a throttle error.
-
 	timer := time.NewTimer(delay)
 	select {
 	case <-timer.C:
