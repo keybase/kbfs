@@ -2045,11 +2045,22 @@ func (fbo *folderBranchOps) syncBlock(
 	var newDe DirEntry
 	doSetTime := true
 	now := fbo.nowUnixNano()
+
+	tr, trOk := trace.FromContext(ctx)
+
 	for len(newPath.path) < len(dir.path)+1 {
+		if trOk {
+			tr.LazyPrintf("syncBlock path iter")
+		}
+
 		info, plainSize, err := fbo.readyBlockMultiple(
 			ctx, md.ReadOnly(), currBlock, uid, bps, keybase1.BlockType_DATA)
 		if err != nil {
 			return path{}, DirEntry{}, nil, err
+		}
+
+		if trOk {
+			tr.LazyPrintf("syncBlock readied plainSize=%d", plainSize)
 		}
 
 		// prepend to path and setup next one

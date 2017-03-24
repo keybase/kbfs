@@ -338,6 +338,10 @@ func (fbo *folderBlockOps) getBlockHelperLocked(ctx context.Context,
 		return block, nil
 	}
 
+	if trOk {
+		tr.LazyPrintf("getBlockHelperLocked not dirty")
+	}
+
 	if block, hasPrefetched, lifetime, err := fbo.config.BlockCache().GetWithPrefetch(ptr); err == nil {
 		// If the block was cached in the past, we need to handle it as if it's
 		// an on-demand request so that its downstream prefetches are triggered
@@ -345,6 +349,9 @@ func (fbo *folderBlockOps) getBlockHelperLocked(ctx context.Context,
 		fbo.config.BlockOps().Prefetcher().PrefetchAfterBlockRetrieved(
 			block, ptr, kmd, defaultOnDemandRequestPriority, lifetime,
 			hasPrefetched)
+		if trOk {
+			tr.LazyPrintf("getBlockHelperLocked got from cache")
+		}
 		return block, nil
 	}
 
