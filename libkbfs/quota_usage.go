@@ -82,14 +82,13 @@ func (q *EventuallyConsistentQuotaUsage) getAndCache(
 // accept stale LimitBytes and UsageBytes data. If tolerance is 0 or negative,
 // this always makes a blocking RPC to bserver and return latest quota usage.
 //
-// 1) If the age of cached data is less than half of tolerance, the cached
-// stale data is returned immediately.
-// 2) If the age of cached data is more than half of tolerance, but not more
-// than tolerance, a background RPC is spawned to refresh cached data, and the
-// stale data is returned immediately.
-// 3) If the age of cached data is more than tolerance, a blocking RPC is
+// 1) If the age of cached data is more than blockTolerance, a blocking RPC is
 // issued and the function only returns after RPC finishes, with the newest
 // data from RPC. The RPC causes cached data to be refreshed as well.
+// 2) Otherwise, if the age of cached data is more than bgTolerance,
+// a background RPC is spawned to refresh cached data, and the stale
+// data is returned immediately.
+// 3) Otherwise, the cached stale data is returned immediately.
 func (q *EventuallyConsistentQuotaUsage) Get(
 	ctx context.Context, bgTolerance, blockTolerance time.Duration) (
 	timestamp time.Time, usageBytes, limitBytes int64, err error) {
