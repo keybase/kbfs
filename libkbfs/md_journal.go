@@ -57,6 +57,12 @@ func (ibrmd ImmutableBareRootMetadata) MakeBareTlfHandleWithExtra() (
 	return ibrmd.BareRootMetadata.MakeBareTlfHandle(ibrmd.extra)
 }
 
+type bufferedMD struct {
+	bareMD BareRootMetadata
+	extra  ExtraMetadata
+	ts     time.Time
+}
+
 // mdJournal stores a single ordered list of metadata IDs for a (TLF,
 // user, device) tuple, along with the associated metadata objects, in
 // flat files on disk in a directory. The directory may be shared with
@@ -138,6 +144,10 @@ type mdJournal struct {
 
 	j mdIDJournal
 
+	bufStart   MetadataRevision
+	bufEntries []mdIDJournalEntry
+	bufMDs     map[MetadataRevision]bufferedMD
+
 	// branchID is the BranchID that every MD in the journal is set
 	// to, except for when it is PendingLocalSquashBranchID, in which
 	// case the journal is a bunch of MDs with a null branchID
@@ -180,6 +190,7 @@ func makeMDJournalWithIDJournal(
 		log:      log,
 		deferLog: deferLog,
 		j:        idJournal,
+		bufMDs:   make(map[MetadataRevision]bufferedMD),
 	}
 
 	_, earliest, _, _, err := journal.getEarliestWithExtra(false)
@@ -486,7 +497,35 @@ func (j mdJournal) getMDAndExtra(entry mdIDJournalEntry, verifyBranchID bool) (
 // putMD stores the given metadata under its ID, if it's not already
 // stored. The extra metadata is put separately, since sometimes,
 // (e.g., when converting to a branch) we don't need to put it.
-func (j mdJournal) putMD(rmd BareRootMetadata) (MdID, error) {
+func (j mdJournal) putMD(rmd BareRootMetadata, extra ExtraMetadata) (MdID, bool, bool, error) {
+	id, err := j.crypto.MakeMdID(rmd)
+	if err != nil {
+		return MdID{}, false, false, err
+	}
+
+	j.bufMDs[rmd.RevisionNumber()] = bufferedMD{
+		bareMD: rmd,
+		extra:  extra,
+		ts:     j.clock.Now(),
+	}
+
+	wkbNew, rkbNew := false, false
+	if extra != nil {
+		extraV3, ok := extra.(*ExtraMetadataV3)
+		if !ok {
+			panic("SAD!")
+		}
+		wkbNew = extraV3.wkbNew
+		rkbNew = extraV3.rkbNew
+	}
+
+	return id, wkbNew, rkbNew, nil
+}
+
+// putMDToDisk stores the given metadata under its ID, if it's not already
+// stored. The extra metadata is put separately, since sometimes,
+// (e.g., when converting to a branch) we don't need to put it.
+func (j mdJournal) putMDToDisk(rmd BareRootMetadata) (MdID, error) {
 	// TODO: Make crypto and RMD wrap errors.
 
 	err := rmd.IsLastModifiedBy(j.uid, j.key)
@@ -578,6 +617,17 @@ func (j mdJournal) getLatest(verifyBranchID bool) (
 }
 
 func (j mdJournal) checkGetParams() (ImmutableBareRootMetadata, error) {
+	if len(j.bufEntries) > 0 {
+		e := j.bufEntries[len(j.bufEntries)-1]
+		rev := j.bufStart + MetadataRevision(len(j.bufEntries)) - 1
+		bufMD, ok := j.bufMDs[rev]
+		if !ok {
+			panic("Couldn't find it!")
+		}
+		return MakeImmutableBareRootMetadata(
+			bufMD.bareMD, bufMD.extra, e.ID, bufMD.ts), nil
+	}
+
 	head, err := j.getLatest(true)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
@@ -624,21 +674,28 @@ func (j *mdJournal) convertToBranch(
 	j.log.CDebugf(
 		ctx, "rewriting MDs %s to %s", earliestRevision, latestRevision)
 
-	_, allEntries, err := j.j.getEntryRange(
-		earliestRevision, latestRevision)
-	if err != nil {
-		return err
+	var allEntries []mdIDJournalEntry
+	if bid != PendingLocalSquashBranchID {
+		_, allEntries, err = j.j.getEntryRange(
+			earliestRevision, latestRevision)
+		if err != nil {
+			return err
+		}
+	} else {
+		allEntries = j.bufEntries
+		j.bufEntries = nil
 	}
 
 	j.log.CDebugf(ctx, "New branch ID=%s", bid)
 
+	mdsToRemove := make([]MdID, 0, len(allEntries))
+	/**
 	journalTempDir, err := ioutil.TempDir(j.dir, "md_journal")
 	if err != nil {
 		return err
 	}
 	j.log.CDebugf(ctx, "Using temp dir %s for rewriting", journalTempDir)
 
-	mdsToRemove := make([]MdID, 0, len(allEntries))
 	defer func() {
 		// If we crash here and leave behind the tempdir, it
 		// won't be cleaned up automatically when the journal
@@ -664,31 +721,46 @@ func (j *mdJournal) convertToBranch(
 			}
 		}
 	}()
+	*/
 
-	tempJournal, err := makeMdIDJournal(j.codec, journalTempDir)
-	if err != nil {
-		return err
-	}
-
-	var prevID MdID
-
-	isPendingLocalSquash := bid == PendingLocalSquashBranchID
-	for _, entry := range allEntries {
-		brmd, _, ts, err := j.getMDAndExtra(entry, true)
+	/*
+		tempJournal, err := makeMdIDJournal(j.codec, journalTempDir)
 		if err != nil {
 			return err
 		}
+	*/
 
-		if entry.IsLocalSquash && isPendingLocalSquash {
-			// If this is a local squash, don't convert it.  We don't
-			// want to squash anything more into it.
-			j.log.CDebugf(ctx, "Preserving local squash %s", entry.ID)
-			err = tempJournal.append(brmd.RevisionNumber(), entry)
+	var prevID MdID
+
+	//isPendingLocalSquash := bid == PendingLocalSquashBranchID
+	for i, entry := range allEntries {
+		rev := j.bufStart + MetadataRevision(i)
+		bufMD, ok := j.bufMDs[rev]
+		if !ok {
+			panic("Couldn't find it!")
+		}
+		brmd := bufMD.bareMD.(MutableBareRootMetadata)
+		extra := bufMD.extra
+		ts := bufMD.ts
+
+		/*
+			brmd, extra, ts, err := j.getMDAndExtra(entry, true)
 			if err != nil {
 				return err
 			}
-			continue
-		}
+
+				if entry.IsLocalSquash && isPendingLocalSquash {
+					// If this is a local squash, don't convert it.  We don't
+					// want to squash anything more into it.
+					j.log.CDebugf(ctx, "Preserving local squash %s", entry.ID)
+					err = tempJournal.append(brmd.RevisionNumber(), entry)
+					if err != nil {
+						return err
+					}
+
+					continue
+				}
+		*/
 
 		brmd.SetUnmerged()
 		brmd.SetBranchID(bid)
@@ -718,7 +790,7 @@ func (j *mdJournal) convertToBranch(
 		// have a slightly wrong localTimestamp.  Instead, we might
 		// want to pass in the timestamp and do an explicit
 		// os.Chtimes() on the file after writing it.
-		newID, err := j.putMD(brmd)
+		newID, _, _, err := j.putMD(brmd, extra)
 		if err != nil {
 			return err
 		}
@@ -728,10 +800,13 @@ func (j *mdJournal) convertToBranch(
 		newEntry := entry
 		newEntry.ID = newID
 		newEntry.IsLocalSquash = false
-		err = tempJournal.append(brmd.RevisionNumber(), newEntry)
-		if err != nil {
-			return err
-		}
+		j.bufEntries = append(j.bufEntries, newEntry)
+		/*
+			err = tempJournal.append(brmd.RevisionNumber(), newEntry)
+			if err != nil {
+				return err
+			}
+		*/
 
 		prevID = newID
 
@@ -767,40 +842,43 @@ func (j *mdJournal) convertToBranch(
 			brmd.RevisionNumber(), entry.ID, newID)
 	}
 
-	// TODO: Do the below atomically on the filesystem
-	// level. Specifically, make "md_journal" always be a symlink,
-	// and then perform the swap by atomically changing the
-	// symlink to point to the new journal directory.
+	/*
 
-	oldJournalTempDir := journalTempDir + ".old"
-	dir, err := j.j.move(oldJournalTempDir)
-	if err != nil {
-		return err
-	}
+			// TODO: Do the below atomically on the filesystem
+			// level. Specifically, make "md_journal" always be a symlink,
+			// and then perform the swap by atomically changing the
+			// symlink to point to the new journal directory.
 
-	j.log.CDebugf(ctx, "Moved old journal from %s to %s",
-		dir, oldJournalTempDir)
+			oldJournalTempDir := journalTempDir + ".old"
+			dir, err := j.j.move(oldJournalTempDir)
+			if err != nil {
+				return err
+			}
 
-	newJournalOldDir, err := tempJournal.move(dir)
-	if err != nil {
-		return err
-	}
+			j.log.CDebugf(ctx, "Moved old journal from %s to %s",
+				dir, oldJournalTempDir)
 
-	j.log.CDebugf(ctx, "Moved new journal from %s to %s",
-		newJournalOldDir, dir)
+			newJournalOldDir, err := tempJournal.move(dir)
+			if err != nil {
+				return err
+			}
 
-	// Make the defer block above remove oldJournalTempDir.
-	journalTempDir = oldJournalTempDir
+			j.log.CDebugf(ctx, "Moved new journal from %s to %s",
+				newJournalOldDir, dir)
 
-	mdsToRemove = make([]MdID, 0, len(allEntries))
-	for _, entry := range allEntries {
-		if entry.IsLocalSquash && isPendingLocalSquash {
-			continue
+			// Make the defer block above remove oldJournalTempDir.
+			journalTempDir = oldJournalTempDir
+
+		mdsToRemove = make([]MdID, 0, len(allEntries))
+		for _, entry := range allEntries {
+			if entry.IsLocalSquash && isPendingLocalSquash {
+				continue
+			}
+			mdsToRemove = append(mdsToRemove, entry.ID)
 		}
-		mdsToRemove = append(mdsToRemove, entry.ID)
-	}
+	*/
 
-	j.j = tempJournal
+	//j.j = tempJournal
 	j.branchID = bid
 
 	return nil
@@ -1005,27 +1083,31 @@ func (j mdJournal) length() uint64 {
 
 func (j mdJournal) atLeastNNonLocalSquashes(
 	numNonLocalSquashes uint64) (bool, error) {
-	size := j.length()
-	if size < numNonLocalSquashes {
-		return false, nil
-	}
+	return numNonLocalSquashes <= uint64(len(j.bufEntries)), nil
+	/*
 
-	latestRev, err := j.readLatestRevision()
-	if err != nil {
-		return false, err
-	}
+		size := j.length()
+		if size < numNonLocalSquashes {
+			return false, nil
+		}
 
-	// Since the IsLocalSquash entries are guaranteed to be a prefix
-	// of the journal, we can just look up an entry that's back
-	// `numNonLocalSquashes` entries ago, and see if it's a local
-	// squash or not.
-	entry, err := j.j.readJournalEntry(
-		latestRev - MetadataRevision(numNonLocalSquashes) + 1)
-	if err != nil {
-		return false, err
-	}
+		latestRev, err := j.readLatestRevision()
+		if err != nil {
+			return false, err
+		}
 
-	return !entry.IsLocalSquash, nil
+		// Since the IsLocalSquash entries are guaranteed to be a prefix
+		// of the journal, we can just look up an entry that's back
+		// `numNonLocalSquashes` entries ago, and see if it's a local
+		// squash or not.
+		entry, err := j.j.readJournalEntry(
+			latestRev - MetadataRevision(numNonLocalSquashes) + 1)
+		if err != nil {
+			return false, err
+		}
+
+		return !entry.IsLocalSquash, nil
+	*/
 }
 
 func (j mdJournal) end() (MetadataRevision, error) {
@@ -1130,6 +1212,28 @@ func (j mdJournal) getRange(bid BranchID, start, stop MetadataRevision) (
 		ibrmds = append(ibrmds, ibrmd)
 	}
 
+	if getLocalSquashPrefix {
+		return ibrmds, nil
+	}
+
+	if start >= j.bufStart {
+		for i, e := range j.bufEntries {
+			rev := j.bufStart + MetadataRevision(i)
+			if rev < start {
+				continue
+			}
+			if rev > stop {
+				break
+			}
+			bufMD, ok := j.bufMDs[rev]
+			if !ok {
+				panic("Couldn't find it!")
+			}
+			ibrmds = append(ibrmds, MakeImmutableBareRootMetadata(
+				bufMD.bareMD, bufMD.extra, e.ID, bufMD.ts))
+		}
+	}
+
 	return ibrmds, nil
 }
 
@@ -1196,7 +1300,7 @@ func (j *mdJournal) put(
 		}
 	}()
 
-	head, err := j.getLatest(true)
+	head, err := j.checkGetParams()
 	if err != nil {
 		return MdID{}, err
 	}
@@ -1326,14 +1430,22 @@ func (j *mdJournal) put(
 		return MdID{}, err
 	}
 
-	id, err := j.putMD(rmd.bareMd)
-	if err != nil {
-		return MdID{}, err
-	}
-
-	wkbNew, rkbNew, err := j.putExtraMetadata(rmd.bareMd, rmd.extra)
-	if err != nil {
-		return MdID{}, err
+	var id MdID
+	var wkbNew, rkbNew bool
+	if rmd.Revision() == MetadataRevisionInitial {
+		id, err = j.putMDToDisk(rmd.bareMd)
+		if err != nil {
+			return MdID{}, err
+		}
+		wkbNew, rkbNew, err = j.putExtraMetadata(rmd.bareMd, rmd.extra)
+		if err != nil {
+			return MdID{}, err
+		}
+	} else {
+		id, wkbNew, rkbNew, err = j.putMD(rmd.bareMd, rmd.extra)
+		if err != nil {
+			return MdID{}, err
+		}
 	}
 
 	newEntry := mdIDJournalEntry{
@@ -1356,10 +1468,15 @@ func (j *mdJournal) put(
 		if err != nil {
 			return MdID{}, err
 		}
-	} else {
-		err = j.j.append(rmd.Revision(), newEntry)
+	} else if rmd.Revision() == MetadataRevisionInitial {
+		err = j.j.append(MetadataRevisionInitial, newEntry)
 		if err != nil {
 			return MdID{}, err
+		}
+	} else {
+		j.bufEntries = append(j.bufEntries, newEntry)
+		if len(j.bufEntries) == 1 {
+			j.bufStart = rmd.Revision()
 		}
 	}
 
@@ -1414,6 +1531,46 @@ func (j *mdJournal) resolveAndClear(
 				bid, err)
 		}
 	}()
+
+	err = encryptMDPrivateData(
+		ctx, j.codec, j.crypto, signer, ekg, j.uid, rmd)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	mdID, err = j.putMDToDisk(rmd.bareMd)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	wkbNew, rkbNew, err := j.putExtraMetadata(rmd.bareMd, rmd.extra)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	newEntry := mdIDJournalEntry{
+		ID:            mdID,
+		IsLocalSquash: true,
+		WKBNew:        wkbNew,
+		RKBNew:        rkbNew,
+	}
+	err = j.j.append(rmd.Revision(), newEntry)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	earliestBranchRevision := j.bufStart
+	latestRevision := j.bufStart + MetadataRevision(len(j.bufEntries)) - 1
+	j.bufStart = MetadataRevisionUninitialized
+	j.bufEntries = nil
+	j.bufMDs = make(map[MetadataRevision]bufferedMD)
+	j.branchID = NullBranchID
+
+	/**
+	mdID, err = otherJournal.put(ctx, signer, ekg, bsplit, rmd, true)
+	if err != nil {
+		return MdID{}, err
+	}
 
 	// The resolution must not have a branch ID.
 	if rmd.BID() != NullBranchID {
@@ -1528,6 +1685,7 @@ func (j *mdJournal) resolveAndClear(
 
 	// Make the defer above remove the old temp dir.
 	idJournalTempDir = oldIDJournalTempDir
+	*/
 
 	// Delete all of the branch MDs from the md cache.
 	for rev := earliestBranchRevision; rev <= latestRevision; rev++ {
@@ -1542,6 +1700,7 @@ func (j *mdJournal) resolveAndClear(
 // the caller already guaranteed that there is no more than 1
 // non-local-squash at the end of the journal.
 func (j *mdJournal) markLatestAsLocalSquash(ctx context.Context) error {
+	panic("MARK LATEST AS LOCAL SQUASH")
 	if j.branchID != NullBranchID {
 		return errors.Errorf("Can't mark latest as local squash when on a "+
 			"branch (bid=%s)", j.branchID)
