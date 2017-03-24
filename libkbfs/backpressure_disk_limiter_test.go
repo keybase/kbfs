@@ -436,6 +436,32 @@ func TestJournalTrackerCounters(t *testing.T) {
 		free: 79,
 	}, quotaSnapshot)
 
+	// Now flush a block...
+
+	jt.onBlocksFlush(10)
+
+	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	require.Equal(t, jtSnapshot{
+		used:  11,
+		free:  240,
+		max:   37,
+		count: 26,
+	}, byteSnapshot)
+	require.Equal(t, jtSnapshot{
+		used:  6,
+		free:  100,
+		max:   15,
+		count: 9,
+	}, fileSnapshot)
+
+	quotaSnapshot = jt.getQuotaSnapshotForTest()
+	require.Equal(t, jtSnapshot{
+		used: 11,
+		free: 89,
+	}, quotaSnapshot)
+
+	// ...and, finally, delete it.
+
 	/*
 		// Finally, delete a block.
 
