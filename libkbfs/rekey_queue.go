@@ -78,7 +78,7 @@ func (rkq *RekeyQueueStandard) start(ctx context.Context) {
 			select {
 			case id := <-rkq.queue:
 				if err := rkq.limiter.Wait(ctx); err != nil {
-					rkq.log.Debug("Waiting on rate limiter error: %v", err)
+					rkq.log.Debug("Waiting on rate limiter for tlf=%v error: %v", id, err)
 					return
 				}
 				rkq.config.KBFSOps().RequestRekey(context.Background(), id)
