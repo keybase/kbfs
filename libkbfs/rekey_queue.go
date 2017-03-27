@@ -88,7 +88,7 @@ func (rkq *RekeyQueueStandard) start(ctx context.Context) {
 					delete(rkq.pendings, id)
 				}(id)
 			case err := <-ctx.Done():
-				rkq.log.Debug("%v", err)
+				rkq.log.Debug("Rekey queue background routine context done: %v", err)
 				return
 			}
 		}
